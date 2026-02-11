@@ -1,0 +1,13 @@
+{
+  "name": "suwa-sh-claude-plugins",
+  "owner": {
+    "name": "suwa-sh"
+  },
+  "plugins": [
+    {
+      "name": "handover",
+      "source": "./plugins/handover",
+      "description": "セッション間コンテキスト自動引き継ぎ"
+    }
+  ]
+}

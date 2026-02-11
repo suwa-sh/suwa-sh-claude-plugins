@@ -12,7 +12,8 @@
 ### プラグインのインストール
 
 ```
-/plugin install suwa-sh/claude-code-handover
+/plugin marketplace add suwa-sh/suwa-sh-claude-plugins
+/plugin install handover@suwa-sh-claude-plugins
 ```
 
 インストールすると PreCompact / SessionStart hook が自動登録される。

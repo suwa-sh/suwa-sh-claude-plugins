@@ -1,5 +1,5 @@
 {
-  "name": "claude-code-handover",
+  "name": "handover",
   "description": "セッション間コンテキスト自動引き継ぎ",
   "author": {
     "name": "suwa-sh"
