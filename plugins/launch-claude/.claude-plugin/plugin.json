@@ -1,0 +1,7 @@
+{
+  "name": "launch-claude",
+  "description": "ghq管理リポジトリでGhosttyタブにClaude Codeセッションを起動",
+  "author": {
+    "name": "suwa-sh"
+  }
+}

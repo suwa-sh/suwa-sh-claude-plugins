@@ -8,6 +8,11 @@
       "name": "handover",
       "source": "./plugins/handover",
       "description": "セッション間コンテキスト自動引き継ぎ"
+    },
+    {
+      "name": "launch-claude",
+      "source": "./plugins/launch-claude",
+      "description": "ghq管理リポジトリでGhosttyタブにClaude Codeセッションを起動"
     }
   ]
 }
