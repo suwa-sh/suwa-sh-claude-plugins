@@ -15,6 +15,7 @@ Claude Code で以下を実行:
 | プラグイン | 説明 | インストール |
 |-----------|------|-------------|
 | [handover](./plugins/handover/) | セッション間コンテキスト自動引き継ぎ | `/plugin install handover@suwa-sh-claude-plugins` |
+| [launch-claude](./plugins/launch-claude/) | ghq管理リポジトリでGhosttyタブにClaude Codeセッションを起動 | `/plugin install launch-claude@suwa-sh-claude-plugins` |
 
 ## ライセンス
 
