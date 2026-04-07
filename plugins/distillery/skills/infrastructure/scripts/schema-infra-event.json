@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["version", "event_id", "created_at", "source", "arch_event_ref", "nfr_event_ref", "foundation_context_ref", "shared_platform_context_ref", "translation", "mcl_execution"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}_[0-9]{6}_infra_product_design$"
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 10
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "arch_event_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nfr_event_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "foundation_context_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "shared_platform_context_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "translation": {
+      "$ref": "#/$defs/Translation"
+    },
+    "mcl_execution": {
+      "$ref": "#/$defs/MclExecution"
+    },
+    "arch_feedback": {
+      "$ref": "#/$defs/ArchFeedback"
+    }
+  },
+  "$defs": {
+    "Translation": {
+      "type": "object",
+      "required": ["workload_type", "availability_tier", "latency_target_p99", "data_classification", "traffic_pattern_type", "consistency_model", "cost_posture", "target_clouds"],
+      "properties": {
+        "workload_type": {
+          "type": "string",
+          "enum": ["web_app", "api", "batch", "event_driven"]
+        },
+        "availability_tier": {
+          "type": "string",
+          "enum": ["99%", "99.9%", "99.95%", "99.99%"]
+        },
+        "latency_target_p99": {
+          "type": "string",
+          "enum": ["200ms", "500ms", "1s", "none"]
+        },
+        "data_classification": {
+          "type": "string",
+          "enum": ["public", "internal", "restricted"]
+        },
+        "traffic_pattern_type": {
+          "type": "string",
+          "enum": ["steady", "spike", "scheduled", "event_driven"]
+        },
+        "consistency_model": {
+          "type": "string",
+          "enum": ["strong", "eventual"]
+        },
+        "cost_posture": {
+          "type": "string",
+          "enum": ["cost_optimized", "balanced", "performance_optimized"]
+        },
+        "target_clouds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "MclExecution": {
+      "type": "object",
+      "required": ["status", "outputs"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["completed", "partial", "failed"]
+        },
+        "completed_at": {
+          "type": "string",
+          "minLength": 10
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MclOutput" }
+        }
+      }
+    },
+    "MclOutput": {
+      "type": "object",
+      "required": ["path", "status"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ArchFeedback": {
+      "type": "object",
+      "required": ["arch_feedback_event_id", "feedback_items"],
+      "properties": {
+        "arch_feedback_event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "feedback_items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/FeedbackItem" }
+        }
+      }
+    },
+    "FeedbackItem": {
+      "type": "object",
+      "required": ["target", "action", "description", "source"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

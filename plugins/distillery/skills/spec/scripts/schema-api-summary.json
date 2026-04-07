@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["uc", "business", "buc"],
+  "properties": {
+    "uc": { "type": "string", "minLength": 1 },
+    "business": { "type": "string", "minLength": 1 },
+    "buc": { "type": "string", "minLength": 1 },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["method", "path", "summary"],
+        "properties": {
+          "method": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+          "path": { "type": "string", "minLength": 1 },
+          "summary": { "type": "string", "minLength": 1 },
+          "request_body": { "type": "object" },
+          "response": { "type": "object" },
+          "query_params": { "type": "array" }
+        }
+      }
+    },
+    "async_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "channel"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "channel": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

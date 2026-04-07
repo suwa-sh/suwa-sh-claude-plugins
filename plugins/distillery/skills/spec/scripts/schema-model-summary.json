@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["uc", "business", "buc", "models", "tables"],
+  "properties": {
+    "uc": { "type": "string", "minLength": 1 },
+    "business": { "type": "string", "minLength": 1 },
+    "buc": { "type": "string", "minLength": 1 },
+    "models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "tier", "layer", "type"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "tier": { "type": "string", "minLength": 1 },
+          "layer": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "tables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "operations"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "rdra_info": { "type": "string" },
+          "operations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": { "type": "string", "enum": ["INSERT", "SELECT", "UPDATE", "DELETE"] }
+              }
+            }
+          },
+          "indexes_needed": { "type": "array" }
+        }
+      }
+    },
+    "kvs": { "type": "array" },
+    "object_storage": { "type": "array" }
+  }
+}

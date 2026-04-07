@@ -1,0 +1,145 @@
+{
+  "skill_name": "architecture",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "samples/05_architecture をルートディレクトリにして、アーキテクチャ設計を実行してください。テクノロジースタックは Go + TypeScript、制約なしです。対話の選択肢はすべてデフォルト（1番）を選択してください。認可モデルは ReBAC（3番）を選択してください。",
+      "expected_output": "arch-design.yaml が生成され、バリデーション PASS、coverage-report.md で RDRA/NFR 網羅率が出力される",
+      "assertions": [
+        {
+          "name": "arch-design.yaml が生成される",
+          "type": "file_exists",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml"
+        },
+        {
+          "name": "arch-design.md が生成される",
+          "type": "file_exists",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.md"
+        },
+        {
+          "name": "coverage-report.md が生成される",
+          "type": "file_exists",
+          "path": "samples/05_architecture/docs/arch/latest/coverage-report.md"
+        },
+        {
+          "name": "バリデーション PASS",
+          "type": "command_exit_code",
+          "command": "node scripts/validateArchDesign.js samples/05_architecture/docs/arch/latest/arch-design.yaml",
+          "expected": 0
+        },
+        {
+          "name": "ティア数が 5 以上",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.md",
+          "contains": "tier-backend-api"
+        },
+        {
+          "name": "IdP ティアが含まれる",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml",
+          "contains": "tier-idp"
+        },
+        {
+          "name": "認可サービスティアが含まれる",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml",
+          "contains": "tier-authz-service"
+        },
+        {
+          "name": "レイヤー名が gateway（Infrastructure ではない）",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml",
+          "contains": "L-backend-api-gateway"
+        },
+        {
+          "name": "イミュータブルデータモデル（event_snapshot）が使われている",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml",
+          "contains": "event_snapshot"
+        },
+        {
+          "name": "domain 層のログ出力禁止ルールが含まれる",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml",
+          "contains": "ログ出力禁止"
+        },
+        {
+          "name": "ベンダー固有サービス名（AWS/Azure/GCP）が含まれない",
+          "type": "content_not_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml",
+          "not_contains": ["Lambda", "EKS", "AKS", "GKE", "Cognito", "DynamoDB"]
+        }
+      ],
+      "files": [
+        "samples/05_architecture/docs/rdra/latest/",
+        "samples/05_architecture/docs/nfr/latest/nfr-grade.yaml"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "samples/05_architecture のRDRAモデルとNFRグレードを読み込んで、アーキテクチャの推論のみ（Step1）を実行してください。ファイル出力は不要です。推論結果のサマリをMarkdownで提示してください。",
+      "expected_output": "RDRA/NFR の分析結果、ティア構成、レイヤリング、データモデル分類の推論結果がサマリとして提示される",
+      "assertions": [
+        {
+          "name": "ティア構成の推論が含まれる",
+          "type": "output_contains",
+          "contains": "ティア"
+        },
+        {
+          "name": "レイヤリングの推論が含まれる",
+          "type": "output_contains",
+          "contains": "レイヤー"
+        },
+        {
+          "name": "エンティティ分類の推論が含まれる",
+          "type": "output_contains",
+          "contains": "エンティティ"
+        },
+        {
+          "name": "NFR からの推論根拠が含まれる",
+          "type": "output_contains",
+          "contains": "NFR"
+        }
+      ],
+      "files": [
+        "samples/05_architecture/docs/rdra/latest/",
+        "samples/05_architecture/docs/nfr/latest/nfr-grade.yaml"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "samples/05_architecture/docs/arch/latest/arch-design.yaml を読み込んで、カバレッジレポートのみ生成してください。RDRAディレクトリは samples/05_architecture/docs/rdra/latest、NFRは samples/05_architecture/docs/nfr/latest/nfr-grade.yaml です。",
+      "expected_output": "coverage-report.md が生成され、RDRA/NFR の網羅率サマリと個別対応状況が含まれる",
+      "assertions": [
+        {
+          "name": "coverage-report.md が生成される",
+          "type": "file_exists",
+          "path": "samples/05_architecture/docs/arch/latest/coverage-report.md"
+        },
+        {
+          "name": "RDRA 網羅率サマリが含まれる",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/coverage-report.md",
+          "contains": "RDRA モデル網羅率"
+        },
+        {
+          "name": "NFR 網羅率サマリが含まれる",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/coverage-report.md",
+          "contains": "NFR グレード網羅率"
+        },
+        {
+          "name": "個別対応状況テーブルが含まれる",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/coverage-report.md",
+          "contains": "対応状況"
+        }
+      ],
+      "files": [
+        "samples/05_architecture/docs/arch/latest/arch-design.yaml",
+        "samples/05_architecture/docs/rdra/latest/",
+        "samples/05_architecture/docs/nfr/latest/nfr-grade.yaml"
+      ]
+    }
+  ]
+}

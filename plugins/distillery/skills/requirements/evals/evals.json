@@ -1,0 +1,17 @@
+{
+  "skill_name": "requirements",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "図書館システムに「電子書籍の貸出機能」を追加したいです。以下の変更要望を USDM に分解してください。\n\n変更要望:\n- 利用者がWebから電子書籍を借りられるようにしたい\n- 電子書籍は物理的な返却が不要で、貸出期間が過ぎると自動で返却される\n- 電子書籍のライセンスは出版社から購入し、同時貸出数に制限がある\n- 図書館司書が電子書籍のライセンスを管理できるようにしたい\n\n既存のRDRAモデルは docs/rdra/latest/ にあります。変更要望テキストは docs/usdm/events/ に保存してください。",
+      "expected_output": "docs/usdm/events/{event_id}/requirements.yaml が生成され、要求が構造化されていること。affected_models に information(電子書籍、ライセンス)、buc(電子書籍貸出)、condition(同時貸出数制限)、actor(出版社)が含まれること",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "図書館システムの変更要望を差分パイプラインで処理してください。\n\n変更要望: 利用者が図書館のWebサイトで蔵書のレビュー（感想・評価）を投稿できるようにしたい。他の利用者のレビューを参考に本を選べるようにする。不適切なレビューは図書館職員が削除できるようにする。\n\nrdra-pipeline スキルの Step1（USDM分解）→ Step2（RDRA差分生成）→ Step4（Spec生成）まで実行してください。既存のRDRAモデルは docs/rdra/latest/ にあります。",
+      "expected_output": "USDM分解(requirements.yaml)、RDRA差分(*.tsv + _changes.md)、Spec(UC単位のspec.md + tier-*.md with BDD)が生成されること",
+      "files": []
+    }
+  ]
+}

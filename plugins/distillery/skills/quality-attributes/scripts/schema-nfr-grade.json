@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["version", "event_id", "created_at", "source", "model_system", "categories"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.0$"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}_[0-9]{6}_.+$",
+      "minLength": 16
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 10
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_system": {
+      "$ref": "#/$defs/ModelSystem"
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "$ref": "#/$defs/Category"
+      }
+    }
+  },
+  "$defs": {
+    "ModelSystem": {
+      "type": "object",
+      "required": ["type", "reason"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["model1", "model2", "model3"]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Category": {
+      "type": "object",
+      "required": ["id", "name", "subcategories"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-F]$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subcategories": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Subcategory"
+          }
+        }
+      }
+    },
+    "Subcategory": {
+      "type": "object",
+      "required": ["id", "name", "items"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-F]\\.[0-9]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Item"
+          }
+        }
+      }
+    },
+    "Item": {
+      "type": "object",
+      "required": ["id", "name", "important", "metrics"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-F]\\.[0-9]+\\.[0-9]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "important": {
+          "type": "boolean"
+        },
+        "metrics": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Metric"
+          }
+        }
+      }
+    },
+    "Metric": {
+      "type": "object",
+      "required": ["id", "name", "important", "grade", "grade_description", "reason", "confidence"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-F]\\.[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "important": {
+          "type": "boolean"
+        },
+        "grade": {
+          "type": "integer"
+        },
+        "grade_description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_model": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "default", "user"]
+        }
+      }
+    }
+  }
+}

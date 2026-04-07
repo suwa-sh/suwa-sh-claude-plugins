@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["version", "datastore", "key_patterns"],
+  "properties": {
+    "version": { "type": "string" },
+    "datastore": { "type": "string", "enum": ["kvs"] },
+    "key_patterns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["pattern", "purpose", "ttl"],
+        "properties": {
+          "pattern": { "type": "string", "minLength": 1 },
+          "purpose": { "type": "string", "minLength": 1 },
+          "value_type": { "type": "string" },
+          "ttl": { "type": "string", "minLength": 1 },
+          "used_by": { "type": "array" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}

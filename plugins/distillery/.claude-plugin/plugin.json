@@ -1,0 +1,7 @@
+{
+  "name": "distillery",
+  "description": "Distill raw requirements into production-ready design: requirements, quality attributes, architecture, infrastructure, design system, and specs.",
+  "author": {
+    "name": "suwa-sh"
+  }
+}

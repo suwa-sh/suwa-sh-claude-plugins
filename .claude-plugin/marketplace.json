@@ -13,6 +13,11 @@
       "name": "launch-claude",
       "source": "./plugins/launch-claude",
       "description": "ghq管理リポジトリでGhosttyタブにClaude Codeセッションを起動"
+    },
+    {
+      "name": "distillery",
+      "source": "./plugins/distillery",
+      "description": "Distill raw requirements into production-ready design (RDRA/USDM/NFR/Arch/Infra/Design/Spec pipeline)"
     }
   ]
 }

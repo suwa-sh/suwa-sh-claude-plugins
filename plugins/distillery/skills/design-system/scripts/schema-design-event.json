@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["version", "event_id", "created_at", "source", "portals", "tokens", "components", "screens", "states"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.0$"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}_[0-9]{6}_.+$",
+      "minLength": 16
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 10
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "brand": {
+      "$ref": "#/$defs/Brand"
+    },
+    "portals": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Portal" }
+    },
+    "tokens": {
+      "$ref": "#/$defs/Tokens"
+    },
+    "components": {
+      "$ref": "#/$defs/Components"
+    },
+    "screens": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/Screen" }
+    },
+    "states": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/StateModel" }
+    },
+    "nfr_decisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/NfrDecision" }
+    },
+    "storybook": {
+      "$ref": "#/$defs/StorybookConfig"
+    }
+  },
+  "$defs": {
+    "Brand": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "colors": {
+          "type": "object",
+          "properties": {
+            "primary": { "$ref": "#/$defs/ColorDef" },
+            "secondary": { "$ref": "#/$defs/ColorDef" }
+          }
+        },
+        "typography": {
+          "type": "object",
+          "properties": {
+            "sans": { "type": "string", "minLength": 1 },
+            "mono": { "type": "string", "minLength": 1 },
+            "scale": { "type": "object" }
+          }
+        },
+        "voice": {
+          "type": "object",
+          "properties": {
+            "tone": { "type": "string" },
+            "principles": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "logo": {
+          "type": "object",
+          "properties": {
+            "variants": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/LogoVariant" }
+            }
+          }
+        },
+        "icons": {
+          "type": "object",
+          "properties": {
+            "style": { "type": "string" },
+            "source_dir": { "type": "string" }
+          }
+        }
+      }
+    },
+    "ColorDef": {
+      "type": "object",
+      "required": ["hex"],
+      "properties": {
+        "hex": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "name": { "type": "string" }
+      }
+    },
+    "LogoVariant": {
+      "type": "object",
+      "required": ["name", "path"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "Portal": {
+      "type": "object",
+      "required": ["id", "name", "actor", "primary_color"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "actor": { "type": "string", "minLength": 1 },
+        "primary_color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "screen_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "Tokens": {
+      "type": "object",
+      "required": ["primitive", "semantic", "component"],
+      "properties": {
+        "primitive": {
+          "type": "object",
+          "required": ["colors", "spacing"],
+          "properties": {
+            "colors": { "type": "object", "minProperties": 1 },
+            "spacing": { "type": "object", "minProperties": 1 },
+            "radius": { "type": "object" },
+            "shadow": { "type": "object" },
+            "font_size": { "type": "object" },
+            "font_family": { "type": "object" },
+            "font_weight": { "type": "object" },
+            "duration": { "type": "object" }
+          }
+        },
+        "semantic": {
+          "type": "object",
+          "required": ["background", "foreground"],
+          "properties": {
+            "background": { "type": "string", "minLength": 1 },
+            "foreground": { "type": "string", "minLength": 1 },
+            "border": { "type": "string" },
+            "success": { "type": "string" },
+            "warning": { "type": "string" },
+            "destructive": { "type": "string" },
+            "info": { "type": "string" },
+            "rating": { "type": "string" },
+            "virtual_accent": { "type": "string" }
+          }
+        },
+        "component": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "dark_overrides": {
+          "type": "object",
+          "properties": {
+            "semantic": { "type": "object" },
+            "component": { "type": "object" }
+          }
+        }
+      }
+    },
+    "Components": {
+      "type": "object",
+      "required": ["ui", "domain"],
+      "properties": {
+        "ui": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/ComponentDef" }
+        },
+        "domain": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/DomainComponentDef" }
+        }
+      }
+    },
+    "ComponentDef": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "variants": { "type": "array", "items": { "type": "string" } },
+        "sizes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "DomainComponentDef": {
+      "type": "object",
+      "required": ["name", "description"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "screens": { "type": "array", "items": { "type": "string" } },
+        "props": { "type": "array", "items": { "type": "string" } },
+        "variants": { "type": "array", "items": { "type": "string" } },
+        "states": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Screen": {
+      "type": "object",
+      "required": ["name", "portal", "route", "components"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "portal": { "type": "string", "minLength": 1 },
+        "route": { "type": "string", "pattern": "^/" },
+        "components": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "StateModel": {
+      "type": "object",
+      "required": ["model", "entries"],
+      "properties": {
+        "model": { "type": "string", "minLength": 1 },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/StateEntry" }
+        }
+      }
+    },
+    "StateEntry": {
+      "type": "object",
+      "required": ["state", "label", "color"],
+      "properties": {
+        "state": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "color": { "type": "string", "enum": ["amber", "green", "blue", "gray", "red", "violet", "orange"] },
+        "actions": { "type": "object" }
+      }
+    },
+    "NfrDecision": {
+      "type": "object",
+      "required": ["nfr", "decision"],
+      "properties": {
+        "nfr": { "type": "string", "minLength": 1 },
+        "decision": { "type": "string", "minLength": 1 }
+      }
+    },
+    "StorybookConfig": {
+      "type": "object",
+      "properties": {
+        "framework": { "type": "string", "minLength": 1 },
+        "addons": { "type": "array", "items": { "type": "string" } },
+        "categories": { "type": "object" }
+      }
+    }
+  }
+}

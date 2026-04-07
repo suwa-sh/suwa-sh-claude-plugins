@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["version", "datastore", "tables"],
+  "properties": {
+    "version": { "type": "string" },
+    "datastore": { "type": "string", "enum": ["rdb"] },
+    "tables": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "columns", "primary_key"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "rdra_info": { "type": "string" },
+          "description": { "type": "string", "minLength": 1 },
+          "columns": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["name", "type", "description"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "type": { "type": "string", "minLength": 1 },
+                "nullable": { "type": "boolean" },
+                "description": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "primary_key": { "type": "array", "minItems": 1 },
+          "foreign_keys": { "type": "array" },
+          "indexes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "columns"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "columns": { "type": "array", "minItems": 1 },
+                "unique": { "type": "boolean" },
+                "reason": { "type": "string" }
+              }
+            }
+          },
+          "used_by": { "type": "array" }
+        }
+      }
+    },
+    "er_diagram": { "type": "string" }
+  }
+}
