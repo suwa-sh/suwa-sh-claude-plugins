@@ -41,7 +41,7 @@
 | skill_name | quality-attributes |
 | skill_args | *(なし)* |
 | trigger_event_instruction | `前段イベント rdra:{rdra_event_id} を trigger_event としてイベントに記録してください。` |
-| additional_instructions | *(なし)* |
+| additional_instructions | `対話ありの Step です。confidence が low/medium の項目、または自動推論（RDRA からの推定や M2 デフォルト等）で埋めた項目がある場合は、**必ず結果として「確認推奨項目リスト」を返してください**。オーケストレータがそれをユーザーに中継します。対話を省略して完了扱いにしないこと。` |
 
 ### Step3: architecture
 
@@ -52,7 +52,7 @@
 | skill_name | architecture |
 | skill_args | *(なし)* |
 | trigger_event_instruction | `前段イベント rdra:{rdra_event_id}, nfr:{nfr_event_id} を trigger_event としてイベントに記録してください。` |
-| additional_instructions | *(なし)* |
+| additional_instructions | `対話ありの Step です。confidence が low/medium の項目、または自動推論で埋めた項目がある場合は、**必ず結果として「確認推奨項目リスト」を返してください**。オーケストレータがそれをユーザーに中継します。対話を省略して完了扱いにしないこと。` |
 
 ### Step4: infrastructure
 
@@ -74,7 +74,7 @@
 | skill_name | design-system |
 | skill_args | *(なし)* |
 | trigger_event_instruction | `前段イベント rdra:{rdra_event_id}, arch:{arch_event_id} を trigger_event としてイベントに記録してください。` |
-| additional_instructions | `Step8（画面確認）は特に重要です。必ず実行してください。` |
+| additional_instructions | `Step8（画面確認）は特に重要です。必ず実行してください。対話ありの Step です。confidence が low/medium の項目、または自動推論で埋めた項目がある場合は、**必ず結果として「確認推奨項目リスト」を返してください**。オーケストレータがそれをユーザーに中継します。対話を省略して完了扱いにしないこと。` |
 
 ### Step6: spec
 

@@ -126,15 +126,40 @@ MCL product-design スキルのプロジェクトルートを `docs/infra/events
 2. `docs/infra/events/{event_id}/specs/foundation/output/foundation-context.yaml` — プロジェクトルートからコピー
 3. `docs/infra/events/{event_id}/specs/shared-platform/output/shared-platform-context.yaml` — プロジェクトルートからコピー
 
-## 全体フロー
+## 全体フロー（Phase 構造・冪等再開対応）
+
+本スキルは 1 パスのサブエージェント実行ではコンテキスト消費が大きく中断しやすいため、**明示的な Phase 構造**に分割する。各 Phase は**完了判定ファイル**を持ち、サブエージェントが中断→再開しても同じ結果になるよう冪等に設計する。
 
 ```
 docs/arch/latest/arch-design.yaml + docs/nfr/latest/nfr-grade.yaml
-  → Step1: Arch + NFR → MCL Product Input 変換（自動マッピング）
-  → Step2: mcl-product-design 実行（MCL スキル呼出し）
-  → Step3: Infra フィードバック → Arch 更新（イベント記録 + スナップショット更新）
-  → Step4: Infra 書き戻しチェック（Arch 変更が product-input に影響するか判定）
+  → Phase1: Arch + NFR → MCL Product Input 変換（= Step1）
+  → Phase2: MCL product-design 実行（= Step2 前半：MCL 呼出し + 出力検証）
+  → Phase3: infra-event 記録 + infra スナップショット更新（= Step2 後半）
+  → Phase4: Arch フィードバック（= Step3）
+  → Phase5: 書き戻しチェック（= Step4）
 ```
+
+### Phase 完了判定ファイル（チェックポイント）
+
+サブエージェント再開時は、以下のファイルの存在を**上から順に**確認し、未完了の最初の Phase から再開する。既に完了している Phase は**再実行しない**。
+
+| Phase | 完了判定ファイル（複数ある場合は全て存在すること） |
+|-------|--------------------------------------------|
+| Phase1 | `docs/infra/events/{event_id}/specs/product/input/product-input.yaml` かつ `docs/infra/events/{event_id}/specs/foundation/output/foundation-context.yaml` かつ `docs/infra/events/{event_id}/specs/shared-platform/output/shared-platform-context.yaml` |
+| Phase2 | `docs/infra/events/{event_id}/specs/product/output/product-workload-model.yaml` かつ `docs/infra/events/{event_id}/specs/product/output/product-observability.yaml` かつ `docs/infra/events/{event_id}/specs/product/output/product-cost-hints.yaml` かつ `specs/product/output/product-mapping-*.yaml` と `product-impl-*.yaml` が各 1 件以上 |
+| Phase3 | `docs/infra/events/{event_id}/infra-event.yaml`（または `infra-event-diff.yaml`） かつ `docs/infra/events/{event_id}/_changes.md` かつ `docs/infra/latest/infra-event.yaml` |
+| Phase4 | `docs/arch/events/{feedback_event_id}/arch-design-diff.yaml` かつ `docs/arch/events/{feedback_event_id}/_changes.md` かつ `docs/infra/latest/infra-event.yaml` に当該 `arch_feedback` エントリが追記済み |
+| Phase5 | 判定結果がユーザーに報告済み（出力は副作用のみ。再実行要求が無ければ完了とみなす） |
+
+### Phase 実行ルール
+
+1. **event_id は Phase1 で確定し、Phase2 以降で再利用する**。再開時は `ls -t docs/infra/events/ | head -1` で直近イベントを取得し、Phase1 の完了判定を再確認した上で継続する。
+2. **各 Phase の冒頭で当該 Phase の完了判定を先にチェックし、既に満たされていれば当該 Phase をスキップ**する。
+3. **Phase 境界で必ずファイル一覧を stdout に出力**し、次 Phase の入力が揃っていることをログに残す（デバッグと再開時の手掛かり）。
+4. Phase1〜Phase5 は直列実行。並列化しない。
+5. Phase 中に失敗した場合は、既に生成された中間ファイルを**削除しない**。次回再開時にチェックポイントから継続するため。
+
+各 Phase の詳細手順は、下記 Step1〜Step4 を参照する（Phase と Step の対応は全体フロー図の通り）。
 
 ---
 

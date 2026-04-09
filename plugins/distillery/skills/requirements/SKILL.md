@@ -63,9 +63,18 @@ docs/
 
 1. **USDM 分解**: 初期要望テキストを USDM に構造化分解 → `docs/usdm/events/{event_id}/`
 2. **USDM スナップショット作成**: → `docs/usdm/latest/requirements.yaml` + `requirements.md`
-3. **USDM YAML を入力とした RDRA フルビルド**: Phase1-5 + RDRA統合（`初期要望.txt` ではなく `docs/usdm/latest/requirements.yaml` を入力とする）
-4. **docs 配置**: `1_RDRA/` → `docs/rdra/latest/` + `docs/rdra/events/{event_id}/`
-5. **一時ディレクトリ削除**: `0_RDRAZeroOne/` と `1_RDRA/` をディレクトリごと削除
+3. **ユーザー確認（1 回、対話 1 ターン）**: 生成した USDM の要約をユーザーに提示し、解釈ズレがないか確認する。短い要望テキスト（数百文字）から自動生成した内容が後段に波及するのを防ぐのが目的。
+   - 提示項目:
+     - 業務一覧（業務名の箇条書き）
+     - UC 候補（BUC 候補名の箇条書き）
+     - 主要情報（情報エンティティ候補の箇条書き）
+     - 主要アクター（アクター候補）
+   - 選択肢: 「このまま進める」「修正指示」「中断」
+   - 修正指示を受けた場合は USDM を再生成してから再度確認する
+   - **対話スキップフラグ**: 呼び出し元が `--no-confirm` を明示した場合、または requirements.yaml が差分更新モード（`docs/usdm/latest/requirements.yaml` が既存）の場合は確認をスキップする
+4. **USDM YAML を入力とした RDRA フルビルド**: Phase1-5 + RDRA統合（`初期要望.txt` ではなく `docs/usdm/latest/requirements.yaml` を入力とする）
+5. **docs 配置**: `1_RDRA/` → `docs/rdra/latest/` + `docs/rdra/events/{event_id}/`
+6. **一時ディレクトリ削除**: `0_RDRAZeroOne/` と `1_RDRA/` をディレクトリごと削除
 
 ### 出力チェック
 

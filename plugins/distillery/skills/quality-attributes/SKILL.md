@@ -215,3 +215,14 @@ Step3 は以下のパターンで subagent に委譲可能。
 - `docs/nfr/latest/nfr-grade.yaml` が最新スナップショットであること
 - `docs/nfr/latest/nfr-grade.md` が存在すること
 - バリデーションスクリプトが PASS すること
+
+## 完了報告（ユーザー向けサマリ）
+
+タスク完了時、ユーザーに以下の項目を**必ず**含めた完了報告を提示する。pipeline スキルの Step 2 対話スキップ検知と連動する:
+
+- 生成/更新した nfr-grade.yaml のパス
+- **確認推奨項目: N 件（low=X, medium=Y）** — confidence が low/medium の項目、または自動推論（RDRA 推定・M2 デフォルト等）で埋めた項目の件数
+- 主要な確認推奨項目（上位 5 件程度）: 項目名・推論値・confidence・推論根拠の 1 行要約
+- 件数が 0 の場合はその旨を明記する
+
+件数が 1 件以上ある場合は、pipeline オーケストレータが対話フローを発火する前提で、そのまま結果に含めて返すこと（AskUserQuestion は使わない）。

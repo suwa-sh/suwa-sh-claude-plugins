@@ -350,6 +350,15 @@ OpenAPI 統合が特に重い場合は、業務単位で分割して並列生成
    - カテゴリ別の網羅率サマリーを算出
    - 未カバー要素一覧を生成し、対応方針（要対応/意図的除外/RDRA見直し）を提示
    - **網羅率をユーザーに報告する**
+   - **BUC ↔ UC 対応表セクションを明示記録する**（RDRA の BUC と spec の UC は 1:1 対応とは限らず、複数 BUC が 1 UC にまとめられる、あるいは 1 BUC が複数 UC に分割されるケースがあるため）。以下のフォーマットで出力する:
+     ```markdown
+     ## BUC ↔ UC 対応表
+
+     | BUC ID | BUC 名 | 対応する UC ID（カンマ区切り） | 関係 |
+     |--------|--------|------------------------------|------|
+     | BUC-001 | ... | UC-001, UC-002 | 1:N |
+     | BUC-002 | ... | UC-001 | N:1（BUC-003 と統合） |
+     ```
 
 2. **網羅率が 100% 未満の場合、自律的に是正する**（人間に判断を委ねずエージェントが自走する）:
 
@@ -560,12 +569,20 @@ node <skill-path>/scripts/generateDatastoreMd.js docs/specs/events/{event_id}/_c
 2. `docs/specs/events/{event_id}/` の全内容を `docs/specs/latest/` にコピーする（`decisions/` ディレクトリを含む）
 3. `docs/specs/latest/README.md` を生成する（UC 一覧インデックス）
 
-### Step9: Storybook Story 生成
+### Step9: Storybook Story 生成は spec-stories スキルで別途実施する
 
-**読み込み（design スキルの references を参照）:**
-- `${CLAUDE_PLUGIN_ROOT}/skills/design-system/references/design/design-storybook-generate.md` — Storybook 生成ルール + emoji→Icon 置換
-- `${CLAUDE_PLUGIN_ROOT}/skills/design-system/references/design/design-lessons-learned.md` — 実装の教訓・品質チェックリスト
-- `${CLAUDE_PLUGIN_ROOT}/skills/design-system/references/design/design-components-generate.md` — コンポーネント仕様生成ルール
+Storybook Story 生成は独立スキル `spec-stories` に分離されている。spec スキルは Step8 で完了とし、以下の扱いとする:
+
+- `docs/specs/latest/spec-event.yaml` に `story_generation: required` を記録する
+- Storybook Story の生成は `spec-stories` スキル（またはパイプラインの Step 6a）で別途実行する
+- 本スキル内では Storybook Story の実装・ビルド検証・design イベント記録を行わない
+
+spec-stories スキルの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/spec-stories/SKILL.md` を参照。
+
+<!-- 以下、旧 Step9 の内容は spec-stories スキルに移管済み。参考のため残置するが本スキルでは実行しない。 -->
+
+<details>
+<summary>（参考）旧 Step9 の内容（spec-stories に移管済み）</summary>
 
 Step8 でスナップショットが確定した後、Spec の内容を Storybook の Story として実装する。
 
@@ -625,6 +642,8 @@ Step8 でスナップショットが確定した後、Spec の内容を Storyboo
 - **Logo コンポーネントを利用する**: design-event.yaml の `brand.logo.variants` で定義された Logo SVG（full, icon, stacked）を、ページのヘッダー・サイドバー・ログイン画面等で積極的に使用する。既存の Logo コンポーネント（`@/components/ui/Logo`）をインポートして配置する
 - _cross-cutting/ux-ui/common-components.md の共通コンポーネント設計を参照し、ページ間で一貫したレイアウトシェルを使用する
 
+</details>
+
 ### 出力チェック
 
 - `docs/specs/events/{event_id}/decisions/` に少なくとも1つの決定記録（spec-decision-*.yaml）が存在すること
@@ -632,16 +651,13 @@ Step8 でスナップショットが確定した後、Spec の内容を Storyboo
 
 ### タスク完了時
 
-1. Storybook dev server を**停止する** (`kill $(lsof -t -i :6006)`)
-2. ユーザーに以下を**必ず**報告する:
-   - 生成された UC Spec の一覧（業務/BUC/UC ツリー）
-   - 全体横断 Spec の一覧
-   - OpenAPI/AsyncAPI spec のファイルパス
-   - 追加された Storybook Story の一覧
-   - **Storybook の起動コマンド**（必須。省略しない）:
-     ```
-     cd {storybook-app のパス} && npm run storybook
-     ```
+ユーザーに以下を**必ず**報告する:
+
+- 生成された UC Spec の一覧（業務/BUC/UC ツリー）
+- 全体横断 Spec の一覧
+- OpenAPI/AsyncAPI spec のファイルパス
+- `story_generation: required` が spec-event.yaml に記録されていること
+- Storybook Story 生成は `spec-stories` スキル（またはパイプラインの Step 6a）で別途実施する旨の案内
 
 ## イベントソーシングルール
 
