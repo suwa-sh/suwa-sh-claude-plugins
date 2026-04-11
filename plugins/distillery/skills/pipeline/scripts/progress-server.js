@@ -6,12 +6,76 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-const port = parseInt(process.argv[2] || '3100', 10);
+const DEFAULT_PORT = parseInt(process.argv[2] || '3100', 10);
+const DRY_RUN = process.argv.includes('--dry-run');
 // 作業ディレクトリ名を含めたファイル名で読む（progress-update.js と同じロジック）
 const cwd = process.cwd();
 const dirName = path.basename(cwd).replace(/[^a-zA-Z0-9_-]/g, '_');
 const statusPath = path.join(__dirname, '..', `.pipeline-status-${dirName}.json`);
+const portFile = path.join(__dirname, '..', '.progress-server.port');
+const pidFile = path.join(__dirname, '..', '.progress-server.pid');
+
+// --- プロセスベースのポート解決 ---
+// 方針: 既定ポートを掴んでいるのが progress-server.js ならそれを停止して再利用、
+//       別プロセスなら空きポートを順に探す、誰もいなければ既定ポートで起動。
+function pidOnPort(port) {
+  try {
+    const out = execSync(`lsof -ti :${port}`, { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+    if (!out) return null;
+    return parseInt(out.split('\n')[0], 10);
+  } catch {
+    return null;
+  }
+}
+
+function commandOfPid(pid) {
+  try {
+    return execSync(`ps -p ${pid} -o command=`, { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  } catch {
+    return '';
+  }
+}
+
+function resolvePort(startPort) {
+  let port = startPort;
+  for (let i = 0; i < 20; i++) {
+    const pid = pidOnPort(port);
+    if (pid == null) {
+      return port; // free
+    }
+    const cmd = commandOfPid(pid);
+    if (cmd.includes('progress-server.js')) {
+      // 自分自身（または別インスタンス）が掴んでいる。停止して同ポートを使う。
+      try {
+        process.stdout.write(`Stopping previous progress-server (pid=${pid}) on port ${port}\n`);
+        execSync(`kill ${pid}`);
+        // プロセス解放を少し待つ
+        const until = Date.now() + 1500;
+        while (Date.now() < until) {
+          if (pidOnPort(port) == null) break;
+        }
+      } catch {}
+      return port;
+    }
+    // 別プロセス → 次のポートへ
+    port += 1;
+  }
+  return port;
+}
+
+const port = resolvePort(DEFAULT_PORT);
+
+if (DRY_RUN) {
+  process.stdout.write(`dry-run: would listen on port ${port}\n`);
+  process.stdout.write(`status file: ${statusPath}\n`);
+  process.exit(0);
+}
 
 function readStatus() {
   try {
@@ -301,6 +365,24 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`Pipeline dashboard: http://localhost:${port}`);
+  try {
+    fs.writeFileSync(portFile, String(port), 'utf-8');
+    fs.writeFileSync(pidFile, String(process.pid), 'utf-8');
+  } catch {}
+  console.log(`Dashboard running at http://localhost:${port}`);
   console.log(`Watching: ${statusPath}`);
 });
+
+function cleanup() {
+  try {
+    if (fs.existsSync(pidFile) && fs.readFileSync(pidFile, 'utf-8').trim() === String(process.pid)) {
+      fs.unlinkSync(pidFile);
+    }
+    if (fs.existsSync(portFile) && fs.readFileSync(portFile, 'utf-8').trim() === String(port)) {
+      fs.unlinkSync(portFile);
+    }
+  } catch {}
+}
+process.on('SIGINT', () => { cleanup(); process.exit(0); });
+process.on('SIGTERM', () => { cleanup(); process.exit(0); });
+process.on('exit', cleanup);

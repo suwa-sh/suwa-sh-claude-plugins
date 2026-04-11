@@ -16,7 +16,8 @@ const STEPS = [
   { id: 1, name: 'requirements', label: 'USDM分解 + RDRA モデル構築' },
   { id: 2, name: 'quality-attributes', label: '非機能要求グレード' },
   { id: 3, name: 'architecture', label: 'アーキテクチャ設計' },
-  { id: 4, name: 'infrastructure', label: 'インフラ設計' },
+  { id: '4a', name: 'infrastructure-mcl', label: 'インフラ設計（MCL実行）' },
+  { id: '4b', name: 'infrastructure-record', label: 'インフラ設計（記録・FB）' },
   { id: 5, name: 'design-system', label: 'デザインシステム' },
   { id: 6, name: 'spec', label: 'UC仕様生成' },
   { id: '6a', name: 'spec-story-check', label: 'Storybook Story 補完' },
@@ -29,6 +30,37 @@ function getStatusPath() {
   const cwd = process.cwd();
   const dirName = path.basename(cwd).replace(/[^a-zA-Z0-9_-]/g, '_');
   return path.join(__dirname, '..', `.pipeline-status-${dirName}.json`);
+}
+
+// progress-server.js が書き込んだ実行中ポートを取得する。
+// サーバー未起動なら null。オーケストレータはこの値からダッシュボードURLを組み立てる。
+function getServerPort() {
+  const portFile = path.join(__dirname, '..', '.progress-server.port');
+  try {
+    if (fs.existsSync(portFile)) {
+      const v = parseInt(fs.readFileSync(portFile, 'utf-8').trim(), 10);
+      if (!Number.isNaN(v)) return v;
+    }
+  } catch {}
+  return null;
+}
+
+function getDashboardUrl() {
+  const port = getServerPort();
+  return port ? `http://localhost:${port}` : null;
+}
+
+// CLI: `node progress-update.js port` → 現行ポート or 空行
+// CLI: `node progress-update.js url`  → http://localhost:<port> or 空行
+if (process.argv[2] === 'port') {
+  const p = getServerPort();
+  if (p) console.log(p);
+  process.exit(0);
+}
+if (process.argv[2] === 'url') {
+  const u = getDashboardUrl();
+  if (u) console.log(u);
+  process.exit(0);
 }
 
 function readStatus(statusPath) {

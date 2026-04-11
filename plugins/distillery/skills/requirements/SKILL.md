@@ -268,3 +268,16 @@ references/usdm/usdm-decompose.md
 ```
 
 > **Note**: Spec 生成の subagent テンプレートは `spec` スキルの SKILL.md を参照。
+
+## 確認推奨項目の返却（dialogue-format 準拠）
+
+本スキルは pipeline の Step1 として **対話あり** で実行される。以下に該当する項目があれば
+結果として「確認推奨項目リスト」を返す。フォーマットは
+`skills/pipeline/references/dialogue-format.md` に従う（**3案以上 + ⭐推奨 + 一行説明 + 推奨理由**）。
+
+- USDM 分解時に解釈が曖昧だった要望（複数解釈が可能）
+- RDRA モデルにアクター / 情報 / BUC を自動追加した項目
+- confidence: low / medium の項目
+
+対話を省略して completed を返してはならない。
+

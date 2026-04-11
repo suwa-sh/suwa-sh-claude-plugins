@@ -187,7 +187,7 @@ const L = (s = '') => lines.push(s);
 // Header
 L(`# ${overview ? overview.system_name : 'プロジェクト'}`);
 L();
-if (overview) { L(`> ${overview.system_overview}`); L(); }
+if (overview) { L(`> ${overview.description}`); L(); }
 const actorNames = [...new Set(actors.map(a => a['アクター']).filter(Boolean))];
 const last = allEvents.length ? allEvents[allEvents.length - 1] : null;
 if (last) { L(`**最終更新**: ${formatEventId(last.eventId)} (${last.domain})`); L(); }

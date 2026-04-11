@@ -522,3 +522,39 @@ Step4: Infra 書き戻しチェック → 要再実行
 - arch バリデーションスクリプトが PASS すること
 - arch-design.yaml にベンダー固有のサービス名が含まれていないこと
 - confidence: "user" の項目が変更されていないこと
+
+## 完了チェックリスト（最終報告前に全てチェック必須）
+
+サブエージェントは最終報告前に以下を全てチェックすること。**未完了の Phase があれば
+"incomplete" を返却** し、pipeline 側に補完実行を要求すること。途中で停止して completed を
+返してはならない。
+
+- [ ] Phase1: `product-input.yaml` 生成
+- [ ] Phase2: MCL `product-design` 実行（`mcl-output/` 生成）
+- [ ] Phase3: `infra-event.yaml` + `docs/infra/latest/` スナップショット作成
+- [ ] Phase4: `docs/arch/latest/arch-design.yaml` へのフィードバック反映（タイムスタンプ更新）
+- [ ] Phase5: write-back 検証（arch バリデーションスクリプト PASS）
+
+## RDRA 整合性ルール
+
+RDRA モデル (`docs/rdra/latest/`) に存在しないアクター / 情報 / BUC / 画面 / エンティティを、
+本スキルで新規に追加してはならない。追加が必要と判断した場合は:
+
+1. 追加しない。提案のみに留める
+2. `node ${CLAUDE_PLUGIN_ROOT}/skills/pipeline/scripts/appendTodo.js --skill infrastructure --event <infra_event_id> --type RDRA追加 --title "<タイトル>" --body "<本文>"` で `docs/todo.md` に記録
+3. 確認推奨項目として返却する
+
+## 確認推奨項目の返却（dialogue-format 準拠）
+
+本スキルは pipeline の Step4 として **対話あり** で実行される。以下に該当する項目があれば
+結果として「確認推奨項目リスト」を返す。フォーマットは
+`skills/pipeline/references/dialogue-format.md` に従うこと
+（**3案以上 + ⭐推奨 + 一行説明 + 推奨理由**）。
+
+- クラウドベンダー選択（AWS / Azure / GCP 等）
+- リージョン / マルチリージョン方針
+- コスト方針（低コスト優先 / 性能優先 / バランス）
+- confidence: low / medium の項目
+
+対話を省略して completed を返してはならない。
+

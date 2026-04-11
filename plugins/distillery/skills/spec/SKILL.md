@@ -707,3 +707,27 @@ Step8 でスナップショットが確定した後、Spec の内容を Storyboo
 | `(design)references/design/design-storybook-generate.md` | Step9: Storybook 生成ルール（design スキル） |
 | `(design)references/design/design-lessons-learned.md` | Step9: 実装の教訓・品質チェック（design スキル） |
 | `(design)references/design/design-components-generate.md` | Step9: コンポーネント仕様生成（design スキル） |
+
+## RDRA 整合性ルール
+
+RDRA モデル (`docs/rdra/latest/`) に存在しないアクター / 情報 / BUC / 画面 / エンティティを
+本スキルで新規追加してはならない。追加が必要と判断した場合は:
+
+1. 追加しない
+2. `node ${CLAUDE_PLUGIN_ROOT}/skills/pipeline/scripts/appendTodo.js --skill spec --event <spec_event_id> --type RDRA追加 --title "<タイトル>" --body "<本文>"` で `docs/todo.md` に記録
+3. 確認推奨項目として返却する
+
+## 確認推奨項目の返却（dialogue-format 準拠）
+
+本スキルは pipeline の Step6 として **対話あり** で実行される。以下に該当する項目があれば
+結果として「確認推奨項目リスト」を返す。フォーマットは
+`skills/pipeline/references/dialogue-format.md` に従うこと
+（**3案以上 + ⭐推奨 + 一行説明 + 推奨理由**）。
+
+- API 命名規則（REST / GraphQL / 命名スタイル）
+- エラーハンドリング戦略（例外設計 / HTTP ステータスポリシー）
+- RDB 正規化レベル（第3正規形 / 非正規化許容 等）
+- confidence: low / medium の項目
+
+対話を省略して completed を返してはならない。
+

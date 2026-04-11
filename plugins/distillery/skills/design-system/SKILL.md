@@ -388,3 +388,39 @@ Ctrl+C
 | `scripts/schema-design-event.json` | Step4: design-event.yaml の JSON Schema |
 | `scripts/validateDesignEvent.js` | Step4: YAML バリデーション (exit 0/1/2) |
 | `scripts/generateDesignEventMd.js` | Step5: YAML → Markdown 生成 |
+| `references/proposal-variants.md` | ブランド/カラー/フォント/レイアウト/コンポーネント/アイコン の3案雛形 |
+
+## 確認推奨項目の返却（3案 + ⭐推奨 + 一行説明 必須）
+
+本スキルは pipeline の Step5 として **対話あり** で実行される。ユーザー確認フェーズでは、
+`skills/pipeline/references/dialogue-format.md` および `references/proposal-variants.md` に
+従い、以下の各項目で **必ず 3案以上 + ⭐推奨 + 一行説明 + 推奨理由** を返すこと。
+
+- **ブランド方針** (`proposal-variants.md` 1 節)
+- **カラーパレット** — 単色ではなく **パレット3案**（`#1E40AF`/`#3B82F6`/`#DBEAFE` のような組）
+- **タイポグラフィ** — **和欧ペアの3案**
+- **レイアウト方針** — グリッド / カラム構成の3案
+- **コンポーネントスタイル** — 角丸・影の3案
+- **アイコノグラフィ** — アイコンセット3案
+
+対話を省略して completed を返してはならない。
+
+## RDRA 整合性ルール（画面追加の自動禁止）
+
+RDRA モデル (`docs/rdra/latest/`) の BUC / 画面定義に存在しない画面を、本スキルで
+**自動追加してはならない**。
+
+- screen 追加判定時に必ず RDRA の BUC / 画面定義と突合する
+- 不一致（RDRA に存在しない画面を追加したくなった）場合は:
+  1. **追加しない**
+  2. `node ${CLAUDE_PLUGIN_ROOT}/skills/pipeline/scripts/appendTodo.js --skill design-system --event <design_event_id> --type RDRA追加 --title "<画面名> の追加提案" --body "<理由>"` で `docs/todo.md` に記録
+  3. 確認推奨項目として「該当画面を RDRA に追加するか」をユーザーに返却する
+- 過去事例: 運用監視目的で「管理ダッシュボード」を自動追加してしまった事案があった。
+  RDRA に無ければ追加しないこと。
+
+## パフォーマンス（並列化）
+
+Step7（Storybook 生成）は最も時間がかかる。独立したコンポーネント群の生成は
+**並列タスク化**（サブサブエージェント分割 / 並列 Write）して実行時間を短縮すること。
+目標: 8 分 → 4〜5 分。
+
