@@ -1,5 +1,5 @@
 ---
-name: dist-spec
+name: distillery:dist-spec
 description: >
   RDRA モデル・NFR グレード・アーキテクチャ設計・デザインシステムから
   UC 単位の詳細仕様（Spec）と全体横断 UX/UI 設計仕様を生成するスキル。

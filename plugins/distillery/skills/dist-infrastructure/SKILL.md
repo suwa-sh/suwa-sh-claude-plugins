@@ -1,5 +1,5 @@
 ---
-name: dist-infrastructure
+name: distillery:dist-infrastructure
 description: >
   アーキテクチャ設計（arch-design.yaml）から MCL product-design スキルを使って
   クラウドインフラ設計を生成し、その結果をアーキテクチャ設計にフィードバックするスキル。

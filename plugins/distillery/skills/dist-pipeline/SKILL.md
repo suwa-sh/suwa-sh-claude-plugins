@@ -1,5 +1,5 @@
 ---
-name: dist-pipeline
+name: distillery:dist-pipeline
 description: >
   USDM-RDRA パイプラインの全スキルを順次実行するワークフロースキル。
   初期要望テキストまたは変更要望テキストを入力とし、

@@ -1,5 +1,5 @@
 ---
-name: dist-spec-stories
+name: distillery:dist-spec-stories
 description: >
   spec スキルの後段で、UC Spec とデザインシステムから Storybook の Story（ページ単位 + 共通コンポーネント）を生成する独立スキル。
   spec スキル本体は Step8 で完了し、Storybook Story 生成は本スキルで別途実施する。

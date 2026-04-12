@@ -1,5 +1,5 @@
 ---
-name: dist-architecture
+name: distillery:dist-architecture
 description: >
   RDRA モデルと NFR グレードからアーキテクチャ設計を推論・対話・出力するスキル。
   requirements スキルの RDRA モデル（docs/rdra/latest/）と

@@ -1,5 +1,5 @@
 ---
-name: dist-design-system
+name: distillery:dist-design-system
 description: >
   アーキテクチャ設計・インフラ設計からデザインシステムを生成し Storybook に変換するスキル。
   infrastructure スキルの後段に位置する。
