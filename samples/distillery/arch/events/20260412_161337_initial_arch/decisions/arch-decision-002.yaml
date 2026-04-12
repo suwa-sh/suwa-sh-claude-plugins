@@ -1,0 +1,31 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-002"
+title: "バックエンド API に FaaS を選定"
+status: "approved"
+generated_at: "2026-04-12T16:13:37"
+context: |
+  バックエンド API のデプロイ形態を選定する必要がある。
+  NFR より同時アクセス ~100、スループット ~10 TPS の小規模・低トラフィック。
+  運用コストの最小化が重要。
+decision: |
+  バックエンド API に FaaS（サーバーレス関数）を採用する。
+  小規模・低トラフィックのシステムでは、リクエストがない時間帯のコストをゼロに抑えられる。
+  運用時間が 9 時〜21 時のため、夜間のアイドルコストを回避できる。
+  Auto Scaling が標準装備のため、ピーク時（通常の 1.5 倍）にも自動対応可能。
+consequences:
+  positive:
+    - "リクエスト数に応じた従量課金でコスト最適化"
+    - "夜間停止時間帯のコストがゼロ"
+    - "Auto Scaling 標準装備でピーク対応が容易"
+    - "サーバ管理不要で運用コスト削減"
+  negative:
+    - "コールドスタートによるレイテンシ増加（初回リクエスト時）"
+    - "実行時間制限がある（長時間バッチ処理には不向き）"
+    - "ローカル開発環境の構築が CaaS より複雑になりうる"
+alternatives_considered:
+  - name: "単一コンテナ（CaaS）"
+    reason_rejected: "常時起動のため固定コストが発生。同時 100 ユーザー規模では過剰な可用性"
+  - name: "CaaS(k8s)"
+    reason_rejected: "コンテナオーケストレーションは同時 100 ユーザー規模には完全に過剰。運用コストが高い"

@@ -1,0 +1,32 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-005"
+title: "バックエンド API に 5 層レイヤリングを採用"
+status: "approved"
+generated_at: "2026-04-12T16:13:37"
+context: |
+  バックエンド API のレイヤリングパターンを選定する必要がある。
+  状態.tsv に 2 つの状態モデル（計 8 状態 9 遷移）が存在し、
+  条件.tsv に 4 件のビジネスルール（貸出期限・貸出可否・延滞判定・予約優先）がある。
+  ドメインロジックの複雑さが一定以上あり、ビジネスルールの集約が必要。
+decision: |
+  5 層レイヤリング（presentation → usecase → domain → repository → gateway）を採用する。
+  domain 層にビジネスルール（貸出期限・貸出可否・延滞判定・予約優先）と
+  状態遷移ロジック（書籍貸出状態・予約状態）を集約する。
+  repository 層が event_snapshot パターンの二重書き込みを隠蔽する。
+  レイヤー間は直接依存（IF なし）とし、開発スピードを優先する。
+consequences:
+  positive:
+    - "ビジネスルールが domain 層に集約され、変更影響範囲が限定される"
+    - "状態遷移の整合性を domain 層で保証できる"
+    - "event_snapshot パターンの複雑さを repository 層が隠蔽"
+    - "テスト容易性が高い（domain 層は外部依存なし）"
+  negative:
+    - "小規模システムに対してレイヤー数が多い"
+    - "レイヤー間のデータ変換（DTO/Entity 変換）のボイラープレートが増加"
+alternatives_considered:
+  - name: "3 層（presentation → usecase → gateway）"
+    reason_rejected: "domain 層がないとビジネスルールが usecase に散在し、状態遷移の整合性保証が困難"
+  - name: "2 層（handler → gateway）"
+    reason_rejected: "CRUD 中心のシンプル構成。状態遷移モデルとビジネスルールの管理には不適"

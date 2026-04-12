@@ -1,0 +1,24 @@
+uc: "延滞を検出する"
+business: "貸出管理業務"
+buc: "延滞管理フロー"
+
+models:
+  - name: "延滞検出Model"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "貸出"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "データ取得"
+        where: "条件に基づく"
+    indexes_needed: []
+
+kvs: []
+object_storage: []

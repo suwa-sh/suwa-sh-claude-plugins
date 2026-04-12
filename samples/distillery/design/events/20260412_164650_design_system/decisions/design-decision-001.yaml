@@ -1,0 +1,30 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-001"
+title: "ブランドアイデンティティ方向性: 信頼・堅実路線の採用"
+status: "approved"
+generated_at: "2026-04-12T16:46:50"
+context: |
+  図書館蔵書管理システムは公共図書館の業務を支援するWebシステムであり、
+  主なアクターは利用者（社外・受益者）と司書（社内・提供者）の2種。
+  公共性が高く幅広い年齢層が利用するため、信頼感と安心感のあるデザインが求められる。
+decision: |
+  ブランド方針として「信頼・堅実路線」を採用する。
+  ブランド名は「LibraShelf」（Libra=天秤/図書+Shelf=書棚）。
+  プライマリカラーはブルー系（#1E40AF）で、図書館の知性・信頼を表現。
+  タイポグラフィは Noto Sans JP + Inter でモダンかつ高可読性を確保。
+  ボイストーンは「正確で分かりやすい情報提供」を基本とする。
+consequences:
+  positive:
+    - "公共図書館の利用者（全年齢層）に安心感を与える"
+    - "司書の業務画面として落ち着いた色調で長時間利用に適する"
+    - "ブルー系は可読性が高くアクセシビリティに優れる"
+  negative:
+    - "差別化・独自性は控えめ"
+    - "保守的な印象を与える可能性"
+alternatives_considered:
+  - name: "革新・先進路線"
+    reason_rejected: "公共図書館の幅広い年齢層には刺激が強すぎる可能性"
+  - name: "親近・カジュアル路線"
+    reason_rejected: "業務系画面（司書ポータル）では軽く見える"

@@ -1,0 +1,31 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-001"
+title: "TypeScript 統一スタック採用"
+status: "approved"
+generated_at: "2026-04-12T16:13:37"
+context: |
+  図書館蔵書管理システムの新規構築にあたり、フロントエンド・バックエンドの使用言語を選定する必要がある。
+  システムは小規模（UC 16 件、同時 100 ユーザー）で、フルスタック開発の効率性が重要。
+decision: |
+  TypeScript をフロントエンド・バックエンドの統一言語として採用する。
+  フレームワークは Next.js（SSR 対応）を採用する。
+  1 言語でフルスタック開発が可能となり、型安全性を確保しつつ学習コストを最小化できる。
+  小規模チームでの開発効率を最大化する選択。
+consequences:
+  positive:
+    - "フロントエンド・バックエンド間でコード（型定義、バリデーションロジック等）を共有できる"
+    - "チームの言語学習コストが最小限に抑えられる"
+    - "TypeScript の型安全性により実行時エラーを予防できる"
+    - "npm エコシステムの豊富なライブラリを活用できる"
+  negative:
+    - "CPU バウンドな処理（大量データの集計等）では Go 等のコンパイル言語に劣る"
+    - "TypeScript ランタイム（Node.js）のシングルスレッド制約により、並列処理が限定的"
+alternatives_considered:
+  - name: "Go + TypeScript"
+    reason_rejected: "2 言語管理のオーバーヘッドが小規模チームには負担。バックエンドの性能要件が低い（10 TPS）ため Go の高性能は不要"
+  - name: "Java/Kotlin + TypeScript"
+    reason_rejected: "エンタープライズ向けの重厚なスタック。小規模図書館システムには過剰。JVM の起動時間が FaaS と相性が悪い"
+  - name: "Python + TypeScript"
+    reason_rejected: "型安全性が TypeScript に劣る。データ分析との親和性は本システムでは不要"

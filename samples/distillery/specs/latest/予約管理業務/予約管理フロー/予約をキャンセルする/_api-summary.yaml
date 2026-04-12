@@ -1,0 +1,13 @@
+uc: "予約をキャンセルする"
+business: "予約管理業務"
+buc: "予約管理フロー"
+endpoints:
+  - method: "DELETE"
+    path: "/api/v1/reservations/{id}"
+    summary: "予約キャンセル"
+    tags:
+      - "予約管理業務"
+
+async_events:
+  []
+schemas: []

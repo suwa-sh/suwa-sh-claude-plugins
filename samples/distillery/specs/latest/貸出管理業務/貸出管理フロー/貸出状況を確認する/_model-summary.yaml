@@ -1,0 +1,34 @@
+uc: "貸出状況を確認する"
+business: "貸出管理業務"
+buc: "貸出管理フロー"
+
+models:
+  - name: "LoanListState"
+    tier: "tier-frontend"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "ListLoansQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "貸出一覧取得"
+        where: "return_date IS NULL ORDER BY loan_date DESC LIMIT :per_page OFFSET :offset"
+    indexes_needed:
+      - columns:
+          - "return_date"
+          - "loan_date"
+        reason: "未返却貸出の一覧取得"
+        access_pattern: "return_date IS NULL で絞り込み、loan_date DESC でソート"
+
+kvs: []
+object_storage: []

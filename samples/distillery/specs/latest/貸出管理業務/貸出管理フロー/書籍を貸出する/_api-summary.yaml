@@ -1,0 +1,45 @@
+uc: "書籍を貸出する"
+business: "貸出管理業務"
+buc: "貸出管理フロー"
+endpoints:
+  - method: "POST"
+    path: "/api/v1/loans"
+    summary: "書籍の貸出"
+    request_schema: "CreateLoanRequest"
+    response_schema: "LoanResponse"
+    tags:
+      - "貸出管理"
+async_events: []
+schemas:
+  - name: "CreateLoanRequest"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+        description: "貸出対象の書籍ID"
+  - name: "LoanResponse"
+    properties:
+      - name: "id"
+        type: "string"
+        required: true
+        description: "貸出ID"
+      - name: "book_id"
+        type: "string"
+        required: true
+        description: "書籍ID"
+      - name: "book_title"
+        type: "string"
+        required: true
+        description: "書籍タイトル"
+      - name: "user_id"
+        type: "string"
+        required: true
+        description: "利用者ID"
+      - name: "loan_date"
+        type: "string"
+        required: true
+        description: "貸出日"
+      - name: "due_date"
+        type: "string"
+        required: true
+        description: "返却期限"

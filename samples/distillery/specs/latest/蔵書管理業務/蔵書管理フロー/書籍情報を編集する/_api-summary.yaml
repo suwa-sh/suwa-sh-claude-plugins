@@ -1,0 +1,49 @@
+uc: "書籍情報を編集する"
+business: "蔵書管理業務"
+buc: "蔵書管理フロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/books/{id}"
+    summary: "書籍情報の取得"
+    response_schema: "BookResponse"
+    tags:
+      - "蔵書管理"
+  - method: "PUT"
+    path: "/api/v1/books/{id}"
+    summary: "書籍情報の更新"
+    request_schema: "UpdateBookRequest"
+    response_schema: "BookResponse"
+    tags:
+      - "蔵書管理"
+async_events: []
+schemas:
+  - name: "UpdateBookRequest"
+    properties:
+      - name: "title"
+        type: "string"
+        required: true
+        description: "書籍タイトル"
+      - name: "author"
+        type: "string"
+        required: true
+        description: "著者名"
+      - name: "isbn"
+        type: "string"
+        required: true
+        description: "ISBN-13形式"
+      - name: "publisher"
+        type: "string"
+        required: true
+        description: "出版社名"
+      - name: "genre"
+        type: "string"
+        required: true
+        description: "書籍ジャンル"
+      - name: "material_type"
+        type: "string"
+        required: true
+        description: "資料種別"
+      - name: "location"
+        type: "string"
+        required: false
+        description: "配架場所"

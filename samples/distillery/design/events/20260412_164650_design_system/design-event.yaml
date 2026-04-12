@@ -1,0 +1,519 @@
+version: "1.0"
+event_id: "20260412_164650_design_system"
+created_at: "2026-04-12T16:46:50"
+source: "RDRA/NFR/Arch モデルからの初期デザインシステム生成"
+trigger_event: "rdra:20260412_140535_initial_build, arch:20260412_164019_arch_infra_feedback"
+
+brand:
+  name: "LibraShelf"
+  colors:
+    primary:
+      hex: "#1E40AF"
+      name: "Library Blue"
+    secondary:
+      hex: "#334155"
+      name: "Slate"
+  typography:
+    sans: "'Noto Sans JP', 'Inter', system-ui, sans-serif"
+    mono: "'JetBrains Mono', 'Fira Code', monospace"
+    scale:
+      xs: "0.75rem"
+      sm: "0.875rem"
+      base: "1rem"
+      lg: "1.125rem"
+      xl: "1.25rem"
+      "2xl": "1.5rem"
+      "3xl": "1.875rem"
+  voice:
+    tone: "信頼・堅実"
+    principles:
+      - "正確で分かりやすい情報提供"
+      - "落ち着いたトーンで安心感を与える"
+      - "専門用語を避け、誰にでも伝わる表現"
+  logo:
+    variants:
+      - name: "full"
+        path: "assets/logo-full.svg"
+      - name: "icon"
+        path: "assets/logo-icon.svg"
+      - name: "stacked"
+        path: "assets/logo-stacked.svg"
+  icons:
+    style: "outlined"
+    source_dir: "assets/icons/"
+
+portals:
+  - id: "user"
+    name: "利用者ポータル"
+    actor: "利用者"
+    primary_color: "#2563EB"
+    screen_count: 7
+  - id: "admin"
+    name: "司書ポータル"
+    actor: "司書"
+    primary_color: "#334155"
+    screen_count: 9
+
+tokens:
+  primitive:
+    colors:
+      white: "#FFFFFF"
+      black: "#000000"
+      gray-50: "#F8FAFC"
+      gray-100: "#F1F5F9"
+      gray-200: "#E2E8F0"
+      gray-300: "#CBD5E1"
+      gray-400: "#94A3B8"
+      gray-500: "#64748B"
+      gray-600: "#475569"
+      gray-700: "#334155"
+      gray-800: "#1E293B"
+      gray-900: "#0F172A"
+      gray-950: "#020617"
+      blue-50: "#EFF6FF"
+      blue-100: "#DBEAFE"
+      blue-200: "#BFDBFE"
+      blue-300: "#93C5FD"
+      blue-400: "#60A5FA"
+      blue-500: "#3B82F6"
+      blue-600: "#2563EB"
+      blue-700: "#1D4ED8"
+      blue-800: "#1E40AF"
+      blue-900: "#1E3A8A"
+      slate-500: "#64748B"
+      slate-600: "#475569"
+      slate-700: "#334155"
+      slate-800: "#1E293B"
+      green-50: "#F0FDF4"
+      green-500: "#22C55E"
+      green-600: "#16A34A"
+      green-700: "#15803D"
+      red-50: "#FEF2F2"
+      red-500: "#EF4444"
+      red-600: "#DC2626"
+      red-700: "#B91C1C"
+      orange-50: "#FFF7ED"
+      orange-500: "#F97316"
+      orange-600: "#EA580C"
+      amber-400: "#FBBF24"
+      amber-500: "#F59E0B"
+      violet-50: "#F5F3FF"
+      violet-500: "#8B5CF6"
+      violet-600: "#7C3AED"
+    spacing:
+      px: "1px"
+      "0.5": "0.125rem"
+      "1": "0.25rem"
+      "1.5": "0.375rem"
+      "2": "0.5rem"
+      "3": "0.75rem"
+      "4": "1rem"
+      "5": "1.25rem"
+      "6": "1.5rem"
+      "8": "2rem"
+      "10": "2.5rem"
+      "12": "3rem"
+      "16": "4rem"
+    radius:
+      none: "0"
+      sm: "0.25rem"
+      md: "0.5rem"
+      lg: "0.75rem"
+      xl: "1rem"
+      full: "9999px"
+    shadow:
+      sm: "0 1px 2px rgba(0,0,0,0.05)"
+      md: "0 4px 6px -1px rgba(0,0,0,0.1)"
+      lg: "0 10px 15px -3px rgba(0,0,0,0.1)"
+    font_size:
+      xs: "0.75rem"
+      sm: "0.875rem"
+      base: "1rem"
+      lg: "1.125rem"
+      xl: "1.25rem"
+      "2xl": "1.5rem"
+      "3xl": "1.875rem"
+    font_family:
+      sans: "'Noto Sans JP', 'Inter', system-ui, sans-serif"
+      mono: "'JetBrains Mono', 'Fira Code', monospace"
+    font_weight:
+      normal: "400"
+      medium: "500"
+      semibold: "600"
+      bold: "700"
+    duration:
+      fast: "150ms"
+      normal: "200ms"
+      slow: "300ms"
+  semantic:
+    background: "var(--color-white)"
+    foreground: "var(--color-gray-900)"
+    border: "var(--color-gray-200)"
+    muted: "var(--color-gray-100)"
+    muted-foreground: "var(--color-gray-500)"
+    primary: "var(--color-blue-600)"
+    primary-foreground: "var(--color-white)"
+    success: "var(--color-green-600)"
+    success-light: "var(--color-green-50)"
+    warning: "var(--color-orange-500)"
+    warning-light: "var(--color-orange-50)"
+    destructive: "var(--color-red-600)"
+    destructive-light: "var(--color-red-50)"
+    info: "var(--color-blue-500)"
+    info-light: "var(--color-blue-50)"
+    rating: "var(--color-amber-500)"
+    virtual_accent: "var(--color-violet-500)"
+  component:
+    button:
+      height-sm: "2rem"
+      height-md: "2.5rem"
+      height-lg: "3rem"
+      padding-x-sm: "0.75rem"
+      padding-x-md: "1rem"
+      padding-x-lg: "1.5rem"
+      radius: "var(--radius-md)"
+      font-size: "var(--font-size-sm)"
+      font-weight: "var(--font-weight-medium)"
+    input:
+      height: "2.5rem"
+      padding-x: "0.75rem"
+      radius: "var(--radius-md)"
+      border: "var(--border)"
+      focus-ring: "var(--primary)"
+    card:
+      bg: "var(--color-white)"
+      border: "var(--color-gray-200)"
+      shadow: "var(--shadow-sm)"
+      padding: "1.5rem"
+      radius: "var(--radius-lg)"
+    badge:
+      height: "1.5rem"
+      padding-x: "0.5rem"
+      radius: "var(--radius-full)"
+      font-size: "var(--font-size-xs)"
+      font-weight: "var(--font-weight-medium)"
+    table:
+      header-bg: "var(--color-gray-50)"
+      row-height: "3rem"
+      cell-padding: "0.75rem"
+    sidebar:
+      width: "16rem"
+      item-height: "2.5rem"
+  dark_overrides:
+    semantic:
+      background: "var(--color-gray-950)"
+      foreground: "var(--color-gray-100)"
+      border: "var(--color-gray-800)"
+      muted: "var(--color-gray-900)"
+      muted-foreground: "var(--color-gray-400)"
+      primary: "var(--color-blue-500)"
+      primary-foreground: "var(--color-white)"
+      success: "var(--color-green-500)"
+      success-light: "rgba(22, 163, 74, 0.15)"
+      warning: "var(--color-orange-500)"
+      warning-light: "rgba(249, 115, 22, 0.15)"
+      destructive: "var(--color-red-500)"
+      destructive-light: "rgba(220, 38, 38, 0.15)"
+      info: "var(--color-blue-400)"
+      info-light: "rgba(59, 130, 246, 0.15)"
+    component:
+      card:
+        bg: "var(--color-gray-900)"
+        border: "var(--color-gray-800)"
+        shadow: "none"
+      table:
+        header-bg: "var(--color-gray-900)"
+      hover-muted: "var(--color-gray-800)"
+
+components:
+  ui:
+    - name: "Button"
+      variants:
+        - "default"
+        - "secondary"
+        - "outline"
+        - "ghost"
+        - "destructive"
+      sizes:
+        - "sm"
+        - "md"
+        - "lg"
+    - name: "Badge"
+      variants:
+        - "default"
+        - "success"
+        - "warning"
+        - "destructive"
+        - "info"
+        - "outline"
+    - name: "Card"
+      variants:
+        - "default"
+        - "hoverable"
+    - name: "Input"
+      variants:
+        - "default"
+        - "error"
+    - name: "Icon"
+      variants: []
+  domain:
+    - name: "BookCard"
+      description: "書籍情報をカード形式で表示するコンポーネント。蔵書検索結果の一覧表示に使用"
+      screens:
+        - "蔵書検索画面"
+        - "蔵書管理画面"
+      props:
+        - "title: string"
+        - "author: string"
+        - "isbn: string"
+        - "publisher: string"
+        - "genre: string"
+        - "materialType: string"
+        - "location: string"
+        - "status: BookLoanStatus"
+      variants:
+        - "compact"
+        - "detailed"
+    - name: "BookLoanStatusBadge"
+      description: "書籍貸出状態を表すステータスバッジ。在庫あり/貸出中/延滞中の3状態"
+      screens:
+        - "蔵書検索画面"
+        - "蔵書管理画面"
+        - "貸出状況一覧画面"
+      props:
+        - "status: 'available' | 'on_loan' | 'overdue'"
+      variants:
+        - "available"
+        - "on_loan"
+        - "overdue"
+    - name: "ReservationStatusBadge"
+      description: "予約状態を表すステータスバッジ。予約受付中/予約確保済/予約キャンセルの3状態"
+      screens:
+        - "予約管理画面"
+        - "予約状況画面"
+      props:
+        - "status: 'pending' | 'reserved' | 'cancelled'"
+      variants:
+        - "pending"
+        - "reserved"
+        - "cancelled"
+    - name: "LoanRecord"
+      description: "貸出記録を一行表示するコンポーネント。貸出状況一覧や貸出履歴で使用"
+      screens:
+        - "貸出状況一覧画面"
+        - "貸出履歴画面"
+        - "延滞管理画面"
+      props:
+        - "bookTitle: string"
+        - "borrowerName: string"
+        - "loanDate: string"
+        - "dueDate: string"
+        - "returnDate: string | null"
+        - "isOverdue: boolean"
+      variants:
+        - "default"
+        - "overdue"
+    - name: "BookSearchFilter"
+      description: "蔵書検索のフィルターコンポーネント。キーワード検索+ジャンル/資料種別フィルター"
+      screens:
+        - "蔵書検索画面"
+      props:
+        - "onSearch: (query: SearchQuery) => void"
+        - "genres: string[]"
+        - "materialTypes: string[]"
+      variants: []
+    - name: "StatsSummaryCard"
+      description: "統計情報をサマリー表示するカードコンポーネント"
+      screens:
+        - "統計レポート画面"
+        - "在庫状況画面"
+      props:
+        - "title: string"
+        - "value: string | number"
+        - "change: number"
+        - "icon: string"
+      variants:
+        - "default"
+        - "highlight"
+
+screens:
+  - name: "蔵書検索画面"
+    portal: "user"
+    route: "/books/search"
+    components:
+      - "BookSearchFilter"
+      - "BookCard"
+      - "BookLoanStatusBadge"
+  - name: "貸出手続き画面"
+    portal: "user"
+    route: "/loans/new"
+    components:
+      - "BookCard"
+      - "BookLoanStatusBadge"
+      - "Button"
+  - name: "返却手続き画面"
+    portal: "user"
+    route: "/loans/return"
+    components:
+      - "LoanRecord"
+      - "Button"
+  - name: "予約申請画面"
+    portal: "user"
+    route: "/reservations/new"
+    components:
+      - "BookCard"
+      - "ReservationStatusBadge"
+      - "Button"
+  - name: "予約管理画面"
+    portal: "user"
+    route: "/reservations"
+    components:
+      - "ReservationStatusBadge"
+      - "BookCard"
+      - "Button"
+  - name: "貸出履歴画面"
+    portal: "user"
+    route: "/mypage/loans"
+    components:
+      - "LoanRecord"
+      - "BookLoanStatusBadge"
+  - name: "予約状況画面"
+    portal: "user"
+    route: "/mypage/reservations"
+    components:
+      - "ReservationStatusBadge"
+      - "BookCard"
+  - name: "蔵書登録画面"
+    portal: "admin"
+    route: "/admin/books/new"
+    components:
+      - "Input"
+      - "Button"
+  - name: "蔵書編集画面"
+    portal: "admin"
+    route: "/admin/books/:id/edit"
+    components:
+      - "Input"
+      - "Button"
+  - name: "蔵書管理画面"
+    portal: "admin"
+    route: "/admin/books"
+    components:
+      - "BookCard"
+      - "BookLoanStatusBadge"
+      - "BookSearchFilter"
+      - "Button"
+  - name: "貸出状況一覧画面"
+    portal: "admin"
+    route: "/admin/loans"
+    components:
+      - "LoanRecord"
+      - "BookLoanStatusBadge"
+  - name: "延滞管理画面"
+    portal: "admin"
+    route: "/admin/loans/overdue"
+    components:
+      - "LoanRecord"
+      - "BookLoanStatusBadge"
+      - "Button"
+  - name: "利用者登録画面"
+    portal: "admin"
+    route: "/admin/users/new"
+    components:
+      - "Input"
+      - "Button"
+  - name: "利用者編集画面"
+    portal: "admin"
+    route: "/admin/users/:id/edit"
+    components:
+      - "Input"
+      - "Button"
+  - name: "在庫状況画面"
+    portal: "admin"
+    route: "/admin/inventory"
+    components:
+      - "StatsSummaryCard"
+      - "BookCard"
+      - "BookLoanStatusBadge"
+  - name: "統計レポート画面"
+    portal: "admin"
+    route: "/admin/stats"
+    components:
+      - "StatsSummaryCard"
+
+states:
+  - model: "書籍貸出状態"
+    entries:
+      - state: "在庫あり"
+        label: "在庫あり"
+        color: "green"
+        actions:
+          user: "貸出申請"
+          admin: "編集, 削除"
+      - state: "貸出中"
+        label: "貸出中"
+        color: "blue"
+        actions:
+          user: "予約申請, 返却申請"
+          admin: "確認"
+      - state: "延滞中"
+        label: "延滞中"
+        color: "red"
+        actions:
+          user: "返却申請"
+          admin: "督促通知送信"
+  - model: "予約状態"
+    entries:
+      - state: "予約受付中"
+        label: "予約受付中"
+        color: "blue"
+        actions:
+          user: "キャンセル"
+          admin: "確認"
+      - state: "予約確保済"
+        label: "予約確保済"
+        color: "green"
+        actions:
+          user: "貸出手続き"
+          admin: "確認"
+      - state: "予約キャンセル"
+        label: "キャンセル済"
+        color: "gray"
+
+nfr_decisions:
+  - nfr: "A.1.1.1 運用時間 Lv2"
+    decision: "全画面にローディング状態とエラー状態を配置。サービス停止時間帯の告知バナーコンポーネントを用意"
+  - nfr: "B.1.1.1 同時アクセス Lv1 (~100)"
+    decision: "蔵書検索結果はページネーション（20件/ページ）。仮想スクロールは不要"
+  - nfr: "B.2.1.1 レスポンスタイム Lv2 (10秒以内)"
+    decision: "一覧画面に Skeleton UI を配置しパーシーブドパフォーマンスを改善"
+  - nfr: "E.5.1.1 認証方式 Lv2 (OAuth2/OIDC)"
+    decision: "ログインは IdP Hosted UI に委譲。カスタムログイン画面は作成しない"
+  - nfr: "E.5.2.1 認可方式 Lv2 (RBAC)"
+    decision: "data-portal 属性によるポータル別ナビゲーション切替。利用者/司書で表示画面を分離"
+  - nfr: "E.1.2.1 PII保護"
+    decision: "利用者情報（連絡先、メールアドレス）のマスク表示機能。司書ポータルでのみ閲覧可能"
+
+storybook:
+  framework: "Next.js + TypeScript + Tailwind CSS"
+  addons:
+    - "@storybook/addon-docs"
+    - "@storybook/addon-a11y"
+  categories:
+    ui:
+      - "Button"
+      - "Badge"
+      - "Card"
+      - "Input"
+      - "Icon"
+    domain:
+      - "BookCard"
+      - "BookLoanStatusBadge"
+      - "ReservationStatusBadge"
+      - "LoanRecord"
+      - "BookSearchFilter"
+      - "StatsSummaryCard"
+    docs:
+      - "Introduction"
+      - "DesignTokens"
+      - "ScreenMapping"

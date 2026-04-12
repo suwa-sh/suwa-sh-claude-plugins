@@ -1,0 +1,58 @@
+uc: "書籍情報を編集する"
+business: "蔵書管理業務"
+buc: "蔵書管理フロー"
+
+models:
+  - name: "BookEditForm"
+    tier: "tier-frontend"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "書籍"
+  - name: "UpdateBookRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "UpdateBookCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "全カラム取得"
+        where: "id = :id"
+      - type: "UPDATE"
+        columns:
+          - name: "title"
+            value: "リクエストのtitle"
+          - name: "author"
+            value: "リクエストのauthor"
+          - name: "isbn"
+            value: "リクエストのisbn"
+          - name: "publisher"
+            value: "リクエストのpublisher"
+          - name: "genre"
+            value: "リクエストのgenre"
+          - name: "material_type"
+            value: "リクエストのmaterial_type"
+          - name: "location"
+            value: "リクエストのlocation"
+          - name: "updated_at"
+            value: "現在日時"
+        where: "id = :id"
+    indexes_needed: []
+
+kvs: []
+object_storage: []

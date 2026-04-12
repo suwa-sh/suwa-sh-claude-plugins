@@ -1,0 +1,13 @@
+uc: "統計レポートを閲覧する"
+business: "統計業務"
+buc: "統計・レポートフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/stats"
+    summary: "統計レポートデータ取得"
+    tags:
+      - "統計業務"
+
+async_events:
+  []
+schemas: []

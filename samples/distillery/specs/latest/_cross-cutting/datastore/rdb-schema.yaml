@@ -1,0 +1,406 @@
+version: "1.0"
+datastore: "rdb"
+description: "図書館蔵書管理システム RDB スキーマ定義"
+normalization_level: "3NF（統計情報テーブルのみ非正規化）"
+
+er_diagram: |
+  ```mermaid
+  erDiagram
+    books ||--o{ loans : "貸出対象"
+    books ||--o{ reservations : "予約対象"
+    users ||--o{ loans : "利用者"
+    users ||--o{ reservations : "予約者"
+
+    books {
+      uuid id PK
+      varchar title
+      varchar author
+      varchar isbn UK
+      varchar publisher
+      varchar genre
+      varchar material_type
+      varchar location
+      varchar status
+      timestamp created_at
+      timestamp updated_at
+    }
+
+    users {
+      uuid id PK
+      varchar user_number UK
+      varchar name
+      varchar contact
+      varchar email UK
+      varchar user_type
+      date registered_at
+      timestamp created_at
+      timestamp updated_at
+    }
+
+    loans {
+      uuid id PK
+      uuid book_id FK
+      uuid user_id FK
+      date loan_date
+      date due_date
+      date return_date
+      boolean is_overdue
+      varchar idempotency_key UK
+      timestamp created_at
+    }
+
+    reservations {
+      uuid id PK
+      uuid book_id FK
+      uuid user_id FK
+      timestamp reserved_at
+      integer queue_position
+      varchar status
+      varchar idempotency_key UK
+      timestamp created_at
+      timestamp updated_at
+    }
+
+    statistics {
+      uuid id PK
+      varchar period_type
+      varchar period_value
+      integer total_loans
+      jsonb popular_books
+      jsonb genre_breakdown
+      timestamp calculated_at
+    }
+  ```
+
+tables:
+  - name: "books"
+    description: "図書館が所蔵する書籍の基本情報"
+    rdra_info: "書籍"
+    columns:
+      - name: "id"
+        type: "uuid"
+        nullable: false
+        description: "書籍ID（主キー）"
+      - name: "title"
+        type: "varchar(500)"
+        nullable: false
+        description: "書籍タイトル"
+      - name: "author"
+        type: "varchar(200)"
+        nullable: false
+        description: "著者名"
+      - name: "isbn"
+        type: "varchar(17)"
+        nullable: false
+        description: "ISBN-13形式"
+      - name: "publisher"
+        type: "varchar(200)"
+        nullable: false
+        description: "出版社名"
+      - name: "genre"
+        type: "varchar(50)"
+        nullable: false
+        description: "書籍ジャンル（文学/理工/児童書/社会科学/自然科学/芸術/その他）"
+      - name: "material_type"
+        type: "varchar(20)"
+        nullable: false
+        description: "資料種別（紙書籍/電子書籍）"
+      - name: "location"
+        type: "varchar(100)"
+        nullable: true
+        description: "配架場所（電子書籍の場合はNULL）"
+      - name: "status"
+        type: "varchar(20)"
+        nullable: false
+        description: "貸出状態（available/on_loan/overdue）"
+      - name: "created_at"
+        type: "timestamp"
+        nullable: false
+        description: "登録日時"
+      - name: "updated_at"
+        type: "timestamp"
+        nullable: false
+        description: "更新日時"
+    primary_key:
+      - "id"
+    unique_constraints:
+      - name: "uq_books_isbn"
+        columns:
+          - "isbn"
+        description: "ISBN一意制約"
+    indexes:
+      - name: "idx_books_genre"
+        columns:
+          - "genre"
+        description: "ジャンル別検索用"
+      - name: "idx_books_status"
+        columns:
+          - "status"
+        description: "在庫状態フィルター用"
+      - name: "idx_books_title_author"
+        columns:
+          - "title"
+          - "author"
+        description: "タイトル・著者検索用"
+    foreign_keys: []
+
+  - name: "users"
+    description: "図書館の利用者情報。個人情報（氏名・連絡先・メールアドレス）は保管時に暗号化する"
+    rdra_info: "利用者"
+    columns:
+      - name: "id"
+        type: "uuid"
+        nullable: false
+        description: "利用者ID（主キー）"
+      - name: "user_number"
+        type: "varchar(20)"
+        nullable: false
+        description: "利用者番号（表示用）"
+      - name: "name"
+        type: "varchar(100)"
+        nullable: false
+        description: "氏名（暗号化保管）"
+      - name: "contact"
+        type: "varchar(200)"
+        nullable: true
+        description: "連絡先（暗号化保管）"
+      - name: "email"
+        type: "varchar(256)"
+        nullable: false
+        description: "メールアドレス（暗号化保管）"
+      - name: "user_type"
+        type: "varchar(20)"
+        nullable: false
+        description: "利用者種別（一般/学生/児童）"
+      - name: "registered_at"
+        type: "date"
+        nullable: false
+        description: "登録日"
+      - name: "created_at"
+        type: "timestamp"
+        nullable: false
+        description: "作成日時"
+      - name: "updated_at"
+        type: "timestamp"
+        nullable: false
+        description: "更新日時"
+    primary_key:
+      - "id"
+    unique_constraints:
+      - name: "uq_users_user_number"
+        columns:
+          - "user_number"
+        description: "利用者番号一意制約"
+      - name: "uq_users_email"
+        columns:
+          - "email"
+        description: "メールアドレス一意制約"
+    indexes:
+      - name: "idx_users_name"
+        columns:
+          - "name"
+        description: "氏名検索用"
+    foreign_keys: []
+
+  - name: "loans"
+    description: "書籍の貸出記録"
+    rdra_info: "貸出"
+    columns:
+      - name: "id"
+        type: "uuid"
+        nullable: false
+        description: "貸出ID（主キー）"
+      - name: "book_id"
+        type: "uuid"
+        nullable: false
+        description: "書籍ID（外部キー）"
+      - name: "user_id"
+        type: "uuid"
+        nullable: false
+        description: "利用者ID（外部キー）"
+      - name: "loan_date"
+        type: "date"
+        nullable: false
+        description: "貸出日"
+      - name: "due_date"
+        type: "date"
+        nullable: false
+        description: "返却期限"
+      - name: "return_date"
+        type: "date"
+        nullable: true
+        description: "返却日（NULL=未返却）"
+      - name: "is_overdue"
+        type: "boolean"
+        nullable: false
+        description: "延滞フラグ"
+      - name: "idempotency_key"
+        type: "varchar(36)"
+        nullable: false
+        description: "冪等キー"
+      - name: "created_at"
+        type: "timestamp"
+        nullable: false
+        description: "作成日時"
+    primary_key:
+      - "id"
+    unique_constraints:
+      - name: "uq_loans_idempotency_key"
+        columns:
+          - "idempotency_key"
+        description: "冪等キー一意制約（二重貸出防止）"
+    indexes:
+      - name: "idx_loans_book_id"
+        columns:
+          - "book_id"
+        description: "書籍別貸出検索"
+      - name: "idx_loans_user_id"
+        columns:
+          - "user_id"
+        description: "利用者別貸出一覧"
+      - name: "idx_loans_due_date_return_date"
+        columns:
+          - "due_date"
+          - "return_date"
+        description: "延滞検出バッチ用（return_date IS NULL AND due_date < NOW()）"
+      - name: "idx_loans_return_date_loan_date"
+        columns:
+          - "return_date"
+          - "loan_date"
+        description: "未返却貸出一覧取得用"
+    foreign_keys:
+      - name: "fk_loans_book_id"
+        columns:
+          - "book_id"
+        references_table: "books"
+        references_columns:
+          - "id"
+        description: "貸出 -> 書籍"
+      - name: "fk_loans_user_id"
+        columns:
+          - "user_id"
+        references_table: "users"
+        references_columns:
+          - "id"
+        description: "貸出 -> 利用者"
+
+  - name: "reservations"
+    description: "貸出中書籍への予約情報"
+    rdra_info: "予約"
+    columns:
+      - name: "id"
+        type: "uuid"
+        nullable: false
+        description: "予約ID（主キー）"
+      - name: "book_id"
+        type: "uuid"
+        nullable: false
+        description: "書籍ID（外部キー）"
+      - name: "user_id"
+        type: "uuid"
+        nullable: false
+        description: "利用者ID（外部キー）"
+      - name: "reserved_at"
+        type: "timestamp"
+        nullable: false
+        description: "予約日時"
+      - name: "queue_position"
+        type: "integer"
+        nullable: false
+        description: "予約順位"
+      - name: "status"
+        type: "varchar(20)"
+        nullable: false
+        description: "予約状態（pending/reserved/cancelled）"
+      - name: "idempotency_key"
+        type: "varchar(36)"
+        nullable: false
+        description: "冪等キー"
+      - name: "created_at"
+        type: "timestamp"
+        nullable: false
+        description: "作成日時"
+      - name: "updated_at"
+        type: "timestamp"
+        nullable: false
+        description: "更新日時"
+    primary_key:
+      - "id"
+    unique_constraints:
+      - name: "uq_reservations_idempotency_key"
+        columns:
+          - "idempotency_key"
+        description: "冪等キー一意制約（二重予約防止）"
+    indexes:
+      - name: "idx_reservations_book_id_status"
+        columns:
+          - "book_id"
+          - "status"
+        description: "書籍別予約受付中検索（返却時の予約チェック用）"
+      - name: "idx_reservations_user_id"
+        columns:
+          - "user_id"
+        description: "利用者別予約一覧"
+    foreign_keys:
+      - name: "fk_reservations_book_id"
+        columns:
+          - "book_id"
+        references_table: "books"
+        references_columns:
+          - "id"
+        description: "予約 -> 書籍"
+      - name: "fk_reservations_user_id"
+        columns:
+          - "user_id"
+        references_table: "users"
+        references_columns:
+          - "id"
+        description: "予約 -> 利用者"
+
+  - name: "statistics"
+    description: "貸出データから集計した統計レポート用データ（非正規化テーブル）"
+    rdra_info: "統計情報"
+    columns:
+      - name: "id"
+        type: "uuid"
+        nullable: false
+        description: "統計ID（主キー）"
+      - name: "period_type"
+        type: "varchar(20)"
+        nullable: false
+        description: "集計期間種別（monthly/weekly）"
+      - name: "period_value"
+        type: "varchar(10)"
+        nullable: false
+        description: "集計期間値（2026-04等）"
+      - name: "total_loans"
+        type: "integer"
+        nullable: false
+        description: "期間内総貸出回数"
+      - name: "popular_books"
+        type: "jsonb"
+        nullable: false
+        description: "人気書籍ランキング（JSON配列）"
+      - name: "genre_breakdown"
+        type: "jsonb"
+        nullable: false
+        description: "ジャンル別貸出構成（JSON配列）"
+      - name: "calculated_at"
+        type: "timestamp"
+        nullable: false
+        description: "集計実行日時"
+    primary_key:
+      - "id"
+    unique_constraints:
+      - name: "uq_statistics_period"
+        columns:
+          - "period_type"
+          - "period_value"
+        description: "期間種別+期間値の一意制約"
+    indexes:
+      - name: "idx_statistics_period"
+        columns:
+          - "period_type"
+          - "period_value"
+        description: "期間別検索用"
+    foreign_keys: []

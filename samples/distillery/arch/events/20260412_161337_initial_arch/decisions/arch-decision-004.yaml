@@ -1,0 +1,30 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-004"
+title: "RBAC + Backend 作り込みによる認可方式"
+status: "approved"
+generated_at: "2026-04-12T16:13:37"
+context: |
+  アクターが 2 種（利用者/司書）のシステムで認可方式を選定する必要がある。
+  NFR E.5.2.1 でロールベースアクセス制御（RBAC）Lv2 が指定されている。
+  所有権ベースの認可パターンは限定的（利用者の自分の貸出/予約のみ）。
+decision: |
+  RBAC + Backend 作り込みを採用する。
+  利用者ロールと司書ロールの 2 種でアクセス制御を行い、
+  粗粒度のロールチェックは認証後に行い、
+  所有権チェック（自分の貸出/予約のみ操作可能）は Backend API の if 文で作り込む。
+  2 ロール・限定的な認可パターンの小規模システムでは最もシンプルかつ十分な方式。
+consequences:
+  positive:
+    - "実装がシンプルで理解しやすい"
+    - "外部サービス（OPA/OpenFGA 等）への依存がない"
+    - "小規模システムではポリシー変更もコード変更で即座に対応可能"
+  negative:
+    - "認可ルールがコードに埋め込まれるため、ルール変更 = コード変更"
+    - "ロール数やリソース種別が増加した場合にスケールしない"
+alternatives_considered:
+  - name: "RBAC + Policy Engine（OPA/Cedar）"
+    reason_rejected: "2 ロールのみの小規模システムでは Policy Engine の導入コスト・学習コストに見合わない"
+  - name: "ReBAC 外部サービス（OpenFGA/SpiceDB）"
+    reason_rejected: "所有権ベースの認可パターンが限定的で、外部サービス追加の運用コストに見合わない"

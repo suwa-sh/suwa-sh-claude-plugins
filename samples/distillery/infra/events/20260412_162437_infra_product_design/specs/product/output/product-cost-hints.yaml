@@ -1,0 +1,180 @@
+schema_version: "1.0"
+artifact_type: "cost_hints"
+skill_type: "product"
+artifact_id: "product-library-management-cost-hints"
+title: "図書館蔵書管理システム コスト最適化ヒント"
+status: "draft"
+generated_at: "2026-04-12T16:26:00"
+source_refs:
+  - "aws-well-architected-framework"
+decision_refs:
+  - "product-decision-compute-model"
+  - "product-decision-database-engine"
+inputs_ref:
+  - "product-library-management-workload-model"
+  - "product-library-management-impl-aws"
+
+cost_posture: "cost_optimized"
+
+estimated_monthly_cost:
+  currency: "USD"
+  total_estimate: "50-80"
+  breakdown:
+    - component: "RDS for PostgreSQL (db.t4g.micro, Multi-AZ)"
+      estimate: "26"
+      notes: "Multi-AZ で約 $26/月。Single-AZ なら約 $13/月"
+    - component: "ElastiCache for Redis (cache.t4g.micro)"
+      estimate: "12"
+      notes: "単一ノード。レプリカなし"
+    - component: "Lambda (Backend API + Worker)"
+      estimate: "1-5"
+      notes: "baseline_rps 1 では無料枠内に収まる可能性あり"
+    - component: "App Runner (Frontend)"
+      estimate: "5-10"
+      notes: "最小 1 インスタンス常時起動。Auto Pause 利用で更に削減可能"
+    - component: "API Gateway (REST API)"
+      estimate: "0-1"
+      notes: "100 万リクエスト/月まで約 $3.50。この規模では $1 未満"
+    - component: "SQS (FIFO)"
+      estimate: "0-1"
+      notes: "100 万リクエスト/月まで無料枠"
+    - component: "Cognito"
+      estimate: "0"
+      notes: "50,000 MAU まで無料枠"
+    - component: "SES"
+      estimate: "0-1"
+      notes: "62,000 通/月まで無料（EC2 から送信の場合）"
+    - component: "CloudWatch"
+      estimate: "3-5"
+      notes: "カスタムメトリクス、ログ保存、アラーム"
+    - component: "VPC (NAT Gateway)"
+      estimate: "5-10"
+      notes: "NAT Gateway 固定費 ~$32/月。VPC エンドポイントで一部代替可能"
+    - component: "Secrets Manager"
+      estimate: "1"
+      notes: "シークレット 1 件: $0.40/月 + API コール"
+
+optimization_strategies:
+  - id: "opt_001"
+    name: "NAT Gateway コスト削減"
+    category: "networking"
+    description: "NAT Gateway は固定費が高い（~$32/月）。VPC エンドポイントを活用し、NAT Gateway 経由のトラフィックを最小化する"
+    potential_saving: "$20-25/月"
+    risk: "low"
+    implementation: |
+      - S3 Gateway エンドポイント（無料）で S3 アクセスを NAT 経由から切り替え
+      - SQS, Secrets Manager, CloudWatch Logs の Interface エンドポイント追加
+      - 将来的に NAT Gateway 不要になれば撤去（月 $32 削減）
+    priority: "high"
+
+  - id: "opt_002"
+    name: "RDS Single-AZ 検討"
+    category: "database"
+    description: "RTO 1 営業日、RPO 日次バックアップの要件であれば Single-AZ でも要件を満たす。Multi-AZ は NFR A.2.5.1 Lv3 対応だが、RDS の自動バックアップで日次 RPO は確保済み"
+    potential_saving: "$13/月"
+    risk: "medium"
+    implementation: |
+      - Single-AZ に変更し、コスト半減
+      - 障害時は自動バックアップからのリストアで RTO 数時間
+      - ストレージ冗長化は EBS の 3 AZ レプリケーションで確保
+    priority: "medium"
+
+  - id: "opt_003"
+    name: "App Runner Auto Pause"
+    category: "compute"
+    description: "App Runner の Auto Pause 機能を有効化し、トラフィックがない時間帯（21時〜翌9時）のコストを削減"
+    potential_saving: "$2-5/月"
+    risk: "low"
+    implementation: |
+      - Auto Pause を有効化（トラフィックなし状態が続くとインスタンス停止）
+      - 初回リクエスト時にコールドスタート（数秒）が発生
+      - 運用時間外（21時〜翌9時）のコスト削減に有効
+    priority: "medium"
+
+  - id: "opt_004"
+    name: "Lambda Provisioned Concurrency 不使用"
+    category: "compute"
+    description: "レスポンスタイム要件が 10 秒以内と緩いため、Provisioned Concurrency は不要。コールドスタートを許容する"
+    potential_saving: "回避コスト: $15-30/月"
+    risk: "low"
+    implementation: |
+      - Provisioned Concurrency を設定しない（デフォルト）
+      - コールドスタート時間: 1-3 秒（10 秒以内の要件を満たす）
+      - 将来的にレイテンシ要件が厳しくなった場合に再検討
+    priority: "low"
+
+  - id: "opt_005"
+    name: "Reserved Instance 検討（RDS）"
+    category: "database"
+    description: "1 年以上の利用が確定している場合、RDS Reserved Instance で約 30-40% のコスト削減が可能"
+    potential_saving: "$8-10/月"
+    risk: "low"
+    implementation: |
+      - 1 年 RI（部分前払い）: 約 30% 割引
+      - 3 年 RI（全前払い）: 約 40% 割引
+      - 本番運用開始後、安定稼働を確認してから購入を推奨
+    priority: "low"
+
+  - id: "opt_006"
+    name: "CloudWatch ログ保持期間の最適化"
+    category: "observability"
+    description: "アプリケーションログの保持期間を 30 日に抑え、監査ログのみ 365 日保持する"
+    potential_saving: "$1-3/月"
+    risk: "low"
+    implementation: |
+      - /library-management/frontend: 30 日
+      - /library-management/backend-api: 30 日
+      - /library-management/worker: 30 日
+      - /library-management/audit: 365 日
+    priority: "low"
+
+right_sizing_recommendations:
+  - component: "RDS for PostgreSQL"
+    current: "db.t4g.micro (2 vCPU, 1 GB RAM)"
+    recommendation: "初期は db.t4g.micro で開始。CPU 使用率が 70% を超えたら db.t4g.small にスケールアップ"
+    trigger: "CPU 使用率 > 70%（1 週間平均）"
+
+  - component: "ElastiCache for Redis"
+    current: "cache.t4g.micro (2 vCPU, 0.5 GB RAM)"
+    recommendation: "初期は cache.t4g.micro で開始。メモリ使用率が 80% を超えたら cache.t4g.small にスケールアップ"
+    trigger: "メモリ使用率 > 80%"
+
+  - component: "Lambda Backend API"
+    current: "512 MB"
+    recommendation: "初期は 512 MB で開始。Duration の p99 が 5 秒を超えたら 1024 MB に増量"
+    trigger: "Duration p99 > 5000ms"
+
+  - component: "Lambda Worker Batch"
+    current: "1024 MB"
+    recommendation: "バッチ処理時間が 10 分を超えたら 2048 MB に増量"
+    trigger: "Duration > 600000ms"
+
+spot_preemptible_candidates: []
+spot_rationale: "全コンポーネントが Serverless またはマネージドサービスのため、スポットインスタンスの対象なし"
+
+storage_tiering:
+  - component: "RDS ストレージ"
+    current: "gp3 20 GB"
+    recommendation: "gp3 で開始。100 GB を超えた場合は S3 へのデータアーカイブを検討"
+
+data_transfer_optimization:
+  - description: "VPC エンドポイント活用で NAT Gateway 経由のデータ転送を最小化"
+  - description: "同一 AZ 内通信を優先（Lambda と RDS を同一 AZ に配置）"
+  - description: "CloudFront による静的アセットのキャッシュ（将来的な最適化）"
+
+auto_scaling_parameters:
+  - component: "App Runner"
+    min_size: 1
+    max_size: 4
+    scale_metric: "同時リクエスト数"
+    scale_threshold: 100
+    cooldown: "60s"
+
+  - component: "Lambda Backend API"
+    reserved_concurrency: 10
+    provisioned_concurrency: 0
+    rationale: "コスト最適化優先。コールドスタートを許容"
+
+  - component: "Lambda Worker Email"
+    reserved_concurrency: 5
+    rationale: "メール送信サービスへの負荷制御"

@@ -1,0 +1,18 @@
+uc: "延滞を検出する"
+business: "貸出管理業務"
+buc: "延滞管理フロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/loans/overdue"
+    summary: "延滞一覧取得"
+    tags:
+      - "貸出管理業務"
+  - method: "POST"
+    path: "/api/v1/loans/detect-overdue"
+    summary: "延滞検出バッチトリガー"
+    tags:
+      - "貸出管理業務"
+
+async_events:
+  []
+schemas: []

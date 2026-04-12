@@ -1,0 +1,63 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "product"
+artifact_id: "product-decision-compute-model"
+title: "コンピュートモデルの選定: Serverless (Lambda + App Runner)"
+status: "accepted"
+generated_at: "2026-04-12T16:26:00"
+source_refs:
+  - "aws-well-architected-framework"
+inputs_ref:
+  - "product-library-management-input"
+
+decision:
+  context: |
+    図書館蔵書管理システムのコンピュートモデルを選定する必要がある。
+    ワークロード特性: web_app、baseline_rps 1、同時アクセス ~100、コスト最適化優先。
+    フロントエンドは Next.js SSR、バックエンドは REST API (FaaS)、ワーカーは CronJob + MQ。
+  conflict_type: "capability"
+  options:
+    - id: "serverless"
+      description: "Lambda (Backend API + Worker) + App Runner (Frontend SSR)"
+      pros:
+        - "従量課金でコスト最適化（baseline_rps 1 では極めて低コスト）"
+        - "Auto Scaling が組み込み（CTP-015 対応）"
+        - "サーバ管理不要（運用負荷最小）"
+        - "EventBridge Scheduler で CronJob が簡単に実装可能"
+      cons:
+        - "コールドスタート（数百 ms〜数秒。レスポンスタイム 10 秒以内は達成可能）"
+        - "Lambda の 15 分タイムアウト制約（バッチ処理は ~10,000 件で十分収まる）"
+        - "VPC 内 Lambda の初回接続遅延"
+    - id: "container"
+      description: "ECS Fargate (全ティア)"
+      pros:
+        - "コールドスタートなし"
+        - "長時間バッチ処理に対応"
+        - "VPC ネイティブ"
+      cons:
+        - "最小 1 タスク常時起動のコスト（Fargate 0.25 vCPU + 0.5 GB: ~$9/月）"
+        - "Auto Scaling 設定が別途必要"
+        - "コンテナイメージ管理の運用負荷"
+    - id: "hybrid"
+      description: "App Runner (Frontend) + ECS Fargate (Backend API) + Lambda (Worker)"
+      pros:
+        - "各ティアに最適なコンピュートモデルを選択"
+        - "Backend API はコールドスタートなし"
+      cons:
+        - "コンピュートモデルが混在し運用が複雑化"
+        - "ECS Fargate の常時起動コスト"
+  chosen_option: "serverless"
+  rationale: |
+    コスト最適化優先（cost_posture: cost_optimized）で、baseline_rps が 1 と極めて低トラフィックのため、
+    従量課金の Serverless が最もコスト効率が良い。レスポンスタイム要件（10 秒以内）は
+    Lambda のコールドスタートを考慮しても十分達成可能。バッチ処理も ~10,000 件/日で
+    Lambda の 15 分タイムアウト内に収まる。
+  risk_assessment: |
+    - コールドスタートによるレイテンシ: 低リスク（10 秒以内の要件に対して数秒のコールドスタートは許容範囲）
+    - VPC 内 Lambda の接続遅延: 低リスク（最新の Lambda は VPC 接続が高速化済み）
+    - 将来的なトラフィック増加: 中リスク（Lambda の同時実行数制限。ただし Fargate への移行パスあり）
+  affected_elements:
+    - "compute_frontend"
+    - "compute_backend_api"
+    - "compute_worker"
+  review_date: "2026-10-12"

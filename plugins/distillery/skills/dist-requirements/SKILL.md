@@ -277,7 +277,7 @@ references/usdm/usdm-decompose.md
 
 - USDM 分解時に解釈が曖昧だった要望（複数解釈が可能）
 - RDRA モデルにアクター / 情報 / BUC を自動追加した項目
-- confidence: low / medium の項目
+- confidence: low の項目
 
 対話を省略して completed を返してはならない。
 

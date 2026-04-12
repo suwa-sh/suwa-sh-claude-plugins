@@ -52,13 +52,14 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 
 | Skill | Role |
 |---|---|
-| `distillery:requirements` | USDM 分解 + RDRA モデルの差分/フルビルド |
-| `distillery:quality-attributes` | IPA 非機能要求グレード 2018 による品質特性推論 |
-| `distillery:architecture` | システム/アプリ/データアーキテクチャ設計（ベンダーニュートラル） |
-| `distillery:infrastructure` | MCL product-design 経由のクラウドインフラ設計 + Arch フィードバック |
-| `distillery:design-system` | デザイントークン生成 + Storybook 変換 |
-| `distillery:spec` | UC 単位詳細仕様 + OpenAPI/AsyncAPI + 全体横断 UX/UI 設計 |
-| `distillery:pipeline` | 全スキルの順次実行（初期要望 or 変更要望を1コマンドで最終成果物へ） |
+| `distillery:dist-requirements` | USDM 分解 + RDRA モデルの差分/フルビルド |
+| `distillery:dist-quality-attributes` | IPA 非機能要求グレード 2018 による品質特性推論 |
+| `distillery:dist-architecture` | システム/アプリ/データアーキテクチャ設計（ベンダーニュートラル） |
+| `distillery:dist-infrastructure` | MCL product-design 経由のクラウドインフラ設計 + Arch フィードバック |
+| `distillery:dist-design-system` | デザイントークン生成 + Storybook 変換 |
+| `distillery:dist-spec` | UC 単位詳細仕様 + OpenAPI/AsyncAPI + 全体横断 UX/UI 設計 |
+| `distillery:dist-spec-stories` | UC Spec + デザインシステムから Storybook Story 生成 |
+| `distillery:dist-pipeline` | 全スキルの順次実行（初期要望 or 変更要望を1コマンドで最終成果物へ） |
 
 ## Installation
 
@@ -72,7 +73,7 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 ### 初回ビルド（新規プロジェクト）
 
 ```
-/distillery:pipeline
+/distillery:dist-pipeline
 ```
 
 初期要望テキストのパスを聞かれるので指定してください。7スキルが順次実行され、`docs/` 配下に全成果物が生成されます。
@@ -80,12 +81,12 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 ### 個別実行
 
 ```
-/distillery:requirements   変更要望テキストのパス
-/distillery:quality-attributes
-/distillery:architecture
-/distillery:infrastructure
-/distillery:design-system
-/distillery:spec
+/distillery:dist-requirements   変更要望テキストのパス
+/distillery:dist-quality-attributes
+/distillery:dist-architecture
+/distillery:dist-infrastructure
+/distillery:dist-design-system
+/distillery:dist-spec
 ```
 
 既存の `docs/{rdra,nfr,arch,infra,design,specs}/latest/` を読み込み、差分更新モードで動作します。

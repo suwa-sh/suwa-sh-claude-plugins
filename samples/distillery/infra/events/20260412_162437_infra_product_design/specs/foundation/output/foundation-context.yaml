@@ -1,0 +1,50 @@
+schema_version: "1.0"
+artifact_type: "context"
+skill_type: "foundation"
+artifact_id: "foundation-context"
+title: "Foundation Context — 下位スキル向け"
+status: "draft"
+generated_at: "2026-04-08T00:00:00Z"
+source_refs: []
+decision_refs: [foundation-decision-cost-allocation]
+inputs_ref: [foundation-input]
+
+organization_structure:
+  business_units: [sales, dev, ccoe]
+  environments: [prod, stg, dev]
+  account_pattern: "{bu}-{env}"
+  core_accounts: [management, log-archive, audit, shared-services]
+
+identity_guardrails:
+  federation_required: true
+  local_users_forbidden: true
+  privileged_access: jit
+  breakglass_accounts: 2
+
+network_guardrails:
+  topology: hub-spoke
+  prod_nonprod_isolation: true
+  central_egress: true
+  inter_cloud_encryption: required
+
+policy_guardrails:
+  allowed_regions:
+    aws: [ap-northeast-1, ap-northeast-3]
+    azure: [japaneast, japanwest]
+    gcp: [asia-northeast1, asia-northeast2]
+  public_storage_forbidden: true
+  required_tags: [cost_center, shared_service, environment]
+
+logging_guardrails:
+  central_aggregation: true
+  retention_days: 365
+  tamper_protection: required
+
+billing_boundaries:
+  budget_owner: business_unit
+  cost_allocation_model: hybrid_fixed_variable
+  fixed_split: even_among_bus
+  variable_split: usage_based
+  required_tags: [cost_center, shared_service]
+
+approved_deviations: []

@@ -1,0 +1,28 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-002"
+title: "ポータル構成戦略: 利用者/司書の2ポータル構成"
+status: "approved"
+generated_at: "2026-04-12T16:46:50"
+context: |
+  RDRAアクター定義に利用者（社外・受益者）と司書（社内・提供者）の2種が存在。
+  BUC画面定義から利用者向け7画面、司書向け9画面を導出。
+  アーキテクチャ設計のRBAC方針（CTP-002）で利用者ロールと司書ロールの2種を定義済み。
+decision: |
+  2ポータル構成を採用する。
+  User（利用者ポータル）: Blue #2563EB — 蔵書検索・貸出・返却・予約・マイページ（7画面）
+  Admin（司書ポータル）: Slate #334155 — 蔵書管理・貸出管理・利用者管理・統計（9画面）
+  テーマ切替は data-portal CSS属性で実現し、各ポータルのプライマリカラーを切り替える。
+consequences:
+  positive:
+    - "アクターの役割に応じた最適化が可能"
+    - "RBAC認可方式と自然に整合する"
+    - "利用者向けはシンプル、司書向けは情報密度を高くできる"
+  negative:
+    - "2つのUIセットのメンテナンスが必要"
+alternatives_considered:
+  - name: "単一ポータル（ロールベース表示切替）"
+    reason_rejected: "利用者と司書で画面構成が大きく異なり（合計16画面）、単一ポータルでは複雑になりすぎる"
+  - name: "3ポータル（利用者/司書/管理者）"
+    reason_rejected: "アクターが2種のみであり、管理者と司書を分離する根拠がRDRAにない"

@@ -1,0 +1,24 @@
+uc: "統計レポートを閲覧する"
+business: "統計業務"
+buc: "統計・レポートフロー"
+
+models:
+  - name: "統計レポート閲覧Model"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "統計情報"
+
+tables:
+  - name: "statistics"
+    rdra_info: "統計情報"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "データ取得"
+        where: "条件に基づく"
+    indexes_needed: []
+
+kvs: []
+object_storage: []

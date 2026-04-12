@@ -1,0 +1,456 @@
+schema_version: "1.0"
+artifact_type: "implementation_spec"
+skill_type: "product"
+artifact_id: "product-library-management-impl-aws"
+title: "図書館蔵書管理システム AWS 実装仕様"
+status: "draft"
+generated_at: "2026-04-12T16:26:00"
+source_refs:
+  - "aws-well-architected-framework"
+  - "aws-rds-postgresql"
+  - "aws-elasticache-redis"
+decision_refs:
+  - "product-decision-compute-model"
+  - "product-decision-database-engine"
+inputs_ref:
+  - "product-library-management-workload-model"
+  - "product-library-management-mapping-aws"
+
+vendor: "aws"
+canonical_ref: "product-library-management-workload-model"
+mapping_ref: "product-library-management-mapping-aws"
+
+components:
+  - id: "vpc"
+    name: "VPC ネットワーク"
+    canonical_element_id: "networking"
+    vendor_service: "Amazon VPC"
+    configuration:
+      region: "ap-northeast-1"
+      cidr: "10.0.0.0/16"
+      availability_zones:
+        - "ap-northeast-1a"
+        - "ap-northeast-1c"
+      subnets:
+        public:
+          - cidr: "10.0.1.0/24"
+            az: "ap-northeast-1a"
+          - cidr: "10.0.2.0/24"
+            az: "ap-northeast-1c"
+        private:
+          - cidr: "10.0.11.0/24"
+            az: "ap-northeast-1a"
+          - cidr: "10.0.12.0/24"
+            az: "ap-northeast-1c"
+      nat_gateway:
+        count: 1
+        subnet: "public-1a"
+      vpc_endpoints:
+        - service: "s3"
+          type: "gateway"
+        - service: "sqs"
+          type: "interface"
+        - service: "secretsmanager"
+          type: "interface"
+    dependencies: []
+    iac_module: "infra/product/aws/modules/vpc"
+    validation_rules:
+      - rule: "VPC CIDR が foundation-context の network_guardrails と競合しないこと"
+        type: "static"
+        description: "CIDR 重複チェック"
+
+  - id: "app_runner_frontend"
+    name: "フロントエンド App Runner"
+    canonical_element_id: "compute_frontend"
+    vendor_service: "AWS App Runner"
+    configuration:
+      source: "ECR image"
+      runtime: "nodejs20"
+      cpu: "0.25 vCPU"
+      memory: "0.5 GB"
+      auto_scaling:
+        min_size: 1
+        max_size: 4
+        max_concurrency: 100
+      health_check:
+        path: "/api/health"
+        protocol: "HTTP"
+        interval: 10
+        timeout: 5
+        healthy_threshold: 1
+        unhealthy_threshold: 5
+      environment_variables:
+        NEXT_PUBLIC_API_URL: "https://api.library.example.com"
+        NODE_ENV: "production"
+      vpc_connector:
+        subnets: "private"
+        security_groups: ["frontend-sg"]
+    dependencies:
+      - "vpc"
+    iac_module: "infra/product/aws/modules/app-runner"
+    validation_rules:
+      - rule: "ヘルスチェックエンドポイントが応答すること"
+        type: "runtime"
+        description: "/api/health が 200 を返すこと"
+
+  - id: "api_gateway"
+    name: "API Gateway"
+    canonical_element_id: "compute_backend_api"
+    vendor_service: "Amazon API Gateway"
+    configuration:
+      type: "REST"
+      stage: "v1"
+      endpoint_type: "REGIONAL"
+      throttling:
+        rate_limit: 100
+        burst_limit: 200
+      logging:
+        access_log: true
+        execution_log: "ERROR"
+      cors:
+        allow_origins: ["https://library.example.com"]
+        allow_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        allow_headers: ["Content-Type", "Authorization", "X-Idempotency-Key"]
+      custom_domain:
+        domain: "api.library.example.com"
+        certificate: "ACM"
+    dependencies:
+      - "vpc"
+      - "lambda_backend"
+    iac_module: "infra/product/aws/modules/api-gateway"
+    validation_rules:
+      - rule: "CORS ヘッダーが正しく設定されていること"
+        type: "runtime"
+        description: "OPTIONS リクエストに CORS ヘッダーが返ること"
+
+  - id: "lambda_backend"
+    name: "バックエンド Lambda"
+    canonical_element_id: "compute_backend_api"
+    vendor_service: "AWS Lambda"
+    configuration:
+      runtime: "nodejs20.x"
+      handler: "dist/lambda.handler"
+      memory_size: 512
+      timeout: 29
+      reserved_concurrency: 10
+      vpc_config:
+        subnets: "private"
+        security_groups: ["backend-sg"]
+      environment_variables:
+        DB_SECRET_ARN: "arn:aws:secretsmanager:ap-northeast-1:*:secret:library-db-*"
+        REDIS_ENDPOINT: "library-cache.xxxxx.apne1.cache.amazonaws.com"
+        SQS_QUEUE_URL: "https://sqs.ap-northeast-1.amazonaws.com/*/library-notification.fifo"
+        COGNITO_USER_POOL_ID: "ap-northeast-1_XXXXXXX"
+        LOG_LEVEL: "INFO"
+      tracing: "Active"
+      layers:
+        - "otel-collector-layer"
+    dependencies:
+      - "vpc"
+      - "rds_postgresql"
+      - "elasticache_redis"
+      - "sqs_notification"
+      - "cognito"
+    iac_module: "infra/product/aws/modules/lambda-backend"
+    validation_rules:
+      - rule: "Lambda が VPC 内の RDS に接続できること"
+        type: "runtime"
+        description: "DB ヘルスチェックが成功すること"
+      - rule: "Secrets Manager からシークレットを取得できること"
+        type: "runtime"
+        description: "IAM ロールにシークレット読み取り権限があること"
+
+  - id: "lambda_worker_batch"
+    name: "延滞検出バッチ Lambda"
+    canonical_element_id: "compute_worker"
+    vendor_service: "AWS Lambda + EventBridge Scheduler"
+    configuration:
+      runtime: "nodejs20.x"
+      handler: "dist/worker-batch.handler"
+      memory_size: 1024
+      timeout: 900
+      vpc_config:
+        subnets: "private"
+        security_groups: ["backend-sg"]
+      schedule:
+        expression: "cron(0 12 * * ? *)"
+        description: "毎日 21:00 JST (12:00 UTC) に延滞検出バッチ実行"
+        timezone: "Asia/Tokyo"
+      tracing: "Active"
+    dependencies:
+      - "vpc"
+      - "rds_postgresql"
+      - "sqs_notification"
+    iac_module: "infra/product/aws/modules/lambda-worker"
+    validation_rules:
+      - rule: "バッチ処理が 15 分以内に完了すること"
+        type: "runtime"
+        description: "~10,000 件の延滞チェックが Lambda タイムアウト内に完了"
+
+  - id: "lambda_worker_email"
+    name: "メール送信ワーカー Lambda"
+    canonical_element_id: "compute_worker"
+    vendor_service: "AWS Lambda"
+    configuration:
+      runtime: "nodejs20.x"
+      handler: "dist/worker-email.handler"
+      memory_size: 256
+      timeout: 60
+      reserved_concurrency: 5
+      vpc_config:
+        subnets: "private"
+        security_groups: ["backend-sg"]
+      event_source:
+        type: "SQS"
+        queue_arn: "arn:aws:sqs:ap-northeast-1:*:library-notification.fifo"
+        batch_size: 10
+        maximum_batching_window: 5
+      tracing: "Active"
+    dependencies:
+      - "vpc"
+      - "sqs_notification"
+      - "ses"
+    iac_module: "infra/product/aws/modules/lambda-worker"
+    validation_rules:
+      - rule: "SQS メッセージを正常に処理できること"
+        type: "runtime"
+        description: "テストメッセージの送信と処理確認"
+
+  - id: "rds_postgresql"
+    name: "RDS for PostgreSQL"
+    canonical_element_id: "database_primary"
+    vendor_service: "Amazon RDS for PostgreSQL"
+    configuration:
+      engine: "postgres"
+      engine_version: "16"
+      instance_class: "db.t4g.micro"
+      allocated_storage: 20
+      max_allocated_storage: 100
+      storage_type: "gp3"
+      multi_az: true
+      backup_retention_period: 35
+      backup_window: "18:00-19:00"
+      maintenance_window: "Sun:19:00-Sun:20:00"
+      storage_encrypted: true
+      kms_key_id: "alias/library-db-key"
+      performance_insights_enabled: true
+      performance_insights_retention_period: 7
+      deletion_protection: true
+      auto_minor_version_upgrade: true
+      db_name: "library_management"
+      port: 5432
+      parameter_group:
+        max_connections: 100
+        shared_buffers: "128MB"
+        log_min_duration_statement: 1000
+        log_statement: "ddl"
+        timezone: "Asia/Tokyo"
+      subnet_group: "private"
+      security_groups: ["db-sg"]
+    dependencies:
+      - "vpc"
+    iac_module: "infra/product/aws/modules/rds"
+    validation_rules:
+      - rule: "Multi-AZ がアクティブであること"
+        type: "runtime"
+        description: "RDS インスタンスが Multi-AZ 構成であること"
+      - rule: "暗号化が有効であること"
+        type: "static"
+        description: "storage_encrypted: true"
+
+  - id: "elasticache_redis"
+    name: "ElastiCache for Redis"
+    canonical_element_id: "cache_session"
+    vendor_service: "Amazon ElastiCache for Redis"
+    configuration:
+      engine: "redis"
+      engine_version: "7.1"
+      node_type: "cache.t4g.micro"
+      num_cache_nodes: 1
+      transit_encryption_enabled: true
+      at_rest_encryption_enabled: true
+      port: 6379
+      parameter_group:
+        maxmemory_policy: "volatile-lru"
+      subnet_group: "private"
+      security_groups: ["cache-sg"]
+    dependencies:
+      - "vpc"
+    iac_module: "infra/product/aws/modules/elasticache"
+    validation_rules:
+      - rule: "暗号化が有効であること"
+        type: "static"
+        description: "transit_encryption_enabled と at_rest_encryption_enabled が true"
+
+  - id: "sqs_notification"
+    name: "通知キュー (SQS FIFO)"
+    canonical_element_id: "message_queue"
+    vendor_service: "Amazon SQS"
+    configuration:
+      queue_type: "FIFO"
+      queue_name: "library-notification.fifo"
+      content_based_deduplication: true
+      visibility_timeout: 60
+      message_retention_period: 604800
+      receive_wait_time: 20
+      dead_letter_queue:
+        queue_name: "library-notification-dlq.fifo"
+        max_receive_count: 3
+      sqs_managed_sse_enabled: true
+    dependencies: []
+    iac_module: "infra/product/aws/modules/sqs"
+    validation_rules:
+      - rule: "FIFO キューが作成されていること"
+        type: "static"
+        description: "キュー名が .fifo で終わること"
+
+  - id: "cognito"
+    name: "Cognito ユーザープール"
+    canonical_element_id: "identity_provider"
+    vendor_service: "Amazon Cognito"
+    configuration:
+      user_pool_name: "library-management-users"
+      password_policy:
+        minimum_length: 8
+        require_uppercase: true
+        require_lowercase: true
+        require_numbers: true
+        require_symbols: true
+        temporary_password_validity_days: 7
+      mfa_configuration: "OPTIONAL"
+      account_recovery:
+        - name: "verified_email"
+          priority: 1
+      custom_attributes:
+        - name: "user_type"
+          type: "String"
+          mutable: true
+        - name: "user_number"
+          type: "String"
+          mutable: false
+      groups:
+        - name: "library_user"
+          description: "図書館利用者"
+        - name: "librarian"
+          description: "司書"
+      app_clients:
+        - name: "library-web-app"
+          auth_flows: ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
+          token_validity:
+            access_token: 15
+            id_token: 15
+            refresh_token: 10080
+          token_validity_units:
+            access_token: "minutes"
+            id_token: "minutes"
+            refresh_token: "minutes"
+          oauth:
+            flows: ["code"]
+            scopes: ["openid", "email", "profile"]
+          prevent_user_existence_errors: true
+    dependencies: []
+    iac_module: "infra/product/aws/modules/cognito"
+    validation_rules:
+      - rule: "パスワードポリシーが設定されていること"
+        type: "static"
+        description: "minimum_length >= 8, require_uppercase/lowercase/numbers/symbols = true"
+
+  - id: "ses"
+    name: "SES メール送信"
+    canonical_element_id: "email_service"
+    vendor_service: "Amazon SES"
+    configuration:
+      region: "ap-northeast-1"
+      configuration_set: "library-email-tracking"
+      sending_enabled: true
+      tls_policy: "Require"
+      event_destinations:
+        - name: "bounce-complaint"
+          matching_types: ["bounce", "complaint"]
+          sns_topic: "library-email-events"
+    dependencies: []
+    iac_module: "infra/product/aws/modules/ses"
+    validation_rules:
+      - rule: "送信元ドメインが検証済みであること"
+        type: "runtime"
+        description: "SES ドメイン検証ステータスが Success"
+
+  - id: "cloudwatch"
+    name: "CloudWatch 監視"
+    canonical_element_id: "observability_stack"
+    vendor_service: "Amazon CloudWatch + AWS X-Ray"
+    configuration:
+      log_groups:
+        - name: "/library-management/frontend"
+          retention_days: 30
+        - name: "/library-management/backend-api"
+          retention_days: 30
+        - name: "/library-management/worker"
+          retention_days: 30
+        - name: "/library-management/audit"
+          retention_days: 365
+      alarms:
+        - name: "backend-api-errors"
+          metric: "Errors"
+          namespace: "AWS/Lambda"
+          statistic: "Sum"
+          period: 300
+          threshold: 5
+          comparison: "GreaterThanThreshold"
+          actions: ["sns:library-ops-alerts"]
+        - name: "rds-cpu-high"
+          metric: "CPUUtilization"
+          namespace: "AWS/RDS"
+          statistic: "Average"
+          period: 300
+          threshold: 80
+          comparison: "GreaterThanThreshold"
+          actions: ["sns:library-ops-alerts"]
+        - name: "dlq-messages"
+          metric: "ApproximateNumberOfMessagesVisible"
+          namespace: "AWS/SQS"
+          statistic: "Sum"
+          period: 60
+          threshold: 0
+          comparison: "GreaterThanThreshold"
+          actions: ["sns:library-ops-alerts"]
+      dashboard:
+        name: "library-management-overview"
+        widgets:
+          - type: "metric"
+            title: "API レイテンシ"
+          - type: "metric"
+            title: "API エラー率"
+          - type: "metric"
+            title: "RDS CPU/メモリ"
+          - type: "metric"
+            title: "ElastiCache ヒット率"
+          - type: "metric"
+            title: "SQS キュー深度"
+      sns_topics:
+        - name: "library-ops-alerts"
+          protocol: "email"
+    dependencies: []
+    iac_module: "infra/product/aws/modules/cloudwatch"
+    validation_rules:
+      - rule: "全ロググループが作成されていること"
+        type: "static"
+        description: "4 つのロググループの存在確認"
+
+  - id: "secrets_manager"
+    name: "Secrets Manager"
+    canonical_element_id: "database_primary"
+    vendor_service: "AWS Secrets Manager"
+    configuration:
+      secrets:
+        - name: "library-db-credentials"
+          description: "RDS PostgreSQL 接続情報"
+          rotation_enabled: true
+          rotation_days: 30
+    dependencies:
+      - "rds_postgresql"
+    iac_module: "infra/product/aws/modules/secrets-manager"
+    validation_rules:
+      - rule: "シークレットローテーションが有効であること"
+        type: "static"
+        description: "rotation_enabled: true"

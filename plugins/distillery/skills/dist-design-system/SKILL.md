@@ -118,7 +118,11 @@ docs/design/
 3. Arch 設計から技術判断を導出する:
    - presentation tier → フレームワーク・レイアウト構成
    - ポータル数・認証方式 → テーマ切替方式
-4. `_inference.md` に推論根拠を記録する
+4. レイアウト・スペーシングを推論する（`design-infer.md` セクション 5）:
+   - グリッドシステム: サイドバー幅、画面パターン別カラム分割、レスポンシブ
+   - スペーシング: page-padding, section-gap, component-gap, card-padding
+   - 全ての具体値に RDRA/NFR からの推論根拠を付与する
+5. `_inference.md` に推論根拠を記録する（レイアウト・スペーシング含む）
 
 ### Step2: ユーザー確認（対話）
 

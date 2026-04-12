@@ -1,0 +1,30 @@
+uc: "書籍を返却する"
+business: "貸出管理業務"
+buc: "貸出管理フロー"
+endpoints:
+  - method: "PUT"
+    path: "/api/v1/loans/{id}/return"
+    summary: "書籍の返却"
+    response_schema: "ReturnLoanResponse"
+    tags:
+      - "貸出管理"
+async_events:
+  - channel: "reservation-notification-queue"
+    direction: "publish"
+    message_schema: "ReservationNotificationMessage"
+    summary: "予約あり書籍の返却時に予約通知を送信"
+schemas:
+  - name: "ReturnLoanResponse"
+    properties:
+      - name: "id"
+        type: "string"
+        required: true
+        description: "貸出ID"
+      - name: "book_title"
+        type: "string"
+        required: true
+        description: "書籍タイトル"
+      - name: "return_date"
+        type: "string"
+        required: true
+        description: "返却日"

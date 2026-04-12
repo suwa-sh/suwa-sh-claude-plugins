@@ -1,0 +1,16 @@
+version: "1.0"
+datastore: "kvs"
+description: "図書館蔵書管理システム KVS（Redis/ElastiCache）キーパターン定義"
+
+key_patterns:
+  - pattern: "idempotency:{idempotency_key}"
+    purpose: "冪等キー重複チェック。貸出・返却・予約・キャンセル操作の二重実行を防止する"
+    ttl: "86400"
+    value_type: "string"
+    value_description: "処理済みレスポンスのJSON文字列。重複リクエスト時にキャッシュから返却"
+
+  - pattern: "session:{session_id}"
+    purpose: "ユーザーセッション管理。HttpOnly Cookie のセッションIDに対応するユーザー情報を保持"
+    ttl: "3600"
+    value_type: "hash"
+    value_description: "user_id, role, name 等のセッション属性"

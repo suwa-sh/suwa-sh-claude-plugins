@@ -1,0 +1,18 @@
+uc: "利用者情報を編集する"
+business: "利用者管理業務"
+buc: "利用者管理フロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/users/{id}"
+    summary: "利用者情報取得"
+    tags:
+      - "利用者管理業務"
+  - method: "PUT"
+    path: "/api/v1/users/{id}"
+    summary: "利用者情報更新"
+    tags:
+      - "利用者管理業務"
+
+async_events:
+  []
+schemas: []

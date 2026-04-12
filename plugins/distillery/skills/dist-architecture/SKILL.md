@@ -276,8 +276,8 @@ RDRA モデル (`docs/rdra/latest/`) に存在しないアクター / 情報 / B
 
 ## 確認推奨項目の返却（dialogue-format 準拠）
 
-本スキルは pipeline の Step3 として **対話あり** で実行される。confidence: low/medium の項目、
-および自動推論で埋めた項目があれば、結果として「確認推奨項目リスト」を返却する。
+本スキルは pipeline の Step3 として **対話あり** で実行される。confidence: low の項目、
+の項目があれば、結果として「確認推奨項目リスト」を返却する。
 フォーマットは `skills/dist-pipeline/references/dialogue-format.md` に従うこと
 （**3案以上 + ⭐推奨 + 一行説明 + 推奨理由**）。対話を省略して completed を返してはならない。
 

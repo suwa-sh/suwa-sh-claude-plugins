@@ -1,0 +1,24 @@
+uc: "利用者情報を編集する"
+business: "利用者管理業務"
+buc: "利用者管理フロー"
+
+models:
+  - name: "利用者情報編集Model"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "利用者"
+
+tables:
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "データ取得"
+        where: "条件に基づく"
+    indexes_needed: []
+
+kvs: []
+object_storage: []

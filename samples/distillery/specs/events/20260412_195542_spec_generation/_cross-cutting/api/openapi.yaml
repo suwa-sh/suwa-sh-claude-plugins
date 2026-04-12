@@ -1,0 +1,1280 @@
+openapi: "3.1.0"
+info:
+  title: "LibraShelf API"
+  version: "1.0.0"
+  description: "図書館蔵書管理システムの REST API。蔵書管理、貸出管理、予約管理、利用者管理、統計の各業務を提供する。"
+  contact:
+    name: "LibraShelf開発チーム"
+servers:
+  - url: "https://api.librashelf.example.com"
+    description: "本番環境"
+
+security:
+  - oauth2: []
+
+paths:
+  /api/v1/books:
+    get:
+      operationId: "searchBooks"
+      summary: "書籍検索"
+      description: "キーワード、ジャンル、資料種別で書籍を検索する。ページネーション対応。"
+      tags:
+        - "蔵書管理"
+      parameters:
+        - name: "keyword"
+          in: "query"
+          schema:
+            type: "string"
+          description: "検索キーワード（タイトル、著者、ISBNで部分一致検索）"
+        - name: "genre"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "文学"
+              - "理工"
+              - "児童書"
+              - "社会科学"
+              - "自然科学"
+              - "芸術"
+              - "その他"
+          description: "書籍ジャンルフィルター"
+        - name: "material_type"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "紙書籍"
+              - "電子書籍"
+          description: "資料種別フィルター"
+        - name: "page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 1
+            minimum: 1
+          description: "ページ番号"
+        - name: "per_page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 20
+            minimum: 1
+            maximum: 100
+          description: "1ページあたり件数"
+      responses:
+        "200":
+          description: "検索結果"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedBookListResponse"
+    post:
+      operationId: "createBook"
+      summary: "書籍登録"
+      description: "新規書籍を蔵書として登録する。登録時の初期状態は「在庫あり」。"
+      tags:
+        - "蔵書管理"
+      security:
+        - oauth2:
+            - "librarian"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookRequest"
+      responses:
+        "201":
+          description: "登録成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
+        "400":
+          description: "バリデーションエラー"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: "ISBN重複"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/v1/books/{id}:
+    get:
+      operationId: "getBook"
+      summary: "書籍詳細取得"
+      description: "指定IDの書籍情報を取得する。"
+      tags:
+        - "蔵書管理"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+          description: "書籍ID"
+      responses:
+        "200":
+          description: "書籍情報"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
+        "404":
+          description: "書籍が見つからない"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      operationId: "updateBook"
+      summary: "書籍情報更新"
+      description: "既存書籍の情報を更新する。"
+      tags:
+        - "蔵書管理"
+      security:
+        - oauth2:
+            - "librarian"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBookRequest"
+      responses:
+        "200":
+          description: "更新成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
+        "400":
+          description: "バリデーションエラー"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "書籍が見つからない"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: "ISBN重複"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      operationId: "deleteBook"
+      summary: "書籍削除"
+      description: "在庫あり状態の書籍を削除する。貸出中・延滞中の書籍は削除不可。"
+      tags:
+        - "蔵書管理"
+      security:
+        - oauth2:
+            - "librarian"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "204":
+          description: "削除成功"
+        "404":
+          description: "書籍が見つからない"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: "貸出中/延滞中のため削除不可"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/v1/loans:
+    get:
+      operationId: "listLoans"
+      summary: "貸出一覧取得（司書用）"
+      description: "全利用者の貸出一覧を取得する。ページネーション・ステータスフィルター対応。"
+      tags:
+        - "貸出管理"
+      security:
+        - oauth2:
+            - "librarian"
+      parameters:
+        - name: "status"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "active"
+              - "overdue"
+              - "all"
+            default: "active"
+          description: "貸出ステータスフィルター"
+        - name: "page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 1
+        - name: "per_page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 20
+      responses:
+        "200":
+          description: "貸出一覧"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedLoanListResponse"
+    post:
+      operationId: "createLoan"
+      summary: "書籍貸出"
+      description: "書籍の貸出手続きを行う。貸出可否判定ルール・貸出期限ルールを適用。"
+      tags:
+        - "貸出管理"
+      parameters:
+        - name: "X-Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+          description: "冪等キー"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLoanRequest"
+      responses:
+        "201":
+          description: "貸出成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanResponse"
+        "409":
+          description: "貸出不可（在庫なし/予約あり/冪等キー重複）"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/v1/loans/{id}/return:
+    put:
+      operationId: "returnLoan"
+      summary: "書籍返却"
+      description: "書籍の返却手続きを行う。予約がある場合は予約通知をトリガー。"
+      tags:
+        - "貸出管理"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "X-Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "返却成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnLoanResponse"
+        "404":
+          description: "貸出が見つからない"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: "既に返却済み"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/v1/loans/overdue:
+    get:
+      operationId: "listOverdueLoans"
+      summary: "延滞一覧取得"
+      description: "延滞中の貸出一覧を取得する。"
+      tags:
+        - "延滞管理"
+      security:
+        - oauth2:
+            - "librarian"
+      parameters:
+        - name: "page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 1
+        - name: "per_page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 20
+      responses:
+        "200":
+          description: "延滞一覧"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedLoanListResponse"
+
+  /api/v1/loans/detect-overdue:
+    post:
+      operationId: "detectOverdue"
+      summary: "延滞検出バッチトリガー"
+      description: "返却期限超過の貸出を検出し延滞フラグを設定する。日次バッチのトリガー。"
+      tags:
+        - "延滞管理"
+      security:
+        - oauth2:
+            - "system"
+      responses:
+        "200":
+          description: "検出結果"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  detected_count:
+                    type: "integer"
+                    description: "新規延滞検出件数"
+                required:
+                  - "detected_count"
+
+  /api/v1/notifications/overdue:
+    post:
+      operationId: "sendOverdueNotification"
+      summary: "督促通知送信トリガー"
+      description: "延滞者への督促メール送信をトリガーする。MQ経由で非同期処理。"
+      tags:
+        - "延滞管理"
+      security:
+        - oauth2:
+            - "librarian"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                loan_ids:
+                  type: "array"
+                  items:
+                    type: "string"
+                    format: "uuid"
+                  description: "督促対象の貸出ID一覧"
+              required:
+                - "loan_ids"
+      responses:
+        "202":
+          description: "通知送信受付完了"
+
+  /api/v1/reservations:
+    get:
+      operationId: "listMyReservations"
+      summary: "自分の予約一覧取得"
+      description: "ログインユーザーの予約一覧を取得する。"
+      tags:
+        - "予約管理"
+      parameters:
+        - name: "page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 1
+        - name: "per_page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 20
+      responses:
+        "200":
+          description: "予約一覧"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedReservationListResponse"
+    post:
+      operationId: "createReservation"
+      summary: "書籍予約"
+      description: "貸出中の書籍に予約を申請する。予約優先ルールに基づき予約順を決定。"
+      tags:
+        - "予約管理"
+      parameters:
+        - name: "X-Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReservationRequest"
+      responses:
+        "201":
+          description: "予約成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationResponse"
+        "409":
+          description: "予約不可"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/v1/reservations/{id}:
+    delete:
+      operationId: "cancelReservation"
+      summary: "予約キャンセル"
+      description: "予約受付中の予約をキャンセルする。"
+      tags:
+        - "予約管理"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+        - name: "X-Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "204":
+          description: "キャンセル成功"
+        "404":
+          description: "予約が見つからない"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: "キャンセル不可（予約確保済等）"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/v1/users:
+    post:
+      operationId: "createUser"
+      summary: "利用者登録"
+      description: "新規利用者を登録する。"
+      tags:
+        - "利用者管理"
+      security:
+        - oauth2:
+            - "librarian"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: "登録成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: "バリデーションエラー"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /api/v1/users/{id}:
+    get:
+      operationId: "getUser"
+      summary: "利用者情報取得"
+      tags:
+        - "利用者管理"
+      security:
+        - oauth2:
+            - "librarian"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      responses:
+        "200":
+          description: "利用者情報"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "404":
+          description: "利用者が見つからない"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      operationId: "updateUser"
+      summary: "利用者情報更新"
+      tags:
+        - "利用者管理"
+      security:
+        - oauth2:
+            - "librarian"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            format: "uuid"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: "更新成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+
+  /api/v1/users/me/loans:
+    get:
+      operationId: "getMyLoans"
+      summary: "自分の貸出履歴取得"
+      description: "ログインユーザーの貸出履歴（過去・現在）を取得する。"
+      tags:
+        - "マイページ"
+      parameters:
+        - name: "page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 1
+        - name: "per_page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 20
+      responses:
+        "200":
+          description: "貸出履歴"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedLoanListResponse"
+
+  /api/v1/users/me/reservations:
+    get:
+      operationId: "getMyReservations"
+      summary: "自分の予約状況取得"
+      description: "ログインユーザーの予約一覧を取得する。"
+      tags:
+        - "マイページ"
+      parameters:
+        - name: "page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 1
+        - name: "per_page"
+          in: "query"
+          schema:
+            type: "integer"
+            default: 20
+      responses:
+        "200":
+          description: "予約状況"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedReservationListResponse"
+
+  /api/v1/inventory:
+    get:
+      operationId: "getInventory"
+      summary: "在庫状況取得"
+      description: "全書籍の在庫状態サマリーとジャンル別蔵書数を取得する。"
+      tags:
+        - "統計"
+      security:
+        - oauth2:
+            - "librarian"
+      responses:
+        "200":
+          description: "在庫状況"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+
+  /api/v1/stats:
+    get:
+      operationId: "getStats"
+      summary: "統計レポート取得"
+      description: "貸出回数ランキング、期間別統計を取得する。"
+      tags:
+        - "統計"
+      security:
+        - oauth2:
+            - "librarian"
+      parameters:
+        - name: "period"
+          in: "query"
+          schema:
+            type: "string"
+            enum:
+              - "1m"
+              - "3m"
+              - "6m"
+              - "12m"
+              - "all"
+            default: "12m"
+          description: "集計期間"
+      responses:
+        "200":
+          description: "統計データ"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
+
+components:
+  securitySchemes:
+    oauth2:
+      type: "oauth2"
+      description: "マネージドIdPによるOAuth2/OIDC認証"
+      flows:
+        authorizationCode:
+          authorizationUrl: "https://auth.librashelf.example.com/authorize"
+          tokenUrl: "https://auth.librashelf.example.com/token"
+          scopes:
+            user: "利用者権限"
+            librarian: "司書権限"
+            system: "システム権限"
+
+  schemas:
+    ProblemDetails:
+      type: "object"
+      description: "RFC 7807 Problem Details エラーレスポンス"
+      properties:
+        type:
+          type: "string"
+          description: "エラータイプURI"
+        title:
+          type: "string"
+          description: "エラータイトル"
+        status:
+          type: "integer"
+          description: "HTTPステータスコード"
+        detail:
+          type: "string"
+          description: "エラー詳細メッセージ"
+        instance:
+          type: "string"
+          description: "エラー発生インスタンスURI"
+      required:
+        - "type"
+        - "title"
+        - "status"
+
+    BookResponse:
+      type: "object"
+      description: "書籍レスポンス"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+          description: "書籍ID"
+        title:
+          type: "string"
+          description: "タイトル"
+        author:
+          type: "string"
+          description: "著者"
+        isbn:
+          type: "string"
+          description: "ISBN-13"
+        publisher:
+          type: "string"
+          description: "出版社"
+        genre:
+          type: "string"
+          description: "ジャンル"
+        material_type:
+          type: "string"
+          description: "資料種別"
+        location:
+          type: "string"
+          description: "配架場所"
+        status:
+          type: "string"
+          enum:
+            - "available"
+            - "on_loan"
+            - "overdue"
+          description: "貸出状態"
+        created_at:
+          type: "string"
+          format: "date-time"
+          description: "登録日時"
+        updated_at:
+          type: "string"
+          format: "date-time"
+          description: "更新日時"
+      required:
+        - "id"
+        - "title"
+        - "author"
+        - "isbn"
+        - "publisher"
+        - "genre"
+        - "material_type"
+        - "status"
+        - "created_at"
+
+    CreateBookRequest:
+      type: "object"
+      description: "書籍登録リクエスト"
+      properties:
+        title:
+          type: "string"
+          minLength: 1
+          maxLength: 500
+          description: "書籍タイトル"
+        author:
+          type: "string"
+          minLength: 1
+          maxLength: 200
+          description: "著者名"
+        isbn:
+          type: "string"
+          pattern: "^978-\\d{1,5}-\\d{1,7}-\\d{1,7}-\\d$"
+          description: "ISBN-13形式"
+        publisher:
+          type: "string"
+          minLength: 1
+          maxLength: 200
+          description: "出版社名"
+        genre:
+          type: "string"
+          enum:
+            - "文学"
+            - "理工"
+            - "児童書"
+            - "社会科学"
+            - "自然科学"
+            - "芸術"
+            - "その他"
+          description: "書籍ジャンル"
+        material_type:
+          type: "string"
+          enum:
+            - "紙書籍"
+            - "電子書籍"
+          description: "資料種別"
+        location:
+          type: "string"
+          maxLength: 100
+          description: "配架場所（紙書籍の場合必須）"
+      required:
+        - "title"
+        - "author"
+        - "isbn"
+        - "publisher"
+        - "genre"
+        - "material_type"
+
+    UpdateBookRequest:
+      type: "object"
+      description: "書籍更新リクエスト"
+      properties:
+        title:
+          type: "string"
+          minLength: 1
+          maxLength: 500
+          description: "書籍タイトル"
+        author:
+          type: "string"
+          minLength: 1
+          maxLength: 200
+          description: "著者名"
+        isbn:
+          type: "string"
+          pattern: "^978-\\d{1,5}-\\d{1,7}-\\d{1,7}-\\d$"
+          description: "ISBN-13形式"
+        publisher:
+          type: "string"
+          minLength: 1
+          maxLength: 200
+          description: "出版社名"
+        genre:
+          type: "string"
+          enum:
+            - "文学"
+            - "理工"
+            - "児童書"
+            - "社会科学"
+            - "自然科学"
+            - "芸術"
+            - "その他"
+          description: "書籍ジャンル"
+        material_type:
+          type: "string"
+          enum:
+            - "紙書籍"
+            - "電子書籍"
+          description: "資料種別"
+        location:
+          type: "string"
+          maxLength: 100
+          description: "配架場所"
+      required:
+        - "title"
+        - "author"
+        - "isbn"
+        - "publisher"
+        - "genre"
+        - "material_type"
+
+    PaginatedBookListResponse:
+      type: "object"
+      description: "ページネーション付き書籍一覧"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/BookResponse"
+        total:
+          type: "integer"
+          description: "全件数"
+        page:
+          type: "integer"
+          description: "現在ページ"
+        per_page:
+          type: "integer"
+          description: "1ページあたり件数"
+      required:
+        - "items"
+        - "total"
+        - "page"
+        - "per_page"
+
+    CreateLoanRequest:
+      type: "object"
+      description: "貸出リクエスト"
+      properties:
+        book_id:
+          type: "string"
+          format: "uuid"
+          description: "貸出対象の書籍ID"
+      required:
+        - "book_id"
+
+    LoanResponse:
+      type: "object"
+      description: "貸出レスポンス"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+          description: "貸出ID"
+        book_id:
+          type: "string"
+          format: "uuid"
+          description: "書籍ID"
+        book_title:
+          type: "string"
+          description: "書籍タイトル"
+        user_id:
+          type: "string"
+          format: "uuid"
+          description: "利用者ID"
+        loan_date:
+          type: "string"
+          format: "date"
+          description: "貸出日"
+        due_date:
+          type: "string"
+          format: "date"
+          description: "返却期限"
+        return_date:
+          type: "string"
+          format: "date"
+          description: "返却日"
+        is_overdue:
+          type: "boolean"
+          description: "延滞フラグ"
+      required:
+        - "id"
+        - "book_id"
+        - "book_title"
+        - "user_id"
+        - "loan_date"
+        - "due_date"
+        - "is_overdue"
+
+    ReturnLoanResponse:
+      type: "object"
+      description: "返却レスポンス"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+          description: "貸出ID"
+        book_title:
+          type: "string"
+          description: "書籍タイトル"
+        return_date:
+          type: "string"
+          format: "date"
+          description: "返却日"
+      required:
+        - "id"
+        - "book_title"
+        - "return_date"
+
+    PaginatedLoanListResponse:
+      type: "object"
+      description: "ページネーション付き貸出一覧"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/LoanResponse"
+        total:
+          type: "integer"
+          description: "全件数"
+        page:
+          type: "integer"
+          description: "現在ページ"
+        per_page:
+          type: "integer"
+          description: "1ページあたり件数"
+      required:
+        - "items"
+        - "total"
+        - "page"
+        - "per_page"
+
+    CreateReservationRequest:
+      type: "object"
+      description: "予約リクエスト"
+      properties:
+        book_id:
+          type: "string"
+          format: "uuid"
+          description: "予約対象の書籍ID"
+      required:
+        - "book_id"
+
+    ReservationResponse:
+      type: "object"
+      description: "予約レスポンス"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+          description: "予約ID"
+        book_id:
+          type: "string"
+          format: "uuid"
+          description: "書籍ID"
+        book_title:
+          type: "string"
+          description: "書籍タイトル"
+        user_id:
+          type: "string"
+          format: "uuid"
+          description: "利用者ID"
+        reserved_at:
+          type: "string"
+          format: "date-time"
+          description: "予約日時"
+        queue_position:
+          type: "integer"
+          description: "予約順位"
+        status:
+          type: "string"
+          enum:
+            - "pending"
+            - "reserved"
+            - "cancelled"
+          description: "予約状態"
+      required:
+        - "id"
+        - "book_id"
+        - "book_title"
+        - "user_id"
+        - "reserved_at"
+        - "queue_position"
+        - "status"
+
+    PaginatedReservationListResponse:
+      type: "object"
+      description: "ページネーション付き予約一覧"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ReservationResponse"
+        total:
+          type: "integer"
+          description: "全件数"
+        page:
+          type: "integer"
+          description: "現在ページ"
+        per_page:
+          type: "integer"
+          description: "1ページあたり件数"
+      required:
+        - "items"
+        - "total"
+        - "page"
+        - "per_page"
+
+    CreateUserRequest:
+      type: "object"
+      description: "利用者登録リクエスト"
+      properties:
+        name:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+          description: "氏名"
+        contact:
+          type: "string"
+          maxLength: 200
+          description: "連絡先"
+        email:
+          type: "string"
+          format: "email"
+          description: "メールアドレス"
+        user_type:
+          type: "string"
+          enum:
+            - "一般"
+            - "学生"
+            - "児童"
+          description: "利用者種別"
+      required:
+        - "name"
+        - "email"
+        - "user_type"
+
+    UpdateUserRequest:
+      type: "object"
+      description: "利用者更新リクエスト"
+      properties:
+        name:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+          description: "氏名"
+        contact:
+          type: "string"
+          maxLength: 200
+          description: "連絡先"
+        email:
+          type: "string"
+          format: "email"
+          description: "メールアドレス"
+        user_type:
+          type: "string"
+          enum:
+            - "一般"
+            - "学生"
+            - "児童"
+          description: "利用者種別"
+      required:
+        - "name"
+        - "email"
+        - "user_type"
+
+    UserResponse:
+      type: "object"
+      description: "利用者レスポンス"
+      properties:
+        id:
+          type: "string"
+          format: "uuid"
+          description: "利用者ID"
+        user_number:
+          type: "string"
+          description: "利用者番号"
+        name:
+          type: "string"
+          description: "氏名"
+        contact:
+          type: "string"
+          description: "連絡先"
+        email:
+          type: "string"
+          description: "メールアドレス"
+        user_type:
+          type: "string"
+          description: "利用者種別"
+        registered_at:
+          type: "string"
+          format: "date"
+          description: "登録日"
+      required:
+        - "id"
+        - "user_number"
+        - "name"
+        - "email"
+        - "user_type"
+        - "registered_at"
+
+    InventoryResponse:
+      type: "object"
+      description: "在庫状況レスポンス"
+      properties:
+        total_books:
+          type: "integer"
+          description: "総蔵書数"
+        available_count:
+          type: "integer"
+          description: "在庫あり数"
+        on_loan_count:
+          type: "integer"
+          description: "貸出中数"
+        overdue_count:
+          type: "integer"
+          description: "延滞中数"
+        by_genre:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              genre:
+                type: "string"
+                description: "ジャンル名"
+              count:
+                type: "integer"
+                description: "蔵書数"
+            required:
+              - "genre"
+              - "count"
+          description: "ジャンル別蔵書数"
+      required:
+        - "total_books"
+        - "available_count"
+        - "on_loan_count"
+        - "overdue_count"
+        - "by_genre"
+
+    StatsResponse:
+      type: "object"
+      description: "統計レスポンス"
+      properties:
+        period:
+          type: "string"
+          description: "集計期間"
+        total_loans:
+          type: "integer"
+          description: "期間内総貸出回数"
+        popular_books:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              book_id:
+                type: "string"
+                format: "uuid"
+                description: "書籍ID"
+              title:
+                type: "string"
+                description: "書籍タイトル"
+              loan_count:
+                type: "integer"
+                description: "貸出回数"
+            required:
+              - "book_id"
+              - "title"
+              - "loan_count"
+          description: "人気書籍ランキング"
+        monthly_trend:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              month:
+                type: "string"
+                description: "年月（YYYY-MM）"
+              count:
+                type: "integer"
+                description: "貸出件数"
+            required:
+              - "month"
+              - "count"
+          description: "月別貸出推移"
+        by_genre:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              genre:
+                type: "string"
+                description: "ジャンル名"
+              count:
+                type: "integer"
+                description: "貸出回数"
+            required:
+              - "genre"
+              - "count"
+          description: "ジャンル別貸出構成"
+      required:
+        - "period"
+        - "total_loans"
+        - "popular_books"
+        - "monthly_trend"

@@ -1,0 +1,29 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-002"
+title: "非同期イベント駆動パターンの採用範囲"
+status: "approved"
+generated_at: "2026-04-12T19:55:42+09:00"
+context: |
+  16 UC のうち、外部システム（メール送信サービス）との連携が必要な UC が2件ある。
+  arch-design.yaml SP-006 に「MQ 経由の非同期メール送信」が定義済み。
+  同期/非同期の境界をどこに引くかを決定する。
+decision: |
+  以下の2つのイベントのみ非同期化する。それ以外の UC 間通信は全て同期（REST API 呼出し）とする。
+  1. overdue-notification-queue: 延滞督促メール送信（延滞検出バッチ -> メール送信ワーカー）
+  2. reservation-notification-queue: 予約確保通知メール送信（返却 API -> メール送信ワーカー）
+  SQS を使用し、DLQ（Dead Letter Queue）でリトライ3回後の失敗メッセージを捕捉する。
+consequences:
+  positive:
+    - "メール送信の失敗が貸出/返却処理をブロックしない"
+    - "メール送信サービスの障害時にもコア業務は継続可能"
+    - "DLQ により送信失敗メッセージの手動再処理が可能"
+  negative:
+    - "非同期のため、メール送信のリアルタイム結果を画面に返せない"
+    - "SQS の運用管理コストが追加される"
+alternatives_considered:
+  - name: "全 UC 同期処理（メール送信も同期）"
+    reason_rejected: "メール送信サービスの障害が貸出/返却処理を阻害するリスク"
+  - name: "イベントバス（EventBridge）による全 UC 間のイベント駆動"
+    reason_rejected: "16 UC の小規模システムで過剰。運用複雑性が増大"

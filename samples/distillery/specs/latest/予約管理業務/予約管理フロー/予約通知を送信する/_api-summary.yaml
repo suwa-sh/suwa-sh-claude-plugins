@@ -1,0 +1,12 @@
+uc: "予約通知を送信する"
+business: "予約管理業務"
+buc: "予約管理フロー"
+endpoints:
+  []
+async_events:
+  - channel: "reservation-notification-queue"
+    direction: "subscribe"
+    message_schema: "ReservationNotificationMessage"
+    summary: "予約確保通知メール送信"
+
+schemas: []

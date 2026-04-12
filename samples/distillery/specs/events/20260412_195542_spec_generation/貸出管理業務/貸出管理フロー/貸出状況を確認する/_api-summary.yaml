@@ -1,0 +1,56 @@
+uc: "貸出状況を確認する"
+business: "貸出管理業務"
+buc: "貸出管理フロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/loans"
+    summary: "貸出一覧取得（司書用）"
+    response_schema: "PaginatedLoanListResponse"
+    tags:
+      - "貸出管理"
+async_events: []
+schemas:
+  - name: "PaginatedLoanListResponse"
+    properties:
+      - name: "items"
+        type: "array"
+        required: true
+        description: "貸出一覧"
+      - name: "total"
+        type: "integer"
+        required: true
+        description: "全件数"
+      - name: "page"
+        type: "integer"
+        required: true
+        description: "現在ページ"
+      - name: "per_page"
+        type: "integer"
+        required: true
+        description: "1ページあたり件数"
+  - name: "LoanListItem"
+    properties:
+      - name: "id"
+        type: "string"
+        required: true
+        description: "貸出ID"
+      - name: "book_title"
+        type: "string"
+        required: true
+        description: "書籍タイトル"
+      - name: "borrower_name"
+        type: "string"
+        required: true
+        description: "利用者名"
+      - name: "loan_date"
+        type: "string"
+        required: true
+        description: "貸出日"
+      - name: "due_date"
+        type: "string"
+        required: true
+        description: "返却期限"
+      - name: "is_overdue"
+        type: "boolean"
+        required: true
+        description: "延滞フラグ"

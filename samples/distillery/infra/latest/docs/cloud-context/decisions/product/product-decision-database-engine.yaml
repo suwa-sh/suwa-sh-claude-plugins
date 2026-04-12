@@ -1,0 +1,60 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "product"
+artifact_id: "product-decision-database-engine"
+title: "データベースエンジンの選定: RDS for PostgreSQL"
+status: "accepted"
+generated_at: "2026-04-12T16:26:00"
+source_refs:
+  - "aws-rds-postgresql"
+inputs_ref:
+  - "product-library-management-input"
+
+decision:
+  context: |
+    図書館蔵書管理システムのプライマリデータベースエンジンを選定する必要がある。
+    要件: PostgreSQL、トランザクション整合性、日次バックアップ 30 日保持、保管時暗号化、
+    データ量 ~100GB、コスト最適化優先。
+  conflict_type: "capability"
+  options:
+    - id: "rds_postgresql"
+      description: "Amazon RDS for PostgreSQL (db.t4g.micro, Multi-AZ)"
+      pros:
+        - "PostgreSQL ネイティブ対応"
+        - "自動バックアップ 35 日保持（要件 30 日を超過）"
+        - "保管時暗号化（KMS）が標準"
+        - "Multi-AZ でストレージ冗長化（NFR A.2.5.1 Lv3 対応）"
+        - "db.t4g.micro は ~$13/月（コスト最適化）"
+      cons:
+        - "手動フェイルオーバー時間が数分（自動フェイルオーバーは Multi-AZ で対応）"
+        - "リードレプリカなし（この規模では不要）"
+    - id: "aurora_postgresql"
+      description: "Amazon Aurora PostgreSQL"
+      pros:
+        - "高い耐久性（6 コピー、3 AZ）"
+        - "自動フェイルオーバー"
+        - "最大 15 リードレプリカ"
+      cons:
+        - "最小コスト: ~$50/月（db.t4g.medium 必須）"
+        - "この規模では過剰スペック"
+    - id: "aurora_serverless_v2"
+      description: "Amazon Aurora Serverless v2"
+      pros:
+        - "自動スケーリング（0.5〜128 ACU）"
+        - "使用分のみ課金"
+      cons:
+        - "最小 0.5 ACU: ~$44/月（常時課金）"
+        - "RDS for PostgreSQL の db.t4g.micro より高コスト"
+  chosen_option: "rds_postgresql"
+  rationale: |
+    コスト最適化優先で baseline_rps が 1 の低トラフィックワークロードのため、
+    db.t4g.micro (~$13/月) の RDS for PostgreSQL が最もコスト効率が良い。
+    Multi-AZ でストレージ冗長化要件を満たし、自動バックアップで 35 日保持が可能。
+    将来的なトラフィック増加時は db.t4g.small/medium へのスケールアップで対応可能。
+  risk_assessment: |
+    - 性能不足: 低リスク（baseline_rps 1、同時接続 100 に対して db.t4g.micro で十分）
+    - スケールアップ時のダウンタイム: 低リスク（計画停止枠で実施。RTO 1 営業日以内）
+    - バーストクレジット枯渇: 低リスク（t4g は常時ベースライン性能あり）
+  affected_elements:
+    - "database_primary"
+  review_date: "2026-10-12"

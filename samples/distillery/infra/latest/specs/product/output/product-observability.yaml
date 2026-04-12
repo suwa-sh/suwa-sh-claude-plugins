@@ -1,0 +1,249 @@
+schema_version: "1.0"
+artifact_type: "observability_spec"
+skill_type: "product"
+artifact_id: "product-library-management-observability"
+title: "図書館蔵書管理システム オブザーバビリティ仕様"
+status: "draft"
+generated_at: "2026-04-12T16:26:00"
+source_refs:
+  - "aws-well-architected-framework"
+decision_refs: []
+inputs_ref:
+  - "product-library-management-workload-model"
+
+sli_definitions:
+  - id: "sli_availability"
+    name: "可用性 SLI"
+    description: "API リクエストの成功率（5xx を除く）"
+    measurement: "1 - (count(5xx) / count(total_requests))"
+    data_source: "API Gateway メトリクス"
+    good_event: "HTTP ステータス 2xx, 3xx, 4xx"
+    bad_event: "HTTP ステータス 5xx"
+
+  - id: "sli_latency"
+    name: "レイテンシ SLI"
+    description: "API レスポンスタイムの p99"
+    measurement: "p99(api_response_time)"
+    data_source: "API Gateway + Lambda Duration メトリクス"
+    threshold: "1000ms"
+
+  - id: "sli_error_rate"
+    name: "エラー率 SLI"
+    description: "Lambda 関数のエラー率"
+    measurement: "count(errors) / count(invocations)"
+    data_source: "Lambda Errors / Invocations メトリクス"
+    threshold: "5%"
+
+slo_definitions:
+  - id: "slo_availability"
+    name: "可用性 SLO"
+    sli_ref: "sli_availability"
+    target: "99.9%"
+    window: "30 日ローリング"
+    error_budget: "0.1%（約 43 分/月）"
+    burn_rate_alert:
+      fast_burn:
+        threshold: "14.4x"
+        window: "1 時間"
+        action: "即座にオンコール通知"
+      slow_burn:
+        threshold: "3x"
+        window: "6 時間"
+        action: "翌営業日にチケット起票"
+
+  - id: "slo_latency"
+    name: "レイテンシ SLO"
+    sli_ref: "sli_latency"
+    target: "99%（p99 < 1s）"
+    window: "30 日ローリング"
+    error_budget: "1%"
+
+metrics:
+  infrastructure:
+    - name: "CPU 使用率"
+      source: "CloudWatch"
+      namespace: "AWS/RDS, AWS/Lambda"
+      period: "60s"
+      statistic: "Average"
+    - name: "メモリ使用率"
+      source: "CloudWatch"
+      namespace: "AWS/RDS, AWS/ElastiCache"
+      period: "60s"
+      statistic: "Average"
+    - name: "ディスク使用率"
+      source: "CloudWatch"
+      namespace: "AWS/RDS"
+      period: "300s"
+      statistic: "Average"
+    - name: "DB 接続数"
+      source: "CloudWatch"
+      namespace: "AWS/RDS"
+      metric: "DatabaseConnections"
+      period: "60s"
+      statistic: "Average"
+
+  application:
+    - name: "API レスポンスタイム"
+      source: "CloudWatch"
+      namespace: "AWS/ApiGateway"
+      metric: "Latency"
+      period: "60s"
+      statistic: "p99"
+    - name: "API エラー率"
+      source: "CloudWatch"
+      namespace: "AWS/ApiGateway"
+      metric: "5XXError"
+      period: "60s"
+      statistic: "Sum"
+    - name: "Lambda Duration"
+      source: "CloudWatch"
+      namespace: "AWS/Lambda"
+      metric: "Duration"
+      period: "60s"
+      statistic: "p99"
+    - name: "Lambda Throttles"
+      source: "CloudWatch"
+      namespace: "AWS/Lambda"
+      metric: "Throttles"
+      period: "60s"
+      statistic: "Sum"
+    - name: "SQS キュー深度"
+      source: "CloudWatch"
+      namespace: "AWS/SQS"
+      metric: "ApproximateNumberOfMessagesVisible"
+      period: "60s"
+      statistic: "Sum"
+    - name: "Redis ヒット率"
+      source: "CloudWatch"
+      namespace: "AWS/ElastiCache"
+      metric: "CacheHitRate"
+      period: "300s"
+      statistic: "Average"
+
+logging:
+  format: "JSON 構造化ログ"
+  required_fields:
+    - "timestamp"
+    - "level"
+    - "service"
+    - "trace_id"
+    - "span_id"
+    - "message"
+  conditional_fields:
+    - field: "session_id"
+      condition: "認証済みリクエスト"
+    - field: "user_id"
+      condition: "認証済みリクエスト"
+  log_levels:
+    production: "INFO"
+    staging: "DEBUG"
+  retention:
+    application: "30 日"
+    audit: "365 日"
+  log_groups:
+    - name: "/library-management/frontend"
+      retention_days: 30
+    - name: "/library-management/backend-api"
+      retention_days: 30
+    - name: "/library-management/worker"
+      retention_days: 30
+    - name: "/library-management/audit"
+      retention_days: 365
+
+  audit_log:
+    trigger_events:
+      - "貸出作成"
+      - "返却処理"
+      - "予約作成"
+      - "予約キャンセル"
+      - "延滞フラグ設定"
+      - "利用者登録"
+      - "利用者更新"
+    required_fields:
+      - "event_type"
+      - "actor_id"
+      - "actor_role"
+      - "target_entity"
+      - "target_id"
+      - "action"
+      - "timestamp"
+      - "trace_id"
+
+tracing:
+  provider: "AWS X-Ray"
+  sampling_rate: "100%"
+  rationale: "低トラフィック（baseline_rps 1）のため全リクエストをトレース"
+  instrumentation:
+    - service: "Lambda"
+      method: "Active tracing"
+    - service: "API Gateway"
+      method: "X-Ray tracing enabled"
+    - service: "RDS"
+      method: "X-Ray SDK でクエリトレース"
+
+alerting:
+  channels:
+    - type: "email"
+      target: "ops-team@library.example.com"
+      severity: ["critical", "warning"]
+    - type: "sns"
+      target: "library-ops-alerts"
+      severity: ["critical"]
+
+  rules:
+    - name: "API 高エラー率"
+      condition: "5xx エラー率 > 5%（5 分間）"
+      severity: "critical"
+      action: "SNS メール通知"
+      runbook: "docs/runbooks/api-errors.md"
+
+    - name: "RDS CPU 高使用率"
+      condition: "CPU 使用率 > 80%（5 分間平均）"
+      severity: "warning"
+      action: "SNS メール通知"
+      runbook: "docs/runbooks/rds-performance.md"
+
+    - name: "DLQ メッセージ滞留"
+      condition: "DLQ メッセージ数 > 0"
+      severity: "warning"
+      action: "SNS メール通知"
+      runbook: "docs/runbooks/dlq-investigation.md"
+
+    - name: "Lambda Throttle 発生"
+      condition: "Throttle 数 > 0（1 分間）"
+      severity: "warning"
+      action: "SNS メール通知"
+      runbook: "docs/runbooks/lambda-scaling.md"
+
+    - name: "Redis メモリ高使用率"
+      condition: "メモリ使用率 > 80%"
+      severity: "warning"
+      action: "SNS メール通知"
+      runbook: "docs/runbooks/redis-memory.md"
+
+dashboard:
+  name: "library-management-overview"
+  sections:
+    - title: "サービス概要"
+      widgets:
+        - "API 成功率（SLI）"
+        - "API レイテンシ p99（SLI）"
+        - "エラーバジェット残量"
+    - title: "コンピュート"
+      widgets:
+        - "Lambda Duration（p50, p99）"
+        - "Lambda Errors / Invocations"
+        - "Lambda Throttles"
+        - "Lambda ConcurrentExecutions"
+    - title: "データストア"
+      widgets:
+        - "RDS CPU 使用率"
+        - "RDS 接続数"
+        - "RDS FreeStorageSpace"
+        - "Redis ヒット率"
+        - "Redis メモリ使用率"
+    - title: "メッセージング"
+      widgets:
+        - "SQS キュー深度"
+        - "SQS DLQ メッセージ数"
+        - "SQS メッセージ処理遅延"

@@ -1,0 +1,24 @@
+uc: "書籍を検索する"
+business: "閲覧業務"
+buc: "蔵書検索フロー"
+
+models:
+  - name: "書籍検索Model"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "データ取得"
+        where: "条件に基づく"
+    indexes_needed: []
+
+kvs: []
+object_storage: []

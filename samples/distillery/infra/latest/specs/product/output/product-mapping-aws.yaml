@@ -1,0 +1,223 @@
+schema_version: "1.0"
+artifact_type: "vendor_mapping"
+skill_type: "product"
+artifact_id: "product-library-management-mapping-aws"
+title: "図書館蔵書管理システム AWS サービスマッピング"
+status: "draft"
+generated_at: "2026-04-12T16:26:00"
+source_refs:
+  - "aws-well-architected-framework"
+  - "aws-rds-postgresql"
+  - "aws-elasticache-redis"
+decision_refs:
+  - "product-decision-compute-model"
+  - "product-decision-database-engine"
+inputs_ref:
+  - "product-library-management-workload-model"
+
+vendor: "aws"
+canonical_ref: "product-library-management-workload-model"
+
+mappings:
+  - canonical_element_id: "compute_frontend"
+    vendor_service: "AWS App Runner"
+    vendor_feature: "Managed container service with auto scaling"
+    fidelity: "exact"
+    configuration_notes: |
+      - Node.js 20 ランタイム（Next.js SSR）
+      - Auto Scaling: min 1, max 4 instances
+      - メモリ: 1 GB、vCPU: 0.5
+      - ヘルスチェック: /api/health
+      - VPC コネクタでプライベートサブネットの Backend API に接続
+      - カスタムドメイン + ACM 証明書で HTTPS 対応
+    alternatives:
+      - "ECS Fargate（より柔軟だがオペレーションコスト増）"
+      - "Lambda@Edge + CloudFront（SSR が複雑になる）"
+    source_refs:
+      - "aws-well-architected-framework"
+
+  - canonical_element_id: "compute_backend_api"
+    vendor_service: "AWS Lambda"
+    vendor_feature: "Serverless functions with API Gateway"
+    fidelity: "exact"
+    configuration_notes: |
+      - ランタイム: Node.js 20
+      - メモリ: 512 MB（コスト最適化。レスポンスタイム 10 秒以内は十分達成可能）
+      - タイムアウト: 29 秒（API Gateway 上限）
+      - API Gateway: REST API（/api/v1/{resource} 形式）
+      - VPC 内配置（プライベートサブネット）
+      - 同時実行数: reserved 10, provisioned 0（コスト最適化）
+      - 環境変数で DB 接続情報を管理（Secrets Manager 参照）
+      - X-Ray トレーシング有効化
+    alternatives:
+      - "ECS Fargate（常時起動。コールドスタートなし。月額コスト増）"
+      - "App Runner（シンプルだが VPC 統合が限定的）"
+    source_refs:
+      - "aws-well-architected-framework"
+
+  - canonical_element_id: "compute_worker"
+    vendor_service: "AWS Lambda + EventBridge Scheduler + SQS"
+    vendor_feature: "Serverless batch and message processing"
+    fidelity: "exact"
+    configuration_notes: |
+      - 延滞検出バッチ: EventBridge Scheduler で日次 21:00 JST にトリガー
+        - Lambda メモリ: 1024 MB（バッチ処理用に増量）
+        - タイムアウト: 900 秒（15 分。~10,000 件処理に十分）
+      - メール送信ワーカー: SQS トリガーの Lambda
+        - バッチサイズ: 10
+        - 同時実行数: 5（メール送信サービスへの負荷制御）
+    alternatives:
+      - "ECS Fargate Scheduled Task（長時間バッチ向け。今回は 15 分以内なので Lambda で十分）"
+      - "Step Functions（複雑なワークフロー制御が必要な場合）"
+    source_refs:
+      - "aws-well-architected-framework"
+
+  - canonical_element_id: "database_primary"
+    vendor_service: "Amazon RDS for PostgreSQL"
+    vendor_feature: "Managed relational database with Multi-AZ"
+    fidelity: "exact"
+    configuration_notes: |
+      - エンジン: PostgreSQL 16
+      - インスタンスクラス: db.t4g.micro（コスト最適化。baseline_rps 1 で十分）
+      - ストレージ: gp3 20 GB（自動拡張有効。最大 100 GB）
+      - Multi-AZ: 有効（NFR A.2.5.1 Lv3 ストレージ冗長化対応）
+      - 自動バックアップ: 有効（保持期間 35 日）
+      - 暗号化: 有効（KMS マネージドキー。保管時暗号化）
+      - パフォーマンスインサイト: 有効（無料枠）
+      - パラメータグループ:
+        - max_connections: 100
+        - shared_buffers: 128 MB
+        - log_min_duration_statement: 1000（ms）
+      - セキュリティグループ: Lambda / App Runner からのみ 5432 ポート許可
+    alternatives:
+      - "Aurora PostgreSQL（高可用性。コスト 2-3 倍。この規模では過剰）"
+      - "Aurora Serverless v2（変動トラフィック向け。最小 0.5 ACU のコストが高い）"
+    source_refs:
+      - "aws-rds-postgresql"
+
+  - canonical_element_id: "cache_session"
+    vendor_service: "Amazon ElastiCache for Redis"
+    vendor_feature: "Managed Redis with encryption"
+    fidelity: "exact"
+    configuration_notes: |
+      - エンジン: Redis 7
+      - ノードタイプ: cache.t4g.micro（コスト最適化）
+      - レプリカ: 0（単一ノード。コスト最適化。セッションは再ログインで復旧可能）
+      - 暗号化 in-transit: 有効
+      - 暗号化 at-rest: 有効
+      - セキュリティグループ: Lambda / App Runner からのみ 6379 ポート許可
+      - TTL 設定:
+        - アクセストークン: 900 秒（15 分）
+        - リフレッシュトークン: 604800 秒（7 日）
+        - 冪等キー: 86400 秒（24 時間）
+    alternatives:
+      - "ElastiCache Serverless（従量課金。極小トラフィックならコスト有利の可能性）"
+      - "DynamoDB（セッションストアとして利用。Redis 不要になるが TTL 管理が異なる）"
+    source_refs:
+      - "aws-elasticache-redis"
+
+  - canonical_element_id: "message_queue"
+    vendor_service: "Amazon SQS"
+    vendor_feature: "FIFO queue with deduplication and DLQ"
+    fidelity: "exact"
+    configuration_notes: |
+      - キュータイプ: FIFO（メッセージ ID による重複排除）
+      - 可視性タイムアウト: 60 秒
+      - メッセージ保持期間: 7 日
+      - デッドレターキュー: 有効（最大受信回数: 3）
+      - メッセージグループ ID: メール種別（overdue_notice, reservation_notice）
+      - 暗号化: SSE-SQS
+    alternatives:
+      - "SNS + SQS（ファンアウトが必要な場合。現時点では不要）"
+      - "EventBridge（イベント駆動アーキテクチャ。現規模では過剰）"
+    source_refs:
+      - "aws-well-architected-framework"
+
+  - canonical_element_id: "identity_provider"
+    vendor_service: "Amazon Cognito"
+    vendor_feature: "User pools with OAuth2/OIDC"
+    fidelity: "exact"
+    configuration_notes: |
+      - ユーザープール: 1（図書館蔵書管理システム用）
+      - カスタム属性: user_type（利用者種別）、user_number（利用者番号）
+      - グループ: library_user（利用者ロール）、librarian（司書ロール）
+      - パスワードポリシー: 最小 8 文字、大文字・小文字・数字・記号必須
+      - トークン有効期限:
+        - アクセストークン: 15 分
+        - ID トークン: 15 分
+        - リフレッシュトークン: 7 日
+      - MFA: オプション（将来的に必須化可能）
+      - アプリクライアント: 1（SPA 用。PKCE フロー）
+    alternatives:
+      - "Auth0（サードパーティ IdP。機能豊富だが追加コスト）"
+      - "Keycloak on ECS（セルフホスト。運用負荷増）"
+    source_refs:
+      - "aws-well-architected-framework"
+
+  - canonical_element_id: "email_service"
+    vendor_service: "Amazon SES"
+    vendor_feature: "Simple Email Service"
+    fidelity: "exact"
+    configuration_notes: |
+      - サンドボックス解除が必要（本番利用時）
+      - 送信元ドメイン検証（SPF, DKIM, DMARC）
+      - 送信レート: 1 通/秒（デフォルト。この規模で十分）
+      - バウンス/苦情通知: SNS トピック経由
+      - TLS 強制
+      - アダプタパターンで SES SDK をラップ
+    alternatives:
+      - "SendGrid（サードパーティ。テンプレート機能が豊富）"
+      - "Mailgun（サードパーティ。API が使いやすい）"
+    source_refs:
+      - "aws-well-architected-framework"
+
+  - canonical_element_id: "networking"
+    vendor_service: "Amazon VPC"
+    vendor_feature: "Virtual Private Cloud with public/private subnets"
+    fidelity: "exact"
+    configuration_notes: |
+      - リージョン: ap-northeast-1
+      - VPC CIDR: 10.0.0.0/16
+      - サブネット構成:
+        - パブリック: 2 AZ（NAT Gateway、ALB 用）
+        - プライベート: 2 AZ（Lambda、RDS、ElastiCache 用）
+      - NAT Gateway: 1（コスト最適化。Single AZ）
+      - VPC エンドポイント:
+        - S3 Gateway エンドポイント
+        - SQS Interface エンドポイント
+        - Secrets Manager Interface エンドポイント
+      - セキュリティグループ:
+        - frontend-sg: 443 インバウンド
+        - backend-sg: Lambda からの内部通信のみ
+        - db-sg: backend-sg からの 5432 のみ
+        - cache-sg: backend-sg からの 6379 のみ
+    alternatives: []
+    source_refs:
+      - "aws-well-architected-framework"
+
+  - canonical_element_id: "observability_stack"
+    vendor_service: "Amazon CloudWatch + AWS X-Ray"
+    vendor_feature: "Monitoring, logging, and distributed tracing"
+    fidelity: "exact"
+    configuration_notes: |
+      - CloudWatch Logs:
+        - ロググループ: /library-management/{service}
+        - 保持期間: 30 日（NFR C.6.1.1 Lv1）
+        - JSON 構造化ログ
+      - CloudWatch Metrics:
+        - カスタムメトリクス: API レイテンシ、エラー率
+        - RDS メトリクス: CPU、メモリ、接続数、IOPS
+        - Lambda メトリクス: Duration、Errors、Throttles
+      - CloudWatch Alarms:
+        - Lambda エラー率 > 5%: SNS メール通知
+        - RDS CPU > 80%: SNS メール通知
+        - SQS DLQ メッセージ数 > 0: SNS メール通知
+      - X-Ray:
+        - Lambda 自動トレーシング
+        - サンプリングレート: 100%（低トラフィックのため）
+      - CloudWatch ダッシュボード: 1（概要ダッシュボード）
+    alternatives:
+      - "Datadog（サードパーティ。高機能だが追加コスト）"
+      - "Grafana + Prometheus（セルフホスト。運用負荷増）"
+    source_refs:
+      - "aws-well-architected-framework"

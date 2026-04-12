@@ -1,0 +1,231 @@
+version: "1.0"
+event_id: "20260412_195542_spec_generation"
+created_at: "2026-04-12T19:55:42"
+source: "RDRA/NFR/Arch/Design モデルからの初期 UC Spec 生成"
+trigger_event: "rdra:20260412_140535_initial_build, arch:20260412_164019_arch_infra_feedback, design:20260412_164650_design_system"
+story_generation: "required"
+
+use_cases:
+  - business: "蔵書管理業務"
+    buc: "蔵書管理フロー"
+    uc: "書籍を登録する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "蔵書管理業務"
+    buc: "蔵書管理フロー"
+    uc: "書籍情報を編集する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 2
+    async_event_count: 0
+  - business: "蔵書管理業務"
+    buc: "蔵書管理フロー"
+    uc: "書籍を削除する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "貸出管理業務"
+    buc: "貸出管理フロー"
+    uc: "書籍を貸出する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "貸出管理業務"
+    buc: "貸出管理フロー"
+    uc: "書籍を返却する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 1
+  - business: "貸出管理業務"
+    buc: "貸出管理フロー"
+    uc: "貸出状況を確認する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "貸出管理業務"
+    buc: "延滞管理フロー"
+    uc: "延滞を検出する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "tier-worker.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 2
+    async_event_count: 0
+  - business: "貸出管理業務"
+    buc: "延滞管理フロー"
+    uc: "督促通知を送信する"
+    files:
+      - "spec.md"
+      - "tier-backend-api.md"
+      - "tier-worker.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 1
+  - business: "予約管理業務"
+    buc: "予約管理フロー"
+    uc: "書籍を予約する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "予約管理業務"
+    buc: "予約管理フロー"
+    uc: "予約通知を送信する"
+    files:
+      - "spec.md"
+      - "tier-backend-api.md"
+      - "tier-worker.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 0
+    async_event_count: 1
+  - business: "予約管理業務"
+    buc: "予約管理フロー"
+    uc: "予約をキャンセルする"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "利用者管理業務"
+    buc: "利用者管理フロー"
+    uc: "利用者を登録する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "利用者管理業務"
+    buc: "利用者管理フロー"
+    uc: "利用者情報を編集する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 2
+    async_event_count: 0
+  - business: "閲覧業務"
+    buc: "蔵書検索フロー"
+    uc: "書籍を検索する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "閲覧業務"
+    buc: "利用者マイページフロー"
+    uc: "貸出履歴を確認する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "閲覧業務"
+    buc: "利用者マイページフロー"
+    uc: "予約状況を確認する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "統計業務"
+    buc: "統計・レポートフロー"
+    uc: "在庫状況を確認する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+  - business: "統計業務"
+    buc: "統計・レポートフロー"
+    uc: "統計レポートを閲覧する"
+    files:
+      - "spec.md"
+      - "tier-frontend.md"
+      - "tier-backend-api.md"
+      - "_api-summary.yaml"
+      - "_model-summary.yaml"
+    api_count: 1
+    async_event_count: 0
+
+cross_cutting:
+  ux_design:
+    user_flows: 8
+    ia_pages: 16
+    psychology_principles: 8
+  ui_design:
+    layout_patterns: 2
+    responsive_breakpoints: 3
+    component_guidelines: 9
+  data_visualization:
+    target_screens: 2
+    chart_types: 5
+  openapi:
+    api_count: 20
+  asyncapi:
+    async_event_count: 2
+
+stats:
+  total_ucs: 18
+  total_apis: 20
+  total_async_events: 2
+  businesses: 6
+  bucs: 8

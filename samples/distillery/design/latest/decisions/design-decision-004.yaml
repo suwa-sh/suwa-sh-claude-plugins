@@ -1,0 +1,31 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-004"
+title: "コンポーネント戦略: RDRAモデル駆動のコンポーネント設計"
+status: "approved"
+generated_at: "2026-04-12T16:46:50"
+context: |
+  RDRA BUCから16画面、情報モデルから5エンティティ、状態モデルから2モデル、
+  バリエーションから3種の検索/フィルター条件を導出。
+  Archで Next.js + TypeScript + Tailwind CSS を採用済み。
+decision: |
+  UI共通コンポーネント5種（Button, Badge, Card, Input, Icon）と
+  ドメイン特化コンポーネント6種（BookCard, BookLoanStatusBadge, ReservationStatusBadge,
+  LoanRecord, BookSearchFilter, StatsSummaryCard）を定義。
+
+  Storybook構成: Next.js + TypeScript + Tailwind CSS + Storybook v10。
+  カテゴリは UI/（汎用）+ Domain/（ドメイン特化）+ Docs/（MDX）。
+  Stories は CSF3 形式、日本語サンプルデータを使用。
+consequences:
+  positive:
+    - "RDRAモデルとの完全なトレーサビリティ"
+    - "全画面のコンポーネント配置が設計段階で明確"
+    - "ドメイン固有のUIパターンを再利用可能な形で整理"
+  negative:
+    - "RDRAに定義されていないUXパターン（ダッシュボード等）が不足する可能性"
+alternatives_considered:
+  - name: "汎用UIキット（shadcn/ui等）をそのまま採用"
+    reason_rejected: "ドメイン固有のステータスバッジやフィルターが不足。カスタマイズが必要"
+  - name: "画面単位のモノリシックコンポーネント"
+    reason_rejected: "画面間でのコンポーネント再利用ができず、一貫性を維持困難"

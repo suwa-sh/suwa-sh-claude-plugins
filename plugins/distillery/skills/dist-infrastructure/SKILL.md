@@ -554,7 +554,7 @@ RDRA モデル (`docs/rdra/latest/`) に存在しないアクター / 情報 / B
 - クラウドベンダー選択（AWS / Azure / GCP 等）
 - リージョン / マルチリージョン方針
 - コスト方針（低コスト優先 / 性能優先 / バランス）
-- confidence: low / medium の項目
+- confidence: low の項目
 
 対話を省略して completed を返してはならない。
 

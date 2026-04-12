@@ -1,0 +1,342 @@
+schema_version: "1.0"
+artifact_type: "canonical_model"
+skill_type: "product"
+artifact_id: "product-library-management-workload-model"
+title: "図書館蔵書管理システム ワークロードモデル"
+status: "draft"
+generated_at: "2026-04-12T16:26:00"
+source_refs:
+  - "arch-design:20260412_161337_initial_arch"
+  - "nfr-grade:20260412_154304_initial_nfr"
+  - "aws-well-architected-framework"
+  - "aws-rds-postgresql"
+  - "aws-elasticache-redis"
+decision_refs:
+  - "product-decision-compute-model"
+  - "product-decision-database-engine"
+inputs_ref:
+  - "foundation-context"
+  - "shared-platform-context"
+  - "product-library-management-input"
+
+workload_characteristics:
+  workload_type: "web_app"
+  availability_target:
+    sla: "99.9%"
+    failover: "manual"
+    redundancy_model: "single_az_with_multi_az_db"
+  latency_sensitivity:
+    category: "interactive"
+    target_p99: "1s"
+  data_sensitivity:
+    classification: "restricted"
+    pii: true
+    encryption: "in_transit_only"
+    compliance: []
+    data_residency: "none"
+  traffic_pattern:
+    type: "scheduled"
+    baseline_rps: 1
+    spike_multiplier: 2
+    peak_hours: "9:00-21:00 JST"
+  consistency_needs:
+    type: "strong"
+    scope: "single_region"
+  recovery_target:
+    rpo: "72h"
+    rto: "72h"
+    backup: "daily"
+    dr_model: "backup_restore"
+  observability_needs:
+    metrics:
+      - "cpu"
+      - "memory"
+      - "disk"
+      - "latency"
+      - "error_rate"
+    logs:
+      - "access"
+      - "audit"
+      - "diagnostic"
+      - "dependency"
+    sli:
+      - "availability"
+      - "latency"
+      - "error_rate"
+    alerting:
+      - "health_check"
+      - "error_rate"
+  cost_posture:
+    strategy: "cost_optimized"
+    spot_eligible: false
+    reserved_eligible: true
+
+elements:
+  - id: "compute_frontend"
+    name: "フロントエンド コンピュート"
+    category: "compute"
+    description: "Next.js SSR によるフロントエンド。蔵書検索画面等の公開ページはサーバーサイドレンダリングで初回表示速度と SEO を確保する"
+    requirements:
+      - id: "req_frontend_001"
+        description: "SSR 対応の Node.js ランタイム"
+        priority: "must"
+        rationale: "公共図書館として検索エンジンからのアクセスが想定されるため SSR が必要"
+      - id: "req_frontend_002"
+        description: "主要ブラウザ 2-3 種対応（Chrome, Firefox, Safari）"
+        priority: "must"
+        rationale: "NFR F.1.1.2 対応ブラウザ Lv2"
+      - id: "req_frontend_003"
+        description: "ヘルスチェックエンドポイント実装"
+        priority: "must"
+        rationale: "CTP-006 全ティアヘルスチェック方針"
+    constraints:
+      - "API 経由のデータアクセスのみ（直接 DB アクセス禁止）"
+    dependencies:
+      - "compute_backend_api"
+      - "identity_provider"
+    source_refs:
+      - "arch-design:tier-frontend"
+
+  - id: "compute_backend_api"
+    name: "バックエンド API コンピュート"
+    category: "compute"
+    description: "蔵書管理・貸出管理・予約管理・利用者管理・統計の業務ロジックを提供する REST API。FaaS ベースのモノリシック API"
+    requirements:
+      - id: "req_backend_001"
+        description: "REST API エンドポイント（/api/v1/{resource} 形式）"
+        priority: "must"
+        rationale: "SR-002 REST API スタイル"
+      - id: "req_backend_002"
+        description: "入力バリデーション（貸出期限・貸出可否・延滞判定・予約優先ルール）"
+        priority: "must"
+        rationale: "SP-004 入力バリデーション"
+      - id: "req_backend_003"
+        description: "Auto Scaling 対応（同時 100 ユーザー、10 TPS、ピーク 1.5 倍）"
+        priority: "must"
+        rationale: "CTP-015 同時アクセス・スループット方針"
+      - id: "req_backend_004"
+        description: "レスポンスタイム 10 秒以内（p99）"
+        priority: "must"
+        rationale: "CTP-016 レスポンスタイム方針"
+      - id: "req_backend_005"
+        description: "ヘルスチェックエンドポイント実装"
+        priority: "must"
+        rationale: "CTP-006 全ティアヘルスチェック方針"
+    constraints:
+      - "状態変更操作に冪等キー必須（CTP-005）"
+      - "全入力を API 境界でバリデーション"
+    dependencies:
+      - "database_primary"
+      - "cache_session"
+      - "message_queue"
+      - "identity_provider"
+    source_refs:
+      - "arch-design:tier-backend-api"
+
+  - id: "compute_worker"
+    name: "バックエンドワーカー コンピュート"
+    category: "compute"
+    description: "延滞検出（日次バッチ）と督促通知・予約通知のメール送信（非同期処理）を担うワーカー"
+    requirements:
+      - id: "req_worker_001"
+        description: "日次 CronJob 実行（延滞検出バッチ）"
+        priority: "must"
+        rationale: "SP-005 延滞検出バッチ"
+      - id: "req_worker_002"
+        description: "MQ メッセージ処理（メール送信ワーカー）"
+        priority: "must"
+        rationale: "SP-006 非同期メール送信"
+      - id: "req_worker_003"
+        description: "バッチ処理は夜間（21時〜翌9時）に完了"
+        priority: "must"
+        rationale: "SR-003 バッチ処理時間制約"
+      - id: "req_worker_004"
+        description: "ジョブ実行 ID / メッセージ ID による重複検知"
+        priority: "must"
+        rationale: "CLR-003 ジョブ冪等性"
+    constraints:
+      - "バッチ処理対象: ~10,000 件/日"
+    dependencies:
+      - "database_primary"
+      - "message_queue"
+      - "email_service"
+    source_refs:
+      - "arch-design:tier-worker"
+
+  - id: "database_primary"
+    name: "プライマリデータベース"
+    category: "database"
+    description: "書籍・利用者・貸出・予約・統計データの永続化。PostgreSQL。トランザクション整合性を保証"
+    requirements:
+      - id: "req_db_001"
+        description: "PostgreSQL エンジン"
+        priority: "must"
+        rationale: "汎用 RDBMS として最適。強整合性、JSON サポート"
+      - id: "req_db_002"
+        description: "トランザクション整合性（書籍貸出状態 4 状態 5 遷移、予約状態 4 状態 4 遷移）"
+        priority: "must"
+        rationale: "SP-007 トランザクション整合性"
+      - id: "req_db_003"
+        description: "日次フル + 増分バックアップ、30 日以上保持"
+        priority: "must"
+        rationale: "SP-008 日次バックアップ、NFR C.1.2.1 Lv3、C.1.2.3 Lv3"
+      - id: "req_db_004"
+        description: "個人情報（氏名・連絡先・メールアドレス）の保管時暗号化"
+        priority: "must"
+        rationale: "SP-009 個人情報暗号化、NFR E.6.1.1 Lv1"
+      - id: "req_db_005"
+        description: "冪等キーカラムに UNIQUE 制約"
+        priority: "must"
+        rationale: "CTP-005 冪等性方針"
+      - id: "req_db_006"
+        description: "ストレージ冗長化（ダブルパリティ相当）"
+        priority: "must"
+        rationale: "CTP-012 ストレージ冗長化方針、NFR A.2.5.1 Lv3"
+    constraints:
+      - "データ量: ~100GB"
+      - "RPO: 前日最終バックアップ"
+    dependencies: []
+    source_refs:
+      - "arch-design:tier-datastore"
+      - "aws-rds-postgresql"
+
+  - id: "cache_session"
+    name: "セッション / 冪等キー キャッシュ"
+    category: "cache"
+    description: "セッション情報（アクセストークン・リフレッシュトークン）と冪等キーの一時ストア。Redis"
+    requirements:
+      - id: "req_cache_001"
+        description: "Redis エンジン"
+        priority: "must"
+        rationale: "有効期限付きキー管理、高速アクセスに最適"
+      - id: "req_cache_002"
+        description: "有効期限付きキー管理（アクセストークン 15 分、リフレッシュトークンローテーション）"
+        priority: "must"
+        rationale: "CTR-004 トークンライフサイクル管理"
+      - id: "req_cache_003"
+        description: "冪等キーの重複検知用一時ストア"
+        priority: "must"
+        rationale: "CTP-005 冪等性方針"
+    constraints: []
+    dependencies: []
+    source_refs:
+      - "arch-design:tier-datastore"
+      - "aws-elasticache-redis"
+
+  - id: "message_queue"
+    name: "メッセージキュー"
+    category: "messaging"
+    description: "督促通知・予約通知のメール送信を非同期処理するメッセージキュー"
+    requirements:
+      - id: "req_mq_001"
+        description: "メッセージ ID による重複検知（FIFO または重複排除）"
+        priority: "must"
+        rationale: "CLR-003 ジョブ冪等性"
+      - id: "req_mq_002"
+        description: "デッドレターキューによるリトライ管理"
+        priority: "must"
+        rationale: "メール送信失敗時のリトライ制御"
+    constraints:
+      - "メッセージ量: 数百件/日程度"
+    dependencies: []
+    source_refs:
+      - "arch-design:tier-worker"
+
+  - id: "identity_provider"
+    name: "ID プロバイダー"
+    category: "identity"
+    description: "マネージド IdP（OAuth2/OIDC）。利用者ロールと司書ロールの 2 種で RBAC を実現"
+    requirements:
+      - id: "req_idp_001"
+        description: "OAuth2/OIDC 対応"
+        priority: "must"
+        rationale: "CTP-001 認証方式"
+      - id: "req_idp_002"
+        description: "パスワードポリシー（複雑性・有効期限）"
+        priority: "must"
+        rationale: "NFR E.5.1.1 認証方式 Lv2"
+      - id: "req_idp_003"
+        description: "RBAC（利用者ロール / 司書ロール）"
+        priority: "must"
+        rationale: "CTP-002 認可方式"
+      - id: "req_idp_004"
+        description: "アクセストークン 15 分有効期限、リフレッシュトークンローテーション"
+        priority: "must"
+        rationale: "CTR-004 トークンライフサイクル管理"
+    constraints: []
+    dependencies: []
+    source_refs:
+      - "arch-design:CTP-001, CTP-002"
+
+  - id: "email_service"
+    name: "メール送信サービス連携"
+    category: "external_integration"
+    description: "外部メール送信サービスとの連携。アダプタパターンで実装し、サービス固有の実装を隔離"
+    requirements:
+      - id: "req_email_001"
+        description: "TLS 通信必須"
+        priority: "must"
+        rationale: "SR-005 TLS 通信"
+      - id: "req_email_002"
+        description: "冪等性保証（同一メッセージの重複送信防止）"
+        priority: "must"
+        rationale: "LP-007 冪等性"
+    constraints:
+      - "アダプタパターンによるサービス隔離"
+    dependencies: []
+    source_refs:
+      - "arch-design:tier-external"
+
+  - id: "networking"
+    name: "ネットワーク"
+    category: "networking"
+    description: "パブリック / プライベートサブネット分離、全経路冗長化、TLS 必須"
+    requirements:
+      - id: "req_net_001"
+        description: "パブリック / プライベートサブネット分離"
+        priority: "must"
+        rationale: "CTP-028 ファイアウォール方針"
+      - id: "req_net_002"
+        description: "全ネットワーク経路の冗長化"
+        priority: "must"
+        rationale: "CTP-011 ネットワーク冗長化方針、NFR A.2.3.1 Lv3"
+      - id: "req_net_003"
+        description: "全通信 TLS 暗号化"
+        priority: "must"
+        rationale: "CTR-001 TLS 必須"
+    constraints:
+      - "allowed_regions: ap-northeast-1, ap-northeast-3"
+    dependencies: []
+    source_refs:
+      - "foundation-context:network_guardrails"
+
+  - id: "observability_stack"
+    name: "オブザーバビリティ基盤"
+    category: "observability"
+    description: "メトリクス、ログ、アラートの統合監視。JSON 構造化ログ、OpenTelemetry 標準トレース"
+    requirements:
+      - id: "req_obs_001"
+        description: "JSON 構造化ログ（trace_id, span_id, service, timestamp 必須）"
+        priority: "must"
+        rationale: "CTP-003 構造化ログ"
+      - id: "req_obs_002"
+        description: "OpenTelemetry 標準トレーシング"
+        priority: "must"
+        rationale: "CTP-004 トレーサビリティ ID 体系"
+      - id: "req_obs_003"
+        description: "サーバエラー（5xx）発生時のメール通知"
+        priority: "must"
+        rationale: "CTR-003 エラー通知"
+      - id: "req_obs_004"
+        description: "ログ保持期間 1 ヶ月"
+        priority: "must"
+        rationale: "NFR C.6.1.1 ログ保管期間 Lv1"
+      - id: "req_obs_005"
+        description: "監査ログ（状態遷移を伴うビジネスイベント）"
+        priority: "must"
+        rationale: "CTP-008 監査ログ、NFR E.7.1.1 Lv2"
+    constraints:
+      - "運用監視は営業時間内（9時〜17時）"
+    dependencies: []
+    source_refs:
+      - "arch-design:CTP-003, CTP-004, CTP-008"

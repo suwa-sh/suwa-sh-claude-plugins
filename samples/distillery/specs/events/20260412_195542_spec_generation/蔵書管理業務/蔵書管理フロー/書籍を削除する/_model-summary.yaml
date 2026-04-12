@@ -1,0 +1,37 @@
+uc: "書籍を削除する"
+business: "蔵書管理業務"
+buc: "蔵書管理フロー"
+
+models:
+  - name: "DeleteConfirmState"
+    tier: "tier-frontend"
+    layer: "view"
+    type: "state"
+    rdra_info: "書籍"
+  - name: "DeleteBookCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "status"
+            value: "削除可否判定用"
+        where: "id = :id"
+      - type: "DELETE"
+        columns: []
+        where: "id = :id AND status = 'available'"
+    indexes_needed: []
+
+kvs: []
+object_storage: []

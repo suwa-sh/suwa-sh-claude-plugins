@@ -385,17 +385,28 @@ if (!infraHas && infraEvents.length) {
   L();
 }
 
-// Infra architecture.md mermaid — extract workload overview
-if (infraEvents.length) {
-  const latestEvDir = path.join(docsRoot, 'infra/events', infraEvents[infraEvents.length - 1]);
-  const infraArchMd = path.join(latestEvDir, 'docs/cloud-context/generated-md/product/architecture.md');
-  if (fileExists(infraArchMd)) {
+// Infra architecture mermaid — extract workload overview
+// Try latest/ first, then fall back to latest event dir.
+// File may be named architecture.md or architecture-overview.md depending on MCL version.
+{
+  const candidates = [];
+  if (dirExists(infraLatest)) {
+    candidates.push(path.join(infraLatest, 'docs/cloud-context/generated-md/product/architecture-overview.md'));
+    candidates.push(path.join(infraLatest, 'docs/cloud-context/generated-md/product/architecture.md'));
+  }
+  if (infraEvents.length) {
+    const latestEvDir = path.join(docsRoot, 'infra/events', infraEvents[infraEvents.length - 1]);
+    candidates.push(path.join(latestEvDir, 'docs/cloud-context/generated-md/product/architecture-overview.md'));
+    candidates.push(path.join(latestEvDir, 'docs/cloud-context/generated-md/product/architecture.md'));
+  }
+  const infraArchMd = candidates.find(p => fileExists(p));
+  if (infraArchMd) {
     const infraArchContent = readFile(infraArchMd);
     const workloadDiags = extractMermaidAfterHeading(infraArchContent, /ワークロード全体構成図/);
     if (workloadDiags.length) {
       L('### ワークロード全体構成図');
       L();
-      L(`> 出典: ${lnk('architecture.md', infraArchMd)}`);
+      L(`> 出典: ${lnk(path.basename(infraArchMd), infraArchMd)}`);
       L();
       L('```mermaid');
       L(workloadDiags[0]);

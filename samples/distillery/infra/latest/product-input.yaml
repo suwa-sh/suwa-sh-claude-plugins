@@ -1,0 +1,123 @@
+schema_version: "1.0"
+artifact_type: "product_input"
+skill_type: "product"
+artifact_id: "product-library-management-input"
+title: "図書館蔵書管理システム ワークロード入力"
+status: "draft"
+generated_at: "2026-04-12T16:25:24"
+source_refs:
+  - "arch-design:20260412_161337_initial_arch"
+  - "nfr-grade:20260412_154304_initial_nfr"
+decision_refs: []
+inputs_ref:
+  - "foundation-context"
+  - "shared-platform-context"
+
+workload:
+  name: "図書館蔵書管理システム"
+  description: "図書館の蔵書と利用者を一元管理するWebシステム。書籍の登録・検索・貸出・返却・予約をWeb画面から行え、貸出期限の管理や延滞者への通知を自動化する。利用者は貸出履歴や予約状況を確認でき、司書は在庫状況や人気書籍の統計を把握できる。将来的には電子書籍にも対応可能な設計とする。"
+  target_clouds:
+    - "aws"
+
+workload_type: "web_app"
+
+availability_target:
+  sla: "99.9%"
+  failover: "manual"
+
+latency_sensitivity:
+  category: "interactive"
+  target_p99: "1s"
+
+data_sensitivity:
+  classification: "restricted"
+  pii: true
+  encryption: "in_transit_only"
+  compliance: []
+  data_residency: "none"
+
+traffic_pattern:
+  type: "scheduled"
+  baseline_rps: 1
+  spike_multiplier: 2
+
+consistency_needs:
+  type: "strong"
+
+recovery_target:
+  rpo: "72h"
+  rto: "72h"
+  backup: "daily"
+
+observability_needs:
+  metrics:
+    - "cpu"
+    - "memory"
+    - "disk"
+    - "latency"
+    - "error_rate"
+  logs:
+    - "access"
+    - "audit"
+    - "diagnostic"
+    - "dependency"
+  sli:
+    - "availability"
+    - "latency"
+    - "error_rate"
+  alerting:
+    - "health_check"
+    - "error_rate"
+
+cost_posture:
+  strategy: "cost_optimized"
+
+elements:
+  - category: "database"
+    type: "rdb"
+    description: "書籍・利用者・貸出・予約・統計データの永続化。PostgreSQL 推奨"
+    entities:
+      - "E-001: 書籍"
+      - "E-002: 利用者"
+      - "E-003: 貸出"
+      - "E-004: 予約"
+      - "E-005: 統計情報"
+    requirements:
+      - "トランザクション整合性（書籍貸出状態 4状態5遷移、予約状態 4状態4遷移）"
+      - "日次フル+増分バックアップ、30日以上保持"
+      - "個人情報（氏名・連絡先・メールアドレス）の保管時暗号化"
+      - "冪等キーカラムに UNIQUE 制約"
+  - category: "cache"
+    type: "kvs"
+    description: "セッション情報の管理。Redis 推奨"
+    entities:
+      - "E-006: セッション情報"
+    requirements:
+      - "アクセストークン・リフレッシュトークンの一時保管"
+      - "有効期限付きキー管理"
+      - "冪等キーの重複検知用一時ストア"
+  - category: "message_queue"
+    type: "mq"
+    description: "督促通知・予約通知のメール送信を非同期処理する MQ"
+    requirements:
+      - "メッセージ ID による重複検知"
+      - "デッドレターキューによるリトライ管理"
+  - category: "cron"
+    type: "scheduled_task"
+    description: "延滞検出バッチ（日次）"
+    requirements:
+      - "夜間（21時〜翌9時）の停止時間帯に完了"
+      - "ジョブ実行 ID による重複実行検知"
+  - category: "identity"
+    type: "idp"
+    description: "マネージド IdP（OAuth2/OIDC）。利用者ロールと司書ロールの2種"
+    requirements:
+      - "パスワードポリシー（複雑性・有効期限）"
+      - "アクセストークン 15分有効期限"
+      - "リフレッシュトークンローテーション"
+  - category: "email"
+    type: "external_service"
+    description: "メール送信サービスとの連携（アダプタパターン）"
+    requirements:
+      - "TLS 通信"
+      - "冪等性保証"

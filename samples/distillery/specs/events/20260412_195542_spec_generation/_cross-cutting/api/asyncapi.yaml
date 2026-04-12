@@ -1,0 +1,142 @@
+asyncapi: "2.6.0"
+info:
+  title: "LibraShelf Async Events"
+  version: "1.0.0"
+  description: "図書館蔵書管理システムの非同期イベント定義。延滞督促通知と予約確保通知のメッセージキューを定義する。"
+
+servers:
+  production:
+    url: "sqs.ap-northeast-1.amazonaws.com"
+    protocol: "sqs"
+    description: "本番環境 SQS"
+
+channels:
+  overdue-notification-queue:
+    description: "延滞者への督促メール送信キュー。延滞検出バッチまたは司書の手動トリガーで督促対象の貸出情報をキューに投入する。"
+    publish:
+      operationId: "publishOverdueNotification"
+      summary: "督促通知メッセージの送信"
+      message:
+        $ref: "#/components/messages/OverdueNotificationMessage"
+    subscribe:
+      operationId: "consumeOverdueNotification"
+      summary: "督促通知メッセージの受信・メール送信"
+      message:
+        $ref: "#/components/messages/OverdueNotificationMessage"
+    bindings:
+      sqs:
+        queue:
+          name: "librashelf-overdue-notification"
+          fifoQueue: false
+          deliveryDelay: 0
+          visibilityTimeout: 60
+          redrivePolicy:
+            deadLetterQueue:
+              arn: "arn:aws:sqs:ap-northeast-1:*:librashelf-overdue-notification-dlq"
+            maxReceiveCount: 3
+
+  reservation-notification-queue:
+    description: "予約確保通知メール送信キュー。書籍返却時に予約がある場合、予約者への通知情報をキューに投入する。"
+    publish:
+      operationId: "publishReservationNotification"
+      summary: "予約通知メッセージの送信"
+      message:
+        $ref: "#/components/messages/ReservationNotificationMessage"
+    subscribe:
+      operationId: "consumeReservationNotification"
+      summary: "予約通知メッセージの受信・メール送信"
+      message:
+        $ref: "#/components/messages/ReservationNotificationMessage"
+    bindings:
+      sqs:
+        queue:
+          name: "librashelf-reservation-notification"
+          fifoQueue: false
+          deliveryDelay: 0
+          visibilityTimeout: 60
+          redrivePolicy:
+            deadLetterQueue:
+              arn: "arn:aws:sqs:ap-northeast-1:*:librashelf-reservation-notification-dlq"
+            maxReceiveCount: 3
+
+components:
+  messages:
+    OverdueNotificationMessage:
+      name: "OverdueNotificationMessage"
+      title: "督促通知メッセージ"
+      description: "延滞者への督促メール送信に必要な情報"
+      contentType: "application/json"
+      payload:
+        type: "object"
+        properties:
+          loan_id:
+            type: "string"
+            format: "uuid"
+            description: "貸出ID"
+          user_id:
+            type: "string"
+            format: "uuid"
+            description: "利用者ID"
+          user_name:
+            type: "string"
+            description: "利用者氏名"
+          user_email:
+            type: "string"
+            format: "email"
+            description: "利用者メールアドレス"
+          book_title:
+            type: "string"
+            description: "書籍タイトル"
+          due_date:
+            type: "string"
+            format: "date"
+            description: "返却期限"
+          overdue_days:
+            type: "integer"
+            description: "延滞日数"
+        required:
+          - "loan_id"
+          - "user_id"
+          - "user_name"
+          - "user_email"
+          - "book_title"
+          - "due_date"
+          - "overdue_days"
+
+    ReservationNotificationMessage:
+      name: "ReservationNotificationMessage"
+      title: "予約通知メッセージ"
+      description: "予約書籍の確保通知メール送信に必要な情報"
+      contentType: "application/json"
+      payload:
+        type: "object"
+        properties:
+          reservation_id:
+            type: "string"
+            format: "uuid"
+            description: "予約ID"
+          user_id:
+            type: "string"
+            format: "uuid"
+            description: "利用者ID"
+          user_name:
+            type: "string"
+            description: "利用者氏名"
+          user_email:
+            type: "string"
+            format: "email"
+            description: "利用者メールアドレス"
+          book_title:
+            type: "string"
+            description: "書籍タイトル"
+          book_id:
+            type: "string"
+            format: "uuid"
+            description: "書籍ID"
+        required:
+          - "reservation_id"
+          - "user_id"
+          - "user_name"
+          - "user_email"
+          - "book_title"
+          - "book_id"

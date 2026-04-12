@@ -1,0 +1,61 @@
+uc: "書籍を登録する"
+business: "蔵書管理業務"
+buc: "蔵書管理フロー"
+
+models:
+  - name: "BookForm"
+    tier: "tier-frontend"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "書籍"
+  - name: "CreateBookRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "CreateBookCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "INSERT"
+        columns:
+          - name: "id"
+            value: "UUID生成"
+          - name: "title"
+            value: "リクエストのtitle"
+          - name: "author"
+            value: "リクエストのauthor"
+          - name: "isbn"
+            value: "リクエストのisbn"
+          - name: "publisher"
+            value: "リクエストのpublisher"
+          - name: "genre"
+            value: "リクエストのgenre"
+          - name: "material_type"
+            value: "リクエストのmaterial_type"
+          - name: "location"
+            value: "リクエストのlocation"
+          - name: "status"
+            value: "available (在庫あり)"
+          - name: "created_at"
+            value: "現在日時"
+        where: ""
+    indexes_needed:
+      - columns:
+          - "isbn"
+        reason: "ISBN一意制約チェック"
+        access_pattern: "ISBN による重複チェック"
+
+kvs: []
+object_storage: []

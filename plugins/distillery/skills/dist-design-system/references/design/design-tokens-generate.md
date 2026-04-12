@@ -20,6 +20,7 @@ Semantic (意味レイヤー)
   - portal: user.primary, owner.primary, admin.primary
   - accent: rating, virtual (+light variants)
   - spacing: component-gap, section-gap, page-padding, card-padding
+  - layout: sidebar-width, sidebar-collapsed-width, content-max-width
       ↓
 Component (コンポーネント固有)
   - button: height, padding, radius, font
@@ -27,10 +28,10 @@ Component (コンポーネント固有)
   - card: bg, border, shadow, padding, radius
   - badge: height, padding, radius, font
   - avatar: sizes, radius
-  - sidebar: width, item-height
+  - sidebar: width, collapsed-width, item-height
   - table: header-bg, row-height, cell-padding
   - modal: backdrop, radius, padding, shadow, widths
-  - domain-specific: room-card, rating, calendar, etc.
+  - domain-specific: (RDRA 情報から導出されたドメインコンポーネント)
 ```
 
 ### design-tokens.json
@@ -80,6 +81,62 @@ Design Tokens Community Group 形式に準拠。
    - `--rating-empty-color`
    - `--calendar-*-bg`
 
+### レイアウト・スペーシングトークン
+
+Step1（`design-infer.md` セクション 5）の推論結果を参照し、以下のトークンを生成する。
+値は推論で導出された根拠付きの数値を使うこと（任意の値をハードコードしない）。
+
+**Semantic レイヤーに追加するトークン:**
+
+```css
+:root {
+  /* Layout — Step1 セクション 5-1 の推論結果から */
+  --sidebar-width: /* ナビ項目数から導出 (例: 16rem) */;
+  --sidebar-collapsed-width: 4rem; /* アイコン24px + padding左右20px = 固定値 */
+  --content-max-width: /* 12col グリッド幅。ブレークポイントに連動 */;
+
+  /* Spacing — Step1 セクション 5-2 の推論結果から */
+  --page-padding: /* ポータル構成から導出 */;
+  --section-gap: /* 情報密度から導出 */;
+  --component-gap: /* 画面要素数から導出 */;
+  --card-padding: /* カード候補の属性数から導出 */;
+}
+```
+
+**Component レイヤーのグリッド定義:**
+
+```css
+:root {
+  /* Grid — 画面パターン別。Step1 セクション 5-1 の推論結果から */
+  --grid-columns: 12;
+  --grid-gutter: var(--component-gap);
+}
+```
+
+**グリッドのカラム分割は CSS class/Tailwind で画面ごとに適用する:**
+
+| パターン | Tailwind 実装例 |
+|---------|----------------|
+| フル幅 (12col) | `col-span-12` |
+| マスター・ディテール (8+4) | `col-span-8` + `col-span-4` |
+| 中央寄せフォーム (2+8+2) | `col-start-3 col-span-8` |
+| ダッシュボード (6+6) | `col-span-6` |
+| KPI 3列 (4+4+4) | `col-span-4` |
+
+**レスポンシブのブレークポイントトークン:**
+
+NFR F.1.1.1（端末対応レベル）から必要なブレークポイントを決定する。
+全ブレークポイントを定義するが、NFR で不要と判定されたものは簡易対応とする。
+
+```css
+:root {
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+```
+
 ### 品質チェック
 
 生成後、以下を確認:
@@ -88,3 +145,6 @@ Design Tokens Community Group 形式に準拠。
 - [ ] `.dark` ブロックに semantic + component のオーバーライドが揃っている
 - [ ] status-light トークンが dark mode で `rgba()` 値になっている
 - [ ] `--hover-muted` が `.dark` に定義されている
+- [ ] `--sidebar-width` の値が `_inference.md` の推論結果と一致している
+- [ ] `--page-padding`, `--section-gap`, `--component-gap`, `--card-padding` が定義されている
+- [ ] グリッドのカラム分割が画面パターンごとに `_inference.md` の推論と一致している

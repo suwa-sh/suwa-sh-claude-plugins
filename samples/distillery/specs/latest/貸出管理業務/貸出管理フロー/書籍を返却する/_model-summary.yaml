@@ -1,0 +1,69 @@
+uc: "書籍を返却する"
+business: "貸出管理業務"
+buc: "貸出管理フロー"
+
+models:
+  - name: "ReturnForm"
+    tier: "tier-frontend"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "ReturnLoanCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "貸出"
+  - name: "Loan"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "貸出"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "貸出情報取得"
+        where: "id = :loan_id"
+      - type: "UPDATE"
+        columns:
+          - name: "return_date"
+            value: "現在日付"
+          - name: "is_overdue"
+            value: "false"
+        where: "id = :loan_id"
+    indexes_needed: []
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "UPDATE"
+        columns:
+          - name: "status"
+            value: "available"
+        where: "id = :book_id"
+    indexes_needed: []
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "予約通知対象の確認"
+        where: "book_id = :book_id AND status = 'pending' ORDER BY reserved_at ASC LIMIT 1"
+    indexes_needed:
+      - columns:
+          - "book_id"
+          - "status"
+        reason: "返却時の予約チェック"
+        access_pattern: "書籍の予約受付中レコード検索"
+
+kvs: []
+object_storage: []

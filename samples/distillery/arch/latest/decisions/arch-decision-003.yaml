@@ -1,0 +1,31 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-003"
+title: "イミュータブルデータモデル（event_snapshot）の採用"
+status: "approved"
+generated_at: "2026-04-12T16:13:37"
+context: |
+  RDRA の状態モデルに「書籍貸出状態」（4 状態 5 遷移）と「予約状態」（4 状態 4 遷移）が定義されている。
+  貸出・予約の状態遷移履歴を追跡可能にする必要がある。
+  利用者情報は個人情報を含み変更履歴の管理が望ましい。
+decision: |
+  書籍・利用者・貸出・予約の 4 エンティティに event_snapshot モデルを採用する。
+  各エンティティに events テーブル（INSERT のみ、イミュータブル）と snapshots テーブル（最新状態キャッシュ）を設ける。
+  repository 層が「イベント追記 + スナップショット更新」の二重書き込みを隠蔽する。
+  統計情報は集計結果のため resource_mutable、セッション情報は cache とする。
+consequences:
+  positive:
+    - "全状態遷移の履歴を完全に保持でき、監査証跡として活用可能"
+    - "イベントテーブルが INSERT のみのためロック競合がない"
+    - "スナップショットにより最新状態の参照が高速"
+    - "個人情報の変更履歴を追跡可能"
+  negative:
+    - "テーブル数が増加する（エンティティごとに events + snapshots の 2 テーブル）"
+    - "repository 層の実装が従来型より複雑"
+    - "スナップショットの整合性維持に注意が必要"
+alternatives_considered:
+  - name: "resource_mutable（従来型）"
+    reason_rejected: "状態遷移の履歴を追跡できない。監査ログ要件（NFR E.7.1.1 Lv2）への対応が困難"
+  - name: "event のみ（スナップショットなし）"
+    reason_rejected: "最新状態の参照にイベントの集計が必要となり、検索・一覧表示のパフォーマンスが低下"

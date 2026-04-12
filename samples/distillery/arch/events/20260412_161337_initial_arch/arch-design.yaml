@@ -1,0 +1,910 @@
+version: "1.0"
+event_id: "20260412_161337_initial_arch"
+trigger_event: "rdra:20260412_140535_initial_build, nfr:20260412_154304_initial_nfr"
+created_at: "2026-04-12T16:13:37"
+source: "RDRA モデルと NFR グレードからの初期アーキテクチャ設計"
+
+technology_context:
+  languages:
+    - "TypeScript"
+  frameworks:
+    - "Next.js"
+  constraints: []
+
+system_architecture:
+  tiers:
+    - id: "tier-frontend"
+      name: "フロントエンド"
+      description: "利用者・司書向け Web UI。蔵書検索・貸出手続き・管理画面を提供する"
+      technology_candidates:
+        - "SSR"
+      policies:
+        - id: "SP-001"
+          name: "サーバーサイドレンダリング"
+          description: "蔵書検索画面等の公開ページは SSR で初回表示速度と SEO を確保する"
+          reason: "外部アクター「利用者」向け蔵書検索画面があり、公共図書館として検索エンジンからのアクセスが想定されるため"
+          source_model: "BUC: 蔵書検索フロー, NFR F.1.1.2"
+          confidence: "user"
+        - id: "SP-002"
+          name: "主要ブラウザ対応"
+          description: "Chrome, Firefox, Safari の主要ブラウザ 2-3 種に対応する"
+          reason: "NFR F.1.1.2 対応ブラウザ Lv2（主要ブラウザ 2-3 種対応）への対応"
+          source_model: "NFR F.1.1.2"
+          confidence: "medium"
+      rules:
+        - id: "SR-001"
+          name: "API 経由のデータアクセス"
+          description: "フロントエンドからデータストアへの直接アクセスを禁止し、必ず Backend API を経由する"
+          reason: "セキュリティとデータ整合性の確保"
+          source_model: "NFR E.5.2.1"
+          confidence: "default"
+    - id: "tier-backend-api"
+      name: "バックエンド API"
+      description: "蔵書管理・貸出管理・予約管理・利用者管理・統計の業務ロジックを提供する REST API"
+      technology_candidates:
+        - "FaaS"
+      policies:
+        - id: "SP-003"
+          name: "モノリシック API"
+          description: "全業務ドメイン（蔵書管理・貸出管理・予約管理・利用者管理・統計）を単一の API サービスとして構成する"
+          reason: "BUC が 6 業務・UC 16 件の小規模システムで、ドメイン境界が明確に分離するほどの規模ではないため"
+          source_model: "BUC: 蔵書管理業務, 貸出管理業務, 予約管理業務, 利用者管理業務, 閲覧業務, 統計業務"
+          confidence: "medium"
+        - id: "SP-004"
+          name: "入力バリデーション"
+          description: "API 境界で全入力をバリデーションする。貸出期限ルール・貸出可否判定ルール・延滞判定ルール・予約優先ルールを含む"
+          reason: "条件.tsv に 4 件のビジネスルールがあり、外部入力の安全性確保が必要"
+          source_model: "条件: 貸出期限ルール, 貸出可否判定ルール, 延滞判定ルール, 予約優先ルール"
+          confidence: "high"
+      rules:
+        - id: "SR-002"
+          name: "REST API スタイル"
+          description: "リソース指向の REST API を採用する。エンドポイントは /api/v1/{resource} 形式"
+          reason: "一般的なベストプラクティスとして適用"
+          source_model: "なし"
+          confidence: "default"
+    - id: "tier-worker"
+      name: "バックエンドワーカー"
+      description: "延滞検出（定期バッチ）と督促通知・予約通知のメール送信（非同期処理）を担う"
+      technology_candidates:
+        - "CronJob"
+        - "MQ"
+      policies:
+        - id: "SP-005"
+          name: "延滞検出バッチ"
+          description: "返却期限超過の貸出を日次バッチで検出し、延滞フラグを設定する"
+          reason: "BUC「延滞管理フロー」に「延滞を検出する」アクティビティがあり、定期的な検出処理が必要"
+          source_model: "BUC: 延滞管理フロー, NFR B.2.2.1"
+          confidence: "high"
+        - id: "SP-006"
+          name: "非同期メール送信"
+          description: "督促通知・予約通知のメール送信を MQ 経由の非同期処理で実行する"
+          reason: "BUC「延滞管理フロー」「予約管理フロー」にメール送信アクティビティがあり、外部システム「メール送信サービス」との連携で非同期処理が適切"
+          source_model: "BUC: 延滞管理フロー, 予約管理フロー, 外部システム: メール送信サービス"
+          confidence: "medium"
+      rules:
+        - id: "SR-003"
+          name: "バッチ処理時間制約"
+          description: "バッチ処理は夜間（21 時〜翌 9 時）の停止時間帯に完了すること"
+          reason: "NFR B.2.2.1 バッチ処理時間 Lv1（翌営業日開始まで）および運用時間 Lv2（9 時〜21 時）への対応"
+          source_model: "NFR B.2.2.1, NFR A.1.1.1"
+          confidence: "medium"
+    - id: "tier-datastore"
+      name: "データストア"
+      description: "書籍・利用者・貸出・予約・統計データの永続化とセッション管理"
+      technology_candidates:
+        - "RDB"
+        - "KVS"
+      policies:
+        - id: "SP-007"
+          name: "トランザクション整合性"
+          description: "貸出・予約の状態遷移を伴うデータ更新は RDB のトランザクションで整合性を保証する"
+          reason: "状態.tsv に書籍貸出状態（4 状態 5 遷移）と予約状態（4 状態 4 遷移）の状態モデルがあり、整合性が必要"
+          source_model: "状態: 書籍貸出状態, 予約状態"
+          confidence: "high"
+        - id: "SP-008"
+          name: "日次バックアップ"
+          description: "RDB のフル + 増分バックアップを日次で実施し、30 日以上保持する"
+          reason: "NFR C.1.2.1 バックアップ方式 Lv3（フル + 増分日次）、C.1.2.3 世代管理 Lv3（30 日以上）への対応"
+          source_model: "NFR C.1.2.1, NFR C.1.2.3"
+          confidence: "medium"
+        - id: "SP-009"
+          name: "個人情報暗号化"
+          description: "利用者情報（氏名・連絡先・メールアドレス）は保管時に暗号化する"
+          reason: "NFR E.6.1.1 データ暗号化（保管時）Lv1（機密データのみ暗号化）への対応。個人情報保護法準拠"
+          source_model: "NFR E.6.1.1, NFR E.1.2.1, 情報: 利用者"
+          confidence: "high"
+      rules:
+        - id: "SR-004"
+          name: "RPO 日次"
+          description: "目標復旧地点（RPO）は前日の最終バックアップまでとする"
+          reason: "NFR A.4.1.1 RPO Lv1（前日の最終バックアップまで）への対応"
+          source_model: "NFR A.4.1.1"
+          confidence: "user"
+    - id: "tier-external"
+      name: "外部連携"
+      description: "メール送信サービスとの連携を担うアダプタ層"
+      technology_candidates:
+        - "アダプタパターン"
+      policies:
+        - id: "SP-010"
+          name: "外部サービスアダプタ"
+          description: "メール送信サービスとの連携はアダプタパターンで実装し、サービス固有の実装を隔離する"
+          reason: "外部システム「メール送信サービス」との連携があり、将来のサービス変更に備える"
+          source_model: "外部システム: メール送信サービス"
+          confidence: "high"
+      rules:
+        - id: "SR-005"
+          name: "TLS 通信"
+          description: "外部サービスとの通信は TLS で暗号化する"
+          reason: "NFR E.6.1.2 データ暗号化（通信時）Lv1（外部通信のみ暗号化）への対応"
+          source_model: "NFR E.6.1.2"
+          confidence: "high"
+  cross_tier_policies:
+    - id: "CTP-001"
+      name: "認証方式"
+      description: "マネージド IdP による OAuth2/OIDC ベースの認証を採用する。パスワードポリシー（複雑性・有効期限）を IdP 側で設定する"
+      reason: "外部アクター「利用者」が存在し、NFR E.5.1.1 認証方式 Lv2（パスワードポリシー）を効率的に満たすためマネージド IdP を採用"
+      source_model: "アクター: 利用者, 司書, NFR E.5.1.1"
+      confidence: "user"
+    - id: "CTP-002"
+      name: "認可方式"
+      description: "RBAC（ロールベースアクセス制御）を採用する。利用者ロールと司書ロールの 2 種でアクセス制御を行い、Backend API で作り込む"
+      reason: "アクターが 2 種（利用者/司書）で所有権ベースの認可パターンが限定的。NFR E.5.2.1 Lv2（RBAC）と合致"
+      source_model: "アクター: 利用者, 司書, NFR E.5.2.1"
+      confidence: "user"
+    - id: "CTP-003"
+      name: "構造化ログ"
+      description: "全ティアで JSON 形式の構造化ログを出力する。trace_id, span_id, service, timestamp を必須フィールドとする"
+      reason: "NFR C.6.1.1 ログ保管期間 Lv1（1 ヶ月）、C.6.1.2 ログ種別 Lv1（アクセスログ・エラーログ）への対応"
+      source_model: "NFR C.6.1.1, NFR C.6.1.2"
+      confidence: "medium"
+    - id: "CTP-004"
+      name: "トレーサビリティ ID 体系"
+      description: "OpenTelemetry 標準（trace_id + span_id）でリクエストの全処理経路を追跡する。認証済みリクエストのログには session_id, user_id を context に含める"
+      reason: "外部アクター「利用者」が存在し、NFR E.7.1.1 監査ログ Lv2（データアクセスログ）への対応"
+      source_model: "アクター: 利用者, NFR E.7.1.1"
+      confidence: "medium"
+    - id: "CTP-005"
+      name: "冪等性方針"
+      description: "状態変更を伴う操作（貸出/返却/予約/キャンセル）に冪等キー（UUID）を適用する。フロントエンドでリクエストごとに冪等キーを生成し X-Idempotency-Key ヘッダに付与。Backend API で KVS を用いて重複リクエストを検知。RDB で冪等キーカラムに UNIQUE 制約を設定"
+      reason: "状態モデルに状態遷移あり、外部ユーザーがアクター、BUC に予約・貸出等の状態変更操作あり（3 条件該当）"
+      source_model: "状態: 書籍貸出状態, 予約状態, アクター: 利用者, BUC: 貸出管理フロー, 予約管理フロー"
+      confidence: "user"
+    - id: "CTP-006"
+      name: "ヘルスチェック"
+      description: "全ティアにヘルスチェックエンドポイントを実装し、依存サービスの死活監視を行う"
+      reason: "NFR A.2.1.1 サーバ冗長化 Lv4（完全冗長化・自動切替）への対応。自動切替の前提としてヘルスチェックが必要"
+      source_model: "NFR A.2.1.1"
+      confidence: "medium"
+    - id: "CTP-007"
+      name: "i18n 方針"
+      description: "日本語のみ対応とする。i18n 対応不要。テキストはコード内に直接記述可能"
+      reason: "RDRA/NFR に i18n シグナルなし。アクターに外国語名なし、BUC に多言語キーワードなし、システム概要に国際展開の言及なし"
+      source_model: "なし"
+      confidence: "user"
+    - id: "CTP-008"
+      name: "監査ログ"
+      description: "状態遷移を伴うビジネスイベント（貸出・返却・予約・キャンセル）の操作ログを記録する。誰が、何を、どうしたかを構造化ログで出力する"
+      reason: "NFR E.7.1.1 監査ログ Lv2（データアクセスログ）への対応。個人情報へのアクセスを記録する必要あり"
+      source_model: "NFR E.7.1.1, 情報: 利用者"
+      confidence: "medium"
+    - id: "CTP-009"
+      name: "計画停止方針"
+      description: "月次の定期メンテナンス枠（夜間 21 時〜翌 9 時）を設け、パッチ適用・DB メンテナンスを実施する"
+      reason: "NFR A.1.1.3 計画停止 Lv1（定期的に計画停止あり）への対応"
+      source_model: "NFR A.1.1.3"
+      confidence: "default"
+    - id: "CTP-010"
+      name: "サービス切替方針"
+      description: "障害発生時は 24 時間以内に部品交換またはインスタンス再起動による復旧を行う"
+      reason: "NFR A.1.2.1 サービス切替時間 Lv1（24 時間未満）への対応"
+      source_model: "NFR A.1.2.1"
+      confidence: "default"
+    - id: "CTP-011"
+      name: "ネットワーク冗長化方針"
+      description: "全ネットワーク経路を冗長化し、単一障害点を排除する"
+      reason: "NFR A.2.3.1 ネットワーク機器の冗長化 Lv3（全経路の冗長化）への対応"
+      source_model: "NFR A.2.3.1"
+      confidence: "medium"
+    - id: "CTP-012"
+      name: "ストレージ冗長化方針"
+      description: "データストアのストレージをダブルパリティ相当で冗長化し、データ消失リスクを低減する"
+      reason: "NFR A.2.5.1 ストレージの冗長化 Lv3（RAID6 相当）への対応"
+      source_model: "NFR A.2.5.1"
+      confidence: "medium"
+    - id: "CTP-013"
+      name: "電源冗長化方針"
+      description: "マネージドサービスの電源冗長化に依存する。個別の電源冗長化対策は不要"
+      reason: "NFR A.2.6.2 電源の冗長化 Lv1（冗長化なし）への対応。クラウド利用のため実質的には冗長化済み"
+      source_model: "NFR A.2.6.2"
+      confidence: "default"
+    - id: "CTP-014"
+      name: "RTO 方針"
+      description: "目標復旧時間（RTO）は 1 営業日以内とする。バックアップからの復元手順を事前に整備する"
+      reason: "NFR A.4.1.2 RTO Lv1（1 営業日以内）への対応"
+      source_model: "NFR A.4.1.2"
+      confidence: "user"
+    - id: "CTP-015"
+      name: "同時アクセス・スループット方針"
+      description: "同時アクセス 100 ユーザー以下、スループット 10 TPS 以下を前提とした構成とする。FaaS の Auto Scaling でピーク時（通常の 1.5 倍）に対応する"
+      reason: "NFR B.1.1.1 同時アクセス Lv1（~100）、B.1.1.3 リクエスト件数 Lv1（~1,000/日）、B.1.2.1 ピーク時 Lv1（1.5 倍）、B.2.1.2 スループット Lv1（~10 TPS）への対応"
+      source_model: "NFR B.1.1.1, NFR B.1.1.3, NFR B.1.2.1, NFR B.2.1.2"
+      confidence: "user"
+    - id: "CTP-016"
+      name: "レスポンスタイム方針"
+      description: "オンラインリクエストのレスポンスタイムを 10 秒以内とする。SSR による初回表示最適化と API レスポンス最適化で対応する"
+      reason: "NFR B.2.1.1 レスポンスタイム Lv2（10 秒以内）への対応"
+      source_model: "NFR B.2.1.1"
+      confidence: "medium"
+    - id: "CTP-017"
+      name: "リソース拡張方針"
+      description: "CPU・メモリはスケールアップ（インスタンスサイズ変更）で対応する。FaaS の場合はメモリ割当量の変更で対応"
+      reason: "NFR B.3.1.1 CPU 拡張性 Lv1（スケールアップ）への対応"
+      source_model: "NFR B.3.1.1"
+      confidence: "default"
+    - id: "CTP-018"
+      name: "性能テスト方針"
+      description: "単体での性能テストを実施する。主要 API エンドポイントのレスポンスタイムを計測し、NFR B.2.1.1 の基準を満たすことを確認する"
+      reason: "NFR B.4.1.1 性能テスト Lv1（単体での性能テスト）への対応"
+      source_model: "NFR B.4.1.1"
+      confidence: "default"
+    - id: "CTP-019"
+      name: "運用監視時間方針"
+      description: "運用監視は営業時間内（9 時〜17 時）に実施する。営業時間外の障害はアラートメール通知で翌営業日に対応する"
+      reason: "NFR C.1.1.1 運用監視時間 Lv1（定時内）への対応"
+      source_model: "NFR C.1.1.1"
+      confidence: "medium"
+    - id: "CTP-020"
+      name: "パッチ適用方針"
+      description: "セキュリティパッチのみ随時適用する。計画停止枠（月次メンテナンス）で適用することを原則とする"
+      reason: "NFR C.2.1.2 パッチ適用方針 Lv1（セキュリティパッチのみ随時）への対応"
+      source_model: "NFR C.2.1.2"
+      confidence: "default"
+    - id: "CTP-021"
+      name: "障害検知方針"
+      description: "障害検知はユーザーからの申告を主とする。ヘルスチェック（CTP-006）のアラートを補助的に活用する"
+      reason: "NFR C.3.1.1 障害検知方式 Lv1（ユーザからの申告）への対応"
+      source_model: "NFR C.3.1.1"
+      confidence: "default"
+    - id: "CTP-022"
+      name: "テスト環境方針"
+      description: "本番環境と同等のテスト環境は設けない。ローカル開発環境でのテストを主とする"
+      reason: "NFR C.4.1.1 テスト環境 Lv1（テスト環境なし）への対応"
+      source_model: "NFR C.4.1.1"
+      confidence: "default"
+    - id: "CTP-023"
+      name: "サポート体制方針"
+      description: "サポートは営業時間内（9 時〜17 時）に開発チームが直接対応する"
+      reason: "NFR C.5.1.1 サポート時間 Lv1（営業時間内）への対応"
+      source_model: "NFR C.5.1.1"
+      confidence: "medium"
+    - id: "CTP-024"
+      name: "移行方針"
+      description: "新規構築のため移行作業は発生しない。将来的にデータ投入が必要な場合は一括移行（ビッグバン方式）を採用する"
+      reason: "NFR D.2.1.1 移行方式 Lv1（一括移行）への対応。新規構築のため"
+      source_model: "NFR D.2.1.1, NFR D.4.1.1, NFR D.5.1.1"
+      confidence: "user"
+    - id: "CTP-025"
+      name: "セキュリティポリシー方針"
+      description: "簡易的なセキュリティガイドラインを策定し、開発チーム内で共有する。OWASP Top 10 をベースとする"
+      reason: "NFR E.1.1.1 セキュリティポリシー Lv1（簡易的なガイドラインあり）への対応"
+      source_model: "NFR E.1.1.1"
+      confidence: "medium"
+    - id: "CTP-026"
+      name: "セキュリティリスク分析方針"
+      description: "簡易チェックリストによるセキュリティリスク確認を実施する"
+      reason: "NFR E.2.1.1 セキュリティリスク分析 Lv1（簡易チェックリスト）への対応"
+      source_model: "NFR E.2.1.1"
+      confidence: "default"
+    - id: "CTP-027"
+      name: "セキュリティ診断方針"
+      description: "セキュリティ診断は実施しない。OWASP Top 10 対応（CTR-005）で基本的なセキュリティを確保する"
+      reason: "NFR E.3.1.1 セキュリティ診断 Lv0（診断なし）への対応"
+      source_model: "NFR E.3.1.1"
+      confidence: "default"
+    - id: "CTP-028"
+      name: "ファイアウォール方針"
+      description: "パケットフィルタリングによる基本的なネットワークアクセス制御を実施する。パブリック/プライベートサブネットの分離を行う"
+      reason: "NFR E.8.1.1 ファイアウォール Lv1（パケットフィルタリング）への対応"
+      source_model: "NFR E.8.1.1"
+      confidence: "default"
+    - id: "CTP-029"
+      name: "マルウェア対策方針"
+      description: "サーバ側のマルウェア対策を実施する。マネージドサービス利用の場合はプロバイダの対策に依存する"
+      reason: "NFR E.9.1.1 マルウェア対策 Lv1（ウイルス対策ソフト導入）への対応"
+      source_model: "NFR E.9.1.1"
+      confidence: "default"
+    - id: "CTP-030"
+      name: "WAF 方針"
+      description: "WAF は導入しない。OWASP Top 10 対応（CTR-005）でアプリケーションレベルの防御を行う"
+      reason: "NFR E.10.1.1 WAF Lv0（WAF なし）への対応"
+      source_model: "NFR E.10.1.1"
+      confidence: "default"
+    - id: "CTP-031"
+      name: "インシデント対応方針"
+      description: "基本的な連絡体制を整備する。インシデント発生時のエスカレーションフローを文書化する"
+      reason: "NFR E.11.1.1 インシデント対応計画 Lv1（基本的な連絡体制のみ）への対応"
+      source_model: "NFR E.11.1.1"
+      confidence: "default"
+    - id: "CTP-032"
+      name: "サーバ OS 方針"
+      description: "サーバ OS は Linux 単一とする。FaaS 利用の場合はランタイム（Node.js）の指定のみ"
+      reason: "NFR F.1.1.1 対応 OS Lv1（単一 OS）への対応"
+      source_model: "NFR F.1.1.1"
+      confidence: "default"
+    - id: "CTP-033"
+      name: "災害対策方針"
+      description: "災害対策は実施しない。マネージドサービスの AZ 間冗長で最低限の可用性を確保する"
+      reason: "NFR A.3.1.1 災害対策 Lv0（対策なし）、A.3.1.2 業務継続 Lv0（不要）への対応"
+      source_model: "NFR A.3.1.1, NFR A.3.1.2"
+      confidence: "user"
+  cross_tier_rules:
+    - id: "CTR-001"
+      name: "TLS 必須"
+      description: "全ティア間の通信および外部通信は TLS で暗号化する"
+      reason: "NFR E.6.1.2 データ暗号化（通信時）Lv1（外部通信のみ暗号化）への対応"
+      source_model: "NFR E.6.1.2"
+      confidence: "high"
+    - id: "CTR-002"
+      name: "API バージョニング"
+      description: "REST API は URL パスベースのバージョニング（/api/v1/）を採用する"
+      reason: "一般的なベストプラクティスとして適用"
+      source_model: "なし"
+      confidence: "default"
+    - id: "CTR-003"
+      name: "エラー通知"
+      description: "サーバエラー（5xx）発生時にメール通知を送信する"
+      reason: "NFR C.3.2.1 障害通知方式 Lv1（メール通知）への対応"
+      source_model: "NFR C.3.2.1"
+      confidence: "default"
+    - id: "CTR-004"
+      name: "トークンライフサイクル管理"
+      description: "アクセストークンの有効期限を短く設定し（15 分程度）、リフレッシュトークンで自動更新する。リフレッシュトークンはローテーション方式で管理する"
+      reason: "マネージド IdP 導入に伴い、セッションハイジャック防止のためトークン管理方針が必要"
+      source_model: "NFR E.5.1.1"
+      confidence: "medium"
+    - id: "CTR-005"
+      name: "OWASP Top 10 対応"
+      description: "OWASP Top 10 に基づく Web アプリケーションセキュリティ対策を実施する"
+      reason: "NFR E.10.2.1 Web アプリケーション対策 Lv1（OWASP Top 10 対応）への対応"
+      source_model: "NFR E.10.2.1"
+      confidence: "medium"
+  diagram_mermaid: |
+    graph TD
+      FE[Frontend<br/>SSR] -->|REST API| API[Backend API<br/>FaaS]
+      API --> DS[(Datastore<br/>RDB + KVS)]
+      API -->|MQ| WK[Worker<br/>CronJob + MQ]
+      WK --> DS
+      WK -->|メール送信| EXT[External<br/>メール送信サービス]
+      API --> EXT
+      IdP[IdP<br/>マネージド IdP] -.->|トークン検証| API
+      FE -->|認証| IdP
+
+app_architecture:
+  tier_layers:
+    - tier_id: "tier-frontend"
+      layers:
+        - id: "L-frontend-view"
+          name: "ビュー層"
+          responsibility: "ページコンポーネント、UI コンポーネント、レイアウト、ルーティング"
+          allowed_dependencies:
+            - "L-frontend-api-client"
+          policies: []
+          rules: []
+        - id: "L-frontend-api-client"
+          name: "API クライアント層"
+          responsibility: "Backend API との HTTP 通信、リクエスト/レスポンスの型定義、エラーハンドリング"
+          allowed_dependencies: []
+          policies: []
+          rules: []
+      cross_layer_policies:
+        - id: "CLP-001"
+          name: "コンポーネント設計"
+          description: "ページコンポーネントと UI コンポーネントを分離し、UI コンポーネントは再利用可能な設計とする"
+          reason: "一般的なベストプラクティスとして適用"
+          source_model: "なし"
+          confidence: "default"
+      cross_layer_rules:
+        - id: "CLR-001"
+          name: "冪等キー生成"
+          description: "状態変更を伴う API リクエスト（POST/PUT/DELETE）ごとに冪等キー（UUID）を生成し X-Idempotency-Key ヘッダに付与する。ダブルクリック防止の UI 制御も併用する"
+          reason: "冪等性方針 CTP-005 のフロントエンド側対応"
+          source_model: "CTP-005"
+          confidence: "user"
+      diagram_mermaid: |
+        graph TD
+          V[view] --> AC[api-client]
+    - tier_id: "tier-backend-api"
+      layers:
+        - id: "L-backend-api-presentation"
+          name: "プレゼンテーション層"
+          responsibility: "HTTP リクエスト/レスポンスの変換、入力バリデーション、アクセスログ出力、trace_id 発行"
+          allowed_dependencies:
+            - "L-backend-api-usecase"
+          policies:
+            - id: "LP-001"
+              name: "入力バリデーション"
+              description: "API 境界で全入力をバリデーションする"
+              reason: "外部入力の安全性確保。条件.tsv に貸出期限ルール・貸出可否判定ルール・延滞判定ルール・予約優先ルールがあり、入力検証が必要"
+              source_model: "条件: 貸出期限ルール, 貸出可否判定ルール, 延滞判定ルール, 予約優先ルール"
+              confidence: "high"
+            - id: "LP-002"
+              name: "アクセスログ"
+              description: "HTTP リクエスト/レスポンスのメタデータを構造化ログで出力する。trace_id を発行し後続レイヤーに伝播する"
+              reason: "NFR C.1.3.1 監視範囲 Lv1 および外部アクターあり"
+              source_model: "NFR C.1.3.1, アクター: 利用者"
+              confidence: "medium"
+          rules: []
+        - id: "L-backend-api-usecase"
+          name: "ユースケース層"
+          responsibility: "ビジネスフロー制御、トランザクション境界管理、監査ログ記録"
+          allowed_dependencies:
+            - "L-backend-api-domain"
+            - "L-backend-api-repository"
+          policies:
+            - id: "LP-003"
+              name: "トランザクション管理"
+              description: "貸出・予約の状態遷移を伴うビジネスフローはトランザクション境界をユースケース層で管理する"
+              reason: "情報.tsv に貸出・予約等の状態遷移を伴うエンティティがあり、トランザクション整合性が必要"
+              source_model: "情報: 貸出, 予約, 状態: 書籍貸出状態, 予約状態"
+              confidence: "high"
+            - id: "LP-004"
+              name: "監査ログ"
+              description: "状態遷移を伴うビジネスイベントを構造化ログで記録する（誰が、何を、どうしたか）"
+              reason: "NFR E.7.1.1 監査ログ Lv2（データアクセスログ）への対応"
+              source_model: "NFR E.7.1.1, 状態: 書籍貸出状態, 予約状態"
+              confidence: "high"
+          rules: []
+        - id: "L-backend-api-domain"
+          name: "ドメイン層"
+          responsibility: "ビジネスルール（貸出期限・貸出可否・延滞判定・予約優先）、エンティティ、値オブジェクト、状態遷移の整合性保証"
+          allowed_dependencies: []
+          policies:
+            - id: "LP-005"
+              name: "状態遷移"
+              description: "書籍貸出状態（在庫あり/貸出中/延滞中）と予約状態（予約受付中/予約確保済/予約キャンセル）の状態遷移をドメインモデル内で整合性保証する"
+              reason: "状態.tsv に 2 つの状態モデル（計 8 状態 9 遷移）があり、ドメインモデルでの状態整合性保証が必要"
+              source_model: "状態: 書籍貸出状態, 予約状態"
+              confidence: "high"
+            - id: "LP-006"
+              name: "ログ出力禁止"
+              description: "domain 層は直接ログ出力を行わない。ドメインイベントの発行または例外のスローで状態変化を通知する"
+              reason: "一般的なベストプラクティスとして適用。domain 層の純粋性を保つ"
+              source_model: "なし"
+              confidence: "high"
+          rules: []
+        - id: "L-backend-api-repository"
+          name: "リポジトリ層"
+          responsibility: "domain のデータアクセス方法。aggregate root と 1:1 で定義。gateway/adapter を利用してデータを永続化・取得する"
+          allowed_dependencies:
+            - "L-backend-api-domain"
+            - "L-backend-api-gateway"
+          policies: []
+          rules:
+            - id: "LR-001"
+              name: "Aggregate Root 対応"
+              description: "repository は domain の aggregate root と 1:1 で定義する。複数テーブルにアクセスする場合は複数の gateway/adapter を利用する"
+              reason: "DDD の集約パターンに従い、データアクセスの責務を明確化"
+              source_model: "なし"
+              confidence: "default"
+            - id: "LR-002"
+              name: "Event/Snapshot 併用パターン"
+              description: "event_snapshot 型エンティティ（書籍・利用者・貸出・予約）の場合、repository.save(domain) は historyAdapter.insert + snapshotAdapter.upsert を実行する"
+              reason: "イミュータブルデータモデルの永続化パターンを repository で隠蔽"
+              source_model: "情報: 書籍, 利用者, 貸出, 予約"
+              confidence: "default"
+            - id: "LR-003"
+              name: "メソッド命名規約"
+              description: "method 名は JPA に寄せる: save, findById, findAll, deleteById など"
+              reason: "広く知られた命名規約に統一し、学習コストを低減"
+              source_model: "なし"
+              confidence: "default"
+        - id: "L-backend-api-gateway"
+          name: "ゲートウェイ層"
+          responsibility: "Driven Side の入出力。adapter は RDB テーブル等の datastore model と 1:1 で定義し datastore アクセスを担う。client は datastore SDK のラッパー"
+          allowed_dependencies: []
+          policies:
+            - id: "LP-007"
+              name: "冪等性"
+              description: "外部呼出し（メール送信サービス）の冪等性を保証する"
+              reason: "外部システム「メール送信サービス」との連携で冪等性が必要"
+              source_model: "外部システム: メール送信サービス, CTP-005"
+              confidence: "high"
+            - id: "LP-008"
+              name: "依存関係ログ"
+              description: "外部 DB/API 呼び出しの開始・終了、処理時間、成否を構造化ログで出力する"
+              reason: "NFR C.1.3.1 監視範囲 Lv1 への対応。外部システムとの連携箇所の可観測性確保"
+              source_model: "NFR C.1.3.1, 外部システム: メール送信サービス"
+              confidence: "medium"
+          rules:
+            - id: "LR-004"
+              name: "Adapter の責務"
+              description: "adapter は RDB テーブル等の datastore model と 1:1 で定義する。adapter/client や外部ライブラリの client を利用する。method 名は datastore の操作に寄せる: insert, update, delete など。ORM 利用時は自動生成コードの配置場所となる"
+              reason: "datastore モデルとの対応を明確にし、変更影響範囲を限定する"
+              source_model: "なし"
+              confidence: "default"
+            - id: "LR-005"
+              name: "Client の責務"
+              description: "client は datastore を操作する SDK。外部ライブラリの使い方に共通ルールがある場合や SDK が提供されていない場合に作成する"
+              reason: "SDK の利用方法を一箇所に集約し、横断的な設定変更を容易にする"
+              source_model: "なし"
+              confidence: "default"
+      cross_layer_policies:
+        - id: "CLP-002"
+          name: "IF なし（直接依存）"
+          description: "レイヤー間は直接依存とし、開発スピードを優先する。外部サービス API 変更や DB 製品乗り換え時に凹型（IF 導入）で依存を内側に向ける"
+          reason: "新規構築のため IF による疎結合化は過剰。前提条件が崩れた場合に凹型へ移行"
+          source_model: "なし"
+          confidence: "user"
+        - id: "CLP-003"
+          name: "ログ運用方針"
+          description: "非同期ログ出力を原則とする。DEBUG/TRACE は本番無効がデフォルト。ログローテーションはサイズ + 時間ベースの併用。保持期間は 1 ヶ月（NFR C.6.1.1 準拠）。ログ出力先は stdout/stderr に統一"
+          reason: "NFR C.6.1.1 ログ保管期間 Lv1（1 ヶ月）への対応"
+          source_model: "NFR C.6.1.1"
+          confidence: "medium"
+        - id: "CLP-004"
+          name: "ログアンチパターン防止"
+          description: "多重ログ禁止、catch 握り潰し禁止、機密情報マスキング必須、ループ内逐次ログ禁止、構造化ログ強制、TZ は UTC 統一"
+          reason: "一般的なベストプラクティスとして適用"
+          source_model: "なし"
+          confidence: "default"
+      cross_layer_rules:
+        - id: "CLR-002"
+          name: "エラーハンドリング伝播"
+          description: "domain の例外は usecase で集約キャッチし 1 回だけログ出力。presentation で HTTP ステータスに変換。cause chain を context に保持。多重ログ防止"
+          reason: "レイヤー責務の分離"
+          source_model: "なし"
+          confidence: "default"
+      diagram_mermaid: |
+        graph TD
+          P[presentation] --> U[usecase]
+          U --> D[domain]
+          U --> R[repository]
+          R --> D
+          R --> G[gateway]
+    - tier_id: "tier-worker"
+      layers:
+        - id: "L-worker-presentation"
+          name: "プレゼンテーション層"
+          responsibility: "CronJob トリガー / MQ メッセージの受信、trace_id 取得・発行"
+          allowed_dependencies:
+            - "L-worker-usecase"
+          policies: []
+          rules: []
+        - id: "L-worker-usecase"
+          name: "ユースケース層"
+          responsibility: "延滞検出・督促通知送信・予約通知送信のビジネスフロー制御"
+          allowed_dependencies:
+            - "L-worker-domain"
+            - "L-worker-repository"
+          policies: []
+          rules: []
+        - id: "L-worker-domain"
+          name: "ドメイン層"
+          responsibility: "延滞判定ルール等のビジネスルール。Backend API と domain を共有"
+          allowed_dependencies: []
+          policies: []
+          rules: []
+        - id: "L-worker-repository"
+          name: "リポジトリ層"
+          responsibility: "延滞検出対象の貸出データ取得、延滞フラグ更新。Backend API と repository を共有"
+          allowed_dependencies:
+            - "L-worker-domain"
+            - "L-worker-gateway"
+          policies: []
+          rules: []
+        - id: "L-worker-gateway"
+          name: "ゲートウェイ層"
+          responsibility: "RDB アクセス、メール送信サービス連携。Backend API と gateway を共有"
+          allowed_dependencies: []
+          policies: []
+          rules: []
+      cross_layer_policies: []
+      cross_layer_rules:
+        - id: "CLR-003"
+          name: "ジョブ冪等性"
+          description: "CronJob はジョブ実行 ID で重複実行を検知する。MQ ワーカーは MessageId で重複メッセージを検知する"
+          reason: "冪等性方針 CTP-005 のワーカー側対応"
+          source_model: "CTP-005"
+          confidence: "user"
+      diagram_mermaid: |
+        graph TD
+          P[presentation] --> U[usecase]
+          U --> D[domain]
+          U --> R[repository]
+          R --> D
+          R --> G[gateway]
+
+data_architecture:
+  entities:
+    - id: "E-001"
+      name: "書籍"
+      source_info: "情報: 書籍"
+      model_type: "event_snapshot"
+      attributes:
+        - name: "book_id"
+          type: "string"
+          description: "書籍ID"
+          nullable: false
+          primary_key: true
+        - name: "title"
+          type: "string"
+          description: "タイトル"
+          nullable: false
+          primary_key: false
+        - name: "author"
+          type: "string"
+          description: "著者"
+          nullable: false
+          primary_key: false
+        - name: "isbn"
+          type: "string"
+          description: "ISBN"
+          nullable: true
+          primary_key: false
+        - name: "publisher"
+          type: "string"
+          description: "出版社"
+          nullable: true
+          primary_key: false
+        - name: "genre"
+          type: "string"
+          description: "ジャンル（文学/理工/児童書/社会科学/自然科学/芸術/その他）"
+          nullable: false
+          primary_key: false
+        - name: "material_type"
+          type: "string"
+          description: "資料種別（紙書籍/電子書籍）"
+          nullable: false
+          primary_key: false
+        - name: "shelf_location"
+          type: "string"
+          description: "配架場所"
+          nullable: true
+          primary_key: false
+        - name: "current_status"
+          type: "string"
+          description: "現在の貸出状態（在庫あり/貸出中/延滞中）"
+          nullable: false
+          primary_key: false
+      relationships:
+        - target_entity: "E-003"
+          type: "1:N"
+          description: "書籍は複数の貸出記録を持つ"
+        - target_entity: "E-004"
+          type: "1:N"
+          description: "書籍は複数の予約を持つ"
+    - id: "E-002"
+      name: "利用者"
+      source_info: "情報: 利用者"
+      model_type: "event_snapshot"
+      attributes:
+        - name: "user_number"
+          type: "string"
+          description: "利用者番号"
+          nullable: false
+          primary_key: true
+        - name: "full_name"
+          type: "string"
+          description: "氏名"
+          nullable: false
+          primary_key: false
+        - name: "contact"
+          type: "string"
+          description: "連絡先"
+          nullable: true
+          primary_key: false
+        - name: "email"
+          type: "string"
+          description: "メールアドレス"
+          nullable: false
+          primary_key: false
+        - name: "user_type"
+          type: "string"
+          description: "利用者種別（一般/学生/児童）"
+          nullable: false
+          primary_key: false
+        - name: "registered_at"
+          type: "datetime"
+          description: "登録日"
+          nullable: false
+          primary_key: false
+      relationships:
+        - target_entity: "E-003"
+          type: "1:N"
+          description: "利用者は複数の貸出記録を持つ"
+        - target_entity: "E-004"
+          type: "1:N"
+          description: "利用者は複数の予約を持つ"
+    - id: "E-003"
+      name: "貸出"
+      source_info: "情報: 貸出"
+      model_type: "event_snapshot"
+      attributes:
+        - name: "loan_id"
+          type: "string"
+          description: "貸出ID"
+          nullable: false
+          primary_key: true
+        - name: "book_id"
+          type: "string"
+          description: "書籍ID（外部キー）"
+          nullable: false
+          primary_key: false
+        - name: "user_number"
+          type: "string"
+          description: "利用者番号（外部キー）"
+          nullable: false
+          primary_key: false
+        - name: "loan_date"
+          type: "datetime"
+          description: "貸出日"
+          nullable: false
+          primary_key: false
+        - name: "due_date"
+          type: "datetime"
+          description: "返却期限"
+          nullable: false
+          primary_key: false
+        - name: "is_overdue"
+          type: "boolean"
+          description: "延滞フラグ"
+          nullable: false
+          primary_key: false
+        - name: "current_status"
+          type: "string"
+          description: "現在の貸出状態（貸出中/返却済/延滞中）"
+          nullable: false
+          primary_key: false
+        - name: "idempotency_key"
+          type: "string"
+          description: "冪等キー（UNIQUE 制約）"
+          nullable: false
+          primary_key: false
+      relationships:
+        - target_entity: "E-001"
+          type: "N:1"
+          description: "貸出は 1 つの書籍に紐づく"
+        - target_entity: "E-002"
+          type: "N:1"
+          description: "貸出は 1 人の利用者に紐づく"
+    - id: "E-004"
+      name: "予約"
+      source_info: "情報: 予約"
+      model_type: "event_snapshot"
+      attributes:
+        - name: "reservation_id"
+          type: "string"
+          description: "予約ID"
+          nullable: false
+          primary_key: true
+        - name: "book_id"
+          type: "string"
+          description: "書籍ID（外部キー）"
+          nullable: false
+          primary_key: false
+        - name: "user_number"
+          type: "string"
+          description: "利用者番号（外部キー）"
+          nullable: false
+          primary_key: false
+        - name: "reserved_at"
+          type: "datetime"
+          description: "予約日"
+          nullable: false
+          primary_key: false
+        - name: "reservation_order"
+          type: "integer"
+          description: "予約順"
+          nullable: false
+          primary_key: false
+        - name: "current_status"
+          type: "string"
+          description: "予約状態（予約受付中/予約確保済/予約キャンセル）"
+          nullable: false
+          primary_key: false
+        - name: "idempotency_key"
+          type: "string"
+          description: "冪等キー（UNIQUE 制約）"
+          nullable: false
+          primary_key: false
+      relationships:
+        - target_entity: "E-001"
+          type: "N:1"
+          description: "予約は 1 つの書籍に紐づく"
+        - target_entity: "E-002"
+          type: "N:1"
+          description: "予約は 1 人の利用者に紐づく"
+    - id: "E-005"
+      name: "統計情報"
+      source_info: "情報: 統計情報"
+      model_type: "resource_mutable"
+      attributes:
+        - name: "period"
+          type: "string"
+          description: "集計期間"
+          nullable: false
+          primary_key: true
+        - name: "loan_count"
+          type: "integer"
+          description: "貸出回数"
+          nullable: false
+          primary_key: false
+        - name: "popular_books_ranking"
+          type: "text"
+          description: "人気書籍ランキング（JSON 形式）"
+          nullable: true
+          primary_key: false
+      relationships: []
+    - id: "E-006"
+      name: "セッション情報"
+      source_info: "なし"
+      model_type: "resource_mutable"
+      attributes:
+        - name: "session_id"
+          type: "string"
+          description: "セッションID"
+          nullable: false
+          primary_key: true
+        - name: "user_id"
+          type: "string"
+          description: "ユーザーID"
+          nullable: false
+          primary_key: false
+        - name: "access_token"
+          type: "string"
+          description: "アクセストークン"
+          nullable: false
+          primary_key: false
+        - name: "refresh_token"
+          type: "string"
+          description: "リフレッシュトークン"
+          nullable: false
+          primary_key: false
+        - name: "role"
+          type: "string"
+          description: "ロール（利用者/司書）"
+          nullable: false
+          primary_key: false
+        - name: "expires_at"
+          type: "datetime"
+          description: "有効期限"
+          nullable: false
+          primary_key: false
+      relationships: []
+  storage_mapping:
+    - entity_id: "E-001"
+      storage_type: "rdb"
+      reason: "状態モデル「書籍貸出状態」があり、トランザクション整合性が必要"
+      confidence: "high"
+    - entity_id: "E-002"
+      storage_type: "rdb"
+      reason: "個人情報を含み、貸出・予約との外部キー関係があるためトランザクション整合性が必要"
+      confidence: "high"
+    - entity_id: "E-003"
+      storage_type: "rdb"
+      reason: "書籍貸出状態の状態遷移を伴い、書籍・利用者との外部キー関係があるためトランザクション整合性が必要"
+      confidence: "high"
+    - entity_id: "E-004"
+      storage_type: "rdb"
+      reason: "予約状態の状態遷移を伴い、書籍・利用者との外部キー関係があるためトランザクション整合性が必要"
+      confidence: "high"
+    - entity_id: "E-005"
+      storage_type: "rdb"
+      reason: "統計データは貸出データからの集計結果であり、RDB で管理する"
+      confidence: "default"
+    - entity_id: "E-006"
+      storage_type: "cache"
+      reason: "セッション情報は頻繁にアクセスされ、有効期限付きで管理するためキャッシュが適切"
+      confidence: "high"
+  diagram_mermaid: |
+    erDiagram
+      BOOK ||--o{ LOAN : has
+      BOOK ||--o{ RESERVATION : has
+      USER ||--o{ LOAN : borrows
+      USER ||--o{ RESERVATION : reserves
+      LOAN }o--|| BOOK : "belongs to"
+      LOAN }o--|| USER : "belongs to"
+      RESERVATION }o--|| BOOK : "belongs to"
+      RESERVATION }o--|| USER : "belongs to"

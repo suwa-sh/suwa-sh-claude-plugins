@@ -1,0 +1,33 @@
+uc: "在庫状況を確認する"
+business: "統計業務"
+buc: "統計・レポートフロー"
+
+models:
+  - name: "在庫状況確認Model"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "データ取得"
+        where: "条件に基づく"
+    indexes_needed: []
+  - name: "statistics"
+    rdra_info: "統計情報"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "データ取得"
+        where: "条件に基づく"
+    indexes_needed: []
+
+kvs: []
+object_storage: []

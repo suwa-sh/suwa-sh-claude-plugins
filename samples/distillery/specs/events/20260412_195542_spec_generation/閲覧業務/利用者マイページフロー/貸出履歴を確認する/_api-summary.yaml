@@ -1,0 +1,13 @@
+uc: "貸出履歴を確認する"
+business: "閲覧業務"
+buc: "利用者マイページフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/users/me/loans"
+    summary: "自分の貸出履歴取得"
+    tags:
+      - "閲覧業務"
+
+async_events:
+  []
+schemas: []

@@ -93,9 +93,13 @@ description: >
 1. **進捗更新（開始）:** `progress-update.js step <id> running --subagent-task "<タスク名>"`
 2. **サブエージェント起動:** `references/subagent-template.md` のテンプレートに各 Step の変数を埋めて指示
 3. **サブエージェント完了後の対話処理（全 Step 共通）:**
-   サブエージェント結果に「質問」または「確認推奨項目リスト」（confidence: low/medium、または自動推論で埋めた項目）が含まれている場合、対話を**必ず発火する**:
+   サブエージェント結果に「質問」または「確認推奨項目リスト」（confidence: low の項目）が含まれている場合、対話を**必ず発火する**:
    a. `progress-update.js dialogue <step_id> "質問内容" --options "選択肢1,選択肢2"` でダッシュボード更新
-   b. ユーザーにチャットで質問または確認推奨項目を中継し、回答を待つ
+   b. ユーザーにチャットで確認推奨項目を中継し、回答を待つ。
+      **提示フォーマット:** 各項目について必ず以下をセットで提示すること（要約表やタイトルのみの提示は不可）:
+      - 全選択肢（Option A/B/C...）と各選択肢の一行説明
+      - ⭐推奨マーク付きの推奨値
+      - 推奨理由（confidence と根拠）
    c. 回答を受け取ったら `progress-update.js dialogue-clear`
    d. 回答内容を反映して同スキルのサブエージェントを再起動する（または回答不要でそのまま完了チェックへ進む）
 
@@ -104,12 +108,12 @@ description: >
 
    **対話スキップ検知:** 全 Step で、サブエージェントが一度も質問・確認推奨項目を返さずに completed を返した場合は、オーケストレータ側で以下をチェックする:
    - Step 1: `docs/rdra/latest/` の自動追加アクター/情報の有無
-   - Step 2: `docs/nfr/latest/nfr-grade.yaml` 内の confidence が low/medium の項目、または source_model が自動推論の項目
-   - Step 3: `docs/arch/latest/arch-design.yaml` 内の confidence が low/medium の項目
+   - Step 2: `docs/nfr/latest/nfr-grade.yaml` 内の confidence が low の項目
+   - Step 3: `docs/arch/latest/arch-design.yaml` 内の confidence が low の項目
    - Step 4a: MCL 成果物の生成状態を確認（`docs/infra/events/{event_id}/specs/` の存在）
-   - Step 4b: `docs/infra/latest/infra-event.yaml` 内の confidence が low/medium の項目（クラウドベンダー、リージョン、コスト方針等）
-   - Step 5: `docs/design/latest/design-event.yaml` 内の confidence が low/medium の項目
-   - Step 6: `docs/specs/latest/` の API 命名/エラー戦略/DB 正規化レベル等の自動推論項目
+   - Step 4b: `docs/infra/latest/infra-event.yaml` 内の confidence が low の項目（クラウドベンダー、リージョン、コスト方針等）
+   - Step 5: `docs/design/latest/design-event.yaml` 内の confidence が low の項目
+   - Step 6: `docs/specs/latest/` の API 命名/エラー戦略/DB 正規化レベル等で confidence が low の項目
 
    該当項目が存在する場合は、オーケストレータがそれらを抽出して上記の対話フロー (a〜d) を発火する。
 4. **完了チェック:** 必須ファイルの存在を確認

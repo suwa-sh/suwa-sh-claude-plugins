@@ -1,0 +1,13 @@
+uc: "書籍を予約する"
+business: "予約管理業務"
+buc: "予約管理フロー"
+endpoints:
+  - method: "POST"
+    path: "/api/v1/reservations"
+    summary: "書籍予約申請"
+    tags:
+      - "予約管理業務"
+
+async_events:
+  []
+schemas: []

@@ -727,7 +727,7 @@ RDRA モデル (`docs/rdra/latest/`) に存在しないアクター / 情報 / B
 - API 命名規則（REST / GraphQL / 命名スタイル）
 - エラーハンドリング戦略（例外設計 / HTTP ステータスポリシー）
 - RDB 正規化レベル（第3正規形 / 非正規化許容 等）
-- confidence: low / medium の項目
+- confidence: low の項目
 
 対話を省略して completed を返してはならない。
 

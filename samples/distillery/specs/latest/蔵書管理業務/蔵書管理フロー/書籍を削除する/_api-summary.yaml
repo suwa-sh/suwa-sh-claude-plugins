@@ -1,0 +1,11 @@
+uc: "書籍を削除する"
+business: "蔵書管理業務"
+buc: "蔵書管理フロー"
+endpoints:
+  - method: "DELETE"
+    path: "/api/v1/books/{id}"
+    summary: "書籍の削除"
+    tags:
+      - "蔵書管理"
+async_events: []
+schemas: []

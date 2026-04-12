@@ -1,0 +1,24 @@
+uc: "予約状況を確認する"
+business: "閲覧業務"
+buc: "利用者マイページフロー"
+
+models:
+  - name: "予約状況確認Model"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "予約"
+
+tables:
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "データ取得"
+        where: "条件に基づく"
+    indexes_needed: []
+
+kvs: []
+object_storage: []

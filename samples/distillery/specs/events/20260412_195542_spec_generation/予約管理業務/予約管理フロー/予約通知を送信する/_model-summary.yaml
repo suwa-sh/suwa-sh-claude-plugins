@@ -1,0 +1,33 @@
+uc: "予約通知を送信する"
+business: "予約管理業務"
+buc: "予約管理フロー"
+
+models:
+  - name: "予約通知送信Model"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "予約"
+
+tables:
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "データ取得"
+        where: "条件に基づく"
+    indexes_needed: []
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "*"
+            value: "データ取得"
+        where: "条件に基づく"
+    indexes_needed: []
+
+kvs: []
+object_storage: []

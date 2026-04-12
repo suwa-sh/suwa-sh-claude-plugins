@@ -1,0 +1,93 @@
+uc: "書籍を貸出する"
+business: "貸出管理業務"
+buc: "貸出管理フロー"
+
+models:
+  - name: "LoanForm"
+    tier: "tier-frontend"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "CreateLoanRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "貸出"
+  - name: "CreateLoanCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "貸出"
+  - name: "Loan"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "貸出"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "INSERT"
+        columns:
+          - name: "id"
+            value: "UUID生成"
+          - name: "book_id"
+            value: "リクエストのbook_id"
+          - name: "user_id"
+            value: "トークンのuser_id"
+          - name: "loan_date"
+            value: "現在日付"
+          - name: "due_date"
+            value: "現在日付 + 14日"
+          - name: "is_overdue"
+            value: "false"
+          - name: "idempotency_key"
+            value: "X-Idempotency-Keyヘッダ値"
+        where: ""
+    indexes_needed:
+      - columns:
+          - "book_id"
+        reason: "書籍別貸出検索"
+        access_pattern: "書籍の現在の貸出状態確認"
+      - columns:
+          - "user_id"
+        reason: "利用者別貸出一覧"
+        access_pattern: "マイページの貸出履歴表示"
+      - columns:
+          - "idempotency_key"
+        reason: "冪等キー一意制約"
+        access_pattern: "重複リクエスト検知"
+      - columns:
+          - "due_date"
+          - "return_date"
+        reason: "延滞検出バッチ"
+        access_pattern: "return_date IS NULL AND due_date < NOW()"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns:
+          - name: "status"
+            value: "貸出可否判定"
+        where: "id = :book_id"
+      - type: "UPDATE"
+        columns:
+          - name: "status"
+            value: "on_loan"
+        where: "id = :book_id"
+    indexes_needed: []
+
+kvs:
+  - key_pattern: "idempotency:{idempotency_key}"
+    purpose: "冪等キー重複チェック"
+    ttl: "86400"
+    value_type: "string"
+    value_description: "処理済みレスポンスJSON"
+
+object_storage: []

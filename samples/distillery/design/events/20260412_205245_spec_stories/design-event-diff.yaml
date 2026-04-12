@@ -1,0 +1,99 @@
+event_id: "20260412_205245_spec_stories"
+created_at: "2026-04-12T20:52:45"
+source: "spec-stories スキルによる全 UC ページ Story + 共通コンポーネント Story 生成"
+trigger_event: "design:20260412_164650_design_system"
+
+components:
+  common:
+    - name: "Logo"
+      path: "src/components/ui/Logo.tsx"
+      description: "ブランドロゴ表示コンポーネント。full/icon/stacked の3バリアント"
+    - name: "EmptyState"
+      path: "src/components/common/EmptyState.tsx"
+      description: "データ0件の空状態表示。アイコン + メッセージ + アクションボタン"
+    - name: "LoadingSkeleton"
+      path: "src/components/common/LoadingSkeleton.tsx"
+      description: "読み込み中スケルトン。table-row / card / form の3バリアント"
+    - name: "ErrorBanner"
+      path: "src/components/common/ErrorBanner.tsx"
+      description: "APIエラー時のバナー表示。RFC 7807 ProblemDetails 対応"
+    - name: "ConfirmActionModal"
+      path: "src/components/common/ConfirmActionModal.tsx"
+      description: "破壊的操作の確認ダイアログ。削除・キャンセル操作前に使用"
+    - name: "PaginatedList"
+      path: "src/components/common/PaginatedList.tsx"
+      description: "ページネーション付き一覧コンテナ"
+    - name: "UserPortalShell"
+      path: "src/components/common/UserPortalShell.tsx"
+      description: "利用者ポータル共通レイアウト。ヘッダー + ナビ + フッター"
+    - name: "AdminPortalShell"
+      path: "src/components/common/AdminPortalShell.tsx"
+      description: "司書ポータル共通レイアウト。サイドバー + ヘッダー + メイン"
+
+screens:
+  user_portal:
+    - name: "蔵書検索画面"
+      story: "src/stories/Pages/UserPortal/BookSearch.stories.tsx"
+      uc: "書籍を検索する"
+      variants: ["Default", "DetailedResults", "EmptyResults", "Loading"]
+    - name: "貸出手続き画面"
+      story: "src/stories/Pages/UserPortal/LoanCheckout.stories.tsx"
+      uc: "書籍を貸出する"
+      variants: ["Default", "Completed", "Error", "Loading"]
+    - name: "返却手続き画面"
+      story: "src/stories/Pages/UserPortal/LoanReturn.stories.tsx"
+      uc: "書籍を返却する"
+      variants: ["Default", "Empty", "Loading"]
+    - name: "予約申請画面"
+      story: "src/stories/Pages/UserPortal/ReservationNew.stories.tsx"
+      uc: "書籍を予約する"
+      variants: ["Default", "Completed", "Error", "Loading"]
+    - name: "予約管理画面"
+      story: "src/stories/Pages/UserPortal/ReservationManage.stories.tsx"
+      uc: "予約をキャンセルする"
+      variants: ["Default", "WithCancelDialog", "Empty"]
+    - name: "貸出履歴画面"
+      story: "src/stories/Pages/UserPortal/LoanHistory.stories.tsx"
+      uc: "貸出履歴を確認する"
+      variants: ["Default", "Empty", "Loading"]
+    - name: "予約状況画面"
+      story: "src/stories/Pages/UserPortal/ReservationStatus.stories.tsx"
+      uc: "予約状況を確認する"
+      variants: ["Default", "Empty", "Loading"]
+  admin_portal:
+    - name: "蔵書登録画面"
+      story: "src/stories/Pages/AdminPortal/BookRegister.stories.tsx"
+      uc: "書籍を登録する"
+      variants: ["Default", "ValidationError", "ServerError"]
+    - name: "蔵書編集画面"
+      story: "src/stories/Pages/AdminPortal/BookEdit.stories.tsx"
+      uc: "書籍情報を編集する"
+      variants: ["Default", "Loading"]
+    - name: "蔵書管理画面"
+      story: "src/stories/Pages/AdminPortal/BookManage.stories.tsx"
+      uc: "書籍を削除する"
+      variants: ["Default", "WithDeleteDialog", "Loading"]
+    - name: "貸出状況一覧画面"
+      story: "src/stories/Pages/AdminPortal/LoanStatus.stories.tsx"
+      uc: "貸出状況を確認する"
+      variants: ["Default", "Empty", "Loading"]
+    - name: "延滞管理画面"
+      story: "src/stories/Pages/AdminPortal/OverdueManage.stories.tsx"
+      uc: "延滞を検出する"
+      variants: ["Default", "Empty", "Loading"]
+    - name: "利用者登録画面"
+      story: "src/stories/Pages/AdminPortal/UserRegister.stories.tsx"
+      uc: "利用者を登録する"
+      variants: ["Default", "ValidationError", "ServerError"]
+    - name: "利用者編集画面"
+      story: "src/stories/Pages/AdminPortal/UserEdit.stories.tsx"
+      uc: "利用者情報を編集する"
+      variants: ["Default", "Loading"]
+    - name: "在庫状況画面"
+      story: "src/stories/Pages/AdminPortal/Inventory.stories.tsx"
+      uc: "在庫状況を確認する"
+      variants: ["Default", "Loading"]
+    - name: "統計レポート画面"
+      story: "src/stories/Pages/AdminPortal/StatsReport.stories.tsx"
+      uc: "統計レポートを閲覧する"
+      variants: ["Default", "Loading"]

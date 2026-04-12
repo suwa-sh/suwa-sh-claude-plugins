@@ -1,0 +1,13 @@
+uc: "書籍を検索する"
+business: "閲覧業務"
+buc: "蔵書検索フロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/books"
+    summary: "書籍検索（キーワード、ジャンル、資料種別フィルター）"
+    tags:
+      - "閲覧業務"
+
+async_events:
+  []
+schemas: []
