@@ -19,18 +19,19 @@
   ~/.local/bin/claude plugin install <プラグイン名>@<marketplace名>
   ```
 
-### distillery 開発プロセス
+### プラグイン開発プロセス
 
-1. **別ディレクトリで動作確認** — `/private/tmp/distillery-test/` 等で `/distillery:dist-pipeline` を実行
-2. **キャッシュの変更をリポジトリに取り込む** — 動作確認中に `~/.claude/plugins/cache/` 配下のスキルファイルを直接修正した場合、その差分を本リポジトリの `plugins/distillery/skills/` に反映する
-3. **実行結果をサンプルに反映** — テスト出力の `docs/` からドキュメント類（yaml, md, tsv）を `samples/distillery/` にコピー（storybook-app, node_modules は除外）
-4. **ドキュメント不足の見直し** — README.md のスキル名・コマンド例・Skills テーブルが最新のスキル構成と一致しているか確認
+1. **別ディレクトリで動作確認** — `/private/tmp/<plugin>-test/` 等でスキルを実行
+2. **キャッシュの変更をリポジトリに取り込む** — 動作確認中に `~/.claude/plugins/cache/` 配下のスキルファイルを直接修正した場合、その差分を本リポジトリの `plugins/<plugin>/` に反映する
+3. **実行結果をサンプルに反映**（サンプルがあるプラグインのみ） — テスト出力からドキュメント類（yaml, md, tsv）を `samples/<plugin>/` にコピー（storybook-app, node_modules 等のビルド成果物は除外）
+4. **ドキュメント不足の見直し** — README.md のスキル名・コマンド例・機能説明が最新のスキル構成と一致しているか確認
 5. **コミット＆プッシュ** — Conventional Commits 規約でコミットし、push
 6. **マーケットプレイス更新＆プラグイン再インストール**:
    ```bash
    ~/.local/bin/claude plugin marketplace update suwa-sh-claude-plugins
-   ~/.local/bin/claude plugin install distillery@suwa-sh-claude-plugins
+   ~/.local/bin/claude plugin install <プラグイン名>@suwa-sh-claude-plugins
    ```
+7. **バージョン確認** — `~/.local/bin/claude plugin list` で該当プラグインのバージョン（コミットハッシュ）が push したコミットと一致することを確認する
 
 ### コミット規約
 
