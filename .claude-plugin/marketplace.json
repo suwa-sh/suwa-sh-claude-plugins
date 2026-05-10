@@ -12,7 +12,7 @@
     {
       "name": "launch-claude",
       "source": "./plugins/launch-claude",
-      "description": "ghq管理リポジトリでGhosttyタブにClaude Codeセッションを起動"
+      "description": "ghq管理リポジトリでGhosttyスプリットにClaude Codeセッションを起動"
     },
     {
       "name": "distillery",

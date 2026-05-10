@@ -1,11 +1,11 @@
 # launch-claude
 
-ghq 管理リポジトリで Ghostty タブに Claude Code セッションを起動するプラグイン。
+ghq 管理リポジトリで Ghostty スプリットに Claude Code セッションを起動するプラグイン。
 
 ## 概要
 
 リポジトリ名やキーワードを伝えるだけで、ghq 管理下のリポジトリを検索し、
-Ghostty の新しいタブで Claude Code セッション（`--dangerously-skip-permissions`）を起動する。
+Ghostty の新しいスプリット（既定では右側）で Claude Code セッション（`--dangerously-skip-permissions`）を起動する。
 
 ## インストール
 
@@ -19,7 +19,7 @@ Ghostty の新しいタブで Claude Code セッション（`--dangerously-skip-
 | ツール     | 用途                       | インストール                               |
 | ---------- | -------------------------- | ------------------------------------------ |
 | ghq        | リポジトリ管理・検索       | `brew install ghq`                         |
-| Ghostty    | ターミナル（タブ起動先）   | [ghostty.org](https://ghostty.org/)        |
+| Ghostty    | ターミナル（スプリット起動先） | [ghostty.org](https://ghostty.org/)    |
 | claude CLI | Claude Code セッション実行 | `npm install -g @anthropic-ai/claude-code` |
 
 ## 使い方
@@ -33,5 +33,5 @@ Ghostty の新しいタブで Claude Code セッション（`--dangerously-skip-
 
 ## 注意事項
 
-- Ghostty が起動済み（ウィンドウが存在する状態）である必要がある
+- Ghostty が起動済みで、フォーカス済みのターミナル（フロントウィンドウの選択中タブ）が存在する必要がある
 - macOS 専用（AppleScript を使用）
