@@ -117,7 +117,7 @@ on run argv
   tell application "Ghostty"
     activate
     set cfg to new surface configuration
-    set command of cfg to zsh_path & " -l -i -c 'cd " & target_dir & " && exec " & claude_path & " --dangerously-skip-permissions -n " & session_name & "'"
+    set command of cfg to zsh_path & " -l -i -c 'cd " & target_dir & " && exec " & claude_path & " --dangerously-skip-permissions -n \"" & session_name & "\"'"
     set currentTerm to focused terminal of selected tab of front window
     if split_dir is "right" then
       set newTerm to split currentTerm direction right with configuration cfg
