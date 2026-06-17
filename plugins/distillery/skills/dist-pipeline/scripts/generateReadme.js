@@ -31,6 +31,9 @@ function yVal(t, k) { const m = t.match(new RegExp(`(?:^|\\n)\\s*${k}:\\s*["']?(
 function yNested(t, p, c) { const m = t.match(new RegExp(`${p}:\\s*\\n\\s+${c}:\\s*["']?([^"'\\n]+?)["']?\\s*(?:\\n|$)`)); return m ? m[1].trim() : null; }
 function yCnt(t, re) { return (t.match(re) || []).length; }
 
+// 要素の表示名に半角括弧 () が含まれると mermaid のノード ID/構文が壊れるため、() を空白に置換する。
+function mmName(s) { return s.replace(/[()]/g, ' '); }
+
 /** Extract mermaid blocks from md that follow a heading matching headingPattern */
 function extractMermaidAfterHeading(md, headingPattern) {
   const results = [];
@@ -278,8 +281,8 @@ L();
 L('```mermaid');
 L('graph TB');
 L(`  SYS["${sysName}"]`);
-for (const a of actorNames) L(`  ${a.replace(/\s/g, '_')}(["${a}"]):::actor --> SYS`);
-for (const e of extNames) L(`  SYS --> ${e.replace(/\s/g, '_')}(["${e}"]):::external`);
+for (const a of actorNames) { const n = mmName(a); L(`  ${n.replace(/\s/g, '_')}(["${n}"]):::actor --> SYS`); }
+for (const e of extNames) { const n = mmName(e); L(`  SYS --> ${n.replace(/\s/g, '_')}(["${n}"]):::external`); }
 L('  classDef actor fill:#2563EB,color:#fff,stroke:none');
 L('  classDef external fill:#6B7280,color:#fff,stroke:none');
 L('```');
