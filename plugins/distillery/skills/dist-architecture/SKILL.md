@@ -27,6 +27,45 @@ RDRA モデルと NFR グレードからシステム・アプリケーション�
 
 ## 前提条件
 
+### 依存スキル
+
+本スキルは DDD 戦略的設計のリファレンスとして `ddd-architecture` スキルに依存する（domain_architecture セクション生成時）。パイプライン開始前に以下のスキルが利用可能か確認すること:
+
+```bash
+# 依存スキルの存在チェック（user skill / plugin skill / repo skill 全パスを走査）
+for skill in ddd-architecture; do
+  if ls ~/.claude/skills/$skill/SKILL.md \
+        ~/.claude/plugins/*/plugins/*/skills/$skill/SKILL.md \
+        ~/.claude/plugins/*/skills/$skill/SKILL.md \
+        /Users/*/src/**/plugins/ddd/skills/$skill/SKILL.md 2>/dev/null | head -1 > /dev/null 2>&1; then
+    echo "OK: $skill"
+  else
+    echo "MISSING: $skill"
+  fi
+done
+```
+
+MISSING の場合:
+1. ユーザーに「ddd-architecture スキルがインストールされていません。インストールしますか？」と確認する
+2. 承認後、以下のコマンドでインストールを試みる:
+   ```bash
+   ~/.local/bin/claude plugin marketplace update suwa-sh-claude-plugins
+   ~/.local/bin/claude plugin install ddd@suwa-sh-claude-plugins
+   ```
+3. インストールに失敗した場合は、以下の手動インストール手順を提示する:
+   ```
+   ddd プラグインの手動インストール手順:
+   1. https://github.com/suwa-sh/suwa-sh-claude-plugins をクローン
+   2. リポジトリ内の plugins/ddd/skills/ 配下の各スキルを user skill ディレクトリ（`~/.claude/skills/`）にコピー
+      - ddd-architecture/
+      - ddd-tactical-implementation/（将来 dist-spec から参照予定）
+   3. コピー後、Claude Code を再起動
+   ```
+
+ddd-architecture は **DDD の概念リファレンス** として位置付ける。本スキル（dist-architecture）は RDRA との結線ルールと出力規約を独自に持ち、DDD 用語の定義 / パターン解説は ddd-architecture/references/ を参照する形にする。詳細は `references/arch-domain-patterns.md` を参照。
+
+### 入力データ
+
 - `docs/rdra/latest/*.tsv` が存在すること（requirements スキル実行済み）
 - `docs/rdra/latest/システム概要.json` が存在すること
 - `docs/nfr/latest/nfr-grade.yaml` が存在すること（quality-attributes スキル実行済み）
