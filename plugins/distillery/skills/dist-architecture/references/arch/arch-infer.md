@@ -72,7 +72,45 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
 | E（移行性） | デプロイ戦略（Blue/Green, Canary 等） |
 | F（環境） | モバイル対応、ブラウザ対応 |
 
-### 3. システムアーキテクチャの推論
+### 3. ドメインアーキテクチャの推論（Part 0）
+
+**Part 1〜3 より先に実施する**。問題空間（DDD 戦略設計）を解決空間（技術選定）より先に確定する。
+
+`arch-inference-rules.md` の「Part 0: ドメインアーキテクチャ推論ルール」および `references/arch-domain-patterns.md` の Q1〜Q4 詳細ルールに従い:
+
+1. **Q1: サブドメイン分類**
+   - BUC.tsv のクラスタリング（同一 UC グループ + 同じ主アクター）
+   - システム概要.json の「競争優位 / 差別化 / 独自 / コア」キーワード検出 → Core 候補（confidence: **medium 上限**）
+   - 外部システム.tsv の機能カテゴリ一致 → Generic（confidence: high）
+   - 上記なし → Supporting（default）
+   - 各 SD に `investment_policy` の定型文を設定（`arch-domain-patterns.md` 参照）
+
+2. **Q2: 境界づけられたコンテキスト**
+   - 情報.tsv の同名異義語検出 → BC 分割の **仮説提示**（confidence: **medium 上限**）
+   - 状態.tsv の状態モデル独立性 / BUC アクター集合の分離 → BC 候補
+   - 外部システム連携領域ごとに独立 BC（Generic 寄り）
+   - 各 BC に `ubiquitous_language` を最低 1 件抽出（情報.tsv エンティティ名 / 状態.tsv 状態名 / BUC アクティビティ動詞 から）
+   - `team_ownership` は `null` 固定（対話で確認）
+   - `owned_entity_ids[]` で entity の所属を確定（**唯一の正規参照**）
+
+3. **Q3: コンテキストマップ**
+   - BUC.tsv の UC 内参照関係から依存方向（upstream / downstream）を判定
+   - 外部システム連携 → ACL or Conformist
+   - 自前 BC 同士の依存 → OHS + Published Language or Customer-Supplier
+   - `integration_events: []` は空配列で良い（具体化は dist-spec の責務）
+
+4. **Q4: 集約境界仮説**
+   - 情報.tsv の relationships（所有 / 包含 / 明細） → 親 = root 仮説（confidence: **low 上限**）
+   - 状態.tsv の状態遷移波及 → 集約境界仮説
+   - event_snapshot 型 entity → aggregate root の有力候補
+   - 条件.tsv の「〜できない / 〜必須 / 〜重複禁止 / 〜上限」表現 → `invariants[]` に抽出
+   - `note` に「仮説。最終確定は dist-spec or ddd-tactical-implementation で行う」旨を必ず記入
+
+5. **Mermaid 図**: BC 間関係を `graph LR` 形式で生成。Subdomain.type を BC ノードラベルに反映
+
+注: confidence 上限ルール（Core SD = medium / BC = medium / Aggregate = low）は validator が自動 WARN する。詳細は `arch-domain-patterns.md` 参照。
+
+### 4. システムアーキテクチャの推論（Part 1）
 
 `arch-inference-rules.md` の「Part 1: システムアーキテクチャ推論ルール」に従い:
 
@@ -82,8 +120,10 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
 4. **ティア共通方針・ルール**: ティアを横断する方針・ルールを設定
 5. **Mermaid 図**: ティア構成図を `graph TD` 形式で生成
 6. **i18n 方針**: RDRA シグナルから多言語対応の要否とアーキテクチャ方針を推論
+7. **BC : tier 対応形態の暫定推定**（Part 0 連携）: BC 数 / NFR A・B / BUC 数 から モノリス / モジュラモノリス / マイクロサービス を仮選定（最終確認は Phase 1 対話）
+8. **認可モデルへの BC 重み付け**（Part 0 連携）: Core BC は厳格認可 / Generic BC は簡易認可（`arch-inference-rules.md` の「サブドメイン分類による認可重み付け」参照）
 
-### 4. アプリケーションアーキテクチャの推論
+### 5. アプリケーションアーキテクチャの推論（Part 2）
 
 `arch-inference-rules.md` の「Part 2: アプリケーションアーキテクチャ推論ルール」に従い:
 
@@ -93,7 +133,7 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
 4. **レイヤー共通方針・ルール**: レイヤーを横断する方針・ルールを設定（ティア内）
 5. **Mermaid 図**: ティアごとのレイヤー依存図を `graph TD` 形式で生成
 
-### 5. データアーキテクチャの推論
+### 6. データアーキテクチャの推論（Part 3）
 
 `arch-inference-rules.md` の「Part 3: データアーキテクチャ推論ルール」に従い:
 
@@ -102,8 +142,9 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
 3. **リレーション推論**: 関連情報からカーディナリティを推論
 4. **ストレージマッピング**: 各エンティティのストレージ種別を推論
 5. **Mermaid 図**: 概念モデルを `erDiagram` 形式で生成
+6. **BC.owned_entity_ids[] との整合性**（Part 0 連携）: 全 entity が BC.owned_entity_ids[] のいずれかに割当されていること。未割当 entity は対話で確認
 
-### 6. confidence の付与
+### 7. confidence の付与
 
 全ての方針・ルール・マッピングに confidence を付与する:
 - `high`: RDRA/NFR から直接推論できた
@@ -111,6 +152,13 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
 - `low`: 弱い根拠での推論
 - `default`: 一般的なベストプラクティスを適用
 - confidence は保守的に付与し、曖昧な場合は低めにする
+
+**ドメインアーキテクチャの confidence 上限ルール**:
+- Core サブドメイン → `medium` 上限（経営判断）
+- BC 分割 → `medium` 上限（言語境界は機械判定が粗い）
+- 集約境界仮説 → `low` 上限（戦略段階の仮説）
+
+validator が上限超過を自動 WARN する。
 
 ### 8. source_model への NFR ID 明記
 
@@ -122,15 +170,18 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
 - 全ての重要メトリクス（important: true）が少なくとも1つの policy/rule の source_model で参照されていることを目標とする
 - カバレッジレポートで RDRA 網羅率・NFR 網羅率ともに 100% を達成すること
 
-### 7. 差分更新モード時の処理
+ドメインアーキテクチャの `source_model` は RDRA 要素のみ（NFR ID は通常不要）。例: `"BUC: 会議室利用業務, 情報: 予約情報"`。
+
+### 9. 差分更新モード時の処理
 
 既存の `docs/arch/latest/arch-design.yaml` がある場合:
 
 1. RDRA の差分（`docs/rdra/events/{最新event_id}/_changes.md`）または NFR の差分を読み取る
-2. 変更された要素に関連するアーキテクチャ項目を特定する
+2. 変更された要素に関連するアーキテクチャ項目を特定する（domain_architecture を含む全セクション）
 3. 該当項目のみを再推論する
 4. 既存設計の `confidence: "user"` の項目は再推論しない（ユーザー確定値を尊重）
 5. 再推論結果と既存値の差異をリストアップする
+6. **domain_architecture が既存スナップショットに無い場合**: 自動で最小構成を埋めない（F18 対応）。「ドメイン設計を新規生成しますか？」とユーザーに確認する
 
 ## 出力
 
