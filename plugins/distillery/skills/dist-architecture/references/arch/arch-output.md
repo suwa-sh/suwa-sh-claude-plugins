@@ -1,11 +1,11 @@
-# Step3: アーキテクチ���設計 YAML 出力
+# Step3: アーキテクチャ設計 YAML 出力
 
-対話で確定したアー��テクチャ設計を YAML ファイルとして出力し、イベント記録 + スナップショット更新を行うタスク。
+対話で確定したアーキテクチャ設計を YAML ファイルとして出力し、イベント記録 + スナップショット更新を行うタスク。
 
 ## 入力
 
 - Step2 で確定したアーキテクチャ設計情報（内部データ）
-- `references/arch-schema.md` — 出��スキーマ
+- `references/arch-schema.md` — 出力スキーマ
 - `references/event-sourcing-rules.md` — イベントソーシングルール
 
 ## タスク手順
@@ -21,13 +21,29 @@
 - NFR 変更起因: `{timestamp}_arch_update_for_nfr_{nfr_event_id}`
 - 手動更新: `{timestamp}_arch_manual_update`
 
-### 2. arch-design.yaml の生成
+### 2. arch-design.yaml / arch-design-diff.yaml の生成
 
-`arch-schema.md` に従い、全セクション（technology_context, system_architecture, app_architecture, data_architecture）を含む完全な YAML を生成する。
+モード判定:
+
+- **初期構築モード**（`docs/arch/latest/arch-design.yaml` が存在しないか空）: `arch-design.yaml` に全セクション完全版を出力する
+- **差分更新モード**（既存スナップショットあり）: `arch-design-diff.yaml` に変更セクションのみを出力する。マージキー・追加/変更/削除の扱いは `references/event-sourcing-rules.md` を参照
+
+`arch-schema.md` に従い、対象セクション（technology_context, system_architecture, app_architecture, data_architecture）を生成する。
 
 #### 生成ルール
 
+##### 初期構築モード（arch-design.yaml）
+
 - 全ティア・全レイヤー・全エンティティを含める（省略しない）
+
+##### 差分更新モード（arch-design-diff.yaml）
+
+- 変更があったセクションのみ含める
+- マージキーで照合される単位（tier.id / tier_layers.tier_id / entities.name / policies.name 等）で部分出力する
+- 削除対象は `_changes.md` の削除セクションで管理する（diff yaml 内には削除フラグを置かない）
+- `meta:` ブロックに `event_id`, `trigger_event`, `created_at` を含める（`event-sourcing-rules.md` の例参照）
+
+##### 共通ルール
 - 各方針/ルールに以下を設定:
   - `id`: プレフィックス付き連番（SP-001, SR-001, CTP-001 等）
   - `name`: 方針/ルール名（日本語）
@@ -36,7 +52,7 @@
   - `source_model`: 根拠となった RDRA/NFR 要素（推論元がない場合は null）
   - `confidence`: 確信度
 - Mermaid 図は `diagram_mermaid` フィールドに YAML ブロックスカラー（`|`）で格納
-- テクノロジー候補は��ンダーニュートラルな用語のみ
+- テクノロジー候補はベンダーニュートラルな用語のみ
 - 全ての policy/rule の `source_model` に、根拠となった NFR メトリクス ID を `"NFR {ID}"` 形式で明記する（例: `"NFR A.1.1.1"`）。複数の場合はカンマ区切り
 - 推論元がない場合は `"なし"` を設定する（null は使用しない）
 - カバレッジレポートで全重要 NFR メトリクスがカバーされることを目標とする
@@ -53,7 +69,7 @@
 推論根拠サマリを `arch-inference-rules.md` の出力形式に従い生成する:
 
 ```markdown
-# アーキテ���チャ推論根拠サマリ
+# アーキテクチャ推論根拠サマリ
 
 - event_id: {event_id}
 - created_at: {created_at}
@@ -127,7 +143,9 @@
 
 ### 5. ファイル出力
 
-以下のファイルを生成する:
+モードに応じて以下のファイルを生成する:
+
+#### 初期構築モード
 
 ```
 docs/arch/events/{event_id}/
@@ -135,6 +153,18 @@ docs/arch/events/{event_id}/
   _inference.md          # 推論根拠サマリ
   source.txt             # トリガー説明
 ```
+
+#### 差分更新モード
+
+```
+docs/arch/events/{event_id}/
+  arch-design-diff.yaml  # 変更セクションのみ
+  _changes.md            # 追加/変更/削除の明細
+  _inference.md          # 推論根拠サマリ
+  source.txt             # トリガー説明
+```
+
+`_changes.md` のフォーマットは `references/event-sourcing-rules.md` を参照。
 
 ### 6. 決定記録生成
 
@@ -204,19 +234,25 @@ node <skill-path>/scripts/validateArchDesign.js docs/arch/events/{event_id}/arch
 ```
 
 - 終了コード 0（PASS）: Markdown 生成へ進む
-- ���了コード 1（FAIL）: エラー内容を確認し、arch-design.yaml を修正してから再度バリデーション
+- 終了コード 1（FAIL）: エラー内容を確認し、arch-design.yaml を修正してから再度バリデーション
 
 `<skill-path>` は `${CLAUDE_PLUGIN_ROOT}/skills/dist-architecture`。
 
 ### 8. Markdown 表の生成
 
-バリデーション通過後、arch-design.yaml を Markdown 形式に変換する:
+バリデーション通過後、Markdown を生成する。生成対象はモードによって異なる。
 
-```bash
-node <skill-path>/scripts/generateArchDesignMd.js docs/arch/events/{event_id}/arch-design.yaml
-```
+- **初期構築モード**: events 配下の完全版 yaml を Markdown 化する
 
-これにより `docs/arch/events/{event_id}/arch-design.md` が生成される。このスクリプトは決定論的（同一入力 → 同一出力）なため、LLM に依存せずバンドルスクリプトで実行する。
+  ```bash
+  node <skill-path>/scripts/generateArchDesignMd.js docs/arch/events/{event_id}/arch-design.yaml
+  ```
+
+  これにより `docs/arch/events/{event_id}/arch-design.md` が生成される。
+
+- **差分更新モード**: events 配下には diff yaml のみ存在し全量 Markdown は生成しない。Markdown はスナップショット更新後に `latest/arch-design.yaml`（マージ結果）から生成する（次の Step 9 参照）。
+
+このスクリプトは決定論的（同一入力 → 同一出力）なため、LLM に依存せずバンドルスクリプトで実行する。
 
 ### 9. スナップショット更新
 
@@ -232,6 +268,8 @@ node <skill-path>/scripts/generateArchDesignMd.js docs/arch/latest/arch-design.y
 
 ## 出力ファイル一覧
 
+### 初期構築モード
+
 | ファイル | 内容 |
 |---------|------|
 | `docs/arch/events/{event_id}/arch-design.yaml` | イベント: 完全なアーキテクチャ設計 |
@@ -243,9 +281,22 @@ node <skill-path>/scripts/generateArchDesignMd.js docs/arch/latest/arch-design.y
 | `docs/arch/latest/arch-design.md` | スナップショット: 最新 Markdown |
 | `docs/arch/latest/decisions/arch-decision-{NNN}.yaml` | スナップショット: 最新決定記録 |
 
+### 差分更新モード
+
+| ファイル | 内容 |
+|---------|------|
+| `docs/arch/events/{event_id}/arch-design-diff.yaml` | イベント: 変更セクションのみ |
+| `docs/arch/events/{event_id}/_changes.md` | イベント: 追加/変更/削除の明細 |
+| `docs/arch/events/{event_id}/_inference.md` | イベント: 推論根拠サマリ |
+| `docs/arch/events/{event_id}/source.txt` | イベント: トリガー説明 |
+| `docs/arch/events/{event_id}/decisions/arch-decision-{NNN}.yaml` | イベント: 決定記録（差分起因のもの） |
+| `docs/arch/latest/arch-design.yaml` | スナップショット: マージ後の最新設計 |
+| `docs/arch/latest/arch-design.md` | スナップショット: 最新 Markdown |
+| `docs/arch/latest/decisions/arch-decision-{NNN}.yaml` | スナップショット: 最新決定記録 |
+
 ## 注意事項
 
-- arch-design.yaml は全セクションを含む完全版であること（部分出力は不可）
+- 初期構築時は arch-design.yaml に全セクションを含める。差分更新時は arch-design-diff.yaml に変更セクションのみ含める（部分出力は差分モードのみ許可）
 - YAML の文字列はダブルクォートで囲む
 - 日本語の文字列は UTF-8
 - null は YAML の null（クォートなし）
