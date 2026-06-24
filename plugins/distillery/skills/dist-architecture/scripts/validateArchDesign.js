@@ -16,17 +16,17 @@
  *   initial 新規構築 / latest スナップショット扱い。domain_architecture 欠落は WARN（exit 0）
  *   diff    差分更新扱い。domain_architecture が無くても WARN にしない（差分は変更セクションのみ）
  *
- * 既知の制約（TODO: 将来 PR で対応）:
- *   - 現状は完全版スキーマ（arch-design.yaml）のみ正式サポート。arch-design-diff.yaml に対しても
- *     同じスキーマで検証するため、必須トップレベルキー（version, event_id, technology_context 等）が
- *     欠落していると schema ERROR になる
- *   - 当面の運用: diff yaml を直接検証せず、latest にマージしてから検証することを推奨
- *   - --mode=diff オプションは domain_architecture 欠落 WARN の抑制のみで、トップレベル必須キー
- *     チェックは無効化していない
+ * モード切替時の動作:
+ *   - initial モード: schema-arch-design.json（完全版）で検証。全トップレベルキー必須
+ *   - diff モード: schema-arch-design-diff.json（部分構造許容）で検証。meta のみ必須、各セクション optional。
+ *     クロスリファレンスチェック（tier_id / entity_id / BC.owned_entity_ids 等）は WARN 扱いに格下げ
+ *     （diff 内に無くても latest にあれば OK のため）
  *
  * 設計判断:
  *   - domain_architecture セクションは optional（後方互換）。欠落しても WARN 止まり
  *   - クロスリファレンスチェック（BC <-> entity 等）は domain_architecture が存在する場合のみ実施
+ *   - diff schema の $defs は main schema の $defs を validator ロード時にマージする
+ *     （rewriteExternalRefs で外部参照を内部参照に変換）
  *
  * npm 依存なし。Node.js 18+ 標準モジュールのみ使用。
  */
@@ -331,13 +331,19 @@ function validateArchSpecific(data, mode) {
   // エンティティID一覧
   const entityIds = new Set(entities.map(e => e.id));
 
+  // diff モードでは、クロスリファレンスを ERROR から WARN に格下げする
+  // (diff yaml は変更セクションのみのため、参照先が latest にあれば OK)
+  const refSeverity = (msg) => mode === 'diff'
+    ? warnings.push(msg)
+    : errors.push(msg);
+
   // チェック1: app_architecture.tier_layers[].tier_id が system_architecture.tiers[].id に存在するか
   for (let i = 0; i < tierLayers.length; i++) {
     const tl = tierLayers[i];
     if (tl.tier_id && !tierIds.has(tl.tier_id)) {
-      errors.push({
+      refSeverity({
         path: `$.app_architecture.tier_layers[${i}].tier_id`,
-        message: `tier_id "${tl.tier_id}" not found in system_architecture.tiers[].id`
+        message: `tier_id "${tl.tier_id}" not found in system_architecture.tiers[].id` + (mode === 'diff' ? ' (diff mode: tier may exist in latest)' : '')
       });
     }
 
@@ -347,9 +353,9 @@ function validateArchSpecific(data, mode) {
       const layer = tl.layers[j];
       for (const dep of (layer.allowed_dependencies || [])) {
         if (!layerIds.has(dep)) {
-          errors.push({
+          refSeverity({
             path: `$.app_architecture.tier_layers[${i}].layers[${j}].allowed_dependencies`,
-            message: `allowed_dependency "${dep}" not found in tier "${tl.tier_id}" layers`
+            message: `allowed_dependency "${dep}" not found in tier "${tl.tier_id}" layers` + (mode === 'diff' ? ' (diff mode: layer may exist in latest)' : '')
           });
         }
       }
@@ -360,9 +366,9 @@ function validateArchSpecific(data, mode) {
   for (let i = 0; i < storageMappings.length; i++) {
     const sm = storageMappings[i];
     if (sm.entity_id && !entityIds.has(sm.entity_id)) {
-      errors.push({
+      refSeverity({
         path: `$.data_architecture.storage_mapping[${i}].entity_id`,
-        message: `entity_id "${sm.entity_id}" not found in data_architecture.entities[].id`
+        message: `entity_id "${sm.entity_id}" not found in data_architecture.entities[].id` + (mode === 'diff' ? ' (diff mode: entity may exist in latest)' : '')
       });
     }
   }
@@ -373,9 +379,9 @@ function validateArchSpecific(data, mode) {
     for (let j = 0; j < (entity.relationships || []).length; j++) {
       const rel = entity.relationships[j];
       if (rel.target_entity && !entityIds.has(rel.target_entity)) {
-        errors.push({
+        refSeverity({
           path: `$.data_architecture.entities[${i}].relationships[${j}].target_entity`,
-          message: `target_entity "${rel.target_entity}" not found in data_architecture.entities[].id`
+          message: `target_entity "${rel.target_entity}" not found in data_architecture.entities[].id` + (mode === 'diff' ? ' (diff mode: entity may exist in latest)' : '')
         });
       }
     }
@@ -467,18 +473,18 @@ function validateArchSpecific(data, mode) {
     for (let i = 0; i < bcs.length; i++) {
       const bc = bcs[i];
       if (bc.related_subdomain_id && !sdIds.has(bc.related_subdomain_id)) {
-        errors.push({
+        refSeverity({
           path: `$.domain_architecture.bounded_contexts[${i}].related_subdomain_id`,
-          message: `related_subdomain_id "${bc.related_subdomain_id}" not found in subdomains[].id`
+          message: `related_subdomain_id "${bc.related_subdomain_id}" not found in subdomains[].id` + (mode === 'diff' ? ' (diff mode: subdomain may exist in latest)' : '')
         });
       }
       // BC.owned_entity_ids → entities[].id 参照整合性
       for (let j = 0; j < (bc.owned_entity_ids || []).length; j++) {
         const eid = bc.owned_entity_ids[j];
         if (!entityIds.has(eid)) {
-          errors.push({
+          refSeverity({
             path: `$.domain_architecture.bounded_contexts[${i}].owned_entity_ids[${j}]`,
-            message: `owned_entity_id "${eid}" not found in data_architecture.entities[].id`
+            message: `owned_entity_id "${eid}" not found in data_architecture.entities[].id` + (mode === 'diff' ? ' (diff mode: entity may exist in latest)' : '')
           });
         }
       }
@@ -488,15 +494,15 @@ function validateArchSpecific(data, mode) {
     for (let i = 0; i < contextMap.length; i++) {
       const cm = contextMap[i];
       if (cm.from_bc_id && !bcIds.has(cm.from_bc_id)) {
-        errors.push({
+        refSeverity({
           path: `$.domain_architecture.context_map[${i}].from_bc_id`,
-          message: `from_bc_id "${cm.from_bc_id}" not found in bounded_contexts[].id`
+          message: `from_bc_id "${cm.from_bc_id}" not found in bounded_contexts[].id` + (mode === 'diff' ? ' (diff mode: BC may exist in latest)' : '')
         });
       }
       if (cm.to_bc_id && !bcIds.has(cm.to_bc_id)) {
-        errors.push({
+        refSeverity({
           path: `$.domain_architecture.context_map[${i}].to_bc_id`,
-          message: `to_bc_id "${cm.to_bc_id}" not found in bounded_contexts[].id`
+          message: `to_bc_id "${cm.to_bc_id}" not found in bounded_contexts[].id` + (mode === 'diff' ? ' (diff mode: BC may exist in latest)' : '')
         });
       }
       if (cm.from_bc_id && cm.to_bc_id && cm.from_bc_id === cm.to_bc_id) {
@@ -516,9 +522,9 @@ function validateArchSpecific(data, mode) {
     for (let i = 0; i < aggregates.length; i++) {
       const ag = aggregates[i];
       if (ag.bounded_context_id && !bcIds.has(ag.bounded_context_id)) {
-        errors.push({
+        refSeverity({
           path: `$.domain_architecture.aggregate_hypotheses[${i}].bounded_context_id`,
-          message: `bounded_context_id "${ag.bounded_context_id}" not found in bounded_contexts[].id`
+          message: `bounded_context_id "${ag.bounded_context_id}" not found in bounded_contexts[].id` + (mode === 'diff' ? ' (diff mode: BC may exist in latest)' : '')
         });
         continue;
       }
@@ -611,6 +617,26 @@ function detectMode(yamlPath, explicitMode) {
   return 'initial'; // arch-design.yaml は initial / latest スナップショット相当
 }
 
+/**
+ * 再帰的にスキーマツリーを走査し、外部参照 "schema-arch-design.json#/$defs/Foo" を
+ * 内部参照 "#/$defs/Foo" に書き換える。validator は内部参照しか解決しないため、
+ * diff schema が main schema の $defs を参照する場合の橋渡し。
+ */
+function rewriteExternalRefs(node) {
+  if (Array.isArray(node)) {
+    for (const item of node) rewriteExternalRefs(item);
+    return;
+  }
+  if (node && typeof node === 'object') {
+    if (typeof node.$ref === 'string') {
+      // "schema-arch-design.json#/$defs/Foo" -> "#/$defs/Foo"
+      const m = node.$ref.match(/^[^#]+(#\/.*)$/);
+      if (m) node.$ref = m[1];
+    }
+    for (const key of Object.keys(node)) rewriteExternalRefs(node[key]);
+  }
+}
+
 function main() {
   const rawArgs = process.argv.slice(2);
   const positional = [];
@@ -639,9 +665,26 @@ function main() {
 
   const mode = detectMode(yamlPath, explicitMode);
 
-  // スキーマ読み込み
-  const schemaPath = path.join(__dirname, 'schema-arch-design.json');
-  const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+  // スキーマ読み込み（mode に応じて切り替え）
+  const mainSchemaPath = path.join(__dirname, 'schema-arch-design.json');
+  const mainSchema = JSON.parse(fs.readFileSync(mainSchemaPath, 'utf8'));
+
+  let schema;
+  if (mode === 'diff') {
+    const diffSchemaPath = path.join(__dirname, 'schema-arch-design-diff.json');
+    if (!fs.existsSync(diffSchemaPath)) {
+      console.error(`Diff schema not found: ${diffSchemaPath}`);
+      process.exit(2);
+    }
+    const diffSchema = JSON.parse(fs.readFileSync(diffSchemaPath, 'utf8'));
+    // diff の $defs に main の $defs をマージ（diff 側優先で上書き）
+    diffSchema.$defs = { ...mainSchema.$defs, ...(diffSchema.$defs || {}) };
+    // 外部参照 "schema-arch-design.json#/$defs/Foo" を内部参照 "#/$defs/Foo" に書き換え
+    rewriteExternalRefs(diffSchema);
+    schema = diffSchema;
+  } else {
+    schema = mainSchema;
+  }
 
   // YAML 読み込み・パース
   const yamlText = fs.readFileSync(yamlPath, 'utf8');

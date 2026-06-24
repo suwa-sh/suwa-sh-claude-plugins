@@ -1,0 +1,24 @@
+meta:
+  event_id: "20260624_140000_test_diff_minimal"
+  trigger_event: "rdra:20260624_135000_test"
+  created_at: "2026-06-24T14:00:00"
+
+# 変更があった BC のみ含む（差分モード）
+# - SD-001 や E-005 は latest にあるはず。diff 内では参照整合性エラーになるが、
+#   --mode=diff では WARN に格下げされて exit 0 で通過する
+domain_architecture:
+  bounded_contexts:
+    - id: "BC-003"
+      name: "新規追加 BC"
+      ubiquitous_language:
+        - term: "新規概念"
+          definition: "差分追加用のテスト概念"
+      related_subdomain_id: "SD-001"
+      owned_entity_ids:
+        - "E-005"
+      owned_buc_ids:
+        - "BUC-005"
+      team_ownership: null
+      reason: "新規業務領域の追加に伴う BC 追加"
+      source_model: "BUC: 新規業務"
+      confidence: "medium"
