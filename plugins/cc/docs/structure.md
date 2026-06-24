@@ -11,7 +11,7 @@ graph LR
 
   User -- "作業指示" --> CC
   CC -- "PreCompact hook<br/>で自動生成" --> HANDOVER
-  User -- "/handover<br/>で手動生成" --> HANDOVER
+  User -- "/cc:handover<br/>で手動生成" --> HANDOVER
   HANDOVER -- "SessionStart hook<br/>で自動注入" --> NextCC
 ```
 
@@ -23,7 +23,7 @@ graph LR
 ```mermaid
 graph TB
   subgraph Claude_Code["Claude Code"]
-    Skill["/handover スキル<br/>（手動トリガー）"]
+    Skill["/cc:handover スキル<br/>（手動トリガー）"]
     PreCompact["PreCompact Hook<br/>（自動トリガー）"]
     SessionStart["SessionStart Hook<br/>（自動注入）"]
     MainAgent["メイン Agent"]
@@ -42,10 +42,10 @@ graph TB
 
 | コンテナ | 役割 | スクリプト |
 |---------|------|-----------|
-| /handover スキル | 手動でメイン Agent に引き継ぎ生成を指示 | `skills/handover/SKILL.md` |
+| /cc:handover スキル | 手動でメイン Agent に引き継ぎ生成を指示 | `skills/cc:handover/SKILL.md` |
 | PreCompact hook | コンパクション前にトランスクリプトを要約 | `hooks/pre_compact.sh` |
 | SessionStart hook | HANDOVER.md を読み取りコンテキストに注入 | `hooks/session_start.sh` |
-| メイン Agent | セッションの主体。/handover 実行時は自ら生成 | - |
+| メイン Agent | セッションの主体。/cc:handover 実行時は自ら生成 | - |
 
 ## Level 3: Component（PreCompact hook）
 

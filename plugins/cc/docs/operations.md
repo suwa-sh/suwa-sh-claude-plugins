@@ -8,7 +8,7 @@
 | `hooks/hooks.json` | hooks 登録（PreCompact, SessionStart） |
 | `hooks/pre_compact.sh` | PreCompact hook スクリプト |
 | `hooks/session_start.sh` | SessionStart hook スクリプト |
-| `skills/handover/SKILL.md` | /handover スキル定義 |
+| `skills/cc:handover/SKILL.md` | /cc:handover スキル定義 |
 
 ## 冪等性
 
@@ -88,7 +88,7 @@ which jq
 
 ## テンプレートを変更したい場合
 
-`skills/handover/SKILL.md` の「## HANDOVER.md テンプレート」以降を変更する。
+`skills/cc:handover/SKILL.md` の「## HANDOVER.md テンプレート」以降を変更する。
 PreCompact hook は SKILL.md から動的に読み込むため、個別の変更は不要。
 
 ただしプラグインのファイルはキャッシュ内にあるため、直接編集は非推奨。

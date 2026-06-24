@@ -1,6 +1,6 @@
 ---
-name: launch-claude
-description: Launch a new Claude Code session in a ghq-managed repository via Ghostty split. Use this skill whenever the user wants to "launch claude", "start claude in", "open claude code in", or work on a specific repository in a separate session. Also trigger when the user mentions a repo name to open (e.g., "RDRAAgentで", "pkmを開いて", "sandboxで作業したい", "別セッションで開いて"), or says just a repo keyword expecting a new Claude Code session to be launched there. Supports passing a slash command to auto-execute on launch (e.g., "/launch-claude pkm /deep-research テーマ").
+name: cc:launch-claude
+description: Launch a new Claude Code session in a ghq-managed repository via Ghostty split. Use this skill whenever the user wants to "launch claude", "start claude in", "open claude code in", or work on a specific repository in a separate session. Also trigger when the user mentions a repo name to open (e.g., "RDRAAgentで", "pkmを開いて", "sandboxで作業したい", "別セッションで開いて"), or says just a repo keyword expecting a new Claude Code session to be launched there. Supports passing a slash command to auto-execute on launch (e.g., "/cc:launch-claude pkm /deep-research テーマ").
 ---
 
 # Launch Claude Code in a Repository
@@ -11,18 +11,17 @@ Open a new Ghostty split running Claude Code (`--dangerously-skip-permissions`) 
 
 ### 0. Check dependencies
 
-Run the bundled check script first:
+Run the bundled check script first. `scripts/` sits next to this `SKILL.md`, so the
+same lookup works whether the skill was installed as a Claude Code plugin
+(`~/.claude/plugins/...`) or via `npx skills` (`~/.claude/skills/` or `./.claude/skills/`):
 
 ```bash
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PLUGIN_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-bash "$PLUGIN_ROOT/scripts/check_deps.sh"
-```
-
-If the plugin root is not available, fall back to finding the script via the plugin directory:
-
-```bash
-bash "$(find ~/.claude/plugins -path '*/launch-claude/scripts/check_deps.sh' 2>/dev/null | head -1)"
+CHECK="$(find ~/.claude ./.claude -path '*/launch-claude/scripts/check_deps.sh' 2>/dev/null | head -1)"
+if [ -z "$CHECK" ] || [ ! -f "$CHECK" ]; then
+  echo "ERROR: check_deps.sh not found. Reinstall the cc plugin or the cc:launch-claude skill." >&2
+  exit 1
+fi
+bash "$CHECK"
 ```
 
 If any FAIL is reported, stop and tell the user what's missing. If only WARN (e.g., Ghostty not running), inform the user and proceed if they confirm.

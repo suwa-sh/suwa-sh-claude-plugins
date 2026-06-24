@@ -5,14 +5,9 @@
   },
   "plugins": [
     {
-      "name": "handover",
-      "source": "./plugins/handover",
-      "description": "セッション間コンテキスト自動引き継ぎ"
-    },
-    {
-      "name": "launch-claude",
-      "source": "./plugins/launch-claude",
-      "description": "ghq管理リポジトリでGhosttyスプリットにClaude Codeセッションを起動"
+      "name": "cc",
+      "source": "./plugins/cc",
+      "description": "Claude Code 運用支援: セッション間コンテキスト自動引き継ぎ(cc:handover)とghq管理リポジトリでGhosttyスプリットにClaude Codeセッションを起動(cc:launch-claude)の2スキル"
     },
     {
       "name": "distillery",

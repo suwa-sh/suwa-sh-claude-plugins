@@ -13,17 +13,17 @@
 
 ```
 /plugin marketplace add suwa-sh/suwa-sh-claude-plugins
-/plugin install handover@suwa-sh-claude-plugins
+/plugin install cc@suwa-sh-claude-plugins
 ```
 
 インストールすると PreCompact / SessionStart hook が自動登録される。
 
-## 手動生成: `/handover`
+## 手動生成: `/cc:handover`
 
 作業の区切りで、明示的に引き継ぎドキュメントを生成する。
 
 ```
-/handover
+/cc:handover
 ```
 
 メイン Agent が現在の会話コンテキストから HANDOVER.md を生成し、cwd に書き出す。
@@ -31,7 +31,7 @@
 ### オプション: 追加の指示
 
 ```
-/handover 特にXXXの設計判断を詳しく残してほしい
+/cc:handover 特にXXXの設計判断を詳しく残してほしい
 ```
 
 引数として追加の指示やメモを渡せる。
@@ -96,4 +96,4 @@ HANDOVER.md が存在しない場合、SessionStart hook は何もせず正常�
 
 - `/clear` ではSessionStart hook のmatcher（`startup|resume|compact`）に該当しないため、HANDOVER.md は注入されない
 - HANDOVER.md は `.gitignore` に追加することを推奨（誤コミット防止）
-- 手動生成（`/handover`）と自動生成（PreCompact hook）は同じテンプレートを使用するため、品質は同等
+- 手動生成（`/cc:handover`）と自動生成（PreCompact hook）は同じテンプレートを使用するため、品質は同等

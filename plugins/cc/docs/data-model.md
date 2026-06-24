@@ -162,7 +162,7 @@ hook の stdout はセッションコンテキストに注入される。
 
 ```mermaid
 stateDiagram-v2
-  [*] --> 生成: PreCompact hook or /handover
+  [*] --> 生成: PreCompact hook or /cc:handover
   生成 --> 存在: cwd/HANDOVER.md
   存在 --> 注入: SessionStart hook が読み取り
   注入 --> 削除: 読み取り直後に rm
