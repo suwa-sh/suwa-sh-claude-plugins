@@ -1,6 +1,20 @@
 # dist-architecture Fixtures
 
-`evals/evals.json` の振る舞い指向アサーション（id:4〜id:7）で参照する arch-design.yaml の fixture 集。
+`evals/evals.json` の振る舞い指向アサーション（id:4〜id:7）で参照する arch-design.yaml の fixture 集と、その生成出力サンプル。
+
+## ディレクトリ構成
+
+```
+fixtures/
+├── README.md                     # 本ファイル
+├── *.yaml                        # 4 つの入力 fixture
+└── expected/                     # 各 fixture の Md / coverage 出力 baseline
+    ├── minimal-with-domain.md           # ドメインセクション付き設計書のサンプル
+    ├── minimal-with-domain.coverage.md  # ドメインアーキテクチャ網羅率を含む coverage report
+    └── legacy-no-domain.md              # 既存 sample 相当（domain なし）の Md baseline
+```
+
+`expected/` 配下は決定論的に生成されるため、git で baseline として管理し回帰検証に使用する。
 
 ## fixture 一覧
 
@@ -14,12 +28,29 @@
 ## 実行コマンド
 
 ```bash
-# 各 fixture の振る舞いを手動確認
 SKILL=plugins/distillery/skills/dist-architecture
+
+# 1) validator の振る舞い確認
 node $SKILL/scripts/validateArchDesign.js $SKILL/evals/fixtures/minimal-with-domain.yaml; echo "exit=$?"
 node $SKILL/scripts/validateArchDesign.js $SKILL/evals/fixtures/legacy-no-domain.yaml; echo "exit=$?"
 node $SKILL/scripts/validateArchDesign.js $SKILL/evals/fixtures/invalid-bc-ref.yaml; echo "exit=$?"
 node $SKILL/scripts/validateArchDesign.js $SKILL/evals/fixtures/high-confidence-core.yaml; echo "exit=$?"
+
+# 2) Md baseline の再生成（決定論的なので git diff が空であるべき）
+node $SKILL/scripts/generateArchDesignMd.js $SKILL/evals/fixtures/minimal-with-domain.yaml
+mv $SKILL/evals/fixtures/arch-design.md $SKILL/evals/fixtures/expected/minimal-with-domain.md
+node $SKILL/scripts/generateArchDesignMd.js $SKILL/evals/fixtures/legacy-no-domain.yaml
+mv $SKILL/evals/fixtures/arch-design.md $SKILL/evals/fixtures/expected/legacy-no-domain.md
+
+# 3) Coverage baseline の再生成（既存 samples の rdra/nfr を流用）
+node $SKILL/scripts/generateCoverageReport.js \
+  samples/distillery/rdra/latest \
+  samples/distillery/nfr/latest/nfr-grade.yaml \
+  $SKILL/evals/fixtures/minimal-with-domain.yaml
+mv $SKILL/evals/fixtures/coverage-report.md $SKILL/evals/fixtures/expected/minimal-with-domain.coverage.md
+
+# 4) 差分なしを確認
+git diff $SKILL/evals/fixtures/expected/
 ```
 
 ## 設計判断
