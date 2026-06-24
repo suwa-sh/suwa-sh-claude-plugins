@@ -205,15 +205,29 @@ alternatives_considered:
 
 #### 記録すべき決定カテゴリ
 
-以下のカテゴリから、該当する判断を全て記録する。1イベントにつき少なくとも1つの決定記録を生成すること。
+以下のカテゴリから、該当する判断を全て記録する。1イベントにつき少なくとも1つの決定記録を生成すること。Phase 番号は新対話順序（Phase 0 ドメイン → Phase 1 テクノロジー → Phase 2 システム → Phase 3 アプリ → Phase 4 データ → Phase 5 最終）に従う。
 
 | カテゴリ | 内容 | 対応する対話 Phase |
 |---------|------|-------------------|
-| テクノロジースタック選定 | 言語・FW の選択理由 | Phase 0 |
-| ティアパターン選定 | CaaS vs FaaS 等、ティアごとの選定理由 | Phase 1 |
-| データモデル戦略 | event_snapshot vs resource_mutable の使い分け基準 | Phase 3 |
-| 認証方式選定 | OAuth2/OIDC の採用理由 | Phase 1 |
-| レイヤリング戦略 | 凹型 vs 直接依存 等 | Phase 2 |
+| サブドメイン分類 | Subdomain.type（Core/Supporting/Generic）の選定理由、投資配分方針 | Phase 0.1 |
+| BC 設計 | 境界づけられたコンテキストの分割理由、ユビキタス言語、team_ownership | Phase 0.2 |
+| コンテキストマップ統合方式 | BC 間の統合パターン（ACL/OHS/Conformist 等）選定理由 | Phase 0.3 |
+| 集約境界仮説 | aggregate root / member / invariants の仮説。仮説止まりであることを明記 | Phase 0.4 |
+| テクノロジースタック選定 | 言語・FW の選択理由 | Phase 1 |
+| BC : tier 対応形態 | モノリス / モジュラモノリス / マイクロサービス の選定理由 | Phase 2 冒頭 |
+| ティアパターン選定 | CaaS vs FaaS 等、ティアごとの選定理由 | Phase 2 |
+| 認証方式選定 | OAuth2/OIDC の採用理由 | Phase 2 |
+| レイヤリング戦略 | 凹型 vs 直接依存 等 | Phase 3 |
+| データモデル戦略 | event_snapshot vs resource_mutable の使い分け基準 | Phase 4 |
+
+##### ドメインアーキテクチャ系の決定記録の特記事項
+
+「サブドメイン分類」「BC 設計」「集約境界仮説」の決定記録は以下の点を明記する:
+
+- **`context`**: なぜこの判断が経営判断またはドメイン判断を含むのか（RDRA から自動推論できない理由）
+- **`decision`**: 採用した分類 / 境界 / 仮説の具体内容と confidence（特に「集約境界仮説」は `low` 確定）
+- **`alternatives_considered`**: Phase 0 の対話で提示した Option B / Option C を必ず代替案として記載
+- **集約境界仮説の `consequences.negative`**: 「これは戦略段階の仮説であり、最終確定は dist-spec or ddd-tactical-implementation で行う」旨を明記
 
 #### 生成ルール
 

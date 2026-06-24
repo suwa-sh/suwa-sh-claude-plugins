@@ -10,20 +10,57 @@ RDRA モデルと NFR グレードからアーキテクチャ設計を推論す�
 3. 推論不能な項目は一般的なベストプラクティスを適用し、confidence: "default" とする
 4. テクノロジー候補はベンダーニュートラルな用語のみ使用する（arch-schema.md のベンダーニュートラル用語ガイド参照）
 5. クラウドデザインパターンの適用判断には `arch-design-patterns.md` を参照し、RDRA/NFR シグナルとパターンの対応を確認する
+6. **問題空間を先に解く**: ドメインアーキテクチャ（Part 0）を技術選定（Part 1 以降）より先に推論する。サブドメイン / BC / コンテキストマップ / 集約境界仮説の確定後に、Part 1〜3 の推論で参照する
 
 ## 入力ファイル
 
 | ファイル | 主な推論先 |
 |---------|-----------|
-| `docs/rdra/latest/BUC.tsv` | ティア構成、バッチ/ワーカー判定、API 粒度 |
+| `docs/rdra/latest/BUC.tsv` | サブドメインクラスタリング、ティア構成、バッチ/ワーカー判定、API 粒度 |
 | `docs/rdra/latest/アクター.tsv` | フロントエンドティア要否、認証方式 |
-| `docs/rdra/latest/外部システム.tsv` | 外部連携ティア、統合パターン |
-| `docs/rdra/latest/情報.tsv` | 概念データモデル、エンティティ、リレーション |
-| `docs/rdra/latest/状態.tsv` | 状態管理戦略、ドメインイベント |
-| `docs/rdra/latest/条件.tsv` | ビジネスルール層の複雑さ、バリデーション方針 |
+| `docs/rdra/latest/外部システム.tsv` | Generic サブドメイン候補、外部連携ティア、コンテキストマップ統合パターン |
+| `docs/rdra/latest/情報.tsv` | 同名異義語検出、BC 所有 entity、概念データモデル、エンティティ、リレーション、集約候補 |
+| `docs/rdra/latest/状態.tsv` | BC 独立性、集約境界仮説、状態管理戦略、ドメインイベント |
+| `docs/rdra/latest/条件.tsv` | invariants 抽出、ビジネスルール層の複雑さ、バリデーション方針 |
 | `docs/rdra/latest/バリエーション.tsv` | ストラテジーパターンの要否 |
-| `docs/rdra/latest/システム概要.json` | システム全体像、対象ユーザー |
+| `docs/rdra/latest/システム概要.json` | Core サブドメイン判定、システム全体像、対象ユーザー |
 | `docs/nfr/latest/nfr-grade.yaml` | 冗長構成、性能戦略、セキュリティ、運用方針 |
+
+参照ドキュメント:
+
+| ファイル | 役割 |
+|---------|------|
+| `references/arch-domain-patterns.md` | Part 0 の RDRA → DDD 結線ルール詳細 + ddd-architecture スキルへの参照リンク |
+
+---
+
+## Part 0: ドメインアーキテクチャ推論ルール
+
+DDD 戦略的設計の観点（Subdomain / BoundedContext / ContextMap / AggregateHypothesis）を RDRA から推論する。詳細な判定条件・confidence 上限・出力規約は `references/arch-domain-patterns.md` を参照。本セクションは Part 1〜3 で参照するためのサマリ。
+
+### 推論順序
+
+1. **Q1: Subdomain 分類** — BUC クラスタ + 外部システム + システム概要から Core / Supporting / Generic を仕分け
+2. **Q2: BoundedContext** — 情報.tsv の同名異義語 + 状態.tsv の独立性 + BUC のアクター分布から BC を切る
+3. **Q3: ContextMap** — BC 間依存方向 + 外部システム連携から統合パターン（ACL / OHS / Conformist 等）を選定
+4. **Q4: AggregateHypothesis** — 情報.tsv の relationships + 状態.tsv の遷移波及から集約境界を **仮説として**提示
+
+### confidence 上限ルール（validator で自動 WARN）
+
+| 対象 | 上限 | 理由 |
+|---|---|---|
+| Core サブドメイン | `medium` | 経営判断（競争優位）は自動推論できない。ユーザー確認必須 |
+| BC 分割 | `medium` | 言語境界の機械判定（同名異義語検出）は誤判定が多い |
+| 集約境界仮説 | `low` | 戦略段階の仮説。最終確定は dist-spec or ddd-tactical-implementation |
+
+### Part 1 以降への伝播
+
+Part 0 で確定した BC を Part 1 以降が参照する:
+
+- **ティア:BC の対応形態**（Part 1 システム）: BC 数 + NFR A/B + チーム規模から モノリス / モジュラモノリス / マイクロサービス を選定
+- **認可モデル選定の重み付け**（Part 1 認可）: Core BC は厳格認可 / Generic BC は簡易認可（後述「認可モデル選定ルール」参照）
+- **レイヤリング**（Part 2 アプリ）: モジュラモノリス時は BC = モジュール構造
+- **データモデル / 集約境界**（Part 3 データ）: BC.owned_entity_ids[] が entity の所属 BC を確定。aggregate_hypotheses は entity の論理グルーピングのヒント
 
 ---
 
@@ -202,6 +239,18 @@ IdP はトークン発行・ユーザー登録・パスワードリセット・M
 | D: ReBAC + ABAC ハイブリッド | Gateway で粗粒度 RBAC、ReBAC + OPA/Cedar の併用 | 所有権 + 条件の両方が多い、大規模 | 最も柔軟、運用コスト高 |
 
 状態ベースの認可は認可モデルに含めず、Domain 層のビジネスルールとして実装する。
+
+##### サブドメイン分類による認可重み付け（Part 0 連携）
+
+Part 0 の Subdomain 分類に基づき、BC ごとに認可の厳格度を変える:
+
+| Subdomain.type | BC ごとの認可方針 | confidence |
+|---|---|---|
+| core | 厳格な認可（ABAC + Domain 状態ベース）。RBAC + 所有権 + 状態 の3層チェック | medium |
+| supporting | RBAC + 所有権ベース。標準的な認可で運用 | medium |
+| generic | API Gateway での RBAC のみ（簡易認可）。汎用機能のためコスト効率優先 | medium |
+
+注: domain_architecture セクションが存在する場合のみ適用。存在しない場合は上記「認可モデル選定」の単一モデル選定に従う。
 
 #### トレーサビリティ推論ルール
 

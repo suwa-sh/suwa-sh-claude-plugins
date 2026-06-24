@@ -116,6 +116,10 @@ data_architecture:
 イベント確定後、`latest/arch-design.yaml` に差分をマージする:
 
 - **マージキー**:
+  - `domain_architecture.subdomains`: `id` で照合
+  - `domain_architecture.bounded_contexts`: `id` で照合
+  - `domain_architecture.context_map`: `id` で照合
+  - `domain_architecture.aggregate_hypotheses`: `id` で照合
   - `system_architecture.tiers`: `id` で照合
   - `app_architecture.tier_layers`: `tier_id` で照合
   - `data_architecture.entities`: `name` で照合
@@ -124,6 +128,13 @@ data_architecture:
 - **変更**: 同一キーの要素を上書き
 - **削除**: `_changes.md` に削除と記載された要素を latest から除去
 - **ユーザー確定値の保護**: `confidence: "user"` の項目は差分更新で上書きしない
+
+#### domain_architecture セクション固有のマージルール
+
+- **dist-infrastructure からのフィードバック対象外**: dist-infrastructure が arch-design-diff.yaml を書き戻す際、`domain_architecture` セクションは **触らない**（infra フィードバックは system_architecture / data_architecture のみが対象）。これは domain_architecture が **問題空間の設計** であり、インフラ視点での書き換えを許容しないため
+- **新規構築時の最小構成**: 既存スナップショットに `domain_architecture` が無く差分更新時に新規追加する場合、validator は WARN（exit 0）扱い。自動で最小構成を埋めず、ユーザーの明示的なドメイン設計対話を待つ
+- **BC.owned_entity_ids[] の整合性**: data_architecture.entities[] とのクロスリファレンスは validator が ERROR レベルでチェックする
+- **confidence 上限ルール**: Core SD = medium / BC = medium / Aggregate = low の上限を超えた場合 validator が WARN（exit 0）
 
 マージ後、`arch-design.md` を再生成する。
 

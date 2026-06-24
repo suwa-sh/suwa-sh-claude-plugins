@@ -23,6 +23,9 @@
     "technology_context": {
       "$ref": "#/$defs/TechnologyContext"
     },
+    "domain_architecture": {
+      "$ref": "#/$defs/DomainArchitecture"
+    },
     "system_architecture": {
       "$ref": "#/$defs/SystemArchitecture"
     },
@@ -51,6 +54,212 @@
         "constraints": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "DomainArchitecture": {
+      "type": "object",
+      "required": ["subdomains", "bounded_contexts", "context_map", "aggregate_hypotheses"],
+      "properties": {
+        "subdomains": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Subdomain" }
+        },
+        "bounded_contexts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/BoundedContext" }
+        },
+        "context_map": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ContextMapRelation" }
+        },
+        "aggregate_hypotheses": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AggregateHypothesis" }
+        },
+        "diagram_mermaid": {
+          "type": "string"
+        }
+      }
+    },
+    "Subdomain": {
+      "type": "object",
+      "required": ["id", "name", "type", "investment_policy", "related_buc_ids", "reason", "source_model", "confidence"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^SD-[0-9]+$",
+          "minLength": 4
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": ["core", "supporting", "generic"]
+        },
+        "investment_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "related_buc_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_model": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "default", "user"]
+        }
+      }
+    },
+    "BoundedContext": {
+      "type": "object",
+      "required": ["id", "name", "ubiquitous_language", "related_subdomain_id", "owned_entity_ids", "owned_buc_ids", "team_ownership", "reason", "source_model", "confidence"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^BC-[0-9]+$",
+          "minLength": 4
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ubiquitous_language": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/UbiquitousLanguageEntry" }
+        },
+        "related_subdomain_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owned_entity_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "owned_buc_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "team_ownership": {
+          "type": ["string", "null"]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_model": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "default", "user"]
+        }
+      }
+    },
+    "UbiquitousLanguageEntry": {
+      "type": "object",
+      "required": ["term", "definition"],
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 1
+        },
+        "definition": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ContextMapRelation": {
+      "type": "object",
+      "required": ["id", "from_bc_id", "to_bc_id", "pattern", "direction", "translator_description", "integration_events", "reason", "source_model", "confidence"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^CM-[0-9]+$",
+          "minLength": 4
+        },
+        "from_bc_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "to_bc_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pattern": {
+          "type": "string",
+          "enum": ["shared_kernel", "customer_supplier", "conformist", "acl", "ohs", "published_language"]
+        },
+        "direction": {
+          "type": "string",
+          "enum": ["upstream", "downstream", "symmetric"]
+        },
+        "translator_description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "integration_events": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_model": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "default", "user"]
+        }
+      }
+    },
+    "AggregateHypothesis": {
+      "type": "object",
+      "required": ["id", "bounded_context_id", "root_entity_id", "member_entity_ids", "invariants", "note", "source_model", "confidence"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^AG-[0-9]+$",
+          "minLength": 4
+        },
+        "bounded_context_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "root_entity_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "member_entity_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "invariants": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "note": {
+          "type": "string"
+        },
+        "source_model": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "default", "user"]
         }
       }
     },

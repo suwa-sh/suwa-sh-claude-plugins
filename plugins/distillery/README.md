@@ -95,6 +95,10 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 
 - **Claude Code** >= 最新安定版
 - **Node.js** （`requirements` スキル内の `scripts/makeGraphData.js` / `makeZeroOneData.js` 実行用）
+- **任意**: `architecture` スキルは同マーケットプレイスの [ddd](../ddd/) プラグイン（`ddd-architecture` スキル）に依存します。Phase 0 のドメイン設計（サブドメイン分類 / 境界づけられたコンテキスト / コンテキストマップ / 集約境界仮説）で DDD 概念リファレンスとして参照します。未インストール時はスキル冒頭でインストール案内が表示されます
+  ```
+  /plugin install ddd@suwa-sh-claude-plugins
+  ```
 - **任意**: `infrastructure` スキルは [multi-cloud-lifecycle-skills](https://github.com/suwa-sh/multi-cloud-lifecycle-skills) の `mcl-common` / `mcl-product-design` プラグインに依存します。未インストール時は手動でインフラ設計を行う動作になります
 - **任意**: `design-system` スキルは `design-system`, `ui-ux-pro-max`, `brand`, `storybook-config` 等のスキルが環境にあれば利用します
 

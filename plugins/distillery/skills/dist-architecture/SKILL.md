@@ -4,16 +4,22 @@ description: >
   RDRA モデルと NFR グレードからアーキテクチャ設計を推論・対話・出力するスキル。
   requirements スキルの RDRA モデル（docs/rdra/latest/）と
   quality-attributes スキルの NFR グレード（docs/nfr/latest/nfr-grade.yaml）を入力とし、
+  ドメインアーキテクチャ（DDD 戦略設計: サブドメイン分類 / 境界づけられたコンテキスト /
+  コンテキストマップ / 集約境界仮説）、
   システムアーキテクチャ（ティア構成・IdP・認可サービス・API Gateway）、
   アプリケーションアーキテクチャ（presentation/usecase/domain/gateway の4層設計・ロギング方針）、
   データアーキテクチャ（イミュータブルデータモデル・概念モデル・ストレージマッピング）を自動推論。
   クラウドデザインパターン（Circuit Breaker, Saga, CQRS 等）の適用判断、
-  認可モデル選定（RBAC/ABAC/ReBAC）、ログ出力方針（レイヤー別ログカテゴリ）も含む。
+  認可モデル選定（RBAC/ABAC/ReBAC、サブドメイン分類による重み付け）、
+  ログ出力方針（レイヤー別ログカテゴリ）も含む。
   対話で確認・調整し、arch-design.yaml + coverage-report.md として出力する。
   全テクノロジー記述はベンダーニュートラル（FaaS, CaaS(k8s), RDB 等）。
   図解は全て Mermaid graph。イベントソーシングで履歴管理する。
+  ddd-architecture スキルに依存する（DDD 概念リファレンス）。
   「アーキテクチャ設計」「システム構成を設計」「ティア構成」「レイヤ設計」
   「データモデル設計」「アプリケーション構成」「概念モデルを作成」
+  「サブドメイン分類」「境界づけられたコンテキスト」「コンテキストマップ」
+  「集約境界」「ドメイン分割」「Core/Supporting/Generic」「ACL/OHS/Conformist」
   「認証認可の設計」「IdP の選定」「認可モデルを選びたい」
   「ログ出力方針」「イミュータブルデータモデル」「クラウドデザインパターン」
   「非機能要求からアーキテクチャ」などで発動。
@@ -26,6 +32,45 @@ RDRA モデルと NFR グレードからシステム・アプリケーション�
 全テクノロジー記述はベンダーニュートラル。クラウドベンダーへのマッピングは後続の別スキルの責務。
 
 ## 前提条件
+
+### 依存スキル
+
+本スキルは DDD 戦略的設計のリファレンスとして `ddd-architecture` スキルに依存する（domain_architecture セクション生成時）。パイプライン開始前に以下のスキルが利用可能か確認すること:
+
+```bash
+# 依存スキルの存在チェック（user skill / plugin skill / repo skill 全パスを走査）
+for skill in ddd-architecture; do
+  if ls ~/.claude/skills/$skill/SKILL.md \
+        ~/.claude/plugins/*/plugins/*/skills/$skill/SKILL.md \
+        ~/.claude/plugins/*/skills/$skill/SKILL.md \
+        /Users/*/src/**/plugins/ddd/skills/$skill/SKILL.md 2>/dev/null | head -1 > /dev/null 2>&1; then
+    echo "OK: $skill"
+  else
+    echo "MISSING: $skill"
+  fi
+done
+```
+
+MISSING の場合:
+1. ユーザーに「ddd-architecture スキルがインストールされていません。インストールしますか？」と確認する
+2. 承認後、以下のコマンドでインストールを試みる:
+   ```bash
+   ~/.local/bin/claude plugin marketplace update suwa-sh-claude-plugins
+   ~/.local/bin/claude plugin install ddd@suwa-sh-claude-plugins
+   ```
+3. インストールに失敗した場合は、以下の手動インストール手順を提示する:
+   ```
+   ddd プラグインの手動インストール手順:
+   1. https://github.com/suwa-sh/suwa-sh-claude-plugins をクローン
+   2. リポジトリ内の plugins/ddd/skills/ 配下の各スキルを user skill ディレクトリ（`~/.claude/skills/`）にコピー
+      - ddd-architecture/
+      - ddd-tactical-implementation/（将来 dist-spec から参照予定）
+   3. コピー後、Claude Code を再起動
+   ```
+
+ddd-architecture は **DDD の概念リファレンス** として位置付ける。本スキル（dist-architecture）は RDRA との結線ルールと出力規約を独自に持ち、DDD 用語の定義 / パターン解説は ddd-architecture/references/ を参照する形にする。詳細は `references/arch-domain-patterns.md` を参照。
+
+### 入力データ
 
 - `docs/rdra/latest/*.tsv` が存在すること（requirements スキル実行済み）
 - `docs/rdra/latest/システム概要.json` が存在すること
@@ -103,13 +148,16 @@ Step1 の推論結果をユーザーに提示し、対話で確認・調整す�
 
 ### タスク
 
-`references/arch/arch-dialogue.md` に従い、以下の順で対話を行う:
+`references/arch/arch-dialogue.md` に従い、以下の順で対話を行う。**問題空間（DDD ドメイン設計）を解決空間（技術選定）より先に確定する**:
 
-1. **テクノロジースタックの確認**: 言語/FW の希望、技術的制約（デプロイ先は対象外）
-2. **システムアーキテクチャの確認**: ティア構成、テクノロジー候補、ティア共通方針/ルール
-3. **アプリケーションアーキテクチャの確認**: ティアごとのレイヤリング、レイヤー共通方針/ルール
-4. **データアーキテクチャの確認**: 概念モデル、ストレージマッピング
-5. **最終確認**: 確定内容のサマリを提示
+1. **ドメイン設計の確認**（Phase 0）: サブドメイン分類 → BC → コンテキストマップ → 集約境界仮説 の 4 sub-step。`references/dialogue-format.md`（3案+⭐推奨）準拠
+2. **テクノロジースタックの確認**（Phase 1）: 言語/FW の希望、技術的制約（デプロイ先は対象外）
+3. **システムアーキテクチャの確認**（Phase 2）: BC : tier 対応形態 → ティア構成、テクノロジー候補、ティア共通方針/ルール、認可モデル（BC 重み付け含む）、i18n
+4. **アプリケーションアーキテクチャの確認**（Phase 3）: ティアごとのレイヤリング、レイヤー共通方針/ルール
+5. **データアーキテクチャの確認**（Phase 4）: BC 所属の確認を含む概念モデル、ストレージマッピング
+6. **最終確認**（Phase 5）: 確定内容のサマリを提示
+
+Phase 0 スキップルール: BUC <= 3 + 外部システム = 0 なら Step 0.1/0.2 を結合 1 ステップに短縮。全 entity が confidence: default のみなら Step 0.4 を skip。
 
 ### 出力
 
