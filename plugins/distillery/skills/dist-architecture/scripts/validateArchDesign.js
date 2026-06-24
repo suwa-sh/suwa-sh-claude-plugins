@@ -16,6 +16,14 @@
  *   initial 新規構築 / latest スナップショット扱い。domain_architecture 欠落は WARN（exit 0）
  *   diff    差分更新扱い。domain_architecture が無くても WARN にしない（差分は変更セクションのみ）
  *
+ * 既知の制約（TODO: 将来 PR で対応）:
+ *   - 現状は完全版スキーマ（arch-design.yaml）のみ正式サポート。arch-design-diff.yaml に対しても
+ *     同じスキーマで検証するため、必須トップレベルキー（version, event_id, technology_context 等）が
+ *     欠落していると schema ERROR になる
+ *   - 当面の運用: diff yaml を直接検証せず、latest にマージしてから検証することを推奨
+ *   - --mode=diff オプションは domain_architecture 欠落 WARN の抑制のみで、トップレベル必須キー
+ *     チェックは無効化していない
+ *
  * 設計判断:
  *   - domain_architecture セクションは optional（後方互換）。欠落しても WARN 止まり
  *   - クロスリファレンスチェック（BC <-> entity 等）は domain_architecture が存在する場合のみ実施

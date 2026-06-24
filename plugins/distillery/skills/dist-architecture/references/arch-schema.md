@@ -329,17 +329,25 @@ data_architecture:
 ### domain_architecture（optional）
 
 DDD 戦略的設計の観点（サブドメイン分類 / 境界づけられたコンテキスト / コンテキストマップ / 集約境界仮説）。
-**トップレベルでは optional**。既存の `latest/arch-design.yaml` に存在しない場合、バリデータは WARN（exit 0）で通過させる。新規構築時は最低 1 subdomain + 1 BC を含めることを推奨する。
+
+**セクション自体の有無**:
+- **トップレベルで domain_architecture セクション自体は optional**。既存の `latest/arch-design.yaml` に存在しない場合、バリデータは WARN（exit 0）で通過させる
+- 新規構築時は最低 1 subdomain + 1 BC を含めることを推奨
+
+**セクション内のフィールド**（domain_architecture を含める場合）:
+- **subdomains, bounded_contexts, context_map, aggregate_hypotheses は schema-arch-design.json で required（必須キー）**
+- ただし**空配列 `[]` は許容**される（例: 小規模システムで context_map: [] / aggregate_hypotheses: []）
+- これは「キー自体は必ず宣言、中身は空でも可」というポリシー（schema 安定性と柔軟性の両立）
 
 DDD 戦略設計は RDRA からの推論を補助とし、最終判断は Phase 0 の対話でユーザーに確認する。本スキルは DDD 完全準拠を主張せず、RDRA から導出可能な戦略設計の **仮説生成** に留める。詳細な原典は `plugins/ddd/skills/ddd-architecture/README.md` を参照（任意）。
 
-| フィールド | 型 | 必須 | 説明 |
-|-----------|---|------|------|
-| subdomains | Subdomain[] | No | サブドメイン定義（Core/Supporting/Generic）。空配列可 |
-| bounded_contexts | BoundedContext[] | No | 境界づけられたコンテキスト定義。空配列可 |
-| context_map | ContextMapRelation[] | No | コンテキスト間の統合パターン。空配列可 |
-| aggregate_hypotheses | AggregateHypothesis[] | No | 集約境界の仮説。最終確定は別スキル。空配列可 |
-| diagram_mermaid | string | No | Mermaid graph 形式の BC 関係図 |
+| フィールド | 型 | キー必須 | 説明 |
+|-----------|---|:------:|------|
+| subdomains | Subdomain[] | Yes（空配列可）| サブドメイン定義（Core/Supporting/Generic） |
+| bounded_contexts | BoundedContext[] | Yes（空配列可）| 境界づけられたコンテキスト定義 |
+| context_map | ContextMapRelation[] | Yes（空配列可）| コンテキスト間の統合パターン |
+| aggregate_hypotheses | AggregateHypothesis[] | Yes（空配列可）| 集約境界の仮説。最終確定は別スキル |
+| diagram_mermaid | string | No（optional） | Mermaid graph 形式の BC 関係図 |
 
 ### Subdomain
 
@@ -393,12 +401,14 @@ DDD 戦略設計は RDRA からの推論を補助とし、最終判断は Phase 
 
 ### AggregateHypothesis
 
+戦略段階の **仮説**として扱う。最終確定は dist-spec or ddd-tactical-implementation の責務。よって BC 境界との整合性は **SHOULD**（推奨）レベルで、違反は validator で WARN（exit 0）に留まる。MUST にしたい場合は validator のロジックを ERROR に変更する必要がある。
+
 | フィールド | 型 | 必須 | 説明 |
 |-----------|---|------|------|
 | id | string | Yes | 集約 ID（"AG-{NNN}" 形式） |
 | bounded_context_id | string | Yes | 所属 BC ID |
-| root_entity_id | string | Yes | aggregate root の Entity ID（**BC.owned_entity_ids に含まれていること**） |
-| member_entity_ids | string[] | Yes | aggregate のメンバー Entity ID の配列（**BC.owned_entity_ids に含まれていること**。空配列可） |
+| root_entity_id | string | Yes | aggregate root の Entity ID（**SHOULD: BC.owned_entity_ids に含まれているべき**。違反時は validator が WARN） |
+| member_entity_ids | string[] | Yes | aggregate のメンバー Entity ID の配列（**SHOULD: BC.owned_entity_ids に含まれているべき**。違反時は validator が WARN。空配列可） |
 | invariants | string[] | Yes | 集約内で保つべき不変条件の配列（条件.tsv 由来）。空配列可 |
 | note | string | Yes | 補足。「仮説。最終確定は dist-spec or ddd-tactical-implementation で行う」等 |
 | source_model | string | Yes | 根拠となった RDRA 要素 |

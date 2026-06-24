@@ -140,12 +140,22 @@ data_architecture:
 
 ### decisions/ のスナップショット更新
 
-`latest/decisions/` はイベントの `decisions/` ディレクトリを **全置換** で更新する（マージではない）:
+`latest/decisions/` は **`artifact_id` 単位の upsert**（マージ）で更新する。全置換はしない（過去イベントで確定した有効な判断を破壊しないため）:
 
-1. `latest/decisions/` が存在する場合は中身を全て削除する
-2. `events/{event_id}/decisions/` の全ファイルを `latest/decisions/` にコピーする
+1. `latest/decisions/` が存在しなければ作成する
+2. `events/{event_id}/decisions/` の各ファイル（`arch-decision-{NNN}.yaml`）を読み込む
+3. `latest/decisions/` に同名ファイルがあれば**上書き**、無ければ**追加**（artifact_id で upsert）
+4. 廃止された判断は `status: "deprecated"` に変更したファイルを events に記録し、その差分が latest に反映される（ファイル削除はしない）
 
-これにより、latest の決定記録は常に最新イベントの決定記録と一致する。
+これにより、latest の決定記録は **全イベントを通じての累積** となり、初期構築から差分更新までの判断履歴がトレース可能となる。
+
+#### 初期構築モード時の動作
+
+初期構築モードでは `events/{event_id}/decisions/` が全決定を含むため、`latest/decisions/` が空の状態への upsert = 全件追加と等価になる（特別扱い不要）。
+
+#### artifact_id の衝突回避
+
+差分更新時に新規追加する決定記録の `artifact_id` は、**`latest/decisions/` の最大連番の次** を採用する。例: latest に `arch-decision-001` 〜 `arch-decision-007` があれば、新規は `arch-decision-008` から。これにより上書きと追加が混在しても ID 衝突しない。
 
 ### マージ手順
 

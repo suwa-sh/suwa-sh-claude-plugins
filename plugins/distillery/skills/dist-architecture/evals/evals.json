@@ -68,6 +68,30 @@
           "type": "content_not_contains",
           "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml",
           "not_contains": ["Lambda", "EKS", "AKS", "GKE", "Cognito", "DynamoDB"]
+        },
+        {
+          "name": "domain_architecture セクションが含まれる",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml",
+          "contains": "domain_architecture:"
+        },
+        {
+          "name": "Core サブドメインが最低 1 件存在",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml",
+          "contains": "type: \"core\""
+        },
+        {
+          "name": "Bounded Context が最低 1 件存在 (BC-001 など)",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.yaml",
+          "contains": "BC-001"
+        },
+        {
+          "name": "Markdown にドメインアーキテクチャセクションが含まれる",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/arch-design.md",
+          "contains": "## ドメインアーキテクチャ"
         }
       ],
       "files": [
@@ -133,12 +157,110 @@
           "type": "content_contains",
           "path": "samples/05_architecture/docs/arch/latest/coverage-report.md",
           "contains": "対応状況"
+        },
+        {
+          "name": "ドメイン設計密度セクションが含まれる",
+          "type": "content_contains",
+          "path": "samples/05_architecture/docs/arch/latest/coverage-report.md",
+          "contains": "ドメイン設計密度"
         }
       ],
       "files": [
         "samples/05_architecture/docs/arch/latest/arch-design.yaml",
         "samples/05_architecture/docs/rdra/latest/",
         "samples/05_architecture/docs/nfr/latest/nfr-grade.yaml"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "evals/fixtures/minimal-with-domain.yaml に対して validateArchDesign.js を実行してください。",
+      "expected_output": "validator が PASS (exit 0) で通過し、domain_architecture セクションのカウント（subdomains=1, BCs=1）が表示される",
+      "assertions": [
+        {
+          "name": "minimal-with-domain fixture が PASS",
+          "type": "command_exit_code",
+          "command": "node scripts/validateArchDesign.js evals/fixtures/minimal-with-domain.yaml",
+          "expected": 0
+        },
+        {
+          "name": "出力に domain カウントが含まれる",
+          "type": "output_contains",
+          "contains": "Domain: subdomains=1, BCs=1"
+        }
+      ],
+      "files": [
+        "evals/fixtures/minimal-with-domain.yaml",
+        "scripts/validateArchDesign.js",
+        "scripts/schema-arch-design.json"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "evals/fixtures/legacy-no-domain.yaml （domain_architecture セクションを持たない既存スナップショット相当）に対して validateArchDesign.js を実行してください。WARN は出るが exit 0 になることを期待します。",
+      "expected_output": "validator が WARN 1 件で PASS (exit 0)。後方互換が機能している",
+      "assertions": [
+        {
+          "name": "legacy-no-domain fixture が WARN + exit 0",
+          "type": "command_exit_code",
+          "command": "node scripts/validateArchDesign.js evals/fixtures/legacy-no-domain.yaml",
+          "expected": 0
+        },
+        {
+          "name": "WARN メッセージが出力される",
+          "type": "output_contains",
+          "contains": "domain_architecture not present"
+        }
+      ],
+      "files": [
+        "evals/fixtures/legacy-no-domain.yaml",
+        "scripts/validateArchDesign.js",
+        "scripts/schema-arch-design.json"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "evals/fixtures/invalid-bc-ref.yaml （BC.owned_entity_ids[] が存在しない entity を参照する不正 fixture）に対して validateArchDesign.js を実行してください。ERROR で exit 1 になることを期待します。",
+      "expected_output": "validator が ERROR で FAIL (exit 1)。BC ↔ entity の整合性チェックが機能している",
+      "assertions": [
+        {
+          "name": "invalid-bc-ref fixture が ERROR + exit 1",
+          "type": "command_exit_code",
+          "command": "node scripts/validateArchDesign.js evals/fixtures/invalid-bc-ref.yaml",
+          "expected": 1
+        },
+        {
+          "name": "ERROR メッセージに owned_entity_id 不在が含まれる",
+          "type": "output_contains",
+          "contains": "owned_entity_id"
+        }
+      ],
+      "files": [
+        "evals/fixtures/invalid-bc-ref.yaml",
+        "scripts/validateArchDesign.js",
+        "scripts/schema-arch-design.json"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "evals/fixtures/high-confidence-core.yaml （Core サブドメインに confidence: \"high\" を指定した fixture）に対して validateArchDesign.js を実行してください。WARN は出るが exit 0 になることを期待します。",
+      "expected_output": "validator が PASS (exit 0) + Core confidence 上限超過 WARN。confidence 上限ルールが機能している",
+      "assertions": [
+        {
+          "name": "high-confidence-core fixture が WARN + exit 0",
+          "type": "command_exit_code",
+          "command": "node scripts/validateArchDesign.js evals/fixtures/high-confidence-core.yaml",
+          "expected": 0
+        },
+        {
+          "name": "WARN メッセージに Core confidence 制限が含まれる",
+          "type": "output_contains",
+          "contains": "Core"
+        }
+      ],
+      "files": [
+        "evals/fixtures/high-confidence-core.yaml",
+        "scripts/validateArchDesign.js",
+        "scripts/schema-arch-design.json"
       ]
     }
   ]

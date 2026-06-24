@@ -1,0 +1,104 @@
+version: "1.0"
+event_id: "20260624_120000_test_domain_minimal"
+created_at: "2026-06-24T12:00:00"
+source: "PR1 動作確認用 minimal fixture"
+
+technology_context:
+  languages:
+    - "TypeScript"
+  frameworks:
+    - "Next.js"
+  constraints:
+    - "テスト用最小構成"
+
+domain_architecture:
+  subdomains:
+    - id: "SD-001"
+      name: "テスト中核業務"
+      type: "core"
+      investment_policy: "最優先で投資"
+      related_buc_ids:
+        - "BUC-001"
+      reason: "テスト中核業務が事業の中核"
+      source_model: "BUC: テスト中核業務"
+      confidence: "medium"
+  bounded_contexts:
+    - id: "BC-001"
+      name: "テスト BC"
+      ubiquitous_language:
+        - term: "テスト対象"
+          definition: "BC-001 における管理対象"
+      related_subdomain_id: "SD-001"
+      owned_entity_ids:
+        - "E-001"
+      owned_buc_ids:
+        - "BUC-001"
+      team_ownership: null
+      reason: "1 サブドメイン 1 BC"
+      source_model: "BUC: テスト中核業務"
+      confidence: "medium"
+  context_map: []
+  aggregate_hypotheses:
+    - id: "AG-001"
+      bounded_context_id: "BC-001"
+      root_entity_id: "E-001"
+      member_entity_ids: []
+      invariants: []
+      note: "仮説。最終確定は dist-spec で行う"
+      source_model: "情報: テスト情報"
+      confidence: "low"
+
+system_architecture:
+  tiers:
+    - id: "tier-api"
+      name: "API"
+      description: "テスト API ティア"
+      technology_candidates:
+        - "CaaS(k8s)"
+      policies: []
+      rules: []
+  cross_tier_policies: []
+  cross_tier_rules: []
+  diagram_mermaid: |
+    graph TD
+      API[API]
+
+app_architecture:
+  tier_layers:
+    - tier_id: "tier-api"
+      layers:
+        - id: "L-api-handler"
+          name: "handler"
+          responsibility: "リクエスト受付"
+          allowed_dependencies: []
+          policies: []
+          rules: []
+      cross_layer_policies: []
+      cross_layer_rules: []
+      diagram_mermaid: |
+        graph TD
+          H[handler]
+
+data_architecture:
+  entities:
+    - id: "E-001"
+      name: "テスト情報"
+      source_info: "情報: テスト情報"
+      model_type: "resource_mutable"
+      attributes:
+        - name: "id"
+          type: "string"
+          description: "テストID"
+          nullable: false
+          primary_key: true
+      relationships: []
+  storage_mapping:
+    - entity_id: "E-001"
+      storage_type: "rdb"
+      reason: "シンプルなマスタ"
+      confidence: "default"
+  diagram_mermaid: |
+    erDiagram
+      TEST {
+        string id
+      }
