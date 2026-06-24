@@ -9,6 +9,12 @@ RDRA モデルと NFR グレードから推論したアーキテクチャ設計�
 - [フィールド説明](#フィールド説明)
   - [トップレベル](#トップレベル)
   - [technology_context](#technology_context)
+  - [domain_architecture（optional）](#domain_architectureoptional)
+  - [Subdomain](#subdomain)
+  - [BoundedContext](#boundedcontext)
+  - [UbiquitousLanguageEntry](#ubiquitouslanguageentry)
+  - [ContextMapRelation](#contextmaprelation)
+  - [AggregateHypothesis](#aggregatehypothesis)
   - [system_architecture](#system_architecture)
   - [Tier](#tier)
   - [app_architecture](#app_architecture)
@@ -41,6 +47,89 @@ technology_context:
     - "Next.js"
   constraints:
     - "モノレポ構成"
+
+# domain_architecture は optional（既存スナップショットでは無くてもよい）
+# 新規構築時は最低 1 subdomain + 1 BC を含めることを推奨
+domain_architecture:
+  subdomains:
+    - id: "SD-001"
+      name: "会議室予約"
+      type: "core"
+      investment_policy: "最優先で深いモデリングと継続的リファクタリングに投資"
+      related_buc_ids:
+        - "BUC-001"
+        - "BUC-002"
+      reason: "BUC「会議室利用業務」が事業の中核であり競争優位の源泉"
+      source_model: "BUC: 会議室利用業務, システム概要: 差別化要因"
+      confidence: "medium"
+    - id: "SD-002"
+      name: "決済処理"
+      type: "generic"
+      investment_policy: "外部 SaaS 採用、自作回避"
+      related_buc_ids:
+        - "BUC-003"
+      reason: "決済機関連携は汎用機能で差別化要因ではない"
+      source_model: "外部システム: 決済機関"
+      confidence: "high"
+  bounded_contexts:
+    - id: "BC-001"
+      name: "予約コンテキスト"
+      ubiquitous_language:
+        - term: "予約"
+          definition: "利用者が会議室の使用権を確保した状態。確定/キャンセル/変更のライフサイクルを持つ"
+        - term: "会議室"
+          definition: "予約対象となる物理的な部屋。請求コンテキストでの「課金対象施設」とは区別される"
+      related_subdomain_id: "SD-001"
+      owned_entity_ids:
+        - "E-001"
+        - "E-003"
+      owned_buc_ids:
+        - "BUC-001"
+      team_ownership: null
+      reason: "言語の境界: 「会議室」が予約文脈と請求文脈で別物として扱われる"
+      source_model: "BUC: 会議室利用業務, 情報: 会議室情報, 状態: 予約状態"
+      confidence: "medium"
+    - id: "BC-002"
+      name: "請求コンテキスト"
+      ubiquitous_language:
+        - term: "課金対象施設"
+          definition: "請求文脈における料金計算の単位。物理的な部屋とは別概念"
+      related_subdomain_id: "SD-002"
+      owned_entity_ids:
+        - "E-004"
+      owned_buc_ids:
+        - "BUC-003"
+      team_ownership: null
+      reason: "決済処理サブドメインに対応した独立 BC"
+      source_model: "外部システム: 決済機関"
+      confidence: "high"
+  context_map:
+    - id: "CM-001"
+      from_bc_id: "BC-001"
+      to_bc_id: "BC-002"
+      pattern: "acl"
+      direction: "downstream"
+      translator_description: "BC-001（予約）が BC-002（請求）の外部モデルを ACL で隔離し、自身のドメイン用語に翻訳"
+      integration_events: []
+      reason: "外部決済機関の汚いモデルを予約コンテキストに持ち込まない"
+      source_model: "外部システム: 決済機関"
+      confidence: "medium"
+  aggregate_hypotheses:
+    - id: "AG-001"
+      bounded_context_id: "BC-001"
+      root_entity_id: "E-003"
+      member_entity_ids: []
+      invariants:
+        - "予約期間が同一会議室の他予約と重複しない"
+        - "キャンセル期限を過ぎた予約は変更不可"
+      note: "仮説。最終確定は dist-spec または ddd-tactical-implementation で行う"
+      source_model: "情報: 予約情報, 状態: 予約状態, 条件: キャンセルポリシー"
+      confidence: "low"
+  diagram_mermaid: |
+    graph LR
+      BC1["BC-001 予約<br/>Core: SD-001"]
+      BC2["BC-002 請求<br/>Generic: SD-002"]
+      BC1 -->|ACL CM-001| BC2
 
 system_architecture:
   tiers:
@@ -237,6 +326,84 @@ data_architecture:
 | frameworks | string[] | Yes | フレームワーク（例: "Next.js", "Spring Boot"） |
 | constraints | string[] | Yes | 技術的制約（例: "モノレポ構成", "既存DBとの互換性"） |
 
+### domain_architecture（optional）
+
+DDD 戦略的設計の観点（サブドメイン分類 / 境界づけられたコンテキスト / コンテキストマップ / 集約境界仮説）。
+**トップレベルでは optional**。既存の `latest/arch-design.yaml` に存在しない場合、バリデータは WARN（exit 0）で通過させる。新規構築時は最低 1 subdomain + 1 BC を含めることを推奨する。
+
+DDD 戦略設計は RDRA からの推論を補助とし、最終判断は Phase 0 の対話でユーザーに確認する。本スキルは DDD 完全準拠を主張せず、RDRA から導出可能な戦略設計の **仮説生成** に留める。詳細な原典は `plugins/ddd/skills/ddd-architecture/README.md` を参照（任意）。
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| subdomains | Subdomain[] | No | サブドメイン定義（Core/Supporting/Generic）。空配列可 |
+| bounded_contexts | BoundedContext[] | No | 境界づけられたコンテキスト定義。空配列可 |
+| context_map | ContextMapRelation[] | No | コンテキスト間の統合パターン。空配列可 |
+| aggregate_hypotheses | AggregateHypothesis[] | No | 集約境界の仮説。最終確定は別スキル。空配列可 |
+| diagram_mermaid | string | No | Mermaid graph 形式の BC 関係図 |
+
+### Subdomain
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| id | string | Yes | サブドメイン ID（"SD-{NNN}" 形式） |
+| name | string | Yes | サブドメイン名（日本語） |
+| type | string | Yes | 分類: "core" / "supporting" / "generic" |
+| investment_policy | string | Yes | 投資方針（Core は最優先 / Supporting は good enough / Generic は買う・借りる） |
+| related_buc_ids | string[] | Yes | 該当サブドメインに属する BUC ID の配列 |
+| reason | string | Yes | 分類根拠 |
+| source_model | string | Yes | 根拠となった RDRA/NFR 要素 |
+| confidence | string | Yes | 確信度（**Core は medium 上限。自動推論で high を付与しない**） |
+
+### BoundedContext
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| id | string | Yes | BC ID（"BC-{NNN}" 形式） |
+| name | string | Yes | BC 名（日本語） |
+| ubiquitous_language | UbiquitousLanguageEntry[] | Yes | 核語彙（最低 1 件）。同名異義語があれば BC 別の意味を明示 |
+| related_subdomain_id | string | Yes | 該当 BC が属する Subdomain ID |
+| owned_entity_ids | string[] | Yes | この BC が所有する Entity ID の配列（`data_architecture.entities[].id` を参照）。**唯一の正規参照**（Entity 側に bounded_context_id は持たない） |
+| owned_buc_ids | string[] | Yes | この BC が扱う BUC ID の配列 |
+| team_ownership | string \| null | Yes | チーム所有者（Conway の法則に基づく）。RDRA から推論できないため対話で確認。不明なら null |
+| reason | string | Yes | BC 分割の根拠（言語境界 / チーム境界 / 外部システム境界等） |
+| source_model | string | Yes | 根拠となった RDRA 要素 |
+| confidence | string | Yes | 確信度（**BC 分割は medium 上限**） |
+
+### UbiquitousLanguageEntry
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| term | string | Yes | 用語（業務で使われる呼び名） |
+| definition | string | Yes | この BC での意味の定義 |
+
+### ContextMapRelation
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| id | string | Yes | 関係 ID（"CM-{NNN}" 形式） |
+| from_bc_id | string | Yes | 関係の起点 BC ID |
+| to_bc_id | string | Yes | 関係の終点 BC ID |
+| pattern | string | Yes | 統合パターン: "shared_kernel" / "customer_supplier" / "conformist" / "acl" / "ohs" / "published_language" |
+| direction | string | Yes | 依存方向: "upstream" / "downstream" / "symmetric" |
+| translator_description | string | Yes | 翻訳責務の説明（ACL なら隔離内容、OHS なら公開 API 等） |
+| integration_events | string[] | Yes | この BC 境界で発生する統合イベント名の配列（具体化は dist-spec で実施。空配列可） |
+| reason | string | Yes | パターン選定の根拠 |
+| source_model | string | Yes | 根拠となった RDRA 要素 |
+| confidence | string | Yes | 確信度 |
+
+### AggregateHypothesis
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| id | string | Yes | 集約 ID（"AG-{NNN}" 形式） |
+| bounded_context_id | string | Yes | 所属 BC ID |
+| root_entity_id | string | Yes | aggregate root の Entity ID（**BC.owned_entity_ids に含まれていること**） |
+| member_entity_ids | string[] | Yes | aggregate のメンバー Entity ID の配列（**BC.owned_entity_ids に含まれていること**。空配列可） |
+| invariants | string[] | Yes | 集約内で保つべき不変条件の配列（条件.tsv 由来）。空配列可 |
+| note | string | Yes | 補足。「仮説。最終確定は dist-spec or ddd-tactical-implementation で行う」等 |
+| source_model | string | Yes | 根拠となった RDRA 要素 |
+| confidence | string | Yes | 確信度（**aggregate は low 上限**。戦略段階の仮説として扱う） |
+
 ### system_architecture
 
 システムアーキテクチャ。ティア構成とティア間の方針・ルール。
@@ -359,6 +526,10 @@ model_type の意味:
 
 | プレフィックス | 種別 | スコープ |
 |---------------|------|---------|
+| SD-{NNN} | Subdomain | サブドメイン分類 |
+| BC-{NNN} | Bounded Context | 境界づけられたコンテキスト |
+| CM-{NNN} | Context Map Relation | BC 間の統合関係 |
+| AG-{NNN} | Aggregate Hypothesis | 集約境界の仮説 |
 | SP-{NNN} | System tier Policy | ティアごとの方針 |
 | SR-{NNN} | System tier Rule | ティアごとのルール |
 | CTP-{NNN} | Cross-Tier Policy | ティア共通の方針 |
