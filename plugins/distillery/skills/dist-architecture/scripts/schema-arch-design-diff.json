@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "arch-design-diff.yaml schema",
+  "description": "差分更新モードで生成される arch-design-diff.yaml のスキーマ。変更セクションのみを含み、トップレベル必須は meta のみ。$defs はメインスキーマ (schema-arch-design.json) から流用する（validator が両ファイルをロードしてマージする）。",
+  "type": "object",
+  "required": ["meta"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["event_id", "created_at"],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[0-9]{8}_[0-9]{6}_.+$",
+          "minLength": 16
+        },
+        "trigger_event": {
+          "type": "string",
+          "description": "前段イベントID（例: rdra:20260328_143000_xxx, nfr:20260328_150000_yyy, infra:20260328_160000_zzz）"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 10
+        }
+      }
+    },
+    "domain_architecture": {
+      "$ref": "#/$defs/DomainArchitectureDiff"
+    },
+    "system_architecture": {
+      "$ref": "#/$defs/SystemArchitectureDiff"
+    },
+    "app_architecture": {
+      "$ref": "#/$defs/AppArchitectureDiff"
+    },
+    "data_architecture": {
+      "$ref": "#/$defs/DataArchitectureDiff"
+    }
+  },
+  "$defs": {
+    "DomainArchitectureDiff": {
+      "type": "object",
+      "description": "domain_architecture セクションの差分。変更があったフィールドのみ含む（4 配列はいずれも optional）",
+      "properties": {
+        "subdomains": {
+          "type": "array",
+          "items": { "$ref": "schema-arch-design.json#/$defs/Subdomain" }
+        },
+        "bounded_contexts": {
+          "type": "array",
+          "items": { "$ref": "schema-arch-design.json#/$defs/BoundedContext" }
+        },
+        "context_map": {
+          "type": "array",
+          "items": { "$ref": "schema-arch-design.json#/$defs/ContextMapRelation" }
+        },
+        "aggregate_hypotheses": {
+          "type": "array",
+          "items": { "$ref": "schema-arch-design.json#/$defs/AggregateHypothesis" }
+        },
+        "diagram_mermaid": {
+          "type": "string"
+        }
+      }
+    },
+    "SystemArchitectureDiff": {
+      "type": "object",
+      "description": "system_architecture セクションの差分。tiers / cross_tier_policies / cross_tier_rules は変更があったもののみ、要素はマージキー (id/name) で照合する完全な要素として記述する",
+      "properties": {
+        "tiers": {
+          "type": "array",
+          "items": { "$ref": "schema-arch-design.json#/$defs/Tier" }
+        },
+        "cross_tier_policies": {
+          "type": "array",
+          "items": { "$ref": "schema-arch-design.json#/$defs/Policy" }
+        },
+        "cross_tier_rules": {
+          "type": "array",
+          "items": { "$ref": "schema-arch-design.json#/$defs/Rule" }
+        },
+        "diagram_mermaid": {
+          "type": "string"
+        }
+      }
+    },
+    "AppArchitectureDiff": {
+      "type": "object",
+      "description": "app_architecture セクションの差分。tier_layers は変更があったティアのみ含む",
+      "properties": {
+        "tier_layers": {
+          "type": "array",
+          "items": { "$ref": "schema-arch-design.json#/$defs/TierLayer" }
+        }
+      }
+    },
+    "DataArchitectureDiff": {
+      "type": "object",
+      "description": "data_architecture セクションの差分。entities / storage_mapping は変更があったもののみ、要素はマージキー (name / entity_id) で照合する完全な要素として記述する",
+      "properties": {
+        "entities": {
+          "type": "array",
+          "items": { "$ref": "schema-arch-design.json#/$defs/Entity" }
+        },
+        "storage_mapping": {
+          "type": "array",
+          "items": { "$ref": "schema-arch-design.json#/$defs/StorageMapping" }
+        },
+        "diagram_mermaid": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -262,6 +262,58 @@
         "scripts/validateArchDesign.js",
         "scripts/schema-arch-design.json"
       ]
+    },
+    {
+      "id": 8,
+      "prompt": "evals/fixtures/diff-minimal.yaml （差分モード用 fixture: meta + 変更 BC のみ）に対して --mode=diff オプション付きで validateArchDesign.js を実行してください。WARN は出るが exit 0 になることを期待します（参照整合性は WARN 扱い、latest にあれば OK）。",
+      "expected_output": "validator が diff schema で検証して PASS (exit 0) + 参照整合性 WARN 2 件",
+      "assertions": [
+        {
+          "name": "diff-minimal fixture が PASS + exit 0 (--mode=diff)",
+          "type": "command_exit_code",
+          "command": "node scripts/validateArchDesign.js --mode=diff evals/fixtures/diff-minimal.yaml",
+          "expected": 0
+        },
+        {
+          "name": "出力に mode: diff が表示される",
+          "type": "output_contains",
+          "contains": "mode: diff"
+        },
+        {
+          "name": "WARN メッセージに diff mode 注記が含まれる",
+          "type": "output_contains",
+          "contains": "diff mode"
+        }
+      ],
+      "files": [
+        "evals/fixtures/diff-minimal.yaml",
+        "scripts/validateArchDesign.js",
+        "scripts/schema-arch-design.json",
+        "scripts/schema-arch-design-diff.json"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "evals/fixtures/diff-minimal.yaml に対して --mode=diff を**指定せず**に validateArchDesign.js を実行してください。完全版スキーマで検証されるため FAIL (exit 1) になることを期待します。",
+      "expected_output": "auto モード（または initial モード）では完全版スキーマで検証され、必須トップレベルキー欠落で FAIL (exit 1)",
+      "assertions": [
+        {
+          "name": "diff-minimal が auto モードで FAIL + exit 1",
+          "type": "command_exit_code",
+          "command": "node scripts/validateArchDesign.js evals/fixtures/diff-minimal.yaml",
+          "expected": 1
+        },
+        {
+          "name": "Missing required property エラーが含まれる",
+          "type": "output_contains",
+          "contains": "Missing required property"
+        }
+      ],
+      "files": [
+        "evals/fixtures/diff-minimal.yaml",
+        "scripts/validateArchDesign.js",
+        "scripts/schema-arch-design.json"
+      ]
     }
   ]
 }

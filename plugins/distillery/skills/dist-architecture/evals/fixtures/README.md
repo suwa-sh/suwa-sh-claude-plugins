@@ -24,6 +24,7 @@ fixtures/
 | `legacy-no-domain.yaml` | 既存スナップショット（domain なし）| PASS (exit 0)、`domain_architecture` 欠落 WARN 1 件 |
 | `invalid-bc-ref.yaml` | BC.owned_entity_ids[] が存在しない entity を参照 | FAIL (exit 1) + 関連 WARN（aggregate root が BC owned に無い）|
 | `high-confidence-core.yaml` | Core サブドメインに confidence: "high" 指定 | PASS (exit 0)、confidence 上限超過 WARN 1 件 |
+| `diff-minimal.yaml` | 差分モード fixture: meta + 変更 BC のみ | `--mode=diff` で PASS (exit 0) + 参照整合性 WARN 2 件。`--mode=diff` 無指定では FAIL (exit 1) |
 
 ## 実行コマンド
 
@@ -65,11 +66,14 @@ codex 再レビューで指摘された未対応項目。将来 PR で追加す�
 
 | 領域 | fixture | 検証内容 |
 |---|---|---|
-| 差分モード | `diff-minimal.yaml` | `meta` + 変更セクションのみの diff yaml が `--mode=diff` で validate 通過すること（**現状は完全版スキーマで検証するため一部 ERROR**）|
-| 差分マージ | `diff-merge-base.yaml` + `diff-merge-overlay.yaml` | event-sourcing-rules.md のマージキー（id 照合）で差分が正しく適用されること |
-| decisions upsert | `decisions-upsert-base/` + `decisions-upsert-diff/` | latest/decisions が **artifact_id で upsert** され、過去の有効な決定が保持されること（**PR3 では仕様変更のみ、テストは未実装**）|
+| 差分マージ | `diff-merge-base.yaml` + `diff-merge-overlay.yaml` | event-sourcing-rules.md のマージキー（id 照合）で差分が正しく適用されること（マージスクリプトが現状未実装） |
+| decisions upsert | `decisions-upsert-base/` + `decisions-upsert-diff/` | latest/decisions が **artifact_id で upsert** され、過去の有効な決定が保持されること（仕様変更のみ、テストは未実装）|
 | ddd 未導入 | (環境変数で ddd plugin を無効化) | distillery 単独で processing が完走すること |
 | 部分 domain セクション | `partial-domain-only-subdomains.yaml` 等 | subdomains だけ / BC だけ等の部分 yaml がどう扱われるか |
 | BC = 1 と context_map | `single-bc-no-cm.yaml` | BC 1 個のみで context_map: [] が valid であること |
 
-これらは PR3 のスコープ外（仕様/実装変更を伴うため）。後続 PR で対応する。
+これらは別 PR で対応する。
+
+### 対応済み (このリポジトリで提供済み)
+
+- ✅ **差分モード**: `diff-minimal.yaml` + `schema-arch-design-diff.json` + validator `--mode=diff` 切替で対応済み (eval id:8/9)

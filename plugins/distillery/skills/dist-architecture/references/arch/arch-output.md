@@ -241,20 +241,29 @@ alternatives_considered:
 
 ### 7. バリデーション
 
-> **既知の制約（TODO）**: 現状の `validateArchDesign.js` は **完全版スキーマ（`arch-design.yaml`）** のみを正式サポートする。`arch-design-diff.yaml`（差分モード）に対しても同じスキーマで検証するため、必須トップレベルキーが欠落していると ERROR になる。差分専用スキーマ（部分構造を許容）への分離は将来 PR で対応する。当面の運用は以下:
->
-> - **差分モードのバリデーション**: validator にかける前に、`latest/arch-design.yaml` とマージしてから検証する（マージ後の yaml は完全版）
-> - **直接 diff yaml を検証したい場合**: `--mode=diff` オプションで起動するが、現状は構造チェックの一部のみ機能する
-> - 詳細トラッキング: `docs/todo.md`（dist-architecture: diff schema 分離）
+モードに応じて適用するスキーマが切り替わる:
+
+- **initial モード**: `schema-arch-design.json`（完全版）で検証。全トップレベルキー必須
+- **diff モード**: `schema-arch-design-diff.json`（部分構造許容）で検証。`meta` のみ必須、各セクション optional。参照整合性チェック（tier_id / entity_id / BC.owned_entity_ids 等）は WARN に格下げ（diff 内に無くても latest にあれば OK のため）
+
+mode はファイル名から自動判定される（`arch-design-diff.yaml` で終わるなら diff、それ以外は initial）。明示指定したい場合は `--mode=initial` / `--mode=diff` で上書き可。
 
 出力後、スキーマバリデータを実行して arch-design.yaml の構造を検証する:
 
 ```bash
+# initial モード（完全版）: ファイル名 arch-design.yaml → 自動で initial
 node <skill-path>/scripts/validateArchDesign.js docs/arch/events/{event_id}/arch-design.yaml
+
+# diff モード（差分）: ファイル名 arch-design-diff.yaml → 自動で diff
+node <skill-path>/scripts/validateArchDesign.js docs/arch/events/{event_id}/arch-design-diff.yaml
+
+# モード明示指定（必要なら）
+node <skill-path>/scripts/validateArchDesign.js --mode=diff <path-to-yaml>
 ```
 
-- 終了コード 0（PASS）: Markdown 生成へ進む
-- 終了コード 1（FAIL）: エラー内容を確認し、arch-design.yaml を修正してから再度バリデーション
+- 終了コード 0（PASS）: Markdown 生成へ進む（WARN は出る可能性あり、stderr で確認）
+- 終了コード 1（FAIL）: エラー内容を確認し、yaml を修正してから再度バリデーション
+- 終了コード 2: ファイル読み込みエラー / 引数エラー
 
 `<skill-path>` は `${CLAUDE_PLUGIN_ROOT}/skills/dist-architecture`。
 
