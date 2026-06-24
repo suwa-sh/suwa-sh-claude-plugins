@@ -664,13 +664,69 @@ function generateReport(archData, rdra, nfrMetricsByCategory, sourceEntries, dat
     return Math.round((covered / total) * 100) + '%';
   }
 
+  // ==== Domain Architecture coverage ====
+  const domain = archData.domain_architecture;
+  let domainMetrics = null;
+  if (domain) {
+    const subdomains = domain.subdomains || [];
+    const bcs = domain.bounded_contexts || [];
+    const contextMap = domain.context_map || [];
+    const aggregates = domain.aggregate_hypotheses || [];
+
+    // Subdomain coverage: BUC 総数 / SD に割当された BUC 数
+    const allBucNames = new Set();
+    for (const bucs of Object.values(rdra.bucs || {})) {
+      for (const b of bucs) if (b.name) allBucNames.add(b.name);
+    }
+    // BUC.tsv の business 別 BUC リストとは別に rdra.bucs はオブジェクト {business: [{name, ...}]} 構造
+    // related_buc_ids には BUC ID（例: BUC-001）が入る想定。本実装では BUC ID は RDRA 側に明示的に無いため
+    // 関連付け検証は「全 SD が related_buc_ids に何かしらを持っている」のチェックに留める
+    const bucsAssignedToSd = new Set();
+    for (const sd of subdomains) {
+      for (const bucId of (sd.related_buc_ids || [])) bucsAssignedToSd.add(bucId);
+    }
+    const bucTotal = allBucNames.size;
+    // BUC ID 体系が将来確定するまで、SD への BUC 割当が「最低 1 件以上ある」SD の割合で代用
+    const sdsWithBucs = subdomains.filter(sd => (sd.related_buc_ids || []).length > 0).length;
+    const subdomainCoverage = subdomains.length > 0
+      ? { total: subdomains.length, covered: sdsWithBucs }
+      : { total: 0, covered: 0 };
+
+    // BC coverage: entity 総数 / BC.owned_entity_ids に含まれる entity 数
+    const allEntityIds = new Set((entities || []).map(e => e.id).filter(Boolean));
+    const ownedEntities = new Set();
+    for (const bc of bcs) {
+      for (const eid of (bc.owned_entity_ids || [])) ownedEntities.add(eid);
+    }
+    const bcCoverage = {
+      total: allEntityIds.size,
+      covered: Array.from(ownedEntities).filter(eid => allEntityIds.has(eid)).length,
+    };
+
+    // Context Map completeness: BC が 2 以上あれば context_map に最低 1 件期待
+    const contextMapCompleteness = bcs.length >= 2
+      ? { total: 1, covered: contextMap.length > 0 ? 1 : 0 }
+      : { total: 0, covered: 0 };
+
+    // Core 投資集中度: Core SD 数 / 全 SD 数
+    const coreCount = subdomains.filter(sd => sd.type === 'core').length;
+
+    domainMetrics = {
+      subdomains, bcs, contextMap, aggregates,
+      bucTotal, subdomainCoverage, bcCoverage, contextMapCompleteness, coreCount,
+    };
+  }
+
   const lines = [];
 
   // ヘッダー
   lines.push('# アーキテクチャ設計 要件網羅率レポート');
   lines.push('');
   lines.push(`- arch-design: ${archData.event_id || 'unknown'}`);
-  lines.push(`- 生成日時: ${new Date().toISOString()}`);
+  // 生成日時は決定論性のため arch-design.yaml の created_at を使う
+  // （`new Date()` を使うと毎回 baseline が変わるため）
+  const generatedAt = archData.created_at || '-';
+  lines.push(`- arch-design 作成日時: ${generatedAt}`);
   lines.push('');
 
   // ==== RDRA サマリ ====
@@ -685,6 +741,29 @@ function generateReport(archData, rdra, nfrMetricsByCategory, sourceEntries, dat
   }
   lines.push(`| **合計** | **${rdraTotal}** | **${rdraCovered}** | **${pct(rdraCovered, rdraTotal)}** |`);
   lines.push('');
+
+  // ==== Domain Architecture サマリ ====
+  if (domainMetrics) {
+    lines.push('### ドメインアーキテクチャ網羅率');
+    lines.push('');
+    lines.push('| メトリクス | 対象数 | カバー数 | 網羅率 |');
+    lines.push('|---------|:------:|:-------:|:-----:|');
+    lines.push(`| Subdomain（BUC 割当あり）| ${domainMetrics.subdomainCoverage.total} | ${domainMetrics.subdomainCoverage.covered} | ${pct(domainMetrics.subdomainCoverage.covered, domainMetrics.subdomainCoverage.total)} |`);
+    lines.push(`| BC（entity 割当）| ${domainMetrics.bcCoverage.total} | ${domainMetrics.bcCoverage.covered} | ${pct(domainMetrics.bcCoverage.covered, domainMetrics.bcCoverage.total)} |`);
+    lines.push(`| Context Map 完全性（BC>=2 で必須） | ${domainMetrics.contextMapCompleteness.total} | ${domainMetrics.contextMapCompleteness.covered} | ${pct(domainMetrics.contextMapCompleteness.covered, domainMetrics.contextMapCompleteness.total)} |`);
+    const coreRatio = domainMetrics.subdomains.length > 0
+      ? Math.round((domainMetrics.coreCount / domainMetrics.subdomains.length) * 100) + '%'
+      : '- ';
+    lines.push(`| Core 投資集中度（Core SD 比率）| ${domainMetrics.subdomains.length} | ${domainMetrics.coreCount} | ${coreRatio} |`);
+    lines.push('');
+    lines.push(`- Subdomain: ${domainMetrics.subdomains.length} 件 / BC: ${domainMetrics.bcs.length} 件 / Context Map: ${domainMetrics.contextMap.length} 件 / Aggregate 仮説: ${domainMetrics.aggregates.length} 件`);
+    lines.push('');
+  } else {
+    lines.push('### ドメインアーキテクチャ網羅率');
+    lines.push('');
+    lines.push('- `domain_architecture` セクションなし（既存スナップショットの後方互換、または初期構築前の状態）');
+    lines.push('');
+  }
 
   // ==== NFR サマリ ====
   lines.push('### NFR グレード網羅率（重要メトリクスのみ）');
@@ -773,6 +852,64 @@ function generateReport(archData, rdra, nfrMetricsByCategory, sourceEntries, dat
     lines.push(`| ${name} | ${mark} | ${refs} |`);
   }
   lines.push('');
+
+  // ==== Domain Architecture 対応状況 ====
+  if (domainMetrics) {
+    lines.push('## ドメインアーキテクチャ対応状況');
+    lines.push('');
+
+    if (domainMetrics.subdomains.length > 0) {
+      lines.push('### サブドメイン → BUC 割当');
+      lines.push('');
+      lines.push('| Subdomain ID | 名前 | type | 関連 BUC | confidence |');
+      lines.push('|--------------|------|:----:|---------|:----------:|');
+      for (const sd of domainMetrics.subdomains) {
+        const bucs = (sd.related_buc_ids || []).join(', ') || '❌ 未割当';
+        const conf = sd.confidence || '-';
+        lines.push(`| ${sd.id} | ${sd.name} | ${sd.type} | ${bucs} | ${conf} |`);
+      }
+      lines.push('');
+    }
+
+    if (domainMetrics.bcs.length > 0) {
+      lines.push('### Bounded Context → entity 割当');
+      lines.push('');
+      lines.push('| BC ID | 名前 | 所属 SD | owned_entity_ids | confidence |');
+      lines.push('|-------|------|:-------:|------------------|:----------:|');
+      for (const bc of domainMetrics.bcs) {
+        const ents = (bc.owned_entity_ids || []).join(', ') || '❌ 未割当';
+        const conf = bc.confidence || '-';
+        lines.push(`| ${bc.id} | ${bc.name} | ${bc.related_subdomain_id || '-'} | ${ents} | ${conf} |`);
+      }
+      lines.push('');
+
+      // 未割当 entity の検出
+      const allEntityIds = new Set((entities || []).map(e => e.id).filter(Boolean));
+      const ownedEntities = new Set();
+      for (const bc of domainMetrics.bcs) {
+        for (const eid of (bc.owned_entity_ids || [])) ownedEntities.add(eid);
+      }
+      const unassigned = Array.from(allEntityIds).filter(eid => !ownedEntities.has(eid));
+      if (unassigned.length > 0) {
+        lines.push(`> ⚠ BC 未割当の entity: ${unassigned.join(', ')}`);
+        lines.push('');
+      }
+    }
+
+    if (domainMetrics.contextMap.length > 0) {
+      lines.push('### Context Map');
+      lines.push('');
+      lines.push('| CM ID | from BC | to BC | パターン | 方向 |');
+      lines.push('|-------|---------|-------|:-------:|:----:|');
+      for (const cm of domainMetrics.contextMap) {
+        lines.push(`| ${cm.id} | ${cm.from_bc_id} | ${cm.to_bc_id} | ${cm.pattern} | ${cm.direction} |`);
+      }
+      lines.push('');
+    } else if (domainMetrics.bcs.length >= 2) {
+      lines.push('> ⚠ BC が 2 以上あるが context_map が空です。BC 間の依存関係を明示してください');
+      lines.push('');
+    }
+  }
 
   // ==== NFR 対応状況 ====
   lines.push('## NFR グレード 対応状況');

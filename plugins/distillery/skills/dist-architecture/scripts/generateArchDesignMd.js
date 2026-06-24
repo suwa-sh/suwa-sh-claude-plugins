@@ -261,6 +261,102 @@ function generateMarkdown(data) {
   lines.push('');
 
   // ================================================================
+  // ドメインアーキテクチャ (optional)
+  // ================================================================
+  const domain = data.domain_architecture;
+  if (domain) {
+    lines.push('## ドメインアーキテクチャ');
+    lines.push('');
+
+    // Mermaid 図
+    if (domain.diagram_mermaid) {
+      lines.push('### コンテキストマップ図');
+      lines.push('');
+      lines.push('```mermaid');
+      lines.push(domain.diagram_mermaid);
+      lines.push('```');
+      lines.push('');
+    }
+
+    // Subdomains
+    const subdomains = domain.subdomains || [];
+    if (subdomains.length > 0) {
+      lines.push('### サブドメイン分類');
+      lines.push('');
+      lines.push('| ID | 名前 | 分類 | 投資方針 | 関連 BUC | confidence | 根拠 |');
+      lines.push('|----|------|:----:|---------|---------|:----------:|------|');
+      for (const sd of subdomains) {
+        const bucs = (sd.related_buc_ids || []).join(', ');
+        lines.push(`| ${esc(sd.id)} | ${esc(sd.name)} | ${esc(sd.type)} | ${esc(sd.investment_policy)} | ${esc(bucs)} | ${confidenceBadge(sd.confidence)} | ${esc(sd.reason)} |`);
+      }
+      lines.push('');
+    }
+
+    // Bounded Contexts
+    const bcs = domain.bounded_contexts || [];
+    if (bcs.length > 0) {
+      lines.push('### 境界づけられたコンテキスト (Bounded Context)');
+      lines.push('');
+      lines.push('| ID | 名前 | 所属 SD | 所有 entity | 所有 BUC | チーム | confidence | 根拠 |');
+      lines.push('|----|------|:------:|-----------|---------|--------|:----------:|------|');
+      for (const bc of bcs) {
+        const ents = (bc.owned_entity_ids || []).join(', ');
+        const bucs = (bc.owned_buc_ids || []).join(', ');
+        const team = bc.team_ownership === null || bc.team_ownership === undefined ? '-' : esc(bc.team_ownership);
+        lines.push(`| ${esc(bc.id)} | ${esc(bc.name)} | ${esc(bc.related_subdomain_id)} | ${esc(ents)} | ${esc(bucs)} | ${team} | ${confidenceBadge(bc.confidence)} | ${esc(bc.reason)} |`);
+      }
+      lines.push('');
+
+      // 各 BC のユビキタス言語
+      lines.push('#### ユビキタス言語');
+      lines.push('');
+      for (const bc of bcs) {
+        const ul = bc.ubiquitous_language || [];
+        if (ul.length === 0) continue;
+        lines.push(`**${esc(bc.id)} ${esc(bc.name)}**`);
+        lines.push('');
+        lines.push('| 用語 | 定義 |');
+        lines.push('|------|------|');
+        for (const entry of ul) {
+          lines.push(`| ${esc(entry.term)} | ${esc(entry.definition)} |`);
+        }
+        lines.push('');
+      }
+    }
+
+    // Context Map
+    const cm = domain.context_map || [];
+    if (cm.length > 0) {
+      lines.push('### コンテキストマップ');
+      lines.push('');
+      lines.push('| ID | from BC | to BC | パターン | 方向 | 翻訳責務 | 統合イベント | confidence |');
+      lines.push('|----|---------|-------|:-------:|:----:|---------|--------------|:----------:|');
+      for (const rel of cm) {
+        const events = (rel.integration_events || []).join(', ') || '-';
+        lines.push(`| ${esc(rel.id)} | ${esc(rel.from_bc_id)} | ${esc(rel.to_bc_id)} | ${esc(rel.pattern)} | ${esc(rel.direction)} | ${esc(rel.translator_description)} | ${esc(events)} | ${confidenceBadge(rel.confidence)} |`);
+      }
+      lines.push('');
+    }
+
+    // Aggregate Hypotheses
+    const aggs = domain.aggregate_hypotheses || [];
+    if (aggs.length > 0) {
+      lines.push('### 集約境界の仮説');
+      lines.push('');
+      lines.push('> 注: これらは戦略段階の仮説です。最終確定は dist-spec or ddd-tactical-implementation で行います。');
+      lines.push('');
+      lines.push('| ID | BC | root entity | members | invariants | confidence | 備考 |');
+      lines.push('|----|----|-----------|---------|-----------|:----------:|------|');
+      for (const ag of aggs) {
+        const members = (ag.member_entity_ids || []).join(', ') || '-';
+        const inv = (ag.invariants || []).map(s => `• ${s}`).join('<br/>') || '-';
+        lines.push(`| ${esc(ag.id)} | ${esc(ag.bounded_context_id)} | ${esc(ag.root_entity_id)} | ${esc(members)} | ${inv} | ${confidenceBadge(ag.confidence)} | ${esc(ag.note || '')} |`);
+      }
+      lines.push('');
+    }
+  }
+
+  // ================================================================
   // システムアーキテクチャ
   // ================================================================
   lines.push('## システムアーキテクチャ');
