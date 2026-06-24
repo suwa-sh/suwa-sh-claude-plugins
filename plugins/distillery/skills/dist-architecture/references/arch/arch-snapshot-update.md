@@ -58,12 +58,13 @@ node <skill-path>/scripts/generateArchDesignMd.js docs/arch/latest/arch-design.y
 
 ### 4. decisions/ のスナップショット更新
 
-`latest/decisions/` はイベントの `decisions/` ディレクトリを **全置換** で更新する（マージではない）:
+`latest/decisions/` は **`artifact_id` 単位の upsert**（マージ）で更新する（全置換ではない）:
 
-1. `latest/decisions/` が存在する場合は中身を全て削除する
-2. `events/{event_id}/decisions/` の全ファイルを `latest/decisions/` にコピーする
+1. `latest/decisions/` が存在しなければ作成する
+2. `events/{event_id}/decisions/` の各 `arch-decision-{NNN}.yaml` を読み込み、`latest/decisions/` の同名ファイルを上書き or 新規追加する
+3. 廃止された判断は `status: "deprecated"` で表現する（ファイル削除はしない）
 
-これにより、latest の決定記録は常に最新イベントの決定記録と一致する。
+詳細なルール・artifact_id 衝突回避は `references/event-sourcing-rules.md`「decisions/ のスナップショット更新」を参照。
 
 ### 5. 更新確認
 

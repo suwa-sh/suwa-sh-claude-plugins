@@ -33,12 +33,14 @@ RDRA モデルと NFR グレードからシステム・アプリケーション�
 
 ## 前提条件
 
-### 依存スキル
+### 推奨参照スキル（任意）
 
-本スキルは DDD 戦略的設計のリファレンスとして `ddd-architecture` スキルに依存する（domain_architecture セクション生成時）。パイプライン開始前に以下のスキルが利用可能か確認すること:
+本スキルは **distillery 内蔵の RDRA→DDD 結線ルール**（`references/arch-domain-patterns.md`）だけで domain_architecture セクションの仮説生成を完結できる。`ddd-architecture` スキルは **DDD 概念の正典リファレンス** として推奨するが、**未インストールでも処理は続行可能**である。
+
+パイプライン開始時に存在チェックを行い、未インストールならインストール案内を表示する（ただしユーザーがスキップを選択すれば内蔵ルールのみで続行）:
 
 ```bash
-# 依存スキルの存在チェック（user skill / plugin skill / repo skill 全パスを走査）
+# 推奨参照スキルの存在チェック（user skill / plugin skill / repo skill 全パスを走査）
 for skill in ddd-architecture; do
   if ls ~/.claude/skills/$skill/SKILL.md \
         ~/.claude/plugins/*/plugins/*/skills/$skill/SKILL.md \
@@ -46,29 +48,28 @@ for skill in ddd-architecture; do
         /Users/*/src/**/plugins/ddd/skills/$skill/SKILL.md 2>/dev/null | head -1 > /dev/null 2>&1; then
     echo "OK: $skill"
   else
-    echo "MISSING: $skill"
+    echo "MISSING (optional): $skill"
   fi
 done
 ```
 
-MISSING の場合:
-1. ユーザーに「ddd-architecture スキルがインストールされていません。インストールしますか？」と確認する
-2. 承認後、以下のコマンドでインストールを試みる:
+MISSING の場合の挙動:
+1. ユーザーに「ddd-architecture スキル（DDD 概念リファレンス）がインストールされていません。インストールしますか？ (y/n/skip)」と確認する
+2. **y**: 以下のコマンドでインストールを試みる:
    ```bash
    ~/.local/bin/claude plugin marketplace update suwa-sh-claude-plugins
    ~/.local/bin/claude plugin install ddd@suwa-sh-claude-plugins
    ```
-3. インストールに失敗した場合は、以下の手動インストール手順を提示する:
+3. **n / skip**: 内蔵ルール（`references/arch-domain-patterns.md`）のみで処理を続行する（**設計仕様の完全性は維持される**。ただし DDD 用語の詳細解説リンクが死リンクになる）
+4. インストール失敗時は手動インストール手順を案内する:
    ```
    ddd プラグインの手動インストール手順:
    1. https://github.com/suwa-sh/suwa-sh-claude-plugins をクローン
-   2. リポジトリ内の plugins/ddd/skills/ 配下の各スキルを user skill ディレクトリ（`~/.claude/skills/`）にコピー
-      - ddd-architecture/
-      - ddd-tactical-implementation/（将来 dist-spec から参照予定）
-   3. コピー後、Claude Code を再起動
+   2. リポジトリ内の plugins/ddd/skills/ddd-architecture/ を `~/.claude/skills/` にコピー
+   3. Claude Code を再起動
    ```
 
-ddd-architecture は **DDD の概念リファレンス** として位置付ける。本スキル（dist-architecture）は RDRA との結線ルールと出力規約を独自に持ち、DDD 用語の定義 / パターン解説は ddd-architecture/references/ を参照する形にする。詳細は `references/arch-domain-patterns.md` を参照。
+ddd-architecture は **DDD 概念リファレンス** に位置付ける。本スキル（dist-architecture）の RDRA との結線ルール・出力規約・推論ロジックは distillery 独自であり、ddd プラグインへの runtime 依存ではない。詳細は `references/arch-domain-patterns.md` を参照。
 
 ### 入力データ
 

@@ -241,6 +241,12 @@ alternatives_considered:
 
 ### 7. バリデーション
 
+> **既知の制約（TODO）**: 現状の `validateArchDesign.js` は **完全版スキーマ（`arch-design.yaml`）** のみを正式サポートする。`arch-design-diff.yaml`（差分モード）に対しても同じスキーマで検証するため、必須トップレベルキーが欠落していると ERROR になる。差分専用スキーマ（部分構造を許容）への分離は将来 PR で対応する。当面の運用は以下:
+>
+> - **差分モードのバリデーション**: validator にかける前に、`latest/arch-design.yaml` とマージしてから検証する（マージ後の yaml は完全版）
+> - **直接 diff yaml を検証したい場合**: `--mode=diff` オプションで起動するが、現状は構造チェックの一部のみ機能する
+> - 詳細トラッキング: `docs/todo.md`（dist-architecture: diff schema 分離）
+
 出力後、スキーマバリデータを実行して arch-design.yaml の構造を検証する:
 
 ```bash
@@ -278,7 +284,7 @@ node <skill-path>/scripts/validateArchDesign.js docs/arch/events/{event_id}/arch
 node <skill-path>/scripts/generateArchDesignMd.js docs/arch/latest/arch-design.yaml
 ```
 
-スナップショット更新時、`decisions/` ディレクトリも `events/{event_id}/decisions/` から `latest/decisions/` に全置換でコピーする（マージではなく全置換）。
+スナップショット更新時、`decisions/` ディレクトリは **`artifact_id` 単位の upsert（マージ）** で更新する。**全置換ではない**（過去イベントで確定した有効な判断を破壊しないため）。詳細は `references/event-sourcing-rules.md`「decisions/ のスナップショット更新」を参照。
 
 ## 出力ファイル一覧
 

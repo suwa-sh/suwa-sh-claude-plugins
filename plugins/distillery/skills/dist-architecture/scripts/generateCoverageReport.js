@@ -742,24 +742,34 @@ function generateReport(archData, rdra, nfrMetricsByCategory, sourceEntries, dat
   lines.push(`| **合計** | **${rdraTotal}** | **${rdraCovered}** | **${pct(rdraCovered, rdraTotal)}** |`);
   lines.push('');
 
-  // ==== Domain Architecture サマリ ====
+  // ==== Domain Architecture 設計密度 ====
+  // 注: これらは「網羅率（coverage）」ではなく「設計密度（design density）/ ヒューリスティクス指標」。
+  // RDRA 要素 ID と一対一でマッチングできるのは entity (data_architecture.entities) のみのため、
+  // BUC や Subdomain の coverage は厳密には算出できない。本指標は「設計の健全性ヒント」として扱う。
   if (domainMetrics) {
-    lines.push('### ドメインアーキテクチャ網羅率');
+    lines.push('### ドメイン設計密度（ヒューリスティクス指標）');
     lines.push('');
-    lines.push('| メトリクス | 対象数 | カバー数 | 網羅率 |');
-    lines.push('|---------|:------:|:-------:|:-----:|');
-    lines.push(`| Subdomain（BUC 割当あり）| ${domainMetrics.subdomainCoverage.total} | ${domainMetrics.subdomainCoverage.covered} | ${pct(domainMetrics.subdomainCoverage.covered, domainMetrics.subdomainCoverage.total)} |`);
-    lines.push(`| BC（entity 割当）| ${domainMetrics.bcCoverage.total} | ${domainMetrics.bcCoverage.covered} | ${pct(domainMetrics.bcCoverage.covered, domainMetrics.bcCoverage.total)} |`);
-    lines.push(`| Context Map 完全性（BC>=2 で必須） | ${domainMetrics.contextMapCompleteness.total} | ${domainMetrics.contextMapCompleteness.covered} | ${pct(domainMetrics.contextMapCompleteness.covered, domainMetrics.contextMapCompleteness.total)} |`);
+    lines.push('> 注: これらは厳密な「網羅率」ではなく、設計が一定の密度・健全性を持つかを判定するヒューリスティクス指標です。RDRA 要素 ID との厳密な照合が可能なのは entity 割当のみ。');
+    lines.push('');
+    lines.push('| メトリクス | 種別 | 分母 | 分子 | 値 |');
+    lines.push('|---------|:----:|:------:|:-------:|:-----:|');
+    lines.push(`| BC への entity 割当率 | **coverage**（厳密）| ${domainMetrics.bcCoverage.total} | ${domainMetrics.bcCoverage.covered} | ${pct(domainMetrics.bcCoverage.covered, domainMetrics.bcCoverage.total)} |`);
+    lines.push(`| Subdomain に BUC 関連付けられている率 | ヒューリスティクス | ${domainMetrics.subdomainCoverage.total} | ${domainMetrics.subdomainCoverage.covered} | ${pct(domainMetrics.subdomainCoverage.covered, domainMetrics.subdomainCoverage.total)} |`);
+    lines.push(`| Context Map の存在（BC>=2 なら期待）| ヒューリスティクス | ${domainMetrics.contextMapCompleteness.total} | ${domainMetrics.contextMapCompleteness.covered} | ${pct(domainMetrics.contextMapCompleteness.covered, domainMetrics.contextMapCompleteness.total)} |`);
     const coreRatio = domainMetrics.subdomains.length > 0
       ? Math.round((domainMetrics.coreCount / domainMetrics.subdomains.length) * 100) + '%'
       : '- ';
-    lines.push(`| Core 投資集中度（Core SD 比率）| ${domainMetrics.subdomains.length} | ${domainMetrics.coreCount} | ${coreRatio} |`);
+    lines.push(`| Core SD 比率（投資集中度）| 設計密度比率 | ${domainMetrics.subdomains.length} | ${domainMetrics.coreCount} | ${coreRatio} |`);
+    lines.push('');
+    lines.push('凡例:');
+    lines.push('- **coverage**: 分母の各要素を分子で網羅できているかを表す厳密な指標');
+    lines.push('- **ヒューリスティクス**: 設計の健全性ヒント。100% でも設計の正しさは保証されない');
+    lines.push('- **設計密度比率**: 設計判断の比率指標（網羅性ではなく投資配分・分布を表す）');
     lines.push('');
     lines.push(`- Subdomain: ${domainMetrics.subdomains.length} 件 / BC: ${domainMetrics.bcs.length} 件 / Context Map: ${domainMetrics.contextMap.length} 件 / Aggregate 仮説: ${domainMetrics.aggregates.length} 件`);
     lines.push('');
   } else {
-    lines.push('### ドメインアーキテクチャ網羅率');
+    lines.push('### ドメイン設計密度（ヒューリスティクス指標）');
     lines.push('');
     lines.push('- `domain_architecture` セクションなし（既存スナップショットの後方互換、または初期構築前の状態）');
     lines.push('');

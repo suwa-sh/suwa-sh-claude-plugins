@@ -187,11 +187,11 @@ BC 数とデプロイ形態の対応:
 
 ### 認可モデル選定との関係
 
-既存の Part 1「認可モデル選定ルール」に DDD ヒントを追加（PR2 で arch-inference-rules.md を更新）:
+認可強度は **データ感度 / 法規制 / 認可パターン複雑度** で決定する（`arch-inference-rules.md` 「BC ごとの認可重み付け（データ感度ベース）」参照）。Subdomain.type は **補助シグナル** に留める。
 
-- **Core BC**: 厳格な認可（ABAC + Domain 状態ベース）を推奨
-- **Supporting BC**: RBAC + 所有権ベース
-- **Generic BC**: API Gateway での RBAC のみ（簡易認可）
+- 「Generic だから RBAC のみ」は危険な単純化（決済 / 請求 / 監査ログは Generic だが高感度）
+- 一次判定（データ感度・法規制）で厳格認可必要 → Subdomain.type に関係なく厳格認可
+- Core は補助シグナル: 一次/二次判定で迷う場合に厳格寄りに倒す材料
 
 ### data_architecture との結線
 

@@ -10,7 +10,7 @@ fixtures/
 ├── *.yaml                        # 4 つの入力 fixture
 └── expected/                     # 各 fixture の Md / coverage 出力 baseline
     ├── minimal-with-domain.md           # ドメインセクション付き設計書のサンプル
-    ├── minimal-with-domain.coverage.md  # ドメインアーキテクチャ網羅率を含む coverage report
+    ├── minimal-with-domain.coverage.md  # ドメイン設計密度（ヒューリスティクス指標）を含む coverage report
     └── legacy-no-domain.md              # 既存 sample 相当（domain なし）の Md baseline
 ```
 
@@ -58,3 +58,18 @@ git diff $SKILL/evals/fixtures/expected/
 - evals.json の prompt-based eval は LLM 実行が必要だが、fixture-based eval は `command_exit_code` アサーションで CI でも実行できる
 - fixture は意図的に最小構成にして「何を検証するか」を明確化
 - `legacy-no-domain.yaml` は実 sample からのコピー（後方互換テスト用）。実 sample の更新時は手動で同期する
+
+## 追加すべき fixture / eval（TODO）
+
+codex 再レビューで指摘された未対応項目。将来 PR で追加する:
+
+| 領域 | fixture | 検証内容 |
+|---|---|---|
+| 差分モード | `diff-minimal.yaml` | `meta` + 変更セクションのみの diff yaml が `--mode=diff` で validate 通過すること（**現状は完全版スキーマで検証するため一部 ERROR**）|
+| 差分マージ | `diff-merge-base.yaml` + `diff-merge-overlay.yaml` | event-sourcing-rules.md のマージキー（id 照合）で差分が正しく適用されること |
+| decisions upsert | `decisions-upsert-base/` + `decisions-upsert-diff/` | latest/decisions が **artifact_id で upsert** され、過去の有効な決定が保持されること（**PR3 では仕様変更のみ、テストは未実装**）|
+| ddd 未導入 | (環境変数で ddd plugin を無効化) | distillery 単独で processing が完走すること |
+| 部分 domain セクション | `partial-domain-only-subdomains.yaml` 等 | subdomains だけ / BC だけ等の部分 yaml がどう扱われるか |
+| BC = 1 と context_map | `single-bc-no-cm.yaml` | BC 1 個のみで context_map: [] が valid であること |
+
+これらは PR3 のスコープ外（仕様/実装変更を伴うため）。後続 PR で対応する。

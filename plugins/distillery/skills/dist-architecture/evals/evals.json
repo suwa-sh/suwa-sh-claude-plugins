@@ -159,10 +159,10 @@
           "contains": "対応状況"
         },
         {
-          "name": "ドメインアーキテクチャ網羅率セクションが含まれる",
+          "name": "ドメイン設計密度セクションが含まれる",
           "type": "content_contains",
           "path": "samples/05_architecture/docs/arch/latest/coverage-report.md",
-          "contains": "ドメインアーキテクチャ網羅率"
+          "contains": "ドメイン設計密度"
         }
       ],
       "files": [
