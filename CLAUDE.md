@@ -29,8 +29,10 @@
 6. **マーケットプレイス更新＆プラグイン再インストール**:
    ```bash
    ~/.local/bin/claude plugin marketplace update suwa-sh-claude-plugins
+   ~/.local/bin/claude plugin uninstall <プラグイン名>
    ~/.local/bin/claude plugin install <プラグイン名>@suwa-sh-claude-plugins
    ```
+   - `install` のみだと "already installed" で no-op になり、バージョンハッシュが更新されない。**必ず `uninstall` → `install` の順で再インストールする**
 7. **バージョン確認** — `~/.local/bin/claude plugin list` で該当プラグインのバージョン（コミットハッシュ）が push したコミットと一致することを確認する
 
 ### コミット規約
