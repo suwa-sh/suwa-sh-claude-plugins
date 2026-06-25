@@ -1,0 +1,36 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-007"
+title: "BC 設計: 6 BC (蔵書/貸出/予約/利用者/統計/通知)、貸出 BC は閲覧の貸出履歴も担当"
+status: "approved"
+generated_at: "2026-06-25T07:51:57"
+context: |
+  サブドメイン分類（arch-decision-006）に対応する境界づけられたコンテキスト（BC）を設計する必要がある。
+  BC 分割は言語境界とチーム境界の双方を考慮するが、機械的な同名異義語検出は誤判定が多いため
+  ユーザー確認を必須とする（confidence: medium 上限）。
+decision: |
+  以下の 6 BC を設定する:
+  - BC-001 蔵書コンテキスト（SD-001 蔵書管理 + 閲覧の蔵書検索）
+  - BC-002 貸出コンテキスト（SD-002 貸出管理 + 閲覧の貸出履歴）
+  - BC-003 予約コンテキスト（SD-003 予約管理）
+  - BC-004 利用者コンテキスト（SD-004 利用者管理）
+  - BC-005 統計コンテキスト（SD-006 統計）
+  - BC-006 通知コンテキスト（SD-007 通知）
+
+  閲覧サブドメイン（SD-005）は独立 BC を持たず、蔵書検索を BC-001、貸出履歴を BC-002 に分散する。
+  これにより参照系業務が書き込み側の BC に統合され、モデルの一貫性が保たれる。
+  team_ownership は RDRA から推論できないため全 BC で null とし、Conway の法則に基づくチーム所有の確定は将来の運用判断に委ねる。
+consequences:
+  positive:
+    - "6 BC の粒度は BUC 数（16）と外部システム数（1）に対して適切なバランス"
+    - "閲覧業務を別 BC に切り出さないことで CRUD と参照の整合性が保たれる"
+    - "貸出 BC が Core の中核として独立し、深いモデリングが可能"
+  negative:
+    - "閲覧 SD と BC の対応が 1:1 でないため、Subdomain → BC 直接マッピングを期待する読者は混乱する可能性がある"
+    - "team_ownership: null のため Conway の法則に基づく組織設計には別途意思決定が必要"
+alternatives_considered:
+  - name: "閲覧専用の BC-007 を追加"
+    reason_rejected: "閲覧業務は蔵書検索と貸出履歴の参照系のみで、独自のドメインモデルを持たない。CQRS 的に分離するメリットが小さく BC 数増加による複雑化が上回る"
+  - name: "蔵書 BC と貸出 BC を統合"
+    reason_rejected: "状態モデル（書籍貸出状態 vs 予約状態）が分離しており、また Core/Supporting 分類が異なるため統合は不適切"
