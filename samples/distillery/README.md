@@ -1,8 +1,6 @@
-# 図書館蔵書管理システム
+# プロジェクト
 
-> undefined
-
-**最終更新**: 2026-04-12 20:52:45 spec stories (design)
+**最終更新**: 2026-06-25 07:51:57 domain architecture addition (arch)
 
 ## 成果物一覧
 
@@ -11,7 +9,7 @@
 | [USDM（要求分解）](#usdm要求分解) | [usdm/latest/](usdm/latest/) | 1 |
 | [RDRA（要件定義）](#rdra要件定義) | [rdra/latest/](rdra/latest/) | 1 |
 | [NFR（非機能要求）](#nfr非機能要求) | [nfr/latest/](nfr/latest/) | 1 |
-| [Arch（アーキテクチャ）](#archアーキテクチャ) | [arch/latest/](arch/latest/) | 2 |
+| [Arch（アーキテクチャ）](#archアーキテクチャ) | [arch/latest/](arch/latest/) | 3 |
 | [Infra（インフラ設計）](#infraインフラ設計) | [infra/latest/](infra/latest/) | 1 |
 | [Design（デザイン）](#designデザイン) | [design/latest/](design/latest/) | 2 |
 | [Specs（詳細仕様）](#specs詳細仕様) | [specs/latest/](specs/latest/) | 1 |
@@ -39,9 +37,6 @@
 - [条件.tsv](rdra/latest/条件.tsv)
 - [バリエーション.tsv](rdra/latest/バリエーション.tsv)
 - [BUC.tsv](rdra/latest/BUC.tsv)
-- [関連データ.txt](rdra/latest/関連データ.txt)
-- [ZeroOne.txt](rdra/latest/ZeroOne.txt)
-- [システム概要.json](rdra/latest/システム概要.json)
 
 | 項目 | 値 |
 |------|-----|
@@ -59,14 +54,12 @@
 
 | ツール | データファイル | 手順 |
 |--------|-------------|------|
-| [RDRA Graph](https://vsa.co.jp/rdratool/graph/v0.94/) | [関連データ.txt](rdra/latest/関連データ.txt) | ファイル内容をコピーし、RDRA Graph に貼り付け |
-| [RDRA Sheet](https://docs.google.com/spreadsheets/d/1h7J70l6DyXcuG0FKYqIpXXfdvsaqjdVFwc6jQXSh9fM/) | [ZeroOne.txt](rdra/latest/ZeroOne.txt) | ファイル内容をコピーし、テンプレートに貼り付け |
 
 ### システムコンテキスト図
 
 ```mermaid
 graph TB
-  SYS["図書館蔵書管理システム"]
+  SYS["システム"]
   利用者(["利用者"]):::actor --> SYS
   司書(["司書"]):::actor --> SYS
   SYS --> メール送信サービス(["メール送信サービス"]):::external
@@ -98,10 +91,32 @@ graph TB
 | 項目 | 値 |
 |------|-----|
 | 言語 | TypeScript |
+| サブドメイン | 7 |
+| Bounded Context | 6 |
+| コンテキストマップ関係 | 7 |
 | ティア | 5 |
 | ポリシー | 10 |
 | ルール | 5 |
 | エンティティ | 6 |
+
+### ドメインアーキテクチャ（コンテキストマップ）
+
+```mermaid
+graph LR
+BC1["蔵書コンテキスト"]
+BC2["貸出コンテキスト"]
+BC3["予約コンテキスト"]
+BC4["利用者コンテキスト"]
+BC5["統計コンテキスト"]
+BC6["通知コンテキスト"]
+BC2 -->|Customer-Supplier| BC1
+BC2 -->|Customer-Supplier| BC4
+BC3 -->|Customer-Supplier| BC1
+BC3 -->|Customer-Supplier| BC4
+BC5 -->|Conformist| BC2
+BC6 -->|Customer-Supplier| BC2
+BC6 -->|Customer-Supplier| BC3
+```
 
 ### コンテナ図（システム構成）
 
@@ -217,7 +232,6 @@ graph TD
 
 - [design-event.md](design/latest/design-event.md)
 - [design-event.yaml](design/latest/design-event.yaml)
-- [assets/](design/latest/assets) (SVG 16 ファイル)
 
 ### ブランド
 
@@ -234,14 +248,6 @@ graph TD
 |---------|---------|--------|
 | 利用者ポータル | 利用者 | `#2563EB` |
 | 司書ポータル | 司書 | `#334155` |
-
-### Storybook
-
-```bash
-cd docs/design/latest/storybook-app && npm run storybook
-```
-
-Stories: 23 ファイル
 
 ## Specs（詳細仕様）
 
@@ -335,16 +341,19 @@ Stories: 23 ファイル
 | 3 | Arch | [イミュータブルデータモデル（event_snapshot）の採用](arch/events/20260412_161337_initial_arch/decisions/arch-decision-003.yaml) | approved |
 | 4 | Arch | [RBAC + Backend 作り込みによる認可方式](arch/events/20260412_161337_initial_arch/decisions/arch-decision-004.yaml) | approved |
 | 5 | Arch | [バックエンド API に 5 層レイヤリングを採用](arch/events/20260412_161337_initial_arch/decisions/arch-decision-005.yaml) | approved |
-| 6 | Infra | [コンピュートモデルの選定: Serverless (Lambda + App Runner)](infra/events/20260412_162437_infra_product_design/docs/cloud-context/decisions/product/product-decision-compute-model.yaml) | accepted |
-| 7 | Infra | [データベースエンジンの選定: RDS for PostgreSQL](infra/events/20260412_162437_infra_product_design/docs/cloud-context/decisions/product/product-decision-database-engine.yaml) | accepted |
-| 8 | Design | [ブランドアイデンティティ方向性: 信頼・堅実路線の採用](design/events/20260412_164650_design_system/decisions/design-decision-001.yaml) | approved |
-| 9 | Design | [ポータル構成戦略: 利用者/司書の2ポータル構成](design/events/20260412_164650_design_system/decisions/design-decision-002.yaml) | approved |
-| 10 | Design | [トークンアーキテクチャ: 3層構造の採用](design/events/20260412_164650_design_system/decisions/design-decision-003.yaml) | approved |
-| 11 | Design | [コンポーネント戦略: RDRAモデル駆動のコンポーネント設計](design/events/20260412_164650_design_system/decisions/design-decision-004.yaml) | approved |
-| 12 | Specs | [REST API スタイルの採用と命名規則](specs/events/20260412_195542_spec_generation/decisions/spec-decision-001.yaml) | approved |
-| 13 | Specs | [非同期イベント駆動パターンの採用範囲](specs/events/20260412_195542_spec_generation/decisions/spec-decision-002.yaml) | approved |
-| 14 | Specs | [RDB 正規化レベルと統計テーブルの非正規化](specs/events/20260412_195542_spec_generation/decisions/spec-decision-003.yaml) | approved |
-| 15 | Specs | [横断関心事の解決方針](specs/events/20260412_195542_spec_generation/decisions/spec-decision-004.yaml) | approved |
+| 6 | Arch | [サブドメイン分類: 貸出管理を Core、通知を Generic、その他を Supporting](arch/events/20260625_075157_domain_architecture_addition/decisions/arch-decision-006.yaml) | approved |
+| 7 | Arch | [BC 設計: 6 BC (蔵書/貸出/予約/利用者/統計/通知)、貸出 BC は閲覧の貸出履歴も担当](arch/events/20260625_075157_domain_architecture_addition/decisions/arch-decision-007.yaml) | approved |
+| 8 | Arch | [コンテキストマップ統合方式: 自前 BC 間は Customer-Supplier、統計は Conformist、外部システムは ACL](arch/events/20260625_075157_domain_architecture_addition/decisions/arch-decision-008.yaml) | approved |
+| 9 | Infra | [コンピュートモデルの選定: Serverless (Lambda + App Runner)](infra/events/20260412_162437_infra_product_design/docs/cloud-context/decisions/product/product-decision-compute-model.yaml) | accepted |
+| 10 | Infra | [データベースエンジンの選定: RDS for PostgreSQL](infra/events/20260412_162437_infra_product_design/docs/cloud-context/decisions/product/product-decision-database-engine.yaml) | accepted |
+| 11 | Design | [ブランドアイデンティティ方向性: 信頼・堅実路線の採用](design/events/20260412_164650_design_system/decisions/design-decision-001.yaml) | approved |
+| 12 | Design | [ポータル構成戦略: 利用者/司書の2ポータル構成](design/events/20260412_164650_design_system/decisions/design-decision-002.yaml) | approved |
+| 13 | Design | [トークンアーキテクチャ: 3層構造の採用](design/events/20260412_164650_design_system/decisions/design-decision-003.yaml) | approved |
+| 14 | Design | [コンポーネント戦略: RDRAモデル駆動のコンポーネント設計](design/events/20260412_164650_design_system/decisions/design-decision-004.yaml) | approved |
+| 15 | Specs | [REST API スタイルの採用と命名規則](specs/events/20260412_195542_spec_generation/decisions/spec-decision-001.yaml) | approved |
+| 16 | Specs | [非同期イベント駆動パターンの採用範囲](specs/events/20260412_195542_spec_generation/decisions/spec-decision-002.yaml) | approved |
+| 17 | Specs | [RDB 正規化レベルと統計テーブルの非正規化](specs/events/20260412_195542_spec_generation/decisions/spec-decision-003.yaml) | approved |
+| 18 | Specs | [横断関心事の解決方針](specs/events/20260412_195542_spec_generation/decisions/spec-decision-004.yaml) | approved |
 
 ## イベント履歴
 
@@ -359,6 +368,7 @@ Stories: 23 ファイル
 | 2026-04-12 16:46:50 | Design（デザイン） | [20260412_164650_design_system](design/events/20260412_164650_design_system) |
 | 2026-04-12 19:55:42 | Specs（詳細仕様） | [20260412_195542_spec_generation](specs/events/20260412_195542_spec_generation) |
 | 2026-04-12 20:52:45 | Design（デザイン） | [20260412_205245_spec_stories](design/events/20260412_205245_spec_stories) |
+| 2026-06-25 07:51:57 | Arch（アーキテクチャ） | [20260625_075157_domain_architecture_addition](arch/events/20260625_075157_domain_architecture_addition) |
 
 ---
 

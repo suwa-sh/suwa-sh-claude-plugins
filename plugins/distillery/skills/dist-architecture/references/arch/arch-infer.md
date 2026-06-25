@@ -106,7 +106,16 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
    - 条件.tsv の「〜できない / 〜必須 / 〜重複禁止 / 〜上限」表現 → `invariants[]` に抽出
    - `note` に「仮説。最終確定は dist-spec or ddd-tactical-implementation で行う」旨を必ず記入
 
-5. **Mermaid 図**: BC 間関係を `graph LR` 形式で生成。Subdomain.type を BC ノードラベルに反映
+5. **Mermaid 図**: BC 間関係を `graph LR` 形式で生成
+   - **ノードラベルは BC 名のみ**（ID/Subdomain type 等の付随情報は付けない）
+   - **エッジラベルはコンテキストマップパターン名**（`Customer-Supplier` / `Conformist` / `ACL` / `OHS+PL` / `Shared Kernel`）。CM ID は付けない
+   - 例:
+     ```
+     graph LR
+       BC1["予約コンテキスト"]
+       BC2["請求コンテキスト"]
+       BC1 -->|ACL| BC2
+     ```
 
 注: confidence 上限ルール（Core SD = medium / BC = medium / Aggregate = low）は validator が自動 WARN する。詳細は `arch-domain-patterns.md` 参照。
 

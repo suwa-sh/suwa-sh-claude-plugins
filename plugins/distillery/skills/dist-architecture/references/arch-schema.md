@@ -127,9 +127,9 @@ domain_architecture:
       confidence: "low"
   diagram_mermaid: |
     graph LR
-      BC1["BC-001 予約<br/>Core: SD-001"]
-      BC2["BC-002 請求<br/>Generic: SD-002"]
-      BC1 -->|ACL CM-001| BC2
+      BC1["予約コンテキスト"]
+      BC2["請求コンテキスト"]
+      BC1 -->|ACL| BC2
 
 system_architecture:
   tiers:

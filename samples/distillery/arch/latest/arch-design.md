@@ -17,19 +17,19 @@
 
 ```mermaid
 graph LR
-BC1["BC-001 蔵書<br/>Supporting: SD-001"]
-BC2["BC-002 貸出<br/>Core: SD-002"]
-BC3["BC-003 予約<br/>Supporting: SD-003"]
-BC4["BC-004 利用者<br/>Supporting: SD-004"]
-BC5["BC-005 統計<br/>Supporting: SD-006"]
-BC6["BC-006 通知<br/>Generic: SD-007"]
-BC2 -->|C/S CM-001| BC1
-BC2 -->|C/S CM-002| BC4
-BC3 -->|C/S CM-003| BC1
-BC3 -->|C/S CM-004| BC4
-BC5 -->|Conformist CM-005| BC2
-BC6 -->|C/S CM-006| BC2
-BC6 -->|C/S CM-007| BC3
+BC1["蔵書コンテキスト"]
+BC2["貸出コンテキスト"]
+BC3["予約コンテキスト"]
+BC4["利用者コンテキスト"]
+BC5["統計コンテキスト"]
+BC6["通知コンテキスト"]
+BC2 -->|Customer-Supplier| BC1
+BC2 -->|Customer-Supplier| BC4
+BC3 -->|Customer-Supplier| BC1
+BC3 -->|Customer-Supplier| BC4
+BC5 -->|Conformist| BC2
+BC6 -->|Customer-Supplier| BC2
+BC6 -->|Customer-Supplier| BC3
 ```
 
 ### サブドメイン分類

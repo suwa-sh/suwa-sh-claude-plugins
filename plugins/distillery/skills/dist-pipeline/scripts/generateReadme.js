@@ -317,9 +317,16 @@ const tiers = extractTiers(archYaml);
 const entities = extractEntities(archYaml);
 const langs = (archYaml.match(/languages:\s*\n((?:\s+- "?.+?"?\n)*)/)||['',''])[1].match(/"([^"]+)"/g);
 
+const subdomainCount = yCnt(archYaml, /^\s+- id: "?SD-\d+"?/gm);
+const bcCount = yCnt(archYaml, /^\s+- id: "?BC-\d+"?/gm);
+const contextMapCount = yCnt(archYaml, /^\s+- id: "?CM-\d+"?/gm);
+
 L('| 項目 | 値 |');
 L('|------|-----|');
 if (langs) L(`| 言語 | ${langs.map(s=>s.replace(/"/g,'')).join(', ')} |`);
+if (subdomainCount) L(`| サブドメイン | ${subdomainCount} |`);
+if (bcCount) L(`| Bounded Context | ${bcCount} |`);
+if (contextMapCount) L(`| コンテキストマップ関係 | ${contextMapCount} |`);
 L(`| ティア | ${tiers.length} |`);
 L(`| ポリシー | ${yCnt(archYaml, /id: "?SP-/gm)} |`);
 L(`| ルール | ${yCnt(archYaml, /id: "?SR-/gm)} |`);
@@ -329,6 +336,17 @@ L();
 // Extract diagrams from arch-design.md
 const archMdPath = path.join(docsRoot, 'arch/latest/arch-design.md');
 const archMd = readFile(archMdPath);
+
+// Context Map diagram (コンテキストマップ図) — Domain Architecture
+const contextMapDiags = extractMermaidAfterHeading(archMd, /コンテキストマップ図/);
+if (contextMapDiags.length) {
+  L('### ドメインアーキテクチャ（コンテキストマップ）');
+  L();
+  L('```mermaid');
+  L(contextMapDiags[0]);
+  L('```');
+  L();
+}
 
 // Container diagram (システム構成図)
 const containerDiags = extractMermaidAfterHeading(archMd, /システム構成図/);
