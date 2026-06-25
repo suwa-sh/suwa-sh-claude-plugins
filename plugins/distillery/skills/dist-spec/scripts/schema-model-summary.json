@@ -6,6 +6,8 @@
     "uc": { "type": "string", "minLength": 1 },
     "business": { "type": "string", "minLength": 1 },
     "buc": { "type": "string", "minLength": 1 },
+    "bounded_context_id": { "type": "string", "pattern": "^BC-\\d+$" },
+    "aggregate_id": { "type": "string", "pattern": "^AG-\\d+$" },
     "models": {
       "type": "array",
       "items": {

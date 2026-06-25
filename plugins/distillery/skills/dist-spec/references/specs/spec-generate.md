@@ -178,6 +178,13 @@ uc: "{UC名}"
 business: "{業務名}"
 buc: "{BUC名}"
 
+# arch-design.yaml の domain_architecture から引き継ぐ (optional)
+# - bounded_context_id: この UC の primary BC（実装ロジックが置かれる側）
+# - aggregate_id: この UC が更新する primary aggregate
+# arch-design.yaml に domain_architecture が無い場合は省略可
+bounded_context_id: "BC-{NNN}"
+aggregate_id: "AG-{NNN}"
+
 models:
   - name: "{モデル/型名}"         # spec.md データフローのノード名
     tier: "{ティアID}"

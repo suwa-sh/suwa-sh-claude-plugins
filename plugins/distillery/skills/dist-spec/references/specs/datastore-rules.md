@@ -25,6 +25,10 @@ uc: "{UC名}"
 business: "{業務名}"
 buc: "{BUC名}"
 
+# arch-design.yaml の domain_architecture から引き継ぐ (optional)
+bounded_context_id: "BC-{NNN}"    # UC の primary BC（実装ロジックが置かれる側）
+aggregate_id: "AG-{NNN}"          # UC が更新する primary aggregate
+
 # レイヤーごとのモデル定義
 models:
   - name: "{モデル/型名}"
@@ -76,6 +80,10 @@ object_storage:
 4. **indexes_needed**: tier-backend-api.md の API 仕様の検索条件（クエリパラメータ）や spec.md の分岐条件一覧から導出
 5. **kvs**: arch-design.yaml で KVS が定義されている場合に、セッション管理・キャッシュ・レート制限等のアクセスパターンを記述
 6. **object_storage**: 画像アップロード等のファイル操作がある UC のみ記述
+7. **bounded_context_id**（optional）: arch-design.yaml に `domain_architecture.bounded_contexts` が存在する場合のみ設定する。UC の BUC を `BC.owned_buc_ids[]` に含む BC を採用（複数該当時は UC が write 操作する table 群の primary entity を `BC.owned_entity_ids[]` で照合）。これは UC の **primary BC**（実装ロジックが置かれる側）であり、Customer-Supplier 関係で参照するだけの他 BC は記録しない。値は `BC-{NNN}` 形式
+8. **aggregate_id**（optional）: arch-design.yaml に `domain_architecture.aggregate_hypotheses` が存在する場合のみ設定する。UC が write 操作する primary entity を `AG.root_entity_id` で照合した集約を採用。SELECT のみの UC は省略可。値は `AG-{NNN}` 形式
+
+**注**: bounded_context_id / aggregate_id は dist-architecture 出力からの**メタデータ伝播**であり、UC ロジックの推論材料ではない。後続の実装時に `ddd-tactical-implementation` スキルが必要かどうかを判断する材料として利用される
 
 ## 全体横断: rdb-schema.yaml
 
