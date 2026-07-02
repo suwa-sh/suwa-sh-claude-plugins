@@ -21,6 +21,9 @@ description: >
   - `infrastructure`, `design-system`
   - `spec`
 
+> **注**: 本ドキュメントの Step 名（`requirements` 等）は論理名。実際に Skill ツールで呼び出す登録名は
+> `distillery:dist-requirements` のように `distillery:dist-` プリフィックス付き（`references/subagent-template.md` の skill_name 参照）。
+
 ## パイプライン概要
 
 ```
@@ -219,7 +222,8 @@ open 件数が 1 以上の場合は「後続スキルから RDRA/NFR 等への�
 サマリ提示後、ダッシュボードを停止してよいか確認する。承認されたら:
 
 ```bash
-kill $(lsof -t -i :3100) 2>/dev/null
+# 実ポートはフォールバックで 3100 以外になり得るため progress-update.js port で解決する
+PORT=$(node <skill-path>/scripts/progress-update.js port); [ -n "$PORT" ] && kill $(lsof -t -i :$PORT) 2>/dev/null
 ```
 
 ## エラーハンドリング

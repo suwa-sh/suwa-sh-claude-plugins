@@ -263,16 +263,18 @@ L(`| BUC | ${bucTotal} |`);
 L(`| UC | ${ucSet.size} |`);
 L();
 
-// RDRA Graph / Sheet
-L('### 外部ツール連携');
-L();
-L('| ツール | データファイル | 手順 |');
-L('|--------|-------------|------|');
+// RDRA Graph / Sheet（データファイルが1つも無ければセクションごと省略）
 const gf = path.join(docsRoot, 'rdra/latest/関連データ.txt');
 const zf = path.join(docsRoot, 'rdra/latest/ZeroOne.txt');
-if (fileExists(gf)) L(`| [RDRA Graph](https://vsa.co.jp/rdratool/graph/v0.94/) | ${lnk('関連データ.txt', gf)} | ファイル内容をコピーし、RDRA Graph に貼り付け |`);
-if (fileExists(zf)) L(`| [RDRA Sheet](https://docs.google.com/spreadsheets/d/1h7J70l6DyXcuG0FKYqIpXXfdvsaqjdVFwc6jQXSh9fM/) | ${lnk('ZeroOne.txt', zf)} | ファイル内容をコピーし、テンプレートに貼り付け |`);
-L();
+if (fileExists(gf) || fileExists(zf)) {
+  L('### 外部ツール連携');
+  L();
+  L('| ツール | データファイル | 手順 |');
+  L('|--------|-------------|------|');
+  if (fileExists(gf)) L(`| [RDRA Graph](https://vsa.co.jp/rdratool/graph/v0.94/) | ${lnk('関連データ.txt', gf)} | ファイル内容をコピーし、RDRA Graph に貼り付け |`);
+  if (fileExists(zf)) L(`| [RDRA Sheet](https://docs.google.com/spreadsheets/d/1h7J70l6DyXcuG0FKYqIpXXfdvsaqjdVFwc6jQXSh9fM/) | ${lnk('ZeroOne.txt', zf)} | ファイル内容をコピーし、テンプレートに貼り付け |`);
+  L();
+}
 
 // C4 System Context diagram
 const sysName = overview ? overview.system_name : 'システム';

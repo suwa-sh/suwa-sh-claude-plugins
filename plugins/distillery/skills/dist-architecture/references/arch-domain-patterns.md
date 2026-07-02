@@ -48,7 +48,7 @@ ddd-architecture スキルが未インストールの場合は本スキルの SK
 | 外部システム.tsv の機能カテゴリと一致する BUC（決済 / 認証 / 帳票 / メール / 監視） | Generic | high |
 | 上記いずれも判定不能 | Supporting（保守側に倒す） | default |
 
-Core/Supporting/Generic の **意味と投資配分の考え方** は ddd-architecture の `references/subdomain.md` を参照。
+Core/Supporting/Generic の **意味と投資配分の考え方** は ddd-architecture の `${CLAUDE_PLUGIN_ROOT}/../ddd/skills/ddd-architecture/references/subdomain.md` を参照。
 
 ### BUC クラスタリング規則
 
@@ -88,7 +88,7 @@ RDRA に経営判断の根拠は無い。Phase 0.1 の対話で必ず「これ�
 | 1 サブドメイン内で BUC が密結合 | 1 SD = 1 BC | medium |
 | 判定不能（小規模、BUC <= 3 かつ外部システム = 0） | 1 BC | default |
 
-BC の概念定義（言語境界 / チーム境界 / ユビキタス言語）は ddd-architecture の `references/bounded-context.md` を参照。
+BC の概念定義（言語境界 / チーム境界 / ユビキタス言語）は ddd-architecture の `${CLAUDE_PLUGIN_ROOT}/../ddd/skills/ddd-architecture/references/bounded-context.md` を参照。
 
 ### ユビキタス言語の核語彙抽出
 
@@ -102,7 +102,7 @@ BC の概念定義（言語境界 / チーム境界 / ユビキタス言語）�
 
 ### チーム所有 (team_ownership)
 
-RDRA からは推論できない。自動推論では `null` 固定。Phase 0.2 の対話で「Conway の法則的にチーム所有者は誰か」を確認する（Conway の法則の意味は ddd-architecture の `references/bounded-context.md` 参照）。チーム情報が確定しなくても `null` のままで設計を進められる。
+RDRA からは推論できない。自動推論では `null` 固定。Phase 0.2 の対話で「Conway の法則的にチーム所有者は誰か」を確認する（Conway の法則の意味は ddd-architecture の `${CLAUDE_PLUGIN_ROOT}/../ddd/skills/ddd-architecture/references/bounded-context.md` 参照）。チーム情報が確定しなくても `null` のままで設計を進められる。
 
 ### 注: BC 分割は全件「ユーザー確認必須」
 
@@ -132,7 +132,7 @@ RDRA からは推論できない。自動推論では `null` 固定。Phase 0.2 
 | 共有エンティティが避けられない（極小領域） | Shared Kernel | **low**（避けるべきだが認める） |
 | 影響力ゼロ + 受容可 | Conformist | medium |
 
-各統合パターン（Shared Kernel / Customer-Supplier / Conformist / ACL / OHS / Published Language）の **意味とトレードオフ** は ddd-architecture の `references/context-map.md` を参照。
+各統合パターン（Shared Kernel / Customer-Supplier / Conformist / ACL / OHS / Published Language）の **意味とトレードオフ** は ddd-architecture の `${CLAUDE_PLUGIN_ROOT}/../ddd/skills/ddd-architecture/references/context-map.md` を参照。
 
 ### 統合イベント (integration_events)
 
@@ -155,7 +155,7 @@ RDRA からは推論できない。自動推論では `null` 固定。Phase 0.2 
 | event_snapshot 型 | aggregate root の有力候補 | low |
 | 1 エンティティが独立した状態を持つ | 単独 aggregate | low |
 
-集約の概念定義と戦術設計への落とし込みは ddd-architecture の `references/strategy-to-tactics.md` を参照。
+集約の概念定義と戦術設計への落とし込みは ddd-architecture の `${CLAUDE_PLUGIN_ROOT}/../ddd/skills/ddd-architecture/references/strategy-to-tactics.md` を参照。
 
 ### invariants の抽出
 
@@ -183,7 +183,7 @@ BC 数とデプロイ形態の対応:
 | モジュラモノリス | 1 tier 内 = N モジュール = N BC |
 | マイクロサービス | 1 tier(独立サービス) : 1 BC |
 
-判定材料: NFR A（可用性）/ B（性能スケール）/ BUC 数 / チーム規模。Phase 1（システム）の冒頭で確認する。配置形態の選定指針は ddd-architecture の `references/strategy-to-tactics.md` を参照。
+判定材料: NFR A（可用性）/ B（性能スケール）/ BUC 数 / チーム規模。Phase 1（システム）の冒頭で確認する。配置形態の選定指針は ddd-architecture の `${CLAUDE_PLUGIN_ROOT}/../ddd/skills/ddd-architecture/references/strategy-to-tactics.md` を参照。
 
 ### 認可モデル選定との関係
 

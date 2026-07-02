@@ -11,7 +11,7 @@ Step1 の推論結果をユーザーに提示し、対話で確認・調整す�
 ## 対話の基本方針
 
 1. **問題空間 → 解決空間の順**: Phase 0（ドメイン）→ Phase 1（テクノロジー）→ Phase 2〜4（システム/アプリ/データ）→ Phase 5（最終確認）
-2. **Phase 0 は dialogue-format.md 完全準拠**: `references/dialogue-format.md`（3案 + ⭐推奨 + 一行説明 + 推奨理由）に従う
+2. **Phase 0 は dialogue-format.md 完全準拠**: `${CLAUDE_PLUGIN_ROOT}/skills/dist-pipeline/references/dialogue-format.md`（3案 + ⭐推奨 + 一行説明 + 推奨理由）に従う
 3. **Phase 1 以降は既存の選択肢形式**: 段階的に dialogue-format への移行を検討
 4. **Mermaid 図の活用**: 各 Phase で推論した Mermaid 図を提示し、視覚的に理解を助ける
 5. **変更の記録**: ユーザーが変更した項目は `confidence: "user"` に更新する
@@ -21,7 +21,7 @@ Step1 の推論結果をユーザーに提示し、対話で確認・調整す�
 
 ### Phase 0: ドメイン設計の確認
 
-**問題空間（DDD 戦略設計）を技術選定より先に確定する**。Subdomain → BC → Context Map → Aggregate 仮説の順で 4 sub-step に分けて確認する。各 sub-step は `references/dialogue-format.md`（3案 + ⭐推奨）形式に従う。
+**問題空間（DDD 戦略設計）を技術選定より先に確定する**。Subdomain → BC → Context Map → Aggregate 仮説の順で 4 sub-step に分けて確認する。各 sub-step は `${CLAUDE_PLUGIN_ROOT}/skills/dist-pipeline/references/dialogue-format.md`（3案 + ⭐推奨）形式に従う。
 
 #### スキップルール
 
@@ -467,7 +467,7 @@ RDRA の情報モデルから推論した概念モデルです。
 
 ## 対話時の注意事項
 
-- **Phase 0 は `references/dialogue-format.md` 完全準拠**（3案 + ⭐推奨 + 一行説明 + 推奨理由）
+- **Phase 0 は `${CLAUDE_PLUGIN_ROOT}/skills/dist-pipeline/references/dialogue-format.md` 完全準拠**（3案 + ⭐推奨 + 一行説明 + 推奨理由）
 - Phase 1〜5 は既存の番号選択式（将来 dialogue-format への移行を検討）
 - Phase 0 のスキップルール:
   - BUC <= 3 かつ外部システム = 0 → Step 0.1 と 0.2 を結合した 1 ステップに短縮

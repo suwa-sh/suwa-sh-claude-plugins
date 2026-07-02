@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Usage: node progress-server.js <work_dir> [port]
+// Usage: node progress-server.js [port]   (default: 3100)
 // Serves a pipeline progress dashboard at http://localhost:<port>
-// Reads .pipeline-status.json from <work_dir> and streams updates via SSE.
+// Reads .pipeline-status-<cwd名>.json from the skill bundle directory
+// (progress-update.js と同じ解決ロジック) and streams updates via SSE.
 
 const http = require('http');
 const fs = require('fs');

@@ -3001,7 +3001,7 @@ function main(rdraPath = "1_RDRA") {
   try {
     console.log(`\u4F7F\u7528\u3059\u308BRDRA\u30D1\u30B9: ${rdraPath}`);
     const rdraData = createRdraSheetDefT(rdraPath);
-    const outputPath = path.join(process.cwd(), "1_RDRA", "\u95A2\u9023\u30C7\u30FC\u30BF.txt");
+    const outputPath = path.join(process.cwd(), rdraPath, "\u95A2\u9023\u30C7\u30FC\u30BF.txt");
     try {
       const connections = makeConnection(rdraData);
       const linkData = conectin2String(rdraData.systemName, connections);

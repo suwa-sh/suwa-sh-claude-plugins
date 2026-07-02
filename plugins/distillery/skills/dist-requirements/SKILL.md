@@ -47,7 +47,7 @@ docs/
 パイプライン開始時に `docs/rdra/latest/` の状態を確認する:
 
 - **初期構築モード**: `docs/rdra/latest/` が存在しないか空
-  → Step0（初期構築）を実行し、続けて Step4-5（Spec 生成）を実行する
+  → Step0（初期構築）を実行する（Spec 生成は後続の dist-spec スキルの責務）
 - **差分更新モード**: `docs/rdra/latest/*.tsv` が存在する
   → Step1 から順に実行
 
@@ -203,7 +203,7 @@ node <skill-path>/scripts/validateChanges.js docs/rdra/events/{event_id}
 
 ## subagent への指示テンプレート
 
-各タスクを subagent に委譲する際は、Step ごとに以下のパターンで指示する。ファイルパスは絶対パスまたはプロジェクトルートからの相対パスで指定する。
+各タスクを subagent に委譲する際は、Step ごとに以下のパターンで指示する。テンプレート内の `references/...` はスキルルート相対パス。subagent へ渡す際は `${CLAUDE_PLUGIN_ROOT}/skills/dist-requirements/references/...` の絶対パスに展開して指定する（成果物パスはプロジェクトルート相対）。
 
 ### Step0 例: RDRA フルビルド Phase1 タスク（USDM YAML 入力）
 

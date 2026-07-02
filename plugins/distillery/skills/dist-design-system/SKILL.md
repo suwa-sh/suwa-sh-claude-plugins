@@ -37,8 +37,8 @@ RDRA/NFR/Arch/Infra モデルからデザインシステムを生成し、Storyb
 - `design-system-starter` — デザインシステム骨組み
 
 ```bash
-# 依存スキルチェック（user skill / plugin skill 両方を走査）
-for skill in design-system ui-ux-pro-max storybook-config component-scaffold story-generation design-system-starter; do
+# 依存スキルチェック（user skill / plugin skill 両方を走査。brand / design は推奨枠）
+for skill in design-system ui-ux-pro-max brand design storybook-config component-scaffold story-generation design-system-starter; do
   if ls "$HOME/.claude/skills/$skill/SKILL.md" \
         "$HOME"/.claude/plugins/*/plugins/*/skills/"$skill"/SKILL.md \
         "$HOME"/.claude/plugins/*/skills/"$skill"/SKILL.md 2>/dev/null | head -1 > /dev/null 2>&1; then
@@ -151,11 +151,13 @@ docs/design/
 **読み込み:** `references/design/design-tokens-generate.md`, `references/design/design-components-generate.md`
 
 1. Step1 の分析結果 + Step2 の確認結果をもとに `design-event.yaml` を生成する
-2. brand セクション: `brand` スキルの出力がある場合は統合。なければ推論から生成
-3. tokens セクション: `design-system` スキルの `references/token-architecture.md` を参照し3層構造で生成
-4. components セクション: RDRA 画面/情報/状態からドメインコンポーネントを導出
-5. screens セクション: RDRA 画面 → ルート → コンポーネントマッピング
-6. states セクション: RDRA 状態モデル → Badge/Color マッピング
+2. メタデータセクション（schema 必須）: 先頭に `version: "1.0"`、`event_id`（`date '+%Y%m%d_%H%M%S'` + `_design_system` 形式でこの時点で採番）、`created_at`、`source`、`trigger_event` を出力する
+3. brand セクション: `brand` スキルの出力がある場合は統合。なければ推論から生成
+4. portals セクション（schema 必須）: Step2-1 で確定したポータル構成を出力する
+5. tokens セクション: primitive（色スケール・spacing・radius 等の生値）→ semantic（用途別参照）→ component（コンポーネント固有）の3層構造で生成する
+6. components セクション: RDRA 画面/情報/状態からドメインコンポーネントを導出
+7. screens セクション: RDRA 画面 → ルート → コンポーネントマッピング
+8. states セクション: RDRA 状態モデル → Badge/Color マッピング
 
 **重要な実装ルール（実績からの学び）:**
 - `--color-white: #FFFFFF` のような基本トークンは必ず明示的に `:root` に定義する
@@ -316,7 +318,7 @@ Logo SVG (3バリアント) と Icon SVG (ドメイン必要セット) を生成
 
 #### 初期構築時
 
-1. イベント ID を生成する: `date '+%Y%m%d_%H%M%S'` コマンドでタイムスタンプを取得し `{YYYYMMDD_HHMMSS}_design_system` 形式で生成
+1. イベント ID は Step3 で採番済み（`{YYYYMMDD_HHMMSS}_design_system` 形式。design-event.yaml の `event_id` と一致させる）
 2. `events/{event_id}/` に記録する（storybook-app/ は含めない）:
    - `design-event.yaml`（全量の完全版）
    - `assets/`（Logo SVG + Icon SVG）
@@ -336,7 +338,8 @@ Logo SVG (3バリアント) と Icon SVG (ドメイン必要セット) を生成
    - `decisions/`（決定記録 YAML。少なくとも1つ）
    - `_changes.md`、`_inference.md`、`source.txt`
 3. `latest/` を更新する:
-   - `design-event.yaml` ← 差分マージ（マージキーで照合）
+   - `design-event.yaml` ← 差分マージ（マージキーで照合。メタデータは `event_id`/`source` を ` + ` 連結、`created_at` を上書き）
+   - `design-event.md` ← マージ後に `generateDesignEventMd.js` で再生成
    - `assets/` ← 差分マージ（SVG 追加/上書き/削除）
    - `decisions/` ← 差分マージ（artifact_id で照合）
    - `storybook-app/` ← **全量再ビルド**（latest/design-event.yaml を入力として再生成 → `storybook build` で検証）

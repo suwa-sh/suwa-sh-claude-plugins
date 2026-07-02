@@ -64,11 +64,21 @@ spec スキルの Step9 として実装されていたものを独立スキル�
 7. **design イベント記録（ハイブリッド方式）**: design スキルのイベントソーシングルールに従う。storybook-app/ は全量再ビルド対象のため events/ には含めない:
    - `date '+%Y%m%d_%H%M%S'` でイベント ID を生成
    - `docs/design/events/{event_id}_spec_stories/` を作成し、以下を記録する:
-     - `design-event-diff.yaml` — screens/components の追加分のみ（差分）
+     - `design-event-diff.yaml` — screens/components の追加分のみ（差分）。**full の design-event.yaml と同型のサブセット構造**とする:
+       - 追加した共通コンポーネント → `components.common[]`（`name` / `description` / `path`）
+       - ページ Story → `screens[]`（`name` / `portal` に加え `uc` / `story` / `variants` を付与）。追加する screens は spec の UC（= RDRA トレース済み）に対応するものに限る
      - `_changes.md` — 追加した共通コンポーネント・ページ Story の一覧
      - `_inference.md`、`source.txt`
-   - `docs/design/latest/design-event.yaml` に差分をマージする（screens/components を追加）
-   - `docs/design/latest/design-event.md` を再生成する
+   - `docs/design/latest/design-event.yaml` に差分をマージする（`${CLAUDE_PLUGIN_ROOT}/skills/dist-design-system/references/event-sourcing-rules.md` のマージキーに従う）:
+     - `components.common` は `name` で照合して追加/上書き
+     - `screens` は `name` で照合し、`uc` / `story` / `variants` フィールドを追加
+     - 必要に応じて `storybook.categories` に `common` / ページ分類を反映する
+     - **メタデータ更新**: latest の `event_id` / `source` に ` + ` で本イベントの値を連結し、`created_at` を本イベントの時刻で上書きする
+   - マージ後に latest を再検証し、`docs/design/latest/design-event.md` を再生成する:
+     ```bash
+     node ${CLAUDE_PLUGIN_ROOT}/skills/dist-design-system/scripts/validateDesignEvent.js docs/design/latest/design-event.yaml
+     node ${CLAUDE_PLUGIN_ROOT}/skills/dist-design-system/scripts/generateDesignEventMd.js docs/design/latest/design-event.yaml
+     ```
    - **storybook-app/ は events/ にコピーしない**（latest/ で直接開発・ビルド済み。design-event.yaml から再現可能）
 
 ## 重要なルール

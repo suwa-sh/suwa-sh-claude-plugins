@@ -60,13 +60,11 @@ rdra スキルの RDRA統合ステップでは、関連データ生成スクリ�
 | スクリプト | パス解決方法 | 入力パス | 出力パス |
 |-----------|-------------|---------|---------|
 | `makeGraphData.js` | `process.cwd()` + 引数（デフォルト `1_RDRA`） | `{cwd}/1_RDRA/*.tsv` | `{cwd}/1_RDRA/関連データ.txt` |
-| `makeZeroOneData.js` | `__dirname/../../1_RDRA/` | `{スクリプトの親の親}/1_RDRA/*.tsv` | `{スクリプトの親の親}/1_RDRA/ZeroOne.txt` |
+| `makeZeroOneData.js` | `process.cwd()` + 引数（デフォルト `1_RDRA`） | `{cwd}/1_RDRA/*.tsv` | `{cwd}/1_RDRA/ZeroOne.txt` |
 
 **makeGraphData.js** は `process.cwd()`（カレントディレクトリ）基準のため、ユーザー指定のルートディレクトリで実行すれば正しく動作する。
 
-**makeZeroOneData.js** は `__dirname`（スクリプト自身のディレクトリ）基準で `../../1_RDRA/` を参照するため、パッチ済み: cwd 基準で動作するようになった。
-
-**対処法**: makeZeroOneData.js を実行する際は、一時的にシンボリックリンクを作成してパスを解決する:
+**makeZeroOneData.js** も cwd 基準（または第1引数）で動作するようパッチ済み。シンボリックリンク等の対処は不要:
 
 ```bash
 # Plugin 互換: makeZeroOneData.js は cwd 基準（または引数）で動作する
@@ -138,8 +136,8 @@ rm -rf 1_RDRA/
 
 ### Step0 後のワークフロー
 
-初期構築完了後、続けて Step4（Spec 生成）→ Step5（Spec スナップショット更新）を実行する。
-初期構築時の Step4 では、`_changes.md` に「全モデル要素を初期構築として追加」と記載されているため、`docs/rdra/latest/BUC.tsv` に含まれる **全 UC** を対象として Spec を生成する。
+初期構築完了後は後続スキル（dist-quality-attributes → dist-architecture → … → dist-spec）へ引き渡す。
+Spec 生成は dist-spec スキルの責務（初期構築時は `_changes.md` に「全モデル要素を初期構築として追加」と記載されるため、dist-spec は `docs/rdra/latest/BUC.tsv` の **全 UC** を対象とする）。
 
 ## 出力チェック
 

@@ -339,7 +339,7 @@ DDD 戦略的設計の観点（サブドメイン分類 / 境界づけられた�
 - ただし**空配列 `[]` は許容**される（例: 小規模システムで context_map: [] / aggregate_hypotheses: []）
 - これは「キー自体は必ず宣言、中身は空でも可」というポリシー（schema 安定性と柔軟性の両立）
 
-DDD 戦略設計は RDRA からの推論を補助とし、最終判断は Phase 0 の対話でユーザーに確認する。本スキルは DDD 完全準拠を主張せず、RDRA から導出可能な戦略設計の **仮説生成** に留める。詳細な原典は `plugins/ddd/skills/ddd-architecture/README.md` を参照（任意）。
+DDD 戦略設計は RDRA からの推論を補助とし、最終判断は Phase 0 の対話でユーザーに確認する。本スキルは DDD 完全準拠を主張せず、RDRA から導出可能な戦略設計の **仮説生成** に留める。詳細な原典は ddd プラグインの `${CLAUDE_PLUGIN_ROOT}/../ddd/skills/ddd-architecture/references/`（subdomain.md / bounded-context.md / context-map.md / strategy-to-tactics.md）を参照（任意）。
 
 | フィールド | 型 | キー必須 | 説明 |
 |-----------|---|:------:|------|
@@ -596,10 +596,13 @@ docs/arch/
   latest/
     arch-design.yaml         # 最新スナップショット
     arch-design.md           # 最新 Markdown
+    coverage-report.md       # 要件カバレッジレポート
     decisions/               # 決定記録（events からコピー）
       arch-decision-001.yaml
       arch-decision-002.yaml
 ```
+
+差分更新時のイベントには `arch-design.yaml`（全量）の代わりに `arch-design-diff.yaml`（変更要素のみ）と `_changes.md` を置く。
 
 ### 決定記録スキーマ
 

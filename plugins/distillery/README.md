@@ -6,7 +6,7 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 
 ## Pipeline
 
-粗い原料から熟成された成果物へ、蒸留酒の製造工程になぞらえた7ステージ構成です。
+粗い原料から熟成された成果物へ、蒸留酒の製造工程になぞらえた8ステージ構成です。
 
 ```
 要望テキスト
@@ -43,6 +43,11 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 └──────────────────┘
    │
    ▼
+┌──────────────────┐  Label       spec-stories        UC Spec → Storybook ページ Story 生成
+│  spec-stories    │────────────▶ docs/design/latest (Story 追記)
+└──────────────────┘
+   │
+   ▼
 ┌──────────────────┐  Master      pipeline            全スキルの順次実行 (オーケストレーション)
 │  pipeline        │
 └──────────────────┘
@@ -76,7 +81,7 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 /distillery:dist-pipeline
 ```
 
-初期要望テキストのパスを聞かれるので指定してください。7スキルが順次実行され、`docs/` 配下に全成果物が生成されます。
+初期要望テキストのパスを聞かれるので指定してください。7スキル（requirements〜spec の6スキル + Step6a の spec-stories）が順次実行され、`docs/` 配下に全成果物が生成されます。
 
 ### 個別実行
 
@@ -87,6 +92,7 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 /distillery:dist-infrastructure
 /distillery:dist-design-system
 /distillery:dist-spec
+/distillery:dist-spec-stories
 ```
 
 既存の `docs/{rdra,nfr,arch,infra,design,specs}/latest/` を読み込み、差分更新モードで動作します。

@@ -530,7 +530,7 @@ Step4: Infra 書き戻しチェック → 要再実行
 返してはならない。
 
 - [ ] Phase1: `product-input.yaml` 生成
-- [ ] Phase2: MCL `product-design` 実行（`mcl-output/` 生成）
+- [ ] Phase2: MCL `product-design` 実行（`specs/product/output/` 生成）
 - [ ] Phase3: `infra-event.yaml` + `docs/infra/latest/` スナップショット作成
 - [ ] Phase4: `docs/arch/latest/arch-design.yaml` へのフィードバック反映（タイムスタンプ更新）
 - [ ] Phase5: write-back 検証（arch バリデーションスクリプト PASS）

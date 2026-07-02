@@ -7,7 +7,7 @@ description: >
   ドメインアーキテクチャ（DDD 戦略設計: サブドメイン分類 / 境界づけられたコンテキスト /
   コンテキストマップ / 集約境界仮説）、
   システムアーキテクチャ（ティア構成・IdP・認可サービス・API Gateway）、
-  アプリケーションアーキテクチャ（presentation/usecase/domain/gateway の4層設計・ロギング方針）、
+  アプリケーションアーキテクチャ（presentation/usecase/domain/repository/gateway の5層設計・ロギング方針）、
   データアーキテクチャ（イミュータブルデータモデル・概念モデル・ストレージマッピング）を自動推論。
   クラウドデザインパターン（Circuit Breaker, Saga, CQRS 等）の適用判断、
   認可モデル選定（RBAC/ABAC/ReBAC、サブドメイン分類による重み付け）、
@@ -151,7 +151,7 @@ Step1 の推論結果をユーザーに提示し、対話で確認・調整す�
 
 `references/arch/arch-dialogue.md` に従い、以下の順で対話を行う。**問題空間（DDD ドメイン設計）を解決空間（技術選定）より先に確定する**:
 
-1. **ドメイン設計の確認**（Phase 0）: サブドメイン分類 → BC → コンテキストマップ → 集約境界仮説 の 4 sub-step。`references/dialogue-format.md`（3案+⭐推奨）準拠
+1. **ドメイン設計の確認**（Phase 0）: サブドメイン分類 → BC → コンテキストマップ → 集約境界仮説 の 4 sub-step。`${CLAUDE_PLUGIN_ROOT}/skills/dist-pipeline/references/dialogue-format.md`（3案+⭐推奨）準拠
 2. **テクノロジースタックの確認**（Phase 1）: 言語/FW の希望、技術的制約（デプロイ先は対象外）
 3. **システムアーキテクチャの確認**（Phase 2）: BC : tier 対応形態 → ティア構成、テクノロジー候補、ティア共通方針/ルール、認可モデル（BC 重み付け含む）、i18n
 4. **アプリケーションアーキテクチャの確認**（Phase 3）: ティアごとのレイヤリング、レイヤー共通方針/ルール
@@ -248,7 +248,7 @@ RDRA 網羅率・NFR 網羅率ともに 100% を目標とする。未カバー�
 
 - **初期構築時**: `events/{event_id}/arch-design.yaml`（完全版）を `latest/arch-design.yaml` にコピーする
 - **差分更新時**: `events/{event_id}/arch-design-diff.yaml` の変更セクションを `latest/arch-design.yaml` にマージする
-  - マージキー: `system_architecture.tiers` は `id`、`app_architecture.tier_layers` は `tier_id`、`data_architecture.entities` は `name`、`data_architecture.policies` は `name`
+  - マージキー: `system_architecture.tiers` は `id`、`app_architecture.tier_layers` は `tier_id`、`data_architecture.entities` は `name`、`data_architecture.storage_mapping` は `entity_id`
   - `confidence: "user"` の項目は上書きしない（ユーザー確定値を保護）
   - `_changes.md` の削除セクションに記載された要素を latest から除去
 

@@ -90,11 +90,10 @@ mkdir -p 1_RDRA
 cp docs/rdra/latest/*.tsv 1_RDRA/
 cp docs/rdra/latest/システム概要.json 1_RDRA/
 
-# 2. makeGraphData.js: process.cwd() 基準のため、ルートディレクトリで実行すれば OK
-node scripts/makeGraphData.js
+# 2. makeGraphData.js: cwd 基準（または第1引数、デフォルト 1_RDRA）で動作する
+node ${CLAUDE_PLUGIN_ROOT}/skills/dist-requirements/scripts/makeGraphData.js 1_RDRA
 
-# 3. makeZeroOneData.js: __dirname/../../1_RDRA/ 基準のため、シンボリックリンクで対処
-# Plugin 互換: makeZeroOneData.js は cwd 基準（または引数）で動作する
+# 3. makeZeroOneData.js: cwd 基準（または第1引数）で動作する
 node ${CLAUDE_PLUGIN_ROOT}/skills/dist-requirements/scripts/makeZeroOneData.js 1_RDRA
 
 # 4. 生成結果を latest にコピーし、一時ディレクトリを削除
@@ -108,9 +107,9 @@ rm -rf 1_RDRA/
 | スクリプト | パス解決方法 | 備考 |
 |-----------|-------------|------|
 | `makeGraphData.js` | `process.cwd()` + 引数（デフォルト `1_RDRA`） | カレントディレクトリ基準。そのまま実行可能 |
-| `makeZeroOneData.js` | `__dirname/../../1_RDRA/` | スクリプトの親の親ディレクトリ基準。シンボリックリンクで対処が必要 |
+| `makeZeroOneData.js` | `process.cwd()` + 引数（デフォルト `1_RDRA`） | カレントディレクトリ基準。そのまま実行可能 |
 
-注意: `<skill-path>` は本スキル（`requirements`）のパス。
+注意: `<skill-path>` は本スキル（`dist-requirements`）のパス。
 
 ## エラーハンドリング
 

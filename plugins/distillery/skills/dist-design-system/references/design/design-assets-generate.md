@@ -2,12 +2,12 @@
 
 ## Logo SVG 直接生成パターン
 
-`design` スキルのプロンプト設計ノウハウ（55スタイル、30カラーパレット、25業界ガイド）を参考にしつつ、SVG コードを直接記述する。外部 AI API (Gemini 等) は不要。
+`design` スキル（外部・推奨依存）のプロンプト設計ノウハウ（55スタイル、30カラーパレット、25業界ガイド）を参考にしつつ、SVG コードを直接記述する。外部 AI API (Gemini 等) は不要。
 
-**design スキルから活用するナレッジ:**
-- `references/logo-style-guide.md` — スタイル選定 (Minimalist, Geometric, Line Art 等)
-- `references/logo-color-psychology.md` — カラー心理学 (Blue=信頼, Green=成長, etc.)
-- `references/logo-prompt-engineering.md` — モチーフ・構図の設計ガイド
+**design スキルがインストールされている場合に活用するナレッジ**（同スキル内のファイル。未インストールなら本ファイルの共通ルールのみで生成する）:
+- `logo-style-guide.md` — スタイル選定 (Minimalist, Geometric, Line Art 等)
+- `logo-color-psychology.md` — カラー心理学 (Blue=信頼, Green=成長, etc.)
+- `logo-prompt-engineering.md` — モチーフ・構図の設計ガイド
 - `data/logo/industries.csv` — 業界別ガイドライン
 
 ### 共通ルール

@@ -177,10 +177,13 @@ Step1 の推論結果をユーザーに提示し、対話で確認・調整す�
 出力後、スキーマバリデータを実行して nfr-grade.yaml の構造を検証する:
 
 ```bash
+# 初期構築時
 node <skill-path>/scripts/validateNfrGrade.js docs/nfr/events/{event_id}/nfr-grade.yaml
+# 差分更新時（イベントには diff しか無いため、マージ後の latest を検証する）
+node <skill-path>/scripts/validateNfrGrade.js docs/nfr/latest/nfr-grade.yaml
 ```
 
-- 終了コード 0（PASS）: スナップショット更新へ進む
+- 終了コード 0（PASS）: スナップショット更新へ進む（差分更新時はマージ後に実行）
 - 終了コード 1（FAIL）: エラー内容を確認し、nfr-grade.yaml を修正してから再度バリデーションを実行する
 
 `<skill-path>` は本スキルのディレクトリパス（`${CLAUDE_PLUGIN_ROOT}/skills/dist-quality-attributes`）。
@@ -190,6 +193,7 @@ node <skill-path>/scripts/validateNfrGrade.js docs/nfr/events/{event_id}/nfr-gra
 バリデーション通過後、nfr-grade.yaml を IPA 非機能要求グレード活用シート形式の Markdown 表に変換する:
 
 ```bash
+# 初期構築時（差分更新時は latest/nfr-grade.yaml を入力にする）
 node <skill-path>/scripts/generateNfrGradeMd.js docs/nfr/events/{event_id}/nfr-grade.yaml
 ```
 
@@ -201,7 +205,7 @@ node <skill-path>/scripts/generateNfrGradeMd.js docs/nfr/events/{event_id}/nfr-g
 
 - **初期構築時**: `events/{event_id}/nfr-grade.yaml`（完全版）を `latest/nfr-grade.yaml` にコピーする
 - **差分更新時**: `events/{event_id}/nfr-grade-diff.yaml` の変更メトリクスを `latest/nfr-grade.yaml` にマージする
-  - マージキー: `category` + `subcategory` + `metric_id`
+  - マージキー: メトリクスの `id`（`A.1.1.1` 形式）
   - `confidence: "user"` のメトリクスは上書きしない（ユーザー確定値を保護）
   - `_changes.md` の削除セクションに記載されたメトリクスを latest から除去
 

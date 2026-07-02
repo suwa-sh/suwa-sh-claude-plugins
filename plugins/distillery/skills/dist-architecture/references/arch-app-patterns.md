@@ -10,14 +10,15 @@
 2. **入出力を相手ごとに分離し定型化する** — Driver Side（利用する側）と Driven Side（利用される側）
 3. **変更があったときに凹型で依存を内側に向ける** — IF 導入は必要になってから
 
-## 基本レイヤー構成（4層）
+## 基本レイヤー構成（5層）
 
 | レイヤー | 責務 | Driver/Driven | 依存先 |
 |---------|------|:------------:|--------|
 | presentation | Driver Side の入出力。HTTP リクエスト/レスポンス変換、入力バリデーション | Driver | usecase |
-| usecase | ビジネスフロー制御。ドメインロジックとデータ入出力の呼び出しで完結する | - | domain, gateway |
+| usecase | ビジネスフロー制御。ドメインロジックとデータ入出力の呼び出しで完結する | - | domain, repository |
 | domain | ドメインロジック（計算・判定ロジック）。エンティティ、値オブジェクト、ドメインイベント | - | なし |
-| gateway | Driven Side の入出力。データストアアクセス、外部システム連携、MQ 発行 | Driven | domain |
+| repository | domain のデータアクセス抽象。aggregate root と 1:1 で定義し、永続化パターンを隠蔽する | - | domain, gateway |
+| gateway | Driven Side の入出力。adapter（データストア 1:1）+ client（外部 SDK/API）、MQ 発行 | Driven | なし |
 
 ### IF（インターフェース）の導入方針
 
@@ -25,17 +26,19 @@
 
 ```
 presentation → usecase → domain
-                       → gateway → domain
+                       → repository → domain
+                                    → gateway
 ```
 
-- usecase は gateway を直接利用する
+- usecase は repository を、repository は gateway を直接利用する
 - 開発スピードを優先し、凹型は導入しない
 
 **凹型への移行（必要になった場合）**
 
 ```
 presentation → usecase → domain
-                       → gateway(IF) ← gateway(実装) → domain
+                       → repository(IF) ← repository(実装) → domain
+                                                           → gateway(IF) ← gateway(実装)
 ```
 
 以下の場合に凹型（IF 導入）を検討する:
@@ -61,7 +64,8 @@ presentation → usecase → domain
 | presentation | HTTP リクエストのパース、レスポンス変換。Web FW のハンドラ |
 | usecase | ビジネスフロー制御、トランザクション境界 |
 | domain | ビジネスルール、エンティティ、状態遷移 |
-| gateway | ORM によるデータアクセス、外部 API クライアント（OpenAPI 生成コード等） |
+| repository | aggregate root 単位のデータアクセス抽象。adapter を束ねて永続化を隠蔽 |
+| gateway | ORM によるデータアクセス（adapter）、外部 API クライアント（OpenAPI 生成コード等の client） |
 
 ### PubSub subscriber / MQ consumer（Worker ティア）
 
@@ -70,6 +74,7 @@ presentation → usecase → domain
 | presentation | メッセージのデシリアライズ、サブスクライバハンドラ |
 | usecase | 非同期処理のビジネスフロー制御 |
 | domain | ビジネスルール、状態遷移（Backend API と共有可能） |
+| repository | aggregate root 単位のデータアクセス抽象（Backend API と共有可能） |
 | gateway | データアクセス、外部 API クライアント（Backend API と共有可能） |
 
 ### CLI（バッチ・管理ツール）
@@ -92,7 +97,7 @@ presentation → usecase → domain
 
 ## 参考にしているアーキテクチャパターン
 
-各パターンは「やりたいこと」が一貫している。本スキルでは4層構成を基本とし、パターン名は参考情報として記載する。
+各パターンは「やりたいこと」が一貫している。本スキルでは5層構成を基本とし、パターン名は参考情報として記載する。
 
 | パターン | 特徴 | 本スキルとの対応 |
 |---------|------|---------------|

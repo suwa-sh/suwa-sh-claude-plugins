@@ -549,7 +549,7 @@ npx --yes @asyncapi/cli validate docs/specs/events/{event_id}/_cross-cutting/api
 - エラーあり → asyncapi.yaml を修正。主な修正対象: SQS バインディングの `fifoQueue` 必須プロパティ欠落、$ref 解決エラー
 - info レベル（AsyncAPI バージョン推奨等）は無視してよい
 
-`<skill-path>` は本スキルのディレクトリパス（`${CLAUDE_PLUGIN_ROOT}/skills/spec`）。
+`<skill-path>` は本スキルのディレクトリパス（`${CLAUDE_PLUGIN_ROOT}/skills/dist-spec`）。
 
 ### Step7: Markdown 生成
 
@@ -704,9 +704,9 @@ Step8 でスナップショットが確定した後、Spec の内容を Storyboo
 | `scripts/generateDatastoreMd.js` | Step7: rdb/kvs/object-storage-schema.yaml → datastore-schema.md 統合生成 |
 | `references/specs/spec-snapshot-update.md` | Step8: スナップショット更新ルール |
 | `references/event-sourcing-rules.md` | Step8: イベントソーシング不変ルール |
-| `(design)references/design/design-storybook-generate.md` | Step9: Storybook 生成ルール（design スキル） |
-| `(design)references/design/design-lessons-learned.md` | Step9: 実装の教訓・品質チェック（design スキル） |
-| `(design)references/design/design-components-generate.md` | Step9: コンポーネント仕様生成（design スキル） |
+| `${CLAUDE_PLUGIN_ROOT}/skills/dist-design-system/references/design/design-storybook-generate.md` | Step9: Storybook 生成ルール（dist-design-system スキル） |
+| `${CLAUDE_PLUGIN_ROOT}/skills/dist-design-system/references/design/design-lessons-learned.md` | Step9: 実装の教訓・品質チェック（dist-design-system スキル） |
+| `${CLAUDE_PLUGIN_ROOT}/skills/dist-design-system/references/design/design-components-generate.md` | Step9: コンポーネント仕様生成（dist-design-system スキル） |
 
 ## RDRA 整合性ルール
 

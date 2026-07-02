@@ -39,7 +39,7 @@ categories:
                 grade: 0
                 grade_description: "規定なし"
                 reason: "モデルシステムデフォルト適用"
-                source_model: null
+                source_model: ""
                 confidence: "default"
 ```
 
@@ -98,7 +98,7 @@ categories:
 | grade | integer | Yes | 決定レベル（0〜5） |
 | grade_description | string | Yes | 確定レベルの具体的な内容（例: "1時間程度の停止（9時〜翌8時）"、"~1,000"）。nfr-grade-catalog.md のレベル定義から該当する内容を転記する |
 | reason | string | Yes | レベル決定根拠 |
-| source_model | string | null | Yes | 根拠となった RDRA モデル要素（推論元）。推論不能の場合は null |
+| source_model | string | Yes | 根拠となった RDRA モデル要素（推論元）。推論不能の場合は空文字列 `""`（または `"なし"`）。null は schema 検証で FAIL する |
 | confidence | string | Yes | 確信度: "high"=RDRA から明確に推論, "medium"=RDRA から間接推論, "low"=弱い推論, "default"=モデルシステムデフォルト, "user"=ユーザー指定 |
 
 ## ID 体系
@@ -126,9 +126,12 @@ categories:
 docs/nfr/
   events/
     {event_id}/
-      nfr-grade.yaml       # この変更での NFR グレード
+      nfr-grade.yaml       # この変更での NFR グレード（差分更新時は nfr-grade-diff.yaml）
+      nfr-grade.md          # 生成 Markdown
+      _changes.md           # 変更サマリ（差分更新時）
       _inference.md         # 推論根拠サマリ
       source.txt            # トリガー説明のコピー
   latest/
     nfr-grade.yaml          # 最新スナップショット
+    nfr-grade.md            # 最新スナップショットの Markdown
 ```

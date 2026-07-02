@@ -317,12 +317,14 @@ function validateDesignSpecific(data) {
   // ポータルID一覧
   const portalIds = new Set(portals.map(p => p.id));
 
-  // コンポーネント名一覧（UI + Domain）
+  // コンポーネント名一覧（UI + Domain + Common）
   const uiComponents = (components.ui || []);
   const domainComponents = (components.domain || []);
+  const commonComponents = (components.common || []);
   const componentNames = new Set([
     ...uiComponents.map(c => c.name),
-    ...domainComponents.map(c => c.name)
+    ...domainComponents.map(c => c.name),
+    ...commonComponents.map(c => c.name)
   ]);
 
   // チェック1: screen.portal が portals[].id に存在するか
@@ -341,7 +343,7 @@ function validateDesignSpecific(data) {
       if (!componentNames.has(compName)) {
         errors.push({
           path: `$.screens[${i}].components[${j}]`,
-          message: `component "${compName}" not found in components.ui[].name or components.domain[].name`
+          message: `component "${compName}" not found in components.ui/domain/common [].name`
         });
       }
     }
@@ -387,7 +389,7 @@ function validateDesignSpecific(data) {
 
   // カウント集計
   const portalCount = portals.length;
-  const componentCount = uiComponents.length + domainComponents.length;
+  const componentCount = uiComponents.length + domainComponents.length + (components.common || []).length;
   const screenCount = screens.length;
   const stateModelCount = states.length;
 

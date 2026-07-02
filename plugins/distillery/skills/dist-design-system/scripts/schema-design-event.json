@@ -184,7 +184,20 @@
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "#/$defs/DomainComponentDef" }
+        },
+        "common": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/CommonComponentDef" }
         }
+      }
+    },
+    "CommonComponentDef": {
+      "type": "object",
+      "required": ["name", "description"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 }
       }
     },
     "ComponentDef": {
@@ -215,7 +228,10 @@
         "name": { "type": "string", "minLength": 1 },
         "portal": { "type": "string", "minLength": 1 },
         "route": { "type": "string", "pattern": "^/" },
-        "components": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        "components": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "story": { "type": "string", "minLength": 1 },
+        "uc": { "type": "string", "minLength": 1 },
+        "variants": { "type": "array", "items": { "type": "string" } }
       }
     },
     "StateModel": {

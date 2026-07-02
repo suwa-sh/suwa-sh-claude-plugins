@@ -92,7 +92,7 @@
 
 - 仕様不一致がある場合: 実装に合わせた Spec を `docs/specs/events/{event_id}/` に生成
 - Spec 不足がある場合: 実装から逆引きした Spec を `docs/specs/events/{event_id}/` に生成
-- 生成後、`references/specs/spec-snapshot-update.md` に従い latest を更新
+- 生成後、dist-spec スキルの `${CLAUDE_PLUGIN_ROOT}/skills/dist-spec/references/specs/spec-snapshot-update.md` に従い latest を更新
 
 ## 注意事項
 

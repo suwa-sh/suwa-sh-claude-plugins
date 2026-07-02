@@ -31,7 +31,7 @@
 - 各メトリクスに以下を設定:
   - `grade`: 確定レベル（0〜5）
   - `reason`: レベル決定根拠（日本語、1文）
-  - `source_model`: 根拠となった RDRA モデル要素（推論元がない場合は null）
+  - `source_model`: 根拠となった RDRA モデル要素（推論元がない場合は空文字列 `""`。null 不可）
   - `confidence`: 確信度
 
 #### reason の記述ルール

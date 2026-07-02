@@ -8,9 +8,9 @@
 | Created At | 2026-04-12T20:52:45 (最終更新) |
 | Source | RDRA/NFR/Arch モデルからの初期デザインシステム生成 + spec-stories による全 UC ページ Story 生成 |
 | Portals | 2 |
-| Components | 19 (UI: 6, Domain: 6, Common: 7) |
+| Components | 19 (UI: 5, Domain: 6, Common: 8) |
 | Screens | 16 |
-| Page Stories | 16 (全 UC 対応) |
+| Page Stories | 16 |
 
 ## Brand
 
@@ -111,19 +111,6 @@
 | Card | default, hoverable | - |
 | Input | default, error | - |
 | Icon | - | - |
-| Logo | full, icon, stacked | - |
-
-### Common Components
-
-| Name | Description |
-|------|-------------|
-| EmptyState | データ0件の空状態表示。アイコン + メッセージ + アクションボタン |
-| LoadingSkeleton | 読み込み中スケルトン (table-row / card / form) |
-| ErrorBanner | APIエラー時のバナー表示。RFC 7807 ProblemDetails 対応 |
-| ConfirmActionModal | 破壊的操作の確認ダイアログ |
-| PaginatedList | ページネーション付き一覧コンテナ |
-| UserPortalShell | 利用者ポータル共通レイアウト (ヘッダー + ナビ + フッター) |
-| AdminPortalShell | 司書ポータル共通レイアウト (サイドバー + ヘッダー + メイン) |
 
 ### Domain Components
 
@@ -135,6 +122,19 @@
 | LoanRecord | 貸出記録を一行表示するコンポーネント。貸出状況一覧や貸出履歴で使用 | 貸出状況一覧画面, 貸出履歴画面, 延滞管理画面 |
 | BookSearchFilter | 蔵書検索のフィルターコンポーネント。キーワード検索+ジャンル/資料種別フィルター | 蔵書検索画面 |
 | StatsSummaryCard | 統計情報をサマリー表示するカードコンポーネント | 統計レポート画面, 在庫状況画面 |
+
+### Common Components
+
+| Name | Description |
+|------|-------------|
+| Logo | ブランドロゴ表示コンポーネント。full/icon/stacked の3バリアント |
+| EmptyState | データ0件の空状態表示。アイコン + メッセージ + アクションボタン |
+| LoadingSkeleton | 読み込み中スケルトン。table-row / card / form の3バリアント |
+| ErrorBanner | APIエラー時のバナー表示。RFC 7807 ProblemDetails 対応 |
+| ConfirmActionModal | 破壊的操作の確認ダイアログ。削除・キャンセル操作前に使用 |
+| PaginatedList | ページネーション付き一覧コンテナ |
+| UserPortalShell | 利用者ポータル共通レイアウト。ヘッダー + ナビ + フッター |
+| AdminPortalShell | 司書ポータル共通レイアウト。サイドバー + ヘッダー + メイン |
 
 ## Screen Mapping
 

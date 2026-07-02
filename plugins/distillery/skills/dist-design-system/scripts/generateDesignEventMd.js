@@ -259,10 +259,14 @@ function generateMarkdown(data) {
   const nfrDecisions = data.nfr_decisions || [];
   const uiComponents = components.ui || [];
   const domainComponents = components.domain || [];
+  const commonComponents = components.common || [];
 
   const portalCount = portals.length;
-  const componentCount = uiComponents.length + domainComponents.length;
+  const componentCount = uiComponents.length + domainComponents.length + commonComponents.length;
   const screenCount = screens.length;
+  const storyScreens = screens.filter(s => s.story);
+  // event_id が " + " 連結されている場合は差分マージ済みスナップショット
+  const isMerged = String(data.event_id || '').includes(' + ');
 
   // ヘッダー
   lines.push(`# Design System: ${esc(brand.name || 'Unnamed')}`);
@@ -276,11 +280,18 @@ function generateMarkdown(data) {
   lines.push('| 項目 | 内容 |');
   lines.push('|------|------|');
   lines.push(`| Event ID | ${esc(data.event_id)} |`);
-  lines.push(`| Created At | ${esc(data.created_at)} |`);
+  lines.push(`| Created At | ${esc(data.created_at)}${isMerged ? ' (最終更新)' : ''} |`);
   lines.push(`| Source | ${esc(data.source)} |`);
   lines.push(`| Portals | ${portalCount} |`);
-  lines.push(`| Components | ${componentCount} |`);
+  if (commonComponents.length > 0) {
+    lines.push(`| Components | ${componentCount} (UI: ${uiComponents.length}, Domain: ${domainComponents.length}, Common: ${commonComponents.length}) |`);
+  } else {
+    lines.push(`| Components | ${componentCount} |`);
+  }
   lines.push(`| Screens | ${screenCount} |`);
+  if (storyScreens.length > 0) {
+    lines.push(`| Page Stories | ${storyScreens.length} |`);
+  }
   lines.push('');
 
   // ================================================================
@@ -467,6 +478,18 @@ function generateMarkdown(data) {
   }
   lines.push('');
 
+  // Common Components (spec-stories マージ後に存在)
+  if (commonComponents.length > 0) {
+    lines.push('### Common Components');
+    lines.push('');
+    lines.push('| Name | Description |');
+    lines.push('|------|-------------|');
+    for (const comp of commonComponents) {
+      lines.push(`| ${esc(comp.name)} | ${esc(comp.description)} |`);
+    }
+    lines.push('');
+  }
+
   // ================================================================
   // Screen Mapping
   // ================================================================
@@ -534,6 +557,37 @@ function generateMarkdown(data) {
   }
   lines.push('');
 
+  // ================================================================
+  // Storybook Page Stories (spec-stories マージ後に存在)
+  // ================================================================
+  if (storyScreens.length > 0) {
+    lines.push('## Storybook Page Stories');
+    lines.push('');
+
+    const storiesByPortal = {};
+    for (const screen of storyScreens) {
+      const portalId = screen.portal || 'unknown';
+      if (!storiesByPortal[portalId]) storiesByPortal[portalId] = [];
+      storiesByPortal[portalId].push(screen);
+    }
+
+    for (const [portalId, portalScreens] of Object.entries(storiesByPortal)) {
+      const portal = portals.find(p => p.id === portalId);
+      const portalName = portal ? portal.name : portalId;
+      lines.push(`### ${esc(portalName)} (${portalScreens.length}画面)`);
+      lines.push('');
+      lines.push('| 画面 | UC | Story | Variants |');
+      lines.push('|------|---|-------|----------|');
+      for (const screen of portalScreens) {
+        // "src/stories/Pages/UserPortal/BookSearch.stories.tsx" → "Pages/UserPortal/BookSearch"
+        const storyLabel = String(screen.story).replace(/^src\/stories\//, '').replace(/\.stories\.tsx?$/, '');
+        const variants = (screen.variants || []).join(', ') || '-';
+        lines.push(`| ${esc(screen.name)} | ${esc(screen.uc)} | ${esc(storyLabel)} | ${variants} |`);
+      }
+      lines.push('');
+    }
+  }
+
   return lines.join('\n');
 }
 
@@ -570,9 +624,10 @@ function main() {
   const states = data.states || [];
   const uiCount = (components.ui || []).length;
   const domainCount = (components.domain || []).length;
+  const commonCount = (components.common || []).length;
 
   console.log(`Generated: ${outputPath}`);
-  console.log(`  Portals: ${portals.length}, Components: ${uiCount + domainCount} (UI: ${uiCount}, Domain: ${domainCount}), Screens: ${screens.length}, State Models: ${states.length}`);
+  console.log(`  Portals: ${portals.length}, Components: ${uiCount + domainCount + commonCount} (UI: ${uiCount}, Domain: ${domainCount}, Common: ${commonCount}), Screens: ${screens.length}, State Models: ${states.length}`);
 }
 
 main();

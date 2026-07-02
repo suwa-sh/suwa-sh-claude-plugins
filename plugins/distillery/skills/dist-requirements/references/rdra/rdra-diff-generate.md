@@ -8,7 +8,7 @@ USDM の affected_models に基づき、RDRA モデルの差分 TSV を生成す
 - `docs/rdra/latest/*.tsv` — 現在の RDRA モデル
 - `docs/rdra/latest/システム概要.json` — 現在のシステム概要
 - `references/event-sourcing-rules.md` — イベントソーシングルール
-- `../rdra-phases/rdra-knowledge.md` — RDRA 基本概念
+- `references/rdra-phases/rdra-knowledge.md` — RDRA 基本概念
 
 ## 出力
 
@@ -108,7 +108,7 @@ requirements.yaml の全仕様から affected_models を収集し、影響を受
 
 ## RDRA 相互関連ルール（参考）
 
-以下は `../rdra-phases/rdra-knowledge.md` に記載のルールの要約。差分生成時にこれらの整合性を確保する:
+以下は `references/rdra-phases/rdra-knowledge.md` に記載のルールの要約。差分生成時にこれらの整合性を確保する:
 
 - BUC は アクター、情報、条件、外部システム を参照できる → 参照先が存在しない場合は一緒に追加する
 - 情報 は 関連情報、状態モデル、バリエーション を参照できる → 新しい状態やバリエーションを情報に紐づける場合は先に追加する

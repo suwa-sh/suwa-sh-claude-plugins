@@ -68,39 +68,43 @@ docs/design/
 
 ### design-event-diff.yaml
 
-変更要素のみを含む。各要素はそれぞれのマージキーで照合する。
+変更要素のみを含む。**構造は full の design-event.yaml（schema-design-event.json）と同型のサブセット**とし、各要素はそれぞれのマージキーで照合する。独自のフィールド名（`portal_id` 等）や独自の配列形式を使わないこと。
 
 ```yaml
-meta:
-  event_id: "{event_id}"
-  trigger_event: "rdra:{rdra_event_id}"
-  created_at: "2026-03-29T10:00:00"
-brand:                              # ブランド情報の変更（あれば）
-  primary_color: "#1a73e8"
-portals:                            # 追加/変更されたポータルのみ
-  - id: "admin-portal"
-    name: "管理者ポータル"
-tokens:                             # 追加/変更されたトークンのみ
+event_id: "{event_id}"
+trigger_event: "rdra:{rdra_event_id}"
+created_at: "2026-03-29T10:00:00"
+source: "変更の説明"
+brand:                              # ブランド情報の変更（あれば。キー単位）
+  colors:
+    primary: { name: "Brand Blue", hex: "#1a73e8" }
+tokens:                             # 追加/変更されたトークンのみ（full と同じネスト構造）
   primitive:
-    - name: "color-blue-500"
-      value: "#1a73e8"
+    colors:
+      blue: { "500": "#1a73e8" }
   semantic:
-    - name: "color-primary"
-      ref: "color-blue-500"
-  component:
-    - name: "button-primary-bg"
-      ref: "color-primary"
-components:                         # 追加/変更されたコンポーネントのみ
-  - name: "ReservationCard"
-    type: "molecule"
-    props: [...]
-screens:                            # 追加/変更された画面のみ
-  - route: "/reservations"
-    portal_id: "admin-portal"
+    color-primary: "blue.500"
+components:                         # 追加/変更されたコンポーネントのみ（ui / domain / common に分類）
+  domain:
+    - name: "ReservationCard"
+      description: "予約カード"
+      screens: ["予約一覧画面"]
+  common:
+    - name: "EmptyState"
+      description: "データ0件の空状態表示"
+      path: "src/components/common/EmptyState.tsx"
+screens:                            # 追加/変更された画面のみ（story 付与のみの変更も可）
+  - name: "予約一覧画面"
+    portal: "admin"
+    route: "/reservations"
     components: ["ReservationCard"]
-states:                             # 追加/変更された状態マッピングのみ
-  - entity: "Reservation"
-    states: ["pending", "confirmed", "cancelled"]
+    uc: "予約状況を確認する"       # spec-stories が付与
+    story: "src/stories/Pages/AdminPortal/ReservationList.stories.tsx"
+    variants: ["Default", "Empty", "Loading"]
+states:                             # 追加/変更された状態マッピングのみ（full と同じ model + entries 構造）
+  - model: "予約"
+    entries:
+      - { state: "pending", label: "予約中", color: "warning" }
 ```
 
 ### _changes.md
@@ -130,14 +134,16 @@ states:                             # 追加/変更された状態マッピン�
 
 - **マージキー**:
   - `portals`: `id` で照合
-  - `tokens`: 層（primitive/semantic/component）+ `name` で照合
-  - `components`: `name` で照合
-  - `screens`: `route` で照合
-  - `states`: `entity` で照合
+  - `tokens`: 層（primitive/semantic/component）内のキー単位で上書き
+  - `components.ui` / `components.domain` / `components.common`: `name` で照合
+  - `screens`: `name` で照合（`route` 変更もあり得るため）。差分に `uc` / `story` / `variants` があれば該当画面にフィールド追加
+  - `states`: `model` で照合
   - `brand`: キー単位で上書き
 - **追加**: latest に存在しない要素を追加
 - **変更**: 同一キーの要素を上書き
 - **削除**: `_changes.md` に削除と記載された要素を latest から除去
+- **メタデータ更新**: マージ後、latest の `event_id` / `source` は既存値に ` + ` で新イベントの値を連結し、`created_at` は新イベントの値で上書きする（generateDesignEventMd.js は ` + ` 連結を検出すると Created At に「(最終更新)」を付記する）
+- **マージ後の検証と再生成**: `validateDesignEvent.js` で latest を再検証し、`generateDesignEventMd.js` で `latest/design-event.md` を再生成する
 
 ### assets/ の差分マージ
 

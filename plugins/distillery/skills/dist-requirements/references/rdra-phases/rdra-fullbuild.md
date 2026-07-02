@@ -1,13 +1,10 @@
----
-name: rdra
-description: >
-  RDRA（Relationship Driven Requirement Analysis）2.0 による要件定義モデリングスキル。
-  初期要望テキストから5フェーズで段階的にRDRAモデルを自動生成し、さらに仕様（論理データモデル・ビジネスルール・画面定義）まで作成する。
-  要件定義、要件分析、RDRA、RDRAモデル、ビジネスユースケース、BUC、アクター、情報モデル、状態モデル、
-  要求分析、初期要望、業務分析、システム仕様に関するタスクで使用する。
-  ユーザーが「要件定義して」「RDRAで分析して」「初期要望から要件を整理して」「BUCを作って」
-  「アクターを洗い出して」「仕様を作って」などと言ったら積極的にこのスキルを使うこと。
----
+<!--
+  旧 rdra スキル由来の内包リファレンス。dist-requirements スキルの Step0（初期構築）から
+  参照される手順書であり、単独のスキルとしては登録されない。
+  本パイプラインで使用するのは Phase1〜5 + RDRA統合まで。
+  「仕様生成（Spec）」「外部ツール連携」セクションは旧スキルの記述で、
+  Spec 生成は dist-spec スキルの責務（本パイプラインでは未使用）。
+-->
 
 # RDRA要件定義スキル
 
@@ -63,17 +60,17 @@ RDRA 2.0（Relationship Driven Requirement Analysis）の手法に基づき、�
 
 | # | タスクプロンプト | 出力ファイル |
 |---|----------------|-------------|
-| 1 | `references/phase1/初期要望分析生成.md` | `0_RDRAZeroOne/phase1/初期要望分析.md` |
-| 2 | `references/phase1/アクター生成.md` | `0_RDRAZeroOne/phase1/アクター.tsv` |
-| 3 | `references/phase1/外部システム生成.md` | `0_RDRAZeroOne/phase1/外部システム.tsv` |
-| 4 | `references/phase1/ビジネスポリシー生成.md` | `0_RDRAZeroOne/phase1/ビジネスポリシー.tsv` |
-| 5 | `references/phase1/ビジネスパラメータ生成.md` | `0_RDRAZeroOne/phase1/ビジネスパラメータ.tsv` |
-| 6 | `references/phase1/業務生成.md` | `0_RDRAZeroOne/phase1/業務.tsv` |
-| 7 | `references/phase1/情報生成.md` | `0_RDRAZeroOne/phase1/情報.tsv` |
-| 8 | `references/phase1/状態生成.md` | `0_RDRAZeroOne/phase1/状態.tsv` |
-| 9 | `references/phase1/バリエーション生成.md` | `0_RDRAZeroOne/phase1/バリエーション.tsv` |
-| 10 | `references/phase1/条件生成.md` | `0_RDRAZeroOne/phase1/条件.tsv` |
-| 11 | `references/phase1/要求生成.md` | `0_RDRAZeroOne/phase1/要求.tsv` |
+| 1 | `references/rdra-phases/phase1/初期要望分析生成.md` | `0_RDRAZeroOne/phase1/初期要望分析.md` |
+| 2 | `references/rdra-phases/phase1/アクター生成.md` | `0_RDRAZeroOne/phase1/アクター.tsv` |
+| 3 | `references/rdra-phases/phase1/外部システム生成.md` | `0_RDRAZeroOne/phase1/外部システム.tsv` |
+| 4 | `references/rdra-phases/phase1/ビジネスポリシー生成.md` | `0_RDRAZeroOne/phase1/ビジネスポリシー.tsv` |
+| 5 | `references/rdra-phases/phase1/ビジネスパラメータ生成.md` | `0_RDRAZeroOne/phase1/ビジネスパラメータ.tsv` |
+| 6 | `references/rdra-phases/phase1/業務生成.md` | `0_RDRAZeroOne/phase1/業務.tsv` |
+| 7 | `references/rdra-phases/phase1/情報生成.md` | `0_RDRAZeroOne/phase1/情報.tsv` |
+| 8 | `references/rdra-phases/phase1/状態生成.md` | `0_RDRAZeroOne/phase1/状態.tsv` |
+| 9 | `references/rdra-phases/phase1/バリエーション生成.md` | `0_RDRAZeroOne/phase1/バリエーション.tsv` |
+| 10 | `references/rdra-phases/phase1/条件生成.md` | `0_RDRAZeroOne/phase1/条件.tsv` |
+| 11 | `references/rdra-phases/phase1/要求生成.md` | `0_RDRAZeroOne/phase1/要求.tsv` |
 
 ### 出力チェック
 以下のファイルが `0_RDRAZeroOne/phase1/` に生成されていることを確認:
@@ -99,9 +96,9 @@ Phase1の出力を基に、業務・情報・状態を詳細化する。
 
 | # | タスクプロンプト | 出力ファイル |
 |---|----------------|-------------|
-| 1 | `references/phase2/業務生成.md` | `0_RDRAZeroOne/phase2/業務.tsv` |
-| 2 | `references/phase2/情報生成.md` | `0_RDRAZeroOne/phase2/情報.tsv` |
-| 3 | `references/phase2/状態生成.md` | `0_RDRAZeroOne/phase2/状態.tsv` |
+| 1 | `references/rdra-phases/phase2/業務生成.md` | `0_RDRAZeroOne/phase2/業務.tsv` |
+| 2 | `references/rdra-phases/phase2/情報生成.md` | `0_RDRAZeroOne/phase2/情報.tsv` |
+| 3 | `references/rdra-phases/phase2/状態生成.md` | `0_RDRAZeroOne/phase2/状態.tsv` |
 
 ### 出力チェック
 以下のファイルが `0_RDRAZeroOne/phase2/` に生成されていることを確認:
@@ -125,9 +122,9 @@ Phase2の出力を基に、アクター・BUC・情報をコンテキストで�
 
 | # | タスクプロンプト | 出力ファイル |
 |---|----------------|-------------|
-| 1 | `references/phase3/アクター生成.md` | `0_RDRAZeroOne/phase3/アクター.tsv` |
-| 2 | `references/phase3/BUC生成.md` | `0_RDRAZeroOne/phase3/BUC.tsv` |
-| 3 | `references/phase3/情報生成.md` | `0_RDRAZeroOne/phase3/情報.tsv` |
+| 1 | `references/rdra-phases/phase3/アクター生成.md` | `0_RDRAZeroOne/phase3/アクター.tsv` |
+| 2 | `references/rdra-phases/phase3/BUC生成.md` | `0_RDRAZeroOne/phase3/BUC.tsv` |
+| 3 | `references/rdra-phases/phase3/情報生成.md` | `0_RDRAZeroOne/phase3/情報.tsv` |
 
 ### 出力チェック
 以下のファイルが `0_RDRAZeroOne/phase3/` に生成されていることを確認:
@@ -151,10 +148,10 @@ Phase3の出力を RDRASheet 形式の最終フォーマットに変換する。
 
 | # | タスクプロンプト | 出力ファイル |
 |---|----------------|-------------|
-| 1 | `references/phase4/BUC生成.md` | `0_RDRAZeroOne/phase4/BUC.tsv` |
-| 2 | `references/phase4/バリエーション生成.md` | `0_RDRAZeroOne/phase4/バリエーション.tsv` |
-| 3 | `references/phase4/条件生成.md` | `0_RDRAZeroOne/phase4/条件.tsv` |
-| 4 | `references/phase4/状態生成.md` | `0_RDRAZeroOne/phase4/状態.tsv` |
+| 1 | `references/rdra-phases/phase4/BUC生成.md` | `0_RDRAZeroOne/phase4/BUC.tsv` |
+| 2 | `references/rdra-phases/phase4/バリエーション生成.md` | `0_RDRAZeroOne/phase4/バリエーション.tsv` |
+| 3 | `references/rdra-phases/phase4/条件生成.md` | `0_RDRAZeroOne/phase4/条件.tsv` |
+| 4 | `references/rdra-phases/phase4/状態生成.md` | `0_RDRAZeroOne/phase4/状態.tsv` |
 
 ### 出力チェック
 以下のファイルが `0_RDRAZeroOne/phase4/` に生成されていることを確認:
@@ -167,7 +164,7 @@ Phase3の出力を RDRASheet 形式の最終フォーマットに変換する。
 初期要望からシステム名と概要を生成する。
 
 ### タスク
-`references/phase5/システム概要生成.md` に従い、`1_RDRA/システム概要.json` を生成する。
+`references/rdra-phases/phase5/システム概要生成.md` に従い、`1_RDRA/システム概要.json` を生成する。
 
 ---
 
@@ -206,7 +203,7 @@ node <skill-path>/scripts/makeZeroOneData.js
 
 ---
 
-## 仕様生成（Spec）
+## 仕様生成（Spec）※本パイプラインでは未使用（dist-spec スキルの責務）
 
 RDRA統合後の `1_RDRA/` データから仕様ドキュメントを生成する。
 仕様生成はユーザーが明示的に指示した場合に実行する。
@@ -215,17 +212,17 @@ RDRA統合後の `1_RDRA/` データから仕様ドキュメントを生成す�
 
 #### 共通コンテキスト
 - `rdra-knowledge.md` — RDRA基本概念
-- `references/rdra-graph.md` — RDRAGraph データ構造
+- `references/rdra-phases/rdra-graph.md` — RDRAGraph データ構造
 - `1_RDRA/関連データ.txt` — RDRA定義の関連データ
 
 #### タスク（並列実行）
 | # | タスクプロンプト | 出力ファイル |
 |---|----------------|-------------|
-| 1 | `references/spec/21_論理データ生成.md` | `2_RDRASpec/論理データモデル.md` |
-| 2 | `references/spec/22_ビジネスルール生成.md` | `2_RDRASpec/ビジネスルール.md` |
-| 3 | `references/spec/23_画面一覧生成.md` | `2_RDRASpec/phase1/画面一覧.json` |
-| 4 | `references/spec/24_BUC画面生成.md` | `2_RDRASpec/phase1/BUC画面.json` |
-| 5 | `references/spec/25_アクター画面生成.md` | `2_RDRASpec/phase1/アクター画面.json` |
+| 1 | `references/rdra-phases/spec/21_論理データ生成.md` | `2_RDRASpec/論理データモデル.md` |
+| 2 | `references/rdra-phases/spec/22_ビジネスルール生成.md` | `2_RDRASpec/ビジネスルール.md` |
+| 3 | `references/rdra-phases/spec/23_画面一覧生成.md` | `2_RDRASpec/phase1/画面一覧.json` |
+| 4 | `references/rdra-phases/spec/24_BUC画面生成.md` | `2_RDRASpec/phase1/BUC画面.json` |
+| 5 | `references/rdra-phases/spec/25_アクター画面生成.md` | `2_RDRASpec/phase1/アクター画面.json` |
 
 ### Spec Phase2: 画面照会（Spec Phase1 完了後に実行）
 
@@ -239,7 +236,7 @@ Spec Phase1 の共通コンテキストに加えて:
 #### タスク
 | # | タスクプロンプト | 出力ファイル |
 |---|----------------|-------------|
-| 1 | `references/spec/26_画面照会生成.md` | `2_RDRASpec/画面照会.json` |
+| 1 | `references/rdra-phases/spec/26_画面照会生成.md` | `2_RDRASpec/画面照会.json` |
 
 ### 仕様の出力チェック
 `2_RDRASpec/` に以下のファイルが揃っていることを確認:

@@ -338,6 +338,11 @@ function main() {
     console.error(`Directory not found: ${eventDir}`);
     process.exit(2);
   }
+  if (!fs.statSync(eventDir).isDirectory()) {
+    console.error(`Not a directory: ${eventDir}`);
+    console.error('Hint: spec-event.yaml のファイルパスではなく、イベントディレクトリを指定してください');
+    process.exit(2);
+  }
 
   const allErrors = [];
   const allWarnings = [];

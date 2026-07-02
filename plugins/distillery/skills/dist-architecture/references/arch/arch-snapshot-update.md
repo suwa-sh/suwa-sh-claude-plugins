@@ -42,7 +42,7 @@
   - `system_architecture.tiers`: `id` で照合
   - `app_architecture.tier_layers`: `tier_id` で照合
   - `data_architecture.entities`: `name` で照合
-  - `data_architecture.policies`: `name` で照合
+  - `data_architecture.storage_mapping`: `entity_id` で照合
 - **追加**: latest に存在しない要素を配列に追加
 - **変更**: 同一キーの要素を上書き
 - **削除**: `_changes.md` の削除セクションに記載された要素を latest から除去
