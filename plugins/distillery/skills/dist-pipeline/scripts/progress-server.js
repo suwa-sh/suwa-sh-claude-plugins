@@ -91,7 +91,7 @@ const HTML = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>USDM-RDRA Pipeline</title>
+<title>Distillery Pipeline</title>
 <style>
   :root {
     --bg: #0f172a; --surface: #1e293b; --border: #334155;
@@ -235,7 +235,7 @@ function render(status) {
 
   // Header
   html += '<div class="pipeline-header">';
-  html += '<div><h1>USDM-RDRA Pipeline</h1><div class="subtitle">' + mainCompleted + ' / ' + mainStepsTotal + ' steps';
+  html += '<div><h1>Distillery Pipeline</h1><div class="subtitle">' + mainCompleted + ' / ' + mainStepsTotal + ' steps';
   if (p.started_at) html += ' \u00B7 ' + formatDuration(p.started_at, p.completed_at);
   html += '</div></div>';
   html += '<div class="pipeline-state ' + (p.state || '') + '"><span class="dot"></span>' + pipelineStateLabel(p.state) + '</div>';
