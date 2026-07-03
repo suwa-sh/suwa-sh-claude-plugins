@@ -6,11 +6,13 @@
  * Markdown ビュー（Mermaid 図解つき）を決定論的に生成する。
  *
  * Usage:
- *   node generateRdraMd.js [rdra-dir] [output-dir] [--strict]
+ *   node generateRdraMd.js [rdra-dir] [output-dir] [--strict|--lint]
  *
  *   rdra-dir   : TSV があるディレクトリ（省略時は docs/rdra/latest）
  *   output-dir : 出力先（省略時は {rdra-dir}/views）
- *   --strict   : 不整合が 1 件でもあれば exit code 1 で終了する
+ *   --strict   : 不整合（警告含む）が 1 件でもあれば exit code 1 で終了する
+ *   --lint     : ビューを生成せず整合性チェックのみ実行する（latest 確定前のゲート用）。
+ *                エラー（未定義参照）があれば exit 1、警告（未接続）のみなら exit 0
  *
  * 入力（存在するものだけ使う。無いシートは空扱い）:
  *   アクター.tsv 外部システム.tsv BUC.tsv 情報.tsv 状態.tsv 条件.tsv
@@ -913,23 +915,37 @@ function validateModel(model) {
   return findings;
 }
 
+// 重大度: error = 未定義参照（名前ゆれ等の欠陥。lint 失敗）
+//         warn  = 未接続要素（意図的なスコープ外があり得るため警告のみ）
 const VALIDATION_CHECKS = [
-  ['未定義「アクター」', 'BUC で参照されているが アクター.tsv で定義されていないアクター'],
-  ['未定義「外部システム」', 'BUC で参照されているが 外部システム.tsv で定義されていない外部システム'],
-  ['未定義「情報」', 'BUC で参照されているが 情報.tsv で定義されていない情報'],
-  ['未定義「条件」', 'BUC で参照されているが 条件.tsv で定義されていない条件'],
-  ['未定義「関連情報」', '情報.tsv の関連情報のうち 情報.tsv で定義されていないもの'],
-  ['未定義「状態モデル」（情報）', '情報.tsv の状態モデルのうち 状態.tsv で定義されていないもの'],
-  ['未定義「バリエーション」（情報）', '情報.tsv のバリエーションのうち バリエーション.tsv で定義されていないもの'],
-  ['未定義「UC」（状態）', '状態.tsv の遷移UC のうち BUC.tsv で定義されていない UC'],
-  ['未定義遷移先「状態」', '状態.tsv の遷移先状態のうち同一状態モデルの状態カラムに定義されていないもの'],
-  ['未定義「バリエーション」（条件）', '条件.tsv のバリエーションのうち バリエーション.tsv で定義されていないもの'],
-  ['未定義「状態モデル」（条件）', '条件.tsv の状態モデルのうち 状態.tsv で定義されていないもの'],
-  ['未接続「アクター」', '定義されているが BUC で参照されていないアクター'],
-  ['未接続「外部システム」', '定義されているが BUC で参照されていない外部システム'],
-  ['未接続「情報」', '定義されているが BUC で参照されていない情報'],
-  ['未接続「条件」', '定義されているが BUC で参照されていない条件'],
+  ['未定義「アクター」', 'BUC で参照されているが アクター.tsv で定義されていないアクター', 'error'],
+  ['未定義「外部システム」', 'BUC で参照されているが 外部システム.tsv で定義されていない外部システム', 'error'],
+  ['未定義「情報」', 'BUC で参照されているが 情報.tsv で定義されていない情報', 'error'],
+  ['未定義「条件」', 'BUC で参照されているが 条件.tsv で定義されていない条件', 'error'],
+  ['未定義「関連情報」', '情報.tsv の関連情報のうち 情報.tsv で定義されていないもの', 'error'],
+  ['未定義「状態モデル」（情報）', '情報.tsv の状態モデルのうち 状態.tsv で定義されていないもの', 'error'],
+  ['未定義「バリエーション」（情報）', '情報.tsv のバリエーションのうち バリエーション.tsv で定義されていないもの', 'error'],
+  ['未定義「UC」（状態）', '状態.tsv の遷移UC のうち BUC.tsv で定義されていない UC', 'error'],
+  ['未定義遷移先「状態」', '状態.tsv の遷移先状態のうち同一状態モデルの状態カラムに定義されていないもの', 'error'],
+  ['未定義「バリエーション」（条件）', '条件.tsv のバリエーションのうち バリエーション.tsv で定義されていないもの', 'error'],
+  ['未定義「状態モデル」（条件）', '条件.tsv の状態モデルのうち 状態.tsv で定義されていないもの', 'error'],
+  ['未接続「アクター」', '定義されているが BUC で参照されていないアクター', 'warn'],
+  ['未接続「外部システム」', '定義されているが BUC で参照されていない外部システム', 'warn'],
+  ['未接続「情報」', '定義されているが BUC で参照されていない情報', 'warn'],
+  ['未接続「条件」', '定義されているが BUC で参照されていない条件', 'warn'],
 ];
+
+const CHECK_SEVERITY = new Map(VALIDATION_CHECKS.map(([check, , severity]) => [check, severity]));
+
+function severityLabel(severity) {
+  return severity === 'error' ? 'エラー' : '警告';
+}
+
+function splitBySeverity(findings) {
+  const errors = findings.filter((f) => CHECK_SEVERITY.get(f.check) === 'error');
+  const warns = findings.filter((f) => CHECK_SEVERITY.get(f.check) !== 'error');
+  return { errors, warns };
+}
 
 function viewValidation(findings) {
   const lines = [GENERATED_NOTE, '', '# 不整合チェック', ''];
@@ -941,23 +957,24 @@ function viewValidation(findings) {
     lines.push('✅ **不整合は検出されませんでした。**');
     lines.push('');
   } else {
-    lines.push(`⚠️ **${findings.length} 件の不整合が検出されました。**`);
+    const { errors, warns } = splitBySeverity(findings);
+    lines.push(`⚠️ **${findings.length} 件の不整合が検出されました**（エラー ${errors.length} 件 / 警告 ${warns.length} 件）。`);
     lines.push('');
-    lines.push('| チェック | 対象 | 詳細 |');
-    lines.push('|---|---|---|');
+    lines.push('| 重大度 | チェック | 対象 | 詳細 |');
+    lines.push('|---|---|---|---|');
     for (const f of findings) {
-      lines.push(`| ${esc(f.check)} | ${esc(f.target)} | ${esc(f.detail)} |`);
+      lines.push(`| ${severityLabel(CHECK_SEVERITY.get(f.check))} | ${esc(f.check)} | ${esc(f.target)} | ${esc(f.detail)} |`);
     }
     lines.push('');
   }
 
   lines.push('## チェック項目サマリ');
   lines.push('');
-  lines.push('| # | チェック | 内容 | 件数 |');
-  lines.push('|---|---|---|---|');
-  VALIDATION_CHECKS.forEach(([check, desc], i) => {
+  lines.push('| # | 重大度 | チェック | 内容 | 件数 |');
+  lines.push('|---|---|---|---|---|');
+  VALIDATION_CHECKS.forEach(([check, desc, severity], i) => {
     const count = findings.filter((f) => f.check === check).length;
-    lines.push(`| ${i + 1} | ${esc(check)} | ${esc(desc)} | ${count} |`);
+    lines.push(`| ${i + 1} | ${severityLabel(severity)} | ${esc(check)} | ${esc(desc)} | ${count} |`);
   });
   lines.push('');
   return lines.join('\n');
@@ -1064,6 +1081,7 @@ function loadModel(dir) {
 function main() {
   const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
   const strict = process.argv.includes('--strict');
+  const lintOnly = process.argv.includes('--lint');
   const inputDir = path.resolve(args[0] || 'docs/rdra/latest');
   const outputDir = path.resolve(args[1] || path.join(inputDir, 'views'));
 
@@ -1076,6 +1094,25 @@ function main() {
 
   // 不整合チェック（RDRA Sheet「✖不整合」相当）
   const findings = validateModel(model);
+
+  // --lint: ビューを生成せず整合性チェックのみ実行する（latest 確定前のゲート用）
+  // エラー（未定義参照）があれば exit 1。警告（未接続）はブロックしない。
+  if (lintOnly) {
+    const { errors, warns } = splitBySeverity(findings);
+    console.log(`RDRA lint: ${inputDir}`);
+    if (findings.length === 0) {
+      console.log('  OK（エラー 0 件 / 警告 0 件）');
+      process.exit(0);
+    }
+    for (const f of errors) {
+      console.log(`  [エラー] ${f.check}: ${f.target} — ${f.detail}`);
+    }
+    for (const f of warns) {
+      console.log(`  [警告] ${f.check}: ${f.target} — ${f.detail}`);
+    }
+    console.log(`  エラー ${errors.length} 件 / 警告 ${warns.length} 件`);
+    process.exit(errors.length > 0 ? 1 : 0);
+  }
 
   // 生成対象を決定（データが無いビューはスキップ）
   const outputs = [];
@@ -1119,9 +1156,12 @@ function main() {
   if (findings.length === 0) {
     console.log('不整合チェック: OK（0 件）');
   } else {
-    console.log(`不整合チェック: ⚠ ${findings.length} 件検出（詳細: ${path.join(outputDir, '00_不整合チェック.md')}）`);
+    const { errors, warns } = splitBySeverity(findings);
+    console.log(
+      `不整合チェック: ⚠ エラー ${errors.length} 件 / 警告 ${warns.length} 件（詳細: ${path.join(outputDir, '00_不整合チェック.md')}）`
+    );
     for (const f of findings) {
-      console.log(`  - ${f.check}: ${f.target} — ${f.detail}`);
+      console.log(`  - [${severityLabel(CHECK_SEVERITY.get(f.check))}] ${f.check}: ${f.target} — ${f.detail}`);
     }
     if (strict) process.exit(1);
   }

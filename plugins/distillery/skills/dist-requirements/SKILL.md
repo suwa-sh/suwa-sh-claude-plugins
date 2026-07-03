@@ -73,9 +73,10 @@ docs/
    - 修正指示を受けた場合は USDM を再生成してから再度確認する
    - **対話スキップフラグ**: 呼び出し元が `--no-confirm` を明示した場合、または requirements.yaml が差分更新モード（`docs/usdm/latest/requirements.yaml` が既存）の場合は確認をスキップする
 4. **USDM YAML を入力とした RDRA フルビルド**: Phase1-5 + RDRA統合（`初期要望.txt` ではなく `docs/usdm/latest/requirements.yaml` を入力とする）
-5. **docs 配置**: `1_RDRA/` → `docs/rdra/latest/` + `docs/rdra/events/{event_id}/`
-6. **RDRA ビュー生成 + 不整合チェック**: `node <skill-path>/scripts/generateRdraMd.js docs/rdra/latest` → `docs/rdra/latest/views/*.md`（Mermaid 図解つきの人間可読ビュー。決定論的スクリプトのため LLM に依存しない）。RDRA Sheet「✖不整合」相当の参照整合性チェック（15 項目）も同時に実行され、結果が `views/00_不整合チェック.md` とコンソールに出力される。不整合が検出された場合はユーザーに提示し、修正するか許容するかを確認する
-7. **一時ディレクトリ削除**: `0_RDRAZeroOne/` と `1_RDRA/` をディレクトリごと削除
+5. **整合性 lint（latest 確定前）**: `node <skill-path>/scripts/generateRdraMd.js 1_RDRA --lint`。エラー（未定義参照）があれば `1_RDRA/` の TSV を修正してエラー 0 件になるまで繰り返す。警告（未接続）はユーザーに報告のみ
+6. **docs 配置**: `1_RDRA/` → `docs/rdra/latest/` + `docs/rdra/events/{event_id}/`
+7. **RDRA ビュー生成 + 不整合チェック**: `node <skill-path>/scripts/generateRdraMd.js docs/rdra/latest` → `docs/rdra/latest/views/*.md`（Mermaid 図解つきの人間可読ビュー。決定論的スクリプトのため LLM に依存しない）。RDRA Sheet「✖不整合」相当の参照整合性チェック（15 項目）も同時に実行され、結果が `views/00_不整合チェック.md` とコンソールに出力される。手順 5 の lint に合格していればエラーは 0 件のはずで、残るのは許容済みの警告のみ
+8. **一時ディレクトリ削除**: `0_RDRAZeroOne/` と `1_RDRA/` をディレクトリごと削除
 
 ### 出力チェック
 
@@ -181,11 +182,15 @@ node <skill-path>/scripts/validateChanges.js docs/rdra/events/{event_id}
 
 ## Step3: RDRA スナップショット更新
 
-差分 TSV を `docs/rdra/latest/` にマージする。
+差分 TSV をステージングにマージし、整合性 lint に合格してから `docs/rdra/latest/` を確定する。
 
 ### タスク
 
-`references/rdra/rdra-snapshot-update.md` に従い、latest/ を更新する。
+`references/rdra/rdra-snapshot-update.md` に従い、以下の順で latest/ を更新する:
+
+1. ステージング（`_rdra_staging/`）へマージ
+2. 整合性 lint（`generateRdraMd.js _rdra_staging --lint`）— エラーがあればイベント TSV / _changes.md を修正して再マージ（latest は未更新のまま）
+3. lint 合格後に latest 確定 → 関連データ・ビュー再生成
 
 ### 出力
 

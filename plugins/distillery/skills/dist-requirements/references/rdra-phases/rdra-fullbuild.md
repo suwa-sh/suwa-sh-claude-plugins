@@ -197,6 +197,14 @@ node <skill-path>/scripts/makeGraphData.js
 node <skill-path>/scripts/makeZeroOneData.js
 ```
 
+### 整合性 lint
+`scripts/generateRdraMd.js --lint` で RDRA Sheet「✖不整合」シート相当の参照整合性（15 項目）を検証する:
+```bash
+node <skill-path>/scripts/generateRdraMd.js 1_RDRA --lint
+```
+- エラー（未定義参照、exit 1）: `1_RDRA/` の該当 TSV を修正して再実行する（エラー 0 件になるまで繰り返す）
+- 警告（未接続要素、exit 0）: ブロックしない。ユーザーに提示して意図的なスコープ外かを確認する
+
 ### 出力チェック
 `1_RDRA/` に以下のファイルが揃っていることを確認:
 - `システム概要.json`, `アクター.tsv`, `外部システム.tsv`, `情報.tsv`, `状態.tsv`, `条件.tsv`, `バリエーション.tsv`, `BUC.tsv`, `関連データ.txt`, `ZeroOne.txt`

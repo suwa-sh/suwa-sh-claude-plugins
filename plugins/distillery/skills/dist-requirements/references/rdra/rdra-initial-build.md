@@ -76,6 +76,18 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/dist-requirements/scripts/makeZeroOneData.js 1
 
 フルビルドの結果を docs 構成に配置する。
 
+**配置前に整合性 lint を実行する（latest 確定前のゲート）:**
+
+```bash
+node <skill-path>/scripts/generateRdraMd.js 1_RDRA --lint
+```
+
+- **エラー（未定義参照、exit 1）**: `1_RDRA/` の TSV を修正して再実行する（名前ゆれ・参照漏れの
+  修正。エラー 0 件になるまで配置に進まない）
+- **警告（未接続要素、exit 0）**: ブロックしない。ユーザーに提示し、意図的なスコープ外かを確認する
+
+lint 合格後に配置する:
+
 ```bash
 # ディレクトリ作成
 mkdir -p docs/rdra/latest

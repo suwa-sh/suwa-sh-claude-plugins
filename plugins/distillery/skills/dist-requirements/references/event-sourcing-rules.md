@@ -97,12 +97,13 @@ docs/specs/events/{event_id}/
 
 ### RDRA スナップショット
 
-- `latest/*.tsv` に対してイベントの TSV を行単位でマージする
+- イベントの TSV はまずステージング（`_rdra_staging/`）に行単位でマージし、整合性 lint
+  （`generateRdraMd.js --lint`）に合格してから latest に反映する（lint エラー時はイベント側を修正して再マージ）
 - マージキー: 各 TSV の最初の意味のあるカラム（アクター名、情報名、BUC名など）
 - 追加行: latest に存在しないキーの行を末尾に追加
 - 変更行: 同一キーの行をイベント側の内容で上書き
 - 削除行: `_changes.md` に削除と記載された要素の行を latest から除去
-- マージ後、関連データ生成スクリプト（makeGraphData.js, makeZeroOneData.js）と RDRA ビュー生成スクリプト（generateRdraMd.js）を再実行
+- latest 確定後、関連データ生成スクリプト（makeGraphData.js, makeZeroOneData.js）と RDRA ビュー生成スクリプト（generateRdraMd.js）を再実行
 
 ### Spec スナップショット
 
