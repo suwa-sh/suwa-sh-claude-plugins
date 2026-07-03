@@ -102,7 +102,7 @@ docs/specs/events/{event_id}/
 - 追加行: latest に存在しないキーの行を末尾に追加
 - 変更行: 同一キーの行をイベント側の内容で上書き
 - 削除行: `_changes.md` に削除と記載された要素の行を latest から除去
-- マージ後、関連データ生成スクリプト（makeGraphData.js, makeZeroOneData.js）を再実行
+- マージ後、関連データ生成スクリプト（makeGraphData.js, makeZeroOneData.js）と RDRA ビュー生成スクリプト（generateRdraMd.js）を再実行
 
 ### Spec スナップショット
 
@@ -122,4 +122,4 @@ docs/specs/events/{event_id}/
 
 - イベントは時系列順に適用すること（event_id のソートで時系列が保証される）
 - latest/ のファイルを直接手動編集した場合、events/ との整合性が崩れる — その場合は手動編集もイベントとして記録する
-- 関連データ生成（makeGraphData.js, makeZeroOneData.js）はスナップショット更新後に毎回実行する
+- 関連データ生成（makeGraphData.js, makeZeroOneData.js）と RDRA ビュー生成（generateRdraMd.js）はスナップショット更新後に毎回実行する

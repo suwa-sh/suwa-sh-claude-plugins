@@ -129,7 +129,7 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 ## Prerequisites
 
 - **Claude Code** >= 最新安定版
-- **Node.js** （`requirements` スキル内の `scripts/makeGraphData.js` / `makeZeroOneData.js` 実行用）
+- **Node.js** （`requirements` スキル内の `scripts/makeGraphData.js` / `makeZeroOneData.js` / `generateRdraMd.js` 実行用）
 - **任意**: `architecture` スキルは同マーケットプレイスの [ddd](../ddd/) プラグイン（`ddd-architecture` スキル）に依存します。Phase 0 のドメイン設計（サブドメイン分類 / 境界づけられたコンテキスト / コンテキストマップ / 集約境界仮説）で DDD 概念リファレンスとして参照します。未インストール時はスキル冒頭でインストール案内が表示されます
   ```
   /plugin install ddd@suwa-sh-claude-plugins

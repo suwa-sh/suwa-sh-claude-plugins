@@ -26,7 +26,7 @@ docs/
     latest/requirements.yaml, requirements.md
   rdra/
     events/{event_id}/*.tsv, _changes.md
-    latest/*.tsv, 関連データ.txt, ZeroOne.txt, システム概要.json
+    latest/*.tsv, 関連データ.txt, ZeroOne.txt, システム概要.json, views/*.md
 ```
 
 > **Note**: Spec 生成は後続の `spec` スキルの責務。
@@ -74,7 +74,8 @@ docs/
    - **対話スキップフラグ**: 呼び出し元が `--no-confirm` を明示した場合、または requirements.yaml が差分更新モード（`docs/usdm/latest/requirements.yaml` が既存）の場合は確認をスキップする
 4. **USDM YAML を入力とした RDRA フルビルド**: Phase1-5 + RDRA統合（`初期要望.txt` ではなく `docs/usdm/latest/requirements.yaml` を入力とする）
 5. **docs 配置**: `1_RDRA/` → `docs/rdra/latest/` + `docs/rdra/events/{event_id}/`
-6. **一時ディレクトリ削除**: `0_RDRAZeroOne/` と `1_RDRA/` をディレクトリごと削除
+6. **RDRA ビュー生成**: `node <skill-path>/scripts/generateRdraMd.js docs/rdra/latest` → `docs/rdra/latest/views/*.md`（Mermaid 図解つきの人間可読ビュー。決定論的スクリプトのため LLM に依存しない）
+7. **一時ディレクトリ削除**: `0_RDRAZeroOne/` と `1_RDRA/` をディレクトリごと削除
 
 ### 出力チェック
 
@@ -85,6 +86,7 @@ USDM:
 RDRA:
 - `docs/rdra/latest/` に以下のファイルが揃っていること:
   - `システム概要.json`, `アクター.tsv`, `外部システム.tsv`, `情報.tsv`, `状態.tsv`, `条件.tsv`, `バリエーション.tsv`, `BUC.tsv`, `関連データ.txt`, `ZeroOne.txt`
+- `docs/rdra/latest/views/` に `README.md` と `01_システムコンテキスト.md` 〜 `07_条件・バリエーション.md` が生成されていること
 
 ---
 
@@ -188,6 +190,7 @@ node <skill-path>/scripts/validateChanges.js docs/rdra/events/{event_id}
 
 - 更新された `docs/rdra/latest/*.tsv`
 - 再生成された `docs/rdra/latest/関連データ.txt`、`docs/rdra/latest/ZeroOne.txt`
+- 再生成された `docs/rdra/latest/views/*.md`（Mermaid 図解つきの人間可読ビュー）
 
 ---
 

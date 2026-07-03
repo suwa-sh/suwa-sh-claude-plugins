@@ -61,6 +61,7 @@ rdra スキルの RDRA統合ステップでは、関連データ生成スクリ�
 |-----------|-------------|---------|---------|
 | `makeGraphData.js` | `process.cwd()` + 引数（デフォルト `1_RDRA`） | `{cwd}/1_RDRA/*.tsv` | `{cwd}/1_RDRA/関連データ.txt` |
 | `makeZeroOneData.js` | `process.cwd()` + 引数（デフォルト `1_RDRA`） | `{cwd}/1_RDRA/*.tsv` | `{cwd}/1_RDRA/ZeroOne.txt` |
+| `generateRdraMd.js` | `process.cwd()` + 引数（デフォルト `docs/rdra/latest`） | `{引数}/*.tsv` | `{引数}/views/*.md` |
 
 **makeGraphData.js** は `process.cwd()`（カレントディレクトリ）基準のため、ユーザー指定のルートディレクトリで実行すれば正しく動作する。
 
@@ -92,6 +93,14 @@ cp 1_RDRA/システム概要.json docs/rdra/latest/
 cp 1_RDRA/関連データ.txt docs/rdra/latest/
 cp 1_RDRA/ZeroOne.txt docs/rdra/latest/
 ```
+
+配置後、RDRA ビュー（ヒトが読む Markdown + Mermaid 図解）を生成する:
+
+```bash
+node <skill-path>/scripts/generateRdraMd.js docs/rdra/latest
+```
+
+これにより `docs/rdra/latest/views/*.md`（システムコンテキスト・業務構成・業務フロー・UC複合図・情報モデル・状態モデル・条件バリエーション + README）が生成される。このスクリプトは決定論的（同一入力 → 同一出力）なため、LLM に依存せずバンドルスクリプトで実行する。
 
 ### 5. 初期構築イベントの記録
 
@@ -153,3 +162,4 @@ Spec 生成は dist-spec スキルの責務（初期構築時は `_changes.md` �
 - `BUC.tsv`
 - `関連データ.txt`
 - `ZeroOne.txt`
+- `views/README.md`（+ `01_システムコンテキスト.md` 〜 `07_条件・バリエーション.md`）

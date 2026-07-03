@@ -13,6 +13,7 @@
 - 更新された `docs/rdra/latest/*.tsv`
 - 再生成された `docs/rdra/latest/関連データ.txt`
 - 再生成された `docs/rdra/latest/ZeroOne.txt`
+- 再生成された `docs/rdra/latest/views/*.md`（Mermaid 図解つきの人間可読ビュー）
 
 ## マージ手順
 
@@ -102,12 +103,23 @@ cp 1_RDRA/ZeroOne.txt docs/rdra/latest/
 rm -rf 1_RDRA/
 ```
 
+### 5. RDRA ビュー再生成
+
+ヒトが読む Markdown ビュー（Mermaid 図解つき）を再生成する。決定論的スクリプトのため LLM に依存しない。
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/skills/dist-requirements/scripts/generateRdraMd.js docs/rdra/latest
+```
+
+これにより `docs/rdra/latest/views/*.md` が再生成される（既存の views/*.md は削除してから生成される）。
+
 #### スクリプトのパス解決方法の違い
 
 | スクリプト | パス解決方法 | 備考 |
 |-----------|-------------|------|
 | `makeGraphData.js` | `process.cwd()` + 引数（デフォルト `1_RDRA`） | カレントディレクトリ基準。そのまま実行可能 |
 | `makeZeroOneData.js` | `process.cwd()` + 引数（デフォルト `1_RDRA`） | カレントディレクトリ基準。そのまま実行可能 |
+| `generateRdraMd.js` | `process.cwd()` + 引数（デフォルト `docs/rdra/latest`） | カレントディレクトリ基準。そのまま実行可能 |
 
 注意: `<skill-path>` は本スキル（`dist-requirements`）のパス。
 

@@ -244,6 +244,8 @@ L();
 const extNames = [...new Set(extSys.map(e => e['外部システム名'] || e['外部システム']).filter(Boolean))];
 const rdraFiles = ['アクター.tsv','外部システム.tsv','情報.tsv','状態.tsv','条件.tsv','バリエーション.tsv','BUC.tsv','関連データ.txt','ZeroOne.txt','システム概要.json'];
 for (const f of rdraFiles) { const p = path.join(docsRoot, 'rdra/latest', f); if (fileExists(p)) L(`- ${lnk(f, p)}`); }
+const viewsIndex = path.join(docsRoot, 'rdra/latest/views/README.md');
+if (fileExists(viewsIndex)) L(`- ${lnk('views/（人間可読ビュー: Mermaid 図解つき Markdown）', viewsIndex)}`);
 L();
 
 // Summary
