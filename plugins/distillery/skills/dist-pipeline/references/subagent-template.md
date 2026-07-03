@@ -32,6 +32,19 @@
 
 ## 各 Step の変数値
 
+### Step0h: harvest（既存プロジェクトの取り込み・任意）
+
+入力が既存プロジェクトの場合のみ、Step1 の代わりに実行する（dist-harvest が requirements 構築を内包する）。
+
+| 変数 | 値 |
+|------|-----|
+| role | 既存プロジェクトからの要求逆生成 |
+| trigger_event_line | *(なし)* |
+| skill_name | distillery:dist-harvest |
+| skill_args | ` 引数: "{対象リポジトリのパス（複数可）}"` |
+| trigger_event_instruction | *(なし)* |
+| additional_instructions | `既存プロジェクトを解析し USDM + RDRA を初期構築する Step です。dist-harvest 内部で USDM 逆生成 + RDRA フルビルドまで完了させてください。対話ありの Step です。confidence: low の項目（推測で補完した理由・モデル要素）は必ず「確認推奨項目リスト」を dialogue-format.md 準拠（3案＋⭐推奨＋一行説明＋推奨理由）で返してください。完了後、docs/rdra/latest/ と docs/usdm/latest/ の event_id を報告してください（後段 Step2 以降が引き継ぎます）。` |
+
 ### Step1: requirements
 
 | 変数 | 値 |

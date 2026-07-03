@@ -74,6 +74,29 @@ description: >
 
 ### 0. 入力確認
 
+**入力種別の判定**: パイプラインの入力が「要望テキスト」か「既存プロジェクトの取り込み」かを判定する。
+
+- **要望テキスト**（デフォルト）: 初期要望 / 変更要望のテキストファイル → 下記 1 以降（Step1 requirements から）
+- **既存プロジェクトの取り込み**: ユーザーが既存リポジトリのパスを指定、または「既存コードから」
+  「as-is 分析」「リバースエンジニアリング」等を要求 → **Step0h（下記）を実行してから Step2 へ**
+
+#### Step0h: 既存プロジェクトの取り込み（dist-harvest）
+
+`docs/rdra/latest/` が空で、入力が既存プロジェクトの場合のみ実行する。
+
+1. `distillery:dist-harvest` スキルをサブエージェントで実行する（引数: 対象リポジトリのパス）。
+   `references/subagent-template.md` の Step0h 変数（skill_name = `distillery:dist-harvest`）を使う。
+   dist-harvest は内部で USDM 逆生成 + RDRA フルビルドを行うため、**Step1（requirements）は
+   dist-harvest が内包する。Step1 は別途実行せず、Step0h 完了後は Step2（quality-attributes）へ進む**。
+2. dist-harvest は対話ありの Step。`confidence: low` の項目を「確認推奨項目リスト」で返すので、
+   下記「1〜6. 各 Step の実行パターン」の対話処理 (a〜d) と同じフローでユーザーに中継する。
+3. 完了チェック: `docs/rdra/latest/BUC.tsv` + `docs/usdm/latest/requirements.yaml` +
+   `docs/harvest/latest/analysis/` が揃うこと。
+4. **進捗ダッシュボード**: 初版では harvest 専用ステップを持たない。Step1（requirements）スロットを
+   流用し、`progress-update.js step 1 running --subagent-task "既存プロジェクト取り込み (dist-harvest)"`
+   → 完了時 `step 1 completed --summary "harvest 逆生成" --event-id "rdra:{id}"` で表現する。
+5. Step0h 完了後は Step2 から通常フローに合流する（rdra / usdm の event_id を後段に引き継ぐ）。
+
 1. ユーザーに要望テキストのファイルパスを確認する（未指定なら質問する）
 2. ファイルの存在を確認する
 3. パイプラインの実行範囲を確認する:

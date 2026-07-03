@@ -8,7 +8,18 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 
 粗い原料から熟成された成果物へ、蒸留酒の製造工程になぞらえた8ステージ構成です。
 
+既存プロジェクトを取り込む場合は、先頭に **Harvest（原料の収穫）** ステージを差し込みます。
+既存コード・定義・履歴を as-is 分析して USDM + RDRA を初期構築し、以降のステージへ合流させます。
+
 ```
+（任意）既存プロジェクト
+   │
+   ▼
+┌──────────────────┐  Harvest     harvest             既存コードから要求を逆生成（as-is 分析）
+│  harvest         │────────────▶ docs/harvest/latest, docs/usdm/latest, docs/rdra/latest
+└──────────────────┘
+   │
+   ▼（要望テキストの場合はここから）
 要望テキスト
    │
    ▼
@@ -57,6 +68,7 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 
 | Skill | Role |
 |---|---|
+| `distillery:dist-harvest` | 既存プロジェクトから要求を逆生成し USDM + RDRA を初期構築（as-is 分析・任意） |
 | `distillery:dist-requirements` | USDM 分解 + RDRA モデルの差分/フルビルド |
 | `distillery:dist-quality-attributes` | IPA 非機能要求グレード 2018 による品質特性推論 |
 | `distillery:dist-architecture` | システム/アプリ/データアーキテクチャ設計（ベンダーニュートラル） |
@@ -82,6 +94,23 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 ```
 
 初期要望テキストのパスを聞かれるので指定してください。7スキル（requirements〜spec の6スキル + Step6a の spec-stories）が順次実行され、`docs/` 配下に全成果物が生成されます。
+
+### 既存プロジェクトの取り込み（リバースエンジニアリング）
+
+既存リポジトリから要求・要件を吸い上げて distillery に取り込み、そこから再設計します。
+
+```
+/distillery:dist-harvest ./repo
+/distillery:dist-harvest ./frontend ./backend      # モノレポ・複数リポジトリも可
+```
+
+コード・エンドポイント定義・データストア定義・テスト・コミット履歴を RDRA 4レイヤーで as-is 分析し、
+「コードから読み取った事実」と「LLM の推測」を evidence / confidence で区別しながら、
+`docs/harvest/latest/` + `docs/usdm/latest/` + `docs/rdra/latest/` を初期構築します。以降は
+`/distillery:dist-quality-attributes` 以降のスキル（または `/distillery:dist-pipeline`）が無変更で動作します。
+
+> **初期構築専用**: 既に `docs/rdra/latest/` が存在するプロジェクトには適用しません。既存モデルへの
+> 変更は差分更新モード（`/distillery:dist-requirements 変更要望テキストのパス`）を使用してください。
 
 ### 個別実行
 
@@ -126,6 +155,10 @@ Distillery は以下の手法を統合しています:
 ## Credits
 
 RDRA ナレッジおよび初期実装は [suwa-sh/RDRAAgent](https://github.com/suwa-sh/RDRAAgent) に由来します。Distillery は RDRAAgent の `usdm-rdra` 系スキル群を汎用的なプラグインとして再パッケージしたものです。
+
+`dist-harvest`（既存プロジェクトからの要求逆生成）の解析観点・RDRA リバース手法は
+[suwa-sh/claude-code-rdra-rev](https://github.com/suwa-sh/claude-code-rdra-rev)（RDRA リバース分析）の
+プロンプト資産を distillery の references 構成に再編して移植したものです。
 
 - RDRA 2.0: https://vsa.co.jp/rdra/
 - RDRAGraph: https://vsa.co.jp/rdratool/graph/v0.94/
