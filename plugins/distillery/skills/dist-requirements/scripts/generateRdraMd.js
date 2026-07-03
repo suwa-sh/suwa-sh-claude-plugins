@@ -6,10 +6,11 @@
  * Markdown ビュー（Mermaid 図解つき）を決定論的に生成する。
  *
  * Usage:
- *   node generateRdraMd.js [rdra-dir] [output-dir]
+ *   node generateRdraMd.js [rdra-dir] [output-dir] [--strict]
  *
  *   rdra-dir   : TSV があるディレクトリ（省略時は docs/rdra/latest）
  *   output-dir : 出力先（省略時は {rdra-dir}/views）
+ *   --strict   : 不整合が 1 件でもあれば exit code 1 で終了する
  *
  * 入力（存在するものだけ使う。無いシートは空扱い）:
  *   アクター.tsv 外部システム.tsv BUC.tsv 情報.tsv 状態.tsv 条件.tsv
@@ -17,6 +18,7 @@
  *
  * 出力:
  *   README.md                    — 目次 + システム概要 + モデル件数
+ *   00_不整合チェック.md           — RDRA Sheet「✖不整合」相当の参照整合性チェック
  *   01_システムコンテキスト.md      — システム価値レイヤー
  *   02_業務構成.md                — システム外部環境レイヤー（業務→BUC）
  *   03_業務フロー.md              — システム外部環境レイヤー（BUC 単位のアクティビティフロー）
@@ -786,6 +788,182 @@ function viewConditionVariation(model) {
 }
 
 // ============================================================
+// 不整合チェック（RDRA Sheet「✖不整合」シート相当）
+// ============================================================
+// チェック仕様は RDRA Sheet テンプレート（2.RDRA定義分析_V1.0）の
+// 「✖不整合」シート 2 行目のセルコメントに準拠する。
+// 「-」は RDRA Sheet の「前行を引き継がない」プレースホルダのため参照値として扱わない。
+
+function isRealValue(v) {
+  return v !== '' && v !== '-';
+}
+
+function validateModel(model) {
+  const findings = []; // {check, target, detail} — チェック定義順・初出順
+  const add = (check, target, detail) => findings.push({ check, target, detail });
+
+  // 定義済みセット
+  const definedActors = new Set(model.actors.map((r) => r['アクター']).filter(isRealValue));
+  const definedExternals = new Set(model.externals.map((r) => r['外部システム']).filter(isRealValue));
+  const definedInfos = new Set(model.infos.map((r) => r['情報']).filter(isRealValue));
+  const definedConditions = new Set(model.conditions.map((r) => r['条件']).filter(isRealValue));
+  const definedVariations = new Set(model.variations.map((r) => r['バリエーション']).filter(isRealValue));
+  const definedStateModels = new Set(model.states.map((r) => r['状態モデル']).filter(isRealValue));
+  const definedUcs = new Set(model.buc.map((r) => r['UC']).filter(isRealValue));
+
+  // BUC シートで参照されているオブジェクト（関連モデル1/2 の両方を見る）
+  const refs = { アクター: new Map(), 外部システム: new Map(), 情報: new Map(), 条件: new Map() };
+  for (const row of model.buc) {
+    const pairs = [
+      [row['関連モデル1'], row['関連オブジェクト1']],
+      [row['関連モデル2'], row['関連オブジェクト2']],
+    ];
+    for (const [m, o] of pairs) {
+      if (refs[m] && isRealValue(o) && !refs[m].has(o)) {
+        refs[m].set(o, `BUC「${row['BUC']}」/ UC「${row['UC'] || '（なし）'}」`);
+      }
+    }
+  }
+
+  // 1-4. BUC シートで参照されているが定義シートに存在しないもの
+  const undefinedChecks = [
+    ['未定義「アクター」', refs['アクター'], definedActors],
+    ['未定義「外部システム」', refs['外部システム'], definedExternals],
+    ['未定義「情報」', refs['情報'], definedInfos],
+    ['未定義「条件」', refs['条件'], definedConditions],
+  ];
+  for (const [check, referenced, defined] of undefinedChecks) {
+    for (const [name, from] of referenced) {
+      if (!defined.has(name)) add(check, name, `${from} から参照`);
+    }
+  }
+
+  // 5-7. 情報シートの参照先が未定義のもの
+  for (const row of model.infos) {
+    if (!isRealValue(row['情報'])) continue;
+    for (const rel of splitList(row['関連情報'])) {
+      if (isRealValue(rel) && !definedInfos.has(rel)) {
+        add('未定義「関連情報」', rel, `情報「${row['情報']}」の関連情報`);
+      }
+    }
+    for (const sm of splitList(row['状態モデル'])) {
+      if (isRealValue(sm) && !definedStateModels.has(sm)) {
+        add('未定義「状態モデル」（情報）', sm, `情報「${row['情報']}」の状態モデル`);
+      }
+    }
+    for (const vr of splitList(row['バリエーション'])) {
+      if (isRealValue(vr) && !definedVariations.has(vr)) {
+        add('未定義「バリエーション」（情報）', vr, `情報「${row['情報']}」のバリエーション`);
+      }
+    }
+  }
+
+  // 8-9. 状態シート: 遷移UC が BUC 未定義 / 遷移先状態が同一状態モデル内で未定義
+  const statesByModel = new Map();
+  for (const row of model.states) {
+    const key = (row['コンテキスト'] || '') + ' ' + (row['状態モデル'] || '');
+    if (!statesByModel.has(key)) {
+      statesByModel.set(key, { name: row['状態モデル'], defined: new Set(), rows: [] });
+    }
+    const g = statesByModel.get(key);
+    if (isRealValue(row['状態'])) g.defined.add(row['状態']);
+    g.rows.push(row);
+  }
+  for (const g of statesByModel.values()) {
+    for (const row of g.rows) {
+      const uc = row['遷移UC'];
+      if (isRealValue(uc) && !definedUcs.has(uc)) {
+        add('未定義「UC」（状態）', uc, `状態モデル「${g.name}」の遷移UC`);
+      }
+      const to = row['遷移先状態'];
+      if (isRealValue(to) && !g.defined.has(to)) {
+        add('未定義遷移先「状態」', to, `状態モデル「${g.name}」の遷移先状態（状態カラムに未定義）`);
+      }
+    }
+  }
+
+  // 10-11. 条件シートの参照先が未定義のもの
+  for (const row of model.conditions) {
+    if (!isRealValue(row['条件'])) continue;
+    for (const vr of splitList(row['バリエーション'])) {
+      if (isRealValue(vr) && !definedVariations.has(vr)) {
+        add('未定義「バリエーション」（条件）', vr, `条件「${row['条件']}」のバリエーション`);
+      }
+    }
+    for (const sm of splitList(row['状態モデル'])) {
+      if (isRealValue(sm) && !definedStateModels.has(sm)) {
+        add('未定義「状態モデル」（条件）', sm, `条件「${row['条件']}」の状態モデル`);
+      }
+    }
+  }
+
+  // 12-15. 定義されているが BUC シートで参照されていないもの
+  const unconnectedChecks = [
+    ['未接続「アクター」', definedActors, refs['アクター']],
+    ['未接続「外部システム」', definedExternals, refs['外部システム']],
+    ['未接続「情報」', definedInfos, refs['情報']],
+    ['未接続「条件」', definedConditions, refs['条件']],
+  ];
+  for (const [check, defined, referenced] of unconnectedChecks) {
+    for (const name of defined) {
+      if (!referenced.has(name)) add(check, name, 'BUC シートのどの行からも参照されていない');
+    }
+  }
+
+  return findings;
+}
+
+const VALIDATION_CHECKS = [
+  ['未定義「アクター」', 'BUC で参照されているが アクター.tsv で定義されていないアクター'],
+  ['未定義「外部システム」', 'BUC で参照されているが 外部システム.tsv で定義されていない外部システム'],
+  ['未定義「情報」', 'BUC で参照されているが 情報.tsv で定義されていない情報'],
+  ['未定義「条件」', 'BUC で参照されているが 条件.tsv で定義されていない条件'],
+  ['未定義「関連情報」', '情報.tsv の関連情報のうち 情報.tsv で定義されていないもの'],
+  ['未定義「状態モデル」（情報）', '情報.tsv の状態モデルのうち 状態.tsv で定義されていないもの'],
+  ['未定義「バリエーション」（情報）', '情報.tsv のバリエーションのうち バリエーション.tsv で定義されていないもの'],
+  ['未定義「UC」（状態）', '状態.tsv の遷移UC のうち BUC.tsv で定義されていない UC'],
+  ['未定義遷移先「状態」', '状態.tsv の遷移先状態のうち同一状態モデルの状態カラムに定義されていないもの'],
+  ['未定義「バリエーション」（条件）', '条件.tsv のバリエーションのうち バリエーション.tsv で定義されていないもの'],
+  ['未定義「状態モデル」（条件）', '条件.tsv の状態モデルのうち 状態.tsv で定義されていないもの'],
+  ['未接続「アクター」', '定義されているが BUC で参照されていないアクター'],
+  ['未接続「外部システム」', '定義されているが BUC で参照されていない外部システム'],
+  ['未接続「情報」', '定義されているが BUC で参照されていない情報'],
+  ['未接続「条件」', '定義されているが BUC で参照されていない条件'],
+];
+
+function viewValidation(findings) {
+  const lines = [GENERATED_NOTE, '', '# 不整合チェック', ''];
+  lines.push('RDRA Sheet の「✖不整合」シート相当の整合性チェック結果。');
+  lines.push('モデル間の参照整合性（未定義参照・未接続要素）を機械的に検証する。');
+  lines.push('');
+
+  if (findings.length === 0) {
+    lines.push('✅ **不整合は検出されませんでした。**');
+    lines.push('');
+  } else {
+    lines.push(`⚠️ **${findings.length} 件の不整合が検出されました。**`);
+    lines.push('');
+    lines.push('| チェック | 対象 | 詳細 |');
+    lines.push('|---|---|---|');
+    for (const f of findings) {
+      lines.push(`| ${esc(f.check)} | ${esc(f.target)} | ${esc(f.detail)} |`);
+    }
+    lines.push('');
+  }
+
+  lines.push('## チェック項目サマリ');
+  lines.push('');
+  lines.push('| # | チェック | 内容 | 件数 |');
+  lines.push('|---|---|---|---|');
+  VALIDATION_CHECKS.forEach(([check, desc], i) => {
+    const count = findings.filter((f) => f.check === check).length;
+    lines.push(`| ${i + 1} | ${esc(check)} | ${esc(desc)} | ${count} |`);
+  });
+  lines.push('');
+  return lines.join('\n');
+}
+
+// ============================================================
 // README（目次）
 // ============================================================
 
@@ -801,6 +979,7 @@ function viewReadme(model, files) {
   lines.push('| ビュー | RDRA レイヤー | 内容 |');
   lines.push('|---|---|---|');
   const meta = [
+    ['00_不整合チェック.md', '整合性', 'RDRA Sheet「✖不整合」相当の参照整合性チェック結果'],
     ['01_システムコンテキスト.md', 'システム価値', 'アクター・外部システムの全体像'],
     ['02_業務構成.md', 'システム外部環境', '業務と BUC の構成'],
     ['03_業務フロー.md', 'システム外部環境', 'BUC ごとのアクティビティフロー'],
@@ -883,8 +1062,10 @@ function loadModel(dir) {
 }
 
 function main() {
-  const inputDir = path.resolve(process.argv[2] || 'docs/rdra/latest');
-  const outputDir = path.resolve(process.argv[3] || path.join(inputDir, 'views'));
+  const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+  const strict = process.argv.includes('--strict');
+  const inputDir = path.resolve(args[0] || 'docs/rdra/latest');
+  const outputDir = path.resolve(args[1] || path.join(inputDir, 'views'));
 
   if (!fs.existsSync(inputDir)) {
     console.error(`Error: Directory not found: ${inputDir}`);
@@ -893,8 +1074,12 @@ function main() {
 
   const model = loadModel(inputDir);
 
+  // 不整合チェック（RDRA Sheet「✖不整合」相当）
+  const findings = validateModel(model);
+
   // 生成対象を決定（データが無いビューはスキップ）
   const outputs = [];
+  outputs.push(['00_不整合チェック.md', viewValidation(findings)]);
   if (model.actors.length > 0 || model.externals.length > 0) {
     outputs.push(['01_システムコンテキスト.md', viewSystemContext(model)]);
   }
@@ -929,6 +1114,16 @@ function main() {
   console.log(`Generated: ${outputDir}`);
   for (const [name] of outputs) {
     console.log(`  ${name}`);
+  }
+
+  if (findings.length === 0) {
+    console.log('不整合チェック: OK（0 件）');
+  } else {
+    console.log(`不整合チェック: ⚠ ${findings.length} 件検出（詳細: ${path.join(outputDir, '00_不整合チェック.md')}）`);
+    for (const f of findings) {
+      console.log(`  - ${f.check}: ${f.target} — ${f.detail}`);
+    }
+    if (strict) process.exit(1);
   }
 }
 

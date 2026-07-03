@@ -219,7 +219,7 @@ Phase1-5 + docs 配置 + 一時ディレクトリ削除）を実行する。**di
    情報モデル・状態・バリエーション・条件の詳細が RDRA 生成に反映されるようにする。
 3. `scripts/makeGraphData.js` / `makeZeroOneData.js` を実行して `関連データ.txt` / `ZeroOne.txt` を生成する。
 4. `1_RDRA/` → `docs/rdra/latest/` + `docs/rdra/events/{event_id}/`（初期構築は全ファイルをイベントに含める）。
-5. `scripts/generateRdraMd.js docs/rdra/latest` を実行して `docs/rdra/latest/views/*.md`（Mermaid 図解つきの人間可読ビュー）を生成する。
+5. `scripts/generateRdraMd.js docs/rdra/latest` を実行して `docs/rdra/latest/views/*.md`（Mermaid 図解つきの人間可読ビュー）を生成する。RDRA Sheet「✖不整合」相当の参照整合性チェック（15 項目）も同時に実行される。逆生成した RDRA は名前ゆれによる未定義参照が起きやすいため、`views/00_不整合チェック.md` の検出結果を必ず確認し、ユーザーに報告する。
 6. 一時ディレクトリ（`0_RDRAZeroOne/`, `1_RDRA/`）を削除する。
 
 ### RDRA フルビルド Phase1 サブエージェント指示例（USDM YAML 入力 + analysis 補足）
@@ -254,7 +254,8 @@ Phase2〜5 も同様に、`初期要望.txt` を `docs/usdm/latest/requirements.
 - `docs/rdra/latest/` に 10 ファイルが揃うこと:
   `システム概要.json`, `アクター.tsv`, `外部システム.tsv`, `情報.tsv`, `状態.tsv`, `条件.tsv`,
   `バリエーション.tsv`, `BUC.tsv`, `関連データ.txt`, `ZeroOne.txt`
-- `docs/rdra/latest/views/` に `README.md` と `01_システムコンテキスト.md` 〜 `07_条件・バリエーション.md` が生成されていること
+- `docs/rdra/latest/views/` に `README.md` と `00_不整合チェック.md` 〜 `07_条件・バリエーション.md` が生成されていること
+- `views/00_不整合チェック.md` の検出件数を確認し、不整合があればユーザーに報告すること
 - `docs/rdra/events/{event_id}/` に同ファイル群が記録されていること
 - `システム概要.json` の `system_name` が USDM の `system_name` と一致すること
 
