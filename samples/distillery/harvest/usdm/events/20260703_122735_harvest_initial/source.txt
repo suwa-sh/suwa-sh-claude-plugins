@@ -1,0 +1,34 @@
+# 逆生成ソース情報
+
+本 USDM（requirements.yaml）は、通常の変更要望テキストからの分解ではなく、
+dist-harvest スキルによる既存リポジトリの as-is 解析結果（analysis/01-overview.md〜05-internal.md）
+からの「逆生成」である。
+
+## 解析対象リポジトリ
+
+- 対象: library（図書館システム）
+- 絶対パス: /Users/suwa_sh/src/github.com/suwa-sh/claude-code-rdra-rev/system-sekkei/library
+- git 管理: あり（親リポジトリ claude-code-rdra-rev の submodule、branch: master）
+- コミットハッシュ: f460a75b843c484908b95b82e6fdd84186b4b5f8
+- 解析日時: 2026-07-03 12:27:35（event_id: 20260703_122735_harvest_initial）
+- 呼び出しオプション: --no-confirm（dist-harvest による初期構築）
+
+## 入力 analysis ドキュメント
+
+- docs/harvest/events/20260703_122735_harvest_initial/analysis/01-overview.md（システム概要）
+- docs/harvest/events/20260703_122735_harvest_initial/analysis/02-value.md（システム価値）
+- docs/harvest/events/20260703_122735_harvest_initial/analysis/03-environment.md（システム外部環境）
+- docs/harvest/events/20260703_122735_harvest_initial/analysis/04-boundary.md（システム境界）
+- docs/harvest/events/20260703_122735_harvest_initial/analysis/05-internal.md（システムレイヤー）
+- docs/harvest/events/20260703_122735_harvest_initial/sources.md（解析対象リポジトリ情報）
+
+## 備考
+
+- 要求は「これから作りたい」ではなく「すでに実現されている（as-is）」観点で抽出した。
+- 各 requirement / specification には confidence（high/medium/low）と evidence（根拠パス）の
+  拡張フィールドを付与している（evidence-rules.md 準拠）。
+- 完全未実装の業務（蔵書管理、会員登録、貸出延長、督促の大部分）は as-is 要求に含めていない。
+  未実装 BUC・UC 候補は analysis/03-environment.md / 04-boundary.md に記録済みであり、
+  RDRA フルビルド時・Phase3 ユーザー確認でスコープの扱いを確認する。
+- 督促業務は期限切れチェック API（GET /expired、未完成実装）のみ部分実装のため、
+  REQ-005 として confidence medium / spec は low で収録した。
