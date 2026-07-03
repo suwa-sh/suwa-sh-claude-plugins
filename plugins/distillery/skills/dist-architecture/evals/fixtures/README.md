@@ -45,8 +45,8 @@ mv $SKILL/evals/fixtures/arch-design.md $SKILL/evals/fixtures/expected/legacy-no
 
 # 3) Coverage baseline の再生成（既存 samples の rdra/nfr を流用）
 node $SKILL/scripts/generateCoverageReport.js \
-  samples/distillery/rdra/latest \
-  samples/distillery/nfr/latest/nfr-grade.yaml \
+  samples/distillery/pipeline/rdra/latest \
+  samples/distillery/pipeline/nfr/latest/nfr-grade.yaml \
   $SKILL/evals/fixtures/minimal-with-domain.yaml
 mv $SKILL/evals/fixtures/coverage-report.md $SKILL/evals/fixtures/expected/minimal-with-domain.coverage.md
 
