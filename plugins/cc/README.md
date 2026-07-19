@@ -41,7 +41,7 @@ HANDOVER.md
 
 ### `cc:launch-claude` — リポジトリでセッション起動
 
-ghq 管理リポジトリをキーワードで検索し、新しい Ghostty スプリットに Claude Code セッションを起動する。スラッシュコマンドを渡して起動時に自動実行も可能（例: `pkm /deep-research テーマ`）。
+ghq 管理リポジトリをキーワードで検索し、新しい Ghostty スプリットに Claude Code セッションを起動する。スラッシュコマンドを渡して起動時に自動実行も可能（例: `pkm /deep-research テーマ`）。`--model` / `--agent`（自然文でも可）でモデルとエージェントペルソナを指定できる（例: `pkm を fable の marketer で開いて` → `--model fable --agent marketer`）。
 
 ## インストール
 
