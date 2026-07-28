@@ -17,7 +17,8 @@ distillery の出力を入力契約として、実装先リポの「最初から
 
 引数: `specs_root={distillery 出力ルート} repo_root={実装先リポルート}`(省略時は対話で確認)。
 `phase=contracts force=true` を渡された場合は **P4(契約 codegen)だけを強制再実行**する
-(S3 の stale 検知から呼ばれる経路。lock の sha256 が一致していても再生成し、lock を更新する)。
+(S3 の stale 検知から呼ばれる経路。lock の sha256 が一致していても再生成し、lock を更新する。
+bootstrap.done.yaml は **P4 の記録と契約入力ハッシュ(openapi / asyncapi)だけ**を更新し、他 Phase に触れない)。
 
 ## 参照する正本
 
@@ -58,9 +59,11 @@ distillery の出力を入力契約として、実装先リポの「最初から
 
 1. `{specs_root}/arch/latest/arch-design.yaml` の `system_architecture.tiers[]` を読み、
    `{specs_root}/specs/latest/spec-event.yaml` の `use_cases[].files[]` に現れる tier id を抽出する
-2. **実装 tier の宣言案**を作る: files[] に現れる tier → 実装 tier(dir は `tier-` を除いた名前)。
+2. **実装 tier の宣言案**を作る: files[] に現れる tier → 実装 tier(dir は `tier-` を除いた名前、
+   `kind`(frontend / backend / worker)は tier id と tier md の構成から推定した案を出す)。
    files[] に現れない architecture tier(例 tier-datastore)→ 共有資産(datastore_owner を提案)。
-   **確認推奨項目としてユーザーに提示**(tier→dir 対応 / datastore_owner / 言語 / コマンド群)
+   **確認推奨項目としてユーザーに提示**(tier→dir 対応 / kind / datastore_owner / 言語 / コマンド群。
+   kind は read-set・tier-rules 適用の機械可読キーになるため必須確定項目)
 3. uc-map.yaml を生成: 全 UC の uc_id(生成式は state-schema.md。NFC 正規化 + canonical JSON + sha256 先頭 8 桁)、
    path、tiers。**衝突検査**で衝突があれば 12 桁に延長
 4. spec-event.yaml に無い tier id・パース不能 YAML は**停止して報告**(推測しない)
@@ -81,7 +84,9 @@ java 不在・generator 失敗時は縮退モード(`_api-summary.yaml` 起点)�
 
 ## P5: ui(Storybook 取り込み。has_design_system のみ)
 
-1. **取り込み元の正は `storybook-app/src/components/` の実ファイル列挙**(`src/tokens/` があれば tokens も)。
+1. **取り込み元の正は `storybook-app/src/` の実ファイル列挙**(components / tokens に加えて
+   `src/stories/` と、それらが import する src 内モジュールも含む — Story は画面実装の参照例として
+   design-event の `screens[].story` から結線されているため、components だけに絞ると落ちる)。
    design-event.yaml の `components` は object(`ui` / `domain` / `common` の配列。path は common の
    一部にしか無い)なので、**取り込みマニフェストには使わず**、コンポーネント名と `screens[]` の
    結線照合(uc → story / variants)にだけ使う
@@ -101,8 +106,9 @@ java 不在・generator 失敗時は縮退モード(`_api-summary.yaml` 起点)�
 `{specs_root}/usdm/latest/requirements.yaml` の全 SPEC(**キーパスは
 `requirements[].specifications[]`**。ルート直下に specifications は無い)について
 `features/atdd/{spec_id}.feature` を生成する。1 criterion = 1 Scenario、Scenario 名は
-`{SPEC-ID}-{連番}`(転写ルールは `references/dev-rules/test-strategy.md`。この名前が
-uc-map の `atdd_scenarios` の選択実行単位になる)。
+`{SPEC-ID}-{連番}`、**各 Scenario に一意タグ `@atdd_{SPEC-ID}-{連番}` を付ける**
+(転写ルールは `references/dev-rules/test-strategy.md`。S7 の選択実行はタグ式の完全一致で行い、
+名前の部分一致フィルタは使わない — `SPEC-X-1` が `SPEC-X-10` に誤一致するため)。
 acceptance_criteria が空の SPEC は feature を作らず、報告に「criteria 欠落 SPEC 一覧」として載せる。
 
 ## 完了報告

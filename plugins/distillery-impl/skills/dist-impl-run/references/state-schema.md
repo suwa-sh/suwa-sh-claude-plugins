@@ -32,6 +32,7 @@ docs/impl/
         S7_atdd.done.yaml
         S8_feedback.done.yaml
         S9_review_generated.done.yaml   # HTML 生成の完了(承認は含まない)
+      invalidated/{event_id}/         # 無効化した done の退避先(stage_invalidated と対)
       issues/{ts}_{slug}.md
       change-requests/{ts}_{slug}.md
       learnings/{ts}_{slug}.md
@@ -63,6 +64,7 @@ print(hashlib.sha256(json.dumps(parts, ensure_ascii=False).encode()).hexdigest()
 ```yaml
 event_id: "20260801_103000_s4_tier_impl_completed"
 type: stage_started | stage_completed | stage_failed | attempt_opened |
+      stage_carried_forward | stage_invalidated |
       finding_reported | finding_resolved | review_approved | review_rejected |
       bootstrap_completed | change_request_issued
 uc_id: "3f9a2b1c"          # グローバルイベント(bootstrap 等)では null
@@ -75,7 +77,13 @@ created_at: "2026-08-01T10:30:00+09:00"
 
 **reducer 規則**(latest の再構築): イベントを `event_id` 昇順に適用する。
 `stage_completed` → 対応する done ファイルを再生成 / `attempt_opened` → attempt カウンタを進める /
-`review_approved` → UC を completed にする。`latest/` と食い違ったら events が正。
+`stage_carried_forward`(payload: 元 attempt・tier・元 done の sha256)→ 新 attempt に
+`carried_from` 付き done を再生成 / `stage_invalidated`(payload: 対象 stage 範囲・理由・退避先)→
+該当 done を無効化 / `review_approved` → UC を completed にする。`latest/` と食い違ったら events が正。
+
+**done の退避(invalidate)**: review_rejected・stale 検知などで done を無効化するときは、
+オーケストレータが `latest/{uc_id}/invalidated/{event_id}/` へ該当 done を移動し、
+`stage_invalidated` イベントを記録する(削除しない。この移動はオーケストレータの write-set に含まれる)。
 
 **UC 完了の正は `review_approved` イベント**(S9 の done は「HTML 生成済み」まで)。
 S9_review_generated.done.yaml があり review_approved が無い状態 = `awaiting_review`。
@@ -90,10 +98,12 @@ repo_root: "impl"                      # 実装先リポのルート(相対 or �
 tiers:                                 # 実装 tier の宣言(architecture tier と別概念)
   - id: tier-frontend
     dir: frontend
-    lang: typescript
+    kind: frontend                     # frontend | backend | worker。read-set 分岐・tier-rules 適用の機械可読キー
+    lang: typescript                   # (tier id からの推測はしない。P2 でユーザー確認して確定する必須項目)
     commands: {format_check: "...", lint: "...", test: "...", bdd: "..."}
   - id: tier-backend-api
     dir: backend-api
+    kind: backend
     lang: typescript
     commands: {format_check: "...", lint: "...", test: "...", bdd: "..."}
 datastore_owner: tier-backend-api      # migration/schema 資産の所有 tier
@@ -137,9 +147,12 @@ uc-map には **Scenario 名の配列**で対応を持つ。
 
 候補生成(S1): `requirements.yaml` の `requirements[].specifications[].affected_models[]`
 (type: buc)から BUC 粒度の候補を出す。ただし **affected_models に buc が無い SPEC も実在する**
-(サンプルの SPEC-002-02)ため、候補と併せて**全 SPEC の一覧(id + specification 要約)も提示し、
-候補外も選べる**形でユーザー確認 → `atdd_scenarios` に永続化する。
-確認済み(`atdd_confirmed: true`)の UC は再確認しない。
+(サンプルの SPEC-002-02)ため、候補外も選べる形で提示する。
+**提示は Scenario(criterion)単位**: 候補・全件一覧とも
+`{Scenario 名({SPEC-ID}-{連番}), criterion 原文, SPEC の specification 要約, affected BUC}` の行で出す
+(SPEC 要約だけでは同一 SPEC 内の criterion を選び分けられない)。
+保存前に Scenario 名の実在(features/atdd/ に生成済みか)・重複・空集合を検証してから
+`atdd_scenarios` に永続化する。確認済み(`atdd_confirmed: true`)の UC は再確認しない。
 マッピング出力の機械化は dist-spec への変更要求として起票する。
 
 ## contracts.lock.yaml
@@ -168,16 +181,23 @@ phases:                                # Phase ごとの完了記録。専用マ
   P5_ui: {status: skipped, reason: "has_design_system: false"}
   P6_ci: {status: done, at: "..."}
   P7_atdd: {status: done, at: "..."}
-inputs_sha256:                         # 主要入力のハッシュ(spec-event / arch / usdm / openapi)
+inputs_sha256:                         # 全入力のハッシュ(現物と比較して Phase invalidate に使う)
   spec_event: "..."
   arch: "..."
   usdm: "..."
+  design: "..."                        # has_design_system の場合のみ
+  openapi: "..."
+  asyncapi: "..."                      # has_asyncapi の場合のみ
 generated_at: "..."
 ```
 
-- **S0 の完了判定はこのファイルの全 Phase done/skipped**(impl-config / uc-map の存在では判定しない。
-  P2 までで中断した S0 を完了扱いする誤判定を防ぐ)
-- bootstrap 再実行時は本ファイルの Phase 記録で skip を決める(冪等)
+- **S0 の完了判定は「全 Phase done/skipped」+「入力ハッシュの現物一致」の両方**。
+  オーケストレータは起動時に inputs_sha256 の各入力を現物から再計算し、
+  不一致の入力に依存する Phase を invalidate する(依存表:
+  spec_event/arch → P2 以降すべて / usdm → P7 / design → P5 / openapi・asyncapi → P4)。
+  invalidate された Phase は bootstrap 再実行の対象になる
+- inputs_sha256 には spec_event / arch / usdm / design / openapi / asyncapi(存在するもの)を記録する
+- bootstrap 再実行時は本ファイルの Phase 記録(invalidate 反映後)で skip を決める(冪等)
 
 ## run-lease.yaml(多重起動の拒否)
 
@@ -209,6 +229,8 @@ inputs:
   usdm: {event_id: "...", sha256: "..."}
   arch: {event_id: "...", sha256: "..."}
   design: {event_id: "...", sha256: "..."}   # has_design_system の場合のみ
+  contracts_lock: {path: "docs/impl/latest/contracts.lock.yaml", sha256: "..."}   # 契約生成物の版
+  ui_imported: {path: "packages/ui/.imported.yaml", sha256: "..."}               # has_design_system のみ
   dev_rules_sha256: "..."
 lineage_ok: true                       # spec-event の trigger_event と arch/design の event_id 整合
 ```
@@ -261,29 +283,34 @@ completed_by: "dist-impl-implement"   # 書いた skill 名
 ```
 
 **attempt の carry-forward**: attempt++ で S4 を再実行するのは blocker のあった tier だけ。
-blocker の無かった tier については、オーケストレータが新 attempt ディレクトリに
-`carried_from: attempt-{n}` 付きの S4 done をコピー生成する(実装は変わっていないため)。
+blocker の無かった tier については、オーケストレータが `stage_carried_forward` イベントを記録した上で
+新 attempt ディレクトリに `carried_from: attempt-{n}` 付きの S4 done をコピー生成する
+(実装は変わっていないため。イベント → latest の順は他の状態変更と同じ)。
 これにより「再開判定は current attempt 内だけを見る」規則が維持される。
 S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証する。安全側)。
 
 ## 再開手順(オーケストレータが実行)
 
 1. `run-lease.yaml` を確認 → 存在すれば起動拒否
-2. `bootstrap.done.yaml` で S0 の完了を判定(全 Phase done/skipped でなければ S0 から)
-3. `latest/{uc_id}/stages/` を S1→S9 の順に存在チェック(S4/S5 は `attempt-{current_attempt}/` 内を
+2. `bootstrap.done.yaml` で S0 の完了を判定(全 Phase done/skipped + 入力ハッシュの現物一致。
+   不一致入力の依存 Phase は invalidate して bootstrap を再実行)
+3. **input-manifest を現物から再計算する**: S1 done が存在しても、保存済み manifest と
+   現物再計算値が食い違えば manifest を更新し、以降の done を stale と判定する
+   (保存済み manifest 同士の比較だけでは入力変更を検知できない)
+4. `latest/{uc_id}/stages/` を S1→S9 の順に存在チェック(S4/S5 は `attempt-{current_attempt}/` 内を
    tier ごとに。carry-forward done も有効な done として扱う)
-4. 各 done の `manifest_sha256` を現在の input-manifest と照合 → 不一致は「stale」として該当 stage 以降を再実行対象に
-5. status.yaml を done ファイル群 + events から再構築して上書き
-6. **awaiting_review の分岐**: S9_review_generated.done.yaml があり `review_approved` イベントが無ければ、
+5. 各 done の `manifest_sha256` を(再計算後の)input-manifest と照合 → 不一致は「stale」として該当 stage 以降を再実行対象に
+6. status.yaml を done ファイル群 + events から再構築して上書き
+7. **awaiting_review の分岐**: S9_review_generated.done.yaml があり `review_approved` イベントが無ければ、
    stage 実行ではなく「プレビュー再表示 + 承認対話」から再開する。`review_rejected` があれば
    その payload の差し戻し先 stage から再開する
-7. 未完了の最初の stage から再開。中間生成物は削除しない
+8. 未完了の最初の stage から再開。中間生成物は削除しない
 
 ## 書き込み権限(write-set)の正本
 
 | 書き手 | 書いてよい場所 |
 |---|---|
-| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、carry-forward done の生成、git commit |
+| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、carry-forward done の生成、`invalidated/` への done 退避、git commit |
 | S0 bootstrap | 実装リポ全体(初期生成)、latest/ の config/uc-map/lock、`bootstrap.done.yaml` |
 | S4 Implementer(tier 別) | 自 tier の dir 配下、`attempt-{n}/S4_*.{自tier}.done.yaml`、issues/ |
 | S5 Verifier(tier 別) | `attempt-{n}/S5_*.{自tier}.done.yaml`、`.findings.yaml` のみ(**実装コードの修正禁止**) |

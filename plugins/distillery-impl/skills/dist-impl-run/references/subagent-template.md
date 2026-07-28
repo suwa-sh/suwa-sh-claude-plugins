@@ -42,7 +42,8 @@
 S1(input-preflight・uc_id 解決・input-manifest 固定・UC→ATDD マッピング確認)はユーザー対話を含むため、
 S3(lock の sha256 照合)は軽量なため、オーケストレータが直接実行する(SKILL.md 参照)。
 S3 で stale を検知した場合のみ、bootstrap を `引数: "phase=contracts force=true"` で
-サブエージェント起動する(S0 の行と同じテンプレート。write_set は packages/contracts/ と contracts.lock.yaml)。
+サブエージェント起動する(S0 の行と同じテンプレート。write_set は packages/contracts/ と
+contracts.lock.yaml と **bootstrap.done.yaml(P4 の記録と契約入力ハッシュのみ更新)**)。
 
 ### S2: test-scaffold
 
@@ -51,8 +52,8 @@ S3 で stale を検知した場合のみ、bootstrap を `引数: "phase=contrac
 | role | 4 段テスト足場の生成 |
 | skill_name | distillery-impl:dist-impl-implement |
 | skill_args | ` 引数: "mode=test-scaffold uc_id={uc_id} config={impl-config へのパス}"` |
-| write_set | 各 tier の features/ と test/、features/uc/、features/atdd/、S2 done |
-| additional_instructions | `gherkin は仕様から意訳せず転写してください(実装リポの docs/dev-rules/test-strategy.md)。done 条件は red baseline(全 4 段が「未実装を理由に」fail)です。fail 理由がパースエラー・設定ミスの場合は done にせず失敗を報告してください。` |
+| write_set | 各 tier の features/ と test/、features/uc/、features/atdd/、stages/S2_test-scaffold.done.yaml |
+| additional_instructions | `gherkin は仕様から意訳せず転写してください(実装リポの docs/dev-rules/test-strategy.md)。ATDD は uc-map の atdd_scenarios に列挙された Scenario だけを対象にし(skeleton と red baseline の確認も同範囲)、生成済みの共有 feature 本文は変更しないでください。done 条件は red baseline(全 4 段が「未実装を理由に」fail)です。fail 理由がパースエラー・設定ミスの場合は done にせず失敗を報告してください。` |
 
 ### S4: tier-impl(tier ごとに並列起動)
 
@@ -94,7 +95,7 @@ S3 で stale を検知した場合のみ、bootstrap を `引数: "phase=contrac
 | role | 仕様フィードバックと学びの整理 |
 | skill_name | distillery-impl:dist-impl-feedback |
 | skill_args | ` 引数: "uc_id={uc_id} config={...}"` |
-| write_set | change-requests/、learnings/、S8 done |
+| write_set | change-requests/、learnings/、stages/S8_feedback.done.yaml |
 | additional_instructions | `issues/ と findings を読み、仕様起因のものだけを変更要求化してください。skill・CLAUDE.md への学び提案は提案ファイルに書くだけで、既存ファイルを編集しないでください。` |
 
 ### S9: review
@@ -104,5 +105,5 @@ S3 で stale を検知した場合のみ、bootstrap を `引数: "phase=contrac
 | role | レビュー資料の生成 |
 | skill_name | distillery-impl:dist-impl-review |
 | skill_args | ` 引数: "uc_id={uc_id} config={...}"` |
-| write_set | review/index.html、S9 done |
+| write_set | review/index.html、stages/S9_review_generated.done.yaml |
 | additional_instructions | `前提知識ゼロの読者が合否判断できる構成にしてください(review-html-template.md)。生成後のプレビュー表示と承認対話はオーケストレータが行うので、HTML 生成と done 記録だけで完了してください。` |

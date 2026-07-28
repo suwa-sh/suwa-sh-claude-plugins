@@ -16,9 +16,9 @@ distillery-impl が生成・運用するテストは 4 段。**上 3 段の gher
 - 転写先 feature ファイルの先頭に出典コメントを残す:
   `# source: docs/specs/latest/貸出管理業務/貸出管理フロー/書籍を貸出する/spec.md#E2E完了条件(BDD)`
 - ① の `acceptance_criteria` は 1 行 Given/When/Then 文字列。**1 criterion = 1 Scenario、
-  Scenario 名は `{SPEC-ID}-{連番}`** として展開する(文言は原文のまま)。
-  1 つの SPEC が複数 UC の基準を含むことがあるため、S7 での実行は uc-map の `atdd_scenarios`
-  (Scenario 名の配列)による選択実行が前提
+  Scenario 名は `{SPEC-ID}-{連番}`、一意タグ `@atdd_{SPEC-ID}-{連番}` を付与**して展開する
+  (文言は原文のまま)。1 つの SPEC が複数 UC の基準を含むことがあるため、S7 での実行は
+  uc-map の `atdd_scenarios` に基づく**タグ完全一致の選択実行**が前提(名前の部分一致は誤選択するため禁止)
 - 仕様側の gherkin が空・欠落・不正(パース不能)なら転写せず、**S1 の input-preflight で変更要求として起票**する
 
 ## red baseline 規約(S2 test-scaffold の完了条件)

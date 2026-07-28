@@ -30,7 +30,9 @@ description: >
 1. `docs/dev-rules/test-strategy.md` の転写ルールに従い、
    ② `features/uc/{uc_id}.feature`(spec.md の E2E 完了条件)/ ③ 各 tier の
    `{tier_dir}/features/{uc_id}.feature`(tier md のティア完了条件)を転写生成
-   (① ATDD は bootstrap P7 で生成済み。無ければ同ルールで補生成)
+   (① ATDD は bootstrap P7 で生成済み。無ければ同ルールで補生成。
+   **skeleton と red baseline の対象は uc-map の `atdd_scenarios` に列挙された Scenario のみ**。
+   生成済みの共有 feature 本文は変更しない)
 2. step definition skeleton(全 step が「未実装」を明示して fail)+ runner 設定を配置
 3. ④ 対象 UC × tier ごとに最初の failing 単体テストを 1 本以上書く(命名・AAA は test-strategy.md)
 4. **red baseline 確認**: 4 段すべてを実行し「未実装を理由に fail する」ことを確認。
@@ -62,9 +64,10 @@ description: >
 integration writer として統合テストを実装・実行する。**tier 実装コードは変更禁止**。
 
 1. `features/uc/{uc_id}.feature`(S7 は uc-map の `atdd_scenarios` に列挙された Scenario
-   **だけ**を対象に、タグ/名前フィルタで選択実行する — SPEC は複数 UC にまたがるため
-   feature 全体を回さない)の step definition を実装(全 tier 結合。起動・シード・呼び出しは
-   config の integration_commands)
+   **だけ**を対象に、**一意タグ `@atdd_{SPEC-ID}-{連番}` の完全一致フィルタ**で選択実行する —
+   SPEC は複数 UC にまたがるため feature 全体を回さず、名前の部分一致フィルタも使わない。
+   **実行された Scenario 件数が atdd_scenarios の件数と一致することを確認**する)の
+   step definition を実装(全 tier 結合。起動・シード・呼び出しは config の integration_commands)
 2. 実行して結果を判定:
    - pass → `S6_uc-bdd.done.yaml`(S7 は `S7_atdd.done.yaml`)を書く
    - fail → done を書かず、「どの tier の何が仕様と食い違うか」の分析を結果として返す

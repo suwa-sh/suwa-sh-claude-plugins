@@ -9,8 +9,9 @@ impl-config に記録する。
 - **入力**: `tier-frontend.md`(画面仕様・コンポーネントマッピング・操作フロー)+
   `docs/design/latest/design-event.yaml` の `screens[]`(uc / story / variants)
 - **UI コンポーネントは `packages/ui/` のみ使用**。`packages/ui/` は
-  `docs/design/latest/storybook-app/src/components/` と tokens を bootstrap が取り込んだもの
-  (取り込み元マニフェストは design-event.yaml の `components[].path`)
+  `docs/design/latest/storybook-app/src/`(components / tokens / stories と依存モジュール)を
+  bootstrap が実ファイル列挙で取り込んだもの(design-event.yaml はコンポーネント名と
+  screen 結線の照合にのみ使う。`.imported.yaml` が取り込みの記録)
 - 不足コンポーネント・不足 variant は自作せず、design への変更要求(issues/ → change-requests/)を経由する
 - 画面と UC の結線は design-event.yaml の `screens[].uc` が正。結線が無い UC は S1 が警告済みのはず
   (素の packages/ui 部品で組む選択がユーザー合意済みの場合のみ進む)

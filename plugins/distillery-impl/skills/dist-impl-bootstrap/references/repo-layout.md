@@ -16,8 +16,8 @@ tier とディレクトリの対応は **`impl-config.yaml` の `tiers[].dir` �
       server-stubs/                # openapi → サーバスタブ(backend が使用)
       async-types/                 # asyncapi → 型(has_asyncapi の場合のみ)
     ui/                            # design の storybook-app 由来(has_design_system の場合のみ)
-      components/                  # design-event.yaml components[].path から取り込み
-      tokens/
+      components/ tokens/ stories/ # storybook-app/src/ の実ファイル列挙で取り込み(bootstrap P5)
+      .imported.yaml               # 取り込み元 design event_id とファイル一覧
   features/
     uc/{uc_id}.feature             # ② UC BDD(integration writer 所有)
     uc/steps/
