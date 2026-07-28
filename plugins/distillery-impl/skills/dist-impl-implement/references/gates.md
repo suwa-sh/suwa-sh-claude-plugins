@@ -10,7 +10,7 @@
 | 3 | TDD(単体) | Implementer(S4)/ CI | commands.test | 対象 tier の全テスト pass |
 | 4 | tier BDD | Implementer(S4)/ CI | commands.bdd | `{tier_dir}/features/{uc_id}.feature` 全シナリオ pass |
 | 5 | UC BDD | integration writer(S6)/ CI | integration_commands.uc_bdd | `features/uc/{uc_id}.feature` 全シナリオ pass |
-| 6 | ATDD | integration writer(S7)/ CI | integration_commands.atdd | uc-map の spec_ids に対応する feature 全 pass |
+| 6 | ATDD | integration writer(S7)/ CI | integration_commands.atdd | uc-map の atdd_scenarios に列挙された Scenario 全 pass(選択実行) |
 
 ## 判定規則
 

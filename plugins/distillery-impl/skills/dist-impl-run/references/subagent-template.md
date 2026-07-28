@@ -37,10 +37,12 @@
 | write_set | 実装リポ全体(初期生成)+ docs/impl/latest/ の config/uc-map/lock |
 | additional_instructions | `冪等に実行してください(既存の生成物は Phase 完了判定ファイルで skip)。preflight の結果(java/node/ddd plugin の有無)と capability フラグを必ず報告してください。` |
 
-### S1: uc-init(dist-impl-run 自身が実行する。サブエージェント委譲しない)
+### S1: uc-init / S3: contracts(dist-impl-run 自身が実行する。サブエージェント委譲しない)
 
-input-preflight・uc_id 解決・input-manifest 固定・UC→SPEC マッピング確認はユーザー対話を含むため、
-オーケストレータが直接実行する(SKILL.md の S1 節参照)。
+S1(input-preflight・uc_id 解決・input-manifest 固定・UC→ATDD マッピング確認)はユーザー対話を含むため、
+S3(lock の sha256 照合)は軽量なため、オーケストレータが直接実行する(SKILL.md 参照)。
+S3 で stale を検知した場合のみ、bootstrap を `引数: "phase=contracts force=true"` で
+サブエージェント起動する(S0 の行と同じテンプレート。write_set は packages/contracts/ と contracts.lock.yaml)。
 
 ### S2: test-scaffold
 
@@ -61,13 +63,14 @@ input-preflight・uc_id 解決・input-manifest 固定・UC→SPEC マッピン�
 | skill_args | ` 引数: "mode=tier-impl uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス}"` |
 | model | impl-config の implementer_model(null なら未指定=セッション既定) |
 | write_set | {tier_dir}/ 配下、attempt-{n}/S4_tier-impl.{tier_id}.done.yaml、issues/ |
-| additional_instructions | `入力は該当 UC の tier-{tier_id}.md、_api-summary.yaml、_model-summary.yaml、packages/contracts/、dev-rules のみ(他 UC・openapi 全量を読まない)。attempt={n} が 2 以上の場合は前回の findings({findings パス})の blocker を修正対象に含めてください。formatter/lint は check-only で実行してください。` |
+| additional_instructions | `入力(read-set)は該当 UC の {tier_id}.md(例 tier-frontend.md)、_api-summary.yaml、_model-summary.yaml、packages/contracts/、実装リポの docs/dev-rules/、さらに tier 種別に応じて: frontend は packages/ui/ と design-event.yaml の該当 screen、backend(datastore_owner)は _cross-cutting/datastore/ の schema、worker は async 型定義。それ以外(他 UC・openapi 全量)は読まないでください。attempt={n} が 2 以上の場合は前回の findings({findings パス})の blocker を修正対象に含めてください。formatter/lint は check-only で実行してください。` |
 
 ### S5: verify(tier ごとに並列起動。Implementer と別コンテキスト)
 
 | 変数 | 値 |
 |------|-----|
 | role | {tier_id} の Verifier(反証専用) |
+| agent_type | **`distillery-impl:impl-verifier`**(plugin 同梱 agent。disallowedTools 制約を効かせる) |
 | skill_name | distillery-impl:dist-impl-verify |
 | skill_args | ` 引数: "uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス}"` |
 | model | **impl-config の verifier_model(必須。Agent/Task ツールの model パラメータで渡す)** |
@@ -82,7 +85,7 @@ input-preflight・uc_id 解決・input-manifest 固定・UC→SPEC マッピン�
 | skill_name | distillery-impl:dist-impl-implement |
 | skill_args | ` 引数: "mode=uc-bdd uc_id={uc_id} config={...}"`(S7 は `mode=atdd`) |
 | write_set | features/uc/(S7 は features/atdd/)、その steps/、S6/S7 done |
-| additional_instructions | `tier 実装は変更禁止です。step definition の実装と統合実行のみ行い、fail した場合は「どの tier の何が仕様と食い違うか」を分析して結果を返してください(修正はオーケストレータが S4 差し戻しを判断します)。` |
+| additional_instructions | `tier 実装は変更禁止です。step definition の実装と統合実行のみ行い、fail した場合は「どの tier の何が仕様と食い違うか」を分析して結果を返してください(修正はオーケストレータが S4 差し戻しを判断します)。S7(atdd)では uc-map の atdd_scenarios に列挙された Scenario だけを実行してください(タグ/名前フィルタ。feature 全体を回さない)。` |
 
 ### S8: feedback
 

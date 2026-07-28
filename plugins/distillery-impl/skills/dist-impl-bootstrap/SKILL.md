@@ -11,9 +11,13 @@ description: >
 # dist-impl-bootstrap
 
 distillery の出力を入力契約として、実装先リポの「最初から規約が焼き込まれた状態」を作る。
-**冪等**: 各 Phase は完了判定ファイルの存在で skip する。再実行しても既存の実装コードを壊さない。
+**冪等**: Phase の完了は `docs/impl/latest/bootstrap.done.yaml` の Phase 記録で判定して skip する
+(生成物の存在では判定しない — CLAUDE.md や ci.yml は既存リポに元からあり得るため)。
+再実行しても既存の実装コードを壊さない。
 
-引数: `specs_root={distillery 出力ルート} repo_root={実装先リポルート}`(省略時は対話で確認)
+引数: `specs_root={distillery 出力ルート} repo_root={実装先リポルート}`(省略時は対話で確認)。
+`phase=contracts force=true` を渡された場合は **P4(契約 codegen)だけを強制再実行**する
+(S3 の stale 検知から呼ばれる経路。lock の sha256 が一致していても再生成し、lock を更新する)。
 
 ## 参照する正本
 
@@ -22,19 +26,21 @@ distillery の出力を入力契約として、実装先リポの「最初から
 - 開発規約(配布物): `references/dev-rules/`(coding-rules / test-strategy / tier-rules)
 - 状態スキーマ: `../dist-impl-run/references/state-schema.md`(impl-config / uc-map / contracts.lock)
 
-## Phase 構成と完了判定ファイル
+## Phase 構成
 
-| Phase | 内容 | 完了判定 |
-|---|---|---|
-| P1 preflight | ツール・依存の存在プローブ | docs/impl/latest/impl-config.yaml の `capabilities` |
-| P2 config | impl-config.yaml + uc-map.yaml 生成 | 同ファイルの存在 + スキーマ適合 |
-| P3 skeleton | リポ骨格 + dev-rules 配布 + CLAUDE.md | {repo_root}/CLAUDE.md |
-| P4 contracts | 契約 codegen + contracts.lock | docs/impl/latest/contracts.lock.yaml |
-| P5 ui | Storybook コンポーネント取り込み | {repo_root}/packages/ui/.imported.yaml |
-| P6 ci | qlty + GitHub Actions(6 段ゲート) | {repo_root}/.github/workflows/ci.yml |
-| P7 atdd | ATDD feature 全 SPEC 分生成 | {repo_root}/features/atdd/.generated.yaml |
+| Phase | 内容 |
+|---|---|
+| P1 preflight | ツール・依存の存在プローブ |
+| P2 config | impl-config.yaml + uc-map.yaml 生成 |
+| P3 skeleton | リポ骨格 + dev-rules 配布 + CLAUDE.md |
+| P4 contracts | 契約 codegen + contracts.lock |
+| P5 ui | Storybook コンポーネント取り込み |
+| P6 ci | qlty + GitHub Actions(6 段ゲート) |
+| P7 atdd | ATDD feature 全 SPEC 分生成 |
 
-失敗時も中間ファイルは削除しない。再実行は未完了 Phase から。
+**各 Phase 完了のたびに `docs/impl/latest/bootstrap.done.yaml` の該当 Phase を done に更新する**
+(スキーマは `../dist-impl-run/references/state-schema.md`。全 Phase の完了で S0 done とみなされる)。
+失敗時も中間ファイルは削除しない。再実行は bootstrap.done.yaml の未完了 Phase から。
 
 ## P1: preflight(存在プローブ)
 
@@ -75,10 +81,12 @@ java 不在・generator 失敗時は縮退モード(`_api-summary.yaml` 起点)�
 
 ## P5: ui(Storybook 取り込み。has_design_system のみ)
 
-1. `{specs_root}/design/latest/design-event.yaml` の `components[].path` を取り込みマニフェストとして、
-   `storybook-app/src/components/` と tokens を `{repo_root}/packages/ui/` へコピー
-2. import パスを packages/ui 内で完結するよう書き換え、`packages/ui/.imported.yaml` に
-   取り込み元(design event_id)とファイル一覧を記録
+1. **取り込み元の正は `storybook-app/src/components/` の実ファイル列挙**(`src/tokens/` があれば tokens も)。
+   design-event.yaml の `components` は object(`ui` / `domain` / `common` の配列。path は common の
+   一部にしか無い)なので、**取り込みマニフェストには使わず**、コンポーネント名と `screens[]` の
+   結線照合(uc → story / variants)にだけ使う
+2. 実ファイルを `{repo_root}/packages/ui/` へコピーし、import パスを packages/ui 内で完結するよう
+   書き換え、`packages/ui/.imported.yaml` に取り込み元(design event_id)とファイル一覧を記録
 3. storybook-app が無い(has_design_system: false)場合は skip(frontend tier の実装は tier-rules.md の
    縮退規約に従う)
 
@@ -90,8 +98,11 @@ java 不在・generator 失敗時は縮退モード(`_api-summary.yaml` 起点)�
 
 ## P7: atdd(ATDD feature 全 SPEC 分)
 
-`{specs_root}/usdm/latest/requirements.yaml` の全 `specifications[]` について
-`features/atdd/{spec_id}.feature` を生成する(転写ルールと Scenario 形式は `references/dev-rules/test-strategy.md`)。
+`{specs_root}/usdm/latest/requirements.yaml` の全 SPEC(**キーパスは
+`requirements[].specifications[]`**。ルート直下に specifications は無い)について
+`features/atdd/{spec_id}.feature` を生成する。1 criterion = 1 Scenario、Scenario 名は
+`{SPEC-ID}-{連番}`(転写ルールは `references/dev-rules/test-strategy.md`。この名前が
+uc-map の `atdd_scenarios` の選択実行単位になる)。
 acceptance_criteria が空の SPEC は feature を作らず、報告に「criteria 欠落 SPEC 一覧」として載せる。
 
 ## 完了報告

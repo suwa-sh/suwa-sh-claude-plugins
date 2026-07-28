@@ -41,8 +41,11 @@ description: >
 
 単一 (UC × tier) を TDD で実装し、ゲート 1〜4 を通す。
 
-1. 入力を読む: tier md(API 仕様表 / データモデル変更表 / ビジネスルール / ティア完了条件)、
-   _api-summary / _model-summary、契約生成物、`docs/dev-rules/` 3 ファイル
+1. 入力を読む: tier md(ファイル名は `{tier_id}.md`。例 `tier-frontend.md`。API 仕様表 /
+   データモデル変更表 / ビジネスルール / ティア完了条件)、_api-summary / _model-summary、
+   契約生成物、`docs/dev-rules/` 3 ファイル。**tier 種別に応じて追加で読む**:
+   frontend は `packages/ui/`(利用可能な export)と design-event.yaml の該当 screen、
+   backend(datastore_owner)は `_cross-cutting/datastore/` の schema、worker は async 型定義
 2. **ddd ガイドの読込**(capabilities.has_ddd_plugin が true の場合):
    Skill ツールで `ddd:ddd-tactical-implementation` を呼び出し、判断ゲートとワークフローを把握してから
    実装に入る。呼び出し時に平文で渡す: 対象言語 / 実装対象モデル(_model-summary.yaml の該当エンティティ)/
@@ -58,13 +61,15 @@ description: >
 
 integration writer として統合テストを実装・実行する。**tier 実装コードは変更禁止**。
 
-1. `features/uc/{uc_id}.feature`(S7 は uc-map の spec_ids に対応する `features/atdd/*.feature`)の
-   step definition を実装(全 tier 結合。起動・シード・呼び出しは config の integration_commands)
+1. `features/uc/{uc_id}.feature`(S7 は uc-map の `atdd_scenarios` に列挙された Scenario
+   **だけ**を対象に、タグ/名前フィルタで選択実行する — SPEC は複数 UC にまたがるため
+   feature 全体を回さない)の step definition を実装(全 tier 結合。起動・シード・呼び出しは
+   config の integration_commands)
 2. 実行して結果を判定:
    - pass → `S6_uc-bdd.done.yaml`(S7 は `S7_atdd.done.yaml`)を書く
    - fail → done を書かず、「どの tier の何が仕様と食い違うか」の分析を結果として返す
      (S4 への差し戻しはオーケストレータの判断)
-3. S7 で uc-map の `spec_ids_confirmed: false` の場合は実行せず、その旨を返す(S1 の確認漏れ)
+3. S7 で uc-map の `atdd_confirmed: false` の場合は実行せず、その旨を返す(S1 の確認漏れ)
 
 ## 完了報告(全 mode 共通)
 

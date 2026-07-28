@@ -24,8 +24,10 @@ description: >
 ## 手順
 
 1. `config` と uc-map から対象パスを解決し、次だけを読む:
-   {tier_dir}/ の成果物(src / test / features)、tier-{tier_id}.md、_api-summary.yaml /
-   _model-summary.yaml、packages/contracts の型シグネチャ、docs/dev-rules/ 3 ファイル
+   {tier_dir}/ の成果物(src / test / features)、tier md(ファイル名 `{tier_id}.md`)、
+   _api-summary.yaml / _model-summary.yaml、`_cross-cutting/datastore/` の schema、
+   `docs/nfr/latest/nfr-grade.yaml`(性能・可用性判定の根拠)、packages/contracts の型シグネチャ、
+   docs/dev-rules/ 3 ファイル(frontend の場合は packages/ui の export 一覧も)
 2. ゲート 1〜4 を check-only で再実行(gates.md)。Implementer の done と食い違えばそれ自体が blocker
 3. `references/verify-viewpoints.md` の 7 観点チェックリストを順に適用
 4. findings を `attempt-{n}/S5_verify.{tier_id}.findings.yaml` に書く(下記スキーマ)
@@ -40,6 +42,14 @@ tier: "..."
 attempt: 1
 verified_at: "..."
 gate_reexec: {format: pass, lint: pass, tdd: pass, bdd_tier: pass}
+viewpoints_checked:               # 7 観点の完走記録(findings 0 件でも「未実施」と区別できる)
+  spec_conformance: {status: done, note: "API 12/12 突合"}
+  readability_maintainability: {status: done}
+  security: {status: done}
+  performance: {status: done}
+  operability: {status: done}
+  fault_tolerance: {status: done}
+  refactoring: {status: done}
 findings:
   - id: F-001
     viewpoint: spec_conformance   # 7 観点のキー(verify-viewpoints.md)
@@ -52,7 +62,7 @@ summary: {blocker: 1, major: 2, minor: 3}
 ```
 
 findings ゼロなら `findings: []` を明示する(「観点を回しきった上でゼロ」と「未実施」を区別するため、
-`gate_reexec` と観点ごとの実施記録は必ず埋める)。
+`gate_reexec` と `viewpoints_checked` は必ず埋める)。
 
 ## 外部 CLI 拡張点(optional)
 

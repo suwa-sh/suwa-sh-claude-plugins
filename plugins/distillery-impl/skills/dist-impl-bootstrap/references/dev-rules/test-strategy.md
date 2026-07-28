@@ -5,9 +5,9 @@ distillery-impl が生成・運用するテストは 4 段。**上 3 段の gher
 
 | 段 | 名称 | gherkin の出典(転写元) | 配置 | 実行ゲート |
 |---|---|---|---|---|
-| ① | ATDD(受け入れ) | `docs/usdm/latest/requirements.yaml` の `specifications[].acceptance_criteria[]` | `features/atdd/{spec_id}.feature` | ゲート 6(S7) |
+| ① | ATDD(受け入れ) | `docs/usdm/latest/requirements.yaml` の `requirements[].specifications[].acceptance_criteria[]` | `features/atdd/{spec_id}.feature` | ゲート 6(S7) |
 | ② | UC BDD | `docs/specs/latest/{業務}/{BUC}/{UC}/spec.md` の「E2E 完了条件(BDD)」gherkin ブロック | `features/uc/{uc_id}.feature` | ゲート 5(S6) |
-| ③ | tier BDD | 同 UC 配下 `tier-{tier_id}.md` の「ティア完了条件(BDD)」gherkin ブロック | `{tier_dir}/features/{uc_id}.feature` | ゲート 4(S4) |
+| ③ | tier BDD | 同 UC 配下 `{tier_id}.md`(例 `tier-frontend.md`)の「ティア完了条件(BDD)」gherkin ブロック | `{tier_dir}/features/{uc_id}.feature` | ゲート 4(S4) |
 | ④ | TDD(単体) | 出典なし(実装者が red→green→refactor で設計) | `{tier_dir}/test/` | ゲート 3(S4) |
 
 ## 転写ルール(①〜③)
@@ -15,8 +15,10 @@ distillery-impl が生成・運用するテストは 4 段。**上 3 段の gher
 - **意訳・要約・補完を禁止**する。gherkin ブロックをそのまま転写する
 - 転写先 feature ファイルの先頭に出典コメントを残す:
   `# source: docs/specs/latest/貸出管理業務/貸出管理フロー/書籍を貸出する/spec.md#E2E完了条件(BDD)`
-- ① の `acceptance_criteria` は 1 行 Given/When/Then 文字列。`Scenario: {SPEC-ID} {specification 要約}` として
-  1 criteria = 1 Scenario に展開する(文言は原文のまま)
+- ① の `acceptance_criteria` は 1 行 Given/When/Then 文字列。**1 criterion = 1 Scenario、
+  Scenario 名は `{SPEC-ID}-{連番}`** として展開する(文言は原文のまま)。
+  1 つの SPEC が複数 UC の基準を含むことがあるため、S7 での実行は uc-map の `atdd_scenarios`
+  (Scenario 名の配列)による選択実行が前提
 - 仕様側の gherkin が空・欠落・不正(パース不能)なら転写せず、**S1 の input-preflight で変更要求として起票**する
 
 ## red baseline 規約(S2 test-scaffold の完了条件)

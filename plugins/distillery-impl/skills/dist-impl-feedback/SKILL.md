@@ -48,6 +48,11 @@ learnings のうち一般化できるものを 2 種に分けて**提案ファ�
 **既存の SKILL.md・CLAUDE.md・dev-rules を直接編集しない**。採否はユーザー(またはオーケストレータ経由の
 ユーザー対話)に委ねる。個人環境の固有機能(特定ベンダーのメモリ機構等)に依存する表現は使わない。
 
+### 4. done の記録
+
+最後に `docs/impl/latest/{uc_id}/stages/S8_feedback.done.yaml` を書く(共通スキーマ +
+固有フィールド: `change_requests: {total: N, blocker: M}` / `learnings: K` / `proposals: {skill: bool, context: bool}`)。
+
 ## 完了報告
 
 変更要求 N 件(うち blocker M 件)/ learnings K 件 / 提案 2 種の有無とパス。

@@ -50,10 +50,10 @@ S9 review         ゼロ知識で合否判断できる HTML レポート → ユ
 
 ```
 # UC を指定して実装開始(初回は bootstrap から自動で走る)
-/dist-impl-run 貸出管理業務/貸出管理フロー/書籍を貸出する
+/distillery-impl:dist-impl-run 貸出管理業務/貸出管理フロー/書籍を貸出する
 
 # 中断からの再開(同じ指定でよい。完了済み stage は skip される)
-/dist-impl-run 書籍を貸出する
+/distillery-impl:dist-impl-run 書籍を貸出する
 ```
 
 進行中の対話(tier 構成の確認・UC→SPEC 対応の確定・Verifier 超過時の判断・最終承認)は

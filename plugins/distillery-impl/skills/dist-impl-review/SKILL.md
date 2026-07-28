@@ -32,7 +32,8 @@ status.yaml / input-manifest.yaml / stages/(done・findings)/ issues/ / change-r
    - `<meta charset="utf-8">` を必ず先頭に置く(欠くと日本語が文字化けする)
    - CSS はインライン。外部 CDN に依存しない(オフラインで開ける)。図は HTML/CSS で組む
    - ライト/ダーク両テーマ対応(prefers-color-scheme)
-3. `S9_review.done.yaml` を書く
+3. `S9_review_generated.done.yaml` を書く(**HTML 生成の完了であって UC の完了ではない**。
+   UC 完了の正はユーザー承認の `review_approved` イベント)
 4. 結果として「HTML のパス / 結論(全ゲート pass か / 残課題数)/ 承認判断のポイント」を返す
 
 プレビュー表示(`open` / `xdg-open`)と承認・差し戻しの対話はオーケストレータの責務

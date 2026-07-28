@@ -24,8 +24,10 @@ description: >
 
 1. **lease 確認**: `docs/impl/latest/run-lease.yaml` が存在すれば起動を拒否して報告
    (stale 判定は state-schema.md。剥がすのはユーザー確認後)
-2. **S0 判定**: `impl-config.yaml` / `uc-map.yaml` が無ければ S0(bootstrap)をサブエージェントで実行。
-   bootstrap の確認推奨項目(tier→dir / datastore_owner / 言語・コマンド)はユーザーに中継して確定
+2. **S0 判定**: `docs/impl/latest/bootstrap.done.yaml` の**全 Phase が done/skipped** でなければ
+   S0(bootstrap)をサブエージェントで実行(config/uc-map の存在では判定しない — P2 で中断した
+   S0 を完了扱いしないため)。bootstrap の確認推奨項目(tier→dir / datastore_owner / 言語・コマンド)は
+   ユーザーに中継して確定
 3. **UC 解決**: 引数を uc-map と照合(照合は NFC 正規化後)。
    完全修飾・uc_id・一意名のみ受理。複数一致は候補一覧を提示して選ばせる
 4. **model 解決**: implementer_model / verifier_model を解決し status.yaml の `resolved_models` に記録。
@@ -48,14 +50,23 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
      欠落・矛盾は「縮退で進める」か「変更要求を出して停止」かを分類して提示
   2. input-manifest.yaml を書く(全入力の event_id + sha256、lineage 検証)。
      `lineage_ok: false` は停止し「spec 再生成 or 旧前提で続行」をユーザーに問う
-  3. UC→SPEC マッピング: uc-map の `spec_ids_confirmed` が false なら、usdm の affected_models から
-     BUC 粒度候補を生成してユーザー確認 → uc-map に永続化
+  3. UC→ATDD マッピング: uc-map の `atdd_confirmed` が false なら、usdm の
+     `requirements[].specifications[].affected_models[]`(type: buc)から BUC 粒度候補を生成し、
+     **全 SPEC 一覧(候補外も選択可)と併せて**ユーザー確認 → Scenario 名単位で uc-map に永続化
+     (state-schema.md「UC→ATDD マッピング」)
   4. has_design_system かつ design-event.yaml に UC の screen 結線が無い場合は警告し、
      「素の packages/ui で進める / design へ変更要求」を確認
+  5. `S1_uc-init.done.yaml` を書く(共通スキーマ。オーケストレータの write-set に含まれる)
+- **S3(contracts)も自分で実行する**: contracts.lock.yaml の inputs sha256 と現物を照合。
+  一致 → `S3_contracts.done.yaml` を書いて次へ / 不一致 → bootstrap サブエージェントを
+  `引数: "phase=contracts force=true"` で起動して再生成させ、lock 更新を確認してから done を書く
 - **S4/S5 の並列 dispatch**: uc-map の tiers を tier ごとに 1 サブエージェントで**同一メッセージ内で並列起動**。
-  S5 の Verifier は **Agent/Task ツールの model パラメータに verifier_model を渡す**
+  S5 の Verifier は **agent type に `distillery-impl:impl-verifier` を指定し、Agent/Task ツールの
+  model パラメータに verifier_model を渡す**(agent 定義の disallowedTools 制約を効かせるため)
 - **attempt 制御**: S5 の findings に blocker があれば `attempt_opened` イベントを記録して attempt++、
-  blocker のある tier の S4 を再実行。**S4 を再実行したら全 tier の S5 を再実行**(安全側)。
+  blocker のある tier の S4 を再実行。blocker の無かった tier には新 attempt に
+  **carry-forward done**(`carried_from` 付き)を自分で生成する(state-schema.md)。
+  **S4 を再実行したら全 tier の S5 を再実行**(安全側。S5 は carry-forward しない)。
   attempt が 3 を超えたら停止し、findings 要約と選択肢(続行 / 仕様ブロック / 手動介入)を提示
 - **S6/S7 の fail**: integration writer の分析を読み、原因 tier の S4 へ差し戻すか
   仕様問題(issues 起票済み)として S8 へ進むかを判断(迷ったらユーザーに提示)
@@ -74,10 +85,13 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 
 ## S9 完了とレビュー依頼
 
-1. review サブエージェント完了後、`review/index.html` を `open`(macOS)/ `xdg-open`(Linux)で
-   プレビュー表示(開けない環境ではパスを提示)
+1. review サブエージェント完了(`S9_review_generated.done.yaml`)後、`review/index.html` を
+   `open`(macOS)/ `xdg-open`(Linux)でプレビュー表示(開けない環境ではパスを提示)。
+   この時点の state は `awaiting_review`(**UC 完了の正は `review_approved` イベント**。
+   承認前に中断しても再開時は state-schema.md の awaiting_review 分岐でここへ戻る)
 2. 「承認(completed にする)/ 差し戻し(どの stage へ戻すか)」をユーザーに問う
-3. 承認 → `review_approved` イベント + status を completed に。lease を削除して完了報告
+3. 承認 → `review_approved` イベント + status を completed に。lease を削除して完了報告。
+   差し戻し → `review_rejected` イベント(payload に差し戻し先 stage)を記録して該当 stage から再実行
 4. 完了報告には S8 の変更要求・learnings・提案(skill / コンテキスト)の要約と、
    変更要求を dist-requirements へ渡す案内を含める
 

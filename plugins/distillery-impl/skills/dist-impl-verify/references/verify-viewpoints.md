@@ -6,8 +6,9 @@
 
 1. **API**: tier md の API 仕様表(メソッド/パス/リクエスト/レスポンス/エラー)と実装ハンドラを 1 行ずつ突合。
    `_api-summary.yaml` の endpoints[] と実装ルーティングの過不足を列挙
-2. **データ**: tier md のデータモデル変更表・`_model-summary.yaml` の tables[]/operations[] と、
-   実装のスキーマ・クエリを突合(カラム欠落・型不一致・未実装の operation)
+2. **データ**: tier md のデータモデル変更表・`_model-summary.yaml` の `tables[].operations[]` と、
+   実装のスキーマ・クエリを突合(カラム欠落・型不一致・未実装の operation)。
+   schema の正は `_cross-cutting/datastore/rdb-schema.yaml`(+ kvs)
 3. **ビジネスルール**: tier md のビジネスルール欄の各項が、コード上のどこで担保されるかを特定。
    担保箇所を特定できないルールは blocker 候補
 4. **テストとの整合**: tier BDD feature のシナリオが仕様の gherkin と一致しているか(意訳・改変されていないか)。
@@ -27,7 +28,7 @@
 
 ## 4. performance(パフォーマンス)
 
-- `_model-summary.yaml` の indexes_needed[] に対応するインデックス・クエリ設計
+- `_model-summary.yaml` の `tables[].indexes_needed[]` に対応するインデックス・クエリ設計
 - N+1 / 全件走査 / 不要な同期待ち。NFR(nfr-grade.yaml)に性能グレードがあればその水準で判定
 
 ## 5. operability(運用性)
