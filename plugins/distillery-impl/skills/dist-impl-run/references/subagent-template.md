@@ -86,7 +86,7 @@ contracts.lock.yaml と **bootstrap.done.yaml(P4 の記録と契約入力ハッ�
 | skill_name | distillery-impl:dist-impl-implement |
 | skill_args | ` 引数: "mode=uc-bdd uc_id={uc_id} config={...}"`(S7 は `mode=atdd`) |
 | write_set | features/uc/(S7 は features/atdd/)、その steps/、S6/S7 done |
-| additional_instructions | `tier 実装は変更禁止です。step definition の実装と統合実行のみ行い、fail した場合は「どの tier の何が仕様と食い違うか」を分析して結果を返してください(修正はオーケストレータが S4 差し戻しを判断します)。S7(atdd)では uc-map の atdd_scenarios に列挙された Scenario だけを実行してください(タグ/名前フィルタ。feature 全体を回さない)。` |
+| additional_instructions | `tier 実装は変更禁止です。step definition の実装と統合実行のみ行い、fail した場合は「どの tier の何が仕様と食い違うか」を分析して結果を返してください(修正はオーケストレータが S4 差し戻しを判断します)。S7(atdd)では uc-map の atdd_scenarios に列挙された Scenario だけを、一意タグ @atdd_{SPEC-ID}-{連番} の完全一致で選択実行してください(名前の部分一致フィルタ禁止・feature 全体を回さない)。実行された Scenario 件数が atdd_scenarios の件数と一致することを done の条件にしてください。` |
 
 ### S8: feedback
 

@@ -82,8 +82,9 @@ created_at: "2026-08-01T10:30:00+09:00"
 該当 done を無効化 / `review_approved` → UC を completed にする。`latest/` と食い違ったら events が正。
 
 **done の退避(invalidate)**: review_rejected・stale 検知などで done を無効化するときは、
-オーケストレータが `latest/{uc_id}/invalidated/{event_id}/` へ該当 done を移動し、
-`stage_invalidated` イベントを記録する(削除しない。この移動はオーケストレータの write-set に含まれる)。
+オーケストレータが**先に `stage_invalidated` イベント(payload: 対象 done 一覧・退避先)を追記し、
+その後に** `latest/{uc_id}/invalidated/{event_id}/` へ該当 done を移動する
+(「イベント追記 → latest 更新」の順序原則と同じ。削除しない。この移動はオーケストレータの write-set に含まれる)。
 
 **UC 完了の正は `review_approved` イベント**(S9 の done は「HTML 生成済み」まで)。
 S9_review_generated.done.yaml があり review_approved が無い状態 = `awaiting_review`。
@@ -193,10 +194,14 @@ generated_at: "..."
 
 - **S0 の完了判定は「全 Phase done/skipped」+「入力ハッシュの現物一致」の両方**。
   オーケストレータは起動時に inputs_sha256 の各入力を現物から再計算し、
-  不一致の入力に依存する Phase を invalidate する(依存表:
-  spec_event/arch → P2 以降すべて / usdm → P7 / design → P5 / openapi・asyncapi → P4)。
+  不一致の入力に依存する Phase を invalidate する(bootstrap.done.yaml の Phase 記録の
+  書き換えはオーケストレータの write-set に含まれる)。依存表:
+  spec_event/arch → P2 以降すべて / usdm → P7 / design → P5 / openapi・asyncapi → P4 /
+  **条件付き入力(asyncapi / kvs / object-storage / storybook-app)の存在自体の増減 →
+  P1・P2(capability と config の再判定)+ 対応する生成 Phase**。
   invalidate された Phase は bootstrap 再実行の対象になる
-- inputs_sha256 には spec_event / arch / usdm / design / openapi / asyncapi(存在するもの)を記録する
+- inputs_sha256 には spec_event / arch / usdm / design / openapi / asyncapi(存在するもの)に加え、
+  条件付き入力の**存在フラグ**(exists: true/false)を記録する(欠落 → 出現も検知するため)
 - bootstrap 再実行時は本ファイルの Phase 記録(invalidate 反映後)で skip を決める(冪等)
 
 ## run-lease.yaml(多重起動の拒否)
@@ -230,6 +235,9 @@ inputs:
   arch: {event_id: "...", sha256: "..."}
   design: {event_id: "...", sha256: "..."}   # has_design_system の場合のみ
   contracts_lock: {path: "docs/impl/latest/contracts.lock.yaml", sha256: "..."}   # 契約生成物の版
+                                       # ※ contracts_lock の変化による stale 判定は S4 以降にのみ適用する
+                                       #   (S3 が lock を正当に更新した直後に S1/S2 が巻き戻るのを防ぐ。
+                                       #    S3 は lock 更新後にこのエントリを更新する)
   ui_imported: {path: "packages/ui/.imported.yaml", sha256: "..."}               # has_design_system のみ
   dev_rules_sha256: "..."
 lineage_ok: true                       # spec-event の trigger_event と arch/design の event_id 整合
@@ -310,7 +318,7 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
 
 | 書き手 | 書いてよい場所 |
 |---|---|
-| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、carry-forward done の生成、`invalidated/` への done 退避、git commit |
+| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、carry-forward done の生成、`invalidated/` への done 退避、git commit |
 | S0 bootstrap | 実装リポ全体(初期生成)、latest/ の config/uc-map/lock、`bootstrap.done.yaml` |
 | S4 Implementer(tier 別) | 自 tier の dir 配下、`attempt-{n}/S4_*.{自tier}.done.yaml`、issues/ |
 | S5 Verifier(tier 別) | `attempt-{n}/S5_*.{自tier}.done.yaml`、`.findings.yaml` のみ(**実装コードの修正禁止**) |

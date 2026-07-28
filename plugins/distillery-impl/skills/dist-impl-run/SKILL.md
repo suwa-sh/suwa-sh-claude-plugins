@@ -24,10 +24,13 @@ description: >
 
 1. **lease 確認**: `docs/impl/latest/run-lease.yaml` が存在すれば起動を拒否して報告
    (stale 判定は state-schema.md。剥がすのはユーザー確認後)
-2. **S0 判定**: `docs/impl/latest/bootstrap.done.yaml` の**全 Phase が done/skipped** でなければ
-   S0(bootstrap)をサブエージェントで実行(config/uc-map の存在では判定しない — P2 で中断した
-   S0 を完了扱いしないため)。bootstrap の確認推奨項目(tier→dir / datastore_owner / 言語・コマンド)は
-   ユーザーに中継して確定
+2. **S0 判定**: `docs/impl/latest/bootstrap.done.yaml` の**全 Phase が done/skipped、かつ
+   inputs_sha256 の各入力を現物から再計算して一致**していれば skip。不一致の入力があれば
+   state-schema.md の依存表に従い該当 Phase を invalidate(bootstrap.done.yaml の Phase 記録を
+   自分で書き換える — オーケストレータの write-set に含まれる)してから S0(bootstrap)を
+   サブエージェントで実行(config/uc-map の存在では判定しない — P2 で中断した S0 を完了扱いしないため)。
+   bootstrap の確認推奨項目(tier→dir / **kind** / datastore_owner / 言語・コマンド)は
+   ユーザーに中継して確定(kind が未確定・不正値のままなら S0 を完了にしない)
 3. **UC 解決**: 引数を uc-map と照合(照合は NFC 正規化後)。
    完全修飾・uc_id・一意名のみ受理。複数一致は候補一覧を提示して選ばせる
 4. **model 解決**: implementer_model / verifier_model を解決し status.yaml の `resolved_models` に記録。
@@ -59,7 +62,9 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
   5. `S1_uc-init.done.yaml` を書く(共通スキーマ。オーケストレータの write-set に含まれる)
 - **S3(contracts)も自分で実行する**: contracts.lock.yaml の inputs sha256 と現物を照合。
   一致 → `S3_contracts.done.yaml` を書いて次へ / 不一致 → bootstrap サブエージェントを
-  `引数: "phase=contracts force=true"` で起動して再生成させ、lock 更新を確認してから done を書く
+  `引数: "phase=contracts force=true"` で起動して再生成させ、lock 更新を確認してから done を書く。
+  **lock を更新したら input-manifest の contracts_lock エントリも更新する**(contracts_lock の
+  変化による stale 判定は S4 以降にのみ適用 — state-schema.md。S1/S2 を巻き戻さない)
 - **S4/S5 の並列 dispatch**: uc-map の tiers を tier ごとに 1 サブエージェントで**同一メッセージ内で並列起動**。
   S5 の Verifier は **agent type に `distillery-impl:impl-verifier` を指定し、Agent/Task ツールの
   model パラメータに verifier_model を渡す**(agent 定義の disallowedTools 制約を効かせるため)
