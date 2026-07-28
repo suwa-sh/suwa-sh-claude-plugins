@@ -18,6 +18,11 @@
       "name": "ddd",
       "source": "./plugins/ddd",
       "description": "ドメイン駆動設計の実装常用(値オブジェクト/振る舞いを持ったenum/集約/貧血回避)とアーキテクチャ設計(境界づけられたコンテキスト/サブドメイン/コンテキストマップ)の2スキル"
+    },
+    {
+      "name": "distillery-impl",
+      "source": "./plugins/distillery-impl",
+      "description": "distillery の仕様書を入力に実装を回す実装ハーネス: 契約駆動 codegen + 4 段テスト先行(ATDD/UC BDD/tier BDD/TDD) + tier 並走実装 + 別モデル Verifier の反証 + ファイル駆動の冪等再開"
     }
   ]
 }

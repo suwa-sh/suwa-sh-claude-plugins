@@ -1,0 +1,7 @@
+{
+  "name": "distillery-impl",
+  "description": "Implementation harness for distillery specs: contract-driven codegen, 4-layer test-first scaffolding (ATDD/UC BDD/tier BDD/TDD), parallel tier implementation with independent adversarial verification, and file-driven idempotent resume.",
+  "author": {
+    "name": "suwa-sh"
+  }
+}
