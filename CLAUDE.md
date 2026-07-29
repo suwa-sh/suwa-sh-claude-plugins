@@ -23,17 +23,20 @@
 
 1. **別ディレクトリで動作確認** — `/private/tmp/<plugin>-test/` 等でスキルを実行
 2. **キャッシュの変更をリポジトリに取り込む** — 動作確認中に `~/.claude/plugins/cache/` 配下のスキルファイルを直接修正した場合、その差分を本リポジトリの `plugins/<plugin>/` に反映する
-3. **実行結果をサンプルに反映**（サンプルがあるプラグインのみ） — テスト出力からドキュメント類（yaml, md, tsv）を `samples/<plugin>/` にコピー（storybook-app, node_modules 等のビルド成果物は除外）
+3. **実行結果をサンプルに反映**（サンプルがあるプラグインのみ） — テスト出力からドキュメント類（yaml, md, tsv）を `samples/<plugin>/` にコピー（node_modules・storybook build 出力等のビルド成果物は除外。手書き・生成ソースコード（storybook-app/src 等）は同梱してよい）
 4. **ドキュメント不足の見直し** — README.md のスキル名・コマンド例・機能説明が最新のスキル構成と一致しているか確認
-5. **コミット＆プッシュ** — Conventional Commits 規約でコミットし、push
-6. **マーケットプレイス更新＆プラグイン再インストール**:
+5. **version bump** — 変更した plugin の `plugins/<plugin>/.claude-plugin/plugin.json` の `version`（semver）を上げる。
+   **bump はリリース手順の一部**（install cache がバージョン名ディレクトリになるため、bump を忘れると古い cache が使われ続ける）。
+   version の正本はこのファイルのみ（SKILL.md 等へ埋め込まない。skill は実行時に `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` から読む）
+6. **コミット＆プッシュ** — Conventional Commits 規約でコミットし、push
+7. **マーケットプレイス更新＆プラグイン再インストール**:
    ```bash
    ~/.local/bin/claude plugin marketplace update suwa-sh-claude-plugins
    ~/.local/bin/claude plugin uninstall <プラグイン名>
    ~/.local/bin/claude plugin install <プラグイン名>@suwa-sh-claude-plugins
    ```
-   - `install` のみだと "already installed" で no-op になり、バージョンハッシュが更新されない。**必ず `uninstall` → `install` の順で再インストールする**
-7. **バージョン確認** — `~/.local/bin/claude plugin list` で該当プラグインのバージョン（コミットハッシュ）が push したコミットと一致することを確認する
+   - `install` のみだと "already installed" で no-op になり、バージョンが更新されない。**必ず `uninstall` → `install` の順で再インストールする**
+8. **バージョン確認** — `~/.local/bin/claude plugin list`（または `~/.claude/plugins/installed_plugins.json`）で該当プラグインの version が bump した semver と一致し、gitCommitSha が push したコミットと一致することを確認する
 
 ### コミット規約
 
