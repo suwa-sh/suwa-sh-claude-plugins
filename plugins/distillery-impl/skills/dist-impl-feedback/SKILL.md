@@ -9,7 +9,15 @@ description: >
 
 # dist-impl-feedback
 
-引数: `uc_id={id} config={impl-config.yaml へのパス}`
+引数: `uc_id={id} config={impl-config.yaml へのパス} [mode=initial|refresh]`(既定 initial)
+
+- `mode=initial` — S8 として実行。issues / findings から変更要求・learnings をドラフトする(下記手順)
+- `mode=refresh` — **S9 ヒトレビュー後の最終化**。`review/review-notes.md`(承認対話で出た指摘・
+  条件・追加疑義)を読み、既存の変更要求を更新する: ①各項目を 仕様起因 / 実装起因 / 運用条件 に分類
+  ②既存変更要求の内容・severity を修正、新規は追加、不要になったものは本文に撤回マーカーを付ける
+  (ファイル削除はしない)③`_as-built-summary.md` に「ヒトレビューでの確定事項」節を追記
+  ④`S8_feedback.done.yaml` に `refreshed_at` と更新後件数を追記。
+  変更要求は refresh を経たものが **dist-requirements へ渡す確定版**になる
 
 ## 入力
 
@@ -62,5 +70,7 @@ learnings のうち一般化できるものを 2 種に分けて**提案ファ�
 ## 完了報告
 
 変更要求 N 件(うち blocker M 件)/ learnings K 件 / 提案 2 種の有無とパス。
+`mode=refresh` では更新・追加・撤回の内訳も報告する。
 変更要求があれば「`distillery:dist-requirements` に change-requests/ のファイルパスを渡して
-差分パイプラインを実行してください」の案内文を含める。
+差分パイプラインを実行してください」の案内文を含める(通常は S9 承認後の refresh を経た
+確定版を渡す — ドラフト段階で渡さない)。

@@ -39,6 +39,7 @@ docs/impl/
       change-requests/{ts}_{slug}.md
       learnings/{ts}_{slug}.md
       review/index.html
+      review/review-notes.md          # S9 承認対話の要点(オーケストレータが追記。S8 refresh の入力)
 ```
 
 - `event_id` の形式は distillery と同じ `{YYYYMMDD_HHMMSS}_{summary_slug}`(`date +%Y%m%d_%H%M%S` で取得)
@@ -89,6 +90,9 @@ impl-config.yaml / uc-map.yaml の該当項目を確定値で上書き / `review
 オーケストレータが**先に `stage_invalidated` イベント(payload: 対象 done 一覧・退避先)を追記し、
 その後に** `latest/{uc_id}/invalidated/{event_id}/` へ該当 done を移動する
 (「イベント追記 → latest 更新」の順序原則と同じ。削除しない。この移動はオーケストレータの write-set に含まれる)。
+
+**S8 refresh**(S9 承認後のヒトレビュー反映)は `stage_completed`(stage: S8、payload.mode:
+refresh)を追記し、`S8_feedback.done.yaml` に `refreshed_at` を追記する(done の作り直しはしない)。
 
 **UC 完了の正は `review_approved` イベント**(S9 の done は「HTML 生成済み」まで)。
 S9_review_generated.done.yaml があり review_approved が無い状態 = `awaiting_review`。
@@ -334,7 +338,7 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
 
 | 書き手 | 書いてよい場所 |
 |---|---|
-| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、carry-forward done の生成、`invalidated/` への done 退避、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、git commit |
+| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、carry-forward done の生成、`invalidated/` への done 退避、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、`review/review-notes.md`、git commit |
 | S0 bootstrap | 実装リポ全体(初期生成)、latest/ の config/uc-map/lock、`bootstrap.done.yaml` |
 | S4 Implementer(tier 別) | 自 tier の dir 配下、`attempt-{n}/S4_*.{自tier}.done.yaml`、issues/ |
 | S5 Verifier(tier 別) | `attempt-{n}/S5_*.{自tier}.done.yaml`、`.findings.yaml` のみ(**実装コードの修正禁止**) |

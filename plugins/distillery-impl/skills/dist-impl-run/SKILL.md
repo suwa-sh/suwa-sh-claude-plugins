@@ -110,13 +110,20 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    `open`(macOS)/ `xdg-open`(Linux)でプレビュー表示(開けない環境ではパスを提示)。
    この時点の state は `awaiting_review`(**UC 完了の正は `review_approved` イベント**。
    承認前に中断しても再開時は state-schema.md の awaiting_review 分岐でここへ戻る)
-2. 「承認(completed にする)/ 差し戻し(どの stage へ戻すか)」をユーザーに問う
-3. 承認 → `review_approved` イベント + status を completed に。lease を削除して完了報告。
+2. 「承認(completed にする)/ 差し戻し(どの stage へ戻すか)」をユーザーに問う。
+   **対話で出た指摘・条件・追加疑義の要点は、承認・差し戻しのどちらでも
+   `review/review-notes.md` に追記する**(オーケストレータの write-set。無ければ「特記なし」)
+3. 承認 → `review_approved` イベントを記録。**review-notes に実質的な内容があれば、
+   S8 を `mode=refresh` で再実行し、ヒトレビューの結果を変更要求へ反映して最終化する**
+   (S8_feedback.done.yaml の `refreshed_at` を確認)。その後 status を completed に。
+   lease を削除して完了報告。
    差し戻し → `review_rejected` イベント(payload に差し戻し先 stage)を記録し、
    差し戻し先以降の done を `invalidated/{event_id}/` へ退避(`stage_invalidated` イベント。
-   state-schema.md「done の退避」)してから該当 stage を再実行
-4. 完了報告には S8 の変更要求・learnings・提案(skill / コンテキスト)の要約と、
-   変更要求を dist-requirements へ渡す案内を含める
+   state-schema.md「done の退避」)してから該当 stage を再実行(差し戻し理由は review-notes 経由で
+   次回の S8/S9 に引き継がれる)
+4. 完了報告には S8 の変更要求(refresh 済みの**確定版**)・learnings・提案(skill / コンテキスト)の
+   要約と、確定版 change-requests/ を dist-requirements へ渡して差分パイプラインを実行する案内を含める
+   (実装 → as-built → ヒトレビュー確定 → 仕様更新、の還流サイクルを閉じる)
 
 ## 中断・失敗時
 

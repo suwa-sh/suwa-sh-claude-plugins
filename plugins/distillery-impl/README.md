@@ -15,20 +15,36 @@ distillery は「要望テキスト → USDM 要件 → RDRA → 仕様書(ユ�
 
 ## パイプライン
 
-```
-S0 bootstrap      実装リポ骨格 + 契約 codegen + ATDD feature 生成(冪等)
-S1 uc-init        UC 解決・入力の固定(sha256)・UC→SPEC 対応の確認
-S2 test-scaffold  4 段テストの足場と red baseline
-S3 contracts      契約の鮮度照合(stale なら再生成)
-S4 tier-impl      tier 並走実装(ゲート 1〜4: format / lint / TDD / tier BDD)
-S5 verify         別モデル Verifier の反証(blocker → S4 へ差し戻し、最大 3 周)
-S6 uc-bdd         ゲート 5: E2E 完了条件を全 tier 結合で実行
-S7 atdd           ゲート 6: 受け入れ基準の実行
-S8 feedback       as-built 仕様サマリ + 変更要求・learnings・改善提案の出力
-S9 review         ゼロ知識で合否判断できる HTML レポート → ユーザー承認
+```mermaid
+flowchart TD
+    S0["S0 bootstrap<br/>実装リポ骨格 + 契約 codegen + ATDD feature 生成(冪等)"]
+    S1["S1 uc-init 💬<br/>UC 解決・入力の固定・UC→SPEC 対応のユーザー確認"]
+    S2["S2 test-scaffold<br/>4 段テストの足場と red baseline"]
+    S3["S3 contracts<br/>契約の鮮度照合(stale なら再生成)"]
+    S4["S4 tier-impl(tier 並走)<br/>ゲート 1〜4: format / lint / TDD / tier BDD"]
+    S5["S5 verify(tier 並走)<br/>別モデル Verifier が 7 観点で反証"]
+    S6["S6 uc-bdd<br/>ゲート 5: E2E 完了条件を全 tier 結合で実行"]
+    S7["S7 atdd<br/>ゲート 6: 受け入れ基準の選択実行"]
+    S8["S8 feedback<br/>as-built 仕様サマリ + 変更要求ドラフト + learnings"]
+    S9["S9 review 💬<br/>ゼロ知識 HTML でヒトレビュー(承認対話)"]
+    REFRESH["S8 refresh<br/>ヒトレビューのやりとり(review-notes)を変更要求へ反映・最終化"]
+    DONE(["completed"])
+    DIST[["distillery<br/>dist-requirements 差分パイプライン"]]
+
+    S0 --> S1 --> S2 --> S3 --> S4 --> S5
+    S5 -->|"blocker あり: attempt++(最大 3)<br/>無傷 tier は carry-forward"| S4
+    S5 -->|blocker なし| S6
+    S6 -->|"fail: 原因 tier へ差し戻し<br/>(仕様不整合は issues に記録して続行)"| S4
+    S6 --> S7 --> S8 --> S9
+    S9 -->|"差し戻し(stage 指定)"| S4
+    S9 -->|承認| REFRESH
+    REFRESH --> DONE
+    REFRESH -.->|確定版の変更要求| DIST
+    DIST -.->|仕様更新 → 次サイクル| S0
 ```
 
-状態ファイル・対話ポイント・fail 時の分岐まで含めた詳細図解は [docs/workflow.html](docs/workflow.html)(ブラウザで開いてください)。
+💬 = ユーザー対話ポイント。破線 = 仕様への還流(実装 → as-built → ヒトレビュー確定 → distillery で仕様更新 → 次サイクル)。
+状態ファイル・fail 時の分岐まで含めた詳細図解は [docs/workflow.html](docs/workflow.html)(ブラウザで開いてください)。
 
 ## スキル一覧
 
