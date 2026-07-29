@@ -13,6 +13,7 @@
 ```markdown
 ---
 source: distillery-impl
+status: active          # active | withdrawn(S8 refresh で撤回。集計・受け渡しから除外)
 uc_id: "3f9a2b1c"
 business: "貸出管理業務"
 buc: "貸出管理フロー"

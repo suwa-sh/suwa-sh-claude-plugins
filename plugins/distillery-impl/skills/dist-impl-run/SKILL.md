@@ -113,10 +113,14 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 2. 「承認(completed にする)/ 差し戻し(どの stage へ戻すか)」をユーザーに問う。
    **対話で出た指摘・条件・追加疑義の要点は、承認・差し戻しのどちらでも
    `review/review-notes.md` に追記する**(オーケストレータの write-set。無ければ「特記なし」)
-3. 承認 → `review_approved` イベントを記録。**review-notes に実質的な内容があれば、
-   S8 を `mode=refresh` で再実行し、ヒトレビューの結果を変更要求へ反映して最終化する**
-   (S8_feedback.done.yaml の `refreshed_at` を確認)。その後 status を completed に。
-   lease を削除して完了報告。
+3. 承認の扱い(**`review_approved` イベントは必ず最後に記録する** — reducer 上これが
+   UC completed の正のため、先に記録すると中断時に refresh が永久にスキップされる):
+   - 対話で指摘・条件が出た場合: S8 を `mode=refresh` で再実行(S8_feedback.done.yaml の
+     `refreshed_at` を確認)→ **更新内容の要約(変更要求の更新・追加・撤回の内訳)をユーザーに
+     再提示して最終承認を得る** → `review_approved` イベントを記録
+   - 特記なしの場合: refresh は不要。そのまま `review_approved` イベントを記録
+   - どちらの場合も**確定版 = review_approved 時点の change-requests**(status: active のもの)。
+   イベント記録後に status を completed にし、lease を削除して完了報告。
    差し戻し → `review_rejected` イベント(payload に差し戻し先 stage)を記録し、
    差し戻し先以降の done を `invalidated/{event_id}/` へ退避(`stage_invalidated` イベント。
    state-schema.md「done の退避」)してから該当 stage を再実行(差し戻し理由は review-notes 経由で

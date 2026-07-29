@@ -49,8 +49,9 @@ npx skills add suwa-sh/suwa-sh-claude-plugins --all
 
 - 各 plugin のバージョン正本は `plugins/<name>/.claude-plugin/plugin.json` の `version`(semver)のみ。
   SKILL.md 等への埋め込みはしない(skill は実行時に `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` から読める)
-- **リリース手順**: 変更を commit → `version` を bump → push → `claude plugin marketplace update` →
-  **`claude plugin uninstall` → `install`**(install のみは no-op)。
+- **リリース手順**: `version` を bump → commit → push → `claude plugin marketplace update` →
+  **`claude plugin uninstall` → `install`**(install のみは no-op)。作業手順の正本は CLAUDE.md
+  「プラグイン開発プロセス」。
   version を宣言した plugin は install cache がバージョン名ディレクトリになるため、**bump を忘れると
   古い cache が使われ続ける**(bump がリリースの一部)
 - 成果物への provenance: 生成物(distillery-impl の done ファイル等)には `{skill}@{version}` /

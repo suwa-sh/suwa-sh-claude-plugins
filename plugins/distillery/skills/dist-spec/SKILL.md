@@ -11,7 +11,7 @@ description: >
   全体横断の UX/UI デザイン・データ可視化・共通コンポーネント・OpenAPI/AsyncAPI を _cross-cutting/ に出力し、
   データストアレイアウト（RDB/KVS/Object Storage）を YAML で定義する。
   要件トレーサビリティマトリクスで網羅率を報告する。
-  最終ステップで Storybook Story（ページ単位 + 共通コンポーネント）を生成する。
+  Storybook Story 生成は後段の spec-stories スキルが担当する。
   このスキルは以下のキーワードで発動する:
   「Spec を生成」「仕様書を作成」「OpenAPI を生成」「AsyncAPI」「UC 仕様」
   「BUC 仕様」「ユースケース仕様」「UX 設計」「UI 設計」「データ可視化仕様」
@@ -562,7 +562,8 @@ Step6 の機械検証は構文・必須項目しか見ない。「検証は通�
    - 入力の正: `docs/usdm/latest/` / `docs/rdra/latest/` / `docs/arch/latest/` / `docs/design/latest/`
    - 観点（後工程の実装ハーネス distillery-impl の実走で「仕様起因の手戻り」になった実例に基づく）:
      - ①**トレーサビリティ**: 全 UC が USDM の SPEC / acceptance_criteria に遡れるか。
-       use_cases[] に機械可読の対応が出力されているか
+       機械可読の対応フィールドが spec-event スキーマに定義されている場合はその出力を検証し、
+       **未定義の場合は欠落 finding にせず「スキーマ拡張の変更要求」として報告する**
      - ②**依存の宣言**: tier md の UI ロジック・操作フローが参照する API・画面遷移先が、
        その UC の `_api-summary.yaml` か他 UC のどこかに宣言されているか
        （**cross-UC 依存の暗黙参照**を検出 — 未宣言だと実装時に「参照先が存在しない」で統合が落ちる）
@@ -576,8 +577,11 @@ Step6 の機械検証は構文・必須項目しか見ない。「検証は通�
    `suggested_fix`。`_` prefix のためバリデーション・スナップショットの UC 走査対象外）
 3. blocker / major を修正し（修正は生成側 = 本スキルが行う。レビューアは修正禁止）、
    Step6 の機械検証を再実行してから次ラウンドへ
-4. **収束条件**: blocker 0 かつ新規 major 0、または 3 ラウンド到達（残 findings は
-   確認推奨項目としてユーザーに返す）。minor の修正は任意
+4. **収束条件**: blocker 0 かつ **未解決 major 0**(前ラウンドからの繰越を含む。
+   意図的に見送る major は resolution: deferred と理由を findings に記録した場合のみ除外可)、
+   または 3 ラウンド到達(残 findings は確認推奨項目としてユーザーに返す)。minor の修正は任意。
+   round-{n}.yaml のトップレベルは `{round: n, findings: [...], resolved: [{id, resolution}]}` とし、
+   finding の id はラウンドをまたいで引き継ぐ(再掲は同 id)
 
 ### Step7: Markdown 生成
 
@@ -594,7 +598,8 @@ node <skill-path>/scripts/generateDatastoreMd.js docs/specs/events/{event_id}/_c
 **読み込み:** `references/specs/spec-snapshot-update.md`
 
 1. `docs/specs/latest/` を完全削除する
-2. `docs/specs/events/{event_id}/` の全内容を `docs/specs/latest/` にコピーする（`decisions/` ディレクトリを含む）
+2. `docs/specs/events/{event_id}/` の全内容を `docs/specs/latest/` にコピーする（`decisions/` ディレクトリを含む。
+   **`_review/` はレビュー作業ログのため latest へコピーしない** — イベント側にのみ残す）
 3. `docs/specs/latest/README.md` を生成する（UC 一覧インデックス）
 
 ### Step9: Storybook Story 生成は spec-stories スキルで別途実施する
@@ -634,7 +639,7 @@ spec-stories スキルの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/dist-spec-stori
 ## 設計方針
 
 1. **全体横断 UX/UI 設計を UC Spec 生成の前に確定する（Step2 → Step3）**: Step2 で UX/UI/共通コンポーネント設計を先行し、Step3 の UC Spec 生成で一貫した設計方針を参照する
-2. **Presentation 系ティアはロジックとコンポーネント設計まで（Step3）、Story 実装は Step9**: Step3 では design-event.yaml のコンポーネントを参照した設計ドキュメントを生成し、Step9 で実際の Storybook Story として実装する
+2. **Presentation 系ティアはロジックとコンポーネント設計まで（Step3）、Story 実装は spec-stories スキル**: Step3 では design-event.yaml のコンポーネントを参照した設計ドキュメントを生成し、後段の spec-stories スキルが実際の Storybook Story として実装する
 3. **OpenAPI/AsyncAPI は全 UC 統合で _cross-cutting/ に生成**: Contract First 開発のために全エンドポイント・全イベントを1ファイルに集約する。スキーマ定義、リクエスト/レスポンス型を実装可能な品質で具体的に記述する
 4. **全体横断 Spec は _cross-cutting/ に配置**: UC 単位 Spec とは異なる粒度で、システム全体を俯瞰する設計情報を提供する
 5. **RDRA モデルから導出できる範囲で記述**: 推測で仕様を追加しない
@@ -642,7 +647,7 @@ spec-stories スキルの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/dist-spec-stori
 
 ## 実装上の注意事項
 
-`references/impl-notes.md` を参照。subagent 分割指針、Step4e 必須（共通コンポーネント UC フィードバック省略禁止）、共通コンポーネント先行（Step9）、YAML 生成方法の4項目。
+`references/impl-notes.md` を参照。subagent 分割指針、Step4e 必須（共通コンポーネント UC フィードバック省略禁止）、共通コンポーネント先行（spec-stories）、YAML 生成方法の4項目。
 
 ## References
 

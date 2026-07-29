@@ -91,8 +91,10 @@ impl-config.yaml / uc-map.yaml の該当項目を確定値で上書き / `review
 その後に** `latest/{uc_id}/invalidated/{event_id}/` へ該当 done を移動する
 (「イベント追記 → latest 更新」の順序原則と同じ。削除しない。この移動はオーケストレータの write-set に含まれる)。
 
-**S8 refresh**(S9 承認後のヒトレビュー反映)は `stage_completed`(stage: S8、payload.mode:
-refresh)を追記し、`S8_feedback.done.yaml` に `refreshed_at` を追記する(done の作り直しはしない)。
+**S8 refresh**(S9 承認対話のヒトレビュー反映。`review_approved` の**前**に実行する)は
+`stage_completed`(stage: S8、payload: `{mode: refresh, refreshed_at, updated: N, added: M,
+withdrawn: K}`)を追記し、`S8_feedback.done.yaml` に `refreshed_at` と更新後件数を追記する
+(done の作り直しはしない。latest はこの payload から再構築可能)。
 
 **UC 完了の正は `review_approved` イベント**(S9 の done は「HTML 生成済み」まで)。
 S9_review_generated.done.yaml があり review_approved が無い状態 = `awaiting_review`。
@@ -209,7 +211,7 @@ inputs_sha256:                         # 全入力のハッシュ(現物と比�
   openapi: "..."
   asyncapi: "..."                      # has_asyncapi の場合のみ
 generated_at: "..."
-generated_by: "distillery-impl@0.1.0"  # plugin version(provenance。plugin.json から実行時に読む)
+generated_by: "distillery-impl@{plugin_version}"  # provenance。version は plugin.json から実行時に読む(例をリテラル転記しない)
 ```
 
 - **S0 の完了判定は「全 Phase done/skipped」+「入力ハッシュの現物一致」の両方**。
@@ -308,7 +310,7 @@ result: pass
 gates: {format: pass, lint: pass, tdd: pass, bdd_tier: pass}   # S4 のみ
 carried_from: "attempt-1"     # carry-forward の場合のみ(下記)
 completed_at: "..."
-completed_by: "dist-impl-implement@0.1.0"   # 書いた skill 名 + plugin version(provenance)。
+completed_by: "dist-impl-implement@{plugin_version}"   # 書いた skill 名 + plugin version(provenance)。
                               # version は ${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json の
                               # version を実行時に読む(SKILL.md への埋め込みはしない — 正本は plugin.json のみ)
 ```

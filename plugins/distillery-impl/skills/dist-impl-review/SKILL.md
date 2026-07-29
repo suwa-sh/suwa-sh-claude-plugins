@@ -23,7 +23,8 @@ description: >
 ## 入力(すべて docs/impl/latest/{uc_id}/ 配下)
 
 status.yaml / input-manifest.yaml / stages/(done・findings)/ issues/ / change-requests/ / learnings/
-と uc-map.yaml の該当行。ゲートの実測値は done ファイルの gates 記録から取る(再実行はしない)。
+と uc-map.yaml の該当行。`review/review-notes.md` が存在する場合(差し戻し後の再生成)は
+前回レビューの指摘と対応状況を「反証と解決」節に含める。ゲートの実測値は done ファイルの gates 記録から取る(再実行はしない)。
 
 ## 手順
 

@@ -64,14 +64,19 @@ spec スキルの Step9 として実装されていたものを独立スキル�
 7. **反証レビューループ（宣言と実体の全数突合）**: 生成とは別コンテキストの反証専用サブエージェント
    （修正禁止）にレビューさせ、指摘を修正して収束させる
    - 突合対象:
-     - ① design-event.yaml の `screens[]`（uc / story / variants）と `src/stories/` の実ファイル・
-       export の**全数一致**（宣言だけあって実体が無い Story を検出。後工程の実装ハーネス
-       distillery-impl は「src/ の実ファイル列挙が正」で取り込むため、宣言超過はそのまま実装の欠品になる）
+     - ① **「latest の design-event.yaml + 手順 8 で追加予定の差分（screens / components）」**と
+       `src/stories/` の実ファイル・export の**全数一致**（レビューは手順 8 のイベント記録より前に走るため、
+       新規分は「追加予定の差分リスト」を比較対象に含める。宣言だけあって実体が無い Story を検出 —
+       後工程の実装ハーネス distillery-impl は「src/ の実ファイル列挙が正」で取り込むため、
+       宣言超過はそのまま実装の欠品になる）
      - ② tier-{tier_id}.md のコンポーネント設計（Props / 状態 / バリアント）と Story 実装の一致
      - ③ `components`（ui / domain / common）の宣言と `src/components/` 実ファイルの全数一致
    - findings（severity: blocker / major / minor）の blocker / major は修正し、
-     ビルド検証・画面確認を再実行してから再レビュー
-   - 収束条件: blocker 0 かつ新規 major 0、または 3 ラウンド到達（残 findings は完了報告に含める）
+     ビルド検証・画面確認を再実行してから再レビュー。findings はラウンドごとに作業ファイルとして
+     保持し、手順 8 のイベントディレクトリに `_review/round-{n}.yaml` として記録する
+     （トップレベル `{round, findings, resolved}`、id はラウンド跨ぎで引き継ぐ）
+   - 収束条件: blocker 0 かつ**未解決 major 0**（繰越含む。意図的な見送りは resolution: deferred と
+     理由の記録が条件）、または 3 ラウンド到達（残 findings は完了報告に含める）
    - 実例（distillery-impl の実走で検出）: design-event.yaml が 16 画面・19 コンポーネントを
      宣言しながら storybook-app の実体が 4 ファイルしか無く、実装 tier が着手直後にブロックした
 8. **design イベント記録（ハイブリッド方式）**: design スキルのイベントソーシングルールに従う。storybook-app/ は全量再ビルド対象のため events/ には含めない:

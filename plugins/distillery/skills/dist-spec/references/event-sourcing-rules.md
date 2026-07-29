@@ -49,6 +49,9 @@ docs/specs/
     decisions/                     # 設計判断記録（Decision Records）
       spec-decision-001.yaml
       ...
+    _review/                       # Step6.5 反証レビューの findings（round-N.yaml。作業ログ —
+      round-1.yaml                 #   latest へはコピーしない）
+      ...
     _changes.md                    # 変更サマリ（追加/変更/削除 UC 一覧）
     spec-event.yaml                # メタデータ
     spec-event.md                  # Markdown 概要

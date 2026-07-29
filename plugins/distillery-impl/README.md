@@ -36,14 +36,16 @@ flowchart TD
     S5 -->|blocker なし| S6
     S6 -->|"fail: 原因 tier へ差し戻し<br/>(仕様不整合は issues に記録して続行)"| S4
     S6 --> S7 --> S8 --> S9
-    S9 -->|"差し戻し(stage 指定)"| S4
-    S9 -->|承認| REFRESH
-    REFRESH --> DONE
+    S9 -->|"差し戻し(指定 stage へ。図は代表で S4)"| S4
+    S9 -->|"承認(指摘なし)"| DONE
+    S9 -->|"承認(指摘あり)"| REFRESH
+    REFRESH -->|"更新要約の再提示 → 最終承認"| DONE
     REFRESH -.->|確定版の変更要求| DIST
     DIST -.->|仕様更新 → 次サイクル| S0
 ```
 
 💬 = ユーザー対話ポイント。破線 = 仕様への還流(実装 → as-built → ヒトレビュー確定 → distillery で仕様更新 → 次サイクル)。
+図は簡略化しています(S7 fail の分岐・blocked_on_spec 終了・S9 差し戻し先の任意 stage 指定は SKILL.md 本文が正)。
 状態ファイル・fail 時の分岐まで含めた詳細図解は [docs/workflow.html](docs/workflow.html)(ブラウザで開いてください)。
 
 ## スキル一覧

@@ -11,13 +11,17 @@ description: >
 
 引数: `uc_id={id} config={impl-config.yaml へのパス} [mode=initial|refresh]`(既定 initial)
 
-- `mode=initial` — S8 として実行。issues / findings から変更要求・learnings をドラフトする(下記手順)
+- `mode=initial` — S8 として実行。issues / findings から変更要求・learnings をドラフトする(下記手順)。
+  **`review/review-notes.md` が存在する場合(S9 差し戻し後の再実行)は必ず入力に含め、
+  差し戻し理由・指摘をドラフトに反映する**
 - `mode=refresh` — **S9 ヒトレビュー後の最終化**。`review/review-notes.md`(承認対話で出た指摘・
   条件・追加疑義)を読み、既存の変更要求を更新する: ①各項目を 仕様起因 / 実装起因 / 運用条件 に分類
-  ②既存変更要求の内容・severity を修正、新規は追加、不要になったものは本文に撤回マーカーを付ける
-  (ファイル削除はしない)③`_as-built-summary.md` に「ヒトレビューでの確定事項」節を追記
+  ②既存変更要求の内容・severity を修正、新規は追加、不要になったものは front matter を
+  `status: withdrawn` に変更する(ファイル削除はしない。件数集計・blocker 判定・
+  dist-requirements への受け渡しから withdrawn は除外)③`_as-built-summary.md` に「ヒトレビューでの確定事項」節を追記
   ④`S8_feedback.done.yaml` に `refreshed_at` と更新後件数を追記。
-  変更要求は refresh を経たものが **dist-requirements へ渡す確定版**になる
+  **dist-requirements へ渡す確定版は「review_approved 時点の change-requests(status: active)」**
+  (対話で指摘が出た場合は refresh を経てから承認される。特記なしなら initial のまま確定)
 
 ## 入力
 

@@ -11,7 +11,7 @@
 - common-components.md 生成後に UC の tier-frontend-*.md へのフィードバックを**省略してはならない**
 - 省略すると UC Spec と共通コンポーネント設計が乖離し、Storybook 実装時に不整合が発生する
 
-## Step9: 共通コンポーネント Story を先に作る
+## 共通コンポーネント Story を先に作る（spec-stories スキル。旧 Step9）
 
 - ページ Story 生成の**前に** common-components.md の共通コンポーネント（StatusBadge, EmptyState, LoadingSkeleton, ErrorBanner, ConfirmActionModal 等）を TSX + Story として実装する
 - ページ Story から共通コンポーネントを参照できるようにする
