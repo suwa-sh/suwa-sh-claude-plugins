@@ -209,6 +209,7 @@ inputs_sha256:                         # 全入力のハッシュ(現物と比�
   openapi: "..."
   asyncapi: "..."                      # has_asyncapi の場合のみ
 generated_at: "..."
+generated_by: "distillery-impl@0.1.0"  # plugin version(provenance。plugin.json から実行時に読む)
 ```
 
 - **S0 の完了判定は「全 Phase done/skipped」+「入力ハッシュの現物一致」の両方**。
@@ -307,7 +308,9 @@ result: pass
 gates: {format: pass, lint: pass, tdd: pass, bdd_tier: pass}   # S4 のみ
 carried_from: "attempt-1"     # carry-forward の場合のみ(下記)
 completed_at: "..."
-completed_by: "dist-impl-implement"   # 書いた skill 名
+completed_by: "dist-impl-implement@0.1.0"   # 書いた skill 名 + plugin version(provenance)。
+                              # version は ${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json の
+                              # version を実行時に読む(SKILL.md への埋め込みはしない — 正本は plugin.json のみ)
 ```
 
 **attempt の carry-forward**: attempt++ で S4 を再実行するのは blocker のあった tier だけ。
