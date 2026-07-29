@@ -1,0 +1,12 @@
+event_id: "20260729_110300_s5_attempt2_completed"
+type: stage_completed
+uc_id: "19ec0182"
+stage: "S5"
+attempt: 2
+payload:
+  tiers:
+    tier-frontend: {result: pass, blocker: 0, major: 0, minor: 3, note: "F-001(画面実描画)真に解消。退行なし"}
+    tier-backend-api: {result: pass, blocker: 0, major: 1, minor: 1, note: "F-001(スキーマ乖離)解消。major は認証スタブ(基盤未提供の環境制約、issue 起票済み)"}
+  decision: "blocker 0 → S6 へ。残 major は S8 変更要求と S9 レビューで明示"
+  deviation: "backend Verifier の findings.yaml が YAML 不正(flow mapping 内 block scalar)。オーケストレータのスキーマ検証で検知し、Verifier 本人に書式修正のみ差し戻して解消(内容不変)"
+created_at: "2026-07-29T11:03:00+09:00"

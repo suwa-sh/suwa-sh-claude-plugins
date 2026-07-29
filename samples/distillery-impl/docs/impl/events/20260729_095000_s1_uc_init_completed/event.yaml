@@ -1,0 +1,12 @@
+event_id: "20260729_095000_s1_uc_init_completed"
+type: stage_completed
+uc_id: "19ec0182"
+stage: "S1"
+payload:
+  preflight: "files/gherkin/tier/YAML すべて pass"
+  lineage_ok: false
+  lineage_decision: "旧 arch(20260412_164019)前提で続行(ユーザー確定 2026-07-29)"
+  atdd_scenarios: ["SPEC-002-01-1", "SPEC-002-01-2"]
+  atdd_confirmed_by: user
+  finding: "usdm affected_models の BUC 名キーは name でなく target(SKILL 手順にキー名明記なし → 改善候補)"
+created_at: "2026-07-29T09:50:00+09:00"

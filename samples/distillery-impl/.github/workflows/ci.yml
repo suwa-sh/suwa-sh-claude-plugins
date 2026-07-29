@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run format:check --workspace=frontend
+      - run: npm run format:check --workspace=backend-api
+      - run: npm run format:check --workspace=worker
+
+  lint:
+    runs-on: ubuntu-latest
+    needs: [format-check]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run lint --workspace=frontend
+      - run: npm run lint --workspace=backend-api
+      - run: npm run lint --workspace=worker
+
+  tdd:
+    runs-on: ubuntu-latest
+    needs: [lint]
+    strategy:
+      matrix:
+        tier: [frontend, backend-api, worker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run test --workspace=${{ matrix.tier }}
+
+  tier-bdd:
+    runs-on: ubuntu-latest
+    needs: [tdd]
+    strategy:
+      matrix:
+        tier: [frontend, backend-api, worker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run bdd --workspace=${{ matrix.tier }}
+
+  uc-bdd:
+    runs-on: ubuntu-latest
+    needs: [tier-bdd]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run bdd:uc
+
+  atdd:
+    runs-on: ubuntu-latest
+    needs: [uc-bdd]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run bdd:atdd

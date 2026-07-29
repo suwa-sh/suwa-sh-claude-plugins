@@ -1,0 +1,56 @@
+stage: S5
+sub_stage: verify
+uc_id: 19ec0182
+tier: tier-backend-api
+attempt: 3
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: pass
+open_blockers: 0
+gate_reexec:
+  format_check:
+    command: npm run format:check --workspace=backend-api
+    exit_code: 0
+    result: pass
+  lint:
+    command: npm run lint --workspace=backend-api
+    exit_code: 0
+    result: pass
+  tdd_unit:
+    command: npm run test --workspace=backend-api
+    exit_code: 0
+    result: pass
+    tests_passed: 21
+    note: doneが主張する21件・退行なしを自テストで再現確認した。
+  tier_bdd:
+    command: npm run bdd --workspace=backend-api
+    exit_code: 0
+    result: pass
+    scenarios_passed: 2
+    steps_passed: 11
+sanity_check_uc_bdd_reexec:
+  command: npm run bdd:uc
+  note: >-
+    integration writer(S6)のwrite-set外の診断的再実行(check-only、ファイル変更なし)。
+    結果はS4 doneの主張(4シナリオ中3 pass、残り1シナリオ「予約確保済書籍の貸出」がHTTP 409で
+    fail)と一致した。fail原因はF-001(X-User-Idヘッダをfrontendが送信しないため
+    userIdが空文字列になりcanLendがfalseになる)であることをエラーメッセージで確認した。
+regression_check:
+  target: attempt-2で修正されたreservations準拠のcanLend判定・UNIQUE制約409変換・
+    未捕捉例外500フォールバック経路
+  result: no_regression
+  note: >-
+    canLend(domain/loan.ts)はattempt-2から無変更。UNIQUE制約→409変換テスト
+    (test/createLoanUseCase.test.ts 162-198行)、未捕捉例外→500テスト
+    (test/server.test.ts 32-71行)ともattempt-3の自テスト再実行でpassを確認した。
+    reservationRepository.findActiveByBookIdのフィルタ条件はfulfilled追加に伴い
+    `status !== "cancelled"` から `status === "pending" || status === "reserved"` へ
+    変更されたが、意味的には従来のpending/reserved抽出(=cancelled除外)と等価であり、
+    fulfilledを新たに正しく除外する必然的な追従であるため退行ではない。
+findings_summary: {blocker: 0, major: 1, minor: 2}
+notes: >-
+  attempt-3の意図的逸脱(GET /api/v1/books/:id新設、ReservationStatus.fulfilled追加)は
+  いずれもissues/に起票済みのためfindings化していない(スコープ外として指示された通り)。
+  attempt-2からの継続issueとしてsecurity F-001(major、X-User-Id認証欠如)・
+  refactoring F-003(minor、findActiveByBookIdフィルタの直接テスト欠如、attempt-2 F-002を
+  継続・更新)を再掲した。加えて新規でfault_tolerance F-002(minor、予約完了更新が
+  トランザクション保護外)を追加した。blocker 0件のためresult: passとする。

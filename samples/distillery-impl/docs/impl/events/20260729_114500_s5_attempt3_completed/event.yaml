@@ -1,0 +1,11 @@
+event_id: "20260729_114500_s5_attempt3_completed"
+type: stage_completed
+uc_id: "19ec0182"
+stage: "S5"
+attempt: 3
+payload:
+  tiers:
+    tier-frontend: {result: pass, blocker: 0, major: 1, minor: 3, note: "carry-forward 実装の再検証。major は X-User-Id 未送信(仕様の穴、3 者が独立に同一指摘)"}
+    tier-backend-api: {result: pass, blocker: 0, major: 1, minor: 2, note: "attempt-3 変更の退行なし。major は認証スタブ継続(既知)。新規 minor: 予約完了更新のトランザクション境界"}
+  decision: "blocker 0 → S6 再実行。X-User-Id は S6 ハーネス注入を許容(仕様ギャップとして as-built 変更要求の材料)"
+created_at: "2026-07-29T11:45:00+09:00"

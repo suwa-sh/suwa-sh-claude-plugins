@@ -1,0 +1,143 @@
+schema_version: "1.0"
+uc_id: "19ec0182"
+tier: "tier-backend-api"
+attempt: 3
+verified_at: "2026-07-29T11:41:26+09:00"
+gate_reexec: {format: pass, lint: pass, tdd: pass, bdd_tier: pass}
+viewpoints_checked:
+  spec_conformance:
+    status: done
+    note: >-
+      POST /api/v1/loans は tier-backend-api.md のAPI仕様表(リクエスト/レスポンス/エラー4件)と
+      実装(loansController.ts)を1行ずつ突合し一致を確認、attempt-2から無変更。GET
+      /api/v1/books/:id は _api-summary.yaml に未宣言(cross-UC依存の仕様漏れ)だが
+      issues/20260729_113000 に起票済みの意図的逸脱のため findings化しない。
+      ReservationStatus.fulfilled 追加も issues/20260729_113001 に起票済みの意図的逸脱
+      (rdb-schema.yaml の reservations.status 列挙 pending/reserved/cancelled との矛盾)
+      のため同様に findings化しない。spec.md 状態遷移一覧「予約状態: 予約確保済 →
+      (終了)。事後処理: 予約レコードを完了に更新」の担保箇所は
+      createLoanUseCase.ts:101 の completeReservedByBookIdAndUserId 呼び出しで特定できる。
+      tier BDD feature(backend-api/features/19ec0182.feature)は tier-backend-api.md の
+      gherkinと完全一致、意訳・改変・スキップ・空実装なし。契約(packages/contracts)経由も
+      継続確認。
+  readability_maintainability:
+    status: done
+    note: >-
+      新規ファイル(booksController.ts)・変更ファイルとも既存の「出典コメント→実装」構成・
+      命名規約に準拠。dev-rules/coding-rules.md・test-strategy.mdからの逸脱なし。findingsなし。
+  security:
+    status: done
+    note: >-
+      attempt-2 S5 findings F-001(major, X-User-Idヘッダをトークン検証なしでそのまま
+      利用者IDとして信用)は attempt-3 でも backend 側の該当コード(server.ts:77)が無変更のため
+      未解消のまま継続する。F-001として再掲する。
+  performance:
+    status: done
+    note: "in-memoryリポジトリのためindexes_neededは実測対象外、attempt-2から変化なし。findingsなし"
+  operability:
+    status: done
+    note: >-
+      GET /api/v1/books/:id を含め全エンドポイントでRFC 7807形式のエラー応答を維持。
+      環境依存値のハードコードなし。findingsなし。
+  fault_tolerance:
+    status: done
+    note: >-
+      attempt-2で修正されたUNIQUE制約→409変換(createLoanUseCase.ts:83-94)と未捕捉例外→500
+      フォールバック(server.ts:103-107)は自テストで再実行し退行なし(test/createLoanUseCase.test.ts
+      の該当ケース、test/server.test.ts の500テストとも pass)。一方、新規追加された
+      reservationRepository.completeReservedByBookIdAndUserId(book.id, command.userId)の
+      呼び出し(createLoanUseCase.ts:101-104)はloanRepository.createのtry-catchの外側かつ
+      それ以降のどの例外処理にも保護されておらず、貸出(loans INSERT相当・books UPDATE相当・
+      冪等キー登録)が既に完了した後に実行される。この呼び出しが失敗した場合、貸出自体は成功済みで
+      予約だけ未完了のまま残る不整合が生じ得る(現状のin-memory実装では例外を投げないため顕在化
+      しないが、将来RDB実装に置き換わった際のリスク)。仕様(spec.md状態遷移一覧)は「事後処理:
+      予約レコードを完了に更新」とのみ記載し、これがloans/books更新と同一トランザクション境界に
+      含まれるべきかの明記が無いため blocker/major の立証はできない。F-002として指摘する。
+  refactoring:
+    status: done
+    note: >-
+      attempt-2 S5 findings F-002(minor, InMemoryReservationRepository.findActiveByBookIdの
+      フィルタ条件を直接検証する単体テストが無い)は attempt-3 でも未解消のまま継続する。
+      加えて attempt-3 でフィルタ条件自体が `status !== "cancelled"` から
+      `status === "pending" || status === "reserved"` に変更され(fulfilled追加への対応)、
+      4値のうち2値を明示的に抽出する条件になったことでこのテストギャップの重要性が増している。
+      F-003として再掲・更新する。
+findings:
+  - id: F-001
+    viewpoint: security
+    severity: major
+    target: "backend-api/src/http/server.ts:77, backend-api/src/http/loansController.ts:22-29"
+    claim: >-
+      tier-backend-api.md が要求する認証(OAuth2/OIDC、利用者ロール)が実装されておらず、
+      クライアントが任意に指定した X-User-Id ヘッダの値をそのまま認証済み利用者IDとして
+      信用している状態が attempt-2 から attempt-3 でも変わっていない。
+    evidence: >-
+      1) server.ts:77 `userId: firstHeaderValue(req.headers["x-user-id"]) ?? ""`
+      はattempt-2から一切変更されていない(トークン検証なし)。
+      2) tier-backend-api.md 13行「認証: OAuth2/OIDC (利用者ロール)」との差分は
+      docs/impl/latest/19ec0182/stages/attempt-3/S4_tier-impl.tier-backend-api.done.yaml
+      fixed_findings[1](F-S6-b)で「backend側のコード変更は行っていない」と明記されている
+      通り、意図的に対応範囲外とされた。
+      3) issues/20260729_011215_auth_and_missing_header_gap.md には attempt-3 で
+      「frontendのLoanConfirmationApiClientがcreateLoan/getBookのいずれでもX-User-Idを
+      送信しない」という根本原因が追記されており、backend単独では解決できないことが
+      確認された(sanity_check_uc_bddの残り1シナリオfail原因と一致)。
+      4) 認証基盤tier未整備という制約・issue追跡済みという事情は理解できるためseverityを
+      blockerには上げないが、attempt-2から継続する既知課題として引き続き追跡が必要。
+    suggested_fix: >-
+      認証基盤tierが用意され次第、OAuth2/OIDCのリソースサーバー検証ミドルウェアに差し替える。
+      あわせてfrontend側のLoanConfirmationApiClientにX-User-Idヘッダ送信(またはトークン送信)を
+      追加する対応をS6以降のバックログで確実に引き継ぐ。
+
+  - id: F-002
+    viewpoint: fault_tolerance
+    severity: minor
+    target: "backend-api/src/application/createLoanUseCase.ts:83-104"
+    claim: >-
+      予約完了更新(reservationRepository.completeReservedByBookIdAndUserId)の呼び出しが、
+      貸出(loanRepository.create・bookRepository.updateStatus・idempotencyStore.put)完了後、
+      いかなる例外処理にも保護されずに実行されており、失敗時に貸出は成功済みのまま予約だけ
+      未完了で残る不整合が起こり得る。
+    evidence: >-
+      1) createLoanUseCase.ts:83-94 は loanRepository.create のみを try-catch で保護し、
+      UniqueConstraintViolationError を409へ変換する。
+      2) その後の bookRepository.updateStatus(95行)・idempotencyStore.put(96行)・
+      reservationRepository.completeReservedByBookIdAndUserId(101-104行)はいずれも
+      同じ関数スコープ内で保護されず、後者が例外を投げた場合はserver.tsの最終エラー
+      ハンドラ(500フォールバック)まで伝播するが、その時点で貸出自体は既にコミット済み。
+      3) spec.md 状態遷移一覧(123-129行)は「予約レコードを完了に更新」を事後処理として
+      記載するのみで、これがloans/books更新と同一トランザクション境界に含まれるべきか
+      明記がない。tier-backend-api.mdビジネスルール「貸出と書籍状態更新は同一トランザクション
+      内で実行」は予約レコード更新に言及していない。
+      4) 現状のInMemoryReservationRepository実装は例外を投げないため顕在化しないが、
+      仕様上のトランザクション境界が未確定なため仕様違反として立証はできず、severityは
+      minorとする。
+    suggested_fix: >-
+      予約完了更新もloans INSERT・books UPDATEと同一トランザクション境界に含めるか、
+      失敗時の扱い(ロールバック/補償/警告ログ)を仕様に明記した上で実装を対応させる。
+      spec.mdの状態遷移一覧に「事後処理」のトランザクション境界を追記することを提案する。
+
+  - id: F-003
+    viewpoint: refactoring
+    severity: minor
+    target: "backend-api/src/repositories/reservationRepository.ts:24-30"
+    claim: >-
+      InMemoryReservationRepository.findActiveByBookId のフィルタ条件
+      (status が pending または reserved のみを抽出、cancelled と fulfilled を除外)を
+      直接検証する単体テストが存在しない。attempt-2 S5 findings F-002 からの継続。
+    evidence: >-
+      1) attempt-3 でフィルタ条件が `status !== "cancelled"` から
+      `status === "pending" || status === "reserved"` に変更された
+      (ReservationStatus に fulfilled が追加されたことへの対応)。
+      2) test/createLoanUseCase.test.ts 226-251行の予約完了更新テストは
+      completeReservedByBookIdAndUserId 実行後に findActiveByBookId が0件を返すことを
+      検証しており fulfilled 除外を間接的にカバーするが、cancelled を含む複数状態を
+      seed してフィルタの境界(pending/reservedのみ抽出)を直接検証するケースは無い
+      (`find backend-api/test -name "*.ts" | xargs grep -n cancelled` はコメント1件のみ)。
+      3) 現状のロジックは単純な述語フィルタで誤動作の兆候はないため blocker/major には
+      該当しない。
+    suggested_fix: >-
+      test/loan.test.ts か新規 test/reservationRepository.test.ts に、pending/reserved/
+      cancelled/fulfilled の4状態を混在させて seed し、findActiveByBookId が
+      pending・reservedのみを返すことを直接検証するケースを追加する。
+summary: {blocker: 0, major: 1, minor: 2}

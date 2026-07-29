@@ -1,0 +1,13 @@
+{
+  "name": "library-management-storybook",
+  "private": true,
+  "version": "0.1.0",
+  "description": "dist-design-system が生成した Storybook アプリ(vertical slice 検証用の最小再現。対象 UC「書籍を貸出する」の画面結線分のみ)",
+  "dependencies": {
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

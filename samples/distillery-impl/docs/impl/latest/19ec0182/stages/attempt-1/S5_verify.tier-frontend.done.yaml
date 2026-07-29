@@ -1,0 +1,30 @@
+stage: S5
+sub_stage: verify
+uc_id: 19ec0182
+tier: tier-frontend
+attempt: 1
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: fail
+open_blockers: 1
+findings_summary:
+  blocker: 1
+  major: 0
+  minor: 1
+gate_reexec:
+  format: pass
+  lint: pass
+  tdd: pass
+  bdd_tier: pass
+findings_file: docs/impl/latest/19ec0182/stages/attempt-1/S5_verify.tier-frontend.findings.yaml
+completed_at: "2026-07-29T10:21:49+09:00"
+completed_by: dist-impl-verify
+notes: >-
+  4ゲート(format/lint/tdd/tier-bdd)はImplementerの申告どおりcheck-onlyで再実行しpassを確認。
+  ただし7観点チェック(spec_conformance)で、tier-frontend.mdが要求する画面(LoanConfirmation
+  コンポーネント、route /loans/new、packages/ui部品によるレンダリング)が一切実装されていない
+  ことをblockerとして検出(F-001)。実装はview-model(値変換関数)とAPIクライアントのみで、
+  react/react-dom未導入を理由にJSX組み立てを省略しているが、packages/ui自体が既にreactを
+  前提としており(design system取り込み済み・.imported.yamlでこのUCの画面Story実在確認済み)、
+  かつこの scope 縮小についてissues/への起票が行われていない(coding-rules.md rule 4違反)。
+  副次的にminor 1件(F-002: DefaultApi.ts構文エラー回避の手書きAPIクライアントが保守負債)。
+  修正なしでS6へ進めない。

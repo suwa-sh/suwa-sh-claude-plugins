@@ -1,0 +1,103 @@
+schema_version: "1.0"
+uc_id: "19ec0182"
+tier: "tier-backend-api"
+attempt: 2
+verified_at: "2026-07-29T10:56:44+09:00"
+gate_reexec: {format: pass, lint: pass, tdd: pass, bdd_tier: pass}
+viewpoints_checked:
+  spec_conformance:
+    status: done
+    note: >-
+      attempt-1 blocker F-001 は解消を確認。canLend(backend-api/src/domain/loan.ts)は
+      Book.reservedByUserId(自作フィールド)を廃止し、ReservationRepository.findActiveByBookId
+      (backend-api/src/repositories/reservationRepository.ts)経由で正本rdb-schema.yamlの
+      reservationsテーブル(status: pending/reserved/cancelled, queue_position)を参照する形に
+      置き換わっている。「予約受付中の予約」=有効な予約(pending/reserved)全体、「予約確保済」=
+      status:reservedかつuserId一致、という解釈はtier-backend-api.md 66行に明記が無いため
+      issues/20260729_020000_reservations_select_missing_in_model_summary.mdに起票済み
+      (coding-rules.md必須4に整合)。解釈自体はrdb-schema.yamlの列定義と業務ルール文言から
+      導ける自然な読みであり、反証可能な仕様違反とは言えないため今回はfindings化しない。
+      API 1/1・契約型(CreateLoanRequest/LoanResponse/ProblemDetails)経由も継続確認。
+  readability_maintainability:
+    status: done
+    note: >-
+      新規ファイル(domain/reservation.ts, repositories/reservationRepository.ts)は
+      既存ファイルと同じ「出典コメント→型定義」構成・命名規約に準拠。dev-rules/coding-rules.md・
+      test-strategy.mdのAAA/命名規約からの逸脱なし。findingsなし。
+  security:
+    status: done
+    note: >-
+      attempt-1 major F-002(X-User-Idヘッダをそのまま利用者IDとして信用/RBAC未実装)は
+      機能的には未解消。issues/20260729_011215_auth_and_missing_header_gap.mdへの差分表追記と
+      server.ts/loansController.tsへのTODOコメント明示のみで、なりすまし可能な実装自体は
+      attempt-1から変化がない。majorとして再掲(F-001参照)。
+  performance:
+    status: done
+    note: "attempt-1と同様、in-memoryリポジトリのためindexes_neededは実測対象外。findingsなし"
+  operability:
+    status: done
+    note: "エラーレスポンスはRFC 7807形式を維持。環境依存値のハードコードなし。findingsなし"
+  fault_tolerance:
+    status: done
+    note: >-
+      attempt-1 major F-003(RDB UNIQUE制約相当のエラーが409にマッピングされず応答なしで終了)は
+      解消を確認。loanRepository.ts に UniqueConstraintViolationError を新設し、
+      createLoanUseCase.ts の catch ブロックで捕捉してConflictError(409)へ変換する経路が
+      直接追加された(test/createLoanUseCase.test.ts 162-198行で検証)。加えてserver.tsに
+      express 4引数エラーハンドリングミドルウェアを追加し、それ以外の未捕捉例外でも
+      500 + RFC7807で応答する多層防御になっている(test/server.test.ts で検証)。
+      express化(node:http→express Router)による退行は確認されず、gate1-4も再現passした。
+  refactoring:
+    status: done
+    note: >-
+      集約境界・値オブジェクト化は妥当。ただしInMemoryReservationRepository.findActiveByBookIdの
+      cancelled除外フィルタ自体を直接検証する単体テストが無い(test/loan.test.tsはcanLendに
+      事前フィルタ済みのactiveReservations配列を直接渡す形でのみ検証しており、リポジトリ層の
+      フィルタ条件は間接的にも一度も踏まれない)。minorとして指摘(F-002参照)。
+findings:
+  - id: F-001
+    viewpoint: security
+    severity: major
+    target: "backend-api/src/http/server.ts:52, backend-api/src/http/loansController.ts:17-29"
+    claim: >-
+      attempt-1 findings F-002(blocker候補ではなくmajor)からの継続。tier-backend-api.md が要求する
+      認証(OAuth2/OIDC、利用者ロール)が実装されておらず、クライアントが任意に指定した X-User-Id
+      ヘッダの値をそのまま認証済み利用者IDとして信用している状態がattempt-2でも変わっていない。
+    evidence: >-
+      1) server.ts:52 `userId: firstHeaderValue(req.headers["x-user-id"]) ?? ""` はexpress化後も
+      トークン検証を行わずヘッダ値をそのまま採用している(attempt-1からロジック不変、express化に伴う
+      配線変更のみ)。
+      2) nfr-grade.yaml E.5.2.1(827-834行) はロールベースアクセス制御(RBAC)をgrade 2で要求しているが、
+      利用者/司書のロール区別は実装のどこにも存在しない(attempt-1から不変)。
+      3) attempt-2での対応は issues/20260729_011215_auth_and_missing_header_gap.md への
+      「OAuth2/OIDC要求との差分」表の追記と、server.ts/loansController.tsへのTODOコメント明示のみ
+      (docs/impl/latest/19ec0182/stages/attempt-2/S4_tier-impl.tier-backend-api.done.yaml
+      fixed_findings[1].fix 参照)。コード自体のなりすまし可能な挙動は修正されていない。
+      4) issue起票済み・認証基盤tier未整備という制約は理解できるため severity を blocker には
+      上げないが、S6以降で認証tierと接続するまではリスクとして追跡が必要。
+    suggested_fix: >-
+      認証基盤tierが用意され次第、OAuth2/OIDCのリソースサーバー検証ミドルウェアに差し替える。
+      それまでの間はS6以降のバックログへの引き継ぎを運用上確実にする(issueは既に起票済み)。
+
+  - id: F-002
+    viewpoint: refactoring
+    severity: minor
+    target: "backend-api/src/repositories/reservationRepository.ts:18-23, backend-api/test/loan.test.ts, backend-api/test/createLoanUseCase.test.ts"
+    claim: >-
+      InMemoryReservationRepository.findActiveByBookId の cancelled 除外フィルタ(21行目
+      `reservation.status !== "cancelled"`)を直接検証する単体テストが存在しない。
+    evidence: >-
+      1) test/loan.test.ts の canLend テストは activeReservations 引数に事前フィルタ済みの配列を
+      直接渡しており、リポジトリのフィルタ条件は関与しない。
+      2) test/createLoanUseCase.test.ts の予約シナリオ2件(89-140行)も reservationRepository.seed
+      で status: "reserved" のみを投入しており、cancelled を含む配列を投入して除外されることを
+      確認するケースが無い。
+      3) `find backend-api/test backend-api/features -name "*.ts" | xargs grep -n cancelled` は
+      コメント1件のみでテストコードには出現しない。
+      4) 現状のロジックは単純な述語フィルタであり誤動作の兆候は無いため blocker/major には
+      該当しないが、予約状態の解釈(F-001[attempt-1]で issues 起票済み)が今後変更される際の
+      回帰検知に使えるテストが欠けている。
+    suggested_fix: >-
+      test/loan.test.ts か新規 test/reservationRepository.test.ts に、cancelled を含む複数状態の
+      予約を seed し、findActiveByBookId が cancelled のみ除外して返すことを検証するケースを追加する。
+summary: {blocker: 0, major: 1, minor: 1}

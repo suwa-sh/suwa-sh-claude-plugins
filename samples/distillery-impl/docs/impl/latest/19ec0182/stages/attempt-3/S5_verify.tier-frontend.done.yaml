@@ -1,0 +1,57 @@
+stage: S5
+sub_stage: verify
+uc_id: 19ec0182
+tier: tier-frontend
+attempt: 3
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: pass
+context: >-
+  attempt-3はS4のtier-frontend実装がattempt-2からcarried_from: attempt-2で内容不変
+  (diffでYAML整形のみの差分と確認済み)。backend-api tierがS6差し戻しを受けて変更された
+  (GET /api/v1/books/:id新設・貸出成功後の予約完了更新実装)ため、安全側規約に従いgate 1〜4の
+  独立再実行と、backend変更との整合(新たな問題の有無)を中心に全観点を再検証した。
+gate_reexec:
+  gate1_format_check:
+    command: npm run format:check --workspace=frontend
+    exit_code: 0
+    result: pass
+  gate2_lint:
+    command: npm run lint --workspace=frontend
+    exit_code: 0
+    result: pass
+  gate3_tdd_unit:
+    command: npm run test --workspace=frontend
+    exit_code: 0
+    result: pass
+    tests_passed: 26
+  gate4_tier_bdd:
+    command: npm run bdd --workspace=frontend
+    exit_code: 0
+    result: pass
+    scenarios_passed: 2
+    steps_passed: 10
+open_blockers: 0
+findings_summary:
+  blocker: 0
+  major: 1
+  minor: 3
+regressions_detected: none
+new_findings_since_attempt2:
+  - id: F-004
+    severity: major
+    viewpoint: security
+    summary: >-
+      LoanConfirmationApiClientがX-User-Idヘッダを送信しないため、backend-api attempt-3で
+      実装された予約確保済シナリオの貸出がUC統合BDD(bdd:uc)でHTTP 409になり失敗する。
+      frontend自身の契約(packages/contracts / _api-summary.yaml)には違反していないため
+      blockerではなくmajorと判定。是正はfrontendまたはintegration writer(S6)のwrite-set。
+sanity_check_uc_bdd:
+  command: npm run bdd:uc
+  note: >-
+    write-set外(integration writerの領域)だが、backend変更との整合を裏取りするため
+    check-onlyで診断的に再実行した(ファイル変更なし)。結果: 4シナリオ中3シナリオpass、
+    「予約確保済書籍の貸出」1シナリオがHTTP 409で失敗(F-004参照)。backend-api attempt-3の
+    sanity_check_uc_bdd報告と一致することを独立に確認した。
+verified_at: "2026-07-29T11:40:00+09:00"
+verified_by: dist-impl-verify
+findings_file: docs/impl/latest/19ec0182/stages/attempt-3/S5_verify.tier-frontend.findings.yaml

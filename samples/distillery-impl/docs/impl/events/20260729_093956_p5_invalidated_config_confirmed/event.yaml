@@ -1,0 +1,18 @@
+event_id: "20260729_093956_p5_invalidated_config_confirmed"
+type: stage_invalidated
+uc_id: null
+stage: "S0"
+payload:
+  invalidated_phases: ["P5_ui"]
+  reason: >
+    P5 の storybook-app プローブと specs_root への storybook-app 配置が並行し、
+    取り込みが 4/6 ファイル時点のスナップショットになった(BookCard.tsx と
+    LoanCheckout.stories.tsx が欠落)。inputs_sha256.design は design-event.yaml のみの
+    ハッシュで storybook src の内容変更を検知できないため、オーケストレータが
+    .imported.yaml と現物の突合で検知して手動 invalidate。
+  config_confirmed:
+    verifier_model: "claude-sonnet-5 -> claude-opus-5"
+    backend_framework: "express(新規確定)"
+    approved_as_is: ["tier→dir", "kind", "datastore_owner=tier-backend-api", "lang=typescript", "toolchain=biome+vitest+cucumber-js"]
+    confirmed_by: user
+created_at: "2026-07-29T09:39:56+09:00"

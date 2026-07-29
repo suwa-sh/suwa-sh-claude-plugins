@@ -1,0 +1,15 @@
+event_id: "20260729_101800_s4_tier_impl_completed"
+type: stage_completed
+uc_id: "19ec0182"
+stage: "S4"
+attempt: 1
+payload:
+  tiers:
+    tier-frontend: {gates: "format/lint/tdd(15)/bdd(2) all pass", issues: 3}
+    tier-backend-api: {gates: "format/lint/tdd(11)/bdd(2) all pass", issues: 4}
+  barrier: "biome format --write をリポ全体に実行。生成物(packages/contracts・packages/ui)の整形は revert し、biome.json に contracts 除外を追加"
+  notable_findings:
+    - "契約生成物 DefaultApi.ts / Create・UpdateBookRequest / Create・UpdateUserRequest に enum キー欠落の構文エラー(両 tier が独立検出。S8 変更要求ネタ)"
+    - "bootstrap 生成の biome.json に packages/contracts 除外がなく barrier format が生成物を壊しかける(SKILL 改善候補)"
+    - "express 未インストール(P3 skeleton が backend_framework の依存を入れていない)→ node:http で代替実装"
+created_at: "2026-07-29T10:18:00+09:00"

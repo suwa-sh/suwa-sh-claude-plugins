@@ -1,0 +1,7 @@
+event_id: "20260729_095800_s3_contracts_completed"
+type: stage_completed
+uc_id: "19ec0182"
+stage: "S3"
+payload:
+  lock_check: "openapi MATCH / asyncapi MATCH(再生成不要)"
+created_at: "2026-07-29T09:58:00+09:00"

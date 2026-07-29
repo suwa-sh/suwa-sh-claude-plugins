@@ -1,0 +1,17 @@
+event_id: "20260729_111500_s6_failed_attempt3_opened"
+type: stage_failed
+uc_id: "19ec0182"
+stage: "S6"
+payload:
+  result: "4 scenarios all fail(18 steps: 4 failed / 2 skipped / 12 passed)"
+  root_causes:
+    - "a: GET /api/v1/books/:id 未実装(この UC の _api-summary 未宣言の cross-UC 依存。tier-frontend.md の UI ロジックは前提にしている)"
+    - "b: X-User-Id ヘッダが frontend→backend 契約に不在で userId が伝わらない"
+    - "c: 貸出成功後の予約レコード完了更新(spec.md 状態遷移の明示要求)が未実装・ReservationStatus に完了値なし"
+  decision: >
+    ユーザー判断(2026-07-29): 変更要求からのやり直しはせず、仕様不整合を issues に書き残して
+    テストが通るところまで実装を進める。テスト通過後に as-built 仕様を整理し、それを根拠に
+    変更要求をブラッシュアップして distillery を再実行する(ワークフロー改善として skill に還流)。
+    → S4 backend attempt-3 差し戻し。frontend は blocker 無しのため carry-forward。
+  toolchain_fix: "features/uc・features/atdd の cucumber.cjs に TS_NODE_PROJECT 既定を追加し tsconfig.uc-features.json を新設(bootstrap P6 のギャップ。オーケストレータが単一 writer として修正)"
+created_at: "2026-07-29T11:15:00+09:00"

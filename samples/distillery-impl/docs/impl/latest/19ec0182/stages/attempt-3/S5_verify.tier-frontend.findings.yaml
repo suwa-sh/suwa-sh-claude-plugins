@@ -1,0 +1,153 @@
+schema_version: "1.0"
+uc_id: "19ec0182"
+tier: "tier-frontend"
+attempt: 3
+verified_at: "2026-07-29T11:40:00+09:00"
+gate_reexec: {format: pass, lint: pass, tdd: pass, bdd_tier: pass}
+viewpoints_checked:
+  spec_conformance:
+    status: done
+    note: >-
+      attempt-3の実装(S4_tier-impl.tier-frontend.done.yaml)はattempt-2からcarried_from:
+      attempt-2で内容不変であることを確認済み(diffで同一内容・YAML整形のみの差分)。API
+      1/1突合・契約(packages/contracts)経由呼び出し・ビジネスルール担保(isLoanButtonEnabled)は
+      維持されている。今attemptの主眼であるbackend変更(GET /api/v1/books/:id新設・貸出成功後の
+      予約完了更新)との整合を検証した。backend-api/src/http/booksController.tsが返すレスポンスは
+      BookResponseToJSON(snake_case)経由であり、frontendのBookResponseFromJSON(material_type/
+      created_at等snake_caseキーを読む)と型・キー名とも整合していることをソース突合で確認した。
+      frontendのtoLoanConfirmationBook/toBookCardPropsが要求するauthor/isbn/publisher/genre/
+      materialType/locationの各フィールドも、backend側が未シード項目を空文字列で応答する
+      実装のためランタイムエラーは発生しない。予約完了更新(createLoanUseCase側の変更)はfrontendの
+      write-set外でありfrontend実装への直接影響はない。
+  readability_maintainability:
+    status: done
+    note: >-
+      attempt-2から実装変更なし。命名・コメントの出典表記(tier-frontend.md参照)・test-strategy.mdの
+      AAA構造・テスト命名規約への準拠は維持されている。新規の重複ロジック・説明のない複雑さは見当たらない。
+  security:
+    status: done
+    note: >-
+      新規finding F-004として記録(詳細はfindings参照)。backend-api attempt-3のS4done
+      (fixed_findings F-S6-b)およびdocs/impl/latest/19ec0182/issues/
+      20260729_011215_auth_and_missing_header_gap.mdの追記により、frontend の
+      LoanConfirmationApiClient(createLoan/getBook)がX-User-Idヘッダを送信しないことが
+      「予約確保済書籍の貸出」UCシナリオの失敗原因であるとbackend側から明示的に特定された。
+      Verifier自身でnpm run bdd:uc(check-only、integration writerのwrite-set外なので書き換えは
+      行っていない)を再実行し、4シナリオ中1シナリオ(予約確保済書籍の貸出)が同じ理由
+      (POST /api/v1/loansがHTTP 409)で失敗することを確認した。ただし_api-summary.yamlの
+      CreateLoanRequestにX-User-Idの定義は無く、tier-frontend.mdにも認証ヘッダの記載が無いため、
+      frontend自身の契約(packages/contracts)には違反していない。よってtier-frontend単体のspec
+      違反ではなくmajor(UC統合を妨げるがtier契約は満たす)と判定する。
+  performance:
+    status: done
+    note: >-
+      attempt-2から変更なし。frontend tierはview-model層+描画層のみでDB/インデックス対象外。
+      backend側の新規GETエンドポイント追加によるfrontend側の追加リクエスト往復は既存設計
+      (useEffectでのbookId変更時のみ再実行)の範囲内で、新たな性能懸念は見当たらない。
+  operability:
+    status: done
+    note: >-
+      attempt-2から変更なし。mapLoanErrorMessageは409を専用メッセージに変換、それ以外は汎用
+      フォールバック。新設されたGET /api/v1/books/:idの404応答時もLoanConfirmationPageの
+      エラーバナー(role="alert")経由で汎用メッセージにフォールバックする(専用メッセージは
+      tier-frontend.mdに記載が無いため未実装だが、これはattempt-2から不変でありbackend変更に
+      よる新規劣化ではない)。
+  fault_tolerance:
+    status: done
+    note: >-
+      attempt-2から変更なし。submitLoan/loadBookResponseともPromise.then/catchで失敗時に
+      エラー状態へ遷移する設計を維持。unmount時のcancelledフラグによるsetState抑止も健在。
+      backend側の予約完了更新はfrontendから見て通常のPOST /api/v1/loans成功レスポンス
+      (LoanResponse)の範囲内でありfrontend側のエラーハンドリング分岐に変更の必要はない。
+  refactoring:
+    status: done
+    note: >-
+      attempt-2から変更なし。LoanConfirmationScreen.tsxの責務分離(純粋関数renderLoanConfirmationView
+      と状態管理LoanConfirmation)は維持。F-003(旧F-003、APIクライアント手動複製)は継続課題として残る。
+findings:
+  - id: F-001
+    viewpoint: spec_conformance
+    severity: minor
+    target: "frontend/src/components/LoanConfirmationScreen.tsx:32-36"
+    claim: >-
+      tier-frontend.mdのコンポーネント設計表は「onLoan: () => Promise<void>」と定義しているが、実装の
+      LoanConfirmationProps.onLoanは「() => Promise<LoanResponse>」でPropsのシグネチャが仕様と異なる。
+    evidence: >-
+      tier-frontend.md「コンポーネント設計 LoanConfirmation」Props表のonLoan行は「() => Promise<void>」。
+      対してLoanConfirmationScreen.tsx:34は`onLoan: () => Promise<LoanResponse>`(attempt-3時点でも
+      不変であることをRead再確認済み)。docs/impl/latest/19ec0182/issues/
+      20260729103954_loanconfirmation-onloan-return-type-ambiguity.mdに起票済み。attempt-3で
+      vitest 26件・cucumber-js 2 scenarios/10 stepsを独立再実行しいずれもpassを確認しており、
+      挙動としての齟齬はない。attempt-2 F-001の継続(退行ではなく未解消の継続)。
+    suggested_fix: >-
+      次回spec更新時にtier-frontend.mdのonLoan型を「() => Promise<LoanResponse>」に修正するか、
+      loanResultをPropsとして親から渡す設計に明確化する。
+  - id: F-002
+    viewpoint: spec_conformance
+    severity: minor
+    target: "frontend/src/pages/LoanConfirmationPage.tsx:36-45, frontend/src/components/LoanConfirmationScreen.tsx:94-102"
+    claim: >-
+      tier-frontend.mdのUIロジック「ローディング: 書籍情報取得時はSkeleton UI、貸出申請時はボタン
+      disabled+Spinner」に対し、実装はSkeleton/Spinnerコンポーネントを使わずプレーンテキスト
+      (「読み込み中...」「処理中...」)で代替している。
+    evidence: >-
+      packages/ui/components配下にSkeleton/Spinnerは未生成のまま(attempt-3時点でも変化なし)。
+      coding-rules.md rule 2(frontendのUIコンポーネントはpackages/ui/のみ使用)に従いテキスト代替と
+      した判断はdocs/impl/latest/19ec0182/issues/20260729103955_
+      skeleton-spinner-components-missing.mdに起票済み。ボタンのdisabled化自体は
+      loanConfirmationScreen.test.tsxで確認済みでattempt-2 F-002の継続。
+    suggested_fix: >-
+      design(dist-design-system)側でSkeleton/Spinnerコンポーネントが生成され次第、テキスト代替箇所を
+      置き換える。
+  - id: F-003
+    viewpoint: refactoring
+    severity: minor
+    target: "frontend/src/api/loanConfirmationApiClient.ts"
+    claim: >-
+      attempt-1 F-002 / attempt-2 F-003の継続。packages/contracts/api-client/apis/DefaultApi.tsの
+      構文エラー回避のため、getBook/createLoanのリクエスト内容を手書きで複製したクライアントが
+      attempt-3でも変更なく残存しており、契約再生成時の手動追従が必要な保守負債である。
+    evidence: >-
+      frontend/src/api/loanConfirmationApiClient.tsはattempt-2から無変更(Read再確認済み)。
+      backend-api attempt-3のbooksController.tsも同じDefaultApi.ts構文エラーを理由に
+      models/BookResponseを直接importする同種の迂回を行っており(既存issue
+      20260729_011213_api_types_defaultapi_syntax_error.md)、根本原因は契約生成側にあり
+      frontend単独の対応では解消しない。
+    suggested_fix: >-
+      契約側(openapi-generatorのenumPropertyNaming設定、またはx-enum-varnames付与)の修正後、
+      LoanConfirmationApiClientを削除しpackages/contracts/api-clientのbarrelからDefaultApiを直接
+      importする形に戻す。
+  - id: F-004
+    viewpoint: security
+    severity: major
+    target: "frontend/src/api/loanConfirmationApiClient.ts"
+    claim: >-
+      LoanConfirmationApiClient(createLoan/getBook)がX-User-Idヘッダを送信しないため、backend-api
+      attempt-3で実装された「予約確保済書籍の貸出」フロー(貸出成功後の予約完了更新・予約者本人判定)が
+      UC統合BDDで成立せず、POST /api/v1/loansがHTTP 409になり「予約確保済書籍の貸出」シナリオが失敗する。
+    evidence: >-
+      backend-api attempt-3のS4_tier-impl.tier-backend-api.done.yaml(fixed_findings F-S6-b)が
+      「frontendのLoanConfirmationApiClientはcreateLoan/getBookのいずれでもX-User-Idを送信しない」
+      事実とその帰結を明示し、docs/impl/latest/19ec0182/issues/
+      20260729_011215_auth_and_missing_header_gap.mdに「frontend契約にX-User-Idヘッダが無い事実
+      (attempt-3 S6差し戻しで判明)」として追記した。Verifier自身でnpm run bdd:uc(check-only、
+      integration writerのwrite-set外につき書き換えなし)を独立再実行し、4シナリオ中3シナリオpass・
+      「予約確保済書籍の貸出」1シナリオのみが同じ理由(HTTP 409)で失敗することを確認した
+      (backend-api attempt-3のsanity_check_uc_bddの報告と一致)。frontend/src/api/
+      loanConfirmationApiClient.tsをRead確認した限り送信ヘッダはContent-Type/X-Idempotency-Key/
+      (設定時のみ)Authorizationのみで、X-User-Idは送っていない。ただし_api-summary.yamlの
+      CreateLoanRequestにX-User-Idの定義は無く、tier-frontend.mdにも認証ヘッダの記載が無いため、
+      frontend自身が参照すべき契約(packages/contracts)には違反していない。tier-frontendの4ゲートは
+      いずれもpassしており、tier単体のspec違反や動作不良ではない(よってblockerではなくmajor)。
+      是正の必要箇所はfrontendのwrite-set(ヘッダ追加)またはintegration writer(S6)のwrite-set
+      (テスト用認証コンテキスト注入)のいずれかであり、backend-api側は対応範囲外であることを
+      backend-api attempt-3自身が明言している。
+    suggested_fix: >-
+      frontend/src/api/loanConfirmationApiClient.tsのcreateLoan/getBookリクエストに認証済み利用者IDを
+      X-User-Idヘッダとして付与する(値の取得元は認証基盤tier実装待ちのため、暫定的にはS6
+      integration writerがテスト用コンテキストを注入するか、_api-summary.yaml/tier-frontend.mdに
+      X-User-Idヘッダ要件を明記した上でfrontendのwrite-setとして対応する)。
+summary:
+  blocker: 0
+  major: 1
+  minor: 3

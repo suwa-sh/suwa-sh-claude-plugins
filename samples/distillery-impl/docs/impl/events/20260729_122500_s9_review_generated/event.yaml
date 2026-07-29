@@ -1,0 +1,8 @@
+event_id: 20260729_122500_s9_review_generated
+type: stage_completed
+uc_id: 19ec0182
+stage: S9
+payload:
+  note: review/index.html 生成。ゼロ知識チェック合格(オーケストレータ検収)。state=awaiting_review(UC 完了の正は
+    review_approved イベント)
+created_at: '2026-07-29T12:25:00+09:00'

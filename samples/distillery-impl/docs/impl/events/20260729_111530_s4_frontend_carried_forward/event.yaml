@@ -1,0 +1,11 @@
+event_id: "20260729_111530_s4_frontend_carried_forward"
+type: stage_carried_forward
+uc_id: "19ec0182"
+stage: "S4"
+tier: "tier-frontend"
+attempt: 3
+payload:
+  from_attempt: 2
+  source_done_sha256: "b8f05025c51ebced8b244c1d9f14d3068fce4f424b1086046518161a38d64e2e"
+  reason: "S6 fail の原因は全て backend-api 側。frontend は attempt-2 S5 で blocker 0 のため実装不変 → carry-forward"
+created_at: "2026-07-29T11:15:30+09:00"

@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>実装完了レビュー: 書籍を貸出する (19ec0182)</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --bg-card:#ffffff; --text:#1c2128; --text-dim:#57606a;
+    --border:#d8dee4; --border-soft:#e8ecf0;
+    --accent:#0969da; --accent-soft:#ddf1ff;
+    --pass:#1a7f37; --pass-bg:#dcfce7; --pass-border:#9ae6b4;
+    --fail:#cf222e; --fail-bg:#ffebe9; --fail-border:#ffc1bc;
+    --warn:#9a6700; --warn-bg:#fff8c5; --warn-border:#f2d675;
+    --blocker:#cf222e; --major:#9a6700; --minor:#57606a;
+    --code-bg:#f6f8fa;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0d1117; --bg-card:#151b23; --text:#e6edf3; --text-dim:#9198a1;
+      --border:#30363d; --border-soft:#21262d;
+      --accent:#4493f8; --accent-soft:#0d2d4d;
+      --pass:#3fb950; --pass-bg:#0f2b1a; --pass-border:#1f6f38;
+      --fail:#f85149; --fail-bg:#3a1210; --fail-border:#7d2b26;
+      --warn:#d29922; --warn-bg:#3a2f0b; --warn-border:#6b5714;
+      --blocker:#f85149; --major:#d29922; --minor:#9198a1;
+      --code-bg:#1c2128;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0d1117; --bg-card:#151b23; --text:#e6edf3; --text-dim:#9198a1;
+    --border:#30363d; --border-soft:#21262d;
+    --accent:#4493f8; --accent-soft:#0d2d4d;
+    --pass:#3fb950; --pass-bg:#0f2b1a; --pass-border:#1f6f38;
+    --fail:#f85149; --fail-bg:#3a1210; --fail-border:#7d2b26;
+    --warn:#d29922; --warn-bg:#3a2f0b; --warn-border:#6b5714;
+    --blocker:#f85149; --major:#d29922; --minor:#9198a1;
+    --code-bg:#1c2128;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"]{
+    --bg:#f7f8fa; --bg-card:#ffffff; --text:#1c2128; --text-dim:#57606a;
+    --border:#d8dee4; --border-soft:#e8ecf0;
+    --accent:#0969da; --accent-soft:#ddf1ff;
+    --pass:#1a7f37; --pass-bg:#dcfce7; --pass-border:#9ae6b4;
+    --fail:#cf222e; --fail-bg:#ffebe9; --fail-border:#ffc1bc;
+    --warn:#9a6700; --warn-bg:#fff8c5; --warn-border:#f2d675;
+    --blocker:#cf222e; --major:#9a6700; --minor:#57606a;
+    --code-bg:#f6f8fa;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.05);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    line-height:1.7; font-size:15px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:24px 20px 80px;}
+  .wrap-wide{max-width:1080px;}
+  h1{font-size:1.5rem; margin:0 0 4px;}
+  h2{font-size:1.2rem; margin:0 0 4px; display:flex; align-items:baseline; gap:8px;}
+  h2 .num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border-radius:50%; background:var(--accent-soft); color:var(--accent);
+    font-size:.85rem; font-weight:700; flex:none;
+  }
+  h3{font-size:1rem; margin:0 0 6px;}
+  section{margin:32px 0;}
+  .lead{color:var(--text-dim); font-size:.92rem; margin:2px 0 16px 34px;}
+  .card{
+    background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
+    padding:20px 24px; box-shadow:var(--shadow);
+  }
+  code, .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.86em;}
+  .badge{
+    display:inline-flex; align-items:center; gap:6px; padding:6px 16px; border-radius:999px;
+    font-weight:700; font-size:1.05rem; border:1px solid;
+  }
+  .badge.pass{background:var(--pass-bg); color:var(--pass); border-color:var(--pass-border);}
+  .badge.fail{background:var(--fail-bg); color:var(--fail); border-color:var(--fail-border);}
+  .badge.warn{background:var(--warn-bg); color:var(--warn); border-color:var(--warn-border);}
+  .pill{
+    display:inline-block; padding:1px 9px; border-radius:999px; font-size:.75rem; font-weight:600;
+    border:1px solid; white-space:nowrap;
+  }
+  .pill.pass{background:var(--pass-bg); color:var(--pass); border-color:var(--pass-border);}
+  .pill.fail{background:var(--fail-bg); color:var(--fail); border-color:var(--fail-border);}
+  .pill.zero{background:var(--pass-bg); color:var(--pass); border-color:var(--pass-border);}
+  .pill.blocker{background:var(--fail-bg); color:var(--blocker); border-color:var(--fail-border);}
+  .pill.major{background:var(--warn-bg); color:var(--major); border-color:var(--warn-border);}
+  .pill.minor{background:var(--border-soft); color:var(--minor); border-color:var(--border);}
+  .pill.gap{background:var(--warn-bg); color:var(--major); border-color:var(--warn-border);}
+  .pill.improve{background:var(--border-soft); color:var(--text-dim); border-color:var(--border);}
+
+  table{width:100%; border-collapse:collapse; font-size:.9rem;}
+  th,td{padding:9px 10px; border-bottom:1px solid var(--border-soft); text-align:left; vertical-align:top;}
+  thead th{color:var(--text-dim); font-weight:600; font-size:.8rem; text-transform:uppercase; letter-spacing:.02em; border-bottom:1px solid var(--border);}
+  tbody tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:10px;}
+  .tbl-wrap table{min-width:640px;}
+  .num-cell{font-variant-numeric:tabular-nums; white-space:nowrap;}
+
+  .evidence-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:16px;}
+  .evidence{border:1px solid var(--border-soft); border-radius:10px; padding:14px 16px; background:var(--code-bg);}
+  .evidence .k{font-size:.78rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;}
+  .evidence .v{font-weight:700; font-size:1.15rem;}
+  .evidence .sub{font-size:.82rem; color:var(--text-dim); margin-top:2px;}
+
+  .term{border-bottom:1px dotted var(--text-dim); cursor:help;}
+  .glossary{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:6px 20px;
+    font-size:.85rem; color:var(--text-dim); margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-soft);
+  }
+  .glossary b{color:var(--text);}
+
+  .timeline{display:flex; flex-wrap:wrap; gap:0; align-items:stretch; margin:18px 0 6px;}
+  .tl-step{
+    flex:1 1 150px; min-width:150px; border:1px solid var(--border); border-radius:10px; padding:12px 14px;
+    background:var(--bg-card); position:relative; margin:6px;
+  }
+  .tl-step.fail{border-color:var(--fail-border); background:var(--fail-bg);}
+  .tl-step.pass{border-color:var(--pass-border); background:var(--pass-bg);}
+  .tl-step .tl-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.03em; color:var(--text-dim); margin-bottom:4px;}
+  .tl-step .tl-title{font-weight:700; font-size:.92rem; margin-bottom:6px;}
+  .tl-step .tl-detail{font-size:.8rem; color:var(--text-dim);}
+  .tl-arrow{align-self:center; color:var(--text-dim); font-size:1.2rem; padding:0 2px; flex:none;}
+
+  ol.decision-list{padding-left:1.2em;}
+  ol.decision-list li{margin-bottom:10px;}
+
+  details{border:1px solid var(--border); border-radius:10px; padding:12px 16px; background:var(--bg-card); margin-top:8px;}
+  details summary{cursor:pointer; font-weight:700; padding:4px 0;}
+  details[open] summary{margin-bottom:8px;}
+  .kv{display:grid; grid-template-columns:180px 1fr; gap:4px 12px; font-size:.85rem;}
+  .kv div:nth-child(odd){color:var(--text-dim);}
+  .kv div{word-break:break-all;}
+
+  .footer-note{margin-top:40px; padding-top:16px; border-top:1px solid var(--border-soft); color:var(--text-dim); font-size:.8rem;}
+  ul.plain{padding-left:1.2em;}
+  ul.plain li{margin-bottom:6px;}
+  .cr-list{list-style:none; padding:0; margin:0;}
+  .cr-list li{padding:10px 0; border-bottom:1px solid var(--border-soft);}
+  .cr-list li:last-child{border-bottom:none;}
+  .cr-title{font-weight:600;}
+  .cr-meta{color:var(--text-dim); font-size:.8rem; margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ============ Section 1: 結論カード ============ -->
+<section>
+  <div class="card">
+    <div style="font-size:.8rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:.03em;">実装完了レビュー</div>
+    <h1>UC: 書籍を貸出する</h1>
+    <div class="lead" style="margin-left:0;">貸出管理業務 &gt; 貸出管理フロー / uc_id: <span class="mono">19ec0182</span> / 対象tier: tier-frontend, tier-backend-api</div>
+    <p style="margin:6px 0 18px;">利用者が蔵書検索画面から書籍の貸出を申し込み、在庫あり・予約なしを確認したうえで貸出を確定し、返却期限（貸出日+14日）を提示する機能です。</p>
+
+    <div style="margin:14px 0;">
+      <span class="badge pass">結論: 承認可能</span>
+    </div>
+
+    <div class="evidence-grid">
+      <div class="evidence">
+        <div class="k">6段ゲート</div>
+        <div class="v">6 / 6 pass</div>
+        <div class="sub">format・lint・単体テスト・tier BDD・UC統合BDD・ATDDのすべてが実測でpass</div>
+      </div>
+      <div class="evidence">
+        <div class="k">open blocker</div>
+        <div class="v">0 件</div>
+        <div class="sub">3回の実装attemptを経て、承認を妨げる致命的な指摘はすべて解消済み</div>
+      </div>
+      <div class="evidence">
+        <div class="k">残 major 指摘</div>
+        <div class="v">2 件</div>
+        <div class="sub">認証スタブ・X-User-Idハーネス注入。仕様の穴が原因と特定済み、変更要求へ還流済み</div>
+      </div>
+    </div>
+
+    <div class="glossary">
+      <div><b>blocker / major / minor</b>: Verifier（検証担当）が指摘する問題の深刻度。blocker=承認不可・major=重要だが承認は可・minor=軽微</div>
+      <div><b>ゲート</b>: 各工程の完了を機械的に判定する合否基準（テスト実行結果など）</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <h3 style="margin-bottom:10px;">次の行動</h3>
+    <p style="margin:0;">全ゲート通過・open blocker 0 のため、このUCの実装は<b>承認</b>して差し支えないと判断します。残る2件のmajor指摘（認証スタブ、X-User-Idヘッダのハーネス注入）は実装の不備ではなく<b>仕様側の欠落</b>が原因であることを特定済みで、是正のための変更要求（11件）を仕様チーム（distillery）宛にすでに起票しています。承認後はこの変更要求をdistilleryで処理し、次回実装サイクルで本番導線の認証を仕上げる想定です。</p>
+  </div>
+</section>
+
+<!-- ============ Section 2: このUCは何か ============ -->
+<section>
+  <h2><span class="num">2</span> このUCは何か</h2>
+  <div class="lead">前提知識なしで読める位置づけの説明</div>
+  <div class="card">
+    <div class="kv" style="margin-bottom:14px;">
+      <div>業務 (business)</div><div>貸出管理業務 — 図書館の蔵書を利用者に貸し出し・返却させる一連の業務</div>
+      <div>業務フロー (BUC)</div><div>貸出管理フロー — 貸出管理業務の中の「貸す」側の流れ（対になる「返す」流れは別UC「書籍を返却する」）</div>
+      <div>ユースケース (UC)</div><div>書籍を貸出する — 本レビューの対象。1回の貸出手続きの開始から完了までの単位</div>
+    </div>
+    <p>この実装では、貸出という1つのユースケースを2つの<span class="term" title="tier = 実装上のレイヤー区分。1つのUCが複数tierにまたがって実装される">tier</span>に分けて作っています。</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>tier</th><th>役割</th><th>主な実装物</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>tier-frontend</b></td>
+            <td>貸出手続き画面の表示とAPI呼び出し</td>
+            <td>LoanConfirmationScreen（画面）/ LoanConfirmationPage（ルート層）/ LoanConfirmationApiClient</td>
+          </tr>
+          <tr>
+            <td><b>tier-backend-api</b></td>
+            <td>貸出可否判定・貸出期限計算・在庫状態遷移・予約整合性チェック</td>
+            <td>POST /api/v1/loans, GET /api/v1/books/:id / createLoanUseCase / loans・books・reservations テーブル操作</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:14px; margin-bottom:0;">処理の要旨: 利用者が蔵書検索画面から貸出ボタンを押す →「在庫あり・予約なし」の条件を満たせば貸出を確定し、書籍の状態を「在庫あり」から「貸出中」に変更、返却期限（貸出日+14日）を計算して画面に表示する。予約者本人による貸出の場合は、対応する予約レコードも「完了」に更新する。</p>
+  </div>
+</section>
+
+<!-- ============ Section 3: 6段ゲート結果表 ============ -->
+<section>
+  <h2><span class="num">3</span> 6段ゲート結果</h2>
+  <div class="lead">実装の完了条件を6段階の自動判定で確認した結果。すべてattempt-3時点の実測値</div>
+  <div class="card" style="padding:14px 16px;">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>ゲート</th><th>意味</th><th>結果</th><th>件数（分母つき）</th><th>実施stage</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="num-cell">1</td><td>format</td><td>コード整形規約の遵守</td>
+            <td><span class="pill pass">pass</span></td><td class="num-cell">frontend / backend-api とも pass</td><td>S4 (attempt-3)</td>
+          </tr>
+          <tr>
+            <td class="num-cell">2</td><td>lint</td><td>静的解析エラーなし</td>
+            <td><span class="pill pass">pass</span></td><td class="num-cell">frontend / backend-api とも pass</td><td>S4 (attempt-3)</td>
+          </tr>
+          <tr>
+            <td class="num-cell">3</td><td>単体テスト (TDD)</td><td>tier内のロジック単位テスト</td>
+            <td><span class="pill pass">pass</span></td>
+            <td class="num-cell">frontend 26/26・backend-api 21/21（合計 47/47）</td><td>S4/S5 (attempt-3)</td>
+          </tr>
+          <tr>
+            <td class="num-cell">4</td><td>tier BDD</td><td>tier単位の振る舞い検証（<span class="term" title="Given/When/Thenで書く振る舞い検証テスト">BDD</span>シナリオ）</td>
+            <td><span class="pill pass">pass</span></td>
+            <td class="num-cell">frontend 2/2シナリオ・10/10ステップ、backend-api 2/2シナリオ・11/11ステップ（合計 4/4シナリオ・21/21ステップ）</td><td>S4/S5 (attempt-3)</td>
+          </tr>
+          <tr>
+            <td class="num-cell">5</td><td>UC統合BDD</td><td>frontend・backend-apiを実結合させたUC全体の振る舞い検証</td>
+            <td><span class="pill pass">pass</span></td>
+            <td class="num-cell">4/4シナリオ・18/18ステップ（3回連続実行で安定確認）</td><td>S6</td>
+          </tr>
+          <tr>
+            <td class="num-cell">6</td><td><span class="term" title="ATDD = Acceptance Test Driven Development。仕様書の受け入れ基準シナリオをそのままテスト化したもの">ATDD</span></td><td>仕様書が定める受け入れ基準シナリオの検証</td>
+            <td><span class="pill pass">pass</span></td>
+            <td class="num-cell">2/2シナリオ（対象 SPEC-002-01-1 / -2 の全件）・6/6ステップ（3回連続実行で安定確認）</td><td>S7</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Section 4: Verifier反証と解決 ============ -->
+<section>
+  <h2><span class="num">4</span> Verifier反証と解決の経緯</h2>
+  <div class="lead">3回の実装attemptと2回のUC統合BDD失敗を経て、blockerゼロ・全ゲートpassに至るまでの推移</div>
+  <div class="card">
+    <p style="margin-top:0;">実装は<span class="term" title="Implementer実装 → Verifier(claude-opus-5)が独立に検証、というサイクルを指す">Implementer→Verifier検証</span>のサイクルを3回（attempt-1〜3）繰り返しています。加えて両tierを実結合させるUC統合BDD（S6）が1回目に全滅し、backendの差し戻しが1回入っています。</p>
+
+    <div class="timeline">
+      <div class="tl-step fail">
+        <div class="tl-label">attempt-1 (S5検証)</div>
+        <div class="tl-title">blocker 2件検出</div>
+        <div class="tl-detail">frontend: blocker1（画面が未描画）major0 minor1<br>backend: blocker1（予約スキーマ乖離）major2 minor0</div>
+      </div>
+      <div class="tl-arrow">→</div>
+      <div class="tl-step pass">
+        <div class="tl-label">attempt-2 (S4修正→S5再検証)</div>
+        <div class="tl-title">blocker 0 達成</div>
+        <div class="tl-detail">frontend: blocker0 major0 minor3<br>backend: blocker0 major1（認証スタブ）minor1<br>→ S6へ進行</div>
+      </div>
+      <div class="tl-arrow">→</div>
+      <div class="tl-step fail">
+        <div class="tl-label">S6 UC統合BDD 1回目</div>
+        <div class="tl-title">4シナリオ全fail</div>
+        <div class="tl-detail">18ステップ中4 fail・2 skip・12 pass<br>原因a: GET /books/:id未実装<br>原因b: X-User-Idヘッダ欠落<br>原因c: 予約完了更新未実装</div>
+      </div>
+      <div class="tl-arrow">→</div>
+      <div class="tl-step pass">
+        <div class="tl-label">attempt-3 (backend差し戻し)</div>
+        <div class="tl-title">原因a・cを解消</div>
+        <div class="tl-detail">frontend: 変更なしcarry-forward<br>backend: blocker2件修正（GET/books実装・予約完了更新実装）<br>S5再検証: 両tierともblocker0、major各1件（既知の2件に収束）</div>
+      </div>
+      <div class="tl-arrow">→</div>
+      <div class="tl-step pass">
+        <div class="tl-label">S6 UC統合BDD 2回目</div>
+        <div class="tl-title">4シナリオ全pass</div>
+        <div class="tl-detail">18/18ステップ pass・3回連続安定<br>原因bはハーネス側でX-User-Id注入して回避（本番導線は未解決のため変更要求へ）</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:22px;">attempt別 findings件数の推移</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>attempt</th><th>tier</th><th>blocker</th><th>major</th><th>minor</th><th>要点</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="2" class="num-cell">1</td><td>frontend</td><td><span class="pill blocker">1</span></td><td><span class="pill zero">0</span></td><td><span class="pill minor">1</span></td><td>画面の実描画コンポーネントが存在しない（blocker）</td></tr>
+          <tr><td>backend-api</td><td><span class="pill blocker">1</span></td><td><span class="pill major">2</span></td><td><span class="pill zero">0</span></td><td>reservationsテーブル未使用で予約チェックを代替実装（blocker）。認証スタブ・未捕捉例外500未対応（major）</td></tr>
+          <tr><td rowspan="2" class="num-cell">2</td><td>frontend</td><td><span class="pill zero">0</span></td><td><span class="pill zero">0</span></td><td><span class="pill minor">3</span></td><td>blocker解消（画面実装完了）、退行なし</td></tr>
+          <tr><td>backend-api</td><td><span class="pill zero">0</span></td><td><span class="pill major">1</span></td><td><span class="pill minor">1</span></td><td>blocker解消（reservations準拠）、major2件中1件（500経路）解消。認証スタブのみ残存</td></tr>
+          <tr><td rowspan="2" class="num-cell">3</td><td>frontend</td><td><span class="pill zero">0</span></td><td><span class="pill major">1</span></td><td><span class="pill minor">3</span></td><td>新規major: X-User-Idヘッダを送信していないことをVerifierが独立指摘（F-004）</td></tr>
+          <tr><td>backend-api</td><td><span class="pill zero">0</span></td><td><span class="pill major">1</span></td><td><span class="pill minor">2</span></td><td>認証スタブ継続（環境制約としてissue起票済み）。新規minor: 予約完了更新のトランザクション境界</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-bottom:0;">残る2件のmajorは以下のとおり、いずれも<b>「仕様に契約が存在しない」ことが根本原因</b>であり、frontend・backend双方とも独立にVerifierから同一の指摘を受けています（3者独立検出）。</p>
+    <ul class="plain" style="margin-top:8px;">
+      <li><b>認証スタブ（backend, security major）</b>: 仕様はOAuth2/OIDC認証を要求するが、認証基盤自体が実装環境に提供されていない。X-User-Idヘッダの値をそのまま信用するスタブ実装で代替。</li>
+      <li><b>X-User-Idハーネス注入（frontend, security major = F-004）</b>: frontendのAPIクライアントはX-User-Idヘッダを一切送信しない契約（仕様上そもそも定義がない）。S6/S7の統合テストはテストコード側でこのヘッダを注入して通しており、本番の画面操作導線では届かない。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ Section 5: 残課題と変更要求 ============ -->
+<section>
+  <h2><span class="num">5</span> 残課題と仕様への変更要求</h2>
+  <div class="lead">実装中に見つかった仕様側の欠落・矛盾は11件の変更要求として起票済み（blocker 0・spec-gap 8・improvement 3）</div>
+  <div class="card">
+    <p style="margin-top:0;">S8（フィードバック整理）で、全attemptのissue・findingsを仕様起因／実装起因／環境起因に分類し、仕様起因の11件を変更要求（<span class="term" title="distillery(仕様生成システム)へ差し戻し、仕様書を修正してもらうための起票">CR</span>）として <span class="mono">change-requests/</span> に起票しました。実装起因・環境起因の4件は変更要求化せず、learningsに記録しています。</p>
+    <ul class="cr-list">
+      <li><span class="cr-title">UCが呼び出すが所有しないcross-UC API（GET /books/:id）を機械可読に宣言する仕組みが無い</span><div class="cr-meta"><span class="pill gap">spec-gap</span> S6 attempt-1差し戻しの直接原因</div></li>
+      <li><span class="cr-title">認証(OAuth2/OIDC)の実装契約（ヘッダ・401応答）が仕様に未定義</span><div class="cr-meta"><span class="pill gap">spec-gap</span> 残major「認証スタブ」「X-User-Id未送信」の根本原因</div></li>
+      <li><span class="cr-title">reservationsテーブルに関する本UCの仕様記述が2箇所で不完全・矛盾している</span><div class="cr-meta"><span class="pill gap">spec-gap</span> attempt-1 blockerの原因</div></li>
+      <li><span class="cr-title">openapi.yamlのgenre/material_type enum（日本語ラベル）が生成コードの構文エラーを引き起こす</span><div class="cr-meta"><span class="pill gap">spec-gap</span></div></li>
+      <li><span class="cr-title">asyncapiのmessage payloadにtitleが無く生成物がAnonymousSchemaになる</span><div class="cr-meta"><span class="pill improve">improvement</span></div></li>
+      <li><span class="cr-title">packages/uiのStorybook生成が本UCの要求（Skeleton/Spinner）を満たしていない</span><div class="cr-meta"><span class="pill gap">spec-gap</span></div></li>
+      <li><span class="cr-title">冪等キー重複時の挙動がkvs-schema.yaml（一般）とtier-backend-api.md（個別）で矛盾する</span><div class="cr-meta"><span class="pill gap">spec-gap</span></div></li>
+      <li><span class="cr-title">tier-frontend.md内で返却期限の表記がスラッシュ区切りとハイフン区切りで食い違う</span><div class="cr-meta"><span class="pill improve">improvement</span></div></li>
+      <li><span class="cr-title">LoanConfirmationコンポーネント設計のProps（onLoan）と状態（loanResult）の受け渡し経路が閉じていない</span><div class="cr-meta"><span class="pill improve">improvement</span></div></li>
+      <li><span class="cr-title">/loans/newへ実URL到達させるアプリシェル/ルーターの生成主体が仕様に存在しない</span><div class="cr-meta"><span class="pill gap">spec-gap</span></div></li>
+      <li><span class="cr-title">UC ↔ SPEC-ID（criterion粒度）の機械可読マッピングがdist-specの出力に存在しない</span><div class="cr-meta"><span class="pill gap">spec-gap</span> オーケストレータの検収で欠落を検出し追補</div></li>
+    </ul>
+    <h3 style="margin-top:20px;">distillery（仕様生成システム）へ渡す手順</h3>
+    <ol class="decision-list" style="margin-bottom:0;">
+      <li><span class="mono">change-requests/</span> 配下11ファイルをdistillery側の変更要求受付キューに投入する</li>
+      <li>最優先は認証契約（OAuth2/OIDC・X-User-Idヘッダ・401応答）とcross-UC API宣言の2件。この2件がS9承認可能の前提となった「残major」の直接原因</li>
+      <li>仕様修正後、本UCを再実行する際は <span class="mono">change-requests/_as-built-summary.md</span>（実装が実際に満たしている仕様との差分一覧）を突合の起点にする</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ Section 6: 判断ポイント ============ -->
+<section>
+  <h2><span class="num">6</span> 判断ポイント</h2>
+  <div class="lead">承認する場合・差し戻す場合それぞれで何が確定するか</div>
+  <div class="card">
+    <h3>承認すると確定すること</h3>
+    <ol class="decision-list">
+      <li>UC「書籍を貸出する」の実装（frontend・backend-api）が本番相当のコードとして確定する。6段ゲートは全てpass、open blockerは0件</li>
+      <li>認証スタブ・X-User-Idハーネス注入の2件のmajorは「実装の欠陥」ではなく「仕様の欠落」として扱われ、本UCの実装をやり直す対象からは外れる。是正はdistillery側の仕様修正 → 次サイクルでの再実装に委ねられる</li>
+      <li>11件の変更要求がdistilleryへの正式なインプットとして確定し、次の仕様生成サイクルの対象になる</li>
+    </ol>
+    <h3 style="margin-top:18px;">差し戻す場合に戻る先</h3>
+    <ol class="decision-list" style="margin-bottom:0;">
+      <li>「認証・X-User-Id契約を仕様確定させてから実装をやり直したい」場合 → S8で起票済みの変更要求（認証契約・reservations仕様）をdistilleryで先に処理し、本UCをS1（uc-init）からやり直す</li>
+      <li>「本番導線でもX-User-Idが届くようにfrontendだけ直したい」場合 → S4 tier-frontendへ差し戻し、LoanConfirmationApiClientにヘッダ送信を追加する（ただし現仕様にヘッダ契約自体が無いため、暫定対応になる点に留意）</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ Section 7: 技術詳細（折りたたみ） ============ -->
+<section>
+  <h2><span class="num">7</span> 技術詳細</h2>
+  <div class="lead">根拠となった入力の版・解決モデル・attempt履歴・learningsの詳細（通常は開かなくてよい）</div>
+
+  <details>
+    <summary>入力の版（input-manifest.yaml）</summary>
+    <div class="kv">
+      <div>spec_event</div><div>spec:20260412_195542_spec_generation</div>
+      <div>usdm event</div><div>20260412_140535_initial_build</div>
+      <div>arch event</div><div>20260625_075157_domain_architecture_addition（旧arch 20260412_164019前提のまま続行をユーザー確定 / lineage_ok: false）</div>
+      <div>design event</div><div>20260412_164650_design_system + 20260412_205245_spec_stories</div>
+      <div>contracts_lock</div><div>docs/impl/latest/contracts.lock.yaml（openapi/asyncapiとも現物一致・再生成不要）</div>
+      <div>dev_rules_sha256</div><div class="mono">9071eb8c2f6c0758...54a7a9a9</div>
+    </div>
+  </details>
+
+  <details>
+    <summary>解決モデル（resolved_models）</summary>
+    <div class="kv">
+      <div>implementer</div><div>claude-fable-5</div>
+      <div>verifier</div><div>claude-opus-5（当初claude-sonnet-5からユーザー確定で変更）</div>
+      <div>backend_framework</div><div>express（アーキ仕様はTS/Next.jsのみ指定・API層はユーザー確定）</div>
+    </div>
+  </details>
+
+  <details>
+    <summary>attempt履歴（イベントログ要約・全12件）</summary>
+    <div class="tbl-wrap" style="margin-top:8px;">
+      <table>
+        <thead><tr><th>時刻</th><th>stage</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td class="num-cell">09:50</td><td>S1</td><td>preflight全pass。lineage不一致は旧arch前提続行をユーザー確定。ATDDシナリオ2件確定</td></tr>
+          <tr><td class="num-cell">09:56</td><td>S2</td><td>red baseline全4段（ATDD/UC BDD/tier BDD/TDD）でfail確認（未実装起因）</td></tr>
+          <tr><td class="num-cell">09:58</td><td>S3</td><td>openapi/asyncappiとも契約現物一致、再生成不要</td></tr>
+          <tr><td class="num-cell">10:18</td><td>S4 attempt-1</td><td>両tier実装完了。express未インストールでnode:http代替、契約生成物の構文エラーを検出</td></tr>
+          <tr><td class="num-cell">10:24</td><td>S5 attempt-1</td><td>両tierでblocker検出（frontend: 画面未描画 / backend: 予約スキーマ乖離）→ attempt-2へ</td></tr>
+          <tr><td class="num-cell">10:45</td><td>S4 attempt-2</td><td>両tierのblocker修正完了（frontend tests26 / backend tests17）</td></tr>
+          <tr><td class="num-cell">11:03</td><td>S5 attempt-2</td><td>両tierblocker0。backend major1（認証スタブ）残存 → S6へ</td></tr>
+          <tr><td class="num-cell">11:15</td><td>S6 attempt-1</td><td>4シナリオ全fail。backend attempt-3へ差し戻し、frontendはcarry-forward</td></tr>
+          <tr><td class="num-cell">11:45</td><td>S5 attempt-3</td><td>backend blocker2件解消。両tiermajor1件ずつに収束（認証スタブ/X-User-Id）</td></tr>
+          <tr><td class="num-cell">11:52</td><td>S6 attempt-2</td><td>4シナリオ全pass・18ステップ・3回連続安定</td></tr>
+          <tr><td class="num-cell">12:00</td><td>S7</td><td>ATDD 2/2シナリオpass</td></tr>
+          <tr><td class="num-cell">12:16</td><td>S8</td><td>変更要求11件・learnings4件・提案2件を整理</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary>learnings（実装起因・環境起因の学び 4件 + 提案2件）</summary>
+    <ul class="plain" style="margin-top:8px;">
+      <li>impl-config.yamlで確定したフレームワーク依存（express）が、write-set分離のためattempt-1では追加できなかった（node:http代替 → attempt-2でオーケストレータが依存追加）</li>
+      <li>tsconfig module:ESNext + ts-node/registerの組み合わせでは拡張子なし相対importが解決できない</li>
+      <li>契約生成物（barrel）の構文エラーは「無編集で個別モデルを直接import」で複数tierが独立に回避できる</li>
+      <li>macOSの大文字小文字非区別ファイルシステムで、TSファイル名の衝突により自己参照的import誤解決が発生した</li>
+      <li>提案（採否はユーザー判断・未反映）: S0 bootstrapのscaffoldテンプレートにts-nodeのmoduleオーバーライドを標準搭載する案</li>
+      <li>提案（採否はユーザー判断・未反映）: 大文字小文字のみ異なるファイル名ペアを禁止する命名規約をdev-rulesに追加する案</li>
+    </ul>
+  </details>
+</section>
+
+<div class="footer-note">
+  生成元: docs/impl/latest/19ec0182/（status.yaml, stages/, issues/, change-requests/, learnings/）, docs/impl/events/, uc-map.yaml, および仕様書 spec.md<br>
+  manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff<br>
+  本ページはS9（HTML生成）の成果物であり、UCの完了を確定するものではありません。UC完了はユーザー承認イベント（review_approved）の記録をもって正とします。
+</div>
+
+</div>
+</body>
+</html>

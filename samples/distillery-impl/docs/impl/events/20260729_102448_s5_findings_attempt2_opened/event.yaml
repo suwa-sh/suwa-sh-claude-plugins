@@ -1,0 +1,12 @@
+event_id: "20260729_102448_s5_findings_attempt2_opened"
+type: attempt_opened
+uc_id: "19ec0182"
+stage: "S5"
+attempt: 2
+payload:
+  findings_attempt1:
+    tier-frontend: {blocker: 1, major: 0, minor: 1, blocker_summary: "画面実描画が未実装(packages/ui 未使用・.tsx 0 件)。scope 縮小の issues 未起票"}
+    tier-backend-api: {blocker: 1, major: 2, minor: 0, blocker_summary: "rdb-schema に無い自作フィールドで予約チェックを代替(reservations テーブル未実装)。未起票"}
+  decision: "両 tier に blocker → attempt-2 で両 tier の S4 を再実行(carry-forward 対象なし)。major 2 件(認証スタブ追跡・冪等 2 層目の未処理例外)も修正対象に含める"
+  note: "S5 の検証は attempt-1 の findings/done として保存済み。S5 は carry-forward しない規約"
+created_at: "2026-07-29T10:24:48+09:00"

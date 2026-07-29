@@ -1,0 +1,39 @@
+stage: "S6"
+uc_id: "19ec0182"
+manifest_sha256: "8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff"
+result: pass
+gate5_uc_bdd:
+  command: "npm run bdd:uc"
+  exit_code: 0
+  result: pass
+  scenarios_total: 4
+  scenarios_passed: 4
+  steps_total: 18
+  steps_passed: 18
+  reruns_confirmed: 3
+attempt_history:
+  - attempt: 1
+    result: fail
+    scenarios_passed: 0
+    scenarios_total: 4
+    note: "GET /api/v1/books/:id 未実装により全4シナリオが書籍情報取得時点で404。原因分析のみ返却しdoneは未作成。"
+  - attempt: 2
+    result: pass
+    scenarios_passed: 4
+    scenarios_total: 4
+    note: "S4 attempt-3でGET /api/v1/books/:id・予約完了更新(reservationRepository.completeReservedByBookIdAndUserId)を追加。features/uc/cucumber.cjsにTS_NODE_PROJECT既定(tsconfig.uc-features.json)を追加しnpm run bdd:ucが素で動作するよう修正。ハーネス側でX-User-Id注入を追加し全4シナリオpass。"
+files_created:
+  - "docs/impl/latest/19ec0182/stages/S6_uc-bdd.done.yaml"
+files_updated:
+  - "features/uc/steps/19ec0182.steps.ts"
+notes: >-
+  全tier結合(実express サーバー起動 + frontendの LoanConfirmationController /
+  renderLoanConfirmationView)でfeatures/uc/19ec0182.featureの4 Scenarioを実行し全pass。
+  モックfetchは使用せず実HTTP通信・実DOM出力(renderToStaticMarkup)で検証した。
+  仕様ギャップ(issue 20260729_011215_auth_and_missing_header_gap.md。frontendの
+  LoanConfirmationApiClientはX-User-Idヘッダを送信しない)について、オーケストレータの
+  ユーザー確定方針「ハーネス注入を許容」に従い、features/uc/steps/19ec0182.steps.tsの
+  fetchラッパでテスト用にX-User-Idヘッダを注入した(該当箇所に暫定注入である旨とissue参照の
+  コメントを明記済み)。frontend/src・backend-api/srcは無変更。
+completed_at: "2026-07-29T11:45:11+09:00"
+completed_by: "dist-impl-implement"

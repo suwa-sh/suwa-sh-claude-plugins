@@ -1,0 +1,20 @@
+config_version = "0"
+
+[[source]]
+name = "default"
+
+[[plugin]]
+name = "biome"
+
+[[plugin]]
+name = "eslint"
+
+[[exclude]]
+plugins = ["eslint"]
+rules = ["*"]
+file_patterns = ["packages/contracts/**"]
+
+[[exclude]]
+plugins = ["biome"]
+rules = ["*"]
+file_patterns = ["packages/contracts/**"]

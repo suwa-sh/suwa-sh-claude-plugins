@@ -1,0 +1,97 @@
+stage: S4
+sub_stage: tier-impl
+uc_id: 19ec0182
+tier: tier-backend-api
+attempt: 2
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: pass
+fixed_findings:
+  - id: F-001
+    severity: blocker
+    fix: >-
+      _cross-cutting/datastore/rdb-schema.yaml の reservations テーブル(status:
+      pending/reserved/cancelled, queue_position)に沿って ReservationRepository
+      (backend-api/src/repositories/reservationRepository.ts)を新設し、canLend
+      (backend-api/src/domain/loan.ts)の予約判定を reservations 経由に修正。
+      Book.reservedByUserId という rdb-schema.yaml に存在しない自作フィールドは廃止。
+      「予約受付中」= 有効な予約(pending/reserved)全体、「予約確保済」= status: reserved
+      の予約者本人、という解釈は仕様に明記が無いため issues/ に起票済み。
+  - id: F-002
+    severity: major
+    fix: >-
+      既存issue(20260729_011215_auth_and_missing_header_gap.md)に
+      tier-backend-api.md の OAuth2/OIDC 要求と現状実装(X-User-Idスタブ)との差分表を追記。
+      backend-api/src/http/server.ts と backend-api/src/http/loansController.ts の
+      userId 取得箇所に issue パス参照付き TODO コメントを明示。
+  - id: F-003
+    severity: major
+    fix: >-
+      loanRepository.ts に UniqueConstraintViolationError を新設し、RDB UNIQUE 制約相当の
+      重複検出時にこれを投げるよう変更。createLoanUseCase.ts で捕捉し ConflictError(409)へ
+      変換。server.ts は express 化に伴いエラーハンドリングミドルウェア(4引数)を追加し、
+      未捕捉例外でも応答無しにならず HTTP 500 + RFC7807 を返すようにした。
+      テスト2件追加(createLoanUseCase.test.ts の UNIQUE制約→409変換、新規server.test.tsの
+      500フォールバック)。
+other_changes:
+  - description: >-
+      backend_framework: express(impl-config.yaml)への載せ替え。attempt-1 issue
+      (20260729_011212_express_dependency_unavailable.md)はオーケストレータが
+      backend-api workspace に express / @types/express をインストール済みだったため解消。
+      server.ts を node:http から express Router ベースへ置き換え(loansController.ts の
+      ハンドラ本体は無変更で流用)。
+gates:
+  gate1_format_check:
+    command: npm run format:check --workspace=backend-api
+    exit_code: 0
+    result: pass
+  gate2_lint:
+    command: npm run lint --workspace=backend-api
+    exit_code: 0
+    result: pass
+  gate3_tdd_unit:
+    command: npm run test --workspace=backend-api
+    exit_code: 0
+    result: pass
+    test_files:
+      - backend-api/test/loan.test.ts
+      - backend-api/test/createLoanUseCase.test.ts
+      - backend-api/test/server.test.ts (new)
+    tests_passed: 17
+    tests_passed_attempt1: 11
+  gate4_tier_bdd:
+    command: npm run bdd --workspace=backend-api
+    exit_code: 0
+    result: pass
+    scenarios_passed: 2
+    steps_passed: 11
+files_created:
+  - backend-api/src/domain/reservation.ts
+  - backend-api/src/repositories/reservationRepository.ts
+  - backend-api/test/server.test.ts
+files_updated:
+  - backend-api/src/domain/book.ts (reservedByUserId フィールド削除)
+  - backend-api/src/domain/loan.ts (canLend を予約経由の判定に変更)
+  - backend-api/src/repositories/loanRepository.ts (UniqueConstraintViolationError 追加)
+  - backend-api/src/application/createLoanUseCase.ts (reservationRepository 注入、
+    UniqueConstraintViolationError → ConflictError 変換)
+  - backend-api/src/http/loansController.ts (認証 TODO コメント明示)
+  - backend-api/src/http/server.ts (express 化、最終 catch 追加)
+  - backend-api/test/loan.test.ts (canLend テストを予約シナリオに全面更新)
+  - backend-api/test/createLoanUseCase.test.ts (予約シナリオ2件・UNIQUE制約変換1件を追加)
+  - backend-api/features/steps/19ec0182.steps.ts (express 対応、reservationRepository 追加)
+issues_filed:
+  - docs/impl/latest/19ec0182/issues/20260729_020000_reservations_select_missing_in_model_summary.md (new)
+issues_updated:
+  - docs/impl/latest/19ec0182/issues/20260729_011215_auth_and_missing_header_gap.md (差分表追記)
+  - docs/impl/latest/19ec0182/issues/20260729_011212_express_dependency_unavailable.md (解消記録追記)
+issues_carried_forward:
+  - docs/impl/latest/19ec0182/issues/20260729_011213_api_types_defaultapi_syntax_error.md (未対応、対象外)
+  - docs/impl/latest/19ec0182/issues/20260729_011214_idempotency_conflict_semantics.md (未対応、対象外)
+completed_at: "2026-07-29T11:20:00+09:00"
+completed_by: dist-impl-implement
+notes: >-
+  attempt-1 の S5 verify findings(F-001 blocker, F-002/F-003 major)を全て修正。
+  reservations テーブル経由の予約判定に置き換え、UNIQUE 制約違反の 409 マッピングと
+  未捕捉例外の 500 フォールバックを追加した。あわせて express_dependency issue が
+  オーケストレータ側の対応で解消していたため node:http から express へ載せ替えた。
+  単体テストは 11 → 17 件に増加し攻撃1のテスト資産は全て退行なく引き継いだ。4ゲート全通過。

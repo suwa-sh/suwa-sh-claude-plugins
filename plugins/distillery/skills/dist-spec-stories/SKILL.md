@@ -61,7 +61,20 @@ spec スキルの Step9 として実装されていたものを独立スキル�
    - 当たり前品質チェック（はみ出し、文字切れ、コントラスト、クリッカブル、色の適用）
    - 問題があれば修正 → 再確認のループ
 6. **ビルド検証**: `npx storybook build` でエラーがないことを確認する
-7. **design イベント記録（ハイブリッド方式）**: design スキルのイベントソーシングルールに従う。storybook-app/ は全量再ビルド対象のため events/ には含めない:
+7. **反証レビューループ（宣言と実体の全数突合）**: 生成とは別コンテキストの反証専用サブエージェント
+   （修正禁止）にレビューさせ、指摘を修正して収束させる
+   - 突合対象:
+     - ① design-event.yaml の `screens[]`（uc / story / variants）と `src/stories/` の実ファイル・
+       export の**全数一致**（宣言だけあって実体が無い Story を検出。後工程の実装ハーネス
+       distillery-impl は「src/ の実ファイル列挙が正」で取り込むため、宣言超過はそのまま実装の欠品になる）
+     - ② tier-{tier_id}.md のコンポーネント設計（Props / 状態 / バリアント）と Story 実装の一致
+     - ③ `components`（ui / domain / common）の宣言と `src/components/` 実ファイルの全数一致
+   - findings（severity: blocker / major / minor）の blocker / major は修正し、
+     ビルド検証・画面確認を再実行してから再レビュー
+   - 収束条件: blocker 0 かつ新規 major 0、または 3 ラウンド到達（残 findings は完了報告に含める）
+   - 実例（distillery-impl の実走で検出）: design-event.yaml が 16 画面・19 コンポーネントを
+     宣言しながら storybook-app の実体が 4 ファイルしか無く、実装 tier が着手直後にブロックした
+8. **design イベント記録（ハイブリッド方式）**: design スキルのイベントソーシングルールに従う。storybook-app/ は全量再ビルド対象のため events/ には含めない:
    - `date '+%Y%m%d_%H%M%S'` でイベント ID を生成
    - `docs/design/events/{event_id}_spec_stories/` を作成し、以下を記録する:
      - `design-event-diff.yaml` — screens/components の追加分のみ（差分）。**full の design-event.yaml と同型のサブセット構造**とする:

@@ -1,0 +1,128 @@
+stage: S4
+sub_stage: tier-impl
+uc_id: 19ec0182
+tier: tier-backend-api
+attempt: 3
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: pass
+context: >-
+  S6(UC統合BDD)がattempt-2完了時点で4シナリオ中4シナリオともfailしたための差し戻し
+  (S6_uc-bdd.done.yamlは書かれず、分析のみオーケストレータへ返却された)。
+  fail原因3点(a: GET /api/v1/books/:idの未実装、b: X-User-Idヘッダの欠落時扱いの不明確さ、
+  c: 貸出成功後の予約レコード完了更新の未実装)のうち、a/cはこのtierの実装で解消し、
+  bはbackend側の対応範囲(ヘッダが送られてくれば正しく動作すること)を保証したうえで
+  frontend契約側の欠落として起票にとどめた(frontendのwrite-setはこのattemptの対象外)。
+fixed_findings:
+  - id: F-S6-a
+    severity: blocker
+    fix: >-
+      GET /api/v1/books/:id を最小実装した(backend-api/src/http/booksController.ts 新設、
+      backend-api/src/http/server.ts にルーティング追加)。この UC の _api-summary.yaml には
+      未宣言(cross-UC 依存の仕様漏れ)だが、tier-frontend.md の UI ロジックと frontend 実装
+      (LoanConfirmationApiClient.getBook)が前提にしていたため実装した。
+      レスポンス形は packages/contracts/api-types/models/BookResponse.ts(snake_case)に合わせた。
+      backend-api/src/domain/book.ts に author/isbn/publisher/genre/materialType/location/
+      createdAt/updatedAt を任意項目として追加し、この UC の bookRepository が未シードの項目は
+      空文字列(created_at は clock.today())で応答する暫定実装とした。
+      issues/20260729_113000_books_get_endpoint_undeclared_in_api_summary.md に起票済み。
+  - id: F-S6-b
+    severity: major
+    fix: >-
+      X-User-Id ヘッダを backend が受け取って正しく動作することを確認した(既存実装のまま、
+      firstHeaderValue経由でHttpRequestContext.userIdに渡す経路は変更不要だった)。
+      frontend の LoanConfirmationApiClient は createLoan/getBook のいずれでも X-User-Id を
+      送信しない事実を確認し、既存 issue
+      (20260729_011215_auth_and_missing_header_gap.md)に差分と backend 側の対応方針
+      (欠落時は空文字列 userId のまま処理継続。frontend 側ヘッダ追加は write-set 外につき対象外)
+      を追記した。backend 側のコード変更は行っていない。
+  - id: F-S6-c
+    severity: blocker
+    fix: >-
+      貸出成功後の予約レコード完了更新を実装した。ReservationStatus に "fulfilled" を追加
+      (backend-api/src/domain/reservation.ts)、ReservationRepository に
+      completeReservedByBookIdAndUserId(bookId, userId) を追加
+      (backend-api/src/repositories/reservationRepository.ts。findActiveByBookId の
+      「有効な予約」定義も pending/reserved のみに厳格化)、createLoanUseCase の貸出成功処理の
+      最後で呼び出すよう変更した(backend-api/src/application/createLoanUseCase.ts)。
+      rdb-schema.yaml の reservations.status enum に完了値が無い矛盾は
+      issues/20260729_113001_reservation_fulfilled_status_missing_in_rdb_schema.md に起票済み。
+gates:
+  gate1_format_check:
+    command: npm run format:check --workspace=backend-api
+    exit_code: 0
+    result: pass
+  gate2_lint:
+    command: npm run lint --workspace=backend-api
+    exit_code: 0
+    result: pass
+  gate3_tdd_unit:
+    command: npm run test --workspace=backend-api
+    exit_code: 0
+    result: pass
+    test_files:
+      - backend-api/test/loan.test.ts
+      - backend-api/test/createLoanUseCase.test.ts
+      - backend-api/test/server.test.ts
+    tests_passed: 21
+    tests_passed_attempt2: 17
+    note: >-
+      attempt-2 の17件は無変更のまま全pass(退行なし)。新規4件(GET /api/v1/books/:id 200/404、
+      予約確保済予約者本人の貸出による完了更新、予約なし通常貸出でのno-op)を追加。
+      3回連続実行で安定してpassすることを確認済み(1回目は`fetch failed`だったが、これは
+      OSが選んだ空きポートに偶然別プロセス(H2 DBサーバーと思われる応答)が割り当たった
+      環境要因の一過性エラーで、直後の再実行では毎回pass。テストコード・実装側の問題ではない)。
+  gate4_tier_bdd:
+    command: npm run bdd --workspace=backend-api
+    exit_code: 0
+    result: pass
+    scenarios_passed: 2
+    steps_passed: 11
+    note: tier-backend-api.mdの「ティア完了条件(BDD)」は本attemptで変更が無いため2シナリオのまま。
+sanity_check_uc_bdd:
+  command: npm run bdd:uc
+  note: >-
+    integration writer(S6)のwrite-set外だが、実装が実際にS6のfail原因を解消しているかの
+    確認のためオーケストレータ判断で診断的に実行した(ファイル変更は行っていない)。
+    結果: 4シナリオ中3シナリオpass(貸出可能な書籍の貸出/貸出中書籍の貸出拒否/
+    他者の予約がある書籍の貸出拒否)。18ステップ中16 pass・1 fail・1 skip。
+    残り1シナリオ「予約確保済書籍の貸出」はPOST /api/v1/loansがHTTP 409になり失敗する。
+    原因はF-S6-bで起票した通りfrontendのLoanConfirmationApiClientがX-User-Idを送信しないため
+    userIdが空文字列となり、予約者本人と一致せずcanLendがfalseになること
+    (backend側は正しい防御的挙動。frontend側のヘッダ送信対応が別途必要)。
+files_created:
+  - backend-api/src/http/booksController.ts
+  - docs/impl/latest/19ec0182/issues/20260729_113000_books_get_endpoint_undeclared_in_api_summary.md
+  - docs/impl/latest/19ec0182/issues/20260729_113001_reservation_fulfilled_status_missing_in_rdb_schema.md
+files_updated:
+  - backend-api/src/domain/book.ts (GET応答用の任意メタデータ項目を追加)
+  - backend-api/src/domain/reservation.ts (ReservationStatusに"fulfilled"を追加)
+  - backend-api/src/repositories/reservationRepository.ts (completeReservedByBookIdAndUserId追加、
+    findActiveByBookIdの有効判定を厳格化)
+  - backend-api/src/application/createLoanUseCase.ts (貸出成功時に予約完了更新を呼び出し)
+  - backend-api/src/http/server.ts (GET /api/v1/books/:id ルーティング追加)
+  - backend-api/test/server.test.ts (GET /api/v1/books/:id の200/404テストを追加)
+  - backend-api/test/createLoanUseCase.test.ts (予約完了更新のテスト2件を追加)
+issues_filed:
+  - docs/impl/latest/19ec0182/issues/20260729_113000_books_get_endpoint_undeclared_in_api_summary.md (new)
+  - docs/impl/latest/19ec0182/issues/20260729_113001_reservation_fulfilled_status_missing_in_rdb_schema.md (new)
+issues_updated:
+  - docs/impl/latest/19ec0182/issues/20260729_011215_auth_and_missing_header_gap.md (frontend契約に
+    X-User-Idが無い事実とbackend側の対応方針を追記)
+issues_carried_forward:
+  - docs/impl/latest/19ec0182/issues/20260729_011213_api_types_defaultapi_syntax_error.md (未対応、対象外)
+  - docs/impl/latest/19ec0182/issues/20260729_011214_idempotency_conflict_semantics.md (未対応、対象外)
+  - docs/impl/latest/19ec0182/issues/20260729_020000_reservations_select_missing_in_model_summary.md (未対応、対象外)
+completed_at: "2026-07-29T11:35:00+09:00"
+completed_by: dist-impl-implement
+notes: >-
+  S6の差し戻し原因3点のうちa(GET /api/v1/books/:id未実装)とc(予約完了更新の未実装)を
+  backend-api tierの実装で解消した。b(X-User-Id欠落時の扱い)はbackendが正しく動作する
+  ことを確認したうえで、根本原因はfrontend契約側にX-User-Idヘッダの送信自体が無いことである
+  と特定し、既存issueに追記した。frontendクライアントへのヘッダ追加はこのattemptの
+  write-set(backend-api/配下、done、issues)の外であり、意図的にスコープ外とした
+  (S6のintegration writerまたは次のfrontend修正での対応が必要)。
+  4ゲート全通過(format/lint/unit 21件/tier BDD 2シナリオ)。attempt-2の17テスト・2 tier BDD
+  シナリオは無変更のまま退行なし。診断的に実行したUC統合BDD(npm run bdd:uc、write-set外・
+  ファイル変更なし)では4シナリオ中3シナリオがpassするようになり、実装がS6のfail原因を
+  実際に解消していることを確認した。残り1シナリオはb(frontend契約のヘッダ欠落)が原因で、
+  backend単独では解決できない。

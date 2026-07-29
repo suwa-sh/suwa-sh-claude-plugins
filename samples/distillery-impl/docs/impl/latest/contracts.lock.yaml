@@ -1,0 +1,23 @@
+schema_version: '1.0'
+inputs:
+  openapi:
+    path: /private/tmp/distillery-impl-test/specs-root/specs/latest/_cross-cutting/api/openapi.yaml
+    sha256: 13fd0e20f0ac27efd32e766b8833c830dbd687070c0861c57e41fbc8070669f4
+  asyncapi:
+    path: /private/tmp/distillery-impl-test/specs-root/specs/latest/_cross-cutting/api/asyncapi.yaml
+    sha256: 7203b779e4f79a3b6267fa2aa8f991e7d4e207af8895db5c434ff6022d2b646b
+generated:
+- dir: packages/contracts/api-types
+  generator: typescript-fetch
+  at: '2026-07-29T09:33:06.341723+09:00'
+- dir: packages/contracts/api-client
+  generator: typescript-fetch
+  at: '2026-07-29T09:33:06.341723+09:00'
+- dir: packages/contracts/server-stubs
+  generator: typescript-node
+  at: '2026-07-29T09:33:06.341723+09:00'
+- dir: packages/contracts/async-types
+  generator: asyncapi-cli-models-typescript
+  at: '2026-07-29T09:33:06.341723+09:00'
+  note: AnonymousSchema_1/9 = payload に title 欠落。README.md に message 対応表を記録
+generated_at: '2026-07-29T09:33:06.341723+09:00'

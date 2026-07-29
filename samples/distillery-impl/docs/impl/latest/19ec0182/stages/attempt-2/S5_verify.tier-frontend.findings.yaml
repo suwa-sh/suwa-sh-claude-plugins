@@ -1,0 +1,126 @@
+schema_version: "1.0"
+uc_id: "19ec0182"
+tier: "tier-frontend"
+attempt: 2
+verified_at: "2026-07-29T10:55:00+09:00"
+gate_reexec: {format: pass, lint: pass, tdd: pass, bdd_tier: pass}
+viewpoints_checked:
+  spec_conformance:
+    status: done
+    note: >-
+      F-001(attempt-1 blocker)の解消を最優先で検証: frontend/src/components/LoanConfirmationScreen.tsx
+      の renderLoanConfirmationView / LoanConfirmation を実行し、react-dom/server の renderToStaticMarkup
+      で得た実際の HTML 文字列に packages/ui の BookCard(内部で BookLoanStatusBadge を描画)/ Button の
+      出力(書籍タイトル・「在庫あり」ラベル・<button>要素・disabled属性)が含まれることを自分で再実行して
+      確認した(vitest 26件・cucumber-js 2 scenarios/10 stepsとも独立再実行しpass)。frontend/src配下の
+      .tsx実装ファイルは2件(LoanConfirmationScreen.tsx/LoanConfirmationPage.tsx)のみで他に画面実装は
+      無いが、tier-frontend.mdが要求する画面仕様(表示要素5点・コンポーネント設計Props/状態・操作フロー
+      5ステップ)を過不足なくカバーしている。BDD featureはtier-frontend.mdのgherkinと一字一句一致(意訳
+      なし、frontend/features/19ec0182.feature)。stepsもTherenステップが計算済みオブジェクトでなく
+      実DOM出力(html変数)を検証する形に更新済みで、画面が実在することの証拠になっている。よってF-001は
+      真に解消と判定する。ただし新規に3件の軽微な仕様乖離を検出(F-001/F-002/F-003、いずれもminor。詳細は
+      findings参照)。既存のAPI 1/1突合・契約(packages/contracts)経由呼び出し・ビジネスルール担保
+      (isLoanButtonEnabled)はattempt-1から変更なく維持されている。
+  readability_maintainability:
+    status: done
+    note: >-
+      LoanConfirmationScreen.tsx/LoanConfirmationPage.tsxとも各JSX要素に「出典: tier-frontend.md
+      表示要素/UIロジック/操作フロー」のコメントが付与され、命名も仕様用語(BookCard/LoanConfirmation/
+      LoanConfirmationPage)に整合している。renderLoanConfirmationView(純粋関数)とLoanConfirmation
+      (状態を持つFC)を分離した設計はテスト容易性(renderToStaticMarkupでの状態別描画検証)に寄与しており、
+      test-strategy.mdのAAA構造(// Arrange/Act/Assertコメント)・テスト命名(describe+it の2分割、
+      許容されている形式)にも準拠している。既存のloanConfirmation.tsは無変更(値変換ロジックの重複なし)。
+      F-004(attempt-1 F-002からの継続、minor)を除き新規の重複ロジック・過剰な複雑さは見当たらない。
+  security:
+    status: done
+    note: >-
+      認証・認可はattempt-1同様frontend tierのスコープ外(BDD Given「利用者がログイン済み」はfrontend側で
+      検証しない設計がtier-frontend.mdにも明記なし・steps.tsのコメントで明示)。秘密情報のハードコード・
+      console.log等によるログ出力(grep確認、該当ゼロ)・fetch/axiosの直書き(grep確認、該当ゼロ、契約
+      client経由を維持)は無し。書影がない状態依存の実装だが個人情報の露出も無い。
+  performance:
+    status: done
+    note: >-
+      frontend tierはview-model層+描画層のみでDB/インデックス対象外。renderToStaticMarkupはSSR相当の
+      同期処理でN+1等の懸念なし。今回追加されたLoanConfirmationPageのuseEffectはbookId/controller変更時
+      のみ再実行され不要な再フェッチは無い(cancelledフラグでのクリーンアップも実装済み)。
+  operability:
+    status: done
+    note: >-
+      mapLoanErrorMessageは変更なく409を「この書籍は現在貸出できません」に変換、それ以外は汎用メッセージに
+      フォールバック。書籍取得失敗時もrole="alert"のエラーバナーで同様に扱われる(LoanConfirmationPage)。
+      環境依存値のハードコードなし(basePath等はConfiguration経由で外出し済み)。
+  fault_tolerance:
+    status: done
+    note: >-
+      submitLoan呼び出し(冪等キー: createIdempotencyKeyでリクエストごとにcrypto.randomUUID発行)・
+      loadBookResponse呼び出しともPromise.then/catchで失敗時にエラー状態へ遷移する設計を維持。
+      LoanConfirmationPageのuseEffectはunmount時にcancelledフラグでstate更新を止めており、
+      React特有の「unmount後のsetState」による不整合を回避している。
+  refactoring:
+    status: done
+    note: >-
+      LoanConfirmationScreen.tsxはrenderLoanConfirmationView(純粋関数)とLoanConfirmation(状態管理)に
+      責務分離されており、次の変更(例: Skeleton/Spinner追加)を高くつかせる設計上の負債は見当たらない。
+      F-004(旧F-002)のAPIクライアント手動複製は継続課題として残る(対応は今attemptの指示で任意)。
+findings:
+  - id: F-001
+    viewpoint: spec_conformance
+    severity: minor
+    target: "frontend/src/components/LoanConfirmationScreen.tsx:32-36"
+    claim: >-
+      tier-frontend.mdのコンポーネント設計表は「onLoan: () => Promise<void>」と定義しているが、実装の
+      LoanConfirmationProps.onLoanは「() => Promise<LoanResponse>」でPropsのシグネチャが仕様と異なる。
+    evidence: >-
+      tier-frontend.md「コンポーネント設計 LoanConfirmation」Props表のonLoan行は「() => Promise<void>」。
+      対してLoanConfirmationScreen.tsx:34は`onLoan: () => Promise<LoanResponse>`。状態表の
+      loanResult(LoanResponse)を保持するために戻り値を変更したとdocs/impl/latest/19ec0182/issues/
+      20260729103954_loanconfirmation-onloan-return-type-ambiguity.mdに起票済み(coding-rules.md
+      rule 4「仕様の問題としてissues/に書き捨てる」に準拠した対応)。BDD 2 scenarios・単体テスト6件は
+      この実装で独立再実行してpassを確認しており、挙動としての齟齬はない。字句レベルの仕様記載精度の
+      問題であり、動作不良ではないためminorと判定する。
+    suggested_fix: >-
+      次回spec更新時にtier-frontend.mdのonLoan型を「() => Promise<LoanResponse>」に修正するか、
+      loanResultをPropsとして親から渡す設計に明確化する(issues記載の提案どおり)。
+  - id: F-002
+    viewpoint: spec_conformance
+    severity: minor
+    target: "frontend/src/pages/LoanConfirmationPage.tsx:36-45, frontend/src/components/LoanConfirmationScreen.tsx:94-102"
+    claim: >-
+      tier-frontend.mdのUIロジック「ローディング: 書籍情報取得時はSkeleton UI、貸出申請時はボタン
+      disabled+Spinner」に対し、実装はSkeleton/Spinnerコンポーネントを使わずプレーンテキスト
+      (「読み込み中...」「処理中...」)で代替している。
+    evidence: >-
+      packages/ui/components配下にはBookCard/BookLoanStatusBadge/Badge/Buttonの4コンポーネントしか
+      存在せず(ls確認)、Skeleton/Spinnerは未生成(packages/ui/.imported.yamlに設計システム生成不足として
+      記録済み)。coding-rules.md rule 2「frontendのUIコンポーネントはpackages/ui/のみ使用。新規
+      コンポーネントの自作は禁止」に従いテキスト代替とした判断はissues/20260729103955_
+      skeleton-spinner-components-missing.mdに起票済みで妥当。ボタンのdisabled化自体はtier-frontend.md
+      要件どおり実装されており(loanConfirmationScreen.test.tsx:164-181で確認)、視覚的な代替表現の
+      粒度のみの差でありminorと判定する。
+    suggested_fix: >-
+      design(dist-design-system)側でSkeleton/Spinnerコンポーネントが生成され次第、テキスト代替箇所を
+      置き換える(issues記載の提案どおり)。
+  - id: F-003
+    viewpoint: refactoring
+    severity: minor
+    target: "frontend/src/api/loanConfirmationApiClient.ts"
+    claim: >-
+      attempt-1 findings F-002(minor)の継続。packages/contracts/api-client/apis/DefaultApi.tsの
+      構文エラー回避のため、getBook/createLoanのリクエスト内容を手書きで複製したクライアントが
+      attempt-2でも変更なく残存しており、契約再生成時の手動追従が必要な保守負債である。
+    evidence: >-
+      frontend/src/api/loanConfirmationApiClient.tsはattempt-1から無変更(DefaultApi.tsのgetBook/
+      createLoanと同一のpath/method/header/body変換を独立コードとして保持)。S4_tier-impl.
+      tier-frontend.done.yaml(attempt-2)のfixed_findingsにも「対応は任意との指示のため...今回のスコープに
+      含めていない」と明記されており、既存issues/20260729101416_defaultapi-generated-syntax-error.md
+      への参照コメントも維持されている。今attemptでの対応見送りは指示どおりであり新規の問題ではないが、
+      未解消のためfindings ledgerとして継続記録する。
+    suggested_fix: >-
+      契約側(openapi-generatorのenumPropertyNaming設定、またはx-enum-varnames付与)の修正後、
+      LoanConfirmationApiClientを削除しpackages/contracts/api-clientのbarrelからDefaultApiを直接
+      importする形に戻す(attempt-1 F-002 suggested_fixのまま)。
+summary:
+  blocker: 0
+  major: 0
+  minor: 3

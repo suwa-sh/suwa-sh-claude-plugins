@@ -1,0 +1,48 @@
+schema_version: '1.0'
+uc_id: 19ec0182
+fixed_at: '2026-07-29T09:50:00+09:00'
+inputs:
+  spec_event:
+    event_id: spec:20260412_195542_spec_generation
+    sha256: fe6cb5d50b377b36f42570507657d61dad54c0b90ebb47e0ff38dac9a25bab9f
+  spec_md:
+    path: /private/tmp/distillery-impl-test/specs-root/specs/latest/貸出管理業務/貸出管理フロー/書籍を貸出する/spec.md
+    sha256: 1a8300e9e8b51b4babaa63ddc5678db1da9f21cd7efaa3cd850beedac5c4dc9d
+  tier_mds:
+  - tier: tier-frontend
+    path: /private/tmp/distillery-impl-test/specs-root/specs/latest/貸出管理業務/貸出管理フロー/書籍を貸出する/tier-frontend.md
+    sha256: 7bcb9ae6a5d0b8ddf70b54d7e8e4e20ffcb71201f48ca9781aa499fe0c813790
+  - tier: tier-backend-api
+    path: /private/tmp/distillery-impl-test/specs-root/specs/latest/貸出管理業務/貸出管理フロー/書籍を貸出する/tier-backend-api.md
+    sha256: 4df3fe157e4c9f8c8dfeba026067176afd3fe09316697213d5ed1324f8090ab0
+  api_summary:
+    path: /private/tmp/distillery-impl-test/specs-root/specs/latest/貸出管理業務/貸出管理フロー/書籍を貸出する/_api-summary.yaml
+    sha256: fd4873e8ad29e258224255e65a64cc4be8d05dc0f263afede10740eba381cf38
+  model_summary:
+    path: /private/tmp/distillery-impl-test/specs-root/specs/latest/貸出管理業務/貸出管理フロー/書籍を貸出する/_model-summary.yaml
+    sha256: 8f3d8614e3e5c35e31ea2a287e1075fafc98f6da50ea77b53484184c061b3800
+  datastore_schema:
+    path: /private/tmp/distillery-impl-test/specs-root/specs/latest/_cross-cutting/datastore/rdb-schema.yaml
+    sha256: 8f68de85d96653e69eeb6f3725090f83fae9d13e5a022f4a5a439a2bf862a3c9
+  nfr:
+    path: /private/tmp/distillery-impl-test/specs-root/nfr/latest/nfr-grade.yaml
+    sha256: fe5a1872dbdd20bfd6544863023fa848c5f6563641cc1939acc18696b54a1fb4
+  usdm:
+    event_id: 20260412_140535_initial_build
+    sha256: cf019a5dd89911e76875c1af56f2a4f4b4655ad70472cad830cd8603427b6911
+  arch:
+    event_id: 20260625_075157_domain_architecture_addition
+    sha256: 4923e5ade468093cb9fe386f4cd7152b1ff1b8d9af2fa12ebec56e0f27cb8cce
+  design:
+    event_id: 20260412_164650_design_system + 20260412_205245_spec_stories
+    sha256: 1c176af00382e4a530e08d4a0d40f56f34418ed1f6aa66e23c42cd08a72fe944
+  contracts_lock:
+    path: /private/tmp/distillery-impl-test/impl-repo/docs/impl/latest/contracts.lock.yaml
+    sha256: 3980ef4d45bb32fbefc2dedd04d48f80956712eaedce86266607df6118f70802
+  ui_imported:
+    path: /private/tmp/distillery-impl-test/impl-repo/packages/ui/.imported.yaml
+    sha256: 743e71850cf71aa8d0cd3a54d364d2464e08de1fade8aec7ea7eeb26ffa93aff
+  dev_rules_sha256: 9071eb8c2f6c0758d43711fb9766db880de7195b8966c972ef635f4954a7a9a9
+lineage_ok: false
+lineage_note: spec-event trigger は arch:20260412_164019 だが arch latest は 20260625_075157。ユーザー判断(2026-07-29)で旧
+  arch 前提のまま続行を確定。

@@ -551,6 +551,34 @@ npx --yes @asyncapi/cli validate docs/specs/events/{event_id}/_cross-cutting/api
 
 `<skill-path>` は本スキルのディレクトリパス（`${CLAUDE_PLUGIN_ROOT}/skills/dist-spec`）。
 
+### Step6.5: 反証レビューループ（セマンティック検証）
+
+Step6 の機械検証は構文・必須項目しか見ない。「検証は通るが実装で破綻する」仕様を出さないため、
+**反証専用のサブエージェント**（生成とは別コンテキスト・spec の修正禁止）にレビューさせ、
+指摘を修正して収束させる。
+
+1. fresh サブエージェントにパスのみを渡してレビューさせる（生成の経緯・会話は渡さない）:
+   - 生成物: `docs/specs/events/{event_id}/` 全体
+   - 入力の正: `docs/usdm/latest/` / `docs/rdra/latest/` / `docs/arch/latest/` / `docs/design/latest/`
+   - 観点（後工程の実装ハーネス distillery-impl の実走で「仕様起因の手戻り」になった実例に基づく）:
+     - ①**トレーサビリティ**: 全 UC が USDM の SPEC / acceptance_criteria に遡れるか。
+       use_cases[] に機械可読の対応が出力されているか
+     - ②**依存の宣言**: tier md の UI ロジック・操作フローが参照する API・画面遷移先が、
+       その UC の `_api-summary.yaml` か他 UC のどこかに宣言されているか
+       （**cross-UC 依存の暗黙参照**を検出 — 未宣言だと実装時に「参照先が存在しない」で統合が落ちる）
+     - ③**契約生成適性**: openapi / asyncapi が codegen で壊れない形か
+       （enum 値のキー欠落 → 生成 TS が構文エラー、message payload の title 欠落 → 無名スキーマ化、の実例あり）
+     - ④**一貫性**: spec.md の状態遷移・事後処理と datastore schema（enum 値・テーブル）の整合、
+       日付等の表記形式の統一（表要素と gherkin 例文の食い違い）
+     - ⑤**gherkin 品質**: E2E / ティア完了条件が実行可能な粒度か（検証不能な Then が無いか）
+2. findings は `docs/specs/events/{event_id}/_review/round-{n}.yaml` に書かせる
+   （`id` / `viewpoint` / `severity: blocker|major|minor` / `target` / `claim` / `evidence` /
+   `suggested_fix`。`_` prefix のためバリデーション・スナップショットの UC 走査対象外）
+3. blocker / major を修正し（修正は生成側 = 本スキルが行う。レビューアは修正禁止）、
+   Step6 の機械検証を再実行してから次ラウンドへ
+4. **収束条件**: blocker 0 かつ新規 major 0、または 3 ラウンド到達（残 findings は
+   確認推奨項目としてユーザーに返す）。minor の修正は任意
+
 ### Step7: Markdown 生成
 
 ```bash

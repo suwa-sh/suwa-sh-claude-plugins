@@ -1,0 +1,8 @@
+event_id: 20260729_123000_review_approved
+type: review_approved
+uc_id: 19ec0182
+stage: S9
+payload:
+  approved_by: user
+  note: 6/6 ゲート・blocker 0・残 major 2 は変更要求還流済みを確認の上で承認
+created_at: '2026-07-29T12:30:00+09:00'

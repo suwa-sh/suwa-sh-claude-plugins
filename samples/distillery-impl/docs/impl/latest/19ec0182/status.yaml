@@ -1,0 +1,53 @@
+schema_version: '1.0'
+uc_id: 19ec0182
+business: 貸出管理業務
+buc: 貸出管理フロー
+uc: 書籍を貸出する
+state: completed
+current_attempt: 3
+resolved_models:
+  implementer: claude-fable-5
+  verifier: claude-opus-5
+stages:
+  S1_uc_init:
+    status: done
+  S2_test_scaffold:
+    status: done
+    red_baseline: pass
+  S3_contracts:
+    status: done
+  S4_tier_impl:
+    tier-frontend:
+      status: done
+      attempt: 3
+      carried_from: attempt-2
+    tier-backend-api:
+      status: done
+      attempt: 3
+      gates:
+        format: pass
+        lint: pass
+        tdd: pass
+        bdd_tier: pass
+  S5_verify:
+    tier-frontend:
+      status: done
+      attempt: 3
+      open_blockers: 0
+      open_majors: 1
+    tier-backend-api:
+      status: done
+      attempt: 3
+      open_blockers: 0
+      open_majors: 1
+  S6_uc_bdd:
+    status: done
+  S7_atdd:
+    status: done
+  S8_feedback:
+    status: done
+    change_requests: 11
+  S9_review:
+    status: done
+    approved: true
+updated_at: '2026-07-29T12:30:30+09:00'

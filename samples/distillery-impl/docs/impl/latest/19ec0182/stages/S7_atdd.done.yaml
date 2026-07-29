@@ -1,0 +1,35 @@
+stage: "S7"
+uc_id: "19ec0182"
+manifest_sha256: "8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff"
+result: pass
+atdd_scenarios_target:
+  - "SPEC-002-01-1"
+  - "SPEC-002-01-2"
+gate6_atdd:
+  command: "npm run bdd:atdd -- --tags \"@atdd_SPEC-002-01-1 or @atdd_SPEC-002-01-2\""
+  exit_code: 0
+  result: pass
+  scenarios_target_count: 2
+  scenarios_executed: 2
+  scenarios_passed: 2
+  steps_total: 6
+  steps_passed: 6
+  reruns_confirmed: 3
+  note: >-
+    実行された Scenario 件数(2)が uc-map.yaml の atdd_scenarios 件数(2)と一致することを確認済み。
+    タグ完全一致(@atdd_SPEC-002-01-1 / @atdd_SPEC-002-01-2)で選択実行し、
+    features/atdd/ 配下の他UC分feature(SPEC-001-01等)は実行対象に含めていない。
+files_updated:
+  - "features/atdd/steps/SPEC-002-01.steps.ts"
+files_created:
+  - "docs/impl/latest/19ec0182/stages/S7_atdd.done.yaml"
+notes: >-
+  features/atdd/steps/SPEC-002-01.steps.ts に S6 と同方式(モックfetchを使わず実express
+  サーバー起動 + frontendのLoanConfirmationController / renderLoanConfirmationViewを実HTTP通信・
+  実DOM出力で結合)で2 Scenarioを実装し全pass。frontend契約にX-User-Idヘッダ送信が無い仕様ギャップ
+  (issue 20260729_011215_auth_and_missing_header_gap.md)について、オーケストレータのユーザー確定
+  方針「ハーネス注入を許容」に従いbuildController内のfetchラッパでX-User-Idを注入した(該当箇所に
+  暫定注入である旨とissue参照のコメントを明記済み)。frontend/src・backend-api/srcは無変更。
+  features/atdd/の feature本文も無変更。
+completed_at: "2026-07-29T11:48:25+09:00"
+completed_by: "dist-impl-implement"

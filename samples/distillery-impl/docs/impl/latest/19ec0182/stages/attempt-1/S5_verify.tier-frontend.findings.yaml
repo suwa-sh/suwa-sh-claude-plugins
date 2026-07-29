@@ -1,0 +1,119 @@
+schema_version: "1.0"
+uc_id: "19ec0182"
+tier: "tier-frontend"
+attempt: 1
+verified_at: "2026-07-29T10:21:49+09:00"
+gate_reexec:
+  format: pass
+  lint: pass
+  tdd: pass
+  bdd_tier: pass
+viewpoints_checked:
+  spec_conformance:
+    status: done
+    note: >-
+      API 1/1 突合(POST /api/v1/loans, GET /api/v1/books/:id 経由利用)。データモデルは
+      本tierでは非所有(backend/tier-backend-api が owner)のため対象外。ビジネスルール
+      (status!=availableでボタンdisabled)は isLoanButtonEnabled で担保・テスト済み。BDD
+      feature は tier-frontend.md の gherkin と一字一句一致(意訳なし)。契約(packages/contracts)
+      経由のAPI呼び出しを確認。ただし画面(LoanConfirmationコンポーネント / route /loans/new /
+      packages/ui部品を用いた実描画)が一切実装されていない事実を検出(F-001, blocker)。
+  readability_maintainability:
+    status: done
+    note: >-
+      loanConfirmation.ts は関数ごとに tier-frontend.md の該当箇所を出典コメントで明示しており、
+      命名も仕様用語(BookCard/BookLoanStatusBadge/LoanConfirmation等)に整合。手動複製した
+      API クライアント(F-002, minor)を除き重複ロジックは見当たらない。
+  security:
+    status: done
+    note: >-
+      認証状態の検証はBDD上「backend側の関心事」として明示的にfrontend tierのスコープ外と
+      記載されており(features/steps/19ec0182.steps.ts 該当Given実装コメント)、tier-frontend.md
+      にもfrontend tier側での認可検証の要求はない。秘密情報のハードコード・ログ出力は無し。
+      画面が未実装のため、実際の入力(book_idクエリパラメータ)検証コードの評価は対象外
+      (F-001に包含)。
+  performance:
+    status: done
+    note: >-
+      frontend tierはview-model層のみでDB/インデックスの対象外。N+1等の懸念なし。
+  operability:
+    status: done
+    note: >-
+      mapLoanErrorMessage は409を仕様通り「この書籍は現在貸出できません」に変換し、それ以外は
+      汎用メッセージにフォールバックする。tier-frontend.mdが定義するエラーケース(409)を超える
+      追加要件はない。
+  fault_tolerance:
+    status: done
+    note: >-
+      API呼び出し失敗時(submitLoan)は例外をキャッチしうる設計(BDD step の try/catch)。
+      仕様が明記する冪等キー(X-Idempotency-Key)はcreateLoan呼び出し時に付与されている。
+  refactoring:
+    status: done
+    note: >-
+      LoanConfirmationApiClient は DefaultApi.ts の構文エラー(検証済み、真正の外部要因)を
+      回避する手書き複製であり、契約再生成後の追従漏れリスクがある(F-002, minor)。
+      Implementer自身がissuesに起票済みで対応方針も明記されている。
+findings:
+  - id: F-001
+    viewpoint: spec_conformance
+    severity: blocker
+    target: "frontend/src/components/loanConfirmation.ts, frontend/ (screen not implemented)"
+    claim: >-
+      tier-frontend.md が要求する「貸出手続き画面」(route: /loans/new、BookCard/BookLoanStatusBadge/
+      Button を用いた表示、コンポーネント設計「LoanConfirmation」Props: book/onLoan/isLoading、
+      state: isCompleted/loanResult)が一切実装されていない。実装されているのは値変換関数と
+      APIクライアントのみで、画面のレンダリング・ルーティングは存在しない。
+    evidence: >-
+      frontend/src 配下は components/loanConfirmation.ts(関数・クラスのみ、.tsx なし)と
+      api/loanConfirmationApiClient.ts の2ファイルのみで、packages/ui の BookCard/
+      BookLoanStatusBadge/Button を import・使用している箇所はゼロ(grep で確認)。
+      tier-frontend.md「画面仕様」節はURL /loans/new・表示要素表(書籍情報カード/貸出状態バッジ/
+      返却期限表示/貸出するボタン/戻るボタン)・「コンポーネント設計 LoanConfirmation」を明記。
+      docs/dev-rules/tier-rules.md「frontend系」は『UIコンポーネントはpackages/ui/のみ使用』
+      と規定し、packages/ui/.imported.yaml はこのUC(uc: 書籍を貸出する, route: /loans/new)向けの
+      画面Story(stories/Pages/UserPortal/LoanCheckout.stories.tsx、variants: Default/Completed/
+      Error/Loading)が既に実在・結線確認済みであることを記録している。にもかかわらず
+      frontend実装はこのStoryやpackages/ui部品を一切参照していない。
+      S4_tier-impl.tier-frontend.done.yaml の notes に「実行環境にreactがprovisionされていない
+      (frontend/package.jsonのdevDependenciesにreact/react-dom/testing-libraryが無い)ため、
+      JSXによる画面組み立てはせず...責務を限定した」と明記されているが、reactはpackages/ui自体が
+      既に使用しているtier-rules.md指定の必須UIライブラリであり(BookCard.tsx等はReact.FCで実装
+      済み)、frontend/package.jsonへの追加自体は妨げられていない。coding-rules.md rule 4
+      「仕様を実装側で曲げない...仕様の問題として issues/ に書き捨てる」に反し、この画面実装の
+      省略についてissues/への起票が一切行われていない(issues/配下7件はいずれも別件)。
+      ゲート4(tier BDD)はpassしているが、features/steps/19ec0182.steps.ts の Then step は
+      実際のDOM描画ではなく `state.bookCardProps?.title` 等の計算済みオブジェクトを検証して
+      おり(gate_reexec で再実行し pass を確認済み)、画面が実在することの証拠にはならない。
+    suggested_fix: >-
+      frontend/package.json に react/react-dom(必要なら @types/react)を追加し、packages/ui の
+      BookCard/BookLoanStatusBadge/Button と既存の LoanCheckout.stories.tsx を土台に、実際に
+      /loans/new でレンダリングされる LoanConfirmation 画面コンポーネント(Props: book/onLoan/
+      isLoading、state: isCompleted/loanResult)を実装する。既存の loanConfirmation.ts の
+      値変換ロジックはそのまま画面コンポーネントから呼び出す形で再利用可能。react追加が本当に
+      不可能な制約があるなら、その旨と影響範囲(スコープ縮小の判断)をissues/に起票し
+      オーケストレータへ差し戻す。
+  - id: F-002
+    viewpoint: refactoring
+    severity: minor
+    target: "frontend/src/api/loanConfirmationApiClient.ts"
+    claim: >-
+      packages/contracts/api-client/apis/DefaultApi.ts の構文エラー回避のため、getBook/createLoan
+      のリクエスト内容を手書きで複製したクライアントを実装している。契約が再生成された際に
+      手動追従が必要な保守負債になる。
+    evidence: >-
+      DefaultApi.ts:1390 の SearchBooksGenreEnum 定義でプロパティ名が空になる構文エラーを
+      esbuild実行で確認済み(genre enum値が日本語のためopenapi-generatorのサニタイズが
+      失敗している)。これは真正の外部要因(契約生成物側の不具合)であり、迂回自体は
+      coding-rules.md rule 1(契約型の直接編集禁止)に準拠した妥当な対応。ただし
+      LoanConfirmationApiClient は DefaultApi.ts の getBook/createLoan と同一のpath/method/
+      header/body変換を独立コードとして保持しており、契約変更時に同期漏れが起き得る。
+      Implementer自身がissues/20260729101416で根本修正(契約側のenumPropertyNaming設定)と
+      迂回コード削除を提案済み。
+    suggested_fix: >-
+      契約側(openapi-generatorのenumPropertyNaming設定、またはx-enum-varnames付与)の修正後、
+      LoanConfirmationApiClient を削除し packages/contracts/api-client の barrel から
+      DefaultApi を直接importする形に戻す(Implementer提案どおり)。
+summary:
+  blocker: 1
+  major: 0
+  minor: 1

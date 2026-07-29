@@ -1,0 +1,12 @@
+event_id: "20260729_094221_bootstrap_completed"
+type: bootstrap_completed
+uc_id: null
+stage: "S0"
+payload:
+  phases: "P1-P7 all done(P5 は invalidate 後の再実行で回収)"
+  capabilities: {has_asyncapi: true, has_kvs: true, has_object_storage: false, has_design_system: true, has_ddd_plugin: true}
+  uc_count: 18
+  uc_id_length: 8
+  degraded: false
+  ui_imported_files: 6
+created_at: "2026-07-29T09:42:21+09:00"

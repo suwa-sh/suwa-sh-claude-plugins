@@ -1,0 +1,8 @@
+stage: S1
+uc_id: 19ec0182
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: pass
+completed_at: '2026-07-29T09:50:00+09:00'
+completed_by: dist-impl-run
+notes: preflight all pass / lineage_ok false は旧 arch 前提続行のユーザー判断で解決 / atdd 2 Scenario
+  確定

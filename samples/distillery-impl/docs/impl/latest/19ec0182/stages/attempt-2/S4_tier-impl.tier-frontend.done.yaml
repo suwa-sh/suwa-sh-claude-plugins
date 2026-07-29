@@ -1,0 +1,90 @@
+stage: S4
+sub_stage: tier-impl
+uc_id: 19ec0182
+tier: tier-frontend
+attempt: 2
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: pass
+fixed_findings:
+  - id: F-001
+    severity: blocker
+    from: docs/impl/latest/19ec0182/stages/attempt-1/S5_verify.tier-frontend.findings.yaml
+    resolution: >-
+      貸出手続き画面(route: /loans/new)の実描画コンポーネントを実装した。
+      frontend/src/components/LoanConfirmationScreen.tsx が tier-frontend.md コンポーネント設計
+      「LoanConfirmation」(Props: book/onLoan/isLoading、状態: isCompleted/loanResult)を満たし、
+      packages/ui の BookCard(detailed。内部で BookLoanStatusBadge を描画)/ Button を実際に
+      react-dom/server の renderToStaticMarkup で DOM 出力する。frontend/src/pages/LoanConfirmationPage.tsx
+      が book_id 取得(readBookIdFromLocation)→ GET /api/v1/books/:id → 画面マウントのルート層を担う。
+      gate3(単体テスト)は renderToStaticMarkup で実際の HTML 出力を検証する形で11テストを追加
+      (frontend/test/loanConfirmationScreen.test.tsx 6件・loanConfirmationPage.test.tsx 5件)。
+      gate4(tier BDD)の step 実装も、計算済みオブジェクトの比較から実際の DOM 出力(HTML文字列)の
+      検証に更新した(frontend/features/steps/19ec0182.steps.ts)。attempt-1 の
+      loanConfirmation.test.ts 15テストは無変更・全pass(退行なし)。
+  - id: F-002
+    severity: minor
+    from: docs/impl/latest/19ec0182/stages/attempt-1/S5_verify.tier-frontend.findings.yaml
+    resolution: >-
+      対応は任意との指示のため、根本修正(契約側 enumPropertyNaming 修正)や迂回コード削除は
+      今回のスコープに含めていない。frontend/src/api/loanConfirmationApiClient.ts の先頭コメントに
+      既存 issue(20260729101416_defaultapi-generated-syntax-error.md)への参照が既に記載されており、
+      契約再生成時の同期を促す状態を維持した。
+gates:
+  gate1_format_check:
+    command: npm run format:check --workspace=frontend
+    exit_code: 0
+    result: pass
+  gate2_lint:
+    command: npm run lint --workspace=frontend
+    exit_code: 0
+    result: pass
+  gate3_tdd_unit:
+    command: npm run test --workspace=frontend
+    exit_code: 0
+    result: pass
+    test_files:
+      - frontend/test/loanConfirmation.test.ts
+      - frontend/test/loanConfirmationScreen.test.tsx
+      - frontend/test/loanConfirmationPage.test.tsx
+    tests_passed: 26
+    note: attempt-1のloanConfirmation.test.ts 15件は無変更のまま全pass(退行なし)
+  gate4_tier_bdd:
+    command: npm run bdd --workspace=frontend
+    exit_code: 0
+    result: pass
+    scenarios_passed: 2
+    steps_passed: 10
+files_created:
+  - frontend/src/components/LoanConfirmationScreen.tsx
+  - frontend/src/pages/LoanConfirmationPage.tsx
+  - frontend/test/loanConfirmationScreen.test.tsx
+  - frontend/test/loanConfirmationPage.test.tsx
+files_updated:
+  - frontend/src/components/loanConfirmation.ts (LoanConfirmationController.loadBookResponse を追加。既存関数は無変更)
+  - frontend/features/steps/19ec0182.steps.ts (Then step を実DOM出力の検証に更新)
+  - "frontend/tsconfig.json (compilerOptions.jsx: react, lib: ES2022+DOM を追加。理由は下記notes参照)"
+  - frontend/vitest.config.ts (test.include に test/**/*.test.tsx を追加)
+issues_filed:
+  - docs/impl/latest/19ec0182/issues/20260729103954_loanconfirmation-onloan-return-type-ambiguity.md
+  - docs/impl/latest/19ec0182/issues/20260729103955_skeleton-spinner-components-missing.md
+  - docs/impl/latest/19ec0182/issues/20260729103956_no-app-shell-router-for-loans-new-route.md
+completed_at: "2026-07-29T10:41:00+09:00"
+completed_by: dist-impl-implement
+notes: >-
+  attempt-1 findings F-001(blocker)を是正: 実際に画面をレンダリングするコンポーネントを実装した。
+  react/react-dom はオーケストレータ提供済み(frontend/package.json)。既存の値変換ロジック
+  (loanConfirmation.ts の toBookCardProps/isLoanButtonEnabled/formatCompletionMessage/
+  mapLoanErrorMessage/calculateExpectedDueDate 等)はそのまま再利用し、画面コンポーネントから呼び出す
+  形にした(値変換ロジック自体は無変更)。jsdom は未導入のため、DOM検証はすべて react-dom/server の
+  renderToStaticMarkup による HTML文字列検証で行った(クリック等のイベントシミュレーションは
+  実施していない。貸出実行後の状態は明示的に構築して同じ描画関数で再描画し検証する設計とした)。
+  frontend/src/components/LoanConfirmationScreen.tsx と既存の frontend/src/components/loanConfirmation.ts
+  は macOS の大文字小文字を区別しないファイルシステム上で衝突する可能性があった
+  (当初 LoanConfirmation.tsx という名前にしたところ、自己参照的な import 誤解決が発生したため
+  LoanConfirmationScreen.tsx に改名して回避)。tsconfig.json に jsx/lib(DOM)を追加したのは、
+  packages/ui の Button.tsx が HTMLButtonElement 等の DOM 型を使用しており、ts-node(bdd gate)が
+  型チェックする際に必要だったため(frontend配下のみの変更で他tierに影響しない)。
+  Skeleton/Spinner未生成、onLoanのProps型(Promise<void> vs 実装したPromise<LoanResponse>)、
+  アプリシェル/ルーター未生成の3件は仕様疑義としてissues/に起票し、それぞれ実装上の判断根拠を記載した。
+  F-002は指示どおり対応を見送り、既存の起票済みissueへの参照コメントを維持するに留めた。
+  4ゲート全通過、attempt-1の既存15テストも退行なし。

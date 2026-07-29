@@ -1,0 +1,35 @@
+schema_version: '1.0'
+phases:
+  P1_preflight:
+    status: done
+    at: '2026-07-29T09:34:42.743355+09:00'
+  P2_config:
+    status: done
+    at: '2026-07-29T09:34:42.743355+09:00'
+  P3_skeleton:
+    status: done
+    at: '2026-07-29T09:34:42.743355+09:00'
+  P4_contracts:
+    status: done
+    at: '2026-07-29T09:34:42.743355+09:00'
+  P5_ui:
+    status: done
+    at: '2026-07-29T10:15:00+09:00'
+  P6_ci:
+    status: done
+    at: '2026-07-29T09:34:42.743355+09:00'
+  P7_atdd:
+    status: done
+    at: '2026-07-29T09:34:42.743355+09:00'
+inputs_sha256:
+  spec_event: fe6cb5d50b377b36f42570507657d61dad54c0b90ebb47e0ff38dac9a25bab9f
+  arch: 4923e5ade468093cb9fe386f4cd7152b1ff1b8d9af2fa12ebec56e0f27cb8cce
+  usdm: cf019a5dd89911e76875c1af56f2a4f4b4655ad70472cad830cd8603427b6911
+  design: 1c176af00382e4a530e08d4a0d40f56f34418ed1f6aa66e23c42cd08a72fe944
+  openapi: 13fd0e20f0ac27efd32e766b8833c830dbd687070c0861c57e41fbc8070669f4
+  asyncapi: 7203b779e4f79a3b6267fa2aa8f991e7d4e207af8895db5c434ff6022d2b646b
+  asyncapi_exists: true
+  kvs_exists: true
+  object_storage_exists: false
+  storybook_app_exists: true
+generated_at: '2026-07-29T09:34:42.743355+09:00'

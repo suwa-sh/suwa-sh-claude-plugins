@@ -1,0 +1,57 @@
+stage: S4
+sub_stage: tier-impl
+uc_id: 19ec0182
+tier: tier-frontend
+attempt: 1
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: pass
+gates:
+  gate1_format_check:
+    command: npx biome format ./frontend/src ./frontend/test ./frontend/features
+    exit_code: 0
+    result: pass
+  gate2_lint:
+    command: npx biome lint ./frontend/src ./frontend/test ./frontend/features
+    exit_code: 0
+    result: pass
+  gate3_tdd_unit:
+    command: npm run test --workspace=frontend
+    exit_code: 0
+    result: pass
+    test_files:
+      - frontend/test/loanConfirmation.test.ts
+    tests_passed: 15
+  gate4_tier_bdd:
+    command: npm run bdd --workspace=frontend
+    exit_code: 0
+    result: pass
+    scenarios_passed: 2
+    steps_passed: 10
+files_created:
+  - frontend/src/components/loanConfirmation.ts
+  - frontend/src/api/loanConfirmationApiClient.ts
+files_updated:
+  - frontend/test/loanConfirmation.test.ts (S2 red baseline の1テストを保持しつつ14テストを追加)
+  - frontend/features/steps/19ec0182.steps.ts
+  - frontend/tsconfig.json (ts-node.compilerOptions.module: CommonJS を追加。理由は issues 参照)
+issues_filed:
+  - docs/impl/latest/19ec0182/issues/20260729101416_defaultapi-generated-syntax-error.md
+  - docs/impl/latest/19ec0182/issues/20260729101417_due-date-format-slash-vs-hyphen.md
+  - docs/impl/latest/19ec0182/issues/20260729101418_frontend-tsnode-esm-relative-import.md
+completed_at: "2026-07-29T10:14:30+09:00"
+completed_by: dist-impl-implement
+notes: >-
+  貸出手続き画面(/loans/new)のビュー・モデル層を実装。実行環境に react が provision されていない
+  (frontend/package.json devDependencies に react/react-dom/testing-library が無く、
+  vitest.config.ts の environment も "node")ため、JSX による画面組み立てはせず、
+  packages/ui(BookCard/BookLoanStatusBadge/Button)の Props にそのまま渡せる形の値の算出
+  (貸出可否判定・BookCard表示Props変換・バッジラベル変換・返却期限計算/フォーマット・
+  エラーメッセージ変換)とAPI呼び出し(LoanConfirmationController.loadBook/submitLoan)に
+  責務を限定した。packages/contracts/api-client の barrel(index.ts経由のDefaultApi)は
+  SearchBooksGenreEnumの生成コードが構文エラーで import不能だったため、runtime.ts / models/*.ts
+  を個別ファイルから直接importし、DefaultApi.tsのgetBook/createLoanと同一のリクエスト内容を
+  再現する迂回クライアント(LoanConfirmationApiClient)をfrontend/src/api/配下に実装した
+  (packages/contracts/は無編集。tier-backend-api側でも同一のDefaultApi.ts構文エラーが
+  独立に検出・記録されており事象は一致)。tier-frontend.md内の返却期限表記(プロースはスラッシュ
+  区切り、ティア完了条件のgherkinはハイフン区切り)の食い違いは実行可能なgherkinを正として実装。
+  4ゲート全通過。

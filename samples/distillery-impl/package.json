@@ -1,0 +1,17 @@
+{
+  "name": "librashelf-impl",
+  "private": true,
+  "workspaces": ["frontend", "backend-api", "worker", "packages/*"],
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "typescript": "^5.6.0",
+    "@cucumber/cucumber": "^11.0.0",
+    "ts-node": "^10.9.2"
+  },
+  "scripts": {
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "bdd:uc": "cucumber-js --config features/uc/cucumber.cjs",
+    "bdd:atdd": "cucumber-js --config features/atdd/cucumber.cjs"
+  }
+}

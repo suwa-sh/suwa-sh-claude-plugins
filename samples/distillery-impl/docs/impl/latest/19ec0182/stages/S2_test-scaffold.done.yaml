@@ -1,0 +1,46 @@
+stage: S2
+uc_id: 19ec0182
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: pass
+red_baseline: pass
+red_baseline_detail:
+  atdd:
+    command: npm run bdd:atdd -- --tags "@atdd_SPEC-002-01-1 or @atdd_SPEC-002-01-2"
+    exit_code: 1
+    scenarios: 2
+    scenarios_expected: 2
+    fail_reason: not_implemented
+  uc_bdd:
+    command: npm run bdd:uc
+    exit_code: 1
+    scenarios: 4
+    fail_reason: not_implemented
+  tier_bdd:
+    tier-frontend:
+      command: npm run bdd --workspace=frontend
+      exit_code: 1
+      scenarios: 2
+      fail_reason: not_implemented
+    tier-backend-api:
+      command: npm run bdd --workspace=backend-api
+      exit_code: 1
+      scenarios: 2
+      fail_reason: not_implemented
+  tdd_unit:
+    tier-frontend:
+      command: npm run test --workspace=frontend
+      exit_code: 1
+      test_file: frontend/test/loanConfirmation.test.ts
+      fail_reason: module_not_found (未実装ソース ../src/components/loanConfirmation)
+    tier-backend-api:
+      command: npm run test --workspace=backend-api
+      exit_code: 1
+      test_file: backend-api/test/loan.test.ts
+      fail_reason: module_not_found (未実装ソース ../src/domain/loan)
+completed_at: '2026-07-29T09:54:00+09:00'
+completed_by: dist-impl-implement
+notes: 4 段すべて red baseline 確認済み。ATDD は uc-map の atdd_scenarios (SPEC-002-01-1,
+  SPEC-002-01-2) をタグ完全一致で選択実行し、実行件数(2)が atdd_scenarios 件数と一致することを確認。
+  npm install (root workspace) を実施し node_modules / package-lock.json を生成。既存の
+  vitest.config / cucumber.cjs / package.json scripts は変更不要だった(スモーク実行で config
+  ミスなしを事前確認)。

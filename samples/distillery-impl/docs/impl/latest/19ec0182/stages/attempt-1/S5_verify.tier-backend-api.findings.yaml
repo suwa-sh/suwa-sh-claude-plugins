@@ -1,0 +1,93 @@
+schema_version: "1.0"
+uc_id: "19ec0182"
+tier: "tier-backend-api"
+attempt: 1
+verified_at: "2026-07-29T10:23:00+09:00"
+gate_reexec: {format: pass, lint: pass, tdd: pass, bdd_tier: pass}
+viewpoints_checked:
+  spec_conformance: {status: done, note: "API 1/1 endpoint突合(POST /api/v1/loans)、契約型(CreateLoanRequest/LoanResponse/ProblemDetails)経由を確認。データモデル突合でblocker 1件"}
+  readability_maintainability: {status: done, note: "dev-rules/coding-rules.md・test-strategy.mdのAAA/命名規約に準拠。層分離(domain/ports/repositories/application/http)も明瞭。findingsなし"}
+  security: {status: done, note: "認証欄(OAuth2/OIDC)との一致を確認。major 1件"}
+  performance: {status: done, note: "_model-summary.yamlのindexes_neededは未接続(in-memory)のため実測対象外。F-001と根を同じくするため重複計上せず"}
+  operability: {status: done, note: "エラーレスポンスはRFC 7807形式でtier md記載のdetail文言と一致。環境依存値のハードコードなし。findingsなし"}
+  fault_tolerance: {status: done, note: "冪等キー二重防止の2層目(RDB UNIQUE相当)のエラー経路にmajor 1件"}
+  refactoring: {status: done, note: "集約境界・値オブジェクト化は本スコープで妥当。過剰モック等のテスト負債なし。findingsなし"}
+findings:
+  - id: F-001
+    viewpoint: spec_conformance
+    severity: blocker
+    target: "backend-api/src/domain/book.ts:1-11, backend-api/src/repositories/bookRepository.ts:1-27, backend-api/src/domain/loan.ts:6-17"
+    claim: >-
+      貸出可否判定の予約チェックが、正本スキーマ(_cross-cutting/datastore/rdb-schema.yaml)に存在しない
+      Book.reservedByUserId という自作フィールドで代替されており、実在する reservations テーブル
+      (book_id/user_id/status/queue_position を持つ独立テーブル)を一切参照していない。
+    evidence: >-
+      1) tier-rules.md 21-27行「データモデルは _cross-cutting/datastore/rdb-schema.yaml(+kvs-schema.yaml)が正」。
+      2) rdb-schema.yaml 76-145行 books テーブルの列一覧に reservedByUserId 相当の列は存在しない。
+      3) rdb-schema.yaml 287-358行に reservations テーブル(status: pending/reserved/cancelled,
+      queue_position, idx_reservations_book_id_status「返却時の予約チェック用」)が別途定義されているが、
+      backend-api/src/repositories/bookRepository.ts の BookRepository interface に予約系のクエリメソッドは
+      1つも存在せず、reservations テーブルを扱う Repository 自体が実装リポに存在しない
+      (`find /private/tmp/distillery-impl-test/impl-repo/backend-api -iname "*reservation*"` は 0 件)。
+      4) tier-backend-api.md 66行のビジネスルール「予約受付中の予約がない場合に貸出可能。ただし予約者本人
+      （予約確保済）の場合は貸出可能」は pending/reserved の状態区分と予約キュー(queue_position)を前提にした
+      規則であり、単一の reservedByUserId (string|null) では複数予約者のキューや予約状態の区別を表現できない。
+      5) coding-rules.md 必須4「仕様を実装側で曲げない...仕様の問題として issues/ に書き捨てる」に反し、
+      本件は他の3件(express依存/冪等キー重複時挙動/認証スタブ)と異なり issues/ に起票されていない
+      (docs/impl/latest/19ec0182/issues/ 配下に reservation 関連の issue は無い)。
+      6) 現状の tier BDD 2 シナリオはいずれも「予約なし」の書籍のみを対象にしており、この乖離は
+      ゲート4では検出されない(test/loan.test.ts 39-53行の単体テストのみが reservedByUserId 分岐を検証)。
+    suggested_fix: >-
+      ReservationRepository(または同等のポート)を追加し、canLend の予約判定を reservations テーブルの
+      status/queue_position を参照する形に置き換える。あるいは、_model-summary.yaml の tables[] に
+      reservations の SELECT operation が未記載であること自体を仕様側の欠落として issues/ に起票し、
+      次 attempt で仕様確定を待ってから実装し直す。いずれの対応を取るにせよ、まず issues/ への起票が必要。
+
+  - id: F-002
+    viewpoint: security
+    severity: major
+    target: "backend-api/src/http/server.ts:43-53, backend-api/src/http/loansController.ts:17-24"
+    claim: >-
+      tier-backend-api.md が要求する認証(OAuth2/OIDC、利用者ロール)が実装されておらず、クライアントが
+      任意に指定した X-User-Id ヘッダの値をそのまま認証済み利用者IDとして信用している。
+    evidence: >-
+      1) tier-backend-api.md 13行「認証: OAuth2/OIDC (利用者ロール)」。
+      2) server.ts 51行 `userId: firstHeaderValue(req.headers["x-user-id"]) ?? ""` はトークン検証を一切行わず
+      ヘッダ値をそのまま利用者IDとして採用しており、任意の利用者になりすまして貸出(状態変更操作)が可能。
+      3) nfr-grade.yaml E.5.2(831行) はロールベースアクセス制御(RBAC)をgrade 2で要求しているが、
+      利用者/司書のロール区別は実装のどこにも存在しない。
+      4) この点は issues/20260729_011215_auth_and_missing_header_gap.md に実装者自身が「仮実装」として
+      起票済みであり、認証基盤tierが未整備という制約は理解できる。ただし現状のコードのまま統合されると
+      なりすましによる貸出操作が可能な状態であるため、S6以降で認証tierと接続するまではmajorとして
+      追跡が必要と判断する(issue起票済みのため修正はブロックしないが、対応漏れリスクとして明示する)。
+    suggested_fix: >-
+      認証基盤tierが用意され次第、OAuth2/OIDCのリソースサーバー検証ミドルウェアに差し替える。
+      それまでの間は、少なくとも issues/ のissueをS6以降のバックログに確実に引き継ぐ運用上の手当てを行う。
+
+  - id: F-003
+    viewpoint: fault_tolerance
+    severity: major
+    target: "backend-api/src/repositories/loanRepository.ts:25-33, backend-api/src/http/loansController.ts:64-75, backend-api/src/http/server.ts:43-53"
+    claim: >-
+      冪等キー重複防止の2層目(RDB UNIQUE制約相当)が実際に発火した場合、そのエラーが仕様通りの
+      409レスポンスにマッピングされず、クライアントへのレスポンスが送出されないまま処理が終了する。
+    evidence: >-
+      1) tier-backend-api.md 69行 ビジネスルール「冪等キーは KVS で重複チェック後、RDB の UNIQUE 制約で
+      二重防止」。KVS(idempotencyStore.has)をすり抜けた重複が RDB UNIQUE 制約側で最終的に防止される
+      2段階防御が明記されている。
+      2) loanRepository.ts 26-30行、InMemoryLoanRepository.create() は UNIQUE 制約違反を模して
+      `throw new Error(...)`(ConflictError ではなく素の Error)を投げる。
+      3) loansController.ts 64-75行の catch ブロックは ValidationError / NotFoundError / ConflictError
+      のみを判定し、それ以外は `throw error` で再送出する(400/404/409のいずれにもマッピングされない)。
+      4) server.ts 43-60行 の HTTP ハンドラは handleCreateLoan(ctx) の呼び出しを try/catch していないため、
+      再送出された Error は async コールバック内の未処理例外となり、res.writeHead/res.end が一度も
+      呼ばれないままリクエストが放置される(クライアント側はタイムアウトするまで応答を受け取れない)。
+      5) 現状の gate4 tier BDD・単体テストはいずれも idempotencyStore の事前チェックで重複を検出する
+      経路のみを通るため、この欠陥はゲートでは検出されない(loanRepository.ts 側の UNIQUE 違反パスに
+      到達するテストが1本も無い)。
+    suggested_fix: >-
+      LoanRepository.create() が投げる重複エラーを ConflictError でラップするか、loansController の
+      catch ブロックで LoanRepository 由来のドメイン外エラーも 409 に変換する。あわせて server.ts の
+      ハンドラに未捕捉例外用の 500 フォールバック(RFC 7807 形式)を追加し、応答が返らないまま
+      リクエストが放置される事態を防ぐ。
+summary: {blocker: 1, major: 2, minor: 0}

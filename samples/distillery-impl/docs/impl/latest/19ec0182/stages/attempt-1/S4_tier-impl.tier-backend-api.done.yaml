@@ -1,0 +1,62 @@
+stage: S4
+sub_stage: tier-impl
+uc_id: 19ec0182
+tier: tier-backend-api
+attempt: 1
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: pass
+gates:
+  gate1_format_check:
+    command: npm run format:check --workspace=backend-api
+    exit_code: 0
+    result: pass
+  gate2_lint:
+    command: npm run lint --workspace=backend-api
+    exit_code: 0
+    result: pass
+  gate3_tdd_unit:
+    command: npm run test --workspace=backend-api
+    exit_code: 0
+    result: pass
+    test_files:
+      - backend-api/test/loan.test.ts
+      - backend-api/test/createLoanUseCase.test.ts
+    tests_passed: 11
+  gate4_tier_bdd:
+    command: npm run bdd --workspace=backend-api
+    exit_code: 0
+    result: pass
+    scenarios_passed: 2
+    steps_passed: 11
+files_created:
+  - backend-api/src/domain/book.ts
+  - backend-api/src/domain/loan.ts
+  - backend-api/src/ports/clock.ts
+  - backend-api/src/ports/idempotencyStore.ts
+  - backend-api/src/repositories/bookRepository.ts
+  - backend-api/src/repositories/loanRepository.ts
+  - backend-api/src/application/errors.ts
+  - backend-api/src/application/createLoanUseCase.ts
+  - backend-api/src/http/loansController.ts
+  - backend-api/src/http/server.ts
+files_updated:
+  - backend-api/test/loan.test.ts
+  - backend-api/test/createLoanUseCase.test.ts (new)
+  - backend-api/features/steps/19ec0182.steps.ts
+  - backend-api/tsconfig.json (ts-node.compilerOptions.module: CommonJS を追加。ts-node/register が
+    tsconfig.base.json の module:ESNext を継承すると require() 時に ESM 解決エラーになるための
+    tier ローカルなオーバーライド)
+issues_filed:
+  - docs/impl/latest/19ec0182/issues/20260729_011212_express_dependency_unavailable.md
+  - docs/impl/latest/19ec0182/issues/20260729_011213_api_types_defaultapi_syntax_error.md
+  - docs/impl/latest/19ec0182/issues/20260729_011214_idempotency_conflict_semantics.md
+  - docs/impl/latest/19ec0182/issues/20260729_011215_auth_and_missing_header_gap.md
+completed_at: "2026-07-29T10:12:30+09:00"
+completed_by: dist-impl-implement
+notes: >-
+  POST /api/v1/loans を実装。ドメイン層(canLend/calculateDueDate)・in-memoryリポジトリ・
+  ユースケース(createLoanUseCase)・HTTP層の4層構成。backend_framework: express は
+  write-set外のロックファイル更新が必要で並走tierとの競合リスクがあるため node:http で代替実装
+  (issues起票済み)。packages/contracts/api-types のbarrel経由でapis/DefaultApi.tsに
+  生成物側の構文エラーを検出したため、必要なmodelファイルを直接importして回避(issues起票済み)。
+  4ゲート全通過。

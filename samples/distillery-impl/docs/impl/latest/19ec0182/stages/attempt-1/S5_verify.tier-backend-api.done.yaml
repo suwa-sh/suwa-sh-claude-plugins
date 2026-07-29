@@ -1,0 +1,38 @@
+stage: S5
+sub_stage: verify
+uc_id: 19ec0182
+tier: tier-backend-api
+attempt: 1
+manifest_sha256: 8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff
+result: findings_reported
+gate_reexec:
+  gate1_format_check:
+    command: npm run format:check --workspace=backend-api
+    exit_code: 0
+    result: pass
+  gate2_lint:
+    command: npm run lint --workspace=backend-api
+    exit_code: 0
+    result: pass
+  gate3_tdd_unit:
+    command: npm run test --workspace=backend-api
+    exit_code: 0
+    result: pass
+    tests_passed: 11
+  gate4_tier_bdd:
+    command: npm run bdd --workspace=backend-api
+    exit_code: 0
+    result: pass
+    scenarios_passed: 2
+    steps_passed: 11
+open_blockers: 1
+findings_summary: {blocker: 1, major: 2, minor: 0}
+findings_file: docs/impl/latest/19ec0182/stages/attempt-1/S5_verify.tier-backend-api.findings.yaml
+completed_at: "2026-07-29T10:23:00+09:00"
+completed_by: dist-impl-verify
+notes: >-
+  Implementer done(S4)の4ゲート主張は全てcheck-onlyで再現しpass。反証はゲート不通過ではなく、
+  ゲートが検出しない仕様/正本スキーマとの乖離を対象に実施した。blocker(F-001)はcanLendの予約判定が
+  正本rdb-schema.yamlに存在しないフィールドを使い、実在するreservationsテーブルを一切参照していない点。
+  他3件(express依存/冪等キー重複時挙動/認証スタブ)がissues/に適切に起票されているのに対し、この乖離は
+  未起票だった。major 2件(認証スタブの実効性、RDB UNIQUE制約違反時の409マッピング欠落)も添えた。

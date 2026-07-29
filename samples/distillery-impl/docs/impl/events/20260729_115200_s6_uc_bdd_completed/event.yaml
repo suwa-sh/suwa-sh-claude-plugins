@@ -1,0 +1,8 @@
+event_id: 20260729_115200_s6_uc_bdd_completed
+type: stage_completed
+uc_id: 19ec0182
+stage: S6
+payload:
+  result: 4 scenarios / 18 steps all pass (3 回連続安定)
+  harness_injection: X-User-Id を steps 内 fetch ラッパで注入(仕様ギャップ issue 参照コメント付き)
+created_at: '2026-07-29T11:52:00+09:00'

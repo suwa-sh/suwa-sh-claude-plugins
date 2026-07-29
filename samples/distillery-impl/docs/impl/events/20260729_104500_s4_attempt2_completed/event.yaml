@@ -1,0 +1,14 @@
+event_id: "20260729_104500_s4_attempt2_completed"
+type: stage_completed
+uc_id: "19ec0182"
+stage: "S4"
+attempt: 2
+payload:
+  tiers:
+    tier-frontend: {gates: "all pass", tests: 26, blocker_fixed: "F-001 画面実描画(LoanConfirmationScreen.tsx + DOM 検証 BDD)", issues: 3}
+    tier-backend-api: {gates: "all pass", tests: 17, blocker_fixed: "F-001 reservations テーブル準拠", major_fixed: "F-002 認証差分表 / F-003 409・500 経路", issues: 1}
+  deviations:
+    - "s4-frontend-a2 が git mv || mv の 1 コマンドを実行(git 禁止違反。untracked のため git mv は失敗し実効影響なし。自己申告あり)"
+    - "s4-backend-a2 は完了報告なしで idle(done ファイルで完了判定)"
+  barrier: "biome format --write(5 files fixed)"
+created_at: "2026-07-29T10:45:00+09:00"

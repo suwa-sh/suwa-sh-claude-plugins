@@ -1,0 +1,43 @@
+schema_version: '1.0'
+specs_root: /private/tmp/distillery-impl-test/specs-root
+repo_root: /private/tmp/distillery-impl-test/impl-repo
+tiers:
+- id: tier-frontend
+  dir: frontend
+  kind: frontend
+  lang: typescript
+  commands:
+    format_check: npm run format:check --workspace=frontend
+    lint: npm run lint --workspace=frontend
+    test: npm run test --workspace=frontend
+    bdd: npm run bdd --workspace=frontend
+- id: tier-backend-api
+  dir: backend-api
+  kind: backend
+  lang: typescript
+  commands:
+    format_check: npm run format:check --workspace=backend-api
+    lint: npm run lint --workspace=backend-api
+    test: npm run test --workspace=backend-api
+    bdd: npm run bdd --workspace=backend-api
+- id: tier-worker
+  dir: worker
+  kind: worker
+  lang: typescript
+  commands:
+    format_check: npm run format:check --workspace=worker
+    lint: npm run lint --workspace=worker
+    test: npm run test --workspace=worker
+    bdd: npm run bdd --workspace=worker
+datastore_owner: tier-backend-api
+integration_commands:
+  uc_bdd: npm run bdd:uc
+  atdd: npm run bdd:atdd
+implementer_model: null
+verifier_model: claude-opus-5
+backend_framework: express   # ユーザー確定 2026-07-29(arch は TS/Next.js のみ指定、API 層は Express)
+capabilities:
+  has_asyncapi: true
+  has_kvs: true
+  has_object_storage: false
+  has_design_system: true

@@ -1,0 +1,186 @@
+schema_version: '1.0'
+id_length: 8
+use_cases:
+- uc_id: b32010dd
+  business: 蔵書管理業務
+  buc: 蔵書管理フロー
+  uc: 書籍を登録する
+  path: docs/specs/latest/蔵書管理業務/蔵書管理フロー/書籍を登録する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: 4889a795
+  business: 蔵書管理業務
+  buc: 蔵書管理フロー
+  uc: 書籍情報を編集する
+  path: docs/specs/latest/蔵書管理業務/蔵書管理フロー/書籍情報を編集する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: 7b9a3730
+  business: 蔵書管理業務
+  buc: 蔵書管理フロー
+  uc: 書籍を削除する
+  path: docs/specs/latest/蔵書管理業務/蔵書管理フロー/書籍を削除する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: 19ec0182
+  business: 貸出管理業務
+  buc: 貸出管理フロー
+  uc: 書籍を貸出する
+  path: docs/specs/latest/貸出管理業務/貸出管理フロー/書籍を貸出する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios:
+  - SPEC-002-01-1
+  - SPEC-002-01-2
+  atdd_confirmed: true
+- uc_id: d807bb7d
+  business: 貸出管理業務
+  buc: 貸出管理フロー
+  uc: 書籍を返却する
+  path: docs/specs/latest/貸出管理業務/貸出管理フロー/書籍を返却する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: a9a74e02
+  business: 貸出管理業務
+  buc: 貸出管理フロー
+  uc: 貸出状況を確認する
+  path: docs/specs/latest/貸出管理業務/貸出管理フロー/貸出状況を確認する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: e492b33d
+  business: 貸出管理業務
+  buc: 延滞管理フロー
+  uc: 延滞を検出する
+  path: docs/specs/latest/貸出管理業務/延滞管理フロー/延滞を検出する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  - tier-worker
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: 58c27b56
+  business: 貸出管理業務
+  buc: 延滞管理フロー
+  uc: 督促通知を送信する
+  path: docs/specs/latest/貸出管理業務/延滞管理フロー/督促通知を送信する
+  tiers:
+  - tier-backend-api
+  - tier-worker
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: fed7d40d
+  business: 予約管理業務
+  buc: 予約管理フロー
+  uc: 書籍を予約する
+  path: docs/specs/latest/予約管理業務/予約管理フロー/書籍を予約する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: c443f1dd
+  business: 予約管理業務
+  buc: 予約管理フロー
+  uc: 予約通知を送信する
+  path: docs/specs/latest/予約管理業務/予約管理フロー/予約通知を送信する
+  tiers:
+  - tier-backend-api
+  - tier-worker
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: a1e031cc
+  business: 予約管理業務
+  buc: 予約管理フロー
+  uc: 予約をキャンセルする
+  path: docs/specs/latest/予約管理業務/予約管理フロー/予約をキャンセルする
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: 8aed3164
+  business: 利用者管理業務
+  buc: 利用者管理フロー
+  uc: 利用者を登録する
+  path: docs/specs/latest/利用者管理業務/利用者管理フロー/利用者を登録する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: 3eafc61d
+  business: 利用者管理業務
+  buc: 利用者管理フロー
+  uc: 利用者情報を編集する
+  path: docs/specs/latest/利用者管理業務/利用者管理フロー/利用者情報を編集する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: 6212b978
+  business: 閲覧業務
+  buc: 蔵書検索フロー
+  uc: 書籍を検索する
+  path: docs/specs/latest/閲覧業務/蔵書検索フロー/書籍を検索する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: 9d8357f1
+  business: 閲覧業務
+  buc: 利用者マイページフロー
+  uc: 貸出履歴を確認する
+  path: docs/specs/latest/閲覧業務/利用者マイページフロー/貸出履歴を確認する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: '54320248'
+  business: 閲覧業務
+  buc: 利用者マイページフロー
+  uc: 予約状況を確認する
+  path: docs/specs/latest/閲覧業務/利用者マイページフロー/予約状況を確認する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: 4eb97f7d
+  business: 統計業務
+  buc: 統計・レポートフロー
+  uc: 在庫状況を確認する
+  path: docs/specs/latest/統計業務/統計・レポートフロー/在庫状況を確認する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false
+- uc_id: adb09293
+  business: 統計業務
+  buc: 統計・レポートフロー
+  uc: 統計レポートを閲覧する
+  path: docs/specs/latest/統計業務/統計・レポートフロー/統計レポートを閲覧する
+  tiers:
+  - tier-frontend
+  - tier-backend-api
+  atdd_scenarios: []
+  atdd_confirmed: false

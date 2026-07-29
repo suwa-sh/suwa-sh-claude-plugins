@@ -1,0 +1,26 @@
+schema_version: "1.0"
+source:
+  design_event_id: "20260412_164650_design_system + 20260412_205245_spec_stories"
+  storybook_app_root: "design/latest/storybook-app/src"
+imported_at: "2026-07-29T09:34:00+09:00"
+files:
+  - "components/domain/BookCard.tsx"
+  - "components/domain/BookLoanStatusBadge.tsx"
+  - "components/ui/Badge.tsx"
+  - "components/ui/Button.tsx"
+  - "stories/Pages/UserPortal/LoanCheckout.stories.tsx"
+  - "tokens/tokens.ts"
+note: >
+  取り込み元は storybook-app/src/ の実ファイル列挙(SKILL 正本どおり)。design-event.yaml の
+  components(ui: Button/Badge/Card/Input/Icon、domain: BookCard/BookLoanStatusBadge/
+  ReservationStatusBadge/LoanRecord/BookSearchFilter/StatsSummaryCard、common: 8 件)と
+  screens[] の 16 画面 story 定義に対し、storybook-app 実体には上記 6 ファイルしか存在せず、
+  src/stories/ 配下も LoanCheckout.stories.tsx の 1 件のみ生成済み。design-event.yaml で
+  宣言済みの残りのコンポーネント・Story(15 画面分)は design(dist-design-system)側の生成
+  未完了であり、bootstrap の完了報告に「デザインシステム生成不足」として記載した。frontend
+  tier の実装時、不足コンポーネント・Story は自作せず tier-rules.md の規約どおり design への
+  変更要求を起票すること。
+  結線照合: screens[] の "貸出手続き画面"(uc: 書籍を貸出する、route: /loans/new)は
+  story: src/stories/Pages/UserPortal/LoanCheckout.stories.tsx / variants: Default,
+  Completed, Error, Loading と宣言されており、取り込んだ LoanCheckout.stories.tsx の
+  export(Default/Completed/Error/Loading)と一致する。実在確認済み。
