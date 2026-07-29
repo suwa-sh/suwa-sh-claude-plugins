@@ -24,9 +24,11 @@ S4 tier-impl      tier 並走実装(ゲート 1〜4: format / lint / TDD / tier 
 S5 verify         別モデル Verifier の反証(blocker → S4 へ差し戻し、最大 3 周)
 S6 uc-bdd         ゲート 5: E2E 完了条件を全 tier 結合で実行
 S7 atdd           ゲート 6: 受け入れ基準の実行
-S8 feedback       変更要求・learnings・改善提案の出力
+S8 feedback       as-built 仕様サマリ + 変更要求・learnings・改善提案の出力
 S9 review         ゼロ知識で合否判断できる HTML レポート → ユーザー承認
 ```
+
+状態ファイル・対話ポイント・fail 時の分岐まで含めた詳細図解は [docs/workflow.html](docs/workflow.html)(ブラウザで開いてください)。
 
 ## スキル一覧
 

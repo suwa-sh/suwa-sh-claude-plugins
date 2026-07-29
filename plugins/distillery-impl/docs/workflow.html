@@ -1,0 +1,266 @@
+<meta charset="utf-8">
+<title>dist-impl-run ワークフロー図解</title>
+<style>
+:root{
+  --bg:#faf7f2; --surface:#ffffff; --ink:#2b2118; --sub:#6e6257;
+  --line:#e5dcd0; --accent:#a85a1e; --accent-soft:#f4e3d3;
+  --orch:#a85a1e; --orch-bg:#f4e3d3;
+  --sub-ag:#2e6b8a; --sub-ag-bg:#e2eef5;
+  --par:#5a7a3d; --par-bg:#e9f0e2;
+  --user:#8a4a7d; --user-bg:#f2e5ef;
+  --state:#6e6257; --state-bg:#efeae2;
+  --loop:#b0432c;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#211b15; --surface:#2b241d; --ink:#ece4d9; --sub:#a99c8d;
+    --line:#42382e; --accent:#d98d4d; --accent-soft:#453423;
+    --orch:#d98d4d; --orch-bg:#453423;
+    --sub-ag:#7db3d1; --sub-ag-bg:#2a3a44;
+    --par:#a3c184; --par-bg:#333f28;
+    --user:#cf9ac2; --user-bg:#42303e;
+    --state:#a99c8d; --state-bg:#37302a;
+    --loop:#e07a5f;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#211b15; --surface:#2b241d; --ink:#ece4d9; --sub:#a99c8d;
+  --line:#42382e; --accent:#d98d4d; --accent-soft:#453423;
+  --orch:#d98d4d; --orch-bg:#453423;
+  --sub-ag:#7db3d1; --sub-ag-bg:#2a3a44;
+  --par:#a3c184; --par-bg:#333f28;
+  --user:#cf9ac2; --user-bg:#42303e;
+  --state:#a99c8d; --state-bg:#37302a;
+  --loop:#e07a5f;
+}
+:root[data-theme="light"]{
+  --bg:#faf7f2; --surface:#ffffff; --ink:#2b2118; --sub:#6e6257;
+  --line:#e5dcd0; --accent:#a85a1e; --accent-soft:#f4e3d3;
+  --orch:#a85a1e; --orch-bg:#f4e3d3;
+  --sub-ag:#2e6b8a; --sub-ag-bg:#e2eef5;
+  --par:#5a7a3d; --par-bg:#e9f0e2;
+  --user:#8a4a7d; --user-bg:#f2e5ef;
+  --state:#6e6257; --state-bg:#efeae2;
+  --loop:#b0432c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;line-height:1.65;font-size:14.5px}
+.wrap{max-width:1020px;margin:0 auto;padding:36px 24px 80px}
+header{border-bottom:2px solid var(--accent);padding-bottom:16px;margin-bottom:24px}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--accent);font-weight:600}
+h1{font-size:23px;margin:6px 0 4px;text-wrap:balance}
+.lede{color:var(--sub);margin:0}
+h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 22px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+  border-radius:4px;padding:3px 10px}
+.chip.orch{background:var(--orch-bg);color:var(--orch)}
+.chip.subag{background:var(--sub-ag-bg);color:var(--sub-ag)}
+.chip.par{background:var(--par-bg);color:var(--par)}
+.chip.user{background:var(--user-bg);color:var(--user)}
+.chip.state{background:var(--state-bg);color:var(--state)}
+.flow{display:flex;flex-direction:column;gap:0}
+.stage{display:grid;grid-template-columns:7.5em 1fr 15em;gap:0;
+  background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stage + .connector{align-self:center}
+.sid{padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  justify-content:flex-start;border-right:1px solid var(--line)}
+.sid .code{font-family:ui-monospace,monospace;font-weight:700;font-size:14px;color:var(--accent)}
+.sid .who{font-size:10.5px;font-weight:600;border-radius:3px;padding:2px 7px;text-align:center;line-height:1.4}
+.who.orch{background:var(--orch-bg);color:var(--orch)}
+.who.subag{background:var(--sub-ag-bg);color:var(--sub-ag)}
+.who.par{background:var(--par-bg);color:var(--par)}
+.sbody{padding:12px 16px}
+.sname{font-weight:700;font-size:15px}
+.sdesc{font-size:13px;color:var(--sub);margin-top:2px}
+.sdesc b{color:var(--ink)}
+.dialog{margin-top:8px;font-size:12.5px;background:var(--user-bg);color:var(--user);
+  border-radius:4px;padding:4px 10px;display:inline-block}
+.gate{margin-top:8px;font-size:12.5px;background:var(--accent-soft);color:var(--accent);
+  border-radius:4px;padding:4px 10px;display:inline-block;font-weight:600}
+.sfiles{padding:12px 14px;border-left:1px dashed var(--line);background:var(--state-bg);
+  font-size:12px;color:var(--state)}
+.sfiles .t{font-weight:700;font-size:11px;letter-spacing:.06em;margin-bottom:4px}
+.sfiles code{font-family:ui-monospace,monospace;font-size:11px;display:block;margin:2px 0;word-break:break-all}
+.connector{display:flex;flex-direction:column;align-items:center;color:var(--sub);
+  font-size:12px;padding:2px 0;line-height:1.3}
+.connector .arrow{font-size:15px}
+.loopbox{border:2px dashed var(--loop);border-radius:10px;padding:10px 12px 4px;margin:0;position:relative}
+.loopbox .looplabel{position:absolute;top:-11px;left:16px;background:var(--bg);
+  color:var(--loop);font-size:12px;font-weight:700;padding:0 8px}
+.loopnote{text-align:center;color:var(--loop);font-size:12.5px;font-weight:600;padding:6px 0 8px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 18px}
+.panel h3{margin:0 0 8px;font-size:14.5px;color:var(--accent)}
+.panel ul{margin:0;padding-left:18px;font-size:13px}
+.panel li{margin:5px 0}
+.panel code{font-family:ui-monospace,monospace;font-size:12px}
+.small{font-size:12.5px;color:var(--sub)}
+@media (max-width:760px){
+  .stage{grid-template-columns:6em 1fr}
+  .sfiles{grid-column:1 / -1;border-left:none;border-top:1px dashed var(--line)}
+  .cols{grid-template-columns:1fr}
+}
+</style>
+<div class="wrap">
+<header>
+  <div class="eyebrow">distillery-impl plugin</div>
+  <h1>dist-impl-run のワークフロー: UC 指定 → 実装完了までの状態機械</h1>
+  <p class="lede">オーケストレータ(dist-impl-run)は状態ファイルの読み書きと dispatch だけを行い、重い仕事はすべて fresh サブエージェントに委譲します(コンテキスト 25% 制約)。git commit はオーケストレータのみ(単一コミッタ)。</p>
+</header>
+
+<div class="legend">
+  <span class="chip orch">🎛 オーケストレータが直接実行</span>
+  <span class="chip subag">🤖 サブエージェントに委譲</span>
+  <span class="chip par">🤖×N tier ごとに並列委譲</span>
+  <span class="chip user">💬 ユーザー対話ポイント</span>
+  <span class="chip state">📄 書かれる状態ファイル(docs/impl/)</span>
+</div>
+
+<h2>起動シーケンス(毎回)</h2>
+<div class="flow">
+  <div class="stage">
+    <div class="sid"><span class="code">起動</span><span class="who orch">オーケストレータ</span></div>
+    <div class="sbody">
+      <span class="sname">lease 確認 → UC 解決 → model 解決 → 再開判定</span>
+      <div class="sdesc">① <b>run-lease</b> があれば起動拒否(多重起動防止) ② UC 指定(完全修飾 / uc_id / 一意名)を uc-map と NFC 照合。複数一致は候補提示 ③ Implementer / Verifier の解決済み model を記録、<b>同一なら停止して確認</b> ④ done ファイル + 入力ハッシュ再計算で「どの stage から再開するか」を決める</div>
+      <div class="dialog">💬 UC 曖昧時の候補選択 / model 同一時の確認 / dirty tree の続行確認</div>
+    </div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>run-lease.yaml(取得)</code><code>status.yaml(resolved_models)</code></div>
+  </div>
+</div>
+
+<h2>stage パイプライン</h2>
+<div class="flow">
+
+  <div class="stage">
+    <div class="sid"><span class="code">S0</span><span class="who subag">🤖 委譲</span></div>
+    <div class="sbody">
+      <span class="sname">bootstrap — 実装リポの骨格(グローバル 1 回・冪等)</span>
+      <div class="sdesc">preflight(java / node / ddd plugin / 条件付き入力)→ impl-config + uc-map 生成 → tier ディレクトリ + dev-rules + CLAUDE.md → <b>契約 codegen</b>(openapi / asyncapi → packages/contracts)→ <b>Storybook 取り込み</b>(→ packages/ui)→ qlty + CI(6 段ゲート)→ <b>ATDD feature 全 SPEC 分生成</b>(@atdd_ タグ付き)。Phase 単位で再開可</div>
+      <div class="dialog">💬 tier→dir / kind / datastore_owner / 言語・コマンドの確定</div>
+    </div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>bootstrap.done.yaml(Phase 記録)</code><code>impl-config.yaml / uc-map.yaml</code><code>contracts.lock.yaml</code></div>
+  </div>
+  <div class="connector"><span class="arrow">▼</span></div>
+
+  <div class="stage">
+    <div class="sid"><span class="code">S1</span><span class="who orch">🎛 直接</span></div>
+    <div class="sbody">
+      <span class="sname">uc-init — 対象 UC の入力を固定する</span>
+      <div class="sdesc">input-preflight(欠落・矛盾・gherkin 実在)→ <b>input-manifest.yaml</b> に全入力の event_id + sha256 を固定(系譜不整合は停止)→ tier セット確定 → <b>UC→ATDD マッピング</b>を Scenario 単位で候補生成しユーザー確認 → uc-map に永続化</div>
+      <div class="dialog">💬 ATDD Scenario の選択確定 / 系譜不整合・Story 結線欠落時の方針</div>
+    </div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>{uc_id}/input-manifest.yaml</code><code>uc-map(atdd_scenarios 確定)</code><code>S1_uc-init.done.yaml</code></div>
+  </div>
+  <div class="connector"><span class="arrow">▼</span></div>
+
+  <div class="stage">
+    <div class="sid"><span class="code">S2</span><span class="who subag">🤖 委譲</span></div>
+    <div class="sbody">
+      <span class="sname">test-scaffold — 4 段テストの足場(テスト先行の担保)</span>
+      <div class="sdesc">① ATDD(生成済み)② UC BDD(spec.md の E2E 完了条件を転写)③ tier BDD(tier md を転写)④ TDD の最初の failing test。step skeleton + runner まで作り、<b>「未実装を理由に fail する」red baseline</b> を確認して done(パースエラー由来の fail は不合格)</div>
+    </div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>S2_test-scaffold.done.yaml</code><code>(red_baseline: pass)</code></div>
+  </div>
+  <div class="connector"><span class="arrow">▼</span></div>
+
+  <div class="stage">
+    <div class="sid"><span class="code">S3</span><span class="who orch">🎛 直接</span></div>
+    <div class="sbody">
+      <span class="sname">contracts — 契約の鮮度照合</span>
+      <div class="sdesc">contracts.lock の sha256 と現物を照合。stale なら bootstrap を <code>phase=contracts force=true</code> で委譲して再生成 → manifest の contracts_lock を更新(stale 波及は S4 以降のみ)</div>
+    </div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>S3_contracts.done.yaml</code></div>
+  </div>
+  <div class="connector"><span class="arrow">▼</span></div>
+
+  <div class="loopbox">
+    <span class="looplabel">検証ループ(attempt-{n}、最大 3 周)</span>
+    <div class="stage" style="margin-bottom:8px">
+      <div class="sid"><span class="code">S4</span><span class="who par">🤖×N 並列</span></div>
+      <div class="sbody">
+        <span class="sname">tier-impl — Implementer(tier ごとに並走)</span>
+        <div class="sdesc">契約型 / packages/ui 起点で <b>TDD(red→green→refactor)</b>。ddd-tactical-implementation を知識ガイドに使用。書き込みは<b>自 tier ディレクトリのみ</b>(write-set 分離)。仕様疑義は issues/ に書き捨て(仕様を曲げない)</div>
+        <div class="gate">ゲート 1-4: format(check-only)/ lint / TDD / tier BDD</div>
+      </div>
+      <div class="sfiles"><div class="t">📄 STATE</div><code>attempt-{n}/S4_tier-impl.{tier}.done.yaml</code><code>issues/*.md</code></div>
+    </div>
+    <div class="stage">
+      <div class="sid"><span class="code">S5</span><span class="who par">🤖×N 並列</span></div>
+      <div class="sbody">
+        <span class="sname">verify — Verifier(別モデル・反証専用)</span>
+        <div class="sdesc">agent type <code>distillery-impl:impl-verifier</code> + <b>impl-config の verifier_model</b> で起動。Implementer の会話履歴は渡さず、<b>成果物と仕様だけ</b>を突合。ゲート再実行 + <b>7 観点</b>(仕様整合 / 可読性・保守性 / セキュリティ / 性能 / 運用性 / 耐障害性 / リファクタリング)で findings 生成。修正は禁止</div>
+      </div>
+      <div class="sfiles"><div class="t">📄 STATE</div><code>attempt-{n}/S5_verify.{tier}.done.yaml</code><code>attempt-{n}/S5_verify.{tier}.findings.yaml</code></div>
+    </div>
+    <div class="loopnote">⟲ blocker あり → attempt++(blocker tier の S4 を再実行、他 tier は carry-forward done をコピー、<b>S5 は全 tier 再検証</b>)。3 周超過 → 💬 ユーザーに選択肢提示</div>
+  </div>
+  <div class="connector">blocker なし<span class="arrow">▼</span></div>
+
+  <div class="stage">
+    <div class="sid"><span class="code">S6</span><span class="who subag">🤖 委譲</span></div>
+    <div class="sbody">
+      <span class="sname">uc-bdd — 全 tier 結合の E2E(integration writer・直列)</span>
+      <div class="sdesc">features/uc/{uc_id}.feature の step を実装して結合実行。fail 時は「どの tier が仕様と食い違うか」の分析だけ返す(差し戻し判断はオーケストレータ)。fail の処置は 3 択: ①原因 tier の S4 差し戻し / ②仕様ブロックで S8 へ / <b>③(推奨)仕様不整合を issues に書き残してテストが通るまで実装を進め、as-built 差分として S8 で変更要求化</b>。仕様ギャップ起因の統合前提(認証ヘッダ等)の欠落は、issue 参照コメント付きで steps 内ハーネス注入を許容</div>
+      <div class="gate">ゲート 5: UC BDD(E2E 完了条件)</div>
+    </div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>S6_uc-bdd.done.yaml</code></div>
+  </div>
+  <div class="connector"><span class="arrow">▼</span></div>
+
+  <div class="stage">
+    <div class="sid"><span class="code">S7</span><span class="who subag">🤖 委譲</span></div>
+    <div class="sbody">
+      <span class="sname">atdd — 受け入れ基準の選択実行(同 integration writer)</span>
+      <div class="sdesc">uc-map の atdd_scenarios を <b>@atdd_ タグ完全一致</b>で選択実行(SPEC は複数 UC にまたがるため全件は回さない)。実行件数 = 選択件数の一致が done 条件</div>
+      <div class="gate">ゲート 6: ATDD(acceptance criteria)</div>
+    </div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>S7_atdd.done.yaml</code></div>
+  </div>
+  <div class="connector"><span class="arrow">▼</span></div>
+
+  <div class="stage">
+    <div class="sid"><span class="code">S8</span><span class="who subag">🤖 委譲</span></div>
+    <div class="sbody">
+      <span class="sname">feedback — 仕様への還流と学び</span>
+      <div class="sdesc">issues / findings を仕様起因・実装起因に分類し、まず <b>as-built 仕様サマリ</b>(_as-built-summary.md — 実装が実際に満たす仕様を「仕様どおり / 仕様に無い追加 / 仕様と矛盾」のマーカー付きで整理)を生成。仕様起因は <b>as-built との差分として、dist-requirements にそのまま渡せる変更要求 md</b> に(blocker なら UC を blocked_on_spec に)。ハマりどころは learnings、skill / CLAUDE.md への学びは<b>提案ファイル</b>(自動編集しない)</div>
+    </div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>change-requests/*.md</code><code>learnings/*.md</code><code>S8_feedback.done.yaml</code></div>
+  </div>
+  <div class="connector"><span class="arrow">▼</span></div>
+
+  <div class="stage">
+    <div class="sid"><span class="code">S9</span><span class="who subag">🤖 委譲</span></div>
+    <div class="sbody">
+      <span class="sname">review — ゼロ知識レビュー資料 → ユーザー承認</span>
+      <div class="sdesc">前提知識ゼロで合否判断できる単一 HTML(結論 → ゲート結果 → 反証と解決 → 残課題 → 判断ポイント)を生成。オーケストレータが <code>open</code> でプレビュー表示し承認対話。<b>UC 完了の正は review_approved イベント</b>(HTML 生成 done ≠ 完了)。差し戻しは該当 stage の done を invalidated/ へ退避して再実行</div>
+      <div class="dialog">💬 承認(completed)/ 差し戻し(戻り先 stage 指定)</div>
+    </div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>review/index.html</code><code>S9_review_generated.done.yaml</code><code>events: review_approved</code></div>
+  </div>
+</div>
+
+<h2>横断の仕組み</h2>
+<div class="cols">
+  <div class="panel">
+    <h3>冪等再開(セッションが切れても巻き戻らない)</h3>
+    <ul>
+      <li>完了の正は <code>.done.yaml</code> の存在 + <code>manifest_sha256</code> 一致。status.yaml は再構築可能なスナップショット</li>
+      <li>再開時は入力ハッシュを<b>現物から再計算</b>し、変わった入力に依存する stage / bootstrap Phase だけを再実行</li>
+      <li>中間生成物は削除しない。無効化は <code>invalidated/</code> へ退避(イベント追記が先)</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>並走の安全(tier 並列でも壊れない)</h3>
+    <ul>
+      <li>stage ごとに<b>明示的な write-set</b>。サブエージェントは自分の領域しか書けない(逸脱 = stage failed)</li>
+      <li><b>git はオーケストレータのみ</b>。stage 境界で <code>git add -- &lt;owned paths&gt;</code> → Conventional Commits(scope = uc_id)</li>
+      <li>packages/contracts・packages/ui は S4 中 read-only。書き換えを伴う format は barrier 後に単一 writer で実行</li>
+      <li>run-lease で多重起動を拒否</li>
+    </ul>
+  </div>
+</div>
+<p class="small">正本: plugins/distillery-impl/skills/dist-impl-run/SKILL.md + references/state-schema.md・subagent-template.md(commit 193d3fe 時点)。本図解は要約であり、矛盾があれば正本が勝ちます。</p>
+</div>
