@@ -27,7 +27,8 @@ description: >
    (実装が実際に満たす仕様: エンドポイント・状態遷移・ヘッダ契約・エラー応答を、
    仕様どおり / 仕様に無い追加 / 仕様と矛盾 の差分マーカー付きで整理)を生成する。
    **変更要求は as-built との差分として書く**(テスト通過後に as-built を根拠に変更要求を
-   ブラッシュアップ → distillery 再実行、という還流サイクルの起点)
+   ブラッシュアップ → distillery 再実行、という還流サイクルの起点)。
+   _as-built-summary.md は変更要求ではない — done の件数集計に含めない(state-schema.md)
 3. `references/change-request-format.md` のフォーマットで
    `docs/impl/latest/{uc_id}/change-requests/{ts}_{slug}.md` を書く(1 問題 = 1 ファイル)
 4. severity が blocker の変更要求を出した場合は、その旨を結果として返す

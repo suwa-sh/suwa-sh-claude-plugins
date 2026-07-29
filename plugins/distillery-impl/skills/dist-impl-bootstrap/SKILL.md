@@ -62,7 +62,8 @@ bootstrap.done.yaml は **P4 の記録と契約入力ハッシュ(openapi / asyn
 2. **実装 tier の宣言案**を作る: files[] に現れる tier → 実装 tier(dir は `tier-` を除いた名前、
    `kind`(frontend / backend / worker)は tier id と tier md の構成から推定した案を出す)。
    files[] に現れない architecture tier(例 tier-datastore)→ 共有資産(datastore_owner を提案)。
-   **確認推奨項目としてユーザーに提示**(tier→dir 対応 / kind / datastore_owner / 言語 / コマンド群。
+   **確認推奨項目としてユーザーに提示**(tier→dir 対応 / kind / datastore_owner /
+   **backend_framework(impl-config に記録。P3 の依存 install の選択元)** / 言語 / コマンド群。
    kind は read-set・tier-rules 適用の機械可読キーになるため必須確定項目)
 3. uc-map.yaml を生成: 全 UC の uc_id(生成式は state-schema.md。NFC 正規化 + canonical JSON + sha256 先頭 8 桁)、
    path、tiers。**衝突検査**で衝突があれば 12 桁に延長
@@ -108,8 +109,9 @@ java 不在・generator 失敗時は縮退モード(`_api-summary.yaml` 起点)�
 2. `.github/workflows/ci.yml` を生成: format-check → lint → tdd(tier matrix)→ tier-bdd(tier matrix)
    → uc-bdd → atdd。コマンドは impl-config の `commands` / `integration_commands` から転記
 3. **ルート実行の cucumber(features/uc・features/atdd)用に `tsconfig.uc-features.json`
-   (jsx: react + DOM lib + module: CommonJS + ts-node 節)を生成し、cucumber.cjs 冒頭で
-   `process.env.TS_NODE_PROJECT ||=` する**(tier cucumber は workspace cwd で自 tsconfig を拾えるが、
+   (jsx: react + DOM lib + module: CommonJS + ts-node 節)を生成し、cucumber.cjs 冒頭に
+   `process.env.TS_NODE_PROJECT = process.env.TS_NODE_PROJECT || "tsconfig.uc-features.json";`
+   を入れる**(パスはリポルート相対 — bdd:uc / bdd:atdd はルート cwd で実行される前提)(tier cucumber は workspace cwd で自 tsconfig を拾えるが、
    ルート実行の bdd:uc / bdd:atdd は拾える tsconfig が無く `--jsx is not set` で即死するため)
 4. **biome.json に生成物の ignore を焼き込む**: `files.ignore: ["packages/contracts/**",
    "packages/ui/**", "node_modules/**"]`(無いと barrier format が vendored 生成物を整形して churn する)

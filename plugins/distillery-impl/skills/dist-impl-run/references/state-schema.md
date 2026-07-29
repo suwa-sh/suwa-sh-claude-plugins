@@ -34,6 +34,8 @@ docs/impl/
         S9_review_generated.done.yaml   # HTML 生成の完了(承認は含まない)
       invalidated/{event_id}/         # 無効化した done の退避先(stage_invalidated と対)
       issues/{ts}_{slug}.md
+      change-requests/_as-built-summary.md   # S8 が変更要求の前に生成する as-built 仕様サマリ
+                                             # (変更要求ではない — 件数集計・S9 の変更要求一覧から除外)
       change-requests/{ts}_{slug}.md
       learnings/{ts}_{slug}.md
       review/index.html
@@ -110,6 +112,8 @@ tiers:                                 # 実装 tier の宣言(architecture tier
     lang: typescript
     commands: {format_check: "...", lint: "...", test: "...", bdd: "..."}
 datastore_owner: tier-backend-api      # migration/schema 資産の所有 tier
+backend_framework: express             # backend tier の API フレームワーク(P2 でユーザー確認して確定。
+                                       #  P3 はこの宣言の依存を install する)
 integration_commands:                  # S6/S7 で integration writer が使う
   uc_bdd: "..."
   atdd: "..."
@@ -193,7 +197,11 @@ inputs_sha256:                         # 全入力のハッシュ(現物と比�
   design_storybook_src: "..."          # has_design_system の場合のみ。storybook-app/src/ 配下の
                                         # 実ファイル一覧 + 各 sha256 から決定論的に合成したハッシュ
                                         # (design event 単体のハッシュでは src/ 配置競合による
-                                        #  部分スナップショット取り込みを検知できないため)
+                                        #  部分スナップショット取り込みを検知できないため)。
+                                        # 記録するのは P5 が実際にコピーした時点の値: P5 は
+                                        # コピー前後で同一ハッシュであることを確認し、
+                                        # .imported.yaml の files と src 実ファイル一覧の
+                                        # 全件一致を P5 完了条件にする
   openapi: "..."
   asyncapi: "..."                      # has_asyncapi の場合のみ
 generated_at: "..."
@@ -326,7 +334,7 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
 
 | 書き手 | 書いてよい場所 |
 |---|---|
-| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、carry-forward done の生成、`invalidated/` への done 退避、git commit |
+| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、carry-forward done の生成、`invalidated/` への done 退避、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、git commit |
 | S0 bootstrap | 実装リポ全体(初期生成)、latest/ の config/uc-map/lock、`bootstrap.done.yaml` |
 | S4 Implementer(tier 別) | 自 tier の dir 配下、`attempt-{n}/S4_*.{自tier}.done.yaml`、issues/ |
 | S5 Verifier(tier 別) | `attempt-{n}/S5_*.{自tier}.done.yaml`、`.findings.yaml` のみ(**実装コードの修正禁止**) |
@@ -336,6 +344,7 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
 
 **git 操作はオーケストレータのみ**。サブエージェントは git を実行してはならない(Bash 含む)。
 
-**run-lease.yaml は commit しない**(一時ファイル)。`git add -- docs/impl/latest` のように
-直下を丸ごと指定すると巻き込まれるため、`git add` のパスは `{uc_id}/` 配下と `events/` を個別に
-指定するか、`.gitignore` に `run-lease.yaml` を追加する。
+**run-lease.yaml は commit しない**(一時ファイル。どの stage の write-set にも含まれない)。
+`git add` のパスは**その stage の write-set に含まれる各パスを明示指定**する(`docs/impl/latest`
+のような親ディレクトリの丸ごと指定は lease を巻き込むため不可)。または `.gitignore` に
+`run-lease.yaml` を追加する。

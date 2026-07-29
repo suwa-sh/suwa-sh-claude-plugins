@@ -29,8 +29,9 @@ description: >
    state-schema.md の依存表に従い該当 Phase を invalidate(bootstrap.done.yaml の Phase 記録を
    自分で書き換える — オーケストレータの write-set に含まれる)してから S0(bootstrap)を
    サブエージェントで実行(config/uc-map の存在では判定しない — P2 で中断した S0 を完了扱いしないため)。
-   bootstrap の確認推奨項目(tier→dir / **kind** / datastore_owner / 言語・コマンド)は
-   ユーザーに中継して確定(kind が未確定・不正値のままなら S0 を完了にしない)
+   bootstrap の確認推奨項目(tier→dir / **kind** / datastore_owner / backend_framework /
+   言語・コマンド)はユーザーに中継して確定(kind が未確定・不正値のままなら S0 を完了にしない)。
+   **確定したら `config_confirmed` イベントを追記してから impl-config を更新する**(イベント → latest の順)
 3. **UC 解決**: 引数を uc-map と照合(照合は NFC 正規化後)。
    完全修飾・uc_id・一意名のみ受理。複数一致は候補一覧を提示して選ばせる
 4. **model 解決**: implementer_model / verifier_model を解決し status.yaml の `resolved_models` に記録。
@@ -56,7 +57,8 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
   3. UC→ATDD マッピング: uc-map の `atdd_confirmed` が false なら、usdm の
      `requirements[].specifications[].affected_models[]`(type: buc)から BUC 粒度候補を生成し、
      **全 SPEC 一覧(候補外も選択可)と併せて**ユーザー確認 → Scenario 名単位で uc-map に永続化
-     (state-schema.md「UC→ATDD マッピング」)
+     (state-schema.md「UC→ATDD マッピング」。**確定時は `config_confirmed` イベントを
+     追記してから uc-map を更新する**)
   4. has_design_system かつ design-event.yaml に UC の screen 結線が無い場合は警告し、
      「素の packages/ui で進める / design へ変更要求」を確認
   5. `S1_uc-init.done.yaml` を書く(共通スキーマ。オーケストレータの write-set に含まれる)
@@ -70,7 +72,9 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
   model パラメータに verifier_model を渡す**(agent 定義の disallowedTools 制約を効かせるため)
 - **workspace 依存追加は単一 writer(オーケストレータ)の責務**: root package-lock.json 等の
   workspace 共有ファイルは並走 Implementer が触ると競合する。必要な依存は S4 dispatch 前(または
-  attempt 開始時)にオーケストレータがまとめて install・commit してから dispatch する
+  attempt 開始時)にオーケストレータがまとめて install し、**依存追加だけの独立 commit**
+  (`impl({uc_id}): add deps for attempt-{n}`)にしてから dispatch する(package.json /
+  package-lock.json はオーケストレータの write-set — state-schema.md 正本表)
 - **attempt 制御**: S5 の findings に blocker があれば `attempt_opened` イベントを記録して attempt++、
   blocker のある tier の S4 を再実行。blocker の無かった tier には新 attempt に
   **carry-forward done**(`carried_from` 付き)を自分で生成する(state-schema.md)。
@@ -80,7 +84,11 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
   ①原因 tier の S4 へ差し戻す、②仕様ブロックとして issues 起票済みのまま S8 へ進む、
   ③**(推奨)仕様不整合を issues に書き残してテストが通るまで実装を進め、S8 で as-built 差分として
   変更要求化する**(変更要求からのやり直しは時間がかかりすぎるため)。cross-UC 依存(未宣言
-  エンドポイント等)はこの③が既定
+  エンドポイント等)はこの③が既定。
+  **③の実体は①と同じ S4 差し戻し**(attempt++・carry-forward・S5 全 tier 再検証も同一)で、
+  違いは Implementer への修正方針だけ — 「仕様に厳密に合わせる」でなく「issues 起票つきの意図的
+  逸脱を許可して統合を通す」を指示する。tier 実装に触れない前提の欠落(認証ヘッダ等)だけは
+  integration writer が自分の write-set(steps)内でハーネス注入する(subagent-template の注入規約)
 - **blocked_on_spec**: S8 が blocker の変更要求を出したら state を blocked_on_spec にし、
   S9 で「仕様ブロック」レポートを出して終了(distillery 側の対応後に再開)
 
@@ -115,6 +123,7 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 - 任意の時点で中断しても、次回起動時の再開判定で続きから走る(中間生成物は消さない)
 - **完了報告が来なくても done ファイルが正**: サブエージェントが完了報告なしで idle になる
   ことがある(ハーネス依存)。オーケストレータは報告を待たず、done ファイルの実在 + parse 可否で
-  完了判定してよい
+  完了判定してよい。**ただし報告の代替であって検証の省略ではない** — stage 境界の共通処理
+  (スキーマ・write-set 逸脱の検証)は通常どおり行う
 - サブエージェントが write-set 外に書いた場合: 該当差分を退避して stage を failed 扱いにし、報告する
 - 終了時(正常・異常とも)に lease を削除する。異常終了で lease が残った場合の扱いは state-schema.md
