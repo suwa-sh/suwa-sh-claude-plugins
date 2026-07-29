@@ -1,0 +1,29 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-006"
+title: "冪等キー重複時の応答は個別API仕様のエラー表を正とする（全API共通のキャッシュ再送はしない）"
+status: "approved"
+generated_at: "2026-07-29T14:16:24"
+context: |
+  distillery-impl 実装フィードバック（REQ-010）により、冪等キー（Idempotency-Key）重複時の挙動について、
+  `_cross-cutting/datastore/kvs-schema.yaml` の一般的な説明（「重複リクエスト時にキャッシュから返却」）と、
+  「書籍を貸出する」UC の `tier-backend-api.md`（重複時は常に 409 を返す、と BDD で検証済み）が
+  矛盾していたことが判明した。実装は後者を優先して 409 固定の実装としたが、この解釈は本UC固有の
+  判断であり、他UC（予約作成・予約キャンセル等の状態変更操作）が同じ `idempotency:{idempotency_key}`
+  パターンを使う際に同じ判断を都度独自に行う必要が生じる。
+decision: |
+  冪等キー重複時の挙動は「各APIのエラー応答仕様（tier-*.md のエラー表）を優先して判定する」ことを
+  全API共通のルールとして明文化する。`kvs-schema.yaml` の `idempotency:{idempotency_key}` の
+  `value_description` を「処理済みリクエストの記録。判定にのみ使用し、キャッシュ済みレスポンスの
+  再送を保証するものではない」に訂正し、API ごとに異なる挙動（本UCは 409 固定）を許容する前提に揃える。
+  RDRA の条件.tsv にも「冪等リクエスト処理ルール」として同旨を追加済み。
+consequences:
+  positive:
+    - "kvs-schema.yaml（全API共通の説明）と tier-backend-api.md（本UC固有かつBDDで検証される正本）の矛盾が解消される"
+    - "他UC（予約作成・予約キャンセル等）が同じ idempotency キーパターンを使う際、判断基準（個別API仕様を優先する）が明確になり、独自解釈の分岐を防げる"
+  negative:
+    - "冪等性の一般的な期待（『重複リクエストには元の成功レスポンスを再送する』）とは異なる挙動になるため、将来 API 利用者向けドキュメントで明示的な注記が必要"
+alternatives_considered:
+  - name: "全API共通でキャッシュ済みレスポンス再送方式に統一する"
+    reason_rejected: "書籍を貸出する UC は実装済み・BDD で検証済みの 409 固定挙動であり、方式変更には実装の巻き戻しとテストの再検証が必要になる。本イベントのスコープ（仕様とすでにある実装の整合）を超えるため見送った"

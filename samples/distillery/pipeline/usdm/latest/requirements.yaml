@@ -183,3 +183,121 @@ requirements:
           - type: "variation"
             action: "add"
             target: "資料種別"
+
+  - id: "REQ-007"
+    requirement: "貸出手続きにおける利用者認証とアクセス制御の実装契約を明確化する"
+    reason: "認証基盤（OAuth2/OIDCのリソースサーバー検証）の実装契約（利用者IDの受け渡し方法・エラー応答・ロール表現）が仕様のどこにも定義されておらず、S5 verifyでなりすまし・RBAC未実装がセキュリティ上のmajor findingとして継続指摘されているため"
+    priority: "must"
+    specifications:
+      - id: "SPEC-007-01"
+        specification: "状態変更を伴うAPIにおいて、利用者IDを受け渡す認証ヘッダをAPI仕様に定義する"
+        acceptance_criteria:
+          - "Given 認証基盤が未整備の暫定運用 When 状態変更を伴うAPIが呼び出される Then 利用者ID受け渡し用の認証ヘッダ（暫定: X-User-Id）がAPI仕様に定義されている"
+          - "Given 認証ヘッダが欠落または不正な値である When APIが呼び出される Then 401エラー（RFC 7807形式）が返却される"
+        affected_models:
+          - type: "condition"
+            action: "add"
+            target: "利用者認証・アクセス制御ルール"
+      - id: "SPEC-007-02"
+        specification: "ロールベースアクセス制御（RBAC）のロール表現（claim名・値の集合）をAPI仕様に定義し、frontendのAPIクライアントが送信すべき認証情報をtier-frontend.mdに明記する"
+        acceptance_criteria:
+          - "Given RBACのロール値が仕様に定義されている When 状態変更APIが呼び出される Then ロールに応じたアクセス制御が判定できる"
+          - "Given tier-frontend.mdに認証情報の送信方法が明記されている When frontendのAPIクライアントを実装する Then backend側の契約と一致する"
+        affected_models:
+          - type: "condition"
+            action: "modify"
+            target: "利用者認証・アクセス制御ルール"
+
+  - id: "REQ-008"
+    requirement: "予約状態モデルに完了状態を追加し、貸出可否判定における予約参照仕様を明確化する"
+    reason: "予約者本人による貸出可否判定や予約完了処理をめぐって、状態モデル（予約状態）・条件（貸出可否判定ルール）・データストアスキーマの記述が不完全かつ相互に矛盾しており、実装のたびに独自解釈で埋め合わせが発生しているため"
+    priority: "must"
+    specifications:
+      - id: "SPEC-008-01"
+        specification: "予約状態モデルに、貸出完了に伴う「完了」状態と予約確保済からの遷移を追加する"
+        acceptance_criteria:
+          - "Given 予約確保済の予約が存在する When 予約者本人が書籍を貸出する Then 予約状態が完了に遷移する"
+          - "Given 予約状態モデルに完了状態が定義されている When reservations.status を実装する Then pending/reserved/cancelled/fulfilledの4値が正式な値として一致する"
+        affected_models:
+          - type: "state"
+            action: "modify"
+            target: "予約状態"
+      - id: "SPEC-008-02"
+        specification: "貸出可否判定ルールに、予約者本人（予約確保済）の場合は貸出可能とする例外を明記し、貸出を申請するBUCアクティビティが予約情報を参照することを明示する"
+        acceptance_criteria:
+          - "Given その書籍に予約受付中の予約がある When 予約者本人以外が貸出を試みる Then 貸出不可と判定される"
+          - "Given その書籍を予約確保済にしている利用者本人 When 貸出を試みる Then 貸出可能と判定される"
+        affected_models:
+          - type: "condition"
+            action: "modify"
+            target: "貸出可否判定ルール"
+          - type: "buc"
+            action: "modify"
+            target: "貸出管理フロー"
+
+  - id: "REQ-009"
+    requirement: "API/イベント契約（openapi.yaml/asyncapi.yaml）の生成品質を担保し、機械的な型生成エラーを解消する"
+    reason: "契約生成ツール（openapi-generator, asyncapi-cli）の制約により、日本語ラベルのenumやtitle欠落のpayloadスキーマから構文エラーや意味不明な型名（AnonymousSchema）が生成され、実装がbarrel importの迂回を強いられている。今後 searchBooks を利用するUC（書籍を検索する）は迂回策が使えず根本修正が必須であるため"
+    priority: "should"
+    specifications:
+      - id: "SPEC-009-01"
+        specification: "asyncapi.yaml の components.messages.*.payload スキーマに title を付与する"
+        acceptance_criteria:
+          - "Given payload スキーマに title が付与されている When 契約（TypeScript型）を再生成する Then AnonymousSchema_* でなく意味のある型名が生成される"
+        affected_models:
+          - type: "external_system"
+            action: "modify"
+            target: "メール送信サービス"
+      - id: "SPEC-009-02"
+        specification: "openapi.yaml の searchBooks genre/material_type enum に x-enum-varnames（英語識別子）を追加する"
+        acceptance_criteria:
+          - "Given enum に x-enum-varnames が定義されている When openapi-generator（typescript-fetch）で型生成する Then SearchBooksGenreEnum/SearchBooksMaterialTypeEnum が構文エラーなく生成される"
+        affected_models:
+          - type: "variation"
+            action: "modify"
+            target: "書籍ジャンル"
+          - type: "variation"
+            action: "modify"
+            target: "資料種別"
+
+  - id: "REQ-010"
+    requirement: "冪等キー重複時のAPI応答仕様の矛盾を解消する"
+    reason: "冪等キー重複時の挙動について、全API共通のkvs-schema.yamlの説明（キャッシュ済みレスポンスの返却を示唆）と、本UC個別のtier-backend-api.md（409エラーを明記しBDDで検証）が矛盾しており、他UCが同じidempotencyパターンを使う際に同じ解釈判断を都度行う必要が生じるため"
+    priority: "should"
+    specifications:
+      - id: "SPEC-010-01"
+        specification: "kvs-schema.yaml の value_description を実際の挙動に合わせて訂正するか、個別API仕様（tier-*.md のエラー表）を優先する旨を明記する"
+        acceptance_criteria:
+          - "Given 冪等キーが重複したリクエストを送信する When APIが応答する Then kvs-schema.yaml と tier-backend-api.md の記述が矛盾なく一致する"
+        affected_models:
+          - type: "condition"
+            action: "add"
+            target: "冪等リクエスト処理ルール"
+
+  - id: "REQ-011"
+    requirement: "貸出完了表示における返却期限フォーマットを統一する"
+    reason: "tier-frontend.mdのプロース記述（スラッシュ区切り）とBDDシナリオ（ハイフン区切り）で返却期限の表記が食い違い、実装上「貸出前プレビュー」と「貸出完了後の確定表示」でユーザーへの表記が不統一なまま提供されているため"
+    priority: "could"
+    specifications:
+      - id: "SPEC-011-01"
+        specification: "tier-frontend.md の返却期限表記をスラッシュ/ハイフンいずれかに統一する"
+        acceptance_criteria:
+          - "Given 貸出前プレビューと貸出完了後の確定表示 When 返却期限を表示する Then 同一の区切り文字形式で表示される"
+        affected_models:
+          - type: "information"
+            action: "modify"
+            target: "貸出"
+
+  - id: "REQ-012"
+    requirement: "LoanConfirmationコンポーネントのonLoan戻り値型を仕様上明確化する"
+    reason: "tier-frontend.mdのProps表でonLoanの戻り値をPromise<void>と定義する一方、状態表のloanResult（貸出結果）を描画するには戻り値からLoanResponseを取得する必要があり、Props表と状態表の間で値の受け渡し経路が仕様上閉じていないため"
+    priority: "could"
+    specifications:
+      - id: "SPEC-012-01"
+        specification: "tier-frontend.md の onLoan を () => Promise<LoanResponse> に修正するか、loanResult を親コンポーネントから渡すPropsとして設計を明確化する"
+        acceptance_criteria:
+          - "Given onLoanの戻り値型が仕様上明確化されている When LoanConfirmationコンポーネントを実装する Then 型定義と実装（貸出結果の取得経路）が整合する"
+        affected_models:
+          - type: "information"
+            action: "modify"
+            target: "貸出"

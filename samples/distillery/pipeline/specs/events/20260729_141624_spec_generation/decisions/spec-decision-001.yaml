@@ -1,0 +1,32 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-001"
+title: "REST API スタイルの採用と命名規則"
+status: "approved"
+generated_at: "2026-04-12T19:55:42+09:00"
+context: |
+  図書館蔵書管理システムの全 API エンドポイントの設計スタイルを決定する必要がある。
+  arch-design.yaml SR-002 に「REST API スタイル、/api/v1/{resource} 形式」と定義済み。
+  リソース名の複数形/単数形、フィールド名の命名規則（snake_case/camelCase）を決定する。
+decision: |
+  REST 複数形リソース名 + snake_case フィールド命名を採用する。
+  リソース名: /api/v1/books, /api/v1/loans, /api/v1/reservations, /api/v1/users
+  フィールド名: book_id, loan_date, due_date, material_type 等
+  エラーレスポンス: RFC 7807 Problem Details (application/problem+json)
+  ページネーション: オフセットベース (?page=1&per_page=20)
+  認証トークン伝播: HttpOnly Cookie + CSRF トークン（Next.js SSR 親和性）
+consequences:
+  positive:
+    - "DB カラム名（snake_case）との自然な対応で変換コスト最小"
+    - "OpenAPI ツール群との互換性が高い"
+    - "RFC 7807 準拠でクライアント側エラーハンドリングが標準化"
+  negative:
+    - "フロントエンド TypeScript では camelCase が慣例のため、API レスポンスの変換レイヤーが必要"
+alternatives_considered:
+  - name: "camelCase フィールド命名"
+    reason_rejected: "DB カラムとの変換コストが増大。バックエンド TypeScript でも snake_case が一般的"
+  - name: "GraphQL"
+    reason_rejected: "16 UC の小規模システムで GraphQL の柔軟性は過剰。REST で十分にカバー可能"
+  - name: "カスタムエラーレスポンス形式"
+    reason_rejected: "標準準拠ツールとの互換性がなく、将来的な拡張性に欠ける"

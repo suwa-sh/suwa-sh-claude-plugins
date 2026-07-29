@@ -1,0 +1,32 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-004"
+title: "横断関心事の解決方針"
+status: "approved"
+generated_at: "2026-04-12T19:55:42+09:00"
+context: |
+  全 UC に共通する横断関心事（エラーハンドリング、ページネーション、認証伝播、冪等性）の
+  一貫した設計方針を決定する。arch-design.yaml の cross_tier_policies を具体化する。
+decision: |
+  1. エラーハンドリング: RFC 7807 Problem Details 形式。type URI でエラー分類、detail に日本語メッセージ
+  2. ページネーション: オフセットベース（page + per_page）。レスポンスに total/page/per_page を含む
+  3. 認証伝播: HttpOnly Cookie（セッションID） + CSRF トークン。KVS でセッション管理
+  4. 冪等性: 状態変更操作（POST/PUT/DELETE の貸出/返却/予約/キャンセル）に X-Idempotency-Key ヘッダ必須。
+     KVS で TTL 24h の重複チェック後、RDB の UNIQUE 制約で二重防止
+  5. 監査ログ: 状態遷移を伴う操作（貸出/返却/予約/キャンセル/延滞検出）の操作ログを構造化 JSON で出力
+consequences:
+  positive:
+    - "全 API で一貫したエラーレスポンス形式によりクライアント側の実装が統一される"
+    - "冪等性保証により二重送信（ネットワークリトライ等）での副作用を防止"
+    - "HttpOnly Cookie により XSS 攻撃でのトークン窃取リスクを低減"
+  negative:
+    - "RFC 7807 の type URI 設計が必要（独自スキーマの定義コスト）"
+    - "冪等キーの KVS 管理で TTL 切れ後の再送は新規リクエストとして処理される"
+alternatives_considered:
+  - name: "カーソルベースページネーション"
+    reason_rejected: "ページ番号指定ジャンプが不可。図書館UIではページ指定ナビが自然"
+  - name: "Bearer トークン認証"
+    reason_rejected: "Next.js SSR 環境でサーバーサイドのトークン管理が複雑化"
+  - name: "冪等キーなし（楽観的ロック）"
+    reason_rejected: "外部ユーザーがアクターで同時操作のリスクあり。arch-design.yaml CTP-005 で冪等性方針が定義済み"

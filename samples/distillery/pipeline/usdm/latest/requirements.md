@@ -26,3 +26,18 @@
 | SPEC-005-02 | | 司書が人気書籍ランキングや貸出統計をレポートとして確認できる | | 1. Given 司書がログイン済み When 統計レポート画面を開く Then 貸出回数ランキング・期間別統計が表示される |
 | REQ-006 | 将来的に電子書籍にも対応できるようにする | | 電子書籍への対応を見据えた設計にしておくことで、将来の拡張時に大規模な改修を避けるため | |
 | SPEC-006-01 | | 書籍情報に資料種別（紙書籍・電子書籍）を持たせ、将来の電子書籍対応に備える | | 1. Given 書籍登録画面 When 資料種別を選択できる Then 紙書籍として登録でき、将来電子書籍も選択可能な設計となっている |
+| REQ-007 | 貸出手続きにおける利用者認証とアクセス制御の実装契約を明確化する | | 認証基盤（OAuth2/OIDCのリソースサーバー検証）の実装契約（利用者IDの受け渡し方法・エラー応答・ロール表現）が仕様のどこにも定義されておらず、S5 verifyでなりすまし・RBAC未実装がセキュリティ上のmajor findingとして継続指摘されているため | |
+| SPEC-007-01 | | 状態変更を伴うAPIにおいて、利用者IDを受け渡す認証ヘッダをAPI仕様に定義する | | 1. Given 認証基盤が未整備の暫定運用 When 状態変更を伴うAPIが呼び出される Then 利用者ID受け渡し用の認証ヘッダ（暫定: X-User-Id）がAPI仕様に定義されている<br>2. Given 認証ヘッダが欠落または不正な値である When APIが呼び出される Then 401エラー（RFC 7807形式）が返却される |
+| SPEC-007-02 | | ロールベースアクセス制御（RBAC）のロール表現（claim名・値の集合）をAPI仕様に定義し、frontendのAPIクライアントが送信すべき認証情報をtier-frontend.mdに明記する | | 1. Given RBACのロール値が仕様に定義されている When 状態変更APIが呼び出される Then ロールに応じたアクセス制御が判定できる<br>2. Given tier-frontend.mdに認証情報の送信方法が明記されている When frontendのAPIクライアントを実装する Then backend側の契約と一致する |
+| REQ-008 | 予約状態モデルに完了状態を追加し、貸出可否判定における予約参照仕様を明確化する | | 予約者本人による貸出可否判定や予約完了処理をめぐって、状態モデル（予約状態）・条件（貸出可否判定ルール）・データストアスキーマの記述が不完全かつ相互に矛盾しており、実装のたびに独自解釈で埋め合わせが発生しているため | |
+| SPEC-008-01 | | 予約状態モデルに、貸出完了に伴う「完了」状態と予約確保済からの遷移を追加する | | 1. Given 予約確保済の予約が存在する When 予約者本人が書籍を貸出する Then 予約状態が完了に遷移する<br>2. Given 予約状態モデルに完了状態が定義されている When reservations.status を実装する Then pending/reserved/cancelled/fulfilledの4値が正式な値として一致する |
+| SPEC-008-02 | | 貸出可否判定ルールに、予約者本人（予約確保済）の場合は貸出可能とする例外を明記し、貸出を申請するBUCアクティビティが予約情報を参照することを明示する | | 1. Given その書籍に予約受付中の予約がある When 予約者本人以外が貸出を試みる Then 貸出不可と判定される<br>2. Given その書籍を予約確保済にしている利用者本人 When 貸出を試みる Then 貸出可能と判定される |
+| REQ-009 | API/イベント契約（openapi.yaml/asyncapi.yaml）の生成品質を担保し、機械的な型生成エラーを解消する | | 契約生成ツール（openapi-generator, asyncapi-cli）の制約により、日本語ラベルのenumやtitle欠落のpayloadスキーマから構文エラーや意味不明な型名（AnonymousSchema）が生成され、実装がbarrel importの迂回を強いられている。今後 searchBooks を利用するUC（書籍を検索する）は迂回策が使えず根本修正が必須であるため | |
+| SPEC-009-01 | | asyncapi.yaml の components.messages.*.payload スキーマに title を付与する | | 1. Given payload スキーマに title が付与されている When 契約（TypeScript型）を再生成する Then AnonymousSchema_* でなく意味のある型名が生成される |
+| SPEC-009-02 | | openapi.yaml の searchBooks genre/material_type enum に x-enum-varnames（英語識別子）を追加する | | 1. Given enum に x-enum-varnames が定義されている When openapi-generator（typescript-fetch）で型生成する Then SearchBooksGenreEnum/SearchBooksMaterialTypeEnum が構文エラーなく生成される |
+| REQ-010 | 冪等キー重複時のAPI応答仕様の矛盾を解消する | | 冪等キー重複時の挙動について、全API共通のkvs-schema.yamlの説明（キャッシュ済みレスポンスの返却を示唆）と、本UC個別のtier-backend-api.md（409エラーを明記しBDDで検証）が矛盾しており、他UCが同じidempotencyパターンを使う際に同じ解釈判断を都度行う必要が生じるため | |
+| SPEC-010-01 | | kvs-schema.yaml の value_description を実際の挙動に合わせて訂正するか、個別API仕様（tier-*.md のエラー表）を優先する旨を明記する | | 1. Given 冪等キーが重複したリクエストを送信する When APIが応答する Then kvs-schema.yaml と tier-backend-api.md の記述が矛盾なく一致する |
+| REQ-011 | 貸出完了表示における返却期限フォーマットを統一する | | tier-frontend.mdのプロース記述（スラッシュ区切り）とBDDシナリオ（ハイフン区切り）で返却期限の表記が食い違い、実装上「貸出前プレビュー」と「貸出完了後の確定表示」でユーザーへの表記が不統一なまま提供されているため | |
+| SPEC-011-01 | | tier-frontend.md の返却期限表記をスラッシュ/ハイフンいずれかに統一する | | 1. Given 貸出前プレビューと貸出完了後の確定表示 When 返却期限を表示する Then 同一の区切り文字形式で表示される |
+| REQ-012 | LoanConfirmationコンポーネントのonLoan戻り値型を仕様上明確化する | | tier-frontend.mdのProps表でonLoanの戻り値をPromise<void>と定義する一方、状態表のloanResult（貸出結果）を描画するには戻り値からLoanResponseを取得する必要があり、Props表と状態表の間で値の受け渡し経路が仕様上閉じていないため | |
+| SPEC-012-01 | | tier-frontend.md の onLoan を () => Promise<LoanResponse> に修正するか、loanResult を親コンポーネントから渡すPropsとして設計を明確化する | | 1. Given onLoanの戻り値型が仕様上明確化されている When LoanConfirmationコンポーネントを実装する Then 型定義と実装（貸出結果の取得経路）が整合する |

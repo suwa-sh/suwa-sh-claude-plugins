@@ -1,18 +1,18 @@
 # プロジェクト
 
-**最終更新**: 2026-06-25 07:51:57 domain architecture addition (arch)
+**最終更新**: 2026-07-29 14:16:24 spec generation (specs)
 
 ## 成果物一覧
 
 | ドメイン | 最新 | イベント数 |
 |---------|------|-----------:|
-| [USDM（要求分解）](#usdm要求分解) | [usdm/latest/](usdm/latest/) | 1 |
-| [RDRA（要件定義）](#rdra要件定義) | [rdra/latest/](rdra/latest/) | 1 |
+| [USDM（要求分解）](#usdm要求分解) | [usdm/latest/](usdm/latest/) | 2 |
+| [RDRA（要件定義）](#rdra要件定義) | [rdra/latest/](rdra/latest/) | 2 |
 | [NFR（非機能要求）](#nfr非機能要求) | [nfr/latest/](nfr/latest/) | 1 |
 | [Arch（アーキテクチャ）](#archアーキテクチャ) | [arch/latest/](arch/latest/) | 3 |
 | [Infra（インフラ設計）](#infraインフラ設計) | [infra/latest/](infra/latest/) | 1 |
 | [Design（デザイン）](#designデザイン) | [design/latest/](design/latest/) | 2 |
-| [Specs（詳細仕様）](#specs詳細仕様) | [specs/latest/](specs/latest/) | 1 |
+| [Specs（詳細仕様）](#specs詳細仕様) | [specs/latest/](specs/latest/) | 2 |
 
 ## USDM（要求分解）
 
@@ -23,8 +23,8 @@
 
 | 項目 | 値 |
 |------|-----|
-| 要求数 | 6 |
-| 仕様数 | 13 |
+| 要求数 | 12 |
+| 仕様数 | 22 |
 
 ## RDRA（要件定義）
 
@@ -37,6 +37,9 @@
 - [条件.tsv](rdra/latest/条件.tsv)
 - [バリエーション.tsv](rdra/latest/バリエーション.tsv)
 - [BUC.tsv](rdra/latest/BUC.tsv)
+- [関連データ.txt](rdra/latest/関連データ.txt)
+- [ZeroOne.txt](rdra/latest/ZeroOne.txt)
+- [views/（人間可読ビュー: Mermaid 図解つき Markdown）](rdra/latest/views/README.md)
 
 | 項目 | 値 |
 |------|-----|
@@ -44,7 +47,7 @@
 | 外部システム | 1 |
 | 情報 | 5 |
 | 状態モデル | 2 |
-| 条件 | 4 |
+| 条件 | 6 |
 | バリエーション | 3 |
 | 業務 | 6 |
 | BUC | 8 |
@@ -54,6 +57,8 @@
 
 | ツール | データファイル | 手順 |
 |--------|-------------|------|
+| [RDRA Graph](https://vsa.co.jp/rdratool/graph/v0.94/) | [関連データ.txt](rdra/latest/関連データ.txt) | ファイル内容をコピーし、RDRA Graph に貼り付け |
+| [RDRA Sheet](https://docs.google.com/spreadsheets/d/1h7J70l6DyXcuG0FKYqIpXXfdvsaqjdVFwc6jQXSh9fM/) | [ZeroOne.txt](rdra/latest/ZeroOne.txt) | ファイル内容をコピーし、テンプレートに貼り付け |
 
 ### システムコンテキスト図
 
@@ -249,6 +254,14 @@ graph TD
 | 利用者ポータル | 利用者 | `#2563EB` |
 | 司書ポータル | 司書 | `#334155` |
 
+### Storybook
+
+```bash
+cd docs/design/latest/storybook-app && npm run storybook
+```
+
+Stories: 1 ファイル
+
 ## Specs（詳細仕様）
 
 ### 主要な成果物
@@ -354,6 +367,8 @@ graph TD
 | 16 | Specs | [非同期イベント駆動パターンの採用範囲](specs/events/20260412_195542_spec_generation/decisions/spec-decision-002.yaml) | approved |
 | 17 | Specs | [RDB 正規化レベルと統計テーブルの非正規化](specs/events/20260412_195542_spec_generation/decisions/spec-decision-003.yaml) | approved |
 | 18 | Specs | [横断関心事の解決方針](specs/events/20260412_195542_spec_generation/decisions/spec-decision-004.yaml) | approved |
+| 19 | Specs | [状態変更APIの暫定認証契約: X-User-Id ヘッダ + userスコープ限定RBAC](specs/events/20260729_141624_spec_generation/decisions/spec-decision-005.yaml) | approved |
+| 20 | Specs | [冪等キー重複時の応答は個別API仕様のエラー表を正とする（全API共通のキャッシュ再送はしない）](specs/events/20260729_141624_spec_generation/decisions/spec-decision-006.yaml) | approved |
 
 ## イベント履歴
 
@@ -369,6 +384,9 @@ graph TD
 | 2026-04-12 19:55:42 | Specs（詳細仕様） | [20260412_195542_spec_generation](specs/events/20260412_195542_spec_generation) |
 | 2026-04-12 20:52:45 | Design（デザイン） | [20260412_205245_spec_stories](design/events/20260412_205245_spec_stories) |
 | 2026-06-25 07:51:57 | Arch（アーキテクチャ） | [20260625_075157_domain_architecture_addition](arch/events/20260625_075157_domain_architecture_addition) |
+| 2026-07-29 14:00:44 | USDM（要求分解） | [20260729_140044_impl_feedback_19ec0182](usdm/events/20260729_140044_impl_feedback_19ec0182) |
+| 2026-07-29 14:00:44 | RDRA（要件定義） | [20260729_140044_impl_feedback_19ec0182](rdra/events/20260729_140044_impl_feedback_19ec0182) |
+| 2026-07-29 14:16:24 | Specs（詳細仕様） | [20260729_141624_spec_generation](specs/events/20260729_141624_spec_generation) |
 
 ---
 

@@ -1,0 +1,19 @@
+Spec 差分更新（dist-spec）: distillery-impl 実装フィードバック（uc_id: 19ec0182）を
+docs/usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml（REQ-007〜REQ-012）
+および docs/rdra/events/20260729_140044_impl_feedback_19ec0182/（BUC.tsv, 条件.tsv, 状態.tsv,
+バリエーション.tsv, 外部システム.tsv の差分）として dist-requirements が反映した内容を受けて、
+影響 UC「貸出管理業務/貸出管理フロー/書籍を貸出する」の Spec（spec.md, tier-*.md,
+_api-summary.yaml, _model-summary.yaml）と、全体横断 _cross-cutting/（openapi.yaml,
+asyncapi.yaml, rdb-schema.yaml, kvs-schema.yaml）を差分再生成した。
+
+対象要求:
+- REQ-007: 状態変更APIの利用者認証・アクセス制御（RBAC）の実装契約明確化
+- REQ-008: 予約状態モデルへの「完了」状態追加、貸出可否判定ルールの予約者本人例外の明記
+- REQ-009: openapi/asyncapi の契約生成品質（x-enum-varnames、payload title）
+- REQ-010: 冪等キー重複時のAPI応答仕様の矛盾解消
+- REQ-011: 貸出完了表示の返却期限フォーマット統一
+- REQ-012: LoanConfirmation コンポーネントの onLoan 戻り値型明確化
+
+スコープ外（USDM化見送り。source.txt 冒頭に明記）:
+- cross-UC API 依存宣言の機械可読化（dist-spec 自体の生成ロジック改善要望）
+- UC ↔ SPEC-ID(criterion粒度) の機械可読マッピング（同上）

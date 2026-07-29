@@ -17,6 +17,14 @@ distillery の出力(仕様書一式)はここには含めません — 入力�
 - **状態ファイル**: [docs/impl/](docs/impl/) — events(追記のみ)+ latest(スナップショット)+
   stages/ の done ファイル群。attempt-1〜3 の blocker 検出 → 解消 → carry-forward の履歴が残っている
 
+## 還流後の仕様(次サイクルの入力)
+
+ここにある変更要求は実際に distillery へ還流済みです。[samples/distillery/pipeline/](../distillery/pipeline/) には
+その結果(usdm イベント `20260729_140044_impl_feedback_19ec0182` = REQ-007〜012 / rdra 差分 /
+specs イベント `20260729_141624_spec_generation`)が反映されており、specs イベントの `_review/` には
+dist-spec Step6.5(反証レビューループ)の findings(round-1: major 2 + minor 4 → round-2 で収束、計 8 件修正)が残っています。
+イベント履歴を遡れば「実装前の仕様 → 実装 → 変更要求 → 還流後の仕様」の一周を追跡できます。
+
 ## 実行結果の要点
 
 - 6 段ゲート全 pass: format / lint / 単体 47 / tier BDD 2+2 / UC BDD 4 / ATDD 2(タグ完全一致選択)

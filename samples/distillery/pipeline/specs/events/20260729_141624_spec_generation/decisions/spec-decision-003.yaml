@@ -1,0 +1,30 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-003"
+title: "RDB 正規化レベルと統計テーブルの非正規化"
+status: "approved"
+generated_at: "2026-04-12T19:55:42+09:00"
+context: |
+  5つの情報モデル（書籍、利用者、貸出、予約、統計情報）のテーブル設計における正規化レベルを決定する。
+  arch-design.yaml SP-007 に「RDB トランザクション整合性」が定義済み。
+  NFR B.1.1.1 同時アクセス約100ユーザーの小規模システム。
+decision: |
+  第3正規形（3NF）を基本とし、statistics テーブルのみ非正規化を許容する。
+  - books, users, loans, reservations: 3NF を厳守。FK で参照整合性を保証
+  - statistics: popular_books と genre_breakdown を JSONB カラムで保持（集計済みデータのため非正規化）
+  理由: 統計情報は貸出データから集計されるレポート用データであり、リアルタイム整合性は不要。
+  日次バッチで再集計するため、非正規化による不整合リスクは許容範囲。
+consequences:
+  positive:
+    - "主要テーブル（books/users/loans/reservations）のデータ整合性が FK で保証される"
+    - "統計クエリが JSONB の直接参照で高速化（JOIN 不要）"
+    - "小規模システムで 3NF の性能問題は発生しない"
+  negative:
+    - "statistics テーブルの JSONB カラムは集計バッチ実行まで最新データを反映しない"
+    - "JSONB カラムのスキーマ変更はマイグレーション時に注意が必要"
+alternatives_considered:
+  - name: "完全 3NF（統計もマテリアライズドビュー）"
+    reason_rejected: "マテリアライズドビューの更新タイミング管理が複雑化。JSONB の方がシンプル"
+  - name: "積極的非正規化（books に loan_count カラム追加等）"
+    reason_rejected: "同時アクセス100規模では過剰最適化。データ不整合リスクが増大"
