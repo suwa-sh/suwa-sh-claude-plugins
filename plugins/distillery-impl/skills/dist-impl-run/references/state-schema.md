@@ -64,7 +64,7 @@ print(hashlib.sha256(json.dumps(parts, ensure_ascii=False).encode()).hexdigest()
 ```yaml
 event_id: "20260801_103000_s4_tier_impl_completed"
 type: stage_started | stage_completed | stage_failed | attempt_opened |
-      stage_carried_forward | stage_invalidated |
+      stage_carried_forward | stage_invalidated | config_confirmed |
       finding_reported | finding_resolved | review_approved | review_rejected |
       bootstrap_completed | change_request_issued
 uc_id: "3f9a2b1c"          # グローバルイベント(bootstrap 等)では null
@@ -79,7 +79,9 @@ created_at: "2026-08-01T10:30:00+09:00"
 `stage_completed` → 対応する done ファイルを再生成 / `attempt_opened` → attempt カウンタを進める /
 `stage_carried_forward`(payload: 元 attempt・tier・元 done の sha256)→ 新 attempt に
 `carried_from` 付き done を再生成 / `stage_invalidated`(payload: 対象 stage 範囲・理由・退避先)→
-該当 done を無効化 / `review_approved` → UC を completed にする。`latest/` と食い違ったら events が正。
+該当 done を無効化 / `config_confirmed`(payload: 確定項目の before→after・confirmed_by)→
+impl-config.yaml / uc-map.yaml の該当項目を確定値で上書き / `review_approved` → UC を completed にする。
+`latest/` と食い違ったら events が正。
 
 **done の退避(invalidate)**: review_rejected・stale 検知などで done を無効化するときは、
 オーケストレータが**先に `stage_invalidated` イベント(payload: 対象 done 一覧・退避先)を追記し、
@@ -147,7 +149,8 @@ use_cases:
 uc-map には **Scenario 名の配列**で対応を持つ。
 
 候補生成(S1): `requirements.yaml` の `requirements[].specifications[].affected_models[]`
-(type: buc)から BUC 粒度の候補を出す。ただし **affected_models に buc が無い SPEC も実在する**
+(type: buc)から BUC 粒度の候補を出す。**BUC 名は `name` でなく `target` キー**
+(例 `{type: buc, action: add, target: 貸出管理フロー}`)。ただし **affected_models に buc が無い SPEC も実在する**
 (サンプルの SPEC-002-02)ため、候補外も選べる形で提示する。
 **提示は Scenario(criterion)単位**: 候補・全件一覧とも
 `{Scenario 名({SPEC-ID}-{連番}), criterion 原文, SPEC の specification 要約, affected BUC}` の行で出す
@@ -187,6 +190,10 @@ inputs_sha256:                         # 全入力のハッシュ(現物と比�
   arch: "..."
   usdm: "..."
   design: "..."                        # has_design_system の場合のみ
+  design_storybook_src: "..."          # has_design_system の場合のみ。storybook-app/src/ 配下の
+                                        # 実ファイル一覧 + 各 sha256 から決定論的に合成したハッシュ
+                                        # (design event 単体のハッシュでは src/ 配置競合による
+                                        #  部分スナップショット取り込みを検知できないため)
   openapi: "..."
   asyncapi: "..."                      # has_asyncapi の場合のみ
 generated_at: "..."
@@ -196,7 +203,8 @@ generated_at: "..."
   オーケストレータは起動時に inputs_sha256 の各入力を現物から再計算し、
   不一致の入力に依存する Phase を invalidate する(bootstrap.done.yaml の Phase 記録の
   書き換えはオーケストレータの write-set に含まれる)。依存表:
-  spec_event/arch → P2 以降すべて / usdm → P7 / design → P5 / openapi・asyncapi → P4 /
+  spec_event/arch → P2 以降すべて / usdm → P7 / design → P5 / design_storybook_src → P5 /
+  openapi・asyncapi → P4 /
   **条件付き入力(asyncapi / kvs / object-storage / storybook-app)の存在自体の増減 →
   P1・P2(capability と config の再判定)+ 対応する生成 Phase**。
   invalidate された Phase は bootstrap 再実行の対象になる
@@ -327,3 +335,7 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
 | S9 review | review/index.html、`S9_review_generated.done.yaml` |
 
 **git 操作はオーケストレータのみ**。サブエージェントは git を実行してはならない(Bash 含む)。
+
+**run-lease.yaml は commit しない**(一時ファイル)。`git add -- docs/impl/latest` のように
+直下を丸ごと指定すると巻き込まれるため、`git add` のパスは `{uc_id}/` 配下と `events/` を個別に
+指定するか、`.gitignore` に `run-lease.yaml` を追加する。

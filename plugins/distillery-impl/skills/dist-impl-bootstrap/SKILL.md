@@ -76,11 +76,18 @@ bootstrap.done.yaml は **P4 の記録と契約入力ハッシュ(openapi / asyn
    続けてプロジェクト固有節(specs_root の場所 / uc-map の場所 / tier 構成 / コマンド群)
 4. 言語ごとの formatter / linter / テスト FW / BDD FW(例: TS = biome or eslint + vitest + cucumber-js、
    Python = ruff + pytest + pytest-bdd)の設定雛形を tier dir に配置し、コマンドを impl-config の `commands` に記録
+5. **backend_framework(express 等)の依存は雛形と同時に install する**(仮置きの雛形だけでは
+   S4 で使えない)。tier tsconfig には ts-node 用の override(`module: CommonJS`)も焼き込む
+   (tsconfig.base の `module: ESNext` を ts-node/register が継承すると、拡張子なし相対 import が
+   解決不能になる)
 
 ## P4: contracts(契約 codegen)
 
 `references/contract-codegen.md` の手順で生成し、contracts.lock.yaml を書く。
 java 不在・generator 失敗時は縮退モード(`_api-summary.yaml` 起点)に切り替え、lock に `degraded` と記録。
+
+**注意**: bootstrap 実行中は `specs_root` を書き換えない(P4/P5 のプローブ・取り込みと競合し
+部分スナップショットになる。`dist-design-system` の追い上げ生成と並走させない)。
 
 ## P5: ui(Storybook 取り込み。has_design_system のみ)
 
@@ -100,6 +107,12 @@ java 不在・generator 失敗時は縮退モード(`_api-summary.yaml` 起点)�
 1. `qlty init` 相当の `.qlty/qlty.toml` + 言語別 configs を配置
 2. `.github/workflows/ci.yml` を生成: format-check → lint → tdd(tier matrix)→ tier-bdd(tier matrix)
    → uc-bdd → atdd。コマンドは impl-config の `commands` / `integration_commands` から転記
+3. **ルート実行の cucumber(features/uc・features/atdd)用に `tsconfig.uc-features.json`
+   (jsx: react + DOM lib + module: CommonJS + ts-node 節)を生成し、cucumber.cjs 冒頭で
+   `process.env.TS_NODE_PROJECT ||=` する**(tier cucumber は workspace cwd で自 tsconfig を拾えるが、
+   ルート実行の bdd:uc / bdd:atdd は拾える tsconfig が無く `--jsx is not set` で即死するため)
+4. **biome.json に生成物の ignore を焼き込む**: `files.ignore: ["packages/contracts/**",
+   "packages/ui/**", "node_modules/**"]`(無いと barrier format が vendored 生成物を整形して churn する)
 
 ## P7: atdd(ATDD feature 全 SPEC 分)
 

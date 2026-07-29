@@ -68,23 +68,31 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 - **S4/S5 の並列 dispatch**: uc-map の tiers を tier ごとに 1 サブエージェントで**同一メッセージ内で並列起動**。
   S5 の Verifier は **agent type に `distillery-impl:impl-verifier` を指定し、Agent/Task ツールの
   model パラメータに verifier_model を渡す**(agent 定義の disallowedTools 制約を効かせるため)
+- **workspace 依存追加は単一 writer(オーケストレータ)の責務**: root package-lock.json 等の
+  workspace 共有ファイルは並走 Implementer が触ると競合する。必要な依存は S4 dispatch 前(または
+  attempt 開始時)にオーケストレータがまとめて install・commit してから dispatch する
 - **attempt 制御**: S5 の findings に blocker があれば `attempt_opened` イベントを記録して attempt++、
   blocker のある tier の S4 を再実行。blocker の無かった tier には新 attempt に
   **carry-forward done**(`carried_from` 付き)を自分で生成する(state-schema.md)。
   **S4 を再実行したら全 tier の S5 を再実行**(安全側。S5 は carry-forward しない)。
   attempt が 3 を超えたら停止し、findings 要約と選択肢(続行 / 仕様ブロック / 手動介入)を提示
-- **S6/S7 の fail**: integration writer の分析を読み、原因 tier の S4 へ差し戻すか
-  仕様問題(issues 起票済み)として S8 へ進むかを判断(迷ったらユーザーに提示)
+- **S6/S7 の fail**: integration writer の分析を読み、次の 3 択から判断する(迷ったらユーザーに提示):
+  ①原因 tier の S4 へ差し戻す、②仕様ブロックとして issues 起票済みのまま S8 へ進む、
+  ③**(推奨)仕様不整合を issues に書き残してテストが通るまで実装を進め、S8 で as-built 差分として
+  変更要求化する**(変更要求からのやり直しは時間がかかりすぎるため)。cross-UC 依存(未宣言
+  エンドポイント等)はこの③が既定
 - **blocked_on_spec**: S8 が blocker の変更要求を出したら state を blocked_on_spec にし、
   S9 で「仕様ブロック」レポートを出して終了(distillery 側の対応後に再開)
 
 ## stage 境界の共通処理(毎 stage)
 
-1. サブエージェント報告から結果を検証(done ファイルの実在・スキーマ・write-set 逸脱の有無)
+1. サブエージェント報告から結果を検証(done ファイルの実在・スキーマ・write-set 逸脱の有無。
+   スキーマ検証には `yaml.safe_load` で parse 可能であることを含める。parse 不能なら該当
+   サブエージェントへ書式のみの修正を差し戻す(内容変更禁止))
 2. `stage_completed`(または failed)イベントを events/ に追記 → status.yaml 更新
 3. **git commit**: `git add -- <その stage の write-set のパスのみ>` →
    `impl({uc_id}): S4 tier-backend-api gates passed` 形式(Conventional Commits、scope=uc_id)。
-   `git add .` は使わない
+   S0(bootstrap)など UC 非依存の commit は `impl(bootstrap): ...` とする。`git add .` は使わない
 4. 必要な barrier 処理: S4 全 tier 完了後、書き換えを伴う formatter をリポ全体に 1 回実行して commit
    (単一 writer。gates.md の check-only 規約と対)
 
@@ -105,5 +113,8 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 ## 中断・失敗時
 
 - 任意の時点で中断しても、次回起動時の再開判定で続きから走る(中間生成物は消さない)
+- **完了報告が来なくても done ファイルが正**: サブエージェントが完了報告なしで idle になる
+  ことがある(ハーネス依存)。オーケストレータは報告を待たず、done ファイルの実在 + parse 可否で
+  完了判定してよい
 - サブエージェントが write-set 外に書いた場合: 該当差分を退避して stage を failed 扱いにし、報告する
 - 終了時(正常・異常とも)に lease を削除する。異常終了で lease が残った場合の扱いは state-schema.md

@@ -16,6 +16,9 @@
 - git コマンド(add/commit/push 等)を実行しないでください。コミットはオーケストレータが行います。
 - 書き込みは次の write-set 内に限定してください: {write_set}
   それ以外のファイルへの書き込みが必要になったら、作業を止めて理由を結果として返してください。
+- done/findings 等の YAML は、値に `: ` や括弧を含む文字列を必ずクォートし、flow mapping `{...}`
+  内に block scalar(`>-`)を書かないでください。書き終えたら `yaml.safe_load` で parse 確認してから
+  完了としてください。
 {additional_instructions}
 完了後、生成・更新したファイル一覧と、done ファイルに記録した結果を報告してください。
 ```
@@ -86,7 +89,7 @@ contracts.lock.yaml と **bootstrap.done.yaml(P4 の記録と契約入力ハッ�
 | skill_name | distillery-impl:dist-impl-implement |
 | skill_args | ` 引数: "mode=uc-bdd uc_id={uc_id} config={...}"`(S7 は `mode=atdd`) |
 | write_set | features/uc/(S7 は features/atdd/)、その steps/、S6/S7 done |
-| additional_instructions | `tier 実装は変更禁止です。step definition の実装と統合実行のみ行い、fail した場合は「どの tier の何が仕様と食い違うか」を分析して結果を返してください(修正はオーケストレータが S4 差し戻しを判断します)。S7(atdd)では uc-map の atdd_scenarios に列挙された Scenario だけを、一意タグ @atdd_{SPEC-ID}-{連番} の完全一致で選択実行してください(名前の部分一致フィルタ禁止・feature 全体を回さない)。実行された Scenario 件数が atdd_scenarios の件数と一致することを done の条件にしてください。` |
+| additional_instructions | `tier 実装は変更禁止です。step definition の実装と統合実行のみ行い、fail した場合は「どの tier の何が仕様と食い違うか」を分析して結果を返してください(修正はオーケストレータが S4 差し戻しを判断します)。S7(atdd)では uc-map の atdd_scenarios に列挙された Scenario だけを、一意タグ @atdd_{SPEC-ID}-{連番} の完全一致で選択実行してください(名前の部分一致フィルタ禁止・feature 全体を回さない)。実行された Scenario 件数が atdd_scenarios の件数と一致することを done の条件にしてください。仕様ギャップ(起票済み issue)起因で統合に必要な前提(認証ヘッダ等)が欠ける場合、steps 内でのハーネス注入を許容します。注入箇所には issue パス参照と「暫定注入・契約確定後に削除」コメントを必ず付けてください。` |
 
 ### S8: feedback
 

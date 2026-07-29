@@ -17,6 +17,10 @@ npx -y @openapitools/openapi-generator-cli generate \
   日本語 description は JSDoc コメントとして生存する
 - **前提**: Java ランタイム必須(openapi-generator は Java 製。スパイク環境は OpenJDK 25 で確認)。
   bootstrap の preflight で `java -version` を確認し、無ければ縮退モードへ
+- **既知の問題**: openapi.yaml の enum 値にキー欠落があると、生成 TS(DefaultApi.ts /
+  Create・UpdateBookRequest / Create・UpdateUserRequest 等)が構文エラーになり barrel import が
+  全滅する(両 tier が独立検出)。回避策は models/ 個別 import + 迂回クライアント。根本対応は
+  dist-spec への変更要求(x-enum-varnames の付与)
 
 generator 選択表(impl-config の tier lang から解決):
 
