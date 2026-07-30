@@ -11,7 +11,8 @@ distillery は「要望テキスト → USDM 要件 → RDRA → 仕様書(ユ�
 - **二段独立検証**: Implementer と別モデルの Verifier が 7 観点(仕様整合 / 可読性・保守性 / セキュリティ / パフォーマンス / 運用性 / 耐障害性 / リファクタリング)で反証します。自己採点を排除します
 - **ファイル駆動の冪等再開**: 状態は `docs/impl/`(events 追記 + latest スナップショット + 完了判定ファイル)。セッションが切れても未完了 stage から再開します
 - **tier 並走**: mono repo で tier ごとにディレクトリを分け、書き込み範囲(write-set)を分離して並列実装します
-- **仕様への還流**: 実装で見つけた仕様の問題は、dist-requirements の差分パイプラインへそのまま渡せる変更要求ファイルとして出力します
+- **仕様への還流**: 実装で見つけた仕様起因の問題を単一の自己完結Markdownにまとめ、S9の実装承認後に
+  immutableなfeedback-requestとして公開します。stageの判定・分割・依存閉包はdist-pipelineが担当します
 
 ## パイプライン
 
@@ -25,11 +26,13 @@ flowchart TD
     S5["S5 verify(tier 並走)<br/>別モデル Verifier が 7 観点で反証"]
     S6["S6 uc-bdd<br/>ゲート 5: E2E 完了条件を全 tier 結合で実行"]
     S7["S7 atdd<br/>ゲート 6: 受け入れ基準の選択実行"]
-    S8["S8 feedback<br/>as-built 仕様サマリ + 変更要求ドラフト + learnings"]
+    S8["S8 feedback<br/>as-built + 単一feedback draft + learnings"]
     S9["S9 review 💬<br/>ゼロ知識 HTML でヒトレビュー(承認対話)"]
-    REFRESH["S8 refresh<br/>ヒトレビューのやりとり(review-notes)を変更要求へ反映・最終化"]
+    REFRESH["S8 refresh<br/>review-notesを単一draftへ反映"]
+    PUBLISH["S8 publish<br/>draftを同じbytesのまま<br/>immutable Markdownへ移動"]
     DONE(["completed"])
-    DIST[["distillery<br/>dist-requirements 差分パイプライン"]]
+    BLOCKED(["blocked_on_spec<br/>distillery反映待ち"])
+    DIST[["distillery<br/>入力を解析してstageを判定<br/>各論理stage最大1回"]]
 
     S0 --> S1 --> S2 --> S3 --> S4 --> S5
     S5 -->|"blocker あり: attempt++(最大 3)<br/>無傷 tier は carry-forward"| S4
@@ -37,15 +40,18 @@ flowchart TD
     S6 -->|"fail: 原因 tier へ差し戻し<br/>(仕様不整合は issues に記録して続行)"| S4
     S6 --> S7 --> S8 --> S9
     S9 -->|"差し戻し(指定 stage へ。図は代表で S4)"| S4
-    S9 -->|"承認(指摘なし)"| DONE
-    S9 -->|"承認(指摘あり)"| REFRESH
-    REFRESH -->|"更新要約の再提示 → 最終承認"| DONE
-    REFRESH -.->|確定版の変更要求| DIST
+    S9 -->|"承認・要求なし"| DONE
+    S9 -->|"承認・要求あり"| PUBLISH
+    S9 -->|"指摘あり"| REFRESH
+    REFRESH -->|"HTML再生成"| S9
+    PUBLISH -->|"non-blocker"| DONE
+    PUBLISH -->|"blocker"| BLOCKED
+    PUBLISH -.->|feedback-request Markdown 1ファイル| DIST
     DIST -.->|仕様更新 → 次サイクル| S0
 ```
 
-💬 = ユーザー対話ポイント。破線 = 仕様への還流(実装 → as-built → ヒトレビュー確定 → distillery で仕様更新 → 次サイクル)。
-図は簡略化しています(S7 fail の分岐・blocked_on_spec 終了・S9 差し戻し先の任意 stage 指定は SKILL.md 本文が正)。
+💬 = ユーザー対話ポイント。破線 = 仕様への還流（実装 → as-built → 実装レビュー → 単一Markdown → distilleryで仕様更新 → 次サイクル）。
+図は簡略化しています(S7 fail の分岐・S9 差し戻し先の任意 stage 指定は SKILL.md 本文が正)。
 状態ファイル・fail 時の分岐まで含めた詳細図解は [docs/workflow.html](docs/workflow.html)(ブラウザで開いてください)。
 
 ## スキル一覧
@@ -78,6 +84,28 @@ flowchart TD
 
 進行中の対話(tier 構成の確認・UC→SPEC 対応の確定・Verifier 超過時の判断・最終承認)は
 オーケストレータが必要な時だけ発話します。
+
+仕様起因の変更要求があるUCを承認すると、`docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md`
+が公開されます。Markdown単体が入力の正本で、dist-impl側ではstageを指定しません。
+S9のレビュー方法、承認記録、レビュー用HTMLはdist-implの履歴に留まり、公開Markdownへ含めません。
+内部ではHTMLへ表示したdraftのfeedback ID・SHA-256・件数に加え、review HTMLのSHA-256・gate結果・
+open finding件数をS9 eventと承認eventへ結び、publish時に再検証します。draftと公開先はcanonical UC root内の
+regular/non-symlink、同一filesystemに限定し、検証した同じbytesだけをatomic renameします。不一致なら公開せず、
+S8 refreshとS9再レビューへ戻ります。
+distillery workspaceから次を1回実行してください。
+
+```text
+/distillery:dist-pipeline {feedback-request.md}
+```
+
+所有stageが曖昧な場合は、推奨案・代替案・それぞれの影響・根拠を提示して確認します。
+`--recommended-auto`でも、安全に自動採用できない項目は同じpolicyのまま人の回答を待ちます。
+自動採用するのは、confidenceがmedium以上で、全案の意味・制約が同一かつdirect ownerだけが異なる、
+安全で一意なpipeline内部route-only ambiguityだけです。意味・制約はmultisetで比較し、各constraintは
+各案で1つのdirect ownerだけを持ちます。`resolved + confidence low`、要求の再解釈、stage内設計判断は
+自動実行しません。同じfeedback ID/SHAのterminal completed/blockedは、dist-pipelineが凍結plan、result、
+artifact、stage/domain/terminal eventとresult SHAを完全検証した場合だけno-opです。outside-onlyのstage 0も
+同じterminal証跡が必要で、plan未生成blockedはcurrent basisを完全再検証します。
 
 ## 設計の出自
 

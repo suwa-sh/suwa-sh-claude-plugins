@@ -76,7 +76,7 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 | `distillery:dist-design-system` | デザイントークン生成 + Storybook 変換 |
 | `distillery:dist-spec` | UC 単位詳細仕様 + OpenAPI/AsyncAPI + 全体横断 UX/UI 設計 |
 | `distillery:dist-spec-stories` | UC Spec + デザインシステムから Storybook Story 生成 |
-| `distillery:dist-pipeline` | 全スキルの順次実行（初期要望 or 変更要望を1コマンドで最終成果物へ） |
+| `distillery:dist-pipeline` | 通常は全スキルを順次実行。単一feedback-request Markdownは内部でrouteして最小範囲を差分実行 |
 
 ## Installation
 
@@ -111,6 +111,50 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 
 > **初期構築専用**: 既に `docs/rdra/latest/` が存在するプロジェクトには適用しません。既存モデルへの
 > 変更は差分更新モード（`/distillery:dist-requirements 変更要望テキストのパス`）を使用してください。
+
+### distillery-impl の複数フィードバックを1回で反映
+
+distillery-implが公開した、複数変更要求を内包する単一Markdownのpathを渡します。
+Markdownが唯一の外部正本で、stage名、ステージ別指示、実装レビューの方法や承認記録は含みません。
+
+```text
+/distillery:dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md
+/distillery:dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md --recommended-auto
+```
+
+dist-pipelineが各CRの所有stageを判定し、内部work unitへ分解し、最上流の所有stageから
+依存閉包を各論理stage最大1回で実行します。曖昧な場合は⭐推奨案、代替案、それぞれの
+影響と根拠を意味上の文面で提示して確認します。質問と選択肢に内部stage IDを出さないため、
+回答者がdistilleryの内部構成を知る必要はありません。`--recommended-auto`は、version固定policyが
+「全案の意味と制約のmultisetは同一」「各constraintは1つのdirect ownerだけを持つ」
+「direct ownerだけが異なる」「confidenceがmedium以上」
+「pipeline内で安全な一位が一意」をすべて満たすroute-only ambiguityだけを自動採用します。
+proposal自身のsafe申告だけでは採用しません。要求の再解釈、stage内設計判断、競合、
+evidence不足、破壊的scope拡大、pipeline内/外の境界不明、confidence lowは自動化しません。
+`resolved + confidence low`も拒否し、質問可能ならrecommendableとして作り直します。
+自動採用できないrecommendableも情報を落とさず質問し、開始policyを変えず人の回答で再開します。
+安全な推奨・選択肢自体を作れないunresolvedだけをblockedにします。
+
+実行状態は`docs/pipeline/feedback-runs/{feedback_id}/`の`input.md`、`routing.json`、
+`plan.json`、stage packets、`status.json`、`result.json`として保存されます。人の回答が必要だった場合は、
+開始policyにかかわらず`resolutions.json`も保存します。
+開始時のownership catalog、routing policy、prompt-data policyもrun内へ不変snapshotし、version/hashと
+stage packet renderer versionへbindします。terminalは当時のsnapshotで監査でき、nonterminalは現在の
+plugin policyとdriftしていれば新しい書き込み前に停止します。
+再開時はrun directoryだけを入口にでき、凍結済みrouting、write先、保存済み回答を自動で再読込します。
+同一feedback ID/SHAは冪等に再開し、workspace leaseにより通常pipelineとの並走も拒否します。
+authoritative beginは外部pathを1回だけ読み、同じBufferで検証・hash・lease・不変`input.md`を確定します。
+nonterminal再開で初期HEAD/latestの完全一致を緩和するのは、実在・lineage・domain hashを検証済みの
+completed/failed stage eventが1件以上ある場合だけです。overall/stageのrunning表示、aborted表示、
+all-pendingだけではfull basisを緩和しません。partial resumeはrun/routing、canonical plan、全packet、
+status順序、stage event/domain hashの順で検証します。plan-backed terminal completed/blockedはさらに
+result coverage、artifact実体、terminal eventとresult actual SHA-256まで完全検証してからno-opにし、leaseを
+即時解放します。outside-onlyでstageが0件でも同じterminal証跡が必要で、no-plan blockedはfull basis必須です。
+feedback modeは`docs/pipeline/feedback-runs/{feedback_id}`、`docs/pipeline/events`、
+`docs/pipeline/run-lease.json`の標準layoutへ固定し、custom overrideと内側のsymlinkを拒否します。
+成功artifact refはrealpath解決後もroot内のregular
+fileだけを許可します。stage packetはallowed descriptorとexact CR sliceだけをnon-instruction dataとして渡し、
+成功stageはdomain event参照必須、失敗stageは空を許可する代わりにfailure phase/reason必須です。
 
 ### 個別実行
 
@@ -150,7 +194,7 @@ Distillery は以下の手法を統合しています:
 
 ## Data Flow
 
-各スキルは `docs/*/latest/` を介した疎結合なファイル I/O で連携します。途中のステージから再実行したり、特定ステージだけを回すことも可能です。イベント履歴は `docs/*/events/` に全て残るため、差分の追跡・ロールバック・監査が可能です。
+各スキルは `docs/*/latest/` を介した疎結合なファイル I/O で連携します。途中のステージから再実行したり、特定ステージだけを回すことも可能です。イベント履歴は `docs/*/events/` に全て残るため、差分の追跡・ロールバック・監査が可能です。feedback request runの計画・進捗・work unit適用結果は`docs/pipeline/`に保存します。
 
 ## Credits
 

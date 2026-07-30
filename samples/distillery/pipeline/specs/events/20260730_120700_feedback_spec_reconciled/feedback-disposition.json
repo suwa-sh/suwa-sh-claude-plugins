@@ -1,0 +1,185 @@
+{
+  "schema_version": "distillery.feedback-no-domain-change/v1",
+  "type": "feedback_no_domain_change",
+  "event_id": "20260730_120700_feedback_spec_reconciled",
+  "created_at": "2026-07-30T12:07:00+09:00",
+  "stage": "spec",
+  "domain_event_root": "specs/events",
+  "reason": "No domain artifact change was required by this stage reconciliation.",
+  "feedback_request": {
+    "feedback_request_id": "20260729_121600_impl_feedback_19ec0182",
+    "input_sha256": "5b4dc4155b3d6aed830334dde78a0df21187dc84e93b70632c40b4b484a891f2",
+    "request_ids": [
+      "CR-19ec0182-001",
+      "CR-19ec0182-002",
+      "CR-19ec0182-003",
+      "CR-19ec0182-004",
+      "CR-19ec0182-005",
+      "CR-19ec0182-006",
+      "CR-19ec0182-007",
+      "CR-19ec0182-008",
+      "CR-19ec0182-009",
+      "CR-19ec0182-010",
+      "CR-19ec0182-011"
+    ],
+    "work_unit_ids": [
+      "CR-19ec0182-001#1",
+      "CR-19ec0182-002#1",
+      "CR-19ec0182-003#1",
+      "CR-19ec0182-004#1",
+      "CR-19ec0182-005#1",
+      "CR-19ec0182-006#1",
+      "CR-19ec0182-007#1",
+      "CR-19ec0182-008#1",
+      "CR-19ec0182-009#1",
+      "CR-19ec0182-010#1",
+      "CR-19ec0182-011#1"
+    ]
+  },
+  "work_unit_results": [
+    {
+      "work_unit_id": "CR-19ec0182-002#1",
+      "disposition": "merged",
+      "reason": "The frozen AsyncAPI event already gives the payload schemas stable titles.",
+      "artifact_refs": [
+        "specs/events/20260729_141624_spec_generation/_cross-cutting/api/asyncapi.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-003#1",
+      "disposition": "merged",
+      "reason": "The frozen OpenAPI event already contains generator-safe enum identifiers.",
+      "artifact_refs": [
+        "specs/events/20260729_141624_spec_generation/_cross-cutting/api/openapi.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-008#1",
+      "disposition": "merged",
+      "reason": "The frozen frontend specification already uses one due-date display contract.",
+      "artifact_refs": [
+        "specs/events/20260729_141624_spec_generation/貸出管理業務/貸出管理フロー/書籍を貸出する/tier-frontend.md"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-009#1",
+      "disposition": "merged",
+      "reason": "The frozen frontend specification already defines the loan-result ownership and transfer contract.",
+      "artifact_refs": [
+        "specs/events/20260729_141624_spec_generation/貸出管理業務/貸出管理フロー/書籍を貸出する/tier-frontend.md"
+      ]
+    }
+  ],
+  "reconciliation_results": [
+    {
+      "work_unit_id": "CR-19ec0182-001#1",
+      "status": "blocked_by_owner",
+      "reason": "Blocked by direct owner requirements: The authoritative cross-UC dependency representation requires a product decision before changing requirements.",
+      "artifact_refs": []
+    },
+    {
+      "work_unit_id": "CR-19ec0182-002#1",
+      "status": "already_current",
+      "reason": "The frozen AsyncAPI event already gives the payload schemas stable titles.",
+      "artifact_refs": [
+        "specs/events/20260729_141624_spec_generation/_cross-cutting/api/asyncapi.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-003#1",
+      "status": "already_current",
+      "reason": "The frozen OpenAPI event already contains generator-safe enum identifiers.",
+      "artifact_refs": [
+        "specs/events/20260729_141624_spec_generation/_cross-cutting/api/openapi.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-004#1",
+      "status": "already_current",
+      "reason": "The frozen OpenAPI event already reflects the accepted upstream contract.",
+      "artifact_refs": [
+        "specs/events/20260729_141624_spec_generation/_cross-cutting/api/openapi.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-005#1",
+      "status": "already_current",
+      "reason": "The frozen OpenAPI event already reflects the accepted upstream contract.",
+      "artifact_refs": [
+        "specs/events/20260729_141624_spec_generation/_cross-cutting/api/openapi.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-006#1",
+      "status": "blocked_by_owner",
+      "reason": "Blocked by direct owner design_system: The design system has no approved visual contract for the requested loading components.",
+      "artifact_refs": []
+    },
+    {
+      "work_unit_id": "CR-19ec0182-007#1",
+      "status": "blocked_by_owner",
+      "reason": "Blocked by direct owner requirements: The idempotency conflict semantics require a product decision before changing requirements.",
+      "artifact_refs": []
+    },
+    {
+      "work_unit_id": "CR-19ec0182-008#1",
+      "status": "already_current",
+      "reason": "The frozen frontend specification already uses one due-date display contract.",
+      "artifact_refs": [
+        "specs/events/20260729_141624_spec_generation/貸出管理業務/貸出管理フロー/書籍を貸出する/tier-frontend.md"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-009#1",
+      "status": "already_current",
+      "reason": "The frozen frontend specification already defines the loan-result ownership and transfer contract.",
+      "artifact_refs": [
+        "specs/events/20260729_141624_spec_generation/貸出管理業務/貸出管理フロー/書籍を貸出する/tier-frontend.md"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-010#1",
+      "status": "blocked_by_owner",
+      "reason": "Blocked by direct owner design_system: The design system has no approved navigation contract for the requested app shell and router.",
+      "artifact_refs": []
+    },
+    {
+      "work_unit_id": "CR-19ec0182-011#1",
+      "status": "blocked_by_owner",
+      "reason": "Blocked by direct owner requirements: The canonical machine-readable UC-to-criterion representation requires a modeling decision.",
+      "artifact_refs": []
+    }
+  ],
+  "evidence_refs": [
+    {
+      "work_unit_id": "CR-19ec0182-002#1",
+      "path": "specs/events/20260729_141624_spec_generation/_cross-cutting/api/asyncapi.yaml",
+      "sha256": "218d55b681949136c528d243b7d613636c306c829352e0f5660416d3af2c429d"
+    },
+    {
+      "work_unit_id": "CR-19ec0182-003#1",
+      "path": "specs/events/20260729_141624_spec_generation/_cross-cutting/api/openapi.yaml",
+      "sha256": "d90538a42d89b416d89b8ef8cafbe4d32fdd814b0aa26f3bd9bab136c2661813"
+    },
+    {
+      "work_unit_id": "CR-19ec0182-004#1",
+      "path": "specs/events/20260729_141624_spec_generation/_cross-cutting/api/openapi.yaml",
+      "sha256": "d90538a42d89b416d89b8ef8cafbe4d32fdd814b0aa26f3bd9bab136c2661813"
+    },
+    {
+      "work_unit_id": "CR-19ec0182-005#1",
+      "path": "specs/events/20260729_141624_spec_generation/_cross-cutting/api/openapi.yaml",
+      "sha256": "d90538a42d89b416d89b8ef8cafbe4d32fdd814b0aa26f3bd9bab136c2661813"
+    },
+    {
+      "work_unit_id": "CR-19ec0182-008#1",
+      "path": "specs/events/20260729_141624_spec_generation/貸出管理業務/貸出管理フロー/書籍を貸出する/tier-frontend.md",
+      "sha256": "bd316338e3f0d9b3668b92d45264fd4dbc0874fc0c6dd97538ae4c9f340babd3"
+    },
+    {
+      "work_unit_id": "CR-19ec0182-009#1",
+      "path": "specs/events/20260729_141624_spec_generation/貸出管理業務/貸出管理フロー/書籍を貸出する/tier-frontend.md",
+      "sha256": "bd316338e3f0d9b3668b92d45264fd4dbc0874fc0c6dd97538ae4c9f340babd3"
+    }
+  ]
+}

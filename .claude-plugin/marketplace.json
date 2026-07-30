@@ -12,7 +12,7 @@
     {
       "name": "distillery",
       "source": "./plugins/distillery",
-      "description": "Distill raw requirements into production-ready design (RDRA/USDM/NFR/Arch/Infra/Design/Spec pipeline)"
+      "description": "Distill raw requirements or a single implementation-feedback Markdown into production-ready RDRA/USDM/NFR/Arch/Infra/Design/Spec, with internal stage routing"
     },
     {
       "name": "ddd",
@@ -22,7 +22,7 @@
     {
       "name": "distillery-impl",
       "source": "./plugins/distillery-impl",
-      "description": "distillery の仕様書を入力に実装を回す実装ハーネス: 契約駆動 codegen + 4 段テスト先行(ATDD/UC BDD/tier BDD/TDD) + tier 並走実装 + 別モデル Verifier の反証 + ファイル駆動の冪等再開"
+      "description": "distillery仕様の実装ハーネス: 独立Verifier、ゼロ知識ヒトレビュー、単一Markdownによるdist-pipeline還流、ファイル駆動の冪等再開"
     }
   ]
 }

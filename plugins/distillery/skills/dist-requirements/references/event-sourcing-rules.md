@@ -1,5 +1,63 @@
 # イベントソーシングルール
 
+## Feedback request lineage
+
+`feedback_packet` 指定時、`source.txt`、requirements event、RDRA `_changes.md` に次を記録する。
+
+```yaml
+feedback_request:
+  feedback_request_id: "{feedback_id}"
+  input_sha256: "{run/input.md sha256}"
+  request_ids: ["CR-..."]
+  work_unit_ids: ["CR-...#1"]
+```
+
+この4キーだけをこの順序・2-space indentで記録する。値はJSON互換のquoted scalar / inline arrayとし、
+複数IDも`["CR-1","CR-2"]`のように`JSON.stringify`と同じ表記にする。
+`request_ids`は当該stageのcausal work unitから導いた一意な要求ID、`work_unit_ids`は
+`causal_work_unit_ids`そのものをplan順で記録する。direct集合やpacket pathはこのenvelopeへ追加せず、
+必要ならdomain eventの別top-level field、`source.txt`、controller stage eventへ記録する。
+
+verified owner ledgerで`applied`となったwork unitが生成・変更したREQ/SPECだけに
+`feedback_source: {feedback_request_id, work_unit_ids}`を付ける。
+`merged / deferred / rejected`と既存無変更entryへcurrent runのmarkerを付けない。
+caller指定のexclude listは使わず、persist済みcontroller eventのowner ledgerをfinal verifierが再導出する。
+packetのCR本文は複製せず、eventからrequest → work unit → REQ/SPEC → RDRA差分を逆引きできる状態にする。
+
+## Feedback controller checkpoint
+
+成功時の`work_unit_results`はdirect集合、`reconciliation_results`はcausal集合をplan順でexactly once覆う。
+
+requirementsのnormal RDRA eventは`event.json` member manifestで全sibling member path/SHA-256をexactに列挙する。
+
+changedが0件なら`rdra/events`と`usdm/events`の各rootへ`feedback-disposition.json`だけのeventを追記し、latestを変更しない。
+
+`applied`があればcurrent normal `usdm/events/{event_id}/requirements.yaml`をexact 1件参照する。
+
+full verifierはpersist済みowner ledger、requirements full schema、directory/event ID、current lineageを結合して検証する。
+
+feedback requirements eventは増分documentである。
+
+event内の各top-level REQ subtreeは、REQ自身または子SPECにcurrent-run markerを1件以上持つ。
+
+同じUSDM event集合を観測する場合は`usdm/latest/requirements.yaml`も検証する。
+
+event内の各top-level REQ subtree全体を、REQ ID単位でlatestの同ID subtreeへexact一致させる。
+
+latest側だけに存在するhistoric REQは許容するが、current-run markerを持つ余分なREQは拒否する。
+
+USDM merge規則に従い、eventとlatestの`system_name`もexact一致させる。
+
+event追加を伴わないlatest差分は拒否する。
+
+後続runでUSDM event集合とheadが進んだ場合だけhistorical projection検査を省略する。
+
+`validateRequirements.js --feedback-stage-event`の結果は生成中のpreflightであり、final acceptanceではない。
+
+controllerは`created_at / run_id / attempt / post_execution_basis`をartifact rootから内部実測する。
+
+failed時は`work_unit_results / reconciliation_results / work_unit_evidence_refs / domain_event_refs`を空配列にする。
+
 本パイプラインでは、変更を「イベント」として記録し、「スナップショット」を逐次更新する方式を採用する。
 
 ## 基本概念

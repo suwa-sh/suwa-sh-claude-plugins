@@ -3,20 +3,26 @@ sub_stage: "review_generated"
 uc_id: "19ec0182"
 manifest_sha256: "8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff"
 result: pass
+feedback_request_count: 11
+open_blocker_count: 0
+feedback_review_evidence:
+  feedback_id: "20260729_121600_impl_feedback_19ec0182"
+  draft_sha256: "5b4dc4155b3d6aed830334dde78a0df21187dc84e93b70632c40b4b484a891f2"
+  request_count: 11
+implementation_review_evidence:
+  review_html_sha256: "387df5f0ba2570acc5d1d70e66da33aa0af234431ec5de0dfeb6afd8690c1b79"
+  gate_result: "6/6 pass"
+  open_blocker_count: 0
+  open_major_count: 2
 output_file: "docs/impl/latest/19ec0182/review/index.html"
 summary:
   gate_result: "6/6 pass"
   open_blockers: 0
   open_majors: 2
-  change_requests: 11
   conclusion_badge: "承認可能"
 notes: >-
-  S9はレビューHTMLの生成完了を示すものであり、UCの完了(承認)そのものではない。
-  UC完了の正はユーザー承認イベント(review_approved)。
-  入力はstatus.yaml / stages(done・findings全件) / issues/ / change-requests/
-  (_as-built-summary.md含む) / learnings/ / docs/impl/events/ / uc-map.yaml /
-  specs-root配下spec.mdを読了して作成した。生成物・数値はいずれも既存ファイルからの
-  実測転記であり、再実行や推測による埋め合わせは行っていない。
-  プレビュー表示と承認・差し戻しの対話はオーケストレータの責務。
-completed_at: "2026-07-29T12:30:00+09:00"
+  S9は通常の実装レビューHTMLを生成した。仕様起因の残課題は実装との差分として表示したが、
+  dist-pipelineのstage割当てや機械可読な振り分け情報は生成していない。表示したdraftとHTML判断根拠は内部の
+  feedback_review_evidence / implementation_review_evidenceへ結合し、承認の正はreview_approved eventとした。
+completed_at: "2026-07-29T12:25:00+09:00"
 completed_by: "dist-impl-review"

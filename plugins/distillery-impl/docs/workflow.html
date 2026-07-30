@@ -225,9 +225,9 @@ h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var
     <div class="sid"><span class="code">S8</span><span class="who subag">🤖 委譲</span></div>
     <div class="sbody">
       <span class="sname">feedback — 仕様への還流と学び</span>
-      <div class="sdesc">issues / findings を仕様起因・実装起因に分類し、まず <b>as-built 仕様サマリ</b>(_as-built-summary.md — 実装が実際に満たす仕様を「仕様どおり / 仕様に無い追加 / 仕様と矛盾」のマーカー付きで整理)を生成。仕様起因は <b>as-built との差分として、dist-requirements にそのまま渡せる変更要求 md</b> に(blocker なら UC を blocked_on_spec に)。ハマりどころは learnings、skill / CLAUDE.md への学びは<b>提案ファイル</b>(自動編集しない)</div>
+      <div class="sdesc">issues / findings を仕様起因・実装起因・環境起因に分類し、<b>as-built仕様サマリ</b>を生成。仕様起因の要求は安定したCR ID、観測事実、問題、要求、完了条件を持つ<b>単一feedback draft</b>へ集約する。stage名やrouteは書かない。ハマりどころはlearnings、skill / CLAUDE.mdへの学びは<b>提案ファイル</b>にする(自動編集しない)</div>
     </div>
-    <div class="sfiles"><div class="t">📄 STATE</div><code>change-requests/*.md</code><code>learnings/*.md</code><code>S8_feedback.done.yaml</code></div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>feedback/as-built-summary.md</code><code>feedback/draft.md</code><code>learnings/*.md</code><code>S8_feedback.done.yaml</code></div>
   </div>
   <div class="connector"><span class="arrow">▼</span></div>
 
@@ -235,10 +235,10 @@ h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var
     <div class="sid"><span class="code">S9</span><span class="who subag">🤖 委譲</span></div>
     <div class="sbody">
       <span class="sname">review — ゼロ知識レビュー資料 → ユーザー承認</span>
-      <div class="sdesc">前提知識ゼロで合否判断できる単一 HTML(結論 → ゲート結果 → 反証と解決 → 残課題 → 判断ポイント)を生成。オーケストレータが <code>open</code> でプレビュー表示し承認対話。対話で出た指摘・条件は <code>review/review-notes.md</code> に記録し、<b>承認後に S8 を mode=refresh で再実行してヒトレビューの結果を変更要求へ反映・最終化</b>してから completed にする(確定版 change-requests を dist-requirements へ渡す)。<b>UC 完了の正は review_approved イベント</b>(HTML 生成 done ≠ 完了)。差し戻しは該当 stage の done を invalidated/ へ退避して再実行</div>
-      <div class="dialog">💬 承認(completed)/ 差し戻し(戻り先 stage 指定)</div>
+      <div class="sdesc">前提知識ゼロで実装の合否を判断できる単一HTML(結論 → ゲート結果 → 反証と解決 → 実装と仕様の差分全文 → 判断ポイント)を生成する。オーケストレータがプレビュー表示して<b>実装を承認 / 差し戻し</b>を確認。指摘は<code>review/review-notes.md</code>へ記録し、承認前にS8 refresh → S9再生成する。draftのID・SHA・件数と、review HTMLのSHA・gate・open finding集約をS9 eventから承認eventへexactに結ぶ。承認後、S8 publishはcanonical UC root内のregular/non-symlinkとsame-filesystemを確認し、検証した同じbytesだけをimmutable Markdownへatomic renameする。不一致はS8 refresh → S9再レビューへ戻す。dist-pipelineがその本文からstageを判定する</div>
+      <div class="dialog">💬 実装を承認 / 差し戻し</div>
     </div>
-    <div class="sfiles"><div class="t">📄 STATE</div><code>review/index.html</code><code>S9_review_generated.done.yaml</code><code>events: review_approved</code></div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>review/index.html</code><code>events: review_approved</code><code>feedback-requests/{feedback_id}.md</code><code>events: feedback_request_published</code></div>
   </div>
 </div>
 
@@ -262,5 +262,5 @@ h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var
     </ul>
   </div>
 </div>
-<p class="small">正本: plugins/distillery-impl/skills/dist-impl-run/SKILL.md + references/state-schema.md・subagent-template.md(commit 193d3fe 時点)。本図解は要約であり、矛盾があれば正本が勝ちます。</p>
+<p class="small">正本: plugins/distillery-impl/skills/dist-impl-run/SKILL.md + references/state-schema.md・subagent-template.md。本図解は要約であり、矛盾があれば正本が勝ちます。</p>
 </div>

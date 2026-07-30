@@ -12,18 +12,27 @@ distillery の出力(仕様書一式)はここには含めません — 入力�
 
 - **ヒトレビュー用 HTML(S9 の成果物)**: [docs/impl/latest/19ec0182/review/index.html](docs/impl/latest/19ec0182/review/index.html)
   をブラウザで開く。前提知識ゼロで「何を作ったか → 結論 → 根拠 → 判断ポイント」が読める構成
-- **as-built 仕様サマリと変更要求(S8)**: [docs/impl/latest/19ec0182/change-requests/](docs/impl/latest/19ec0182/change-requests/)
-  — 実装で見つけた仕様の問題 11 件(dist-requirements にそのまま渡せる形式)
+- **as-built仕様サマリ(S8)**: [docs/impl/latest/19ec0182/feedback/as-built-summary.md](docs/impl/latest/19ec0182/feedback/as-built-summary.md)
+  — 実装が実際に満たした仕様と、仕様との差分
+- **公開済みfeedback request**: [docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md](docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md)
+  — 仕様起因11件を1ファイルへ集約したdist-pipeline入力。stage指定やreview metadataは含まない。
+  S9で表示したdraft ID/SHA/件数とreview HTML SHA/gate/open finding集約は
+  review-generated event→review-approved eventへexactに結合され、publish eventはそのlineageと同じdraft bytesを参照する
 - **状態ファイル**: [docs/impl/](docs/impl/) — events(追記のみ)+ latest(スナップショット)+
   stages/ の done ファイル群。attempt-1〜3 の blocker 検出 → 解消 → carry-forward の履歴が残っている
 
 ## 還流後の仕様(次サイクルの入力)
 
-ここにある変更要求は実際に distillery へ還流済みです。[samples/distillery/pipeline/](../distillery/pipeline/) には
-その結果(usdm イベント `20260729_140044_impl_feedback_19ec0182` = REQ-007〜012 / rdra 差分 /
-specs イベント `20260729_141624_spec_generation`)が反映されており、specs イベントの `_review/` には
+ここにある変更要求は、単一Markdownとして distillery の判定処理へ還流済みです。[samples/distillery/pipeline/](../distillery/pipeline/) には
+還流前から存在する成果(usdm イベント `20260729_140044_impl_feedback_19ec0182` = REQ-007〜012 / rdra 差分 /
+specs イベント `20260729_141624_spec_generation`)があり、specs イベントの `_review/` には
 dist-spec Step6.5(反証レビューループ)の findings(round-1: major 2 + minor 4 → round-2 で収束、計 8 件修正)が残っています。
-イベント履歴を遡れば「実装前の仕様 → 実装 → 変更要求 → 還流後の仕様」の一周を追跡できます。
+加えて [pipeline/feedback-runs/](../distillery/pipeline/pipeline/feedback-runs/) にdist-pipeline内部の
+振り分け計画と要求別結果を収録しています。サンプルworkspace rootが`../distillery/pipeline/`で、その配下の
+`pipeline/feedback-runs/`が契約上の実行記録先となるため、リポジトリから見ると`pipeline/`が2階層に見えます。
+イベント履歴を遡れば「実装前の仕様 → 実装 → 単一feedback Markdown → pipeline内部判定 →
+既反映との照合・未反映の明示」の一周を追跡できます。新しいfeedback runは6件を`merged`、
+5件を`deferred`、今回の変更を0件と判定し、runを`blocked`で終了します。未反映を完了扱いしません。
 
 ## 実行結果の要点
 

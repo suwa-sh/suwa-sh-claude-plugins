@@ -1,18 +1,38 @@
 # プロジェクト
 
-**最終更新**: 2026-07-29 14:16:24 spec generation (specs)
+**最終更新**: 2026-07-30 12:09:00 feedback reconciliation (pipeline)
 
 ## 成果物一覧
 
 | ドメイン | 最新 | イベント数 |
 |---------|------|-----------:|
-| [USDM（要求分解）](#usdm要求分解) | [usdm/latest/](usdm/latest/) | 2 |
-| [RDRA（要件定義）](#rdra要件定義) | [rdra/latest/](rdra/latest/) | 2 |
-| [NFR（非機能要求）](#nfr非機能要求) | [nfr/latest/](nfr/latest/) | 1 |
-| [Arch（アーキテクチャ）](#archアーキテクチャ) | [arch/latest/](arch/latest/) | 3 |
-| [Infra（インフラ設計）](#infraインフラ設計) | [infra/latest/](infra/latest/) | 1 |
-| [Design（デザイン）](#designデザイン) | [design/latest/](design/latest/) | 2 |
-| [Specs（詳細仕様）](#specs詳細仕様) | [specs/latest/](specs/latest/) | 2 |
+| [USDM（要求分解）](#usdm要求分解) | [usdm/latest/](usdm/latest/) | 3 |
+| [RDRA（要件定義）](#rdra要件定義) | [rdra/latest/](rdra/latest/) | 3 |
+| [NFR（非機能要求）](#nfr非機能要求) | [nfr/latest/](nfr/latest/) | 2 |
+| [Arch（アーキテクチャ）](#archアーキテクチャ) | [arch/latest/](arch/latest/) | 4 |
+| [Infra（インフラ設計）](#infraインフラ設計) | [infra/latest/](infra/latest/) | 2 |
+| [Design（デザイン）](#designデザイン) | [design/latest/](design/latest/) | 4 |
+| [Specs（詳細仕様）](#specs詳細仕様) | [specs/latest/](specs/latest/) | 3 |
+| [Pipeline feedback run](#pipeline-feedback-run) | [pipeline/feedback-runs/](pipeline/feedback-runs/) | 1 |
+
+## Pipeline feedback run
+
+distillery-implの単一feedback-request Markdownを受け、dist-pipelineが所有stageの判定、
+内部work unit分解、依存閉包を行う往復例です。外部Markdownにstage名は含みません。
+このsampleは`--recommended-auto`で安全な推奨routeを採用した例です。実行時は
+`pipeline/feedback-runs/{feedback_id}/`に不変`input.md`、`routing.json`、`plan.json`、stage packets、
+`status.json`、`result.json`を作り、[pipeline/events/](pipeline/events/)へ履歴を追記します。
+interactiveで回答したrunだけ`resolutions.json`も持ちます。
+旧イベントと現在の成果物で充足を確認できた6件は`merged`、実体が不足する5件は`deferred`です。
+各stageは判定証跡だけを追記し、domainの`latest`を変更していません。したがってrun全体は
+`blocked`で終了し、未反映を成功として数えません。今回のdomain変更は0件です。
+表のイベント数には、成果物を変えなかったことを対象rootごとに示す
+`feedback-disposition.json`の追記も含みます。
+
+> 履歴注記: `usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml`
+> に残る `docs/impl/latest/19ec0182/change-requests/` は、移行前の論理的な配置名です。
+> 当時の入力内容は同eventの `source.txt` にファイル名付きで凍結済みであり、
+> `latest` 配下の分割change-requestファイルは単一Markdown入力への移行で廃止しました。
 
 ## USDM（要求分解）
 
