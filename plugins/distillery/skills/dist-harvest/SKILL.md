@@ -199,8 +199,12 @@ PASS 後、docs/usdm/latest/requirements.yaml を作成し（初期構築なの�
   再生成してから再確認する。
 - **スキップ**: 呼び出し元が `--no-confirm` を明示した場合（pipeline からの呼び出し用）は確認を省略する。
   ただし confidence: low の項目は結果として「確認推奨項目リスト」で呼び出し元に返す。
+- **dialogue_policy 分岐**: 呼び出し元 pipeline から `dialogue_policy: auto_adopt` が渡された場合も
+  この確認を省略し、確認推奨項目リストを作成した上で⭐推奨を採用して続行する
+  （low は todo.md 登録 + 仮採用、採用一覧を完了報告に含める）。ユーザーへ提示して回答を待つのは
+  `interactive` の場合のみ。
 
-対話を省略して完了扱いにしてはならない（`--no-confirm` 時を除く）。
+対話を省略して完了扱いにしてはならない（`--no-confirm` / `dialogue_policy: auto_adopt` 時を除く）。
 
 ---
 
@@ -285,3 +289,7 @@ pipeline から `--no-confirm` で呼ばれた場合も、`confidence: low` の�
 - 業務ドメイン一般論から補完した非機能要求
 
 対話（または確認推奨項目の返却）を省略して completed としてはならない。
+
+ただし、呼び出し元 pipeline から `dialogue_policy: auto_adopt` が指示された場合は、確認推奨項目リストを
+同フォーマットで作成した上で⭐推奨を採用して続行し、採用一覧（low は todo.md 登録+仮採用）を完了報告に含める
+（`skills/dist-pipeline/references/dialogue-format.md`「自動採用モード」参照）。

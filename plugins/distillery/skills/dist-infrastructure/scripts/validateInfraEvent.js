@@ -231,7 +231,7 @@ function findNextAtOrAbove(lines, startIdx, maxIndent) {
 const VALID_WORKLOAD_TYPES = ['web_app', 'api', 'batch', 'event_driven'];
 const VALID_AVAILABILITY_TIERS = ['99%', '99.9%', '99.95%', '99.99%'];
 const VALID_COST_POSTURES = ['cost_optimized', 'balanced', 'performance_optimized'];
-const VALID_TARGET_CLOUDS = ['aws', 'azure', 'gcp'];
+const VALID_TARGET_CLOUDS = ['aws', 'azure', 'gcp', 'onprem'];
 const VALID_FEEDBACK_ACTIONS = ['add', 'upgrade'];
 const VALID_MCL_STATUSES = ['completed', 'partial', 'failed'];
 const EVENT_ID_PATTERN = /^\d{8}_\d{6}_infra_product_design$/;

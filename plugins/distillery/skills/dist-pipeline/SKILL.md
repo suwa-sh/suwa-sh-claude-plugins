@@ -4,6 +4,8 @@ description: >
   USDM-RDRA パイプラインの全スキルを順次実行するワークフロースキル。
   初期要望テキストまたは変更要望テキストを入力とし、
   requirements → nfr → arch → infra → design → spec の6スキルをサブエージェントで順次実行する。
+  通常modeのデフォルトはauto_adopt（⭐推奨を自動採用して完走し、low仮採用は完了時に一括確認）。
+  --interactive 指定で従来の逐次対話に切り替わる。モデルはdocs/pipeline/pipeline-config.yamlでStep別に指定できる。
   distillery-impl の単一 feedback-request Markdown path を入力した場合は、内部でstage所有者を判定し、
   work unitへ分解して直接所有stageから末尾までの保守的suffixを各論理stage最大1回で差分実行する。
   各スキルはコンテキストを大量消費するため、必ずサブエージェントに委譲する。
@@ -41,8 +43,18 @@ description: >
 ```
 
 各スキルはコンテキストを大量に消費するため、**必ずサブエージェントに委譲する**。
-**全 Step (1〜6) で確認推奨項目があれば対話が発火する**。返却値のフォーマットは
-`references/dialogue-format.md` に従う（3案＋⭐推奨＋一行説明が必須）。
+確認推奨項目の扱いは **dialogue_policy** で決まる（`references/dialogue-format.md` 参照）:
+
+- **auto_adopt**（通常 mode のデフォルト）: サブエージェントが⭐推奨を採用して完走し、採用一覧を返す。
+  途中の対話は発火しない。low は仮採用 + `docs/todo.md` 登録とし、完了サマリで一括確認する
+- **interactive**（`--interactive` 指定時 / feedback mode）: 全 Step (1〜6) で確認推奨項目があれば対話が発火する
+
+どちらの policy でも確認推奨項目の作成フォーマットは `references/dialogue-format.md` に従う
+（3案＋⭐推奨＋一行説明が必須）。
+
+各 Step のサブエージェント起動時は `docs/pipeline/pipeline-config.yaml` の `step_models` から
+model を解決して Agent/Task ツールの `model` パラメータに渡す
+（`references/pipeline-config-schema.md` 参照。null = セッション既定）。
 
 ## イベントID管理
 
@@ -93,6 +105,23 @@ description: >
 不正なら停止し、通常の要望テキストへフォールバックしない。
 `--recommended-auto`を通常入力に付けた場合も拒否する。
 
+**dialogue_policy の決定（通常/harvest modeのみ）**:
+
+- デフォルト: `auto_adopt`（⭐推奨を自動採用して完走。low は仮採用 + todo.md 登録 + 完了時一括確認）
+- `--interactive` 指定時: `interactive`（現行の逐次対話）
+- feedback mode は常に `interactive` 扱い（自動採用は feedback 専用の `--recommended-auto` のみ。
+  `--interactive` を feedback 入力に付けた場合は無視してよい—feedback mode のデフォルトと同じため）
+- `--recommended-auto` は feedback 専用、`--interactive`/`auto_adopt` は通常 mode 専用。
+  両制度は独立しており、feedback-routing-policy.json の安全境界には影響しない
+- 決定した policy は実行開始時にユーザーへ報告する
+
+**pipeline-config の読込（全 mode 共通・lease 取得後）**: `docs/pipeline/pipeline-config.yaml` を読み込む。
+存在しなければ `references/pipeline-config-schema.md` のデフォルト値で生成する。
+読込・生成は **workspace lease の取得後**に行う（通常/harvest mode は下記の lease 取得直後、
+feedback mode は F0b の lease 取得後・stage 起動前。lease 取得前は入力種別判定などの読み取りのみ許可し、
+config を含む一切の書き込みを行わない）。config は feedback 契約の外なので routing/plan には影響しない。
+解決した step_models を実行開始時にユーザーへ報告する。
+
 通常/harvest modeは入力種別の判定直後、Step0hを含むどの書き込みよりも前に共通workspace leaseを取得する
 （feedback modeはF0bのauthoritative begin transactionで同じleaseを取得）。通常/harvestの`input-path`はfileまたはdirectoryを許可する。
 run IDとHEADは次のように採番・取得し、以後のtouch/releaseで
@@ -118,8 +147,8 @@ pipelineと並走させない。
    `references/subagent-template.md` の Step0h 変数（skill_name = `distillery:dist-harvest`）を使う。
    dist-harvest は内部で USDM 逆生成 + RDRA フルビルドを行うため、**Step1（requirements）は
    dist-harvest が内包する。Step1 は別途実行せず、Step0h 完了後は Step2（quality-attributes）へ進む**。
-2. dist-harvest は対話ありの Step。`confidence: low` の項目を「確認推奨項目リスト」で返すので、
-   下記「1〜6. 各 Step の実行パターン」の対話処理 (a〜d) と同じフローでユーザーに中継する。
+2. dist-harvest は対話ありの Step。`confidence: low` の項目の扱いは下記「1〜6. 各 Step の実行パターン」の
+   対話処理と同じく dialogue_policy で分岐する（auto_adopt: 採用一覧の検証 / interactive: a〜d で中継）。
 3. 完了チェック: `docs/rdra/latest/BUC.tsv` + `docs/usdm/latest/requirements.yaml` +
    `docs/harvest/latest/analysis/` が揃うこと。
 4. **進捗ダッシュボード**: 初版では harvest 専用ステップを持たない。Step1（requirements）スロットを
@@ -369,10 +398,24 @@ node <skill-path>/scripts/feedbackLease.js release \
 全 Step は以下の共通パターンで実行する。Step 固有の値は表を参照。
 
 1. **進捗更新（開始）:** `progress-update.js step <id> running --subagent-task "<タスク名>"`
-2. **サブエージェント起動:** `references/subagent-template.md` のテンプレートに各 Step の変数を埋めて指示
-3. **サブエージェント完了後の対話処理（全 Step 共通）:**
+2. **サブエージェント起動:** `references/subagent-template.md` のテンプレートに各 Step の変数
+   （`{dialogue_policy_instructions}` と model を含む）を埋めて指示
+3. **サブエージェント完了後の対話処理（全 Step 共通・dialogue_policy で分岐）:**
+
+   **auto_adopt の場合（通常 mode デフォルト）:**
+   a. サブエージェント結果の「採用一覧」（dialogue-format.md「自動採用モード」準拠）を検証する。
+      採用一覧がない（「採用一覧: なし」の明記もない）場合は再返却を要求する
+   b. low 仮採用の各項目が `docs/todo.md` に登録済みであることを確認する（未登録なら再返却を要求）
+   c. 採用一覧をオーケストレータ側で集約し、完了サマリで一括提示する（途中の対話は発火しない）
+   d. サブエージェントが policy に反して「質問」を返して停止した場合は、**interactive へ暗黙移行しない**。
+      auto_adopt 指示（`{dialogue_policy_instructions}` の auto_adopt 版）を再掲して同 Step の
+      サブエージェントを **1 回だけ** 再実行する。再実行でも質問が返る場合はエラーとして扱い
+      （notify.js でエラー通知）、エラーハンドリングに従ってユーザーに報告する
+
+   **interactive の場合（--interactive 指定時 / feedback mode）:**
    サブエージェント結果に「質問」または「確認推奨項目リスト」（confidence: low の項目）が含まれている場合、対話を**必ず発火する**:
-   a. `progress-update.js dialogue <step_id> "質問内容" --options "選択肢1,選択肢2"` でダッシュボード更新
+   a. `progress-update.js dialogue <step_id> "質問内容" --options "選択肢1,選択肢2"` でダッシュボード更新後、
+      `node <skill-path>/scripts/notify.js "distillery: 回答待ち" "Step{id} が確認を求めています"` で通知する
    b. ユーザーにチャットで確認推奨項目を中継し、回答を待つ。
       **提示フォーマット:** 各項目について必ず以下をセットで提示すること（要約表やタイトルのみの提示は不可）:
       - 全選択肢（Option A/B/C...）と各選択肢の一行説明
@@ -381,10 +424,11 @@ node <skill-path>/scripts/feedbackLease.js release \
    c. 回答を受け取ったら `progress-update.js dialogue-clear`
    d. 回答内容を反映して同スキルのサブエージェントを再起動する（または回答不要でそのまま完了チェックへ進む）
 
-   **フォーマット検査:** 返却された確認推奨項目が `references/dialogue-format.md` に従っていない
+   **フォーマット検査（両 policy 共通）:** 返却された確認推奨項目/採用一覧が `references/dialogue-format.md` に従っていない
    （3案不足、⭐推奨なし、一行説明なし等）場合は、オーケストレータはサブエージェントに再返却を要求する。
 
-   **対話スキップ検知:** 全 Step で、サブエージェントが一度も質問・確認推奨項目を返さずに completed を返した場合は、オーケストレータ側で以下をチェックする:
+   **対話スキップ検知（interactive）/ 採用記録検知（auto_adopt）:** 全 Step で、サブエージェントが一度も質問・確認推奨項目
+   （auto_adopt では採用一覧）を返さずに completed を返した場合は、オーケストレータ側で以下をチェックする:
    - Step 1: `docs/rdra/latest/` の自動追加アクター/情報の有無
    - Step 2: `docs/nfr/latest/nfr-grade.yaml` 内の confidence が low の項目
    - Step 3: `docs/arch/latest/arch-design.yaml` 内の confidence が low の項目
@@ -393,7 +437,10 @@ node <skill-path>/scripts/feedbackLease.js release \
    - Step 5: `docs/design/latest/design-event.yaml` 内の confidence が low の項目
    - Step 6: `docs/specs/latest/` の API 命名/エラー戦略/DB 正規化レベル等で confidence が low の項目
 
-   該当項目が存在する場合は、オーケストレータがそれらを抽出して上記の対話フロー (a〜d) を発火する。
+   該当項目が存在する場合の処理は policy で分岐する:
+   - interactive: オーケストレータがそれらを抽出して上記の対話フロー (a〜d) を発火する
+   - auto_adopt: サブエージェントに「該当項目の確認推奨項目リスト作成 + ⭐推奨採用 + 採用一覧返却」の
+     補完実行を指示する（オーケストレータが代わりに採用値を決めてはならない）
 4. **完了チェック:** 必須ファイルの存在を確認
 5. **イベントID取得（通常modeのみ）:** `ls -t docs/{domain}/events/ | head -1`。
    feedback modeはF1の返却event ID + identity検証を使い、この手順を実行しない
@@ -438,6 +485,7 @@ UC_COUNT=$(find docs/specs/latest -name "spec.md" -path "*/UC/*" 2>/dev/null | w
 - それ以外 → **実施済み**
 
 **未実施の場合:** `references/step6a-story-補完.md` の指示でサブエージェントを起動する。
+起動時は pipeline-config の `step_models.step6a`（既定 "sonnet"）を Agent/Task ツールの `model` パラメータに渡す。
 
 **進捗更新（完了/スキップ）:** `progress-update.js step 6a completed --summary "実施済み"` or `--summary "27 Stories 生成"`
 
@@ -449,13 +497,20 @@ UC_COUNT=$(find docs/specs/latest -name "spec.md" -path "*/UC/*" 2>/dev/null | w
 
 - **存在しない場合**: 網羅率 100% 達成済み。
   - **進捗更新（完了）:** `progress-update.js step 6b completed --summary "網羅率100%達成"`
-- **存在する場合**: ユーザーに提示し承認/却下を確認。承認なら Step1〜6 を差分再実行（最大2回）
-  - **進捗更新（完了・承認）:** `progress-update.js step 6b completed --summary "差分再実行を実施"`
-  - **進捗更新（完了・却下）:** `progress-update.js step 6b completed --summary "feedback 却下"`
+- **存在する場合**: dialogue_policy で分岐する:
+  - **auto_adopt**: 途中で承認を求めない。`appendTodo.js` で `docs/todo.md` に rdra-feedback の要旨を登録し、
+    完了サマリの「仮採用（low・要確認）」と同じ枠で一括提示する（差分再実行はユーザーの事後判断。
+    実行する場合は feedback request 経由）
+    - **進捗更新（完了）:** `progress-update.js step 6b completed --summary "rdra-feedback を todo 登録（要確認）"`
+  - **interactive**: ユーザーに提示し承認/却下を確認。承認なら Step1〜6 を差分再実行（最大2回）
+    - **進捗更新（完了・承認）:** `progress-update.js step 6b completed --summary "差分再実行を実施"`
+    - **進捗更新（完了・却下）:** `progress-update.js step 6b completed --summary "feedback 却下"`
 
 ## 完了時の報告
 
 **進捗更新:** `progress-update.js complete`
+
+**通知:** `node <skill-path>/scripts/notify.js "distillery: パイプライン完了" "全 Step 完了。サマリを確認してください"`
 
 通常modeの完了event/snapshotを確定後、owner照合つきでworkspace leaseを解放する。README生成や
 ダッシュボード停止で失敗した場合も、pipeline成果物の状態を報告したうえでleaseを解放する。
@@ -496,6 +551,15 @@ OPEN=$(grep -c '\*\*ステータス\*\*: open' docs/todo.md 2>/dev/null || echo 
 open 件数が 1 以上の場合は「後続スキルから RDRA/NFR 等への追加提案があります。
 `docs/todo.md` を確認し、必要なら requirements スキルを再実行してください」と案内する。
 
+**自動採用サマリ（auto_adopt 時は必須）:** 各 Step の採用一覧を集約し、以下をユーザーに提示する:
+
+1. **採用済み（high/medium）**: Step / 項目 / 採用値 / confidence / 推奨理由 の一覧表
+2. **仮採用（low・要確認）**: Step / 項目 / 仮採用値 / 他の選択肢 / 推奨理由 の一覧表。
+   各項目に「このままでよいか、変更するか」の回答を促す
+3. 変更が必要な項目は **feedback request Markdown を作成して
+   `/distillery:dist-pipeline path/to/{feedback_id}.md` で差分実行**するよう案内する
+   （`references/feedback-request-format.md` 準拠。回答内容から feedback request の下書きを提示してよい）
+
 ## ダッシュボード停止
 
 サマリ提示後、ダッシュボードを停止してよいか確認する。承認されたら:
@@ -509,7 +573,8 @@ PORT=$(node <skill-path>/scripts/progress-update.js port); [ -n "$PORT" ] && kil
 
 サブエージェントが失敗した場合:
 
-1. **進捗更新:** `progress-update.js error <step_id> "エラーメッセージ"`
+1. **進捗更新:** `progress-update.js error <step_id> "エラーメッセージ"` の後、
+   `node <skill-path>/scripts/notify.js "distillery: エラー" "Step{id} が失敗しました"` で通知する
 2. エラー内容をユーザーに報告する
 3. ユーザーに「再試行」「スキップして次へ」「中断」の選択肢を提示する
 4. 途中で中断した場合、再開時に `resume` コマンドで完了済み Step をスキップできる
@@ -530,7 +595,8 @@ failed/deferredをevent化して停止する。
 |----------|------|
 | `references/subagent-template.md` | サブエージェント指示の共通テンプレート + 各 Step の変数値 |
 | `references/step6a-story-補完.md` | Step6a 補完サブエージェント指示（そのまま使用） |
-| `references/dialogue-format.md` | 確認推奨項目のフォーマット仕様（3案＋⭐推奨） + RDRA整合性ルール |
+| `references/dialogue-format.md` | 確認推奨項目のフォーマット仕様（3案＋⭐推奨）+ 自動採用モード + RDRA整合性ルール |
+| `references/pipeline-config-schema.md` | `docs/pipeline/pipeline-config.yaml` のスキーマ正本（step_models） |
 | `references/feedback-request-format.md` | 単一Markdown入力の厳密契約 |
 | `references/feedback-stage-ownership.json` | version付きstage所有者catalog |
 | `references/feedback-routing-policy.json` | 曖昧性、推奨質問、recommended-autoの安全境界 |
@@ -538,6 +604,7 @@ failed/deferredをevent化して停止する。
 | `scripts/progress-update.js` | 進捗ステータス更新 CLI（`port` / `url` サブコマンドで実行中ポート取得） |
 | `scripts/progress-server.js` | 進捗ダッシュボード Web サーバー（SSE、プロセスベースのポート解決） |
 | `scripts/appendTodo.js` | `docs/todo.md` への追加提案追記 CLI（冪等） |
+| `scripts/notify.js` | デスクトップ通知 CLI（macOS/Windows/Linux 対応・音付き。dialogue / error / complete で使用。失敗しても exit 0） |
 | `scripts/generateReadme.js` | docs/README.md 自動生成（完了時に実行） |
 | `scripts/feedbackRequest.js` | feedback candidate検出・Markdown parse・hash・厳密検証 |
 | `scripts/planFeedbackRequest.js` | authoritative begin/resume・routing/resolution検証・保守的suffix closure・stage packet生成 |

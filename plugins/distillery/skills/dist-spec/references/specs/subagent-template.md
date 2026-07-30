@@ -16,7 +16,7 @@ Step3 で UC Spec を並列生成する際に subagent へ渡す指示テンプ�
    - docs/design/latest/design-event.yaml
    - docs/specs/events/{event_id}/_cross-cutting/ux-ui/ux-design.md（Step2 で生成済み）
    - docs/specs/events/{event_id}/_cross-cutting/ux-ui/ui-design.md（Step2 で生成済み）
-   - docs/specs/events/{event_id}/_cross-cutting/ux-ui/common-components.md（Step2 で生成済み）
+   - docs/specs/latest/_cross-cutting/ux-ui/common-components.md（latest に存在する場合のみ参照。common-components.md は Step4c で生成されるため、初回実行時は未生成）
    - docs/specs/latest/{業務名}/{BUC名}/{UC名}/（既存 Spec があれば）
 
 3. タスク指示

@@ -240,7 +240,7 @@ OpenAPI/AsyncAPI は `_cross-cutting/` に全 UC 統合で生成される（UC �
 
 **読み込み:** `references/specs/spec-template.md`, `references/specs/spec-generate.md`
 
-UC ごとに spec.md + ティア別 md + `_api-summary.yaml` を生成する。ティアファイルは Step1 で決定した UC-ティアマッピングに従う。UC 間は独立しているため subagent で並列実行可能。OpenAPI/AsyncAPI は UC 単位では生成せず、Step4 で `_api-summary.yaml` を入力として全 UC 統合で `_cross-cutting/` に生成する。
+UC ごとに spec.md + ティア別 md + `_api-summary.yaml` を生成する。ティアファイルは Step1 で決定した UC-ティアマッピングに従う。UC 間は独立しているため subagent で並列実行する。**並列起動は必須**: グループ分割後の全 subagent を**単一メッセージで同時起動**すること（1 グループずつの直列処理は禁止。壁時計が UC 数に比例して伸びる）。実行環境で Agent/Task ツールが利用できない場合のみ、その旨を完了報告に明記した上で 8-10 UC ずつ順次処理してよい。OpenAPI/AsyncAPI は UC 単位では生成せず、Step4 で `_api-summary.yaml` を入力として全 UC 統合で `_cross-cutting/` に生成する。
 
 #### subagent 分割指針
 
@@ -279,7 +279,7 @@ Step3 で生成した各 UC の出力を、**生成 subagent とは別の subage
 ```
 
 **ループ手順:**
-1. 業務単位でレビュー subagent を並列起動する（1 subagent あたり 8-10 UC）
+1. 業務単位でレビュー subagent を並列起動する（1 subagent あたり 8-10 UC、全グループを単一メッセージで同時起動）
 2. 指摘があった UC について修正 subagent を起動して修正する
 3. 修正後、再度レビュー subagent でチェックする
 4. 「LGTM」が出るまで繰り返す（最大3回。3回目でも指摘が残る場合は残指摘をログに記録して次へ進む）
@@ -288,7 +288,7 @@ Step3 で生成した各 UC の出力を、**生成 subagent とは別の subage
 
 **読み込み:** `references/specs/spec-template.md`（buc-spec.md フォーマット）
 
-Step3 で全 UC Spec が出揃った後に、BUC 単位の俯瞰仕様を生成する。BUC 間は独立しているため subagent で並列実行可能。
+Step3 で全 UC Spec が出揃った後に、BUC 単位の俯瞰仕様を生成する。BUC 間は独立しているため subagent で並列実行する（全 BUC グループを単一メッセージで同時起動）。
 
 各 BUC について `buc-spec.md` を生成する:
 1. 所属 UC 一覧
@@ -319,7 +319,7 @@ Step3-Review と同様に、生成 subagent とは別の subagent でレビュ�
 
 ### Step4: 全体横断統合
 
-Step3 + Step3.5 完了後に実行。**機能別に subagent を分割して並列実行する**（単一 subagent では入力量が多くコンテキスト上限に達するリスクがある）。
+Step3 + Step3.5 完了後に実行。**機能別に subagent を分割して並列実行する**（単一 subagent では入力量が多くコンテキスト上限に達するリスクがある）。相互依存のない 4a/4b/4c は単一メッセージで同時起動する。
 
 #### Step4a: API 統合（OpenAPI/AsyncAPI）
 
@@ -465,6 +465,10 @@ alternatives_considered:
 3. Step4b（データストアレイアウト）の結果からデータ正規化レベルの判断記録を生成する
 4. Step4c/4d の結果から横断関心事の解決方針の判断記録を生成する
 5. 各判断記録を `docs/specs/events/{event_id}/decisions/spec-decision-{NNN}.yaml` として出力する（NNN は 001 から連番）
+
+**採番の競合防止**: decisions/ の生成と NNN 採番は**単一の subagent（またはオーケストレータ本体）でまとめて行う**。
+並列 subagent に decisions/ を直接書かせない（連番が衝突する）。並列 subagent が判断記録を提案する場合は
+結果として返却し、採番担当が一括で書き出す。
 
 #### Step4e: 共通コンポーネント UC フィードバック
 
@@ -734,3 +738,7 @@ RDRA モデル (`docs/rdra/latest/`) に存在しないアクター / 情報 / B
 - confidence: low の項目
 
 対話を省略して completed を返してはならない。
+
+ただし、呼び出し元 pipeline から `dialogue_policy: auto_adopt` が指示された場合は、確認推奨項目リストを
+同フォーマットで作成した上で⭐推奨を採用して続行し、採用一覧（low は todo.md 登録+仮採用）を完了報告に含める
+（`skills/dist-pipeline/references/dialogue-format.md`「自動採用モード」参照）。

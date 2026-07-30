@@ -216,11 +216,56 @@ Phase 0 スキップルール: BUC <= 3 + 外部システム = 0 なら Step 0.1
 
 1. イベント ID の生成（`date '+%Y%m%d_%H%M%S'` コマンドでタイムスタンプ取得）
 2. trigger_event の特定（前段イベント ID を `rdra:{rdra_event_id}`, `nfr:{nfr_event_id}` 形式で記録）
-3. **初期構築時**: `arch-design.yaml`（全セクション含む完全版）を events/ に記録
+3. **初期構築時**: `arch-design.yaml`（全セクション含む完全版）を events/ に記録（下記「分割書き出し」必須）
 4. **差分更新時**: `arch-design-diff.yaml`（変更セクションのみ）を events/ に記録
+   （変更セクションが 2 つ以上なら同様に分割書き出しを使う）
 5. `_changes.md` の生成（追加/変更/削除を明記。trigger_event を含む）
 6. `_inference.md` の生成（推論根拠サマリ）
 7. `source.txt` の生成（トリガー説明）
+
+### 分割書き出し（必須）
+
+arch-design.yaml は大出力になりやすく、一括 Write は途中失敗のリスクが高い。
+**一括 Write は禁止**とし、トップレベルセクション単位の分割ファイルに小分けで書き出してから
+スクリプトで連結する。
+
+**モード別の parts ディレクトリと出力先**:
+
+| モード | parts ディレクトリ | 連結出力先 |
+|---|---|---|
+| 初期構築 | `arch-design.parts/` | `arch-design.yaml` |
+| 差分更新 | `arch-design-diff.parts/` | `arch-design-diff.yaml` |
+
+差分更新時の parts は `01-meta.yaml`（meta 情報）+ 変更セクションのみでよい
+（変更セクションが 1 つだけなら分割せず直接 arch-design-diff.yaml を書いてもよい）。
+
+1. `docs/arch/events/{event_id}/arch-design.parts/`（差分更新時は `arch-design-diff.parts/`）に、
+   トップレベルセクション単位で分割して書き出す。
+   ファイル名は `{NN}-{セクション名}.yaml`（NN は連結順）:
+   - `01-meta.yaml` — version / event_id / created_at / source
+   - `02-technology-context.yaml` — technology_context
+   - `03-domain-architecture.yaml` — domain_architecture
+   - `04-system-architecture.yaml` — system_architecture
+   - `05-app-architecture.yaml` — app_architecture
+   - `06-data-architecture.yaml` — data_architecture
+   - 1 つのセクションがさらに大きい場合は、まず骨格だけの小さな part を Write し、
+     Edit（部分置換）で数回に分けて追記して完成させる。**セクションを複数 part に跨いで分割してはならない**
+     （各 part はトップレベルキーを 1 つ以上含む必要があり、連結時に重複キー検査でエラーになる）
+2. 連結スクリプトで正本を生成する（トップレベルキーの重複検査つき。parts はこの時点では保持される）:
+
+   ```bash
+   node <skill-path>/scripts/mergeArchDesignParts.js \
+     docs/arch/events/{event_id}/arch-design.parts \
+     docs/arch/events/{event_id}/arch-design.yaml
+   # 差分更新時は arch-design-diff.parts → arch-design-diff.yaml を指定する
+   ```
+
+3. 連結後は通常どおり下記バリデーションへ進む（下流が参照する正本は arch-design.yaml のまま不変）。
+   **バリデーション PASS を確認してから** parts を削除する（FAIL 時は parts を残して修正・再連結に使う）:
+
+   ```bash
+   rm -rf docs/arch/events/{event_id}/arch-design.parts
+   ```
 
 ### 出力
 
@@ -242,14 +287,17 @@ Phase 0 スキップルール: BUC <= 3 + 外部システム = 0 なら Step 0.1
 
 ### バリデーション
 
-出力後、スキーマバリデータを実行して arch-design.yaml の構造を検証する:
+出力後、スキーマバリデータを実行して構造を検証する（モードで対象ファイルを切り替える）:
 
 ```bash
+# 初期構築時
 node <skill-path>/scripts/validateArchDesign.js docs/arch/events/{event_id}/arch-design.yaml
+# 差分更新時
+node <skill-path>/scripts/validateArchDesign.js docs/arch/events/{event_id}/arch-design-diff.yaml --mode=diff
 ```
 
-- 終了コード 0（PASS）: Markdown 生成へ進む
-- 終了コード 1（FAIL）: エラー内容を確認し、arch-design.yaml を修正してから再度バリデーションを実行する
+- 終了コード 0（PASS）: Markdown 生成へ進む。分割書き出しを使った場合はこの時点で対応する parts/ を削除する
+- 終了コード 1（FAIL）: エラー内容を確認し、対象 YAML（parts があれば parts 側）を修正してから再連結・再バリデーションを実行する
 
 `<skill-path>` は本スキルのディレクトリパス（`${CLAUDE_PLUGIN_ROOT}/skills/dist-architecture`）。
 
@@ -364,3 +412,7 @@ RDRA モデル (`docs/rdra/latest/`) に存在しないアクター / 情報 / B
 の項目があれば、結果として「確認推奨項目リスト」を返却する。
 フォーマットは `skills/dist-pipeline/references/dialogue-format.md` に従うこと
 （**3案以上 + ⭐推奨 + 一行説明 + 推奨理由**）。対話を省略して completed を返してはならない。
+
+ただし、呼び出し元 pipeline から `dialogue_policy: auto_adopt` が指示された場合は、確認推奨項目リストを
+同フォーマットで作成した上で⭐推奨を採用して続行し、採用一覧（low は todo.md 登録+仮採用）を完了報告に含める
+（`skills/dist-pipeline/references/dialogue-format.md`「自動採用モード」参照）。

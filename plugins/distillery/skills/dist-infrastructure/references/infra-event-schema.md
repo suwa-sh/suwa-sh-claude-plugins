@@ -27,7 +27,7 @@ translation:
   consistency_model: string             # strong | eventual
   cost_posture: string                  # cost_optimized | balanced | performance_optimized
   target_clouds:                        # 対象クラウド一覧
-    - string                            # aws | azure | gcp
+    - string                            # aws | azure | gcp | onprem
 
 # === MCL 実行結果 ===
 mcl_execution:

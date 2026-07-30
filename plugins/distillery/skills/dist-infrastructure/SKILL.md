@@ -219,7 +219,9 @@ arch-design.yaml と nfr-grade.yaml を読み取り、MCL product-design の入�
 
 `specs/shared-platform/output/shared-platform-context.yaml` が存在しない場合、**Step1 のサブステップ 1a として**以下を実施する:
 
-1. ユーザーに「shared-platform コンテキストが見つかりません。最小構成で進めますか？」と確認する
+1. ユーザーに「shared-platform コンテキストが見つかりません。最小構成で進めますか？」と確認する。
+   **dialogue_policy 分岐**: `dialogue_policy: auto_adopt` の場合はこの確認を省略し、最小構成を仮採用して続行する
+   （採用一覧に「shared-platform: 最小構成を仮採用」を記録する）
 2. 確認後、以下の最小 shared-platform-context.yaml を **event ディレクトリ内の `specs/shared-platform/output/`**（`docs/infra/events/{event_id}/specs/shared-platform/output/`）に生成する。加えて、プロジェクトルートの `specs/shared-platform/output/` にも同じファイルを生成する（後続の実行で再利用するため）:
 
 ```yaml
@@ -417,7 +419,10 @@ MCL product-design の出力を分析し、ベンダーニュートラルな知�
 `references/infra/infra-feedback.md` に従い、以下を実行する:
 
 1. MCL 出力を分析し、arch にフィードバックすべき知見を抽出する
-2. 抽出した知見をユーザーに提示し、フィードバック内容を確認する
+2. 抽出した知見をユーザーに提示し、フィードバック内容を確認する。
+   **dialogue_policy 分岐**: `dialogue_policy: auto_adopt` の場合はユーザー確認を省略し、
+   下記「フィードバックの方針」に沿う保守的な追加（ベンダーニュートラル化された制約/ポリシーの追記）のみ適用する。
+   既存セクションの書き換え・削除を伴うフィードバックは適用せず todo.md に登録し、採用一覧に記録する
 3. 確認後、arch-design.yaml を更新する
 4. arch フィードバックイベントを記録する
 
@@ -512,7 +517,10 @@ Step4: Infra 書き戻しチェック → 不要
 
 #### 書き戻しが必要な場合
 
-以下のようにユーザーに報告し、確認する:
+以下のようにユーザーに報告し、確認する。
+**dialogue_policy 分岐**: `dialogue_policy: auto_adopt` の場合はユーザー確認を待たず、影響度で既定アクションを採る:
+影響度 high の行が 1 つでもあれば「1. product-input.yaml を再生成し Step2 から再実行」、
+全て medium 以下なら「2. 今回はスキップし次回実行時に反映」を採用し、判断内容を todo.md と採用一覧に記録する。
 
 ```
 Step4: Infra 書き戻しチェック → 要再実行
@@ -593,3 +601,7 @@ RDRA モデル (`docs/rdra/latest/`) に存在しないアクター / 情報 / B
 - confidence: low の項目
 
 対話を省略して completed を返してはならない。
+
+ただし、呼び出し元 pipeline から `dialogue_policy: auto_adopt` が指示された場合は、確認推奨項目リストを
+同フォーマットで作成した上で⭐推奨を採用して続行し、採用一覧（low は todo.md 登録+仮採用）を完了報告に含める
+（`skills/dist-pipeline/references/dialogue-format.md`「自動採用モード」参照）。

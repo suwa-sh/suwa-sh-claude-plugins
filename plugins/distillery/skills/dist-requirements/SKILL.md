@@ -95,6 +95,7 @@ docs/
    - 選択肢: 「このまま進める」「修正指示」「中断」
    - 修正指示を受けた場合は USDM を再生成してから再度確認する
    - **対話スキップフラグ**: 呼び出し元が `--no-confirm` を明示した場合、または requirements.yaml が差分更新モード（`docs/usdm/latest/requirements.yaml` が既存）の場合は確認をスキップする
+   - **dialogue_policy 分岐**: 呼び出し元 pipeline から `dialogue_policy: auto_adopt` が渡された場合もこの確認をスキップし、生成した USDM 要約（業務一覧 / UC 候補 / 主要情報 / 主要アクター）を採用一覧の一部として完了報告に含める。ユーザーへ提示して回答を待つのは `interactive` の場合のみ
 4. **USDM YAML を入力とした RDRA フルビルド**: Phase1-5 + RDRA統合（`初期要望.txt` ではなく `docs/usdm/latest/requirements.yaml` を入力とする）
 5. **整合性 lint（latest 確定前）**: `node <skill-path>/scripts/generateRdraMd.js 1_RDRA --lint`。エラー（未定義参照）があれば `1_RDRA/` の TSV を修正してエラー 0 件になるまで繰り返す。警告（未接続）はユーザーに報告のみ
 6. **docs 配置**: `1_RDRA/` → `docs/rdra/latest/` + `docs/rdra/events/{event_id}/`
@@ -329,3 +330,7 @@ references/usdm/usdm-decompose.md
 - confidence: low の項目
 
 対話を省略して completed を返してはならない。
+
+ただし、呼び出し元 pipeline から `dialogue_policy: auto_adopt` が指示された場合は、確認推奨項目リストを
+同フォーマットで作成した上で⭐推奨を採用して続行し、採用一覧（low は todo.md 登録+仮採用）を完了報告に含める
+（`skills/dist-pipeline/references/dialogue-format.md`「自動採用モード」参照）。

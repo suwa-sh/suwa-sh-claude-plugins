@@ -29,6 +29,9 @@ spec-stories SKILL.md の手順に従い実装してください。特に以下�
 - Logo コンポーネントを利用する
 - 全ポータルの全画面の Story を生成する（代表画面だけでなく全 UC）
 - design スキルのハイブリッド方式イベントソーシングに従う（storybook-app/ は events/ にコピーしない）
+- ページ Story は SKILL.md の並列指示に従い、業務単位の subagent（1 subagent 8-10 UC）を
+  **単一メッセージで同時起動**して並列生成する（直列処理は禁止。例外: 実行環境で Agent/Task ツールが
+  利用できない場合のみ、その旨を完了報告に明記した上で順次処理してよい）
 
 重要: AskUserQuestion ツールは使わないでください。
 完了後、生成した Story の一覧、build 結果、design イベント ID を報告してください。

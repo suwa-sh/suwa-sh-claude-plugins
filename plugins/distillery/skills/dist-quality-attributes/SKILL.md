@@ -119,6 +119,11 @@ NFR 推論の精度を上げるため、**Step1 の前に** 以下 3〜5 問を�
 回答を得られない場合のみ Option (⭐推奨) を仮置きして Step1 に進むが、その項目は
 confidence: medium とマークし、Step1 の結果で確認推奨項目として再度返却する。
 
+**dialogue_policy 分岐**: 呼び出し元 pipeline から `dialogue_policy: auto_adopt` が渡された場合は、
+このプリインタビューをユーザーへ提示せず、各問の⭐推奨を仮置きして Step1 に進む
+（上記「回答を得られない場合」と同じ扱い。confidence: medium マーク + 採用一覧への記録）。
+ユーザーに質問して回答を待つのは `interactive` の場合のみ。
+
 これにより Step1 で confidence: low となる項目を大幅に削減する。
 
 ---
@@ -163,6 +168,10 @@ Step1 の推論結果をユーザーに提示し、対話で確認・調整す�
 2. **重要項目の確認**: confidence が high/medium の重要メトリクスをカテゴリ別に提示
 3. **要確認項目のヒアリング**: 推論不能項目（移行性、環境等）をヒアリング
 4. **最終確認**: 確定内容のサマリを提示
+
+**dialogue_policy 分岐**: 呼び出し元 pipeline から `dialogue_policy: auto_adopt` が渡された場合は、
+上記 1〜4 の対話をユーザーへ提示せず、各項目の⭐推奨を採用して Step3 へ進む
+（推論不能項目は保守的な⭐推奨を仮採用 + todo.md 登録。採用一覧を完了報告に含める）。
 
 ### 出力
 
@@ -302,3 +311,7 @@ Step3 は以下のパターンで subagent に委譲可能。
 - 件数が 0 の場合はその旨を明記する
 
 件数が 1 件以上ある場合は、pipeline オーケストレータが対話フローを発火する前提で、そのまま結果に含めて返すこと（AskUserQuestion は使わない）。
+
+ただし、呼び出し元 pipeline から `dialogue_policy: auto_adopt` が指示された場合は、確認推奨項目リストを
+同フォーマットで作成した上で⭐推奨を採用して続行し、採用一覧（low は todo.md 登録+仮採用）を完了報告に含める
+（`skills/dist-pipeline/references/dialogue-format.md`「自動採用モード」参照）。

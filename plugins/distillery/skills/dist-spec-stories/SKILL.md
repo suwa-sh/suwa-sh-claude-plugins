@@ -90,7 +90,10 @@ spec スキルの Step9 として実装されていたものを独立スキル�
    - tier-{tier_id}.md のコンポーネント設計（Props、状態、イベント）を反映する
    - **全ポータルの全画面を生成する**（代表画面だけでなく、tier-frontend-*.md が存在する全 UC のページ Story を作成する）
    - **UC 全数チェック**: `docs/specs/latest/` 配下の Presentation 系ティアを持つ UC を列挙し、対応するページ Story が存在することを検証する。欠落がある場合は追加生成してから次に進む
-   - UC 数が多い場合は subagent で業務単位に分割して並列生成する（1 subagent あたり 8-10 UC が上限）
+   - UC 数が多い場合は subagent で業務単位に分割して並列生成する（1 subagent あたり 8-10 UC が上限）。
+     **並列起動は必須**: 全グループの subagent を単一メッセージで同時起動する（1 グループずつの直列処理は禁止）。
+     共通コンポーネント（手順1）完了後であれば UC グループ間に依存はない。
+     実行環境で Agent/Task ツールが利用できない場合のみ、その旨を完了報告に明記した上で順次処理してよい
 4. **UC 固有コンポーネントの生成**: tier-{tier_id}.md のコンポーネント設計で、design-event.yaml に存在しない新規コンポーネントがあれば追加実装する
 5. **画面確認（必須）**: ブラウザツールで目視確認する
    - Storybook dev server を起動 (`cd docs/design/latest/storybook-app && npm run storybook -- --no-open`)

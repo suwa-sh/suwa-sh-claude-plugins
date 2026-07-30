@@ -2,6 +2,19 @@
 
 Step1 の推論結果をユーザーに提示し、対話で確認・調整するタスク。
 
+**dialogue_policy 分岐（最優先）**: 呼び出し元 pipeline から `dialogue_policy: auto_adopt` が渡された場合は、
+本ファイルの Phase 0〜5 を**ユーザーへ提示せず**、各 Phase を次の既定で処理して Step3 へ進む:
+
+- Phase 0（ドメイン設計）: 「ドメイン設計はおまかせ」回答と同じ扱い — 各 sub-step の推奨案 Option A を採用して即確定
+- Phase 1〜4（テクノロジー/システム/アプリ/データ）: 各項目の推論値（推奨案）をそのまま採用する。
+  番号選択式の項目は「1（推奨）」を選んだものとして扱う
+- Phase 5（最終確認）: 「OK」として扱う
+- 採用した項目は confidence をそのまま維持し（`user` に更新しない）、
+  採用一覧（項目 / 採用値 / confidence / 他の選択肢）を完了報告に含める。
+  confidence: low の項目は保守的推奨を仮採用し appendTodo.js で docs/todo.md に登録する
+
+ユーザーへ質問して回答を待つのは `interactive` の場合のみ。以下は interactive 時のフロー。
+
 ## 入力
 
 - Step1 の推論結果サマリ（内部データ）

@@ -76,7 +76,7 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 | `distillery:dist-design-system` | デザイントークン生成 + Storybook 変換 |
 | `distillery:dist-spec` | UC 単位詳細仕様 + OpenAPI/AsyncAPI + 全体横断 UX/UI 設計 |
 | `distillery:dist-spec-stories` | UC Spec + デザインシステムから Storybook Story 生成 |
-| `distillery:dist-pipeline` | 通常は全スキルを順次実行。単一feedback-request Markdownは内部でrouteして最小範囲を差分実行 |
+| `distillery:dist-pipeline` | 通常は全スキルを順次実行（デフォルト auto_adopt: ⭐推奨自動採用・完了時一括確認。`--interactive` で逐次対話）。単一feedback-request Markdownは内部でrouteして最小範囲を差分実行 |
 
 ## Installation
 
@@ -94,6 +94,21 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 ```
 
 初期要望テキストのパスを聞かれるので指定してください。7スキル（requirements〜spec の6スキル + Step6a の spec-stories）が順次実行され、`docs/` 配下に全成果物が生成されます。
+
+**対話ポリシー**: デフォルトは **auto_adopt**（確認推奨項目の⭐推奨を自動採用して完走。
+confidence: low の項目は仮採用 + `docs/todo.md` 登録とし、完了サマリで一括確認 →
+必要なら feedback request で差分修正）。従来どおり途中で逐次確認したい場合は `--interactive` を付けます。
+
+```
+/distillery:dist-pipeline --interactive
+```
+
+**Step 別モデル指定**: `docs/pipeline/pipeline-config.yaml` の `step_models` で Step ごとに
+モデルを指定できます（未作成ならデフォルト値で自動生成。既定は Step4b/6a のみ `sonnet`、他はセッション既定）。
+詳細は [pipeline-config-schema.md](skills/dist-pipeline/references/pipeline-config-schema.md) を参照してください。
+
+**通知**: 対話待ち・エラー・完了時にデスクトップ通知（音付き）が届きます。
+macOS（osascript）/ Windows（PowerShell バルーン通知）/ Linux（notify-send + paplay、未インストールならスキップ）に対応。
 
 ### 既存プロジェクトの取り込み（リバースエンジニアリング）
 
