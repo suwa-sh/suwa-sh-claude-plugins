@@ -1,18 +1,49 @@
 # プロジェクト
 
-**最終更新**: 2026-07-29 14:16:24 spec generation (specs)
+**最終更新**: 2026-07-30 12:09:00 feedback reconciliation (pipeline)
 
 ## 成果物一覧
 
 | ドメイン | 最新 | イベント数 |
 |---------|------|-----------:|
-| [USDM（要求分解）](#usdm要求分解) | [usdm/latest/](usdm/latest/) | 2 |
-| [RDRA（要件定義）](#rdra要件定義) | [rdra/latest/](rdra/latest/) | 2 |
-| [NFR（非機能要求）](#nfr非機能要求) | [nfr/latest/](nfr/latest/) | 1 |
-| [Arch（アーキテクチャ）](#archアーキテクチャ) | [arch/latest/](arch/latest/) | 3 |
-| [Infra（インフラ設計）](#infraインフラ設計) | [infra/latest/](infra/latest/) | 1 |
-| [Design（デザイン）](#designデザイン) | [design/latest/](design/latest/) | 2 |
-| [Specs（詳細仕様）](#specs詳細仕様) | [specs/latest/](specs/latest/) | 2 |
+| [USDM（要求分解）](#usdm要求分解) | [usdm/latest/](usdm/latest/) | 3 |
+| [RDRA（要件定義）](#rdra要件定義) | [rdra/latest/](rdra/latest/) | 3 |
+| [NFR（非機能要求）](#nfr非機能要求) | [nfr/latest/](nfr/latest/) | 2 |
+| [Arch（アーキテクチャ）](#archアーキテクチャ) | [arch/latest/](arch/latest/) | 4 |
+| [Infra（インフラ設計）](#infraインフラ設計) | [infra/latest/](infra/latest/) | 2 |
+| [Design（デザイン）](#designデザイン) | [design/latest/](design/latest/) | 4 |
+| [Specs（詳細仕様）](#specs詳細仕様) | [specs/latest/](specs/latest/) | 3 |
+| [Pipeline feedback run](#pipeline-feedback-run) | [pipeline/feedback-runs/](pipeline/feedback-runs/) | 1 |
+
+## Pipeline feedback run
+
+このrunは、distillery-implが公開した単一Markdownを`--recommended-auto`で処理した例です。
+外部Markdownにstage名はありません。
+
+dist-pipelineは11件の要求を11個のwork unitへ分け、7つのstageで照合しました。
+実行記録は[pipeline/feedback-runs/](pipeline/feedback-runs/)にあります。
+
+| ファイル | 内容 |
+|---|---|
+| `input.md` | 公開Markdownの不変snapshot |
+| `routing.json` | 所有stageの判定と推奨route |
+| `plan.json` | work unit、依存stage、実行順 |
+| `stage-packets/` | stageごとの入力 |
+| `status.json` | 再開点 |
+| `result.json` | 要求ごとの最終結果 |
+
+| 判定 | 件数 |
+|---|---:|
+| `merged` | 6 |
+| `deferred` | 5 |
+| `applied` | 0 |
+
+各stageは`feedback-disposition.json`を追記し、domainの`latest`を変更していません。
+未反映が5件あるため、run全体は`blocked`です。
+未反映の要求を成功として数えていません。
+
+> `usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml`には、移行前のpathが履歴として残っています。
+> 当時の内容は同eventの`source.txt`に保存されています。
 
 ## USDM（要求分解）
 

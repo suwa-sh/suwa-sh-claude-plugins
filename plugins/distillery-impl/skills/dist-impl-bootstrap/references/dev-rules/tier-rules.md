@@ -12,7 +12,7 @@ impl-config に記録する。
   `docs/design/latest/storybook-app/src/`(components / tokens / stories と依存モジュール)を
   bootstrap が実ファイル列挙で取り込んだもの(design-event.yaml はコンポーネント名と
   screen 結線の照合にのみ使う。`.imported.yaml` が取り込みの記録)
-- 不足コンポーネント・不足 variant は自作せず、design への変更要求(issues/ → change-requests/)を経由する
+- 不足コンポーネント・不足variantは自作せず、designへの変更要求（issues/ → 単一feedback draft）を経由する
 - 画面と UC の結線は design-event.yaml の `screens[].uc` が正。結線が無い UC は S1 が警告済みのはず
   (素の packages/ui 部品で組む選択がユーザー合意済みの場合のみ進む)
 - API 呼び出しは `packages/contracts/api-client`(生成物)経由。fetch/axios の直書き禁止

@@ -3,11 +3,13 @@ type: stage_completed
 uc_id: 19ec0182
 stage: S8
 payload:
-  as_built_summary: change-requests/_as-built-summary.md(ユーザー提案ワークフローの実装)
-  change_requests: 11
-  themes: dist-spec 宛 8(UC→SPECマッピング/asyncapi title/openapi enum/cross-UC依存/認証契約/予約状態/期限表記/型齟齬)+
-    dist-design 宛 2 + app-shell 1
+  mode: initial
+  as_built_summary: docs/impl/latest/19ec0182/feedback/as-built-summary.md
+  draft_path: docs/impl/latest/19ec0182/feedback/draft.md
+  feedback_id: 20260729_121600_impl_feedback_19ec0182
+  request_count: 11
+  blocker_count: 0
   learnings: 4
   proposals: skill 1 + context 1
-  note: 検収で UC→SPEC マッピング CR の欠落を検出し追補させた
+  note: 仕様起因の11件を単一feedback draftへ集約。所有stageは指定しない
 created_at: '2026-07-29T12:16:00+09:00'

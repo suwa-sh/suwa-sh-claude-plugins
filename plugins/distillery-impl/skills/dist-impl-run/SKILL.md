@@ -45,7 +45,8 @@ description: >
 ```
 S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 → S4 tier-impl(並列) → S5 verify(並列) →(blocker あり: attempt++ で S4 へ、最大 3)
-→ S6 uc-bdd → S7 atdd → S8 feedback → S9 review → completed
+→ S6 uc-bdd → S7 atdd → S8 feedback draft → S9 implementation review
+→ S8 feedback publish(要求がある場合) → completed / blocked_on_spec
 ```
 
 - **S1(uc-init)は自分で実行する**(ユーザー対話を含むため):
@@ -89,8 +90,10 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
   違いは Implementer への修正方針だけ — 「仕様に厳密に合わせる」でなく「issues 起票つきの意図的
   逸脱を許可して統合を通す」を指示する。tier 実装に触れない前提の欠落(認証ヘッダ等)だけは
   integration writer が自分の write-set(steps)内でハーネス注入する(subagent-template の注入規約)
-- **blocked_on_spec**: S8 が blocker の変更要求を出したら state を blocked_on_spec にし、
-  S9 で「仕様ブロック」レポートを出して終了(distillery 側の対応後に再開)
+- **blocked_on_spec**: S8 draft に blocker があれば、S9で実装の到達点と仕様ブロックを提示する。
+  ユーザーが現在の実装を承認した後、S8 `mode=publish`で単一feedback-request Markdownを公開し、
+  stateを`blocked_on_spec`として「distillery反映待ち」で終了する。stage routeの指定やfeedbackだけの
+  別承認は行わない。distillery側の仕様更新でinput hashが変わった後に再開する
 
 ## stage 境界の共通処理(毎 stage)
 
@@ -106,28 +109,46 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 
 ## S9 完了とレビュー依頼
 
-1. review サブエージェント完了(`S9_review_generated.done.yaml`)後、`review/index.html` を
-   `open`(macOS)/ `xdg-open`(Linux)でプレビュー表示(開けない環境ではパスを提示)。
-   この時点の state は `awaiting_review`(**UC 完了の正は `review_approved` イベント**。
-   承認前に中断しても再開時は state-schema.md の awaiting_review 分岐でここへ戻る)
-2. 「承認(completed にする)/ 差し戻し(どの stage へ戻すか)」をユーザーに問う。
-   **対話で出た指摘・条件・追加疑義の要点は、承認・差し戻しのどちらでも
-   `review/review-notes.md` に追記する**(オーケストレータの write-set。無ければ「特記なし」)
-3. 承認の扱い(**`review_approved` イベントは必ず最後に記録する** — reducer 上これが
-   UC completed の正のため、先に記録すると中断時に refresh が永久にスキップされる):
-   - 対話で指摘・条件が出た場合: S8 を `mode=refresh` で再実行(S8_feedback.done.yaml の
-     `refreshed_at` を確認)→ **更新内容の要約(変更要求の更新・追加・撤回の内訳)をユーザーに
-     再提示して最終承認を得る** → `review_approved` イベントを記録
-   - 特記なしの場合: refresh は不要。そのまま `review_approved` イベントを記録
-   - どちらの場合も**確定版 = review_approved 時点の change-requests**(status: active のもの)。
-   イベント記録後に status を completed にし、lease を削除して完了報告。
-   差し戻し → `review_rejected` イベント(payload に差し戻し先 stage)を記録し、
-   差し戻し先以降の done を `invalidated/{event_id}/` へ退避(`stage_invalidated` イベント。
-   state-schema.md「done の退避」)してから該当 stage を再実行(差し戻し理由は review-notes 経由で
-   次回の S8/S9 に引き継がれる)
-4. 完了報告には S8 の変更要求(refresh 済みの**確定版**)・learnings・提案(skill / コンテキスト)の
-   要約と、確定版 change-requests/ を dist-requirements へ渡して差分パイプラインを実行する案内を含める
-   (実装 → as-built → ヒトレビュー確定 → 仕様更新、の還流サイクルを閉じる)
+1. review サブエージェント完了（`S9_review_generated.done.yaml`）後、`review/index.html` を
+   `open`（macOS）/ `xdg-open`（Linux）で表示する。開けなければ絶対pathを提示する。この時点の
+   stateは`awaiting_review`。S9 doneと対応するstage eventには、表示したdraftの
+   `feedback_review_evidence`（feedback ID / exact bytes SHA-256 / request件数）と、表示したHTMLの
+   `implementation_review_evidence`（exact bytes SHA-256 / gate結果 / open blocker・major件数）を記録する。
+   S9 doneは資料生成済みを示すだけで、承認の正は`review_approved` event
+2. ユーザーへ、ゲート結果、Verifierの反証、実装と仕様の差分、blockerの有無を提示し、
+   **実装を承認 / 差し戻し**を問う。dist-pipelineのstage名やrouteは提示・選択させない。
+   対話で出た指摘・条件は承認・差し戻しのどちらでも`review/review-notes.md`へ記録する
+3. feedback draftへの訂正を含む指摘がある場合、`review_approved`をまだ記録せず、S8を
+   `mode=refresh`で再実行する。更新・追加・除去を確認し、S9 HTMLを再生成してから再度実装承認を得る
+4. 差し戻しの場合、`review_rejected` event（差し戻し先stageと理由）を記録し、該当stage以降のdoneを
+   `invalidated/{event_id}/`へ退避して再実行する
+5. 承認の場合、現在のdraft bytes/ID/件数をS9 doneとS9 stage eventの`feedback_review_evidence`へ、
+   現在のreview HTML bytesとgate/open finding集約を両者の`implementation_review_evidence`へexact照合する。
+   一致した場合だけ、`review_approved` eventへ`review_evidence_event_id`と両evidence mappingを記録する。
+   どちらかが不一致なら承認を記録せず、S8 refresh → S9再生成 → 再レビューへ戻る。
+   同じreview evidenceを参照するvalidなapprovalが既にあれば再追記せず再利用する。同じevidenceへの
+   複数approval、S9 eventより前のapproval event IDはfail-closedで停止する。再レビューで新しいS9 evidenceを
+   作った場合、旧approvalは履歴として残すがcurrent approvalには使わない
+   feedback要求が0件ならそのままstate=`completed`、leaseを解放して終了する
+6. 要求が1件以上ならstate=`publishing_feedback`とし、S8を`mode=publish`で実行する。公開先が未作成なら
+   draft/公開先と全親componentがcanonical UC root内のregular/non-symlinkであること、両親が同一filesystem
+   であることをfail-closedに確認してatomic renameする。公開済みpathを再開時に発見した
+   場合は`feedback_request_published` event、承認・review evidence event ID、SHAを照合し、
+   同じ処理を繰り返さない
+7. publish後、blocker 0ならstate=`completed`、blockerありなら`blocked_on_spec`としてleaseを解放する。
+   完了報告に公開Markdownのpath、feedback ID、要求件数を含め、次を1回実行する案内を出す
+
+   ```text
+   /distillery:dist-pipeline {feedback-request.md}
+   ```
+
+   推奨ルーティングを安全な範囲で自動採用したい場合は`--recommended-auto`を付ける。
+
+### 公開後の訂正
+
+公開済みMarkdownは、dist-pipelineをまだ実行していなくても編集しない。訂正が必要なら新しいdraftを
+新feedback IDで作り、front matterの`supersedes`で旧IDを参照する。その版についてS9実装レビューを
+再度承認し、S8 publishする。旧ファイルと旧`feedback_request_published` eventは残す。
 
 ## 中断・失敗時
 

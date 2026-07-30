@@ -76,7 +76,7 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 | `distillery:dist-design-system` | デザイントークン生成 + Storybook 変換 |
 | `distillery:dist-spec` | UC 単位詳細仕様 + OpenAPI/AsyncAPI + 全体横断 UX/UI 設計 |
 | `distillery:dist-spec-stories` | UC Spec + デザインシステムから Storybook Story 生成 |
-| `distillery:dist-pipeline` | 全スキルの順次実行（初期要望 or 変更要望を1コマンドで最終成果物へ） |
+| `distillery:dist-pipeline` | 通常は全スキルを順次実行。単一feedback-request Markdownは内部でrouteして最小範囲を差分実行 |
 
 ## Installation
 
@@ -111,6 +111,41 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 
 > **初期構築専用**: 既に `docs/rdra/latest/` が存在するプロジェクトには適用しません。既存モデルへの
 > 変更は差分更新モード（`/distillery:dist-requirements 変更要望テキストのパス`）を使用してください。
+
+### distillery-impl の複数フィードバックを1回で反映
+
+dist-pipelineへ渡す入力は、distillery-implが公開したMarkdownのパス1つです。
+このMarkdownが変更要求の外部正本です。
+stage名、stage別指示、レビュー情報は含めません。
+
+```text
+/distillery:dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md
+/distillery:dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md --recommended-auto
+```
+
+dist-pipelineは次の順に処理します。
+
+1. Markdownを検証し、不変な`input.md`として保存する。
+2. 各変更要求を内部work unitへ分け、所有stageを判定する。
+3. 所有stage以降の依存stageを、それぞれ最大1回実行する。
+4. 要求ごとの結果と証跡を`result.json`へ保存する。
+
+曖昧さの扱いは実行モードで決まります。
+
+| モード | 動作 |
+|---|---|
+| 既定の対話モード | 推奨案、代替案、影響、根拠を提示して回答を待つ |
+| `--recommended-auto` | 要求の意味を変えない安全なroutingだけを自動採用する |
+
+要求の再解釈、設計判断、競合、根拠不足、破壊的な範囲拡大は自動採用しません。
+回答者が内部stage名を知る必要はありません。
+
+実行記録は`docs/pipeline/feedback-runs/{feedback_id}/`へ保存します。
+中断後は外部Markdownを読み直さず、このrun directoryから再開します。
+同じfeedback IDと入力SHAの組み合わせは、保存済み証跡を検証してから再開またはno-opにします。
+
+入力書式は[feedback-request-format.md](skills/dist-pipeline/references/feedback-request-format.md)を参照してください。
+内部状態と再開条件は[feedback-run-state.md](skills/dist-pipeline/references/feedback-run-state.md)を参照してください。
 
 ### 個別実行
 
@@ -150,7 +185,7 @@ Distillery は以下の手法を統合しています:
 
 ## Data Flow
 
-各スキルは `docs/*/latest/` を介した疎結合なファイル I/O で連携します。途中のステージから再実行したり、特定ステージだけを回すことも可能です。イベント履歴は `docs/*/events/` に全て残るため、差分の追跡・ロールバック・監査が可能です。
+各スキルは `docs/*/latest/` を介した疎結合なファイル I/O で連携します。途中のステージから再実行したり、特定ステージだけを回すことも可能です。イベント履歴は `docs/*/events/` に全て残るため、差分の追跡・ロールバック・監査が可能です。feedback request runの計画・進捗・work unit適用結果は`docs/pipeline/`に保存します。
 
 ## Credits
 

@@ -3,7 +3,7 @@
  * requirements.yaml バリデータ
  *
  * Usage:
- *   node validateRequirements.js <path-to-requirements.yaml>
+ *   node validateRequirements.js <path-to-requirements.yaml> [--feedback-plan <plan.json> --feedback-stage-event <event.json>]
  *   node validateRequirements.js docs/usdm/events/20260326_000000_add_ebook_lending/requirements.yaml
  *
  * 終了コード:
@@ -17,6 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { readCanonicalJson } = require('../../dist-pipeline/scripts/canonicalJson');
 
 // ---------------------------------------------------------------------------
 // 簡易 YAML パーサー（requirements.yaml のサブセットのみ対応）
@@ -25,6 +26,25 @@ const path = require('path');
 function parseYaml(text) {
   const lines = text.split('\n');
   return parseNode(lines, 0, -1).value;
+}
+
+function parseMappingKey(rawKey) {
+  const key = rawKey.trim();
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+    throw new Error(`Unsupported mapping key: ${key || '(empty)'}`);
+  }
+  return key;
+}
+
+function setMappingKey(target, key, value) {
+  if (Object.prototype.hasOwnProperty.call(target, key)) {
+    throw new Error(`Duplicate mapping key: ${key}`);
+  }
+  target[key] = value;
+}
+
+function mergeMappings(target, source) {
+  for (const [key, value] of Object.entries(source)) setMappingKey(target, key, value);
 }
 
 function parseNode(lines, startIdx, parentIndent) {
@@ -53,7 +73,7 @@ function parseNode(lines, startIdx, parentIndent) {
       // "- key: value" 形式（オブジェクト配列の開始）
       if (itemContent.includes(':') && !itemContent.startsWith('"') && !itemContent.startsWith("'")) {
         const colonIdx = itemContent.indexOf(':');
-        const k = itemContent.slice(0, colonIdx).trim();
+        const k = parseMappingKey(itemContent.slice(0, colonIdx));
         const v = itemContent.slice(colonIdx + 1).trim();
 
         // この配列要素がオブジェクトかを判断
@@ -64,9 +84,9 @@ function parseNode(lines, startIdx, parentIndent) {
           if (nextIndent > indent && !nextContent.startsWith('- ')) {
             // 子プロパティがある → オブジェクト
             const obj = {};
-            obj[k] = parseValue(v);
+            setMappingKey(obj, k, parseValue(v));
             const child = parseNode(lines, i + 1, indent);
-            Object.assign(obj, child.value);
+            mergeMappings(obj, child.value);
             currentArray.push(obj);
             i = child.nextIdx;
             continue;
@@ -74,7 +94,7 @@ function parseNode(lines, startIdx, parentIndent) {
         }
         // 単一行オブジェクト
         const obj = {};
-        obj[k] = parseValue(v);
+        setMappingKey(obj, k, parseValue(v));
         currentArray.push(obj);
         i++;
         continue;
@@ -89,7 +109,7 @@ function parseNode(lines, startIdx, parentIndent) {
     // キー: 値
     if (content.includes(':')) {
       const colonIdx = content.indexOf(':');
-      const key = content.slice(0, colonIdx).trim();
+      const key = parseMappingKey(content.slice(0, colonIdx));
       const rawValue = content.slice(colonIdx + 1).trim();
 
       // 値が空 → 子ノード（オブジェクトまたは配列）
@@ -109,30 +129,30 @@ function parseNode(lines, startIdx, parentIndent) {
             if (nextContent.startsWith('- ')) {
               // 配列
               const arr = parseArray(lines, nextLineIdx, indent);
-              result[key] = arr.value;
+              setMappingKey(result, key, arr.value);
               i = arr.nextIdx;
               continue;
             } else if (rawValue === '>') {
               // 折りたたみスカラー
               const scalar = parseFoldedScalar(lines, i + 1, indent);
-              result[key] = scalar.value;
+              setMappingKey(result, key, scalar.value);
               i = scalar.nextIdx;
               continue;
             } else {
               // ネストオブジェクト
               const child = parseNode(lines, i + 1, indent);
-              result[key] = child.value;
+              setMappingKey(result, key, child.value);
               i = child.nextIdx;
               continue;
             }
           }
         }
-        result[key] = null;
+        setMappingKey(result, key, null);
         i++;
         continue;
       }
 
-      result[key] = parseValue(rawValue);
+      setMappingKey(result, key, parseValue(rawValue));
       i++;
       continue;
     }
@@ -165,7 +185,7 @@ function parseArray(lines, startIdx, parentIndent) {
     if (itemContent.includes(':') && !isQuotedString(itemContent)) {
       const obj = {};
       const colonIdx = itemContent.indexOf(':');
-      const k = itemContent.slice(0, colonIdx).trim();
+      const k = parseMappingKey(itemContent.slice(0, colonIdx));
       const v = itemContent.slice(colonIdx + 1).trim();
 
       if (v === '' || v === '>') {
@@ -176,10 +196,10 @@ function parseArray(lines, startIdx, parentIndent) {
           if (nextIndent > itemIndent) {
             if (v === '>') {
               const scalar = parseFoldedScalar(lines, i + 1, itemIndent);
-              obj[k] = scalar.value;
+              setMappingKey(obj, k, scalar.value);
               // 残りのプロパティ
               const child = parseNode(lines, scalar.nextIdx, itemIndent);
-              Object.assign(obj, child.value);
+              mergeMappings(obj, child.value);
               arr.push(obj);
               i = child.nextIdx;
               continue;
@@ -187,14 +207,14 @@ function parseArray(lines, startIdx, parentIndent) {
             const nextContent = lines[nextLineIdx].trimStart();
             if (nextContent.startsWith('- ')) {
               const sub = parseArray(lines, nextLineIdx, itemIndent);
-              obj[k] = sub.value;
+              setMappingKey(obj, k, sub.value);
               const child = parseNode(lines, sub.nextIdx, itemIndent);
-              Object.assign(obj, child.value);
+              mergeMappings(obj, child.value);
             } else {
               const child = parseNode(lines, i + 1, itemIndent);
-              obj[k] = parseValue(v) || child.value[k];
+              setMappingKey(obj, k, parseValue(v) || child.value[k]);
               delete child.value[k];
-              Object.assign(obj, child.value);
+              mergeMappings(obj, child.value);
               arr.push(obj);
               i = child.nextIdx;
               continue;
@@ -204,9 +224,9 @@ function parseArray(lines, startIdx, parentIndent) {
             continue;
           }
         }
-        obj[k] = null;
+        setMappingKey(obj, k, null);
       } else {
-        obj[k] = parseValue(v);
+        setMappingKey(obj, k, parseValue(v));
       }
 
       // 追加プロパティのチェック
@@ -216,7 +236,7 @@ function parseArray(lines, startIdx, parentIndent) {
         const nextContent2 = lines[nextLineIdx2].trimStart();
         if (nextIndent2 > itemIndent && !nextContent2.startsWith('- ')) {
           const child = parseNode(lines, i + 1, itemIndent);
-          Object.assign(obj, child.value);
+          mergeMappings(obj, child.value);
           arr.push(obj);
           i = child.nextIdx;
           continue;
@@ -367,6 +387,182 @@ function validate(data, schema, defs, jsonPath) {
   return errors;
 }
 
+function validateRequirementsDocument(data) {
+  const schemaPath = path.join(__dirname, 'schema-requirements.json');
+  const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+  return [
+    ...validate(data, schema, schema.$defs || {}, '$'),
+    ...validateRequirementsSemantics(data),
+  ];
+}
+
+function validateRequirementsSemantics(data) {
+  const errors = [];
+  const requirementIds = new Map();
+  const specificationIds = new Map();
+  const requirements = Array.isArray(data?.requirements) ? data.requirements : [];
+
+  for (let reqIndex = 0; reqIndex < requirements.length; reqIndex++) {
+    const requirement = requirements[reqIndex];
+    const requirementPath = `$.requirements[${reqIndex}]`;
+    const requirementId = requirement?.id;
+    if (typeof requirementId === 'string') {
+      if (requirementIds.has(requirementId)) {
+        errors.push({
+          path: `${requirementPath}.id`,
+          message: `Requirement id ${requirementId} duplicates ${requirementIds.get(requirementId)}`,
+        });
+      } else {
+        requirementIds.set(requirementId, `${requirementPath}.id`);
+      }
+    }
+
+    const requirementNumber = typeof requirementId === 'string'
+      ? /^REQ-([0-9]{3})$/.exec(requirementId)?.[1]
+      : undefined;
+    const specifications = Array.isArray(requirement?.specifications) ? requirement.specifications : [];
+    for (let specIndex = 0; specIndex < specifications.length; specIndex++) {
+      const specification = specifications[specIndex];
+      const specificationPath = `${requirementPath}.specifications[${specIndex}]`;
+      const specificationId = specification?.id;
+      if (typeof specificationId !== 'string') continue;
+      if (specificationIds.has(specificationId)) {
+        errors.push({
+          path: `${specificationPath}.id`,
+          message: `Specification id ${specificationId} duplicates ${specificationIds.get(specificationId)}`,
+        });
+      } else {
+        specificationIds.set(specificationId, `${specificationPath}.id`);
+      }
+      const specificationRequirementNumber = /^SPEC-([0-9]{3})-[0-9]{2}$/.exec(specificationId)?.[1];
+      if (requirementNumber && specificationRequirementNumber &&
+          requirementNumber !== specificationRequirementNumber) {
+        errors.push({
+          path: `${specificationPath}.id`,
+          message: `Specification id ${specificationId} must belong to ${requirementId}`,
+        });
+      }
+    }
+  }
+
+  return errors;
+}
+
+function validateFeedbackLineage(data, plan, options = {}) {
+  const errors = [];
+  const requirementsWorkUnits = (plan.work_units || [])
+    .filter(item => item.direct_stage === 'requirements');
+  const applied = options.appliedWorkUnitIds === undefined
+    ? new Set(requirementsWorkUnits.map(item => item.id))
+    : new Set(options.appliedWorkUnitIds);
+  const requirementsIds = new Set(requirementsWorkUnits.map(item => item.id));
+  for (const id of applied) {
+    if (!requirementsIds.has(id)) {
+      errors.push({ path: '$', message: `Applied work unit ${id} is not assigned to requirements` });
+    }
+  }
+  const workUnits = requirementsWorkUnits.filter(item => applied.has(item.id));
+  const allowed = new Set(workUnits.map(item => item.id));
+  const covered = new Set();
+
+  function check(source, jsonPath) {
+    // Existing, unchanged REQ/SPEC entries do not acquire lineage from the
+    // current feedback run. Only entries created or changed by an applied
+    // owner-ledger work unit carry feedback_source; the coverage gate below
+    // still requires every such work unit to appear at least once.
+    if (source === undefined || source === null) return;
+    if (typeof source !== 'object' || Array.isArray(source)) {
+      errors.push({ path: jsonPath, message: 'feedback_source must be an object when present' });
+      return;
+    }
+    const workUnitIds = Array.isArray(source.work_unit_ids) ? source.work_unit_ids : [];
+    if (typeof source.feedback_request_id !== 'string' || source.feedback_request_id.trim() === '' ||
+        !Array.isArray(source.work_unit_ids) || workUnitIds.some(id => typeof id !== 'string' || id.trim() === '')) {
+      errors.push({ path: jsonPath, message: 'feedback_source must contain a non-empty feedback_request_id and string work_unit_ids array' });
+      return;
+    }
+    if (new Set(workUnitIds).size !== workUnitIds.length) {
+      errors.push({ path: `${jsonPath}.work_unit_ids`, message: 'work_unit_ids must be unique' });
+    }
+    const touchesCurrentLineage = source.feedback_request_id === plan.feedback_request_id ||
+      workUnitIds.some(id => requirementsIds.has(id));
+    if (!touchesCurrentLineage) return;
+    if (source.feedback_request_id !== plan.feedback_request_id) {
+      errors.push({ path: `${jsonPath}.feedback_request_id`, message: `Expected ${plan.feedback_request_id}` });
+    }
+    if (workUnitIds.length === 0) {
+      errors.push({ path: `${jsonPath}.work_unit_ids`, message: 'Current feedback_source work_unit_ids must be non-empty' });
+    }
+    for (const id of workUnitIds) {
+      if (!allowed.has(id)) {
+        errors.push({ path: `${jsonPath}.work_unit_ids`, message: `Work unit ${id} is not assigned to requirements` });
+      } else {
+        covered.add(id);
+      }
+    }
+  }
+
+  for (let reqIndex = 0; reqIndex < (data.requirements || []).length; reqIndex++) {
+    const requirement = data.requirements[reqIndex];
+    check(requirement.feedback_source, `$.requirements[${reqIndex}].feedback_source`);
+    for (let specIndex = 0; specIndex < (requirement.specifications || []).length; specIndex++) {
+      check(
+        requirement.specifications[specIndex].feedback_source,
+        `$.requirements[${reqIndex}].specifications[${specIndex}].feedback_source`
+      );
+    }
+  }
+  for (const id of allowed.keys()) {
+    if (!covered.has(id)) {
+      errors.push({ path: '$.requirements', message: `Requirements work unit ${id} is not referenced by any feedback_source` });
+    }
+  }
+  return errors;
+}
+
+function deriveAppliedRequirementsWorkUnitIds(plan, stageEvent) {
+  const errors = [];
+  const plannedStage = (plan.execution_stages || []).find(item => item.id === 'requirements');
+  if (!plannedStage) return { appliedWorkUnitIds: [], errors: ['Feedback plan has no requirements execution stage'] };
+  if (!stageEvent || typeof stageEvent !== 'object' || Array.isArray(stageEvent)) {
+    return { appliedWorkUnitIds: [], errors: ['Requirements feedback stage event must be an object'] };
+  }
+  if (stageEvent.type !== 'feedback_stage_completed' || stageEvent.stage !== 'requirements') {
+    errors.push('Requirements feedback stage event must be a completed requirements event');
+  }
+  const exactArray = (left, right) => Array.isArray(left) && JSON.stringify(left) === JSON.stringify(right);
+  if (!exactArray(stageEvent.direct_work_unit_ids, plannedStage.direct_work_unit_ids)) {
+    errors.push('Requirements feedback stage event direct_work_unit_ids must exactly match the plan');
+  }
+  if (!exactArray(stageEvent.causal_work_unit_ids, plannedStage.causal_work_unit_ids)) {
+    errors.push('Requirements feedback stage event causal_work_unit_ids must exactly match the plan');
+  }
+  const lineage = stageEvent.feedback_request || {};
+  const expectedRequestIds = [...new Set((plannedStage.causal_work_unit_ids || []).map(id =>
+    (plan.work_units || []).find(item => item.id === id)?.request_id))];
+  if (lineage.feedback_request_id !== plan.feedback_request_id ||
+      lineage.input_sha256 !== plan.input_sha256 ||
+      !exactArray(lineage.request_ids, expectedRequestIds) ||
+      !exactArray(lineage.work_unit_ids, plannedStage.causal_work_unit_ids)) {
+    errors.push('Requirements feedback stage event lineage must exactly match the plan');
+  }
+  if (!Array.isArray(stageEvent.work_unit_results) ||
+      !exactArray(stageEvent.work_unit_results.map(item => item?.work_unit_id), plannedStage.direct_work_unit_ids)) {
+    errors.push('Requirements feedback stage event work_unit_results must cover direct work units in plan order');
+    return { appliedWorkUnitIds: [], errors };
+  }
+  const appliedWorkUnitIds = [];
+  for (const result of stageEvent.work_unit_results) {
+    if (!result || typeof result !== 'object' || Array.isArray(result) ||
+        !['applied', 'merged', 'deferred', 'rejected'].includes(result.disposition)) {
+      errors.push(`Requirements feedback stage event has an invalid owner disposition: ${result?.work_unit_id || '(missing)'}`);
+      continue;
+    }
+    if (result.disposition === 'applied') appliedWorkUnitIds.push(result.work_unit_id);
+  }
+  return { appliedWorkUnitIds, errors };
+}
+
 // ---------------------------------------------------------------------------
 // メイン
 // ---------------------------------------------------------------------------
@@ -374,8 +570,23 @@ function validate(data, schema, defs, jsonPath) {
 function main() {
   const args = process.argv.slice(2);
   if (args.length === 0) {
-    console.error('Usage: node validateRequirements.js <path-to-requirements.yaml>');
+    console.error('Usage: node validateRequirements.js <path-to-requirements.yaml> [--feedback-plan <plan.json> --feedback-stage-event <event.json>]');
     process.exit(2);
+  }
+  const valueOptions = new Set(['--feedback-plan', '--feedback-stage-event']);
+  const flagOptions = new Set(['--json']);
+  for (let index = 1; index < args.length; index++) {
+    const option = args[index];
+    if (flagOptions.has(option)) continue;
+    if (!valueOptions.has(option)) {
+      console.error(`Unknown option: ${option}`);
+      process.exit(2);
+    }
+    const value = args[++index];
+    if (!value || value.startsWith('--')) {
+      console.error(`${option} requires a value`);
+      process.exit(2);
+    }
   }
 
   const yamlPath = path.resolve(args[0]);
@@ -383,10 +594,6 @@ function main() {
     console.error(`File not found: ${yamlPath}`);
     process.exit(2);
   }
-
-  // スキーマ読み込み
-  const schemaPath = path.join(__dirname, 'schema-requirements.json');
-  const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
 
   // YAML 読み込み・パース
   const yamlText = fs.readFileSync(yamlPath, 'utf8');
@@ -399,7 +606,41 @@ function main() {
   }
 
   // バリデーション
-  const errors = validate(data, schema, schema.$defs || {}, '$');
+  const errors = validateRequirementsDocument(data);
+  const planIndex = args.indexOf('--feedback-plan');
+  if (planIndex >= 0) {
+    const planPath = args[planIndex + 1];
+    if (!planPath || !fs.existsSync(planPath)) {
+      console.error(`Feedback plan not found: ${planPath || '(missing)'}`);
+      process.exit(2);
+    }
+    let plan;
+    try {
+      plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+    } catch (error) {
+      console.error(`Feedback plan parse error: ${error.message}`);
+      process.exit(2);
+    }
+    const stageEventIndex = args.indexOf('--feedback-stage-event');
+    const stageEventPath = stageEventIndex >= 0 ? args[stageEventIndex + 1] : null;
+    if (!stageEventPath || !fs.existsSync(stageEventPath)) {
+      console.error(`Requirements feedback stage event not found: ${stageEventPath || '(missing)'}`);
+      process.exit(2);
+    }
+    let stageEvent;
+    try {
+      stageEvent = readCanonicalJson(stageEventPath, 'requirements feedback stage event');
+    } catch (error) {
+      console.error(`Requirements feedback stage event parse error: ${error.message}`);
+      process.exit(2);
+    }
+    const binding = deriveAppliedRequirementsWorkUnitIds(plan, stageEvent);
+    errors.push(...binding.errors.map(message => ({ path: '$', message })));
+    errors.push(...validateFeedbackLineage(data, plan, { appliedWorkUnitIds: binding.appliedWorkUnitIds }));
+  } else if (args.includes('--feedback-stage-event')) {
+    console.error('--feedback-stage-event requires --feedback-plan');
+    process.exit(2);
+  }
 
   // 結果出力
   if (errors.length === 0) {
@@ -432,4 +673,13 @@ function main() {
   }
 }
 
-main();
+module.exports = {
+  deriveAppliedRequirementsWorkUnitIds,
+  parseYaml,
+  validate,
+  validateFeedbackLineage,
+  validateRequirementsDocument,
+  validateRequirementsSemantics,
+};
+
+if (require.main === module) main();

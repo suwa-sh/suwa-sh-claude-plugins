@@ -1,80 +1,168 @@
 ---
 name: distillery-impl:dist-impl-feedback
 description: >
-  distillery-impl の還流スキル。実装セッションで見つかった仕様の問題を distillery
-  (dist-requirements の差分パイプライン)へ渡せる変更要求ファイルにまとめ、ハマりどころを learnings として
-  保存し、skill・プロジェクト CLAUDE.md へ反映すべき学びを「提案」として整理する(自動編集はしない)。
-  dist-impl-run(S8)から呼ばれるほか、「実装の学びを整理して」で単体起動もできる。
+  実装で見つかった仕様起因の問題を、1つのfeedback-request Markdownへまとめる。
+  S8はdraftを管理し、S9の承認後に同じbytesをimmutableな公開ファイルへ移す。
+  実装時の学びと改善提案も保存する。
 ---
 
 # dist-impl-feedback
 
-引数: `uc_id={id} config={impl-config.yaml へのパス} [mode=initial|refresh]`(既定 initial)
+```text
+uc_id={id} config={impl-config.yaml} [mode=initial|refresh|publish] [supersedes={feedback_id}]
+```
 
-- `mode=initial` — S8 として実行。issues / findings から変更要求・learnings をドラフトする(下記手順)。
-  **`review/review-notes.md` が存在する場合(S9 差し戻し後の再実行)は必ず入力に含め、
-  差し戻し理由・指摘をドラフトに反映する**
-- `mode=refresh` — **S9 ヒトレビュー後の最終化**。`review/review-notes.md`(承認対話で出た指摘・
-  条件・追加疑義)を読み、既存の変更要求を更新する: ①各項目を 仕様起因 / 実装起因 / 運用条件 に分類
-  ②既存変更要求の内容・severity を修正、新規は追加、不要になったものは front matter を
-  `status: withdrawn` に変更する(ファイル削除はしない。件数集計・blocker 判定・
-  dist-requirements への受け渡しから withdrawn は除外)③`_as-built-summary.md` に「ヒトレビューでの確定事項」節を追記
-  ④`S8_feedback.done.yaml` に `refreshed_at` と更新後件数を追記。
-  **dist-requirements へ渡す確定版は「review_approved 時点の change-requests(status: active)」**
-  (対話で指摘が出た場合は refresh を経てから承認される。特記なしなら initial のまま確定)
+既定modeは`initial`です。
+`supersedes`は公開済みfeedbackの訂正版を作る場合だけ指定します。
+
+| mode | 処理 |
+|---|---|
+| `initial` | issueを分類し、単一draftを作る |
+| `refresh` | review notesを同じdraftへ反映する |
+| `publish` | 承認済みdraftを同じbytesのまま公開する |
 
 ## 入力
 
-- `docs/impl/latest/{uc_id}/issues/`(Implementer / integration writer が書き捨てた仕様疑義)
-- `attempt-*/S5_verify.*.findings.yaml`(Verifier の findings。特に仕様起因のもの)
-- bootstrap / S1 の報告に含まれた矛盾検査・欠落(asyncapi 無名スキーマ、criteria 欠落 SPEC 等)
+- `docs/impl/latest/{uc_id}/issues/`
+- `docs/impl/latest/{uc_id}/stages/attempt-*/S5_verify.*.findings.yaml`
+- bootstrapとS1の矛盾または欠落
+- `docs/impl/latest/{uc_id}/review/review-notes.md`（任意）
 
-## 手順
+## draftの作成
 
-### 1. 変更要求の生成(仕様起因のものだけ)
+### 1. 原因を分類する
 
-1. issues / findings を分類する: **仕様起因**(仕様が誤り・欠落・矛盾)/ **実装起因**(実装で解決済み or
-   次 attempt で解決すべき)/ **環境起因**。変更要求にするのは仕様起因のみ
-2. **as-built ワークフロー**: 変更要求を書く前に `change-requests/_as-built-summary.md`
-   (実装が実際に満たす仕様: エンドポイント・状態遷移・ヘッダ契約・エラー応答を、
-   仕様どおり / 仕様に無い追加 / 仕様と矛盾 の差分マーカー付きで整理)を生成する。
-   **変更要求は as-built との差分として書く**(テスト通過後に as-built を根拠に変更要求を
-   ブラッシュアップ → distillery 再実行、という還流サイクルの起点)。
-   _as-built-summary.md は変更要求ではない — done の件数集計に含めない(state-schema.md)
-3. `references/change-request-format.md` のフォーマットで
-   `docs/impl/latest/{uc_id}/change-requests/{ts}_{slug}.md` を書く(1 問題 = 1 ファイル)
-4. severity が blocker の変更要求を出した場合は、その旨を結果として返す
-   (UC を `blocked_on_spec` にするかはオーケストレータが判断)
+| 分類 | 扱い |
+|---|---|
+| 仕様起因 | feedback requestへ含める |
+| 実装起因 | 次のattemptで修正し、feedback requestへ含めない |
+| 環境起因 | 実行環境の問題として記録し、feedback requestへ含めない |
 
-### 2. learnings の保存(ハマりどころ)
+分類理由と根拠pathは`feedback/as-built-summary.md`へ記録します。
+実装済みのendpoint、状態遷移、header、error responseを、仕様どおり、不足、矛盾に分けます。
+このsummaryはdist-pipelineへの入力ではありません。
 
-実装セッションで手戻り・想定外・回避策が発生した事実を
-`docs/impl/latest/{uc_id}/learnings/{ts}_{slug}.md` に 1 件 1 ファイルで書く。
-様式: **何が起きたか / なぜ(根本原因)/ どう回避したか / 次回どうすべきか** の 4 節。
-一般論・感想は書かない(再現可能な事実だけ)。
+### 2. 1つのdraftへまとめる
 
-### 3. skill / コンテキストへの学び提案(自動編集禁止)
+書式は`references/feedback-request-format.md`に従います。
+出力先は`docs/impl/latest/{uc_id}/feedback/draft.md`です。
 
-learnings のうち一般化できるものを 2 種に分けて**提案ファイル**にまとめ、結果として返す:
+- initialは`{YYYYMMDD_HHMMSS}_impl_feedback_{uc_id}`形式のfeedback IDを作る。
+- refreshはfeedback ID、created_at、既存CR IDを維持する。
+- 訂正版だけが新しいfeedback IDと`supersedes`を使う。
+- 各CRは4つの必須節だけで理解できる内容にする。
+- `related_ids`には安定した識別子を1件以上入れる。
+- stage名、routing、stage別指示は書かない。
+- review情報、承認者、入力hashはfront matterへ書かない。
 
-- **skill への提案**: distillery-impl 自身(または distillery)の SKILL.md / references を
-  どう直すべきか。`learnings/{ts}_proposal-skill.md` に「対象ファイル / 現状の記述 / 提案する変更 /
-  根拠となった出来事」を書く
-- **プロジェクトコンテキストへの提案**: 実装先リポの CLAUDE.md / dev-rules に足すべき規約。
-  `learnings/{ts}_proposal-context.md` に同様式で書く
+有効な要求が0件ならdraftを作りません。
+refreshで0件になった場合は、削除したCR IDをeventへ記録してから未公開draftを削除します。
+公開済みファイルは削除しません。
 
-**既存の SKILL.md・CLAUDE.md・dev-rules を直接編集しない**。採否はユーザー(またはオーケストレータ経由の
-ユーザー対話)に委ねる。個人環境の固有機能(特定ベンダーのメモリ機構等)に依存する表現は使わない。
+### 3. 学びを保存する
 
-### 4. done の記録
+再現できる実装上の学びは`learnings/{ts}_{slug}.md`へ保存します。
+各ファイルは「何が起きたか」「原因」「回避方法」「次回の対応」の4節を持ちます。
 
-最後に `docs/impl/latest/{uc_id}/stages/S8_feedback.done.yaml` を書く(共通スキーマ +
-固有フィールド: `change_requests: {total: N, blocker: M}` / `learnings: K` / `proposals: {skill: bool, context: bool}`)。
+一般化できる内容は次の提案ファイルへ保存します。
+
+- `learnings/{ts}_proposal-skill.md`
+- `learnings/{ts}_proposal-context.md`
+
+既存のSKILL.md、CLAUDE.md、dev-rulesは直接変更しません。
+
+### 4. S8の状態を更新する
+
+`stages/S8_feedback.done.yaml`へ次を記録します。
+
+```yaml
+feedback_request:
+  draft_path: "docs/impl/latest/{uc_id}/feedback/draft.md"
+  request_count: 0
+  blocker_count: 0
+learnings: 0
+proposals: {skill: false, context: false}
+```
+
+要求が0件なら`draft_path`を`null`にします。
+refreshは`refreshed_at`と`updated / added / removed`も記録します。
+
+## publish
+
+publishは、承認されたdraftのidentityとbytesを変えずに公開する処理です。
+承認情報を公開Markdownへ追加する処理ではありません。
+
+### 1. 承認証跡を結ぶ
+
+最新の`review_approved` eventが、最新のS9 review-generated eventを参照していることを確認します。
+両eventの`feedback_review_evidence`をexact一致させます。
+
+S9 done、S9 event、approval eventの`implementation_review_evidence`もexact一致させます。
+このevidenceはreview HTMLのSHA-256、gate結果、open blocker件数、open major件数を持ちます。
+approval直前のreview HTML bytesも同じSHA-256でなければなりません。
+
+event順はreview evidence、approval、publish started、publishedです。
+current evidenceへ複数のapprovalがある場合は停止します。
+
+### 2. pathを検証する
+
+draftと公開先は、安全なfeedback IDから導出したcanonical UC root内のpathだけを使います。
+親componentは`lstat`と`realpath`で検証します。
+親directoryとfileはsymlinkを許可しません。
+
+draftは`regular file`かつ`non-symlink`でなければなりません。
+公開先は未作成でなければなりません。
+draftと公開先の親は`same-filesystem`でなければなりません。
+
+### 3. draftを検証する
+
+draftを`no-follow`で1回だけ開きます。
+同じfile descriptorからbytesとSHA-256を取得します。
+
+次の値を承認証跡とexact一致させます。
+
+- feedback ID
+- draft SHA-256
+- request件数
+- blocker件数
+
+bytesはUTF-8、BOMなし、LF、NFCでなければなりません。
+front matter、CR ID、必須節も検証します。
+最終的な機械検証はdist-pipelineの`feedbackRequest.js`が担当します。
+
+### 4. 公開する
+
+rename前にdraftの`lstat`を再実行します。
+検証時と`device/inode/size`が一致することを確認します。
+親pathのcontainment、non-symlink、same-filesystemも再確認します。
+
+先に`feedback_request_publish_started` eventを書きます。
+eventはfeedback ID、path、input SHA-256、件数、review event IDを持ちます。
+
+次に、draftを公開先へatomic renameします。
+rename後のfileが同じdeviceとinodeを持つregular/non-symlink fileであることを確認します。
+公開先をno-followで開き、SHA-256を再確認します。
+
+最後に`feedback_request_published` eventを書きます。
+S8 doneとstatusは公開path、identity、review event ID、published_atを参照します。
+
+## 再開と訂正
+
+同じfeedback versionのpublish started eventとpublished eventは各1件だけを許可します。
+publish再開は、公開済みfileのpath、bytes、ID、件数、review lineageが一致するときだけno-opにします。
+不一致時は上書きしません。
+
+公開後の訂正では新しいfeedback IDを使います。
+新しいdraftへ`supersedes`を記録し、S9の承認をやり直します。
+旧fileと旧eventは保持します。
 
 ## 完了報告
 
-変更要求 N 件(うち blocker M 件)/ learnings K 件 / 提案 2 種の有無とパス。
-`mode=refresh` では更新・追加・撤回の内訳も報告する。
-変更要求があれば「`distillery:dist-requirements` に change-requests/ のファイルパスを渡して
-差分パイプラインを実行してください」の案内文を含める(通常は S9 承認後の refresh を経た
-確定版を渡す — ドラフト段階で渡さない)。
+initialとrefreshは、要求数、blocker数、learnings数、提案の有無、draft pathを報告します。
+publishは公開path、feedback ID、要求数、SHA-256を報告します。
+
+```text
+/distillery:dist-pipeline docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
+```
+
+安全なroutingを自動採用する場合だけ`--recommended-auto`を付けます。

@@ -97,9 +97,19 @@ contracts.lock.yaml と **bootstrap.done.yaml(P4 の記録と契約入力ハッ�
 |------|-----|
 | role | 仕様フィードバックと学びの整理 |
 | skill_name | distillery-impl:dist-impl-feedback |
-| skill_args | ` 引数: "uc_id={uc_id} config={...}"` |
-| write_set | change-requests/、learnings/、stages/S8_feedback.done.yaml |
-| additional_instructions | `issues/ と findings を読み、仕様起因のものだけを変更要求化してください。skill・CLAUDE.md への学び提案は提案ファイルに書くだけで、既存ファイルを編集しないでください。` |
+| skill_args | ` 引数: "uc_id={uc_id} config={...} mode={initial|refresh|publish} [supersedes={feedback_id}]"` |
+| write_set | initial/refresh: feedback/、learnings/、stages/S8_feedback.done.yaml / publish: feedback/draft.md、feedback-requests/、stages/S8_feedback.done.yaml、feedback_request_publish_started/published event |
+| additional_instructions | `issues/ と findings を読み、仕様起因のものだけを単一feedback draftへまとめてください。pipeline内部のstage名・振り分け・stage別処理指示は書かないでください。skill・CLAUDE.mdへの学びは提案ファイルに書くだけで、既存ファイルを編集しないでください。` |
+
+`mode=publish`では`review_approved`が参照するS9 eventと両者の`feedback_review_evidence` /
+`implementation_review_evidence`を確認し、draftのfeedback ID / exact SHA-256 / request件数と
+review HTML SHA / gate・open finding集約を照合してから公開契約を自己検査する。不一致は公開せず
+S8 refresh → S9再レビューへ戻す。別pluginへの曖昧なscript pathやproducer独自parserは使わない。
+draft/公開先の全親componentをlstat/realpathしcanonical UC root containment・non-symlinkを確認する。
+draftはregular/non-symlink、公開先は未存在、両親はsame-filesystemでなければ停止し、rename直前にも
+device/inode/sizeとpath条件を再検証して、同じbytesのまま`feedback-requests/{feedback_id}.md`へatomic
+renameする。review/approval/publish eventの一意性と順序を検証し、既存publishedはcanonical pathの
+containment・regular/non-symlink・SHA・件数・lineageのexact一致時だけno-opにする。review情報を本文へ追加しない。
 
 ### S9: review
 
@@ -109,4 +119,4 @@ contracts.lock.yaml と **bootstrap.done.yaml(P4 の記録と契約入力ハッ�
 | skill_name | distillery-impl:dist-impl-review |
 | skill_args | ` 引数: "uc_id={uc_id} config={...}"` |
 | write_set | review/index.html、stages/S9_review_generated.done.yaml |
-| additional_instructions | `前提知識ゼロの読者が合否判断できる構成にしてください(review-html-template.md)。生成後のプレビュー表示と承認対話はオーケストレータが行うので、HTML 生成と done 記録だけで完了してください。` |
+| additional_instructions | `前提知識ゼロの読者が実装の合否を判断できる構成にしてください(review-html-template.md)。仕様起因の残課題はfeedback ID/件数/pathと、各CRの事実・問題・要求・完了条件を全文（details可）で示しますが、pipeline内部の所有stage・振り分け・個別処理指示・承認hashはHTMLへ生成しないでください。表示したdraftのfeedback ID / exact bytes SHA-256 / request件数は内部のfeedback_review_evidence、HTML SHA / gate結果 / open blocker・major件数はimplementation_review_evidenceとしてS9 doneへ記録してください。生成後のプレビュー表示と承認対話はオーケストレータが行います。` |

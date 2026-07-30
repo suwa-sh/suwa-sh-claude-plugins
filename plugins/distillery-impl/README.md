@@ -1,17 +1,22 @@
 # distillery-impl
 
-distillery が生成した仕様書を入力に、「実装」を継続稼働パイプラインで回す実装ハーネス plugin です。
+distilleryが生成した仕様書から、テストと実装を作るpluginです。
+中断時は保存済みの状態から再開できます。
 
-distillery は「要望テキスト → USDM 要件 → RDRA → 仕様書(ユースケースごと・ティアごとの BDD 完了条件つき)」までを自動生成します。distillery-impl はその続きを担当します: 仕様書からテストを 4 段先に生成し、実装エージェント(Implementer)が書き、別モデルの検証エージェント(Verifier)が反証し、途中で切れても再開できる形で「動くコード」まで運びます。
+distillery-implは仕様書から4段階のテストを作ります。
+Implementerがコードを書き、別モデルのVerifierが検証します。
 
 ## 特徴
 
-- **契約駆動**: openapi / asyncapi から型・クライアント・スタブを生成し、実装はその生成物起点で書きます。frontend の UI は design(dist-design-system)が生成した Storybook コンポーネントだけを使います
-- **4 段テスト先行**: ① ATDD(USDM の受け入れ基準)② UC BDD(仕様書の E2E 完了条件)③ tier BDD(ティア完了条件)④ TDD(単体)。上 3 段は仕様の gherkin をそのまま転写し、実装前に「期待した理由で fail する」red baseline を作ります
-- **二段独立検証**: Implementer と別モデルの Verifier が 7 観点(仕様整合 / 可読性・保守性 / セキュリティ / パフォーマンス / 運用性 / 耐障害性 / リファクタリング)で反証します。自己採点を排除します
-- **ファイル駆動の冪等再開**: 状態は `docs/impl/`(events 追記 + latest スナップショット + 完了判定ファイル)。セッションが切れても未完了 stage から再開します
-- **tier 並走**: mono repo で tier ごとにディレクトリを分け、書き込み範囲(write-set)を分離して並列実装します
-- **仕様への還流**: 実装で見つけた仕様の問題は、dist-requirements の差分パイプラインへそのまま渡せる変更要求ファイルとして出力します
+- **契約駆動**：OpenAPIとAsyncAPIから型、クライアント、スタブを生成します。
+  frontendはdist-design-systemが生成したStorybook componentを使います。
+- **4段階のテスト**：ATDD、UC BDD、tier BDD、TDDの順に期待動作を固定します。
+  実装前にred baselineを確認します。
+- **独立検証**：Implementerとは別のVerifierが、仕様整合性を含む7項目を検証します。
+- **再開可能な状態管理**：`docs/impl/`へevent、snapshot、完了判定を保存します。
+- **tier並走**：tierごとにwrite-setを分けて実装します。
+- **仕様への還流**：仕様起因の問題を1つのMarkdownへまとめます。
+  dist-pipelineが所有stage、分割、依存stageを決めます。
 
 ## パイプライン
 
@@ -25,11 +30,13 @@ flowchart TD
     S5["S5 verify(tier 並走)<br/>別モデル Verifier が 7 観点で反証"]
     S6["S6 uc-bdd<br/>ゲート 5: E2E 完了条件を全 tier 結合で実行"]
     S7["S7 atdd<br/>ゲート 6: 受け入れ基準の選択実行"]
-    S8["S8 feedback<br/>as-built 仕様サマリ + 変更要求ドラフト + learnings"]
+    S8["S8 feedback<br/>as-built + 単一feedback draft + learnings"]
     S9["S9 review 💬<br/>ゼロ知識 HTML でヒトレビュー(承認対話)"]
-    REFRESH["S8 refresh<br/>ヒトレビューのやりとり(review-notes)を変更要求へ反映・最終化"]
+    REFRESH["S8 refresh<br/>review-notesを単一draftへ反映"]
+    PUBLISH["S8 publish<br/>draftを同じbytesのまま<br/>immutable Markdownへ移動"]
     DONE(["completed"])
-    DIST[["distillery<br/>dist-requirements 差分パイプライン"]]
+    BLOCKED(["blocked_on_spec<br/>distillery反映待ち"])
+    DIST[["distillery<br/>入力を解析してstageを判定<br/>各論理stage最大1回"]]
 
     S0 --> S1 --> S2 --> S3 --> S4 --> S5
     S5 -->|"blocker あり: attempt++(最大 3)<br/>無傷 tier は carry-forward"| S4
@@ -37,16 +44,20 @@ flowchart TD
     S6 -->|"fail: 原因 tier へ差し戻し<br/>(仕様不整合は issues に記録して続行)"| S4
     S6 --> S7 --> S8 --> S9
     S9 -->|"差し戻し(指定 stage へ。図は代表で S4)"| S4
-    S9 -->|"承認(指摘なし)"| DONE
-    S9 -->|"承認(指摘あり)"| REFRESH
-    REFRESH -->|"更新要約の再提示 → 最終承認"| DONE
-    REFRESH -.->|確定版の変更要求| DIST
+    S9 -->|"承認・要求なし"| DONE
+    S9 -->|"承認・要求あり"| PUBLISH
+    S9 -->|"指摘あり"| REFRESH
+    REFRESH -->|"HTML再生成"| S9
+    PUBLISH -->|"non-blocker"| DONE
+    PUBLISH -->|"blocker"| BLOCKED
+    PUBLISH -.->|feedback-request Markdown 1ファイル| DIST
     DIST -.->|仕様更新 → 次サイクル| S0
 ```
 
-💬 = ユーザー対話ポイント。破線 = 仕様への還流(実装 → as-built → ヒトレビュー確定 → distillery で仕様更新 → 次サイクル)。
-図は簡略化しています(S7 fail の分岐・blocked_on_spec 終了・S9 差し戻し先の任意 stage 指定は SKILL.md 本文が正)。
-状態ファイル・fail 時の分岐まで含めた詳細図解は [docs/workflow.html](docs/workflow.html)(ブラウザで開いてください)。
+💬は利用者の判断が必要なstageです。
+破線は、実装で見つけた仕様課題をdistilleryへ戻す流れです。
+図は主要な分岐だけを示します。
+全分岐は[workflow.html](docs/workflow.html)を参照してください。
 
 ## スキル一覧
 
@@ -76,14 +87,37 @@ flowchart TD
 /distillery-impl:dist-impl-run 書籍を貸出する
 ```
 
-進行中の対話(tier 構成の確認・UC→SPEC 対応の確定・Verifier 超過時の判断・最終承認)は
-オーケストレータが必要な時だけ発話します。
+オーケストレータは、利用者の判断が必要なときだけ質問します。
+
+仕様起因の変更要求がある場合、S8は1つのdraftへ集約します。
+S9の承認後、S8は承認済みのbytesを次の場所へ公開します。
+
+```text
+docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
+```
+
+公開Markdownにはstage名とレビュー情報を含めません。
+レビュー情報はdist-implのevent履歴へ残します。
+公開時はdraftのID、SHA-256、要求数、review evidenceを再検証します。
+不一致なら公開せず、S8 refreshとS9 reviewへ戻ります。
+
+公開後、distillery workspaceで次を実行します。
+
+```text
+/distillery:dist-pipeline {feedback-request.md}
+```
+
+所有stageが曖昧な場合、dist-pipelineは推奨案、代替案、影響、根拠を提示します。
+`--recommended-auto`は、要求の意味を変えない安全なroutingだけを自動採用します。
+それ以外は利用者の回答を待ちます。
+
+feedbackの作成と公開は[dist-impl-feedback](skills/dist-impl-feedback/SKILL.md)を参照してください。
+pipeline側の実行契約は[distillery README](../distillery/README.md#distillery-impl-の複数フィードバックを1回で反映)を参照してください。
 
 ## 設計の出自
 
-Cloudflare の Vulnerability Research Harness(VDH/VVS)の設計原則 — 二段独立検証・状態の外部化と
-冪等再開・コンテキストを絞った stage 分割・PoC 必須・モデル非依存・human-in-the-loop — を
-「脆弱性探索」から「仕様駆動実装」に転用したものです。
+Cloudflare Vulnerability Research Harnessの設計原則を、仕様駆動実装へ応用しています。
+採用した原則は、独立検証、状態の外部化、再開可能なstage分割、human-in-the-loopです。
 
 - 解説記事: [技術調査 - Cloudflare 脆弱性探索ハーネス (VDH/VVS)](https://suwa-sh.github.io/zenn-contents/articles/cloudflare-vulnerability-harness_20260619/)
 - 一次情報: [Build your own vulnerability harness — Cloudflare Blog](https://blog.cloudflare.com/build-your-own-vulnerability-harness/)

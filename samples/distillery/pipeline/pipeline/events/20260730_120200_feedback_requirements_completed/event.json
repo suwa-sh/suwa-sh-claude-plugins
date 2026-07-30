@@ -1,0 +1,248 @@
+{
+  "event_id": "20260730_120200_feedback_requirements_completed",
+  "type": "feedback_stage_completed",
+  "run_id": "feedback-run-20260730-19ec0182",
+  "attempt": 1,
+  "created_at": "2026-07-30T12:02:00+09:00",
+  "stage": "requirements",
+  "direct_work_unit_ids": [
+    "CR-19ec0182-001#1",
+    "CR-19ec0182-004#1",
+    "CR-19ec0182-005#1",
+    "CR-19ec0182-007#1",
+    "CR-19ec0182-011#1"
+  ],
+  "causal_work_unit_ids": [
+    "CR-19ec0182-001#1",
+    "CR-19ec0182-004#1",
+    "CR-19ec0182-005#1",
+    "CR-19ec0182-007#1",
+    "CR-19ec0182-011#1"
+  ],
+  "work_unit_results": [
+    {
+      "work_unit_id": "CR-19ec0182-001#1",
+      "disposition": "deferred",
+      "reason": "The authoritative cross-UC dependency representation requires a product decision before changing requirements.",
+      "artifact_refs": []
+    },
+    {
+      "work_unit_id": "CR-19ec0182-004#1",
+      "disposition": "merged",
+      "reason": "The frozen USDM and RDRA events already define the authentication contract.",
+      "artifact_refs": [
+        "usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml",
+        "rdra/events/20260729_140044_impl_feedback_19ec0182/条件.tsv"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-005#1",
+      "disposition": "merged",
+      "reason": "The frozen USDM and RDRA events already define the reservation state transition.",
+      "artifact_refs": [
+        "usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml",
+        "rdra/events/20260729_140044_impl_feedback_19ec0182/状態.tsv"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-007#1",
+      "disposition": "deferred",
+      "reason": "The idempotency conflict semantics require a product decision before changing requirements.",
+      "artifact_refs": []
+    },
+    {
+      "work_unit_id": "CR-19ec0182-011#1",
+      "disposition": "deferred",
+      "reason": "The canonical machine-readable UC-to-criterion representation requires a modeling decision.",
+      "artifact_refs": []
+    }
+  ],
+  "reconciliation_results": [
+    {
+      "work_unit_id": "CR-19ec0182-001#1",
+      "status": "blocked_by_owner",
+      "reason": "Blocked by direct owner requirements: The authoritative cross-UC dependency representation requires a product decision before changing requirements.",
+      "artifact_refs": []
+    },
+    {
+      "work_unit_id": "CR-19ec0182-004#1",
+      "status": "already_current",
+      "reason": "The frozen USDM and RDRA events already define the authentication contract.",
+      "artifact_refs": [
+        "usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml",
+        "rdra/events/20260729_140044_impl_feedback_19ec0182/条件.tsv"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-005#1",
+      "status": "already_current",
+      "reason": "The frozen USDM and RDRA events already define the reservation state transition.",
+      "artifact_refs": [
+        "usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml",
+        "rdra/events/20260729_140044_impl_feedback_19ec0182/状態.tsv"
+      ]
+    },
+    {
+      "work_unit_id": "CR-19ec0182-007#1",
+      "status": "blocked_by_owner",
+      "reason": "Blocked by direct owner requirements: The idempotency conflict semantics require a product decision before changing requirements.",
+      "artifact_refs": []
+    },
+    {
+      "work_unit_id": "CR-19ec0182-011#1",
+      "status": "blocked_by_owner",
+      "reason": "Blocked by direct owner requirements: The canonical machine-readable UC-to-criterion representation requires a modeling decision.",
+      "artifact_refs": []
+    }
+  ],
+  "work_unit_evidence_refs": [
+    {
+      "work_unit_id": "CR-19ec0182-004#1",
+      "path": "usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml",
+      "sha256": "44c42f5282879d503cb374ac4b7087c17886ec6429346556244d464de6c2a0d8"
+    },
+    {
+      "work_unit_id": "CR-19ec0182-004#1",
+      "path": "rdra/events/20260729_140044_impl_feedback_19ec0182/条件.tsv",
+      "sha256": "9987f500aaa20885a038fad208fc6428a9884949a5760e77fb96950834d28da1"
+    },
+    {
+      "work_unit_id": "CR-19ec0182-005#1",
+      "path": "usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml",
+      "sha256": "44c42f5282879d503cb374ac4b7087c17886ec6429346556244d464de6c2a0d8"
+    },
+    {
+      "work_unit_id": "CR-19ec0182-005#1",
+      "path": "rdra/events/20260729_140044_impl_feedback_19ec0182/状態.tsv",
+      "sha256": "69297fd924b6798af2414f804583f29bd27bc0aaed01a53aa916a5d25c2a5df6"
+    }
+  ],
+  "domain_event_refs": [
+    {
+      "path": "rdra/events/20260730_120200_feedback_requirements_reconciled/feedback-disposition.json",
+      "sha256": "9a88f2abed9d8b95bc5ab029089bfb2869024b9a79fd4548205161e2d1a48fb0"
+    },
+    {
+      "path": "usdm/events/20260730_120200_feedback_requirements_reconciled/feedback-disposition.json",
+      "sha256": "89c12075a43b0180775784c84b009702dc4ce66d9b68b9f9c39a547f401915c1"
+    }
+  ],
+  "post_execution_basis": {
+    "repository_head": "1ed2a1d75d26ab5abeeb20653a2a0cbc490211f5",
+    "latest_domain_event_ids": {
+      "requirements": {
+        "rdra/events": "20260730_120200_feedback_requirements_reconciled",
+        "usdm/events": "20260730_120200_feedback_requirements_reconciled"
+      },
+      "quality_attributes": {
+        "nfr/events": "20260412_154304_initial_nfr"
+      },
+      "architecture": {
+        "arch/events": "20260625_075157_domain_architecture_addition"
+      },
+      "infrastructure": {
+        "infra/events": "20260412_162437_infra_product_design"
+      },
+      "design_system": {
+        "design/events": "20260412_205245_spec_stories"
+      },
+      "spec": {
+        "specs/events": "20260729_141624_spec_generation"
+      },
+      "spec_stories": {
+        "design/events": "20260412_205245_spec_stories"
+      }
+    },
+    "domain_event_root_snapshots": {
+      "rdra/events": {
+        "head_event_id": "20260730_120200_feedback_requirements_reconciled",
+        "head_event_sha256": "3032fa0d9df1800a8f6e4062e4a621cec655ffb22793be4e794e17d31be1e773",
+        "event_ids": [
+          "20260412_140535_initial_build",
+          "20260729_140044_impl_feedback_19ec0182",
+          "20260730_120200_feedback_requirements_reconciled"
+        ],
+        "event_set_sha256": "fb02a62ba321c68436a145b7c62fcad48b61ddd068eee662632d44fd06764a5b",
+        "latest_tree_sha256": "154aac4a2b521990d3ef4c94d0c500b1c48ccf31ae518c70779dee52876fcb5d"
+      },
+      "usdm/events": {
+        "head_event_id": "20260730_120200_feedback_requirements_reconciled",
+        "head_event_sha256": "81706a023193e3830e3092acecb75dfeecf3b82a1cc9b25b1b42454378ac7c1b",
+        "event_ids": [
+          "20260412_140535_initial_build",
+          "20260729_140044_impl_feedback_19ec0182",
+          "20260730_120200_feedback_requirements_reconciled"
+        ],
+        "event_set_sha256": "fb02a62ba321c68436a145b7c62fcad48b61ddd068eee662632d44fd06764a5b",
+        "latest_tree_sha256": "c4d2f8b610c93f2580905e12705c949a613e7887517df8925d0c3fafab8362b1"
+      },
+      "nfr/events": {
+        "head_event_id": "20260412_154304_initial_nfr",
+        "head_event_sha256": "a793e19c74c744396c8e11e1c5100e52715761bccbf4b0dece28cd5ea140bd7d",
+        "event_ids": [
+          "20260412_154304_initial_nfr"
+        ],
+        "event_set_sha256": "9bec790377e5b71552b77144916df3ee4d8dceeae034a2f5eb8b167607faa908",
+        "latest_tree_sha256": "09657cf163f38932c4f440f03da85b1fa2938e41b9f40b748fd51746d4e77214"
+      },
+      "arch/events": {
+        "head_event_id": "20260625_075157_domain_architecture_addition",
+        "head_event_sha256": "5ab2779811d808dc3a3741470f9cf5fb57ad0089771780eb89fa8ca23e2060f2",
+        "event_ids": [
+          "20260412_161337_initial_arch",
+          "20260412_164019_arch_infra_feedback",
+          "20260625_075157_domain_architecture_addition"
+        ],
+        "event_set_sha256": "ab7f54b84331ddec4d4e090d76299124764b032dc0ad5400806863f12f95ead5",
+        "latest_tree_sha256": "39fc13d5186f330ea36ae1efd7e2d8beb514a8cb0b3efd8ee95172fd489f37e7"
+      },
+      "infra/events": {
+        "head_event_id": "20260412_162437_infra_product_design",
+        "head_event_sha256": "a9a2fb51ebf653482dc988c3a6420e9b420ef514ffcc715cff6af6f858ae680d",
+        "event_ids": [
+          "20260412_162437_infra_product_design"
+        ],
+        "event_set_sha256": "6cd404e2f2aa9ed8e59e41e9e25d88aefc9579ccf540f531eed4ec4d551b786d",
+        "latest_tree_sha256": "a9a2fb51ebf653482dc988c3a6420e9b420ef514ffcc715cff6af6f858ae680d"
+      },
+      "design/events": {
+        "head_event_id": "20260412_205245_spec_stories",
+        "head_event_sha256": "6116a40b64840438a04490c0a59d851d7f9d7201240ca5b5f5092939b2f67d4f",
+        "event_ids": [
+          "20260412_164650_design_system",
+          "20260412_205245_spec_stories"
+        ],
+        "event_set_sha256": "d4af5d54e1620c04a21051fbf0dce0503eb768acca08e9d10ced6819100fff3a",
+        "latest_tree_sha256": "375aa76214eb3beea3a2453a80a987c8913f18c2b9518990861e3e27bae27c02"
+      },
+      "specs/events": {
+        "head_event_id": "20260729_141624_spec_generation",
+        "head_event_sha256": "9174c6801ca9fbc5b71d0372205818718705ded7cd4ce0622f6958bbaa61a746",
+        "event_ids": [
+          "20260412_195542_spec_generation",
+          "20260729_141624_spec_generation"
+        ],
+        "event_set_sha256": "0097751bd56abf8eaae6c09b9a47242f652c982e3ec8653c6be8297c66a5047a",
+        "latest_tree_sha256": "2ceb5c2ba649e8799f354a7e65cd0520283117882175403ac814437e6bc00df1"
+      }
+    }
+  },
+  "feedback_request": {
+    "feedback_request_id": "20260729_121600_impl_feedback_19ec0182",
+    "input_sha256": "5b4dc4155b3d6aed830334dde78a0df21187dc84e93b70632c40b4b484a891f2",
+    "request_ids": [
+      "CR-19ec0182-001",
+      "CR-19ec0182-004",
+      "CR-19ec0182-005",
+      "CR-19ec0182-007",
+      "CR-19ec0182-011"
+    ],
+    "work_unit_ids": [
+      "CR-19ec0182-001#1",
+      "CR-19ec0182-004#1",
+      "CR-19ec0182-005#1",
+      "CR-19ec0182-007#1",
+      "CR-19ec0182-011#1"
+    ]
+  }
+}

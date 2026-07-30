@@ -1,5 +1,47 @@
 # Event Sourcing Rules (Spec)
 
+## Feedback request lineage
+
+`feedback_packet` 指定時も既存のトリガー説明を`source.txt`の先頭に保ち、その後へfeedback identityと
+packet pathを追記する。参照されるspec-event.yamlには次のcanonical envelopeをexactに記録する。
+
+```yaml
+feedback_request:
+  feedback_request_id: "{feedback_id}"
+  input_sha256: "{run/input.md sha256}"
+  request_ids: ["CR-..."]
+  work_unit_ids: ["CR-...#1"]
+```
+
+4キーだけをこの順序・2-space indentで置き、値は`JSON.stringify`互換のquoted scalar / inline arrayにする。
+`request_ids`はcausal work unitから導いた一意な要求ID、`work_unit_ids`は`causal_work_unit_ids`そのものを
+plan順で記録する。direct集合・packet pathはenvelopeへ追加せず、必要なら別top-level field、`source.txt`、
+controller stage eventへ記録する。`_changes.md`にも同じlineageを人が読める形で残す。
+CR本文は`run/input.md`の対象byte sliceが正本であり、event側へ複製しない。
+
+## Feedback controller checkpoint
+
+stage skillはdomain eventとlatest更新を行い、controllerがstage ledgerとexecution basisを確定する。
+
+成功時の`work_unit_results`はdirect集合、`reconciliation_results`はcausal集合をplan順でexactly once覆う。
+
+直接ownerの対応は`applied→changed`、`merged→already_current`、`deferred|rejected→blocked_by_owner`である。
+
+`work_unit_evidence_refs`は`changed | already_current`の全work-unit/artifact pairをpathとactual SHA-256でexactに覆う。
+
+changedが0件なら、当該stageの各catalog domain rootへ`feedback-disposition.json`だけを持つeventを1件追記し、`latest/`を変更しない。
+
+changedが1件以上なら全domain rootをnormal eventまたはno-change manifestで覆い、少なくとも1rootの`latest/`を更新する。
+
+failed時は`work_unit_results / reconciliation_results / work_unit_evidence_refs / domain_event_refs`を空配列にする。
+
+controllerはeventの`created_at / run_id / attempt / post_execution_basis`をartifact rootから確定し、stage返却値をそのまま信頼しない。
+
+root snapshotは全event ID集合、head event tree、latest treeをhashする。
+
+過去のnon-head event tree全体は再hashしないため、参照した過去artifactはevidence refの個別SHA-256でbindする。
+
+
 Spec の変更をイベントとして記録し、スナップショットを逐次更新する方式。
 UC 単位の差分イベント + latest マージ + cross-cutting 後付け方式を採用する。
 

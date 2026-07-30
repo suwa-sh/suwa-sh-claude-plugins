@@ -17,12 +17,18 @@ requirements:
     requirement: "要求の記述（何を実現したいか）"
     reason: "この要求が必要な理由（なぜ必要か）"
     priority: "must | should | could"
+    feedback_source:                    # feedback request mode のみ
+      feedback_request_id: "20260730_120000_impl_feedback_19ec0182"
+      work_unit_ids: ["CR-19ec0182-001#1"]
     specifications:
       - id: "SPEC-001-01"
         specification: "仕様の記述（どのように実現するか）"
         acceptance_criteria:
           - "受け入れ基準1"
           - "受け入れ基準2"
+        feedback_source:                # このSPECへ統合した内部work unitを保持
+          feedback_request_id: "20260730_120000_impl_feedback_19ec0182"
+          work_unit_ids: ["CR-19ec0182-001#1"]
         affected_models:
           - type: "actor | information | state | buc | condition | variation | external_system | business_policy"
             action: "add | modify | delete"
@@ -75,6 +81,14 @@ requirements:
 
 - 仕様が正しく実現されたかを判定するための基準
 - BDD の Given/When/Then 形式を推奨するが、自然言語でも可
+
+### feedback_source（feedback request mode のみ）
+
+- owner ledgerで`applied`となるwork unitが生成・変更した各REQ/SPECから、元のfeedback requestと内部work unitへ
+  逆引きするための必須メタデータ
+- 1つのREQ/SPECへ複数work unitを統合した場合はIDをすべて列挙する
+- `merged`/`deferred`/`rejected`のwork unitや既存の無変更REQ/SPECへ、現在runの値を追加しない
+- 通常の要望テキスト mode では省略する
 
 ## ディレクトリ配置
 

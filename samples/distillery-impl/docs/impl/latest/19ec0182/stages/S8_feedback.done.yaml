@@ -2,49 +2,35 @@ stage: "S8"
 uc_id: "19ec0182"
 manifest_sha256: "8779db1c3f7c2a0494126d30465bd592143c2b91d2d07bdc1fd0c9d05a164dff"
 result: pass
-change_requests:
-  total: 11
-  blocker: 0
-  spec_gap: 8
-  improvement: 3
+feedback_request:
+  draft_path: null
+  request_count: 11
+  blocker_count: 0
+  spec_gap_count: 8
+  improvement_count: 3
+  published_path: "docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md"
+  feedback_id: "20260729_121600_impl_feedback_19ec0182"
+  input_sha256: "5b4dc4155b3d6aed830334dde78a0df21187dc84e93b70632c40b4b484a891f2"
+  review_approved_event_id: "20260729_123000_review_approved"
+  review_evidence_event_id: "20260729_122500_s9_review_generated"
+  published_at: "2026-07-29T12:30:02+09:00"
 learnings: 4
 proposals:
   skill: true
   context: true
 files_created:
-  - "docs/impl/latest/19ec0182/change-requests/_as-built-summary.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_115504_cross_uc_api_dependency_undeclared.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_115505_asyncapi_payload_title_missing.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_115506_openapi_enum_key_syntax_error.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_115507_auth_header_contract_undefined.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_115508_reservations_spec_incomplete.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_115509_storybook_skeleton_spinner_missing.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_115510_idempotency_conflict_semantics_contradiction.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_115511_due_date_format_inconsistency.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_115512_onload_return_type_mismatch.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_115513_app_shell_router_missing.md"
-  - "docs/impl/latest/19ec0182/change-requests/20260729_121500_uc_spec_machine_readable_mapping_missing.md"
+  - "docs/impl/latest/19ec0182/feedback/as-built-summary.md"
+  - "docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md"
   - "docs/impl/latest/19ec0182/learnings/20260729_120001_express_dependency_single_writer_constraint.md"
   - "docs/impl/latest/19ec0182/learnings/20260729_120002_tsnode_esm_relative_import_resolution.md"
   - "docs/impl/latest/19ec0182/learnings/20260729_120003_generated_contract_barrel_syntax_error_workaround.md"
   - "docs/impl/latest/19ec0182/learnings/20260729_120004_macos_case_insensitive_filename_self_import_collision.md"
   - "docs/impl/latest/19ec0182/learnings/20260729_120005_proposal-skill.md"
   - "docs/impl/latest/19ec0182/learnings/20260729_120006_proposal-context.md"
-  - "docs/impl/latest/19ec0182/stages/S8_feedback.done.yaml"
 notes: >-
-  issues/ 11ファイル(uniqueなissue事実としては13起票のうち一部は同一issueへの追記)と
-  attempt-1〜3のS5 findings(tier-backend-api/tier-frontend各3回)を全件読了し、仕様起因/実装起因/
-  環境起因に分類した。仕様起因の11件を変更要求化(blocker 0・spec-gap 8・improvement 3。全ゲート
-  通過済みのためblocker級は無し)。express依存のwrite-set制約・ts-node ESM解決・契約barrel構文
-  エラー回避・macOSファイル名大文字小文字衝突の4件は実装起因/環境起因のためlearningsに記録し、
-  変更要求化しなかった。skill/コンテキストへの提案は2種とも learnings/ 配下の提案ファイルにのみ
-  記載し、既存のSKILL.md・CLAUDE.md・dev-rulesは一切編集していない。issues/・findings.yamlの原本も
-  無編集。オーケストレータ検収により既知テーマ①「UC→SPEC 機械可読マッピングの出力」の変更要求が
-  当初欠落していたため追補(20260729_121500)。根拠は S1イベント
-  docs/impl/events/20260729_095000_s1_uc_init_completed/event.yaml の finding、および
-  usdm/latest/requirements.yaml の実データ(affected_modelsキーはtarget、SPEC-002-02はbuc
-  エントリ無し、SPEC-001-01は2UC分のacceptance_criteriaを含む)で裏付け済み。severityは
-  「実装は回避策(ユーザー確認によるhuman-in-the-loop)で進められるが仕様に欠落がある」に該当する
-  ためspec-gapと判断した。
+  issuesとattempt-1〜3のfindingsを分類し、仕様起因の11件を単一Markdownへ集約した。
+  実装起因・環境起因の4件はlearningsへ保存した。S9の実装承認後、strict contractを自己検査した
+  draftを同じbytesのままimmutableなfeedback-request pathへ移動した。stage割当ては含めていない。
 completed_at: "2026-07-29T12:10:00+09:00"
+published_at: "2026-07-29T12:30:02+09:00"
 completed_by: "dist-impl-feedback"

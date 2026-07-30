@@ -34,9 +34,9 @@ docs/impl/
         S9_review_generated.done.yaml   # HTML 生成の完了(承認は含まない)
       invalidated/{event_id}/         # 無効化した done の退避先(stage_invalidated と対)
       issues/{ts}_{slug}.md
-      change-requests/_as-built-summary.md   # S8 が変更要求の前に生成する as-built 仕様サマリ
-                                             # (変更要求ではない — 件数集計・S9 の変更要求一覧から除外)
-      change-requests/{ts}_{slug}.md
+      feedback/as-built-summary.md     # S8が要求を書く前に生成する実装事実。handoff入力ではない
+      feedback/draft.md                # S8 initial/refreshの単一mutable draft。publish時に移動
+      feedback-requests/{feedback_id}.md # S9実装承認後に公開するimmutableなdist-pipeline入力
       learnings/{ts}_{slug}.md
       review/index.html
       review/review-notes.md          # S9 承認対話の要点(オーケストレータが追記。S8 refresh の入力)
@@ -69,7 +69,7 @@ event_id: "20260801_103000_s4_tier_impl_completed"
 type: stage_started | stage_completed | stage_failed | attempt_opened |
       stage_carried_forward | stage_invalidated | config_confirmed |
       finding_reported | finding_resolved | review_approved | review_rejected |
-      bootstrap_completed | change_request_issued
+      bootstrap_completed | feedback_request_publish_started | feedback_request_published
 uc_id: "3f9a2b1c"          # グローバルイベント(bootstrap 等)では null
 stage: "S4"                 # 該当する場合のみ
 tier: "tier-backend-api"    # 該当する場合のみ
@@ -82,23 +82,61 @@ created_at: "2026-08-01T10:30:00+09:00"
 `stage_completed` → 対応する done ファイルを再生成 / `attempt_opened` → attempt カウンタを進める /
 `stage_carried_forward`(payload: 元 attempt・tier・元 done の sha256)→ 新 attempt に
 `carried_from` 付き done を再生成 / `stage_invalidated`(payload: 対象 stage 範囲・理由・退避先)→
-該当 done を無効化 / `config_confirmed`(payload: 確定項目の before→after・confirmed_by)→
-impl-config.yaml / uc-map.yaml の該当項目を確定値で上書き / `review_approved` → UC を completed にする。
-`latest/` と食い違ったら events が正。
+該当 done を無効化 / `config_confirmed`（payload: 確定項目のbefore→after・confirmed_by）→
+impl-config.yaml / uc-map.yamlの該当項目を確定値で上書き / `review_approved` → 参照先S9 eventと
+`feedback_review_evidence`および`implementation_review_evidence`が一致する場合だけ、request 0件なら`completed`、1件以上なら
+`publishing_feedback`へ進む。
+
+`feedback_request_publish_started`（stage: `S8`、payload: feedback_id / path / input_sha256 /
+request_count / blocker_count / supersedes / review_approved_event_id / review_evidence_event_id）→
+承認済みdraftのimmutable公開を予約する。request/blocker件数は承認済みexact bytesから再計算し、mutableな
+S8 doneの旧集計を信頼しない。次にdraftを公開先へatomic renameし、
+`feedback_request_published`（同じidentity + review lineage + published_at）→ blocker 0なら`completed`、1件以上なら
+`blocked_on_spec`へ進む。reviewerや承認時刻はfeedback fileへ転記しない。`latest/`と食い違ったらeventsが正。
 
 **done の退避(invalidate)**: review_rejected・stale 検知などで done を無効化するときは、
 オーケストレータが**先に `stage_invalidated` イベント(payload: 対象 done 一覧・退避先)を追記し、
 その後に** `latest/{uc_id}/invalidated/{event_id}/` へ該当 done を移動する
 (「イベント追記 → latest 更新」の順序原則と同じ。削除しない。この移動はオーケストレータの write-set に含まれる)。
 
-**S8 refresh**(S9 承認対話のヒトレビュー反映。`review_approved` の**前**に実行する)は
+**S8 refresh**（S9承認対話の指摘反映。`review_approved`の**前**に実行する）は
 `stage_completed`(stage: S8、payload: `{mode: refresh, refreshed_at, updated: N, added: M,
-withdrawn: K}`)を追記し、`S8_feedback.done.yaml` に `refreshed_at` と更新後件数を追記する
-(done の作り直しはしない。latest はこの payload から再構築可能)。
+removed: K}`)を追記し、`S8_feedback.done.yaml` に `refreshed_at` と更新後件数を追記する
+(done の作り直しはしない。latest はこの payload から再構築可能)。request 0件になった場合は、このeventを
+先に記録してから未公開の`feedback/draft.md`だけを削除し、doneの`draft_path: null`とする。
 
-**UC 完了の正は `review_approved` イベント**(S9 の done は「HTML 生成済み」まで)。
-S9_review_generated.done.yaml があり review_approved が無い状態 = `awaiting_review`。
+**S9 review evidence**: S9 doneと対応する`stage_completed` eventは、HTMLへ表示したdraftの
+`feedback_review_evidence: {feedback_id, draft_sha256, request_count}`を持つ。draftがない場合は
+`{feedback_id: null, draft_sha256: null, request_count: 0}`とする。done/event間でexact一致しなければ
+レビュー資料を有効にしない。さらに、表示したHTMLのexact bytesと実装判断の集約を
+`implementation_review_evidence: {review_html_sha256, gate_result, open_blocker_count, open_major_count}`へ
+記録する。S9 done / S9 event / current HTMLでこのmappingが一致しなければレビュー資料を有効にしない。
+
+**実装承認の正は `review_approved` event**（S9 doneはHTML生成済みまで）。承認eventはpayloadに
+`review_evidence_event_id`と、その参照先S9 eventとexact一致する`feedback_review_evidence`および
+`implementation_review_evidence`を持つ。承認直前のdraft identity/hash/count、review HTML SHA、
+gate/open finding集約とも一致しなければeventを追記せず、S8 refresh → S9再生成 →
+再レビューへ戻る。S9_review_generated.done.yamlがあり、validな`review_approved`が無ければ`awaiting_review`。
+同じreview evidenceを参照するapprovalは高々1件で、S9 eventより後のevent IDを持つ。validなapprovalが
+既にあれば再利用する。再レビューで新しいS9 evidenceを作った場合は旧approvalを履歴として残し、最新S9
+evidenceを参照するapprovalだけをcurrentとする。同じevidenceへの重複approvalは自動選択せず停止する。
 `review_rejected` イベントは payload に差し戻し先 stage を持ち、該当 stage 以降の done を退避して再実行する。
+
+**publishの再開**: `feedback_request_publish_started`だけがある場合、started eventが参照するapprovalと
+S9 evidenceのlineage、両review evidence、feedback identity/count/SHAを再検証する。draftと公開先は
+canonical UC rootから固定導出し、全親componentがdirectory/non-symlinkでrealpath containmentを満たすこと、
+本体がregular/non-symlink、draftと公開先親がsame-filesystemであることを毎回`lstat`/`realpath`で確認する。
+draftがあれば承認済みSHAとの一致とrename直前のdevice/inode/size再照合後にatomic renameを続行する。
+draftが無く公開先があれば公開先をno-followで開いてSHAを検証し、`feedback_request_published`を追記する。
+両方無い、両方ある、SHAが違う場合は停止する。published eventがあれば承認対話やpublishへ戻らない。
+publish started/publishedはfeedback versionごとに各高々1件とし、event ID順を
+S9 review evidence < approval < publish started < publishedに固定する。published eventからのno-opは、
+canonical公開pathの親component containmentとregular/non-symlinkが成立し、記録SHA/ID/count/review lineageと
+exact一致する場合だけ許す。別path、
+欠落、改変、重複・競合eventは上書きや再publishで修復せず停止する。
+
+**公開後の訂正**: 公開Markdownは編集しない。新feedback IDのdraftを作り、front matterの`supersedes`で
+旧IDを示す。新しいS9レビュー承認とpublish eventを記録し、旧file/eventを残す。
 
 ## impl-config.yaml
 
@@ -279,7 +317,7 @@ uc_id: "3f9a2b1c"
 business: "貸出管理業務"
 buc: "貸出管理フロー"
 uc: "書籍を貸出する"
-state: running | blocked_on_spec | awaiting_review | completed
+state: running | blocked_on_spec | awaiting_review | publishing_feedback | completed
 current_attempt: 1
 resolved_models: {implementer: "...", verifier: "..."}   # 起動時に記録。同一なら停止して確認
 stages:
@@ -315,6 +353,14 @@ completed_by: "dist-impl-implement@{plugin_version}"   # 書いた skill 名 + p
                               # version を実行時に読む(SKILL.md への埋め込みはしない — 正本は plugin.json のみ)
 ```
 
+S9 doneはトップレベルに`feedback_request_count`と`open_blocker_count`、および表示したdraftを結ぶ
+`feedback_review_evidence: {feedback_id, draft_sha256, request_count}`と、表示したHTMLと判断根拠を結ぶ
+`implementation_review_evidence: {review_html_sha256, gate_result, open_blocker_count, open_major_count}`を持つ。
+S8 initial/refreshのdoneは `feedback_request: {draft_path, request_count, blocker_count}`を持つ。
+publish後は同じmappingへ`published_path`、`feedback_id`、`input_sha256`、`review_approved_event_id`、
+`review_evidence_event_id`、`published_at`を追加し、
+`draft_path: null`とする。reviewer情報やstage routeは持たない。
+
 **attempt の carry-forward**: attempt++ で S4 を再実行するのは blocker のあった tier だけ。
 blocker の無かった tier については、オーケストレータが `stage_carried_forward` イベントを記録した上で
 新 attempt ディレクトリに `carried_from: attempt-{n}` 付きの S4 done をコピー生成する
@@ -334,9 +380,13 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
    tier ごとに。carry-forward done も有効な done として扱う)
 5. 各 done の `manifest_sha256` を(再計算後の)input-manifest と照合 → 不一致は「stale」として該当 stage 以降を再実行対象に
 6. status.yaml を done ファイル群 + events から再構築して上書き
-7. **awaiting_review の分岐**: S9_review_generated.done.yaml があり `review_approved` イベントが無ければ、
-   stage 実行ではなく「プレビュー再表示 + 承認対話」から再開する。`review_rejected` があれば
-   その payload の差し戻し先 stage から再開する
+7. **S9以後の分岐**: S9 doneがありvalidな`review_approved`が無ければ「プレビュー再表示 + 実装承認対話」へ
+   戻る。approvalのS9 event参照、done/event/approvalの両review evidence、current draft/HTML hashのどれかが
+   不一致ならS8 refresh → S9再生成へ戻る。`review_rejected`があれば差し戻し先stageから再開する。
+   validな`review_approved`がありrequest 1件以上で
+   published eventが無ければ`dist-impl-feedback mode=publish`から再開する。publish started eventがあれば
+   上記の再開規則でdraft/publicationのどちらを継続するか判定する。published eventがあれば
+   blocker件数に応じて`completed`または`blocked_on_spec`へ復元する
 8. 未完了の最初の stage から再開。中間生成物は削除しない
 
 ## 書き込み権限(write-set)の正本
@@ -348,7 +398,7 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
 | S4 Implementer(tier 別) | 自 tier の dir 配下、`attempt-{n}/S4_*.{自tier}.done.yaml`、issues/ |
 | S5 Verifier(tier 別) | `attempt-{n}/S5_*.{自tier}.done.yaml`、`.findings.yaml` のみ(**実装コードの修正禁止**) |
 | S6/S7 integration writer(直列) | `features/uc/`、`features/atdd/`(uc タグ付与を含む)、integration 用 step definitions、`S6/S7 done` |
-| S8 feedback | issues/ の読取、change-requests/、learnings/、`S8_feedback.done.yaml` |
+| S8 feedback | issues/の読取、feedback/、feedback-requests/、learnings/、`S8_feedback.done.yaml`。publish時だけ`feedback_request_publish_started/published` eventを追記可 |
 | S9 review | review/index.html、`S9_review_generated.done.yaml` |
 
 **git 操作はオーケストレータのみ**。サブエージェントは git を実行してはならない(Bash 含む)。

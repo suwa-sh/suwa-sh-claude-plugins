@@ -105,4 +105,9 @@
 - ID は連番で振る（REQ-001, REQ-002, ..., SPEC-001-01, SPEC-001-02, ...）。`docs/usdm/latest/requirements.yaml` が存在する場合は、既存 ID と重複しないよう、最大の既存 ID の次の番号から採番する
 - 受け入れ基準は具体的かつ検証可能な記述にする
 - affected_models は漏れなく記述する — 1つの仕様が複数のモデルに影響する場合はすべて列挙する
+- `feedback_packet` 指定時は`allowed_work_unit_ids`を保持し、`applied`として返すwork unitで生成・変更した
+  各REQ/SPECに`feedback_source: {feedback_request_id, work_unit_ids}`を必ず付ける。複数work unitを
+  1要求へ統合した場合も元IDを省略しない。`merged`/`deferred`/`rejected`として返すwork unitでは
+  REQ/SPECを変更せず、現在runの`feedback_source`を追加しない。`source.txt`にはfeedback request ID +
+  work unit ID + packet pathを記録する
 - 推測で仕様を追加しない — 変更要望に記述された内容のみから仕様を導出する

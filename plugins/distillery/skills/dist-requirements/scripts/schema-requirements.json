@@ -54,6 +54,7 @@
           "type": "string",
           "enum": ["must", "should", "could"]
         },
+        "feedback_source": { "$ref": "#/$defs/feedback_source" },
         "specifications": {
           "type": "array",
           "minItems": 1,
@@ -78,10 +79,26 @@
           "minItems": 1,
           "items": { "type": "string", "minLength": 1 }
         },
+        "feedback_source": { "$ref": "#/$defs/feedback_source" },
         "affected_models": {
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "#/$defs/affected_model" }
+        }
+      }
+    },
+    "feedback_source": {
+      "type": "object",
+      "required": ["feedback_request_id", "work_unit_ids"],
+      "properties": {
+        "feedback_request_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+        },
+        "work_unit_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^CR-[A-Za-z0-9._-]+#[1-9][0-9]*$" }
         }
       }
     },
