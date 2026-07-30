@@ -8,7 +8,9 @@ Implementerがコードを書き、別モデルのVerifierが検証します。
 
 ## 特徴
 
-- **契約駆動**：OpenAPIとAsyncAPIから型、クライアント、スタブを生成します。
+- **契約駆動**：tier間の依存面を契約として宣言し、型、クライアント、スタブを生成します。
+  契約種別はレジストリ方式で追加できます（OpenAPI / AsyncAPI / RDBスキーマを同梱。
+  data pipelineが作るmartをbackendがread modelとして読む、といったテーブルレイアウト契約も扱えます）。
   frontendはdist-design-systemが生成したStorybook componentを使います。
 - **4段階のテスト**：ATDD、UC BDD、tier BDD、TDDの順に期待動作を固定します。
   実装前にred baselineを確認します。
@@ -25,7 +27,7 @@ flowchart TD
     S0["S0 bootstrap<br/>実装リポ骨格 + 契約 codegen + ATDD feature 生成(冪等)"]
     S1["S1 uc-init 💬<br/>UC 解決・入力の固定・UC→SPEC 対応のユーザー確認"]
     S2["S2 test-scaffold<br/>4 段テストの足場と red baseline"]
-    S3["S3 contracts<br/>契約の鮮度照合(stale なら再生成)"]
+    S3["S3 contracts<br/>契約の鮮度照合 + 実装時検証(確定してから並走)"]
     S4["S4 tier-impl(tier 並走)<br/>ゲート 1〜4: format / lint / TDD / tier BDD"]
     S5["S5 verify(tier 並走)<br/>別モデル Verifier が 7 観点で反証"]
     S6["S6 uc-bdd<br/>ゲート 5: E2E 完了条件を全 tier 結合で実行"]

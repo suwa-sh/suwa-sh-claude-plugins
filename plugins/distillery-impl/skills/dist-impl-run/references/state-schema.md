@@ -147,7 +147,8 @@ repo_root: "impl"                      # 実装先リポのルート(相対 or �
 tiers:                                 # 実装 tier の宣言(architecture tier と別概念)
   - id: tier-frontend
     dir: frontend
-    kind: frontend                     # frontend | backend | worker。read-set 分岐・tier-rules 適用の機械可読キー
+    kind: frontend                     # frontend | backend | worker | data-pipeline | cli | mcp-server。
+                                       # read-set 分岐・tier-rules 適用の機械可読キー
     lang: typescript                   # (tier id からの推測はしない。P2 でユーザー確認して確定する必須項目)
     commands: {format_check: "...", lint: "...", test: "...", bdd: "..."}
   - id: tier-backend-api
@@ -155,7 +156,22 @@ tiers:                                 # 実装 tier の宣言(architecture tier
     kind: backend
     lang: typescript
     commands: {format_check: "...", lint: "...", test: "...", bdd: "..."}
-datastore_owner: tier-backend-api      # migration/schema 資産の所有 tier
+datastore_owner: tier-backend-api      # migration/schema 資産の既定所有 tier
+                                       # (contracts[] で provider が宣言された資産はその tier が所有)
+contracts:                             # 契約宣言(正本。種別定義は
+                                       #  ../../dist-impl-bootstrap/references/contract-registry.md)
+  - id: api                            # 契約 id(lock・S3 検証・contracts/ 出力のキー)
+    type: openapi                      # レジストリに定義された種別のみ
+    source: "specs/latest/_cross-cutting/api/openapi.yaml"   # specs_root 相対
+    provider: tier-backend-api         # 契約面を実装・所有する tier
+    consumers: [tier-frontend]         # 契約面に依存する tier
+  - id: mart-tables                    # 例: data pipeline の mart を backend が read model として読む
+    type: rdb-schema
+    source: "specs/latest/_cross-cutting/datastore/rdb-schema.yaml"
+    scope: ["loan_stats"]              # 種別により任意。対象テーブル名の完全一致の配列
+                                       # (glob・正規表現は不可。照合規則は contract-registry.md)
+    provider: tier-data-pipeline
+    consumers: [tier-backend-api]
 backend_framework: express             # backend tier の API フレームワーク(P2 でユーザー確認して確定。
                                        #  P3 はこの宣言の依存を install する)
 integration_commands:                  # S6/S7 で integration writer が使う
@@ -173,6 +189,9 @@ capabilities:                          # bootstrap の存在プローブ結果
 - **architecture tier(arch-design.yaml の tiers[])と実装 tier は別概念**。UC の files[] に現れない
   architecture tier(例 tier-datastore)は「実装対象外 or 共有資産」を本ファイルの宣言で解決する
 - 未知の tier id(arch tiers[] に無い)が spec-event.yaml に現れたら**停止して変更要求を出す**(推測しない)
+- **contracts[] は tier 間依存面の正**。P2 が推論案を出しユーザー確認で確定する
+  (`config_confirmed` イベント)。capabilities の has_* は probe 結果の記録であり契約の正ではない。
+  P4 の codegen・S3 の検証・S4 の read-set 配布はすべてこの宣言を loop する(種別名で分岐しない)
 
 ## uc-map.yaml
 
@@ -210,16 +229,44 @@ uc-map には **Scenario 名の配列**で対応を持つ。
 ## contracts.lock.yaml
 
 ```yaml
-schema_version: "1.0"
-inputs:
-  openapi: {path: "docs/specs/latest/_cross-cutting/api/openapi.yaml", sha256: "..."}
-  asyncapi: {path: "...", sha256: "..."}    # capability がある場合のみ
-generated:
-  - {dir: "packages/contracts/api-types", generator: "typescript-fetch", at: "..."}
+schema_version: "1.1"
+contracts:                             # impl-config の contracts[] と同じ id をキーにする
+  - id: api
+    type: openapi
+    source_read: none                  # 契約 source の読み取り可否: none | scope | full
+    input: {path: "docs/specs/latest/_cross-cutting/api/openapi.yaml", sha256: "..."}
+    generated:
+      - {dir: "packages/contracts/api-types", generator: "typescript-fetch", audience: both, at: "..."}
+      - {dir: "packages/contracts/api-client", generator: "typescript-fetch", audience: consumers, at: "..."}
+      - {dir: "packages/contracts/server-stubs", generator: "typescript-node", audience: provider, at: "..."}
+  - id: mart-tables
+    type: rdb-schema
+    scope: ["loan_stats"]
+    source_read: scope
+    input: {path: "docs/specs/latest/_cross-cutting/datastore/rdb-schema.yaml", sha256: "..."}
+    generated:
+      - {dir: "packages/contracts/mart-tables", generator: "direct-from-yaml", audience: both, at: "..."}
 generated_at: "..."
 ```
 
-S3 で inputs の sha256 を照合し、不一致なら契約再生成のみ実行して lock を更新する。
+lock は実装リポ側エージェントの**機械可読 read-set** を兼ねる(P4 が registry の read-set
+スロットから反映する。Implementer / Verifier は registry を読まない):
+
+- `generated[].audience: provider | consumers | both` — 配布先 role。S4/S5 は
+  「自 tier の role または both の generated[] のみ」を読む。**generated[] に `lang` がある場合
+  (複数言語生成時)は、自 tier の lang と一致するエントリのみ**
+- `source_read: none | scope | full` — 契約 source を読んでよいか。none(例 openapi —
+  生成物起点)は source を読まない。scope は contracts[] の scope 範囲のみ。full は全量
+
+S3 で契約ごとに input の sha256 を照合し、不一致なら該当契約の再生成のみ実行して lock を更新する。
+照合とは独立に、種別ごとの verify(正本は
+`../../dist-impl-bootstrap/references/contract-registry.md`)を当該 UC の範囲で実行し、
+結果を S3 done に記録する(lock には書かない — verify は UC 単位、lock はグローバル)。
+
+**旧形式からの移行**: schema_version "1.0" の lock(トップレベル `inputs:`)や、bootstrap.done.yaml の
+旧キー(`inputs_sha256.openapi` / `.asyncapi`)を検出したら、P4 を invalidate して新形式で再生成する
+(生成物の内容が同じでも形式移行として 1 回だけ再生成する)。既存の impl-config に `contracts[]` が
+無い場合は P2 を invalidate し、契約宣言案の確認からやり直す。
 
 ## bootstrap.done.yaml(S0 の完了判定)
 
@@ -246,8 +293,12 @@ inputs_sha256:                         # 全入力のハッシュ(現物と比�
                                         # コピー前後で同一ハッシュであることを確認し、
                                         # .imported.yaml の files と src 実ファイル一覧の
                                         # 全件一致を P5 完了条件にする
-  openapi: "..."
-  asyncapi: "..."                      # has_asyncapi の場合のみ
+  contracts:                           # impl-config の contracts[] の id ごとの入力ハッシュ
+    api: "..."
+    mart-tables: "..."
+  contracts_decl: "..."                # contracts[] 宣言自体の canonical JSON sha256
+                                       # (source の内容が同じでも scope / provider / consumers の
+                                       #  変更で P4 を invalidate するため)
 generated_at: "..."
 generated_by: "distillery-impl@{plugin_version}"  # provenance。version は plugin.json から実行時に読む(例をリテラル転記しない)
 ```
@@ -257,11 +308,11 @@ generated_by: "distillery-impl@{plugin_version}"  # provenance。version は plu
   不一致の入力に依存する Phase を invalidate する(bootstrap.done.yaml の Phase 記録の
   書き換えはオーケストレータの write-set に含まれる)。依存表:
   spec_event/arch → P2 以降すべて / usdm → P7 / design → P5 / design_storybook_src → P5 /
-  openapi・asyncapi → P4 /
-  **条件付き入力(asyncapi / kvs / object-storage / storybook-app)の存在自体の増減 →
-  P1・P2(capability と config の再判定)+ 対応する生成 Phase**。
+  contracts.{id}(契約入力)・contracts_decl(宣言変更)→ P4 /
+  **条件付き入力(契約 source / kvs / object-storage / storybook-app)の存在自体の増減 →
+  P1・P2(capability・契約宣言と config の再判定)+ 対応する生成 Phase**。
   invalidate された Phase は bootstrap 再実行の対象になる
-- inputs_sha256 には spec_event / arch / usdm / design / openapi / asyncapi(存在するもの)に加え、
+- inputs_sha256 には spec_event / arch / usdm / design と contracts[] の各入力(存在するもの)に加え、
   条件付き入力の**存在フラグ**(exists: true/false)を記録する(欠落 → 出現も検知するため)
 - bootstrap 再実行時は本ファイルの Phase 記録(invalidate 反映後)で skip を決める(冪等)
 
@@ -295,6 +346,9 @@ inputs:
   usdm: {event_id: "...", sha256: "..."}
   arch: {event_id: "...", sha256: "..."}
   design: {event_id: "...", sha256: "..."}   # has_design_system の場合のみ
+  contracts_decl: {sha256: "..."}      # impl-config の contracts[] を canonical JSON 化した sha256
+                                       #   (scope / provider / consumers / source の宣言変更を検知する。
+                                       #    stale 適用は S3 以降)
   contracts_lock: {path: "docs/impl/latest/contracts.lock.yaml", sha256: "..."}   # 契約生成物の版
                                        # ※ contracts_lock の変化による stale 判定は S4 以降にのみ適用する
                                        #   (S3 が lock を正当に更新した直後に S1/S2 が巻き戻るのを防ぐ。
@@ -306,8 +360,13 @@ lineage_ok: true                       # spec-event の trigger_event と arch/d
 
 - **latest 同士の系譜不整合は実在する**(サンプルでも spec の trigger より arch latest が新しい)。
   `lineage_ok: false` の場合は停止し、「spec を再生成するか / 旧 arch 前提で進めるか」をユーザーに問う
-- 各 `.done.yaml` は `manifest_sha256`(input-manifest.yaml 全体のハッシュ)を持つ。再開時に現在の
-  manifest と比較し、**不一致なら該当 stage 以降の done を無効扱い**にする(ファイルは消さず退避)
+- 各 `.done.yaml` は `manifest_sha256` を持つ。再開時に現在の manifest と比較し、
+  **不一致なら該当 stage 以降の done を無効扱い**にする(ファイルは消さず退避)
+- **manifest_sha256 は stage projection で計算する**: S1/S2 の done は `contracts_decl` /
+  `contracts_lock` の 2 エントリを除外した manifest のハッシュ、S3 以降の done は manifest 全体の
+  ハッシュを持つ。これにより「contracts_lock の変化は S4 以降にのみ適用」「contracts_decl の変化は
+  S3 以降にのみ適用」の例外が照合アルゴリズムとして成立する
+  (全体ハッシュ 1 本だと、S3 の正当な lock 更新で S1/S2 の done まで stale になり巻き戻る)
 
 ## status.yaml({uc_id} 配下・スナップショット)
 
@@ -353,6 +412,10 @@ completed_by: "dist-impl-implement@{plugin_version}"   # 書いた skill 名 + p
                               # version を実行時に読む(SKILL.md への埋め込みはしない — 正本は plugin.json のみ)
 ```
 
+S3 done は `contracts_verified: [{id, result: pass | degraded_continue, detail: "..."}]` を持つ
+(契約ごとの実装時検証の結果。縮退続行はユーザー判断の記録を detail に含める。
+検証を行ってから S4 を dispatch する gate の証跡)。
+
 S9 doneはトップレベルに`feedback_request_count`と`open_blocker_count`、および表示したdraftを結ぶ
 `feedback_review_evidence: {feedback_id, draft_sha256, request_count}`と、表示したHTMLと判断根拠を結ぶ
 `implementation_review_evidence: {review_html_sha256, gate_result, open_blocker_count, open_major_count}`を持つ。
@@ -393,7 +456,7 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
 
 | 書き手 | 書いてよい場所 |
 |---|---|
-| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、carry-forward done の生成、`invalidated/` への done 退避、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、`review/review-notes.md`、git commit |
+| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、**S3 の契約不整合の `issues/` 起票**、carry-forward done の生成、`invalidated/` への done 退避、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、`review/review-notes.md`、git commit |
 | S0 bootstrap | 実装リポ全体(初期生成)、latest/ の config/uc-map/lock、`bootstrap.done.yaml` |
 | S4 Implementer(tier 別) | 自 tier の dir 配下、`attempt-{n}/S4_*.{自tier}.done.yaml`、issues/ |
 | S5 Verifier(tier 別) | `attempt-{n}/S5_*.{自tier}.done.yaml`、`.findings.yaml` のみ(**実装コードの修正禁止**) |

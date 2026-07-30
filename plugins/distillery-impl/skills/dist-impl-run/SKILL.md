@@ -63,9 +63,22 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
   4. has_design_system かつ design-event.yaml に UC の screen 結線が無い場合は警告し、
      「素の packages/ui で進める / design へ変更要求」を確認
   5. `S1_uc-init.done.yaml` を書く(共通スキーマ。オーケストレータの write-set に含まれる)
-- **S3(contracts)も自分で実行する**: contracts.lock.yaml の inputs sha256 と現物を照合。
-  一致 → `S3_contracts.done.yaml` を書いて次へ / 不一致 → bootstrap サブエージェントを
-  `引数: "phase=contracts force=true"` で起動して再生成させ、lock 更新を確認してから done を書く。
+- **S3(contracts)も自分で実行する**。impl-config の `contracts[]` を loop し、契約ごとに:
+  1. **鮮度照合**: contracts.lock.yaml の input sha256 と現物を照合。不一致 → bootstrap
+     サブエージェントを `引数: "phase=contracts force=true contract_id={不一致の契約 id}"` で
+     起動して**該当契約だけ**再生成させ、lock 更新を確認(無関係な契約の生成物・lock に触れさせない)
+  2. **実装時検証**: 種別の verify(正本は `../dist-impl-bootstrap/references/contract-registry.md`)を
+     **当該 UC の範囲**で実行する
+     (例 rdb-schema: 当該 UC の `_model-summary.yaml` の参照テーブル・列が source に実在するか突合)。
+     不整合は「dist-spec への変更要求を出して停止 / 縮退して続行」をユーザーに提示し、
+     **どちらの判断でも不整合の内容を `{uc_id}/issues/{ts}_{slug}.md` に起票する**
+     (S8 が feedback へ回収する経路)。**停止を選んだ場合は S3 done を書かず、
+     `stage_failed` イベントを記録して lease を解放し run を終了する**(再開時は S3 から。
+     distillery 側の仕様更新で契約入力が変われば照合からやり直す)。
+     縮退続行は S3 done の contracts_verified に `degraded_continue` と判断を記録して進める
+     (仕様で決定したレイアウトを実装前提として確定してから並走に入る gate)
+  全契約の照合・検証が済んでから `S3_contracts.done.yaml`(`contracts_verified` を含む —
+  state-schema.md)を書き、S4 を dispatch する。
   **lock を更新したら input-manifest の contracts_lock エントリも更新する**(contracts_lock の
   変化による stale 判定は S4 以降にのみ適用 — state-schema.md。S1/S2 を巻き戻さない)
 - **S4/S5 の並列 dispatch**: uc-map の tiers を tier ごとに 1 サブエージェントで**同一メッセージ内で並列起動**。

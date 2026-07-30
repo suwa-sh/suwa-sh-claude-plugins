@@ -5,7 +5,7 @@
 
 ## 必須(Verifier が reject する違反)
 
-1. **契約型の直接編集禁止**: `packages/contracts/` 配下(openapi/asyncapi generator の生成物)を手で書き換えない。
+1. **契約型の直接編集禁止**: `packages/contracts/` 配下(契約宣言 contracts[] からの生成物)を手で書き換えない。
    契約に不足があれば仕様への変更要求(issues/)を起票する。生成物の再生成は S0/S3 のみ
 2. **frontend の UI コンポーネントは `packages/ui/` のみ使用**: 新規コンポーネントの自作は禁止。
    不足は design(dist-design-system)への変更要求を経由する(詳細は `tier-rules.md`)

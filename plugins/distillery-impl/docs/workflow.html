@@ -138,7 +138,7 @@ h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var
     <div class="sid"><span class="code">S0</span><span class="who subag">🤖 委譲</span></div>
     <div class="sbody">
       <span class="sname">bootstrap — 実装リポの骨格(グローバル 1 回・冪等)</span>
-      <div class="sdesc">preflight(java / node / ddd plugin / 条件付き入力)→ impl-config + uc-map 生成 → tier ディレクトリ + dev-rules + CLAUDE.md → <b>契約 codegen</b>(openapi / asyncapi → packages/contracts)→ <b>Storybook 取り込み</b>(→ packages/ui)→ qlty + CI(6 段ゲート)→ <b>ATDD feature 全 SPEC 分生成</b>(@atdd_ タグ付き)。Phase 単位で再開可</div>
+      <div class="sdesc">preflight(java / node / ddd plugin / 条件付き入力)→ impl-config + uc-map 生成 → tier ディレクトリ + dev-rules + CLAUDE.md → <b>契約 codegen</b>(契約宣言 contracts[] → packages/contracts。openapi / asyncapi / rdb-schema 等、レジストリ方式で種別追加可)→ <b>Storybook 取り込み</b>(→ packages/ui)→ qlty + CI(6 段ゲート)→ <b>ATDD feature 全 SPEC 分生成</b>(@atdd_ タグ付き)。Phase 単位で再開可</div>
       <div class="dialog">💬 tier→dir / kind / datastore_owner / 言語・コマンドの確定</div>
     </div>
     <div class="sfiles"><div class="t">📄 STATE</div><code>bootstrap.done.yaml(Phase 記録)</code><code>impl-config.yaml / uc-map.yaml</code><code>contracts.lock.yaml</code></div>
@@ -169,8 +169,8 @@ h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var
   <div class="stage">
     <div class="sid"><span class="code">S3</span><span class="who orch">🎛 直接</span></div>
     <div class="sbody">
-      <span class="sname">contracts — 契約の鮮度照合</span>
-      <div class="sdesc">contracts.lock の sha256 と現物を照合。stale なら bootstrap を <code>phase=contracts force=true</code> で委譲して再生成 → manifest の contracts_lock を更新(stale 波及は S4 以降のみ)</div>
+      <span class="sname">contracts — 契約の鮮度照合 + 実装時検証</span>
+      <div class="sdesc">契約ごとに contracts.lock の sha256 と現物を照合。stale なら bootstrap を <code>phase=contracts force=true</code> で委譲して再生成 → manifest の contracts_lock を更新(stale 波及は S4 以降のみ)。加えて種別ごとの verify を当該 UC の範囲で実行(例: rdb-schema は参照テーブル・列の突合)し、仕様決定値を確定してから並走へ</div>
     </div>
     <div class="sfiles"><div class="t">📄 STATE</div><code>S3_contracts.done.yaml</code></div>
   </div>

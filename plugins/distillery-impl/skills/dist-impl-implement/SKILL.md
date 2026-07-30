@@ -17,7 +17,9 @@ description: >
 - `config` から specs_root / repo_root / tiers / commands / capabilities を読む
 - 対象 UC のパスは `docs/impl/latest/uc-map.yaml` の uc_id 行から引く
 - **読む入力を最小に保つ**(コンテキスト 25% 制約): 該当 UC の spec.md / tier md / _api-summary.yaml /
-  _model-summary.yaml / packages/contracts / docs/dev-rules のみ。他 UC・openapi 全量・実装履歴は読まない
+  _model-summary.yaml / docs/dev-rules と、impl-config の contracts[] で自 tier が
+  provider/consumers に含まれる契約の生成物・source のみ。
+  他 UC・関与しない契約・契約 source の全量・実装履歴は読まない
 - **git 操作禁止**。done ファイルは自分の write-set 内のものだけを書く(state-schema.md の write-set 表)
 - 仕様と実装が両立しない事実を見つけたら、実装で仕様を曲げず
   `docs/impl/latest/{uc_id}/issues/{ts}_{slug}.md` に「仕様の記載 / 実装で判明した事実 / 提案」を書き捨てて先へ進む
@@ -45,9 +47,16 @@ description: >
 
 1. 入力を読む: tier md(ファイル名は `{tier_id}.md`。例 `tier-frontend.md`。API 仕様表 /
    データモデル変更表 / ビジネスルール / ティア完了条件)、_api-summary / _model-summary、
-   契約生成物、`docs/dev-rules/` 3 ファイル。**tier 種別に応じて追加で読む**:
+   自 tier が関与する契約の生成物・source(impl-config の contracts[] が正。
+   生成物 dir は `docs/impl/latest/contracts.lock.yaml` の該当契約の generated[] のうち
+   audience が自 tier の role(provider / consumers)または both で、lang 指定があれば
+   自 tier の lang と一致するもの。契約 source は lock の source_read が none 以外の契約のみ・
+   scope 指定時は scope 範囲)、
+   `docs/dev-rules/` 3 ファイル。
+   **tier 種別に応じて追加で読む**(tier-rules.md):
    frontend は `packages/ui/`(利用可能な export)と design-event.yaml の該当 screen、
-   backend(datastore_owner)は `_cross-cutting/datastore/` の schema、worker は async 型定義
+   backend(datastore_owner)は `_cross-cutting/datastore/` の schema、
+   worker は async 型定義(asyncapi 契約が宣言されている場合)
 2. **ddd ガイドの読込**(capabilities.has_ddd_plugin が true の場合):
    Skill ツールで `ddd:ddd-tactical-implementation` を呼び出し、判断ゲートとワークフローを把握してから
    実装に入る。呼び出し時に平文で渡す: 対象言語 / 実装対象モデル(_model-summary.yaml の該当エンティティ)/

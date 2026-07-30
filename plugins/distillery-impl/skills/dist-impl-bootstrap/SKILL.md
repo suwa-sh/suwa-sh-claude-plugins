@@ -3,7 +3,8 @@ name: distillery-impl:dist-impl-bootstrap
 description: >
   distillery の仕様書一式(docs/specs, arch, usdm, design)から実装先 mono repo の骨格を生成する
   bootstrap スキル。tier ディレクトリ・4 段テスト配置・qlty/CI・dev-rules 配布・契約 codegen
-  (openapi/asyncapi → packages/contracts)・Storybook コンポーネント取り込み(packages/ui)・
+  (契約レジストリの宣言 contracts[] → packages/contracts。openapi/asyncapi/rdb-schema 等、種別追加可能)・
+  Storybook コンポーネント取り込み(packages/ui)・
   uc-map/impl-config/contracts.lock の生成までを冪等に行う。
   通常は dist-impl-run(S0)から呼ばれるが、「実装リポを bootstrap して」で単体起動もできる。
 ---
@@ -18,12 +19,14 @@ distillery の出力を入力契約として、実装先リポの「最初から
 引数: `specs_root={distillery 出力ルート} repo_root={実装先リポルート}`(省略時は対話で確認)。
 `phase=contracts force=true` を渡された場合は **P4(契約 codegen)だけを強制再実行**する
 (S3 の stale 検知から呼ばれる経路。lock の sha256 が一致していても再生成し、lock を更新する。
-bootstrap.done.yaml は **P4 の記録と契約入力ハッシュ(openapi / asyncapi)だけ**を更新し、他 Phase に触れない)。
+bootstrap.done.yaml は **P4 の記録と契約入力ハッシュ(contracts[] の各入力)だけ**を更新し、他 Phase に触れない)。
+さらに `contract_id={id}`(任意・カンマ区切りで複数可)を渡された場合は**該当契約だけ**を再生成し、
+lock・入力ハッシュもその契約のエントリのみ更新する(無指定は全契約)。
 
 ## 参照する正本
 
 - レイアウト: `references/repo-layout.md`
-- 契約 codegen: `references/contract-codegen.md`
+- 契約レジストリ(種別定義・codegen): `references/contract-registry.md`
 - 開発規約(配布物): `references/dev-rules/`(coding-rules / test-strategy / tier-rules)
 - 状態スキーマ: `../dist-impl-run/references/state-schema.md`(impl-config / uc-map / contracts.lock)
 
@@ -52,6 +55,8 @@ bootstrap.done.yaml は **P4 の記録と契約入力ハッシュ(openapi / asyn
    - `{specs_root}/specs/latest/_cross-cutting/api/asyncapi.yaml` → has_asyncapi
    - `_cross-cutting/datastore/kvs-schema.yaml` → has_kvs / `object-storage-schema.yaml` → has_object_storage
    - `{specs_root}/design/latest/storybook-app/` → has_design_system
+   - 加えて `references/contract-registry.md` の各種別の source を probe する
+     (P2 の契約宣言案の材料。capability は probe 結果の記録であり、契約の正は contracts[])
 4. **矛盾検査**: spec-event.yaml の `use_cases[].async_event_count > 0` の UC があるのに asyncapi.yaml が
    無い等の矛盾は、bootstrap を止めず「仕様への変更要求」ドラフトとして報告する(起票は S8/ユーザー判断)
 
@@ -60,14 +65,22 @@ bootstrap.done.yaml は **P4 の記録と契約入力ハッシュ(openapi / asyn
 1. `{specs_root}/arch/latest/arch-design.yaml` の `system_architecture.tiers[]` を読み、
    `{specs_root}/specs/latest/spec-event.yaml` の `use_cases[].files[]` に現れる tier id を抽出する
 2. **実装 tier の宣言案**を作る: files[] に現れる tier → 実装 tier(dir は `tier-` を除いた名前、
-   `kind`(frontend / backend / worker)は tier id と tier md の構成から推定した案を出す)。
+   `kind`(frontend / backend / worker / data-pipeline / cli / mcp-server)は tier id と
+   tier md の構成から推定した案を出す)。
    files[] に現れない architecture tier(例 tier-datastore)→ 共有資産(datastore_owner を提案)。
    **確認推奨項目としてユーザーに提示**(tier→dir 対応 / kind / datastore_owner /
    **backend_framework(impl-config に記録。P3 の依存 install の選択元)** / 言語 / コマンド群。
    kind は read-set・tier-rules 適用の機械可読キーになるため必須確定項目)
-3. uc-map.yaml を生成: 全 UC の uc_id(生成式は state-schema.md。NFC 正規化 + canonical JSON + sha256 先頭 8 桁)、
+3. **契約宣言案(contracts[])を作る**: P1 の probe 結果と spec(`_api-summary.yaml` /
+   `_model-summary.yaml` / tier md)から、契約ごとに type / source / provider / consumers の案を
+   推論する(種別は `references/contract-registry.md` に定義されたもののみ。
+   例: 複数 tier が同一テーブル群に read/write する場合は type: rdb-schema の契約 —
+   data pipeline が書く mart を backend が読む等)。
+   **tier 宣言と併せてユーザー確認で確定**する(provider/consumers が推定できない契約は
+   推測で埋めず確認必須項目にする)。契約に載らない tier 間依存は実装時に issues 経由で扱う
+4. uc-map.yaml を生成: 全 UC の uc_id(生成式は state-schema.md。NFC 正規化 + canonical JSON + sha256 先頭 8 桁)、
    path、tiers。**衝突検査**で衝突があれば 12 桁に延長
-4. spec-event.yaml に無い tier id・パース不能 YAML は**停止して報告**(推測しない)
+5. spec-event.yaml に無い tier id・パース不能 YAML は**停止して報告**(推測しない)
 
 ## P3: skeleton(骨格 + 規約配布)
 
@@ -84,8 +97,10 @@ bootstrap.done.yaml は **P4 の記録と契約入力ハッシュ(openapi / asyn
 
 ## P4: contracts(契約 codegen)
 
-`references/contract-codegen.md` の手順で生成し、contracts.lock.yaml を書く。
-java 不在・generator 失敗時は縮退モード(`_api-summary.yaml` 起点)に切り替え、lock に `degraded` と記録。
+impl-config の `contracts[]` を loop し、`references/contract-registry.md` の種別定義
+(codegen / degraded スロット)に従って生成し、contracts.lock.yaml(契約ごとの input sha256 +
+generated)を書く。java 不在・generator 失敗時は種別の縮退手順に切り替え、lock の該当契約に
+`degraded` と記録。**種別名でパイプラインを分岐させない**(新種別はレジストリへの追加だけで通る)。
 
 **注意**: bootstrap 実行中は `specs_root` を書き換えない(P4/P5 のプローブ・取り込みと競合し
 部分スナップショットになる。`dist-design-system` の追い上げ生成と並走させない)。

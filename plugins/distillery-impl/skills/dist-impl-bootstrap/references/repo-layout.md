@@ -11,10 +11,15 @@ tier とディレクトリの対応は **`impl-config.yaml` の `tiers[].dir` �
     features/                      # ③ tier BDD({uc_id}.feature + steps/)
   packages/
     contracts/                     # 契約 codegen 出力(S4 実行中 read-only。再生成は S0/S3 のみ)
-      api-types/                   # openapi → 型
-      api-client/                  # openapi → クライアント(frontend が使用)
-      server-stubs/                # openapi → サーバスタブ(backend が使用)
-      async-types/                 # asyncapi → 型(has_asyncapi の場合のみ)
+                                   # サブ dir は impl-config の contracts[] 宣言から決まる
+                                   # (種別ごとの生成規約は contract-registry.md)
+      api-types/                   # openapi → 型(従来名は type 1 件宣言時の後方互換)
+      api-client/                  # openapi → クライアント(consumers が使用)
+      server-stubs/                # openapi → サーバスタブ(provider が使用)
+      async-types/                 # asyncapi → 型(宣言がある場合のみ)
+      {contract_id}/               # その他の宣言契約(例 rdb-schema → row 型・列定数)。
+                                   # 同一 type を複数宣言した場合も各 {contract_id}/ 配下
+                                   # (出力 dir の衝突は bootstrap が検査して停止)
     ui/                            # design の storybook-app 由来(has_design_system の場合のみ)
       components/ tokens/ stories/ # storybook-app/src/ の実ファイル列挙で取り込み(bootstrap P5)
       .imported.yaml               # 取り込み元 design event_id とファイル一覧
@@ -24,6 +29,8 @@ tier とディレクトリの対応は **`impl-config.yaml` の `tiers[].dir` �
     atdd/{spec_id}.feature         # ① ATDD(S0 で全 SPEC 分生成。integration writer 所有)
     atdd/steps/
   {datastore 資産}                  # migration/schema。impl-config の datastore_owner tier の dir 配下
+                                   # (contracts[] で provider が宣言された資産 — 例 data pipeline の
+                                   #  mart DDL — はその provider tier の dir 配下。provider 優先)
   docs/dev-rules/                  # dev-rules 正本のコピー(bootstrap が配布)
   CLAUDE.md                        # bootstrap が生成(dev-rules 抜粋 + プロジェクト固有規約)
   .qlty/qlty.toml                  # qlty(formatter/linter/SAST)

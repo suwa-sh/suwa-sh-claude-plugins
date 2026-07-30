@@ -43,10 +43,13 @@
 ### S1: uc-init / S3: contracts(dist-impl-run 自身が実行する。サブエージェント委譲しない)
 
 S1(input-preflight・uc_id 解決・input-manifest 固定・UC→ATDD マッピング確認)はユーザー対話を含むため、
-S3(lock の sha256 照合)は軽量なため、オーケストレータが直接実行する(SKILL.md 参照)。
-S3 で stale を検知した場合のみ、bootstrap を `引数: "phase=contracts force=true"` で
-サブエージェント起動する(S0 の行と同じテンプレート。write_set は packages/contracts/ と
-contracts.lock.yaml と **bootstrap.done.yaml(P4 の記録と契約入力ハッシュのみ更新)**)。
+S3(契約ごとの lock 照合 + 実装時検証。不整合時の縮退判断はユーザー対話)は当該 UC 範囲に閉じて
+軽量なため、オーケストレータが直接実行する(SKILL.md 参照)。
+S3 で stale を検知した場合のみ、bootstrap を
+`引数: "phase=contracts force=true contract_id={不一致の契約 id}"` で
+サブエージェント起動する(S0 の行と同じテンプレート。write_set は該当契約の
+packages/contracts/ 出力 dir と contracts.lock.yaml の該当エントリと
+**bootstrap.done.yaml(P4 の記録と該当契約の入力ハッシュのみ更新)**)。
 
 ### S2: test-scaffold
 
@@ -67,7 +70,7 @@ contracts.lock.yaml と **bootstrap.done.yaml(P4 の記録と契約入力ハッ�
 | skill_args | ` 引数: "mode=tier-impl uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス}"` |
 | model | impl-config の implementer_model(null なら未指定=セッション既定) |
 | write_set | {tier_dir}/ 配下、attempt-{n}/S4_tier-impl.{tier_id}.done.yaml、issues/ |
-| additional_instructions | `入力(read-set)は該当 UC の {tier_id}.md(例 tier-frontend.md)、_api-summary.yaml、_model-summary.yaml、packages/contracts/、実装リポの docs/dev-rules/、さらに tier 種別に応じて: frontend は packages/ui/ と design-event.yaml の該当 screen、backend(datastore_owner)は _cross-cutting/datastore/ の schema、worker は async 型定義。それ以外(他 UC・openapi 全量)は読まないでください。attempt={n} が 2 以上の場合は前回の findings({findings パス})の blocker を修正対象に含めてください。formatter/lint は check-only で実行してください。` |
+| additional_instructions | `入力(read-set)は該当 UC の {tier_id}.md(例 tier-frontend.md)、_api-summary.yaml、_model-summary.yaml、実装リポの docs/dev-rules/、packages/contracts/ と契約 source のうち impl-config の contracts[] で自 tier が provider または consumers に含まれる契約のもの(生成物 dir は docs/impl/latest/contracts.lock.yaml の該当契約の generated[] のうち audience が自 tier の role または both で、lang 指定があれば自 tier の lang と一致するもの。契約 source は lock の source_read が none 以外の契約のみ・scope 指定時は scope 範囲)、さらに tier 種別の追加入力(tier-rules.md。例: frontend は packages/ui/ と design-event.yaml の該当 screen)。それ以外(他 UC・関与しない契約・契約 source の全量読み)は読まないでください。attempt={n} が 2 以上の場合は前回の findings({findings パス})の blocker を修正対象に含めてください。formatter/lint は check-only で実行してください。` |
 
 ### S5: verify(tier ごとに並列起動。Implementer と別コンテキスト)
 

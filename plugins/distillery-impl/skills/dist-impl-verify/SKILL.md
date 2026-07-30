@@ -25,9 +25,16 @@ description: >
 
 1. `config` と uc-map から対象パスを解決し、次だけを読む:
    {tier_dir}/ の成果物(src / test / features)、tier md(ファイル名 `{tier_id}.md`)、
-   _api-summary.yaml / _model-summary.yaml、`_cross-cutting/datastore/` の schema、
-   `docs/nfr/latest/nfr-grade.yaml`(性能・可用性判定の根拠)、packages/contracts の型シグネチャ、
-   docs/dev-rules/ 3 ファイル(frontend の場合は packages/ui の export 一覧も)
+   _api-summary.yaml / _model-summary.yaml、
+   impl-config の contracts[] で対象 tier が provider/consumers に含まれる契約の source と生成物
+   (source は lock の該当契約の `source_read` が none 以外の場合のみ・scope 指定時は scope 範囲。
+   生成 dir は `docs/impl/latest/contracts.lock.yaml` の該当契約の generated[] のうち
+   audience が対象 tier の role または both で、lang 指定があれば対象 tier の lang と一致するもの)、
+   `docs/nfr/latest/nfr-grade.yaml`(性能・可用性判定の根拠)、
+   docs/dev-rules/ 3 ファイル(frontend の場合は packages/ui の export 一覧も)。
+   **関与しない契約・schema は読まない**(誤検出を避け、read-set を最小に保つ)。
+   例外: 対象 tier が関与するデータ契約が 1 件も無い場合に限り、従来どおり
+   `_cross-cutting/datastore/` の schema を読んでよい(verify-viewpoints のデータ観点の fallback)
 2. ゲート 1〜4 を check-only で再実行(gates.md)。Implementer の done と食い違えばそれ自体が blocker
 3. `references/verify-viewpoints.md` の 7 観点チェックリストを順に適用
 4. findings を `attempt-{n}/S5_verify.{tier_id}.findings.yaml` に書く(下記スキーマ)

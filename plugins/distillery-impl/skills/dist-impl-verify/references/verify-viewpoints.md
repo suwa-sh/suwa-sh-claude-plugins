@@ -8,7 +8,9 @@
    `_api-summary.yaml` の endpoints[] と実装ルーティングの過不足を列挙
 2. **データ**: tier md のデータモデル変更表・`_model-summary.yaml` の `tables[].operations[]` と、
    実装のスキーマ・クエリを突合(カラム欠落・型不一致・未実装の operation)。
-   schema の正は `_cross-cutting/datastore/rdb-schema.yaml`(+ kvs)
+   schema の正は、対象 tier が関与するデータ契約(contracts[] の rdb-schema 等)が宣言されていれば
+   その `source` の `scope` 範囲。宣言が無ければ `_cross-cutting/datastore/rdb-schema.yaml`(+ kvs)。
+   関与しない契約・scope 外のテーブルには findings を出さない
 3. **ビジネスルール**: tier md のビジネスルール欄の各項が、コード上のどこで担保されるかを特定。
    担保箇所を特定できないルールは blocker 候補
 4. **テストとの整合**: tier BDD feature のシナリオが仕様の gherkin と一致しているか(意訳・改変されていないか)。
@@ -22,7 +24,7 @@
 
 ## 3. security(セキュリティ)
 
-- 入力検証: 契約(openapi)の制約(required / format / range)が実装でも検証されるか
+- 入力検証: 契約(openapi 等、自 tier が関与する contracts[])の制約(required / format / range)が実装でも検証されるか
 - 認証・認可: tier md の認証欄・アクセス権欄との一致
 - 秘密情報のハードコード / ログへの個人情報・秘密の出力
 
