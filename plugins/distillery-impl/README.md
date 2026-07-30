@@ -1,18 +1,22 @@
 # distillery-impl
 
-distillery が生成した仕様書を入力に、「実装」を継続稼働パイプラインで回す実装ハーネス plugin です。
+distilleryが生成した仕様書から、テストと実装を作るpluginです。
+中断時は保存済みの状態から再開できます。
 
-distillery は「要望テキスト → USDM 要件 → RDRA → 仕様書(ユースケースごと・ティアごとの BDD 完了条件つき)」までを自動生成します。distillery-impl はその続きを担当します: 仕様書からテストを 4 段先に生成し、実装エージェント(Implementer)が書き、別モデルの検証エージェント(Verifier)が反証し、途中で切れても再開できる形で「動くコード」まで運びます。
+distillery-implは仕様書から4段階のテストを作ります。
+Implementerがコードを書き、別モデルのVerifierが検証します。
 
 ## 特徴
 
-- **契約駆動**: openapi / asyncapi から型・クライアント・スタブを生成し、実装はその生成物起点で書きます。frontend の UI は design(dist-design-system)が生成した Storybook コンポーネントだけを使います
-- **4 段テスト先行**: ① ATDD(USDM の受け入れ基準)② UC BDD(仕様書の E2E 完了条件)③ tier BDD(ティア完了条件)④ TDD(単体)。上 3 段は仕様の gherkin をそのまま転写し、実装前に「期待した理由で fail する」red baseline を作ります
-- **二段独立検証**: Implementer と別モデルの Verifier が 7 観点(仕様整合 / 可読性・保守性 / セキュリティ / パフォーマンス / 運用性 / 耐障害性 / リファクタリング)で反証します。自己採点を排除します
-- **ファイル駆動の冪等再開**: 状態は `docs/impl/`(events 追記 + latest スナップショット + 完了判定ファイル)。セッションが切れても未完了 stage から再開します
-- **tier 並走**: mono repo で tier ごとにディレクトリを分け、書き込み範囲(write-set)を分離して並列実装します
-- **仕様への還流**: 実装で見つけた仕様起因の問題を単一の自己完結Markdownにまとめ、S9の実装承認後に
-  immutableなfeedback-requestとして公開します。stageの判定・分割・依存閉包はdist-pipelineが担当します
+- **契約駆動**：OpenAPIとAsyncAPIから型、クライアント、スタブを生成します。
+  frontendはdist-design-systemが生成したStorybook componentを使います。
+- **4段階のテスト**：ATDD、UC BDD、tier BDD、TDDの順に期待動作を固定します。
+  実装前にred baselineを確認します。
+- **独立検証**：Implementerとは別のVerifierが、仕様整合性を含む7項目を検証します。
+- **再開可能な状態管理**：`docs/impl/`へevent、snapshot、完了判定を保存します。
+- **tier並走**：tierごとにwrite-setを分けて実装します。
+- **仕様への還流**：仕様起因の問題を1つのMarkdownへまとめます。
+  dist-pipelineが所有stage、分割、依存stageを決めます。
 
 ## パイプライン
 
@@ -50,9 +54,10 @@ flowchart TD
     DIST -.->|仕様更新 → 次サイクル| S0
 ```
 
-💬 = ユーザー対話ポイント。破線 = 仕様への還流（実装 → as-built → 実装レビュー → 単一Markdown → distilleryで仕様更新 → 次サイクル）。
-図は簡略化しています(S7 fail の分岐・S9 差し戻し先の任意 stage 指定は SKILL.md 本文が正)。
-状態ファイル・fail 時の分岐まで含めた詳細図解は [docs/workflow.html](docs/workflow.html)(ブラウザで開いてください)。
+💬は利用者の判断が必要なstageです。
+破線は、実装で見つけた仕様課題をdistilleryへ戻す流れです。
+図は主要な分岐だけを示します。
+全分岐は[workflow.html](docs/workflow.html)を参照してください。
 
 ## スキル一覧
 
@@ -82,36 +87,37 @@ flowchart TD
 /distillery-impl:dist-impl-run 書籍を貸出する
 ```
 
-進行中の対話(tier 構成の確認・UC→SPEC 対応の確定・Verifier 超過時の判断・最終承認)は
-オーケストレータが必要な時だけ発話します。
+オーケストレータは、利用者の判断が必要なときだけ質問します。
 
-仕様起因の変更要求があるUCを承認すると、`docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md`
-が公開されます。Markdown単体が入力の正本で、dist-impl側ではstageを指定しません。
-S9のレビュー方法、承認記録、レビュー用HTMLはdist-implの履歴に留まり、公開Markdownへ含めません。
-内部ではHTMLへ表示したdraftのfeedback ID・SHA-256・件数に加え、review HTMLのSHA-256・gate結果・
-open finding件数をS9 eventと承認eventへ結び、publish時に再検証します。draftと公開先はcanonical UC root内の
-regular/non-symlink、同一filesystemに限定し、検証した同じbytesだけをatomic renameします。不一致なら公開せず、
-S8 refreshとS9再レビューへ戻ります。
-distillery workspaceから次を1回実行してください。
+仕様起因の変更要求がある場合、S8は1つのdraftへ集約します。
+S9の承認後、S8は承認済みのbytesを次の場所へ公開します。
+
+```text
+docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
+```
+
+公開Markdownにはstage名とレビュー情報を含めません。
+レビュー情報はdist-implのevent履歴へ残します。
+公開時はdraftのID、SHA-256、要求数、review evidenceを再検証します。
+不一致なら公開せず、S8 refreshとS9 reviewへ戻ります。
+
+公開後、distillery workspaceで次を実行します。
 
 ```text
 /distillery:dist-pipeline {feedback-request.md}
 ```
 
-所有stageが曖昧な場合は、推奨案・代替案・それぞれの影響・根拠を提示して確認します。
-`--recommended-auto`でも、安全に自動採用できない項目は同じpolicyのまま人の回答を待ちます。
-自動採用するのは、confidenceがmedium以上で、全案の意味・制約が同一かつdirect ownerだけが異なる、
-安全で一意なpipeline内部route-only ambiguityだけです。意味・制約はmultisetで比較し、各constraintは
-各案で1つのdirect ownerだけを持ちます。`resolved + confidence low`、要求の再解釈、stage内設計判断は
-自動実行しません。同じfeedback ID/SHAのterminal completed/blockedは、dist-pipelineが凍結plan、result、
-artifact、stage/domain/terminal eventとresult SHAを完全検証した場合だけno-opです。outside-onlyのstage 0も
-同じterminal証跡が必要で、plan未生成blockedはcurrent basisを完全再検証します。
+所有stageが曖昧な場合、dist-pipelineは推奨案、代替案、影響、根拠を提示します。
+`--recommended-auto`は、要求の意味を変えない安全なroutingだけを自動採用します。
+それ以外は利用者の回答を待ちます。
+
+feedbackの作成と公開は[dist-impl-feedback](skills/dist-impl-feedback/SKILL.md)を参照してください。
+pipeline側の実行契約は[distillery README](../distillery/README.md#distillery-impl-の複数フィードバックを1回で反映)を参照してください。
 
 ## 設計の出自
 
-Cloudflare の Vulnerability Research Harness(VDH/VVS)の設計原則 — 二段独立検証・状態の外部化と
-冪等再開・コンテキストを絞った stage 分割・PoC 必須・モデル非依存・human-in-the-loop — を
-「脆弱性探索」から「仕様駆動実装」に転用したものです。
+Cloudflare Vulnerability Research Harnessの設計原則を、仕様駆動実装へ応用しています。
+採用した原則は、独立検証、状態の外部化、再開可能なstage分割、human-in-the-loopです。
 
 - 解説記事: [技術調査 - Cloudflare 脆弱性探索ハーネス (VDH/VVS)](https://suwa-sh.github.io/zenn-contents/articles/cloudflare-vulnerability-harness_20260619/)
 - 一次情報: [Build your own vulnerability harness — Cloudflare Blog](https://blog.cloudflare.com/build-your-own-vulnerability-harness/)

@@ -17,22 +17,33 @@
 
 ## Pipeline feedback run
 
-distillery-implの単一feedback-request Markdownを受け、dist-pipelineが所有stageの判定、
-内部work unit分解、依存閉包を行う往復例です。外部Markdownにstage名は含みません。
-このsampleは`--recommended-auto`で安全な推奨routeを採用した例です。実行時は
-`pipeline/feedback-runs/{feedback_id}/`に不変`input.md`、`routing.json`、`plan.json`、stage packets、
-`status.json`、`result.json`を作り、[pipeline/events/](pipeline/events/)へ履歴を追記します。
-interactiveで回答したrunだけ`resolutions.json`も持ちます。
-旧イベントと現在の成果物で充足を確認できた6件は`merged`、実体が不足する5件は`deferred`です。
-各stageは判定証跡だけを追記し、domainの`latest`を変更していません。したがってrun全体は
-`blocked`で終了し、未反映を成功として数えません。今回のdomain変更は0件です。
-表のイベント数には、成果物を変えなかったことを対象rootごとに示す
-`feedback-disposition.json`の追記も含みます。
+このrunは、distillery-implが公開した単一Markdownを`--recommended-auto`で処理した例です。
+外部Markdownにstage名はありません。
 
-> 履歴注記: `usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml`
-> に残る `docs/impl/latest/19ec0182/change-requests/` は、移行前の論理的な配置名です。
-> 当時の入力内容は同eventの `source.txt` にファイル名付きで凍結済みであり、
-> `latest` 配下の分割change-requestファイルは単一Markdown入力への移行で廃止しました。
+dist-pipelineは11件の要求を11個のwork unitへ分け、7つのstageで照合しました。
+実行記録は[pipeline/feedback-runs/](pipeline/feedback-runs/)にあります。
+
+| ファイル | 内容 |
+|---|---|
+| `input.md` | 公開Markdownの不変snapshot |
+| `routing.json` | 所有stageの判定と推奨route |
+| `plan.json` | work unit、依存stage、実行順 |
+| `stage-packets/` | stageごとの入力 |
+| `status.json` | 再開点 |
+| `result.json` | 要求ごとの最終結果 |
+
+| 判定 | 件数 |
+|---|---:|
+| `merged` | 6 |
+| `deferred` | 5 |
+| `applied` | 0 |
+
+各stageは`feedback-disposition.json`を追記し、domainの`latest`を変更していません。
+未反映が5件あるため、run全体は`blocked`です。
+未反映の要求を成功として数えていません。
+
+> `usdm/events/20260729_140044_impl_feedback_19ec0182/requirements.yaml`には、移行前のpathが履歴として残っています。
+> 当時の内容は同eventの`source.txt`に保存されています。
 
 ## USDM（要求分解）
 

@@ -114,47 +114,38 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 
 ### distillery-impl の複数フィードバックを1回で反映
 
-distillery-implが公開した、複数変更要求を内包する単一Markdownのpathを渡します。
-Markdownが唯一の外部正本で、stage名、ステージ別指示、実装レビューの方法や承認記録は含みません。
+dist-pipelineへ渡す入力は、distillery-implが公開したMarkdownのパス1つです。
+このMarkdownが変更要求の外部正本です。
+stage名、stage別指示、レビュー情報は含めません。
 
 ```text
 /distillery:dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md
 /distillery:dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md --recommended-auto
 ```
 
-dist-pipelineが各CRの所有stageを判定し、内部work unitへ分解し、最上流の所有stageから
-依存閉包を各論理stage最大1回で実行します。曖昧な場合は⭐推奨案、代替案、それぞれの
-影響と根拠を意味上の文面で提示して確認します。質問と選択肢に内部stage IDを出さないため、
-回答者がdistilleryの内部構成を知る必要はありません。`--recommended-auto`は、version固定policyが
-「全案の意味と制約のmultisetは同一」「各constraintは1つのdirect ownerだけを持つ」
-「direct ownerだけが異なる」「confidenceがmedium以上」
-「pipeline内で安全な一位が一意」をすべて満たすroute-only ambiguityだけを自動採用します。
-proposal自身のsafe申告だけでは採用しません。要求の再解釈、stage内設計判断、競合、
-evidence不足、破壊的scope拡大、pipeline内/外の境界不明、confidence lowは自動化しません。
-`resolved + confidence low`も拒否し、質問可能ならrecommendableとして作り直します。
-自動採用できないrecommendableも情報を落とさず質問し、開始policyを変えず人の回答で再開します。
-安全な推奨・選択肢自体を作れないunresolvedだけをblockedにします。
+dist-pipelineは次の順に処理します。
 
-実行状態は`docs/pipeline/feedback-runs/{feedback_id}/`の`input.md`、`routing.json`、
-`plan.json`、stage packets、`status.json`、`result.json`として保存されます。人の回答が必要だった場合は、
-開始policyにかかわらず`resolutions.json`も保存します。
-開始時のownership catalog、routing policy、prompt-data policyもrun内へ不変snapshotし、version/hashと
-stage packet renderer versionへbindします。terminalは当時のsnapshotで監査でき、nonterminalは現在の
-plugin policyとdriftしていれば新しい書き込み前に停止します。
-再開時はrun directoryだけを入口にでき、凍結済みrouting、write先、保存済み回答を自動で再読込します。
-同一feedback ID/SHAは冪等に再開し、workspace leaseにより通常pipelineとの並走も拒否します。
-authoritative beginは外部pathを1回だけ読み、同じBufferで検証・hash・lease・不変`input.md`を確定します。
-nonterminal再開で初期HEAD/latestの完全一致を緩和するのは、実在・lineage・domain hashを検証済みの
-completed/failed stage eventが1件以上ある場合だけです。overall/stageのrunning表示、aborted表示、
-all-pendingだけではfull basisを緩和しません。partial resumeはrun/routing、canonical plan、全packet、
-status順序、stage event/domain hashの順で検証します。plan-backed terminal completed/blockedはさらに
-result coverage、artifact実体、terminal eventとresult actual SHA-256まで完全検証してからno-opにし、leaseを
-即時解放します。outside-onlyでstageが0件でも同じterminal証跡が必要で、no-plan blockedはfull basis必須です。
-feedback modeは`docs/pipeline/feedback-runs/{feedback_id}`、`docs/pipeline/events`、
-`docs/pipeline/run-lease.json`の標準layoutへ固定し、custom overrideと内側のsymlinkを拒否します。
-成功artifact refはrealpath解決後もroot内のregular
-fileだけを許可します。stage packetはallowed descriptorとexact CR sliceだけをnon-instruction dataとして渡し、
-成功stageはdomain event参照必須、失敗stageは空を許可する代わりにfailure phase/reason必須です。
+1. Markdownを検証し、不変な`input.md`として保存する。
+2. 各変更要求を内部work unitへ分け、所有stageを判定する。
+3. 所有stage以降の依存stageを、それぞれ最大1回実行する。
+4. 要求ごとの結果と証跡を`result.json`へ保存する。
+
+曖昧さの扱いは実行モードで決まります。
+
+| モード | 動作 |
+|---|---|
+| 既定の対話モード | 推奨案、代替案、影響、根拠を提示して回答を待つ |
+| `--recommended-auto` | 要求の意味を変えない安全なroutingだけを自動採用する |
+
+要求の再解釈、設計判断、競合、根拠不足、破壊的な範囲拡大は自動採用しません。
+回答者が内部stage名を知る必要はありません。
+
+実行記録は`docs/pipeline/feedback-runs/{feedback_id}/`へ保存します。
+中断後は外部Markdownを読み直さず、このrun directoryから再開します。
+同じfeedback IDと入力SHAの組み合わせは、保存済み証跡を検証してから再開またはno-opにします。
+
+入力書式は[feedback-request-format.md](skills/dist-pipeline/references/feedback-request-format.md)を参照してください。
+内部状態と再開条件は[feedback-run-state.md](skills/dist-pipeline/references/feedback-run-state.md)を参照してください。
 
 ### 個別実行
 

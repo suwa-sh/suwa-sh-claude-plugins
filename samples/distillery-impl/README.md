@@ -1,48 +1,47 @@
-# samples/distillery-impl — 実装ハーネスの実行結果サンプル
+# distillery-impl実行サンプル
 
-distillery-impl plugin の vertical slice(2026-07-29)で、`samples/distillery/pipeline/` を
-specs_root として UC「貸出管理業務/貸出管理フロー/書籍を貸出する」(uc_id `19ec0182`)を
-S0→S9 一気通貫で実行した**実装先リポの実物**です(git tracked ファイルのみ。node_modules は除く)。
+このdirectoryは、UC「書籍を貸出する」をS0からS9まで実行した結果です。
+入力仕様は[samples/distillery/pipeline/](../distillery/pipeline/)にあります。
 
-distillery の出力(仕様書一式)はここには含めません — 入力側の正は
-[samples/distillery/pipeline/](../distillery/pipeline/) を参照してください
-(vertical slice で使った最小 storybook-app も `design/latest/storybook-app/` に同梱)。
+## 確認するファイル
 
-## まず見るもの
+| 確認内容 | ファイル |
+|---|---|
+| 実装レビュー | [review/index.html](docs/impl/latest/19ec0182/review/index.html) |
+| 実装済み仕様と差分 | [feedback/as-built-summary.md](docs/impl/latest/19ec0182/feedback/as-built-summary.md) |
+| pipelineへ渡した11件の要求 | [feedback request](docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md) |
+| stageとeventの状態 | [docs/impl/](docs/impl/) |
 
-- **ヒトレビュー用 HTML(S9 の成果物)**: [docs/impl/latest/19ec0182/review/index.html](docs/impl/latest/19ec0182/review/index.html)
-  をブラウザで開く。前提知識ゼロで「何を作ったか → 結論 → 根拠 → 判断ポイント」が読める構成
-- **as-built仕様サマリ(S8)**: [docs/impl/latest/19ec0182/feedback/as-built-summary.md](docs/impl/latest/19ec0182/feedback/as-built-summary.md)
-  — 実装が実際に満たした仕様と、仕様との差分
-- **公開済みfeedback request**: [docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md](docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md)
-  — 仕様起因11件を1ファイルへ集約したdist-pipeline入力。stage指定やreview metadataは含まない。
-  S9で表示したdraft ID/SHA/件数とreview HTML SHA/gate/open finding集約は
-  review-generated event→review-approved eventへexactに結合され、publish eventはそのlineageと同じdraft bytesを参照する
-- **状態ファイル**: [docs/impl/](docs/impl/) — events(追記のみ)+ latest(スナップショット)+
-  stages/ の done ファイル群。attempt-1〜3 の blocker 検出 → 解消 → carry-forward の履歴が残っている
+公開済みfeedback requestは、stage指定とレビュー情報を含まない単一Markdownです。
+S9 eventとapproval eventは、レビュー画面に表示したdraftのID、SHA-256、要求数を保持します。
+publish eventは、同じdraft bytesを公開したことを記録します。
 
-## 還流後の仕様(次サイクルの入力)
+## 実行結果
 
-ここにある変更要求は、単一Markdownとして distillery の判定処理へ還流済みです。[samples/distillery/pipeline/](../distillery/pipeline/) には
-還流前から存在する成果(usdm イベント `20260729_140044_impl_feedback_19ec0182` = REQ-007〜012 / rdra 差分 /
-specs イベント `20260729_141624_spec_generation`)があり、specs イベントの `_review/` には
-dist-spec Step6.5(反証レビューループ)の findings(round-1: major 2 + minor 4 → round-2 で収束、計 8 件修正)が残っています。
-加えて [pipeline/feedback-runs/](../distillery/pipeline/pipeline/feedback-runs/) にdist-pipeline内部の
-振り分け計画と要求別結果を収録しています。サンプルworkspace rootが`../distillery/pipeline/`で、その配下の
-`pipeline/feedback-runs/`が契約上の実行記録先となるため、リポジトリから見ると`pipeline/`が2階層に見えます。
-イベント履歴を遡れば「実装前の仕様 → 実装 → 単一feedback Markdown → pipeline内部判定 →
-既反映との照合・未反映の明示」の一周を追跡できます。新しいfeedback runは6件を`merged`、
-5件を`deferred`、今回の変更を0件と判定し、runを`blocked`で終了します。未反映を完了扱いしません。
+実装は3回のattemptで完了しました。
 
-## 実行結果の要点
+1. attempt 1でVerifierがblockerを2件検出した。
+2. attempt 2でblockerを解消したが、統合時に仕様の不足を検出した。
+3. attempt 3でbackendを修正し、全gateを通過した。
 
-- 6 段ゲート全 pass: format / lint / 単体 47 / tier BDD 2+2 / UC BDD 4 / ATDD 2(タグ完全一致選択)
-- attempt-1 で別モデル Verifier が blocker 2 件を検出(「ゲート pass だが画面未描画」
-  「スキーマに無い自作フィールド」)→ attempt-2 で解消 → S6 統合 fail(cross-UC 依存等の仕様の穴)
-  → backend のみ attempt-3 差し戻し・frontend は carry-forward → 全ゲート green → ヒトレビュー承認
+最終的に、format、lint、単体テスト、tier BDD、UC BDD、ATDDがPASSしました。
+S9の承認後、仕様起因の11件を1つのMarkdownとして公開しました。
+
+## distilleryへの還流結果
+
+pipeline側の実行記録は[feedback-runs/](../distillery/pipeline/pipeline/feedback-runs/)にあります。
+
+| 判定 | 件数 | 意味 |
+|---|---:|---|
+| `merged` | 6 | 既存の仕様eventで充足を確認した |
+| `deferred` | 5 | 未反映または判断が必要だった |
+| `applied` | 0 | 今回はdomain成果物を変更しなかった |
+
+未反映が5件あるため、run全体は`blocked`です。
+詳細は[pipeline sample README](../distillery/pipeline/README.md#pipeline-feedback-run)を参照してください。
 
 ## 再現方法
 
-```
-/distillery-impl:dist-impl-run 貸出管理業務/貸出管理フロー/書籍を貸出する specs_root={samples/distillery/pipeline の複製} repo_root={空の git リポ}
+```text
+/distillery-impl:dist-impl-run 貸出管理業務/貸出管理フロー/書籍を貸出する specs_root={samples/distillery/pipeline の複製} repo_root={空のgit repository}
 ```
