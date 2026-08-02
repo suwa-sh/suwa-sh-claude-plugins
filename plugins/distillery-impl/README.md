@@ -111,7 +111,9 @@ docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
 公開時はdraftのID、SHA-256、要求数、review evidenceを再検証します。
 不一致なら公開せず、S8 refreshとS9 reviewへ戻ります。
 
-公開後、distillery workspaceで次を実行します。
+公開後、**新しいセッション（または`/clear`後）**で次を実行します。
+入力は公開Markdown 1ファイルで完結するため、実装セッションの会話コンテキストは不要です。
+実行コマンドと判断材料は`docs/impl/latest/{uc_id}/NEXT.md`にも永続化されます。
 
 ```text
 /distillery:dist-pipeline {feedback-request.md}

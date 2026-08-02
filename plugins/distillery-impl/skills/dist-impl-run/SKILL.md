@@ -244,20 +244,33 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    同じreview evidenceを参照するvalidなapprovalが既にあれば再追記せず再利用する。同じevidenceへの
    複数approval、S9 eventより前のapproval event IDはfail-closedで停止する。再レビューで新しいS9 evidenceを
    作った場合、旧approvalは履歴として残すがcurrent approvalには使わない
-   feedback要求が0件ならそのままstate=`completed`、leaseを解放して終了する
+   feedback要求が0件ならstate=`completed`とし、`{uc_id}/NEXT.md`を「還流不要(要求0件)」の内容で
+   上書き生成して、`review_approved` eventの追記分・status.yaml・更新済み`review/review-notes.md`と
+   **同一commit**(明示path)にしてからleaseを解放して終了する(前サイクルの還流指示を残さない。
+   派生物だけをcommitしない — state-schema.md「NEXT.md」のcommit境界)
 6. 要求が1件以上ならstate=`publishing_feedback`とし、S8を`mode=publish`で実行する。公開先が未作成なら
    draft/公開先と全親componentがcanonical UC root内のregular/non-symlinkであること、両親が同一filesystem
    であることをfail-closedに確認してatomic renameする。公開済みpathを再開時に発見した
    場合は`feedback_request_published` event、承認・review evidence event ID、SHAを照合し、
    同じ処理を繰り返さない
-7. publish後、blocker 0ならstate=`completed`、blockerありなら`blocked_on_spec`としてleaseを解放する。
-   完了報告に公開Markdownのpath、feedback ID、要求件数を含め、次を1回実行する案内を出す
+7. publish後、blocker 0ならstate=`completed`、blockerありなら`blocked_on_spec`とする。
+   **lease保持中に**`{uc_id}/NEXT.md`(セッション引き継ぎカード — 書式は state-schema.md)を上書き生成し、
+   明示pathでcommit(`impl({uc_id}): write NEXT.md handoff card`。terminal遷移に至る未commitの
+   write-set — events/追記分・status.yaml・S8 publish成果物・更新済みreview-notes.md — があれば
+   同一commitに含める — state-schema.mdのcommit境界が正本)してから、leaseを解放する
+   (単一コミッタ規則の内側で完結させる。commit前にleaseを剥がさない)。
+   完了報告に公開Markdownのpath、feedback ID、要求件数、NEXT.mdのpathを含め、
+   **還流はこのセッションで続けない**。次の案内を出して終了する:
+   「**コンテキストをクリアして**(`/clear` または新セッション)、次を1回実行してください」
 
    ```text
    /distillery:dist-pipeline {feedback-request.md}
    ```
 
    推奨ルーティングを安全な範囲で自動採用したい場合は`--recommended-auto`を付ける。
+   還流に必要な情報はすべてファイル側にある(公開Markdown / docs/ 配下)ため、
+   本セッションの会話コンテキストを持ち越す必要はない。dist-pipeline完了後の本スキル再開も
+   同様に新セッションでよい(再開判定はファイル駆動)。
 
 ### 公開後の訂正
 

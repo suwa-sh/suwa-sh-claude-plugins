@@ -53,6 +53,8 @@ docs/impl/
       learnings/{ts}_{slug}.md
       review/index.html
       review/review-notes.md          # S9 承認対話の要点(オーケストレータが追記。S8 refresh の入力)
+      NEXT.md                          # セッション引き継ぎカード(terminal 遷移ごとにオーケストレータが
+                                       #   lease 保持中に上書き生成。状態の正ではない — 正は events + done)
 ```
 
 - `event_id` の形式は distillery と同じ `{YYYYMMDD_HHMMSS}_{summary_slug}`(`date +%Y%m%d_%H%M%S` で取得)
@@ -710,14 +712,60 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
    validな`review_approved`がありrequest 1件以上で
    published eventが無ければ`dist-impl-feedback mode=publish`から再開する。publish started eventがあれば
    上記の再開規則でdraft/publicationのどちらを継続するか判定する。published eventがあれば
-   blocker件数に応じて`completed`または`blocked_on_spec`へ復元する
+   blocker件数に応じて`completed`または`blocked_on_spec`へ復元する。
+   **terminal復元時は`NEXT.md`の欠落・不一致を検査し**、冪等に再生成・commitしてから
+   leaseを解放する(published直後〜NEXT.md commit前の中断で引き継ぎカードが欠落したまま
+   終わらないようにする)。再生成元は件数で分岐する:
+   **要求1件以上** — 最新の有効なpublished event + 公開Markdown(severity内訳の出典)。
+   **要求0件** — 最新のvalid `review_approved` eventと参照先S9 evidence
+   (`request_count: 0`・`feedback_id: null`と、対応するpublished eventが存在しないことを
+   検証した上で)から「還流不要(要求0件)」カードを生成する(公開Markdownはこの経路では存在しない)
 8. 未完了の最初の stage から再開。中間生成物は削除しない
+
+## NEXT.md(セッション引き継ぎカード)
+
+還流(dist-pipeline 実行)は**新しいセッションで行う**前提のため、完了報告のチャット本文に
+しか無い情報を `latest/{uc_id}/NEXT.md` へ永続化する。**status.yaml と同格の派生スナップショット
+であり状態の正ではない**(正は events + done。食い違ったらそちらが正)。専用イベントは発行しない —
+以下の再構築元から決定論的に再構築可能なため、reducer の対象外とする(status.yaml と同じ扱い)。
+**再構築元は要求件数で分岐する**(再開手順の NEXT.md 補完と同じ規則):
+**要求 1 件以上** — 最新の有効な published event の payload + 公開 Markdown(immutable。
+severity 内訳の出典)。**要求 0 件** — 最新の valid `review_approved` event + 参照先 S9 evidence
+(published event と公開 Markdown はこの経路では存在しない)。
+
+**書くタイミング**: run の terminal 遷移(`completed` / `blocked_on_spec`)ごとに、
+オーケストレータが **lease 保持中に**毎回全体を上書き生成し(追記しない)、明示 path で
+commit してから lease を解放する。**要求 0 件の `completed` でも上書きし、
+「還流不要(要求 0 件)」であることを明記する**(前サイクルの還流指示を残さないため)。
+
+**commit 境界**: NEXT.md を commit する時点で、**その terminal 遷移に至る未 commit の write-set
+全体を同一 commit に含める**。対象は terminal 遷移を確定させた events/ 追記分・status.yaml のほか、
+未 commit で残っていれば S8 publish の write-set(公開 Markdown・draft の削除・`S8_feedback.done.yaml`・
+publish events)と更新済み `review/review-notes.md` も含む(いずれも明示 path で指定)。
+派生物の NEXT.md だけが commit され、正である events や公開 Markdown が未 commit のまま残る状態
+(checkout 時に NEXT.md が存在しない公開 Markdown を指す・events の再構築結果と食い違う状態)を
+作らない。
+
+記載内容(要求 1 件以上の場合):
+
+- **state**: `completed` | `blocked_on_spec`、feedback ID、要求件数、blocker 件数
+- **次に実行するコマンド**(新セッションまたは `/clear` 後に 1 回):
+
+  ```text
+  /distillery:dist-pipeline docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
+  ```
+
+- **`--recommended-auto` の判断材料**: CR の件数と severity 内訳の要旨
+  (安全な推奨 routing を自動採用したい場合のみ付ける)
+- **pipeline 完了後の再開コマンド**: `/distillery-impl:dist-impl-run {uc_id}`
+  (distillery 側の仕様更新で input hash が変われば S1 から新 manifest で再生成される旨を併記)
+- **参照 path**: 公開 Markdown / review/index.html / as-built-summary.md / learnings/
 
 ## 書き込み権限(write-set)の正本
 
 | 書き手 | 書いてよい場所 |
 |---|---|
-| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、**S3 の契約不整合の `issues/` 起票**、**S5 UI Review 環境失敗(`result: environment_failure`)の `issues/` 起票**、**`capture_review_completed` イベント追記後の staging→canonical 昇格**(`attempt-{n}/ui-artifacts/{tier_id}/staging/` から `ui-artifacts/{tier_id}/` へのファイル移動・`.findings.yaml` への findings-delta マージ・該当 `S5_ui-review.{tier_id}.done.yaml` の `checks_checked` 更新。D10 round2 skipped 復旧の再実行時のみ)、orphan 化した `staging/` の破棄、carry-forward done の生成、`invalidated/` への done 退避、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、`review/review-notes.md`、git commit |
+| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、**S3 の契約不整合の `issues/` 起票**、**S5 UI Review 環境失敗(`result: environment_failure`)の `issues/` 起票**、**`capture_review_completed` イベント追記後の staging→canonical 昇格**(`attempt-{n}/ui-artifacts/{tier_id}/staging/` から `ui-artifacts/{tier_id}/` へのファイル移動・`.findings.yaml` への findings-delta マージ・該当 `S5_ui-review.{tier_id}.done.yaml` の `checks_checked` 更新。D10 round2 skipped 復旧の再実行時のみ)、orphan 化した `staging/` の破棄、carry-forward done の生成、`invalidated/` への done 退避、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、`review/review-notes.md`、`{uc_id}/NEXT.md`、git commit |
 | S0 bootstrap | 実装リポ全体(初期生成)、latest/ の config/uc-map/lock、`bootstrap.done.yaml` |
 | S2 Implementer(test-scaffold) | 各 tier の `features/`・`test/`、`features/uc/`、`features/atdd/`、`S2_test-scaffold.done.yaml`、対象 UC の `issues/`(矛盾 3 条件の起票) |
 | S4 Implementer(tier 別) | 自 tier の dir 配下、`attempt-{n}/S4_*.{自tier}.done.yaml`、issues/ |
