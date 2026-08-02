@@ -3,70 +3,39 @@ uc_id: 19ec0182
 business: 貸出管理業務
 buc: 貸出管理フロー
 uc: 書籍を貸出する
-state: completed
+state: invalidated
+# 2026-08-02: UI 構造整合規範 + UI 並走レビューレーン(distillery-impl v0.4.0)の導入で
+# input-manifest が変化し、event 20260802_103500_ui_norms_stages_archived により
+# 全 stage done を invalidated/ へ退避。再実行時は S1 から新 manifest で done を再生成する。
+# 公開済み feedback(feedback-requests/20260729_121600_impl_feedback_19ec0182.md)と
+# events の履歴は immutable として保持。
 current_attempt: 3
 resolved_models:
   implementer: claude-fable-5
   verifier: claude-opus-5
 stages:
   S1_uc_init:
-    status: done
+    status: pending
   S2_test_scaffold:
-    status: done
-    red_baseline: pass
+    status: pending
   S3_contracts:
-    status: done
+    status: pending
   S4_tier_impl:
     tier-frontend:
-      status: done
-      attempt: 3
-      carried_from: attempt-2
+      status: pending
     tier-backend-api:
-      status: done
-      attempt: 3
-      gates:
-        format: pass
-        lint: pass
-        tdd: pass
-        bdd_tier: pass
+      status: pending
   S5_verify:
     tier-frontend:
-      status: done
-      attempt: 3
-      open_blockers: 0
-      open_majors: 1
+      status: pending
     tier-backend-api:
-      status: done
-      attempt: 3
-      open_blockers: 0
-      open_majors: 1
+      status: pending
   S6_uc_bdd:
-    status: done
+    status: pending
   S7_atdd:
-    status: done
+    status: pending
   S8_feedback:
-    status: done
-    feedback_request:
-      request_count: 11
-      blocker_count: 0
-      feedback_id: 20260729_121600_impl_feedback_19ec0182
-      path: docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md
-      input_sha256: 5b4dc4155b3d6aed830334dde78a0df21187dc84e93b70632c40b4b484a891f2
-      review_approved_event_id: 20260729_123000_review_approved
-      review_evidence_event_id: 20260729_122500_s9_review_generated
-      published_at: '2026-07-29T12:30:02+09:00'
+    status: pending
   S9_review:
-    status: done
-    approved: true
-    review_evidence_event_id: 20260729_122500_s9_review_generated
-    review_approved_event_id: 20260729_123000_review_approved
-    feedback_review_evidence:
-      feedback_id: 20260729_121600_impl_feedback_19ec0182
-      draft_sha256: 5b4dc4155b3d6aed830334dde78a0df21187dc84e93b70632c40b4b484a891f2
-      request_count: 11
-    implementation_review_evidence:
-      review_html_sha256: 387df5f0ba2570acc5d1d70e66da33aa0af234431ec5de0dfeb6afd8690c1b79
-      gate_result: 6/6 pass
-      open_blocker_count: 0
-      open_major_count: 2
-updated_at: '2026-07-29T12:30:02+09:00'
+    status: pending
+updated_at: '2026-08-02T10:35:00+09:00'

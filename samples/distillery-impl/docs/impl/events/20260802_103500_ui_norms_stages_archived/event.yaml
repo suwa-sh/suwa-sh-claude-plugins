@@ -1,0 +1,40 @@
+event_id: "20260802_103500_ui_norms_stages_archived"
+type: stage_invalidated
+uc_id: "19ec0182"
+stage: "S1"
+payload:
+  corrects_event_id: "20260802_061500_ui_norms_manifest_recalculated"
+  invalidated_stages: ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"]
+  archived_to: "latest/19ec0182/invalidated/20260802_103500_ui_norms_stages_archived/"
+  archived_dones:
+    - "stages/S1_uc-init.done.yaml"
+    - "stages/S2_test-scaffold.done.yaml"
+    - "stages/S3_contracts.done.yaml"
+    - "stages/S6_uc-bdd.done.yaml"
+    - "stages/S7_atdd.done.yaml"
+    - "stages/S8_feedback.done.yaml"
+    - "stages/S9_review_generated.done.yaml"
+    - "stages/attempt-1/S4_tier-impl.tier-backend-api.done.yaml"
+    - "stages/attempt-1/S4_tier-impl.tier-frontend.done.yaml"
+    - "stages/attempt-1/S5_verify.tier-backend-api.done.yaml"
+    - "stages/attempt-1/S5_verify.tier-frontend.done.yaml"
+    - "stages/attempt-2/S4_tier-impl.tier-backend-api.done.yaml"
+    - "stages/attempt-2/S4_tier-impl.tier-frontend.done.yaml"
+    - "stages/attempt-2/S5_verify.tier-backend-api.done.yaml"
+    - "stages/attempt-2/S5_verify.tier-frontend.done.yaml"
+    - "stages/attempt-3/S4_tier-impl.tier-backend-api.done.yaml"
+    - "stages/attempt-3/S4_tier-impl.tier-frontend.done.yaml"
+    - "stages/attempt-3/S5_verify.tier-backend-api.done.yaml"
+    - "stages/attempt-3/S5_verify.tier-frontend.done.yaml"
+  reason: >
+    先行イベント 20260802_061500_ui_norms_manifest_recalculated が宣言した stale を
+    state-schema.md の done 退避規約どおりに完遂する補正イベント。
+    追加で UI 並走レビューレーン(dist-impl-ui-review)導入に伴う dev-rules 更新
+    (tier-rules.md 検証所有表 / test-strategy.md DOM 一致テスト転写規約)を
+    dev_rules_sha256 に反映した。対象の全 done ファイル(*.done.yaml)を上記退避先へ
+    相対パス構造を保って移動する。findings / feedback / review 成果物は証跡として
+    stages/ 配下に残す。status.yaml は再実行待ち(stale)へ再構築する。
+    再実行時は S1 から新 manifest(stage projection)で done を再生成する。
+    impl-config への tiers[].capabilities.ui_review の追加は遡及せず、
+    再実行時の bootstrap 旧形式移行規則(P1/P2 の一度きり invalidate)に委ねる。
+created_at: "2026-08-02T10:35:00+09:00"

@@ -37,9 +37,24 @@ description: >
    生成済みの共有 feature 本文は変更しない)
 2. step definition skeleton(全 step が「未実装」を明示して fail)+ runner 設定を配置
 3. ④ 対象 UC × tier ごとに最初の failing 単体テストを 1 本以上書く(命名・AAA は test-strategy.md)
-4. **red baseline 確認**: 4 段すべてを実行し「未実装を理由に fail する」ことを確認。
-   パースエラー・設定ミス由来の fail は red と認めず修正する
-5. `S2_test-scaffold.done.yaml` を書く(`red_baseline: pass` を含める)
+4. **dom_snapshot が true な frontend tier のみ**: `docs/dev-rules/test-strategy.md` の
+   「DOM 一致テストの転写規約」に従い、**executable target**(定義の正本は
+   `dist-impl-run/SKILL.md` の S5 dispatch 手順。本節では再定義しない)ごとに red の
+   DOM 一致テストを生成する。正本の算出規則で除外された行・variant は `issues/` に起票済みとして
+   **red baseline の分母から外す**(テスト自体を生成しない。除外理由は生成したテストファイル側の
+   コメントにも記録する)。
+   **生成物は 2 種に分離する**(test-strategy.md の表を参照。混同しない): 実装画面は直接 import せず、
+   variant ごとに明示的な not-implemented stub の**結線 module**を生成してテストは結線 module
+   経由にする(module resolution error は red baseline と認めない)
+5. **dom_snapshot が true または capture_review が enabled な frontend tier**: 構造署名の
+   extractor・variant→実装 props の adapter・HTML shell 生成(capture_review の SSR 静的 HTML 化が
+   使う)を含む**共通 helper**を tier 内に 1 箇所だけ生成する(結線 module とは別生成物・S4 では
+   変更しない)。capture_review のみ enabled で dom_snapshot テスト自体は生成しない場合でも、この
+   helper は生成する。S5 UI Reviewer の dom_snapshot 再実行・capture_review の SSR 静的 HTML 生成の
+   両方がこれを使う
+6. **red baseline 確認**: 4 段すべて(dom_snapshot テストがあればそれも含む)を実行し
+   「未実装を理由に fail する」ことを確認。パースエラー・設定ミス由来の fail は red と認めず修正する
+7. `S2_test-scaffold.done.yaml` を書く(`red_baseline: pass` を含める)
 
 ## mode=tier-impl(S4)
 
@@ -54,16 +69,27 @@ description: >
    scope 指定時は scope 範囲)、
    `docs/dev-rules/` 3 ファイル。
    **tier 種別に応じて追加で読む**(tier-rules.md):
-   frontend は `packages/ui/`(利用可能な export)と design-event.yaml の該当 screen、
+   frontend は read-set 定義(uc-map の `ui_screens` が指す design-event.yaml の該当 screens[] 全行 +
+   結線 story + story から到達する packages/ui 内の推移的 import closure)、
    backend(datastore_owner)は `_cross-cutting/datastore/` の schema、
    worker は async 型定義(asyncapi 契約が宣言されている場合)
+   - **frontend の実装前チェック**: tier-rules.md の矛盾 3 条件(story path 実体の不在 /
+     variants と named export の不一致 / components 宣言と story 実体の不一致)を確認する。
+     矛盾があれば `issues/{ts}_{slug}.md` に起票した上で、story 実体を優先して実装を続行する
+     (停止しない。ui_screen_resolution が plain_ui_confirmed / feedback_requested の場合は
+     UI 突合そのものをスキップする)
 2. **ddd ガイドの読込**(capabilities.has_ddd_plugin が true の場合):
    Skill ツールで `ddd:ddd-tactical-implementation` を呼び出し、判断ゲートとワークフローを把握してから
    実装に入る。呼び出し時に平文で渡す: 対象言語 / 実装対象モデル(_model-summary.yaml の該当エンティティ)/
    不変条件・業務ルール(tier md のビジネスルール欄)/ 成果物パス({tier_dir}/src)。
    false の場合は `docs/dev-rules/coding-rules.md` の基準のみで実装する
 3. **TDD ループ**: tier BDD シナリオ(③)を外側の目標に、内側で red→green→refactor を回す。
-   attempt が 2 以上なら、渡された findings の blocker を先に修正対象へ組み込む
+   attempt が 2 以上なら、渡された findings(verify、当該 tier で ui-review が dispatch されて
+   いれば ui-review も。両レーン分)の blocker を先に修正対象へ組み込む。
+   **dom_snapshot が true な frontend tier**: S2 が生成した**結線 module のみ**を実装画面への
+   参照に書き換え、DOM 一致テストを green にする。**共通 helper(構造署名 extractor +
+   variant→props adapter)は変更しない**(S2 生成のまま使う。署名生成ロジックを独自に作らない。
+   test-strategy.md「生成物の構造」の区分に従う)
 4. **ゲート 1〜4 を実行**(`references/gates.md`。コマンドは config の commands。
    format/lint は check-only。書き換えを伴う format は実行しない)
 5. 全ゲート pass → `attempt-{n}/S4_tier-impl.{tier_id}.done.yaml` を書く(gates 結果を記録)

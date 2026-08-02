@@ -2,7 +2,8 @@
 name: distillery-impl:dist-impl-run
 description: >
   distillery-impl のオーケストレータ。UC を指定して実装パイプライン(S0 bootstrap → S1 uc-init →
-  S2 test-scaffold → S3 contracts → S4 tier 並走実装 → S5 別モデル Verifier → S6 UC BDD → S7 ATDD →
+  S2 test-scaffold → S3 contracts → S4 tier 並走実装 → S5 別モデル Verifier(+ dispatch 条件を満たす
+  frontend tier は実行ベースの UI Reviewer が並走)→ S6 UC BDD → S7 ATDD →
   S8 feedback → S9 review)をファイル駆動の冪等再開つきで運転する。
   「この UC を実装して」「実装パイプラインを回して」「実装を再開して」などで発動。
 ---
@@ -44,7 +45,8 @@ description: >
 
 ```
 S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
-→ S4 tier-impl(並列) → S5 verify(並列) →(blocker あり: attempt++ で S4 へ、最大 3)
+→ S4 tier-impl(並列) → S5 verify(並列)+ui-review(並走。dispatch 条件を満たす frontend tier のみ)
+   →(blocker あり: attempt++ で S4 へ、最大 3。両レーンの findings を合算)
 → S6 uc-bdd → S7 atdd → S8 feedback draft → S9 implementation review
 → S8 feedback publish(要求がある場合) → completed / blocked_on_spec
 ```
@@ -54,14 +56,36 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
      tier id が arch tiers[] に含まれるか / 条件付き生成物と capability の矛盾。
      欠落・矛盾は「縮退で進める」か「変更要求を出して停止」かを分類して提示
   2. input-manifest.yaml を書く(全入力の event_id + sha256、lineage 検証)。
-     `lineage_ok: false` は停止し「spec 再生成 or 旧前提で続行」をユーザーに問う
+     `lineage_ok: false` は停止し「spec 再生成 or 旧前提で続行」をユーザーに問う。
+     **has_design_system の場合**、`ui_imported` は state-schema.md の計算規則で
+     packages/ui 配下の実体から tree hash を計算する(fail-closed: 実ファイルと
+     `.imported.yaml` の path 集合の乖離・per-file sha256 不一致は「取り込みの再実行 or
+     変更内容の確認」として提示する)
   3. UC→ATDD マッピング: uc-map の `atdd_confirmed` が false なら、usdm の
      `requirements[].specifications[].affected_models[]`(type: buc)から BUC 粒度候補を生成し、
      **全 SPEC 一覧(候補外も選択可)と併せて**ユーザー確認 → Scenario 名単位で uc-map に永続化
      (state-schema.md「UC→ATDD マッピング」。**確定時は `config_confirmed` イベントを
      追記してから uc-map を更新する**)
-  4. has_design_system かつ design-event.yaml に UC の screen 結線が無い場合は警告し、
-     「素の packages/ui で進める / design へ変更要求」を確認
+  4. **has_design_system かつ対象 UC の tiers に frontend 種別の tier が含まれる場合、
+     screen 解決を確定し uc-map へ永続化する**(frontend が無い UC では `ui_screens` /
+     `ui_screen_resolution` のどちらも置かない):
+     design-event.yaml の `screens[]` から uc 名一致行を抽出する。リポジトリ内に同名 UC が
+     複数ある場合(uc-map の {業務, BUC, UC} 識別で判定)や帰属が曖昧な場合は、確定前に
+     ユーザーに確認する。確定した screen の `{name, route}` リストを `config_confirmed` イベント追記後、
+     uc-map の `ui_screens` に永続化する(**非空の場合は `ui_screen_resolution` を置かない。
+     design 更新後の再実行等で残存していたら削除する** — state-schema.md の XOR 制約)。
+     - **0 件**の場合は「素の packages/ui で進める / design へ変更要求」を確認し、
+       **`config_confirmed` イベントを追記してから** `ui_screen_resolution` に永続化する
+       (`plain_ui_confirmed` または `feedback_requested`)。`feedback_requested` を選んだ場合は
+       `issues/{ts}_{slug}.md` に design への変更要求を起票した上で、
+       **素の packages/ui で実装を続行する**(停止しない)
+     - **0 件 → 非空への遷移**(design 更新後の再実行等)では、`config_confirmed` イベントに
+       `ui_screens` の before→after と `ui_screen_resolution: {before: ..., after: null}` の両方を
+       含める(reducer は `after: null` を削除として適用 — state-schema.md)
+     - **screen 解決の確定後、uc-map の {ui_screens, ui_screen_resolution} から
+       `ui_screen_config`(canonical JSON の sha256)を計算して input-manifest に記録する**。
+       手順 2 の manifest はこの反映をもって確定する(screen 解決の変更が S1 以降の
+       stale 判定に乗る)
   5. `S1_uc-init.done.yaml` を書く(共通スキーマ。オーケストレータの write-set に含まれる)
 - **S3(contracts)も自分で実行する**。impl-config の `contracts[]` を loop し、契約ごとに:
   1. **鮮度照合**: contracts.lock.yaml の input sha256 と現物を照合。不一致 → bootstrap
@@ -84,15 +108,88 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 - **S4/S5 の並列 dispatch**: uc-map の tiers を tier ごとに 1 サブエージェントで**同一メッセージ内で並列起動**。
   S5 の Verifier は **agent type に `distillery-impl:impl-verifier` を指定し、Agent/Task ツールの
   model パラメータに verifier_model を渡す**(agent 定義の disallowedTools 制約を効かせるため)
+- **S5 UI Reviewer の並走 dispatch**(D8。dist-impl-verify とは対象も手段も異なる独立レーン):
+  1. **executable target 集合を自分で算出**する(この算出規則が唯一の正本。test-strategy.md の
+     S2 対象・dist-impl-ui-review/SKILL.md の target 前提はここを参照する): uc-map の `ui_screens` を
+     design-event.yaml まで解決した `screens[]` 行のうち、`story` の実体が packages/ui に存在し
+     `variants` が非空の行の(screen × variant)集合。`ui_screens` が非空でも target が 0 件になり得る
+     (story/variants は optional のため)。**さらに、tier-rules.md の矛盾 3 条件(story path 実体の
+     不在 / variants と named export の不一致 / components 宣言と story 実体の不一致)に該当する
+     行・variant は集合から除外する**(除外対象は実行ベースの検証に持ち込まず、Verifier
+     手順 6 の major findings / issues 経路でのみ扱う — 入力ソース間矛盾は実装で解消不能なため)。
+     除外した行があれば理由を起動テンプレートの指示に含める。**算出した target 集合の
+     canonical hash(`targets_hash`)と件数(`targets_count`)も算出する**(計算規則は
+     state-schema.md「dispatch target の canonical hash」)
+  2. **dispatch するのは**「対象 UC の tiers のうち `tiers[].capabilities.ui_review` の
+     `dom_snapshot: true` または `capture_review: enabled` のいずれかを満たす frontend tier」かつ
+     「手順 1 の executable target が 1 件以上」の場合のみ。`dom_snapshot: false` かつ
+     `capture_review: disabled` の tier には起動しない(読解ベースの照合表は Verifier 手順 6 が
+     担保。重複検証を作らない)
+  3. dispatch する tier があれば、Verifier と**同一メッセージ内で**並列起動する(agent type は
+     `distillery-impl:impl-verifier`、model は verifier_model を流用 — impl-config にキーを
+     増やさない)。skill 名は `distillery-impl:dist-impl-ui-review`、算出した target 集合と
+     `targets_hash`・`targets_count` を引数で渡す(subagent-template.md の S5 ui-review テンプレート)
+  4. **UI Reviewer の done が `environment_failure` の場合の縮退遷移**(dom_snapshot テストの
+     実行環境自体が壊れている場合のみ到達する — capture_review はこの状態に到達しない。D10。
+     writer はオーケストレータ。UI Reviewer 自身は縮退を書かない):
+     - `{uc_id}/issues/{ts}_{slug}.md` に起票する
+     - ユーザーに縮退可否を確認する
+     - **承認**: `config_confirmed` イベントを追記した上で該当 tier の `tiers[].capabilities.ui_review`
+       を done の `degradation_proposed` に従って更新し、`ui_review_config` の変化により
+       S2 以降の done を invalidate する(state-schema.md の manifest_sha256 射影規則に従う)
+     - **拒否**: `stage_failed` イベントを記録して lease を解放し run を終了する(再開時は S5 から。
+       環境を直すか縮退を選ぶまで進まない — S3 の既存停止パターンと同じ)
+  5. **UI Reviewer の done が `unverified` の場合**(dispatch 前提とのズレ): 再開時に dispatch 条件・
+     executable target を再算出する。**再算出後も target が 0 件**なら、既存の `unverified` done を
+     invalidate して `executable_target_zero` の非 dispatch 状態に合流させ(以後 dispatch しない)、
+     **1 件以上**なら同一 attempt で UI Reviewer を再 dispatch する(state-schema.md 再開手順を正本とする)
+  6. **UI Reviewer の done が `result: pass` かつ `checks_checked.capture_review: {status: skipped,
+     reason: runtime_unavailable}` の場合**(browser ツールが本セッションで利用不能だった。D10):
+     縮退確認は不要(environment_failure ではないため)。再開時、**現セッションで browser 系
+     ツールが利用可能**かつ**`S6_uc-bdd.done.yaml` 以降の done がまだ存在しない**場合のみ、
+     以下を判定する: **(i) 対応イベントの無い `staging/`(orphan)を検出したら破棄**(D10
+     round2)、**(ii) `capture_review_completed` イベントは存在するが canonical が期待 hash に
+     未到達(昇格が中断)なら冪等に再遂行**(D8 round3。両方の詳細は state-schema.md
+     「orphan 検出」「冪等再遂行」を正本とする)。どちらでもなければ
+     `distillery-impl:dist-impl-ui-review` を `checks=capture_review` を渡して同一 attempt で
+     再 dispatch する(dom_snapshot は再実行しない)。UI Reviewer は成果物を
+     `attempt-{n}/ui-artifacts/{tier_id}/staging/` にのみ書き、更新後の `checks_checked` 全文
+     (`checks_checked_after`)・staged ファイル一覧・各ハッシュを完了報告で返す(canonical
+     latest/ は書き換えない)。オーケストレータは報告値を `staging/` の実測と照合するだけでなく、
+     **イベント追記の前に** staging の内容(canonical findings の dom_snapshot 分 +
+     `findings-delta.yaml` の capture_review 追記分)から「マージ後 findings 候補」を構築し、
+     **通常の S5 受理(下記手順 7)と同じ全検証**(`checks_checked` 完全一致・`captures[].target`
+     と dispatch target の 1:1 対応・`capture_index` の範囲と参照先 `result: diff`)を実施する
+     (D8 round3。sha 自己整合だけで昇格しない)。**全検証 pass の場合のみ**、検証済み候補から
+     算出した hash を payload に持たせて **`capture_review_completed` イベント(payload に
+     staged→canonical 対応表を含む。stage_completed は流用しない)を追記し、その後に**
+     staging→canonical への昇格(ファイル移動・findings マージ・done の `checks_checked` 更新)を
+     行う(イベント先行。state-schema.md の順序原則どおり)。**検証に失敗したら イベントを
+     書かず** `staging/` を orphan のまま残す(次回再開時に discard して再実行)。追加 findings に
+     blocker があれば通常の attempt 制御に乗る。**S6 以降が完了済みならこの attempt では
+     再実行しない**(承認済み証跡の失効・再承認の複雑さを持ち込まないため。state-schema.md の
+     再開手順を正本とする)
+  7. **S5 受理時の fail-closed 検証**(D8 round2。「stage 境界の共通処理」の一部として実施):
+     UI Reviewer の done が持つ `dispatch_targets.hash`/`count` を、自分が dispatch 時に算出した
+     `targets_hash`/`targets_count` と照合する。`checks_checked.capture_review.status: done` の
+     場合はさらに、`.findings.yaml` の `captures[].target` が dispatch した executable target
+     集合と 1:1 対応する(欠落・重複・過剰なし)ことと、capture_review の finding が
+     `0 <= capture_index < captures.length` かつ参照先 `captures[capture_index].result: diff` で
+     あることを検証する。**いずれか不一致なら S5 を受理しない**(stage failed 扱い。
+     state-schema.md「captures[] の網羅性検証」を正本とする)
 - **workspace 依存追加は単一 writer(オーケストレータ)の責務**: root package-lock.json 等の
   workspace 共有ファイルは並走 Implementer が触ると競合する。必要な依存は S4 dispatch 前(または
   attempt 開始時)にオーケストレータがまとめて install し、**依存追加だけの独立 commit**
   (`impl({uc_id}): add deps for attempt-{n}`)にしてから dispatch する(package.json /
   package-lock.json はオーケストレータの write-set — state-schema.md 正本表)
-- **attempt 制御**: S5 の findings に blocker があれば `attempt_opened` イベントを記録して attempt++、
-  blocker のある tier の S4 を再実行。blocker の無かった tier には新 attempt に
-  **carry-forward done**(`carried_from` 付き)を自分で生成する(state-schema.md)。
-  **S4 を再実行したら全 tier の S5 を再実行**(安全側。S5 は carry-forward しない)。
+- **attempt 制御**: **S5 verify と ui-review、両レーンの findings を合算**して blocker 判定する
+  (ui-review が dispatch されなかった tier は verify のみで判定)。blocker があれば
+  `attempt_opened` イベントを記録して attempt++、blocker のある tier の S4 を再実行。
+  blocker の無かった tier には新 attempt に**carry-forward done**(`carried_from` 付き)を
+  自分で生成する(state-schema.md)。**S4 を再実行したら全 tier の S5(verify + dispatch 対象なら
+  ui-review も)を再実行**(安全側。どちらのレーンも carry-forward しない)。
+  **S4 再実行時は両レーンの findings パスを tier 単位で Implementer に渡す**
+  (subagent-template.md の S4 の findings 変数。ui-review も carry-forward しない)。
   attempt が 3 を超えたら停止し、findings 要約と選択肢(続行 / 仕様ブロック / 手動介入)を提示
 - **S6/S7 の fail**: integration writer の分析を読み、次の 3 択から判断する(迷ったらユーザーに提示):
   ①原因 tier の S4 へ差し戻す、②仕様ブロックとして issues 起票済みのまま S8 へ進む、
@@ -112,7 +209,9 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 
 1. サブエージェント報告から結果を検証(done ファイルの実在・スキーマ・write-set 逸脱の有無。
    スキーマ検証には `yaml.safe_load` で parse 可能であることを含める。parse 不能なら該当
-   サブエージェントへ書式のみの修正を差し戻す(内容変更禁止))
+   サブエージェントへ書式のみの修正を差し戻す(内容変更禁止))。**S5 UI Reviewer(通常 dispatch)は
+   さらに、done の `checks_checked` が `.findings.yaml` の `checks_checked` と完全一致すること・
+   S5 受理時の fail-closed 検証(上記 S5 dispatch 手順 7)を満たす**
 2. `stage_completed`(または failed)イベントを events/ に追記 → status.yaml 更新
 3. **git commit**: `git add -- <その stage の write-set のパスのみ>` →
    `impl({uc_id}): S4 tier-backend-api gates passed` 形式(Conventional Commits、scope=uc_id)。
@@ -126,7 +225,8 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    `open`（macOS）/ `xdg-open`（Linux）で表示する。開けなければ絶対pathを提示する。この時点の
    stateは`awaiting_review`。S9 doneと対応するstage eventには、表示したdraftの
    `feedback_review_evidence`（feedback ID / exact bytes SHA-256 / request件数）と、表示したHTMLの
-   `implementation_review_evidence`（exact bytes SHA-256 / gate結果 / open blocker・major件数）を記録する。
+   `implementation_review_evidence`（exact bytes SHA-256 / gate結果 / open blocker・major件数 /
+   captures_sha256。capture_review のスクショが承認後に置換・欠損していないことの証跡)を記録する。
    S9 doneは資料生成済みを示すだけで、承認の正は`review_approved` event
 2. ユーザーへ、ゲート結果、Verifierの反証、実装と仕様の差分、blockerの有無を提示し、
    **実装を承認 / 差し戻し**を問う。dist-pipelineのstage名やrouteは提示・選択させない。
@@ -136,7 +236,9 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 4. 差し戻しの場合、`review_rejected` event（差し戻し先stageと理由）を記録し、該当stage以降のdoneを
    `invalidated/{event_id}/`へ退避して再実行する
 5. 承認の場合、現在のdraft bytes/ID/件数をS9 doneとS9 stage eventの`feedback_review_evidence`へ、
-   現在のreview HTML bytesとgate/open finding集約を両者の`implementation_review_evidence`へexact照合する。
+   現在のreview HTML bytesとgate/open finding集約・**current capture imagesの再検証
+   (captures[]の非skippedエントリの実測SHA-256と`captures_sha256`の整合)**を両者の
+   `implementation_review_evidence`へexact照合する。
    一致した場合だけ、`review_approved` eventへ`review_evidence_event_id`と両evidence mappingを記録する。
    どちらかが不一致なら承認を記録せず、S8 refresh → S9再生成 → 再レビューへ戻る。
    同じreview evidenceを参照するvalidなapprovalが既にあれば再追記せず再利用する。同じevidenceへの

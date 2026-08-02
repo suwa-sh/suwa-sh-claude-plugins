@@ -1,0 +1,17 @@
+event_id: "20260802_060000_ui_screens_config_confirmed"
+type: config_confirmed
+uc_id: "19ec0182"
+stage: "S1"
+payload:
+  ui_screens:
+    before: null
+    after:
+      - name: "貸出手続き画面"
+        route: "/loans/new"
+  reason: >
+    UI 構造整合規範(tier-rules.md)の導入に伴い、design-event.yaml の screens[] から
+    uc「書籍を貸出する」に uc 名一致する行を抽出して screen 解決を確定。同名 UC の衝突は
+    uc-map の {業務, BUC, UC} 識別で無しと判定。ui_screens が非空のため
+    ui_screen_resolution は置かない(state-schema.md の XOR 制約)。
+  confirmed_by: user
+created_at: "2026-08-02T06:00:00+09:00"

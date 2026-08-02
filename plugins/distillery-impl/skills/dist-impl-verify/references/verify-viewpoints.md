@@ -16,6 +16,44 @@
 4. **テストとの整合**: tier BDD feature のシナリオが仕様の gherkin と一致しているか(意訳・改変されていないか)。
    スキップ・空実装の step が無いか
 5. **契約**: packages/contracts の型を経由しているか(直書きの型・fetch がないか)
+6. **UI 構造整合(frontend のみ)**: **実行ベースの比較(dom_snapshot / capture_review)は S5 並走の
+   UI Reviewer(dist-impl-ui-review)が所有する。capability(`tiers[].capabilities.ui_review`)が
+   無い(`dom_snapshot: false` かつ `capture_review: disabled`)場合、本手順(読解ベース)が唯一の
+   UI 検証になる**(tier-rules.md の検証所有表)。以下の照合表は読解ベースとして常時実施する
+   (dom_snapshot / capture_review の有無にかかわらず重複ではない)。
+   story を構造の正として、次の照合表方式で確認する
+   (集合一致ではない。合成コンポーネントの偽陽性を避けるため)。**明示する限界**:
+   確認するのは構造的整合まで。レイアウト・スタイル・レスポンシブ挙動などのピクセル忠実度は
+   対象外(未保証)であり、微細なレイアウト差は指摘対象にしない
+   - **uc 結線の 0/1/N 処理**: uc-map の `ui_screens` を先に確認する。**非空なら
+     `ui_screen_resolution` の値にかかわらず全行を対象に以下を行う**(両方が共存していたら
+     S1 の掃除漏れとして note に記録。state-schema.md の XOR 制約)。
+     `ui_screens` が空の場合のみ `ui_screen_resolution` を確認する:
+     `plain_ui_confirmed` または `feedback_requested` なら UI 突合はスキップし、
+     `viewpoints_checked.spec_conformance.note` に「UI 結線なし(合意記録あり)」等を記録して
+     findings は出さない。記録が無い 0 件は note に「UI 結線なし・合意記録なし」と記録し
+     minor findings とする
+   - **矛盾 3 条件の preflight**: 突合の冒頭で tier-rules.md の矛盾 3 条件
+     (①宣言 story path の実体欠落 / ②variants ↔ story named export の不一致 /
+     ③components 宣言が story closure に不在)をすべて判定する。**該当はいずれも
+     入力ソース間矛盾であり blocker にしない**。severity major +
+     「入力ソース間矛盾(実装では解消不能)。issues → feedback 経由での仕様修正を推奨」を
+     明記した findings とする。①②に該当した項目は以降の該当突合(story 構造・画面状態)を
+     スキップし note に記録する
+   - **コンポーネント在庫の照合表**: design-event `screens[].components` の各コンポーネントについて
+     `直接使用(direct) | 他コンポーネント経由(transitive: 経由元を記録) | 実装に見当たらない(missing)`
+     を、根拠となる JSX / import 行とともに記録する。実装が import する UI コンポーネントの解決先が
+     すべて `packages/ui/` 内であること(直書き自作は違反)。`transitive` は違反ではない
+     (合成は design 側の構成)
+   - **missing の severity 区別**: story にも実装にも無い場合は矛盾 3 条件の③
+     (preflight で major・非 blocker 判定済み)。story には有るが実装に無い場合は
+     **実装欠陥**(blocker 候補。通常の attempt ループで修正)
+   - **画面状態の突合**: `screens[].variants` の各状態(Empty / Error / Loading 等)に対応する
+     表示分岐が実装に存在するかを、story の該当 named export の構成と突き合わせて確認する
+   - **prop variant の突合**: tier-frontend.md のコンポーネントマッピング表に記載された
+     variant / size prop が実装の該当箇所で使われているかを確認する
+   - 階層・文言・トークン参照は story との明らかな乖離(状態の欠落・別コンポーネントへの置換)のみ
+     指摘対象とする
 
 ## 2. readability_maintainability(可読性・保守性)
 

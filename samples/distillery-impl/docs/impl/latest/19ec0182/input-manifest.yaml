@@ -40,9 +40,10 @@ inputs:
     path: /private/tmp/distillery-impl-test/impl-repo/docs/impl/latest/contracts.lock.yaml
     sha256: 3980ef4d45bb32fbefc2dedd04d48f80956712eaedce86266607df6118f70802
   ui_imported:
-    path: /private/tmp/distillery-impl-test/impl-repo/packages/ui/.imported.yaml
-    sha256: 743e71850cf71aa8d0cd3a54d364d2464e08de1fade8aec7ea7eeb26ffa93aff
-  dev_rules_sha256: 9071eb8c2f6c0758d43711fb9766db880de7195b8966c972ef635f4954a7a9a9
+    tree_hash: 5e842d1fa2e8589e62cf83c174af0e756413a814e718f4fa2f98163667f8ea92
+  ui_screen_config:
+    sha256: 6bd9cd63b5b1cdea34da6d5efecc852281aa951150f3b450eaa612da8c35fcb4
+  dev_rules_sha256: e749e683b83729b93d88cf6346db25f58e58e2e9f155b0eb7db46181c8fbfc3e
 lineage_ok: false
 lineage_note: spec-event trigger は arch:20260412_164019 だが arch latest は 20260625_075157。ユーザー判断(2026-07-29)で旧
   arch 前提のまま続行を確定。

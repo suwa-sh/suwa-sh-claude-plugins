@@ -31,7 +31,9 @@ description: >
    生成 dir は `docs/impl/latest/contracts.lock.yaml` の該当契約の generated[] のうち
    audience が対象 tier の role または both で、lang 指定があれば対象 tier の lang と一致するもの)、
    `docs/nfr/latest/nfr-grade.yaml`(性能・可用性判定の根拠)、
-   docs/dev-rules/ 3 ファイル(frontend の場合は packages/ui の export 一覧も)。
+   docs/dev-rules/ 3 ファイル(frontend の場合は packages/ui の export 一覧に加えて
+   tier-rules.md の read-set 定義: uc-map の `ui_screens` が指す design-event.yaml の該当
+   screens[] 全行 + 結線 story + story から到達する packages/ui 内の推移的 import closure)。
    **関与しない契約・schema は読まない**(誤検出を避け、read-set を最小に保つ)。
    例外: 対象 tier が関与するデータ契約が 1 件も無い場合に限り、従来どおり
    `_cross-cutting/datastore/` の schema を読んでよい(verify-viewpoints のデータ観点の fallback)

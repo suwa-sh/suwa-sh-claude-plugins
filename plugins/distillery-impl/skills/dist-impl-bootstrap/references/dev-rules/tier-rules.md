@@ -25,6 +25,85 @@ generated[]。種別定義の正本は distillery-impl プラグイン側の con
 - openapi 契約の consumer である場合、API 呼び出しは `packages/contracts/api-client`(生成物)経由。
   fetch/axios の直書き禁止
 
+### story = 画面構造の正(転写起点)
+
+画面実装は **story の画面構成(使用コンポーネント・画面状態の出し分け)を構造の正として転写する**
+(参照例ではなく転写起点)。乖離が必要になったら実装で曲げず issues → feedback の既存経路で
+変更要求する。**明示する限界**: 本規約が担保するのは構造的整合(コンポーネント在庫・画面結線・
+画面状態)までであり、レイアウト・スタイル・レスポンシブ挙動などのピクセル忠実度は未保証。
+
+### 用語の正本分離
+
+UI に関する「正本」は 3 つに分離する。混同しない。
+
+| 対象 | 正本 | 例 |
+|---|---|---|
+| 画面のコンポーネント在庫 | design-event.yaml `screens[].components` | `["BookCard", "Button"]` |
+| 画面状態(Story の named export) | design-event.yaml `screens[].variants` | `["Default", "Error", "Loading"]` |
+| コンポーネントの prop variant / size | tier-frontend.md のコンポーネントマッピング表 | `BookCard (detailed)`, `Button (default/outline)` |
+
+宣言と実体が食い違う場合の実装優先順位: **story 実体(取り込まれた実ファイル)>
+design-event 宣言 > tier md 記載**(実装を止めないための優先。差分は issues へ)。
+
+### 入力ソース間矛盾の扱い(実装欠陥と区別・停止理由にしない)
+
+design-event / story 実体 / tier md が互いに食い違うケースは**実装の欠陥ではない**。
+上記の優先順位規則で常に実装続行可能なため、S4 の停止(blocker)理由にしない。
+
+矛盾として扱うのは次の 3 つのみ(optional 項目の単純な不在は矛盾ではない):
+
+1. screens[] に宣言された story path の実体が packages/ui 取り込みに存在しない
+2. screens[].variants と story 実体の named export が一致しない
+3. screens[].components に宣言されたコンポーネントが、story 実体(import closure 展開後)に存在しない
+
+**story path の解決規則**(条件 1 の判定に使う): `screens[].story` は storybook-app 相対
+(`src/` 始まり)、`.imported.yaml` の path は `storybook-app/src/` 基準(packages/ui 相対)。
+先頭の `src/` を厳密に 1 回除去して packages/ui 相対へ変換してから実体を照合する
+(例: `src/stories/Foo.stories.tsx` → `packages/ui/stories/Foo.stories.tsx`)。
+
+frontend の実装開始前に上記 3 条件を確認し、矛盾があれば
+`issues/{ts}_{slug}.md` に起票した上で、**story 実体を優先して実装を続行**する(停止しない)。
+
+### uc 結線の 0 / 1 / N 件の扱い
+
+design-event.yaml の Screen スキーマは `uc` / `story` / `variants` が任意で uc の一意性制約もない。
+screen 解決は uc-map の `ui_screens` / `ui_screen_resolution`(S1 が確定・永続化済み。
+両者は XOR — ui_screens が非空なら resolution は置かれない)を起点にする:
+
+- **`ui_screens` に 1 件以上**: 各行について突合する(複数画面 UC は全行が対象。
+  resolution が残存していても ui_screens 非空を優先する)
+- **`ui_screen_resolution: plain_ui_confirmed`**(ui_screens が空): UI 突合をスキップ
+  (素の packages/ui で進める合意済み)
+- **`ui_screen_resolution: feedback_requested`**(ui_screens が空): design への変更要求が起票済み。
+  素の packages/ui で実装を続行する(UI 突合はスキップ)
+- 行に `story` / `variants` が無い(optional 不在): その項目の転写はスキップする
+  (スキーマ上正常な入力であり矛盾ではない)
+
+### read-set 定義(Implementer / Verifier 対称)
+
+frontend の追加読込は次で構成する:
+
+- uc-map の `ui_screens` の各エントリ(`{name, route}`)に name + route 一致する
+  design-event.yaml の該当 `screens[]` 行(全行。screen name は一意制約が無いため route で同定を補う)
+- 各行の結線 story ファイル
+- 結線 story から到達する **packages/ui 内**の推移的 import closure
+  (closure は packages/ui 内に限定。packages/ui 外への展開はしない)
+
+### 検証所有表(UI 一致確認の担当分担)
+
+frontend の UI 一致確認は対象・手段が異なる複数レーンで分担する(有効化は
+`tiers[].capabilities.ui_review` の宣言に応じる)。混同しない:
+
+| 検証 | 手段 | 担当 | 有効化条件 |
+|---|---|---|---|
+| 構造(読解) | 上記「UI 構造整合」の照合表(story vs コード読解) | Verifier(dist-impl-verify)手順 6 | 常時(has_design_system) |
+| dom_snapshot | story と実装画面を両方 render して構造署名を比較(決定論・CI 常設) | ④ TDD の DOM 一致テスト + S5 UI Reviewer(dist-impl-ui-review)の再実行 | `capabilities.ui_review.dom_snapshot: true` |
+| capture_review | browser でキャプチャした story と実装画面をアドホックに目視比較(環境依存・CI では回らない) | S5 UI Reviewer(dist-impl-ui-review) | `capabilities.ui_review.capture_review: enabled`(実施可否はセッション実行時に判定) |
+
+読解ベースの照合表は dom_snapshot / capture_review の有効化にかかわらず常に実施する(重複ではなく、
+構造整合の担保方法が異なる)。`dom_snapshot: false` かつ `capture_review: disabled` のプロジェクトでは、
+UI Reviewer は起動せず読解ベースの照合表のみで進む。
+
 ## backend 系(例: tier-backend-api)
 
 - **入力**: `tier-backend-api.md`(API 仕様表・データモデル変更表・ビジネスルール)+

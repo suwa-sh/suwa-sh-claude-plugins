@@ -4,12 +4,18 @@ source:
   storybook_app_root: "design/latest/storybook-app/src"
 imported_at: "2026-07-29T09:34:00+09:00"
 files:
-  - "components/domain/BookCard.tsx"
-  - "components/domain/BookLoanStatusBadge.tsx"
-  - "components/ui/Badge.tsx"
-  - "components/ui/Button.tsx"
-  - "stories/Pages/UserPortal/LoanCheckout.stories.tsx"
-  - "tokens/tokens.ts"
+  - path: "components/domain/BookCard.tsx"
+    sha256: "524154cf65697fa1dcf77210aa8eb477a661a97ecc288115027a6e417fd2af0b"
+  - path: "components/domain/BookLoanStatusBadge.tsx"
+    sha256: "bc0d971f078befa5df1b6cfdb21051312181c9829513e48c79221178434a58d7"
+  - path: "components/ui/Badge.tsx"
+    sha256: "b6c3fd0410d9b97b2afb1ee73afb0145b4a6ee45aecbb99f46398bf1036e6b32"
+  - path: "components/ui/Button.tsx"
+    sha256: "a2a4699c09fbcd60500cdae35c1f09cd079d76ed3a840da527aa2b159b5e87ba"
+  - path: "stories/Pages/UserPortal/LoanCheckout.stories.tsx"
+    sha256: "a102d071ff4f87d279bae2f0ef21851fbfcdf32497c9f139043531bd8966c91c"
+  - path: "tokens/tokens.ts"
+    sha256: "8acd849e8ac103f14f1bf5f0ee916dd5c67e97041d3e6955a1ed886df64fa52a"
 note: >
   取り込み元は storybook-app/src/ の実ファイル列挙(SKILL 正本どおり)。design-event.yaml の
   components(ui: Button/Badge/Card/Input/Icon、domain: BookCard/BookLoanStatusBadge/

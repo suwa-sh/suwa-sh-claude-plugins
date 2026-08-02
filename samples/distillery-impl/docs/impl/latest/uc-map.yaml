@@ -43,6 +43,9 @@ use_cases:
   - SPEC-002-01-1
   - SPEC-002-01-2
   atdd_confirmed: true
+  ui_screens:
+  - name: 貸出手続き画面
+    route: /loans/new
 - uc_id: d807bb7d
   business: 貸出管理業務
   buc: 貸出管理フロー

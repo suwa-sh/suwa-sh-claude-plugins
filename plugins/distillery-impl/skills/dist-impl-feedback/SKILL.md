@@ -25,6 +25,8 @@ uc_id={id} config={impl-config.yaml} [mode=initial|refresh|publish] [supersedes=
 
 - `docs/impl/latest/{uc_id}/issues/`
 - `docs/impl/latest/{uc_id}/stages/attempt-*/S5_verify.*.findings.yaml`
+- `docs/impl/latest/{uc_id}/stages/attempt-*/S5_ui-review.*.findings.yaml`（S5 並走の UI Reviewer。
+  dispatchされたtierのみ存在）
 - bootstrapとS1の矛盾または欠落
 - `docs/impl/latest/{uc_id}/review/review-notes.md`（任意）
 

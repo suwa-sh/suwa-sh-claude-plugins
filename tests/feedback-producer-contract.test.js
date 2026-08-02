@@ -110,7 +110,9 @@ test('implementation review presents every request without becoming a routing ga
 test('publish state points at the exact canonical Markdown identity', () => {
   const inputPath = path.join(feedbackDir, publishedFiles()[0]);
   const parsed = parseFeedbackRequest(fs.readFileSync(inputPath));
-  const done = fs.readFileSync(path.join(sampleRoot, 'docs/impl/latest/19ec0182/stages/S8_feedback.done.yaml'), 'utf8');
+  // 2026-08-02: UI 規範導入で stage done は invalidated/ へ退避済み(event 20260802_103500)。
+  // 完了証跡は immutable な退避先から読む(events が正、退避 done はその記録)。
+  const done = fs.readFileSync(path.join(sampleRoot, 'docs/impl/latest/19ec0182/invalidated/20260802_103500_ui_norms_stages_archived/stages/S8_feedback.done.yaml'), 'utf8');
   const event = fs.readFileSync(path.join(sampleRoot, 'docs/impl/events/20260729_123002_feedback_request_published/event.yaml'), 'utf8');
 
   for (const text of [done, event]) {
@@ -130,7 +132,8 @@ test('implementation approval is bound to the exact draft that publish exposes',
   assert.ok(approvalEventId < publishStartedEventId);
   assert.ok(publishStartedEventId < publishedEventId);
   const stateFiles = [
-    'docs/impl/latest/19ec0182/stages/S9_review_generated.done.yaml',
+    // done は invalidated/ へ退避済み(event 20260802_103500)。退避先から読む
+    'docs/impl/latest/19ec0182/invalidated/20260802_103500_ui_norms_stages_archived/stages/S9_review_generated.done.yaml',
     `docs/impl/events/${evidenceEventId}/event.yaml`,
     `docs/impl/events/${approvalEventId}/event.yaml`,
   ].map(relative => fs.readFileSync(path.join(sampleRoot, relative), 'utf8'));
@@ -163,11 +166,12 @@ test('implementation approval is also bound to the exact zero-knowledge review e
   const visible = normalizedVisibleText(html.toString('utf8'));
   assert.ok(visible.includes('6/6 pass'), 'review HTML must display the bound gate result');
   assert.ok(visible.includes('最終結果: blocker 0、major 2'), 'review HTML must display the bound open finding counts');
+  // status.yaml は state: invalidated のスナップショットになったため evidence を持たない
+  // (完了時 evidence の正は events と退避済み done — event 20260802_103500 参照)
   for (const relative of [
-    'docs/impl/latest/19ec0182/stages/S9_review_generated.done.yaml',
+    'docs/impl/latest/19ec0182/invalidated/20260802_103500_ui_norms_stages_archived/stages/S9_review_generated.done.yaml',
     'docs/impl/events/20260729_122500_s9_review_generated/event.yaml',
     'docs/impl/events/20260729_123000_review_approved/event.yaml',
-    'docs/impl/latest/19ec0182/status.yaml',
   ]) {
     const text = fs.readFileSync(path.join(sampleRoot, relative), 'utf8');
     assert.deepEqual(scalarMapping(text, 'implementation_review_evidence'), expected, relative);

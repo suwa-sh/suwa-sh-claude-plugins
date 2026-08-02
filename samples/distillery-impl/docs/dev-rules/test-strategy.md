@@ -53,3 +53,78 @@ distillery-impl が生成・運用するテストは 4 段。**上 3 段の gher
 
 - Act は原則 1 呼び出し。複数の Act が必要になったらテストを分割する
 - ①〜③ の gherkin は Given=Arrange / When=Act / Then=Assert に自然対応するため、step definition も同じ規律で書く
+
+## DOM 一致テストの転写規約(dom_snapshot が true な frontend tier のみ)
+
+`tiers[].capabilities.ui_review.dom_snapshot: true`(state-schema.md)の frontend tier では、
+④ TDD の一部として「story と実装画面の DOM 構造一致」を検証するテストを追加で持つ。
+生成の責務は Implementer(dist-impl-implement の S2/S4)であり、本節は転写規約(何をどう作るか)の正本。
+**共通 helper(下記)だけは生成条件が異なる**: `dom_snapshot: true` **または**
+`capture_review: enabled` のいずれかを満たせば生成する(capture_review が SSR 静的 HTML 生成に
+この helper を要するため。D11)。DOM 一致テスト自体(stub adapter・結線 module・テストコード)の
+生成は引き続き `dom_snapshot: true` のみで変更しない。
+
+### 生成物の構造(不変 helper と差し替え可能な結線 module)
+
+DOM 一致テストの生成物は役割の異なる 2 種に分離する。**同じ「adapter」という言葉を 2 つの
+異なる対象に使わない**(以下では「結線 module」「(variant→props) adapter」で明確に呼び分ける):
+
+| 生成物 | 生成条件 | 生成タイミング | S4 での変更可否 | 役割 |
+|---|---|---|---|---|
+| **共通 helper**(構造署名 extractor + variant→実装 props の adapter + HTML shell 生成) | `dom_snapshot: true` **または** `capture_review: enabled` | S2 が tier 内 1 箇所だけ生成 | **変更不可**(S2 生成のまま使う) | 構造署名の抽出規則・story args→実装 props の変換規則(fixture 契約)・SSR 静的 HTML 化の単一の正。S5 UI Reviewer が dom_snapshot 再実行と capture_review の SSR 静的 HTML 生成の両方でこれを再利用する(D9・D11) |
+| **結線 module**(画面 adapter。variant ごと) | `dom_snapshot: true` | S2 が not-implemented stub として生成 | **S4 が変更可能**(結線先を書き換えるのはここだけ) | テストが render する窓口。S2 時点は「未実装」を理由に fail する stub、S4 で実装画面への参照に書き換える |
+
+### S2(test-scaffold): not-implemented stub 経由の red baseline
+
+- **実装画面を直接 import しない**(module resolution error は red baseline と認めない —
+  既存の red baseline 規約と同一)。代わりに variant(画面状態)ごとに**結線 module**
+  (明示的な not-implemented stub)を生成し、テストは結線 module 経由で render する
+  (fail は「未実装」を理由とする assertion failure になる)
+- 1 variant(画面状態)= 1 テスト。**対象は executable target のみ**(定義の正本は
+  `dist-impl-run/SKILL.md` の S5 dispatch 手順「executable target 集合の算出」— story 実体の存在・
+  variants 非空に加え、tier-rules.md の矛盾 3 条件による除外を含む。本節では再定義しない。
+  S5 UI Reviewer の dispatch 条件と同一集合を使う)。矛盾 3 条件で除外された行・variant は
+  正本の算出規則により既に集合から外れているため、**red baseline の分母にも含めない**
+  (テストを生成しない)。除外は `issues/{ts}_{slug}.md` への起票対象であり(除外理由は生成した
+  テストファイル側のコメントにも記録し、「未生成=見落とし」と区別できるようにする)、実行ベースの
+  検証には持ち込まない(Verifier 手順 6 の major findings で扱う)
+- 共通 helper(構造署名 extractor + variant→props adapter + HTML shell 生成)は結線 module とは別に、
+  tier 内 1 箇所だけ生成する。**生成条件は `dom_snapshot: true` または `capture_review: enabled`**
+  (capture_review のみ enabled で dom_snapshot テスト自体は生成しない場合でも、この helper は生成する)
+
+### S4(tier-impl): 結線 module を実装画面へ結線して green 化
+
+- S2 が生成した**結線 module のみ**を実装画面への参照に書き換え、DOM 一致テストを green にする
+- **共通 helper(構造署名 extractor + variant→props adapter)は変更しない**(S2 生成のまま使う。
+  結線 module の書き換えと混同しない)
+
+### 共通 helper の単一化
+
+- **構造署名の extractor**(DOM から比較対象の署名を取り出す関数)、
+  **variant → 実装 props の adapter**(story args を実装 props へ変換する関数)、
+  **HTML shell 生成**(render 出力 + 収集済み style を head に埋め込んだ静的 HTML を組み立てる関数。
+  capture_review の SSR 静的 HTML 生成が使う。D11)は、
+  **tier 内に 1 箇所だけ生成**する(結線 module とは別の生成物。生成条件は `dom_snapshot: true`
+  または `capture_review: enabled`)
+- **S2/S4 のテスト(dom_snapshot)と S5 UI Reviewer(dist-impl-ui-review)の dom_snapshot 再実行・
+  capture_review の SSR 静的 HTML 生成は、この同一 helper を使う**
+  (実装ごとに署名生成・HTML 生成ロジックが異なる事態を構造的に防ぐ。UI Reviewer は自前で
+  署名生成・HTML 生成をしない)
+- **HTML shell の描画再現範囲(必須項目)**: 再現対象はコンポーネントが自己完結で持つスタイル
+  (inline style / CSS-in-JS の SSR 出力)に**限定**する。import される外部 CSS・外部 asset・
+  Storybook decorators への依存は再現対象外とする。**片側でも再現できない target は比較せず**、
+  capture_review の `captures[].result: skipped`(`reason: render_context_unavailable`)として
+  記録する(偽差分を作らないため。dist-impl-ui-review/SKILL.md の判定規則と一致させる)
+- story args を実装 props へ変換する adapter は **story(variant)ごとに定義**する(fixture 契約)
+
+### 構造署名の正規化規則(必須項目)
+
+- **比較する**: 文書順の要素タグ列 / role(明示属性に加え、`output`=status・`button`=button 等の
+  **要素の暗黙 role を同一視**する — story が明示 role、実装がセマンティック要素の暗黙 role でも
+  等価と判定する。縮小実走で確認済みの偽陽性対策)/ aria-* 属性 / 状態依存要素の有無
+  (variant ごとに story と実装で同じ要素が現れるか)
+- **比較しない**: テキスト内容 / style・class / 動的 id / データ値 / 属性の並び順
+- 実装言語・フレームワークごとの extractor の実装詳細は helper 実装に委ねる(本節は必須の
+  比較対象/非対象のみを固定する)
+
+これらのテストは gate 3(TDD)に乗るため CI でも常時回る(`references/gates.md` は変更不要)。

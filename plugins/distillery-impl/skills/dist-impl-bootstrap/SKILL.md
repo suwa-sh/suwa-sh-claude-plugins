@@ -59,6 +59,17 @@ lock・入力ハッシュもその契約のエントリのみ更新する(無指
      (P2 の契約宣言案の材料。capability は probe 結果の記録であり、契約の正は contracts[])
 4. **矛盾検査**: spec-event.yaml の `use_cases[].async_event_count > 0` の UC があるのに asyncapi.yaml が
    無い等の矛盾は、bootstrap を止めず「仕様への変更要求」ドラフトとして報告する(起票は S8/ユーザー判断)
+5. **UI 並走レビュー(ui_review)の raw evidence probe**(has_design_system の場合のみ。D7・D10): 実装 tier・
+   lang・framework は P2 で初めて確定するため、P1 では**依存の存在を probe して記録するだけで
+   判定はしない**(判定は循環する)。**probe するのは安定したプロジェクト側の依存のみ**:
+   - SSR renderer(react-dom 等、実装先の依存として解決可能か)の存在
+   - Storybook build 構成(`storybook-app/.storybook` 等)の存在
+   **browser 系ツール(Claude in Chrome 等)は probe しない**(セッション依存のため P1 時点の
+   有無に意味がない。実施可否は S5 実行時に UI Reviewer が判定する。D10)。
+   結果は `docs/impl/latest/bootstrap.done.yaml` の `preflight_evidence.ui_review` に機械可読で
+   永続化する(スキーマは `../dist-impl-run/references/state-schema.md`)。中断・再開があっても
+   P2 が判定根拠を復元できるようにするためであり、**再プローブは P1 の invalidate 時のみ**
+   (既存の Phase skip 規約に従う)
 
 ## P2: config(impl-config + uc-map)
 
@@ -81,6 +92,31 @@ lock・入力ハッシュもその契約のエントリのみ更新する(無指
 4. uc-map.yaml を生成: 全 UC の uc_id(生成式は state-schema.md。NFC 正規化 + canonical JSON + sha256 先頭 8 桁)、
    path、tiers。**衝突検査**で衝突があれば 12 桁に延長
 5. spec-event.yaml に無い tier id・パース不能 YAML は**停止して報告**(推測しない)
+6. **UI 並走レビュー能力(`tiers[].capabilities.ui_review`)の方針確定**(has_design_system かつ
+   frontend 種別の tier がある場合のみ。D7・D10): 実装 tier・lang・framework の確定後、P1 の
+   `preflight_evidence.ui_review` から**frontend 種別の tier ごとに**
+   `{dom_snapshot: bool, capture_review: enabled|disabled}` の案を導出する(**独立フラグ**。
+   capture_review は dom_snapshot の SSR 能力を前提にしない)。
+   複数 frontend tier で能力が異なり得るため**グローバルにせず tier 単位**で確定する。
+   **capture_review は「実施したいか」の方針宣言であり、実施可否(browser ツールが実際に
+   使えるか)はここでは判定しない**(セッション依存のため S5 実行時に UI Reviewer が判定する。
+   利用不能でも `skipped(runtime_unavailable)` として進むだけで invalidate 等は不要 — D10)。
+   tier 宣言・契約宣言と併せて**ユーザー確認で確定**し、`config_confirmed` イベントで
+   `tiers[].capabilities.ui_review` を書く(両方 false/disabled を選んだ場合もフィールド自体は
+   必ず書く。**プロジェクト側の比較コマンド整備は要求しない** — 生成直後のリポに事前整備された
+   コマンドは存在し得ないため。決定論の比較コマンドを宣言する仕組み自体を持たない)。
+   `input-manifest.yaml` の `ui_review_config`(全 frontend tier の
+   `{tier_id, capabilities.ui_review}` の sha256)はこの確定を入力に S2 以降で
+   参照される(スキーマ・stale 適用範囲は state-schema.md)
+7. **旧形式(ui_review 未対応)からの移行**(contracts[] 欠落時の P2 invalidate と同型):
+   bootstrap の再開判定で「**`has_design_system: true` かつ** frontend 種別の tier があるのに
+   `tiers[].capabilities.ui_review` / `preflight_evidence.ui_review` が欠落しており、かつ
+   `bootstrap.done.yaml` の `migrations.ui_review_v1` が未記録」を検出したら、**P1/P2 を一度だけ
+   invalidate**して probe とユーザー確認をやり直す。移行完了時に
+   `migrations.ui_review_v1: {at: 実施時刻}` を bootstrap.done.yaml に記録し(一度きりの根拠。
+   スキーマは state-schema.md)、以後は再判定しない。**`has_design_system: false` のリポは
+   移行対象外**(dom_snapshot/capture_review 自体が該当せず、`preflight_evidence.ui_review` を
+   probe しないため欠落検出の条件に元々当たらない。マーカーも記録しない)
 
 ## P3: skeleton(骨格 + 規約配布)
 
@@ -108,13 +144,16 @@ generated)を書く。java 不在・generator 失敗時は種別の縮退手順�
 ## P5: ui(Storybook 取り込み。has_design_system のみ)
 
 1. **取り込み元の正は `storybook-app/src/` の実ファイル列挙**(components / tokens に加えて
-   `src/stories/` と、それらが import する src 内モジュールも含む — Story は画面実装の参照例として
+   `src/stories/` と、それらが import する src 内モジュールも含む — Story は画面構造の正として
    design-event の `screens[].story` から結線されているため、components だけに絞ると落ちる)。
    design-event.yaml の `components` は object(`ui` / `domain` / `common` の配列。path は common の
    一部にしか無い)なので、**取り込みマニフェストには使わず**、コンポーネント名と `screens[]` の
    結線照合(uc → story / variants)にだけ使う
 2. 実ファイルを `{repo_root}/packages/ui/` へコピーし、import パスを packages/ui 内で完結するよう
    書き換え、`packages/ui/.imported.yaml` に取り込み元(design event_id)とファイル一覧を記録
+   (`files[]` は `{path, sha256}` の配列。path は packages/ui 相対、sha256 はコピー後の実ファイルから
+   計算する — 取り込み後の story 実体改変を検知する input-manifest の `ui_imported` tree hash 計算の
+   材料になる。state-schema.md 参照)
 3. storybook-app が無い(has_design_system: false)場合は skip(frontend tier の実装は tier-rules.md の
    縮退規約に従う)
 
