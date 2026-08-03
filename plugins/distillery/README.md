@@ -133,6 +133,10 @@ dist-pipelineへ渡す入力は、distillery-implが公開したMarkdownのパ�
 このMarkdownが変更要求の外部正本です。
 stage名、stage別指示、レビュー情報は含めません。
 
+実行は**新しいセッション（または`/clear`後）**で行います。
+入力は公開Markdown 1ファイルで完結するため、実装セッションの会話コンテキストは不要です。
+実行コマンドと判断材料は`docs/impl/latest/{uc_id}/NEXT.md`に永続化されています。
+
 ```text
 /distillery:dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md
 /distillery:dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md --recommended-auto
