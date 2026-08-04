@@ -11,7 +11,10 @@ description: >
 
 # dist-impl-ui-review
 
-引数: `uc_id={id} tier={tier_id} attempt={n} config={impl-config.yaml へのパス} targets={executable target 集合} targets_hash={targets の canonical hash} targets_count={targets 件数} [checks={dom_snapshot,capture_review}]`
+引数: `uc_id={id} tier={tier_id} attempt={n} config={impl-config.yaml へのパス} manifest_sha256={オーケストレータ算出の tier projection hash} targets={executable target 集合} targets_hash={targets の canonical hash} targets_count={targets 件数} [checks={dom_snapshot,capture_review}]`
+
+`manifest_sha256` は `targets_hash` と同様に再計算せず done に転記し、`manifest_projection: v2` を
+併記する(state-schema.md の projection 規則)。
 
 `targets` は呼び出し側(dist-impl-run)が算出済みの (screen × variant) 集合。各行は
 `{screen: {name, route}, story: {storybook 相対 path}, variant: {story の named export 名}}`。
@@ -211,7 +214,8 @@ stage: "S5"
 tier: "tier-frontend"
 attempt: 1
 uc_id: "3f9a2b1c"
-manifest_sha256: "..."
+manifest_sha256: "..."            # 引数で渡された値を再計算せず転記(state-schema.md の projection 規則)
+manifest_projection: v2
 result: pass | environment_failure | unverified
 checks_checked:                   # 必須。findings スキーマと同形の全文(dom_snapshot / capture_review の
                                    #   status・note・reason)。**通常実行時は findings.yaml の

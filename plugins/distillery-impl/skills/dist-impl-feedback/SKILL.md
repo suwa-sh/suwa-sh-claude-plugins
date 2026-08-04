@@ -9,11 +9,13 @@ description: >
 # dist-impl-feedback
 
 ```text
-uc_id={id} config={impl-config.yaml} [mode=initial|refresh|publish] [supersedes={feedback_id}]
+uc_id={id} config={impl-config.yaml} [mode=initial|refresh|publish] manifest_sha256={オーケストレータ算出の global projection hash} [supersedes={feedback_id}]
 ```
 
 既定modeは`initial`です。
 `supersedes`は公開済みfeedbackの訂正版を作る場合だけ指定します。
+`manifest_sha256`は再計算せずdoneへ転記し、`manifest_projection: v2`を併記します
+(state-schema.mdのprojection規則)。
 
 | mode | 処理 |
 |---|---|

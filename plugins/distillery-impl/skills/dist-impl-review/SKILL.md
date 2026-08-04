@@ -8,7 +8,10 @@ description: >
 
 # dist-impl-review
 
-引数: `uc_id={id} config={impl-config.yaml へのパス}`
+引数: `uc_id={id} config={impl-config.yaml へのパス} manifest_sha256={オーケストレータ算出の global projection hash}`
+
+`manifest_sha256` は再計算せず done に転記し、`manifest_projection: v2` を併記する
+(state-schema.md の projection 規則)。
 
 S9は**実装のレビュー**である。dist-pipelineのstage割当てやrouteを決める場ではなく、feedback handoff用の
 JSON、route file、approval hashは生成しない。一方、承認時に表示したfeedback draftと公開bytesを結ぶため、

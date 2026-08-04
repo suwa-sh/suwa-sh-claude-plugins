@@ -10,7 +10,10 @@ description: >
 
 # dist-impl-implement
 
-引数: `mode={test-scaffold|tier-impl|uc-bdd|atdd} uc_id={id} [tier={tier_id}] [attempt={n}] config={impl-config.yaml へのパス}`
+引数: `mode={test-scaffold|tier-impl|uc-bdd|atdd} uc_id={id} [tier={tier_id}] [attempt={n}] config={impl-config.yaml へのパス} manifest_sha256={オーケストレータ算出の projection hash} [tiers={mode=test-scaffold の scoped 再実行対象 tier(カンマ区切り)}]`
+
+`manifest_sha256` は再計算せず done に転記し、`manifest_projection: v2` を併記する
+(state-schema.md の projection 規則。値の算出と受理時照合はオーケストレータの責務)。
 
 共通の前提:
 
@@ -55,6 +58,18 @@ description: >
 6. **red baseline 確認**: 4 段すべて(dom_snapshot テストがあればそれも含む)を実行し
    「未実装を理由に fail する」ことを確認。パースエラー・設定ミス由来の fail は red と認めず修正する
 7. `S2_test-scaffold.done.yaml` を書く(`red_baseline: pass` を含める)
+
+**scoped 再実行(`tiers` 引数が渡された場合)**: spec 変更起因の stale 再実行であり、
+指定 tier の scaffold だけを更新する。初回とは次の点が異なる:
+
+- 手順 1〜5 を**指定 tier に限定**する。features/uc/ の共有 feature は spec.md が変わった場合のみ
+  再転写し、他 tier の scaffold・features/atdd/ の既存 feature 本文には触れない
+- **red baseline は done 条件にしない**(既存実装が残っているため「未実装を理由に fail」は
+  成立しない)。代わりに、再生成した feature / テストが parse 可能かつ実行可能であることを確認し、
+  新規・変更 Scenario が fail する場合は「未実装(実装が後続の S4 再実行で追従予定)」か
+  「パースエラー・設定ミス」かを区別して前者のみ許容する
+- done には `red_baseline` の代わりに `scaffold_scope: {tiers: [...], uc_feature:
+  untouched | regenerated, atdd: untouched}` と再実行モードであることを記録する
 
 ## mode=tier-impl(S4)
 

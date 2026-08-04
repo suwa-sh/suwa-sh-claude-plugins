@@ -29,6 +29,10 @@ distillery-impl が生成・運用するテストは 4 段。**上 3 段の gher
 - ④: 実装対象(UC × tier)ごとに最初の failing 単体テストを 1 本以上
 - S2 の done 条件 = 全 4 段のテストが「**未実装を理由に fail する**」こと(エラー種別を確認する。
   設定ミス・パースエラーによる fail は red baseline と認めない)
+- **scoped 再実行(spec 変更起因で S2 が指定 tier のみ再実行される場合)は red baseline を
+  done 条件にしない**: 既存実装が残っているため全段 fail は成立しない。再生成した feature /
+  テストが parse 可能かつ実行可能であることを確認し、既実装分の green を許容する
+  (done 条件の正本は dist-impl-implement の mode=test-scaffold「scoped 再実行」)
 
 ## テストメソッド命名規約(④ TDD)
 

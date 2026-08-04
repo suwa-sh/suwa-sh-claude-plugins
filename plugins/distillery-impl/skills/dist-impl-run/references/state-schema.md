@@ -90,6 +90,7 @@ uc_id: "3f9a2b1c"          # グローバルイベント(bootstrap 等)では nu
 stage: "S4"                 # 該当する場合のみ
 tier: "tier-backend-api"    # 該当する場合のみ
 attempt: 1                  # S4/S5 のみ
+lane: verify                # S5 のみ必須: verify | ui-review(2 レーンの done を identity で区別する)
 payload: {}                 # type 固有の付帯情報(findings 件数、失敗理由等)
 created_at: "2026-08-01T10:30:00+09:00"
 ```
@@ -97,8 +98,12 @@ created_at: "2026-08-01T10:30:00+09:00"
 **reducer 規則**(latest の再構築): イベントを `event_id` 昇順に適用する。
 `stage_completed` → 対応する done ファイルを再生成 / `attempt_opened` → attempt カウンタを進める /
 `stage_carried_forward`(payload: 元 attempt・tier・元 done の sha256)→ 新 attempt に
-`carried_from` 付き done を再生成 / `stage_invalidated`(payload: 対象 stage 範囲・理由・退避先)→
-該当 done を無効化 / `config_confirmed`（payload: 確定項目のbefore→after・confirmed_by）→
+`carried_from` 付き done を再生成 / `stage_invalidated`(payload: **対象 done ファイル一覧**
+(stage / tier / attempt を含む done 単位の指定)・理由・退避先)→ 該当 done を無効化。
+**同一の対象 done ファイル**(identity は stage / tier / attempt / lane から導出する。S5 は
+`lane: verify | ui-review` で 2 レーンを区別する)に対する `stage_completed` →
+`stage_invalidated` → `stage_completed` の並びは、event_id 昇順に適用した**最後の状態が勝つ**
+(後勝ち。tier-scoped な部分 invalidate と同一 attempt 内の再実行を replay 可能にする)/ `config_confirmed`（payload: 確定項目のbefore→after・confirmed_by）→
 impl-config.yaml / uc-map.yamlの該当項目を確定値で上書き。**`after: null` はフィールド削除として
 適用する**(例: ui_screens の非空化イベントは `ui_screen_resolution: {before: ..., after: null}` を
 併記し、replay 後も XOR 制約が保たれるようにする)/ `review_approved` → 参照先S9 eventと
@@ -124,17 +129,27 @@ S8 doneの旧集計を信頼しない。次にdraftを公開先へatomic rename�
 payload の done 一覧を退避先へ移す」ものとして適用する(先行イベント自体は書き換えない。
 イベントは追記のみで、事実の訂正は新しいイベントで行う既存の規約と同型)。
 
-`stage_invalidated` の `invalidated_stages` に `S5` が含まれる場合、`S5_ui-review` の
-done(存在すれば)も退避対象に含める(verify と同一 attempt スコープで扱う)。
+`stage_invalidated` の対象に S5 の done が含まれる場合、**同一 tier の** `S5_ui-review` の
+done(存在すれば)と両レーンの `.findings.yaml` も退避対象に含める(verify と同一
+attempt・tier スコープで扱う。tier 指定の無い S5 全体指定では全 tier 分が対象)。
 
 `corrects_event_id` は `stage_invalidated` を補正対象とする用法(上記)に限らない。
 下記「冪等再遂行」のとおり、`capture_review_completed` の昇格が再遂行不能なときも、
-その `capture_review_completed` の event_id を `corrects_event_id` に持つ新しい
-`stage_invalidated`(`invalidated_stages: [S5]`)を追記することで、その promotion の効果を
-無効と宣言し S5 を元状態(`skipped(runtime_unavailable)`)へ戻す(同じ「先行イベントは
-書き換えず、事実の訂正は新しいイベントで行う」原則の別適用)。
+その `capture_review_completed` の event_id を `corrects_event_id` に持ち、payload の対象 done
+一覧に当該 `S5_ui-review.{tier_id}.done.yaml`(identity: stage `S5` / tier / attempt /
+lane `ui-review`)を列挙した新しい `stage_invalidated` を追記することで、その promotion の効果を
+無効と宣言する。**この補正の適用(rollback)は次の 3 操作で行い、部分昇格の残骸を latest に
+残さない**(必要な情報はすべて補正対象イベントの payload から決定論的に得られる):
+(i) 補正対象 `capture_review_completed` の `staged_to_canonical` に列挙された canonical_path の
+ファイル(存在するもの)を `invalidated/{補正 event_id}/` へ退避する、
+(ii) canonical `.findings.yaml` から capture_review 由来の要素(`captures[]` の該当エントリと
+`capture_index` を持つ findings)を除去する、
+(iii) done の `checks_checked.capture_review` を元状態 `skipped(runtime_unavailable)` へ戻す。
+reducer もこの 3 操作として補正を適用する(同じ「先行イベントは書き換えず、事実の訂正は
+新しいイベントで行う」原則の別適用)。
 
-**`capture_review_completed`**(stage: `S5`、payload:
+**`capture_review_completed`**(トップレベル identity: stage `S5`・tier・attempt・
+**lane: `ui-review`**(S5 イベントの lane 必須規定に従う)。payload:
 `{uc_id, tier, attempt, checks_checked_after, findings_sha256, captures_manifest_sha256,
 staged_to_canonical: [{staged_path, canonical_path, sha256}]}`)は、
 `checks_checked.capture_review: skipped(runtime_unavailable)` だった S5 ui-review の
@@ -179,6 +194,11 @@ payload に記録する(検証に失敗した候補の hash はイベントに�
 ui-artifacts を in-place で更新するミューテーションであり、`stage_invalidated` が先にイベントを
 追記してから done を退避するのと同型で扱う)。
 
+**orphan 検出・冪等再遂行の判定スコープ**: どちらの判定も、同一 (uc_id, tier, attempt) の
+イベント列のうち、**それ以降に当該 S5 done を対象とする `stage_invalidated` / `stage_completed` が
+追記されていない最新の `capture_review_completed`** だけを対象にする(tier-scoped な部分
+invalidate 後の再実行で残った旧イベントの期待 hash に反応して、有効な新 done を巻き戻さない)。
+
 **orphan 検出**: 再開時、`attempt-{n}/ui-artifacts/{tier_id}/staging/` が存在するのに対応する
 `capture_review_completed` イベントが無い(前回の再実行が昇格未完了のまま中断した、または
 昇格前検証で拒否された)場合、`staging/` を破棄して capture_review を再実行する(部分適用状態を
@@ -194,8 +214,10 @@ payload の `staged_to_canonical` を項目ごとに検査し、**「staged ま�
 `findings_sha256`・`captures_manifest_sha256`・`checks_checked_after` が指す期待状態まで
 再適用する。**再遂行不能**(対応する staged_path・canonical_path のどちらにも該当ファイルが
 無い、または存在しても hash が一致しない)な場合は、`stage_invalidated`(`corrects_event_id` に
-当該 `capture_review_completed` の event_id を持つ補正)を追記して S5 を元状態(`skipped
-(runtime_unavailable)`)へ戻す(部分昇格状態のまま latest に残さない)。
+当該 `capture_review_completed` の event_id を持つ補正。payload の対象 done 指定と reducer 適用は
+上記 `corrects_event_id` の補正規則と同じ — identity: stage `S5` / tier / attempt / lane
+`ui-review`)を追記して S5 を元状態(`skipped(runtime_unavailable)`)へ戻す
+(部分昇格状態のまま latest に残さない)。
 
 reducer は payload の `checks_checked_after` から done の `checks_checked` を再構築し、
 `findings_sha256`・`captures_manifest_sha256` を昇格後の現物と照合して検証する(不一致で
@@ -451,11 +473,17 @@ generated_by: "distillery-impl@{plugin_version}"  # provenance。version は plu
   オーケストレータは起動時に inputs_sha256 の各入力を現物から再計算し、
   不一致の入力に依存する Phase を invalidate する(bootstrap.done.yaml の Phase 記録の
   書き換えはオーケストレータの write-set に含まれる)。依存表:
-  spec_event/arch → P2 以降すべて / usdm → P7 / design → P5 / design_storybook_src → P5 /
-  contracts.{id}(契約入力)・contracts_decl(宣言変更)→ P4 /
+  **spec_event → P2 のみ**(uc-map / impl-config の導出再確認。P4/P5/P7 は自分の入力キーで判定する —
+  spec_event を「以降すべて」に波及させると、無関係な spec 変更のたびに lock が書き換わり
+  tier-scoped staleness が無効化されるため)/ arch → P2 以降すべて / usdm → P7 / design → P5 /
+  design_storybook_src → P5 / contracts.{id}(契約入力)・contracts_decl(宣言変更)→ P4 /
   **条件付き入力(契約 source / kvs / object-storage / storybook-app)の存在自体の増減 →
   P1・P2(capability・契約宣言と config の再判定)+ 対応する生成 Phase**。
   invalidate された Phase は bootstrap 再実行の対象になる
+- **P2/P4 の再実行は content-stable にする**: P2 は導出結果(uc-map / impl-config)が既存と同一なら
+  書き換えない(`config_confirmed` の再確認も発生しない)。P4 は契約ごとに input sha256 と生成物が
+  既存 lock と同一なら該当エントリ(`at` 含む)を書き換えない(lock の無変更が S4 以降の
+  stale 判定に波及しない — projection の `contracts_lock` エントリを安定に保つ)
 - inputs_sha256 には spec_event / arch / usdm / design と contracts[] の各入力(存在するもの)に加え、
   条件付き入力の**存在フラグ**(exists: true/false)を記録する(欠落 → 出現も検知するため)
 - bootstrap 再実行時は本ファイルの Phase 記録(invalidate 反映後)で skip を決める(冪等)
@@ -491,11 +519,20 @@ uc_id: "3f9a2b1c"
 fixed_at: "..."
 inputs:
   spec_event: {event_id: "spec:20260412_195542_...", sha256: "..."}
+                                       # provenance 記録。**stale 照合(projection)には使わない**
+                                       #   (spec 再生成のたびに変わる catch-all のため。鮮度は下記の
+                                       #    content hash 群で担保し、系譜整合は S1 preflight の
+                                       #    lineage_ok が検査する)
   spec_md: {path: "...", sha256: "..."}
-  tier_mds: [{tier: tier-frontend, path: "...", sha256: "..."}]   # ファイル名は {tier_id}.md(例 tier-frontend.md)
+  tier_mds: [{tier: tier-frontend, path: "...", sha256: "..."}]   # ファイル名は {tier_id}.md(例 tier-frontend.md)。
+                                       #   **tier id 昇順に整列して記録する**(projection の決定論の前提)
   api_summary: {path: "...", sha256: "..."}
   model_summary: {path: "...", sha256: "..."}
   datastore_schema: {path: "_cross-cutting/datastore/rdb-schema.yaml", sha256: "..."}
+  kvs_schema: {path: "_cross-cutting/datastore/kvs-schema.yaml", sha256: "..."}
+                                       # ファイルが存在する場合のみ記録(出現・消滅はエントリの
+                                       #   増減として manifest に乗る)。object_storage_schema も同様
+  object_storage_schema: {path: "_cross-cutting/datastore/object-storage-schema.yaml", sha256: "..."}
   nfr: {path: "docs/nfr/latest/nfr-grade.yaml", sha256: "..."}    # Verifier の性能・可用性判定の根拠
   usdm: {event_id: "...", sha256: "..."}
   arch: {event_id: "...", sha256: "..."}
@@ -504,9 +541,11 @@ inputs:
                                        #   (scope / provider / consumers / source の宣言変更を検知する。
                                        #    stale 適用は S3 以降)
   contracts_lock: {path: "docs/impl/latest/contracts.lock.yaml", sha256: "..."}   # 契約生成物の版
-                                       # ※ contracts_lock の変化による stale 判定は S4 以降にのみ適用する
-                                       #   (S3 が lock を正当に更新した直後に S1/S2 が巻き戻るのを防ぐ。
-                                       #    S3 は lock 更新後にこのエントリを更新する)
+                                       # ※ S1/S2 の projection から除外(S3 の正当な lock 更新で
+                                       #   S1/S2 が巻き戻るのを防ぐ)。S3 は lock 更新後に本エントリを
+                                       #   更新してから done を書くため、自身の更新では stale にならない。
+                                       #   外部起因の lock 変化では S3 done も stale になり再検証する
+                                       #   (実装への stale 波及は S4 以降)
   ui_review_config: {sha256: "..."}    # 全 frontend tier の {tier_id, capabilities.ui_review}
                                        #   ({dom_snapshot, capture_review} の方針)を canonical JSON 化
                                        #   (キー昇順・UTF-8・null は明示)した sha256。
@@ -539,16 +578,49 @@ lineage_ok: true                       # spec-event の trigger_event と arch/d
 
 - **latest 同士の系譜不整合は実在する**(サンプルでも spec の trigger より arch latest が新しい)。
   `lineage_ok: false` の場合は停止し、「spec を再生成するか / 旧 arch 前提で進めるか」をユーザーに問う
-- 各 `.done.yaml` は `manifest_sha256` を持つ。再開時に現在の manifest と比較し、
-  **不一致なら該当 stage 以降の done を無効扱い**にする(ファイルは消さず退避)
-- **manifest_sha256 は stage projection で計算する**: 各エントリの「stale 適用は Sx 以降」の記述に従い、
-  その stage 未満の done では該当エントリを除外したハッシュを使う。**S1 の done は `contracts_decl` /
-  `contracts_lock` / `ui_review_config` の 3 エントリを除外**した manifest のハッシュ、
-  **S2 の done は `contracts_decl` / `contracts_lock` の 2 エントリを除外**した manifest のハッシュ
-  (`ui_review_config` は S2 から適用のため含める)、**S3 以降の done は manifest 全体**の
-  ハッシュを持つ。これにより「contracts_lock の変化は S4 以降にのみ適用」「contracts_decl の変化は
-  S3 以降にのみ適用」「ui_review_config の変化は S2 以降にのみ適用」の例外が照合アルゴリズムとして
-  成立する(全体ハッシュ 1 本だと、S3 の正当な lock 更新で S1/S2 の done まで stale になり巻き戻る)
+- 各 `.done.yaml` は `manifest_sha256`(**自分の projection** で計算した manifest ハッシュ)を持つ。
+  再開時に現在の manifest から同じ projection で再計算した値と比較し、**不一致なら「その done だけ」を
+  stale として無効扱い**にする(ファイルは消さず退避)。**位置ベースの「該当 stage 以降を一括無効」は
+  行わない** — 下流 stage が入力変化の影響を受けるかどうかも、各 done 自身の projection 照合で決まる
+  (tier-scoped staleness)
+- **manifest_sha256 は projection で計算する**。projection は 2 系統。いずれも `spec_event` を除外する:
+  - **global done(S1/S2/S3/S6/S7/S8/S9)**: 従来の stage projection を維持する。
+    **S1 の done は `contracts_decl` / `contracts_lock` / `ui_review_config` の 3 エントリを除外**、
+    **S2 の done は `contracts_decl` / `contracts_lock` の 2 エントリを除外**
+    (`ui_review_config` は S2 から適用のため含める)、**S3 以降の done は `spec_event` 以外の
+    全エントリ**を対象にする。これにより「contracts_lock の変化は S4 以降にのみ適用」
+    「contracts_decl の変化は S3 以降にのみ適用」「ui_review_config の変化は S2 以降にのみ適用」の
+    例外が照合アルゴリズムとして成立する(全体ハッシュ 1 本だと、S3 の正当な lock 更新で
+    S1/S2 の done まで stale になり巻き戻る)
+  - **tier done(`S4_tier-impl.{tier}` / `S5_verify.{tier}` / `S5_ui-review.{tier}`)**: S3 以降の
+    global projection からさらに **`tier_mds` を自 tier のエントリだけに絞る**(他 tier の tier md の
+    変化では stale にならない)。根拠: S4/S5 サブエージェントの read-set は自 tier の
+    `{tier_id}.md` に限定されている(subagent-template.md)。tier 間の依存は契約生成物
+    (`contracts_lock`)と `_api-summary` / `_model-summary` 経由に限られ、これらは projection に残る
+- **`spec_event` を projection から除外する理由**: spec 再生成のたびに変わる catch-all を含めると、
+  無関係な変更(他 UC のみの spec 変更等)で全 done が偽 stale になる。入力の鮮度は content hash
+  (spec_md / tier_mds / api_summary / model_summary / datastore 系 schema / contracts_lock /
+  design / ui_imported / ui_screen_config / nfr / usdm / arch / dev_rules)で担保する。
+  **規範: サブエージェントの read-set に spec 生成物を追加するときは、対応する manifest エントリも
+  必ず追加する**(content hash の網羅が spec_event 除外の前提)
+- **canonical 直列化**: projection 適用後の `inputs` 配下の残エントリを canonical JSON 化
+  (キー昇順・UTF-8・null 明示 — `ui_screen_config` と同方式。`tier_mds` は tier id 昇順に整列)した
+  文字列の sha256 を `manifest_sha256` とする。`schema_version` / `uc_id` / `fixed_at` /
+  `lineage_ok` は照合対象に含めない
+- **計算主体はオーケストレータ**: サブエージェントに done を書かせる stage では、dispatch 時に
+  該当 projection の hash を算出してテンプレート変数で渡し、サブエージェントは**再計算せず done に
+  転記する**(`targets_hash` と同型)。オーケストレータは受理時に独立して再計算し、done の値と
+  照合する(不一致は stage failed)。S1/S3 の done はオーケストレータ自身が計算して書く
+- **互換(projection 版マーカー)**: 新規に書く done には `manifest_projection: v2` を記録する。
+  照合分岐は次のとおり fail-closed に固定する(相互 fallback は禁止):
+  - `manifest_projection` の値が厳密に `v2` → **projection 照合のみ**(bytes 照合への fallback 禁止)
+  - キーが欠落(旧 done)→ input-manifest.yaml の**現物ファイル bytes の sha256 照合のみ**。
+    一致すれば valid-legacy として有効扱いする(done は書き換えない。次に再生成されるとき
+    v2 で書かれる)。旧 S1/S2 done の projection 計算は直列化が未規定で再現を保証できないため、
+    bytes 照合に一致しなければ stale とする(安全側。S1 はオーケストレータ実行、S2 は
+    scoped 再実行で回復が軽い)
+  - それ以外の値(`v1`・誤記等)→ 照合せず **stale**(fail-closed)
+  carry-forward はコピー元の hash とマーカーをそのまま複製する(legacy hash の連鎖を許容)
 
 ## status.yaml({uc_id} 配下・スナップショット)
 
@@ -560,7 +632,8 @@ buc: "貸出管理フロー"
 uc: "書籍を貸出する"
 state: running | blocked_on_spec | awaiting_review | publishing_feedback | completed | invalidated
                                        # invalidated = stage_invalidated で done が退避され再実行待ち
-                                       #   (入力変更・規範変更等。再開時は S1 から新 manifest で再生成)
+                                       #   (入力変更・規範変更等。再開時は projection 照合で stale に
+                                       #    なった done だけが再実行対象になる — 再開手順)
 current_attempt: 1
 resolved_models: {implementer: "...", verifier: "..."}   # 起動時に記録。同一なら停止して確認
 stages:
@@ -588,7 +661,10 @@ stage: "S4"
 tier: "tier-backend-api"      # tier stage のみ
 attempt: 2                    # S4/S5 のみ
 uc_id: "3f9a2b1c"
-manifest_sha256: "..."        # input-manifest.yaml のハッシュ(stale 検知)
+manifest_sha256: "..."        # 自分の projection で計算した manifest ハッシュ(stale 検知。
+                              #   計算規則は「manifest_sha256 は projection で計算する」の項。
+                              #   サブエージェントはオーケストレータから渡された値を転記する)
+manifest_projection: v2       # projection 版マーカー。無い done は旧規則で照合(互換の項)
 result: pass
 gates: {format: pass, lint: pass, tdd: pass, bdd_tier: pass}   # S4 のみ
 carried_from: "attempt-1"     # carry-forward の場合のみ(下記)
@@ -660,7 +736,11 @@ blocker の無かった tier については、オーケストレータが `stag
 新 attempt ディレクトリに `carried_from: attempt-{n}` 付きの S4 done をコピー生成する
 (実装は変わっていないため。イベント → latest の順は他の状態変更と同じ)。
 これにより「再開判定は current attempt 内だけを見る」規則が維持される。
-S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証する。安全側)。
+**attempt++ を伴う再実行(blocker 由来・S6/S7 差し戻し)では S5(verify)を carry-forward しない**
+(S4 再実行後は全 tier を再検証する。安全側)。attempt 上限 3 のカウントを消費するのも
+この attempt++ 経路のみ。
+**stale 由来の同一 attempt 内再実行**(再開手順)は attempt++ せず、stale でない tier の
+S4/S5 done は projection 一致により有効なまま残るため、carry-forward 自体が発生しない。
 
 ## 再開手順(オーケストレータが実行)
 
@@ -668,10 +748,27 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
 2. `bootstrap.done.yaml` で S0 の完了を判定(全 Phase done/skipped + 入力ハッシュの現物一致。
    不一致入力の依存 Phase は invalidate して bootstrap を再実行)
 3. **input-manifest を現物から再計算する**: S1 done が存在しても、保存済み manifest と
-   現物再計算値が食い違えば manifest を更新し、以降の done を stale と判定する
-   (保存済み manifest 同士の比較だけでは入力変更を検知できない)
-4. `latest/{uc_id}/stages/` を S1→S9 の順に存在チェック(S4/S5 は `attempt-{current_attempt}/` 内を
-   tier ごとに。carry-forward done も有効な done として扱う)。**`S5_ui-review` の done は
+   現物再計算値が食い違えば manifest を更新する
+   (保存済み manifest 同士の比較だけでは入力変更を検知できない)。
+   stale 判定は次手順の projection 照合で行う
+4. **各 done を自分の projection で個別照合する**(S1→S9 の順。S4/S5 は
+   `attempt-{current_attempt}/` 内を tier ごとに。carry-forward done も対象):
+   (再計算後の)input-manifest から各 done の projection hash を計算し、done の
+   `manifest_sha256` と比較する(`manifest_projection` マーカーの無い done は互換規則で照合)。
+   **照合は全 done について先に完了させ、退避はその後にまとめて行う**(S2 の hash_refresh 判定は
+   S4 の照合結果に依存するため)。不一致の done は stale として `stage_invalidated` イベント
+   (payload: 対象 done ファイル一覧・理由 `stale`・退避先)を追記してから `invalidated/` へ
+   退避する。**例外**: S2 done が不一致でも全 tier の S4 done が有効(projection 一致)な場合は
+   退避せず、手順 6 の hash_refresh 対象としてマークする(退避してしまうと 2 フィールド更新の
+   対象が失われるため)。
+   **tier done の stale は該当 tier の done だけを対象にし、位置カスケードは行わない**。
+   S5 の done を退避するときは同 tier の `.findings.yaml` も退避対象に含め、
+   残存する `staging/` は orphan として破棄する。
+   **この照合は手順 5 の S5 特殊状態処理より先に行う**(stale な S5 done に対して
+   capture_review 復旧や unverified 再算出を dispatch しない)
+5. `latest/{uc_id}/stages/` を S1→S9 の順に存在チェック(S4/S5 は `attempt-{current_attempt}/` 内を
+   tier ごとに。carry-forward done も有効な done として扱う)し、欠落・退避済みの stage を
+   再実行対象にする。**`S5_ui-review` の done は
    `result: pass` の場合のみ完了扱いする**: `environment_failure` / `unverified` は
    (done ファイル自体は存在していても)未完了として扱い、S5 へ差し戻す。
    `environment_failure` は縮退判断を含む `dist-impl-run/SKILL.md` の S5 手順に従う。
@@ -704,9 +801,30 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
    dom_snapshot の記録・attempt カウンタには触れない。追加 findings に blocker があれば通常の
    attempt 制御に乗る — S6 前のため既存規則のまま)。**検証に失敗したらイベントを書かず**
    `staging/` を orphan のまま残す(次回再開時に (i) の規則で破棄され再実行される)
-5. 各 done の `manifest_sha256` を(再計算後の)input-manifest と照合 → 不一致は「stale」として該当 stage 以降を再実行対象に
-6. status.yaml を done ファイル群 + events から再構築して上書き
-7. **S9以後の分岐**: S9 doneがありvalidな`review_approved`が無ければ「プレビュー再表示 + 実装承認対話」へ
+6. **stale になった stage の再実行規則**:
+   - stale な global stage は再実行する。**S2 は scoped 再実行**: 対象 tier 集合 =
+     「`attempt-{current_attempt}/` に有効な S4 done が無い(欠落または退避済みの)tier」
+     (現在のファイル状態だけから再導出できるため、invalidate 後〜S2 再実行前に中断しても
+     復元できる)。S2 done 自体が無い初期実行は従来どおり全量。
+     対象 tier 集合が空(全 tier の S4 done が有効 — 互換規則による hash 形式差のみ等)の場合は
+     dispatch せず、**先に `stage_completed`(stage: S2、payload: `{mode: hash_refresh,
+     manifest_sha256, manifest_projection: v2}`)イベントを追記してから**、手順 4 で退避せず
+     マークした**既存の S2 done** の該当 2 フィールドだけを in-place 更新する(S8 refresh と
+     同型 — reducer は直近の S2 done 状態にこの payload の 2 フィールドを上書き適用する。
+     イベント → latest の順序原則どおり。write-set の項に定める例外)
+   - stale な tier done(S4/S5)は**該当 tier のみ**、同一 attempt 内で再 dispatch する
+     (attempt++ しない — attempt++ は blocker 由来・S6/S7 差し戻しのみ)。tier X の S4 を
+     再実行したら同 tier の S5(verify + dispatch 対象なら ui-review)も再実行する。
+     **他 tier の S4/S5 done は projection が一致する限り有効のまま維持する**
+     (同一 attempt 内のため carry-forward 生成も不要)
+   - stale 由来の S4 再実行では前回の findings をサブエージェントに渡さない
+     (旧 spec 前提の指摘を新実装に持ち込まない。findings を渡すのは blocker 由来の
+     attempt++ 直後のみ — dist-impl-run/SKILL.md の attempt 制御)
+   - S4 再実行後の formatter barrier で、再実行 tier の tier_dir 外に整形差分が出た場合は、
+     その tier の S5(両レーン)を追加で invalidate して再実行する
+     (dist-impl-run/SKILL.md「stage 境界の共通処理」4)
+7. status.yaml を done ファイル群 + events から再構築して上書き
+8. **S9以後の分岐**: S9 doneがありvalidな`review_approved`が無ければ「プレビュー再表示 + 実装承認対話」へ
    戻る。approvalのS9 event参照、done/event/approvalの両review evidence、current draft/HTML hashのどれかが
    不一致ならS8 refresh → S9再生成へ戻る。`review_rejected`があれば差し戻し先stageから再開する。
    validな`review_approved`がありrequest 1件以上で
@@ -720,7 +838,7 @@ S5(verify)は carry-forward しない(S4 再実行後は全 tier を再検証す
    **要求0件** — 最新のvalid `review_approved` eventと参照先S9 evidence
    (`request_count: 0`・`feedback_id: null`と、対応するpublished eventが存在しないことを
    検証した上で)から「還流不要(要求0件)」カードを生成する(公開Markdownはこの経路では存在しない)
-8. 未完了の最初の stage から再開。中間生成物は削除しない
+9. 未完了の最初の stage から再開。中間生成物は削除しない
 
 ## NEXT.md(セッション引き継ぎカード)
 
@@ -758,14 +876,15 @@ publish events)と更新済み `review/review-notes.md` も含む(いずれも�
 - **`--recommended-auto` の判断材料**: CR の件数と severity 内訳の要旨
   (安全な推奨 routing を自動採用したい場合のみ付ける)
 - **pipeline 完了後の再開コマンド**: `/distillery-impl:dist-impl-run {uc_id}`
-  (distillery 側の仕様更新で input hash が変われば S1 から新 manifest で再生成される旨を併記)
+  (distillery 側の仕様更新で input hash が変わった場合、影響を受けた done だけが
+  projection 照合で再実行される旨を併記 — tier-scoped staleness)
 - **参照 path**: 公開 Markdown / review/index.html / as-built-summary.md / learnings/
 
 ## 書き込み権限(write-set)の正本
 
 | 書き手 | 書いてよい場所 |
 |---|---|
-| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、**S3 の契約不整合の `issues/` 起票**、**S5 UI Review 環境失敗(`result: environment_failure`)の `issues/` 起票**、**`capture_review_completed` イベント追記後の staging→canonical 昇格**(`attempt-{n}/ui-artifacts/{tier_id}/staging/` から `ui-artifacts/{tier_id}/` へのファイル移動・`.findings.yaml` への findings-delta マージ・該当 `S5_ui-review.{tier_id}.done.yaml` の `checks_checked` 更新。D10 round2 skipped 復旧の再実行時のみ)、orphan 化した `staging/` の破棄、carry-forward done の生成、`invalidated/` への done 退避、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、`review/review-notes.md`、`{uc_id}/NEXT.md`、git commit |
+| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、**S3 の契約不整合の `issues/` 起票**、**S5 UI Review 環境失敗(`result: environment_failure`)の `issues/` 起票**、**`capture_review_completed` イベント追記後の staging→canonical 昇格**(`attempt-{n}/ui-artifacts/{tier_id}/staging/` から `ui-artifacts/{tier_id}/` へのファイル移動・`.findings.yaml` への findings-delta マージ・該当 `S5_ui-review.{tier_id}.done.yaml` の `checks_checked` 更新。D10 round2 skipped 復旧の再実行時のみ)、orphan 化した `staging/` の破棄、carry-forward done の生成、`invalidated/` への done 退避、**S2 done の projection hash 再記録(scoped 再実行の対象 tier 集合が空の場合のみ。`stage_completed(mode: hash_refresh)` イベントを先行させ、`manifest_sha256` / `manifest_projection` の 2 フィールドに限る)**、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、`review/review-notes.md`、`{uc_id}/NEXT.md`、git commit |
 | S0 bootstrap | 実装リポ全体(初期生成)、latest/ の config/uc-map/lock、`bootstrap.done.yaml` |
 | S2 Implementer(test-scaffold) | 各 tier の `features/`・`test/`、`features/uc/`、`features/atdd/`、`S2_test-scaffold.done.yaml`、対象 UC の `issues/`(矛盾 3 条件の起票) |
 | S4 Implementer(tier 別) | 自 tier の dir 配下、`attempt-{n}/S4_*.{自tier}.done.yaml`、issues/ |

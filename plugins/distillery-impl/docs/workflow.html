@@ -249,6 +249,7 @@ h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var
     <ul>
       <li>完了の正は <code>.done.yaml</code> の存在 + <code>manifest_sha256</code> 一致。status.yaml は再構築可能なスナップショット</li>
       <li>再開時は入力ハッシュを<b>現物から再計算</b>し、変わった入力に依存する stage / bootstrap Phase だけを再実行</li>
+      <li><b>tier-scoped staleness</b>: S4/S5 の done は自 tier の tier md だけを projection に含むため、spec の 1 tier 修正では他 tier の実装・検証は温存される(位置カスケードなし)</li>
       <li>中間生成物は削除しない。無効化は <code>invalidated/</code> へ退避(イベント追記が先)</li>
     </ul>
   </div>

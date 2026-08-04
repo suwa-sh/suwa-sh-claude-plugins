@@ -39,7 +39,9 @@ description: >
    **両者が同一なら停止してユーザー確認**(二段独立検証の要件)
 5. **lease 取得**: run_id・開始 HEAD(`git rev-parse HEAD`)・uc_id を run-lease.yaml に書く。
    working tree が dirty なら既存差分を記録した上で続行可否をユーザーに確認
-6. **再開判定**: state-schema.md の再開手順(done 存在 + manifest_sha256 照合)で開始 stage を決める
+6. **再開判定**: state-schema.md の再開手順(done ごとの projection 照合 + 存在チェック)で
+   再実行対象を決める(位置カスケードではなく、stale になった done だけが対象 —
+   tier-scoped staleness)
 
 ## stage 運転規則
 
@@ -84,8 +86,8 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
        含める(reducer は `after: null` を削除として適用 — state-schema.md)
      - **screen 解決の確定後、uc-map の {ui_screens, ui_screen_resolution} から
        `ui_screen_config`(canonical JSON の sha256)を計算して input-manifest に記録する**。
-       手順 2 の manifest はこの反映をもって確定する(screen 解決の変更が S1 以降の
-       stale 判定に乗る)
+       手順 2 の manifest はこの反映をもって確定する(screen 解決の変更が、
+       `ui_screen_config` を projection に含む done の stale 判定に乗る)
   5. `S1_uc-init.done.yaml` を書く(共通スキーマ。オーケストレータの write-set に含まれる)
 - **S3(contracts)も自分で実行する**。impl-config の `contracts[]` を loop し、契約ごとに:
   1. **鮮度照合**: contracts.lock.yaml の input sha256 と現物を照合。不一致 → bootstrap
@@ -136,7 +138,8 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
      - ユーザーに縮退可否を確認する
      - **承認**: `config_confirmed` イベントを追記した上で該当 tier の `tiers[].capabilities.ui_review`
        を done の `degradation_proposed` に従って更新し、`ui_review_config` の変化により
-       S2 以降の done を invalidate する(state-schema.md の manifest_sha256 射影規則に従う)
+       これを projection に含む done(S2 以降の global done・全 tier done)を invalidate する
+       (state-schema.md の projection 規則に従う)
      - **拒否**: `stage_failed` イベントを記録して lease を解放し run を終了する(再開時は S5 から。
        環境を直すか縮退を選ぶまで進まない — S3 の既存停止パターンと同じ)
   5. **UI Reviewer の done が `unverified` の場合**(dispatch 前提とのズレ): 再開時に dispatch 条件・
@@ -186,11 +189,16 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
   (ui-review が dispatch されなかった tier は verify のみで判定)。blocker があれば
   `attempt_opened` イベントを記録して attempt++、blocker のある tier の S4 を再実行。
   blocker の無かった tier には新 attempt に**carry-forward done**(`carried_from` 付き)を
-  自分で生成する(state-schema.md)。**S4 を再実行したら全 tier の S5(verify + dispatch 対象なら
-  ui-review も)を再実行**(安全側。どちらのレーンも carry-forward しない)。
-  **S4 再実行時は両レーンの findings パスを tier 単位で Implementer に渡す**
+  自分で生成する(state-schema.md)。**attempt++ 経由(blocker 由来・S6/S7 差し戻し)で S4 を
+  再実行したら全 tier の S5(verify + dispatch 対象なら ui-review も)を再実行**(安全側。
+  どちらのレーンも carry-forward しない)。
+  **attempt++ 経由の S4 再実行時は両レーンの findings パスを tier 単位で Implementer に渡す**
   (subagent-template.md の S4 の findings 変数。ui-review も carry-forward しない)。
-  attempt が 3 を超えたら停止し、findings 要約と選択肢(続行 / 仕様ブロック / 手動介入)を提示
+  attempt が 3 を超えたら停止し、findings 要約と選択肢(続行 / 仕様ブロック / 手動介入)を提示。
+  **stale 由来の再実行(再開手順の projection 照合)はこの attempt 制御に乗せない**:
+  attempt++ せず同一 attempt 内で stale な tier の S4/S5 のみ再実行し、findings も渡さない
+  (旧 spec 前提の指摘を新実装に持ち込まない)。他 tier の有効な done は維持する
+  (state-schema.md 再開手順 6 が正本)
 - **S6/S7 の fail**: integration writer の分析を読み、次の 3 択から判断する(迷ったらユーザーに提示):
   ①原因 tier の S4 へ差し戻す、②仕様ブロックとして issues 起票済みのまま S8 へ進む、
   ③**(推奨)仕様不整合を issues に書き残してテストが通るまで実装を進め、S8 で as-built 差分として
@@ -216,8 +224,12 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 3. **git commit**: `git add -- <その stage の write-set のパスのみ>` →
    `impl({uc_id}): S4 tier-backend-api gates passed` 形式(Conventional Commits、scope=uc_id)。
    S0(bootstrap)など UC 非依存の commit は `impl(bootstrap): ...` とする。`git add .` は使わない
-4. 必要な barrier 処理: S4 全 tier 完了後、書き換えを伴う formatter をリポ全体に 1 回実行して commit
-   (単一 writer。gates.md の check-only 規約と対)
+4. 必要な barrier 処理: 当該サイクルで S4 を実行した tier が全て完了した後、書き換えを伴う
+   formatter をリポ全体に 1 回実行して commit(単一 writer。gates.md の check-only 規約と対)。
+   **barrier commit の前に変更パスを検査し、今回 S4 を実行していない tier の tier_dir に
+   整形差分が出た場合は、その tier の S5(verify + dispatch 対象なら ui-review)を追加で
+   invalidate して再実行する**(維持された S5 done が整形前コードの検証記録のまま残らないようにする。
+   tier-scoped staleness の補償規則)
 
 ## S9 完了とレビュー依頼
 

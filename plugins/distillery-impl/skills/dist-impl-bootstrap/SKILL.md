@@ -18,7 +18,11 @@ distillery の出力を入力契約として、実装先リポの「最初から
 
 引数: `specs_root={distillery 出力ルート} repo_root={実装先リポルート}`(省略時は対話で確認)。
 `phase=contracts force=true` を渡された場合は **P4(契約 codegen)だけを強制再実行**する
-(S3 の stale 検知から呼ばれる経路。lock の sha256 が一致していても再生成し、lock を更新する。
+(S3 の stale 検知から呼ばれる経路。lock の sha256 が一致していても codegen・検証は再実行する。
+ただし **content-stable 規則が優先**: 再生成後の input sha256 と生成物が既存 lock エントリと
+同一なら、lock の該当エントリ(`at` 含む)は書き換えない — force は「生成・検証の強制」であり
+「lock 書き換えの強制」ではない(無変更の再生成が `contracts_lock` の hash を揺らして
+S4 以降を偽 stale にしないため)。
 bootstrap.done.yaml は **P4 の記録と契約入力ハッシュ(contracts[] の各入力)だけ**を更新し、他 Phase に触れない)。
 さらに `contract_id={id}`(任意・カンマ区切りで複数可)を渡された場合は**該当契約だけ**を再生成し、
 lock・入力ハッシュもその契約のエントリのみ更新する(無指定は全契約)。
@@ -108,7 +112,12 @@ lock・入力ハッシュもその契約のエントリのみ更新する(無指
    `input-manifest.yaml` の `ui_review_config`(全 frontend tier の
    `{tier_id, capabilities.ui_review}` の sha256)はこの確定を入力に S2 以降で
    参照される(スキーマ・stale 適用範囲は state-schema.md)
-7. **旧形式(ui_review 未対応)からの移行**(contracts[] 欠落時の P2 invalidate と同型):
+7. **再実行は content-stable にする**(spec_event 変化等による P2 invalidate 後の再実行):
+   導出結果(impl-config / uc-map)が既存と同一なら**ファイルを書き換えず、ユーザー再確認も
+   発生させない**(`config_confirmed` は差分がある項目のみ)。無変更の再実行が config 群の
+   タイムスタンプ・ハッシュを揺らして下流(input-manifest の projection 照合)を偽 stale に
+   しないため(tier-scoped staleness の前提。state-schema.md「P2/P4 の再実行は content-stable」が正本)
+8. **旧形式(ui_review 未対応)からの移行**(contracts[] 欠落時の P2 invalidate と同型):
    bootstrap の再開判定で「**`has_design_system: true` かつ** frontend 種別の tier があるのに
    `tiers[].capabilities.ui_review` / `preflight_evidence.ui_review` が欠落しており、かつ
    `bootstrap.done.yaml` の `migrations.ui_review_v1` が未記録」を検出したら、**P1/P2 を一度だけ
@@ -137,6 +146,10 @@ impl-config の `contracts[]` を loop し、`references/contract-registry.md` �
 (codegen / degraded スロット)に従って生成し、contracts.lock.yaml(契約ごとの input sha256 +
 generated)を書く。java 不在・generator 失敗時は種別の縮退手順に切り替え、lock の該当契約に
 `degraded` と記録。**種別名でパイプラインを分岐させない**(新種別はレジストリへの追加だけで通る)。
+
+**再実行は content-stable にする**: 契約ごとに input sha256 と生成物が既存 lock と同一なら、
+lock の該当エントリ(`at` 含む)を書き換えない(無変更の再生成が `contracts_lock` の hash を
+揺らして S4 以降を偽 stale にしないため。state-schema.md「P2/P4 の再実行は content-stable」が正本)。
 
 **注意**: bootstrap 実行中は `specs_root` を書き換えない(P4/P5 のプローブ・取り込みと競合し
 部分スナップショットになる。`dist-design-system` の追い上げ生成と並走させない)。

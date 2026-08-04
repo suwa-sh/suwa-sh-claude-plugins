@@ -9,7 +9,10 @@ description: >
 
 # dist-impl-verify
 
-引数: `uc_id={id} tier={tier_id} attempt={n} config={impl-config.yaml へのパス}`
+引数: `uc_id={id} tier={tier_id} attempt={n} config={impl-config.yaml へのパス} manifest_sha256={オーケストレータ算出の tier projection hash}`
+
+`manifest_sha256` は再計算せず done に転記し、`manifest_projection: v2` を併記する
+(state-schema.md の projection 規則)。
 
 ## Verifier の掟(Cloudflare VVS の転用)
 
