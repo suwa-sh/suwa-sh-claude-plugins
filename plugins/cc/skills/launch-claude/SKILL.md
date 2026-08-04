@@ -1,11 +1,18 @@
 ---
 name: cc:launch-claude
-description: Launch a new Claude Code session in a ghq-managed repository via Ghostty split. Use this skill whenever the user wants to "launch claude", "start claude in", "open claude code in", or work on a specific repository in a separate session. Also trigger when the user mentions a repo name to open (e.g., "RDRAAgentで", "pkmを開いて", "sandboxで作業したい", "別セッションで開いて"), or says just a repo keyword expecting a new Claude Code session to be launched there. Supports passing a slash command to auto-execute on launch (e.g., "/cc:launch-claude pkm /deep-research テーマ"), and choosing the model and/or agent persona (e.g., "pkm を fable の marketer で開いて").
+description: Launch a new Claude Code session in a ghq-managed repository via Ghostty split, and drive sessions that are already running. Use this skill whenever the user wants to "launch claude", "start claude in", "open claude code in", or work on a specific repository in a separate session. Also trigger when the user mentions a repo name to open (e.g., "RDRAAgentで", "pkmを開いて", "sandboxで作業したい", "別セッションで開いて"), or says just a repo keyword expecting a new Claude Code session to be launched there. Supports passing a slash command to auto-execute on launch (e.g., "/cc:launch-claude pkm /deep-research テーマ"), and choosing the model and/or agent persona (e.g., "pkm を fable の marketer で開いて"). Also handles talking to an already-open pane — listing running sessions, typing a command into one, or turning Remote Control on from outside (e.g., "さっき開いたセッションを remote on にして", "あのペインに /clear を送って", "起動済みセッション一覧").
 ---
 
 # Launch Claude Code in a Repository
 
 Open a new Ghostty split running Claude Code (`--dangerously-skip-permissions`) in a ghq-managed repository. Optionally pass a slash command to auto-execute on launch, and optionally choose the model and/or agent persona.
+
+Two jobs live here:
+
+| The user wants | Go to |
+|---|---|
+| A **new** session in a repo | Steps 0–4 (Launch) |
+| To talk to an **already running** pane (list / send a command / Remote Control) | Step 5 (Control) |
 
 ## Workflow
 
@@ -165,6 +172,30 @@ APPLESCRIPT
 
 Then confirm to the user that a new split has been opened in Ghostty with Claude Code running in the selected repository (mention the model / agent when set).
 
+### 5. Control an already-running session
+
+Use `scripts/session_ctl.sh` when the user refers to a session that is **already open** — "さっき立ち上げたやつ", "あのペイン", "起動済みのセッション". Locate it the same way as `check_deps.sh`:
+
+```bash
+CTL="$(find ~/.claude ./.claude -path '*/launch-claude/scripts/session_ctl.sh' 2>/dev/null | head -1)"
+```
+
+| Command | What it does |
+|---|---|
+| `bash "$CTL" list` | Print every Ghostty pane as `ID \| NAME \| CWD` |
+| `bash "$CTL" resolve <target>` | Print the id `<target>` resolves to, **sending nothing** |
+| `bash "$CTL" send <target> <text...>` | Paste `<text>` into the pane, then press enter |
+| `bash "$CTL" remote <target>` | Send `/remote-control` to the pane |
+
+`<target>` is a terminal id from `list`, or a case-insensitive substring of the pane name (`claude-plugins`, `pkm [fable] 3`). No match or an ambiguous match is an error that lists the candidates — it never guesses.
+
+Rules:
+
+- **Always run `list` first** and show the user which pane you are about to hit. Pane names carry the `[agent/model]` suffix from step 4, so they are the natural handle.
+- **Sending is an interrupt.** The text lands in that session's prompt as if pasted. Only send to a pane the user pointed at, and prefer an idle one — a busy session will take the injection mid-work.
+- `/remote-control` is a **toggle**, not an "on" switch. Sessions normally start with Remote Control already enabled (`remoteControlAtStartup` in `~/.claude/settings.json`), so sending it to a healthy session turns it **off**. Send it only when the user says a session is missing from claude.ai, and ask them to confirm the pane afterwards.
+- There is no CLI to enable Remote Control on a live session; `claude --remote-control [name]` works at startup only. Injecting the slash command is the only outside-in route.
+
 ## Notes
 
 - Ghostty must already be running with a focused terminal in the front window (the new pane is split off the focused one)
@@ -172,4 +203,5 @@ Then confirm to the user that a new split has been opened in Ghostty with Claude
 - `ghq list -p` returns full absolute paths, so grep results can be used directly
 - The session name appears in Ghostty's pane title and in Claude Code's remote control list, so including the slash command and the `[agent/model]` suffix helps identify what each session is doing
 - `--model` / `--agent` are standard `claude` CLI options (`claude --help`): `--model` takes an alias (`fable`, `opus`, `sonnet`) or full model name; `--agent` takes an agent/persona name resolved from the same registry Claude Code uses
-- AppleScript reference: <https://ghostty.org/docs/features/applescript> (`split` command)
+- `-n <name>` only sets the display name (prompt box, `/resume` picker, terminal title). Remote Control is governed separately by `remoteControlAtStartup`, or by launching with `--remote-control [name]`
+- AppleScript reference: <https://ghostty.org/docs/features/applescript> (`split`, `input text`, `send key`)
