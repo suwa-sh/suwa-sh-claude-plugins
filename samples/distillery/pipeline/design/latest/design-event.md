@@ -4,9 +4,9 @@
 
 | 項目 | 内容 |
 |------|------|
-| Event ID | 20260412_164650_design_system + 20260412_205245_spec_stories |
-| Created At | 2026-04-12T20:52:45 (最終更新) |
-| Source | RDRA/NFR/Arch モデルからの初期デザインシステム生成 + spec-stories による全 UC ページ Story 生成 |
+| Event ID | 20260412_164650_design_system + 20260412_205245_spec_stories + 20260804_152314_design_system |
+| Created At | 2026-08-04T15:23:14 (最終更新) |
+| Source | RDRA/NFR/Arch モデルからの初期デザインシステム生成 + spec-stories による全 UC ページ Story 生成 + Storybook 再現性修復 |
 | Portals | 2 |
 | Components | 19 (UI: 5, Domain: 6, Common: 8) |
 | Screens | 16 |
