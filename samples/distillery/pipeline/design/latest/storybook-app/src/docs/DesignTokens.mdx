@@ -1,0 +1,133 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Docs/Design Tokens" />
+
+# Design Tokens
+
+すべての実装は Primitive → Semantic → Component の3層を通して値を参照します。表示されている CSS 変数名はそのままコピーできます。
+
+## Primitive colors
+
+<table>
+  <thead><tr><th>Preview</th><th>Token</th><th>Value</th></tr></thead>
+  <tbody>
+    {[
+      ['--color-white', '#FFFFFF'], ['--color-gray-50', '#F8FAFC'], ['--color-gray-100', '#F1F5F9'],
+      ['--color-gray-200', '#E2E8F0'], ['--color-gray-400', '#94A3B8'], ['--color-gray-600', '#475569'],
+      ['--color-gray-800', '#1E293B'], ['--color-gray-950', '#020617'], ['--color-blue-50', '#EFF6FF'],
+      ['--color-blue-400', '#60A5FA'], ['--color-blue-600', '#2563EB'], ['--color-blue-800', '#1E40AF'],
+      ['--color-slate-700', '#334155'], ['--color-green-500', '#22C55E'], ['--color-green-600', '#16A34A'],
+      ['--color-red-500', '#EF4444'], ['--color-red-600', '#DC2626'], ['--color-orange-500', '#F97316'],
+      ['--color-amber-500', '#F59E0B'], ['--color-violet-500', '#8B5CF6'],
+    ].map(([token, value]) => (
+      <tr key={token}>
+        <td><span style={{ display: 'inline-block', width: 24, height: 24, backgroundColor: `var(${token})`, border: '1px solid var(--border)', borderRadius: 4 }} /></td>
+        <td><code>{`var(${token})`}</code></td><td><code>{value}</code></td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+## Semantic colors
+
+<table>
+  <thead><tr><th>Purpose</th><th>Token</th><th>Light</th><th>Dark</th></tr></thead>
+  <tbody>
+    <tr><td>Page background</td><td><code>var(--background)</code></td><td>white</td><td>gray-950</td></tr>
+    <tr><td>Primary text</td><td><code>var(--foreground)</code></td><td>gray-900</td><td>gray-100</td></tr>
+    <tr><td>Border</td><td><code>var(--border)</code></td><td>gray-200</td><td>gray-800</td></tr>
+    <tr><td>Muted surface</td><td><code>var(--muted)</code></td><td>gray-100</td><td>gray-900</td></tr>
+    <tr><td>Success</td><td><code>var(--success)</code></td><td>green-600</td><td>green-500</td></tr>
+    <tr><td>Success surface</td><td><code>var(--success-light)</code></td><td>green-50</td><td>rgba(22,163,74,.15)</td></tr>
+    <tr><td>Warning</td><td><code>var(--warning)</code></td><td>orange-500</td><td>orange-500</td></tr>
+    <tr><td>Destructive</td><td><code>var(--destructive)</code></td><td>red-600</td><td>red-500</td></tr>
+    <tr><td>Information</td><td><code>var(--info)</code></td><td>blue-500</td><td>blue-400</td></tr>
+  </tbody>
+</table>
+
+## Portal colors
+
+<table>
+  <thead><tr><th>Portal</th><th>Selector</th><th>Primary</th><th>Preview</th></tr></thead>
+  <tbody>
+    <tr><td>利用者</td><td><code>[data-portal="user"]</code></td><td><code>#2563EB</code></td><td><span style={{ display: 'inline-block', width: 80, height: 20, background: '#2563EB', borderRadius: 4 }} /></td></tr>
+    <tr><td>司書</td><td><code>[data-portal="admin"]</code></td><td><code>#334155</code></td><td><span style={{ display: 'inline-block', width: 80, height: 20, background: '#334155', borderRadius: 4 }} /></td></tr>
+  </tbody>
+</table>
+
+## Spacing scale
+
+<table>
+  <thead><tr><th>Token</th><th>Value</th><th>Preview</th></tr></thead>
+  <tbody>
+    {[
+      ['--spacing-1', '0.25rem'], ['--spacing-2', '0.5rem'], ['--spacing-3', '0.75rem'],
+      ['--spacing-4', '1rem'], ['--spacing-6', '1.5rem'], ['--spacing-8', '2rem'],
+      ['--spacing-12', '3rem'], ['--spacing-16', '4rem'],
+    ].map(([token, value]) => (
+      <tr key={token}><td><code>{`var(${token})`}</code></td><td>{value}</td><td><span style={{ display: 'block', width: `var(${token})`, height: 12, background: 'var(--primary)', borderRadius: 2 }} /></td></tr>
+    ))}
+  </tbody>
+</table>
+
+### Semantic spacing and layout
+
+<table>
+  <thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead>
+  <tbody>
+    <tr><td><code>var(--page-padding)</code></td><td>1.5rem</td><td>ページ内側余白</td></tr>
+    <tr><td><code>var(--section-gap)</code></td><td>2rem</td><td>セクション間隔</td></tr>
+    <tr><td><code>var(--component-gap)</code></td><td>0.75rem</td><td>コンポーネント内部</td></tr>
+    <tr><td><code>var(--card-padding)</code></td><td>1.5rem</td><td>情報量の多いカード</td></tr>
+    <tr><td><code>var(--sidebar-width)</code></td><td>16rem</td><td>司書ポータル</td></tr>
+    <tr><td><code>var(--content-max-width)</code></td><td>80rem</td><td>12カラムコンテンツ</td></tr>
+  </tbody>
+</table>
+
+## Typography
+
+<table>
+  <thead><tr><th>Token</th><th>Value</th><th>Sample</th></tr></thead>
+  <tbody>
+    <tr><td><code>var(--font-size-xs)</code></td><td>0.75rem</td><td style={{ fontSize: 'var(--font-size-xs)' }}>貸出期限 2026年5月12日</td></tr>
+    <tr><td><code>var(--font-size-sm)</code></td><td>0.875rem</td><td style={{ fontSize: 'var(--font-size-sm)' }}>貸出期限 2026年5月12日</td></tr>
+    <tr><td><code>var(--font-size-base)</code></td><td>1rem</td><td style={{ fontSize: 'var(--font-size-base)' }}>貸出期限 2026年5月12日</td></tr>
+    <tr><td><code>var(--font-size-lg)</code></td><td>1.125rem</td><td style={{ fontSize: 'var(--font-size-lg)' }}>貸出期限 2026年5月12日</td></tr>
+    <tr><td><code>var(--font-size-2xl)</code></td><td>1.5rem</td><td style={{ fontSize: 'var(--font-size-2xl)' }}>貸出期限 2026年5月12日</td></tr>
+    <tr><td><code>var(--font-size-3xl)</code></td><td>1.875rem</td><td style={{ fontSize: 'var(--font-size-3xl)' }}>貸出期限 2026年5月12日</td></tr>
+  </tbody>
+</table>
+
+Sans-serif は <code>var(--font-sans)</code>（Noto Sans JP / Inter）、識別子・コードは <code>var(--font-mono)</code> を使用します。ウェイトは 400 / 500 / 600 / 700 です。
+
+## Border radius
+
+<div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+  {[
+    ['--radius-sm', '4px'], ['--radius-md', '8px'], ['--radius-lg', '12px'], ['--radius-xl', '16px'], ['--radius-full', 'Full'],
+  ].map(([token, label]) => (
+    <div key={token} style={{ width: 104, height: 72, display: 'grid', placeContent: 'center', border: '1px solid var(--border)', borderRadius: `var(${token})`, background: 'var(--muted)' }}>
+      <code>{label}</code>
+    </div>
+  ))}
+</div>
+
+## Component tokens
+
+<table>
+  <thead><tr><th>Component</th><th>Token</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Button</td><td><code>var(--button-height-md)</code></td><td>2.5rem</td></tr>
+    <tr><td>Button</td><td><code>var(--button-radius)</code></td><td>radius-md</td></tr>
+    <tr><td>Input</td><td><code>var(--input-height)</code></td><td>2.5rem</td></tr>
+    <tr><td>Card</td><td><code>var(--card-bg)</code></td><td>theme dependent</td></tr>
+    <tr><td>Card</td><td><code>var(--card-padding)</code></td><td>1.5rem</td></tr>
+    <tr><td>Badge</td><td><code>var(--badge-height)</code></td><td>1.5rem</td></tr>
+    <tr><td>Table</td><td><code>var(--table-header-bg)</code></td><td>theme dependent</td></tr>
+    <tr><td>Sidebar</td><td><code>var(--sidebar-width)</code></td><td>16rem</td></tr>
+  </tbody>
+</table>
+
+## Dark mode
+
+`.dark` クラスと `prefers-color-scheme: dark` の両方をサポートします。ステータス背景は暗い面で発光しすぎないよう、15%透明度の `rgba()` 値へ切り替わります。

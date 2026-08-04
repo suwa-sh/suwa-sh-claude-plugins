@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" role="img" aria-labelledby="title">
+  <title id="title">LibraShelf icon</title>
+  <rect x="3" y="3" width="42" height="42" rx="10" stroke="#1E40AF" stroke-width="2"/>
+  <path d="M13 14.5c4.5-.8 8.2.2 11 3v17c-2.8-2.8-6.5-3.8-11-3V14.5Z" stroke="#2563EB" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M35 14.5c-4.5-.8-8.2.2-11 3v17c2.8-2.8 6.5-3.8 11-3V14.5Z" stroke="#334155" stroke-width="2" stroke-linejoin="round"/>
+</svg>

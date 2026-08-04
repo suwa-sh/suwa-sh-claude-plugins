@@ -1,37 +1,28 @@
 import * as React from "react";
-import { colors, spacing, radius, fontSize } from "../../tokens/tokens";
+import "./ui.css";
 
-export type BadgeVariant = "default" | "success" | "warning" | "destructive" | "info" | "outline";
+export type BadgeVariant =
+  | "default"
+  | "success"
+  | "warning"
+  | "destructive"
+  | "info"
+  | "virtual"
+  | "outline";
 
-export interface BadgeProps {
+export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
-  children: React.ReactNode;
 }
 
-const variantStyles: Record<BadgeVariant, React.CSSProperties> = {
-  default: { background: colors.secondary, color: colors.surface },
-  success: { background: colors.success, color: colors.surface },
-  warning: { background: colors.warning, color: colors.surface },
-  destructive: { background: colors.destructive, color: colors.surface },
-  info: { background: colors.info, color: colors.surface },
-  outline: {
-    background: "transparent",
-    color: colors.textPrimary,
-    border: `1px solid ${colors.border}`,
-  },
-};
-
-export const Badge: React.FC<BadgeProps> = ({ variant = "default", children }) => (
-  <span
-    style={{
-      display: "inline-block",
-      padding: `${spacing.xs} ${spacing.sm}`,
-      borderRadius: radius.sm,
-      fontSize: fontSize.sm,
-      fontWeight: 600,
-      ...variantStyles[variant],
-    }}
-  >
-    {children}
-  </span>
+/** 状態や短い属性値を簡潔に示すラベル。選択操作には使用しない。 */
+export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
+  ({ variant = "default", className = "", ...props }, ref) => (
+    <span
+      ref={ref}
+      className={`ls-badge ls-badge--${variant} ${className}`.trim()}
+      {...props}
+    />
+  ),
 );
+
+Badge.displayName = "Badge";

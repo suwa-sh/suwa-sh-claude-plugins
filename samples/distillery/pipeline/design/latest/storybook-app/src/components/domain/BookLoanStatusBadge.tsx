@@ -1,7 +1,5 @@
-import * as React from "react";
-import { Badge, BadgeVariant } from "../ui/Badge";
+import { Badge, type BadgeVariant } from "../ui/Badge";
 
-/** 書籍貸出状態を表すステータスバッジ。在庫あり/貸出中/延滞中の3状態 */
 export type BookLoanStatus = "available" | "on_loan" | "overdue";
 
 export interface BookLoanStatusBadgeProps {
@@ -14,7 +12,8 @@ const statusMap: Record<BookLoanStatus, { label: string; variant: BadgeVariant }
   overdue: { label: "延滞中", variant: "destructive" },
 };
 
-export const BookLoanStatusBadge: React.FC<BookLoanStatusBadgeProps> = ({ status }) => {
-  const { label, variant } = statusMap[status];
-  return <Badge variant={variant}>{label}</Badge>;
-};
+/** 書籍貸出状態を、状態モデルに対応した色と日本語ラベルで表示する。 */
+export function BookLoanStatusBadge({ status }: BookLoanStatusBadgeProps) {
+  const mapped = statusMap[status];
+  return <Badge variant={mapped.variant}>{mapped.label}</Badge>;
+}

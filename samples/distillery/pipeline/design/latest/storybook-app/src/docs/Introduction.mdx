@@ -1,0 +1,45 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Docs/Introduction" />
+
+<img src="/assets/logo-full.svg" alt="LibraShelf" style={{ height: 64, marginBottom: 24 }} />
+
+# LibraShelf Design System
+
+LibraShelf は公共図書館の蔵書管理を支える、利用者・司書向けのデザインシステムです。RDRA の16画面、2つの状態モデル、NFR とアーキテクチャ設計から生成されています。
+
+## Design principles
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--component-gap)' }}>
+  <div style={{ padding: 'var(--card-padding)', border: '1px solid var(--card-border)', borderRadius: 'var(--card-radius)', background: 'var(--card-bg)' }}>
+    <strong>正確で分かりやすい</strong>
+    <p style={{ color: 'var(--muted-foreground)' }}>状態と次の操作を、専門用語に頼らず伝えます。</p>
+  </div>
+  <div style={{ padding: 'var(--card-padding)', border: '1px solid var(--card-border)', borderRadius: 'var(--card-radius)', background: 'var(--card-bg)' }}>
+    <strong>信頼・堅実</strong>
+    <p style={{ color: 'var(--muted-foreground)' }}>知性と安心を表す Library Blue を中心に構成します。</p>
+  </div>
+  <div style={{ padding: 'var(--card-padding)', border: '1px solid var(--card-border)', borderRadius: 'var(--card-radius)', background: 'var(--card-bg)' }}>
+    <strong>役割に最適化</strong>
+    <p style={{ color: 'var(--muted-foreground)' }}>利用者はシンプルに、司書は高い情報密度で表示します。</p>
+  </div>
+</div>
+
+## Portals
+
+<table>
+  <thead><tr><th>Portal</th><th>Actor</th><th>Primary</th><th>Screens</th></tr></thead>
+  <tbody>
+    <tr><td>利用者ポータル</td><td>利用者</td><td><code>#2563EB</code></td><td>7</td></tr>
+    <tr><td>司書ポータル</td><td>司書</td><td><code>#334155</code></td><td>9</td></tr>
+  </tbody>
+</table>
+
+Storybook ツールバーの Portal と Theme を切り替えると、`data-portal` と `.dark` によるトークン変更を確認できます。
+
+## Technology
+
+- Next.js + TypeScript + Tailwind CSS
+- Storybook 10 (`@storybook/nextjs-vite`)
+- CSS Custom Properties による Primitive → Semantic → Component の3層トークン
+- `@storybook/addon-docs` と `@storybook/addon-a11y`

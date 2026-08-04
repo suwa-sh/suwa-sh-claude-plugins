@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 92" fill="none" role="img" aria-labelledby="title">
+  <title id="title">LibraShelf stacked logo</title>
+  <rect x="45" y="4" width="42" height="42" rx="10" stroke="#1E40AF" stroke-width="2"/>
+  <path d="M55 15.5c4.5-.8 8.2.2 11 3v17c-2.8-2.8-6.5-3.8-11-3v-17Z" stroke="#2563EB" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M77 15.5c-4.5-.8-8.2.2-11 3v17c2.8-2.8 6.5-3.8 11-3v-17Z" stroke="#334155" stroke-width="2" stroke-linejoin="round"/>
+  <text x="66" y="70" text-anchor="middle" font-family="'Noto Sans JP','Inter',system-ui,sans-serif" font-size="18" font-weight="700">
+    <tspan fill="#1E40AF">Libra</tspan><tspan fill="#334155">Shelf</tspan>
+  </text>
+  <text x="66" y="84" text-anchor="middle" fill="#64748B" font-family="'Noto Sans JP',system-ui,sans-serif" font-size="9">図書館蔵書管理</text>
+</svg>

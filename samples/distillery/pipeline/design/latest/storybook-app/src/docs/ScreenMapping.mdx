@@ -1,0 +1,53 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Docs/Screen Mapping" />
+
+# RDRA Screen Mapping
+
+全16画面を RDRA の UC、ルート、主要コンポーネント、Story に対応付けています。
+
+## 利用者ポータル（7画面）
+
+<table>
+  <thead><tr><th>RDRA画面</th><th>UC</th><th>Route</th><th>Components</th></tr></thead>
+  <tbody>
+    <tr><td>蔵書検索画面</td><td>書籍を検索する</td><td><code>/books/search</code></td><td>BookSearchFilter, BookCard</td></tr>
+    <tr><td>貸出手続き画面</td><td>書籍を貸出する</td><td><code>/loans/new</code></td><td>BookCard, Button</td></tr>
+    <tr><td>返却手続き画面</td><td>書籍を返却する</td><td><code>/loans/return</code></td><td>LoanRecord, Button</td></tr>
+    <tr><td>予約申請画面</td><td>書籍を予約する</td><td><code>/reservations/new</code></td><td>BookCard, ReservationStatusBadge</td></tr>
+    <tr><td>予約管理画面</td><td>予約をキャンセルする</td><td><code>/reservations</code></td><td>ReservationStatusBadge, ConfirmActionModal</td></tr>
+    <tr><td>貸出履歴画面</td><td>貸出履歴を確認する</td><td><code>/mypage/loans</code></td><td>LoanRecord, PaginatedList</td></tr>
+    <tr><td>予約状況画面</td><td>予約状況を確認する</td><td><code>/mypage/reservations</code></td><td>ReservationStatusBadge, BookCard</td></tr>
+  </tbody>
+</table>
+
+## 司書ポータル（9画面）
+
+<table>
+  <thead><tr><th>RDRA画面</th><th>UC</th><th>Route</th><th>Components</th></tr></thead>
+  <tbody>
+    <tr><td>蔵書登録画面</td><td>書籍を登録する</td><td><code>/admin/books/new</code></td><td>Input, Button</td></tr>
+    <tr><td>蔵書編集画面</td><td>書籍情報を編集する</td><td><code>/admin/books/:id/edit</code></td><td>Input, Button</td></tr>
+    <tr><td>蔵書管理画面</td><td>書籍を削除する</td><td><code>/admin/books</code></td><td>BookCard, BookSearchFilter, ConfirmActionModal</td></tr>
+    <tr><td>貸出状況一覧画面</td><td>貸出状況を確認する</td><td><code>/admin/loans</code></td><td>LoanRecord, BookLoanStatusBadge</td></tr>
+    <tr><td>延滞管理画面</td><td>延滞を検出する</td><td><code>/admin/loans/overdue</code></td><td>LoanRecord, ErrorBanner</td></tr>
+    <tr><td>利用者登録画面</td><td>利用者を登録する</td><td><code>/admin/users/new</code></td><td>Input, Button</td></tr>
+    <tr><td>利用者編集画面</td><td>利用者情報を編集する</td><td><code>/admin/users/:id/edit</code></td><td>Input, Button</td></tr>
+    <tr><td>在庫状況画面</td><td>在庫状況を確認する</td><td><code>/admin/inventory</code></td><td>StatsSummaryCard, BookCard</td></tr>
+    <tr><td>統計レポート画面</td><td>統計レポートを閲覧する</td><td><code>/admin/stats</code></td><td>StatsSummaryCard</td></tr>
+  </tbody>
+</table>
+
+## State mapping
+
+<table>
+  <thead><tr><th>Model</th><th>RDRA state</th><th>Label</th><th>Semantic color</th></tr></thead>
+  <tbody>
+    <tr><td>書籍貸出状態</td><td>在庫あり</td><td>在庫あり</td><td><code>success</code></td></tr>
+    <tr><td>書籍貸出状態</td><td>貸出中</td><td>貸出中</td><td><code>info</code></td></tr>
+    <tr><td>書籍貸出状態</td><td>延滞中</td><td>延滞中</td><td><code>destructive</code></td></tr>
+    <tr><td>予約状態</td><td>予約受付中</td><td>予約受付中</td><td><code>info</code></td></tr>
+    <tr><td>予約状態</td><td>予約確保済</td><td>予約確保済</td><td><code>success</code></td></tr>
+    <tr><td>予約状態</td><td>予約キャンセル</td><td>キャンセル済</td><td><code>default</code></td></tr>
+  </tbody>
+</table>
