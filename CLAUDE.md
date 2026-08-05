@@ -37,6 +37,7 @@
    ```
    - `install` のみだと "already installed" で no-op になり、バージョンが更新されない。**必ず `uninstall` → `install` の順で再インストールする**
 8. **バージョン確認** — `~/.local/bin/claude plugin list`（または `~/.claude/plugins/installed_plugins.json`）で該当プラグインの version が bump した semver と一致し、gitCommitSha が push したコミットと一致することを確認する
+9. **CI確認** — GitHub Actions の結果を確認し、すべてのジョブが成功していることを確認する（失敗している場合は修正して再push）
 
 ### コミット規約
 
