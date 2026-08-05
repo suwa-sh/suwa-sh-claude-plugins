@@ -210,10 +210,20 @@ OpenAPI/AsyncAPI は `_cross-cutting/` に全 UC 統合で生成される（UC �
    - UC 単位 Spec: `{業務名}/{BUC名}/{UC名}/` のツリー表示 + 各 UC の対象ティア一覧
    - 全体横断 Spec: `_cross-cutting/` の内容
 7. `_inference.md` に分析根拠を記録する（UC ツリー、UC-ティアマッピング、全体横断設計方針）
+8. `_inputs-digest.md` を生成する（Step3 並列 subagent 用の入力ダイジェスト）:
+   - **目的**: 並列 subagent が `arch-design.yaml`（数十KB）と `nfr-grade.yaml`（数十KB）を各自フルロードすると、同じ入力が subagent 数ぶん重複課金される。Spec 生成に必要なセクションだけを1回抽出し、subagent はこちらを読む
+   - **抽出方法**: 該当セクションを**原文転写する（要約・言い換えをしない）**。転写元のフィールド名・値を変更すると Spec の整合が壊れる
+   - **arch-design.yaml から転写するセクション**: `system_architecture.tiers`（全項目）、`app_architecture.tier_layers`（全項目）、`data_architecture.entities`、`technology_context`、`domain_architecture` の境界づけられたコンテキスト・集約定義（存在する場合）
+   - **nfr-grade.yaml から転写するセクション**: 可用性（エラーハンドリング・リトライに効く項目）、性能（ページネーション・キャッシュ・レスポンスタイムに効く項目）、セキュリティ（認証・認可・PII に効く項目）の各グレードと選定値
+   - 冒頭に転写元ファイルパス・event_id・**転写済みセクションのチェックリスト**を記録する。状態は3値:
+     `転写済み` / `元ファイル参照`（転写しなかった。subagent は欠けた分だけ元ファイルから読む）/
+     `not_applicable`（元ファイルにセクション自体が存在しない。**フォールバック対象外** — subagent は元ファイルを読みに行かない）。
+     subagent はこのチェックリストで欠落を判定する
+   - 出力先: `docs/specs/events/{event_id}/_inputs-digest.md`
 
 ### Step2: 全体横断 UX/UI 設計（UC の前に先行確定）
 
-**読み込み:** `references/specs/cross-cutting-template.md`, `references/specs/data-visualization-rules.md`, `references/specs/ux-psychology-glossary.md`
+**読み込み:** `references/specs/cross-cutting-ux-ui-template.md`, `references/specs/data-visualization-rules.md`, `references/specs/ux-psychology-glossary.md`
 
 **UC Spec 生成の前に**、全体横断の UX/UI 設計を先行して確定する。UX は RDRA モデルから、UI は design-event.yaml から決定できるため、UC の内容に依存しない。これにより UC Spec 生成時に一貫した設計方針を参照できる。
 
@@ -249,7 +259,8 @@ UC ごとに spec.md + ティア別 md + `_api-summary.yaml` を生成する。�
 - グループ分割例（46 UC の場合）: 5-6 グループに分割
 - subagent が途中停止した場合は、未生成 UC を新しい subagent で補完する
 
-**Step2 の成果物を入力として参照する**:
+**Step1/Step2 の成果物を入力として参照する**:
+- `_inputs-digest.md` — arch/nfr のダイジェスト。**subagent は arch-design.yaml / nfr-grade.yaml をフルロードせず、こちらを読む**（重複ロード削減。ダイジェストが無い、またはチェックリストでセクション欠落がある場合は、欠けた分だけ元ファイルから読む）
 - `_cross-cutting/ux-ui/ux-design.md` — ユーザーフロー・IA を参照して画面遷移を整合させる
 - `_cross-cutting/ux-ui/ui-design.md` — レイアウトパターン・レスポンシブ戦略を参照
 
@@ -264,7 +275,7 @@ Step3 で生成した各 UC の出力を、**生成 subagent とは別の subage
 あなたは UC Spec のレビュアーです。以下の UC Spec を厳密にレビューしてください。
 
 対象: {UC Spec のパス}
-参照: RDRA モデル（docs/rdra/latest/*.tsv）、arch-design.yaml、design-event.yaml
+参照: RDRA モデル（docs/rdra/latest/*.tsv）、docs/specs/events/{event_id}/_inputs-digest.md（無い/セクション欠落時は欠けた分だけ arch-design.yaml / nfr-grade.yaml を読む）、design-event.yaml
 
 レビュー観点:
 1. spec.md の RDRA トレーサビリティテーブルに漏れがないか（情報属性、条件、バリエーション、状態遷移）
@@ -365,7 +376,7 @@ OpenAPI 統合が特に重い場合は、業務単位で分割して並列生成
 
 #### Step4c: 共通コンポーネント抽出
 
-**読み込み:** `references/specs/cross-cutting-template.md`
+**読み込み:** `references/specs/cross-cutting-ux-ui-template.md`
 
 1. `_cross-cutting/ux-ui/common-components.md` を生成する:
    - **Step3 で生成した全 UC の tier-frontend-*.md を俯瞰して**、複数 UC で共通して使われるコンポーネントパターンを抽出・設計する
@@ -378,7 +389,7 @@ OpenAPI 統合が特に重い場合は、業務単位で分割して並列生成
 
 #### Step4d: トレーサビリティマトリクス + 網羅率 100% 自律是正
 
-**読み込み:** `references/specs/cross-cutting-template.md`（traceability-matrix.md フォーマット）
+**読み込み:** `references/specs/cross-cutting-traceability-template.md`
 
 1. `_cross-cutting/traceability-matrix.md` を生成する:
    - RDRA の全要素（情報属性、条件、バリエーション値、状態遷移パス、外部システム）を分母として棚卸し
@@ -695,7 +706,9 @@ spec-stories スキルの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/dist-spec-stori
 |----------|------|
 | `references/impl-notes.md` | 実装上の注意事項（subagent 分割・Step4e 必須・YAML 生成）|
 | `references/specs/spec-analyse.md` | Step1: モデル分析タスク詳細 |
-| `references/specs/cross-cutting-template.md` | Step2/Step4c/Step4d: 全体横断 UX/UI/共通コンポーネント テンプレート |
+| `references/specs/cross-cutting-template.md` | Step4a/全体把握: 全体横断ディレクトリ構成 + API/データストア概要 |
+| `references/specs/cross-cutting-ux-ui-template.md` | Step2/Step4c: 全体横断 UX/UI テンプレート |
+| `references/specs/cross-cutting-traceability-template.md` | Step4d: トレーサビリティマトリクス テンプレート + 網羅率算出ルール |
 | `references/specs/data-visualization-rules.md` | Step2: データ可視化設計ルール |
 | `references/specs/ux-psychology-glossary.md` | Step2: UX 心理学用語集 |
 | `references/specs/spec-template.md` | Step3: UC Spec フォーマット定義（BUC は参照ポインタ） |

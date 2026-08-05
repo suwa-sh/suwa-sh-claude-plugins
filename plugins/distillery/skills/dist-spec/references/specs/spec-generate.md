@@ -7,8 +7,10 @@
 ## 入力
 
 - `docs/rdra/latest/*.tsv` — RDRA モデル
-- `docs/nfr/latest/nfr-grade.yaml` — NFR グレード
-- `docs/arch/latest/arch-design.yaml` — アーキテクチャ設計
+- `docs/specs/events/{event_id}/_inputs-digest.md` — Step1 生成の arch/nfr ダイジェスト（**優先**。
+  NFR グレード・ティア構成・レイヤー構成・エンティティ・技術スタックの転写と、冒頭に転写済みセクションのチェックリストを含む）
+- `docs/nfr/latest/nfr-grade.yaml` — NFR グレード（ダイジェストが無ければフルロード。チェックリストでセクション欠落があれば欠けた分だけ読む）
+- `docs/arch/latest/arch-design.yaml` — アーキテクチャ設計（同上フォールバック）
 - `docs/design/latest/design-event.yaml` — デザインシステム
 - `docs/specs/latest/` — 既存の Spec（あれば）
 - `references/specs/spec-template.md` — Spec フォーマット定義
@@ -22,7 +24,10 @@
 
 ### 1. ティア構成の決定
 
-`docs/arch/latest/arch-design.yaml` を読み込み、生成対象のティアを決定する:
+`_inputs-digest.md` を読み込み、生成対象のティアを決定する
+（ファイル自体が無ければ `docs/arch/latest/arch-design.yaml` をフルロード。
+チェックリストで `system_architecture.tiers` または `app_architecture.tier_layers` が
+`元ファイル参照` の場合は、該当セクションだけを `arch-design.yaml` から読む）:
 
 - `system_architecture.tiers` から全ティアの `id`, `name`, `description`, `technology_candidates` を取得する
 - `app_architecture.tier_layers` から各ティアのレイヤー構成を取得する

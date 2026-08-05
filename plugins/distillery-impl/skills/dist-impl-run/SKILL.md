@@ -17,7 +17,10 @@ description: >
 - **自分ではファイル本文をほぼ読まない**(コンテキスト 25% 制約)。読むのは
   `docs/impl/latest/` の config / uc-map / lease / status / done ファイルと、サブエージェントの報告だけ
 - 各 stage は **fresh サブエージェントに委譲**する。指示文は `references/subagent-template.md` の
-  テンプレートに変数を埋めて作る(パスを渡し、本文を貼らない)
+  テンプレートに変数を埋めて作る(パスを渡し、本文を貼らない)。
+  S2/S4/S5 ui-review/S9 の長文固定指示は `references/stage-instructions/` 配下のファイル
+  (ファイル名はテンプレートの対応表が正本)の絶対パスをプロンプトに埋め、
+  サブエージェント側に読ませる(テンプレートの「ファイル参照方式」参照)
 - 状態の正は `references/state-schema.md`。**イベント追記 → latest 更新**の順を守る
 - **git 操作は自分だけが行う**(単一コミッタ)。サブエージェントの指示に git 禁止を必ず含める
 

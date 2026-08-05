@@ -32,6 +32,25 @@
 `state-schema.md` の「書き込み権限(write-set)の正本」表を参照(ここでは二重保持しない)。
 テンプレートの `{write_set}` には該当行の内容を展開して渡す。
 
+## 長文固定指示のファイル参照方式(S2 / S4 / S5 ui-review / S9)
+
+長文の固定指示は `references/stage-instructions/` 配下のファイルを正本とし、プロンプトに全文を埋め込まない
+(tier 並列起動時にプロンプトへ複製されるトークンを削減するため)。
+**ファイル名は各 stage の表の「固定部」に記載された名前が正本**(stage ID からの機械的な導出はしない):
+
+| stage | 固定指示ファイル |
+|-------|----------------|
+| S2 | `stage-instructions/S2_test-scaffold.md` |
+| S4 | `stage-instructions/S4_tier-impl.md` |
+| S5 ui-review | `stage-instructions/S5_ui-review.md` |
+| S9 | `stage-instructions/S9_review.md` |
+
+- オーケストレータは `additional_instructions` に次の1行だけを埋める:
+  `まず次のファイルを読み、記載の追加指示すべてに従ってください: {instructions_path}`
+  (`{instructions_path}` は dist-impl-run 自身の `${CLAUDE_PLUGIN_ROOT}/skills/dist-impl-run/references/` 配下の上記ファイルを絶対パスに展開した値)
+- 可変部(findings パス等)は同じ `additional_instructions` 内に短い行として追記する(各 stage の表を参照)
+- 固定指示ファイルの読み込み失敗をサブエージェントが報告した場合、オーケストレータは stage を done にしない
+
 ## manifest_sha256 の受け渡し(done を書く全 stage 共通)
 
 done の `manifest_sha256` は**オーケストレータが state-schema.md の projection 規則で算出**して
@@ -71,7 +90,7 @@ packages/contracts/ 出力 dir と contracts.lock.yaml の該当エントリと
 | skill_name | distillery-impl:dist-impl-implement |
 | skill_args | ` 引数: "mode=test-scaffold uc_id={uc_id} config={impl-config へのパス} manifest_sha256={S2 global projection hash} [tiers={scoped 再実行時の対象 tier 集合(カンマ区切り)}]"` |
 | write_set | 各 tier の features/ と test/(**tiers 指定時は指定 tier のみ**)、features/uc/(**tiers 指定の scoped 再実行では spec.md 変更時を除き触れない**)、features/atdd/、stages/S2_test-scaffold.done.yaml、対象 UC の issues/(矛盾 3 条件の起票) |
-| additional_instructions | `gherkin は仕様から意訳せず転写してください(実装リポの docs/dev-rules/test-strategy.md)。ATDD は uc-map の atdd_scenarios に列挙された Scenario だけを対象にし(skeleton と red baseline の確認も同範囲)、生成済みの共有 feature 本文は変更しないでください。done 条件は red baseline(全 4 段が「未実装を理由に」fail)です。fail 理由がパースエラー・設定ミスの場合は done にせず失敗を報告してください。dom_snapshot が true の frontend tier については、test-strategy.md の DOM 一致テスト転写規約に従い、**executable target(定義は dist-impl-run が算出した集合そのもの — S5 UI Reviewer に渡す集合と同一)ごと**に red DOM 一致テストの足場を生成してください。矛盾 3 条件で除外された行・variant(算出時に issues/ 起票済み)はこの集合に含まれないため、red baseline の分母からも外してください(テストを生成しない。除外理由をテストファイル側のコメントにも記録)。実装画面を直接 import せず、明示的な not-implemented stub の画面 adapter を生成し、テストは adapter 経由で render してください(module resolution error は red baseline と認めません — fail は「未実装」を理由とする assertion failure にしてください)。**dom_snapshot が true または capture_review が enabled の frontend tier では**、構造署名 extractor・variant→実装 props の adapter・HTML shell 生成を含む共通 helper を tier 内 1 箇所だけ生成してください(S4 のテストと S5 UI Reviewer の dom_snapshot 再実行・capture_review の SSR 静的 HTML 生成が同一 helper を使います。capture_review のみ enabled で dom_snapshot テスト自体は生成しない場合でも、この helper は生成してください)。story args → 実装 props の fixture 契約を variant ごとに定義してください。**tiers が指定された場合は scoped 再実行です**: 指定 tier の features/ と test/ だけを再生成し、他 tier の scaffold・features/uc/ の共有 feature(spec.md が変わった場合を除く)・features/atdd/ の既存 feature 本文には触れないでください。scoped 再実行では red baseline を done 条件にせず、dist-impl-implement の mode=test-scaffold に定める再実行時 done 条件に従い、done に scaffold_scope を記録してください。` |
+| additional_instructions | 固定部: `stage-instructions/S2_test-scaffold.md`(ファイル参照方式)。可変部: なし(tiers 指定の有無は skill_args で伝わる) |
 
 ### S4: tier-impl(tier ごとに並列起動)
 
@@ -82,7 +101,7 @@ packages/contracts/ 出力 dir と contracts.lock.yaml の該当エントリと
 | skill_args | ` 引数: "mode=tier-impl uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス} manifest_sha256={当該 tier の tier projection hash}"` |
 | model | impl-config の implementer_model(null なら未指定=セッション既定) |
 | write_set | {tier_dir}/ 配下、attempt-{n}/S4_tier-impl.{tier_id}.done.yaml、issues/ |
-| additional_instructions | `入力(read-set)は該当 UC の {tier_id}.md(例 tier-frontend.md)、_api-summary.yaml、_model-summary.yaml、実装リポの docs/dev-rules/、packages/contracts/ と契約 source のうち impl-config の contracts[] で自 tier が provider または consumers に含まれる契約のもの(生成物 dir は docs/impl/latest/contracts.lock.yaml の該当契約の generated[] のうち audience が自 tier の role または both で、lang 指定があれば自 tier の lang と一致するもの。契約 source は lock の source_read が none 以外の契約のみ・scope 指定時は scope 範囲)、さらに tier 種別の追加入力(tier-rules.md。frontend は uc-map の ui_screens が指す design-event.yaml の該当 screens[] 全行 + 結線 story + story から到達する packages/ui 内の推移的 import closure。ui_screens が空で ui_screen_resolution が記録済みの場合は UI 突合をスキップ)。それ以外(他 UC・関与しない契約・契約 source の全量読み)は読まないでください。findings パスが渡された場合(blocker 由来の attempt++ 直後の再実行のみ渡されます。verify: {findings_verify_path}、当該 tier で ui-review が dispatch されていれば ui-review: {findings_ui_review_path} も併せて渡す)は、その blocker を修正対象に含めてください(stale 由来の再実行では渡されません — 旧 spec 前提の指摘を新実装に持ち込まないため)。dom_snapshot が true な frontend tier は、S2 が生成した not-implemented stub の画面 adapter を実装画面へ結線し、DOM 一致テストを green にしてください(署名 extractor・adapter は S2 生成の共通 helper をそのまま使い、独自の署名生成ロジックを作らないでください)。formatter/lint は check-only で実行してください。` |
+| additional_instructions | 固定部: `stage-instructions/S4_tier-impl.md`(ファイル参照方式)。可変部: blocker 由来の attempt++ 直後の再実行のみ `findings パス — verify: {findings_verify_path}`(当該 tier で ui-review が dispatch されていれば ` ui-review: {findings_ui_review_path}` も併記)を追記する。stale 由来の再実行では findings パスを渡さない |
 
 ### S5: verify(tier ごとに並列起動。Implementer と別コンテキスト)
 
@@ -109,7 +128,7 @@ dispatch 条件(target 集合の算出を含む)は `dist-impl-run/SKILL.md` の
 | skill_args | ` 引数: "uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス} manifest_sha256={当該 tier の tier projection hash} targets={dist-impl-run が算出した executable target 集合} targets_hash={算出した canonical hash} targets_count={targets 件数} [checks={dom_snapshot,capture_review}]"`(`checks` は省略時 capability の全 check。skipped(runtime_unavailable) 復旧の再 dispatch 時のみ `checks=capture_review` を渡す — D10。`targets_hash`/`targets_count` の計算規則は state-schema.md「dispatch target の canonical hash」) |
 | model | **impl-config の verifier_model(dist-impl-verify と同じ値を流用。impl-config にキーを増やさない)** |
 | write_set | **通常 dispatch**: `attempt-{n}/S5_ui-review.{tier_id}.done.yaml` と `.findings.yaml`、`attempt-{n}/ui-artifacts/{tier_id}/`(capture_review が書く SSR 静的 HTML `render/` サブディレクトリ・キャプチャ画像を含む)のみ。**`checks=capture_review` の再実行時は例外**(D10 round2): `attempt-{n}/ui-artifacts/{tier_id}/staging/` のみ。canonical な done・`.findings.yaml`・`ui-artifacts/{tier_id}/`(`staging/` を除く)への書き込みは禁止 |
-| additional_instructions | `あなたは実装者とは独立の検証者です。実装の会話履歴は渡されません。dist-impl-verify(コード vs 仕様書、読解)とは対象・手段が異なり、実行された画面と story のレンダリング結果を突き合わせます。targets に渡された (screen × variant) 集合だけを対象にしてください(自分で ui_screens 全件を再算出しない)。受け取った targets_hash/targets_count は再計算せず done の dispatch_targets へそのまま転記してください。dom_snapshot / capture_review は capabilities.ui_review の方針(dom_snapshot: bool / capture_review: enabled|disabled)に従って実施し(checks が明示されていればそれに限定)、実施した check は自分で再実行・再キャプチャした結果だけを根拠にしてください(既存テストの green 報告や Implementer の自己申告を信用しない)。targets が実測 0 件だった場合は pass にせず unverified として報告してください。capture_review は browser 系ツール(Claude in Chrome 等)の利用を許可します。プロジェクト側に比較コマンドの事前整備は要求されていません — 共通 helper で story と実装をそれぞれ SSR 静的 HTML 化し、browser で開いてキャプチャ・目視比較してください。browser ツールが本セッションで利用不能な場合は checks_checked.capture_review を skipped(reason: runtime_unavailable) として記録し、result は pass のまま報告してください(environment_failure にしない)。片側でも表示手段を再現できない target は比較せず skipped(reason: render_context_unavailable) として captures[] に記録してください(偽差分を作らない)。captures[] は targets と 1:1 対応させ(欠落・重複・過剰なし)、findings は乖離のみとしてください。capture_review の finding には capture_index を付け、参照先の captures[] エントリが result: diff であることを確認してから書いてください。**checks=capture_review で再実行した場合は canonical な done/findings/ui-artifacts(staging/ を除く)を一切書き換えず**、成果物は attempt-{n}/ui-artifacts/{tier_id}/staging/ にのみ書いてください。完了報告には更新後の checks_checked 全文(checks_checked_after)・staged ファイル一覧([{staged_path, sha256, canonical_path}])・findings-delta.yaml の sha256・captures manifest の sha256(ui_imported.tree_hash と同じ計算規則)を含めてください(canonical への昇格はオーケストレータが capture_review_completed イベント追記後に行います)。実装コードの修正は禁止です。` |
+| additional_instructions | 固定部: `stage-instructions/S5_ui-review.md`(ファイル参照方式)。可変部: なし(targets/targets_hash/checks は skill_args で伝わる) |
 
 ### S6: uc-bdd / S7: atdd(integration writer。直列 1 エージェント)
 
@@ -149,4 +168,4 @@ containment・regular/non-symlink・SHA・件数・lineageのexact一致時だ�
 | skill_name | distillery-impl:dist-impl-review |
 | skill_args | ` 引数: "uc_id={uc_id} config={...} manifest_sha256={global projection hash}"` |
 | write_set | review/index.html、stages/S9_review_generated.done.yaml |
-| additional_instructions | `前提知識ゼロの読者が実装の合否を判断できる構成にしてください(review-html-template.md)。仕様起因の残課題はfeedback ID/件数/pathと、各CRの事実・問題・要求・完了条件を全文（details可）で示しますが、pipeline内部の所有stage・振り分け・個別処理指示・承認hashはHTMLへ生成しないでください。capture_reviewの画像はcaptures[]の非skippedエントリごとにpath containment・regular file・存在・実測SHA-256とfindings.yaml記載値の一致を検証してから表示し、不一致・欠落があればS9を完了しないでください。checks_checked.capture_review.status: doneのtierについては、対象UCのexecutable target集合をdist-impl-run/SKILL.mdの算出規則で独立に再計算し、captures[].targetと1:1対応する(欠落・重複・過剰なし)ことも検証してください。capture_reviewのfindingはcapture_indexが0<=capture_index<captures.lengthかつ参照先captures[capture_index].result: diffであることを確認してください。いずれか不一致ならS9を完了しないでください。表示したdraftのfeedback ID / exact bytes SHA-256 / request件数は内部のfeedback_review_evidence、HTML SHA / gate結果 / open blocker・major件数 / captures_sha256(検証済み実測値から算出)はimplementation_review_evidenceとしてS9 doneへ記録してください。生成後のプレビュー表示と承認対話はオーケストレータが行います。` |
+| additional_instructions | 固定部: `stage-instructions/S9_review.md`(ファイル参照方式)。可変部: なし |

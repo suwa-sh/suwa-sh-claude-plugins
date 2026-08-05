@@ -1,11 +1,12 @@
-# Feedback requestの書き方
+# Feedback requestの書き方（producer向けガイド）
 
 dist-implからdist-pipelineへ渡す入力は、公開済みMarkdown **1ファイルのパスだけ**です。
 本文をJSONへ複製しません。
 stageの判定と実行計画はdist-pipelineが作ります。
 
 機械検証の正本は、distillery側の`dist-pipeline/references/feedback-request-format.md`と`dist-pipeline/scripts/feedbackRequest.js`です。
-この文書はproducerが書く内容だけを説明します。
+この文書はproducerが書く内容だけを説明する別役割の文書です。同一内容へ揃える対象ではありませんが、
+**記載する書式・必須項目は機械検証の正本と整合させます**（正本のスキーマ変更時はこの文書も追随させます）。
 
 ## ファイルの状態
 

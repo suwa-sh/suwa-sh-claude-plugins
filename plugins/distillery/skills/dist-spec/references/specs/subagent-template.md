@@ -11,8 +11,9 @@ Step3 で UC Spec を並列生成する際に subagent へ渡す指示テンプ�
 
 2. 入力データ
    - docs/rdra/latest/*.tsv（全ファイル）
-   - docs/nfr/latest/nfr-grade.yaml
-   - docs/arch/latest/arch-design.yaml（tiers 定義から生成対象ティアを決定）
+   - docs/specs/events/{event_id}/_inputs-digest.md（Step1 生成の arch/nfr ダイジェスト。tiers 定義から生成対象ティアを決定）
+     - ファイル自体が存在しない場合は docs/nfr/latest/nfr-grade.yaml と docs/arch/latest/arch-design.yaml をフルロードする
+     - 冒頭のチェックリストで `元ファイル参照` のセクションがある場合は、そのセクションだけを元ファイルから読む（`not_applicable` = 元ファイルに存在しないセクションは読みに行かない）
    - docs/design/latest/design-event.yaml
    - docs/specs/events/{event_id}/_cross-cutting/ux-ui/ux-design.md（Step2 で生成済み）
    - docs/specs/events/{event_id}/_cross-cutting/ux-ui/ui-design.md（Step2 で生成済み）
