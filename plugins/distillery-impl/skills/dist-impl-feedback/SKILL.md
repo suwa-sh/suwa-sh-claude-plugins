@@ -48,7 +48,7 @@ uc_id={id} config={impl-config.yaml} [mode=initial|refresh|publish] manifest_sha
 
 ### 2. 1つのdraftへまとめる
 
-書式は`references/feedback-request-authoring.md`に従います。
+書式は`references/feedback-request-format.md`に従います。
 出力先は`docs/impl/latest/{uc_id}/feedback/draft.md`です。
 
 - initialは`{YYYYMMDD_HHMMSS}_impl_feedback_{uc_id}`形式のfeedback IDを作る。
