@@ -83,7 +83,7 @@ test('producer does not carry a second schema/parser or feedback-routing contrac
     assert.equal(fs.existsSync(path.join(producerRoot, relative)), false, `${relative} must not survive the migration`);
   }
 
-  const producerFormat = fs.readFileSync(path.join(producerRoot, 'references/feedback-request-format.md'), 'utf8');
+  const producerFormat = fs.readFileSync(path.join(producerRoot, 'references/feedback-request-authoring.md'), 'utf8');
   assert.match(producerFormat, /dist-pipeline\/scripts\/feedbackRequest\.js/);
   assert.match(producerFormat, /Markdown \*\*1ファイルのパスだけ\*\*/);
 });
