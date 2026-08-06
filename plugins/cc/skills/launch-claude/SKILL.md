@@ -69,105 +69,30 @@ If the user specifies an absolute path (starts with `/` or `~`) instead of a key
 
 ### 4. Launch
 
-Use AppleScript to split the focused terminal in the existing Ghostty window. The new pane opens beside (or below) the currently focused terminal in the front window's selected tab.
-
-- **Extra flags**: Build a `--model <alias>` / `--agent <name>` string from step 1 (empty when neither is given). These are injected into the `claude` invocation.
-- **Session name**: Start from the basename, then append a `[agent/model]` suffix when an agent and/or model is set, then append `: <slash-command>` when a slash command is given. Examples: `pkm`, `pkm [marketer/fable]`, `pkm: /deep-research テーマ`, `pkm [journaler]: /journal-review`.
-- **Initial prompt**: If a slash command is provided, pass it as a positional argument to the `claude` CLI so it auto-executes on startup.
-- **Split direction**: Default is `right` (side-by-side). Use `down` / `left` / `up` if the user explicitly requests another direction.
-
-Build the shared variables first:
+Call the bundled `scripts/launch_session.sh` — it builds the `claude` invocation, escapes it safely, and splits the focused terminal of the front window's selected tab. **Do not hand-roll the AppleScript**; a scratchpad copy gets wiped between turns and the quoting is easy to get wrong.
 
 ```bash
-target_dir="<matched_directory>"
-base_name="$(basename "$target_dir")"
-claude_path="$(command -v claude)"
-zsh_path="$(command -v zsh)"
-split_dir="right"  # right | left | down | up
-
-# from step 1 (either may be empty)
-model="<model-alias-or-empty>"
-agent="<agent-name-or-empty>"
-
-extra_flags=""
-[ -n "$model" ] && extra_flags="$extra_flags --model $model"
-[ -n "$agent" ] && extra_flags="$extra_flags --agent $agent"
-
-# session-name suffix: [agent/model], [agent], or [model]
-suffix=""
-if [ -n "$agent" ] && [ -n "$model" ]; then suffix=" [${agent}/${model}]";
-elif [ -n "$agent" ]; then suffix=" [${agent}]";
-elif [ -n "$model" ]; then suffix=" [${model}]"; fi
+LAUNCH="$(find ~/.claude ./.claude -path '*/launch-claude/scripts/launch_session.sh' 2>/dev/null | head -1)"
+bash "$LAUNCH" <target-dir> [--model <alias>] [--agent <name>] [--prompt '<slash-command...>']
 ```
 
-> Note: the AppleScript below is shown as a heredoc for readability. If your Bash tool mangles heredocs, write the `on run argv ... end run` body to a file with the Write tool and call `osascript <file> <args...>` instead.
+| Option | Meaning |
+|---|---|
+| `--model <alias>` | passed to `claude --model` |
+| `--agent <name>` | passed to `claude --agent` |
+| `--prompt <text>` | slash command auto-executed on startup |
+| `--name <text>` | override the auto-generated session name |
+| `--split right\|left\|down\|up` | pane direction (default `right`) |
+| `--dry-run` | print the shell command instead of opening a pane |
 
-#### With slash command:
+The session name is derived automatically: `<basename>` + ` [agent/model]` + `: <prompt>` — e.g. `pkm`, `pkm [marketer/fable]`, `agent-loop [maintainer]: /journal-review`. Pass `--name` only when the user wants something else, or to disambiguate repeat launches of the same repo (`pkm [fable] 2`).
 
-```bash
-initial_prompt="<slash-command-and-args>"
-session_name="${base_name}${suffix}: ${initial_prompt}"
-
-osascript - "$zsh_path" "$target_dir" "$claude_path" "$session_name" "$extra_flags" "$initial_prompt" "$split_dir" <<'APPLESCRIPT'
-on run argv
-  set zsh_path to item 1 of argv
-  set target_dir to item 2 of argv
-  set claude_path to item 3 of argv
-  set session_name to item 4 of argv
-  set extra_flags to item 5 of argv
-  set initial_prompt to item 6 of argv
-  set split_dir to item 7 of argv
-  tell application "Ghostty"
-    activate
-    set cfg to new surface configuration
-    set command of cfg to zsh_path & " -l -i -c 'cd " & target_dir & " && exec " & claude_path & " --dangerously-skip-permissions" & extra_flags & " -n \"" & session_name & "\" \"" & initial_prompt & "\"'"
-    set currentTerm to focused terminal of selected tab of front window
-    if split_dir is "right" then
-      set newTerm to split currentTerm direction right with configuration cfg
-    else if split_dir is "left" then
-      set newTerm to split currentTerm direction left with configuration cfg
-    else if split_dir is "down" then
-      set newTerm to split currentTerm direction down with configuration cfg
-    else
-      set newTerm to split currentTerm direction up with configuration cfg
-    end if
-    focus newTerm
-  end tell
-end run
-APPLESCRIPT
-```
-
-#### Without slash command:
+Examples:
 
 ```bash
-session_name="${base_name}${suffix}"
-
-osascript - "$zsh_path" "$target_dir" "$claude_path" "$session_name" "$extra_flags" "$split_dir" <<'APPLESCRIPT'
-on run argv
-  set zsh_path to item 1 of argv
-  set target_dir to item 2 of argv
-  set claude_path to item 3 of argv
-  set session_name to item 4 of argv
-  set extra_flags to item 5 of argv
-  set split_dir to item 6 of argv
-  tell application "Ghostty"
-    activate
-    set cfg to new surface configuration
-    set command of cfg to zsh_path & " -l -i -c 'cd " & target_dir & " && exec " & claude_path & " --dangerously-skip-permissions" & extra_flags & " -n \"" & session_name & "\"'"
-    set currentTerm to focused terminal of selected tab of front window
-    if split_dir is "right" then
-      set newTerm to split currentTerm direction right with configuration cfg
-    else if split_dir is "left" then
-      set newTerm to split currentTerm direction left with configuration cfg
-    else if split_dir is "down" then
-      set newTerm to split currentTerm direction down with configuration cfg
-    else
-      set newTerm to split currentTerm direction up with configuration cfg
-    end if
-    focus newTerm
-  end tell
-end run
-APPLESCRIPT
+bash "$LAUNCH" /Users/me/src/pkm
+bash "$LAUNCH" /Users/me/src/pkm --model fable --agent marketer
+bash "$LAUNCH" /Users/me/src/pkm --prompt '/deep-research ハーネスエンジニアリング'
 ```
 
 Then confirm to the user that a new split has been opened in Ghostty with Claude Code running in the selected repository (mention the model / agent when set).
