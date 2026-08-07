@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="{{LANG}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{TITLE}}</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f3efe8;
+      --surface: #fbf9f5;
+      --surface-strong: #ebe4d9;
+      --ink: #302d29;
+      --muted: #6d675f;
+      --line: #d4cdc2;
+      --accent: #356f9f;
+      --accent-soft: #dfeaf3;
+      --danger: #9b3f37;
+      --danger-soft: #f4dfdc;
+      --warn: #8a6422;
+      --warn-soft: #f3e8cc;
+      --ok: #346b4a;
+      --ok-soft: #dceade;
+      --unknown: #665b78;
+      --unknown-soft: #e9e2ef;
+      --shadow: 0 12px 35px rgb(61 52 42 / 8%);
+      font-family: Inter, "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      line-height: 1.7;
+    }
+    a { color: var(--accent); text-underline-offset: .18em; }
+    a:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 3px;
+    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    .hero { padding: 48px 0 24px; }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    h1 { margin: 0; max-width: 23ch; font-size: clamp(2rem, 5vw, 4.5rem); line-height: 1.08; }
+    .lede { max-width: 72ch; color: var(--muted); font-size: 1.05rem; }
+    .meta, .status-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill, .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: var(--surface);
+      font-size: .8rem;
+      font-weight: 700;
+    }
+    .status::before { content: ""; width: .55rem; height: .55rem; border-radius: 50%; background: currentColor; }
+    .status.pass { color: var(--ok); background: var(--ok-soft); }
+    .status.fail { color: var(--danger); background: var(--danger-soft); }
+    .status.warn { color: var(--warn); background: var(--warn-soft); }
+    .status.unknown { color: var(--unknown); background: var(--unknown-soft); }
+    .jump {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      border-block: 1px solid var(--line);
+      background: rgb(243 239 232 / 94%);
+      backdrop-filter: blur(14px);
+    }
+    .jump nav { display: flex; gap: 16px; overflow-x: auto; padding: 10px 0; }
+    .jump a { flex: 0 0 auto; color: var(--ink); font-size: .82rem; font-weight: 750; text-decoration: none; }
+    main { padding: 24px 0 72px; }
+    section { scroll-margin-top: 72px; margin-top: 22px; }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      padding: clamp(18px, 3vw, 30px);
+    }
+    .section-heading { display: flex; justify-content: space-between; gap: 20px; align-items: start; }
+    h2, h3 { line-height: 1.25; }
+    h2 { margin: 0 0 14px; font-size: clamp(1.35rem, 3vw, 2rem); }
+    h3 { margin: 0 0 8px; font-size: 1.05rem; }
+    .muted { color: var(--muted); }
+    .grid { display: grid; gap: 14px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .contract-item, .timeline-item, .option, .finding {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fffdf9;
+    }
+    .contract-item p, .timeline-item p, .option p { margin: 5px 0 0; }
+    .exception {
+      border-left: 5px solid var(--danger);
+      background: var(--danger-soft);
+      box-shadow: none;
+    }
+    .timeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .timeline-item { position: relative; min-height: 132px; }
+    .timeline-item:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -14px;
+      z-index: 2;
+      color: var(--accent);
+      font-weight: 900;
+    }
+    .step { color: var(--accent); font-size: .72rem; font-weight: 850; letter-spacing: .08em; }
+    figure { margin: 0; }
+    .model-card { display: flex; flex-direction: column; gap: 12px; }
+    .model-card svg { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    figcaption { color: var(--muted); font-size: .86rem; }
+    .diagram-node { fill: #fffdf9; stroke: #a9a095; stroke-width: 1.5; }
+    .diagram-node.changed { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2.4; }
+    .diagram-edge { fill: none; stroke: #746e66; stroke-width: 1.8; marker-end: url(#arrow); }
+    .diagram-label { fill: var(--ink); font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    th, td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: .74rem; letter-spacing: .05em; text-transform: uppercase; }
+    .table-wrap { overflow-x: auto; }
+    .option.recommended { border: 2px solid var(--accent); background: var(--accent-soft); }
+    .option dl { display: grid; grid-template-columns: minmax(90px, .7fr) 2fr; gap: 6px 12px; margin: 12px 0 0; }
+    .option dt { font-weight: 800; }
+    .option dd { margin: 0; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+    .action {
+      display: inline-flex;
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 11px 16px;
+      color: var(--accent);
+      background: transparent;
+      font-weight: 850;
+    }
+    .action.primary { color: white; background: var(--accent); }
+    details { border-top: 1px solid var(--line); padding: 12px 0; }
+    summary { cursor: pointer; font-weight: 800; }
+    footer { padding: 24px 0 48px; color: var(--muted); font-size: .82rem; }
+    @media (max-width: 850px) {
+      .grid.two, .grid.three, .timeline { grid-template-columns: 1fr; }
+      .timeline-item { min-height: auto; }
+      .timeline-item:not(:last-child)::after { content: "↓"; top: auto; right: 50%; bottom: -19px; }
+      .section-heading { display: block; }
+    }
+    @media (max-width: 480px) {
+      .shell { width: min(100% - 20px, 1180px); }
+      .hero { padding-top: 28px; }
+      .card { border-radius: 13px; padding: 16px; }
+      .option dl { grid-template-columns: 1fr; }
+      .option dd { margin-bottom: 8px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body data-decision-mode="{{DECISION_MODE}}">
+  <header class="hero shell">
+    <p class="eyebrow">Human review · Derived view</p>
+    <h1>{{REVIEW_TITLE}}</h1>
+    <p class="lede">{{ONE_SENTENCE_DECISION_CONTEXT}}</p>
+    <div class="meta" aria-label="Review metadata">
+      <span class="pill">Mode: {{DECISION_MODE}}</span>
+      <span class="pill">Revision: {{SOURCE_REVISION}}</span>
+      <span class="pill">Updated: {{UPDATED_AT}}</span>
+    </div>
+  </header>
+
+  <div class="jump">
+    <div class="shell">
+      <nav aria-label="Review sections">
+        <a href="#contract">判断</a>
+        <a href="#timeline">経緯</a>
+        <a href="#target">対象モデル</a>
+        <a href="#verification">検証</a>
+        <a href="#decision">意思決定</a>
+        <a href="#evidence">原証拠</a>
+      </nav>
+    </div>
+  </div>
+
+  <main class="shell" data-source-revision="{{SOURCE_REVISION}}">
+    <section id="contract" class="card" data-review-section="review-contract" data-target="review-contract">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Decision contract</p>
+          <h2>{{DECISION_QUESTION}}</h2>
+        </div>
+        <span class="status unknown">{{DECISION_STATE}}</span>
+      </div>
+      <div class="grid two">
+        <div class="contract-item"><h3>目的</h3><p>{{PURPOSE}}</p></div>
+        <div class="contract-item"><h3>成功条件</h3><p>{{SUCCESS_CRITERIA}}</p></div>
+        <div class="contract-item"><h3>制約</h3><p>{{CONSTRAINTS}}</p></div>
+        <div class="contract-item"><h3>対象範囲・対象外</h3><p>{{SCOPE_AND_OMISSIONS}}</p></div>
+      </div>
+    </section>
+
+    <section class="card exception" data-review-section="exception-summary" data-target="exception-summary">
+      <p class="eyebrow">Exceptions first</p>
+      <h2>先に確認すべき例外</h2>
+      <div class="status-row">
+        <span class="status fail">失敗 {{FAIL_COUNT}}</span>
+        <span class="status warn">未実行 {{NOT_RUN_COUNT}}</span>
+        <span class="status unknown">未検証 {{UNVERIFIED_COUNT}}</span>
+        <span class="status unknown">不明 {{UNKNOWN_COUNT}}</span>
+      </div>
+      <p>{{EXCEPTION_SUMMARY}}</p>
+    </section>
+
+    <section id="timeline" class="card" data-review-section="causal-timeline" data-target="causal-timeline">
+      <p class="eyebrow">Causal timeline</p>
+      <h2>判断が積み上がった経緯</h2>
+      <p class="muted">作業ログではなく、現在の結果や選択肢へ至った因果だけを示します。</p>
+      <div class="timeline">
+        <article class="timeline-item"><span class="step">01 TRIGGER</span><h3>{{TRIGGER_TITLE}}</h3><p>{{TRIGGER_BODY}}</p></article>
+        <article class="timeline-item"><span class="step">02 CONSTRAINT</span><h3>{{CONSTRAINT_TITLE}}</h3><p>{{CONSTRAINT_BODY}}</p></article>
+        <article class="timeline-item"><span class="step">03 ALTERNATIVES</span><h3>{{ALTERNATIVES_TITLE}}</h3><p>{{ALTERNATIVES_BODY}}</p></article>
+        <article class="timeline-item"><span class="step">04 RESULT</span><h3>{{RESULT_TITLE}}</h3><p>{{RESULT_BODY}}</p></article>
+      </div>
+    </section>
+
+    <section id="target" class="card" data-review-section="target-model" data-target="target-model">
+      <p class="eyebrow">Target model</p>
+      <h2>レビュー対象自体を理解する</h2>
+      <p>{{MODEL_BOUNDARY_AND_OMISSIONS}}</p>
+      <div class="grid three">
+        <figure class="model-card" data-model="structure" data-target="model-structure">
+          <h3>構造</h3>
+          <svg viewBox="0 0 320 220" role="img" aria-labelledby="structure-title structure-desc">
+            <title id="structure-title">{{STRUCTURE_TITLE}}</title>
+            <desc id="structure-desc">{{STRUCTURE_DESCRIPTION}}</desc>
+            <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#746e66"/></marker></defs>
+            <path class="diagram-edge" d="M95 110 H205"/>
+            <rect class="diagram-node" x="20" y="75" width="110" height="70" rx="10"/>
+            <text class="diagram-label" x="75" y="110">{{STRUCTURE_NODE_A}}</text>
+            <rect class="diagram-node changed" x="190" y="75" width="110" height="70" rx="10"/>
+            <text class="diagram-label" x="245" y="110">{{STRUCTURE_NODE_B}}</text>
+          </svg>
+          <figcaption>{{STRUCTURE_CAPTION_AND_SOURCE}}</figcaption>
+        </figure>
+
+        <figure class="model-card" data-model="behavior" data-target="model-behavior">
+          <h3>振る舞い</h3>
+          <svg viewBox="0 0 320 220" role="img" aria-labelledby="behavior-title behavior-desc">
+            <title id="behavior-title">{{BEHAVIOR_TITLE}}</title>
+            <desc id="behavior-desc">{{BEHAVIOR_DESCRIPTION}}</desc>
+            <defs><marker id="arrow-behavior" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#746e66"/></marker></defs>
+            <path class="diagram-edge" style="marker-end:url(#arrow-behavior)" d="M92 110 H133"/>
+            <path class="diagram-edge" style="marker-end:url(#arrow-behavior)" d="M218 110 H258"/>
+            <rect class="diagram-node" x="12" y="78" width="80" height="64" rx="10"/>
+            <text class="diagram-label" x="52" y="110">{{BEHAVIOR_TRIGGER}}</text>
+            <rect class="diagram-node changed" x="133" y="78" width="85" height="64" rx="10"/>
+            <text class="diagram-label" x="175" y="110">{{BEHAVIOR_PROCESS}}</text>
+            <rect class="diagram-node" x="258" y="78" width="50" height="64" rx="10"/>
+            <text class="diagram-label" x="283" y="110">{{BEHAVIOR_OUTPUT}}</text>
+          </svg>
+          <figcaption>{{BEHAVIOR_CAPTION_AND_SOURCE}}</figcaption>
+        </figure>
+
+        <figure class="model-card" data-model="data" data-target="model-data">
+          <h3>データ</h3>
+          <svg viewBox="0 0 320 220" role="img" aria-labelledby="data-title data-desc">
+            <title id="data-title">{{DATA_TITLE}}</title>
+            <desc id="data-desc">{{DATA_DESCRIPTION}}</desc>
+            <defs><marker id="arrow-data" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#746e66"/></marker></defs>
+            <path class="diagram-edge" style="marker-end:url(#arrow-data)" d="M160 68 V115"/>
+            <path class="diagram-edge" style="marker-end:url(#arrow-data)" d="M145 135 H82"/>
+            <path class="diagram-edge" style="marker-end:url(#arrow-data)" d="M175 135 H238"/>
+            <rect class="diagram-node changed" x="105" y="20" width="110" height="55" rx="10"/>
+            <text class="diagram-label" x="160" y="48">{{DATA_ENTITY}}</text>
+            <rect class="diagram-node" x="15" y="115" width="100" height="55" rx="10"/>
+            <text class="diagram-label" x="65" y="143">{{DATA_STATE_A}}</text>
+            <rect class="diagram-node" x="205" y="115" width="100" height="55" rx="10"/>
+            <text class="diagram-label" x="255" y="143">{{DATA_STATE_B}}</text>
+          </svg>
+          <figcaption>{{DATA_CAPTION_AND_SOURCE}}</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="verification" class="card" data-review-section="verification" data-target="verification">
+      <p class="eyebrow">Verification</p>
+      <h2>対象モデルに対応する検証</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>状態</th><th>主張</th><th>証拠・command</th><th>範囲と限界</th><th>revision</th></tr></thead>
+          <tbody>
+            <tr data-evidence-state="{{EVIDENCE_STATE}}" data-target="evidence-1">
+              <td><span class="status {{EVIDENCE_CLASS}}">{{EVIDENCE_STATE_LABEL}}</span></td>
+              <td>{{EVIDENCE_CLAIM}}</td>
+              <td><code>{{EVIDENCE_SOURCE}}</code></td>
+              <td>{{EVIDENCE_COVERAGE}}</td>
+              <td><code>{{EVIDENCE_REVISION}}</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="decision" class="card" data-review-section="decision" data-target="decision">
+      <p class="eyebrow">Human decision</p>
+      <h2>{{DECISION_HEADING}}</h2>
+
+      <!-- Keep this panel only for approval mode. Delete the selection panel. -->
+      <div data-mode-panel="approval">
+        <div class="grid two">
+          <div class="finding"><h3>承認を妨げる事項</h3><p>{{APPROVAL_BLOCKERS}}</p></div>
+          <div class="finding"><h3>残るリスク</h3><p>{{APPROVAL_RESIDUAL_RISK}}</p></div>
+        </div>
+        <div class="actions" aria-label="Approval decision targets">
+          <span class="action primary" tabindex="0" data-decision-action="approve" data-target="approve">Approve</span>
+          <span class="action" tabindex="0" data-decision-action="request-changes" data-target="request-changes">Request changes</span>
+        </div>
+      </div>
+
+      <!-- Keep this panel only for selection mode. Delete the approval panel. -->
+      <div class="grid two" data-mode-panel="selection">
+        <article class="option recommended" data-option="{{OPTION_A_ID}}" data-option-outcome="{{OPTION_A_ID}}" data-target="option-{{OPTION_A_ID}}">
+          <p class="eyebrow">{{OPTION_A_BADGE}}</p><h3>{{OPTION_A_NAME}}</h3><p>{{OPTION_A_SUMMARY}}</p>
+          <dl>
+            <dt>結果</dt><dd>{{OPTION_A_OUTCOME}}</dd><dt>構造</dt><dd>{{OPTION_A_STRUCTURE}}</dd>
+            <dt>振る舞い</dt><dd>{{OPTION_A_BEHAVIOR}}</dd><dt>データ</dt><dd>{{OPTION_A_DATA}}</dd>
+            <dt>コスト</dt><dd>{{OPTION_A_COST}}</dd><dt>リスク</dt><dd>{{OPTION_A_RISK}}</dd>
+            <dt>可逆性</dt><dd>{{OPTION_A_REVERSIBILITY}}</dd><dt>次の行動</dt><dd>{{OPTION_A_NEXT_ACTION}}</dd>
+          </dl>
+        </article>
+        <article class="option" data-option="{{OPTION_B_ID}}" data-option-outcome="{{OPTION_B_ID}}" data-target="option-{{OPTION_B_ID}}">
+          <p class="eyebrow">{{OPTION_B_BADGE}}</p><h3>{{OPTION_B_NAME}}</h3><p>{{OPTION_B_SUMMARY}}</p>
+          <dl>
+            <dt>結果</dt><dd>{{OPTION_B_OUTCOME}}</dd><dt>構造</dt><dd>{{OPTION_B_STRUCTURE}}</dd>
+            <dt>振る舞い</dt><dd>{{OPTION_B_BEHAVIOR}}</dd><dt>データ</dt><dd>{{OPTION_B_DATA}}</dd>
+            <dt>コスト</dt><dd>{{OPTION_B_COST}}</dd><dt>リスク</dt><dd>{{OPTION_B_RISK}}</dd>
+            <dt>可逆性</dt><dd>{{OPTION_B_REVERSIBILITY}}</dd><dt>次の行動</dt><dd>{{OPTION_B_NEXT_ACTION}}</dd>
+          </dl>
+        </article>
+      </div>
+    </section>
+
+    <section class="card" data-review-section="decision-outcome" data-target="decision-outcome">
+      <p class="eyebrow">After the decision</p>
+      <h2>判断後に起きること</h2>
+      <div class="grid two">
+        <div class="contract-item"><h3>選んだ場合</h3><p>{{AFTER_POSITIVE_DECISION}}</p></div>
+        <div class="contract-item"><h3>選ばない・差し戻す場合</h3><p>{{AFTER_NEGATIVE_DECISION}}</p></div>
+      </div>
+    </section>
+
+    <section id="evidence" class="card" data-review-section="raw-evidence" data-target="raw-evidence">
+      <p class="eyebrow">Raw evidence</p>
+      <h2>原証拠と詳細</h2>
+      <details open><summary>変更とsource</summary><p>{{RAW_DIFF_AND_SOURCE_LINKS}}</p></details>
+      <details><summary>test・log・screenshot</summary><p>{{RAW_TEST_LOG_LINKS}}</p></details>
+      <details><summary>未確認・対象外</summary><p>{{RAW_UNVERIFIED_AND_OMITTED}}</p></details>
+    </section>
+  </main>
+
+  <footer class="shell">
+    <p>This is a derived review view for revision <code>{{SOURCE_REVISION}}</code>. Formal approval remains in the system of record.</p>
+  </footer>
+</body>
+</html>

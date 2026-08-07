@@ -1,0 +1,4 @@
+interface:
+  display_name: "Human HTML Review"
+  short_description: "前提知識ゼロから判断可能なレビューHTMLを生成する"
+  default_prompt: "Use $human-html-review to create a decision-ready HTML review for the current changes."
