@@ -25,6 +25,17 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 
 トリガー例: 「このプランをレビュー用 HTML にして」「承認に必要な情報をまとめて」「選択肢を比較できる形で見せて」
 
+### `toolbox:codex-imagen` — Codex CLI 経由の画像生成/編集
+
+`codex exec` の imagen スキルをラップし、指定した出力パスに PNG を保存して絶対パスを返す。入力画像を渡せば edit モード。
+
+- `--size=<WxH>` で最終サイズを厳密担保 (scale-to-cover + center-crop、目標未満はリトライで引き直し)
+- `codex exec --json` の thread_id で自分の出力を一意特定するため**並列実行しても干渉しない**
+- スタイルプリセット同梱 (`references/`): 製図風モノクロ概念図 (technical-schematic) / アイソメ積層図 (isometric-layer-stack)
+- `CODEX_IMAGEN_CODEX_WRAPPER` 等の環境変数でラッパー注入・タイムアウト・リトライ回数を制御
+
+トリガー例: 「画像を生成して」「codex で画像作って」「イラストを作って」「この画像を編集」
+
 ## インストール
 
 ```
@@ -38,6 +49,7 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 |---|---|---|
 | `review-refute-loop` | Codex CLI (companion plugin) または `claude` CLI | どちらも無い場合はサブエージェントフォールバックで動作 (クロスモデル効果は失われる) |
 | `human-html-review` | [diagram-design](https://github.com/cathrynlavery/diagram-design) スキル | 未導入時はスキルが URL とインストールコマンド (`npx skills add cathrynlavery/diagram-design`) を提示する。`python3` も使用 (validate.py) |
+| `codex-imagen` | Codex CLI (`codex` が PATH にありログイン済み) | `--size` のリサイズは macOS `sips` を使用 (無い環境では警告してスキップ) |
 
 ## 使い方
 
