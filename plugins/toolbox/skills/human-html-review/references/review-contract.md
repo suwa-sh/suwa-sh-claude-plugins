@@ -1,170 +1,170 @@
-# Review information contract
+# レビュー情報契約
 
-Use this contract to decide what belongs in a human-facing review. It is an information schema, not a demand to show every field with equal visual weight.
+この契約は、人間向けレビューに何を含めるべきかを決めるために使う。情報スキーマであって、すべてのフィールドを同じ視覚的重みで表示せよという要求ではない。
 
-## 1. Review contract
+## 1. レビュー契約
 
-| Field | Required content |
+| フィールド | 必須の内容 |
 |---|---|
-| `decision_mode` | `approval` or `selection` |
-| `decision_question` | One concrete question answerable by the reviewer |
-| `target` | Artifact, change, plan, architecture, or research result being reviewed |
-| `source_revision` | Base/head SHA, artifact version, or explicit `unknown` |
-| `purpose` | Why this work exists |
-| `success_criteria` | Observable conditions for success |
-| `constraints` | Time, compatibility, policy, security, data, or operational constraints |
-| `scope` | Included and excluded areas |
-| `unknowns` | Missing evidence or assumptions that could change the decision |
+| `decision_mode` | `approval` または `selection` |
+| `decision_question` | レビュアーが答えられる具体的な問い 1 つ |
+| `target` | レビュー対象の成果物、変更、プラン、アーキテクチャ、調査結果 |
+| `source_revision` | base/head SHA、成果物バージョン、または明示的な `unknown` |
+| `purpose` | この作業が存在する理由 |
+| `success_criteria` | 成功を観測できる条件 |
+| `constraints` | 時間、互換性、ポリシー、セキュリティ、データ、運用上の制約 |
+| `scope` | 含む範囲と除外する範囲 |
+| `unknowns` | 判断を変えうる、欠けている根拠や仮定 |
 
-The review contract must fit in the first viewport. It may link to detail below.
+レビュー契約は最初のビューポートに収める。契約から文書下部の詳細へリンクしてもよい。
 
-## 2. Causal timeline
+## 2. 因果タイムライン
 
-Include only decision-relevant events:
+判断に関わる出来事だけを含める:
 
 ```text
 trigger → goal/constraint → alternatives → adoption/open options
         → target model → verification → decision → resulting action
 ```
 
-Each event should have a source link or one of these labels:
+各出来事にはソースへのリンク、または次のいずれかのラベルを付ける:
 
-- `Observed`: primary artifact supports it.
-- `Agent claim`: the producing agent reported it.
-- `Inference`: derived from stated premises.
-- `Unknown`: evidence is unavailable.
+- `Observed`: 一次成果物が裏づける。
+- `Agent claim`: 生成したエージェントが報告した。
+- `Inference`: 明記した前提から導いた。
+- `Unknown`: 根拠が入手できない。
 
-Do not present an agent transcript, tool-call list, or celebratory completion summary as a timeline.
+エージェントのトランスクリプト、ツール呼び出しの一覧、祝賀ムードの完了サマリをタイムラインとして提示しない。
 
-## 3. Review target model
+## 3. レビュー対象モデル
 
-Explain the target only after the reader knows the adopted result or open options. Limit the model to the slice required for the decision and name the boundary.
+読者が採用結果または開いている選択肢を理解したあとにだけ、対象を説明する。モデルは判断に必要なスライスに限定し、その境界を明記する。
 
-### Structure model
+### 構造モデル
 
-Include:
+含めるもの:
 
-- components and responsibilities
-- dependencies and external boundaries
-- entry points and ownership
-- added, changed, removed, and unchanged-but-affected nodes
-- source locations for important nodes
+- コンポーネントと責務
+- 依存関係と外部境界
+- エントリポイントと所有者
+- 追加・変更・削除されたノード、および変更されていないが影響を受けるノード
+- 重要なノードのソース位置
 
-### Behavior model
+### 振る舞いモデル
 
-Include:
+含めるもの:
 
-- initiating actor or trigger
-- main success path
-- outputs and externally visible behavior
-- side effects
-- retries, timeout, cancellation, and failure paths when relevant
-- before/after behavior or option-specific behavior
+- 起点となるアクターまたはトリガー
+- メインの成功パス
+- 出力と外から見える振る舞い
+- 副作用
+- 関連する場合はリトライ、タイムアウト、キャンセル、失敗パス
+- 変更前後の振る舞い、または選択肢ごとの振る舞い
 
-### Data model
+### データモデル
 
-Include:
+含めるもの:
 
-- entities and relationships
-- owner and system of record
-- persistence and retention
-- state transitions and invariants
-- schema or migration effects
-- sensitive data and trust boundaries when relevant
+- エンティティと関係
+- 所有者と正本（system of record）
+- 永続化と保持期間
+- 状態遷移と不変条件
+- スキーマまたはマイグレーションへの影響
+- 関連する場合は機密データと信頼境界
 
-Use diagrams to externalize relationships, not to decorate the review. Every edge must have a defensible meaning. Use captions to state boundaries and uncertainty.
+図は関係を外在化するために使う。レビューの飾りにしない。すべてのエッジに説明可能な意味を持たせる。境界と不確実さはキャプションで述べる。
 
-## 4. Evidence model
+## 4. 根拠モデル
 
-For each material claim, record:
+重要な主張ごとに記録する:
 
-| Field | Meaning |
+| フィールド | 意味 |
 |---|---|
-| `claim` | The proposition a reviewer may rely on |
-| `kind` | `observed`, `agent-claim`, or `inference` |
-| `source` | Code, diff, schema, command, test, log, screenshot, or specification |
-| `revision` | Revision against which the evidence is valid |
-| `state` | `pass`, `fail`, `not-run`, `unknown`, `unverified`, or `stale` |
-| `coverage` | What the evidence proves and does not prove |
-| `risk` | Consequence if the claim is wrong |
+| `claim` | レビュアーが依拠してよい命題 |
+| `kind` | `observed`、`agent-claim`、または `inference` |
+| `source` | コード、diff、スキーマ、コマンド、テスト、ログ、スクリーンショット、仕様 |
+| `revision` | その根拠が有効なリビジョン |
+| `state` | `pass`、`fail`、`not-run`、`unknown`、`unverified`、または `stale` |
+| `coverage` | その根拠が証明すること・しないこと |
+| `risk` | 主張が誤っていた場合の帰結 |
 
-Never merge these independent axes into one green badge:
+次の独立した軸を 1 つの緑バッジに統合しない:
 
-- machine evidence: pass/fail/unknown/not-run
-- reviewer exposure: unseen/seen
-- human decision: accepted/changes-requested/deferred
-- discussion: unresolved/resolved
-- currency: current/stale
+- 機械による根拠: pass/fail/unknown/not-run
+- レビュアーの閲覧状況: unseen/seen
+- 人間の判断: accepted/changes-requested/deferred
+- 議論: unresolved/resolved
+- 鮮度: current/stale
 
-## 5. Decision modes
+## 5. 判断モード
 
 ### Approval
 
-Show:
+示すもの:
 
-- adopted result and why it was chosen
-- success criteria met and unmet
-- residual risks and unknowns
-- blocking and non-blocking findings
-- what `Approve` causes next
-- what `Request changes` should target
-- rollback or reversibility after approval
+- 採用した成果と、それを選んだ理由
+- 満たした成功基準と満たしていない成功基準
+- 残存リスクと不明点
+- blocking と non-blocking の指摘
+- `Approve` が次に何を引き起こすか
+- `Request changes` が何を対象にすべきか
+- 承認後のロールバック手段または可逆性
 
 ### Selection
 
-For every option, show:
+すべての選択肢について示す:
 
-| Dimension | Question |
+| 観点 | 問い |
 |---|---|
-| Outcome | What state exists after choosing it? |
-| User | What does the user experience? |
-| Structure | Which components, dependencies, and owners change? |
-| Behavior | What happens on success and failure? |
-| Data | What is stored, migrated, or re-owned? |
-| Cost | What implementation, operation, migration, and learning cost follows? |
-| Risk | What can fail, and what remains unverified? |
-| Reversibility | Can the decision be changed later, at what cost? |
-| Next action | What will the agent and human do immediately after selection? |
+| 結果 | それを選んだあと、どんな状態になるか? |
+| ユーザー | ユーザーは何を体験するか? |
+| 構造 | どのコンポーネント、依存関係、所有者が変わるか? |
+| 振る舞い | 成功時と失敗時に何が起きるか? |
+| データ | 何が保存され、移行され、所有が変わるか? |
+| コスト | どんな実装・運用・移行・学習コストが伴うか? |
+| リスク | 何が失敗しうるか、何が未検証のままか? |
+| 可逆性 | あとで判断を変えられるか、そのコストは? |
+| 次のアクション | 選択の直後にエージェントと人間は何をするか? |
 
-Show the recommendation as a conditional conclusion. State which constraints or weights would reverse it.
+推奨は条件付きの結論として示す。どの制約や重みが変われば推奨が逆転するかを明記する。
 
-## 6. Information hierarchy
+## 6. 情報の階層
 
-Use this order:
+この順序を使う:
 
-1. decision contract
-2. exception summary
-3. causal timeline
-4. adopted result or options
-5. target structure, behavior, and data model
-6. verification mapped to claims and model elements
-7. human decision surface
-8. resulting action or future state
-9. raw evidence
+1. 判断契約
+2. 例外サマリ
+3. 因果タイムライン
+4. 採用した成果または選択肢
+5. 対象の構造・振る舞い・データモデル
+6. 主張とモデル要素に対応づけた検証
+7. 人間の判断サーフェス
+8. 結果として起きるアクションまたは将来の状態
+9. 生の根拠
 
-Keep exceptions in the first viewport even though detailed evidence appears later.
+詳細な根拠が後段に現れる場合でも、例外は最初のビューポートに保つ。
 
-## 7. Visual and accessibility rules
+## 7. 視覚とアクセシビリティのルール
 
-- Use one visual message per figure.
-- Keep diagram labels short and exact.
-- Do not encode status by color alone; pair color with text and shape.
-- Keep reading order meaningful without CSS.
-- Use native headings, lists, tables, `figure`, `figcaption`, `details`, and `summary`.
-- Provide visible keyboard focus and adequate contrast.
-- Avoid horizontal scrolling for prose at 390 px.
-- Prefer inline SVG with `role="img"`, accessible names, and a text explanation below.
-- Draw diagrams with the `diagram-design` skill (see SKILL.md § Dependencies); embed the SVG inline and skip its external font link.
-- Keep raw evidence accessible in text even when a diagram summarizes it.
+- 1 つの図につき視覚的メッセージは 1 つ。
+- 図のラベルは短く正確に。
+- ステータスを色だけで符号化しない。色にはテキストと形状を併用する。
+- CSS なしでも読み順が意味を持つようにする。
+- ネイティブの見出し、リスト、テーブル、`figure`、`figcaption`、`details`、`summary` を使う。
+- 見えるキーボードフォーカスと十分なコントラストを提供する。
+- 390 px で本文の横スクロールを避ける。
+- `role="img"`、アクセシブルネーム、直下の文章説明を備えたインライン SVG を優先する。
+- 図は `diagram-design` スキルで描く（SKILL.md の依存関係の節を参照）。SVG はインラインで埋め込み、外部フォントの link は省く。
+- 図が要約している場合でも、生の根拠にはテキストで到達できるようにする。
 
-## 8. Trust boundaries
+## 8. 信頼境界
 
-The review HTML is a derived view. It must not silently replace:
+レビュー HTML は派生ビューである。次のものを黙って置き換えてはならない:
 
-- Git revisions and raw diffs
-- CI results
-- required review or merge protection
-- specifications and schemas
-- audit records
+- Git リビジョンと生の diff
+- CI の結果
+- 必須レビューやマージ保護
+- 仕様とスキーマ
+- 監査記録
 
-Pin the view to a source revision. Mark it stale when the source changes. Never turn `pass`, `seen`, `approved`, `resolved`, and `current` into a single status.
+ビューはソースリビジョンに固定する。ソースが変わったら stale と表示する。`pass`、`seen`、`approved`、`resolved`、`current` を 1 つのステータスに統合しない。

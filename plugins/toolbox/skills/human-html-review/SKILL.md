@@ -1,6 +1,6 @@
 ---
 name: toolbox:human-html-review
-description: Create a self-contained, decision-ready HTML review that rebuilds the reviewer’s mental model from zero context. Use for autonomous coding-agent results, implementation or design reviews, plan reviews, architecture changes, research artifacts, and option-selection decisions where a human must understand background, alternatives, the review target’s structure/behavior/data model, evidence, risks, and what happens after approval or selection.
+description: 前提知識ゼロのレビュアーがメンタルモデルを再構築して判断できる、自己完結型の decision-ready なレビュー HTML を生成するスキル。自律コーディングエージェントの成果、実装レビュー・設計レビュー、プランレビュー、アーキテクチャ変更、調査成果物、選択肢からの意思決定など、背景・代替案・レビュー対象の構造/振る舞い/データモデル・根拠・リスク・承認や選択後に起きることを人間が理解する必要がある場面で使う。
 metadata:
   dependencies:
     - diagram-design # https://github.com/cathrynlavery/diagram-design — install: npx skills add cathrynlavery/diagram-design
@@ -8,13 +8,13 @@ metadata:
 
 # Human HTML Review
 
-Create a derived review view that lets a reviewer move from no prior context to a defensible decision. Keep Git, the PR, CI, specifications, and source files as the system of record.
+事前コンテキストのないレビュアーが、根拠を持って判断できる状態まで到達するための派生レビュービューを作る。Git・PR・CI・仕様書・ソースファイルが正本（system of record）であることは維持する。
 
-## Inputs and defaults
+## 入力とデフォルト
 
-Treat `$ARGUMENTS` as a review target plus optional decision mode, base/head revision, and output path. If no target is supplied, review the current repository change.
+`$ARGUMENTS` は「レビュー対象 + 任意の判断モード・base/head リビジョン・出力パス」として扱う。対象の指定がなければ、現在のリポジトリの変更をレビューする。
 
-Examples:
+例:
 
 ```text
 $human-html-review current changes --mode approval
@@ -22,164 +22,164 @@ $human-html-review choose auth migration approach --mode selection
 $human-html-review PR 123 --output tmp/reviews/pr-123.html
 ```
 
-- Use `approval` when the reviewer must accept or request changes to a completed result.
-- Use `selection` when the reviewer must choose among open alternatives.
-- Infer the mode from the request when clear. If still ambiguous, use `approval` and state the assumption in the review contract.
-- Default the output to `tmp/reviews/<target>-review.html` under the current repository.
-- Do not overwrite an existing review unless explicitly requested. Add a revision suffix instead.
-- Do not commit, publish, deploy, or record formal approval unless explicitly requested.
+- 完成した成果を「承認するか、修正を求めるか」判断してもらうときは `approval` を使う。
+- 未確定の選択肢から選んでもらうときは `selection` を使う。
+- 依頼内容からモードが明確なら推論する。それでもあいまいなら `approval` を使い、その仮定をレビュー契約に明記する。
+- 出力先のデフォルトは現在のリポジトリ配下の `tmp/reviews/<target>-review.html`。
+- 明示的な依頼がない限り既存のレビューを上書きしない。代わりにリビジョンサフィックスを付ける。
+- 明示的な依頼がない限り、コミット・公開・デプロイ・正式承認の記録は行わない。
 
-Before creating the review, read [references/review-contract.md](references/review-contract.md) completely. Copy and adapt [assets/review-template.html](assets/review-template.html); do not recreate its layout from scratch.
+レビュー作成の前に [references/review-contract.md](references/review-contract.md) を最後まで読むこと。[assets/review-template.html](assets/review-template.html) をコピーして改変すること。レイアウトをゼロから作り直さない。
 
-## Dependencies
+## 依存関係
 
-### diagram-design (required for the step-4 diagrams)
+### diagram-design（Step 4 の図に必須）
 
-Every diagram in this skill (structure / behavior / data model, step 4) must follow the **diagram-design** skill: its style-guide tokens, node treatments, mandatory connector rules, complexity budget, and pre-output taste gate. Map the three views to its types:
+このスキルのすべての図（構造 / 振る舞い / データモデル、Step 4）は **diagram-design** スキルに従う: スタイルガイドのトークン、ノードの装飾、コネクタの必須ルール、複雑さの予算、出力前の taste gate。3 つのビューは次の型に対応づける:
 
-| View | diagram-design type reference |
+| ビュー | diagram-design の型リファレンス |
 |---|---|
-| Structure | `references/type-architecture.md` |
-| Behavior | `references/type-flowchart.md` (or `type-sequence.md` / `type-state.md` when message order / state transitions dominate) |
-| Data model | `references/type-er.md` |
+| 構造 | `references/type-architecture.md` |
+| 振る舞い | `references/type-flowchart.md`（メッセージ順序や状態遷移が主役なら `type-sequence.md` / `type-state.md`） |
+| データモデル | `references/type-er.md` |
 
-**Availability check (run before step 4):** verify the skill exists at `~/.claude/skills/diagram-design/SKILL.md` or the project's `.claude/skills/diagram-design/SKILL.md`. If it is missing, present exactly this to the user and ask whether to install:
+**存在チェック（Step 4 の前に実行）:** `~/.claude/skills/diagram-design/SKILL.md` またはプロジェクトの `.claude/skills/diagram-design/SKILL.md` にスキルが存在するか確認する。無ければ、次の内容をそのままユーザーに提示し、インストールするか確認する:
 
-> The `diagram-design` skill is not installed. It is required for the review diagrams.
+> `diagram-design` スキルがインストールされていません。レビューの図の作成に必要です。
 >
-> - Source: <https://github.com/cathrynlavery/diagram-design>
-> - Security audits: <https://skills.sh/cathrynlavery/diagram-design>
-> - Install: `npx skills add cathrynlavery/diagram-design`
+> - ソース: <https://github.com/cathrynlavery/diagram-design>
+> - セキュリティ監査: <https://skills.sh/cathrynlavery/diagram-design>
+> - インストール: `npx skills add cathrynlavery/diagram-design`
 
-If the user declines, fall back to plain inline SVG following [references/review-contract.md](references/review-contract.md) only, and record `diagram-design: not installed (fallback)` in the review contract section.
+ユーザーが拒否した場合は、[references/review-contract.md](references/review-contract.md) のみに従った素のインライン SVG にフォールバックし、レビュー契約セクションに `diagram-design: not installed (fallback)` と記録する。
 
-**Constraint reconciliation — this skill wins on conflicts:**
+**制約の競合解決 — 競合時はこのスキルが勝つ:**
 
-- **No external assets.** Do not include diagram-design's Google Fonts `<link>`. Use system font stacks instead (sans: `"Hiragino Sans","Noto Sans JP",Inter,system-ui,sans-serif`; mono: `"SF Mono",Menlo,Consolas,monospace`).
-- **One self-contained file.** Embed each diagram as inline SVG inside the review HTML. Do not emit separate diagram-design `.html` files.
-- **Accessibility stays.** Keep `role="img"`, accessible names, and the text explanation below each figure as required by the review contract.
+- **外部アセット禁止。** diagram-design の Google Fonts `<link>` は含めない。代わりにシステムフォントスタックを使う（sans: `"Hiragino Sans","Noto Sans JP",Inter,system-ui,sans-serif`、mono: `"SF Mono",Menlo,Consolas,monospace`）。
+- **自己完結の 1 ファイル。** 各図はレビュー HTML 内のインライン SVG として埋め込む。diagram-design の個別 `.html` ファイルは出力しない。
+- **アクセシビリティは維持。** レビュー契約が求めるとおり、`role="img"`、アクセシブルネーム、各図の下の文章説明を保つ。
 
-## Workflow
+## ワークフロー
 
-### 1. Establish the review contract
+### 1. レビュー契約を確立する
 
-State at the top:
+冒頭に明記する:
 
-- decision mode: `approval` or `selection`
-- the exact decision requested from the human
-- review target and base/head revision
-- purpose, success criteria, constraints, scope, and omitted scope
-- known unknowns and evidence that is unavailable
+- 判断モード: `approval` または `selection`
+- 人間に求める判断そのもの
+- レビュー対象と base/head リビジョン
+- 目的、成功基準、制約、スコープ、除外スコープ
+- 既知の不明点と、入手できない根拠
 
-Do not start with code, a diff summary, or an agent transcript.
+コード、diff サマリ、エージェントのトランスクリプトから書き始めない。
 
-### 2. Ground every claim
+### 2. すべての主張を根拠づける
 
-Inspect the sources that produced the result: repository instructions, relevant specification or issue, source code, base/head diff, schemas, tests, commands, logs, screenshots, and prior decisions that remain material.
+成果を生んだソースを検分する: リポジトリの指示、関連する仕様や issue、ソースコード、base/head diff、スキーマ、テスト、コマンド、ログ、スクリーンショット、いまも有効な過去の意思決定。
 
-Build an evidence ledger before writing HTML. Classify statements as:
+HTML を書く前に根拠台帳（evidence ledger）を作る。各記述を次に分類する:
 
-- `observed`: directly supported by code, diff, command output, schema, or another primary artifact
-- `agent-claim`: reported by the producing agent but not independently established
-- `inference`: a reasoned interpretation; label the premises
-- `human-decision`: reserved for the reviewer
+- `observed`: コード、diff、コマンド出力、スキーマ、その他の一次成果物が直接裏づける
+- `agent-claim`: 生成したエージェントの報告だが、独立には確認されていない
+- `inference`: 論理的な解釈。前提を明記する
+- `human-decision`: レビュアーに委ねる
 
-Never invent missing background or diagram edges. Mark gaps as `unknown` or `unverified`.
+欠けた背景や図のエッジを捏造しない。欠落は `unknown` または `unverified` として明示する。
 
-### 3. Build a causal timeline
+### 3. 因果のタイムラインを構築する
 
-Use the main narrative order:
+本文の語り順はこれを使う:
 
-1. trigger and purpose
-2. constraints and success criteria
-3. alternatives considered
-4. adopted result or currently open options
-5. the review target itself
-6. verification and exceptions
-7. human decision
-8. what happens after that decision
+1. トリガーと目的
+2. 制約と成功基準
+3. 検討した代替案
+4. 採用した成果、または現在開いている選択肢
+5. レビュー対象そのもの
+6. 検証と例外
+7. 人間の判断
+8. 判断のあとに起きること
 
-Summarize only events that explain the decision. Do not reproduce the chronological work log.
+判断の説明に必要な出来事だけを要約する。時系列の作業ログを再現しない。
 
-### 4. Explain the review target after the adopted result or options
+### 4. 採用結果・選択肢のあとにレビュー対象を説明する
 
-Create all three views for the decision-relevant slice:
+判断に関わるスライスについて、3 つのビューをすべて作る:
 
-1. **Structure**: components, responsibilities, dependencies, boundaries, and changed nodes.
-2. **Behavior**: trigger, main path, output, side effects, failure paths, and before/after behavior.
-3. **Data model**: entities, relationships, ownership, persistence, lifecycle/state transitions, and migration effects.
+1. **構造**: コンポーネント、責務、依存関係、境界、変更されたノード。
+2. **振る舞い**: トリガー、メインパス、出力、副作用、失敗パス、変更前後の振る舞い。
+3. **データモデル**: エンティティ、関係、所有、永続化、ライフサイクル/状態遷移、マイグレーションの影響。
 
-Draw all three views with the **diagram-design** skill (see Dependencies): run its availability check first, load its SKILL.md plus the matching `references/type-*.md` before drawing, apply its style-guide tokens and mandatory connector rules, and run its pre-output taste gate on each figure. Use inline SVG with readable text. Keep every node labeled and connected. Mark observed facts and inference distinctly, and link diagram elements to source anchors where practical. State diagram boundaries and omitted areas.
+3 つのビューはすべて **diagram-design** スキルで描く（依存関係の節を参照）: まず存在チェックを実行し、描く前に SKILL.md と対応する `references/type-*.md` を読み込み、スタイルガイドのトークンとコネクタの必須ルールを適用し、各図に出力前の taste gate をかける。読めるテキストのインライン SVG を使う。すべてのノードにラベルを付け、接続する。observed な事実と inference を区別して示し、可能なら図の要素をソースのアンカーにリンクする。図の境界と省略した領域を明記する。
 
-### 5. Present evidence after the target model
+### 5. 対象モデルのあとに根拠を提示する
 
-Place evidence next to the claim or model element it supports. Show command, scope, revision, exit status, and exclusions—not only “tests pass.”
+根拠は、それが支える主張やモデル要素の隣に置く。「テストが通った」だけでなく、コマンド・範囲・リビジョン・終了ステータス・除外を示す。
 
-Keep these visible without opening a disclosure:
+次の項目は折りたたみを開かなくても見えるようにする:
 
-- failures and warnings
-- `not-run`, `unknown`, and `unverified`
-- destructive, permission, data migration, external contract, and security changes
-- stale evidence or revision mismatch
-- unresolved reviewer questions
+- 失敗と警告
+- `not-run`、`unknown`、`unverified`
+- 破壊的変更、権限、データマイグレーション、外部契約、セキュリティの変更
+- 古くなった根拠やリビジョン不一致
+- 未解決のレビュアーからの質問
 
-Fold only repetitive successful logs or low-risk supporting detail. Provide a route to raw evidence.
+折りたたむのは、繰り返しの成功ログや低リスクの補足詳細だけ。生の根拠への経路を用意する。
 
-### 6. Render the decision branch
+### 6. 判断ブランチを描画する
 
-For `approval`:
+`approval` の場合:
 
-- show the adopted result, residual risks, and blocking/non-blocking findings
-- offer `Approve` and `Request changes` as distinct actions or annotation targets
-- explain what approval triggers and what remains reversible
+- 採用した成果、残存リスク、blocking / non-blocking の指摘を示す
+- `Approve` と `Request changes` を別々のアクションまたは注記対象として提供する
+- 承認が何をトリガーし、何が可逆のままかを説明する
 
-For `selection`:
+`selection` の場合:
 
-- compare at least two real options without weakening non-recommended options
-- for every option, show user outcome, structure, behavior, data effects, cost, risks/unknowns, reversibility, and next action
-- explain the resulting state after each choice, not only feature differences
-- state which assumptions or evaluation axes would change the recommendation
-- explain what the agent and human will do after selection
+- 実在する選択肢を 2 つ以上、非推奨の選択肢を弱めずに比較する
+- すべての選択肢について、ユーザーへの結果・構造・振る舞い・データへの影響・コスト・リスク/不明点・可逆性・次のアクションを示す
+- 機能差だけでなく、各選択のあとに生じる状態を説明する
+- どの仮定や評価軸が変われば推奨が変わるかを明記する
+- 選択のあとにエージェントと人間が何をするかを説明する
 
-### 7. Generate one self-contained HTML file
+### 7. 自己完結の HTML を 1 ファイル生成する
 
-Adapt the bundled template in one complete write.
+同梱テンプレートを 1 回の完全な書き込みで改変する。
 
-- Set `<html lang>` and a descriptive `<title>`.
-- Keep inline CSS and inline SVG; do not use external assets, fonts, Mermaid runtimes, CDNs, iframes, forms, or JavaScript.
-- Preserve semantic headings, landmarks, tables, figures, captions, keyboard-visible focus, and non-color status labels.
-- Preserve the template’s `data-*` contract and stable element IDs so annotation tools can anchor feedback.
-- Remove the unused approval/selection branch and every `{{PLACEHOLDER}}`.
-- Keep the artifact useful at 390 px and 1440 px widths.
+- `<html lang>` と内容がわかる `<title>` を設定する。
+- インライン CSS とインライン SVG を維持する。外部アセット、フォント、Mermaid ランタイム、CDN、iframe、フォーム、JavaScript は使わない。
+- セマンティックな見出し、ランドマーク、テーブル、figure、キャプション、キーボードで見えるフォーカス、色以外のステータスラベルを維持する。
+- 注記ツールがフィードバックをアンカーできるよう、テンプレートの `data-*` 契約と安定した要素 ID を維持する。
+- 使わない approval/selection ブランチとすべての `{{PLACEHOLDER}}` を除去する。
+- 390 px と 1440 px の幅で成果物が使えることを保つ。
 
-### 8. Validate and inspect
+### 8. 検証と目視確認
 
-Run:
+実行する:
 
 ```bash
-# <skill-base-dir> = the "Base directory for this skill" shown when this skill loads
+# <skill-base-dir> = このスキルのロード時に表示される "Base directory for this skill"
 python3 "<skill-base-dir>/scripts/validate.py" "<output.html>"
 ```
 
-Fix every error. Then open the HTML in an available browser or screenshot tool and inspect both narrow and wide layouts. Verify:
+すべてのエラーを修正する。その後、利用可能なブラウザまたはスクリーンショットツールで HTML を開き、狭い幅と広い幅の両方のレイアウトを目視確認する。確認事項:
 
-- the causal order is immediately visible
-- the three target-model diagrams are readable
-- exceptions are not visually buried
-- approval and selection controls match the declared mode
-- each option’s future state and next action are explicit
-- raw evidence remains reachable
+- 因果の順序がすぐに見えるか
+- 対象モデルの 3 つの図が読めるか
+- 例外が視覚的に埋もれていないか
+- 承認/選択のコントロールが宣言したモードと一致しているか
+- 各選択肢の将来の状態と次のアクションが明示されているか
+- 生の根拠に到達できるか
 
-If the browser is unavailable, report that visual inspection was not run; do not claim it passed.
+ブラウザが使えない場合は、目視確認を実施しなかったと報告する。合格したと主張しない。
 
-## Completion response
+## 完了時の応答
 
-Return:
+次を返す:
 
-- absolute output path
-- decision mode and source revision
-- validator result and whether visual inspection ran
-- failures, unverified items, and omitted scope that remain
-- one sentence describing exactly what decision the reviewer can now make
+- 出力の絶対パス
+- 判断モードとソースリビジョン
+- バリデータの結果と目視確認を実施したか
+- 残っている失敗、未検証項目、除外スコープ
+- レビュアーがいまどんな判断を下せるのかを 1 文で
 
-Do not claim the HTML itself records formal approval unless it is integrated with the actual approval system.
+実際の承認システムと統合されていない限り、HTML 自体が正式な承認を記録すると主張しない。

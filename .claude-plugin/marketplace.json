@@ -12,7 +12,7 @@
     {
       "name": "distillery",
       "source": "./plugins/distillery",
-      "description": "Distill raw requirements or a single implementation-feedback Markdown into production-ready RDRA/USDM/NFR/Arch/Infra/Design/Spec, with internal stage routing"
+      "description": "生の要求や単一の実装フィードバックMarkdownを、内部ステージルーティング付きでプロダクションレディなRDRA/USDM/NFR/Arch/Infra/Design/Specに蒸留する"
     },
     {
       "name": "ddd",
