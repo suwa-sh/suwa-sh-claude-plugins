@@ -21,7 +21,9 @@ REQUIRED_SECTIONS = {
 }
 REQUIRED_MODELS = {"structure", "behavior", "data"}
 FORBIDDEN_TAGS = {"script", "iframe", "form", "object", "embed"}
-PLACEHOLDER_RE = re.compile(r"\{\{[^}]+\}\}|\b(?:TODO|PLACEHOLDER)\b", re.IGNORECASE)
+# TODO/PLACEHOLDER は大文字のマーカーのみ検出する。IGNORECASE にすると
+# パス表記 (ideas/todo/ 等) の小文字 todo まで誤検出する (2026-08-11 実害)
+PLACEHOLDER_RE = re.compile(r"\{\{[^}]+\}\}|\b(?:TODO|PLACEHOLDER)\b")
 
 
 class ReviewParser(HTMLParser):
