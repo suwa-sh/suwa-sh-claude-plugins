@@ -28,6 +28,11 @@ awk '
 
     if (line ~ /^[[:space:]]*$/) next
 
+    # companion の result 出力が末尾に付けるトレイラー行は契約外の散文として扱わない
+    # (指摘ありの場合は in_finding 中に無視されるが、No findings の場合は outside 判定になるため)
+    if (line ~ /^[[:space:]]*Codex session ID:[[:space:]]*[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}[[:space:]]*$/) next
+    if (line ~ /^[[:space:]]*Resume in Codex:[[:space:]]*codex resume[[:space:]]+[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}[[:space:]]*$/) next
+
     if (line ~ /^[[:space:]]*No findings[.。]?[[:space:]]*$/) {
       no_findings++
       next
