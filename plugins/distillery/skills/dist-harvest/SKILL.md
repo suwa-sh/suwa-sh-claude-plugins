@@ -7,18 +7,30 @@ description: >
   「コードから読み取った事実」と「LLM の推測」を evidence / confidence で区別する。
   逆生成した USDM を入力に dist-requirements の RDRA フルビルド資産で docs/rdra/latest/ まで構築するため、
   以降の quality-attributes → architecture → infrastructure → design → spec が無変更で動作する。
+  --preflight を付けると、実装内部を読む前に 3 つの整理 view(システムコンテキスト / 業務フロー /
+  成果物チェーン)で対象を整理し、変更の影響範囲を判定する軽量パスになる。
   「既存プロジェクトから要件を吸い上げ」「リバースエンジニアリング」「既存コードから RDRA」
-  「現行システムを distillery に取り込む」「as-is 分析」「逆生成」「レガシーから要件定義」などで発動。
+  「現行システムを distillery に取り込む」「as-is 分析」「逆生成」「レガシーから要件定義」
+  「変更の影響範囲を調べたい」「コードを読む前に影響調査」「preflight」などで発動。
 ---
 
-# dist-harvest スキル（既存プロジェクトからの要求逆生成）
+# dist-harvest スキル（既存プロジェクトからの要求逆生成 + 影響範囲 preflight）
 
-既存プロジェクトを解析して要求・要件を吸い上げ、distillery の正規入力（USDM + RDRA）を初期構築する。
-コードから RDRA TSV を直接生成せず、**USDM requirements.yaml を逆生成の成果物**とし、RDRA フルビルドは
-既存 `dist-requirements` の Step0 資産（`references/rdra-phases/`）を再利用する。これにより既存
-バリデータ・イベントソーシングとの整合が保たれ、以降の変更要望が差分モードに自然に乗る。
+本スキルは 2 つのモードを持つ:
+
+- **全量パス（既定）**: 既存プロジェクトを解析して要求・要件を吸い上げ、distillery の正規入力
+  （USDM + RDRA）を初期構築する。コードから RDRA TSV を直接生成せず、**USDM requirements.yaml を
+  逆生成の成果物**とし、RDRA フルビルドは既存 `dist-requirements` の Step0 資産
+  （`references/rdra-phases/`）を再利用する。これにより既存バリデータ・イベントソーシングとの整合が
+  保たれ、以降の変更要望が差分モードに自然に乗る。
+- **preflight パス（`--preflight`）**: 全量解析の前段の軽量パス。実装内部を読まずに、外側から読める
+  資料（手順書・運用手順・構成資料・実出力）だけで対象を 3 つの view に整理し、変更の影響範囲を
+  判定する。コードリポジトリが無い資産（マクロ・手順書ベースの業務・現場運用のあるアプリ）にも使える。
+  手順の正本は `references/preflight.md`。
 
 ## 前提条件
+
+**全量パス**:
 
 - 解析対象リポジトリのディレクトリパス（1 つ以上、スペース区切り）が指定されること
 - distillery 成果物を置くプロジェクトの作業ディレクトリで実行すること
@@ -26,11 +38,21 @@ description: >
 - **初期構築専用**: `docs/rdra/latest/*.tsv` が既に存在する場合は中断し、差分更新モード
   （`dist-requirements`）を案内する
 
+**preflight パス**:
+
+- 対象パス（外側から読めるテキスト資料、またはそれらを含むディレクトリ）が指定されること
+- 読み取り専用の調査のため、**既存 RDRA チェックは適用しない**（上記の初期構築専用ガードは
+  全量パス専用。RDRA モデルが既にあるプロジェクトでも preflight は実行できる）
+- `--continue` / `--no-confirm` は preflight では対象外（軽量単発パスのため）
+
 ## ディレクトリ構成（出力）
 
 ```
 docs/
   harvest/
+    preflight/                # --preflight の出力（軽量パス）
+      events/{event_id}/preflight.md   # event_id = {YYYYMMDD_HHMMSS}_preflight
+      latest/preflight.md              # events からの置換コピー
     events/{event_id}/
       analysis/
         01-overview.md      # システム概要・技術スタック・ビジネスドメイン
@@ -69,7 +91,16 @@ docs/
 
 ## 全体フロー
 
+**モード判定を最初に行う**（Phase0 の対象パス確認・既存 RDRA チェックより前）:
+引数に `--preflight` があれば preflight パス（下記「preflight パス」節）へ。無ければ全量パスへ。
+
 ```
+（--preflight あり）
+対象資料（手順書・構成資料・実出力などのテキスト）
+  → references/preflight.md の手順で 3 view 整理 + 影響判定
+  → docs/harvest/preflight/ に preflight.md を出力して終了（USDM / RDRA は生成しない）
+
+（--preflight なし = 全量パス）
 既存プロジェクト（リポジトリ）
   → Phase0: 入力確認（対象パス確認 / 既存 RDRA チェック / --continue 再開）
   → Phase1: リポジトリ解析（Phase1〜5 を順次サブエージェント実行、checklist 駆動）
@@ -77,6 +108,31 @@ docs/
   → Phase3: ユーザー確認（confidence: low を対話提示、dialogue-format 準拠）
   → Phase4: RDRA フルビルド（dist-requirements の資産へ委譲）
 ```
+
+---
+
+## preflight パス（`--preflight`）
+
+```
+/distillery:dist-harvest --preflight <対象パス...> [--change <変更内容テキストまたはファイルパス>]
+```
+
+1. **入力確認**: 対象パスの存在を確認する。外側から読めるテキスト資料が無く
+   バイナリしか無い場合は、「手順・構成のテキスト化を用意してから再実行」を案内して終了する。
+2. **変更内容の確認**: `--change` が未指定なら対話で 1 回だけ質問する。回答が得られない場合は
+   影響判定を「保留」にして続行する（エラーにしない）。
+3. **実行**: `${CLAUDE_PLUGIN_ROOT}/skills/dist-harvest/references/preflight.md` と
+   `references/evidence-rules.md` を読み込み、preflight.md の手順（実装内部を読まない規範 /
+   3 つの整理 view / 影響判定 / 出力フォーマット）に従って実行する。
+4. **出力チェック**: `docs/harvest/preflight/events/{event_id}/preflight.md` と
+   `docs/harvest/preflight/latest/preflight.md` が存在し、結論（影響判定 3 値）・view（または
+   N/A + 理由）・ノード一覧（確度/根拠列つき）・残質問リストが揃っていること。
+5. **完了報告**: 影響判定と根拠を報告し、「読む必要がある範囲」の各項目ごとに後続を案内する
+   （コードリポジトリ内の範囲 → 実在ディレクトリに正規化して全量パスを案内 / 非コード資産 →
+   担当者ヒアリング → 回答メモを対象パスに含めて再実行を案内 / 混在時は併記。
+   詳細は preflight.md「完了報告と後続案内」節）。
+
+preflight は調査で完結する（USDM / RDRA の生成・更新は行わない）。
 
 ---
 

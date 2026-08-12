@@ -68,7 +68,7 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 
 | Skill | Role |
 |---|---|
-| `distillery:dist-harvest` | 既存プロジェクトから要求を逆生成し USDM + RDRA を初期構築（as-is 分析・任意） |
+| `distillery:dist-harvest` | 既存プロジェクトから要求を逆生成し USDM + RDRA を初期構築（as-is 分析・任意）。`--preflight` で、実装内部を読まずに変更の影響範囲を判定する軽量調査モード |
 | `distillery:dist-requirements` | USDM 分解 + RDRA モデルの差分/フルビルド |
 | `distillery:dist-quality-attributes` | IPA 非機能要求グレード 2018 による品質特性推論 |
 | `distillery:dist-architecture` | システム/アプリ/データアーキテクチャ設計（ベンダーニュートラル） |
@@ -126,6 +126,23 @@ macOS（osascript）/ Windows（PowerShell バルーン通知）/ Linux（notify
 
 > **初期構築専用**: 既に `docs/rdra/latest/` が存在するプロジェクトには適用しません。既存モデルへの
 > 変更は差分更新モード（`/distillery:dist-requirements 変更要望テキストのパス`）を使用してください。
+> なお下記の `--preflight`（影響調査）はこの制約の対象外で、RDRA モデルの有無に関係なく実行できます。
+
+### 変更の影響範囲を先に調べる（preflight）
+
+コードを読む前に「この変更はどこに影響するか」だけを軽量に判定するモードです。
+実装内部（コード本文・バイナリ）を読まず、手順書・運用手順・構成資料・実出力などの
+外側から読める資料だけで、対象を 3 つの view（システムコンテキスト / 業務フロー / 成果物チェーン）に
+整理し、外部影響境界での影響を YES / NO / 保留で判定します。
+
+```
+/distillery:dist-harvest --preflight ./調査資料 --change "変更したい内容"
+```
+
+コードリポジトリが無い資産（Excel/Access マクロ・手順書ベースの業務・現場運用のあるアプリ）から、
+大規模 web app の変更前調査まで同じ手順で使えます。結果は `docs/harvest/preflight/latest/preflight.md`
+に出力され、「読まなくてよい範囲 / 読む必要がある範囲」と担当者への残質問リストが得られます。
+実行例は [samples/distillery/preflight/](../../samples/distillery/preflight/) を参照してください。
 
 ### distillery-impl の複数フィードバックを1回で反映
 
