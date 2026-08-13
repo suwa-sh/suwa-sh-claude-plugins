@@ -27,7 +27,11 @@
 4. **ドキュメント不足の見直し** — README.md のスキル名・コマンド例・機能説明が最新のスキル構成と一致しているか確認
 5. **version bump** — 変更した plugin の `plugins/<plugin>/.claude-plugin/plugin.json` の `version`（semver）を上げる。
    **bump はリリース手順の一部**（install cache がバージョン名ディレクトリになるため、bump を忘れると古い cache が使われ続ける）。
-   version の正本はこのファイルのみ（SKILL.md 等へ埋め込まない。skill は実行時に `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` から読む）
+   version の正本はこのファイルのみ（SKILL.md 等へ埋め込まない。skill は実行時に `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` から読む）。
+   **bump の要否は install cache に入るかで決める**: cache に含まれるのは `plugins/<plugin>/` 配下のみ
+   （2026-08-13 実測: `~/.claude/plugins/cache/.../distillery/<ver>/` に samples は無い）。
+   `samples/` やリポ直下 README だけの変更は bump・再インストール不要。逆に `plugins/` 配下を
+   1 文字でも変えたら bump + 手順 6〜8 の再インストールまで必須
 6. **コミット＆プッシュ** — Conventional Commits 規約でコミットし、push
 7. **マーケットプレイス更新＆プラグイン再インストール**:
    ```bash
