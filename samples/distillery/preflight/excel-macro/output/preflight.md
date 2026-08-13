@@ -126,7 +126,7 @@ flowchart LR
   回答を `input/回答メモ.md` に追記して再実行してください:
 
   ```
-  /distillery:dist-harvest --preflight samples/distillery/preflight/input --change "02_登録内容作成.xlsm のマクロを変更し、登録内容の担当区分の割当ルールを見直したい(A 系設備の一部を電気から機械に変更)"
+  /distillery:dist-harvest --preflight samples/distillery/preflight/excel-macro/input --change "02_登録内容作成.xlsm のマクロを変更し、登録内容の担当区分の割当ルールを見直したい(A 系設備の一部を電気から機械に変更)"
   ```
 
 - 未確定(03 の参照先)が確定した後に、02 の担当区分割当ロジックだけを VBA で読み、

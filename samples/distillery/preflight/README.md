@@ -1,51 +1,31 @@
 # preflight サンプル(影響範囲の事前調査)
 
-`/distillery:dist-harvest --preflight` の実行例です。
+`/distillery:dist-harvest --preflight` の実行例です。preflight は実装内部(コード本文・バイナリ)を
+読まずに、外側から読める資料だけで対象を 3 つの view(システムコンテキスト / 業務フロー /
+成果物チェーン)に整理し、外部影響境界での変更影響を YES / NO / 保留 で判定します。
 
-## シナリオ(架空)
+性質の異なる 3 つの事例を収録しています。
 
-前任者が作った Excel マクロ 3 本で回っている「月次スケジュール登録」業務に、
-「登録内容の担当区分の割当ルールを見直したい(A 系設備の一部を電気から機械に変更)」という
-変更要望が来ました。マクロの中身(VBA)は誰も読めていません。
+| 事例 | 対象の性質 | 見どころ |
+|---|---|---|
+| [excel-macro/](excel-macro/) | **架空の Excel マクロ業務**(月次スケジュール登録。手順書起点・VBA 非開示) | 手運用ノードの可視化 / 回答メモによる 2 巡目実行 / 判定 YES の証拠化 |
+| [tbm-template/](tbm-template/) | **実在のデータパイプライン**([suwa-sh/tbm-template](https://github.com/suwa-sh/tbm-template): dlt→PostgreSQL→dbt→Grafana) | SQL 本文を読まずに配賦ルール変更の影響を判定 / 「影響の有無は YES・範囲は未確定」という判定の分離 / 変更要望の曖昧さ(「共通費」とは?)を残質問へ変換 |
+| [asana-register-routines/](asana-register-routines/) | **実在の小さな自動化ツール**([suwa-sh/asana-register-routines](https://github.com/suwa-sh/asana-register-routines): Google スプレッドシート + GAS) | 現場運用(設定シートの手作業)の業務フロー化 / 機能追加の届き先の見極め(最終境界への影響は未確定として保留) / README の記載漏れ検出 |
 
-このサンプルは **2 巡目の実行例**です: 初回の preflight で出た残質問 Q1〜Q3 のうち Q2・Q3 を
-担当者にヒアリングし(あわせて追加確認 Q4 も取得)、その記録(`input/回答メモ.md`)を入力に含めて
-再実行した状態を収録しています。
-preflight は **VBA を 1 行も読まずに**、手順書・構成メモ・回答メモから影響範囲を判定します
-(結果: 判定 YES — スケジューラー登録内容の担当区分の値が変わる。読む必要があるのは
-02 の割当ロジックだけで、01 は読まなくてよい、03 は残質問 Q1 の回答待ちで未確定、と絞り込まれます)。
-
-この事例は適用対象の代表例の 1 つです。preflight 自体は Excel マクロ専用ではなく、
-全自動化された小さなツール、業務の現場で使うスマホアプリの現場での使われ方、
-大規模 web app の変更前調査まで、同じ 3 つの view(システムコンテキスト / 業務フロー /
-成果物チェーン)で調査できます。
-
-## ファイル
-
-| パス | 内容 |
-|---|---|
-| [input/操作手順書.md](input/操作手順書.md) | 調査の入力 1: 業務の操作手順書(抜粋) |
-| [input/ファイル構成.md](input/ファイル構成.md) | 調査の入力 2: ファイル・シート構成のメモ |
-| [input/回答メモ.md](input/回答メモ.md) | 調査の入力 3: 担当者回答(Q2・Q3 + 追加確認 Q4 回答済み / Q1 未回答) |
-| [output/preflight.md](output/preflight.md) | 調査の出力: 3 view + 影響判定 + 残質問リスト + 次の一手 |
-
-VBA 本文が input に無いのは意図的です(preflight は実装内部を読まないため、無くても実行できます)。
+3 事例とも同じ手順・同じ出力フォーマットです。小さなツールから業務システム、データ基盤まで、
+同じ 3 view で調査できることを示しています。
 
 ## 実行方法
 
+各事例の README に、実行したコマンドと入力の所在を記載しています。基本形:
+
 ```
-/distillery:dist-harvest --preflight samples/distillery/preflight/input --change "02_登録内容作成.xlsm のマクロを変更し、登録内容の担当区分の割当ルールを見直したい(A 系設備の一部を電気から機械に変更)"
+/distillery:dist-harvest --preflight <対象パス> --change "変更したい内容"
 ```
 
-> ちなみに「祝日を自動で除外したい」のような変更だと、判定は YES になりません。
-> 手順書には「祝日は入力時に手で除外すること」とあり、**既存の手運用を自動化する変更は、
-> 手運用が既に同じ結果を作っているなら境界の内容を変えない**ためです(NO、実態が不明なら保留)。
-> preflight は現行運用の実態(手運用込み)を比較の基準にします。
-
-## output の生成手順
+## output の生成手順(共通)
 
 正式な出力先は実行プロジェクトの `docs/harvest/preflight/events/{event_id}/preflight.md`
-(+ `latest/` への置換コピー)です。このサンプルの `output/preflight.md` は、
-上記コマンド相当の調査(event_id `20260813_083612_preflight`)の結果を手動コピーしたものです。
-再生成した場合は最新 event の preflight.md をこのパスへコピーしてください
-(event_id・実行日時は実行のたびに変わります)。
+(+ `latest/` への置換コピー)です。各事例の `output/preflight.md` は実行結果の手動コピーで、
+event_id・実行日時・ローカルパスは実行のたびに変わります。再生成した場合は最新 event の
+preflight.md を各事例の `output/` へコピーしてください。
