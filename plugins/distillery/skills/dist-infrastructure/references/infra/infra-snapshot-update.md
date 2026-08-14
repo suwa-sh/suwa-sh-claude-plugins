@@ -12,7 +12,7 @@ rm -rf docs/infra/latest/
 cp -r docs/infra/events/{event_id}/ docs/infra/latest/
 ```
 
-latest にはイベントの全ファイル（infra-event.yaml, infra-event.md, _inference.md, source.txt）と MCL 出力（specs/, docs/, infra/）がそのまま入る。
+latest にはイベントの全ファイル（infra-event.yaml, infra-event.md, _inference.md, source.txt）と MCL 出力（docs/, infra/）がそのまま入る。
 
 ## 注意事項
 

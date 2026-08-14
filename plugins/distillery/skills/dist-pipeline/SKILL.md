@@ -436,7 +436,7 @@ node <skill-path>/scripts/feedbackLease.js release \
    - Step 1: `docs/rdra/latest/` の自動追加アクター/情報の有無
    - Step 2: `docs/nfr/latest/nfr-grade.yaml` 内の confidence が low の項目
    - Step 3: `docs/arch/latest/arch-design.yaml` 内の confidence が low の項目
-   - Step 4a: MCL 成果物の生成状態を確認（`docs/infra/events/{event_id}/specs/` の存在）
+   - Step 4a: MCL 成果物の生成状態を確認（`docs/infra/events/{event_id}/docs/mcl/` の存在）
    - Step 4b: `docs/infra/latest/infra-event.yaml` 内の confidence が low の項目（クラウドベンダー、リージョン、コスト方針等）
    - Step 5: `docs/design/latest/design-event.yaml` 内の confidence が low の項目
    - Step 6: `docs/specs/latest/` の API 命名/エラー戦略/DB 正規化レベル等で confidence が low の項目
@@ -456,14 +456,14 @@ node <skill-path>/scripts/feedbackLease.js release \
 | 1 | requirements | あり | `docs/rdra/latest/BUC.tsv` + `docs/usdm/latest/requirements.yaml` | 曖昧要望の解釈を確認 |
 | 2 | quality-attributes | あり | `docs/nfr/latest/nfr-grade.yaml` | Step0 規模感プリインタビュー必須 |
 | 3 | architecture | あり | `docs/arch/latest/arch-design.yaml` | RDRA 整合性厳守 |
-| 4a | infrastructure (MCL) | あり | `docs/infra/events/{event_id}/specs/` が存在 | MCL product-design 成果物生成で完了 |
+| 4a | infrastructure (MCL) | あり | `docs/infra/events/{event_id}/docs/mcl/` が存在 | MCL product-design 成果物生成で完了 |
 | 4b | infrastructure (記録・FB) | あり | `docs/infra/latest/infra-event.yaml` + arch feedback event 存在 | Phase3〜5 を実行。Step4a の event_id を引き継ぐ |
 | 5 | design-system | あり | `docs/design/latest/design-event.yaml` + `docs/design/latest/storybook-app/` | ブランド/カラー/フォント/レイアウトを3案確認 |
 | 6 | spec | あり | `docs/specs/latest/spec-event.yaml` + `docs/specs/latest/_cross-cutting/` | API/エラー/DB 方針を確認 |
 
 **Step4a/4b infrastructure の完了検証:**
 
-- **Step4a (MCL実行):** `docs/infra/events/{event_id}/specs/` ディレクトリが存在し、MCL 成果物が生成されていること。
+- **Step4a (MCL実行):** `docs/infra/events/{event_id}/docs/mcl/` ディレクトリが存在し、MCL 成果物が生成されていること。
   未達ならサブエージェントに補完実行を指示する。
 - **Step4b (イベント記録・FB):** `docs/infra/latest/infra-event.yaml` の存在、および Phase4 で
   `docs/arch/latest/arch-design.yaml` のタイムスタンプが Step4b 開始以降に更新されていることを確認する。
@@ -537,7 +537,7 @@ node <skill-path>/scripts/generateReadme.js docs
 | 1 | requirements | docs/usdm/latest/, docs/rdra/latest/ | usdm:{id}, rdra:{id} |
 | 2 | quality-attributes | docs/nfr/latest/nfr-grade.yaml | nfr:{id} |
 | 3 | architecture | docs/arch/latest/arch-design.yaml | arch:{id} |
-| 4a | infrastructure (MCL) | docs/infra/events/{id}/specs/ | infra:{id} |
+| 4a | infrastructure (MCL) | docs/infra/events/{id}/docs/mcl/ | infra:{id} |
 | 4b | infrastructure (記録・FB) | docs/infra/latest/ | infra:{id} |
 | 5 | design-system | docs/design/latest/ | design:{id} |
 | 6 | spec | docs/specs/latest/ | spec:{id} |

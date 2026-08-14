@@ -101,8 +101,8 @@ done
 - `docs/rdra/latest/*.tsv` が存在すること
 - `docs/rdra/latest/システム概要.json` が存在すること
 - `docs/nfr/latest/nfr-grade.yaml` が存在すること
-- `specs/foundation/output/foundation-context.yaml` が存在すること（MCL foundation 実行済み）
-- `specs/shared-platform/output/shared-platform-context.yaml` は**任意**（存在しない場合は Step1 で最小コンテキストを自動生成）
+- `docs/mcl/foundation/output/foundation-context.yaml` が存在すること（MCL foundation 実行済み）
+- `docs/mcl/shared-platform/output/shared-platform-context.yaml` は**任意**（存在しない場合は Step1 で最小コンテキストを自動生成）
 
 ## ハイブリッド方式の概要
 
@@ -111,7 +111,7 @@ done
 | 成果物 | 方式 | events/ に含む | latest/ の更新 |
 |--------|------|:-------------:|--------------|
 | `infra-event.yaml` | **差分マージ** | `infra-event-diff.yaml` | フィールド単位でマージ |
-| `MCL 出力`（specs/, docs/, infra/） | **★ 全量上書き** | 全量を含む | 全量で上書き |
+| `MCL 出力`（docs/, infra/） | **★ 全量上書き** | 全量を含む | 全量で上書き |
 
 **MCL（mcl-product-design）は差分出力をサポートしない**ため、MCL 出力は常に全量。infra-event.yaml の変換サマリやフィードバック記録は差分マージ可能。
 
@@ -127,18 +127,18 @@ docs/
       _changes.md                   # 変更サマリ（追加/変更/削除）
       _inference.md                 # 変換推論根拠
       source.txt                    # トリガー説明
-      specs/                        # MCL ルートとして直接出力される
-        product/
-          input/product-input.yaml  # MCL 入力
-          output/                   # MCL 出力（workload-model, mapping, impl, observability, cost-hints）
-        foundation/output/          # foundation-context のコピー（MCL 参照用）
-        shared-platform/output/     # shared-platform-context のコピー（MCL 参照用）
-      docs/cloud-context/           # MCL が直接出力（decisions, conformance, generated-md, sources）
+      docs/                         # MCL ルートとして直接出力される
+        mcl/
+          product/
+            input/product-input.yaml  # MCL 入力
+            output/                 # MCL 出力（workload-model, mapping, impl, observability, cost-hints）
+          foundation/output/        # foundation-context のコピー（MCL 参照用）
+          shared-platform/output/   # shared-platform-context のコピー（MCL 参照用）
+        cloud-context/              # MCL が直接出力（decisions, conformance, generated-md, sources）
       infra/product/{vendor}/       # MCL が直接出力（IaC スケルトン）
     latest/                         # 最新スナップショット（events/{event_id}/ の全量コピー）
       infra-event.yaml
       infra-event.md
-      specs/...
       docs/...
       infra/...
   arch/
@@ -158,9 +158,9 @@ MCL product-design スキルのプロジェクトルートを `docs/infra/events
 これにより MCL の全出力が event ディレクトリ内に直接生成される。集約や後処理は不要。
 
 **MCL 実行前の準備**:
-1. `docs/infra/events/{event_id}/specs/product/input/product-input.yaml` — Step1 で生成
-2. `docs/infra/events/{event_id}/specs/foundation/output/foundation-context.yaml` — プロジェクトルートからコピー
-3. `docs/infra/events/{event_id}/specs/shared-platform/output/shared-platform-context.yaml` — プロジェクトルートからコピー
+1. `docs/infra/events/{event_id}/docs/mcl/product/input/product-input.yaml` — Step1 で生成
+2. `docs/infra/events/{event_id}/docs/mcl/foundation/output/foundation-context.yaml` — プロジェクトルートからコピー
+3. `docs/infra/events/{event_id}/docs/mcl/shared-platform/output/shared-platform-context.yaml` — プロジェクトルートからコピー
 
 ## 全体フロー（Phase 構造・冪等再開対応）
 
@@ -181,8 +181,8 @@ docs/arch/latest/arch-design.yaml + docs/nfr/latest/nfr-grade.yaml
 
 | Phase | 完了判定ファイル（複数ある場合は全て存在すること） |
 |-------|--------------------------------------------|
-| Phase1 | `docs/infra/events/{event_id}/specs/product/input/product-input.yaml` かつ `docs/infra/events/{event_id}/specs/foundation/output/foundation-context.yaml` かつ `docs/infra/events/{event_id}/specs/shared-platform/output/shared-platform-context.yaml` |
-| Phase2 | `docs/infra/events/{event_id}/specs/product/output/product-workload-model.yaml` かつ `docs/infra/events/{event_id}/specs/product/output/product-observability.yaml` かつ `docs/infra/events/{event_id}/specs/product/output/product-cost-hints.yaml` かつ `specs/product/output/product-mapping-*.yaml` と `product-impl-*.yaml` が各 1 件以上 |
+| Phase1 | `docs/infra/events/{event_id}/docs/mcl/product/input/product-input.yaml` かつ `docs/infra/events/{event_id}/docs/mcl/foundation/output/foundation-context.yaml` かつ `docs/infra/events/{event_id}/docs/mcl/shared-platform/output/shared-platform-context.yaml` |
+| Phase2 | `docs/infra/events/{event_id}/docs/mcl/product/output/product-workload-model.yaml` かつ `docs/infra/events/{event_id}/docs/mcl/product/output/product-observability.yaml` かつ `docs/infra/events/{event_id}/docs/mcl/product/output/product-cost-hints.yaml` かつ `docs/infra/events/{event_id}/docs/mcl/product/output/product-mapping-*.yaml` と `docs/infra/events/{event_id}/docs/mcl/product/output/product-impl-*.yaml` が各 1 件以上 |
 | Phase3 | `docs/infra/events/{event_id}/infra-event.yaml`（または `infra-event-diff.yaml`） かつ `docs/infra/events/{event_id}/_changes.md` かつ `docs/infra/latest/infra-event.yaml` |
 | Phase4 | `docs/arch/events/{feedback_event_id}/arch-design-diff.yaml` かつ `docs/arch/events/{feedback_event_id}/_changes.md` かつ `docs/infra/latest/infra-event.yaml` に当該 `arch_feedback` エントリが追記済み |
 | Phase5 | 判定結果がユーザーに報告済み（出力は副作用のみ。再実行要求が無ければ完了とみなす） |
@@ -213,16 +213,16 @@ arch-design.yaml と nfr-grade.yaml を読み取り、MCL product-design の入�
 - `docs/arch/latest/arch-design.yaml` — 現在のアーキテクチャ設計
 - `docs/nfr/latest/nfr-grade.yaml` — NFR グレード
 - `docs/rdra/latest/システム概要.json` — システム概要（名前・説明用）
-- `specs/foundation/output/foundation-context.yaml` — Foundation コンテキスト（target_clouds 取得用）
+- `docs/mcl/foundation/output/foundation-context.yaml` — Foundation コンテキスト（target_clouds 取得用）
 
 ### shared-platform がない場合の処理（Step1 サブステップ 1a）
 
-`specs/shared-platform/output/shared-platform-context.yaml` が存在しない場合、**Step1 のサブステップ 1a として**以下を実施する:
+`docs/mcl/shared-platform/output/shared-platform-context.yaml` が存在しない場合、**Step1 のサブステップ 1a として**以下を実施する:
 
 1. ユーザーに「shared-platform コンテキストが見つかりません。最小構成で進めますか？」と確認する。
    **dialogue_policy 分岐**: `dialogue_policy: auto_adopt` の場合はこの確認を省略し、最小構成を仮採用して続行する
    （採用一覧に「shared-platform: 最小構成を仮採用」を記録する）
-2. 確認後、以下の最小 shared-platform-context.yaml を **event ディレクトリ内の `specs/shared-platform/output/`**（`docs/infra/events/{event_id}/specs/shared-platform/output/`）に生成する。加えて、プロジェクトルートの `specs/shared-platform/output/` にも同じファイルを生成する（後続の実行で再利用するため）:
+2. 確認後、以下の最小 shared-platform-context.yaml を **event ディレクトリ内の `docs/mcl/shared-platform/output/`**（`docs/infra/events/{event_id}/docs/mcl/shared-platform/output/`）に生成する。加えて、プロジェクトルートの `docs/mcl/shared-platform/output/` にも同じファイルを生成する（後続の実行で再利用するため）:
 
 ```yaml
 schema_version: "1.0"
@@ -246,20 +246,20 @@ optional_services: []
 
 1. イベント ID を生成: `date '+%Y%m%d_%H%M%S'` コマンドでタイムスタンプを取得し、`{YYYYMMDD_HHMMSS}_infra_product_design` 形式で生成する
 2. イベントディレクトリを作成: `docs/infra/events/{event_id}/`
-3. `references/infra/infra-translate.md` に従い、arch-design.yaml と nfr-grade.yaml から `docs/infra/events/{event_id}/specs/product/input/product-input.yaml` を生成する
+3. `references/infra/infra-translate.md` に従い、arch-design.yaml と nfr-grade.yaml から `docs/infra/events/{event_id}/docs/mcl/product/input/product-input.yaml` を生成する
 4. MCL 実行に必要な上位コンテキストをイベントディレクトリにコピー:
    ```bash
-   mkdir -p docs/infra/events/{event_id}/specs/foundation/output/
-   mkdir -p docs/infra/events/{event_id}/specs/shared-platform/output/
-   cp specs/foundation/output/foundation-context.yaml docs/infra/events/{event_id}/specs/foundation/output/
-   cp specs/shared-platform/output/shared-platform-context.yaml docs/infra/events/{event_id}/specs/shared-platform/output/
+   mkdir -p docs/infra/events/{event_id}/docs/mcl/foundation/output/
+   mkdir -p docs/infra/events/{event_id}/docs/mcl/shared-platform/output/
+   cp docs/mcl/foundation/output/foundation-context.yaml docs/infra/events/{event_id}/docs/mcl/foundation/output/
+   cp docs/mcl/shared-platform/output/shared-platform-context.yaml docs/infra/events/{event_id}/docs/mcl/shared-platform/output/
    ```
 
 ### 出力
 
-- `docs/infra/events/{event_id}/specs/product/input/product-input.yaml`
-- `docs/infra/events/{event_id}/specs/foundation/output/foundation-context.yaml`（コピー）
-- `docs/infra/events/{event_id}/specs/shared-platform/output/shared-platform-context.yaml`（コピー）
+- `docs/infra/events/{event_id}/docs/mcl/product/input/product-input.yaml`
+- `docs/infra/events/{event_id}/docs/mcl/foundation/output/foundation-context.yaml`（コピー）
+- `docs/infra/events/{event_id}/docs/mcl/shared-platform/output/shared-platform-context.yaml`（コピー）
 
 ---
 
@@ -278,12 +278,12 @@ MCL product-design が正常完了した場合、event ディレクトリ内に�
 
 | カテゴリ | ファイルパス | 必須 | 説明 |
 |---------|-----------|------|------|
-| MCL 入力 | `specs/product/input/product-input.yaml` | Yes | Step1 で生成済み |
-| ワークロードモデル | `specs/product/output/product-workload-model.yaml` | Yes | ベンダーニュートラルな canonical elements |
-| ベンダーマッピング | `specs/product/output/product-mapping-{vendor}.yaml` | Yes | 対象クラウドごとに最低1ファイル |
-| 実装仕様 | `specs/product/output/product-impl-{vendor}.yaml` | Yes | 対象クラウドごとに最低1ファイル |
-| オブザーバビリティ | `specs/product/output/product-observability.yaml` | Yes | SLI/SLO、メトリクス、ログ、アラート |
-| コストヒント | `specs/product/output/product-cost-hints.yaml` | Yes | コスト最適化戦略 |
+| MCL 入力 | `docs/mcl/product/input/product-input.yaml` | Yes | Step1 で生成済み |
+| ワークロードモデル | `docs/mcl/product/output/product-workload-model.yaml` | Yes | ベンダーニュートラルな canonical elements |
+| ベンダーマッピング | `docs/mcl/product/output/product-mapping-{vendor}.yaml` | Yes | 対象クラウドごとに最低1ファイル |
+| 実装仕様 | `docs/mcl/product/output/product-impl-{vendor}.yaml` | Yes | 対象クラウドごとに最低1ファイル |
+| オブザーバビリティ | `docs/mcl/product/output/product-observability.yaml` | Yes | SLI/SLO、メトリクス、ログ、アラート |
+| コストヒント | `docs/mcl/product/output/product-cost-hints.yaml` | Yes | コスト最適化戦略 |
 | Decision Record | `docs/cloud-context/decisions/product/*.yaml` | No | 設計判断の記録 |
 | Conformance | `docs/cloud-context/conformance/product/*.yaml` | No | 準拠レポート |
 | IaC スケルトン | `infra/product/{vendor}/` | No | Terraform 等 |
@@ -305,9 +305,9 @@ MCL product-design が正常完了した場合、event ディレクトリ内に�
 以下のプロジェクトで mcl-product-design スキルを実行してください:
 
 - プロジェクトルート: {project_root}/docs/infra/events/{event_id}
-- ワークロード入力: specs/product/input/product-input.yaml（既に存在）
-- Foundation コンテキスト: specs/foundation/output/foundation-context.yaml（既に存在）
-- 共有プラットフォームコンテキスト: specs/shared-platform/output/shared-platform-context.yaml（既に存在）
+- ワークロード入力: docs/mcl/product/input/product-input.yaml（既に存在）
+- Foundation コンテキスト: docs/mcl/foundation/output/foundation-context.yaml（既に存在）
+- 共有プラットフォームコンテキスト: docs/mcl/shared-platform/output/shared-platform-context.yaml（既に存在）
 
 入力ファイルが全て揃っているため、ヒアリングはスキップし、直接ワークロードモデル生成から開始してください。
 ```
@@ -320,11 +320,11 @@ MCL 完了後、event ディレクトリ内に期待される出力が存在す�
 
 ```bash
 # 必須ファイルの存在確認
-test -f docs/infra/events/{event_id}/specs/product/output/product-workload-model.yaml && echo "OK: workload-model" || echo "MISSING: workload-model"
-test -f docs/infra/events/{event_id}/specs/product/output/product-observability.yaml && echo "OK: observability" || echo "MISSING: observability"
-test -f docs/infra/events/{event_id}/specs/product/output/product-cost-hints.yaml && echo "OK: cost-hints" || echo "MISSING: cost-hints"
-ls docs/infra/events/{event_id}/specs/product/output/product-mapping-*.yaml >/dev/null 2>&1 && echo "OK: mapping" || echo "MISSING: mapping"
-ls docs/infra/events/{event_id}/specs/product/output/product-impl-*.yaml >/dev/null 2>&1 && echo "OK: impl" || echo "MISSING: impl"
+test -f docs/infra/events/{event_id}/docs/mcl/product/output/product-workload-model.yaml && echo "OK: workload-model" || echo "MISSING: workload-model"
+test -f docs/infra/events/{event_id}/docs/mcl/product/output/product-observability.yaml && echo "OK: observability" || echo "MISSING: observability"
+test -f docs/infra/events/{event_id}/docs/mcl/product/output/product-cost-hints.yaml && echo "OK: cost-hints" || echo "MISSING: cost-hints"
+ls docs/infra/events/{event_id}/docs/mcl/product/output/product-mapping-*.yaml >/dev/null 2>&1 && echo "OK: mapping" || echo "MISSING: mapping"
+ls docs/infra/events/{event_id}/docs/mcl/product/output/product-impl-*.yaml >/dev/null 2>&1 && echo "OK: impl" || echo "MISSING: impl"
 ```
 
 いずれかが MISSING の場合:
@@ -370,7 +370,7 @@ node <skill-path>/scripts/generateInfraEventMd.js docs/infra/events/{event_id}/i
 - **初期構築時**: `events/{event_id}/` の全量を `latest/` にコピーする
 - **差分更新時**:
   1. `events/{event_id}/infra-event-diff.yaml` の変更フィールドを `latest/infra-event.yaml` に差分マージする
-  2. MCL 出力（`events/{event_id}/specs/product/output/` 等）は `latest/` に全量上書きする
+  2. MCL 出力（`events/{event_id}/docs/mcl/product/output/` 等）は `latest/` に全量上書きする
   3. `latest/product-input.yaml` を `events/{event_id}/product-input.yaml` で上書きする
   4. `latest/infra-event.md` を再生成する
 
@@ -384,7 +384,7 @@ node <skill-path>/scripts/generateInfraEventMd.js docs/infra/events/{event_id}/i
 - `docs/infra/events/{event_id}/product-input.yaml`
 - `docs/infra/events/{event_id}/_inference.md`
 - `docs/infra/events/{event_id}/source.txt`
-- `docs/infra/events/{event_id}/specs/product/output/` （MCL 出力）
+- `docs/infra/events/{event_id}/docs/mcl/product/output/` （MCL 出力）
 - `docs/infra/events/{event_id}/docs/cloud-context/` （decisions, conformance, generated-md, sources）
 - `docs/infra/events/{event_id}/infra/product/{vendor}/` （IaC スケルトン）
 - `docs/infra/latest/` （スナップショット。events/{event_id}/ の全量コピー）
@@ -397,7 +397,7 @@ node <skill-path>/scripts/generateInfraEventMd.js docs/infra/events/{event_id}/i
 - `docs/infra/events/{event_id}/product-input.yaml`
 - `docs/infra/events/{event_id}/_inference.md`
 - `docs/infra/events/{event_id}/source.txt`
-- `docs/infra/events/{event_id}/specs/product/output/` （MCL 出力。全量）
+- `docs/infra/events/{event_id}/docs/mcl/product/output/` （MCL 出力。全量）
 - `docs/infra/latest/` （ハイブリッドマージ: infra-event 差分マージ + MCL 全量上書き）
 
 ---
@@ -411,7 +411,7 @@ MCL product-design の出力を分析し、ベンダーニュートラルな知�
 - `references/infra/infra-feedback.md` — フィードバック解析タスクの詳細指示
 - `references/arch-feedback-rules.md` — フィードバックルール（何を戻すか/戻さないか）
 - `references/event-sourcing-rules.md` — イベントソーシングルール
-- MCL 出力ファイル群（`docs/infra/events/{event_id}/specs/product/output/` 配下）
+- MCL 出力ファイル群（`docs/infra/events/{event_id}/docs/mcl/product/output/` 配下）
 - `docs/arch/latest/arch-design.yaml` — 現在のアーキテクチャ設計
 
 ### タスク
@@ -488,7 +488,7 @@ Step3 で Arch にフィードバックした結果、product-input.yaml の再�
 - `references/infra/infra-writeback-check.md` — 書き戻しチェックの詳細指示
 - `docs/arch/latest/arch-design.yaml` — フィードバック反映後の Arch
 - `docs/arch/events/{前回の arch event_id}/arch-design.yaml` — フィードバック前の Arch
-- `specs/product/input/product-input.yaml` — 現在の MCL 入力
+- `docs/mcl/product/input/product-input.yaml` — 現在の MCL 入力
 
 ### タスク
 
@@ -574,7 +574,7 @@ Step4: Infra 書き戻しチェック → 要再実行
 返してはならない。
 
 - [ ] Phase1: `product-input.yaml` 生成
-- [ ] Phase2: MCL `product-design` 実行（`specs/product/output/` 生成）
+- [ ] Phase2: MCL `product-design` 実行（`docs/mcl/product/output/` 生成）
 - [ ] Phase3: `infra-event.yaml` + `docs/infra/latest/` スナップショット作成
 - [ ] Phase4: `docs/arch/latest/arch-design.yaml` へのフィードバック反映（タイムスタンプ更新）
 - [ ] Phase5: write-back 検証（arch バリデーションスクリプト PASS）

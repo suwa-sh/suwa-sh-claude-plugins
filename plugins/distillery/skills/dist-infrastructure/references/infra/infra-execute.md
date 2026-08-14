@@ -4,9 +4,9 @@
 
 ## 前提
 
-- `specs/product/input/product-input.yaml` が Step1 で生成済み
-- `specs/foundation/output/foundation-context.yaml` が存在
-- `specs/shared-platform/output/shared-platform-context.yaml` が存在（最小構成含む）
+- `docs/mcl/product/input/product-input.yaml` が Step1 で生成済み
+- `docs/mcl/foundation/output/foundation-context.yaml` が存在
+- `docs/mcl/shared-platform/output/shared-platform-context.yaml` が存在（最小構成含む）
 
 ## 実行手順
 
@@ -14,7 +14,7 @@
 
 Skill ツールで `mcl-product-design` を起動する。
 
-`specs/product/input/product-input.yaml` が存在するため、MCL のワークロードヒアリング（Step 2）はスキップされ、ファイルから入力を取得する。
+`docs/mcl/product/input/product-input.yaml` が存在するため、MCL のワークロードヒアリング（Step 2）はスキップされ、ファイルから入力を取得する。
 
 MCL は以下の Step を順に実行する:
 - Step 1: 上位コンテキスト読み込み（foundation + shared-platform）
@@ -28,11 +28,11 @@ MCL 完了後、以下の出力が生成されていることを確認する:
 
 | 出力 | パス | 必須 |
 |------|------|------|
-| ワークロードモデル | `specs/product/output/product-workload-model.yaml` | Yes |
-| Vendor Mapping（対象クラウドごと） | `specs/product/output/product-mapping-{vendor}.yaml` | Yes |
-| Implementation Spec（対象クラウドごと） | `specs/product/output/product-impl-{vendor}.yaml` | Yes |
-| Observability Spec | `specs/product/output/product-observability.yaml` | Yes |
-| コスト最適化ヒント | `specs/product/output/product-cost-hints.yaml` | Yes |
+| ワークロードモデル | `docs/mcl/product/output/product-workload-model.yaml` | Yes |
+| Vendor Mapping（対象クラウドごと） | `docs/mcl/product/output/product-mapping-{vendor}.yaml` | Yes |
+| Implementation Spec（対象クラウドごと） | `docs/mcl/product/output/product-impl-{vendor}.yaml` | Yes |
+| Observability Spec | `docs/mcl/product/output/product-observability.yaml` | Yes |
+| コスト最適化ヒント | `docs/mcl/product/output/product-cost-hints.yaml` | Yes |
 | Decision Record | `docs/cloud-context/decisions/product/` | No |
 | Conformance Report | `docs/cloud-context/conformance/product/` | No |
 | IaC スケルトン | `infra/product/{vendor}/` | No |
@@ -68,7 +68,7 @@ MCL 完了後、infra イベントを記録する。
 
 **product-input.yaml**
 
-`specs/product/input/product-input.yaml` のコピー（トレーサビリティ用）。
+`docs/mcl/product/input/product-input.yaml` のコピー（トレーサビリティ用）。
 
 **_inference.md**
 

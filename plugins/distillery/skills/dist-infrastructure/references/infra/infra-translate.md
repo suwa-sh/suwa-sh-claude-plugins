@@ -7,7 +7,7 @@ arch-design.yaml と nfr-grade.yaml を読み取り、MCL product-design の入�
 1. `docs/arch/latest/arch-design.yaml` — アーキテクチャ設計
 2. `docs/nfr/latest/nfr-grade.yaml` — NFR グレード
 3. `docs/rdra/latest/システム概要.json` — システム概要（名前・説明用）
-4. `specs/foundation/output/foundation-context.yaml` — Foundation コンテキスト（target_clouds 取得用）
+4. `docs/mcl/foundation/output/foundation-context.yaml` — Foundation コンテキスト（target_clouds 取得用）
 
 ## 変換手順
 
@@ -107,7 +107,7 @@ arch-design.yaml と nfr-grade.yaml を読み取り、MCL product-design の入�
 
 ## 出力
 
-`specs/product/input/product-input.yaml` を `references/translation-mapping.md` の出力フォーマットに従い生成する。
+`docs/mcl/product/input/product-input.yaml` を `references/translation-mapping.md` の出力フォーマットに従い生成する。
 
 ## 推論根拠の記録
 

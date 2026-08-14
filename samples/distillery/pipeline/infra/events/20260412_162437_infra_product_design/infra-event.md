@@ -29,11 +29,11 @@
 
 | パス | ステータス |
 |------|-----------|
-| specs/product/output/product-workload-model.yaml | generated |
-| specs/product/output/product-mapping-aws.yaml | generated |
-| specs/product/output/product-impl-aws.yaml | generated |
-| specs/product/output/product-observability.yaml | generated |
-| specs/product/output/product-cost-hints.yaml | generated |
+| docs/mcl/product/output/product-workload-model.yaml | generated |
+| docs/mcl/product/output/product-mapping-aws.yaml | generated |
+| docs/mcl/product/output/product-impl-aws.yaml | generated |
+| docs/mcl/product/output/product-observability.yaml | generated |
+| docs/mcl/product/output/product-cost-hints.yaml | generated |
 | docs/cloud-context/decisions/product/product-decision-compute-model.yaml | generated |
 | docs/cloud-context/decisions/product/product-decision-database-engine.yaml | generated |
 | docs/cloud-context/conformance/product/product-conformance-aws.yaml | generated |

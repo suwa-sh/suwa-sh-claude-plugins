@@ -81,15 +81,15 @@ MCL product-design スキルの実行結果。outputs には生成された全�
 典型的な outputs:
 ```yaml
 outputs:
-  - path: "specs/product/output/product-workload-model.yaml"
+  - path: "docs/mcl/product/output/product-workload-model.yaml"
     status: "generated"
-  - path: "specs/product/output/product-mapping-aws.yaml"
+  - path: "docs/mcl/product/output/product-mapping-aws.yaml"
     status: "generated"
-  - path: "specs/product/output/product-impl-aws.yaml"
+  - path: "docs/mcl/product/output/product-impl-aws.yaml"
     status: "generated"
-  - path: "specs/product/output/product-observability.yaml"
+  - path: "docs/mcl/product/output/product-observability.yaml"
     status: "generated"
-  - path: "specs/product/output/product-cost-hints.yaml"
+  - path: "docs/mcl/product/output/product-cost-hints.yaml"
     status: "generated"
 ```
 
@@ -99,12 +99,12 @@ MCL 実行完了時（`mcl_execution.status: "completed"`）に、以下のフ�
 
 | カテゴリ | 必須ファイルパターン | 説明 |
 |---------|-------------------|------|
-| MCL 入力 | `specs/product/input/product-input.yaml` | ワークロード入力 |
-| ワークロードモデル | `specs/product/output/product-workload-model.yaml` | ベンダーニュートラルモデル |
-| ベンダーマッピング | `specs/product/output/product-mapping-*.yaml` | 最低1ファイル |
-| 実装仕様 | `specs/product/output/product-impl-*.yaml` | 最低1ファイル |
-| オブザーバビリティ | `specs/product/output/product-observability.yaml` | オブザーバビリティ仕様 |
-| コストヒント | `specs/product/output/product-cost-hints.yaml` | コスト最適化ヒント |
+| MCL 入力 | `docs/mcl/product/input/product-input.yaml` | ワークロード入力 |
+| ワークロードモデル | `docs/mcl/product/output/product-workload-model.yaml` | ベンダーニュートラルモデル |
+| ベンダーマッピング | `docs/mcl/product/output/product-mapping-*.yaml` | 最低1ファイル |
+| 実装仕様 | `docs/mcl/product/output/product-impl-*.yaml` | 最低1ファイル |
+| オブザーバビリティ | `docs/mcl/product/output/product-observability.yaml` | オブザーバビリティ仕様 |
+| コストヒント | `docs/mcl/product/output/product-cost-hints.yaml` | コスト最適化ヒント |
 
 `mcl_execution.status` が `"completed"` 以外の場合、必須ファイルチェックはスキップする。
 
@@ -154,15 +154,15 @@ mcl_execution:
   status: "completed"
   completed_at: "2026-03-28T14:30:00"
   outputs:
-    - path: "specs/product/output/product-workload-model.yaml"
+    - path: "docs/mcl/product/output/product-workload-model.yaml"
       status: "generated"
-    - path: "specs/product/output/product-mapping-aws.yaml"
+    - path: "docs/mcl/product/output/product-mapping-aws.yaml"
       status: "generated"
-    - path: "specs/product/output/product-impl-aws.yaml"
+    - path: "docs/mcl/product/output/product-impl-aws.yaml"
       status: "generated"
-    - path: "specs/product/output/product-observability.yaml"
+    - path: "docs/mcl/product/output/product-observability.yaml"
       status: "generated"
-    - path: "specs/product/output/product-cost-hints.yaml"
+    - path: "docs/mcl/product/output/product-cost-hints.yaml"
       status: "generated"
 
 arch_feedback:

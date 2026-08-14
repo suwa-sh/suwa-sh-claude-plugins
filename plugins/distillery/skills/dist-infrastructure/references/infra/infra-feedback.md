@@ -4,11 +4,11 @@ MCL product-design の出力を分析し、ベンダーニュートラルな知�
 
 ## 入力ファイル
 
-1. `specs/product/output/product-workload-model.yaml` — ワークロードモデル
-2. `specs/product/output/product-mapping-{vendor}.yaml` — 各クラウドのサービスマッピング
-3. `specs/product/output/product-impl-{vendor}.yaml` — 各クラウドの実装仕様
-4. `specs/product/output/product-observability.yaml` — オブザーバビリティ仕様
-5. `specs/product/output/product-cost-hints.yaml` — コスト最適化ヒント
+1. `docs/mcl/product/output/product-workload-model.yaml` — ワークロードモデル
+2. `docs/mcl/product/output/product-mapping-{vendor}.yaml` — 各クラウドのサービスマッピング
+3. `docs/mcl/product/output/product-impl-{vendor}.yaml` — 各クラウドの実装仕様
+4. `docs/mcl/product/output/product-observability.yaml` — オブザーバビリティ仕様
+5. `docs/mcl/product/output/product-cost-hints.yaml` — コスト最適化ヒント
 6. `docs/arch/latest/arch-design.yaml` — 現在のアーキテクチャ設計
 
 ## フィードバック抽出手順

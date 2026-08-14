@@ -403,7 +403,7 @@ if (dirExists(infraLatest)) {
 if (!infraHas && infraEvents.length) {
   const latestEvDir = path.join(docsRoot, 'infra/events', infraEvents[infraEvents.length - 1]);
   L(`- ${lnk('最新イベント: ' + infraEvents[infraEvents.length - 1], latestEvDir)}`);
-  const mclOut = path.join(latestEvDir, 'specs/product/output');
+  const mclOut = path.join(latestEvDir, 'docs/mcl/product/output');
   if (dirExists(mclOut)) { try { for (const f of fs.readdirSync(mclOut).filter(f => f.endsWith('.yaml')).sort()) L(`  - ${lnk(f, path.join(mclOut, f))}`); } catch {} }
   const tf = path.join(latestEvDir, 'infra/product/aws/main.tf');
   if (fileExists(tf)) L(`  - ${lnk('main.tf', tf)}`);

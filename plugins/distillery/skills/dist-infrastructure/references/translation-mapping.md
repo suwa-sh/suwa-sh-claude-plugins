@@ -8,7 +8,7 @@ arch-design.yaml と nfr-grade.yaml の各フィールドを MCL product-input.y
 |--------|------------|------------|
 | `docs/rdra/latest/システム概要.json` → name | `workload.name` | そのまま使用 |
 | `docs/rdra/latest/システム概要.json` → description | `workload.description` | そのまま使用 |
-| `specs/foundation/output/foundation-context.yaml` → `organization_structure.target_clouds` | `workload.target_clouds` | scope が `full_stack` のクラウドを抽出。なければ全クラウドを対象 |
+| `docs/mcl/foundation/output/foundation-context.yaml` → `organization_structure.target_clouds` | `workload.target_clouds` | scope が `full_stack` のクラウドを抽出。なければ全クラウドを対象 |
 
 ## ワークロードタイプの変換
 

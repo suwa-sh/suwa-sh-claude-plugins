@@ -414,10 +414,10 @@ function checkRequiredOutputFiles(eventDir) {
 
   // 固定パスの必須ファイル
   const exactFiles = [
-    { path: 'specs/product/input/product-input.yaml', label: 'MCL 入力（product-input.yaml）' },
-    { path: 'specs/product/output/product-workload-model.yaml', label: 'ワークロードモデル（product-workload-model.yaml）' },
-    { path: 'specs/product/output/product-observability.yaml', label: 'オブザーバビリティ（product-observability.yaml）' },
-    { path: 'specs/product/output/product-cost-hints.yaml', label: 'コストヒント（product-cost-hints.yaml）' },
+    { path: 'docs/mcl/product/input/product-input.yaml', label: 'MCL 入力（product-input.yaml）' },
+    { path: 'docs/mcl/product/output/product-workload-model.yaml', label: 'ワークロードモデル（product-workload-model.yaml）' },
+    { path: 'docs/mcl/product/output/product-observability.yaml', label: 'オブザーバビリティ（product-observability.yaml）' },
+    { path: 'docs/mcl/product/output/product-cost-hints.yaml', label: 'コストヒント（product-cost-hints.yaml）' },
   ];
 
   for (const file of exactFiles) {
@@ -429,8 +429,8 @@ function checkRequiredOutputFiles(eventDir) {
 
   // glob パターンの必須ファイル（最低1ファイル）
   const globPatterns = [
-    { prefix: 'product-mapping-', dir: 'specs/product/output', label: 'ベンダーマッピング（product-mapping-*.yaml）' },
-    { prefix: 'product-impl-', dir: 'specs/product/output', label: '実装仕様（product-impl-*.yaml）' },
+    { prefix: 'product-mapping-', dir: 'docs/mcl/product/output', label: 'ベンダーマッピング（product-mapping-*.yaml）' },
+    { prefix: 'product-impl-', dir: 'docs/mcl/product/output', label: '実装仕様（product-impl-*.yaml）' },
   ];
 
   for (const pat of globPatterns) {
