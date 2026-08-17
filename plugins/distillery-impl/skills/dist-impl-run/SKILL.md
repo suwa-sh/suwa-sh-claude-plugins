@@ -253,8 +253,9 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    `implementation_review_evidence`（exact bytes SHA-256 / gate結果 / open blocker・major件数 /
    captures_sha256。capture_review のスクショが承認後に置換・欠損していないことの証跡)を記録する。
    S9 doneは資料生成済みを示すだけで、承認の正は`review_approved` event
-2. ユーザーへ、ゲート結果、Verifierの反証、実装と仕様の差分、blockerの有無を提示し、
-   **実装を承認 / 差し戻し**を問う。dist-pipelineのstage名やrouteは提示・選択させない。
+2. ユーザーへ、UCと対象仕様、実装の構成・処理・データフロー、動かし方、テストと確認方法、
+   現在の仕様差分とblockerの有無を人間向け名称で提示し、**実装を承認 / 差し戻し**を問う。
+   `S1`等の内部stage code、attempt履歴、dist-pipelineのstage名やrouteは提示・選択させない。
    対話で出た指摘・条件は承認・差し戻しのどちらでも`review/review-notes.md`へ記録する
 3. feedback draftへの訂正を含む指摘がある場合、`review_approved`をまだ記録せず、S8を
    `mode=refresh`で再実行する。更新・追加・除去を確認し、S9 HTMLを再生成してから再度実装承認を得る

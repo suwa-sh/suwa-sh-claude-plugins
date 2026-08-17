@@ -1,93 +1,190 @@
 # 実装レビューHTML骨格テンプレート（dist-impl-review）
 
-単一HTML・逆ピラミッド構成。S9は実装の合否レビューであり、dist-pipelineのrouting reviewではない。
+単一HTML・逆ピラミッド構成。主役はレビュー履歴ではなく、UC、対象仕様、完成した実装である。
 
-| # | セクション | 内容 | データ取得元 |
+## セクション構成
+
+| # | セクション | 内容 | 主な根拠 |
 |---|---|---|---|
-| 1 | 結論カード | UC名、評価対象、結論、根拠3点、次の行動 | status、done、findings |
-| 2 | このUCは何か | 業務 / BUC / UC、実装tierと役割、主要な利用者価値 | uc-map、spec概要 |
-| 3 | 6段ゲート結果 | ゲート名、意味、結果、分母つき件数、実施stage | doneのgates |
-| 4 | Verifier反証と解決(両レーン) | attemptごとのblocker/major/minor、修正、再検証、未解決事項。verifyレーン（7観点）とui-reviewレーン（dom_snapshot/capture_review。dispatchされたtierのみ）を分けて示す | findings（S5_verify、S5_ui-review）、done |
-| 5 | 実装と仕様の差分 | feedback ID / 件数 / path、各CRのID / severity / 観測事実 / 問題 / 要求 / 完了条件の全文、実装承認への影響 | as-built、feedback draft |
-| 6 | 判断ポイント | 承認で確定する実装、承認後に公開されるfeedback、差し戻し先 | status、本文規則 |
-| 7 | 技術詳細 | input manifest、model、attempt履歴、learnings | manifest、status、learnings |
+| 1 | 判断サマリ | UC名、利用者価値、レビュー範囲、結論、根拠、次の行動 | UC仕様、現在の確認結果 |
+| 2 | UCとレビュー対象仕様 | actor、trigger、事前条件、入力、出力、業務ルール、受け入れ条件、対象外 | spec、tier仕様、API/model summary |
+| 3 | 実装の構成 | component、責務、外部system、storage、境界を構成図で示す | tier仕様、architecture、実装 |
+| 4 | 処理フロー | 正常系と重要分岐・失敗時の流れを図示する | spec、実装、error contract |
+| 5 | データフロー | dataのsource、変換、保存、送信、秘密情報境界を図示する | model、contract、実装 |
+| 6 | 動かし方 | 前提、設定、command、代表入力、出力、artifact、失敗の見方 | impl-config、entrypoint、実装 |
+| 7 | テストと確認方法 | 何を、どう実行し、何を確認したか。件数、代表ケース、障害注入、未確認範囲 | tests、done、最終findings |
+| 8 | 現在の差分と制約 | 現在未解決のblocker/major、暫定境界、feedback全文 | 最終findings、as-built、draft |
+| 9 | 判断ポイント | 承認で確定すること、許容する制約、差し戻し時に必要な情報 | 上記全体 |
 
-## 結論バッジ
+この9名称をHTMLの見出しとしてそのまま使い、省略・内部コードへの置換をしない。
 
-- **承認可能**: 全ゲートpassかつopen blocker 0
-- **要修正**: ゲートfailまたは実装findingのopen blockerあり。戻り先stageを示す
-- **仕様ブロック**: blocker severityの仕様要求が残る。実装の到達点と、仕様更新まで再開できない理由を示す
+## 判断サマリ
 
-## UI一致確認の表示(ui-reviewレーン。セクション4)
+- **承認可能**: 全確認結果がpassし、現在のopen blockerが0
+- **要修正**: 確認結果にfail、または現在のopen blockerがある
+- **仕様ブロック**: blocker severityの仕様要求が残り、現在の入力では実装を確定できない
 
-dispatchされたtierがある場合、verifyレーンの反証と区別してui-reviewレーンの結果を表示する。
-ui-reviewが1件もdispatchされていないtier・UCについては、一律「両方無効」表示で終わらせず、
-理由を次の3分類のいずれかで明示し、未検証範囲が分かるようにする。
+冒頭には内部工程やattemptを出さず、次の4点だけを置く。
 
-- **capability無効**: 該当tierの`tiers[].capabilities.ui_review`が`dom_snapshot: false`かつ
-  `capture_review: disabled`（読解ベースの照合表のみで進めている）
-- **screen解決0件**: uc-mapの`ui_screens`が0件で`ui_screen_resolution`が記録済み
-  （`plain_ui_confirmed`/`feedback_requested`。素のpackages/uiで進める合意済みか変更要求起票済み）
-- **executable target 0件**: capabilityは有効だが、story実体・variants未解決等でdispatch前提の
-  target（screen×variant）がdist-impl-run側で算出できなかった（uc-map/design-eventの不整合の可能性）
+1. このUCが誰の何を実現するか
+2. 今回どの仕様・実装境界をレビューするか
+3. 合否と、その直接根拠
+4. 「実装を承認」または「差し戻し」という次の行動
 
-いずれにも該当しない（capability有効かつtargetありでdispatchされている）場合は、通常どおり
-checkごとの結果を表示する。
+## UCとレビュー対象仕様
 
-- **checkごとの対象数**: `checks_checked.{dom_snapshot,capture_review}.note`から「対象n画面×m状態」を転記する
-- **checkごとの結果**: done/findingsから status（done/skipped/unverified）と、findings件数
-  （severity別）を示す。`unverified`はdispatch前提と実態のずれを示すため、対象0件の理由を明示する。
-  capture_reviewが`skipped`の場合は`reason`（`capability_disabled`＝方針で無効／
-  `runtime_unavailable`＝browserツールがそのセッションで利用不能）を区別して示す
-  （`runtime_unavailable`はdoneが`pass`のまま進む正常系であり、環境失敗ではない）
-- **capture_reviewのキャプチャ表示**: findingsの`captures[]`から、targetごとに story側と実装側の
-  スクリーンショットを**2枚並記**し、`observation`（所見）と`result`（match/diff/skipped）を添える。
-  **リンクを生成する前に、path containment・regular file・存在・実測SHA-256の一致を検証済みの
-  画像だけを表示する**（dist-impl-review/SKILL.mdの検証手順。未検証・不一致の画像は表示しない）。
-  画像は`attempt-{n}/ui-artifacts/{tier_id}/`配下からHTMLの到達できる相対リンクで示し（sha256も併記し、
-  改変されていないことを示す）、`result: skipped`（`reason: render_context_unavailable`）は画像を
-  「再現不能」として明示し偽の一致・差分と誤読させない。差分がないtargetもS9では両画像を並記し、
-  一致の根拠を確認できるようにする（アドホックレビューであり決定論のゲートではないことも明記する）
-- **縮退状態（dom_snapshot側のみ）**: doneの`result: environment_failure`があれば、
-  `environment_failure`フィールド（check/command/exit_code/evidence。失敗の一次根拠）、
-  `degradation_proposed`の内容（capability更新案）、オーケストレータの縮退判断
-  （承認/拒否、承認なら更新後のcapability値）を示す（capture_reviewはこの状態に到達しない —
-  browserツール利用不能は上記`runtime_unavailable`スキップとして表示する）
+最低限、次を表または短いcardで示す。
 
-## feedbackの表示
+- 利用者・起動主体
+- triggerと事前条件
+- 入力と入力元
+- 成功時の出力・状態変化・artifact
+- 失敗時の応答と残してはいけない状態
+- 業務ルール・不変条件
+- 受け入れ条件
+- 今回の対象外または未確定境界
 
-- feedback draftは実装中に判明した仕様差分の説明として表示する
-- HTMLへ表示したdraftのexact bytesはS9 done/eventの`feedback_review_evidence`
-  （feedback ID / SHA-256 / request件数）へ結ぶ。ただしhashやevent IDはHTMLへ表示しない
-- feedback IDとrequest件数、review時の`feedback/draft.md`、承認後に同じbytesを置く
-  `feedback-requests/{feedback_id}.md`を明示する。pathはHTMLから到達できる相対linkにする
-- 各CRは観測事実 / 現在の仕様と問題 / 変更してほしいこと / 完了条件を全文表示する。認知負荷を下げる
-  `details`折りたたみはよいが、link先を開かないと内容を承認できない構成にはしない
-- pipeline内部の所有stage、stage別instruction、振り分け候補を作らない
-- feedbackの承認を実装承認から分離した選択肢として出さない
-- 実装承認後、有効要求が1件以上ならS8 publishが単一Markdownを公開することだけを説明する
-- blockerの場合、承認は「現在の実装到達点を認め、仕様修正依頼を公開する」意味であり、UCは
-  `blocked_on_spec`のままになる
+仕様文を丸ごと転載せず、判断に必要な意味へ要約する。各要約はpathまたは管理IDへ追跡可能にする。
 
-## 判断ポイント
+## 3つの図解
 
-1. この実装を現在の仕様と明示した差分のもとで承認できるか
-2. 未解決findingや暫定回避が利用者・運用へ与える影響を許容できるか
-3. 差し戻す場合、どの実装stageから再実行すべきか
+外部runtimeなしで表示できるinline SVGまたはHTML/CSSを使う。Mermaid sourceだけを置かない。
+各図は`figure`、見出し、`figcaption`、短いテキスト代替を持つ。色以外に形・線・ラベルで意味を示す。
 
-S9 done/eventはHTML exact bytes SHA-256、gate結果、open blocker/major件数、
-`captures_sha256`（表示したcapture_reviewの全画像を束ねたsha256。captureが無ければnull）を
-`implementation_review_evidence`へ記録する。captures_sha256はHTML生成後にスクショが
-置換・欠損していないことの証跡であり、値自体はHTMLへ表示しない。承認時、オーケストレータはcurrent HTMLとこのmapping、
-current draftと`feedback_review_evidence`が一致することを再検証し、そのS9 eventを参照して両mappingを
-exactに持つ`review_approved` eventを記録する。承認後にfeedback draftがある場合、
-S8 publishを実行してから終端状態へ進む。
-公開されたMarkdownはdist-pipelineが自分でstage判定するため、レビュー時点でstage知識は不要。
+### 構成図
+
+次を左から右、または上から下へ配置する。
+
+- actor / scheduler / browser等の起点
+- 今回実装したcomponentを責務名で表示
+- 関連する別component・外部system
+- DB、queue、file、object storage等の永続境界
+- network/process境界と、同期/非同期の別
+
+`tier-facade`等の内部IDを箱名にせず、「起動受付CLI」等の責務名を使う。未確定の接続先は
+破線と「未確定」と書き、推測で埋めない。
+
+### 処理フロー図
+
+番号付きnodeと矢印で、少なくとも次を示す。
+
+1. triggerと入力受付
+2. validationと業務ルール判定
+3. 設定・data解決
+4. 永続化またはartifact確定
+5. 外部処理・下流呼出し
+6. 成功応答
+7. 重要な検証失敗・timeout・補償の分岐
+
+正常系を主線、失敗系を分岐線にする。実装が保証する順序と、仕様上未確定の順序を区別する。
+
+### データフロー図
+
+data objectごとにsource→transform→destinationを示す。
+
+- user/scheduler入力
+- config・job map・feature flag
+- request/command DTO
+- domain/state record
+- execution artifact・event・log
+- DB/queue/file/remoteへの保存・送信
+- response/stdout/stderr
+- secretそのものとcredential referenceの境界
+
+矢印にはdata名またはformatを付ける。保存は円筒、processは角丸、外部actorは別形状など、凡例を付ける。
+
+## 動かし方
+
+copyできる形で次を示す。
+
+- 必要なruntime・tool・接続先
+- 必須環境変数やconfig。秘密値は名前だけで値を載せない
+- 最小command例
+- 代表入力例
+- 成功時のexit code / HTTP status / stdout / response
+- 失敗時の観測点
+- 生成artifact、DB record、logの場所
+- cleanupや再実行時の注意
+
+commandはactual entrypointから得る。仕様だけを根拠に、実装に存在しないcommandを作らない。
+
+## テストと確認方法
+
+レビュー履歴ではなく、現在の実装に対する確認範囲を示す。
+
+| 表示名 | 説明 |
+|---|---|
+| 書式確認 | formatterのcheck-only結果 |
+| 静的解析 | lint / typecheck / schema validation |
+| 実装層テスト | unit・component・境界・障害注入 |
+| 実装層の振る舞い確認 | tier単位のBDD |
+| UC統合テスト | 全componentを結んだUC BDD |
+| 受け入れテスト | 選択されたATDD |
+
+各行に、対象、実行方法、成功数/総数、代表ケースを示す。`22/22件成功`のように分子と分母を明記し、
+`22 tests`のような総数だけの合格表現を使わない。command全文はcopy可能な`details`へ置いてよい。
+特に次を明示する。
+
+- 正常系で何をassertしたか
+- validation/error/timeout/rollback/compensationをどう注入したか
+- file/DB/message/remote/UIをどう観測したか
+- 実時間、permission、秘密情報非包含等の非機能確認
+- mock/test doubleを使った境界と、実systemで未確認の範囲
+
+### UIがある場合
+
+UI reviewはattempt履歴ではなく「見た目と構造の確認方法」として本節へ統合する。
+
+- DOM一致とcapture reviewの対象数・結果を示す
+- captureはpath containment、regular file、存在、実測SHA-256一致を検証した画像だけを表示する
+- targetごとにstory側と実装側を並べ、observationとmatch/diff/skippedを示す
+- `render_context_unavailable`は「再現不能」と明記し、一致扱いにしない
+- capability無効、screen解決0件、executable target 0件は、人間向けの理由と未確認範囲を示す
+
+## 現在の差分とfeedback
+
+- 過去のfinding件数推移や、どのattemptで何を直したかは表示しない
+- 現在openのblocker/majorだけを、影響、暫定回避、承認判断への意味とともに示す
+- 閉鎖済みfindingは、現在のテスト説明に必要な場合だけ「確認済みの性質」として示し、履歴を語らない
+- feedback draftがあれば、feedback ID、要求数、review時path、承認後公開予定pathを示す
+- 各CRは観測事実、現在の仕様と問題、変更してほしいこと、完了条件を全文表示する
+- CR IDより人間向けタイトルを先に表示する
+- pipeline内部のstage、routing、個別処理指示、承認hashを表示しない
+
+## 内部コードを読者向け名称へ変換する
+
+HTML本文・見出しでは次のように表現する。
+
+| 内部コード | 読者向け名称 |
+|---|---|
+| S1 | 仕様入力の確認 |
+| S2 | テスト足場の準備 |
+| S3 | 契約の整合確認 |
+| S4 | 実装層の実装・テスト |
+| S5 | 独立検証 |
+| S6 | UC統合テスト |
+| S7 | 受け入れテスト |
+| S8 | 仕様差分の整理 |
+| S9 | 人レビュー |
+
+原則として内部コード自体を併記しない。raw statusは「実行中」「レビュー待ち」「完了」等へ変換する。
+tier IDはtier仕様の責務名へ変換する。管理IDが追跡に不可欠な場合だけ、主表示の後に小さく添える。
+
+## evidence
+
+S9 done/eventはHTML exact bytes SHA-256、`6/6 pass`等の集約結果、現在のopen blocker/major件数、
+`captures_sha256`を`implementation_review_evidence`へ記録する。feedback draftのID・SHA・件数は
+`feedback_review_evidence`へ記録する。これらのhashやevent IDはHTMLへ表示しない。
+
+承認時、オーケストレータはcurrent HTML・draft・captureを再検証し、S9 evidenceと一致する場合だけ
+`review_approved` eventを作る。承認後にdraftがあれば、同じbytesをimmutable feedback requestへ公開する。
 
 ## 様式規則
 
-- セクション1だけで判断でき、後続は根拠の展開にする
-- 数値は `n/分母`。欠測は「unknown」
+- 文章だけで3項目以上の関係を説明しない。対応表、flow、図へ変換する
+- 1図はおおむね9 node以内。複雑なら分割する
+- 図中の文字は狭幅でも読める大きさにし、横スクロールまたはresponsive viewBoxを使う
+- 数値は`n/分母`。欠測は「未計測」
 - 色だけに意味を持たせない
 - wide tableは横スクロール可能にする
 - 外部asset、実行script、route JSON埋め込みを使わない

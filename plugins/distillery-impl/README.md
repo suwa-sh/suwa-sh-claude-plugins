@@ -17,6 +17,9 @@ Implementerがコードを書き、別モデルのVerifierが検証します。
 - **4段階のテスト**：ATDD、UC BDD、tier BDD、TDDの順に期待動作を固定します。
   実装前にred baselineを確認します。
 - **独立検証**：Implementerとは別のVerifierが、仕様整合性を含む7項目を検証します。
+- **判断しやすい人レビュー**：UCと対象仕様を主軸に、完成した構成・処理フロー・データフロー、
+  動かし方、テストと確認方法を静的図解付きの単一HTMLへまとめます。レビュー指摘の履歴や内部stage codeは
+  読者向け画面へ出さず、現在の未解決事項だけを示します。
 - **UI一致確認の並走レーン**：読解（Verifierの照合表・常時実施）に加え、プロジェクトの能力
   （`tiers[].capabilities.ui_review`）に応じてdom_snapshot（決定論・CI常設。story実装両方をrenderして
   構造署名を比較）・capture_review（アドホック・環境依存。browserでキャプチャした画面を目視比較。
@@ -78,7 +81,7 @@ flowchart TD
 | `distillery-impl:dist-impl-verify` | Verifier(反証専用・7 観点。コード vs 仕様書を読解で突合) |
 | `distillery-impl:dist-impl-ui-review` | UI Reviewer(S5 並走レーン。実行された画面 vs story を実行で突合) |
 | `distillery-impl:dist-impl-feedback` | 変更要求・learnings・skill/コンテキスト改善提案 |
-| `distillery-impl:dist-impl-review` | レビュー用 HTML レポート生成 |
+| `distillery-impl:dist-impl-review` | UC/仕様・構成・処理/データフロー・操作・テストを図解する人レビュー用HTML生成 |
 
 ## 前提条件
 
