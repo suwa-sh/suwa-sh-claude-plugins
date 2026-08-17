@@ -94,7 +94,10 @@ lock・入力ハッシュもその契約のエントリのみ更新する(無指
    **tier 宣言と併せてユーザー確認で確定**する(provider/consumers が推定できない契約は
    推測で埋めず確認必須項目にする)。契約に載らない tier 間依存は実装時に issues 経由で扱う
 4. uc-map.yaml を生成: 全 UC の uc_id(生成式は state-schema.md。NFC 正規化 + canonical JSON + sha256 先頭 8 桁)、
-   path、tiers。**衝突検査**で衝突があれば 12 桁に延長。
+   path、tiers。**衝突検査**で衝突があれば 12 桁に延長。各UCについて自然な
+   `uc_english_name`と、それをlowercase ASCII kebab-case化した`branch_slug`を推奨案として提示する。
+   ユーザー確認後、`config_confirmed`イベントを先に追記してから保存する。`branch_slug`は
+   `^[a-z0-9]+(?:-[a-z0-9]+)*$`かつuc-map内で一意でなければP2を完了にしない。
    **実施順の計画**: `use_cases[]` の並び順 = 実施順(引数なし dist-impl-run の着手順。
    正本は state-schema.md「uc-map.yaml」)。spec(BUC フロー・各 UC の生産物/消費物)から
    UC 間の依存を推論して並べる — 成果物・状態を生む生産者 UC(実行・登録系)を先、

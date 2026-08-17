@@ -2,7 +2,7 @@
 name: distillery-impl:dist-impl-run
 description: >
   distillery-impl のオーケストレータ。UC を指定して(または引数なしで uc-map の実施順に
-  未完了 UC を自動選択・自動継続して)実装パイプライン(S0 bootstrap → S1 uc-init →
+  未完了 UC を自動選択して)実装パイプライン(S0 bootstrap → S1 uc-init →
   S2 test-scaffold → S3 contracts → S4 tier 並走実装 → S5 別モデル Verifier(+ dispatch 条件を満たす
   frontend tier は実行ベースの UI Reviewer が並走)→ S6 UC BDD → S7 ATDD →
   S8 feedback → S9 review)をファイル駆動の冪等再開つきで運転する。
@@ -15,7 +15,8 @@ metadata:
 # dist-impl-run
 
 引数: `[{UC 指定}] [specs_root={...}] [repo_root={...}]`(UC 指定は 完全修飾「業務/BUC/UC」・uc_id・一意な UC 名のいずれか。
-**省略時は uc-map の実施順で次の未完了 UC を自動選択**し、completed のたびに次へ自動継続する — 起動シーケンス 3)
+**省略時は uc-map の実施順で次の未完了 UC を自動選択**する。1 UC = 1 branch = 1 PR とし、
+PR 作成後は次の UC へ自動継続しない — 起動シーケンス 3)
 
 ## オーケストレータの原則
 
@@ -31,15 +32,12 @@ metadata:
 
 ## 起動シーケンス
 
-0. **必須skill確認とreview HTMLのGit除外**:
+0. **必須skill確認**:
    - `diagram-design`を`~/.claude/skills/`、`~/.agents/skills/`、
      repoの`.claude/skills/`から探す。無ければ処理を開始せず、source
      `https://github.com/cathrynlavery/diagram-design`、security audit
      `https://skills.sh/cathrynlavery/diagram-design`、install
      `npx skills add cathrynlavery/diagram-design`を提示して、インストールするか確認する
-   - repoの`.gitignore`へ`docs/impl/latest/*/review/*.html`をexactly onceで追加する
-   - 既に追跡中のreview HTMLがあれば、working treeのfileを残したままindexから除外する。
-     review HTMLは以後どのstage commitにも含めない。この一度きりのmigrationはorchestratorのwrite-set
 1. **lease 確認**: `docs/impl/latest/run-lease.yaml` が存在すれば起動を拒否して報告
    (stale 判定は state-schema.md。剥がすのはユーザー確認後)
 2. **S0 判定**: `docs/impl/latest/bootstrap.done.yaml` の**全 Phase が done/skipped、かつ
@@ -49,22 +47,50 @@ metadata:
    サブエージェントで実行(config/uc-map の存在では判定しない — P2 で中断した S0 を完了扱いしないため)。
    bootstrap の確認推奨項目(tier→dir / **kind** / datastore_owner / backend_framework /
    言語・コマンド)はユーザーに中継して確定(kind が未確定・不正値のままなら S0 を完了にしない)。
-   **確定したら `config_confirmed` イベントを追記してから impl-config を更新する**(イベント → latest の順)
+   **確定したら `config_confirmed` イベントを追記してから impl-config を更新する**(イベント → latest の順)。
+   S0はrepository setupでありUC workへ混ぜない。S0が新規変更を作ったrunはsetup commitまでで停止し、
+   base branchのupstreamへ反映・mergeされた後に再実行する。UC branch開始時はbase branchとそのupstreamが
+   同じcommitであることを必須にし、bootstrap commitをUCのsquash範囲へ混入させない
 3. **UC 解決**: 引数あり = uc-map と照合(照合は NFC 正規化後)。
    完全修飾・uc_id・一意名のみ受理。複数一致は候補一覧を提示して選ばせる。
-   **引数なし = 実施順の自動選択**: uc-map の `use_cases[]`(並び順 = 実施順。
-   state-schema.md)を先頭から走査し、`status.yaml` の state が `completed` でない
+   **引数なし = 実施順の自動選択**: まず `state: completed` だが `git_delivery.required: true` の
+   UCを調べ、`gh pr list --state all --head {feature_branch}`で対応PRが無ければ、そのUCをdelivery
+   再試行対象にする。対応PRがあるUCは完了扱いとする。その後 uc-map の `use_cases[]`
+   (並び順 = 実施順。state-schema.md)を先頭から走査し、`status.yaml` の state が `completed` でない
    最初の UC を対象にする(status.yaml が無い UC は未着手として選択対象)。
    選択した UC・残りの未完了 UC 数を報告してから進める。全 UC が completed なら
    全体完了を報告して終了する。選択した UC が `blocked_on_spec` の場合は自動で
    スキップせず、仕様還流待ちであることと「還流(dist-pipeline)を先に実行するか、
    跳ばして進むなら次の UC を明示指定する」ことを報告して停止する
    (実施順は依存順のため、前提 UC を跳ばした続行はユーザー判断に委ねる)
-4. **model 解決**: implementer_model / verifier_model を解決し status.yaml の `resolved_models` に記録。
+4. **UC用branchを開始または再開**:
+   - 初回は`git status --porcelain=v1 --untracked-files=all`が空で、working tree/indexに
+     追跡・未追跡差分が無いことを必須とする。既存差分をUCへ混入させるおそれがあるため、
+     dirtyなら勝手にstash/commitせず、ユーザーに整理を依頼して停止する
+   - detached HEAD、`feature/*`上、upstream未設定、またはbase branchとupstreamのHEAD不一致なら
+     新規UC branchを作らない。fetch後も不一致なら、先行変更のpush/merge/整理をユーザーへ依頼する
+   - uc-mapの`uc_english_name`と`branch_slug`を使う。欠落時はUC内容から英名と
+     lowercase ASCII kebab-caseのslugを推奨案として提示し、ユーザー確認後に
+     メモリ上で保持する。feature branchへswitchした直後、`config_confirmed`イベントを先に追記して
+     uc-mapへ永続化する。slugは`[a-z0-9]+`を
+     `-`で連結した形式だけを許し、空・先頭末尾の`-`・`..`・重複branchを拒否する
+   - 現在branchを`base_branch`、現在HEADを`base_head`としてメモリ上で固定し、
+     `git switch -c "feature/{branch_slug}"`で作成した直後にstatusの`git_delivery`へ記録する。
+     branch名は必ず`feature/{branch_slug}`とする。switchと記録の間で中断した場合は、現在の
+     feature branchがcommit 0件・HEAD=`base_head`であることを確認して同じ記録を補完する
+   - 再開時はstatusの`feature_branch`と現在branchが一致することを確認する。異なるbranchなら
+     clean時だけ記録済みbranchへswitchし、存在しない・base_headが祖先でない場合は停止する
+   - 旧runでstatus/doneは存在するが`git_delivery`が無い場合、base_headを推測しない。
+     remote baseとのmerge-base、現在のcommit列、dirty差分を提示し、推奨するbase_head・英名・slug・
+     feature branchへの移行をユーザーが確認した場合だけ`config_confirmed`とgit_deliveryを記録する
+   - branch作成後、repoの`.gitignore`から旧規則`docs/impl/latest/*/review/*.html`を除去し、
+     `docs/impl/**/review/*.html`をexactly onceで追加する。該当する追跡済みHTMLはworking treeへ
+     残したままindexから除外する。以後review HTMLをstage/commitしない。このmigrationは
+     orchestratorのwrite-setで、最終的に同じUC commitへsquashされる
+5. **model 解決**: implementer_model / verifier_model を解決し status.yaml の `resolved_models` に記録。
    **両者が同一なら停止してユーザー確認**(二段独立検証の要件)
-5. **lease 取得**: run_id・開始 HEAD(`git rev-parse HEAD`)・uc_id を run-lease.yaml に書く。
-   working tree が dirty なら既存差分を記録した上で続行可否をユーザーに確認
-6. **再開判定**: state-schema.md の再開手順(done ごとの projection 照合 + 存在チェック)で
+6. **lease 取得**: run_id・開始 HEAD(`git rev-parse HEAD`)・uc_id を run-lease.yaml に書く。
+7. **再開判定**: state-schema.md の再開手順(done ごとの projection 照合 + 存在チェック)で
    再実行対象を決める(位置カスケードではなく、stale になった done だけが対象 —
    tier-scoped staleness)
 
@@ -75,7 +101,8 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 → S4 tier-impl(並列) → S5 verify(並列)+ui-review(並走。dispatch 条件を満たす frontend tier のみ)
    →(blocker あり: attempt++ で S4 へ、最大 3。両レーンの findings を合算)
 → S6 uc-bdd → S7 atdd → S8 feedback draft → S9 implementation review
-→ S8 feedback publish(要求がある場合) → completed / blocked_on_spec
+→ S8 feedback publish(要求がある場合) → blocked_on_spec
+→ 要求0件かつ最終承認 → delivery_ready → squash → push → PR
 ```
 
 - **S1(uc-init)は自分で実行する**(ユーザー対話を含むため):
@@ -249,6 +276,7 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 3. **git commit**: `git add -- <その stage の write-set のパスのみ>` →
    `impl({uc_id}): S4 tier-backend-api gates passed` 形式(Conventional Commits、scope=uc_id)。
    S0(bootstrap)など UC 非依存の commit は `impl(bootstrap): ...` とする。`git add .` は使わない
+   UC stageのcommit前には現在branchがstatusの`feature_branch`と一致することを毎回確認する
 4. 必要な barrier 処理: 当該サイクルで S4 を実行した tier が全て完了した後、書き換えを伴う
    formatter をリポ全体に 1 回実行して commit(単一 writer。gates.md の check-only 規約と対)。
    **barrier commit の前に変更パスを検査し、今回 S4 を実行していない tier の tier_dir に
@@ -270,8 +298,11 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    `S1`等の内部stage code、attempt履歴、dist-pipelineのstage名やrouteは提示・選択させない。
    対話で出た指摘・条件は承認・差し戻しのどちらでも`review/review-notes.md`へ記録する
 3. feedback draftに結びつく仕様選択や訂正がある場合、`review_approved`をまだ記録せず、選択内容を
-   review notesへ記録してS8を`mode=refresh`で再実行する。draftへ選択結果・条件を反映し、
-   HTMLを再生成してから回答内容を再確認する。HTML再生成だけではdone/event/statusの整合性を取り直さない
+   review notesへ記録してS8を`mode=refresh`で再実行する。選択結果を仕様・設定・実装・テストの
+   該当箇所へ反映し、影響するテストと検証を再実行する。仕様側の変更が必要ならS8 publish後に
+   `blocked_on_spec`で停止し、dist-pipeline反映後に本skillを再開する。どちらの経路でも、更新後の
+   HTMLを再生成してユーザーに再レビューを依頼し、変更後の認識合わせが終わるまで承認を確定しない。
+   HTMLだけの再生成ではdone/event/statusの整合性を取り直さない
 4. 差し戻しの場合、`review_rejected` event（差し戻し先stageと理由）を記録し、該当stage以降のdoneを
    `invalidated/{event_id}/`へ退避して再実行する
 5. 承認の場合、現在のdraft bytes/ID/件数をS9 doneとS9 stage eventの
@@ -284,20 +315,21 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    同じreview evidenceを参照するvalidなapprovalが既にあれば再追記せず再利用する。同じevidenceへの
    複数approval、S9 eventより前のapproval event IDはfail-closedで停止する。再レビューで新しいS9 evidenceを
    作った場合、旧approvalは履歴として残すがcurrent approvalには使わない
-   feedback要求が0件ならstate=`completed`とし、`{uc_id}/NEXT.md`を「還流不要(要求0件)」の内容で
-   上書き生成して、`review_approved` eventの追記分・status.yaml・更新済み`review/review-notes.md`と
-   **同一commit**(明示path)にしてからleaseを解放して終了する(前サイクルの還流指示を残さない。
-   派生物だけをcommitしない — state-schema.md「NEXT.md」のcommit境界)。
-   **連続運転(引数なし起動のみ)**: この経路(要求0件のcompleted)でlease解放後、
-   起動シーケンス3の自動選択で次の未完了UCへ継続する(lease取得からやり直す)。
-   継続のたびに「n/全UC完了、次: {uc}」を報告する。要求ありのcompleted・blocked_on_spec・
-   awaiting_review等ユーザー入力や還流を要する停止では継続せず、従来どおり案内して終了する
+   feedback要求が0件、未確定事項が0件、選択結果が仕様・設定・実装・テストへ反映済みで、
+   その反映後のHTMLについてユーザーとの認識合わせが完了している場合だけstate=`delivery_ready`を経て
+   `delivery_prepared`イベント(state-schema.mdのpayload)を追記し、state=`completed`とする。
+   `{uc_id}/NEXT.md`を「還流不要(要求0件)・PR作成へ進む」の内容で
+   上書き生成して、`review_approved` / `delivery_prepared` eventの追記分・status.yaml・
+   更新済み`review/review-notes.md`と
+   **同一commit**(明示path)にしてからleaseを解放し、下記「UCのsquash・push・PR作成」へ進む
+   (前サイクルの還流指示を残さない。派生物だけをcommitしない — state-schema.md「NEXT.md」のcommit境界)
 6. 要求が1件以上ならstate=`publishing_feedback`とし、S8を`mode=publish`で実行する。公開先が未作成なら
    draft/公開先と全親componentがcanonical UC root内のregular/non-symlinkであること、両親が同一filesystem
    であることをfail-closedに確認してatomic renameする。公開済みpathを再開時に発見した
    場合は`feedback_request_published` event、承認・review evidence event ID、SHAを照合し、
    同じ処理を繰り返さない
-7. publish後、blocker 0ならstate=`completed`、blockerありなら`blocked_on_spec`とする。
+7. publish後はseverityにかかわらずstate=`blocked_on_spec`とする。公開した要求は承認以外の未対応な
+   決定事項だから、blocker 0でも完了扱いにしない。
    **lease保持中に**`{uc_id}/NEXT.md`(セッション引き継ぎカード — 書式は state-schema.md)を上書き生成し、
    明示pathでcommit(`impl({uc_id}): write NEXT.md handoff card`。terminal遷移に至る未commitの
    write-set — events/追記分・status.yaml・S8 publish成果物・更新済みreview-notes.md — があれば
@@ -315,6 +347,44 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    還流に必要な情報はすべてファイル側にある(公開Markdown / docs/ 配下)ため、
    本セッションの会話コンテキストを持ち越す必要はない。dist-pipeline完了後の本スキル再開も
    同様に新セッションでよい(再開判定はファイル駆動)。
+
+## UCのsquash・push・PR作成
+
+次をすべて満たす場合だけ実行する。未対応の決定事項が1件でもあればsquash・push・PRは禁止する。
+
+- 最新のreview evidenceに対する人の承認がvalid
+- 未確定事項とfeedback要求が0件
+- ユーザーの選択結果が仕様・設定・実装・テストへ反映済み
+- 反映後の全gateと独立検証がpassし、更新後のHTMLで再レビュー・認識合わせが完了
+- open blockerが0件、stateが`completed`、現在branchが記録済み`feature_branch`
+- working tree/indexがcleanで、`base_head`がHEADの祖先。最終treeでreview HTMLとrun-leaseが追跡されない
+
+実行手順:
+
+1. `git status --porcelain=v1 --untracked-files=all`が空であること、`git diff --quiet`、
+   `git diff --cached --quiet`、`git merge-base --is-ancestor {base_head} HEAD`、branch名、
+   `git log {base_head}..HEAD`を照合する。未追跡file、範囲外変更・他UC・merge commitがあれば停止する
+2. 復旧用ref `refs/distillery-impl/pre-squash/{uc_id}/{timestamp}` を現在HEADへ
+   `git update-ref`で作る。これを作れない場合はsquashしない
+3. `git reset --soft {base_head}`を実行し、staged pathが当該UCの意図した変更だけであることを確認する。
+   `docs/impl/**/review/*.html`は旧追跡fileの削除だけを許し、追加・変更を禁止する。
+   `run-lease.yaml`は全statusを禁止する
+4. canonicalな日本語UC名を使い、exactly 1 commitを`git commit -m "feat: {UC名}"`で作る。
+   `git rev-list --count {base_head}..HEAD`が`1`でなく、または
+   `git ls-files 'docs/impl/**/review/*.html'`が空でなければpushしない。soft reset、commit、
+   検証のいずれかが失敗したらpushせず、`git reset --soft {復旧用ref}`で元のcommit列へ戻す
+5. push前に`gh auth status`とremote/base branchを確認し、`git push -u origin "{feature_branch}"`する。
+   force pushはしない。push失敗時はPRを作らず、同じbranchで再試行可能な状態を報告する
+6. `gh pr list --state all --head "{feature_branch}" --json number,url,state`で既存PRを先に照合する。
+   あれば再利用し、無ければ`gh pr create --base "{base_branch}" --head "{feature_branch}" \
+   --title "feat: {UC名}" --body-file {一時PR本文}`で作成する。本文にはUCの目的、主な変更、
+   テスト結果、反映済みの判断、既知の制約を人間向け名称で記載し、review HTMLは添付・追跡しない
+   PR作成だけが失敗した場合はbranchを変更・再pushせず、次回`gh pr list`確認から再試行する
+7. PR URLと復旧用refを報告して終了する。PR作成後は次のUCへ自動継続しない。
+   次のUCはこのPRがmergeされ、base branchをfetch/fast-forwardした後の新しいrunで開始する
+
+PRの存在はGitHubを正とし、作成後にURLをtracked stateへ書いて2個目のcommitを作らない。
+再開時はstatusの`git_delivery`と`gh pr list`を照合し、PRが無いときだけpush/PR作成を冪等に再試行する。
 
 ### 公開後の訂正
 

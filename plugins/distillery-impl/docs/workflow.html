@@ -240,6 +240,17 @@ h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var
     </div>
     <div class="sfiles"><div class="t">📄 STATE</div><code>review/index.html (gitignored)</code><code>events: review_approved</code><code>feedback-requests/{feedback_id}.md</code><code>events: feedback_request_published</code></div>
   </div>
+  <div class="connector"><span class="arrow">▼</span></div>
+
+  <div class="stage">
+    <div class="sid"><span class="code">DELIVER</span><span class="who main">🎛 ORCH</span></div>
+    <div class="sbody">
+      <span class="sname">delivery — UCを1 commit・1 PRで引き渡す</span>
+      <div class="sdesc">未確定事項が0件で、選択結果を仕様・実装・テストへ反映し、更新後レビューで認識合わせが完了した場合だけ進む。UC開始時の<code>feature/&lt;english-kebab-name&gt;</code>上のcommitを、復旧ref作成後に<code>feat: &lt;UC名&gt;</code>へsquashし、pushしてPRを作成する。仕様への要求が1件でも残ればPRを作らず、反映後の再レビューへ戻る</div>
+      <div class="dialog">💬 PR作成後はmergeを待って終了。次UCへ自動継続しない</div>
+    </div>
+    <div class="sfiles"><div class="t">📄 GIT</div><code>feature/{branch_slug}</code><code>1 commit</code><code>GitHub Pull Request</code></div>
+  </div>
 </div>
 
 <h2>横断の仕組み</h2>

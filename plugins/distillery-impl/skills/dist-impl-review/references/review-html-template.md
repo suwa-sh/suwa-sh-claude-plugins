@@ -121,7 +121,7 @@ test double境界と実systemで未確認の範囲を示す。
 
 ## Git・証跡境界
 
-- HTMLは`docs/impl/latest/*/review/*.html`でgitignoreする
+- HTMLは`docs/impl/**/review/*.html`でgitignoreする
 - HTMLのSHA、表示内容、capture SHAをdone/event/approvalへ記録しない
 - HTMLを変更・再生成してもdone/event/statusの整合性を取り直さない
 - feedback draftのID/SHA/件数、gate結果、current open finding件数は正本なので証跡へ残す

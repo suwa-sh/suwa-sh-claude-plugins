@@ -85,7 +85,7 @@ type: stage_started | stage_completed | stage_failed | attempt_opened |
       stage_carried_forward | stage_invalidated | config_confirmed |
       finding_reported | finding_resolved | review_approved | review_rejected |
       bootstrap_completed | feedback_request_publish_started | feedback_request_published |
-      capture_review_completed
+      capture_review_completed | delivery_prepared
 uc_id: "3f9a2b1c"          # グローバルイベント(bootstrap 等)では null
 stage: "S4"                 # 該当する場合のみ
 tier: "tier-backend-api"    # 該当する場合のみ
@@ -108,15 +108,23 @@ impl-config.yaml / uc-map.yamlの該当項目を確定値で上書き。**`after
 適用する**(例: ui_screens の非空化イベントは `ui_screen_resolution: {before: ..., after: null}` を
 併記し、replay 後も XOR 制約が保たれるようにする)/ `review_approved` → 参照先S9 eventと
 `feedback_review_evidence`、および`implementation_review_evidence`のcanonical 3 field
-（gate result / open blocker / open major）が一致する場合だけ、request 0件なら`completed`、1件以上なら
-`publishing_feedback`へ進む。
+（gate result / open blocker / open major）が一致する場合だけ、request 0件なら`delivery_ready`、1件以上なら
+`publishing_feedback`へ進む。`delivery_prepared`は未確定事項0件・選択結果の反映後gate pass・
+最新HTMLでの再レビュー完了・git_deliveryの4条件をpayloadで検証し、満たす場合だけ`completed`へ進める。
 
 `feedback_request_publish_started`（stage: `S8`、payload: feedback_id / path / input_sha256 /
 request_count / blocker_count / supersedes / review_approved_event_id / review_evidence_event_id）→
 承認済みdraftのimmutable公開を予約する。request/blocker件数は承認済みexact bytesから再計算し、mutableな
 S8 doneの旧集計を信頼しない。次にdraftを公開先へatomic renameし、
-`feedback_request_published`（同じidentity + review lineage + published_at）→ blocker 0なら`completed`、1件以上なら
-`blocked_on_spec`へ進む。reviewerや承認時刻はfeedback fileへ転記しない。`latest/`と食い違ったらeventsが正。
+`feedback_request_published`（同じidentity + review lineage + published_at）→ severityにかかわらず
+`blocked_on_spec`へ進む。公開要求が残る間はsquash/push/PRへ進めない。reviewerや承認時刻は
+feedback fileへ転記しない。`latest/`と食い違ったらeventsが正。
+
+`delivery_prepared`のpayloadは`{review_approved_event_id, pending_decision_count: 0,
+decisions_applied: true, post_decision_gates: pass, post_decision_review_aligned: true,
+base_branch, base_head, feature_branch}`を持つ。対応approvalがlatest S9 evidenceを参照し、
+feedback requestが0件で、git_deliveryとbase/feature値が一致する場合だけ有効とする。
+PR URL/numberは含めない(GitHubが正であり、PR作成後の2 commit目を避けるため)。
 
 **done の退避(invalidate)**: review_rejected・stale 検知などで done を無効化するときは、
 オーケストレータが**先に `stage_invalidated` イベント(payload: 対象 done 一覧・退避先)を追記し、
@@ -348,6 +356,9 @@ use_cases:
     business: "貸出管理業務"
     buc: "貸出管理フロー"
     uc: "書籍を貸出する"
+    uc_english_name: "Loan a book"
+    branch_slug: "loan-a-book"        # confirmed English nameをlowercase ASCII kebab-case化。
+                                       # branchは feature/{branch_slug}
     path: "docs/specs/latest/貸出管理業務/貸出管理フロー/書籍を貸出する"
     tiers: [tier-frontend, tier-backend-api]   # spec-event.yaml の files[] から確定
     atdd_scenarios: []                 # UC→ATDD の対応(Scenario 名単位。下記)。例 ["SPEC-002-01-1"]
@@ -371,6 +382,12 @@ tier 宣言と併せて `config_confirmed` で確定する(根拠はファイル
 並び替えは内容変更として扱う(P2 の content-stable 照合は並び順も含めて比較する。
 並び順だけの変更でも uc-map は書き換わるが、各 UC の done の projection には uc-map 自体が
 含まれないため既存 done は stale にならない)。
+
+**UC英名とbranch slug**: `uc_english_name`はユーザーが確認した自然な英名、`branch_slug`はその英名を
+lowercase ASCII kebab-caseへ正規化した値とする。`branch_slug`は`^[a-z0-9]+(?:-[a-z0-9]+)*$`、
+uc-map内で一意、branchは`feature/{branch_slug}`で固定する。bootstrapで推奨案を提示し
+`config_confirmed`後に保存する。旧uc-mapで欠落していればUC開始前に同じ確認・保存を行い、
+モデルが毎回別訳を生成してbranch名が変わる状態を許さない。
 
 **UC→ATDD マッピングは Scenario(acceptance criterion)単位**: distillery 出力に UC→SPEC の
 機械可読対応は存在せず、さらに **1 つの SPEC が複数 UC の受け入れ基準を含む実例がある**
@@ -638,12 +655,22 @@ uc_id: "3f9a2b1c"
 business: "貸出管理業務"
 buc: "貸出管理フロー"
 uc: "書籍を貸出する"
-state: running | blocked_on_spec | awaiting_review | publishing_feedback | completed | invalidated
+state: running | blocked_on_spec | awaiting_review | publishing_feedback | delivery_ready | completed | invalidated
                                        # invalidated = stage_invalidated で done が退避され再実行待ち
                                        #   (入力変更・規範変更等。再開時は projection 照合で stale に
                                        #    なった done だけが再実行対象になる — 再開手順)
 current_attempt: 1
 resolved_models: {implementer: "...", verifier: "..."}   # 起動時に記録。同一なら停止して確認
+git_delivery:
+  required: true
+  uc_english_name: "Loan a book"
+  branch_slug: "loan-a-book"
+  base_branch: "main"
+  base_head: "<40-hex commit>"          # feature branch作成直前のHEAD。最終squashの親
+  feature_branch: "feature/loan-a-book"
+  remote: "origin"
+                                        # PR URLはtracked stateへ書かない。GitHubを正として
+                                        # gh pr list --state all --head feature/loan-a-bookで照合
 stages:
   S1_uc_init: {status: done}
   S2_test_scaffold: {status: done, red_baseline: pass}
@@ -661,6 +688,12 @@ stages:
   S9_review: {status: pending}
 updated_at: "..."
 ```
+
+**旧runのGit lifecycle移行**: status/doneがあるのに`git_delivery`が無い場合は、現在branchや最古の
+UC commitをbase_headとして自動採用しない。remote baseとのmerge-base、`git log`、dirty pathを
+ユーザーへ提示し、base_branch/base_head/uc_english_name/branch_slug/feature_branchの組を
+`config_confirmed`で確認してから保存する。確認不能なら既存runは従来どおり成果物まで維持し、
+squash/push/PRを行わない。
 
 ## done ファイル(.done.yaml 共通スキーマ)
 
@@ -838,7 +871,9 @@ S4/S5 done は projection 一致により有効なまま残るため、carry-for
    validな`review_approved`がありrequest 1件以上で
    published eventが無ければ`dist-impl-feedback mode=publish`から再開する。publish started eventがあれば
    上記の再開規則でdraft/publicationのどちらを継続するか判定する。published eventがあれば
-   blocker件数に応じて`completed`または`blocked_on_spec`へ復元する。
+   severityにかかわらず`blocked_on_spec`へ復元する。request 0件のvalid approvalがあれば
+   `delivery_ready`へ復元し、`delivery_prepared`の4条件を照合して`completed`へ進める。
+   completedでも対応PRが無ければgit deliveryだけを再試行する。
    **terminal復元時は`NEXT.md`の欠落・不一致を検査し**、冪等に再生成・commitしてから
    leaseを解放する(published直後〜NEXT.md commit前の中断で引き継ぎカードが欠落したまま
    終わらないようにする)。再生成元は件数で分岐する:
@@ -872,6 +907,11 @@ publish events)と更新済み `review/review-notes.md` も含む(いずれも�
 (checkout 時に NEXT.md が存在しない公開 Markdown を指す・events の再構築結果と食い違う状態)を
 作らない。
 
+`completed`のNEXT.mdは`git_delivery`のbase/feature branch、squash commit message
+`feat: {UC名}`、push/PRが次であることを含める。tracked stateには作成後のPR URLを書かない。
+`state: completed`かつ`git_delivery.required: true`のUCは、`gh pr list --state all --head
+{feature_branch}`でPRの存在を照合する。PRが無ければdelivery再試行対象、あれば完了扱いである。
+
 記載内容(要求 1 件以上の場合):
 
 - **state**: `completed` | `blocked_on_spec`、feedback ID、要求件数、blocker 件数
@@ -903,8 +943,9 @@ publish events)と更新済み `review/review-notes.md` も含む(いずれも�
 | S9 review | gitignore済みreview/index.html、`S9_review_generated.done.yaml`（HTMLはcommit対象外） |
 
 review HTMLのGit除外migrationに限り、orchestratorはrepo rootの`.gitignore`を更新し、
-追跡済み`docs/impl/latest/*/review/*.html`をworking treeに残したままindexから除外してよい。
-`.gitignore`規則は`docs/impl/latest/*/review/*.html`をexactly once記録する。
+追跡済み`docs/impl/**/review/*.html`をworking treeに残したままindexから除外してよい。
+旧規則`docs/impl/latest/*/review/*.html`は削除し、`.gitignore`規則は
+`docs/impl/**/review/*.html`をexactly once記録する。
 
 **git 操作はオーケストレータのみ**。サブエージェントは git を実行してはならない(Bash 含む)。
 

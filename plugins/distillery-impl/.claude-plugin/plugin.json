@@ -1,7 +1,7 @@
 {
   "name": "distillery-impl",
-  "version": "0.10.0",
-  "description": "Implementation harness with independent verification, diagram-design decision reviews, and immutable Markdown feedback handoff.",
+  "version": "0.11.0",
+  "description": "Implementation harness with independent verification, decision-complete human reviews, and one-commit pull-request delivery per use case.",
   "author": {
     "name": "suwa-sh"
   }

@@ -26,6 +26,9 @@ Implementerがコードを書き、別モデルのVerifierが検証します。
   プロジェクト側の比較コマンド整備は不要）をS5並走のUI Reviewer（dist-impl-ui-review）が実行します。
   対象も手段もVerifierと異なるため独立レーンにしています。
 - **再開可能な状態管理**：`docs/impl/`へevent、snapshot、完了判定を保存します。
+- **UC単位のGit delivery**：UC開始時に確認済み英名から`feature/<english-kebab-name>`を作り、
+  人レビューと全判断の反映後に`feat: <UC名>`の1 commitへsquashしてpush・PR作成します。
+  review HTMLは`docs/impl/**/review/*.html`としてGit管理外です。
 - **tier並走**：tierごとにwrite-setを分けて実装します。
 - **仕様への還流**：仕様起因の問題を1つのMarkdownへまとめます。
   dist-pipelineが所有stage、分割、依存stageを決めます。
@@ -46,7 +49,8 @@ flowchart TD
     S9["S9 review 💬<br/>推奨案を選べる図解HTMLで承認・仕様選択"]
     REFRESH["S8 refresh<br/>review-notesを単一draftへ反映"]
     PUBLISH["S8 publish<br/>draftを同じbytesのまま<br/>immutable Markdownへ移動"]
-    DONE(["completed"])
+    READY(["全判断の反映と再レビュー完了"])
+    PR(["1 commitへsquash → push → PR"])
     BLOCKED(["blocked_on_spec<br/>distillery反映待ち"])
     DIST[["distillery<br/>入力を解析してstageを判定<br/>各論理stage最大1回"]]
 
@@ -56,12 +60,11 @@ flowchart TD
     S6 -->|"fail: 原因 tier へ差し戻し<br/>(仕様不整合は issues に記録して続行)"| S4
     S6 --> S7 --> S8 --> S9
     S9 -->|"差し戻し(指定 stage へ。図は代表で S4)"| S4
-    S9 -->|"承認・要求なし"| DONE
+    S9 -->|"承認・要求なし"| READY --> PR
     S9 -->|"承認・要求あり"| PUBLISH
     S9 -->|"指摘あり"| REFRESH
     REFRESH -->|"HTML再生成"| S9
-    PUBLISH -->|"non-blocker"| DONE
-    PUBLISH -->|"blocker"| BLOCKED
+    PUBLISH --> BLOCKED
     PUBLISH -.->|feedback-request Markdown 1ファイル| DIST
     DIST -.->|仕様更新 → 次サイクル| S0
 ```
@@ -75,7 +78,7 @@ flowchart TD
 
 | skill | 役割 |
 |---|---|
-| `distillery-impl:dist-impl-run` | オーケストレータ。UC 指定または引数なし(実施順で自動選択・自動継続)で S0〜S9 を運転(通常はこれだけ呼べばよい) |
+| `distillery-impl:dist-impl-run` | オーケストレータ。UC 指定または引数なし(実施順で自動選択)で実装・人レビュー・1 commit化・PR作成まで運転(通常はこれだけ呼べばよい) |
 | `distillery-impl:dist-impl-bootstrap` | 実装リポの骨格生成・契約 codegen・Storybook 取り込み(冪等) |
 | `distillery-impl:dist-impl-implement` | Implementer(test-scaffold / tier-impl / uc-bdd / atdd の 4 mode) |
 | `distillery-impl:dist-impl-verify` | Verifier(反証専用・7 観点。コード vs 仕様書を読解で突合) |
@@ -95,8 +98,8 @@ flowchart TD
 ## 使い方
 
 ```
-# 引数なし: uc-map の実施順(bootstrap P2 が依存関係から計画)で次の未完了 UC を自動選択し、
-# completed のたびに次の UC へ自動継続する(初回は bootstrap から自動で走る)
+# 引数なし: uc-map の実施順(bootstrap P2 が依存関係から計画)で次の未完了 UC を自動選択する。
+# UCごとにfeature branchとPRを作り、PR作成後はmergeを待って終了する
 /distillery-impl:dist-impl-run
 
 # UC を指定して実装開始
