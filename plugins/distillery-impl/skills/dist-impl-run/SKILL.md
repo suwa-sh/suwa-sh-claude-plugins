@@ -299,9 +299,12 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    対話で出た指摘・条件は承認・差し戻しのどちらでも`review/review-notes.md`へ記録する
 3. feedback draftに結びつく仕様選択や訂正がある場合、`review_approved`をまだ記録せず、選択内容を
    review notesへ記録してS8を`mode=refresh`で再実行する。選択結果を仕様・設定・実装・テストの
-   該当箇所へ反映し、影響するテストと検証を再実行する。仕様側の変更が必要ならS8 publish後に
-   `blocked_on_spec`で停止し、dist-pipeline反映後に本skillを再開する。どちらの経路でも、更新後の
-   HTMLを再生成してユーザーに再レビューを依頼し、変更後の認識合わせが終わるまで承認を確定しない。
+   該当箇所へ反映し、影響するテストと検証を再実行する。仕様側の変更が必要なら、選択を反映したdraftと
+   HTMLを再生成する。追加の意味変更が無くユーザー回答とexactに一致する場合は、そのevidenceへの
+   `review_approved`を「feedback公開許可」として記録してS8 publishへ進める。新しい選択肢・詳細決定が
+   増えた場合だけ再質問する。この要求ありapprovalはPR許可ではない。publish後は`blocked_on_spec`で停止し、
+   dist-pipeline反映後に本skillを再開する。仕様・実装・テストへ反映した後、新しいS9 evidenceで
+   要求0件の再レビューを行い、変更後の認識合わせが終わるまでdelivery approvalを確定しない。
    HTMLだけの再生成ではdone/event/statusの整合性を取り直さない
 4. 差し戻しの場合、`review_rejected` event（差し戻し先stageと理由）を記録し、該当stage以降のdoneを
    `invalidated/{event_id}/`へ退避して再実行する

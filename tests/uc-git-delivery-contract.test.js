@@ -47,6 +47,9 @@ test('delivery is gated by applied decisions and a fresh human alignment', () =>
   assert.match(runSkill, /再生成.*再レビュー/s);
   assert.match(runSkill, /未対応.*squash.*push.*PR.*禁止/s);
   assert.match(stateSchema, /delivery_ready/);
+  assert.match(runSkill, /feedback公開許可/);
+  assert.match(runSkill, /要求ありapprovalはPR許可ではない/);
+  assert.match(runSkill, /要求0件の再レビュー/);
 });
 
 test('approved UC work is safely squashed, pushed, and opened as one PR', () => {

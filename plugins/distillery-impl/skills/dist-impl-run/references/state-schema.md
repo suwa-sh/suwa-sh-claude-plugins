@@ -111,6 +111,8 @@ impl-config.yaml / uc-map.yamlの該当項目を確定値で上書き。**`after
 （gate result / open blocker / open major）が一致する場合だけ、request 0件なら`delivery_ready`、1件以上なら
 `publishing_feedback`へ進む。`delivery_prepared`は未確定事項0件・選択結果の反映後gate pass・
 最新HTMLでの再レビュー完了・git_deliveryの4条件をpayloadで検証し、満たす場合だけ`completed`へ進める。
+request 1件以上の`review_approved`は選択済みfeedback bytesの公開許可であり、delivery approvalとして
+再利用しない。仕様反映後は新しいS9 evidenceとrequest 0件の新しいapprovalを必須とする。
 
 `feedback_request_publish_started`（stage: `S8`、payload: feedback_id / path / input_sha256 /
 request_count / blocker_count / supersedes / review_approved_event_id / review_evidence_event_id）→
