@@ -7,6 +7,9 @@ description: >
   frontend tier は実行ベースの UI Reviewer が並走)→ S6 UC BDD → S7 ATDD →
   S8 feedback → S9 review)をファイル駆動の冪等再開つきで運転する。
   「この UC を実装して」「実装パイプラインを回して」「実装を再開して」などで発動。
+metadata:
+  dependencies:
+    - diagram-design # https://github.com/cathrynlavery/diagram-design — install: npx skills add cathrynlavery/diagram-design
 ---
 
 # dist-impl-run
@@ -28,6 +31,15 @@ description: >
 
 ## 起動シーケンス
 
+0. **必須skill確認とreview HTMLのGit除外**:
+   - `diagram-design`を`~/.claude/skills/`、`~/.agents/skills/`、
+     repoの`.claude/skills/`から探す。無ければ処理を開始せず、source
+     `https://github.com/cathrynlavery/diagram-design`、security audit
+     `https://skills.sh/cathrynlavery/diagram-design`、install
+     `npx skills add cathrynlavery/diagram-design`を提示して、インストールするか確認する
+   - repoの`.gitignore`へ`docs/impl/latest/*/review/*.html`をexactly onceで追加する
+   - 既に追跡中のreview HTMLがあれば、working treeのfileを残したままindexから除外する。
+     review HTMLは以後どのstage commitにも含めない。この一度きりのmigrationはorchestratorのwrite-set
 1. **lease 確認**: `docs/impl/latest/run-lease.yaml` が存在すれば起動を拒否して報告
    (stale 判定は state-schema.md。剥がすのはユーザー確認後)
 2. **S0 判定**: `docs/impl/latest/bootstrap.done.yaml` の**全 Phase が done/skipped、かつ
@@ -248,25 +260,27 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 
 1. review サブエージェント完了（`S9_review_generated.done.yaml`）後、`review/index.html` を
    `open`（macOS）/ `xdg-open`（Linux）で表示する。開けなければ絶対pathを提示する。この時点の
-   stateは`awaiting_review`。S9 doneと対応するstage eventには、表示したdraftの
-   `feedback_review_evidence`（feedback ID / exact bytes SHA-256 / request件数）と、表示したHTMLの
-   `implementation_review_evidence`（exact bytes SHA-256 / gate結果 / open blocker・major件数 /
-   captures_sha256。capture_review のスクショが承認後に置換・欠損していないことの証跡)を記録する。
-   S9 doneは資料生成済みを示すだけで、承認の正は`review_approved` event
-2. ユーザーへ、UCと対象仕様、実装の構成・処理・データフロー、動かし方、テストと確認方法、
-   現在の仕様差分とblockerの有無を人間向け名称で提示し、**実装を承認 / 差し戻し**を問う。
+   stateは`awaiting_review`。HTMLはgitignoreされた再生成可能な補助資料であり、stage commitへ含めない。
+   S9 done/eventにはdraftの`feedback_review_evidence`と、gate/open findingだけの
+   `implementation_review_evidence`を記録する。HTML/captureのSHAは記録しない
+2. ユーザーへ、HTML冒頭と同じ順序で、実装承認と現在必要な仕様・運用上の選択を問う。
+   未確定事項には2〜3案、推奨案、推奨理由、trade-off、推奨が変わる条件、選択後のactionを示し、
+   `機能=A / 相互運用=A / 監査=A`のようなcopy可能な回答templateを提示する。
+   必須の判断が未回答なら`awaiting_review`のまま停止する。
    `S1`等の内部stage code、attempt履歴、dist-pipelineのstage名やrouteは提示・選択させない。
    対話で出た指摘・条件は承認・差し戻しのどちらでも`review/review-notes.md`へ記録する
-3. feedback draftへの訂正を含む指摘がある場合、`review_approved`をまだ記録せず、S8を
-   `mode=refresh`で再実行する。更新・追加・除去を確認し、S9 HTMLを再生成してから再度実装承認を得る
+3. feedback draftに結びつく仕様選択や訂正がある場合、`review_approved`をまだ記録せず、選択内容を
+   review notesへ記録してS8を`mode=refresh`で再実行する。draftへ選択結果・条件を反映し、
+   HTMLを再生成してから回答内容を再確認する。HTML再生成だけではdone/event/statusの整合性を取り直さない
 4. 差し戻しの場合、`review_rejected` event（差し戻し先stageと理由）を記録し、該当stage以降のdoneを
    `invalidated/{event_id}/`へ退避して再実行する
-5. 承認の場合、現在のdraft bytes/ID/件数をS9 doneとS9 stage eventの`feedback_review_evidence`へ、
-   現在のreview HTML bytesとgate/open finding集約・**current capture imagesの再検証
-   (captures[]の非skippedエントリの実測SHA-256と`captures_sha256`の整合)**を両者の
-   `implementation_review_evidence`へexact照合する。
+5. 承認の場合、現在のdraft bytes/ID/件数をS9 doneとS9 stage eventの
+   `feedback_review_evidence`へexact照合する。`implementation_review_evidence`は
+   `gate_result / open_blocker_count / open_major_count`の3 fieldだけを照合する。
+   旧done/eventの`review_html_sha256`、`captures_sha256`はlegacy fieldとして比較から除外し、
+   current HTML/capture bytesを再検証しない。
    一致した場合だけ、`review_approved` eventへ`review_evidence_event_id`と両evidence mappingを記録する。
-   どちらかが不一致なら承認を記録せず、S8 refresh → S9再生成 → 再レビューへ戻る。
+   draft/gate/open findingが不一致なら承認を記録せず、S8 refresh → S9再生成 → 再レビューへ戻る。
    同じreview evidenceを参照するvalidなapprovalが既にあれば再追記せず再利用する。同じevidenceへの
    複数approval、S9 eventより前のapproval event IDはfail-closedで停止する。再レビューで新しいS9 evidenceを
    作った場合、旧approvalは履歴として残すがcurrent approvalには使わない

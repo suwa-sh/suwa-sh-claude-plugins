@@ -152,7 +152,7 @@ dispatch 条件(target 集合の算出を含む)は `dist-impl-run/SKILL.md` の
 
 `mode=publish`では`review_approved`が参照するS9 eventと両者の`feedback_review_evidence` /
 `implementation_review_evidence`を確認し、draftのfeedback ID / exact SHA-256 / request件数と
-review HTML SHA / gate・open finding集約を照合してから公開契約を自己検査する。不一致は公開せず
+gate・open finding集約を照合してから公開契約を自己検査する。review HTML/captureのSHAは照合しない。不一致は公開せず
 S8 refresh → S9再レビューへ戻す。別pluginへの曖昧なscript pathやproducer独自parserは使わない。
 draft/公開先の全親componentをlstat/realpathしcanonical UC root containment・non-symlinkを確認する。
 draftはregular/non-symlink、公開先は未存在、両親はsame-filesystemでなければ停止し、rename直前にも
@@ -167,5 +167,5 @@ containment・regular/non-symlink・SHA・件数・lineageのexact一致時だ�
 | role | レビュー資料の生成 |
 | skill_name | distillery-impl:dist-impl-review |
 | skill_args | ` 引数: "uc_id={uc_id} config={...} manifest_sha256={global projection hash}"` |
-| write_set | review/index.html、stages/S9_review_generated.done.yaml |
+| write_set | gitignore済みreview/index.html、stages/S9_review_generated.done.yaml |
 | additional_instructions | 固定部: `stage-instructions/S9_review.md`(ファイル参照方式)。可変部: なし |

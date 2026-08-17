@@ -101,9 +101,10 @@ publishは、承認されたdraftのidentityとbytesを変えずに公開する�
 最新の`review_approved` eventが、最新のS9 review-generated eventを参照していることを確認します。
 両eventの`feedback_review_evidence`をexact一致させます。
 
-S9 done、S9 event、approval eventの`implementation_review_evidence`もexact一致させます。
-このevidenceはreview HTMLのSHA-256、gate結果、open blocker件数、open major件数を持ちます。
-approval直前のreview HTML bytesも同じSHA-256でなければなりません。
+S9 done、S9 event、approval eventの`implementation_review_evidence`は、
+`gate_result / open_blocker_count / open_major_count`のcanonical 3 fieldをexact一致させます。
+review HTMLはgitignoreされた補助資料なのでSHA-256を照合しません。旧eventの
+`review_html_sha256`と`captures_sha256`はlegacy fieldとして比較から除外します。
 
 event順はreview evidence、approval、publish started、publishedです。
 current evidenceへ複数のapprovalがある場合は停止します。

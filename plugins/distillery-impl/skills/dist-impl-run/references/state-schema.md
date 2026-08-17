@@ -44,14 +44,14 @@ docs/impl/
         S6_uc-bdd.done.yaml
         S7_atdd.done.yaml
         S8_feedback.done.yaml
-        S9_review_generated.done.yaml   # HTML 生成の完了(承認は含まない)
+        S9_review_generated.done.yaml   # review資料生成の完了(HTML bytes/承認は含まない)
       invalidated/{event_id}/         # 無効化した done の退避先(stage_invalidated と対)
       issues/{ts}_{slug}.md
       feedback/as-built-summary.md     # S8が要求を書く前に生成する実装事実。handoff入力ではない
       feedback/draft.md                # S8 initial/refreshの単一mutable draft。publish時に移動
       feedback-requests/{feedback_id}.md # S9実装承認後に公開するimmutableなdist-pipeline入力
       learnings/{ts}_{slug}.md
-      review/index.html
+      review/index.html                # gitignore対象の再生成可能な補助資料
       review/review-notes.md          # S9 承認対話の要点(オーケストレータが追記。S8 refresh の入力)
       NEXT.md                          # セッション引き継ぎカード(terminal 遷移ごとにオーケストレータが
                                        #   lease 保持中に上書き生成。状態の正ではない — 正は events + done)
@@ -107,7 +107,8 @@ created_at: "2026-08-01T10:30:00+09:00"
 impl-config.yaml / uc-map.yamlの該当項目を確定値で上書き。**`after: null` はフィールド削除として
 適用する**(例: ui_screens の非空化イベントは `ui_screen_resolution: {before: ..., after: null}` を
 併記し、replay 後も XOR 制約が保たれるようにする)/ `review_approved` → 参照先S9 eventと
-`feedback_review_evidence`および`implementation_review_evidence`が一致する場合だけ、request 0件なら`completed`、1件以上なら
+`feedback_review_evidence`、および`implementation_review_evidence`のcanonical 3 field
+（gate result / open blocker / open major）が一致する場合だけ、request 0件なら`completed`、1件以上なら
 `publishing_feedback`へ進む。
 
 `feedback_request_publish_started`（stage: `S8`、payload: feedback_id / path / input_sha256 /
@@ -229,21 +230,21 @@ removed: K}`)を追記し、`S8_feedback.done.yaml` に `refreshed_at` と更新
 (done の作り直しはしない。latest はこの payload から再構築可能)。request 0件になった場合は、このeventを
 先に記録してから未公開の`feedback/draft.md`だけを削除し、doneの`draft_path: null`とする。
 
-**S9 review evidence**: S9 doneと対応する`stage_completed` eventは、HTMLへ表示したdraftの
+**S9 review evidence**: S9 doneと対応する`stage_completed` eventは、review対象draftの
 `feedback_review_evidence: {feedback_id, draft_sha256, request_count}`を持つ。draftがない場合は
 `{feedback_id: null, draft_sha256: null, request_count: 0}`とする。done/event間でexact一致しなければ
-レビュー資料を有効にしない。さらに、表示したHTMLのexact bytesと実装判断の集約を
-`implementation_review_evidence: {review_html_sha256, gate_result, open_blocker_count,
-open_major_count, captures_sha256}`へ記録する。`captures_sha256`は`captures[]`の全画像
-（`{path, sha256}`の配列）をcanonical JSON化したsha256で、captureが無い場合は`null`とする
-（S9生成後の画像置換・欠損で証跡と承認が分離する穴を塞ぐ。plan round3 反映事項）。
-S9 done / S9 event / current HTMLでこのmappingが一致しなければレビュー資料を有効にしない。
+レビュー入力を有効にしない。実装判断の正本集約は
+`implementation_review_evidence: {gate_result, open_blocker_count, open_major_count}`とする。
+review HTMLはgitignoreされた補助資料なので、HTML SHA、capture SHA、表示内容をevidenceへ含めない。
+HTMLの再生成・編集だけではdone/event/statusを更新しない。
 
 **実装承認の正は `review_approved` event**（S9 doneはHTML生成済みまで）。承認eventはpayloadに
 `review_evidence_event_id`と、その参照先S9 eventとexact一致する`feedback_review_evidence`および
-`implementation_review_evidence`を持つ。承認直前のdraft identity/hash/count、review HTML SHA、
-gate/open finding集約とも一致しなければeventを追記せず、S8 refresh → S9再生成 →
+`implementation_review_evidence`を持つ。承認直前のdraft identity/hash/countと
+gate/open finding集約が一致しなければeventを追記せず、S8 refresh → S9再生成 →
 再レビューへ戻る。S9_review_generated.done.yamlがあり、validな`review_approved`が無ければ`awaiting_review`。
+旧done/eventに`review_html_sha256`や`captures_sha256`が残る場合はlegacy fieldとして無視し、
+canonical 3 fieldだけを比較する。
 同じreview evidenceを参照するapprovalは高々1件で、S9 eventより後のevent IDを持つ。validなapprovalが
 既にあれば再利用する。再レビューで新しいS9 evidenceを作った場合は旧approvalを履歴として残し、最新S9
 evidenceを参照するapprovalだけをcurrentとする。同じevidenceへの重複approvalは自動選択せず停止する。
@@ -729,10 +730,10 @@ lease 解放)は `dist-impl-run/SKILL.md` の S5 手順を正本とする。`che
 skipped(runtime_unavailable)` からの再実行規則(browser ツールが後で使えるようになった場合)も
 同 SKILL.md の S5 手順(D10)を正本とする。
 
-S9 doneはトップレベルに`feedback_request_count`と`open_blocker_count`、および表示したdraftを結ぶ
-`feedback_review_evidence: {feedback_id, draft_sha256, request_count}`と、表示したHTMLと判断根拠を結ぶ
-`implementation_review_evidence: {review_html_sha256, gate_result, open_blocker_count,
-open_major_count, captures_sha256}`を持つ。
+S9 doneはトップレベルに`feedback_request_count`と`open_blocker_count`、判断質問数を示す
+`decision_summary`、draftを結ぶ`feedback_review_evidence: {feedback_id, draft_sha256, request_count}`、
+判断根拠を結ぶ`implementation_review_evidence: {gate_result, open_blocker_count,
+open_major_count}`を持つ。HTML/captureのSHAは持たない。
 S8 initial/refreshのdoneは `feedback_request: {draft_path, request_count, blocker_count}`を持つ。
 publish後は同じmappingへ`published_path`、`feedback_id`、`input_sha256`、`review_approved_event_id`、
 `review_evidence_event_id`、`published_at`を追加し、
@@ -885,7 +886,7 @@ publish events)と更新済み `review/review-notes.md` も含む(いずれも�
 - **pipeline 完了後の再開コマンド**: `/distillery-impl:dist-impl-run {uc_id}`
   (distillery 側の仕様更新で input hash が変わった場合、影響を受けた done だけが
   projection 照合で再実行される旨を併記 — tier-scoped staleness)
-- **参照 path**: 公開 Markdown / review/index.html / as-built-summary.md / learnings/
+- **参照 path**: 公開 Markdown / ignored review/index.html / as-built-summary.md / learnings/
 
 ## 書き込み権限(write-set)の正本
 
@@ -899,7 +900,11 @@ publish events)と更新済み `review/review-notes.md` も含む(いずれも�
 | S5 UI Reviewer(tier 別。dispatch 条件を満たす frontend tier のみ) | **通常 dispatch**: `attempt-{n}/S5_ui-review.{自tier}.done.yaml`、`.findings.yaml`、`attempt-{n}/ui-artifacts/{自tier}/`(capture_review の SSR 静的 HTML・キャプチャ画像を含む)のみ(**実装コードの修正禁止**)。**`checks=capture_review` の再実行時は例外**(D10 round2): `attempt-{n}/ui-artifacts/{自tier}/staging/` のみ。canonical な done・`.findings.yaml`・`ui-artifacts/{自tier}/`(`staging/` を除く)への書き込みは禁止(staging→canonical の昇格はオーケストレータが `capture_review_completed` イベント追記後に行う) |
 | S6/S7 integration writer(直列) | `features/uc/`、`features/atdd/`(uc タグ付与を含む)、integration 用 step definitions、`S6/S7 done` |
 | S8 feedback | issues/の読取、feedback/、feedback-requests/、learnings/、`S8_feedback.done.yaml`。publish時だけ`feedback_request_publish_started/published` eventを追記可 |
-| S9 review | review/index.html、`S9_review_generated.done.yaml` |
+| S9 review | gitignore済みreview/index.html、`S9_review_generated.done.yaml`（HTMLはcommit対象外） |
+
+review HTMLのGit除外migrationに限り、orchestratorはrepo rootの`.gitignore`を更新し、
+追跡済み`docs/impl/latest/*/review/*.html`をworking treeに残したままindexから除外してよい。
+`.gitignore`規則は`docs/impl/latest/*/review/*.html`をexactly once記録する。
 
 **git 操作はオーケストレータのみ**。サブエージェントは git を実行してはならない(Bash 含む)。
 

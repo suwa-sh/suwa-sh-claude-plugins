@@ -235,10 +235,10 @@ h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var
     <div class="sid"><span class="code">S9</span><span class="who subag">🤖 委譲</span></div>
     <div class="sbody">
       <span class="sname">review — ゼロ知識レビュー資料 → ユーザー承認</span>
-      <div class="sdesc">前提知識ゼロで実装の合否を判断できる単一HTMLを生成する。内容は<b>UCと対象仕様 → 実装構成図 → 処理フロー図 → データフロー図 → 動かし方 → テストと確認方法 → 現在の仕様差分 → 判断ポイント</b>。attemptごとの指摘推移や内部stage codeは読者向け画面へ出さない。オーケストレータがプレビュー表示して<b>実装を承認 / 差し戻し</b>を確認。指摘は<code>review/review-notes.md</code>へ記録し、承認前にS8 refresh → S9再生成する。draftのID・SHA・件数と、review HTMLのSHA・確認結果・open finding集約をS9 eventから承認eventへexactに結ぶ。承認後、S8 publishはcanonical UC root内のregular/non-symlinkとsame-filesystemを確認し、検証した同じbytesだけをimmutable Markdownへatomic renameする。不一致はS8 refresh → S9再レビューへ戻す。dist-pipelineがその本文からstageを判定する</div>
-      <div class="dialog">💬 実装を承認 / 差し戻し</div>
+      <div class="sdesc">前提知識ゼロで判断できる補助HTMLを生成する。冒頭に<b>ユーザーにお願いしたいこと</b>を置き、実装承認と仕様・運用上の選択を分離する。未確定事項には推奨案・代替案・trade-off・回答templateを示す。構成・処理・データの図は必須依存の<code>diagram-design</code>で生成し、connectorの直交・重なり・接続点をtaste gateで確認する。HTMLはGit管理と承認SHAの対象外。承認証跡はdraftのID/SHA/件数とgate/open finding集約だけを結ぶ</div>
+      <div class="dialog">💬 機能承認 + 未確定事項を選択</div>
     </div>
-    <div class="sfiles"><div class="t">📄 STATE</div><code>review/index.html</code><code>events: review_approved</code><code>feedback-requests/{feedback_id}.md</code><code>events: feedback_request_published</code></div>
+    <div class="sfiles"><div class="t">📄 STATE</div><code>review/index.html (gitignored)</code><code>events: review_approved</code><code>feedback-requests/{feedback_id}.md</code><code>events: feedback_request_published</code></div>
   </div>
 </div>
 

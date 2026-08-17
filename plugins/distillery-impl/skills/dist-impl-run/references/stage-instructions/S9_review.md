@@ -1,27 +1,31 @@
 # S9: review 追加指示（固定部）
 
-このファイルは dist-impl-run が S9 サブエージェントに渡す追加指示の固定部の正本。
-サブエージェントはこの指示すべてに従うこと。
+このファイルはdist-impl-runがreview writerへ渡す固定指示の正本。
 
-- 前提知識ゼロの読者が、UCと対象仕様を理解して実装の合否を判断できる構成にする
-  （review-html-template.md）。
-- HTMLの主軸を、UCの目的・actor・trigger・入力・出力・業務ルール・受け入れ条件、完成した実装の
-  構成・処理・data、動かし方、テストと確認方法に置く。
-- 構成図、処理フロー図、データフロー図をinline SVGまたはHTML/CSSで生成する。各図にcaption、凡例、
-  短いテキスト代替を付け、外部runtimeやMermaid rendererへ依存しない。
-- attemptごとのレビュー指摘、blocker/major件数の推移、修正履歴はHTMLへ生成しない。現在openの問題だけを示す。
-- `S1`〜`S9`、`attempt-*`、raw status、tier ID、finding IDを読者向けの見出し・説明に使わない。
-  「仕様入力の確認」「起動受付CLI」「UC統合テスト」等の意味が分かる名称へ変換する。
-- 仕様起因の残課題はfeedback ID/件数/pathと、各CRの事実・問題・要求・完了条件を全文（details可）で
-  示す。ただしpipeline内部の所有stage・振り分け・個別処理指示・承認hashはHTMLへ生成しない。
-- capture_review画像はcaptures[]の非skipped entryごとにpath containment・regular file・存在・
-  実測SHA-256とfindings記載値の一致を検証してから、「テストと確認方法」に表示する。
-  不一致・欠落があればS9を完了しない。
-- `checks_checked.capture_review.status: done`のtierでは、対象UCのexecutable target集合を
-  dist-impl-run/SKILL.mdの算出規則で独立再計算し、captures[].targetと1:1対応することを検証する。
-- capture_review findingは`0 <= capture_index < captures.length`かつ参照先`result: diff`を確認する。
-  いずれか不一致ならS9を完了しない。
-- 表示したdraftのfeedback ID / exact bytes SHA-256 / request件数は内部の
-  `feedback_review_evidence`、HTML SHA / 確認結果 / open blocker・major件数 / captures_sha256は
-  `implementation_review_evidence`としてS9 doneへ記録する。
-- 生成後のプレビュー表示と承認対話はオーケストレータが行う。
+- HTMLの最初のviewportを「ユーザーにお願いしたいこと」にする。
+- 実装承認と、仕様・運用上の未確定事項の選択を分ける。
+- 各未確定事項へ相互排他的な2〜3案を示し、最初に推奨案、理由、結果、trade-off、
+  推奨が変わる条件、選択後のactionを示す。
+- copy可能な回答template（例: `機能=A / 相互運用=A / 監査=A`）を表示する。
+- UCの目的・actor・trigger・入出力・rule・受け入れ条件、完成した実装、動かし方、
+  testと未確認範囲を判断の根拠として示す。
+- 図を描く前に`diagram-design`の存在を確認する。無ければ生成を停止してsource、security audit、
+  `npx skills add cathrynlavery/diagram-design`を提示する。
+- 存在する場合はdiagram-designのSKILL、style guide、選んだtype referenceを全文読み、
+  構成図、処理flow、data flowへtaste gateを適用する。
+- off-axis connectorはrounded orthogonal pathだけを使う。diagonal、overlap、shared attach point、
+  non-endpoint node背面通過を禁止し、connectorをnodeより先に描く。
+- 各図にcaption、legend、accessible name、文章のtext alternativeを付ける。
+- 各SVGを`data-diagram-type`で分類し、`data-layer="connectors"` groupを
+  `data-layer="nodes"` groupより先にする。review skill同梱validatorを実行し、非0ならdoneを書かない。
+- validator通過後もrenderを目視し、重なり、attach point共有、node背面通過、label gapを確認する。
+- external asset/font/script/Mermaid runtimeを使わず、inline CSS/SVGだけの1 HTMLにする。
+- attempt履歴、内部stage code、raw status、tier/finding IDを読者向け本文へ出さない。
+- feedback requestはhuman titleを主表示し、管理ID、事実、問題、要求、完了条件を全文表示し、
+  対応する選択肢へ結ぶ。
+- captureは生成時にだけ実在・path・記録SHAを確認して表示する。承認時に再検証しない。
+- HTMLはgitignoreされた補助資料であり、git add/commitしない。HTMLを再生成してもstate evidenceを
+  更新しない。
+- done/eventへはfeedback draftのidentity/SHA/countと、gate/open finding集約だけを記録する。
+  HTML SHAとcapture SHAは記録しない。
+- preview、回答取得、feedback refresh、approval、publishはorchestratorが行う。

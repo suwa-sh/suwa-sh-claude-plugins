@@ -10,7 +10,6 @@ feedback_review_evidence:
   draft_sha256: "5b4dc4155b3d6aed830334dde78a0df21187dc84e93b70632c40b4b484a891f2"
   request_count: 11
 implementation_review_evidence:
-  review_html_sha256: "387df5f0ba2570acc5d1d70e66da33aa0af234431ec5de0dfeb6afd8690c1b79"
   gate_result: "6/6 pass"
   open_blocker_count: 0
   open_major_count: 2
@@ -23,6 +22,7 @@ summary:
 notes: >-
   S9は通常の実装レビューHTMLを生成した。仕様起因の残課題は実装との差分として表示したが、
   dist-pipelineのstage割当てや機械可読な振り分け情報は生成していない。表示したdraftとHTML判断根拠は内部の
-  feedback_review_evidence / implementation_review_evidenceへ結合し、承認の正はreview_approved eventとした。
+  feedback_review_evidence / implementation_review_evidenceへ結合し、HTML自体は可変な補助資料として証跡に含めず、
+  承認の正はreview_approved eventとした。
 completed_at: "2026-07-29T12:25:00+09:00"
 completed_by: "dist-impl-review"

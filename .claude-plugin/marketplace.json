@@ -22,7 +22,7 @@
     {
       "name": "distillery-impl",
       "source": "./plugins/distillery-impl",
-      "description": "distillery仕様の実装ハーネス: 独立Verifier、ゼロ知識ヒトレビュー、単一Markdownによるdist-pipeline還流、ファイル駆動の冪等再開"
+      "description": "distillery仕様の実装ハーネス: 独立Verifier、推奨案を選べる図解レビュー、単一Markdownによるdist-pipeline還流、ファイル駆動の冪等再開"
     },
     {
       "name": "toolbox",

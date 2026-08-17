@@ -1,7 +1,6 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
@@ -153,17 +152,14 @@ test('implementation approval is bound to the exact draft that publish exposes',
   }
 });
 
-test('implementation approval is also bound to the exact zero-knowledge review evidence', () => {
+test('implementation approval is bound to canonical gate and finding evidence, not mutable HTML bytes', () => {
   const htmlPath = path.join(sampleRoot, 'docs/impl/latest/19ec0182/review/index.html');
-  const html = fs.readFileSync(htmlPath);
-  const htmlSha256 = crypto.createHash('sha256').update(html).digest('hex');
   const expected = {
-    review_html_sha256: htmlSha256,
     gate_result: '6/6 pass',
     open_blocker_count: '0',
     open_major_count: '2',
   };
-  const visible = normalizedVisibleText(html.toString('utf8'));
+  const visible = normalizedVisibleText(fs.readFileSync(htmlPath, 'utf8'));
   assert.ok(visible.includes('6/6 pass'), 'review HTML must display the bound gate result');
   assert.ok(visible.includes('最終結果: blocker 0、major 2'), 'review HTML must display the bound open finding counts');
   // status.yaml は state: invalidated のスナップショットになったため evidence を持たない
@@ -185,4 +181,5 @@ test('publish contract rejects symlink and path-containment substitutions', () =
   }
   assert.match(contract, /canonical UC root/);
   assert.match(contract, /implementation_review_evidence/);
+  assert.match(contract, /review_html_sha256.*legacy field/s);
 });

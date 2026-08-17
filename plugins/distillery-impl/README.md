@@ -17,9 +17,9 @@ Implementerがコードを書き、別モデルのVerifierが検証します。
 - **4段階のテスト**：ATDD、UC BDD、tier BDD、TDDの順に期待動作を固定します。
   実装前にred baselineを確認します。
 - **独立検証**：Implementerとは別のVerifierが、仕様整合性を含む7項目を検証します。
-- **判断しやすい人レビュー**：UCと対象仕様を主軸に、完成した構成・処理フロー・データフロー、
-  動かし方、テストと確認方法を静的図解付きの単一HTMLへまとめます。レビュー指摘の履歴や内部stage codeは
-  読者向け画面へ出さず、現在の未解決事項だけを示します。
+- **判断しやすい人レビュー**：冒頭にユーザーが実施する承認・選択・回答形式を示し、未確定事項には
+  推奨案と比較可能な選択肢を提示します。構成・処理・データの図は`diagram-design`で作成します。
+  HTMLはGit管理・承認SHAの対象にせず、認識合わせ用の補助資料として再生成できます。
 - **UI一致確認の並走レーン**：読解（Verifierの照合表・常時実施）に加え、プロジェクトの能力
   （`tiers[].capabilities.ui_review`）に応じてdom_snapshot（決定論・CI常設。story実装両方をrenderして
   構造署名を比較）・capture_review（アドホック・環境依存。browserでキャプチャした画面を目視比較。
@@ -43,7 +43,7 @@ flowchart TD
     S6["S6 uc-bdd<br/>ゲート 5: E2E 完了条件を全 tier 結合で実行"]
     S7["S7 atdd<br/>ゲート 6: 受け入れ基準の選択実行"]
     S8["S8 feedback<br/>as-built + 単一feedback draft + learnings"]
-    S9["S9 review 💬<br/>ゼロ知識 HTML でヒトレビュー(承認対話)"]
+    S9["S9 review 💬<br/>推奨案を選べる図解HTMLで承認・仕様選択"]
     REFRESH["S8 refresh<br/>review-notesを単一draftへ反映"]
     PUBLISH["S8 publish<br/>draftを同じbytesのまま<br/>immutable Markdownへ移動"]
     DONE(["completed"])
@@ -81,11 +81,13 @@ flowchart TD
 | `distillery-impl:dist-impl-verify` | Verifier(反証専用・7 観点。コード vs 仕様書を読解で突合) |
 | `distillery-impl:dist-impl-ui-review` | UI Reviewer(S5 並走レーン。実行された画面 vs story を実行で突合) |
 | `distillery-impl:dist-impl-feedback` | 変更要求・learnings・skill/コンテキスト改善提案 |
-| `distillery-impl:dist-impl-review` | UC/仕様・構成・処理/データフロー・操作・テストを図解する人レビュー用HTML生成 |
+| `distillery-impl:dist-impl-review` | ユーザーの承認・選択、推奨案、UC/仕様、図解、操作、テストをまとめる補助HTML生成 |
 
 ## 前提条件
 
 - distillery の出力(`docs/specs/latest/` ほか)が存在すること
+- `diagram-design` skill（未導入時はdist-impl-runが
+  `npx skills add cathrynlavery/diagram-design`を案内して停止）
 - Node.js(契約 codegen は npx で実行)
 - Java(openapi-generator 用。無い場合は `_api-summary.yaml` 起点の縮退モードで動作)
 - ddd plugin(`ddd:ddd-tactical-implementation`)推奨。未導入でも dev-rules のみで動作
