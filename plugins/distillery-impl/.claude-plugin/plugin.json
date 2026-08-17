@@ -1,6 +1,6 @@
 {
   "name": "distillery-impl",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Implementation harness for distillery specs with independent verification, zero-knowledge human review, and immutable Markdown feedback handoff to dist-pipeline.",
   "author": {
     "name": "suwa-sh"

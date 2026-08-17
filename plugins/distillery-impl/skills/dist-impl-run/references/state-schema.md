@@ -364,6 +364,13 @@ use_cases:
                                        #   S1 が残存値を削除する)。0 件の場合のみ記録する
 ```
 
+**`use_cases[]` の並び順 = 実施順**: bootstrap P2 が UC 間依存(生産者 → 消費者)の推論で決定し、
+tier 宣言と併せて `config_confirmed` で確定する(根拠はファイル冒頭コメントに残す)。
+引数なしの dist-impl-run はこの順で「state が `completed` でない最初の UC」を選択する。
+並び替えは内容変更として扱う(P2 の content-stable 照合は並び順も含めて比較する。
+並び順だけの変更でも uc-map は書き換わるが、各 UC の done の projection には uc-map 自体が
+含まれないため既存 done は stale にならない)。
+
 **UC→ATDD マッピングは Scenario(acceptance criterion)単位**: distillery 出力に UC→SPEC の
 機械可読対応は存在せず、さらに **1 つの SPEC が複数 UC の受け入れ基準を含む実例がある**
 (サンプルの SPEC-001-01 は「登録」と「編集」の 2 基準を持つ)ため、SPEC-ID 単位の対応では

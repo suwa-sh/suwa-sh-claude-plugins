@@ -94,7 +94,14 @@ lock・入力ハッシュもその契約のエントリのみ更新する(無指
    **tier 宣言と併せてユーザー確認で確定**する(provider/consumers が推定できない契約は
    推測で埋めず確認必須項目にする)。契約に載らない tier 間依存は実装時に issues 経由で扱う
 4. uc-map.yaml を生成: 全 UC の uc_id(生成式は state-schema.md。NFC 正規化 + canonical JSON + sha256 先頭 8 桁)、
-   path、tiers。**衝突検査**で衝突があれば 12 桁に延長
+   path、tiers。**衝突検査**で衝突があれば 12 桁に延長。
+   **実施順の計画**: `use_cases[]` の並び順 = 実施順(引数なし dist-impl-run の着手順。
+   正本は state-schema.md「uc-map.yaml」)。spec(BUC フロー・各 UC の生産物/消費物)から
+   UC 間の依存を推論して並べる — 成果物・状態を生む生産者 UC(実行・登録系)を先、
+   それを読む・止める・やり直す消費者 UC(照会・監視・中止・リラン系)を後に置く
+   (例: 実行中核 → 比較依頼作成 → 比較実行 → 結果確認 → 監視 → 中止 → リラン)。
+   依存が無い UC 同士は BUC のフロー順を保つ。並び順の根拠はファイル冒頭コメントに要約し、
+   tier 宣言・契約宣言と併せて**確認推奨項目としてユーザー確認**する(dialogue_policy に従う)
 5. spec-event.yaml に無い tier id・パース不能 YAML は**停止して報告**(推測しない)
 6. **UI 並走レビュー能力(`tiers[].capabilities.ui_review`)の方針確定**(has_design_system かつ
    frontend 種別の tier がある場合のみ。D7・D10): 実装 tier・lang・framework の確定後、P1 の

@@ -1,7 +1,8 @@
 ---
 name: distillery-impl:dist-impl-run
 description: >
-  distillery-impl のオーケストレータ。UC を指定して実装パイプライン(S0 bootstrap → S1 uc-init →
+  distillery-impl のオーケストレータ。UC を指定して(または引数なしで uc-map の実施順に
+  未完了 UC を自動選択・自動継続して)実装パイプライン(S0 bootstrap → S1 uc-init →
   S2 test-scaffold → S3 contracts → S4 tier 並走実装 → S5 別モデル Verifier(+ dispatch 条件を満たす
   frontend tier は実行ベースの UI Reviewer が並走)→ S6 UC BDD → S7 ATDD →
   S8 feedback → S9 review)をファイル駆動の冪等再開つきで運転する。
@@ -10,7 +11,8 @@ description: >
 
 # dist-impl-run
 
-引数: `{UC 指定} [specs_root={...}] [repo_root={...}]`(UC 指定は 完全修飾「業務/BUC/UC」・uc_id・一意な UC 名のいずれか)
+引数: `[{UC 指定}] [specs_root={...}] [repo_root={...}]`(UC 指定は 完全修飾「業務/BUC/UC」・uc_id・一意な UC 名のいずれか。
+**省略時は uc-map の実施順で次の未完了 UC を自動選択**し、completed のたびに次へ自動継続する — 起動シーケンス 3)
 
 ## オーケストレータの原則
 
@@ -36,8 +38,16 @@ description: >
    bootstrap の確認推奨項目(tier→dir / **kind** / datastore_owner / backend_framework /
    言語・コマンド)はユーザーに中継して確定(kind が未確定・不正値のままなら S0 を完了にしない)。
    **確定したら `config_confirmed` イベントを追記してから impl-config を更新する**(イベント → latest の順)
-3. **UC 解決**: 引数を uc-map と照合(照合は NFC 正規化後)。
-   完全修飾・uc_id・一意名のみ受理。複数一致は候補一覧を提示して選ばせる
+3. **UC 解決**: 引数あり = uc-map と照合(照合は NFC 正規化後)。
+   完全修飾・uc_id・一意名のみ受理。複数一致は候補一覧を提示して選ばせる。
+   **引数なし = 実施順の自動選択**: uc-map の `use_cases[]`(並び順 = 実施順。
+   state-schema.md)を先頭から走査し、`status.yaml` の state が `completed` でない
+   最初の UC を対象にする(status.yaml が無い UC は未着手として選択対象)。
+   選択した UC・残りの未完了 UC 数を報告してから進める。全 UC が completed なら
+   全体完了を報告して終了する。選択した UC が `blocked_on_spec` の場合は自動で
+   スキップせず、仕様還流待ちであることと「還流(dist-pipeline)を先に実行するか、
+   跳ばして進むなら次の UC を明示指定する」ことを報告して停止する
+   (実施順は依存順のため、前提 UC を跳ばした続行はユーザー判断に委ねる)
 4. **model 解決**: implementer_model / verifier_model を解決し status.yaml の `resolved_models` に記録。
    **両者が同一なら停止してユーザー確認**(二段独立検証の要件)
 5. **lease 取得**: run_id・開始 HEAD(`git rev-parse HEAD`)・uc_id を run-lease.yaml に書く。
@@ -262,7 +272,11 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    feedback要求が0件ならstate=`completed`とし、`{uc_id}/NEXT.md`を「還流不要(要求0件)」の内容で
    上書き生成して、`review_approved` eventの追記分・status.yaml・更新済み`review/review-notes.md`と
    **同一commit**(明示path)にしてからleaseを解放して終了する(前サイクルの還流指示を残さない。
-   派生物だけをcommitしない — state-schema.md「NEXT.md」のcommit境界)
+   派生物だけをcommitしない — state-schema.md「NEXT.md」のcommit境界)。
+   **連続運転(引数なし起動のみ)**: この経路(要求0件のcompleted)でlease解放後、
+   起動シーケンス3の自動選択で次の未完了UCへ継続する(lease取得からやり直す)。
+   継続のたびに「n/全UC完了、次: {uc}」を報告する。要求ありのcompleted・blocked_on_spec・
+   awaiting_review等ユーザー入力や還流を要する停止では継続せず、従来どおり案内して終了する
 6. 要求が1件以上ならstate=`publishing_feedback`とし、S8を`mode=publish`で実行する。公開先が未作成なら
    draft/公開先と全親componentがcanonical UC root内のregular/non-symlinkであること、両親が同一filesystem
    であることをfail-closedに確認してatomic renameする。公開済みpathを再開時に発見した

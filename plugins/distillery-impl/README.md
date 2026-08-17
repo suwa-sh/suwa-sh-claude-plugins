@@ -72,7 +72,7 @@ flowchart TD
 
 | skill | 役割 |
 |---|---|
-| `distillery-impl:dist-impl-run` | オーケストレータ。UC 指定で S0〜S9 を運転(通常はこれだけ呼べばよい) |
+| `distillery-impl:dist-impl-run` | オーケストレータ。UC 指定または引数なし(実施順で自動選択・自動継続)で S0〜S9 を運転(通常はこれだけ呼べばよい) |
 | `distillery-impl:dist-impl-bootstrap` | 実装リポの骨格生成・契約 codegen・Storybook 取り込み(冪等) |
 | `distillery-impl:dist-impl-implement` | Implementer(test-scaffold / tier-impl / uc-bdd / atdd の 4 mode) |
 | `distillery-impl:dist-impl-verify` | Verifier(反証専用・7 観点。コード vs 仕様書を読解で突合) |
@@ -90,10 +90,14 @@ flowchart TD
 ## 使い方
 
 ```
-# UC を指定して実装開始(初回は bootstrap から自動で走る)
+# 引数なし: uc-map の実施順(bootstrap P2 が依存関係から計画)で次の未完了 UC を自動選択し、
+# completed のたびに次の UC へ自動継続する(初回は bootstrap から自動で走る)
+/distillery-impl:dist-impl-run
+
+# UC を指定して実装開始
 /distillery-impl:dist-impl-run 貸出管理業務/貸出管理フロー/書籍を貸出する
 
-# 中断からの再開(同じ指定でよい。完了済み stage は skip される)
+# 中断からの再開(同じ指定 or 引数なしでよい。完了済み stage は skip される)
 /distillery-impl:dist-impl-run 書籍を貸出する
 ```
 
