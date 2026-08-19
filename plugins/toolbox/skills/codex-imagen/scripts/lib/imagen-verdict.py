@@ -27,7 +27,9 @@ RULES = [
     # agy: "使用モデルの生成制限（クォータ制限）に達しており、回復まで約4時間半"
     ("quota_exhausted", (r"クォータ", r"生成制限", r"quota (?:limit|exceeded|exhausted)",
                          r"RESOURCE_EXHAUSTED")),
-    ("rate_limit", (r"rate limit", r"429", r"too many requests")),
+    # 429 は境界必須。裸の r"429" は "1429 bytes" のようなログ中の数値に誤爆し、
+    # クォータでない失敗に遅延リトライを付けてしまう (2026-08-20 レビューで実測)
+    ("rate_limit", (r"rate limit", r"\b429\b", r"too many requests")),
     ("auth_expired", (r"not logged in", r"unauthorized", r"\b401\b", r"login required",
                       r"re-?authenticate", r"認証", r"ログインし")),
     ("content_policy", (r"content policy", r"safety (?:policy|system)", r"I can'?t help with",
@@ -43,6 +45,13 @@ DELTA_EN_RE = re.compile(r"in\s+(\d+)\s*(hour|minute)s?", re.I)
 
 
 def classify(text):
+    """出力の内容から理由を 1 語に決める。
+
+    「証拠が無い」(unknown) と「出力はあったが PNG が出なかった」(no_image) は別物として扱う。
+    同じ語に潰すと、分類器へログが届いていない配線ミスをログから見分けられなくなる。
+    """
+    if not text.strip():
+        return "unknown"
     for reason, patterns in RULES:
         for pat in patterns:
             if re.search(pat, text, re.I):
@@ -109,7 +118,7 @@ def main():
         except OSError:
             text = ""
 
-    verdict["reason"] = classify(text) if text else "no_image"
+    verdict["reason"] = classify(text)
     hint = find_hint(text)
     if hint:
         verdict["hint"] = hint

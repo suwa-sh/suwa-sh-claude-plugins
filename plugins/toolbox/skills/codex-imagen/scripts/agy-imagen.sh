@@ -39,14 +39,16 @@ imagen_verdict_init
 
 if ! command -v "$AGY_IMAGEN_BIN" >/dev/null 2>&1; then
   imagen_log "agy not found in PATH (AGY_IMAGEN_BIN=$AGY_IMAGEN_BIN)"
-  imagen_verdict_raw agy failed not_installed
+  # 「試して失敗した」ではなく「試していない」。failed にすると消費側で
+  # 非クォータ理由として数えられ、codex が本当に枯渇していても遅延リトライを取りこぼす
+  imagen_verdict_raw agy skipped not_installed
   imagen_verdict_finish failed
   exit 1
 fi
 
-# 失敗理由の分類用に「直近の agy 失敗ログ」を保持する
+# 失敗理由の分類用に agy の失敗ログを全試行ぶん貯める (最後の試行が無証拠でも前の証拠を残す)
 _agy_last_log="$(mktemp -t agy-imagen-last.XXXXXX)"
-trap 'rm -f "$_agy_last_log"' EXIT
+imagen_tmp_register "$_agy_last_log"
 
 _timeout_bin="$(imagen_timeout_bin)"
 
@@ -89,7 +91,6 @@ run_agy() {
   fi
 
   # 失敗理由を握り潰さない (quota / 認証失効 / content policy がすべて「no PNG」に潰れるのを防ぐ)
-  : >"$_agy_last_log"
   if [ "$rc" -ne 0 ] || [ ! -f "$out_path" ]; then
     imagen_log "agy rc=${rc}"
     if [ -s "$log_out" ]; then

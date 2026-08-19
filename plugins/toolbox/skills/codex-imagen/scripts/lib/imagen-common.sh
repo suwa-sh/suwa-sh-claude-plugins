@@ -142,11 +142,35 @@ imagen_print_result() {
 #
 # 契約 (呼び出し元が読む):
 #   [<tag>] IMAGEN_RESULT {"status":"failed","out":"<path>","providers":[{...},{...}]}
-#   providers[].reason = ok | usage_limit | quota_exhausted | rate_limit | auth_expired
-#                      | content_policy | timeout | no_image | unknown
+#   providers[].status = ok | failed | skipped
+#   providers[].reason (status=failed) = usage_limit | quota_exhausted | rate_limit | auth_expired
+#                      | content_policy | timeout | no_image (出力はあったが PNG 無し)
+#                      | unknown (証拠が取れなかった)
+#   providers[].reason (status=skipped) = disabled | misconfigured | script_not_found | not_installed
 #   providers[].retry_epoch (任意) = 復帰見込み epoch 秒
+#
+# 消費側は「status=skipped は試していない」として扱うこと (失敗として数えると、
+# 実際に試したプロバイダの判定が歪む)。
 
 _imagen_verdict_owner=0
+_imagen_tmp_files=""
+
+# 一時ファイルの回収は 1 つの EXIT trap に集約する。各スクリプトが直に trap を張ると
+# 後から張った側が黙って上書きし、片方が消えずに /tmp へ溜まる (非対称が事故になる)。
+imagen_cleanup() {
+  local f
+  for f in $_imagen_tmp_files; do
+    [ -n "$f" ] && rm -f "$f"
+  done
+  _imagen_tmp_files=""
+}
+
+# imagen_tmp_register <path> — 終了時に消す一時ファイルを登録する
+imagen_tmp_register() {
+  _imagen_tmp_files="${_imagen_tmp_files} $1"
+  # shellcheck disable=SC2064
+  trap imagen_cleanup EXIT
+}
 
 imagen_verdict_init() {
   if [ -n "${IMAGEN_VERDICT_FILE:-}" ]; then
@@ -156,6 +180,8 @@ imagen_verdict_init() {
   IMAGEN_VERDICT_FILE="$(mktemp -t imagen-verdict.XXXXXX)"
   export IMAGEN_VERDICT_FILE
   _imagen_verdict_owner=1
+  # set -e 中断 / SIGTERM / 外側 timeout で finish に到達しなくても消えるようにする
+  imagen_tmp_register "$IMAGEN_VERDICT_FILE"
 }
 
 # imagen_verdict <provider> <ok|failed> [<logfile>]
