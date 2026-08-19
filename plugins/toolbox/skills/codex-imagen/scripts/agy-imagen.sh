@@ -105,7 +105,8 @@ try_generate_and_resize() {
   rm -f "$out_path"
   run_agy "$(build_agy_prompt)"
   [ -f "$out_path" ] || return 1
-  imagen_resize_if_needed || return 1
+  # size 拒否も分類器へ残す (PNG は出たが契約サイズに満たない = 引き直しで直る類)
+  imagen_resize_if_needed || { echo "resize rejected (source smaller than target)" >>"$_agy_last_log"; return 1; }
   return 0
 }
 

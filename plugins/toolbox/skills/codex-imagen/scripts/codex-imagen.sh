@@ -133,12 +133,16 @@ try_generate_and_resize() {
       i=$((i + 1))
     done
     if [ -z "$found" ] || [ ! -f "$found" ]; then
+      # 分類器に「出力はあったが PNG が出なかった」を伝える。書かないと証拠ゼロ = unknown となり、
+      # routine な no-PNG と「分類器へログが届いていない配線ミス」を区別できなくなる
+      echo "no png produced in generated_images/${_codex_thread_id} after 30s" >>"$_codex_last_log"
       return 1  # 30 秒待っても PNG が出ない → 呼び出し側でリトライ
     fi
     cp "$found" "$out_path"
   fi
 
-  imagen_resize_if_needed || return 1
+  # size 拒否も分類器へ残す (PNG は出たが契約サイズに満たない = 引き直しで直る類)
+  imagen_resize_if_needed || { echo "resize rejected (source smaller than target)" >>"$_codex_last_log"; return 1; }
   return 0
 }
 

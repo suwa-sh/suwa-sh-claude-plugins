@@ -153,22 +153,23 @@ imagen_print_result() {
 # 実際に試したプロバイダの判定が歪む)。
 
 _imagen_verdict_owner=0
-_imagen_tmp_files=""
+# 配列で持つ (空白区切り文字列 + 非クォート展開だと TMPDIR に空白や glob 文字が入ったとき
+# 単語分割・パス名展開で回収漏れや別パスへの rm が起きる)
+_imagen_tmp_files=()
 
 # 一時ファイルの回収は 1 つの EXIT trap に集約する。各スクリプトが直に trap を張ると
 # 後から張った側が黙って上書きし、片方が消えずに /tmp へ溜まる (非対称が事故になる)。
 imagen_cleanup() {
   local f
-  for f in $_imagen_tmp_files; do
+  for f in ${_imagen_tmp_files[@]+"${_imagen_tmp_files[@]}"}; do
     [ -n "$f" ] && rm -f "$f"
   done
-  _imagen_tmp_files=""
+  _imagen_tmp_files=()
 }
 
 # imagen_tmp_register <path> — 終了時に消す一時ファイルを登録する
 imagen_tmp_register() {
-  _imagen_tmp_files="${_imagen_tmp_files} $1"
-  # shellcheck disable=SC2064
+  _imagen_tmp_files+=("$1")
   trap imagen_cleanup EXIT
 }
 
