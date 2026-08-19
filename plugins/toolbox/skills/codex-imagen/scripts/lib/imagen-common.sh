@@ -16,6 +16,7 @@
 # set -euo pipefail 下で source される前提。
 
 IMAGEN_TAG="${IMAGEN_TAG:-imagen}"
+IMAGEN_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 imagen_log() { echo "[${IMAGEN_TAG}] $*" >&2; }
 
@@ -131,4 +132,76 @@ imagen_resize_if_needed() {
 # 成功時の契約: 生成画像の絶対パスを stdout に 1 行だけ出す
 imagen_print_result() {
   echo "$(cd "$(dirname "$out_path")" && pwd)/$(basename "$out_path")"
+}
+
+# --- verdict (プロバイダごとの結末) ---------------------------------------
+# 失敗が「PNG が出なかった」に潰れると、呼び出し元の pipeline は理由を通知できない
+# (2026-08-20: codex 枯渇 → agy も枯渇、を Asana 通知から読み取れなかった)。
+# 各プロバイダが自分の結末を JSON 1 行で $IMAGEN_VERDICT_FILE に積み、
+# 集約役 (= 最初に init したスクリプト) が最後に IMAGEN_RESULT 1 行にまとめて stderr へ出す。
+#
+# 契約 (呼び出し元が読む):
+#   [<tag>] IMAGEN_RESULT {"status":"failed","out":"<path>","providers":[{...},{...}]}
+#   providers[].reason = ok | usage_limit | quota_exhausted | rate_limit | auth_expired
+#                      | content_policy | timeout | no_image | unknown
+#   providers[].retry_epoch (任意) = 復帰見込み epoch 秒
+
+_imagen_verdict_owner=0
+
+imagen_verdict_init() {
+  if [ -n "${IMAGEN_VERDICT_FILE:-}" ]; then
+    _imagen_verdict_owner=0   # 上位 (codex-imagen.sh) が集約する。積むだけ
+    return 0
+  fi
+  IMAGEN_VERDICT_FILE="$(mktemp -t imagen-verdict.XXXXXX)"
+  export IMAGEN_VERDICT_FILE
+  _imagen_verdict_owner=1
+}
+
+# imagen_verdict <provider> <ok|failed> [<logfile>]
+imagen_verdict() {
+  local provider="$1" status="$2" logfile="${3:-}" line=""
+  [ -n "${IMAGEN_VERDICT_FILE:-}" ] || return 0
+  if command -v python3 >/dev/null 2>&1; then
+    line="$(python3 "$IMAGEN_LIB_DIR/imagen-verdict.py" "$provider" "$status" "$logfile" 2>/dev/null || true)"
+  fi
+  [ -n "$line" ] || line="{\"name\":\"${provider}\",\"status\":\"${status}\",\"reason\":\"unknown\"}"
+  printf '%s\n' "$line" >>"$IMAGEN_VERDICT_FILE"
+}
+
+# imagen_verdict_raw <provider> <status> <reason> — 分類不要のとき (skipped 等) に直接積む
+imagen_verdict_raw() {
+  [ -n "${IMAGEN_VERDICT_FILE:-}" ] || return 0
+  printf '{"name":"%s","status":"%s","reason":"%s"}\n' "$1" "$2" "$3" >>"$IMAGEN_VERDICT_FILE"
+}
+
+# imagen_verdict_finish <ok|failed> — 集約役だけが IMAGEN_RESULT を出す
+imagen_verdict_finish() {
+  local status="$1"
+  [ "${_imagen_verdict_owner}" = "1" ] || return 0
+  [ -n "${IMAGEN_VERDICT_FILE:-}" ] || return 0
+  local out_abs summary=""
+  out_abs="$(cd "$(dirname "$out_path")" 2>/dev/null && pwd)/$(basename "$out_path")"
+  if command -v python3 >/dev/null 2>&1; then
+    summary="$(python3 -c '
+import json, sys
+providers = []
+try:
+    with open(sys.argv[3], encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                try:
+                    providers.append(json.loads(line))
+                except ValueError:
+                    pass
+except OSError:
+    pass
+print(json.dumps({"status": sys.argv[1], "out": sys.argv[2], "providers": providers},
+                 ensure_ascii=False, separators=(",", ":")))
+' "$status" "$out_abs" "$IMAGEN_VERDICT_FILE" 2>/dev/null || true)"
+  fi
+  [ -n "$summary" ] || summary="{\"status\":\"${status}\",\"out\":\"${out_abs}\",\"providers\":[]}"
+  imagen_log "IMAGEN_RESULT ${summary}"
+  rm -f "$IMAGEN_VERDICT_FILE"
 }

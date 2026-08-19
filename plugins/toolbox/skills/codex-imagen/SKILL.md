@@ -86,6 +86,30 @@ scripts/
   明示しており、キャラクターの造形・画風が保持される (明示しないと参照が無視され別の絵になる)
 - `agy` が PATH に無ければフォールバックせずに従来通り失敗する
 
+### 失敗理由の構造化 (IMAGEN_RESULT)
+
+呼び出し元の pipeline に届くのが「PNG が無い」だけだと、**どのプロバイダがなぜ落ちたか**を
+運用通知 (Discord / Asana) に載せられない (2026-08-20: codex 枯渇 → agy も枯渇、が読み取れず
+agy 側のログを掘るまで原因不明だった)。そこで実行の最後に stderr へ **1 行の機械可読サマリ**を出す。
+
+```
+[codex-imagen] IMAGEN_RESULT {"status":"failed","out":"/path/ig-1.png","providers":[
+  {"name":"codex","status":"failed","reason":"usage_limit","hint":"try again at 2:53 PM",
+   "retry_epoch":1787205180,"retry_at":"2026-08-20T14:53:00+09:00"},
+  {"name":"agy","status":"failed","reason":"quota_exhausted","hint":"約4時間半","retry_epoch":...}]}
+```
+
+- `status` は全体の結末 (`ok` / `failed`)。`providers[]` は**試した順**に 1 プロバイダ 1 要素
+  (フォールバックで成功した場合は `codex=usage_limit` + `agy=ok` が並ぶ = 誰が救ったか分かる)
+- `reason`: `ok` / `usage_limit` / `quota_exhausted` / `rate_limit` / `auth_expired` /
+  `content_policy` / `timeout` / `no_image` / `unknown`、未実行は `status=skipped`
+- `retry_epoch`: provider の文言 (`try again at 2:53 PM` / `約4時間半`) から読めた復帰見込み時刻。
+  読めなければキーごと省略 (呼び出し側が保守的な既定値を決める)
+- 分類の実体は `lib/imagen-verdict.py`。`python3` が無い環境では `reason=unknown` に退避するだけで
+  生成そのものは従来通り動く
+- 呼び出し側は `IMAGEN_RESULT ` 以降を JSON として読む。人向けの詳細ログ (provider の生出力) は
+  従来どおり別行で stderr に出るので、**ログを捨てずに拾う**こと (捨てると分類も届かない)
+
 ### リトライ回数 (CODEX_IMAGEN_MAX_ATTEMPTS, default 4)
 
 codex の imagen スキルは組み込み `image_gen` ツール/CLI フォールバックの可用性がセッション単位で揺れる。`--size` 指定時に codex が目標未満サイズを返して resize 拒否されるケース (出力サイズは実行ごとの当たり外れ) があるため、同一 invocation 内で最大 `CODEX_IMAGEN_MAX_ATTEMPTS` 回 (default 4) まで 10 秒間隔でリトライして「外れ」を引き直す。1 回あたり最大 `CODEX_IMAGEN_TIMEOUT`(300s) + 10s なので最悪 ~20 分。恒久的に不可な状況 (API key 未設定・アカウント状態) では何回試しても変わらないが、上限で打ち切るので暴走はしない。

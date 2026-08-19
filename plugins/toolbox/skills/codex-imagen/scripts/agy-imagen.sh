@@ -33,10 +33,20 @@ AGY_IMAGEN_MAX_ATTEMPTS="${AGY_IMAGEN_MAX_ATTEMPTS:-2}"
 AGY_IMAGEN_TIMEOUT="${AGY_IMAGEN_TIMEOUT:-420}"
 AGY_IMAGEN_BIN="${AGY_IMAGEN_BIN:-agy}"
 
+# codex-imagen.sh から呼ばれたときは、そちらが set/export した $IMAGEN_VERDICT_FILE に積むだけ。
+# 単体実行のときはここが集約役になり、最後に IMAGEN_RESULT を出す。
+imagen_verdict_init
+
 if ! command -v "$AGY_IMAGEN_BIN" >/dev/null 2>&1; then
   imagen_log "agy not found in PATH (AGY_IMAGEN_BIN=$AGY_IMAGEN_BIN)"
+  imagen_verdict_raw agy failed not_installed
+  imagen_verdict_finish failed
   exit 1
 fi
+
+# 失敗理由の分類用に「直近の agy 失敗ログ」を保持する
+_agy_last_log="$(mktemp -t agy-imagen-last.XXXXXX)"
+trap 'rm -f "$_agy_last_log"' EXIT
 
 _timeout_bin="$(imagen_timeout_bin)"
 
@@ -79,11 +89,12 @@ run_agy() {
   fi
 
   # 失敗理由を握り潰さない (quota / 認証失効 / content policy がすべて「no PNG」に潰れるのを防ぐ)
+  : >"$_agy_last_log"
   if [ "$rc" -ne 0 ] || [ ! -f "$out_path" ]; then
     imagen_log "agy rc=${rc}"
     if [ -s "$log_out" ]; then
       imagen_log "agy output (tail):"
-      tail -c 1500 "$log_out" | sed "s/^/[${IMAGEN_TAG}]   /" >&2
+      tail -c 1500 "$log_out" | tee -a "$_agy_last_log" | sed "s/^/[${IMAGEN_TAG}]   /" >&2
     fi
   fi
   rm -f "$log_out"
@@ -101,6 +112,8 @@ attempt=1
 while ! try_generate_and_resize; do
   if [ "$attempt" -ge "$AGY_IMAGEN_MAX_ATTEMPTS" ]; then
     imagen_log "failed to generate/resize image at: $out_path (after ${attempt} attempts)"
+    imagen_verdict agy failed "$_agy_last_log"
+    imagen_verdict_finish failed
     exit 1
   fi
   imagen_log "attempt ${attempt}/${AGY_IMAGEN_MAX_ATTEMPTS} failed (no PNG or size-reject), retrying after 10s..."
@@ -108,4 +121,6 @@ while ! try_generate_and_resize; do
   attempt=$((attempt + 1))
 done
 
+imagen_verdict agy ok
+imagen_verdict_finish ok
 imagen_print_result

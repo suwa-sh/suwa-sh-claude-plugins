@@ -43,6 +43,11 @@ fi
 # 複数の codex-imagen を同時に走らせても干渉しない (= 並列実行できる)。
 _codex_thread_id=""
 
+# 失敗理由の分類用に「直近の codex 失敗ログ」を保持する (人が読むログとは別に機械可読な分類へ回す)
+imagen_verdict_init
+_codex_last_log="$(mktemp -t codex-imagen-last.XXXXXX)"
+trap 'rm -f "$_codex_last_log"' EXIT
+
 # codex exec は単独でも稀にハングする (API ストール等)。timeout が無いと run_codex が返らず
 # 外側の Kestra timeout (PT3H) まで詰まる。timeout/gtimeout (homebrew coreutils) で 1回の
 # codex exec を CODEX_IMAGEN_TIMEOUT 秒で打ち切り、「PNG 無し → リトライ」経路に確実に到達させる。
@@ -79,15 +84,17 @@ run_codex() {
   _codex_thread_id="$(grep -m1 '"type":"thread.started"' "$json_out" 2>/dev/null | sed -n 's/.*"thread_id":"\([^"]*\)".*/\1/p' || true)"
   # 失敗の原因を握り潰さない。stderr を捨てていたため、rate limit / 認証失効 / content
   # policy 拒否がすべて「no PNG」に潰れて診断不能だった (2026-07-28)。
+  # さらに 2026-08-20: 人が読むログに出すだけでなく、分類用に最後の失敗ログを保持する。
+  : >"$_codex_last_log"
   if [ "$rc" -ne 0 ] || [ -z "$_codex_thread_id" ]; then
     imagen_log "codex exec rc=${rc} thread_id='${_codex_thread_id}'"
     if [ -s "$err_out" ]; then
       imagen_log "stderr:"
-      head -c 2000 "$err_out" | sed 's/^/[codex-imagen]   /' >&2
+      head -c 2000 "$err_out" | tee -a "$_codex_last_log" | sed 's/^/[codex-imagen]   /' >&2
     fi
     # JSONL 側の error イベントも拾う (stderr が空でも API 側の拒否理由がここに出る)
     grep -o '"type":"[a-z._]*error[a-z._]*"[^}]*' "$json_out" 2>/dev/null | head -3 \
-      | sed 's/^/[codex-imagen]   json: /' >&2 || true
+      | tee -a "$_codex_last_log" | sed 's/^/[codex-imagen]   json: /' >&2 || true
   fi
   rm -f "$json_out" "$err_out"
 }
@@ -163,11 +170,13 @@ run_fallback() {
   case "$CODEX_IMAGEN_FALLBACK" in
     off)
       imagen_log "fallback disabled (CODEX_IMAGEN_FALLBACK=off)"
+      imagen_verdict_raw fallback skipped disabled
       return 1
       ;;
     agy) ;;
     *)
       imagen_log "unknown CODEX_IMAGEN_FALLBACK='${CODEX_IMAGEN_FALLBACK}' (expected agy|off)"
+      imagen_verdict_raw fallback skipped misconfigured
       return 1
       ;;
   esac
@@ -175,6 +184,7 @@ run_fallback() {
   local fallback_script="$SCRIPT_DIR/${CODEX_IMAGEN_FALLBACK}-imagen.sh"
   if [ ! -f "$fallback_script" ]; then
     imagen_log "fallback script not found: $fallback_script"
+    imagen_verdict_raw "${CODEX_IMAGEN_FALLBACK}" skipped script_not_found
     return 1
   fi
 
@@ -185,13 +195,19 @@ run_fallback() {
 }
 
 if run_codex_attempts; then
+  imagen_verdict codex ok
+  imagen_verdict_finish ok
   imagen_print_result
   exit 0
 fi
+imagen_verdict codex failed "$_codex_last_log"
 
+# フォールバック側 (agy-imagen.sh) は同じ $IMAGEN_VERDICT_FILE に自分の verdict を積む
 if run_fallback "$@"; then
+  imagen_verdict_finish ok
   exit 0
 fi
 
 imagen_log "failed to generate/resize image at: $out_path (codex + fallback=${CODEX_IMAGEN_FALLBACK})"
+imagen_verdict_finish failed
 exit 1
