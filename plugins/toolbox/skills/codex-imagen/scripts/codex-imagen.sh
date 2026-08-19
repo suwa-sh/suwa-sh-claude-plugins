@@ -1,47 +1,20 @@
 #!/usr/bin/env bash
+# codex-imagen.sh — Codex CLI の imagen スキルで画像を生成する (既定のプロバイダ)。
+#
+#   codex-imagen.sh <output_path> <prompt> [<input_image>] [--size=<WxH>]
+#
+# codex 側が usage limit / rate limit で尽きたときは、同じ引数のまま
+# agy-imagen.sh (Antigravity CLI の generate_image) へフォールバックする。
+# 引数契約・--size のリサイズ・出力パスの扱いは lib/imagen-common.sh が正本。
 set -euo pipefail
 
-usage() {
-  cat >&2 <<'EOF'
-Usage:
-  codex-imagen.sh <output_path> <prompt> [<input_image>] [--size=<WxH>]
+IMAGEN_TAG="codex-imagen"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/imagen-common.sh
+. "$SCRIPT_DIR/lib/imagen-common.sh"
 
-  <output_path>  : 生成画像の保存先
-  <prompt>       : プロンプト文字列
-  <input_image>  : （任意）入力画像パス。指定すると edit モード
-  --size=<WxH>   : （任意）最終サイズを WxH に強制する。例: --size=1280x670
-                   指定時はプロンプトに size 指示を追加し、生成後 scale-to-cover + center-crop
-                   でリサイズする（歪みなし）。元画像が目標より小さい場合はエラー→リトライ
-EOF
-  exit 2
-}
-
-out_path=""
-prompt=""
-in_path=""
-size=""
-
-for arg in "$@"; do
-  case "$arg" in
-    --size=*) size="${arg#--size=}" ;;
-    *)
-      if   [ -z "$out_path" ]; then out_path="$arg"
-      elif [ -z "$prompt"   ]; then prompt="$arg"
-      elif [ -z "$in_path"  ]; then in_path="$arg"
-      else usage
-      fi
-      ;;
-  esac
-done
-
-[ -z "$out_path" ] || [ -z "$prompt" ] && usage
-
-if [ -n "$size" ] && ! [[ "$size" =~ ^[0-9]+x[0-9]+$ ]]; then
-  echo "[codex-imagen] invalid --size format: $size (expected WxH)" >&2
-  exit 2
-fi
-
-mkdir -p "$(dirname "$out_path")"
+# out_path / prompt / in_path / size / target_w / target_h / size_hint を設定する
+imagen_parse_args "$@"
 
 # --- ハウスキープ (全経路一元管理): codex 中間出力 generated_images の古い dir を削除 ---
 # codex は指定 out_path でなく ~/.codex/generated_images/<uuid>/ig_*.png に書き出し、本スクリプトが
@@ -57,20 +30,7 @@ if [ -d "$_gi_dir" ] && [ "${_gi_keep:-0}" -gt 0 ] 2>/dev/null; then
   find "$_gi_dir" -mindepth 1 -maxdepth 1 -type d -mtime +"$_gi_keep" -exec rm -rf {} + 2>/dev/null || true
 fi
 
-target_w=""
-target_h=""
-size_hint=""
-if [ -n "$size" ]; then
-  target_w="${size%x*}"
-  target_h="${size#*x}"
-  size_hint=" 画像サイズは${target_w}x${target_h}ピクセル以上、縦横比${target_w}:${target_h}で生成してください。"
-fi
-
 if [ -n "$in_path" ]; then
-  if [ ! -f "$in_path" ]; then
-    echo "[codex-imagen] input image not found: $in_path" >&2
-    exit 1
-  fi
   codex_prompt="imagenスキルで画像を編集します。入力画像: $in_path  出力ファイルパス: $out_path  $prompt$size_hint"
 else
   codex_prompt="imagenスキルで画像を生成します。出力ファイルパス: $out_path  $prompt$size_hint"
@@ -88,10 +48,7 @@ _codex_thread_id=""
 # codex exec を CODEX_IMAGEN_TIMEOUT 秒で打ち切り、「PNG 無し → リトライ」経路に確実に到達させる。
 # どちらも無い環境では従来通り (timeout なし)。
 CODEX_IMAGEN_TIMEOUT="${CODEX_IMAGEN_TIMEOUT:-300}"   # codex exec 1回の上限 (秒)
-_timeout_bin=""
-if   command -v timeout  >/dev/null 2>&1; then _timeout_bin="timeout"
-elif command -v gtimeout >/dev/null 2>&1; then _timeout_bin="gtimeout"
-fi
+_timeout_bin="$(imagen_timeout_bin)"
 
 run_codex() {
   # CODEX_IMAGEN_CODEX_WRAPPER: codex の代わりに実行するラッパー (例: OTel トレーシングラッパー)。
@@ -123,9 +80,9 @@ run_codex() {
   # 失敗の原因を握り潰さない。stderr を捨てていたため、rate limit / 認証失効 / content
   # policy 拒否がすべて「no PNG」に潰れて診断不能だった (2026-07-28)。
   if [ "$rc" -ne 0 ] || [ -z "$_codex_thread_id" ]; then
-    echo "[codex-imagen] codex exec rc=${rc} thread_id='${_codex_thread_id}'" >&2
+    imagen_log "codex exec rc=${rc} thread_id='${_codex_thread_id}'"
     if [ -s "$err_out" ]; then
-      echo "[codex-imagen] stderr:" >&2
+      imagen_log "stderr:"
       head -c 2000 "$err_out" | sed 's/^/[codex-imagen]   /' >&2
     fi
     # JSONL 側の error イベントも拾う (stderr が空でも API 側の拒否理由がここに出る)
@@ -133,32 +90,6 @@ run_codex() {
       | sed 's/^/[codex-imagen]   json: /' >&2 || true
   fi
   rm -f "$json_out" "$err_out"
-}
-
-# --size 指定時: scale-to-cover + center-crop でリサイズ
-# 元画像が目標より小さければ non-zero で返す（呼び出し側でリトライ判定）
-resize_cover_crop() {
-  local path="$1" tw="$2" th="$3"
-  local src_w src_h
-  src_w=$(sips -g pixelWidth "$path" 2>/dev/null | awk '/pixelWidth/{print $2}')
-  src_h=$(sips -g pixelHeight "$path" 2>/dev/null | awk '/pixelHeight/{print $2}')
-  if [ -z "$src_w" ] || [ -z "$src_h" ]; then
-    echo "[codex-imagen] cannot read image dimensions: $path" >&2
-    return 1
-  fi
-  if [ "$src_w" -lt "$tw" ] || [ "$src_h" -lt "$th" ]; then
-    echo "[codex-imagen] source ${src_w}x${src_h} smaller than target ${tw}x${th}" >&2
-    return 1
-  fi
-  # scale-to-cover: 最小辺が target を覆うようにスケール
-  local new_w new_h
-  read new_w new_h < <(awk -v tw=$tw -v th=$th -v sw=$src_w -v sh=$src_h 'BEGIN {
-    a=tw/sw; b=th/sh; s=(a>b ? a : b);
-    printf "%d %d", int(sw*s+0.5), int(sh*s+0.5)
-  }')
-  sips --resampleHeightWidth "$new_h" "$new_w" "$path" --out "$path" >/dev/null 2>&1 || return 1
-  sips -c "$th" "$tw" "$path" --out "$path" >/dev/null 2>&1 || return 1
-  return 0
 }
 
 # codex は画像を ~/.codex/generated_images/<thread_id>/ 配下に書き出す (指定 out_path には
@@ -196,31 +127,71 @@ try_generate_and_resize() {
     cp "$found" "$out_path"
   fi
 
-  if [ -n "$size" ]; then
-    if ! command -v sips >/dev/null 2>&1; then
-      echo "[codex-imagen] warning: sips not found, skipping resize to $size" >&2
-      return 0
-    fi
-    resize_cover_crop "$out_path" "$target_w" "$target_h" || return 1
-  fi
+  imagen_resize_if_needed || return 1
   return 0
 }
 
-# --size 指定時、codex が目標未満のサイズを返すと resize_cover_crop が拒否して失敗する。
+# --size 指定時、codex が目標未満のサイズを返すと resize が拒否して失敗する。
 # これは codex 側の出力サイズの当たり外れ (実行ごとに揺れる) なので、同一 invocation 内で
 # 複数回リトライすることで「外れ」を引き直す。CODEX_IMAGEN_MAX_ATTEMPTS で上限を制御
 # (default 4: --size 用途で 1 回の pipeline run 内に十分な引き直し回数を確保する)。
 # 1 回あたり最大 CODEX_IMAGEN_TIMEOUT(300s) + sleep 10s なので最悪 ~20 分 (pinterest-image.md の想定内)。
 CODEX_IMAGEN_MAX_ATTEMPTS="${CODEX_IMAGEN_MAX_ATTEMPTS:-4}"
-attempt=1
-while ! try_generate_and_resize; do
-  if [ "$attempt" -ge "$CODEX_IMAGEN_MAX_ATTEMPTS" ]; then
-    echo "[codex-imagen] failed to generate/resize image at: $out_path (after ${attempt} attempts)" >&2
-    exit 1
-  fi
-  echo "[codex-imagen] attempt ${attempt}/${CODEX_IMAGEN_MAX_ATTEMPTS} failed (no PNG or size-reject), retrying after 10s..." >&2
-  sleep 10
-  attempt=$((attempt + 1))
-done
 
-echo "$(cd "$(dirname "$out_path")" && pwd)/$(basename "$out_path")"
+run_codex_attempts() {
+  local attempt=1
+  while ! try_generate_and_resize; do
+    if [ "$attempt" -ge "$CODEX_IMAGEN_MAX_ATTEMPTS" ]; then
+      imagen_log "codex path failed (after ${attempt} attempts)"
+      return 1
+    fi
+    imagen_log "attempt ${attempt}/${CODEX_IMAGEN_MAX_ATTEMPTS} failed (no PNG or size-reject), retrying after 10s..."
+    sleep 10
+    attempt=$((attempt + 1))
+  done
+  return 0
+}
+
+# --- フォールバック: 同じ引数のまま別プロバイダのスクリプトへ委譲 ---
+# codex は usage limit で数時間〜1 日単位で止まることがあり、その間は何回リトライしても出ない。
+# 画像生成に依存する pipeline (YouTube サムネ / Shorts ページ / Pinterest pin) が片方の
+# クォータ枯渇で丸ごと止まらないよう、二段目として agy-imagen.sh を呼ぶ。
+#   CODEX_IMAGEN_FALLBACK=agy (default) | off
+CODEX_IMAGEN_FALLBACK="${CODEX_IMAGEN_FALLBACK:-agy}"
+
+run_fallback() {
+  case "$CODEX_IMAGEN_FALLBACK" in
+    off)
+      imagen_log "fallback disabled (CODEX_IMAGEN_FALLBACK=off)"
+      return 1
+      ;;
+    agy) ;;
+    *)
+      imagen_log "unknown CODEX_IMAGEN_FALLBACK='${CODEX_IMAGEN_FALLBACK}' (expected agy|off)"
+      return 1
+      ;;
+  esac
+
+  local fallback_script="$SCRIPT_DIR/${CODEX_IMAGEN_FALLBACK}-imagen.sh"
+  if [ ! -f "$fallback_script" ]; then
+    imagen_log "fallback script not found: $fallback_script"
+    return 1
+  fi
+
+  imagen_log "switching to fallback: $(basename "$fallback_script")"
+  # 引数は受け取ったものをそのまま渡す (引数契約が同一なので変換不要)。
+  # stdout (= 絶対パス 1 行) もそのまま呼び出し元へ流す。
+  bash "$fallback_script" "$@"
+}
+
+if run_codex_attempts; then
+  imagen_print_result
+  exit 0
+fi
+
+if run_fallback "$@"; then
+  exit 0
+fi
+
+imagen_log "failed to generate/resize image at: $out_path (codex + fallback=${CODEX_IMAGEN_FALLBACK})"
+exit 1

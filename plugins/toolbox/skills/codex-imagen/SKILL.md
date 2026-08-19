@@ -17,6 +17,7 @@ Codex 自身への指示: プロンプトの「出力ファイルパス」に対
 ## 前提
 
 - `codex` CLI が PATH に存在し、ログイン済みであること
+- (任意) `agy` (Antigravity CLI) が PATH にあり、ログイン済みであること。codex が usage limit 等で尽きたときのフォールバックに使う
 - 出力パスは呼び出し側が指定する（例: `tmp/shiba.png`）
 - 編集モードの場合、入力画像も呼び出し側が指定する（ローカルファイルパス）
 - `--size` のリサイズは macOS の `sips` を使用する (無い環境では警告してスキップ)
@@ -43,11 +44,12 @@ Codex 自身への指示: プロンプトの「出力ファイルパス」に対
     2. `sips -c` で中央を切り抜き、正確に W×H にする
   - **元画像が目標より小さい場合はエラー扱い**。10秒待ってリトライする（codex に「もっと大きく」を期待）
   - **用途**: アイキャッチなど、特定縦横比が必須の用途で確実にサイズ担保したいとき
-- 実行コマンド:
+- 実行コマンド (codex 経路):
   - generate: `codex exec 'imagenスキルで画像を生成します。出力ファイルパス: <path>  <prompt>'`
   - edit: `codex exec 'imagenスキルで画像を編集します。入力画像: <in>  出力ファイルパス: <out>  <prompt>'`
+- `scripts/agy-imagen.sh` も **同じ引数契約**で単体実行できる (プロバイダを明示指定したいとき)
 - 成功時: PNG の絶対パスを stdout に1行出力、exit 0
-- 失敗時（ファイルが生成されなかった）: 10秒待ってリトライ。上限到達で stderr にエラー理由、exit 1
+- 失敗時（ファイルが生成されなかった）: 10秒待ってリトライ。codex の上限到達後は `agy` フォールバックへ切り替え、そこも尽きたら stderr にエラー理由、exit 1
 
 ### 環境変数
 
@@ -57,6 +59,32 @@ Codex 自身への指示: プロンプトの「出力ファイルパス」に対
 | `CODEX_IMAGEN_TIMEOUT` | 300 | `codex exec` 1 回の上限秒数 (timeout/gtimeout がある環境のみ有効) |
 | `CODEX_IMAGEN_KEEP_DAYS` | 7 | `~/.codex/generated_images/` の中間出力の保持日数。0 で掃除無効化 |
 | `CODEX_IMAGEN_CODEX_WRAPPER` | (なし) | `codex` の代わりに実行するラッパーコマンドの絶対パス。実行可能な場合のみ使用 (例: OTel トレーシングラッパー)。未設定なら `codex` を直接呼ぶ |
+| `CODEX_IMAGEN_FALLBACK` | `agy` | codex が尽きたときの二段目。`off` で無効化 (codex のみ) |
+| `AGY_IMAGEN_MAX_ATTEMPTS` | 2 | agy-imagen.sh のリトライ上限 |
+| `AGY_IMAGEN_TIMEOUT` | 420 | `agy` 1 回の上限秒数 |
+| `AGY_IMAGEN_BIN` | `agy` | `agy` 実体の上書き (テスト用) |
+
+### フォールバック (CODEX_IMAGEN_FALLBACK, default agy)
+
+codex は usage limit / rate limit で数時間〜1 日単位で止まることがあり、その間は何回リトライしても
+画像が出ない。画像生成に依存する pipeline (YouTube サムネ / Shorts ページ / Pinterest pin) が
+片方のクォータ枯渇で丸ごと止まらないよう、**プロバイダごとにスクリプトを分け、尽きたら切り替える**。
+
+```
+scripts/
+├── lib/imagen-common.sh   # 引数契約 / --size リサイズ / 出力パスの正本 (両者が source)
+├── codex-imagen.sh        # 既定: codex exec の imagen スキル。尽きたら下へ委譲
+└── agy-imagen.sh          # 二段目: Antigravity CLI (agy) の generate_image。単体でも使える
+```
+
+- `codex-imagen.sh` は codex のリトライが全て尽きた後にだけ `agy-imagen.sh` を **同じ引数のまま**呼ぶ
+  (通常時の挙動・コストは変わらない)。stdout の絶対パス 1 行という契約も同じ
+- `agy-imagen.sh` は `agy --dangerously-skip-permissions --print-timeout <d> --add-dir <出力/参照dir> -p "<prompt>"`
+  の非対話実行。プロバイダを明示的に選びたいときは単体で呼んでもよい
+- リサイズは共通ライブラリの `scale-to-cover + center-crop` なので **サイズ契約は同一**
+- 参照画像 (`<input_image>`) は「generate_image の入力画像 (ImagePaths) として渡す」とプロンプトで
+  明示しており、キャラクターの造形・画風が保持される (明示しないと参照が無視され別の絵になる)
+- `agy` が PATH に無ければフォールバックせずに従来通り失敗する
 
 ### リトライ回数 (CODEX_IMAGEN_MAX_ATTEMPTS, default 4)
 
