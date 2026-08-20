@@ -24,8 +24,10 @@ import sys
 RULES = [
     # codex: "You've hit your usage limit. ... try again at 2:53 PM."
     ("usage_limit", (r"hit your usage limit", r"usage_limit_exceeded", r"usage limit reached")),
-    # agy: "使用モデルの生成制限（クォータ制限）に達しており、回復まで約4時間半"
-    ("quota_exhausted", (r"クォータ", r"生成制限", r"quota (?:limit|exceeded|exhausted)",
+    # agy: "使用モデルの生成制限（クォータ制限）に達しており、回復まで約4時間半" (対話文言) /
+    #      "Individual quota reached. ... Resets in 164h41m41s." (CLI のエラー文言。2026-08-20 実測)
+    ("quota_exhausted", (r"クォータ", r"生成制限",
+                         r"quota\s+(?:limit|exceeded|exhausted|reached)",
                          r"RESOURCE_EXHAUSTED")),
     # 429 は境界必須。裸の r"429" は "1429 bytes" のようなログ中の数値に誤爆し、
     # クォータでない失敗に遅延リトライを付けてしまう (2026-08-20 レビューで実測)
@@ -42,6 +44,8 @@ RULES = [
 CLOCK_RE = re.compile(r"try again at\s+(\d{1,2}):(\d{2})\s*(AM|PM)?", re.I)
 DELTA_JA_RE = re.compile(r"約\s*(\d+)\s*時間(半)?")
 DELTA_EN_RE = re.compile(r"in\s+(\d+)\s*(hour|minute)s?", re.I)
+# agy CLI: "Resets in 164h41m41s."
+RESETS_IN_RE = re.compile(r"resets?\s+in\s+(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?", re.I)
 
 
 def classify(text):
@@ -59,8 +63,13 @@ def classify(text):
     return "no_image"
 
 
+def _resets_in_seconds(match):
+    hours, minutes, seconds = (int(g) if g else 0 for g in match.groups())
+    return hours * 3600 + minutes * 60 + seconds
+
+
 def find_hint(text):
-    for regex in (CLOCK_RE, DELTA_JA_RE, DELTA_EN_RE):
+    for regex in (CLOCK_RE, RESETS_IN_RE, DELTA_JA_RE, DELTA_EN_RE):
         m = regex.search(text)
         if m:
             return m.group(0).strip()
@@ -83,6 +92,10 @@ def retry_epoch(text, now=None):
             if target <= now:  # 既に過ぎている表記は翌日の同時刻とみなす
                 target += datetime.timedelta(days=1)
             return int(target.timestamp())
+
+    m = RESETS_IN_RE.search(text)
+    if m and any(m.groups()):
+        return int((now + datetime.timedelta(seconds=_resets_in_seconds(m))).timestamp())
 
     m = DELTA_JA_RE.search(text)
     if m:
