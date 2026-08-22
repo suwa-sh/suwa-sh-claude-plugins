@@ -6,9 +6,13 @@ distillery-impl が生成・運用するテストは 4 段。**上 3 段の gher
 | 段 | 名称 | gherkin の出典(転写元) | 配置 | 実行ゲート |
 |---|---|---|---|---|
 | ① | ATDD(受け入れ) | `docs/usdm/latest/requirements.yaml` の `requirements[].specifications[].acceptance_criteria[]` | `features/atdd/{spec_id}.feature` | ゲート 6(S7) |
-| ② | UC BDD | `docs/specs/latest/{業務}/{BUC}/{UC}/spec.md` の「E2E 完了条件(BDD)」gherkin ブロック | `features/uc/{uc_id}.feature` | ゲート 5(S6) |
-| ③ | tier BDD | 同 UC 配下 `{tier_id}.md`(例 `tier-frontend.md`)の「ティア完了条件(BDD)」gherkin ブロック | `{tier_dir}/features/{uc_id}.feature` | ゲート 4(S4) |
+| ② | UC BDD | `docs/specs/latest/{業務}/{BUC}/{UC}/spec.md` の「E2E 完了条件(BDD)」gherkin ブロック | `features/uc/{uc_slug}.feature` | ゲート 5(S6) |
+| ③ | tier BDD | 同 UC 配下 `{tier_id}.md`(例 `tier-frontend.md`)の「ティア完了条件(BDD)」gherkin ブロック | `{tier_dir}/features/{uc_slug}.feature` | ゲート 4(S4) |
 | ④ | TDD(単体) | 出典なし(実装者が red→green→refactor で設計) | `{tier_dir}/test/` | ゲート 3(S4) |
+
+`{uc_slug}` = uc-map(`docs/impl/latest/uc-map.yaml`)の `branch_slug`(UC 英語名の kebab-case)。
+uc_id ハッシュはファイル名に使わない(外側から UC の意味が読み取れないため)。step definition
+(`steps/{uc_slug}.steps.*`)も同じ slug で揃える。uc_id との対応は uc-map が正本。
 
 ## 転写ルール(①〜③)
 
@@ -57,6 +61,22 @@ distillery-impl が生成・運用するテストは 4 段。**上 3 段の gher
 
 - Act は原則 1 呼び出し。複数の Act が必要になったらテストを分割する
 - ①〜③ の gherkin は Given=Arrange / When=Act / Then=Assert に自然対応するため、step definition も同じ規律で書く
+
+## 実体テストの環境前提(I/O 境界)
+
+I/O 境界(RDB / メッセージング / 外部プロセス / ファイル)はモックでなく実体で検証する。環境前提は次のとおり固定する:
+
+- **実 DB 等はテストが自前で起動・破棄する一時インスタンス**を使う(例: PostgreSQL は `initdb` + `pg_ctl`、
+  または使い捨ての docker コンテナ)。開発機や CI の常設サービスに接続しない
+- **環境不足は fail にする(暗黙 skip 禁止)**。意図的に外すときだけプロジェクトで定めた明示 skip の
+  環境変数を使い、skip 理由をテスト出力に残す
+- CI のテストジョブは必要バイナリを `PATH` に載せる(runner のプリインストール先が PATH 外のことがある)
+- 独立検証(S5)をサンドボックス付きで動かすと loopback / shared memory が禁止され実体テストが開始できない。
+  検証環境の制限は実装の blocker ではなく環境失敗として分離する(dist-impl-verify 手順 2)
+- **テスト用 DDL は正本ではない**: migration は `datastore_owner` tier の migration 資産が正本。
+  未整備の間に他 tier が置く DDL fixture は契約 source(rdb-schema)から生成し、先頭に暫定である旨を明記する
+- E2E Scenario の Then に後続 UC の責務が含まれる場合、S2 の時点で「UC 横断 Scenario」として issues/ に
+  一覧化し、ハーネス注入の要否を着手前に決める(注入箇所には issue 参照と「暫定注入・契約確定後に削除」を残す)
 
 ## DOM 一致テストの転写規約(dom_snapshot が true な frontend tier のみ)
 

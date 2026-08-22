@@ -57,7 +57,11 @@ docs/impl/
                                        #   lease 保持中に上書き生成。状態の正ではない — 正は events + done)
 ```
 
-- `event_id` の形式は distillery と同じ `{YYYYMMDD_HHMMSS}_{summary_slug}`(`date +%Y%m%d_%H%M%S` で取得)
+- `event_id` の形式は distillery と同じ `{YYYYMMDD_HHMMSS}_{summary_slug}`(`date +%Y%m%d_%H%M%S` で取得)。
+  **event_id は reducer の適用順(昇順)を決めるため単調増加を必須とする**: 同一秒内に複数イベントを
+  書く場合や、実時計が先行イベントの時刻より前になった場合(論理時刻で刻んだ先行イベントがある等)は、
+  「直近イベントの時刻 + 1 秒以上」の論理時刻を採用してよい。`created_at` は実時計のままでよい
+  (順序の正は event_id、発生時刻の記録は created_at と役割を分ける)
 - **完了判定の正は `.done.yaml` の存在**。`status.yaml` はスナップショットであり、壊れても done ファイルから再構築する
 - 中断・失敗時も中間生成物は削除しない(冪等再開のため)
 

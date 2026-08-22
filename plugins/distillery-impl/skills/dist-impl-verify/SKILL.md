@@ -40,10 +40,16 @@ description: >
    **関与しない契約・schema は読まない**(誤検出を避け、read-set を最小に保つ)。
    例外: 対象 tier が関与するデータ契約が 1 件も無い場合に限り、従来どおり
    `_cross-cutting/datastore/` の schema を読んでよい(verify-viewpoints のデータ観点の fallback)
-2. ゲート 1〜4 を check-only で再実行(gates.md)。Implementer の done と食い違えばそれ自体が blocker
-3. `references/verify-viewpoints.md` の 7 観点チェックリストを順に適用
-4. findings を `attempt-{n}/S5_verify.{tier_id}.findings.yaml` に書く(下記スキーマ)
-5. `attempt-{n}/S5_verify.{tier_id}.done.yaml` を書く(`open_blockers` 件数を記録)
+2. **検証環境の前提を probe する**: テストが要求する環境機能(TCP loopback / shared memory /
+   docker / 必要バイナリ(DB の initdb・pg_ctl・psql 等))が使えるかを、ゲート再実行の前に確認する。
+   不足があれば、その機能に依存するテストの失敗は **findings の blocker に数えず** done の
+   `environment_failures: [{check, command, evidence}]` に分離して記録し、「環境を変えて再検証が必要」と
+   報告する(サンドボックス付きで起動されると実体テストが開始できない — 実装欠陥と混同しない)
+3. ゲート 1〜4 を check-only で再実行(gates.md)。Implementer の done と食い違えばそれ自体が blocker
+   (手順 2 で分離した環境失敗を除く)
+4. `references/verify-viewpoints.md` の 7 観点チェックリストを順に適用
+5. findings を `attempt-{n}/S5_verify.{tier_id}.findings.yaml` に書く(下記スキーマ)
+6. `attempt-{n}/S5_verify.{tier_id}.done.yaml` を書く(`open_blockers` 件数を記録。環境失敗があれば `environment_failures` も記録)
 
 ## findings スキーマ
 

@@ -33,11 +33,15 @@ description: >
 4 段テストの実行可能な足場を作り、**red baseline** を確認する。
 
 1. `docs/dev-rules/test-strategy.md` の転写ルールに従い、
-   ② `features/uc/{uc_id}.feature`(spec.md の E2E 完了条件)/ ③ 各 tier の
-   `{tier_dir}/features/{uc_id}.feature`(tier md のティア完了条件)を転写生成
-   (① ATDD は bootstrap P7 で生成済み。無ければ同ルールで補生成。
+   ② `features/uc/{uc_slug}.feature`(spec.md の E2E 完了条件)/ ③ 各 tier の
+   `{tier_dir}/features/{uc_slug}.feature`(tier md のティア完了条件)を転写生成
+   (`{uc_slug}` = uc-map の `branch_slug`。step definition も同じ slug。
+   ① ATDD は bootstrap P7 で生成済み。無ければ同ルールで補生成。
    **skeleton と red baseline の対象は uc-map の `atdd_scenarios` に列挙された Scenario のみ**。
-   生成済みの共有 feature 本文は変更しない)
+   生成済みの共有 feature 本文は変更しない)。
+   **転写時に E2E Scenario の Then ごとに担当 UC を判定し**、他 UC の責務(後続 UC が遷移させる状態、
+   完了待ち等)を含む Scenario を「UC 横断 Scenario」として `issues/` に一覧化する(S6 で必要になる
+   ハーネス注入の要否を着手前に確定させ、S8 で仕様側へ「Then の責務分離」を要求できるようにする)
 2. step definition skeleton(全 step が「未実装」を明示して fail)+ runner 設定を配置
 3. ④ 対象 UC × tier ごとに最初の failing 単体テストを 1 本以上書く(命名・AAA は test-strategy.md)
 4. **dom_snapshot が true な frontend tier のみ**: `docs/dev-rules/test-strategy.md` の
@@ -87,7 +91,11 @@ description: >
    frontend は read-set 定義(uc-map の `ui_screens` が指す design-event.yaml の該当 screens[] 全行 +
    結線 story + story から到達する packages/ui 内の推移的 import closure)、
    backend(datastore_owner)は `_cross-cutting/datastore/` の schema、
-   worker は async 型定義(asyncapi 契約が宣言されている場合)
+   worker は async 型定義(asyncapi 契約が宣言されている場合)。
+   **読込時に「複数 tier / UC が共有する算出規則」(hash の正規化形式・シリアライズ形式・
+   時刻精度・識別子形式 等)で契約に定義が無いものを未定義リストとして抽出する**。仮置きが
+   避けられない場合は関数を 1 箇所に集約し、仮置きである旨を as-built(S8 入力)と `issues/` に
+   同時に記録する(独立検証の後で初めて発覚させない)
    - **frontend の実装前チェック**: tier-rules.md の矛盾 3 条件(story path 実体の不在 /
      variants と named export の不一致 / components 宣言と story 実体の不一致)を確認する。
      矛盾があれば `issues/{ts}_{slug}.md` に起票した上で、story 実体を優先して実装を続行する

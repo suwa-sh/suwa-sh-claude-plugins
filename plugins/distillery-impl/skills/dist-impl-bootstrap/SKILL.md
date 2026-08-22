@@ -140,7 +140,9 @@ lock・入力ハッシュもその契約のエントリのみ更新する(無指
 ## P3: skeleton(骨格 + 規約配布)
 
 1. `references/repo-layout.md` に従い tier ディレクトリ・packages/・features/ を作成
-2. `references/dev-rules/` 3 ファイルを `{repo_root}/docs/dev-rules/` へコピー
+2. `references/dev-rules/` 3 ファイルを `{repo_root}/docs/dev-rules/` へコピー(**初回生成時のみ**。
+   再実行時に既存ファイルとプラグイン同梱版が異なる場合は**リポ側を正として上書きせず**、差分を
+   完了報告に載せる — リポ側のローカル改訂(命名規約・環境前提の追記等)を消さないため)
 3. `{repo_root}/CLAUDE.md` を生成: 冒頭に dev-rules の必須 5 項の抜粋 + `docs/dev-rules/` への参照、
    続けてプロジェクト固有節(specs_root の場所 / uc-map の場所 / tier 構成 / コマンド群)
 4. 言語ごとの formatter / linter / テスト FW / BDD FW(例: TS = biome or eslint + vitest + cucumber-js、
@@ -202,6 +204,9 @@ lock の該当エントリ(`at` 含む)を書き換えない(無変更の再生�
 (転写ルールは `references/dev-rules/test-strategy.md`。S7 の選択実行はタグ式の完全一致で行い、
 名前の部分一致フィルタは使わない — `SPEC-X-1` が `SPEC-X-10` に誤一致するため)。
 acceptance_criteria が空の SPEC は feature を作らず、報告に「criteria 欠落 SPEC 一覧」として載せる。
+**再生成時(usdm 変更による P7 invalidate)は、既存 feature の Scenario に付いている `@uc_{uc_id}` タグ
+(S7 integration writer が付与)を Scenario 名(`{SPEC-ID}-{連番}`)をキーに引き継ぐ**(消すと uc-map の
+atdd_scenarios との対応が feature 側から読めなくなる)。引き継げなかった Scenario は報告に載せる。
 
 ## 完了報告
 

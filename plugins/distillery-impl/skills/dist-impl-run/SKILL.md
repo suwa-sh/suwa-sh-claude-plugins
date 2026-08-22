@@ -50,7 +50,11 @@ PR 作成後は次の UC へ自動継続しない — 起動シーケンス 3)
    **確定したら `config_confirmed` イベントを追記してから impl-config を更新する**(イベント → latest の順)。
    S0はrepository setupでありUC workへ混ぜない。S0が新規変更を作ったrunはsetup commitまでで停止し、
    base branchのupstreamへ反映・mergeされた後に再実行する。UC branch開始時はbase branchとそのupstreamが
-   同じcommitであることを必須にし、bootstrap commitをUCのsquash範囲へ混入させない
+   同じcommitであることを必須にし、bootstrap commitをUCのsquash範囲へ混入させない。
+   **例外(還流中の UC)**: `blocked_on_spec` から再開した UC で、dist-pipeline の還流成果物
+   (docs/ 配下)が feature branch にしか無いために S0 の入力ハッシュが不一致になった場合は、
+   base branch へ戻せないので feature branch 上で S0 を再実行し `impl(bootstrap): ...` で commit して
+   続行する(最終 squash に含まれる。完了報告と NEXT.md に混在を明記する)
 3. **UC 解決**: 引数あり = uc-map と照合(照合は NFC 正規化後)。
    完全修飾・uc_id・一意名のみ受理。複数一致は候補一覧を提示して選ばせる。
    **引数なし = 実施順の自動選択**: まず `state: completed` だが `git_delivery.required: true` の
@@ -161,7 +165,18 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
   変化による stale 判定は S4 以降にのみ適用 — state-schema.md。S1/S2 を巻き戻さない)
 - **S4/S5 の並列 dispatch**: uc-map の tiers を tier ごとに 1 サブエージェントで**同一メッセージ内で並列起動**。
   S5 の Verifier は **agent type に `distillery-impl:impl-verifier` を指定し、Agent/Task ツールの
-  model パラメータに verifier_model を渡す**(agent 定義の disallowedTools 制約を効かせるため)
+  model パラメータに verifier_model を渡す**(agent 定義の disallowedTools 制約を効かせるため)。
+  **verifier_model が Agent/Task ツールで指定できないモデル(例: Codex の gpt-5.6-*)の場合**は、
+  そのモデルの CLI を直接起動する(Codex なら `codex exec -m {verifier_model} -C {repo_root}
+  --skip-git-repo-check -o {last-message file} - < {prompt file}`。プロンプトは subagent-template の
+  S5 verify テンプレートに impl-verifier.md と dist-impl-verify/SKILL.md の絶対パスを加えてファイル化する)。
+  注意点: (i) CLI のサンドボックス(loopback socket / shared memory 禁止)は実 DB 等の実体テストを
+  開始不能にするので、実体テストを含む tier は **サンドボックス無効**で起動し、完了後に `git status` で
+  write-set 逸脱(done / findings 以外)を必ず検査する(disallowedTools の代替)、(ii) 検証は数十分かかるため
+  ハーネスのツールタイムアウトに掛からないよう `nohup` で切り離し、完了 marker を待つ、
+  (iii) 環境制限で開始できなかったテスト由来の blocker は実装欠陥ではないので、オーケストレータが
+  サンドボックス外で同テストを実行して確認したうえで `stage_invalidated(reason:
+  verification_environment_limited)` で退避し、同一 attempt で再検証する(attempt++ しない)
 - **S5 UI Reviewer の並走 dispatch**(D8。dist-impl-verify とは対象も手段も異なる独立レーン):
   1. **executable target 集合を自分で算出**する(この算出規則が唯一の正本。test-strategy.md の
      S2 対象・dist-impl-ui-review/SKILL.md の target 前提はここを参照する): uc-map の `ui_screens` を
