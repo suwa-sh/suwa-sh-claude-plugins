@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# imagen-common.sh — 画像生成スクリプト (codex-imagen.sh / agy-imagen.sh) の共通部品。
+# imagen-common.sh — 画像生成スクリプト (codex / grok / agy) の共通部品。
 #
 # 各スクリプトは「どのエージェント CLI に画像を作らせるか」だけが違い、
 #   引数契約 / --size のリサイズ / 出力パスの扱い

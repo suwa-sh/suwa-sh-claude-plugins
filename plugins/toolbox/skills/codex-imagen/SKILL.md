@@ -1,6 +1,6 @@
 ---
 name: codex-imagen
-description: Codex CLI 経由で画像を生成/編集するスキル。scripts/codex-imagen.sh が `codex exec` を呼び、指定した出力パスに PNG を保存して絶対パスを返す。入力画像を指定すれば編集 (edit モード) にも対応する。「画像を生成して」「codex で画像作って」「イラストを作って」「この画像を編集」などで使う。
+description: Codex CLI 経由で画像を生成/編集し、失敗時は Grok、Antigravity の順に退避するスキル。指定した出力パスに PNG を保存して絶対パスを返す。入力画像を指定すれば編集 (edit モード) にも対応する。「画像を生成して」「codex で画像作って」「イラストを作って」「この画像を編集」などで使う。
 ---
 
 # codex-imagen
@@ -17,9 +17,11 @@ Codex 自身への指示: プロンプトの「出力ファイルパス」に対
 ## 前提
 
 - `codex` CLI が PATH に存在し、ログイン済みであること
-- (任意) `agy` (Antigravity CLI) が PATH にあり、ログイン済みであること。codex が usage limit 等で尽きたときのフォールバックに使う
+- (任意) `grok` CLI が PATH にあり、ログイン済みであること。codex が尽きたときの第一フォールバックに使う
+- (任意) `agy` (Antigravity CLI) が PATH にあり、ログイン済みであること。grok も尽きたときの最終フォールバックに使う
 - 出力パスは呼び出し側が指定する（例: `tmp/shiba.png`）
 - 編集モードの場合、入力画像も呼び出し側が指定する（ローカルファイルパス）
+- Grok の JPEG 出力は `sips` / ImageMagick / ffmpeg のいずれかで PNG に変換する (macOS は標準の `sips` を使用)
 - `--size` のリサイズは macOS の `sips` を使用する (無い環境では警告してスキップ)
 
 ## 手順
@@ -47,9 +49,9 @@ Codex 自身への指示: プロンプトの「出力ファイルパス」に対
 - 実行コマンド (codex 経路):
   - generate: `codex exec 'imagenスキルで画像を生成します。出力ファイルパス: <path>  <prompt>'`
   - edit: `codex exec 'imagenスキルで画像を編集します。入力画像: <in>  出力ファイルパス: <out>  <prompt>'`
-- `scripts/agy-imagen.sh` も **同じ引数契約**で単体実行できる (プロバイダを明示指定したいとき)
+- `scripts/grok-imagen.sh` と `scripts/agy-imagen.sh` も **同じ引数契約**で単体実行できる (プロバイダを明示指定したいとき)
 - 成功時: PNG の絶対パスを stdout に1行出力、exit 0
-- 失敗時（ファイルが生成されなかった）: 10秒待ってリトライ。codex の上限到達後は `agy` フォールバックへ切り替え、そこも尽きたら stderr にエラー理由、exit 1
+- 失敗時（ファイルが生成されなかった）: 10秒待ってリトライ。各プロバイダの上限到達後は `codex → grok → agy` の順に切り替え、全て尽きたら stderr にエラー理由、exit 1
 
 ### 環境変数
 
@@ -59,32 +61,43 @@ Codex 自身への指示: プロンプトの「出力ファイルパス」に対
 | `CODEX_IMAGEN_TIMEOUT` | 300 | `codex exec` 1 回の上限秒数 (timeout/gtimeout がある環境のみ有効) |
 | `CODEX_IMAGEN_KEEP_DAYS` | 7 | `~/.codex/generated_images/` の中間出力の保持日数。0 で掃除無効化 |
 | `CODEX_IMAGEN_CODEX_WRAPPER` | (なし) | `codex` の代わりに実行するラッパーコマンドの絶対パス。実行可能な場合のみ使用 (例: OTel トレーシングラッパー)。未設定なら `codex` を直接呼ぶ |
-| `CODEX_IMAGEN_FALLBACK` | `agy` | codex が尽きたときの二段目。`off` で無効化 (codex のみ) |
+| `CODEX_IMAGEN_FALLBACKS` | `grok,agy` | codex 後に試すプロバイダ列。`grok` / `agy` / カンマ区切り / `off` |
+| `CODEX_IMAGEN_FALLBACK` | (なし) | 旧形式の互換入力。`FALLBACKS` 未指定時だけ使用する |
+| `GROK_IMAGEN_MAX_ATTEMPTS` | 2 | grok-imagen.sh のリトライ上限 |
+| `GROK_IMAGEN_TIMEOUT` | 420 | `grok` 1 回の上限秒数 |
+| `GROK_IMAGEN_BIN` | `grok` | `grok` 実体の上書き (テスト用) |
+| `GROK_IMAGEN_MODEL` | (なし) | Grok のモデルを明示指定する場合に使用 |
+| `GROK_HOME` | `~/.grok` | Grok のセッション保存先。CLI 標準の環境変数 |
 | `AGY_IMAGEN_MAX_ATTEMPTS` | 2 | agy-imagen.sh のリトライ上限 |
 | `AGY_IMAGEN_TIMEOUT` | 420 | `agy` 1 回の上限秒数 |
 | `AGY_IMAGEN_BIN` | `agy` | `agy` 実体の上書き (テスト用) |
 
-### フォールバック (CODEX_IMAGEN_FALLBACK, default agy)
+### フォールバック (CODEX_IMAGEN_FALLBACKS, default grok,agy)
 
 codex は usage limit / rate limit で数時間〜1 日単位で止まることがあり、その間は何回リトライしても
 画像が出ない。画像生成に依存する pipeline (YouTube サムネ / Shorts ページ / Pinterest pin) が
-片方のクォータ枯渇で丸ごと止まらないよう、**プロバイダごとにスクリプトを分け、尽きたら切り替える**。
+1社のクォータ枯渇で丸ごと止まらないよう、**プロバイダごとにスクリプトを分け、codex → grok → agy の順に切り替える**。
 
 ```
 scripts/
-├── lib/imagen-common.sh   # 引数契約 / --size リサイズ / 出力パスの正本 (両者が source)
+├── lib/imagen-common.sh   # 引数契約 / --size リサイズ / 出力パスの正本 (3者が source)
 ├── codex-imagen.sh        # 既定: codex exec の imagen スキル。尽きたら下へ委譲
-└── agy-imagen.sh          # 二段目: Antigravity CLI (agy) の generate_image。単体でも使える
+├── grok-imagen.sh         # 二段目: Grok CLI。生成=image_gen、編集=image_edit
+└── agy-imagen.sh          # 三段目: Antigravity CLI (agy) の generate_image
 ```
 
-- `codex-imagen.sh` は codex のリトライが全て尽きた後にだけ `agy-imagen.sh` を **同じ引数のまま**呼ぶ
-  (通常時の挙動・コストは変わらない)。stdout の絶対パス 1 行という契約も同じ
+- `codex-imagen.sh` は前のプロバイダのリトライが全て尽きた後にだけ次を **同じ引数のまま**呼ぶ。
+  stdout の絶対パス 1 行という契約も同じ
+- `grok-imagen.sh` は非対話の `grok --single` で、入力画像なしなら許可ツールを `image_gen` のみに、
+  入力画像ありなら `image_edit` のみに絞る。編集時は元画像の絶対パスをプロンプトへ渡す
+- Grok は生成物を `~/.grok/sessions/<workspace>/<session ID>/images/` に JPEG で保存する。
+  ラッパーが invocation ごとに一意な session ID を渡し、そのセッションの `images/1.*` だけを回収して PNG に変換するため、並列実行でも混線しない
 - `agy-imagen.sh` は `agy --dangerously-skip-permissions --print-timeout <d> --add-dir <出力/参照dir> -p "<prompt>"`
   の非対話実行。プロバイダを明示的に選びたいときは単体で呼んでもよい
 - リサイズは共通ライブラリの `scale-to-cover + center-crop` なので **サイズ契約は同一**
 - 参照画像 (`<input_image>`) は「generate_image の入力画像 (ImagePaths) として渡す」とプロンプトで
   明示しており、キャラクターの造形・画風が保持される (明示しないと参照が無視され別の絵になる)
-- `agy` が PATH に無ければフォールバックせずに従来通り失敗する
+- `grok` が PATH に無ければ `status=skipped` として agy へ進む。`agy` も無ければ全体が失敗する
 
 ### 失敗理由の構造化 (IMAGEN_RESULT)
 
@@ -96,11 +109,12 @@ agy 側のログを掘るまで原因不明だった)。そこで実行の最後
 [codex-imagen] IMAGEN_RESULT {"status":"failed","out":"/path/ig-1.png","providers":[
   {"name":"codex","status":"failed","reason":"usage_limit","hint":"try again at 2:53 PM",
    "retry_epoch":1787205180,"retry_at":"2026-08-20T14:53:00+09:00"},
+  {"name":"grok","status":"failed","reason":"quota_exhausted","hint":"quota exceeded"},
   {"name":"agy","status":"failed","reason":"quota_exhausted","hint":"約4時間半","retry_epoch":...}]}
 ```
 
 - `status` は全体の結末 (`ok` / `failed`)。`providers[]` は**試した順**に 1 プロバイダ 1 要素
-  (フォールバックで成功した場合は `codex=usage_limit` + `agy=ok` が並ぶ = 誰が救ったか分かる)
+  (Grok で成功した場合は `codex=usage_limit` + `grok=ok` が並ぶ = 誰が救ったか分かる)
 - `reason`: `ok` / `usage_limit` / `quota_exhausted` / `rate_limit` / `auth_expired` /
   `content_policy` / `timeout` / `no_image` / `unknown`、未実行は `status=skipped`
 - `retry_epoch`: provider の文言 (`try again at 2:53 PM` / `約4時間半`) から読めた復帰見込み時刻。

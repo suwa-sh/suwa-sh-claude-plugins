@@ -8,7 +8,7 @@
 usage:
   imagen-verdict.py <provider> <status> [<logfile>]
 
-  <provider> : codex | agy | ...
+  <provider> : codex | grok | agy | ...
   <status>   : ok | failed
   <logfile>  : provider の stdout+stderr を落としたファイル (status=ok なら省略可)
 

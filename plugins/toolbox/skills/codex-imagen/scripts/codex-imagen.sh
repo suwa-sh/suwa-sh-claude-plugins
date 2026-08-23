@@ -4,7 +4,7 @@
 #   codex-imagen.sh <output_path> <prompt> [<input_image>] [--size=<WxH>]
 #
 # codex 側が usage limit / rate limit で尽きたときは、同じ引数のまま
-# agy-imagen.sh (Antigravity CLI の generate_image) へフォールバックする。
+# grok-imagen.sh、agy-imagen.sh の順にフォールバックする。
 # 引数契約・--size のリサイズ・出力パスの扱いは lib/imagen-common.sh が正本。
 set -euo pipefail
 
@@ -170,36 +170,49 @@ run_codex_attempts() {
 # --- フォールバック: 同じ引数のまま別プロバイダのスクリプトへ委譲 ---
 # codex は usage limit で数時間〜1 日単位で止まることがあり、その間は何回リトライしても出ない。
 # 画像生成に依存する pipeline (YouTube サムネ / Shorts ページ / Pinterest pin) が片方の
-# クォータ枯渇で丸ごと止まらないよう、二段目として agy-imagen.sh を呼ぶ。
-#   CODEX_IMAGEN_FALLBACK=agy (default) | off
-CODEX_IMAGEN_FALLBACK="${CODEX_IMAGEN_FALLBACK:-agy}"
+# クォータ枯渇で丸ごと止まらないよう、grok、agy の順で退避する。
+#   CODEX_IMAGEN_FALLBACKS=grok,agy (default) | agy | grok | off
+# 旧 CODEX_IMAGEN_FALLBACK も、FALLBACKS が未指定なら互換入力として受け付ける。
+CODEX_IMAGEN_FALLBACKS="${CODEX_IMAGEN_FALLBACKS:-${CODEX_IMAGEN_FALLBACK:-grok,agy}}"
 
-run_fallback() {
-  case "$CODEX_IMAGEN_FALLBACK" in
+run_fallbacks() {
+  case "$CODEX_IMAGEN_FALLBACKS" in
     off)
-      imagen_log "fallback disabled (CODEX_IMAGEN_FALLBACK=off)"
+      imagen_log "fallback disabled (CODEX_IMAGEN_FALLBACKS=off)"
       imagen_verdict_raw fallback skipped disabled
-      return 1
-      ;;
-    agy) ;;
-    *)
-      imagen_log "unknown CODEX_IMAGEN_FALLBACK='${CODEX_IMAGEN_FALLBACK}' (expected agy|off)"
-      imagen_verdict_raw fallback skipped misconfigured
       return 1
       ;;
   esac
 
-  local fallback_script="$SCRIPT_DIR/${CODEX_IMAGEN_FALLBACK}-imagen.sh"
-  if [ ! -f "$fallback_script" ]; then
-    imagen_log "fallback script not found: $fallback_script"
-    imagen_verdict_raw "${CODEX_IMAGEN_FALLBACK}" skipped script_not_found
-    return 1
-  fi
+  local provider fallback_script
+  local providers=()
+  IFS=',' read -r -a providers <<<"$CODEX_IMAGEN_FALLBACKS"
+  for provider in "${providers[@]}"; do
+    provider="${provider//[[:space:]]/}"
+    case "$provider" in
+      grok|agy) ;;
+      "") continue ;;
+      *)
+        imagen_log "unknown fallback provider: '$provider' (expected grok|agy)"
+        imagen_verdict_raw "$provider" skipped misconfigured
+        continue
+        ;;
+    esac
 
-  imagen_log "switching to fallback: $(basename "$fallback_script")"
-  # 引数は受け取ったものをそのまま渡す (引数契約が同一なので変換不要)。
-  # stdout (= 絶対パス 1 行) もそのまま呼び出し元へ流す。
-  bash "$fallback_script" "$@"
+    fallback_script="$SCRIPT_DIR/${provider}-imagen.sh"
+    if [ ! -f "$fallback_script" ]; then
+      imagen_log "fallback script not found: $fallback_script"
+      imagen_verdict_raw "$provider" skipped script_not_found
+      continue
+    fi
+
+    imagen_log "switching to fallback: $(basename "$fallback_script")"
+    # 引数は受け取ったものをそのまま渡す。失敗したら次の provider へ進む。
+    if bash "$fallback_script" "$@"; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 if run_codex_attempts; then
@@ -210,12 +223,12 @@ if run_codex_attempts; then
 fi
 imagen_verdict codex failed "$_codex_last_log"
 
-# フォールバック側 (agy-imagen.sh) は同じ $IMAGEN_VERDICT_FILE に自分の verdict を積む
-if run_fallback "$@"; then
+# フォールバック側は同じ $IMAGEN_VERDICT_FILE に自分の verdict を試行順で積む
+if run_fallbacks "$@"; then
   imagen_verdict_finish ok
   exit 0
 fi
 
-imagen_log "failed to generate/resize image at: $out_path (codex + fallback=${CODEX_IMAGEN_FALLBACK})"
+imagen_log "failed to generate/resize image at: $out_path (providers=codex,${CODEX_IMAGEN_FALLBACKS})"
 imagen_verdict_finish failed
 exit 1

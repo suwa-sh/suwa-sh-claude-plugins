@@ -25,11 +25,13 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 
 トリガー例: 「このプランをレビュー用 HTML にして」「承認に必要な情報をまとめて」「選択肢を比較できる形で見せて」
 
-### `toolbox:codex-imagen` — Codex CLI 経由の画像生成/編集
+### `toolbox:codex-imagen` — Codex → Grok → AGY の画像生成/編集
 
-`codex exec` の imagen スキルをラップし、指定した出力パスに PNG を保存して絶対パスを返す。入力画像を渡せば edit モード。
+`codex exec` の imagen スキルをラップし、失敗時は Grok、Antigravity の順に退避する。指定した出力パスに PNG を保存して絶対パスを返し、入力画像を渡せば edit モードになる。
 
 - `--size=<WxH>` で最終サイズを厳密担保 (scale-to-cover + center-crop、目標未満はリトライで引き直し)
+- Grok 経路は生成に `image_gen`、既存画像の編集に `image_edit` だけを許可
+- Grok のセッションIDを invocation ごとに固定し、`images/1.jpg` を回収・PNG変換するため並列実行でも混線しない
 - `codex exec --json` の thread_id で自分の出力を一意特定するため**並列実行しても干渉しない**
 - スタイルプリセット同梱 (`references/`): 製図風モノクロ概念図 (technical-schematic) / アイソメ積層図 (isometric-layer-stack)
 - `CODEX_IMAGEN_CODEX_WRAPPER` 等の環境変数でラッパー注入・タイムアウト・リトライ回数を制御
@@ -49,7 +51,7 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 |---|---|---|
 | `review-refute-loop` | Codex CLI (companion plugin) または `claude` CLI | どちらも無い場合はサブエージェントフォールバックで動作 (クロスモデル効果は失われる) |
 | `human-html-review` | [diagram-design](https://github.com/cathrynlavery/diagram-design) スキル | 未導入時はスキルが URL とインストールコマンド (`npx skills add cathrynlavery/diagram-design`) を提示する。`python3` も使用 (validate.py) |
-| `codex-imagen` | Codex CLI (`codex` が PATH にありログイン済み) | `--size` のリサイズは macOS `sips` を使用 (無い環境では警告してスキップ) |
+| `codex-imagen` | Codex CLI。Grok CLI / Antigravity CLI は任意 | 既定の退避順は codex → grok → agy。`--size` は macOS `sips` を使用 |
 
 ## 使い方
 

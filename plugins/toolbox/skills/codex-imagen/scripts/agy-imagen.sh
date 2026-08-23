@@ -4,7 +4,7 @@
 # 引数契約は codex-imagen.sh と同一:
 #   agy-imagen.sh <output_path> <prompt> [<input_image>] [--size=<WxH>]
 #
-# 位置づけ: codex-imagen.sh (既定) が usage limit / rate limit で尽きたときの二段目。
+# 位置づけ: codex-imagen.sh の既定列で codex、grok が尽きたときの三段目。
 # 単体でも使える (プロバイダを明示的に選びたいとき)。
 #
 # 実測メモ (2026-08-19):

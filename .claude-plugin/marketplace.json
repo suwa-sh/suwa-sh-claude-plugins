@@ -27,7 +27,7 @@
     {
       "name": "toolbox",
       "source": "./plugins/toolbox",
-      "description": "汎用ワークフロースキル集: クロスモデル外部レビュー収束ループ(toolbox:review-refute-loop)、前提知識ゼロから判断できる自己完結レビューHTML生成(toolbox:human-html-review)、Codex CLI 経由の画像生成/編集(toolbox:codex-imagen)。今後も汎用スキルを追加予定"
+      "description": "汎用ワークフロースキル集: クロスモデル外部レビュー収束ループ(toolbox:review-refute-loop)、前提知識ゼロから判断できる自己完結レビューHTML生成(toolbox:human-html-review)、Codex→Grok→AGYの画像生成/編集(toolbox:codex-imagen)。今後も汎用スキルを追加予定"
     }
   ]
 }
