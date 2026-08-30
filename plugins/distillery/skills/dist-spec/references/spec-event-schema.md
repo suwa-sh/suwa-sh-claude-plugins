@@ -46,6 +46,9 @@ stats:
   total_async_events: {非同期イベント総数}
   businesses: {業務数}
   bucs: {BUC 数}
+
+# Storybook Story 生成の要否（spec-stories / pipeline Step6a が参照）
+story_generation: required   # design ありなら required、design 無しモードなら not_applicable
 ```
 
 ## フィールド説明
@@ -61,6 +64,12 @@ stats:
 | use_cases | array | UC 一覧 |
 | cross_cutting | object | 全体横断仕様のサマリー |
 | stats | object | 生成統計 |
+
+### 任意フィールド
+
+| フィールド | 型 | 説明 |
+|-----------|---|------|
+| story_generation | `required` \| `not_applicable` | Storybook Story 生成の要否。design 無しモードでは `not_applicable`。省略時は `required` 相当（1.4.x 以前の互換） |
 
 ### use_cases[].files
 

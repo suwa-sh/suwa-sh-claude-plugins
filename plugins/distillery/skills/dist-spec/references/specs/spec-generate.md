@@ -35,7 +35,10 @@
   - **Presentation 系**: `technology_candidates` に SPA, SSR, MPA, モバイルアプリ等の UI 技術が含まれる
   - **API / バックエンド系**: `technology_candidates` に REST, GraphQL, gRPC, API Gateway 等の API 技術が含まれる
   - **非同期処理 / ワーカー系**: `technology_candidates` に Worker, Consumer, Batch, FaaS 等の非同期処理技術が含まれる
+  - **CLI 系**: `id` に `cli` / `command` / `tui` を含む、または `technology_candidates` に CLI, コマンドラインツール等が含まれる
 - ティアの種別に応じて、`spec-template.md` の該当フォーマットを使用する
+- **design 無しモード**（`_inputs-digest.md` 冒頭の `design_available: false`）では、Presentation 系ティアの
+  画面仕様・コンポーネント設計・デザイントークン参照を生成しない。design-event.yaml を読みに行かない
 
 #### UC パターン別ティア選定ルール
 
@@ -49,6 +52,7 @@
 | **自動通知 UC** | UC の説明に「自動通知」「自動送信」等がある | FaaS 系ワーカー + API 系 |
 | **バッチ + 画面 UC** | 関連モデルに「画面」があり、処理にバッチ実行が含まれる | Presentation 系 + API 系 + CronJob 系ワーカー |
 | **外部連携 UC** | 関連モデルに「イベント」+「外部システム」がある | API 系 + 該当ワーカー系 |
+| **コマンド UC（CLI プロダクト）** | 関連モデルに「画面」があるが arch に Presentation 系ティアが無く、CLI 系ティアがある（RDRA の「画面」がコマンド出力を表す。`システム概要.json` の `interface_kind: cli`） | CLI 系 + API 系（API 系が無ければ CLI 系のみ） |
 
 **重要**: インフラティア（API Gateway, IdP, 認可サービス, データストア, Object Storage, KVS, 外部連携アダプタ）は UC 単位の Spec では生成しない。これらは全体横断（cross-cutting）の責務。
 
@@ -117,6 +121,14 @@ Step 1 で決定した各ティアについて、ティア種別に応じたフ�
 - **ティア完了条件**: 画面操作に閉じた BDD シナリオ
 
 コンポーネント設計では、design-event.yaml のコンポーネントを「ベースコンポーネント」として参照し、この UC 固有の Props や状態を定義する。UI の実装（Storybook Story）は後続作業。
+
+**CLI 系ティアの場合**（`spec-template.md`「CLI 系ティア」フォーマット）:
+- **コマンド契約**: コマンド名、引数、オプション（型・既定値・必須）、stdin の受け付け
+- **出力契約**: stdout の内容とフォーマット（table / json / plain。`_cross-cutting/ux-ui/ui-design.md` の出力規約に従う）、
+  stderr のメッセージ、終了コード（成功 / 入力エラー / 業務エラー / システムエラー）
+- **UC ロジック**: バリデーション、確認プロンプトの有無、冪等性
+- **ティア完了条件**: コマンド実行に閉じた BDD シナリオ（Given 引数 / When 実行 / Then stdout・終了コード）
+- 画面仕様・コンポーネント設計・デザイントークン参照・`screens` は**生成しない**
 
 **API / バックエンド系ティアの場合:**
 - **API 仕様**: arch-design.yaml の該当ティアのレイヤー構成から導出したエンドポイント

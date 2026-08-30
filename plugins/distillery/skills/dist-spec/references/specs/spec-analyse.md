@@ -66,7 +66,12 @@ arch-design.yaml から以下を抽出する:
 - **technology_context**: 技術スタック（言語、フレームワーク、DB）
 - **policies**: セキュリティ、認証、認可ポリシー
 
-### 3. Design システムからの画面・コンポーネント抽出
+### 3. Design システムからの画面・コンポーネント抽出（design-event.yaml が存在する場合のみ）
+
+design 有無は SKILL.md「design 無しモード」の条件（引数 `design_available` が最優先、無ければファイルの有無）で Step1 の最初に
+決め、`_inference.md` に記録済みである。`design_available: false` なら本節と「4. UC と画面・コンポーネントのマッピング」を
+スキップし、**design-event.yaml が残っていても開かない**。以降の UC Spec では画面仕様・コンポーネント設計・
+デザイントークン参照・`screens` を生成しない（`spec-template.md`「design 無しモード」）。
 
 design-event.yaml から以下を抽出する:
 
@@ -107,7 +112,8 @@ BUC.tsv の「画面」列と design-event.yaml の screens を照合する:
 - BUC.tsv のアクティビティ列から操作順序を推定
 - 複数 UC をまたぐフローを特定
 
-**情報アーキテクチャ**: design-event.yaml の screens と portals からサイトマップを構築する
+**情報アーキテクチャ**: design-event.yaml の screens と portals からサイトマップを構築する。
+design 無しモードでは BUC.tsv の業務 → BUC → UC 階層とアクターから、コマンド体系（CLI）または API リソース階層として構築する
 
 **データ可視化対象**: 情報.tsv の指標データ（数値型属性）を持つエンティティを特定する
 

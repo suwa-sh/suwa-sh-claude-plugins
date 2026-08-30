@@ -30,6 +30,11 @@
     },
     "stats": {
       "$ref": "#/$defs/Stats"
+    },
+    "story_generation": {
+      "type": "string",
+      "enum": ["required", "not_applicable"],
+      "description": "Storybook Story 生成の要否。design-event.yaml が無い（design ステージ skip）場合は not_applicable。省略時は required 相当"
     }
   },
   "$defs": {

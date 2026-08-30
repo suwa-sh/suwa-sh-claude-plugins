@@ -141,9 +141,21 @@ docs/design/
 
 **読み込み:** `references/design/design-infer.md`
 
+0. **UI 画面の有無を確認する**（引数 `design_generation=required` が渡された場合はこの判定を**行わず** 1. へ進む。
+   dist-pipeline は pipeline-config で「design を実行する」と確定した場合にこの引数を渡す）:
+   `docs/rdra/latest/システム概要.json` の `interface_kind`（省略時 `gui`）が `gui` 以外
+   （`cli` / `api` / `batch`）、または `docs/arch/latest/arch-design.yaml` の `system_architecture.tiers[].id` に
+   `frontend` / `presentation` / `ui` を含む tier が無い場合は、**UI 画面を持たないプロダクト**である。
+   この場合はデザインシステムを生成せず、確認推奨項目「design ステージの実行」（⭐ = skip。
+   `docs/pipeline/pipeline-config.yaml` に `skip_steps: [step5, step6a]` を設定して再実行）を返して終了する。
+   ユーザーが明示的に「UI 無しでも design を作る」と指示した場合のみ続行する。その場合は従来どおり
+   BUC.tsv の `画面` 行を画面一覧として取り込む（design-event.yaml の schema は `screens` を 1 件以上要求するため、
+   screens を空にはできない。画面名がコマンド出力（`{コマンド名} 出力`）なら、その名前のまま画面として設計する）
 1. RDRA モデルを読み込み、以下を抽出する:
    - **ポータル構成**: アクターの社内外・立場からポータルを導出（例: 利用者/オーナー/管理者）
-   - **画面一覧**: BUC.tsv の `画面` 列からユニークな画面名を抽出
+   - **画面一覧**: BUC.tsv の `画面` 列からユニークな画面名を抽出（`interface_kind` が `gui` 以外でも、
+     0. を通過して続行する場合 = `design_generation=required` またはユーザーの明示指示 = は同じく全画面を取り込む。
+     schema が `portals` / `screens` を 1 件以上要求するため空にはしない）
    - **ドメインエンティティ**: 情報.tsv からコンポーネント化候補を特定
    - **状態モデル**: 状態.tsv からステータス表示が必要なエンティティを特定
    - **バリエーション**: バリエーション.tsv から検索/フィルター条件を抽出

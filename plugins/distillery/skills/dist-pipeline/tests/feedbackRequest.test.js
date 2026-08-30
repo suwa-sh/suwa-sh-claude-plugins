@@ -2445,3 +2445,53 @@ test('run verifier rebuilds plan and packets from input plus frozen routing and 
   fs.appendFileSync(path.join(runDir, 'stage-packets', 'spec.md'), 'tampered\n');
   assert.ok(validateRunDirectory(runDir, eventsDir, { artifactRoot }).some(error => error.includes('stage packet mismatch')));
 });
+
+test('skipped stages are frozen in the routing basis and removed from every closure', () => {
+  const input = document();
+  const options = routingOptions({ skippedStages: 'spec_stories,design_system' });
+  const routing = buildRouting(input, resolvedProposal(input), 'interactive', options);
+  assert.deepEqual(routing.routing_basis.skipped_stages, ['design_system', 'spec_stories']);
+  const plan = buildPlan(input, routing, options);
+  const stageIds = plan.execution_stages.map(stage => stage.id);
+  assert.ok(!stageIds.includes('design_system'));
+  assert.ok(!stageIds.includes('spec_stories'));
+  assert.deepEqual(stageIds, ['requirements', 'quality_attributes', 'architecture', 'infrastructure', 'spec']);
+  for (const unit of plan.work_units) {
+    assert.ok(!unit.required_closure_stages.includes('design_system'));
+    assert.ok(!unit.required_closure_stages.includes('spec_stories'));
+  }
+  assert.deepEqual(plan.work_units[1].required_closure_stages, ['spec']);
+
+  const rebuilt = buildRouting(input, resolvedProposal(input), 'interactive', options);
+  assert.equal(canonicalJsonText(buildPlan(input, rebuilt, options)), canonicalJsonText(plan));
+
+  const noSkip = createRoutingBasis(routingOptions(), options.catalogBundle, options.policyBundle);
+  assert.deepEqual(noSkip.skipped_stages, []);
+  assert.throws(() => createRoutingBasis(routingOptions({ skippedStages: 'outside_pipeline' }), options.catalogBundle, options.policyBundle), /unknown skipped stage/);
+});
+
+test('a work unit whose direct owner is a skipped stage is rejected fail-closed', () => {
+  const input = document();
+  const options = routingOptions({ skippedStages: ['spec'] });
+  assert.throws(() => buildRouting(input, resolvedProposal(input), 'interactive', options), /direct_stage spec is a skipped stage/);
+});
+
+test('frozen routing without skipped_stages (pre-1.5.0) still resumes as an empty skip set', () => {
+  const input = document();
+  const options = routingOptions();
+  const routing = buildRouting(input, resolvedProposal(input), 'interactive', options);
+  const legacy = JSON.parse(JSON.stringify(routing));
+  delete legacy.routing_basis.skipped_stages;
+  const resumed = buildRouting(input, legacy, 'interactive', { ...options, basisValidation: 'static' });
+  assert.deepEqual(resumed.requests[1].work_units[0].required_closure_stages, ['spec', 'spec_stories']);
+  // awaiting_resolution など plan の無い run は full 比較になる。旧 basis でも通ること
+  const resumedFull = buildRouting(input, legacy, 'interactive', { ...options, basisValidation: 'full' });
+  const legacyPlan = buildPlan(input, resumedFull, options);
+  const currentPlan = buildPlan(input, routing, options);
+  assert.deepEqual(legacyPlan.execution_stages, currentPlan.execution_stages);
+  assert.deepEqual(legacyPlan.work_units, currentPlan.work_units);
+  assert.throws(
+    () => buildRouting(input, routing, 'interactive', routingOptions({ skippedStages: ['spec_stories'] })),
+    /routing basis changed/,
+  );
+});

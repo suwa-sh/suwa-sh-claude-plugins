@@ -251,6 +251,17 @@ node <skill-path>/scripts/validateChanges.js docs/rdra/events/{event_id}
 
 ---
 
+## UI 画面を持たないプロダクト（CLI / API / バッチ）の扱い
+
+- Phase5 の `システム概要.json` に `interface_kind`（`gui` / `cli` / `api` / `batch`。省略時 `gui`）を記録する
+  （`references/rdra-phases/phase5/システム概要生成.md`）
+- `gui` 以外では、RDRA の「画面」は **コマンド出力 / API レスポンス** として扱う。画面名は `{コマンド名} 出力` のように
+  GUI と誤読されない名前にし、画面一覧.json の各 screen に `interface_kind` を付ける
+  （`references/rdra-phases/spec/23_画面一覧生成.md`「インターフェース種別の判定」）
+- 目的: dist-design-system が CLI 出力を GUI 画面としてデザインシステム化するのを防ぐ。
+  design ステージ自体の skip は `docs/pipeline/pipeline-config.yaml` の `skip_steps`（dist-pipeline）で行う
+- 既存プロジェクト互換: `interface_kind` が無いモデルは `gui` として従来どおり扱う
+
 ## subagent への指示テンプレート
 
 各タスクを subagent に委譲する際は、Step ごとに以下のパターンで指示する。テンプレート内の `references/...` はスキルルート相対パス。subagent へ渡す際は `${CLAUDE_PLUGIN_ROOT}/skills/dist-requirements/references/...` の絶対パスに展開して指定する（成果物パスはプロジェクトルート相対）。

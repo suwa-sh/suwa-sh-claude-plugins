@@ -115,12 +115,28 @@ model を解決して Agent/Task ツールの `model` パラメータに渡す
   両制度は独立しており、feedback-routing-policy.json の安全境界には影響しない
 - 決定した policy は実行開始時にユーザーへ報告する
 
-**pipeline-config の読込（全 mode 共通・lease 取得後）**: `docs/pipeline/pipeline-config.yaml` を読み込む。
-存在しなければ `references/pipeline-config-schema.md` のデフォルト値で生成する。
-読込・生成は **workspace lease の取得後**に行う（通常/harvest mode は下記の lease 取得直後、
-feedback mode は F0b の lease 取得後・stage 起動前。lease 取得前は入力種別判定などの読み取りのみ許可し、
-config を含む一切の書き込みを行わない）。config は feedback 契約の外なので routing/plan には影響しない。
-解決した step_models を実行開始時にユーザーへ報告する。
+**pipeline-config の読込**: `docs/pipeline/pipeline-config.yaml` を読み込む。
+存在しなければ `references/pipeline-config-schema.md` のデフォルト値で生成する（**生成は通常/harvest mode のみ**。
+feedback mode で存在しない場合は `skip_steps` 無しとして扱い、生成しない）。
+
+- 通常/harvest mode: 読込・生成は下記の **workspace lease 取得直後**に行う（lease 取得前は入力種別判定などの
+  読み取りのみ許可し、config を含む一切の書き込みを行わない）
+- feedback mode: config は F0b の begin command（lease 取得を含む transaction）の引数 `--skip-stages` を組み立てるために
+  必要なので、**begin 前に読み取りのみ**行う（書き込みはしない）。planner が `routing_basis.skipped_stages` に凍結した後は
+  config を変更しても run には影響しない（変更したい場合は新しい run を開始する）
+
+config は feedback 契約の外なので routing（所有者判定）には影響しないが、
+`skip_steps` は closure（実行 stage 集合）に影響する（F0b 参照）。
+解決した step_models と skip_steps（暗黙 skip を含む。空なら「skip なし」）を実行開始時にユーザーへ報告する。
+
+**skip_steps の解決**（`references/pipeline-config-schema.md` の「skip_steps の仕様」が正本）:
+
+- 解決は `node <skill-path>/scripts/resolvePipelineConfig.js docs/pipeline/pipeline-config.yaml` で行う
+  （YAML parser で読む。grep による行判定はしない）。出力の `skip_steps`（暗黙 skip 込み）と
+  `skip_steps_defined`（キーの有無 = 判断済みか）を以降で使う。`warnings` はユーザーに報告する
+- 許容値は `step5` / `step6a`。不正値は警告してその値だけ無視する
+- `step5` を含む場合は `step6a` を暗黙に追加する
+- 途中再開（resume）でも同じ config を読み、skip 対象 Step は completed 扱いで開始 Step の候補から外す
 
 通常/harvest modeは入力種別の判定直後、Step0hを含むどの書き込みよりも前に共通workspace leaseを取得する
 （feedback modeはF0bのauthoritative begin transactionで同じleaseを取得）。通常/harvestの`input-path`はfileまたはdirectoryを許可する。
@@ -254,7 +270,14 @@ proposalの形、判定規則、正規化、hash bindingは`references/feedback-
      --run-id "$RUN_ID" \
      --write docs/pipeline/feedback-runs/{feedback_id}
    # --recommended-autoで開始する場合は --policy recommended_auto
+   # pipeline-config の skip_steps が空でない場合は stage ID に写像して追加する
+   #   step5 → design_system, step6a → spec_stories（feedback-stage-ownership.json の steps）
+   #   例: --skip-stages design_system,spec_stories
    ```
+
+   `--skip-stages` は begin でのみ渡す。planner は `routing_basis.skipped_stages` に凍結し、
+   全 work unit の `required_closure_stages` から除外する。direct owner が skip stage の work unit が
+   あれば planner はエラーで停止する（skip を解除するか、request を見直す）。resume では凍結値を使う。
 
    Git worktreeではplannerがHEADを取得するため、`--repository-head`を渡さない。
 
@@ -354,6 +377,7 @@ packet、台帳、domain evidence、root snapshotの正確な契約は`reference
 ### F2. feedback mode 固有の後処理
 
 - Step6aはexecution planに含まれる場合だけ、既存Story件数によるskip判定を使わず1回実行する
+  （`skipped_stages` に `spec_stories` があれば plan に含まれないので実行しない）
 - Step6bは網羅率を確認するが、Step1〜6をその場で再帰しない。`rdra-feedback.md` があれば
   resultに記録し、新しいfeedback-request候補を提示する
 - 通常 mode の「エラー時にスキップ」はfeedback modeでは禁止する
@@ -458,8 +482,53 @@ node <skill-path>/scripts/feedbackLease.js release \
 | 3 | architecture | あり | `docs/arch/latest/arch-design.yaml` | RDRA 整合性厳守 |
 | 4a | infrastructure (MCL) | あり | `docs/infra/events/{event_id}/docs/mcl/` が存在 | MCL product-design 成果物生成で完了 |
 | 4b | infrastructure (記録・FB) | あり | `docs/infra/latest/infra-event.yaml` + arch feedback event 存在 | Phase3〜5 を実行。Step4a の event_id を引き継ぐ |
-| 5 | design-system | あり | `docs/design/latest/design-event.yaml` + `docs/design/latest/storybook-app/` | ブランド/カラー/フォント/レイアウトを3案確認 |
-| 6 | spec | あり | `docs/specs/latest/spec-event.yaml` + `docs/specs/latest/_cross-cutting/` | API/エラー/DB 方針を確認 |
+| 5 | design-system | あり | `docs/design/latest/design-event.yaml` + `docs/design/latest/storybook-app/` | ブランド/カラー/フォント/レイアウトを3案確認。**`skip_steps` に step5 があれば起動しない**（下記）。起動する場合は skill_args に `design_generation=required` を渡す（config で「実行する」と判断済みのため、dist-design-system 側の skip 推奨・早期終了を抑止） |
+| 6 | spec | あり | `docs/specs/latest/spec-event.yaml` + `docs/specs/latest/_cross-cutting/` | API/エラー/DB 方針を確認。design 無し時は trigger_event から `design:` を外す |
+
+**Step5 の skip（`skip_steps` に `step5` を含む場合）:**
+
+- サブエージェントを起動しない。`progress-update.js step 5 completed --summary "skipped (skip_steps)"` で進める
+- `docs/design/` は生成しない。既に `docs/design/latest/` が存在する場合（過去に design を実行済み）は削除せず残し、
+  完了サマリに「design は skip、既存 latest は据え置き（Step6 では使用しない）」と記載する
+- Step6 の subagent-template 変数は **design 無し版**（`references/subagent-template.md` の Step6 注記）を使う。
+  `design_event_id` を持たないため trigger_event は `rdra:{id}, arch:{id}` のみ
+
+**Step6 の design 有無判定（オーケストレータが決め、dist-spec に明示的に渡す）:**
+`skip_steps` に `step5` がある、または `docs/design/latest/design-event.yaml` が存在しない場合を「design 無し」とし、
+dist-spec の skill_args に `design_available=false` を渡す（design ありは `design_available=true`）。
+dist-spec は**この引数を優先**し、ファイルの有無では判定しない（古い `docs/design/latest/` が残っていても使わない）。
+design 無しでは `story_generation: not_applicable` が記録される（dist-spec SKILL.md「design 無しモード」）。
+完了チェックは design 有無で変わらない。
+
+**Step3 完了後: design skip 推奨判定（通常/harvest mode のみ）:**
+
+Step3 の完了チェック直後に、次の 2 条件が**両方**成り立つ場合だけ実行する:
+
+1. `docs/pipeline/pipeline-config.yaml` に `skip_steps` キーが**存在しない**（`skip_steps: []` の明示は「実行する」意思なので対象外）
+2. UI 画面を持たないプロダクトである: `docs/rdra/latest/システム概要.json` の `interface_kind`（省略時 `gui`）が `gui` 以外、
+   **または** `docs/arch/latest/arch-design.yaml` の `system_architecture.tiers[].id` に presentation 系 tier
+   （トークンに `frontend` / `presentation` / `ui` / `web` / `spa` / `mobile`）が 1 つも無い（dist-design-system の Step0 と同じ規則）
+
+```bash
+node <skill-path>/scripts/resolvePipelineConfig.js docs/pipeline/pipeline-config.yaml                                   # "skip_steps_defined": false なら条件 1 成立
+node <skill-path>/scripts/hasPresentationTier.js docs/arch/latest/arch-design.yaml docs/rdra/latest/システム概要.json   # exit 1（"recommend_design_skip": true）なら条件 2 成立
+```
+
+成立したら、オーケストレータ自身が確認推奨項目「design ステージの実行」を `references/dialogue-format.md` 準拠で作る
+（confidence: medium。根拠: `interface_kind` / presentation 系 tier の有無 = UI 画面を持たないプロダクト）:
+
+- Option A ⭐: Step5 / Step6a を skip する（`skip_steps: [step5, step6a]`）— UI 画面が無いため design/Storybook は不要
+- Option B: 両方実行する（`skip_steps: []`）— 将来 UI を追加する予定があり、RDRA の画面（コマンド出力）をそのまま画面として設計する場合
+- Option C: Step5 は実行し Step6a のみ skip する（`skip_steps: [step6a]`）— デザインシステムは欲しいが UC ページ Story は不要な場合
+
+処理は dialogue_policy で分岐する:
+
+- **auto_adopt**: ⭐（Option A）を採用し、`docs/pipeline/pipeline-config.yaml` に `skip_steps: [step5, step6a]` を追記する
+  （lease 取得中なので書き込み可）。採用一覧に「Step3 後 / design ステージの実行 / skip / medium / 理由」を載せる
+- **interactive**: 上記 a〜d の対話フローで確認し、回答どおりの `skip_steps` を書き戻す
+
+以後の Step5 / Step6 / Step6a は書き戻した `skip_steps` に従う。feedback mode ではこの判定を行わない
+（config は F0b で凍結済み。変更したい場合は config を直して新しい run を開始する）。
 
 **Step4a/4b infrastructure の完了検証:**
 
@@ -475,6 +544,15 @@ node <skill-path>/scripts/feedbackLease.js release \
 spec スキルは Step8 で完了し、Storybook Story 生成は独立スキル `spec-stories` で実施する。Step6 完了後に必ず実行する。
 
 **進捗更新（開始）:** `progress-update.js step 6a running --subagent-task "Storybook Story 補完チェック"`
+
+**skip 判定（判定より先に行う）:** 次のいずれかに該当したら Story 生成を行わず
+`progress-update.js step 6a completed --summary "skipped ({理由})"` で進める:
+
+| 理由 | 条件 |
+|------|------|
+| `skip_steps` | `skip_steps` に `step6a` がある（`step5` からの暗黙 skip を含む） |
+| `story_generation: not_applicable` | `docs/specs/latest/spec-event.yaml` の `story_generation` が `not_applicable` |
+| `no storybook-app` | `docs/design/latest/storybook-app/` が存在しない |
 
 **判定:**
 
@@ -545,6 +623,8 @@ node <skill-path>/scripts/generateReadme.js docs
 TODO (docs/todo.md): open 件数 = {N}
 ```
 
+skip した Step は成果物・イベントID 列に `skipped (skip_steps)` と書く。
+
 **todo.md サマリの算出:**
 
 ```bash
@@ -591,7 +671,8 @@ failed/deferredをevent化して停止する。
 
 - 各サブエージェントは独立したコンテキストで動作する。前の Step の情報は `docs/` 配下のファイルを通じて引き継がれる
 - イベントIDはパイプラインオーケストレータが管理し、サブエージェント指示に `trigger_event` として含める
-- Step5（design）は最も時間がかかる。ユーザーに所要時間の目安を事前に伝えることを推奨する
+- Step5（design）は最も時間がかかる。ユーザーに所要時間の目安を事前に伝えることを推奨する。
+  UI 画面を持たないプロダクトでは `skip_steps` で Step5/6a を skip できる（`references/pipeline-config-schema.md`）
 
 ## リファレンス
 
@@ -600,7 +681,7 @@ failed/deferredをevent化して停止する。
 | `references/subagent-template.md` | サブエージェント指示の共通テンプレート + 各 Step の変数値 |
 | `references/step6a-story-補完.md` | Step6a 補完サブエージェント指示（そのまま使用） |
 | `references/dialogue-format.md` | 確認推奨項目のフォーマット仕様（3案＋⭐推奨）+ 自動採用モード + RDRA整合性ルール |
-| `references/pipeline-config-schema.md` | `docs/pipeline/pipeline-config.yaml` のスキーマ正本（step_models） |
+| `references/pipeline-config-schema.md` | `docs/pipeline/pipeline-config.yaml` のスキーマ正本（step_models / skip_steps） |
 | `references/feedback-request-format.md` | 単一Markdown入力の厳密契約 |
 | `references/feedback-stage-ownership.json` | version付きstage所有者catalog |
 | `references/feedback-routing-policy.json` | 曖昧性、推奨質問、recommended-autoの安全境界 |
@@ -609,7 +690,9 @@ failed/deferredをevent化して停止する。
 | `scripts/progress-server.js` | 進捗ダッシュボード Web サーバー（SSE、プロセスベースのポート解決） |
 | `scripts/appendTodo.js` | `docs/todo.md` への追加提案追記 CLI（冪等） |
 | `scripts/notify.js` | デスクトップ通知 CLI（macOS/Windows/Linux 対応・音付き。dialogue / error / complete で使用。失敗しても exit 0） |
-| `scripts/generateReadme.js` | docs/README.md 自動生成（完了時に実行） |
+| `scripts/generateReadme.js` | docs/README.md 自動生成（完了時に実行。`skip_steps` に step5 があれば Design 節を据え置き扱いにする） |
+| `scripts/resolvePipelineConfig.js` | pipeline-config.yaml を YAML parser で読み step_models / skip_steps（暗黙 skip 込み）/ `skip_steps_defined` を JSON で返す |
+| `scripts/hasPresentationTier.js` | arch-design.yaml の `system_architecture.tiers[].id` に presentation 系 tier があるか判定（exit 0/1）。Step3 後の design skip 推奨判定で使う |
 | `scripts/feedbackRequest.js` | feedback candidate検出・Markdown parse・hash・厳密検証 |
 | `scripts/planFeedbackRequest.js` | authoritative begin/resume・routing/resolution検証・保守的suffix closure・stage packet生成 |
 | `scripts/feedbackLease.js` | workspace leaseの原子的な取得・owner照合・更新・解放 |

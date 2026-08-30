@@ -200,12 +200,20 @@ feedback modeでRDRAにない要素が必要になった場合は、通常mode�
 | role | デザインシステム生成 |
 | trigger_event_line | `前段イベント: rdra:{rdra_event_id}, arch:{arch_event_id}` |
 | skill_name | distillery:dist-design-system |
-| skill_args | 通常: *(なし)* / feedback: ` 引数: "feedback_packet={stage_packet_path}"` |
+| skill_args | 通常: ` 引数: "design_generation=required"` / feedback: ` 引数: "feedback_packet={stage_packet_path} design_generation=required"`（pipeline が Step5 を起動する = config で実行が確定しているため、dist-design-system 側の「UI 無し → skip 推奨で終了」を抑止する） |
 | model | pipeline-config の step_models.step5（null なら未指定=セッション既定） |
 | trigger_event_instruction | `前段イベント rdra:{rdra_event_id}, arch:{arch_event_id} を trigger_event としてイベントに記録してください。` |
 | additional_instructions | `Step8（画面確認）は特に重要です。必ず実行してください。対話ありの Step です。confidence が low の項目がある場合は、**必ず「確認推奨項目リスト」を dialogue-format.md 準拠（3案以上＋⭐推奨＋一行説明＋推奨理由）で作成し、dialogue_policy に従って処理してください**。RDRA に存在しない要素を追加したい場合は appendTodo.js で docs/todo.md に登録し、確認推奨項目として扱うこと（自動追加禁止）。` |
 
 ### Step6: spec
+
+> **design 無し版**（`skip_steps` に step5 がある、または `docs/design/latest/design-event.yaml` が無い場合）:
+> `trigger_event_line` と `trigger_event_instruction` から `design:{design_event_id}` を外し、
+> skill_args に ` 引数: "design_available=false"`（feedback: `"feedback_packet=... design_available=false"`）を渡し、
+> additional_instructions の先頭に次を追記する:
+> `デザインシステムはこの実行では使用しません（design_available=false。docs/design/latest/ が残っていても読まないこと）。dist-spec SKILL.md の「design 無しモード」で実行し、画面仕様・コンポーネント設計・screens は生成せず、spec-event.yaml に story_generation: not_applicable を記録してください。`
+>
+> design あり版では skill_args に ` 引数: "design_available=true"` を渡す。
 
 | 変数 | 値 |
 |------|-----|

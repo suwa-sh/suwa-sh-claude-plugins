@@ -443,8 +443,28 @@ if (!infraHas && infraEvents.length) {
 
 
 // == Design ===============================================================
+// design ステージを skip したプロジェクト（pipeline-config の skip_steps）では docs/design/latest が無い。
+// その場合は空の Design 節を出さず、skip した旨だけ 1 行残す
 L('## Design（デザイン）');
 L();
+// pipeline-config の skip_steps に step5 があれば、旧 docs/design/latest が残っていても現行成果物として掲載しない
+let designSkipped = false;
+try {
+  const { resolvePipelineConfig, parsePipelineConfigText } = require('./resolvePipelineConfig');
+  const cfgPath = path.join(docsRoot, 'pipeline/pipeline-config.yaml');
+  if (fileExists(cfgPath)) designSkipped = resolvePipelineConfig(parsePipelineConfigText(fs.readFileSync(cfgPath, 'utf8'))).skip_steps.includes('step5');
+} catch { designSkipped = false; }
+const designLatestExists = dirExists(path.join(docsRoot, 'design/latest'));
+if (designSkipped) {
+  L(designLatestExists
+    ? 'design ステージは pipeline-config の `skip_steps` で skip されている。`docs/design/latest/` は過去の据え置き成果物で、現行の spec では使用していない。'
+    : 'design ステージは pipeline-config の `skip_steps` で skip されている（UI 画面を持たないプロダクト）。');
+  L();
+} else if (!designLatestExists) {
+  L('design ステージは未実行。');
+  L();
+}
+if (!designSkipped && designLatestExists) {
 L('### 主要な成果物');
 L();
 for (const f of ['design-event.md', 'design-event.yaml']) { const p = path.join(docsRoot, 'design/latest', f); if (fileExists(p)) L(`- ${lnk(f, p)}`); }
@@ -489,6 +509,7 @@ if (dirExists(sbDir)) {
   const storiesDir = path.join(sbDir, 'src/stories');
   if (dirExists(storiesDir)) { const c = countFiles(storiesDir, '.stories.tsx'); if (c) L(`Stories: ${c} ファイル`); L(); }
 }
+} // end: design/latest exists
 
 // == Specs ================================================================
 L('## Specs（詳細仕様）');

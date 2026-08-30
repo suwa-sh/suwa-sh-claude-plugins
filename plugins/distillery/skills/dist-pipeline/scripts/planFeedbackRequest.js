@@ -60,6 +60,7 @@ const STATIC_ROUTING_BASIS_KEYS = Object.freeze([
   'routing_policy_sha256',
   'prompt_schema_sha256',
   'stage_packet_renderer_version',
+  'skipped_stages',
 ]);
 const TERMINAL_RUN_STATES = new Set(['completed', 'blocked']);
 
@@ -483,16 +484,41 @@ function normalizeUnits(units, requestId, catalog, options = {}) {
   return normalized;
 }
 
-function assignWorkUnitIds(requests, catalog) {
+// skipped stages: pipeline-config の skip_steps を stage ID に写像したもの。
+// catalog 順に正規化し、outside_stage や未知の ID は拒否する。省略時は []。
+function normalizeSkippedStages(value, catalog) {
+  if (value === undefined || value === null || value === '') return [];
+  const list = typeof value === 'string' ? value.split(',').map(item => item.trim()).filter(Boolean) : value;
+  if (!Array.isArray(list)) throw new Error('skipped stages must be an array or comma-separated string');
+  const known = stageIds(catalog);
+  const selected = new Set();
+  for (const stage of list) {
+    if (typeof stage !== 'string' || !known.includes(stage)) throw new Error(`unknown skipped stage: ${stage}`);
+    selected.add(stage);
+  }
+  return known.filter(stage => selected.has(stage));
+}
+
+function skippedStagesFromBasis(basis) {
+  return Array.isArray(basis?.skipped_stages) ? basis.skipped_stages : [];
+}
+
+function assignWorkUnitIds(requests, catalog, skippedStages = []) {
+  const skipped = new Set(skippedStages);
   return requests.map(request => ({
     ...request,
-    work_units: request.work_units.map((unit, index) => ({
-      ...unit,
-      id: `${request.request_id}#${index + 1}`,
-      required_closure_stages: unit.direct_stage === catalog.outside_stage
-        ? []
-        : stageIds(catalog).slice(stageOrder(unit.direct_stage, catalog)),
-    })),
+    work_units: request.work_units.map((unit, index) => {
+      if (skipped.has(unit.direct_stage)) {
+        throw new Error(`${request.request_id}: work unit direct_stage ${unit.direct_stage} is a skipped stage (pipeline-config skip_steps); unskip it or re-route the request`);
+      }
+      return {
+        ...unit,
+        id: `${request.request_id}#${index + 1}`,
+        required_closure_stages: unit.direct_stage === catalog.outside_stage
+          ? []
+          : stageIds(catalog).slice(stageOrder(unit.direct_stage, catalog)).filter(stage => !skipped.has(stage)),
+      };
+    }),
   }));
 }
 
@@ -610,6 +636,7 @@ function createRoutingBasis(options, catalogBundle, policyBundle) {
     routing_policy_sha256: policyBundle.sha256,
     prompt_schema_sha256: options.promptSchemaSha256 || sha256Bytes(Buffer.from(PROMPT_DATA_POLICY, 'utf8')),
     stage_packet_renderer_version: options.stagePacketRendererVersion || STAGE_PACKET_RENDERER_VERSION,
+    skipped_stages: normalizeSkippedStages(options.skippedStages, catalogBundle.value),
     repository_head: options.repositoryHead ?? null,
     latest_domain_event_ids: latestDomainEventIds,
     domain_event_root_snapshots: domainEventRootSnapshots,
@@ -692,7 +719,7 @@ function validateFrozenRouting(document, routing, mode, options, catalogBundle, 
       const normalized = normalizeUnits(rawUnits, request.request_id, catalog, {
         ...(requestSemanticContractSha ? { semanticContractSha256: requestSemanticContractSha } : {}),
       });
-      const assigned = assignWorkUnitIds([{ request_id: request.request_id, work_units: normalized }], catalog)[0].work_units;
+      const assigned = assignWorkUnitIds([{ request_id: request.request_id, work_units: normalized }], catalog, skippedStagesFromBasis(routing.routing_basis))[0].work_units;
       if (canonicalize(assigned) !== canonicalize(request.work_units)) {
         throw new Error(`${request.request_id}: frozen routing work units are not normalized or closure-bound`);
       }
@@ -848,7 +875,7 @@ function buildRouting(document, proposal, mode, options = {}) {
       work_units: [],
     });
   }
-  const requestsWithIds = assignWorkUnitIds(routed, catalog);
+  const requestsWithIds = assignWorkUnitIds(routed, catalog, skippedStagesFromBasis(basis));
   return {
     schema_version: 'distillery.feedback-routing/v1',
     feedback_request_id: document.metadata.feedback_id,
@@ -860,14 +887,24 @@ function buildRouting(document, proposal, mode, options = {}) {
   };
 }
 
+// 1.4.x 以前の frozen basis には skipped_stages が無い。比較前に [] を補って後方互換にする
+function withDefaultSkippedStages(basis) {
+  if (!basis || typeof basis !== 'object' || Array.isArray(basis) || Object.hasOwn(basis, 'skipped_stages')) return basis;
+  return { ...basis, skipped_stages: [] };
+}
+
 function validateBasis(expected, actual) {
-  if (canonicalize(expected) !== canonicalize(actual)) throw new Error('routing basis changed; regenerate and re-present the routing proposal');
+  if (canonicalize(withDefaultSkippedStages(expected)) !== canonicalize(withDefaultSkippedStages(actual))) {
+    throw new Error('routing basis changed; regenerate and re-present the routing proposal');
+  }
 }
 
 function staticBasis(basis) {
   if (!basis || typeof basis !== 'object' || Array.isArray(basis)) throw new Error('routing basis must be an object');
   const selected = {};
   for (const key of STATIC_ROUTING_BASIS_KEYS) {
+    // skipped_stages は後方互換のため省略可（1.4.x 以前の frozen routing には無い）。省略 = []
+    if (key === 'skipped_stages' && !Object.hasOwn(basis, key)) { selected[key] = []; continue; }
     if (!Object.hasOwn(basis, key)) throw new Error(`routing basis is missing static field: ${key}`);
     selected[key] = basis[key];
   }
@@ -921,7 +958,7 @@ function applyResolutions(routing, resolutions, currentBasis, options = {}) {
       work_units: selected.work_units,
     };
   });
-  const materialized = assignWorkUnitIds(requests.map(request => ({ ...request, work_units: request.work_units.map(({ id, required_closure_stages, ...unit }) => unit) })), catalog);
+  const materialized = assignWorkUnitIds(requests.map(request => ({ ...request, work_units: request.work_units.map(({ id, required_closure_stages, ...unit }) => unit) })), catalog, skippedStagesFromBasis(routing.routing_basis));
   return { ...routing, state: 'resolved', requests: materialized };
 }
 
@@ -1685,7 +1722,7 @@ function parseArgs(argv) {
       '--repository-head': 'repositoryHead', '--model-id': 'modelId', '--latest-domain-events': 'latestEventsPath',
       '--catalog': 'catalogPath', '--routing-policy': 'policyPath', '--lease': 'leasePath',
       '--run-id': 'runId', '--started-head': 'startedHead', '--events-dir': 'eventsDir',
-      '--artifact-root': 'artifactRoot',
+      '--artifact-root': 'artifactRoot', '--skip-stages': 'skipStages',
     };
     if (!keys[name]) throw new Error(`unknown option: ${name}`);
     options[keys[name]] = value;
@@ -1796,9 +1833,17 @@ function runCli() {
     const actualRepositoryHead = runSecurity && (requiresCurrentDynamicBasis || options.repositoryHead)
       ? deriveRepositoryHead(runSecurity.artifactRoot, options.repositoryHead)
       : (options.repositoryHead ?? proposal.routing_basis?.repository_head);
+    // skipped stages: begin では --skip-stages、resume では frozen routing の値を使う（外部指定との不一致は拒否）
+    const frozenSkippedStages = options.runDirectoryResume ? skippedStagesFromBasis(proposal.routing_basis) : null;
+    const requestedSkippedStages = normalizeSkippedStages(options.skipStages, catalogBundle.value);
+    if (frozenSkippedStages && options.skipStages !== undefined &&
+        canonicalize(requestedSkippedStages) !== canonicalize(frozenSkippedStages)) {
+      throw new Error('run-directory resume may not override the frozen skipped_stages');
+    }
     const routingOptions = {
       catalogBundle,
       policyBundle,
+      skippedStages: frozenSkippedStages ?? requestedSkippedStages,
       ...(useHistoricalBasis ? { promptSchemaSha256: resumeRunContext.basisSnapshot.promptSchemaSha256 } : {}),
       ...(useHistoricalBasis ? { stagePacketRendererVersion: resumeRunContext.basisSnapshot.rendererVersion } : {}),
       repositoryHead: actualRepositoryHead,
@@ -1950,6 +1995,8 @@ module.exports = {
   applyResolutions,
   assertRunDirectory,
   buildPlan,
+  normalizeSkippedStages,
+  skippedStagesFromBasis,
   buildRouting,
   canonicalize,
   canAutoAccept,

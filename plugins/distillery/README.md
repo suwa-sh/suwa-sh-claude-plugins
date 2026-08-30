@@ -107,6 +107,22 @@ confidence: low の項目は仮採用 + `docs/todo.md` 登録とし、完了サ�
 モデルを指定できます（未作成ならデフォルト値で自動生成。既定は Step4b/6a のみ `sonnet`、他はセッション既定）。
 詳細は [pipeline-config-schema.md](skills/dist-pipeline/references/pipeline-config-schema.md) を参照してください。
 
+**UI 画面を持たないプロダクト（CLI / API / バッチのみ）**: 同じ config の `skip_steps` で design 系ステージを skip できます。
+
+```yaml
+# docs/pipeline/pipeline-config.yaml
+skip_steps: [step5, step6a]   # design-system と spec-stories を実行しない（step5 指定で step6a も暗黙 skip）
+```
+
+- Step6（spec）は design 無しモードで実行され、画面仕様・コンポーネント設計・`screens` を生成しません。
+  代わりに `_cross-cutting/ux-ui/ui-design.md` が CLI 出力規約（stdout/stderr・終了コード・出力フォーマット）になり、
+  CLI 系ティアにはコマンド契約が生成されます
+- `skip_steps` キーが無い（未判断）状態で、Step3 のアーキテクチャに presentation 系ティアが無ければパイプラインが skip を推奨します
+  （auto_adopt では推奨を採用して config に書き戻します）。`skip_steps: []` と明示すると「design を実行する」意思になり推奨は出ません
+- feedback request の差分実行でも skip 設定は尊重されます（design_system / spec_stories が closure から外れます）
+
+変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照してください。
+
 **通知**: 対話待ち・エラー・完了時にデスクトップ通知（音付き）が届きます。
 macOS（osascript）/ Windows（PowerShell バルーン通知）/ Linux（notify-send + paplay、未インストールならスキップ）に対応。
 

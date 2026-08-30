@@ -366,6 +366,27 @@ function main() {
     if (data) {
       const schemaErrors = validate(data, schema, schema.$defs || {}, '$');
       allErrors.push(...schemaErrors.map(e => `spec-event.yaml ${e.path}: ${e.message}`));
+
+      // story_generation と _inputs-digest.md の design_available の整合(1.5.0 以降の新規 event のみ。
+      // 旧 event には digest の design_available 行が無いので検査しない = 後方互換)
+      const digestPath = path.join(eventDir, '_inputs-digest.md');
+      if (fs.existsSync(digestPath)) {
+        const m = fs.readFileSync(digestPath, 'utf8').match(/^design_available:\s*(true|false)\s*$/m);
+        if (m) {
+          const expected = m[1] === 'true' ? 'required' : 'not_applicable';
+          if (data.story_generation === undefined) {
+            allErrors.push(`spec-event.yaml $.story_generation: 必須(_inputs-digest.md が design_available: ${m[1]} のため "${expected}" を期待)`);
+          } else if (data.story_generation !== expected) {
+            allErrors.push(`spec-event.yaml $.story_generation: "${data.story_generation}" は _inputs-digest.md の design_available: ${m[1]} と矛盾("${expected}" を期待)`);
+          }
+        } else if (data.story_generation === undefined) {
+          // 1.5.0 の生成契約では両方が揃う。両方欠落は新規 event の生成不備として fail-closed にする
+          allErrors.push('_inputs-digest.md に design_available 行が無く、spec-event.yaml にも story_generation が無い(1.5.0 以降の生成契約違反。Step1 で design_available を記録し Step5 で story_generation を書くこと)');
+        } else {
+          // 1.3.x〜1.4.x の event(digest はあるが design_available 行が無い)。story_generation があれば互換として警告のみ
+          allWarnings.push('_inputs-digest.md に design_available 行が無い(1.4.x 以前の event なら無視してよい)');
+        }
+      }
     }
   }
 

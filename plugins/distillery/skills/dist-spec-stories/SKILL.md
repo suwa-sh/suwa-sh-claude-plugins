@@ -53,6 +53,9 @@ spec スキルの Step9 として実装されていたものを独立スキル�
 - `docs/specs/latest/` が存在し、Presentation 系ティア（tier-frontend-*.md）が生成済みであること
 - `docs/specs/latest/_cross-cutting/ux-ui/` の全体横断 UX/UI 設計（ux-design.md / ui-design.md / common-components.md）が存在すること
 - `docs/design/latest/design-event.yaml` と `docs/design/latest/storybook-app/` が存在すること
+  （存在しない、または `docs/specs/latest/spec-event.yaml` が `story_generation: not_applicable` の場合は
+  **何も生成せず**「design 無しプロダクトのため Story 生成は不要」と報告して終了する。pipeline-config の
+  `skip_steps` で design ステージを skip したプロジェクトがこれに該当する）
 
 ## 入力
 

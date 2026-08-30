@@ -27,7 +27,35 @@ step_models:
   step5: null       # design-system
   step6: null       # spec
   step6a: "sonnet"  # Storybook Story 補完（規約準拠のコード量産のため軽量化）
+
+# skip する Step（任意。省略時 = []）。UI 画面を持たないプロダクト（CLI / API / バッチのみ）向け。
+# 許容値: step5（design-system）, step6a（spec-stories）。step5 を指定すると step6a も暗黙に skip される。
+# ★ 自動生成時はこのキーを書かない（コメントのまま）。キーが無い = 「未判断」で、Step3 後に skip 推奨が発動する。
+#   skip_steps: [] と明示すると「design を実行する」意思になり推奨は出ない。
+# skip_steps: [step5, step6a]
 ```
+
+## skip_steps の仕様
+
+| 項目 | 内容 |
+|------|------|
+| 型 | 文字列の配列。省略時・null は `[]` と同義 |
+| 許容値 | `step5`, `step6a` のみ。他の値は**警告してその値だけ無視**する（config 全体は有効） |
+| 暗黙 skip | `step5` を含む場合、`step6a` も skip する（spec-stories は storybook-app を前提とするため） |
+| 通常 mode | Step5 / Step6a のサブエージェントを起動せず、progress は `completed --summary "skipped (skip_steps)"` で進める。Step6（spec）は design 無しモードで実行する |
+| feedback mode | F0b の begin で `--skip-stages` として planner に渡す（`step5` → `design_system`、`step6a` → `spec_stories`。対応は `feedback-stage-ownership.json` の `steps`）。closure から除外され `routing_basis.skipped_stages` に凍結される |
+| 自動生成 | ファイルを新規生成するときは `skip_steps` キーを**書かない**（コメント行のみ）。書くと推奨判定が発動しなくなる |
+| 推奨提示 | `skip_steps` キー自体が**未定義**で、Step3 完了後の `arch-design.yaml` の `system_architecture.tiers[].id` に `frontend` / `presentation` / `ui` を含む tier が無い場合、パイプラインが「design ステージの実行」を確認推奨項目として提示する（`SKILL.md` の「Step3 完了後: design skip 推奨判定」）。`skip_steps: []` を明示した場合は「実行する」意思とみなし提示しない |
+| 書き戻し | 推奨を採用（auto_adopt の ⭐採用、または interactive で選択）した場合、パイプラインが `skip_steps` をこのファイルに書き戻す。書き戻しは lease 取得中のみ行う |
+
+design 無しで実行された dist-spec は `docs/specs/latest/spec-event.yaml` に `story_generation: not_applicable` を記録する。
+Step6a はこの値でも skip する（`skip_steps` に `step6a` が無くても）。
+
+## 読込方法
+
+`node <skill-path>/scripts/resolvePipelineConfig.js docs/pipeline/pipeline-config.yaml` で読む（YAML parser 経由）。
+`step_models`（型を正規化）/ `skip_steps`（暗黙 skip 込み）/ `skip_steps_defined`（キーの有無）/ `warnings` を JSON で返す。
+grep による行判定はインデントやコメント行を誤検出するため使わない。
 
 ## 運用ルール
 
@@ -37,6 +65,8 @@ step_models:
 - feedback mode でも同じ config を使う（stage 実行のモデル解決は通常 mode と共通）
 - 不明なキーは無視してよいが、`step_models` 配下の値は文字列または null であること。
   それ以外の型を検出したら該当 Step は null 扱いとし、警告をユーザーに報告する
+- `skip_steps` が配列でない場合は `[]` 扱いとし、警告をユーザーに報告する
+- 解決した `skip_steps`（暗黙 skip を含む）は step_models と同時に実行開始時にユーザーへ報告する
 
 ## 速度優先プリセット（オプトイン）
 

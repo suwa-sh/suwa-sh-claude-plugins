@@ -160,6 +160,8 @@ components:
 - 例: brand.name が `RoomConnect` → `api.roomconnect.example.com`
 - `.example.com` は仕様ドキュメント用のプレースホルダ
 - `info.title` には `brand.name` を使用する。`info.description` で和名（`brand.system_name_ja`）に言及してもよい
+- **design-event.yaml が無い場合**（design 無しモード）: `docs/rdra/latest/システム概要.json` の `system_name` を英字化
+  （ローマ字/英訳、小文字・ハイフン区切り）したものを `brand.name` の代わりに使う。`info.title` は `system_name` をそのまま使う
 
 ## NFR 反映
 

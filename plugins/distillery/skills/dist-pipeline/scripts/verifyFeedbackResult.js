@@ -1928,6 +1928,7 @@ function validateRunDirectory(runDir, eventsDir = path.resolve(runDir, '..', '..
       policyBundle,
       promptSchemaSha256: basisSnapshot.promptSchemaSha256,
       stagePacketRendererVersion: basisSnapshot.rendererVersion,
+      skippedStages: Array.isArray(routing.routing_basis?.skipped_stages) ? routing.routing_basis.skipped_stages : [],
       basisValidation: 'static',
     });
   } catch (error) {

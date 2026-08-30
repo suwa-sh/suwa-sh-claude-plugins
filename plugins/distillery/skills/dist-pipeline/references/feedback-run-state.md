@@ -110,7 +110,11 @@ question、label、route impact、rationaleは意味上の選択だけを説明�
 
 同じrequest内で`constraint_key`を重複させず、複数stageへdirect fan-outしない。
 
-`required_closure_stages`は、direct ownerからcatalog末尾までの保守的suffixである。
+`required_closure_stages`は、direct ownerからcatalog末尾までの保守的suffixから`routing_basis.skipped_stages`を除いたものである。
+
+`skipped_stages`はbeginの`--skip-stages`（pipeline-configの`skip_steps`を stage IDへ写像したもの）で決まり、routing basisの静的キーとして凍結される。省略時は`[]`。
+
+direct ownerが`skipped_stages`に含まれるwork unitは作れない。plannerはエラーで停止する。
 
 全work unitのsuffix unionをpipeline順に各1回だけ実行する。
 

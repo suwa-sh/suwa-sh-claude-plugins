@@ -78,7 +78,34 @@ failed返却は4 ledgerをすべて空配列にし、非空・単一行の`phase
 | `docs/rdra/latest/システム概要.json` | 推奨 | システム概要 |
 | `docs/nfr/latest/nfr-grade.yaml` | 必須 | NFR グレード → 非機能要件反映 |
 | `docs/arch/latest/arch-design.yaml` | 必須 | アーキテクチャ設計 → 技術スタック・レイヤー構成 |
-| `docs/design/latest/design-event.yaml` | 必須 | デザインシステム → コンポーネント参照・トークン参照 |
+| `docs/design/latest/design-event.yaml` | 任意 | デザインシステム → コンポーネント参照・トークン参照。**無ければ design 無しモード**（下記） |
+
+### design 無しモード
+
+**design 無しモード**で実行する条件（上から優先）:
+
+1. 引数 `design_available=false` が渡された（dist-pipeline が Step5 skip 時に渡す。古い `docs/design/latest/` が残っていても使わない）
+2. 引数が無く、`docs/design/latest/design-event.yaml` が存在しない（単体実行時）
+
+`design_available=true` が渡された場合、または引数無しでファイルが存在する場合は design ありモード（従来の挙動。変えない）。
+判定結果は Step1 で `_inference.md` と `_inputs-digest.md` の冒頭に `design_available: true|false` として記録し、
+**以降の全 subagent はこの値だけを見る**（ファイルの有無で再判定しない）。
+
+| 項目 | design あり | design 無し |
+|------|-----------|-----------|
+| Step1 入力 | RDRA / NFR / Arch / Design | RDRA / NFR / Arch（`_inference.md` に `design_available: false` を記録） |
+| 画面 → コンポーネントマッピング（spec-analyse 3・4） | 実施 | スキップ |
+| `ui-design.md` | レイアウト / レスポンシブ / コンポーネント利用ガイド | **出力規約**（stdout/stderr・終了コード・出力フォーマット・メッセージ表現。`cross-cutting-ux-ui-template.md`「design 無しモード」） |
+| `data-visualization.md` | 画面の可視化設計 | 出力の集計・表形式の設計（可視化対象が無ければ「対象なし」と明記） |
+| Presentation 系 tier の「画面仕様」「コンポーネント設計」「デザイントークン参照」 | 生成 | **生成しない**。`screens:` も出力しない |
+| Step4c 共通コンポーネント抽出 / Step4e UC フィードバック | 実施 | **実施しない**（`common-components.md` を生成しない） |
+| `ux-design.md` の IA / ナビゲーション | 画面のサイトマップ・ポータル別ナビ | コマンド体系（cli）/ リソース階層（api）/ ジョブ運用フロー（batch）。ユーザーフローは「操作」を画面ではなくコマンド・API 呼び出しで書く |
+| CLI 系 tier（id に `cli` / `command` / `tui`）| — | コマンド契約（引数 / オプション / stdin / stdout / stderr / 終了コード）を生成（`spec-template.md`「CLI 系ティア」） |
+| `openapi.yaml` の `servers[].url` / `info.title` | `brand.name` | `システム概要.json` の `system_name`（`openapi-rules.md`） |
+| Step6.5 レビューの入力の正 | `docs/design/latest/` を含む | 含まない |
+| `spec-event.yaml` の `story_generation` | `required` | `not_applicable` |
+| 完了報告 | Story 生成は spec-stories で別途 | Story 生成は不要（Step6a は skip） |
+
 
 ### 依存スキル
 
@@ -190,15 +217,17 @@ OpenAPI/AsyncAPI は `_cross-cutting/` に全 UC 統合で生成される（UC �
 **読み込み:** `references/specs/spec-analyse.md`
 
 0. **イベント ID を生成する**: `date '+%Y%m%d_%H%M%S'` コマンドでタイムスタンプを取得し、`{YYYYMMDD_HHMMSS}_spec_generation` 形式のイベント ID を決定する。以降のステップで使用する
-1. 全入力モデル（RDRA, NFR, Arch, Design）を読み込む
+1. design 有無を判定する（「design 無しモード」の条件。引数 `design_available` が最優先）。
+   結果を `_inference.md` に `design_available: true|false` として記録し、全入力モデル（RDRA, NFR, Arch、design ありなら Design）を読み込む
 2. BUC.tsv から業務 → BUC → UC の階層構造を抽出する
 3. 各 UC について以下を整理する:
    - 関連アクター、情報、状態、条件、外部システム
    - arch-design.yaml から該当する API レイヤー・データストア
-   - design-event.yaml から該当する画面・コンポーネント
+   - design-event.yaml から該当する画面・コンポーネント（design ありのみ）
 4. **UC ごとの対象ティアを決定する**（`spec-generate.md` の「UC パターン別ティア選定ルール」に従う）:
    - 画面あり UC（社外アクター） → Presentation 系（user 向け） + API 系
    - 画面あり UC（社内アクター） → Presentation 系（admin 向け） + API 系
+   - 画面あり UC で arch に Presentation 系 tier が無い（CLI プロダクト） → CLI 系 tier + API 系（`spec-generate.md`）
    - タイマートリガー UC → CronJob 系ワーカー + API 系（Presentation なし）
    - 自動通知 UC → FaaS 系ワーカー + API 系
    - バッチ + 画面 UC → Presentation 系 + API 系 + CronJob 系ワーカー
@@ -226,6 +255,10 @@ OpenAPI/AsyncAPI は `_cross-cutting/` に全 UC 統合で生成される（UC �
 **読み込み:** `references/specs/cross-cutting-ux-ui-template.md`, `references/specs/data-visualization-rules.md`, `references/specs/ux-psychology-glossary.md`
 
 **UC Spec 生成の前に**、全体横断の UX/UI 設計を先行して確定する。UX は RDRA モデルから、UI は design-event.yaml から決定できるため、UC の内容に依存しない。これにより UC Spec 生成時に一貫した設計方針を参照できる。
+
+design 無しモードでは、`ui-design.md` を「出力規約」（CLI の stdout/stderr・終了コード・出力フォーマット・メッセージ表現）として
+生成し、design-event.yaml への参照を一切含めない（`cross-cutting-ux-ui-template.md`「design 無しモード」）。
+ファイル名と `spec-event.yaml` の `cross_cutting.ui_design` は design ありと共通（後段の互換のため）。
 
 1. `_cross-cutting/ux-ui/ux-design.md` を生成する:
    - 業務フロー横断のユーザーフロー
@@ -275,12 +308,12 @@ Step3 で生成した各 UC の出力を、**生成 subagent とは別の subage
 あなたは UC Spec のレビュアーです。以下の UC Spec を厳密にレビューしてください。
 
 対象: {UC Spec のパス}
-参照: RDRA モデル（docs/rdra/latest/*.tsv）、docs/specs/events/{event_id}/_inputs-digest.md（無い/セクション欠落時は欠けた分だけ arch-design.yaml / nfr-grade.yaml を読む）、design-event.yaml
+参照: RDRA モデル（docs/rdra/latest/*.tsv）、docs/specs/events/{event_id}/_inputs-digest.md（無い/セクション欠落時は欠けた分だけ arch-design.yaml / nfr-grade.yaml を読む）、design-event.yaml（存在する場合のみ。design 無しモードでは、tier-*.md に画面仕様・コンポーネント設計・screens・Storybook 参照が**含まれていないこと**を指摘対象にする）
 
 レビュー観点:
 1. spec.md の RDRA トレーサビリティテーブルに漏れがないか（情報属性、条件、バリエーション、状態遷移）
 2. BDD シナリオ（Given/When/Then）が具体的な値を含んでいるか（「適切な値」のような曖昧表現がないか）
-3. tier-*.md にデータモデル変更・API仕様・コンポーネント設計が記述されているか
+3. tier-*.md にデータモデル変更・API仕様（API 系）・コンポーネント設計（Presentation 系、**design ありのみ**）・コマンド契約（CLI 系）が記述されているか
 4. _api-summary.yaml の paths/schemas が tier-backend-api.md と整合しているか
 5. _model-summary.yaml の tables/operations が spec.md のデータフローと整合しているか
 6. mermaid ダイアグラムの構文が正しいか
@@ -375,6 +408,10 @@ OpenAPI 統合が特に重い場合は、業務単位で分割して並列生成
    - バケット/パス設計を一覧化する
 
 #### Step4c: 共通コンポーネント抽出
+
+**design 無しモードでは Step4c / Step4e を実行しない**（共通コンポーネントはデザインシステム前提。`common-components.md` を生成せず、
+`spec-event.yaml` の `cross_cutting.ui_design.component_guidelines` は 0 とする）。代わりに CLI 系ティアの共通事項（グローバルオプション、
+共通の終了コード、共通出力フォーマット）は Step2 の `ui-design.md`（出力規約）に集約済みであることを確認する。
 
 **読み込み:** `references/specs/cross-cutting-ux-ui-template.md`
 
@@ -483,7 +520,7 @@ alternatives_considered:
 
 #### Step4e: 共通コンポーネント UC フィードバック
 
-**このステップを省略してはならない**（Step4.5）。`common-components.md` の設計を各 UC の tier-frontend-*.md にフィードバックする。
+**このステップを省略してはならない**（Step4.5。ただし design 無しモードでは Step4c と共に実行しない）。`common-components.md` の設計を各 UC の tier-frontend-*.md にフィードバックする。
 
 1. 各 UC の tier-frontend-*.md に「共通コンポーネント参照」セクションを追加する
 2. 使用する共通コンポーネント名、インポートパス (`@/components/common/{Name}`)、Props マッピングを記載
@@ -494,6 +531,11 @@ alternatives_considered:
 
 Step4a〜4d の各成果物を、**生成 subagent とは別の subagent でレビューし、指摘がなくなるまで改善する**。
 
+design 無しモード（`design_available: false`）では `common-components.md` は生成されないので**レビュー対象から外す**
+（欠落を不備として再生成させない）。代わりに UX/UI 系 reviewer は `_cross-cutting/ux-ui/ui-design.md`（出力規約）を
+「`interface_kind` に応じた規約（cli: stdout/stderr・終了コード / api: レスポンス・HTTP ステータス / batch: ログ・終了コード）が
+具体値で書かれているか、design-event / Storybook / コンポーネント名への参照が無いか」の観点でレビューする。
+
 **レビュー対象と観点:**
 
 | 成果物 | レビュー観点 |
@@ -502,7 +544,7 @@ Step4a〜4d の各成果物を、**生成 subagent とは別の subagent でレ�
 | `asyncapi.yaml` | channels が全非同期イベントを網羅しているか、payload スキーマが具体的か |
 | `rdb-schema.yaml` | 全テーブルに description があるか、全カラムに description があるか、インデックスに name があるか、ユニーク制約の検討が行われているか（ビジネスルール由来の重複防止）、FK が情報.tsv の関連情報と整合しているか |
 | `kvs-schema.yaml` | キーパターンの命名規則が統一されているか、TTL が設定されているか |
-| `common-components.md` | 利用 UC 一覧が正確か、design-event.yaml の既存コンポーネントとの重複がないか |
+| `common-components.md`（design ありのみ） | 利用 UC 一覧が正確か、design-event.yaml の既存コンポーネントとの重複がないか |
 | `traceability-matrix.md` | 網羅率の分母（RDRA 全要素数）が正確か、未カバー要素の対応方針が具体的か |
 
 **ループ手順:**
@@ -521,6 +563,8 @@ Step4a〜4d の各成果物を、**生成 subagent とは別の subagent でレ�
 - UC 一覧（業務/BUC/UC の階層、各 UC のファイル構成）
 - 全体横断仕様のサマリー
 - 生成統計（UC 数、API 数、非同期イベント数）
+- `story_generation`: design ありなら `required`、design 無しモードなら `not_applicable`
+  （**この時点で events/ 側の YAML に書く**。latest へは Step8 のコピーで伝播する。後から latest だけを書き換えない）
 
 ### Step6: バリデーション
 
@@ -610,7 +654,7 @@ Step6 の機械検証は構文・必須項目しか見ない。「検証は通�
 
 1. fresh サブエージェントにパスのみを渡してレビューさせる（生成の経緯・会話は渡さない）:
    - 生成物: `docs/specs/events/{event_id}/` 全体
-   - 入力の正: `docs/usdm/latest/` / `docs/rdra/latest/` / `docs/arch/latest/` / `docs/design/latest/`
+   - 入力の正: `docs/usdm/latest/` / `docs/rdra/latest/` / `docs/arch/latest/` / `docs/design/latest/`（design ありのみ）
    - 観点（後工程の実装ハーネス distillery-impl の実走で「仕様起因の手戻り」になった実例に基づく）:
      - ①**トレーサビリティ**: 全 UC が USDM の SPEC / acceptance_criteria に遡れるか。
        機械可読の対応フィールドが spec-event スキーマに定義されている場合はその出力を検証し、
@@ -657,7 +701,8 @@ node <skill-path>/scripts/generateDatastoreMd.js docs/specs/events/{event_id}/_c
 
 Storybook Story 生成は独立スキル `spec-stories` に分離されている。spec スキルは Step8 で完了とし、以下の扱いとする:
 
-- `docs/specs/latest/spec-event.yaml` に `story_generation: required` を記録する
+- `spec-event.yaml` の `story_generation` は Step5 で記録済み（design あり `required` / design 無し `not_applicable`）。
+  ここでは latest に伝播していることを確認するだけで、書き換えない（`not_applicable` なら Step6a は実行されない）
 - Storybook Story の生成は `spec-stories` スキル（またはパイプラインの Step 6a）で別途実行する
 - 本スキル内では Storybook Story の実装・ビルド検証・design イベント記録を行わない
 
@@ -675,8 +720,9 @@ spec-stories スキルの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/dist-spec-stori
 - 生成された UC Spec の一覧（業務/BUC/UC ツリー）
 - 全体横断 Spec の一覧
 - OpenAPI/AsyncAPI spec のファイルパス
-- `story_generation: required` が spec-event.yaml に記録されていること
+- `story_generation: required`（design 無しモードは `not_applicable`）が spec-event.yaml に記録されていること
 - Storybook Story 生成は `spec-stories` スキル（またはパイプラインの Step 6a）で別途実施する旨の案内
+  （design 無しモードでは「Story 生成は不要」と案内し、`grep -rl "screens:\|storybook" docs/specs/latest` が 0 件であることを報告する）
 
 ## イベントソーシングルール
 
