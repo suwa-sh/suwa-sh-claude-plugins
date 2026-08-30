@@ -1,6 +1,7 @@
-# Verifier 7 観点チェックリスト(distillery-impl)
+# Verifier 8 観点チェックリスト(distillery-impl)
 
 観点キーは findings の `viewpoint` に使う。各観点で「何と突き合わせるか」を固定する。
+**1〜7 観点は前提ファイル(AssumptionRecord)を開かずに完走し、8 観点目で初めて開く**(blind join)。
 
 ## 1. spec_conformance(仕様整合)— 最重要・手順まで固定
 
@@ -85,6 +86,42 @@
 
 - ddd 基準(集約境界 / 値オブジェクト / 貧血回避)からの逸脱で、次の変更を高くつかせるもの
 - テスト構造の負債(1 テスト複数 Act / 過剰モック / 実装詳細への結合)
+
+## 8. assumption_conformance(前提整合)— Implementer が黙って決めた判断の照合
+
+対象: `attempt-{n}/S4_tier-impl.{tier_id}.assumptions.yaml`(AssumptionRecord。正本は
+`dist-impl-implement/references/assumption-record.md`)。仕様に照合先が無い判断は 1〜7 観点から
+原理的に落ちるため、Implementer 自身に書かせた「補った判断の一覧」を反証対象にする。
+
+### 手順(blind join — 順序を守る)
+
+1. **1〜7 観点の完走中に**、実装から読み取れる「仕様・契約・dev-rules に根拠が無い設計判断」
+   (時刻精度・失敗時の状態値・hash の正規化順・冪等キー等)を**候補リストとして控える**。
+   この時点で前提ファイルは開かない(Implementer の理由づけに引きずられないため)
+2. 前提ファイルを開き、まず各要素の `id / assumption / target` だけを読む。候補リストと突合する
+3. 各前提を仕様(tier md / 契約 / _api・_model summary / dev-rules)と照合し、**さらに S4 固定指示
+   `dist-impl-run/references/stage-instructions/S4_tier-impl.md` を読んで**、下表の verdict を付ける
+4. `reason / confidence / spec_refs` は verdict 確定後に補助証拠として読む(verdict を変える根拠には
+   仕様側の記載だけを使う)
+5. 各前提の `verified_category`(6 値のどれか)を Implementer の `category` と独立に判定する。
+   不一致なら `kind: category_mismatch` の minor finding を出す(分類ミスの可視化。減点ではない)
+6. 候補リストに残った「前提ファイルに無い黙った判断」を `V-nnn`(unlisted)として `assumption_verdicts`
+   に追記する(`category: null`、`verified_category` は自分の判定)
+
+### verdict と finding
+
+| verdict | 意味 | finding(`viewpoint: assumption_conformance`、`kind` = verdict 名 / consistent は `restatement`) |
+|---|---|---|
+| `consistent` | 仕様・契約・dev-rules・S4 固定指示に明示があった(復唱) | minor `restatement`(一覧のノイズとして可視化。再実行はしない) |
+| `spec_absent` | 仕様に照合先が無い(真の前提) | `category` または `verified_category` が security / persistence なら **major**、他は minor。finding は S9 の人間確認の入口であり blocker ではない |
+| `contradicts` | 仕様と矛盾する | **blocker(カテゴリにかかわらず)**。既存定義「仕様違反 = blocker」のとおり |
+| `unlisted` | 候補にあるが前提ファイルに無い | Verifier が `V-nnn` で追記。severity は spec_absent と同じ規則(仕様と矛盾するなら `contradicts` で blocker) |
+
+**全 A-id に verdict を exactly-one で付ける**。verdict ごとに専用の finding を 1 件出し、
+`assumption_verdicts[].finding_id` で結ぶ(finding 側は `assumption_id` で逆参照)。
+前提 0 件・候補 0 件なら `assumption_verdicts: []` を明示する。
+記録の妥当性はオーケストレータが `validateAssumptions.js verdicts` で受理時に検査する
+(hash の再計算一致 / exactly-one / V-id 一意 / severity の期待一致 / 集計一致)。
 
 ## severity の目安
 

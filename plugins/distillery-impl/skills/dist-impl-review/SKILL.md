@@ -55,6 +55,9 @@ HTML bytes、画像bytes、HTMLの表示状態を承認証跡へ結ばない。
 
 1. **実装承認**: 現在の成果を承認するか、差し戻すか
 2. **仕様・運用の選択**: RDB、外部接続、保持、監査等、実装だけでは決められない事項
+3. **前提の承認・却下**: 仕様に無いためImplementerが決めた判断（AssumptionRecord）を承認するか、
+   却下するか。却下は `実装修正` か `仕様変更` を必ず添える。回答必須は「仕様に無い、かつ
+   Implementer分類かVerifier分類が security / persistence」の前提だけ。他は未回答なら承認扱い
 
 各判断は次を必ず持つ。
 
@@ -71,7 +74,8 @@ HTML bytes、画像bytes、HTMLの表示状態を承認証跡へ結ばない。
 ## 入力
 
 `docs/impl/latest/{uc_id}/`のstatus、input manifest、current done/final findings、issues、
-as-built summary、feedback draft、review notes、uc-mapを読む。manifest/configを起点に対象UCだけの
+as-built summary、feedback draft、review notes、uc-map、current attemptの全tierの
+`S4_tier-impl.{tier}.assumptions.yaml` とS5 findingsの `assumption_verdicts` を読む。manifest/configを起点に対象UCだけの
 spec、tier spec、API/model summary、contract/architecture、implementation、tests、commandsを読む。
 公開済みfeedback requestや無関係なUCを全走査しない。記録済みgateは再実行しない。
 
@@ -100,6 +104,10 @@ spec、tier spec、API/model summary、contract/architecture、implementation、
    - validator通過後もrenderを目視し、connector重なり・共有attach point・node背面通過をtaste gateで確認する
 7. feedback draftがあれば、各要求のhuman title、管理ID、severity、観測事実、問題、要求、完了条件を
    全文表示し、該当する判断質問と結ぶ。draftがなければ変更要求なしと示す。
+7.5. 「実装者が補った前提」節を `references/review-html-template.md` の同名節に従って作る。
+   回答必須の前提を先頭に集め、回答templateに `前提=` 行を含める。**全tierのAssumptionRecordが空、かつ全tierのS5 `assumption_verdicts` も空**の場合だけ
+   「前提なし（Implementerは仕様外の判断をしていないと申告し、Verifierも未記載の判断を見つけていない）」と示す。
+   記録が空でもVerifierが `V-nnn` を見つけていれば、それを前提一覧に載せる（回答必須になり得る）。
 8. captureがある場合は生成時にpath containment、regular file、存在、記録SHAを確認してから表示する。
    HTML再生成や承認時にcapture/HTML SHAの再照合は行わない。
 9. `S9_review_generated.done.yaml`へ次を記録する。HTML SHAとcapture SHAは記録しない。
@@ -119,10 +127,16 @@ implementation_review_evidence:
   gate_result: "6/6 pass"
   open_blocker_count: 0
   open_major_count: 0
+  assumption_evidence_sha256: "..."   # validateAssumptions.js evidence の出力。tier_id昇順に `{assumptions_sha256}:{assumption_verdicts_sha256}` を改行連結したsha256（state-schema.mdと同一式）
 ```
 
+`decision_summary` には `assumption_questions`（回答必須の前提件数）も含める。
+`assumption_evidence_sha256` は自分で連結せず、current attemptの全tierのS5 doneから
+`node ${CLAUDE_PLUGIN_ROOT}/skills/dist-impl-implement/scripts/validateAssumptions.js evidence {tier}:{assumptions_sha256}:{assumption_verdicts_sha256} ...`
+で算出する（承認・publish時の再計算と同じ実装を使う）。
+
 feedback draftのidentity/bytesは公開する正本なので従来どおりexactに結ぶ。
-`implementation_review_evidence`はgateとcurrent finding集約だけを結び、HTML内容を結ばない。
+`implementation_review_evidence`はgate、current finding集約、前提と判定のhash（canonical 4 field）だけを結び、HTML内容を結ばない。
 旧done/eventに`review_html_sha256`や`captures_sha256`があっても承認時は無視する。
 
 ## 出力

@@ -26,6 +26,8 @@ docs/impl/
         S3_contracts.done.yaml
         attempt-{n}/
           S4_tier-impl.{tier_id}.done.yaml    # carry-forward の場合は carried_from を持つ
+          S4_tier-impl.{tier_id}.assumptions.yaml  # AssumptionRecord(Implementer が補った前提。0 件でも必須。
+                                                   #   carry-forward 時は done と一緒に複製、invalidate 時は一緒に退避)
           S5_verify.{tier_id}.done.yaml
           S5_verify.{tier_id}.findings.yaml
           S5_ui-review.{tier_id}.done.yaml        # 並走レーン。dispatch 条件を満たす frontend tier のみ
@@ -101,9 +103,12 @@ created_at: "2026-08-01T10:30:00+09:00"
 
 **reducer 規則**(latest の再構築): イベントを `event_id` 昇順に適用する。
 `stage_completed` → 対応する done ファイルを再生成 / `attempt_opened` → attempt カウンタを進める /
-`stage_carried_forward`(payload: 元 attempt・tier・元 done の sha256)→ 新 attempt に
-`carried_from` 付き done を再生成 / `stage_invalidated`(payload: **対象 done ファイル一覧**
-(stage / tier / attempt を含む done 単位の指定)・理由・退避先)→ 該当 done を無効化。
+`stage_carried_forward`(payload: 元 attempt・tier・元 done の sha256・**`assumptions_sha256`**)→ 新 attempt に
+`carried_from` 付き done を再生成し、**同 tier の assumptions ファイルも元 attempt から複製する** /
+`stage_invalidated`(payload: **対象 done ファイル一覧**
+(stage / tier / attempt を含む done 単位の指定)・理由・退避先)→ 該当 done を無効化
+(**S4 done を対象にするときは同 tier の assumptions ファイルも退避対象に含める**。stale の同一 attempt
+再実行で旧版が上書き消失しないようにする)。
 **同一の対象 done ファイル**(identity は stage / tier / attempt / lane から導出する。S5 は
 `lane: verify | ui-review` で 2 レーンを区別する)に対する `stage_completed` →
 `stage_invalidated` → `stage_completed` の並びは、event_id 昇順に適用した**最後の状態が勝つ**
@@ -111,8 +116,9 @@ created_at: "2026-08-01T10:30:00+09:00"
 impl-config.yaml / uc-map.yamlの該当項目を確定値で上書き。**`after: null` はフィールド削除として
 適用する**(例: ui_screens の非空化イベントは `ui_screen_resolution: {before: ..., after: null}` を
 併記し、replay 後も XOR 制約が保たれるようにする)/ `review_approved` → 参照先S9 eventと
-`feedback_review_evidence`、および`implementation_review_evidence`のcanonical 3 field
-（gate result / open blocker / open major）が一致する場合だけ、request 0件なら`delivery_ready`、1件以上なら
+`feedback_review_evidence`、および`implementation_review_evidence`のcanonical 4 field
+（gate result / open blocker / open major / assumption_evidence_sha256）が一致し、**かつ payload の
+`assumption_decisions` が「AssumptionRecord の完全性条件」(後述)を満たす**場合だけ、request 0件なら`delivery_ready`、1件以上なら
 `publishing_feedback`へ進む。`delivery_prepared`は未確定事項0件・選択結果の反映後gate pass・
 最新HTMLでの再レビュー完了・git_deliveryの4条件をpayloadで検証し、満たす場合だけ`completed`へ進める。
 request 1件以上の`review_approved`は選択済みfeedback bytesの公開許可であり、delivery approvalとして
@@ -248,7 +254,10 @@ removed: K}`)を追記し、`S8_feedback.done.yaml` に `refreshed_at` と更新
 `feedback_review_evidence: {feedback_id, draft_sha256, request_count}`を持つ。draftがない場合は
 `{feedback_id: null, draft_sha256: null, request_count: 0}`とする。done/event間でexact一致しなければ
 レビュー入力を有効にしない。実装判断の正本集約は
-`implementation_review_evidence: {gate_result, open_blocker_count, open_major_count}`とする。
+`implementation_review_evidence: {gate_result, open_blocker_count, open_major_count, assumption_evidence_sha256}`
+(canonical 4 field)とする。`assumption_evidence_sha256` は current attempt の全 tier について
+`{assumptions_sha256}:{assumption_verdicts_sha256}` を tier_id 昇順に `\n` 連結した文字列の sha256
+(算出は `validateAssumptions.js evidence <tier>:<sha>:<sha> ...` で行い、手で連結しない)。
 review HTMLはgitignoreされた補助資料なので、HTML SHA、capture SHA、表示内容をevidenceへ含めない。
 HTMLの再生成・編集だけではdone/event/statusを更新しない。
 
@@ -258,11 +267,15 @@ HTMLの再生成・編集だけではdone/event/statusを更新しない。
 gate/open finding集約が一致しなければeventを追記せず、S8 refresh → S9再生成 →
 再レビューへ戻る。S9_review_generated.done.yamlがあり、validな`review_approved`が無ければ`awaiting_review`。
 旧done/eventに`review_html_sha256`や`captures_sha256`が残る場合はlegacy fieldとして無視し、
-canonical 3 fieldだけを比較する。
+canonical 4 fieldだけを比較する。**`assumption_evidence_sha256` を持たない旧 3 field の S9 evidence は
+current として使わない**(S9 を再生成して再レビューする — 「AssumptionRecord」節の legacy 規則)。
 同じreview evidenceを参照するapprovalは高々1件で、S9 eventより後のevent IDを持つ。validなapprovalが
 既にあれば再利用する。再レビューで新しいS9 evidenceを作った場合は旧approvalを履歴として残し、最新S9
 evidenceを参照するapprovalだけをcurrentとする。同じevidenceへの重複approvalは自動選択せず停止する。
 `review_rejected` イベントは payload に差し戻し先 stage を持ち、該当 stage 以降の done を退避して再実行する。
+**前提の却下(`resolution: implementation_change`)由来の `review_rejected` は payload に `rejected_assumptions:
+[{tier, id}]` を持ち、attempt++ の契機になる**(意味論は S6/S7 差し戻しと同じ: 対象 tier だけ S4 再実行、
+他 tier は S4 done + assumptions を carry-forward、全 tier の S5 再実行、attempt 上限 3 を消費)。
 
 **publishの再開**: `feedback_request_publish_started`だけがある場合、started eventが参照するapprovalと
 S9 evidenceのlineage、両review evidence、feedback identity/count/SHAを再検証する。draftと公開先は
@@ -714,6 +727,12 @@ manifest_sha256: "..."        # 自分の projection で計算した manifest �
 manifest_projection: v2       # projection 版マーカー。無い done は旧規則で照合(互換の項)
 result: pass
 gates: {format: pass, lint: pass, tdd: pass, bdd_tier: pass}   # S4 のみ
+assumptions:                  # S4 のみ(必須)。validateAssumptions.js record の出力を転記
+  path: "attempt-2/S4_tier-impl.tier-backend-api.assumptions.yaml"
+  count: 3
+  by_category: {input_validation: 0, data_format: 2, error_handling: 1, persistence: 0, performance: 0, security: 0}
+  sha256: "..."               # AssumptionRecord の canonical hash(assumption-record.md)
+  extraction: {candidate_count: 7, excluded_as_explicit: 4, recorded_count: 3}
 carried_from: "attempt-1"     # carry-forward の場合のみ(下記)
 completed_at: "..."
 completed_by: "dist-impl-implement@{plugin_version}"   # 書いた skill 名 + plugin version(provenance)。
@@ -769,25 +788,71 @@ lease 解放)は `dist-impl-run/SKILL.md` の S5 手順を正本とする。`che
 skipped(runtime_unavailable)` からの再実行規則(browser ツールが後で使えるようになった場合)も
 同 SKILL.md の S5 手順(D10)を正本とする。
 
+**S5 Verifier done は `assumptions_sha256`(照合した AssumptionRecord の hash)、
+`assumption_verdicts_sha256`(`validateAssumptions.js verdicts` の出力)、
+`assumption_verdicts_summary: {consistent, spec_absent, contradicts, unlisted}` を持つ**
+(findings.yaml の同名フィールドと完全一致すること — S5 受理条件)。
+
 S9 doneはトップレベルに`feedback_request_count`と`open_blocker_count`、判断質問数を示す
-`decision_summary`、draftを結ぶ`feedback_review_evidence: {feedback_id, draft_sha256, request_count}`、
+`decision_summary`(`assumption_questions` = 回答必須の前提件数を含む)、draftを結ぶ
+`feedback_review_evidence: {feedback_id, draft_sha256, request_count}`、
 判断根拠を結ぶ`implementation_review_evidence: {gate_result, open_blocker_count,
-open_major_count}`を持つ。HTML/captureのSHAは持たない。
+open_major_count, assumption_evidence_sha256}`を持つ。HTML/captureのSHAは持たない。
 S8 initial/refreshのdoneは `feedback_request: {draft_path, request_count, blocker_count}`を持つ。
 publish後は同じmappingへ`published_path`、`feedback_id`、`input_sha256`、`review_approved_event_id`、
 `review_evidence_event_id`、`published_at`を追加し、
 `draft_path: null`とする。reviewer情報やstage routeは持たない。
 
-**attempt の carry-forward**: attempt++ で S4 を再実行するのは blocker のあった tier だけ。
-blocker の無かった tier については、オーケストレータが `stage_carried_forward` イベントを記録した上で
-新 attempt ディレクトリに `carried_from: attempt-{n}` 付きの S4 done をコピー生成する
-(実装は変わっていないため。イベント → latest の順は他の状態変更と同じ)。
+**attempt の carry-forward**: attempt++ で S4 を再実行するのは blocker のあった tier(または S9 で
+`implementation_change` 却下された前提を持つ tier)だけ。
+それ以外の tier については、オーケストレータが `stage_carried_forward` イベントを記録した上で
+新 attempt ディレクトリに `carried_from: attempt-{n}` 付きの S4 done **と同 tier の
+`S4_tier-impl.{tier}.assumptions.yaml`** を生成する(実装も前提も変わっていないため。
+全 tier の S5 は新 attempt のファイルを読むので前提ファイルの複製は必須)。**byte copy ではない**:
+assumptions ファイルの `attempt` と S4 done の `attempt` / `assumptions.path` を新 attempt の値に更新する
+(`attempt` は canonical hash の対象外なので `assumptions_sha256` は変わらない)。更新後に
+`validateAssumptions.js record <新ファイル> --uc --tier --attempt {新 attempt}` を実行し ok と sha256 一致を確認する
+(イベント → latest の順は他の状態変更と同じ)。
 これにより「再開判定は current attempt 内だけを見る」規則が維持される。
 **attempt++ を伴う再実行(blocker 由来・S6/S7 差し戻し)では S5(verify)を carry-forward しない**
 (S4 再実行後は全 tier を再検証する。安全側)。attempt 上限 3 のカウントを消費するのも
-この attempt++ 経路のみ。
+この attempt++ 経路のみ(契機は blocker 由来・S6/S7 差し戻し・**S9 の前提却下 `implementation_change`** の 3 つ)。
 **stale 由来の同一 attempt 内再実行**(再開手順)は attempt++ せず、stale でない tier の
 S4/S5 done は projection 一致により有効なまま残るため、carry-forward 自体が発生しない。
+
+## AssumptionRecord(実装者が補った前提)の状態
+
+正本: `dist-impl-implement/references/assumption-record.md`(スキーマ・hash 規則)、
+`dist-impl-verify/references/verify-viewpoints.md` §8(verdict)、`dist-impl-run/SKILL.md` S9 節(回答規則)。
+
+- **ファイル**: `attempt-{n}/S4_tier-impl.{tier}.assumptions.yaml`(S4 Implementer の write-set。0 件でも必須)
+- **受理**: S4 受理時に `validateAssumptions.js record` の出力(count / sha256)と S4 done の `assumptions` が一致、
+  S5 受理時に `validateAssumptions.js verdicts` が ok かつ `verdicts_sha256` が S5 done と一致(不一致は stage failed)
+- **ライフサイクル**: `unconfirmed`(S4 出力時)→ `confirmed | rejected`(S9 で人が回答)/ `auto_confirmed`
+  (回答任意の前提が未回答のまま承認)。状態の正本は `review_approved.payload.assumption_decisions` であり、
+  latest 側の assumptions ファイルは書き換えない。attempt++ / stale 再実行で S4 が再実行された tier は
+  新しいファイルが生成され `unconfirmed` に戻る。carry-forward された tier は前 attempt の内容が複製され、
+  人の判断は最新の S9 で再度取る(Stale の自動判定は持たない)
+- **`review_approved.payload`**: `assumption_decisions: [{tier, id, decision: confirmed | rejected | auto_confirmed,
+  resolution: spec_change (rejected のとき必須), note}]`。**`implementation_change` の却下は approval に含めない**
+  — それは `review_rejected.rejected_assumptions` にのみ記録され、attempt++ で S4 を再実行してから新しい S9 evidence で
+  承認をやり直す(approval に `implementation_change` が現れたら reducer は無効とする。fail-closed)
+- **完全性条件**(reducer と S9 手順の両方で判定。満たさない approval は無効):
+  1. current attempt の全 tier の S5 `assumption_verdicts`(A + V)と `assumption_decisions` が 1:1
+     (未知 id・重複・欠落なし)
+  2. 回答必須(verdict が spec_absent / unlisted で、`category` か `verified_category` が security / persistence)
+     の項目は `confirmed | rejected` のどちらか(`auto_confirmed` 不可)
+  3. `rejected` は `resolution: spec_change` を持つ(`implementation_change` は不可)
+  4. `implementation_review_evidence.assumption_evidence_sha256` が参照先 S9 evidence と exact 一致
+  5. **current ファイルからの再計算一致**: 承認直前・S8 publish 直前・再開手順で、全 tier の
+     `validateAssumptions.js record` / `verdicts` を再実行し、出力の `sha256` / `verdicts_sha256` が S4/S5 done と、
+     それらから再構成した `assumption_evidence_sha256` が S9 evidence と一致する(不一致 = S5 受理後に前提か判定が
+     書き換えられた → 該当 tier の S4/S5 と S9 を `stage_invalidated(reason: assumption_evidence_drift)` で退避し再実行)
+- **legacy 規則**(v0.12 以前で開始した run の再開): 再開手順 4 の照合で current attempt の S4 done に
+  `assumptions` mapping が無い tier は、同一 attempt 内でその tier の S4/S5 を
+  `stage_invalidated(reason: assumptions_missing_legacy)` で退避して再実行する(stale 再実行と同じ経路)。
+  `assumption_evidence_sha256` を持たない S9 evidence / approval は current として使わず、S9 を再生成して
+  再レビューする
 
 ## 再開手順(オーケストレータが実行)
 
@@ -808,6 +873,10 @@ S4/S5 done は projection 一致により有効なまま残るため、carry-for
    退避する。**例外**: S2 done が不一致でも全 tier の S4 done が有効(projection 一致)な場合は
    退避せず、手順 6 の hash_refresh 対象としてマークする(退避してしまうと 2 フィールド更新の
    対象が失われるため)。
+   **S4 done に `assumptions` mapping が無い tier は legacy として同様に退避・再実行対象にする**
+   (「AssumptionRecord」節の legacy 規則。退避には同 tier の assumptions ファイル(あれば)を含める)。
+   **有効な S4/S5 done についても `validateAssumptions.js record` / `verdicts` を再実行し、current ファイルの hash が
+   done と一致しない tier は `assumption_evidence_drift` として同様に退避・再実行する**(完全性条件 5)。
    **tier done の stale は該当 tier の done だけを対象にし、位置カスケードは行わない**。
    S5 の done を退避するときは同 tier の `.findings.yaml` も退避対象に含め、
    残存する `staging/` は orphan として破棄する。
@@ -860,7 +929,7 @@ S4/S5 done は projection 一致により有効なまま残るため、carry-for
      同型 — reducer は直近の S2 done 状態にこの payload の 2 フィールドを上書き適用する。
      イベント → latest の順序原則どおり。write-set の項に定める例外)
    - stale な tier done(S4/S5)は**該当 tier のみ**、同一 attempt 内で再 dispatch する
-     (attempt++ しない — attempt++ は blocker 由来・S6/S7 差し戻しのみ)。tier X の S4 を
+     (attempt++ しない — attempt++ は blocker 由来・S6/S7 差し戻し・S9 の前提却下 `implementation_change` のみ)。tier X の S4 を
      再実行したら同 tier の S5(verify + dispatch 対象なら ui-review)も再実行する。
      **他 tier の S4/S5 done は projection が一致する限り有効のまま維持する**
      (同一 attempt 内のため carry-forward 生成も不要)
@@ -938,10 +1007,10 @@ publish events)と更新済み `review/review-notes.md` も含む(いずれも�
 
 | 書き手 | 書いてよい場所 |
 |---|---|
-| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、**S3 の契約不整合の `issues/` 起票**、**S5 UI Review 環境失敗(`result: environment_failure`)の `issues/` 起票**、**`capture_review_completed` イベント追記後の staging→canonical 昇格**(`attempt-{n}/ui-artifacts/{tier_id}/staging/` から `ui-artifacts/{tier_id}/` へのファイル移動・`.findings.yaml` への findings-delta マージ・該当 `S5_ui-review.{tier_id}.done.yaml` の `checks_checked` 更新。D10 round2 skipped 復旧の再実行時のみ)、orphan 化した `staging/` の破棄、carry-forward done の生成、`invalidated/` への done 退避、**S2 done の projection hash 再記録(scoped 再実行の対象 tier 集合が空の場合のみ。`stage_completed(mode: hash_refresh)` イベントを先行させ、`manifest_sha256` / `manifest_projection` の 2 フィールドに限る)**、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、`review/review-notes.md`、`{uc_id}/NEXT.md`、git commit |
+| オーケストレータ(dist-impl-run) | events/ への追記、latest/ 直下の共有ファイル(config/uc-map/lock/lease)、`bootstrap.done.yaml` の Phase invalidate、status.yaml、`{uc_id}/input-manifest.yaml`、`S1_uc-init.done.yaml`、`S3_contracts.done.yaml`、**S3 の契約不整合の `issues/` 起票**、**S5 UI Review 環境失敗(`result: environment_failure`)の `issues/` 起票**、**`capture_review_completed` イベント追記後の staging→canonical 昇格**(`attempt-{n}/ui-artifacts/{tier_id}/staging/` から `ui-artifacts/{tier_id}/` へのファイル移動・`.findings.yaml` への findings-delta マージ・該当 `S5_ui-review.{tier_id}.done.yaml` の `checks_checked` 更新。D10 round2 skipped 復旧の再実行時のみ)、orphan 化した `staging/` の破棄、carry-forward done の生成(**同 tier の assumptions ファイルの複製を含む**)、`invalidated/` への done 退避(**S4 done と対の assumptions ファイルを含む**)、**S2 done の projection hash 再記録(scoped 再実行の対象 tier 集合が空の場合のみ。`stage_completed(mode: hash_refresh)` イベントを先行させ、`manifest_sha256` / `manifest_projection` の 2 フィールドに限る)**、**workspace 依存追加(package.json / package-lock.json — attempt 開始時の単一 writer install、独立 commit)**、`review/review-notes.md`、`{uc_id}/NEXT.md`、git commit |
 | S0 bootstrap | 実装リポ全体(初期生成)、latest/ の config/uc-map/lock、`bootstrap.done.yaml` |
 | S2 Implementer(test-scaffold) | 各 tier の `features/`・`test/`、`features/uc/`、`features/atdd/`、`S2_test-scaffold.done.yaml`、対象 UC の `issues/`(矛盾 3 条件の起票) |
-| S4 Implementer(tier 別) | 自 tier の dir 配下、`attempt-{n}/S4_*.{自tier}.done.yaml`、issues/ |
+| S4 Implementer(tier 別) | 自 tier の dir 配下、`attempt-{n}/S4_*.{自tier}.done.yaml`、`attempt-{n}/S4_tier-impl.{自tier}.assumptions.yaml`、issues/ |
 | S5 Verifier(tier 別) | `attempt-{n}/S5_verify.{自tier}.done.yaml`、`.findings.yaml` のみ(**実装コードの修正禁止**) |
 | S5 UI Reviewer(tier 別。dispatch 条件を満たす frontend tier のみ) | **通常 dispatch**: `attempt-{n}/S5_ui-review.{自tier}.done.yaml`、`.findings.yaml`、`attempt-{n}/ui-artifacts/{自tier}/`(capture_review の SSR 静的 HTML・キャプチャ画像を含む)のみ(**実装コードの修正禁止**)。**`checks=capture_review` の再実行時は例外**(D10 round2): `attempt-{n}/ui-artifacts/{自tier}/staging/` のみ。canonical な done・`.findings.yaml`・`ui-artifacts/{自tier}/`(`staging/` を除く)への書き込みは禁止(staging→canonical の昇格はオーケストレータが `capture_review_completed` イベント追記後に行う) |
 | S6/S7 integration writer(直列) | `features/uc/`、`features/atdd/`(uc タグ付与を含む)、integration 用 step definitions、`S6/S7 done` |

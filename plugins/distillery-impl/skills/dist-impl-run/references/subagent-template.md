@@ -100,7 +100,7 @@ packages/contracts/ 出力 dir と contracts.lock.yaml の該当エントリと
 | skill_name | distillery-impl:dist-impl-implement |
 | skill_args | ` 引数: "mode=tier-impl uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス} manifest_sha256={当該 tier の tier projection hash}"` |
 | model | impl-config の implementer_model(null なら未指定=セッション既定) |
-| write_set | {tier_dir}/ 配下、attempt-{n}/S4_tier-impl.{tier_id}.done.yaml、issues/ |
+| write_set | {tier_dir}/ 配下、attempt-{n}/S4_tier-impl.{tier_id}.done.yaml、attempt-{n}/S4_tier-impl.{tier_id}.assumptions.yaml、issues/ |
 | additional_instructions | 固定部: `stage-instructions/S4_tier-impl.md`(ファイル参照方式)。可変部: blocker 由来の attempt++ 直後の再実行のみ `findings パス — verify: {findings_verify_path}`(当該 tier で ui-review が dispatch されていれば ` ui-review: {findings_ui_review_path}` も併記)を追記する。stale 由来の再実行では findings パスを渡さない |
 
 ### S5: verify(tier ごとに並列起動。Implementer と別コンテキスト)
@@ -110,10 +110,10 @@ packages/contracts/ 出力 dir と contracts.lock.yaml の該当エントリと
 | role | {tier_id} の Verifier(反証専用) |
 | agent_type | **`distillery-impl:impl-verifier`**(plugin 同梱 agent。disallowedTools 制約を効かせる) |
 | skill_name | distillery-impl:dist-impl-verify |
-| skill_args | ` 引数: "uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス} manifest_sha256={当該 tier の tier projection hash}"` |
+| skill_args | ` 引数: "uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス} manifest_sha256={当該 tier の tier projection hash} assumptions={attempt-{n}/S4_tier-impl.{tier_id}.assumptions.yaml へのパス}"` |
 | model | **impl-config の verifier_model(必須。Agent/Task ツールの model パラメータで渡す)** |
 | write_set | attempt-{n}/S5_verify.{tier_id}.done.yaml と .findings.yaml のみ |
-| additional_instructions | `あなたは実装者とは独立の検証者です。実装の会話履歴は渡されません。成果物({tier_dir}/)と仕様(tier md・契約・feature)だけを突き合わせ、7 観点で反証してください。実装コードの修正は禁止です。` |
+| additional_instructions | `あなたは実装者とは独立の検証者です。実装の会話履歴は渡されません。成果物({tier_dir}/)と仕様(tier md・契約・feature)だけを突き合わせ、8 観点で反証してください。8 観点目(前提整合)の前提ファイルは 1〜7 観点を完走してから開いてください。実装コードの修正は禁止です。` |
 
 ### S5: ui-review(dispatch 条件を満たす frontend tier のみ。Verifier と同一メッセージ内で並列起動)
 
@@ -138,7 +138,7 @@ dispatch 条件(target 集合の算出を含む)は `dist-impl-run/SKILL.md` の
 | skill_name | distillery-impl:dist-impl-implement |
 | skill_args | ` 引数: "mode=uc-bdd uc_id={uc_id} config={...} manifest_sha256={global projection hash}"`(S7 は `mode=atdd`) |
 | write_set | features/uc/(S7 は features/atdd/)、その steps/、S6/S7 done |
-| additional_instructions | `tier 実装は変更禁止です。step definition の実装と統合実行のみ行い、fail した場合は「どの tier の何が仕様と食い違うか」を分析して結果を返してください(修正はオーケストレータが S4 差し戻しを判断します)。S7(atdd)では uc-map の atdd_scenarios に列挙された Scenario だけを、一意タグ @atdd_{SPEC-ID}-{連番} の完全一致で選択実行してください(名前の部分一致フィルタ禁止・feature 全体を回さない)。実行された Scenario 件数が atdd_scenarios の件数と一致することを done の条件にしてください。仕様ギャップ(起票済み issue)起因で統合に必要な前提(認証ヘッダ等)が欠ける場合、steps 内でのハーネス注入を許容します。注入箇所には issue パス参照と「暫定注入・契約確定後に削除」コメントを必ず付けてください。` |
+| additional_instructions | `tier 実装は変更禁止です。step definition の実装と統合実行のみ行い、fail した場合は「どの tier の何が仕様と食い違うか」を分析して結果を返してください(修正はオーケストレータが S4 差し戻しを判断します)。S7(atdd)では uc-map の atdd_scenarios に列挙された Scenario だけを、一意タグ @atdd_{SPEC-ID}-{連番} の完全一致で選択実行してください(名前の部分一致フィルタ禁止・feature 全体を回さない)。実行された Scenario 件数が atdd_scenarios の件数と一致することを done の条件にしてください。仕様ギャップ起因で統合に必要な前提(認証ヘッダ等)が欠ける場合、steps 内でのハーネス注入を許容します。注入箇所には根拠(起票済み issue のパス、または当該 tier の AssumptionRecord の id と assumptions.yaml のパス)と「暫定注入・契約確定後に削除」コメントを必ず付けてください。前提の新規抽出は行わないでください。` |
 
 ### S8: feedback
 

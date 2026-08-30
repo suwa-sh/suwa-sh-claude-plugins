@@ -26,6 +26,15 @@
 dom_snapshot が true な frontend tier は、S2 が生成した not-implemented stub の画面 adapter を実装画面へ結線し、DOM 一致テストを green にすること
 （署名 extractor・adapter は S2 生成の共通 helper をそのまま使い、独自の署名生成ロジックを作らない）。
 
+## 前提の記録(AssumptionRecord)
+
+仕様・契約・dev-rules・この固定指示に明示されていないため**自分で決めた設計判断**を、
+`attempt-{n}/S4_tier-impl.{tier_id}.assumptions.yaml` に `dist-impl-implement/references/assumption-record.md` の
+スキーマで書くこと(0 件でも `assumptions: []` で必ず書く。欠落は受理されない)。
+明示されていた事項の復唱は含めない。各前提に「どこを探して無かったか」(`spec_refs`)を付けること。
+書いたら `validateAssumptions.js record` を実行して ok を確認し、`count / by_category / sha256` を done に転記すること。
+可変プロンプト(この dispatch の引数・findings パス等)の内容を実装判断に使った場合は、それも前提として書くこと。
+
 ## その他
 
 formatter/lint は check-only で実行すること。

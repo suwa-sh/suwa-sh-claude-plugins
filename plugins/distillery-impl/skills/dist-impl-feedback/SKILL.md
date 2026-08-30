@@ -29,6 +29,8 @@ uc_id={id} config={impl-config.yaml} [mode=initial|refresh|publish] manifest_sha
 - `docs/impl/latest/{uc_id}/stages/attempt-*/S5_verify.*.findings.yaml`
 - `docs/impl/latest/{uc_id}/stages/attempt-*/S5_ui-review.*.findings.yaml`（S5 並走の UI Reviewer。
   dispatchされたtierのみ存在）
+- current attemptの `S4_tier-impl.*.assumptions.yaml`（AssumptionRecord）とS5 findingsの `assumption_verdicts`
+- `review/review-notes.md` に記録された前提の却下（`spec_change` / `implementation_change` の種別つき）
 - bootstrapとS1の矛盾または欠落
 - `docs/impl/latest/{uc_id}/review/review-notes.md`（任意）
 
@@ -44,6 +46,11 @@ uc_id={id} config={impl-config.yaml} [mode=initial|refresh|publish] manifest_sha
 
 分類理由と根拠pathは`feedback/as-built-summary.md`へ記録します。
 実装済みのendpoint、状態遷移、header、error responseを、仕様どおり、不足、矛盾に分けます。
+as-built summaryには **実装者が補った前提の一覧**（id、カテゴリ、前提、Verifierの判定、人の判断があればその決定と種別）も載せます。
+
+前提の扱いは次のとおりです。仕様と矛盾する前提（contradicts）はblockerとしてS4で修正されるため、要求へ含めません。
+人が `implementation_change` で却下した前提は実装起因としてS4で修正し、要求へ含めません。
+**人が `spec_change` で却下した前提だけ**を、`severity: spec-gap` の要求候補にします（仕様に無いことを仕様で決めてほしい、という要求）。
 このsummaryはdist-pipelineへの入力ではありません。
 
 ### 2. 1つのdraftへまとめる
@@ -102,12 +109,19 @@ publishは、承認されたdraftのidentityとbytesを変えずに公開する�
 両eventの`feedback_review_evidence`をexact一致させます。
 
 S9 done、S9 event、approval eventの`implementation_review_evidence`は、
-`gate_result / open_blocker_count / open_major_count`のcanonical 3 fieldをexact一致させます。
+`gate_result / open_blocker_count / open_major_count / assumption_evidence_sha256`のcanonical 4 fieldをexact一致させます。
+`assumption_evidence_sha256`を持たない旧3 fieldだけのS9 evidence / approvalは、前提と判定を承認対象に
+固定できていないため公開に使いません（S9を再生成して再レビューします）。
 review HTMLはgitignoreされた補助資料なのでSHA-256を照合しません。旧eventの
 `review_html_sha256`と`captures_sha256`はlegacy fieldとして比較から除外します。
 
 event順はreview evidence、approval、publish started、publishedです。
 current evidenceへ複数のapprovalがある場合は停止します。
+
+使うapprovalは「最新」ではなく、state-schema.mdの「AssumptionRecord の完全性条件」をすべて満たす latest valid approvalです。
+publish直前に、current attemptの全tierへ `validateAssumptions.js record` / `verdicts` を再実行し、
+current S5 verdictsに対して `assumption_decisions` の完全性（1:1、必須回答、`rejected` は `spec_change` のみ）と
+`assumption_evidence_sha256` の再計算一致を再検証します。満たさなければ公開せず、S9再生成へ戻します。
 
 ### 2. pathを検証する
 

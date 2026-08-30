@@ -16,7 +16,10 @@ Implementerがコードを書き、別モデルのVerifierが検証します。
   （レイアウト・スタイル等のピクセル忠実度は対象外）。
 - **4段階のテスト**：ATDD、UC BDD、tier BDD、TDDの順に期待動作を固定します。
   実装前にred baselineを確認します。
-- **独立検証**：Implementerとは別のVerifierが、仕様整合性を含む7項目を検証します。
+- **独立検証**：Implementerとは別のVerifierが、仕様整合性を含む8項目を検証します。
+- **暗黙前提の可視化**：仕様に書かれていないためImplementerが自分で決めた判断を、
+  AssumptionRecordとして構造化ファイルに書き出させます。Verifierが8観点目としてその一覧を仕様と照合し
+  （矛盾はblocker）、人レビューで承認・却下できます。却下は実装修正かdistilleryへの仕様変更要求へ流れます。
 - **判断しやすい人レビュー**：冒頭にユーザーが実施する承認・選択・回答形式を示し、未確定事項には
   推奨案と比較可能な選択肢を提示します。構成・処理・データの図は`diagram-design`で作成します。
   HTMLはGit管理・承認SHAの対象にせず、認識合わせ用の補助資料として再生成できます。
@@ -42,7 +45,7 @@ flowchart TD
     S2["S2 test-scaffold<br/>4 段テストの足場と red baseline"]
     S3["S3 contracts<br/>契約の鮮度照合 + 実装時検証(確定してから並走)"]
     S4["S4 tier-impl(tier 並走)<br/>ゲート 1〜4: format / lint / TDD / tier BDD"]
-    S5["S5 verify(tier 並走)+ 条件付き ui-review 並走<br/>別モデル Verifier が 7 観点で反証。dispatch 条件を満たす<br/>frontend tier は実行ベースの UI Reviewer も並走"]
+    S5["S5 verify(tier 並走)+ 条件付き ui-review 並走<br/>別モデル Verifier が 8 観点で反証。dispatch 条件を満たす<br/>frontend tier は実行ベースの UI Reviewer も並走"]
     S6["S6 uc-bdd<br/>ゲート 5: E2E 完了条件を全 tier 結合で実行"]
     S7["S7 atdd<br/>ゲート 6: 受け入れ基準の選択実行"]
     S8["S8 feedback<br/>as-built + 単一feedback draft + learnings"]
@@ -81,7 +84,7 @@ flowchart TD
 | `distillery-impl:dist-impl-run` | オーケストレータ。UC 指定または引数なし(実施順で自動選択)で実装・人レビュー・1 commit化・PR作成まで運転(通常はこれだけ呼べばよい) |
 | `distillery-impl:dist-impl-bootstrap` | 実装リポの骨格生成・契約 codegen・Storybook 取り込み(冪等) |
 | `distillery-impl:dist-impl-implement` | Implementer(test-scaffold / tier-impl / uc-bdd / atdd の 4 mode) |
-| `distillery-impl:dist-impl-verify` | Verifier(反証専用・7 観点。コード vs 仕様書を読解で突合) |
+| `distillery-impl:dist-impl-verify` | Verifier(反証専用・8 観点。コード vs 仕様書を読解で突合 + 実装者が補った前提の照合) |
 | `distillery-impl:dist-impl-ui-review` | UI Reviewer(S5 並走レーン。実行された画面 vs story を実行で突合) |
 | `distillery-impl:dist-impl-feedback` | 変更要求・learnings・skill/コンテキスト改善提案 |
 | `distillery-impl:dist-impl-review` | ユーザーの承認・選択、推奨案、UC/仕様、図解、操作、テストをまとめる補助HTML生成 |

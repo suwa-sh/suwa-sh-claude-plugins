@@ -166,6 +166,8 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 - **S4/S5 の並列 dispatch**: uc-map の tiers を tier ごとに 1 サブエージェントで**同一メッセージ内で並列起動**。
   S5 の Verifier は **agent type に `distillery-impl:impl-verifier` を指定し、Agent/Task ツールの
   model パラメータに verifier_model を渡す**(agent 定義の disallowedTools 制約を効かせるため)。
+  **S5 の skill_args には当該 tier の AssumptionRecord のパス(`assumptions=attempt-{n}/S4_tier-impl.{tier}.assumptions.yaml`)を渡す**
+  (S4 受理で存在と整合を確認済みのもの。subagent-template.md)。
   **verifier_model が Agent/Task ツールで指定できないモデル(例: Codex の gpt-5.6-*)の場合**は、
   そのモデルの CLI を直接起動する(Codex なら `codex exec -m {verifier_model} -C {repo_root}
   --skip-git-repo-check -o {last-message file} - < {prompt file}`。プロンプトは subagent-template の
@@ -255,8 +257,12 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 - **attempt 制御**: **S5 verify と ui-review、両レーンの findings を合算**して blocker 判定する
   (ui-review が dispatch されなかった tier は verify のみで判定)。blocker があれば
   `attempt_opened` イベントを記録して attempt++、blocker のある tier の S4 を再実行。
-  blocker の無かった tier には新 attempt に**carry-forward done**(`carried_from` 付き)を
-  自分で生成する(state-schema.md)。**attempt++ 経由(blocker 由来・S6/S7 差し戻し)で S4 を
+  blocker の無かった tier には新 attempt に**carry-forward done**(`carried_from` 付き)**と同 tier の
+  assumptions ファイル**を自分で生成する(state-schema.md。全 tier の S5 が新 attempt の前提ファイルを読む。
+  byte copy ではなく `attempt` を新値に更新し、`validateAssumptions.js record --attempt {新}` で ok と sha256 不変を確認する)。
+  **S9 で前提が `implementation_change` として却下された場合も同じ attempt++ 経路に乗せる**
+  (`review_rejected` に `rejected_assumptions` を記録 → 却下対象 tier の S4 再実行 → 他 tier carry-forward →
+  全 tier S5 再実行 → S8/S9 再生成。attempt 上限 3 を消費する)。**attempt++ 経由(blocker 由来・S6/S7 差し戻し)で S4 を
   再実行したら全 tier の S5(verify + dispatch 対象なら ui-review も)を再実行**(安全側。
   どちらのレーンも carry-forward しない)。
   **attempt++ 経由の S4 再実行時は両レーンの findings パスを tier 単位で Implementer に渡す**
@@ -284,7 +290,15 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
 
 1. サブエージェント報告から結果を検証(done ファイルの実在・スキーマ・write-set 逸脱の有無。
    スキーマ検証には `yaml.safe_load` で parse 可能であることを含める。parse 不能なら該当
-   サブエージェントへ書式のみの修正を差し戻す(内容変更禁止))。**S5 UI Reviewer(通常 dispatch)は
+   サブエージェントへ書式のみの修正を差し戻す(内容変更禁止))。
+   **S4 はさらに** `node ${CLAUDE_PLUGIN_ROOT}/skills/dist-impl-implement/scripts/validateAssumptions.js record
+   attempt-{n}/S4_tier-impl.{tier}.assumptions.yaml --uc {uc_id} --tier {tier} --attempt {n}` を実行し、
+   `ok: true` かつ出力の `count / sha256` が S4 done の `assumptions` と一致することを受理条件にする
+   (ファイル欠落・不一致は stage failed)。**S5 verify はさらに** `validateAssumptions.js verdicts
+   attempt-{n}/S5_verify.{tier}.findings.yaml --assumptions attempt-{n}/S4_tier-impl.{tier}.assumptions.yaml --uc {uc_id} --tier {tier} --attempt {n}` が
+   `ok: true` で、出力の `verdicts_sha256` と findings の `assumptions_sha256` / `assumption_verdicts_summary` が
+   S5 done と一致することを受理条件にする(hash が stale = 前提ファイルが照合後に変わった、verdict の
+   欠落・重複、severity の期待不一致、集計不一致はいずれも stage failed)。**S5 UI Reviewer(通常 dispatch)は
    さらに、done の `checks_checked` が `.findings.yaml` の `checks_checked` と完全一致すること・
    S5 受理時の fail-closed 検証(上記 S5 dispatch 手順 7)を満たす**
 2. `stage_completed`(または failed)イベントを events/ に追記 → status.yaml 更新
@@ -308,12 +322,21 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    `implementation_review_evidence`を記録する。HTML/captureのSHAは記録しない
 2. ユーザーへ、HTML冒頭と同じ順序で、実装承認と現在必要な仕様・運用上の選択を問う。
    未確定事項には2〜3案、推奨案、推奨理由、trade-off、推奨が変わる条件、選択後のactionを示し、
-   `機能=A / 相互運用=A / 監査=A`のようなcopy可能な回答templateを提示する。
+   `機能=A / 相互運用=A / 監査=A / 前提=A-001:承認 / A-002:却下(実装修正: …)`のようなcopy可能な回答templateを提示する。
    必須の判断が未回答なら`awaiting_review`のまま停止する。
+   **前提(AssumptionRecord)の回答規則**: 回答必須は「Verifier の verdict が spec_absent / unlisted で、
+   `category` か `verified_category` のどちらかが security / persistence」の前提だけ(state-schema.md の
+   完全性条件)。必須が 1 件でも未回答なら `awaiting_review` のまま停止する。回答任意の前提は未回答なら
+   `auto_confirmed` として記録する。却下には `実装修正`(implementation_change)か `仕様変更`(spec_change)の
+   種別が必須で、無ければ再質問する。verdict が contradicts の前提は blocker で S4 に差し戻されるため
+   S9 には到達しない。
    `S1`等の内部stage code、attempt履歴、dist-pipelineのstage名やrouteは提示・選択させない。
    対話で出た指摘・条件は承認・差し戻しのどちらでも`review/review-notes.md`へ記録する
 3. feedback draftに結びつく仕様選択や訂正がある場合、`review_approved`をまだ記録せず、選択内容を
-   review notesへ記録してS8を`mode=refresh`で再実行する。選択結果を仕様・設定・実装・テストの
+   review notesへ記録してS8を`mode=refresh`で再実行する。**前提を `仕様変更`(spec_change)で却下した場合も
+   この経路**: review notes に却下(id・種別・期待)を記録 → S8 refresh で spec-gap の要求候補に反映 → S9 再生成 →
+   request あり approval(公開許可)→ publish → `blocked_on_spec`(現行契約どおり。仕様反映後は request 0 件の
+   新しい approval を要する)。選択結果を仕様・設定・実装・テストの
    該当箇所へ反映し、影響するテストと検証を再実行する。仕様側の変更が必要なら、選択を反映したdraftと
    HTMLを再生成する。追加の意味変更が無くユーザー回答とexactに一致する場合は、そのevidenceへの
    `review_approved`を「feedback公開許可」として記録してS8 publishへ進める。新しい選択肢・詳細決定が
@@ -322,13 +345,23 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    要求0件の再レビューを行い、変更後の認識合わせが終わるまでdelivery approvalを確定しない。
    HTMLだけの再生成ではdone/event/statusの整合性を取り直さない
 4. 差し戻しの場合、`review_rejected` event（差し戻し先stageと理由）を記録し、該当stage以降のdoneを
-   `invalidated/{event_id}/`へ退避して再実行する
+   `invalidated/{event_id}/`へ退避して再実行する。**前提を `実装修正`(implementation_change)で却下した場合は
+   `review_rejected` の payload に `rejected_assumptions: [{tier, id}]` を記録し、attempt 制御の attempt++ 経路
+   (対象 tier の S4 再実行・他 tier carry-forward・全 tier S5 再実行)に乗せる。修正・再検証・S9 再生成が
+   済むまで `review_approved` を記録しない**
 5. 承認の場合、現在のdraft bytes/ID/件数をS9 doneとS9 stage eventの
    `feedback_review_evidence`へexact照合する。`implementation_review_evidence`は
-   `gate_result / open_blocker_count / open_major_count`の3 fieldだけを照合する。
+   `gate_result / open_blocker_count / open_major_count / assumption_evidence_sha256`の4 fieldだけを照合する。
    旧done/eventの`review_html_sha256`、`captures_sha256`はlegacy fieldとして比較から除外し、
    current HTML/capture bytesを再検証しない。
-   一致した場合だけ、`review_approved` eventへ`review_evidence_event_id`と両evidence mappingを記録する。
+   一致した場合だけ、`review_approved` eventへ`review_evidence_event_id`と両evidence mapping、および
+   `assumption_decisions`(全前提の decision。auto_confirmed を含む。却下は `spec_change` のみ —
+   `implementation_change` は手順 4 の `review_rejected` に記録済みで approval には含めない。state-schema.md の
+   完全性条件を満たすもの)を記録する。
+   `implementation_review_evidence` は canonical 4 field(`assumption_evidence_sha256` を含む)で照合する。
+   **記録の直前に全 tier の `validateAssumptions.js record` / `verdicts` を再実行し、current ファイルの hash が
+   S4/S5 done と S9 evidence に一致することを確認する**(完全性条件 5。不一致なら approval を記録せず、該当 tier の
+   S4/S5 と S9 を `assumption_evidence_drift` で invalidate して再実行する)。
    draft/gate/open findingが不一致なら承認を記録せず、S8 refresh → S9再生成 → 再レビューへ戻る。
    同じreview evidenceを参照するvalidなapprovalが既にあれば再追記せず再利用する。同じevidenceへの
    複数approval、S9 eventより前のapproval event IDはfail-closedで停止する。再レビューで新しいS9 evidenceを

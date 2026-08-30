@@ -10,6 +10,7 @@ HTMLは正本ではなく、ユーザーと認識を合わせて判断を受け�
 | 2 | 判断サマリ | UCの目的、結論、blocker、未決定数 |
 | 3 | UCとレビュー対象仕様 | actor、trigger、入出力、rule、受け入れ条件、対象外 |
 | 4 | 決めてほしいことの詳細 | 各選択肢の結果、trade-off、推奨が変わる条件 |
+| 4.5 | 実装者が補った前提 | 仕様に無いためImplementerが決めた判断の一覧。前提ごとにカテゴリ、前提、理由、Verifierの判定、影響箇所、回答要否。回答必須を先頭に集める |
 | 5 | 実装の構成 | component、責務、外部境界、storageの構成図 |
 | 6 | 処理フロー | 正常系、validation、失敗、timeout、補償のflowchart |
 | 7 | データフロー | source、変換、保存、送信、秘密情報境界 |
@@ -34,12 +35,20 @@ HTMLは正本ではなく、ユーザーと認識を合わせて判断を受け�
    B. 代替案 — 結果 / 向く条件 / trade-off
    C. 今回は保留 — 保留中にできること / できないこと
 
+3. 実装者が補った前提を承認・却下する（回答必須: 仕様に無く security / persistence に関わるもの）
+   A-001 時刻精度=秒 — 承認（推奨）/ 却下
+   A-003 監査ログの保持期間=90日 — 却下（仕様変更: 保持期間を仕様で決める）
+
 回答:
 機能=A
 相互運用=A
 監査=A
+前提=A-001:承認 / A-003:却下(仕様変更: 保持期間を仕様で決める) / V-001:却下(実装修正: 契約の canonical 順に合わせる)
 補足=
 ```
+
+前提の却下には必ず `実装修正` か `仕様変更` の種別を添える。`実装修正` は対象tierを再実装し、
+`仕様変更` は変更要求（feedback）へ流れる。回答任意の前提は未回答なら承認扱い（auto_confirmed）になる。
 
 card全体をclick可能に見せる偽UIや、動作しないradio/buttonを置かない。HTMLは静的資料であり、
 回答はchatへcopyして返す形式にする。推奨には文字で`推奨`と表示し、色だけに頼らない。
@@ -110,6 +119,15 @@ commandはactual entrypointから得る。秘密値は変数名だけを表示�
 
 正常系、validation、error、timeout、rollback/compensation、permission、秘密情報非包含、
 test double境界と実systemで未確認の範囲を示す。
+
+## 実装者が補った前提
+
+- 入力は `attempt-{n}/S4_tier-impl.{tier}.assumptions.yaml`（全tier）と、S5 findingsの `assumption_verdicts`
+- 前提ごとに カテゴリ（Implementer分類 / Verifier分類が違えば両方）、前提、理由、Verifierの判定
+  （仕様に明示あり / 仕様に無い / 実装者が未記載のまま決めていた）、影響箇所、回答要否 を示す
+- **回答必須**（仕様に無い、かつ どちらかの分類が security / persistence）を先頭に集め、`必須` と文字で示す
+- Verifierが仕様との矛盾（blocker）と判定した前提はこの画面に到達しない（先に差し戻される）
+- verdict名・finding ID・hashは本文へ出さない。前提IDは回答templateに必要なので表示する
 
 ## 現在の問題とfeedback
 

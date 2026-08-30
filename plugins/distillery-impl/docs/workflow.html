@@ -191,7 +191,7 @@ h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var
       <div class="sid"><span class="code">S5</span><span class="who par">🤖×N 並列</span></div>
       <div class="sbody">
         <span class="sname">verify — Verifier(別モデル・反証専用)</span>
-        <div class="sdesc">agent type <code>distillery-impl:impl-verifier</code> + <b>impl-config の verifier_model</b> で起動。Implementer の会話履歴は渡さず、<b>成果物と仕様だけ</b>を突合。ゲート再実行 + <b>7 観点</b>(仕様整合 / 可読性・保守性 / セキュリティ / 性能 / 運用性 / 耐障害性 / リファクタリング)で findings 生成。修正は禁止</div>
+        <div class="sdesc">agent type <code>distillery-impl:impl-verifier</code> + <b>impl-config の verifier_model</b> で起動。Implementer の会話履歴は渡さず、<b>成果物と仕様だけ</b>を突合。ゲート再実行 + <b>8 観点</b>(仕様整合 / 可読性・保守性 / セキュリティ / 性能 / 運用性 / 耐障害性 / リファクタリング / 前提整合 = Implementer が黙って決めた判断の照合)で findings 生成。修正は禁止</div>
       </div>
       <div class="sfiles"><div class="t">📄 STATE</div><code>attempt-{n}/S5_verify.{tier}.done.yaml</code><code>attempt-{n}/S5_verify.{tier}.findings.yaml</code></div>
     </div>

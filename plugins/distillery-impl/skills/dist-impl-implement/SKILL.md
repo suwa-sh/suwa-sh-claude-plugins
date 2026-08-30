@@ -92,10 +92,12 @@ description: >
    結線 story + story から到達する packages/ui 内の推移的 import closure)、
    backend(datastore_owner)は `_cross-cutting/datastore/` の schema、
    worker は async 型定義(asyncapi 契約が宣言されている場合)。
-   **読込時に「複数 tier / UC が共有する算出規則」(hash の正規化形式・シリアライズ形式・
-   時刻精度・識別子形式 等)で契約に定義が無いものを未定義リストとして抽出する**。仮置きが
-   避けられない場合は関数を 1 箇所に集約し、仮置きである旨を as-built(S8 入力)と `issues/` に
-   同時に記録する(独立検証の後で初めて発覚させない)
+   **読込時に「仕様・契約・dev-rules・S4 固定指示に定義が無いのに実装には決める必要がある事項」
+   (hash の正規化形式・シリアライズ形式・時刻精度・識別子形式・失敗時の状態値 等)を
+   前提候補として控える**。実装で仮置きした判断は関数を 1 箇所に集約し、
+   `references/assumption-record.md` に従って **AssumptionRecord(手順 5)に記録する**
+   (独立検証の後で初めて発覚させない。`issues/` には書かない — issues は「仕様どおりに実装すると
+   動かない事実」専用)。
    - **frontend の実装前チェック**: tier-rules.md の矛盾 3 条件(story path 実体の不在 /
      variants と named export の不一致 / components 宣言と story 実体の不一致)を確認する。
      矛盾があれば `issues/{ts}_{slug}.md` に起票した上で、story 実体を優先して実装を続行する
@@ -115,7 +117,15 @@ description: >
    test-strategy.md「生成物の構造」の区分に従う)
 4. **ゲート 1〜4 を実行**(`references/gates.md`。コマンドは config の commands。
    format/lint は check-only。書き換えを伴う format は実行しない)
-5. 全ゲート pass → `attempt-{n}/S4_tier-impl.{tier_id}.done.yaml` を書く(gates 結果を記録)
+5. **前提の記録(AssumptionRecord)**: `attempt-{n}/S4_tier-impl.{tier_id}.assumptions.yaml` を
+   `references/assumption-record.md` のスキーマで書く。**仕様・契約・dev-rules・S4 固定指示に
+   明示されていた事項は含めず、自分が補った判断だけ**を、探して見つからなかった箇所(`spec_refs`)
+   つきで書く。**0 件でも `assumptions: []` で必ず書く**(欠落は S4 受理拒否)。書いたら
+   `node ${CLAUDE_PLUGIN_ROOT}/skills/dist-impl-implement/scripts/validateAssumptions.js record
+   <file> --uc {uc_id} --tier {tier_id} --attempt {n}` を実行し `ok: true` を確認する
+   (出力の `count / by_category / sha256` を done に転記する)
+6. 全ゲート pass + 前提記録 ok → `attempt-{n}/S4_tier-impl.{tier_id}.done.yaml` を書く
+   (gates 結果と `assumptions: {path, count, by_category, sha256, extraction}` を記録 — state-schema.md)
 
 ## mode=uc-bdd(S6)/ mode=atdd(S7)
 
@@ -131,7 +141,12 @@ integration writer として統合テストを実装・実行する。**tier 実
    - fail → done を書かず、「どの tier の何が仕様と食い違うか」の分析を結果として返す
      (S4 への差し戻しはオーケストレータの判断)
 3. S7 で uc-map の `atdd_confirmed: false` の場合は実行せず、その旨を返す(S1 の確認漏れ)
+4. 統合に必要な前提(認証ヘッダ等)が仕様に無い場合のハーネス注入(subagent-template の注入規約)は、
+   根拠として**起票済み issue のパス、または当該 tier の AssumptionRecord の id(`A-nnn`。
+   `attempt-{n}/S4_tier-impl.{tier}.assumptions.yaml` のパス併記)**のどちらかを注入箇所のコメントに書く。
+   S6/S7 自身は前提を抽出しない(参照のみ)
 
 ## 完了報告(全 mode 共通)
 
-生成・更新ファイル一覧 / ゲート・テストの実行結果(コマンドと exit code)/ issues に書いた仕様疑義の有無
+生成・更新ファイル一覧 / ゲート・テストの実行結果(コマンドと exit code)/ issues に書いた仕様疑義の有無 /
+(tier-impl)前提件数のカテゴリ別内訳と `validateAssumptions.js record` の結果

@@ -141,7 +141,7 @@ variants 非空条件の再判定漏れ等)は、その check を `pass` にし�
 イベントを追記し、その後に staging→canonical への昇格(ファイル移動・findings マージ・done 更新)を
 行う。手順・payload の詳細は state-schema.md を正本とする。
 
-## findings スキーマ(dist-impl-verify の 7 観点スキーマとは別物)
+## findings スキーマ(dist-impl-verify の 8 観点スキーマとは別物)
 
 ```yaml
 schema_version: "1.0"
