@@ -281,7 +281,7 @@ Phase1-5 + docs 配置 + 一時ディレクトリ削除）を実行する。**di
    `docs/usdm/latest/requirements.yaml`（下記サブエージェント指示の補足参照）。
 2. 追加コンテキストとして `docs/harvest/latest/` の analysis ドキュメントを読み込ませ、コード由来の
    情報モデル・状態・バリエーション・条件の詳細が RDRA 生成に反映されるようにする。
-3. `scripts/makeGraphData.js` / `makeZeroOneData.js` を実行して `関連データ.txt` / `ZeroOne.txt` を生成する。
+3. `${CLAUDE_PLUGIN_ROOT}/skills/dist-requirements/scripts/makeGraphData.js` / `makeZeroOneData.js`（dist-requirements のスクリプト）を実行して `関連データ.txt` / `ZeroOne.txt` を生成する。
 4. `scripts/generateRdraMd.js 1_RDRA --lint` で整合性 lint を実行する（latest 確定前のゲート）。逆生成した RDRA は名前ゆれによる未定義参照が混入しやすい。エラー（未定義参照、exit 1）があれば `1_RDRA/` の TSV を修正し、エラー 0 件になるまで繰り返す。警告（未接続、exit 0）はブロックせずユーザーに報告する。
 5. `1_RDRA/` → `docs/rdra/latest/` + `docs/rdra/events/{event_id}/`（初期構築は全ファイルをイベントに含める）。
 6. `scripts/generateRdraMd.js docs/rdra/latest` を実行して `docs/rdra/latest/views/*.md`（Mermaid 図解つきの人間可読ビュー）を生成する。手順 4 の lint に合格していればエラーは 0 件のはずで、`views/00_不整合チェック.md` に残るのは許容済みの警告のみ。

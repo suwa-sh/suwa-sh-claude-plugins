@@ -3,6 +3,25 @@
 distillery プラグインの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョンは semver（正本は `.claude-plugin/plugin.json`）。
 
+## [1.6.1] - 2026-09-02
+
+### Changed
+
+- **feedback mode の手順を `dist-pipeline/references/feedback-mode.md` へ分離**（トークン削減 Phase 1。挙動変更なし）
+  - SKILL.md の F0〜F3（約 230 行）と subagent-template.md の `{feedback_instructions}` ブロック（約 50 行）を移動し、
+    SKILL.md の feedback request mode 節には呼び出し形式・新規セッションでの起動推奨・
+    「feedback 入力を検出したら `references/feedback-mode.md` を読む」・関連契約の一覧を残す（入力判定の fail-closed・dialogue_policy・config 読込順序は通常 mode と共通のため「0. 入力確認」に残る）。
+    通常 / harvest mode のオーケストレータは feedback 手順をロードしなくなる（1.6.0 比: SKILL.md 47.6KB → 38.8KB、
+    subagent-template.md 20.5KB → 15.4KB）
+  - SKILL.md / pipeline-config-schema.md の F0b / F1 参照を `feedback-mode.md` 参照に張り替え
+
+### Fixed
+
+- dist-harvest SKILL.md: `scripts/makeGraphData.js` の参照先を実在する
+  `${CLAUDE_PLUGIN_ROOT}/skills/dist-requirements/scripts/makeGraphData.js` に修正（誤参照。下記テストで検出）
+- root `tests/distillery-reference-links.test.js` を追加: distillery の SKILL.md / references 内の
+  `references/...` / `scripts/...` パスの実在を検証（以後の分割で相互参照が破断したら CI で検出）
+
 ## [1.6.0] - 2026-09-02
 
 ### Added

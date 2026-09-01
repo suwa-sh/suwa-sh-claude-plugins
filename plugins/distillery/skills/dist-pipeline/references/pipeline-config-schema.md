@@ -43,7 +43,7 @@ step_models:
 | 許容値 | `step5`, `step6a` のみ。他の値は**警告してその値だけ無視**する（config 全体は有効） |
 | 暗黙 skip | `step5` を含む場合、`step6a` も skip する（spec-stories は storybook-app を前提とするため） |
 | 通常 mode | Step5 / Step6a のサブエージェントを起動せず、progress は `completed --summary "skipped (skip_steps)"` で進める。Step6（spec）は design 無しモードで実行する |
-| feedback mode | F0b の begin で `--skip-stages` として planner に渡す（`step5` → `design_system`、`step6a` → `spec_stories`。対応は `feedback-stage-ownership.json` の `steps`）。closure から除外され `routing_basis.skipped_stages` に凍結される |
+| feedback mode | `references/feedback-mode.md` F0b の begin で `--skip-stages` として planner に渡す（`step5` → `design_system`、`step6a` → `spec_stories`。対応は `feedback-stage-ownership.json` の `steps`）。closure から除外され `routing_basis.skipped_stages` に凍結される |
 | 自動生成 | ファイルを新規生成するときは `skip_steps` キーを**書かない**（コメント行のみ）。書くと推奨判定が発動しなくなる |
 | 推奨提示 | `skip_steps` キー自体が**未定義**で、Step3 完了後の `arch-design.yaml` の `system_architecture.tiers[].id` に `frontend` / `presentation` / `ui` を含む tier が無い場合、パイプラインが「design ステージの実行」を確認推奨項目として提示する（`SKILL.md` の「Step3 完了後: design skip 推奨判定」）。`skip_steps: []` を明示した場合は「実行する」意思とみなし提示しない |
 | 書き戻し | 推奨を採用（auto_adopt の ⭐採用、または interactive で選択）した場合、パイプラインが `skip_steps` をこのファイルに書き戻す。書き戻しは lease 取得中のみ行う |
