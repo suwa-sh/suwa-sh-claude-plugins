@@ -3,6 +3,31 @@
 distillery プラグインの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョンは semver（正本は `.claude-plugin/plugin.json`）。
 
+## [1.6.0] - 2026-09-02
+
+### Added
+
+- **トークン計測基盤**（トークン削減の Phase 0。以後の Phase で before/after を取るための土台）
+  - `scripts/tokenReport.js`: セッション transcript（`~/.claude/projects/<project>/<session>.jsonl` と
+    `<session>/subagents/agent-*.jsonl` + `.meta.json`）からエージェント別に input / cache_creation / cache_read /
+    output / msgs / max_context を集計し、markdown 表と JSON を出力。同一 `message.id` が content block ごとに
+    複数行出るため id で重複排除する（重複排除しないと約 4 倍に過大計上される）。main transcript 内の
+    task-notification `<subagent_tokens>` を subagent id で突合して `reported` 列に出す（≒ 最終コンテキスト量）。
+    `--latest` / `--out <dir>`（常に md + json の両方を書く）/ `--weights`（有限・非負のみ受理）対応
+  - `scripts/progress-update.js`: `step ... --tokens <N>`（非負整数のみ。加算）と `summary` サブコマンド（Step 別表）。
+    `resume` は前回 status の tokens を全 Step から引き継ぐ（先行 Step は event_id も）。
+    Step 別記録は通常/harvest mode 限定（feedback mode は status を持たないため tokenReport.js で集計）。
+    `DIST_PIPELINE_STATUS_PATH` で status 出力先を上書き可能（テスト用）
+  - dist-pipeline SKILL.md: サブエージェント完了通知ごとに `subagent_tokens` を `--tokens` で加算し、完了サマリに
+    「完了時コンテキスト量（Step 別・参考値）」表を追加（課金対象の総消費量ではない。精密集計は tokenReport.js）
+  - ベースライン（dist-spec 単体 headless 実行、2026-08-30、35 エージェント、重複排除後）:
+    cache_read 32.5M / cache_creation 4.2M / msgs 346。オーケストレータ最大コンテキスト 245k
+
+### Notes
+
+- transcript の `output_tokens` は streaming 初期値のため過小。tokenReport.js の既定 weight は `output=0`
+  （コスト評価に含めない。含めたい場合は `--weights output=5` 等で明示する）
+
 ## [1.5.0] - 2026-08-30
 
 ### Added

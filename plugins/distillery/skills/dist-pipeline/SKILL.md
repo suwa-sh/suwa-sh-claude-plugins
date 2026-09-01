@@ -77,11 +77,26 @@ model を解決して Agent/Task ツールの `model` パラメータに渡す
 | フル開始 | `node <skill-path>/scripts/progress-update.js init` |
 | 途中再開 | `node <skill-path>/scripts/progress-update.js resume <start_step_id>` |
 | Step開始 | `... step <id> running --subagent-task "..."` |
-| Step完了 | `... step <id> completed --summary "..." --event-id "..."` |
+| サブエージェント完了通知ごと | `... step <id> running --tokens <N>`（通知 1 件につき 1 回。加算される） |
+| Step完了 | `... step <id> completed --summary "..." --event-id "..."`（`--tokens` は付けない） |
 | 対話待ち | `... dialogue <step_id> "質問" --options "opt1,opt2"` |
 | 対話完了 | `... dialogue-clear` |
 | エラー | `... error <step_id> "メッセージ"` |
 | 完了 | `... complete` |
+| トークン集計 | `... summary`（Step 別の状態・tokens・event_id を markdown 表で出力。完了サマリに貼る） |
+
+`--tokens <N>` には Agent ツールの完了通知に含まれる `<usage><subagent_tokens>N</subagent_tokens></usage>` の値を転記する
+（≒ その subagent の**完了時コンテキスト量**であり、課金対象の総消費量ではない参考値。空なら省略）。
+**記録規則は 1 つだけ**: サブエージェントの完了通知を受け取るたびに `step <id> running --tokens <N>` を **1 回** 実行する
+（対話後の再起動・補完実行・4a/4b の分割・Step6a も同じ）。`step <id> completed` には `--tokens` を付けない
+（付けると同じ通知を二重加算する）。
+**Step 別の記録は通常/harvest mode 限定**（進捗ダッシュボードを `init` するのは通常/harvest mode だけ）。
+feedback mode は status を持たないので `--tokens` を呼ばず、必要なら実行後に `tokenReport.js` で集計する。
+実行後の精密な集計（cache_creation / cache_read / エージェント別）は `scripts/tokenReport.js` でセッション transcript から取る:
+
+```bash
+node <skill-path>/scripts/tokenReport.js ~/.claude/projects/<project-dir> --latest --out docs/pipeline/token-report
+```
 
 ## サブエージェント指示
 
@@ -427,7 +442,8 @@ node <skill-path>/scripts/feedbackLease.js release \
 
 1. **進捗更新（開始）:** `progress-update.js step <id> running --subagent-task "<タスク名>"`
 2. **サブエージェント起動:** `references/subagent-template.md` のテンプレートに各 Step の変数
-   （`{dialogue_policy_instructions}` と model を含む）を埋めて指示
+   （`{dialogue_policy_instructions}` と model を含む）を埋めて指示。完了通知を受け取ったら
+   `progress-update.js step <id> running --tokens <N>`（`<N>` = 通知の `subagent_tokens`。空なら実行しない）
 3. **サブエージェント完了後の対話処理（全 Step 共通・dialogue_policy で分岐）:**
 
    **auto_adopt の場合（通常 mode デフォルト）:**
@@ -473,6 +489,8 @@ node <skill-path>/scripts/feedbackLease.js release \
 5. **イベントID取得（通常modeのみ）:** `ls -t docs/{domain}/events/ | head -1`。
    feedback modeはF1の返却event ID + identity検証を使い、この手順を実行しない
 6. **進捗更新（完了）:** `progress-update.js step <id> completed --summary "..." --event-id "..."`
+   （`--tokens` は付けない。手順 2〜3 で受け取った各サブエージェント完了通知の `subagent_tokens` は、
+   その都度 `step <id> running --tokens <N>` で記録済みであること。通知に値が無ければ何もしない）
 7. **完了報告:** 概要とイベントIDをユーザーに伝える
 
 | Step | スキル名 | 対話 | 完了チェック | 備考 |
@@ -570,6 +588,7 @@ UC_COUNT=$(find docs/specs/latest -name "spec.md" -path "*/UC/*" 2>/dev/null | w
 起動時は pipeline-config の `step_models.step6a`（既定 "sonnet"）を Agent/Task ツールの `model` パラメータに渡す。
 
 **進捗更新（完了/スキップ）:** `progress-update.js step 6a completed --summary "実施済み"` or `--summary "27 Stories 生成"`
+（サブエージェントを起動した場合は、完了通知を受け取った時点で `step 6a running --tokens <N>` を 1 回実行しておく）
 
 ### 6b. 網羅率チェック + RDRA フィードバックループ
 
@@ -621,9 +640,15 @@ node <skill-path>/scripts/generateReadme.js docs
 | 6 | spec | docs/specs/latest/ | spec:{id} |
 
 TODO (docs/todo.md): open 件数 = {N}
+
+### 完了時コンテキスト量（Step 別・参考値）
+
+{`node <skill-path>/scripts/progress-update.js summary` の出力をそのまま貼る}
+※ 各サブエージェントの完了時コンテキスト量の合計。課金対象の総消費量ではない。精密な集計は tokenReport.js
 ```
 
 skip した Step は成果物・イベントID 列に `skipped (skip_steps)` と書く。
+コンテキスト量の表は `progress-update.js summary` の出力を使う（`--tokens` を渡していない Step は `-`）。
 
 **todo.md サマリの算出:**
 
@@ -686,7 +711,8 @@ failed/deferredをevent化して停止する。
 | `references/feedback-stage-ownership.json` | version付きstage所有者catalog |
 | `references/feedback-routing-policy.json` | 曖昧性、推奨質問、recommended-autoの安全境界 |
 | `references/feedback-run-state.md` | event/snapshot/lease/再開規約 |
-| `scripts/progress-update.js` | 進捗ステータス更新 CLI（`port` / `url` サブコマンドで実行中ポート取得） |
+| `scripts/progress-update.js` | 進捗ステータス更新 CLI（`port` / `url` サブコマンドで実行中ポート取得。`--tokens` で Step 別トークンを加算、`summary` で表出力） |
+| `scripts/tokenReport.js` | セッション transcript（`~/.claude/projects/<project>/<session>.jsonl` + `subagents/`）からエージェント別トークン消費を集計（message.id で重複排除。markdown + JSON） |
 | `scripts/progress-server.js` | 進捗ダッシュボード Web サーバー（SSE、プロセスベースのポート解決） |
 | `scripts/appendTodo.js` | `docs/todo.md` への追加提案追記 CLI（冪等） |
 | `scripts/notify.js` | デスクトップ通知 CLI（macOS/Windows/Linux 対応・音付き。dialogue / error / complete で使用。失敗しても exit 0） |
