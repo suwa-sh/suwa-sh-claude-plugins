@@ -3,6 +3,14 @@
 distillery プラグインの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョンは semver（正本は `.claude-plugin/plugin.json`）。
 
+## [1.9.2] - 2026-09-02
+
+### Changed
+
+- dist-pipeline: 完了サマリの末尾に「精密なトークン集計」節を追加。`tokenReport.js` はパイプライン内では自動実行せず
+  （transcript はセッション終了まで書き終わらない）、skill-path と `~/.claude/projects/<cwd 由来の名前>` を展開した
+  実行コマンドをそのまま提示する
+
 ## [1.9.1] - 2026-09-02
 
 ### Fixed

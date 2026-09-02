@@ -92,7 +92,9 @@ model を解決して Agent/Task ツールの `model` パラメータに渡す
 （付けると同じ通知を二重加算する）。
 **Step 別の記録は通常/harvest mode 限定**（進捗ダッシュボードを `init` するのは通常/harvest mode だけ）。
 feedback mode は status を持たないので `--tokens` を呼ばず、必要なら実行後に `tokenReport.js` で集計する。
-実行後の精密な集計（cache_creation / cache_read / エージェント別）は `scripts/tokenReport.js` でセッション transcript から取る:
+実行後の精密な集計（cache_creation / cache_read / エージェント別）は `scripts/tokenReport.js` でセッション transcript から取る。
+パイプライン内では自動実行しない（transcript はセッション終了まで書き終わらない）。完了サマリの末尾に、
+展開済みの実行コマンドを提示する（「完了時の報告」参照）:
 
 ```bash
 node <skill-path>/scripts/tokenReport.js ~/.claude/projects/<project-dir> --latest --out docs/pipeline/token-report
@@ -431,11 +433,26 @@ TODO (docs/todo.md): open 件数 = {N}
 ### 完了時コンテキスト量（Step 別・参考値）
 
 {`node <skill-path>/scripts/progress-update.js summary` の出力をそのまま貼る}
-※ 各サブエージェントの完了時コンテキスト量の合計。課金対象の総消費量ではない。精密な集計は tokenReport.js
+※ 各サブエージェントの完了時コンテキスト量の合計。課金対象の総消費量ではない。
+
+### 精密なトークン集計（このセッション終了後に手動で実行）
+
+セッション transcript はこの会話が終わるまで書き終わらないため、パイプライン内では集計しない。
+チャットを閉じたあと（または /clear 後）に次を実行すると、エージェント別の cache_creation / cache_read が取れる:
+
+    node {skill-path の絶対パス}/scripts/tokenReport.js {project-dir の絶対パス} --latest --out docs/pipeline/token-report
 ```
 
 skip した Step は成果物・イベントID 列に `skipped (skip_steps)` と書く。
 コンテキスト量の表は `progress-update.js summary` の出力を使う（`--tokens` を渡していない Step は `-`）。
+
+**精密集計コマンドの組み立て**: サマリ内のコマンドは `{...}` を残さず、**実行できる形に展開して**書く。
+
+- `{skill-path の絶対パス}` = `${CLAUDE_PLUGIN_ROOT}/skills/dist-pipeline` を展開した値
+- `{project-dir の絶対パス}` = `~/.claude/projects/<name>`。`<name>` は作業ディレクトリの絶対パスの `/` を `-` に置換したもの
+  （例: `/Users/me/src/app` → `~/.claude/projects/-Users-me-src-app`）。`pwd` の結果から組み立て、`ls` で存在を確認してから書く
+- `--latest` は mtime が最新の 1 セッション（= この実行）だけを集計する。別セッションを後から開いた場合は
+  `--latest` を外して全セッションを出し、`token-report.md` の session 列で選ぶ
 
 **todo.md サマリの算出:**
 
