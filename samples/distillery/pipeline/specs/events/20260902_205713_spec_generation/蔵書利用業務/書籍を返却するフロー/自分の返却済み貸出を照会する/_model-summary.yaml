@@ -1,0 +1,68 @@
+# _model-summary.yaml
+uc: "自分の返却済み貸出を照会する"
+business: "蔵書利用業務"
+buc: "書籍を返却するフロー"
+
+bounded_context_id: "BC-003"
+
+models:
+  - name: "返却完了確認画面（LoanTable / LoanStatusBadge / Alert / EmptyState）"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "LoanListResponse"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "response"
+    rdra_info: "貸出"
+  - name: "LoanListResponse"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "response-dto"
+    rdra_info: "貸出"
+  - name: "ListMyReturnedLoansQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出"
+  - name: "Loan"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "貸出"
+  - name: "ReturnedDate"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "貸出"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "LoanRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :authenticated_user_no AND loan_status = '返却済み' ORDER BY returned_at DESC LIMIT :per_page OFFSET :offset（書誌は loans の非正規化スナップショット列 book_title / book_author / book_isbn / book_genre から取得し、books は参照しない。書籍が削除されて book_id が NULL でも貸出当時の書誌を表示できる）"
+    indexes_needed:
+      - columns: ["user_no", "loan_status", "returned_at"]
+        reason: "本人限定参照の絞り込み（user_no）+ 返却済みの状態フィルタ（loan_status）+ 返却日降順ソート（returned_at）を 1 インデックスで賄う。返却済みは年々蓄積されるため索引なしの走査は避ける"
+        access_pattern: "利用者番号で絞り込み、貸出状態が返却済みの貸出を返却日の降順で 20 件ずつ取得"
+
+kvs: []
+object_storage: []

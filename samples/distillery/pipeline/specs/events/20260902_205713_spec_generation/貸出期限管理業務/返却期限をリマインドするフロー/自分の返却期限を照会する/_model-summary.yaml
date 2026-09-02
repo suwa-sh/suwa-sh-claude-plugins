@@ -1,0 +1,89 @@
+# _model-summary.yaml
+uc: "自分の返却期限を照会する"
+business: "貸出期限管理業務"
+buc: "返却期限をリマインドするフロー"
+
+bounded_context_id: "BC-003"
+
+models:
+  - name: "返却期限リマインド確認画面"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "MyDueLoanListResponse"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "MyDueLoansRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "貸出"
+  - name: "ListMyDueLoansQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出"
+  - name: "所有者ベースの認可判定"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "利用者アカウント"
+  - name: "LoanFinder"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "LoanRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :認証利用者番号 AND loan_status = '貸出中' AND due_date BETWEEN :base_date AND :base_date + :remind_days"
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :認証利用者番号 AND loan_status = '延滞'（overdue_count の集計）"
+    indexes_needed:
+      - columns: ["user_no", "loan_status", "due_date"]
+        reason: "本人限定参照（個人情報参照可否条件）で利用者番号を必ず先頭条件に置き、貸出状態と返却期限で絞り込むため"
+        access_pattern: "利用者番号 + 貸出状態 + 返却期限範囲の絞り込みと期限昇順ソート"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = loans.book_id（タイトル・著者の取得）"
+    indexes_needed: []
+  - name: "user_accounts"
+    rdra_info: "利用者アカウント"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "account_id = :認証アカウントID（役割と利用者番号の解決）"
+    indexes_needed:
+      - columns: ["account_id"]
+        reason: "認証コンテキストから役割・利用者番号を解決するため"
+        access_pattern: "アカウントIDの完全一致検索"
+
+kvs:
+  - key_pattern: "session:account:{session_id}"
+    purpose: "session"
+    value_type: "利用者アカウントID・利用者番号・役割・トークン有効期限"
+    ttl: "有効期限まで（既定 1h）"
+    operations: ["GET"]
+
+object_storage: []

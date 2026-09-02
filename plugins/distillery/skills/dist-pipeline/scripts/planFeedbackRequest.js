@@ -265,6 +265,53 @@ function deriveRepositoryHead(artifactRoot, suppliedValue) {
   }
 }
 
+// latest tree の hash から Git 管理外（.gitignore 該当）の entry を除く。
+// node_modules / storybook-static / .next 等のビルド成果物は domain artifact ではなく、環境ごとに変わる
+// （clean checkout には存在しない）ため、含めると basis が可搬でなくなり verifier が
+// 「observed domain root changed without an appended event directory」で fail する。
+// 除外規則は worktree 内の各ディレクトリの .gitignore だけ（`--exclude-per-directory=.gitignore`）。
+// `--exclude-standard` は `.git/info/exclude` とユーザーの global excludesFile も適用するため、同じ checkout でも
+// 実行環境で hash 対象が変わり、可搬性が崩れる（かつ未追跡ファイル追加の検知を環境依存で回避できる）ので使わない。
+// 残存する脅威: worktree 内の .gitignore を書き換えれば latest 配下の entry を hash から外せる。ただし .gitignore の変更は
+// git diff で可視であり、feedback run の basis は repository_head とともに記録されるため、ここでは許容する。
+// artifact root が Git worktree の外なら除外なし（従来どおり全 entry を hash する）。worktree 内で git が失敗した場合は
+// 黙って除外なしへ倒さず fail-closed にする（非可搬 hash や ignored symlink エラーが理由不明のまま再発するのを防ぐ）。
+// 戻り値: latestDirectory からの相対 path の Set。ignored directory は末尾 "/" 付きで入る。
+function listGitIgnoredEntries(artifactRoot, latestDirectory) {
+  const ignored = new Set();
+  const rootBoundary = path.resolve(artifactRoot);
+  const latestBoundary = path.resolve(latestDirectory);
+  const gitOptions = { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 };
+  let insideWorktree = false;
+  try {
+    insideWorktree = execFileSync('git', ['-C', rootBoundary, 'rev-parse', '--is-inside-work-tree'], gitOptions).trim() === 'true';
+  } catch {
+    // git 未導入 / Git 管理外 / 権限エラー: 従来どおり全 entry を hash する
+    return ignored;
+  }
+  if (!insideWorktree) return ignored;
+  let output;
+  try {
+    output = execFileSync('git', [
+      '-C', rootBoundary,
+      'ls-files', '-z', '--others', '--ignored', '--exclude-per-directory=.gitignore', '--directory',
+      '--', latestBoundary,
+    ], gitOptions);
+  } catch (error) {
+    const detail = (error.stderr || error.message || '').toString().trim().split('\n')[0];
+    throw new Error(`git-ignored entries of the domain latest tree cannot be listed inside a Git worktree: ${detail}`);
+  }
+  for (const entry of output.split('\0')) {
+    if (!entry) continue;
+    const absolute = path.resolve(rootBoundary, entry);
+    const relative = path.relative(latestBoundary, absolute);
+    if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) continue;
+    const posix = relative.split(path.sep).join('/');
+    ignored.add(entry.endsWith('/') ? `${posix}/` : posix);
+  }
+  return ignored;
+}
+
 function snapshotDomainEventRoots(artifactRoot, catalog) {
   if (!artifactRoot) return emptyDomainEventRootSnapshots(catalog);
   const rootBoundary = path.resolve(artifactRoot);
@@ -337,10 +384,13 @@ function snapshotDomainEventRoots(artifactRoot, catalog) {
         }
       }
       const members = [];
+      const gitIgnored = listGitIgnoredEntries(rootBoundary, latestDirectory);
       const walkLatest = (directory, relativeDirectory = '') => {
         for (const entry of fs.readdirSync(directory).sort(compareCodePoints)) {
           const candidate = path.join(directory, entry);
           const relative = relativeDirectory ? `${relativeDirectory}/${entry}` : entry;
+          // .gitignore 該当（ビルド成果物等）は symlink 検査より前に除外する（node_modules/.bin の symlink で fail しない）
+          if (gitIgnored.has(relative) || gitIgnored.has(`${relative}/`)) continue;
           const stat = fs.lstatSync(candidate);
           if (stat.isSymbolicLink()) throw new Error(`domain latest tree must not contain symlinks: ${relativeRoot}/${relative}`);
           if (stat.isDirectory()) walkLatest(candidate, relative);

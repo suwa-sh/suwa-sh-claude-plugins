@@ -1,0 +1,62 @@
+event_id: "20260902_204527_design_system"
+trigger_event:
+  rdra: "20260902_130741_initial_build"
+  arch: "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+created_at: "2026-09-02T20:45:27"
+source: "dist-design-system feedback 差分実行 (feedback_packet=docs/pipeline/feedback-runs/20260902_213000_impl_feedback_d0f57ea2/stage-packets/design_system.md)。loading 表現の component を名前から解決できるよう components.ui[] に path / exports / usage を追加し、LoadingState の利用条件に import 規約を明記"
+feedback_request:
+  feedback_request_id: "20260902_213000_impl_feedback_d0f57ea2"
+  input_sha256: "ec85158bc13b54b63c3b96567bb1206417360ee13594fac713374fffa89c64fb"
+  request_ids: ["CR-d0f57ea2-006"]
+  work_unit_ids: ["CR-d0f57ea2-006#1"]
+
+components:
+  ui:
+    - name: "Button"
+      path: "src/components/ui/Button.tsx"
+      exports: ["Button"]
+    - name: "Badge"
+      path: "src/components/ui/Badge.tsx"
+      exports: ["Badge"]
+    - name: "Card"
+      path: "src/components/ui/Card.tsx"
+      exports: ["Card","CardHeader"]
+    - name: "Input"
+      path: "src/components/ui/Input.tsx"
+      exports: ["Input"]
+    - name: "ToggleGroup"
+      path: "src/components/ui/ToggleGroup.tsx"
+      exports: ["ToggleGroup"]
+    - name: "Table"
+      path: "src/components/ui/Table.tsx"
+      exports: ["Table"]
+    - name: "Alert"
+      path: "src/components/ui/Feedback.tsx"
+      exports: ["Alert"]
+    - name: "EmptyState"
+      path: "src/components/ui/Feedback.tsx"
+      exports: ["EmptyState"]
+    - name: "Skeleton"
+      path: "src/components/ui/Feedback.tsx"
+      exports: ["Skeleton","SkeletonTable","SkeletonCard","SkeletonDetail"]
+      usage: "loading 中の領域形状プレースホルダ。画面から直接使わず common/LoadingState 経由で使う（kind=list/card/detail/line）"
+    - name: "Spinner"
+      path: "src/components/ui/Feedback.tsx"
+      exports: ["Spinner"]
+      usage: "loading 中の回転インジケータ。画面から直接使わず common/LoadingState 経由で使う（kind=action/page）"
+    - name: "Pagination"
+      path: "src/components/ui/Pagination.tsx"
+      exports: ["Pagination"]
+    - name: "Modal"
+      path: "src/components/ui/Modal.tsx"
+      exports: ["Modal"]
+    - name: "Icon"
+      path: "src/components/ui/Icon.tsx"
+      exports: ["Icon","iconNames"]
+    - name: "PortalShell"
+      path: "src/components/ui/PortalShell.tsx"
+      exports: ["PortalShell","staffNav","patronNav"]
+  common:
+    - name: "LoadingState"
+      description: "loading 表現の唯一の入口。kind で Skeleton / Spinner を出し分ける（list=SkeletonTable / card=SkeletonCard / detail=SkeletonDetail / line=Skeleton / action=Spinner(inline) / page=Spinner(overlay)）。同一領域で Skeleton と Spinner を併用せず、常に aria-busy と読み上げラベルを伴う。ちらつきが問題になる領域だけ delayMs（推奨 300ms）で遅延表示する。画面側で独自 loading UI を作ってはならない。画面実装は LoadingState だけを import し、Skeleton / Spinner を直接 import しない（実体は components.ui[].path = src/components/ui/Feedback.tsx に同居する）"
+      path: "src/components/common/LoadingState.tsx"

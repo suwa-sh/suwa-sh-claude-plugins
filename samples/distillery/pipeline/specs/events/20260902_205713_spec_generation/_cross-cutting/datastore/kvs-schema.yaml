@@ -1,0 +1,122 @@
+version: "1.0"
+datastore: "kvs"
+
+# キー命名規則: {目的}:{種別}:{識別子} のコロン区切り階層。
+#   目的: session（セッション） / idem（冪等キー） / lock（排他） / cache（キャッシュ）
+#   同じ目的のキーを {目的}:* でスキャンできるようにする。
+# 各 UC の _model-summary.yaml のキーパターンを本規則へ正規化して統合した（元の表記は description に併記）。
+
+key_patterns:
+  - pattern: "session:account:{session_id}"
+    purpose: "session"
+    value_type: "セッション情報（account_id / user_no / role / access_token / expires_at）。arch E-901「セッション情報」に対応する"
+    ttl: "IdP のアクセストークン有効期限まで（既定 1h）"
+    used_by:
+      - "利用者番号で貸出対象利用者を特定する"
+      - "自分の延滞中の貸出を照会する"
+      - "自分の返却期限を照会する"
+    description: "ログイン済み操作者のセッションを保持する。認証コンテキストから利用者アカウントID・利用者番号・役割を解決し、RBAC の粗粒度判定（NFR E.5.2.1）と本人限定参照（個人情報参照可否条件）の判定に使う。RDB へは永続化せず TTL で自動失効させる。操作: GET / SET / DEL。元表記: session:{session_id}"
+
+  - pattern: "idem:api:{operation_id}:{idempotency_key}"
+    purpose: "idem"
+    value_type: |
+      冪等レコード（JSON）。次の 4 フィールドを持つ。
+      state: "in_progress" | "completed"（処理中か完了か）、
+      request_fingerprint: 正規化リクエストの SHA-256 16 進小文字（下記「冪等キーの判定規則」）、
+      response_status: 完了時の HTTP ステータス（例: 201）、
+      response_body: 完了時のレスポンス本文（採番した ID を含む）。
+      state = "in_progress" のとき response_status / response_body は null。
+    ttl: "24h"
+    used_by:
+      - "書籍を登録する"
+      - "書籍情報を編集する"
+      - "書籍を削除する"
+      - "利用者を登録する"
+      - "利用者情報を編集する"
+      - "利用者を削除する"
+      - "貸出を登録する"
+      - "返却を登録する"
+      - "返却後の書籍状態を更新する"
+      - "予約を登録する"
+      - "予約を取り消す"
+      - "取置き通知メールを送信する"
+      - "督促メールを送信する"
+      - "リマインドメールを送信する"
+      - "在庫状況を区分別に集計する"
+      - "期間別貸出統計を集計する"
+    behavior:
+      canonical_request: |
+        request_fingerprint は「HTTP メソッド + パス（パスパラメータの実値を含む）+
+        リクエストボディの正規化 JSON（キー昇順・空白なし・null 項目は省略しない）」を
+        UTF-8 で連結した文字列の SHA-256 とする。`Authorization` / `traceparent` /
+        `X-Idempotency-Key` 自体はフィンガープリントに含めない。
+      cases:
+        - case: "キー未存在"
+          action: "state=in_progress・request_fingerprint 付きで SET（NX）してから本処理を実行し、成功後に state=completed とレスポンスを保存する"
+          http: "本処理どおり（201 等）"
+        - case: "同一キー・同一 request_fingerprint・state=completed"
+          action: "本処理を再実行せず、保存済みの response_status / response_body をそのまま返す"
+          http: "保存済みの成功ステータス（例: 201）。`Idempotency-Replayed: true` を付与する"
+        - case: "同一キー・同一 request_fingerprint・state=in_progress"
+          action: "先行処理が未完了のため本処理を開始しない"
+          http: "409 `IDEMPOTENCY_KEY_IN_PROGRESS`（`Retry-After: 1` を付与する）"
+        - case: "同一キー・異なる request_fingerprint"
+          action: "別内容の要求に同じキーが再利用された誤りとして、本処理を実行しない。保存済みレコードは書き換えない"
+          http: "409 `IDEMPOTENCY_KEY_CONFLICT`"
+        - case: "本処理が業務エラー（4xx）で終了"
+          action: "冪等レコードを削除し、同一キーでの再試行を許す（失敗結果はリプレイしない）"
+          http: "本処理どおりの 4xx"
+        - case: "TTL 24h 経過後の再送"
+          action: "キー未存在として扱い、本処理を実行する（重複作成の防御は業務側の一意制約に委ねる）"
+          http: "本処理どおり"
+    description: "更新系 API の二重送信を抑止する冪等キー（arch SR-002）。operation_id は OpenAPI の operationId（createUser / updateUser / deleteUser / createLoan / registerLoanReturn / restockBook / createReservation / cancelReservation / sendHoldNotice / resendNotification / createInventoryReport / createLoanStatsReport / createBook / updateBook / deleteBook 等）を用い、HTTP メソッドとパスを直接キーに埋め込まない。同一キーの再送には前回結果をそのまま返す。操作: GET / SET。元表記: idempotency:POST:/api/v1/users:{key}, idempotency:PUT:/api/v1/users/{user_no}:{key}, idempotency:DELETE:/api/v1/users/{user_no}:{key}, idempotency:loan:{key}, idempotency:return:{key}, idempotency:restock:{key}, idem:reservation:create:{key}, idem:reservation:cancel:{key}, idem:notification:request:{key}, api:idem:{X-Idempotency-Key}"
+
+  - pattern: "idem:notification:loan:{notification_type}:{target_loan_id}:{timing_type}:{base_date}"
+    purpose: "idem"
+    value_type: "生成済みの通知ID（送信要求の発行済みマーカー）"
+    ttl: "7d"
+    used_by:
+      - "返却期限接近の貸出を判定する"
+      - "リマインドメールを送信する"
+      - "期限超過の貸出を延滞にする"
+      - "督促メールを送信する"
+    description: "返却期限リマインドと延滞督促の重複送信を抑止する（arch SR-018）。日次判定ジョブの再実行と MQ の at-least-once 配信の両方で同じキーになるよう、通知種別・対象貸出ID・通知タイミング区分・判定基準日から決定的に生成する。RDB の notification_idempotency_keys と二重に保持し、KVS 消失時は RDB 側が最終防御となる。操作: GET / SET。元表記: notif:idem:{通知種別}:{対象貸出ID}:{通知タイミング区分}:{base_date}"
+
+  - pattern: "idem:notification:reservation:{notification_type}:{target_reservation_id}"
+    purpose: "idem"
+    value_type: "生成済みの通知ID"
+    ttl: "24h"
+    used_by:
+      - "取置き通知メールを送信する"
+    description: "取置き案内メールの重複送信を抑止する（取置き通知対象条件）。予約1件につき取置き案内は1回のため判定基準日を含めない。RDB の notification_idempotency_keys（arch E-902）と二重に保持する。操作: GET / SET。元表記: notify:idem:取置き案内:{reservation_id}"
+
+  - pattern: "idem:mq:consumed:{message_id}"
+    purpose: "idem"
+    value_type: "消費済みマーカー（処理結果コード）"
+    ttl: "24h"
+    used_by:
+      - "リマインドメールを送信する"
+      - "督促メールを送信する"
+      - "在庫状況を区分別に集計する"
+      - "期間別貸出統計を集計する"
+    description: "非同期ワーカーが MQ の at-least-once 配信による同一メッセージの再処理を検知する。業務単位の冪等キー（idem:notification:*）より手前の粗い防御として働く。操作: GET / SET。元表記: mq:consumed:{message_id}"
+
+  - pattern: "lock:job:{job_name}:{base_date}"
+    purpose: "lock"
+    value_type: "ジョブ実行ID・実行状態（実行中／完了）・遷移件数・遷移対象ID一覧"
+    ttl: "7d"
+    used_by:
+      - "期限超過の貸出を延滞にする"
+      - "返却期限接近の貸出を判定する"
+    description: "日次バッチの同一基準日での多重起動を防ぎ、実行結果を保持する。job_name は overdue-judge（期限超過判定）と upcoming-due-judge（返却期限接近判定）。当日の遷移件数・遷移対象貸出ID一覧の正本であり、返却期限からの逆算による再構築を不要にする。操作: GET / SET。元表記: job:exec:overdue-judge:{base_date}, job:exec:upcoming-due-judge:{base_date}"
+
+  - pattern: "cache:reservation:rank:{book_id}"
+    purpose: "cache"
+    value_type: "同一書籍の有効予約件数（integer）"
+    ttl: "60s"
+    used_by:
+      - "自分の予約順位を照会する"
+      - "予約を登録する"
+      - "予約を取り消す"
+      - "取置き通知メールを送信する"
+    description: "予約順位表示に使う書籍単位の有効予約件数をキャッシュする。生成・参照は「自分の予約順位を照会する」が行い、破棄（DEL）は予約状態を変える「予約を登録する」「予約を取り消す」「取置き通知メールを送信する」が行う。予約の登録・取消で明示的に破棄（DEL）し、取りこぼしに備えて短い TTL を併用する。操作: GET / SET / DEL"

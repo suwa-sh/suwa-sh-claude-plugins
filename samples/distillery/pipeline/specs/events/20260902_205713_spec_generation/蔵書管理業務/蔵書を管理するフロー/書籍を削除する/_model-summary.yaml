@@ -1,0 +1,92 @@
+uc: "書籍を削除する"
+business: "蔵書管理業務"
+buc: "蔵書を管理するフロー"
+
+bounded_context_id: "BC-001"
+aggregate_id: "AG-001"
+
+models:
+  - name: "除籍手続画面(BookWithdrawalView)"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "書籍"
+  - name: "WithdrawalState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "書籍"
+  - name: "WithdrawBookApiClient"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "書籍"
+  - name: "WithdrawBookRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "CheckWithdrawalEligibilityQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "書籍"
+  - name: "WithdrawBookCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "BookRepository"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "ReservationQueryPort"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "query"
+    rdra_info: "予約"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = ?（対象書籍と書籍状態の取得）"
+      - type: "DELETE"
+        columns: []
+        where: "book_id = ? AND book_status = '在庫あり'（蔵書削除可否条件）"
+    indexes_needed:
+      - columns: ["book_id"]
+        reason: "1 件取得・削除の主キーアクセス"
+        access_pattern: "WHERE book_id = ? AND book_status = '在庫あり'"
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = ? AND reservation_status IN ('予約中','取置き中')（有効予約件数の集計。予約コンテキストの公開インターフェース経由）"
+    indexes_needed:
+      - columns: ["book_id", "reservation_status"]
+        reason: "対象書籍の有効な予約件数を数えるため"
+        access_pattern: "SELECT COUNT(*) WHERE book_id = ? AND reservation_status IN (...)"
+
+kvs:
+  - key_pattern: "idem:api:deleteBook:{idempotency_key}"
+    purpose: "idem"
+    description: "冪等キー検証（書籍削除の二重送信防止）"
+    value_type: "前回処理結果（削除済み書籍IDと204ステータス）"
+    ttl: "24h"
+    operations: ["GET", "SET"]
+object_storage: []

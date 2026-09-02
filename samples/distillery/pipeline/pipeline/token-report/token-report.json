@@ -2,6 +2,7 @@
   "sessions": [
     "8a715924-18ea-4d58-8ac7-308c8d5e82a8",
     "9033d2b9-f768-4382-83c7-90822403b812",
+    "cf22a464-38c5-4781-a605-93148a64088e",
     "f5947081-7f33-48fd-ae2d-937b559204d2"
   ],
   "weights": {
@@ -346,6 +347,86 @@
       "model": "claude-opus-5",
       "reported_tokens": null,
       "cost": 1120803.8
+    },
+    {
+      "session": "cf22a464-38c5-4781-a605-93148a64088e",
+      "agent": "main",
+      "description": "(orchestrator)",
+      "spawn_depth": 0,
+      "agent_type": null,
+      "msgs": 97,
+      "input": 194,
+      "cache_creation": 197660,
+      "cache_read": 13013612,
+      "output": 53466,
+      "max_context": 207897,
+      "model": "claude-opus-5",
+      "reported_tokens": null,
+      "cost": 1548630.2000000002
+    },
+    {
+      "session": "cf22a464-38c5-4781-a605-93148a64088e",
+      "agent": "a6ba9828e604220a3",
+      "description": "spec_stories feedback stage",
+      "spawn_depth": 1,
+      "agent_type": "general-purpose",
+      "msgs": 15,
+      "input": 30,
+      "cache_creation": 71962,
+      "cache_read": 859000,
+      "output": 2045,
+      "max_context": 71964,
+      "model": "claude-sonnet-5",
+      "reported_tokens": 73275,
+      "cost": 175882.5
+    },
+    {
+      "session": "cf22a464-38c5-4781-a605-93148a64088e",
+      "agent": "a92c10938d0b1feac",
+      "description": "Review spec feedback diff",
+      "spawn_depth": 2,
+      "agent_type": "general-purpose",
+      "msgs": 12,
+      "input": 24,
+      "cache_creation": 62912,
+      "cache_read": 538865,
+      "output": 211,
+      "max_context": 62914,
+      "model": "claude-sonnet-5",
+      "reported_tokens": null,
+      "cost": 132550.5
+    },
+    {
+      "session": "cf22a464-38c5-4781-a605-93148a64088e",
+      "agent": "abd7231d42d45be45",
+      "description": "spec feedback stage",
+      "spawn_depth": 1,
+      "agent_type": "general-purpose",
+      "msgs": 86,
+      "input": 172,
+      "cache_creation": 168139,
+      "cache_read": 10271398,
+      "output": 9988,
+      "max_context": 175383,
+      "model": "claude-opus-5",
+      "reported_tokens": 179561,
+      "cost": 1237485.55
+    },
+    {
+      "session": "cf22a464-38c5-4781-a605-93148a64088e",
+      "agent": "acd252862972428b4",
+      "description": "design_system feedback stage",
+      "spawn_depth": 1,
+      "agent_type": "general-purpose",
+      "msgs": 56,
+      "input": 112,
+      "cache_creation": 112401,
+      "cache_read": 4399153,
+      "output": 9362,
+      "max_context": 112403,
+      "model": "claude-opus-5",
+      "reported_tokens": 115701,
+      "cost": 580528.55
     },
     {
       "session": "f5947081-7f33-48fd-ae2d-937b559204d2",
@@ -2077,12 +2158,12 @@
     }
   ],
   "totals": {
-    "agents": 129,
-    "msgs": 4374,
-    "input": 8742,
-    "cache_creation": 16357529,
-    "cache_read": 498344731,
-    "output": 1204191,
-    "cost": 70290126.34999998
+    "agents": 134,
+    "msgs": 4640,
+    "input": 9274,
+    "cache_creation": 16970603,
+    "cache_read": 527426759,
+    "output": 1279263,
+    "cost": 73965203.64999998
   }
 }

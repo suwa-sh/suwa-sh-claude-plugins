@@ -1,0 +1,78 @@
+# _api-summary.yaml
+uc: "自分の現在の貸出を照会する"
+business: "利用照会業務"
+buc: "貸出履歴を確認するフロー"
+endpoints:
+  - operation_id: "listMyLoans"
+    method: "GET"
+    path: "/api/v1/me/loans"
+    summary: "ログイン中の利用者本人の貸出中・延滞の貸出と返却期限を取得する（status=current）"
+    request_schema: "ListMyLoansQueryParams"
+    response_schema: "MyLoanListResponse"
+    tags: ["マイページ", "貸出"]
+async_events: []
+# cross-UC API 依存（他 UC 所有 operation の利用）。形式は
+# _cross-cutting/api/uc-api-dependencies.md「記録場所と形式」を正本とする。
+# 本 UC は自 UC 所有の listMyLoans だけで成立する
+# （貸出内容・返却期限確認画面への遷移は画面遷移であり API 呼び出しではない）。
+consumes: []
+schemas:
+  - name: "ListMyLoansQueryParams"
+    properties:
+      - name: "status"
+        type: "string"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: false
+      - name: "per_page"
+        type: "integer"
+        required: false
+  - name: "BookBrief"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+  - name: "MyLoanListItem"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+      - name: "book"
+        type: "BookBrief"
+        required: true
+      - name: "loan_date"
+        type: "string"
+        required: true
+      - name: "loan_period_type"
+        type: "string"
+        required: true
+      - name: "due_date"
+        type: "string"
+        required: true
+      - name: "loan_status"
+        type: "string"
+        required: true
+      - name: "days_remaining"
+        type: "integer"
+        required: true
+  - name: "MyLoanListResponse"
+    properties:
+      - name: "items"
+        type: "array<MyLoanListItem>"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true

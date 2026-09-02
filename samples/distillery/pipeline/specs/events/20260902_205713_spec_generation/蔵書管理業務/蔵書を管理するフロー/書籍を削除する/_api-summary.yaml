@@ -1,0 +1,36 @@
+uc: "書籍を削除する"
+business: "蔵書管理業務"
+buc: "蔵書を管理するフロー"
+endpoints:
+  - operation_id: "getBookWithdrawalEligibility"
+    method: "GET"
+    path: "/api/v1/books/{book_id}/withdrawal-eligibility"
+    summary: "蔵書削除可否条件の判定結果と未充足理由を取得する"
+    response_schema: "WithdrawalEligibilityResponse"
+    tags: ["books"]
+  - operation_id: "deleteBook"
+    method: "DELETE"
+    path: "/api/v1/books/{book_id}"
+    summary: "書籍を蔵書から削除（除籍）する"
+    response_schema: "NoContent"
+    tags: ["books"]
+async_events: []
+consumes: []
+schemas:
+  - name: "WithdrawalEligibilityResponse"
+    properties:
+      - name: "book"
+        type: "BookSummary"
+        required: true
+      - name: "deletable"
+        type: "boolean"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "active_reservation_count"
+        type: "integer"
+        required: true
+      - name: "reasons"
+        type: "array<string>"
+        required: true

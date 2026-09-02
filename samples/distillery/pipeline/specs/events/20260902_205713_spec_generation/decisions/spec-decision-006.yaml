@@ -1,0 +1,50 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-006"
+title: "利用者識別情報は Bearer トークンのクレームだけで送り、401 を 3 コードに限定する"
+status: "approved"
+generated_at: "2026-09-02T19:10:46+09:00"
+context: |
+  実装フィードバック CR-d0f57ea2-004 で、統合テスト時に利用者識別子の送信方法が API 契約に
+  定義されておらず、実装側が暫定の独自ヘッダを注入していたことが判明した。
+
+  - 認証方式は NFR / arch で「外部マネージド IdP（OAuth2/OIDC）+ API Gateway 検証」に確定している。
+  - しかし OpenAPI 側は `bearerAuth` の存在だけを示し、どのクレームが必須か、
+    欠落・期限切れ・ロール不足をどう区別するかを規定していなかった。
+  - 401 応答のスキーマも汎用 `ErrorResponse` で、`code` の値域が未定義だった。
+  - クライアント・サーバー・テストスタブが同じ実装へ収束しない状態だった。
+decision: |
+  利用者識別情報の送信方法を `openapi.yaml` の `info.description` に「全 operation 共通の唯一の契約」
+  として明文化し、次のとおり確定した。
+
+  1. **識別情報は `Authorization: Bearer {access_token}` の JWT クレームだけで送る**。
+     `X-User-No` / `X-User-Id` / `X-Role` のような識別用の独自ヘッダは定義せず、
+     送られても無視する（テスト・スタブでも同じ）。
+  2. **必須クレーム**は `sub`（アカウントID）/ `role`（司書 | 利用者）/ `exp` とし、
+     `role = 利用者` のときに限り `user_no` も必須とする。本人限定参照の絞り込みは
+     クレームの `user_no` だけを入力とし、ボディ・クエリの利用者番号を本人判定に使わない。
+  3. **検証責務を 2 段に分ける**。API Gateway が署名・`exp`・`iss` / `aud` を検証し、
+     バックエンド API は必須クレームの存在と型を再検証する。
+  4. **401 の値域を 3 つに限定**する。`UNAUTHENTICATED`（ヘッダ欠落 / Bearer 以外 / 署名不正）、
+     `TOKEN_EXPIRED`（`exp` 超過）、`IDENTITY_CLAIM_MISSING`（必須クレーム欠落）。
+     専用スキーマ `UnauthorizedResponse` と enum `UnauthorizedCode` を定義した。
+  5. **401 と 403 の境界を明示**する。認証が成立していてロール・所有者が不足する場合は 403 とする。
+  6. 全 401 応答に `WWW-Authenticate: Bearer realm="libra", error="invalid_token",
+     error_description="{code}"` を必須ヘッダとして定義した（RFC 6750 準拠）。
+consequences:
+  positive:
+    - "クライアント・サーバー・統合テストが推測なしに同じ認証ヘッダとエラー応答を実装できる"
+    - "401 の code が enum になり、フロントエンドの再ログイン導線の分岐が契約から生成できる"
+    - "識別用の独自ヘッダを禁止したため、ヘッダ偽装による権限昇格の経路が仕様上存在しない"
+    - "401 と 403 の使い分けが固定され、認可エラーの誤分類が起きない"
+  negative:
+    - "クレーム構成を変える際は IdP 設定と OpenAPI の両方を同時に更新する必要がある"
+    - "テストで任意の利用者になりすますには署名済みトークンの発行が必要で、ヘッダ差し替えより手間がかかる"
+alternatives_considered:
+  - name: "識別用の独自ヘッダ（X-User-No 等）を正式契約として定義する"
+    reason_rejected: "Gateway を経由しない経路でヘッダを偽装できるため、認可の根拠にできない。実装側の暫定対応をそのまま正式化することになる"
+  - name: "401 の code を汎用 ErrorResponse のまま自由文字列にする"
+    reason_rejected: "生成される型が string のままで、フロントエンドの分岐が文字列推測になる。CR-d0f57ea2-004 の完了条件を満たさない"
+  - name: "ロール不足も 401 に含める（401 / 403 を区別しない）"
+    reason_rejected: "再ログインで解決する事象と解決しない事象が同じコードになり、利用者への導線が誤る"

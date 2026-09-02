@@ -209,7 +209,7 @@
 | useListQueryState | 一覧の検索条件・ページをクエリパラメータ相当の状態と同期する（画面をまたぐ共有状態を持たない） |
 | useIdempotentMutation | 画面表示時に冪等キー（UUID）を発行し、送信・再送で同一キーを維持する |
 | useApiErrorPresenter | API エラーを4分類（通信/認可/業務ルール違反/競合）に正規化し、表示先と重篤度を決める |
-| LoadingState | loading 表現の唯一の入口。kind で Skeleton / Spinner を出し分ける（list=SkeletonTable / card=SkeletonCard / detail=SkeletonDetail / line=Skeleton / action=Spinner(inline) / page=Spinner(overlay)）。同一領域で Skeleton と Spinner を併用せず、常に aria-busy と読み上げラベルを伴う。ちらつきが問題になる領域だけ delayMs（推奨 300ms）で遅延表示する。画面側で独自 loading UI を作ってはならない |
+| LoadingState | loading 表現の唯一の入口。kind で Skeleton / Spinner を出し分ける（list=SkeletonTable / card=SkeletonCard / detail=SkeletonDetail / line=Skeleton / action=Spinner(inline) / page=Spinner(overlay)）。同一領域で Skeleton と Spinner を併用せず、常に aria-busy と読み上げラベルを伴う。ちらつきが問題になる領域だけ delayMs（推奨 300ms）で遅延表示する。画面側で独自 loading UI を作ってはならない。画面実装は LoadingState だけを import し、Skeleton / Spinner を直接 import しない（実体は components.ui[].path = src/components/ui/Feedback.tsx に同居する） |
 | AppShell | アプリのエントリポイント兼シェル（AppShell / AppShellByPath）。ルート id または URL からポータル・画面名・アクティブナビを解決し、404 とポータル外アクセスを判定する。デザインシステムが所有し、実装リポは onNavigate に router.push を注入して children にページ本体を渡すだけにする |
 | appRoutes | URL の正本となるルート表（41 件）。screens[].route と 1:1 で route id / path / portal / 画面 / UC / 業務 / nav / params を定義する。getRoute・buildPath・matchPath・routesOf を提供し、画面側の URL 文字列直書きを禁止する。RDRA の BUC / 画面に無いルートを追加してはならない |
 | useAppNavigation | 画面遷移の唯一の API。ルート id 指定で navigate / href を行い、AppShell の外で使うと例外にしてシェル未装着を早期検出する |

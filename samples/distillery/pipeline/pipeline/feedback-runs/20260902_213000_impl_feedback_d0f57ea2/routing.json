@@ -1,0 +1,260 @@
+{
+  "schema_version": "distillery.feedback-routing/v1",
+  "feedback_request_id": "20260902_213000_impl_feedback_d0f57ea2",
+  "input_sha256": "ec85158bc13b54b63c3b96567bb1206417360ee13594fac713374fffa89c64fb",
+  "policy": "recommended_auto",
+  "routing_basis": {
+    "ownership_catalog_version": "1.0.0",
+    "ownership_catalog_sha256": "801750c2abe99945a3de9387b82339b2bc96ccb2da564f9923cc0e9b76a2bd39",
+    "routing_policy_version": "1.1.0",
+    "routing_policy_sha256": "3873275bf4adb3d9d7b7c41c22c9463d054a3614df7bbcab7514f0c1e23e166e",
+    "prompt_schema_sha256": "bf7c7f34d7a2fc5976ccd2589a454172a4630e1448c509966b620f88029732c4",
+    "stage_packet_renderer_version": "1",
+    "skipped_stages": [],
+    "repository_head": "e3afca0e19a8be7b787d8f9ab5e15decac043325",
+    "latest_domain_event_ids": {
+      "requirements": {
+        "rdra/events": "20260902_130741_initial_build",
+        "usdm/events": "20260902_130741_initial_build"
+      },
+      "quality_attributes": {
+        "nfr/events": "20260902_132551_initial_nfr"
+      },
+      "architecture": {
+        "arch/events": "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+      },
+      "infrastructure": {
+        "infra/events": "20260902_142349_infra_product_design"
+      },
+      "design_system": {
+        "design/events": "20260902_201117_spec_stories"
+      },
+      "spec": {
+        "specs/events": "20260902_191046_spec_generation"
+      },
+      "spec_stories": {
+        "design/events": "20260902_201117_spec_stories"
+      }
+    },
+    "domain_event_root_snapshots": {
+      "rdra/events": {
+        "head_event_id": "20260902_130741_initial_build",
+        "head_event_sha256": "fb6f06d93a05c4e93975bcad30721ab0ec99ae0b0ec9b9a68f1673650263cf91",
+        "event_ids": [
+          "20260902_130741_initial_build"
+        ],
+        "event_set_sha256": "047e04aa23237bfc38d8642cdbf47c6c1274788f60a5eac4df6c3a0cc3c07a03",
+        "latest_tree_sha256": "900230113d3a6312605b4a55c4d0daf37f952f709a8e1e58b24724681a403308"
+      },
+      "usdm/events": {
+        "head_event_id": "20260902_130741_initial_build",
+        "head_event_sha256": "f4e61d85a24da5570608bc0e71beb35d54412523b8355bfd9da76812988f66c1",
+        "event_ids": [
+          "20260902_130741_initial_build"
+        ],
+        "event_set_sha256": "047e04aa23237bfc38d8642cdbf47c6c1274788f60a5eac4df6c3a0cc3c07a03",
+        "latest_tree_sha256": "fe6f8dad183689f0b10911f4d161bdfbcc32553525f01caccd34c92c8e68c20a"
+      },
+      "nfr/events": {
+        "head_event_id": "20260902_132551_initial_nfr",
+        "head_event_sha256": "acbf930e512ed305e483cd956d08cfb498100d1bfad5f164b0debea84b6b9390",
+        "event_ids": [
+          "20260902_132551_initial_nfr"
+        ],
+        "event_set_sha256": "ebf719352242441145d489c70c100ec001917c92a68f7fe019d1129419c13d78",
+        "latest_tree_sha256": "c415d8f502720d31c0a2770c1194bf55fd18a80ef49d13dad7e07e15d1b5c5e2"
+      },
+      "arch/events": {
+        "head_event_id": "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design",
+        "head_event_sha256": "fe544edc2e0ed6c0d8898a0e5538fd8bf14f75405657e29c3b3f78febaffb9eb",
+        "event_ids": [
+          "20260902_133544_initial_arch",
+          "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+        ],
+        "event_set_sha256": "68a5a647be2c143f41aa4e67f3cc4be2a97c66bce0bdd702e26ad68eb5ae3be8",
+        "latest_tree_sha256": "26049abca8f396e363fc03f1cec047b714c3a6831336591a1e4558a8ec5fab37"
+      },
+      "infra/events": {
+        "head_event_id": "20260902_142349_infra_product_design",
+        "head_event_sha256": "b5fc568c6e2da92ef7263e01fdfd221d31ecc0616c947bd3726109b13596d54b",
+        "event_ids": [
+          "20260902_142349_infra_product_design"
+        ],
+        "event_set_sha256": "546f0883c0392eb984400c6a37c9f29048bb43c6adab7ba966d20a80854267f0",
+        "latest_tree_sha256": "b5fc568c6e2da92ef7263e01fdfd221d31ecc0616c947bd3726109b13596d54b"
+      },
+      "design/events": {
+        "head_event_id": "20260902_201117_spec_stories",
+        "head_event_sha256": "c430610335cf5b0a092456c4f13940be0e066b219854b111e992f0ca2a334ee3",
+        "event_ids": [
+          "20260902_145539_design_system",
+          "20260902_183502_spec_stories",
+          "20260902_185951_design_system",
+          "20260902_201117_spec_stories"
+        ],
+        "event_set_sha256": "3ab3b47c4054034ca6f89476d451e669b6dd802ad507e7a8887f883af0d0dcc0",
+        "latest_tree_sha256": "4a11ececc864d4cb278400e5007401b90a8e9ee98bd1a702a2515664146fe4a5"
+      },
+      "specs/events": {
+        "head_event_id": "20260902_191046_spec_generation",
+        "head_event_sha256": "c62bc402515fad2c8687e914f6b3b25546228bff8d21e07a6e8e08f8fb594b75",
+        "event_ids": [
+          "20260902_152849_spec_generation",
+          "20260902_191046_spec_generation"
+        ],
+        "event_set_sha256": "31bd31c0aa3ebf1bb0f6ed1d66b4ed8c83c30e5cd71ba3ba818071e1a40b3c13",
+        "latest_tree_sha256": "990a2497caf58b8dc3c7fcd32e795075571ba2442316f4e38148106033d6b157"
+      }
+    }
+  },
+  "state": "resolved",
+  "requests": [
+    {
+      "request_id": "CR-d0f57ea2-002",
+      "source": {
+        "byte_span": [
+          268,
+          970
+        ],
+        "slice_sha256": "2389c5694e7218954c2185b4ca213063b325a83b86fe519d8031f0c8809a8fbd"
+      },
+      "decision_state": "resolved",
+      "reason": "AsyncAPI契約は仕様成果物の生成物であり、message payloadのschema titleはその契約定義内で完結する。上流モデルの変更を伴わない。",
+      "evidence": [
+        {
+          "kind": "related_id",
+          "value": "ASYNCAPI-CONTRACT"
+        },
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/_cross-cutting/api/asyncapi.yaml"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "ASYNCAPI-CONTRACT",
+          "rule": "ASYNCAPI-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/_cross-cutting/api/asyncapi.yaml",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "high",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-002",
+          "constraint_key": "asyncapi-payload-title",
+          "direct_stage": "spec",
+          "reason": "各message payload schemaへ業務イベントを表す安定titleを付与し、生成型が匿名名にならないようにする。",
+          "evidence": [
+            {
+              "kind": "related_id",
+              "value": "ASYNCAPI-CONTRACT"
+            },
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/_cross-cutting/api/asyncapi.yaml"
+            }
+          ],
+          "id": "CR-d0f57ea2-002#1",
+          "required_closure_stages": [
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-006",
+      "source": {
+        "byte_span": [
+          970,
+          1847
+        ],
+        "slice_sha256": "585bd8b8ddf2cb22b4f558cd80c1d9c94257fd586a2d7317eba0cd499454c18a"
+      },
+      "decision_state": "resolved",
+      "reason": "要求本文が『design成果物に追加する』と明示しており、frontendが利用できる共通componentの生成はデザイン資産の所有範囲。",
+      "evidence": [
+        {
+          "kind": "requested_change",
+          "value": "loading状態を表現する共通componentと利用条件をdesign成果物に追加する"
+        },
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+        },
+        {
+          "kind": "related_file",
+          "value": "packages/ui/.imported.yaml"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "REQ-002",
+          "rule": "REQ-",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "high",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-006",
+          "constraint_key": "loading-state-components",
+          "direct_stage": "design_system",
+          "reason": "loading状態を表すSkeleton/Spinner相当の共通componentと利用条件をデザイン資産へ追加し、画面実装が独自UIを追加せず再現できるようにする。",
+          "evidence": [
+            {
+              "kind": "requested_change",
+              "value": "loading状態を表現する共通componentと利用条件をdesign成果物に追加する"
+            },
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+            },
+            {
+              "kind": "related_file",
+              "value": "packages/ui/.imported.yaml"
+            }
+          ],
+          "id": "CR-d0f57ea2-006#1",
+          "required_closure_stages": [
+            "design_system",
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    }
+  ]
+}

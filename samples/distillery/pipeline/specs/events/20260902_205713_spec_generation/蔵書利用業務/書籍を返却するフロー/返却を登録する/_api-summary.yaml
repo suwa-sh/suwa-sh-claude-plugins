@@ -1,0 +1,97 @@
+# _api-summary.yaml
+uc: "返却を登録する"
+business: "蔵書利用業務"
+buc: "書籍を返却するフロー"
+endpoints:
+  - operation_id: "listLoans"
+    method: "GET"
+    path: "/api/v1/loans"
+    summary: "司書が書籍IDまたは利用者番号から返却対象の貸出を検索する（司書ロール限定）"
+    response_schema: "StaffLoanListResponse"
+    tags: ["貸出"]
+  - operation_id: "registerLoanReturn"
+    method: "POST"
+    path: "/api/v1/loans/{loan_id}/return"
+    summary: "返却を登録し、貸出状態を返却済みへ遷移させて返却日を記録する。督促を停止し、進行中取引が無くなれば利用者状態を登録済みへ戻す（司書ロール限定・冪等キー必須）"
+    request_schema: "RegisterReturnRequest"
+    response_schema: "ReturnResponse"
+    tags: ["貸出"]
+async_events: []
+consumes: []
+schemas:
+  - name: "RegisterReturnRequest"
+    properties: []
+  - name: "ReturnResponse"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "loan_status"
+        type: "string"
+        required: true
+      - name: "previous_loan_status"
+        type: "string"
+        required: true
+      - name: "returned_at"
+        type: "string(date)"
+        required: true
+      - name: "overdue_days"
+        type: "integer"
+        required: true
+      - name: "user_status"
+        type: "string"
+        required: true
+  - name: "StaffLoanListResponse"
+    properties:
+      - name: "items"
+        type: "array<StaffLoanListItem>"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+  - name: "StaffLoanListItem"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+      - name: "loan_date"
+        type: "string(date)"
+        required: true
+      - name: "loan_period_type"
+        type: "string"
+        required: true
+      - name: "due_date"
+        type: "string(date)"
+        required: true
+      - name: "days_remaining"
+        type: "integer"
+        required: true
+      - name: "loan_status"
+        type: "string"
+        required: true
+      - name: "book"
+        type: "BookBrief"
+        required: true
+      - name: "user"
+        type: "UserBrief"
+        required: true
+  - name: "UserBrief"
+    properties:
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true

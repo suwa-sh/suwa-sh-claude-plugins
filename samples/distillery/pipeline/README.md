@@ -2,7 +2,7 @@
 
 > 図書館の蔵書と利用者を一元管理し、貸出・返却・予約を Web 画面から行えるようにするシステム。書籍情報（タイトル・著者・ISBN・出版社・ジャンル）と利用者情報（氏名・連絡先・利用者番号）を登録・編集・削除でき、キーワード・タイトル・著者・ISBN・ジャンルで蔵書を検索できる。貸出時に返却期限を自動設定し、期限接近のリマインド・期限超過の督促・予約書籍の取置き案内をメールで自動通知する。利用者は自分の貸出履歴と予約状況を Web 画面で照会でき、司書は在庫状況・人気書籍ランキング・期間別貸出統計をレポートとして把握できる。紙台帳と表計算ファイルに分散した情報を単一の正データに統合し、司書の管理の手間とミスを削減して利用者サービスを向上させる。まずは 1 館での運用を想定し、将来の電子書籍対応に備えて蔵書を資料種別で区別できるモデルとする。
 
-**最終更新**: 2026-09-02 20:11:17 spec stories (design)
+**最終更新**: 2026-09-02 21:07:20 spec stories (design)
 
 ## 成果物一覧
 
@@ -13,8 +13,8 @@
 | [NFR（非機能要求）](#nfr非機能要求) | [nfr/latest/](nfr/latest/) | 1 |
 | [Arch（アーキテクチャ）](#archアーキテクチャ) | [arch/latest/](arch/latest/) | 2 |
 | [Infra（インフラ設計）](#infraインフラ設計) | [infra/latest/](infra/latest/) | 1 |
-| [Design（デザイン）](#designデザイン) | [design/latest/](design/latest/) | 4 |
-| [Specs（詳細仕様）](#specs詳細仕様) | [specs/latest/](specs/latest/) | 2 |
+| [Design（デザイン）](#designデザイン) | [design/latest/](design/latest/) | 6 |
+| [Specs（詳細仕様）](#specs詳細仕様) | [specs/latest/](specs/latest/) | 3 |
 
 ## USDM（要求分解）
 
@@ -412,17 +412,18 @@ Stories: 53 ファイル
 | 20 | Design | [Storybook を Next.js 16 + Tailwind v4 + Storybook 10 で構成し、外部 CDN に依存しない](design/events/20260902_145539_design_system/decisions/design-decision-005.yaml) | approved |
 | 21 | Design | [loading 表現は LoadingState 1 か所に集約し、Skeleton と Spinner を用途で固定する](design/events/20260902_185951_design_system/decisions/design-decision-006.yaml) | approved |
 | 22 | Design | [アプリシェル・ルート表・遷移 API をデザインシステムが所有し、router アダプタだけを実装リポに残す](design/events/20260902_185951_design_system/decisions/design-decision-007.yaml) | approved |
-| 23 | Specs | [同期 API のスタイルは REST（OpenAPI 3.1）とし、パスを /api/v1/{リソース} + staff / me で分離する](specs/events/20260902_152849_spec_generation/decisions/spec-decision-001.yaml) | approved |
-| 24 | Specs | [通知メール送信とレポート集計だけを MQ 経由の非同期にし、at-least-once + 冪等消費 + DLQ 退避で受ける](specs/events/20260902_152849_spec_generation/decisions/spec-decision-002.yaml) | approved |
-| 25 | Specs | [RDB は 3NF を基本としつつ、loans に貸出時点の書誌スナップショットを非正規化して保持する](specs/events/20260902_152849_spec_generation/decisions/spec-decision-003.yaml) | approved |
-| 26 | Specs | [横断関心事（エラー・ページネーション・認証伝播・冪等性・楽観ロック）を全 41 UC 共通の規約として一元化する](specs/events/20260902_152849_spec_generation/decisions/spec-decision-004.yaml) | approved |
-| 27 | Specs | [貸出期間区分の適用方式 — 利用者区分ごとの「既定 + 選択可能集合」で検証する](specs/events/20260902_152849_spec_generation/decisions/spec-decision-005.yaml) | approved |
-| 28 | Specs | [利用者識別情報は Bearer トークンのクレームだけで送り、401 を 3 コードに限定する](specs/events/20260902_191046_spec_generation/decisions/spec-decision-006.yaml) | approved |
-| 29 | Specs | [冪等キーは request_fingerprint 付きで保存し、内容不一致の再送を 409 で拒否する](specs/events/20260902_191046_spec_generation/decisions/spec-decision-007.yaml) | approved |
-| 30 | Specs | [enum は日本語 wire value のまま x-enum-varnames で ASCII 識別子を併記し、AsyncAPI payload には安定 title を必須にする](specs/events/20260902_191046_spec_generation/decisions/spec-decision-008.yaml) | approved |
-| 31 | Specs | [API operation の所有 UC を 1 つに固定し、他 UC からの利用は _api-summary.yaml の consumes で宣言する](specs/events/20260902_191046_spec_generation/decisions/spec-decision-009.yaml) | approved |
-| 32 | Specs | [受け入れ基準 ID は {仕様ID}#{添字} とし、1 基準につき主担当 UC を 1 つに固定する](specs/events/20260902_191046_spec_generation/decisions/spec-decision-010.yaml) | approved |
-| 33 | Specs | [loading 表現・URL 結線・完了結果の所有権を共通層へ集約し、UC 仕様は参照だけにする](specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml) | approved |
+| 23 | Design | [components.ui[] に path / exports を持たせ、Skeleton・Spinner をファイル名ではなく成果物定義から解決させる](design/events/20260902_204527_design_system/decisions/design-decision-008.yaml) | approved |
+| 24 | Specs | [同期 API のスタイルは REST（OpenAPI 3.1）とし、パスを /api/v1/{リソース} + staff / me で分離する](specs/events/20260902_152849_spec_generation/decisions/spec-decision-001.yaml) | approved |
+| 25 | Specs | [通知メール送信とレポート集計だけを MQ 経由の非同期にし、at-least-once + 冪等消費 + DLQ 退避で受ける](specs/events/20260902_152849_spec_generation/decisions/spec-decision-002.yaml) | approved |
+| 26 | Specs | [RDB は 3NF を基本としつつ、loans に貸出時点の書誌スナップショットを非正規化して保持する](specs/events/20260902_152849_spec_generation/decisions/spec-decision-003.yaml) | approved |
+| 27 | Specs | [横断関心事（エラー・ページネーション・認証伝播・冪等性・楽観ロック）を全 41 UC 共通の規約として一元化する](specs/events/20260902_152849_spec_generation/decisions/spec-decision-004.yaml) | approved |
+| 28 | Specs | [貸出期間区分の適用方式 — 利用者区分ごとの「既定 + 選択可能集合」で検証する](specs/events/20260902_152849_spec_generation/decisions/spec-decision-005.yaml) | approved |
+| 29 | Specs | [利用者識別情報は Bearer トークンのクレームだけで送り、401 を 3 コードに限定する](specs/events/20260902_191046_spec_generation/decisions/spec-decision-006.yaml) | approved |
+| 30 | Specs | [冪等キーは request_fingerprint 付きで保存し、内容不一致の再送を 409 で拒否する](specs/events/20260902_191046_spec_generation/decisions/spec-decision-007.yaml) | approved |
+| 31 | Specs | [enum は日本語 wire value のまま x-enum-varnames で ASCII 識別子を併記し、AsyncAPI payload には安定 title を必須にする](specs/events/20260902_191046_spec_generation/decisions/spec-decision-008.yaml) | approved |
+| 32 | Specs | [API operation の所有 UC を 1 つに固定し、他 UC からの利用は _api-summary.yaml の consumes で宣言する](specs/events/20260902_191046_spec_generation/decisions/spec-decision-009.yaml) | approved |
+| 33 | Specs | [受け入れ基準 ID は {仕様ID}#{添字} とし、1 基準につき主担当 UC を 1 つに固定する](specs/events/20260902_191046_spec_generation/decisions/spec-decision-010.yaml) | approved |
+| 34 | Specs | [loading 表現・URL 結線・完了結果の所有権を共通層へ集約し、UC 仕様は参照だけにする](specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml) | approved |
 
 ## Pipeline feedback runs
 
@@ -432,6 +433,7 @@ distillery-impl が公開した feedback-request Markdown を `dist-pipeline` �
 | feedback_id | 状態 | 要求 | applied | merged | deferred | 実行 stage | run dir |
 |-------------|------|-----:|--------:|-------:|---------:|-----------|---------|
 | 20260902_184257_impl_feedback_d0f57ea2 | completed | 11 | 11 | 0 | 0 | design_system → spec → spec_stories | [feedback-runs/](pipeline/feedback-runs/20260902_184257_impl_feedback_d0f57ea2) |
+| 20260902_213000_impl_feedback_d0f57ea2 | completed | 2 | 2 | 0 | 0 | design_system → spec → spec_stories | [feedback-runs/](pipeline/feedback-runs/20260902_213000_impl_feedback_d0f57ea2) |
 
 ## イベント履歴
 
@@ -449,6 +451,9 @@ distillery-impl が公開した feedback-request Markdown を `dist-pipeline` �
 | 2026-09-02 18:59:51 | Design（デザイン） | [20260902_185951_design_system](design/events/20260902_185951_design_system) |
 | 2026-09-02 19:10:46 | Specs（詳細仕様） | [20260902_191046_spec_generation](specs/events/20260902_191046_spec_generation) |
 | 2026-09-02 20:11:17 | Design（デザイン） | [20260902_201117_spec_stories](design/events/20260902_201117_spec_stories) |
+| 2026-09-02 20:45:27 | Design（デザイン） | [20260902_204527_design_system](design/events/20260902_204527_design_system) |
+| 2026-09-02 20:57:13 | Specs（詳細仕様） | [20260902_205713_spec_generation](specs/events/20260902_205713_spec_generation) |
+| 2026-09-02 21:07:20 | Design（デザイン） | [20260902_210720_spec_stories](design/events/20260902_210720_spec_stories) |
 
 ---
 

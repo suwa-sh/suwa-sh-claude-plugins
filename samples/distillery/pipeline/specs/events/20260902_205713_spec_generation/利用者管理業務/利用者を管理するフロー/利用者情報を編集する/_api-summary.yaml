@@ -1,0 +1,97 @@
+# _api-summary.yaml
+uc: "利用者情報を編集する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+endpoints:
+  - operation_id: "getUser"
+    method: "GET"
+    path: "/api/v1/users/{user_no}"
+    summary: "編集対象の利用者の現在値を取得する（司書のみ）"
+    request_schema: "GetUserQueryParams"
+    response_schema: "UserDetailResponse"
+    tags: ["利用者管理"]
+  - operation_id: "updateUser"
+    method: "PUT"
+    path: "/api/v1/users/{user_no}"
+    summary: "利用者の氏名・連絡先・利用者区分を更新する（司書のみ）"
+    request_schema: "UpdateUserRequest"
+    response_schema: "UserResponse"
+    tags: ["利用者管理"]
+async_events: []
+# cross-UC API 依存（他 UC 所有 operation の利用）。形式は
+# _cross-cutting/api/uc-api-dependencies.md「記録場所と形式」を正本とする。
+# 本 UC は自 UC 所有の getUser / updateUser だけで成立し、他 UC 所有 operation を呼び出さない。
+consumes: []
+schemas:
+  - name: "GetUserQueryParams"
+    properties:
+      - name: "reveal"
+        type: "boolean"
+        required: false
+        note: "in: query。既定 false。true のときだけ生の連絡先 email を返す"
+  - name: "UpdateUserRequest"
+    properties:
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "email"
+        type: "string"
+        required: true
+      - name: "user_category"
+        type: "string"
+        required: true
+  - name: "UserDetailResponse"
+    properties:
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "email_masked"
+        type: "string"
+        required: true
+      - name: "email"
+        type: "string"
+        required: false
+      - name: "user_category"
+        type: "string"
+        required: true
+      - name: "user_status"
+        type: "string"
+        required: true
+      - name: "active_loan_count"
+        type: "integer"
+        required: true
+      - name: "active_reservation_count"
+        type: "integer"
+        required: true
+      - name: "registered_at"
+        type: "string"
+        required: true
+      - name: "updated_at"
+        type: "string"
+        required: true
+      - name: "deletable"
+        type: "boolean"
+        required: true
+  - name: "UserResponse"
+    properties:
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "email_masked"
+        type: "string"
+        required: true
+      - name: "user_category"
+        type: "string"
+        required: true
+      - name: "user_status"
+        type: "string"
+        required: true
+      - name: "updated_at"
+        type: "string"
+        required: true

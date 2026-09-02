@@ -1,0 +1,48 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-007"
+title: "冪等キーは request_fingerprint 付きで保存し、内容不一致の再送を 409 で拒否する"
+status: "approved"
+generated_at: "2026-09-02T19:10:46+09:00"
+context: |
+  実装フィードバック CR-d0f57ea2-007 で、同一冪等キーの再送時の挙動が仕様間で矛盾していた。
+
+  - `kvs-schema.yaml` は「保存済み応答の再利用」だけを示していた。
+  - UC の tier 仕様は「競合応答」を要求していた。
+  - どちらも「同一キーで payload が異なる場合」を規定しておらず、実装とテストの期待が分かれた。
+  - 更新系 16 UC が同じ `X-Idempotency-Key` 規約を共有するため、UC ごとの個別定義は破綻する。
+decision: |
+  冪等レコードに **`request_fingerprint`（正規化リクエストの SHA-256）と `state`（in_progress /
+  completed）を含める**ことにし、再送の 6 ケースすべてに HTTP 応答と副作用を割り当てた。
+  正本は `kvs-schema.yaml` の `idem:api:{operation_id}:{idempotency_key}` の `behavior` と
+  `openapi.yaml` の `IdempotencyKeyHeader` の 2 箇所（同一内容）とする。
+
+  | 再送の内容 | 応答 | 副作用 |
+  |---|---|---|
+  | キー未存在 | 本処理どおり | 実行する |
+  | 同一キー・同一 fingerprint・completed | 保存済み応答をリプレイ（`Idempotency-Replayed: true`） | 実行しない |
+  | 同一キー・同一 fingerprint・in_progress | 409 `IDEMPOTENCY_KEY_IN_PROGRESS`（`Retry-After: 1`） | 実行しない |
+  | 同一キー・異なる fingerprint | 409 `IDEMPOTENCY_KEY_CONFLICT` | 実行しない。保存済みレコードを書き換えない |
+  | 先行処理が 4xx で終了 | 本処理どおり（冪等レコードは破棄済み） | 実行する |
+  | TTL 24h 経過後 | 本処理どおり | 実行する（重複防御は業務側の一意制約） |
+
+  `request_fingerprint` は「HTTP メソッド + パス（実値）+ 正規化 JSON ボディ（キー昇順・空白なし）」の
+  SHA-256 とし、`Authorization` / `traceparent` / `X-Idempotency-Key` 自体は含めない。
+consequences:
+  positive:
+    - "「正常な再送」と「キーの誤再利用」が仕様上区別され、実装とテストの期待が一致する"
+    - "in_progress を明示したため、並行再送でトランザクションが二重に走らない"
+    - "失敗（4xx）をリプレイしないため、入力を直して同じキーで再試行できる"
+    - "更新系 16 UC が同じ 1 つの規約を参照し、UC ごとの再定義が不要になる"
+  negative:
+    - "冪等レコードにリクエスト本文のハッシュを持つため、KVS の 1 レコードあたりのサイズが増える"
+    - "正規化 JSON の定義（キー順・null の扱い）が実装間でずれるとフィンガープリントが一致しない"
+    - "TTL 経過後の再送は重複作成を防げず、業務側の一意制約に依存する"
+alternatives_considered:
+  - name: "異なる payload でも保存済み応答をそのまま返す"
+    reason_rejected: "利用者が別の内容を登録したつもりで前回結果を受け取る。誤りに気づけない"
+  - name: "異なる payload の再送で処理を上書き実行する"
+    reason_rejected: "冪等性の定義に反し、二重登録防止という本来の目的を損なう"
+  - name: "in_progress を持たず、先行処理の完了までブロックして待つ"
+    reason_rejected: "API Gateway のタイムアウトとコネクション占有を招く。409 + Retry-After のほうが観測しやすい"

@@ -1,0 +1,82 @@
+# _model-summary.yaml
+uc: "利用者一覧を照会する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+
+bounded_context_id: "BC-002"
+aggregate_id: "AG-002"
+
+models:
+  - name: "利用者名簿画面 / UserTable"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "利用者"
+  - name: "UserListState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "利用者"
+  - name: "UserListRequest"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "利用者"
+  - name: "ListUsersRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "利用者"
+  - name: "ListUsersQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "利用者"
+  - name: "UserSummary"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "value-object"
+    rdra_info: "利用者"
+  - name: "UserRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+
+tables:
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_category = :user_category（任意） AND (name LIKE :keyword OR user_no LIKE :keyword)（任意）。ORDER BY user_no、LIMIT/OFFSET でページング"
+    indexes_needed:
+      - columns: ["user_category"]
+        reason: "利用者区分による一覧絞り込み"
+        access_pattern: "利用者名簿画面の ToggleGroup 絞り込み"
+      - columns: ["name"]
+        reason: "氏名のキーワード検索"
+        access_pattern: "利用者名簿画面のキーワード検索"
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no IN (:一覧の利用者番号) AND loan_status IN ('貸出中','延滞') を利用者番号で COUNT 集計"
+    indexes_needed:
+      - columns: ["user_no", "loan_status"]
+        reason: "進行中貸出件数の集計（利用者削除可否条件の判定材料）"
+        access_pattern: "一覧 1 頁分の利用者番号に対する件数集計"
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no IN (:一覧の利用者番号) AND reservation_status IN ('予約中','取置き中') を利用者番号で COUNT 集計"
+    indexes_needed:
+      - columns: ["user_no", "reservation_status"]
+        reason: "進行中予約件数の集計（利用者削除可否条件の判定材料）"
+        access_pattern: "一覧 1 頁分の利用者番号に対する件数集計"
+
+kvs: []
+object_storage: []

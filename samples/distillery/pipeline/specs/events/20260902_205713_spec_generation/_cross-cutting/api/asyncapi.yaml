@@ -1,0 +1,531 @@
+asyncapi: "3.0.0"
+info:
+  title: "Libra Async Events"
+  version: "1.0.0"
+  description: |
+    Libra（図書館蔵書管理システム）の非同期メッセージ契約定義。
+
+    - 通知送信要求（取置き案内 / 返却期限リマインド / 延滞督促）とレポート集計要求を
+      メッセージングティア（MQ）でバッファし、Backend API がプロデューサー、Worker がコンシューマーとなる。
+    - 配信は at-least-once を前提とし、コンシューマー側が `idempotency_key` による冪等消費で重複を吸収する。
+      厳密な順序保証は要求しない。
+    - リトライ上限を超えたメッセージは対応する DLQ チャネルへ退避し、通知状態を「送信失敗」として記録する。
+      DLQ からの再処理は手順書に基づく手動操作とする。
+    - メッセージ本文には通知 ID・利用者番号・対象貸出 ID / 予約 ID の参照のみを載せ、
+      氏名・メールアドレスなどの個人情報は格納しない。宛先の解決は Worker が RDB から行う。
+
+    ## payload schema の命名規約
+
+    - `components.schemas` の全スキーマに、業務上安定した `title` を必須で付与する。
+      `title` は `components.schemas` のキーと同一の PascalCase 名とし、
+      payload は `{イベント名}Payload`（例: `HoldNoticeRequestedPayload`）とする。
+    - message の `payload` / `headers` は必ず `$ref` で名前付きスキーマを参照し、
+      インラインのオブジェクト定義を書かない。これにより生成型が
+      `AnonymousSchema_1` のような匿名名にならず、複数 message の保守時も
+      どの業務イベントの型かを名前だけで識別できる。
+    - `title` を変更すると生成型名が変わるため、イベントの業務的意味が変わらない限り
+      `title` は変更しない（説明の変更は `description` 側で行う）。
+  license:
+    name: "Proprietary"
+    url: "https://libra.example.com/license"
+defaultContentType: "application/json"
+servers:
+  mq:
+    host: "mq.libra.example.com"
+    protocol: "amqp"
+    description: |
+      通知送信要求とレポート集計要求のバッファとなる MQ ティア（DLQ 併設）。
+      具体的なブローカー製品はインフラ設計ステージで確定する（本定義はベンダーニュートラル）。
+channels:
+  notificationHoldNoticeRequested:
+    address: "notification.hold-notice.requested"
+    title: "取置き案内 送信要求"
+    description: |
+      取置き通知対象条件を満たす予約に対する取置き案内メールの送信依頼。
+      Backend API が publish し、Worker が subscribe してメール配信サービスへ連携する。
+    servers:
+      - $ref: "#/servers/mq"
+    messages:
+      HoldNoticeRequested:
+        $ref: "#/components/messages/HoldNoticeRequested"
+  notificationHoldNoticeDlq:
+    address: "notification.hold-notice.dlq"
+    title: "取置き案内 送信要求 DLQ"
+    description: |
+      取置き案内の送信要求のうち、リトライ上限を超えたメッセージを退避する DLQ。
+      Worker が publish し、通知状態を「送信失敗」として記録したうえでアラートを通知する。
+    servers:
+      - $ref: "#/servers/mq"
+    messages:
+      HoldNoticeRequested:
+        $ref: "#/components/messages/HoldNoticeRequested"
+  notificationRemindRequested:
+    address: "notification.remind.requested"
+    title: "返却期限リマインド 送信要求"
+    description: |
+      リマインド通知対象条件を満たす貸出に対する返却期限リマインドメールの送信依頼。
+      日次バッチおよび司書の再送操作を契機に publish し、Worker が subscribe する。
+    servers:
+      - $ref: "#/servers/mq"
+    messages:
+      RemindNotificationRequested:
+        $ref: "#/components/messages/RemindNotificationRequested"
+  notificationRemindDlq:
+    address: "notification.remind.dlq"
+    title: "返却期限リマインド 送信要求 DLQ"
+    description: |
+      返却期限リマインドの送信要求のうち、リトライ上限を超えたメッセージを退避する DLQ。
+    servers:
+      - $ref: "#/servers/mq"
+    messages:
+      RemindNotificationRequested:
+        $ref: "#/components/messages/RemindNotificationRequested"
+  notificationDunRequested:
+    address: "notification.dun.requested"
+    title: "延滞督促 送信要求"
+    description: |
+      督促通知対象条件を満たす貸出に対する延滞督促メールの送信依頼。
+      日次バッチおよび司書の再送操作を契機に publish し、Worker が subscribe する。
+    servers:
+      - $ref: "#/servers/mq"
+    messages:
+      DunNotificationRequested:
+        $ref: "#/components/messages/DunNotificationRequested"
+  notificationDunDlq:
+    address: "notification.dun.dlq"
+    title: "延滞督促 送信要求 DLQ"
+    description: |
+      延滞督促の送信要求のうち、リトライ上限を超えたメッセージを退避する DLQ。
+    servers:
+      - $ref: "#/servers/mq"
+    messages:
+      DunNotificationRequested:
+        $ref: "#/components/messages/DunNotificationRequested"
+  reportAggregationRequested:
+    address: "report.aggregation.requested"
+    title: "統計レポート 集計要求"
+    description: |
+      在庫状況・期間別貸出統計の集計を Worker ティアへ委譲する集計要求。
+      Backend API が統計レポートを「集計中」で作成したうえで publish し、
+      Worker が集計を実施して統計レポート状態を「作成済み」または「実績なし」で確定する。
+    servers:
+      - $ref: "#/servers/mq"
+    messages:
+      InventoryReportAggregationRequested:
+        $ref: "#/components/messages/InventoryReportAggregationRequested"
+      LoanStatsReportAggregationRequested:
+        $ref: "#/components/messages/LoanStatsReportAggregationRequested"
+  reportAggregationDlq:
+    address: "report.aggregation.dlq"
+    title: "統計レポート 集計要求 DLQ"
+    description: |
+      集計要求のうち、リトライ上限を超えたメッセージを退避する DLQ。
+      Worker が publish し、対象の統計レポートは「集計中」のまま滞留するため運用監視の対象とする。
+    servers:
+      - $ref: "#/servers/mq"
+    messages:
+      InventoryReportAggregationRequested:
+        $ref: "#/components/messages/InventoryReportAggregationRequested"
+      LoanStatsReportAggregationRequested:
+        $ref: "#/components/messages/LoanStatsReportAggregationRequested"
+operations:
+  publishHoldNoticeRequested:
+    action: "send"
+    channel:
+      $ref: "#/channels/notificationHoldNoticeRequested"
+    title: "取置き案内の送信要求を発行する"
+    summary: "Backend API が取置き案内メールの送信依頼を publish する"
+    description: |
+      `POST /api/v1/staff/notifications/hold-notices` および
+      `POST /api/v1/staff/notifications/{notification_id}/resend` を契機に発行する。
+    messages:
+      - $ref: "#/channels/notificationHoldNoticeRequested/messages/HoldNoticeRequested"
+  consumeHoldNoticeRequested:
+    action: "receive"
+    channel:
+      $ref: "#/channels/notificationHoldNoticeRequested"
+    title: "取置き案内の送信要求を消費する"
+    summary: "Worker が取置き案内メールを送信し、通知状態と予約状態を更新する"
+    description: |
+      `idempotency_key` で冪等に消費する。送信成功時は通知状態を「送信済み」に更新し、
+      取置き通知対象条件に従って対象予約の予約状態を「取置き中」へ遷移させる。
+      恒久エラー（4xx 系）はリトライせず即座に「送信失敗」として記録する。
+    messages:
+      - $ref: "#/channels/notificationHoldNoticeRequested/messages/HoldNoticeRequested"
+  publishHoldNoticeDlq:
+    action: "send"
+    channel:
+      $ref: "#/channels/notificationHoldNoticeDlq"
+    title: "取置き案内の送信要求を DLQ へ退避する"
+    summary: "Worker がリトライ上限超過のメッセージを DLQ へ移送する"
+    messages:
+      - $ref: "#/channels/notificationHoldNoticeDlq/messages/HoldNoticeRequested"
+  publishRemindNotificationRequested:
+    action: "send"
+    channel:
+      $ref: "#/channels/notificationRemindRequested"
+    title: "返却期限リマインドの送信要求を発行する"
+    summary: "返却期限接近の貸出に対するリマインドメールの送信依頼を publish する"
+    messages:
+      - $ref: "#/channels/notificationRemindRequested/messages/RemindNotificationRequested"
+  consumeRemindNotificationRequested:
+    action: "receive"
+    channel:
+      $ref: "#/channels/notificationRemindRequested"
+    title: "返却期限リマインドの送信要求を消費する"
+    summary: "Worker がリマインドメールを送信し、通知状態を更新する"
+    description: |
+      `notification_id` は publish 前に「送信待ち」で作成済みの通知レコードを指す。
+      Worker はそのレコードを更新し、新規の通知を作成しない（再送時も同じ通知 ID を再利用する）。
+    messages:
+      - $ref: "#/channels/notificationRemindRequested/messages/RemindNotificationRequested"
+  publishRemindNotificationDlq:
+    action: "send"
+    channel:
+      $ref: "#/channels/notificationRemindDlq"
+    title: "返却期限リマインドの送信要求を DLQ へ退避する"
+    summary: "Worker がリトライ上限超過のメッセージを DLQ へ移送する"
+    messages:
+      - $ref: "#/channels/notificationRemindDlq/messages/RemindNotificationRequested"
+  publishDunNotificationRequested:
+    action: "send"
+    channel:
+      $ref: "#/channels/notificationDunRequested"
+    title: "延滞督促の送信要求を発行する"
+    summary: "返却期限を経過した貸出に対する督促メールの送信依頼を publish する"
+    messages:
+      - $ref: "#/channels/notificationDunRequested/messages/DunNotificationRequested"
+  consumeDunNotificationRequested:
+    action: "receive"
+    channel:
+      $ref: "#/channels/notificationDunRequested"
+    title: "延滞督促の送信要求を消費する"
+    summary: "Worker が督促メールを送信し、通知状態を更新する"
+    description: |
+      督促通知対象条件により、対象貸出の貸出状態が「返却済み」になっている場合は送信をスキップする。
+    messages:
+      - $ref: "#/channels/notificationDunRequested/messages/DunNotificationRequested"
+  publishDunNotificationDlq:
+    action: "send"
+    channel:
+      $ref: "#/channels/notificationDunDlq"
+    title: "延滞督促の送信要求を DLQ へ退避する"
+    summary: "Worker がリトライ上限超過のメッセージを DLQ へ移送する"
+    messages:
+      - $ref: "#/channels/notificationDunDlq/messages/DunNotificationRequested"
+  publishReportAggregationRequested:
+    action: "send"
+    channel:
+      $ref: "#/channels/reportAggregationRequested"
+    title: "統計レポートの集計要求を発行する"
+    summary: "Backend API が在庫状況・期間別貸出統計の集計要求を publish する"
+    messages:
+      - $ref: "#/channels/reportAggregationRequested/messages/InventoryReportAggregationRequested"
+      - $ref: "#/channels/reportAggregationRequested/messages/LoanStatsReportAggregationRequested"
+  consumeReportAggregationRequested:
+    action: "receive"
+    channel:
+      $ref: "#/channels/reportAggregationRequested"
+    title: "統計レポートの集計要求を消費する"
+    summary: "Worker が集計を実施し、統計レポート状態を確定する"
+    description: |
+      在庫状況集計条件・貸出統計集計条件に従って集計明細を作成する。
+      対象期間に実績が存在しない場合は統計レポート状態を「実績なし」で確定する。
+    messages:
+      - $ref: "#/channels/reportAggregationRequested/messages/InventoryReportAggregationRequested"
+      - $ref: "#/channels/reportAggregationRequested/messages/LoanStatsReportAggregationRequested"
+  publishReportAggregationDlq:
+    action: "send"
+    channel:
+      $ref: "#/channels/reportAggregationDlq"
+    title: "統計レポートの集計要求を DLQ へ退避する"
+    summary: "Worker がリトライ上限超過のメッセージを DLQ へ移送する"
+    messages:
+      - $ref: "#/channels/reportAggregationDlq/messages/InventoryReportAggregationRequested"
+      - $ref: "#/channels/reportAggregationDlq/messages/LoanStatsReportAggregationRequested"
+components:
+  messages:
+    HoldNoticeRequested:
+      name: "HoldNoticeRequested"
+      title: "取置き案内 送信要求"
+      summary: "取置き案内メールの送信依頼"
+      contentType: "application/json"
+      headers:
+        $ref: "#/components/schemas/MessageHeaders"
+      payload:
+        $ref: "#/components/schemas/HoldNoticeRequestedPayload"
+    RemindNotificationRequested:
+      name: "RemindNotificationRequested"
+      title: "返却期限リマインド 送信要求"
+      summary: "返却期限リマインドメールの送信依頼"
+      contentType: "application/json"
+      headers:
+        $ref: "#/components/schemas/MessageHeaders"
+      payload:
+        $ref: "#/components/schemas/RemindNotificationRequestedPayload"
+    DunNotificationRequested:
+      name: "DunNotificationRequested"
+      title: "延滞督促 送信要求"
+      summary: "延滞督促メールの送信依頼"
+      contentType: "application/json"
+      headers:
+        $ref: "#/components/schemas/MessageHeaders"
+      payload:
+        $ref: "#/components/schemas/DunNotificationRequestedPayload"
+    InventoryReportAggregationRequested:
+      name: "InventoryReportAggregationRequested"
+      title: "在庫状況レポート 集計要求"
+      summary: "在庫状況の集計を Worker ティアへ委譲する集計要求"
+      contentType: "application/json"
+      headers:
+        $ref: "#/components/schemas/MessageHeaders"
+      payload:
+        $ref: "#/components/schemas/ReportAggregationRequestedPayload"
+    LoanStatsReportAggregationRequested:
+      name: "LoanStatsReportAggregationRequested"
+      title: "貸出統計レポート 集計要求"
+      summary: "期間別貸出統計・人気書籍ランキングの集計を Worker ティアへ委譲する集計要求"
+      contentType: "application/json"
+      headers:
+        $ref: "#/components/schemas/MessageHeaders"
+      payload:
+        $ref: "#/components/schemas/ReportAggregationRequestedPayload"
+  schemas:
+    MessageHeaders:
+      title: "MessageHeaders"
+      type: "object"
+      description: "全イベントメッセージ共通のヘッダー"
+      required: ["correlationId", "timestamp", "source", "eventType", "version"]
+      properties:
+        correlationId:
+          type: "string"
+          format: "uuid"
+          description: "リクエスト追跡 ID"
+        timestamp:
+          type: "string"
+          format: "date-time"
+          description: "イベント発生日時"
+        source:
+          type: "string"
+          description: "イベント発生元サービス"
+          examples: ["tier-backend-api", "tier-worker"]
+        eventType:
+          type: "string"
+          description: "イベント種別（チャネルのアドレスと一致させる）"
+          examples: ["notification.hold-notice.requested"]
+        version:
+          type: "string"
+          description: "メッセージスキーマバージョン"
+          examples: ["1.0.0"]
+        retryCount:
+          type: "integer"
+          minimum: 0
+          description: "再試行回数。リトライ上限を超えたメッセージは DLQ へ退避する"
+    NotificationType:
+      title: "NotificationType"
+      type: "string"
+      description: "通知種別（バリエーション: 通知種別）"
+      enum: ["取置き案内", "返却期限リマインド", "延滞督促"]
+      x-enum-varnames: ["HOLD_NOTICE", "DUE_DATE_REMINDER", "OVERDUE_DUNNING"]
+    NotificationTimingType:
+      title: "NotificationTimingType"
+      type: "string"
+      description: "通知タイミング区分（バリエーション: 通知タイミング区分）"
+      enum: ["期限前リマインド", "期限当日", "期限超過督促"]
+      x-enum-varnames: ["BEFORE_DUE", "ON_DUE_DATE", "AFTER_DUE"]
+    ReportType:
+      title: "ReportType"
+      type: "string"
+      description: "レポート種別（バリエーション: レポート種別）"
+      enum: ["在庫状況", "人気書籍ランキング", "期間別貸出統計"]
+      x-enum-varnames: ["INVENTORY_STATUS", "POPULAR_BOOK_RANKING", "LOAN_STATS_BY_PERIOD"]
+    PeriodType:
+      title: "PeriodType"
+      type: "string"
+      description: "集計期間区分（バリエーション: 集計期間区分）"
+      enum: ["日次", "月次", "年次"]
+      x-enum-varnames: ["DAILY", "MONTHLY", "YEARLY"]
+    HoldNoticeRequestedPayload:
+      title: "HoldNoticeRequestedPayload"
+      type: "object"
+      description: "取置き案内メールの送信依頼ペイロード（個人情報は含めない）"
+      required:
+        - "message_id"
+        - "notification_id"
+        - "notification_type"
+        - "target_reservation_id"
+        - "recipient_user_no"
+        - "idempotency_key"
+        - "trace_id"
+        - "requested_at"
+      properties:
+        message_id:
+          type: "string"
+          format: "uuid"
+          description: "メッセージ一意 ID"
+        notification_id:
+          type: "string"
+          description: "通知 ID（送信待ちで作成済みの通知レコードを指す）"
+        notification_type:
+          $ref: "#/components/schemas/NotificationType"
+        target_reservation_id:
+          type: "string"
+          description: "対象予約 ID"
+        recipient_user_no:
+          type: "string"
+          description: "宛先利用者番号（メールアドレスは Worker が RDB から解決する）"
+        idempotency_key:
+          type: "string"
+          description: "冪等キー。コンシューマーはこのキーで重複消費を吸収する"
+        trace_id:
+          type: "string"
+          description: "リクエスト追跡 ID"
+        requested_at:
+          type: "string"
+          format: "date-time"
+          description: "送信要求日時"
+    RemindNotificationRequestedPayload:
+      title: "RemindNotificationRequestedPayload"
+      type: "object"
+      description: "返却期限リマインドメールの送信依頼ペイロード（個人情報は含めない）"
+      required:
+        - "message_id"
+        - "idempotency_key"
+        - "notification_type"
+        - "timing_type"
+        - "target_loan_id"
+        - "recipient_user_no"
+        - "due_date"
+        - "days_remaining"
+        - "base_date"
+        - "requested_at"
+        - "trace_id"
+        - "notification_id"
+      properties:
+        message_id:
+          type: "string"
+          description: "メッセージ ID"
+        idempotency_key:
+          type: "string"
+          description: "冪等キー"
+        notification_type:
+          $ref: "#/components/schemas/NotificationType"
+        timing_type:
+          $ref: "#/components/schemas/NotificationTimingType"
+        target_loan_id:
+          type: "string"
+          description: "対象貸出 ID"
+        recipient_user_no:
+          type: "string"
+          description: "宛先利用者番号"
+        due_date:
+          type: "string"
+          format: "date"
+          description: "対象貸出の返却期限"
+        days_remaining:
+          type: "integer"
+          description: "基準日から返却期限までの残日数"
+        base_date:
+          type: "string"
+          format: "date"
+          description: "リマインド通知対象条件の判定基準日"
+        requested_at:
+          type: "string"
+          format: "date-time"
+          description: "送信要求日時"
+        trace_id:
+          type: "string"
+          description: "リクエスト追跡 ID"
+        notification_id:
+          type: "string"
+          description: |
+            通知レコード ID（publish 前に「送信待ち」で作成済みの通知を指す）。
+            再送時は既存の通知 ID を設定し、Worker はそのレコードを再利用して新規作成しない。
+    DunNotificationRequestedPayload:
+      title: "DunNotificationRequestedPayload"
+      type: "object"
+      description: "延滞督促メールの送信依頼ペイロード（個人情報は含めない）"
+      required:
+        - "message_id"
+        - "idempotency_key"
+        - "notification_type"
+        - "timing_type"
+        - "target_loan_id"
+        - "recipient_user_no"
+        - "due_date"
+        - "days_overdue"
+        - "base_date"
+        - "requested_at"
+        - "trace_id"
+        - "notification_id"
+      properties:
+        message_id:
+          type: "string"
+          description: "メッセージ ID"
+        idempotency_key:
+          type: "string"
+          description: "冪等キー"
+        notification_type:
+          $ref: "#/components/schemas/NotificationType"
+        timing_type:
+          $ref: "#/components/schemas/NotificationTimingType"
+        target_loan_id:
+          type: "string"
+          description: "対象貸出 ID"
+        recipient_user_no:
+          type: "string"
+          description: "宛先利用者番号"
+        due_date:
+          type: "string"
+          format: "date"
+          description: "対象貸出の返却期限"
+        days_overdue:
+          type: "integer"
+          minimum: 1
+          description: "基準日時点の延滞日数"
+        base_date:
+          type: "string"
+          format: "date"
+          description: "督促通知対象条件の判定基準日"
+        requested_at:
+          type: "string"
+          format: "date-time"
+          description: "送信要求日時"
+        trace_id:
+          type: "string"
+          description: "リクエスト追跡 ID"
+        notification_id:
+          type: "string"
+          description: |
+            通知レコード ID（publish 前に「送信待ち」で作成済みの通知を指す）。
+            再送時は既存の通知 ID を設定し、Worker はそのレコードを再利用して新規作成しない。
+    ReportAggregationRequestedPayload:
+      title: "ReportAggregationRequestedPayload"
+      type: "object"
+      description: "統計レポートの集計要求ペイロード"
+      required:
+        - "report_id"
+        - "report_type"
+        - "period_type"
+        - "period_start"
+        - "period_end"
+        - "trace_id"
+      properties:
+        report_id:
+          type: "string"
+          description: "集計中で作成済みの統計レポート ID"
+        report_type:
+          $ref: "#/components/schemas/ReportType"
+        period_type:
+          $ref: "#/components/schemas/PeriodType"
+        period_start:
+          type: "string"
+          format: "date"
+          description: "集計開始日"
+        period_end:
+          type: "string"
+          format: "date"
+          description: "集計終了日"
+        trace_id:
+          type: "string"
+          description: "リクエスト追跡 ID"

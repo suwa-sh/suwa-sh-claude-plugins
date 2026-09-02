@@ -1,0 +1,88 @@
+# _model-summary.yaml
+uc: "自分の予約順位を照会する"
+business: "予約管理業務"
+buc: "書籍を予約するフロー"
+
+bounded_context_id: "BC-004"
+
+models:
+  - name: "予約順位確認画面 / ReservationRankView"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "予約"
+  - name: "GetReservationRankRequest"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "予約"
+  - name: "GetReservationRankRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "予約"
+  - name: "GetMyReservationRankQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "予約"
+  - name: "予約(Reservation)"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "書籍(Book)"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "ReservationRepository"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "ReservationRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "予約"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "reservation_id = :reservation_id AND user_no = :認証利用者番号（個人情報参照可否条件）"
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id AND reservation_status IN ('予約中','取置き中')（有効予約件数の集計）"
+    indexes_needed:
+      - columns: ["reservation_id", "user_no"]
+        reason: "本人限定参照を索引段階で絞り込み、他利用者の予約に到達させない"
+        access_pattern: "予約ID + 利用者番号の等値検索"
+      - columns: ["book_id", "reservation_status"]
+        reason: "有効予約件数（total_reservations）の集計"
+        access_pattern: "書籍ID + 予約状態での件数集計"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id（表示用の書籍属性取得）"
+    indexes_needed: []
+
+kvs:
+  - key_pattern: "cache:reservation:rank:{book_id}"
+    purpose: "cache"
+    description: "同一書籍の有効予約件数の参照キャッシュ。予約登録・取消で破棄する"
+    value_type: "有効予約件数（integer）"
+    ttl: "60s"
+    operations: ["GET", "SET", "DEL"]
+
+object_storage: []

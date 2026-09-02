@@ -1,4 +1,4 @@
-# digest of design/latest/design-event.yaml section states (L1500-1614); source_sha256: 7e4262e4b85411707038985f94bd47496eca0007f0389cf6fa4c3bec2389b6d5
+# digest of design/latest/design-event.yaml section states (L1530-1644); source_sha256: a7c591614e86518c64bedfab204693aecdd149bcc2c0a230692d585870a9e4cf
 # 派生物。正本は design-event.yaml。編集しない
 states:
   - model: "書籍状態"

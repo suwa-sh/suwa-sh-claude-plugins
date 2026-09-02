@@ -1,0 +1,110 @@
+# _model-summary.yaml
+uc: "利用者情報を編集する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+
+bounded_context_id: "BC-002"
+aggregate_id: "AG-002"
+
+models:
+  - name: "利用者情報変更画面 / UserProfileCard + UserEditForm"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "利用者"
+  - name: "UserEditState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "利用者"
+  - name: "UpdateUserApiRequest"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "利用者"
+  - name: "UpdateUserRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "利用者"
+  - name: "GetUserQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "利用者"
+  - name: "UpdateUserCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "利用者"
+  - name: "User"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "利用者"
+  - name: "UserRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+  - name: "UserEventRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+
+tables:
+  - name: "user_events"
+    rdra_info: "利用者"
+    operations:
+      - type: "INSERT"
+        columns:
+          - name: "event_id"
+            value: "UUID"
+          - name: "user_no"
+            value: "対象の利用者番号"
+          - name: "event_type"
+            value: "USER_PROFILE_CHANGED"
+          - name: "payload"
+            value: "変更項目名・変更後の利用者区分（個人情報である氏名・連絡先の値は含めない。匿名化方針との整合）"
+          - name: "occurred_at"
+            value: "更新時刻"
+        where: ""
+    indexes_needed:
+      - columns: ["user_no", "occurred_at"]
+        reason: "利用者ごとの変更履歴の時系列取得"
+        access_pattern: "監査追跡・スナップショット再構築"
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :user_no（現在値と楽観ロック版の取得）"
+      - type: "UPDATE"
+        columns:
+          - name: "name"
+            value: "入力された氏名"
+          - name: "email"
+            value: "入力された連絡先"
+          - name: "user_category"
+            value: "一般 / 学生 / 団体"
+          - name: "updated_at"
+            value: "編集イベントの occurred_at"
+        where: "user_no = :user_no AND updated_at = :if_match（楽観ロック）"
+    indexes_needed:
+      - columns: ["user_no"]
+        reason: "主キーによる単一取得と更新"
+        access_pattern: "利用者情報変更画面の取得・保存"
+      - columns: ["email"]
+        reason: "変更後の連絡先が他利用者と重複しないことを一意制約で担保する"
+        access_pattern: "UPDATE 時の一意制約検査"
+
+kvs:
+  - key_pattern: "idem:api:updateUser:{idempotency_key}"
+    purpose: "idem"
+    description: "冪等キー検証（更新の重複適用の抑止）"
+    value_type: "処理結果（レスポンス本文）"
+    ttl: "24h"
+    operations: ["GET", "SET"]
+
+object_storage: []

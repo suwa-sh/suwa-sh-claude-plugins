@@ -1,0 +1,247 @@
+{
+  "event_id": "20260902_211000_feedback_spec_completed",
+  "type": "feedback_stage_completed",
+  "run_id": "feedback-20260902_213000_impl_feedback_d0f57ea2-20260902_203921-73195",
+  "attempt": 1,
+  "created_at": "2026-09-02T21:10:00+09:00",
+  "stage": "spec",
+  "direct_work_unit_ids": [
+    "CR-d0f57ea2-002#1"
+  ],
+  "causal_work_unit_ids": [
+    "CR-d0f57ea2-002#1",
+    "CR-d0f57ea2-006#1"
+  ],
+  "work_unit_results": [
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "disposition": "applied",
+      "reason": "asyncapi.yaml 側の payload schema title は前イベントで付与済みだったが、AsyncAPI を再集約する入力である UC 単位 _api-summary.yaml と tier 仕様に payload schema title のアンカーが無く、差分再生成で匿名スキーマへ退行しうる残存ギャップがあった。非同期イベントを持つ 5 UC・6 event の async_events[] へ payload_schema / headers_schema を追加し、tier-backend-api.md / tier-worker.md 12 件へペイロードスキーマ・ヘッダースキーマの明記を追加し、uc-api-dependencies.md へ message ↔ channel ↔ payload_schema(title) ↔ headers_schema ↔ 所有 UC の対応表を新設した。",
+      "artifact_refs": [
+        "specs/events/20260902_205713_spec_generation/spec-event.yaml",
+        "specs/events/20260902_205713_spec_generation/spec-event.md",
+        "specs/events/20260902_205713_spec_generation/_changes.md",
+        "specs/events/20260902_205713_spec_generation/_inference.md",
+        "specs/events/20260902_205713_spec_generation/_cross-cutting/api/uc-api-dependencies.md",
+        "specs/events/20260902_205713_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/_api-summary.yaml",
+        "specs/events/20260902_205713_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/_api-summary.yaml",
+        "specs/events/20260902_205713_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/_api-summary.yaml",
+        "specs/events/20260902_205713_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/_api-summary.yaml",
+        "specs/events/20260902_205713_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/_api-summary.yaml"
+      ]
+    }
+  ],
+  "reconciliation_results": [
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "status": "changed",
+      "reason": "asyncapi.yaml 側の payload schema title は前イベントで付与済みだったが、AsyncAPI を再集約する入力である UC 単位 _api-summary.yaml と tier 仕様に payload schema title のアンカーが無く、差分再生成で匿名スキーマへ退行しうる残存ギャップがあった。非同期イベントを持つ 5 UC・6 event の async_events[] へ payload_schema / headers_schema を追加し、tier-backend-api.md / tier-worker.md 12 件へペイロードスキーマ・ヘッダースキーマの明記を追加し、uc-api-dependencies.md へ message ↔ channel ↔ payload_schema(title) ↔ headers_schema ↔ 所有 UC の対応表を新設した。",
+      "artifact_refs": [
+        "specs/events/20260902_205713_spec_generation/spec-event.yaml",
+        "specs/events/20260902_205713_spec_generation/spec-event.md",
+        "specs/events/20260902_205713_spec_generation/_changes.md",
+        "specs/events/20260902_205713_spec_generation/_inference.md",
+        "specs/events/20260902_205713_spec_generation/_cross-cutting/api/uc-api-dependencies.md",
+        "specs/events/20260902_205713_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/_api-summary.yaml",
+        "specs/events/20260902_205713_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/_api-summary.yaml",
+        "specs/events/20260902_205713_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/_api-summary.yaml",
+        "specs/events/20260902_205713_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/_api-summary.yaml",
+        "specs/events/20260902_205713_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/_api-summary.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "status": "already_current",
+      "reason": "direct owner は design_system ステージで applied 済み（event 20260902_204527_design_system）。今回の design 変更は components.ui[] への path / exports / usage 付与と LoadingState の import 規約明記でありデザイン資産内で完結する。spec 側は前イベント 20260902_191046_spec_generation で loading 表現の LoadingState 一本化を presentation tier 仕様へ反映済みで矛盾がないため、追加変更は不要。",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/spec-event.yaml",
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+      ]
+    }
+  ],
+  "work_unit_evidence_refs": [
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_205713_spec_generation/spec-event.yaml",
+      "sha256": "f13ddc453289ee58bcba1b4c992945f3dde31f269a13e7c62c50c082aaaa73ce"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_205713_spec_generation/spec-event.md",
+      "sha256": "b8c06e5ed43abb46921521999cdf9aef3b14af9596d10ddd7c98c42275ea0654"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_205713_spec_generation/_changes.md",
+      "sha256": "a5a19d4c158c61c4fe467e11a9b6382c0f5c85ce8fcaf218df40148ff3d9568f"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_205713_spec_generation/_inference.md",
+      "sha256": "9095a75d3ae8a23569a37057486ec3563f9192fcecb1ea2dc72f960a95bd50f9"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_205713_spec_generation/_cross-cutting/api/uc-api-dependencies.md",
+      "sha256": "7cfd602211bea1a878eb550df88ace867c2adeb5e9460bb25212f1b3f040ba6e"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_205713_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/_api-summary.yaml",
+      "sha256": "8418ad40cd8cb15fab27b776d923dbde46b7b3cdf712e533ed9aaf1657cb9aa2"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_205713_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/_api-summary.yaml",
+      "sha256": "5cea61ba0d18e0e63f45222bb5224e6abe9851318da9f2bffbe7bab5b929d172"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_205713_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/_api-summary.yaml",
+      "sha256": "26c3c89633a230d06b607ce1777f98ec711a0c78eb2ae2ee4ca28f085714d78f"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_205713_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/_api-summary.yaml",
+      "sha256": "e93de502086ff7be62cabf59fed7106e8dc4cdac2a52f580451e62ab28895000"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_205713_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/_api-summary.yaml",
+      "sha256": "f8a215d2652002c1a30f14114fba4b8882edf2740be62822feb2cc0ae64c9b02"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "path": "specs/events/20260902_191046_spec_generation/spec-event.yaml",
+      "sha256": "03edcdf6f49fb6cbde450aadbce3936dd3eb7293f0575006fb901bc3acabcaba"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+      "sha256": "c5830502cff20b572a33bd9bbade0e15c2a5e7a0352a6f7be2e2864c84533728"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+      "sha256": "14c82782f183c31140e44f5a71448bb85a84503d6fcccf89cc68d0d31eef95ee"
+    }
+  ],
+  "domain_event_refs": [
+    {
+      "path": "specs/events/20260902_205713_spec_generation/spec-event.yaml",
+      "sha256": "f13ddc453289ee58bcba1b4c992945f3dde31f269a13e7c62c50c082aaaa73ce"
+    }
+  ],
+  "post_execution_basis": {
+    "repository_head": "e3afca0e19a8be7b787d8f9ab5e15decac043325",
+    "latest_domain_event_ids": {
+      "requirements": {
+        "rdra/events": "20260902_130741_initial_build",
+        "usdm/events": "20260902_130741_initial_build"
+      },
+      "quality_attributes": {
+        "nfr/events": "20260902_132551_initial_nfr"
+      },
+      "architecture": {
+        "arch/events": "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+      },
+      "infrastructure": {
+        "infra/events": "20260902_142349_infra_product_design"
+      },
+      "design_system": {
+        "design/events": "20260902_204527_design_system"
+      },
+      "spec": {
+        "specs/events": "20260902_205713_spec_generation"
+      },
+      "spec_stories": {
+        "design/events": "20260902_204527_design_system"
+      }
+    },
+    "domain_event_root_snapshots": {
+      "rdra/events": {
+        "head_event_id": "20260902_130741_initial_build",
+        "head_event_sha256": "fb6f06d93a05c4e93975bcad30721ab0ec99ae0b0ec9b9a68f1673650263cf91",
+        "event_ids": [
+          "20260902_130741_initial_build"
+        ],
+        "event_set_sha256": "047e04aa23237bfc38d8642cdbf47c6c1274788f60a5eac4df6c3a0cc3c07a03",
+        "latest_tree_sha256": "900230113d3a6312605b4a55c4d0daf37f952f709a8e1e58b24724681a403308"
+      },
+      "usdm/events": {
+        "head_event_id": "20260902_130741_initial_build",
+        "head_event_sha256": "f4e61d85a24da5570608bc0e71beb35d54412523b8355bfd9da76812988f66c1",
+        "event_ids": [
+          "20260902_130741_initial_build"
+        ],
+        "event_set_sha256": "047e04aa23237bfc38d8642cdbf47c6c1274788f60a5eac4df6c3a0cc3c07a03",
+        "latest_tree_sha256": "fe6f8dad183689f0b10911f4d161bdfbcc32553525f01caccd34c92c8e68c20a"
+      },
+      "nfr/events": {
+        "head_event_id": "20260902_132551_initial_nfr",
+        "head_event_sha256": "acbf930e512ed305e483cd956d08cfb498100d1bfad5f164b0debea84b6b9390",
+        "event_ids": [
+          "20260902_132551_initial_nfr"
+        ],
+        "event_set_sha256": "ebf719352242441145d489c70c100ec001917c92a68f7fe019d1129419c13d78",
+        "latest_tree_sha256": "c415d8f502720d31c0a2770c1194bf55fd18a80ef49d13dad7e07e15d1b5c5e2"
+      },
+      "arch/events": {
+        "head_event_id": "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design",
+        "head_event_sha256": "fe544edc2e0ed6c0d8898a0e5538fd8bf14f75405657e29c3b3f78febaffb9eb",
+        "event_ids": [
+          "20260902_133544_initial_arch",
+          "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+        ],
+        "event_set_sha256": "68a5a647be2c143f41aa4e67f3cc4be2a97c66bce0bdd702e26ad68eb5ae3be8",
+        "latest_tree_sha256": "26049abca8f396e363fc03f1cec047b714c3a6831336591a1e4558a8ec5fab37"
+      },
+      "infra/events": {
+        "head_event_id": "20260902_142349_infra_product_design",
+        "head_event_sha256": "b5fc568c6e2da92ef7263e01fdfd221d31ecc0616c947bd3726109b13596d54b",
+        "event_ids": [
+          "20260902_142349_infra_product_design"
+        ],
+        "event_set_sha256": "546f0883c0392eb984400c6a37c9f29048bb43c6adab7ba966d20a80854267f0",
+        "latest_tree_sha256": "b5fc568c6e2da92ef7263e01fdfd221d31ecc0616c947bd3726109b13596d54b"
+      },
+      "design/events": {
+        "head_event_id": "20260902_204527_design_system",
+        "head_event_sha256": "0aa7bc16c8e77a36293d3715a85f6a3a887e7b5fc8f3bc5d9bbfb7569ce3af27",
+        "event_ids": [
+          "20260902_145539_design_system",
+          "20260902_183502_spec_stories",
+          "20260902_185951_design_system",
+          "20260902_201117_spec_stories",
+          "20260902_204527_design_system"
+        ],
+        "event_set_sha256": "a3725a0269093462c62997dbb22fd75b144e99d934bef792946f09759faf6bb3",
+        "latest_tree_sha256": "3bab6f9ff1cdd9050180a261f04c84a7ee9c462b91c85f9a5f08778929cc71c3"
+      },
+      "specs/events": {
+        "head_event_id": "20260902_205713_spec_generation",
+        "head_event_sha256": "d5c4bd1a219f5bb727ff883e85c7e23c4777fbce2f95240e4a3a900a2f51cc77",
+        "event_ids": [
+          "20260902_152849_spec_generation",
+          "20260902_191046_spec_generation",
+          "20260902_205713_spec_generation"
+        ],
+        "event_set_sha256": "408205854c5f205b44c34dd71acb5454610de0f737663a90c9fb2def0b2aec9e",
+        "latest_tree_sha256": "d5c4bd1a219f5bb727ff883e85c7e23c4777fbce2f95240e4a3a900a2f51cc77"
+      }
+    }
+  },
+  "feedback_request": {
+    "feedback_request_id": "20260902_213000_impl_feedback_d0f57ea2",
+    "input_sha256": "ec85158bc13b54b63c3b96567bb1206417360ee13594fac713374fffa89c64fb",
+    "request_ids": [
+      "CR-d0f57ea2-002",
+      "CR-d0f57ea2-006"
+    ],
+    "work_unit_ids": [
+      "CR-d0f57ea2-002#1",
+      "CR-d0f57ea2-006#1"
+    ]
+  }
+}

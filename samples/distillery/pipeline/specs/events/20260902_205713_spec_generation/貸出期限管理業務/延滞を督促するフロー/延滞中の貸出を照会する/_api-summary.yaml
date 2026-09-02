@@ -1,0 +1,86 @@
+# _api-summary.yaml
+uc: "延滞中の貸出を照会する"
+business: "貸出期限管理業務"
+buc: "延滞を督促するフロー"
+endpoints:
+  - operation_id: "listOverdueLoans"
+    method: "GET"
+    path: "/api/v1/staff/overdues"
+    summary: "延滞中の貸出一覧と督促の実施状況を取得する（司書向け）"
+    response_schema: "OverdueLoanListResponse"
+    tags: ["overdues"]
+async_events: []
+consumes: []
+schemas:
+  - name: "OverdueLoanListResponse"
+    properties:
+      - name: "base_date"
+        type: "string(date)"
+        required: true
+      - name: "summary"
+        type: "OverdueSummary"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true
+      - name: "items"
+        type: "array<OverdueLoanItem>"
+        required: true
+  - name: "OverdueSummary"
+    properties:
+      - name: "overdue_total"
+        type: "integer"
+        required: true
+      - name: "dun_not_sent"
+        type: "integer"
+        required: true
+      - name: "dun_failed"
+        type: "integer"
+        required: true
+  - name: "OverdueLoanItem"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "user_name"
+        type: "string"
+        required: true
+      - name: "user_category"
+        type: "string"
+        required: true
+      - name: "loan_date"
+        type: "string(date)"
+        required: true
+      - name: "due_date"
+        type: "string(date)"
+        required: true
+      - name: "days_overdue"
+        type: "integer"
+        required: true
+      - name: "loan_status"
+        type: "string"
+        required: true
+      - name: "last_dun_status"
+        type: "string"
+        required: true
+      - name: "last_dun_requested_at"
+        type: "string(date-time)"
+        required: false

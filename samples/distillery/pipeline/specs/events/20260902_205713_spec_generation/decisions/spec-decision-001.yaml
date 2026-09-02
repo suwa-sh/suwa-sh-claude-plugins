@@ -1,0 +1,88 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-001"
+title: "同期 API のスタイルは REST（OpenAPI 3.1）とし、パスを /api/v1/{リソース} + staff / me で分離する"
+status: "approved"
+generated_at: "2026-09-02T16:42:47+09:00"
+context: |
+  全 41 UC の `_api-summary.yaml` を単一の API 契約（`_cross-cutting/api/openapi.yaml`）へ統合するにあたり、
+  同期 API のスタイルと URL 設計規約を確定する必要があった。制約は次のとおり。
+
+  - 消費者は 2 つのフロントエンドポータルのみ（利用者ポータル 16 UC / 司書ポータル 25 UC）で、
+    外部パートナー向けの汎用クエリ需要はない。
+  - 書籍・利用者・貸出・予約・通知・レポートという業務リソースが明確で、UC はその CRUD と
+    状態遷移操作にほぼ 1 対 1 で対応する。
+  - 認可は RBAC（司書 / 利用者）に加え、「本人限定参照」（利用者は自分のデータのみ参照可）が
+    個人情報参照可否条件として要求されている。
+  - 認証は外部マネージド IdP（OAuth2/OIDC）に委譲し、API Gateway でトークンを検証する構成が
+    アーキテクチャ設計で確定済み。認可判定は Gateway でも粗粒度に行いたい。
+  - Contract First で実装（distillery-impl）へ渡すため、ツールチェーンの成熟度が選定条件となる。
+decision: |
+  同期 API は **REST（OpenAPI 3.1.0 で記述）** を採用する。パス設計規約は次のとおり。
+
+  1. **バージョンをパス先頭に固定する**: 全エンドポイントを `/api/v1/...` 配下に置く。
+     破壊的変更は `/api/v2/...` の並行提供で吸収し、v1 は非互換変更を行わない
+     （後方互換な項目追加は同一バージョン内で許容する）。URL バージョニングを選んだのは、
+     Gateway でのルーティング・観測・段階移行がヘッダバージョニングより単純なため。
+  2. **アクセス主体でパス空間を分ける**:
+     - `/api/v1/me/**`（`/me`, `/me/card`, `/me/loans`, `/me/loans/due`, `/me/loans/overdue`,
+       `/me/reservations`, `/me/reservations/holds`, `/me/reservations/{id}/rank` など）は
+       「ログイン中の利用者本人」だけを対象とする本人限定参照。対象の絞り込みは
+       パスパラメータではなくアクセストークンの利用者番号クレームで行い、
+       他人の ID を URL に指定する経路自体を作らない。
+     - `/api/v1/staff/**`（`/staff/overdues`, `/staff/duedates/upcoming`, `/staff/notifications/**`,
+       `/staff/holds/pending-books`, `/staff/reservations/{id}/cancel` など）は司書業務専用。
+       司書ロール限定であることをパスから判別でき、Gateway のパスプレフィックス単位で
+       粗粒度の RBAC を効かせられる。
+     - 上記に属さない業務リソース（`/api/v1/books`, `/api/v1/users`, `/api/v1/loans`,
+       `/api/v1/reservations`, `/api/v1/reports/**`）はリソース名で素直に表す。
+       このうち更新系と `/users` 系は司書ロール限定とする。
+  3. **状態遷移はサブリソース化する**: 動詞をパスに露出させず、
+     `POST /api/v1/loans/{loan_id}/return`、`POST /api/v1/books/{book_id}/restock`、
+     `POST /api/v1/staff/notifications/{notification_id}/resend` のように
+     「操作対象の従属リソースへの POST」として表現する。
+     判定系も同様に `GET /api/v1/books/{book_id}/withdrawal-eligibility`、
+     `POST /api/v1/loans/eligibility-checks` と名詞化する。
+  4. **operationId を安定 ID として扱う**: `listBooks` / `createLoan` / `registerLoanReturn` などの
+     operationId を、クライアント生成名だけでなく冪等キーの名前空間
+     （KVS `idem:api:{operation_id}:{idempotency_key}`）にも使う。
+     HTTP メソッドとパスを冪等キーへ直接埋め込まないため、パス変更が冪等制御に波及しない。
+consequences:
+  positive:
+    - "OpenAPI 3.1 の成熟したツールチェーン（型生成・モックサーバ・契約テスト）をそのまま利用でき、Contract First で実装ティアへ渡せる"
+    - "`/staff/**` と `/me/**` のプレフィックス分離により、API Gateway でパス単位の粗粒度 RBAC を先に効かせられ、バックエンドの認可はリソース所有者判定に集中できる"
+    - "`/me/**` が他人の ID を URL に取らないため、認可漏れによる水平権限昇格（他人のデータ参照）の攻撃面が構造的に小さい"
+    - "HTTP のキャッシュ・ステータスコード・冪等セマンティクスをそのまま活用でき、`X-Idempotency-Key` や楽観ロックの 409 と自然に噛み合う"
+    - "URL バージョニングによりログ・メトリクス・Gateway ルールでバージョン別の利用状況を追跡できる"
+  negative:
+    - "一覧画面ごとに必要項目が異なっても固定レスポンス形状となり、オーバーフェッチが発生する（例: 一覧で書誌の全項目を返す）"
+    - "同一業務でもアクセス主体ごとにエンドポイントが分かれるため（`/me/loans` と `/staff/overdues` 等）、エンドポイント総数が 41 パス規模に増え、契約定義の重複が生じる"
+    - "画面が複数リソースを必要とする場合、フロントエンドが複数回リクエストする（例: 書籍詳細＋在庫状況＋予約状況）"
+    - "URL バージョニングは v2 移行時に全パスの書き換えが必要で、部分的なバージョン差分の表現が難しい"
+alternatives_considered:
+  - name: "GraphQL（単一エンドポイント + スキーマ）"
+    reason_rejected: |
+      消費者が自社製の 2 ポータルのみで、クエリ形状は UC ごとに確定しているため、
+      クライアント主導クエリの利点が小さい。一方で、本人限定参照をフィールド単位の認可で
+      実装する必要が生じ、個人情報マスク（`*_masked` / `reveal=true`）の制御点が分散する。
+      加えてクエリ複雑度制限・N+1 対策・キャッシュ設計の追加コストが、
+      本システムの規模（41 UC）に対して見合わない。
+  - name: "gRPC（Protocol Buffers）"
+    reason_rejected: |
+      主要クライアントがブラウザ上のフロントエンド 2 種であり、gRPC-Web のプロキシ層が
+      追加で必要になる。ブラウザ向けの帯域・レイテンシ最適化が要件として求められておらず、
+      内部サービス間の高頻度 RPC も存在しない（非同期処理は MQ で受ける）ため、
+      バイナリプロトコル採用の便益が運用コストを上回らない。
+  - name: "バージョンを Accept ヘッダまたはカスタムヘッダで指定する"
+    reason_rejected: |
+      URL にバージョンが現れないため、Gateway のパスベースルーティング・アクセスログ・
+      ダッシュボードでのバージョン別可視化が難しくなる。ブラウザからの直接検証や
+      ドキュメント上の参照もしにくい。本システムはバージョン粒度を API 全体で 1 つに
+      揃える方針のため、ヘッダによる細粒度指定の利点が活きない。
+  - name: "リソース単位のフラットなパスに統一し、認可だけでロールを判別する（/staff・/me を作らない）"
+    reason_rejected: |
+      同一パスに司書と利用者の両方が到達するため、Gateway で粗粒度の RBAC を効かせられず、
+      すべての認可判定がバックエンドのハンドラ内に集中する。また利用者向け参照が
+      `/api/v1/loans?user_no={自分}` の形になり、他人の利用者番号を指定する経路が
+      仕様上存在してしまう。本人限定参照の担保をレビューで保証しにくい。

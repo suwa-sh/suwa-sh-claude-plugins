@@ -1,0 +1,59 @@
+uc: "蔵書一覧を照会する"
+business: "蔵書管理業務"
+buc: "蔵書を管理するフロー"
+endpoints:
+  - operation_id: "listBooks"
+    method: "GET"
+    path: "/api/v1/books"
+    summary: "蔵書一覧をページングして照会する（司書）"
+    response_schema: "BookListResponse"
+    tags: ["books"]
+async_events: []
+consumes: []
+schemas:
+  - name: "BookSummary"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "isbn"
+        type: "string"
+        required: false
+      - name: "publisher"
+        type: "string"
+        required: true
+      - name: "genre"
+        type: "string"
+        required: true
+      - name: "material_type"
+        type: "string"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "registered_at"
+        type: "string"
+        required: true
+      - name: "updated_at"
+        type: "string"
+        required: true
+  - name: "BookListResponse"
+    properties:
+      - name: "items"
+        type: "array<BookSummary>"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true

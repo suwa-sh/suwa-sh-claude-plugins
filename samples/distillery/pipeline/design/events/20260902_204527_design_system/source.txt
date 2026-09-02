@@ -1,0 +1,36 @@
+distillery:dist-design-system スキル実行（feedback 差分モード）。
+
+feedback_request_id: 20260902_213000_impl_feedback_d0f57ea2
+input_sha256: ec85158bc13b54b63c3b96567bb1206417360ee13594fac713374fffa89c64fb
+request_ids: CR-d0f57ea2-006
+direct_work_unit_ids: CR-d0f57ea2-006#1
+causal_work_unit_ids: CR-d0f57ea2-006#1
+stage_packet: docs/pipeline/feedback-runs/20260902_213000_impl_feedback_d0f57ea2/stage-packets/design_system.md
+
+trigger_event:
+  rdra: 20260902_130741_initial_build
+  arch: 20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design
+
+packet の allowed_work_unit_ids（= causal_work_unit_ids）だけを処理した差分実行であり、
+デザインシステムの全面再生成は行っていない。
+
+- CR-d0f57ea2-006#1 (constraint_key=loading-state-components):
+  loading 表現の共通 component（LoadingState / Skeleton / Spinner）とその利用条件は
+  前回イベント 20260902_185951_design_system で既に生成済みだった。
+  本イベントでは残存ギャップである「取り込み済み components から Skeleton / Spinner を
+  名前で解決できない」点を解消した。
+  - components.ui[] 全 14 件に path（storybook-app/src 相対）と exports（実 export 名）を付与
+  - Skeleton / Spinner に usage（LoadingState 経由でのみ使う）を付与
+  - common LoadingState の description に import 規約を追記
+  - Storybook の Common/LoadingState docs に「取り込み先での参照（import 解決表）」を追加
+
+Skeleton / Spinner は単独ファイルではなく src/components/ui/Feedback.tsx に同居する。
+取り込み済み packages/ui の import パスを壊さないため、ファイル分割は行っていない
+（design-decision-008）。
+
+RDRA（docs/rdra/latest/）に無い画面・ルートは追加していない。screens[] は 41 件のまま変更なし。
+
+storybook-app/ はハイブリッド方式に従い events/ には含めない（latest/ のみで管理）。
+本 feedback 実行では controller 指示により npm install を行わないため、
+storybook build / dev server での画面確認は実施していない（node_modules 未配置）。
+Step8 は静的検証（export 実在・path 実在・kind 結線・Story 構文・schema 妥当性）で代替した。

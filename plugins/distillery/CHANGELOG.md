@@ -3,6 +3,25 @@
 distillery プラグインの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョンは semver（正本は `.claude-plugin/plugin.json`）。
 
+## [1.9.4] - 2026-09-02
+
+### Fixed
+
+- dist-pipeline `planFeedbackRequest.js` `snapshotDomainEventRoots`: domain `latest/` tree の hash から
+  `.gitignore` 該当 entry（node_modules / storybook-static / .next / *.log 等のビルド成果物）を除外する
+  （artifact root が Git worktree 内のときのみ。`git ls-files --others --ignored --exclude-per-directory=.gitignore --directory` で列挙。
+  `.git/info/exclude` やユーザーの global excludesFile は環境依存なので適用しない。worktree 内で `git ls-files` が失敗した場合は fail-closed）。
+  従来は実行時 workspace にだけ存在するビルド成果物まで hash に入り、clean checkout で verifier が
+  「observed domain root changed without an appended event directory」で fail していた（1.9.3 の sample で CI 検出）。
+  ignored directory は symlink 検査より前に除外するため、`node_modules/.bin` の symlink で planner が fail-closed することも無くなった
+  （1.9.3 sample の feedback run では planner が node_modules の削除を要求していた）。verifier は同じ関数を使うため一貫する
+
+### Changed
+
+- `samples/distillery/pipeline/`: 上記により basis が可搬になった状態で、1.9.3 の feedback run 1（11 件 applied）を
+  supersede する feedback run 2（同じ要求のうち CR-002 / CR-006 を再送。各 stage が残存ギャップを検出し 2 件とも applied、
+  spec_stories は no-change）を追加。run 1 の basis 差分は appended event で解消され、clean checkout でも両 run の verifier が PASS
+
 ## [1.9.3] - 2026-09-02
 
 ### Fixed

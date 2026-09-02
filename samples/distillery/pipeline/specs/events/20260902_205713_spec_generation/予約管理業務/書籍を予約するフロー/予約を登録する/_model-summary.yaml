@@ -1,0 +1,123 @@
+# _model-summary.yaml
+uc: "予約を登録する"
+business: "予約管理業務"
+buc: "書籍を予約するフロー"
+
+bounded_context_id: "BC-004"
+aggregate_id: "AG-004"
+
+models:
+  - name: "書籍予約申込画面 / ReservationDraft"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "書籍"
+  - name: "CreateReservationRequest"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "予約"
+  - name: "CreateReservationRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "予約"
+  - name: "RegisterReservationCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "予約"
+  - name: "予約(Reservation)"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "書籍(Book)"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "ReservationRepository"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "ReservationRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "予約"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id AND reservation_status IN ('予約中','取置き中')（予約可否・重複判定・順位採番）"
+      - type: "INSERT"
+        columns:
+          - name: "reservation_id"
+            value: "採番した予約ID"
+          - name: "book_id"
+            value: "リクエストの書籍ID"
+          - name: "user_no"
+            value: "認証コンテキストの利用者番号"
+          - name: "applied_at"
+            value: "登録時刻（予約申込日時）"
+          - name: "priority"
+            value: "有効予約件数 + 1（予約順位決定条件）"
+          - name: "reservation_status"
+            value: "予約中"
+          - name: "hold_expires_at"
+            value: "NULL（rdb-schema.yaml state_transition_rules「予約状態遷移規則」の （なし）→予約中 の also_sets）"
+          - name: "hold_started_at"
+            value: "NULL（同上。取置きを経ていない予約は NULL）"
+        where: ""
+    indexes_needed:
+      - columns: ["book_id", "reservation_status"]
+        reason: "予約可否条件・予約順位決定条件のため同一書籍の有効予約を件数取得する"
+        access_pattern: "書籍IDと予約状態での絞り込み集計"
+      - columns: ["user_no", "book_id", "reservation_status"]
+        reason: "重複予約禁止条件の判定を単一インデックスで完結させる"
+        access_pattern: "利用者番号 + 書籍ID + 予約状態での存在確認"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id（書籍状態の取得）"
+    indexes_needed: []
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "UPDATE"
+        columns:
+          - name: "user_status"
+            value: "取引進行中"
+          - name: "updated_at"
+            value: "登録時刻"
+        where: "user_no = :user_no AND user_status = '登録済み'"
+    indexes_needed: []
+
+kvs:
+  - key_pattern: "idem:api:createReservation:{idempotency_key}"
+    purpose: "idem"
+    description: "予約登録の冪等キー。二重送信での重複登録を防止する。arch SR-002"
+    value_type: "登録済み reservation_id"
+    ttl: "24h"
+    operations: ["SET", "GET"]
+
+  - key_pattern: "cache:reservation:rank:{book_id}"
+    purpose: "cache"
+    description: "予約順位表示用の有効予約件数キャッシュ。予約登録の確定時 に破棄する"
+    value_type: "有効予約件数（integer）"
+    ttl: "60s"
+    operations: ["DEL"]
+
+object_storage: []

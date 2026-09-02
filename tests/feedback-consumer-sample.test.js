@@ -121,6 +121,28 @@ test('executed stages append auditable event directories and the final basis cov
   assert.equal(final['rdra/events'].event_ids.length, initial['rdra/events'].event_ids.length);
 });
 
+test('superseding run 2 (CR-002 / CR-006 re-sent) also verifies standalone and appends events after run 1', () => {
+  const feedbackId2 = '20260902_213000_impl_feedback_d0f57ea2';
+  const runDir2 = path.join(sampleRoot, 'pipeline/feedback-runs', feedbackId2);
+  assert.deepEqual(validateRunDirectory(runDir2, eventsDir, { artifactRoot: sampleRoot }), []);
+  const input2 = fs.readFileSync(path.join(sampleRoot, 'feedback-requests', `${feedbackId2}.md`), 'utf8');
+  assert.match(input2, new RegExp(`^supersedes: ${feedbackId}$`, 'm'));
+  const result2 = readJson(path.join(runDir2, 'result.json'));
+  assert.equal(result2.status, 'completed');
+  assert.deepEqual(result2.requests.map(item => item.request_id).sort(), ['CR-d0f57ea2-002', 'CR-d0f57ea2-006']);
+  assert.ok(result2.requests.every(item => item.disposition === 'applied'));
+  assert.deepEqual(result2.stages.map(stage => stage.stage_id), ['design_system', 'spec', 'spec_stories']);
+  // run 2 の design / specs event は run 1 の最終 basis より後に append されている（run 1 の basis 差分を解消する根拠）
+  const run1Final = readJson(path.join(eventsDir, readJson(path.join(runDir, 'result.json')).stages.at(-1).event_ids[0], 'event.json'));
+  const run2Final = readJson(path.join(eventsDir, result2.stages.at(-1).event_ids[0], 'event.json'));
+  for (const root of ['design/events', 'specs/events']) {
+    const before = run1Final.post_execution_basis.domain_event_root_snapshots[root].event_ids;
+    const after = run2Final.post_execution_basis.domain_event_root_snapshots[root].event_ids;
+    assert.ok(after.length > before.length, root);
+    for (const id of before) assert.ok(after.includes(id), `${root}: ${id} vanished`);
+  }
+});
+
 test('requirements validator rejects a caller exclusion list instead of narrowing lineage coverage', () => {
   const validator = path.join(root, 'plugins/distillery/skills/dist-requirements/scripts/validateRequirements.js');
   const requirements = path.join(sampleRoot, 'usdm/latest/requirements.yaml');

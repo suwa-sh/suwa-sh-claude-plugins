@@ -1,0 +1,155 @@
+{
+  "event_id": "20260902_211500_feedback_spec_stories_completed",
+  "type": "feedback_stage_completed",
+  "run_id": "feedback-20260902_213000_impl_feedback_d0f57ea2-20260902_203921-73195",
+  "attempt": 1,
+  "created_at": "2026-09-02T21:15:00+09:00",
+  "stage": "spec_stories",
+  "direct_work_unit_ids": [],
+  "causal_work_unit_ids": [
+    "CR-d0f57ea2-002#1",
+    "CR-d0f57ea2-006#1"
+  ],
+  "work_unit_results": [],
+  "reconciliation_results": [
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "status": "not_impacted",
+      "reason": "AsyncAPI payload schema title は backend 契約の関心事で spec ステージ（event 20260902_205713_spec_generation）が解決済み。Storybook Story / design-event.yaml に spec_stories が更新すべき面が無い。",
+      "artifact_refs": []
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "status": "already_current",
+      "reason": "design_system event 20260902_204527_design_system が components.ui[] の path / exports / usage で Skeleton / Spinner を LoadingState 経由で解決可能にしている。storybook-app の LoadingState.tsx が Skeleton / SkeletonTable / SkeletonCard / SkeletonDetail / Spinner を Feedback.tsx から import 済みで、対象 UC の Story も AsyncSection / SubmitActionButton 経由で LoadingState に委譲済みのため Story 側の変更は不要。",
+      "artifact_refs": [
+        "design/events/20260902_204527_design_system/design-event-diff.yaml"
+      ]
+    }
+  ],
+  "work_unit_evidence_refs": [
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "path": "design/events/20260902_204527_design_system/design-event-diff.yaml",
+      "sha256": "539120ab47b14348f2f8d41d224fd7d74dc74578580afa63891be0d2f091d225"
+    }
+  ],
+  "domain_event_refs": [
+    {
+      "path": "design/events/20260902_210720_spec_stories/feedback-disposition.json",
+      "sha256": "c52bb9bf0b6086e15934d47ffd0a69ac7db7a13b0af7ff91debbacaf5892154f"
+    }
+  ],
+  "post_execution_basis": {
+    "repository_head": "e3afca0e19a8be7b787d8f9ab5e15decac043325",
+    "latest_domain_event_ids": {
+      "requirements": {
+        "rdra/events": "20260902_130741_initial_build",
+        "usdm/events": "20260902_130741_initial_build"
+      },
+      "quality_attributes": {
+        "nfr/events": "20260902_132551_initial_nfr"
+      },
+      "architecture": {
+        "arch/events": "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+      },
+      "infrastructure": {
+        "infra/events": "20260902_142349_infra_product_design"
+      },
+      "design_system": {
+        "design/events": "20260902_210720_spec_stories"
+      },
+      "spec": {
+        "specs/events": "20260902_205713_spec_generation"
+      },
+      "spec_stories": {
+        "design/events": "20260902_210720_spec_stories"
+      }
+    },
+    "domain_event_root_snapshots": {
+      "rdra/events": {
+        "head_event_id": "20260902_130741_initial_build",
+        "head_event_sha256": "fb6f06d93a05c4e93975bcad30721ab0ec99ae0b0ec9b9a68f1673650263cf91",
+        "event_ids": [
+          "20260902_130741_initial_build"
+        ],
+        "event_set_sha256": "047e04aa23237bfc38d8642cdbf47c6c1274788f60a5eac4df6c3a0cc3c07a03",
+        "latest_tree_sha256": "900230113d3a6312605b4a55c4d0daf37f952f709a8e1e58b24724681a403308"
+      },
+      "usdm/events": {
+        "head_event_id": "20260902_130741_initial_build",
+        "head_event_sha256": "f4e61d85a24da5570608bc0e71beb35d54412523b8355bfd9da76812988f66c1",
+        "event_ids": [
+          "20260902_130741_initial_build"
+        ],
+        "event_set_sha256": "047e04aa23237bfc38d8642cdbf47c6c1274788f60a5eac4df6c3a0cc3c07a03",
+        "latest_tree_sha256": "fe6f8dad183689f0b10911f4d161bdfbcc32553525f01caccd34c92c8e68c20a"
+      },
+      "nfr/events": {
+        "head_event_id": "20260902_132551_initial_nfr",
+        "head_event_sha256": "acbf930e512ed305e483cd956d08cfb498100d1bfad5f164b0debea84b6b9390",
+        "event_ids": [
+          "20260902_132551_initial_nfr"
+        ],
+        "event_set_sha256": "ebf719352242441145d489c70c100ec001917c92a68f7fe019d1129419c13d78",
+        "latest_tree_sha256": "c415d8f502720d31c0a2770c1194bf55fd18a80ef49d13dad7e07e15d1b5c5e2"
+      },
+      "arch/events": {
+        "head_event_id": "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design",
+        "head_event_sha256": "fe544edc2e0ed6c0d8898a0e5538fd8bf14f75405657e29c3b3f78febaffb9eb",
+        "event_ids": [
+          "20260902_133544_initial_arch",
+          "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+        ],
+        "event_set_sha256": "68a5a647be2c143f41aa4e67f3cc4be2a97c66bce0bdd702e26ad68eb5ae3be8",
+        "latest_tree_sha256": "26049abca8f396e363fc03f1cec047b714c3a6831336591a1e4558a8ec5fab37"
+      },
+      "infra/events": {
+        "head_event_id": "20260902_142349_infra_product_design",
+        "head_event_sha256": "b5fc568c6e2da92ef7263e01fdfd221d31ecc0616c947bd3726109b13596d54b",
+        "event_ids": [
+          "20260902_142349_infra_product_design"
+        ],
+        "event_set_sha256": "546f0883c0392eb984400c6a37c9f29048bb43c6adab7ba966d20a80854267f0",
+        "latest_tree_sha256": "b5fc568c6e2da92ef7263e01fdfd221d31ecc0616c947bd3726109b13596d54b"
+      },
+      "design/events": {
+        "head_event_id": "20260902_210720_spec_stories",
+        "head_event_sha256": "d49bb0418251693a908f48498e91d3fc55874aacf6439bf86c22c2c86ca55104",
+        "event_ids": [
+          "20260902_145539_design_system",
+          "20260902_183502_spec_stories",
+          "20260902_185951_design_system",
+          "20260902_201117_spec_stories",
+          "20260902_204527_design_system",
+          "20260902_210720_spec_stories"
+        ],
+        "event_set_sha256": "8102358f91f37aa22cc95096c21bf63e33f90e8a891a2f2e0ca9382f77df8106",
+        "latest_tree_sha256": "3bab6f9ff1cdd9050180a261f04c84a7ee9c462b91c85f9a5f08778929cc71c3"
+      },
+      "specs/events": {
+        "head_event_id": "20260902_205713_spec_generation",
+        "head_event_sha256": "d5c4bd1a219f5bb727ff883e85c7e23c4777fbce2f95240e4a3a900a2f51cc77",
+        "event_ids": [
+          "20260902_152849_spec_generation",
+          "20260902_191046_spec_generation",
+          "20260902_205713_spec_generation"
+        ],
+        "event_set_sha256": "408205854c5f205b44c34dd71acb5454610de0f737663a90c9fb2def0b2aec9e",
+        "latest_tree_sha256": "d5c4bd1a219f5bb727ff883e85c7e23c4777fbce2f95240e4a3a900a2f51cc77"
+      }
+    }
+  },
+  "feedback_request": {
+    "feedback_request_id": "20260902_213000_impl_feedback_d0f57ea2",
+    "input_sha256": "ec85158bc13b54b63c3b96567bb1206417360ee13594fac713374fffa89c64fb",
+    "request_ids": [
+      "CR-d0f57ea2-002",
+      "CR-d0f57ea2-006"
+    ],
+    "work_unit_ids": [
+      "CR-d0f57ea2-002#1",
+      "CR-d0f57ea2-006#1"
+    ]
+  }
+}

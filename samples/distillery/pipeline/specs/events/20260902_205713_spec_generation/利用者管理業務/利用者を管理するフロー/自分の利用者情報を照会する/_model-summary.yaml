@@ -1,0 +1,74 @@
+# _model-summary.yaml
+uc: "自分の利用者情報を照会する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+
+bounded_context_id: "BC-002"
+aggregate_id: "AG-002"
+
+models:
+  - name: "マイページ登録内容画面 / UserProfileCard"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "利用者"
+  - name: "GetMyProfileApiRequest"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "利用者"
+  - name: "AuthContext"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "利用者アカウント"
+  - name: "GetMyProfileQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "利用者"
+  - name: "OwnerAccessPolicy"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "利用者アカウント"
+  - name: "MyProfile"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "value-object"
+    rdra_info: "利用者"
+  - name: "UserRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+  - name: "UserAccountRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者アカウント"
+
+tables:
+  - name: "user_accounts"
+    rdra_info: "利用者アカウント"
+    operations:
+      - type: "SELECT"
+        columns: ["account_id", "login_id", "user_no", "role", "is_active"]
+        where: "account_id = :認証コンテキストのアカウントID AND is_active = true"
+    indexes_needed:
+      - columns: ["account_id"]
+        reason: "認証コンテキストから利用者番号・役割を解決する"
+        access_pattern: "本人限定参照の認可判定"
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :認証コンテキストの利用者番号"
+    indexes_needed:
+      - columns: ["user_no"]
+        reason: "主キーによる本人 1 件の取得"
+        access_pattern: "マイページ登録内容画面の初期表示"
+
+kvs: []
+object_storage: []
