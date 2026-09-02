@@ -2,16 +2,45 @@
 
 RDRA モデルと NFR グレードを読み取り、アーキテクチャ設計を推論するタスク。
 
-## 入力
+## 実行形態（Part 別 subagent）
 
-- `docs/rdra/latest/*.tsv` — 現在の RDRA モデル（全ファイル）
-- `docs/rdra/latest/システム概要.json` — システム概要
-- `docs/nfr/latest/nfr-grade.yaml` — NFR グレード
-- `references/arch-inference-rules.md` — 推論ルール
-- `references/arch-schema.md` — 出力スキーマ定義
-- `docs/arch/latest/arch-design.yaml`（差分更新モード時のみ）— 既存のアーキテクチャ設計
+Step1 は **メインエージェントが直接推論しない**。推論ルール（43KB）・スキーマ（33KB）・RDRA 全 tsv・NFR を
+メインが抱えると Step2 の対話全ターンでコンテキストを再読するため、Part ごとに fresh subagent へ委譲する:
 
-## タスク手順
+1. **Part 0（ドメイン）subagent** を起動する（指示: `references/arch/stage-instructions/step1-part0.md`）
+2. Part 0 の完了報告を受けたら **Part 1（システム）subagent** を起動する（指示: `step1-part123.md`、`part: 1`）
+3. Part 1 の完了報告を受けたら **Part 2 と Part 3 を単一メッセージで並列起動**する（Part 2 は Part 1 が確定したティア id を、
+   Part 3 は Part 0 の owned_entity_ids を前提にする。Part 2 と Part 3 は互いに依存しない）
+4. メインエージェントは各 subagent が書いた `docs/arch/.work/{event_id}/_draft/0N-*.md`（要約 + 要確認項目）だけを読み、
+   Step2 の対話材料にする。`_draft/*.yaml`（セクションのドラフト）はメインが読まず、Step3 の出力 subagent が
+   `arch-design.parts/` に昇格する（ファイル名は parts と同一）
+5. 差分更新モードでは変更セクションに対応する Part の subagent だけを起動する。**影響の伝播（推移閉包）**:
+   Part 0 の変更（BC / owned_entity_ids / 認可重み付け）→ Part 1・2・3 を再実行、Part 1 の変更でティアの追加・削除・id 変更・
+   種別変更があれば → Part 2 を必須再実行（`app_architecture.tier_layers[].tier_id` が `system_architecture.tiers[].id` を参照するため）、
+   Part 3 の変更（Entity 追加・削除）→ Part 0 の `owned_entity_ids` を再確認（Part 0 を再実行するか、要確認項目として対話に回す）。
+   未実行 Part の前提は `docs/arch/latest/_digest/` から補う: Part 0 未実行 → `domain_architecture.yaml`（Part 0 自身の差分実行時は
+   `data_architecture.yaml` も既存 Entity ID の対応表として読む）、Part 1 未実行の Part 2 → `system_architecture.yaml`。
+   トリガー種別（`trigger_type: rdra | nfr | manual`）を Part 0 に渡す（NFR 起因では RDRA の差分ファイルが無い）。
+   既存スナップショットに `domain_architecture` が無い場合は「9. 差分更新モード時の処理」6. の確認を行い、生成しない選択なら
+   Part 1〜3 を `domain: none`（no-domain モード）で起動する。
+   Step3 の `_inference.md` は未実行 Part の集計値を直前イベントの `_inference.md` から転記する
+
+staging は `docs/arch/.work/{event_id}/`（**events/ には一時ファイルを置かない**。event-sourcing の不変条件を守るため）。
+Step3 でバリデーション PASS 後に `.work/{event_id}/` を削除する。
+プロンプトは「role 1 行 + 指示ファイルの絶対パス + 変数ブロック（`skill_root` / `event_id` / `part` / `mode`）」だけにする（固定長文を貼らない）。
+イベント ID は Step1 冒頭で `references/event-sourcing-rules.md` の形式 `{YYYYMMDD_HHMMSS}_{変更名}` で採番する
+（日時は `date '+%Y%m%d_%H%M%S'`。変更名は初期構築 `initial_arch` / RDRA 差分起因 `arch_update_for_{rdra_event_id}` /
+NFR 変更起因 `arch_update_for_nfr_{nfr_event_id}`。Step3 はこの ID をそのまま使い、再採番しない）。
+
+## 入力（各 Part subagent が自分の分だけ読む。正本は `references/arch-inference-rules.md`「Part 別入力表」と各指示ファイル）
+
+- `docs/rdra/latest/*.tsv` / `システム概要.json` — 全 Part が全部読む（小さい）
+- `docs/nfr/latest/nfr-grade.yaml` — Part ごとの必要カテゴリのみ（`_digest/category-X.yaml` があればそちら）
+- `references/inference/part{N}-*.md` — 自分の Part の推論ルール（索引は `references/arch-inference-rules.md`）
+- `references/schema/{domain|system|app|data}.md` + `references/schema/common.md` — 自分の Part の出力スキーマ
+- `docs/arch/latest/arch-design.yaml` の該当セクション（差分更新モード時のみ）
+
+## タスク手順（1〜2 と 7〜9 は各 subagent が自 Part の範囲で行う）
 
 ### 1. RDRA モデルの読み込みと特徴抽出
 
@@ -76,7 +105,8 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
 
 **Part 1〜3 より先に実施する**。問題空間（DDD 戦略設計）を解決空間（技術選定）より先に確定する。
 
-`arch-inference-rules.md` の「Part 0: ドメインアーキテクチャ推論ルール」および `references/arch-domain-patterns.md` の Q1〜Q4 詳細ルールに従い:
+担当: Part 0 subagent（`stage-instructions/step1-part0.md`）。`references/inference/part0-domain.md` および
+`references/arch-domain-patterns.md` の Q1〜Q4 詳細ルールに従い:
 
 1. **Q1: サブドメイン分類**
    - BUC.tsv のクラスタリング（同一 UC グループ + 同じ主アクター）
@@ -121,7 +151,7 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
 
 ### 4. システムアーキテクチャの推論（Part 1）
 
-`arch-inference-rules.md` の「Part 1: システムアーキテクチャ推論ルール」に従い:
+担当: Part 1 subagent（`stage-instructions/step1-part123.md`、part=1）。`references/inference/part1-system.md` に従い:
 
 1. **ティア識別**: 各ティア（フロントエンド、バックエンド API、ワーカー、データストア、外部連携）の要否を判定
 2. **テクノロジー候補**: 各ティアのベンダーニュートラルなテクノロジー候補を推論
@@ -130,11 +160,11 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
 5. **Mermaid 図**: ティア構成図を `graph TD` 形式で生成
 6. **i18n 方針**: RDRA シグナルから多言語対応の要否とアーキテクチャ方針を推論
 7. **BC : tier 対応形態の暫定推定**（Part 0 連携）: BC 数 / NFR A・B / BUC 数 から モノリス / モジュラモノリス / マイクロサービス を仮選定（最終確認は Phase 1 対話）
-8. **認可モデルの BC ごとの重み付け**（Part 0 連携）: **データ感度ベース**で判定する（決済 / PII / 認証情報 / 監査ログ等は Subdomain.type に関係なく厳格認可必須）。Subdomain.type は補助シグナルとして使う（Core は迷う場合に厳格寄り）。詳細は `arch-inference-rules.md` の「BC ごとの認可重み付け（データ感度ベース）」参照
+8. **認可モデルの BC ごとの重み付け**（Part 0 連携）: **データ感度ベース**で判定する（決済 / PII / 認証情報 / 監査ログ等は Subdomain.type に関係なく厳格認可必須）。Subdomain.type は補助シグナルとして使う（Core は迷う場合に厳格寄り）。詳細は `references/inference/part1-system.md` の「BC ごとの認可重み付け（データ感度ベース）」参照
 
 ### 5. アプリケーションアーキテクチャの推論（Part 2）
 
-`arch-inference-rules.md` の「Part 2: アプリケーションアーキテクチャ推論ルール」に従い:
+担当: Part 2 subagent（part=2）。`references/inference/part2-app.md` に従い:
 
 1. **レイヤリングパターン選定**: 各ティアのレイヤリング（2層/3層/4層）を判定
 2. **レイヤー定義**: 各レイヤーの責務と依存関係を設定
@@ -144,7 +174,7 @@ nfr-grade.yaml からカテゴリ別に主要メトリクスを抽出し、ア�
 
 ### 6. データアーキテクチャの推論（Part 3）
 
-`arch-inference-rules.md` の「Part 3: データアーキテクチャ推論ルール」に従い:
+担当: Part 3 subagent（part=3）。`references/inference/part3-data.md` に従い:
 
 1. **エンティティ抽出**: 情報.tsv の各行からエンティティを生成
 2. **属性の型推論**: 属性名パターンから論理型を推論
@@ -194,12 +224,16 @@ validator が上限超過を自動 WARN する。
 
 ## 出力
 
-このステップではファイル出力を行わない。推論結果は Step2（対話）に渡すための内部データとして保持する。
+正本（arch-design.yaml / events / latest）への出力は行わない。各 Part subagent が staging
+`docs/arch/.work/{event_id}/_draft/` に要約 md（`00-domain.md` / `01-system.md` / `02-app.md` / `03-data.md`）と
+セクションドラフト yaml（`03-domain-architecture.yaml` / `04-system-architecture.yaml` / `05-app-architecture.yaml` /
+`06-data-architecture.yaml`。**Step3 の `arch-design.parts/` と同名**）を書く。メインエージェントは要約 md だけを読んで
+Step2 の対話材料にする。`.work/{event_id}/` は Step3 でバリデーション PASS 後に削除する。
 
 ## 注意事項
 
 - 推論は保守的に行う（迷ったらシンプルな構成を推定し、Step2 で複雑化の判断を委ねる）
-- テクノロジー候補はベンダーニュートラルな用語のみ使用（arch-schema.md のベンダーニュートラル用語ガイド参照）
+- テクノロジー候補はベンダーニュートラルな用語のみ使用（`references/schema/common.md` のベンダーニュートラル用語ガイド参照）
 - RDRA/NFR に記載のない情報を想像で補完しない
 - 推論根拠は具体的な RDRA/NFR 要素名を引用する
 - Mermaid 図はシンプルで読みやすい構成にする

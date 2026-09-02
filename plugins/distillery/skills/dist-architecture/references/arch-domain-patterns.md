@@ -187,7 +187,7 @@ BC 数とデプロイ形態の対応:
 
 ### 認可モデル選定との関係
 
-認可強度は **データ感度 / 法規制 / 認可パターン複雑度** で決定する（`arch-inference-rules.md` 「BC ごとの認可重み付け（データ感度ベース）」参照）。Subdomain.type は **補助シグナル** に留める。
+認可強度は **データ感度 / 法規制 / 認可パターン複雑度** で決定する（`references/inference/part1-system.md` 「BC ごとの認可重み付け（データ感度ベース）」参照）。Subdomain.type は **補助シグナル** に留める。
 
 - 「Generic だから RBAC のみ」は危険な単純化（決済 / 請求 / 監査ログは Generic だが高感度）
 - 一次判定（データ感度・法規制）で厳格認可必要 → Subdomain.type に関係なく厳格認可
@@ -210,4 +210,4 @@ BC 数とデプロイ形態の対応:
 
 - 各要素の `source_model` には根拠となった RDRA 要素を `"BUC: 会議室利用業務, 情報: 予約情報"` のような形式で記録する
 - 推論元が完全に無い場合は `"なし"`（null は使わない）
-- 全 confidence は `arch-schema.md` で定義された 5 値（high / medium / low / default / user）のいずれか
+- 全 confidence は `references/schema/common.md` で定義された 5 値（high / medium / low / default / user）のいずれか

@@ -5,16 +5,20 @@
 ## 入力
 
 - Step2 で確定したアーキテクチャ設計情報（内部データ）
-- `references/arch-schema.md` — 出力スキーマ
+- `references/arch-schema.md`（目次）→ 出力対象セクションの `references/schema/{domain|system|app|data}.md` + `references/schema/common.md`
+  （domain 無しモードでは `domain.md` を読まない）
 - `references/event-sourcing-rules.md` — イベントソーシングルール
 
 ## タスク手順
 
-### 1. イベント ID の生成
+### 1. イベント ID の確定
 
-形式: `{YYYYMMDD_HHMMSS}_{変更名}`
+**Step1 を経た通常フローでは、Step1 冒頭で採番済みの `event_id`（変数として渡される）をそのまま使う。ここで新しい ID を生成しない**
+（生成すると Step1 の staging（`docs/arch/.work/{event_id}/`）と正本イベントが分離する）。
 
-**日時部分は `date '+%Y%m%d_%H%M%S'` コマンドで取得する。LLM が日時を推測してはならない。** `created_at` も同じタイミングで `date '+%Y-%m-%dT%H:%M:%S'` コマンドで取得する。
+Step1 を経ない手動更新のときだけ、形式 `{YYYYMMDD_HHMMSS}_{変更名}` で採番する。
+**日時部分は `date '+%Y%m%d_%H%M%S'` コマンドで取得する。LLM が日時を推測してはならない。** `created_at` は
+どちらの場合も `date '+%Y-%m-%dT%H:%M:%S'` コマンドで取得する。
 
 - 初期構築: `{timestamp}_initial_arch`
 - RDRA 差分起因: `{timestamp}_arch_update_for_{rdra_event_id}`
@@ -28,7 +32,13 @@
 - **初期構築モード**（`docs/arch/latest/arch-design.yaml` が存在しないか空）: `arch-design.yaml` に全セクション完全版を出力する
 - **差分更新モード**（既存スナップショットあり）: `arch-design-diff.yaml` に変更セクションのみを出力する。マージキー・追加/変更/削除の扱いは `references/event-sourcing-rules.md` を参照
 
-`arch-schema.md` に従い、対象セクション（technology_context, system_architecture, app_architecture, data_architecture）を生成する。
+`references/schema/` 配下の該当セクションファイル（`domain.md` / `system.md` / `app.md` / `data.md` + `common.md`）に従い、対象セクション（technology_context, domain_architecture, system_architecture, app_architecture, data_architecture）を生成する。
+parts ディレクトリはモードで **1 回だけ**決める（`parts_dir` = 初期構築 `arch-design.parts/`、差分更新 `arch-design-diff.parts/`。
+以降の昇格・連結・修正・削除はすべて同じ `parts_dir` を使う）。
+Step1 のセクションドラフト `docs/arch/.work/{event_id}/_draft/{NN}-{section}.yaml` がある場合は、**同名の**
+`docs/arch/events/{event_id}/{parts_dir}/{NN}-{section}.yaml` にコピーしたうえで、Step2 で確定した変更を Edit で反映する
+（ドラフトを読み直して一から書き直さない）。`01-meta.yaml` と `02-technology-context.yaml` はドラフトが無いので Step3 で書く。
+差分更新では変更セクションのドラフトだけをコピーする（未変更セクションは parts に含めない）。
 
 #### 生成ルール
 
@@ -66,7 +76,12 @@
 
 ### 3. _inference.md の生成
 
-推論根拠サマリを `arch-inference-rules.md` の出力形式に従い生成する:
+推論根拠サマリを `references/inference/output-format.md` の出力形式（**正本**。下記のテンプレートは抜粋例で、差異があれば
+output-format.md を優先する）に従い生成する。RDRA 各モデルの要素数・特徴は Part 0 の
+`_draft/00-domain.md`「RDRA モデル分析結果」から、NFR カテゴリ別の平均 Lv・主な影響は Part 1 の `_draft/01-system.md` から転記し、
+各 Part の推論結果を統合する（RDRA tsv / nfr-grade.yaml を読み直さない）。
+**差分更新で実行していない Part の分**は、直前イベントの `docs/arch/events/{直前の event_id}/_inference.md` の該当節から転記し、
+「（前回値）」と注記する:
 
 ```markdown
 # アーキテクチャ推論根拠サマリ

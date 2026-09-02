@@ -3,6 +3,34 @@
 distillery プラグインの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョンは semver（正本は `.claude-plugin/plugin.json`）。
 
+## [1.8.0] - 2026-09-02
+
+### Changed
+
+- **dist-architecture: 推論ルール / スキーマの分割ロードと Step1 の Part 別 subagent 化**（トークン削減 Phase 3）
+  - `references/arch-inference-rules.md`（43KB）を基本方針 + Part 索引 + 共通ルール（4KB 台）に縮小し、本体を
+    `references/inference/part0-domain.md` / `part1-system.md` / `part2-app.md` / `part3-data.md` / `output-format.md` に分割
+  - `references/arch-schema.md`（33KB）を目次（2KB）に縮小し、本体を `references/schema/common.md` / `domain.md` / `system.md` /
+    `app.md` / `data.md` に分割（YAML 例もセクションごと）。他 md の節参照は分割後パスに更新
+  - Step1 推論を「メインエージェント直接実行」から **Part 0 → Part 1 → (Part 2 ∥ Part 3)** の subagent に変更
+    （指示: `references/arch/stage-instructions/step1-part0.md` / `step1-part123.md`。ファイル参照方式、変数 `skill_root` /
+    `event_id` / `part` / `mode`）。各 subagent は自 Part のルール・スキーマ・必要 NFR カテゴリ（`_digest/` があればそちら）と
+    RDRA tsv 全部を読み、staging `docs/arch/.work/{event_id}/_draft/` に要約 md（Phase 0〜4 の対話に必要な全表 + 要確認項目 +
+    RDRA 要素数 / NFR 平均 Lv）とセクションドラフト yaml（`arch-design.parts/` と同名）を書く。メインは要約 md だけ読んで Step2 へ
+  - Step3 の出力 subagent はドラフトを同名の `arch-design.parts/` にコピーして確定内容を Edit で反映。バリデーション PASS 後に
+    `.work/{event_id}/` を削除（events/ に一時ファイルを置かない）
+  - イベント ID の採番を Step1 冒頭に前倒し（Step3 は再採番しない。手動更新のみ例外）
+  - 差分更新モードは変更セクションに対応する Part だけを起動（Part 0 未実行時は `latest/_digest/domain_architecture.yaml` を共通入力）
+  - 共通ルール「Entity ID の決定規則」を追加（初期構築: 情報.tsv の行順で `E-{NNN}`、派生は `E-9NN`、差分更新は既存 ID 優先）。
+    Part 0 の `owned_entity_ids` と Part 3 の `entities[].id` を一致させる
+  - 差分更新の影響伝播（Part 0 → 全 Part、Part 1 のティア変更 → Part 2 必須再実行）、`trigger_type`（rdra / nfr / manual）、
+    domain 無し既存スナップショットの no-domain モード（`domain: none`）を明記
+
+### Known issues（今回の変更範囲外・既存）
+
+- dist-architecture SKILL.md の Markdown / カバレッジ生成は差分更新モードでも `events/{event_id}/arch-design.yaml`（差分時は存在しない）を
+  入力にしている。`arch-output.md` の「差分モードでは latest のマージ結果から生成」との不整合。次版で分岐を追加する
+
 ## [1.7.0] - 2026-09-02
 
 ### Changed

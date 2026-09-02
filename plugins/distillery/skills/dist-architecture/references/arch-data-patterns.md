@@ -1,6 +1,6 @@
 # データアーキテクチャ リファレンス
 
-本ドキュメントは arch-inference-rules.md の Part 3 から参照され、データモデリング方針の選定を支援する。
+本ドキュメントは `references/inference/part3-data.md`（Part 3）から参照され、データモデリング方針の選定を支援する。
 
 ## データモデリング方針
 

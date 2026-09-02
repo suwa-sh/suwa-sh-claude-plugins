@@ -157,24 +157,27 @@ docs/rdra/latest/*.tsv + docs/nfr/latest/nfr-grade.yaml
 
 RDRA モデルと NFR グレードを読み取り、アーキテクチャ設計を推論する。
 
-### 共通コンテキスト
+### 共通コンテキスト（メインエージェントが読むもの）
 
-以下のファイルを読み込んで理解する:
-
-- `references/arch-inference-rules.md` — RDRA + NFR → アーキテクチャ推論ルール
-- `references/arch-schema.md` — アーキテクチャ設計 YAML スキーマ
-- `docs/rdra/latest/*.tsv` — 現在の RDRA モデル（全ファイル）
-- `docs/rdra/latest/システム概要.json` — システム概要
-- `docs/nfr/latest/nfr-grade.yaml` — NFR グレード
-- `docs/arch/latest/arch-design.yaml`（差分更新モード時のみ）— 既存のアーキテクチャ設計
+- `references/arch/arch-infer.md` — 実行形態（Part 別 subagent）と手順
+- `references/arch-inference-rules.md` — 基本方針と Part 索引（**推論ルール本体は読まない**。各 Part subagent が
+  `references/inference/part{N}-*.md` を読む）
+- `docs/rdra/latest/システム概要.json` — 規模感の把握（tsv 全文・nfr-grade.yaml・arch-schema はメインでは読まない）
 
 ### タスク
 
-`references/arch/arch-infer.md` に従い、RDRA モデルと NFR グレードからアーキテクチャを推論する。
+`references/arch/arch-infer.md`「実行形態」に従い、Step1 冒頭でイベント ID（`{YYYYMMDD_HHMMSS}_{変更名}`。
+変更名は Step3 の規則と同じ: `initial_arch` / `arch_update_for_{rdra_event_id}` / `arch_update_for_nfr_{nfr_event_id}`）を採番したうえで
+**Part 0 → Part 1 → (Part 2 ∥ Part 3)** の順に subagent を起動する（指示ファイルは
+`references/arch/stage-instructions/step1-part0.md` / `step1-part123.md`。プロンプトは role 1 行 + 指示ファイルの絶対パス +
+変数ブロックのみ）。差分更新モードでは変更セクションに対応する Part の subagent だけを起動する。
 
 ### 出力
 
-このステップではファイル出力を行わない。推論結果を内部データとして保持し、Step2 に渡す。
+各 Part subagent が staging `docs/arch/.work/{event_id}/_draft/` に要約 md とセクションドラフト yaml（`arch-design.parts/` と同名）を書く。
+メインエージェントは要約 md（`00-domain.md` / `01-system.md` / `02-app.md` / `03-data.md`）だけを読み、Step2 の対話材料にする
+（Phase 0 の表で不足する詳細があれば `_draft/03-domain-architecture.yaml` だけを追加で開いてよい）。
+正本（arch-design.yaml / events/）はこのステップでは書かない。events/ に一時ファイルを置かない。
 
 ---
 
@@ -205,16 +208,18 @@ Phase 0 スキップルール: BUC <= 3 + 外部システム = 0 なら Step 0.1
 
 確定したアーキテクチャ設計を YAML ファイルとして出力し、イベント記録 + スナップショット更新を行う。
 
-### 共通コンテキスト
+### 共通コンテキスト（Step3 出力 subagent が読むもの）
 
-- `references/arch-schema.md` — 出力スキーマ
+- `references/arch-schema.md`（目次）→ 出力対象セクションの `references/schema/{domain|system|app|data}.md` + `references/schema/common.md`
+  （domain 無しモードでは `domain.md` を読まない）
 - `references/event-sourcing-rules.md` — イベントソーシングルール
+- `docs/arch/.work/{event_id}/_draft/{NN}-{section}.yaml` — Step1 のセクションドラフト（同名の `arch-design.parts/` にコピーし、Step2 の確定内容を Edit で反映）
 
 ### タスク
 
 `references/arch/arch-output.md` に従い、以下を生成する:
 
-1. イベント ID の生成（`date '+%Y%m%d_%H%M%S'` コマンドでタイムスタンプ取得）
+1. イベント ID は Step1 冒頭で採番済みのものを使う（Step1 を経ない手動更新時のみ `date '+%Y%m%d_%H%M%S'` で採番）
 2. trigger_event の特定（前段イベント ID を `rdra:{rdra_event_id}`, `nfr:{nfr_event_id}` 形式で記録）
 3. **初期構築時**: `arch-design.yaml`（全セクション含む完全版）を events/ に記録（下記「分割書き出し」必須）
 4. **差分更新時**: `arch-design-diff.yaml`（変更セクションのみ）を events/ に記録
@@ -264,7 +269,8 @@ arch-design.yaml は大出力になりやすく、一括 Write は途中失敗�
    **バリデーション PASS を確認してから** parts を削除する（FAIL 時は parts を残して修正・再連結に使う）:
 
    ```bash
-   rm -rf docs/arch/events/{event_id}/arch-design.parts
+   rm -rf docs/arch/events/{event_id}/arch-design.parts        # 差分更新時は arch-design-diff.parts
+   rm -rf docs/arch/.work/{event_id}                            # Step1 の Part 別ドラフト（staging。PASS 後に削除）
    ```
 
 ### 出力
@@ -296,7 +302,7 @@ node <skill-path>/scripts/validateArchDesign.js docs/arch/events/{event_id}/arch
 node <skill-path>/scripts/validateArchDesign.js docs/arch/events/{event_id}/arch-design-diff.yaml --mode=diff
 ```
 
-- 終了コード 0（PASS）: Markdown 生成へ進む。分割書き出しを使った場合はこの時点で対応する parts/ を削除する
+- 終了コード 0（PASS）: Markdown 生成へ進む。分割書き出しを使った場合はこの時点で対応する parts/ と staging `docs/arch/.work/{event_id}/` を削除する
 - 終了コード 1（FAIL）: エラー内容を確認し、対象 YAML（parts があれば parts 側）を修正してから再連結・再バリデーションを実行する
 
 `<skill-path>` は本スキルのディレクトリパス（`${CLAUDE_PLUGIN_ROOT}/skills/dist-architecture`）。
@@ -351,9 +357,28 @@ node <skill-path>/scripts/generateCoverageReport.js <rdra-dir> <nfr-yaml> docs/a
 
 ## subagent への指示テンプレート
 
-Step1 は RDRA/NFR モデルの読み込みと推論を行うため、メインエージェントが直接実行する。
-Step2 は対話が必要なため、メインエージェントが直接実行する。
-Step3 は以下のパターンで subagent に委譲可能。
+Step1 は **Part 別 subagent**（Part 0 → Part 1 → Part 2 ∥ Part 3）に委譲する（ファイル参照方式。`references/arch/arch-infer.md`「実行形態」）。
+Step2 は対話が必要なため、メインエージェントが直接実行する（読むのは `_draft/*.md` の要約だけ）。
+Step3 は以下のパターンで subagent に委譲する。
+
+### Step1: Part 別推論（ファイル参照方式）
+
+```
+あなたは アーキテクチャ推論（Part {N}） の実行エージェントです。
+まず次の指示ファイルを読み、その指示に従ってください（本文はここに貼りません）:
+{絶対パス: ${CLAUDE_PLUGIN_ROOT}/skills/dist-architecture/references/arch/stage-instructions/step1-part0.md または step1-part123.md}
+
+変数ブロック:
+skill_root: {${CLAUDE_PLUGIN_ROOT}/skills/dist-architecture を展開した絶対パス}
+event_id: {event_id}
+part: {0|1|2|3}
+mode: {initial|diff}
+
+質問や確認は不要です。指示ファイルの「完了報告」形式だけを返してください。
+```
+
+`${CLAUDE_PLUGIN_ROOT}` は実際の絶対パスに展開してから渡す（指示ファイル内の `references/...` は `skill_root` 基準）。
+Part 1 は Part 0 の完了報告後、Part 2 と Part 3 は Part 1 の完了報告後に単一メッセージで同時起動する。
 
 ### Step3 例: アーキテクチャ設計出力
 
@@ -361,11 +386,14 @@ Step3 は以下のパターンで subagent に委譲可能。
 以下のファイルを順に読み込んで理解してください:
 
 1. スキーマ定義
-   - references/arch-schema.md
+   - references/arch-schema.md（目次）→ 出力対象セクションの references/schema/{domain|system|app|data}.md + references/schema/common.md
    - references/event-sourcing-rules.md
 
 2. タスク指示
    - references/arch/arch-output.md
+
+3. Step1 のセクションドラフト（あれば。同名の arch-design.parts/ にコピーし、確定内容を Edit で反映する）
+   - docs/arch/.work/{event_id}/_draft/{NN}-{section}.yaml
 
 3. 確定データ
    以下のアーキテクチャ設計情報を arch-design.yaml として出力してください:

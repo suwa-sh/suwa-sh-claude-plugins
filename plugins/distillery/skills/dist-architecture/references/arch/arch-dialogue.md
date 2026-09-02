@@ -18,7 +18,7 @@ Step1 の推論結果をユーザーに提示し、対話で確認・調整す�
 ## 入力
 
 - Step1 の推論結果サマリ（内部データ）
-- `references/arch-schema.md` — スキーマ定義の参照用
+- `references/arch-schema.md` — スキーマ目次（フィールドの意味を確認したいときだけ `references/schema/` の該当ファイルを開く。丸読みしない）
 - `references/arch-domain-patterns.md` — Phase 0 の判定根拠
 
 ## 対話の基本方針

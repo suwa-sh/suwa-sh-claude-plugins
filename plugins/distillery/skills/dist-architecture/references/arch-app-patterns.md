@@ -1,6 +1,6 @@
 # アプリケーションアーキテクチャ リファレンス
 
-本ドキュメントは arch-inference-rules.md の Part 2 から参照され、ティアごとのレイヤリング選定を支援する。
+本ドキュメントは `references/inference/part2-app.md`（Part 2）から参照され、ティアごとのレイヤリング選定を支援する。
 
 ## 設計思想
 

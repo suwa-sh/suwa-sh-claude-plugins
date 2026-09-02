@@ -1,6 +1,6 @@
 # ロギングアーキテクチャ リファレンス
 
-本ドキュメントは arch-inference-rules.md から参照され、ロギング方針の推論を支援する。
+本ドキュメントは `references/inference/part1-system.md` / `part2-app.md` から参照され、ロギング方針の推論を支援する。
 
 ## ログカテゴリ
 
