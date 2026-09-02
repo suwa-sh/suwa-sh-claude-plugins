@@ -3,6 +3,12 @@
 distillery プラグインの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョンは semver（正本は `.claude-plugin/plugin.json`）。
 
+## [1.9.1] - 2026-09-02
+
+### Fixed
+
+- `extractSections.test.js`: flow style の CLI テストが `/dev/stdin` 経由で入力していたため Linux CI で失敗していた。一時ファイル方式に変更
+
 ## [1.9.0] - 2026-09-02
 
 ### Changed

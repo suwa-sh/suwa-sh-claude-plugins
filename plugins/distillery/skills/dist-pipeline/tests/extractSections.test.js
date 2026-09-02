@@ -117,9 +117,16 @@ test('edge cases: trailing comments on id lines, bare "-" items, nested leading 
   assert.equal(flow.unsupported, true);
   assert.equal(sliceSection(y3, 'root').found, true, 'the flow mapping itself can still be extracted as a line');
   assert.equal(sliceSection(y3, 'plain').text, 'plain: 1');
-  const r = spawnSync(process.execPath, [script, '/dev/stdin', 'root.child'], { input: y3, encoding: 'utf-8' });
-  assert.equal(r.status, 3, 'CLI exits 3 on unsupported paths');
-  assert.ok(r.stderr.includes('flow style'));
+  const flowDir = fs.mkdtempSync(path.join(os.tmpdir(), 'extract-flow-'));
+  try {
+    const flowFile = path.join(flowDir, 'flow.yaml');
+    fs.writeFileSync(flowFile, y3, 'utf-8');
+    const r = spawnSync(process.execPath, [script, flowFile, 'root.child'], { encoding: 'utf-8' });
+    assert.equal(r.status, 3, `CLI exits 3 on unsupported paths (stderr: ${r.stderr})`);
+    assert.ok(r.stderr.includes('flow style'));
+  } finally {
+    fs.rmSync(flowDir, { recursive: true, force: true });
+  }
 });
 
 test('renderMarkdown emits headers, checklist with not_applicable, and fenced original text', () => {
