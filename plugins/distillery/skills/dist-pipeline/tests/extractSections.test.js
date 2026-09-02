@@ -5,15 +5,17 @@ const test = require('node:test');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 
-const { sliceSection, extract, renderMarkdown, sha256 } = require('../scripts/extractSections');
-const { buildAll, readIndexSha } = require('../scripts/buildDigest');
+const { sliceSection, listItemValues, extract, renderMarkdown, sha256, stripTrailingComment } = require('../scripts/extractSections');
+const { buildAll, readIndexSha, readIndex, digestIsCurrent, expectedRowsOf, DOMAINS } = require('../scripts/buildDigest');
 
-const sampleRoot = path.resolve(__dirname, '../../../../../samples/distillery/pipeline');
+// 実リポジトリでは samples/ を fixture に使う。レビュー用コピー等では DIST_SAMPLE_ROOT で差し替えられる
+const sampleRoot = process.env.DIST_SAMPLE_ROOT || path.resolve(__dirname, '../../../../../samples/distillery/pipeline');
 const archYaml = path.join(sampleRoot, 'arch/latest/arch-design.yaml');
 const nfrYaml = path.join(sampleRoot, 'nfr/latest/nfr-grade.yaml');
 const designYaml = path.join(sampleRoot, 'design/latest/design-event.yaml');
+const script = path.join(__dirname, '..', 'scripts', 'extractSections.js');
 
 const SMALL = [
   'version: "1.0"',
@@ -59,6 +61,67 @@ test('sliceSection resolves nested keys and list items selected by id', () => {
   assert.equal(sliceSection(SMALL, 'system_architecture.nope').found, false);
 });
 
+test('edge cases: trailing comments on id lines, bare "-" items, nested leading comments, block scalars', () => {
+  const y = [
+    'categories:',
+    '  - id: "A" # valid comment',
+    '    name: "可用性"',
+    '  -',
+    '    id: B',
+    '    name: "性能"',
+    'root:',
+    '  note: |',
+    '    child:',
+    '      not_a_mapping: true',
+    '  # belongs to child',
+    '  child:',
+    '    real: true',
+    'quoted: "a # not a comment"',
+  ].join('\n');
+  assert.equal(sliceSection(y, 'categories[id=A]').text, ['  - id: "A" # valid comment', '    name: "可用性"'].join('\n'));
+  assert.equal(sliceSection(y, 'categories[id=B]').text, ['  -', '    id: B', '    name: "性能"'].join('\n'));
+  assert.equal(sliceSection(y, 'root.note.child').found, false, 'block scalar body must not be searched as mapping');
+  assert.equal(sliceSection(y, 'root.child').text, ['  # belongs to child', '  child:', '    real: true'].join('\n'), 'nested leading comment kept');
+  assert.equal(sliceSection(y, 'root.note').text, ['  note: |', '    child:', '      not_a_mapping: true'].join('\n'));
+  assert.equal(stripTrailingComment('"a # not a comment" # real'), '"a # not a comment"');
+  assert.equal(stripTrailingComment('name: "Security \\" #1\\" team" # comment'), 'name: "Security \\" #1\\" team"', 'escaped quotes inside double quotes');
+  assert.equal(stripTrailingComment("name: 'it''s # here' # c"), "name: 'it''s # here'");
+  assert.deepEqual(listItemValues(y, 'categories', 'id', ['name']), [{ id: 'A', name: '可用性' }, { id: 'B', name: '性能' }]);
+
+  // block scalar の指示子はどちらの順序でも、複数行 quoted scalar の本文もキー探索の対象外
+  const y2 = [
+    'root:',
+    '  note: |2-',
+    '    fake: 1',
+    '  memo: >+2',
+    '    fake: 2',
+    '  quoted: "line one',
+    '    fake: 3',
+    '    still quoted"',
+    '  single: \'it\'\'s',
+    '    fake: 4\'',
+    '  real:',
+    '    value: 1',
+  ].join('\n');
+  assert.equal(sliceSection(y2, 'root.fake').found, false, 'strings inside scalars are not keys');
+  assert.equal(sliceSection(y2, 'root.note.fake').found, false);
+  assert.equal(sliceSection(y2, 'root.memo.fake').found, false);
+  assert.equal(sliceSection(y2, 'root.quoted.fake').found, false);
+  assert.equal(sliceSection(y2, 'root.real').text, ['  real:', '    value: 1'].join('\n'));
+  assert.equal(sliceSection(y2, 'root.quoted').text, ['  quoted: "line one', '    fake: 3', '    still quoted"'].join('\n'));
+
+  // flow style の内部は unsupported（not_applicable ではない）
+  const y3 = ['root: { child: { value: 1 } }', 'list: [a, b]', 'plain: 1'].join('\n');
+  const flow = sliceSection(y3, 'root.child');
+  assert.equal(flow.found, false);
+  assert.equal(flow.unsupported, true);
+  assert.equal(sliceSection(y3, 'root').found, true, 'the flow mapping itself can still be extracted as a line');
+  assert.equal(sliceSection(y3, 'plain').text, 'plain: 1');
+  const r = spawnSync(process.execPath, [script, '/dev/stdin', 'root.child'], { input: y3, encoding: 'utf-8' });
+  assert.equal(r.status, 3, 'CLI exits 3 on unsupported paths');
+  assert.ok(r.stderr.includes('flow style'));
+});
+
 test('renderMarkdown emits headers, checklist with not_applicable, and fenced original text', () => {
   const results = { sourceText: SMALL, sections: extract(SMALL, ['system_architecture.tiers', 'missing']) };
   const md = renderMarkdown(results, 'docs/arch/latest/arch-design.yaml', ['design_available: false'], 'arch/nfr ダイジェスト');
@@ -74,7 +137,6 @@ test('sample arch-design.yaml sections are extracted verbatim and concatenate ba
   const keys = ['technology_context', 'domain_architecture', 'system_architecture', 'app_architecture', 'data_architecture'];
   const parts = keys.map(k => sliceSection(text, k));
   for (const p of parts) assert.equal(p.found, true, p.path);
-  // 各セクションの原文がソースにそのまま含まれ、順序どおり並ぶ
   let cursor = 0;
   for (const p of parts) {
     const idx = text.indexOf(p.text, cursor);
@@ -84,7 +146,7 @@ test('sample arch-design.yaml sections are extracted verbatim and concatenate ba
   assert.ok(sliceSection(text, 'system_architecture.tiers').text.includes('- id: "tier-frontend"'));
 });
 
-test('buildAll generates _digest for arch/nfr/design from a copy of the samples and is idempotent', () => {
+test('buildAll generates _digest, is idempotent, repairs missing/corrupted files, and drops stale digest when the source disappears', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'digest-'));
   try {
     for (const [dom, file] of [['arch', 'arch-design.yaml'], ['nfr', 'nfr-grade.yaml'], ['design', 'design-event.yaml']]) {
@@ -95,44 +157,110 @@ test('buildAll generates _digest for arch/nfr/design from a copy of the samples 
     assert.deepEqual(first.map(r => r.status), ['generated', 'generated', 'generated']);
     const archDir = path.join(tmp, 'arch/latest/_digest');
     assert.ok(fs.existsSync(path.join(archDir, 'system_architecture.yaml')));
-    assert.ok(fs.existsSync(path.join(archDir, 'index.md')));
     assert.equal(readIndexSha(path.join(archDir, 'index.md')), sha256(fs.readFileSync(path.join(tmp, 'arch/latest/arch-design.yaml'), 'utf-8')));
-    const nfrFiles = fs.readdirSync(path.join(tmp, 'nfr/latest/_digest')).sort();
+    assert.ok(readIndex(path.join(archDir, 'index.md')).files.length >= 4, 'index records per-file sha256');
+    const archText = fs.readFileSync(path.join(tmp, 'arch/latest/arch-design.yaml'), 'utf-8');
+    assert.equal(digestIsCurrent(archDir, readIndexSha(path.join(archDir, 'index.md')), expectedRowsOf(DOMAINS.arch, archText)), true);
+
+    // index の name 改変 / not_applicable 行の欠落も再生成の対象
+    const nfrIndexPath = path.join(tmp, 'nfr/latest/_digest/index.md');
+    const nfrIndexFull = fs.readFileSync(nfrIndexPath, 'utf-8');
+    fs.writeFileSync(nfrIndexPath, nfrIndexFull.replace('| 可用性 |', '| 改変 |'), 'utf-8');
+    assert.equal(buildAll(tmp, ['nfr'])[0].status, 'generated', 'tampered name column triggers regeneration');
+
+    // index の行が欠けている（切り詰め）場合は期待集合と一致しないので up_to_date にならない
+    const indexPath = path.join(archDir, 'index.md');
+    const fullIndex = fs.readFileSync(indexPath, 'utf-8');
+    fs.writeFileSync(indexPath, fullIndex.split('\n').filter(l => !l.includes('`_digest/data_architecture.yaml`')).join('\n'), 'utf-8');
+    assert.equal(buildAll(tmp, ['arch'])[0].status, 'generated', 'truncated index triggers regeneration');
+    fs.writeFileSync(indexPath, fullIndex.replace(/\| `technology_context`[^\n]*\n/, m => m + m), 'utf-8');
+    assert.equal(buildAll(tmp, ['arch'])[0].status, 'generated', 'duplicated index rows trigger regeneration');
+
+    const nfrDir = path.join(tmp, 'nfr/latest/_digest');
+    const nfrFiles = fs.readdirSync(nfrDir).sort();
     assert.ok(nfrFiles.includes('category-A.yaml') && nfrFiles.includes('category-F.yaml') && nfrFiles.includes('model_system.yaml'), nfrFiles.join(','));
-    const catA = fs.readFileSync(path.join(tmp, 'nfr/latest/_digest/category-A.yaml'), 'utf-8');
+    const catA = fs.readFileSync(path.join(nfrDir, 'category-A.yaml'), 'utf-8');
     assert.ok(catA.includes('name: "可用性"'));
-    assert.ok(!catA.includes('name: "性能"'), 'category-A must not include other categories');
+    assert.ok(!catA.includes('name: "性能'), 'category-A must not include other categories');
+    const nfrIndex = fs.readFileSync(path.join(nfrDir, 'index.md'), 'utf-8');
+    assert.ok(nfrIndex.includes('| `categories[id=A]` | `_digest/category-A.yaml` | 可用性 |'), 'nfr index carries category names');
+    assert.ok(nfrIndex.includes('| `categories[id=E]` | `_digest/category-E.yaml` | セキュリティ |'));
     const designFiles = fs.readdirSync(path.join(tmp, 'design/latest/_digest'));
     assert.ok(designFiles.includes('screens.yaml') && designFiles.includes('components.yaml'));
 
     const second = buildAll(tmp, ['arch', 'nfr', 'design']);
     assert.deepEqual(second.map(r => r.status), ['up_to_date', 'up_to_date', 'up_to_date']);
 
+    // 派生ファイルの欠落 / 改変は再生成される
+    fs.rmSync(path.join(nfrDir, 'category-A.yaml'));
+    assert.equal(buildAll(tmp, ['nfr'])[0].status, 'generated');
+    assert.ok(fs.existsSync(path.join(nfrDir, 'category-A.yaml')));
+    fs.appendFileSync(path.join(archDir, 'system_architecture.yaml'), '\n# tampered\n');
+    assert.equal(buildAll(tmp, ['arch'])[0].status, 'generated');
+    assert.ok(!fs.readFileSync(path.join(archDir, 'system_architecture.yaml'), 'utf-8').includes('# tampered'));
+
     // 正本が変わったら再生成される
     fs.appendFileSync(path.join(tmp, 'arch/latest/arch-design.yaml'), '\n# touched\n');
     assert.equal(buildAll(tmp, ['arch'])[0].status, 'generated');
-    assert.equal(buildAll(tmp, ['missing-domain'.slice(0, 0) || 'arch'])[0].status, 'up_to_date');
+    assert.equal(buildAll(tmp, ['arch'])[0].status, 'up_to_date');
+
+    // 正本が消えたら stale な _digest/ を削除する
     fs.rmSync(path.join(tmp, 'design/latest/design-event.yaml'));
-    assert.equal(buildAll(tmp, ['design'])[0].status, 'source_missing');
+    const gone = buildAll(tmp, ['design'])[0];
+    assert.equal(gone.status, 'source_missing');
+    assert.equal(gone.removed_stale_digest, true);
+    assert.equal(fs.existsSync(path.join(tmp, 'design/latest/_digest')), false);
+
+    // CLI: --domain で明示したドメインの正本が無ければ exit 2、既定（全ドメイン）では 0
+    const buildScript = path.join(__dirname, '..', 'scripts', 'buildDigest.js');
+    assert.equal(spawnSync(process.execPath, [buildScript, tmp, '--domain', 'design'], { encoding: 'utf-8' }).status, 2);
+    assert.equal(spawnSync(process.execPath, [buildScript, tmp], { encoding: 'utf-8' }).status, 0);
+    // 未知の --domain / 空 / 未知オプションは CLI エラー
+    assert.equal(spawnSync(process.execPath, [buildScript, tmp, '--domain', 'typo'], { encoding: 'utf-8' }).status, 1);
+    assert.equal(spawnSync(process.execPath, [buildScript, tmp, '--domain', ''], { encoding: 'utf-8' }).status, 1);
+    assert.equal(spawnSync(process.execPath, [buildScript, tmp, '--bogus'], { encoding: 'utf-8' }).status, 1);
+
+    // flow style の categories は unsupported（空カテゴリで generated にしない）→ exit 3
+    fs.writeFileSync(path.join(tmp, 'nfr/latest/nfr-grade.yaml'), 'version: "1.0"\nmodel_system:\n  type: "model1"\ncategories: [{ id: A, name: "可用性" }]\n', 'utf-8');
+    const flow = buildAll(tmp, ['nfr'])[0];
+    assert.equal(flow.status, 'unsupported');
+    assert.equal(spawnSync(process.execPath, [buildScript, tmp, '--domain', 'nfr'], { encoding: 'utf-8' }).status, 3);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
 
-test('CLI --md writes a digest markdown with the design_available header', () => {
+test('CLI --md writes a digest markdown and --md --append adds a second source with its own checklist and fences', () => {
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'extract-'));
   try {
     const target = path.join(out, '_inputs-digest.md');
     const stdout = execFileSync(process.execPath, [
-      path.join(__dirname, '..', 'scripts', 'extractSections.js'), archYaml,
+      script, archYaml,
       'system_architecture.tiers', 'app_architecture.tier_layers', 'data_architecture.entities', 'technology_context', 'domain_architecture', 'nope.section',
       '--md', '--header', 'design_available: false', '--out', target, '--source-label', 'docs/arch/latest/arch-design.yaml',
     ], { encoding: 'utf-8' });
     assert.ok(stdout.includes('not_applicable: nope.section'));
+    const appended = execFileSync(process.execPath, [
+      script, nfrYaml, 'categories[id=A]', 'categories[id=B]', 'categories[id=E]', 'categories[id=ZZ]',
+      '--md', '--append', '--out', target, '--source-label', 'docs/nfr/latest/nfr-grade.yaml',
+    ], { encoding: 'utf-8' });
+    assert.ok(appended.startsWith('appended:'));
     const md = fs.readFileSync(target, 'utf-8');
     assert.ok(/^design_available:\s*false\s*$/m.test(md), 'validateSpecEvent.js reads this header line');
     assert.ok(md.includes('| `nope.section` | not_applicable |'));
     assert.ok(md.includes('## system_architecture.tiers'));
+    assert.ok(md.includes('## 追加転写元: `docs/nfr/latest/nfr-grade.yaml`'));
+    assert.ok(md.includes('| `categories[id=A]` | 転写済み |'));
+    assert.ok(md.includes('| `categories[id=ZZ]` | not_applicable |'));
+    assert.ok(md.includes('### categories[id=E]\n\n```yaml\n  - id: "E"'), 'appended sections are fenced');
+    // fence の対応が取れている（``` の数が偶数）
+    assert.equal((md.match(/^```/gm) || []).length % 2, 0);
+    // --append は --md と --out が必須。未知オプション / 値欠落 / path 0 件 / ファイル無しは exit 1
+    assert.notEqual(spawnSync(process.execPath, [script, nfrYaml, 'model_system', '--append'], { encoding: 'utf-8' }).status, 0);
+    assert.equal(spawnSync(process.execPath, [script, nfrYaml, 'model_system', '--mdx'], { encoding: 'utf-8' }).status, 1);
+    assert.equal(spawnSync(process.execPath, [script, nfrYaml, 'model_system', '--out'], { encoding: 'utf-8' }).status, 1);
+    assert.equal(spawnSync(process.execPath, [script, nfrYaml, '--md'], { encoding: 'utf-8' }).status, 1);
+    assert.equal(spawnSync(process.execPath, [script, path.join(out, 'nope.yaml'), 'model_system'], { encoding: 'utf-8' }).status, 1);
   } finally {
     fs.rmSync(out, { recursive: true, force: true });
   }
@@ -151,4 +279,5 @@ test('nfr sample: category selection keeps subcategories and metrics intact', ()
   assert.ok(!d.text.includes('name: "セキュリティ"'), 'category D must end before category E');
   const s = sliceSection(fs.readFileSync(designYaml, 'utf-8'), 'screens');
   assert.ok(s.found && s.text.startsWith('screens:'));
+  assert.deepEqual(listItemValues(text, 'categories', 'id').map(o => o.id), ['A', 'B', 'C', 'D', 'E', 'F']);
 });

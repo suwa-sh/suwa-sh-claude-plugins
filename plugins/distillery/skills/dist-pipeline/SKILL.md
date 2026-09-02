@@ -271,6 +271,8 @@ feedback request 入力を検出したら **F0 開始前に `references/feedback
    - auto_adopt: サブエージェントに「該当項目の確認推奨項目リスト作成 + ⭐推奨採用 + 採用一覧返却」の
      補完実行を指示する（オーケストレータが代わりに採用値を決めてはならない）
 4. **完了チェック:** 必須ファイルの存在を確認
+   完了チェック直後に `node <skill-path>/scripts/buildDigest.js docs` を実行し、各 `latest/` の `_digest/`（索引 + セクション別 YAML、
+   正本の sha256 つき）を次 Step の起動前に揃える（冪等。正本は変更しない。次 Step は索引 → 必要セクションだけを読む）
 5. **イベントID取得（通常modeのみ）:** `ls -t docs/{domain}/events/ | head -1`。
    feedback modeは`references/feedback-mode.md` F1の返却event ID + identity検証を使い、この手順を実行しない
 6. **進捗更新（完了）:** `progress-update.js step <id> completed --summary "..." --event-id "..."`
@@ -480,6 +482,10 @@ failed/deferredをevent化して停止する。
 ## 注意事項
 
 - 各サブエージェントは独立したコンテキストで動作する。前の Step の情報は `docs/` 配下のファイルを通じて引き継がれる
+- **段階的開示**: 前 Step の正本（arch-design.yaml 63KB / nfr-grade.yaml 48KB / design-event.yaml 等）は丸読みせず、
+  `docs/<domain>/latest/_digest/index.md`（`buildDigest.js` が生成。正本と各ファイルの sha256 つき）を読んで必要なセクションファイルだけを開く。
+  `_digest/` が無い・sha256 が不一致なら `buildDigest.js` を実行し、**終了コード 0 と `generated` / `up_to_date` を確認してから**読む
+  （`source_missing` なら正本が無い = そのドメインは読めない）。`_digest/` は派生物で、正本・events/ には置かない
 - イベントIDはパイプラインオーケストレータが管理し、サブエージェント指示に `trigger_event` として含める
 - Step5（design）は最も時間がかかる。ユーザーに所要時間の目安を事前に伝えることを推奨する。
   UI 画面を持たないプロダクトでは `skip_steps` で Step5/6a を skip できる（`references/pipeline-config-schema.md`）
@@ -498,6 +504,8 @@ failed/deferredをevent化して停止する。
 | `references/feedback-routing-policy.json` | 曖昧性、推奨質問、recommended-autoの安全境界 |
 | `references/feedback-run-state.md` | event/snapshot/lease/再開規約 |
 | `scripts/progress-update.js` | 進捗ステータス更新 CLI（`port` / `url` サブコマンドで実行中ポート取得。`--tokens` で Step 別トークンを加算、`summary` で表出力） |
+| `scripts/extractSections.js` | YAML の指定セクション（`system_architecture.tiers` / `categories[id=A]` 等）を原文のまま切り出す。`--md` で dist-spec の `_inputs-digest.md` 形式（チェックリストつき）を生成 |
+| `scripts/buildDigest.js` | `docs/{arch,nfr,design}/latest/_digest/`（index.md + セクション別 YAML、正本の sha256 つき）を生成。冪等。各 Step 完了直後と消費側スキルの冒頭で実行 |
 | `scripts/tokenReport.js` | セッション transcript（`~/.claude/projects/<project>/<session>.jsonl` + `subagents/`）からエージェント別トークン消費を集計（message.id で重複排除。markdown + JSON） |
 | `scripts/progress-server.js` | 進捗ダッシュボード Web サーバー（SSE、プロセスベースのポート解決） |
 | `scripts/appendTodo.js` | `docs/todo.md` への追加提案追記 CLI（冪等） |

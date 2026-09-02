@@ -252,12 +252,17 @@ OpenAPI/AsyncAPI は `_cross-cutting/` に全 UC 統合で生成される（UC �
        --out docs/specs/events/{event_id}/_inputs-digest.md
      node <pipeline-skill>/scripts/extractSections.js docs/nfr/latest/nfr-grade.yaml \
        "categories[id=A]" "categories[id=B]" "categories[id=E]" \
-       --source-label docs/nfr/latest/nfr-grade.yaml >> docs/specs/events/{event_id}/_inputs-digest.md
+       --md --append --source-label docs/nfr/latest/nfr-grade.yaml \
+       --out docs/specs/events/{event_id}/_inputs-digest.md
      ```
 
+     2 つ目は `--md --append` で同じファイルに「追加転写元」節（転写元・sha256・チェックリスト・fenced YAML）として追記する
+     （`>>` で yaml 出力を継ぎ足さない。Markdown が壊れる）。
      nfr のカテゴリ id は正本の `categories[].id` に従う（既定は A=可用性 / B=性能・拡張性 / E=セキュリティ。
-     `docs/nfr/latest/_digest/index.md` があれば id と名前の対応を確認できる）
-   - 1 行目の `design_available: true|false` は `validateSpecEvent.js` が検証する（手順 1 の判定結果を渡す）
+     `docs/nfr/latest/_digest/index.md` の `name` 列で id と名前の対応を確認できる）。
+     どちらのコマンドも終了コード 0 を確認してから次へ進む
+   - 先頭ヘッダの `design_available: true|false` 行は `validateSpecEvent.js` が `story_generation` との整合検証に使う（手順 1 の判定結果を渡す。
+     validator はファイル内の同名行を探すが、生成物では 1 行目に置く）
    - 冒頭に転写元・source_sha256・**転写済みセクションのチェックリスト**が入る。状態は 2 値: `転写済み` /
      `not_applicable`（元ファイルにセクション自体が存在しない。**フォールバック対象外** — subagent は元ファイルを読みに行かない）。
      旧来の `元ファイル参照` はスクリプト生成では発生しない（要求したセクションは必ず転写される）

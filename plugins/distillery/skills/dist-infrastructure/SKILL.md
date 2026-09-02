@@ -203,6 +203,14 @@ docs/arch/latest/arch-design.yaml + docs/nfr/latest/nfr-grade.yaml
 
 arch-design.yaml と nfr-grade.yaml を読み取り、MCL product-design の入力形式に変換する。
 
+**読み方（段階的開示）**: 正本を丸読みせず、`docs/arch/latest/_digest/index.md` と `docs/nfr/latest/_digest/index.md` を先に読み、
+`references/translation-mapping.md` が使うセクションだけを開く（arch: `system_architecture.yaml` / `data_architecture.yaml` /
+`technology_context.yaml`、nfr: `category-A.yaml`（可用性）/ `category-B.yaml`（性能・拡張性）/ `category-C.yaml`（運用・保守性）/
+`category-E.yaml`（セキュリティ）等、必要なカテゴリのみ。id と名前の対応は index.md の `name` 列で確認する）。
+**読む前に必ず** `node ${CLAUDE_PLUGIN_ROOT}/skills/dist-pipeline/scripts/buildDigest.js docs --domain arch,nfr` を実行し、
+終了コード 0 かつ両ドメインが `generated` / `up_to_date` であることを確認する（冪等。正本と各派生ファイルの sha256 を検証し、
+欠落・改変・古い index は再生成される。正本は変更しない。`_digest/` は派生物）。
+
 ### 共通コンテキスト
 
 以下のファイルを読み込んで理解する:

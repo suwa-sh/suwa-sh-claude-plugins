@@ -3,6 +3,35 @@
 distillery プラグインの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョンは semver（正本は `.claude-plugin/plugin.json`）。
 
+## [1.9.0] - 2026-09-02
+
+### Changed
+
+- **成果物の段階的開示**（トークン削減 Phase 4。1.7.0 で追加した `extractSections.js` / `buildDigest.js` を消費側に適用）
+  - dist-pipeline: 各 Step の完了チェック直後に `node <skill-path>/scripts/buildDigest.js docs` を実行し、
+    `docs/{arch,nfr,design}/latest/_digest/`（index.md + セクション別 YAML、正本の sha256 つき）を次 Step の起動前に揃える。
+    注意事項に段階的開示ルール（索引 → 必要セクションだけ読む / sha256 不一致なら再生成 / `_digest/` は派生物で events/ に置かない）を追加
+  - dist-infrastructure Step1: arch は `system_architecture` / `data_architecture` / `technology_context`、nfr は必要カテゴリだけを
+    `_digest/` から読む（丸読みをやめる）
+  - dist-design-system: nfr は F / B / E カテゴリ、arch は `system_architecture`（tiers）と `technology_context` だけを `_digest/` から読む
+  - dist-spec-stories: design-event.yaml は `_digest/screens.yaml` / `components.yaml`（必要なら tokens / brand）だけを読む。
+    差分マージは正本に対して行い `_digest/` は再生成に任せる
+  - 各消費側に共通のフォールバック: `_digest/` が無い、または index の `source_sha256` が正本と一致しない場合は
+    `buildDigest.js` を実行し、終了コード 0 と `generated` / `up_to_date` を確認してから読む（正本は変更しない）
+- `buildDigest.js`: index に各派生ファイルの `file_sha256` を記録し、正本から再計算した行（section / file / name / status）と
+  index の全行の完全一致 + 全ファイルの sha256 一致を検証してから `up_to_date` と判定（欠落・改変・切り詰め・重複は再生成）。
+  正本が無いドメインは既存 `_digest/` を削除して `source_missing`（`--domain` で明示指定時は exit 2）。flow style 等の非対応 YAML は
+  `unsupported`（exit 3）。未知の `--domain` / オプションは exit 1。nfr の index に `name` 列（カテゴリ id ↔ 名前）
+- `extractSections.js`: id 行の末尾コメント（引用符内の `#` / `\"` / `''` を考慮）、bare `-` 要素、block scalar（`|2-` 等の指示子順序も）、
+  複数行 quoted scalar、ネストの直前コメントに対応。flow style の内部 path は `unsupported`（exit 3。not_applicable にしない）。
+  未知オプション / 値欠落 / path 0 件は exit 1。`--md --append --out` で既存ダイジェストに「追加転写元」節を追記
+  （dist-spec の `_inputs-digest.md` 生成は arch → nfr の 2 段で使う。`>>` による yaml 追記は廃止）
+- テスト: fixture ルートを `DIST_SAMPLE_ROOT` で差し替え可能（レビュー用コピーでも実行できる）
+
+### Notes
+
+- distillery-impl（dist-impl-verify の nfr-grade.yaml 全文読み）は本計画の対象外。`_digest/category-*.yaml` を読む変更は別版で行う
+
 ## [1.8.0] - 2026-09-02
 
 ### Changed

@@ -105,8 +105,11 @@ done
 | `docs/rdra/latest/情報.tsv` | 必須 | 情報モデル → データ表示コンポーネント |
 | `docs/rdra/latest/状態.tsv` | 必須 | 状態モデル → ステータスBadge/トラッカー |
 | `docs/rdra/latest/バリエーション.tsv` | 推奨 | バリエーション → フィルター/フォーム |
-| `docs/nfr/latest/nfr-grade.yaml` | 必須 | NFRグレード → 設計判断 |
-| `docs/arch/latest/arch-design.yaml` | 必須 | アーキテクチャ → レイアウト/技術選定 |
+| `docs/nfr/latest/nfr-grade.yaml` | 必須 | NFRグレード → 設計判断。**`docs/nfr/latest/_digest/index.md` から必要カテゴリ（F=環境: モバイル/ブラウザ対応、B=性能、E=セキュリティ）だけ読む** |
+| `docs/arch/latest/arch-design.yaml` | 必須 | アーキテクチャ → レイアウト/技術選定。**`docs/arch/latest/_digest/index.md` から `system_architecture.yaml`（tiers）と `technology_context.yaml` だけ読む** |
+
+**読む前に必ず** `node ${CLAUDE_PLUGIN_ROOT}/skills/dist-pipeline/scripts/buildDigest.js docs --domain arch,nfr` を実行し、
+終了コード 0 かつ両ドメインが `generated` / `up_to_date` であることを確認する（冪等。正本と各派生ファイルの sha256 を検証する。正本は変更しない）。
 | `docs/infra/latest/` | 推奨 | インフラ設計 → CDN/キャッシュ考慮 |
 
 ## 出力ディレクトリ

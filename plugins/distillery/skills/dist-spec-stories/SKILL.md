@@ -63,7 +63,11 @@ spec スキルの Step9 として実装されていたものを独立スキル�
 - `docs/specs/latest/_cross-cutting/ux-ui/ux-design.md` — ユーザーフロー・インタラクション設計
 - `docs/specs/latest/_cross-cutting/ux-ui/ui-design.md` — レイアウトパターン・レスポンシブ戦略
 - `docs/specs/latest/_cross-cutting/ux-ui/common-components.md` — 共通コンポーネント設計
-- `docs/design/latest/design-event.yaml` — デザインシステム（トークン・コンポーネント）
+- `docs/design/latest/design-event.yaml` — デザインシステム（トークン・コンポーネント）。
+  **読むときは `docs/design/latest/_digest/index.md` から `screens.yaml` / `components.yaml`（必要なら `tokens.yaml` / `brand.yaml`）だけを開く**。
+  **読む前に必ず** `node ${CLAUDE_PLUGIN_ROOT}/skills/dist-pipeline/scripts/buildDigest.js docs --domain design` を実行し、
+  終了コード 0 かつ `generated` / `up_to_date` であることを確認する（冪等。正本と各派生ファイルの sha256 を検証する）。
+  差分マージ（`design-event-diff.yaml` の適用）は正本 `design-event.yaml` に対して行い、`_digest/` は書き換えない（マージ後に再生成される）
 - `docs/design/latest/storybook-app/` — 既存の Storybook プロジェクト
 
 ## 読み込み（design スキルの references）
