@@ -100,7 +100,7 @@ failed返却は4 ledgerをすべて空配列にし、非空・単一行の`phase
 | Presentation 系 tier の「画面仕様」「コンポーネント設計」「デザイントークン参照」 | 生成 | **生成しない**。`screens:` も出力しない |
 | Step4c 共通コンポーネント抽出 / Step4e UC フィードバック | 実施 | **実施しない**（`common-components.md` を生成しない） |
 | `ux-design.md` の IA / ナビゲーション | 画面のサイトマップ・ポータル別ナビ | コマンド体系（cli）/ リソース階層（api）/ ジョブ運用フロー（batch）。ユーザーフローは「操作」を画面ではなくコマンド・API 呼び出しで書く |
-| CLI 系 tier（id に `cli` / `command` / `tui`）| — | コマンド契約（引数 / オプション / stdin / stdout / stderr / 終了コード）を生成（`spec-template.md`「CLI 系ティア」） |
+| CLI 系 tier（id に `cli` / `command` / `tui`）| — | コマンド契約（引数 / オプション / stdin / stdout / stderr / 終了コード）を生成（`references/specs/tier-templates/cli.md`） |
 | `openapi.yaml` の `servers[].url` / `info.title` | `brand.name` | `システム概要.json` の `system_name`（`openapi-rules.md`） |
 | Step6.5 レビューの入力の正 | `docs/design/latest/` を含む | 含まない |
 | `spec-event.yaml` の `story_generation` | `required` | `not_applicable` |
@@ -224,10 +224,11 @@ OpenAPI/AsyncAPI は `_cross-cutting/` に全 UC 統合で生成される（UC �
    - 関連アクター、情報、状態、条件、外部システム
    - arch-design.yaml から該当する API レイヤー・データストア
    - design-event.yaml から該当する画面・コンポーネント（design ありのみ）
-4. **UC ごとの対象ティアを決定する**（`spec-generate.md` の「UC パターン別ティア選定ルール」に従う）:
+4. **UC ごとの対象ティアと kind を決定する**（`references/specs/tier-selection-rules.md` に従う。kind は
+   presentation / api / worker / cli のいずれかで、Step3 の生成 subagent が読む `tier-templates/{kind}.md` を決める）:
    - 画面あり UC（社外アクター） → Presentation 系（user 向け） + API 系
    - 画面あり UC（社内アクター） → Presentation 系（admin 向け） + API 系
-   - 画面あり UC で arch に Presentation 系 tier が無い（CLI プロダクト） → CLI 系 tier + API 系（`spec-generate.md`）
+   - 画面あり UC で arch に Presentation 系 tier が無い（CLI プロダクト） → CLI 系 tier + API 系（`tier-selection-rules.md`）
    - タイマートリガー UC → CronJob 系ワーカー + API 系（Presentation なし）
    - 自動通知 UC → FaaS 系ワーカー + API 系
    - バッチ + 画面 UC → Presentation 系 + API 系 + CronJob 系ワーカー
@@ -238,16 +239,28 @@ OpenAPI/AsyncAPI は `_cross-cutting/` に全 UC 統合で生成される（UC �
 6. 生成対象の Spec 一覧を提示する:
    - UC 単位 Spec: `{業務名}/{BUC名}/{UC名}/` のツリー表示 + 各 UC の対象ティア一覧
    - 全体横断 Spec: `_cross-cutting/` の内容
-7. `_inference.md` に分析根拠を記録する（UC ツリー、UC-ティアマッピング、全体横断設計方針）
-8. `_inputs-digest.md` を生成する（Step3 並列 subagent 用の入力ダイジェスト）:
+7. `_inference.md` に分析根拠を記録する（UC ツリー、UC-ティアマッピング = UC ごとの `{tier_id} ({kind})` 一覧、全体横断設計方針）
+8. `_inputs-digest.md` を**スクリプトで**生成する（Step3 並列 subagent 用の入力ダイジェスト。LLM が転写しない = トークン 0・決定的）:
    - **目的**: 並列 subagent が `arch-design.yaml`（数十KB）と `nfr-grade.yaml`（数十KB）を各自フルロードすると、同じ入力が subagent 数ぶん重複課金される。Spec 生成に必要なセクションだけを1回抽出し、subagent はこちらを読む
-   - **抽出方法**: 該当セクションを**原文転写する（要約・言い換えをしない）**。転写元のフィールド名・値を変更すると Spec の整合が壊れる
-   - **arch-design.yaml から転写するセクション**: `system_architecture.tiers`（全項目）、`app_architecture.tier_layers`（全項目）、`data_architecture.entities`、`technology_context`、`domain_architecture` の境界づけられたコンテキスト・集約定義（存在する場合）
-   - **nfr-grade.yaml から転写するセクション**: 可用性（エラーハンドリング・リトライに効く項目）、性能（ページネーション・キャッシュ・レスポンスタイムに効く項目）、セキュリティ（認証・認可・PII に効く項目）の各グレードと選定値
-   - 冒頭に転写元ファイルパス・event_id・**転写済みセクションのチェックリスト**を記録する。状態は3値:
-     `転写済み` / `元ファイル参照`（転写しなかった。subagent は欠けた分だけ元ファイルから読む）/
+   - **生成コマンド**（`<pipeline-skill>` = `${CLAUDE_PLUGIN_ROOT}/skills/dist-pipeline`。原文を切り出すので要約・言い換えは起きない）:
+
+     ```bash
+     node <pipeline-skill>/scripts/extractSections.js docs/arch/latest/arch-design.yaml \
+       technology_context domain_architecture system_architecture.tiers app_architecture.tier_layers data_architecture.entities \
+       --md --header "design_available: {true|false}" --header "event_id: {event_id}" \
+       --source-label docs/arch/latest/arch-design.yaml --label "arch ダイジェスト" \
+       --out docs/specs/events/{event_id}/_inputs-digest.md
+     node <pipeline-skill>/scripts/extractSections.js docs/nfr/latest/nfr-grade.yaml \
+       "categories[id=A]" "categories[id=B]" "categories[id=E]" \
+       --source-label docs/nfr/latest/nfr-grade.yaml >> docs/specs/events/{event_id}/_inputs-digest.md
+     ```
+
+     nfr のカテゴリ id は正本の `categories[].id` に従う（既定は A=可用性 / B=性能・拡張性 / E=セキュリティ。
+     `docs/nfr/latest/_digest/index.md` があれば id と名前の対応を確認できる）
+   - 1 行目の `design_available: true|false` は `validateSpecEvent.js` が検証する（手順 1 の判定結果を渡す）
+   - 冒頭に転写元・source_sha256・**転写済みセクションのチェックリスト**が入る。状態は 2 値: `転写済み` /
      `not_applicable`（元ファイルにセクション自体が存在しない。**フォールバック対象外** — subagent は元ファイルを読みに行かない）。
-     subagent はこのチェックリストで欠落を判定する
+     旧来の `元ファイル参照` はスクリプト生成では発生しない（要求したセクションは必ず転写される）
    - 出力先: `docs/specs/events/{event_id}/_inputs-digest.md`
 
 ### Step2: 全体横断 UX/UI 設計（UC の前に先行確定）
@@ -281,7 +294,8 @@ design 無しモードでは、`ui-design.md` を「出力規約」（CLI の st
 
 ### Step3: UC 単位 Spec 生成
 
-**読み込み:** `references/specs/spec-template.md`, `references/specs/spec-generate.md`
+**読み込み（オーケストレータ）:** なし（生成の固定指示は `references/specs/stage-instructions/step3-generate.md` を subagent に読ませる。
+subagent 側が `spec-template.md` + 対象 kind の `tier-templates/{kind}.md` + `spec-generate.md` を読む）
 
 UC ごとに spec.md + ティア別 md + `_api-summary.yaml` を生成する。ティアファイルは Step1 で決定した UC-ティアマッピングに従う。UC 間は独立しているため subagent で並列実行する。**並列起動は必須**: グループ分割後の全 subagent を**単一メッセージで同時起動**すること（1 グループずつの直列処理は禁止。壁時計が UC 数に比例して伸びる）。実行環境で Agent/Task ツールが利用できない場合のみ、その旨を完了報告に明記した上で 8-10 UC ずつ順次処理してよい。OpenAPI/AsyncAPI は UC 単位では生成せず、Step4 で `_api-summary.yaml` を入力として全 UC 統合で `_cross-cutting/` に生成する。
 
@@ -297,40 +311,32 @@ UC ごとに spec.md + ティア別 md + `_api-summary.yaml` を生成する。�
 - `_cross-cutting/ux-ui/ux-design.md` — ユーザーフロー・IA を参照して画面遷移を整合させる
 - `_cross-cutting/ux-ui/ui-design.md` — レイアウトパターン・レスポンシブ戦略を参照
 
-subagent への指示テンプレートは `references/specs/subagent-template.md` を参照。
+subagent への指示の渡し方（ファイル参照方式・stage → 指示ファイルの対応表）は `references/specs/subagent-template.md` を参照。
+オーケストレータのプロンプトは「role 1 行 + 指示ファイルの絶対パス + 変数ブロック」だけにする（固定長文を貼らない）。
 
 #### Step3-Review: UC Spec 自己改善ループ
 
-Step3 で生成した各 UC の出力を、**生成 subagent とは別の subagent でレビューし、指摘がなくなるまで改善する**。生成した本人がレビューすると見落としが生じるため、必ず別 subagent を使う。
+Step3 で生成した各 UC の出力を、**生成 subagent とは別の subagent でレビューし、指摘を直す**。生成した本人がレビューすると
+見落としが生じるため、必ず別 subagent を使う。レビュー観点・出力規約の正本は
+`references/specs/stage-instructions/step3-review.md`、修正側は `references/specs/stage-instructions/step3-fix.md`。
+指摘は **findings YAML（`docs/specs/events/{event_id}/_review/step3-{group}-round{n}.yaml`）経由**で受け渡し、
+チャットには件数と path だけを返させる（オーケストレータが指摘本文を抱えない）。
 
-**レビュー subagent の指示:**
-```
-あなたは UC Spec のレビュアーです。以下の UC Spec を厳密にレビューしてください。
-
-対象: {UC Spec のパス}
-参照: RDRA モデル（docs/rdra/latest/*.tsv）、docs/specs/events/{event_id}/_inputs-digest.md（無い/セクション欠落時は欠けた分だけ arch-design.yaml / nfr-grade.yaml を読む）、design-event.yaml（存在する場合のみ。design 無しモードでは、tier-*.md に画面仕様・コンポーネント設計・screens・Storybook 参照が**含まれていないこと**を指摘対象にする）
-
-レビュー観点:
-1. spec.md の RDRA トレーサビリティテーブルに漏れがないか（情報属性、条件、バリエーション、状態遷移）
-2. BDD シナリオ（Given/When/Then）が具体的な値を含んでいるか（「適切な値」のような曖昧表現がないか）
-3. tier-*.md にデータモデル変更・API仕様（API 系）・コンポーネント設計（Presentation 系、**design ありのみ**）・コマンド契約（CLI 系）が記述されているか
-4. _api-summary.yaml の paths/schemas が tier-backend-api.md と整合しているか
-5. _model-summary.yaml の tables/operations が spec.md のデータフローと整合しているか
-6. mermaid ダイアグラムの構文が正しいか
-
-指摘事項がある場合は、ファイルパスと行を特定して修正内容を具体的に提示してください。
-指摘なしの場合は「LGTM」と報告してください。
-```
-
-**ループ手順:**
-1. 業務単位でレビュー subagent を並列起動する（1 subagent あたり 8-10 UC、全グループを単一メッセージで同時起動）
-2. 指摘があった UC について修正 subagent を起動して修正する
-3. 修正後、再度レビュー subagent でチェックする
-4. 「LGTM」が出るまで繰り返す（最大3回。3回目でも指摘が残る場合は残指摘をログに記録して次へ進む）
+**ループ手順（修正は最大 2 回、レビューは最大 3 回 = 最後は検証パス）:**
+1. round 1: 業務単位でレビュー subagent を並列起動する（1 subagent あたり 8-10 UC、全グループを単一メッセージで同時起動）
+2. findings が 1 件以上のグループごとに修正 subagent を **1 回** 起動する（グループ内の blocker / major / minor を 1 つの findings YAML で渡す。
+   修正 subagent は指摘のある UC のファイルと findings だけを読む。同じ直し方を複数 UC に展開する横断修正は
+   「対象 UC 一覧 + 変更の正本 1 ファイル」だけを渡す）
+3. round 2: **round 1 で指摘のあった UC だけ**を再レビューする（前ラウンド findings のパスを渡す。指摘なしの UC は再レビューしない）
+4. round 2 の findings のうち blocker / major は修正 subagent をもう 1 回だけ起動して直す（変数 `対象 finding: severity=blocker,major`。
+   minor はこの時点でオーケストレータが `deferred` 記録する）
+5. round 3（**検証パス**）: round 2 で修正した UC だけを再レビューする。findings は記録するだけで修正 subagent は起動しない
+6. 残った finding は、オーケストレータが findings YAML の `resolved` に `resolution: deferred` + 理由 + `by: orchestrator` で記録して次へ進む
+   （`step3-fix.md` の resolution 表。`resolved` に無い finding を残さない）。round 1 で指摘が 0 件なら 2〜6 は行わない
 
 ### Step3.5: BUC 単位 Spec 生成
 
-**読み込み:** `references/specs/spec-template.md`（buc-spec.md フォーマット）
+**読み込み:** `references/specs/buc-spec-template.md`（buc-spec.md フォーマット。生成 subagent に読ませる）
 
 Step3 で全 UC Spec が出揃った後に、BUC 単位の俯瞰仕様を生成する。BUC 間は独立しているため subagent で並列実行する（全 BUC グループを単一メッセージで同時起動）。
 
@@ -349,17 +355,10 @@ Step3 で全 UC Spec が出揃った後に、BUC 単位の俯瞰仕様を生成�
 
 #### Step3.5-Review: BUC Spec 自己改善ループ
 
-Step3-Review と同様に、生成 subagent とは別の subagent でレビューする。
-
-**レビュー観点:**
-1. 所属 UC 一覧が BUC.tsv と一致しているか
-2. UC 横断データフローの mermaid に全 UC の CRUD 操作が反映されているか
-3. 情報 CRUD マトリクスに全情報 x 全 UC のセルが埋まっているか
-4. 状態遷移全体図に全状態遷移パスが含まれているか
-5. 共有条件・共有バリエーション一覧に漏れがないか
-6. **コンテンツが実質的に空でないか**（セクション見出しだけで本文がない等）
-
-ループ: 最大3回。指摘なし（LGTM）で次へ進む。
+Step3-Review と同様に、生成 subagent とは別の subagent でレビューする。観点・出力規約の正本は
+`references/specs/stage-instructions/step35-review.md`（findings は `_review/step35-{group}-round{n}.yaml`）、
+修正側は `step3-fix.md`。ループは Step3-Review と同じ（round 1 全 BUC → 修正 1 回 → round 2 は指摘のあった BUC のみ →
+blocker / major の修正 1 回 → round 3 は修正した BUC だけの検証パス → 残りは deferred 記録）。
 
 ### Step4: 全体横断統合
 
@@ -476,6 +475,8 @@ OpenAPI 統合が特に重い場合は、業務単位で分割して並列生成
 
 #### Step4f: 設計判断記録（Decision Records）生成
 
+**読み込み:** `references/specs/decision-records.md`（判断カテゴリ・生成タイミング・YAML フォーマット・出力先）
+
 Step4a〜4d の設計判断を Decision Record YAML として `docs/specs/events/{event_id}/decisions/` に記録する。イベントあたり少なくとも1つの決定記録を生成すること。
 
 **判断カテゴリ:**
@@ -529,29 +530,16 @@ alternatives_considered:
 
 #### Step4-Review: Cross-Cutting 自己改善ループ
 
-Step4a〜4d の各成果物を、**生成 subagent とは別の subagent でレビューし、指摘がなくなるまで改善する**。
+Step4a〜4d の各成果物を、**生成 subagent とは別の subagent でレビューし、指摘を直す**。
+レビュー対象・観点・design 無しモードの扱い（`common-components.md` を対象から外し、`ui-design.md` の出力規約を見る）・
+出力規約の正本は `references/specs/stage-instructions/step4-review.md`（findings は `_review/step4-{担当}-round{n}.yaml`）、
+修正側は `step3-fix.md`。
 
-design 無しモード（`design_available: false`）では `common-components.md` は生成されないので**レビュー対象から外す**
-（欠落を不備として再生成させない）。代わりに UX/UI 系 reviewer は `_cross-cutting/ux-ui/ui-design.md`（出力規約）を
-「`interface_kind` に応じた規約（cli: stdout/stderr・終了コード / api: レスポンス・HTTP ステータス / batch: ログ・終了コード）が
-具体値で書かれているか、design-event / Storybook / コンポーネント名への参照が無いか」の観点でレビューする。
-
-**レビュー対象と観点:**
-
-| 成果物 | レビュー観点 |
-|--------|------------|
-| `openapi.yaml` | paths が全 UC の `_api-summary.yaml` を網羅しているか、schemas のプロパティに description があるか、required が適切か |
-| `asyncapi.yaml` | channels が全非同期イベントを網羅しているか、payload スキーマが具体的か |
-| `rdb-schema.yaml` | 全テーブルに description があるか、全カラムに description があるか、インデックスに name があるか、ユニーク制約の検討が行われているか（ビジネスルール由来の重複防止）、FK が情報.tsv の関連情報と整合しているか |
-| `kvs-schema.yaml` | キーパターンの命名規則が統一されているか、TTL が設定されているか |
-| `common-components.md`（design ありのみ） | 利用 UC 一覧が正確か、design-event.yaml の既存コンポーネントとの重複がないか |
-| `traceability-matrix.md` | 網羅率の分母（RDRA 全要素数）が正確か、未カバー要素の対応方針が具体的か |
-
-**ループ手順:**
-1. 機能別にレビュー subagent を並列起動する（API系、データストア系、UX/UI系、トレーサビリティ）
-2. 指摘があった成果物について修正 subagent を起動して修正する
-3. 修正後、再度レビュー subagent でチェックする
-4. 「LGTM」が出るまで繰り返す（最大3回）
+**ループ手順（Step3-Review と同じ構造）:**
+1. round 1: 担当別（api / datastore / ux-ui / traceability）にレビュー subagent を単一メッセージで並列起動する
+2. findings が 1 件以上の担当ごとに修正 subagent を 1 回起動する（findings YAML と指摘のある成果物だけを読ませる）
+3. round 2: 指摘のあった担当だけを再レビューする。残る blocker / major は修正をもう 1 回
+4. round 3（検証パス）: 修正した成果物だけを再レビューし、findings は記録のみ。残りはオーケストレータが `deferred` 記録して次へ
 
 ### Step5: spec-event.yaml 生成
 
@@ -652,21 +640,10 @@ Step6 の機械検証は構文・必須項目しか見ない。「検証は通�
 **反証専用のサブエージェント**（生成とは別コンテキスト・spec の修正禁止）にレビューさせ、
 指摘を修正して収束させる。
 
-1. fresh サブエージェントにパスのみを渡してレビューさせる（生成の経緯・会話は渡さない）:
-   - 生成物: `docs/specs/events/{event_id}/` 全体
-   - 入力の正: `docs/usdm/latest/` / `docs/rdra/latest/` / `docs/arch/latest/` / `docs/design/latest/`（design ありのみ）
-   - 観点（後工程の実装ハーネス distillery-impl の実走で「仕様起因の手戻り」になった実例に基づく）:
-     - ①**トレーサビリティ**: 全 UC が USDM の SPEC / acceptance_criteria に遡れるか。
-       機械可読の対応フィールドが spec-event スキーマに定義されている場合はその出力を検証し、
-       **未定義の場合は欠落 finding にせず「スキーマ拡張の変更要求」として報告する**
-     - ②**依存の宣言**: tier md の UI ロジック・操作フローが参照する API・画面遷移先が、
-       その UC の `_api-summary.yaml` か他 UC のどこかに宣言されているか
-       （**cross-UC 依存の暗黙参照**を検出 — 未宣言だと実装時に「参照先が存在しない」で統合が落ちる）
-     - ③**契約生成適性**: openapi / asyncapi が codegen で壊れない形か
-       （enum 値のキー欠落 → 生成 TS が構文エラー、message payload の title 欠落 → 無名スキーマ化、の実例あり）
-     - ④**一貫性**: spec.md の状態遷移・事後処理と datastore schema（enum 値・テーブル）の整合、
-       日付等の表記形式の統一（表要素と gherkin 例文の食い違い）
-     - ⑤**gherkin 品質**: E2E / ティア完了条件が実行可能な粒度か（検証不能な Then が無いか）
+1. fresh サブエージェントに `references/specs/stage-instructions/step65-review.md` の絶対パスと変数ブロック
+   （event_id / round / design_available / 前ラウンド findings のパス）だけを渡してレビューさせる
+   （生成の経緯・会話は渡さない。観点 ①トレーサビリティ ②依存の宣言 ③契約生成適性 ④一貫性 ⑤gherkin 品質の正本は同ファイル）。
+   **round 2 以降は前ラウンド findings の target と、その修正で影響を受ける成果物だけ**を対象にする（events/ 全体を再読しない）
 2. findings は `docs/specs/events/{event_id}/_review/round-{n}.yaml` に書かせる
    （`id` / `viewpoint` / `severity: blocker|major|minor` / `target` / `claim` / `evidence` /
    `suggested_fix`。`_` prefix のためバリデーション・スナップショットの UC 走査対象外）
@@ -757,10 +734,16 @@ spec-stories スキルの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/dist-spec-stori
 | `references/specs/cross-cutting-traceability-template.md` | Step4d: トレーサビリティマトリクス テンプレート + 網羅率算出ルール |
 | `references/specs/data-visualization-rules.md` | Step2: データ可視化設計ルール |
 | `references/specs/ux-psychology-glossary.md` | Step2: UX 心理学用語集 |
-| `references/specs/spec-template.md` | Step3: UC Spec フォーマット定義（BUC は参照ポインタ） |
-| `references/specs/subagent-template.md` | Step3: subagent への指示テンプレート |
+| `references/specs/spec-template.md` | Step3: UC Spec フォーマット定義の共通部（spec.md フォーマット・注意事項。BUC は参照ポインタ） |
+| `references/specs/tier-templates/presentation.md` / `api.md` / `worker.md` / `cli.md` | Step3: ティア種別（kind）ごとの tier-{tier_id}.md フォーマット。生成 subagent は対象 kind の分だけ読む |
+| `references/specs/tier-selection-rules.md` | Step1: UC パターン別ティア選定ルール（オーケストレータ専用。subagent は読まない） |
+| `references/specs/decision-records.md` | Step4f: 設計判断記録の判断カテゴリ・YAML フォーマット・出力先 |
+| `references/specs/subagent-template.md` | subagent への指示の渡し方（ファイル参照方式）と stage → 指示ファイルの対応表 |
+| `references/specs/stage-instructions/step3-generate.md` | Step3 生成 subagent の固定指示（読むファイル・生成・完了報告・変数ブロック） |
+| `references/specs/stage-instructions/step3-review.md` / `step35-review.md` / `step4-review.md` / `step65-review.md` | 各レビュー subagent の固定指示（観点・findings YAML の出力規約） |
+| `references/specs/stage-instructions/step3-fix.md` | 修正 subagent の固定指示（findings と指摘のあるファイルだけを読む） |
 | `references/specs/buc-spec-template.md` | Step3.5: BUC Spec フォーマット定義 |
-| `references/specs/spec-generate.md` | Step3: UC Spec 生成タスク詳細（ティア選定ルール・API サマリー出力含む） |
+| `references/specs/spec-generate.md` | Step3: UC Spec 生成タスク詳細（手順 2〜7・出力ルール。ティア選定ルールと Decision Records は別ファイルへ分離） |
 | `references/specs/openapi-rules.md` | Step4a: OpenAPI 3.1 生成ルール（全 UC 統合） |
 | `references/specs/asyncapi-rules.md` | Step4a: AsyncAPI 生成ルール（全 UC 統合） |
 | `references/specs/datastore-rules.md` | Step3/_model-summary.yaml 出力 + Step4b: データストアレイアウト統合ルール |

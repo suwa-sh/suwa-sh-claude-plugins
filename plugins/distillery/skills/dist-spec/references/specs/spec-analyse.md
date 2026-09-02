@@ -71,7 +71,7 @@ arch-design.yaml から以下を抽出する:
 design 有無は SKILL.md「design 無しモード」の条件（引数 `design_available` が最優先、無ければファイルの有無）で Step1 の最初に
 決め、`_inference.md` に記録済みである。`design_available: false` なら本節と「4. UC と画面・コンポーネントのマッピング」を
 スキップし、**design-event.yaml が残っていても開かない**。以降の UC Spec では画面仕様・コンポーネント設計・
-デザイントークン参照・`screens` を生成しない（`spec-template.md`「design 無しモード」）。
+デザイントークン参照・`screens` を生成しない（`spec-template.md`「注意事項」の design 無しモード。CLI 系は `tier-templates/cli.md`）。
 
 design-event.yaml から以下を抽出する:
 

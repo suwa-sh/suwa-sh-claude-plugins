@@ -13,7 +13,8 @@
 - `docs/arch/latest/arch-design.yaml` — アーキテクチャ設計（同上フォールバック）
 - `docs/design/latest/design-event.yaml` — デザインシステム
 - `docs/specs/latest/` — 既存の Spec（あれば）
-- `references/specs/spec-template.md` — Spec フォーマット定義
+- `references/specs/spec-template.md` — Spec フォーマット定義（共通部）
+- `references/specs/tier-templates/{kind}.md` — 対象ティアの kind に一致するティア別フォーマット（該当分だけ読む）
 
 ## 出力
 
@@ -22,43 +23,11 @@
 
 ## 手順
 
-### 1. ティア構成の決定
+### 1. ティア構成の確認
 
-`_inputs-digest.md` を読み込み、生成対象のティアを決定する
-（ファイル自体が無ければ `docs/arch/latest/arch-design.yaml` をフルロード。
-チェックリストで `system_architecture.tiers` または `app_architecture.tier_layers` が
-`元ファイル参照` の場合は、該当セクションだけを `arch-design.yaml` から読む）:
-
-- `system_architecture.tiers` から全ティアの `id`, `name`, `description`, `technology_candidates` を取得する
-- `app_architecture.tier_layers` から各ティアのレイヤー構成を取得する
-- 各ティアの種別を判定する:
-  - **Presentation 系**: `technology_candidates` に SPA, SSR, MPA, モバイルアプリ等の UI 技術が含まれる
-  - **API / バックエンド系**: `technology_candidates` に REST, GraphQL, gRPC, API Gateway 等の API 技術が含まれる
-  - **非同期処理 / ワーカー系**: `technology_candidates` に Worker, Consumer, Batch, FaaS 等の非同期処理技術が含まれる
-  - **CLI 系**: `id` に `cli` / `command` / `tui` を含む、または `technology_candidates` に CLI, コマンドラインツール等が含まれる
-- ティアの種別に応じて、`spec-template.md` の該当フォーマットを使用する
-- **design 無しモード**（`_inputs-digest.md` 冒頭の `design_available: false`）では、Presentation 系ティアの
-  画面仕様・コンポーネント設計・デザイントークン参照を生成しない。design-event.yaml を読みに行かない
-
-#### UC パターン別ティア選定ルール
-
-すべての arch ティアを全 UC に生成するのではなく、UC の特性に応じて対象ティアを絞り込む。BUC.tsv の関連モデル列（画面、タイマー、イベント、外部システム）から UC パターンを判定する:
-
-| UC パターン | 判定条件 | 対象ティア |
-|------------|---------|-----------|
-| **画面あり UC（外部アクター）** | 関連モデルに「画面」があり、アクターが社外 | Presentation 系（user 向け） + API 系 |
-| **画面あり UC（社内アクター）** | 関連モデルに「画面」があり、アクターが社内 | Presentation 系（admin 向け） + API 系 |
-| **タイマートリガー UC** | 関連モデルに「タイマー」がある（画面なし） | CronJob 系ワーカー + API 系 |
-| **自動通知 UC** | UC の説明に「自動通知」「自動送信」等がある | FaaS 系ワーカー + API 系 |
-| **バッチ + 画面 UC** | 関連モデルに「画面」があり、処理にバッチ実行が含まれる | Presentation 系 + API 系 + CronJob 系ワーカー |
-| **外部連携 UC** | 関連モデルに「イベント」+「外部システム」がある | API 系 + 該当ワーカー系 |
-| **コマンド UC（CLI プロダクト）** | 関連モデルに「画面」があるが arch に Presentation 系ティアが無く、CLI 系ティアがある（RDRA の「画面」がコマンド出力を表す。`システム概要.json` の `interface_kind: cli`） | CLI 系 + API 系（API 系が無ければ CLI 系のみ） |
-
-**重要**: インフラティア（API Gateway, IdP, 認可サービス, データストア, Object Storage, KVS, 外部連携アダプタ）は UC 単位の Spec では生成しない。これらは全体横断（cross-cutting）の責務。
-
-**Presentation 系ティアが複数ある場合**（例: user 向けと admin 向け）、アクターの社内外で使い分ける:
-- 社外アクター（利用者、オーナー等） → user 向け Presentation ティア
-- 社内アクター（運営担当者等） → admin 向け Presentation ティア
+生成対象のティアと kind は **Step1 でオーケストレータが確定し、subagent 指示の「対象ティア」に渡される**
+（選定ルールは `references/specs/tier-selection-rules.md`。subagent は読まない）。
+指示に無いティアのファイルは生成しない。ティア id の一覧は `_inputs-digest.md` の `system_architecture.tiers` で確認できる。
 
 ### 2. UC 情報の収集
 
@@ -122,7 +91,7 @@ Step 1 で決定した各ティアについて、ティア種別に応じたフ�
 
 コンポーネント設計では、design-event.yaml のコンポーネントを「ベースコンポーネント」として参照し、この UC 固有の Props や状態を定義する。UI の実装（Storybook Story）は後続作業。
 
-**CLI 系ティアの場合**（`spec-template.md`「CLI 系ティア」フォーマット）:
+**CLI 系ティアの場合**（`references/specs/tier-templates/cli.md` のフォーマット）:
 - **コマンド契約**: コマンド名、引数、オプション（型・既定値・必須）、stdin の受け付け
 - **出力契約**: stdout の内容とフォーマット（table / json / plain。`_cross-cutting/ux-ui/ui-design.md` の出力規約に従う）、
   stderr のメッセージ、終了コード（成功 / 入力エラー / 業務エラー / システムエラー）
@@ -242,61 +211,7 @@ object_storage: []                # Object Storage アクセスがある場合�
 - 推測でティアの仕様を追加しない — 入力モデルから導出できる範囲で記述する
 - 1つの UC の Spec 生成は1つの subagent で完結させる（UC 間で並列実行可能）
 - ティア構成は arch-design.yaml から動的に決定する — 固定のティア名をハードコードしない
-- UC パターン別ティア選定ルール（手順 1 参照）に従い、UC に関連しないティアのファイルは生成しない
+- 指示で渡された対象ティア以外のファイルは生成しない（選定ルールの正本は `references/specs/tier-selection-rules.md`。オーケストレータが適用済み）
 - tier-*.md 内の API 仕様テーブルや非同期イベント仕様は、後続の `_cross-cutting/api/openapi.yaml` / `asyncapi.yaml` 生成の入力になるため、具体的に記述する
 - API 系ティアの生成時は `_api-summary.yaml` も出力する（手順 6 参照）
 - 全 UC で `_model-summary.yaml` も出力する（手順 7 参照）。spec.md のデータフローと tier-backend-api.md から導出
-
-## 設計判断記録（Decision Records）
-
-全体横断 Spec（Step4）の完了後に、設計判断を Decision Record YAML として記録する。Spec 生成プロセスで行った重要な設計判断を、後続の開発者やレビュアーが理解できるように構造化する。
-
-### 対象となる判断カテゴリ
-
-| カテゴリ | 判断内容の例 |
-|---------|------------|
-| **API スタイル選定** | REST vs GraphQL vs gRPC の選定理由。ティアごとに異なるスタイルを採用した場合はそれぞれの根拠 |
-| **イベント駆動パターン** | 同期/非同期の境界をどこに引いたか。どの UC 間通信を非同期にしたか（メッセージキュー、イベントバス）とその理由 |
-| **データ正規化レベル** | 3NF を基本としつつ非正規化した箇所とその理由（パフォーマンス、読み取りパターン最適化など） |
-| **横断関心事の解決方針** | エラーハンドリング戦略（リトライ、サーキットブレーカー）、ページネーション方式（カーソル vs オフセット）、認証伝播方式（JWT、セッション）の決定 |
-
-### 生成タイミング
-
-Decision Record は **cross-cutting Spec の生成完了後** に作成する。UC 単位 Spec の生成中ではなく、全体を俯瞰した段階で判断を記録する理由:
-
-1. API スタイルは openapi.yaml / asyncapi.yaml の統合時に確定する
-2. データ正規化は rdb-schema.yaml の統合時に確定する
-3. 横断関心事は common-components.md やトレーサビリティマトリクスの生成時に確定する
-
-### YAML フォーマット
-
-```yaml
-schema_version: "1.0"
-artifact_type: "decision_record"
-skill_type: "specification"
-artifact_id: "spec-decision-{NNN}"
-title: "判断タイトル"
-status: "approved"
-generated_at: "{ISO 8601}"
-context: |
-  ...問題の背景・制約...
-decision: |
-  ...判断内容と理由...
-consequences:
-  positive: [...]
-  negative: [...]
-alternatives_considered:
-  - name: "代替案名"
-    reason_rejected: "不採用理由"
-```
-
-### 出力先
-
-```
-docs/specs/events/{event_id}/decisions/
-  spec-decision-001.yaml
-  spec-decision-002.yaml
-  ...
-```
-
-イベントあたり少なくとも1つの Decision Record を生成すること。

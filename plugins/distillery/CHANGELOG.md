@@ -3,6 +3,37 @@
 distillery プラグインの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョンは semver（正本は `.claude-plugin/plugin.json`）。
 
+## [1.7.0] - 2026-09-02
+
+### Changed
+
+- **dist-spec: subagent の入力削減とレビュー/修正ループの短縮**（トークン削減 Phase 2）
+  - `references/specs/spec-template.md`（16.9KB）を共通部（9.9KB）と `tier-templates/{presentation|api|worker|cli}.md`
+    （各 2〜3KB）に分割。生成 subagent は対象ティアの kind に一致するファイルだけを読む
+  - `references/specs/spec-generate.md`（17.6KB → 12.1KB）から「ティア構成の決定」を `tier-selection-rules.md`
+    （Step1 オーケストレータ専用）、「設計判断記録」を `decision-records.md`（Step4f 専用）に分離
+  - Step1 で UC ごとの `{tier_id} ({kind})` を確定して `_inference.md` に記録し、生成 subagent の指示に渡す
+  - `references/specs/stage-instructions/` を新設（dist-impl-run と同じファイル参照方式）: `step3-generate.md` /
+    `step3-review.md` / `step3-fix.md` / `step35-review.md` / `step4-review.md` / `step65-review.md`。
+    オーケストレータのプロンプトは「role 1 行 + 指示ファイルの絶対パス + 変数ブロック」のみ
+  - レビュー結果は findings YAML（`docs/specs/events/{event_id}/_review/step3-{group}-round{n}.yaml` 等）経由で受け渡し、
+    チャットには件数と path だけを返す。修正 subagent は指摘のある UC のファイルと findings だけを読む
+  - Step3 / 3.5 / 4 のレビューループは「round 1 全件 → 修正 → round 2 は指摘のあった UC / 担当のみ → blocker/major 修正 →
+    round 3 は修正した対象だけの検証パス（修正なし）」に変更（従来: LGTM まで全件を最大 3 回）。残る finding は
+    オーケストレータが `resolution: deferred` + 理由で記録する（記録主体・状態は `step3-fix.md` の表）。
+    Step6.5 は従来どおり 3 ラウンド・blocker/major 収束条件を維持
+  - `subagent-template.md` は stage → 指示ファイルの対応表に置き換え。変数ブロックに `skill_root`（dist-spec の絶対パス）を渡し、
+    指示ファイル内の `references/...` はその基準で解決する。専用指示ファイルの無い生成 stage（Step3.5 / Step4a〜4d）は
+    既存テンプレート・ルールファイルと一次入力の絶対パス + 共通の完了報告形式をプロンプトに書く
+  - findings YAML の `file` を全 stage 共通の修正対象パスとし、任意の `source_refs`（検証に使った一次入力）を追加。
+    round 2 以降のレビューは対象成果物 + `source_refs` の最小部分だけを読む
+  - Step1 の `_inputs-digest.md` を LLM 転写から `dist-pipeline/scripts/extractSections.js`（原文切り出し）による生成に置換
+    （トークン 0・決定的。1 行目 `design_available:` と転写済みチェックリストの契約は維持）
+- **dist-pipeline: `scripts/extractSections.js` / `scripts/buildDigest.js` を追加**（段階的開示の基盤。消費側 SKILL.md への
+  適用は 1.9.0）。`extractSections.js` は YAML の指定セクション（`system_architecture.tiers` / `categories[id=A]` 等）を
+  原文のまま切り出し、`--md` で `_inputs-digest.md` 形式を出力。`buildDigest.js` は `docs/{arch,nfr,design}/latest/_digest/`
+  （index.md + セクション別 YAML、正本の sha256 つき）を冪等に生成する
+
 ## [1.6.1] - 2026-09-02
 
 ### Changed
