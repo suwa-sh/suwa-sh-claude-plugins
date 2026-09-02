@@ -1,0 +1,55 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-011"
+title: "loading 表現・URL 結線・完了結果の所有権を共通層へ集約し、UC 仕様は参照だけにする"
+status: "approved"
+generated_at: "2026-09-02T19:10:46+09:00"
+context: |
+  design ステージが CR-d0f57ea2-006（`LoadingState`）と CR-d0f57ea2-010（`AppShell` / `appRoutes` /
+  `useAppNavigation`）を applied にしたため、仕様側の presentation 記述を整合させる必要があった。
+  あわせて CR-d0f57ea2-009（完了結果の受け渡し）と CR-d0f57ea2-008（日付・期限の表示形式）が、
+  同じ「画面側に判断を委ねている」という原因を共有していた。
+
+  - 各 UC が `Skeleton` / `Spinner` を直接指定し、同一領域での併用や独自 loading 表現が混在していた。
+  - 画面仕様が URL 文字列を直書きし、ルート表・シェル・遷移 API の所有者が未定義だった。
+  - 更新系 UC で完了結果を親子どちらが持つかが曖昧で、同じ仕様から異なる実装が成立していた。
+  - 返却期限の表示が「残り N 日」と「あと N 日」で揺れ、表示テストと UI 実装の正誤を判定できなかった。
+decision: |
+  4 つの横断関心事を `_cross-cutting/ux-ui/` の 2 ファイルへ集約し、UC 単位 Spec は参照だけを行う。
+
+  1. **loading（`common-components.md` 3. LoadingState）**: `LoadingState` を loading 表現の
+     唯一の入口とする。`kind` は待ち対象で機械的に決まる（一覧=`list` / カード群=`card` /
+     詳細=`detail` / 部分=`line` / 更新系ボタン=`action` / 画面全体=`page`）。
+     `AsyncSection` と `SubmitActionButton` は loading を自前で描画せず `LoadingState` へ委譲する。
+     画面側での `Skeleton` / `Spinner` 直接指定と独自 loading UI を禁止する。
+  2. **URL 結線（`common-components.md` 0. アプリケーションシェルとルーティング）**:
+     ルート表 `appRoutes`・シェル `AppShell`・遷移 API `useAppNavigation` をデザインシステムの
+     所有物とする。UC 仕様は**ルート id を宣言するだけ**とし、遷移は
+     `useAppNavigation().navigate("<ルート id>")` で表す。実装リポは `AppShell` の `onNavigate` へ
+     ルーターの遷移関数を注入する薄いアダプタに限る。404・ポータル外アクセス判定も共通層が持つ。
+  3. **完了結果の受け渡し（`common-components.md` 6. コンポーネント間の受け渡し規約）**:
+     実行結果の所有者は常にページコンポーネントとする。子は API を直接呼ばず結果 state も持たず、
+     `on{ドメイン動詞}{結果}` イベントで親へ引き渡す。完了結果の型は API のレスポンススキーマ名
+     （`_api-summary.yaml` の `response_schema`）をそのまま使い、画面側で別名を定義しない。
+     結果表示コンポーネントは表示専用で、`null` の間は描画しない。
+  4. **日付・期限の表示（`ui-design.md` 日付・期限の表示規約）**: API は ISO 8601、
+     画面は `YYYY年M月D日`（一覧の列のみ `YYYY/MM/DD`）とする。残日数は `あと{N}日` に統一し、
+     期限当日は `本日が返却期限`、超過は `{N}日超過` とする。BDD の期待値も同じ文字列を使う。
+consequences:
+  positive:
+    - "画面実装が独自 UI を追加せず、指定されたコンポーネントだけで loading 状態を再現できる"
+    - "E2E テストが実 URL から対象画面へ到達でき、結線の所有者が一意になる"
+    - "完了状態への遷移が Props と event 契約だけで実装でき、同じ仕様から同じ実装に収束する"
+    - "仕様例と受け入れテストが同一の表示文字列を使い、表示テストの正誤が判定できる"
+  negative:
+    - "共通層への変更が全 41 UC に波及するため、変更時の影響確認範囲が広い"
+    - "UC 固有の loading 表現・遷移演出を入れる余地が仕様上ほぼ無くなる"
+    - "デザインシステム側の appRoutes に無い画面は仕様側で追加できず、design ステージへの往復が必要になる"
+alternatives_considered:
+  - name: "各 UC が Skeleton / Spinner を直接指定し続ける"
+    reason_rejected: "同一領域での併用や独自 loading UI の混在が再発する。design ステージが LoadingState を唯一の入口と定義した決定と矛盾する"
+  - name: "URL を各画面仕様の正本とし、ルート表を持たない"
+    reason_rejected: "URL 直書きが 41 画面へ散り、遷移の所有者が不在のまま E2E の到達性が保証されない"
+  - name: "完了結果を子コンポーネントに持たせ、親は表示だけにする"
+    reason_rejected: "同じ結果を複数の子が別々に保持でき、状態の正本が決まらない。API 呼び出し位置も分散する"

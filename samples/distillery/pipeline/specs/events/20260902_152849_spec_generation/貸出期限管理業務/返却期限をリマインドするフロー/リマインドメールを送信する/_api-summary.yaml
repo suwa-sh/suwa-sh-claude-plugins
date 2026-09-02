@@ -1,0 +1,149 @@
+# _api-summary.yaml
+uc: "リマインドメールを送信する"
+business: "貸出期限管理業務"
+buc: "返却期限をリマインドするフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/staff/notifications"
+    summary: "通知の送信実績一覧とサマリを取得する（司書向け）"
+    response_schema: "NotificationLogListResponse"
+    tags: ["notifications"]
+  - method: "POST"
+    path: "/api/v1/staff/notifications/{notification_id}/resend"
+    summary: "送信失敗の通知を再送受付する（司書向け）"
+    request_schema: "ResendNotificationRequest"
+    response_schema: "NotificationResendResponse"
+    tags: ["notifications"]
+async_events:
+  - name: "publishRemindNotificationRequested"
+    channel: "notification.remind.requested"
+    direction: "publish"
+    message_schema: "RemindNotificationRequested"
+    summary: "再送受付時に返却期限リマインドの送信要求を再 publish する"
+schemas:
+  - name: "NotificationLogListResponse"
+    properties:
+      - name: "summary"
+        type: "NotificationSummary"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true
+      - name: "items"
+        type: "array<NotificationLogItem>"
+        required: true
+  - name: "NotificationSummary"
+    properties:
+      - name: "pending"
+        type: "integer"
+        required: true
+      - name: "sent"
+        type: "integer"
+        required: true
+      - name: "failed"
+        type: "integer"
+        required: true
+  - name: "NotificationLogItem"
+    properties:
+      - name: "notification_id"
+        type: "string"
+        required: true
+      - name: "notification_type"
+        type: "string"
+        required: true
+      - name: "timing_type"
+        type: "string"
+        required: true
+      - name: "recipient_user_no"
+        type: "string"
+        required: true
+      - name: "recipient_email_masked"
+        type: "string"
+        required: true
+      - name: "user_name"
+        type: "string"
+        required: true
+      - name: "target_loan_id"
+        type: "string"
+        required: false
+      - name: "book_title"
+        type: "string"
+        required: false
+      - name: "due_date"
+        type: "string(date)"
+        required: false
+      - name: "notification_status"
+        type: "string"
+        required: true
+      - name: "send_result"
+        type: "string"
+        required: false
+      - name: "requested_at"
+        type: "string(date-time)"
+        required: true
+      - name: "resendable"
+        type: "boolean"
+        required: true
+  - name: "ResendNotificationRequest"
+    properties:
+      - name: "notification_id"
+        type: "string"
+        required: true
+      - name: "X-Idempotency-Key"
+        type: "string"
+        required: true
+  - name: "NotificationResendResponse"
+    properties:
+      - name: "notification_id"
+        type: "string"
+        required: true
+      - name: "notification_status"
+        type: "string"
+        required: true
+      - name: "accepted_at"
+        type: "string(date-time)"
+        required: true
+  - name: "RemindNotificationRequested"
+    properties:
+      - name: "message_id"
+        type: "string"
+        required: true
+      - name: "idempotency_key"
+        type: "string"
+        required: true
+      - name: "notification_type"
+        type: "string"
+        required: true
+      - name: "timing_type"
+        type: "string"
+        required: true
+      - name: "target_loan_id"
+        type: "string"
+        required: true
+      - name: "recipient_user_no"
+        type: "string"
+        required: true
+      - name: "due_date"
+        type: "string(date)"
+        required: true
+      - name: "days_remaining"
+        type: "integer"
+        required: true
+      - name: "base_date"
+        type: "string(date)"
+        required: true
+      - name: "requested_at"
+        type: "string(date-time)"
+        required: true
+      - name: "trace_id"
+        type: "string"
+        required: true
+      - name: "notification_id"
+        type: "string"
+        required: false        # 再送時のみ設定（再送対象の通知ID。worker は既存通知を再利用し INSERT しない）

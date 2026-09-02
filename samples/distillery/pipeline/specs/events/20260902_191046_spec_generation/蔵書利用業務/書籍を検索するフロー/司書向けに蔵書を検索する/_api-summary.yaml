@@ -1,0 +1,17 @@
+uc: "司書向けに蔵書を検索する"
+business: "蔵書利用業務"
+buc: "書籍を検索するフロー"
+# 新規エンドポイントは追加しない。「書籍を検索する」UC が所有する GET /api/v1/books/search を
+# 司書ロールでも利用する（結果の出し分けを行わない）。所有ではなく利用のため consumes: に記録する
+endpoints: []
+async_events: []
+consumes:
+  - operation_id: "searchBooks"
+    method: "GET"
+    path: "/api/v1/books/search"
+    owner_uc: "書籍を検索する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-staff"
+    purpose: "レファレンス検索画面で司書が検索条件種別（キーワード/タイトル/著者/ISBN/ジャンル）により蔵書を検索し、在庫状況区分を表形式で案内する"
+    required: true
+schemas: []

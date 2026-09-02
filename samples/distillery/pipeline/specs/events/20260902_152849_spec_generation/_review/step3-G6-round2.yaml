@@ -1,0 +1,64 @@
+round: 2
+group: G6
+# round1 findings S3-G6-001〜012 は全件 fixed を実測で確認済み（再掲なし）
+findings:
+  - id: S3-G6-013
+    uc: "蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md"
+    line: 47
+    severity: major
+    viewpoint: 5
+    claim: "S3-G6-007 の修正で tier-worker.md 手順 9 と _model-summary.yaml に users の SELECT が追加されたが、spec.md のデータフロー図・処理フロー図には users テーブルも利用者区分の取得ステップも無く、_model-summary.yaml の tables と整合していない。"
+    fix: "データフロー図の subgraph DB に `DB_User[(\"users\\nuser_no/user_category\")]` を追加し、`WK_Repo -->|\"SELECT user_no, user_category FROM users WHERE user_no IN (...)\"| DB_User` を引く。処理フローの `WRepo->>DB: SELECT title, author, genre FROM books ...` の直後に `WUC->>WRepo: findUsersByNos(userNos)` / `WRepo->>DB: SELECT user_no, user_category FROM users WHERE user_no IN (...)` を追加する。WK_Repo のラベルにも `UserRecord` を加える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/tier-worker.md#処理フロー 9"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/_model-summary.yaml#tables users"
+  - id: S3-G6-014
+    uc: "蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md"
+    line: 115
+    severity: minor
+    viewpoint: 5
+    claim: "tier-worker.md 手順 3 と _model-summary.yaml の statistical_reports SELECT(report_id = :report_id) が定義されているのに、spec.md のデータフロー図・処理フロー図に Worker が集計対象レポートを取得して report_status='集計中' を確認するステップが無い（同 BUC の『在庫状況を区分別に集計する』では S3-G6-002 として修正済み）。"
+    fix: "処理フローの `WPres->>WUC: AggregateLoanStatsCommand` の直後に `WUC->>WRepo: findReport(report_id)` / `WRepo->>DB: SELECT ... FROM statistical_reports WHERE report_id=:report_id AND report_status='集計中'` / `DB-->>WRepo: 統計レポートレコード` を追加し、データフロー図にも `WK_Repo -->|\"SELECT statistical_reports (report_id, report_status='集計中')\"| DB_Report` を追記する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/tier-worker.md#処理フロー 3"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/spec.md#処理フロー 114-116 行"
+  - id: S3-G6-015
+    uc: "蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/_model-summary.yaml"
+    line: 84
+    severity: minor
+    viewpoint: 5
+    claim: "tables に users の SELECT を追加した一方で models[] には tier-worker の利用者モデルが無く、books（Book / BookRecord）・loans（Loan / LoanRecord）と記述粒度が揃っていない。"
+    fix: "models[] の BookRecord の後に `User`（tier: tier-worker / layer: domain / type: entity / rdra_info: 利用者）と `UserRecord`（tier: tier-worker / layer: repository / type: record / rdra_info: 利用者）を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/_model-summary.yaml#tables users"
+  - id: S3-G6-016
+    uc: "蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/tier-frontend-staff.md"
+    line: 21
+    severity: minor
+    viewpoint: 2
+    claim: "S3-G6-011 で spec.md の期待値は「+12.1%」に修正されたが、tier-frontend-staff.md の表示要素マッピングは「前期比 `+12%`」のままで、同ファイルの UIロジック『比率は小数第 1 位まで表示する』および tier-backend-api.md の 12.1 と桁が食い違っている。"
+    fix: "『前期比 `+12.1%` を中立トーンで示す（減少＝悪と決めつけない）』に修正し、小数第 1 位表記へ揃える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/spec.md#E2E 180-184 行"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/tier-frontend-staff.md#UIロジック 数値表記"
+  - id: S3-G6-017
+    uc: "蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/spec.md"
+    line: 30
+    severity: minor
+    viewpoint: 5
+    claim: "処理フロー図と _model-summary.yaml には前期比算出用の SELECT（aggregated_at < :target で前回 1 件取得）があるのに、データフロー図の SELECT が最新 1 件の 1 本だけで整合していない（『在庫状況レポートを参照する』では S3-G6-004 の修正で 2 本描かれている）。"
+    fix: "データフロー図の `BE_Repo -->|\"SELECT ... ORDER BY aggregated_at DESC LIMIT 1\"| DB_Report` の次に `BE_Repo -->|\"SELECT ... FROM statistical_reports WHERE report_type=:type AND aggregated_at < :at ORDER BY aggregated_at DESC LIMIT 1（前期比）\"| DB_Report` を追記する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/_model-summary.yaml#statistical_reports SELECT(前期比の算出)"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する/spec.md#データフロー 29-30 行"
+resolved:
+  - {id: S3-G6-013, resolution: fixed}
+  - {id: S3-G6-014, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G6-015, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G6-016, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G6-017, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

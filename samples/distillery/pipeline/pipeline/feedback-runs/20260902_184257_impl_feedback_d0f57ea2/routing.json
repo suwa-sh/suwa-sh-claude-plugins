@@ -1,0 +1,1156 @@
+{
+  "schema_version": "distillery.feedback-routing/v1",
+  "feedback_request_id": "20260902_184257_impl_feedback_d0f57ea2",
+  "input_sha256": "7afd483f6a221ae5f469cbcbc5c7c3bce46be4f4924e7aec3f1e9b2b682c9133",
+  "policy": "recommended_auto",
+  "routing_basis": {
+    "ownership_catalog_version": "1.0.0",
+    "ownership_catalog_sha256": "801750c2abe99945a3de9387b82339b2bc96ccb2da564f9923cc0e9b76a2bd39",
+    "routing_policy_version": "1.1.0",
+    "routing_policy_sha256": "3873275bf4adb3d9d7b7c41c22c9463d054a3614df7bbcab7514f0c1e23e166e",
+    "prompt_schema_sha256": "bf7c7f34d7a2fc5976ccd2589a454172a4630e1448c509966b620f88029732c4",
+    "stage_packet_renderer_version": "1",
+    "skipped_stages": [],
+    "repository_head": "15e5feb905590ddd0a8984211144402e097f49af",
+    "latest_domain_event_ids": {
+      "requirements": {
+        "rdra/events": "20260902_130741_initial_build",
+        "usdm/events": "20260902_130741_initial_build"
+      },
+      "quality_attributes": {
+        "nfr/events": "20260902_132551_initial_nfr"
+      },
+      "architecture": {
+        "arch/events": "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+      },
+      "infrastructure": {
+        "infra/events": "20260902_142349_infra_product_design"
+      },
+      "design_system": {
+        "design/events": "20260902_183502_spec_stories"
+      },
+      "spec": {
+        "specs/events": "20260902_152849_spec_generation"
+      },
+      "spec_stories": {
+        "design/events": "20260902_183502_spec_stories"
+      }
+    },
+    "domain_event_root_snapshots": {
+      "rdra/events": {
+        "head_event_id": "20260902_130741_initial_build",
+        "head_event_sha256": "fb6f06d93a05c4e93975bcad30721ab0ec99ae0b0ec9b9a68f1673650263cf91",
+        "event_ids": [
+          "20260902_130741_initial_build"
+        ],
+        "event_set_sha256": "047e04aa23237bfc38d8642cdbf47c6c1274788f60a5eac4df6c3a0cc3c07a03",
+        "latest_tree_sha256": "900230113d3a6312605b4a55c4d0daf37f952f709a8e1e58b24724681a403308"
+      },
+      "usdm/events": {
+        "head_event_id": "20260902_130741_initial_build",
+        "head_event_sha256": "f4e61d85a24da5570608bc0e71beb35d54412523b8355bfd9da76812988f66c1",
+        "event_ids": [
+          "20260902_130741_initial_build"
+        ],
+        "event_set_sha256": "047e04aa23237bfc38d8642cdbf47c6c1274788f60a5eac4df6c3a0cc3c07a03",
+        "latest_tree_sha256": "fe6f8dad183689f0b10911f4d161bdfbcc32553525f01caccd34c92c8e68c20a"
+      },
+      "nfr/events": {
+        "head_event_id": "20260902_132551_initial_nfr",
+        "head_event_sha256": "acbf930e512ed305e483cd956d08cfb498100d1bfad5f164b0debea84b6b9390",
+        "event_ids": [
+          "20260902_132551_initial_nfr"
+        ],
+        "event_set_sha256": "ebf719352242441145d489c70c100ec001917c92a68f7fe019d1129419c13d78",
+        "latest_tree_sha256": "c415d8f502720d31c0a2770c1194bf55fd18a80ef49d13dad7e07e15d1b5c5e2"
+      },
+      "arch/events": {
+        "head_event_id": "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design",
+        "head_event_sha256": "fe544edc2e0ed6c0d8898a0e5538fd8bf14f75405657e29c3b3f78febaffb9eb",
+        "event_ids": [
+          "20260902_133544_initial_arch",
+          "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+        ],
+        "event_set_sha256": "68a5a647be2c143f41aa4e67f3cc4be2a97c66bce0bdd702e26ad68eb5ae3be8",
+        "latest_tree_sha256": "26049abca8f396e363fc03f1cec047b714c3a6831336591a1e4558a8ec5fab37"
+      },
+      "infra/events": {
+        "head_event_id": "20260902_142349_infra_product_design",
+        "head_event_sha256": "b5fc568c6e2da92ef7263e01fdfd221d31ecc0616c947bd3726109b13596d54b",
+        "event_ids": [
+          "20260902_142349_infra_product_design"
+        ],
+        "event_set_sha256": "546f0883c0392eb984400c6a37c9f29048bb43c6adab7ba966d20a80854267f0",
+        "latest_tree_sha256": "b5fc568c6e2da92ef7263e01fdfd221d31ecc0616c947bd3726109b13596d54b"
+      },
+      "design/events": {
+        "head_event_id": "20260902_183502_spec_stories",
+        "head_event_sha256": "70272afc6e58ccd3d1c7825a5c017f64aa0cb035479ae6518db1df7668f6c204",
+        "event_ids": [
+          "20260902_145539_design_system",
+          "20260902_183502_spec_stories"
+        ],
+        "event_set_sha256": "b3a85565cae64a7c567f023679aa84d87c529f547c59d7ee9f810c1b9b32cc8f",
+        "latest_tree_sha256": "59a79b4dcb52f21190b8235d20c82fda039b5fb425886ff24b4d064faf9685cf"
+      },
+      "specs/events": {
+        "head_event_id": "20260902_152849_spec_generation",
+        "head_event_sha256": "cef85779300c9e6dcb872764d37482975647811146585273ee3e44f1a6ef4fb1",
+        "event_ids": [
+          "20260902_152849_spec_generation"
+        ],
+        "event_set_sha256": "71bf554911b297043e53b770470b28ccd24e6899f63f5cc86adc682d97bb2a51",
+        "latest_tree_sha256": "fe851ea7e2781e8214872cb868c9a5591f822726a1da835f7fc295226640b7fd"
+      }
+    }
+  },
+  "state": "resolved",
+  "requests": [
+    {
+      "request_id": "CR-d0f57ea2-001",
+      "source": {
+        "byte_span": [
+          217,
+          1158
+        ],
+        "slice_sha256": "127881f3a131cac65784373c42ac11facccb94d49b53025f87af8e64d32524fc"
+      },
+      "decision_state": "resolved",
+      "reason": "変更対象のcross-UC API依存宣言は、UC単位のAPI summaryと全体API契約の双方を生成する仕様成果物にだけ存在する。related_filesは2件とも仕様成果物であり、上流モデルの再解釈を伴わない。",
+      "evidence": [
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml"
+        },
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/_cross-cutting/api/openapi.yaml"
+        },
+        {
+          "kind": "related_id",
+          "value": "SPEC-002-01"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "REQ-002",
+          "rule": "REQ-",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/_cross-cutting/api/openapi.yaml",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "high",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-001",
+          "constraint_key": "cross-uc-api-dependency",
+          "direct_stage": "spec",
+          "reason": "UCが利用する非所有APIを、UC単位のAPI summaryへ機械可読な依存として追記し、全体API契約のoperationおよび契約ファイルへ解決できるようにする。",
+          "evidence": [
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml"
+            },
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/_cross-cutting/api/openapi.yaml"
+            },
+            {
+              "kind": "related_id",
+              "value": "SPEC-002-01"
+            }
+          ],
+          "id": "CR-d0f57ea2-001#1",
+          "required_closure_stages": [
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-002",
+      "source": {
+        "byte_span": [
+          1158,
+          1860
+        ],
+        "slice_sha256": "2389c5694e7218954c2185b4ca213063b325a83b86fe519d8031f0c8809a8fbd"
+      },
+      "decision_state": "resolved",
+      "reason": "AsyncAPI契約は仕様成果物の生成物であり、message payloadのschema titleはその契約定義内で完結する。上流モデルの変更を伴わない。",
+      "evidence": [
+        {
+          "kind": "related_id",
+          "value": "ASYNCAPI-CONTRACT"
+        },
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/_cross-cutting/api/asyncapi.yaml"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "ASYNCAPI-CONTRACT",
+          "rule": "ASYNCAPI-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/_cross-cutting/api/asyncapi.yaml",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "high",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-002",
+          "constraint_key": "asyncapi-payload-title",
+          "direct_stage": "spec",
+          "reason": "各message payload schemaへ業務イベントを表す安定titleを付与し、生成型が匿名名にならないようにする。",
+          "evidence": [
+            {
+              "kind": "related_id",
+              "value": "ASYNCAPI-CONTRACT"
+            },
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/_cross-cutting/api/asyncapi.yaml"
+            }
+          ],
+          "id": "CR-d0f57ea2-002#1",
+          "required_closure_stages": [
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-003",
+      "source": {
+        "byte_span": [
+          1860,
+          2618
+        ],
+        "slice_sha256": "d663807f4a497655e5491a843a3b8727a713197cfbe40ca6125b2bed9dd9c215"
+      },
+      "decision_state": "resolved",
+      "reason": "OpenAPI契約は仕様成果物の生成物であり、enumのwire valueとコード識別子の分離は契約定義内で完結する。",
+      "evidence": [
+        {
+          "kind": "related_id",
+          "value": "OPENAPI-CONTRACT"
+        },
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/_cross-cutting/api/openapi.yaml"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "OPENAPI-CONTRACT",
+          "rule": "OPENAPI-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/_cross-cutting/api/openapi.yaml",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "high",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-003",
+          "constraint_key": "openapi-enum-identifier",
+          "direct_stage": "spec",
+          "reason": "genreとmaterial_typeのenumについてwire valueと安全なコード識別子を分離し、標準generatorが有効な型を生成できる契約にする。",
+          "evidence": [
+            {
+              "kind": "related_id",
+              "value": "OPENAPI-CONTRACT"
+            },
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/_cross-cutting/api/openapi.yaml"
+            }
+          ],
+          "id": "CR-d0f57ea2-003#1",
+          "required_closure_stages": [
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-004",
+      "source": {
+        "byte_span": [
+          2618,
+          3510
+        ],
+        "slice_sha256": "cc376853a87ed0323a0262daae39cc9a24aead8a698f8238ca1e5c3a6e568db7"
+      },
+      "decision_state": "resolved",
+      "reason": "認証方式そのものは非機能要求で既に決まっており、本要求は当該APIの認証情報送信方法・検証責務・401応答という契約記述の欠落を埋めるもの。変更先はAPI契約とUC仕様であり、非機能グレードの再判断を伴わない。",
+      "evidence": [
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md"
+        },
+        {
+          "kind": "related_id",
+          "value": "SPEC-002-01"
+        },
+        {
+          "kind": "context_only",
+          "value": "docs/nfr/latest/nfr-grade.yaml は認証方式の根拠として参照するのみで変更対象ではない"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "REQ-002",
+          "rule": "REQ-",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/nfr/latest/nfr-grade.yaml",
+          "rule": "(^|/)nfr(/|$)",
+          "stage": "quality_attributes"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "medium",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-004",
+          "constraint_key": "auth-header-401-contract",
+          "direct_stage": "spec",
+          "reason": "利用者識別情報の送信方法・検証責務・欠落/不正時の401応答を、API契約とUC仕様で一貫して定義する。",
+          "evidence": [
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md"
+            },
+            {
+              "kind": "related_id",
+              "value": "SPEC-002-01"
+            },
+            {
+              "kind": "context_only",
+              "value": "docs/nfr/latest/nfr-grade.yaml は認証方式の根拠として参照するのみで変更対象ではない"
+            }
+          ],
+          "id": "CR-d0f57ea2-004#1",
+          "required_closure_stages": [
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-005",
+      "source": {
+        "byte_span": [
+          3510,
+          4403
+        ],
+        "slice_sha256": "af2f6c7a09a89279f23428edd751c2739b13823c51b7e5f3f2ed41c2abc5c9b3"
+      },
+      "decision_state": "resolved",
+      "reason": "不整合が観測されたのはDB schemaとUC単位のmodel summaryという同一仕様成果物内の2箇所であり、上位の状態モデル自体の変更要求ではない。",
+      "evidence": [
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/_cross-cutting/datastore/rdb-schema.yaml"
+        },
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml"
+        },
+        {
+          "kind": "related_id",
+          "value": "SPEC-002-01"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "REQ-002",
+          "rule": "REQ-",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/_cross-cutting/datastore/rdb-schema.yaml",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "medium",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-005",
+          "constraint_key": "reservation-transition-consistency",
+          "direct_stage": "spec",
+          "reason": "予約履行時の遷移元・遷移先・同時更新条件を単一の業務規則として定め、UC仕様・model summary・DB制約を一致させる。",
+          "evidence": [
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/_cross-cutting/datastore/rdb-schema.yaml"
+            },
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml"
+            },
+            {
+              "kind": "related_id",
+              "value": "SPEC-002-01"
+            }
+          ],
+          "id": "CR-d0f57ea2-005#1",
+          "required_closure_stages": [
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-006",
+      "source": {
+        "byte_span": [
+          4403,
+          5280
+        ],
+        "slice_sha256": "585bd8b8ddf2cb22b4f558cd80c1d9c94257fd586a2d7317eba0cd499454c18a"
+      },
+      "decision_state": "resolved",
+      "reason": "要求本文が『design成果物に追加する』と明示しており、frontendが利用できる共通componentの生成はデザイン資産の所有範囲。",
+      "evidence": [
+        {
+          "kind": "requested_change",
+          "value": "loading状態を表現する共通componentと利用条件をdesign成果物に追加する"
+        },
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+        },
+        {
+          "kind": "related_file",
+          "value": "packages/ui/.imported.yaml"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "REQ-002",
+          "rule": "REQ-",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "high",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-006",
+          "constraint_key": "loading-state-components",
+          "direct_stage": "design_system",
+          "reason": "loading状態を表すSkeleton/Spinner相当の共通componentと利用条件をデザイン資産へ追加し、画面実装が独自UIを追加せず再現できるようにする。",
+          "evidence": [
+            {
+              "kind": "requested_change",
+              "value": "loading状態を表現する共通componentと利用条件をdesign成果物に追加する"
+            },
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+            },
+            {
+              "kind": "related_file",
+              "value": "packages/ui/.imported.yaml"
+            }
+          ],
+          "id": "CR-d0f57ea2-006#1",
+          "required_closure_stages": [
+            "design_system",
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-007",
+      "source": {
+        "byte_span": [
+          5280,
+          6194
+        ],
+        "slice_sha256": "9750581bdb71da5e652039ab6f68b370a15f1c22c2ecc30b4511e0438c2b04ff"
+      },
+      "decision_state": "resolved",
+      "reason": "矛盾しているのはKVS仕様とUC単位のtier仕様であり、どちらも仕様成果物内の記述。",
+      "evidence": [
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/_cross-cutting/datastore/kvs-schema.yaml"
+        },
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md"
+        },
+        {
+          "kind": "related_id",
+          "value": "SPEC-002-01"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "REQ-002",
+          "rule": "REQ-",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/_cross-cutting/datastore/kvs-schema.yaml",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "high",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-007",
+          "constraint_key": "idempotency-key-behavior",
+          "direct_stage": "spec",
+          "reason": "同一payload再送と異なるpayload衝突を区別する判定規則とHTTP応答・保存状態を明示し、KVS仕様とtier仕様を統一する。",
+          "evidence": [
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/_cross-cutting/datastore/kvs-schema.yaml"
+            },
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md"
+            },
+            {
+              "kind": "related_id",
+              "value": "SPEC-002-01"
+            }
+          ],
+          "id": "CR-d0f57ea2-007#1",
+          "required_closure_stages": [
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-008",
+      "source": {
+        "byte_span": [
+          6194,
+          6944
+        ],
+        "slice_sha256": "f561d6d5a3dcea04a3b54afb1367e6b59824f7568997287d4450f1faa7909618"
+      },
+      "decision_state": "resolved",
+      "reason": "表記ゆれは単一のtier仕様内で観測されており、表示形式とAPI日付形式の区別は仕様記述の統一で完結する。",
+      "evidence": [
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+        },
+        {
+          "kind": "related_id",
+          "value": "SPEC-002-01"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "REQ-002",
+          "rule": "REQ-",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "high",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-008",
+          "constraint_key": "due-date-display-format",
+          "direct_stage": "spec",
+          "reason": "利用者向け返却期限の表示形式とAPI上の日付形式を区別して統一し、仕様例と受け入れ基準を単一形式に揃える。",
+          "evidence": [
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+            },
+            {
+              "kind": "related_id",
+              "value": "SPEC-002-01"
+            }
+          ],
+          "id": "CR-d0f57ea2-008#1",
+          "required_closure_stages": [
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-009",
+      "source": {
+        "byte_span": [
+          6944,
+          7749
+        ],
+        "slice_sha256": "7578d7d1a2619ccc3151988516ae9cda39b2b5f8c4058cce52403479fded66e8"
+      },
+      "decision_state": "recommendable",
+      "reason": "貸出完了結果の型と状態所有者は、共通UI部品の契約としても、当該画面の仕様記述としても定義しうる。要求の意味と制約は同一で、記録先だけが異なる経路上の曖昧性。",
+      "evidence": [
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+        },
+        {
+          "kind": "related_id",
+          "value": "SPEC-002-01"
+        },
+        {
+          "kind": "observed_fact",
+          "value": "LoanConfirmationのonLoanと画面状態loanResultの型・所有者が決まらない"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "REQ-002",
+          "rule": "REQ-",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "medium",
+      "ambiguity_kind": "pipeline_stage_ownership",
+      "stop_flags": [],
+      "semantic_contract": {
+        "requested_change_slice_sha256": "7d5463518096a7cc78eb89e0607f2ae623b344c3d20461a8b35663b406fbd23b",
+        "semantic_summary": "貸出完了結果の型、状態の所有者、component間の受け渡しを、PropsとeventのみでUI実装が確定する形で明記する。"
+      },
+      "question": "貸出完了結果の型と状態所有者を、当該画面の仕様記述として確定するか、共通UI部品の契約として確定するか。",
+      "recommended_option_id": "screen-spec",
+      "options": [
+        {
+          "option_id": "screen-spec",
+          "rank": 1,
+          "label": "当該画面の仕様記述として確定する",
+          "route_impact": "画面単位の仕様成果物へ記録する",
+          "rationale": "観測されたのは当該画面の仕様記述内の曖昧性であり、同じ場所で型と所有者を確定できる。",
+          "safe": true,
+          "semantic_contract_sha256": "aa1d7bae638840177441f4b4dec9f0b2a8451f375b2c365361ad094e8e3a446e",
+          "work_units": [
+            {
+              "request_id": "CR-d0f57ea2-009",
+              "constraint_key": "loan-result-handoff",
+              "direct_stage": "spec",
+              "reason": "貸出完了結果の型、状態所有者、親子component間の受け渡しをPropsとevent契約として明記する。",
+              "evidence": [
+                {
+                  "kind": "related_file",
+                  "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+                },
+                {
+                  "kind": "related_id",
+                  "value": "SPEC-002-01"
+                },
+                {
+                  "kind": "observed_fact",
+                  "value": "LoanConfirmationのonLoanと画面状態loanResultの型・所有者が決まらない"
+                }
+              ],
+              "semantic_contract_sha256": "aa1d7bae638840177441f4b4dec9f0b2a8451f375b2c365361ad094e8e3a446e"
+            }
+          ]
+        },
+        {
+          "option_id": "shared-ui-contract",
+          "rank": 2,
+          "label": "共通UI部品の契約として確定する",
+          "route_impact": "共通UI資産の部品定義へ記録する",
+          "rationale": "LoanConfirmationは共通UI資産の部品でもあり、部品契約として定義する選択肢もある。",
+          "safe": true,
+          "semantic_contract_sha256": "aa1d7bae638840177441f4b4dec9f0b2a8451f375b2c365361ad094e8e3a446e",
+          "work_units": [
+            {
+              "request_id": "CR-d0f57ea2-009",
+              "constraint_key": "loan-result-handoff",
+              "direct_stage": "design_system",
+              "reason": "貸出完了結果の型、状態所有者、親子component間の受け渡しをPropsとevent契約として明記する。",
+              "evidence": [
+                {
+                  "kind": "related_file",
+                  "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+                },
+                {
+                  "kind": "related_id",
+                  "value": "SPEC-002-01"
+                },
+                {
+                  "kind": "observed_fact",
+                  "value": "LoanConfirmationのonLoanと画面状態loanResultの型・所有者が決まらない"
+                }
+              ],
+              "semantic_contract_sha256": "aa1d7bae638840177441f4b4dec9f0b2a8451f375b2c365361ad094e8e3a446e"
+            }
+          ]
+        }
+      ],
+      "resolution": {
+        "status": "accepted_recommendation",
+        "selected_option_id": "screen-spec",
+        "alternatives": [
+          "shared-ui-contract"
+        ],
+        "rationale": "観測されたのは当該画面の仕様記述内の曖昧性であり、同じ場所で型と所有者を確定できる。",
+        "policy_version": "1.1.0"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-009",
+          "constraint_key": "loan-result-handoff",
+          "direct_stage": "spec",
+          "reason": "貸出完了結果の型、状態所有者、親子component間の受け渡しをPropsとevent契約として明記する。",
+          "evidence": [
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+            },
+            {
+              "kind": "related_id",
+              "value": "SPEC-002-01"
+            },
+            {
+              "kind": "observed_fact",
+              "value": "LoanConfirmationのonLoanと画面状態loanResultの型・所有者が決まらない"
+            }
+          ],
+          "semantic_contract_sha256": "aa1d7bae638840177441f4b4dec9f0b2a8451f375b2c365361ad094e8e3a446e",
+          "id": "CR-d0f57ea2-009#1",
+          "required_closure_stages": [
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-010",
+      "source": {
+        "byte_span": [
+          7749,
+          8593
+        ],
+        "slice_sha256": "ac53f618fded04fe457c5eb2497e1d5e7131df78b14a82ab694cb687998ee0e2"
+      },
+      "decision_state": "recommendable",
+      "reason": "アプリシェル・router・entry pointは生成されるUI資産の一部として定義することも、画面単位の仕様記述として定義することもできる。要求の意味と制約は同一で、所有者を置く場所だけが異なる。",
+      "evidence": [
+        {
+          "kind": "related_file",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+        },
+        {
+          "kind": "related_id",
+          "value": "SPEC-002-01"
+        },
+        {
+          "kind": "observed_fact",
+          "value": "/loans/new の画面componentは実装できたがrouterとentry pointの生成物・所有者が存在しない"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "REQ-002",
+          "rule": "REQ-",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+          "rule": "(^|/)specs?(/|$)",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "medium",
+      "ambiguity_kind": "pipeline_stage_ownership",
+      "stop_flags": [],
+      "semantic_contract": {
+        "requested_change_slice_sha256": "f97b15f36370348e0c25376924d36108bc18669eef7899850f79d1d00b592330",
+        "semantic_summary": "共通アプリシェル、router、entry pointの生成・保守責務と画面結線規則を定義し、実URLから対象画面へ到達できる所有者を一意にする。"
+      },
+      "question": "アプリシェルとrouter、entry pointの生成・保守責務を、生成されるUI資産側で定義するか、画面単位の仕様記述側で定義するか。",
+      "recommended_option_id": "ui-asset-shell",
+      "options": [
+        {
+          "option_id": "ui-asset-shell",
+          "rank": 1,
+          "label": "生成されるUI資産側で定義する",
+          "route_impact": "UI資産の生成物として記録する",
+          "rationale": "画面componentとentry pointは同じUI資産生成の系にあり、結線規則を生成物側に置くと所有者が一意になる。",
+          "safe": true,
+          "semantic_contract_sha256": "b6738da206b19f6aa2fee9749f080a7e4b59683c98a68c7bf91d9a602217e840",
+          "work_units": [
+            {
+              "request_id": "CR-d0f57ea2-010",
+              "constraint_key": "app-shell-routing-ownership",
+              "direct_stage": "design_system",
+              "reason": "共通アプリシェル・router・entry pointの生成物と保守責務、および画面結線規則を定義する。",
+              "evidence": [
+                {
+                  "kind": "related_file",
+                  "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+                },
+                {
+                  "kind": "related_id",
+                  "value": "SPEC-002-01"
+                },
+                {
+                  "kind": "observed_fact",
+                  "value": "/loans/new の画面componentは実装できたがrouterとentry pointの生成物・所有者が存在しない"
+                }
+              ],
+              "semantic_contract_sha256": "b6738da206b19f6aa2fee9749f080a7e4b59683c98a68c7bf91d9a602217e840"
+            }
+          ]
+        },
+        {
+          "option_id": "screen-spec-shell",
+          "rank": 2,
+          "label": "画面単位の仕様記述側で定義する",
+          "route_impact": "画面単位の仕様成果物へ記録する",
+          "rationale": "各画面のURLは仕様記述側にあり、そこへ結線規則を書く選択肢もある。",
+          "safe": true,
+          "semantic_contract_sha256": "b6738da206b19f6aa2fee9749f080a7e4b59683c98a68c7bf91d9a602217e840",
+          "work_units": [
+            {
+              "request_id": "CR-d0f57ea2-010",
+              "constraint_key": "app-shell-routing-ownership",
+              "direct_stage": "spec",
+              "reason": "共通アプリシェル・router・entry pointの生成物と保守責務、および画面結線規則を定義する。",
+              "evidence": [
+                {
+                  "kind": "related_file",
+                  "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+                },
+                {
+                  "kind": "related_id",
+                  "value": "SPEC-002-01"
+                },
+                {
+                  "kind": "observed_fact",
+                  "value": "/loans/new の画面componentは実装できたがrouterとentry pointの生成物・所有者が存在しない"
+                }
+              ],
+              "semantic_contract_sha256": "b6738da206b19f6aa2fee9749f080a7e4b59683c98a68c7bf91d9a602217e840"
+            }
+          ]
+        }
+      ],
+      "resolution": {
+        "status": "accepted_recommendation",
+        "selected_option_id": "ui-asset-shell",
+        "alternatives": [
+          "screen-spec-shell"
+        ],
+        "rationale": "画面componentとentry pointは同じUI資産生成の系にあり、結線規則を生成物側に置くと所有者が一意になる。",
+        "policy_version": "1.1.0"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-010",
+          "constraint_key": "app-shell-routing-ownership",
+          "direct_stage": "design_system",
+          "reason": "共通アプリシェル・router・entry pointの生成物と保守責務、および画面結線規則を定義する。",
+          "evidence": [
+            {
+              "kind": "related_file",
+              "value": "docs/specs/latest/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+            },
+            {
+              "kind": "related_id",
+              "value": "SPEC-002-01"
+            },
+            {
+              "kind": "observed_fact",
+              "value": "/loans/new の画面componentは実装できたがrouterとentry pointの生成物・所有者が存在しない"
+            }
+          ],
+          "semantic_contract_sha256": "b6738da206b19f6aa2fee9749f080a7e4b59683c98a68c7bf91d9a602217e840",
+          "id": "CR-d0f57ea2-010#1",
+          "required_closure_stages": [
+            "design_system",
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-d0f57ea2-011",
+      "source": {
+        "byte_span": [
+          8593,
+          9411
+        ],
+        "slice_sha256": "4ade2dea4238035d302cfa7641ba3872408172abe69cb72d01448f5877ade223"
+      },
+      "decision_state": "resolved",
+      "reason": "要求は『仕様生成物へ追加する』ものであり、UCとacceptance criterionの対応表は要件トレーサビリティを算出する仕様成果物側で決定的に出力できる。上流の要求記述自体の再解釈は不要。",
+      "evidence": [
+        {
+          "kind": "requested_change",
+          "value": "UCとSPEC acceptance criterionを結ぶ機械可読な対応を仕様生成物へ追加する"
+        },
+        {
+          "kind": "related_id",
+          "value": "SPEC-002-01"
+        },
+        {
+          "kind": "related_id",
+          "value": "SPEC-002-02"
+        },
+        {
+          "kind": "context_only",
+          "value": "docs/usdm/latest/requirements.yaml はcriterionの出典として参照するのみ"
+        }
+      ],
+      "deterministic_ownership_evidence": [
+        {
+          "kind": "related_id_prefix",
+          "value": "REQ-002",
+          "rule": "REQ-",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_path_pattern",
+          "value": "docs/usdm/latest/requirements.yaml",
+          "rule": "(^|/)usdm(/|$)",
+          "stage": "requirements"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-001-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-01",
+          "rule": "SPEC-",
+          "stage": "spec"
+        },
+        {
+          "kind": "related_id_prefix",
+          "value": "SPEC-002-02",
+          "rule": "SPEC-",
+          "stage": "spec"
+        }
+      ],
+      "confidence": "medium",
+      "ambiguity_kind": null,
+      "stop_flags": [],
+      "candidates": [],
+      "resolution": {
+        "status": "not_required"
+      },
+      "work_units": [
+        {
+          "request_id": "CR-d0f57ea2-011",
+          "constraint_key": "uc-acceptance-criterion-mapping",
+          "direct_stage": "spec",
+          "reason": "UCとacceptance criterionの対応を機械可読な成果物として仕様側へ出力し、文字列推測なしにUC単位のシナリオを選択できるようにする。",
+          "evidence": [
+            {
+              "kind": "requested_change",
+              "value": "UCとSPEC acceptance criterionを結ぶ機械可読な対応を仕様生成物へ追加する"
+            },
+            {
+              "kind": "related_id",
+              "value": "SPEC-002-01"
+            },
+            {
+              "kind": "related_id",
+              "value": "SPEC-002-02"
+            },
+            {
+              "kind": "context_only",
+              "value": "docs/usdm/latest/requirements.yaml はcriterionの出典として参照するのみ"
+            }
+          ],
+          "id": "CR-d0f57ea2-011#1",
+          "required_closure_stages": [
+            "spec",
+            "spec_stories"
+          ]
+        }
+      ]
+    }
+  ]
+}

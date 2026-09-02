@@ -1,0 +1,528 @@
+{
+  "event_id": "20260902_195553_feedback_spec_completed",
+  "type": "feedback_stage_completed",
+  "run_id": "feedback-20260902_184257_impl_feedback_d0f57ea2-20260902_184710-7781",
+  "attempt": 1,
+  "created_at": "2026-09-02T19:55:53+09:00",
+  "stage": "spec",
+  "direct_work_unit_ids": [
+    "CR-d0f57ea2-001#1",
+    "CR-d0f57ea2-002#1",
+    "CR-d0f57ea2-003#1",
+    "CR-d0f57ea2-004#1",
+    "CR-d0f57ea2-005#1",
+    "CR-d0f57ea2-007#1",
+    "CR-d0f57ea2-008#1",
+    "CR-d0f57ea2-009#1",
+    "CR-d0f57ea2-011#1"
+  ],
+  "causal_work_unit_ids": [
+    "CR-d0f57ea2-001#1",
+    "CR-d0f57ea2-002#1",
+    "CR-d0f57ea2-003#1",
+    "CR-d0f57ea2-004#1",
+    "CR-d0f57ea2-005#1",
+    "CR-d0f57ea2-006#1",
+    "CR-d0f57ea2-007#1",
+    "CR-d0f57ea2-008#1",
+    "CR-d0f57ea2-009#1",
+    "CR-d0f57ea2-010#1",
+    "CR-d0f57ea2-011#1"
+  ],
+  "work_unit_results": [
+    {
+      "work_unit_id": "CR-d0f57ea2-001#1",
+      "disposition": "applied",
+      "reason": "所有 operation を endpoints に限定し operation_id を付与、他 UC 所有分を consumes へ移して全 41 UC に consumes を明示し、operation 所有一覧と依存マップを uc-api-dependencies.md に集約した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/uc-api-dependencies.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-009.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "disposition": "applied",
+      "reason": "AsyncAPI の全 component schema へ業務上安定した title を付与し、payload/headers は名前付きスキーマの $ref に限る命名規約を info.description へ明記した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/asyncapi.yaml",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-008.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-003#1",
+      "disposition": "applied",
+      "reason": "日本語 wire value の enum へ x-enum-varnames を併記し（openapi 16 件 / asyncapi 4 件）、同時更新を必須とする規約を openapi の info.description へ追加した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/asyncapi.yaml",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-008.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-004#1",
+      "disposition": "applied",
+      "reason": "利用者識別情報を Bearer クレームのみとする契約・必須クレーム表・検証責務・401 の 3 コードと WWW-Authenticate を openapi と UC 仕様で一貫定義した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-006.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-005#1",
+      "disposition": "applied",
+      "reason": "予約状態遷移規則を rdb-schema.yaml の state_transition_rules に単一の正本として定義し、UC 仕様と model summary の同時更新列（hold_expires_at のクリア）を一致させた",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/datastore/rdb-schema.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-007#1",
+      "disposition": "applied",
+      "reason": "冪等レコードへ request_fingerprint と state を導入し、再送 6 ケースの HTTP 応答と副作用を kvs-schema・openapi・tier 仕様で統一した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/datastore/kvs-schema.yaml",
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-007.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-008#1",
+      "disposition": "applied",
+      "reason": "日付・期限の表示規約を ui-design.md に単一形式で定義し、残日数を あと{N}日 に統一して各 UC の本文と BDD 期待値を同じ文字列へ揃えた",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/ui-design.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-009#1",
+      "disposition": "applied",
+      "reason": "完了結果の所有者をページに固定し、型は API のレスポンススキーマ名、イベント名は on{ドメイン動詞}{結果} とする受け渡し規約を定義して更新系 UC へ適用した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-011#1",
+      "disposition": "applied",
+      "reason": "受け入れ基準 ID を {仕様ID}#{添字} と定義し、34 基準の主担当・補助 UC 対応表と各 UC の Scenario 名対応表による 2 段引きを整備した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/traceability-matrix.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-010.yaml"
+      ]
+    }
+  ],
+  "reconciliation_results": [
+    {
+      "work_unit_id": "CR-d0f57ea2-001#1",
+      "status": "changed",
+      "reason": "所有 operation を endpoints に限定し operation_id を付与、他 UC 所有分を consumes へ移して全 41 UC に consumes を明示し、operation 所有一覧と依存マップを uc-api-dependencies.md に集約した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/uc-api-dependencies.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-009.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "status": "changed",
+      "reason": "AsyncAPI の全 component schema へ業務上安定した title を付与し、payload/headers は名前付きスキーマの $ref に限る命名規約を info.description へ明記した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/asyncapi.yaml",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-008.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-003#1",
+      "status": "changed",
+      "reason": "日本語 wire value の enum へ x-enum-varnames を併記し（openapi 16 件 / asyncapi 4 件）、同時更新を必須とする規約を openapi の info.description へ追加した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/asyncapi.yaml",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-008.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-004#1",
+      "status": "changed",
+      "reason": "利用者識別情報を Bearer クレームのみとする契約・必須クレーム表・検証責務・401 の 3 コードと WWW-Authenticate を openapi と UC 仕様で一貫定義した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-006.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-005#1",
+      "status": "changed",
+      "reason": "予約状態遷移規則を rdb-schema.yaml の state_transition_rules に単一の正本として定義し、UC 仕様と model summary の同時更新列（hold_expires_at のクリア）を一致させた",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/datastore/rdb-schema.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "status": "changed",
+      "reason": "design が applied にした LoadingState を loading 表現の唯一の入口として共通コンポーネント設計へ取り込み、全 tier-frontend の loading 記述を置き換えた",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-007#1",
+      "status": "changed",
+      "reason": "冪等レコードへ request_fingerprint と state を導入し、再送 6 ケースの HTTP 応答と副作用を kvs-schema・openapi・tier 仕様で統一した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/datastore/kvs-schema.yaml",
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-007.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-008#1",
+      "status": "changed",
+      "reason": "日付・期限の表示規約を ui-design.md に単一形式で定義し、残日数を あと{N}日 に統一して各 UC の本文と BDD 期待値を同じ文字列へ揃えた",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/ui-design.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-009#1",
+      "status": "changed",
+      "reason": "完了結果の所有者をページに固定し、型は API のレスポンススキーマ名、イベント名は on{ドメイン動詞}{結果} とする受け渡し規約を定義して更新系 UC へ適用した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-010#1",
+      "status": "changed",
+      "reason": "design が applied にした AppShell・appRoutes・useAppNavigation の所有権境界を仕様へ取り込み、全 41 画面へ実在するルート id の宣言と遷移記法を反映した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-011#1",
+      "status": "changed",
+      "reason": "受け入れ基準 ID を {仕様ID}#{添字} と定義し、34 基準の主担当・補助 UC 対応表と各 UC の Scenario 名対応表による 2 段引きを整備した",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/traceability-matrix.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-010.yaml"
+      ]
+    }
+  ],
+  "work_unit_evidence_refs": [
+    {
+      "work_unit_id": "CR-d0f57ea2-001#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/api/uc-api-dependencies.md",
+      "sha256": "34aa27ad9aa53b7c8729c6a495a27621bca1fbf2376f593a15582dd8b213c7c2"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-001#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml",
+      "sha256": "9eb08b38cd4133f8d43379a25e8cbc74f316adbe38ecde322d5b19db51571896"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-001#1",
+      "path": "specs/events/20260902_191046_spec_generation/decisions/spec-decision-009.yaml",
+      "sha256": "521c770d023b5c0615b5c3d2b389ff1a46d9e5634621e2297930e3e2666ea056"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/api/asyncapi.yaml",
+      "sha256": "30795207c3fa61c2b547c1825ea3e9a36ff8a1f71cc3aca475ca23933795d81a"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "path": "specs/events/20260902_191046_spec_generation/decisions/spec-decision-008.yaml",
+      "sha256": "904e2d42ec37ac9ced1a927872ca916daf70e56308b56018b2879d644871e899"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-003#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+      "sha256": "d3783770256296715bab7baef6f7d1bab93d65a41498abe4d7ebb125828647c8"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-003#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/api/asyncapi.yaml",
+      "sha256": "30795207c3fa61c2b547c1825ea3e9a36ff8a1f71cc3aca475ca23933795d81a"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-003#1",
+      "path": "specs/events/20260902_191046_spec_generation/decisions/spec-decision-008.yaml",
+      "sha256": "904e2d42ec37ac9ced1a927872ca916daf70e56308b56018b2879d644871e899"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-004#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+      "sha256": "d3783770256296715bab7baef6f7d1bab93d65a41498abe4d7ebb125828647c8"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-004#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+      "sha256": "f9d80fcc3237beb6b2037946adf7cde333466e83d827b771035800b55ab0c5fb"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-004#1",
+      "path": "specs/events/20260902_191046_spec_generation/decisions/spec-decision-006.yaml",
+      "sha256": "2d19800e5b6dfb8fc911ad999919c2ec165376848fa6c8eb3a20330f397d9f88"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-005#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/datastore/rdb-schema.yaml",
+      "sha256": "d20accb4d98726261a828dc336001ec54cea51725867c59b6bb0be23466964ea"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-005#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml",
+      "sha256": "7fc13a4c6d72d7c7ba5c4e81fb970df10c952c1e0b76e9ac4f7a3d6c1268d58f"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-005#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+      "sha256": "2133dc20d5f8653e8ce20647932527bfc320001a9dba097259a67b6c1a2c84ce"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+      "sha256": "c5830502cff20b572a33bd9bbade0e15c2a5e7a0352a6f7be2e2864c84533728"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+      "sha256": "14c82782f183c31140e44f5a71448bb85a84503d6fcccf89cc68d0d31eef95ee"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "path": "specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml",
+      "sha256": "47eaa3b25154b364358297ee73c6123298823c0e5a788200eff6f2575e4d48a4"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-007#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/datastore/kvs-schema.yaml",
+      "sha256": "d0f4ed8c95fde0452f712a10b1112bb99b2bf2500a9f6afdd72169eb7540b355"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-007#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+      "sha256": "d3783770256296715bab7baef6f7d1bab93d65a41498abe4d7ebb125828647c8"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-007#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+      "sha256": "f9d80fcc3237beb6b2037946adf7cde333466e83d827b771035800b55ab0c5fb"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-007#1",
+      "path": "specs/events/20260902_191046_spec_generation/decisions/spec-decision-007.yaml",
+      "sha256": "3975afc173ed429c4c4874cdacddbea372d49da6487a232adeff3f6cbef10cb1"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-008#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/ui-design.md",
+      "sha256": "1b819ad3f3f53bcee25253ce8426621f791ce1a209216248578882520d3441ba"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-008#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+      "sha256": "14c82782f183c31140e44f5a71448bb85a84503d6fcccf89cc68d0d31eef95ee"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-009#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+      "sha256": "c5830502cff20b572a33bd9bbade0e15c2a5e7a0352a6f7be2e2864c84533728"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-009#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+      "sha256": "14c82782f183c31140e44f5a71448bb85a84503d6fcccf89cc68d0d31eef95ee"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-009#1",
+      "path": "specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml",
+      "sha256": "47eaa3b25154b364358297ee73c6123298823c0e5a788200eff6f2575e4d48a4"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-010#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+      "sha256": "c5830502cff20b572a33bd9bbade0e15c2a5e7a0352a6f7be2e2864c84533728"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-010#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+      "sha256": "14c82782f183c31140e44f5a71448bb85a84503d6fcccf89cc68d0d31eef95ee"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-010#1",
+      "path": "specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml",
+      "sha256": "47eaa3b25154b364358297ee73c6123298823c0e5a788200eff6f2575e4d48a4"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-011#1",
+      "path": "specs/events/20260902_191046_spec_generation/_cross-cutting/traceability-matrix.md",
+      "sha256": "3c6c2010843e7332855353eb83aacfef1000539a877972019b8d7a79610a6af2"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-011#1",
+      "path": "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+      "sha256": "2133dc20d5f8653e8ce20647932527bfc320001a9dba097259a67b6c1a2c84ce"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-011#1",
+      "path": "specs/events/20260902_191046_spec_generation/decisions/spec-decision-010.yaml",
+      "sha256": "6358ce7984b13464e465149b56c20cd86a6c44085e7c70f2ddefb5c381fecbaf"
+    }
+  ],
+  "domain_event_refs": [
+    {
+      "path": "specs/events/20260902_191046_spec_generation/spec-event.yaml",
+      "sha256": "03edcdf6f49fb6cbde450aadbce3936dd3eb7293f0575006fb901bc3acabcaba"
+    }
+  ],
+  "post_execution_basis": {
+    "repository_head": "15e5feb905590ddd0a8984211144402e097f49af",
+    "latest_domain_event_ids": {
+      "requirements": {
+        "rdra/events": "20260902_130741_initial_build",
+        "usdm/events": "20260902_130741_initial_build"
+      },
+      "quality_attributes": {
+        "nfr/events": "20260902_132551_initial_nfr"
+      },
+      "architecture": {
+        "arch/events": "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+      },
+      "infrastructure": {
+        "infra/events": "20260902_142349_infra_product_design"
+      },
+      "design_system": {
+        "design/events": "20260902_185951_design_system"
+      },
+      "spec": {
+        "specs/events": "20260902_191046_spec_generation"
+      },
+      "spec_stories": {
+        "design/events": "20260902_185951_design_system"
+      }
+    },
+    "domain_event_root_snapshots": {
+      "rdra/events": {
+        "head_event_id": "20260902_130741_initial_build",
+        "head_event_sha256": "fb6f06d93a05c4e93975bcad30721ab0ec99ae0b0ec9b9a68f1673650263cf91",
+        "event_ids": [
+          "20260902_130741_initial_build"
+        ],
+        "event_set_sha256": "047e04aa23237bfc38d8642cdbf47c6c1274788f60a5eac4df6c3a0cc3c07a03",
+        "latest_tree_sha256": "900230113d3a6312605b4a55c4d0daf37f952f709a8e1e58b24724681a403308"
+      },
+      "usdm/events": {
+        "head_event_id": "20260902_130741_initial_build",
+        "head_event_sha256": "f4e61d85a24da5570608bc0e71beb35d54412523b8355bfd9da76812988f66c1",
+        "event_ids": [
+          "20260902_130741_initial_build"
+        ],
+        "event_set_sha256": "047e04aa23237bfc38d8642cdbf47c6c1274788f60a5eac4df6c3a0cc3c07a03",
+        "latest_tree_sha256": "fe6f8dad183689f0b10911f4d161bdfbcc32553525f01caccd34c92c8e68c20a"
+      },
+      "nfr/events": {
+        "head_event_id": "20260902_132551_initial_nfr",
+        "head_event_sha256": "acbf930e512ed305e483cd956d08cfb498100d1bfad5f164b0debea84b6b9390",
+        "event_ids": [
+          "20260902_132551_initial_nfr"
+        ],
+        "event_set_sha256": "ebf719352242441145d489c70c100ec001917c92a68f7fe019d1129419c13d78",
+        "latest_tree_sha256": "c415d8f502720d31c0a2770c1194bf55fd18a80ef49d13dad7e07e15d1b5c5e2"
+      },
+      "arch/events": {
+        "head_event_id": "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design",
+        "head_event_sha256": "fe544edc2e0ed6c0d8898a0e5538fd8bf14f75405657e29c3b3f78febaffb9eb",
+        "event_ids": [
+          "20260902_133544_initial_arch",
+          "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+        ],
+        "event_set_sha256": "68a5a647be2c143f41aa4e67f3cc4be2a97c66bce0bdd702e26ad68eb5ae3be8",
+        "latest_tree_sha256": "26049abca8f396e363fc03f1cec047b714c3a6831336591a1e4558a8ec5fab37"
+      },
+      "infra/events": {
+        "head_event_id": "20260902_142349_infra_product_design",
+        "head_event_sha256": "b5fc568c6e2da92ef7263e01fdfd221d31ecc0616c947bd3726109b13596d54b",
+        "event_ids": [
+          "20260902_142349_infra_product_design"
+        ],
+        "event_set_sha256": "546f0883c0392eb984400c6a37c9f29048bb43c6adab7ba966d20a80854267f0",
+        "latest_tree_sha256": "b5fc568c6e2da92ef7263e01fdfd221d31ecc0616c947bd3726109b13596d54b"
+      },
+      "design/events": {
+        "head_event_id": "20260902_185951_design_system",
+        "head_event_sha256": "810aac630f5f32094069374a6b0289c2c77a2b1a16ca915fa22032d565cc2a40",
+        "event_ids": [
+          "20260902_145539_design_system",
+          "20260902_183502_spec_stories",
+          "20260902_185951_design_system"
+        ],
+        "event_set_sha256": "9d72e35c9ec8b5acca50d6dcb5510f160d4544e28a85b66c7128973781bb3804",
+        "latest_tree_sha256": "ec38afbe94002fad4cde7f6d7f6d38916ed005c3b1eea4e9321740e9c447ea9c"
+      },
+      "specs/events": {
+        "head_event_id": "20260902_191046_spec_generation",
+        "head_event_sha256": "c62bc402515fad2c8687e914f6b3b25546228bff8d21e07a6e8e08f8fb594b75",
+        "event_ids": [
+          "20260902_152849_spec_generation",
+          "20260902_191046_spec_generation"
+        ],
+        "event_set_sha256": "31bd31c0aa3ebf1bb0f6ed1d66b4ed8c83c30e5cd71ba3ba818071e1a40b3c13",
+        "latest_tree_sha256": "990a2497caf58b8dc3c7fcd32e795075571ba2442316f4e38148106033d6b157"
+      }
+    }
+  },
+  "feedback_request": {
+    "feedback_request_id": "20260902_184257_impl_feedback_d0f57ea2",
+    "input_sha256": "7afd483f6a221ae5f469cbcbc5c7c3bce46be4f4924e7aec3f1e9b2b682c9133",
+    "request_ids": [
+      "CR-d0f57ea2-001",
+      "CR-d0f57ea2-002",
+      "CR-d0f57ea2-003",
+      "CR-d0f57ea2-004",
+      "CR-d0f57ea2-005",
+      "CR-d0f57ea2-006",
+      "CR-d0f57ea2-007",
+      "CR-d0f57ea2-008",
+      "CR-d0f57ea2-009",
+      "CR-d0f57ea2-010",
+      "CR-d0f57ea2-011"
+    ],
+    "work_unit_ids": [
+      "CR-d0f57ea2-001#1",
+      "CR-d0f57ea2-002#1",
+      "CR-d0f57ea2-003#1",
+      "CR-d0f57ea2-004#1",
+      "CR-d0f57ea2-005#1",
+      "CR-d0f57ea2-006#1",
+      "CR-d0f57ea2-007#1",
+      "CR-d0f57ea2-008#1",
+      "CR-d0f57ea2-009#1",
+      "CR-d0f57ea2-010#1",
+      "CR-d0f57ea2-011#1"
+    ]
+  }
+}

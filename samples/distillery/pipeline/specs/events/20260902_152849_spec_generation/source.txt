@@ -1,0 +1,9 @@
+Spec 生成: dist-pipeline Step6 (dist-spec) による UC 単位詳細仕様と全体横断 UX/UI 設計の初期生成
+
+trigger_event:
+  rdra: 20260902_130741_initial_build
+  arch: 20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design
+  design: 20260902_145539_design_system
+
+design_available: true
+dialogue_policy: auto_adopt

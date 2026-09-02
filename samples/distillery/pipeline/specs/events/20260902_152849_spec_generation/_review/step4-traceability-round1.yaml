@@ -1,0 +1,43 @@
+round: 1
+group: traceability
+findings:
+  - id: S4-traceability-001
+    artifact: "traceability-matrix.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/traceability-matrix.md"
+    line: 133
+    severity: major
+    viewpoint: 7
+    claim: "バリエーションマトリクスの 通知種別「取置き案内」行が、適用 UC として「リマインドメールを送信する」1 件だけを挙げているが、当該 UC の spec.md のバリエーション一覧には 通知種別「返却期限リマインド」しか無く「取置き案内」は現れない。実際にこの値を固定設定する「予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する」（spec.md L158「本 UC では『取置き案内』を固定で設定」）が抜けており、covered の根拠（適用 Spec ファイル欄「spec.md のバリエーション一覧」）が実体と一致していない。"
+    fix: "適用 UC を [取置き通知メールを送信する](../予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/spec.md) に置き換える（enum 定義のみで値を適用しない「リマインドメールを送信する」は載せない）。網羅率の数値（33/33・合計 146/146）は変わらない。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/spec.md#バリエーション一覧"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/spec.md#バリエーション一覧"
+      - "docs/rdra/latest/バリエーション.tsv#通知種別"
+  - id: S4-traceability-002
+    artifact: "traceability-matrix.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/traceability-matrix.md"
+    line: 138
+    severity: minor
+    viewpoint: 7
+    claim: "通知タイミング区分「期限超過督促」行の代表 3 UC（自分の返却期限を照会する / 返却期限接近の貸出を判定する / リマインドメールを送信する）はいずれも返却期限リマインドフローで、spec.md のバリエーション一覧に「期限超過督促」を持たない（値は tier-backend-api.md の enum 定義に出るだけ）。実際に当該値を適用する延滞督促フローの UC が「ほか 2 UC」に押し込まれ、代表 UC が誤っている。"
+    fix: "代表 UC を [期限超過の貸出を延滞にする](../貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする/spec.md) / [督促メールを送信する](../貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/spec.md)（tier-worker.md L26/L53 で当該値の文面を定義）へ差し替え、enum 定義のみの UC は「ほか N UC」側に回す。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/tier-worker.md"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/spec.md#バリエーション一覧"
+      - "docs/rdra/latest/バリエーション.tsv#通知タイミング区分"
+  - id: S4-traceability-003
+    artifact: "traceability-matrix.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/traceability-matrix.md"
+    line: 134
+    severity: minor
+    viewpoint: 7
+    claim: "通知種別「返却期限リマインド」行に「督促メールを送信する」が、「延滞督促」行（L135）に「リマインドメールを送信する」が挙がっているが、いずれの UC の spec.md バリエーション一覧にも当該値は無く（それぞれ固定値は「延滞督促」「返却期限リマインド」）、値と UC の対応が入れ違っている。"
+    fix: "L134 の適用 UC を「リマインドメールを送信する」のみに、L135 を「期限超過の貸出を延滞にする / 督促メールを送信する」のみに絞り、enum 一覧に載るだけの UC は適用 UC から外す。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/spec.md#バリエーション一覧"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/spec.md#バリエーション一覧"
+      - "docs/rdra/latest/バリエーション.tsv#通知種別"
+resolved:
+  - {id: S4-traceability-001, resolution: fixed}
+  - {id: S4-traceability-002, resolution: fixed}
+  - {id: S4-traceability-003, resolution: fixed}

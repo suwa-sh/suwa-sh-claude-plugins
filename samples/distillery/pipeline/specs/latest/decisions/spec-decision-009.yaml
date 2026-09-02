@@ -1,0 +1,50 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-009"
+title: "API operation の所有 UC を 1 つに固定し、他 UC からの利用は _api-summary.yaml の consumes で宣言する"
+status: "approved"
+generated_at: "2026-09-02T19:10:46+09:00"
+context: |
+  実装フィードバック CR-d0f57ea2-001 で、UC が他 UC 所有の API を利用する関係が機械可読でなく、
+  実装時に全体 OpenAPI（3,900 行超）を探索する必要があったことが判明した。
+
+  - `_api-summary.yaml` の `endpoints:` に「所有する operation」と「利用する operation」が混在していた。
+  - 実際に 4 つの operationId（`listMyLoans` / `listNotifications` / `resendNotification` /
+    `searchBooks`）が複数 UC の `endpoints:` に重複して現れ、所有者が一意でなかった。
+  - `endpoints:` に `operationId` が無く、OpenAPI との結合キーがパス文字列の一致に依存していた。
+decision: |
+  1. **`endpoints:` はその UC が所有する operation だけ**とし、他 UC 所有の operation は
+     新設した **`consumes:`** ブロックへ移す。`consumes:` は
+     `operation_id / method / path / owner_uc / contract / tier / purpose / required` の 8 キーとする。
+  2. **結合キーは `operationId`** とし、`endpoints[]` にも `operation_id` を明記する。
+     パス文字列の一致で解決しない（パスパラメータ表記の揺れで壊れるため）。
+  3. **1 operation = 1 所有 UC** に固定する。重複していた 4 operation の所有 UC を確定した。
+
+     | operationId | 所有 UC | 根拠 |
+     |---|---|---|
+     | `listMyLoans` | 自分の現在の貸出を照会する | 本人限定の貸出照会の正本。履歴・返却対象・返却済みはクエリ条件違いの利用 |
+     | `listNotifications` / `resendNotification` | 取置き通知メールを送信する | 通知種別横断の共通 operation。最初に通知を発火する UC を所有者とする |
+     | `searchBooks` | 書籍を検索する | SPEC-001-03#1 の主担当。司書向けは同じ operation の条件違い |
+
+  4. 所有一覧（45 operation）と依存の記録形式を `_cross-cutting/api/uc-api-dependencies.md` に集約し、
+     `consumes[].owner_uc` は必ずこの表と一致させる。
+  5. 依存は operation 単位で書き、UC 本文に呼び出しの根拠が無いものを推測で足さない。
+     依存が無い UC は `consumes: []` と明示する（未記入と区別する）。
+consequences:
+  positive:
+    - "対象 UC の _api-summary.yaml だけで、実装する契約と呼び出す契約を列挙できる"
+    - "operationId が結合キーになり、パス表記の揺れに影響されない"
+    - "OpenAPI 集約時に同一 operation が複数 UC から重複定義されない"
+    - "UC 間の依存グラフが機械生成でき、実装順序の判断材料になる"
+  negative:
+    - "所有 UC の決定に業務的判断が要り、共通 operation では恣意性が残る（根拠を決定記録に残して緩和）"
+    - "所有 UC 側の endpoints を変えると利用側 UC の consumes も更新が必要になる"
+    - "従来 endpoints に列挙していた UC では、その UC の api_count が見かけ上減る"
+alternatives_considered:
+  - name: "endpoints に所有・利用を残したまま owned: true/false フラグを足す"
+    reason_rejected: "OpenAPI 集約時に同一 operation が複数 UC から現れる構造が残り、重複定義の危険が消えない"
+  - name: "共通 operation を専用の共通 UC（横断 UC）へ切り出す"
+    reason_rejected: "RDRA に存在しない UC を spec が新設することになり、RDRA 整合性ルールに反する"
+  - name: "依存を自然文で spec.md にだけ書く"
+    reason_rejected: "機械可読でなく、実装側が全体 OpenAPI を探索する現状が解消しない"

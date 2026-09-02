@@ -1,0 +1,17 @@
+event_id: "20260902_201117_spec_stories"
+trigger_event:
+  spec: "20260902_191046_spec_generation"
+  design: "20260902_185951_design_system"
+created_at: "2026-09-02T20:11:17"
+source: "dist-spec-stories feedback 差分実行 (feedback_packet=docs/pipeline/feedback-runs/20260902_184257_impl_feedback_d0f57ea2/stage-packets/spec_stories.md)。日付・期限の表示規約（CR-d0f57ea2-008）と貸出登録の完了表示 Props/イベント契約（CR-d0f57ea2-009）を Storybook コンポーネント・Story へ反映"
+feedback_request:
+  feedback_request_id: "20260902_184257_impl_feedback_d0f57ea2"
+  input_sha256: "7afd483f6a221ae5f469cbcbc5c7c3bce46be4f4924e7aec3f1e9b2b682c9133"
+  request_ids: ["CR-d0f57ea2-001","CR-d0f57ea2-002","CR-d0f57ea2-003","CR-d0f57ea2-004","CR-d0f57ea2-005","CR-d0f57ea2-006","CR-d0f57ea2-007","CR-d0f57ea2-008","CR-d0f57ea2-009","CR-d0f57ea2-010","CR-d0f57ea2-011"]
+  work_unit_ids: ["CR-d0f57ea2-001#1","CR-d0f57ea2-002#1","CR-d0f57ea2-003#1","CR-d0f57ea2-004#1","CR-d0f57ea2-005#1","CR-d0f57ea2-006#1","CR-d0f57ea2-007#1","CR-d0f57ea2-008#1","CR-d0f57ea2-009#1","CR-d0f57ea2-010#1","CR-d0f57ea2-011#1"]
+
+components:
+  domain:
+    - name: "LoanConfirmation"
+      description: "窓口貸出受付画面の完了表示（表示専用）。`result: LoanResponse | null` を確定値として受け取り、null の間は描画しない。次の行動導線は `onLoanSucceeded(result)` で親へ通知する（汎用名 onLoan / onDone は使わない）。返却期限は `YYYY年M月D日` + 残日数（`あと{N}日`）で表示する"
+      path: "src/components/domain/LoanConfirmation.tsx"

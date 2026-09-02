@@ -1,0 +1,53 @@
+# _api-summary.yaml
+uc: "自分の予約順位を照会する"
+business: "予約管理業務"
+buc: "書籍を予約するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/me/reservations/{reservation_id}/rank"
+    summary: "本人の予約 1 件の予約順位・待ち人数・予約状態を返す"
+    response_schema: "ReservationRankResponse"
+    tags: ["reservations", "me"]
+async_events: []
+schemas:
+  - name: "ReservationRankResponse"
+    properties:
+      - name: "reservation_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "book_author"
+        type: "string"
+        required: true
+      - name: "book_genre"
+        type: "string"
+        required: true
+      - name: "book_material_type"
+        type: "string"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "reservation_status"
+        type: "string"
+        required: true
+      - name: "priority"
+        type: "integer"
+        required: false
+      - name: "waiting_ahead"
+        type: "integer"
+        required: false
+      - name: "total_reservations"
+        type: "integer"
+        required: true
+      - name: "applied_at"
+        type: "string(date-time)"
+        required: true
+      - name: "hold_expires_at"
+        type: "string(date-time)"
+        required: false

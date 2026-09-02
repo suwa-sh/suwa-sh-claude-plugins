@@ -1,0 +1,205 @@
+round: 1
+group: G3
+findings:
+  - id: S3-G3-001
+    uc: "予約管理業務/書籍を予約するフロー/予約を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/spec.md"
+    line: 127
+    severity: major
+    viewpoint: 1
+    claim: "状態遷移一覧に予約状態のみを記載し、RDRA 状態.tsv が定義する利用者状態「登録済み → 取引進行中（トリガー: 予約を登録する）」の遷移が欠落している"
+    fix: "状態遷移一覧に「利用者状態 / 登録済み → 取引進行中 / 予約を登録する / 予約が登録されたこと / 利用者削除可否条件の判定対象になる / tier-backend-api」の行を追加する"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#利用者状態 登録済み→取引進行中（予約を登録する）"
+
+  - id: S3-G3-002
+    uc: "予約管理業務/書籍を予約するフロー/予約を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/tier-frontend-patron.md"
+    line: 50
+    severity: major
+    viewpoint: 4
+    claim: "画面が申込前に必要とする「見込み予約順位（expectedRank）」「重複予約の有無（alreadyReserved）」「有効予約件数」の取得元 API が定義されておらず、_api-summary.yaml の endpoints は POST /api/v1/reservations の 1 本のみである"
+    fix: "取得元を明示する。既存の書籍詳細・在庫状況照会 API と GET /api/v1/me/reservations で解決するならその 2 本を UIロジックに明記し、専用の申込プレビュー API（例: GET /api/v1/books/{book_id}/reservation-preview → expected_rank, already_reserved, total_reservations）を置くなら _api-summary.yaml の endpoints に追加する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/_api-summary.yaml"
+
+  - id: S3-G3-003
+    uc: "予約管理業務/書籍を予約するフロー/予約を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/tier-backend-api.md"
+    line: 45
+    severity: minor
+    viewpoint: 1
+    claim: "409 RESERVATION_NOT_ALLOWED の条件に書籍状態「予約待ち」を含めているが、メッセージが「この本は予約せずにそのまま借りられます」で予約待ちの場合に誤った案内になり、spec.md の分岐条件一覧・BDD にも予約待ちのケースが無い"
+    fix: "予約待ちを別コード（例: RESERVATION_NOT_ALLOWED_ON_HOLD / message「この本は取置き中のため予約を受け付けられません」）に分けるか、予約可否条件の記述どおり「貸出中以外は受け付けない」旨の共通メッセージへ改め、spec.md の異常系 BDD に書籍状態「予約待ち」のシナリオを 1 本追加する"
+    source_refs:
+      - "docs/rdra/latest/条件.tsv#予約可否条件"
+
+  - id: S3-G3-004
+    uc: "予約管理業務/書籍を予約するフロー/予約を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/spec.md"
+    line: 46
+    severity: minor
+    viewpoint: 4
+    claim: "データフロー表の Response 欄が ReservationResponse(reservation_id, book_id, priority, reservation_status, applied_at) となっており、_api-summary.yaml / tier-backend-api.md が定義する book_title・user_no・total_reservations が欠落している"
+    fix: "Response 欄を ReservationResponse(reservation_id, book_id, book_title, user_no, applied_at, priority, reservation_status, total_reservations) に揃える"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/_api-summary.yaml"
+
+  - id: S3-G3-005
+    uc: "予約管理業務/書籍を予約するフロー/予約を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/spec.md"
+    line: 102
+    severity: minor
+    viewpoint: 2
+    claim: "処理フローの最終表示が「予約中（順位 3 / 全 5 件）」だが、同 UC の BDD 正常系は既存予約 2 件 + 新規 1 件で「順位 3 / 全 3 件」であり、例示値が矛盾している"
+    fix: "処理フローの表示文言を「予約中（順位 3 / 全 3 件）」に修正し、BDD の Given（予約中 2 件）と一致させる"
+
+  - id: S3-G3-006
+    uc: "予約管理業務/書籍を予約するフロー/予約を取り消す"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を取り消す/spec.md"
+    line: 131
+    severity: major
+    viewpoint: 1
+    claim: "状態遷移一覧に予約状態・書籍状態のみを記載し、RDRA 状態.tsv が定義する利用者状態「取引進行中 → 登録済み（トリガー: 予約を取り消す）」の遷移が欠落している"
+    fix: "状態遷移一覧に「利用者状態 / 取引進行中 → 登録済み / 予約を取り消す / 当該利用者に貸出中・延滞の貸出と予約中・取置き中の予約が残らないこと / 利用者削除可否条件を満たす状態へ戻す / tier-backend-api」の行を追加する"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#利用者状態 取引進行中→登録済み（予約を取り消す）"
+
+  - id: S3-G3-007
+    uc: "予約管理業務/書籍を予約するフロー/予約を取り消す"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を取り消す/spec.md"
+    line: 36
+    severity: minor
+    viewpoint: 5
+    claim: "_model-summary.yaml は kvs に idem:reservation:cancel:{idempotency_key} を定義しているが、spec.md のデータフロー図には KVS ノードが無く、X-Idempotency-Key の保存先が図に現れない"
+    fix: "UC「予約を登録する」と同様に subgraph DS へ KVS_Idem[(\"KVS\\nidem:reservation:cancel:{key}\")] を追加し、BE_GW -->|\"SET NX idem キー\"| KVS_Idem のエッジを引く"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を取り消す/_model-summary.yaml"
+
+  - id: S3-G3-008
+    uc: "予約管理業務/書籍を予約するフロー/予約を取り消す"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を取り消す/tier-backend-api.md"
+    line: 29
+    severity: minor
+    viewpoint: 3
+    claim: "X-Idempotency-Key を必須にしているが、同一キーで再送されたときの応答が定義されておらず、エラー表では「予約状態がキャンセル」が一律 409 ALREADY_CANCELLED になるため、UC「予約を登録する」で定めた冪等再送＝初回と同一結果を返す方針と矛盾する"
+    fix: "「同一 X-Idempotency-Key の再送は初回の取消結果（HTTP 200・同一 promoted_count / book_status）を返し、reservations を再更新しない」旨を API 仕様に追記し、409 ALREADY_CANCELLED は別キーでの再取消に限定する"
+
+  - id: S3-G3-009
+    uc: "予約管理業務/書籍を予約するフロー/自分の予約順位を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/自分の予約順位を照会する/spec.md"
+    line: 28
+    severity: minor
+    viewpoint: 5
+    claim: "データフロー図の参照キャッシュキーが cache:reservation:rank:{reservation_id} だが、_model-summary.yaml の key_pattern は cache:reservation:rank:{book_id}（有効予約件数の書籍単位キャッシュ）で、キーの粒度が食い違う"
+    fix: "データフロー図のノードを cache:reservation:rank:{book_id} に修正し、エッジのラベルも「GET/SET 有効予約件数キャッシュ（book_id 単位）」に揃える"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/自分の予約順位を照会する/_model-summary.yaml"
+
+  - id: S3-G3-010
+    uc: "予約管理業務/書籍を予約するフロー/自分の予約順位を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/自分の予約順位を照会する/tier-frontend-patron.md"
+    line: 16
+    severity: minor
+    viewpoint: 3
+    claim: "ティア完了条件の BDD が「取置き中」の状態バッジ表示を検証しているが、表示要素とコンポーネントマッピング表に ReservationStatusBadge が無く、対応するコンポーネントが特定できない"
+    fix: "表示要素表に「予約の状態 / バッジ / ReservationStatusBadge / 予約状態を dot + 文言で表示」の行を追加する（design の予約順位確認画面は ReservationQueueTracker のみのため、バッジ利用を明記して整合させる）"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#ReservationStatusBadge"
+
+  - id: S3-G3-011
+    uc: "予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する/_api-summary.yaml"
+    line: 59
+    severity: major
+    viewpoint: 4
+    claim: "_api-summary.yaml の HoldCandidate.user_email が required: true の単一フィールドで、tier-backend-api.md の「既定はマスク文字列、reveal_contact=true のときのみ平文」という仕様が表現されておらず、開示制御用の reveal_contact クエリパラメータも endpoint 定義に現れない"
+    fix: "user_email を user_email_masked（required: true）と user_email（required: false。reveal_contact=true 時のみ設定）に分割し、endpoint に reveal_contact（boolean / query / 既定 false）を追記して OpenAPI 生成時に開示制御が落ちないようにする"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する/tier-backend-api.md"
+
+  - id: S3-G3-012
+    uc: "予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する/tier-frontend-staff.md"
+    line: 52
+    severity: major
+    viewpoint: 4
+    claim: "操作フロー 2 と状態管理の「予約待ち書籍一覧」が前提とする、書籍状態=予約待ちの書籍を列挙する API が _api-summary.yaml に無く、hold-candidate の照会に必要な book_id をどこから得るかが未定義"
+    fix: "GET /api/v1/staff/books?book_status=予約待ち（または GET /api/v1/staff/holds/pending-books）を _api-summary.yaml の endpoints に追加し、tier-backend-api.md にリクエスト・レスポンスを定義する。既存の蔵書管理台帳 API を流用するなら、その endpoint 名を tier-frontend-staff.md の UIロジックに明記する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する/_api-summary.yaml"
+
+  - id: S3-G3-013
+    uc: "予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/tier-backend-api.md"
+    line: 134
+    severity: major
+    viewpoint: 5
+    claim: "notifications.timing_type を「設定しない（要確認）」としているが、arch の E-006 では timing_type が nullable: false と定義されており、INSERT 時に NOT NULL 制約へ違反する"
+    fix: "timing_type に取置き案内用の値を割り当てる（例: バリエーション「通知タイミング区分」に「即時通知」を追加、または暫定値「期限当日」を設定）か、E-006 の timing_type を nullable: true へ変更する必要がある旨を arch へのフィードバック事項として明記し、_model-summary.yaml の INSERT 値も同じ結論に揃える"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_inputs-digest.md#data_architecture.entities E-006 timing_type"
+      - "docs/rdra/latest/バリエーション.tsv#通知タイミング区分"
+
+  - id: S3-G3-014
+    uc: "予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/tier-worker.md"
+    line: 33
+    severity: major
+    viewpoint: 3
+    claim: "処理フロー 4 で取置き期限をメール本文に埋め込むと書いているが、取置き期限（hold_expires_at）は処理フロー 6（送信成功後）に設定されるため、送信時点では未確定で本文に載せられない"
+    fix: "処理フローを「4. 送信成功日時ではなく送信実行時刻を起点に取置き期限を先に算出して本文へ埋め込む → 6. 送信成功時に同じ算出値を hold_expires_at として確定する」に改め、計算ルール一覧（spec.md）の入力情報も「送信実行日時」に統一する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/spec.md#計算ルール一覧 取置き期限の設定"
+
+  - id: S3-G3-015
+    uc: "予約管理業務/予約者へ通知するフロー/自分の取置き状況を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/自分の取置き状況を照会する/_model-summary.yaml"
+    line: 60
+    severity: minor
+    viewpoint: 5
+    claim: "レスポンスに hold_started_at（取置き遷移イベントの発生時刻）を含める仕様だが、tables の operations は reservations / books / users の SELECT のみで、取置き遷移イベントを読む操作が定義されていない"
+    fix: "tables に取置き遷移イベントの参照（例: reservation_events を SELECT: where \"reservation_id = :reservation_id AND event_type = '取置き遷移' ORDER BY occurred_at DESC LIMIT 1\"）を追加し、indexes_needed に [reservation_id, event_type, occurred_at] を挙げる"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/自分の取置き状況を照会する/tier-backend-api.md"
+
+  - id: S3-G3-016
+    uc: "利用照会業務/予約状況を確認するフロー/自分の予約状況を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/予約状況を確認するフロー/自分の予約状況を照会する/spec.md"
+    line: 43
+    severity: minor
+    viewpoint: 4
+    claim: "データフロー表の Response 欄が MyReservationListResponse(items[], total, page, size) となっており、_api-summary.yaml / tier-backend-api.md に定義され BDD でも検証される active_count が欠落している"
+    fix: "Response 欄を MyReservationListResponse(items[], total, page, size, active_count) に修正する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用照会業務/予約状況を確認するフロー/自分の予約状況を照会する/_api-summary.yaml"
+
+  - id: S3-G3-017
+    uc: "利用照会業務/予約状況を確認するフロー/自分の取置き中の予約を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/予約状況を確認するフロー/自分の取置き中の予約を照会する/_model-summary.yaml"
+    line: 60
+    severity: minor
+    viewpoint: 5
+    claim: "MyHoldItem に hold_started_at（取置き遷移イベントの発生時刻）を返す仕様だが、tables の operations は reservations / books の SELECT のみで、取置き遷移イベントを読む操作が定義されていない"
+    fix: "tables に取置き遷移イベントの一括参照（例: reservation_events を SELECT: where \"reservation_id IN (:reservation_ids) AND event_type = '取置き遷移'\"）を追加し、N+1 を避ける旨を reason に書く"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用照会業務/予約状況を確認するフロー/自分の取置き中の予約を照会する/tier-backend-api.md"
+
+resolved:
+  - {id: S3-G3-001, resolution: fixed}
+  - {id: S3-G3-002, resolution: fixed}
+  - {id: S3-G3-003, resolution: fixed}
+  - {id: S3-G3-004, resolution: fixed}
+  - {id: S3-G3-005, resolution: fixed}
+  - {id: S3-G3-006, resolution: fixed}
+  - {id: S3-G3-007, resolution: fixed}
+  - {id: S3-G3-008, resolution: fixed}
+  - {id: S3-G3-009, resolution: fixed}
+  - {id: S3-G3-010, resolution: fixed}
+  - {id: S3-G3-011, resolution: fixed}
+  - {id: S3-G3-012, resolution: fixed}
+  - {id: S3-G3-013, resolution: fixed}
+  - {id: S3-G3-014, resolution: fixed}
+  - {id: S3-G3-015, resolution: fixed}
+  - {id: S3-G3-016, resolution: fixed}
+  - {id: S3-G3-017, resolution: fixed}

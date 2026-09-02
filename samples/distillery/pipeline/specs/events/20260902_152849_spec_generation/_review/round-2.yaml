@@ -1,0 +1,45 @@
+round: 2
+findings:
+  - id: R-014
+    viewpoint: 4
+    severity: major
+    target: "蔵書利用業務/書籍を返却するフロー/返却を登録する/_model-summary.yaml"
+    claim: "R-002 の修正で冪等キーを `idem:api:{operation_id}:{idempotency_key}` へ正規化したが、埋め込まれた operation_id のうち `returnLoan` と `createReport` が OpenAPI に存在しない operationId であり、キー導出規則（spec-decision-001「operationId を安定 ID として扱う」）を実装では満たせない。さらに `createReport` は 2 つの別 UC が同一キー空間を共有するため、冪等キーが衝突すると誤ったレポートIDを返す。"
+    evidence: |
+      - openapi.yaml の実在 operationId: `registerLoanReturn`（L857, POST /api/v1/loans/{loan_id}/return）/ `createInventoryReport`（L1244）/ `createLoanStatsReport`（L1322）。`returnLoan` `createReport` は openapi.yaml に 0 件。
+      - 返却を登録する/_model-summary.yaml: `key_pattern: "idem:api:returnLoan:{idempotency_key}"`、同 spec.md L31 のデータフロー図も `idem:api:returnLoan:{key}`。
+      - 在庫状況を区分別に集計する/_model-summary.yaml L138 と 期間別貸出統計を集計する/_model-summary.yaml L165 がともに `idem:api:createReport:{idempotency_key}`（別オペレーションで同一名前空間）。
+      - kvs-schema.yaml L38 の description も operationId 例として「createLoan / returnLoan / … / createReport 等」と実在しない 2 件を列挙している。
+      - decisions/spec-decision-001.yaml L47 も「`listBooks` / `createLoan` / `returnLoan` などの operationId」と記載。
+      - 他の 8 件（createUser/updateUser/deleteUser/createLoan/restockBook/createReservation/cancelReservation/resendNotification）は openapi に実在し一致している。
+    suggested_fix: "`idem:api:returnLoan:` → `idem:api:registerLoanReturn:`、在庫状況を区分別に集計する → `idem:api:createInventoryReport:`、期間別貸出統計を集計する → `idem:api:createLoanStatsReport:` に置換する（_model-summary.yaml と spec.md のデータフロー図の両方）。kvs-schema.yaml L38 の operationId 例と spec-decision-001 L47 の例示も実在 operationId に揃える。"
+
+  - id: R-015
+    viewpoint: 4
+    severity: major
+    target: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+    claim: "R-006 の修正でバックエンドを「利用者区分 → 貸出期間区分の 1:1 対応表と不一致なら 409」にした結果、RDRA のバリエーション値『短期』がどの利用者区分にも対応せず到達不能になった。かつフロントエンドは 3 区分を自由に選択・返却期限プレビューさせたままで、追加された 409 `LOAN_PERIOD_TYPE_MISMATCH` を扱っていない。仕様どおり実装すると、司書が『短期』を選ぶと必ず 409 になり、UI にはその理由が出ない。"
+    evidence: |
+      - spec.md L144-148 の日数表は 標準 14 / 短期 7 / 長期 28 の 3 区分。L152-156 の対応表は 一般=標準 / 学生=長期 / 団体=長期 の 2 区分のみで『短期』が現れない。
+      - tier-backend-api.md L108「要求の `loan_period_type` が対象利用者の利用者区分に対応しないときは登録を拒否する（409 `LOAN_PERIOD_TYPE_MISMATCH`）」、L155-159 の Scenario は 一般 + 長期 を 409 で拒否。→ 『短期』は全利用者区分で 409。
+      - docs/rdra/latest/バリエーション.tsv L6「貸出期間区分: 標準、短期、長期」。RDRA は 3 値を有効値として定義しており、うち 1 値が仕様上使えなくなる。
+      - tier-frontend-staff.md L22「標準 / 短期 / 長期。利用者区分に対応する既定値を初期選択」、L57「司書が必要に応じて貸出期間区分を変更する」、L103-107 の Scenario は 一般利用者の画面で「短期」（7 日）へ変更し 2026-09-09 を表示する（送信すれば必ず 409）。
+      - tier-frontend-staff.md L48 のエラーハンドリングは 409 を「貸出中・取置き中の競合」としか分類せず、`LOAN_PERIOD_TYPE_MISMATCH` の表示・導線が無い（grep で FE 側 0 件）。openapi.yaml にも当該コードの記載は無い。
+    suggested_fix: "(a) 対応表を「利用者区分ごとに選択可能な貸出期間区分の集合（既定 + 許容）」へ改め、短期を許容集合に含める（例: 一般=標準/短期、学生・団体=長期/標準/短期）か、(b) 1:1 を貫くなら CreateLoanRequest から `loan_period_type` を落としてサーバ導出にし、FE の ToggleGroup を表示専用にする。いずれの場合も FE のエラーハンドリング・BDD に `LOAN_PERIOD_TYPE_MISMATCH` の扱いを追加し、選択不可の区分は ToggleGroup で disabled にする。"
+
+  - id: R-016
+    viewpoint: 2
+    severity: major
+    target: "_cross-cutting/datastore/kvs-schema.yaml"
+    claim: "R-005 の修正で冪等キーの適用範囲を「users / books / loans / reservations / notifications / reports の更新系オペレーション全体」に広げ、OpenAPI の書籍 3 オペレーションにも `IdempotencyKeyHeader` を必須で付けたが、books 側の冪等キーを保持する KVS エントリがどこにも宣言されていない。書籍 3 UC の実装者はキー形式・TTL の正本を持たない。"
+    evidence: |
+      - spec-decision-004.yaml L78-80「状態を変える更新系（POST / PUT / DELETE）は `X-Idempotency-Key`（UUID v4、必須）を受け取る。対象は `users` / `books` / … の更新系オペレーション全体」。
+      - openapi.yaml: createBook(L105) / updateBook(L201) / deleteBook(L234) / restockBook(L300) すべてに `IdempotencyKeyHeader` を $ref 済み。
+      - 書籍を登録する/tier-backend-api.md L20・書籍情報を編集する L38・書籍を削除する L53 も「X-Idempotency-Key: Yes」と規定し、L88/L101 等で冪等キー検証を要求。
+      - 一方 kvs-schema.yaml L23-36 の `idem:api:{operation_id}:{idempotency_key}` の used_by は 13 UC で、書籍を登録する / 書籍情報を編集する / 書籍を削除する が欠落。
+      - 蔵書管理業務の 4 UC の _model-summary.yaml は `kvs: []`（冪等キーの宣言ゼロ）。restockBook を持つ「返却後の書籍状態を更新する」だけは `idem:api:restockBook:{idempotency_key}` を宣言しており、書籍 3 UC だけが取り残されている。
+    suggested_fix: "書籍を登録する / 書籍情報を編集する / 書籍を削除する の _model-summary.yaml に `idem:api:createBook|updateBook|deleteBook:{idempotency_key}`（purpose: idem, ttl: 24h, operations: [GET, SET]）を追加し、kvs-schema.yaml の used_by にも 3 UC を加える。books を冪等対象から外す方針なら openapi の 3 オペレーションから IdempotencyKeyHeader を削り、tier-backend-api.md のヘッダ表・ビジネスルール・BDD を同時に落とす。"
+resolved:
+  - {id: R-014, resolution: fixed}
+  - {id: R-015, resolution: fixed, note: "利用者区分ごとの「既定 + 選択可能集合」方式を採用。decisions/spec-decision-005.yaml に記録"}
+  - {id: R-016, resolution: fixed}

@@ -1,0 +1,75 @@
+# _api-summary.yaml
+uc: "期間別貸出統計を集計する"
+business: "蔵書分析業務"
+buc: "貸出統計を把握するフロー"
+endpoints:
+  - method: "POST"
+    path: "/api/v1/reports/loans"
+    summary: "期間別貸出統計・人気書籍ランキングの集計を要求し、統計レポートを集計中で作成する"
+    request_schema: "CreateLoanStatsReportRequest"
+    response_schema: "ReportAcceptedResponse"
+    tags: ["reports"]
+async_events:
+  - name: "publishReportAggregationRequested"
+    channel: "report.aggregation.requested"
+    direction: "publish"
+    message_schema: "LoanStatsReportAggregationRequested"
+    summary: "期間別貸出統計の集計を Worker ティアへ委譲する集計要求イベント"
+schemas:
+  - name: "CreateLoanStatsReportRequest"
+    properties:
+      - name: "report_type"
+        type: "string"
+        required: true
+      - name: "period_type"
+        type: "string"
+        required: true
+      - name: "period_start"
+        type: "string"
+        required: true
+      - name: "period_end"
+        type: "string"
+        required: true
+  - name: "ReportAcceptedResponse"
+    properties:
+      - name: "report_id"
+        type: "string"
+        required: true
+      - name: "report_type"
+        type: "string"
+        required: true
+      - name: "period_type"
+        type: "string"
+        required: true
+      - name: "period_start"
+        type: "string"
+        required: true
+      - name: "period_end"
+        type: "string"
+        required: true
+      - name: "report_status"
+        type: "string"
+        required: true
+      - name: "aggregated_at"
+        type: "string"
+        required: true
+  - name: "LoanStatsReportAggregationRequested"
+    properties:
+      - name: "report_id"
+        type: "string"
+        required: true
+      - name: "report_type"
+        type: "string"
+        required: true
+      - name: "period_type"
+        type: "string"
+        required: true
+      - name: "period_start"
+        type: "string"
+        required: true
+      - name: "period_end"
+        type: "string"
+        required: true
+      - name: "trace_id"
+        type: "string"
+        required: true

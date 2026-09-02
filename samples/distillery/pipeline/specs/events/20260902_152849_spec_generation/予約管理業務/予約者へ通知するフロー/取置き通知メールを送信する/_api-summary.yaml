@@ -1,0 +1,138 @@
+# _api-summary.yaml
+uc: "取置き通知メールを送信する"
+business: "予約管理業務"
+buc: "予約者へ通知するフロー"
+endpoints:
+  - method: "POST"
+    path: "/api/v1/staff/notifications/hold-notices"
+    summary: "取置き案内の通知を送信待ちで作成し、送信要求を非同期チャネルへ発行する"
+    request_schema: "SendHoldNoticeRequest"
+    response_schema: "HoldNoticeAcceptedResponse"
+    tags: ["notifications", "staff"]
+  - method: "GET"
+    path: "/api/v1/staff/notifications"
+    summary: "通知の送信実績を通知種別・通知状態で絞り込んで一覧取得する（未達件数つき）"
+    response_schema: "NotificationLogListResponse"
+    tags: ["notifications", "staff"]
+  - method: "POST"
+    path: "/api/v1/staff/notifications/{notification_id}/resend"
+    summary: "送信失敗の通知を送信待ちへ戻し、通知種別に応じたチャネルへ送信要求を再発行する"
+    response_schema: "NotificationResendResponse"
+    tags: ["notifications", "staff"]
+async_events:
+  - name: "publishHoldNoticeRequested"
+    channel: "notification.hold-notice.requested"
+    direction: "publish"
+    message_schema: "HoldNoticeRequested"
+    summary: "取置き案内メールの送信依頼。バックエンド API が publish し、ワーカーが subscribe する"
+  - name: "publishHoldNoticeDlq"
+    channel: "notification.hold-notice.dlq"
+    direction: "publish"
+    message_schema: "HoldNoticeRequested"
+    summary: "リトライ上限超過の送信依頼を移送する DLQ。ワーカーが publish する"
+schemas:
+  - name: "SendHoldNoticeRequest"
+    properties:
+      - name: "reservation_id"
+        type: "string"
+        required: true
+  - name: "HoldNoticeAcceptedResponse"
+    properties:
+      - name: "notification_id"
+        type: "string"
+        required: true
+      - name: "notification_type"
+        type: "string"
+        required: true
+      - name: "notification_status"
+        type: "string"
+        required: true
+      - name: "target_reservation_id"
+        type: "string"
+        required: true
+      - name: "recipient_user_no"
+        type: "string"
+        required: true
+      - name: "requested_at"
+        type: "string(date-time)"
+        required: true
+  - name: "NotificationLogListResponse"
+    properties:
+      - name: "summary"
+        type: "object"
+        required: true
+      - name: "items"
+        type: "array<NotificationLogItem>"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true
+      - name: "failure_count"
+        type: "integer"
+        required: true
+  - name: "NotificationLogItem"
+    properties:
+      - name: "notification_id"
+        type: "string"
+        required: true
+      - name: "notification_type"
+        type: "string"
+        required: true
+      - name: "recipient_user_no"
+        type: "string"
+        required: true
+      - name: "recipient_email_masked"
+        type: "string"
+        required: true
+      - name: "target_reservation_id"
+        type: "string"
+        required: false
+      - name: "notification_status"
+        type: "string"
+        required: true
+      - name: "send_result"
+        type: "string"
+        required: false
+      - name: "sent_at"
+        type: "string(date-time)"
+        required: false
+  - name: "NotificationResendResponse"
+    properties:
+      - name: "notification_id"
+        type: "string"
+        required: true
+      - name: "notification_status"
+        type: "string"
+        required: true
+      - name: "accepted_at"
+        type: "string(date-time)"
+        required: true
+  - name: "HoldNoticeRequested"
+    properties:
+      - name: "notification_id"
+        type: "string"
+        required: true
+      - name: "notification_type"
+        type: "string"
+        required: true
+      - name: "target_reservation_id"
+        type: "string"
+        required: true
+      - name: "recipient_user_no"
+        type: "string"
+        required: true
+      - name: "idempotency_key"
+        type: "string"
+        required: true
+      - name: "trace_id"
+        type: "string"
+        required: true
+      - name: "requested_at"
+        type: "string(date-time)"
+        required: true

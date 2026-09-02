@@ -1,0 +1,116 @@
+# _api-summary.yaml
+uc: "在庫状況レポートを参照する"
+business: "蔵書分析業務"
+buc: "在庫状況を把握するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/reports/inventory/latest"
+    summary: "最新の在庫状況レポート（区分別件数・ジャンル別件数・書籍一覧）を参照する"
+    response_schema: "InventoryReportResponse"
+    tags: ["reports"]
+  - method: "GET"
+    path: "/api/v1/reports/inventory/{report_id}"
+    summary: "指定した在庫状況レポートを参照する"
+    response_schema: "InventoryReportResponse"
+    tags: ["reports"]
+async_events: []
+schemas:
+  - name: "InventoryReportResponse"
+    properties:
+      - name: "report_id"
+        type: "string"
+        required: true
+      - name: "report_type"
+        type: "string"
+        required: true
+      - name: "period_type"
+        type: "string"
+        required: true
+      - name: "period_start"
+        type: "string"
+        required: true
+      - name: "period_end"
+        type: "string"
+        required: true
+      - name: "aggregated_at"
+        type: "string"
+        required: true
+      - name: "report_status"
+        type: "string"
+        required: true
+      - name: "summary"
+        type: "object"
+        required: true
+      - name: "status_counts"
+        type: "array"
+        required: true
+      - name: "genre_counts"
+        type: "array"
+        required: true
+      - name: "books"
+        type: "array"
+        required: true
+      - name: "pagination"
+        type: "object"
+        required: true
+  - name: "InventoryReportSummary"
+    properties:
+      - name: "total_books"
+        type: "integer"
+        required: true
+      - name: "utilization_rate"
+        type: "number"
+        required: false
+      - name: "total_books_delta"
+        type: "integer"
+        required: false
+  - name: "InventoryStatusCount"
+    properties:
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "count"
+        type: "integer"
+        required: true
+      - name: "delta"
+        type: "integer"
+        required: false
+  - name: "InventoryGenreCount"
+    properties:
+      - name: "genre"
+        type: "string"
+        required: true
+      - name: "count"
+        type: "integer"
+        required: true
+  - name: "InventoryReportBook"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "genre"
+        type: "string"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+  - name: "Pagination"
+    properties:
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "total_pages"
+        type: "integer"
+        required: true

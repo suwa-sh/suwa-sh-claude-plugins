@@ -1,0 +1,21 @@
+round: 1
+findings:
+  - id: 1
+    severity: major
+    file: "src/components/common/dateFormat.ts"
+    summary: "startOfDay がローカル timezone getter (getFullYear/getMonth/getDate) を使っており、日付のみ ISO と日時付き ISO(オフセット付き) を混在させると UTC 以外のタイムゾーンで暦日がずれる可能性がある"
+    resolution: fixed
+    note: "getUTCFullYear/getUTCMonth/getUTCDate に変更して UTC の暦日境界に統一した"
+  - id: 2
+    severity: minor
+    file: "src/components/domain/HoldPickupCard.tsx"
+    summary: "resolvedVariant が remaining <= 0 を一括で deadline-today 扱いにするため、期限超過 (remaining < 0) でも「本日が受取期限」と表示される"
+    resolution: deferred
+    note: "spec (tier-frontend-patron.md) が定義する variant は default / deadline-today の 2 値のみで overdue 相当の第3 variant は要求されていない。取置き期限超過時は予約が自動解除され本画面に表示され続けない運用のため、現状のコードパスでは到達しない"
+  - id: 3
+    severity: minor
+    file: "src/components/domain/DueDateIndicator.tsx"
+    summary: "today 省略時に baseDate が dueDate 自身へ暗黙フォールバックし、常に remaining=0（当日扱い）になる"
+    resolution: deferred
+    note: "全ての実装済み呼び出し元（ページ Story）が today を明示的に渡しており現在は顕在化しない。将来の呼び出し元向けの latent な設計判断として記録のみ行う"
+resolved: true

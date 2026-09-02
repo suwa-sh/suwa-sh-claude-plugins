@@ -1,0 +1,13 @@
+# digest of design/latest/design-event.yaml section portals (L50-60); source_sha256: 7e4262e4b85411707038985f94bd47496eca0007f0389cf6fa4c3bec2389b6d5
+# 派生物。正本は design-event.yaml。編集しない
+portals:
+  - id: "patron"
+    name: "利用者ポータル"
+    actor: "利用者"
+    primary_color: "#1D4ED8"
+    screen_count: 17
+  - id: "staff"
+    name: "司書ポータル"
+    actor: "司書"
+    primary_color: "#0F766E"
+    screen_count: 24

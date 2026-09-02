@@ -1,0 +1,107 @@
+round: 1
+group: ux-ui
+findings:
+  - id: S4-ux-ui-001
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: null
+    severity: major
+    viewpoint: 5
+    claim: "リマインド送信 / 督促送信 / 取置き通知送信 / 返却期限接近貸出一覧 / 延滞状況一覧 の 5 画面で `ReportKpiCard` を使う設計だが、design 正本では `ReportKpiCard` の screens は「在庫状況レポート画面」「貸出統計レポート画面」の 2 件のみで、当該 5 画面の components にも含まれていない。「design 正本にあるもののみ」という本書冒頭の宣言に反する。"
+    fix: "5 画面の件数サマリは `ReportKpiCard` ではなく既存の表現（`NotificationLogTable` のヘッダ件数表示・`Alert(warning/destructive)` の未達件数・`DueDateIndicator` 列）で表す、と改める。KPI カードを使い続けるなら design ステージへ差し戻し、`ReportKpiCard` の screens に 5 画面を追加する旨を明記する。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#ReportKpiCard"
+      - "docs/design/latest/_digest/screens.yaml#リマインド送信画面"
+      - "docs/design/latest/_digest/screens.yaml#延滞状況一覧画面"
+  - id: S4-ux-ui-002
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: null
+    severity: major
+    viewpoint: 5
+    claim: "`LoanTrendChart` を「書籍状態別（3 区分）」「利用者区分別 / ジャンル別」の Composition 用途で使うと書いているが、design 正本の `LoanTrendChart` は description が「期間別貸出統計の棒グラフ」、variants が `monthly` / `daily` / `empty` の 3 種のみで、時系列でない区分別棒のバリアントが存在しない。実質的な新規バリアント追加になっている。"
+    fix: "区分別（非時系列）の内訳は `Table`（ジャンル別と同じ扱い）で提示するか、`LoanTrendChart` に `category` バリアントを追加するために design ステージへ差し戻す、のいずれかに決めて本文へ明記する（現状の「design 正本にあるもののみ」という記述と矛盾させない）。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#LoanTrendChart"
+  - id: S4-ux-ui-003
+    artifact: "common-components.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/common-components.md"
+    line: null
+    severity: major
+    viewpoint: 5
+    claim: "`AsyncSection` の利用 UC は「`書籍を登録する` / `利用者を登録する` / `返却を登録する` を除く 38 UC」と定義しているのに、同じ文書の `DataListSection` の「参考」節で `返却を登録する` を「`AsyncSection` + Domain テーブルの直接組み合わせでよい」と書いており、同一 UC の扱いが矛盾している。"
+    fix: "`返却を登録する` は利用者番号入力後に貸出一覧を取得する取得系のため `AsyncSection` の対象に含める（利用 UC を 39 件に修正し、除外を `書籍を登録する` / `利用者を登録する` の 2 件にする）。除外のままとするなら「参考」節から `返却を登録する` を外す。"
+    source_refs:
+      - "docs/design/latest/_digest/screens.yaml#窓口返却受付画面"
+  - id: S4-ux-ui-004
+    artifact: "ux-design.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/ux-design.md"
+    line: null
+    severity: major
+    viewpoint: 5
+    claim: "ナビゲーション構造がプライマリナビを patron 4 項目 + staff 6 項目の計 10 項目としているが、design 正本の `PortalShell` は「ナビは RDRA 業務 7 件 + 共通メニュー 2 件」と定義しており、共通メニュー 2 件（ログイン利用者・ヘルプ等の横断導線）が spec 側に一切現れない。`common-components.md` の `PortalPageLayout` も同じ 4 / 6 項目を正としているため、両文書とも design と食い違う。"
+    fix: "design の `PortalShell` 定義に合わせ、プライマリナビ（業務単位）に加えて共通メニュー 2 件を明示した表に改める（例: patron / staff 共通で「ログイン利用者メニュー」「ヘルプ・問い合わせ」をサイドバー下端に置く）。業務 7 件との対応（staff 6 項目が RDRA 業務何件に対応するか）も併記する。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#common.PortalShell"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/common-components.md#PortalPageLayout"
+  - id: S4-ux-ui-005
+    artifact: "common-components.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/common-components.md"
+    line: null
+    severity: minor
+    viewpoint: 5
+    claim: "設計原則 1 で「design-event.yaml に存在する UI コンポーネント（13 種）・Domain コンポーネント（19 種）」と書いているが、design 正本の domain は 18 種（ui 13 / domain 18 / common 3 = 計 34）で件数が 1 件多い。"
+    fix: "「Domain コンポーネント（18 種）」に修正する。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#domain"
+  - id: S4-ux-ui-006
+    artifact: "common-components.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/common-components.md"
+    line: null
+    severity: minor
+    viewpoint: 5
+    claim: "`NotificationLogSection` の合成元が `NotificationLogTable` / `NotificationStatusBadge` / `Alert` / `SubmitActionButton` のみで、`data-visualization.md` が通知 3 画面に要求する通知状態別件数サマリ（KPI 3 枚）が構造に含まれていない。2 文書で通知画面の構成が食い違う。"
+    fix: "S4-ux-ui-001 の結論に合わせ、`NotificationLogSection` の構造に「送信対象サマリ（送信待ち / 送信済み / 送信失敗の件数表示）」を props（例: `counts`）として明示するか、`data-visualization.md` 側から通知 3 画面の KPI カード指定を削除する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md#可視化対象"
+  - id: S4-ux-ui-007
+    artifact: "ui-design.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/ui-design.md"
+    line: null
+    severity: minor
+    viewpoint: 5
+    claim: "ブレイクポイント表が「Mobile（sm 未満）< 640px」「Tablet（md）768px - 1023px」となっており、design トークンの `sm: 640px` 帯（640px - 767px）のレイアウト指定が抜けている。"
+    fix: "「Mobile（sm 未満）< 640px」「Small（sm）640px - 767px: Mobile と同一（ドロワー + 横スクロール）」のように sm 帯の扱いを明記するか、Mobile 行を「< 768px（sm 以下）」に統一する。"
+    source_refs:
+      - "docs/design/latest/_digest/tokens.yaml#primitive.breakpoint"
+  - id: S4-ux-ui-008
+    artifact: "common-components.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/common-components.md"
+    line: null
+    severity: minor
+    viewpoint: 5
+    claim: "「既に loading / empty / error の 4 状態を内包する」と 3 つしか列挙せずに 4 状態と書いている（design の states は default / loading / empty / error の 4 種）。`ui-design.md` のコンポーネント選定ルール表（`LoanTable` の行）にも同じ表記がある。"
+    fix: "両文書とも「default / loading / empty / error の 4 状態」と列挙を揃える。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#LoanTable"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/ui-design.md#コンポーネント選定ルール"
+  - id: S4-ux-ui-009
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: null
+    severity: minor
+    viewpoint: 5
+    claim: "「可視化対象」表を「ここに無い指標を新設しない」と宣言しているのに、ダッシュボード設計原則の KPI 列挙で `返却済み件数` と `利用者数` が新たに登場しており、可視化対象表に該当行が無い。"
+    fix: "可視化対象表に `返却済み件数`（貸出統計レポート / Comparison / `ReportKpiCard`）と `利用者数`（同上）の行を追加して整合させる。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md#ダッシュボード設計原則"
+resolved:
+  - {id: S4-ux-ui-001, resolution: fixed}
+  - {id: S4-ux-ui-002, resolution: fixed}
+  - {id: S4-ux-ui-003, resolution: fixed}
+  - {id: S4-ux-ui-004, resolution: fixed}
+  - {id: S4-ux-ui-005, resolution: fixed}
+  - {id: S4-ux-ui-006, resolution: fixed}
+  - {id: S4-ux-ui-007, resolution: fixed}
+  - {id: S4-ux-ui-008, resolution: fixed}
+  - {id: S4-ux-ui-009, resolution: fixed}

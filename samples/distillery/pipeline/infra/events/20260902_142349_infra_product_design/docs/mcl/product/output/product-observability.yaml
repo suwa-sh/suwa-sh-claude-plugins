@@ -1,0 +1,352 @@
+schema_version: "1.0"
+artifact_type: "observability_spec"
+skill_type: "product"
+artifact_id: "product-observability"
+title: "図書館蔵書管理システム オブザーバビリティ仕様"
+status: "draft"
+generated_at: "2026-09-02T14:26:00"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+decision_refs: []
+inputs_ref:
+  - "product-library-management-canonical"
+  - "product-impl-aws"
+
+vendor: "aws"
+
+# ------------------------------------------------------------------
+# SLI / SLO
+# ------------------------------------------------------------------
+slis:
+  - id: "SLI-001"
+    name: "利用者ポータル可用性"
+    type: "availability"
+    definition: "外形監視の成功回数 / 総試行回数"
+    measurement: "CloudWatch Synthetics Canary（5 分間隔）の SuccessPercent"
+    target_element: "public_web_delivery"
+
+  - id: "SLI-002"
+    name: "API 可用性"
+    type: "availability"
+    definition: "(総リクエスト数 - 5xx 応答数) / 総リクエスト数"
+    measurement: "ALB の RequestCount と HTTPCode_Target_5XX_Count / HTTPCode_ELB_5XX_Count"
+    target_element: "api_edge"
+
+  - id: "SLI-003"
+    name: "API 応答時間"
+    type: "latency"
+    definition: "ALB TargetResponseTime の p99"
+    measurement: "CloudWatch メトリクス統計 p99（5 分粒度）"
+    target_element: "application_runtime"
+
+  - id: "SLI-004"
+    name: "API エラー率"
+    type: "error_rate"
+    definition: "5xx 応答数 / 総リクエスト数"
+    measurement: "ALB メトリクスの比率メトリクス（Metric Math）"
+    target_element: "application_runtime"
+
+  - id: "SLI-005"
+    name: "通知送信成功率"
+    type: "throughput"
+    definition: "送信成功数 / 送信要求数"
+    measurement: "SES の Delivery / Send イベントと SQS の DLQ 到達数から算出"
+    target_element: "outbound_integration_gateway"
+
+  - id: "SLI-006"
+    name: "日次バッチ完遂率"
+    type: "throughput"
+    definition: "期限内に完了したバッチ実行回数 / 総実行回数"
+    measurement: "EventBridge Scheduler の実行結果と ECS タスクの終了コード"
+    target_element: "async_worker_runtime"
+
+slos:
+  - sli_ref: "SLI-001"
+    objective: "99.0%"
+    window: "30d"
+    error_budget: "約 7.3 時間 / 30 日"
+    rationale: "SLA 99%（運用時間 grade 3・冗長化 grade 3）に対応"
+
+  - sli_ref: "SLI-002"
+    objective: "99.0%"
+    window: "30d"
+    error_budget: "約 7.3 時間 / 30 日"
+    rationale: "SLA 99% に対応"
+
+  - sli_ref: "SLI-003"
+    objective: "p99 <= 500ms（測定期間の 95% の 5 分窓で達成）"
+    window: "30d"
+    error_budget: "5% の窓で逸脱を許容"
+    rationale: "レスポンスタイム目標 5 秒以内に対し、対話操作の内部目標として 500ms を設定"
+
+  - sli_ref: "SLI-004"
+    objective: "< 1.0%"
+    window: "30d"
+    error_budget: "1% を超えた時点でリリース凍結を検討"
+    rationale: "対話型 Web アプリの一般的な水準"
+
+  - sli_ref: "SLI-005"
+    objective: "99.0%"
+    window: "30d"
+    error_budget: "1%（1 日 100 通なら月 30 通まで）"
+    rationale: "通知未達は督促・取置き案内の業務影響に直結するため監視必須"
+
+  - sli_ref: "SLI-006"
+    objective: "100%（未達成時は翌営業日までに手動再実行）"
+    window: "30d"
+    error_budget: "0（失敗時は必ず再実行する）"
+    rationale: "返却期限接近判定と期限超過判定が欠けると督促業務が滞る"
+
+# ------------------------------------------------------------------
+# メトリクス
+# ------------------------------------------------------------------
+metrics:
+  infrastructure:
+    - namespace: "AWS/ECS"
+      metrics: ["CPUUtilization", "MemoryUtilization", "RunningTaskCount"]
+      dimensions: ["ClusterName", "ServiceName"]
+    - namespace: "ECS/ContainerInsights"
+      metrics: ["EphemeralStorageUtilized", "NetworkRxBytes", "NetworkTxBytes"]
+    - namespace: "AWS/RDS"
+      metrics: ["CPUUtilization", "FreeableMemory", "FreeStorageSpace", "DatabaseConnections", "ReadLatency", "WriteLatency", "ReplicaLag", "TransactionLogsDiskUsage"]
+    - namespace: "AWS/ElastiCache"
+      metrics: ["CPUUtilization", "DatabaseMemoryUsagePercentage", "CacheHitRate", "Evictions", "CurrConnections"]
+  network:
+    - namespace: "AWS/ApplicationELB"
+      metrics: ["RequestCount", "TargetResponseTime", "HTTPCode_Target_5XX_Count", "HTTPCode_ELB_5XX_Count", "UnHealthyHostCount", "RejectedConnectionCount"]
+    - namespace: "AWS/CloudFront"
+      metrics: ["Requests", "BytesDownloaded", "4xxErrorRate", "5xxErrorRate", "CacheHitRate"]
+    - namespace: "AWS/WAFV2"
+      metrics: ["BlockedRequests", "AllowedRequests"]
+  application:
+    - namespace: "AWS/SQS"
+      metrics: ["ApproximateNumberOfMessagesVisible", "ApproximateAgeOfOldestMessage", "NumberOfMessagesSent", "NumberOfMessagesDeleted"]
+    - namespace: "AWS/SES"
+      metrics: ["Send", "Delivery", "Bounce", "Complaint", "Reject"]
+    - namespace: "Libms/Application"
+      metrics:
+        - name: "TokenValidationFailure"
+          source: "metric_filter on /ecs/libms-{env}/api"
+          description: "トークン検証失敗数。エッジ検証を持たない構成（product-decision-002）の代償を監視する"
+        - name: "IdempotencyConflict"
+          source: "metric_filter"
+          description: "冪等キー衝突数。二重送信・重複消費の発生状況"
+        - name: "BatchDurationSeconds"
+          source: "embedded_metric_format"
+          description: "日次バッチの実行時間。8 時間以内を検証する"
+        - name: "DegradationWarn"
+          source: "metric_filter on level=WARN and category=degradation"
+          description: "キュー深度・リトライ率・ジョブ実行時間の劣化兆候（SR-021）"
+
+# ------------------------------------------------------------------
+# ログ
+# ------------------------------------------------------------------
+logs:
+  format: "JSON 構造化ログ"
+  required_fields:
+    - "timestamp"
+    - "level"
+    - "trace_id"
+    - "span_id"
+    - "parent_span_id"
+    - "tier"
+    - "actor_role"
+    - "event"
+  categories:
+    - category: "access"
+      sources: ["ALB access logs", "CloudFront standard logs", "アプリケーションの入口ログ"]
+      destination: "S3 (libms-{env}-logs) + CloudWatch Logs"
+      retention_days: 180
+    - category: "audit"
+      sources: ["Cognito 認証イベント", "個人情報参照の操作ログ", "CloudTrail 管理イベント"]
+      destination: "CloudWatch Logs + S3"
+      retention_days: 180
+      notes: "本人限定参照の逸脱検知に用いるため、参照主体と参照対象の利用者番号を必ず記録する"
+    - category: "diagnostic"
+      sources: ["アプリケーションのエラーログ", "RDS postgresql ログ", "ECS コンテナ標準出力"]
+      destination: "CloudWatch Logs"
+      retention_days: 180
+    - category: "dependency"
+      sources: ["SES 送信結果", "外部連携の呼び出し結果", "RDS スロークエリ"]
+      destination: "CloudWatch Logs"
+      retention_days: 180
+  masking:
+    mechanism: "CloudWatch Logs データ保護ポリシー（Deidentify）"
+    targets: ["氏名", "メールアドレス", "認証トークン", "Cookie", "Authorization ヘッダ"]
+  levels:
+    prod: "INFO（WARN で劣化兆候、ERROR で障害）"
+    stg: "INFO"
+    dev: "DEBUG"
+
+# ------------------------------------------------------------------
+# 分散トレーシング
+# ------------------------------------------------------------------
+tracing:
+  backend: "AWS X-Ray"
+  propagation: "trace_id をエッジで生成し、ALB → ECS → RDS / SQS → ワーカーへ伝播する"
+  async_propagation: "SQS メッセージ属性に trace_id と parent span_id を格納し、コンシューマー側で子スパンとして接続する"
+  batch_propagation: "日次バッチはジョブ実行ごとに新規 trace_id を発行する"
+  sampling_rate: 0.1
+  sampling_rules:
+    - name: "errors-always"
+      description: "5xx 応答とエラーログを伴うリクエストは 100% サンプリングする"
+      rate: 1.0
+    - name: "default"
+      rate: 0.1
+
+# ------------------------------------------------------------------
+# ダッシュボード
+# ------------------------------------------------------------------
+dashboards:
+  - name: "libms-service-overview"
+    audience: "運用担当（1 次）"
+    widgets:
+      - "SLI-001〜004 の SLO 達成状況とエラーバジェット残量"
+      - "ALB リクエスト数・p99 応答時間・5xx 率の時系列"
+      - "ECS タスク数と CPU / メモリ使用率"
+      - "外形監視の成功率"
+  - name: "libms-data-layer"
+    audience: "保守ベンダ（2 次）"
+    widgets:
+      - "RDS CPU / 接続数 / 空きストレージ / レプリカ遅延"
+      - "RDS スロークエリ件数の推移"
+      - "ElastiCache ヒット率 / 追い出し数 / メモリ使用率"
+  - name: "libms-async"
+    audience: "運用担当（1 次）"
+    widgets:
+      - "SQS 可視メッセージ数と最古メッセージ経過時間"
+      - "DLQ 滞留件数"
+      - "日次バッチの実行時間推移と成否"
+      - "SES 送信数 / バウンス率 / 苦情率"
+
+# ------------------------------------------------------------------
+# アラート
+# ------------------------------------------------------------------
+alerts:
+  - id: "ALT-001"
+    name: "利用者ポータル外形監視失敗"
+    severity: "critical"
+    condition: "Synthetics SuccessPercent < 100 が 2 データポイント連続（10 分）"
+    action: "SNS libms-{env}-alert-critical → 運用担当 + 保守ベンダ"
+    sli_ref: "SLI-001"
+
+  - id: "ALT-002"
+    name: "API 5xx 率上昇"
+    severity: "critical"
+    condition: "5xx 率 > 5% が 5 分継続"
+    action: "SNS libms-{env}-alert-critical"
+    sli_ref: "SLI-004"
+
+  - id: "ALT-003"
+    name: "API 応答時間劣化"
+    severity: "warning"
+    condition: "TargetResponseTime p99 > 0.5 秒が 15 分継続"
+    action: "SNS libms-{env}-alert-warning"
+    sli_ref: "SLI-003"
+
+  - id: "ALT-004"
+    name: "正常ターゲット消失"
+    severity: "critical"
+    condition: "HealthyHostCount < 1 が 2 データポイント連続"
+    action: "SNS libms-{env}-alert-critical"
+    sli_ref: "SLI-002"
+
+  - id: "ALT-005"
+    name: "DLQ 滞留"
+    severity: "critical"
+    condition: "DLQ の ApproximateNumberOfMessagesVisible > 0"
+    action: "SNS libms-{env}-alert-critical。手順書に基づく手動再処理（SR-022）"
+    sli_ref: "SLI-005"
+
+  - id: "ALT-006"
+    name: "通知キュー滞留"
+    severity: "warning"
+    condition: "ApproximateAgeOfOldestMessage > 1800 秒"
+    action: "SNS libms-{env}-alert-warning。コンシューマー数の確認"
+    sli_ref: "SLI-005"
+
+  - id: "ALT-007"
+    name: "日次バッチ失敗"
+    severity: "critical"
+    condition: "EventBridge Scheduler のターゲット呼び出し失敗、または ECS タスク終了コード != 0"
+    action: "SNS libms-{env}-alert-critical。翌営業日までに手動再実行"
+    sli_ref: "SLI-006"
+
+  - id: "ALT-008"
+    name: "日次バッチ実行時間超過"
+    severity: "warning"
+    condition: "BatchDurationSeconds > 21600（6 時間。8 時間上限の 75%）"
+    action: "SNS libms-{env}-alert-warning"
+    sli_ref: "SLI-006"
+
+  - id: "ALT-009"
+    name: "データベース空き容量逼迫"
+    severity: "warning"
+    condition: "FreeStorageSpace < 20GB"
+    action: "SNS libms-{env}-alert-warning。ストレージ自動拡張の動作確認"
+    sli_ref: null
+
+  - id: "ALT-010"
+    name: "データベース接続数逼迫"
+    severity: "warning"
+    condition: "DatabaseConnections > max_connections の 80%"
+    action: "SNS libms-{env}-alert-warning"
+    sli_ref: null
+
+  - id: "ALT-011"
+    name: "データベースフェイルオーバー発生"
+    severity: "critical"
+    condition: "RDS-EVENT-0049 / 0050（フェイルオーバー完了）イベント"
+    action: "SNS libms-{env}-alert-critical"
+    sli_ref: "SLI-002"
+
+  - id: "ALT-012"
+    name: "キャッシュヒット率低下"
+    severity: "warning"
+    condition: "CacheHitRate < 70% が 30 分継続"
+    action: "SNS libms-{env}-alert-warning。TTL と無効化ロジックの確認"
+    sli_ref: "SLI-003"
+
+  - id: "ALT-013"
+    name: "メール送信のバウンス率上昇"
+    severity: "critical"
+    condition: "Bounce / Send > 5% が 1 時間継続"
+    action: "SNS libms-{env}-alert-critical。送信レピュテーション停止の回避"
+    sli_ref: "SLI-005"
+
+  - id: "ALT-014"
+    name: "トークン検証失敗の急増"
+    severity: "warning"
+    condition: "TokenValidationFailure > 100 / 5 分"
+    action: "SNS libms-{env}-alert-warning。WAF レート制限ルールの強化を検討（product-decision-002 のリスク緩和）"
+    sli_ref: null
+
+  - id: "ALT-015"
+    name: "バックアップジョブ失敗"
+    severity: "critical"
+    condition: "AWS Backup ジョブの状態が FAILED / EXPIRED"
+    action: "SNS libms-{env}-alert-critical。RPO 4 時間の担保に直結"
+    sli_ref: null
+
+escalation:
+  levels:
+    - level: 1
+      responder: "図書館システム担当"
+      response_time: "運用監視時間内 30 分以内"
+    - level: 2
+      responder: "保守ベンダ"
+      response_time: "1 次で 60 分以内に復旧見込みが立たない場合に依頼"
+  notes: "サポート時間は平日日中を前提とする。critical は時間外でもメール通知を行い、翌営業日の開館前までに対応する"
+
+health_checks:
+  - path: "/healthz"
+    depth: "shallow"
+    checks: ["プロセス生存"]
+    consumer: "ALB ターゲットグループ"
+    timeout_sec: 5
+  - path: "/healthz/deep"
+    depth: "deep"
+    checks: ["データベース接続", "キャッシュ接続", "キュー到達性"]
+    consumer: "運用監視（5 分間隔）"
+    timeout_sec: 10
+    notes: "ALB のヘルスチェックには使わない。依存障害でタスクが一斉に不健全化するのを避けるため"

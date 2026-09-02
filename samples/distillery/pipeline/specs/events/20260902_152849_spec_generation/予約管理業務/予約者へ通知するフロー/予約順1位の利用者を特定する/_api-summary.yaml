@@ -1,0 +1,118 @@
+# _api-summary.yaml
+uc: "予約順1位の利用者を特定する"
+business: "予約管理業務"
+buc: "予約者へ通知するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/staff/books/{book_id}/hold-candidate"
+    summary: "取置き通知対象条件を評価し、予約順1位かつ予約中の予約と申込者を取置き候補として返す"
+    response_schema: "HoldCandidateResponse"
+    parameters:
+      - name: "book_id"
+        in: "path"
+        type: "string"
+        required: true
+      - name: "reveal_contact"
+        in: "query"
+        type: "boolean"
+        required: false
+        default: false
+    tags: ["holds", "staff"]
+  - method: "GET"
+    path: "/api/v1/staff/holds/pending-books"
+    summary: "書籍状態が「予約待ち」の書籍を列挙し、取置き候補照会の対象 book_id を司書へ提示する"
+    response_schema: "PendingHoldBookListResponse"
+    parameters:
+      - name: "page"
+        in: "query"
+        type: "integer"
+        required: false
+        default: 1
+      - name: "size"
+        in: "query"
+        type: "integer"
+        required: false
+        default: 20
+    tags: ["holds", "staff"]
+async_events: []
+schemas:
+  - name: "HoldCandidateResponse"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "notifiable"
+        type: "boolean"
+        required: true
+      - name: "reason_condition"
+        type: "string"
+        required: false
+      - name: "candidate"
+        type: "HoldCandidate"
+        required: false
+      - name: "remaining_count"
+        type: "integer"
+        required: true
+  - name: "HoldCandidate"
+    properties:
+      - name: "reservation_id"
+        type: "string"
+        required: true
+      - name: "priority"
+        type: "integer"
+        required: true
+      - name: "reservation_status"
+        type: "string"
+        required: true
+      - name: "applied_at"
+        type: "string(date-time)"
+        required: true
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "user_name"
+        type: "string"
+        required: true
+      - name: "user_category"
+        type: "string"
+        required: true
+      - name: "user_email_masked"
+        type: "string"
+        required: true
+      - name: "user_email"
+        type: "string"
+        required: false
+  - name: "PendingHoldBookListResponse"
+    properties:
+      - name: "items"
+        type: "array<PendingHoldBook>"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "size"
+        type: "integer"
+        required: true
+  - name: "PendingHoldBook"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "waiting_count"
+        type: "integer"
+        required: true

@@ -1,0 +1,249 @@
+round: 1
+group: G2
+findings:
+  - id: S3-G2-001
+    uc: "蔵書利用業務/書籍を返却するフロー/返却後の書籍状態を更新する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却後の書籍状態を更新する/spec.md"
+    line: 32
+    severity: major
+    viewpoint: 6
+    claim: "データフロー mermaid のエッジラベル内に未エスケープの `|` があり、`-->|ラベル|` 構文が壊れて図がレンダリングできない"
+    fix: "`BE_GW -->|\"UPDATE books SET book_status = '在庫あり' | '予約待ち'\"| DB_Books` を `BE_GW -->|\"UPDATE books SET book_status = '在庫あり' または '予約待ち'\"| DB_Books` に書き換える"
+
+  - id: S3-G2-002
+    uc: "蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する/spec.md"
+    line: 17
+    severity: major
+    viewpoint: 4
+    claim: "spec.md はレスポンススキーマを `ReturnableLoanListResponse` と記述するが、_api-summary.yaml の response_schema は `LoanListResponse` で不一致（統合 OpenAPI 生成時に解決できない）"
+    fix: "spec.md の 4 箇所（L17 データフロー、L32 エッジラベル、L39 レイヤー表、L88 処理フロー、L101 バリエーション適用箇所）の `ReturnableLoanListResponse` を `LoanListResponse` に統一する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する/_api-summary.yaml"
+
+  - id: S3-G2-003
+    uc: "蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する/_model-summary.yaml"
+    line: 19
+    severity: minor
+    viewpoint: 5
+    claim: "presentation 層のモデル名が `ReturnableLoanListResponse` で _api-summary.yaml の `LoanListResponse` と不一致。さらに応答 DTO なのに type が `request-dto` になっている"
+    fix: "name を `LoanListResponse`、type を `response-dto` に修正する"
+
+  - id: S3-G2-004
+    uc: "蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する/_api-summary.yaml"
+    line: 13
+    severity: major
+    viewpoint: 4
+    claim: "同一エンドポイント `GET /api/v1/me/loans` の同名スキーマ `LoanListResponse` / `LoanListItem` を「自分の返却済み貸出を照会する」と異なる定義で宣言しており（latest_returned_at / returned_at / overdue_days が欠落、days_remaining が required: true）、統合 OpenAPI でスキーマ定義が衝突する"
+    fix: "LoanListResponse に `latest_returned_at`(string(date), required: false)、LoanListItem に `returned_at`(string(date), required: false) と `overdue_days`(integer, required: false) を追加し、`days_remaining` を required: false に合わせる"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/自分の返却済み貸出を照会する/_api-summary.yaml"
+
+  - id: S3-G2-005
+    uc: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md"
+    line: 103
+    severity: major
+    viewpoint: 4
+    claim: "リクエスト表とエラー表では `loan_period_type` を必須（欠落は 400 INVALID_REQUEST）としているが、ビジネスルール L103 は「未指定時は利用者区分に対応する既定の区分を適用する」と述べており矛盾する（_api-summary.yaml も required: true）"
+    fix: "L103 の「未指定時は利用者区分に対応する既定の区分を適用する」を削除し、「既定区分の選択はフロントエンド（窓口貸出受付画面の ToggleGroup 初期選択）が行い、API は常に指定値を必須とする」に書き換える"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml"
+
+  - id: S3-G2-006
+    uc: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+    line: 138
+    severity: major
+    viewpoint: 2
+    claim: "返却期限の算出が「貸出期間区分に対応する日数」という曖昧表現のままで、標準 / 短期 / 長期 の日数と、利用者区分（一般 / 学生 / 団体）→ 既定の貸出期間区分の対応が具体値で定義されていない（BDD に標準 = 14 日が現れるのみ）"
+    fix: "計算ルール一覧に対応表を追加する。例: 貸出期間区分の日数 = 標準 14 日 / 短期 7 日 / 長期 28 日、利用者区分の既定区分 = 一般→標準 / 学生→長期 / 団体→長期。BDD の 2026-09-02 + 標準 = 2026-09-16 と整合させる"
+
+  - id: S3-G2-007
+    uc: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md"
+    line: 107
+    severity: major
+    viewpoint: 3
+    claim: "「`books` の更新は取得時のバージョンと一致する場合のみ適用する」と定めているが、データモデル変更の books 表にバージョン列が無く、_model-summary.yaml の UPDATE も `book_status IN ('在庫あり','予約待ち')` の条件付き更新で、実装可能な定義になっていない"
+    fix: "books のデータモデル変更表に `version | INT | 楽観ロック用バージョン。更新時に +1 | 変更（UPDATE）` を追加し、UPDATE の WHERE に `AND version = :version` を含める（列を追加しない方針なら L107 を「book_status を条件に含めた条件付き UPDATE による競合検知」に書き換える）"
+
+  - id: S3-G2-008
+    uc: "蔵書利用業務/書籍を返却するフロー/返却を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却を登録する/tier-backend-api.md"
+    line: 126
+    severity: major
+    viewpoint: 3
+    claim: "「`loans` の更新は取得時のバージョンと一致する場合のみ適用する」と定めているが、データモデル変更の loans 表にバージョン列が無く、409 CONFLICT の判定根拠が定義されていない"
+    fix: "loans のデータモデル変更表に `version | INT | 楽観ロック用バージョン。更新時に +1 | 変更（UPDATE）` を追加し、UPDATE の WHERE に `AND version = :version` を含める（または L126 を `loan_status IN ('貸出中','延滞')` を条件に含めた条件付き UPDATE の記述に統一する）"
+
+  - id: S3-G2-009
+    uc: "蔵書利用業務/書籍を返却するフロー/返却後の書籍状態を更新する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却後の書籍状態を更新する/tier-backend-api.md"
+    line: 82
+    severity: major
+    viewpoint: 3
+    claim: "「`books` の更新は取得時のバージョンと一致する場合のみ適用する」と定めているが、データモデル変更の books 表にバージョン列が無く、409 CONFLICT の判定根拠が定義されていない"
+    fix: "books のデータモデル変更表に `version | INT | 楽観ロック用バージョン。更新時に +1 | 変更（UPDATE）` を追加し、UPDATE の WHERE に `AND version = :version` を含める（または `book_status = '貸出中'` を条件に含めた条件付き UPDATE の記述に統一する）"
+
+  - id: S3-G2-010
+    uc: "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/tier-backend-api.md"
+    line: 41
+    severity: major
+    viewpoint: 4
+    claim: "`GET /api/v1/me/card` のエラー表に 403「認証コンテキストと異なる利用者のカードを要求した」があるが、この API はパス・クエリで利用者を指定できず（ビジネスルール L107 で明記）到達不能な仕様になっている"
+    fix: "L41 の 403 行を削除する。他人参照の拒否は `GET /api/v1/loan-targets/{userNo}` を利用者ロールで呼んだ場合の 403（L75）で表現する"
+
+  - id: S3-G2-011
+    uc: "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/spec.md"
+    line: 169
+    severity: major
+    viewpoint: 2
+    claim: "異常系 Scenario「他の利用者の利用者カードは参照できない」の When「利用者が別の利用者番号 \"U-000456\" のカード情報を要求する」は、`GET /api/v1/me/card` に利用者指定の口が無いため実行不能で、テストに落とせない"
+    fix: "Scenario を「利用者ロールのトークンで `GET /api/v1/loan-targets/U-000456` を呼ぶと HTTP 403（FORBIDDEN）が返る」に書き換え、tier-backend-api.md L75 の 403 と対応付ける"
+
+  - id: S3-G2-012
+    uc: "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/spec.md"
+    line: 87
+    severity: major
+    viewpoint: 4
+    claim: "処理フローの分岐が「利用者状態が未登録 / 利用不可 → eligible = false（理由: 未登録利用者）」となっているが、tier-backend-api.md と E2E BDD では未登録利用者は HTTP 404 USER_NOT_FOUND で、eligible を返さない。また「利用不可」は RDRA 利用者状態（登録済み / 取引進行中）に存在しない値"
+    fix: "L87-88 を「利用者が存在しない → presentation で HTTP 404 USER_NOT_FOUND」と「利用者状態が『登録済み』または『取引進行中』でない → eligible = false」に分けて記述する"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#利用者状態"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/tier-backend-api.md"
+
+  - id: S3-G2-013
+    uc: "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/tier-backend-api.md"
+    line: 64
+    severity: minor
+    viewpoint: 4
+    claim: "レスポンスの book と _api-summary.yaml の BookSummary は `publisher` を required で含むが、データモデル変更の books 表に publisher の SELECT 行が無い"
+    fix: "books 表に `| publisher | VARCHAR | 出版社 | 変更なし（SELECT） |` を isbn 行の後に追加する"
+
+  - id: S3-G2-014
+    uc: "蔵書利用業務/書籍を返却するフロー/返却後の書籍状態を更新する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却後の書籍状態を更新する/spec.md"
+    line: 45
+    severity: minor
+    viewpoint: 4
+    claim: "データフロー表の Response 行が `{ book_id, book_status, previous_book_status, next_reservation{...} }` で、_api-summary.yaml の RestockResponse に required で存在する `active_reservation_count` が欠落している"
+    fix: "Response 行を `{ book_id, book_status, previous_book_status, active_reservation_count, next_reservation{ reservation_id, priority, user_no } }` に修正する"
+
+  - id: S3-G2-015
+    uc: "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/_model-summary.yaml"
+    line: 22
+    severity: minor
+    viewpoint: 5
+    claim: "presentation 層の `LoanTargetResponse` が type: request-dto になっているが実体は応答 DTO。また `UserRepository`（layer: repository）の type が `record` で、gateway の Record と区別できない"
+    fix: "L22 を `type: \"response-dto\"`、L37 を `type: \"repository\"` に修正する"
+
+  - id: S3-G2-016
+    uc: "蔵書利用業務/書籍を貸し出すフロー/自分の貸出内容と返却期限を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/自分の貸出内容と返却期限を照会する/_model-summary.yaml"
+    line: 22
+    severity: minor
+    viewpoint: 5
+    claim: "presentation 層の `LoanDetailResponse` が type: request-dto になっているが、参照系 UC の応答 DTO であり誤り"
+    fix: "L22 を `type: \"response-dto\"` に修正する"
+
+  - id: S3-G2-017
+    uc: "蔵書利用業務/書籍を返却するフロー/自分の返却済み貸出を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/自分の返却済み貸出を照会する/_model-summary.yaml"
+    line: 22
+    severity: minor
+    viewpoint: 5
+    claim: "presentation 層の `LoanListResponse` が type: request-dto になっているが、参照系 UC の応答 DTO であり誤り"
+    fix: "L22 を `type: \"response-dto\"` に修正する"
+
+  - id: S3-G2-018
+    uc: "蔵書利用業務/書籍を返却するフロー/返却を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却を登録する/spec.md"
+    line: 26
+    severity: minor
+    viewpoint: 5
+    claim: "_model-summary.yaml は reservations の SELECT（進行中予約の確認）と KVS `idempotency:return:{idempotency_key}` を定義しているが、データフロー図の DB サブグラフには loans / users しか描かれていない（処理フローには『SELECT 進行中の貸出・予約』が登場する）"
+    fix: "DB サブグラフに `DB_Res[(\"reservations\\nuser_no / reservation_status\")]` と KVS ノード `KVS[(\"KVS\\nidempotency:return:{key}\")]` を追加し、BE_GW からのエッジを引く"
+
+  - id: S3-G2-019
+    uc: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+    line: 26
+    severity: minor
+    viewpoint: 5
+    claim: "_model-summary.yaml が定義する KVS `idempotency:loan:{idempotency_key}`（冪等キー検証、TTL 24h）がデータフロー図・レイヤー表のどちらにも現れない"
+    fix: "データフロー図に KVS ノード `KVS[(\"KVS\\nidempotency:loan:{key} TTL 24h\")]` を追加し、レイヤー表の BE usecase 行に「冪等キーを KVS で GET/SET」を追記する"
+
+  - id: S3-G2-020
+    uc: "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/spec.md"
+    line: 121
+    severity: minor
+    viewpoint: 1
+    claim: "関連 RDRA モデル表にバリエーション「利用者区分」の行が無い（バリエーション一覧では適用対象として記載済み）"
+    fix: "関連 RDRA モデル表に `| バリエーション | 利用者区分 | 一般 / 学生 / 団体。特定結果に含めて後続の返却期限設定に使う |` を追加する"
+    source_refs:
+      - "docs/rdra/latest/バリエーション.tsv#利用者区分"
+
+  - id: S3-G2-021
+    uc: "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/spec.md"
+    line: 141
+    severity: minor
+    viewpoint: 1
+    claim: "バリエーション一覧に「利用者区分」があるのに、関連 RDRA モデル表にはバリエーション「資料種別」しか記載されていない"
+    fix: "関連 RDRA モデル表に `| バリエーション | 利用者区分 | 一般 / 学生 / 団体。判定結果に含めて後続の貸出期間区分の既定選択に使う |` を追加する"
+    source_refs:
+      - "docs/rdra/latest/バリエーション.tsv#利用者区分"
+
+  - id: S3-G2-022
+    uc: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+    line: 152
+    severity: minor
+    viewpoint: 1
+    claim: "バリエーション一覧に「利用者区分」「資料種別」があり、状態遷移一覧に予約状態の遷移があるのに、関連 RDRA モデル表にはバリエーション「貸出期間区分」と情報「予約」が反映されていない（条件「取置き中書籍貸出条件」「資料種別利用可否条件」も未記載）"
+    fix: "関連 RDRA モデル表に 情報「予約」、条件「取置き中書籍貸出条件」「資料種別利用可否条件」、バリエーション「利用者区分」「資料種別」の行を追加する"
+
+  - id: S3-G2-023
+    uc: "蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する/tier-frontend-patron.md"
+    line: 17
+    severity: minor
+    viewpoint: 3
+    claim: "spec.md の BDD が「LoanStatusBadge『延滞』つきで一覧に表示される」と要求しているが、表示要素とコンポーネントマッピングに LoanStatusBadge の行が無い"
+    fix: "マッピング表に `| 貸出状態の表示 | バッジ | LoanStatusBadge | 貸出中 / 延滞 を dot + 文言で各行に表示 |` を追加する"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml"
+
+resolved:
+  - {id: S3-G2-001, resolution: fixed}
+  - {id: S3-G2-002, resolution: fixed}
+  - {id: S3-G2-003, resolution: fixed}
+  - {id: S3-G2-004, resolution: fixed}
+  - {id: S3-G2-005, resolution: fixed}
+  - {id: S3-G2-006, resolution: fixed}
+  - {id: S3-G2-007, resolution: fixed}
+  - {id: S3-G2-008, resolution: fixed}
+  - {id: S3-G2-009, resolution: fixed}
+  - {id: S3-G2-010, resolution: fixed}
+  - {id: S3-G2-011, resolution: fixed}
+  - {id: S3-G2-012, resolution: fixed}
+  - {id: S3-G2-013, resolution: fixed}
+  - {id: S3-G2-014, resolution: fixed}
+  - {id: S3-G2-015, resolution: fixed}
+  - {id: S3-G2-016, resolution: fixed}
+  - {id: S3-G2-017, resolution: fixed}
+  - {id: S3-G2-018, resolution: fixed}
+  - {id: S3-G2-019, resolution: fixed}
+  - {id: S3-G2-020, resolution: fixed}
+  - {id: S3-G2-021, resolution: fixed}
+  - {id: S3-G2-022, resolution: fixed}
+  - {id: S3-G2-023, resolution: fixed}

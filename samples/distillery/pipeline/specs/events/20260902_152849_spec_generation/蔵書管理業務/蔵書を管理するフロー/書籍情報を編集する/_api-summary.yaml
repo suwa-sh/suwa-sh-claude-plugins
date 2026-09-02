@@ -1,0 +1,75 @@
+uc: "書籍情報を編集する"
+business: "蔵書管理業務"
+buc: "蔵書を管理するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/books/{book_id}"
+    summary: "書籍 1 件の書誌情報と書籍状態を取得する（編集の現行値取得）"
+    response_schema: "BookResponse"
+    tags: ["books"]
+  - method: "PUT"
+    path: "/api/v1/books/{book_id}"
+    summary: "書籍の書誌情報を訂正する（楽観ロックつき。書籍状態は変更しない）"
+    request_schema: "UpdateBookRequest"
+    response_schema: "BookResponse"
+    tags: ["books"]
+async_events: []
+schemas:
+  - name: "UpdateBookRequest"
+    properties:
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "isbn"
+        type: "string"
+        required: false
+      - name: "publisher"
+        type: "string"
+        required: true
+      - name: "genre"
+        type: "string"
+        required: true
+      - name: "material_type"
+        type: "string"
+        required: true
+      - name: "version"
+        type: "integer"
+        required: true
+  - name: "BookResponse"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "isbn"
+        type: "string"
+        required: false
+      - name: "publisher"
+        type: "string"
+        required: true
+      - name: "genre"
+        type: "string"
+        required: true
+      - name: "material_type"
+        type: "string"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "registered_at"
+        type: "string"
+        required: true
+      - name: "updated_at"
+        type: "string"
+        required: true
+      - name: "version"
+        type: "integer"
+        required: true

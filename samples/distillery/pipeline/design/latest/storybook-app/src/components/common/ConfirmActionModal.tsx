@@ -1,35 +1,64 @@
-"use client";
-
-import { Button } from "../ui/Button";
+import React from 'react'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
+import { Alert } from '@/components/ui/Feedback'
 
 export interface ConfirmActionModalProps {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  confirmLabel: string;
-  onConfirm: () => void | Promise<void>;
-  onCancel: () => void;
-  isLoading?: boolean;
+  open: boolean
+  /** confirm: 24rem sm / destructive: 32rem md */
+  tone: 'confirm' | 'destructive'
+  title: string
+  /** 対象名の再掲 */
+  targetLabel: string
+  /** 実行後に起きること */
+  impact: string
+  confirmLabel: string
+  onConfirm: () => void
+  onCancel: () => void
+  submitting?: boolean
 }
 
-/** 削除・予約キャンセルなど、取り消しにくい操作の確認ダイアログ。 */
-export function ConfirmActionModal({ isOpen, title, message, confirmLabel, onConfirm, onCancel, isLoading = false }: ConfirmActionModalProps) {
-  if (!isOpen) return null;
-
-  return (
-    <div
-      aria-hidden={!isOpen}
-      onMouseDown={(event) => { if (event.currentTarget === event.target && !isLoading) onCancel(); }}
-      style={{ alignItems: "center", background: "color-mix(in srgb, var(--color-black) 55%, transparent)", display: "flex", inset: 0, justifyContent: "center", padding: "var(--page-padding)", position: "fixed", zIndex: 1000 }}
-    >
-      <section aria-describedby="confirm-action-description" aria-labelledby="confirm-action-title" aria-modal="true" role="dialog" style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--card-radius)", boxShadow: "var(--shadow-lg)", color: "var(--foreground)", maxWidth: "30rem", padding: "var(--card-padding)", width: "100%" }}>
-        <h2 id="confirm-action-title" style={{ fontSize: "var(--font-size-xl)", margin: 0 }}>{title}</h2>
-        <p id="confirm-action-description" style={{ color: "var(--muted-foreground)", lineHeight: 1.7, margin: "var(--spacing-3) 0 var(--spacing-6)" }}>{message}</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--spacing-3)", justifyContent: "flex-end" }}>
-          <Button disabled={isLoading} onClick={onCancel} variant="outline">戻る</Button>
-          <Button disabled={isLoading} onClick={onConfirm} variant="destructive">{isLoading ? "処理中" : confirmLabel}</Button>
-        </div>
-      </section>
+/**
+ * 確認ダイアログの文言構造（対象名の再掲 → 影響の明示 → 取り消し可否）とフォーカス制御を統一する。
+ * window.confirm と Alert による代替を禁止する。
+ */
+export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
+  open,
+  tone,
+  title,
+  targetLabel,
+  impact,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+  submitting = false,
+}) => (
+  <Modal
+    open={open}
+    onClose={onCancel}
+    title={title}
+    size={tone === 'destructive' ? 'md' : 'sm'}
+    footer={
+      <>
+        <Button variant="outline" onClick={onCancel} disabled={submitting}>
+          キャンセル
+        </Button>
+        <Button
+          variant={tone === 'destructive' ? 'destructive' : 'default'}
+          onClick={onConfirm}
+          loading={submitting}
+          autoFocus={false}
+        >
+          {confirmLabel}
+        </Button>
+      </>
+    }
+  >
+    <div className="flex flex-col" style={{ gap: 'var(--spacing-3)' }}>
+      <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>{targetLabel}</div>
+      <Alert tone={tone === 'destructive' ? 'warning' : 'info'} title="実行すると">
+        {impact}
+      </Alert>
     </div>
-  );
-}
+  </Modal>
+)

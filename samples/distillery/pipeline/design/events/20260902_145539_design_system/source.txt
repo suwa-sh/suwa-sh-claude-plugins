@@ -1,0 +1,26 @@
+trigger: dist-pipeline Step5 (design)
+skill: distillery:dist-design-system
+args: design_generation=required
+dialogue_policy: auto_adopt
+
+trigger_event:
+  - rdra: 20260902_130741_initial_build
+  - arch: 20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design
+
+inputs:
+  - docs/rdra/latest/BUC.tsv
+  - docs/rdra/latest/アクター.tsv
+  - docs/rdra/latest/情報.tsv
+  - docs/rdra/latest/状態.tsv
+  - docs/rdra/latest/バリエーション.tsv
+  - docs/rdra/latest/システム概要.json
+  - docs/nfr/latest/_digest/index.md (category-B, category-E, category-F)
+  - docs/arch/latest/_digest/index.md (technology_context, system_architecture)
+  - docs/infra/latest/
+
+description: |
+  図書館蔵書管理システムの初期デザインシステム構築。
+  RDRA の 41 画面 / 2 アクター / 7 情報 / 6 状態モデルと、
+  arch の 2 フロントエンドティア（利用者ポータル / 司書ポータル）を入力として、
+  3 層デザイントークン・ドメインコンポーネント・画面マッピング・状態マッピングを生成し、
+  Next.js + Storybook プロジェクトとして出力した。

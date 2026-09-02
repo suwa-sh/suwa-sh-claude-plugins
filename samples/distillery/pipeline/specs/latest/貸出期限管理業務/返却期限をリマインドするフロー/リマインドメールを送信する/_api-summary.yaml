@@ -1,0 +1,31 @@
+# _api-summary.yaml
+uc: "リマインドメールを送信する"
+business: "貸出期限管理業務"
+buc: "返却期限をリマインドするフロー"
+endpoints: []
+async_events:
+  - name: "publishRemindNotificationRequested"
+    channel: "notification.remind.requested"
+    direction: "publish"
+    message_schema: "RemindNotificationRequested"
+    summary: "再送受付時に返却期限リマインドの送信要求を再 publish する"
+consumes:
+  - operation_id: "listNotifications"
+    method: "GET"
+    path: "/api/v1/staff/notifications"
+    owner_uc: "取置き通知メールを送信する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-staff"
+    purpose: "通知種別「返却期限リマインド」の送信実績一覧とサマリ（送信待ち / 送信済み / 送信失敗）を取得する"
+    required: true
+  - operation_id: "resendNotification"
+    method: "POST"
+    path: "/api/v1/staff/notifications/{notification_id}/resend"
+    owner_uc: "取置き通知メールを送信する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-staff"
+    purpose: "送信失敗の返却期限リマインド通知を再送受付する（冪等キー付き）"
+    required: true
+# 本 UC は operation を所有しないため、リクエスト・レスポンススキーマも定義しない。
+# 型の正本は consumes[].contract の operation_id を引くこと（所有 UC 側で定義済み）。
+schemas: []

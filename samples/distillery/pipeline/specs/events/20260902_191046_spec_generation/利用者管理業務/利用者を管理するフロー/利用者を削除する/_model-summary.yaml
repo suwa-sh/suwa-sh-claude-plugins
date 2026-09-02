@@ -1,0 +1,119 @@
+# _model-summary.yaml
+uc: "利用者を削除する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+
+bounded_context_id: "BC-002"
+aggregate_id: "AG-002"
+
+models:
+  - name: "退会手続画面 / UserProfileCard + WithdrawConfirmModal"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "利用者"
+  - name: "UserWithdrawState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "利用者"
+  - name: "DeleteUserApiRequest"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "利用者"
+  - name: "DeleteUserRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "利用者"
+  - name: "DeleteUserCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "利用者"
+  - name: "User"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "利用者"
+  - name: "UserDeletionPolicy"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "利用者"
+  - name: "UserRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+  - name: "UserEventRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :user_no AND loan_status IN ('貸出中','延滞') の COUNT"
+    indexes_needed:
+      - columns: ["user_no", "loan_status"]
+        reason: "利用者削除可否条件の進行中貸出件数の判定"
+        access_pattern: "退会手続画面の表示と削除実行時の再判定"
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :user_no AND reservation_status IN ('予約中','取置き中') の COUNT"
+    indexes_needed:
+      - columns: ["user_no", "reservation_status"]
+        reason: "利用者削除可否条件の進行中予約件数の判定"
+        access_pattern: "退会手続画面の表示と削除実行時の再判定"
+  - name: "user_events"
+    rdra_info: "利用者"
+    operations:
+      - type: "INSERT"
+        columns:
+          - name: "event_id"
+            value: "UUID"
+          - name: "user_no"
+            value: "削除対象の利用者番号"
+          - name: "event_type"
+            value: "USER_WITHDRAWN"
+          - name: "payload"
+            value: "削除時点の利用者区分・登録日時（氏名・連絡先は含めない）"
+          - name: "occurred_at"
+            value: "削除時刻"
+        where: ""
+    indexes_needed:
+      - columns: ["user_no", "occurred_at"]
+        reason: "削除の事実を監査追跡する"
+        access_pattern: "監査ログ・イベント時系列参照"
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :user_no（対象の存在確認）"
+      - type: "DELETE"
+        columns: []
+        where: "user_no = :user_no"
+    indexes_needed:
+      - columns: ["user_no"]
+        reason: "主キーによる単一取得と削除"
+        access_pattern: "退会手続の実行"
+
+kvs:
+  - key_pattern: "idem:api:deleteUser:{idempotency_key}"
+    purpose: "idem"
+    description: "冪等キー検証（削除の重複実行の抑止）"
+    value_type: "処理結果（204 の記録）"
+    ttl: "24h"
+    operations: ["GET", "SET"]
+
+object_storage: []

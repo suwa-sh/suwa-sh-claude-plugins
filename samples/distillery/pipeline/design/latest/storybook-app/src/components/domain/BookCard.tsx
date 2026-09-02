@@ -1,83 +1,166 @@
-import type { CSSProperties } from "react";
-import { Icon } from "../ui/Icon";
-import { BookLoanStatusBadge, type BookLoanStatus } from "./BookLoanStatusBadge";
+import React from 'react'
+import { Card } from '../ui/Card'
+import { Icon } from '../ui/Icon'
+import { Badge } from '../ui/Badge'
+import { BookStatusBadge } from './StatusBadges'
+import type { BookState } from './stateMaps'
+
+export interface BookSummary {
+  bookId: string
+  title: string
+  author: string
+  isbn: string
+  publisher: string
+  genre: string
+  materialType: string
+  state: BookState
+}
 
 export interface BookCardProps {
-  title: string;
-  author: string;
-  isbn: string;
-  publisher: string;
-  genre: string;
-  materialType: string;
-  location: string;
-  status: BookLoanStatus;
-  variant?: "compact" | "detailed";
+  book: BookSummary
+  /** 予約件数。0 件でも件数を明示したい場合は 0 を渡す */
+  reservationCount?: number
+  onSelect?: () => void
+  /** 右下に置く操作ボタン群 */
+  actions?: React.ReactNode
 }
 
-const cardStyle: CSSProperties = {
-  background: "var(--card-bg)",
-  border: "1px solid var(--card-border)",
-  borderRadius: "var(--card-radius)",
-  boxShadow: "var(--card-shadow)",
-  color: "var(--foreground)",
-  display: "grid",
-  gap: "var(--spacing-3)",
-  minWidth: 0,
-  padding: "var(--card-padding)",
-};
+/** 長いタイトル・著者名でも枠を破らないための共通スタイル */
+const wrapAnywhere: React.CSSProperties = { overflowWrap: 'anywhere', wordBreak: 'normal' }
 
-const metaStyle: CSSProperties = {
-  alignItems: "center",
-  color: "var(--muted-foreground)",
-  display: "flex",
-  fontSize: "var(--font-size-sm)",
-  gap: "var(--spacing-2)",
-};
+/**
+ * 蔵書検索結果・蔵書管理台帳で使う書籍カード。
+ * 表紙画像は初期リリースでは扱わないため、アイコンのプレースホルダ枠を出す。
+ */
+export const BookCard: React.FC<BookCardProps> = ({
+  book,
+  reservationCount,
+  onSelect,
+  actions,
+}) => (
+  <Card
+    hoverable
+    onClick={onSelect}
+    role={onSelect ? 'button' : undefined}
+    tabIndex={onSelect ? 0 : undefined}
+    aria-label={onSelect ? `${book.title} の詳細を開く` : undefined}
+    onKeyDown={
+      onSelect
+        ? (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onSelect()
+            }
+          }
+        : undefined
+    }
+    style={{ cursor: onSelect ? 'pointer' : undefined }}
+  >
+    <div className="flex" style={{ gap: 'var(--component-gap)', minWidth: 0 }}>
+      {/* 表紙プレースホルダ */}
+      <div
+        aria-hidden="true"
+        className="flex items-center justify-center shrink-0"
+        style={{
+          width: 64,
+          height: 88,
+          background: 'var(--background-muted)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          color: 'var(--foreground-muted)',
+        }}
+      >
+        <Icon name="book" size={28} />
+      </div>
 
-/** 蔵書検索・蔵書管理で使う書籍情報カード。 */
-export function BookCard({
-  title,
-  author,
-  isbn,
-  publisher,
-  genre,
-  materialType,
-  location,
-  status,
-  variant = "compact",
-}: BookCardProps) {
-  return (
-    <article style={cardStyle}>
-      <div style={{ alignItems: "flex-start", display: "flex", gap: "var(--spacing-3)", justifyContent: "space-between" }}>
-        <div style={{ minWidth: 0 }}>
-          <h3 style={{ fontSize: "var(--font-size-lg)", fontWeight: "var(--font-weight-semibold)", lineHeight: 1.5, margin: 0 }}>
-            {title}
-          </h3>
-          <p style={{ color: "var(--muted-foreground)", margin: "var(--spacing-1) 0 0" }}>{author}</p>
+      <div className="flex flex-col flex-1 min-w-0" style={{ gap: 'var(--spacing-2)' }}>
+        <h3
+          title={book.title}
+          style={{
+            fontSize: 'var(--font-size-base)',
+            fontWeight: 600,
+            color: 'var(--foreground)',
+            lineHeight: 'var(--line-height-tight)',
+            margin: 0,
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 2,
+            overflow: 'hidden',
+            ...wrapAnywhere,
+          }}
+        >
+          {book.title}
+        </h3>
+
+        <div className="flex flex-col" style={{ gap: 'var(--spacing-1)', minWidth: 0 }}>
+          <span
+            style={{
+              fontSize: 'var(--font-size-sm)',
+              color: 'var(--foreground-secondary)',
+              ...wrapAnywhere,
+            }}
+          >
+            {book.author}
+          </span>
+          <span
+            style={{
+              fontSize: 'var(--font-size-xs)',
+              color: 'var(--foreground-muted)',
+              ...wrapAnywhere,
+            }}
+          >
+            {book.publisher}
+          </span>
+          <span
+            style={{
+              fontSize: 'var(--font-size-xs)',
+              color: 'var(--foreground-muted)',
+              fontFamily: 'var(--font-family-mono)',
+              fontVariantNumeric: 'tabular-nums',
+              ...wrapAnywhere,
+            }}
+          >
+            ISBN {book.isbn}
+          </span>
         </div>
-        <BookLoanStatusBadge status={status} />
-      </div>
 
-      <div style={metaStyle}>
-        <Icon name="map-pin" size={16} aria-hidden />
-        <span>{location}</span>
-      </div>
+        <div className="flex flex-wrap items-center" style={{ gap: 'var(--spacing-2)' }}>
+          <Badge variant="outline" icon="tag">
+            {book.genre}
+          </Badge>
+          <Badge variant="outline" icon="book-open">
+            {book.materialType}
+          </Badge>
+          <BookStatusBadge state={book.state} dot />
+          {reservationCount !== undefined && (
+            <span
+              className="inline-flex items-center"
+              style={{
+                gap: 'var(--spacing-1)',
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--foreground-secondary)',
+              }}
+            >
+              <Icon name="bookmark" size={12} label="予約件数" />
+              <span
+                style={{
+                  fontFamily: 'var(--font-family-mono)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {reservationCount.toLocaleString('ja-JP')}
+              </span>
+              件
+            </span>
+          )}
+        </div>
 
-      {variant === "detailed" && (
-        <dl style={{ display: "grid", gap: "var(--spacing-2)", margin: 0 }}>
-          {[
-            ["ISBN", isbn],
-            ["出版社", publisher],
-            ["ジャンル", genre],
-            ["資料種別", materialType],
-          ].map(([label, value]) => (
-            <div key={label} style={{ display: "grid", fontSize: "var(--font-size-sm)", gap: "var(--spacing-2)", gridTemplateColumns: "5rem minmax(0, 1fr)" }}>
-              <dt style={{ color: "var(--muted-foreground)" }}>{label}</dt>
-              <dd style={{ margin: 0, overflowWrap: "anywhere" }}>{value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-    </article>
-  );
-}
+        {actions && (
+          <div className="flex flex-wrap items-center" style={{ gap: 'var(--spacing-2)' }}>
+            {actions}
+          </div>
+        )}
+      </div>
+    </div>
+  </Card>
+)

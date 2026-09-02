@@ -1,61 +1,52 @@
-import * as React from "react";
-import "./ui.css";
+import React from 'react'
+import { iconPaths } from './icons.generated'
 
-export const iconNames = [
-  "alert-triangle",
-  "search",
-  "book",
-  "bookmark",
-  "calendar",
-  "chart",
-  "clock",
-  "filter",
-  "mail",
-  "settings",
-  "shield-check",
-  "user",
-  "users",
-] as const;
+export type IconName = string
 
-/** 独自の追加アイコンも扱える。カタログ掲載名は iconNames を参照する。 */
-export type IconName = (typeof iconNames)[number] | (string & {});
-
-export interface IconProps
-  extends React.HTMLAttributes<HTMLSpanElement> {
-  name: IconName;
-  size?: number;
-  /** 意味を持つアイコンの場合だけ指定する。省略時は装飾画像として扱う。 */
-  alt?: string;
+export interface IconProps {
+  /** アイコン名。assets/icons/{name}.svg と 1:1 で対応する */
+  name: IconName
+  /** px。既定 16（本文行内サイズ） */
+  size?: number
+  className?: string
+  /** 線幅。既定 1.75 */
+  strokeWidth?: number
+  /** 装飾目的なら省略。意味を持つ場合はラベルを渡す（JIS X 8341-3 AA 目標） */
+  label?: string
 }
 
-/** public/assets/icons の outlined SVG を表示する共通アイコン。 */
-export const Icon = ({
+/**
+ * インライン SVG のアイコン。stroke に currentColor を使うため、
+ * 親要素の color / CSS 変数からそのまま着色できる。
+ */
+export const Icon: React.FC<IconProps> = ({
   name,
-  size = 24,
-  alt = "",
-  className = "",
-  style,
-  ...props
-}: IconProps) => (
-  <span
-    role={alt ? "img" : undefined}
-    aria-label={alt || undefined}
-    aria-hidden={alt ? undefined : true}
-    className={`ls-icon ${className}`.trim()}
-    style={{
-      width: size,
-      height: size,
-      backgroundColor: "currentColor",
-      WebkitMaskImage: `url(/assets/icons/${name}.svg)`,
-      maskImage: `url(/assets/icons/${name}.svg)`,
-      WebkitMaskPosition: "center",
-      maskPosition: "center",
-      WebkitMaskRepeat: "no-repeat",
-      maskRepeat: "no-repeat",
-      WebkitMaskSize: "contain",
-      maskSize: "contain",
-      ...style,
-    }}
-    {...props}
-  />
-);
+  size = 16,
+  className = '',
+  strokeWidth = 1.75,
+  label,
+}) => {
+  const body = iconPaths[name]
+  if (!body) return null
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      role={label ? 'img' : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      style={{ flexShrink: 0, display: 'inline-block', verticalAlign: 'text-bottom' }}
+      dangerouslySetInnerHTML={{ __html: body }}
+    />
+  )
+}
+
+export const iconNames = Object.keys(iconPaths)

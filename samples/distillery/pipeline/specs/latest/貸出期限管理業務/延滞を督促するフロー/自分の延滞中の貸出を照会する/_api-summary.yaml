@@ -1,0 +1,60 @@
+# _api-summary.yaml
+uc: "自分の延滞中の貸出を照会する"
+business: "貸出期限管理業務"
+buc: "延滞を督促するフロー"
+endpoints:
+  - operation_id: "listMyOverdueLoans"
+    method: "GET"
+    path: "/api/v1/me/loans/overdue"
+    summary: "ログイン中の利用者本人の延滞中の貸出一覧を取得する"
+    response_schema: "MyOverdueLoanListResponse"
+    tags: ["me-loans"]
+async_events: []
+consumes: []
+schemas:
+  - name: "MyOverdueLoanListResponse"
+    properties:
+      - name: "base_date"
+        type: "string(date)"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true
+      - name: "items"
+        type: "array<MyOverdueLoanItem>"
+        required: true
+  - name: "MyOverdueLoanItem"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "loan_date"
+        type: "string(date)"
+        required: true
+      - name: "loan_period_type"
+        type: "string"
+        required: true
+      - name: "due_date"
+        type: "string(date)"
+        required: true
+      - name: "days_overdue"
+        type: "integer"
+        required: true
+      - name: "loan_status"
+        type: "string"
+        required: true

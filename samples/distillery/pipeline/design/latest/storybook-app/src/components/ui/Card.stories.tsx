@@ -1,28 +1,84 @@
-import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { Button } from "./Button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./Card";
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { Card, CardHeader } from './Card'
+import { Button } from './Button'
+import { Badge } from './Badge'
 
-const meta = {
-  title: "UI/Card",
+const meta: Meta<typeof Card> = {
+  title: 'UI/Card',
   component: Card,
-  tags: ["autodocs"],
-  args: { hoverable: false },
-  render: (args) => (
-    <Card {...args} style={{ maxWidth: "28rem" }}>
-      <CardHeader>
-        <CardTitle>吾輩は猫である</CardTitle>
-        <CardDescription>夏目漱石・新潮文庫</CardDescription>
-      </CardHeader>
-      <CardContent>近代日本文学を代表する長編小説です。3階・文学コーナーに配架されています。</CardContent>
-      <CardFooter>
-        <Button size="sm">詳細を見る</Button>
-      </CardFooter>
+  tags: ['autodocs'],
+  parameters: { layout: 'padded' },
+}
+export default meta
+type Story = StoryObj<typeof Card>
+
+export const Default: Story = {
+  render: () => (
+    <Card style={{ maxWidth: '32rem' }}>
+      <CardHeader
+        title="貸出内容"
+        description="返却期限は貸出期間区分から自動設定されます"
+        actions={<Badge variant="info" icon="book-open">貸出中</Badge>}
+      />
+      <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--foreground-secondary)' }}>
+        『銀河鉄道の夜』 宮沢賢治 / 岩波書店
+      </p>
     </Card>
   ),
-} satisfies Meta<typeof Card>;
+}
 
-export default meta;
-type Story = StoryObj<typeof meta>;
+export const Hoverable: Story = {
+  render: () => (
+    <Card hoverable style={{ maxWidth: '32rem' }}>
+      <CardHeader title="蔵書検索結果" description="クリックで書籍詳細へ" />
+      <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--foreground-secondary)' }}>
+        該当 128 件
+      </p>
+    </Card>
+  ),
+}
 
-export const Default: Story = {};
-export const Hoverable: Story = { args: { hoverable: true } };
+export const WithActions: Story = {
+  render: () => (
+    <Card style={{ maxWidth: '32rem' }}>
+      <CardHeader
+        title="利用者情報"
+        description="個人情報は業務上必要な範囲のみ表示します"
+        actions={
+          <>
+            <Button variant="ghost" size="sm" iconLeft="edit">
+              編集
+            </Button>
+            <Button variant="outline" size="sm">
+              退会手続
+            </Button>
+          </>
+        }
+      />
+      <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--foreground-secondary)' }}>
+        利用者番号 U-2026-0184 / 一般
+      </p>
+    </Card>
+  ),
+}
+
+export const Flush: Story = {
+  render: () => (
+    <Card flush style={{ maxWidth: '32rem' }}>
+      <div style={{ padding: 'var(--card-padding)' }}>
+        <CardHeader title="蔵書管理台帳" />
+      </div>
+      <div
+        style={{
+          borderTop: '1px solid var(--border)',
+          padding: 'var(--card-padding)',
+          background: 'var(--background-subtle)',
+          fontSize: 'var(--font-size-sm)',
+          color: 'var(--foreground-secondary)',
+        }}
+      >
+        テーブルをそのまま入れる場合は `flush` で内側余白を外す
+      </div>
+    </Card>
+  ),
+}

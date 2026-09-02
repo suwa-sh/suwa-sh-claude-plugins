@@ -1,0 +1,168 @@
+round: 1
+group: G5
+findings:
+  - id: S3-G5-001
+    uc: "利用者管理業務/利用者を管理するフロー/利用者一覧を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を照会する/spec.md"
+    line: 42
+    severity: major
+    viewpoint: 3
+    claim: "データフロー表の BE gateway 行が「司書ロール向けにのみ生値を含める」と書いており、同 UC の LR-003 / tier-backend-api.md（連絡先はマスク済み値のみを返し生値はレスポンスに含めない）および _api-summary.yaml（email_masked のみ）と矛盾する。"
+    fix: "当該セルを「UserRecord → UserSummary へ射影する。連絡先は email_masked（例 t****@example.com）のみを返し、生値はレスポンスに含めない（LR-003）」に修正する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を照会する/tier-backend-api.md"
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を照会する/_api-summary.yaml"
+
+  - id: S3-G5-002
+    uc: "利用者管理業務/利用者を管理するフロー/利用者一覧を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を照会する/spec.md"
+    line: 103
+    severity: minor
+    viewpoint: 1
+    claim: "分岐条件一覧の「個人情報参照可否条件」の判定ルールが RDRA 条件.tsv の定義（貸出履歴・予約状況の照会をログイン中の本人に限定する）と別内容（連絡先マスク・司書ロール限定）に置き換わっており、トレーサビリティが切れている。"
+    fix: "判定ルール欄に RDRA 定義（本人に紐づく貸出・予約のみを対象とする）を明記したうえで、本 UC での適用（司書ロール限定の到達可否＋一覧の連絡先マスク）を派生ルールとして併記する。"
+    source_refs:
+      - "docs/rdra/latest/条件.tsv#個人情報参照可否条件"
+
+  - id: S3-G5-003
+    uc: "利用者管理業務/利用者を管理するフロー/利用者一覧を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を照会する/tier-backend-api.md"
+    line: 123
+    severity: minor
+    viewpoint: 2
+    claim: "BDD の Then が「items[0].email_masked が『tanaka@example.com』と一致しない」という否定形で、期待値が具体値になっていない。"
+    fix: "「items[0].email_masked が『t****@example.com』である」に書き換え、マスク規則（ローカル部の先頭 1 文字のみ残す）に沿った具体値で検証する。"
+
+  - id: S3-G5-004
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_api-summary.yaml"
+    line: 14
+    severity: major
+    viewpoint: 4
+    claim: "tier-backend-api.md が必須ヘッダー X-Idempotency-Key を規定しているのに、_api-summary.yaml の CreateUserRequest に含まれておらず、OpenAPI 生成時に必須ヘッダーが欠落する。"
+    fix: "CreateUserRequest に name: X-Idempotency-Key / type: string / required: true（in: header の注記つき）を追加するか、endpoint に header パラメータ定義を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/tier-backend-api.md"
+
+  - id: S3-G5-005
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md"
+    line: 106
+    severity: major
+    viewpoint: 6
+    claim: "処理フローの sequenceDiagram で、連絡先重複の 409 CONFLICT 分岐を抜けたあと無条件に Pres-->>APIClient: HTTP 201 UserResponse へ到達するため、重複時も 201 を返す図になっている。"
+    fix: "HTTP 201 の応答を「重複なし」ブランチ内へ移動し、409 ブランチには Pres-->>APIClient: HTTP 409 CONFLICT を明示する（既処理の冪等キー分岐についても前回結果を返す応答を図に残す）。"
+
+  - id: S3-G5-006
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md"
+    line: 91
+    severity: minor
+    viewpoint: 5
+    claim: "連絡先重複を Domain が単独で検知する図になっているが、_model-summary.yaml は users の SELECT WHERE email = :email と users(email) の一意制約で検知する定義であり、データアクセスがシーケンスに現れていない。"
+    fix: "Domain 判定の前に UC->>Repo: 連絡先の重複確認 / GW->>DB: SELECT users WHERE email = ? を追加し、INSERT 時の一意制約違反を 409 に写像する経路も図に含める。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_model-summary.yaml"
+
+  - id: S3-G5-007
+    uc: "利用者管理業務/利用者を管理するフロー/利用者情報を編集する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者情報を編集する/_api-summary.yaml"
+    line: 6
+    severity: major
+    viewpoint: 4
+    claim: "GET /api/v1/users/{userNo} に request_schema が無く reveal クエリパラメータが未定義だが、tier-backend-api.md は「email は reveal=true 指定時のみ返す」と規定し、フロントは明示操作で生の連絡先を開示する前提になっている。"
+    fix: "schemas に GetUserQueryParams（reveal: boolean / required: false）を追加して endpoint の request_schema に紐付け、tier-backend-api.md の GET リクエスト表にも reveal 行（既定 false）を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者情報を編集する/tier-backend-api.md"
+
+  - id: S3-G5-008
+    uc: "利用者管理業務/利用者を管理するフロー/利用者情報を編集する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者情報を編集する/_api-summary.yaml"
+    line: 30
+    severity: major
+    viewpoint: 4
+    claim: "UserDetailResponse に deletable が無いが、「利用者を削除する」UC の tier-backend-api.md が「削除可否の事前確認は GET /api/v1/users/{userNo} の deletable を用いる」と参照し、退会手続画面の BDD も deletable に依存している。"
+    fix: "UserDetailResponse に deletable（boolean / required: true）を追加し、tier-backend-api.md の GET レスポンス表にも「進行中の貸出・予約がいずれも 0 件のとき true」の行を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/tier-backend-api.md"
+
+  - id: S3-G5-009
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を削除する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/tier-backend-api.md"
+    line: 38
+    severity: minor
+    viewpoint: 3
+    claim: "409 のレスポンス例の reasons に「予約中・取置き中の予約が 0 件あります」という 0 件の項目が含まれており、未充足理由の定義（進行中取引が存在する項目のみ）および同 UC の BDD と矛盾する。"
+    fix: "例を reasons: [\"貸出中・延滞の貸出が 1 件あります\"] に修正し、件数が 0 の項目は reasons に含めないことをビジネスルールに明記する。"
+
+  - id: S3-G5-010
+    uc: "利用者管理業務/利用者を管理するフロー/自分の利用者情報を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/自分の利用者情報を照会する/tier-frontend-patron.md"
+    line: 44
+    severity: major
+    viewpoint: 3
+    claim: "段階的開示として「連絡先を表示する」の明示操作で生の連絡先を開示する UI 仕様だが、GET /api/v1/me は email_masked のみを返し（同 UC の tier-backend-api.md の BDD が「レスポンスに生の連絡先フィールドが含まれない」と規定）、同 md の BDD も「生の連絡先は DOM に含まれない」としており、revealed 時に表示するデータが存在しない。"
+    fix: "GET /api/v1/me に reveal=true 指定時のみ email を返す仕様を追加して _api-summary.yaml の MyProfileResponse に email（required: false）を足すか、開示トグルを廃止して常時マスク表示に統一し spec.md の処理フロー末尾の開示ステップも削除する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/自分の利用者情報を照会する/tier-backend-api.md"
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/自分の利用者情報を照会する/_api-summary.yaml"
+
+  - id: S3-G5-011
+    uc: "利用照会業務/貸出履歴を確認するフロー/自分の現在の貸出を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の現在の貸出を照会する/spec.md"
+    line: 118
+    severity: minor
+    viewpoint: 4
+    claim: "計算ルール「超過日数（days_overdue）」の適用 tier が tier-backend-api になっているが、_api-summary.yaml と tier-backend-api.md のレスポンスには days_overdue が無く、実際は days_remaining の負値から FE が導出している。"
+    fix: "適用 tier を tier-frontend-patron に変更し、計算式を「days_remaining < 0 のとき days_overdue = -days_remaining（例 days_remaining -3 → 3 日超過）」に書き換える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の現在の貸出を照会する/_api-summary.yaml"
+
+  - id: S3-G5-012
+    uc: "利用照会業務/貸出履歴を確認するフロー/自分の現在の貸出を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の現在の貸出を照会する/tier-frontend-patron.md"
+    line: 26
+    severity: minor
+    viewpoint: 3
+    claim: "操作フロー 6 が「21 件以上ある場合は Pagination で頁を切り替える」としているのに、表示要素とコンポーネントマッピングにもコンポーネント設計にも Pagination が無い。"
+    fix: "貸出履歴画面と同様に、表示要素へ Pagination（default / single-page、20 件/頁、無限スクロールは使わない）の行を追加し、コンポーネント設計に page / perPage / total / onChange の Props を定義する。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#Pagination"
+
+  - id: S3-G5-013
+    uc: "利用照会業務/貸出履歴を確認するフロー/自分の貸出履歴を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の貸出履歴を照会する/_model-summary.yaml"
+    line: 62
+    severity: major
+    viewpoint: 5
+    claim: "loans の SELECT を「返却日の降順」でページングする定義になっているが、tier-backend-api.md は「loans に返却日の列を持たず loan_events の LOAN_RETURNED の occurred_at から射影する」と規定しており、loans 単体では返却日ソートできない（indexes_needed も loans(user_no, loan_status) のみでソートを支えない）。"
+    fix: "where を「user_no = :認証コンテキストの利用者番号 AND loan_status = '返却済み'。loan_events（event_type = 'LOAN_RETURNED'）を JOIN し occurred_at の降順、LIMIT/OFFSET でページング」に修正し、spec.md 処理フローの SELECT loans ... ORDER BY 返却日 DESC も同じ結合前提に直す。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の貸出履歴を照会する/tier-backend-api.md"
+
+  - id: S3-G5-014
+    uc: "利用者管理業務/利用者を管理するフロー/利用者一覧を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を照会する/tier-frontend-staff.md"
+    line: 74
+    severity: minor
+    viewpoint: 3
+    claim: "UserTable のコンポーネント設計に onSelect(userNo) イベントを定義しているが、デザインシステムの UserTable の props は users / loading / error / actionsFor のみで onSelect を持たない。"
+    fix: "行からの遷移を actionsFor が返す Action 経由に変更するか、デザインシステム側へ onSelect の追加が必要である旨を明記する（LoanTable は onSelect を持つため対比を書く）。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#UserTable"
+
+resolved:
+  - {id: S3-G5-001, resolution: fixed}
+  - {id: S3-G5-002, resolution: fixed}
+  - {id: S3-G5-003, resolution: fixed}
+  - {id: S3-G5-004, resolution: fixed}
+  - {id: S3-G5-005, resolution: fixed}
+  - {id: S3-G5-006, resolution: fixed}
+  - {id: S3-G5-007, resolution: fixed}
+  - {id: S3-G5-008, resolution: fixed}
+  - {id: S3-G5-009, resolution: fixed}
+  - {id: S3-G5-010, resolution: fixed}
+  - {id: S3-G5-011, resolution: fixed}
+  - {id: S3-G5-012, resolution: fixed}
+  - {id: S3-G5-013, resolution: fixed}
+  - {id: S3-G5-014, resolution: fixed}

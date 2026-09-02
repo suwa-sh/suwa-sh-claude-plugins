@@ -1,0 +1,81 @@
+# _model-summary.yaml
+uc: "自分の貸出内容と返却期限を照会する"
+business: "蔵書利用業務"
+buc: "書籍を貸し出すフロー"
+
+bounded_context_id: "BC-003"
+
+models:
+  - name: "貸出内容・返却期限確認画面（Card / DueDateIndicator / LoanStatusBadge / BookCard）"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "LoanDetailResponse"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "response"
+    rdra_info: "貸出"
+  - name: "LoanDetailResponse"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "response-dto"
+    rdra_info: "貸出"
+  - name: "GetMyLoanDetailQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出"
+  - name: "Loan"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "貸出"
+  - name: "DueDate"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "貸出"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "LoanRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "loan_id = :loan_id AND user_no = :authenticated_user_no"
+    indexes_needed:
+      - columns: ["loan_id"]
+        reason: "貸出IDによる 1 件取得。主キーで充足する"
+        access_pattern: "貸出詳細の 1 件取得"
+      - columns: ["user_no", "loan_status", "due_date"]
+        reason: "本人限定参照の絞り込みと、貸出一覧・返却期限順の表示で共用する"
+        access_pattern: "利用者番号での絞り込み（本人限定参照）と貸出状態・返却期限によるソート"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id"
+    indexes_needed:
+      - columns: ["book_id"]
+        reason: "貸出対象書籍の情報取得。主キーで充足する"
+        access_pattern: "貸出の book_id による 1 件取得"
+
+kvs: []
+object_storage: []

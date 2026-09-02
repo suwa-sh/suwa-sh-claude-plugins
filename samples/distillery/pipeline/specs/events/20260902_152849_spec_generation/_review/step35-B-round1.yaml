@@ -1,0 +1,74 @@
+round: 1
+group: B
+findings:
+  - id: S35-B-001
+    buc: "予約管理業務/書籍を予約するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/buc-spec.md"
+    line: 42
+    severity: major
+    viewpoint: 4
+    claim: "状態遷移全体図と状態遷移 UC マッピングに利用者状態の遷移が欠落している。所属 UC の spec.md は「利用者状態: 登録済み → 取引進行中（予約を登録する）」「取引進行中 → 登録済み（予約を取り消す）」を宣言している"
+    fix: "状態遷移全体図に 3 つ目の stateDiagram-v2（登録済み --> 取引進行中: 予約を登録する / 取引進行中 --> 登録済み: 予約を取り消す）を追加し、UC マッピング表に同 2 行（担当 UC は予約を登録する / 予約を取り消す）を追記する"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#利用者状態"
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/spec.md#状態遷移一覧"
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を取り消す/spec.md#状態遷移一覧"
+  - id: S35-B-002
+    buc: "予約管理業務/予約者へ通知するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/buc-spec.md"
+    line: 25
+    severity: major
+    viewpoint: 2
+    claim: "データフロー図の `UC2 -->|\"通知（送信済み／送信失敗）\"| UC1` が、同ファイルの情報 CRUD マトリクス（UC1「予約順1位の利用者を特定する」の通知セルは空欄）および BUC.tsv の UC1 関連情報（予約・書籍・利用者のみ）と矛盾する"
+    fix: "UC2 → UC1 の通知フローの矢印を削除する（送信結果の確認・再送は UC2 の取置き通知送信画面で完結する）。残す場合は CRUD マトリクスの UC1 × 通知に R を入れ、UC1 の spec.md 関連 RDRA モデルにも情報「通知」を追加して整合させる"
+    source_refs:
+      - "docs/rdra/latest/BUC.tsv#予約者へ通知するフロー/予約順1位の利用者を特定する"
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する/spec.md#関連RDRAモデル"
+  - id: S35-B-003
+    buc: "貸出期限管理業務/延滞を督促するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/buc-spec.md"
+    line: 29
+    severity: major
+    viewpoint: 2
+    claim: "データフロー図の `UC2 -->|\"再送指示\"| UC3` が UC2 の tier 仕様と矛盾する。延滞中の貸出を照会する/tier-frontend-staff.md は「本画面は照会専用: 督促メールの送信・再送は督促送信画面で行う。一覧に送信ボタンを置かない」と定義している"
+    fix: "`UC2 -->|\"再送指示\"| UC3` の矢印を削除し、必要なら「UC2 で未達を把握 → 督促送信画面（UC3）へ遷移」という画面遷移である旨を UC 横断データフローの本文注記に落とす"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/延滞中の貸出を照会する/tier-frontend-staff.md"
+  - id: S35-B-004
+    buc: "貸出期限管理業務/返却期限をリマインドするフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/buc-spec.md"
+    line: 25
+    severity: minor
+    viewpoint: 2
+    claim: "データフロー図の `UC1 -->|\"貸出（返却期限・残日数）\"| UC3` は、UC1「返却期限接近の貸出を判定する」が貸出を R しかしない（CRUD マトリクスも R）ため、UC1 が UC3 へ渡すデータが存在せず誤誘導になる"
+    fix: "この矢印を削除し、UC1 と UC3 が同じ貸出（返却期限・残日数）を参照する関係であることは本文の説明にとどめる。または矢印元を貸出データストアとして `LOAN[(貸出)] --> UC3` の形に描き替える"
+    source_refs:
+      - "docs/rdra/latest/BUC.tsv#返却期限をリマインドするフロー/返却期限接近の貸出を判定する"
+  - id: S35-B-005
+    buc: "貸出期限管理業務/返却期限をリマインドするフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/buc-spec.md"
+    line: 52
+    severity: minor
+    viewpoint: 4
+    claim: "貸出状態の stateDiagram に 状態.tsv の遷移「延滞 → 返却済み（返却を登録する）」が欠落している。同図は別 BUC の遷移（貸出中 → 延滞、貸出中 → 返却済み）を 2 本描いており、延滞からの終端だけが欠けた不完全な図になっている"
+    fix: "`延滞 --> 返却済み: 返却を登録する（別BUC）` の 1 行を追加する"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#貸出状態"
+  - id: S35-B-006
+    buc: "予約管理業務/予約者へ通知するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/buc-spec.md"
+    line: 81
+    severity: minor
+    viewpoint: 5
+    claim: "BUC 内共有条件一覧の「個人情報参照可否条件」の適用 UC に「予約順1位の利用者を特定する」が含まれているが、BUC.tsv では同条件は「自分の取置き状況を照会する」にのみ紐づいている（UC spec 側で司書の連絡先マスクとして独自に追加された適用）"
+    fix: "適用 UC に「（司書側のマスク要件として UC spec で拡張）」の注記を付けて RDRA 上の紐づきと区別する。拡張を採らない場合は単一 UC 条件表へ移し、適用 UC を「自分の取置き状況を照会する」のみにする"
+    source_refs:
+      - "docs/rdra/latest/BUC.tsv#予約者へ通知するフロー"
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する/spec.md#分岐条件一覧"
+resolved:
+  - {id: S35-B-001, resolution: fixed}
+  - {id: S35-B-002, resolution: fixed}
+  - {id: S35-B-003, resolution: fixed}
+  - {id: S35-B-004, resolution: fixed}
+  - {id: S35-B-005, resolution: fixed}
+  - {id: S35-B-006, resolution: fixed}

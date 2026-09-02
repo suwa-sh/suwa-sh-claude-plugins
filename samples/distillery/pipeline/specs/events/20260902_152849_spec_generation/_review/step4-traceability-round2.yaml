@@ -1,0 +1,30 @@
+round: 2
+group: traceability
+findings:
+  - id: S4-traceability-004
+    artifact: "traceability-matrix.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/traceability-matrix.md"
+    line: 138
+    severity: minor
+    viewpoint: 7
+    claim: "round1 の S4-traceability-002 修正後も、通知タイミング区分「期限超過督促」行の適用 UC 数が実体を超えている。行は代表 2 UC（期限超過の貸出を延滞にする / 督促メールを送信する）+「ほか 3 UC」= 計 5 UC を主張するが、全 41 UC の spec.md「バリエーション一覧」節に文字列『期限超過督促』が現れるのは 4 UC（上記 2 件 + 延滞中の貸出を照会する + 取置き通知メールを送信する）だけで、5 件目の根拠が存在しない。"
+    fix: "「ほか 3 UC」を「ほか 2 UC」に修正する（enum 定義のみの 延滞中の貸出を照会する / 取置き通知メールを送信する の 2 件）。網羅率（33/33・合計 146/146）は変わらない。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/延滞中の貸出を照会する/spec.md#バリエーション一覧"
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/spec.md#バリエーション一覧"
+      - "docs/rdra/latest/バリエーション.tsv#通知タイミング区分"
+  - id: S4-traceability-005
+    artifact: "traceability-matrix.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/traceability-matrix.md"
+    line: 133
+    severity: minor
+    viewpoint: 7
+    claim: "round1 修正の結果、バリエーションマトリクスの適用 UC 列で「enum 定義のみの UC」の扱いが行ごとに不統一になった。通知種別 3 行（取置き案内 1 UC / 返却期限リマインド 1 UC / 延滞督促 2 UC）は enum 定義のみの UC を完全に落としている（実際に値が現れる spec.md は各 3 / 6 / 7 UC）のに対し、通知タイミング区分の期限当日行は enum 定義のみの UC を「ほか 1 UC」として残しており、さらに期限前リマインド行（L136）は同じ enum 定義のみの『取置き通知メールを送信する』を落としている。読み手が『ほか N UC』の意味（値を適用する UC のみか、参照 UC 全部か）を判定できない。"
+    fix: "マトリクス冒頭の凡例に「適用 UC 列は当該値を固定・選択・分岐で適用する UC のみを挙げ、enum 定義のみの UC は数えない」と 1 文で定義し、その規則で全 33 行を揃える（通知タイミング区分の期限当日行の『ほか 1 UC』= 取置き通知メールを送信する も除外し 3 UC にする）。逆に参照 UC 全件を数える規則にするなら通知種別 3 行に『ほか N UC』を付ける。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/spec.md#バリエーション一覧"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/spec.md#バリエーション一覧"
+      - "docs/rdra/latest/バリエーション.tsv#通知種別 / 通知タイミング区分"
+resolved:
+  - {id: S4-traceability-004, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S4-traceability-005, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

@@ -1,0 +1,37 @@
+# _api-summary.yaml
+uc: "利用者を削除する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+endpoints:
+  - operation_id: "deleteUser"
+    method: "DELETE"
+    path: "/api/v1/users/{user_no}"
+    summary: "退会する利用者を登録から外す。利用者削除可否条件を満たす場合のみ許可する（司書のみ）"
+    response_schema: "NoContent"
+    tags: ["利用者管理"]
+async_events: []
+# cross-UC API 依存（他 UC 所有 operation の利用）。形式は
+# _cross-cutting/api/uc-api-dependencies.md「記録場所と形式」を正本とする。
+consumes:
+  - operation_id: "getUser"
+    method: "GET"
+    path: "/api/v1/users/{user_no}"
+    owner_uc: "利用者情報を編集する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-staff"
+    purpose: "退会手続画面で対象の登録内容と削除可否（deletable / active_loan_count / active_reservation_count）を取得する"
+    required: true
+schemas:
+  - name: "NoContent"
+    properties: []
+  - name: "BusinessRuleViolationResponse"
+    properties:
+      - name: "code"
+        type: "string"
+        required: true
+      - name: "message"
+        type: "string"
+        required: true
+      - name: "reasons"
+        type: "array<string>"
+        required: true

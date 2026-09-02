@@ -1,0 +1,82 @@
+round: 2
+group: G4
+findings:
+  - id: S3-G4-003
+    uc: "貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/_api-summary.yaml"
+    line: 111
+    severity: major
+    viewpoint: 4
+    claim: "consumer 側だけ修正され publisher 側と契約が未修正。tier-worker.md は入力メッセージに `notification_id`（再送時のみ必須）を追加したが、_api-summary.yaml の `RemindNotificationRequested` の properties に `notification_id` が無く、tier-backend-api.md の再 publish 節（102 行）も `idempotency_key` の再生成しか書いていない。再送 API が `notification_id` を載せない限り worker は再送を判別できず、round1 で指摘した通知の重複 INSERT が残る。"
+    fix: "_api-summary.yaml の `RemindNotificationRequested` に `notification_id`（type: string / required: false / 再送時のみ設定）を追加し、tier-backend-api.md の「返却期限リマインド送信要求の再 publish」のメッセージ記述に「再送対象の `notification_id` を設定して publish する（worker は既存通知を再利用し INSERT しない）」を追記する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/tier-worker.md#入力メッセージ"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/tier-backend-api.md#非同期イベント"
+
+  - id: S3-G4-004
+    uc: "貸出期限管理業務/延滞を督促するフロー/督促メールを送信する"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/_api-summary.yaml"
+    line: 111
+    severity: major
+    viewpoint: 4
+    claim: "S3-G4-003 と同一。tier-worker.md は `DunNotificationRequested` に `notification_id`（再送時のみ必須）を追加したが、_api-summary.yaml の `DunNotificationRequested` の properties に `notification_id` が無く、tier-backend-api.md の再 publish 節（93 行）にも設定する旨の記述が無い。"
+    fix: "_api-summary.yaml の `DunNotificationRequested` に `notification_id`（type: string / required: false / 再送時のみ設定）を追加し、tier-backend-api.md の「延滞督促送信要求の再 publish」に「再送対象の `notification_id` を設定して publish する」を追記する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/tier-worker.md#入力メッセージ"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/tier-backend-api.md#非同期イベント"
+
+  - id: S3-G4-005
+    uc: "貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする/tier-backend-api.md"
+    line: 29
+    severity: major
+    viewpoint: 3
+    claim: "ビジネスルール（83 行）と _model-summary.yaml は「日次ジョブ実行結果の遷移対象貸出ID一覧を正本とし、返却期限からの逆算はしない」に修正済みだが、レスポンス定義（29 行）の `transitioned_count` の説明が「返却期限が `base_date - 1 日` の延滞貸出の件数」のまま残り、同一ファイル内で矛盾する。indexes_needed の reason（_model-summary.yaml 105 行付近）にも「遷移日の逆算」の記述が残る。"
+    fix: "29 行を「判定日に『貸出中』から『延滞』へ遷移した貸出の件数（日次ジョブ実行結果 `job:exec:overdue-judge:{base_date}` の遷移対象貸出ID一覧の件数）」に書き換え、_model-summary.yaml の loans indexes_needed の reason から「遷移日の逆算」を削除する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする/tier-backend-api.md#ビジネスルール"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする/_model-summary.yaml"
+
+  - id: S3-G4-015
+    uc: "貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/spec.md"
+    line: 190
+    severity: minor
+    viewpoint: 1
+    claim: "S3-G4-001/002 の修正で処理フローと tier-worker.md は「貸出状態が『延滞』なら送信を中止する」となったが、spec.md の分岐条件一覧（190 行）は「『返却済み』に変わっていれば送信を中止する」のままで、関連 RDRA モデル（227 行）の貸出状態も「『返却済み』の貸出は送信対象外」に留まる。同一ファイル内で不一致。"
+    fix: "190 行の判定ルールを「送信時点で貸出状態が『貸出中』であること。『返却済み』『延滞』に変わっていれば送信を中止する（『延滞』は督促通知対象条件が扱う）」に、227 行を「『返却済み』『延滞』の貸出は送信対象外」に修正する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/tier-worker.md#ビジネスルール"
+      - "docs/rdra/latest/条件.tsv#リマインド通知対象条件"
+
+  - id: S3-G4-016
+    uc: "貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/spec.md"
+    line: 99
+    severity: minor
+    viewpoint: 6
+    claim: "処理フローの tier-worker box にリポジトリ層の participant が無く、ユースケース層が直接ゲートウェイ層を呼ぶ（113〜114 行 `WUC->>WGW` / `WGW->>DB`、124〜137 行も同様）。同ファイルのデータフロー図（WK_UC → WK_Repo → WK_GW）と _model-summary.yaml の NotificationRepository / LoanFinder（layer: repository）と不整合。S3-G4-014 の修正で他 UC は WRepo 経由に揃ったため、本 UC だけが残っている。"
+    fix: "tier-worker box に `participant WRepo as リポジトリ層` を追加し、貸出・利用者の取得と notifications の INSERT / UPDATE を `WUC->>WRepo` → `WRepo->>DB` → `WRepo-->>WUC` の順に書き換える（UC「督促メールを送信する」の処理フローと同じ表現に揃える）。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/_model-summary.yaml"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/spec.md#処理フロー"
+
+verified_resolved:
+  - {id: S3-G4-001, resolution: fixed}
+  - {id: S3-G4-002, resolution: fixed}
+  - {id: S3-G4-006, resolution: fixed}
+  - {id: S3-G4-007, resolution: fixed}
+  - {id: S3-G4-008, resolution: fixed}
+  - {id: S3-G4-009, resolution: fixed}
+  - {id: S3-G4-010, resolution: fixed}
+  - {id: S3-G4-011, resolution: fixed}
+  - {id: S3-G4-012, resolution: fixed}
+  - {id: S3-G4-013, resolution: fixed}
+  - {id: S3-G4-014, resolution: fixed}
+
+resolved:
+  - {id: S3-G4-003, resolution: fixed}
+  - {id: S3-G4-004, resolution: fixed}
+  - {id: S3-G4-005, resolution: fixed}
+  - {id: S3-G4-015, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G4-016, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

@@ -1,0 +1,116 @@
+# _api-summary.yaml
+uc: "貸出統計レポートを参照する"
+business: "蔵書分析業務"
+buc: "貸出統計を把握するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/reports/loans/latest"
+    summary: "最新の貸出統計レポート（貸出件数推移・人気書籍ランキング・区分別内訳）を参照する"
+    response_schema: "LoanStatsReportResponse"
+    tags: ["reports"]
+  - method: "GET"
+    path: "/api/v1/reports/loans/{report_id}"
+    summary: "指定した貸出統計レポートを参照する"
+    response_schema: "LoanStatsReportResponse"
+    tags: ["reports"]
+async_events: []
+schemas:
+  - name: "LoanStatsReportResponse"
+    properties:
+      - name: "report_id"
+        type: "string"
+        required: true
+      - name: "report_type"
+        type: "string"
+        required: true
+      - name: "period_type"
+        type: "string"
+        required: true
+      - name: "period_start"
+        type: "string"
+        required: true
+      - name: "period_end"
+        type: "string"
+        required: true
+      - name: "aggregated_at"
+        type: "string"
+        required: true
+      - name: "report_status"
+        type: "string"
+        required: true
+      - name: "summary"
+        type: "object"
+        required: true
+      - name: "trend"
+        type: "array"
+        required: true
+      - name: "ranking"
+        type: "array"
+        required: true
+      - name: "breakdowns"
+        type: "object"
+        required: true
+      - name: "pagination"
+        type: "object"
+        required: true
+  - name: "LoanStatsSummary"
+    properties:
+      - name: "total_loans"
+        type: "integer"
+        required: true
+      - name: "total_loans_delta_rate"
+        type: "number"
+        required: false
+      - name: "returned_count"
+        type: "integer"
+        required: true
+      - name: "distinct_users"
+        type: "integer"
+        required: true
+      - name: "loans_per_user"
+        type: "number"
+        required: false
+  - name: "LoanTrendPoint"
+    properties:
+      - name: "period_label"
+        type: "string"
+        required: true
+      - name: "loan_count"
+        type: "integer"
+        required: true
+  - name: "PopularBookRankingItem"
+    properties:
+      - name: "rank"
+        type: "integer"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "genre"
+        type: "string"
+        required: true
+      - name: "loan_count"
+        type: "integer"
+        required: true
+  - name: "LoanStatsBreakdowns"
+    properties:
+      - name: "user_category"
+        type: "array"
+        required: true
+      - name: "genre"
+        type: "array"
+        required: true
+  - name: "LoanStatsBreakdownItem"
+    properties:
+      - name: "label"
+        type: "string"
+        required: true
+      - name: "count"
+        type: "integer"
+        required: true

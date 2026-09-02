@@ -1,0 +1,185 @@
+# digest of nfr/latest/nfr-grade.yaml section categories[id=A] (L11-193); source_sha256: 9ecccca870476f5c8b048641028a922e9f2b393562b9bca87d4bd1f567861198
+# 派生物。正本は nfr-grade.yaml。編集しない
+  - id: "A"
+    name: "可用性"
+    subcategories:
+      - id: "A.1"
+        name: "継続性"
+        items:
+          - id: "A.1.1"
+            name: "運用スケジュール"
+            important: true
+            metrics:
+              - id: "A.1.1.1"
+                name: "運用時間（通常）"
+                important: true
+                grade: 3
+                grade_description: "1時間程度の停止（9時〜翌8時）"
+                reason: "BUC「貸出履歴を確認するフロー」「予約状況を確認するフロー」で利用者が Web から任意の時間に照会し、BUC「返却期限をリマインドするフロー」「延滞を督促するフロー」の通知処理が夜間帯に動くため、日中窓口業務時間を超える稼働が必要"
+                source_model: "BUC: 貸出履歴を確認するフロー / 予約状況を確認するフロー / 返却期限をリマインドするフロー"
+                confidence: "medium"
+              - id: "A.1.1.2"
+                name: "運用時間（特定日）"
+                important: false
+                grade: 0
+                grade_description: "規定なし"
+                reason: "モデルシステム2のデフォルト値を適用（RDRA に休館日・特定日の稼働要件の記述なし）"
+                source_model: ""
+                confidence: "default"
+              - id: "A.1.1.3"
+                name: "計画停止の有無"
+                important: true
+                grade: 3
+                grade_description: "不定期に計画停止あり（事前通知3日前）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "A.1.2"
+            name: "サービス切替時間"
+            important: true
+            metrics:
+              - id: "A.1.2.1"
+                name: "サービス切替時間"
+                important: true
+                grade: 3
+                grade_description: "60分未満（コールドスタンバイ）"
+                reason: "モデルシステム2のデフォルト値を適用（A.1.1.1 の「1時間程度の停止」許容と整合）"
+                source_model: ""
+                confidence: "default"
+      - id: "A.2"
+        name: "耐障害性"
+        items:
+          - id: "A.2.1"
+            name: "サーバ"
+            important: true
+            metrics:
+              - id: "A.2.1.1"
+                name: "サーバ内の冗長化"
+                important: true
+                grade: 3
+                grade_description: "N+1冗長（手動切替）"
+                reason: "モデルシステム2のデフォルト値を適用（デプロイ環境がクラウドに確定した場合は infrastructure スキルで Lv4 へ補正する）"
+                source_model: ""
+                confidence: "default"
+          - id: "A.2.2"
+            name: "端末"
+            important: false
+            metrics:
+              - id: "A.2.2.1"
+                name: "端末の冗長化"
+                important: false
+                grade: 1
+                grade_description: "冗長化なし"
+                reason: "モデルシステム2のデフォルト値を適用（司書窓口端末は代替機での運用継続が可能）"
+                source_model: "アクター: 司書"
+                confidence: "default"
+          - id: "A.2.3"
+            name: "ネットワーク機器"
+            important: true
+            metrics:
+              - id: "A.2.3.1"
+                name: "ネットワーク機器の冗長化"
+                important: true
+                grade: 2
+                grade_description: "一部機器の冗長化"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "A.2.4"
+            name: "ネットワーク回線"
+            important: false
+            metrics:
+              - id: "A.2.4.1"
+                name: "回線の冗長化"
+                important: false
+                grade: 2
+                grade_description: "一部回線の冗長化"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "A.2.5"
+            name: "ストレージ"
+            important: true
+            metrics:
+              - id: "A.2.5.1"
+                name: "ストレージの冗長化"
+                important: true
+                grade: 2
+                grade_description: "RAID5（パリティ）"
+                reason: "モデルシステム2のデフォルト値を適用（デプロイ環境がクラウドに確定した場合は infrastructure スキルで Lv3 へ補正する）"
+                source_model: ""
+                confidence: "default"
+          - id: "A.2.6"
+            name: "建物・電源"
+            important: true
+            metrics:
+              - id: "A.2.6.1"
+                name: "建物の耐震・免震"
+                important: false
+                grade: 2
+                grade_description: "耐震構造"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+              - id: "A.2.6.2"
+                name: "電源の冗長化"
+                important: true
+                grade: 2
+                grade_description: "UPS（無停電電源装置）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+      - id: "A.3"
+        name: "災害対策"
+        items:
+          - id: "A.3.1"
+            name: "災害対策"
+            important: true
+            metrics:
+              - id: "A.3.1.1"
+                name: "災害対策の範囲"
+                important: true
+                grade: 1
+                grade_description: "バックアップを遠隔地に保管"
+                reason: "規模感プリインタビューで「24/7 稼働、DR は RPO/RTO 24h 許容」を採用したため、待機拠点は設けず遠隔地バックアップに留める（モデルシステム2 デフォルトの Lv2 コールドスタンバイ拠点より 1 段低く設定）"
+                source_model: "システム概要: まずは 1 館での運用を想定"
+                confidence: "medium"
+              - id: "A.3.1.2"
+                name: "業務継続の要否"
+                important: true
+                grade: 1
+                grade_description: "業務継続要（24時間以内に復旧）"
+                reason: "規模感プリインタビューで DR は RPO/RTO 24h 許容を採用。貸出・返却は災害時に紙台帳での暫定運用が可能なため 24 時間以内の復旧で足りる"
+                source_model: "システム概要: 紙台帳と表計算ファイルに分散した情報を統合"
+                confidence: "medium"
+      - id: "A.4"
+        name: "回復性"
+        items:
+          - id: "A.4.1"
+            name: "目標復旧水準"
+            important: true
+            metrics:
+              - id: "A.4.1.1"
+                name: "RPO（目標復旧地点）"
+                important: true
+                grade: 2
+                grade_description: "数時間前まで"
+                reason: "情報「貸出」「予約」「書籍」「利用者」「通知」の 5 つに状態モデルが定義され、貸出中／予約中／取置き中といった進行中取引が失われると窓口業務と整合しなくなるため、日次バックアップ（Lv1）では不足する。一方で金銭取引は扱わないため Lv3 以上は過剰"
+                source_model: "状態: 書籍状態 / 貸出状態 / 予約状態 / 利用者状態 / 通知状態"
+                confidence: "medium"
+              - id: "A.4.1.2"
+                name: "RTO（目標復旧時間）"
+                important: true
+                grade: 3
+                grade_description: "2時間以内"
+                reason: "通常障害時は開館時間中に窓口の貸出・返却が停止するため、モデルシステム2 デフォルトの 2 時間以内を採用（災害時の 24 時間は A.3.1.2 で別途規定）"
+                source_model: "BUC: 書籍を貸し出すフロー / 書籍を返却するフロー"
+                confidence: "medium"
+              - id: "A.4.1.3"
+                name: "RLO（目標復旧レベル）"
+                important: false
+                grade: 2
+                grade_description: "平常時の80%の処理能力"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"

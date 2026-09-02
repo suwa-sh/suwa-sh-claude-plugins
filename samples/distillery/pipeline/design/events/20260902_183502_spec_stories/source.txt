@@ -1,0 +1,6 @@
+distillery:dist-spec-stories スキル実行。
+spec スキル（dist-spec, event_id=20260902_152849_spec_generation）で確定した全 41 UC の
+UC Spec（tier-frontend-*.md）と全体横断 UX/UI 設計（_cross-cutting/ux-ui/）、
+design スキル（dist-design-system, event_id=20260902_145539_design_system）の design-event.yaml を入力として、
+共通コンポーネント 10 種 + フック 3 種、全 41 UC のページ Story を生成した。
+storybook-app/ はハイブリッド方式に従い全量再ビルド対象のため events/ には含めない（latest/ のみで管理）。

@@ -1,0 +1,89 @@
+# _api-summary.yaml
+uc: "書籍の貸出可否を判定する"
+business: "蔵書利用業務"
+buc: "書籍を貸し出すフロー"
+endpoints:
+  - method: "POST"
+    path: "/api/v1/loans/eligibility-checks"
+    summary: "書籍と利用者の組み合わせについて貸出可否を判定し、可否と根拠条件を返す（司書ロール限定・永続化なし）"
+    request_schema: "LoanEligibilityRequest"
+    response_schema: "LoanEligibilityResponse"
+    tags: ["貸出"]
+async_events: []
+schemas:
+  - name: "LoanEligibilityRequest"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "user_no"
+        type: "string"
+        required: true
+  - name: "LoanEligibilityResponse"
+    properties:
+      - name: "eligible"
+        type: "boolean"
+        required: true
+      - name: "reasons"
+        type: "array<EligibilityReason>"
+        required: true
+      - name: "book"
+        type: "BookSummary"
+        required: true
+      - name: "user"
+        type: "LoanTargetResponse"
+        required: true
+      - name: "hold"
+        type: "HoldSummary"
+        required: false
+  - name: "EligibilityReason"
+    properties:
+      - name: "condition_name"
+        type: "string"
+        required: true
+      - name: "satisfied"
+        type: "boolean"
+        required: true
+      - name: "detail"
+        type: "string"
+        required: false
+  - name: "BookSummary"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "isbn"
+        type: "string"
+        required: false
+      - name: "publisher"
+        type: "string"
+        required: true
+      - name: "genre"
+        type: "string"
+        required: true
+      - name: "material_type"
+        type: "string"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+  - name: "HoldSummary"
+    properties:
+      - name: "reservation_id"
+        type: "string"
+        required: true
+      - name: "priority"
+        type: "integer"
+        required: true
+      - name: "holder_user_no"
+        type: "string"
+        required: true
+      - name: "hold_expires_at"
+        type: "string(date-time)"
+        required: false

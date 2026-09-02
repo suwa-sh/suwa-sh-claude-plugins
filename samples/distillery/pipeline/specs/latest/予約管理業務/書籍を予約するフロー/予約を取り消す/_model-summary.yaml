@@ -1,0 +1,112 @@
+# _model-summary.yaml
+uc: "予約を取り消す"
+business: "予約管理業務"
+buc: "書籍を予約するフロー"
+
+bounded_context_id: "BC-004"
+aggregate_id: "AG-004"
+
+models:
+  - name: "予約取消受付画面 / CancelTarget"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "予約"
+  - name: "対象予約 / 取消結果"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "予約"
+  - name: "CancelReservationRequest"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "予約"
+  - name: "CancelReservationRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "予約"
+  - name: "CancelReservationCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "予約"
+  - name: "予約(Reservation)"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "ReservationRepository"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "BookStatusPort"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "value-object"
+    rdra_info: "書籍"
+  - name: "ReservationRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "予約"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "reservation_id = :reservation_id（取消対象の取得）"
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id AND reservation_status IN ('予約中','取置き中')（後続予約と残存有効予約の判定）"
+      - type: "UPDATE"
+        columns:
+          - name: "reservation_status"
+            value: "キャンセル"
+          - name: "hold_expires_at"
+            value: "NULL（rdb-schema.yaml state_transition_rules「予約状態遷移規則」の 予約中/取置き中 → キャンセル の also_sets。予約中の予約は元から NULL のため実質変化しない）"
+        where: "reservation_id = :reservation_id（hold_started_at は同規則の also_sets により変更しない。取置きの実績として保持する）"
+      - type: "UPDATE"
+        columns:
+          - name: "priority"
+            value: "priority - 1（後続予約の繰り上げ）"
+        where: "book_id = :book_id AND reservation_status IN ('予約中','取置き中') AND priority > :cancelled_priority"
+    indexes_needed:
+      - columns: ["book_id", "reservation_status", "priority"]
+        reason: "後続予約の順位繰り上げと残存有効予約の判定を 1 回の索引走査で行う"
+        access_pattern: "書籍ID + 予約状態 + 予約順位の範囲更新"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "UPDATE"
+        columns:
+          - name: "book_status"
+            value: "在庫あり（有効な予約が残らない場合のみ。蔵書コンテキストの BookStatusPort 経由）"
+        where: "book_id = :book_id AND book_status = '予約待ち'"
+    indexes_needed: []
+
+kvs:
+  - key_pattern: "idem:api:cancelReservation:{idempotency_key}"
+    purpose: "idem"
+    description: "予約取消の冪等キー。二重取消と重複した順位繰り上げを防止する。arch SR-002"
+    value_type: "取消済み reservation_id と promoted_count"
+    ttl: "24h"
+    operations: ["SET", "GET"]
+
+  - key_pattern: "cache:reservation:rank:{book_id}"
+    purpose: "cache"
+    description: "予約順位表示用の有効予約件数キャッシュ。予約取消と順位繰り上げの確定時 に破棄する"
+    value_type: "有効予約件数（integer）"
+    ttl: "60s"
+    operations: ["DEL"]
+
+object_storage: []

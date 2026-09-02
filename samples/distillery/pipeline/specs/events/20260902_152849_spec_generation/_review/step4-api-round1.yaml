@@ -1,0 +1,189 @@
+round: 1
+group: api
+findings:
+  - id: S4-api-001
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/自分の貸出内容と返却期限を照会する/_api-summary.yaml"
+    line: 7
+    severity: major
+    viewpoint: 1
+    claim: "path が `/api/v1/me/loans/{loanId}` と camelCase で、openapi.yaml の `/api/v1/me/loans/{loan_id}`（`LoanIdPath`）と literal 不一致のため網羅チェックで未カバー扱いになる。"
+    fix: "path を `/api/v1/me/loans/{loan_id}` に修正し、openapi.yaml の snake_case パスパラメータ規約（`{book_id}` / `{user_no}` / `{loan_id}` / `{report_id}`）に揃える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/me/loans/{loan_id}"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.parameters.LoanIdPath"
+
+  - id: S4-api-002
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/_api-summary.yaml"
+    line: 12
+    severity: major
+    viewpoint: 1
+    claim: "path が `/api/v1/loan-targets/{userNo}` と camelCase で、openapi.yaml の `/api/v1/loan-targets/{user_no}` と literal 不一致。"
+    fix: "path を `/api/v1/loan-targets/{user_no}` に修正する（openapi.yaml `components.parameters.UserNoPath` の name は `user_no`）。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/loan-targets/{user_no}"
+
+  - id: S4-api-003
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却を登録する/_api-summary.yaml"
+    line: 12
+    severity: major
+    viewpoint: 1
+    claim: "path が `/api/v1/loans/{loanId}/return` と camelCase で、openapi.yaml の `/api/v1/loans/{loan_id}/return` と literal 不一致。"
+    fix: "path を `/api/v1/loans/{loan_id}/return` に修正する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/loans/{loan_id}/return"
+
+  - id: S4-api-004
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却後の書籍状態を更新する/_api-summary.yaml"
+    line: 7
+    severity: major
+    viewpoint: 1
+    claim: "path が `/api/v1/books/{bookId}/restock` と camelCase で、openapi.yaml の `/api/v1/books/{book_id}/restock` と literal 不一致。"
+    fix: "path を `/api/v1/books/{book_id}/restock` に修正する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/books/{book_id}/restock"
+
+  - id: S4-api-005
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/_api-summary.yaml"
+    line: 12
+    severity: major
+    viewpoint: 1
+    claim: "path が `/api/v1/reports/loans/{reportId}` と camelCase で、openapi.yaml の `/api/v1/reports/loans/{report_id}` と literal 不一致。"
+    fix: "path を `/api/v1/reports/loans/{report_id}` に修正する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/reports/loans/{report_id}"
+
+  - id: S4-api-006
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する/_api-summary.yaml"
+    line: 12
+    severity: major
+    viewpoint: 1
+    claim: "path が `/api/v1/reports/inventory/{reportId}` と camelCase で、openapi.yaml の `/api/v1/reports/inventory/{report_id}` と literal 不一致。"
+    fix: "path を `/api/v1/reports/inventory/{report_id}` に修正する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/reports/inventory/{report_id}"
+
+  - id: S4-api-007
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_api-summary.yaml"
+    line: 7
+    severity: major
+    viewpoint: 1
+    claim: "path が `/api/v1/users/{userNo}` と camelCase で、openapi.yaml の `/api/v1/users/{user_no}` と literal 不一致。"
+    fix: "path を `/api/v1/users/{user_no}` に修正する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/users/{user_no}"
+
+  - id: S4-api-008
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者情報を編集する/_api-summary.yaml"
+    line: 7
+    severity: major
+    viewpoint: 1
+    claim: "GET / PUT の 2 エンドポイントとも path が `/api/v1/users/{userNo}` と camelCase で、openapi.yaml の `/api/v1/users/{user_no}` と literal 不一致。"
+    fix: "7 行目と 13 行目の path をいずれも `/api/v1/users/{user_no}` に修正する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/users/{user_no}"
+
+  - id: S4-api-009
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/自分の返却済み貸出を照会する/_api-summary.yaml"
+    line: 9
+    severity: major
+    viewpoint: 1
+    claim: "`GET /api/v1/me/loans` の response_schema が `LoanListResponse`（items は `LoanListItem`）だが、openapi.yaml は同一エンドポイントを `MyLoanListResponse` / `MyLoanListItem` に統合しており、スキーマ名が openapi 側に存在しない。"
+    fix: "response_schema を `MyLoanListResponse` に、schemas の `LoanListResponse` / `LoanListItem` を `MyLoanListResponse` / `MyLoanListItem` にリネームして openapi.yaml と一致させる。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.schemas.MyLoanListResponse"
+
+  - id: S4-api-010
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する/_api-summary.yaml"
+    line: 9
+    severity: major
+    viewpoint: 1
+    claim: "`GET /api/v1/me/loans` の response_schema が `LoanListResponse`（items は `LoanListItem`）で、openapi.yaml の `MyLoanListResponse` / `MyLoanListItem` と名前が一致しない。"
+    fix: "response_schema を `MyLoanListResponse` に、schemas を `MyLoanListResponse` / `MyLoanListItem` にリネームする。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.schemas.MyLoanListResponse"
+
+  - id: S4-api-011
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の貸出履歴を照会する/_api-summary.yaml"
+    line: 10
+    severity: major
+    viewpoint: 1
+    claim: "`GET /api/v1/me/loans`（status=history）の response_schema が `MyLoanHistoryResponse` / `MyLoanHistoryItem` だが、openapi.yaml は `status` クエリで応答を切り替える単一の `MyLoanListResponse` に統合しており、この名前は存在しない。"
+    fix: "response_schema を `MyLoanListResponse` に、items スキーマを `MyLoanListItem` に統一する（履歴固有の `latest_returned_at` は `MyLoanListResponse` に定義済み）。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.schemas.MyLoanListResponse"
+
+  - id: S4-api-012
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の現在の貸出を照会する/_api-summary.yaml"
+    line: 25
+    severity: minor
+    viewpoint: 1
+    claim: "response_schema `MyLoanListResponse` は openapi.yaml と一致するが、その items のスキーマ名だけ `MyLoanSummary` で、openapi.yaml の `MyLoanListItem` と一致しない。"
+    fix: "schemas の `MyLoanSummary` を `MyLoanListItem` にリネームする。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.schemas.MyLoanListItem"
+
+  - id: S4-api-013
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml"
+    line: null
+    severity: major
+    viewpoint: 1
+    claim: "`PUT /api/v1/users/{user_no}` のレスポンスに 409 が無い。`POST /api/v1/users` は同じ `UpdateUserRequest` 相当の `email` を持ち 409 (`BusinessRuleViolation`) を返す設計で、rdb-schema.yaml にも `uq_users_email`（unique）が定義されているため、他利用者と重複するメールアドレスへの更新が表現できない。"
+    fix: "`PUT /api/v1/users/{user_no}` の responses に `'409': {$ref: '#/components/responses/BusinessRuleViolation'}` を追加し、description に「他利用者と重複する `email` への更新は 409（`EMAIL_ALREADY_EXISTS`）」を明記する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml#users.uq_users_email"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/users.post.responses.409"
+
+  - id: S4-api-014
+    artifact: "asyncapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/asyncapi.yaml"
+    line: null
+    severity: major
+    viewpoint: 2
+    claim: "メッセージ payload の共通エンベロープが揃っていない。`HoldNoticeRequestedPayload` は `message_id` を持たず `notification_id` を required にする一方、`RemindNotificationRequestedPayload` / `DunNotificationRequestedPayload` は `message_id` を required にし `notification_id` を optional にしている。通知状態は publish 前に「送信待ち」で作成される設計なので、後者で `notification_id` が任意だと Worker が通知レコードを特定できない。"
+    fix: "3 payload とも `message_id`（メッセージ一意 ID）と `notification_id`（通知レコード ID）の両方を持たせ、いずれも required に統一する。`HoldNoticeRequestedPayload` に `message_id: {type: string, format: uuid}` を追加し、Remind / Dun の required に `notification_id` を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/asyncapi.yaml#components.schemas.HoldNoticeRequestedPayload"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/asyncapi.yaml#components.schemas.RemindNotificationRequestedPayload"
+      - "docs/rdra/latest/状態.tsv#通知状態"
+
+  - id: S4-api-015
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml"
+    line: null
+    severity: minor
+    viewpoint: 1
+    claim: "`ResendNotificationRequest` は唯一のプロパティ `notification_id` がパスパラメータ `{notification_id}` と重複し、required も無いため空オブジェクトが正となる。パスとボディで異なる値を送れてしまい契約が曖昧になる。"
+    fix: "`ResendNotificationRequest` から `notification_id` を削除し、再送理由など将来の任意項目のみを持つ空スキーマにするか、`POST /api/v1/staff/notifications/{notification_id}/resend` の requestBody 自体を削除して冪等キーヘッダのみで受け付ける契約にする。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.schemas.ResendNotificationRequest"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.parameters.NotificationIdPath"
+
+resolved:
+  - {id: S4-api-001, resolution: fixed}
+  - {id: S4-api-002, resolution: fixed}
+  - {id: S4-api-003, resolution: fixed}
+  - {id: S4-api-004, resolution: fixed}
+  - {id: S4-api-005, resolution: fixed}
+  - {id: S4-api-006, resolution: fixed}
+  - {id: S4-api-007, resolution: fixed}
+  - {id: S4-api-008, resolution: fixed}
+  - {id: S4-api-009, resolution: fixed}
+  - {id: S4-api-010, resolution: fixed}
+  - {id: S4-api-011, resolution: fixed}
+  - {id: S4-api-012, resolution: fixed}
+  - {id: S4-api-013, resolution: fixed}
+  - {id: S4-api-014, resolution: fixed}
+  - {id: S4-api-015, resolution: fixed}

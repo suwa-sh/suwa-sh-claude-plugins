@@ -1,0 +1,23 @@
+# _api-summary.yaml
+uc: "自分の貸出履歴を照会する"
+business: "利用照会業務"
+buc: "貸出履歴を確認するフロー"
+# 本 UC が所有する operation は無い。GET /api/v1/me/loans は
+# 「自分の現在の貸出を照会する」が所有し、本 UC は status=history のクエリ条件違いで利用する
+# （uc-api-dependencies.md「複数 UC が同じ operation を使う場合の所有 UC 決定」）。
+endpoints: []
+async_events: []
+# cross-UC API 依存（他 UC 所有 operation の利用）。形式は
+# _cross-cutting/api/uc-api-dependencies.md「記録場所と形式」を正本とする。
+consumes:
+  - operation_id: "listMyLoans"
+    method: "GET"
+    path: "/api/v1/me/loans"
+    owner_uc: "自分の現在の貸出を照会する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-patron"
+    purpose: "貸出履歴画面で本人の返却済みの貸出を貸出日・返却日とともに取得する（status=history）"
+    required: true
+# 本 UC は operation を所有しないため、リクエスト・レスポンススキーマも定義しない。
+# 型の正本は consumes[].contract の operation_id を引くこと（所有 UC 側で定義済み）。
+schemas: []

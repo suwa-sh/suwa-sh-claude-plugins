@@ -1,0 +1,214 @@
+schema_version: "1.0"
+artifact_type: "vendor_mapping"
+skill_type: "product"
+artifact_id: "product-mapping-aws"
+title: "図書館蔵書管理システム AWS サービスマッピング"
+status: "draft"
+generated_at: "2026-09-02T14:26:00"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+  - "docs/cloud-context/sources/aws/aws-rds-postgresql.md"
+  - "docs/cloud-context/sources/aws/aws-elasticache-redis.md"
+decision_refs:
+  - "product-decision-001"
+  - "product-decision-002"
+  - "product-decision-003"
+  - "product-decision-004"
+  - "product-decision-005"
+inputs_ref:
+  - "product-library-management-canonical"
+  - "foundation-context"
+  - "shared-platform-context"
+
+vendor: "aws"
+canonical_ref: "product-library-management-canonical"
+
+region_strategy:
+  primary_region: "ap-northeast-1"
+  multi_az: true
+  availability_zones: 2
+  dr_region: null
+  rationale: "foundation-context の allowed_regions.aws = [ap-northeast-1] とデータ所在地 japan に従う。災害対策の範囲が最小水準のため DR リージョンは設けず、単一リージョン内の複数 AZ で冗長化する"
+
+mappings:
+  - canonical_element_id: "public_web_delivery"
+    vendor_service: "Amazon CloudFront"
+    vendor_feature: "OAC 経由の S3 オリジン + TLS 終端 + マネージドキャッシュポリシー"
+    fidelity: "exact"
+    configuration_notes: "viewer_protocol_policy=redirect-to-https、最小 TLS 1.2、Origin Access Control で S3 への直接アクセスを遮断。SPA のため 403/404 を index.html へ 200 で書き換える。標準ログを S3 へ出力する"
+    gap_description: ""
+    alternatives:
+      - "Application Load Balancer + EC2 での自前配信（エッジキャッシュ効果が得られずコスト効率が劣る）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "internal_web_delivery"
+    vendor_service: "Application Load Balancer (internal) + Amazon S3"
+    vendor_feature: "内部 ALB + セキュリティグループ/WAF IP セットによる接続元制限"
+    fidelity: "partial"
+    configuration_notes: "職員ポータルは館内ネットワークの固定グローバル IP からのみ許可する。VPN/Direct Connect が未整備の段階では、公開 ALB + AWS WAF の IP セット許可リストで代替する"
+    gap_description: "館内ネットワークからの閉域接続（VPN/Direct Connect）が未整備の場合、接続元 IP 制限による論理的な制限にとどまり、ネットワーク層での完全な閉域化は達成できない"
+    alternatives:
+      - "Client VPN + 内部 ALB（閉域化は達成できるが職員端末への VPN クライアント配布運用が必要）"
+      - "AWS Verified Access（デバイス信頼性まで評価できるが小規模構成には過剰）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "api_edge"
+    vendor_service: "Application Load Balancer + AWS WAF"
+    vendor_feature: "ALB の OIDC/JWT 前段認証は使わず、WAF のレート制限ルールとマネージドルールグループを適用"
+    fidelity: "partial"
+    configuration_notes: "WAF に AWSManagedRulesCommonRuleSet と Rate-based rule（5 分あたり 3,000 リクエスト = ベースライン 10rps × スパイク 3 倍に対する保護余裕）を適用する。トークン検証はバックエンドのミドルウェアで実施し、ALB はアクセスログを S3 へ全件出力する。X-Amzn-Trace-Id をアプリの trace_id と関連付ける"
+    gap_description: "エッジでの JWT 検証を ALB 単体では行えない。Amazon API Gateway の Lambda オーソライザーであればエッジ検証が可能だが、常時稼働の SPA バックエンドでは ALB のほうがコスト効率が高いため、トークン検証をアプリケーション層に配置した（product-decision-002）"
+    alternatives:
+      - "Amazon API Gateway (HTTP API) + JWT オーソライザー（エッジ検証が可能だがリクエスト課金でベースライン負荷では割高、かつ WebSocket 以外の常時接続に制約）"
+      - "CloudFront Functions での事前検証（署名検証に必要な鍵取得ができず不採用）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "identity_federation"
+    vendor_service: "Amazon Cognito user pools"
+    vendor_feature: "OIDC/OAuth2 トークン発行、パスワードポリシー、アカウントロック（高度なセキュリティ機能）、グループ、ユーザープールドメイン"
+    fidelity: "exact"
+    configuration_notes: "利用者と職員を単一ユーザープールの別グループとして管理する。パスワードポリシーは長さ 12 以上・記号必須、AdvancedSecurityMode=ENFORCED で総当たり検知とアカウントロックを有効化する。アクセストークン有効期限 60 分、リフレッシュトークン 30 日。認証イベントは CloudTrail と Cognito ログを CloudWatch Logs へ出力する"
+    gap_description: ""
+    alternatives:
+      - "セルフホスト IdP を EC2/ECS で運用（館内ディレクトリ連携が必要になった場合の選択肢だが運用要員が小規模なため不採用）"
+      - "IAM Identity Center（従業員向けであり一般利用者 1,000 人の認証には適さない）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "application_runtime"
+    vendor_service: "Amazon ECS on AWS Fargate"
+    vendor_feature: "サービスオートスケーリング（ターゲット追跡）、複数 AZ 配置、ALB ターゲットグループのヘルスチェック"
+    fidelity: "exact"
+    configuration_notes: "desired_count=2（AZ ごとに 1）を最小とし、ALBRequestCountPerTarget と CPU 使用率 60% のターゲット追跡でスパイク 3 倍まで追随する。タスク定義は 0.5 vCPU / 1GB を起点にライトサイジングする。ヘルスチェックは /healthz（shallow）を ALB、/healthz/deep（deep）を運用監視に割り当てる。タスクロールで Secrets Manager / SQS / S3 への最小権限を付与する"
+    gap_description: ""
+    alternatives:
+      - "AWS Lambda（ベースライン 10rps では割安だが、モジュラモノリスのパッケージサイズとコールドスタートが p99 500ms 目標に不利）"
+      - "Amazon EKS（Kubernetes の運用要員が小規模体制では確保できない）"
+      - "AWS App Runner（構成は最も単純だが VPC 内リソースへの接続とスケーリング制御の自由度が低い）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "async_worker_runtime"
+    vendor_service: "Amazon ECS on AWS Fargate (scheduled task + queue consumer service)"
+    vendor_feature: "EventBridge Scheduler による日次起動、SQS キュー深度に基づくターゲット追跡オートスケーリング、Fargate Spot"
+    fidelity: "exact"
+    configuration_notes: "日次バッチは EventBridge Scheduler で 02:00 JST に単発タスクを起動し、ジョブ実行 ID を DynamoDB ではなく RDS のジョブ実行テーブルで重複検知する。キュー消費サービスは ApproximateNumberOfMessagesVisible / タスク数 のターゲット追跡でスケールし、最小 0・最大 10 タスク。中断許容のため capacity_provider は FARGATE_SPOT を weight 3 / FARGATE を weight 1 で混在させる。バッチ実行枠は計画停止枠 01:00-04:00 およびバックアップ枠と重ならないよう 02:00 起動・8 時間以内完了とする"
+    gap_description: ""
+    alternatives:
+      - "AWS Batch（大規模計算向けで日次数分のジョブには過剰）"
+      - "AWS Lambda + SQS イベントソースマッピング（15 分の実行時間上限が日次バッチに不利）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "message_queue"
+    vendor_service: "Amazon SQS (standard queue + dead-letter queue)"
+    vendor_feature: "at-least-once 配信、可視性タイムアウト、maxReceiveCount による DLQ 退避、SSE-KMS"
+    fidelity: "exact"
+    configuration_notes: "標準キューを採用（厳密な順序保証は不要）。visibility_timeout=300 秒、message_retention=4 日、maxReceiveCount=5 で DLQ へ退避する。SSE を KMS カスタマーマネージドキーで有効化する。メッセージ本文には通知 ID・利用者番号・対象 ID のみを載せ、氏名・メールアドレスは格納しない"
+    gap_description: ""
+    alternatives:
+      - "Amazon SQS FIFO（順序保証は不要でスループット上限とコストが不利）"
+      - "Amazon MSK / Amazon MQ（運用負荷とコストが小規模構成に見合わない）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "relational_datastore"
+    vendor_service: "Amazon RDS for PostgreSQL (Multi-AZ instance deployment)"
+    vendor_feature: "Multi-AZ 自動フェイルオーバー、ポイントインタイムリカバリ、保管時暗号化（KMS）、pg_trgm / 全文検索、マテリアライズドビュー"
+    fidelity: "exact"
+    configuration_notes: "エンジンバージョンは PostgreSQL 16。db.t4g.medium を起点にライトサイジングし、gp3 ストレージ 100GB・ストレージ自動拡張を有効化。Multi-AZ インスタンス配置で AZ 障害時に 1〜2 分で自動フェイルオーバーし、切替時間 60 分未満を満たす。backup_retention_period=14 日、preferred_backup_window=04:30-05:30 JST（計画停止枠およびバッチ枠と非競合）で PITR を有効化し RPO 4 時間を満たす。deletion_protection と performance_insights を有効化。プライベートサブネットに配置し、セキュリティグループでアプリ層からのみ 5432 を許可する。書籍検索は pg_trgm GIN インデックスと tsvector で実装し、統計レポートはマテリアライズドビューで保持する"
+    gap_description: ""
+    alternatives:
+      - "Amazon Aurora PostgreSQL（可用性と読み取りスケールで優位だが、SLA 99%・データ量 100GB 未満の要件には過剰でコストが約 2 倍）"
+      - "Amazon RDS Multi-AZ DB cluster（読み取り 2 台の追加コストに対し読み取り負荷はキャッシュで吸収できる）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-rds-postgresql.md"
+
+  - canonical_element_id: "key_value_cache"
+    vendor_service: "Amazon ElastiCache for Valkey"
+    vendor_feature: "Multi-AZ 自動フェイルオーバー、TTL、保管時暗号化、転送時暗号化 + AUTH"
+    fidelity: "exact"
+    configuration_notes: "cache.t4g.micro × 2 ノード（プライマリ + 別 AZ レプリカ）で automatic_failover を有効化する。transit_encryption_enabled / at_rest_encryption_enabled を有効化し、AUTH トークンを Secrets Manager で管理する。用途別に論理キー空間を分ける: 書籍キャッシュ（TTL 300 秒 + 状態遷移イベントで明示無効化）、セッション（TTL 60 分）、通知送信冪等キー（TTL 24 時間）。maxmemory-policy は volatile-lru とし、正本データを置かない"
+    gap_description: ""
+    alternatives:
+      - "Amazon ElastiCache for Redis OSS（機能は同等だが Valkey のほうが同一スペックで割安）"
+      - "Amazon MemoryDB（永続性が高いが正本を置かない用途には過剰）"
+      - "Amazon DynamoDB + TTL（セッションと冪等キーには適合するが書籍の先読みキャッシュには遅延面で劣る）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-elasticache-redis.md"
+
+  - canonical_element_id: "object_storage"
+    vendor_service: "Amazon S3"
+    vendor_feature: "Block Public Access、SSE-KMS、バージョニング、ライフサイクルルール、Object Lock"
+    fidelity: "exact"
+    configuration_notes: "バケットを 3 つに分割する: (1) 静的成果物（CloudFront OAC からのみ参照）、(2) ログ集約（ALB/CloudFront アクセスログ、180 日で Glacier Instant Retrieval へ移行、365 日で削除）、(3) バックアップ退避（Object Lock ガバナンスモード 30 日）。全バケットで Block Public Access を有効化し、SSE-KMS と bucket_key を設定する"
+    gap_description: ""
+    alternatives:
+      - "Amazon EFS（オブジェクト用途に対して単価が高い）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "outbound_integration_gateway"
+    vendor_service: "Amazon SES"
+    vendor_feature: "SMTP/API 送信、設定セットによるイベント発行、送信レピュテーション監視、バウンス/苦情通知"
+    fidelity: "partial"
+    configuration_notes: "アプリケーション側の ACL アダプタから SES v2 API で送信する。設定セットのイベント宛先を EventBridge 経由で SQS に流し、bounce / complaint / delivery を通知エンティティの送信結果へ反映する。送信ドメインは DKIM / SPF / DMARC を設定する。SES の資格情報は IAM ロールで付与し、静的キーを持たない"
+    gap_description: "外部メール配信事業者が SES 以外に指定された場合はアダプタの実装が変わる。RDRA では外部システム名が「メール配信サービス」であり具体的事業者が未確定のため、ACL アダプタのインターフェースを事業者非依存に保つ必要がある。また SES はサンドボックス解除の申請が必要で、初期構築時のリードタイムを見込む"
+    alternatives:
+      - "外部 SaaS のメール配信 API（事業者指定がある場合。VPC エンドポイントが使えず NAT 経由の外向き通信が必要）"
+      - "自前 SMTP サーバ（レピュテーション管理の運用負荷が小規模体制に見合わない）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "network_segmentation"
+    vendor_service: "Amazon VPC"
+    vendor_feature: "パブリック/プライベートサブネット、セキュリティグループ、NAT Gateway、VPC エンドポイント"
+    fidelity: "exact"
+    configuration_notes: "CIDR 10.20.0.0/16、2 AZ × 3 層（public / app-private / data-private）の 6 サブネット。ALB は public、ECS タスクは app-private、RDS と ElastiCache は data-private に配置する。S3 と DynamoDB はゲートウェイエンドポイント、Secrets Manager / ECR / CloudWatch Logs / SQS はインターフェースエンドポイントで NAT を経由させない。NAT Gateway は SES 等の外向き通信のためコスト最適化として 1 AZ に集約する（AZ 障害時は該当 AZ の外向き通信が停止するが、SLA 99% では許容）。本番と非本番は別 VPC・別アカウントで分離する"
+    gap_description: ""
+    alternatives:
+      - "NAT Gateway を AZ ごとに冗長化（可用性は上がるが月額が約 2 倍）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "secret_management"
+    vendor_service: "AWS Secrets Manager + AWS KMS"
+    vendor_feature: "自動ローテーション、ECS タスク定義の secrets 参照、カスタマーマネージドキー"
+    fidelity: "exact"
+    configuration_notes: "RDS 資格情報はマネージドローテーション（30 日）を有効化する。ElastiCache AUTH トークンと外部連携の設定値も Secrets Manager で保持し、ECS タスク定義の secrets で環境変数として注入する。KMS はカスタマーマネージドキーを用途別（データストア用・ログ用）に 2 本作成し、自動ローテーションを有効化する"
+    gap_description: ""
+    alternatives:
+      - "AWS Systems Manager Parameter Store SecureString（安価だが自動ローテーション機構がない）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "observability_platform"
+    vendor_service: "Amazon CloudWatch + AWS X-Ray + Amazon SNS"
+    vendor_feature: "CloudWatch Logs（構造化 JSON）、メトリクスフィルタ、Container Insights、Synthetics Canary、X-Ray トレース、SNS 通知"
+    fidelity: "exact"
+    configuration_notes: "ロググループの保持期間を 180 日に設定し、期限後は S3 のログ集約バケットへエクスポートする。Container Insights でコンピュート層、RDS/ElastiCache の拡張モニタリングでデータ層、ALB/CloudFront メトリクスでネットワーク層を収集する。Synthetics Canary で利用者ポータルの外形監視を 5 分間隔で実行する。X-Ray に trace_id を伝播し、ALB → ECS → RDS/SQS の依存関係を可視化する。個人情報は CloudWatch Logs のデータ保護ポリシーで伏字化する。アラートは SNS トピック 2 本（critical / warning）に分け、critical はメール + 保守ベンダへのエスカレーションとする"
+    gap_description: ""
+    alternatives:
+      - "Amazon Managed Grafana + Prometheus（可視化の自由度は高いが小規模構成では運用コスト過多）"
+      - "サードパーティ SaaS（データ所在地 japan の確認が別途必要）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - canonical_element_id: "backup_and_recovery"
+    vendor_service: "AWS Backup + Amazon RDS 自動バックアップ"
+    vendor_feature: "バックアッププラン、バックアップボールト、ボールトロック、復旧ポイントの世代管理"
+    fidelity: "exact"
+    configuration_notes: "RDS の自動バックアップ（保持 14 日・PITR）を一次手段とし、AWS Backup で日次 04:30 JST のスナップショットを取得して 35 日保持する。バックアップボールトは KMS カスタマーマネージドキーで暗号化し、ボールトロックをガバナンスモードで設定する。復旧手順書を整備し、四半期ごとに復旧演習を行って RTO 2 時間を検証する。遠隔リージョンへのコピーは行わない"
+    gap_description: ""
+    alternatives:
+      - "クロスリージョンバックアップコピー（災害対策の範囲が拡大した場合の将来オプション）"
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-rds-postgresql.md"
+
+shared_platform_usage:
+  mandatory_services_used: []
+  optional_services_used: []
+  notes: "shared-platform-context は最小構成（available_shared_services が空）のため、全 capability をベンダー直接サービスで構成した。共有プラットフォームが整備された段階でログ集約・監視・IdP の再評価が必要"

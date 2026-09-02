@@ -1,73 +1,62 @@
-@import "tailwindcss";
-@import "../styles/design-tokens.css";
+@import 'tailwindcss';
+@import '../styles/design-tokens.css';
+@import '../styles/components.css';
 
 @theme inline {
+  /* Tailwind ネイティブクラス (text-*, bg-*, border-*) から使えるよう公開する。
+     Tailwind v4 では text-[var(--x)] が font-size と解釈されるため、
+     色は必ずこの @theme 経由か style prop で指定する。 */
   --color-background: var(--background);
+  --color-background-subtle: var(--background-subtle);
+  --color-background-muted: var(--background-muted);
   --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-foreground-inverse: var(--foreground-inverse);
+  --color-border-default: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
+  --color-primary-light: var(--primary-light);
+  --color-accent: var(--accent);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-destructive: var(--destructive);
   --color-info: var(--info);
-  --font-sans: "Noto Sans JP", Inter, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --color-neutral: var(--neutral);
+  --color-pending: var(--pending);
+  --color-analysis: var(--analysis);
+
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-family-sans);
+  line-height: var(--line-height-normal);
 }
 
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
-}
-
-html {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-}
-
-body {
-  min-height: 100vh;
-  margin: 0;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  line-height: 1.5;
-  transition: background-color var(--duration-normal), color var(--duration-normal);
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-button,
-a,
-[role="button"] {
-  -webkit-tap-highlight-color: transparent;
-}
-
-button:not(:disabled),
-a[href],
-[role="button"]:not([aria-disabled="true"]) {
-  cursor: pointer;
+  border-color: var(--border);
 }
 
 :focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--focus-ring) 55%, transparent);
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
-::selection {
-  background: color-mix(in srgb, var(--primary) 25%, transparent);
+/* JIS X 8341-3 AA 目標: 動きを減らす設定を尊重する */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

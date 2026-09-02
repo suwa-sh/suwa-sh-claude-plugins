@@ -1,0 +1,72 @@
+event_id: "20260902_185951_design_system"
+trigger_event:
+  rdra: "20260902_130741_initial_build"
+  arch: "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+created_at: "2026-09-02T19:00:00"
+source: "dist-design-system feedback 差分実行 (feedback_packet=docs/pipeline/feedback-runs/20260902_184257_impl_feedback_d0f57ea2/stage-packets/design_system.md)。loading 表現（Spinner / LoadingState）とアプリシェル・ルーティング所有権（AppShell / routes.ts / useAppNavigation）をデザイン資産へ追加"
+feedback_request:
+  feedback_request_id: "20260902_184257_impl_feedback_d0f57ea2"
+  input_sha256: "7afd483f6a221ae5f469cbcbc5c7c3bce46be4f4924e7aec3f1e9b2b682c9133"
+  request_ids: ["CR-d0f57ea2-006","CR-d0f57ea2-010"]
+  work_unit_ids: ["CR-d0f57ea2-006#1","CR-d0f57ea2-010#1"]
+
+tokens:
+  component:
+    spinner:
+      track: "var(--color-gray-200)"
+      indicator: "var(--primary)"
+      thickness: "2px"
+      thickness_lg: "3px"
+      size_sm: "1rem"
+      size_md: "1.5rem"
+      size_lg: "2.5rem"
+      duration: "900ms"
+    overlay:
+      backdrop: "rgba(255, 255, 255, 0.72)"
+      blur: "2px"
+  dark_overrides:
+    component:
+      spinner_track: "var(--color-gray-700)"
+      overlay_backdrop: "rgba(2, 6, 23, 0.72)"
+
+components:
+  ui:
+    - name: "Skeleton"
+      variants:
+        - "line"
+        - "table"
+        - "card"
+        - "detail"
+    - name: "Spinner"
+      variants:
+        - "inline"
+        - "button"
+        - "overlay"
+      sizes:
+        - "sm"
+        - "md"
+        - "lg"
+  common:
+    - name: "LoadingState"
+      description: "loading 表現の唯一の入口。kind で Skeleton / Spinner を出し分ける（list=SkeletonTable / card=SkeletonCard / detail=SkeletonDetail / line=Skeleton / action=Spinner(inline) / page=Spinner(overlay)）。同一領域で Skeleton と Spinner を併用せず、常に aria-busy と読み上げラベルを伴う。ちらつきが問題になる領域だけ delayMs（推奨 300ms）で遅延表示する。画面側で独自 loading UI を作ってはならない"
+      path: "src/components/common/LoadingState.tsx"
+    - name: "AppShell"
+      description: "アプリのエントリポイント兼シェル（AppShell / AppShellByPath）。ルート id または URL からポータル・画面名・アクティブナビを解決し、404 とポータル外アクセスを判定する。デザインシステムが所有し、実装リポは onNavigate に router.push を注入して children にページ本体を渡すだけにする"
+      path: "src/components/common/AppShell.tsx"
+    - name: "appRoutes"
+      description: "URL の正本となるルート表（41 件）。screens[].route と 1:1 で route id / path / portal / 画面 / UC / 業務 / nav / params を定義する。getRoute・buildPath・matchPath・routesOf を提供し、画面側の URL 文字列直書きを禁止する。RDRA の BUC / 画面に無いルートを追加してはならない"
+      path: "src/components/common/routes.ts"
+    - name: "useAppNavigation"
+      description: "画面遷移の唯一の API。ルート id 指定で navigate / href を行い、AppShell の外で使うと例外にしてシェル未装着を早期検出する"
+      path: "src/components/common/hooks/useAppNavigation.ts"
+
+nfr_decisions:
+  - nfr: "B.2.1.1 レスポンスタイム 5 秒以内 / F.3.1.2 アクセシビリティ Lv2"
+    decision: "loading 表現を LoadingState 1 か所に集約し、形が決まっている領域は Skeleton（list/card/detail/line）、レイアウトが変わらない待ちは Spinner（inline/overlay）に固定する。画面側に独自 loading UI を作らせず、常に aria-busy と読み上げラベルを伴わせる"
+  - nfr: "E.5.3.1 司書向け機能は館内ネットワーク限定 / arch SP-004 本人限定参照の UI 制約"
+    decision: "URL の正本を routes.ts に一元化し、AppShell がポータル外・未登録ルートを描画しない。実装リポは router アダプタ（onNavigate）とページ本体だけを所有する"
+
+storybook:
+  categories:
+    Common: "画面横断の共通コンポーネント 11 種 + フック 3 種（既存 UI/Domain の合成。新規視覚表現は LoadingState のみ）"
+    Shell: "アプリシェルとルーティング所有権（AppShell / ルート表 41 件 / 遷移 API）"

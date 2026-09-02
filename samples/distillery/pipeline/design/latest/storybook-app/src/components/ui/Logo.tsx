@@ -1,33 +1,36 @@
-import * as React from "react";
-import "./ui.css";
+import React from 'react'
 
-export type LogoVariant = "full" | "icon" | "stacked";
+export type LogoVariant = 'full' | 'icon' | 'stacked'
 
-export interface LogoProps
-  extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src"> {
-  variant?: LogoVariant;
-  width?: number;
+export interface LogoProps {
+  variant?: LogoVariant
+  /** px。既定は variant ごとの推奨サイズ */
+  height?: number
+  className?: string
 }
 
-const defaultWidths: Record<LogoVariant, number> = {
-  full: 184,
-  icon: 48,
-  stacked: 112,
-};
+const src: Record<LogoVariant, string> = {
+  full: '/assets/logo-full.svg',
+  icon: '/assets/logo-icon.svg',
+  stacked: '/assets/logo-stacked.svg',
+}
 
-/** LibraShelf ブランドロゴ。用途に応じて3つの公式バリアントを選択する。 */
-export const Logo = ({
-  variant = "full",
-  width,
-  alt = "LibraShelf",
-  className = "",
-  ...props
-}: LogoProps) => (
+const defaultHeight: Record<LogoVariant, number> = {
+  full: 32,
+  icon: 24,
+  stacked: 96,
+}
+
+/**
+ * ブランドロゴ。ヘッダー・サイドバー・ログイン画面等で使う唯一の入口。
+ * `<img src="/assets/logo-*.svg">` を画面側に直書きしない。
+ */
+export const Logo: React.FC<LogoProps> = ({ variant = 'full', height, className = '' }) => (
   <img
-    src={`/assets/logo-${variant}.svg`}
-    alt={variant === "icon" && alt === "LibraShelf" ? "LibraShelf" : alt}
-    width={width ?? defaultWidths[variant]}
-    className={`ls-logo ${className}`.trim()}
-    {...props}
+    src={src[variant]}
+    alt="Libra 図書館蔵書管理システム"
+    height={height ?? defaultHeight[variant]}
+    className={className}
+    style={{ display: 'inline-block', height: height ?? defaultHeight[variant], width: 'auto' }}
   />
-);
+)

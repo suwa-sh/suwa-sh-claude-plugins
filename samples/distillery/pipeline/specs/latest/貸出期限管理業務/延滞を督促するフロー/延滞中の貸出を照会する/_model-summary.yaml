@@ -1,0 +1,103 @@
+# _model-summary.yaml
+uc: "延滞中の貸出を照会する"
+business: "貸出期限管理業務"
+buc: "延滞を督促するフロー"
+
+bounded_context_id: "BC-003"
+
+models:
+  - name: "延滞状況一覧画面"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "OverdueListState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "貸出"
+  - name: "OverdueLoanListResponse"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "OverdueListRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "貸出"
+  - name: "ListOverdueLoansQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出"
+  - name: "LoanFinder"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "NotificationFinder"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "record"
+    rdra_info: "通知"
+  - name: "LoanRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+  - name: "UserRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+  - name: "NotificationRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "通知"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "loan_status = '延滞' AND (:base_date - due_date) >= :min_days_overdue ORDER BY due_date ASC（超過日数の降順）"
+    indexes_needed:
+      - columns: ["loan_status", "due_date"]
+        reason: "延滞の絞り込みと超過日数降順（返却期限昇順）のソートを索引で解決するため"
+        access_pattern: "貸出状態の完全一致 + 返却期限のソート・範囲絞り込み"
+  - name: "notifications"
+    rdra_info: "通知"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "notification_type = '延滞督促' AND target_loan_id IN (:loan_ids) の中で requested_at が最新の 1 件"
+    indexes_needed:
+      - columns: ["target_loan_id", "notification_type", "requested_at"]
+        reason: "対象貸出ごとの直近督促を 1 件だけ取得するため"
+        access_pattern: "対象貸出ID + 通知種別で絞り込み、送信要求日時の降順で先頭 1 件を取得"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = loans.book_id（未返却の書籍タイトル・著者）"
+    indexes_needed: []
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = loans.user_no（氏名・利用者区分）"
+    indexes_needed: []
+
+kvs: []
+
+object_storage: []

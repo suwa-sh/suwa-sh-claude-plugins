@@ -190,7 +190,9 @@ const L = (s = '') => lines.push(s);
 // Header
 L(`# ${overview ? overview.system_name : 'プロジェクト'}`);
 L();
-if (overview) { L(`> ${overview.description}`); L(); }
+// システム概要.json のキーは system_overview（dist-requirements phase5 の正本）。旧形式の description も許容する
+const overviewText = overview ? (overview.system_overview || overview.description) : null;
+if (overviewText) { L(`> ${overviewText}`); L(); }
 const actorNames = [...new Set(actors.map(a => a['アクター']).filter(Boolean))];
 const last = allEvents.length ? allEvents[allEvents.length - 1] : null;
 if (last) { L(`**最終更新**: ${formatEventId(last.eventId)} (${last.domain})`); L(); }
@@ -570,6 +572,39 @@ if (allDecisions.length) {
   for (let i = 0; i < allDecisions.length; i++) {
     const d = allDecisions[i];
     L(`| ${i + 1} | ${domainLabels[d.domain] || d.domain} | ${lnk(d.title, d.fullPath)} | ${d.status} |`);
+  }
+  L();
+}
+
+// == Pipeline feedback runs ================================================
+// docs/pipeline/feedback-runs/<feedback_id>/result.json（feedback request mode の最終結果）を要約する。
+// run が無ければ節ごと出さない。result.json が無い（実行中 / 中断）run は状態だけ載せる
+const feedbackRunsDir = path.join(docsRoot, 'pipeline/feedback-runs');
+const feedbackRuns = (() => {
+  try { return fs.readdirSync(feedbackRunsDir).filter(e => dirExists(path.join(feedbackRunsDir, e))).sort(); } catch { return []; }
+})();
+if (feedbackRuns.length) {
+  L('## Pipeline feedback runs');
+  L();
+  L('distillery-impl が公開した feedback-request Markdown を `dist-pipeline` が差分実行した記録。');
+  L('`input.md`（不変 snapshot）/ `routing.json`（所有 stage の判定）/ `plan.json`（work unit と実行順）/ `result.json`（要求ごとの最終判定）を含む。');
+  L();
+  L('| feedback_id | 状態 | 要求 | applied | merged | deferred | 実行 stage | run dir |');
+  L('|-------------|------|-----:|--------:|-------:|---------:|-----------|---------|');
+  for (const id of feedbackRuns) {
+    const runDir = path.join(feedbackRunsDir, id);
+    const result = readJson(path.join(runDir, 'result.json'));
+    const status = readJson(path.join(runDir, 'status.json'));
+    const state = result ? result.status : (status ? `${status.state}（result 未確定）` : 'unknown');
+    const counts = { applied: 0, merged: 0, deferred: 0 };
+    let requests = '-';
+    let stages = '-';
+    if (result) {
+      requests = String((result.requests || []).length);
+      for (const r of result.requests || []) if (r.disposition in counts) counts[r.disposition]++;
+      stages = (result.stages || []).map(s => s.stage_id).join(' → ') || '-';
+    }
+    L(`| ${id} | ${state} | ${requests} | ${counts.applied} | ${counts.merged} | ${counts.deferred} | ${stages} | ${lnk('feedback-runs/', runDir)} |`);
   }
   L();
 }

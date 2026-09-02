@@ -1,0 +1,133 @@
+round: 1
+group: datastore
+findings:
+  - id: S4-datastore-001
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 345
+    severity: blocker
+    viewpoint: 3
+    claim: "loans.book_id と reservations.book_id の FK が on_delete: RESTRICT だが、UC「書籍を削除する」は books を物理 DELETE し、その可否条件は book_status = '在庫あり' だけを見る。返却済み貸出・キャンセル済み予約が 1 件でも残っている書籍は DB レベルで削除に失敗し、UC が成立しない。さらに loans に book_title / book_author / book_isbn / book_genre を非正規化した理由は description で『書籍が削除・改題されても貸出履歴と統計の表示を貸出当時の値で再現するため』と明記されており、RESTRICT はこの設計意図とも矛盾する"
+    fix: "loans.book_id / reservations.book_id の on_delete を SET NULL（book_id を nullable 化。書誌はスナップショット列で再現）か、books を論理削除（is_deleted / deleted_at 列を追加し UC の DELETE を UPDATE に変更）へ改める。いずれの方針を採るかを _review_notes に記録し、非正規化列の存在理由と整合させる"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/_model-summary.yaml"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml L345-L356（loans.foreign_keys）, L462-L473（reservations.foreign_keys）"
+  - id: S4-datastore-002
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 350
+    severity: blocker
+    viewpoint: 3
+    claim: "loans.user_no と reservations.user_no の FK も on_delete: RESTRICT だが、UC「利用者を削除する」は users を物理 DELETE し、削除可否条件は『進行中の貸出（貸出中/延滞）と予約（予約中/取置き中）が 0 件』のみ。返却済み貸出やキャンセル済み予約が残る利用者は条件を満たすのに DB で削除できない。loans の description は『返却済みの貸出は貸出統計の集計対象として保持する』としており、履歴保持と物理削除が両立しない。同じテーブル群の中で user_accounts.user_no だけ on_delete: CASCADE になっており、削除方針が 1 つに定まっていない"
+    fix: "利用者の削除方針を確定して FK を揃える。履歴を残す方針なら users を論理削除（user_status に '退会済み' を追加、または deleted_at 列）にして UC の DELETE を UPDATE へ、匿名化方針なら loans/reservations.user_no を SET NULL + 氏名・連絡先の消去とする。user_accounts の CASCADE もその方針に合わせる"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_model-summary.yaml"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml L265-L271（user_accounts.foreign_keys）"
+  - id: S4-datastore-003
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 737
+    severity: blocker
+    viewpoint: 3
+    claim: "loan_events と reservation_events は INSERT する UC が 1 つも無い。全 41 UC の _model-summary.yaml を走査すると loan_events は「自分の貸出履歴を照会する」の SELECT のみ、reservation_events は「自分の取置き状況を照会する」「自分の取置き中の予約を照会する」の SELECT のみで、rdb-schema.yaml の used_by もその通り SELECT だけを列挙している（書き手のいる event ストリームは user_events だけ）。行が 1 件も生成されないため、返却日の射影（貸出履歴一覧）と取置き開始日時の射影（取置き状況照会）が常に空になる"
+    fix: "書き手を定義するか、テーブルを落とす。(a) 「貸出を登録する」「返却を登録する」「期限超過の貸出を延滞にする」に loan_events INSERT を、「予約を登録する」「取置き通知メールを送信する」「予約を取り消す」「貸出を登録する」に reservation_events INSERT を追加して used_by を更新する。(b) loans.returned_at が既に存在する（「返却を登録する」の UPDATE で設定済み）ので loan_events を廃し、reservations に hold_started_at 列を追加して reservation_events を廃す。いずれにせよ「自分の貸出履歴を照会する」の『loans は返却日の列を持たない』という前提は returned_at 追加により古くなっているので併せて解消する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の貸出履歴を照会する/_model-summary.yaml"
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/自分の取置き状況を照会する/_model-summary.yaml"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却を登録する/_model-summary.yaml"
+  - id: S4-datastore-004
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 357
+    severity: major
+    viewpoint: 3
+    claim: "uq_loans_book_id_active は columns に loan_status を含めた unique（book_id, loan_status）+ partial_condition loan_status IN ('貸出中','延滞') になっている。この定義では (b1,'貸出中') と (b1,'延滞') が別キーとして共存できるため、reason に書かれた『同一書籍に有効な貸出は同時に 1 件まで』という業務ルールを担保できない"
+    fix: "columns を [\"book_id\"] のみにして partial_condition を loan_status IN ('貸出中','延滞') のまま残す（部分ユニークインデックス）。インデックス名も uq_loans_book_id_active のままでよい"
+    source_refs:
+      - "docs/arch/latest/arch-design.yaml E-004 の関連説明（有効な貸出 1 件制約）"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml"
+  - id: S4-datastore-005
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 474
+    severity: major
+    viewpoint: 3
+    claim: "uq_reservations_book_id_user_no_active も columns に reservation_status を含む unique（book_id, user_no, reservation_status）+ partial_condition reservation_status IN ('予約中','取置き中') のため、同一利用者が同一書籍に (予約中) と (取置き中) の 2 行を同時に持てる。重複予約禁止ポリシーの最終防御として機能しない"
+    fix: "columns を [\"book_id\", \"user_no\"] にし、partial_condition で有効状態を絞る"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/_model-summary.yaml"
+  - id: S4-datastore-006
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 561
+    severity: major
+    viewpoint: 3
+    claim: "notifications.requested_at は nullable: false かつ default 未指定だが、notifications を INSERT する 3 UC（取置き通知メールを送信する / リマインドメールを送信する / 督促メールを送信する）のいずれも INSERT 列に requested_at を挙げていない（値を定義しているのは notification_idempotency_keys.requested_at だけ）。このままでは INSERT が NOT NULL 違反になる。一方で 3 UC が requested_at を検索条件・ソートキーとして使っており、書き込み経路だけが欠けている"
+    fix: "requested_at に default: \"CURRENT_TIMESTAMP\" を与えるか、3 UC の _model-summary.yaml の INSERT 列に requested_at（＝送信要求時刻）を追加する。どちらで担保したかを column description に明記する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/_model-summary.yaml"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/_model-summary.yaml"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/リマインドメールを送信する/_model-summary.yaml"
+  - id: S4-datastore-007
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 581
+    severity: major
+    viewpoint: 3
+    claim: "idx_notifications_target_loan_id_type_timing_type は columns が (target_loan_id, notification_type, timing_type) なのに、reason で『対象貸出ごとの直近督促 1 件の取得に使う』と主張している。「延滞中の貸出を照会する」の要求は『target_loan_id IN (...) AND notification_type = '延滞督促' の中で requested_at が最新の 1 件』で、indexes_needed も (target_loan_id, notification_type, requested_at) を挙げている。3 列目が timing_type では並べ替えを索引で解決できず、UC の indexes_needed が未充足のまま reason だけが充足を主張している"
+    fix: "columns を [\"target_loan_id\", \"notification_type\", \"requested_at\"] に変更する（重複送信抑止は timing_type を含む idem キー / notification_idempotency_keys 側で担保済み）。timing_type での絞り込みも索引で必要なら 4 列目に置くか別インデックスに分離し、reason を実際に解決できるアクセスパターンだけに合わせる"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/延滞中の貸出を照会する/_model-summary.yaml L81-L85"
+  - id: S4-datastore-008
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 186
+    severity: minor
+    viewpoint: 3
+    claim: "users.email は『保管時暗号化の対象（NFR E.6.1.1）』と description に書かれている一方で、uq_users_email によるユニーク制約が張られている。暗号化方式が非決定的（ランダム IV）だと同一アドレスでも暗号文が一致せず一意制約が機能しない。前提となる暗号化方式が schema に書かれていない"
+    fix: "決定的暗号化を前提とする旨を uq_users_email の reason または email の description に明記するか、email_hash（正規化後のハッシュ）列を追加してそちらにユニーク制約を張る。notifications.recipient_email も同じ暗号化方針に揃える"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_model-summary.yaml"
+  - id: S4-datastore-009
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 573
+    severity: minor
+    viewpoint: 3
+    claim: "notifications.target_loan_id / target_reservation_id はともに nullable で、『取置き案内なら予約ID、リマインド・督促なら貸出ID』という排他関係が description の文章にしかない。どちらも NULL の行、どちらも埋まった行を DB が受け入れる"
+    fix: "notification_type と 2 つの対象 ID の排他関係を CHECK 制約として定義する（例: notification_type = '取置き案内' のとき target_reservation_id IS NOT NULL AND target_loan_id IS NULL、それ以外は逆）。テーブル定義に constraints 項目が無ければ _review_notes に制約方針として記録する"
+    source_refs:
+      - "docs/rdra/latest/情報.tsv（通知の属性: 対象貸出ID・対象予約ID）"
+  - id: S4-datastore-010
+    artifact: "kvs-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/kvs-schema.yaml"
+    line: 21
+    severity: minor
+    viewpoint: 4
+    claim: "ファイル冒頭のキー命名規則は『目的: session / idem / lock / cache』を第 1 階層に置くと宣言しているのに、idem: 接頭辞の 4 パターン（idem:api / idem:notification:loan / idem:notification:reservation / idem:mq:consumed）は purpose が \"lock（...）\" になっている。宣言した語彙と purpose の値が対応せず、purpose での分類（{目的}:* スキャン）が成り立たない"
+    fix: "purpose の値を接頭辞と同じ語彙（session / idem / lock / cache）に統一し、補足説明は括弧書きではなく description 側に寄せる。lock を名乗るのは lock:job:* だけにする"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/kvs-schema.yaml L5-L7（キー命名規則コメント）"
+  - id: S4-datastore-011
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 722
+    severity: minor
+    viewpoint: 3
+    claim: "user_events / loan_events / reservation_events の description は、いずれも『arch が RDRA 情報◯◯を model_type: event_snapshot と定義したことに由来し』を event ストリーム設置の根拠としている。しかし arch で event_snapshot なのは E-001 書籍・E-006 通知・E-007 統計レポートも同じで、これらには event テーブルが無い。実際の設置基準は『UC がイベントからの射影を必要とするか』であり、記載された根拠と一致しない"
+    fix: "3 テーブルの description の根拠を実際の基準（当該 UC がスナップショットに無い事実を射影するために必要）に書き換え、books / notifications / statistical_reports に event ストリームを置かない理由を _review_notes に 1 項目として残す"
+    source_refs:
+      - "docs/arch/latest/arch-design.yaml L1858-L2146（E-001〜E-007 の model_type）"
+
+resolved:
+  - {id: S4-datastore-001, resolution: fixed}
+  - {id: S4-datastore-002, resolution: fixed}
+  - {id: S4-datastore-003, resolution: fixed}
+  - {id: S4-datastore-004, resolution: fixed}
+  - {id: S4-datastore-005, resolution: fixed}
+  - {id: S4-datastore-006, resolution: fixed}
+  - {id: S4-datastore-007, resolution: fixed}
+  - {id: S4-datastore-008, resolution: fixed}
+  - {id: S4-datastore-009, resolution: fixed}
+  - {id: S4-datastore-010, resolution: fixed}
+  - {id: S4-datastore-011, resolution: fixed}

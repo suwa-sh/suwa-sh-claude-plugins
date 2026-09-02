@@ -1,0 +1,78 @@
+# _model-summary.yaml
+uc: "返却対象の貸出を照会する"
+business: "蔵書利用業務"
+buc: "書籍を返却するフロー"
+
+bounded_context_id: "BC-003"
+
+models:
+  - name: "返却対象貸出確認画面（LoanTable / DueDateIndicator / Button）"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "LoanListResponse"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "response"
+    rdra_info: "貸出"
+  - name: "LoanListResponse"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "response-dto"
+    rdra_info: "貸出"
+  - name: "ListMyReturnableLoansQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出"
+  - name: "Loan"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "貸出"
+  - name: "DueDate"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "貸出"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "LoanRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :authenticated_user_no AND loan_status IN ('貸出中','延滞') ORDER BY due_date ASC LIMIT :per_page OFFSET :offset"
+    indexes_needed:
+      - columns: ["user_no", "loan_status", "due_date"]
+        reason: "本人限定参照の絞り込み（user_no）+ 返却対象の状態フィルタ（loan_status）+ 返却期限昇順ソート（due_date）を 1 インデックスで賄う"
+        access_pattern: "利用者番号で絞り込み、貸出状態が貸出中・延滞の貸出を返却期限の昇順で 20 件ずつ取得"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id IN (:book_ids)"
+    indexes_needed:
+      - columns: ["book_id"]
+        reason: "一覧の書籍情報を一括取得し N+1 クエリを避ける。主キーで充足する"
+        access_pattern: "貸出一覧の book_id 群による IN 検索（最大 20 件）"
+
+kvs: []
+object_storage: []

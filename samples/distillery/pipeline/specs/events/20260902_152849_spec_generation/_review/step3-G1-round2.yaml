@@ -1,0 +1,104 @@
+round: 2
+group: G1
+findings:
+  - id: S3-G1-010
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を削除する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/tier-backend-api.md"
+    line: 102
+    severity: major
+    viewpoint: 5
+    claim: "round1 の修正で「loans は書籍ID に加えてタイトル・著者・ISBN・ジャンルのスナップショットを保持する」と宣言したが、loans への INSERT を定義する『貸出を登録する』UC の _model-summary.yaml は loan_id / book_id / user_no / loan_date / loan_period_type / due_date / loan_status しか書き込まず、スナップショット列が存在しない。除籍後に貸出履歴・貸出統計が書誌を復元できない"
+    fix: "『貸出を登録する』の loans INSERT に book_title / book_author / book_isbn / book_genre のスナップショット列追加を要求する旨を本 UC のビジネスルールに明記して整合させるか、除籍を books の論理削除（withdrawn_at 設定、一覧・検索から除外）に戻す"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml"
+      - "docs/rdra/latest/条件.tsv#貸出統計集計条件"
+  - id: S3-G1-019
+    uc: "蔵書管理業務/蔵書を管理するフロー/蔵書一覧を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/蔵書一覧を照会する/tier-frontend-staff.md"
+    line: 35
+    severity: major
+    viewpoint: 3
+    claim: "round1 の修正で `var(--semantic-primary_staff)` を `var(--primary)` に置換したが、`--primary-staff` という CSS 変数は design-tokens.css に存在しない（ポータル色は `[data-portal='staff']` セレクタ配下の `--primary` として定義される）"
+    fix: "`var(--primary)`（`[data-portal='staff']` 適用時に `var(--color-teal-700)`）に修正する。digest の semantic キー名 `primary_staff` は CSS 変数名ではない点に注意する"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-020
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/tier-frontend-staff.md"
+    line: 35
+    severity: major
+    viewpoint: 3
+    claim: "`var(--primary)` という CSS 変数は design-tokens.css に存在しない（ポータル色は `[data-portal='staff']` 配下の `--primary`）"
+    fix: "`var(--primary)`（`[data-portal='staff']` 適用時に `var(--color-teal-700)`）に修正する"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-021
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍情報を編集する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍情報を編集する/tier-frontend-staff.md"
+    line: 37
+    severity: major
+    viewpoint: 3
+    claim: "`var(--primary)` という CSS 変数は design-tokens.css に存在しない（ポータル色は `[data-portal='staff']` 配下の `--primary`）"
+    fix: "`var(--primary)`（`[data-portal='staff']` 適用時に `var(--color-teal-700)`）に修正する"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-022
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を削除する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/tier-frontend-staff.md"
+    line: 35
+    severity: major
+    viewpoint: 3
+    claim: "`var(--primary)` という CSS 変数は design-tokens.css に存在しない（ポータル色は `[data-portal='staff']` 配下の `--primary`）"
+    fix: "`var(--primary)`（`[data-portal='staff']` 適用時に `var(--color-teal-700)`）に修正する"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-023
+    uc: "蔵書利用業務/書籍を検索するフロー/書籍を検索する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍を検索する/tier-frontend-patron.md"
+    line: 34
+    severity: major
+    viewpoint: 3
+    claim: "`var(--primary)` という CSS 変数は design-tokens.css に存在しない（ポータル色は `:root, [data-portal='patron']` 配下の `--primary`）"
+    fix: "`var(--primary)`（既定 = patron で `var(--color-blue-700)`）に修正する"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-024
+    uc: "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/tier-frontend-patron.md"
+    line: 35
+    severity: major
+    viewpoint: 3
+    claim: "`var(--primary)` という CSS 変数は design-tokens.css に存在しない（ポータル色は `:root, [data-portal='patron']` 配下の `--primary`）"
+    fix: "`var(--primary)`（既定 = patron で `var(--color-blue-700)`）に修正する"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-025
+    uc: "蔵書利用業務/書籍を検索するフロー/司書向けに蔵書を検索する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/司書向けに蔵書を検索する/tier-frontend-staff.md"
+    line: 34
+    severity: major
+    viewpoint: 3
+    claim: "`var(--primary)` という CSS 変数は design-tokens.css に存在しない（ポータル色は `[data-portal='staff']` 配下の `--primary`）"
+    fix: "`var(--primary)`（`[data-portal='staff']` 適用時に `var(--color-teal-700)`）に修正する"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-026
+    uc: "蔵書管理業務/蔵書を管理するフロー/蔵書一覧を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/蔵書一覧を照会する/_model-summary.yaml"
+    line: 56
+    severity: minor
+    viewpoint: 5
+    claim: "round1 の修正で tier-backend-api.md には `(title)` `(author)` `(isbn)` インデックスが追加されたが、_model-summary.yaml の indexes_needed は `(genre)` `(book_status)` `(updated_at)` のままで tier md と不整合"
+    fix: "indexes_needed に columns: [\"title\"] / [\"author\"] / [\"isbn\"] の 3 エントリを追加し、reason を「keyword 検索（title/author/isbn/publisher の部分一致）の前方一致部分を支える」、access_pattern を「WHERE title LIKE :kw% 等」とする"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/蔵書一覧を照会する/tier-backend-api.md"
+resolved:
+  - {id: S3-G1-010, resolution: fixed}
+  - {id: S3-G1-019, resolution: fixed}
+  - {id: S3-G1-020, resolution: fixed}
+  - {id: S3-G1-021, resolution: fixed}
+  - {id: S3-G1-022, resolution: fixed}
+  - {id: S3-G1-023, resolution: fixed}
+  - {id: S3-G1-024, resolution: fixed}
+  - {id: S3-G1-025, resolution: fixed}
+  - {id: S3-G1-026, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

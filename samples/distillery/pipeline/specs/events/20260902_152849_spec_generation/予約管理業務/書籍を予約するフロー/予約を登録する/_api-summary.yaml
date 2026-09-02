@@ -1,0 +1,44 @@
+# _api-summary.yaml
+uc: "予約を登録する"
+business: "予約管理業務"
+buc: "書籍を予約するフロー"
+endpoints:
+  - method: "POST"
+    path: "/api/v1/reservations"
+    summary: "貸出中の書籍に対する予約を登録し、予約状態を予約中として予約順位を付与する"
+    request_schema: "CreateReservationRequest"
+    response_schema: "ReservationResponse"
+    tags: ["reservations"]
+async_events: []
+schemas:
+  - name: "CreateReservationRequest"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+  - name: "ReservationResponse"
+    properties:
+      - name: "reservation_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "applied_at"
+        type: "string(date-time)"
+        required: true
+      - name: "priority"
+        type: "integer"
+        required: true
+      - name: "reservation_status"
+        type: "string"
+        required: true
+      - name: "total_reservations"
+        type: "integer"
+        required: true

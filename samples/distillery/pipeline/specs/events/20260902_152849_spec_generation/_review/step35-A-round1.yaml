@@ -1,0 +1,86 @@
+round: 1
+group: A
+findings:
+  - id: S35-A-001
+    buc: "蔵書利用業務/書籍を貸し出すフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/buc-spec.md"
+    line: 13
+    severity: major
+    viewpoint: 1
+    claim: "所属 UC 一覧の「貸出を登録する」の関連情報が「書籍、利用者、貸出」となっており、同 UC が更新する「予約」が漏れている（同ファイルの情報 CRUD マトリクス 36 行目では 予約 = U と記載されており自己矛盾）。"
+    fix: "関連情報を「書籍、利用者、貸出、予約」に修正する。UC spec.md の入力情報一覧（予約: 取置き中の予約から貸し出した場合に予約状態を更新する）および状態遷移一覧（予約状態 取置き中 → 貸出済み）と一致させる。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md#入力情報一覧"
+      - "docs/rdra/latest/状態.tsv#予約状態"
+  - id: S35-A-002
+    buc: "蔵書利用業務/書籍を返却するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/buc-spec.md"
+    line: 12
+    severity: major
+    viewpoint: 1
+    claim: "所属 UC 一覧の「返却を登録する」の関連情報が「書籍、貸出」となっており、同 UC が更新する「利用者」が漏れている（同ファイルの情報 CRUD マトリクス 36 行目では 利用者 = U、40 行目の注記でも利用者状態の更新に言及しており自己矛盾）。"
+    fix: "関連情報を「書籍、貸出、利用者」に修正する。UC spec.md の状態遷移一覧（利用者状態 取引進行中 → 登録済み）と一致させる。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却を登録する/spec.md#状態遷移一覧"
+      - "docs/rdra/latest/状態.tsv#利用者状態"
+  - id: S35-A-003
+    buc: "蔵書利用業務/書籍を検索するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/buc-spec.md"
+    line: 73
+    severity: minor
+    viewpoint: 5
+    claim: "共有バリエーション「検索条件種別」の適用 UC が「書籍を検索する, 司書向けに蔵書を検索する」の 2 UC のみだが、BUC.tsv では「書籍詳細と在庫状況を照会する」にも書籍検索条件（バリエーション: 検索条件種別、ジャンル）が紐づいており、65 行目の共有条件一覧でも 3 UC 全てに適用と記載されている。"
+    fix: "検索条件種別の適用 UC を「書籍を検索する, 書籍詳細と在庫状況を照会する, 司書向けに蔵書を検索する」に揃えるか、書籍詳細では検索条件種別を使わない旨を注記して共有条件一覧との差異を明示する。"
+    source_refs:
+      - "docs/rdra/latest/BUC.tsv#書籍を検索するフロー"
+      - "docs/rdra/latest/条件.tsv#書籍検索条件"
+  - id: S35-A-004
+    buc: "蔵書利用業務/書籍を検索するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/buc-spec.md"
+    line: 40
+    severity: minor
+    viewpoint: 4
+    claim: "状態遷移全体図の mermaid が書籍状態のみで、状態遷移 UC マッピング 59 行目に挙げた予約状態（予約中 / 取置き中）の参照が図に現れていない。「書籍詳細と在庫状況を照会する」が予約状態を表示に使うことが図から読み取れない。"
+    fix: "stateDiagram-v2 に `state 予約状態 { 予約中 --> 取置き中: 取置き通知メールを送信する（BUC外） ... }` のブロックを追加し、本 BUC は参照のみである旨をラベルで示す。"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#予約状態"
+  - id: S35-A-005
+    buc: "蔵書利用業務/書籍を返却するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/buc-spec.md"
+    line: 91
+    severity: minor
+    viewpoint: 5
+    claim: "単独適用条件「督促通知対象条件」の説明から、条件.tsv 原文にある「督促時に貸出状態を『延滞』へ遷移させ」の部分が脱落している。"
+    fix: "説明を条件.tsv の原文どおり「貸出状態が『貸出中』または『延滞』であり、かつ返却期限を経過した貸出を督促対象とする。督促時に貸出状態を『延滞』へ遷移させ、貸出状態が『返却済み』になった時点で督促を停止する」に修正する。"
+    source_refs:
+      - "docs/rdra/latest/条件.tsv#督促通知対象条件"
+  - id: S35-A-006
+    buc: "蔵書利用業務/書籍を返却するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/buc-spec.md"
+    line: 104
+    severity: minor
+    viewpoint: 5
+    claim: "単独適用バリエーション一覧に、督促通知対象条件が参照するもう 1 つのバリエーション「通知タイミング区分」（期限前リマインド、期限当日、期限超過督促）が漏れている。"
+    fix: "単独適用バリエーション表に「通知タイミング区分 | 期限前リマインド、期限当日、期限超過督促 | 返却を登録する（督促通知対象条件の判定基準）」の行を追加する。"
+    source_refs:
+      - "docs/rdra/latest/条件.tsv#督促通知対象条件"
+      - "docs/rdra/latest/バリエーション.tsv#通知タイミング区分"
+  - id: S35-A-007
+    buc: "蔵書利用業務/書籍を貸し出すフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/buc-spec.md"
+    line: 86
+    severity: minor
+    viewpoint: 5
+    claim: "共有条件「貸出可否条件」の説明（条件.tsv 原文の「利用者状態区分が『利用可能』」）と、所属 UC「貸出を登録する」spec.md の記述（「利用者状態が『登録済み』または『取引進行中』」）が食い違っており、実装時にどちらが正かの判断がつかない。"
+    fix: "条件.tsv 原文は保持したうえで、「利用者状態区分『利用可能』は利用者状態が『登録済み』または『取引進行中』であることを指す」旨の注記を共有条件一覧に追加し、UC spec.md との対応を明示する。"
+    source_refs:
+      - "docs/rdra/latest/条件.tsv#貸出可否条件"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md#条件"
+resolved:
+  - {id: S35-A-001, resolution: fixed}
+  - {id: S35-A-002, resolution: fixed}
+  - {id: S35-A-003, resolution: fixed}
+  - {id: S35-A-004, resolution: fixed}
+  - {id: S35-A-005, resolution: fixed}
+  - {id: S35-A-006, resolution: fixed}
+  - {id: S35-A-007, resolution: fixed}

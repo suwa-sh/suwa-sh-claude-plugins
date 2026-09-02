@@ -1,0 +1,55 @@
+distillery:dist-spec-stories スキル実行（feedback 差分実行）。
+
+feedback_request_id: 20260902_184257_impl_feedback_d0f57ea2
+input_sha256: 7afd483f6a221ae5f469cbcbc5c7c3bce46be4f4924e7aec3f1e9b2b682c9133
+stage_packet_path: docs/pipeline/feedback-runs/20260902_184257_impl_feedback_d0f57ea2/stage-packets/spec_stories.md
+
+causal_work_unit_ids（本 stage は closure stage であり direct owner を持たない）:
+  - CR-d0f57ea2-001#1
+  - CR-d0f57ea2-002#1
+  - CR-d0f57ea2-003#1
+  - CR-d0f57ea2-004#1
+  - CR-d0f57ea2-005#1
+  - CR-d0f57ea2-006#1
+  - CR-d0f57ea2-007#1
+  - CR-d0f57ea2-008#1
+  - CR-d0f57ea2-009#1
+  - CR-d0f57ea2-010#1
+  - CR-d0f57ea2-011#1
+
+request_ids:
+  - CR-d0f57ea2-001
+  - CR-d0f57ea2-002
+  - CR-d0f57ea2-003
+  - CR-d0f57ea2-004
+  - CR-d0f57ea2-005
+  - CR-d0f57ea2-006
+  - CR-d0f57ea2-007
+  - CR-d0f57ea2-008
+  - CR-d0f57ea2-009
+  - CR-d0f57ea2-010
+  - CR-d0f57ea2-011
+
+trigger_event:
+  spec: 20260902_191046_spec_generation
+  design: 20260902_185951_design_system
+
+対応した work unit（Storybook Story へ差分反映が必要だったもの）:
+  - CR-d0f57ea2-008#1（due-date-display-format）: 返却期限・取置き期限の表示規約
+    （`_cross-cutting/ux-ui/ui-design.md`「日付・期限の表示規約」）を満たす共有フォーマッタを
+    新設し、既存の日付表示バグ（`toLocaleDateString('ja-JP')` の非ゼロ埋め・文言中の余計な空白・
+    当日文言の種別未分岐）を修正した。
+  - CR-d0f57ea2-009#1（loan-result-handoff）: `LoanConfirmation` コンポーネントを
+    tier-frontend-staff.md の Props/イベント契約（`result: LoanResponse | null` /
+    `onLoanSucceeded`）どおりに新設し、窓口貸出受付画面のアドホックな完了表示を置き換えた。
+
+closure 判定（Storybook Story への影響なし）:
+  - CR-d0f57ea2-001#1 / 002#1 / 003#1 / 004#1 / 005#1 / 007#1 / 011#1:
+    バックエンド API 契約・DB スキーマ・UC⇔SPEC トレーサビリティのみが対象で、
+    Storybook の成果物（`src/components` / `src/stories`）に対応する変更点が無い。
+  - CR-d0f57ea2-006#1 / 010#1: direct owner は design_system ステージ
+    （event 20260902_185951_design_system）。当該イベントで
+    LoadingState/Spinner/Skeleton の Story（Common/LoadingState、UI/Feedback）と
+    Shell/AppShell（41 ルートのカタログ Story）が既に追加済みであり、
+    既存ページ Story は `AsyncSection` 経由で `LoadingState` に自動的に委譲されるため
+    （画面側の変更不要）、本 stage では追加の Story 変更を行っていない。

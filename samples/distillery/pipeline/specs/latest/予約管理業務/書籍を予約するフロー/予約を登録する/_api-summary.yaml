@@ -1,0 +1,62 @@
+# _api-summary.yaml
+uc: "予約を登録する"
+business: "予約管理業務"
+buc: "書籍を予約するフロー"
+endpoints:
+  - operation_id: "createReservation"
+    method: "POST"
+    path: "/api/v1/reservations"
+    summary: "貸出中の書籍に対する予約を登録し、予約状態を予約中として予約順位を付与する"
+    request_schema: "CreateReservationRequest"
+    response_schema: "ReservationResponse"
+    tags: ["reservations"]
+async_events: []
+consumes:
+  - operation_id: "getBookAvailability"
+    method: "GET"
+    path: "/api/v1/books/{book_id}/availability"
+    owner_uc: "書籍詳細と在庫状況を照会する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-patron"
+    purpose: "申込前の見込み予約順位（expectedRank = reservation_count + 1）と有効予約件数を取得する"
+    required: true
+  - operation_id: "listMyReservations"
+    method: "GET"
+    path: "/api/v1/me/reservations"
+    owner_uc: "自分の予約状況を照会する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-patron"
+    purpose: "重複予約禁止条件（同一書籍の予約中／取置き中の予約有無）を申込前に判定する"
+    required: true
+schemas:
+  - name: "CreateReservationRequest"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+  - name: "ReservationResponse"
+    properties:
+      - name: "reservation_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "applied_at"
+        type: "string(date-time)"
+        required: true
+      - name: "priority"
+        type: "integer"
+        required: true
+      - name: "reservation_status"
+        type: "string"
+        required: true
+      - name: "total_reservations"
+        type: "integer"
+        required: true

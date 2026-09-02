@@ -1,0 +1,69 @@
+# _api-summary.yaml
+uc: "自分の返却期限を照会する"
+business: "貸出期限管理業務"
+buc: "返却期限をリマインドするフロー"
+endpoints:
+  - operation_id: "listMyDueLoans"
+    method: "GET"
+    path: "/api/v1/me/loans/due"
+    summary: "ログイン中の利用者本人の返却期限接近の貸出一覧を取得する"
+    response_schema: "MyDueLoanListResponse"
+    tags: ["me-loans"]
+async_events: []
+consumes: []
+schemas:
+  - name: "MyDueLoanListResponse"
+    properties:
+      - name: "base_date"
+        type: "string(date)"
+        required: true
+      - name: "timing_type"
+        type: "string"
+        required: true
+      - name: "remind_days"
+        type: "integer"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "overdue_count"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true
+      - name: "items"
+        type: "array<MyDueLoanItem>"
+        required: true
+  - name: "MyDueLoanItem"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "loan_date"
+        type: "string(date)"
+        required: true
+      - name: "loan_period_type"
+        type: "string"
+        required: true
+      - name: "due_date"
+        type: "string(date)"
+        required: true
+      - name: "days_remaining"
+        type: "integer"
+        required: true
+      - name: "loan_status"
+        type: "string"
+        required: true

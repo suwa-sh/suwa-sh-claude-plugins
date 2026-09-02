@@ -1,0 +1,91 @@
+round: 2
+group: api
+findings:
+  - id: S4-api-016
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の現在の貸出を照会する/_api-summary.yaml"
+    line: 25
+    severity: major
+    viewpoint: 1
+    claim: "round1 でスキーマ名は `MyLoanListItem` に統一されたが、プロパティ構造が統一されていない。本 UC と「自分の貸出履歴を照会する」の `MyLoanListItem` は書誌を `book_id` / `book_title` / `book_author` のフラット 3 列で持つのに対し、openapi.yaml と「返却対象の貸出を照会する」「自分の返却済み貸出を照会する」の `MyLoanListItem` は `book: BookBrief`（`book_id` / `title` / `author`）のネスト構造。同名スキーマが 2 つの非互換な形で定義されており、契約生成時にどちらが正か決まらない。"
+    fix: "本 UC の `MyLoanListItem` から `book_id` / `book_title` / `book_author` を削除し、`book`（type: `BookBrief`, required: true）に置き換える。併せて `BookBrief`（book_id / title / author）を schemas に追加し、openapi.yaml `components.schemas.MyLoanListItem` と一致させる。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.schemas.MyLoanListItem (L2364-L2398)"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する/_api-summary.yaml"
+
+  - id: S4-api-017
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の貸出履歴を照会する/_api-summary.yaml"
+    line: 24
+    severity: major
+    viewpoint: 1
+    claim: "`MyLoanListItem` の返却日プロパティ名が `returned_date`（required: true）だが、openapi.yaml と他 2 UC は `returned_at`（optional。`status=history` のときだけ返す）。プロパティ名も必須性も一致せず、さらに書誌がフラット 3 列（S4-api-016 と同じ構造ずれ）。"
+    fix: "`returned_date` を `returned_at`（required: false）にリネームし、`book_id` / `book_title` / `book_author` を `book: BookBrief` に置き換える。`days_remaining` / `overdue_days`（いずれも optional）も openapi.yaml に合わせて追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.schemas.MyLoanListItem.returned_at (L2387-L2390)"
+
+  - id: S4-api-018
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/_api-summary.yaml"
+    line: 68
+    severity: major
+    viewpoint: 1
+    claim: "`NotificationLogListResponse` のページサイズ列が `size` になっており、openapi.yaml（`required: [\"summary\", \"total\", \"page\", \"per_page\", \"items\", \"failure_count\"]`）および他 2 UC（督促 / リマインド）の `per_page` と不一致。加えて openapi.yaml で required の `summary`（通知種別別の集計サマリ）が本 UC の定義に無い。API 全体のページネーション規約（`page` / `per_page`）からも外れる唯一の箇所。"
+    fix: "`size` を `per_page` にリネームし、`summary`（required: true）を追加して openapi.yaml `components.schemas.NotificationLogListResponse` と一致させる。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.schemas.NotificationLogListResponse (L3432-L3455)"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/_api-summary.yaml"
+
+  - id: S4-api-019
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の貸出履歴を照会する/_api-summary.yaml"
+    line: 15
+    severity: minor
+    viewpoint: 1
+    claim: "`ListMyLoansQueryParams` の `status` が required: true だが、openapi.yaml `GET /api/v1/me/loans` の `status` は `required: false` / `default: current` / `enum: [current, history]`。また openapi.yaml にある `returnable` クエリが本スキーマに無く、クエリ契約が UC 側と openapi 側で食い違う（「自分の現在の貸出を照会する」の同名スキーマも同じ）。"
+    fix: "`status` を required: false（既定 `current`、取りうる値 `current` / `history`）に直し、`returnable`（boolean, 既定 false）を追加する。2 UC の `ListMyLoansQueryParams` を同一定義に揃える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/me/loans.get.parameters (L519-L535)"
+
+  - id: S4-api-020
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/自分の返却済み貸出を照会する/_api-summary.yaml"
+    line: 8
+    severity: minor
+    viewpoint: 1
+    claim: "endpoint summary に `status=返却済み で返却済み貸出を…` と書かれているが、openapi.yaml の `status` クエリの enum は `[\"current\", \"history\"]` で日本語の状態値は受け付けない。実装者が貸出状態値をそのままクエリに渡す誤読を招く。"
+    fix: "summary を `status=history で返却済み貸出を返却日の降順に絞り込む` に修正する（貸出状態「返却済み」はサーバ側の絞り込み条件であってクエリ値ではない旨も添える）。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#paths./api/v1/me/loans.get.parameters.status"
+
+  - id: S4-api-021
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の貸出履歴を照会する/_api-summary.yaml"
+    line: 47
+    severity: minor
+    viewpoint: 1
+    claim: "本 UC の `MyLoanListResponse` に `latest_returned_at` が無い。openapi.yaml は `status=history` のときの最新返却日として `latest_returned_at` を定義しており（round1 S4-api-011 の fix でも「履歴固有の `latest_returned_at` は定義済み」と前提にしている）、履歴照会 UC の応答契約から抜けているのは不整合。「自分の現在の貸出を照会する」も同様。"
+    fix: "2 UC の `MyLoanListResponse` に `latest_returned_at`（type: `string(date)`, required: false）を追加し、openapi.yaml と一致させる。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.schemas.MyLoanListResponse.latest_returned_at (L2421-L2424)"
+
+  - id: S4-api-022
+    artifact: "asyncapi.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/asyncapi.yaml"
+    line: null
+    severity: minor
+    viewpoint: 2
+    claim: "round1 S4-api-014 の fix で payload のエンベロープは揃ったが、ヘッダーと payload で命名規約と ID の役割が二重化している。`MessageHeaders` は camelCase（`correlationId` / `eventType` / `retryCount`）、payload は snake_case（`message_id` / `trace_id` / `idempotency_key`）。さらに `MessageHeaders.correlationId`（リクエスト追跡 ID）と payload の `trace_id`（リクエスト追跡 ID）が同じ説明の重複定義で、どちらを追跡の正とするかが決まらない。"
+    fix: "命名を snake_case に統一（`correlation_id` / `event_type` / `retry_count`）し、追跡 ID はヘッダー側 1 本に寄せて payload の `trace_id` を削除する（残す場合は `correlation_id` と同値である旨を description に明記し、required から外す）。5 payload すべてに同じ規約を適用する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/asyncapi.yaml#components.schemas.MessageHeaders"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/asyncapi.yaml#components.schemas.RemindNotificationRequestedPayload.trace_id"
+
+resolved:
+  - {id: S4-api-016, resolution: fixed}
+  - {id: S4-api-017, resolution: fixed}
+  - {id: S4-api-018, resolution: fixed}
+  - {id: S4-api-019, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S4-api-020, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S4-api-021, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S4-api-022, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

@@ -1,0 +1,101 @@
+# _model-summary.yaml
+uc: "返却後の書籍状態を更新する"
+business: "蔵書利用業務"
+buc: "書籍を返却するフロー"
+
+bounded_context_id: "BC-001"
+aggregate_id: "AG-001"
+
+models:
+  - name: "返却後在庫整理画面（BookCard / BookStatusBadge / ReservationStatusBadge / Alert）"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "書籍"
+  - name: "RestockState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "書籍"
+  - name: "RestockBookRequest"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "書籍"
+  - name: "RestockBookRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "UpdateBookStatusAfterReturnCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "BookStatus"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "書籍"
+  - name: "Reservation"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+  - name: "ReservationRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "予約"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id FOR UPDATE"
+      - type: "UPDATE"
+        columns:
+          - name: "book_status"
+            value: "在庫あり（有効な予約なし）または 予約待ち（有効な予約あり）"
+          - name: "updated_at"
+            value: "在庫整理イベントの発生時刻"
+        where: "book_id = :book_id AND book_status = '貸出中'"
+    indexes_needed:
+      - columns: ["book_id"]
+        reason: "在庫整理対象書籍の取得と更新。主キーで充足する"
+        access_pattern: "書籍IDによる 1 件取得・更新"
+      - columns: ["book_status"]
+        reason: "在庫状況レポートの区分別集計と、書籍状態での絞り込み検索に使う"
+        access_pattern: "書籍状態（在庫あり/貸出中/予約待ち）での件数集計"
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id AND reservation_status = '予約中' ORDER BY priority ASC, applied_at ASC"
+    indexes_needed:
+      - columns: ["book_id", "reservation_status", "priority"]
+        reason: "返却後状態決定条件で有効な予約の有無を確認し、取置き対象候補となる予約順1位を特定する"
+        access_pattern: "書籍ID + 予約状態（予約中）で絞り込み、予約順位の昇順で先頭 1 件と総件数を取得"
+
+kvs:
+  - key_pattern: "idem:api:restockBook:{idempotency_key}"
+    purpose: "idem"
+    description: "冪等キー検証（書籍状態の二重更新防止）"
+    value_type: "処理済みの在庫整理結果（書籍ID・遷移後の書籍状態・取置き対象候補）"
+    ttl: "24h"
+    operations: ["GET", "SET"]
+
+object_storage: []

@@ -1,0 +1,61 @@
+# _api-summary.yaml
+uc: "自分の予約状況を照会する"
+business: "利用照会業務"
+buc: "予約状況を確認するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/me/reservations"
+    summary: "本人の予約一覧を予約状態で絞り込み、ページネーションつきで返す"
+    response_schema: "MyReservationListResponse"
+    tags: ["reservations", "me"]
+async_events: []
+schemas:
+  - name: "MyReservationListResponse"
+    properties:
+      - name: "items"
+        type: "array<MyReservationItem>"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "size"
+        type: "integer"
+        required: true
+      - name: "active_count"
+        type: "integer"
+        required: true
+  - name: "MyReservationItem"
+    properties:
+      - name: "reservation_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "book_author"
+        type: "string"
+        required: true
+      - name: "book_genre"
+        type: "string"
+        required: true
+      - name: "book_material_type"
+        type: "string"
+        required: true
+      - name: "reservation_status"
+        type: "string"
+        required: true
+      - name: "priority"
+        type: "integer"
+        required: false
+      - name: "applied_at"
+        type: "string(date-time)"
+        required: true
+      - name: "hold_expires_at"
+        type: "string(date-time)"
+        required: false

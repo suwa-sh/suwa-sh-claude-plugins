@@ -1,0 +1,40 @@
+# _api-summary.yaml
+uc: "予約を取り消す"
+business: "予約管理業務"
+buc: "書籍を予約するフロー"
+endpoints:
+  - operation_id: "cancelReservation"
+    method: "POST"
+    path: "/api/v1/staff/reservations/{reservation_id}/cancel"
+    summary: "司書が予約を取り消し、後続予約の予約順位を繰り上げる"
+    request_schema: "CancelReservationRequest"
+    response_schema: "CancelReservationResponse"
+    tags: ["reservations", "staff"]
+async_events: []
+consumes: []
+schemas:
+  - name: "CancelReservationRequest"
+    properties:
+      - name: "reason"
+        type: "string"
+        required: false
+  - name: "CancelReservationResponse"
+    properties:
+      - name: "reservation_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "reservation_status"
+        type: "string"
+        required: true
+      - name: "promoted_count"
+        type: "integer"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "cancelled_at"
+        type: "string(date-time)"
+        required: true

@@ -1,0 +1,45 @@
+# round 3 は round-2 findings（R-014 / R-015 / R-016）の適用検証パス。
+# 検証結果:
+#   R-014 fixed 確認: `returnLoan` / `createReport` は event 配下に 0 件。
+#     返却を登録する = idem:api:registerLoanReturn（_model-summary.yaml L122 / spec.md L31 の両方）、
+#     在庫状況を区分別に集計する = idem:api:createInventoryReport（L138）、
+#     期間別貸出統計を集計する = idem:api:createLoanStatsReport（L165）。
+#     kvs-schema.yaml L38 の operationId 例・spec-decision-001 L47 の例示も実在 operationId に是正済み。
+#   R-015 fixed 確認: spec.md（返却期限設定条件 / 計算ルール / 対応表）・tier-backend-api.md L56,L108,L155-166・
+#     tier-frontend-staff.md L22,L49,L57,L105-113・openapi.yaml L792 が「既定 + 選択可能集合」で一貫。
+#     短期は全利用者区分で到達可能、409 LOAN_PERIOD_TYPE_MISMATCH は FE のインラインエラーと BDD に反映済み。
+#     FE が必要とする user_category は LoanEligibilityResponse.user（LoanTargetResponse）で取得可能で、依存の宣言も満たす。
+#   R-016 fixed 確認: 書籍を登録する / 書籍情報を編集する / 書籍を削除する の _model-summary.yaml に
+#     idem:api:createBook|updateBook|deleteBook:{idempotency_key}（ttl 24h / GET,SET）が追加され、
+#     kvs-schema.yaml の used_by も 16 UC に拡張済み。
+# 以下は上記修正の検証中に見つかった残存・新規の不整合。
+round: 3
+findings:
+  - id: R-017
+    viewpoint: 2
+    severity: major
+    target: "_cross-cutting/datastore/kvs-schema.yaml"
+    claim: "R-016 の修正は books 3 オペレーションだけを補い、同じ欠落を持つ `sendHoldNotice`（POST /api/v1/staff/notifications/hold-notices）が取り残されている。IdempotencyKeyHeader が required: true で付いているのに、その冪等キーを保持する KVS エントリをどの UC も宣言していない。"
+    evidence: |
+      - openapi.yaml で IdempotencyKeyHeader を $ref する 15 オペレーションのうち、`sendHoldNotice`（L1126）だけが KVS 側に対応する宣言を持たない（他 14 は kvs-schema.yaml L38 の operationId 列挙と各 UC の key_pattern に対応がある）。
+      - openapi.yaml L1456-1459: `IdempotencyKeyHeader` は `required: true`。したがって sendHoldNotice の実装者はキー形式・TTL の正本なしに必須ヘッダを処理することになる。
+      - 取置き通知メールを送信する/_api-summary.yaml L7 は `/api/v1/staff/notifications/hold-notices` を宣言。しかし同 UC の _model-summary.yaml L166-176 が持つ KVS は `idem:notification:reservation:{notification_type}:{target_reservation_id}`（業務単位の重複送信抑止）と `idem:api:resendNotification:{idempotency_key}`（再送オペレーション用）の 2 件のみで、`idem:api:sendHoldNotice:{idempotency_key}` が無い。
+      - kvs-schema.yaml L38 の operationId 例（createUser / … / createBook / updateBook / deleteBook 等）にも sendHoldNotice は含まれない。
+      - R-016 の evidence が挙げた欠落条件（「OpenAPI に IdempotencyKeyHeader があるのに KVS 宣言が無い」）と完全に同型であり、修正が books のみに閉じたことによる残存。
+    suggested_fix: "取置き通知メールを送信する/_model-summary.yaml に `idem:api:sendHoldNotice:{idempotency_key}`（purpose: idem, ttl: 24h, operations: [GET, SET]）を追加し、kvs-schema.yaml L38 の operationId 例にも sendHoldNotice を加える。業務単位キー（idem:notification:reservation:*）だけで足りる方針なら、openapi.yaml の sendHoldNotice から IdempotencyKeyHeader を外し、その根拠を spec-decision-004 に明記する。"
+
+  - id: R-018
+    viewpoint: 4
+    severity: minor
+    target: "蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/_model-summary.yaml"
+    claim: "R-014 / R-016 の修正で key_pattern は kvs-schema.yaml の正規形に揃ったが、同じエントリの `purpose` は正規語彙（session / idem / lock / cache）に揃っておらず、冪等キーに `lock` が付いたままの UC と日本語の説明文を入れた UC が混在する。step4-datastore-round2 の指摘（purpose は 1 語）が未収束のまま、R-016 の修正でさらに 3 件の非正規値が増えた。"
+    evidence: |
+      - kvs-schema.yaml L4-6 の命名規則は purpose を session / idem / lock / cache の 4 語に限定し、`idem:api:{operation_id}:{idempotency_key}` の purpose は L21 で `idem`。
+      - R-014 の修正対象 2 ファイルは key_pattern だけ直り purpose は誤ったまま: 在庫状況を区分別に集計する L139 `purpose: "lock"`、期間別貸出統計を集計する L166 `purpose: "lock"`（いずれも idem キー）。督促メールを送信する L167 / リマインドメールを送信する L167 も同様に `lock`。
+      - R-016 の修正で追加された 3 件は逆に文章形式: 書籍を登録する L91 `purpose: "冪等キー検証（書籍登録の二重送信防止）"`、書籍情報を編集する L93、書籍を削除する L87。
+      - 結果として `idem:api:*` を宣言する 16 エントリの purpose が「lock」4 件 / 「lock（…説明…）」3 件 / 日本語説明 9 件の 3 系統に分かれ、正規語 `idem` は 1 件も無い。purpose で機械的にグルーピングすると冪等キーが lock に誤分類される。
+      - _model-summary.yaml は distillery-impl がデータアクセス実装を導出する入力であり、purpose の語彙不一致はそのまま実装側の分類ミスに伝播する。
+    suggested_fix: "`idem:api:*` を持つ全 16 UC の _model-summary.yaml で `purpose: \"idem\"` に統一し、補足説明は value_type か別フィールド（説明用のコメント行）へ移す。同様に `lock:job:*` は `lock`、`cache:*` は `cache`、`session:*` は `session` とし、kvs-schema.yaml の purpose と 1:1 で突き合わせられる状態にする。"
+resolved:
+  - {id: R-017, resolution: fixed, note: "取置き通知メールを送信する/_model-summary.yaml に idem:api:sendHoldNotice を追加し、kvs-schema.yaml の operationId 例にも追記"}
+  - {id: R-018, resolution: fixed, note: "全 _model-summary.yaml の kvs purpose を session/idem/lock/cache の 4 語に正規化し、説明文は description へ移設"}

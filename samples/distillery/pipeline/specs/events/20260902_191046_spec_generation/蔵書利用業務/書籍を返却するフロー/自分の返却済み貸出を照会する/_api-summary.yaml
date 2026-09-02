@@ -1,0 +1,20 @@
+# _api-summary.yaml
+uc: "自分の返却済み貸出を照会する"
+business: "蔵書利用業務"
+buc: "書籍を返却するフロー"
+# 新規エンドポイントは追加しない。本人限定の貸出一覧 GET /api/v1/me/loans は
+# 「自分の現在の貸出を照会する」UC が所有し、本 UC は status=返却済み の条件違いで利用する
+endpoints: []
+async_events: []
+consumes:
+  - operation_id: "listMyLoans"
+    method: "GET"
+    path: "/api/v1/me/loans"
+    owner_uc: "自分の現在の貸出を照会する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-patron"
+    purpose: "返却完了確認画面で status=返却済み・返却日の降順に絞り込み、本人の返却済み貸出を一覧表示する"
+    required: true
+# 本 UC は operation を所有しないため、リクエスト・レスポンススキーマも定義しない。
+# 型の正本は consumes[].contract の operation_id を引くこと（所有 UC 側で定義済み）。
+schemas: []

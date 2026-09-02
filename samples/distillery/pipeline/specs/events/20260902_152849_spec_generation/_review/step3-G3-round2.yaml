@@ -1,0 +1,100 @@
+round: 2
+group: G3
+findings:
+  - id: S3-G3-014
+    uc: "予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/tier-worker.md"
+    line: 71
+    severity: minor
+    viewpoint: 3
+    claim: "処理フロー 4/6 と spec.md の計算ルールは取置き期限の起点を「送信実行時刻」に統一したが、データモデル変更表の hold_expires_at の説明だけ「送信成功日時を起点に設定する」のまま残り、同一ファイル内で起点が矛盾している"
+    fix: "tier-worker.md のデータモデル変更表の hold_expires_at 説明を「取置き期限。送信実行時刻を起点に算出し、送信成功時に本文へ埋め込んだ同一値を確定する」に修正する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/tier-worker.md#処理フロー 4/6"
+
+  - id: S3-G3-018
+    uc: "予約管理業務/書籍を予約するフロー/予約を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/spec.md"
+    line: 28
+    severity: minor
+    viewpoint: 5
+    claim: "データフロー図の KVS ノードが idem:reservation:{key} だが、_model-summary.yaml の key_pattern は idem:reservation:create:{idempotency_key} で、UC「予約を取り消す」（idem:reservation:cancel:{key}）と揃うべき命名が図だけ食い違っている"
+    fix: "データフロー図のノードを KVS_Idem[(\"KVS\\nidem:reservation:create:{key}\")] に修正し、_model-summary.yaml の key_pattern と一致させる"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/_model-summary.yaml#kvs"
+
+  - id: S3-G3-019
+    uc: "予約管理業務/書籍を予約するフロー/予約を取り消す"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を取り消す/spec.md"
+    line: 51
+    severity: minor
+    viewpoint: 4
+    claim: "データフロー表の Response 欄が CancelReservationResponse(reservation_id, reservation_status, promoted_count, book_status) となっており、_api-summary.yaml / tier-backend-api.md が required で定義する book_id・cancelled_at が欠落している"
+    fix: "Response 欄を CancelReservationResponse(reservation_id, book_id, reservation_status, promoted_count, book_status, cancelled_at) に揃える"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を取り消す/_api-summary.yaml#CancelReservationResponse"
+
+  - id: S3-G3-020
+    uc: "予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する/tier-backend-api.md"
+    line: 158
+    severity: major
+    viewpoint: 3
+    claim: "レスポンス定義を user_email_masked（常に返す）/ user_email（reveal_contact=true 時のみ）へ分割したのに、ティア完了条件の BDD が「candidate.user_email がマスク文字列で返る」と検証しており、reveal_contact 未指定時は user_email が未設定という自身の仕様と矛盾する"
+    fix: "BDD を「candidate.user_email_masked が t***@example.com で返る」「candidate.user_email は返らない（未設定）」の 2 行へ改め、tier-frontend-staff.md の HoldCandidatePanel Props の user も (user_no, name, user_category, emailMasked, email?) に揃える"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する/_api-summary.yaml#HoldCandidate"
+
+  - id: S3-G3-021
+    uc: "予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する/_model-summary.yaml"
+    line: 75
+    severity: minor
+    viewpoint: 5
+    claim: "新設した GET /api/v1/staff/holds/pending-books のデータアクセスが _model-summary.yaml に反映されておらず、books の SELECT は book_id 等値のみ、予約待ち書籍の列挙と waiting_count 集計の operations が存在しない"
+    fix: "books に SELECT（where \"book_status = '予約待ち' ORDER BY book_id LIMIT :size OFFSET :offset\"）を追加して indexes_needed に [book_status] を挙げ、reservations に waiting_count 集計の SELECT（where \"book_id IN (:book_ids) AND reservation_status = '予約中'\"）を追加する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/予約順1位の利用者を特定する/tier-backend-api.md#予約待ち書籍一覧 API"
+
+  - id: S3-G3-022
+    uc: "予約管理業務/予約者へ通知するフロー/自分の取置き状況を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/自分の取置き状況を照会する/spec.md"
+    line: 25
+    severity: minor
+    viewpoint: 5
+    claim: "_model-summary.yaml に reservation_events の SELECT（hold_started_at の解決）を追加したが、データフロー図の subgraph DS には reservations / books / users しかノードが無く、イベント参照が図に現れない"
+    fix: "subgraph DS へ DB_Evt[(\"reservation_events\\nevent_type=取置き遷移\")] を追加し、BE_GW -->|\"SELECT reservation_events WHERE reservation_id AND event_type='取置き遷移' ORDER BY occurred_at DESC LIMIT 1\"| DB_Evt のエッジを引く"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/自分の取置き状況を照会する/_model-summary.yaml#tables reservation_events"
+
+  - id: S3-G3-023
+    uc: "利用照会業務/予約状況を確認するフロー/自分の取置き中の予約を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/予約状況を確認するフロー/自分の取置き中の予約を照会する/spec.md"
+    line: 25
+    severity: minor
+    viewpoint: 5
+    claim: "_model-summary.yaml に reservation_events の一括 SELECT（hold_started_at の解決）を追加したが、データフロー図の subgraph DS には reservations / books しかノードが無く、イベント参照が図に現れない"
+    fix: "subgraph DS へ DB_Evt[(\"reservation_events\\nevent_type=取置き遷移\")] を追加し、BE_GW -->|\"SELECT reservation_events WHERE reservation_id IN (:reservation_ids) AND event_type='取置き遷移'\"| DB_Evt のエッジを引く"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用照会業務/予約状況を確認するフロー/自分の取置き中の予約を照会する/_model-summary.yaml#tables reservation_events"
+
+  - id: S3-G3-024
+    uc: "予約管理業務/書籍を予約するフロー/予約を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/spec.md"
+    line: 116
+    severity: minor
+    viewpoint: 1
+    claim: "異常系 BDD と tier-backend-api.md に書籍状態「予約待ち」の 409（RESERVATION_NOT_ALLOWED_ON_HOLD）を追加したのに、分岐条件一覧の予約可否条件の判定ルールと BDD Scenario 列は「在庫あり」のケースしか参照しておらず、追加シナリオがトレースされていない"
+    fix: "判定ルールを「書籍状態が『貸出中』の書籍に対してのみ予約を受け付ける。『在庫あり』は貸出できる旨を案内し、『予約待ち』は取置き中のため受け付けない」に改め、BDD Scenario 列を「在庫ありの書籍には予約を登録できない / 予約待ちの書籍には予約を登録できない」の 2 件にする"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/tier-backend-api.md#エラーレスポンス"
+
+resolved:
+  - {id: S3-G3-020, resolution: fixed}
+  - {id: S3-G3-014, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G3-018, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G3-019, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G3-021, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G3-022, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G3-023, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G3-024, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

@@ -1,0 +1,43 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-010"
+title: "受け入れ基準 ID は {仕様ID}#{添字} とし、1 基準につき主担当 UC を 1 つに固定する"
+status: "approved"
+generated_at: "2026-09-02T19:10:46+09:00"
+context: |
+  実装フィードバック CR-d0f57ea2-011 で、UC と USDM の受け入れ基準の対応が機械可読でなく、
+  dist-impl が ATDD シナリオを文字列推測かユーザー確認で選んでいたことが判明した。
+
+  - USDM の `acceptance_criteria` は文字列配列で ID を持たない。
+  - `affected_models` に BUC を持たない仕様（SPEC-003-01 等）があり、モデル経由で UC を辿れない。
+  - 1 つの仕様（SPEC-002-01 等）に複数 UC の受け入れ基準が混在し、SPEC 単位では対応できない。
+  - USDM は requirements スキルの所有物であり、spec スキルが ID 列を追記することはできない。
+decision: |
+  1. **受け入れ基準 ID を `{仕様ID}#{n}`（n は `acceptance_criteria` 配列の 1 始まりの添字）**とする。
+     USDM 側にはフィールドを追加せず、並び順を正本として spec 側で参照する。
+     順序変更・途中挿入を禁止し、追加は末尾に行う運用規約を明記した。
+  2. **1 つの受け入れ基準につき主担当 UC を 1 つだけ**割り当てる。主担当 UC の E2E BDD Scenario が
+     その基準の受け入れテストの正本となる。寄与するが正本でない UC は「補助」として記録する。
+  3. **2 段引きの構造**にする。
+     - `_cross-cutting/traceability-matrix.md`「USDM 受け入れ基準 ↔ UC 対応表」: 基準 ID → 主担当 UC / 補助 UC
+     - 各 UC の `spec.md`「受け入れ基準トレーサビリティ」: 基準 ID → 当該 UC の E2E Scenario 名（一字一句）
+  4. 16 仕様 / 34 受け入れ基準をすべて表に載せ、主担当を持つ UC 23 件・補助専任 UC 18 件で
+     41 UC を漏れなく分類した。補助専任 UC の受け入れは当該 UC の BDD 全件で担保する。
+consequences:
+  positive:
+    - "dist-impl が基準 ID から ATDD シナリオを一意に選択でき、文字列推測もユーザー確認も不要になる"
+    - "USDM を変更せずに ID を導入できるため、requirements スキルの所有権を侵さない"
+    - "主担当を 1 つに固定したため、同じ基準に対する受け入れテストが複数 UC に散らない"
+    - "全 41 UC が主担当か補助専任のいずれかに分類され、対応漏れが検出できる"
+  negative:
+    - "acceptance_criteria の並び替え・途中挿入で ID がずれるため、USDM 側に運用制約が生まれる"
+    - "Scenario 名を一字一句コピーするため、Scenario のリネーム時に UC 側の表も更新が必要になる"
+    - "主担当の割り当てに業務的判断が入り、基準の粒度が UC をまたぐ場合は恣意性が残る"
+alternatives_considered:
+  - name: "USDM の acceptance_criteria に id フィールドを追加する"
+    reason_rejected: "USDM は requirements スキルの所有物であり、spec スキルからの構造変更はパイプラインの所有権境界に反する"
+  - name: "SPEC 単位（SPEC-002-01）で UC を対応づける"
+    reason_rejected: "1 仕様に複数 UC の基準が混在するため、SPEC 単位ではシナリオを一意に選べない（CR の指摘そのもの）"
+  - name: "affected_models の BUC を辿って UC を機械的に導出する"
+    reason_rejected: "BUC を持たない仕様があり全基準を被覆できない。BUC と UC も 1:1 ではない"

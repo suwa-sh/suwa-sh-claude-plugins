@@ -1,0 +1,9 @@
+RDRA モデルと NFR グレードからの初期アーキテクチャ設計
+
+trigger_event:
+  rdra:20260902_130741_initial_build
+  nfr:20260902_132551_initial_nfr
+
+対象システム: 図書館蔵書管理システム
+mode: initial（初期構築）
+dialogue_policy: auto_adopt（Step1 の要確認項目 30 件はすべて ⭐推奨 の Option A を自動採用）

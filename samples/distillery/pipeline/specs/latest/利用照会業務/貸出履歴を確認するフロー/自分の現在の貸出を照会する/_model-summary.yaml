@@ -1,0 +1,74 @@
+# _model-summary.yaml
+uc: "自分の現在の貸出を照会する"
+business: "利用照会業務"
+buc: "貸出履歴を確認するフロー"
+
+bounded_context_id: "BC-003"
+aggregate_id: "AG-003"
+
+models:
+  - name: "現在の貸出一覧画面 / LoanTable + DueDateIndicator"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "ListMyLoansApiRequest"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "貸出"
+  - name: "ListMyLoansRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "貸出"
+  - name: "ListMyCurrentLoansQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出"
+  - name: "OwnerAccessPolicy"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "利用者アカウント"
+  - name: "MyLoanSummary"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "value-object"
+    rdra_info: "貸出"
+  - name: "LoanRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :認証コンテキストの利用者番号 AND loan_status IN ('貸出中','延滞') ORDER BY due_date ASC、LIMIT/OFFSET でページング"
+    indexes_needed:
+      - columns: ["user_no", "loan_status", "due_date"]
+        reason: "本人の現在の貸出を返却期限昇順で取得する"
+        access_pattern: "現在の貸出一覧画面の初期表示・ページング"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id IN (:貸出行の書籍ID)（BC-001 の公開インターフェース経由）"
+    indexes_needed:
+      - columns: ["book_id"]
+        reason: "貸出行に表示するタイトル・著者の取得"
+        access_pattern: "一覧 1 頁分の書籍IDによる一括取得"
+
+kvs: []
+object_storage: []

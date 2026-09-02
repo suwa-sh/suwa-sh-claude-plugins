@@ -1,0 +1,78 @@
+{
+  "schema_version": "distillery.feedback-run-status/v1",
+  "run_id": "feedback-20260902_184257_impl_feedback_d0f57ea2-20260902_184710-7781",
+  "attempt": 1,
+  "feedback_request_id": "20260902_184257_impl_feedback_d0f57ea2",
+  "input_sha256": "7afd483f6a221ae5f469cbcbc5c7c3bce46be4f4924e7aec3f1e9b2b682c9133",
+  "ambiguity_policy": "recommended_auto",
+  "state": "completed",
+  "stages": [
+    {
+      "id": "design_system",
+      "state": "completed",
+      "event_ids": [
+        "20260902_190712_feedback_design_system_completed"
+      ],
+      "direct_work_unit_ids": [
+        "CR-d0f57ea2-006#1",
+        "CR-d0f57ea2-010#1"
+      ],
+      "causal_work_unit_ids": [
+        "CR-d0f57ea2-006#1",
+        "CR-d0f57ea2-010#1"
+      ]
+    },
+    {
+      "id": "spec",
+      "state": "completed",
+      "event_ids": [
+        "20260902_195553_feedback_spec_completed"
+      ],
+      "direct_work_unit_ids": [
+        "CR-d0f57ea2-001#1",
+        "CR-d0f57ea2-002#1",
+        "CR-d0f57ea2-003#1",
+        "CR-d0f57ea2-004#1",
+        "CR-d0f57ea2-005#1",
+        "CR-d0f57ea2-007#1",
+        "CR-d0f57ea2-008#1",
+        "CR-d0f57ea2-009#1",
+        "CR-d0f57ea2-011#1"
+      ],
+      "causal_work_unit_ids": [
+        "CR-d0f57ea2-001#1",
+        "CR-d0f57ea2-002#1",
+        "CR-d0f57ea2-003#1",
+        "CR-d0f57ea2-004#1",
+        "CR-d0f57ea2-005#1",
+        "CR-d0f57ea2-006#1",
+        "CR-d0f57ea2-007#1",
+        "CR-d0f57ea2-008#1",
+        "CR-d0f57ea2-009#1",
+        "CR-d0f57ea2-010#1",
+        "CR-d0f57ea2-011#1"
+      ]
+    },
+    {
+      "id": "spec_stories",
+      "state": "completed",
+      "event_ids": [
+        "20260902_201730_feedback_spec_stories_completed"
+      ],
+      "direct_work_unit_ids": [],
+      "causal_work_unit_ids": [
+        "CR-d0f57ea2-001#1",
+        "CR-d0f57ea2-002#1",
+        "CR-d0f57ea2-003#1",
+        "CR-d0f57ea2-004#1",
+        "CR-d0f57ea2-005#1",
+        "CR-d0f57ea2-006#1",
+        "CR-d0f57ea2-007#1",
+        "CR-d0f57ea2-008#1",
+        "CR-d0f57ea2-009#1",
+        "CR-d0f57ea2-010#1",
+        "CR-d0f57ea2-011#1"
+      ]
+    }
+  ]
+}

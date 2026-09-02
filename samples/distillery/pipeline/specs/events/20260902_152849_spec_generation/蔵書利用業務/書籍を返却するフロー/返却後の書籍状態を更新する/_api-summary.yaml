@@ -1,0 +1,46 @@
+# _api-summary.yaml
+uc: "返却後の書籍状態を更新する"
+business: "蔵書利用業務"
+buc: "書籍を返却するフロー"
+endpoints:
+  - method: "POST"
+    path: "/api/v1/books/{book_id}/restock"
+    summary: "返却後の書籍状態を返却後状態決定条件で在庫あり/予約待ちへ更新し、予約待ちのときは予約順1位を取置き対象候補として返す（司書ロール限定・冪等キー必須）"
+    request_schema: "RestockBookRequest"
+    response_schema: "RestockResponse"
+    tags: ["蔵書"]
+async_events: []
+schemas:
+  - name: "RestockBookRequest"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+  - name: "RestockResponse"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "previous_book_status"
+        type: "string"
+        required: true
+      - name: "active_reservation_count"
+        type: "integer"
+        required: true
+      - name: "next_reservation"
+        type: "NextReservation"
+        required: false
+  - name: "NextReservation"
+    properties:
+      - name: "reservation_id"
+        type: "string"
+        required: true
+      - name: "priority"
+        type: "integer"
+        required: true
+      - name: "user_no"
+        type: "string"
+        required: true

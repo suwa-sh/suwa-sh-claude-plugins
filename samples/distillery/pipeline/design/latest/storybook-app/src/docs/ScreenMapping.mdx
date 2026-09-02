@@ -1,53 +1,616 @@
 import { Meta } from '@storybook/addon-docs/blocks'
 
-<Meta title="Docs/Screen Mapping" />
+<Meta title="Screen Mapping" />
 
-# RDRA Screen Mapping
+# 画面マッピング
 
-全16画面を RDRA の UC、ルート、主要コンポーネント、Story に対応付けています。
+RDRA モデル（`docs/rdra/latest/BUC.tsv`）の `画面` 定義 **41 件** を、ポータル・ルート・構成コンポーネントへ対応づけた一覧です。
 
-## 利用者ポータル（7画面）
+この表に無い画面をデザインシステム側で追加することは禁止しています。追加が必要になった場合は `docs/todo.md` へ登録し、requirements スキルで RDRA へ反映してから戻ってきます。
+
+## ルーティングの所有権
+
+ルート（URL）の正本は `src/components/common/routes.ts`（Storybook では **Shell/AppShell → ルート表**）です。下表の `route id` を使って遷移し、画面側で URL 文字列を組み立てないでください。
 
 <table>
-  <thead><tr><th>RDRA画面</th><th>UC</th><th>Route</th><th>Components</th></tr></thead>
+  <thead>
+    <tr>
+      <th>対象</th>
+      <th>生成物</th>
+      <th>所有者</th>
+      <th>規則</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td>蔵書検索画面</td><td>書籍を検索する</td><td><code>/books/search</code></td><td>BookSearchFilter, BookCard</td></tr>
-    <tr><td>貸出手続き画面</td><td>書籍を貸出する</td><td><code>/loans/new</code></td><td>BookCard, Button</td></tr>
-    <tr><td>返却手続き画面</td><td>書籍を返却する</td><td><code>/loans/return</code></td><td>LoanRecord, Button</td></tr>
-    <tr><td>予約申請画面</td><td>書籍を予約する</td><td><code>/reservations/new</code></td><td>BookCard, ReservationStatusBadge</td></tr>
-    <tr><td>予約管理画面</td><td>予約をキャンセルする</td><td><code>/reservations</code></td><td>ReservationStatusBadge, ConfirmActionModal</td></tr>
-    <tr><td>貸出履歴画面</td><td>貸出履歴を確認する</td><td><code>/mypage/loans</code></td><td>LoanRecord, PaginatedList</td></tr>
-    <tr><td>予約状況画面</td><td>予約状況を確認する</td><td><code>/mypage/reservations</code></td><td>ReservationStatusBadge, BookCard</td></tr>
+    <tr>
+      <td>ルート表（URL の正本）</td>
+      <td><code>src/components/common/routes.ts</code></td>
+      <td>デザインシステム</td>
+      <td>この画面マッピングの <code>ルート</code> 列と 1:1。実装リポで追記しない</td>
+    </tr>
+    <tr>
+      <td>エントリポイント / アプリシェル</td>
+      <td><code>src/components/common/AppShell.tsx</code>（<code>AppShell</code> / <code>AppShellByPath</code>）</td>
+      <td>デザインシステム</td>
+      <td>ポータル解決・アクティブナビ・404・ポータル外アクセスの判定をここに集約する</td>
+    </tr>
+    <tr>
+      <td>遷移 API</td>
+      <td><code>src/components/common/hooks/useAppNavigation.ts</code></td>
+      <td>デザインシステム</td>
+      <td>遷移は route id 指定のみ。<code>href()</code> / <code>navigate()</code> 以外で URL を作らない</td>
+    </tr>
+    <tr>
+      <td>router アダプタ</td>
+      <td>実装リポの router（App Router 等）</td>
+      <td>実装リポ</td>
+      <td><code>AppShell</code> の <code>onNavigate</code> に <code>router.push</code> を注入するだけ</td>
+    </tr>
+    <tr>
+      <td>各ページ本体</td>
+      <td>実装リポのページ実装</td>
+      <td>実装リポ</td>
+      <td><code>AppShell</code> の children として描画する。シェル・ナビを再実装しない</td>
+    </tr>
   </tbody>
 </table>
 
-## 司書ポータル（9画面）
+E2E は実 URL（`path` 列）で対象画面へ到達できます。パスパラメータは `buildPath(routeId, params)` で組み立てます。
+
+## 利用者ポータル（17 画面）
+
+<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+  <span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: '#1D4ED8', borderRadius: 4 }} />
+  <span>プライマリ色 <code>#1D4ED8</code></span>
+</div>
 
 <table>
-  <thead><tr><th>RDRA画面</th><th>UC</th><th>Route</th><th>Components</th></tr></thead>
+  <thead>
+    <tr>
+      <th>RDRA 画面名</th>
+      <th>UC</th>
+      <th>ルート</th>
+      <th>主要コンポーネント</th>
+      <th>バリエーション</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td>蔵書登録画面</td><td>書籍を登録する</td><td><code>/admin/books/new</code></td><td>Input, Button</td></tr>
-    <tr><td>蔵書編集画面</td><td>書籍情報を編集する</td><td><code>/admin/books/:id/edit</code></td><td>Input, Button</td></tr>
-    <tr><td>蔵書管理画面</td><td>書籍を削除する</td><td><code>/admin/books</code></td><td>BookCard, BookSearchFilter, ConfirmActionModal</td></tr>
-    <tr><td>貸出状況一覧画面</td><td>貸出状況を確認する</td><td><code>/admin/loans</code></td><td>LoanRecord, BookLoanStatusBadge</td></tr>
-    <tr><td>延滞管理画面</td><td>延滞を検出する</td><td><code>/admin/loans/overdue</code></td><td>LoanRecord, ErrorBanner</td></tr>
-    <tr><td>利用者登録画面</td><td>利用者を登録する</td><td><code>/admin/users/new</code></td><td>Input, Button</td></tr>
-    <tr><td>利用者編集画面</td><td>利用者情報を編集する</td><td><code>/admin/users/:id/edit</code></td><td>Input, Button</td></tr>
-    <tr><td>在庫状況画面</td><td>在庫状況を確認する</td><td><code>/admin/inventory</code></td><td>StatsSummaryCard, BookCard</td></tr>
-    <tr><td>統計レポート画面</td><td>統計レポートを閲覧する</td><td><code>/admin/stats</code></td><td>StatsSummaryCard</td></tr>
+    <tr>
+      <td>蔵書検索画面</td>
+      <td>書籍を検索する</td>
+      <td><code>/search</code></td>
+      <td><code>PortalShell</code> / <code>BookSearchFilter</code> / <code>BookCard</code> / <code>Pagination</code> / <code>EmptyState</code> / <code>Skeleton</code></td>
+      <td>検索条件種別 / ジャンル / 資料種別</td>
+    </tr>
+    <tr>
+      <td>書籍詳細・在庫状況画面</td>
+      <td>書籍詳細と在庫状況を照会する</td>
+      <td><code>/books/:bookId</code></td>
+      <td><code>PortalShell</code> / <code>BookCard</code> / <code>BookStatusBadge</code> / <code>ReservationQueueTracker</code> / <code>Button</code> / <code>Alert</code></td>
+      <td>ジャンル / 資料種別</td>
+    </tr>
+    <tr>
+      <td>書籍予約申込画面</td>
+      <td>予約を登録する</td>
+      <td><code>/books/:bookId/reserve</code></td>
+      <td><code>PortalShell</code> / <code>BookCard</code> / <code>ReservationQueueTracker</code> / <code>Alert</code> / <code>Button</code> / <code>Modal</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>予約取消受付画面</td>
+      <td>予約を取り消す</td>
+      <td><code>/reservations/:reservationId/cancel</code></td>
+      <td><code>PortalShell</code> / <code>ReservationStatusBadge</code> / <code>Modal</code> / <code>Alert</code> / <code>Button</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>予約順位確認画面</td>
+      <td>自分の予約順位を照会する</td>
+      <td><code>/reservations/:reservationId/rank</code></td>
+      <td><code>PortalShell</code> / <code>ReservationQueueTracker</code> / <code>BookCard</code> / <code>Card</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>予約状況一覧画面</td>
+      <td>自分の予約状況を照会する</td>
+      <td><code>/reservations</code></td>
+      <td><code>PortalShell</code> / <code>ReservationStatusBadge</code> / <code>ReservationQueueTracker</code> / <code>Table</code> / <code>EmptyState</code> / <code>Pagination</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>取置き中予約確認画面</td>
+      <td>自分の取置き中の予約を照会する</td>
+      <td><code>/reservations/holds</code></td>
+      <td><code>PortalShell</code> / <code>HoldPickupCard</code> / <code>ReservationStatusBadge</code> / <code>EmptyState</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>取置き受取案内画面</td>
+      <td>自分の取置き状況を照会する</td>
+      <td><code>/reservations/holds/:reservationId</code></td>
+      <td><code>PortalShell</code> / <code>HoldPickupCard</code> / <code>Alert</code> / <code>Button</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>現在の貸出一覧画面</td>
+      <td>自分の現在の貸出を照会する</td>
+      <td><code>/loans</code></td>
+      <td><code>PortalShell</code> / <code>LoanTable</code> / <code>DueDateIndicator</code> / <code>LoanStatusBadge</code> / <code>EmptyState</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>貸出内容・返却期限確認画面</td>
+      <td>自分の貸出内容と返却期限を照会する</td>
+      <td><code>/loans/:loanId</code></td>
+      <td><code>PortalShell</code> / <code>Card</code> / <code>DueDateIndicator</code> / <code>LoanStatusBadge</code> / <code>BookCard</code></td>
+      <td>貸出期間区分</td>
+    </tr>
+    <tr>
+      <td>貸出履歴画面</td>
+      <td>自分の貸出履歴を照会する</td>
+      <td><code>/loans/history</code></td>
+      <td><code>PortalShell</code> / <code>LoanTable</code> / <code>Pagination</code> / <code>EmptyState</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>返却期限リマインド確認画面</td>
+      <td>自分の返却期限を照会する</td>
+      <td><code>/loans/due</code></td>
+      <td><code>PortalShell</code> / <code>DueDateIndicator</code> / <code>LoanTable</code> / <code>Alert</code></td>
+      <td>通知タイミング区分</td>
+    </tr>
+    <tr>
+      <td>延滞返却対象確認画面</td>
+      <td>自分の延滞中の貸出を照会する</td>
+      <td><code>/loans/overdue</code></td>
+      <td><code>PortalShell</code> / <code>LoanTable</code> / <code>DueDateIndicator</code> / <code>Alert</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>返却対象貸出確認画面</td>
+      <td>返却対象の貸出を照会する</td>
+      <td><code>/loans/return</code></td>
+      <td><code>PortalShell</code> / <code>LoanTable</code> / <code>DueDateIndicator</code> / <code>Button</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>返却完了確認画面</td>
+      <td>自分の返却済み貸出を照会する</td>
+      <td><code>/loans/returned</code></td>
+      <td><code>PortalShell</code> / <code>LoanTable</code> / <code>LoanStatusBadge</code> / <code>Alert</code> / <code>EmptyState</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>マイページ登録内容画面</td>
+      <td>自分の利用者情報を照会する</td>
+      <td><code>/mypage</code></td>
+      <td><code>PortalShell</code> / <code>UserProfileCard</code> / <code>UserStatusBadge</code></td>
+      <td>利用者区分</td>
+    </tr>
+    <tr>
+      <td>利用者番号提示画面</td>
+      <td>利用者番号で貸出対象利用者を特定する</td>
+      <td><code>/mypage/card</code></td>
+      <td><code>PortalShell</code> / <code>UserProfileCard</code> / <code>Card</code> / <code>Alert</code></td>
+      <td>—</td>
+    </tr>
   </tbody>
 </table>
 
-## State mapping
+## 司書ポータル（24 画面）
+
+<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+  <span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: '#0F766E', borderRadius: 4 }} />
+  <span>プライマリ色 <code>#0F766E</code></span>
+</div>
 
 <table>
-  <thead><tr><th>Model</th><th>RDRA state</th><th>Label</th><th>Semantic color</th></tr></thead>
+  <thead>
+    <tr>
+      <th>RDRA 画面名</th>
+      <th>UC</th>
+      <th>ルート</th>
+      <th>主要コンポーネント</th>
+      <th>バリエーション</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td>書籍貸出状態</td><td>在庫あり</td><td>在庫あり</td><td><code>success</code></td></tr>
-    <tr><td>書籍貸出状態</td><td>貸出中</td><td>貸出中</td><td><code>info</code></td></tr>
-    <tr><td>書籍貸出状態</td><td>延滞中</td><td>延滞中</td><td><code>destructive</code></td></tr>
-    <tr><td>予約状態</td><td>予約受付中</td><td>予約受付中</td><td><code>info</code></td></tr>
-    <tr><td>予約状態</td><td>予約確保済</td><td>予約確保済</td><td><code>success</code></td></tr>
-    <tr><td>予約状態</td><td>予約キャンセル</td><td>キャンセル済</td><td><code>default</code></td></tr>
+    <tr>
+      <td>蔵書管理台帳画面</td>
+      <td>蔵書一覧を照会する</td>
+      <td><code>/staff/books</code></td>
+      <td><code>PortalShell</code> / <code>Table</code> / <code>BookStatusBadge</code> / <code>BookSearchFilter</code> / <code>Pagination</code> / <code>EmptyState</code> / <code>Button</code></td>
+      <td>ジャンル / 資料種別</td>
+    </tr>
+    <tr>
+      <td>書籍受入登録画面</td>
+      <td>書籍を登録する</td>
+      <td><code>/staff/books/new</code></td>
+      <td><code>PortalShell</code> / <code>Card</code> / <code>Input</code> / <code>ToggleGroup</code> / <code>Button</code> / <code>Alert</code></td>
+      <td>ジャンル / 資料種別</td>
+    </tr>
+    <tr>
+      <td>書誌情報訂正画面</td>
+      <td>書籍情報を編集する</td>
+      <td><code>/staff/books/:bookId/edit</code></td>
+      <td><code>PortalShell</code> / <code>Card</code> / <code>Input</code> / <code>ToggleGroup</code> / <code>BookStatusBadge</code> / <code>Button</code></td>
+      <td>ジャンル / 資料種別</td>
+    </tr>
+    <tr>
+      <td>除籍手続画面</td>
+      <td>書籍を削除する</td>
+      <td><code>/staff/books/:bookId/withdraw</code></td>
+      <td><code>PortalShell</code> / <code>BookCard</code> / <code>BookStatusBadge</code> / <code>Alert</code> / <code>Modal</code> / <code>Button</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>レファレンス検索画面</td>
+      <td>司書向けに蔵書を検索する</td>
+      <td><code>/staff/books/reference-search</code></td>
+      <td><code>PortalShell</code> / <code>BookSearchFilter</code> / <code>Table</code> / <code>BookStatusBadge</code> / <code>Pagination</code></td>
+      <td>検索条件種別 / ジャンル / 資料種別</td>
+    </tr>
+    <tr>
+      <td>利用者名簿画面</td>
+      <td>利用者一覧を照会する</td>
+      <td><code>/staff/users</code></td>
+      <td><code>PortalShell</code> / <code>UserTable</code> / <code>UserStatusBadge</code> / <code>Pagination</code> / <code>EmptyState</code> / <code>Button</code></td>
+      <td>利用者区分</td>
+    </tr>
+    <tr>
+      <td>利用申込受付画面</td>
+      <td>利用者を登録する</td>
+      <td><code>/staff/users/new</code></td>
+      <td><code>PortalShell</code> / <code>Card</code> / <code>Input</code> / <code>ToggleGroup</code> / <code>Button</code> / <code>Alert</code></td>
+      <td>利用者区分</td>
+    </tr>
+    <tr>
+      <td>利用者情報変更画面</td>
+      <td>利用者情報を編集する</td>
+      <td><code>/staff/users/:userNumber/edit</code></td>
+      <td><code>PortalShell</code> / <code>UserProfileCard</code> / <code>Input</code> / <code>ToggleGroup</code> / <code>Button</code></td>
+      <td>利用者区分</td>
+    </tr>
+    <tr>
+      <td>退会手続画面</td>
+      <td>利用者を削除する</td>
+      <td><code>/staff/users/:userNumber/withdraw</code></td>
+      <td><code>PortalShell</code> / <code>UserProfileCard</code> / <code>UserStatusBadge</code> / <code>Alert</code> / <code>Modal</code> / <code>Button</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>貸出可否判定画面</td>
+      <td>書籍の貸出可否を判定する</td>
+      <td><code>/staff/loans/eligibility</code></td>
+      <td><code>PortalShell</code> / <code>BookCard</code> / <code>UserProfileCard</code> / <code>Alert</code> / <code>BookStatusBadge</code> / <code>Button</code></td>
+      <td>資料種別</td>
+    </tr>
+    <tr>
+      <td>窓口貸出受付画面</td>
+      <td>貸出を登録する</td>
+      <td><code>/staff/loans/new</code></td>
+      <td><code>PortalShell</code> / <code>Input</code> / <code>ToggleGroup</code> / <code>BookCard</code> / <code>UserProfileCard</code> / <code>DueDateIndicator</code> / <code>Button</code></td>
+      <td>貸出期間区分</td>
+    </tr>
+    <tr>
+      <td>窓口返却受付画面</td>
+      <td>返却を登録する</td>
+      <td><code>/staff/returns/new</code></td>
+      <td><code>PortalShell</code> / <code>Input</code> / <code>LoanTable</code> / <code>LoanStatusBadge</code> / <code>DueDateIndicator</code> / <code>Button</code> / <code>Alert</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>返却後在庫整理画面</td>
+      <td>返却後の書籍状態を更新する</td>
+      <td><code>/staff/returns/:loanId/restock</code></td>
+      <td><code>PortalShell</code> / <code>BookCard</code> / <code>BookStatusBadge</code> / <code>ReservationStatusBadge</code> / <code>Alert</code> / <code>Button</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>返却期限接近貸出一覧画面</td>
+      <td>返却期限接近の貸出を判定する</td>
+      <td><code>/staff/duedates/upcoming</code></td>
+      <td><code>PortalShell</code> / <code>LoanTable</code> / <code>DueDateIndicator</code> / <code>Pagination</code> / <code>Button</code></td>
+      <td>通知タイミング区分</td>
+    </tr>
+    <tr>
+      <td>リマインド送信画面</td>
+      <td>リマインドメールを送信する</td>
+      <td><code>/staff/duedates/remind</code></td>
+      <td><code>PortalShell</code> / <code>NotificationLogTable</code> / <code>NotificationStatusBadge</code> / <code>Alert</code> / <code>Button</code></td>
+      <td>通知種別 / 通知タイミング区分</td>
+    </tr>
+    <tr>
+      <td>延滞判定結果確認画面</td>
+      <td>期限超過の貸出を延滞にする</td>
+      <td><code>/staff/overdues/judge</code></td>
+      <td><code>PortalShell</code> / <code>LoanTable</code> / <code>LoanStatusBadge</code> / <code>Alert</code> / <code>Button</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>延滞状況一覧画面</td>
+      <td>延滞中の貸出を照会する</td>
+      <td><code>/staff/overdues</code></td>
+      <td><code>PortalShell</code> / <code>LoanTable</code> / <code>DueDateIndicator</code> / <code>LoanStatusBadge</code> / <code>Pagination</code> / <code>EmptyState</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>督促送信画面</td>
+      <td>督促メールを送信する</td>
+      <td><code>/staff/overdues/dun</code></td>
+      <td><code>PortalShell</code> / <code>NotificationLogTable</code> / <code>NotificationStatusBadge</code> / <code>Alert</code> / <code>Button</code></td>
+      <td>通知種別 / 通知タイミング区分</td>
+    </tr>
+    <tr>
+      <td>取置き対象者特定画面</td>
+      <td>予約順1位の利用者を特定する</td>
+      <td><code>/staff/holds/next</code></td>
+      <td><code>PortalShell</code> / <code>ReservationQueueTracker</code> / <code>ReservationStatusBadge</code> / <code>UserProfileCard</code> / <code>Button</code></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>取置き通知送信画面</td>
+      <td>取置き通知メールを送信する</td>
+      <td><code>/staff/holds/notify</code></td>
+      <td><code>PortalShell</code> / <code>NotificationLogTable</code> / <code>NotificationStatusBadge</code> / <code>Alert</code> / <code>Button</code></td>
+      <td>通知種別</td>
+    </tr>
+    <tr>
+      <td>在庫状況集計条件指定画面</td>
+      <td>在庫状況を区分別に集計する</td>
+      <td><code>/staff/reports/inventory/new</code></td>
+      <td><code>PortalShell</code> / <code>ReportPeriodSelector</code> / <code>ReportStatusBadge</code> / <code>Button</code></td>
+      <td>レポート種別 / 集計期間区分</td>
+    </tr>
+    <tr>
+      <td>在庫状況レポート画面</td>
+      <td>在庫状況レポートを参照する</td>
+      <td><code>/staff/reports/inventory</code></td>
+      <td><code>PortalShell</code> / <code>ReportKpiCard</code> / <code>LoanTrendChart</code> / <code>Table</code> / <code>BookStatusBadge</code> / <code>ReportStatusBadge</code> / <code>EmptyState</code></td>
+      <td>レポート種別</td>
+    </tr>
+    <tr>
+      <td>集計期間指定画面</td>
+      <td>期間別貸出統計を集計する</td>
+      <td><code>/staff/reports/loans/new</code></td>
+      <td><code>PortalShell</code> / <code>ReportPeriodSelector</code> / <code>ReportStatusBadge</code> / <code>Button</code> / <code>Alert</code></td>
+      <td>レポート種別 / 集計期間区分</td>
+    </tr>
+    <tr>
+      <td>貸出統計レポート画面</td>
+      <td>貸出統計レポートを参照する</td>
+      <td><code>/staff/reports/loans</code></td>
+      <td><code>PortalShell</code> / <code>ReportKpiCard</code> / <code>LoanTrendChart</code> / <code>Table</code> / <code>ReportStatusBadge</code> / <code>EmptyState</code></td>
+      <td>レポート種別 / 集計期間区分</td>
+    </tr>
+  </tbody>
+</table>
+
+## コンポーネント逆引き
+
+ドメインコンポーネントがどの画面で使われるかの逆引きです。変更の影響範囲の確認に使います。
+
+<table>
+  <thead>
+    <tr>
+      <th>コンポーネント</th>
+      <th>使用画面数</th>
+      <th>使用画面</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>PortalShell</code></td>
+      <td>41</td>
+      <td>蔵書検索画面 / 書籍詳細・在庫状況画面 / 書籍予約申込画面 / 予約取消受付画面 / 予約順位確認画面 / 予約状況一覧画面 / 取置き中予約確認画面 / 取置き受取案内画面 / 現在の貸出一覧画面 / 貸出内容・返却期限確認画面 / 貸出履歴画面 / 返却期限リマインド確認画面 / 延滞返却対象確認画面 / 返却対象貸出確認画面 / 返却完了確認画面 / マイページ登録内容画面 / 利用者番号提示画面 / 蔵書管理台帳画面 / 書籍受入登録画面 / 書誌情報訂正画面 / 除籍手続画面 / レファレンス検索画面 / 利用者名簿画面 / 利用申込受付画面 / 利用者情報変更画面 / 退会手続画面 / 貸出可否判定画面 / 窓口貸出受付画面 / 窓口返却受付画面 / 返却後在庫整理画面 / 返却期限接近貸出一覧画面 / リマインド送信画面 / 延滞判定結果確認画面 / 延滞状況一覧画面 / 督促送信画面 / 取置き対象者特定画面 / 取置き通知送信画面 / 在庫状況集計条件指定画面 / 在庫状況レポート画面 / 集計期間指定画面 / 貸出統計レポート画面</td>
+    </tr>
+    <tr>
+      <td><code>Button</code></td>
+      <td>25</td>
+      <td>書籍詳細・在庫状況画面 / 書籍予約申込画面 / 予約取消受付画面 / 取置き受取案内画面 / 返却対象貸出確認画面 / 蔵書管理台帳画面 / 書籍受入登録画面 / 書誌情報訂正画面 / 除籍手続画面 / 利用者名簿画面 / 利用申込受付画面 / 利用者情報変更画面 / 退会手続画面 / 貸出可否判定画面 / 窓口貸出受付画面 / 窓口返却受付画面 / 返却後在庫整理画面 / 返却期限接近貸出一覧画面 / リマインド送信画面 / 延滞判定結果確認画面 / 督促送信画面 / 取置き対象者特定画面 / 取置き通知送信画面 / 在庫状況集計条件指定画面 / 集計期間指定画面</td>
+    </tr>
+    <tr>
+      <td><code>Alert</code></td>
+      <td>20</td>
+      <td>書籍詳細・在庫状況画面 / 書籍予約申込画面 / 予約取消受付画面 / 取置き受取案内画面 / 返却期限リマインド確認画面 / 延滞返却対象確認画面 / 返却完了確認画面 / 利用者番号提示画面 / 書籍受入登録画面 / 除籍手続画面 / 利用申込受付画面 / 退会手続画面 / 貸出可否判定画面 / 窓口返却受付画面 / 返却後在庫整理画面 / リマインド送信画面 / 延滞判定結果確認画面 / 督促送信画面 / 取置き通知送信画面 / 集計期間指定画面</td>
+    </tr>
+    <tr>
+      <td><code>EmptyState</code></td>
+      <td>11</td>
+      <td>蔵書検索画面 / 予約状況一覧画面 / 取置き中予約確認画面 / 現在の貸出一覧画面 / 貸出履歴画面 / 返却完了確認画面 / 蔵書管理台帳画面 / 利用者名簿画面 / 延滞状況一覧画面 / 在庫状況レポート画面 / 貸出統計レポート画面</td>
+    </tr>
+    <tr>
+      <td><code>LoanTable</code></td>
+      <td>10</td>
+      <td>現在の貸出一覧画面 / 貸出履歴画面 / 返却期限リマインド確認画面 / 延滞返却対象確認画面 / 返却対象貸出確認画面 / 返却完了確認画面 / 窓口返却受付画面 / 返却期限接近貸出一覧画面 / 延滞判定結果確認画面 / 延滞状況一覧画面</td>
+    </tr>
+    <tr>
+      <td><code>BookCard</code></td>
+      <td>9</td>
+      <td>蔵書検索画面 / 書籍詳細・在庫状況画面 / 書籍予約申込画面 / 予約順位確認画面 / 貸出内容・返却期限確認画面 / 除籍手続画面 / 貸出可否判定画面 / 窓口貸出受付画面 / 返却後在庫整理画面</td>
+    </tr>
+    <tr>
+      <td><code>DueDateIndicator</code></td>
+      <td>9</td>
+      <td>現在の貸出一覧画面 / 貸出内容・返却期限確認画面 / 返却期限リマインド確認画面 / 延滞返却対象確認画面 / 返却対象貸出確認画面 / 窓口貸出受付画面 / 窓口返却受付画面 / 返却期限接近貸出一覧画面 / 延滞状況一覧画面</td>
+    </tr>
+    <tr>
+      <td><code>BookStatusBadge</code></td>
+      <td>8</td>
+      <td>書籍詳細・在庫状況画面 / 蔵書管理台帳画面 / 書誌情報訂正画面 / 除籍手続画面 / レファレンス検索画面 / 貸出可否判定画面 / 返却後在庫整理画面 / 在庫状況レポート画面</td>
+    </tr>
+    <tr>
+      <td><code>Pagination</code></td>
+      <td>8</td>
+      <td>蔵書検索画面 / 予約状況一覧画面 / 貸出履歴画面 / 蔵書管理台帳画面 / レファレンス検索画面 / 利用者名簿画面 / 返却期限接近貸出一覧画面 / 延滞状況一覧画面</td>
+    </tr>
+    <tr>
+      <td><code>UserProfileCard</code></td>
+      <td>7</td>
+      <td>マイページ登録内容画面 / 利用者番号提示画面 / 利用者情報変更画面 / 退会手続画面 / 貸出可否判定画面 / 窓口貸出受付画面 / 取置き対象者特定画面</td>
+    </tr>
+    <tr>
+      <td><code>Card</code></td>
+      <td>6</td>
+      <td>予約順位確認画面 / 貸出内容・返却期限確認画面 / 利用者番号提示画面 / 書籍受入登録画面 / 書誌情報訂正画面 / 利用申込受付画面</td>
+    </tr>
+    <tr>
+      <td><code>Input</code></td>
+      <td>6</td>
+      <td>書籍受入登録画面 / 書誌情報訂正画面 / 利用申込受付画面 / 利用者情報変更画面 / 窓口貸出受付画面 / 窓口返却受付画面</td>
+    </tr>
+    <tr>
+      <td><code>LoanStatusBadge</code></td>
+      <td>6</td>
+      <td>現在の貸出一覧画面 / 貸出内容・返却期限確認画面 / 返却完了確認画面 / 窓口返却受付画面 / 延滞判定結果確認画面 / 延滞状況一覧画面</td>
+    </tr>
+    <tr>
+      <td><code>ReservationQueueTracker</code></td>
+      <td>5</td>
+      <td>書籍詳細・在庫状況画面 / 書籍予約申込画面 / 予約順位確認画面 / 予約状況一覧画面 / 取置き対象者特定画面</td>
+    </tr>
+    <tr>
+      <td><code>ReservationStatusBadge</code></td>
+      <td>5</td>
+      <td>予約取消受付画面 / 予約状況一覧画面 / 取置き中予約確認画面 / 返却後在庫整理画面 / 取置き対象者特定画面</td>
+    </tr>
+    <tr>
+      <td><code>Table</code></td>
+      <td>5</td>
+      <td>予約状況一覧画面 / 蔵書管理台帳画面 / レファレンス検索画面 / 在庫状況レポート画面 / 貸出統計レポート画面</td>
+    </tr>
+    <tr>
+      <td><code>ToggleGroup</code></td>
+      <td>5</td>
+      <td>書籍受入登録画面 / 書誌情報訂正画面 / 利用申込受付画面 / 利用者情報変更画面 / 窓口貸出受付画面</td>
+    </tr>
+    <tr>
+      <td><code>Modal</code></td>
+      <td>4</td>
+      <td>書籍予約申込画面 / 予約取消受付画面 / 除籍手続画面 / 退会手続画面</td>
+    </tr>
+    <tr>
+      <td><code>ReportStatusBadge</code></td>
+      <td>4</td>
+      <td>在庫状況集計条件指定画面 / 在庫状況レポート画面 / 集計期間指定画面 / 貸出統計レポート画面</td>
+    </tr>
+    <tr>
+      <td><code>BookSearchFilter</code></td>
+      <td>3</td>
+      <td>蔵書検索画面 / 蔵書管理台帳画面 / レファレンス検索画面</td>
+    </tr>
+    <tr>
+      <td><code>NotificationLogTable</code></td>
+      <td>3</td>
+      <td>リマインド送信画面 / 督促送信画面 / 取置き通知送信画面</td>
+    </tr>
+    <tr>
+      <td><code>NotificationStatusBadge</code></td>
+      <td>3</td>
+      <td>リマインド送信画面 / 督促送信画面 / 取置き通知送信画面</td>
+    </tr>
+    <tr>
+      <td><code>UserStatusBadge</code></td>
+      <td>3</td>
+      <td>マイページ登録内容画面 / 利用者名簿画面 / 退会手続画面</td>
+    </tr>
+    <tr>
+      <td><code>HoldPickupCard</code></td>
+      <td>2</td>
+      <td>取置き中予約確認画面 / 取置き受取案内画面</td>
+    </tr>
+    <tr>
+      <td><code>LoanTrendChart</code></td>
+      <td>2</td>
+      <td>在庫状況レポート画面 / 貸出統計レポート画面</td>
+    </tr>
+    <tr>
+      <td><code>ReportKpiCard</code></td>
+      <td>2</td>
+      <td>在庫状況レポート画面 / 貸出統計レポート画面</td>
+    </tr>
+    <tr>
+      <td><code>ReportPeriodSelector</code></td>
+      <td>2</td>
+      <td>在庫状況集計条件指定画面 / 集計期間指定画面</td>
+    </tr>
+    <tr>
+      <td><code>Skeleton</code></td>
+      <td>1</td>
+      <td>蔵書検索画面</td>
+    </tr>
+    <tr>
+      <td><code>UserTable</code></td>
+      <td>1</td>
+      <td>利用者名簿画面</td>
+    </tr>
+  </tbody>
+</table>
+
+## レイアウトパターン
+
+画面用途ごとのカラム分割です。値の導出根拠は `_inference.md` の 5-1 にあります。
+
+<table>
+  <thead>
+    <tr>
+      <th>画面パターン</th>
+      <th>カラム分割</th>
+      <th>該当画面の例</th>
+      <th>導出根拠</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>一覧・検索</td>
+      <td>12col（フル幅）</td>
+      <td>蔵書管理台帳画面 / 利用者名簿画面 / 蔵書検索画面 / 延滞状況一覧画面</td>
+      <td>書籍の属性数 10、利用者 7。属性数 5 以上でテーブル表示が必要</td>
+    </tr>
+    <tr>
+      <td>詳細表示</td>
+      <td>8col + 4col（マスター・ディテール）</td>
+      <td>書籍詳細・在庫状況画面</td>
+      <td>書籍に関連情報あり（貸出 / 予約 / 統計レポート）→ 右に在庫・予約パネル</td>
+    </tr>
+    <tr>
+      <td>登録・編集フォーム</td>
+      <td>余白 2col + 8col + 余白 2col（中央寄せ）</td>
+      <td>書籍受入登録画面 / 利用申込受付画面 / 利用者情報変更画面</td>
+      <td>入力フィールド数が 10 以下（書籍 7 / 利用者 4）</td>
+    </tr>
+    <tr>
+      <td>ダッシュボード・統計</td>
+      <td>4col × 3（KPI）+ 12col（チャート）</td>
+      <td>在庫状況レポート画面 / 貸出統計レポート画面</td>
+      <td>レポート種別 3 値（在庫状況 / 人気書籍ランキング / 期間別貸出統計）→ KPI カード 3 件</td>
+    </tr>
+    <tr>
+      <td>確認・単票</td>
+      <td>6col + 6col</td>
+      <td>貸出可否判定画面 / 返却後在庫整理画面 / 取置き対象者特定画面</td>
+      <td>判定対象と判定結果を対比表示する</td>
+    </tr>
+  </tbody>
+</table>
+
+## レスポンシブ
+
+NFR F.1.1.1（対応 OS Lv2）/ F.1.1.3（対応デバイス Lv2 = PC + タブレット）に基づき、
+lg と md をフル設計し、sm は崩れ防止の簡易対応に留めます。
+
+<table>
+  <thead>
+    <tr>
+      <th>ブレークポイント</th>
+      <th>カラム</th>
+      <th>サイドバー</th>
+      <th>設計方針</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><code>lg</code>（1024px 以上）</td><td>12col</td><td>展開（<code>16rem</code>）</td><td>フル設計。デスクトップ標準</td></tr>
+    <tr><td><code>md</code>（768–1023px）</td><td>8col</td><td>折りたたみ（<code>4rem</code>）</td><td>フル設計。タブレット横持ち相当</td></tr>
+    <tr><td><code>sm</code>（768px 未満）</td><td>4col</td><td>非表示（ハンバーガー）</td><td>簡易対応。スマートフォン対応の要否は確認待ち（todo 登録済み）</td></tr>
   </tbody>
 </table>

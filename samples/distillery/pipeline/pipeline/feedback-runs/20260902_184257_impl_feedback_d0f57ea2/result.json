@@ -1,0 +1,287 @@
+{
+  "schema_version": "distillery.feedback-result/v1",
+  "run_id": "feedback-20260902_184257_impl_feedback_d0f57ea2-20260902_184710-7781",
+  "attempt": 1,
+  "feedback_request_id": "20260902_184257_impl_feedback_d0f57ea2",
+  "input_sha256": "7afd483f6a221ae5f469cbcbc5c7c3bce46be4f4924e7aec3f1e9b2b682c9133",
+  "status": "completed",
+  "stages": [
+    {
+      "stage_id": "design_system",
+      "state": "succeeded",
+      "event_ids": [
+        "20260902_190712_feedback_design_system_completed"
+      ],
+      "direct_work_unit_ids": [
+        "CR-d0f57ea2-006#1",
+        "CR-d0f57ea2-010#1"
+      ],
+      "causal_work_unit_ids": [
+        "CR-d0f57ea2-006#1",
+        "CR-d0f57ea2-010#1"
+      ]
+    },
+    {
+      "stage_id": "spec",
+      "state": "succeeded",
+      "event_ids": [
+        "20260902_195553_feedback_spec_completed"
+      ],
+      "direct_work_unit_ids": [
+        "CR-d0f57ea2-001#1",
+        "CR-d0f57ea2-002#1",
+        "CR-d0f57ea2-003#1",
+        "CR-d0f57ea2-004#1",
+        "CR-d0f57ea2-005#1",
+        "CR-d0f57ea2-007#1",
+        "CR-d0f57ea2-008#1",
+        "CR-d0f57ea2-009#1",
+        "CR-d0f57ea2-011#1"
+      ],
+      "causal_work_unit_ids": [
+        "CR-d0f57ea2-001#1",
+        "CR-d0f57ea2-002#1",
+        "CR-d0f57ea2-003#1",
+        "CR-d0f57ea2-004#1",
+        "CR-d0f57ea2-005#1",
+        "CR-d0f57ea2-006#1",
+        "CR-d0f57ea2-007#1",
+        "CR-d0f57ea2-008#1",
+        "CR-d0f57ea2-009#1",
+        "CR-d0f57ea2-010#1",
+        "CR-d0f57ea2-011#1"
+      ]
+    },
+    {
+      "stage_id": "spec_stories",
+      "state": "succeeded",
+      "event_ids": [
+        "20260902_201730_feedback_spec_stories_completed"
+      ],
+      "direct_work_unit_ids": [],
+      "causal_work_unit_ids": [
+        "CR-d0f57ea2-001#1",
+        "CR-d0f57ea2-002#1",
+        "CR-d0f57ea2-003#1",
+        "CR-d0f57ea2-004#1",
+        "CR-d0f57ea2-005#1",
+        "CR-d0f57ea2-006#1",
+        "CR-d0f57ea2-007#1",
+        "CR-d0f57ea2-008#1",
+        "CR-d0f57ea2-009#1",
+        "CR-d0f57ea2-010#1",
+        "CR-d0f57ea2-011#1"
+      ]
+    }
+  ],
+  "work_units": [
+    {
+      "work_unit_id": "CR-d0f57ea2-001#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/uc-api-dependencies.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-009.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/asyncapi.yaml",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-008.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-003#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/asyncapi.yaml",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-008.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-004#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-006.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-005#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/datastore/rdb-schema.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "design/events/20260902_185951_design_system/design-event-diff.yaml",
+        "design/events/20260902_185951_design_system/decisions/design-decision-006.yaml",
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-007#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/datastore/kvs-schema.yaml",
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/api/openapi.yaml",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-007.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-008#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/ui-design.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+        "design/events/20260902_201117_spec_stories/design-event-diff.yaml",
+        "design/events/20260902_201117_spec_stories/_changes.md"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-009#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml",
+        "design/events/20260902_201117_spec_stories/design-event-diff.yaml",
+        "design/events/20260902_201117_spec_stories/_changes.md"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-010#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "design/events/20260902_185951_design_system/design-event-diff.yaml",
+        "design/events/20260902_185951_design_system/decisions/design-decision-007.yaml",
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/ux-ui/common-components.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-011.yaml"
+      ]
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-011#1",
+      "disposition": "applied",
+      "reason": "At least one required closure stage changed its domain artifacts.",
+      "artifact_refs": [
+        "specs/events/20260902_191046_spec_generation/_cross-cutting/traceability-matrix.md",
+        "specs/events/20260902_191046_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+        "specs/events/20260902_191046_spec_generation/decisions/spec-decision-010.yaml"
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "request_id": "CR-d0f57ea2-001",
+      "work_unit_ids": [
+        "CR-d0f57ea2-001#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    },
+    {
+      "request_id": "CR-d0f57ea2-002",
+      "work_unit_ids": [
+        "CR-d0f57ea2-002#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    },
+    {
+      "request_id": "CR-d0f57ea2-003",
+      "work_unit_ids": [
+        "CR-d0f57ea2-003#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    },
+    {
+      "request_id": "CR-d0f57ea2-004",
+      "work_unit_ids": [
+        "CR-d0f57ea2-004#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    },
+    {
+      "request_id": "CR-d0f57ea2-005",
+      "work_unit_ids": [
+        "CR-d0f57ea2-005#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    },
+    {
+      "request_id": "CR-d0f57ea2-006",
+      "work_unit_ids": [
+        "CR-d0f57ea2-006#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    },
+    {
+      "request_id": "CR-d0f57ea2-007",
+      "work_unit_ids": [
+        "CR-d0f57ea2-007#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    },
+    {
+      "request_id": "CR-d0f57ea2-008",
+      "work_unit_ids": [
+        "CR-d0f57ea2-008#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    },
+    {
+      "request_id": "CR-d0f57ea2-009",
+      "work_unit_ids": [
+        "CR-d0f57ea2-009#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    },
+    {
+      "request_id": "CR-d0f57ea2-010",
+      "work_unit_ids": [
+        "CR-d0f57ea2-010#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    },
+    {
+      "request_id": "CR-d0f57ea2-011",
+      "work_unit_ids": [
+        "CR-d0f57ea2-011#1"
+      ],
+      "disposition": "applied",
+      "reason": "At least one work unit was applied and all work units completed successfully."
+    }
+  ],
+  "terminal_event_id": "20260902_201827_feedback_run_completed"
+}

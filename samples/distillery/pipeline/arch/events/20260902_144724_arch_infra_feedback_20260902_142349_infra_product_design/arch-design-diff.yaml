@@ -1,0 +1,56 @@
+meta:
+  event_id: "20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design"
+  trigger_event: "infra:20260902_142349_infra_product_design"
+  created_at: "2026-09-02T14:47:24"
+
+system_architecture:
+  cross_tier_policies:
+    - id: "CTP-018"
+      name: "SLI/SLO ベースのオブザーバビリティ方針"
+      description: "可用性・レイテンシ・エラー率・スループットを SLI として定義し、エラーバジェットの消費状況に基づいて運用判断（リリース可否・アラート対応優先度）を行う。SLI は外形監視、エッジ/アプリの応答時間・エラー率、非同期処理の完遂率をカバーする"
+      reason: "インフラ設計（MCL product-design）の結果に基づく: product-observability.yaml で SLI 6 件（可用性 2・レイテンシ 1・エラー率 1・スループット 2）と対応する SLO・エラーバジェットが定義され、SLA 99%（CTP-XXX 既存の可用性方針）を数値目標として運用に落とし込む方針が具体化されたため"
+      source_model: "infra: product-observability.yaml → slis / slos"
+      confidence: "medium"
+    - id: "CTP-019"
+      name: "コスト最適化方針"
+      description: "本番環境ではライトサイジングの継続的レビュー（使用率トリガーに基づく見直し）を行い、非本番環境（stg/dev）は縮退構成（Single-AZ 化・夜間停止・シングルノード化）とする。中断許容ワークロードには割引価格帯のインフラを優先適用し、実績確認後に確定リソースへ長期利用割引を適用する"
+      reason: "インフラ設計（MCL product-design）の結果に基づく: product-cost-hints.yaml の cost_posture=balanced（可用性・性能の重要メトリクス平均が中位）に基づくライトサイジング・環境別コスト削減・割引プランの適用方針が具体化されたため"
+      source_model: "infra: product-cost-hints.yaml → rightsizing / non_production / commitment_discounts"
+      confidence: "medium"
+  cross_tier_rules:
+    - id: "CTR-012"
+      name: "Gateway トークン検証責務の委譲許容"
+      description: "Gateway（tier-api-gateway）の実装がリバースプロキシ/WAF 型でエッジでのトークン検証機能を提供しない場合、トークン検証責務を Backend API 層（tier-backend-api）へ委譲することを許容する。Gateway は WAF によるレート制限・マネージドルールセット適用までを担い、JWT 検証はアプリケーション層のミドルウェアで実施する構成を許容範囲とする"
+      reason: "インフラ設計（MCL product-design）の結果に基づく: product-mapping-aws.yaml の api_edge マッピングで fidelity: partial（ALB 単体ではエッジ JWT 検証ができず、常時稼働ワークロードのコスト効率を優先してトークン検証をアプリケーション層に配置）と判定されたため。SP-008「セキュリティオフロード」の実現手段の選択肢を明確化する"
+      source_model: "infra: product-mapping-aws.yaml → mappings[api_edge] (fidelity: partial)"
+      confidence: "medium"
+    - id: "CTR-013"
+      name: "館内ネットワーク限定の代替実現方式の許容"
+      description: "司書向け管理機能の館内ネットワーク限定公開（SP-005）は、VPN/専用線などの閉域接続が未整備の段階では、接続元 IP アドレス許可リスト（WAF IP セット等）による論理的な制限で代替することを許容する。閉域接続が整備され次第、より強固な方式へ移行を検討する"
+      reason: "インフラ設計（MCL product-design）の結果に基づく: product-mapping-aws.yaml の internal_web_delivery マッピングで fidelity: partial（VPN/Direct Connect 未整備のため IP 制限による代替を採用）と判定されたため"
+      source_model: "infra: product-mapping-aws.yaml → mappings[internal_web_delivery] (fidelity: partial)"
+      confidence: "medium"
+  tiers:
+    - id: "tier-worker"
+      policies:
+        - id: "SP-032"
+          name: "中断許容インフラの優先適用"
+          description: "冪等消費・重複実行検知（SR-018）が保証された非同期処理（通知送信の MQ コンシューマー、日次バッチ）に対し、中断許容インフラ（プリエンプティブル/スポットインスタンス相当）をコスト最適化のため優先的に適用する。中断時は再配信・再実行の仕組みで安全に回復できることを前提とする"
+          reason: "インフラ設計（MCL product-design）の結果に基づく: product-cost-hints.yaml の spot_candidates で worker_consumer / worker_scheduled が中断許容ワークロードとして特定され、SR-018 の冪等性が前提条件として明記されたため"
+          source_model: "infra: product-cost-hints.yaml → spot_candidates"
+          confidence: "medium"
+
+data_architecture:
+  storage_mapping:
+    - entity_id: "E-001"
+      storage_type: "cache"
+      confidence: "high"
+      confidence_upgrade_reason: "medium → high（product-mapping-aws.yaml の key_value_cache が全対象クラウド（aws）で fidelity: exact と判定されたため）"
+    - entity_id: "E-007"
+      storage_type: "rdb"
+      confidence: "high"
+      confidence_upgrade_reason: "medium → high（product-mapping-aws.yaml の relational_datastore が全対象クラウド（aws）で fidelity: exact と判定されたため）"
+    - entity_id: "E-902"
+      storage_type: "cache"
+      confidence: "high"
+      confidence_upgrade_reason: "medium → high（product-mapping-aws.yaml の key_value_cache が全対象クラウド（aws）で fidelity: exact と判定されたため）"

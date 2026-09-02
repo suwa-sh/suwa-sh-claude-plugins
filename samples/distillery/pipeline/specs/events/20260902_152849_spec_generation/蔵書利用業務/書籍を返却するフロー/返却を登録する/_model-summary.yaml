@@ -1,0 +1,129 @@
+# _model-summary.yaml
+uc: "返却を登録する"
+business: "蔵書利用業務"
+buc: "書籍を返却するフロー"
+
+bounded_context_id: "BC-003"
+aggregate_id: "AG-003"
+
+models:
+  - name: "窓口返却受付画面（Input / LoanTable / LoanStatusBadge / DueDateIndicator）"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "ReturnRegistrationState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "貸出"
+  - name: "RegisterReturnRequest"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "貸出"
+  - name: "RegisterReturnRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "貸出"
+  - name: "RegisterReturnCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "貸出"
+  - name: "Loan"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "貸出"
+  - name: "ReturnedDate"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "貸出"
+  - name: "User"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "利用者"
+  - name: "LoanRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "UserRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+  - name: "ReservationRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "予約"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "loan_id = :loan_id FOR UPDATE"
+      - type: "UPDATE"
+        columns:
+          - name: "loan_status"
+            value: "返却済み"
+          - name: "returned_at"
+            value: "返却受付日（サーバのシステム日付）"
+        where: "loan_id = :loan_id AND loan_status IN ('貸出中','延滞')"
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :user_no AND loan_status IN ('貸出中','延滞')"
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id AND loan_status IN ('貸出中','延滞')"
+    indexes_needed:
+      - columns: ["loan_id"]
+        reason: "返却対象貸出の取得と更新。主キーで充足する"
+        access_pattern: "貸出IDによる 1 件取得・更新"
+      - columns: ["book_id", "loan_status"]
+        reason: "返却された書籍から対象貸出を特定する司書向け検索に使う"
+        access_pattern: "書籍IDと貸出状態（貸出中/延滞）での絞り込み"
+      - columns: ["user_no", "loan_status"]
+        reason: "返却後の利用者状態の再評価で、他に進行中の貸出が無いことを確認する"
+        access_pattern: "利用者番号と貸出状態（貸出中/延滞）での件数確認"
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "UPDATE"
+        columns:
+          - name: "user_status"
+            value: "登録済み（他に進行中の貸出・予約が無い場合のみ）"
+          - name: "updated_at"
+            value: "返却登録イベントの発生時刻"
+        where: "user_no = :user_no AND user_status = '取引進行中'"
+    indexes_needed:
+      - columns: ["user_no"]
+        reason: "利用者状態の更新。主キーで充足する"
+        access_pattern: "利用者番号による 1 件更新"
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :user_no AND reservation_status IN ('予約中','取置き中')"
+    indexes_needed:
+      - columns: ["user_no", "reservation_status"]
+        reason: "返却後の利用者状態の再評価で、他に進行中の予約が無いことを確認する"
+        access_pattern: "利用者番号と予約状態（予約中/取置き中）での件数確認"
+
+kvs:
+  - key_pattern: "idem:api:registerLoanReturn:{idempotency_key}"
+    purpose: "idem"
+    description: "冪等キー検証（返却の二重登録防止）"
+    value_type: "処理済みの返却結果（貸出ID・返却日・超過日数）"
+    ttl: "24h"
+    operations: ["GET", "SET"]
+
+object_storage: []

@@ -1,0 +1,48 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-007"
+title: "アプリシェル・ルート表・遷移 API をデザインシステムが所有し、router アダプタだけを実装リポに残す"
+status: "approved"
+generated_at: "2026-09-02T19:00:00"
+context: |
+  実装フィードバック CR-d0f57ea2-010 で、画面 component は実装できたが
+  router と entry point の生成物・所有者が存在しないという指摘を受けた。
+  design-event.yaml の screens[] には 41 画面の route が定義されていたが、
+  - route を束ねる正本（ルート表）
+  - URL からポータル・画面を解決するエントリポイント
+  - 画面から遷移するための API
+  が成果物として無く、各画面が URL 文字列を自前で組み立てる余地が残っていた。
+  E2E が実 URL から対象画面へ到達する前提も担保できていなかった。
+decision: |
+  1. ルート表 src/components/common/routes.ts をデザインシステムの生成物とし、URL の正本にする。
+     design-event.yaml の screens[].route と 1:1（41 件）で、
+     route id / path / portal / 画面名 / UC / 業務 / nav / params を持つ。
+     ヘルパとして getRoute・buildPath・matchPath・routesOf を提供する。
+     nav（サイドバーのアクティブ項目）は RDRA の業務名から決め、
+     利用者ポータルで業務が複数ナビに割れる画面だけ明示的に割り当てる。
+  2. エントリポイント src/components/common/AppShell.tsx を追加する。
+     AppShell（route id 指定）と AppShellByPath（URL 指定）を提供し、
+     ポータル解決・アクティブナビ・未登録 URL・ポータル外アクセスの判定をここへ集約する。
+  3. 遷移 API useAppNavigation を追加する。遷移は route id 指定のみとし、
+     画面側で URL 文字列を組み立てることを禁止する。AppShell の外で使うと例外にする。
+  4. 所有権を次のように固定する。
+     デザインシステム: ルート表 / AppShell / 遷移 API / 画面骨格（PortalPageLayout）
+     実装リポ: router アダプタ（AppShell の onNavigate に router.push を注入）とページ本体、認証済みユーザーの注入
+  5. ルートの追加は design ステージの責務とし、実装リポで routes.ts に追記してはならない
+     （RDRA の BUC / 画面に無いルートは作らない）。
+consequences:
+  positive:
+    - "URL の正本が 1 ファイルに集約され、E2E が実 URL から全 41 画面へ到達できる"
+    - "画面実装がシェル・ナビ・URL 生成を再実装しなくなる"
+    - "ポータル外アクセスと 404 の扱いが 1 か所に集まり、画面ごとの判定が不要になる"
+  negative:
+    - "実装リポの router を薄いアダプタに保つ制約が増える（自由な URL 追加ができない）"
+    - "ルート表が screens[] と二重定義になるため、design ステージでの同期が必要"
+alternatives_considered:
+  - name: "実装リポ側で router と entry point を所有する"
+    reason_rejected: "URL とポータル境界が仕様から離れ、画面ごとに URL 直書きが再発する"
+  - name: "screens[].route をそのまま読ませ、ルート表を作らない"
+    reason_rejected: "route id・パラメータ・ナビ対応が無く、遷移 API も型安全にできない"
+  - name: "Next.js App Router のファイル規約をそのまま正本にする"
+    reason_rejected: "デザインシステム側はフレームワーク非依存のカタログであり、実装リポの構成に縛られる"

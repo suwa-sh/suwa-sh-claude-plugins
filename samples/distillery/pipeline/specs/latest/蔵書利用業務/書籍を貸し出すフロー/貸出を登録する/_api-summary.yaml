@@ -1,0 +1,81 @@
+# _api-summary.yaml
+uc: "貸出を登録する"
+business: "蔵書利用業務"
+buc: "書籍を貸し出すフロー"
+endpoints:
+  - operation_id: "createLoan"
+    method: "POST"
+    path: "/api/v1/loans"
+    summary: "貸出記録を作成し、返却期限を自動設定して書籍状態・利用者状態・予約状態を遷移させる（司書ロール限定・冪等キー必須）"
+    request_schema: "CreateLoanRequest"
+    response_schema: "LoanResponse"
+    tags: ["貸出"]
+async_events: []
+
+# cross-UC API 依存。形式と所有一覧は _cross-cutting/api/uc-api-dependencies.md が正本。
+consumes:
+  - operation_id: "checkLoanEligibility"
+    method: "POST"
+    path: "/api/v1/loans/eligibility-checks"
+    owner_uc: "書籍の貸出可否を判定する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-staff"
+    purpose: "貸出可否判定画面からの引き継ぎ状態が無い場合（直リンク・再読込）に貸出可否を再取得して登録可否を提示する"
+    required: false
+  - operation_id: "getBookAvailability"
+    method: "GET"
+    path: "/api/v1/books/{book_id}/availability"
+    owner_uc: "書籍詳細と在庫状況を照会する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-staff"
+    purpose: "BookCard に表示する対象書籍の書誌・資料種別・書籍状態を取得する（引き継ぎ状態が無い場合の再取得）"
+    required: false
+  - operation_id: "getLoanTarget"
+    method: "GET"
+    path: "/api/v1/loan-targets/{user_no}"
+    owner_uc: "利用者番号で貸出対象利用者を特定する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-staff"
+    purpose: "UserProfileCard に表示する貸出先利用者の氏名・利用者区分・利用者状態を取得する（引き継ぎ状態が無い場合の再取得）"
+    required: false
+schemas:
+  - name: "CreateLoanRequest"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "loan_period_type"
+        type: "string"
+        required: true
+  - name: "LoanResponse"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "loan_date"
+        type: "string(date)"
+        required: true
+      - name: "loan_period_type"
+        type: "string"
+        required: true
+      - name: "due_date"
+        type: "string(date)"
+        required: true
+      - name: "loan_status"
+        type: "string"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "reservation_id"
+        type: "string"
+        required: false

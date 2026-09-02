@@ -150,7 +150,8 @@ test('sample arch-design.yaml sections are extracted verbatim and concatenate ba
     assert.ok(idx >= cursor, `${p.path} must appear in order`);
     cursor = idx + p.text.length;
   }
-  assert.ok(sliceSection(text, 'system_architecture.tiers').text.includes('- id: "tier-frontend"'));
+  // sample の tier id は再生成のたびに変わり得る（tier-frontend / tier-frontend-patron 等）。backend-api は全世代で安定
+  assert.ok(sliceSection(text, 'system_architecture.tiers').text.includes('- id: "tier-backend-api"'));
 });
 
 test('buildAll generates _digest, is idempotent, repairs missing/corrupted files, and drops stale digest when the source disappears', () => {

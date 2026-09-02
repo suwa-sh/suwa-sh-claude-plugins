@@ -1,0 +1,69 @@
+# _api-summary.yaml
+uc: "期限超過の貸出を延滞にする"
+business: "貸出期限管理業務"
+buc: "延滞を督促するフロー"
+endpoints:
+  - operation_id: "getOverdueJudgement"
+    method: "GET"
+    path: "/api/v1/staff/overdues/judgement"
+    summary: "延滞判定（貸出中→延滞）の結果サマリと対象一覧を取得する（司書向け）"
+    response_schema: "OverdueJudgementResponse"
+    tags: ["overdues"]
+async_events: []
+consumes: []
+schemas:
+  - name: "OverdueJudgementResponse"
+    properties:
+      - name: "base_date"
+        type: "string(date)"
+        required: true
+      - name: "transitioned_count"
+        type: "integer"
+        required: true
+      - name: "overdue_total"
+        type: "integer"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true
+      - name: "items"
+        type: "array<JudgedOverdueLoanItem>"
+        required: true
+  - name: "JudgedOverdueLoanItem"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "user_name"
+        type: "string"
+        required: true
+      - name: "loan_date"
+        type: "string(date)"
+        required: true
+      - name: "due_date"
+        type: "string(date)"
+        required: true
+      - name: "days_overdue"
+        type: "integer"
+        required: true
+      - name: "loan_status"
+        type: "string"
+        required: true

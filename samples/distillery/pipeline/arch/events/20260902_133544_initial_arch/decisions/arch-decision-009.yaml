@@ -1,0 +1,41 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-009"
+title: "レイヤリング戦略: 5 層 + 軽量 CQRS、凹型は外部連携ティアのみ"
+status: "approved"
+generated_at: "2026-09-02T14:11:27"
+context: |
+  レイヤー構成（層数）、Command / Query 分離の深さ、レイヤー間インタフェース（凹型）の導入範囲の 3 点を決める必要があった。
+  判断材料は次のとおり。
+  - 状態モデル 6 件 / 遷移 46 件 + 条件 17 件 → バックエンドは 5 層の判定条件を満たす
+  - 全 41 UC のうち照会系が 22 UC を占める
+  - NFR B.2.1.3 Lv2（TAT 10 秒）でレポート集計の応答余裕が必要
+  - 外部システムは 1 件（メール配信サービス）のみで、差し替え要求のある依存が他にない
+  - 新規構築・単一チーム・データストア乗り換え予定なし
+decision: |
+  - tier-backend-api と tier-worker を 5 層（presentation → usecase → domain → repository → gateway）とする。
+    tier-worker は domain / repository / gateway を tier-backend-api と共有する。
+  - Command / Query は軽量 CQRS（usecase 層のみ分離、データストアは単一）とする。
+    照会系 22 UC は domain を経由しない読み取り専用 finder で処理し、大量走査はページング / ストリーミング対応とする（LR-024）。
+  - レイヤー間インタフェース（凹型）は原則導入せず、tier-external-gateway のみ凹型とする。
+    これにより外部メール配信サービスをテストでスタブ化できる。
+  - フロントエンドは司書ポータル 3 層 / 利用者ポータル 2 層、tier-external-gateway は 2 層とする（合計 5 tier_layers / 17 layers）。
+consequences:
+  positive:
+    - "条件 17 件・状態遷移 46 件をドメイン層に集中でき、業務ルールの置き場所が一意になる"
+    - "照会系 22 UC が domain を経由せず、レポート TAT 10 秒目標（B.2.1.3）に余裕が出る"
+    - "IF の記述量を最小化しつつ、日次バッチのテストで実メール送信を回避できる"
+  negative:
+    - "Command / Query で 2 系統の実装規約を覚える学習コストが増える"
+    - "外部連携以外の依存を差し替える要求が出た場合、都度 IF 導入への移行が必要になる"
+    - "Query 側が repository を介さず finder で直接読むため、集約の不変条件を経由しない読み取り経路が生まれる"
+alternatives_considered:
+  - name: "Option B: Command / Query を分離しない（単一の usecase 経路）"
+    reason_rejected: "照会系 22 UC が集約のロードを伴い、レポート集計と一覧照会のレスポンスタイムを圧迫する"
+  - name: "Option C: 完全 CQRS（読み取り専用データストアを別に持つ）"
+    reason_rejected: "同時アクセス〜100（B.1.1.1 Lv1）の規模に対して運用対象と結果整合の複雑さが見合わない"
+  - name: "repository / gateway に全面 IF 導入（全面凹型）"
+    reason_rejected: "新規構築・単一チーム・乗り換え予定なしの現状では記述量だけが増える"
+  - name: "全面 IF なし（外部連携も含めて凹型を作らない）"
+    reason_rejected: "日次バッチの自動テストで実メール送信を避ける手段が通信層のモックに限られ、テスト設計が脆くなる"

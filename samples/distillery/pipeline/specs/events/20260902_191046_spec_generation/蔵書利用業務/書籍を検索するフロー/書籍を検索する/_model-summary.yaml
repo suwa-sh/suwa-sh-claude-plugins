@@ -1,0 +1,79 @@
+uc: "書籍を検索する"
+business: "蔵書利用業務"
+buc: "書籍を検索するフロー"
+
+bounded_context_id: "BC-001"
+
+models:
+  - name: "蔵書検索画面(BookSearchView)"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "書籍"
+  - name: "BookSearchQuery"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "state"
+    rdra_info: "書籍"
+  - name: "BookSearchApiClient"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "書籍"
+  - name: "SearchBooksRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "SearchBooksQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "BookSearchCriteria"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "書籍"
+  - name: "BookFinder"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "query"
+    rdra_info: "書籍"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "検索条件種別に応じた述語（キーワード=title/author/isbn/publisher の部分一致、タイトル/著者=部分一致、ISBN=完全一致、ジャンル=完全一致）+ genre IN / material_type IN / book_status='在庫あり'(available_only)、ORDER BY title、LIMIT per_page OFFSET (page-1)*per_page"
+    indexes_needed:
+      - columns: ["title"]
+        reason: "タイトル検索と既定の並び順に使うため"
+        access_pattern: "WHERE title LIKE ? / ORDER BY title"
+      - columns: ["author"]
+        reason: "著者検索の主要アクセスパターンであるため"
+        access_pattern: "WHERE author LIKE ?"
+      - columns: ["isbn"]
+        reason: "ISBN の完全一致検索に使うため"
+        access_pattern: "WHERE isbn = ?"
+      - columns: ["genre"]
+        reason: "ジャンル検索・絞り込みに使うため"
+        access_pattern: "WHERE genre IN (...)"
+      - columns: ["book_status"]
+        reason: "在庫ありのみの絞り込みに使うため"
+        access_pattern: "WHERE book_status = '在庫あり'"
+
+kvs: []
+object_storage: []

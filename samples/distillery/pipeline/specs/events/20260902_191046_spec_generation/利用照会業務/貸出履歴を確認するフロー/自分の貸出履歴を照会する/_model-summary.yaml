@@ -1,0 +1,64 @@
+# _model-summary.yaml
+uc: "自分の貸出履歴を照会する"
+business: "利用照会業務"
+buc: "貸出履歴を確認するフロー"
+
+bounded_context_id: "BC-003"
+aggregate_id: "AG-003"
+
+models:
+  - name: "貸出履歴画面 / LoanTable + Pagination"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "ListMyLoanHistoryApiRequest"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "貸出"
+  - name: "ListMyLoansRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "貸出"
+  - name: "ListMyLoanHistoryQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出"
+  - name: "OwnerAccessPolicy"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "利用者アカウント"
+  - name: "MyLoanHistoryItem"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "value-object"
+    rdra_info: "貸出"
+  - name: "LoanRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :認証コンテキストの利用者番号 AND loan_status = '返却済み' ORDER BY returned_at DESC、LIMIT/OFFSET でページング（返却日は loans.returned_at を直接参照する。書誌は loans の非正規化スナップショット列 book_title / book_author / book_isbn / book_genre から取得し、books は参照しない。書籍が削除されて book_id が NULL でも貸出当時の書誌を表示できる）"
+    indexes_needed:
+      - columns: ["user_no", "loan_status", "returned_at"]
+        reason: "本人の返却済み貸出を返却日の降順で抽出する"
+        access_pattern: "貸出履歴画面の一覧取得・ページング"
+
+kvs: []
+object_storage: []

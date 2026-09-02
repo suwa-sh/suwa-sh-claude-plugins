@@ -1,0 +1,88 @@
+round: 1
+group: C
+findings:
+  - id: S35-C-001
+    buc: "利用者管理業務/利用者を管理するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/buc-spec.md"
+    line: 42
+    severity: major
+    viewpoint: 3
+    claim: "情報 CRUD マトリクスで「貸出」「予約」行の『利用者一覧を照会する』列が空だが、当該 UC は進行中貸出件数・進行中予約件数を集計するため両情報を参照している"
+    fix: "「貸出」行と「予約」行の『利用者一覧を照会する』列を R にする（UC spec の派生情報 active_loan_count / active_reservation_count が loans・reservations の COUNT に由来するため）"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を照会する/spec.md#L110-L111"
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を照会する/spec.md#L130-L131"
+  - id: S35-C-002
+    buc: "利用者管理業務/利用者を管理するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/buc-spec.md"
+    line: 31
+    severity: major
+    viewpoint: 2
+    claim: "UC 横断データフローの本文「削除時のみ貸出・予約を参照し」と mermaid が、利用者一覧照会での貸出・予約参照を反映していない（同じ buc-spec の共有条件表は『利用者一覧を照会する（削除可否の表示）』と書いており自己矛盾）"
+    fix: "mermaid に `LOAN -->|\"進行中貸出件数\"| LIST` と `RSV -->|\"進行中予約件数\"| LIST` を追加し、本文を「削除判定と一覧の削除可否表示で貸出・予約を参照する」に修正する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を照会する/spec.md#L31-L32"
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/buc-spec.md#L76"
+  - id: S35-C-003
+    buc: "利用者管理業務/利用者を管理するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/buc-spec.md"
+    line: 75
+    severity: minor
+    viewpoint: 5
+    claim: "共有条件「個人情報参照可否条件」の説明が RDRA 条件.tsv の定義文を書き換え、司書向け 4 UC への拡大適用（司書役割の認可判定）を条件本文に混ぜている"
+    fix: "説明列は RDRA 定義（貸出履歴・予約状況の照会はログイン中の本人に紐づく貸出・予約のみを対象とする）をそのまま引用し、司書 UC 側は UC spec と同じく「本 UC での派生ルール: 司書ロールのみ到達可・連絡先マスク」と分けて記述する"
+    source_refs:
+      - "docs/rdra/latest/条件.tsv#個人情報参照可否条件"
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を照会する/spec.md#L103"
+  - id: S35-C-004
+    buc: "蔵書分析業務/貸出統計を把握するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/buc-spec.md"
+    line: 34
+    severity: major
+    viewpoint: 3
+    claim: "情報 CRUD マトリクスに「利用者」行が無いが、UC「期間別貸出統計を集計する」は利用者区分別内訳のため利用者情報を参照している"
+    fix: "「利用者」行を追加し、『期間別貸出統計を集計する』列を R、『貸出統計レポートを参照する』列は空（参照 UC の spec は利用者を参照しない）とする"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md#L182"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md#L188"
+  - id: S35-C-005
+    buc: "蔵書分析業務/貸出統計を把握するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/buc-spec.md"
+    line: 23
+    severity: minor
+    viewpoint: 2
+    claim: "データフロー図に利用者ノードが無く、利用者区分別内訳の集計入力（利用者 → 期間別貸出統計を集計する）が表現されていない"
+    fix: "mermaid に `USER[\"利用者\"] -->|\"利用者区分\"| AGG` を追加する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md#L125"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md#L182"
+  - id: S35-C-006
+    buc: "蔵書分析業務/貸出統計を把握するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/buc-spec.md"
+    line: 57
+    severity: minor
+    viewpoint: 4
+    claim: "状態遷移 UC マッピングが統計レポート状態のみで、両 UC が参照する貸出状態（返却済み件数の判定・内訳表示）の行が無い。他 BUC は参照のみの状態モデルも行として持つ"
+    fix: "マッピング表に「貸出状態 | 返却済み | （遷移なし・参照のみ） | 期間別貸出統計を集計する, 貸出統計レポートを参照する」の行を追加する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md#L184"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/spec.md#L153"
+  - id: S35-C-007
+    buc: "蔵書分析業務/在庫状況を把握するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/buc-spec.md"
+    line: 51
+    severity: minor
+    viewpoint: 4
+    claim: "状態遷移 UC マッピングに、両 UC が参照する書籍状態（集計の区分軸・BookStatusBadge 表示）の行が無く、また「在庫状況レポートを参照する」が集計中でも表示を切り替える点が『作成済み』行だけで表現されていない"
+    fix: "「書籍状態 | 在庫あり / 貸出中 / 予約待ち | （遷移なし・参照のみ） | 在庫状況を区分別に集計する, 在庫状況レポートを参照する」の行と、「統計レポート状態 | 集計中 | （遷移なし・参照のみ） | 在庫状況レポートを参照する」の行を追加する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/spec.md#L175"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する/spec.md#L151-L152"
+resolved:
+  - {id: S35-C-001, resolution: fixed}
+  - {id: S35-C-002, resolution: fixed}
+  - {id: S35-C-003, resolution: fixed}
+  - {id: S35-C-004, resolution: fixed}
+  - {id: S35-C-005, resolution: fixed}
+  - {id: S35-C-006, resolution: fixed}
+  - {id: S35-C-007, resolution: fixed}

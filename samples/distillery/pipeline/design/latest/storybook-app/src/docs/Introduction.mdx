@@ -1,45 +1,166 @@
 import { Meta } from '@storybook/addon-docs/blocks'
 
-<Meta title="Docs/Introduction" />
+<Meta title="Introduction" />
 
-<img src="/assets/logo-full.svg" alt="LibraShelf" style={{ height: 64, marginBottom: 24 }} />
+<img src="/assets/logo-full.svg" alt="Libra 図書館蔵書管理システム" style={{ height: 64, marginBottom: 24 }} />
 
-# LibraShelf Design System
+# Libra Design System
 
-LibraShelf は公共図書館の蔵書管理を支える、利用者・司書向けのデザインシステムです。RDRA の16画面、2つの状態モデル、NFR とアーキテクチャ設計から生成されています。
+図書館蔵書管理システムのデザインシステムです。
+RDRA モデル・NFR グレード・アーキテクチャ設計・インフラ設計から機械的に導出しています。
 
-## Design principles
-
-<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--component-gap)' }}>
-  <div style={{ padding: 'var(--card-padding)', border: '1px solid var(--card-border)', borderRadius: 'var(--card-radius)', background: 'var(--card-bg)' }}>
-    <strong>正確で分かりやすい</strong>
-    <p style={{ color: 'var(--muted-foreground)' }}>状態と次の操作を、専門用語に頼らず伝えます。</p>
-  </div>
-  <div style={{ padding: 'var(--card-padding)', border: '1px solid var(--card-border)', borderRadius: 'var(--card-radius)', background: 'var(--card-bg)' }}>
-    <strong>信頼・堅実</strong>
-    <p style={{ color: 'var(--muted-foreground)' }}>知性と安心を表す Library Blue を中心に構成します。</p>
-  </div>
-  <div style={{ padding: 'var(--card-padding)', border: '1px solid var(--card-border)', borderRadius: 'var(--card-radius)', background: 'var(--card-bg)' }}>
-    <strong>役割に最適化</strong>
-    <p style={{ color: 'var(--muted-foreground)' }}>利用者はシンプルに、司書は高い情報密度で表示します。</p>
-  </div>
+<div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
+  <span style={{ padding: '4px 10px', borderRadius: 999, background: 'var(--info-light)', color: 'var(--info-foreground)', fontSize: 12 }}>ポータル 2</span>
+  <span style={{ padding: '4px 10px', borderRadius: 999, background: 'var(--info-light)', color: 'var(--info-foreground)', fontSize: 12 }}>画面 41</span>
+  <span style={{ padding: '4px 10px', borderRadius: 999, background: 'var(--info-light)', color: 'var(--info-foreground)', fontSize: 12 }}>状態モデル 6</span>
+  <span style={{ padding: '4px 10px', borderRadius: 999, background: 'var(--info-light)', color: 'var(--info-foreground)', fontSize: 12 }}>UI コンポーネント 13</span>
+  <span style={{ padding: '4px 10px', borderRadius: 999, background: 'var(--info-light)', color: 'var(--info-foreground)', fontSize: 12 }}>ドメインコンポーネント 18</span>
+  <span style={{ padding: '4px 10px', borderRadius: 999, background: 'var(--info-light)', color: 'var(--info-foreground)', fontSize: 12 }}>アイコン 42</span>
 </div>
 
-## Portals
+## 何を解決するシステムか
+
+紙台帳と表計算ファイルに分散した蔵書・利用者の情報を単一の正データに統合し、
+司書の管理の手間とミスを削減して利用者サービスを向上させます。
+まずは 1 館での運用を想定し、将来の電子書籍対応に備えて蔵書を資料種別で区別できるモデルにしています。
+
+## 2 つのポータル
 
 <table>
-  <thead><tr><th>Portal</th><th>Actor</th><th>Primary</th><th>Screens</th></tr></thead>
+  <thead>
+    <tr>
+      <th>ポータル</th>
+      <th>アクター</th>
+      <th>プライマリ色</th>
+      <th>画面数</th>
+      <th>公開範囲</th>
+      <th>設計方針</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td>利用者ポータル</td><td>利用者</td><td><code>#2563EB</code></td><td>7</td></tr>
-    <tr><td>司書ポータル</td><td>司書</td><td><code>#334155</code></td><td>9</td></tr>
+    <tr>
+      <td>利用者ポータル（<code>patron</code>）</td>
+      <td>図書館利用者（社外・受益者）</td>
+      <td>
+        <span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: '#1D4ED8', borderRadius: 4, verticalAlign: 'middle', marginRight: 6 }} />
+        <code>#1D4ED8</code>
+      </td>
+      <td>17</td>
+      <td>インターネット公開</td>
+      <td>本人のデータのみを表示し、他利用者へ到達する導線を持たない（arch SP-004）</td>
+    </tr>
+    <tr>
+      <td>司書ポータル（<code>staff</code>）</td>
+      <td>司書（社内・提供者）</td>
+      <td>
+        <span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: '#0F766E', borderRadius: 4, verticalAlign: 'middle', marginRight: 6 }} />
+        <code>#0F766E</code>
+      </td>
+      <td>24</td>
+      <td>館内ネットワーク限定（NFR E.5.3.1）</td>
+      <td>窓口業務を最小操作数で完了できる高密度 UI（arch SP-006）</td>
+    </tr>
   </tbody>
 </table>
 
-Storybook ツールバーの Portal と Theme を切り替えると、`data-portal` と `.dark` によるトークン変更を確認できます。
+ポータルの切替は右上ツールバーの **Portal** から行えます。
+実装上は `data-portal` 属性で CSS 変数を切り替えており、コンポーネント側の実装は共通です。
 
-## Technology
+色を分けているのは装飾ではありません。司書が窓口で 2 ポータルを行き来する運用で、
+どちらを操作しているかを一目で判別し、取り違えを防ぐためです。
+色覚特性への配慮として、ヘッダーにポータル名を必ず併記します。
 
-- Next.js + TypeScript + Tailwind CSS
-- Storybook 10 (`@storybook/nextjs-vite`)
-- CSS Custom Properties による Primitive → Semantic → Component の3層トークン
-- `@storybook/addon-docs` と `@storybook/addon-a11y`
+## ボイスとトーン
+
+信頼・堅実。公共サービスとして、断定しすぎず、次に何をすればよいかを必ず示します。
+
+<ul>
+  <li>利用者には「できること」を先に伝える（在庫あり / 予約できます / あと N 日）</li>
+  <li>司書には「判定結果と根拠」を並べて示す（貸出できません + 蔵書削除制限ポリシー）</li>
+  <li>個人情報は既定で伏せ、必要なときだけ明示操作で開く</li>
+  <li>色だけで意味を伝えない。必ず文言かアイコンを添える</li>
+  <li>専門用語は RDRA の業務用語をそのまま使う（除籍 / 取置き / 督促）</li>
+</ul>
+
+## カタログの歩き方
+
+<table>
+  <thead>
+    <tr><th>セクション</th><th>内容</th><th>こんなときに見る</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Design Tokens</strong></td><td>primitive / semantic / component の 3 層トークン一覧</td><td>色・余白・書体の値を実装にコピペしたいとき</td></tr>
+    <tr><td><strong>Screen Mapping</strong></td><td>RDRA 画面 41 件 → ルート → コンポーネント</td><td>担当画面をどのコンポーネントで組むか決めるとき</td></tr>
+    <tr><td><strong>State Mapping</strong></td><td>RDRA 状態モデル 6 種 → Badge / 色</td><td>状態表示の色と操作可否を確認するとき</td></tr>
+    <tr><td><strong>Brand</strong></td><td>ロゴ 3 バリアント / アイコン 42 種</td><td>アイコン名を探すとき</td></tr>
+    <tr><td><strong>UI</strong></td><td>共通コンポーネント 13 種</td><td>ボタン・入力・テーブル等の使い方を確認するとき</td></tr>
+    <tr><td><strong>Domain</strong></td><td>ドメイン特化コンポーネント 18 種</td><td>書籍・貸出・予約・利用者・通知・レポートの表示部品を探すとき</td></tr>
+  </tbody>
+</table>
+
+## 実装ルール（必読）
+
+<table>
+  <thead>
+    <tr><th>ルール</th><th>理由</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>色は必ずトークン参照。<code>text-white</code> や <code>#RRGGBB</code> のハードコード禁止</td>
+      <td>ポータル 2 × テーマ 2 の 4 通りで破綻するため</td>
+    </tr>
+    <tr>
+      <td>色指定は <code>style</code> prop か <code>@theme inline</code> 経由。<code>text-[var(--x)]</code> は使わない</td>
+      <td>Tailwind v4 が <code>text-[...]</code> を font-size として解釈するため</td>
+    </tr>
+    <tr>
+      <td>絵文字・Unicode 記号（★☆✓）を使わない。<code>&lt;Icon name="..." /&gt;</code> を使う</td>
+      <td>環境差で字形が変わり、CSS 変数で着色できないため</td>
+    </tr>
+    <tr>
+      <td>間隔は <code>gap</code> &gt; <code>padding</code> &gt; <code>margin</code> の優先順。<code>margin</code> は原則不使用</td>
+      <td>子要素に margin を持たせるとコンポーネント間に結合が生まれるため</td>
+    </tr>
+    <tr>
+      <td>選択肢 UI に Badge を使わない。<code>ToggleGroup</code>（button トグル）を使う</td>
+      <td>Badge はクリックできず、選択状態も伝わらないため</td>
+    </tr>
+    <tr>
+      <td>固定幅の入力欄を作らない。<code>flex-1 min-w-0</code> で幅を確保する</td>
+      <td>日本語ラベルや長い値で文字が切れるため</td>
+    </tr>
+    <tr>
+      <td>一覧・詳細は Loading / Empty / Error の 3 状態を必ず持つ</td>
+      <td>NFR A（可用性）と B.2.1.1（レスポンス 5 秒以内）に対応するため</td>
+    </tr>
+    <tr>
+      <td>個人情報（連絡先）は既定でマスクする</td>
+      <td>NFR E.1.2.1 / arch SR-006「個人情報表示の最小化」のため</td>
+    </tr>
+    <tr>
+      <td>RDRA に無い画面・状態を追加しない</td>
+      <td>要件トレーサビリティが切れるため。必要なら <code>docs/todo.md</code> 経由で requirements へ戻す</td>
+    </tr>
+  </tbody>
+</table>
+
+## 入力にしたモデル
+
+<table>
+  <thead>
+    <tr><th>入力</th><th>使いどころ</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>docs/rdra/latest/BUC.tsv</code></td><td>画面 41 件・UC・業務（サイドバーナビ 9 項目）</td></tr>
+    <tr><td><code>docs/rdra/latest/アクター.tsv</code></td><td>ポータル 2 分割</td></tr>
+    <tr><td><code>docs/rdra/latest/情報.tsv</code></td><td>ドメインコンポーネント導出・カード内の属性・スペーシング推論</td></tr>
+    <tr><td><code>docs/rdra/latest/状態.tsv</code></td><td>状態 Badge 6 種と色マッピング</td></tr>
+    <tr><td><code>docs/rdra/latest/バリエーション.tsv</code></td><td>ToggleGroup の選択肢（検索条件種別・ジャンル・資料種別ほか）</td></tr>
+    <tr><td><code>docs/nfr/latest/nfr-grade.yaml</code></td><td>ブレークポイント・ページネーション・アクセシビリティ目標・PII マスク</td></tr>
+    <tr><td><code>docs/arch/latest/arch-design.yaml</code></td><td>フロントエンドティア 2 分割・技術選定・冪等キー / 二重送信防止</td></tr>
+    <tr><td><code>docs/infra/latest/</code></td><td>静的アセットの CDN 配信前提（外部 CDN へのランタイム依存は持たない）</td></tr>
+  </tbody>
+</table>
+
+導出根拠の全文は `docs/design/events/{event_id}/_inference.md`、
+設計判断の記録は `docs/design/events/{event_id}/decisions/` にあります。

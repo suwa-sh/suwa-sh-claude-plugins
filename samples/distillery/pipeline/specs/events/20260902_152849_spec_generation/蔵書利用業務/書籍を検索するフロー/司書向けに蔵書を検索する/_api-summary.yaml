@@ -1,0 +1,13 @@
+uc: "司書向けに蔵書を検索する"
+business: "蔵書利用業務"
+buc: "書籍を検索するフロー"
+# 新規エンドポイントは追加しない。「書籍を検索する」UC と同一の GET /api/v1/books/search を
+# 司書ロールでも利用する（結果の出し分けを行わない）
+endpoints:
+  - method: "GET"
+    path: "/api/v1/books/search"
+    summary: "検索条件種別で蔵書を検索し在庫状況区分を返す（司書のレファレンス検索でも共有）"
+    response_schema: "BookSearchResponse"
+    tags: ["books"]
+async_events: []
+schemas: []

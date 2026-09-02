@@ -1,133 +1,2320 @@
 import { Meta } from '@storybook/addon-docs/blocks'
 
-<Meta title="Docs/Design Tokens" />
+<Meta title="Design Tokens" />
 
-# Design Tokens
+# デザイントークン
 
-すべての実装は Primitive → Semantic → Component の3層を通して値を参照します。表示されている CSS 変数名はそのままコピーできます。
+図書館蔵書管理システム (Libra) のデザイントークン一覧です。
+定義の正本は `src/styles/design-tokens.css` です。このページはその内容を可視化したものです。
 
-## Primitive colors
+---
+
+## 1. 概要
+
+### 3 層構造
+
+トークンは primitive → semantic → component の 3 層で構成します。
 
 <table>
-  <thead><tr><th>Preview</th><th>Token</th><th>Value</th></tr></thead>
+  <thead>
+    <tr>
+      <th>層</th>
+      <th>役割</th>
+      <th>例</th>
+      <th>直接使ってよいか</th>
+    </tr>
+  </thead>
   <tbody>
-    {[
-      ['--color-white', '#FFFFFF'], ['--color-gray-50', '#F8FAFC'], ['--color-gray-100', '#F1F5F9'],
-      ['--color-gray-200', '#E2E8F0'], ['--color-gray-400', '#94A3B8'], ['--color-gray-600', '#475569'],
-      ['--color-gray-800', '#1E293B'], ['--color-gray-950', '#020617'], ['--color-blue-50', '#EFF6FF'],
-      ['--color-blue-400', '#60A5FA'], ['--color-blue-600', '#2563EB'], ['--color-blue-800', '#1E40AF'],
-      ['--color-slate-700', '#334155'], ['--color-green-500', '#22C55E'], ['--color-green-600', '#16A34A'],
-      ['--color-red-500', '#EF4444'], ['--color-red-600', '#DC2626'], ['--color-orange-500', '#F97316'],
-      ['--color-amber-500', '#F59E0B'], ['--color-violet-500', '#8B5CF6'],
-    ].map(([token, value]) => (
-      <tr key={token}>
-        <td><span style={{ display: 'inline-block', width: 24, height: 24, backgroundColor: `var(${token})`, border: '1px solid var(--border)', borderRadius: 4 }} /></td>
-        <td><code>{`var(${token})`}</code></td><td><code>{value}</code></td>
-      </tr>
-    ))}
+    <tr>
+      <td>primitive</td>
+      <td>生の値。用途を持たない</td>
+      <td><code>var(--color-blue-700)</code> <code>var(--spacing-4)</code></td>
+      <td>色は不可 / 寸法は可</td>
+    </tr>
+    <tr>
+      <td>semantic</td>
+      <td>用途レイヤー。primitive を参照する</td>
+      <td><code>var(--foreground)</code> <code>var(--destructive)</code></td>
+      <td>可（推奨）</td>
+    </tr>
+    <tr>
+      <td>component</td>
+      <td>コンポーネント固有。semantic を参照する</td>
+      <td><code>var(--button-radius)</code> <code>var(--table-border)</code></td>
+      <td>該当コンポーネント内でのみ可</td>
+    </tr>
   </tbody>
 </table>
 
-## Semantic colors
+### 使い分けルール
+
+- 色は必ずトークン参照にする。HEX リテラルをコンポーネントに直接書かない。
+- 色は semantic 層以上を使う。primitive のカラースケールを直接参照するのは semantic 定義の中だけにする。
+- コンポーネント固有の寸法は component 層に定義してから参照する。
+- Dark Mode とポータル切替は semantic 層の再定義で吸収する。コンポーネント側に分岐を書かない。
+
+### Tailwind v4 での注意
+
+Tailwind v4 の任意値記法 `text-[var(--x)]` は **font-size として解釈される**ため、文字色には使えません。
+色は次のいずれかで指定します。
+
+- style prop で直接指定する: `style={{ color: 'var(--foreground)' }}`
+- `@theme inline` 経由でトークンを Tailwind のカラーとして登録し、`text-foreground` のようなユーティリティで使う
+
+背景色・ボーダー色も同様です。`bg-[var(--x)]` / `border-[var(--x)]` は解釈が曖昧になるため、
+style prop か `@theme inline` 経由に統一します。
+
+---
+
+## 2. Primitive: カラーパレット
+
+### base
 
 <table>
-  <thead><tr><th>Purpose</th><th>Token</th><th>Light</th><th>Dark</th></tr></thead>
+  <thead>
+    <tr>
+      <th>プレビュー</th>
+      <th>変数名</th>
+      <th>値</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td>Page background</td><td><code>var(--background)</code></td><td>white</td><td>gray-950</td></tr>
-    <tr><td>Primary text</td><td><code>var(--foreground)</code></td><td>gray-900</td><td>gray-100</td></tr>
-    <tr><td>Border</td><td><code>var(--border)</code></td><td>gray-200</td><td>gray-800</td></tr>
-    <tr><td>Muted surface</td><td><code>var(--muted)</code></td><td>gray-100</td><td>gray-900</td></tr>
-    <tr><td>Success</td><td><code>var(--success)</code></td><td>green-600</td><td>green-500</td></tr>
-    <tr><td>Success surface</td><td><code>var(--success-light)</code></td><td>green-50</td><td>rgba(22,163,74,.15)</td></tr>
-    <tr><td>Warning</td><td><code>var(--warning)</code></td><td>orange-500</td><td>orange-500</td></tr>
-    <tr><td>Destructive</td><td><code>var(--destructive)</code></td><td>red-600</td><td>red-500</td></tr>
-    <tr><td>Information</td><td><code>var(--info)</code></td><td>blue-500</td><td>blue-400</td></tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-white)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-white)</code></td>
+      <td><code>#FFFFFF</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-black)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-black)</code></td>
+      <td><code>#000000</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-transparent)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-transparent)</code></td>
+      <td><code>transparent</code></td>
+    </tr>
   </tbody>
 </table>
 
-## Portal colors
+### gray (slate)
+
+UI の面・文字・線のベースです。semantic の <code>--background</code> 系 / <code>--foreground</code> 系 / <code>--border</code> 系が参照します。
 
 <table>
-  <thead><tr><th>Portal</th><th>Selector</th><th>Primary</th><th>Preview</th></tr></thead>
+  <thead>
+    <tr>
+      <th>プレビュー</th>
+      <th>変数名</th>
+      <th>HEX</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td>利用者</td><td><code>[data-portal="user"]</code></td><td><code>#2563EB</code></td><td><span style={{ display: 'inline-block', width: 80, height: 20, background: '#2563EB', borderRadius: 4 }} /></td></tr>
-    <tr><td>司書</td><td><code>[data-portal="admin"]</code></td><td><code>#334155</code></td><td><span style={{ display: 'inline-block', width: 80, height: 20, background: '#334155', borderRadius: 4 }} /></td></tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-50)</code></td>
+      <td><code>#F8FAFC</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-100)</code></td>
+      <td><code>#F1F5F9</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-200)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-200)</code></td>
+      <td><code>#E2E8F0</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-300)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-300)</code></td>
+      <td><code>#CBD5E1</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-400)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-400)</code></td>
+      <td><code>#94A3B8</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-500)</code></td>
+      <td><code>#64748B</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-600)</code></td>
+      <td><code>#475569</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-700)</code></td>
+      <td><code>#334155</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-800)</code></td>
+      <td><code>#1E293B</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-900)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-900)</code></td>
+      <td><code>#0F172A</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-950)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-gray-950)</code></td>
+      <td><code>#020617</code></td>
+    </tr>
   </tbody>
 </table>
 
-## Spacing scale
+### blue — 利用者ポータル (patron) の primary
 
 <table>
-  <thead><tr><th>Token</th><th>Value</th><th>Preview</th></tr></thead>
+  <thead>
+    <tr>
+      <th>プレビュー</th>
+      <th>変数名</th>
+      <th>HEX</th>
+    </tr>
+  </thead>
   <tbody>
-    {[
-      ['--spacing-1', '0.25rem'], ['--spacing-2', '0.5rem'], ['--spacing-3', '0.75rem'],
-      ['--spacing-4', '1rem'], ['--spacing-6', '1.5rem'], ['--spacing-8', '2rem'],
-      ['--spacing-12', '3rem'], ['--spacing-16', '4rem'],
-    ].map(([token, value]) => (
-      <tr key={token}><td><code>{`var(${token})`}</code></td><td>{value}</td><td><span style={{ display: 'block', width: `var(${token})`, height: 12, background: 'var(--primary)', borderRadius: 2 }} /></td></tr>
-    ))}
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-blue-50)</code></td>
+      <td><code>#EFF6FF</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-blue-100)</code></td>
+      <td><code>#DBEAFE</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-200)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-blue-200)</code></td>
+      <td><code>#BFDBFE</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-300)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-blue-300)</code></td>
+      <td><code>#93C5FD</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-400)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-blue-400)</code></td>
+      <td><code>#60A5FA</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-blue-500)</code></td>
+      <td><code>#3B82F6</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-blue-600)</code></td>
+      <td><code>#2563EB</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-blue-700)</code></td>
+      <td><code>#1D4ED8</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-blue-800)</code></td>
+      <td><code>#1E40AF</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-900)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-blue-900)</code></td>
+      <td><code>#1E3A8A</code></td>
+    </tr>
   </tbody>
 </table>
 
-### Semantic spacing and layout
+### teal — 司書ポータル (staff) の primary
 
 <table>
-  <thead><tr><th>Token</th><th>Value</th><th>Usage</th></tr></thead>
+  <thead>
+    <tr>
+      <th>プレビュー</th>
+      <th>変数名</th>
+      <th>HEX</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td><code>var(--page-padding)</code></td><td>1.5rem</td><td>ページ内側余白</td></tr>
-    <tr><td><code>var(--section-gap)</code></td><td>2rem</td><td>セクション間隔</td></tr>
-    <tr><td><code>var(--component-gap)</code></td><td>0.75rem</td><td>コンポーネント内部</td></tr>
-    <tr><td><code>var(--card-padding)</code></td><td>1.5rem</td><td>情報量の多いカード</td></tr>
-    <tr><td><code>var(--sidebar-width)</code></td><td>16rem</td><td>司書ポータル</td></tr>
-    <tr><td><code>var(--content-max-width)</code></td><td>80rem</td><td>12カラムコンテンツ</td></tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-teal-50)</code></td>
+      <td><code>#F0FDFA</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-teal-100)</code></td>
+      <td><code>#CCFBF1</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-200)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-teal-200)</code></td>
+      <td><code>#99F6E4</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-300)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-teal-300)</code></td>
+      <td><code>#5EEAD4</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-400)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-teal-400)</code></td>
+      <td><code>#2DD4BF</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-teal-500)</code></td>
+      <td><code>#14B8A6</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-teal-600)</code></td>
+      <td><code>#0D9488</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-teal-700)</code></td>
+      <td><code>#0F766E</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-teal-800)</code></td>
+      <td><code>#115E59</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-900)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-teal-900)</code></td>
+      <td><code>#134E4A</code></td>
+    </tr>
   </tbody>
 </table>
 
-## Typography
+### green — success / 在庫あり / 送信済み
 
 <table>
-  <thead><tr><th>Token</th><th>Value</th><th>Sample</th></tr></thead>
+  <thead>
+    <tr>
+      <th>プレビュー</th>
+      <th>変数名</th>
+      <th>HEX</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td><code>var(--font-size-xs)</code></td><td>0.75rem</td><td style={{ fontSize: 'var(--font-size-xs)' }}>貸出期限 2026年5月12日</td></tr>
-    <tr><td><code>var(--font-size-sm)</code></td><td>0.875rem</td><td style={{ fontSize: 'var(--font-size-sm)' }}>貸出期限 2026年5月12日</td></tr>
-    <tr><td><code>var(--font-size-base)</code></td><td>1rem</td><td style={{ fontSize: 'var(--font-size-base)' }}>貸出期限 2026年5月12日</td></tr>
-    <tr><td><code>var(--font-size-lg)</code></td><td>1.125rem</td><td style={{ fontSize: 'var(--font-size-lg)' }}>貸出期限 2026年5月12日</td></tr>
-    <tr><td><code>var(--font-size-2xl)</code></td><td>1.5rem</td><td style={{ fontSize: 'var(--font-size-2xl)' }}>貸出期限 2026年5月12日</td></tr>
-    <tr><td><code>var(--font-size-3xl)</code></td><td>1.875rem</td><td style={{ fontSize: 'var(--font-size-3xl)' }}>貸出期限 2026年5月12日</td></tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-green-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-green-50)</code></td>
+      <td><code>#F0FDF4</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-green-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-green-100)</code></td>
+      <td><code>#DCFCE7</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-green-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-green-500)</code></td>
+      <td><code>#22C55E</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-green-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-green-600)</code></td>
+      <td><code>#16A34A</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-green-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-green-700)</code></td>
+      <td><code>#15803D</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-green-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-green-800)</code></td>
+      <td><code>#166534</code></td>
+    </tr>
   </tbody>
 </table>
 
-Sans-serif は <code>var(--font-sans)</code>（Noto Sans JP / Inter）、識別子・コードは <code>var(--font-mono)</code> を使用します。ウェイトは 400 / 500 / 600 / 700 です。
-
-## Border radius
-
-<div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-  {[
-    ['--radius-sm', '4px'], ['--radius-md', '8px'], ['--radius-lg', '12px'], ['--radius-xl', '16px'], ['--radius-full', 'Full'],
-  ].map(([token, label]) => (
-    <div key={token} style={{ width: 104, height: 72, display: 'grid', placeContent: 'center', border: '1px solid var(--border)', borderRadius: `var(${token})`, background: 'var(--muted)' }}>
-      <code>{label}</code>
-    </div>
-  ))}
-</div>
-
-## Component tokens
+### amber — warning / 予約待ち / 取置き中 / 送信待ち
 
 <table>
-  <thead><tr><th>Component</th><th>Token</th><th>Value</th></tr></thead>
+  <thead>
+    <tr>
+      <th>プレビュー</th>
+      <th>変数名</th>
+      <th>HEX</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td>Button</td><td><code>var(--button-height-md)</code></td><td>2.5rem</td></tr>
-    <tr><td>Button</td><td><code>var(--button-radius)</code></td><td>radius-md</td></tr>
-    <tr><td>Input</td><td><code>var(--input-height)</code></td><td>2.5rem</td></tr>
-    <tr><td>Card</td><td><code>var(--card-bg)</code></td><td>theme dependent</td></tr>
-    <tr><td>Card</td><td><code>var(--card-padding)</code></td><td>1.5rem</td></tr>
-    <tr><td>Badge</td><td><code>var(--badge-height)</code></td><td>1.5rem</td></tr>
-    <tr><td>Table</td><td><code>var(--table-header-bg)</code></td><td>theme dependent</td></tr>
-    <tr><td>Sidebar</td><td><code>var(--sidebar-width)</code></td><td>16rem</td></tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-amber-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-amber-50)</code></td>
+      <td><code>#FFFBEB</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-amber-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-amber-100)</code></td>
+      <td><code>#FEF3C7</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-amber-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-amber-500)</code></td>
+      <td><code>#F59E0B</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-amber-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-amber-600)</code></td>
+      <td><code>#D97706</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-amber-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-amber-700)</code></td>
+      <td><code>#B45309</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-amber-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-amber-800)</code></td>
+      <td><code>#92400E</code></td>
+    </tr>
   </tbody>
 </table>
 
-## Dark mode
+### orange — 期限接近
 
-`.dark` クラスと `prefers-color-scheme: dark` の両方をサポートします。ステータス背景は暗い面で発光しすぎないよう、15%透明度の `rgba()` 値へ切り替わります。
+<table>
+  <thead>
+    <tr>
+      <th>プレビュー</th>
+      <th>変数名</th>
+      <th>HEX</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-orange-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-orange-50)</code></td>
+      <td><code>#FFF7ED</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-orange-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-orange-100)</code></td>
+      <td><code>#FFEDD5</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-orange-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-orange-500)</code></td>
+      <td><code>#F97316</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-orange-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-orange-600)</code></td>
+      <td><code>#EA580C</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-orange-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-orange-700)</code></td>
+      <td><code>#C2410C</code></td>
+    </tr>
+  </tbody>
+</table>
+
+### red — destructive / 延滞 / 送信失敗
+
+<table>
+  <thead>
+    <tr>
+      <th>プレビュー</th>
+      <th>変数名</th>
+      <th>HEX</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-red-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-red-50)</code></td>
+      <td><code>#FEF2F2</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-red-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-red-100)</code></td>
+      <td><code>#FEE2E2</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-red-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-red-500)</code></td>
+      <td><code>#EF4444</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-red-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-red-600)</code></td>
+      <td><code>#DC2626</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-red-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-red-700)</code></td>
+      <td><code>#B91C1C</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-red-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-red-800)</code></td>
+      <td><code>#991B1B</code></td>
+    </tr>
+  </tbody>
+</table>
+
+### violet — 集計中 / 分析系アクセント
+
+<table>
+  <thead>
+    <tr>
+      <th>プレビュー</th>
+      <th>変数名</th>
+      <th>HEX</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-violet-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-violet-50)</code></td>
+      <td><code>#F5F3FF</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-violet-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-violet-100)</code></td>
+      <td><code>#EDE9FE</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-violet-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-violet-500)</code></td>
+      <td><code>#8B5CF6</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-violet-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-violet-600)</code></td>
+      <td><code>#7C3AED</code></td>
+    </tr>
+    <tr>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-violet-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /></td>
+      <td><code>var(--color-violet-700)</code></td>
+      <td><code>#6D28D9</code></td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## 3. Primitive: スペーシング
+
+4px ベースグリッドです。`0.25rem = 4px` を 1 単位とし、数字は 4px の倍数を表します。
+`--spacing-7` `--spacing-9` などは定義していません。以下のスケールのみを使います。
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>rem</th>
+      <th>px</th>
+      <th>プレビュー</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--spacing-0)</code></td>
+      <td>0rem</td>
+      <td>0px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-0)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--spacing-1)</code></td>
+      <td>0.25rem</td>
+      <td>4px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-1)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--spacing-2)</code></td>
+      <td>0.5rem</td>
+      <td>8px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-2)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--spacing-3)</code></td>
+      <td>0.75rem</td>
+      <td>12px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-3)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--spacing-4)</code></td>
+      <td>1rem</td>
+      <td>16px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-4)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--spacing-5)</code></td>
+      <td>1.25rem</td>
+      <td>20px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-5)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--spacing-6)</code></td>
+      <td>1.5rem</td>
+      <td>24px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-6)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--spacing-8)</code></td>
+      <td>2rem</td>
+      <td>32px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-8)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--spacing-10)</code></td>
+      <td>2.5rem</td>
+      <td>40px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-10)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--spacing-12)</code></td>
+      <td>3rem</td>
+      <td>48px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-12)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--spacing-16)</code></td>
+      <td>4rem</td>
+      <td>64px</td>
+      <td><span style={{ display: 'inline-block', width: 'var(--spacing-16)', height: 12, backgroundColor: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} /></td>
+    </tr>
+  </tbody>
+</table>
+
+適用方針は `gap` を最優先にします。兄弟要素の間隔は親の `gap`、コンテナ内側は `padding`、
+`margin` はセクション間 (`--section-gap`) に限定します。
+
+---
+
+## 4. Primitive: タイポグラフィ
+
+### font-family
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>用途</th>
+      <th>見本</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--font-family-sans)</code></td>
+      <td><code>'Noto Sans JP', 'Inter', 'Hiragino Sans', 'Yu Gothic UI', system-ui, sans-serif</code></td>
+      <td>本文・見出し・UI 全般</td>
+      <td><span style={{ fontFamily: 'var(--font-family-sans)' }}>蔵書検索 Library Search 2026</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--font-family-mono)</code></td>
+      <td><code>'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Menlo', monospace</code></td>
+      <td>ISBN・利用者番号・日付などの ID と数値</td>
+      <td><span style={{ fontFamily: 'var(--font-family-mono)' }}>ISBN 978-4-06-000000-0</span></td>
+    </tr>
+  </tbody>
+</table>
+
+### font-size
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>rem</th>
+      <th>px</th>
+      <th>見本</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--font-size-xs)</code></td>
+      <td>0.75rem</td>
+      <td>12px</td>
+      <td><span style={{ fontSize: 'var(--font-size-xs)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--font-size-sm)</code></td>
+      <td>0.875rem</td>
+      <td>14px</td>
+      <td><span style={{ fontSize: 'var(--font-size-sm)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--font-size-base)</code></td>
+      <td>1rem</td>
+      <td>16px</td>
+      <td><span style={{ fontSize: 'var(--font-size-base)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--font-size-lg)</code></td>
+      <td>1.125rem</td>
+      <td>18px</td>
+      <td><span style={{ fontSize: 'var(--font-size-lg)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--font-size-xl)</code></td>
+      <td>1.25rem</td>
+      <td>20px</td>
+      <td><span style={{ fontSize: 'var(--font-size-xl)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--font-size-2xl)</code></td>
+      <td>1.5rem</td>
+      <td>24px</td>
+      <td><span style={{ fontSize: 'var(--font-size-2xl)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--font-size-3xl)</code></td>
+      <td>1.875rem</td>
+      <td>30px</td>
+      <td><span style={{ fontSize: 'var(--font-size-3xl)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+  </tbody>
+</table>
+
+### font-weight
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>見本</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--font-weight-normal)</code></td>
+      <td>400</td>
+      <td><span style={{ fontWeight: 'var(--font-weight-normal)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--font-weight-medium)</code></td>
+      <td>500</td>
+      <td><span style={{ fontWeight: 'var(--font-weight-medium)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--font-weight-semibold)</code></td>
+      <td>600</td>
+      <td><span style={{ fontWeight: 'var(--font-weight-semibold)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--font-weight-bold)</code></td>
+      <td>700</td>
+      <td><span style={{ fontWeight: 'var(--font-weight-bold)' }}>蔵書検索 Library 12345</span></td>
+    </tr>
+  </tbody>
+</table>
+
+### line-height
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>用途</th>
+      <th>見本</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--line-height-tight)</code></td>
+      <td>1.3</td>
+      <td>見出し・テーブルセル・バッジ</td>
+      <td><span style={{ display: 'inline-block', width: 240, lineHeight: 'var(--line-height-tight)', border: '1px solid var(--border)', padding: 4 }}>蔵書管理台帳の一覧は情報密度を優先します。行間を詰めて表示します。</span></td>
+    </tr>
+    <tr>
+      <td><code>var(--line-height-normal)</code></td>
+      <td>1.7</td>
+      <td>本文・説明文</td>
+      <td><span style={{ display: 'inline-block', width: 240, lineHeight: 'var(--line-height-normal)', border: '1px solid var(--border)', padding: 4 }}>説明文は和文の可読性を優先します。行間を広めに取ります。</span></td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## 5. Primitive: 角丸とシャドウ
+
+### radius
+
+D5「中間（radius 8px, shadow sm）」の判断に基づくスケールです。
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>px</th>
+      <th>プレビュー</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--radius-none)</code></td>
+      <td>0rem</td>
+      <td>0px</td>
+      <td><span style={{ display: 'inline-block', width: 48, height: 32, backgroundColor: 'var(--background-muted)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-none)' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--radius-sm)</code></td>
+      <td>0.25rem</td>
+      <td>4px</td>
+      <td><span style={{ display: 'inline-block', width: 48, height: 32, backgroundColor: 'var(--background-muted)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--radius-md)</code></td>
+      <td>0.375rem</td>
+      <td>6px</td>
+      <td><span style={{ display: 'inline-block', width: 48, height: 32, backgroundColor: 'var(--background-muted)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-md)' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--radius-lg)</code></td>
+      <td>0.5rem</td>
+      <td>8px</td>
+      <td><span style={{ display: 'inline-block', width: 48, height: 32, backgroundColor: 'var(--background-muted)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-lg)' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--radius-xl)</code></td>
+      <td>0.75rem</td>
+      <td>12px</td>
+      <td><span style={{ display: 'inline-block', width: 48, height: 32, backgroundColor: 'var(--background-muted)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-xl)' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--radius-full)</code></td>
+      <td>9999px</td>
+      <td>完全な丸</td>
+      <td><span style={{ display: 'inline-block', width: 48, height: 32, backgroundColor: 'var(--background-muted)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-full)' }} /></td>
+    </tr>
+  </tbody>
+</table>
+
+### shadow
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>プレビュー</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--shadow-none)</code></td>
+      <td><code>none</code></td>
+      <td><span style={{ display: 'inline-block', width: 64, height: 40, margin: 8, backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-none)', border: '1px solid var(--border)' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--shadow-sm)</code></td>
+      <td><code>0 1px 2px 0 rgba(15, 23, 42, 0.06)</code></td>
+      <td><span style={{ display: 'inline-block', width: 64, height: 40, margin: 8, backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--shadow-md)</code></td>
+      <td><code>0 2px 6px -1px rgba(15, 23, 42, 0.10), 0 1px 3px -1px rgba(15, 23, 42, 0.06)</code></td>
+      <td><span style={{ display: 'inline-block', width: 64, height: 40, margin: 8, backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-md)' }} /></td>
+    </tr>
+    <tr>
+      <td><code>var(--shadow-lg)</code></td>
+      <td><code>0 8px 20px -4px rgba(15, 23, 42, 0.14), 0 2px 6px -2px rgba(15, 23, 42, 0.08)</code></td>
+      <td><span style={{ display: 'inline-block', width: 64, height: 40, margin: 8, backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-lg)' }} /></td>
+    </tr>
+  </tbody>
+</table>
+
+### duration
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>用途</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--duration-fast)</code></td>
+      <td>120ms</td>
+      <td>hover / focus の色変化</td>
+    </tr>
+    <tr>
+      <td><code>var(--duration-normal)</code></td>
+      <td>200ms</td>
+      <td>開閉・展開の標準</td>
+    </tr>
+    <tr>
+      <td><code>var(--duration-slow)</code></td>
+      <td>320ms</td>
+      <td>モーダル・サイドバーの大きな遷移</td>
+    </tr>
+  </tbody>
+</table>
+
+### breakpoint
+
+NFR F.1.1.3（対応デバイス Lv2）に従い、`lg` と `md` をフル設計、`sm` は簡易対応です。
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>設計方針</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--breakpoint-sm)</code></td>
+      <td>640px</td>
+      <td>簡易対応。レイアウト崩れのみ防ぐ</td>
+    </tr>
+    <tr>
+      <td><code>var(--breakpoint-md)</code></td>
+      <td>768px</td>
+      <td>タブレット。8 カラム + サイドバー折りたたみ</td>
+    </tr>
+    <tr>
+      <td><code>var(--breakpoint-lg)</code></td>
+      <td>1024px</td>
+      <td>PC。12 カラム + サイドバー展開</td>
+    </tr>
+    <tr>
+      <td><code>var(--breakpoint-xl)</code></td>
+      <td>1280px</td>
+      <td><code>--content-max-width</code> の上限に一致</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## 6. Semantic トークン
+
+用途レイヤーです。コンポーネント実装では原則この層を参照します。
+
+### 面 (surface)
+
+<table>
+  <thead>
+    <tr>
+      <th>用途</th>
+      <th>参照先 primitive</th>
+      <th>light 値</th>
+      <th>dark 値</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--background)</code> — ページの基本背景</td>
+      <td><code>--color-white</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-white)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FFFFFF</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-950)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-950</td>
+    </tr>
+    <tr>
+      <td><code>var(--background-subtle)</code> — 一段沈めた面</td>
+      <td><code>--color-gray-50</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-50</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-900)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-900</td>
+    </tr>
+    <tr>
+      <td><code>var(--background-muted)</code> — 非活性・プレースホルダ面</td>
+      <td><code>--color-gray-100</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-100</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-800</td>
+    </tr>
+    <tr>
+      <td><code>var(--hover-muted)</code> — hover の面</td>
+      <td><code>--color-gray-100</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-100</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-700</td>
+    </tr>
+    <tr>
+      <td><code>var(--active-muted)</code> — active / 押下の面</td>
+      <td><code>--color-gray-200</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-200)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-200</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-600</td>
+    </tr>
+  </tbody>
+</table>
+
+### 文字 (foreground)
+
+<table>
+  <thead>
+    <tr>
+      <th>用途</th>
+      <th>参照先 primitive</th>
+      <th>light 値</th>
+      <th>dark 値</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--foreground)</code> — 本文の既定色</td>
+      <td><code>--color-gray-900</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-900)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-900</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-50</td>
+    </tr>
+    <tr>
+      <td><code>var(--foreground-secondary)</code> — 補助テキスト・ラベル</td>
+      <td><code>--color-gray-600</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-600</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-300)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-300</td>
+    </tr>
+    <tr>
+      <td><code>var(--foreground-muted)</code> — 低優先の注記</td>
+      <td><code>--color-gray-500</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-500</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-400)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-400</td>
+    </tr>
+    <tr>
+      <td><code>var(--foreground-inverse)</code> — 濃色面の上の文字</td>
+      <td><code>--color-white</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-white)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FFFFFF</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-950)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-950</td>
+    </tr>
+  </tbody>
+</table>
+
+### 線 (border) とフォーカス
+
+<table>
+  <thead>
+    <tr>
+      <th>用途</th>
+      <th>参照先 primitive</th>
+      <th>light 値</th>
+      <th>dark 値</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--border)</code> — 既定の区切り線</td>
+      <td><code>--color-gray-200</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-200)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-200</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-700</td>
+    </tr>
+    <tr>
+      <td><code>var(--border-strong)</code> — 入力欄など強調する線</td>
+      <td><code>--color-gray-300</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-300)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-300</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-600</td>
+    </tr>
+    <tr>
+      <td><code>var(--ring)</code> — フォーカスリング（ポータルで切替）</td>
+      <td><code>--color-blue-500</code>（patron 既定）</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> blue-500</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-400)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> blue-400</td>
+    </tr>
+  </tbody>
+</table>
+
+### 状態 (status)
+
+各状態は「本体」「foreground（濃い文字色）」「light（淡い背景）」の 3 点セットで定義します。
+
+<table>
+  <thead>
+    <tr>
+      <th>用途</th>
+      <th>参照先 primitive</th>
+      <th>light 値</th>
+      <th>dark 値</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--success)</code> — 在庫あり・返却済み・送信済み</td>
+      <td><code>--color-green-600</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-green-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #16A34A</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#4ADE80', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #4ADE80</td>
+    </tr>
+    <tr>
+      <td><code>var(--success-foreground)</code></td>
+      <td><code>--color-green-800</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-green-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #166534</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#86EFAC', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #86EFAC</td>
+    </tr>
+    <tr>
+      <td><code>var(--success-light)</code></td>
+      <td><code>--color-green-50</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-green-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #F0FDF4</td>
+      <td><code>rgba(22, 163, 74, 0.18)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--warning)</code> — 予約待ち・取置き中・送信待ち</td>
+      <td><code>--color-amber-600</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-amber-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #D97706</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#FBBF24', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FBBF24</td>
+    </tr>
+    <tr>
+      <td><code>var(--warning-foreground)</code></td>
+      <td><code>--color-amber-800</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-amber-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #92400E</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#FCD34D', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FCD34D</td>
+    </tr>
+    <tr>
+      <td><code>var(--warning-light)</code></td>
+      <td><code>--color-amber-50</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-amber-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FFFBEB</td>
+      <td><code>rgba(217, 119, 6, 0.18)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--destructive)</code> — 延滞・削除・送信失敗</td>
+      <td><code>--color-red-600</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-red-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #DC2626</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#F87171', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #F87171</td>
+    </tr>
+    <tr>
+      <td><code>var(--destructive-foreground)</code></td>
+      <td><code>--color-red-800</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-red-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #991B1B</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#FCA5A5', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FCA5A5</td>
+    </tr>
+    <tr>
+      <td><code>var(--destructive-light)</code></td>
+      <td><code>--color-red-50</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-red-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FEF2F2</td>
+      <td><code>rgba(220, 38, 38, 0.18)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--info)</code> — 情報通知・貸出中</td>
+      <td><code>--color-blue-600</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #2563EB</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#60A5FA', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #60A5FA</td>
+    </tr>
+    <tr>
+      <td><code>var(--info-foreground)</code></td>
+      <td><code>--color-blue-800</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #1E40AF</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#93C5FD', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #93C5FD</td>
+    </tr>
+    <tr>
+      <td><code>var(--info-light)</code></td>
+      <td><code>--color-blue-50</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #EFF6FF</td>
+      <td><code>rgba(37, 99, 235, 0.18)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--neutral)</code> — 無効・対象外</td>
+      <td><code>--color-gray-500</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #64748B</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-400)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-400</td>
+    </tr>
+    <tr>
+      <td><code>var(--neutral-foreground)</code></td>
+      <td><code>--color-gray-700</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #334155</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-300)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-300</td>
+    </tr>
+    <tr>
+      <td><code>var(--neutral-light)</code></td>
+      <td><code>--color-gray-100</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-100)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #F1F5F9</td>
+      <td><code>rgba(100, 116, 139, 0.18)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--pending)</code> — 期限接近・処理待ち</td>
+      <td><code>--color-orange-600</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-orange-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #EA580C</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#FB923C', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FB923C</td>
+    </tr>
+    <tr>
+      <td><code>var(--pending-foreground)</code></td>
+      <td><code>--color-orange-700</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-orange-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #C2410C</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#FDBA74', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FDBA74</td>
+    </tr>
+    <tr>
+      <td><code>var(--pending-light)</code></td>
+      <td><code>--color-orange-50</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-orange-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FFF7ED</td>
+      <td><code>rgba(234, 88, 12, 0.18)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--analysis)</code> — 集計中・分析系アクセント</td>
+      <td><code>--color-violet-600</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-violet-600)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #7C3AED</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#A78BFA', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #A78BFA</td>
+    </tr>
+    <tr>
+      <td><code>var(--analysis-foreground)</code></td>
+      <td><code>--color-violet-700</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-violet-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #6D28D9</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: '#C4B5FD', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #C4B5FD</td>
+    </tr>
+    <tr>
+      <td><code>var(--analysis-light)</code></td>
+      <td><code>--color-violet-50</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-violet-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #F5F3FF</td>
+      <td><code>rgba(124, 58, 237, 0.18)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+### ポータル (primary 系)
+
+既定値は patron です。`[data-portal="staff"]` で staff の値に切り替わります。詳細は 9 節を参照してください。
+
+<table>
+  <thead>
+    <tr>
+      <th>用途</th>
+      <th>参照先 primitive</th>
+      <th>light 値（既定 = patron）</th>
+      <th>dark 値（既定 = patron）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--primary)</code> — 主要アクション</td>
+      <td><code>--color-blue-700</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> blue-700</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-400)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> blue-400</td>
+    </tr>
+    <tr>
+      <td><code>var(--primary-hover)</code> — 主要アクションの hover</td>
+      <td><code>--color-blue-800</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> blue-800</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-300)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> blue-300</td>
+    </tr>
+    <tr>
+      <td><code>var(--primary-foreground)</code> — primary 面の上の文字</td>
+      <td><code>--color-white</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-white)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> #FFFFFF</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-gray-950)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> gray-950</td>
+    </tr>
+    <tr>
+      <td><code>var(--primary-light)</code> — 選択中の淡い面</td>
+      <td><code>--color-blue-50</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> blue-50</td>
+      <td><code>rgba(37, 99, 235, 0.20)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--accent)</code> — 補助的な強調</td>
+      <td><code>--color-blue-500</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> blue-500</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-300)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> blue-300</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## 7. レイアウトとスペーシングのセマンティック
+
+`_inference.md` の「5. レイアウト・スペーシング推論」に基づく値です。推論根拠を併記します。
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>推論根拠</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--sidebar-width)</code></td>
+      <td>16rem (256px)</td>
+      <td>ナビ項目数 = 業務ユニーク数 7（蔵書管理業務 / 蔵書分析業務 / 蔵書利用業務 / 貸出期限管理業務 / 予約管理業務 / 利用者管理業務 / 利用照会業務）+ 共通メニュー 2（ホーム, 設定）= 9。推論ルール「項目数 9〜15: 標準 (16rem)」に該当。最大ラベル「貸出期限管理業務」= 全角 8 文字で「全角 8 文字以上: 標準以上を推奨」にも適合</td>
+    </tr>
+    <tr>
+      <td><code>var(--sidebar-collapsed-width)</code></td>
+      <td>4rem (64px)</td>
+      <td>アイコン 24px + padding 左右 20px = 64px（固定値）</td>
+    </tr>
+    <tr>
+      <td><code>var(--content-max-width)</code></td>
+      <td>80rem (1280px)</td>
+      <td><code>lg</code> ブレークポイント 1024px と <code>xl</code> 1280px のうち、12 カラムを破綻なく敷ける上限として <code>xl</code> に合わせる</td>
+    </tr>
+    <tr>
+      <td><code>var(--page-padding)</code></td>
+      <td><code>var(--spacing-6)</code> = 1.5rem (24px)</td>
+      <td>両ポータルともサイドバーありの業務画面。情報密度が高いため余白を抑えて表示領域を確保</td>
+    </tr>
+    <tr>
+      <td><code>var(--section-gap)</code></td>
+      <td><code>var(--spacing-8)</code> = 2rem (32px)</td>
+      <td>情報.tsv の属性数平均 8.0（書籍 10, 利用者 7, 利用者アカウント 5, 貸出 8, 予約 8, 通知 10, 統計レポート 8 = 56/7）。平均 6 以上の高密度のため 2rem</td>
+    </tr>
+    <tr>
+      <td><code>var(--component-gap)</code></td>
+      <td><code>var(--spacing-3)</code> = 0.75rem (12px)</td>
+      <td>フォーム要素・リスト項目の標準間隔。4px グリッドの 3 倍。司書ポータルの窓口業務（SP-006 高密度 UI）でも視認可能な最小値</td>
+    </tr>
+    <tr>
+      <td><code>var(--card-padding)</code></td>
+      <td><code>var(--spacing-6)</code> = 1.5rem (24px)</td>
+      <td>カード候補（書籍 = 属性 10、貸出 = 属性 8）がいずれも属性数 5 以上のため 1.5rem</td>
+    </tr>
+    <tr>
+      <td><code>var(--grid-columns)</code></td>
+      <td>12</td>
+      <td>D4「12 列グリッド + サイドバーナビ」を採用。BUC 13 フロー / 業務 7 / 画面 41 の規模と SP-006「窓口業務優先の操作設計（最小操作数）」から、常時可視のサイドバーナビ + 12 カラムが最短導線</td>
+    </tr>
+    <tr>
+      <td><code>var(--grid-gutter)</code></td>
+      <td><code>var(--component-gap)</code> = 0.75rem (12px)</td>
+      <td>カラム間の溝をコンポーネント間隔と揃え、グリッド上の要素間隔を一貫させる</td>
+    </tr>
+  </tbody>
+</table>
+
+### 画面パターン別のカラム分割
+
+<table>
+  <thead>
+    <tr>
+      <th>画面パターン</th>
+      <th>該当画面（例）</th>
+      <th>カラム分割</th>
+      <th>根拠</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>一覧・検索</td>
+      <td>蔵書管理台帳 / 利用者名簿 / 蔵書検索 / 延滞状況一覧</td>
+      <td>12col フル幅</td>
+      <td>書籍の属性数 10、利用者 7。属性数 5 以上でテーブル表示が必要</td>
+    </tr>
+    <tr>
+      <td>詳細表示</td>
+      <td>書籍詳細・在庫状況</td>
+      <td>8col + 4col</td>
+      <td>書籍の関連情報あり（貸出 / 予約 / 統計レポート）。右サイドに在庫・予約状況パネル</td>
+    </tr>
+    <tr>
+      <td>登録・編集フォーム</td>
+      <td>書籍受入登録 / 利用申込受付 / 利用者情報変更</td>
+      <td>余白 2col + 8col + 余白 2col</td>
+      <td>書籍の入力項目 7、利用者 4。いずれも 10 以下</td>
+    </tr>
+    <tr>
+      <td>ダッシュボード・統計</td>
+      <td>在庫状況レポート / 貸出統計レポート</td>
+      <td>4col × 3（KPI）+ 12col（チャート）</td>
+      <td>レポート種別 3 値（在庫状況 / 人気書籍ランキング / 期間別貸出統計）。KPI カード 3 件</td>
+    </tr>
+    <tr>
+      <td>確認・単票</td>
+      <td>貸出可否判定 / 返却後在庫整理 / 取置き対象者特定</td>
+      <td>6col + 6col</td>
+      <td>判定対象と判定結果の対比表示</td>
+    </tr>
+  </tbody>
+</table>
+
+### レスポンシブ
+
+<table>
+  <thead>
+    <tr>
+      <th>ブレークポイント</th>
+      <th>カラム</th>
+      <th>サイドバー</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>lg (1024px 以上)</td>
+      <td>12col</td>
+      <td>展開（<code>var(--sidebar-width)</code> = 16rem）</td>
+    </tr>
+    <tr>
+      <td>md (768–1023px)</td>
+      <td>8col</td>
+      <td>折りたたみ（<code>var(--sidebar-collapsed-width)</code> = 4rem）</td>
+    </tr>
+    <tr>
+      <td>sm (768px 未満)</td>
+      <td>4col</td>
+      <td>非表示（簡易対応）</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## 8. Component トークン
+
+### button
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>用途</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--button-height-sm)</code></td>
+      <td>2rem (32px)</td>
+      <td>小サイズの高さ</td>
+    </tr>
+    <tr>
+      <td><code>var(--button-height-md)</code></td>
+      <td>2.25rem (36px)</td>
+      <td>標準サイズの高さ</td>
+    </tr>
+    <tr>
+      <td><code>var(--button-height-lg)</code></td>
+      <td>2.75rem (44px)</td>
+      <td>大サイズの高さ</td>
+    </tr>
+    <tr>
+      <td><code>var(--button-padding-x)</code></td>
+      <td><code>var(--spacing-4)</code> = 1rem</td>
+      <td>左右の内側余白</td>
+    </tr>
+    <tr>
+      <td><code>var(--button-radius)</code></td>
+      <td><code>var(--radius-lg)</code> = 0.5rem</td>
+      <td>角丸</td>
+    </tr>
+    <tr>
+      <td><code>var(--button-font-size)</code></td>
+      <td><code>var(--font-size-sm)</code> = 0.875rem</td>
+      <td>ラベルの文字サイズ</td>
+    </tr>
+    <tr>
+      <td><code>var(--button-font-weight)</code></td>
+      <td><code>var(--font-weight-medium)</code> = 500</td>
+      <td>ラベルの太さ</td>
+    </tr>
+  </tbody>
+</table>
+
+### input
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>dark での上書き</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--input-height)</code></td>
+      <td>2.25rem (36px)</td>
+      <td>なし</td>
+    </tr>
+    <tr>
+      <td><code>var(--input-padding-x)</code></td>
+      <td><code>var(--spacing-3)</code> = 0.75rem</td>
+      <td>なし</td>
+    </tr>
+    <tr>
+      <td><code>var(--input-radius)</code></td>
+      <td><code>var(--radius-lg)</code> = 0.5rem</td>
+      <td>なし</td>
+    </tr>
+    <tr>
+      <td><code>var(--input-bg)</code></td>
+      <td><code>var(--color-white)</code></td>
+      <td><code>var(--color-gray-900)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--input-border)</code></td>
+      <td><code>var(--border-strong)</code></td>
+      <td><code>var(--color-gray-600)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--input-focus-ring)</code></td>
+      <td><code>var(--ring)</code></td>
+      <td>なし（<code>--ring</code> 側で切替）</td>
+    </tr>
+    <tr>
+      <td><code>var(--input-placeholder)</code></td>
+      <td><code>var(--color-gray-400)</code></td>
+      <td><code>var(--color-gray-500)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+### card
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>dark での上書き</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--card-bg)</code></td>
+      <td><code>var(--color-white)</code></td>
+      <td><code>var(--color-gray-900)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--card-border)</code></td>
+      <td><code>var(--border)</code></td>
+      <td><code>var(--color-gray-700)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--card-shadow)</code></td>
+      <td><code>var(--shadow-sm)</code></td>
+      <td><code>0 1px 2px 0 rgba(0, 0, 0, 0.5)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--card-radius)</code></td>
+      <td><code>var(--radius-xl)</code> = 0.75rem</td>
+      <td>なし</td>
+    </tr>
+  </tbody>
+</table>
+
+### badge
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>用途</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--badge-height)</code></td>
+      <td>1.5rem (24px)</td>
+      <td>バッジの高さ</td>
+    </tr>
+    <tr>
+      <td><code>var(--badge-padding-x)</code></td>
+      <td><code>var(--spacing-2)</code> = 0.5rem</td>
+      <td>左右の内側余白</td>
+    </tr>
+    <tr>
+      <td><code>var(--badge-radius)</code></td>
+      <td><code>var(--radius-full)</code> = 9999px</td>
+      <td>ピル形状</td>
+    </tr>
+    <tr>
+      <td><code>var(--badge-font-size)</code></td>
+      <td><code>var(--font-size-xs)</code> = 0.75rem</td>
+      <td>ラベルの文字サイズ</td>
+    </tr>
+    <tr>
+      <td><code>var(--badge-font-weight)</code></td>
+      <td><code>var(--font-weight-medium)</code> = 500</td>
+      <td>ラベルの太さ</td>
+    </tr>
+  </tbody>
+</table>
+
+### table
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>dark での上書き</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--table-header-bg)</code></td>
+      <td><code>var(--color-gray-50)</code></td>
+      <td><code>var(--color-gray-800)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--table-header-foreground)</code></td>
+      <td><code>var(--foreground-secondary)</code></td>
+      <td><code>var(--color-gray-300)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--table-row-height)</code></td>
+      <td>2.75rem (44px)</td>
+      <td>なし</td>
+    </tr>
+    <tr>
+      <td><code>var(--table-cell-padding-x)</code></td>
+      <td><code>var(--spacing-4)</code> = 1rem</td>
+      <td>なし</td>
+    </tr>
+    <tr>
+      <td><code>var(--table-cell-padding-y)</code></td>
+      <td><code>var(--spacing-3)</code> = 0.75rem</td>
+      <td>なし</td>
+    </tr>
+    <tr>
+      <td><code>var(--table-border)</code></td>
+      <td><code>var(--border)</code></td>
+      <td><code>var(--color-gray-700)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--table-row-hover-bg)</code></td>
+      <td><code>var(--hover-muted)</code></td>
+      <td><code>var(--color-gray-800)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+### sidebar
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>dark での上書き</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--sidebar-bg)</code></td>
+      <td><code>var(--color-gray-50)</code></td>
+      <td><code>var(--color-gray-900)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--sidebar-foreground)</code></td>
+      <td><code>var(--foreground-secondary)</code></td>
+      <td><code>var(--color-gray-300)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--sidebar-border)</code></td>
+      <td><code>var(--border)</code></td>
+      <td><code>var(--color-gray-700)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--sidebar-item-height)</code></td>
+      <td>2.5rem (40px)</td>
+      <td>なし</td>
+    </tr>
+    <tr>
+      <td><code>var(--sidebar-item-active-bg)</code></td>
+      <td><code>var(--primary-light)</code></td>
+      <td><code>rgba(37, 99, 235, 0.20)</code> / staff は <code>rgba(13, 148, 136, 0.20)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--sidebar-item-active-foreground)</code></td>
+      <td><code>var(--primary)</code></td>
+      <td><code>var(--color-blue-300)</code> / staff は <code>var(--color-teal-300)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+### modal
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>dark での上書き</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--modal-backdrop)</code></td>
+      <td><code>rgba(15, 23, 42, 0.45)</code></td>
+      <td><code>rgba(2, 6, 23, 0.7)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--modal-bg)</code></td>
+      <td><code>var(--color-white)</code></td>
+      <td><code>var(--color-gray-900)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--modal-radius)</code></td>
+      <td><code>var(--radius-xl)</code> = 0.75rem</td>
+      <td>なし</td>
+    </tr>
+    <tr>
+      <td><code>var(--modal-padding)</code></td>
+      <td><code>var(--spacing-6)</code> = 1.5rem</td>
+      <td>なし</td>
+    </tr>
+    <tr>
+      <td><code>var(--modal-shadow)</code></td>
+      <td><code>var(--shadow-lg)</code></td>
+      <td><code>0 8px 24px -4px rgba(0, 0, 0, 0.7)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--modal-width-sm)</code></td>
+      <td>24rem (384px)</td>
+      <td>なし</td>
+    </tr>
+    <tr>
+      <td><code>var(--modal-width-md)</code></td>
+      <td>32rem (512px)</td>
+      <td>なし</td>
+    </tr>
+  </tbody>
+</table>
+
+### alert
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>用途</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--alert-radius)</code></td>
+      <td><code>var(--radius-lg)</code> = 0.5rem</td>
+      <td>角丸</td>
+    </tr>
+    <tr>
+      <td><code>var(--alert-padding)</code></td>
+      <td><code>var(--spacing-4)</code> = 1rem</td>
+      <td>内側余白</td>
+    </tr>
+  </tbody>
+</table>
+
+配色は状態セマンティック（<code>var(--success)</code> / <code>var(--warning)</code> / <code>var(--destructive)</code> / <code>var(--info)</code> と対応する `-light`）を使います。
+
+### skeleton
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>dark での上書き</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--skeleton-bg)</code></td>
+      <td><code>var(--color-gray-200)</code></td>
+      <td><code>var(--color-gray-700)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--skeleton-highlight)</code></td>
+      <td><code>var(--color-gray-100)</code></td>
+      <td><code>var(--color-gray-600)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+### spinner / loading overlay
+
+Skeleton と Spinner の使い分けは <code>LoadingState</code>（Common/LoadingState）に集約しています。画面側で独自の loading 表現を作らないでください。
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>dark での上書き</th>
+      <th>用途</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--spinner-track)</code></td>
+      <td><code>var(--color-gray-200)</code></td>
+      <td><code>var(--color-gray-700)</code></td>
+      <td>回転リングの下地</td>
+    </tr>
+    <tr>
+      <td><code>var(--spinner-indicator)</code></td>
+      <td><code>var(--primary)</code></td>
+      <td>―（ポータル色に追随）</td>
+      <td>回転する先頭部分</td>
+    </tr>
+    <tr>
+      <td><code>var(--spinner-thickness)</code></td>
+      <td><code>2px</code></td>
+      <td>―</td>
+      <td>sm / md の線幅</td>
+    </tr>
+    <tr>
+      <td><code>var(--spinner-thickness-lg)</code></td>
+      <td><code>3px</code></td>
+      <td>―</td>
+      <td>lg の線幅</td>
+    </tr>
+    <tr>
+      <td><code>var(--spinner-size-sm)</code></td>
+      <td><code>1rem</code></td>
+      <td>―</td>
+      <td>本文・ボタン内</td>
+    </tr>
+    <tr>
+      <td><code>var(--spinner-size-md)</code></td>
+      <td><code>1.5rem</code></td>
+      <td>―</td>
+      <td>セクション内</td>
+    </tr>
+    <tr>
+      <td><code>var(--spinner-size-lg)</code></td>
+      <td><code>2.5rem</code></td>
+      <td>―</td>
+      <td>overlay（画面ブロック）</td>
+    </tr>
+    <tr>
+      <td><code>var(--spinner-duration)</code></td>
+      <td><code>900ms</code></td>
+      <td>―</td>
+      <td>1 回転。<code>prefers-reduced-motion</code> で停止する</td>
+    </tr>
+    <tr>
+      <td><code>var(--overlay-backdrop)</code></td>
+      <td><code>rgba(255, 255, 255, 0.72)</code></td>
+      <td><code>rgba(2, 6, 23, 0.72)</code></td>
+      <td>ブロッキング待ちの背面</td>
+    </tr>
+    <tr>
+      <td><code>var(--overlay-blur)</code></td>
+      <td><code>2px</code></td>
+      <td>―</td>
+      <td>背面のぼかし</td>
+    </tr>
+  </tbody>
+</table>
+
+### pagination
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>値</th>
+      <th>用途</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--pagination-item-size)</code></td>
+      <td>2rem (32px)</td>
+      <td>ページ番号ボタンの一辺</td>
+    </tr>
+    <tr>
+      <td><code>var(--pagination-radius)</code></td>
+      <td><code>var(--radius-md)</code> = 0.375rem</td>
+      <td>角丸</td>
+    </tr>
+  </tbody>
+</table>
+
+### domain: due-date（貸出.返却期限）
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>light 値</th>
+      <th>dark 値</th>
+      <th>意味</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--duedate-safe-color)</code></td>
+      <td><code>var(--success)</code></td>
+      <td><code>#4ADE80</code></td>
+      <td>期限に余裕あり</td>
+    </tr>
+    <tr>
+      <td><code>var(--duedate-safe-bg)</code></td>
+      <td><code>var(--success-light)</code></td>
+      <td><code>rgba(22, 163, 74, 0.18)</code></td>
+      <td>同上の背景</td>
+    </tr>
+    <tr>
+      <td><code>var(--duedate-near-color)</code></td>
+      <td><code>var(--pending)</code></td>
+      <td><code>#FB923C</code></td>
+      <td>返却期限が接近</td>
+    </tr>
+    <tr>
+      <td><code>var(--duedate-near-bg)</code></td>
+      <td><code>var(--pending-light)</code></td>
+      <td><code>rgba(234, 88, 12, 0.18)</code></td>
+      <td>同上の背景</td>
+    </tr>
+    <tr>
+      <td><code>var(--duedate-over-color)</code></td>
+      <td><code>var(--destructive)</code></td>
+      <td><code>#F87171</code></td>
+      <td>延滞</td>
+    </tr>
+    <tr>
+      <td><code>var(--duedate-over-bg)</code></td>
+      <td><code>var(--destructive-light)</code></td>
+      <td><code>rgba(220, 38, 38, 0.18)</code></td>
+      <td>同上の背景</td>
+    </tr>
+  </tbody>
+</table>
+
+### domain: reservation queue（予約.予約順位）
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>light 値</th>
+      <th>dark 値</th>
+      <th>意味</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--queue-track-bg)</code></td>
+      <td><code>var(--color-gray-200)</code></td>
+      <td><code>var(--color-gray-700)</code></td>
+      <td>未到達ステップのトラック</td>
+    </tr>
+    <tr>
+      <td><code>var(--queue-active-bg)</code></td>
+      <td><code>var(--primary)</code></td>
+      <td><code>var(--color-blue-400)</code></td>
+      <td>現在のステップ</td>
+    </tr>
+    <tr>
+      <td><code>var(--queue-done-bg)</code></td>
+      <td><code>var(--success)</code></td>
+      <td><code>#4ADE80</code></td>
+      <td>通過済みステップ</td>
+    </tr>
+    <tr>
+      <td><code>var(--queue-label-color)</code></td>
+      <td><code>var(--foreground-secondary)</code></td>
+      <td><code>var(--color-gray-300)</code></td>
+      <td>ステップラベル</td>
+    </tr>
+  </tbody>
+</table>
+
+### domain: report kpi（統計レポート）
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>light 値</th>
+      <th>dark 値</th>
+      <th>意味</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--kpi-bg)</code></td>
+      <td><code>var(--card-bg)</code></td>
+      <td>なし（<code>--card-bg</code> 側で切替）</td>
+      <td>KPI カードの面</td>
+    </tr>
+    <tr>
+      <td><code>var(--kpi-value-color)</code></td>
+      <td><code>var(--foreground)</code></td>
+      <td>なし（<code>--foreground</code> 側で切替）</td>
+      <td>KPI の数値</td>
+    </tr>
+    <tr>
+      <td><code>var(--kpi-label-color)</code></td>
+      <td><code>var(--foreground-secondary)</code></td>
+      <td>なし（<code>--foreground-secondary</code> 側で切替）</td>
+      <td>KPI のラベル</td>
+    </tr>
+    <tr>
+      <td><code>var(--kpi-accent)</code></td>
+      <td><code>var(--analysis)</code></td>
+      <td><code>#A78BFA</code></td>
+      <td>分析系アクセント</td>
+    </tr>
+  </tbody>
+</table>
+
+### domain: chart（期間別貸出統計）
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>light 値</th>
+      <th>dark 値</th>
+      <th>意味</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--chart-bar-bg)</code></td>
+      <td><code>var(--primary)</code></td>
+      <td><code>var(--color-blue-400)</code></td>
+      <td>主系列のバー</td>
+    </tr>
+    <tr>
+      <td><code>var(--chart-bar-muted-bg)</code></td>
+      <td><code>var(--color-gray-300)</code></td>
+      <td><code>var(--color-gray-600)</code></td>
+      <td>比較用・非強調のバー</td>
+    </tr>
+    <tr>
+      <td><code>var(--chart-grid)</code></td>
+      <td><code>var(--border)</code></td>
+      <td><code>var(--color-gray-700)</code></td>
+      <td>グリッド線</td>
+    </tr>
+    <tr>
+      <td><code>var(--chart-axis-label)</code></td>
+      <td><code>var(--foreground-muted)</code></td>
+      <td><code>var(--color-gray-400)</code></td>
+      <td>軸ラベル</td>
+    </tr>
+  </tbody>
+</table>
+
+### domain: pii mask（利用者.連絡先 / NFR E.1.2.1）
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>light 値</th>
+      <th>dark 値</th>
+      <th>意味</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--pii-mask-bg)</code></td>
+      <td><code>var(--color-gray-100)</code></td>
+      <td><code>var(--color-gray-800)</code></td>
+      <td>マスク表示の背景</td>
+    </tr>
+    <tr>
+      <td><code>var(--pii-mask-color)</code></td>
+      <td><code>var(--foreground-muted)</code></td>
+      <td><code>var(--color-gray-400)</code></td>
+      <td>マスク表示の文字</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## 9. ポータル別カラー
+
+`data-portal` 属性で primary 系を切り替えます。窓口業務中のポータル取り違えを色で防ぐ狙いです。
+`:root` の既定値は patron と同じです。
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>patron（利用者ポータル / blue）</th>
+      <th>staff（司書ポータル / teal）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--primary)</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> <code>var(--color-blue-700)</code> #1D4ED8</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-700)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> <code>var(--color-teal-700)</code> #0F766E</td>
+    </tr>
+    <tr>
+      <td><code>var(--primary-hover)</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> <code>var(--color-blue-800)</code> #1E40AF</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-800)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> <code>var(--color-teal-800)</code> #115E59</td>
+    </tr>
+    <tr>
+      <td><code>var(--primary-light)</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> <code>var(--color-blue-50)</code> #EFF6FF</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-50)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> <code>var(--color-teal-50)</code> #F0FDFA</td>
+    </tr>
+    <tr>
+      <td><code>var(--accent)</code></td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-blue-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> <code>var(--color-blue-500)</code> #3B82F6</td>
+      <td><span style={{ display: 'inline-block', width: 20, height: 20, backgroundColor: 'var(--color-teal-500)', border: '1px solid var(--border)', borderRadius: 4, verticalAlign: 'middle' }} /> <code>var(--color-teal-500)</code> #14B8A6</td>
+    </tr>
+  </tbody>
+</table>
+
+補足として、<code>var(--primary-foreground)</code> は両ポータルとも <code>var(--color-white)</code>、
+<code>var(--ring)</code> は patron が <code>var(--color-blue-500)</code>、staff が <code>var(--color-teal-500)</code> です。
+
+---
+
+## 10. Dark Mode 対応
+
+`.dark` クラスで切り替えます。クラス未指定時は `@media (prefers-color-scheme: dark)` の
+`:root:not(.light)` が同じ値を適用します。`.light` クラスを付けると OS 設定を無視して light に固定できます。
+
+### 面・文字・線の対比
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>light</th>
+      <th>dark</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--background)</code></td>
+      <td><code>var(--color-white)</code></td>
+      <td><code>var(--color-gray-950)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--background-subtle)</code></td>
+      <td><code>var(--color-gray-50)</code></td>
+      <td><code>var(--color-gray-900)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--background-muted)</code></td>
+      <td><code>var(--color-gray-100)</code></td>
+      <td><code>var(--color-gray-800)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--foreground)</code></td>
+      <td><code>var(--color-gray-900)</code></td>
+      <td><code>var(--color-gray-50)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--foreground-secondary)</code></td>
+      <td><code>var(--color-gray-600)</code></td>
+      <td><code>var(--color-gray-300)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--foreground-muted)</code></td>
+      <td><code>var(--color-gray-500)</code></td>
+      <td><code>var(--color-gray-400)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--foreground-inverse)</code></td>
+      <td><code>var(--color-white)</code></td>
+      <td><code>var(--color-gray-950)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--border)</code></td>
+      <td><code>var(--color-gray-200)</code></td>
+      <td><code>var(--color-gray-700)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--border-strong)</code></td>
+      <td><code>var(--color-gray-300)</code></td>
+      <td><code>var(--color-gray-600)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+### hover / active の注意
+
+`--hover-muted` は light では `--background-muted` と同じ `--color-gray-100` ですが、
+**dark では `--color-gray-700` という別値**になります（`--background-muted` の dark 値は `--color-gray-800`）。
+dark で hover が背景に埋もれないよう、意図的に 1 段明るい値を割り当てています。
+hover の面には `--background-muted` ではなく必ず `--hover-muted` を使ってください。
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>light</th>
+      <th>dark</th>
+      <th>備考</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--hover-muted)</code></td>
+      <td><code>var(--color-gray-100)</code></td>
+      <td><code>var(--color-gray-700)</code></td>
+      <td>dark で <code>--background-muted</code> と別値になる</td>
+    </tr>
+    <tr>
+      <td><code>var(--active-muted)</code></td>
+      <td><code>var(--color-gray-200)</code></td>
+      <td><code>var(--color-gray-600)</code></td>
+      <td>hover よりさらに 1 段明るい</td>
+    </tr>
+  </tbody>
+</table>
+
+### status 系の注意
+
+status の本体色と foreground は、dark では primitive を参照せず **HEX リテラルの明るい値**に差し替わります。
+`-light`（淡い背景）は、dark では不透明色ではなく **`rgba()` の半透明**になります。
+背景が `--card-bg` でも `--background` でも自然に馴染ませるための設計です。
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>light</th>
+      <th>dark</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--success)</code> / <code>var(--success-foreground)</code></td>
+      <td><code>--color-green-600</code> / <code>--color-green-800</code></td>
+      <td><code>#4ADE80</code> / <code>#86EFAC</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--success-light)</code></td>
+      <td><code>--color-green-50</code>（不透明）</td>
+      <td><code>rgba(22, 163, 74, 0.18)</code>（半透明）</td>
+    </tr>
+    <tr>
+      <td><code>var(--warning)</code> / <code>var(--warning-foreground)</code></td>
+      <td><code>--color-amber-600</code> / <code>--color-amber-800</code></td>
+      <td><code>#FBBF24</code> / <code>#FCD34D</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--warning-light)</code></td>
+      <td><code>--color-amber-50</code>（不透明）</td>
+      <td><code>rgba(217, 119, 6, 0.18)</code>（半透明）</td>
+    </tr>
+    <tr>
+      <td><code>var(--destructive)</code> / <code>var(--destructive-foreground)</code></td>
+      <td><code>--color-red-600</code> / <code>--color-red-800</code></td>
+      <td><code>#F87171</code> / <code>#FCA5A5</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--destructive-light)</code></td>
+      <td><code>--color-red-50</code>（不透明）</td>
+      <td><code>rgba(220, 38, 38, 0.18)</code>（半透明）</td>
+    </tr>
+    <tr>
+      <td><code>var(--info)</code> / <code>var(--info-foreground)</code></td>
+      <td><code>--color-blue-600</code> / <code>--color-blue-800</code></td>
+      <td><code>#60A5FA</code> / <code>#93C5FD</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--info-light)</code></td>
+      <td><code>--color-blue-50</code>（不透明）</td>
+      <td><code>rgba(37, 99, 235, 0.18)</code>（半透明）</td>
+    </tr>
+    <tr>
+      <td><code>var(--neutral)</code> / <code>var(--neutral-foreground)</code></td>
+      <td><code>--color-gray-500</code> / <code>--color-gray-700</code></td>
+      <td><code>--color-gray-400</code> / <code>--color-gray-300</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--neutral-light)</code></td>
+      <td><code>--color-gray-100</code>（不透明）</td>
+      <td><code>rgba(100, 116, 139, 0.18)</code>（半透明）</td>
+    </tr>
+    <tr>
+      <td><code>var(--pending)</code> / <code>var(--pending-foreground)</code></td>
+      <td><code>--color-orange-600</code> / <code>--color-orange-700</code></td>
+      <td><code>#FB923C</code> / <code>#FDBA74</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--pending-light)</code></td>
+      <td><code>--color-orange-50</code>（不透明）</td>
+      <td><code>rgba(234, 88, 12, 0.18)</code>（半透明）</td>
+    </tr>
+    <tr>
+      <td><code>var(--analysis)</code> / <code>var(--analysis-foreground)</code></td>
+      <td><code>--color-violet-600</code> / <code>--color-violet-700</code></td>
+      <td><code>#A78BFA</code> / <code>#C4B5FD</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--analysis-light)</code></td>
+      <td><code>--color-violet-50</code>（不透明）</td>
+      <td><code>rgba(124, 58, 237, 0.18)</code>（半透明）</td>
+    </tr>
+  </tbody>
+</table>
+
+### primary 系の反転
+
+dark では primary が明るい側（400 番台）に反転し、その上に載る文字は `--color-gray-950` になります。
+`--primary-light` も `rgba()` の半透明です。
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>light (patron / staff)</th>
+      <th>dark (patron / staff)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--primary)</code></td>
+      <td><code>--color-blue-700</code> / <code>--color-teal-700</code></td>
+      <td><code>--color-blue-400</code> / <code>--color-teal-400</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--primary-hover)</code></td>
+      <td><code>--color-blue-800</code> / <code>--color-teal-800</code></td>
+      <td><code>--color-blue-300</code> / <code>--color-teal-300</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--primary-foreground)</code></td>
+      <td><code>--color-white</code> / <code>--color-white</code></td>
+      <td><code>--color-gray-950</code> / <code>--color-gray-950</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--primary-light)</code></td>
+      <td><code>--color-blue-50</code> / <code>--color-teal-50</code></td>
+      <td><code>rgba(37, 99, 235, 0.20)</code> / <code>rgba(13, 148, 136, 0.20)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--accent)</code></td>
+      <td><code>--color-blue-500</code> / <code>--color-teal-500</code></td>
+      <td><code>--color-blue-300</code> / <code>--color-teal-300</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--ring)</code></td>
+      <td><code>--color-blue-500</code> / <code>--color-teal-500</code></td>
+      <td><code>--color-blue-400</code> / <code>--color-teal-400</code></td>
+    </tr>
+  </tbody>
+</table>
+
+### 影の対比
+
+dark では影の色を `rgba(15, 23, 42, ...)` から `rgba(0, 0, 0, ...)` に変え、不透明度を上げます。
+
+<table>
+  <thead>
+    <tr>
+      <th>変数名</th>
+      <th>light</th>
+      <th>dark</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>var(--card-shadow)</code></td>
+      <td><code>var(--shadow-sm)</code></td>
+      <td><code>0 1px 2px 0 rgba(0, 0, 0, 0.5)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--modal-shadow)</code></td>
+      <td><code>var(--shadow-lg)</code></td>
+      <td><code>0 8px 24px -4px rgba(0, 0, 0, 0.7)</code></td>
+    </tr>
+    <tr>
+      <td><code>var(--modal-backdrop)</code></td>
+      <td><code>rgba(15, 23, 42, 0.45)</code></td>
+      <td><code>rgba(2, 6, 23, 0.7)</code></td>
+    </tr>
+  </tbody>
+</table>

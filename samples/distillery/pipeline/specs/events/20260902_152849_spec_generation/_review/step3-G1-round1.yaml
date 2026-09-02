@@ -1,0 +1,205 @@
+round: 1
+group: G1
+findings:
+  - id: S3-G1-001
+    uc: "蔵書管理業務/蔵書を管理するフロー/蔵書一覧を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/蔵書一覧を照会する/tier-frontend-staff.md"
+    line: 33
+    severity: major
+    viewpoint: 3
+    claim: "デザイントークン参照が `var(--semantic-background)` / `var(--semantic-foreground)` / `var(--semantic-success)` / `var(--semantic-info)` / `var(--semantic-warning)` という存在しない CSS 変数名を使っている（design システムの正本は `--semantic-` 接頭辞を持たない）"
+    fix: "`var(--background)` / `var(--foreground)` / `var(--success)` / `var(--info)` / `var(--warning)` に修正する（design-tokens.css L158-L185 の定義名に合わせる）"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+      - "docs/design/latest/_digest/tokens.yaml"
+  - id: S3-G1-002
+    uc: "蔵書管理業務/蔵書を管理するフロー/蔵書一覧を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/蔵書一覧を照会する/tier-backend-api.md"
+    line: 78
+    severity: minor
+    viewpoint: 3
+    claim: "keyword で title / author / isbn / publisher の部分一致検索を受け付けるのに、必要なインデックスが `(genre)` `(book_status)` `(updated_at DESC)` のみで、キーワード検索を支えるインデックスが無い（レスポンスタイム 5 秒目標の根拠が欠ける）"
+    fix: "「書籍を検索する」UC と同様に `(title)` `(author)` `(isbn)` を必要なインデックスへ追加するか、keyword 検索は前方一致に限定する旨を明記する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍を検索する/_model-summary.yaml"
+  - id: S3-G1-003
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/tier-frontend-staff.md"
+    line: 33
+    severity: major
+    viewpoint: 3
+    claim: "デザイントークン参照が `var(--semantic-background)` / `var(--semantic-warning)` / `var(--semantic-success)` という存在しない CSS 変数名を使っている"
+    fix: "`var(--background)` / `var(--warning)` / `var(--success)` に修正する（design-tokens.css L158-L185）"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-004
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/_model-summary.yaml"
+    line: 73
+    severity: minor
+    viewpoint: 5
+    claim: "INSERT の material_type の値が「紙書籍（資料種別利用可否条件により固定）」となっているが、spec.md / tier-backend-api.md では material_type はリクエスト値を受け取り「電子書籍」なら 422 で拒否する仕様であり、サーバ側で固定値を書き込む仕様ではない"
+    fix: "value を「リクエストの material_type（資料種別利用可否条件により『紙書籍』のみ受理、『電子書籍』は 422 で拒否）」に修正する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/tier-backend-api.md"
+  - id: S3-G1-005
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/tier-backend-api.md"
+    line: 80
+    severity: minor
+    viewpoint: 3
+    claim: "`(isbn)` インデックスの理由に「ISBN による重複確認」とあるが、ISBN が既存書籍と重複した場合の業務ルール・エラー（409 等）が分岐条件一覧にもエラーレスポンス表にも定義されていない"
+    fix: "同一 ISBN の複数所蔵を許容する旨をビジネスルールに明記し、インデックス理由から「重複確認」を外す（または重複時の 409 DUPLICATE_ISBN を定義する）"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/spec.md"
+  - id: S3-G1-006
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍情報を編集する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍情報を編集する/tier-frontend-staff.md"
+    line: 36
+    severity: major
+    viewpoint: 3
+    claim: "デザイントークン参照が `var(--semantic-background)` / `var(--semantic-info)` / `var(--semantic-warning)` という存在しない CSS 変数名を使っている"
+    fix: "`var(--background)` / `var(--info)` / `var(--warning)` に修正する（design-tokens.css L158-L185）"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-007
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍情報を編集する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍情報を編集する/_model-summary.yaml"
+    line: 79
+    severity: minor
+    viewpoint: 5
+    claim: "UPDATE の material_type の値が「紙書籍（資料種別利用可否条件により固定）」となっているが、tier-backend-api.md では material_type はリクエスト値を検証して「電子書籍」なら 422 で拒否する仕様であり、固定値で上書きする仕様ではない"
+    fix: "value を「リクエストの material_type（『紙書籍』のみ受理、『電子書籍』は 422 で拒否）」に修正する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍情報を編集する/tier-backend-api.md"
+  - id: S3-G1-008
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍情報を編集する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍情報を編集する/spec.md"
+    line: 89
+    severity: minor
+    viewpoint: 3
+    claim: "分岐条件一覧・ビジネスルールに冪等キー検証があるのに、処理フロー（sequenceDiagram）に冪等キー検証のステップが無い（「書籍を登録する」の処理フローには `UC->>UC: 冪等キー検証` がある）"
+    fix: "`Pres->>UC: UpdateBookCommand` の直後に `UC->>UC: 冪等キー検証（同一キーの既処理なら初回結果を返す）` を追加する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/spec.md"
+  - id: S3-G1-009
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を削除する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/tier-frontend-staff.md"
+    line: 34
+    severity: major
+    viewpoint: 3
+    claim: "デザイントークン参照が `var(--semantic-background)` / `var(--semantic-destructive)` / `var(--semantic-warning)` / `var(--semantic-success)` という存在しない CSS 変数名を使っている"
+    fix: "`var(--background)` / `var(--destructive)` / `var(--warning)` / `var(--success)` に修正する（design-tokens.css L158-L185）"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-010
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を削除する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/tier-backend-api.md"
+    line: 90
+    severity: major
+    viewpoint: 1
+    claim: "books を物理 DELETE する仕様だが、RDRA 情報「書籍」は貸出・統計レポートと関連し「返却済みの貸出は貸出統計の集計対象として保持される」ため、除籍した書籍を参照する過去の貸出履歴・書籍別貸出回数の集計が壊れる。蔵書削除可否条件は進行中の貸出・予約しか見ていない"
+    fix: "books を論理削除（`withdrawn_at` を設定し一覧・検索から除外）に変更するか、物理削除でも貸出履歴・統計側が書籍IDとタイトルを保持する旨をビジネスルールに明記する"
+    source_refs:
+      - "docs/rdra/latest/情報.tsv#書籍"
+      - "docs/rdra/latest/状態.tsv#貸出状態"
+      - "docs/rdra/latest/条件.tsv#貸出統計集計条件"
+  - id: S3-G1-011
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を削除する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/tier-backend-api.md"
+    line: 30
+    severity: minor
+    viewpoint: 3
+    claim: "除籍可否判定 API（GET /api/v1/books/{book_id}/withdrawal-eligibility）にエラーレスポンスの定義が無く、tier-frontend-staff.md が想定する 404 / 401 / 5xx の code・message が特定できない"
+    fix: "除籍可否判定 API にも 401 UNAUTHENTICATED / 403 FORBIDDEN / 404 BOOK_NOT_FOUND / 500 INTERNAL_ERROR のエラーレスポンス表を追加する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/tier-frontend-staff.md"
+  - id: S3-G1-012
+    uc: "蔵書利用業務/書籍を検索するフロー/書籍を検索する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍を検索する/tier-frontend-patron.md"
+    line: 32
+    severity: major
+    viewpoint: 3
+    claim: "デザイントークン参照が `var(--semantic-background)` / `var(--semantic-foreground)` / `var(--semantic-success)` / `var(--semantic-info)` / `var(--semantic-warning)` という存在しない CSS 変数名を使っている"
+    fix: "`var(--background)` / `var(--foreground)` / `var(--success)` / `var(--info)` / `var(--warning)` に修正する（design-tokens.css L158-L185）"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-013
+    uc: "蔵書利用業務/書籍を検索するフロー/書籍を検索する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍を検索する/tier-backend-api.md"
+    line: 20
+    severity: minor
+    viewpoint: 3
+    claim: "search_type が「必須 Yes」なのに説明で「既定『キーワード』」とあり、必須と既定値が矛盾している（未指定時に 400 か既定適用かが決まらない）"
+    fix: "search_type を必須 No・既定「キーワード」に変更し、既定適用の主体（プレゼンテーション層）を明記する（q は必須 Yes のままとする）"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍を検索する/tier-frontend-patron.md"
+  - id: S3-G1-014
+    uc: "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/tier-frontend-patron.md"
+    line: 33
+    severity: major
+    viewpoint: 3
+    claim: "デザイントークン参照が `var(--semantic-background)` / `var(--semantic-foreground)` / `var(--semantic-success)` / `var(--semantic-info)` / `var(--semantic-warning)` という存在しない CSS 変数名を使っている"
+    fix: "`var(--background)` / `var(--foreground)` / `var(--success)` / `var(--info)` / `var(--warning)` に修正する（design-tokens.css L158-L185）"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-015
+    uc: "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/spec.md"
+    line: 118
+    severity: minor
+    viewpoint: 3
+    claim: "計算ルール「案内文の決定」では書籍状態が「予約待ち」のとき guidance を「予約できます（現在の予約待ち N 件）」としているが、処理フロー（L88）では「他の利用者のために取り置かれています（予約待ち N 件）」としており文言が一致しない"
+    fix: "計算ルール表を「在庫あり → 『予約せずにそのまま借りられます』、貸出中 → 『予約できます（現在の予約待ち N 件）』、予約待ち → 『他の利用者のために取り置かれています（予約待ち N 件）』」の 3 分岐に揃える"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/tier-backend-api.md"
+  - id: S3-G1-016
+    uc: "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/spec.md"
+    line: 138
+    severity: minor
+    viewpoint: 1
+    claim: "分岐条件一覧で RDRA 条件「予約可否条件」を reservable の導出根拠として使っているのに、関連 RDRA モデル表の条件が「書籍検索条件」だけで、予約可否条件がトレーサビリティに載っていない"
+    fix: "関連 RDRA モデル表に「条件 | 予約可否条件 | 予約導線の出し分け（表示上の参照。受付判定は『予約を登録する』UC）」の行を追加する"
+    source_refs:
+      - "docs/rdra/latest/条件.tsv#予約可否条件"
+  - id: S3-G1-017
+    uc: "蔵書利用業務/書籍を検索するフロー/司書向けに蔵書を検索する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/司書向けに蔵書を検索する/tier-frontend-staff.md"
+    line: 32
+    severity: major
+    viewpoint: 3
+    claim: "デザイントークン参照が `var(--semantic-background)` / `var(--semantic-foreground)` / `var(--semantic-success)` / `var(--semantic-info)` / `var(--semantic-warning)` という存在しない CSS 変数名を使っている"
+    fix: "`var(--background)` / `var(--foreground)` / `var(--success)` / `var(--info)` / `var(--warning)` に修正する（design-tokens.css L158-L185）"
+    source_refs:
+      - "docs/design/latest/storybook-app/src/styles/design-tokens.css"
+  - id: S3-G1-018
+    uc: "蔵書利用業務/書籍を検索するフロー/司書向けに蔵書を検索する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/司書向けに蔵書を検索する/tier-backend-api.md"
+    line: 20
+    severity: minor
+    viewpoint: 3
+    claim: "search_type が「必須 Yes」なのに説明で「既定『キーワード』」とあり矛盾している（共有エンドポイントのため『書籍を検索する』UC と同じ不整合が二重に記述されている）"
+    fix: "「書籍を検索する」UC の修正に合わせ、search_type を必須 No・既定「キーワード」に統一する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を検索するフロー/書籍を検索する/tier-backend-api.md"
+resolved:
+  - {id: S3-G1-001, resolution: fixed}
+  - {id: S3-G1-002, resolution: fixed}
+  - {id: S3-G1-003, resolution: fixed}
+  - {id: S3-G1-004, resolution: fixed}
+  - {id: S3-G1-005, resolution: fixed}
+  - {id: S3-G1-006, resolution: fixed}
+  - {id: S3-G1-007, resolution: fixed}
+  - {id: S3-G1-008, resolution: fixed}
+  - {id: S3-G1-009, resolution: fixed}
+  - {id: S3-G1-010, resolution: fixed}
+  - {id: S3-G1-011, resolution: fixed}
+  - {id: S3-G1-012, resolution: fixed}
+  - {id: S3-G1-013, resolution: fixed}
+  - {id: S3-G1-014, resolution: fixed}
+  - {id: S3-G1-015, resolution: fixed}
+  - {id: S3-G1-016, resolution: fixed}
+  - {id: S3-G1-017, resolution: fixed}
+  - {id: S3-G1-018, resolution: fixed}

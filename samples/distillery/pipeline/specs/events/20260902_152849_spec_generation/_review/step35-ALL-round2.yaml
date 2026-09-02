@@ -1,0 +1,122 @@
+round: 2
+group: ALL
+findings:
+  - id: S35-ALL-001
+    buc: "予約管理業務/書籍を予約するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/buc-spec.md"
+    line: 35
+    severity: major
+    viewpoint: 3
+    claim: "情報 CRUD マトリクスの「利用者」行が『予約を登録する』『予約を取り消す』ともに R だが、同ファイルの状態遷移 UC マッピング（77-78 行目）は両 UC が利用者状態を遷移させる（登録済み → 取引進行中 / 取引進行中 → 登録済み）と宣言しており自己矛盾する。round1 で同型の指摘（S35-A-002: 返却を登録する の利用者 R → U）が修正済みであり、貸し出すフローでも『貸出を登録する』は U になっている。予約フローだけ R のままで一貫していない。"
+    fix: "「利用者」行を『予約を登録する』= U、『予約を取り消す』= U に修正し、貸し出すフロー 40 行目と同様の注記（U は利用者状態遷移に伴う更新を指す）を CRUD マトリクス直下に追加する。UC spec 側の関連 RDRA モデル記述（予約を取り消す/spec.md#L153「取消申し出者として参照する情報」）も更新意図を含む表現に揃える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/spec.md#L132"
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を取り消す/spec.md#L140"
+      - "docs/rdra/latest/状態.tsv#利用者状態"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/buc-spec.md#L34-L40"
+  - id: S35-ALL-002
+    buc: "予約管理業務/書籍を予約するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/buc-spec.md"
+    line: 26
+    severity: minor
+    viewpoint: 2
+    claim: "データフロー図の `UC2 -->|\"書籍状態（予約待ち→在庫あり）\"| UC1` は UC 間のデータ引き渡しではなく、書籍状態への副作用が後続の予約可否判定に効くという間接的な関係である。round1 で同型の矢印（S35-B-004: UC1 → UC3 の参照のみ矢印）を削除・データストア化する方針が確定しているため、本図だけ方針から外れている。"
+    fix: "`UC2 -->|\"書籍状態（予約待ち→在庫あり）\"| UC1` を削除し、`BOOK[(\"書籍\")]` ノードを置いて `UC2 -->|\"書籍状態（予約待ち→在庫あり）\"| BOOK` と `BOOK -->|\"書籍状態（予約可否判定）\"| UC1` の 2 本に描き替える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_review/step35-B-round1.yaml#S35-B-004"
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/spec.md#分岐条件一覧"
+  - id: S35-ALL-003
+    buc: "利用照会業務/貸出履歴を確認するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/buc-spec.md"
+    line: 28
+    severity: minor
+    viewpoint: 2
+    claim: "データフロー図の `CUR -->|\"返却済みへ遷移した貸出\"| HIS` は、両 UC が参照専用（CRUD マトリクスは 2 UC とも R のみ、状態遷移全体図でも遷移担当は BUC 外）であるため、UC1 が UC2 へ渡すデータが存在しない。返却済みへの遷移は『返却を登録する』（別 BUC）が担当する。round1 の S35-B-004 と同型の誤誘導。"
+    fix: "この矢印を削除する。貸出中・延滞と返却済みが同一の貸出データを状態で切り分けたものである旨は、既に 16 行目の本文で説明されているため図での表現は不要。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/buc-spec.md#L33-L37"
+      - "docs/rdra/latest/状態.tsv#貸出状態"
+  - id: S35-ALL-004
+    buc: "利用照会業務/予約状況を確認するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/予約状況を確認するフロー/buc-spec.md"
+    line: 28
+    severity: minor
+    viewpoint: 2
+    claim: "データフロー図の `RSVQ -->|\"取置き中へ遷移した予約\"| HOLD` は、両 UC が参照専用（CRUD は R のみ）で予約中 → 取置き中の遷移は『取置き通知メールを送信する』（別 BUC）が担当するため、UC 間のデータ流通として成立しない。S35-ALL-003 と同型。"
+    fix: "この矢印を削除する。予約状態による切り分けは 16 行目の本文説明で足りる。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用照会業務/予約状況を確認するフロー/buc-spec.md#L33-L37"
+      - "docs/rdra/latest/状態.tsv#予約状態"
+  - id: S35-ALL-005
+    buc: "予約管理業務/予約者へ通知するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/buc-spec.md"
+    line: 21
+    severity: minor
+    viewpoint: 2
+    claim: "データフロー図が UC → UC の 2 本のみで、CRUD マトリクスにある参照入力（書籍 R: 予約順1位の利用者を特定する／自分の取置き状況を照会する、利用者 R: 予約順1位の利用者を特定する／取置き通知メールを送信する、利用者アカウント R: 自分の取置き状況を照会する）が図に現れていない。他 BUC（書籍を予約するフロー・利用者を管理するフロー等）は参照入力をデータストアノードで描いており、粒度が揃っていない。"
+    fix: "`BOOK[(\"書籍\")]`, `USER[(\"利用者\")]`, `ACC[(\"利用者アカウント\")]` のノードを追加し、CRUD マトリクスの R セルに対応する入力エッジ（書籍 → UC1/UC3、利用者 → UC1/UC2、利用者アカウント → UC3）を引く。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/buc-spec.md#L29-L35"
+      - "docs/rdra/latest/BUC.tsv#予約者へ通知するフロー"
+  - id: S35-ALL-006
+    buc: "貸出期限管理業務/返却期限をリマインドするフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/buc-spec.md"
+    line: 25
+    severity: minor
+    viewpoint: 2
+    claim: "round1 の S35-B-004 対応で追加された `LOAN[(\"貸出\")] --> UC3` だけがラベルなしで、かつ同じ CRUD マトリクスにある他の参照入力（書籍 R: UC1/UC3、利用者 R: UC1/UC2、利用者アカウント R: UC3）はノード化されていない。データストアノードを一部だけ描いたため図の網羅基準が不明瞭になっている。"
+    fix: "`LOAN[(\"貸出\")] -->|\"返却期限・残日数\"| UC3` とラベルを付け、あわせて `BOOK[(\"書籍\")]`, `USER[(\"利用者\")]`, `ACC[(\"利用者アカウント\")]` を追加して CRUD マトリクスの R セルと 1 対 1 に対応させる。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/buc-spec.md#L30-L36"
+      - "docs/specs/events/20260902_152849_spec_generation/_review/step35-B-round1.yaml#S35-B-004"
+  - id: S35-ALL-007
+    buc: "貸出期限管理業務/延滞を督促するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/buc-spec.md"
+    line: 99
+    severity: minor
+    viewpoint: 5
+    claim: "共有バリエーション「通知種別」の適用 UC に『自分の延滞中の貸出を照会する』が含まれるが、情報 CRUD マトリクス（38 行目）では同 UC の「通知」列が空で、情報アクセスとバリエーション適用の対応が読み取れない。UC spec 側は「督促メールのリンク元を示すだけで画面の分岐には使わない」と限定している。"
+    fix: "適用 UC 欄に「自分の延滞中の貸出を照会する（着地点の文脈表示のみ・通知は参照しない）」と注記して、通知情報を読まないことと矛盾しない旨を明示する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/自分の延滞中の貸出を照会する/spec.md#L95"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/buc-spec.md#L38"
+  - id: S35-ALL-008
+    buc: "蔵書分析業務/貸出統計を把握するフロー"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/buc-spec.md"
+    line: 74
+    severity: minor
+    viewpoint: 5
+    claim: "共有バリエーション「利用者区分」の適用 UC に『貸出統計レポートを参照する』が含まれるが、round1 の S35-C-004 対応で情報 CRUD マトリクスの「利用者」列は同 UC を空欄と決めた（参照 UC は利用者を直接読まない）。バリエーション表と CRUD マトリクスの整合根拠が本文に無く、読み手が矛盾と受け取る。"
+    fix: "適用 UC 欄に「貸出統計レポートを参照する（統計レポートの集計明細に格納済みの利用者区分別内訳を表示軸として使う。利用者情報は直接参照しない）」と注記する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/spec.md#L150-L157"
+      - "docs/specs/events/20260902_152849_spec_generation/_review/step35-C-round1.yaml#S35-C-004"
+resolved:
+  - {id: S35-A-001, resolution: verified}
+  - {id: S35-A-002, resolution: verified}
+  - {id: S35-A-003, resolution: verified}
+  - {id: S35-A-004, resolution: verified}
+  - {id: S35-A-005, resolution: verified}
+  - {id: S35-A-006, resolution: verified}
+  - {id: S35-A-007, resolution: verified}
+  - {id: S35-B-001, resolution: verified}
+  - {id: S35-B-002, resolution: verified}
+  - {id: S35-B-003, resolution: verified}
+  - {id: S35-B-004, resolution: verified}
+  - {id: S35-B-005, resolution: verified}
+  - {id: S35-B-006, resolution: verified}
+  - {id: S35-C-001, resolution: verified}
+  - {id: S35-C-002, resolution: verified}
+  - {id: S35-C-003, resolution: verified}
+  - {id: S35-C-004, resolution: verified}
+  - {id: S35-C-005, resolution: verified}
+  - {id: S35-C-006, resolution: verified}
+  - {id: S35-C-007, resolution: verified}
+  - {id: S35-ALL-001, resolution: fixed}
+  - {id: S35-ALL-002, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S35-ALL-003, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S35-ALL-004, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S35-ALL-005, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S35-ALL-006, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S35-ALL-007, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S35-ALL-008, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

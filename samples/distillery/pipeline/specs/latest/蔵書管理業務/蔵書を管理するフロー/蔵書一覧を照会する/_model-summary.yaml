@@ -1,0 +1,68 @@
+uc: "蔵書一覧を照会する"
+business: "蔵書管理業務"
+buc: "蔵書を管理するフロー"
+
+bounded_context_id: "BC-001"
+
+models:
+  - name: "蔵書管理台帳画面(BookLedgerView)"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "書籍"
+  - name: "BookLedgerQueryState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "書籍"
+  - name: "BookListApiClient"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "書籍"
+  - name: "ListBooksRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "ListBooksQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "BookRepository"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "keyword の部分一致 / genre IN / material_type IN / book_status IN、ORDER BY updated_at DESC、LIMIT per_page OFFSET (page-1)*per_page"
+    indexes_needed:
+      - columns: ["genre"]
+        reason: "ジャンル絞り込みが台帳の主要な絞り込み軸であるため"
+        access_pattern: "WHERE genre IN (...)"
+      - columns: ["book_status"]
+        reason: "在庫あり／貸出中／予約待ちの区分表示と絞り込みに使うため"
+        access_pattern: "WHERE book_status IN (...)"
+      - columns: ["updated_at"]
+        reason: "既定の並び順が最新更新順であるため"
+        access_pattern: "ORDER BY updated_at DESC LIMIT 20 OFFSET n"
+
+kvs: []
+object_storage: []

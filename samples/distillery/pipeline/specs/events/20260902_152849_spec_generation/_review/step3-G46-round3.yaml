@@ -1,0 +1,135 @@
+round: 3
+group: G46
+# 検証パス。round2 で fixed 判定された指摘の実測確認と、対象 6 UC の再走査による新規指摘の記録のみ。
+# deferred 済みの minor（S3-G4-015 / S3-G4-016 / S3-G6-014 / S3-G6-015 / S3-G6-016 / S3-G6-017）は再掲しない。
+
+verified_resolved:
+  - {id: S3-G4-003, resolution: fixed, evidence: "リマインドメールを送信する/_api-summary.yaml の RemindNotificationRequested に notification_id(required:false, 再送時のみ設定) が追加され、tier-backend-api.md 102 行に「再送対象の notification_id を設定して publish する（worker は既存通知を再利用し INSERT しない）」が追記されている"}
+  - {id: S3-G4-004, resolution: fixed, evidence: "督促メールを送信する/_api-summary.yaml の DunNotificationRequested に notification_id(required:false) が追加され、tier-backend-api.md 93 行に同趣旨の記述が追記されている"}
+  - {id: S3-G4-005, resolution: fixed, evidence: "期限超過の貸出を延滞にする/tier-backend-api.md 29 行の transitioned_count が「日次ジョブ実行結果 job:exec:overdue-judge:{base_date} の遷移対象貸出ID一覧の件数」に修正され、_model-summary.yaml 106 行の indexes_needed reason からも「遷移日の逆算」が消えている"}
+  - {id: S3-G6-013, resolution: fixed, evidence: "期間別貸出統計を集計する/spec.md 39/49 行にデータフローの DB_User と users SELECT、127-129 行に findUsersByNos の処理フローが追加され、WK_Repo ラベルにも UserRecord が入っている"}
+
+findings:
+  - id: S3-G4-017
+    uc: "貸出期限管理業務/返却期限をリマインドするフロー/返却期限接近の貸出を判定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/返却期限接近の貸出を判定する/spec.md"
+    line: 41
+    severity: minor
+    viewpoint: 5
+    claim: "データフロー図では loans の SELECT を `WK_GW`（ゲートウェイ層）から引いているのに、同ファイルの処理フローでは `WRepo->>DB: SELECT * FROM loans ...` とリポジトリ層が DB を叩いており、同一ファイル内で DB アクセスの担当層が食い違う。"
+    fix: "データフロー図の `WK_GW -->|\"SELECT loans WHERE ...\"| DB_Loan` を `WK_Repo -->|\"SELECT loans WHERE loan_status='貸出中' AND due_date BETWEEN :base_date AND :base_date + :remind_days\"| DB_Loan` に変更し、MQ publish のみを `WK_GW` から引く（処理フローの表現に揃える）。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/返却期限接近の貸出を判定する/spec.md#処理フロー"
+
+  - id: S3-G4-018
+    uc: "貸出期限管理業務/返却期限をリマインドするフロー/返却期限接近の貸出を判定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/返却期限接近の貸出を判定する/_model-summary.yaml"
+    line: 53
+    severity: minor
+    viewpoint: 5
+    claim: "spec.md のデータフロー図・処理フローに `WK_Repo`（リポジトリ層 LoanFinder（チャンク走査））が登場するのに、_model-summary.yaml の models[] には tier-worker の layer: repository のモデルが 1 件も無い（tier-backend-api の LoanFinder のみ）。"
+    fix: "models[] に `LoanFinder`（tier: tier-worker / layer: repository / type: record / rdra_info: 貸出）を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/返却期限接近の貸出を判定する/spec.md#データフロー WK_Repo"
+
+  - id: S3-G4-019
+    uc: "貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする/spec.md"
+    line: 41
+    severity: minor
+    viewpoint: 5
+    claim: "S3-G4-017 と同型。データフロー図は loans の SELECT / UPDATE を `WK_GW` から引くが、処理フローは `WRepo->>DB: SELECT ...` / `WRepo->>DB: UPDATE loans SET loan_status='延滞' ...` でリポジトリ層が DB を叩く。あわせて処理フローの backend 側は `GW-->>UC: 読み取り DTO` とリポジトリ層を飛ばしており、データフロー図の `BE_GW --> BE_Repo --> BE_UC` と経路が食い違う。"
+    fix: "データフロー図の loans SELECT / UPDATE の起点を `WK_Repo` に変更し（MQ publish のみ `WK_GW`）、処理フローの `GW-->>UC: 読み取り DTO` を `GW-->>Repo: レコード` / `Repo-->>UC: 読み取り DTO` の 2 行に分ける（UC「返却期限接近の貸出を判定する」の処理フローと同じ表現）。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする/spec.md#処理フロー"
+
+  - id: S3-G4-020
+    uc: "貸出期限管理業務/延滞を督促するフロー/督促メールを送信する"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/spec.md"
+    line: 51
+    severity: minor
+    viewpoint: 5
+    claim: "S3-G4-014 の修正で処理フローは WRepo 経由（`WUC->>WRepo: 通知の永続化` / `WRepo->>DB: INSERT notifications ...`）になったが、データフロー図は loans/users の SELECT・notifications の INSERT/UPDATE をいずれも `WK_GW` から引いたままで、同一ファイル内で不一致。"
+    fix: "データフロー図の `WK_GW -->|\"SELECT loans / users（督促対象の再判定と宛先解決）\"| DB_Loan` / `WK_GW -->|\"INSERT notifications ...\"| DB_Notif` / `WK_GW -->|\"UPDATE notifications SET ...\"| DB_Notif` の起点を `WK_Repo` に変更し、`WK_GW` は外部連携（EG_Translator への送信依頼と配信結果の受領）のみに残す。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/spec.md#処理フロー"
+
+  - id: S3-G4-021
+    uc: "貸出期限管理業務/延滞を督促するフロー/督促メールを送信する"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/spec.md"
+    line: 178
+    severity: minor
+    viewpoint: 1
+    claim: "分岐条件一覧「再送可否」の BDD Scenario 列が「送信済みの通知は再送できない」を指しているが、本 UC の異常系 BDD に存在するのは「送信待ちの通知は再送できない」であり、参照先の Scenario が存在しない（トレーサビリティ切れ）。"
+    fix: "BDD Scenario 列を「送信待ちの通知は再送できない」に修正する。または異常系に「送信済みの通知は再送できない」Scenario（通知「N-4003」の通知状態が「送信済み」→ HTTP 409）を追加して両方を参照する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/spec.md#異常系 BDD"
+
+  - id: S3-G4-022
+    uc: "貸出期限管理業務/返却期限をリマインドするフロー/返却期限接近の貸出を判定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/返却期限接近の貸出を判定する/spec.md"
+    line: 121
+    severity: minor
+    viewpoint: 1
+    claim: "分岐条件一覧の BDD Scenario 列の名称が実際の Scenario 名と一致しない。「期限接近の貸出をリマインド対象として抽出する」は BDD では「返却期限 3 日前の貸出をリマインド対象として抽出する」、「同一日の再実行で通知送信要求を二重生成しない」は BDD では「同一日の再実行で送信要求を二重生成しない」。"
+    fix: "BDD Scenario 列を実際の Scenario 名（「返却期限 3 日前の貸出をリマインド対象として抽出する」「同一日の再実行で送信要求を二重生成しない」）へ揃える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/返却期限をリマインドするフロー/返却期限接近の貸出を判定する/spec.md#E2E 完了条件（BDD）"
+
+  - id: S3-G4-023
+    uc: "貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする"
+    file: "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする/spec.md"
+    line: 130
+    severity: minor
+    viewpoint: 1
+    claim: "分岐条件一覧「督促通知対象条件」の BDD Scenario 列が「期限超過の貸出を延滞へ遷移させる」だが、実際の Scenario 名は「返却期限を超過した貸出を延滞へ遷移させる」で一致しない。"
+    fix: "BDD Scenario 列を「返却期限を超過した貸出を延滞へ遷移させる」に修正する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/期限超過の貸出を延滞にする/spec.md#E2E 完了条件（BDD）"
+
+  - id: S3-G6-018
+    uc: "蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md"
+    line: 161
+    severity: minor
+    viewpoint: 5
+    claim: "_model-summary.yaml の statistical_reports UPDATE の detail に `user_category_counts` / `genre_counts` が含まれ、BDD にも「集計明細の user_category_counts に 一般 150・学生 70・団体 20 が記録される」があるのに、計算ルール一覧にこの 2 つの算出ルールが無い（total_loans / trend / ranking / returned_count / distinct_users / loans_per_user のみ）。"
+    fix: "計算ルール一覧に「利用者区分別貸出件数（入力: 貸出（利用者番号）+ 利用者（利用者区分）／ロジック: 利用者区分ごとに COUNT(loan_id)／出力: 集計明細.user_category_counts／tier-worker）」と「ジャンル別貸出件数（入力: 貸出（書籍ID）+ 書籍（ジャンル）／ロジック: ジャンルごとに COUNT(loan_id)／出力: 集計明細.genre_counts／tier-worker）」の 2 行を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/_model-summary.yaml#statistical_reports UPDATE detail"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md#正常系 BDD 利用者区分別の貸出内訳を集計する"
+
+  - id: S3-G6-019
+    uc: "蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/spec.md"
+    line: 145
+    severity: minor
+    viewpoint: 1
+    claim: "処理フローの `Pres->>Pres: 入力バリデーション（レポート種別・集計期間区分の許容値、period_start <= period_end）` に対し、分岐条件一覧には「レポート種別の許容値」しか無く、「集計期間区分の許容値」「集計期間の前後関係」の 2 条件が欠落している（同 業務の「期間別貸出統計を集計する」には両方ある）。対応する BDD Scenario も無い。"
+    fix: "分岐条件一覧に「集計期間区分の許容値（period_type が 日次／月次／年次 のいずれでもない場合は受け付けない / tier-backend-api）」「集計期間の前後関係（period_start が period_end より後の場合は受け付けない / tier-frontend-staff, tier-backend-api）」を追加し、異常系 BDD に period_type「週次」で 400、period_start「2026-08-31」・period_end「2026-08-01」で 400 の 2 Scenario を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md#分岐条件一覧"
+
+  - id: S3-G6-020
+    uc: "蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/spec.md"
+    line: 47
+    severity: minor
+    viewpoint: 5
+    claim: "データフロー図の books SELECT ラベルが `SELECT book_status, genre FROM books` で、処理フローの `SELECT book_id, book_status, genre, title, author FROM books` および _model-summary.yaml の books SELECT（book_id, title, author, genre, book_status を取得）と取得列が食い違う。集計明細の books[]（区分別書籍一覧）に必要な title/author が図から読み取れない。"
+    fix: "データフロー図のラベルを `SELECT book_id, book_status, genre, title, author FROM books` に修正し、DB_Book のラベルも `books\\nbook_id/book_status/genre/title/author` に揃える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/_model-summary.yaml#books SELECT"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/spec.md#処理フロー"
+
+resolved:
+  - {id: S3-G4-017, resolution: deferred, reason: "minor。round3 は検証パスのため修正せず、実装時に扱う", by: orchestrator}
+  - {id: S3-G4-018, resolution: deferred, reason: "minor。round3 は検証パスのため修正せず、実装時に扱う", by: orchestrator}
+  - {id: S3-G4-019, resolution: deferred, reason: "minor。round3 は検証パスのため修正せず、実装時に扱う", by: orchestrator}
+  - {id: S3-G4-020, resolution: deferred, reason: "minor。round3 は検証パスのため修正せず、実装時に扱う", by: orchestrator}
+  - {id: S3-G4-021, resolution: deferred, reason: "minor。round3 は検証パスのため修正せず、実装時に扱う", by: orchestrator}
+  - {id: S3-G4-022, resolution: deferred, reason: "minor。round3 は検証パスのため修正せず、実装時に扱う", by: orchestrator}
+  - {id: S3-G4-023, resolution: deferred, reason: "minor。round3 は検証パスのため修正せず、実装時に扱う", by: orchestrator}
+  - {id: S3-G6-018, resolution: deferred, reason: "minor。round3 は検証パスのため修正せず、実装時に扱う", by: orchestrator}
+  - {id: S3-G6-019, resolution: deferred, reason: "minor。round3 は検証パスのため修正せず、実装時に扱う", by: orchestrator}
+  - {id: S3-G6-020, resolution: deferred, reason: "minor。round3 は検証パスのため修正せず、実装時に扱う", by: orchestrator}

@@ -1,0 +1,74 @@
+round: 2
+group: G2
+findings:
+  - id: S3-G2-024
+    uc: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+    line: 140
+    severity: major
+    viewpoint: 2
+    claim: "計算ルール『返却期限の自動設定』が「貸出期間区分は利用者区分に対応する既定値を用い、司書が明示指定した場合はその区分を優先する」と述べており、round1 で修正した tier-backend-api.md L103「既定区分の選択はフロントエンドが行い、API は常に指定値を必須とする」と矛盾したまま残っている（S3-G2-005 の残存）"
+    fix: "計算式の説明を `due_date = loan_date + 貸出期間区分に対応する日数`。貸出期間区分は要求で指定された値（必須）を用いる。利用者区分に対応する既定区分の選択は窓口貸出受付画面の ToggleGroup 初期選択が担う」に書き換え、入力情報から user_category を外す"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md"
+
+  - id: S3-G2-025
+    uc: "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/_api-summary.yaml"
+    line: 34
+    severity: minor
+    viewpoint: 4
+    claim: "LoanEligibilityResponse.user の型が `LoanTargetResponse`（loanable / reason を required で持つ）だが、tier-backend-api.md L34 の user は `user_no` / `name` / `user_category` / `user_status` の 4 項目のみで、統合 OpenAPI では loanable / reason が必須になり不整合となる"
+    fix: "user 専用の `UserSummary`（user_no / name / user_category / user_status をすべて required: true）を schemas に追加し、LoanEligibilityResponse.user の型を `UserSummary` に変更する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/tier-backend-api.md"
+
+  - id: S3-G2-026
+    uc: "蔵書利用業務/書籍を返却するフロー/返却後の書籍状態を更新する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却後の書籍状態を更新する/spec.md"
+    line: 26
+    severity: minor
+    viewpoint: 5
+    claim: "_model-summary.yaml が定義する KVS `idempotency:restock:{idempotency_key}`（冪等キー検証、TTL 24h）がデータフロー図・レイヤー表のどちらにも現れない（S3-G2-019 で他 UC を修正した際と同じ欠落）"
+    fix: "データフロー図に KVS ノード `KVS[(\"KVS\\nidempotency:restock:{key} TTL 24h\")]` と `BE_UC -->|\"GET/SET 冪等キー\"| KVS` を追加し、レイヤー表の BE usecase 行の記述と対応付ける"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却後の書籍状態を更新する/_model-summary.yaml"
+
+  - id: S3-G2-027
+    uc: "蔵書利用業務/書籍を返却するフロー/返却を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却を登録する/spec.md"
+    line: 49
+    severity: minor
+    viewpoint: 4
+    claim: "データフロー表の Response 行が `{ loan_id, book_id, user_no, loan_status, returned_at, overdue_days, previous_loan_status }` で、_api-summary.yaml の ReturnResponse に required で存在する `user_status`（tier-backend-api.md L75 のレスポンス表・BDD でも検証対象）が欠落している"
+    fix: "Response 行を `{ loan_id, book_id, user_no, loan_status, previous_loan_status, returned_at, overdue_days, user_status }` に修正する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却を登録する/_api-summary.yaml"
+
+  - id: S3-G2-028
+    uc: "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/spec.md"
+    line: 201
+    severity: minor
+    viewpoint: 2
+    claim: "異常系 Scenario 名が「未登録の利用者番号では貸出不可と判定される」だが、Then は HTTP 404 USER_NOT_FOUND で eligible を返さない（S3-G2-012 の修正で処理フローは 404 に統一済み）。名称と検証内容が食い違いテスト意図が読み取れない"
+    fix: "Scenario 名を「未登録の利用者番号は貸出可否を判定せず 404 を返す」に変更する"
+
+  - id: S3-G2-029
+    uc: "蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する/spec.md"
+    line: 43
+    severity: minor
+    viewpoint: 4
+    claim: "データフロー表の Response 行の items が `{ loan_id, book{...}, due_date, days_remaining, loan_status }` で、バリエーション一覧 L101 が参照する `loan_period_type` と tier-backend-api.md L31 の `loan_date` が欠落している"
+    fix: "items の要素を `{ loan_id, book{...}, loan_date, loan_period_type, due_date, days_remaining, loan_status }` に修正する"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を返却するフロー/返却対象の貸出を照会する/_api-summary.yaml"
+
+resolved:
+  - {id: S3-G2-024, resolution: fixed}
+  - {id: S3-G2-025, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G2-026, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G2-027, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G2-028, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G2-029, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

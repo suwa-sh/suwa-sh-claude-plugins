@@ -1,0 +1,93 @@
+# _api-summary.yaml
+uc: "在庫状況を区分別に集計する"
+business: "蔵書分析業務"
+buc: "在庫状況を把握するフロー"
+endpoints:
+  - operation_id: "createInventoryReport"
+    method: "POST"
+    path: "/api/v1/reports/inventory"
+    summary: "在庫状況レポートの集計を要求し、統計レポートを集計中で作成する"
+    request_schema: "CreateInventoryReportRequest"
+    response_schema: "ReportAcceptedResponse"
+    tags: ["reports"]
+async_events:
+  - name: "publishReportAggregationRequested"
+    channel: "report.aggregation.requested"
+    direction: "publish"
+    message_schema: "InventoryReportAggregationRequested"
+    summary: "在庫状況の集計を Worker ティアへ委譲する集計要求イベント"
+consumes:
+  - operation_id: "getLatestInventoryReport"
+    method: "GET"
+    path: "/api/v1/reports/inventory/latest"
+    owner_uc: "在庫状況レポートを参照する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-staff"
+    purpose: "在庫状況集計条件指定画面の表示要素「直近の集計状態」に直近レポートの統計レポート状態を表示する"
+    required: false
+  - operation_id: "getInventoryReport"
+    method: "GET"
+    path: "/api/v1/reports/inventory/{report_id}"
+    owner_uc: "在庫状況レポートを参照する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-staff"
+    purpose: "HTTP 202 で受け取った report_id の集計完了（集計中 → 作成済み／実績なし）を確認する"
+    required: false
+schemas:
+  - name: "CreateInventoryReportRequest"
+    properties:
+      - name: "report_type"
+        type: "string"
+        required: true
+      - name: "period_type"
+        type: "string"
+        required: true
+      - name: "period_start"
+        type: "string"
+        required: true
+      - name: "period_end"
+        type: "string"
+        required: true
+  - name: "ReportAcceptedResponse"
+    properties:
+      - name: "report_id"
+        type: "string"
+        required: true
+      - name: "report_type"
+        type: "string"
+        required: true
+      - name: "period_type"
+        type: "string"
+        required: true
+      - name: "period_start"
+        type: "string"
+        required: true
+      - name: "period_end"
+        type: "string"
+        required: true
+      - name: "report_status"
+        type: "string"
+        required: true
+      - name: "aggregated_at"
+        type: "string"
+        required: true
+  - name: "InventoryReportAggregationRequested"
+    properties:
+      - name: "report_id"
+        type: "string"
+        required: true
+      - name: "report_type"
+        type: "string"
+        required: true
+      - name: "period_type"
+        type: "string"
+        required: true
+      - name: "period_start"
+        type: "string"
+        required: true
+      - name: "period_end"
+        type: "string"
+        required: true
+      - name: "trace_id"
+        type: "string"
+        required: true

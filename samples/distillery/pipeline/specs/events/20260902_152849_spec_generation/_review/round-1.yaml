@@ -1,0 +1,175 @@
+round: 1
+findings:
+  - id: R-001
+    viewpoint: 3
+    severity: blocker
+    target: "予約管理業務/書籍を予約するフロー/予約を登録する/tier-frontend-patron.md"
+    claim: "申込前表示値（expectedRank / totalReservations）の取得元として指定された「UC『書籍の在庫状況を確認する』の GET /api/v1/books/{book_id} が返す total_reservations」は、UC 名・エンドポイント・フィールド名の 3 点すべてが実在しない。実装者はこの記述どおりに書くとコンパイル/実行時に失敗する。"
+    evidence: |
+      - L41: 「`expectedRank` は書籍詳細・在庫状況照会 API（UC「書籍の在庫状況を確認する」の `GET /api/v1/books/{book_id}`）が返す有効予約件数 `total_reservations` から `total_reservations + 1` として算出する」
+      - UC「書籍の在庫状況を確認する」は 41 UC のどこにも存在しない（実在するのは「書籍詳細と在庫状況を照会する」）。
+      - その UC の _api-summary.yaml が宣言するのは `GET /api/v1/books/{book_id}/availability` であり `GET /api/v1/books/{book_id}` ではない。
+      - openapi.yaml: `GET /api/v1/books/{book_id}` は BookResponse（book_id/title/author/isbn/publisher/genre/material_type/book_status/registered_at/updated_at/version）を返し、summary も「編集画面の現行値取得に使う」で total_reservations を持たない。
+      - 有効予約件数に相当するのは BookAvailabilityResponse の `reservation_count`。`total_reservations` は ReservationResponse / ReservationRankResponse にしか存在しない（openapi.yaml L2955/2976/2992/3022）。
+    suggested_fix: "L41 を「UC『書籍詳細と在庫状況を照会する』の `GET /api/v1/books/{book_id}/availability` が返す `reservation_count`」へ修正し、`expectedRank = reservation_count + 1`、`totalReservations ← reservation_count` とマッピングを明示する。フィールド名を `total_reservations` に揃える方針を採るなら openapi の BookAvailabilityResponse 側を改名し、全参照を一致させる。"
+
+  - id: R-002
+    viewpoint: 4
+    severity: major
+    target: "_cross-cutting/datastore/kvs-schema.yaml"
+    claim: "kvs-schema.yaml が KVS キーを 7 パターンへ正規化した一方、各 UC の _model-summary.yaml へ逆展開されておらず、KVS を使う全 19 UC・27 エントリのキーパターンが正本と一致しない。うち 8 エントリは spec-decision-004 が「却下した代替案」として明記した `idempotency:{METHOD}:{PATH}:{key}` 形式のまま残っている。"
+    evidence: |
+      正本の pattern（kvs-schema.yaml L10/20/40/51/59/70/79）: session:account:{session_id} / idem:api:{operation_id}:{idempotency_key} /
+      idem:notification:loan:{...} / idem:notification:reservation:{...} / idem:mq:consumed:{message_id} / lock:job:{job_name}:{base_date} / cache:reservation:rank:{book_id}
+      これに一致しない _model-summary.yaml のキー（抜粋・全 27 件）:
+      - 利用者を登録する L106 "idempotency:POST:/api/v1/users:{idempotency_key}"
+      - 利用者情報を編集する L103 "idempotency:PUT:/api/v1/users/{user_no}:{idempotency_key}"
+      - 利用者を削除する L112 "idempotency:DELETE:/api/v1/users/{user_no}:{idempotency_key}"
+      - 貸出を登録する L168 "idempotency:loan:{idempotency_key}"（spec.md L32/L48 のデータフロー図・変換表にも同じ旧表記）
+      - 返却を登録する L122 "idempotency:return:{idempotency_key}"（spec.md L31）
+      - 返却後の書籍状態を更新する L94 "idempotency:restock:{idempotency_key}"
+      - 督促メールを送信する / リマインドメールを送信する "notif:idem:{通知種別}:{対象貸出ID}:{通知タイミング区分}:{base_date}", "mq:consumed:{message_id}", "api:idem:{X-Idempotency-Key}"
+      - 取置き通知メールを送信する "notify:idem:取置き案内:{reservation_id}", "idem:notification:request:{idempotency_key}"
+      - 予約を登録する "idem:reservation:create:{idempotency_key}" / 予約を取り消す "idem:reservation:cancel:{idempotency_key}"
+      - 期限超過の貸出を延滞にする "job:exec:overdue-judge:{base_date}" / 返却期限接近の貸出を判定する "job:exec:upcoming-due-judge:{base_date}"
+      - 利用者番号で貸出対象利用者を特定する / 自分の延滞中の貸出を照会する / 自分の返却期限を照会する "session:{session_id}"
+      spec-decision-004 L162 は "冪等キーに HTTP メソッドとパスを埋め込む（idempotency:POST:/api/v1/users:{key}）" を却下済み代替案として記載しており、上記は承認済み決定と矛盾する。
+    suggested_fix: "kvs-schema.yaml の正規化を各 UC の _model-summary.yaml（key_pattern）と spec.md のデータフロー図・レイヤー変換表へ逆展開し、旧表記を kvs-schema.yaml の description 内の『元表記』だけに閉じ込める。"
+
+  - id: R-003
+    viewpoint: 3
+    severity: major
+    target: "_cross-cutting/api/openapi.yaml"
+    claim: "利用者情報の更新が必須と定める `If-Match` ヘッダが OpenAPI 契約に一切定義されておらず、契約から生成したクライアント/サーバでは規定の楽観ロックと 409 を実装・検証できない。"
+    evidence: |
+      - 利用者情報を編集する/tier-backend-api.md L52「| If-Match（ヘッダー） | string | Yes | 取得時の `updated_at` を版として指定する（楽観ロック） |」、L109「`If-Match` に指定された版と `users.updated_at` が一致するときだけ更新する。不一致は 409」、L149 に 409 の Scenario。
+      - spec-decision-004 §5「`users` は現状 `updated_at` を `If-Match` で比較する方式で定義されており…」と方式を明文化。
+      - openapi.yaml: `/api/v1/users/{user_no}` の put/delete は operation-level parameters が null、path-level は UserNoPath のみ。components.parameters は PageQuery/PerPageQuery/RevealQuery/BaseDateQuery/IdempotencyKeyHeader/*IdPath の 11 件で If-Match 相当は無い。openapi 全体に "If-Match" の文字列が存在しない。
+      - 対照的に books は `UpdateBookRequest.version`（required）として契約に載っており、users だけが契約から欠落している。
+      - 利用者情報を編集する/tier-frontend-staff.md にも If-Match 送出の記述が無く、フロント側も未定義。
+    suggested_fix: "components.parameters に `IfMatchHeader`（in: header, name: If-Match, required: true, schema: string）を追加し、PUT/DELETE `/api/v1/users/{user_no}` に $ref する。409 レスポンスの description に楽観ロック競合を明記し、tier-frontend-staff.md に If-Match の保持・送出（GET の updated_at を版として保持）を追記する。"
+
+  - id: R-004
+    viewpoint: 2
+    severity: major
+    target: "_cross-cutting/datastore/kvs-schema.yaml"
+    claim: "予約順位キャッシュ `cache:reservation:rank:{book_id}` の破棄責務がどの UC にも割り当てられておらず、破棄する側の実装が発生しない（暗黙の cross-UC 依存）。"
+    evidence: |
+      - kvs-schema.yaml L79-: pattern "cache:reservation:rank:{book_id}"、used_by は ["自分の予約順位を照会する"] のみ。purpose には「予約登録・取消で破棄する」と書かれている（_model-summary.yaml 側 L81 の purpose も同文）。
+      - grep の結果 `cache:reservation:rank` を参照するのは 自分の予約順位を照会する/_model-summary.yaml・同 spec.md・kvs-schema.yaml の 3 箇所のみ。
+      - 予約状態を変える 予約を登録する / 予約を取り消す / 取置き通知メールを送信する の _model-summary.yaml には当該キーの DEL 宣言が無い。
+    suggested_fix: "予約を登録する・予約を取り消す（および予約状態を遷移させる取置き通知メールを送信する）の _model-summary.yaml に `cache:reservation:rank:{book_id}` の operations: [DEL] を追加し、kvs-schema.yaml の used_by にも同 UC を加える。破棄を行わない方針なら purpose から『予約登録・取消で破棄する』を削り、TTL 60s による陳腐化許容を明記する。"
+
+  - id: R-005
+    viewpoint: 4
+    severity: major
+    target: "decisions/spec-decision-004.yaml"
+    claim: "冪等キーの適用範囲が decision / kvs-schema / openapi の三者で食い違っており、PUT・DELETE を実装する側がヘッダの要否を決められない。"
+    evidence: |
+      - spec-decision-004 §4 L78「**状態を変える POST は `X-Idempotency-Key`（UUID v4、必須）を受け取る**」（POST に限定）。
+      - kvs-schema.yaml L20- `idem:api:{operation_id}:{idempotency_key}` の used_by には「利用者情報を編集する」(PUT) と「利用者を削除する」(DELETE) が含まれる。
+      - 各 UC の _model-summary.yaml も PUT/DELETE 用の冪等キーを宣言（利用者情報を編集する L103 / 利用者を削除する L112）。
+      - 一方 openapi.yaml の PUT/DELETE `/api/v1/users/{user_no}`・PUT/DELETE `/api/v1/books/{book_id}` は operation-level parameters が null で IdempotencyKeyHeader を持たない（POST /api/v1/users・POST /api/v1/books だけが持つ）。
+    suggested_fix: "どちらかに寄せる。POST 限定を維持するなら kvs-schema.yaml の used_by と 利用者情報を編集する/利用者を削除する の _model-summary.yaml から冪等キーを外す。更新系全般に広げるなら decision-004 §4 を改訂し、openapi の PUT/DELETE に IdempotencyKeyHeader を追加して各 tier-backend-api.md のリクエストヘッダ表と 400 IDEMPOTENCY_KEY_REQUIRED を揃える。"
+
+  - id: R-006
+    viewpoint: 1
+    severity: major
+    target: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+    claim: "返却期限設定条件が RDRA の定義（利用者区分に対応する貸出期間区分をシステムが適用する）から逸脱し、貸出期間区分をクライアント指定の必須値へ置き換えたうえ、対応関係の検証をフロントエンドの初期選択にだけ委ねている。バックエンドに規則が無いため、API を直接叩けば任意の区分で貸出できる。"
+    evidence: |
+      - docs/rdra/latest/条件.tsv 返却期限設定条件: 「貸出日を起点として**利用者区分に対応する**貸出期間区分の日数を加算した日を返却期限として自動設定する」（バリエーション欄も「利用者区分、貸出期間区分」）。
+      - spec.md L134/L140: 「**要求で指定された**貸出期間区分に対応する日数を加算」「既定区分の選択は窓口貸出受付画面の ToggleGroup 初期選択が担う」。
+      - tier-backend-api.md L107: 「既定区分の選択はフロントエンド（窓口貸出受付画面の ToggleGroup 初期選択）が行い、API は常に指定値を必須とする」。
+      - openapi.yaml CreateLoanRequest は loan_period_type を required とするだけで、user_no の利用者区分との整合検証は契約にもドメイン処理フローにも現れない（spec.md L152-156 の対応表は FE 初期選択の根拠としてのみ記述）。
+    suggested_fix: "利用者区分 → 既定貸出期間区分の対応表（一般=標準 / 学生=長期 / 団体=長期）をバックエンドのドメイン規則として spec.md「分岐条件一覧」と tier-backend-api.md のビジネスルールに移し、(a) loan_period_type 省略時にサーバが既定を適用する、または (b) 利用者区分と不整合な区分指定を 409/422 で拒否する、のいずれかを明記する。FE 専任にする方針を貫くなら RDRA 条件からの逸脱として decision record に残す。"
+
+  - id: R-007
+    viewpoint: 4
+    severity: minor
+    target: "_cross-cutting/ux-ui/common-components.md"
+    claim: "PortalShell のナビ対応表で列挙している「RDRA 業務 7 件」に実在しない業務名が 2 件含まれ、実在する業務 2 件が欠落している。design 正本は件数しか示しておらず、この列挙は spec 側の創作。"
+    evidence: |
+      - common-components.md L63: 「（蔵書管理業務 / 利用者管理業務 / **貸出返却業務** / 貸出期限管理業務 / 予約管理業務 / 蔵書分析業務 / **蔵書検索業務**）」。ux-design.md L273 も同じ 2 件を使用。
+      - docs/rdra/latest/BUC.tsv の業務は 蔵書管理業務 / 蔵書分析業務 / **蔵書利用業務** / 貸出期限管理業務 / 予約管理業務 / 利用者管理業務 / **利用照会業務** の 7 件。「貸出返却業務」「蔵書検索業務」は存在しない。
+      - docs/design/latest/_digest/components.yaml L371 の PortalShell 定義は「ナビは RDRA 業務 7 件 + 共通メニュー 2 件」とだけ記述し、名称は与えていない。
+    suggested_fix: "common-components.md L63 と ux-design.md L273 の業務名を BUC.tsv の 7 件に置換し、patron 4 項目 / staff 6 項目との対応を実在業務名で貼り直す（貸出返却業務→蔵書利用業務、蔵書検索業務→蔵書利用業務の検索 BUC、利用照会業務を明示）。"
+
+  - id: R-008
+    viewpoint: 4
+    severity: minor
+    target: "貸出期限管理業務/返却期限をリマインドするフロー/自分の返却期限を照会する/spec.md"
+    claim: "利用者向け画面の日付表示形式が「YYYY年M月D日」と「YYYY/MM/DD」で混在しており、受け入れ基準としてどちらが正か判定できない。"
+    evidence: |
+      - 「YYYY年M月D日」形式 14 件（例: 蔵書利用業務/書籍を貸し出すフロー/自分の貸出内容と返却期限を照会する/spec.md L149「返却期限「2026年9月16日」」）。
+      - 「YYYY/MM/DD」形式 3 件: 自分の返却期限を照会する/spec.md L146「返却期限「2026/09/05」」、自分の延滞中の貸出を照会する/spec.md L145「返却期限「2026/09/01」」、返却期限接近の貸出を判定する/tier-frontend-staff.md L106「判定日時: 2026/09/02 1:10」。
+      - _cross-cutting/ux-ui/ui-design.md / common-components.md に日付表示形式の規約が無く、参照できる正本が存在しない。
+    suggested_fix: "ui-design.md（または common-components.md の DueDateIndicator 節）に日付・日時の表示形式規約（例: 本文は YYYY年M月D日、監査・ログ系は YYYY-MM-DD HH:mm）を追加し、上記 3 箇所を規約へ揃える。"
+
+  - id: R-009
+    viewpoint: 4
+    severity: minor
+    target: "蔵書利用業務/書籍を返却するフロー/返却を登録する/tier-backend-api.md"
+    claim: "tier md 内の API パステンプレートが camelCase（{loanId} / {bookId} / {userNumber} / {userNo} / {reportId}）で書かれており、OpenAPI 契約の snake_case（{loan_id} / {book_id} / {user_no} / {report_id}）と一致しない。契約由来の型名・パスと突き合わせる実装で参照解決が破綻する。"
+    evidence: |
+      - openapi.yaml のパスは全て snake_case: /api/v1/loans/{loan_id}/return, /api/v1/books/{book_id}/restock, /api/v1/users/{user_no}, /api/v1/reports/inventory/{report_id} 等。
+      - camelCase 表記の例: 返却を登録する/tier-backend-api.md・tier-frontend-staff.md「POST /api/v1/loans/{loanId}/return」、返却後の書籍状態を更新する「POST /api/v1/books/{bookId}/restock」、利用者を削除する/利用者情報を編集する「GET|PUT|DELETE /api/v1/users/{userNumber}」「GET /api/v1/users/{userNo}」、自分の貸出内容と返却期限を照会する「GET /api/v1/me/loans/{loanId}」、在庫状況を区分別に集計する「GET /api/v1/reports/inventory/{reportId}」、利用者番号で貸出対象利用者を特定する「GET /api/v1/loan-targets/{userNo}」。
+      - 同一 UC 内で `{userNumber}` と `{userNo}` が併用されており、表記そのものも不統一。
+    suggested_fix: "tier md の API パステンプレートを OpenAPI の snake_case に一括で揃える（画面ルートの :bookId / :userNumber は screens.yaml 正本のままでよいので、API パスと画面ルートで表記規約が違うことを _cross-cutting に一文で明記する）。"
+
+  - id: R-010
+    viewpoint: 2
+    severity: minor
+    target: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md"
+    claim: "キャッシュ無効化の対象として存在しない画面ルート `/staff/loans`（貸出一覧）を参照している。"
+    evidence: |
+      - 貸出を登録する/tier-frontend-staff.md L44「登録成功後は貸出一覧（`/staff/loans`）・蔵書一覧・利用者名簿の関連キャッシュを無効化する」、返却を登録する/tier-frontend-staff.md L42 も同文。
+      - docs/design/latest/_digest/screens.yaml に `/staff/loans` は無く、存在するのは `/staff/loans/eligibility`（貸出可否判定）と `/staff/loans/new`（窓口貸出受付）のみ。ux-design.md のサイトマップにも貸出一覧画面は無い。
+      - 一方 OpenAPI には `GET /api/v1/loans`（貸出を検索する）が存在するため、「一覧を表示する画面が無いのにキャッシュキーだけ存在する」状態になっている。
+    suggested_fix: "無効化対象を実在ルート（`/staff/loans/eligibility`・`/staff/returns/new`・`/staff/overdues` 等）またはクエリキー名（例: `loans` クエリキャッシュ）に置き換える。画面ルートではなくデータキャッシュキーを指す意図なら、その旨を明記して画面ルート表記をやめる。"
+
+  - id: R-011
+    viewpoint: 4
+    severity: minor
+    target: "spec-event.yaml"
+    claim: "stats と cross_cutting の件数が食い違っており、どちらが要件網羅の分母か判定できない。"
+    evidence: |
+      - stats.total_apis: 53（41 UC の api_count 合計と一致）に対し cross_cutting.openapi.api_count: 45（openapi.yaml の実オペレーション数 45 と一致）。差 8 は複数 UC が共有する 4 エンドポイント（/books/search ×2, /me/loans ×4, /staff/notifications ×3, /staff/notifications/{id}/resend ×3）の重複計上。
+      - stats.total_async_events: 6（per-UC 合計）に対し cross_cutting.asyncapi.async_event_count: 8（asyncapi.yaml の channels 数。メッセージ種別は 5、operations は 12）。
+    suggested_fix: "stats 側を「UC 宣言の延べ数」、cross_cutting 側を「契約上の実体数」と定義づけて各キーにコメントを付ける（または stats を実体数へ統一する）。asyncapi の 8 はチャネル数（DLQ 4 本を含む）である旨も明記する。"
+
+  - id: R-012
+    viewpoint: 4
+    severity: minor
+    target: "蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/_model-summary.yaml"
+    claim: "_model-summary.yaml の kvs エントリのキー名が UC 間で `key_pattern` と `key` に割れており、機械処理（横断集計・検証スクリプト）が一部 UC を取りこぼす。"
+    evidence: |
+      - `key_pattern:` を使うファイル 17 件に対し、`key:` を使うファイル 2 件（在庫状況を区分別に集計する / 期間別貸出統計を集計する）。
+      - 実際に kvs キーを機械抽出すると後者 2 UC は key_pattern が None として抽出され、正本 kvs-schema.yaml との突合から漏れる。
+    suggested_fix: "2 ファイルの `key:` を `key_pattern:` へ改名し、_model-summary.yaml の kvs エントリのキー名をスキーマとして固定する。"
+
+  - id: R-013
+    viewpoint: 1
+    severity: minor
+    target: "spec-event.yaml"
+    claim: "USDM の SPEC / acceptance_criteria への機械可読なトレースが成果物に一切存在しない。ただし spec-event スキーマに対応フィールドが定義されていないため、欠落ではなくスキーマ拡張の変更要求として報告する。"
+    evidence: |
+      - docs/usdm/latest/requirements.yaml は REQ-xxx / SPEC-xxx-yy と acceptance_criteria を持つ（SPEC は 15 件）。
+      - 生成物 41 UC + _cross-cutting + decisions を grep しても `SPEC-` 参照は 0 件。
+      - _cross-cutting/traceability-matrix.md の分母は「docs/rdra/latest/*.tsv から機械抽出した RDRA 要素」（情報属性 56 / 条件 17 / バリエーション値 33 / 状態遷移 39 / 外部連携 1）で、USDM 層は対象外。
+      - skills/dist-spec/references/spec-event-schema.md に usdm / spec_id / trace 相当のフィールド定義が無い（grep 0 件）。
+    suggested_fix: "spec-event スキーマの use_cases[] に `usdm_spec_ids: [SPEC-xxx-yy]`（および任意で acceptance_criteria index）を追加し、traceability-matrix.md に USDM SPEC × UC のカバレッジ表を 1 セクション追加する変更要求として dist-spec スキルへ起票する。"
+resolved:
+  - {id: R-001, resolution: fixed}
+  - {id: R-002, resolution: fixed}
+  - {id: R-003, resolution: fixed}
+  - {id: R-004, resolution: fixed}
+  - {id: R-005, resolution: fixed}
+  - {id: R-006, resolution: fixed}
+  - {id: R-007, resolution: deferred, reason: "minor。実装時に扱う", by: orchestrator}
+  - {id: R-008, resolution: deferred, reason: "minor。実装時に扱う", by: orchestrator}
+  - {id: R-009, resolution: deferred, reason: "minor。実装時に扱う", by: orchestrator}
+  - {id: R-010, resolution: deferred, reason: "minor。実装時に扱う", by: orchestrator}
+  - {id: R-011, resolution: deferred, reason: "minor。実装時に扱う", by: orchestrator}
+  - {id: R-012, resolution: deferred, reason: "minor。実装時に扱う", by: orchestrator}
+  - {id: R-013, resolution: deferred, reason: "minor。実装時に扱う", by: orchestrator}

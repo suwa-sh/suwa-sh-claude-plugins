@@ -1,0 +1,66 @@
+round: 2
+group: ux-ui
+findings:
+  - id: S4-ux-ui-010
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: 17
+    severity: major
+    viewpoint: 5
+    claim: "round1 の S4-ux-ui-002 修正で `LoanTrendChart` を「時系列専用」とし在庫状況レポート画面から外したが、design 正本は `LoanTrendChart` の screens に「貸出統計レポート画面」「在庫状況レポート画面」の 2 件を挙げ、`screens.yaml` の在庫状況レポート画面の components にも `LoanTrendChart` が含まれる。design が当該画面で使うと宣言したコンポーネントを spec 側が理由の明記なく不使用にしており（L17「`LoanTrendChart` は時系列専用のため使わない」・L78 「在庫状況レポートは第2層を持たない」）、design と spec が逆向きに食い違ったまま残っている。`common-components.md` の `ReportSummarySection`（利用 UC 2 件・合成元に `LoanTrendChart`）とも整合しない。"
+    fix: "在庫状況レポート画面でも `LoanTrendChart` を使う用途（例: 集計日別の蔵書総数・貸出中件数の推移。design の screens 宣言に沿う時系列用途）を可視化対象表に 1 行追加し、L78 の「第2層を持たない」分岐を削除する。使わない判断を維持するなら「design の `LoanTrendChart.screens` から在庫状況レポート画面を外す差し戻しが必要」と本文に明記し、`ReportSummarySection` の chart スロットが貸出統計のみである旨も併記する。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#LoanTrendChart（screens: 貸出統計レポート画面 / 在庫状況レポート画面）"
+      - "docs/design/latest/_digest/screens.yaml#在庫状況レポート画面（components に LoanTrendChart）"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/common-components.md#ReportSummarySection"
+  - id: S4-ux-ui-011
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: 31
+    severity: major
+    viewpoint: 5
+    claim: "返却期限接近貸出一覧画面（L31）と延滞状況一覧画面（L32）の可視化コンポーネントを素の `Table` と書いているが、design 正本の両画面の components は `LoanTable`（+ `DueDateIndicator` / `LoanStatusBadge` / `Pagination`）であり `Table` を含まない。さらに同じ ux-ui 群の `ui-design.md` コンポーネント選定ルール（L76）は「貸出の一覧 = `LoanTable`、非推奨 = 素の `Table`」と定めており、本書だけが規約に反している。round1 の S4-ux-ui-001 修正で KPI カードを外した際に置換先を誤ったもの。"
+    fix: "L31・L32 のチャート種別欄を `LoanTable`（ヘッダーに区分別件数を文言表示）+ `DueDateIndicator` 列に改める。あわせて L7 の使用コンポーネント一覧の `Table` を、レポート 2 画面の明細用途と一覧 2 画面の `LoanTable` に書き分ける。"
+    source_refs:
+      - "docs/design/latest/_digest/screens.yaml#返却期限接近貸出一覧画面"
+      - "docs/design/latest/_digest/screens.yaml#延滞状況一覧画面"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/ui-design.md#コンポーネント選定ルール（貸出の一覧）"
+  - id: S4-ux-ui-012
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: 32
+    severity: minor
+    viewpoint: 5
+    claim: "延滞状況一覧画面に `Alert(warning)`（延滞件数）を置く設計だが、design 正本の当該画面の components は `PortalShell` / `LoanTable` / `DueDateIndicator` / `LoanStatusBadge` / `Pagination` / `EmptyState` のみで `Alert` を含まない（督促送信画面・リマインド送信画面は `Alert` を含む）。本書冒頭の「design 正本にあるもののみ」の宣言に対する例外が残っている。"
+    fix: "延滞状況一覧画面の件数警告は `LoanTable` のヘッダー件数 + `DueDateIndicator`（over 表現）で代替すると改めるか、design の当該画面 components に `Alert` を追加する差し戻しが必要と明記する。"
+    source_refs:
+      - "docs/design/latest/_digest/screens.yaml#延滞状況一覧画面"
+      - "docs/design/latest/_digest/screens.yaml#督促送信画面"
+  - id: S4-ux-ui-013
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: 7
+    severity: minor
+    viewpoint: 5
+    claim: "冒頭の「使用コンポーネント」列挙（L7）が本文で実際に使っているコンポーネントを網羅していない。`NotificationStatusBadge`（L28 / L30）・`BookStatusBadge`（L17 / L20）・`Pagination`（L20 / L77）・`Skeleton`（L86 / L109）・`Card`（L106）が欠落しており、round1 修正で表側の記述を差し替えた際に見出しの一覧が更新されていない。"
+    fix: "L7 の列挙に `NotificationStatusBadge` / `BookStatusBadge` / `Pagination` / `Skeleton` / `Card` を追加する（いずれも design 正本にある）。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#ui / domain"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md#可視化対象"
+  - id: S4-ux-ui-014
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: 34
+    severity: minor
+    viewpoint: 5
+    claim: "「チャートを置かない画面（一覧・詳細・フォーム 34 画面）」とあるが、design の screens は 41 件で、round1 修正により通知 3 画面 + 一覧 2 画面もチャート（KPI カード）を持たなくなったため、チャートを持つ画面は 2 レポート画面のみ・チャートを置かない画面は 39 画面になる。34 は修正前（41 − 2 − 5）の数え方が残ったもの。"
+    fix: "「チャートを置かない画面（39 画面）」に改める。可視化対象表に挙げた 5 画面も件数の文言表示のみでチャートを持たないことを、同じ文で明示する。"
+    source_refs:
+      - "docs/design/latest/_digest/screens.yaml（screens 41 件）"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/ux-ui/data-visualization.md#可視化対象"
+resolved:
+  - {id: S4-ux-ui-010, resolution: fixed}
+  - {id: S4-ux-ui-011, resolution: fixed}
+  - {id: S4-ux-ui-012, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S4-ux-ui-013, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S4-ux-ui-014, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

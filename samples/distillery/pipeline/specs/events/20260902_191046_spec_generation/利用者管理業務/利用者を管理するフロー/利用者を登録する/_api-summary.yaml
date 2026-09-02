@@ -1,0 +1,54 @@
+# _api-summary.yaml
+uc: "利用者を登録する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+endpoints:
+  - operation_id: "createUser"
+    method: "POST"
+    path: "/api/v1/users"
+    summary: "利用申込を受け付けて利用者を登録し、利用者番号を採番する（司書のみ）"
+    request_schema: "CreateUserRequest"
+    response_schema: "UserResponse"
+    tags: ["利用者管理"]
+async_events: []
+# cross-UC API 依存（他 UC 所有 operation の利用）。形式は
+# _cross-cutting/api/uc-api-dependencies.md「記録場所と形式」を正本とする。
+# 本 UC は自 UC 所有の createUser だけで成立し、他 UC 所有 operation を呼び出さない
+# （登録後の利用者名簿への遷移は画面遷移であり API 呼び出しではない）。
+consumes: []
+schemas:
+  - name: "CreateUserRequest"
+    properties:
+      - name: "X-Idempotency-Key"
+        type: "string"
+        required: true
+        note: "in: header。冪等キー。同一キーの再送には前回と同一の結果を返す"
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "email"
+        type: "string"
+        required: true
+      - name: "user_category"
+        type: "string"
+        required: true
+  - name: "UserResponse"
+    properties:
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "email_masked"
+        type: "string"
+        required: true
+      - name: "user_category"
+        type: "string"
+        required: true
+      - name: "user_status"
+        type: "string"
+        required: true
+      - name: "registered_at"
+        type: "string"
+        required: true

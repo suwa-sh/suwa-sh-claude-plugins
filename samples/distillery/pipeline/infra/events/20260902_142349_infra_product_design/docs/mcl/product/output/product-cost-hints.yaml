@@ -1,0 +1,219 @@
+schema_version: "1.0"
+artifact_type: "cost_hints"
+skill_type: "product"
+artifact_id: "product-cost-hints"
+title: "図書館蔵書管理システム コスト最適化ヒント"
+status: "draft"
+generated_at: "2026-09-02T14:26:00"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+decision_refs:
+  - "product-decision-001"
+  - "product-decision-003"
+  - "product-decision-005"
+inputs_ref:
+  - "product-library-management-canonical"
+  - "product-impl-aws"
+
+vendor: "aws"
+region: "ap-northeast-1"
+cost_posture: "balanced"
+
+posture_rationale: "可用性の重要メトリクス平均 2.27、性能の重要メトリクス平均 2.12 で、いずれも中位。過剰投資を避けつつ冗長化と復旧目標は削らない均衡型とする"
+
+# ------------------------------------------------------------------
+# ライトサイジング
+# ------------------------------------------------------------------
+rightsizing:
+  - component: "api_service"
+    initial: "Fargate 0.5 vCPU / 1GB × 2 タスク"
+    basis: "ベースライン 10rps・ピーク 30rps。1 タスクあたり 600rpm を目安に 2 タスクで余裕を持たせた"
+    review_trigger: "CPU 使用率の 7 日平均が 30% を下回る、または 70% を上回る"
+    action: "下回れば 0.25 vCPU / 0.5GB へ縮小、上回ればタスク定義を 1 vCPU / 2GB へ拡大"
+
+  - component: "worker_consumer"
+    initial: "Fargate 0.25 vCPU / 0.5GB、最小 0 タスク"
+    basis: "通知送信は日次バッチ直後に集中し、平常時はほぼ無負荷"
+    review_trigger: "キュー滞留時間が 30 分を超える"
+    action: "max_capacity を 10 から段階的に引き上げる"
+
+  - component: "database"
+    initial: "db.t4g.medium（2 vCPU / 4GB）Multi-AZ、gp3 100GB"
+    basis: "総容量 100GB 未満・年 100 万件規模。バーストパフォーマンスで日中ピークを吸収する"
+    review_trigger: "CPU クレジット残高が継続的に減少する、または CPU 使用率の 7 日平均が 60% を超える"
+    action: "db.m7g.large（固定性能）へ移行する。t 系のクレジット枯渇は応答時間目標に直結するため放置しない"
+
+  - component: "cache"
+    initial: "cache.t4g.micro × 2 ノード"
+    basis: "キャッシュ対象は書籍情報・セッション・冪等キーで、いずれもデータ量が小さい"
+    review_trigger: "DatabaseMemoryUsagePercentage > 70% または Evictions > 0 が継続"
+    action: "cache.t4g.small へ拡大する"
+
+# ------------------------------------------------------------------
+# 割引プラン
+# ------------------------------------------------------------------
+commitment_discounts:
+  - target: "api_service（Fargate 常時 2 タスク）"
+    instrument: "Compute Savings Plans"
+    term: "1 年 / 全額前払いなし"
+    eligibility: "常時稼働のベースライン分のみを対象にする"
+    estimated_saving: "対象分の約 20%"
+    timing: "本番稼働から 3 ヶ月の実績を確認した後に購入する（初期はスケーリング挙動が安定しないため）"
+
+  - target: "database（RDS Multi-AZ）"
+    instrument: "RDS Reserved Instance"
+    term: "1 年 / 全額前払いなし"
+    eligibility: "インスタンスクラスが確定していること"
+    estimated_saving: "対象分の約 30%"
+    timing: "ライトサイジングのレビューを 1 巡してインスタンスクラスを確定させてから購入する"
+
+  - target: "cache（ElastiCache）"
+    instrument: "ElastiCache Reserved Node"
+    term: "1 年"
+    eligibility: "ノードタイプが確定していること"
+    estimated_saving: "対象分の約 30%"
+    timing: "database と同時期"
+
+# ------------------------------------------------------------------
+# 中断許容ワークロード
+# ------------------------------------------------------------------
+spot_candidates:
+  - component: "worker_consumer"
+    mechanism: "Fargate Spot（weight 3 : FARGATE weight 1 の混在）"
+    estimated_saving: "対象分の最大 70%"
+    prerequisites:
+      - "SIGTERM 受信時に処理中メッセージの可視性タイムアウトを 0 に戻して再配信させる"
+      - "冪等消費により再処理が安全であること（REQ-MQ-001 / SR-018 で担保済み）"
+    risk: "中断時に通知送信が数分遅延する。督促・リマインドは即時性要求が低いため許容"
+
+  - component: "worker_scheduled"
+    mechanism: "Fargate Spot（フォールバックとして FARGATE を指定）"
+    estimated_saving: "対象分の最大 70%"
+    prerequisites:
+      - "ジョブ実行 ID による重複実行検知（REQ-WRK-001）が動作していること"
+      - "中断時に EventBridge Scheduler のリトライ（最大 2 回）で再実行されること"
+    risk: "深夜帯は Spot 中断率が低く、8 時間の実行枠に対して再実行の余裕がある"
+
+non_spot_components:
+  - "api_service（同期 API。中断が利用者影響に直結する）"
+  - "database / cache（Spot の概念が適用されない）"
+
+# ------------------------------------------------------------------
+# ストレージ階層化
+# ------------------------------------------------------------------
+storage_tiering:
+  - target: "libms-{env}-logs"
+    rule: "180 日で Glacier Instant Retrieval へ移行、365 日で削除"
+    basis: "ログ保管期間 6 ヶ月の要件を満たしつつ、監査目的の参照可能性を 1 年まで残す"
+    estimated_saving: "180 日以降の保管費用が約 60% 減"
+
+  - target: "libms-{env}-backup"
+    rule: "35 日で Glacier Instant Retrieval へ移行、400 日で削除"
+    basis: "PITR は RDS 側で 14 日保持しており、S3 側は長期保全用途"
+    estimated_saving: "35 日以降の保管費用が約 60% 減"
+
+  - target: "libms-{env}-static"
+    rule: "階層化しない。古いバージョンのみ 30 日で削除"
+    basis: "配信元であり常時アクセスされる"
+
+  - target: "database ストレージ"
+    rule: "gp3 のベースライン IOPS 3,000 で開始し、プロビジョンド IOPS は購入しない"
+    basis: "ベースライン 10rps・データ量 100GB 未満では追加 IOPS が不要"
+
+# ------------------------------------------------------------------
+# データ転送最適化
+# ------------------------------------------------------------------
+data_transfer:
+  - measure: "NAT Gateway を 1 AZ に集約する"
+    saving: "NAT Gateway の時間課金が半減（月額で概ね 5,000 円相当）"
+    tradeoff: "該当 AZ 障害時に外向き通信（メール送信）が停止する。SLA 99% では許容し、復旧手順に NAT の再作成を含める"
+
+  - measure: "S3 / SQS / Secrets Manager / ECR / CloudWatch Logs へ VPC エンドポイントを使う"
+    saving: "NAT Gateway のデータ処理料を大幅に削減。特にコンテナイメージ取得とログ出力の転送量が大きい"
+    tradeoff: "インターフェースエンドポイントには時間課金があるため、利用量の少ない環境（dev）ではゲートウェイエンドポイント（S3）のみに絞る"
+
+  - measure: "CloudFront の price_class を PriceClass_200 に制限する"
+    saving: "南米・アフリカのエッジを除外して配信単価を下げる"
+    tradeoff: "国内利用のみのため実質的な影響なし"
+
+  - measure: "CloudFront のキャッシュヒット率を 90% 以上に保つ"
+    saving: "オリジン（S3）へのリクエスト数と転送量を削減"
+    tradeoff: "SPA のビルド成果物にコンテンツハッシュを付与し、長期 TTL を安全に設定する必要がある"
+
+# ------------------------------------------------------------------
+# オートスケーリング
+# ------------------------------------------------------------------
+autoscaling_parameters:
+  - component: "api_service"
+    min: 2
+    max: 8
+    metric: "CPU 60% / ALBRequestCountPerTarget 600"
+    scale_out_cooldown_sec: 60
+    scale_in_cooldown_sec: 300
+    rationale: "スパイク倍率 3 倍に 60 秒で追随し、縮小は 5 分の猶予でフラッピングを防ぐ"
+
+  - component: "worker_consumer"
+    min: 0
+    max: 10
+    metric: "BacklogPerTask = ApproximateNumberOfMessagesVisible / RunningTaskCount、目標 20"
+    scale_out_cooldown_sec: 60
+    scale_in_cooldown_sec: 600
+    rationale: "平常時 0 タスクで固定費をゼロにし、日次バッチ直後の滞留に応じて増やす"
+
+  - component: "database"
+    mechanism: "storage autoscaling（100GB → 最大 500GB）"
+    rationale: "コンピュートの自動スケールは行わず、ライトサイジングのレビューで対応する"
+
+# ------------------------------------------------------------------
+# 環境別のコスト削減
+# ------------------------------------------------------------------
+non_production:
+  - measure: "stg / dev の RDS を Single-AZ にする"
+    saving: "RDS 費用が約 50% 減"
+  - measure: "stg / dev の ECS タスクを夜間・週末に停止する（EventBridge Scheduler で desired_count を 0 にする）"
+    saving: "コンピュート費用が約 65% 減"
+  - measure: "dev の ElastiCache をシングルノードにする"
+    saving: "キャッシュ費用が約 50% 減"
+  - measure: "dev では VPC インターフェースエンドポイントを作らず NAT 経由にする"
+    saving: "エンドポイントの時間課金を削減"
+
+# ------------------------------------------------------------------
+# コスト可視化
+# ------------------------------------------------------------------
+cost_visibility:
+  required_tags: ["system", "environment"]
+  budgets:
+    - name: "libms-prod-monthly"
+      threshold_actions:
+        - "実績が予算の 80% に到達したら運用担当へ通知"
+        - "予測が予算の 100% を超えたら運用担当と保守ベンダへ通知"
+    - name: "libms-nonprod-monthly"
+      threshold_actions:
+        - "実績が予算の 80% に到達したら運用担当へ通知"
+  anomaly_detection: "AWS Cost Anomaly Detection をサービス単位で有効化する"
+  note: "foundation-context の billing_boundaries は budget_owner=system / cost_allocation_model=direct であり、共有インフラの按分は発生しない"
+
+# ------------------------------------------------------------------
+# 優先度
+# ------------------------------------------------------------------
+prioritized_actions:
+  - priority: 1
+    action: "非本番環境の Single-AZ 化と夜間停止"
+    effort: "low"
+    impact: "high"
+  - priority: 2
+    action: "ワーカーの Fargate Spot 適用"
+    effort: "medium"
+    impact: "medium"
+  - priority: 3
+    action: "VPC エンドポイントによる NAT 転送量削減"
+    effort: "low"
+    impact: "medium"
+  - priority: 4
+    action: "3 ヶ月実績後の Savings Plans / Reserved Instance 購入"
+    effort: "low"
+    impact: "high"
+  - priority: 5
+    action: "ログとバックアップのストレージ階層化"
+    effort: "low"
+    impact: "low"

@@ -1,0 +1,24 @@
+# digest of design/latest/design-event.yaml section storybook (L1642-1663); source_sha256: 7e4262e4b85411707038985f94bd47496eca0007f0389cf6fa4c3bec2389b6d5
+# 派生物。正本は design-event.yaml。編集しない
+storybook:
+  framework: "@storybook/nextjs-vite (Storybook 10 / Next.js 16 / React 19 / Tailwind CSS v4)"
+  addons:
+    - "@storybook/addon-docs"
+    - "@storybook/addon-a11y"
+    - "@storybook/addon-vitest"
+    - "@chromatic-com/storybook"
+    - "@storybook/addon-mcp"
+  categories:
+    Common: "画面横断の共通コンポーネント 11 種 + フック 3 種（既存 UI/Domain の合成。新規視覚表現は LoadingState のみ）"
+    Shell: "アプリシェルとルーティング所有権（AppShell / ルート表 41 件 / 遷移 API）"
+    Pages: "全 41 UC のページ Story（利用者ポータル 16 画面 / 司書ポータル 25 画面）"
+    Introduction: "デザインシステムの目的・ブランド・入力モデル"
+    "Design Tokens": "primitive / semantic / component の 3 層トークン一覧"
+    "Screen Mapping": "RDRA 画面 41 件 → ルート → コンポーネント"
+    "State Mapping": "RDRA 状態モデル 6 種 → Badge / Color"
+    Brand: "ロゴ 3 バリアント / アイコン 42 種"
+    UI: "共通コンポーネント 13 種"
+    Domain: "ドメイン特化コンポーネント 19 種"
+  globals:
+    portal: "patron | staff（data-portal 属性で切替）"
+    theme: "light | dark（.dark クラスと prefers-color-scheme の両対応）"

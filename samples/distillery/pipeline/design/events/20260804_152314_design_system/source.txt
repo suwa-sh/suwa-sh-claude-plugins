@@ -1,1 +1,0 @@
-Storybook 再現性修復: latest/design-event.yaml と全 16 UC の Presentation 層仕様から latest/storybook-app/ を全量再ビルド

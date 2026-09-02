@@ -1,0 +1,18 @@
+# _api-summary.yaml
+uc: "返却対象の貸出を照会する"
+business: "蔵書利用業務"
+buc: "書籍を返却するフロー"
+endpoints: []
+async_events: []
+consumes:
+  - operation_id: "listMyLoans"
+    method: "GET"
+    path: "/api/v1/me/loans"
+    owner_uc: "自分の現在の貸出を照会する"
+    contract: "_cross-cutting/api/openapi.yaml"
+    tier: "tier-frontend-patron"
+    purpose: "returnable=true で返却対象（貸出中・延滞）の貸出を返却期限の昇順に取得する"
+    required: true
+# 本 UC は operation を所有しないため、リクエスト・レスポンススキーマも定義しない。
+# 型の正本は consumes[].contract の operation_id を引くこと（所有 UC 側で定義済み）。
+schemas: []

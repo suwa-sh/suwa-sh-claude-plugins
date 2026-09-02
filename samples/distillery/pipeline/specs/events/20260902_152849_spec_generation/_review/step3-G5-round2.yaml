@@ -1,0 +1,28 @@
+round: 2
+group: G5
+findings:
+  - id: S3-G5-010
+    uc: "利用者管理業務/利用者を管理するフロー/自分の利用者情報を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/自分の利用者情報を照会する/spec.md"
+    line: 100
+    severity: minor
+    viewpoint: 6
+    claim: "round1 の修正で API 側は reveal=true 対応済み（tier-backend-api.md L21/L31、_api-summary.yaml の GetMyProfileQueryParams / MyProfileResponse.email）になったが、spec.md の処理フローは末尾で「UserProfileCard を revealed にして連絡先を開示する」とだけ書き、tier-frontend-patron.md L44/L53 が規定する GET /api/v1/me?reveal=true の再要求が図に無く、データフロー表の Response 行（L43）も MyProfileResponse に email を含めないままである。"
+    fix: "処理フロー末尾を View->>APIClient: GET /api/v1/me?reveal=true / APIClient->>Pres: GET /api/v1/me?reveal=true / Pres-->>APIClient: HTTP 200 MyProfileResponse（email = tanaka@example.com）/ View-->>Patron: revealed で開示 の往復に書き換え、データフロー表の Response 行を「MyProfileResponse(user_no, name, email_masked, email?（reveal=true 時のみ）, user_category, user_status, registered_at)」に更新する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/自分の利用者情報を照会する/tier-frontend-patron.md"
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/自分の利用者情報を照会する/_api-summary.yaml"
+
+  - id: S3-G5-011
+    uc: "利用照会業務/貸出履歴を確認するフロー/自分の現在の貸出を照会する"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の現在の貸出を照会する/spec.md"
+    line: 84
+    severity: minor
+    viewpoint: 6
+    claim: "計算ルール一覧は round1 の修正で超過日数（days_overdue）の適用 tier を tier-frontend-patron に変更した（L118）が、処理フローの sequenceDiagram は依然 UC->>UC: 残日数・超過日数を算出する とバックエンド usecase で超過日数を算出する図のままで、同一 spec 内で不整合である。"
+    fix: "L84 を「UC->>UC: 残日数（days_remaining = 返却期限 - 現在日。負値は超過を表す）を算出する」に修正し、超過日数の導出は FE 側ステップ（View: days_remaining < 0 のとき days_overdue = -days_remaining、例 -3 → 3 日超過）として図の末尾（DueDateIndicator 描画の直前）へ移す。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の現在の貸出を照会する/_api-summary.yaml"
+resolved:
+  - {id: S3-G5-010, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S3-G5-011, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

@@ -1,0 +1,25 @@
+round: 3
+group: G1
+findings:
+  - id: S3-G1-010
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を削除する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml"
+    line: 82
+    severity: major
+    viewpoint: 5
+    claim: "round2 の修正で『書籍を削除する』側のビジネスルールには loans の書誌スナップショット列（book_title / book_author / book_isbn / book_genre）の書き込み責務が明記されたが、実際に loans へ INSERT する『貸出を登録する』UC の _model-summary.yaml の INSERT columns は loan_id / book_id / user_no / loan_date / loan_period_type / due_date / loan_status のままで、スナップショット列が無い。除籍（books 物理削除）後に貸出履歴・貸出統計が書誌を復元できない状態が残っている"
+    fix: "『貸出を登録する』の _model-summary.yaml の loans INSERT columns に book_title / book_author / book_isbn / book_genre（value はいずれも「貸出時点の books の当該値のスナップショット」）を追加し、同 UC の tier-backend-api.md のデータモデル変更表にも同 4 列を追記する。G1 の対象外ファイルのため本ラウンドでは記録のみ"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/tier-backend-api.md#ビジネスルール"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml"
+      - "docs/rdra/latest/条件.tsv#貸出統計集計条件"
+resolved:
+  - {id: S3-G1-010, resolution: fixed}
+  - {id: S3-G1-019, resolution: fixed}
+  - {id: S3-G1-020, resolution: fixed}
+  - {id: S3-G1-021, resolution: fixed}
+  - {id: S3-G1-022, resolution: fixed}
+  - {id: S3-G1-023, resolution: fixed}
+  - {id: S3-G1-024, resolution: fixed}
+  - {id: S3-G1-025, resolution: fixed}
+  - {id: S3-G1-026, resolution: deferred, reason: "round2 で deferred 済み（minor）。再掲しない", by: orchestrator}

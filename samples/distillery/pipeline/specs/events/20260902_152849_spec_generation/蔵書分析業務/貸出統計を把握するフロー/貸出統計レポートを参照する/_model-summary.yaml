@@ -1,0 +1,75 @@
+# _model-summary.yaml
+uc: "貸出統計レポートを参照する"
+business: "蔵書分析業務"
+buc: "貸出統計を把握するフロー"
+
+bounded_context_id: "BC-006"
+# aggregate_id: SELECT のみの参照系 UC のため省略する
+
+models:
+  - name: "貸出統計レポート画面"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "統計レポート"
+  - name: "LoanStatsViewState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "統計レポート"
+  - name: "GetLoanStatsReportRequest"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "統計レポート"
+  - name: "GetLoanStatsReportRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "統計レポート"
+  - name: "GetLoanStatsReportQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "統計レポート"
+  - name: "StatisticalReport"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "統計レポート"
+  - name: "LoanStatsDetail"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "統計レポート"
+  - name: "PopularBookRankingItem"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "書籍"
+  - name: "StatisticalReportRecord"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "record"
+    rdra_info: "統計レポート"
+
+tables:
+  - name: "statistical_reports"
+    rdra_info: "統計レポート"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "report_type = :report_type ORDER BY aggregated_at DESC LIMIT 1（latest 参照）"
+      - type: "SELECT"
+        columns: []
+        where: "report_id = :report_id（ID 指定参照）"
+      - type: "SELECT"
+        columns: []
+        where: "report_type = :report_type AND aggregated_at < :target_aggregated_at ORDER BY aggregated_at DESC LIMIT 1（前期比の算出）"
+    indexes_needed:
+      - columns: ["report_type", "aggregated_at"]
+        reason: "レポート種別ごとの最新 1 件取得と、前回集計 1 件の取得を高速化するため"
+        access_pattern: "report_type 等価 + aggregated_at 降順の範囲検索"
+
+kvs: []
+object_storage: []

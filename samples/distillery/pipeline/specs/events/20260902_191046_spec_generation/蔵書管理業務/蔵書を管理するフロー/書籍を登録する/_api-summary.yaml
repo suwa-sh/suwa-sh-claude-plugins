@@ -1,0 +1,69 @@
+uc: "書籍を登録する"
+business: "蔵書管理業務"
+buc: "蔵書を管理するフロー"
+endpoints:
+  - operation_id: "createBook"
+    method: "POST"
+    path: "/api/v1/books"
+    summary: "書籍を受け入れて登録する（書籍状態は在庫ありで初期化）"
+    request_schema: "CreateBookRequest"
+    response_schema: "BookResponse"
+    tags: ["books"]
+async_events: []
+consumes: []
+schemas:
+  - name: "CreateBookRequest"
+    properties:
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "isbn"
+        type: "string"
+        required: false
+      - name: "publisher"
+        type: "string"
+        required: true
+      - name: "genre"
+        type: "string"
+        required: true
+      - name: "material_type"
+        type: "string"
+        required: true
+  - name: "BookResponse"
+    properties:
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "isbn"
+        type: "string"
+        required: false
+      - name: "publisher"
+        type: "string"
+        required: true
+      - name: "genre"
+        type: "string"
+        required: true
+      - name: "material_type"
+        type: "string"
+        required: true
+      - name: "book_status"
+        type: "string"
+        required: true
+      - name: "registered_at"
+        type: "string"
+        required: true
+      - name: "updated_at"
+        type: "string"
+        required: true
+      - name: "version"
+        type: "integer"
+        required: true

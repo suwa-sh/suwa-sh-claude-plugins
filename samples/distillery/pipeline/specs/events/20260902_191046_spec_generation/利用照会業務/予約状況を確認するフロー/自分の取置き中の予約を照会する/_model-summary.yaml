@@ -1,0 +1,75 @@
+# _model-summary.yaml
+uc: "自分の取置き中の予約を照会する"
+business: "利用照会業務"
+buc: "予約状況を確認するフロー"
+
+bounded_context_id: "BC-004"
+
+models:
+  - name: "取置き中予約確認画面 / HoldListView"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "予約"
+  - name: "ListMyHoldsRequest"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "予約"
+  - name: "ListMyHoldsRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "予約"
+  - name: "ListMyHoldsQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "予約"
+  - name: "予約(Reservation)"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "書籍(Book)"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "ReservationRepository"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "ReservationRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "予約"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :認証利用者番号 AND reservation_status = '取置き中' ORDER BY hold_expires_at ASC（MyHoldItem.hold_started_at は reservations.hold_started_at を直接参照する）"
+    indexes_needed:
+      - columns: ["user_no", "reservation_status", "hold_expires_at"]
+        reason: "本人の取置き中予約を取置き期限の昇順で取得する"
+        access_pattern: "利用者番号 + 予約状態での取置き期限昇順走査"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id IN (:book_ids)（一覧カードの書籍属性を一括解決し N+1 を避ける）"
+    indexes_needed: []
+
+kvs: []
+object_storage: []

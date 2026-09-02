@@ -1,0 +1,51 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-006"
+title: "loading 表現は LoadingState 1 か所に集約し、Skeleton と Spinner を用途で固定する"
+status: "approved"
+generated_at: "2026-09-02T19:00:00"
+context: |
+  実装フィードバック CR-d0f57ea2-006 で、画面仕様が要求する loading 表示（Skeleton / Spinner）を
+  デザインシステムの成果物から参照できないという指摘を受けた。
+  既存資産には Skeleton（line / table）と Button の loading 状態しかなく、
+  - 操作起点の短い待ち（検索実行・再送・再試行）
+  - 画面全体をブロックする待ち（確定処理）
+  - カード一覧・詳細画面の読み込み
+  に対応する共通 component と「どの場面でどちらを使うか」の利用条件が無かった。
+  そのため画面実装ごとに独自の loading UI が生まれる状態だった。
+decision: |
+  1. UI 層に Spinner（variants: inline / button / overlay、sizes: sm / md / lg）を追加する。
+     回転リングは --spinner-track / --spinner-indicator / --spinner-size-* / --spinner-duration の
+     component トークンで表現し、overlay は --overlay-backdrop / --overlay-blur を使う。
+     dark mode は --spinner-track と --overlay-backdrop を上書きする。
+  2. Skeleton の variants を line / table に加えて card / detail へ拡張する
+     （SkeletonCard / SkeletonDetail を追加）。
+  3. 共通層に LoadingState を追加し、loading 表現の唯一の入口にする。
+     kind の意味を固定する:
+       list   → SkeletonTable（一覧の取得。行と列の形が決まっている）
+       card   → SkeletonCard（カード一覧・KPI）
+       detail → SkeletonDetail（詳細・定義リスト）
+       line   → Skeleton（見出し・1 行）
+       action → Spinner(inline)（操作起点の短い待ち。レイアウトは変わらない）
+       page   → Spinner(overlay)（画面全体をブロックする待ち）
+     制約: 同一領域で Skeleton と Spinner を併用しない / 常に aria-busy + 読み上げラベルを伴う /
+     ちらつきが問題になる領域だけ delayMs（推奨 300ms）で遅延表示する。
+  4. AsyncSection の loading 分岐を LoadingState へ委譲し、既存 41 画面の loading も同じ入口を通す。
+  遅延表示の既定値は 0（即時表示）にする。Story と E2E が t=0 で loading 状態を観測できることを優先し、
+  遅延が必要な領域だけ画面側で delayMs を指定する。
+consequences:
+  positive:
+    - "画面実装は LoadingState を呼ぶだけでよく、独自 loading UI を作る動機が無くなる"
+    - "Skeleton / Spinner の選択基準がコードとカタログの両方に明文化される"
+    - "aria-busy と読み上げラベルが自動的に付き、NFR F.3.1.2（JIS X 8341-3 AA 目標）に沿う"
+  negative:
+    - "AsyncSection の loading 描画が LoadingState 経由になり、間接層が 1 段増える"
+    - "delayMs の既定が 0 のため、高速に返る領域では実装側で明示指定しないとちらつきが残る"
+alternatives_considered:
+  - name: "Spinner だけを追加し、使い分けは各画面の判断に委ねる"
+    reason_rejected: "指摘の根本原因（利用条件が無く画面ごとに独自 UI が生まれる）を解消できない"
+  - name: "AsyncSection に loading 表現をすべて内包する"
+    reason_rejected: "AsyncSection は一覧・詳細取得系の型であり、操作起点の待ちや全画面ブロックを扱えない"
+  - name: "delayMs の既定を 300ms にする"
+    reason_rejected: "既存 41 画面の Loading Story と E2E が t=0 で何も描画されず、状態を観測できなくなる"

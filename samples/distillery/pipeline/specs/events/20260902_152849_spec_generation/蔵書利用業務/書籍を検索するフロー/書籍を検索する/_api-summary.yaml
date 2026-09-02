@@ -1,0 +1,33 @@
+uc: "書籍を検索する"
+business: "蔵書利用業務"
+buc: "書籍を検索するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/books/search"
+    summary: "検索条件種別（キーワード/タイトル/著者/ISBN/ジャンル）で蔵書を検索し、在庫状況区分を併せて返す"
+    response_schema: "BookSearchResponse"
+    tags: ["books"]
+async_events: []
+schemas:
+  - name: "BookSearchResultItem"
+    properties:
+      - name: "book"
+        type: "BookSummary"
+        required: true
+      - name: "availability"
+        type: "string"
+        required: true
+  - name: "BookSearchResponse"
+    properties:
+      - name: "items"
+        type: "array<BookSearchResultItem>"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true

@@ -1,0 +1,84 @@
+round: 2
+group: datastore
+findings:
+  - id: S4-datastore-012
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の貸出履歴を照会する/_model-summary.yaml"
+    line: 62
+    severity: major
+    viewpoint: 3
+    claim: "round1 S4-datastore-001 の fix で loans.book_id を nullable + on_delete: SET NULL に変えたが、履歴系 UC のデータアクセス定義は books を `book_id IN (:履歴行の書籍ID)` で引いてタイトル・著者を取得する前提のまま。削除済み書籍の履歴行は book_id が NULL になるため書誌を解決できず、書影・タイトルが欠落する。rdb-schema.yaml の loans.book_title / book_author の description は『書籍が削除・改題されても貸出履歴と統計の表示を貸出当時の値で再現するために保持する』としており、UC 側の参照先（books JOIN）と食い違う。同じ構図が「自分の返却済み貸出を照会する」「自分の現在の貸出を照会する」「自分の貸出内容と返却期限を照会する」「返却対象の貸出を照会する」にもある（rdb-schema.yaml books.used_by に 5 UC が SELECT で列挙されている）。"
+    fix: "履歴・一覧系 UC の tables から books の SELECT を外し、書誌は loans の非正規化スナップショット列（book_title / book_author / book_isbn / book_genre）から取得する定義に改める。現在の貸出のように最新書誌を出したい UC だけ books を残し、その場合も `book_id IS NULL`（削除済み）のときはスナップショット列にフォールバックする旨を where / 補足に明記する。rdb-schema.yaml の books.used_by からも該当 UC を落として整合させる。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml#loans.book_id / loans.book_title（L300-L303, L330-L336）"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml#books.used_by"
+      - "docs/specs/events/20260902_152849_spec_generation/利用照会業務/貸出履歴を確認するフロー/自分の貸出履歴を照会する/_model-summary.yaml L61-L70"
+
+  - id: S4-datastore-013
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 578
+    severity: major
+    viewpoint: 3
+    claim: "notifications に送信日時（sent_at）の列が無い。notification_status の description は『送信日時そのものは送信イベントの occurred_at で管理する』としているが、round1 S4-datastore-011 の fix で確定した設置基準により notifications には event ストリームを置かない（_review_notes「イベントストリームの設置基準」で notifications は event ストリーム対象外と明記）。一方で openapi.yaml の `NotificationLogItem` は `sent_at`（送信日時。通知状態が「送信済み」のとき）を返し、UC「取置き通知メールを送信する」の _api-summary.yaml も同項目を返す契約になっている。供給元が存在しない列を API が返す状態。"
+    fix: "notifications に `sent_at`（type: datetime, nullable: true, description: 送信日時。メール配信サービスの送信成功時に設定し、送信待ち・送信失敗の間は NULL）を追加し、notification_status の description から『送信イベントの occurred_at で管理する』の記述を削除する。通知を UPDATE する 3 UC（取置き / リマインド / 督促）の _model-summary.yaml の UPDATE 列にも sent_at を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/api/openapi.yaml#components.schemas.NotificationLogItem.sent_at (L3422-L3425)"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml#_review_notes（イベントストリームの設置基準）"
+
+  - id: S4-datastore-014
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 720
+    severity: major
+    viewpoint: 3
+    claim: "round1 S4-datastore-002 の fix で利用者は『物理削除＋履歴の匿名化』に確定したが、user_events.payload の description は『登録・変更では氏名・連絡先・利用者区分と変更項目名』を保持するとしており、退会イベントだけ個人情報を含めない設計になっている。過去の USER_REGISTERED / USER_PROFILE_CHANGED 行に氏名・メールアドレスが平文 JSON で残るため、users 行を物理削除しても匿名化が成立しない。加えて users.name / users.email は保管時暗号化の対象（NFR E.6.1.1）なのに、同じ値を持つ payload には暗号化の記載が無く、保護水準が経路によって食い違う。"
+    fix: "(a) 退会時に当該利用者の user_events.payload から氏名・連絡先をマスク／削除する後処理（匿名化バッチ）を定義して description と UC「利用者を削除する」の操作定義に明記する、または (b) payload に個人情報を格納せず変更項目名と利用者区分のみを保持する定義へ改める。いずれの場合も payload の保管時暗号化の要否を description に明記し、users の暗号化方針（NFR E.6.1.1）と揃える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml#users.name / users.email（NFR E.6.1.1）"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml#_review_notes（利用者削除の方針）"
+      - "docs/specs/events/20260902_152849_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_model-summary.yaml"
+
+  - id: S4-datastore-015
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 196
+    severity: minor
+    viewpoint: 3
+    claim: "round1 S4-datastore-008 の fix で uq_users_email の reason に『notifications.recipient_email も同じ決定的暗号化方式に揃える』と書かれたが、notifications.recipient_email には一意制約も等価検索の要件も無く（送信実績の表示用）、決定的暗号化にする必然性が無い。決定的暗号化は同一平文が同一暗号文になるため保護水準が下がる方式であり、必要のない列にまで広げると NFR E.6.1.1 の目的に反する。recipient_email の description にも暗号化方式の記載が無く、reason と description で方針が閉じていない。"
+    fix: "uq_users_email の reason から notifications.recipient_email への言及を外し、決定的暗号化の適用範囲を users.email（一意制約のため必要）に限定する。recipient_email の description には『非決定的な保管時暗号化（NFR E.6.1.1）。等価検索・一意制約の対象としない』と明記する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml#users.indexes.uq_users_email.reason"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml#notifications.recipient_email"
+
+  - id: S4-datastore-016
+    artifact: "kvs-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/予約者へ通知するフロー/取置き通知メールを送信する/_model-summary.yaml"
+    line: null
+    severity: minor
+    viewpoint: 4
+    claim: "round1 S4-datastore-010 の fix は kvs-schema.yaml 側だけで完結しており、UC の _model-summary.yaml のキーパターンと purpose が旧表記のまま残っている（例: `notify:idem:取置き案内:{reservation_id}` / `purpose: \"lock（通知送信冪等キー E-902 …）\"`、`idem:notification:request:{idempotency_key}` / purpose も lock）。実装者が UC 定義だけを読むと正規化前のキーを実装し、`{目的}:*` スキャンの前提が崩れる。kvs-schema.yaml の冒頭コメントは元表記を description に併記したと述べるが、UC 側の記述自体は更新されていない。"
+    fix: "kvs を持つ UC の _model-summary.yaml の key_pattern を kvs-schema.yaml の正規化後パターン（`idem:notification:reservation:{notification_type}:{target_reservation_id}` / `idem:api:{operation_id}:{idempotency_key}` 等）に置き換え、purpose を session / idem / lock / cache のいずれか 1 語にする（補足は別途文章で書く）。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/kvs-schema.yaml L4-L7（キー命名規則）"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/kvs-schema.yaml#idem:notification:reservation"
+
+  - id: S4-datastore-017
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 750
+    severity: minor
+    viewpoint: 3
+    claim: "er_diagram のカーディナリティが round1 の FK 変更（SET NULL + nullable 化）に追随していない。`users ||--o{ loans` / `users ||--o{ reservations` / `books ||--o{ loans` / `books ||--o{ reservations` はいずれも子側の参照が必須（||）を意味するが、loans.book_id / loans.user_no / reservations.book_id / reservations.user_no は nullable になった。また `users ||--o{ user_events` / `users ||--o{ notifications` は FK を張らない設計（_review_notes「notifications の外部キー」、user_events.user_no の description）なので、実体としては論理関連のみ。"
+    fix: "nullable 化した参照は `|o--o{` に改め、FK を張らない関連（user_events / notifications）はラベルに「論理参照（FK なし）」を明記する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml#loans.foreign_keys（on_delete: SET NULL）"
+      - "docs/specs/events/20260902_152849_spec_generation/_cross-cutting/datastore/rdb-schema.yaml#_review_notes（notifications の外部キー）"
+
+resolved:
+  - {id: S4-datastore-012, resolution: fixed}
+  - {id: S4-datastore-013, resolution: fixed}
+  - {id: S4-datastore-014, resolution: fixed}
+  - {id: S4-datastore-015, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S4-datastore-016, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
+  - {id: S4-datastore-017, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}

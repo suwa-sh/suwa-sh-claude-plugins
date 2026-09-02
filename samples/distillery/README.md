@@ -4,7 +4,7 @@
 
 | ディレクトリ | 実行モード | 題材 |
 |---|---|---|
-| [pipeline/](pipeline/) | 初期要望テキストからのフル実行に加え、単一feedback-request Markdownを内部work unitへrouteし、既反映6件と未反映5件を1回で判定・記録する往復例。usdm → rdra → nfr → arch → infra → design → specs | 図書館蔵書管理システム（初期要望＋実装feedback起点） |
+| [pipeline/](pipeline/) | 初期要望テキスト（[input/初期要望.txt](pipeline/input/初期要望.txt)）からのフル実行（distillery 1.9.2、auto_adopt、headless）に加え、単一 feedback-request Markdown（[feedback-requests/](pipeline/feedback-requests/)、11 件）を `--recommended-auto` で内部 work unit へ route し、design_system → spec → spec_stories の 3 stage で 11 件すべてを applied として記録した往復例。usdm → rdra → nfr → arch → infra → design → specs。各 `latest/_digest/`（段階的開示用の索引）と `pipeline/token-report/`（エージェント別トークン集計）を含む | 図書館蔵書管理システム（7 業務 / 13 BUC / 41 UC。初期要望＋実装 feedback 起点） |
 | [harvest/](harvest/) | 既存プロジェクトからの逆生成（`/distillery:dist-harvest`）。as-is 解析ドキュメント（harvest/）＋逆生成された USDM（usdm/）＋ RDRA モデル（rdra/）の3点セット | 図書館システム（[system-sekkei/library](https://github.com/system-sekkei/library) の実コード起点） |
 | [preflight/](preflight/) | 影響範囲の事前調査（`/distillery:dist-harvest --preflight`）。実装内部を読まずに 3 view（システムコンテキスト / 業務フロー / 成果物チェーン）で整理し、変更の影響を判定する軽量パス | 3 事例: 架空 Excel マクロ業務（手順書起点・VBA 非開示）/ 実在データパイプライン [tbm-template](https://github.com/suwa-sh/tbm-template)（SQL 非読）/ 実在 GAS 小ツール [asana-register-routines](https://github.com/suwa-sh/asana-register-routines)（GAS 非読） |
 

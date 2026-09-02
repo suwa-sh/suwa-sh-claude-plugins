@@ -1,0 +1,50 @@
+# _api-summary.yaml
+uc: "自分の取置き状況を照会する"
+business: "予約管理業務"
+buc: "予約者へ通知するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/me/reservations/{reservation_id}/hold"
+    summary: "本人の予約 1 件の取置き状況（予約状態・取置き期限・残日数・窓口提示用の利用者番号）を返す"
+    response_schema: "HoldStatusResponse"
+    tags: ["holds", "me"]
+async_events: []
+schemas:
+  - name: "HoldStatusResponse"
+    properties:
+      - name: "reservation_id"
+        type: "string"
+        required: true
+      - name: "reservation_status"
+        type: "string"
+        required: true
+      - name: "is_on_hold"
+        type: "boolean"
+        required: true
+      - name: "hold_expires_at"
+        type: "string(date-time)"
+        required: false
+      - name: "hold_started_at"
+        type: "string(date-time)"
+        required: false
+      - name: "days_remaining"
+        type: "integer"
+        required: false
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "book_id"
+        type: "string"
+        required: true
+      - name: "book_title"
+        type: "string"
+        required: true
+      - name: "book_author"
+        type: "string"
+        required: true
+      - name: "book_genre"
+        type: "string"
+        required: true
+      - name: "book_material_type"
+        type: "string"
+        required: true

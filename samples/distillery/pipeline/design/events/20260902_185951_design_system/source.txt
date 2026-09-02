@@ -1,0 +1,30 @@
+distillery:dist-design-system スキル実行（feedback 差分モード）。
+
+feedback_request_id: 20260902_184257_impl_feedback_d0f57ea2
+input_sha256: 7afd483f6a221ae5f469cbcbc5c7c3bce46be4f4924e7aec3f1e9b2b682c9133
+request_ids: CR-d0f57ea2-006, CR-d0f57ea2-010
+direct_work_unit_ids: CR-d0f57ea2-006#1, CR-d0f57ea2-010#1
+causal_work_unit_ids: CR-d0f57ea2-006#1, CR-d0f57ea2-010#1
+stage_packet: docs/pipeline/feedback-runs/20260902_184257_impl_feedback_d0f57ea2/stage-packets/design_system.md
+
+trigger_event:
+  rdra: 20260902_130741_initial_build
+  arch: 20260902_144724_arch_infra_feedback_20260902_142349_infra_product_design
+
+packet の allowed_work_unit_ids（= causal_work_unit_ids）だけを処理した差分実行であり、
+デザインシステムの全面再生成は行っていない。
+
+- CR-d0f57ea2-006#1 (constraint_key=loading-state-components):
+  Spinner（inline/button/overlay）と Skeleton の card / detail バリアント、
+  loading 表現の唯一の入口となる共通コンポーネント LoadingState、
+  spinner / overlay の component トークン（dark 上書き含む）を追加した。
+- CR-d0f57ea2-010#1 (constraint_key=app-shell-routing-ownership):
+  URL の正本となるルート表 routes.ts（screens[].route と 1:1 の 41 件）、
+  エントリポイント AppShell / AppShellByPath、遷移 API useAppNavigation を追加し、
+  デザインシステムと実装リポの所有権境界を design-event.yaml と Storybook ドキュメントに明記した。
+
+RDRA（docs/rdra/latest/）に無い画面・ルートは追加していない。ルート表は既存 screens[] の 41 件と一致する。
+
+storybook-app/ はハイブリッド方式に従い events/ には含めない（latest/ のみで管理）。
+本 feedback 実行では controller 指示により npm install を行わないため、
+storybook build / dev server での画面確認は実施していない（node_modules 未配置）。

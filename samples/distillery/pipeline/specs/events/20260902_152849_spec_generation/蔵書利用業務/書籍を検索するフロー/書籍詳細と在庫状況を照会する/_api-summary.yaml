@@ -1,0 +1,28 @@
+uc: "書籍詳細と在庫状況を照会する"
+business: "蔵書利用業務"
+buc: "書籍を検索するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/books/{book_id}/availability"
+    summary: "書籍 1 件の書誌情報と在庫状況区分・予約待ち件数・次の行動の案内を返す"
+    response_schema: "BookAvailabilityResponse"
+    tags: ["books"]
+async_events: []
+schemas:
+  - name: "BookAvailabilityResponse"
+    properties:
+      - name: "book"
+        type: "BookSummary"
+        required: true
+      - name: "availability"
+        type: "string"
+        required: true
+      - name: "reservation_count"
+        type: "integer"
+        required: true
+      - name: "reservable"
+        type: "boolean"
+        required: true
+      - name: "guidance"
+        type: "string"
+        required: true

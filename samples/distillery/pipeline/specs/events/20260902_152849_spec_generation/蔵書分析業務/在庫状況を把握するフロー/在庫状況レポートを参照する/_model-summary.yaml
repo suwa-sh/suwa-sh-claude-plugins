@@ -1,0 +1,70 @@
+# _model-summary.yaml
+uc: "在庫状況レポートを参照する"
+business: "蔵書分析業務"
+buc: "在庫状況を把握するフロー"
+
+bounded_context_id: "BC-006"
+# aggregate_id: SELECT のみの参照系 UC のため省略する
+
+models:
+  - name: "在庫状況レポート画面"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "統計レポート"
+  - name: "InventoryReportViewState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "統計レポート"
+  - name: "GetInventoryReportRequest"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "統計レポート"
+  - name: "GetInventoryReportRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "統計レポート"
+  - name: "GetInventoryReportQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "統計レポート"
+  - name: "StatisticalReport"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "統計レポート"
+  - name: "InventoryAggregationDetail"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "統計レポート"
+  - name: "StatisticalReportRecord"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "record"
+    rdra_info: "統計レポート"
+
+tables:
+  - name: "statistical_reports"
+    rdra_info: "統計レポート"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "report_type = '在庫状況' ORDER BY aggregated_at DESC LIMIT 1（latest 参照）"
+      - type: "SELECT"
+        columns: []
+        where: "report_id = :report_id AND report_type = '在庫状況'（ID 指定参照）"
+      - type: "SELECT"
+        columns: []
+        where: "report_type = '在庫状況' AND aggregated_at < :target_aggregated_at ORDER BY aggregated_at DESC LIMIT 1（前回集計比の算出）"
+    indexes_needed:
+      - columns: ["report_type", "aggregated_at"]
+        reason: "レポート種別ごとの最新 1 件取得と、前回集計 1 件の取得を高速化するため"
+        access_pattern: "report_type 等価 + aggregated_at 降順の範囲検索"
+
+kvs: []
+object_storage: []

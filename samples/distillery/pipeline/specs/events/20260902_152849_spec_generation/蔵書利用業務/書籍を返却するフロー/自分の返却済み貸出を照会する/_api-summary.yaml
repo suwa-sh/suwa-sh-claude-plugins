@@ -1,0 +1,58 @@
+# _api-summary.yaml
+uc: "自分の返却済み貸出を照会する"
+business: "蔵書利用業務"
+buc: "書籍を返却するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/me/loans"
+    summary: "ログイン中の利用者本人の貸出一覧を取得する。status=返却済み で返却済み貸出を返却日の降順に絞り込む"
+    response_schema: "MyLoanListResponse"
+    tags: ["貸出"]
+async_events: []
+schemas:
+  - name: "MyLoanListResponse"
+    properties:
+      - name: "items"
+        type: "array<MyLoanListItem>"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "latest_returned_at"
+        type: "string(date)"
+        required: false
+  - name: "MyLoanListItem"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+      - name: "loan_date"
+        type: "string(date)"
+        required: true
+      - name: "loan_period_type"
+        type: "string"
+        required: true
+      - name: "due_date"
+        type: "string(date)"
+        required: true
+      - name: "days_remaining"
+        type: "integer"
+        required: false
+      - name: "returned_at"
+        type: "string(date)"
+        required: false
+      - name: "overdue_days"
+        type: "integer"
+        required: false
+      - name: "loan_status"
+        type: "string"
+        required: true
+      - name: "book"
+        type: "BookBrief"
+        required: true

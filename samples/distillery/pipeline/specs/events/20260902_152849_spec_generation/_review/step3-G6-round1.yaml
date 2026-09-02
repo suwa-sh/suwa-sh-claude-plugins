@@ -1,0 +1,144 @@
+round: 1
+group: G6
+findings:
+  - id: S3-G6-001
+    uc: "蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/_model-summary.yaml"
+    line: 137
+    severity: major
+    viewpoint: 5
+    claim: "tier-backend-api が X-Idempotency-Key による重複検知（arch SR-013）を、tier-worker が message_id による重複消費検知（arch SR-018）を必須としているのに、_model-summary.yaml の kvs が空で KVS アクセス定義が欠落している。"
+    fix: "kvs に `api:idem:{X-Idempotency-Key}`（purpose: lock / value_type: 処理済みの report_id / ttl: 24h / operations: [GET, SET]）と `mq:consumed:{message_id}`（purpose: lock / value_type: 消費済みマーカー / ttl: 24h / operations: [GET, SET]）を追加する（貸出を登録する・督促メールを送信する UC と同じ記法）。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/tier-backend-api.md#エラーレスポンス直前のリクエスト表 X-Idempotency-Key"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/tier-worker.md#処理フロー 1"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/_model-summary.yaml#kvs"
+  - id: S3-G6-002
+    uc: "蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/spec.md"
+    line: 113
+    severity: minor
+    viewpoint: 5
+    claim: "spec.md の処理フロー・データフローに、Worker が集計対象レポートを取得して report_status='集計中' を確認する SELECT statistical_reports が描かれておらず、tier-worker.md 手順 3 および _model-summary.yaml の SELECT(report_id = :report_id) と整合していない。"
+    fix: "処理フローの `WPres->>WUC` の直後に `WUC->>WRepo: findReport(report_id)` / `WRepo->>DB: SELECT ... FROM statistical_reports WHERE report_id=:report_id AND report_status='集計中'` を追加し、データフロー図にも `WK_Repo -->|SELECT statistical_reports| DB_Report` を追記する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/tier-worker.md#処理フロー 3"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/_model-summary.yaml#statistical_reports SELECT"
+  - id: S3-G6-003
+    uc: "蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況を区分別に集計する/spec.md"
+    line: 159
+    severity: minor
+    viewpoint: 1
+    claim: "状態遷移一覧の「統計レポート状態: 集計中 → 実績なし」は、状態.tsv では『期間別貸出統計を集計する』のみに定義された遷移であり、本 UC（在庫状況を区分別に集計する）には RDRA 上の裏付けがない。"
+    fix: "状態遷移一覧の当該行に RDRA 未定義の派生であることを注記する（例: 『状態.tsv には在庫状況の実績なし遷移が未定義。蔵書 0 件時の扱いとして本仕様で追加』）か、RDRA 側へのフィードバック対象として明示する。"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#統計レポート状態（41-47 行）"
+  - id: S3-G6-004
+    uc: "蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する/spec.md"
+    line: 76
+    severity: major
+    viewpoint: 5
+    claim: "計算ルール「前回集計比（件数差）」と _model-summary.yaml の 3 番目の SELECT（aggregated_at < :target で前回 1 件取得）が定義されているのに、処理フローのシーケンス図に前回レポート取得ステップが無く、データフロー図の SELECT も 1 本だけになっている。"
+    fix: "『貸出統計レポートを参照する』spec.md と同様に、`alt 統計レポート状態: 作成済み` の中へ `UC->>Repo: findPreviousByReportType('在庫状況', aggregated_at)` → `Repo->>DB: SELECT ... WHERE report_type='在庫状況' AND aggregated_at < :at ORDER BY aggregated_at DESC LIMIT 1` → `calculateDelta(current, previous)` を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する/_model-summary.yaml#statistical_reports SELECT(前回集計比の算出)"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/spec.md#処理フロー"
+  - id: S3-G6-005
+    uc: "蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する/tier-frontend-staff.md"
+    line: 83
+    severity: major
+    viewpoint: 3
+    claim: "InventoryStatusChart はベースコンポーネント `LoanTrendChart` に無い状態 `selectedLabel` とイベント `onSelectSegment(label)` を持ち、区分別棒としての利用もデザインシステム側のバリアント（monthly / daily / empty）に存在しない。本 UC の主要操作であるチャートドリルダウンがデザインシステムに裏付けられていない。"
+    fix: "コンポーネント設計に『LoanTrendChart への拡張点（`onSelectSegment` / `selected` プロップと区分別棒バリアントの追加が必要）』を明記し、デザインシステム側 components.yaml の LoanTrendChart（props: data/unit/highlightMax/emptyMessage、variants: monthly/daily/empty）への追加要求として記述する。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#LoanTrendChart"
+  - id: S3-G6-006
+    uc: "蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する/tier-frontend-staff.md"
+    line: 24
+    severity: minor
+    viewpoint: 4
+    claim: "KPI「稼働率」を `ReportKpiCard(with-delta)` としているが、_api-summary.yaml の InventoryReportSummary には total_books_delta しか無く、utilization_rate の前回比フィールドが存在しないため delta を描画できない。"
+    fix: "稼働率カードを `ReportKpiCard(default)` に変更する（説明どおり分母・分子の補足のみ）か、_api-summary.yaml と tier-backend-api.md のレスポンス表に `summary.utilization_rate_delta`（number / 任意）を追加して両者を揃える。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/在庫状況を把握するフロー/在庫状況レポートを参照する/_api-summary.yaml#InventoryReportSummary"
+  - id: S3-G6-007
+    uc: "蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/tier-worker.md"
+    line: 26
+    severity: blocker
+    viewpoint: 5
+    claim: "処理フロー 9 で「利用者区分別内訳」を算出し detail に user_category_counts を保存する一方、利用者区分は情報.tsv では利用者の属性であり loans には user_no しか無いのに、users テーブルの SELECT が処理フロー・データモデル変更・_model-summary.yaml のいずれにも存在せず集計不能である。"
+    fix: "処理フロー 8 の後に `SELECT user_no, user_category FROM users WHERE user_no IN (:period_user_nos)` を追加し、tier-worker.md のデータモデル変更に users（user_no / user_category を参照のみ）を、_model-summary.yaml の tables に users の SELECT と user_no インデックスを追加する。spec.md の関連 RDRA モデルにも 情報「利用者」（利用者区分の取得元）を追記する。"
+    source_refs:
+      - "docs/rdra/latest/情報.tsv#利用者（利用者番号、氏名、連絡先、利用者区分…）"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/_model-summary.yaml#tables"
+  - id: S3-G6-008
+    uc: "蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/tier-worker.md"
+    line: 25
+    severity: major
+    viewpoint: 5
+    claim: "books の SELECT が『ランキング対象（上位 20 件）の book_id IN』に限定されているのに、処理フロー 9 では期間内貸出全件のジャンル別内訳（genre_counts）を算出しており、上位 20 件分のジャンルしか取得できず集計が成立しない。"
+    fix: "手順 8 の SELECT を『期間内貸出の DISTINCT book_id 全件』（`SELECT book_id, title, author, genre FROM books WHERE book_id IN (:period_book_ids)`）へ拡張し、_model-summary.yaml の books SELECT の where も同じ範囲に修正する。ランキング表示用は取得結果の上位 20 件に絞る旨を併記する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/_model-summary.yaml#books SELECT"
+  - id: S3-G6-009
+    uc: "蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/_model-summary.yaml"
+    line: 148
+    severity: major
+    viewpoint: 5
+    claim: "tier-backend-api の X-Idempotency-Key 重複検知（arch SR-013）と tier-worker の message_id 重複消費検知（arch SR-018）が必須なのに、_model-summary.yaml の kvs が空で KVS アクセス定義が欠落している。"
+    fix: "kvs に `api:idem:{X-Idempotency-Key}`（value_type: 処理済みの report_id / ttl: 24h / operations: [GET, SET]）と `mq:consumed:{message_id}`（value_type: 消費済みマーカー / ttl: 24h / operations: [GET, SET]）を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/tier-backend-api.md#リクエスト X-Idempotency-Key"
+      - "docs/specs/events/20260902_152849_spec_generation/貸出期限管理業務/延滞を督促するフロー/督促メールを送信する/_model-summary.yaml#kvs"
+  - id: S3-G6-010
+    uc: "蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/spec.md"
+    line: 149
+    severity: minor
+    viewpoint: 1
+    claim: "バリエーション一覧では report_type『在庫状況』を 400 にすると定めているのに、分岐条件一覧にレポート種別の許容値判定の行が無く、E2E BDD 異常系にも report_type 不正のシナリオが無い（tier-backend-api.md には INVALID_REPORT_TYPE が定義済み）。"
+    fix: "分岐条件一覧に『レポート種別の許容値 / report_type が 期間別貸出統計・人気書籍ランキング 以外なら受け付けない / tier-backend-api / 入力バリデーション』の行を追加し、E2E 異常系に『report_type「在庫状況」で POST /api/v1/reports/loans → HTTP 400 と「レポート種別は 期間別貸出統計 または 人気書籍ランキング を指定してください」』を追加する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/期間別貸出統計を集計する/tier-backend-api.md#エラーレスポンス"
+  - id: S3-G6-011
+    uc: "蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/spec.md"
+    line: 183
+    severity: minor
+    viewpoint: 2
+    claim: "E2E BDD の期待値が『前期比 +12%』となっており、tier-backend-api.md の期待値 12.1 および『比率は小数第 1 位まで表示する』という UI ロジックと桁が食い違っている。"
+    fix: "spec.md の当該 Then を『前期比 +12.1% が表示される』に修正し、Given の 240 件 / 214 件から (240-214)÷214×100 = 12.1 が導かれることを明示する。"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/tier-backend-api.md#前期比を算出して返す"
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/tier-frontend-staff.md#数値表記"
+  - id: S3-G6-012
+    uc: "蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書分析業務/貸出統計を把握するフロー/貸出統計レポートを参照する/tier-frontend-staff.md"
+    line: 109
+    severity: minor
+    viewpoint: 3
+    claim: "LoanBreakdownPanel が `LoanTrendChart`（区分別棒）を使うが、デザインシステムの LoanTrendChart は時系列用でバリアントが monthly / daily / empty のみであり、区分別棒のバリアントも軸切り替えイベント `onAxisChange` に対応する props も定義されていない。"
+    fix: "コンポーネント設計に『区分別棒バリアントと軸切り替えはデザインシステムへの拡張要求』と明記するか、利用者区分別内訳を `Table` + 既存バリアント範囲の表現に置き換える。"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#LoanTrendChart"
+
+resolved:
+  - {id: S3-G6-001, resolution: fixed}
+  - {id: S3-G6-002, resolution: fixed}
+  - {id: S3-G6-003, resolution: fixed}
+  - {id: S3-G6-004, resolution: fixed}
+  - {id: S3-G6-005, resolution: fixed}
+  - {id: S3-G6-006, resolution: fixed}
+  - {id: S3-G6-007, resolution: fixed}
+  - {id: S3-G6-008, resolution: fixed}
+  - {id: S3-G6-009, resolution: fixed}
+  - {id: S3-G6-010, resolution: fixed}
+  - {id: S3-G6-011, resolution: fixed}
+  - {id: S3-G6-012, resolution: fixed}

@@ -3,6 +3,24 @@
 distillery プラグインの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョンは semver（正本は `.claude-plugin/plugin.json`）。
 
+## [1.9.3] - 2026-09-02
+
+### Fixed
+
+- dist-pipeline `generateReadme.js`: `システム概要.json` の概要文を `description` キーで読んでいたため README 冒頭が
+  `> undefined` になっていた。正本（dist-requirements phase5）のキー `system_overview` を読む（旧 `description` も許容）
+
+### Added
+
+- dist-pipeline `generateReadme.js`: `docs/pipeline/feedback-runs/` があれば「Pipeline feedback runs」節を生成
+  （feedback_id / 状態 / 要求数 / applied・merged・deferred 件数 / 実行 stage / run dir リンク）
+
+### Changed
+
+- `samples/distillery/pipeline/` を 1.9.2 のフル実行 + feedback 往復（`--recommended-auto`、11 件 applied）で全面再生成。
+  初期要望テキストを `input/初期要望.txt`、feedback request を `feedback-requests/` に同梱。
+  sample 依存のテスト（`extractSections.test.js` / `tests/feedback-consumer-sample.test.js`）を新 sample に追随
+
 ## [1.9.2] - 2026-09-02
 
 ### Changed

@@ -1,0 +1,43 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-008"
+title: "enum は日本語 wire value のまま x-enum-varnames で ASCII 識別子を併記し、AsyncAPI payload には安定 title を必須にする"
+status: "approved"
+generated_at: "2026-09-02T19:10:46+09:00"
+context: |
+  実装フィードバック CR-d0f57ea2-003 / CR-d0f57ea2-002 で、契約からの型生成が破綻していた。
+
+  - `genre` / `material_type` など RDRA バリエーション由来の enum は値が日本語で、
+    生成された TypeScript のメンバー名が構文エラーになった。
+  - AsyncAPI の message payload に `title` が無く、生成型が `AnonymousSchema_1` などの
+    匿名名になり、複数 message の保守時にどの業務イベントの型か判別できなかった。
+  - 値そのものは RDRA モデル・DB・画面表示で日本語が正本であり、wire value の英語化は
+    RDRA からの導出可能性を壊す。
+decision: |
+  1. **enum の wire value は日本語のまま維持**し、生成コード側の識別子を
+     `x-enum-varnames`（SCREAMING_SNAKE_CASE の ASCII）で併記する。両者は同順・同要素数で 1:1 対応させる。
+     対象は openapi.yaml の 16 enum と asyncapi.yaml の 4 enum。値が最初から ASCII の enum
+     （`current` / `history`）には付与しない。
+  2. `enum` と `x-enum-varnames` は必ず同時に更新する規約を `info.description` に明記した。
+  3. **AsyncAPI の `components.schemas` は全スキーマに `title` を必須**とし、
+     値は schemas のキーと同一の PascalCase（payload は `{イベント名}Payload`）とする。
+  4. message の `payload` / `headers` は必ず `$ref` で名前付きスキーマを参照し、
+     インライン定義を書かない。`title` は業務的意味が変わらない限り変更しない。
+consequences:
+  positive:
+    - "OpenAPI から生成した TypeScript が無修正で parse・typecheck できる"
+    - "RDRA の値（日本語）が wire value として残り、モデルからの導出可能性が保たれる"
+    - "AsyncAPI の生成型が業務イベント名を持ち、匿名スキーマ名が残らない"
+    - "型名の安定性が契約側で保証され、実装リポの手修正が不要になる"
+  negative:
+    - "enum 値の追加時に 2 箇所（enum / x-enum-varnames）を同時に更新する運用負荷がある"
+    - "x-enum-varnames を解さない生成器では wire value 由来の名前になり、生成器側の設定が必要になる"
+    - "title の変更が生成型名の変更を意味するため、リネームの自由度が下がる"
+alternatives_considered:
+  - name: "wire value を英語化し、日本語はラベルとして別に持つ"
+    reason_rejected: "DB・画面・RDRA モデルの値がすべて日本語であり、全層に変換テーブルが必要になる。変換漏れの事故面が広い"
+  - name: "enum をやめて自由 string にする"
+    reason_rejected: "値域の検証が契約から消え、型生成の恩恵とバリデーションの両方を失う"
+  - name: "生成後のコードを手修正する"
+    reason_rejected: "Contract First の前提が崩れ、契約更新のたびに手修正が再発する"

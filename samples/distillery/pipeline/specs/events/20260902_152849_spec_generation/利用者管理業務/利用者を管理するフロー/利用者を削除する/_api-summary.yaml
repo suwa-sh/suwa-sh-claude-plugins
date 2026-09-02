@@ -1,0 +1,25 @@
+# _api-summary.yaml
+uc: "利用者を削除する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+endpoints:
+  - method: "DELETE"
+    path: "/api/v1/users/{user_no}"
+    summary: "退会する利用者を登録から外す。利用者削除可否条件を満たす場合のみ許可する（司書のみ）"
+    response_schema: "NoContent"
+    tags: ["利用者管理"]
+async_events: []
+schemas:
+  - name: "NoContent"
+    properties: []
+  - name: "BusinessRuleViolationResponse"
+    properties:
+      - name: "code"
+        type: "string"
+        required: true
+      - name: "message"
+        type: "string"
+        required: true
+      - name: "reasons"
+        type: "array<string>"
+        required: true

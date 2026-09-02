@@ -1,0 +1,35 @@
+# _api-summary.yaml
+uc: "自分の貸出内容と返却期限を照会する"
+business: "蔵書利用業務"
+buc: "書籍を貸し出すフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/me/loans/{loan_id}"
+    summary: "ログイン中の利用者本人の貸出 1 件の内容と返却期限・残日数を取得する（本人限定参照）"
+    response_schema: "LoanDetailResponse"
+    tags: ["貸出"]
+async_events: []
+schemas:
+  - name: "LoanDetailResponse"
+    properties:
+      - name: "loan_id"
+        type: "string"
+        required: true
+      - name: "loan_date"
+        type: "string(date)"
+        required: true
+      - name: "loan_period_type"
+        type: "string"
+        required: true
+      - name: "due_date"
+        type: "string(date)"
+        required: true
+      - name: "days_remaining"
+        type: "integer"
+        required: true
+      - name: "loan_status"
+        type: "string"
+        required: true
+      - name: "book"
+        type: "BookSummary"
+        required: true

@@ -1,0 +1,37 @@
+# _api-summary.yaml
+uc: "利用者番号で貸出対象利用者を特定する"
+business: "蔵書利用業務"
+buc: "書籍を貸し出すフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/me/card"
+    summary: "ログイン中の利用者本人の利用者カード情報（利用者番号・氏名・利用者区分・利用者状態）を取得する"
+    response_schema: "LoanTargetResponse"
+    tags: ["利用者"]
+  - method: "GET"
+    path: "/api/v1/loan-targets/{user_no}"
+    summary: "窓口で提示された利用者番号から貸出対象利用者を特定する（司書ロール限定）"
+    response_schema: "LoanTargetResponse"
+    tags: ["貸出"]
+async_events: []
+schemas:
+  - name: "LoanTargetResponse"
+    properties:
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "user_category"
+        type: "string"
+        required: true
+      - name: "user_status"
+        type: "string"
+        required: true
+      - name: "loanable"
+        type: "boolean"
+        required: true
+      - name: "reason"
+        type: "string"
+        required: false

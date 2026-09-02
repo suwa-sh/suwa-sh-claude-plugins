@@ -1,0 +1,45 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "product"
+artifact_id: "product-decision-004"
+title: "職員向け面の館内ネットワーク限定を接続元 IP 制限で実現する"
+status: "draft"
+generated_at: "2026-09-02T14:26:00"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+inputs_ref:
+  - "product-library-management-canonical"
+
+decision:
+  context: "職員向け管理機能は館内ネットワークからのみ利用可という制約がある。ただしこの制約の根拠となる NFR E.5.3.1 は important: false・confidence: low であり、RDRA に館内ネットワーク制限の明示的な記述はない。また館内から AWS への閉域接続（VPN / 専用線）の有無が未確定である"
+  conflict_type: "feature_gap"
+  options:
+    - id: "opt-ip-allowlist"
+      description: "公開ロードバランサ + WAF の IP セット許可リストで館内グローバル IP からのみ許可する"
+      pros:
+        - "追加の閉域接続設備が不要で、初期コストが最小"
+        - "館内 IP が固定であれば実用上の制限効果は十分"
+      cons:
+        - "ネットワーク層での閉域化ではなく、IP 詐称やテザリング経由の回避余地が理論上残る"
+        - "館内グローバル IP が動的な場合に運用が破綻する"
+    - id: "opt-client-vpn"
+      description: "Client VPN + 内部ロードバランサで閉域化する"
+      pros:
+        - "職員端末単位で認証でき、真の閉域アクセスを実現できる"
+        - "館外からの緊急対応にも対応できる"
+      cons:
+        - "接続時間課金と職員端末への VPN クライアント配布・証明書運用が発生する"
+    - id: "opt-site-to-site-vpn"
+      description: "館内ルータと AWS 間の Site-to-Site VPN + 内部ロードバランサ"
+      pros:
+        - "職員端末の設定が不要で、館内ネットワーク単位の閉域化を実現できる"
+        - "制約の意図に最も忠実"
+      cons:
+        - "館内ルータの対応可否と設定変更が前提となり、図書館側の設備調整が必要"
+  chosen_option: "opt-ip-allowlist"
+  rationale: "根拠となる NFR が confidence: low であり、館内ネットワーク設備の状況も未確定である。初期は追加設備なしで開始でき、後から opt-site-to-site-vpn へ移行しても利用者向け面に影響しない構成を選んだ。移行時の変更範囲はロードバランサのスキームとサブネット配置に限定される"
+  risk_assessment: "館内グローバル IP が動的な場合、または個人情報保護の監査で閉域化が要求された場合に構成変更が必要になる。館内ネットワーク設備の確認をユーザーへの確認事項として残し、確認結果次第で Site-to-Site VPN へ移行する"
+  affected_elements:
+    - "internal_web_delivery"
+    - "network_segmentation"
+  review_date: "2026-12-31"

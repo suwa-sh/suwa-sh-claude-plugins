@@ -1,0 +1,84 @@
+{
+  "event_id": "20260902_201827_feedback_run_completed",
+  "type": "feedback_run_completed",
+  "run_id": "feedback-20260902_184257_impl_feedback_d0f57ea2-20260902_184710-7781",
+  "attempt": 1,
+  "created_at": "2026-09-02T20:18:27+09:00",
+  "result_sha256": "111d66852462efd951f674be1a947f4fff31c803057429930581eff03e41bc05",
+  "work_unit_dispositions": [
+    {
+      "work_unit_id": "CR-d0f57ea2-001#1",
+      "disposition": "applied"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-002#1",
+      "disposition": "applied"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-003#1",
+      "disposition": "applied"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-004#1",
+      "disposition": "applied"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-005#1",
+      "disposition": "applied"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-006#1",
+      "disposition": "applied"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-007#1",
+      "disposition": "applied"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-008#1",
+      "disposition": "applied"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-009#1",
+      "disposition": "applied"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-010#1",
+      "disposition": "applied"
+    },
+    {
+      "work_unit_id": "CR-d0f57ea2-011#1",
+      "disposition": "applied"
+    }
+  ],
+  "feedback_request": {
+    "feedback_request_id": "20260902_184257_impl_feedback_d0f57ea2",
+    "input_sha256": "7afd483f6a221ae5f469cbcbc5c7c3bce46be4f4924e7aec3f1e9b2b682c9133",
+    "request_ids": [
+      "CR-d0f57ea2-001",
+      "CR-d0f57ea2-002",
+      "CR-d0f57ea2-003",
+      "CR-d0f57ea2-004",
+      "CR-d0f57ea2-005",
+      "CR-d0f57ea2-006",
+      "CR-d0f57ea2-007",
+      "CR-d0f57ea2-008",
+      "CR-d0f57ea2-009",
+      "CR-d0f57ea2-010",
+      "CR-d0f57ea2-011"
+    ],
+    "work_unit_ids": [
+      "CR-d0f57ea2-001#1",
+      "CR-d0f57ea2-002#1",
+      "CR-d0f57ea2-003#1",
+      "CR-d0f57ea2-004#1",
+      "CR-d0f57ea2-005#1",
+      "CR-d0f57ea2-006#1",
+      "CR-d0f57ea2-007#1",
+      "CR-d0f57ea2-008#1",
+      "CR-d0f57ea2-009#1",
+      "CR-d0f57ea2-010#1",
+      "CR-d0f57ea2-011#1"
+    ]
+  }
+}

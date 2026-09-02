@@ -1,0 +1,44 @@
+# _api-summary.yaml
+uc: "自分の利用者情報を照会する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+endpoints:
+  - operation_id: "getMyProfile"
+    method: "GET"
+    path: "/api/v1/me"
+    summary: "ログイン中の利用者本人の氏名・連絡先・利用者番号を取得する（本人限定参照）"
+    request_schema: "GetMyProfileQueryParams"
+    response_schema: "MyProfileResponse"
+    tags: ["マイページ"]
+async_events: []
+consumes: []
+schemas:
+  - name: "GetMyProfileQueryParams"
+    properties:
+      - name: "reveal"
+        type: "boolean"
+        required: false
+        note: "in: query。既定 false。true のときだけ本人の生の連絡先 email を返す"
+  - name: "MyProfileResponse"
+    properties:
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "email_masked"
+        type: "string"
+        required: true
+      - name: "email"
+        type: "string"
+        required: false
+      - name: "user_category"
+        type: "string"
+        required: true
+      - name: "user_status"
+        type: "string"
+        required: true
+      - name: "registered_at"
+        type: "string"
+        required: true

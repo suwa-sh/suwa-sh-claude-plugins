@@ -1,0 +1,75 @@
+# _api-summary.yaml
+uc: "利用者一覧を照会する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+endpoints:
+  - operation_id: "listUsers"
+    method: "GET"
+    path: "/api/v1/users"
+    summary: "登録済み利用者を氏名・利用者番号・利用者状態とともに一覧取得する（司書のみ）"
+    request_schema: "ListUsersQueryParams"
+    response_schema: "UserListResponse"
+    tags: ["利用者管理"]
+async_events: []
+# cross-UC API 依存（他 UC 所有 operation の利用）。形式は
+# _cross-cutting/api/uc-api-dependencies.md「記録場所と形式」を正本とする。
+# 本 UC は自 UC 所有の listUsers だけで成立し、他 UC 所有 operation を呼び出さない。
+consumes: []
+schemas:
+  - name: "ListUsersQueryParams"
+    properties:
+      - name: "keyword"
+        type: "string"
+        required: false
+      - name: "user_category"
+        type: "string"
+        required: false
+      - name: "page"
+        type: "integer"
+        required: false
+      - name: "per_page"
+        type: "integer"
+        required: false
+  - name: "UserSummary"
+    properties:
+      - name: "user_no"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "email_masked"
+        type: "string"
+        required: true
+      - name: "user_category"
+        type: "string"
+        required: true
+      - name: "user_status"
+        type: "string"
+        required: true
+      - name: "active_loan_count"
+        type: "integer"
+        required: true
+      - name: "active_reservation_count"
+        type: "integer"
+        required: true
+      - name: "deletable"
+        type: "boolean"
+        required: true
+      - name: "registered_at"
+        type: "string"
+        required: true
+  - name: "UserListResponse"
+    properties:
+      - name: "items"
+        type: "array<UserSummary>"
+        required: true
+      - name: "total"
+        type: "integer"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "per_page"
+        type: "integer"
+        required: true

@@ -1,0 +1,40 @@
+round: 3
+group: G23
+findings:
+  - id: S3-G2-024
+    uc: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+    line: 134
+    severity: major
+    viewpoint: 1
+    claim: "round2 の修正は計算ルール表（L140 付近）だけに適用され、概要 L5「貸出日を起点に利用者区分に対応する貸出期間区分の日数を加算した返却期限を自動設定する」と分岐条件一覧 L134 の返却期限設定条件「貸出日を起点として利用者区分に対応する貸出期間区分の日数を加算」が残り、tier-backend-api.md L103「貸出期間区分は要求で指定された値を使用する。既定区分の選択はフロントエンドが行い、API は常に指定値を必須とする」と同一 UC 内で矛盾したままである"
+    fix: "L134 の判定ルールを「貸出記録の作成時に、貸出日を起点として要求で指定された貸出期間区分に対応する日数を加算した日を返却期限として自動設定する（既定区分の選択は窓口貸出受付画面が担う）」に、概要 L5 を「貸出日を起点に指定された貸出期間区分の日数を加算した返却期限を自動設定する」に書き換える"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md#ビジネスルール"
+
+  - id: S3-G2-030
+    uc: "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+    line: 51
+    severity: minor
+    viewpoint: 4
+    claim: "データフロー表の Response 行が `{ loan_id, book_id, user_no, loan_date, loan_period_type, due_date, loan_status, book_status }` で、_api-summary.yaml の LoanResponse と tier-backend-api.md L39 に定義され、ティア完了条件 BDD（取置き中の予約から貸出）でも検証される `reservation_id`（任意）が欠落している"
+    fix: "Response 行を `{ loan_id, book_id, user_no, loan_date, loan_period_type, due_date, loan_status, book_status, reservation_id? }` に修正する（reservation_id は取置き中の予約から貸し出した場合のみ）"
+    source_refs:
+      - "docs/specs/events/20260902_152849_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml#LoanResponse"
+
+  - id: S3-G3-025
+    uc: "予約管理業務/書籍を予約するフロー/予約を登録する"
+    file: "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/tier-backend-api.md"
+    line: 55
+    severity: major
+    viewpoint: 3
+    claim: "S3-G3-001 の修正で spec.md 状態遷移一覧 L132 に「利用者状態 登録済み → 取引進行中（tier-backend-api）」を追加したが、tier-backend-api.md のデータモデル変更は reservations と books のみで users の UPDATE が無く、_model-summary.yaml の tables にも users が存在せず、データフロー図・処理フローにも users 更新が現れない。RDRA 状態.tsv が定義する遷移が実装仕様のどこにも落ちていない"
+    fix: "tier-backend-api.md のデータモデル変更へ `### users（情報: 利用者 / E-002）` を追加し `user_status`（登録済み → 取引進行中。既に取引進行中なら変更なし）/ `updated_at` を UPDATE 対象として記載する。あわせて _model-summary.yaml の tables に users（UPDATE user_status='取引進行中' WHERE user_no = :user_no AND user_status = '登録済み'）を追加し、spec.md のデータフロー図に users ノードと `BE_GW -->|\"UPDATE users SET user_status='取引進行中'\"| DB_User` のエッジ、処理フローに同トランザクション内の更新ステップを追加する"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#利用者状態 登録済み→取引進行中（予約を登録する）"
+      - "docs/specs/events/20260902_152849_spec_generation/予約管理業務/書籍を予約するフロー/予約を登録する/_model-summary.yaml#tables"
+resolved:
+  - {id: S3-G2-024, resolution: fixed}
+  - {id: S3-G3-025, resolution: fixed}
+  - {id: S3-G2-030, resolution: deferred, reason: "minor。最終ラウンド後の残指摘として実装時に扱う", by: orchestrator}
