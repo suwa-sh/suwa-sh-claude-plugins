@@ -1,0 +1,9 @@
+round: 2
+group: traceability
+verified:
+  - "S4-traceability-001 再検証: traceability-matrix.md L29 のカバー判定ルールに「アクター.tsv（3 件）と BUC.tsv は網羅率の分母に含めない（アクターは UC の主体として spec.md のアクター欄で、BUC は BUC ↔ UC 対応表で対応を示す）」が追記され、アクター.tsv の実データ（司書 / 利用者 / タイマー = 3 件）と件数が一致。分母の宣言（`docs/rdra/latest/*.tsv`）と集計範囲のずれが解消 → resolved"
+  - "網羅率サマリーの数値（情報の属性 56/58、条件 14/14、バリエーション 23/23、状態遷移 16/16、外部システム 1/1、合計 110/112 = 98.2%）は round 1 検証値から変更なし。round 1 の fix 案のうち「ルール明記」を選択したため合計 115/113 への更新は不要（整合）"
+  - "rdra-feedback.md: 未カバー 2 件（貸出期間.更新日 / リマインド日数.更新日）の要素・理由・対応方針（属性削除 or 保守 UC 追加）が traceability-matrix.md の是正ループ表と引き続き一致。変更なし"
+findings: []
+resolved:
+  - {id: S4-traceability-001, resolution: fixed}

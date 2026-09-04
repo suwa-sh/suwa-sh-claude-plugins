@@ -1,0 +1,24 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-006"
+title: "コンポーネントスタイルとアイコノグラフィ: radius 8px / shadow sm / Lucide 準拠 outlined"
+status: "approved"
+generated_at: "2026-09-03T04:18:12+09:00"
+context: |
+  Tailwind v4 + Next.js + Storybook 10 でカタログを作る。角丸・影・アイコンの統一方針が必要。
+decision: |
+  コンポーネントは中間スタイル（button/input radius 0.5rem, card radius 0.75rem, shadow sm）。アイコンは Lucide 準拠の outlined SVG を自前生成し（24x24 / stroke 2 / currentColor）、Icon コンポーネント経由で使う。絵文字は使わない。色は Tailwind v4 の制約から @theme inline 経由または style prop で指定する。
+consequences:
+  positive:
+    - "外部アイコンパッケージに依存せず SVG を Storybook に同梱できる"
+    - "currentColor により dark mode / ポータル色に自動追従する"
+  negative:
+    - "Lucide 本体より収録数が少なく、追加時は SVG を手書きする"
+alternatives_considered:
+  - name: "シャープ（radius 2px, shadow none）"
+    reason_rejected: "公共サービスの親しみやすさが薄れる"
+  - name: "柔らかい（radius 16px, shadow md）"
+    reason_rejected: "テーブル主体の管理画面で角丸が過剰になる"
+  - name: "Heroicons / Material Symbols"
+    reason_rejected: "npm 依存を増やす。実装リポの FW が未定のため SVG 直置きが最も可搬"

@@ -1,0 +1,112 @@
+# _model-summary.yaml
+uc: "書籍詳細を参照する"
+business: "蔵書管理業務"
+buc: "書籍を検索するフロー"
+
+bounded_context_id: "BC-001"
+# SELECT のみの UC のため aggregate_id は省略
+
+models:
+  - name: "BookDetailPageState"
+    tier: "tier-frontend-user"
+    layer: "view"
+    type: "state"
+    rdra_info: "書籍"
+  - name: "GetBookDetailRequest（api-client）"
+    tier: "tier-frontend-user"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "書籍"
+  - name: "GetBookRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "GetBookDetailQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "Genre"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "ジャンル"
+  - name: "ReservationQueue"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "予約"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+  - name: "GenreRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "ジャンル"
+  - name: "ReservationCountRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "予約"
+  - name: "BookDetailResponse"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "view-model"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :bookId（genres JOIN で genre_name 取得）"
+    indexes_needed:
+      - columns: ["book_id"]
+        reason: "主キー参照"
+        access_pattern: "書籍 ID による 1 件取得"
+  - name: "genres"
+    rdra_info: "ジャンル"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "genre_id = books.genre_id（JOIN）"
+    indexes_needed: []
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "COUNT(*) WHERE book_id = :bookId AND current_status IN ('RESERVED', 'NOTIFIED')（予約 BC 公開 IF 経由）"
+    indexes_needed:
+      - columns: ["book_id", "current_status"]
+        reason: "書籍ごとの有効予約件数の集計（予約待ち人数）"
+        access_pattern: "WHERE book_id = ? AND current_status IN (...)"
+  - name: "book_events"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :bookId AND event_type = 'REGISTERED'（registeredAt 導出）"
+    indexes_needed:
+      - columns: ["book_id", "occurred_at"]
+        reason: "登録日時の導出"
+        access_pattern: "book_id で絞り occurred_at 順に取得"
+
+kvs:
+  - key_pattern: "cache:books:detail:{bookId}"
+    purpose: "cache"
+    value_type: "BookDetailResponse JSON"
+    ttl: "60s"
+    operations: ["GET", "SET", "DEL"]
+
+object_storage: []

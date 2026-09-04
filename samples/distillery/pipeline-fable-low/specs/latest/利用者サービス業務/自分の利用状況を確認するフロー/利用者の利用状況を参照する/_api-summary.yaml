@@ -1,0 +1,213 @@
+# _api-summary.yaml
+uc: "利用者の利用状況を参照する"
+business: "利用者サービス業務"
+buc: "自分の利用状況を確認するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/users/{userNumber}/usage"
+    summary: "司書が利用者番号を指定して貸出・予約の状況を照会する（連絡先は既定マスク。reveal=true で開示 + 監査ログ）"
+    request_schema: "UserUsageQueryParams"
+    response_schema: "UserUsageResponse"
+    tags: ["users"]
+    security: ["bearer"]
+    roles: ["司書"]
+    parameters:
+      - name: "userNumber"
+        in: "path"
+        type: "string"
+        required: true
+      - name: "loanScope"
+        in: "query"
+        type: "string"
+        required: false
+        enum: ["current", "history", "all"]
+        default: "current"
+        description: "貸出の取得範囲: current（現在の貸出）/ history（履歴）/ all（全件）"
+      - name: "includeClosedReservations"
+        in: "query"
+        type: "boolean"
+        required: false
+        default: false
+        description: "終了・取消済みの予約を含めるか"
+      - name: "reveal"
+        in: "query"
+        type: "boolean"
+        required: false
+        default: false
+        description: "連絡先のマスキングを解除するか"
+    responses:
+      "200": "UserUsageResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+      "404": "ProblemDetails"
+    errors:
+      - status: "400"
+        code: "VALIDATION_ERROR"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+      - status: "404"
+        code: "USER_NOT_FOUND"
+async_events: []
+schemas:
+  - name: "UserUsageQueryParams"
+    properties:
+      - name: "loanScope"
+        type: "string"
+        enum: ["current", "history", "all"]
+        required: false
+      - name: "includeClosedReservations"
+        type: "boolean"
+        required: false
+      - name: "reveal"
+        type: "boolean"
+        required: false
+  - name: "UserUsageResponse"
+    properties:
+      - name: "user"
+        type: "UserUsageProfile"
+        required: true
+      - name: "loans"
+        type: "array"
+        items: "MyLoanItem"
+        required: true
+      - name: "reservations"
+        type: "array"
+        items: "MyReservationItem"
+        required: true
+      - name: "summary"
+        type: "UsageSummary"
+        required: true
+      - name: "today"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "remindDays"
+        type: "integer"
+        required: true
+  - name: "UserUsageProfile"
+    properties:
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "userType"
+        type: "string"
+        enum: ["STAFF", "PATRON"]
+        required: true
+      - name: "emailMasked"
+        type: "string"
+        required: true
+      - name: "phoneMasked"
+        type: "string"
+        required: false
+      - name: "addressMasked"
+        type: "string"
+        required: false
+      - name: "email"
+        type: "string"
+        required: false
+      - name: "phone"
+        type: "string"
+        required: false
+      - name: "address"
+        type: "string"
+        required: false
+  - name: "UsageSummary"
+    properties:
+      - name: "onLoanCount"
+        type: "integer"
+        required: true
+      - name: "overdueCount"
+        type: "integer"
+        required: true
+      - name: "activeReservationCount"
+        type: "integer"
+        required: true
+  - name: "MyLoanItem"
+    properties:
+      - name: "loanId"
+        type: "string"
+        required: true
+      - name: "book"
+        type: "BookSummary"
+        required: true
+      - name: "loanedOn"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "dueDate"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "returnedOn"
+        type: "string"
+        format: "date"
+        required: false
+      - name: "status"
+        type: "string"
+        enum: ["ON_LOAN", "OVERDUE", "RETURNED"]
+        required: true
+      - name: "remainingDays"
+        type: "integer"
+        required: false
+      - name: "dueStatus"
+        type: "string"
+        enum: ["OK", "SOON", "OVERDUE", "RETURNED"]
+        required: true
+  - name: "MyReservationItem"
+    properties:
+      - name: "reservationId"
+        type: "string"
+        required: true
+      - name: "book"
+        type: "BookSummary"
+        required: true
+      - name: "acceptedAt"
+        type: "string"
+        format: "date-time"
+        required: true
+      - name: "queuePosition"
+        type: "integer"
+        required: true
+      - name: "totalWaiting"
+        type: "integer"
+        required: true
+      - name: "status"
+        type: "string"
+        enum: ["RESERVED", "NOTIFIED", "CANCELLED", "CLOSED"]
+        required: true
+      - name: "notifiedAt"
+        type: "string"
+        format: "date-time"
+        required: false
+      - name: "cancelledAt"
+        type: "string"
+        format: "date-time"
+        required: false
+      - name: "canCancel"
+        type: "boolean"
+        required: true
+  - name: "BookSummary"
+    properties:
+      - name: "bookId"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "mediaType"
+        type: "string"
+        enum: ["PAPER", "ELECTRONIC"]
+        required: true
+      - name: "status"
+        type: "string"
+        enum: ["AVAILABLE", "ON_LOAN", "RESERVED"]
+        required: true

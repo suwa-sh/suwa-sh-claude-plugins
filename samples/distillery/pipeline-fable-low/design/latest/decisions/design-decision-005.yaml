@@ -1,0 +1,22 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-005"
+title: "レイアウト方針: 司書=12 列グリッド + サイドバー、利用者=トップナビ"
+status: "approved"
+generated_at: "2026-09-03T04:18:12+09:00"
+context: |
+  司書ポータルは 5 業務 18 画面で情報密度が高い。利用者ポータルは 6 画面で導線が少なく、タブレット利用（NFR F.1.1.3 Lv2）も想定する。
+decision: |
+  司書ポータルは 12 列グリッド + サイドバー 16rem（collapsed 4rem）。利用者ポータルはシングルカラム中心 + トップナビ 3.5rem。画面パターン別に 12col / 8+4 / 2+8+2 / 6+6 / 4×3+12 を割り当て、spacing は page-padding 1.5rem / section-gap 2rem / component-gap 0.75rem / card-padding 1.5rem。gap > padding > margin の原則。
+consequences:
+  positive:
+    - "管理画面の情報密度と利用者画面の読みやすさを両立する"
+    - "ブレークポイント lg/md をフル設計し、sm は簡易対応で工数を抑える"
+  negative:
+    - "ポータルごとにシェルが 2 種類必要になる"
+alternatives_considered:
+  - name: "両ポータルともサイドバー"
+    reason_rejected: "利用者ポータルはナビ 4 項目で、サイドバーが表示領域を無駄にする"
+  - name: "両ポータルともカード主体 + ヘッダーナビ"
+    reason_rejected: "属性数 8 の書籍一覧はテーブルの方が比較しやすい"

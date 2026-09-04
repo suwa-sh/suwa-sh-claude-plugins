@@ -1,0 +1,48 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "product"
+artifact_id: "product-decision-006"
+title: "認証基盤をセルフホスト IdP ではなくマネージド IdP で構成する"
+status: "accepted"
+generated_at: "2026-09-03T04:07:39"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+inputs_ref:
+  - "product-library-management-canonical"
+  - "product-library-management-input"
+
+decision:
+  context: "アーキテクチャ設計 CTP-003（confidence: medium）は司書・利用者を単一のセルフホスト IdP で管理する方針を置いている。product-input の tier-idp は「セルフホスト IdP / OAuth2/OIDC」を技術候補としつつ、マネージド IdP への置換は infra 側の判断余地ありと注記している。運用要員は司書中心の小規模体制（NFR C.5.1.1 サポート営業時間内）で、IdP のパッチ適用・可用性維持・認証ログ保全（NFR E.7.1.1 / C.6.1.1）を自前で負うことが難しい"
+  conflict_type: "granularity"
+  options:
+    - id: "opt-managed-idp"
+      description: "マネージド IdP（OIDC/OAuth2 トークン発行、パスワードポリシー、アカウントロック、監査イベント出力を提供）を採用し、司書と利用者を単一テナント内のグループで区別する"
+      pros:
+        - "パッチ適用・冗長化・認証ログの保全がマネージドで提供され、小規模運用体制に適合する"
+        - "パスワードポリシー・連続失敗ロック・トークン失効（NFR E.5.1.1 / CTR-004）を設定のみで満たせる"
+        - "ベースライン 1,000 ユーザー規模ではほぼ無料枠内で、コスト方針 balanced に適合する"
+      cons:
+        - "アーキテクチャ設計 CTP-003 のセルフホスト前提と異なる（arch フィードバックで整合を取る）"
+        - "利用者番号を ID とする運用や画面カスタマイズはベンダーの制約内に収める必要がある"
+    - id: "opt-self-hosted-idp"
+      description: "セルフホスト IdP をコンテナ実行基盤上で運用する"
+      pros:
+        - "アーキテクチャ設計 CTP-003 に忠実"
+        - "ログイン画面・クレーム設計の自由度が高い"
+      cons:
+        - "IdP の脆弱性対応・バージョン更改・Multi-AZ 化・DB のバックアップを自前で運用する必要がある"
+        - "認証情報の保護（NFR E.6.1.1）と監査ログ保全を自前で証明する必要があり、リリース前診断（CTP-012）の範囲が広がる"
+    - id: "opt-app-embedded-auth"
+      description: "Backend API 内に認証機能を実装し IdP ティアを設けない"
+      pros:
+        - "構成要素が最少"
+      cons:
+        - "アーキテクチャ設計のティア分離（tier-idp）と OAuth2/OIDC 前提（CTP-001）に反する"
+        - "トークン発行・失効・ロックの実装と保守をアプリケーションが抱える"
+  chosen_option: "opt-managed-idp"
+  rationale: "認証機能要件（ID/パスワード + パスワードポリシー + ロック + OIDC）はマネージド IdP の標準機能で全て満たせ、運用体制と可用性目標（99%、N+1）に対して最も運用負担が小さい。アーキテクチャ上の IdP ティアの責務と OAuth2/OIDC 境界は変えず、実現手段のみをマネージドに置き換える。CTP-003 はベンダーニュートラルに「マネージド IdP を第一候補、セルフホストを代替候補」へ更新することを arch フィードバックとして提案する"
+  risk_assessment: "ベンダー依存が増える。同一ベンダー内での移行可能性（CTP-013）は OIDC 標準に限定した利用（カスタム属性の最小化、クレーム設計の文書化）で保つ。将来の館内ディレクトリ連携が必要になった場合は IdP のフェデレーション機能で吸収する"
+  affected_elements:
+    - "identity_federation"
+    - "api_edge"
+  review_date: "2027-03-31"

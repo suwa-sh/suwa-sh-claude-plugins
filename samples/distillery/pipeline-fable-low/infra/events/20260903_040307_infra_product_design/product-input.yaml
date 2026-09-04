@@ -1,0 +1,128 @@
+schema_version: "1.0"
+artifact_type: "product_input"
+skill_type: "product"
+artifact_id: "product-library-management-input"
+title: "図書館蔵書管理システム ワークロード入力"
+status: "draft"
+generated_at: "2026-09-03T04:03:07"
+source_refs:
+  - "arch-design:20260903_032540_initial_arch"
+  - "nfr-grade:20260903_031858_initial_nfr"
+decision_refs: []
+inputs_ref:
+  - "foundation-context"
+  - "shared-platform-context"
+
+workload:
+  name: "図書館蔵書管理システム"
+  description: "1館の図書館を対象に、紙台帳と表計算ファイルに分散していた蔵書情報と利用者情報を一元管理し、貸出・返却・予約をWeb画面から行えるようにするシステム。貸出時の返却期限自動設定、期限前リマインドと延滞督促のメール自動送信、返却時の予約者への通知により司書の手作業とミスを削減する。利用者は自分の貸出履歴と予約状況をWeb画面で確認でき、司書は在庫状況・人気書籍ランキング・期間別貸出統計をレポートとして把握できる。将来の電子書籍対応を見据え、書籍に媒体種別を持たせる。"
+  target_clouds:
+    - "aws"
+
+workload_type: "web_app"
+
+availability_target:
+  sla: "99%"
+  failover: "warm_standby"
+
+latency_sensitivity:
+  category: "interactive"
+  target_p99: "500ms"
+
+data_sensitivity:
+  classification: "restricted"
+  pii: true
+  encryption: "at_rest_and_in_transit"
+  compliance: []
+  data_residency: "japan"
+
+traffic_pattern:
+  type: "scheduled"
+  baseline_rps: 10
+  spike_multiplier: 2
+
+consistency_needs:
+  type: "strong"
+
+recovery_target:
+  rpo: "4h"
+  rto: "2h"
+  backup: "daily"
+
+observability_needs:
+  metrics:
+    - "cpu"
+    - "memory"
+    - "disk"
+    - "network"
+    - "latency"
+    - "error_rate"
+    - "throughput"
+  logs:
+    - "access"
+    - "audit"
+    - "diagnostic"
+    - "dependency"
+  sli:
+    - "availability"
+    - "latency"
+    - "error_rate"
+    - "throughput"
+  alerting:
+    - "health_check"
+    - "error_rate"
+    - "latency_p99"
+
+cost_posture:
+  strategy: "balanced"
+
+# arch-design.yaml の system_architecture.tiers / data_architecture.storage_mapping 由来の補足。
+# MCL の element 生成のヒントとして渡す（ベンダーニュートラル表記）。
+tiers:
+  - id: "tier-frontend-user"
+    name: "利用者向けフロントエンド"
+    technology_candidates: ["SPA", "レスポンシブ Web UI", "CDN"]
+    exposure: "internet"
+  - id: "tier-frontend-staff"
+    name: "司書向けフロントエンド"
+    technology_candidates: ["SPA", "レスポンシブ Web UI"]
+    exposure: "internal_network_only"
+    note: "館内ネットワーク限定公開（NFR E.5.3.1）。公開経路と館内経路を分離する"
+  - id: "tier-api-gateway"
+    name: "API Gateway"
+    technology_candidates: ["API Gateway / リバースプロキシ", "WAF", "LB"]
+    note: "TLS 終端、WAF、IdP 発行トークン検証、粗粒度 RBAC、レート制限"
+  - id: "tier-idp"
+    name: "IdP"
+    technology_candidates: ["セルフホスト IdP", "OAuth2/OIDC"]
+    note: "司書・利用者を単一 IdP で管理（CTP-003 セルフホスト IdP。マネージド IdP への置換は infra 側の判断余地あり）"
+  - id: "tier-backend-api"
+    name: "Backend API"
+    technology_candidates: ["CaaS(k8s)", "コンテナ + LB"]
+    note: "6 BC を内包するモジュラモノリス。ステートレス水平スケールアウト前提"
+  - id: "tier-worker"
+    name: "ワーカー"
+    technology_candidates: ["CronJob(k8s)", "MQ", "コンテナワーカー"]
+    note: "日次バッチ（リマインド・延滞判定、夜間 8 時間枠）+ MQ コンシューマー（Queue-Based Load Leveling + DLQ）"
+  - id: "tier-datastore"
+    name: "データストア"
+    technology_candidates: ["RDB", "KVS", "Object Storage"]
+    note: "RDB を正本とする強整合。KVS は冪等キー・セッション・参照系キャッシュ。Object Storage は遠隔地バックアップ保管"
+  - id: "tier-external-integration"
+    name: "外部連携"
+    technology_candidates: ["HTTPS API クライアント", "SMTPS クライアント", "ACL アダプタ"]
+    note: "メール配信サービス連携。Retry + Circuit Breaker + Timeout"
+
+storage_elements:
+  - category: "database"
+    engine_preference: "PostgreSQL"
+    reason: "storage_mapping の rdb 11 件（書籍/ジャンル/利用者/貸出/貸出期間/リマインド日数/予約/通知/貸出統計/監査ログ/認証情報）。強整合トランザクション、BC 単位のスキーマ論理分離、RPO 数時間のためのトランザクションログ退避が前提"
+  - category: "cache"
+    engine_preference: "Redis"
+    reason: "storage_mapping の cache 4 件（ジャンル/貸出期間/リマインド日数の Cache-Aside、セッション）+ 冪等キー管理（CTP-004）。TTL 管理が前提"
+  - category: "storage"
+    engine_preference: "Object Storage"
+    reason: "tier-datastore の technology_candidates に Object Storage（SPA 静的コンテンツ配信・バックアップ遠隔地保管 NFR A.3.1.1）"
+  - category: "messaging"
+    engine_preference: "Managed MQ"
+    reason: "tier-worker の MQ（通知メッセージの非同期化 SP: メール送信の非同期化。at-least-once + DLQ）"

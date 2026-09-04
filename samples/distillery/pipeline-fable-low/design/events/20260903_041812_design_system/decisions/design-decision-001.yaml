@@ -1,0 +1,24 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-001"
+title: "ブランドアイデンティティ方向性: 信頼・堅実路線「Libro」"
+status: "approved"
+generated_at: "2026-09-03T04:18:12+09:00"
+context: |
+  図書館蔵書管理システムは公共サービスであり、主要アクターは司書（社内・提供者）と利用者（社外・受益者）。BUC のトーンは業務手続き中心で、装飾より判断の速さと安心感が求められる。ブランド名・トーン・基調色を決める必要があった。
+decision: |
+  ブランド方針は「信頼・堅実路線」を採用し、名称を Libro（libro=本）とする。基調色は信頼感ブルー系（#2563EB）。ボイスは「状態と次の行動をセットで伝える」「個人情報は既定で伏せる」「色だけで意味を伝えない」を原則にする。
+consequences:
+  positive:
+    - "公共サービスとして幅広い年齢層に安心感を与える"
+    - "業務系 UI の定番パターンを流用でき実装コストが低い"
+    - "JIS X 8341-3 AA 目標（NFR F.3.1.2）と整合するコントラスト設計になる"
+  negative:
+    - "差別化の弱いビジュアルになりやすい"
+    - "利用者ポータルはやや堅い印象になる"
+alternatives_considered:
+  - name: "革新・先進路線"
+    reason_rejected: "図書館の利用者層（子どもから高齢者まで）に対して先進的な表現は理解負荷が高い"
+  - name: "親近・カジュアル路線"
+    reason_rejected: "司書向け管理機能が主体（画面 18/24）であり、業務系に軽く見える"

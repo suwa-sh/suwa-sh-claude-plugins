@@ -1,0 +1,149 @@
+round: 2
+# Step6.5 セマンティック反証レビュー（round 2）
+# 対象: round-1 findings（R-001〜R-029）の target と、その修正で影響を受けた成果物のみ
+# 入力の正: _cross-cutting/api/openapi.yaml / asyncapi.yaml / datastore/*.yaml
+# 観点: 1 トレーサビリティ / 2 依存の宣言 / 3 契約生成適性 / 4 一貫性 / 5 gherkin 品質
+#
+# round 1 で確認済み（本ラウンドで再検証し解消を確認した id）:
+#   R-001 R-002 R-004 R-005(主) R-007 R-008 R-009 R-011(主) R-012 R-014 R-015
+#   R-017 R-018 R-020 R-021 R-022 R-023 R-024 R-027 R-028 R-029
+findings:
+  # ============================================================
+  # major
+  # ============================================================
+  - id: R-010
+    viewpoint: 3
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/_api-summary.yaml"
+    claim: "_api-summary.yaml のキー正規化（security / roles / parameters / errors）は完了したが、正規化後の値が openapi と突合しない。errors は 23 endpoint で openapi の responses と不一致、roles は語彙が正規化されておらず機械可読にならない。契約入力として使うと UC ごとに別の認可・エラー分岐が生成される"
+    evidence: "(1) errors の 500: 16 endpoint が `status: '500' / code: INTERNAL_ERROR` を宣言するが、openapi.yaml で 500 を宣言する operation は POST /api/v1/loans の 1 件のみ（InternalServerError の出現は定義 + 参照の 2 箇所）。(2) 逆向きの欠落: openapi が 429 RATE_LIMITED を宣言する 8 operation（GET /api/v1/books・/genres・/books/{bookId}・/me/loans・/me/reservations・/reservations/{reservationId}・POST /api/v1/reservations 等）で UC 側 errors に 429 が 0 件。POST /api/v1/users と PUT /api/v1/users/{userNumber} は openapi が 400 を宣言するのに UC 側 errors に 400 が無い（書籍側 POST /api/v1/books は 400 BAD_REQUEST を宣言しており非対称）。GET /api/v1/genres は UC 側が 401 / 403 を宣言するが openapi には無い（anonymous 許可の公開エンドポイント）。GET /api/v1/books/{bookId} は UC 側が 403 を宣言するが openapi には無い。(3) roles の語彙: 単一トークンのリストになっておらず `利用者(本人)`（予約状況を参照する / 貸出履歴を参照する / 予約を取り消す）、`利用者(本人)|司書`・`利用者|司書`（予約を取り消す / 予約を登録する）のように 1 要素に 2 ロールと限定子を詰め込んだ値がある。匿名は UC 側が `匿名`、openapi の x-roles が `ANONYMOUS` で対応表が無い。(4) 同一エンドポイントの宣言が UC 間で割れる: GET /api/v1/books/{bookId} は 書籍詳細を参照する が security [bearer, anonymous] / roles [司書, 利用者, 匿名]、書籍を編集する が security [bearer] / roles [司書, 利用者]。(5) レスポンス表現は依然 3 系統: responses（蔵書管理・利用者管理の 15 endpoint）/ response_status（貸出系 5 endpoint）/ どちらも無し（12 UC の 14 endpoint）"
+    suggested_fix: "openapi の各 operation の responses を正として errors を機械生成する（500 と 429 の宣言方針をどちらかに統一し、GET /api/v1/genres の 401 / 403 と GET /api/v1/books/{bookId} の 403 は openapi 側に追加するか UC 側から削除する）。roles は `[司書]` `[利用者]` `[匿名]` の単一トークン列に限定し、「本人のみ」は roles ではなく別キー（例: ownership: self）で表現する。openapi の x-roles と同じ語彙に揃える。レスポンス表現は responses に一本化する"
+
+  - id: R-013
+    viewpoint: 4
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    claim: "返却通知の送信先解決を「有効予約（RESERVED / NOTIFIED）の queue_position = 1」に変更した round 1 の修正が UC 側だけで完結しており、openapi.yaml が旧定義（RESERVED のみ）のまま残っている。契約と UC で canSend の真偽が割れ、翌日以降の再送信ケースで実装が分岐する"
+    evidence: "返却通知を送信する/tier-backend-api.md L134「有効予約（状態『予約中』RESERVED または『通知済み』NOTIFIED）のうち queue_position = 1 の予約の利用者を送信先とする」・L136「順位 1 位が NOTIFIED でもプレビューの reservation は null にしない」。対して openapi.yaml L2828 canSend.description「送信可否（予約順位 1 位の RESERVED が存在し、当日の RETURN_NOTICE が未作成のとき true）」、L626 sendReturnNotice.description「返却済み貸出の書籍に予約中の予約がある場合」。NOTIFIED の 1 位に対する翌日再送信は UC では可・openapi では canSend=false となる"
+    suggested_fix: "openapi.yaml の canSend.description を「有効予約（RESERVED / NOTIFIED）の予約順位 1 位が存在し、その予約 × RETURN_NOTICE × 当日の通知レコードが未作成のとき true」に、sendReturnNotice.description の「予約中の予約がある場合」を「有効予約（RESERVED / NOTIFIED）がある場合」に修正する。getReturnNoticePreview.description と RecipientSummary.description も同じ語に揃える"
+
+  - id: R-016
+    viewpoint: 3
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    claim: "409 の oneOf 化が UC 側（_api-summary.yaml / tier-backend-api.md）だけに入り、openapi.yaml は DELETE /api/v1/users/{userNumber} の 409 を UserNotDeletableProblemDetails 単一のまま残している。round 1 で指摘した「reasons required のスキーマで検証・生成クライアントが破綻する」状態が契約側で未解消"
+    evidence: "利用者を削除する/_api-summary.yaml L58「'409': oneOf: [ProblemDetails, UserNotDeletableProblemDetails]」・tier-backend-api.md L82「code = USER_NOT_DELETABLE のときだけ reasons を持つ ... 契約上は oneOf」。対して openapi.yaml L1013-1018 は 409 の content schema が $ref: '#/components/schemas/UserNotDeletableProblemDetails' 単一で、L1600 以降の同スキーマは reasons を required に持つ。openapi.yaml で UserNotDeletableProblemDetails を参照するのはこの 1 箇所のみで oneOf は 0 件。code enum への SELF_DELETE_NOT_ALLOWED / MEDIA_TYPE_CHANGE_NOT_ALLOWED 追加は完了している"
+    suggested_fix: "openapi.yaml の DELETE /api/v1/users/{userNumber} の 409 を oneOf: [ProblemDetails, UserNotDeletableProblemDetails] に変更し、discriminator 代わりに code で判別する旨を description に明記する。書籍側の MEDIA_TYPE_CHANGE_NOT_ALLOWED を返す PUT /api/v1/books/{bookId} の 409 も同じ形にそろえる"
+
+  - id: R-030
+    viewpoint: 3
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    claim: "R-025 で ProblemDetails.code を enum 化して業務エラーコードの正本にしたが、UC 側が使う 2 コード（BAD_REQUEST / CONCURRENT_UPDATE）が enum に無い。正本を作った直後に正本違反が残っており、突合を機械化した瞬間に落ちる"
+    evidence: "openapi.yaml の ProblemDetails.code enum は 30 値で BAD_REQUEST / CONCURRENT_UPDATE を含まない。BAD_REQUEST は 書籍を登録する/_api-summary.yaml L25・tier-backend-api.md L57、書籍を編集する/_api-summary.yaml L57・tier-backend-api.md L77、書籍を削除する/_api-summary.yaml L32・tier-backend-api.md L41、利用者を削除する/_api-summary.yaml L61・tier-backend-api.md L73 の 4 UC 8 箇所（400: JSON 構文不正 / Idempotency-Key 欠落 / If-Match 非整数）。CONCURRENT_UPDATE は 貸出を登録する/_api-summary.yaml L59・tier-backend-api.md L87・L148・_model-summary.yaml L192、予約を登録する/_api-summary.yaml L51・tier-backend-api.md L81、予約を取り消す/_api-summary.yaml L54・tier-backend-api.md L86、返却を登録する/_api-summary.yaml L56・tier-backend-api.md L83・tier-frontend-staff.md L44、返却通知を送信する/_api-summary.yaml L53・tier-backend-api.md L83 の 5 UC 13 箇所（409: version 不一致・順位採番の一意制約違反）。同じ楽観ロック競合を蔵書・利用者系は OPTIMISTIC_LOCK_CONFLICT、貸出系は CONCURRENT_UPDATE と呼び分けており R-001 と同型の乖離が別名で残っている"
+    suggested_fix: "CONCURRENT_UPDATE は OPTIMISTIC_LOCK_CONFLICT に統合する（順位採番の一意制約違反は RESERVATION_PRIORITY_MISMATCH か新コードに割り当てる）。BAD_REQUEST は enum に追加する（400 の汎用コード。VALIDATION_ERROR との使い分けを description に明記）。決定後に 9 UC の _api-summary.yaml / tier-*.md / _model-summary.yaml を置換する"
+
+  - id: R-031
+    viewpoint: 2
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/_api-summary.yaml"
+    claim: "R-011 / R-012 の修正がリマインド・督促の 2 UC だけに適用され、同じ構造を持つ返却通知 UC の非同期契約が宣言不足のまま残っている。asyncapi に定義済みの DLQ メッセージと consumer が UC 側から辿れず、契約生成で購読側・DLQ 側が生成されない"
+    evidence: "返却通知を送信する/_api-summary.yaml の async_events は publish の ReturnNoticeRequested 1 件のみ（L62-68）。対して同 UC の tier-worker.md は L13「出力チャネル: なし（DLQ: notifications.return-notice-requested.dlq）」・L25「上限（5 回）を超えたら DLQ へ退避」・L45 ReturnNoticeSweepJob（日次再発行）を定義し、asyncapi.yaml は L57 / L114-121 で publishReturnNoticeRequestedDlq + ReturnNoticeRequestedDead（L284-291。traits: dlqHeaders で attemptCount / lastFailureReason / lastFailedAt / originalChannel が required）と L102 consumeReturnNoticeRequested を定義している。比較対象の リマインドを送信する/_api-summary.yaml は subscribe / 再発行スイープの publish / DLQ の publish の 3 エントリを持つ。さらに tier-worker.md の DLQ 退避手順に退避ヘッダ 4 項目の付与記述が無く（リマインド側 tier-worker.md L27 にはある）、BDD L95 も「DLQ に退避される」までで attemptCount 等の観測可能な Then が無い"
+    suggested_fix: "返却通知を送信する/_api-summary.yaml に (a) ReturnNoticeRequested の direction: subscribe（消費: tier-worker ReturnNoticeConsumer）、(b) 再発行スイープ ReturnNoticeSweepJob の publish、(c) ReturnNoticeRequestedDead の DLQ publish（退避ヘッダ 4 項目のスキーマ付き）を追加する。tier-worker.md の DLQ 退避手順に退避ヘッダ付与を明記し、BDD に attemptCount=6 等の Then を追加する（リマインド側と同文）"
+
+  # ============================================================
+  # minor
+  # ============================================================
+  - id: R-005
+    viewpoint: 4
+    severity: minor
+    target: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/tier-worker.md"
+    claim: "ReturnNoticeRequested の発行タイミングは「コミット後発行」に統一されたが、ワーカー側に in-tx 発行時代の理由付けが残り、DLQ 退避の判断根拠が契約と矛盾する。コミット後発行なら「通知レコードが存在しない」は設計上起こらないため、この分岐の扱いが実装時に迷いを生む"
+    evidence: "asyncapi.yaml L95-99 publishReturnNoticeRequested.description「通知レコードの作成と予約の NOTIFIED 遷移を同一トランザクションでコミットした後に発行する（コミット後発行）」（round 1 の R-005 で修正済み）。対して 返却通知を送信する/tier-worker.md L19「レコードが無ければ WARN を出力して DLQ へ退避する（API 側のコミット前に発行された不整合）」・L32「通知レコードが存在しない | No | Yes | WARN を出力して DLQ へ退避」が in-tx 発行前提の理由をそのまま残している"
+    suggested_fix: "tier-worker.md L19 / L32 の括弧内の理由を「コミット後発行のため通常は発生しない。発生時はロールバック後に発行された等の異常として WARN + DLQ 退避し運用が調査する」に書き換える。または短時間リトライ後に DLQ とする方針を明記する"
+
+  - id: R-032
+    viewpoint: 4
+    severity: minor
+    target: "docs/todo.md"
+    claim: "round 1 で解消した R-008 の起票（DIST-034）がステータス open のまま残り、本文も「置換を実施していない」と書かれている。todo を入力にする後続工程が解消済みの作業を再実行する"
+    evidence: "docs/todo.md L371-378 DIST-034「UC 側 KVS キー名を kvs-schema.yaml の命名規約に追随させる」・「round 1 の修正では UC ファイルの担当分割上この置換を実施していない（kvs-schema.yaml 側に対応表を注記済み）」・ステータス: open。対して round-1.yaml の R-008 resolved は fixed（「docs/todo.md DIST-034 は本ラウンドで解消」）で、実測でも UC 側 _model-summary.yaml の key_pattern 16 種はすべて kvs-schema.yaml の pattern と一致し、旧キー名は kvs-schema.yaml の改名履歴注記（L8 / L11）にしか残っていない"
+    suggested_fix: "DIST-034 のステータスを done（または closed）にし、本文の「実施していない」を「Step6.5 round 1 で解消済み」に更新する"
+
+  # ============================================================
+  # deferred（成果物側の修正は求めない。severity は round 1 据え置き）
+  # ============================================================
+  - id: R-003
+    viewpoint: 4
+    severity: blocker
+    target: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/tier-backend-api.md"
+    claim: "credentials に行を作成する UC が存在せず、登録された利用者がログインできない（round 1 から未解消）。RDRA に該当 UC が無いため deferred。docs/todo.md DIST-031 に起票済みで、本ラウンドでは成果物側の修正を求めない"
+    evidence: "docs/todo.md L338 DIST-031「利用者の認証情報を初期作成する UC の追加」。_cross-cutting/rdra-feedback.md #3 に変更要望を記載済み。仕様の状態は round 1 の evidence から変化なし"
+    suggested_fix: "RDRA 側で認証情報作成の要求を追加してから dist-requirements → dist-spec を再実行する（本ラウンドでの成果物修正は不要）"
+
+  - id: R-006
+    viewpoint: 4
+    severity: blocker
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    claim: "loan_statistics を UPSERT する集計バッチの UC が存在しない（round 1 から未解消）。RDRA に該当 UC が無いため deferred。docs/todo.md DIST-032 に起票済みで、本ラウンドでは成果物側の修正を求めない"
+    evidence: "docs/todo.md L349 DIST-032「貸出統計を集計する定期実行 UC の追加」。rdb-schema.yaml の _review_notes に集計バッチの前提（実行周期・UPSERT キー・ranking 付与・loan_count / loan_total の定義・遅延到着の再集計・cache:report:* 無効化）を追記済み。_cross-cutting/rdra-feedback.md #4 に変更要望を記載済み"
+    suggested_fix: "RDRA 側で集計バッチの要求を追加してから再実行する（本ラウンドでの成果物修正は不要）"
+
+  - id: R-019
+    viewpoint: 1
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/spec-event.yaml"
+    claim: "spec-event スキーマに USDM SPEC ID / acceptance_criteria への機械可読な対応フィールドが無く、USDM 層のトレーサビリティを機械検証できない（round 1 から未解消）。dist-spec スキル側のスキーマ拡張要求のため deferred。docs/todo.md DIST-033 に起票済み"
+    evidence: "docs/todo.md L360 DIST-033「spec-event スキーマに USDM SPEC 参照フィールドを追加する」。event 配下に SPEC- の文字列は 0 件のままで、traceability-matrix.md の分母も docs/rdra/latest/*.tsv のみ"
+    suggested_fix: "dist-spec スキル側で use_cases 要素に usdm_spec_ids / usdm_acceptance_criteria_refs を追加する（本ラウンドでの成果物修正は不要）"
+
+resolved:
+  - id: R-005
+    resolution: fixed
+    by: fix-r2
+    note: "返却通知を送信する/tier-worker.md の処理フロー 2 と エラーハンドリング表の『通知レコードが存在しない』を、コミット後発行前提の理由（通常は発生しない。ロールバック後発行等の異常として WARN + DLQ 退避し運用が調査する）に書き換えた"
+  - id: R-010
+    resolution: fixed
+    by: fix-r2
+    note: |
+      openapi.yaml の各 operation の responses / x-roles を正として、23 UC の _api-summary.yaml（30 operation）を機械生成で揃えた。
+      (1) errors: 汎用 500 INTERNAL_ERROR の個別宣言を全 UC から削除（業務条件の 500 は POST /api/v1/loans の LOAN_PERIOD_NOT_CONFIGURED のみ残す）。
+          openapi が 429 を宣言する 9 operation に RATE_LIMITED を追加。POST /api/v1/users・PUT /api/v1/users/{userNumber} に 400 BAD_REQUEST を追加。
+          openapi に無い GET /api/v1/genres の 401 / 403 と GET /api/v1/books/{bookId} の 403 を削除。
+      (2) roles: 単一トークン列に限定（`利用者(本人)` / `利用者(本人)|司書` / `利用者|司書` を解消）。openapi の x-roles（STAFF / PATRON / ANONYMOUS）と 1 対 1 対応の順序で生成。
+          「本人のみ」は新キー ownership: self で表現（GET /me/loans, GET /me/reservations, GET /reservations/{reservationId}, POST /reservations/{reservationId}/cancel）。
+      (3) security: x-roles に ANONYMOUS を含む operation のみ ["bearer", "anonymous"]。同一エンドポイントの UC 間の割れ（GET /api/v1/books/{bookId} 等）を解消。
+      (4) レスポンス表現を responses に一本化（response_status を廃止し、全 30 operation で responses マップを openapi から生成）。
+      あわせて openapi.yaml の規約セクションに 500 の宣言方針と roles / x-roles 語彙・ownership の対応を明記した。
+  - id: R-013
+    resolution: fixed
+    by: fix-r2
+    note: "openapi.yaml の canSend.description / sendReturnNotice.description / getReturnNoticePreview.description / RecipientSummary.description / ReturnNoticePreviewResponse.reservation.description を、有効予約（RESERVED / NOTIFIED）の予約順位 1 位を基準とする表現に統一した"
+  - id: R-016
+    resolution: fixed
+    by: fix-r2
+    note: "openapi.yaml の DELETE /api/v1/users/{userNumber} の 409 を oneOf: [ProblemDetails, UserNotDeletableProblemDetails] に変更し、code による判別（USER_NOT_DELETABLE のときだけ reasons を持つ）を description に明記した。PUT /api/v1/books/{bookId} の 409 は元から共通 Conflict レスポンス（ProblemDetails 単体・reasons 無し）で reasons required の破綻が無いため変更不要"
+  - id: R-030
+    resolution: fixed
+    by: fix-r2
+    note: "業務エラーコードの正本である ProblemDetails.code の enum に BAD_REQUEST / CONCURRENT_UPDATE を追加し、description に使い分け（BAD_REQUEST は VALIDATION_ERROR に到達する前の形式不正、CONCURRENT_UPDATE は貸出・予約系の同時更新競合）を明記した。Conflict レスポンスの code 一覧にも CONCURRENT_UPDATE を追加。UC 側 9 UC の呼称は変更していない（正本側を UC 側に揃える方針）"
+  - id: R-031
+    resolution: fixed
+    by: fix-r2
+    note: "返却通知を送信する/_api-summary.yaml の async_events に (a) ReturnNoticeRequested の direction: subscribe（consumer: tier-worker ReturnNoticeConsumer）と (c) ReturnNoticeRequestedDead の DLQ publish を追加（(b) 再発行スイープの publish は既存）。schemas に ReturnNoticeRequestedDead（payload_schema + 退避ヘッダ 4 項目）を追加。tier-worker.md の処理フロー 4 に退避ヘッダ付与を明記し、BDD の DLQ シナリオに attemptCount=6 / lastFailureReason / originalChannel / lastFailedAt の Then を追加した"
+  - id: R-032
+    resolution: fixed
+    by: fix-r2
+    note: "docs/todo.md DIST-034 の本文を『Step6.5 round 1 の R-008 対応で解消済み』に更新し、根拠・影響範囲・推奨対応を埋め、ステータスを closed（解消済み）にした"
+  - id: R-003
+    resolution: deferred
+    by: fix-r2
+    reason: "RDRA に該当 UC が無く、新規 UC を作らない方針。docs/todo.md DIST-031 に起票済み。RDRA 側で認証情報作成の要求を追加してから dist-requirements → dist-spec を再実行する"
+  - id: R-006
+    resolution: deferred
+    by: fix-r2
+    reason: "RDRA に該当 UC が無く、新規 UC を作らない方針。docs/todo.md DIST-032 に起票済み。RDRA 側で集計バッチの要求を追加してから再実行する"
+  - id: R-019
+    resolution: deferred
+    by: fix-r2
+    reason: "dist-spec スキル側のスキーマ拡張要求で、本イベントの成果物では解消できない。docs/todo.md DIST-033 に起票済み"

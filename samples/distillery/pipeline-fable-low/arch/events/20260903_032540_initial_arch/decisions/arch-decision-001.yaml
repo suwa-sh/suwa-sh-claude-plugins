@@ -1,0 +1,34 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-001"
+title: "サブドメイン分類: 貸出・予約・期限管理を Core、蔵書/利用者/運営分析を Supporting、通知配信を Generic とする"
+status: "approved"
+generated_at: "2026-09-03T03:51:01"
+context: |
+  図書館蔵書管理システム（1 館・GUI）の 10 BUC を DDD のサブドメインに分類し、投資配分を決める必要がある。
+  Core サブドメインの判定は「どこに競争優位を置くか」という経営判断を含むため、RDRA モデルだけから自動推論できない。
+  システム概要.json には「貸出・返却・予約を Web 画面から」「返却期限自動設定・リマインド・督促の自動送信で司書の手作業とミスを削減」と
+  目的が明示されている一方、「競争優位」「差別化」「独自」といった明示キーワードは無い。
+  auto_adopt ポリシーのため ⭐推奨案を採用し、confidence は推論値（medium）のまま維持した。
+decision: |
+  以下の 5 サブドメインに分類する。
+  - SD-001 貸出・予約・期限管理: core（confidence: medium）。BUC-004〜008。システムの目的そのものであり、3 状態モデル（書籍・貸出・予約）が連動する最複雑領域。最優先で深いモデリングと継続的リファクタリングに投資する
+  - SD-002 蔵書管理: supporting（medium）。BUC-001, 002。中核業務の前提だが差別化要因ではない。good enough な品質で安定運用
+  - SD-003 利用者管理: supporting（medium）。BUC-003, 009。個人情報を扱うため品質は担保するが投資は標準的
+  - SD-004 運営分析: supporting（medium）。BUC-010。貸出記録の参照系集計
+  - SD-005 通知配信: generic（high）。外部システム「メール配信サービス」（通知系）と一致。外部 SaaS / ライブラリを採用し自作を避ける
+  Core の confidence は schema の上限（medium）に従い high を付与しない。
+consequences:
+  positive:
+    - "投資配分が明確になり、貸出・予約・期限管理のモデリングにチームの最強人材を集中できる"
+    - "通知配信を Generic と位置づけることで、メール配信サービスの選定・差し替えをドメインから切り離せる"
+    - "Supporting 3 領域は標準的なフレームワークと CRUD 中心の実装でコストを抑えられる"
+  negative:
+    - "Core 判定は経営判断を含むため、ユーザー確認なし（auto_adopt）の暫定分類である。競争優位の置き所が異なれば再分類が必要"
+    - "SD-001 が 5 BUC を抱えるため、期限管理（リマインド・督促）を Supporting に分離する余地が残る"
+alternatives_considered:
+  - name: "SD-001 を supporting とする（Option B）"
+    reason_rejected: "図書館業務として標準的で差別化要因ではないという見方はあるが、システム概要が目的として明示し状態連動の複雑さが最も高い領域を Supporting 扱いにすると投資不足のリスクがある"
+  - name: "「貸出・予約」を core、「期限管理（リマインド・督促）」を supporting に分割する（Option C）"
+    reason_rejected: "SD 数 +1 と BC-003 の所属 SD 再判定が必要。リマインド・督促は貸出の状態モデルと同じ業務パラメータ（返却期限）に依存し、分離すると投資判断が分散する"

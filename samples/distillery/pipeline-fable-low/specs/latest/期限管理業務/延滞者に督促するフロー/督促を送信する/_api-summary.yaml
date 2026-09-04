@@ -1,0 +1,65 @@
+# _api-summary.yaml
+uc: "督促を送信する"
+business: "期限管理業務"
+buc: "延滞者に督促するフロー"
+endpoints: []   # タイマー UC（MQ コンシューマ）。外部公開 API なし（内部ユースケース SendOverdueNotice のみ）
+async_events:
+  - name: "OverdueNoticeRequested"
+    channel: "notifications.overdue-notice-requested"
+    direction: "subscribe"
+    message_schema: "OverdueNoticeRequested"
+    summary: "日次延滞判定バッチが発行した延滞督促メール配信要求を消費し、メール配信サービス経由で送信して送信結果を通知レコードに反映する（再発行スイープでは本 UC も publish する）"
+  - name: "OverdueNoticeRequested"
+    channel: "notifications.overdue-notice-requested"
+    direction: "publish"
+    message_schema: "OverdueNoticeRequested"
+    summary: "PENDING 滞留の再発行スイープ（tier-worker の OverdueNoticeSweepJob）が同一チャネルへ再発行する"
+  - name: "OverdueNoticeRequestedDead"
+    channel: "notifications.overdue-notice-requested.dlq"
+    direction: "publish"
+    message_schema: "OverdueNoticeRequestedDead"
+    summary: "再配信上限（5 回）を超過した督促配信要求の退避先（手動再処理用）。退避ヘッダ 4 項目を付与する"
+schemas:
+  - name: "OverdueNoticeRequested"
+    properties:
+      - name: "notificationId"
+        type: "string"
+        required: true
+      - name: "notificationType"
+        type: "string"
+        required: true
+        enum: ["OVERDUE_NOTICE"]
+      - name: "targetLoanId"
+        type: "string"
+        required: true
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "requestedOn"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "traceId"
+        type: "string"
+        required: true
+  - name: "OverdueNoticeRequestedDead"
+    description: "DLQ 退避メッセージ（asyncapi の OverdueNoticeRequestedDead）。ペイロードは OverdueNoticeRequested と同一。退避ヘッダ 4 項目（attemptCount / lastFailureReason / lastFailedAt / originalChannel）を必須で付与する"
+    payload_schema: "OverdueNoticeRequested"
+    headers:
+      - name: "attemptCount"
+        type: "integer"
+        required: true
+        description: "配信試行回数（再配信上限 5 回を超過した値。初回退避は 6）"
+      - name: "lastFailureReason"
+        type: "string"
+        required: true
+        description: "最後の失敗理由コード"
+      - name: "lastFailedAt"
+        type: "string"
+        format: "date-time"
+        required: true
+        description: "最後に失敗した日時"
+      - name: "originalChannel"
+        type: "string"
+        required: true
+        description: "退避元のチャネル名"

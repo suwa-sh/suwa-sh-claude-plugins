@@ -1,0 +1,655 @@
+schema_version: "1.0"
+artifact_type: "implementation_spec"
+skill_type: "product"
+artifact_id: "product-impl-aws"
+title: "図書館蔵書管理システム AWS 実装仕様"
+status: "draft"
+generated_at: "2026-09-03T04:07:39"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+  - "docs/cloud-context/sources/aws/aws-rds-postgresql.md"
+  - "docs/cloud-context/sources/aws/aws-elasticache-redis.md"
+decision_refs:
+  - "product-decision-001"
+  - "product-decision-002"
+  - "product-decision-003"
+  - "product-decision-004"
+  - "product-decision-005"
+  - "product-decision-006"
+inputs_ref:
+  - "product-library-management-canonical"
+  - "product-mapping-aws"
+
+vendor: "aws"
+canonical_ref: "product-library-management-canonical"
+mapping_ref: "product-mapping-aws"
+
+global_configuration:
+  region: "ap-northeast-1"
+  availability_zones: ["ap-northeast-1a", "ap-northeast-1c"]
+  environments: ["prod", "stg", "dev"]
+  naming_prefix: "libms"
+  required_tags:
+    system: "libms"
+    environment: "{env}"
+  encryption_default: "kms_cmk"
+
+components:
+  - id: "network"
+    name: "VPC ネットワーク"
+    canonical_element_id: "network_segmentation"
+    vendor_service: "Amazon VPC"
+    configuration:
+      cidr_block: "10.20.0.0/16"
+      public_subnets: ["10.20.0.0/24", "10.20.1.0/24"]
+      app_private_subnets: ["10.20.10.0/24", "10.20.11.0/24"]
+      data_private_subnets: ["10.20.20.0/24", "10.20.21.0/24"]
+      nat_gateway_count: 1
+      enable_dns_hostnames: true
+      flow_logs:
+        destination: "cloudwatch_logs"
+        traffic_type: "REJECT"
+        retention_days: 180
+      gateway_endpoints: ["s3", "dynamodb"]
+      interface_endpoints: ["secretsmanager", "ecr.api", "ecr.dkr", "logs", "sqs", "kms"]
+    dependencies: []
+    iac_module: "infra/product/aws/modules/network"
+    validation_rules:
+      - rule: "data_private サブネットに 0.0.0.0/0 のインターネットゲートウェイ経路が存在しない"
+        type: "static"
+        description: "データ層が外部から直接到達できないこと（REQ-NET-001）"
+      - rule: "全サブネットが 2 つ以上の AZ に分散している"
+        type: "static"
+        description: "複数 AZ 冗長（REQ-APP-002 / REQ-DB-003）"
+
+  - id: "kms_keys"
+    name: "暗号鍵"
+    canonical_element_id: "secret_management"
+    vendor_service: "AWS KMS"
+    configuration:
+      keys:
+        - alias: "alias/libms-data"
+          description: "データストア・キュー・バックアップの保管時暗号化用"
+          enable_key_rotation: true
+        - alias: "alias/libms-logs"
+          description: "ログ集約の保管時暗号化用"
+          enable_key_rotation: true
+    dependencies: []
+    iac_module: "infra/product/aws/modules/kms"
+    validation_rules:
+      - rule: "全ての KMS キーで enable_key_rotation = true"
+        type: "static"
+        description: "鍵の定期更新（REQ-SEC-003）"
+
+  - id: "secrets"
+    name: "秘密情報"
+    canonical_element_id: "secret_management"
+    vendor_service: "AWS Secrets Manager"
+    configuration:
+      secrets:
+        - name: "libms/{env}/rds/app"
+          rotation: "managed"
+          rotation_days: 30
+        - name: "libms/{env}/cache/auth-token"
+          rotation: "manual"
+        - name: "libms/{env}/ses/config"
+          rotation: "manual"
+      kms_key_alias: "alias/libms-data"
+    dependencies: ["kms_keys"]
+    iac_module: "infra/product/aws/modules/secrets"
+    validation_rules:
+      - rule: "ECS タスク定義の environment に平文の資格情報が含まれない"
+        type: "static"
+        description: "資格情報は secrets 参照で注入する（REQ-SEC-001）"
+
+  - id: "identity"
+    name: "アイデンティティプロバイダー"
+    canonical_element_id: "identity_federation"
+    vendor_service: "Amazon Cognito user pools"
+    configuration:
+      user_pool_name: "libms-{env}"
+      password_policy:
+        minimum_length: 12
+        require_lowercase: true
+        require_uppercase: true
+        require_numbers: true
+        require_symbols: true
+        temporary_password_validity_days: 3
+      advanced_security_mode: "ENFORCED"
+      mfa_configuration: "OPTIONAL"
+      groups: ["patron", "staff"]
+      token_validity:
+        access_token_minutes: 60
+        id_token_minutes: 60
+        refresh_token_days: 30
+      user_pool_domain: "libms-{env}"
+      log_delivery:
+        destination: "cloudwatch_logs"
+        log_level: "INFO"
+    dependencies: []
+    iac_module: "infra/product/aws/modules/identity"
+    validation_rules:
+      - rule: "advanced_security_mode = ENFORCED"
+        type: "static"
+        description: "総当たり検知とアカウントロック（REQ-IDP-002）"
+      - rule: "password_policy.minimum_length >= 12 かつ require_symbols = true"
+        type: "static"
+        description: "パスワードポリシーの複雑性（REQ-IDP-002）"
+
+  - id: "cdn_patron"
+    name: "利用者ポータル配信"
+    canonical_element_id: "public_web_delivery"
+    vendor_service: "Amazon CloudFront + Amazon S3"
+    configuration:
+      origin_access_control: true
+      viewer_protocol_policy: "redirect-to-https"
+      minimum_protocol_version: "TLSv1.2_2021"
+      default_root_object: "index.html"
+      custom_error_responses:
+        - error_code: 403
+          response_code: 200
+          response_page_path: "/index.html"
+        - error_code: 404
+          response_code: 200
+          response_page_path: "/index.html"
+      cache_policy: "CachingOptimized"
+      logging:
+        bucket: "libms-{env}-logs"
+        prefix: "cloudfront/"
+      price_class: "PriceClass_200"
+    dependencies: ["storage", "waf"]
+    iac_module: "infra/product/aws/modules/cdn"
+    validation_rules:
+      - rule: "オリジンバケットの Block Public Access が全項目 true"
+        type: "static"
+        description: "匿名公開アクセスの禁止（REQ-PWD-003 / REQ-OBJ-001）"
+      - rule: "viewer_protocol_policy が http を許可しない"
+        type: "static"
+        description: "全通信暗号化（REQ-PWD-002）"
+
+  - id: "waf"
+    name: "Web アプリケーションファイアウォール"
+    canonical_element_id: "api_edge"
+    vendor_service: "AWS WAF"
+    configuration:
+      scope: "REGIONAL"
+      managed_rule_groups:
+        - "AWSManagedRulesCommonRuleSet"
+        - "AWSManagedRulesKnownBadInputsRuleSet"
+        - "AWSManagedRulesAmazonIpReputationList"
+      rate_based_rules:
+        - name: "global-rate-limit"
+          limit: 3000
+          aggregate_key_type: "IP"
+          evaluation_window_sec: 300
+      ip_sets:
+        - name: "staff-allowlist"
+          description: "館内ネットワークのグローバル IP。TODO: 図書館側で固定 IP を確認して設定する"
+          addresses: []
+      logging:
+        destination: "cloudwatch_logs"
+        redacted_fields: ["authorization", "cookie"]
+    dependencies: ["network"]
+    iac_module: "infra/product/aws/modules/waf"
+    validation_rules:
+      - rule: "rate_based_rules が 1 つ以上定義されている"
+        type: "static"
+        description: "レート制限（REQ-EDGE-002）"
+      - rule: "staff-allowlist の addresses が空でない（本番環境のみ）"
+        type: "runtime"
+        description: "職員向け面の接続元制限（REQ-IWD-001）"
+
+  - id: "alb"
+    name: "アプリケーションロードバランサ"
+    canonical_element_id: "api_edge"
+    vendor_service: "Application Load Balancer"
+    configuration:
+      scheme: "internet-facing"
+      subnets: "public_subnets"
+      listeners:
+        - port: 443
+          protocol: "HTTPS"
+          ssl_policy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+        - port: 80
+          protocol: "HTTP"
+          action: "redirect_to_443"
+      idle_timeout_sec: 60
+      access_logs:
+        bucket: "libms-{env}-logs"
+        prefix: "alb/"
+        enabled: true
+      target_groups:
+        - name: "libms-api"
+          port: 8080
+          protocol: "HTTP"
+          health_check:
+            path: "/healthz"
+            interval_sec: 15
+            timeout_sec: 5
+            healthy_threshold: 2
+            unhealthy_threshold: 3
+          deregistration_delay_sec: 30
+      routing_rules:
+        - host_header: "api.{domain}"
+          target_group: "libms-api"
+        - host_header: "staff.{domain}"
+          target_group: "libms-api"
+          waf_ip_set: "staff-allowlist"
+    dependencies: ["network", "waf"]
+    iac_module: "infra/product/aws/modules/alb"
+    validation_rules:
+      - rule: "access_logs.enabled = true"
+        type: "static"
+        description: "アクセスログの全件出力（REQ-EDGE-004）"
+      - rule: "idle_timeout_sec がアプリケーションのタイムアウトより長い"
+        type: "static"
+        description: "タイムアウト階層の最上位（REQ-EDGE-005）"
+
+  - id: "api_service"
+    name: "バックエンド API サービス"
+    canonical_element_id: "application_runtime"
+    vendor_service: "Amazon ECS on AWS Fargate"
+    configuration:
+      cluster_name: "libms-{env}"
+      service_name: "libms-api"
+      launch_type: "FARGATE"
+      task_cpu: 512
+      task_memory: 1024
+      desired_count: 2
+      subnets: "app_private_subnets"
+      assign_public_ip: false
+      deployment:
+        maximum_percent: 200
+        minimum_healthy_percent: 100
+        circuit_breaker_rollback: true
+      autoscaling:
+        min_capacity: 2
+        max_capacity: 8
+        policies:
+          - type: "target_tracking"
+            metric: "ECSServiceAverageCPUUtilization"
+            target_value: 60
+            scale_in_cooldown_sec: 300
+            scale_out_cooldown_sec: 60
+          - type: "target_tracking"
+            metric: "ALBRequestCountPerTarget"
+            target_value: 600
+      container:
+        port: 8080
+        health_check_command: "curl -f http://localhost:8080/healthz || exit 1"
+        log_configuration:
+          driver: "awslogs"
+          group: "/ecs/libms-{env}/api"
+          retention_days: 180
+        secrets:
+          - "DATABASE_URL from libms/{env}/rds/app"
+          - "CACHE_AUTH_TOKEN from libms/{env}/cache/auth-token"
+        environment:
+          - "OTEL_TRACE_ENABLED=true"
+          - "APP_TIMEOUT_SEC=30"
+    dependencies: ["network", "alb", "database", "cache", "queue", "secrets"]
+    iac_module: "infra/product/aws/modules/ecs-service"
+    validation_rules:
+      - rule: "desired_count >= 2 かつ subnets が 2 AZ にまたがる"
+        type: "static"
+        description: "AZ 冗長（REQ-APP-002）"
+      - rule: "assign_public_ip = false"
+        type: "static"
+        description: "アプリ層をプライベートに配置（REQ-NET-001）"
+      - rule: "APP_TIMEOUT_SEC < ALB idle_timeout_sec"
+        type: "static"
+        description: "タイムアウト階層（REQ-EDGE-005）"
+
+  - id: "worker_consumer"
+    name: "キュー消費ワーカー"
+    canonical_element_id: "async_worker_runtime"
+    vendor_service: "Amazon ECS on AWS Fargate"
+    configuration:
+      service_name: "libms-worker"
+      capacity_provider_strategy:
+        - capacity_provider: "FARGATE_SPOT"
+          weight: 3
+        - capacity_provider: "FARGATE"
+          weight: 1
+          base: 0
+      task_cpu: 256
+      task_memory: 512
+      subnets: "app_private_subnets"
+      autoscaling:
+        min_capacity: 0
+        max_capacity: 10
+        policies:
+          - type: "target_tracking"
+            metric: "custom:BacklogPerTask"
+            metric_definition: "ApproximateNumberOfMessagesVisible / RunningTaskCount"
+            target_value: 20
+      container:
+        log_configuration:
+          driver: "awslogs"
+          group: "/ecs/libms-{env}/worker"
+          retention_days: 180
+        environment:
+          - "SQS_MAX_RECEIVE_COUNT=5"
+          - "SES_MAX_RETRY=3"
+    dependencies: ["queue", "database", "cache", "email", "secrets"]
+    iac_module: "infra/product/aws/modules/ecs-service"
+    validation_rules:
+      - rule: "FARGATE_SPOT の中断シグナル（SIGTERM）を受けて処理中メッセージを可視化に戻す実装がある"
+        type: "runtime"
+        description: "中断許容（REQ-WRK-005）"
+
+  - id: "worker_scheduled"
+    name: "日次バッチ"
+    canonical_element_id: "async_worker_runtime"
+    vendor_service: "Amazon EventBridge Scheduler + Amazon ECS RunTask"
+    configuration:
+      schedule_expression: "cron(0 2 * * ? *)"
+      schedule_expression_timezone: "Asia/Tokyo"
+      flexible_time_window: "OFF"
+      target:
+        cluster: "libms-{env}"
+        task_definition: "libms-batch"
+        launch_type: "FARGATE"
+        subnets: "app_private_subnets"
+      retry_policy:
+        maximum_retry_attempts: 2
+        maximum_event_age_sec: 3600
+      dead_letter_config:
+        target: "libms-{env}-scheduler-dlq"
+      timeout_hours: 8
+    dependencies: ["queue", "database", "worker_consumer"]
+    iac_module: "infra/product/aws/modules/scheduler"
+    validation_rules:
+      - rule: "schedule_expression の実行時刻が計画停止枠 01:00-04:00 の内側かつバックアップ枠 04:30-05:30 と重ならない"
+        type: "static"
+        description: "バッチ実行計画（REQ-WRK-003 / REQ-BKP-003）"
+      - rule: "ジョブ実行 ID の一意制約により重複実行が拒否される"
+        type: "runtime"
+        description: "重複実行検知（REQ-WRK-001）"
+
+  - id: "queue"
+    name: "メッセージキュー"
+    canonical_element_id: "message_queue"
+    vendor_service: "Amazon SQS"
+    configuration:
+      queues:
+        - name: "libms-{env}-notification"
+          type: "standard"
+          visibility_timeout_sec: 300
+          message_retention_sec: 345600
+          redrive_policy:
+            dead_letter_target: "libms-{env}-notification-dlq"
+            max_receive_count: 5
+        - name: "libms-{env}-report"
+          type: "standard"
+          visibility_timeout_sec: 900
+          message_retention_sec: 345600
+          redrive_policy:
+            dead_letter_target: "libms-{env}-report-dlq"
+            max_receive_count: 3
+        - name: "libms-{env}-notification-dlq"
+          type: "standard"
+          message_retention_sec: 1209600
+        - name: "libms-{env}-report-dlq"
+          type: "standard"
+          message_retention_sec: 1209600
+      kms_master_key_alias: "alias/libms-data"
+      kms_data_key_reuse_sec: 300
+    dependencies: ["kms_keys"]
+    iac_module: "infra/product/aws/modules/queue"
+    validation_rules:
+      - rule: "全ての業務キューに redrive_policy が設定されている"
+        type: "static"
+        description: "退避キューの併設（REQ-MQ-002）"
+      - rule: "kms_master_key_alias が設定されている"
+        type: "static"
+        description: "保管時暗号化（REQ-MQ-004）"
+      - rule: "メッセージ本文のスキーマに氏名・メールアドレスのフィールドが存在しない"
+        type: "static"
+        description: "個人情報非格納（REQ-MQ-003）"
+
+  - id: "database"
+    name: "リレーショナルデータベース"
+    canonical_element_id: "relational_datastore"
+    vendor_service: "Amazon RDS for PostgreSQL"
+    configuration:
+      engine_version: "16"
+      instance_class: "db.t4g.medium"
+      multi_az: true
+      storage_type: "gp3"
+      allocated_storage_gb: 100
+      max_allocated_storage_gb: 500
+      storage_encrypted: true
+      kms_key_alias: "alias/libms-data"
+      subnets: "data_private_subnets"
+      publicly_accessible: false
+      backup_retention_period_days: 14
+      preferred_backup_window: "19:30-20:30"
+      preferred_backup_window_note: "UTC 表記。JST 04:30-05:30 に相当"
+      preferred_maintenance_window: "sun:17:00-sun:18:00"
+      preferred_maintenance_window_note: "UTC 表記。JST 日曜 02:00-03:00（計画停止枠内）に相当"
+      copy_tags_to_snapshot: true
+      deletion_protection: true
+      performance_insights_enabled: true
+      performance_insights_retention_days: 7
+      monitoring_interval_sec: 60
+      enabled_cloudwatch_logs_exports: ["postgresql", "upgrade"]
+      auto_minor_version_upgrade: true
+      parameter_group:
+        log_min_duration_statement: 1000
+        log_statement: "ddl"
+        shared_preload_libraries: "pg_stat_statements"
+      extensions: ["pg_trgm", "pg_stat_statements"]
+      schema_notes:
+        - "書籍検索は title/author/isbn/genre に対する pg_trgm GIN インデックスと tsvector 列で実装する"
+        - "統計レポートはマテリアライズドビューで保持し、日次バッチで REFRESH CONCURRENTLY する"
+        - "個人情報列（利用者.氏名 / 利用者.連絡先 / 通知.宛先メールアドレス）はアプリケーション層で追加の列暗号化を行う"
+        - "ジョブ実行テーブルに実行 ID の一意制約を置き、バッチの重複実行を検知する"
+    dependencies: ["network", "kms_keys", "secrets"]
+    iac_module: "infra/product/aws/modules/database"
+    validation_rules:
+      - rule: "multi_az = true"
+        type: "static"
+        description: "AZ 冗長と自動フェイルオーバー（REQ-DB-003）"
+      - rule: "storage_encrypted = true かつ publicly_accessible = false"
+        type: "static"
+        description: "保管時暗号化とネットワーク分離（REQ-DB-004 / REQ-DB-005）"
+      - rule: "backup_retention_period_days >= 7"
+        type: "static"
+        description: "PITR と世代管理（REQ-DB-002 / REQ-DB-008）"
+      - rule: "preferred_backup_window が日次バッチ実行時間帯と重ならない"
+        type: "static"
+        description: "バックアップとバッチの非競合（REQ-BKP-003）"
+
+  - id: "cache"
+    name: "キー値キャッシュ"
+    canonical_element_id: "key_value_cache"
+    vendor_service: "Amazon ElastiCache for Valkey"
+    configuration:
+      engine: "valkey"
+      engine_version: "8.0"
+      node_type: "cache.t4g.micro"
+      num_cache_clusters: 2
+      automatic_failover_enabled: true
+      multi_az_enabled: true
+      subnets: "data_private_subnets"
+      transit_encryption_enabled: true
+      at_rest_encryption_enabled: true
+      kms_key_alias: "alias/libms-data"
+      auth_token_secret: "libms/{env}/cache/auth-token"
+      parameter_group:
+        maxmemory-policy: "volatile-lru"
+      snapshot_retention_limit_days: 0
+      key_namespaces:
+        - prefix: "book:"
+          ttl_sec: 300
+          invalidation: "書籍状態の遷移イベントで明示的に DEL する"
+        - prefix: "session:"
+          ttl_sec: 3600
+        - prefix: "idem:notify:"
+          ttl_sec: 86400
+    dependencies: ["network", "kms_keys", "secrets"]
+    iac_module: "infra/product/aws/modules/cache"
+    validation_rules:
+      - rule: "automatic_failover_enabled = true かつ num_cache_clusters >= 2"
+        type: "static"
+        description: "AZ 冗長（REQ-CACHE-004）"
+      - rule: "transit_encryption_enabled = true かつ at_rest_encryption_enabled = true"
+        type: "static"
+        description: "通信時・保管時暗号化（REQ-CACHE-004）"
+      - rule: "全てのキー名前空間に TTL が設定されている"
+        type: "static"
+        description: "有効期限による自動失効（REQ-CACHE-003）"
+
+  - id: "storage"
+    name: "オブジェクトストレージ"
+    canonical_element_id: "object_storage"
+    vendor_service: "Amazon S3"
+    configuration:
+      buckets:
+        - name: "libms-{env}-static"
+          purpose: "SPA 静的成果物"
+          block_public_access: "all"
+          versioning: true
+          sse: "aws:kms"
+          kms_key_alias: "alias/libms-data"
+          bucket_key_enabled: true
+          policy: "CloudFront OAC からの GetObject のみ許可"
+        - name: "libms-{env}-logs"
+          purpose: "ALB / CloudFront / WAF のアクセスログ集約"
+          block_public_access: "all"
+          sse: "aws:kms"
+          kms_key_alias: "alias/libms-logs"
+          lifecycle_rules:
+            - transition_to: "GLACIER_IR"
+              days: 180
+            - expiration_days: 365
+        - name: "libms-{env}-backup"
+          purpose: "バックアップ退避"
+          block_public_access: "all"
+          versioning: true
+          sse: "aws:kms"
+          kms_key_alias: "alias/libms-data"
+          object_lock:
+            mode: "GOVERNANCE"
+            days: 30
+          lifecycle_rules:
+            - transition_to: "GLACIER_IR"
+              days: 35
+            - expiration_days: 400
+    dependencies: ["kms_keys"]
+    iac_module: "infra/product/aws/modules/storage"
+    validation_rules:
+      - rule: "全バケットで block_public_access = all"
+        type: "static"
+        description: "匿名公開アクセスの禁止（REQ-OBJ-001）"
+      - rule: "全バケットで sse が設定されている"
+        type: "static"
+        description: "保管時暗号化（REQ-OBJ-002）"
+
+  - id: "email"
+    name: "メール送信"
+    canonical_element_id: "outbound_integration_gateway"
+    vendor_service: "Amazon SES"
+    configuration:
+      identity_type: "domain"
+      dkim_signing: true
+      dmarc_policy_note: "TODO: DNS に DMARC レコード（p=quarantine）を設定する"
+      configuration_set: "libms-{env}"
+      event_destinations:
+        - name: "delivery-events"
+          events: ["send", "delivery", "bounce", "complaint", "reject", "renderingFailure"]
+          destination: "eventbridge"
+      suppression_list: "account_level"
+      sending_rate_note: "TODO: 本番稼働前にサンドボックス解除を申請する（リードタイム 24〜48 時間）"
+      max_retry: 3
+    dependencies: ["secrets"]
+    iac_module: "infra/product/aws/modules/email"
+    validation_rules:
+      - rule: "dkim_signing = true"
+        type: "static"
+        description: "到達率の確保"
+      - rule: "bounce / complaint イベントが通知エンティティの送信結果へ反映される"
+        type: "runtime"
+        description: "未達追跡（REQ-OUT-001）"
+
+  - id: "observability"
+    name: "オブザーバビリティ"
+    canonical_element_id: "observability_platform"
+    vendor_service: "Amazon CloudWatch + AWS X-Ray + Amazon SNS"
+    configuration:
+      log_groups_retention_days: 180
+      container_insights: "enhanced"
+      x_ray_sampling_rate: 0.1
+      synthetics_canary:
+        name: "libms-{env}-patron-portal"
+        schedule_rate_min: 5
+        runtime: "syn-nodejs-puppeteer-latest"
+      data_protection_policy:
+        managed_identifiers: ["EmailAddress", "JapanBankAccountNumber", "Name"]
+        operation: "Deidentify"
+      sns_topics:
+        - name: "libms-{env}-alert-critical"
+          subscriptions: ["TODO: 運用担当メールアドレス", "TODO: 保守ベンダ連絡先"]
+        - name: "libms-{env}-alert-warning"
+          subscriptions: ["TODO: 運用担当メールアドレス"]
+    dependencies: ["storage"]
+    iac_module: "infra/product/aws/modules/observability"
+    validation_rules:
+      - rule: "全ロググループの retention_in_days = 180"
+        type: "static"
+        description: "ログ保管期間 6 ヶ月（REQ-OBS-002）"
+      - rule: "data_protection_policy が設定されている"
+        type: "static"
+        description: "個人情報の伏字化（REQ-OBS-005）"
+
+  - id: "backup"
+    name: "バックアップ"
+    canonical_element_id: "backup_and_recovery"
+    vendor_service: "AWS Backup"
+    configuration:
+      vault_name: "libms-{env}"
+      vault_kms_key_alias: "alias/libms-data"
+      vault_lock:
+        mode: "GOVERNANCE"
+        min_retention_days: 7
+        max_retention_days: 400
+      plan:
+        - rule_name: "daily"
+          schedule_expression: "cron(30 19 * * ? *)"
+          schedule_note: "UTC 表記。JST 04:30 に相当"
+          start_window_min: 60
+          completion_window_min: 180
+          lifecycle:
+            delete_after_days: 35
+      selection_resources:
+        - "arn:aws:rds:*:*:db:libms-{env}"
+      copy_actions: []
+      copy_actions_note: "遠隔リージョンへのコピーは行わない（product-decision-005）。将来 DR が必要になった場合はここに追加する"
+    dependencies: ["database", "kms_keys"]
+    iac_module: "infra/product/aws/modules/backup"
+    validation_rules:
+      - rule: "plan の実行時刻が日次バッチと重ならない"
+        type: "static"
+        description: "バックアップとバッチの非競合（REQ-BKP-003）"
+      - rule: "四半期ごとの復旧演習記録が存在する"
+        type: "runtime"
+        description: "RTO 2 時間の検証（REQ-BKP-002）"
+
+iam_model:
+  task_roles:
+    - name: "libms-api-task-role"
+      permissions:
+        - "secretsmanager:GetSecretValue on libms/{env}/*"
+        - "sqs:SendMessage on libms-{env}-notification, libms-{env}-report"
+        - "kms:Decrypt on alias/libms-data"
+        - "xray:PutTraceSegments"
+    - name: "libms-worker-task-role"
+      permissions:
+        - "secretsmanager:GetSecretValue on libms/{env}/*"
+        - "sqs:ReceiveMessage,DeleteMessage,ChangeMessageVisibility on libms-{env}-*"
+        - "ses:SendEmail on identity libms"
+        - "kms:Decrypt,GenerateDataKey on alias/libms-data"
+        - "xray:PutTraceSegments"
+  principle: "least_privilege"
+  note: "ワイルドカードのリソース指定は xray とログ出力に限定し、データ系は全て個別リソース ARN で絞る（CTR-004 アクセス制御の最小権限）"

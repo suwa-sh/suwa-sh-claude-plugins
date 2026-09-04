@@ -1,0 +1,34 @@
+# _api-summary.yaml
+uc: "延滞を判定する"
+business: "期限管理業務"
+buc: "延滞者に督促するフロー"
+endpoints: []   # タイマー UC。外部公開 API なし（内部ユースケース DetectOverdueLoans のみ）
+async_events:
+  - name: "OverdueNoticeRequested"
+    channel: "notifications.overdue-notice-requested"
+    direction: "publish"
+    message_schema: "OverdueNoticeRequested"
+    summary: "日次延滞判定バッチが貸出を延滞に遷移させ通知レコード（督促・送信待ち）を作成した後に発行する延滞督促メール配信要求"
+schemas:
+  - name: "OverdueNoticeRequested"
+    properties:
+      - name: "notificationId"
+        type: "string"
+        required: true
+      - name: "notificationType"
+        type: "string"
+        required: true
+        enum: ["OVERDUE_NOTICE"]
+      - name: "targetLoanId"
+        type: "string"
+        required: true
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "requestedOn"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "traceId"
+        type: "string"
+        required: true

@@ -1,0 +1,516 @@
+schema_version: "1.0"
+artifact_type: "canonical_model"
+skill_type: "product"
+artifact_id: "product-library-management-canonical"
+title: "図書館蔵書管理システム ワークロードモデル（ベンダー中立）"
+status: "draft"
+generated_at: "2026-09-03T04:07:39"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+  - "docs/cloud-context/sources/aws/aws-rds-postgresql.md"
+  - "docs/cloud-context/sources/aws/aws-elasticache-redis.md"
+decision_refs:
+  - "product-decision-001"
+  - "product-decision-002"
+  - "product-decision-003"
+  - "product-decision-004"
+  - "product-decision-005"
+  - "product-decision-006"
+inputs_ref:
+  - "product-library-management-input"
+  - "foundation-context"
+  - "shared-platform-context"
+
+# ------------------------------------------------------------------
+# ワークロード特性（9 特性）
+# ------------------------------------------------------------------
+workload_characteristics:
+  workload_type: "web_app"
+  workload_type_notes: "外部公開の利用者向け Web アプリと内部限定の職員向け Web アプリの 2 面を持ち、同期 API に加えてスケジュール実行のバッチと非同期メッセージ消費を伴う"
+
+  availability_target:
+    sla: "99%"
+    allowed_downtime_per_year: "約 3.65 日"
+    redundancy_model: "single_region_multi_zone_active_standby"
+    failover: "warm_standby"
+    failover_time_objective: "60 分未満"
+    planned_maintenance_window: "深夜 1 時〜4 時（計画停止枠）"
+
+  latency_sensitivity:
+    category: "interactive"
+    target_p99: "500ms"
+    placement: "利用者と同一地理圏の単一リージョンに配置する"
+
+  data_sensitivity:
+    classification: "restricted"
+    pii: true
+    pii_elements:
+      - "利用者の氏名"
+      - "利用者の連絡先メールアドレス"
+      - "貸出履歴（誰が何を借りたか）"
+    encryption: "at_rest_and_in_transit"
+    encryption_notes: "内部通信を含む全通信を暗号化し、機密データは保管時も暗号化する"
+    compliance: []
+    data_residency: "japan"
+
+  traffic_pattern:
+    type: "scheduled"
+    baseline_rps: 10
+    spike_multiplier: 2
+    scheduled_notes: "日次タイマー起点のバッチ（返却期限接近判定・期限超過判定）が大量の通知送信要求を生成する。オンラインは日中ピーク・夜間閑散"
+
+  consistency_needs:
+    type: "strong"
+    scope:
+      - "在庫（書籍状態）と貸出の整合"
+      - "予約順位の一意性と重複予約禁止"
+    relaxed_scope:
+      - "統計レポートの集計結果は結果整合で許容する"
+      - "参照系の書籍検索・詳細照会はキャッシュ経由の短時間の陳腐化を許容する"
+
+  recovery_target:
+    rpo: "4h"
+    rto: "2h"
+    backup: "daily"
+    backup_notes: "日次フル + 差分に加え、トランザクションログの継続取得によるポイントインタイムリカバリを前提とする"
+    dr_model: "same_region_backup_restore"
+    dr_notes: "災害対策の範囲は最小水準であり、遠隔地 DR サイトは設けない"
+
+  observability_needs:
+    metrics: ["cpu", "memory", "disk", "network", "latency", "error_rate", "throughput"]
+    logs: ["access", "audit", "diagnostic", "dependency"]
+    traces: ["distributed_trace_with_propagated_trace_id"]
+    sli: ["availability", "latency", "error_rate", "throughput"]
+    alerting: ["health_check", "error_rate", "latency_p99"]
+    log_retention: "180 日（6 ヶ月）"
+
+  cost_posture:
+    strategy: "balanced"
+    spot_tolerance: "非同期ワーカーとバッチのみ中断許容。同期 API とデータストアは中断不可"
+
+# ------------------------------------------------------------------
+# Canonical elements
+# ------------------------------------------------------------------
+elements:
+  - id: "public_web_delivery"
+    name: "公開 Web 配信"
+    category: "delivery"
+    description: "外部利用者向けシングルページアプリケーションの静的成果物を配信し、エッジキャッシュで応答時間と原本負荷を低減する capability"
+    requirements:
+      - id: "REQ-PWD-001"
+        description: "静的成果物をエッジキャッシュ経由で配信し、対話的応答目標 p99 500ms に寄与する"
+        priority: "must"
+        rationale: "利用者ポータルはインターネット経由で参照され、レスポンスタイム目標が定義されている"
+      - id: "REQ-PWD-002"
+        description: "配信経路の全区間を暗号化し、平文アクセスを遮断する"
+        priority: "must"
+        rationale: "全通信暗号化が要求されている"
+      - id: "REQ-PWD-003"
+        description: "配信元ストレージへの匿名公開アクセスを禁止し、配信面からの参照のみ許可する"
+        priority: "must"
+        rationale: "基盤ガードレールで公開ストレージが禁止されている"
+    constraints:
+      - "オリジンは同一地理圏内に配置する"
+    dependencies: ["object_storage", "api_edge"]
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "internal_web_delivery"
+    name: "内部限定 Web 配信"
+    category: "delivery"
+    description: "職員向けシングルページアプリケーションを内部ネットワークからのみ到達可能な形で配信する capability"
+    requirements:
+      - id: "REQ-IWD-001"
+        description: "接続元ネットワークによるアクセス制限を強制し、インターネットからの到達を遮断する"
+        priority: "must"
+        rationale: "職員向け管理機能は館内ネットワークからのみ利用可と定義されている"
+      - id: "REQ-IWD-002"
+        description: "公開配信面とは経路を分離する"
+        priority: "should"
+        rationale: "ポータル別の経路分離が設計方針として定義されている"
+    constraints:
+      - "エッジキャッシュによる広域配信は行わない"
+    dependencies: ["api_edge"]
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "api_edge"
+    name: "API エッジ"
+    category: "network_edge"
+    description: "全 API リクエストの単一入口として、トークン検証・レート制限・不正リクエスト遮断・アクセスログ全件記録を担う capability"
+    requirements:
+      - id: "REQ-EDGE-001"
+        description: "認証トークンを検証し、無効なリクエストを後段へ通さない"
+        priority: "must"
+        rationale: "認可責務の分界としてエッジでトークン検証を行う方針"
+      - id: "REQ-EDGE-002"
+        description: "レート制限を適用し、ピーク倍率 2 倍を超える異常流入から後段を保護する"
+        priority: "must"
+        rationale: "レート制限が設計方針として定義されている"
+      - id: "REQ-EDGE-003"
+        description: "アプリケーション層の不正リクエストを検査・遮断する"
+        priority: "must"
+        rationale: "セキュリティオフロードをエッジに集約する方針"
+      - id: "REQ-EDGE-004"
+        description: "アクセスログを全件出力し、追跡 ID を後段へ伝播する"
+        priority: "must"
+        rationale: "アクセスログ全件出力と分散トレーシングが要求されている"
+      - id: "REQ-EDGE-005"
+        description: "タイムアウト階層の最上位として、後段より長いタイムアウトを設定する"
+        priority: "should"
+        rationale: "タイムアウト階層が横断方針として定義されている"
+    constraints:
+      - "公開面と内部限定面で経路を分ける"
+    dependencies: ["identity_federation", "application_runtime"]
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "identity_federation"
+    name: "アイデンティティ連携"
+    category: "identity"
+    description: "利用者と職員の認証を外部委譲し、標準プロトコルのトークンを発行・失効させる capability。業務ロールの判定はアプリケーション側の責務とする"
+    requirements:
+      - id: "REQ-IDP-001"
+        description: "標準的な認可・認証プロトコルでトークンを発行し、有効期限と失効を管理する"
+        priority: "must"
+        rationale: "全ティア共通でトークンベース認証を採用する方針"
+      - id: "REQ-IDP-002"
+        description: "パスワードポリシー（複雑性・有効期限）とアカウントロックを強制する"
+        priority: "must"
+        rationale: "識別子とパスワードによる認証にパスワードポリシーが要求されている"
+      - id: "REQ-IDP-003"
+        description: "認証イベントを監査ログとして記録し、保管期間 180 日を満たす"
+        priority: "must"
+        rationale: "認証イベントの監査ログが要求されている"
+      - id: "REQ-IDP-004"
+        description: "認証クレデンシャルと業務ロールを分離して保持する"
+        priority: "should"
+        rationale: "認証情報と業務ロールの分界が方針として定義されている"
+    constraints:
+      - "利用者規模 1,000 人程度を前提とする"
+      - "運用要員が小規模であるため、自前運用ではなくマネージド提供を第一候補とする"
+    dependencies: []
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "application_runtime"
+    name: "アプリケーション実行基盤"
+    category: "compute"
+    description: "同期 API を処理するステートレスな実行基盤。モジュラモノリスとして単一デプロイ単位で複数業務モジュールを保持し、水平スケールアウトする capability"
+    requirements:
+      - id: "REQ-APP-001"
+        description: "ステートレスに構成し、インスタンス数の増減で処理能力を調整する"
+        priority: "must"
+        rationale: "水平スケールアウトが設計方針として定義されている"
+      - id: "REQ-APP-002"
+        description: "複数の可用性ゾーンに分散配置し、単一ゾーン障害時も処理を継続する"
+        priority: "must"
+        rationale: "N+1 相当の冗長化と切替時間 60 分未満が要求されている"
+      - id: "REQ-APP-003"
+        description: "浅い（プロセス生存）と深い（依存確認）の 2 深度のヘルスチェック応答を提供する"
+        priority: "must"
+        rationale: "2 深度のヘルスチェックが横断方針として定義されている"
+      - id: "REQ-APP-004"
+        description: "対話操作の p99 応答時間 500ms を満たす"
+        priority: "must"
+        rationale: "レイテンシ目標が定義されている"
+      - id: "REQ-APP-005"
+        description: "冪等キーによる重複リクエスト検知を行う"
+        priority: "must"
+        rationale: "冪等性方針と二重送信防止が定義されている"
+    constraints:
+      - "業務モジュール間の直接参照を禁止する"
+      - "セッション状態をインスタンス内に保持しない"
+    dependencies: ["relational_datastore", "key_value_cache", "message_queue", "secret_management"]
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "async_worker_runtime"
+    name: "非同期処理実行基盤"
+    category: "compute"
+    description: "日次スケジュール実行のバッチ処理と、キューからのメッセージ消費による非同期処理を担う実行基盤 capability"
+    requirements:
+      - id: "REQ-WRK-001"
+        description: "日次スケジュールでジョブを起動し、実行 ID による重複実行検知を行う"
+        priority: "must"
+        rationale: "日次タイマージョブと重複実行検知が定義されている"
+      - id: "REQ-WRK-002"
+        description: "キュー滞留量に応じて消費側の並列度を増減させる"
+        priority: "should"
+        rationale: "競合コンシューマーによるスループット調整が定義されている"
+      - id: "REQ-WRK-003"
+        description: "バッチ実行を計画停止枠およびバックアップ取得時間帯と競合しない時間帯に配置し、8 時間以内に完了させる"
+        priority: "must"
+        rationale: "バッチ実行計画とバッチ処理時間の目標が定義されている"
+      - id: "REQ-WRK-004"
+        description: "再試行上限を超えた処理を失敗として記録し、通知する"
+        priority: "must"
+        rationale: "再試行上限超過時の退避とアラート通知が定義されている"
+      - id: "REQ-WRK-005"
+        description: "中断されても業務影響が出ないよう、処理を再実行可能に設計する"
+        priority: "should"
+        rationale: "中断許容の実行形態を選べるようにしてコストを最適化するため"
+    constraints:
+      - "同一通知の二重送信を禁止する"
+    dependencies: ["message_queue", "relational_datastore", "key_value_cache", "outbound_integration_gateway"]
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "message_queue"
+    name: "メッセージキュー"
+    category: "messaging"
+    description: "通知送信要求とレポート集計要求を非同期に受け渡し、負荷を平準化する capability。配信失敗メッセージの退避先を併設する"
+    requirements:
+      - id: "REQ-MQ-001"
+        description: "少なくとも 1 回の配信を保証し、消費側の冪等処理で重複を吸収する"
+        priority: "must"
+        rationale: "at-least-once 配信と冪等消費が方針として定義されている"
+      - id: "REQ-MQ-002"
+        description: "再試行上限を超えたメッセージを退避キューへ移し、滞留を監視対象とする"
+        priority: "must"
+        rationale: "退避キューの監視と手動再処理の運用手順が定義されている"
+      - id: "REQ-MQ-003"
+        description: "メッセージ本文に個人情報を格納せず、識別子の参照のみを載せる"
+        priority: "must"
+        rationale: "メッセージへの個人情報非格納が方針として定義されている"
+      - id: "REQ-MQ-004"
+        description: "保管時・通信時ともに暗号化する"
+        priority: "must"
+        rationale: "全通信暗号化と機密データの保管時暗号化が要求されている"
+    constraints:
+      - "厳密な順序保証は要求しない"
+    dependencies: []
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "relational_datastore"
+    name: "リレーショナルデータストア"
+    category: "database"
+    description: "業務データの正本を保持し、強整合トランザクションと一意制約・行ロックによる整合担保を提供する capability"
+    requirements:
+      - id: "REQ-DB-001"
+        description: "強整合トランザクションで在庫・貸出・予約の整合を担保する"
+        priority: "must"
+        rationale: "在庫整合のトランザクション境界と重複予約禁止が定義されている"
+      - id: "REQ-DB-002"
+        description: "ポイントインタイムリカバリにより目標復旧地点 4 時間以内を満たす"
+        priority: "must"
+        rationale: "復旧地点目標が数時間前までと定義されている"
+      - id: "REQ-DB-003"
+        description: "複数の可用性ゾーンにまたがる待機系を持ち、切替時間 60 分未満で復旧できる"
+        priority: "must"
+        rationale: "冗長化と切替時間の目標が定義されている"
+      - id: "REQ-DB-004"
+        description: "保管時暗号化を有効にし、個人情報を含む列を保護する"
+        priority: "must"
+        rationale: "機密データの保管時暗号化が要求されている"
+      - id: "REQ-DB-005"
+        description: "外部から直接到達できない内部セグメントに配置する"
+        priority: "must"
+        rationale: "ネットワーク分離の方針が定義されている"
+      - id: "REQ-DB-006"
+        description: "全文索引による書籍検索を提供し、応答時間目標を満たす"
+        priority: "should"
+        rationale: "検索条件は 5 種に限られ、データ量から専用検索基盤は不要と判断されている"
+      - id: "REQ-DB-007"
+        description: "集計結果を実体化ビューとして永続化し、レポート参照の応答を安定させる"
+        priority: "should"
+        rationale: "統計レポートの実体化ビュー化が設計方針として定義されている"
+      - id: "REQ-DB-008"
+        description: "日次フル + 差分バックアップを取得し、世代管理する"
+        priority: "must"
+        rationale: "バックアップ方式と世代管理が定義されている"
+    constraints:
+      - "データ量は年 100 万件規模・総容量 100GB 未満を前提とする"
+      - "データ所在地は国内に限定する"
+    dependencies: ["secret_management"]
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-rds-postgresql.md"
+
+  - id: "key_value_cache"
+    name: "キー値キャッシュ"
+    category: "cache"
+    description: "参照系の負荷軽減、セッション状態の外部保持、短命な冪等キー保持を担う有効期限付きキー値ストア capability"
+    requirements:
+      - id: "REQ-CACHE-001"
+        description: "参照系の書籍情報を先読み型キャッシュとして保持し、状態遷移時に無効化する"
+        priority: "should"
+        rationale: "参照系が主要負荷でありピーク吸収に先読み型キャッシュを適用する方針"
+      - id: "REQ-CACHE-002"
+        description: "セッション状態を実行基盤の外部に保持し、実行基盤のステートレス化を可能にする"
+        priority: "must"
+        rationale: "水平スケールアウトに伴うステートレス化が要求されている"
+      - id: "REQ-CACHE-003"
+        description: "有効期限による自動失効を提供する"
+        priority: "must"
+        rationale: "セッションと冪等キーはいずれも有効期限管理が前提"
+      - id: "REQ-CACHE-004"
+        description: "複数の可用性ゾーンにまたがる冗長構成とし、通信時・保管時ともに暗号化する"
+        priority: "must"
+        rationale: "冗長化要件と全通信暗号化が要求されている"
+    constraints:
+      - "業務データの正本を置かない"
+    dependencies: []
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-elasticache-redis.md"
+
+  - id: "object_storage"
+    name: "オブジェクトストレージ"
+    category: "storage"
+    description: "静的配信成果物、バックアップ退避、ログ長期保管を担うオブジェクト単位のストレージ capability"
+    requirements:
+      - id: "REQ-OBJ-001"
+        description: "匿名公開アクセスを禁止し、配信面または明示的に許可された主体からのみ参照可能とする"
+        priority: "must"
+        rationale: "基盤ガードレールで公開ストレージが禁止されている"
+      - id: "REQ-OBJ-002"
+        description: "保管時暗号化を有効にする"
+        priority: "must"
+        rationale: "機密データの保管時暗号化が要求されている"
+      - id: "REQ-OBJ-003"
+        description: "保管期間経過後の自動削除と、低頻度アクセス階層への自動移行を設定する"
+        priority: "should"
+        rationale: "ログ保管期間 180 日と均衡型コスト方針から階層化が有効"
+    constraints:
+      - "データ所在地は国内に限定する"
+    dependencies: []
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "outbound_integration_gateway"
+    name: "外部連携ゲートウェイ"
+    category: "integration"
+    description: "外部のメール配信事業者へ通知を送出する腐敗防止層 capability。外部仕様の変更を業務モジュールへ波及させない"
+    requirements:
+      - id: "REQ-OUT-001"
+        description: "外部サービスの応答コードとエラー内容を記録し、未達を追跡可能にする"
+        priority: "must"
+        rationale: "通知の送信実績と未達追跡が要求されている"
+      - id: "REQ-OUT-002"
+        description: "外部呼び出しの失敗時に再試行し、上限超過時は失敗として確定させる"
+        priority: "must"
+        rationale: "再試行上限と失敗記録が定義されている"
+      - id: "REQ-OUT-003"
+        description: "外部宛先の資格情報を秘密情報管理から取得し、設定ファイルに平文で持たない"
+        priority: "must"
+        rationale: "最小権限とアクセス制御の方針"
+      - id: "REQ-OUT-004"
+        description: "外部連携の失敗率とレイテンシを依存関係のログ・メトリクスとして出力する"
+        priority: "must"
+        rationale: "アプリケーションレベルでの通知失敗検知が監視範囲に含まれている"
+    constraints:
+      - "宛先メールアドレスは送信時点の値を保持し、外部へ渡す範囲を最小化する"
+    dependencies: ["secret_management"]
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "network_segmentation"
+    name: "ネットワーク分離"
+    category: "network"
+    description: "公開面・アプリケーション面・データ面を分離し、データ面への直接到達を遮断する capability"
+    requirements:
+      - id: "REQ-NET-001"
+        description: "データストアを外部から直接到達できないセグメントに配置する"
+        priority: "must"
+        rationale: "ネットワーク分離の方針が定義されている"
+      - id: "REQ-NET-002"
+        description: "職員向け面を接続元ネットワークで制限する"
+        priority: "must"
+        rationale: "館内ネットワーク限定の利用制限が定義されている"
+      - id: "REQ-NET-003"
+        description: "本番環境と非本番環境を分離する"
+        priority: "must"
+        rationale: "基盤ガードレールで本番・非本番の分離が要求されている"
+      - id: "REQ-NET-004"
+        description: "内部通信を含む全通信を暗号化する"
+        priority: "must"
+        rationale: "全通信暗号化が要求されている"
+    constraints:
+      - "複数の可用性ゾーンにまたがる構成とする"
+    dependencies: []
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "secret_management"
+    name: "秘密情報管理"
+    category: "security"
+    description: "データストア資格情報・外部連携資格情報・暗号鍵を集中管理し、実行基盤へ安全に供給する capability"
+    requirements:
+      - id: "REQ-SEC-001"
+        description: "資格情報を集中管理し、実行基盤へは実行時に供給する"
+        priority: "must"
+        rationale: "最小権限のアクセス制御が横断ルールとして定義されている"
+      - id: "REQ-SEC-002"
+        description: "暗号鍵を管理し、保管時暗号化に用いる"
+        priority: "must"
+        rationale: "機密データの保管時暗号化が要求されている"
+      - id: "REQ-SEC-003"
+        description: "資格情報の定期的な更新を可能にする"
+        priority: "should"
+        rationale: "パスワードポリシーの有効期限と整合させるため"
+    constraints: []
+    dependencies: []
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "observability_platform"
+    name: "オブザーバビリティ基盤"
+    category: "observability"
+    description: "メトリクス・ログ・分散トレースを集約し、サービス水準指標の測定とアラート通知を行う capability"
+    requirements:
+      - id: "REQ-OBS-001"
+        description: "基盤層・ネットワーク層・アプリケーション層のメトリクスを収集する"
+        priority: "must"
+        rationale: "監視範囲として 3 層が定義されている"
+      - id: "REQ-OBS-002"
+        description: "構造化ログを集約し、保管期間 180 日を満たす"
+        priority: "must"
+        rationale: "ログ保管期間 6 ヶ月が定義されている"
+      - id: "REQ-OBS-003"
+        description: "追跡 ID を全ティアで伝播した分散トレースを保持する"
+        priority: "must"
+        rationale: "構造化ログと分散トレーシングが横断方針として定義されている"
+      - id: "REQ-OBS-004"
+        description: "利用者向け画面の外形監視を 5 分間隔で行う"
+        priority: "should"
+        rationale: "外形監視と 5 分間隔ポーリングが定義されている"
+      - id: "REQ-OBS-005"
+        description: "個人情報をログへ出力する際は伏字化する"
+        priority: "must"
+        rationale: "ログ保管とマスキングが横断ルールとして定義されている"
+      - id: "REQ-OBS-006"
+        description: "異常検知時に運用担当へ即時通知し、エスカレーション経路を定義する"
+        priority: "must"
+        rationale: "エラー通知とエスカレーションが横断ルールとして定義されている"
+    constraints:
+      - "監視間隔は 5 分、異常検知時は即時通知とする"
+    dependencies: ["object_storage"]
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+
+  - id: "backup_and_recovery"
+    name: "バックアップと復旧"
+    category: "resilience"
+    description: "業務データとオブジェクトの定期取得・世代管理・復旧手順を提供する capability"
+    requirements:
+      - id: "REQ-BKP-001"
+        description: "日次でフル + 差分を取得し、継続的なトランザクションログ取得を併用する"
+        priority: "must"
+        rationale: "バックアップ方式と復旧地点目標が定義されている"
+      - id: "REQ-BKP-002"
+        description: "復旧時間目標 2 時間以内で復旧できる手順を定義し、定期的に検証する"
+        priority: "must"
+        rationale: "復旧時間目標が 2 時間以内と定義されている"
+      - id: "REQ-BKP-003"
+        description: "バックアップ取得時間帯を計画停止枠およびバッチ実行時間帯と競合させない"
+        priority: "should"
+        rationale: "バッチ実行計画で競合回避が定義されている"
+      - id: "REQ-BKP-004"
+        description: "バックアップを保管時暗号化し、削除保護を設定する"
+        priority: "must"
+        rationale: "機密データの保管時暗号化が要求されている"
+    constraints:
+      - "遠隔地への複製は行わない（災害対策の範囲は最小水準）"
+    dependencies: ["relational_datastore", "object_storage"]
+    source_refs:
+      - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"

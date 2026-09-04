@@ -1,0 +1,209 @@
+# _model-summary.yaml
+uc: "貸出を登録する"
+business: "貸出業務"
+buc: "書籍を貸し出すフロー"
+
+bounded_context_id: "BC-003"
+aggregate_id: "AG-003"
+
+models:
+  - name: "LoanRegisterPanel 入力 / 判定結果"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出"
+  - name: "LoanEligibility / LoanResult"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "貸出"
+  - name: "LoanEligibilityQuery"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "貸出"
+  - name: "CreateLoanRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "貸出"
+  - name: "CheckLoanEligibilityQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出"
+  - name: "RegisterLoanCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "貸出"
+  - name: "Loan"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "貸出"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "Reservation"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "LoanPeriod"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "貸出期間"
+  - name: "DueDate"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "貸出"
+  - name: "LoanRecord / BookRecord / ReservationRecord / LoanPeriodRecord / UserRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "貸出"
+
+tables:
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "INSERT"
+        columns:
+          - name: "loan_id"
+            value: "ULID 採番"
+          - name: "book_id"
+            value: "リクエストの bookId"
+          - name: "user_number"
+            value: "リクエストの userNumber"
+          - name: "loaned_on"
+            value: "当日"
+          - name: "due_date"
+            value: "loaned_on + loan_periods.loan_days"
+          - name: "current_status"
+            value: "ON_LOAN"
+          - name: "recorded_by"
+            value: "トークンの司書利用者番号"
+          - name: "version"
+            value: "1"
+        where: ""
+    indexes_needed:
+      - columns: ["book_id", "current_status"]
+        reason: "書籍ごとの貸出中レコード検索（返却・貸出可否）"
+        access_pattern: "WHERE book_id = ? AND current_status IN ('ON_LOAN','OVERDUE')"
+      - columns: ["user_number", "current_status"]
+        reason: "利用者ごとの貸出中件数・履歴"
+        access_pattern: "WHERE user_number = ?"
+  - name: "loan_events"
+    rdra_info: "貸出"
+    operations:
+      - type: "INSERT"
+        columns:
+          - name: "loan_id"
+            value: "作成した貸出 ID"
+          - name: "event_type"
+            value: "REGISTERED"
+          - name: "occurred_at"
+            value: "現在時刻"
+          - name: "actor_user_number"
+            value: "司書の利用者番号"
+          - name: "idempotency_key"
+            value: "Idempotency-Key ヘッダ"
+        where: ""
+      - type: "SELECT"
+        columns: []
+        where: "idempotency_key = ?（冪等キー検査）"
+    indexes_needed:
+      - columns: ["idempotency_key"]
+        reason: "冪等キーの一意性と再送検出"
+        access_pattern: "UNIQUE WHERE idempotency_key = ?"
+      - columns: ["loan_id", "occurred_at"]
+        reason: "貸出ごとのイベント履歴（返却日の導出）"
+        access_pattern: "WHERE loan_id = ? ORDER BY occurred_at"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = ? FOR UPDATE"
+      - type: "UPDATE"
+        columns:
+          - name: "current_status"
+            value: "ON_LOAN"
+          - name: "version"
+            value: "version + 1"
+          - name: "updated_at"
+            value: "現在時刻"
+        where: "book_id = ? AND version = ?"
+    indexes_needed: []
+  - name: "book_events"
+    rdra_info: "書籍"
+    operations:
+      - type: "INSERT"
+        columns:
+          - name: "book_id"
+            value: "書籍 ID"
+          - name: "event_type"
+            value: "LOANED"
+          - name: "occurred_at"
+            value: "現在時刻"
+          - name: "related_id"
+            value: "loan_id"
+        where: ""
+    indexes_needed:
+      - columns: ["book_id", "occurred_at"]
+        reason: "書籍ごとのイベント履歴"
+        access_pattern: "WHERE book_id = ? ORDER BY occurred_at"
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_number = ?（登録済み判定・氏名表示）"
+    indexes_needed: []
+  - name: "loan_periods"
+    rdra_info: "貸出期間"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "valid_to IS NULL AND valid_from <= 当日（現行世代）"
+    indexes_needed:
+      - columns: ["valid_from", "valid_to"]
+        reason: "現行世代の貸出期間を 1 件取得"
+        access_pattern: "WHERE valid_to IS NULL AND valid_from <= ?"
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = ? AND current_status IN ('RESERVED','NOTIFIED') ORDER BY queue_position（順位 1 位の判定）"
+      - type: "UPDATE"
+        columns:
+          - name: "current_status"
+            value: "CLOSED"
+          - name: "version"
+            value: "version + 1"
+          - name: "updated_at"
+            value: "現在時刻"
+        where: "reservation_id = ? AND version = ?（貸出先利用者の予約。楽観ロック。更新件数 0 は CONCURRENT_UPDATE）"
+      - type: "UPDATE"
+        note: "順位繰り上げ。部分一意インデックス uq_reservations_book_id_queue_position（book_id, queue_position / current_status IN ('RESERVED','NOTIFIED')）との衝突を避けるため、一括 UPDATE ではなく queue_position 昇順に 1 行ずつ更新する（ORDER BY queue_position ASC のカーソル、または同順の CTE で 1 行ずつ）"
+        columns:
+          - name: "queue_position"
+            value: "queue_position - 1"
+          - name: "version"
+            value: "version + 1"
+          - name: "updated_at"
+            value: "現在時刻"
+        where: "reservation_id = ?（book_id = ? AND current_status IN ('RESERVED','NOTIFIED') AND queue_position > ? を queue_position 昇順に走査して 1 行ずつ）"
+    indexes_needed:
+      - columns: ["book_id", "current_status", "queue_position"]
+        reason: "書籍ごとの有効予約を順位順に取得"
+        access_pattern: "WHERE book_id = ? AND current_status IN (...) ORDER BY queue_position"
+
+kvs: []
+object_storage: []

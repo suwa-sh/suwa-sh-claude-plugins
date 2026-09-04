@@ -1,0 +1,160 @@
+# digest of nfr/latest/nfr-grade.yaml section categories[id=F] (L1004-1161); source_sha256: f352e424419f352fb0a55e65541b02a9f420d7d6b9dec9d2a0f3b5de39d04780
+# 派生物。正本は nfr-grade.yaml。編集しない
+  - id: "F"
+    name: "システム環境・エコロジー"
+    subcategories:
+      - id: "F.1"
+        name: "システム制約・前提条件"
+        items:
+          - id: "F.1.1"
+            name: "システム制約"
+            important: true
+            metrics:
+              - id: "F.1.1.1"
+                name: "対応OS"
+                important: true
+                grade: 2
+                grade_description: "主要2-3 OS対応（Windows / macOS を対象とする Web アプリケーション）"
+                reason: "システム概要の interface_kind=gui と「Web画面から行える」の記述から Web アプリケーションと判断し、マルチ OS 対応とする"
+                source_model: "システム概要: Web画面 / interface_kind=gui"
+                confidence: "medium"
+              - id: "F.1.1.2"
+                name: "対応ブラウザ"
+                important: true
+                grade: 2
+                grade_description: "主要ブラウザ2-3種対応（Chrome / Edge / Safari の最新版）"
+                reason: "社外の利用者が自身の端末の Web ブラウザから利用するため単一ブラウザ指定は現実的でない。モバイルブラウザ対応の記述はなく Lv3 は採らない"
+                source_model: "アクター: 利用者（社外）、システム概要: Web画面"
+                confidence: "medium"
+              - id: "F.1.1.3"
+                name: "対応デバイス"
+                important: false
+                grade: 2
+                grade_description: "PC（司書窓口）＋PC/タブレット（利用者向け検索・予約・照会）。スマートフォン対応は要確認"
+                reason: "BUC に「モバイル」「スマートフォン」の記述がなく、利用者端末の種別は RDRA から読み取れない弱い推論"
+                source_model: "BUC: 書籍を検索するフロー / 自分の利用状況を確認するフロー"
+                confidence: "low"
+          - id: "F.1.2"
+            name: "ネットワーク制約"
+            important: false
+            metrics:
+              - id: "F.1.2.1"
+                name: "通信プロトコル"
+                important: false
+                grade: 1
+                grade_description: "HTTPS（TLS1.2以上）と SMTP/SMTPS または HTTPS API（メール配信サービス連携）"
+                reason: "Web 画面（HTTPS）と外部システム「メール配信サービス」へのメール送信連携が RDRA で明示されている"
+                source_model: "外部システム: メール配信サービス、システム概要: Web画面"
+                confidence: "high"
+              - id: "F.1.2.2"
+                name: "帯域要件"
+                important: false
+                grade: 1
+                grade_description: "〜100Mbps（画面主体・大容量添付なし）"
+                reason: "情報にファイル・画像属性がなく画面主体だが、館内回線の前提が RDRA になく弱い推論"
+                source_model: "情報: 書籍 / 利用者（ファイル属性なし）"
+                confidence: "low"
+      - id: "F.2"
+        name: "システム特性"
+        items:
+          - id: "F.2.1"
+            name: "可搬性"
+            important: false
+            metrics:
+              - id: "F.2.1.1"
+                name: "可搬性"
+                important: false
+                grade: 2
+                grade_description: "同一ベンダ内での移行可能"
+                reason: "モデルシステム2のデフォルト値を適用（デプロイ環境未定）"
+                source_model: ""
+                confidence: "default"
+          - id: "F.2.2"
+            name: "拡張性"
+            important: false
+            metrics:
+              - id: "F.2.2.1"
+                name: "アーキテクチャ拡張性"
+                important: false
+                grade: 2
+                grade_description: "コンテキスト分割されたモジュラ構成（蔵書管理／利用者管理／貸出管理／予約管理／通知管理／運営分析管理）。媒体種別による電子書籍対応を拡張点とする"
+                reason: "情報・条件が 6 コンテキストに分割され、システム概要とバリエーション「媒体種別」で将来の電子書籍対応が拡張起点として明示されている"
+                source_model: "バリエーション: 媒体種別、条件: 媒体種別判定、システム概要: 将来の電子書籍対応"
+                confidence: "medium"
+      - id: "F.3"
+        name: "適合規格"
+        items:
+          - id: "F.3.1"
+            name: "適合規格"
+            important: false
+            metrics:
+              - id: "F.3.1.1"
+                name: "業界標準・規格"
+                important: false
+                grade: 1
+                grade_description: "ISBN（ISO 2108）に準拠した書誌データ管理"
+                reason: "情報「書籍」の属性 ISBN と検索条件種別 ISBN から書誌識別子の標準準拠が必要"
+                source_model: "情報: 書籍（ISBN）、バリエーション: 検索条件種別"
+                confidence: "medium"
+              - id: "F.3.1.2"
+                name: "アクセシビリティ"
+                important: false
+                grade: 2
+                grade_description: "JIS X 8341-3:2016 レベル AA 準拠を目標とする（利用者向け画面）"
+                reason: "社外の一般利用者向け画面を公開する図書館システムとして望ましいが、アクセシビリティ要件は RDRA に記述がなく弱い推論"
+                source_model: "アクター: 利用者（社外）"
+                confidence: "low"
+      - id: "F.4"
+        name: "機材設置環境条件"
+        items:
+          - id: "F.4.1"
+            name: "設置環境"
+            important: false
+            metrics:
+              - id: "F.4.1.1"
+                name: "耐震クラス"
+                important: false
+                grade: 2
+                grade_description: "データセンタ（耐震）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+              - id: "F.4.1.2"
+                name: "空調・温度管理"
+                important: false
+                grade: 2
+                grade_description: "データセンタ標準の空調（温度18〜27℃、冗長構成）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+              - id: "F.4.1.3"
+                name: "物理セキュリティ"
+                important: false
+                grade: 2
+                grade_description: "入退室管理（ICカード）＋監視カメラ"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+      - id: "F.5"
+        name: "環境マネージメント"
+        items:
+          - id: "F.5.1"
+            name: "環境対策"
+            important: false
+            metrics:
+              - id: "F.5.1.1"
+                name: "CO2排出量"
+                important: false
+                grade: 1
+                grade_description: "省電力機器の選定"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+              - id: "F.5.1.2"
+                name: "廃棄物・リサイクル"
+                important: false
+                grade: 1
+                grade_description: "IT機器は産業廃棄物として適正処理し、記憶媒体は物理破壊＋証明書取得とする"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"

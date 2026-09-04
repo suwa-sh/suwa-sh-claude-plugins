@@ -1,0 +1,123 @@
+# _api-summary.yaml
+uc: "利用者を登録する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+endpoints:
+  - method: "POST"
+    path: "/api/v1/users"
+    summary: "利用者を登録し利用者番号を採番する"
+    request_schema: "CreateUserRequest"
+    response_schema: "UserResponse"
+    tags: ["users"]
+    security: ["bearer"]
+    roles: ["司書"]
+    headers:
+      - name: "Idempotency-Key"
+        required: true
+    responses:
+      "201": "UserResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+      "422": "ValidationProblemDetails"
+    errors:
+      - status: "400"
+        code: "BAD_REQUEST"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+      - status: "422"
+        code: "VALIDATION_ERROR"
+async_events: []
+schemas:
+  - name: "CreateUserRequest"
+    properties:
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "email"
+        type: "string"
+        format: "email"
+        required: true
+      - name: "phone"
+        type: "string"
+        required: false
+      - name: "address"
+        type: "string"
+        required: false
+      - name: "userType"
+        type: "string"
+        enum: ["PATRON", "STAFF"]
+        description: "利用者区分（PATRON=利用者 / STAFF=司書）。省略時 PATRON"
+        required: false
+  - name: "UserResponse"
+    properties:
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "email"
+        type: "string"
+        required: true
+      - name: "phone"
+        type: "string"
+        required: false
+      - name: "address"
+        type: "string"
+        required: false
+      - name: "userType"
+        type: "string"
+        enum: ["PATRON", "STAFF"]
+        description: "利用者区分（PATRON=利用者 / STAFF=司書）"
+        required: true
+      - name: "version"
+        type: "integer"
+        required: true
+      - name: "registeredAt"
+        type: "string"
+        format: "date-time"
+        required: true
+      - name: "updatedAt"
+        type: "string"
+        format: "date-time"
+        required: true
+  - name: "ProblemDetails"
+    properties:
+      - name: "type"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "status"
+        type: "integer"
+        required: true
+      - name: "detail"
+        type: "string"
+        required: false
+      - name: "code"
+        type: "string"
+        required: true
+      - name: "traceId"
+        type: "string"
+        required: false
+  - name: "ValidationProblemDetails"
+    properties:
+      - name: "code"
+        type: "string"
+        required: true
+      - name: "errors"
+        type: "array"
+        items: "FieldError"
+        required: true
+  - name: "FieldError"
+    properties:
+      - name: "field"
+        type: "string"
+        required: true
+      - name: "message"
+        type: "string"
+        required: true

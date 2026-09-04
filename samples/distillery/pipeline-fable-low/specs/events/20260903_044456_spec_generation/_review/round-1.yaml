@@ -1,0 +1,325 @@
+round: 1
+# Step6.5 セマンティック反証レビュー（round 1）
+# 対象: docs/specs/events/20260903_044456_spec_generation 全体
+# 入力の正: docs/usdm/latest/ / docs/rdra/latest/ / docs/arch/latest/_digest/ / docs/design/latest/_digest/
+# 観点: 1 トレーサビリティ / 2 依存の宣言 / 3 契約生成適性 / 4 一貫性 / 5 gherkin 品質
+findings:
+  # ============================================================
+  # blocker
+  # ============================================================
+  - id: R-001
+    viewpoint: 4
+    severity: blocker
+    target: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を編集する/tier-backend-api.md"
+    claim: "楽観ロック競合（409）の業務エラーコードが UC 側と openapi で完全に食い違う。UC 側は全 4 更新系 UC が VERSION_CONFLICT、openapi は OPTIMISTIC_LOCK_CONFLICT。フロントエンドの 409 分岐（再読み込み導線）が実装時に必ず外れる"
+    evidence: "VERSION_CONFLICT は UC 成果物に 31 箇所（書籍を編集する/tier-backend-api.md L81・L118・L148、書籍を削除する/tier-backend-api.md L46・L81、利用者を編集する/tier-backend-api.md L78・L132、利用者を削除する/tier-backend-api.md L79・L131、各 spec.md / buc-spec.md / tier-frontend-staff.md）。一方 _cross-cutting/api/openapi.yaml は L16 / L196 / L953 / L1280 / L1357 / L1380 で一貫して OPTIMISTIC_LOCK_CONFLICT。OPTIMISTIC_LOCK_CONFLICT は UC 側成果物に 0 箇所"
+    suggested_fix: "openapi を正として 4 UC の spec.md / tier-*.md / buc-spec.md / _api-summary.yaml の VERSION_CONFLICT を OPTIMISTIC_LOCK_CONFLICT に一括置換する。あわせて ProblemDetails.code を自由文字列から enum 化し、以後この種の乖離を機械検証できるようにする（R-025 と同時対応）"
+
+  - id: R-002
+    viewpoint: 4
+    severity: blocker
+    target: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_model-summary.yaml"
+    claim: "book_events / user_events へ INSERT する操作者カラム名が UC 側では recorded_by、rdb-schema.yaml では actor_user_number で不一致。リポジトリ実装・DDL 生成が即座に落ちる"
+    evidence: "rdb-schema.yaml L191（book_events）・L365（user_events）はカラム名 actor_user_number（description に「（recorded_by）」と旧名を併記しているだけ）。対して recorded_by を INSERT 対象カラムとして宣言する箇所が UC 成果物に 17 箇所: 書籍を登録する/tier-backend-api.md L96・_model-summary.yaml L121、書籍を編集する/_model-summary.yaml L122、書籍を削除する/_model-summary.yaml L85、利用者を登録する/tier-backend-api.md L84・_model-summary.yaml L93、利用者を編集する/_model-summary.yaml L92、利用者を削除する/_model-summary.yaml L100 ほか。なお loans.recorded_by（rdb-schema L465）は別カラムであり正当"
+    suggested_fix: "book_events / user_events に対する UC 側の recorded_by をすべて actor_user_number に置換する。rdb-schema.yaml L194 / L368 の description から別名 recorded_by の併記を削除し、カラム名を 1 つに固定する"
+
+  - id: R-003
+    viewpoint: 4
+    severity: blocker
+    target: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/tier-backend-api.md"
+    claim: "credentials テーブルに行を作成する UC が仕様書のどこにも存在しない。利用者登録は user_events と users しか書き込まないため、登録された利用者は永久にログインできず、認証必須の利用者ポータル UC（予約・貸出履歴・予約状況）が到達不能になる"
+    evidence: "利用者を登録する/tier-backend-api.md L92「保存は UserRepository.save が user_events INSERT + users INSERT を同一トランザクションで実行する（LR-008）」— credentials への言及なし。rdb-schema.yaml の credentials.used_by（L429-431）は「利用者を削除する / operations: [DELETE]」のみで INSERT 元が無く、password_hash は nullable: false（L405）。credentials という語を含む UC 成果物は 利用者を削除する の 3 ファイルと buc-spec.md / decisions/spec-decision-003.yaml だけ。_cross-cutting/ux-ui/ux-design.md L230「利用者ポータルの /me/* と予約系画面は認証必須」"
+    suggested_fix: "利用者を登録する UC に認証情報の初期作成（初期パスワード発行または招待メール送付）の処理フロー・API 契約・BDD を追加する。別 UC として切り出す場合は spec-event.yaml の use_cases に追加し、rdb-schema.yaml の credentials.used_by に INSERT 元 UC を登録する"
+
+  - id: R-004
+    viewpoint: 2
+    severity: blocker
+    target: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_api-summary.yaml"
+    claim: "openapi が必須ヘッダとして課している Idempotency-Key を、利用者を登録する / 利用者を編集する の 2 UC が一切宣言していない。UC 仕様どおりに実装するとリクエストが全件 400 になる"
+    evidence: "openapi.yaml L886（POST /api/v1/users）と L959（PUT /api/v1/users/{userNumber}）が $ref: '#/components/parameters/IdempotencyKey'、L1265-1268 で required: true。対して両 UC のディレクトリ全ファイルに Idempotency-Key の文字列が 0 件（grep -c で tier-backend-api.md が両方とも 0）。比較対象として 書籍を登録する/tier-backend-api.md L20 は「ヘッダ Idempotency-Key（必須）」を正しく宣言している"
+    suggested_fix: "両 UC の _api-summary.yaml に headers: - name: Idempotency-Key / required: true を追加し、tier-backend-api.md のリクエスト節と tier-frontend-staff.md の API クライアント記述（書籍側と同文の付与処理）を追記する"
+
+  - id: R-005
+    viewpoint: 3
+    severity: blocker
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/asyncapi.yaml"
+    claim: "ReturnNoticeRequested の発行タイミングが契約と UC 仕様で正反対。asyncapi は「同一トランザクション内で発行（Outbox 相当）」、UC 2 件は「コミット後に発行」。トランザクション境界と障害時の再発行設計が真逆になり、実装後の作り直しになる"
+    evidence: "asyncapi.yaml L94 publishReturnNoticeRequested.description「発行前に通知レコードを作成し予約を NOTIFIED に遷移させる同一トランザクション内で発行する（Outbox 相当）」。対して 返却通知を送信する/tier-backend-api.md L5・L92・L138「コミット後に MQ へ ReturnNoticeRequested を発行する」「発行に失敗した場合は WARN の劣化兆候ログを出し、通知レコードは送信待ちのまま残す」、予約を取り消す/tier-backend-api.md L5・L143「コミット後に返却通知の MQ 発行を行う」。さらに 返却通知を送信する/tier-worker.md の消費手順 2 は「レコードが無ければ WARN を出力して DLQ へ退避する（API 側のコミット前に発行された不整合）」と in-tx 発行を前提にしており UC 本体とも矛盾する"
+    suggested_fix: "Transactional Outbox に統一する（推奨）。asyncapi の operation description、両 UC の tier-backend-api.md のビジネスルール、tier-worker.md の「通知レコードなし」ケースの扱い（in-tx なら DLQ 退避ではなく短時間リトライ）を同時に書き換える"
+
+  - id: R-006
+    viewpoint: 4
+    severity: blocker
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    claim: "loan_statistics を UPSERT する集計バッチの UC も tier 仕様も event 配下に存在しない。運営分析 2 UC は「集計の正本は loan_statistics」を前提にしているため、誰がデータを作るのかが未定義のまま実装に入ることになる"
+    evidence: "rdb-schema.yaml L18「loan_statistics は loans の集計結果（Materialized View 相当）。集計バッチが (period_type, period_start, book_id) をキーに UPSERT する」。しかし L1004-1008 の used_by は 期間別貸出統計を参照する[SELECT] / 人気書籍ランキングを参照する[SELECT] のみで、spec-event.yaml の 27 UC にも集計バッチ UC は無い。人気書籍ランキングを参照する/tier-backend-api.md L84「未集計の区切り（当日・当月）は本 UC では補完しない」＝バッチ不在なら当日・当月が常に空になる。ranking / aggregated_at の付与規則、loan_count と loan_total の算出規則も未定義"
+    suggested_fix: "「貸出統計を集計する」タイマー UC（tier-worker）を追加するか、最低限 _cross-cutting に集計バッチ仕様（実行周期・UPSERT キー・ranking 付与・loan_count / loan_total の定義・遅延到着の再集計）を定義し、rdb-schema.yaml の used_by に UPSERT 元を登録する"
+
+  # ============================================================
+  # major
+  # ============================================================
+  - id: R-007
+    viewpoint: 4
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/予約を取り消す/_model-summary.yaml"
+    claim: "*_events テーブルの event_type 値が _model-summary.yaml と spec.md では日本語リテラル（登録 / 返却 / 貸出 / 取消 / 通知）のままで、rdb-schema.yaml と _review/api-conventions.md が定める英語 UPPER_SNAKE_CASE と不一致。さらに 10 値の正本に存在しない値（予約取消）も混入している"
+    evidence: "予約を取り消す/_model-summary.yaml L122 value: '取消（次順位は 通知）'、L166 value: '予約取消（書籍が在庫ありへ遷移したときのみ）'（api-conventions.md の 10 値 REGISTERED / UPDATED / DELETED / LOANED / RETURNED / OVERDUE / RESERVED / NOTIFIED / CANCELLED / CLOSED に 予約取消 は無い）。同様に 貸出を登録する/_model-summary.yaml L109 '登録' / L151 '貸出'、書籍を登録する/_model-summary.yaml L116 '登録'。where 句では日英が同一行に混在: 利用者の利用状況を参照する/_model-summary.yaml L112「event_type IN ('通知','CANCELLED')」、貸出履歴を参照する/_model-summary.yaml L70「event_type = '返却'」、利用者一覧を参照する/_model-summary.yaml L78・L82「event_type = '登録'」。spec.md の mermaid も 予約を取り消す/spec.md L26「reservation_events event_type=取消 / 通知」。rdb-schema.yaml L11 は「UC の _model-summary.yaml では日本語リテラルで記述されているため、実装時は本ファイルのコードを正とする」と乖離を自認したまま解消していない"
+    suggested_fix: "全 25 箇所の日本語 event_type リテラルを api-conventions.md の英語コードに置換する。予約取消 は CANCELLED（reservation_events）と RESERVED 解除に伴う book_events の CANCELLED のどちらを指すかを確定してから置換する。置換後 rdb-schema.yaml L11 の読み替え注記を削除する"
+
+  - id: R-008
+    viewpoint: 4
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/datastore/kvs-schema.yaml"
+    claim: "kvs-schema.yaml で統一したキー命名に UC 側（_model-summary.yaml / tier md）が追随しておらず、9 種のキーパターンが正本に存在しない。kvs-schema.yaml 自身が Step7 TODO として残した追随作業が未消化のまま"
+    evidence: "kvs-schema.yaml L11「キー命名を cache:{リソース}:{サブ種別}:{識別子} / lock:{種別}:{識別子} に統一した（旧: cache:book-reservations / cache:me-loans / cache:me-reservations / cache:user-usage / job:* / dedupe:notification / consumer:return-notice）。Step7 TODO: 該当 UC の _model-summary.yaml と tier md のキー名を本ファイルに追随させる」。正本の key_patterns（L18-125）に無い旧名が UC 側に残存: 予約一覧を参照する/_model-summary.yaml L91 cache:book-reservations:...、貸出履歴を参照する/_model-summary.yaml L94 cache:me-loans:...、予約状況を参照する/_model-summary.yaml L87 cache:me-reservations:...、利用者の利用状況を参照する/_model-summary.yaml L160 cache:user-usage:...、リマインド対象を抽出する/_model-summary.yaml L126 と tier-worker.md L19 job:reminder-extraction:...、延滞を判定する/_model-summary.yaml L152 と tier-worker.md L19 job:overdue-detection:...、リマインドを送信する/_model-summary.yaml L112・tier-worker.md L19・L82 と 督促を送信する/_model-summary.yaml L117・tier-worker.md L19 dedupe:notification:...、返却通知を送信する/_model-summary.yaml L209 consumer:return-notice:...、予約を登録する/_model-summary.yaml L145・予約を取り消す L218・返却を登録する L168 cache:book:{bookId}"
+    suggested_fix: "該当 11 UC の _model-summary.yaml と tier md のキー名を kvs-schema.yaml の key_patterns（cache:reservations:book: / cache:loans:me: / cache:reservations:me: / cache:users:usage: / lock:job:* / lock:notification: / lock:consumer:return-notice: / cache:books:detail:）に置換し、kvs-schema.yaml L11 の Step7 TODO 記述を削除する"
+
+  - id: R-009
+    viewpoint: 3
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を編集する/_api-summary.yaml"
+    claim: "書籍詳細レスポンスのスキーマ名と必須項目が UC 側と openapi で割れている。api-conventions.md が宣言した BookResponse から BookDetailResponse への改名が UC 側に反映されておらず、waitingCount / registeredAt / version の扱いも 3 UC で不一致。契約 codegen が UC 側と openapi 側で別の型を生成する"
+    evidence: "openapi.yaml L1671「UC では BookResponse と記載されていたものを規約名に統一」・L1672 required: [bookId, title, author, genreId, genreName, mediaType, status, waitingCount, registeredAt, updatedAt]。しかし BookResponse は 書籍を登録する/_api-summary.yaml L10・L18・L46、書籍を編集する/_api-summary.yaml L9・L19・L26・L39・L72、書籍詳細を参照する/_api-summary.yaml L9・L19・L26 に残存（kvs-schema.yaml L47 の value_type も BookResponse）。必須項目も割れており、書籍を登録する/tier-backend-api.md L33-47 のフィールド表と spec.md L46 に waitingCount が無く、書籍詳細を参照する/spec.md L49 は registeredAt を落としている。version の返却条件も 書籍を編集する/tier-backend-api.md L36「司書経路のみ返却」と 書籍を登録する/tier-backend-api.md L45（無条件）で不一致"
+    suggested_fix: "BookDetailResponse を唯一の名前として 3 UC の _api-summary.yaml / tier-backend-api.md / spec.md と kvs-schema.yaml L47 を置換する。登録直後は waitingCount: 0 を返すことと version の返却条件を 1 つに確定して 3 UC に反映する"
+
+  - id: R-010
+    viewpoint: 3
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/_api-summary.yaml"
+    claim: "_api-summary.yaml の endpoint フィールド名が UC 群ごとに異なり、機械可読の契約入力として使えない。認証は auth と security の 2 系統、エラーは errors と error_codes の 2 系統、パラメータは parameters と query_params / path_params の 2 系統に割れ、34 endpoint のうち 15 endpoint はエラーの宣言そのものが無い"
+    evidence: "全 27 ファイル 34 endpoint のキー出現数: security 20 / auth 14、errors 14 / error_codes 5（残り 15 は無し）、parameters 8 / query_params 11 / path_params 1、roles 15 / responses 15 / response_status 5。UC 群ごとに系統が固まっている: 蔵書管理・利用者管理の 15 endpoint は security かつエラー宣言なし、貸出・利用者サービスの 14 endpoint は auth + errors、期限管理・運営分析の 5 endpoint は security + error_codes。同じ概念に別名を与えているため、_api-summary.yaml を読む実装ハーネスは UC ごとに分岐が必要になる"
+    suggested_fix: "endpoint スキーマを 1 つに固定する（推奨: security / errors / parameters に統一し、path_params と query_params は parameters の in で表現する）。エラー宣言が無い 15 endpoint には openapi の各 operation の responses から errors を補完する"
+
+  - id: R-011
+    viewpoint: 3
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/期限管理業務/返却期限を通知するフロー/リマインドを送信する/_api-summary.yaml"
+    claim: "DLQ 退避メッセージのスキーマと必須ヘッダが UC 側契約と asyncapi で食い違う。UC 側は「元メッセージと同一スキーマ」と宣言するが、asyncapi は別名スキーマと必須の退避ヘッダ 4 項目を要求する。ワーカー仕様に退避ヘッダの付与手順が無いため、実装後に契約検証で落ちる"
+    evidence: "リマインドを送信する/_api-summary.yaml L12-16 は channel: notifications.reminder-mail-requested.dlq に対し message_schema: ReminderMailRequested、tier-backend-api.md L55「退避先: ...（同一スキーマ）」。対して asyncapi.yaml L308-316 は ReminderMailRequestedDead + traits: dlqHeaders を定義し、L397 で required: [attemptCount, lastFailureReason, lastFailedAt, originalChannel]。リマインドを送信する/tier-worker.md L27 の DLQ 手順は「DLQ に退避して send_result=FAILED に更新する」だけで退避ヘッダに言及なし（督促を送信する/tier-worker.md L27 も同じ）"
+    suggested_fix: "両 UC の _api-summary.yaml の DLQ エントリを message_schema: ReminderMailRequestedDead / OverdueNoticeRequestedDead に変更し、tier-worker.md の DLQ 退避手順に退避ヘッダ 4 項目の付与を明記する。BDD の DLQ シナリオにも attemptCount = 6 等の観測可能な Then を追加する"
+
+  - id: R-012
+    viewpoint: 2
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/期限管理業務/返却期限を通知するフロー/リマインドを送信する/tier-worker.md"
+    claim: "PENDING 滞留の再発行スイープが main チャネルへ publish するのに、その publish がどの _api-summary.yaml にも asyncapi の発行元記述にも宣言されていない。契約生成しても送信側の publisher が生成されず、返却通知側に至ってはスイープの実体（UC / tier / エンドポイント）自体が存在しない"
+    evidence: "リマインドを送信する/tier-worker.md L30-35「ReminderSendSweepJob ... 出力チャネル: notifications.reminder-mail-requested」に対し、同 UC の _api-summary.yaml L6-16 は main チャネルを direction: subscribe でしか宣言せず publish エントリが無い。asyncapi.yaml L124-126 publishReminderMailRequested.description の発行元は「リマインド対象を抽出する」のみ（督促側は asyncapi.yaml L156 でスイープを明記しているが、督促を送信する/_api-summary.yaml L11 も direction は subscribe のまま）。返却通知側は 返却通知を送信する/tier-backend-api.md L138「送信待ちかつ未発行の通知はワーカーの再発行バッチまたは次回の API 呼び出し時に再発行する」と前提にしているが、tier-worker.md は ReturnNoticeConsumer（購読のみ）しか定義せず、asyncapi の publishReturnNoticeRequested.description にもスイープの記述が無い。rdb-schema.yaml の idx_notifications_send_result_notification_type_requested_on の used_by には 返却通知を送信する が含まれ、スイープの存在を前提にしている"
+    suggested_fix: "リマインド / 督促の 2 UC の _api-summary.yaml に main チャネルの direction: publish（用途: 再発行スイープ）を追加し、asyncapi の各 publish operation の description に発行元として追記する。返却通知の再発行は所有者（既存タイマー UC への相乗り / 新規ワーカーコンポーネント / API 呼び出し時の遅延再発行）を確定して tier-worker.md と asyncapi に記述する"
+
+  - id: R-013
+    viewpoint: 4
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/tier-backend-api.md"
+    claim: "返却通知の送信先選定が「予約中の予約のうち予約順位 1 位」と定義されているため、順位 1 位が通知済みのまま来館しないケースで順位 2 位が送信先になり、予約順位の保証が壊れる。同じ定義のせいで送信確定後にプレビュー API を再取得すると reservation が null になり、フロントエンドの「通知記録を再取得して送信結果を反映する」が実装不能になる"
+    evidence: "返却通知を送信する/tier-backend-api.md ビジネスルール「状態『予約中』の予約のうち予約順位 1 位の利用者を送信先とする。予約中の予約が無ければ NO_RESERVATION_TO_NOTIFY」かつ「翌日以降の再送信は新しい通知レコードとして許可する（通知済みの予約に対する再通知）」。一方 spec.md 概要と asyncapi.yaml L204 ReturnNoticeRequested.summary は「予約順位 1 位の利用者への返却通知」と定義しており両立しない。またレスポンス表は「reservation: 送信先となる予約（順位 1 位・予約中）。無ければ null」「notifications: 対象予約に対する返却通知の送信記録」なので、送信確定でその予約が NOTIFIED に遷移した直後は reservation = null となり、tier-frontend-staff.md「202 受付後は通知記録を 3 秒後に 1 回再取得して送信結果を反映する」が成立しない。同時に _api-summary.yaml の blockedReason enum の RETURN_NOTICE_ALREADY_SENT も到達不能（NOTIFIED になった時点で NO_RESERVATION_TO_NOTIFY になる）"
+    suggested_fix: "送信先の解決を「有効予約（RESERVED / NOTIFIED）の queue_position = 1 の予約」に変更し、canSend を「当日の通知レコードが未作成」で判定する。これにより 2 位への誤通知と再取得時の null が同時に解消し、RETURN_NOTICE_ALREADY_SENT も到達可能になる。分岐条件一覧に「2 位以降を送信先にしない」ガードを追加する"
+
+  - id: R-014
+    viewpoint: 4
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/予約を取り消す/_model-summary.yaml"
+    claim: "予約順位の繰り上げが単一 UPDATE の一括デクリメントで定義されているが、部分一意インデックス uq_reservations_book_id_queue_position と衝突する。行の更新順序は RDBMS 保証外で、降順に処理されると一意違反する。加えて繰り上げ UPDATE が version / updated_at を更新しないため、スキーマが宣言する楽観ロック前提とも矛盾する"
+    evidence: "rdb-schema.yaml L733-736 uq_reservations_book_id_queue_position は columns [book_id, queue_position] / unique: true / 「部分一意インデックス: current_status IN ('RESERVED','NOTIFIED')」。対して 予約を取り消す/_model-summary.yaml L95-99 は UPDATE queue_position = queue_position - 1 WHERE book_id = ? AND current_status IN ('RESERVED','NOTIFIED') AND queue_position > ?（貸出を登録する/_model-summary.yaml の reservations 3 番目の UPDATE も同一 SQL、spec.md の計算ルール一覧「順位繰り上げ」も同旨）。またこの繰り上げ UPDATE の columns は queue_position のみで、rdb-schema.yaml の reservations.version description「楽観ロック用バージョン（状態遷移・繰り上げの UPDATE ごとに +1）」に反する（同ファイル L86-94 の取消 UPDATE は version / updated_at を含み WHERE に version = ? を持つ）。貸出を登録する の CLOSED 更新は WHERE に version ガードが無い"
+    suggested_fix: "繰り上げの更新順序を仕様として確定する（ORDER BY queue_position 昇順の CTE / カーソルで 1 行ずつ、または queue_position を持たず accepted_at 順で都度算出）。繰り上げ UPDATE にも version = version + 1 / updated_at を追加し、CLOSED 更新の WHERE に version = ? を追加する。version を進めない設計にするなら rdb-schema.yaml の description 側を修正して片側に統一する"
+
+  - id: R-015
+    viewpoint: 5
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する/tier-worker.md"
+    claim: "バッチの既処理照合に使う KVS キーがジョブ実行 ID を含むため、同日 2 回目の起動は必ず別キーになり照合が機能しない。BDD の完了条件も「同じジョブ実行 ID で再起動する」という実運用で起こらない前提でしか通らず、実行可能な粒度になっていない"
+    evidence: "リマインド対象を抽出する/_model-summary.yaml L126-127 key_pattern: job:reminder-extraction:{asOf}:{jobRunId} / purpose: lock、tier-worker.md L19「既処理照合: ジョブ実行 ID × asOf を KVS で照合し、完了済みなら正常終了として読み飛ばす（LR-014）」、BDD L79-83「Given ジョブ実行 ID『job-20260903-01』× 対象日 ... When 同じジョブ実行 ID で ReminderExtractionJob が再起動する」。延滞を判定する も job:overdue-detection:{asOf}:{jobRunId}（tier-worker.md L19、BDD L95-99）で同型"
+    suggested_fix: "ロックキーを job:reminder-extraction:{asOf}（値に jobRunId と完了状態を保持）に変更し、BDD を「別のジョブ実行 ID で同一 asOf を再起動しても抽出ユースケースが呼ばれない」に書き換える。重複作成防止を notifications の一意制約のみに委ねるなら、KVS 照合が lock ではなく再実行スキップ用途である旨を明記する。R-008 のキー改名（lock:job:*）と同時に対応する"
+
+  - id: R-016
+    viewpoint: 3
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_api-summary.yaml"
+    claim: "DELETE /api/v1/users/{userNumber} の 409 レスポンスを UserNotDeletableProblemDetails 単一で定義しているが、同 UC は同じ 409 で SELF_DELETE_NOT_ALLOWED と楽観ロック競合も返す。これらは reasons を持たないため、reasons required のスキーマで検証・生成クライアントが破綻する"
+    evidence: "_api-summary.yaml L51「'409': UserNotDeletableProblemDetails」・L98-102「name: reasons ... required: true」、openapi.yaml L1010-1014 も 409 を UserNotDeletableProblemDetails 単一で定義し L1541 required: [reasons]。対して tier-backend-api.md L78「409 | 対象が認可コンテキストの本人 | { status: 409, code: SELF_DELETE_NOT_ALLOWED }」、L79 が楽観ロック競合。書籍側にも同型の未定義コード MEDIA_TYPE_CHANGE_NOT_ALLOWED（書籍を編集する/tier-backend-api.md L82）がある"
+    suggested_fix: "409 を oneOf: [ProblemDetails, UserNotDeletableProblemDetails] にする、または reasons を optional にして code で判別する旨を明記する。openapi の Conflict の code 列挙（L1352-1357）に SELF_DELETE_NOT_ALLOWED と MEDIA_TYPE_CHANGE_NOT_ALLOWED を追加する"
+
+  - id: R-017
+    viewpoint: 4
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/tier-backend-api.md"
+    claim: "ISBN のハイフン正規化を誰が行うかが未定義で、openapi の pattern と UC の検証仕様・保存仕様が両立しない。ハイフン付き入力が API 境界で弾かれる"
+    evidence: "openapi.yaml L1748 pattern: '^(?:\\d{9}[\\dX]|\\d{13})$' / description「ISBN（ハイフンなし 10 桁または 13 桁）」。対して 書籍を登録する/tier-backend-api.md L26「ISBN（ハイフン除去後 10 桁または 13 桁の数字。最大 17 文字）」・L76「isbn | VARCHAR(17) NULL | ISBN（入力形式を保持）」、rdb-schema.yaml books.isbn「ハイフン込みの入力値」、tier-frontend-staff.md L109 のエラー文言「ISBN は 10 桁または 13 桁の数字で入力してください」（末尾 X を許さない）。フロントエンドがハイフンを除去して送信する記述はどこにも無い"
+    suggested_fix: "正規化の実施層を 1 箇所に決める（推奨: FE 送信前にハイフン除去 → API はハイフンなしのみ受理 → DB もハイフンなしで保存し、表示用の原文が必要なら別列にする）。決定に合わせて openapi の pattern、UC の検証文言、rdb-schema の description、書籍を検索する の REPLACE(isbn,'-','') を整合させ、末尾 X の許否も統一する"
+
+  - id: R-018
+    viewpoint: 4
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍を検索する/tier-backend-api.md"
+    claim: "searchType=isbn の照合方式が 3 通りに割れている。openapi は完全一致、書籍を検索する は正規化後の部分一致、書籍一覧を参照する は正規化なしの部分一致。同一エンドポイント GET /api/v1/books の挙動が UC ごとに変わる"
+    evidence: "openapi.yaml L68「title / author / isbn: 該当属性のみ照合（isbn はハイフン除去後の完全一致）」。書籍を検索する/tier-backend-api.md L89「isbn: q のハイフンを除去し REPLACE(isbn,'-','') LIKE %q%」・spec.md L142「isbn = ハイフン除去後の部分一致」・_model-summary.yaml L82・L95 も同旨。書籍一覧を参照する/_model-summary.yaml L86 access_pattern: 'WHERE isbn LIKE ?'（REPLACE なし）"
+    suggested_fix: "照合方式を 1 つに決め（部分一致なら openapi.yaml L68 を修正）、書籍一覧を参照する/_model-summary.yaml L86 も同じ式に揃える。決定後に rdb-schema.yaml の idx_books_isbn の注記（関数インデックスか isbn_normalized 列か）を確定する。R-017 と同時に対応する"
+
+  - id: R-019
+    viewpoint: 1
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/spec-event.yaml"
+    claim: "spec-event スキーマに USDM の SPEC ID / acceptance_criteria への機械可読な対応フィールドが定義されていないため、UC が USDM のどの SPEC に遡るかを機械検証できない。欠落 finding ではなくスキーマ拡張の変更要求として報告する"
+    evidence: "spec-event.yaml の use_cases 要素は business / buc / uc / files / api_count / async_event_count のみで、USDM への参照フィールドが無い。event 配下 185 ファイルに SPEC- という文字列が 0 件（docs/usdm/latest/requirements.yaml には SPEC-001-01 〜 SPEC-006-01 の 17 件が定義されている）。_cross-cutting/traceability-matrix.md は分母を docs/rdra/latest/*.tsv（情報の属性 / 条件 / バリエーション / 状態遷移 / 外部システム）に取っており、USDM 層のトレーサビリティは対象外"
+    suggested_fix: "spec-event スキーマの use_cases 要素に usdm_spec_ids: [SPEC-xxx-yy] と usdm_acceptance_criteria_refs を追加し、dist-spec の Step で埋める。あわせて traceability-matrix.md に USDM SPEC × UC のマトリクスと SPEC 網羅率を追加する。スキーマ拡張は dist-spec スキル側の変更要求として起票する"
+
+  - id: R-020
+    viewpoint: 3
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/asyncapi.yaml"
+    claim: "リマインド / 督促の消費時 SKIPPED 条件が asyncapi と UC 仕様で不一致。asyncapi は「RETURNED なら SKIPPED」と限定するが UC は「ON_LOAN でなければ SKIPPED」。リマインド抽出後に延滞判定で OVERDUE へ遷移したケースの扱いが契約と実装仕様で割れる。あわせて consume operation の description が発行元 UC と誤ラベルされている"
+    evidence: "asyncapi.yaml L135 consumeReminderMailRequested.description「発行元 UC: リマインドを送信する。消費時に貸出が既に RETURNED なら sendResult=SKIPPED として送信しない」（L165 consumeOverdueNoticeRequested も同型）。対して リマインドを送信する/spec.md L125「返却済み・延滞に遷移していれば送信せず『スキップ』とする」、tier-backend-api.md L33「ReminderPolicy.isStillTarget(loan) ... loan.status = 貸出中 のとき true」。asyncapi 準拠なら OVERDUE でも送信、UC 準拠なら SKIPPED となり真逆"
+    suggested_fix: "asyncapi の consume description を「貸出が ON_LOAN でなければ sendResult=SKIPPED」に統一し、action: receive の operation の『発行元 UC』を『消費元 UC』に修正する"
+
+  - id: R-021
+    viewpoint: 4
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/asyncapi.yaml"
+    claim: "通知メールの送信先アドレスの取得元が契約とワーカー仕様で食い違う。契約は「ワーカーが userNumber から RDB の users を参照」、ワーカー仕様は「通知レコードの recipient_email を使用」。利用者がメールアドレスを変更した場合に送信先が変わるか変わらないかという業務差が出る"
+    evidence: "asyncapi.yaml L19 共通規約「個人情報（氏名・メールアドレス）はメッセージに載せず、ワーカーが userNumber から RDB を参照する」・L446 userNumber.description「メールアドレスはワーカーが RDB から取得する」。対して 返却通知を送信する/tier-worker.md 処理フロー 3-1「通知レコード（送信先メールアドレス・件名・本文）を取得する」・3-2 to: recipient_email。rdb-schema.yaml notifications.recipient_email「要求時点の users.email のコピー」"
+    suggested_fix: "送信先は notifications.recipient_email（要求時点のスナップショット）を正とし users は参照しない、と asyncapi の共通規約 L19 と userNumber.description L446 を修正する（userNumber はログ・突合用途と明記）。users を正とするなら recipient_email 列の存在理由を rdb-schema 側で再定義する"
+
+  # ============================================================
+  # minor
+  # ============================================================
+  - id: R-022
+    viewpoint: 4
+    severity: minor
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    claim: "分析系 3 画面の StatCard 構成が可視化仕様と UC 側の実装仕様で一致しない（枚数・指標がいずれも異なる）"
+    evidence: "data-visualization.md L14 / L65「StatCard 3 枚（delta = 前期比）: 期間内総貸出回数 / 対象書籍数 / 1 位の貸出回数」に対し 人気書籍ランキングを参照する/tier-frontend-staff.md L22-24 は 2 枚（期間内貸出件数 / 1 位の貸出回数）。L16 / L66「合計貸出件数 / 平均 / 前期比」に対し 期間別貸出統計を参照する/tier-frontend-staff.md L21-23 は 2 枚（期間内貸出件数 / 1 期間あたり平均）。L11 / L64「件数 + 構成比 %（+ 総冊数）」に対し 在庫状況一覧を参照する/tier-frontend-staff.md L18-20 は件数のみ 3 枚で構成比・総冊数なし"
+    suggested_fix: "data-visualization.md を UC 側の枚数・指標に合わせて改訂するか、UC 側に不足 StatCard を追加してどちらかを正とする"
+
+  - id: R-023
+    viewpoint: 4
+    severity: minor
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    claim: "可視化仕様が要求する前期比・前期系列の並置が、対応する API レスポンススキーマに項目が無く実現不能"
+    evidence: "data-visualization.md L14「delta = 前期比」に対し openapi.yaml L2918-2948 PopularBooksResponse は periodType / from / to / totalLoans / items / aggregatedAt のみ。L15 / L42「前期同期間を bar_muted で並置」に対し L2949-2967 LoanStatisticsPoint は periodStart / periodEnd / loanTotal のみ（previousTotalLoans は期間合計スカラのみで系列単位の前期値が無い）。L43「前回集計との差を delta に出す」に対し L2815-2838 InventorySummary は available / onLoan / reserved / total のみ"
+    suggested_fix: "前期比を維持するなら openapi に previousTotalLoans / 系列内 previousLoanTotal / previousSummary を追加し、維持しないなら data-visualization.md L14 / L15 / L43 から前期比と bar_muted 並置を削除する"
+
+  - id: R-024
+    viewpoint: 4
+    severity: minor
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    claim: "延滞一覧の StatCard 指標「督促送信済み件数」が API にも画面にも存在しない"
+    evidence: "data-visualization.md L17 / L67「延滞件数 / 督促送信済み / 送信失敗」。対して 延滞一覧を参照する/tier-frontend-staff.md L19-21 は summary.overdueCount / summary.noticeFailedCount / summary.noticePendingCount、openapi.yaml L2242 OverdueSummary required: [overdueCount, noticeFailedCount, noticePendingCount]"
+    suggested_fix: "OverdueSummary に noticeSucceededCount を追加するか、data-visualization.md L17 / L67 を noticePendingCount（督促待ち）に修正する"
+
+  - id: R-025
+    viewpoint: 3
+    severity: minor
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    claim: "業務エラーコードが openapi 上で列挙されておらず（ProblemDetails.code が pattern 付き自由文字列）、UC 側が宣言するコードとの整合を機械検証できない。実際に openapi に一度も現れないコードが複数ある"
+    evidence: "openapi.yaml L1505-1508 code: type string / pattern '^[A-Z][A-Z0-9_]*$' / examples: [BOOK_NOT_FOUND] で enum なし。UC 側 _api-summary.yaml の error_codes に現れる LOAN_NOT_FOUND（延滞一覧を参照する/_api-summary.yaml）は openapi 全文に 0 件。tier-backend-api.md が 8 UC で宣言する INTERNAL_ERROR も openapi に 0 件で、components/responses/InternalServerError を参照する operation は POST /api/v1/loans の 1 件のみ。R-001 の VERSION_CONFLICT / R-016 の SELF_DELETE_NOT_ALLOWED も同じ理由で検出されずに残った"
+    suggested_fix: "ProblemDetails.code を enum 化して業務エラーコードの正本を openapi に置き、_api-summary.yaml の errors / error_codes と突合できるようにする。500 の扱いも全 operation で InternalServerError を参照するか、宣言しない方針かを統一する"
+
+  - id: R-026
+    viewpoint: 3
+    severity: minor
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    claim: "api-conventions.md が enum に日本語表記の description 併記を求めているのに、description の無い enum が 6 箇所ある。生成クライアントの enum に説明が付かない"
+    evidence: "description 欠落の enum: GET /api/v1/loans の parameters[3].schema（[latestNotice]）と parameters[4].schema（[dueDate, overdueDays, lastNotice]）、GET /api/v1/me/loans の parameters[0].schema（[current, history, all]）、GET /api/v1/users/{userNumber} の parameters[0].schema（[activeCounts]）、GET /api/v1/users/{userNumber}/usage の parameters[0].schema（[current, history, all]）、components/schemas/UserNotDeletableProblemDetails.allOf[1].properties.reasons.items（[ACTIVE_LOAN, ACTIVE_RESERVATION]）"
+    suggested_fix: "各 enum に日本語の意味を併記した description を追加する。特に reasons の ACTIVE_LOAN / ACTIVE_RESERVATION は業務コードなので api-conventions.md の enum 表にも追記する"
+
+  - id: R-027
+    viewpoint: 5
+    severity: minor
+    target: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/予約一覧を参照する/spec.md"
+    claim: "観測手段が定義されていない Then が残っており、そのままでは自動テストに落とせない"
+    evidence: "予約一覧を参照する/spec.md 正常系「有効な予約を順位順に表示する」の And「1 行目は『1 / 山田太郎 / 2026/09/01 10:00 / 通知済み』で引き渡し先として強調される」（同 UC の分岐条件一覧「引き渡し先の強調」も『即断できるようにする』と観測不能）。貸出を登録する/spec.md 正常系「予約順位 1 位の利用者に予約待ちの書籍を貸し出す」の And「利用者番号『U-000200』の予約は終了し順位管理対象から外れる」（後段の『U-000300 の予約順位が 1 になる』と重複し、前段は観測手段が未定義）"
+    suggested_fix: "前者は tier-frontend-staff.md の BDD と同じく『1 行目に引き渡し先ラベルが表示される』等の DOM で観測可能な表現に置換する。後者は『予約 R-0001 の状態が終了になる』等、テーブル値またはレスポンス値での断定に置換する"
+
+  - id: R-028
+    viewpoint: 3
+    severity: minor
+    target: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_api-summary.yaml"
+    claim: "共有スキーマ ProblemDetails の required 定義が UC 間で割れている。同一スキーマ名で必須項目が異なる定義が併存する"
+    evidence: "利用者を登録する/_api-summary.yaml L78 と 利用者を編集する/_api-summary.yaml L113 は type を required: true とするが、他 8 UC の _api-summary.yaml は required: false。openapi.yaml L1477 は required: [type, title, status, code]"
+    suggested_fix: "openapi の required: [type, title, status, code] を正として全 UC の _api-summary.yaml の ProblemDetails 定義を揃える。共有スキーマは UC 側で再定義せず _cross-cutting を参照する方針にすれば再発を防げる"
+
+  - id: R-029
+    viewpoint: 4
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    claim: "冪等キー競合の業務エラーコードが UC 側と openapi で乖離している。UC 側は IDEMPOTENCY_KEY_CONFLICT（409）、openapi の IdempotencyKey パラメータ description は IDEMPOTENCY_KEY_REUSED（422）で、ProblemDetails.code enum は両方を持つ。フロントエンドの再送競合ハンドリングが実装時に外れる"
+    evidence: "UC 側は 貸出を登録する / 予約を登録する / 予約を取り消す / 返却を登録する / 返却通知を送信する の tier-backend-api.md と _api-summary.yaml で一貫して 409 IDEMPOTENCY_KEY_CONFLICT。openapi.yaml は components.parameters.IdempotencyKey.description が「同一キーで異なるリクエストボディを送った場合は 422 IDEMPOTENCY_KEY_REUSED」、ProblemDetails.code enum に IDEMPOTENCY_KEY_REUSED / IDEMPOTENCY_KEY_CONFLICT の両方が存在。一方 IdempotencyKey を持つ 11 operation のうち POST /api/v1/loans 等は 422 レスポンス自体を宣言しておらず、422 の IDEMPOTENCY_KEY_REUSED は到達不能"
+    suggested_fix: "実際のレスポンス定義（409 Conflict）を正として IDEMPOTENCY_KEY_CONFLICT に一本化し、openapi の enum と description から IDEMPOTENCY_KEY_REUSED を除去する"
+
+resolved:
+  - {id: R-029, resolution: fixed, note: "openapi.yaml の実際のレスポンス定義を正として IDEMPOTENCY_KEY_CONFLICT（409）に一本化した（Idempotency-Key を要求する 11 operation は 409 Conflict を宣言する一方、貸出・予約・返却系は 422 レスポンス自体を宣言しておらず IDEMPOTENCY_KEY_REUSED（422）が到達不能だったため）。openapi.yaml の ProblemDetails.code enum と code 一覧から IDEMPOTENCY_KEY_REUSED を削除し、IdempotencyKey パラメータの description を 409 IDEMPOTENCY_KEY_CONFLICT に修正、Conflict レスポンスの code 列挙に IDEMPOTENCY_KEY_CONFLICT を追加した。UC 側は既に IDEMPOTENCY_KEY_CONFLICT（409）のため変更不要", by: fix-residual}
+  - {id: R-003, resolution: deferred, note: "RDRA に認証情報作成の UC が無く新規 UC を作らない方針のため保留。_cross-cutting/rdra-feedback.md #3 に変更要望を追記し docs/todo.md DIST-031 に起票済み", by: fix-cc}
+  - {id: R-005, resolution: fixed, note: "asyncapi.yaml publishReturnNoticeRequested の description を UC 本体（返却通知を送信する / 予約を取り消す）に合わせて「コミット後発行」に統一し、発行失敗時は通知レコードを PENDING のまま残して再発行スイープで回収すると明記した", by: fix-cc}
+  - {id: R-006, resolution: deferred, note: "RDRA に集計バッチ UC が無く新規 UC を作らない方針のため保留。rdb-schema.yaml の _review_notes に集計バッチの前提（実行周期・UPSERT キー・ranking 付与・loan_count / loan_total の定義・遅延到着の再集計・cache:report:* 無効化）を追記し、rdra-feedback.md #4 と docs/todo.md DIST-032 に起票済み", by: fix-cc}
+  - {id: R-008, resolution: fixed, note: "kvs-schema.yaml の新命名を正として、UC 側 16 ファイル（12 UC の _model-summary.yaml / tier-worker.md）の旧キー名を置換した: cache:book-reservations→cache:reservations:book / cache:me-loans→cache:loans:me / cache:me-reservations→cache:reservations:me / cache:user-usage→cache:users:usage / cache:book:{bookId}→cache:books:detail:{bookId} / job:reminder-extraction→lock:job:reminder-extraction / job:overdue-detection→lock:job:overdue-detection / dedupe:notification→lock:notification / consumer:return-notice→lock:consumer:return-notice。追随完了により kvs-schema.yaml の Step7 TODO（旧→新対応表）を削除した。あわせて R-015 に合わせ lock:job:* の pattern から {jobRunId} を外し（lock:job:reminder-extraction:{asOf} / lock:job:overdue-detection:{asOf}）、jobRunId は値側に保持する旨を _review_notes に明記した。docs/todo.md DIST-034 は本ラウンドで解消", by: fix-residual}
+  - {id: R-019, resolution: deferred, note: "dist-spec スキル側のスキーマ拡張要求のため成果物は変更せず、docs/todo.md DIST-033 に起票した", by: fix-cc}
+  - {id: R-020, resolution: fixed, note: "asyncapi.yaml の consumeReminderMailRequested / consumeOverdueNoticeRequested の description を UC 側の判定（リマインド: 貸出が ON_LOAN でなければ SKIPPED / 督促: OVERDUE でなければ SKIPPED）に統一し、「発行元 UC」を「消費元 UC」に修正した", by: fix-cc}
+  - {id: R-021, resolution: fixed, note: "asyncapi.yaml の共通規約と ReturnNoticeRequested.userNumber の description を修正し、送信先は notifications.recipient_email（要求時点のスナップショット）を正、userNumber はログ・突合用途と明記した", by: fix-cc}
+  - {id: R-022, resolution: fixed, note: "data-visualization.md の StatCard 構成を UC 側（在庫状況一覧 3 枚・件数のみ / 人気書籍ランキング 2 枚 / 期間別貸出統計 2 枚）に合わせ、可視化対象表と情報の階層化・観点別チャート選定を更新した", by: fix-cc}
+  - {id: R-023, resolution: fixed, note: "API に前期値が無い箇所（PopularBooksResponse / LoanStatisticsPoint / InventorySummary）の前期比・bar_muted 並置を data-visualization.md から削除し、前期比は LoanStatisticsResponse.previousTotalLoans を持つ期間別貸出統計のみに限定した", by: fix-cc}
+  - {id: R-024, resolution: fixed, note: "data-visualization.md の延滞・督促状況 StatCard を OverdueSummary（overdueCount / noticeFailedCount / noticePendingCount）に合わせ「延滞件数 / 督促失敗 / 督促待ち」に修正した", by: fix-cc}
+  - {id: R-025, resolution: fixed, note: "openapi.yaml の ProblemDetails.code を enum 化（31 コード）し、各コードの意味と HTTP ステータスを description に併記して業務エラーコードの正本を openapi に置いた", by: fix-cc}
+  - {id: R-026, resolution: fixed, note: "openapi.yaml の description 欠落 enum 6 箇所（loans の include / sort、me/loans の scope、users/{userNumber} の include、users/{userNumber}/usage の loanScope、UserNotDeletableProblemDetails.reasons.items）に日本語 description を追加した", by: fix-cc}
+  - id: R-001
+    resolution: fixed
+    note: "openapi を正として、UC 側 14 ファイル 31 箇所の VERSION_CONFLICT を OPTIMISTIC_LOCK_CONFLICT に置換した（openapi.yaml は未変更）。ProblemDetails.code の enum 化は R-025（_cross-cutting 担当）"
+    by: fix-uc
+  - id: R-002
+    resolution: fixed
+    note: "rdb-schema.yaml を正として、book_events / user_events に対する UC 側の recorded_by を actor_user_number に置換した（8 ファイル）。loans.recorded_by（貸出を登録する）は別カラムのため据え置き。rdb-schema.yaml L194 / L368 の別名併記削除は _cross-cutting 担当。rdb-schema.yaml 側の別名併記は既に解消済みで actor_user_number 一本であることを確認した（残作業を fix-residual が完了）"
+    by: fix-uc
+  - id: R-004
+    resolution: fixed
+    note: "利用者を登録する / 利用者を編集する の _api-summary.yaml に headers: Idempotency-Key（required: true）を追加し、tier-backend-api.md のリクエスト節・tier-frontend-staff.md の送信手順・spec.md の api-client 責務行にも付与処理を追記した"
+    by: fix-uc
+  - id: R-007
+    resolution: fixed
+    note: "api-conventions.md / rdb-schema.yaml の英語コードに統一した（book_events: REGISTERED / UPDATED / DELETED / LOANED / RETURNED / CANCELLED、user_events: REGISTERED / UPDATED / DELETED、loan_events: REGISTERED / RETURNED / OVERDUE、reservation_events: RESERVED / NOTIFIED / CANCELLED / CLOSED）。正本に無い『予約取消』は book_events の CANCELLED に確定した。UC 側 73 箇所を置換。rdb-schema.yaml L11 の読み替え注記の削除は _cross-cutting 担当。rdb-schema.yaml の読み替え注記（L11 の日本語リテラル読み替え、reservation_events の『_model-summary.yaml の 登録 は RESERVED に対応』）を削除し、4 テーブルの event_type が指定の英語コードに一致することを確認した（残作業を fix-residual が完了）"
+    by: fix-uc
+  - id: R-009
+    resolution: fixed
+    note: "BookResponse を BookDetailResponse に改名した（蔵書管理 4 UC + 書籍詳細を参照する の _api-summary.yaml / tier-*.md / spec.md / _model-summary.yaml）。書籍を登録する のレスポンス表と spec.md に waitingCount（登録直後 0）を追加し、version は openapi 準拠で『司書経路のみ返却』に統一、書籍詳細を参照する/spec.md に registeredAt を追加した。kvs-schema.yaml L47 の value_type 改名は _cross-cutting 担当。kvs-schema.yaml の cache:books:detail:{bookId} の value_type を BookDetailResponse に改名した（残作業を fix-residual が完了）"
+    by: fix-uc
+  - id: R-010
+    resolution: fixed
+    note: "全 27 ファイル 34 endpoint の _api-summary.yaml を単一スキーマへ正規化した: auth → security + roles、security: [staff] → security: [bearer] + roles: [司書]、query_params / path_params → parameters（in: query / path）、errors / error_codes → errors（{status, code} のリスト）。エラー宣言が無かった 15 endpoint は各 UC の tier-backend-api.md のエラー表から補完し、security に bearer を持つ endpoint には 401 / 403 を必ず宣言させた"
+    by: fix-uc
+  - id: R-011
+    resolution: fixed
+    note: "リマインドを送信する / 督促を送信する の DLQ エントリの message_schema を ReminderMailRequestedDead / OverdueNoticeRequestedDead に変更し、退避ヘッダ 4 項目を持つスキーマ定義を _api-summary.yaml に追加した。tier-worker.md の DLQ 退避手順と tier-backend-api.md の『同一スキーマ』記述に退避ヘッダの付与を明記し、BDD の DLQ シナリオに attemptCount=6 等の観測可能な Then を追加した"
+    by: fix-uc
+  - id: R-012
+    resolution: fixed
+    note: "リマインド / 督促の _api-summary.yaml に main チャネルの direction: publish（用途: 再発行スイープ）を追加した。返却通知の再発行スイープは所有者を tier-worker の ReturnNoticeSweepJob（日次）に確定し、返却通知を送信する/tier-worker.md にジョブ仕様を追加、_api-summary.yaml に publish エントリを追加、tier-backend-api.md の『ワーカーの再発行バッチまたは次回の API 呼び出し時』という曖昧記述を同ジョブへの参照に置換した。asyncapi.yaml の publish operation description への発行元追記は _cross-cutting 担当。asyncapi.yaml の publishReturnNoticeRequested / publishReminderMailRequested / publishOverdueNoticeRequested の description に発行元 UC と再発行スイープ（返却通知は tier-worker の ReturnNoticeSweepJob（日次））を明記した（残作業を fix-residual が完了）"
+    by: fix-uc
+  - id: R-013
+    resolution: fixed
+    note: "送信先の解決を『有効予約（RESERVED / NOTIFIED）の queue_position = 1 の予約』に変更し、canSend を『その予約 × 返却通知 × 当日の通知レコードが未作成』で判定するようにした。分岐条件一覧に『送信先ガード（2 位以降を送信先にしない）』を追加し、プレビューの reservation が送信確定後も null にならないことを明記した（RETURN_NOTICE_ALREADY_SENT が到達可能になる）"
+    by: fix-uc
+  - id: R-014
+    resolution: fixed
+    note: "予約を取り消す / 貸出を登録する の順位繰り上げを『queue_position 昇順に 1 行ずつ更新（部分一意インデックスとの衝突回避）』に変更し、繰り上げ UPDATE に version = version + 1 / updated_at を追加した。貸出を登録する の CLOSED 更新の WHERE に version = ? を追加した（更新件数 0 は CONCURRENT_UPDATE）。spec.md の計算ルールと両 UC の tier-backend-api.md のビジネスルールにも同じ制約を明記した"
+    by: fix-uc
+  - id: R-015
+    resolution: fixed
+    note: "ロックキーを job:reminder-extraction:{asOf} / job:overdue-detection:{asOf} に変更し（jobRunId をキーから外す）、値に完了フラグ + 完了させたジョブ実行 ID + 件数サマリを保持する設計にした。purpose を『再実行スキップ』に改め、重複作成防止は notifications の一意制約が担う旨を tier-worker.md に明記。BDD を『別のジョブ実行 ID で同一 asOf を再起動しても usecase が呼ばれない』に書き換えた。キー接頭辞の lock:job:* への改名は R-008 の対応で反映済み（lock:job:reminder-extraction:{asOf} / lock:job:overdue-detection:{asOf}）"
+    by: fix-uc
+  - id: R-016
+    resolution: fixed
+    note: "利用者を削除する の 409 を oneOf: [ProblemDetails, UserNotDeletableProblemDetails] に変更し（reasons を持つのは code=USER_NOT_DELETABLE のときのみ、クライアントは code で判別）、tier-backend-api.md にも判別ルールを明記した。openapi.yaml の Conflict の code 列挙への SELF_DELETE_NOT_ALLOWED / MEDIA_TYPE_CHANGE_NOT_ALLOWED 追加は _cross-cutting 担当。openapi.yaml の Conflict レスポンス description と ProblemDetails.code enum に SELF_DELETE_NOT_ALLOWED / MEDIA_TYPE_CHANGE_NOT_ALLOWED が含まれることを確認した（残作業を fix-residual が完了）"
+    by: fix-uc
+  - id: R-017
+    resolution: fixed
+    note: "正規化の実施層を『FE が送信前にハイフン除去 → API はハイフンなしのみ受理（openapi の pattern に一致。10 桁は末尾 X 可）→ DB もハイフンなしの正規形で保存』に確定し、書籍を登録する / 書籍を編集する の tier-backend-api.md（リクエスト・データモデル）、spec.md の ISBN 正規化ルール、tier-frontend-staff.md の検証仕様とエラー文言（末尾 X を許可）を揃えた。rdb-schema.yaml books.isbn の description（『ハイフン込みの入力値』）の修正は _cross-cutting 担当。rdb-schema.yaml books.isbn の description を『ハイフンなしの正規形（FE がハイフン除去 → API はハイフンなしのみ受理）』に、_review_notes を『検索時に REPLACE 不要』に揃えた（残作業を fix-residual が完了）"
+    by: fix-uc
+  - id: R-018
+    resolution: fixed
+    note: "照合方式を『q のハイフンを除去した部分一致』に統一した。isbn 列がハイフンなしの正規形（R-017）になるため REPLACE(isbn,'-','') を廃し、書籍を検索する の tier-backend-api.md / spec.md / _model-summary.yaml を isbn LIKE ? に、書籍一覧を参照する/_model-summary.yaml の access_pattern も同一式である旨に揃えた。openapi.yaml L68 の『isbn はハイフン除去後の完全一致』と rdb-schema.yaml の idx_books_isbn 注記の修正は _cross-cutting 担当。openapi.yaml の q の description を『isbn は q のハイフンを除去した部分一致。DB はハイフンなしの正規形で保存する』に、rdb-schema.yaml の idx_books_isbn 注記を REPLACE 不要の通常インデックスに揃えた（残作業を fix-residual が完了）"
+    by: fix-uc
+  - id: R-027
+    resolution: fixed
+    note: "予約一覧を参照する/spec.md の Then を『1 行目のセルは …であり、その行に「引き渡し先」ラベルが表示される』に置換し、分岐条件一覧の『即断できるようにする』を DOM で観測可能な表現（ラベル表示 + 行の強調スタイル）に変更した。貸出を登録する/spec.md の『順位管理対象から外れる』は『予約の状態が「終了」になる』に置換した"
+    by: fix-uc
+  - id: R-028
+    resolution: fixed
+    note: "openapi の required: [type, title, status, code] を正として、ProblemDetails の type を required: true に揃えた（8 ファイル）。共有スキーマを _cross-cutting 参照に切り替える方針変更は本ラウンドの対象外"
+    by: fix-uc

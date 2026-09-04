@@ -1,0 +1,188 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Design Tokens" />
+
+export const Swatch = ({ token, hex }) => (
+  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+    <span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: hex ?? `var(${token})`, border: '1px solid #ccc', borderRadius: 2 }} />
+    <code>{hex ?? token}</code>
+  </span>
+)
+
+export const Box = ({ size }) => (
+  <span style={{ display: 'inline-block', width: size, height: 16, background: 'var(--primary)', borderRadius: 2, verticalAlign: 'middle' }} />
+)
+
+export const RadiusBox = ({ token }) => (
+  <span style={{ display: 'inline-block', width: 40, height: 28, background: 'var(--primary-light)', border: '2px solid var(--primary)', borderRadius: `var(${token})`, verticalAlign: 'middle' }} />
+)
+
+# Design Tokens
+
+3 層構造（primitive → semantic → component）。実装では **CSS 変数名をそのまま** 使います。正本は `docs/design/latest/design-event.yaml`、CSS は `src/styles/design-tokens.css`。
+
+## 1. Primitive — カラーパレット
+
+<table>
+  <thead>
+    <tr><th>スケール</th><th>50</th><th>100</th><th>400</th><th>600</th><th>700</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--color-gray-{"{n}"}</code></td><td><Swatch hex="#F8FAFC" /></td><td><Swatch hex="#F1F5F9" /></td><td><Swatch hex="#94A3B8" /></td><td><Swatch hex="#475569" /></td><td><Swatch hex="#334155" /></td></tr>
+    <tr><td><code>--color-blue-{"{n}"}</code></td><td><Swatch hex="#EFF6FF" /></td><td><Swatch hex="#DBEAFE" /></td><td><Swatch hex="#60A5FA" /></td><td><Swatch hex="#2563EB" /></td><td><Swatch hex="#1D4ED8" /></td></tr>
+    <tr><td><code>--color-slate-{"{n}"}</code></td><td>—</td><td>—</td><td><Swatch hex="#94A3B8" /></td><td><Swatch hex="#475569" /></td><td><Swatch hex="#334155" /></td></tr>
+    <tr><td><code>--color-green-{"{n}"}</code></td><td><Swatch hex="#F0FDF4" /></td><td><Swatch hex="#DCFCE7" /></td><td><Swatch hex="#4ADE80" /></td><td><Swatch hex="#16A34A" /></td><td><Swatch hex="#15803D" /></td></tr>
+    <tr><td><code>--color-amber-{"{n}"}</code></td><td><Swatch hex="#FFFBEB" /></td><td><Swatch hex="#FEF3C7" /></td><td><Swatch hex="#FBBF24" /></td><td><Swatch hex="#D97706" /></td><td><Swatch hex="#B45309" /></td></tr>
+    <tr><td><code>--color-orange-{"{n}"}</code></td><td><Swatch hex="#FFF7ED" /></td><td><Swatch hex="#FFEDD5" /></td><td><Swatch hex="#FB923C" /></td><td><Swatch hex="#EA580C" /></td><td><Swatch hex="#C2410C" /></td></tr>
+    <tr><td><code>--color-red-{"{n}"}</code></td><td><Swatch hex="#FEF2F2" /></td><td><Swatch hex="#FEE2E2" /></td><td><Swatch hex="#F87171" /></td><td><Swatch hex="#DC2626" /></td><td><Swatch hex="#B91C1C" /></td></tr>
+    <tr><td><code>--color-violet-{"{n}"}</code></td><td><Swatch hex="#F5F3FF" /></td><td><Swatch hex="#EDE9FE" /></td><td><Swatch hex="#A78BFA" /></td><td><Swatch hex="#7C3AED" /></td><td><Swatch hex="#6D28D9" /></td></tr>
+  </tbody>
+</table>
+
+基本色: <code>--color-white: #FFFFFF</code> / <code>--color-black: #000000</code>（`:root` に明示定義）。
+
+## 2. Semantic — 用途別トークン（light / dark）
+
+<table>
+  <thead>
+    <tr><th>CSS 変数</th><th>用途</th><th>light</th><th>dark</th><th>現在値</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>var(--background)</code></td><td>ページ背景</td><td>gray-white</td><td>gray-900</td><td><Swatch token="--background" /></td></tr>
+    <tr><td><code>var(--background-subtle)</code></td><td>サイドバー / テーブルヘッダ</td><td>gray-50</td><td>gray-800</td><td><Swatch token="--background-subtle" /></td></tr>
+    <tr><td><code>var(--background-muted)</code></td><td>Skeleton / secondary ボタン</td><td>gray-100</td><td>gray-700</td><td><Swatch token="--background-muted" /></td></tr>
+    <tr><td><code>var(--foreground)</code></td><td>本文</td><td>gray-900</td><td>gray-50</td><td><Swatch token="--foreground" /></td></tr>
+    <tr><td><code>var(--foreground-secondary)</code></td><td>補足テキスト</td><td>gray-600</td><td>gray-300</td><td><Swatch token="--foreground-secondary" /></td></tr>
+    <tr><td><code>var(--foreground-muted)</code></td><td>プレースホルダ / ヒント</td><td>gray-500</td><td>gray-400</td><td><Swatch token="--foreground-muted" /></td></tr>
+    <tr><td><code>var(--border)</code></td><td>罫線</td><td>gray-200</td><td>gray-700</td><td><Swatch token="--border" /></td></tr>
+    <tr><td><code>var(--border-strong)</code></td><td>入力枠</td><td>gray-300</td><td>gray-600</td><td><Swatch token="--border-strong" /></td></tr>
+    <tr><td><code>var(--hover-muted)</code></td><td>hover 背景</td><td>gray-200</td><td>gray-700</td><td><Swatch token="--hover-muted" /></td></tr>
+    <tr><td><code>var(--primary)</code></td><td>ポータル主色</td><td>patron blue-600 / staff slate-700</td><td>patron blue-500 / staff slate-400</td><td><Swatch token="--primary" /></td></tr>
+    <tr><td><code>var(--primary-hover)</code></td><td>主色 hover</td><td>blue-700 / slate-800</td><td>blue-400 / slate-300</td><td><Swatch token="--primary-hover" /></td></tr>
+    <tr><td><code>var(--primary-foreground)</code></td><td>主色上の文字</td><td>white</td><td>white / gray-900</td><td><Swatch token="--primary-foreground" /></td></tr>
+    <tr><td><code>var(--primary-light)</code></td><td>選択中 / アイコン背景</td><td>blue-50 / gray-100</td><td>rgba 18%</td><td><Swatch token="--primary-light" /></td></tr>
+    <tr><td><code>var(--success)</code> / <code>--success-light</code></td><td>在庫あり / 成功</td><td>green-600 / green-50</td><td>green-400 / rgba</td><td><Swatch token="--success" /> <Swatch token="--success-light" /></td></tr>
+    <tr><td><code>var(--info)</code> / <code>--info-light</code></td><td>貸出中 / 案内</td><td>blue-600 / blue-50</td><td>blue-400 / rgba</td><td><Swatch token="--info" /> <Swatch token="--info-light" /></td></tr>
+    <tr><td><code>var(--pending)</code> / <code>--pending-light</code></td><td>予約待ち</td><td>orange-600 / orange-50</td><td>orange-400 / rgba</td><td><Swatch token="--pending" /> <Swatch token="--pending-light" /></td></tr>
+    <tr><td><code>var(--warning)</code> / <code>--warning-light</code></td><td>予約中 / 期限間近</td><td>amber-600 / amber-50</td><td>amber-400 / rgba</td><td><Swatch token="--warning" /> <Swatch token="--warning-light" /></td></tr>
+    <tr><td><code>var(--destructive)</code> / <code>--destructive-light</code></td><td>延滞 / 削除 / 失敗</td><td>red-600 / red-50</td><td>red-400 / rgba</td><td><Swatch token="--destructive" /> <Swatch token="--destructive-light" /></td></tr>
+    <tr><td><code>var(--analysis)</code> / <code>--analysis-light</code></td><td>通知済み</td><td>violet-600 / violet-50</td><td>violet-400 / rgba</td><td><Swatch token="--analysis" /> <Swatch token="--analysis-light" /></td></tr>
+    <tr><td><code>var(--neutral)</code> / <code>--neutral-light</code></td><td>返却済み / 取消</td><td>gray-500 / gray-100</td><td>gray-400 / rgba</td><td><Swatch token="--neutral" /> <Swatch token="--neutral-light" /></td></tr>
+  </tbody>
+</table>
+
+## 3. ポータル別カラー
+
+<table>
+  <thead>
+    <tr><th>ポータル</th><th>セレクタ</th><th>--primary (light)</th><th>--primary (dark)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>利用者 patron</td><td><code>[data-portal="patron"]</code></td><td><Swatch hex="#2563EB" /></td><td><Swatch hex="#3B82F6" /></td></tr>
+    <tr><td>司書 staff</td><td><code>[data-portal="staff"]</code></td><td><Swatch hex="#334155" /></td><td><Swatch hex="#94A3B8" /></td></tr>
+  </tbody>
+</table>
+
+## 4. Component トークン
+
+<table>
+  <thead>
+    <tr><th>コンポーネント</th><th>CSS 変数</th><th>値</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Button</td><td><code>--button-height-sm/md/lg</code>, <code>--button-padding-x</code>, <code>--button-radius</code>, <code>--button-font-size</code></td><td>2rem / 2.5rem / 3rem, spacing-4, radius-lg, font-size-sm</td></tr>
+    <tr><td>Input</td><td><code>--input-height</code>, <code>--input-padding-x</code>, <code>--input-radius</code>, <code>--input-border</code>, <code>--input-focus-ring</code></td><td>2.5rem, spacing-3, radius-lg, border-strong, ring</td></tr>
+    <tr><td>Card</td><td><code>--card-bg</code>, <code>--card-border</code>, <code>--card-shadow</code>, <code>--card-radius</code>, <code>--card-padding</code></td><td>background, border, shadow-sm(dark: none), radius-xl, spacing-6</td></tr>
+    <tr><td>Badge</td><td><code>--badge-height</code>, <code>--badge-padding-x</code>, <code>--badge-radius</code>, <code>--badge-font-size</code></td><td>1.5rem, spacing-2, radius-full, font-size-xs</td></tr>
+    <tr><td>Table</td><td><code>--table-header-bg</code>, <code>--table-row-height</code>, <code>--table-cell-padding</code>, <code>--table-border</code>, <code>--table-row-hover</code></td><td>background-subtle, 3rem, spacing-3, border, hover-muted</td></tr>
+    <tr><td>Sidebar</td><td><code>--sidebar-width</code>, <code>--sidebar-collapsed-width</code>, <code>--sidebar-bg</code>, <code>--sidebar-item-height</code>, <code>--sidebar-active-bg/fg</code></td><td>16rem, 4rem, background-subtle(dark: gray-950), 2.5rem, primary-light / primary</td></tr>
+    <tr><td>Modal</td><td><code>--modal-backdrop</code>, <code>--modal-radius</code>, <code>--modal-padding</code>, <code>--modal-shadow</code>, <code>--modal-width-sm/md</code></td><td>rgba(15,23,42,.45), radius-xl, spacing-6, shadow-lg, 24rem / 32rem</td></tr>
+    <tr><td>DueDateIndicator</td><td><code>--due-ok</code>, <code>--due-soon</code>, <code>--due-overdue</code></td><td>success, warning, destructive</td></tr>
+    <tr><td>ReservationQueueTracker</td><td><code>--queue-done</code>, <code>--queue-current</code>, <code>--queue-todo</code></td><td>success, primary, border-strong</td></tr>
+    <tr><td>StatCard</td><td><code>--stat-value-size</code>, <code>--stat-label-color</code></td><td>font-size-3xl, foreground-secondary</td></tr>
+    <tr><td>Chart</td><td><code>--chart-bar</code>, <code>--chart-bar-muted</code>, <code>--chart-grid</code></td><td>primary, primary-light, border</td></tr>
+    <tr><td>PiiMaskedText</td><td><code>--pii-masked-color</code>, <code>--pii-masked-bg</code></td><td>foreground-muted, background-muted</td></tr>
+  </tbody>
+</table>
+
+## 5. Spacing（4px グリッド）
+
+<table>
+  <thead>
+    <tr><th>CSS 変数</th><th>値</th><th>プレビュー</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--spacing-1</code></td><td>0.25rem</td><td><Box size={4} /></td></tr>
+    <tr><td><code>--spacing-2</code></td><td>0.5rem</td><td><Box size={8} /></td></tr>
+    <tr><td><code>--spacing-3</code></td><td>0.75rem</td><td><Box size={12} /></td></tr>
+    <tr><td><code>--spacing-4</code></td><td>1rem</td><td><Box size={16} /></td></tr>
+    <tr><td><code>--spacing-6</code></td><td>1.5rem</td><td><Box size={24} /></td></tr>
+    <tr><td><code>--spacing-8</code></td><td>2rem</td><td><Box size={32} /></td></tr>
+    <tr><td><code>--spacing-12</code></td><td>3rem</td><td><Box size={48} /></td></tr>
+    <tr><td><code>--spacing-16</code></td><td>4rem</td><td><Box size={64} /></td></tr>
+  </tbody>
+</table>
+
+セマンティック spacing（_inference.md 6 節の推論値）:
+
+<table>
+  <thead>
+    <tr><th>CSS 変数</th><th>値</th><th>根拠</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--page-padding</code></td><td>1.5rem</td><td>サイドバーあり管理画面が主体</td></tr>
+    <tr><td><code>--section-gap</code></td><td>2rem</td><td>情報.tsv 属性数平均 6.3 → 高密度</td></tr>
+    <tr><td><code>--component-gap</code></td><td>0.75rem</td><td>フォーム / リストの標準間隔</td></tr>
+    <tr><td><code>--card-padding</code></td><td>1.5rem</td><td>書籍カードの属性数 ≥ 5</td></tr>
+    <tr><td><code>--sidebar-width</code></td><td>16rem</td><td>ナビ 6 項目、最大ラベル全角 8 文字</td></tr>
+    <tr><td><code>--content-max-width</code></td><td>80rem</td><td>12 列グリッドの上限</td></tr>
+  </tbody>
+</table>
+
+## 6. Typography
+
+<table>
+  <thead>
+    <tr><th>CSS 変数</th><th>サイズ</th><th>用途</th><th>プレビュー</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--font-size-xs</code></td><td>0.75rem</td><td>Badge / テーブル見出し</td><td><span style={{ fontSize: '0.75rem' }}>図書館蔵書管理システム</span></td></tr>
+    <tr><td><code>--font-size-sm</code></td><td>0.875rem</td><td>テーブル / フォーム / ボタン</td><td><span style={{ fontSize: '0.875rem' }}>図書館蔵書管理システム</span></td></tr>
+    <tr><td><code>--font-size-base</code></td><td>1rem</td><td>本文</td><td><span style={{ fontSize: '1rem' }}>図書館蔵書管理システム</span></td></tr>
+    <tr><td><code>--font-size-lg</code></td><td>1.125rem</td><td>カード見出し</td><td><span style={{ fontSize: '1.125rem', fontWeight: 600 }}>図書館蔵書管理システム</span></td></tr>
+    <tr><td><code>--font-size-xl</code></td><td>1.25rem</td><td>書籍タイトル / 確認見出し</td><td><span style={{ fontSize: '1.25rem', fontWeight: 700 }}>図書館蔵書管理システム</span></td></tr>
+    <tr><td><code>--font-size-2xl</code></td><td>1.5rem</td><td>画面タイトル</td><td><span style={{ fontSize: '1.5rem', fontWeight: 700 }}>図書館蔵書管理システム</span></td></tr>
+    <tr><td><code>--font-size-3xl</code></td><td>1.875rem</td><td>KPI 値</td><td><span style={{ fontSize: '1.875rem', fontWeight: 700 }}>436</span></td></tr>
+  </tbody>
+</table>
+
+- <code>--font-family-sans</code>: 'Noto Sans JP', 'Inter', 'Hiragino Sans', 'Yu Gothic UI', system-ui
+- <code>--font-family-mono</code>: 'JetBrains Mono', 'SFMono-Regular', 'Menlo', 'Consolas' — ISBN / 書籍 ID / 利用者番号 / 日付
+- weight: <code>--font-weight-normal 400</code> / <code>medium 500</code> / <code>semibold 600</code> / <code>bold 700</code>
+- line-height: <code>--line-height-tight 1.25</code> / <code>normal 1.5</code> / <code>relaxed 1.7</code>
+
+## 7. Border Radius / Shadow / Motion
+
+<table>
+  <thead>
+    <tr><th>CSS 変数</th><th>値</th><th>プレビュー</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--radius-sm</code></td><td>0.25rem</td><td><RadiusBox token="--radius-sm" /></td></tr>
+    <tr><td><code>--radius-md</code></td><td>0.375rem</td><td><RadiusBox token="--radius-md" /></td></tr>
+    <tr><td><code>--radius-lg</code></td><td>0.5rem（Button / Input）</td><td><RadiusBox token="--radius-lg" /></td></tr>
+    <tr><td><code>--radius-xl</code></td><td>0.75rem（Card / Modal）</td><td><RadiusBox token="--radius-xl" /></td></tr>
+    <tr><td><code>--radius-full</code></td><td>9999px（Badge / Toggle）</td><td><RadiusBox token="--radius-full" /></td></tr>
+  </tbody>
+</table>
+
+- <code>--shadow-sm</code> / <code>--shadow-md</code> / <code>--shadow-lg</code>（dark では card-shadow を none にする）
+- <code>--duration-fast 120ms</code> / <code>normal 200ms</code> / <code>slow 320ms</code>。`prefers-reduced-motion` で無効化
+- breakpoints: <code>--breakpoint-sm 640px</code> / <code>md 768px</code> / <code>lg 1024px</code> / <code>xl 1280px</code>
+
+## 8. Dark Mode の適用
+
+- `.dark` クラスと `@media (prefers-color-scheme: dark)`（`.light` 未指定時）の両方で override を定義
+- status 系の `-light` は `-50` 色ではなく `rgba()` 半透明値を使う（暗背景で明るすぎるため）
+- `--hover-muted` は light gray-200 / dark gray-700
+- すべての semantic / component トークンに dark 値がある（card / table / sidebar / modal / pii / chart）

@@ -1,0 +1,121 @@
+round: 1
+group: api
+findings:
+  # ---- 観点1: schemas のプロパティ description 欠落（約 80 プロパティ / 25 スキーマ） ----
+  - id: S4-api-001
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    line: 2113
+    severity: major
+    viewpoint: 1
+    claim: "貸出・返却・利用状況系スキーマのプロパティに description が無い。LoanSummary（loanId / bookId / userNumber / loanedOn / dueDate: L2113-2126）、LoanResponse（bookId / userNumber: L2080-2083）、ReturnResponse（loanId / bookId / userNumber / reservationCount: L2166-2193）、OverdueLoanItem（loanId / loanedOn / dueDate: L2227-2238）、MyLoanItem（loanId / loanedOn / dueDate: L2276-2285）、UserUsageProfile（userNumber / name: L1949-1952）、UserUsageResponse（loans / reservations: L2005-2009）、GenreListResponse（items: L1585）"
+    fix: "各プロパティに description を追加する（例: loanId「貸出 ID」、loanedOn「貸出日」、dueDate「返却期限（貸出日 + 貸出期間）」、reservationCount「返却時点の予約待ち件数」、UserUsageResponse.loans「loanScope で絞り込んだ貸出一覧」）。BookSummary / UserSummary（L1589 / L1781）と同じ粒度に揃える"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を返却するフロー/返却を登録する/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/_api-summary.yaml"
+  - id: S4-api-002
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    line: 2334
+    severity: major
+    viewpoint: 1
+    claim: "予約系スキーマのプロパティに description が無い。ReservationSummary（reservationId: L2334）、ReservationListItem（reservationId / queuePosition / userNumber / userName: L2349-2359）、ReservationEligibilityResponse（allowed: L2407）、ReservationResponse（reservationId / bookId / userNumber / acceptedAt / queuePosition: L2437-2450）、ReservationDetailResponse（reservationId 〜 cancelledAt: L2467-2494）、ReservationCancelResponse（reservationId / bookId / cancelledAt: L2516-2526）、MyReservationItem（reservationId / acceptedAt / queuePosition / totalWaiting / notifiedAt / cancelledAt / canCancel: L2550-2575）"
+    fix: "各プロパティに description を追加する（例: queuePosition「予約順位（1 始まり）」、totalWaiting「同一書籍の予約待ち総数」、notifiedAt「返却通知の送信日時（NOTIFIED 以降のみ。未通知なら null）」、canCancel「取消可否（RESERVED / NOTIFIED のとき true）」、allowed「予約可否判定の結果」）"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/予約を登録する/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/予約を取り消す/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/予約一覧を参照する/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/予約状況を参照する/_api-summary.yaml"
+  - id: S4-api-003
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    line: 2604
+    severity: major
+    viewpoint: 1
+    claim: "通知・レポート系スキーマのプロパティに description が無い。NotificationLogItem（notificationId: L2604）、RecipientSummary（userNumber / name / emailMasked: L2648-2654）、ReturnNoticePreviewResponse（loanId / canSend: L2665-2685）、ReturnNoticeResponse（notificationId 〜 requestedOn: L2704-2719）、InventoryBookItem（bookId / title / author / publisher / genreId / genreName: L2761-2780）、PopularBookItem（bookId / title / author / genreName: L2809-2818）、PopularBooksResponse（from / to / items: L2832-2845）、LoanStatisticsResponse（from / to / aggregatedAt: L2879-2902）"
+    fix: "各プロパティに description を追加する（例: canSend「送信可否（予約順位 1 位の RESERVED が存在し、当日の RETURN_NOTICE が未作成のとき true）」、from / to「集計期間の開始日 / 終了日（periodType に応じた境界）」、aggregatedAt「集計時刻（キャッシュの鮮度表示用）」）。InventoryBookItem / PopularBookItem の書籍属性は BookSummary の description と同文にする"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/在庫状況一覧を参照する/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/_api-summary.yaml"
+
+  # ---- 観点1: 連絡先マスク（reveal）の契約不整合 ----
+  - id: S4-api-004
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    line: 543
+    severity: major
+    viewpoint: 1
+    claim: "NotificationLogItem.recipientEmail（L2614）は「`reveal=true` のときのみ返す」と定義されているが、それを返す `GET /api/v1/loans/{loanId}/notifications`（L543）と `GET /api/v1/loans`（include=latestNotice で latestNotice に同スキーマを含む: L337）のどちらにも `Reveal` パラメータが無く、平文を要求する手段が契約上存在しない。UC「延滞一覧を参照する」の _api-summary.yaml は NotificationLogItem.recipientEmail を required としており、統合時に既定マスクへ変更した意図がパスに反映されていない"
+    fix: "listLoanNotifications と listLoans の parameters に `$ref: \"#/components/parameters/Reveal\"` を追加し、description に「reveal=true のとき latestNotice.recipientEmail / items[].recipientEmail を開示し監査ログに記録する（NFR E.1.2.1 / E.6.1.1）」を追記する。あわせて NotificationLogItem の description（L2598-2601）に「`GET /loans` / `GET /loans/{loanId}/notifications` の reveal も同じ扱い」と明記する"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/_api-summary.yaml#schemas.NotificationLogItem.recipientEmail"
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/_api-summary.yaml#endpoints[0].query_params.reveal"
+  - id: S4-api-005
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    line: 1786
+    severity: minor
+    viewpoint: 1
+    claim: "UserSummary は `email`（平文）を required としており LoanResponse / ReturnResponse / OverdueLoanItem.user で無条件に返るが、同じ司書経路の UserUsageProfile（L1946）と RecipientSummary（L2645）は「既定でマスク・reveal=true で平文」に統一されている。同一仕様内で連絡先マスク方針が二重化している"
+    fix: "UserSummary を `emailMasked`（required）+ `email`（reveal=true のときのみ）に揃え、UserSummary を返す listLoans / createLoan / returnLoan / lookupReturn に Reveal パラメータを追加する。もしくは方針として「一覧・登録系は司書経路のため平文固定」を info.description の規約節に明記して意図的な差であることを示す"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/_api-summary.yaml#schemas.UserSummary.email"
+      - "docs/specs/events/20260903_044456_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/_api-summary.yaml"
+
+  # ---- 観点1: enum 参照・エラーレスポンスの統一 ----
+  - id: S4-api-006
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    line: 2707
+    severity: minor
+    viewpoint: 1
+    claim: "ReturnNoticeResponse.notificationType がインライン `enum: [\"RETURN_NOTICE\"]` で定義され、共通の `NotificationType` スキーマを参照しておらず description も無い（他の notificationType は $ref で統一）"
+    fix: "`$ref: \"#/components/schemas/NotificationType\"` に置き換え、値が固定であることは親スキーマの description に「notificationType は常に RETURN_NOTICE」と書く。固定値を型で表したい場合は `allOf: [$ref NotificationType, {const: RETURN_NOTICE}]` + description にする"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/_api-summary.yaml#schemas.ReturnNoticeResponse"
+  - id: S4-api-007
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    line: 650
+    severity: minor
+    viewpoint: 1
+    claim: "429 TooManyRequests（Retry-After 付き）は公開経路のうち `GET /api/v1/books` / `GET /api/v1/books/{bookId}` / `GET /api/v1/genres` にしか宣言されておらず、同じ公開経路（API Gateway 経由）の `POST /api/v1/reservations`（L650）/ `GET /api/v1/reservations/{reservationId}` / `POST .../cancel` / `GET /api/v1/me/loans`（L758）/ `GET /api/v1/me/reservations`（L793）には無い。info.description の経路区分（L19）と整合しない"
+    fix: "公開経路の全操作に `\"429\": $ref: \"#/components/responses/TooManyRequests\"` を追加する。館内経路にはレート制限を掛けない方針であれば、その旨を info.description の「経路と認可」節に明記する"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍を検索する/_api-summary.yaml#endpoints[0].errors"
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/予約を登録する/_api-summary.yaml#endpoints"
+
+  # ---- 観点2: asyncapi.yaml ----
+  - id: S4-api-008
+    artifact: "asyncapi.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/asyncapi.yaml"
+    line: 47
+    severity: minor
+    viewpoint: 2
+    claim: "DLQ チャネル（returnNoticeRequestedDlq / reminderMailRequestedDlq / overdueNoticeRequestedDlq）は元チャネルと同一メッセージを再利用しており、手動再処理に必要な退避情報（再配信回数・最終失敗理由・最終失敗日時・元チャネル名）がペイロードにもヘッダにも定義されていない。「再配信上限 5 回超過で退避して手動再処理」という運用（L15）に対しスキーマが具体化されていない"
+    fix: "components.messageTraits に `dlqHeaders`（`attemptCount` integer / `lastFailureReason` string / `lastFailedAt` date-time / `originalChannel` string を required）を追加し、DLQ 3 チャネルのメッセージを `traits: [commonHeaders, dlqHeaders]` を持つ `*RequestedDead` メッセージとして定義する。もしくは MQ 製品の x-death 相当ヘッダに委ねる旨を共通規約に明記する"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/督促を送信する/_api-summary.yaml#async_events[1]"
+      - "docs/specs/events/20260903_044456_spec_generation/期限管理業務/返却期限を通知するフロー/リマインドを送信する/_api-summary.yaml#async_events[1]"
+
+# 確認済み・指摘なし:
+#   - 観点1 paths 網羅: 全 27 UC の _api-summary.yaml に列挙された 30 エンドポイント（method × path）すべてが openapi.yaml に存在する
+#   - 観点1 required: 全レスポンス / リクエストスキーマに required が定義されている（PageMeta を allOf で継承するページレスポンス含む）。enum は英語 UPPER_SNAKE_CASE + 日本語併記で api-conventions.md に準拠
+#   - 状態変更操作（POST / PUT / DELETE 11 件）すべてに Idempotency-Key、DELETE に If-Match が宣言されている
+#   - 観点2 channels: 全 UC の async_events（return-notice / reminder-mail / overdue-notice + 各 DLQ = 6 チャネル）が網羅され、payload は additionalProperties:false + required + examples 付きで具体的
+#   - BookResponse → BookDetailResponse の改名、Idempotency-Key ヘッダ統一は補足指示どおり意図的として指摘対象外
+
+resolved:
+  - {id: S4-api-001, resolution: fixed}
+  - {id: S4-api-002, resolution: fixed}
+  - {id: S4-api-003, resolution: fixed}
+  - {id: S4-api-004, resolution: fixed}
+  - {id: S4-api-005, resolution: fixed}
+  - {id: S4-api-006, resolution: fixed}
+  - {id: S4-api-007, resolution: fixed}
+  - {id: S4-api-008, resolution: fixed}

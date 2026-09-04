@@ -1,0 +1,54 @@
+schema_version: "1.0"
+artifact_type: "context"
+skill_type: "foundation"
+artifact_id: "foundation-context"
+title: "Foundation Context（最小構成 / dist-infrastructure 自動生成）"
+status: "draft"
+generated_at: "2026-09-03T04:03:07"
+source_refs: []
+decision_refs: []
+inputs_ref: []
+
+# 注意: mcl-foundation-design 未実行のため、dist-infrastructure が最小構成で自動生成した暫定 context。
+# target_clouds / allowed_regions は dialogue_policy: auto_adopt の⭐推奨採用値（confidence: low。docs/todo.md に登録済み）。
+# arch-design.yaml technology_context.constraints「クラウドベンダー未定・ベンダーニュートラル」に対し、
+# MCL 実行のためベンダーを 1 つ仮採用した。正式な基盤設計を行う場合は mcl-foundation-design を実行して本ファイルを置き換えること。
+
+organization_structure:
+  target_clouds:
+    - name: "aws"
+      scope: "full_stack"
+  business_units: ["library"]
+  environments: ["prod", "stg", "dev"]
+  account_pattern: "{system}-{env}"
+  core_accounts: []
+
+identity_guardrails:
+  federation_required: true
+  local_users_forbidden: false
+  privileged_access: "role_based"
+  breakglass_accounts: 1
+
+network_guardrails:
+  topology: "single_vpc_multi_az"
+  prod_nonprod_isolation: true
+  central_egress: false
+  inter_cloud_encryption: "required"
+
+policy_guardrails:
+  allowed_regions:
+    aws: ["ap-northeast-1"]
+  public_storage_forbidden: true
+  required_tags: ["system", "environment"]
+
+logging_guardrails:
+  central_aggregation: true
+  retention_days: 180
+  tamper_protection: "recommended"
+
+billing_boundaries:
+  budget_owner: "system"
+  cost_allocation_model: "direct"
+  required_tags: ["system", "environment"]
+
+approved_deviations: []

@@ -1,0 +1,120 @@
+# digest of nfr/latest/nfr-grade.yaml section categories[id=D] (L614-731); source_sha256: f352e424419f352fb0a55e65541b02a9f420d7d6b9dec9d2a0f3b5de39d04780
+# 派生物。正本は nfr-grade.yaml。編集しない
+  - id: "D"
+    name: "移行性"
+    subcategories:
+      - id: "D.1"
+        name: "移行時期"
+        items:
+          - id: "D.1.1"
+            name: "移行時期"
+            important: false
+            metrics:
+              - id: "D.1.1.1"
+                name: "移行時期"
+                important: false
+                grade: 1
+                grade_description: "初期リリース時に一括で初期データ投入（休館日を利用）"
+                reason: "システム概要に「紙台帳と表計算ファイルに分散していた蔵書情報と利用者情報を一元管理」とあり、初期リリース前に既存データを投入する必要がある"
+                source_model: "システム概要: 紙台帳と表計算ファイルに分散していた蔵書情報と利用者情報"
+                confidence: "medium"
+      - id: "D.2"
+        name: "移行方式"
+        items:
+          - id: "D.2.1"
+            name: "移行方式"
+            important: true
+            metrics:
+              - id: "D.2.1.1"
+                name: "移行方式"
+                important: true
+                grade: 1
+                grade_description: "一括移行（ビッグバン方式）"
+                reason: "1 館・単一システムで移行元が紙台帳と表計算ファイルのため、段階移行の単位がなく一括移行が適切（M2 標準 Lv2 から引き下げ）"
+                source_model: "システム概要: 1館の図書館を対象 / 紙台帳と表計算ファイル"
+                confidence: "medium"
+      - id: "D.3"
+        name: "移行対象（機器）"
+        items:
+          - id: "D.3.1"
+            name: "移行対象機器"
+            important: false
+            metrics:
+              - id: "D.3.1.1"
+                name: "移行対象機器"
+                important: false
+                grade: 0
+                grade_description: "移行対象機器なし（紙台帳・表計算ファイルからの新規構築）"
+                reason: "既存のシステム機器は RDRA に登場せず、移行元は紙台帳と表計算ファイルのみ"
+                source_model: "システム概要: 紙台帳と表計算ファイル"
+                confidence: "medium"
+              - id: "D.3.1.2"
+                name: "移行元環境の廃棄"
+                important: false
+                grade: 1
+                grade_description: "紙台帳は館内規定に従い一定期間保管し、表計算ファイルは移行完了確認後にアーカイブして参照専用にする"
+                reason: "移行元の廃棄方針は RDRA に記述がなく、一般的な運用慣行からの弱い推論"
+                source_model: "システム概要: 紙台帳と表計算ファイル"
+                confidence: "low"
+      - id: "D.4"
+        name: "移行対象（データ）"
+        items:
+          - id: "D.4.1"
+            name: "移行データ"
+            important: true
+            metrics:
+              - id: "D.4.1.1"
+                name: "データ移行量"
+                important: true
+                grade: 1
+                grade_description: "〜100GB"
+                reason: "移行対象は情報「書籍」「ジャンル」「利用者」のマスタ系で、1 館の蔵書と登録利用者〜1,000 人の規模では 100GB を大きく下回る"
+                source_model: "情報: 書籍 / ジャンル / 利用者、システム概要: 1館の図書館を対象"
+                confidence: "high"
+              - id: "D.4.1.2"
+                name: "データ変換"
+                important: false
+                grade: 2
+                grade_description: "表計算ファイル→情報「書籍」「利用者」へのマッピング変換が必要（ISBN・ジャンル・媒体種別・利用者区分の正規化を含む）"
+                reason: "情報「書籍」の属性（ISBN・ジャンル・媒体種別）とバリエーション「ジャンル」「利用者区分」の定義値へ既存データを正規化する必要がある"
+                source_model: "情報: 書籍 / 利用者、バリエーション: ジャンル / 媒体種別 / 利用者区分"
+                confidence: "medium"
+              - id: "D.4.1.3"
+                name: "データクレンジング"
+                important: false
+                grade: 2
+                grade_description: "ISBN の重複・欠損、利用者の連絡先（メールアドレス）欠損を移行前に名寄せ・補完する"
+                reason: "情報「通知」の送信先メールアドレスは利用者の連絡先に依存するため、メールアドレス欠損は通知機能の欠陥に直結する"
+                source_model: "情報: 利用者（連絡先）/ 通知（送信先メールアドレス）"
+                confidence: "medium"
+      - id: "D.5"
+        name: "移行計画"
+        items:
+          - id: "D.5.1"
+            name: "移行計画"
+            important: true
+            metrics:
+              - id: "D.5.1.1"
+                name: "移行リハーサル"
+                important: true
+                grade: 1
+                grade_description: "1回実施"
+                reason: "移行量が小さく方式も一括移行のため 1 回のリハーサルで足りると推定するが、移行体制は RDRA に無く弱い推論（M2 標準 Lv2 から引き下げ）"
+                source_model: "D.2.1.1 移行方式 / D.4.1.1 データ移行量"
+                confidence: "low"
+              - id: "D.5.1.2"
+                name: "移行判定基準"
+                important: false
+                grade: 1
+                grade_description: "書籍・利用者の件数一致＋主要属性（ISBN・利用者番号・メールアドレス）のサンプル突合で判定"
+                reason: "判定基準は RDRA に記述がなく、情報「書籍」「利用者」の識別属性から推定した弱い推論"
+                source_model: "情報: 書籍 / 利用者"
+                confidence: "low"
+              - id: "D.5.1.3"
+                name: "切り戻し計画"
+                important: false
+                grade: 1
+                grade_description: "移行失敗時は紙台帳・表計算ファイル運用へ戻す（新システム未公開のため利用者影響は限定的）"
+                reason: "移行元が紙台帳・表計算ファイルであり、初期リリース前は既存運用へ戻せる"
+                source_model: "システム概要: 紙台帳と表計算ファイル"
+                confidence: "medium"

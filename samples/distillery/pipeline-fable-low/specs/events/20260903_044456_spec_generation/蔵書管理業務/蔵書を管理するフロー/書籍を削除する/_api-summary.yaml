@@ -1,0 +1,64 @@
+# _api-summary.yaml
+uc: "書籍を削除する"
+business: "蔵書管理業務"
+buc: "蔵書を管理するフロー"
+endpoints:
+  - method: "DELETE"
+    path: "/api/v1/books/{bookId}"
+    summary: "書籍を削除する（在庫ありの書籍のみ。貸出中・予約待ちは 409）"
+    response_schema: ""
+    tags: ["books"]
+    security: ["bearer"]
+    roles: ["司書"]
+    parameters:
+      - name: "bookId"
+        in: "path"
+        type: "string"
+        required: true
+    headers:
+      - name: "Idempotency-Key"
+        required: true
+      - name: "If-Match"
+        required: false
+    responses:
+      "204": ""
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+      "404": "ProblemDetails"
+      "409": "ProblemDetails"
+    errors:
+      - status: "400"
+        code: "BAD_REQUEST"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+      - status: "404"
+        code: "BOOK_NOT_FOUND"
+      - status: "409"
+        code: "BOOK_NOT_DELETABLE"
+      - status: "409"
+        code: "OPTIMISTIC_LOCK_CONFLICT"
+async_events: []
+schemas:
+  - name: "ProblemDetails"
+    properties:
+      - name: "type"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "status"
+        type: "integer"
+        required: true
+      - name: "detail"
+        type: "string"
+        required: false
+      - name: "code"
+        type: "string"
+        required: true
+      - name: "traceId"
+        type: "string"
+        required: false

@@ -1,0 +1,242 @@
+round: 1
+group: A
+findings:
+  # ---- 全体規約: 日本語 enum が API スキーマに残存 ----
+  - id: S3-A-001
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を登録する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_api-summary.yaml"
+    line: 38
+    severity: major
+    viewpoint: 4
+    claim: "CreateUserRequest.userType の enum が日本語（\"利用者\", \"司書\"）で定義され、UserResponse.userType には enum が無い"
+    fix: "CreateUserRequest.userType / UserResponse.userType の enum を [\"PATRON\", \"STAFF\"] に置換し、description に「利用者区分（PATRON=利用者 / STAFF=司書）」を併記する。既定値は PATRON"
+    source_refs:
+      - "docs/rdra/latest/バリエーション.tsv#利用者区分"
+  - id: S3-A-002
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を登録する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/tier-backend-api.md"
+    line: 25
+    severity: major
+    viewpoint: 3
+    claim: "API 仕様の userType が「enum: 利用者 / 司書」と日本語で定義され、BDD（L100）も userType が「利用者」であることを検証している"
+    fix: "L25 を「利用者区分: `PATRON`（利用者）/ `STAFF`（司書）。省略時 `PATRON`」に、L100 を「userType が \"PATRON\" である」に置換する。L69 の users.user_type 説明も（PATRON / STAFF）に揃える"
+  - id: S3-A-003
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を編集する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を編集する/tier-frontend-staff.md"
+    line: 97
+    severity: major
+    viewpoint: 3
+    claim: "GET /api/v1/users/U0001234 のモック応答が userType:\"利用者\" と日本語 enum 値を使っている"
+    fix: "モック応答を userType:\"PATRON\" に置換し、画面表示（L22 Badge）は PATRON→「利用者」/ STAFF→「司書」へ変換する旨を追記する"
+  - id: S3-A-004
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を削除する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_api-summary.yaml"
+    line: 73
+    severity: major
+    viewpoint: 4
+    claim: "UserResponse.userType の enum が日本語（\"利用者\", \"司書\"）で定義されている"
+    fix: "enum を [\"PATRON\", \"STAFF\"] に置換し、description に「PATRON=利用者 / STAFF=司書」を併記する"
+  - id: S3-A-005
+    uc: "利用者管理業務/利用者を管理するフロー/利用者一覧を参照する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を参照する/_api-summary.yaml"
+    line: 42
+    severity: major
+    viewpoint: 4
+    claim: "UserSummary.userType の enum が日本語（\"利用者\", \"司書\"）で定義されている"
+    fix: "enum を [\"PATRON\", \"STAFF\"] に置換し、description に「PATRON=利用者 / STAFF=司書」を併記する"
+  - id: S3-A-006
+    uc: "利用者管理業務/利用者を管理するフロー/利用者一覧を参照する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を参照する/tier-backend-api.md"
+    line: 36
+    severity: major
+    viewpoint: 3
+    claim: "items[].userType の値が「`利用者` / `司書`」と日本語で定義されている"
+    fix: "「利用者区分: `PATRON`（利用者）/ `STAFF`（司書）」に置換する。L74 の users.user_type 説明も（PATRON / STAFF）に揃える"
+
+  # ---- 全体規約: 予約状態 enum の逸脱（WAITING / COMPLETED） ----
+  - id: S3-A-007
+    uc: "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する"
+    file: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/tier-backend-api.md"
+    line: 79
+    severity: major
+    viewpoint: 3
+    claim: "reservations.current_status の enum が WAITING / NOTIFIED / CANCELLED / COMPLETED で、全体規約の予約状態 RESERVED / NOTIFIED / CANCELLED / CLOSED と一致しない"
+    fix: "L79 を「RESERVED = 予約中 / NOTIFIED = 通知済み / CANCELLED = 取消 / CLOSED = 終了」に置換し、L107 の BDD「WAITING 2 件」を「RESERVED 2 件」に置換する"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#予約の状態"
+  - id: S3-A-008
+    uc: "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する"
+    file: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/spec.md"
+    line: 93
+    severity: major
+    viewpoint: 5
+    claim: "処理フローの SQL が current_status IN ('WAITING','NOTIFIED') で、規約の予約状態 enum（RESERVED / NOTIFIED）と一致しない"
+    fix: "L93 を `current_status IN ('RESERVED','NOTIFIED')` に置換する"
+  - id: S3-A-009
+    uc: "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する"
+    file: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/_model-summary.yaml"
+    line: 89
+    severity: major
+    viewpoint: 5
+    claim: "reservations の where 句が current_status IN ('WAITING', 'NOTIFIED') で、規約の予約状態 enum と一致しない"
+    fix: "where を `COUNT(*) WHERE book_id = :bookId AND current_status IN ('RESERVED', 'NOTIFIED')（予約 BC 公開 IF 経由）` に置換する"
+  - id: S3-A-010
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を削除する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/tier-backend-api.md"
+    line: 124
+    severity: major
+    viewpoint: 3
+    claim: "reservations.current_status の enum が WAITING / NOTIFIED / CANCELLED / COMPLETED で、全体規約の予約状態 RESERVED / NOTIFIED / CANCELLED / CLOSED と一致しない"
+    fix: "L124 を「RESERVED = 予約中 / NOTIFIED = 通知済み / CANCELLED = 取消 / CLOSED = 終了」に置換し、L161 の BDD「reservations に WAITING 1 件」を「RESERVED 1 件」に置換する"
+  - id: S3-A-011
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を削除する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_model-summary.yaml"
+    line: 132
+    severity: major
+    viewpoint: 5
+    claim: "reservations の where 句が current_status IN ('WAITING', 'NOTIFIED') で、規約の予約状態 enum と一致しない"
+    fix: "where を `COUNT(*) WHERE user_number = :userNumber AND current_status IN ('RESERVED', 'NOTIFIED')（予約 BC 公開 IF 経由）` に置換する"
+
+  # ---- 同一パスのレスポンススキーマ不整合 ----
+  - id: S3-A-012
+    uc: "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する"
+    file: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/_api-summary.yaml"
+    line: 9
+    severity: major
+    viewpoint: 4
+    claim: "GET /api/v1/books/{bookId} の response_schema が BookDetailResponse（waitingCount 必須 / version 任意）で、「書籍を編集する」「書籍を削除する」の同一パスは BookResponse（waitingCount 無し / version 必須）と異なる"
+    fix: "スキーマ名を BookResponse に統一し、プロパティを bookId, title, author, isbn?, publisher?, genreId, genreName, mediaType, status, waitingCount（required: true）, version（required: false。司書経路のみ返却）, registeredAt, updatedAt とする。同名の schemas エントリ・responses.\"200\" も BookResponse に置換する"
+  - id: S3-A-013
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を編集する"
+    file: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を編集する/_api-summary.yaml"
+    line: 72
+    severity: major
+    viewpoint: 4
+    claim: "BookResponse に waitingCount が無く version が required: true のため、同一パス GET /api/v1/books/{bookId} を共有する「書籍詳細を参照する」の BookDetailResponse と衝突する"
+    fix: "BookResponse に waitingCount（type: integer, required: true）を追加し、version を required: false（司書経路のみ返却）に変更する。POST / PUT の 200/201 応答でも同じ BookResponse を返す（waitingCount は登録直後 0）"
+  - id: S3-A-014
+    uc: "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する"
+    file: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/tier-backend-api.md"
+    line: 27
+    severity: major
+    viewpoint: 4
+    claim: "レスポンスが `BookDetailResponse` として記述され、変更概要（L7）で「司書経路は BookResponse 相当、公開経路は BookDetailResponse」と経路ごとに別スキーマを示している"
+    fix: "L7 / L27 を単一スキーマ `BookResponse`（waitingCount 必須、version は司書経路のみ）に統一し、「書籍を編集する」の BookResponse 定義を参照する旨に書き換える"
+  - id: S3-A-015
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を削除する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_api-summary.yaml"
+    line: 54
+    severity: major
+    viewpoint: 4
+    claim: "同一パス GET /api/v1/users/{userNumber} の UserResponse が「利用者を編集する」と異なる（本 UC: activeLoanCount / activeReservationCount あり・updatedAt 無し、編集 UC: updatedAt あり・件数無し。登録 UC は version / updatedAt 無し）"
+    fix: "UserResponse を 1 定義に統一する: userNumber, name, email, phone?, address?, userType（enum PATRON/STAFF）, version, registeredAt, updatedAt, activeLoanCount?（include=activeCounts 時）, activeReservationCount?（同）。本ファイルに updatedAt（required: true）を追加する"
+  - id: S3-A-016
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を編集する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を編集する/_api-summary.yaml"
+    line: 6
+    severity: major
+    viewpoint: 4
+    claim: "GET /api/v1/users/{userNumber} に「利用者を削除する」が定義する include=activeCounts クエリと activeLoanCount / activeReservationCount が無く、同一パスの定義が食い違う"
+    fix: "GET エンドポイントに parameters `include`（in: query, enum: [\"activeCounts\"], required: false）を追加し、UserResponse に activeLoanCount / activeReservationCount（type: integer, required: false）と userType の enum [\"PATRON\", \"STAFF\"] を追加する"
+  - id: S3-A-017
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を登録する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_api-summary.yaml"
+    line: 40
+    severity: major
+    viewpoint: 4
+    claim: "UserResponse に version / updatedAt が無く、「利用者を編集する」「利用者を削除する」の同名スキーマ UserResponse と定義が異なる"
+    fix: "UserResponse に version（type: integer, required: true。登録直後は 1）と updatedAt（type: string, format: date-time, required: true）を追加し、tier-backend-api.md のレスポンス表にも同 2 項目を追加する"
+
+  # ---- 同一リソースのエラーコード不整合 ----
+  - id: S3-A-018
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を編集する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を編集する/tier-backend-api.md"
+    line: 78
+    severity: major
+    viewpoint: 3
+    claim: "楽観ロック競合のエラーコードが CONFLICT_VERSION で、同一リソースの「利用者を削除する」および書籍系 UC の VERSION_CONFLICT と一致しない"
+    fix: "L78 の code=CONFLICT_VERSION を code=VERSION_CONFLICT に置換し、L132 の BDD も VERSION_CONFLICT にする"
+  - id: S3-A-019
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を編集する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を編集する/spec.md"
+    line: 104
+    severity: major
+    viewpoint: 5
+    claim: "処理フロー（L104）と異常系 BDD（L186）の 409 コードが CONFLICT_VERSION で、他 UC の VERSION_CONFLICT と一致しない"
+    fix: "L104 / L186 の CONFLICT_VERSION を VERSION_CONFLICT に置換する"
+  - id: S3-A-020
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を編集する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を編集する/tier-frontend-staff.md"
+    line: 43
+    severity: major
+    viewpoint: 3
+    claim: "エラーハンドリング（L43）と BDD（L110）が 409 コード CONFLICT_VERSION を前提にしており、他 UC の VERSION_CONFLICT と一致しない"
+    fix: "L43 / L110 の CONFLICT_VERSION を VERSION_CONFLICT に置換する"
+
+  # ---- spec.md データフローと _model-summary / tier の不整合 ----
+  - id: S3-A-021
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍を削除する"
+    file: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/spec.md"
+    line: 34
+    severity: minor
+    viewpoint: 5
+    claim: "データフロー（L34）と処理フロー（L99）の DELETE が `WHERE book_id = ? AND version = ?` で、_model-summary / tier-backend-api の `WHERE book_id = ? AND current_status = 'AVAILABLE'（If-Match 指定時のみ AND version = ?）` と一致せず、If-Match ヘッダも spec.md に現れない"
+    fix: "L34 / L99 を `DELETE FROM books WHERE book_id = ? AND current_status = 'AVAILABLE' [AND version = ?（If-Match 指定時）]` に置換し、L90 の DELETE 呼び出しに「If-Match: {version}（任意）」を追記する"
+  - id: S3-A-022
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を削除する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/spec.md"
+    line: 39
+    severity: minor
+    viewpoint: 5
+    claim: "データフローに _model-summary / tier-backend-api が定義する credentials DELETE と KVS session DEL が無く、DELETE 条件（L39 / L111）も `AND version = ?` 固定で If-Match 任意の定義と一致しない"
+    fix: "RDB サブグラフに `credentials` ノードと `DELETE FROM credentials WHERE user_number = ?` エッジ、KVS `session:{sessionId}` DEL を追加し、L39 / L111 を `WHERE user_number = ? [AND version = ?（If-Match 指定時）]` に置換する"
+  - id: S3-A-023
+    uc: "利用者管理業務/利用者を管理するフロー/利用者を削除する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/tier-frontend-staff.md"
+    line: 52
+    severity: minor
+    viewpoint: 4
+    claim: "確認画面の初期表示が GET /api/v1/users/{userNumber} をクエリ無しで呼ぶが、_api-summary / tier-backend-api では activeLoanCount / activeReservationCount は `include=activeCounts` 指定時のみ返る"
+    fix: "L6 / L52 / L107 / L115 / L121 / L127 の GET を `GET /api/v1/users/{userNumber}?include=activeCounts` に置換する（spec.md L77 の処理フローも同様）"
+  - id: S3-A-024
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する"
+    file: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/spec.md"
+    line: 10
+    severity: minor
+    viewpoint: 5
+    claim: "_model-summary の kvs（cache:books:list:{queryHash} GET/SET/DEL）と _api-summary の GET /api/v1/genres がデータフロー・処理フローに現れない"
+    fix: "データフローに KVS サブグラフ（cache:books:list:{queryHash}, GET/SET TTL 60s）と `FE_API -->|GET /api/v1/genres| BE_Pres` エッジを追加し、処理フローに Cache-Aside の alt（ヒット / ミス）を「書籍を検索する」と同形で追加する"
+  - id: S3-A-025
+    uc: "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する"
+    file: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/_api-summary.yaml"
+    line: 6
+    severity: minor
+    viewpoint: 4
+    claim: "GET /api/v1/books / GET /api/v1/genres に security / roles / responses が無く、同一パスを共有する「書籍を検索する」の定義（bearer + anonymous、400/401/403/429）と揃っていない"
+    fix: "両エンドポイントに security: [\"bearer\", \"anonymous\"]、roles: [\"司書\", \"利用者\", \"匿名\"]、responses（\"200\", \"400\": ValidationProblemDetails, \"401\", \"403\", \"429\"）を「書籍を検索する」と同一内容で追加する"
+resolved:
+  - {id: S3-A-001, resolution: fixed}
+  - {id: S3-A-002, resolution: fixed}
+  - {id: S3-A-003, resolution: fixed}
+  - {id: S3-A-004, resolution: fixed}
+  - {id: S3-A-005, resolution: fixed}
+  - {id: S3-A-006, resolution: fixed}
+  - {id: S3-A-007, resolution: fixed}
+  - {id: S3-A-008, resolution: fixed}
+  - {id: S3-A-009, resolution: fixed}
+  - {id: S3-A-010, resolution: fixed}
+  - {id: S3-A-011, resolution: fixed}
+  - {id: S3-A-012, resolution: fixed}
+  - {id: S3-A-013, resolution: fixed}
+  - {id: S3-A-014, resolution: fixed}
+  - {id: S3-A-015, resolution: fixed}
+  - {id: S3-A-016, resolution: fixed}
+  - {id: S3-A-017, resolution: fixed}
+  - {id: S3-A-018, resolution: fixed}
+  - {id: S3-A-019, resolution: fixed}
+  - {id: S3-A-020, resolution: fixed}
+  - {id: S3-A-021, resolution: fixed}
+  - {id: S3-A-022, resolution: fixed}
+  - {id: S3-A-023, resolution: fixed}
+  - {id: S3-A-024, resolution: fixed}
+  - {id: S3-A-025, resolution: fixed}

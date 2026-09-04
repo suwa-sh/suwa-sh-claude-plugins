@@ -1,0 +1,181 @@
+# digest of nfr/latest/nfr-grade.yaml section categories[id=B] (L194-372); source_sha256: f352e424419f352fb0a55e65541b02a9f420d7d6b9dec9d2a0f3b5de39d04780
+# 派生物。正本は nfr-grade.yaml。編集しない
+  - id: "B"
+    name: "性能・拡張性"
+    subcategories:
+      - id: "B.1"
+        name: "業務処理量"
+        items:
+          - id: "B.1.1"
+            name: "通常時の業務量"
+            important: true
+            metrics:
+              - id: "B.1.1.1"
+                name: "同時アクセス数"
+                important: true
+                grade: 1
+                grade_description: "〜100"
+                reason: "プリインタビュー「〜1,000 ユーザー」を採用。司書は数名、社外の利用者の Web 照会も 1 館の登録利用者に限られるため同時 100 未満（M2 標準 Lv3 から引き下げ）"
+                source_model: "アクター: 司書 / 利用者、システム概要: 1館の図書館を対象"
+                confidence: "medium"
+              - id: "B.1.1.2"
+                name: "データ量"
+                important: false
+                grade: 1
+                grade_description: "〜100万件/年（蔵書数万件＋貸出・予約・通知の年間明細を含めて総容量 100GB 未満）"
+                reason: "プリインタビュー「〜100万件/年」を採用。情報は 8 エンティティで、明細系は貸出・予約・通知の 3 つに限られる"
+                source_model: "情報: 書籍 / 貸出 / 予約 / 通知"
+                confidence: "medium"
+              - id: "B.1.1.3"
+                name: "オンラインリクエスト件数"
+                important: true
+                grade: 2
+                grade_description: "〜10,000件/日"
+                reason: "登録利用者〜1,000 人の検索・予約・利用状況照会と司書の窓口操作（貸出・返却・蔵書管理）を合算しても 1 日 1 万件未満と推定"
+                source_model: "BUC: 書籍を検索するフロー / 書籍を貸し出すフロー / 自分の利用状況を確認するフロー"
+                confidence: "medium"
+              - id: "B.1.1.4"
+                name: "バッチ処理件数"
+                important: false
+                grade: 1
+                grade_description: "1回あたり〜10万件（貸出中の全貸出をリマインド・延滞判定で日次走査）"
+                reason: "アクター「タイマー」の日次バッチが UC「リマインド対象を抽出する」「延滞を判定する」で貸出中の貸出を走査する。貸出件数は蔵書数を超えないため 10 万件未満と推定するが、蔵書規模の記述がなく弱い推論"
+                source_model: "アクター: タイマー、UC: リマインド対象を抽出する / 延滞を判定する"
+                confidence: "low"
+          - id: "B.1.2"
+            name: "ピーク時の業務量"
+            important: true
+            metrics:
+              - id: "B.1.2.1"
+                name: "ピーク時同時アクセス数"
+                important: true
+                grade: 2
+                grade_description: "通常時の2倍"
+                reason: "モデルシステム2のデフォルト値を適用（プリインタビュー「10〜100 rps」の範囲内。返却通知メール直後の予約者アクセス集中を想定）"
+                source_model: ""
+                confidence: "default"
+              - id: "B.1.2.2"
+                name: "ピーク時データ量"
+                important: false
+                grade: 1
+                grade_description: "通常時の2倍（新刊入荷日・長期休暇前でも 1 日あたり数千件の明細追加に留まる）"
+                reason: "貸出・予約・通知の明細が 1 日に数千件を超える業務は RDRA にないが、季節変動の記述もないため弱い推論"
+                source_model: "情報: 貸出 / 予約 / 通知"
+                confidence: "low"
+      - id: "B.2"
+        name: "性能目標値"
+        items:
+          - id: "B.2.1"
+            name: "オンライン"
+            important: true
+            metrics:
+              - id: "B.2.1.1"
+                name: "レスポンスタイム"
+                important: true
+                grade: 3
+                grade_description: "5秒以内"
+                reason: "アクター「利用者」（社外）向けの蔵書検索画面・予約画面・利用状況画面が中心のため、一般利用者向け画面操作の基準 5 秒以内を適用"
+                source_model: "アクター: 利用者、UC: 書籍を検索する / 予約を登録する / 貸出履歴を参照する"
+                confidence: "medium"
+              - id: "B.2.1.2"
+                name: "スループット"
+                important: true
+                grade: 2
+                grade_description: "〜50 TPS"
+                reason: "プリインタビュー「10〜100 rps」を採用。同時アクセス〜100・1 日 1 万件の規模では 50 TPS で十分"
+                source_model: "アクター: 司書 / 利用者"
+                confidence: "medium"
+              - id: "B.2.1.3"
+                name: "ターンアラウンドタイム"
+                important: false
+                grade: 2
+                grade_description: "10秒以内（在庫状況一覧・人気書籍ランキング・期間別貸出統計の集計要求から表示まで）"
+                reason: "BUC「蔵書の利用状況を分析するフロー」の集計 UC は司書向け内部操作のため、管理者向け基準 10 秒以内を適用"
+                source_model: "BUC: 蔵書の利用状況を分析するフロー、条件: 人気書籍ランキング判定 / 集計期間判定"
+                confidence: "medium"
+          - id: "B.2.2"
+            name: "バッチ"
+            important: true
+            metrics:
+              - id: "B.2.2.1"
+                name: "バッチ処理時間"
+                important: true
+                grade: 2
+                grade_description: "8時間以内"
+                reason: "モデルシステム2のデフォルト値を適用（日次バッチは夜間〜早朝の 8 時間枠で完了すればリマインド・督促の当日送信に間に合う）"
+                source_model: "アクター: タイマー"
+                confidence: "default"
+              - id: "B.2.2.2"
+                name: "バッチ処理量"
+                important: false
+                grade: 1
+                grade_description: "1回あたり〜10万件（貸出中の貸出走査＋通知レコード生成）"
+                reason: "UC「リマインド対象を抽出する」「延滞を判定する」の対象は貸出中の貸出に限られるが、蔵書規模が RDRA に無いため弱い推論"
+                source_model: "UC: リマインド対象を抽出する / 延滞を判定する、情報: 通知"
+                confidence: "low"
+      - id: "B.3"
+        name: "リソース拡張性"
+        items:
+          - id: "B.3.1"
+            name: "CPU"
+            important: true
+            metrics:
+              - id: "B.3.1.1"
+                name: "CPU拡張性"
+                important: true
+                grade: 2
+                grade_description: "スケールアウト（サーバ追加）"
+                reason: "アクター「利用者」が社外の一般ユーザーで Web 公開するため、利用者増に備えてスケールアウト可能な構成とする"
+                source_model: "アクター: 利用者（社外・受益者）"
+                confidence: "medium"
+          - id: "B.3.2"
+            name: "メモリ"
+            important: false
+            metrics:
+              - id: "B.3.2.1"
+                name: "メモリ拡張性"
+                important: false
+                grade: 1
+                grade_description: "スケールアップ（メモリ増設・インスタンスタイプ変更）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "B.3.3"
+            name: "ストレージ"
+            important: false
+            metrics:
+              - id: "B.3.3.1"
+                name: "ストレージ拡張性"
+                important: false
+                grade: 2
+                grade_description: "オンライン拡張可能（無停止でボリューム追加）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "B.3.4"
+            name: "ネットワーク"
+            important: false
+            metrics:
+              - id: "B.3.4.1"
+                name: "ネットワーク拡張性"
+                important: false
+                grade: 1
+                grade_description: "帯域増強は計画停止を伴う"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+      - id: "B.4"
+        name: "性能品質保証"
+        items:
+          - id: "B.4.1"
+            name: "性能テスト"
+            important: true
+            metrics:
+              - id: "B.4.1.1"
+                name: "性能テスト"
+                important: true
+                grade: 3
+                grade_description: "負荷テスト（ピーク時想定）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"

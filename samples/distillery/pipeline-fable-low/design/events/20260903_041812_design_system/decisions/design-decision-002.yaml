@@ -1,0 +1,23 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-002"
+title: "ポータル構成戦略: 利用者 / 司書の 2 ポータル"
+status: "approved"
+generated_at: "2026-09-03T04:18:12+09:00"
+context: |
+  アクター.tsv には司書（社内・提供者）、利用者（社外・受益者）、タイマー（画面なし）の 3 アクターがある。arch では利用者向け（公開経路）と司書向け（館内経路）の 2 系統フロントエンドが分離されている（SP-003 / SP-005, NFR E.5.3.1）。
+decision: |
+  社外+受益者 → patron（利用者ポータル, Blue #2563EB）、社内+提供者 → staff（司書ポータル, Slate #334155）の 2 ポータルとする。タイマーはポータルを持たない。テーマ切替は [data-portal] 属性で行い、ナビゲーションはポータルごとに完全分離する。
+consequences:
+  positive:
+    - "arch のティア分離とポータルが 1:1 で対応しトレースしやすい"
+    - "利用者ポータルに管理導線が混入しない（NFR E.5.3.1）"
+    - "デザイントークンは共有しつつ primary だけ差し替えられる"
+  negative:
+    - "司書と利用者を兼ねる人は 2 つの UI を使い分ける"
+alternatives_considered:
+  - name: "単一ポータル + 権限による表示切替"
+    reason_rejected: "館内限定機能をインターネット側に同梱することになり E.5.3.1 に反する"
+  - name: "3 ポータル（司書 / 利用者 / システム管理者）"
+    reason_rejected: "システム管理者は RDRA アクターに存在しない。RDRA 外の要素は自動追加しない"

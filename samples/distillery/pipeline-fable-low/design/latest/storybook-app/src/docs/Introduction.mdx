@@ -1,0 +1,55 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Introduction" />
+
+<img src="/assets/logo-full.svg" alt="Libro" style={{ height: 56, marginBottom: 24 }} />
+
+# Libro Design System
+
+図書館蔵書管理システムのデザインシステムです。RDRA（要件）・NFR（非機能）・アーキテクチャ設計から導出しています。
+
+## ポータル
+
+<table>
+  <thead>
+    <tr><th>ポータル</th><th>アクター</th><th>プライマリ</th><th>画面数</th><th>レイアウト</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>利用者ポータル <code>patron</code></td><td>利用者（社外・受益者）</td><td><span style={{ display: 'inline-block', width: 14, height: 14, background: '#2563EB', borderRadius: 3, verticalAlign: 'middle' }} /> #2563EB</td><td>6</td><td>トップナビ + シングルカラム</td></tr>
+    <tr><td>司書ポータル <code>staff</code></td><td>司書（社内・提供者）</td><td><span style={{ display: 'inline-block', width: 14, height: 14, background: '#334155', borderRadius: 3, verticalAlign: 'middle' }} /> #334155</td><td>18</td><td>サイドバー 16rem + 12 列グリッド</td></tr>
+  </tbody>
+</table>
+
+ツールバーの **Portal** / **Theme** で、ポータルと light / dark を切り替えて確認できます。
+
+## ボイス原則
+
+- 利用者には状態と次の行動をセットで伝える（貸出中 → 予約できます）
+- 司書には判定結果と根拠を同時に示す（貸出できません: この書籍は貸出中です）
+- 個人情報は既定で伏せ、明示操作でのみ開示する
+- 色だけで意味を伝えない。文言またはアイコンを必ず添える
+- RDRA の業務用語をそのまま使う（在庫あり / 貸出中 / 予約待ち / 延滞 / 督促 / 返却通知）
+
+## 構成
+
+<table>
+  <thead>
+    <tr><th>カテゴリ</th><th>内容</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Design Tokens</td><td>primitive → semantic → component の 3 層。CSS 変数名つき</td></tr>
+    <tr><td>Screen Mapping</td><td>RDRA 画面 24 件 → ルート → コンポーネント</td></tr>
+    <tr><td>State Mapping</td><td>RDRA 状態モデル 3 件 → Badge</td></tr>
+    <tr><td>Brand</td><td>ロゴ 3 種・アイコン 49 種</td></tr>
+    <tr><td>UI</td><td>Button / Badge / Card / Input / ToggleGroup / Table / Feedback / Pagination / Modal / PortalShell</td></tr>
+    <tr><td>Domain</td><td>Status / Books / Users / Loans / Reports</td></tr>
+  </tbody>
+</table>
+
+## 実装ルール
+
+- 色は `style={{ color: 'var(--token)' }}` か `@theme inline` で公開したクラス（`text-primary` 等）で指定する。Tailwind v4 では `text-[var(--x)]` は font-size と解釈される
+- コンポーネント内でハードコード色（`text-white`, `bg-gray-200`）を使わない
+- 絵文字を使わない。`<Icon name="..." />` を使う
+- フィルター選択肢は `<button>` トグル（ToggleGroup）。Badge をクリック対象にしない
+- 状態変更操作は確認ステップを経由し、送信中はボタンを `loading` にする

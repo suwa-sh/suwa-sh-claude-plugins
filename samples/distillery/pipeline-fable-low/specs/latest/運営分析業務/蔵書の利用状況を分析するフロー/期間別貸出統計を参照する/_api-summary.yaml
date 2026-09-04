@@ -1,0 +1,87 @@
+# _api-summary.yaml
+uc: "期間別貸出統計を参照する"
+business: "運営分析業務"
+buc: "蔵書の利用状況を分析するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/reports/loan-statistics"
+    summary: "集計期間種別（日・月・年）と期間を指定して期間別の貸出件数を取得する"
+    response_schema: "LoanStatisticsResponse"
+    tags: ["reports"]
+    security: ["bearer"]
+    roles: ["司書"]
+    parameters:
+      - name: "periodType"
+        in: "query"
+        type: "string"
+        required: true
+        enum: ["DAY", "MONTH", "YEAR"]
+        description: "集計期間種別: DAY（日）/ MONTH（月）/ YEAR（年）"
+      - name: "from"
+        in: "query"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "to"
+        in: "query"
+        type: "string"
+        format: "date"
+        required: true
+    responses:
+      "200": "LoanStatisticsResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+    errors:
+      - status: "400"
+        code: "INVALID_PERIOD_RANGE"
+      - status: "400"
+        code: "VALIDATION_ERROR"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+async_events: []
+schemas:
+  - name: "LoanStatisticsResponse"
+    properties:
+      - name: "periodType"
+        type: "string"
+        required: true
+        enum: ["DAY", "MONTH", "YEAR"]
+        description: "集計期間種別: DAY（日）/ MONTH（月）/ YEAR（年）"
+      - name: "from"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "to"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "totalLoans"
+        type: "integer"
+        required: true
+      - name: "previousTotalLoans"
+        type: "integer"
+        required: true
+      - name: "series"
+        type: "array"
+        items: "LoanStatisticsPoint"
+        required: true
+      - name: "aggregatedAt"
+        type: "string"
+        format: "date-time"
+        required: true
+  - name: "LoanStatisticsPoint"
+    properties:
+      - name: "periodStart"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "periodEnd"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "loanTotal"
+        type: "integer"
+        required: true

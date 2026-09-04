@@ -1,0 +1,40 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-003"
+title: "コンテキストマップ統合方式: 蔵書 BC が書籍の状態を所有し Customer-Supplier で遷移を提供、利用者 BC は OHS、通知 BC は外部へ ACL"
+status: "approved"
+generated_at: "2026-09-03T03:51:01"
+context: |
+  6 BC 間の依存方向と統合パターン（ACL / OHS / Customer-Supplier / Conformist / Shared Kernel）を決める必要がある。
+  最大の論点は「書籍の状態」の所有権である。情報.tsv では書籍の属性（蔵書管理コンテキスト）として定義される一方、
+  状態遷移を起こす UC（貸出登録・返却登録・予約取消）はすべて貸出・予約 BC 側にあり、所有と契機が分かれている。
+  また通知 BC は唯一の外部システム「メール配信サービス」と連携するため、外部モデルの隔離方法を決める必要がある。
+  統合イベントの具体化は DDD 戦略段階では後続（dist-spec）に委ねる。
+decision: |
+  10 関係を定義する（confidence: medium）。
+  - 蔵書 BC（上流）→ 貸出 / 予約 BC（下流）: Customer-Supplier（CM-001 / CM-002）。蔵書 BC が書籍の正本と状態遷移 API を貸出・予約の要件に合わせて提供する
+  - 利用者 BC（上流）→ 貸出 / 予約 / 通知 BC（下流）: OHS + Published Language（CM-003 / CM-004 / CM-008）。利用者番号照会・連絡先取得を公開ホストサービスとして提供する
+  - 予約 BC（上流）→ 貸出 BC（下流）: Customer-Supplier（CM-005）。返却時の順位 1 位問い合わせと貸出登録による予約完了
+  - 貸出 BC（上流）→ 通知 BC（下流）: Conformist（CM-006）。リマインド対象・延滞判定の結果をそのまま受け取る
+  - 予約 BC（上流）→ 通知 BC（下流）: Customer-Supplier（CM-007）。返却通知後の予約中 → 通知済み遷移を要求
+  - 貸出 / 蔵書 BC（上流）→ 運営分析 BC（下流）: Conformist（CM-009 / CM-010）。読み取り専用の集計
+  - 通知 BC → メール配信サービス: ACL（confidence: high）。BC ID を持たないため context_map には載せず、tier-external-integration の ACL adapter として表現する
+  integration_events はすべて空配列とし、イベント名の具体化は dist-spec に委ねる。
+consequences:
+  positive:
+    - "書籍の正本が蔵書 BC の 1 箇所に集約され、在庫状況の参照が一貫する"
+    - "利用者 BC の OHS により、個人情報の正本へのアクセス経路を 1 つの公開 IF に限定できる"
+    - "外部モデルは ACL adapter に閉じ込められ、メール配信サービスの差し替えが通知 BC 内で完結する"
+  negative:
+    - "貸出登録・返却登録の UC は蔵書・貸出・予約の 3 BC をまたぐ。モジュラモノリスの単一トランザクションで扱う前提（arch-decision-006）に依存する"
+    - "統合イベントが未定義のため、通知・運営分析の購読契機は dist-spec の UC 解析後に確定する"
+alternatives_considered:
+  - name: "書籍の状態を Shared Kernel 化する（Option B）"
+    reason_rejected: "越境呼び出しは減るが、蔵書・貸出・予約の 3 BC の変更が連動し、モジュール境界の独立性が失われる"
+  - name: "書籍の状態を貸出 BC へ移管する（Option C）"
+    reason_rejected: "在庫あり / 貸出中 / 予約待ちは貸出・予約の結果ではあるが、蔵書一覧・検索が貸出 BC を参照する方向に反転し、情報.tsv の定義（書籍の属性）と乖離する"
+  - name: "主要な統合イベントを先行定義する（貸出登録済み / 返却登録済み / 延滞判定済み / 予約登録済み）"
+    reason_rejected: "DDD 戦略段階ではイベント設計を後続に委ねる方が責務分離が明確。UC 解析前に定義すると dist-spec で引き直しになる"
+  - name: "イベント駆動を採用せず全て同期呼び出しで統合する"
+    reason_rejected: "通知送信は MQ による非同期化が Part 1 で採用されており（arch-decision-007）、同期に閉じない"

@@ -1,0 +1,243 @@
+# digest of nfr/latest/nfr-grade.yaml section categories[id=C] (L373-613); source_sha256: f352e424419f352fb0a55e65541b02a9f420d7d6b9dec9d2a0f3b5de39d04780
+# 派生物。正本は nfr-grade.yaml。編集しない
+  - id: "C"
+    name: "運用・保守性"
+    subcategories:
+      - id: "C.1"
+        name: "通常運用"
+        items:
+          - id: "C.1.1"
+            name: "運用時間"
+            important: true
+            metrics:
+              - id: "C.1.1.1"
+                name: "運用監視時間"
+                important: true
+                grade: 3
+                grade_description: "1時間程度の停止あり（9時〜翌8時）"
+                reason: "A.1.1.1 運用時間（通常）Lv3 に連動して同等の監視時間帯とする"
+                source_model: "A.1.1.1 運用時間（通常）"
+                confidence: "high"
+              - id: "C.1.1.2"
+                name: "バックアップ時間帯"
+                important: false
+                grade: 1
+                grade_description: "深夜の計画停止枠（1時〜4時）に日次取得。日次バッチ（リマインド・延滞判定）と重ならない時間帯とする"
+                reason: "モデルシステム2のデフォルト値を適用（アクター「タイマー」の日次バッチとの時間帯分離を付記）"
+                source_model: "アクター: タイマー"
+                confidence: "default"
+              - id: "C.1.1.3"
+                name: "計画停止対応時間"
+                important: false
+                grade: 1
+                grade_description: "1回あたり最大1時間（事前通知3日前）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "C.1.2"
+            name: "バックアップ"
+            important: true
+            metrics:
+              - id: "C.1.2.1"
+                name: "バックアップ方式"
+                important: true
+                grade: 2
+                grade_description: "フル+差分バックアップ（日次）"
+                reason: "情報 8 エンティティ・属性合計約 50 で中規模。RPO「数時間前まで」を満たすため日次フル＋差分にトランザクションログ退避を組み合わせる"
+                source_model: "情報: 書籍 / ジャンル / 利用者 / 貸出 / 予約 / 通知 / 貸出期間 / リマインド日数"
+                confidence: "medium"
+              - id: "C.1.2.2"
+                name: "バックアップ対象"
+                important: false
+                grade: 2
+                grade_description: "業務データ＋システム構成＋ログ"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+              - id: "C.1.2.3"
+                name: "バックアップ世代管理"
+                important: false
+                grade: 2
+                grade_description: "7世代（1週間分）を保持"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "C.1.3"
+            name: "運用監視"
+            important: true
+            metrics:
+              - id: "C.1.3.1"
+                name: "監視範囲"
+                important: true
+                grade: 3
+                grade_description: "サーバ＋ネットワーク＋アプリケーション監視"
+                reason: "外部システム「メール配信サービス」への送信結果（情報「通知」の送信結果属性）と日次バッチの完了をアプリケーション層で監視する必要がある"
+                source_model: "外部システム: メール配信サービス、情報: 通知（送信結果）、アクター: タイマー"
+                confidence: "medium"
+              - id: "C.1.3.2"
+                name: "監視方式"
+                important: false
+                grade: 2
+                grade_description: "エージェント型監視＋利用者向け画面の外形監視"
+                reason: "社外の利用者向けに Web 公開するため、外部からの疎通を確認する外形監視を加える"
+                source_model: "アクター: 利用者（社外）"
+                confidence: "medium"
+              - id: "C.1.3.3"
+                name: "監視間隔"
+                important: false
+                grade: 2
+                grade_description: "5分間隔のポーリング、異常検知時は即時通知"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+      - id: "C.2"
+        name: "保守運用"
+        items:
+          - id: "C.2.1"
+            name: "計画保守"
+            important: true
+            metrics:
+              - id: "C.2.1.1"
+                name: "計画保守の時間帯"
+                important: false
+                grade: 1
+                grade_description: "月次・深夜帯（1時〜4時）に実施"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+              - id: "C.2.1.2"
+                name: "パッチ適用方針"
+                important: true
+                grade: 2
+                grade_description: "定期的パッチ適用（四半期）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "C.2.2"
+            name: "ソフトウェア保守"
+            important: false
+            metrics:
+              - id: "C.2.2.1"
+                name: "ライフサイクル管理"
+                important: false
+                grade: 2
+                grade_description: "年1回のバージョン棚卸し、EOL 6ヶ月前に更改計画を立案"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+      - id: "C.3"
+        name: "障害時運用"
+        items:
+          - id: "C.3.1"
+            name: "障害検知"
+            important: true
+            metrics:
+              - id: "C.3.1.1"
+                name: "障害検知方式"
+                important: true
+                grade: 2
+                grade_description: "監視ツールによる検知（アラート通知）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "C.3.2"
+            name: "障害通知"
+            important: false
+            metrics:
+              - id: "C.3.2.1"
+                name: "障害通知方式"
+                important: false
+                grade: 2
+                grade_description: "メール＋チャット通知。図書館システム担当→保守ベンダの2段エスカレーション"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "C.3.3"
+            name: "障害復旧"
+            important: false
+            metrics:
+              - id: "C.3.3.1"
+                name: "障害復旧方式"
+                important: false
+                grade: 2
+                grade_description: "手順書に基づく手動復旧。バックアップからのリストアと書籍・貸出・予約の状態整合性確認手順を整備"
+                reason: "モデルシステム2のデフォルト値を適用（3 つの状態モデル間の整合性確認を付記）"
+                source_model: "状態: 書籍の状態 / 貸出の状態 / 予約の状態"
+                confidence: "default"
+      - id: "C.4"
+        name: "運用環境"
+        items:
+          - id: "C.4.1"
+            name: "テスト環境"
+            important: true
+            metrics:
+              - id: "C.4.1.1"
+                name: "テスト環境"
+                important: true
+                grade: 2
+                grade_description: "簡易テスト環境（本番縮小構成）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "C.4.2"
+            name: "開発環境"
+            important: false
+            metrics:
+              - id: "C.4.2.1"
+                name: "開発環境"
+                important: false
+                grade: 2
+                grade_description: "本番と同一ミドルウェア構成の開発環境を1面用意"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+      - id: "C.5"
+        name: "サポート体制"
+        items:
+          - id: "C.5.1"
+            name: "サポート時間"
+            important: true
+            metrics:
+              - id: "C.5.1.1"
+                name: "サポート時間"
+                important: true
+                grade: 1
+                grade_description: "営業時間内（9時〜17時）"
+                reason: "1 館運用で司書が主要オペレータであり、夜間の利用者操作は検索・予約・照会に限られるため開館時間帯のサポートで足りると推定。ただし運用体制は RDRA に無く弱い推論（M2 標準 Lv3 から引き下げ）"
+                source_model: "アクター: 司書（社内・提供者）、システム概要: 1館の図書館を対象"
+                confidence: "low"
+          - id: "C.5.2"
+            name: "エスカレーション"
+            important: false
+            metrics:
+              - id: "C.5.2.1"
+                name: "エスカレーション体制"
+                important: false
+                grade: 2
+                grade_description: "1次: 図書館システム担当、2次: 保守ベンダ（翌営業日対応）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+      - id: "C.6"
+        name: "その他の運用管理方針"
+        items:
+          - id: "C.6.1"
+            name: "ログ管理"
+            important: true
+            metrics:
+              - id: "C.6.1.1"
+                name: "ログ保管期間"
+                important: true
+                grade: 3
+                grade_description: "6ヶ月"
+                reason: "個人情報（利用者の氏名・連絡先・貸出履歴）を扱うが金銭取引はないため、一般業務の 3 ヶ月より長く 1 年未満の M2 標準 6 ヶ月とする"
+                source_model: "情報: 利用者 / 貸出"
+                confidence: "medium"
+              - id: "C.6.1.2"
+                name: "ログ種別"
+                important: false
+                grade: 3
+                grade_description: "アクセスログ＋操作ログ＋エラーログ＋監査ログ（本人限定参照の逸脱検知用）"
+                reason: "条件「利用状況閲覧範囲判定」で利用者は自分の貸出履歴・予約状況のみ閲覧可と定めており、逸脱を追跡できる監査ログが必要"
+                source_model: "条件: 利用状況閲覧範囲判定"
+                confidence: "medium"

@@ -1,0 +1,138 @@
+# _api-summary.yaml
+uc: "貸出履歴を参照する"
+business: "利用者サービス業務"
+buc: "自分の利用状況を確認するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/me/loans"
+    summary: "自分の貸出一覧を取得する（本人限定。現在の貸出 / 履歴の切替、返却期限の表示区分、offset ページネーション）"
+    request_schema: "ListMyLoansQueryParams"
+    response_schema: "MyLoanPageResponse"
+    tags: ["me"]
+    security: ["bearer"]
+    roles: ["利用者"]
+    ownership: "self"  # 利用者ロールはトークンの利用者番号と一致するデータのみ（SP-011）
+    parameters:
+      - name: "scope"
+        in: "query"
+        type: "string"
+        required: false
+        enum: ["current", "history", "all"]
+        default: "current"
+        description: "取得範囲: current（現在の貸出）/ history（履歴）/ all（全件）"
+      - name: "page"
+        in: "query"
+        type: "integer"
+        required: false
+        default: 1
+        minimum: 1
+      - name: "pageSize"
+        in: "query"
+        type: "integer"
+        required: false
+        default: 20
+        maximum: 100
+    responses:
+      "200": "MyLoanPageResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+      "429": "ProblemDetails"
+    errors:
+      - status: "400"
+        code: "VALIDATION_ERROR"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+      - status: "429"
+        code: "RATE_LIMITED"
+async_events: []
+schemas:
+  - name: "ListMyLoansQueryParams"
+    properties:
+      - name: "scope"
+        type: "string"
+        enum: ["current", "history", "all"]
+        required: false
+      - name: "page"
+        type: "integer"
+        required: false
+      - name: "pageSize"
+        type: "integer"
+        required: false
+  - name: "MyLoanPageResponse"
+    properties:
+      - name: "items"
+        type: "array"
+        items: "MyLoanItem"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "pageSize"
+        type: "integer"
+        required: true
+      - name: "totalCount"
+        type: "integer"
+        required: true
+      - name: "today"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "remindDays"
+        type: "integer"
+        required: true
+      - name: "overdueCount"
+        type: "integer"
+        required: true
+  - name: "MyLoanItem"
+    properties:
+      - name: "loanId"
+        type: "string"
+        required: true
+      - name: "book"
+        type: "BookSummary"
+        required: true
+      - name: "loanedOn"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "dueDate"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "returnedOn"
+        type: "string"
+        format: "date"
+        required: false
+      - name: "status"
+        type: "string"
+        enum: ["ON_LOAN", "OVERDUE", "RETURNED"]
+        required: true
+      - name: "remainingDays"
+        type: "integer"
+        required: false
+      - name: "dueStatus"
+        type: "string"
+        enum: ["OK", "SOON", "OVERDUE", "RETURNED"]
+        required: true
+  - name: "BookSummary"
+    properties:
+      - name: "bookId"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "mediaType"
+        type: "string"
+        enum: ["PAPER", "ELECTRONIC"]
+        required: true
+      - name: "status"
+        type: "string"
+        enum: ["AVAILABLE", "ON_LOAN", "RESERVED"]
+        required: true

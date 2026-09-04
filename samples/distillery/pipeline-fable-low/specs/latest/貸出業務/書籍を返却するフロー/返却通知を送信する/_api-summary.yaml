@@ -1,0 +1,310 @@
+# _api-summary.yaml
+uc: "返却通知を送信する"
+business: "貸出業務"
+buc: "書籍を返却するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/loans/{loanId}/return-notice"
+    summary: "返却通知の送信先（有効予約 RESERVED / NOTIFIED の予約順位 1 位）と送信可否、通知記録をプレビューする"
+    response_schema: "ReturnNoticePreviewResponse"
+    tags: ["notifications"]
+    security: ["bearer"]
+    roles: ["司書"]
+    parameters:
+      - name: "loanId"
+        in: "path"
+        type: "string"
+        required: true
+      - name: "reveal"
+        in: "query"
+        type: "string"
+        required: false
+    responses:
+      "200": "ReturnNoticePreviewResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+      "404": "ProblemDetails"
+    errors:
+      - status: "400"
+        code: "VALIDATION_ERROR"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+      - status: "404"
+        code: "LOAN_NOT_FOUND"
+  - method: "POST"
+    path: "/api/v1/notifications/return-notices"
+    summary: "返却通知を送信する（通知レコード作成 + 予約を通知済みに遷移 + MQ 発行）"
+    request_schema: "SendReturnNoticeRequest"
+    response_schema: "ReturnNoticeResponse"
+    tags: ["notifications"]
+    security: ["bearer"]
+    roles: ["司書"]
+    headers:
+      - name: "Idempotency-Key"
+        required: true
+    responses:
+      "202": "ReturnNoticeResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+      "404": "ProblemDetails"
+      "409": "ProblemDetails"
+    errors:
+      - status: "400"
+        code: "VALIDATION_ERROR"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+      - status: "404"
+        code: "LOAN_NOT_FOUND"
+      - status: "409"
+        code: "CONCURRENT_UPDATE"
+      - status: "409"
+        code: "IDEMPOTENCY_KEY_CONFLICT"
+      - status: "409"
+        code: "LOAN_NOT_RETURNED"
+      - status: "409"
+        code: "NO_RESERVATION_TO_NOTIFY"
+      - status: "409"
+        code: "RETURN_NOTICE_ALREADY_SENT"
+async_events:
+  - name: "ReturnNoticeRequested"
+    channel: "notifications.return-notice-requested"
+    direction: "publish"
+    message_schema: "ReturnNoticeRequested"
+    summary: "返却通知の送信確定後に発行する返却通知メール配信要求。tier-worker の ReturnNoticeConsumer が購読しメール配信サービスへ送信する"
+    consumer: "tier-worker ReturnNoticeConsumer"
+    dlq: "notifications.return-notice-requested.dlq"
+  - name: "ReturnNoticeRequested"
+    channel: "notifications.return-notice-requested"
+    direction: "subscribe"
+    message_schema: "ReturnNoticeRequested"
+    summary: "tier-worker の ReturnNoticeConsumer が返却通知メール配信要求を消費し、メール配信サービス経由で送信して送信結果を通知レコードに反映する"
+    consumer: "tier-worker ReturnNoticeConsumer"
+    dlq: "notifications.return-notice-requested.dlq"
+  - name: "ReturnNoticeRequested"
+    channel: "notifications.return-notice-requested"
+    direction: "publish"
+    message_schema: "ReturnNoticeRequested"
+    summary: "PENDING 滞留の再発行スイープ（tier-worker の ReturnNoticeSweepJob）が同一チャネルへ再発行する"
+    consumer: "tier-worker ReturnNoticeConsumer"
+    dlq: "notifications.return-notice-requested.dlq"
+  - name: "ReturnNoticeRequestedDead"
+    channel: "notifications.return-notice-requested.dlq"
+    direction: "publish"
+    message_schema: "ReturnNoticeRequestedDead"
+    summary: "再配信上限（5 回）を超過した返却通知配信要求の退避先（手動再処理用）。退避ヘッダ 4 項目を付与する"
+schemas:
+  - name: "SendReturnNoticeRequest"
+    properties:
+      - name: "loanId"
+        type: "string"
+        required: true
+  - name: "ReturnNoticePreviewResponse"
+    properties:
+      - name: "loanId"
+        type: "string"
+        required: true
+      - name: "book"
+        type: "BookSummary"
+        required: true
+      - name: "reservation"
+        type: "ReservationSummary"
+        required: false
+      - name: "recipient"
+        type: "RecipientSummary"
+        required: false
+      - name: "reservations"
+        type: "array"
+        items: "ReservationListItem"
+        required: true
+      - name: "notifications"
+        type: "array"
+        items: "NotificationLog"
+        required: true
+      - name: "canSend"
+        type: "boolean"
+        required: true
+      - name: "blockedReason"
+        type: "string"
+        enum: ["NO_RESERVATION_TO_NOTIFY", "RETURN_NOTICE_ALREADY_SENT", "LOAN_NOT_RETURNED"]
+        required: false
+  - name: "ReturnNoticeResponse"
+    properties:
+      - name: "notificationId"
+        type: "string"
+        required: true
+      - name: "notificationType"
+        type: "string"
+        enum: ["RETURN_NOTICE"]
+        required: true
+      - name: "reservationId"
+        type: "string"
+        required: true
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "recipientMasked"
+        type: "string"
+        required: true
+      - name: "requestedOn"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "sendResult"
+        type: "string"
+        enum: ["PENDING"]
+        required: true
+      - name: "reservationStatus"
+        type: "string"
+        enum: ["NOTIFIED"]
+        required: true
+  - name: "RecipientSummary"
+    properties:
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "emailMasked"
+        type: "string"
+        required: true
+      - name: "email"
+        type: "string"
+        required: false
+  - name: "ReservationListItem"
+    properties:
+      - name: "reservationId"
+        type: "string"
+        required: true
+      - name: "queuePosition"
+        type: "integer"
+        required: true
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "userName"
+        type: "string"
+        required: true
+      - name: "acceptedAt"
+        type: "string"
+        format: "date-time"
+        required: true
+      - name: "status"
+        type: "string"
+        enum: ["RESERVED", "NOTIFIED", "CANCELLED", "CLOSED"]
+        required: true
+      - name: "notifiedAt"
+        type: "string"
+        format: "date-time"
+        required: false
+      - name: "cancelledAt"
+        type: "string"
+        format: "date-time"
+        required: false
+  - name: "NotificationLog"
+    properties:
+      - name: "notificationId"
+        type: "string"
+        required: true
+      - name: "notificationType"
+        type: "string"
+        enum: ["RETURN_NOTICE", "REMINDER", "OVERDUE_NOTICE"]
+        required: true
+      - name: "recipientMasked"
+        type: "string"
+        required: true
+      - name: "requestedOn"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "sentAt"
+        type: "string"
+        format: "date-time"
+        required: false
+      - name: "sendResult"
+        type: "string"
+        enum: ["PENDING", "SUCCEEDED", "FAILED"]
+        required: true
+  - name: "BookSummary"
+    properties:
+      - name: "bookId"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "mediaType"
+        type: "string"
+        enum: ["PAPER", "ELECTRONIC"]
+        required: true
+      - name: "status"
+        type: "string"
+        enum: ["AVAILABLE", "ON_LOAN", "RESERVED"]
+        required: true
+  - name: "ReservationSummary"
+    properties:
+      - name: "reservationId"
+        type: "string"
+        required: true
+      - name: "queuePosition"
+        type: "integer"
+        required: true
+      - name: "status"
+        type: "string"
+        enum: ["RESERVED", "NOTIFIED", "CANCELLED", "CLOSED"]
+        required: true
+  - name: "ReturnNoticeRequested"
+    properties:
+      - name: "notificationId"
+        type: "string"
+        required: true
+      - name: "notificationType"
+        type: "string"
+        required: true
+        enum: ["RETURN_NOTICE"]
+      - name: "targetReservationId"
+        type: "string"
+        required: true
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "bookId"
+        type: "string"
+        required: true
+      - name: "requestedOn"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "traceId"
+        type: "string"
+        required: true
+  - name: "ReturnNoticeRequestedDead"
+    description: "DLQ 退避メッセージ（asyncapi の ReturnNoticeRequestedDead）。ペイロードは ReturnNoticeRequested と同一。退避ヘッダ 4 項目（attemptCount / lastFailureReason / lastFailedAt / originalChannel）を必須で付与する"
+    payload_schema: "ReturnNoticeRequested"
+    headers:
+      - name: "attemptCount"
+        type: "integer"
+        required: true
+        description: "配信試行回数（再配信上限 5 回を超過した値。初回退避は 6）"
+      - name: "lastFailureReason"
+        type: "string"
+        required: true
+        description: "最後の失敗理由コード"
+      - name: "lastFailedAt"
+        type: "string"
+        format: "date-time"
+        required: true
+        description: "最後に失敗した日時"
+      - name: "originalChannel"
+        type: "string"
+        required: true
+        description: "退避元のチャネル名"

@@ -1,0 +1,41 @@
+round: 2
+group: B
+# round 1 の resolved 19 件を再検証。S3-B-001〜013 / 015 / 016 / 018 / 019 は解消を確認（/api/v1 プレフィックス・英語 enum・
+# ReservationListItem の notifiedAt/cancelledAt・reveal 行・500 LOAN_PERIOD_NOT_CONFIGURED・トークン名・関連 RDRA 行・
+# mermaid ラベル・includeClosedReservations トグル）。残存 2 件（S3-B-014 / S3-B-017）と新規 1 件を記録する。
+findings:
+  - id: S3-B-014
+    uc: "貸出業務/書籍を貸し出すフロー/貸出を登録する"
+    file: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を貸し出すフロー/貸出を登録する/spec.md"
+    line: 156
+    severity: minor
+    viewpoint: 1
+    claim: "状態遷移一覧に「予約中 → 終了」の行（157 行目）は追加されたが、156 行目の遷移先が「（終了）」と括弧付きのまま残り、関連 RDRA モデル表（173 行目「通知済み → 終了」）・データフロー図のドメイン層ノード（19 行目「Reservation (通知済み→終了)」）・tier-backend-api.md のデータモデル（138 行目 current_status「NOTIFIED → CLOSED」）が 予約中 → 終了 を反映していない"
+    fix: "156 行目の遷移先を「終了」に修正し、173 行目を「通知済み → 終了、予約中 → 終了」、19 行目を「Reservation (通知済み/予約中→終了)」に改める。tier-backend-api.md 138 行目の説明を「NOTIFIED（通知済み）または RESERVED（予約中） → CLOSED（終了） に更新（順位 1 位の予約）」に揃える"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#予約の状態"
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md#データモデル"
+  - id: S3-B-017
+    uc: "利用者サービス業務/自分の利用状況を確認するフロー/貸出履歴を参照する"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/貸出履歴を参照する/tier-frontend-user.md"
+    line: 95
+    severity: minor
+    viewpoint: 2
+    claim: "延滞 Alert の判定は overdueCount >= 1 に統一されたが、BDD「現在の貸出を残日数つきで描画する」の Given のレスポンス値に overdueCount が無く、Then の Alert 表示が判定条件から導けない"
+    fix: "95 行目の Given のレスポンスに overdueCount: 1 を追加する（{..., totalCount: 2, overdueCount: 1, today: \"2026-09-10\", remindDays: 3}）"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/貸出履歴を参照する/_api-summary.yaml"
+  - id: S3-B-020
+    uc: "貸出業務/書籍を返却するフロー/返却通知を送信する"
+    file: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/_api-summary.yaml"
+    line: 163
+    severity: minor
+    viewpoint: 4
+    claim: "NotificationLog.sendResult の enum が [PENDING, SUCCEEDED, FAILED] で、API 規約の送信結果（PENDING / SUCCEEDED / FAILED / SKIPPED）と一致せず、他 UC の通知記録と同名スキーマを共有したとき値域が衝突する"
+    fix: "enum を [\"PENDING\", \"SUCCEEDED\", \"FAILED\", \"SKIPPED\"] にし description に「SKIPPED（スキップ）」を併記する。tier-backend-api.md の notifications 行（32 行目）の sendResult 説明にも SKIPPED を追記する（本 UC では生成しない旨を書く）"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/_review/api-conventions.md#enum"
+resolved:
+  - {id: S3-B-014, resolution: deferred, reason: "minor。round 2 時点で修正対象外（Step4 統合レビューで再検証）", by: orchestrator}
+  - {id: S3-B-017, resolution: deferred, reason: "minor。round 2 時点で修正対象外（Step4 統合レビューで再検証）", by: orchestrator}
+  - {id: S3-B-020, resolution: deferred, reason: "minor。round 2 時点で修正対象外（Step4 統合レビューで再検証）", by: orchestrator}

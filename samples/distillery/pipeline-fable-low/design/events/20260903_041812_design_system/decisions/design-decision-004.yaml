@@ -1,0 +1,22 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-004"
+title: "タイポグラフィ: Noto Sans JP + Inter"
+status: "approved"
+generated_at: "2026-09-03T04:18:12+09:00"
+context: |
+  CTP-007 により日本語のみ。書籍タイトル・著者名などの和文と、ISBN・利用者番号・日付などの英数字が混在する。
+decision: |
+  和文 Noto Sans JP、欧文 Inter の和欧ペアを採用。等幅は JetBrains Mono（ISBN / 利用者番号 / 書籍 ID）。スケールは xs〜3xl の 7 段、本文 16px、テーブル 14px。
+consequences:
+  positive:
+    - "無償・Web フォントとして配信しやすい"
+    - "数字の可読性が高く、窓口業務での読み間違いを減らす"
+  negative:
+    - "Web フォント未読込時は system-ui にフォールバックし字面が変わる"
+alternatives_considered:
+  - name: "Noto Serif JP + Source Serif 4"
+    reason_rejected: "格調はあるが、テーブル密度の高い管理画面で可読性が落ちる"
+  - name: "M PLUS 1p + Work Sans"
+    reason_rejected: "カジュアル寄りで信頼・堅実路線と整合しない"

@@ -1,0 +1,209 @@
+# _api-summary.yaml
+uc: "延滞一覧を参照する"
+business: "期限管理業務"
+buc: "延滞者に督促するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/loans"
+    summary: "貸出一覧を取得する（本 UC は status=OVERDUE と include=latestNotice で延滞・督促状況を取得）"
+    response_schema: "OverdueLoanListResponse"
+    tags: ["loans"]
+    security: ["bearer"]
+    roles: ["司書"]
+    parameters:
+      - name: "status"
+        in: "query"
+        type: "string"
+        required: false
+        enum: ["ON_LOAN", "OVERDUE", "RETURNED"]
+        description: "貸出の状態: ON_LOAN（貸出中）/ OVERDUE（延滞）/ RETURNED（返却済み）"
+      - name: "userNumber"
+        in: "query"
+        type: "string"
+        required: false
+      - name: "include"
+        in: "query"
+        type: "string"
+        required: false
+        enum: ["latestNotice"]
+      - name: "sort"
+        in: "query"
+        type: "string"
+        required: false
+        enum: ["dueDate", "overdueDays", "lastNotice"]
+        default: "dueDate"
+      - name: "page"
+        in: "query"
+        type: "integer"
+        required: false
+        default: 1
+        minimum: 1
+      - name: "pageSize"
+        in: "query"
+        type: "integer"
+        required: false
+        default: 20
+        maximum: 100
+    responses:
+      "200": "OverdueLoanListResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+    errors:
+      - status: "400"
+        code: "VALIDATION_ERROR"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+  - method: "GET"
+    path: "/api/v1/loans/{loanId}/notifications"
+    summary: "貸出に紐づく通知（リマインド・督促）の送信記録を新しい順に取得する"
+    response_schema: "NotificationLogResponse"
+    tags: ["loans", "notifications"]
+    security: ["bearer"]
+    roles: ["司書"]
+    parameters:
+      - name: "loanId"
+        in: "path"
+        type: "string"
+        required: true
+    responses:
+      "200": "NotificationLogResponse"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+      "404": "ProblemDetails"
+    errors:
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+      - status: "404"
+        code: "LOAN_NOT_FOUND"
+async_events: []
+schemas:
+  - name: "OverdueLoanListResponse"
+    properties:
+      - name: "summary"
+        type: "object"
+        schema: "OverdueSummary"
+        required: true
+      - name: "items"
+        type: "array"
+        items: "OverdueLoanItem"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "pageSize"
+        type: "integer"
+        required: true
+      - name: "totalCount"
+        type: "integer"
+        required: true
+  - name: "OverdueSummary"
+    properties:
+      - name: "overdueCount"
+        type: "integer"
+        required: true
+      - name: "noticeFailedCount"
+        type: "integer"
+        required: true
+      - name: "noticePendingCount"
+        type: "integer"
+        required: true
+  - name: "OverdueLoanItem"
+    properties:
+      - name: "loanId"
+        type: "string"
+        required: true
+      - name: "book"
+        type: "object"
+        schema: "BookSummary"
+        required: true
+      - name: "user"
+        type: "object"
+        schema: "UserSummary"
+        required: true
+      - name: "loanedOn"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "dueDate"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "overdueDays"
+        type: "integer"
+        required: true
+      - name: "status"
+        type: "string"
+        required: true
+        enum: ["ON_LOAN", "OVERDUE", "RETURNED"]
+        description: "貸出の状態: ON_LOAN（貸出中）/ OVERDUE（延滞）/ RETURNED（返却済み）"
+      - name: "latestNotice"
+        type: "object"
+        schema: "NotificationLogItem"
+        required: false
+        nullable: true
+      - name: "noticeCount"
+        type: "integer"
+        required: true
+  - name: "BookSummary"
+    properties:
+      - name: "bookId"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+  - name: "UserSummary"
+    properties:
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "email"
+        type: "string"
+        format: "email"
+        required: true
+  - name: "NotificationLogResponse"
+    properties:
+      - name: "items"
+        type: "array"
+        items: "NotificationLogItem"
+        required: true
+  - name: "NotificationLogItem"
+    properties:
+      - name: "notificationId"
+        type: "string"
+        required: true
+      - name: "notificationType"
+        type: "string"
+        required: true
+        enum: ["RETURN_NOTICE", "REMINDER", "OVERDUE_NOTICE"]
+        description: "通知種別: RETURN_NOTICE（返却通知）/ REMINDER（リマインド）/ OVERDUE_NOTICE（督促）"
+      - name: "recipientEmail"
+        type: "string"
+        format: "email"
+        required: true
+      - name: "requestedOn"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "sentAt"
+        type: "string"
+        format: "date-time"
+        required: false
+        nullable: true
+      - name: "sendResult"
+        type: "string"
+        required: true
+        enum: ["PENDING", "SUCCEEDED", "FAILED", "SKIPPED"]
+        description: "送信結果: PENDING（送信待ち）/ SUCCEEDED（成功）/ FAILED（失敗）/ SKIPPED（スキップ）"
+      - name: "failureReason"
+        type: "string"
+        required: false
+        nullable: true

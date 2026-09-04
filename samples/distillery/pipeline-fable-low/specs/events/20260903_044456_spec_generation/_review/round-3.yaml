@@ -1,0 +1,102 @@
+round: 3
+# Step6.5 セマンティック反証レビュー（round 3 = 検証パス）
+# 対象: round-2 で fixed とされた R-005 / R-010 / R-013 / R-016 / R-030 / R-031 / R-032 の target と、
+#       その修正で影響を受ける成果物のみ。events/ 全体の再読は行っていない。
+# 追加確認: spec-event.yaml の use_cases[].api_count / async_event_count と各 UC の _api-summary.yaml の実データ突合。
+#
+# 本ラウンドで解消を確認した id（機械突合 + 現物確認）:
+#   R-005  返却通知を送信する/tier-worker.md L19 / L32 がコミット後発行前提の理由に書き換わっている。
+#   R-010  27 UC / 30 endpoint を openapi と機械突合し、responses の集合一致・errors の status 過不足・
+#          response_status の残存はいずれも 0 件。roles 語彙は {司書} / {利用者} / {司書,利用者,匿名} /
+#          {利用者,司書} の 4 パターンのみで、openapi の x-roles（{STAFF} / {PATRON} / {STAFF,PATRON,ANONYMOUS} /
+#          {PATRON,STAFF}）と件数・順序ともに 1 対 1 対応。security も ["bearer","anonymous"] 6 件 /
+#          ["bearer"] 28 件で x-roles の ANONYMOUS 有無と一致。
+#          ※ ただし同一 UC の tier-backend-api.md 側が未追随（R-033）。
+#   R-013  openapi.yaml L534 / L631 / L2799 / L2830 / L2845 がすべて「有効予約（RESERVED / NOTIFIED）の
+#          予約順位 1 位」に統一。返却を登録する側が RESERVED 単独で判定しているのは、貸出時に 1 位の
+#          NOTIFIED 予約が CLOSED になる（貸出を登録する/spec.md L157）ため返却時点で NOTIFIED が
+#          残らず、矛盾しない。
+#   R-016  openapi.yaml L1027-1029 で DELETE /api/v1/users/{userNumber} の 409 が
+#          oneOf: [ProblemDetails, UserNotDeletableProblemDetails] になり、L1022-1023 に code による判別を明記。
+#   R-030  ProblemDetails.code enum が 32 値になり BAD_REQUEST / CONCURRENT_UPDATE を含む（L1557 / L1563）。
+#          27 UC の _api-summary.yaml が使う全エラーコードを enum と突合し、enum 外は 0 件。
+#          enum 側で未使用なのは INTERNAL_ERROR のみで、これは規約（L17-19）どおりの意図的な非宣言。
+#   R-031  返却通知を送信する/_api-summary.yaml の async_events が 4 件（publish / subscribe / スイープ publish /
+#          DLQ publish）になり、schemas に ReturnNoticeRequestedDead（payload_schema + 退避ヘッダ 4 項目）を追加。
+#          tier-worker.md L25 に退避ヘッダ付与、BDD L95-96 に attemptCount=6 等の Then が入っている。
+#   R-032  docs/todo.md DIST-034 が「Step6.5 round 1 の R-008 対応で解消済み」・ステータス closed に更新済み。
+#
+# 追加確認の結果（api_count / async_event_count）:
+#   27 UC すべてで use_cases[].api_count == len(_api-summary.endpoints)、
+#   use_cases[].async_event_count == len(_api-summary.async_events)。不一致 0 件。
+#   UC 横断のユニーク endpoint は 30 件で openapi の operation 30 件と完全一致（片側だけの endpoint は 0 件）。
+#   stats.total_async_events: 13 も UC 側 async_events の総数と一致。
+#   ただし集計規則が指標ごとに割れている（R-035）。
+findings:
+  # ============================================================
+  # major
+  # ============================================================
+  - id: R-033
+    viewpoint: 4
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/tier-backend-api.md"
+    claim: "R-010 の一括再生成が _api-summary.yaml だけに適用され、同じ UC の tier-backend-api.md のエラー表・認証記述が旧内容のまま残った。同一 UC 内で 2 つの成果物が矛盾し、実装者が読む tier md と契約入力の _api-summary.yaml で 401 / 429 / 500 の扱いが割れる"
+    evidence: "(1) 429 の欠落: _api-summary.yaml に 429 RATE_LIMITED を持つのは 8 UC / 12 endpoint だが、tier-backend-api.md に 429 の記述があるのは 書籍を検索する（L53）と 書籍詳細を参照する の 2 UC のみ。書籍一覧を参照する（GET /api/v1/books・GET /api/v1/genres）/ 書籍を編集する（GET /api/v1/books/{bookId}）/ 予約を登録する（GET /api/v1/books/{bookId}/reservation-eligibility・POST /api/v1/reservations）/ 予約を取り消す（GET /api/v1/reservations/{reservationId}・POST /api/v1/reservations/{reservationId}/cancel）/ 予約状況を参照する（GET /api/v1/me/reservations）/ 貸出履歴を参照する（GET /api/v1/me/loans）の 6 UC 9 endpoint で tier md に 429 が 0 件。(2) 500 の残存: openapi.yaml L17-19 の規約と R-010 の修正で「500 INTERNAL_ERROR は operation ごとに宣言しない」と決めたが、tier-backend-api.md には 12 UC / 16 行の `| 500 | ... | code: \"INTERNAL_ERROR\" |` が残る（書籍一覧を参照する L61 / L92、書籍を編集する L45 / L85、書籍を登録する L62、書籍を削除する L47、書籍を検索する L54、書籍詳細を参照する L53、利用者一覧を参照する L56、利用者を登録する L54、利用者を削除する L80、延滞一覧を参照する L58、在庫状況一覧を参照する L58、人気書籍ランキングを参照する L56、期間別貸出統計を参照する L53）。(3) 認証記述の矛盾: 書籍一覧を参照する/tier-backend-api.md L67「**認証**: Bearer（司書 / 利用者）」・L91「401 | トークン無し / 期限切れ」に対し、同 UC の _api-summary.yaml の GET /api/v1/genres は security [bearer, anonymous] / roles [司書, 利用者, 匿名] / responses は 200 と 429 のみで 401 を持たない（openapi の x-roles も [STAFF, PATRON, ANONYMOUS]）。匿名許可のエンドポイントに未認証 401 を規定しており、tier md どおりに実装すると匿名参照が落ちる。書籍を編集する/tier-backend-api.md L15「**認証**: Bearer（司書 / 利用者）」も GET /api/v1/books/{bookId} の匿名許可と不一致"
+    suggested_fix: "_api-summary.yaml を正として tier-backend-api.md のエラー表を再生成する。(a) 429 RATE_LIMITED 行（`Retry-After` 付き）を 6 UC 9 endpoint に追加、(b) 個別宣言をやめた 500 INTERNAL_ERROR の 16 行を削除し、共通エラーハンドラが返す横断エラーである旨を各 tier md の冒頭か規約参照に 1 行だけ置く、(c) 匿名許可エンドポイント（GET /api/v1/books・/genres・/books/{bookId}）の認証記述を「Bearer（司書 / 利用者）または未認証（匿名）」に直し、GET /api/v1/genres の 401 行を削除する。以後 _api-summary.yaml を機械生成する修正では tier md を同時に再生成する"
+
+  # ============================================================
+  # minor
+  # ============================================================
+  - id: R-034
+    viewpoint: 3
+    severity: minor
+    target: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/予約を取り消す/_api-summary.yaml"
+    claim: "R-010 で導入した ownership: self が、(a) 適用されるロールを機械可読に持たず、(b) openapi 側に対応する拡張フィールドが無い。契約から認可コードを生成すると、司書にも本人限定判定が掛かるか、逆に本人限定判定が生成されないかのどちらかに倒れる"
+    evidence: "ownership: self を持つのは 4 UC / 4 endpoint（予約を取り消す の GET /api/v1/reservations/{reservationId} L13 と POST /api/v1/reservations/{reservationId}/cancel L44、予約状況を参照する の GET /api/v1/me/reservations、貸出履歴を参照する の GET /api/v1/me/loans）。うち GET /api/v1/reservations/{reservationId} は roles [利用者, 司書]（openapi x-roles [PATRON, STAFF]）で、ownership の値は role スコープを持たない `self` 単独。ロール限定は YAML コメント「# 利用者ロールはトークンの利用者番号と一致するデータのみ（SP-011）」と openapi.yaml L26 の散文にしかなく、どちらも機械可読ではない。openapi.yaml 側に x-ownership 等の対応フィールドは 0 件（L21 は「ownership は _api-summary.yaml 側で表す」と明記して契約側に持たない設計を宣言している）"
+    suggested_fix: "ownership を role スコープ付きの構造にする（例: `ownership: {scope: self, roles: [利用者]}`）。あわせて openapi 側にも `x-ownership` を追加して契約単体から認可を生成できるようにするか、追加しない場合は「認可生成の正本は _api-summary.yaml」と規約に明記する"
+
+  - id: R-035
+    viewpoint: 4
+    severity: minor
+    target: "docs/specs/events/20260903_044456_spec_generation/spec-event.yaml"
+    claim: "同じ spec-event.yaml の中で api / async の集計規則が指標ごとに違う。total_apis は UC 横断でユニーク化した値、total_async_events は UC 側エントリの単純合計、cross_cutting.asyncapi.async_event_count はメッセージ定義数で、3 通りの母数が同名系のフィールドに同居している。統計を機械集計する後続工程が指標ごとに別の前提を持つ必要がある"
+    evidence: "sum(use_cases[].api_count) = 34 に対し stats.total_apis（L273）= 30。差の 4 は UC 間で共有する endpoint（GET /api/v1/books と GET /api/v1/genres が 書籍一覧を参照する / 書籍を検索する、GET /api/v1/books/{bookId} が 書籍を編集する / 書籍詳細を参照する、GET /api/v1/users/{userNumber} が 利用者を編集する / 利用者を削除する）で、total_apis は openapi の operation 数 30（cross_cutting.openapi.api_count L267 と一致）＝ユニーク値。一方 sum(use_cases[].async_event_count) = 13 = stats.total_async_events（L274）で、こちらは重複を含む合計（(direction, message) でユニーク化すると 9、asyncapi.yaml の operations も 9）。さらに cross_cutting.asyncapi.async_event_count（L269）= 6 は components.messages の 6 件で、operations 9 件でも UC 側 13 件でもない"
+    suggested_fix: "集計規則を定義して各フィールドに単位を明示する（例: total_apis: ユニーク operation 数 / total_api_declarations: UC 側宣言の合計、total_async_events はどちらかに寄せる）。cross_cutting.asyncapi は async_message_count と async_operation_count に分割する。少なくとも spec-event.yaml のコメントか README に「total_* はユニーク値、use_cases[].* は UC 内の宣言数」と書いて突合方法を固定する"
+
+  # ============================================================
+  # deferred（round 2 で deferred 確定。成果物側の修正は求めない。severity は round 1 据え置き）
+  # ============================================================
+  - id: R-003
+    viewpoint: 4
+    severity: blocker
+    target: "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/tier-backend-api.md"
+    claim: "credentials に行を作成する UC が存在せず、登録された利用者がログインできない。RDRA 側の変更要求のため deferred（docs/todo.md DIST-031）。本ラウンドでも成果物側の修正は求めない"
+    evidence: "docs/todo.md DIST-031 はステータス open のまま。_cross-cutting/rdra-feedback.md #3 に変更要望を記載済み。仕様の状態は round 2 から変化なし"
+    suggested_fix: "RDRA 側で認証情報作成の要求を追加してから dist-requirements → dist-spec を再実行する（成果物修正は不要）"
+
+  - id: R-006
+    viewpoint: 4
+    severity: blocker
+    target: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    claim: "loan_statistics を UPSERT する集計バッチの UC が存在しない。RDRA 側の変更要求のため deferred（docs/todo.md DIST-032）。本ラウンドでも成果物側の修正は求めない"
+    evidence: "docs/todo.md DIST-032 はステータス open のまま。rdb-schema.yaml の _review_notes に集計バッチの前提を追記済み。_cross-cutting/rdra-feedback.md #4 に変更要望を記載済み"
+    suggested_fix: "RDRA 側で集計バッチの要求を追加してから再実行する（成果物修正は不要）"
+
+  - id: R-019
+    viewpoint: 1
+    severity: major
+    target: "docs/specs/events/20260903_044456_spec_generation/spec-event.yaml"
+    claim: "spec-event スキーマに USDM SPEC ID / acceptance_criteria への機械可読な対応フィールドが無く、USDM 層のトレーサビリティを機械検証できない。dist-spec スキル側のスキーマ拡張要求のため deferred（docs/todo.md DIST-033）"
+    evidence: "docs/todo.md DIST-033 はステータス open のまま。event 配下に SPEC- の文字列は 0 件で、use_cases 要素のキーは business / buc / uc / files / api_count / async_event_count のみ"
+    suggested_fix: "dist-spec スキル側で use_cases 要素に usdm_spec_ids / usdm_acceptance_criteria_refs を追加する（成果物修正は不要）"
+
+resolved:
+  - id: R-033
+    resolution: fixed
+    note: "18 UC の tier-backend-api.md を同一 UC の _api-summary.yaml に同期。汎用 500 INTERNAL_ERROR 行 15 件を削除し「共通エラーハンドラが返す横断エラーで個別宣言しない」旨の 1 行注記に置換（業務条件の 500 は POST /api/v1/loans の LOAN_PERIOD_NOT_CONFIGURED のみ残置）。429 RATE_LIMITED（+ Retry-After）を 6 UC 9 endpoint に追加。GET /api/v1/genres の 401 行を削除し認証記述を匿名許可に修正、GET /api/v1/books・GET /api/v1/books/{bookId} の認証記述にも匿名 GET 許可を明記。欠落していた 400/401 行も summary に合わせて 3 endpoint に追加。エラーコードは openapi の ProblemDetails.code enum 内のみ使用"
+    by: fix-r3
+  - {id: R-003, resolution: deferred, reason: "RDRA に認証情報作成の UC が無く、RDRA 整合性ルールにより新規 UC を追加しない。_cross-cutting/rdra-feedback.md #3 に変更要望を追記し docs/todo.md DIST-031 に起票済み。requirements スキルでの RDRA 差分更新後に再実行して解消する", by: orchestrator}
+  - {id: R-006, resolution: deferred, reason: "RDRA に貸出統計の集計バッチ UC が無く、RDRA 整合性ルールにより新規 UC を追加しない。rdb-schema.yaml の _review_notes に集計バッチ前提を注記し、rdra-feedback.md #4 と docs/todo.md DIST-032 に起票済み", by: orchestrator}
+  - {id: R-019, resolution: deferred, reason: "dist-spec スキルの spec-event スキーマ拡張要求（USDM SPEC ID / acceptance_criteria 参照フィールド）であり本イベントの成果物では解決できない。docs/todo.md DIST-033 に起票済み", by: orchestrator}
+  - {id: R-034, resolution: deferred, reason: "minor。ownership: self は _api-summary.yaml 側の補助表現で、本人限定判定は openapi の operation description と tier-backend-api.md のビジネスルールに記述済み。openapi への x- 拡張追加は契約スキーマの拡張になるため 3 ラウンド到達をもって見送り、確認推奨項目として返却する", by: orchestrator}
+  - {id: R-035, resolution: fixed, reason: "spec-event.yaml の cross_cutting 直前に集計規則コメント（api_count / async_event_count / total_apis / total_async_events の母数定義）を追記し、指標ごとの前提を明示した", by: orchestrator}

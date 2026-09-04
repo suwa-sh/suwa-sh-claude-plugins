@@ -1,0 +1,49 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "product"
+artifact_id: "product-decision-001"
+title: "アプリケーション実行基盤にコンテナサーバレスを選定する"
+status: "accepted"
+generated_at: "2026-09-03T04:07:39"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+inputs_ref:
+  - "product-library-management-canonical"
+
+decision:
+  context: "同期 API はモジュラモノリスとして単一デプロイ単位で提供され、水平スケールアウトと p99 500ms の応答目標、複数 AZ 冗長が要求される。一方で運用体制は図書館システム担当 1 次・保守ベンダ 2 次の小規模であり、基盤運用の負荷を最小化する必要がある"
+  conflict_type: "capability"
+  options:
+    - id: "opt-fargate"
+      description: "Amazon ECS on AWS Fargate でコンテナを実行する"
+      pros:
+        - "サーバ管理が不要で小規模運用体制に適合する"
+        - "モジュラモノリスのイメージサイズに制約がなく、常駐プロセスでコールドスタートが発生しない"
+        - "ターゲット追跡オートスケーリングでスパイク 2 倍に追随できる"
+        - "Fargate Spot をワーカーにのみ適用でき、コスト方針 balanced と両立する"
+      cons:
+        - "ベースライン 10rps に対して常時 2 タスクが稼働するため、完全従量課金より固定費が高い"
+    - id: "opt-lambda"
+      description: "AWS Lambda で関数として実行する"
+      pros:
+        - "ベースライン 10rps の負荷では最も安価"
+        - "スケーリングの構成が不要"
+      cons:
+        - "モジュラモノリスのパッケージサイズとコールドスタートが p99 500ms 目標に不利"
+        - "RDS への接続数管理に RDS Proxy の追加が必要"
+        - "最大実行時間の制約が日次バッチに合わない"
+    - id: "opt-eks"
+      description: "Amazon EKS で Kubernetes クラスタを運用する"
+      pros:
+        - "アーキテクチャ設計の technology_candidates（CaaS(k8s)）と最も直接的に対応する"
+        - "将来の複数館展開時にワークロードを集約しやすい"
+      cons:
+        - "コントロールプレーンの固定費とアップグレード運用が小規模体制で負担になる"
+        - "Kubernetes の運用スキルを持つ要員を確保できない"
+  chosen_option: "opt-fargate"
+  rationale: "アーキテクチャ設計の technology_candidates は CaaS(k8s) と FaaS の両方を許容している。運用要員が小規模であること（NFR C.5.2.1）、p99 500ms の応答目標、モジュラモノリスという構成の 3 点から、コンテナの実行モデルを保ちつつ基盤運用を委譲できる Fargate を選定した。EKS はコントロールプレーン費用と運用スキルの両面で見合わず、Lambda は応答特性とバッチ実行時間で不適合"
+  risk_assessment: "利用規模が拡大して常時タスク数が増えた場合、Fargate の単価が EC2 起動タイプより不利になる。月間コンピュート費用が想定の 2 倍を超えた時点で EC2 Capacity Provider または Compute Savings Plans への移行を再検討する"
+  affected_elements:
+    - "application_runtime"
+    - "async_worker_runtime"
+  review_date: "2027-03-31"

@@ -1,0 +1,164 @@
+# _api-summary.yaml
+uc: "書籍一覧を参照する"
+business: "蔵書管理業務"
+buc: "蔵書を管理するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/books"
+    summary: "書籍一覧取得（offset ページネーション + 絞り込み）"
+    request_schema: "ListBooksQueryParams"
+    response_schema: "BookPageResponse"
+    tags: ["books"]
+    security: ["bearer", "anonymous"]
+    roles: ["司書", "利用者", "匿名"]
+    responses:
+      "200": "BookPageResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+      "429": "ProblemDetails"
+    errors:
+      - status: "400"
+        code: "VALIDATION_ERROR"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+      - status: "429"
+        code: "RATE_LIMITED"
+  - method: "GET"
+    path: "/api/v1/genres"
+    summary: "ジャンル一覧取得"
+    response_schema: "GenreListResponse"
+    tags: ["genres"]
+    security: ["bearer", "anonymous"]
+    roles: ["司書", "利用者", "匿名"]
+    responses:
+      "200": "GenreListResponse"
+      "429": "ProblemDetails"
+    errors:
+      - status: "429"
+        code: "RATE_LIMITED"
+async_events: []
+schemas:
+  - name: "ListBooksQueryParams"
+    properties:
+      - name: "page"
+        type: "integer"
+        required: false
+      - name: "pageSize"
+        type: "integer"
+        required: false
+      - name: "searchType"
+        type: "string"
+        required: false
+        enum: ["keyword", "title", "author", "isbn", "genre"]
+      - name: "q"
+        type: "string"
+        required: false
+      - name: "genreId"
+        type: "string"
+        required: false
+      - name: "status"
+        type: "string"
+        required: false
+        enum: ["AVAILABLE", "ON_LOAN", "RESERVED"]
+  - name: "BookSummary"
+    properties:
+      - name: "bookId"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "isbn"
+        type: "string"
+        required: false
+      - name: "publisher"
+        type: "string"
+        required: false
+      - name: "genreId"
+        type: "string"
+        required: true
+      - name: "genreName"
+        type: "string"
+        required: true
+      - name: "mediaType"
+        type: "string"
+        required: true
+        enum: ["PAPER", "ELECTRONIC"]
+      - name: "status"
+        type: "string"
+        required: true
+        enum: ["AVAILABLE", "ON_LOAN", "RESERVED"]
+      - name: "updatedAt"
+        type: "string"
+        format: "date-time"
+        required: true
+  - name: "BookPageResponse"
+    properties:
+      - name: "items"
+        type: "array"
+        items: "BookSummary"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "pageSize"
+        type: "integer"
+        required: true
+      - name: "totalCount"
+        type: "integer"
+        required: true
+  - name: "Genre"
+    properties:
+      - name: "genreId"
+        type: "string"
+        required: true
+      - name: "genreName"
+        type: "string"
+        required: true
+      - name: "description"
+        type: "string"
+        required: false
+  - name: "GenreListResponse"
+    properties:
+      - name: "items"
+        type: "array"
+        items: "Genre"
+        required: true
+  - name: "ProblemDetails"
+    properties:
+      - name: "type"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "status"
+        type: "integer"
+        required: true
+      - name: "detail"
+        type: "string"
+        required: false
+      - name: "code"
+        type: "string"
+        required: true
+      - name: "traceId"
+        type: "string"
+        required: false
+      - name: "errors"
+        type: "array"
+        items: "FieldError"
+        required: false
+  - name: "FieldError"
+    properties:
+      - name: "field"
+        type: "string"
+        required: true
+      - name: "message"
+        type: "string"
+        required: true

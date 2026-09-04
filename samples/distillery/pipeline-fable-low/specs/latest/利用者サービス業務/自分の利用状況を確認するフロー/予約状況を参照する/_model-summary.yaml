@@ -1,0 +1,93 @@
+# _model-summary.yaml
+uc: "予約状況を参照する"
+business: "利用者サービス業務"
+buc: "自分の利用状況を確認するフロー"
+
+bounded_context_id: "BC-004"
+
+models:
+  - name: "MyReservationsPageState"
+    tier: "tier-frontend-user"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "予約"
+  - name: "MyReservationPage（api-client）"
+    tier: "tier-frontend-user"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "予約"
+  - name: "ListMyReservationsQueryParams"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "予約"
+  - name: "ListMyReservationsQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "予約"
+  - name: "Reservation"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "ReservationQueue"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "予約"
+  - name: "ReservationRecord / ReservationEventRecord / BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "予約"
+
+tables:
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_number = :tokenUserNumber AND current_status IN ('RESERVED','NOTIFIED') ORDER BY CASE current_status 通知済み=0 / 予約中=1, accepted_at DESC LIMIT :pageSize OFFSET :offset（既定）"
+      - type: "SELECT"
+        columns: []
+        where: "user_number = :tokenUserNumber（includeClosed）ORDER BY 有効=0 / 終端=1, accepted_at DESC"
+      - type: "SELECT"
+        columns: []
+        where: "COUNT(*) WHERE book_id IN (...) AND current_status IN ('RESERVED','NOTIFIED') GROUP BY book_id（totalWaiting）"
+      - type: "SELECT"
+        columns: []
+        where: "COUNT(*) WHERE user_number = :tokenUserNumber AND current_status IN (...)（totalCount / activeCount）"
+    indexes_needed:
+      - columns: ["user_number", "current_status", "accepted_at"]
+        reason: "利用者ごとの予約を状態・受付日時順に取得"
+        access_pattern: "WHERE user_number = ? AND current_status IN (...) ORDER BY accepted_at DESC"
+      - columns: ["book_id", "current_status", "queue_position"]
+        reason: "書籍ごとの有効予約件数（待ち人数）"
+        access_pattern: "WHERE book_id IN (...) AND current_status IN (...) GROUP BY book_id"
+  - name: "reservation_events"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "reservation_id IN (...) AND event_type IN ('NOTIFIED','CANCELLED')（通知日時・取消日時の導出）"
+    indexes_needed:
+      - columns: ["reservation_id", "occurred_at"]
+        reason: "予約ごとのイベント履歴"
+        access_pattern: "WHERE reservation_id IN (...) ORDER BY occurred_at"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id IN (...)（書籍要約の結合）"
+    indexes_needed: []
+
+kvs:
+  - key_pattern: "cache:reservations:me:{userNumber}:{includeClosed}:{page}:{pageSize}"
+    purpose: "cache"
+    value_type: "MyReservationPageResponse（Cache-Aside。予約の状態遷移で無効化）"
+    ttl: "5m"
+    operations: ["GET", "SET", "DEL"]
+
+object_storage: []

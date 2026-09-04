@@ -1,0 +1,36 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "specification"
+artifact_id: "spec-decision-003"
+title: "データ正規化レベル: 3NF + 集計テーブル 1 本"
+status: "approved"
+generated_at: "2026-09-03T08:48:37Z"
+context: |
+  27 UC の _model-summary.yaml を統合した結果、情報エンティティ 9 + 派生 6（*_events × 4、credentials、audit_logs）の計 15 テーブルとなった。
+  運営分析（期間別統計・人気ランキング）は loans を集計して参照する。
+  利用者・蔵書の削除後も貸出履歴と統計を保持する仕様がある。
+  NFR B.2.1.3 で集計処理 10 秒以内が要求されている。
+decision: |
+  第 3 正規形を基本とし、非正規化は loan_statistics の集計テーブル 1 本に限定する。
+  - loan_statistics: (period_type, period_start, book_id) をキーに集計バッチが UPSERT する
+  - 検索用派生列 *_normalized（表記ゆれ吸収）は許容する
+  - 物理 FK は削除時に整合性保証が必要な関係に限定し、履歴・統計からの参照は論理参照（ID のみ保持）とする
+  - enum の格納値は英語コード（*_events.event_type を含む）
+  - users.email にユニーク制約は付けない（RDRA に一意性の要件がないため）
+  理由: 集計参照の性能要件を満たしつつ、履歴保持と削除の両立を FK 設計で担保できる。
+consequences:
+  positive:
+    - "期間別統計・人気ランキングが loans 全走査なしで返り、集計 10 秒以内（NFR B.2.1.3）を満たす"
+    - "履歴・統計は論理参照のため、利用者・蔵書の削除後も残る"
+    - "3NF を維持しているため更新異常が生じにくく、UC 単位 Spec のデータアクセス定義と直接対応する"
+  negative:
+    - "集計バッチ + 未集計区切りに対するリアルタイム COUNT の二段構成が必要"
+    - "削除済み ID を参照する履歴・統計は表示側で名称置換（削除済み表示）が必要"
+    - "登録日などの一部属性はカラムを持たず *_events から導出する"
+alternatives_considered:
+  - name: "完全 3NF で都度集計"
+    reason_rejected: "統計参照のたびに loans を全走査し、データ増加時に集計 10 秒以内を満たせない"
+  - name: "物理 FK + ON DELETE CASCADE"
+    reason_rejected: "削除後も履歴・統計を保持する仕様と矛盾する"
+  - name: "loans に returned_at 等を非正規化"
+    reason_rejected: "状態変化を *_events に記録する event_snapshot 方針に反し、二重管理になる"

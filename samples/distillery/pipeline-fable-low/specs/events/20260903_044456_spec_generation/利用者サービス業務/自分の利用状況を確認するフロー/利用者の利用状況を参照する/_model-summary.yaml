@@ -1,0 +1,166 @@
+# _model-summary.yaml
+uc: "利用者の利用状況を参照する"
+business: "利用者サービス業務"
+buc: "自分の利用状況を確認するフロー"
+
+bounded_context_id: "BC-002"
+
+models:
+  - name: "UserUsagePageState"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "利用者"
+  - name: "UserUsage（api-client）"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "利用者"
+  - name: "UserUsageQueryParams"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "利用者"
+  - name: "GetUserUsageQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "利用者"
+  - name: "User"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "利用者"
+  - name: "ContactMask"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "利用者"
+  - name: "Loan"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "貸出"
+  - name: "DueDatePolicy"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "リマインド日数"
+  - name: "Reservation"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "UserRecord / LoanRecord / LoanEventRecord / ReservationRecord / ReservationEventRecord / BookRecord / RemindDaysRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+
+tables:
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_number = ?（存在確認・氏名・連絡先）"
+    indexes_needed: []
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_number = ? AND current_status IN ('ON_LOAN','OVERDUE') ORDER BY due_date（current）/ current_status = 'RETURNED' ORDER BY loaned_on DESC（history）"
+      - type: "SELECT"
+        columns: []
+        where: "COUNT(*) WHERE user_number = ? GROUP BY current_status（summary）"
+    indexes_needed:
+      - columns: ["user_number", "current_status", "due_date"]
+        reason: "利用者ごとの貸出を状態・返却期限順に取得"
+        access_pattern: "WHERE user_number = ? AND current_status IN (...) ORDER BY due_date"
+  - name: "loan_events"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "loan_id IN (...) AND event_type = 'RETURNED'（返却日の導出）"
+    indexes_needed:
+      - columns: ["loan_id", "occurred_at"]
+        reason: "貸出ごとのイベント履歴"
+        access_pattern: "WHERE loan_id IN (...) ORDER BY occurred_at"
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_number = ? AND current_status IN ('RESERVED','NOTIFIED') ORDER BY 通知済み先頭, accepted_at DESC（既定）"
+      - type: "SELECT"
+        columns: []
+        where: "COUNT(*) WHERE book_id IN (...) AND current_status IN ('RESERVED','NOTIFIED') GROUP BY book_id（totalWaiting）"
+    indexes_needed:
+      - columns: ["user_number", "current_status", "accepted_at"]
+        reason: "利用者ごとの予約を状態・受付日時順に取得"
+        access_pattern: "WHERE user_number = ? AND current_status IN (...) ORDER BY accepted_at DESC"
+      - columns: ["book_id", "current_status", "queue_position"]
+        reason: "書籍ごとの有効予約件数（待ち人数）"
+        access_pattern: "WHERE book_id IN (...) AND current_status IN (...) GROUP BY book_id"
+  - name: "reservation_events"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "reservation_id IN (...) AND event_type IN ('NOTIFIED','CANCELLED')（通知日時・取消日時の導出）"
+    indexes_needed:
+      - columns: ["reservation_id", "occurred_at"]
+        reason: "予約ごとのイベント履歴"
+        access_pattern: "WHERE reservation_id IN (...) ORDER BY occurred_at"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id IN (...)（書籍要約の結合）"
+    indexes_needed: []
+  - name: "remind_days_settings"
+    rdra_info: "リマインド日数"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "valid_from <= :today AND (valid_to IS NULL OR valid_to >= :today)（現行世代）"
+    indexes_needed:
+      - columns: ["valid_from", "valid_to"]
+        reason: "本日時点の有効世代の解決"
+        access_pattern: "WHERE valid_from <= ? AND (valid_to IS NULL OR valid_to >= ?)"
+  - name: "audit_logs"
+    rdra_info: ""
+    operations:
+      - type: "INSERT"
+        columns:
+          - name: "audit_id"
+            value: "ULID 採番"
+          - name: "occurred_at"
+            value: "現在時刻"
+          - name: "actor_user_number"
+            value: "司書の利用者番号"
+          - name: "action_type"
+            value: "データ参照（reveal=true は連絡先開示を付記）"
+          - name: "target_entity"
+            value: "E-003 / E-004 / E-007"
+          - name: "target_id"
+            value: "指定した利用者番号"
+          - name: "result"
+            value: "成功 / 拒否"
+        where: ""
+    indexes_needed:
+      - columns: ["target_id", "occurred_at"]
+        reason: "対象利用者ごとのアクセス履歴の追跡（NFR E.7.1.1）"
+        access_pattern: "WHERE target_id = ? ORDER BY occurred_at"
+
+kvs:
+  - key_pattern: "cache:users:usage:{userNumber}:{loanScope}"
+    purpose: "cache"
+    value_type: "UserUsageResponse（マスク済みのみ。reveal=true はキャッシュしない。貸出・予約の状態遷移で無効化）"
+    ttl: "2m"
+    operations: ["GET", "SET", "DEL"]
+
+object_storage: []

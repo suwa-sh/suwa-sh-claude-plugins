@@ -1,0 +1,93 @@
+round: 1
+group: ux-ui
+# 対象: _cross-cutting/ux-ui/{ux-design,ui-design,data-visualization,common-components}.md
+# 検証に使った一次入力: docs/design/latest/_digest/components.yaml、全 24 tier-frontend-*.md（grep による利用箇所の実測）
+# 利用 UC 一覧（PatronLayout 6 / StaffLayout 18 / BookCard / ReservationTable / PiiMaskedText / NotificationLogTable / StatCard / CounterHandoffActions）は tier ファイルと一致を確認。Modal は 24 tier で未使用を確認
+findings:
+  - id: S4-ux-ui-001
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: 77
+    severity: minor
+    viewpoint: 5
+    claim: "延滞・督促状況画面のフィルターとして「送信結果（ToggleGroup: すべて / 未送信 / 失敗）」を定義しているが、S-延滞一覧 の tier-frontend-staff.md は利用者番号 Input（with-icon）+ sort のみで送信結果の絞り込みを持たず、common-components.md の UC 別利用マトリクス（S-延滞一覧 行）でも ScopeToggle は空欄。3 成果物間で画面のフィルター構成が食い違う"
+    fix: "L77 を「利用者番号（Input with-icon）、並び順（返却期限 / 延滞日数 / 最終督促日時）」に置換する。送信結果の絞り込みを残す場合は S-延滞一覧 の tier-frontend-staff.md（URL クエリ・画面要素）と common-components.md の ScopeToggle 利用 UC / マトリクスに追記して整合させる"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/tier-frontend-staff.md#L11,L23"
+      - "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/common-components.md#L533"
+  - id: S4-ux-ui-002
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: 75
+    severity: minor
+    viewpoint: 5
+    claim: "人気書籍ランキング画面のフィルターに「ジャンル（Select）」を挙げているが、S-ランキング の tier-frontend-staff.md は URL クエリが periodType / from / to / limit のみで、画面要素にもジャンル絞り込み（Select）が無い。ジャンルは RankingList の表示項目（genreName）に留まる"
+    fix: "L75 を「期間（PeriodSelector）、上位 N（10 / 20 / 50）」に修正する。ジャンル絞り込みを要件化する場合は tier-frontend-staff.md の URL クエリ・画面要素と API（GET /api/v1/reports/popular-books の genreId）を先に追加する"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/tier-frontend-staff.md#L11,L20-L25,L60"
+  - id: S4-ux-ui-003
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: 71
+    severity: minor
+    viewpoint: 5
+    claim: "ドリルダウンとして「PeriodStatChart のバー → 集計期間種別を 1 段細かくして再表示（年 → 月 → 日）」を定義しているが、S-貸出統計 の tier-frontend-staff.md にバー選択イベントや粒度切替のドリルダウンは無く、共通コンポーネント PeriodReportFrame にも該当 Props が無い"
+    fix: "L71 を削除するか「（将来拡張。初期リリースは PeriodSelector での粒度変更のみ）」と明記する。採用する場合は S-貸出統計 の PeriodStatChart Props（onSelectBar）と PeriodReportFrame に追記する"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/tier-frontend-staff.md#L21,L36,L51"
+      - "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/common-components.md#L484-L499"
+  - id: S4-ux-ui-004
+    artifact: "data-visualization.md"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/data-visualization.md"
+    line: 26
+    severity: minor
+    viewpoint: 5
+    claim: "成果物本文がスキル内部のテンプレートパス `references/specs/data-visualization-rules.md` を参照している。プロジェクト側の docs/ からは辿れないパスで、生成手順の残骸が出力に混入している"
+    fix: "L26 の相対パス参照を削除し「以下の観点別チャート選定に従う」等の自己完結した文に置換する"
+    source_refs: []
+  - id: S4-ux-ui-005
+    artifact: "ui-design.md"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/ui-design.md"
+    line: 40
+    severity: minor
+    viewpoint: 6
+    claim: "「確認ステップ」行（L40）と「削除・取消・送信の確認」行（L81）で Modal（confirm / destructive-confirm）を推奨コンポーネントに挙げているが、24 tier-frontend ファイルで Modal を使う UC は 0 件（全て ConfirmPanel の確認画面）。common-components.md 要確認事項 3 も同じ矛盾を指摘したまま未解決で、ux-design.md L256 のフォーカストラップ記述も Modal を前提にしている"
+    fix: "L40 / L81 の Modal を外し ConfirmPanel（画面）のみとするか、「Modal は本 event の UC では未使用。design の予備コンポーネント」と注記する。ux-design.md L256 の「Modal / ConfirmPanel」も同様に揃える"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#ui.Modal"
+      - "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/common-components.md#L86,L559"
+      - "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/ux-design.md#L256"
+  - id: S4-ux-ui-006
+    artifact: "ui-design.md"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/ui-design.md"
+    line: 106
+    severity: minor
+    viewpoint: 6
+    claim: "状態表示パターンの「通知の送信結果」を 成功 / 失敗 の 2 値としているが、UC 側は PENDING（送信待ち = warning）/ 未送信（neutral）を含む 4 表示（S-延滞一覧 L92）、および 202 受付後の PENDING 表示（S-返却通知 L46, L109）を定義しており、色トークンの割り当てが横断仕様に無い"
+    fix: "L106 を「成功 / 失敗 / 送信待ち / 未送信」に拡張し、カラートークンを success / destructive / warning / neutral として S-延滞一覧 L92 と揃える"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/tier-frontend-staff.md#L92"
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/tier-frontend-staff.md#L46,L109"
+  - id: S4-ux-ui-007
+    artifact: "common-components.md"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/ux-ui/common-components.md"
+    line: 108
+    severity: minor
+    viewpoint: 5
+    claim: "Domain コンポーネントの利用 UC は tier ファイルと一致しているが、design digest の components.domain.screens と食い違う利用が 3 件あり要確認事項に記載が無い: StatCard を S-利用状況（窓口利用状況照会画面）で利用（L108。design screens は 期間別貸出統計 / 人気書籍ランキング / 在庫状況一覧 のみ）、PiiMaskedText を S-利用者削除 / S-返却通知（利用者削除確認画面 / 返却通知送信確認画面）で利用（L107）、BookCard を S-予約一覧（書籍別予約状況画面）で利用（L96）"
+    fix: "要確認事項に 4 として「design components.domain の screens に未記載の利用（StatCard@窓口利用状況照会画面、PiiMaskedText@利用者削除確認画面・返却通知送信確認画面、BookCard@書籍別予約状況画面）を design-event.yaml へフィードバックする」を追記する"
+    source_refs:
+      - "docs/design/latest/_digest/components.yaml#domain.StatCard.screens"
+      - "docs/design/latest/_digest/components.yaml#domain.PiiMaskedText.screens"
+      - "docs/design/latest/_digest/components.yaml#domain.BookCard.screens"
+      - "docs/specs/events/20260903_044456_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/tier-frontend-staff.md#L22"
+      - "docs/specs/events/20260903_044456_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/tier-frontend-staff.md#L23"
+      - "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/予約一覧を参照する/tier-frontend-staff.md#L20"
+resolved:
+  - {id: S4-ux-ui-001, resolution: fixed}
+  - {id: S4-ux-ui-002, resolution: fixed}
+  - {id: S4-ux-ui-003, resolution: fixed}
+  - {id: S4-ux-ui-004, resolution: fixed}
+  - {id: S4-ux-ui-005, resolution: fixed}
+  - {id: S4-ux-ui-006, resolution: fixed}
+  - {id: S4-ux-ui-007, resolution: fixed}

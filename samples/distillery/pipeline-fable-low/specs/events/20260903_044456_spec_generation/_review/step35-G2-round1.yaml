@@ -1,0 +1,92 @@
+round: 1
+group: G2
+findings:
+  - id: S35-G2-001
+    buc: "貸出業務/書籍を予約するフロー"
+    file: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/buc-spec.md"
+    line: 49
+    severity: minor
+    viewpoint: 3
+    claim: "情報 CRUD マトリクスの「通知 × 予約を登録する」「通知 × 予約一覧を参照する」のセルが空欄で、未記入か操作なしかを判別できない"
+    fix: "操作のないセルは「-」で埋める（通知 行の 予約を登録する / 予約一覧を参照する を「-」にする）"
+    source_refs:
+      - "docs/rdra/latest/BUC.tsv#書籍を予約するフロー"
+  - id: S35-G2-002
+    buc: "貸出業務/書籍を予約するフロー"
+    file: "docs/specs/events/20260903_044456_spec_generation/貸出業務/書籍を予約するフロー/buc-spec.md"
+    line: 65
+    severity: minor
+    viewpoint: 4
+    claim: "状態遷移全体図の「書籍の状態」に 状態.tsv の遷移パス（[*] → 在庫あり: 書籍を登録する、在庫あり → 貸出中: 貸出を登録する、貸出中 → 在庫あり: 返却を登録する（予約なし）、在庫あり → [*]: 書籍を削除する）が含まれておらず、「全遷移パス」になっていない"
+    fix: "書籍の状態 の state ブロックに上記 4 遷移を「（他 BUC）」付きで追加し、状態遷移 UC マッピングにも同じ行を追加する（他 BUC 担当は 蔵書管理業務 / 貸出業務 を付記）"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#書籍の状態"
+  - id: S35-G2-003
+    buc: "期限管理業務/返却期限を通知するフロー"
+    file: "docs/specs/events/20260903_044456_spec_generation/期限管理業務/返却期限を通知するフロー/buc-spec.md"
+    line: 45
+    severity: minor
+    viewpoint: 3
+    claim: "情報 CRUD マトリクスの「リマインド日数 × リマインドを送信する」「書籍 × リマインド対象を抽出する」のセルが空欄"
+    fix: "操作のないセルは「-」で埋める"
+    source_refs:
+      - "docs/rdra/latest/BUC.tsv#返却期限を通知するフロー"
+  - id: S35-G2-004
+    buc: "期限管理業務/返却期限を通知するフロー"
+    file: "docs/specs/events/20260903_044456_spec_generation/期限管理業務/返却期限を通知するフロー/buc-spec.md"
+    line: 56
+    severity: minor
+    viewpoint: 4
+    claim: "状態遷移全体図の「貸出の状態」に 状態.tsv の遷移 延滞 → 返却済み: 返却を登録する と 返却済み → [*] が含まれておらず、全遷移パスになっていない（同 BUC 群の 延滞者に督促するフロー / 自分の利用状況を確認するフロー では含まれている）"
+    fix: "state ブロックに「延滞 --> 返却済み: 返却を登録する（他 BUC）」と「返却済み --> [*]」を追加し、状態遷移 UC マッピングに「貸出の状態 | 延滞 | 返却済み | 返却を登録する（他 BUC: 貸出業務）」行を追加する"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#貸出の状態"
+  - id: S35-G2-005
+    buc: "期限管理業務/延滞者に督促するフロー"
+    file: "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/buc-spec.md"
+    line: 53
+    severity: minor
+    viewpoint: 3
+    claim: "情報 CRUD マトリクスの「書籍 × 延滞を判定する」のセルが空欄"
+    fix: "操作のないセルは「-」で埋める"
+    source_refs:
+      - "docs/rdra/latest/BUC.tsv#延滞者に督促するフロー"
+  - id: S35-G2-006
+    buc: "期限管理業務/延滞者に督促するフロー"
+    file: "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/buc-spec.md"
+    line: 88
+    severity: minor
+    viewpoint: 4
+    claim: "状態遷移 UC マッピングと状態遷移全体図が不整合: マッピングには「書籍の状態 | 貸出中 | 貸出中（遷移なし） | 延滞を判定する」行があるが図に 書籍の状態 ブロックが無く、逆に図の「[*] --> 貸出中: 貸出を登録する（他 BUC）」がマッピングに無い"
+    fix: "図に依存しない 書籍の状態 行はマッピングから削除する（または図に 書籍の状態 ブロックを追加する）。マッピングに「貸出の状態 | （なし） | 貸出中 | 貸出を登録する（他 BUC: 貸出業務）」行を追加する"
+    source_refs:
+      - "docs/rdra/latest/状態.tsv#貸出の状態"
+  - id: S35-G2-007
+    buc: "利用者サービス業務/自分の利用状況を確認するフロー"
+    file: "docs/specs/events/20260903_044456_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/buc-spec.md"
+    line: 49
+    severity: minor
+    viewpoint: 3
+    claim: "情報 CRUD マトリクスの「貸出 × 予約状況を参照する」「予約 × 貸出履歴を参照する」「リマインド日数 × 予約状況を参照する」のセルが空欄"
+    fix: "操作のないセルは「-」で埋める"
+    source_refs:
+      - "docs/rdra/latest/BUC.tsv#自分の利用状況を確認するフロー"
+  - id: S35-G2-008
+    buc: "運営分析業務/蔵書の利用状況を分析するフロー"
+    file: "docs/specs/events/20260903_044456_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/buc-spec.md"
+    line: 51
+    severity: minor
+    viewpoint: 3
+    claim: "情報 CRUD マトリクスの「ジャンル × 期間別貸出統計を参照する」「貸出統計 × 在庫状況一覧を参照する」「貸出 × 在庫状況一覧を参照する」のセルが空欄"
+    fix: "操作のないセルは「-」で埋める"
+    source_refs:
+      - "docs/rdra/latest/BUC.tsv#蔵書の利用状況を分析するフロー"
+resolved:
+  - {id: S35-G2-001, resolution: fixed}
+  - {id: S35-G2-002, resolution: fixed}
+  - {id: S35-G2-003, resolution: fixed}
+  - {id: S35-G2-004, resolution: fixed}
+  - {id: S35-G2-005, resolution: fixed}
+  - {id: S35-G2-006, resolution: fixed}
+  - {id: S35-G2-007, resolution: fixed}
+  - {id: S35-G2-008, resolution: fixed}

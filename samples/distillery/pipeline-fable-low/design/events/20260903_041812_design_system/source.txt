@@ -1,0 +1,8 @@
+dist-pipeline Step5 (design) / distillery:dist-design-system design_generation=required / dialogue_policy=auto_adopt
+trigger_event:
+  rdra: 20260903_030744_initial_build
+  arch: 20260903_041150_arch_infra_feedback_20260903_040307_infra_product_design
+入力:
+  docs/rdra/latest/{BUC.tsv, アクター.tsv, 情報.tsv, 状態.tsv, バリエーション.tsv, システム概要.json}
+  docs/nfr/latest/_digest/{category-B, category-E, category-F}.yaml
+  docs/arch/latest/_digest/{technology_context, system_architecture}.yaml

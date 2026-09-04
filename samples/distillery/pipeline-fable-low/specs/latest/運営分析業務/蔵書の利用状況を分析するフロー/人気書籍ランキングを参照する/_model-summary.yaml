@@ -1,0 +1,89 @@
+# _model-summary.yaml
+uc: "人気書籍ランキングを参照する"
+business: "運営分析業務"
+buc: "蔵書の利用状況を分析するフロー"
+
+bounded_context_id: "BC-006"
+
+models:
+  - name: "PopularBooksPage"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出統計"
+  - name: "PopularBooksQueryParams"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "貸出統計"
+  - name: "GetPopularBooksQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出統計"
+  - name: "AggregationPeriod"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "貸出統計"
+  - name: "BookRanking"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "貸出統計"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "LoanStatisticsRecord"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "record"
+    rdra_info: "貸出統計"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "record"
+    rdra_info: "書籍"
+  - name: "PopularBooksResponse"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "view-model"
+    rdra_info: "貸出統計"
+
+tables:
+  - name: "loan_statistics"
+    rdra_info: "貸出統計"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "period_type = :periodType AND period_start BETWEEN :from AND :to GROUP BY book_id ORDER BY SUM(loan_count) DESC, book_id LIMIT :limit"
+    indexes_needed:
+      - columns: ["period_type", "period_start", "book_id"]
+        reason: "期間範囲 × 書籍の貸出回数合算（UNIQUE と兼用）"
+        access_pattern: "ランキング参照ごとに 1 回（最大 366 区切り × 蔵書数）"
+        unique: true
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id IN (:bookIds)（上位 N 件の属性付与。削除済みは表示名を置換）"
+    indexes_needed: []
+  - name: "genres"
+    rdra_info: "ジャンル"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "genre_id IN (:genreIds)"
+    indexes_needed: []
+
+kvs:
+  - key_pattern: "cache:report:popular-books:{periodType}:{from}:{to}:{limit}"
+    purpose: "cache"
+    value_type: "PopularBooksResponse（JSON）"
+    ttl: "10m"
+    operations: ["GET", "SET"]
+
+object_storage: []

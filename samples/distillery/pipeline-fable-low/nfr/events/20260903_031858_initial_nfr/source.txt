@@ -1,0 +1,7 @@
+RDRA モデルからの初期 NFR グレード構築
+
+trigger_event: rdra:20260903_030744_initial_build
+mode: 初期構築（docs/nfr/latest/nfr-grade.yaml が存在しないため）
+dialogue_policy: auto_adopt（Step0 プリインタビュー・Step2 対話ともユーザーへ中継せず⭐推奨を自動採用）
+入力: docs/rdra/latest/*.tsv, docs/rdra/latest/システム概要.json
+対象システム: 図書館蔵書管理システム

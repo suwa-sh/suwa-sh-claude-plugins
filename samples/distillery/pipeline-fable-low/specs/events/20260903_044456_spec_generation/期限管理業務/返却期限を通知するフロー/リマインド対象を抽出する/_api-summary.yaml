@@ -1,0 +1,34 @@
+# _api-summary.yaml
+uc: "リマインド対象を抽出する"
+business: "期限管理業務"
+buc: "返却期限を通知するフロー"
+endpoints: []   # タイマー UC。外部公開 API なし（内部ユースケース ExtractReminderTargets のみ）
+async_events:
+  - name: "ReminderMailRequested"
+    channel: "notifications.reminder-mail-requested"
+    direction: "publish"
+    message_schema: "ReminderMailRequested"
+    summary: "日次リマインド抽出バッチが通知レコード（送信待ち）を作成した後に発行する返却期限リマインドメール配信要求"
+schemas:
+  - name: "ReminderMailRequested"
+    properties:
+      - name: "notificationId"
+        type: "string"
+        required: true
+      - name: "notificationType"
+        type: "string"
+        required: true
+        enum: ["REMINDER"]
+      - name: "targetLoanId"
+        type: "string"
+        required: true
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "requestedOn"
+        type: "string"
+        format: "date"
+        required: true
+      - name: "traceId"
+        type: "string"
+        required: true

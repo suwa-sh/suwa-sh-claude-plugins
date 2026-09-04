@@ -1,0 +1,69 @@
+event_id: "20260904_113742_spec_stories"
+created_at: "2026-09-04T11:37:42+09:00"
+source: "distillery:dist-spec-stories / storybook page story generation for all 24 tier-frontend screens"
+
+# 差分: full design-event.yaml と同型のサブセット構造
+# 1) components.common: 既存実装済みだが design-event.yaml に未宣言だった 16 共通コンポーネントを追加宣言する
+#    （_cross-cutting/ux-ui/common-components.md が正本。実体は storybook-app/src/components/common/ に実装済み）
+# 2) screens: 24 screens は 20260903_041812_design_system で既に story / uc / variants を宣言済みのため
+#    diff としての追加フィールドは無い。本イベントは「宣言どおりに src/stories/Pages/ 配下へ実装した」ことの記録である
+# 3) storybook.categories: Common / Pages のカテゴリを追加する
+
+components:
+  common:
+    - name: "PatronLayout"
+      description: "利用者ポータル全画面の外枠。PortalShell（patron）にトップナビのアクティブ判定・認証ガード・ダークモード切替を付与する"
+      path: "src/components/common/PatronLayout.tsx"
+    - name: "StaffLayout"
+      description: "司書ポータル全画面の外枠。PortalShell（staff / staff-collapsed）にサイドバーのアクティブ判定・折りたたみ状態・認証 + 司書区分ガードを付与する"
+      path: "src/components/common/StaffLayout.tsx"
+    - name: "PageHeader"
+      description: "画面見出し + 主要操作 + 通知スロットを持つ共通ヘッダー。全 24 UC で使用"
+      path: "src/components/common/PageHeader.tsx"
+    - name: "AsyncStateView"
+      description: "ローディング（0.4 秒遅延つき Skeleton）/ エラー / 空状態 / コンテンツの表示切替を統一する"
+      path: "src/components/common/AsyncStateView.tsx"
+    - name: "ErrorAlert"
+      description: "api client の統一エラー型を利用者/司書向け文言に変換して表示する（destructive / warning + 再試行）"
+      path: "src/components/common/ErrorAlert.tsx"
+    - name: "NoticeAlert"
+      description: "成功・完了通知を表示する（success トーン固定の Alert）"
+      path: "src/components/common/NoticeAlert.tsx"
+    - name: "PaginatedListFrame"
+      description: "一覧画面の filter / summary / content / pagination / loading / empty / error を統一するフレーム。20 件/頁固定"
+      path: "src/components/common/PaginatedListFrame.tsx"
+    - name: "KeywordSearchInput"
+      description: "Enter 送信・補助検証つきのキーワード検索入力（Input with-icon の合成）"
+      path: "src/components/common/KeywordSearchInput.tsx"
+    - name: "ScopeToggle"
+      description: "表示範囲（例: 現在 / 履歴、全件 / 延滞のみ）の切り替え。URL クエリ同期を付与する ToggleGroup 合成"
+      path: "src/components/common/ScopeToggle.tsx"
+    - name: "StatCardGroup"
+      description: "StatCard を横並びで表示する KPI カード群"
+      path: "src/components/common/StatCardGroup.tsx"
+    - name: "CollapsibleSection"
+      description: "行展開などの折りたたみ表示（例: 延滞一覧の通知ログ展開）"
+      path: "src/components/common/CollapsibleSection.tsx"
+    - name: "EntityFormPage"
+      description: "登録・編集フォーム画面の共通シェル（見出し + フォーム + 送信/キャンセル操作 + エラー表示）"
+      path: "src/components/common/EntityFormPage.tsx"
+    - name: "ConfirmPage"
+      description: "削除 / 取消 / 送信の確認ステップ画面の共通シェル。ConfirmPanel を包み、tone / blocked / submitting を統一する"
+      path: "src/components/common/ConfirmPage.tsx"
+    - name: "SubmitButton"
+      description: "submitting 状態と連動する送信ボタン（Spinner 内包、二重送信防止）"
+      path: "src/components/common/SubmitButton.tsx"
+    - name: "BackLink"
+      description: "前画面へ戻る ghost ボタン。検索条件・ページの復元を伴う画面遷移で使用"
+      path: "src/components/common/BackLink.tsx"
+    - name: "CounterHandoffActions"
+      description: "窓口業務（貸出/返却/予約状況）での次アクション導線ボタン群"
+      path: "src/components/common/CounterHandoffActions.tsx"
+    - name: "PeriodReportFrame"
+      description: "集計期間選択 + レポート本体（グラフ/ランキング）+ ローディングを統一するフレーム"
+      path: "src/components/common/PeriodReportFrame.tsx"
+
+storybook:
+  categories:
+    Common: "共通レイアウト・状態表示・一覧・フォーム・ナビゲーションの合成コンポーネント"
+    Pages: "UC 単位のページ Story（利用者ポータル / 司書ポータル、全 24 画面）"

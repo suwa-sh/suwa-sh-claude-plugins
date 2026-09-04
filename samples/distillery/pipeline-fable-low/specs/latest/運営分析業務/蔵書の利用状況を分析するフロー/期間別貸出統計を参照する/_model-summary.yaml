@@ -1,0 +1,89 @@
+# _model-summary.yaml
+uc: "期間別貸出統計を参照する"
+business: "運営分析業務"
+buc: "蔵書の利用状況を分析するフロー"
+
+bounded_context_id: "BC-006"
+
+models:
+  - name: "LoanStatisticsPage"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "貸出統計"
+  - name: "LoanStatisticsQueryParams"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "貸出統計"
+  - name: "GetLoanStatisticsQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出統計"
+  - name: "AggregationPeriod"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "貸出統計"
+  - name: "LoanStatistics"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "貸出統計"
+  - name: "LoanStatisticsRecord"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "record"
+    rdra_info: "貸出統計"
+  - name: "LoanRecord"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "record"
+    rdra_info: "貸出"
+  - name: "LoanStatisticsResponse"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "view-model"
+    rdra_info: "貸出統計"
+
+tables:
+  - name: "loan_statistics"
+    rdra_info: "貸出統計"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "period_type = :periodType AND period_start BETWEEN :from AND :to GROUP BY period_start, period_end（SUM(loan_total)）"
+      - type: "SELECT"
+        columns: []
+        where: "period_type = :periodType AND period_start BETWEEN :prevFrom AND :prevTo（前期比の基準期間。SUM(loan_total) = previousTotalLoans）"
+    indexes_needed:
+      - columns: ["period_type", "period_start"]
+        reason: "集計期間種別 × 期間範囲の集約参照"
+        access_pattern: "分析画面の期間指定ごとに 1 回（最大 366 区切り）"
+      - columns: ["period_type", "period_start", "book_id"]
+        reason: "期間 × 書籍で 1 行の一意性（再集計の UPSERT キー）"
+        access_pattern: "集計バッチの UPSERT / ランキング参照"
+        unique: true
+  - name: "loans"
+    rdra_info: "貸出"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "loaned_on BETWEEN :periodStart AND :periodEnd（未集計区切りの COUNT）"
+      - type: "SELECT"
+        columns: []
+        where: "loaned_on BETWEEN :prevFrom AND :prevTo（前期比の基準期間に未集計区切りがある場合の COUNT）"
+    indexes_needed:
+      - columns: ["loaned_on"]
+        reason: "貸出日範囲の件数集計"
+        access_pattern: "未集計区切り（当日・当月）ごとに 1 回"
+
+kvs:
+  - key_pattern: "cache:report:loan-statistics:{periodType}:{from}:{to}"
+    purpose: "cache"
+    value_type: "LoanStatisticsResponse（JSON）"
+    ttl: "10m"
+    operations: ["GET", "SET"]
+
+object_storage: []

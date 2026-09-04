@@ -1,0 +1,66 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Screen Mapping" />
+
+# Screen Mapping
+
+RDRA の BUC.tsv `画面` 行 24 件を、ルートと主要コンポーネントに対応づけます。RDRA に無い画面（ログイン・ダッシュボード等）は追加していません。
+
+## 利用者ポータル（6 画面）
+
+<table>
+  <thead>
+    <tr><th>RDRA 画面名</th><th>UC</th><th>ルート</th><th>主要コンポーネント</th><th>レイアウト</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>蔵書検索画面</td><td>書籍を検索する</td><td><code>/search</code></td><td>BookSearchFilter, BookCard, Pagination, EmptyState, Skeleton</td><td>12col</td></tr>
+    <tr><td>書籍詳細・在庫状況画面</td><td>書籍詳細を参照する</td><td><code>/books/:bookId</code></td><td>BookCard(detail), BookStatusBadge, ReservationQueueTracker, Alert</td><td>8 + 4</td></tr>
+    <tr><td>予約申込画面</td><td>予約を登録する</td><td><code>/books/:bookId/reserve</code></td><td>BookCard, ReservationQueueTracker, ConfirmPanel</td><td>2 + 8 + 2</td></tr>
+    <tr><td>予約取消画面</td><td>予約を取り消す</td><td><code>/reservations/:reservationId/cancel</code></td><td>ReservationStatusBadge, ConfirmPanel</td><td>中央 6col</td></tr>
+    <tr><td>マイ貸出履歴画面</td><td>貸出履歴を参照する</td><td><code>/me/loans</code></td><td>LoanTable, DueDateIndicator, LoanStatusBadge, Pagination</td><td>12col</td></tr>
+    <tr><td>マイ予約状況画面</td><td>予約状況を参照する</td><td><code>/me/reservations</code></td><td>ReservationTable, ReservationQueueTracker, ReservationStatusBadge</td><td>12col</td></tr>
+  </tbody>
+</table>
+
+## 司書ポータル（18 画面）
+
+<table>
+  <thead>
+    <tr><th>RDRA 画面名</th><th>UC</th><th>ルート</th><th>主要コンポーネント</th><th>レイアウト</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>蔵書一覧画面</td><td>書籍一覧を参照する</td><td><code>/staff/books</code></td><td>BookSearchFilter(staff), BookTable(manage), Pagination</td><td>12col</td></tr>
+    <tr><td>書籍登録画面</td><td>書籍を登録する</td><td><code>/staff/books/new</code></td><td>BookForm(create), Alert</td><td>2 + 8 + 2</td></tr>
+    <tr><td>書籍編集画面</td><td>書籍を編集する</td><td><code>/staff/books/:bookId/edit</code></td><td>BookForm(edit), BookStatusBadge</td><td>2 + 8 + 2</td></tr>
+    <tr><td>書籍削除確認画面</td><td>書籍を削除する</td><td><code>/staff/books/:bookId/delete</code></td><td>ConfirmPanel(destructive / blocked)</td><td>中央 6col</td></tr>
+    <tr><td>窓口蔵書検索画面</td><td>書籍を検索する</td><td><code>/staff/search</code></td><td>BookSearchFilter(staff), BookTable(select), Pagination</td><td>12col</td></tr>
+    <tr><td>利用者登録画面</td><td>利用者を登録する</td><td><code>/staff/users/new</code></td><td>UserForm(create), Alert</td><td>2 + 8 + 2</td></tr>
+    <tr><td>利用者編集画面</td><td>利用者を編集する</td><td><code>/staff/users/:userId/edit</code></td><td>UserForm(edit), PiiMaskedText</td><td>2 + 8 + 2</td></tr>
+    <tr><td>利用者削除確認画面</td><td>利用者を削除する</td><td><code>/staff/users/:userId/delete</code></td><td>ConfirmPanel, PiiMaskedText</td><td>中央 6col</td></tr>
+    <tr><td>利用者一覧画面</td><td>利用者一覧を参照する</td><td><code>/staff/users</code></td><td>Input(search), UserTable, PiiMaskedText, Pagination</td><td>12col</td></tr>
+    <tr><td>貸出受付画面</td><td>貸出を登録する</td><td><code>/staff/loans/new</code></td><td>LoanRegisterPanel, BookStatusBadge, DueDateIndicator, Alert</td><td>6 + 6</td></tr>
+    <tr><td>返却受付画面</td><td>返却を登録する</td><td><code>/staff/returns/new</code></td><td>ReturnRegisterPanel, LoanStatusBadge, BookStatusBadge, Alert</td><td>6 + 6</td></tr>
+    <tr><td>返却通知送信確認画面</td><td>返却通知を送信する</td><td><code>/staff/returns/:loanId/notify</code></td><td>ConfirmPanel, ReservationTable, NotificationLogTable</td><td>中央 6col</td></tr>
+    <tr><td>書籍別予約状況画面</td><td>予約一覧を参照する</td><td><code>/staff/books/:bookId/reservations</code></td><td>BookCard, ReservationTable, ReservationQueueTracker</td><td>8 + 4</td></tr>
+    <tr><td>延滞・督促状況画面</td><td>延滞一覧を参照する</td><td><code>/staff/overdues</code></td><td>StatCard, OverdueTable, DueDateIndicator, NotificationLogTable</td><td>4×3 + 12</td></tr>
+    <tr><td>窓口利用状況照会画面</td><td>利用者の利用状況を参照する</td><td><code>/staff/users/:userId/status</code></td><td>Input, PiiMaskedText, LoanTable, ReservationTable</td><td>8 + 4</td></tr>
+    <tr><td>在庫状況一覧画面</td><td>在庫状況一覧を参照する</td><td><code>/staff/reports/inventory</code></td><td>StatCard, ToggleGroup, BookTable(inventory), Pagination</td><td>4×3 + 12</td></tr>
+    <tr><td>人気書籍ランキング画面</td><td>人気書籍ランキングを参照する</td><td><code>/staff/reports/ranking</code></td><td>PeriodSelector, RankingList, StatCard</td><td>4×3 + 12</td></tr>
+    <tr><td>期間別貸出統計画面</td><td>期間別貸出統計を参照する</td><td><code>/staff/reports/loans</code></td><td>PeriodSelector, StatCard, PeriodStatChart</td><td>4×3 + 12</td></tr>
+  </tbody>
+</table>
+
+## レイアウトパターン
+
+<table>
+  <thead>
+    <tr><th>パターン</th><th>Tailwind</th><th>根拠</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>12col フル幅</td><td><code>col-span-12</code></td><td>書籍属性 8 / 貸出属性 8 → テーブル表示</td></tr>
+    <tr><td>8 + 4 マスター・ディテール</td><td><code>col-span-8</code> + <code>col-span-4</code></td><td>関連情報（予約 / 貸出）をサイドパネルに</td></tr>
+    <tr><td>2 + 8 + 2 中央寄せフォーム</td><td><code>col-start-3 col-span-8</code></td><td>フィールド数 6 / 4 ≤ 10</td></tr>
+    <tr><td>6 + 6 窓口</td><td><code>col-span-6</code> ×2</td><td>左: 入力、右: 判定結果（SP-006 最少操作）</td></tr>
+    <tr><td>4×3 + 12 統計</td><td><code>col-span-4</code> ×3 + <code>col-span-12</code></td><td>KPI 3 + チャート 1</td></tr>
+  </tbody>
+</table>

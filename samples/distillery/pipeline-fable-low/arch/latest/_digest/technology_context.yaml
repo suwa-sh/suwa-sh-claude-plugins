@@ -1,0 +1,13 @@
+# digest of arch/latest/arch-design.yaml section technology_context (L5-15); source_sha256: 00ef834d62946ecc806f3ac1755b4250fecff62244405745e1a7df4ef94c91d4
+# 派生物。正本は arch-design.yaml。編集しない
+technology_context:
+  languages:
+    - "未定（ユーザー希望なし。dist-impl の bootstrap 時に確定する）"
+  frameworks:
+    - "未定（ユーザー希望なし。Web フロントエンドは SPA フレームワーク、バックエンドは REST + ORM を持つ汎用 Web フレームワークを想定）"
+  constraints:
+    - "クラウドベンダー未定・ベンダーニュートラル（CaaS(k8s) / RDB / KVS / MQ / Object Storage 等の汎用用語で設計し、ベンダー固有サービス名を使わない）"
+    - "デプロイ先未定（クラウド / オンプレミスのいずれにも配置可能な構成とする。CaaS(k8s) を第一候補、コンテナ + LB を代替候補とする）"
+    - "1 館向けの小規模システム（NFR B.1.1.1 同時アクセス〜100）。モジュラモノリス + 単一 RDB で開始し、BC 境界をモジュールとして維持する"
+    - "利用者向け（公開経路）と司書向け（館内経路）の 2 系統フロントエンドを分離する（NFR E.5.3.1）"
+    - "Backend API とワーカーは domain / repository / gateway を共有ライブラリとして共有する（モノレポ運用が前提）"

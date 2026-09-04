@@ -1,0 +1,35 @@
+round: 2
+group: datastore
+findings:
+  # ---- rdb-schema.yaml（新規） ----
+  - id: S4-datastore-007
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 547
+    severity: minor
+    viewpoint: 3
+    claim: "loan_events.event_type の貸出登録イベントが REGISTERED になっており、正本に LOANED（貸出）がある点と、reservation_events では同じ '登録' を RESERVED に読み替えた点（L790）と方針が揃っていない。書籍側 book_events では貸出を LOANED で記録するため、同一の貸出登録が親テーブルごとに REGISTERED / LOANED と別コードで残る"
+    fix: "loan_events.event_type の貸出登録を LOANED（貸出）に変更し、description に「_model-summary.yaml の '登録' は LOANED に対応」と注記する（from_status の説明 L559 の「REGISTERED は NULL」も LOANED に追随）。REGISTERED を残す場合は _review_notes（L11）に「loan_events の '登録' は REGISTERED、reservation_events の '登録' は RESERVED」と読み替え規則を明記する"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/_review/api-conventions.md#enum（イベント種別 event_type 行: LOANED（貸出））"
+      - "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/datastore/rdb-schema.yaml L186（book_events: LOANED）/ L790（reservation_events: '登録' → RESERVED）"
+  - id: S4-datastore-008
+    artifact: "rdb-schema.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/datastore/rdb-schema.yaml"
+    line: 974
+    severity: minor
+    viewpoint: 3
+    claim: "loan_statistics.loan_count の description が「期間内の当該書籍の貸出件数」、loan_total が「期間 × 書籍の貸出レコード数（loan_count は利用者ののべ借用回数）」で、期間 × 書籍 1 行の粒度では両者が同じ値（貸出レコード数）になり区別が成立しない。round1 の過大集計は解消したが、2 列を持つ根拠が description から読み取れない"
+    fix: "情報.tsv の「貸出回数」「貸出件数」に対応づけて定義を分ける（例: loan_count = 期間内の当該書籍の貸出レコード数（ランキング基準）、loan_total = 期間内の全書籍合計ではなく、当該行では loan_count と同値であることを明記し「期間別貸出統計は SUM(loan_total) で期間合計を得る」と残す）。または loan_total を廃止し UC 側を SUM(loan_count) に置換する旨を _review_notes に記す"
+    source_refs:
+      - "docs/rdra/latest/情報.tsv#貸出統計（貸出回数、貸出件数）"
+      - "docs/specs/events/20260903_044456_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/_model-summary.yaml（SUM(loan_total)）"
+resolved:
+  - {id: S4-datastore-001, resolution: fixed, note: "book_events CANCELLED / reservation_events RESERVED / _review_notes 10 値を確認"}
+  - {id: S4-datastore-002, resolution: fixed, note: "loan_total が行単位の件数となり SUM の過大集計は解消。残課題は S4-datastore-008"}
+  - {id: S4-datastore-003, resolution: fixed, note: "uq_*_valid_from が valid_from 単独、(valid_to, valid_from) は非ユニーク別インデックス"}
+  - {id: S4-datastore-004, resolution: fixed, note: "idx_books_genre_id_updated_at に改名済み"}
+  - {id: S4-datastore-005, resolution: fixed, note: "cache:{リソース}:{サブ種別}:{識別子} / lock:{種別}:{識別子} に統一、Step7 TODO 記載済み"}
+  - {id: S4-datastore-006, resolution: fixed, note: "session TTL 8h 既定値を記載"}
+  - {id: S4-datastore-007, resolution: deferred, reason: "minor。round 2 の残指摘は意図的に見送り（Step6.5 反証レビューで再検証）", by: orchestrator}
+  - {id: S4-datastore-008, resolution: deferred, reason: "minor。round 2 の残指摘は意図的に見送り（Step6.5 反証レビューで再検証）", by: orchestrator}

@@ -1,0 +1,528 @@
+asyncapi: "3.0.0"
+info:
+  title: "Libro Async Events"
+  version: "1.0.0"
+  description: |
+    図書館蔵書管理システム（brand: Libro）の非同期メッセージ仕様（AsyncAPI 3.0）。
+    通知管理 BC のメール配信要求を Backend API / ワーカーから MQ へ発行し、ワーカー（Competing Consumers）が消費して
+    メール配信サービス経由で送信する（tier-backend-api SP-013 メール送信の非同期化、tier-worker SP-018 Queue-Based Load Leveling + DLQ）。
+
+    ## 共通規約
+    - チャネル名は `notifications.{イベント種別}-requested`、DLQ は末尾に `.dlq`。
+    - すべてのメッセージに共通ヘッダ（`correlationId` / `timestamp` / `source` / `eventType` / `version`）を付与する。
+    - 冪等消費: 通知レコード（`notificationId`）は「対象貸出 ID / 対象予約 ID × 通知種別 × 送信日」で一意に作成済み。
+      ワーカーは MQ の MessageId と `notificationId` で重複処理を検知し、送信結果が SUCCEEDED の通知は再送しない（SR-013）。
+    - 再試行: 送信失敗は指数バックオフで最大 5 回再配信し、超過分を DLQ へ退避して手動再処理する。
+      DLQ メッセージ（`*RequestedDead`）は元メッセージのペイロードをそのまま保持し、共通ヘッダに加えて退避ヘッダ
+      （`attemptCount` / `lastFailureReason` / `lastFailedAt` / `originalChannel`）を必須で付与する（messageTrait `dlqHeaders`）。
+    - enum は OpenAPI と同じ英語 UPPER_SNAKE_CASE（`notificationType`: RETURN_NOTICE / REMINDER / OVERDUE_NOTICE）。
+    - 個人情報（氏名・メールアドレス）はメッセージに載せない。送信先メールアドレスは通知レコードの
+      `notifications.recipient_email`（要求時点の `users.email` のスナップショット）を正とし、ワーカーは
+      `notificationId` で通知レコードを読み出して使用する（`users` は参照しない）。
+      `userNumber` はログ・監査突合と本文の宛名解決の用途に限る。
+  license:
+    name: "Proprietary"
+  contact:
+    name: "Libro API Team"
+    email: "api@libro.example.com"
+defaultContentType: "application/json"
+
+servers:
+  production:
+    host: "mq.libro.example.com:5672"
+    protocol: "amqp"
+    description: "本番 MQ（ベンダーニュートラル。プロトコルは代表として AMQP を記載。実装時に technology_context で確定する）"
+    security:
+      - $ref: "#/components/securitySchemes/mqUserPassword"
+  local:
+    host: "localhost:5672"
+    protocol: "amqp"
+    description: "ローカル開発用 MQ"
+
+channels:
+  returnNoticeRequested:
+    address: "notifications.return-notice-requested"
+    title: "返却通知メール配信要求"
+    description: |
+      返却通知の送信確定後（`POST /api/v1/notifications/return-notices`）、または通知済み予約の取消で次順位へ繰り上げたとき
+      （`POST /api/v1/reservations/{reservationId}/cancel`）に Backend API が発行する。ワーカー ReturnNoticeConsumer が購読する。
+    messages:
+      ReturnNoticeRequested:
+        $ref: "#/components/messages/ReturnNoticeRequested"
+  returnNoticeRequestedDlq:
+    address: "notifications.return-notice-requested.dlq"
+    title: "返却通知メール配信要求 DLQ"
+    description: "再配信上限（5 回）を超過した返却通知配信要求の退避先（手動再処理用）"
+    messages:
+      ReturnNoticeRequestedDead:
+        $ref: "#/components/messages/ReturnNoticeRequestedDead"
+  reminderMailRequested:
+    address: "notifications.reminder-mail-requested"
+    title: "返却期限リマインドメール配信要求"
+    description: "日次リマインド抽出バッチ（UC: リマインド対象を抽出する）が通知レコード（REMINDER / PENDING）を作成した後に発行する"
+    messages:
+      ReminderMailRequested:
+        $ref: "#/components/messages/ReminderMailRequested"
+  reminderMailRequestedDlq:
+    address: "notifications.reminder-mail-requested.dlq"
+    title: "返却期限リマインドメール配信要求 DLQ"
+    description: "再配信上限（5 回）を超過したリマインド配信要求の退避先（手動再処理用）"
+    messages:
+      ReminderMailRequestedDead:
+        $ref: "#/components/messages/ReminderMailRequestedDead"
+  overdueNoticeRequested:
+    address: "notifications.overdue-notice-requested"
+    title: "延滞督促メール配信要求"
+    description: "日次延滞判定バッチ（UC: 延滞を判定する）が貸出を OVERDUE に遷移させ通知レコード（OVERDUE_NOTICE / PENDING）を作成した後に発行する"
+    messages:
+      OverdueNoticeRequested:
+        $ref: "#/components/messages/OverdueNoticeRequested"
+  overdueNoticeRequestedDlq:
+    address: "notifications.overdue-notice-requested.dlq"
+    title: "延滞督促メール配信要求 DLQ"
+    description: "再配信上限（5 回）を超過した督促配信要求の退避先（手動再処理用）"
+    messages:
+      OverdueNoticeRequestedDead:
+        $ref: "#/components/messages/OverdueNoticeRequestedDead"
+
+operations:
+  publishReturnNoticeRequested:
+    action: "send"
+    channel:
+      $ref: "#/channels/returnNoticeRequested"
+    title: "返却通知配信要求を発行する"
+    summary: "Backend API（通知モジュール）が返却通知の送信確定後に発行する"
+    description: |
+      発行元 UC: 返却通知を送信する（送信確定時）/ 予約を取り消す（取消対象が NOTIFIED かつ書籍が RESERVED かつ次順位の RESERVED が存在するとき、条件付き）。
+      通知レコードの作成と予約の NOTIFIED 遷移を同一トランザクションでコミットした後に発行する（コミット後発行）。
+      発行に失敗した場合は通知レコードを送信待ち（PENDING）のまま残し、UC「返却通知を送信する」の tier-worker
+      `ReturnNoticeSweepJob`（日次の再発行スイープ）が同じチャネルへ再発行して回収する。
+    messages:
+      - $ref: "#/channels/returnNoticeRequested/messages/ReturnNoticeRequested"
+  consumeReturnNoticeRequested:
+    action: "receive"
+    channel:
+      $ref: "#/channels/returnNoticeRequested"
+    title: "返却通知配信要求を消費する"
+    summary: "ワーカー ReturnNoticeConsumer がメール配信サービス経由で返却通知メールを送信し、送信結果を通知レコードに反映する"
+    description: |
+      - `notificationId` の通知レコードが PENDING でなければスキップ（冪等）
+      - 送信成功: `sendResult=SUCCEEDED`、`sentAt` を記録
+      - 送信失敗: `sendResult=FAILED` と `failureReason` を記録し、再配信（指数バックオフ）。5 回超過で DLQ へ
+    messages:
+      - $ref: "#/channels/returnNoticeRequested/messages/ReturnNoticeRequested"
+  publishReturnNoticeRequestedDlq:
+    action: "send"
+    channel:
+      $ref: "#/channels/returnNoticeRequestedDlq"
+    title: "返却通知配信要求を DLQ へ退避する"
+    summary: "ワーカーが再配信上限を超過したメッセージを退避する"
+    messages:
+      - $ref: "#/channels/returnNoticeRequestedDlq/messages/ReturnNoticeRequestedDead"
+
+  publishReminderMailRequested:
+    action: "send"
+    channel:
+      $ref: "#/channels/reminderMailRequested"
+    title: "リマインド配信要求を発行する"
+    summary: "日次リマインド抽出バッチ（ワーカー）がリマインド対象ごとに発行する"
+    description: |
+      発行元 UC: リマインド対象を抽出する。貸出の状態が ON_LOAN で、返却期限までの残日数がリマインド日数以内の貸出を対象とする（条件: リマインド対象判定）。
+      通知レコードは「対象貸出 ID × REMINDER × 送信日」で一意に作成し、既存があれば発行しない。
+      UC「リマインドを送信する」の tier-worker `ReminderSendSweepJob`（PENDING のまま滞留した通知レコードの再発行スイープ）も同じチャネルへ発行する。
+    messages:
+      - $ref: "#/channels/reminderMailRequested/messages/ReminderMailRequested"
+  consumeReminderMailRequested:
+    action: "receive"
+    channel:
+      $ref: "#/channels/reminderMailRequested"
+    title: "リマインド配信要求を消費する"
+    summary: "ワーカー ReminderMailConsumer がメール配信サービス経由でリマインドメールを送信し、送信結果を通知レコードに反映する"
+    description: "消費元 UC: リマインドを送信する。消費時に貸出の状態が ON_LOAN でなければ（RETURNED / OVERDUE を含む）`sendResult=SKIPPED` として送信しない"
+    messages:
+      - $ref: "#/channels/reminderMailRequested/messages/ReminderMailRequested"
+  publishReminderMailRequestedDlq:
+    action: "send"
+    channel:
+      $ref: "#/channels/reminderMailRequestedDlq"
+    title: "リマインド配信要求を DLQ へ退避する"
+    summary: "ワーカーが再配信上限を超過したメッセージを退避する"
+    messages:
+      - $ref: "#/channels/reminderMailRequestedDlq/messages/ReminderMailRequestedDead"
+
+  publishOverdueNoticeRequested:
+    action: "send"
+    channel:
+      $ref: "#/channels/overdueNoticeRequested"
+    title: "督促配信要求を発行する"
+    summary: "日次延滞判定バッチ（ワーカー）が延滞に遷移させた貸出ごとに発行する"
+    description: |
+      発行元 UC: 延滞を判定する。貸出の状態が ON_LOAN で当日が返却期限を超過している貸出を OVERDUE に遷移させ、
+      通知レコード（OVERDUE_NOTICE / PENDING）を作成した後に発行する（条件: 延滞判定）。
+      UC「督促を送信する」の tier-worker `OverdueNoticeSweepJob`（PENDING のまま滞留した通知レコードの再発行スイープ）も同じチャネルへ発行する。
+    messages:
+      - $ref: "#/channels/overdueNoticeRequested/messages/OverdueNoticeRequested"
+  consumeOverdueNoticeRequested:
+    action: "receive"
+    channel:
+      $ref: "#/channels/overdueNoticeRequested"
+    title: "督促配信要求を消費する"
+    summary: "ワーカー OverdueNoticeConsumer がメール配信サービス経由で督促メールを送信し、送信結果を通知レコードに反映する"
+    description: "消費元 UC: 督促を送信する。消費時に貸出の状態が OVERDUE でなければ（RETURNED を含む）`sendResult=SKIPPED` として送信しない"
+    messages:
+      - $ref: "#/channels/overdueNoticeRequested/messages/OverdueNoticeRequested"
+  publishOverdueNoticeRequestedDlq:
+    action: "send"
+    channel:
+      $ref: "#/channels/overdueNoticeRequestedDlq"
+    title: "督促配信要求を DLQ へ退避する"
+    summary: "ワーカーが再配信上限を超過したメッセージを退避する"
+    messages:
+      - $ref: "#/channels/overdueNoticeRequestedDlq/messages/OverdueNoticeRequestedDead"
+
+components:
+  securitySchemes:
+    mqUserPassword:
+      type: "userPassword"
+      description: "MQ 接続の認証（資格情報はシークレット管理から注入。内部セグメント内の通信）"
+
+  messageTraits:
+    commonHeaders:
+      headers:
+        $ref: "#/components/schemas/CommonHeaders"
+      correlationId:
+        location: "$message.header#/correlationId"
+        description: "API Gateway が付与した trace_id を引き継ぐ"
+    dlqHeaders:
+      description: |
+        DLQ 退避メッセージのヘッダ（共通ヘッダ + 退避ヘッダ）。trait の headers はマージ時に置換されるため、
+        commonHeaders と併用せず本 trait 単独で共通ヘッダも含める
+      headers:
+        $ref: "#/components/schemas/DlqMessageHeaders"
+      correlationId:
+        location: "$message.header#/correlationId"
+        description: "元メッセージの correlationId を引き継ぐ"
+
+  messages:
+    ReturnNoticeRequested:
+      name: "ReturnNoticeRequested"
+      title: "返却通知メール配信要求"
+      summary: "予約順位 1 位の利用者への返却通知メールの配信要求"
+      contentType: "application/json"
+      traits:
+        - $ref: "#/components/messageTraits/commonHeaders"
+      payload:
+        $ref: "#/components/schemas/ReturnNoticeRequested"
+      examples:
+        - name: "returnNotice"
+          summary: "返却通知の配信要求"
+          headers:
+            correlationId: "0af7651916cd43dd8448eb211c80319c"
+            timestamp: "2026-09-03T10:30:00+09:00"
+            source: "backend-api.notification"
+            eventType: "notifications.return-notice-requested"
+            version: "1.0"
+          payload:
+            notificationId: "nt_01HZX3C4D5E6F7G8H9J0K1L2M3"
+            notificationType: "RETURN_NOTICE"
+            targetReservationId: "rs_01HZX2B3C4D5E6F7G8H9J0K1L2"
+            userNumber: "U000456"
+            bookId: "bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"
+            requestedOn: "2026-09-03"
+            traceId: "0af7651916cd43dd8448eb211c80319c"
+    ReminderMailRequested:
+      name: "ReminderMailRequested"
+      title: "返却期限リマインドメール配信要求"
+      summary: "返却期限が近い貸出の利用者へのリマインドメールの配信要求"
+      contentType: "application/json"
+      traits:
+        - $ref: "#/components/messageTraits/commonHeaders"
+      payload:
+        $ref: "#/components/schemas/ReminderMailRequested"
+      examples:
+        - name: "reminder"
+          summary: "リマインドの配信要求"
+          headers:
+            correlationId: "6d2c1b0a9f8e7d6c5b4a39281706f5e4"
+            timestamp: "2026-09-03T06:00:05+09:00"
+            source: "worker.reminder-batch"
+            eventType: "notifications.reminder-mail-requested"
+            version: "1.0"
+          payload:
+            notificationId: "nt_01HZX4D5E6F7G8H9J0K1L2M3N4"
+            notificationType: "REMINDER"
+            targetLoanId: "ln_01HZX1A2B3C4D5E6F7G8H9J0K1"
+            userNumber: "U000123"
+            requestedOn: "2026-09-03"
+            traceId: "6d2c1b0a9f8e7d6c5b4a39281706f5e4"
+    OverdueNoticeRequested:
+      name: "OverdueNoticeRequested"
+      title: "延滞督促メール配信要求"
+      summary: "返却期限を超過した貸出の利用者への督促メールの配信要求"
+      contentType: "application/json"
+      traits:
+        - $ref: "#/components/messageTraits/commonHeaders"
+      payload:
+        $ref: "#/components/schemas/OverdueNoticeRequested"
+      examples:
+        - name: "overdueNotice"
+          summary: "督促の配信要求"
+          headers:
+            correlationId: "b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6"
+            timestamp: "2026-09-03T06:10:05+09:00"
+            source: "worker.overdue-batch"
+            eventType: "notifications.overdue-notice-requested"
+            version: "1.0"
+          payload:
+            notificationId: "nt_01HZX5E6F7G8H9J0K1L2M3N4P5"
+            notificationType: "OVERDUE_NOTICE"
+            targetLoanId: "ln_01HZX1A2B3C4D5E6F7G8H9J0K1"
+            userNumber: "U000123"
+            requestedOn: "2026-09-03"
+            traceId: "b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6"
+
+    ReturnNoticeRequestedDead:
+      name: "ReturnNoticeRequestedDead"
+      title: "返却通知メール配信要求（DLQ 退避）"
+      summary: "再配信上限（5 回）を超過した返却通知配信要求。ペイロードは元メッセージと同一で、退避ヘッダを付与する"
+      contentType: "application/json"
+      traits:
+        - $ref: "#/components/messageTraits/dlqHeaders"
+      payload:
+        $ref: "#/components/schemas/ReturnNoticeRequested"
+      examples:
+        - name: "returnNoticeDead"
+          summary: "返却通知配信要求の DLQ 退避"
+          headers:
+            correlationId: "0af7651916cd43dd8448eb211c80319c"
+            timestamp: "2026-09-03T10:30:00+09:00"
+            source: "backend-api.notification"
+            eventType: "notifications.return-notice-requested"
+            version: "1.0"
+            attemptCount: 6
+            lastFailureReason: "MAIL_DELIVERY_REJECTED"
+            lastFailedAt: "2026-09-03T11:02:41+09:00"
+            originalChannel: "notifications.return-notice-requested"
+          payload:
+            notificationId: "nt_01HZX3C4D5E6F7G8H9J0K1L2M3"
+            notificationType: "RETURN_NOTICE"
+            targetReservationId: "rs_01HZX2B3C4D5E6F7G8H9J0K1L2"
+            userNumber: "U000456"
+            bookId: "bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"
+            requestedOn: "2026-09-03"
+            traceId: "0af7651916cd43dd8448eb211c80319c"
+    ReminderMailRequestedDead:
+      name: "ReminderMailRequestedDead"
+      title: "返却期限リマインドメール配信要求（DLQ 退避）"
+      summary: "再配信上限（5 回）を超過したリマインド配信要求。ペイロードは元メッセージと同一で、退避ヘッダを付与する"
+      contentType: "application/json"
+      traits:
+        - $ref: "#/components/messageTraits/dlqHeaders"
+      payload:
+        $ref: "#/components/schemas/ReminderMailRequested"
+      examples:
+        - name: "reminderDead"
+          summary: "リマインド配信要求の DLQ 退避"
+          headers:
+            correlationId: "6d2c1b0a9f8e7d6c5b4a39281706f5e4"
+            timestamp: "2026-09-03T06:00:05+09:00"
+            source: "worker.reminder-batch"
+            eventType: "notifications.reminder-mail-requested"
+            version: "1.0"
+            attemptCount: 6
+            lastFailureReason: "MAIL_SERVICE_TIMEOUT"
+            lastFailedAt: "2026-09-03T06:35:12+09:00"
+            originalChannel: "notifications.reminder-mail-requested"
+          payload:
+            notificationId: "nt_01HZX4D5E6F7G8H9J0K1L2M3N4"
+            notificationType: "REMINDER"
+            targetLoanId: "ln_01HZX1A2B3C4D5E6F7G8H9J0K1"
+            userNumber: "U000123"
+            requestedOn: "2026-09-03"
+            traceId: "6d2c1b0a9f8e7d6c5b4a39281706f5e4"
+    OverdueNoticeRequestedDead:
+      name: "OverdueNoticeRequestedDead"
+      title: "延滞督促メール配信要求（DLQ 退避）"
+      summary: "再配信上限（5 回）を超過した督促配信要求。ペイロードは元メッセージと同一で、退避ヘッダを付与する"
+      contentType: "application/json"
+      traits:
+        - $ref: "#/components/messageTraits/dlqHeaders"
+      payload:
+        $ref: "#/components/schemas/OverdueNoticeRequested"
+      examples:
+        - name: "overdueNoticeDead"
+          summary: "督促配信要求の DLQ 退避"
+          headers:
+            correlationId: "b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6"
+            timestamp: "2026-09-03T06:10:05+09:00"
+            source: "worker.overdue-batch"
+            eventType: "notifications.overdue-notice-requested"
+            version: "1.0"
+            attemptCount: 6
+            lastFailureReason: "MAIL_DELIVERY_REJECTED"
+            lastFailedAt: "2026-09-03T06:45:30+09:00"
+            originalChannel: "notifications.overdue-notice-requested"
+          payload:
+            notificationId: "nt_01HZX5E6F7G8H9J0K1L2M3N4P5"
+            notificationType: "OVERDUE_NOTICE"
+            targetLoanId: "ln_01HZX1A2B3C4D5E6F7G8H9J0K1"
+            userNumber: "U000123"
+            requestedOn: "2026-09-03"
+            traceId: "b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6"
+
+  schemas:
+    CommonHeaders:
+      type: "object"
+      description: "すべてのイベントメッセージに付与する共通ヘッダ"
+      required: ["correlationId", "timestamp", "source", "eventType", "version"]
+      properties:
+        correlationId:
+          type: "string"
+          description: "リクエスト追跡 ID（API Gateway の trace_id またはバッチのジョブ実行 ID）"
+          examples: ["0af7651916cd43dd8448eb211c80319c"]
+        timestamp:
+          type: "string"
+          format: "date-time"
+          description: "イベント発生日時"
+          examples: ["2026-09-03T10:30:00+09:00"]
+        source:
+          type: "string"
+          description: "イベント発生元サービス（backend-api.notification / worker.reminder-batch / worker.overdue-batch / worker.notification-consumer）"
+          examples: ["backend-api.notification"]
+        eventType:
+          type: "string"
+          description: "イベント種別（チャネル名と同一）"
+          examples: ["notifications.return-notice-requested"]
+        version:
+          type: "string"
+          description: "メッセージスキーマバージョン"
+          examples: ["1.0"]
+    DlqHeaders:
+      type: "object"
+      description: "DLQ 退避時にワーカーが付与する退避ヘッダ（手動再処理の判断材料）"
+      required: ["attemptCount", "lastFailureReason", "lastFailedAt", "originalChannel"]
+      properties:
+        attemptCount:
+          type: "integer"
+          minimum: 1
+          description: "再配信を含む配信試行回数（上限 5 回超過で退避するため通常 6）"
+          examples: [6]
+        lastFailureReason:
+          type: "string"
+          description: "最終失敗理由（通知レコードの failureReason と同じコード体系）"
+          examples: ["MAIL_DELIVERY_REJECTED"]
+        lastFailedAt:
+          type: "string"
+          format: "date-time"
+          description: "最終失敗日時"
+          examples: ["2026-09-03T11:02:41+09:00"]
+        originalChannel:
+          type: "string"
+          description: "元チャネル名（手動再処理時の再投入先）"
+          examples: ["notifications.return-notice-requested"]
+    DlqMessageHeaders:
+      description: "DLQ 退避メッセージのヘッダ（共通ヘッダ + 退避ヘッダ）"
+      allOf:
+        - $ref: "#/components/schemas/CommonHeaders"
+        - $ref: "#/components/schemas/DlqHeaders"
+    NotificationType:
+      type: "string"
+      description: "通知種別: RETURN_NOTICE（返却通知）/ REMINDER（返却期限リマインド）/ OVERDUE_NOTICE（延滞督促）"
+      enum: ["RETURN_NOTICE", "REMINDER", "OVERDUE_NOTICE"]
+    ReturnNoticeRequested:
+      type: "object"
+      description: "返却通知メール配信要求のペイロード（UC: 返却通知を送信する / 予約を取り消す で同一）"
+      required: ["notificationId", "notificationType", "targetReservationId", "userNumber", "bookId", "requestedOn", "traceId"]
+      additionalProperties: false
+      properties:
+        notificationId:
+          type: "string"
+          description: "通知 ID（通知レコードの主キー。冪等消費のキー）"
+          examples: ["nt_01HZX3C4D5E6F7G8H9J0K1L2M3"]
+        notificationType:
+          type: "string"
+          description: "通知種別（常に RETURN_NOTICE）"
+          enum: ["RETURN_NOTICE"]
+        targetReservationId:
+          type: "string"
+          description: "対象予約 ID（NOTIFIED に遷移済み）"
+          examples: ["rs_01HZX2B3C4D5E6F7G8H9J0K1L2"]
+        userNumber:
+          type: "string"
+          description: "送信先利用者の利用者番号（ログ・監査突合用。送信先メールアドレスは通知レコードの recipient_email を使う）"
+          examples: ["U000456"]
+        bookId:
+          type: "string"
+          description: "返却された書籍の書籍 ID（メール本文のタイトル取得用）"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        requestedOn:
+          type: "string"
+          format: "date"
+          description: "送信要求日（通知レコードの一意キーの一部）"
+          examples: ["2026-09-03"]
+        traceId:
+          type: "string"
+          description: "発行元リクエストの trace_id"
+          examples: ["0af7651916cd43dd8448eb211c80319c"]
+    ReminderMailRequested:
+      type: "object"
+      description: "返却期限リマインドメール配信要求のペイロード（UC: リマインド対象を抽出する / リマインドを送信する で同一）"
+      required: ["notificationId", "notificationType", "targetLoanId", "userNumber", "requestedOn", "traceId"]
+      additionalProperties: false
+      properties:
+        notificationId:
+          type: "string"
+          description: "通知 ID（冪等消費のキー）"
+          examples: ["nt_01HZX4D5E6F7G8H9J0K1L2M3N4"]
+        notificationType:
+          type: "string"
+          description: "通知種別（常に REMINDER）"
+          enum: ["REMINDER"]
+        targetLoanId:
+          type: "string"
+          description: "対象貸出 ID（ON_LOAN かつ返却期限までリマインド日数以内）"
+          examples: ["ln_01HZX1A2B3C4D5E6F7G8H9J0K1"]
+        userNumber:
+          type: "string"
+          description: "送信先利用者の利用者番号"
+          examples: ["U000123"]
+        requestedOn:
+          type: "string"
+          format: "date"
+          description: "送信要求日（バッチ実行日）"
+          examples: ["2026-09-03"]
+        traceId:
+          type: "string"
+          description: "バッチのジョブ実行 ID"
+          examples: ["6d2c1b0a9f8e7d6c5b4a39281706f5e4"]
+    OverdueNoticeRequested:
+      type: "object"
+      description: "延滞督促メール配信要求のペイロード（UC: 延滞を判定する / 督促を送信する で同一）"
+      required: ["notificationId", "notificationType", "targetLoanId", "userNumber", "requestedOn", "traceId"]
+      additionalProperties: false
+      properties:
+        notificationId:
+          type: "string"
+          description: "通知 ID（冪等消費のキー）"
+          examples: ["nt_01HZX5E6F7G8H9J0K1L2M3N4P5"]
+        notificationType:
+          type: "string"
+          description: "通知種別（常に OVERDUE_NOTICE）"
+          enum: ["OVERDUE_NOTICE"]
+        targetLoanId:
+          type: "string"
+          description: "対象貸出 ID（OVERDUE に遷移済み）"
+          examples: ["ln_01HZX1A2B3C4D5E6F7G8H9J0K1"]
+        userNumber:
+          type: "string"
+          description: "送信先利用者の利用者番号"
+          examples: ["U000123"]
+        requestedOn:
+          type: "string"
+          format: "date"
+          description: "送信要求日（バッチ実行日）"
+          examples: ["2026-09-03"]
+        traceId:
+          type: "string"
+          description: "バッチのジョブ実行 ID"
+          examples: ["b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6"]

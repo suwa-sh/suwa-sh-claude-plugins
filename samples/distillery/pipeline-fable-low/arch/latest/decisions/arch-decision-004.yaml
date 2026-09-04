@@ -1,0 +1,41 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-004"
+title: "集約境界仮説: 書籍 / 利用者 / 貸出 / 貸出ポリシー設定 / 予約 / 通知 / 貸出統計の 7 集約（仮説・low 確定）"
+status: "approved"
+generated_at: "2026-09-03T03:51:01"
+context: |
+  各 BC の集約境界（aggregate root / member / invariants）を戦略段階の仮説として置く必要がある。
+  集約境界はトランザクション整合性の範囲を決めるドメイン判断であり、UC 単位の詳細解析（dist-spec）や実装（ddd-tactical-implementation）で確定するもので、
+  RDRA の情報・状態・条件からは仮説生成に留まる。
+  「返却を登録する」は貸出の状態・書籍の状態・予約の状態の 3 集約に同期波及し、「貸出を登録する」も貸出・書籍・予約に波及するため、集約をまたぐ更新が避けられない。
+  invariants は条件.tsv 14 件の禁止・必須・一意・範囲表現から機械抽出した。
+decision: |
+  7 集約仮説を置く。すべて confidence: low（schema 上限）で、仮説であることを note に明記する。
+  - AG-001 書籍（BC-001, root E-001）: ジャンルはマスタ参照で集約外
+  - AG-002 利用者（BC-002, root E-003）
+  - AG-003 貸出（BC-003, root E-004）: 貸出 1 件 = 書籍 1 冊 × 利用者 1 人で強整合範囲が完結
+  - AG-004 貸出ポリシー設定（BC-003, root E-005 貸出期間, member E-006 リマインド日数）
+  - AG-005 予約（BC-004, root E-007）
+  - AG-006 通知（BC-005, root E-008）: 追記型の記録で単独集約
+  - AG-007 貸出統計（BC-006, root E-009）: invariants なし。読み取りモデルとして扱う可能性が高い
+  invariants は条件.tsv から抽出した 16 件を採用する（DIST-018）。
+  越境更新（貸出登録・返却登録）は 1 館規模で同時更新競合が小さいため、UC 単位で単一 RDB トランザクションによる同期整合を仮採用する（DIST-017）。
+consequences:
+  positive:
+    - "dist-spec の BDD 条件と repository（集約 root 1:1）設計の起点として使える"
+    - "貸出 / 予約 / 書籍を別集約に保つことで、各 BC のモジュール境界と集約境界が一致する"
+  negative:
+    - "これは戦略段階の仮説であり、最終確定は dist-spec または ddd-tactical-implementation で行う。UC 解析の結果で root / member / invariants が変わり得る"
+    - "予約順位の繰り上げは同一書籍の予約集合にまたがる整合性であり、予約単独集約では順位の整合性が弱い"
+    - "AG-002 の閲覧範囲や AG-006 の重複防止は不変条件かアクセス制御 / 冪等性かの判断が分かれ、invariants の粒度が粗い"
+alternatives_considered:
+  - name: "書籍単位の「予約帳」を root にして予約を member 化する（Option B）"
+    reason_rejected: "予約順位の繰り上げが同一集約内で完結し順位の整合性は強くなるが、予約帳の肥大化と貸出 UC からの参照が複雑になる。dist-spec での再判定候補として残す（DIST-017）"
+  - name: "集約を跨ぐ更新を結果整合（ドメインイベント）にする（Option C）"
+    reason_rejected: "書籍の状態遷移が遅延すると貸出可否判定・予約可否判定の即時性が損なわれる。1 館規模では単一トランザクションで実用上問題なく、実装コスト +20% に見合わない"
+  - name: "invariants を追加する（重複予約禁止・貸出冊数上限など）（Option B）"
+    reason_rejected: "RDRA に記載が無い業務ルールを推測で追加しない。必要なら requirements スキルで RDRA に反映してから追記する（DIST-003 で貸出上限は未設定）"
+  - name: "戦略段階では invariants を空配列にする（Option C）"
+    reason_rejected: "条件.tsv 由来の 16 件は dist-spec の BDD 条件の起点として価値があり、空にすると起点が失われる"

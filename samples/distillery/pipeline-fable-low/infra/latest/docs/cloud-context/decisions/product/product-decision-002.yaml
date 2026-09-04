@@ -1,0 +1,46 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "product"
+artifact_id: "product-decision-002"
+title: "API エッジをロードバランサ + WAF で構成し、トークン検証をアプリケーション層に置く"
+status: "accepted"
+generated_at: "2026-09-03T04:07:39"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+inputs_ref:
+  - "product-library-management-canonical"
+
+decision:
+  context: "アーキテクチャ設計は tier-api-gateway に「トークン検証と粗粒度 RBAC」（SP: トークン検証と粗粒度 RBAC）として API Gateway でのトークン検証を求めている。一方でバックエンドは常駐コンテナであり、リクエスト課金型のマネージド API Gateway はベースライン負荷では割高になる"
+  conflict_type: "granularity"
+  options:
+    - id: "opt-alb-waf"
+      description: "Application Load Balancer + AWS WAF を入口とし、JWT 検証はバックエンドのミドルウェアで行う"
+      pros:
+        - "常駐コンテナと組み合わせたときのコスト効率が最も高い"
+        - "WAF のマネージドルールとレート制限で不正リクエスト遮断とレート制限の要件を満たす"
+        - "アクセスログを S3 へ全件出力できる"
+      cons:
+        - "トークン検証がエッジではなくアプリケーション層になり、無効トークンでもバックエンドまで到達する"
+    - id: "opt-apigw-jwt"
+      description: "Amazon API Gateway (HTTP API) の JWT オーソライザーでエッジ検証する"
+      pros:
+        - "アーキテクチャ設計の「トークン検証と粗粒度 RBAC」（SP: トークン検証と粗粒度 RBAC）に最も忠実"
+        - "無効トークンをバックエンド到達前に遮断できる"
+      cons:
+        - "リクエスト課金のため、ベースライン 10rps・日次バッチ由来の内部呼び出しを含めると ALB より割高"
+        - "WAF 連携とアクセスログの構成が ALB より複雑になる"
+    - id: "opt-alb-oidc"
+      description: "ALB の組み込み OIDC 認証アクションを使う"
+      pros:
+        - "エッジでのセッション確立が可能"
+        - "追加のコンピュートが不要"
+      cons:
+        - "SPA + API のトークンベース構成ではなく Cookie セッション前提となり、アーキテクチャ設計のトークン伝播方針と整合しない"
+  chosen_option: "opt-alb-waf"
+  rationale: "コスト方針 balanced と常駐コンテナという実行形態を前提にすると ALB + WAF が最も適合する。認可責務の分界は失われないよう、バックエンドの最外周ミドルウェアでトークン検証を行い、業務ロジックへ到達する前に拒否する構成とする。エッジでの遮断が失われる分は WAF のレート制限で緩和する"
+  risk_assessment: "無効トークンのリクエストがバックエンドのコンピュートを消費する。トークン検証失敗率が閾値を超えた場合に WAF のレート制限ルールを強化する運用とし、CloudWatch メトリクスフィルタで検証失敗数を監視する"
+  affected_elements:
+    - "api_edge"
+    - "application_runtime"
+  review_date: "2027-03-31"

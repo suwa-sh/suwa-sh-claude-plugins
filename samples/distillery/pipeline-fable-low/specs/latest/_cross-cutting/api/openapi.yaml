@@ -1,0 +1,3085 @@
+openapi: "3.1.0"
+info:
+  title: "Libro API"
+  version: "1.0.0"
+  summary: "図書館蔵書管理システム Libro の統合 REST API 仕様（全 27 UC 集約）"
+  description: |
+    図書館蔵書管理システム（brand: Libro）の Backend API を Contract First で定義する OpenAPI 3.1 仕様。
+    全 UC の `_api-summary.yaml` を集約し、`_review/api-conventions.md` の規約に揃えている。
+
+    ## 規約
+    - パスは `/api/v1/` プレフィックス、リソース名は複数形 kebab-case、JSON フィールドは camelCase。
+    - enum は英語 UPPER_SNAKE_CASE。description に RDRA の日本語表記を併記する。
+    - エラーは RFC 9457 `application/problem+json`（`type` / `title` / `status` / `detail` / `instance` + 拡張 `code` / `traceId`）。
+    - 一覧は `page`（1 始まり）/ `pageSize`（既定 20、上限 100）の offset ページネーション。レスポンスは `items[]` / `page` / `pageSize` / `totalCount`。
+    - 状態変更操作（POST / PUT / DELETE）は `Idempotency-Key` ヘッダで冪等化する（tier-frontend-staff SR-005 ダブルサブミット防止）。
+    - 楽観ロックはリクエストボディの `version` または `If-Match` ヘッダで行い、競合は 409 `OPTIMISTIC_LOCK_CONFLICT` を返す。
+    - 500 `INTERNAL_ERROR` は全 operation 共通の横断エラー（共通エラーハンドラが返す）であり、operation ごとの `responses` にも
+      UC 側 `_api-summary.yaml` の `errors` にも個別宣言しない。業務条件に紐づく 500（例: `POST /api/v1/loans` の
+      `LOAN_PERIOD_NOT_CONFIGURED`）だけを明示宣言する。
+    - `x-roles` と UC 側 `roles` は同じ語彙の 1 対 1 対応（STAFF=司書 / PATRON=利用者 / ANONYMOUS=匿名）で、
+      UC 側は単一トークンのリストのみを使う。「本人のみ」は roles ではなく `_api-summary.yaml` の `ownership: self` で表す。
+
+    ## 経路と認可
+    - 公開経路（利用者向け）: `books` / `genres` の参照、`reservations` の登録・参照・取消、`me` 配下。API Gateway が IdP 発行トークンを検証する。
+    - 館内経路（司書向け）: `users` / `loans` / `returns` / `notifications` / `reports`。館内ネットワークからのみ到達可能（SP-007）。
+    - 各操作の `x-roles` に許可ロール（STAFF=司書 / PATRON=利用者 / ANONYMOUS=匿名）を記載する。本人限定判定（PATRON はトークンの利用者番号と一致するデータのみ）は Backend API が行う（SP-011）。
+    - 連絡先マスク方針: 館内経路の一覧・登録系（`UserSummary` を返す `GET /loans` / `POST /loans` / `POST /loans/{loanId}/return` / `GET /returns/lookup`）は司書の窓口業務で本人確認に平文メールアドレスが必要なため平文固定とする。
+      照会系（`UserUsageProfile` / `RecipientSummary` / `NotificationLogItem`）は既定でマスクし、`reveal=true` のときのみ平文を返して監査ログに記録する（意図的な差）。
+    - 公開経路の全操作は API Gateway のレート制限対象であり 429 `TooManyRequests` を返しうる。館内経路にはレート制限を掛けない。
+  license:
+    name: "Proprietary"
+    url: "https://libro.example.com/license"
+  contact:
+    name: "Libro API Team"
+    email: "api@libro.example.com"
+servers:
+  - url: "https://api.libro.example.com"
+    description: "本番環境（プレースホルダ）。公開経路 / 館内経路は API Gateway が接続元で分離する"
+  - url: "https://api.stg.libro.example.com"
+    description: "ステージング環境（プレースホルダ）"
+  - url: "http://localhost:8080"
+    description: "ローカル開発環境"
+security:
+  - bearerAuth: []
+tags:
+  - name: "books"
+    description: "書籍（蔵書管理 BC）。検索・詳細・登録・編集・削除"
+  - name: "genres"
+    description: "ジャンル（蔵書管理 BC）。検索条件の選択肢"
+  - name: "loans"
+    description: "貸出（貸出管理 BC）。貸出可否照会・貸出登録・返却・延滞一覧"
+  - name: "reservations"
+    description: "予約（予約管理 BC）。予約可否照会・予約登録・予約詳細・取消・書籍別予約一覧"
+  - name: "notifications"
+    description: "通知（通知管理 BC）。返却通知の送信と送信記録"
+  - name: "me"
+    description: "本人限定の利用状況（利用者サービス）。トークンの利用者番号に紐づく貸出履歴・予約状況"
+  - name: "users"
+    description: "利用者（利用者管理 BC）。登録・編集・削除・一覧・利用状況照会"
+  - name: "reports"
+    description: "運営分析（運営分析 BC）。在庫状況一覧・人気書籍ランキング・期間別貸出統計"
+
+paths:
+  # ---------------------------------------------------------------- books
+  /api/v1/books:
+    get:
+      tags: ["books"]
+      operationId: "listBooks"
+      summary: "書籍を検索・一覧取得する"
+      description: |
+        検索条件種別（`searchType`）に応じたストラテジーで書籍を照合し、offset ページネーションで返す。
+        - `keyword`（既定）: タイトル・著者・ISBN・出版社を正規化した部分一致で横断検索
+        - `title` / `author` / `isbn`: 該当属性のみ照合（`isbn` は `q` のハイフンを除去した部分一致。DB はハイフンなしの正規形で保存する）
+        - `genre`: `genreId` と一致する書籍
+        `status` で書籍の状態による絞り込みも可能。匿名アクセス可（公開経路）。
+
+        UC: 書籍を検索する / 書籍一覧を参照する
+      security:
+        - {}
+        - bearerAuth: []
+      x-roles: ["STAFF", "PATRON", "ANONYMOUS"]
+      parameters:
+        - name: "searchType"
+          in: "query"
+          description: "検索条件種別: keyword（キーワード）/ title（タイトル）/ author（著者）/ isbn（ISBN）/ genre（ジャンル）。省略時 keyword"
+          schema:
+            $ref: "#/components/schemas/SearchType"
+        - name: "q"
+          in: "query"
+          description: "検索語。`searchType` が genre 以外のときに使用。前後空白は除去して正規化する"
+          schema:
+            type: "string"
+            maxLength: 200
+            examples: ["夏目漱石"]
+        - name: "genreId"
+          in: "query"
+          description: "ジャンル ID による絞り込み（`searchType=genre` のときは必須）"
+          schema:
+            type: "string"
+            examples: ["literature"]
+        - name: "status"
+          in: "query"
+          description: "書籍の状態による絞り込み"
+          schema:
+            $ref: "#/components/schemas/BookStatus"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: "検索結果（0 件のときも 200 で空の `items`）"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookPageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    post:
+      tags: ["books"]
+      operationId: "createBook"
+      summary: "書籍を登録する"
+      description: |
+        書籍を登録し、書籍 ID を採番する。登録直後の状態は AVAILABLE（在庫あり）。
+        媒体種別を省略した場合は PAPER（紙）。ELECTRONIC（電子）は登録のみ可能で貸出・予約は受け付けない（条件: 媒体種別判定）。
+
+        UC: 書籍を登録する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookRequest"
+      responses:
+        "201":
+          description: "登録完了。`Location` に登録した書籍の URL を返す"
+          headers:
+            Location:
+              description: "登録した書籍のリソース URL"
+              schema:
+                type: "string"
+                format: "uri-reference"
+                examples: ["/api/v1/books/bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/books/{bookId}:
+    parameters:
+      - $ref: "#/components/parameters/BookId"
+    get:
+      tags: ["books"]
+      operationId: "getBook"
+      summary: "書籍詳細と在庫状況を取得する"
+      description: |
+        書籍 ID で書籍の詳細と在庫状況（書籍の状態・予約待ち人数）を返す。
+        匿名アクセス可（公開経路）。`version` は司書経路のみ返却し、公開経路では省略する。
+
+        UC: 書籍詳細を参照する / 書籍を編集する
+      security:
+        - {}
+        - bearerAuth: []
+      x-roles: ["STAFF", "PATRON", "ANONYMOUS"]
+      responses:
+        "200":
+          description: "書籍詳細"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+    put:
+      tags: ["books"]
+      operationId: "updateBook"
+      summary: "書籍情報を更新する"
+      description: |
+        タイトル・著者・ISBN・出版社・ジャンル・媒体種別を更新する（全項目置換）。
+        `version` による楽観ロックを行い、競合時は 409 `OPTIMISTIC_LOCK_CONFLICT`。書籍の状態は本 API では変更しない。
+
+        UC: 書籍を編集する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBookRequest"
+      responses:
+        "200":
+          description: "更新後の書籍"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      tags: ["books"]
+      operationId: "deleteBook"
+      summary: "書籍を削除する"
+      description: |
+        在庫あり（AVAILABLE）の書籍のみ削除できる。貸出中・予約待ちの書籍は 409 `BOOK_NOT_DELETABLE`。
+        `If-Match` に `version` を指定した場合は楽観ロックを行う。
+
+        UC: 書籍を削除する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204":
+          description: "削除完了"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/books/{bookId}/reservation-eligibility:
+    parameters:
+      - $ref: "#/components/parameters/BookId"
+    get:
+      tags: ["reservations"]
+      operationId: "getReservationEligibility"
+      summary: "予約可否を照会する"
+      description: |
+        書籍の状態・媒体種別・自分の有効予約の有無・待ち人数から予約可否を判定して返す。
+        書籍が AVAILABLE（在庫あり）のときは予約できない（条件: 予約可否判定）。
+
+        UC: 予約を登録する
+      x-roles: ["PATRON", "STAFF"]
+      responses:
+        "200":
+          description: "予約可否"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationEligibilityResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/books/{bookId}/reservations:
+    parameters:
+      - $ref: "#/components/parameters/BookId"
+    get:
+      tags: ["reservations"]
+      operationId: "listBookReservations"
+      summary: "書籍別の予約一覧を取得する"
+      description: |
+        指定書籍の予約を予約順位順に返す。既定では有効予約（RESERVED / NOTIFIED）のみ。
+        `includeClosed=true` で取消・終了（CANCELLED / CLOSED）も含める。
+
+        UC: 予約一覧を参照する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/IncludeClosed"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: "予約一覧"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookReservationPageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --------------------------------------------------------------- genres
+  /api/v1/genres:
+    get:
+      tags: ["genres"]
+      operationId: "listGenres"
+      summary: "ジャンル一覧を取得する"
+      description: |
+        書籍登録・検索条件の選択肢となるジャンル一覧を返す（文学・社会科学・自然科学・技術・芸術・歴史・児童書・その他）。
+        匿名アクセス可（公開経路）。
+
+        UC: 書籍を検索する / 書籍一覧を参照する
+      security:
+        - {}
+        - bearerAuth: []
+      x-roles: ["STAFF", "PATRON", "ANONYMOUS"]
+      responses:
+        "200":
+          description: "ジャンル一覧"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenreListResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  # ---------------------------------------------------------------- loans
+  /api/v1/loans:
+    get:
+      tags: ["loans"]
+      operationId: "listLoans"
+      summary: "貸出一覧を取得する（延滞・督促状況）"
+      description: |
+        貸出を条件で絞り込んで返す。延滞一覧では `status=OVERDUE` と `include=latestNotice` を指定し、
+        各貸出の最新の督促送信記録と延滞日数を取得する。`summary` には延滞件数・督促失敗件数・送信待ち件数を返す。
+        `reveal=true` のとき `items[].latestNotice.recipientEmail` を開示し、データアクセス監査ログに記録する（NFR E.1.2.1 / E.6.1.1）。
+
+        UC: 延滞一覧を参照する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/Reveal"
+        - name: "status"
+          in: "query"
+          description: "貸出の状態による絞り込み"
+          schema:
+            $ref: "#/components/schemas/LoanStatus"
+        - name: "userNumber"
+          in: "query"
+          description: "利用者番号による絞り込み"
+          schema:
+            type: "string"
+            examples: ["U000123"]
+        - name: "include"
+          in: "query"
+          description: "追加で含める関連情報。`latestNotice` で最新の通知記録を各項目に含める"
+          schema:
+            type: "string"
+            description: "追加で含める関連情報: latestNotice（最新の通知記録）"
+            enum: ["latestNotice"]
+        - name: "sort"
+          in: "query"
+          description: "並び順: dueDate（返却期限昇順）/ overdueDays（延滞日数降順）/ lastNotice（最終督促日時降順）"
+          schema:
+            type: "string"
+            description: "並び順: dueDate（返却期限昇順）/ overdueDays（延滞日数降順）/ lastNotice（最終督促日時降順）"
+            enum: ["dueDate", "overdueDays", "lastNotice"]
+            default: "dueDate"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: "貸出一覧（延滞・督促状況つき）"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OverdueLoanListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: ["loans"]
+      operationId: "createLoan"
+      summary: "貸出を登録する"
+      description: |
+        利用者番号と書籍 ID で貸出を登録する。書籍を ON_LOAN（貸出中）に遷移させ、返却期限を「貸出日 + 貸出期間」で自動設定する。
+        貸出可否判定（条件: 貸出可否判定）に反する場合は 409 を返す:
+        - `BOOK_NOT_AVAILABLE`: 書籍が貸出中または予約待ち（予約順位 1 位の利用者を除く）
+        - `RESERVATION_PRIORITY_MISMATCH`: 予約待ち書籍を予約順位 1 位以外の利用者に貸し出そうとした
+        - `MEDIA_TYPE_NOT_LOANABLE`: 電子書籍は貸出対象外
+
+        UC: 貸出を登録する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLoanRequest"
+      responses:
+        "201":
+          description: "貸出登録完了"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/v1/loans/eligibility:
+    get:
+      tags: ["loans"]
+      operationId: "getLoanEligibility"
+      summary: "貸出可否を照会する"
+      description: |
+        利用者番号と書籍 ID から貸出可否を判定し、可能な場合は返却期限の予定日と貸出期間を返す。
+        貸出登録前の確認画面で使用する（判定結果と根拠を同時に示す）。
+
+        UC: 貸出を登録する
+      x-roles: ["STAFF"]
+      parameters:
+        - name: "userNumber"
+          in: "query"
+          required: true
+          description: "貸出先の利用者番号"
+          schema:
+            type: "string"
+            examples: ["U000123"]
+        - name: "bookId"
+          in: "query"
+          required: true
+          description: "貸し出す書籍の書籍 ID"
+          schema:
+            type: "string"
+            examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+      responses:
+        "200":
+          description: "貸出可否"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanEligibilityResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/loans/{loanId}/return:
+    parameters:
+      - $ref: "#/components/parameters/LoanId"
+    post:
+      tags: ["loans"]
+      operationId: "returnLoan"
+      summary: "返却を登録する"
+      description: |
+        貸出を RETURNED（返却済み）に遷移させる。ON_LOAN / OVERDUE のいずれからも遷移可能。
+        返却後の書籍状態は、予約中の予約が 1 件以上あれば RESERVED（予約待ち）、なければ AVAILABLE（在庫あり）（条件: 返却後の書籍状態判定）。
+        既に返却済みの貸出は 409 `LOAN_ALREADY_RETURNED`。返却通知の送信は別 API（`POST /api/v1/notifications/return-notices`）。
+
+        UC: 返却を登録する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        description: "現時点で入力項目はない（将来拡張用の空オブジェクト）"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReturnLoanRequest"
+      responses:
+        "200":
+          description: "返却登録完了"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/loans/{loanId}/return-notice:
+    parameters:
+      - $ref: "#/components/parameters/LoanId"
+    get:
+      tags: ["notifications"]
+      operationId: "getReturnNoticePreview"
+      summary: "返却通知の送信先と送信可否をプレビューする"
+      description: |
+        返却された貸出に対する返却通知の送信先（有効予約（RESERVED / NOTIFIED）のうち予約順位 1 位の利用者）・送信可否・書籍の予約一覧・通知記録を返す。
+        連絡先は既定でマスクし、`reveal=true` のときのみ `recipient.email` を開示して監査ログに記録する（NFR E.1.2.1 / E.6.1.1）。
+
+        UC: 返却通知を送信する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/Reveal"
+      responses:
+        "200":
+          description: "返却通知プレビュー"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnNoticePreviewResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/loans/{loanId}/notifications:
+    parameters:
+      - $ref: "#/components/parameters/LoanId"
+    get:
+      tags: ["loans", "notifications"]
+      operationId: "listLoanNotifications"
+      summary: "貸出に紐づく通知の送信記録を取得する"
+      description: |
+        貸出に紐づく通知（REMINDER / OVERDUE_NOTICE）の送信記録を新しい順に返す。延滞一覧から督促の送信状況を確認するために使用する。
+        `reveal=true` のとき `items[].recipientEmail` を開示し、データアクセス監査ログに記録する（NFR E.1.2.1 / E.6.1.1）。
+
+        UC: 延滞一覧を参照する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/Reveal"
+      responses:
+        "200":
+          description: "通知送信記録"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationLogResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------- returns
+  /api/v1/returns/lookup:
+    get:
+      tags: ["loans"]
+      operationId: "lookupReturn"
+      summary: "返却対象を照会する"
+      description: |
+        書籍 ID から貸出中 / 延滞の貸出を特定し、返却後の書籍状態（AVAILABLE / RESERVED）・予約件数・延滞日数を返す。
+        書籍が貸出中でない場合は 409 `BOOK_NOT_ON_LOAN`。
+
+        UC: 返却を登録する
+      x-roles: ["STAFF"]
+      parameters:
+        - name: "bookId"
+          in: "query"
+          required: true
+          description: "返却される書籍の書籍 ID"
+          schema:
+            type: "string"
+            examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+      responses:
+        "200":
+          description: "返却対象"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnLookupResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  # -------------------------------------------------------- notifications
+  /api/v1/notifications/return-notices:
+    post:
+      tags: ["notifications"]
+      operationId: "sendReturnNotice"
+      summary: "返却通知を送信する"
+      description: |
+        返却済み貸出の書籍に有効予約（状態『予約中』RESERVED または『通知済み』NOTIFIED）がある場合、そのうち予約順位 1 位の利用者を送信先として通知レコード（RETURN_NOTICE / PENDING）を作成し、
+        予約を NOTIFIED（通知済み）に遷移させ、MQ チャネル `notifications.return-notice-requested` へ配信要求を発行する（SP-013 メール送信の非同期化）。
+        API 応答はメール配信サービスの結果を待たず 202 を返す。送信結果はワーカーが通知レコードに反映する。
+        - 有効予約がない場合: 409 `NO_RESERVATION_TO_NOTIFY`
+        - 既に送信済み: 409 `RETURN_NOTICE_ALREADY_SENT`
+        - 貸出が返却済みでない: 409 `LOAN_NOT_RETURNED`
+
+        UC: 返却通知を送信する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendReturnNoticeRequest"
+      responses:
+        "202":
+          description: "送信要求を受理した（送信結果は PENDING）"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnNoticeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  # ----------------------------------------------------------- reservations
+  /api/v1/reservations:
+    post:
+      tags: ["reservations"]
+      operationId: "createReservation"
+      summary: "予約を登録する"
+      description: |
+        書籍に対する予約を受付順の予約順位つきで RESERVED（予約中）として作成する。予約主体はトークンの利用者番号。
+        書籍が ON_LOAN / RESERVED のときのみ受け付け、AVAILABLE のときは 409 `BOOK_AVAILABLE_NOT_RESERVABLE`（条件: 予約可否判定）。
+        同一書籍に有効予約がある場合は 409 `RESERVATION_ALREADY_EXISTS`、電子書籍は 409 `MEDIA_TYPE_NOT_RESERVABLE`。
+
+        UC: 予約を登録する
+      x-roles: ["PATRON"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReservationRequest"
+      responses:
+        "201":
+          description: "予約登録完了"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/reservations/{reservationId}:
+    parameters:
+      - $ref: "#/components/parameters/ReservationId"
+    get:
+      tags: ["reservations"]
+      operationId: "getReservation"
+      summary: "予約詳細を参照する"
+      description: |
+        予約の詳細（順位・待ち人数・状態・取消可否）を返す。利用者は本人の予約のみ参照でき、他人の予約は 403（条件: 利用状況閲覧範囲判定）。
+
+        UC: 予約を取り消す
+      x-roles: ["PATRON", "STAFF"]
+      responses:
+        "200":
+          description: "予約詳細"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/reservations/{reservationId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/ReservationId"
+    post:
+      tags: ["reservations"]
+      operationId: "cancelReservation"
+      summary: "予約を取り消す"
+      description: |
+        予約を CANCELLED（取消）に遷移させ、後続の予約中・通知済みの予約の順位を繰り上げる（条件: 予約順位決定）。
+        取消対象が NOTIFIED かつ書籍が RESERVED のとき、次順位の予約中があればその利用者へ返却通知の配信要求を発行し（`nextNotified`）、
+        次順位がなければ書籍を AVAILABLE に戻す。既に取消・終了済みの予約は 409 `RESERVATION_NOT_CANCELLABLE`。本人以外は 403。
+
+        UC: 予約を取り消す
+      x-roles: ["PATRON"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        description: "現時点で入力項目はない（将来拡張用の空オブジェクト）"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelReservationRequest"
+      responses:
+        "200":
+          description: "取消完了"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationCancelResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  # ------------------------------------------------------------------ me
+  /api/v1/me/loans:
+    get:
+      tags: ["me"]
+      operationId: "listMyLoans"
+      summary: "自分の貸出履歴を取得する"
+      description: |
+        トークンの利用者番号に紐づく貸出を返す（本人限定）。`scope` で現在の貸出（ON_LOAN / OVERDUE）と履歴（RETURNED）を切り替える。
+        各項目に返却期限までの残日数と表示区分（`dueStatus`）を含め、`remindDays` はリマインド日数の業務パラメータ。
+
+        UC: 貸出履歴を参照する
+      x-roles: ["PATRON"]
+      parameters:
+        - name: "scope"
+          in: "query"
+          description: "取得範囲: current（貸出中・延滞）/ history（返却済み）/ all（すべて）。省略時 current"
+          schema:
+            type: "string"
+            description: "取得範囲: current（貸出中・延滞）/ history（返却済み）/ all（すべて）"
+            enum: ["current", "history", "all"]
+            default: "current"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: "自分の貸出一覧"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyLoanPageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/me/reservations:
+    get:
+      tags: ["me"]
+      operationId: "listMyReservations"
+      summary: "自分の予約状況を取得する"
+      description: |
+        トークンの利用者番号に紐づく予約を返す（本人限定）。予約順位・待ち人数・状態・取消可否を含む。
+        既定は有効予約のみ。`includeClosed=true` で取消・終了も含める。
+
+        UC: 予約状況を参照する
+      x-roles: ["PATRON"]
+      parameters:
+        - $ref: "#/components/parameters/IncludeClosed"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: "自分の予約一覧"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyReservationPageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  # ---------------------------------------------------------------- users
+  /api/v1/users:
+    get:
+      tags: ["users"]
+      operationId: "listUsers"
+      summary: "利用者一覧を取得する"
+      description: |
+        利用者を offset ページネーションで返す。`q` は利用者番号（完全一致）または氏名（部分一致）の単一条件。
+
+        UC: 利用者一覧を参照する
+      x-roles: ["STAFF"]
+      parameters:
+        - name: "q"
+          in: "query"
+          description: "利用者番号（完全一致）または氏名（部分一致）"
+          schema:
+            type: "string"
+            maxLength: 100
+            examples: ["山田"]
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: "利用者一覧"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: ["users"]
+      operationId: "createUser"
+      summary: "利用者を登録する"
+      description: |
+        利用者を登録し、一意の利用者番号を採番する。`userType` 省略時は PATRON（利用者）。
+
+        UC: 利用者を登録する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: "登録完了"
+          headers:
+            Location:
+              description: "登録した利用者のリソース URL"
+              schema:
+                type: "string"
+                format: "uri-reference"
+                examples: ["/api/v1/users/U000123"]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/users/{userNumber}:
+    parameters:
+      - $ref: "#/components/parameters/UserNumber"
+    get:
+      tags: ["users"]
+      operationId: "getUser"
+      summary: "利用者を取得する"
+      description: |
+        利用者番号で利用者を返す。`include=activeCounts` で有効な貸出件数・予約件数（削除可否の判断材料）を含める。
+
+        UC: 利用者を編集する / 利用者を削除する
+      x-roles: ["STAFF"]
+      parameters:
+        - name: "include"
+          in: "query"
+          description: "追加で含める情報。`activeCounts` で `activeLoanCount` / `activeReservationCount` を返す"
+          schema:
+            type: "string"
+            description: "追加で含める情報: activeCounts（有効な貸出件数・予約件数）"
+            enum: ["activeCounts"]
+      responses:
+        "200":
+          description: "利用者"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: ["users"]
+      operationId: "updateUser"
+      summary: "利用者情報を更新する"
+      description: |
+        氏名・連絡先（メールアドレス・電話番号・住所）を更新する。`version` による楽観ロックを行い、競合時は 409 `OPTIMISTIC_LOCK_CONFLICT`。
+        利用者区分は本 API では変更しない。
+
+        UC: 利用者を編集する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: "更新後の利用者"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+    delete:
+      tags: ["users"]
+      operationId: "deleteUser"
+      summary: "利用者を削除する"
+      description: |
+        利用者を削除する。貸出中・延滞の貸出、または予約中・通知済みの予約がある場合は 409 `USER_NOT_DELETABLE`
+        （`UserNotDeletableProblemDetails` に理由と件数を含む）。`If-Match` に `version` を指定した場合は楽観ロックを行う。
+
+        UC: 利用者を削除する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204":
+          description: "削除完了"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: |
+            削除不可（有効な貸出・予約あり）または楽観ロック競合。
+            `code` で判別する（discriminator 代わり）。`code = USER_NOT_DELETABLE` のときだけ
+            `reasons` / `activeLoanCount` / `activeReservationCount` を持つ `UserNotDeletableProblemDetails`、
+            それ以外（SELF_DELETE_NOT_ALLOWED / OPTIMISTIC_LOCK_CONFLICT / IDEMPOTENCY_KEY_CONFLICT）は `ProblemDetails`。
+          content:
+            application/problem+json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ProblemDetails"
+                  - $ref: "#/components/schemas/UserNotDeletableProblemDetails"
+
+  /api/v1/users/{userNumber}/usage:
+    parameters:
+      - $ref: "#/components/parameters/UserNumber"
+    get:
+      tags: ["users"]
+      operationId: "getUserUsage"
+      summary: "利用者の利用状況を照会する"
+      description: |
+        司書が利用者番号を指定して貸出・予約の状況を照会する（条件: 利用状況閲覧範囲判定）。
+        連絡先は既定でマスクし、`reveal=true` のときのみ `user.email` / `user.phone` / `user.address` を開示して監査ログに記録する。
+
+        UC: 利用者の利用状況を参照する
+      x-roles: ["STAFF"]
+      parameters:
+        - name: "loanScope"
+          in: "query"
+          description: "貸出の取得範囲: current（貸出中・延滞）/ history（返却済み）/ all（すべて）。省略時 current"
+          schema:
+            type: "string"
+            description: "貸出の取得範囲: current（貸出中・延滞）/ history（返却済み）/ all（すべて）"
+            enum: ["current", "history", "all"]
+            default: "current"
+        - name: "includeClosedReservations"
+          in: "query"
+          description: "取消・終了した予約も含める"
+          schema:
+            type: "boolean"
+            default: false
+        - $ref: "#/components/parameters/Reveal"
+      responses:
+        "200":
+          description: "利用状況"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserUsageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # -------------------------------------------------------------- reports
+  /api/v1/reports/inventory:
+    get:
+      tags: ["reports"]
+      operationId: "getInventoryReport"
+      summary: "在庫状況一覧を取得する"
+      description: |
+        書籍の状態別件数（`summary`）と、状態・ジャンルで絞り込んだ書籍一覧（ページネーション）を返す（条件: 在庫状況判定）。
+        集計要求から 10 秒以内に応答する（SP-006）。
+
+        UC: 在庫状況一覧を参照する
+      x-roles: ["STAFF"]
+      parameters:
+        - name: "status"
+          in: "query"
+          description: "書籍の状態による絞り込み"
+          schema:
+            $ref: "#/components/schemas/BookStatus"
+        - name: "genreId"
+          in: "query"
+          description: "ジャンル ID による絞り込み"
+          schema:
+            type: "string"
+            examples: ["literature"]
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: "在庫状況"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/reports/popular-books:
+    get:
+      tags: ["reports"]
+      operationId: "getPopularBooksReport"
+      summary: "人気書籍ランキングを取得する"
+      description: |
+        指定期間内の貸出回数を書籍ごとに集計し、多い順に順位を付与して上位 `limit` 件を返す（条件: 人気書籍ランキング判定 / 集計期間判定）。
+        `from` > `to` は 400 `INVALID_PERIOD_RANGE`。
+
+        UC: 人気書籍ランキングを参照する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/PeriodType"
+        - $ref: "#/components/parameters/PeriodFrom"
+        - $ref: "#/components/parameters/PeriodTo"
+        - name: "limit"
+          in: "query"
+          description: "取得する上位件数"
+          schema:
+            type: "integer"
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: "人気書籍ランキング"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PopularBooksResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/reports/loan-statistics:
+    get:
+      tags: ["reports"]
+      operationId: "getLoanStatisticsReport"
+      summary: "期間別貸出統計を取得する"
+      description: |
+        集計期間種別（DAY / MONTH / YEAR）と期間を指定し、粒度ごとの貸出件数の時系列（`series`）と合計・前期間合計を返す（条件: 集計期間判定）。
+        `from` > `to` は 400 `INVALID_PERIOD_RANGE`。
+
+        UC: 期間別貸出統計を参照する
+      x-roles: ["STAFF"]
+      parameters:
+        - $ref: "#/components/parameters/PeriodType"
+        - $ref: "#/components/parameters/PeriodFrom"
+        - $ref: "#/components/parameters/PeriodTo"
+      responses:
+        "200":
+          description: "期間別貸出統計"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanStatisticsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: "http"
+      scheme: "bearer"
+      bearerFormat: "JWT"
+      description: |
+        IdP（OAuth2 / OIDC）が発行するアクセストークン。クレームに主体識別子（利用者番号 `sub`）と利用者区分（`userType`: STAFF / PATRON）を含み、
+        API Gateway が署名検証と経路単位の粗粒度 RBAC を、Backend API が本人限定などの細粒度判定を行う。
+
+  parameters:
+    Page:
+      name: "page"
+      in: "query"
+      description: "ページ番号（1 始まり）"
+      schema:
+        type: "integer"
+        minimum: 1
+        default: 1
+    PageSize:
+      name: "pageSize"
+      in: "query"
+      description: "1 ページの件数（既定 20、上限 100）"
+      schema:
+        type: "integer"
+        minimum: 1
+        maximum: 100
+        default: 20
+    IncludeClosed:
+      name: "includeClosed"
+      in: "query"
+      description: "取消（CANCELLED）・終了（CLOSED）の予約も含める"
+      schema:
+        type: "boolean"
+        default: false
+    Reveal:
+      name: "reveal"
+      in: "query"
+      description: "true のとき、マスクされた連絡先を開示する。開示はデータアクセス監査ログに記録する（NFR E.1.2.1 / E.6.1.1）"
+      schema:
+        type: "boolean"
+        default: false
+    PeriodType:
+      name: "periodType"
+      in: "query"
+      required: true
+      description: "集計期間種別"
+      schema:
+        $ref: "#/components/schemas/PeriodType"
+    PeriodFrom:
+      name: "from"
+      in: "query"
+      required: true
+      description: "集計対象期間の開始日（含む）"
+      schema:
+        type: "string"
+        format: "date"
+        examples: ["2026-08-01"]
+    PeriodTo:
+      name: "to"
+      in: "query"
+      required: true
+      description: "集計対象期間の終了日（含む）。`from` 以降であること"
+      schema:
+        type: "string"
+        format: "date"
+        examples: ["2026-08-31"]
+    BookId:
+      name: "bookId"
+      in: "path"
+      required: true
+      description: "書籍 ID"
+      schema:
+        type: "string"
+        examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+    UserNumber:
+      name: "userNumber"
+      in: "path"
+      required: true
+      description: "利用者番号"
+      schema:
+        type: "string"
+        examples: ["U000123"]
+    LoanId:
+      name: "loanId"
+      in: "path"
+      required: true
+      description: "貸出 ID"
+      schema:
+        type: "string"
+        examples: ["ln_01HZX1A2B3C4D5E6F7G8H9J0K1"]
+    ReservationId:
+      name: "reservationId"
+      in: "path"
+      required: true
+      description: "予約 ID"
+      schema:
+        type: "string"
+        examples: ["rs_01HZX2B3C4D5E6F7G8H9J0K1L2"]
+    IdempotencyKey:
+      name: "Idempotency-Key"
+      in: "header"
+      required: true
+      description: |
+        クライアントが生成する冪等キー（UUID v4 推奨）。同一キーの再送には初回と同じ結果を返し、状態変更を重複させない。
+        保持期間は 24 時間。同一キーで異なるリクエストボディを送った場合、および同一キーの処理が進行中の場合は 409 `IDEMPOTENCY_KEY_CONFLICT`
+      schema:
+        type: "string"
+        format: "uuid"
+        examples: ["6f1c2a3e-8b4d-4c5e-9f60-1a2b3c4d5e6f"]
+    IfMatch:
+      name: "If-Match"
+      in: "header"
+      required: false
+      description: "楽観ロック用。対象リソースの `version` を指定する。不一致は 409 `OPTIMISTIC_LOCK_CONFLICT`"
+      schema:
+        type: "string"
+        examples: ["\"3\""]
+
+  responses:
+    BadRequest:
+      description: "入力不正（形式エラー・必須欠落・期間指定の不整合など）"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ValidationProblemDetails"
+          examples:
+            validation:
+              summary: "クエリ不正"
+              value:
+                type: "https://api.libro.example.com/problems/validation-error"
+                title: "Bad Request"
+                status: 400
+                detail: "pageSize は 1〜100 の整数を指定してください"
+                instance: "/api/v1/books?pageSize=500"
+                code: "VALIDATION_ERROR"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+                errors:
+                  - field: "pageSize"
+                    message: "must be <= 100"
+    Unauthorized:
+      description: "未認証（トークン欠落・失効・署名不正）"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            unauthenticated:
+              value:
+                type: "https://api.libro.example.com/problems/unauthenticated"
+                title: "Unauthorized"
+                status: 401
+                code: "UNAUTHENTICATED"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+    Forbidden:
+      description: "権限なし（ロール不一致・本人以外のデータ参照）"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            forbidden:
+              value:
+                type: "https://api.libro.example.com/problems/forbidden"
+                title: "Forbidden"
+                status: 403
+                detail: "この操作には司書権限が必要です"
+                code: "FORBIDDEN"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+    NotFound:
+      description: "リソース不在"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            bookNotFound:
+              value:
+                type: "https://api.libro.example.com/problems/not-found"
+                title: "Not Found"
+                status: 404
+                detail: "書籍 bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9 は存在しません"
+                instance: "/api/v1/books/bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"
+                code: "BOOK_NOT_FOUND"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+    Conflict:
+      description: |
+        業務ルール違反または楽観ロック競合。`code` で理由を判別する。
+        例: BOOK_NOT_AVAILABLE / RESERVATION_PRIORITY_MISMATCH / MEDIA_TYPE_NOT_LOANABLE / BOOK_NOT_DELETABLE / BOOK_NOT_ON_LOAN /
+        LOAN_ALREADY_RETURNED / NO_RESERVATION_TO_NOTIFY / RETURN_NOTICE_ALREADY_SENT / LOAN_NOT_RETURNED /
+        BOOK_AVAILABLE_NOT_RESERVABLE / RESERVATION_ALREADY_EXISTS / MEDIA_TYPE_NOT_RESERVABLE / RESERVATION_NOT_CANCELLABLE /
+        USER_NOT_DELETABLE / SELF_DELETE_NOT_ALLOWED / MEDIA_TYPE_CHANGE_NOT_ALLOWED / OPTIMISTIC_LOCK_CONFLICT /
+        CONCURRENT_UPDATE / IDEMPOTENCY_KEY_CONFLICT
+        （値の正本は `ProblemDetails.code` の enum）
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            bookNotAvailable:
+              summary: "貸出不可"
+              value:
+                type: "https://api.libro.example.com/problems/book-not-available"
+                title: "Conflict"
+                status: 409
+                detail: "貸出できません: この書籍は貸出中です"
+                instance: "/api/v1/loans"
+                code: "BOOK_NOT_AVAILABLE"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+            optimisticLock:
+              summary: "楽観ロック競合"
+              value:
+                type: "https://api.libro.example.com/problems/optimistic-lock-conflict"
+                title: "Conflict"
+                status: 409
+                detail: "他の司書が先に更新しました。最新の内容を再取得してください"
+                code: "OPTIMISTIC_LOCK_CONFLICT"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+    UnprocessableEntity:
+      description: "検証エラー（項目単位のエラーを `errors` に列挙）"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ValidationProblemDetails"
+          examples:
+            validation:
+              value:
+                type: "https://api.libro.example.com/problems/validation-error"
+                title: "Unprocessable Entity"
+                status: 422
+                detail: "入力内容を確認してください"
+                code: "VALIDATION_ERROR"
+                traceId: "0af7651916cd43dd8448eb211c80319c"
+                errors:
+                  - field: "isbn"
+                    message: "ISBN-10 または ISBN-13 の形式で入力してください"
+                  - field: "genreId"
+                    message: "存在しないジャンルです"
+    TooManyRequests:
+      description: "レート制限超過（公開経路。API Gateway が返す）"
+      headers:
+        Retry-After:
+          description: "再試行までの秒数"
+          schema:
+            type: "integer"
+            examples: [30]
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    InternalServerError:
+      description: "サーバ内部エラー（`traceId` で問い合わせる）"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+  schemas:
+    # ------------------------------------------------------------- enums
+    BookStatus:
+      type: "string"
+      description: "書籍の状態: AVAILABLE（在庫あり）/ ON_LOAN（貸出中）/ RESERVED（予約待ち）"
+      enum: ["AVAILABLE", "ON_LOAN", "RESERVED"]
+      examples: ["AVAILABLE"]
+    MediaType:
+      type: "string"
+      description: "媒体種別: PAPER（紙）/ ELECTRONIC（電子）。初期リリースは紙のみ貸出・予約対象"
+      enum: ["PAPER", "ELECTRONIC"]
+      examples: ["PAPER"]
+    UserType:
+      type: "string"
+      description: "利用者区分: PATRON（利用者）/ STAFF（司書）"
+      enum: ["PATRON", "STAFF"]
+      examples: ["PATRON"]
+    LoanStatus:
+      type: "string"
+      description: "貸出の状態: ON_LOAN（貸出中）/ OVERDUE（延滞）/ RETURNED（返却済み）"
+      enum: ["ON_LOAN", "OVERDUE", "RETURNED"]
+      examples: ["ON_LOAN"]
+    ReservationStatus:
+      type: "string"
+      description: "予約の状態: RESERVED（予約中）/ NOTIFIED（通知済み）/ CANCELLED（取消）/ CLOSED（終了）"
+      enum: ["RESERVED", "NOTIFIED", "CANCELLED", "CLOSED"]
+      examples: ["RESERVED"]
+    NotificationType:
+      type: "string"
+      description: "通知種別: RETURN_NOTICE（返却通知）/ REMINDER（返却期限リマインド）/ OVERDUE_NOTICE（延滞督促）"
+      enum: ["RETURN_NOTICE", "REMINDER", "OVERDUE_NOTICE"]
+      examples: ["RETURN_NOTICE"]
+    SendResult:
+      type: "string"
+      description: "送信結果: PENDING（送信待ち）/ SUCCEEDED（成功）/ FAILED（失敗）/ SKIPPED（スキップ）"
+      enum: ["PENDING", "SUCCEEDED", "FAILED", "SKIPPED"]
+      examples: ["SUCCEEDED"]
+    PeriodType:
+      type: "string"
+      description: "集計期間種別: DAY（日）/ MONTH（月）/ YEAR（年）"
+      enum: ["DAY", "MONTH", "YEAR"]
+      examples: ["MONTH"]
+    SearchType:
+      type: "string"
+      description: "検索条件種別: keyword（キーワード）/ title（タイトル）/ author（著者）/ isbn（ISBN）/ genre（ジャンル）"
+      enum: ["keyword", "title", "author", "isbn", "genre"]
+      default: "keyword"
+    DueStatus:
+      type: "string"
+      description: "返却期限の表示区分: OK（余裕あり）/ SOON（リマインド日数以内）/ OVERDUE（期限超過）/ RETURNED（返却済み）"
+      enum: ["OK", "SOON", "OVERDUE", "RETURNED"]
+      examples: ["SOON"]
+
+    # ---------------------------------------------------------- problems
+    ProblemDetails:
+      type: "object"
+      description: "RFC 9457 Problem Details + 拡張（`code` / `traceId`）"
+      required: ["type", "title", "status", "code"]
+      properties:
+        type:
+          type: "string"
+          format: "uri"
+          description: "問題種別を識別する URI"
+          examples: ["https://api.libro.example.com/problems/not-found"]
+        title:
+          type: "string"
+          description: "問題種別の短い要約（HTTP reason phrase 相当）"
+          examples: ["Not Found"]
+        status:
+          type: "integer"
+          description: "HTTP ステータスコード"
+          minimum: 400
+          maximum: 599
+          examples: [404]
+        detail:
+          type: "string"
+          description: "この発生に固有の説明（画面表示可能な日本語）"
+          examples: ["書籍 bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9 は存在しません"]
+        instance:
+          type: "string"
+          format: "uri-reference"
+          description: "問題が発生したリクエストの URI"
+          examples: ["/api/v1/books/bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        code:
+          type: "string"
+          description: |
+            業務エラーコード（UPPER_SNAKE_CASE）。本 enum が業務エラーコードの正本であり、
+            UC 側 `_api-summary.yaml` の `error_codes` / `errors` はここに列挙された値だけを使う。
+            - BAD_REQUEST: リクエストの形式不正（400）。JSON 構文不正・必須ヘッダ欠落（Idempotency-Key）・
+              `If-Match` の形式不正など、項目単位の検証に到達する前に落ちるもの。項目単位の入力値エラーは VALIDATION_ERROR を使う
+            - VALIDATION_ERROR: 入力検証エラー（400 / 422）
+            - UNAUTHENTICATED: 未認証（401）
+            - FORBIDDEN: 権限不足（403）
+            - IDEMPOTENCY_KEY_CONFLICT: 同一 Idempotency-Key で異なるリクエスト本文、または同一キーの処理が進行中（409）
+            - OPTIMISTIC_LOCK_CONFLICT: 楽観ロック競合（409。version 不一致）
+            - CONCURRENT_UPDATE: 同時更新の競合（409）。貸出・予約系で version 不一致、
+              または予約順位の採番が一意制約に違反して再試行が必要な場合に使う
+            - RATE_LIMITED: レート制限超過（429）
+            - INTERNAL_ERROR: サーバ内部エラー（500）
+            - BOOK_NOT_FOUND / GENRE_NOT_FOUND / USER_NOT_FOUND / LOAN_NOT_FOUND / RESERVATION_NOT_FOUND: 対象が存在しない（404）
+            - BOOK_NOT_DELETABLE: 貸出中・予約中の書籍は削除できない（409）
+            - BOOK_NOT_AVAILABLE: 書籍が貸出可能状態でない（409）
+            - BOOK_NOT_ON_LOAN: 書籍が貸出中でない（409）
+            - BOOK_AVAILABLE_NOT_RESERVABLE: 貸出可能な書籍は予約できない（409）
+            - MEDIA_TYPE_NOT_LOANABLE / MEDIA_TYPE_NOT_RESERVABLE: 媒体種別が貸出・予約の対象外（409）
+            - MEDIA_TYPE_CHANGE_NOT_ALLOWED: 貸出・予約が存在する書籍の媒体種別は変更できない（409）
+            - USER_NOT_DELETABLE: 貸出中・予約中の利用者は削除できない（409）
+            - SELF_DELETE_NOT_ALLOWED: 自分自身は削除できない（409）
+            - LOAN_ALREADY_RETURNED: 貸出が既に返却済み（409）
+            - LOAN_NOT_RETURNED: 貸出が未返却（409）
+            - LOAN_PERIOD_NOT_CONFIGURED: 貸出期間の設定が未登録（409）
+            - RESERVATION_ALREADY_EXISTS: 同一利用者・同一書籍の有効な予約が既に存在する（409）
+            - RESERVATION_NOT_CANCELLABLE: 予約が取消可能な状態でない（409）
+            - RESERVATION_PRIORITY_MISMATCH: 予約の順位が繰り上げ対象と一致しない（409）
+            - NO_RESERVATION_TO_NOTIFY: 通知対象の予約が存在しない（409）
+            - RETURN_NOTICE_ALREADY_SENT: 返却通知が送信済み（409）
+            - INVALID_PERIOD_RANGE: 期間指定が不正（400）
+          enum:
+            - "BAD_REQUEST"
+            - "VALIDATION_ERROR"
+            - "UNAUTHENTICATED"
+            - "FORBIDDEN"
+            - "IDEMPOTENCY_KEY_CONFLICT"
+            - "OPTIMISTIC_LOCK_CONFLICT"
+            - "CONCURRENT_UPDATE"
+            - "RATE_LIMITED"
+            - "INTERNAL_ERROR"
+            - "BOOK_NOT_FOUND"
+            - "GENRE_NOT_FOUND"
+            - "USER_NOT_FOUND"
+            - "LOAN_NOT_FOUND"
+            - "RESERVATION_NOT_FOUND"
+            - "BOOK_NOT_DELETABLE"
+            - "BOOK_NOT_AVAILABLE"
+            - "BOOK_NOT_ON_LOAN"
+            - "BOOK_AVAILABLE_NOT_RESERVABLE"
+            - "MEDIA_TYPE_NOT_LOANABLE"
+            - "MEDIA_TYPE_NOT_RESERVABLE"
+            - "MEDIA_TYPE_CHANGE_NOT_ALLOWED"
+            - "USER_NOT_DELETABLE"
+            - "SELF_DELETE_NOT_ALLOWED"
+            - "LOAN_ALREADY_RETURNED"
+            - "LOAN_NOT_RETURNED"
+            - "LOAN_PERIOD_NOT_CONFIGURED"
+            - "RESERVATION_ALREADY_EXISTS"
+            - "RESERVATION_NOT_CANCELLABLE"
+            - "RESERVATION_PRIORITY_MISMATCH"
+            - "NO_RESERVATION_TO_NOTIFY"
+            - "RETURN_NOTICE_ALREADY_SENT"
+            - "INVALID_PERIOD_RANGE"
+          examples: ["BOOK_NOT_FOUND"]
+        traceId:
+          type: "string"
+          description: "API Gateway が付与する trace_id（問い合わせ用）"
+          examples: ["0af7651916cd43dd8448eb211c80319c"]
+    FieldError:
+      type: "object"
+      required: ["field", "message"]
+      properties:
+        field:
+          type: "string"
+          description: "エラーの対象フィールド（JSON Pointer 相当の camelCase 名。クエリパラメータ名も可）"
+          examples: ["isbn"]
+        message:
+          type: "string"
+          description: "エラー内容"
+          examples: ["ISBN-10 または ISBN-13 の形式で入力してください"]
+    ValidationProblemDetails:
+      description: "検証エラー（400 / 422）。項目単位のエラーを `errors` に列挙する"
+      allOf:
+        - $ref: "#/components/schemas/ProblemDetails"
+        - type: "object"
+          required: ["errors"]
+          properties:
+            errors:
+              type: "array"
+              items:
+                $ref: "#/components/schemas/FieldError"
+    UserNotDeletableProblemDetails:
+      description: "利用者削除不可（409 `USER_NOT_DELETABLE`）。有効な貸出・予約の理由と件数を含む"
+      allOf:
+        - $ref: "#/components/schemas/ProblemDetails"
+        - type: "object"
+          required: ["reasons"]
+          properties:
+            reasons:
+              type: "array"
+              description: "削除できない理由: ACTIVE_LOAN（貸出中・延滞あり）/ ACTIVE_RESERVATION（予約中・通知済みあり）"
+              items:
+                type: "string"
+                description: "削除できない理由: ACTIVE_LOAN（貸出中・延滞あり）/ ACTIVE_RESERVATION（予約中・通知済みあり）"
+                enum: ["ACTIVE_LOAN", "ACTIVE_RESERVATION"]
+              examples: [["ACTIVE_LOAN"]]
+            activeLoanCount:
+              type: "integer"
+              minimum: 0
+              description: "有効な貸出件数（ON_LOAN + OVERDUE）"
+              examples: [2]
+            activeReservationCount:
+              type: "integer"
+              minimum: 0
+              description: "有効な予約件数（RESERVED + NOTIFIED）"
+              examples: [0]
+
+    # ---------------------------------------------------------- pagination
+    PageMeta:
+      type: "object"
+      description: "offset ページネーションの共通メタ情報"
+      required: ["page", "pageSize", "totalCount"]
+      properties:
+        page:
+          type: "integer"
+          minimum: 1
+          description: "現在のページ番号（1 始まり）"
+          examples: [1]
+        pageSize:
+          type: "integer"
+          minimum: 1
+          maximum: 100
+          description: "1 ページの件数"
+          examples: [20]
+        totalCount:
+          type: "integer"
+          minimum: 0
+          description: "条件に一致する総件数"
+          examples: [135]
+
+    # ---------------------------------------------------------------- books
+    Genre:
+      type: "object"
+      required: ["genreId", "genreName"]
+      properties:
+        genreId:
+          type: "string"
+          description: "ジャンル ID"
+          examples: ["literature"]
+        genreName:
+          type: "string"
+          description: "ジャンル名（文学 / 社会科学 / 自然科学 / 技術 / 芸術 / 歴史 / 児童書 / その他）"
+          examples: ["文学"]
+        description:
+          type: "string"
+          description: "ジャンルの説明"
+          examples: ["小説・詩・エッセイなど"]
+    GenreListResponse:
+      type: "object"
+      required: ["items"]
+      properties:
+        items:
+          type: "array"
+          description: "ジャンル一覧（検索条件の選択肢）"
+          items:
+            $ref: "#/components/schemas/Genre"
+    BookSummary:
+      type: "object"
+      description: |
+        書籍の要約（一覧・貸出・予約・利用状況の各レスポンスで共有）。
+        UC 間の定義差（貸出系: bookId/title/author/mediaType/status、延滞一覧: bookId/title）は属性の多い蔵書管理系の定義に統合した
+      required: ["bookId", "title", "author", "genreId", "genreName", "mediaType", "status", "updatedAt"]
+      properties:
+        bookId:
+          type: "string"
+          description: "書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        title:
+          type: "string"
+          maxLength: 200
+          description: "タイトル"
+          examples: ["吾輩は猫である"]
+        author:
+          type: "string"
+          maxLength: 100
+          description: "著者"
+          examples: ["夏目漱石"]
+        isbn:
+          type: ["string", "null"]
+          description: "ISBN（ハイフンなし 10 桁または 13 桁）"
+          pattern: "^(?:\\d{9}[\\dX]|\\d{13})$"
+          examples: ["9784101010014"]
+        publisher:
+          type: ["string", "null"]
+          maxLength: 100
+          description: "出版社"
+          examples: ["新潮社"]
+        genreId:
+          type: "string"
+          description: "ジャンル ID"
+          examples: ["literature"]
+        genreName:
+          type: "string"
+          description: "ジャンル名"
+          examples: ["文学"]
+        mediaType:
+          $ref: "#/components/schemas/MediaType"
+        status:
+          $ref: "#/components/schemas/BookStatus"
+        updatedAt:
+          type: "string"
+          format: "date-time"
+          description: "更新日時"
+          examples: ["2026-08-30T09:12:45+09:00"]
+    BookPageResponse:
+      description: "書籍検索・一覧のページレスポンス"
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: "object"
+          required: ["items"]
+          properties:
+            items:
+              type: "array"
+              items:
+                $ref: "#/components/schemas/BookSummary"
+    BookDetailResponse:
+      type: "object"
+      description: "書籍詳細（`GET /api/v1/books/{bookId}` および登録・更新のレスポンス。UC では `BookResponse` と記載されていたものを規約名に統一）"
+      required: ["bookId", "title", "author", "genreId", "genreName", "mediaType", "status", "waitingCount", "registeredAt", "updatedAt"]
+      properties:
+        bookId:
+          type: "string"
+          description: "書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        title:
+          type: "string"
+          maxLength: 200
+          description: "タイトル"
+          examples: ["吾輩は猫である"]
+        author:
+          type: "string"
+          maxLength: 100
+          description: "著者"
+          examples: ["夏目漱石"]
+        isbn:
+          type: ["string", "null"]
+          pattern: "^(?:\\d{9}[\\dX]|\\d{13})$"
+          description: "ISBN（ハイフンなし）"
+          examples: ["9784101010014"]
+        publisher:
+          type: ["string", "null"]
+          maxLength: 100
+          description: "出版社"
+          examples: ["新潮社"]
+        genreId:
+          type: "string"
+          description: "ジャンル ID"
+          examples: ["literature"]
+        genreName:
+          type: "string"
+          description: "ジャンル名"
+          examples: ["文学"]
+        mediaType:
+          $ref: "#/components/schemas/MediaType"
+        status:
+          $ref: "#/components/schemas/BookStatus"
+        waitingCount:
+          type: "integer"
+          minimum: 0
+          description: "予約待ち人数（予約状態が RESERVED / NOTIFIED の件数。登録直後は 0）"
+          examples: [2]
+        version:
+          type: "integer"
+          minimum: 0
+          description: "楽観ロック用バージョン（司書経路のみ返却。公開経路では省略）"
+          examples: [3]
+        registeredAt:
+          type: "string"
+          format: "date-time"
+          description: "登録日時"
+          examples: ["2026-04-01T10:00:00+09:00"]
+        updatedAt:
+          type: "string"
+          format: "date-time"
+          description: "更新日時"
+          examples: ["2026-08-30T09:12:45+09:00"]
+    CreateBookRequest:
+      type: "object"
+      required: ["title", "author", "genreId"]
+      properties:
+        title:
+          type: "string"
+          minLength: 1
+          maxLength: 200
+          description: "タイトル"
+          examples: ["吾輩は猫である"]
+        author:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+          description: "著者"
+          examples: ["夏目漱石"]
+        isbn:
+          type: "string"
+          pattern: "^(?:\\d{9}[\\dX]|\\d{13})$"
+          description: "ISBN（ハイフンなし 10 桁または 13 桁）"
+          examples: ["9784101010014"]
+        publisher:
+          type: "string"
+          maxLength: 100
+          description: "出版社"
+          examples: ["新潮社"]
+        genreId:
+          type: "string"
+          description: "ジャンル ID（`GET /api/v1/genres` の値）"
+          examples: ["literature"]
+        mediaType:
+          $ref: "#/components/schemas/MediaType"
+          description: "媒体種別。省略時 PAPER"
+    UpdateBookRequest:
+      type: "object"
+      required: ["title", "author", "genreId", "mediaType", "version"]
+      properties:
+        title:
+          type: "string"
+          minLength: 1
+          maxLength: 200
+          description: "タイトル"
+          examples: ["吾輩は猫である"]
+        author:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+          description: "著者"
+          examples: ["夏目漱石"]
+        isbn:
+          type: ["string", "null"]
+          pattern: "^(?:\\d{9}[\\dX]|\\d{13})$"
+          description: "ISBN（null で消去）"
+          examples: ["9784101010014"]
+        publisher:
+          type: ["string", "null"]
+          maxLength: 100
+          description: "出版社（null で消去）"
+          examples: ["新潮社"]
+        genreId:
+          type: "string"
+          description: "ジャンル ID"
+          examples: ["literature"]
+        mediaType:
+          $ref: "#/components/schemas/MediaType"
+        version:
+          type: "integer"
+          minimum: 0
+          description: "取得時の `version`（楽観ロック）"
+          examples: [3]
+
+    # ---------------------------------------------------------------- users
+    UserSummary:
+      type: "object"
+      description: |
+        利用者の要約（一覧・貸出・返却の各レスポンスで共有）。
+        UC 間の定義差（貸出系: userNumber/name、延滞一覧: + email）は属性の多い利用者一覧の定義に統合した
+      required: ["userNumber", "name", "userType", "email", "registeredAt", "updatedAt"]
+      properties:
+        userNumber:
+          type: "string"
+          description: "利用者番号"
+          examples: ["U000123"]
+        name:
+          type: "string"
+          maxLength: 100
+          description: "氏名"
+          examples: ["山田 太郎"]
+        userType:
+          $ref: "#/components/schemas/UserType"
+        email:
+          type: "string"
+          format: "email"
+          description: "メールアドレス（司書経路のみ）"
+          examples: ["taro.yamada@example.com"]
+        phone:
+          type: ["string", "null"]
+          description: "電話番号"
+          examples: ["090-1234-5678"]
+        registeredAt:
+          type: "string"
+          format: "date-time"
+          description: "登録日時"
+          examples: ["2026-04-01T10:00:00+09:00"]
+        updatedAt:
+          type: "string"
+          format: "date-time"
+          description: "更新日時"
+          examples: ["2026-08-30T09:12:45+09:00"]
+    UserPageResponse:
+      description: "利用者一覧のページレスポンス"
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: "object"
+          required: ["items"]
+          properties:
+            items:
+              type: "array"
+              items:
+                $ref: "#/components/schemas/UserSummary"
+    UserResponse:
+      type: "object"
+      description: "利用者（`GET/PUT /api/v1/users/{userNumber}` と登録のレスポンス）"
+      required: ["userNumber", "name", "email", "userType", "version", "registeredAt", "updatedAt"]
+      properties:
+        userNumber:
+          type: "string"
+          description: "利用者番号"
+          examples: ["U000123"]
+        name:
+          type: "string"
+          maxLength: 100
+          description: "氏名"
+          examples: ["山田 太郎"]
+        email:
+          type: "string"
+          format: "email"
+          description: "メールアドレス"
+          examples: ["taro.yamada@example.com"]
+        phone:
+          type: ["string", "null"]
+          description: "電話番号"
+          examples: ["090-1234-5678"]
+        address:
+          type: ["string", "null"]
+          maxLength: 200
+          description: "住所"
+          examples: ["東京都千代田区1-1-1"]
+        userType:
+          $ref: "#/components/schemas/UserType"
+        version:
+          type: "integer"
+          minimum: 0
+          description: "楽観ロック用バージョン"
+          examples: [1]
+        registeredAt:
+          type: "string"
+          format: "date-time"
+          description: "登録日時"
+          examples: ["2026-04-01T10:00:00+09:00"]
+        updatedAt:
+          type: "string"
+          format: "date-time"
+          description: "更新日時"
+          examples: ["2026-08-30T09:12:45+09:00"]
+        activeLoanCount:
+          type: "integer"
+          minimum: 0
+          description: "有効な貸出件数（ON_LOAN + OVERDUE。`include=activeCounts` 指定時のみ）"
+          examples: [1]
+        activeReservationCount:
+          type: "integer"
+          minimum: 0
+          description: "有効な予約件数（RESERVED + NOTIFIED。`include=activeCounts` 指定時のみ）"
+          examples: [0]
+    CreateUserRequest:
+      type: "object"
+      required: ["name", "email"]
+      properties:
+        name:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+          description: "氏名"
+          examples: ["山田 太郎"]
+        email:
+          type: "string"
+          format: "email"
+          maxLength: 254
+          description: "メールアドレス（通知の送信先）"
+          examples: ["taro.yamada@example.com"]
+        phone:
+          type: "string"
+          pattern: "^[0-9+()-]{10,20}$"
+          description: "電話番号"
+          examples: ["090-1234-5678"]
+        address:
+          type: "string"
+          maxLength: 200
+          description: "住所"
+          examples: ["東京都千代田区1-1-1"]
+        userType:
+          $ref: "#/components/schemas/UserType"
+          description: "利用者区分。省略時 PATRON"
+    UpdateUserRequest:
+      type: "object"
+      required: ["name", "email", "version"]
+      properties:
+        name:
+          type: "string"
+          minLength: 1
+          maxLength: 100
+          description: "氏名"
+          examples: ["山田 太郎"]
+        email:
+          type: "string"
+          format: "email"
+          maxLength: 254
+          description: "メールアドレス"
+          examples: ["taro.yamada@example.com"]
+        phone:
+          type: ["string", "null"]
+          pattern: "^[0-9+()-]{10,20}$"
+          description: "電話番号（null で消去）"
+          examples: ["090-1234-5678"]
+        address:
+          type: ["string", "null"]
+          maxLength: 200
+          description: "住所（null で消去）"
+          examples: ["東京都千代田区1-1-1"]
+        version:
+          type: "integer"
+          minimum: 0
+          description: "取得時の `version`（楽観ロック）"
+          examples: [1]
+    UserUsageProfile:
+      type: "object"
+      description: "利用状況照会の利用者プロフィール。連絡先は既定でマスクし、`reveal=true` のときのみ平文を追加で返す"
+      required: ["userNumber", "name", "userType", "emailMasked"]
+      properties:
+        userNumber:
+          type: "string"
+          description: "利用者番号"
+          examples: ["U000123"]
+        name:
+          type: "string"
+          description: "氏名"
+          examples: ["山田 太郎"]
+        userType:
+          $ref: "#/components/schemas/UserType"
+        emailMasked:
+          type: "string"
+          description: "マスク済みメールアドレス"
+          examples: ["t***@example.com"]
+        phoneMasked:
+          type: ["string", "null"]
+          description: "マスク済み電話番号"
+          examples: ["090-****-5678"]
+        addressMasked:
+          type: ["string", "null"]
+          description: "マスク済み住所"
+          examples: ["東京都千代田区***"]
+        email:
+          type: "string"
+          format: "email"
+          description: "平文メールアドレス（`reveal=true` のときのみ）"
+          examples: ["taro.yamada@example.com"]
+        phone:
+          type: ["string", "null"]
+          description: "平文電話番号（`reveal=true` のときのみ）"
+        address:
+          type: ["string", "null"]
+          description: "平文住所（`reveal=true` のときのみ）"
+    UsageSummary:
+      type: "object"
+      required: ["onLoanCount", "overdueCount", "activeReservationCount"]
+      properties:
+        onLoanCount:
+          type: "integer"
+          minimum: 0
+          description: "貸出中件数"
+          examples: [2]
+        overdueCount:
+          type: "integer"
+          minimum: 0
+          description: "延滞件数"
+          examples: [1]
+        activeReservationCount:
+          type: "integer"
+          minimum: 0
+          description: "有効な予約件数"
+          examples: [1]
+    UserUsageResponse:
+      type: "object"
+      required: ["user", "loans", "reservations", "summary", "today", "remindDays"]
+      properties:
+        user:
+          $ref: "#/components/schemas/UserUsageProfile"
+        loans:
+          type: "array"
+          description: "loanScope で絞り込んだ貸出一覧（返却期限までの残日数と表示区分つき）"
+          items:
+            $ref: "#/components/schemas/MyLoanItem"
+        reservations:
+          type: "array"
+          description: "利用者の予約一覧（予約順位・待ち人数・状態つき）"
+          items:
+            $ref: "#/components/schemas/MyReservationItem"
+        summary:
+          $ref: "#/components/schemas/UsageSummary"
+        today:
+          type: "string"
+          format: "date"
+          description: "基準日（サーバ日付）"
+          examples: ["2026-09-03"]
+        remindDays:
+          type: "integer"
+          minimum: 0
+          description: "リマインド日数（業務パラメータ）"
+          examples: [3]
+
+    # ---------------------------------------------------------------- loans
+    CreateLoanRequest:
+      type: "object"
+      required: ["userNumber", "bookId"]
+      properties:
+        userNumber:
+          type: "string"
+          description: "貸出先の利用者番号"
+          examples: ["U000123"]
+        bookId:
+          type: "string"
+          description: "貸し出す書籍の書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+    LoanEligibilityResponse:
+      type: "object"
+      required: ["allowed", "book", "user"]
+      properties:
+        allowed:
+          type: "boolean"
+          description: "貸出可否"
+          examples: [false]
+        reasonCode:
+          type: "string"
+          description: "貸出不可の理由コード: BOOK_NOT_AVAILABLE（貸出中・予約待ち）/ RESERVATION_PRIORITY_MISMATCH（予約順位 1 位以外）/ MEDIA_TYPE_NOT_LOANABLE（電子書籍）"
+          enum: ["BOOK_NOT_AVAILABLE", "RESERVATION_PRIORITY_MISMATCH", "MEDIA_TYPE_NOT_LOANABLE"]
+        reasonMessage:
+          type: "string"
+          description: "画面表示用の理由（日本語）"
+          examples: ["貸出できません: この書籍は貸出中です"]
+        dueDate:
+          type: "string"
+          format: "date"
+          description: "貸出した場合の返却期限（貸出日 + 貸出期間）。`allowed=true` のとき"
+          examples: ["2026-09-17"]
+        loanDays:
+          type: "integer"
+          minimum: 1
+          description: "貸出期間（日数。業務パラメータ）"
+          examples: [14]
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        reservation:
+          $ref: "#/components/schemas/ReservationSummary"
+          description: "予約待ち書籍のとき、貸出先利用者の予約（順位 1 位判定の根拠）"
+    LoanResponse:
+      type: "object"
+      required: ["loanId", "bookId", "userNumber", "loanedOn", "dueDate", "status", "recordedBy", "bookStatus", "book", "user"]
+      properties:
+        loanId:
+          type: "string"
+          description: "貸出 ID"
+          examples: ["ln_01HZX1A2B3C4D5E6F7G8H9J0K1"]
+        bookId:
+          type: "string"
+          description: "貸し出した書籍の書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        userNumber:
+          type: "string"
+          description: "貸出先利用者の利用者番号"
+          examples: ["U000123"]
+        loanedOn:
+          type: "string"
+          format: "date"
+          description: "貸出日"
+          examples: ["2026-09-03"]
+        dueDate:
+          type: "string"
+          format: "date"
+          description: "返却期限（貸出日 + 貸出期間）"
+          examples: ["2026-09-17"]
+        status:
+          $ref: "#/components/schemas/LoanStatus"
+        recordedBy:
+          type: "string"
+          description: "記録した司書の利用者番号"
+          examples: ["S000001"]
+        bookStatus:
+          $ref: "#/components/schemas/BookStatus"
+          description: "貸出後の書籍の状態（ON_LOAN）"
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        user:
+          $ref: "#/components/schemas/UserSummary"
+    LoanSummary:
+      type: "object"
+      required: ["loanId", "bookId", "userNumber", "loanedOn", "dueDate", "status"]
+      properties:
+        loanId:
+          type: "string"
+          description: "貸出 ID"
+          examples: ["ln_01HZX1A2B3C4D5E6F7G8H9J0K1"]
+        bookId:
+          type: "string"
+          description: "書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        userNumber:
+          type: "string"
+          description: "利用者番号"
+          examples: ["U000123"]
+        loanedOn:
+          type: "string"
+          format: "date"
+          description: "貸出日"
+          examples: ["2026-08-20"]
+        dueDate:
+          type: "string"
+          format: "date"
+          description: "返却期限（貸出日 + 貸出期間）"
+          examples: ["2026-09-03"]
+        status:
+          $ref: "#/components/schemas/LoanStatus"
+    ReturnLoanRequest:
+      type: "object"
+      description: "返却登録の入力（現時点で項目なし）"
+      properties: {}
+      additionalProperties: false
+    ReturnLookupResponse:
+      type: "object"
+      required: ["loan", "book", "user", "nextBookStatus", "reservationCount", "overdueDays"]
+      properties:
+        loan:
+          $ref: "#/components/schemas/LoanSummary"
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        nextBookStatus:
+          type: "string"
+          description: "返却後の書籍の状態: AVAILABLE（予約なし）/ RESERVED（予約中あり）"
+          enum: ["AVAILABLE", "RESERVED"]
+          examples: ["RESERVED"]
+        reservationCount:
+          type: "integer"
+          minimum: 0
+          description: "予約中（RESERVED）の件数"
+          examples: [1]
+        overdueDays:
+          type: "integer"
+          minimum: 0
+          description: "延滞日数（延滞していなければ 0）"
+          examples: [0]
+    ReturnResponse:
+      type: "object"
+      required: ["loanId", "bookId", "userNumber", "returnedOn", "status", "bookStatus", "hasReservation", "reservationCount", "book", "user"]
+      properties:
+        loanId:
+          type: "string"
+          description: "返却した貸出の貸出 ID"
+          examples: ["ln_01HZX1A2B3C4D5E6F7G8H9J0K1"]
+        bookId:
+          type: "string"
+          description: "返却された書籍の書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        userNumber:
+          type: "string"
+          description: "返却した利用者の利用者番号"
+          examples: ["U000123"]
+        returnedOn:
+          type: "string"
+          format: "date"
+          description: "返却日"
+          examples: ["2026-09-03"]
+        status:
+          type: "string"
+          description: "貸出の状態（返却後は常に RETURNED）"
+          enum: ["RETURNED"]
+        bookStatus:
+          type: "string"
+          description: "返却後の書籍の状態: AVAILABLE / RESERVED"
+          enum: ["AVAILABLE", "RESERVED"]
+          examples: ["RESERVED"]
+        hasReservation:
+          type: "boolean"
+          description: "予約中の予約があるか（true なら返却通知の送信へ誘導する）"
+          examples: [true]
+        reservationCount:
+          type: "integer"
+          minimum: 0
+          description: "返却時点の予約待ち件数"
+          examples: [1]
+        nextReservation:
+          $ref: "#/components/schemas/ReservationSummary"
+          description: "予約順位 1 位の予約（返却通知の送信先候補）"
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        user:
+          $ref: "#/components/schemas/UserSummary"
+    OverdueSummary:
+      type: "object"
+      required: ["overdueCount", "noticeFailedCount", "noticePendingCount"]
+      properties:
+        overdueCount:
+          type: "integer"
+          minimum: 0
+          description: "延滞件数"
+          examples: [12]
+        noticeFailedCount:
+          type: "integer"
+          minimum: 0
+          description: "督促の送信失敗件数（FAILED）"
+          examples: [1]
+        noticePendingCount:
+          type: "integer"
+          minimum: 0
+          description: "督促の送信待ち件数（PENDING）"
+          examples: [2]
+    OverdueLoanItem:
+      type: "object"
+      required: ["loanId", "book", "user", "loanedOn", "dueDate", "overdueDays", "status", "noticeCount"]
+      properties:
+        loanId:
+          type: "string"
+          description: "貸出 ID"
+          examples: ["ln_01HZX1A2B3C4D5E6F7G8H9J0K1"]
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        loanedOn:
+          type: "string"
+          format: "date"
+          description: "貸出日"
+          examples: ["2026-08-01"]
+        dueDate:
+          type: "string"
+          format: "date"
+          description: "返却期限（貸出日 + 貸出期間）"
+          examples: ["2026-08-15"]
+        overdueDays:
+          type: "integer"
+          minimum: 0
+          description: "延滞日数（基準日 - 返却期限）"
+          examples: [19]
+        status:
+          $ref: "#/components/schemas/LoanStatus"
+        latestNotice:
+          oneOf:
+            - $ref: "#/components/schemas/NotificationLogItem"
+            - type: "null"
+          description: "最新の通知記録（`include=latestNotice` 指定時。未送信なら null）"
+        noticeCount:
+          type: "integer"
+          minimum: 0
+          description: "この貸出に対する督促の送信回数"
+          examples: [2]
+    OverdueLoanListResponse:
+      description: "貸出一覧（延滞・督促状況）のページレスポンス"
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: "object"
+          required: ["summary", "items"]
+          properties:
+            summary:
+              $ref: "#/components/schemas/OverdueSummary"
+            items:
+              type: "array"
+              items:
+                $ref: "#/components/schemas/OverdueLoanItem"
+    MyLoanItem:
+      type: "object"
+      required: ["loanId", "book", "loanedOn", "dueDate", "status", "dueStatus"]
+      properties:
+        loanId:
+          type: "string"
+          description: "貸出 ID"
+          examples: ["ln_01HZX1A2B3C4D5E6F7G8H9J0K1"]
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        loanedOn:
+          type: "string"
+          format: "date"
+          description: "貸出日"
+          examples: ["2026-08-20"]
+        dueDate:
+          type: "string"
+          format: "date"
+          description: "返却期限（貸出日 + 貸出期間）"
+          examples: ["2026-09-03"]
+        returnedOn:
+          type: ["string", "null"]
+          format: "date"
+          description: "返却日（未返却なら null）"
+          examples: ["2026-09-01"]
+        status:
+          $ref: "#/components/schemas/LoanStatus"
+        remainingDays:
+          type: "integer"
+          description: "返却期限までの残日数（負数は超過日数。返却済みは省略）"
+          examples: [2]
+        dueStatus:
+          $ref: "#/components/schemas/DueStatus"
+    MyLoanPageResponse:
+      description: "自分の貸出一覧のページレスポンス"
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: "object"
+          required: ["items", "today", "remindDays", "overdueCount"]
+          properties:
+            items:
+              type: "array"
+              items:
+                $ref: "#/components/schemas/MyLoanItem"
+            today:
+              type: "string"
+              format: "date"
+              description: "基準日（サーバ日付）"
+              examples: ["2026-09-03"]
+            remindDays:
+              type: "integer"
+              minimum: 0
+              description: "リマインド日数（業務パラメータ。SOON 判定の閾値）"
+              examples: [3]
+            overdueCount:
+              type: "integer"
+              minimum: 0
+              description: "延滞中の件数"
+              examples: [0]
+
+    # ----------------------------------------------------------- reservations
+    ReservationSummary:
+      type: "object"
+      required: ["reservationId", "queuePosition", "status"]
+      properties:
+        reservationId:
+          type: "string"
+          description: "予約 ID"
+          examples: ["rs_01HZX2B3C4D5E6F7G8H9J0K1L2"]
+        queuePosition:
+          type: "integer"
+          minimum: 1
+          description: "予約順位（1 が先頭）"
+          examples: [1]
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+    ReservationListItem:
+      type: "object"
+      description: "書籍別予約一覧・返却通知プレビューの予約項目（司書向け。利用者名を含む）"
+      required: ["reservationId", "queuePosition", "userNumber", "userName", "acceptedAt", "status"]
+      properties:
+        reservationId:
+          type: "string"
+          description: "予約 ID"
+          examples: ["rs_01HZX2B3C4D5E6F7G8H9J0K1L2"]
+        queuePosition:
+          type: "integer"
+          minimum: 1
+          description: "予約順位（1 始まり）"
+          examples: [1]
+        userNumber:
+          type: "string"
+          description: "予約した利用者の利用者番号"
+          examples: ["U000123"]
+        userName:
+          type: "string"
+          description: "予約した利用者の氏名"
+          examples: ["山田 太郎"]
+        acceptedAt:
+          type: "string"
+          format: "date-time"
+          description: "受付日時"
+          examples: ["2026-08-25T14:03:11+09:00"]
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+        notifiedAt:
+          type: ["string", "null"]
+          format: "date-time"
+          description: "返却通知の送信日時（通知済みのとき）"
+        cancelledAt:
+          type: ["string", "null"]
+          format: "date-time"
+          description: "取消日時（取消のとき）"
+    BookReservationPageResponse:
+      description: "書籍別予約一覧のページレスポンス"
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: "object"
+          required: ["book", "items", "waitingCount"]
+          properties:
+            book:
+              $ref: "#/components/schemas/BookSummary"
+            items:
+              type: "array"
+              items:
+                $ref: "#/components/schemas/ReservationListItem"
+            waitingCount:
+              type: "integer"
+              minimum: 0
+              description: "有効予約（RESERVED + NOTIFIED）の件数"
+              examples: [2]
+    CreateReservationRequest:
+      type: "object"
+      required: ["bookId"]
+      properties:
+        bookId:
+          type: "string"
+          description: "予約する書籍の書籍 ID（予約主体はトークンの利用者番号）"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+    ReservationEligibilityResponse:
+      type: "object"
+      required: ["allowed", "waitingCount", "book"]
+      properties:
+        allowed:
+          type: "boolean"
+          description: "予約可否判定の結果（true なら予約できる）"
+          examples: [true]
+        reasonCode:
+          type: "string"
+          description: "予約不可の理由コード: BOOK_AVAILABLE_NOT_RESERVABLE（在庫あり）/ RESERVATION_ALREADY_EXISTS（有効予約あり）/ MEDIA_TYPE_NOT_RESERVABLE（電子書籍）"
+          enum: ["BOOK_AVAILABLE_NOT_RESERVABLE", "RESERVATION_ALREADY_EXISTS", "MEDIA_TYPE_NOT_RESERVABLE"]
+        reasonMessage:
+          type: "string"
+          description: "画面表示用の理由（日本語）"
+          examples: ["この書籍は在庫があるため予約できません"]
+        waitingCount:
+          type: "integer"
+          minimum: 0
+          description: "現在の予約待ち人数"
+          examples: [2]
+        expectedQueuePosition:
+          type: "integer"
+          minimum: 1
+          description: "予約した場合の予約順位（`allowed=true` のとき）"
+          examples: [3]
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        existingReservation:
+          $ref: "#/components/schemas/ReservationSummary"
+          description: "既に有効予約がある場合、その予約"
+    ReservationResponse:
+      type: "object"
+      required: ["reservationId", "bookId", "userNumber", "acceptedAt", "queuePosition", "waitingCount", "status", "book"]
+      properties:
+        reservationId:
+          type: "string"
+          description: "予約 ID"
+          examples: ["rs_01HZX2B3C4D5E6F7G8H9J0K1L2"]
+        bookId:
+          type: "string"
+          description: "予約した書籍の書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        userNumber:
+          type: "string"
+          description: "予約した利用者の利用者番号（トークンの利用者番号）"
+          examples: ["U000123"]
+        acceptedAt:
+          type: "string"
+          format: "date-time"
+          description: "受付日時"
+          examples: ["2026-09-03T10:15:00+09:00"]
+        queuePosition:
+          type: "integer"
+          minimum: 1
+          description: "予約順位（1 始まり）"
+          examples: [3]
+        waitingCount:
+          type: "integer"
+          minimum: 0
+          description: "自分を含む予約待ち人数"
+          examples: [3]
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+        book:
+          $ref: "#/components/schemas/BookSummary"
+    ReservationDetailResponse:
+      type: "object"
+      required: ["reservationId", "bookId", "userNumber", "acceptedAt", "queuePosition", "totalWaiting", "status", "canCancel", "book"]
+      properties:
+        reservationId:
+          type: "string"
+          description: "予約 ID"
+          examples: ["rs_01HZX2B3C4D5E6F7G8H9J0K1L2"]
+        bookId:
+          type: "string"
+          description: "予約した書籍の書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        userNumber:
+          type: "string"
+          description: "予約した利用者の利用者番号"
+          examples: ["U000123"]
+        acceptedAt:
+          type: "string"
+          format: "date-time"
+          description: "受付日時"
+          examples: ["2026-08-25T14:03:11+09:00"]
+        queuePosition:
+          type: "integer"
+          minimum: 1
+          description: "予約順位（1 始まり）"
+          examples: [2]
+        totalWaiting:
+          type: "integer"
+          minimum: 0
+          description: "書籍全体の予約待ち人数"
+          examples: [3]
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+        notifiedAt:
+          type: ["string", "null"]
+          format: "date-time"
+          description: "返却通知の送信日時（NOTIFIED 以降のみ。未通知なら null）"
+        cancelledAt:
+          type: ["string", "null"]
+          format: "date-time"
+          description: "取消日時（CANCELLED のときのみ。未取消なら null）"
+        canCancel:
+          type: "boolean"
+          description: "取消可否（RESERVED / NOTIFIED のとき true）"
+          examples: [true]
+        blockedReason:
+          type: "string"
+          description: "取消不可の理由コード"
+          enum: ["RESERVATION_NOT_CANCELLABLE"]
+        book:
+          $ref: "#/components/schemas/BookSummary"
+    CancelReservationRequest:
+      type: "object"
+      description: "予約取消の入力（現時点で項目なし）"
+      properties: {}
+      additionalProperties: false
+    ReservationCancelResponse:
+      type: "object"
+      required: ["reservationId", "bookId", "status", "cancelledAt", "previousStatus", "promotedCount", "bookStatus"]
+      properties:
+        reservationId:
+          type: "string"
+          description: "取り消した予約の予約 ID"
+          examples: ["rs_01HZX2B3C4D5E6F7G8H9J0K1L2"]
+        bookId:
+          type: "string"
+          description: "予約していた書籍の書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        status:
+          type: "string"
+          description: "取消後の予約の状態（常に CANCELLED）"
+          enum: ["CANCELLED"]
+        cancelledAt:
+          type: "string"
+          format: "date-time"
+          description: "取消日時"
+          examples: ["2026-09-03T10:20:00+09:00"]
+        previousStatus:
+          type: "string"
+          description: "取消前の状態: RESERVED / NOTIFIED"
+          enum: ["RESERVED", "NOTIFIED"]
+          examples: ["RESERVED"]
+        promotedCount:
+          type: "integer"
+          minimum: 0
+          description: "順位を繰り上げた後続予約の件数"
+          examples: [1]
+        bookStatus:
+          $ref: "#/components/schemas/BookStatus"
+          description: "取消後の書籍の状態（次順位がなく通知済み取消なら AVAILABLE に戻る）"
+        nextNotified:
+          $ref: "#/components/schemas/ReservationSummary"
+          description: "通知済み予約の取消により次順位へ返却通知を発行した場合、その予約"
+    MyReservationItem:
+      type: "object"
+      required: ["reservationId", "book", "acceptedAt", "queuePosition", "totalWaiting", "status", "canCancel"]
+      properties:
+        reservationId:
+          type: "string"
+          description: "予約 ID"
+          examples: ["rs_01HZX2B3C4D5E6F7G8H9J0K1L2"]
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        acceptedAt:
+          type: "string"
+          format: "date-time"
+          description: "受付日時"
+          examples: ["2026-08-25T14:03:11+09:00"]
+        queuePosition:
+          type: "integer"
+          minimum: 1
+          description: "予約順位（1 始まり）"
+          examples: [2]
+        totalWaiting:
+          type: "integer"
+          minimum: 0
+          description: "同一書籍の予約待ち総数"
+          examples: [3]
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+        notifiedAt:
+          type: ["string", "null"]
+          format: "date-time"
+          description: "返却通知の送信日時（NOTIFIED 以降のみ。未通知なら null）"
+        cancelledAt:
+          type: ["string", "null"]
+          format: "date-time"
+          description: "取消日時（CANCELLED のときのみ。未取消なら null）"
+        canCancel:
+          type: "boolean"
+          description: "取消可否（RESERVED / NOTIFIED のとき true）"
+          examples: [true]
+    MyReservationPageResponse:
+      description: "自分の予約一覧のページレスポンス"
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: "object"
+          required: ["items", "activeCount"]
+          properties:
+            items:
+              type: "array"
+              items:
+                $ref: "#/components/schemas/MyReservationItem"
+            activeCount:
+              type: "integer"
+              minimum: 0
+              description: "有効予約（RESERVED + NOTIFIED）の件数"
+              examples: [1]
+
+    # -------------------------------------------------------- notifications
+    NotificationLogItem:
+      type: "object"
+      description: |
+        通知の送信記録。UC「返却通知を送信する」の `NotificationLog`（recipientMasked / sendResult 3 値）と
+        UC「延滞一覧を参照する」の `NotificationLogItem`（recipientEmail / failureReason / sendResult 4 値）を属性の多い側で統合した。
+        送信先は既定でマスク（`recipientMasked`）し、平文（`recipientEmail`）は `reveal=true` の司書経路でのみ返す。
+        `GET /loans`（include=latestNotice）/ `GET /loans/{loanId}/notifications` の `reveal` も `GET /loans/{loanId}/return-notice` と同じ扱い
+      required: ["notificationId", "notificationType", "recipientMasked", "requestedOn", "sendResult"]
+      properties:
+        notificationId:
+          type: "string"
+          description: "通知 ID"
+          examples: ["nt_01HZX3C4D5E6F7G8H9J0K1L2M3"]
+        notificationType:
+          $ref: "#/components/schemas/NotificationType"
+        recipientMasked:
+          type: "string"
+          description: "マスク済み送信先メールアドレス"
+          examples: ["t***@example.com"]
+        recipientEmail:
+          type: "string"
+          format: "email"
+          description: "平文の送信先メールアドレス（`reveal=true` のときのみ）"
+          examples: ["taro.yamada@example.com"]
+        requestedOn:
+          type: "string"
+          format: "date"
+          description: "送信要求日"
+          examples: ["2026-09-03"]
+        sentAt:
+          type: ["string", "null"]
+          format: "date-time"
+          description: "送信日時（未送信なら null）"
+          examples: ["2026-09-03T06:05:12+09:00"]
+        sendResult:
+          $ref: "#/components/schemas/SendResult"
+        failureReason:
+          type: ["string", "null"]
+          description: "送信失敗理由（FAILED のとき）"
+          examples: ["MAIL_DELIVERY_REJECTED"]
+    NotificationLogResponse:
+      type: "object"
+      required: ["items"]
+      properties:
+        items:
+          type: "array"
+          description: "新しい順"
+          items:
+            $ref: "#/components/schemas/NotificationLogItem"
+    RecipientSummary:
+      type: "object"
+      description: "返却通知の送信先（有効予約（RESERVED / NOTIFIED）のうち予約順位 1 位の利用者）。連絡先は既定でマスク"
+      required: ["userNumber", "name", "emailMasked"]
+      properties:
+        userNumber:
+          type: "string"
+          description: "送信先利用者の利用者番号"
+          examples: ["U000456"]
+        name:
+          type: "string"
+          description: "送信先利用者の氏名"
+          examples: ["鈴木 花子"]
+        emailMasked:
+          type: "string"
+          description: "マスク済みメールアドレス"
+          examples: ["h***@example.com"]
+        email:
+          type: "string"
+          format: "email"
+          description: "平文メールアドレス（`reveal=true` のときのみ）"
+    ReturnNoticePreviewResponse:
+      type: "object"
+      required: ["loanId", "book", "reservations", "notifications", "canSend"]
+      properties:
+        loanId:
+          type: "string"
+          description: "返却済み貸出の貸出 ID"
+          examples: ["ln_01HZX1A2B3C4D5E6F7G8H9J0K1"]
+        book:
+          $ref: "#/components/schemas/BookSummary"
+        reservation:
+          $ref: "#/components/schemas/ReservationSummary"
+          description: "通知対象の予約（有効予約（RESERVED / NOTIFIED）のうち順位 1 位。順位 1 位が NOTIFIED でも null にしない）"
+        recipient:
+          $ref: "#/components/schemas/RecipientSummary"
+        reservations:
+          type: "array"
+          description: "書籍の予約一覧（順位順）"
+          items:
+            $ref: "#/components/schemas/ReservationListItem"
+        notifications:
+          type: "array"
+          description: "この書籍・予約に関する通知記録（新しい順）"
+          items:
+            $ref: "#/components/schemas/NotificationLogItem"
+        canSend:
+          type: "boolean"
+          description: "送信可否（有効予約（RESERVED / NOTIFIED）の予約順位 1 位が存在し、その予約 × RETURN_NOTICE × 当日の通知レコードが未作成のとき true）"
+          examples: [true]
+        blockedReason:
+          type: "string"
+          description: "送信不可の理由コード: NO_RESERVATION_TO_NOTIFY / RETURN_NOTICE_ALREADY_SENT / LOAN_NOT_RETURNED"
+          enum: ["NO_RESERVATION_TO_NOTIFY", "RETURN_NOTICE_ALREADY_SENT", "LOAN_NOT_RETURNED"]
+    SendReturnNoticeRequest:
+      type: "object"
+      required: ["loanId"]
+      properties:
+        loanId:
+          type: "string"
+          description: "返却済み貸出の貸出 ID"
+          examples: ["ln_01HZX1A2B3C4D5E6F7G8H9J0K1"]
+    ReturnNoticeResponse:
+      type: "object"
+      description: "返却通知の送信受理結果。notificationType は常に RETURN_NOTICE"
+      required: ["notificationId", "notificationType", "reservationId", "userNumber", "recipientMasked", "requestedOn", "sendResult", "reservationStatus"]
+      properties:
+        notificationId:
+          type: "string"
+          description: "作成した通知レコードの通知 ID"
+          examples: ["nt_01HZX3C4D5E6F7G8H9J0K1L2M3"]
+        notificationType:
+          $ref: "#/components/schemas/NotificationType"
+        reservationId:
+          type: "string"
+          description: "通知対象の予約 ID（NOTIFIED に遷移済み）"
+          examples: ["rs_01HZX2B3C4D5E6F7G8H9J0K1L2"]
+        userNumber:
+          type: "string"
+          description: "送信先利用者の利用者番号"
+          examples: ["U000456"]
+        recipientMasked:
+          type: "string"
+          description: "マスク済み送信先メールアドレス"
+          examples: ["h***@example.com"]
+        requestedOn:
+          type: "string"
+          format: "date"
+          description: "送信要求日"
+          examples: ["2026-09-03"]
+        sendResult:
+          type: "string"
+          description: "受理時点では常に PENDING。結果はワーカーが更新する"
+          enum: ["PENDING"]
+        reservationStatus:
+          type: "string"
+          description: "遷移後の予約の状態（常に NOTIFIED）"
+          enum: ["NOTIFIED"]
+
+    # -------------------------------------------------------------- reports
+    InventorySummary:
+      type: "object"
+      required: ["available", "onLoan", "reserved", "total"]
+      properties:
+        available:
+          type: "integer"
+          minimum: 0
+          description: "在庫あり件数"
+          examples: [820]
+        onLoan:
+          type: "integer"
+          minimum: 0
+          description: "貸出中件数"
+          examples: [150]
+        reserved:
+          type: "integer"
+          minimum: 0
+          description: "予約待ち件数"
+          examples: [30]
+        total:
+          type: "integer"
+          minimum: 0
+          description: "総件数"
+          examples: [1000]
+    InventoryBookItem:
+      type: "object"
+      required: ["bookId", "title", "author", "isbn", "publisher", "genreId", "genreName", "mediaType", "status"]
+      properties:
+        bookId:
+          type: "string"
+          description: "書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        title:
+          type: "string"
+          description: "タイトル"
+          examples: ["吾輩は猫である"]
+        author:
+          type: "string"
+          description: "著者"
+          examples: ["夏目漱石"]
+        isbn:
+          type: ["string", "null"]
+          description: "ISBN（未登録は null）"
+          examples: ["9784101010014"]
+        publisher:
+          type: ["string", "null"]
+          description: "出版社"
+          examples: ["新潮社"]
+        genreId:
+          type: "string"
+          description: "ジャンル ID"
+          examples: ["literature"]
+        genreName:
+          type: "string"
+          description: "ジャンル名"
+          examples: ["文学"]
+        mediaType:
+          $ref: "#/components/schemas/MediaType"
+        status:
+          $ref: "#/components/schemas/BookStatus"
+    InventoryResponse:
+      description: "在庫状況一覧"
+      allOf:
+        - $ref: "#/components/schemas/PageMeta"
+        - type: "object"
+          required: ["summary", "items"]
+          properties:
+            summary:
+              $ref: "#/components/schemas/InventorySummary"
+            items:
+              type: "array"
+              items:
+                $ref: "#/components/schemas/InventoryBookItem"
+    PopularBookItem:
+      type: "object"
+      required: ["ranking", "bookId", "title", "author", "genreName", "loanCount"]
+      properties:
+        ranking:
+          type: "integer"
+          minimum: 1
+          description: "ランキング順位（貸出回数の多い順。同数は同順位）"
+          examples: [1]
+        bookId:
+          type: "string"
+          description: "書籍 ID"
+          examples: ["bk_01HZX0M4V8Q7K2N3R5T6Y7A8B9"]
+        title:
+          type: "string"
+          description: "タイトル"
+          examples: ["吾輩は猫である"]
+        author:
+          type: "string"
+          description: "著者"
+          examples: ["夏目漱石"]
+        genreName:
+          type: "string"
+          description: "ジャンル名"
+          examples: ["文学"]
+        loanCount:
+          type: "integer"
+          minimum: 0
+          description: "期間内の貸出回数"
+          examples: [42]
+    PopularBooksResponse:
+      type: "object"
+      required: ["periodType", "from", "to", "totalLoans", "items", "aggregatedAt"]
+      properties:
+        periodType:
+          $ref: "#/components/schemas/PeriodType"
+        from:
+          type: "string"
+          format: "date"
+          description: "集計期間の開始日（periodType に応じた境界）"
+          examples: ["2026-08-01"]
+        to:
+          type: "string"
+          format: "date"
+          description: "集計期間の終了日（periodType に応じた境界）"
+          examples: ["2026-08-31"]
+        totalLoans:
+          type: "integer"
+          minimum: 0
+          description: "期間内の総貸出件数"
+          examples: [1280]
+        items:
+          type: "array"
+          description: "ランキング項目（ranking 昇順）"
+          items:
+            $ref: "#/components/schemas/PopularBookItem"
+        aggregatedAt:
+          type: "string"
+          format: "date-time"
+          description: "集計日時"
+          examples: ["2026-09-03T09:00:00+09:00"]
+    LoanStatisticsPoint:
+      type: "object"
+      required: ["periodStart", "periodEnd", "loanTotal"]
+      properties:
+        periodStart:
+          type: "string"
+          format: "date"
+          description: "粒度ごとの期間開始日"
+          examples: ["2026-08-01"]
+        periodEnd:
+          type: "string"
+          format: "date"
+          description: "粒度ごとの期間終了日"
+          examples: ["2026-08-31"]
+        loanTotal:
+          type: "integer"
+          minimum: 0
+          description: "期間内の貸出件数"
+          examples: [1280]
+    LoanStatisticsResponse:
+      type: "object"
+      required: ["periodType", "from", "to", "totalLoans", "previousTotalLoans", "series", "aggregatedAt"]
+      properties:
+        periodType:
+          $ref: "#/components/schemas/PeriodType"
+        from:
+          type: "string"
+          format: "date"
+          description: "集計期間の開始日（periodType に応じた境界）"
+          examples: ["2026-06-01"]
+        to:
+          type: "string"
+          format: "date"
+          description: "集計期間の終了日（periodType に応じた境界）"
+          examples: ["2026-08-31"]
+        totalLoans:
+          type: "integer"
+          minimum: 0
+          description: "指定期間の総貸出件数"
+          examples: [3600]
+        previousTotalLoans:
+          type: "integer"
+          minimum: 0
+          description: "直前の同じ長さの期間の総貸出件数（比較用）"
+          examples: [3350]
+        series:
+          type: "array"
+          description: "粒度ごとの時系列（期間開始日昇順）"
+          items:
+            $ref: "#/components/schemas/LoanStatisticsPoint"
+        aggregatedAt:
+          type: "string"
+          format: "date-time"
+          description: "集計時刻（キャッシュの鮮度表示用）"
+          examples: ["2026-09-03T09:00:00+09:00"]

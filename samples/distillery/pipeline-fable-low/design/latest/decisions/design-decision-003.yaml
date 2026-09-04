@@ -1,0 +1,22 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-003"
+title: "カラーパレット: Blue（利用者）+ Slate（司書）"
+status: "approved"
+generated_at: "2026-09-03T04:18:12+09:00"
+context: |
+  2 ポータルに対し、視覚的に区別でき、かつステータス色（在庫あり=green / 貸出中=blue / 予約待ち=orange / 延滞=red）と衝突しないプライマリ色が必要。
+decision: |
+  利用者ポータルは blue-600 #2563EB、司書ポータルは slate-700 #334155 をプライマリとする（design-infer.md の 2 ポータル推奨 Blue + Slate）。dark mode では patron=blue-500 / staff=slate-400（foreground を gray-900 に反転）にしてコントラスト AA を確保する。ステータス色は success/warning/destructive/info/pending/analysis/neutral の 7 系統。
+consequences:
+  positive:
+    - "書籍状態「貸出中」の info blue と利用者ポータルの primary が同系統だが、Badge は必ず文言つきのため混同しない"
+    - "司書ポータルの無彩色 primary が窓口画面の判定結果（緑 / 赤）を際立たせる"
+  negative:
+    - "司書ポータルは色味が少なく単調に見える可能性がある"
+alternatives_considered:
+  - name: "Green（利用者）+ Slate（司書）"
+    reason_rejected: "在庫あり=green のステータス色と衝突する"
+  - name: "Blue（利用者）+ Teal（司書）"
+    reason_rejected: "2 ポータルとも有彩色になり、窓口画面で判定色の視認性が落ちる"

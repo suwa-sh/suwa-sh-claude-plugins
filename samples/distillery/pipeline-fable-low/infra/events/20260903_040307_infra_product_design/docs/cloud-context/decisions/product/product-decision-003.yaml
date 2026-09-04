@@ -1,0 +1,47 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "product"
+artifact_id: "product-decision-003"
+title: "リレーショナルデータストアをマネージド単一インスタンス Multi-AZ 構成とする"
+status: "accepted"
+generated_at: "2026-09-03T04:07:39"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-rds-postgresql.md"
+inputs_ref:
+  - "product-library-management-canonical"
+
+decision:
+  context: "業務データ 7 エンティティの正本を強整合トランザクションで保持し、RPO 4 時間・RTO 2 時間・切替時間 60 分未満を満たす必要がある。データ量は年 100 万件規模・総容量 100GB 未満、SLA は 99% である"
+  conflict_type: "capability"
+  options:
+    - id: "opt-rds-multiaz"
+      description: "Amazon RDS for PostgreSQL の Multi-AZ インスタンス配置"
+      pros:
+        - "AZ 障害時に 1〜2 分で自動フェイルオーバーし、切替時間 60 分未満を大きく下回る"
+        - "PITR で RPO 4 時間を満たす"
+        - "SLA 99% とデータ量 100GB 未満の規模に対してコスト効率が良い"
+        - "pg_trgm / tsvector による全文検索とマテリアライズドビューを追加コストなしで利用できる"
+      cons:
+        - "待機系は読み取りに使えず、読み取り負荷はプライマリとキャッシュで吸収する必要がある"
+    - id: "opt-aurora"
+      description: "Amazon Aurora PostgreSQL クラスタ"
+      pros:
+        - "フェイルオーバーが数十秒と更に速く、読み取りレプリカを追加しやすい"
+        - "ストレージが自動拡張し障害耐性が高い"
+      cons:
+        - "同等スペックで月額が約 2 倍。SLA 99% の要件に対して過剰"
+        - "I/O 課金の予測が難しく、コスト方針 balanced から外れる"
+    - id: "opt-selfhosted"
+      description: "コンテナまたは仮想マシン上にセルフホストする"
+      pros:
+        - "ライセンス費用が発生せず、単価は最安"
+      cons:
+        - "高可用構成・バックアップ・PITR・パッチ適用をすべて自前運用する必要があり、小規模運用体制では RTO 2 時間を担保できない"
+  chosen_option: "opt-rds-multiaz"
+  rationale: "可用性・復旧目標をマネージド機能で確実に満たしつつ、規模に対して過剰な費用を避けられるため。読み取り負荷は参照系のキャッシュ（key_value_cache）で吸収する設計と組み合わせる"
+  risk_assessment: "参照系がキャッシュミス時にプライマリへ集中する。CPU 使用率とレプリケーション遅延を監視し、読み取り負荷が持続的に 60% を超える場合はリードレプリカの追加または Aurora への移行を再検討する"
+  affected_elements:
+    - "relational_datastore"
+    - "key_value_cache"
+    - "backup_and_recovery"
+  review_date: "2027-03-31"

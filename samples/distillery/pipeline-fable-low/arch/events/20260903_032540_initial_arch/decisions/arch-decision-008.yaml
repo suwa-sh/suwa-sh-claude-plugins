@@ -1,0 +1,29 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-008"
+title: "認証方式: OAuth2/OIDC をセルフホスト IdP で提供し、API Gateway でトークン検証する"
+status: "approved"
+generated_at: "2026-09-03T03:51:01"
+context: |
+  社外アクター「利用者」が Web 画面からログインして自分の貸出履歴・予約状況を閲覧する（DIST-002 で利用者番号 + パスワードを仮採用）。
+  NFR E.5.1.1 は ID/パスワード認証 + パスワードポリシー（Lv2、外部 IdP 連携なし）、E.7.2.1 はログイン失敗検知・アカウントロック、
+  E.5.3.1 は館内 / 公開の利用制限を求める。司書と利用者の 2 ロールを一元管理する必要がある。
+decision: |
+  - 認証プロトコルは OAuth2/OIDC（CTP-001, confidence: high）。IdP が発行するトークンを API Gateway で検証し、Backend API はトークンのクレーム（利用者区分）を信頼する
+  - IdP はセルフホスト IdP 単一（tier-idp / CTP-003, confidence: medium）。司書・利用者を一元管理し、ID/パスワード認証 + パスワードポリシー + アカウントロックを IdP で実装する
+  - トークンライフサイクル（CTR-004）: 短命アクセストークン + リフレッシュ、司書向けは無操作タイムアウト
+  - セッション（E-901）は TTL 付き KVS に置き、スケールアウト時に共有する
+consequences:
+  positive:
+    - "認証を IdP に集約し、Backend API から認証ロジックを排除できる"
+    - "標準プロトコルにより、将来のマネージド IdP や自治体アカウント連携への移行余地を残せる"
+    - "トークンのクレームで利用者区分を運び、Gateway の粗粒度 RBAC と Backend の本人限定判定に一貫して使える"
+  negative:
+    - "セルフホスト IdP の運用対象（パッチ・可用性・バックアップ）が 1 つ増える"
+    - "利用者番号ベースの ID 運用と IdP のアカウント管理の対応付け（利用者登録時のアカウント発行）を dist-spec で設計する必要がある"
+alternatives_considered:
+  - name: "Backend API 内蔵の ID/パスワード認証 + セッション（IdP ティアなし）（Option B）"
+    reason_rejected: "小規模ならティア削減で最も簡素だが、認証ロジックの自作範囲が広くセキュリティ責務が API に集中する"
+  - name: "マネージド IdP（Option C）"
+    reason_rejected: "運用負荷最小・MFA 拡張容易だが、外部サービス依存とコスト、利用者番号ベースの ID 運用との整合が課題。ベンダー未定の段階では選定できない"

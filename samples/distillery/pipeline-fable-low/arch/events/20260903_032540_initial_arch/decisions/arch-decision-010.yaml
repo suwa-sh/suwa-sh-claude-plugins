@@ -1,0 +1,48 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-010"
+title: "レイヤリング戦略: Backend API / ワーカーは 5 層 + 共有ライブラリ、フロントエンドは 2 層、IF なし直接依存で開始"
+status: "approved"
+generated_at: "2026-09-03T03:51:01"
+context: |
+  アプリケーションコードを持つ 5 ティア（backend-api / worker / frontend-user / frontend-staff / external-integration）のレイヤリングと、
+  レイヤー間の依存形態（IF なし直接依存 vs 凹型）を決める必要がある。
+  状態.tsv は 3 モデル / 17 遷移行（5 種以上）、条件.tsv は 14 件（10 件以上）で Backend の 5 層判定に該当する。
+  ワーカーは延滞判定（貸出中 → 延滞）・返却通知送信（予約中 → 通知済み）の状態遷移を起こし、API 側と同じ業務パラメータ（返却期限）を使う。
+  利用者 UC 6 件・司書 UC 18 件はいずれも 20 未満。外部サービスはメール配信 1 つで、DB 乗り換え予定・チーム分割情報は無い。
+decision: |
+  - tier-backend-api: presentation → usecase → domain → repository → gateway の 5 層（confidence: high）。越境状態遷移は usecase 層の単一トランザクション（LP-005）、本人限定判定と監査ログも usecase 層（LP-006 / LP-007）
+  - tier-worker: 5 層。domain / repository / gateway は Backend API と同一リポジトリの共有ライブラリで共有し、デプロイ単位は分離する（LP-026, medium）
+  - tier-frontend-user / tier-frontend-staff: view/component → api client の 2 層（状態管理層なし、medium）
+  - tier-external-integration: ACL adapter → SDK client の 2 層。ワーカーの gateway 層から利用するライブラリとして同梱（CLP-014, medium）
+  - レイヤー間依存は IF なし（直接依存）で開始し、依存方向は lint / アーキテクチャテストで機械的に担保する（CLP-001 / CLR-004, default）。外部サービス API 変更や DB 製品乗り換え時に凹型（IF 導入）へ移行する
+  - 通知メッセージは通知レコードを同一トランザクションで作成し、コミット後に MQ へ発行。発行漏れは日次バッチが送信待ちを拾う（LP-008, medium）
+  - 運営分析は同一 RDB の集計クエリ + 貸出統計テーブルへの日次集計とし、CQRS は不採用（medium）
+  - ロギングはレイヤー別ログカテゴリ（CLP-003）、domain 層はログ出力禁止（LP-011）、PII・認証情報のログ出力禁止（CLR-002 / CLR-006 / CLR-008〜010, high）
+  - トークン期限接近ログ（LP-004）は presentation 層で WARN 出力を仮採用（confidence: low、DIST-023）
+consequences:
+  positive:
+    - "状態遷移規則と条件判定が domain 層に集約され、API とワーカーで二重実装にならない"
+    - "IF なしで開発スピードを優先しつつ、依存方向の静的検査で構造の劣化を防げる"
+    - "フロントエンドは 2 層で実装量が最小。画面横断状態が増えたら 3 層へ拡張できる"
+  negative:
+    - "共有ライブラリはモノレポ運用が前提となり、ビルド・バージョン管理の規律が必要"
+    - "IF なしのため repository / gateway の差し替えとテスト時 mock がやや煩雑。凹型移行時に実装量 +10% 程度"
+    - "司書向け FE は UC 18 件で 2 層判定の境界に近く、窓口画面間の状態共有が必要になれば 3 層または画面グループ単位ストアへ拡張が要る"
+    - "コミット後発行は MQ 発行とコミットの原子性を保証しない。発行漏れの回収は日次バッチの周期に依存する"
+alternatives_considered:
+  - name: "フロントエンドを 3 層（view → state management → api client）/ SSR 中心にする"
+    reason_rejected: "画面横断状態は認証状態程度で初期実装量 +15% に見合わない。SSR 併用は技術スタックが分かれる"
+  - name: "ワーカーを同一デプロイ単位（起動モード切替）/ ワーカー専用の薄い SQL 実装にする"
+    reason_rejected: "同一デプロイは API イメージにバッチコードが同居しスケール設定が共通になる。薄い実装は延滞判定・リマインド対象判定が API 側の状態遷移規則と乖離するリスクがある"
+  - name: "gateway のみ IF 導入（凹型）/ repository と gateway の両方に IF 導入"
+    reason_rejected: "外部サービス 1 つ（ACL で隔離済み）・DB 乗り換え予定なし・チーム分割なしで、IF なしの前提条件を満たす。抽象化コストが小規模には過剰"
+  - name: "Transactional Outbox / 返却通知のみ API 内で同期送信"
+    reason_rejected: "Outbox はリレープロセスの追加運用が要る。通知レコードが送信結果を保持するため代替になる。同期送信は外部遅延が 5 秒以内の目標に直結する"
+  - name: "外部連携を独立プロセス / Backend API にも同梱"
+    reason_rejected: "呼び出し元はワーカーのみで独立プロセスの根拠が無い。API 同梱は冪等性と回復性の実装が 2 箇所になる"
+  - name: "参照専用レプリカ + 集計クエリ / CQRS（Materialized View）"
+    reason_rejected: "NFR B.1.1.1 Lv1 で読み書き負荷の非対称は小さく、B.2.1.3 TAT 10 秒以内は RDB 集計 + 貸出統計テーブルで足りる"
+  - name: "トークン期限接近ログを出力しない / Gateway アクセスログで代替"
+    reason_rejected: "実装は軽微で期限切れ直前の失敗集中を検知できるため仮採用。運用上の必要性は弱い推論のため DIST-023 で要確認"

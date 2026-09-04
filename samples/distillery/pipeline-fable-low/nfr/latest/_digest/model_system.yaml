@@ -1,0 +1,5 @@
+# digest of nfr/latest/nfr-grade.yaml section model_system (L6-8); source_sha256: f352e424419f352fb0a55e65541b02a9f420d7d6b9dec9d2a0f3b5de39d04780
+# 派生物。正本は nfr-grade.yaml。編集しない
+model_system:
+  type: "model2"
+  reason: "アクター「利用者」が社外・受益者として Web 画面から書籍検索・予約・利用状況確認を行い、情報「利用者」に氏名・連絡先（メールアドレス・電話番号・住所）の個人情報を保持する。一方で対象は 1 館の図書館・登録利用者〜1,000 人規模で、停止しても社会的混乱には至らない。社会的影響が限定的なサービスと判断し model2 を選定した（model3 は金融・社会インフラ級で過剰、model1 は社外向けに個人情報を扱う点で不足）"

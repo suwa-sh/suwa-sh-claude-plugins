@@ -1,0 +1,23 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-007"
+title: "NFR 起因の UI 判断: PII マスク・確認ステップ・ページネーション"
+status: "approved"
+generated_at: "2026-09-03T04:18:12+09:00"
+context: |
+  NFR E.1.2.1 / E.6.1.1（貸出履歴の要配慮性・PII 暗号化）、arch SR-002 / SR-005、B.1.1.1 / B.2.1.1 / B.2.1.3 から、UI 側で守るべき振る舞いを決める必要があった。
+decision: |
+  連絡先は PiiMaskedText で既定マスク（明示操作で開示）。削除・貸出・返却・通知送信は ConfirmPanel を経由し submitting 中は disabled。一覧は 20 件/頁ページネーション + Skeleton。統計は Skeleton + 「集計中」文言。ブラウザ永続化を前提とする UI（ログイン維持等）は設けない。
+consequences:
+  positive:
+    - "個人情報の画面表示を最小化できる"
+    - "状態遷移操作の二重送信を UI 側でも防げる"
+    - "同時 100 規模に対して過剰な仮想スクロール実装を避けられる"
+  negative:
+    - "司書は連絡先を見るたびに開示操作が必要"
+alternatives_considered:
+  - name: "連絡先を常時表示"
+    reason_rejected: "E.1.2.1 のプライバシー配慮に反する"
+  - name: "確認ステップを Modal のみで実装"
+    reason_rejected: "RDRA に確認画面が独立して定義されており、画面としても持つ必要がある"

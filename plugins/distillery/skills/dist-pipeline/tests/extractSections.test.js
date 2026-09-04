@@ -11,7 +11,7 @@ const { sliceSection, listItemValues, extract, renderMarkdown, sha256, stripTrai
 const { buildAll, readIndexSha, readIndex, digestIsCurrent, expectedRowsOf, DOMAINS } = require('../scripts/buildDigest');
 
 // 実リポジトリでは samples/ を fixture に使う。レビュー用コピー等では DIST_SAMPLE_ROOT で差し替えられる
-const sampleRoot = process.env.DIST_SAMPLE_ROOT || path.resolve(__dirname, '../../../../../samples/distillery/pipeline');
+const sampleRoot = process.env.DIST_SAMPLE_ROOT || path.resolve(__dirname, '../../../../../samples/distillery/pipeline-opus-medium');
 const archYaml = path.join(sampleRoot, 'arch/latest/arch-design.yaml');
 const nfrYaml = path.join(sampleRoot, 'nfr/latest/nfr-grade.yaml');
 const designYaml = path.join(sampleRoot, 'design/latest/design-event.yaml');

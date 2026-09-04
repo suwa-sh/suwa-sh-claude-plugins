@@ -1,0 +1,17 @@
+Spec 生成: dist-pipeline Step6 (dist-spec) による UC 単位詳細仕様・全体横断仕様の初回生成
+
+trigger_event:
+  rdra: 20260903_030744_initial_build
+  arch: 20260903_041150_arch_infra_feedback_20260903_040307_infra_product_design
+  design: 20260903_041812_design_system
+
+design_available: true
+dialogue_policy: auto_adopt
+mode: initial
+
+備考:
+  - 本イベントは Step6 の途中（Step4-Review round2 完了直後、spec-event.yaml 作成前）で
+    セッション上限により中断し、同じ event_id で再開して完了させた。
+  - 再開時は既存の UC spec 本文（spec.md / tier-*.md / buc-spec.md / _cross-cutting/）を再利用し、
+    残工程（spec-event.yaml 生成 → バリデーション → Step6.5 反証レビュー → Markdown 生成 →
+    latest/ スナップショット）だけを実施した。

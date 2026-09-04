@@ -1,0 +1,1090 @@
+version: "1.0"
+datastore: "rdb"
+
+# 生成元: 全 27 UC の _model-summary.yaml（tables）+ docs/rdra/latest/情報.tsv + _inputs-digest.md（data_architecture.entities）
+# 正規化方針: 第 3 正規形を基本。貸出統計（loan_statistics）のみ loans からの集計テーブル（非正規化）
+# enum 格納値: _review/api-conventions.md の英語コードに揃える
+# DDL には変換しない（抽象型のみ。RDB 製品固有の型名は使わない）
+
+_review_notes:
+  - "物理 FK は削除時に参照整合性を保証する必要がある関係のみ設定する（books→genres, credentials→users, *_events→親, notifications→loans/reservations）。loans / reservations / loan_statistics / audit_logs から books / users への参照は論理参照（FK なし）: 書籍削除（在庫あり条件）・利用者削除（有効貸出・予約 0 件条件）後も履歴・統計を保持し、人気書籍ランキングは削除済み書籍の表示名を置換する仕様のため"
+  - "*_events テーブルの event_type は英語コード（api-conventions.md の 10 値: REGISTERED / UPDATED / DELETED / LOANED / RETURNED / OVERDUE / RESERVED / NOTIFIED / CANCELLED / CLOSED）に統一した。UC の _model-summary.yaml も同じ英語コードに揃えている"
+  - "book_events は UC 間でカラム構成が異なっていた（蔵書管理: event_id / payload / recorded_by、貸出・予約: related_id）。両方を包含する構成（payload と related_id を nullable、actor_user_number を nullable）に統合した"
+  - "notifications.sent_at は digest では非 NULL だが、送信待ち（PENDING）行を INSERT してワーカーが後から更新する運用のため nullable にした。requested_on（要求日）を重複送信防止キーの一部として追加した"
+  - "notifications の重複送信防止ユニークキーは target_loan_id 系（REMINDER / OVERDUE_NOTICE）と target_reservation_id 系（RETURN_NOTICE）で別のインデックスとし、NULL を含む行は対象外とする部分一意インデックスを想定する"
+  - "reservations の (book_id, queue_position) 一意制約は有効予約（RESERVED / NOTIFIED）に限定した部分一意インデックスとする。取消・終了済みの順位は再利用されるため全行一意にはできない"
+  - "books.isbn はハイフンなしの正規形で保存するため、検索時に REPLACE は不要。isbn 単独の通常インデックスで足りる（部分一致検索の前方一致部分に効く）"
+  - "ユニーク制約不要と判断: genres.genre_name（マスタは genre_id で識別。名称変更を許容）、users.email（同一メールアドレスを複数利用者番号で登録する運用を排除する要件が RDRA にないため。要確認）"
+  - "loan_statistics は loans の集計結果（Materialized View 相当）。集計バッチが (period_type, period_start, book_id) をキーに UPSERT する。loans への FK は持たない"
+  - "loan_statistics を UPSERT する集計バッチの UC が RDRA に無いため、本ファイルでは前提だけを定義する（R-006 / docs/todo.md に RDRA 追加要望として起票済み）。前提: (1) 実行周期は日次（前日分の DAY 行を確定し、当月・当年の MONTH / YEAR 行を再集計する。当日・当月の未確定分は参照 UC 側では補完しない）、(2) UPSERT キーは (period_type, period_start, book_id)、(3) loan_count = 期間内に当該書籍が貸し出された回数（loans.loaned_on が期間内の行数。返却済み・延滞も含む）、(4) loan_total = 当該行の貸出レコード数（期間別貸出統計は SUM(loan_total) で期間合計を得る）、(5) ranking は同一 (period_type, period_start) 内で loan_count 降順・同値は book_id 昇順の連番を集計バッチが付与する、(6) aggregated_at は再集計のたびに更新し、遅延到着（過去期間の貸出登録・訂正）は当該 period_start の行を再計算して上書きする、(7) 集計完了時に KVS の cache:report:* を無効化する"
+  - "sessions（E-901）は KVS（kvs-schema.yaml の session:{sessionId}）で管理し RDB テーブルにしない"
+
+tables:
+  # ---------------------------------------------------------------------------
+  # 蔵書管理
+  # ---------------------------------------------------------------------------
+  - name: "books"
+    rdra_info: "書籍"
+    description: "蔵書として一元管理する書籍のスナップショット（E-001, event_snapshot）。登録日・更新日は book_events の occurred_at から導出する"
+    columns:
+      - name: "book_id"
+        type: "uuid"
+        nullable: false
+        description: "書籍ID（主キー。ULID 等で採番）。情報.tsv: 書籍ID"
+      - name: "title"
+        type: "string"
+        nullable: false
+        description: "タイトル。情報.tsv: タイトル"
+      - name: "author"
+        type: "string"
+        nullable: false
+        description: "著者。情報.tsv: 著者"
+      - name: "isbn"
+        type: "string"
+        nullable: true
+        description: "ISBN（ハイフンなしの正規形。フロントエンドが送信前にハイフンを除去し、API はハイフンなしのみ受理する。任意。移行時に重複・欠損を名寄せする NFR D.4.1.3）。情報.tsv: ISBN"
+      - name: "publisher"
+        type: "string"
+        nullable: true
+        description: "出版社（任意）。情報.tsv: 出版社"
+      - name: "genre_id"
+        type: "uuid"
+        nullable: false
+        description: "ジャンルID（genres への FK）。情報.tsv: ジャンル"
+      - name: "media_type"
+        type: "string"
+        nullable: false
+        default: "PAPER"
+        description: "媒体種別。値: PAPER（紙）, ELECTRONIC（電子）。初期リリースは PAPER のみ運用。情報.tsv: 媒体種別"
+      - name: "current_status"
+        type: "string"
+        nullable: false
+        default: "AVAILABLE"
+        description: "書籍の状態（スナップショット）。値: AVAILABLE（在庫あり）, ON_LOAN（貸出中）, RESERVED（予約待ち）。遷移は book_events で記録する。情報.tsv: 書籍の状態"
+      - name: "title_normalized"
+        type: "string"
+        nullable: false
+        description: "タイトルの NFKC 正規化 + 小文字化した検索用派生列（INSERT / UPDATE 時に再計算）"
+      - name: "author_normalized"
+        type: "string"
+        nullable: false
+        description: "著者の NFKC 正規化 + 小文字化した検索用派生列"
+      - name: "publisher_normalized"
+        type: "string"
+        nullable: true
+        description: "出版社の NFKC 正規化 + 小文字化した検索用派生列（publisher が NULL のとき NULL）"
+      - name: "version"
+        type: "integer"
+        nullable: false
+        default: "1"
+        description: "楽観ロック用バージョン（UPDATE ごとに +1。If-Match / ETag と対応）"
+      - name: "updated_at"
+        type: "datetime"
+        nullable: false
+        description: "スナップショット最終更新日時（一覧の既定ソートキー）。情報.tsv: 更新日"
+    primary_key: ["book_id"]
+    foreign_keys:
+      - columns: ["genre_id"]
+        references:
+          table: "genres"
+          columns: ["genre_id"]
+        on_delete: "RESTRICT"
+    indexes:
+      - name: "idx_books_genre_id_updated_at"
+        columns: ["genre_id", "updated_at"]
+        unique: false
+        reason: "genres への FK 参照 + ジャンル絞り込み一覧の更新日時降順ページング"
+        used_by: ["書籍を登録する", "書籍を検索する", "書籍一覧を参照する", "在庫状況一覧を参照する"]
+      - name: "idx_books_current_status_updated_at"
+        columns: ["current_status", "updated_at"]
+        unique: false
+        reason: "在庫状況で絞り込んだ一覧の更新日時降順ページング。状態別件数の GROUP BY にも利用"
+        used_by: ["書籍を検索する", "書籍一覧を参照する", "在庫状況一覧を参照する"]
+      - name: "idx_books_current_status_genre_id_title"
+        columns: ["current_status", "genre_id", "title"]
+        unique: false
+        reason: "在庫状況一覧の 状態 × ジャンル 絞り込みとタイトル順ページング"
+        used_by: ["在庫状況一覧を参照する"]
+      - name: "idx_books_updated_at"
+        columns: ["updated_at"]
+        unique: false
+        reason: "絞り込みなし一覧の更新日時降順ページング"
+        used_by: ["書籍一覧を参照する"]
+      - name: "idx_books_title_normalized"
+        columns: ["title_normalized"]
+        unique: false
+        reason: "タイトル検索（前方一致時に利用。中間一致は LIKE 走査を許容: 1 館規模 NFR B.1.1.2）"
+        used_by: ["書籍を検索する", "書籍一覧を参照する"]
+      - name: "idx_books_author_normalized"
+        columns: ["author_normalized"]
+        unique: false
+        reason: "著者検索（前方一致時に利用）"
+        used_by: ["書籍を検索する"]
+      - name: "idx_books_isbn"
+        columns: ["isbn"]
+        unique: false
+        reason: "ISBN 検索。ユニーク制約: 不要（同一 ISBN の複本を別書籍 ID で登録するため一意にしない）"
+        used_by: ["書籍を検索する", "書籍一覧を参照する"]
+    used_by:
+      - uc: "書籍を登録する"
+        operations: ["INSERT"]
+      - uc: "書籍を編集する"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "書籍を削除する"
+        operations: ["SELECT", "DELETE"]
+      - uc: "書籍一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "書籍を検索する"
+        operations: ["SELECT"]
+      - uc: "書籍詳細を参照する"
+        operations: ["SELECT"]
+      - uc: "貸出を登録する"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "返却を登録する"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "返却通知を送信する"
+        operations: ["SELECT"]
+      - uc: "予約を登録する"
+        operations: ["SELECT"]
+      - uc: "予約を取り消す"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "予約一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "貸出履歴を参照する"
+        operations: ["SELECT"]
+      - uc: "予約状況を参照する"
+        operations: ["SELECT"]
+      - uc: "利用者の利用状況を参照する"
+        operations: ["SELECT"]
+      - uc: "リマインド対象を抽出する"
+        operations: ["SELECT"]
+      - uc: "リマインドを送信する"
+        operations: ["SELECT"]
+      - uc: "延滞一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "督促を送信する"
+        operations: ["SELECT"]
+      - uc: "在庫状況一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "人気書籍ランキングを参照する"
+        operations: ["SELECT"]
+
+  - name: "book_events"
+    rdra_info: "書籍"
+    description: "書籍の状態遷移・属性変更イベント（E-001 の event ログ）。登録日 / 更新日 / 削除履歴の正本。書籍削除後も保持する"
+    columns:
+      - name: "event_id"
+        type: "uuid"
+        nullable: false
+        description: "イベントID（主キー。UUID）"
+      - name: "book_id"
+        type: "uuid"
+        nullable: false
+        description: "対象書籍ID（論理参照。削除後も保持するため FK なし）"
+      - name: "event_type"
+        type: "string"
+        nullable: false
+        description: "イベント種別。値: REGISTERED（登録）, UPDATED（属性変更）, DELETED（削除）, LOANED（貸出）, RETURNED（返却）, CANCELLED（予約取消で在庫ありへ遷移）"
+      - name: "occurred_at"
+        type: "datetime"
+        nullable: false
+        description: "発生日時。REGISTERED の occurred_at が登録日、最新イベントの occurred_at が更新日"
+      - name: "actor_user_number"
+        type: "string"
+        nullable: true
+        description: "操作した司書の利用者番号。貸出・返却・予約取消に伴う自動遷移は NULL"
+      - name: "related_id"
+        type: "uuid"
+        nullable: true
+        description: "関連レコードID（LOANED / RETURNED は loan_id、CANCELLED は reservation_id。それ以外は NULL）"
+      - name: "payload"
+        type: "text"
+        nullable: true
+        description: "イベントペイロード（JSON。REGISTERED: 登録属性 + 遷移後状態、UPDATED: 変更前後差分、DELETED: 削除前の全属性 + 遷移前状態）"
+    primary_key: ["event_id"]
+    foreign_keys: []
+    indexes:
+      - name: "idx_book_events_book_id_occurred_at"
+        columns: ["book_id", "occurred_at"]
+        unique: false
+        reason: "書籍ごとの履歴を時系列に取得（registeredAt / updatedAt の導出、監査）"
+        used_by: ["書籍を登録する", "書籍を編集する", "書籍を削除する", "書籍詳細を参照する", "貸出を登録する", "返却を登録する", "予約を取り消す"]
+    used_by:
+      - uc: "書籍を登録する"
+        operations: ["INSERT"]
+      - uc: "書籍を編集する"
+        operations: ["INSERT", "SELECT"]
+      - uc: "書籍を削除する"
+        operations: ["INSERT"]
+      - uc: "書籍詳細を参照する"
+        operations: ["SELECT"]
+      - uc: "貸出を登録する"
+        operations: ["INSERT"]
+      - uc: "返却を登録する"
+        operations: ["INSERT"]
+      - uc: "予約を取り消す"
+        operations: ["INSERT"]
+
+  - name: "genres"
+    rdra_info: "ジャンル"
+    description: "書籍を分類するジャンルマスタ（E-002, resource_mutable）。検索条件および運営分析の集計単位"
+    columns:
+      - name: "genre_id"
+        type: "uuid"
+        nullable: false
+        description: "ジャンルID（主キー）。情報.tsv: ジャンルID"
+      - name: "genre_name"
+        type: "string"
+        nullable: false
+        description: "ジャンル名（文学・社会科学・自然科学・技術・芸術・歴史・児童書・その他）。情報.tsv: ジャンル名"
+      - name: "description"
+        type: "text"
+        nullable: true
+        description: "ジャンルの説明。情報.tsv: 説明"
+    primary_key: ["genre_id"]
+    foreign_keys: []
+    indexes: []
+    used_by:
+      - uc: "書籍を登録する"
+        operations: ["SELECT"]
+      - uc: "書籍を編集する"
+        operations: ["SELECT"]
+      - uc: "書籍一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "書籍を検索する"
+        operations: ["SELECT"]
+      - uc: "書籍詳細を参照する"
+        operations: ["SELECT"]
+      - uc: "在庫状況一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "人気書籍ランキングを参照する"
+        operations: ["SELECT"]
+
+  # ---------------------------------------------------------------------------
+  # 利用者管理
+  # ---------------------------------------------------------------------------
+  - name: "users"
+    rdra_info: "利用者"
+    description: "図書館を利用する人（司書・利用者）のスナップショット（E-003, event_snapshot）。個人情報を含む（NFR E.6.1.1 保管時暗号化、E.6.2.1 テスト環境マスキング）"
+    columns:
+      - name: "user_number"
+        type: "string"
+        nullable: false
+        description: "利用者番号（主キー。司書が登録時にシーケンス採番する一意の識別子）。情報.tsv: 利用者番号"
+      - name: "name"
+        type: "string"
+        nullable: false
+        description: "氏名（個人情報）。情報.tsv: 氏名"
+      - name: "name_normalized"
+        type: "string"
+        nullable: false
+        description: "氏名の NFKC 正規化 + 小文字化した検索用派生列（利用者一覧の部分一致検索）"
+      - name: "email"
+        type: "string"
+        nullable: false
+        description: "メールアドレス（通知の送信先。個人情報。移行時に欠損を補完する NFR D.4.1.3）。情報.tsv: 連絡先"
+      - name: "phone"
+        type: "string"
+        nullable: true
+        description: "電話番号（任意。個人情報）。情報.tsv: 連絡先"
+      - name: "address"
+        type: "string"
+        nullable: true
+        description: "住所（任意。個人情報）。情報.tsv: 連絡先"
+      - name: "user_type"
+        type: "string"
+        nullable: false
+        default: "PATRON"
+        description: "利用者区分。値: PATRON（利用者）, STAFF（司書）。RBAC のロール源泉（NFR E.5.2.1）。情報.tsv: 利用者区分"
+      - name: "version"
+        type: "integer"
+        nullable: false
+        default: "1"
+        description: "楽観ロック用バージョン（UPDATE ごとに +1）"
+      - name: "updated_at"
+        type: "datetime"
+        nullable: false
+        description: "スナップショット最終更新日時。登録日・更新日は user_events の occurred_at で管理する。情報.tsv: 更新日"
+    primary_key: ["user_number"]
+    foreign_keys: []
+    indexes:
+      - name: "idx_users_name_normalized"
+        columns: ["name_normalized"]
+        unique: false
+        reason: "氏名部分一致検索（前方一致時に利用。中間一致は LIKE 走査を許容: 1 館規模）"
+        used_by: ["利用者一覧を参照する"]
+    used_by:
+      - uc: "利用者を登録する"
+        operations: ["INSERT"]
+      - uc: "利用者を編集する"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "利用者を削除する"
+        operations: ["SELECT", "DELETE"]
+      - uc: "利用者一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "利用者の利用状況を参照する"
+        operations: ["SELECT"]
+      - uc: "貸出を登録する"
+        operations: ["SELECT"]
+      - uc: "返却を登録する"
+        operations: ["SELECT"]
+      - uc: "返却通知を送信する"
+        operations: ["SELECT"]
+      - uc: "予約を登録する"
+        operations: ["SELECT"]
+      - uc: "予約を取り消す"
+        operations: ["SELECT"]
+      - uc: "予約一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "リマインド対象を抽出する"
+        operations: ["SELECT"]
+      - uc: "延滞を判定する"
+        operations: ["SELECT"]
+      - uc: "延滞一覧を参照する"
+        operations: ["SELECT"]
+
+  - name: "user_events"
+    rdra_info: "利用者"
+    description: "利用者の登録・属性変更・削除イベント（E-003 の event ログ）。登録日 / 更新日の正本。利用者削除後も保持する（削除イベントの payload に氏名・連絡先は含めない）"
+    columns:
+      - name: "event_id"
+        type: "uuid"
+        nullable: false
+        description: "イベントID（主キー。UUID）"
+      - name: "user_number"
+        type: "string"
+        nullable: false
+        description: "対象利用者番号（論理参照。削除後も保持するため FK なし）"
+      - name: "event_type"
+        type: "string"
+        nullable: false
+        description: "イベント種別。値: REGISTERED（登録）, UPDATED（属性変更）, DELETED（削除）"
+      - name: "occurred_at"
+        type: "datetime"
+        nullable: false
+        description: "発生日時。REGISTERED の occurred_at が登録日、最新イベントの occurred_at が更新日"
+      - name: "actor_user_number"
+        type: "string"
+        nullable: false
+        description: "操作した司書の利用者番号"
+      - name: "payload"
+        type: "text"
+        nullable: true
+        description: "イベントペイロード（JSON。REGISTERED / UPDATED: 氏名・連絡先、DELETED: { reason: 利用終了 } のみ）"
+    primary_key: ["event_id"]
+    foreign_keys: []
+    indexes:
+      - name: "idx_user_events_user_number_occurred_at"
+        columns: ["user_number", "occurred_at"]
+        unique: false
+        reason: "利用者ごとの履歴を時系列に取得（registeredAt / updatedAt の導出）"
+        used_by: ["利用者を登録する", "利用者を編集する", "利用者を削除する"]
+      - name: "idx_user_events_user_number_event_type"
+        columns: ["user_number", "event_type"]
+        unique: false
+        reason: "一覧表示時の登録イベント一括取得（WHERE event_type = 'REGISTERED' AND user_number IN (...)）"
+        used_by: ["利用者一覧を参照する"]
+    used_by:
+      - uc: "利用者を登録する"
+        operations: ["INSERT"]
+      - uc: "利用者を編集する"
+        operations: ["INSERT"]
+      - uc: "利用者を削除する"
+        operations: ["INSERT"]
+      - uc: "利用者一覧を参照する"
+        operations: ["SELECT"]
+
+  - name: "credentials"
+    rdra_info: "利用者"
+    description: "認証情報（E-903, 派生エンティティ。NFR E.5.1.1 ID/パスワード認証、E.7.2.1 ログイン失敗検知とアカウントロック、E.6.1.1 暗号化）。users と 1:1"
+    columns:
+      - name: "user_number"
+        type: "string"
+        nullable: false
+        description: "利用者番号（主キー兼 users への FK。1:1）"
+      - name: "password_hash"
+        type: "string"
+        nullable: false
+        description: "パスワードハッシュ（平文保持禁止。ソルト付きハッシュ）"
+      - name: "password_updated_at"
+        type: "datetime"
+        nullable: false
+        description: "パスワード最終更新日時（有効期限ポリシーの判定基準）"
+      - name: "failed_attempts"
+        type: "integer"
+        nullable: false
+        default: "0"
+        description: "連続ログイン失敗回数（成功時に 0 へリセット）"
+      - name: "locked_until"
+        type: "datetime"
+        nullable: true
+        description: "アカウントロック解除日時（未ロックは NULL）"
+    primary_key: ["user_number"]
+    foreign_keys:
+      - columns: ["user_number"]
+        references:
+          table: "users"
+          columns: ["user_number"]
+        on_delete: "CASCADE"
+    indexes: []
+    used_by:
+      - uc: "利用者を削除する"
+        operations: ["DELETE"]
+
+  # ---------------------------------------------------------------------------
+  # 貸出管理
+  # ---------------------------------------------------------------------------
+  - name: "loans"
+    rdra_info: "貸出"
+    description: "利用者に書籍を貸し出した記録のスナップショット（E-004, event_snapshot）。返却日は loan_events（RETURNED）の occurred_at で管理する。貸出履歴は要配慮情報に準じる（NFR E.1.2.1 / E.6.1.1）"
+    columns:
+      - name: "loan_id"
+        type: "uuid"
+        nullable: false
+        description: "貸出ID（主キー。ULID 採番）。情報.tsv: 貸出ID"
+      - name: "book_id"
+        type: "uuid"
+        nullable: false
+        description: "書籍ID（books への論理参照。書籍削除後も履歴を保持するため FK なし）。情報.tsv: 書籍ID"
+      - name: "user_number"
+        type: "string"
+        nullable: false
+        description: "利用者番号（users への論理参照。利用者削除後も履歴を保持するため FK なし）。情報.tsv: 利用者番号"
+      - name: "loaned_on"
+        type: "date"
+        nullable: false
+        description: "貸出日（貸出登録時に確定）。情報.tsv: 貸出日"
+      - name: "due_date"
+        type: "date"
+        nullable: false
+        description: "返却期限（loaned_on + 貸出時点で有効な loan_periods.loan_days）。情報.tsv: 返却期限"
+      - name: "current_status"
+        type: "string"
+        nullable: false
+        default: "ON_LOAN"
+        description: "貸出の状態。値: ON_LOAN（貸出中）, OVERDUE（延滞）, RETURNED（返却済み）。情報.tsv: 貸出の状態"
+      - name: "recorded_by"
+        type: "string"
+        nullable: false
+        description: "記録した司書の利用者番号（users への論理参照）。情報.tsv: 記録した司書"
+      - name: "version"
+        type: "integer"
+        nullable: false
+        default: "1"
+        description: "楽観ロック用バージョン（返却・延滞判定の UPDATE ごとに +1）"
+      - name: "updated_at"
+        type: "datetime"
+        nullable: false
+        description: "スナップショット最終更新日時"
+    primary_key: ["loan_id"]
+    foreign_keys: []
+    indexes:
+      - name: "idx_loans_book_id_current_status"
+        columns: ["book_id", "current_status"]
+        unique: false
+        reason: "書籍ごとの貸出中 / 延滞レコード検索（返却対象の特定・貸出可否判定）。ユニーク制約: 貸出中は書籍の状態（books.current_status）と FOR UPDATE で直列化するため一意インデックスは設けない"
+        used_by: ["貸出を登録する", "返却を登録する"]
+      - name: "idx_loans_user_number_current_status_due_date"
+        columns: ["user_number", "current_status", "due_date"]
+        unique: false
+        reason: "利用者ごとの現在の貸出を返却期限順に取得。有効貸出件数（削除可否判定）・延滞一覧の利用者絞り込みにも利用"
+        used_by: ["貸出履歴を参照する", "利用者の利用状況を参照する", "利用者を削除する", "延滞一覧を参照する", "貸出を登録する"]
+      - name: "idx_loans_user_number_loaned_on"
+        columns: ["user_number", "loaned_on"]
+        unique: false
+        reason: "利用者ごとの貸出履歴を貸出日降順に取得"
+        used_by: ["貸出履歴を参照する", "利用者の利用状況を参照する"]
+      - name: "idx_loans_current_status_due_date"
+        columns: ["current_status", "due_date"]
+        unique: false
+        reason: "貸出中 × 返却期限範囲の日次走査（リマインド対象抽出・延滞判定。〜10 万件、8 時間枠）と延滞一覧の返却期限順ページング"
+        used_by: ["リマインド対象を抽出する", "延滞を判定する", "延滞一覧を参照する"]
+      - name: "idx_loans_loaned_on"
+        columns: ["loaned_on"]
+        unique: false
+        reason: "貸出日範囲の件数集計（未集計区切りのリアルタイム COUNT・集計バッチ）"
+        used_by: ["期間別貸出統計を参照する"]
+    used_by:
+      - uc: "貸出を登録する"
+        operations: ["INSERT"]
+      - uc: "返却を登録する"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "返却通知を送信する"
+        operations: ["SELECT"]
+      - uc: "貸出履歴を参照する"
+        operations: ["SELECT"]
+      - uc: "利用者の利用状況を参照する"
+        operations: ["SELECT"]
+      - uc: "利用者を削除する"
+        operations: ["SELECT"]
+      - uc: "リマインド対象を抽出する"
+        operations: ["SELECT"]
+      - uc: "リマインドを送信する"
+        operations: ["SELECT"]
+      - uc: "延滞を判定する"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "延滞一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "督促を送信する"
+        operations: ["SELECT"]
+      - uc: "期間別貸出統計を参照する"
+        operations: ["SELECT"]
+
+  - name: "loan_events"
+    rdra_info: "貸出"
+    description: "貸出の状態遷移イベント（E-004 の event ログ）。返却日（RETURNED の occurred_at）の正本。API の冪等キーも保持する"
+    columns:
+      - name: "loan_event_id"
+        type: "uuid"
+        nullable: false
+        description: "貸出イベントID（主キー。ULID 採番）"
+      - name: "loan_id"
+        type: "uuid"
+        nullable: false
+        description: "対象貸出ID（loans への FK）"
+      - name: "event_type"
+        type: "string"
+        nullable: false
+        description: "イベント種別。値: REGISTERED（登録）, RETURNED（返却）, OVERDUE（延滞）"
+      - name: "occurred_at"
+        type: "datetime"
+        nullable: false
+        description: "発生日時。RETURNED の occurred_at が返却日（情報.tsv: 返却日）"
+      - name: "actor_user_number"
+        type: "string"
+        nullable: false
+        description: "操作者。司書の利用者番号、またはバッチの固定 ID（system:{jobRunId}）"
+      - name: "from_status"
+        type: "string"
+        nullable: true
+        description: "遷移前の貸出状態（値: ON_LOAN, OVERDUE, RETURNED。REGISTERED は NULL）"
+      - name: "to_status"
+        type: "string"
+        nullable: true
+        description: "遷移後の貸出状態（値: ON_LOAN, OVERDUE, RETURNED）"
+      - name: "idempotency_key"
+        type: "string"
+        nullable: true
+        description: "API の Idempotency-Key ヘッダ値（貸出登録・返却登録の再送検出。バッチ由来イベントは NULL）"
+    primary_key: ["loan_event_id"]
+    foreign_keys:
+      - columns: ["loan_id"]
+        references:
+          table: "loans"
+          columns: ["loan_id"]
+        on_delete: "CASCADE"
+    indexes:
+      - name: "idx_loan_events_loan_id_occurred_at"
+        columns: ["loan_id", "occurred_at"]
+        unique: false
+        reason: "貸出ごとのイベント履歴を時系列に取得（返却日の導出・監査）"
+        used_by: ["貸出を登録する", "返却を登録する", "貸出履歴を参照する", "利用者の利用状況を参照する", "延滞を判定する"]
+      - name: "uq_loan_events_idempotency_key"
+        columns: ["idempotency_key"]
+        unique: true
+        reason: "ユニーク制約: 冪等キーの一意性と再送検出（NULL は対象外の部分一意インデックス）"
+        used_by: ["貸出を登録する", "返却を登録する"]
+    used_by:
+      - uc: "貸出を登録する"
+        operations: ["INSERT", "SELECT"]
+      - uc: "返却を登録する"
+        operations: ["INSERT", "SELECT"]
+      - uc: "延滞を判定する"
+        operations: ["INSERT"]
+      - uc: "貸出履歴を参照する"
+        operations: ["SELECT"]
+      - uc: "利用者の利用状況を参照する"
+        operations: ["SELECT"]
+
+  - name: "loan_periods"
+    rdra_info: "貸出期間"
+    description: "返却期限算出に用いる貸出期間（日数）の世代管理設定（E-005, resource_scd2）。現行世代は valid_to = NULL"
+    columns:
+      - name: "loan_period_id"
+        type: "uuid"
+        nullable: false
+        description: "貸出期間設定ID（主キー。世代ごとに採番）"
+      - name: "loan_days"
+        type: "integer"
+        nullable: false
+        description: "貸出期間（日数）。返却期限 = 貸出日 + loan_days。情報.tsv: 貸出期間（日数）"
+      - name: "valid_from"
+        type: "date"
+        nullable: false
+        description: "適用開始日。情報.tsv: 適用開始日"
+      - name: "valid_to"
+        type: "date"
+        nullable: true
+        description: "適用終了日（現行世代は NULL）"
+      - name: "updated_at"
+        type: "datetime"
+        nullable: false
+        description: "更新日時。情報.tsv: 更新日"
+    primary_key: ["loan_period_id"]
+    foreign_keys: []
+    indexes:
+      - name: "uq_loan_periods_valid_from"
+        columns: ["valid_from"]
+        unique: true
+        reason: "ユニーク制約: 同一適用開始日の世代重複防止（valid_to が NULL の行は複合一意の判定対象外になるため valid_from 単独とする。現行世代 1 件の保証はアプリ側の直列化で行う）"
+        used_by: ["貸出を登録する"]
+      - name: "idx_loan_periods_valid_to_valid_from"
+        columns: ["valid_to", "valid_from"]
+        unique: false
+        reason: "現行世代（valid_to IS NULL AND valid_from <= 当日）の 1 件取得"
+        used_by: ["貸出を登録する"]
+    used_by:
+      - uc: "貸出を登録する"
+        operations: ["SELECT"]
+
+  - name: "remind_days_settings"
+    rdra_info: "リマインド日数"
+    description: "返却期限の何日前からリマインドを送るかの世代管理設定（E-006, resource_scd2）。現行世代は valid_to = NULL"
+    columns:
+      - name: "remind_days_id"
+        type: "uuid"
+        nullable: false
+        description: "リマインド日数設定ID（主キー。世代ごとに採番）"
+      - name: "remind_days"
+        type: "integer"
+        nullable: false
+        description: "リマインド日数（返却期限の何日前か）。情報.tsv: リマインド日数"
+      - name: "valid_from"
+        type: "date"
+        nullable: false
+        description: "適用開始日。情報.tsv: 適用開始日"
+      - name: "valid_to"
+        type: "date"
+        nullable: true
+        description: "適用終了日（現行世代は NULL）"
+      - name: "updated_at"
+        type: "datetime"
+        nullable: false
+        description: "更新日時。情報.tsv: 更新日"
+    primary_key: ["remind_days_id"]
+    foreign_keys: []
+    indexes:
+      - name: "uq_remind_days_settings_valid_from"
+        columns: ["valid_from"]
+        unique: true
+        reason: "ユニーク制約: 同一適用開始日の世代重複防止（valid_to が NULL の行は複合一意の判定対象外になるため valid_from 単独とする。現行世代 1 件の保証はアプリ側の直列化で行う）"
+        used_by: ["リマインド対象を抽出する", "貸出履歴を参照する", "利用者の利用状況を参照する"]
+      - name: "idx_remind_days_settings_valid_to_valid_from"
+        columns: ["valid_to", "valid_from"]
+        unique: false
+        reason: "asOf 時点の有効世代の解決（現行世代は valid_to IS NULL）"
+        used_by: ["リマインド対象を抽出する", "貸出履歴を参照する", "利用者の利用状況を参照する"]
+    used_by:
+      - uc: "リマインド対象を抽出する"
+        operations: ["SELECT"]
+      - uc: "貸出履歴を参照する"
+        operations: ["SELECT"]
+      - uc: "利用者の利用状況を参照する"
+        operations: ["SELECT"]
+
+  # ---------------------------------------------------------------------------
+  # 予約管理
+  # ---------------------------------------------------------------------------
+  - name: "reservations"
+    rdra_info: "予約"
+    description: "貸出中の書籍に対する利用者の予約記録のスナップショット（E-007, event_snapshot）。取消日時・通知日時は reservation_events の occurred_at で管理する"
+    columns:
+      - name: "reservation_id"
+        type: "uuid"
+        nullable: false
+        description: "予約ID（主キー。ULID 採番）。情報.tsv: 予約ID"
+      - name: "book_id"
+        type: "uuid"
+        nullable: false
+        description: "書籍ID（books への論理参照。書籍削除後も終端状態の履歴を保持するため FK なし）。情報.tsv: 書籍ID"
+      - name: "user_number"
+        type: "string"
+        nullable: false
+        description: "利用者番号（users への論理参照）。情報.tsv: 利用者番号"
+      - name: "accepted_at"
+        type: "datetime"
+        nullable: false
+        description: "受付日時（予約順位の決定基準）。情報.tsv: 受付日時"
+      - name: "queue_position"
+        type: "integer"
+        nullable: false
+        description: "予約順位（同一書籍の有効予約内で 1 始まりの受付順。取消時に後続を繰り上げる）。情報.tsv: 予約順位"
+      - name: "current_status"
+        type: "string"
+        nullable: false
+        default: "RESERVED"
+        description: "予約の状態。値: RESERVED（予約中）, NOTIFIED（通知済み）, CANCELLED（取消）, CLOSED（終了: 貸出成立）。情報.tsv: 予約の状態"
+      - name: "version"
+        type: "integer"
+        nullable: false
+        default: "1"
+        description: "楽観ロック用バージョン（状態遷移・繰り上げの UPDATE ごとに +1）"
+      - name: "updated_at"
+        type: "datetime"
+        nullable: false
+        description: "スナップショット最終更新日時"
+    primary_key: ["reservation_id"]
+    foreign_keys: []
+    indexes:
+      - name: "idx_reservations_book_id_current_status_queue_position"
+        columns: ["book_id", "current_status", "queue_position"]
+        unique: false
+        reason: "書籍ごとの有効予約（RESERVED / NOTIFIED）を順位順に取得・件数集計・繰り上げ更新"
+        used_by: ["予約を登録する", "予約を取り消す", "予約一覧を参照する", "貸出を登録する", "返却を登録する", "返却通知を送信する", "書籍詳細を参照する", "予約状況を参照する", "利用者の利用状況を参照する"]
+      - name: "uq_reservations_book_id_queue_position"
+        columns: ["book_id", "queue_position"]
+        unique: true
+        reason: "ユニーク制約: 有効予約内の順位一意（部分一意インデックス: current_status IN ('RESERVED','NOTIFIED')）"
+        used_by: ["予約を登録する"]
+      - name: "idx_reservations_user_number_book_id_current_status"
+        columns: ["user_number", "book_id", "current_status"]
+        unique: false
+        reason: "同一利用者の同一書籍への重複予約判定。ユニーク制約: 実装時に部分一意インデックス（有効予約に限定）へ昇格可能"
+        used_by: ["予約を登録する"]
+      - name: "idx_reservations_user_number_current_status_accepted_at"
+        columns: ["user_number", "current_status", "accepted_at"]
+        unique: false
+        reason: "利用者ごとの予約を状態・受付日時順に取得。有効予約件数（削除可否判定）・本人限定判定にも利用"
+        used_by: ["予約状況を参照する", "利用者の利用状況を参照する", "利用者を削除する", "予約を取り消す"]
+      - name: "idx_reservations_book_id_accepted_at"
+        columns: ["book_id", "accepted_at"]
+        unique: false
+        reason: "取消・終了を含む書籍ごとの予約一覧の受付日時順取得"
+        used_by: ["予約一覧を参照する"]
+    used_by:
+      - uc: "予約を登録する"
+        operations: ["SELECT", "INSERT"]
+      - uc: "予約を取り消す"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "予約一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "貸出を登録する"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "返却を登録する"
+        operations: ["SELECT"]
+      - uc: "返却通知を送信する"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "書籍詳細を参照する"
+        operations: ["SELECT"]
+      - uc: "予約状況を参照する"
+        operations: ["SELECT"]
+      - uc: "利用者の利用状況を参照する"
+        operations: ["SELECT"]
+      - uc: "利用者を削除する"
+        operations: ["SELECT"]
+
+  - name: "reservation_events"
+    rdra_info: "予約"
+    description: "予約の状態遷移イベント（E-007 の event ログ）。通知日時（NOTIFIED）・取消日時（CANCELLED）の正本。API の冪等キーも保持する"
+    columns:
+      - name: "reservation_event_id"
+        type: "uuid"
+        nullable: false
+        description: "予約イベントID（主キー。ULID 採番）"
+      - name: "reservation_id"
+        type: "uuid"
+        nullable: false
+        description: "対象予約ID（reservations への FK）"
+      - name: "event_type"
+        type: "string"
+        nullable: false
+        description: "イベント種別。値: RESERVED（予約）, NOTIFIED（通知）, CANCELLED（取消）, CLOSED（終了）"
+      - name: "occurred_at"
+        type: "datetime"
+        nullable: false
+        description: "発生日時。RESERVED は accepted_at と同値、CANCELLED の occurred_at が取消日時（情報.tsv: 取消日時）"
+      - name: "actor_user_number"
+        type: "string"
+        nullable: false
+        description: "操作者の利用者番号（利用者本人または司書。バッチの場合は固定 ID）"
+      - name: "related_id"
+        type: "uuid"
+        nullable: true
+        description: "関連レコードID（NOTIFIED は notification_id、CLOSED は loan_id。それ以外は NULL）"
+      - name: "idempotency_key"
+        type: "string"
+        nullable: true
+        description: "API の Idempotency-Key ヘッダ値（予約登録・取消・返却通知の再送検出。派生イベントは NULL）"
+    primary_key: ["reservation_event_id"]
+    foreign_keys:
+      - columns: ["reservation_id"]
+        references:
+          table: "reservations"
+          columns: ["reservation_id"]
+        on_delete: "CASCADE"
+    indexes:
+      - name: "idx_reservation_events_reservation_id_occurred_at"
+        columns: ["reservation_id", "occurred_at"]
+        unique: false
+        reason: "予約ごとのイベント履歴を時系列に取得（通知日時・取消日時の導出）"
+        used_by: ["予約を登録する", "予約を取り消す", "予約一覧を参照する", "返却通知を送信する", "予約状況を参照する", "利用者の利用状況を参照する"]
+      - name: "uq_reservation_events_idempotency_key"
+        columns: ["idempotency_key"]
+        unique: true
+        reason: "ユニーク制約: 冪等キーの一意性と再送検出（NULL は対象外の部分一意インデックス）"
+        used_by: ["予約を登録する", "予約を取り消す", "返却通知を送信する"]
+    used_by:
+      - uc: "予約を登録する"
+        operations: ["INSERT", "SELECT"]
+      - uc: "予約を取り消す"
+        operations: ["INSERT", "SELECT"]
+      - uc: "返却通知を送信する"
+        operations: ["INSERT", "SELECT"]
+      - uc: "予約一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "予約状況を参照する"
+        operations: ["SELECT"]
+      - uc: "利用者の利用状況を参照する"
+        operations: ["SELECT"]
+
+  # ---------------------------------------------------------------------------
+  # 通知管理
+  # ---------------------------------------------------------------------------
+  - name: "notifications"
+    rdra_info: "通知"
+    description: "利用者に送信する返却通知・リマインド・督促のメール記録（E-008, event）。送信待ち行を INSERT し、ワーカーが送信結果を反映する。重複送信防止（SR-013）の正本"
+    columns:
+      - name: "notification_id"
+        type: "uuid"
+        nullable: false
+        description: "通知ID（主キー。ULID 採番。MQ の MessageId と同値）。情報.tsv: 通知ID"
+      - name: "user_number"
+        type: "string"
+        nullable: false
+        description: "送信先利用者の利用者番号（users への論理参照）。情報.tsv: 利用者番号"
+      - name: "notification_type"
+        type: "string"
+        nullable: false
+        description: "通知種別。値: RETURN_NOTICE（返却通知）, REMINDER（返却期限リマインド）, OVERDUE_NOTICE（延滞督促）。情報.tsv: 通知種別"
+      - name: "recipient_email"
+        type: "string"
+        nullable: false
+        description: "送信先メールアドレス（要求時点の users.email のコピー。個人情報 NFR E.6.1.1）。情報.tsv: 送信先メールアドレス"
+      - name: "subject"
+        type: "string"
+        nullable: false
+        description: "件名（テンプレート展開後）。情報.tsv: 件名"
+      - name: "body"
+        type: "text"
+        nullable: false
+        description: "本文（テンプレート展開後。書籍名・返却期限・延滞日数・来館案内）。情報.tsv: 本文"
+      - name: "requested_on"
+        type: "date"
+        nullable: false
+        description: "送信要求日（バッチの asOf / 返却登録の当日）。同一対象・同一種別・同一日の重複送信防止キー"
+      - name: "send_result"
+        type: "string"
+        nullable: false
+        default: "PENDING"
+        description: "送信結果。値: PENDING（送信待ち）, SUCCEEDED（成功）, FAILED（失敗）, SKIPPED（スキップ: 送信直前の再確認で対象外）。情報.tsv: 送信結果"
+      - name: "sent_at"
+        type: "datetime"
+        nullable: true
+        description: "送信日時（SUCCEEDED 時のみ設定。PENDING / FAILED / SKIPPED は NULL）。情報.tsv: 送信日時"
+      - name: "failure_reason"
+        type: "string"
+        nullable: true
+        description: "失敗理由コード（FAILED 時のみ。メール配信サービスの応答を ACL で翻訳した値）"
+      - name: "external_message_id"
+        type: "string"
+        nullable: true
+        description: "メール配信サービス側のメッセージID（SUCCEEDED 時のみ）"
+      - name: "target_loan_id"
+        type: "uuid"
+        nullable: true
+        description: "対象貸出ID（REMINDER / OVERDUE_NOTICE のとき。loans への FK。RETURN_NOTICE は NULL）。情報.tsv: 対象貸出ID"
+      - name: "target_reservation_id"
+        type: "uuid"
+        nullable: true
+        description: "対象予約ID（RETURN_NOTICE のとき。reservations への FK。REMINDER / OVERDUE_NOTICE は NULL）。情報.tsv: 対象予約ID"
+    primary_key: ["notification_id"]
+    foreign_keys:
+      - columns: ["target_loan_id"]
+        references:
+          table: "loans"
+          columns: ["loan_id"]
+        on_delete: "RESTRICT"
+      - columns: ["target_reservation_id"]
+        references:
+          table: "reservations"
+          columns: ["reservation_id"]
+        on_delete: "RESTRICT"
+    indexes:
+      - name: "uq_notifications_target_loan_id_notification_type_requested_on"
+        columns: ["target_loan_id", "notification_type", "requested_on"]
+        unique: true
+        reason: "ユニーク制約: 貸出対象通知の重複送信防止（SR-013。target_loan_id IS NOT NULL の部分一意インデックス）。貸出別の最新督促・通知記録の取得にも利用"
+        used_by: ["リマインド対象を抽出する", "延滞を判定する", "延滞一覧を参照する"]
+      - name: "uq_notifications_target_reservation_id_notification_type_requested_on"
+        columns: ["target_reservation_id", "notification_type", "requested_on"]
+        unique: true
+        reason: "ユニーク制約: 予約対象通知の重複送信防止（SR-013。target_reservation_id IS NOT NULL の部分一意インデックス）。予約ごとの通知記録取得・同日重複判定にも利用"
+        used_by: ["返却通知を送信する", "予約を取り消す"]
+      - name: "idx_notifications_send_result_notification_type_requested_on"
+        columns: ["send_result", "notification_type", "requested_on"]
+        unique: false
+        reason: "送信待ち（PENDING）通知の再発行スイープ（種別別・全種別）"
+        used_by: ["リマインドを送信する", "督促を送信する", "返却通知を送信する"]
+    used_by:
+      - uc: "返却通知を送信する"
+        operations: ["INSERT", "SELECT", "UPDATE"]
+      - uc: "予約を取り消す"
+        operations: ["INSERT"]
+      - uc: "リマインド対象を抽出する"
+        operations: ["INSERT"]
+      - uc: "リマインドを送信する"
+        operations: ["SELECT", "UPDATE"]
+      - uc: "延滞を判定する"
+        operations: ["INSERT"]
+      - uc: "延滞一覧を参照する"
+        operations: ["SELECT"]
+      - uc: "督促を送信する"
+        operations: ["SELECT", "UPDATE"]
+
+  # ---------------------------------------------------------------------------
+  # 運営分析管理
+  # ---------------------------------------------------------------------------
+  - name: "loan_statistics"
+    rdra_info: "貸出統計"
+    description: "loans を集計期間種別 × 期間 × 書籍で集計した非正規化テーブル（E-009, resource_mutable。Materialized View 相当）。集計バッチが UPSERT し、人気書籍ランキングと期間別貸出統計の参照元になる"
+    columns:
+      - name: "stat_id"
+        type: "uuid"
+        nullable: false
+        description: "集計ID（主キー）。情報.tsv: 集計ID"
+      - name: "period_type"
+        type: "string"
+        nullable: false
+        description: "集計期間種別。値: DAY（日）, MONTH（月）, YEAR（年）。情報.tsv: 集計期間種別"
+      - name: "period_start"
+        type: "date"
+        nullable: false
+        description: "集計対象期間 開始日。情報.tsv: 集計対象期間（開始日）"
+      - name: "period_end"
+        type: "date"
+        nullable: false
+        description: "集計対象期間 終了日。情報.tsv: 集計対象期間（終了日）"
+      - name: "book_id"
+        type: "uuid"
+        nullable: false
+        description: "書籍ID（books への論理参照。削除済み書籍の統計も保持し、表示時に名称を置換する）。情報.tsv: 書籍ID"
+      - name: "loan_count"
+        type: "integer"
+        nullable: false
+        default: "0"
+        description: "貸出回数（期間内の当該書籍の貸出件数。人気書籍ランキングの基準）。情報.tsv: 貸出回数"
+      - name: "loan_total"
+        type: "integer"
+        nullable: false
+        default: "0"
+        description: "貸出件数（当該行 = 期間 × 書籍の貸出レコード数。loan_count は利用者ののべ借用回数、loan_total は貸出レコード数として区別する。期間別貸出統計 UC は GROUP BY period_start, period_end の SUM(loan_total) で期間合計を得る）。情報.tsv: 貸出件数"
+      - name: "ranking"
+        type: "integer"
+        nullable: false
+        description: "期間内の書籍ランキング順位（loan_count 降順。集計バッチが付与）。情報.tsv: ランキング順位"
+      - name: "aggregated_at"
+        type: "datetime"
+        nullable: false
+        description: "集計日時（再集計のたびに更新）。情報.tsv: 集計日時"
+    primary_key: ["stat_id"]
+    foreign_keys: []
+    indexes:
+      - name: "uq_loan_statistics_period_type_period_start_book_id"
+        columns: ["period_type", "period_start", "book_id"]
+        unique: true
+        reason: "ユニーク制約: 期間種別 × 期間 × 書籍で 1 行（集計バッチの UPSERT キー）。期間範囲 × 書籍の貸出回数合算（ランキング）にも利用"
+        used_by: ["期間別貸出統計を参照する", "人気書籍ランキングを参照する"]
+      - name: "idx_loan_statistics_period_type_period_start"
+        columns: ["period_type", "period_start"]
+        unique: false
+        reason: "集計期間種別 × 期間範囲の集約参照（期間別貸出統計・前期比）"
+        used_by: ["期間別貸出統計を参照する"]
+    used_by:
+      - uc: "期間別貸出統計を参照する"
+        operations: ["SELECT"]
+      - uc: "人気書籍ランキングを参照する"
+        operations: ["SELECT"]
+
+  # ---------------------------------------------------------------------------
+  # 横断（監査）
+  # ---------------------------------------------------------------------------
+  - name: "audit_logs"
+    rdra_info: ""
+    description: "監査ログ（E-902, 派生エンティティ。NFR E.7.1.1 Lv2: ログイン / ログアウト + データアクセスログ）。個人情報の参照・更新と利用状況閲覧範囲判定の検証に用いる"
+    columns:
+      - name: "audit_id"
+        type: "uuid"
+        nullable: false
+        description: "監査ログID（主キー。UUID / ULID 採番）"
+      - name: "occurred_at"
+        type: "datetime"
+        nullable: false
+        description: "発生日時"
+      - name: "actor_user_number"
+        type: "string"
+        nullable: false
+        description: "操作者の利用者番号（バッチはタイマーの固定 ID。users への論理参照）"
+      - name: "action_type"
+        type: "string"
+        nullable: false
+        description: "操作種別。値: LOGIN（ログイン）, LOGOUT（ログアウト）, LOGIN_FAILED（ログイン失敗）, DATA_READ（データ参照）, DATA_WRITE（データ更新）"
+      - name: "target_entity"
+        type: "string"
+        nullable: false
+        description: "対象エンティティID（E-001 / E-003 / E-004 / E-007 等）"
+      - name: "target_id"
+        type: "string"
+        nullable: false
+        description: "対象レコードID（書籍ID・利用者番号等。一覧参照は応答に含めた ID の一覧）"
+      - name: "result"
+        type: "string"
+        nullable: false
+        description: "結果。値: SUCCEEDED（成功）, DENIED（拒否）, FAILED（失敗）"
+      - name: "detail"
+        type: "text"
+        nullable: true
+        description: "付記（JSON。連絡先開示 reveal=true の記録等）"
+    primary_key: ["audit_id"]
+    foreign_keys: []
+    indexes:
+      - name: "idx_audit_logs_target_entity_target_id_occurred_at"
+        columns: ["target_entity", "target_id", "occurred_at"]
+        unique: false
+        reason: "対象エンティティ・レコード単位の監査ログ検索（利用者ごとのアクセス履歴追跡 NFR E.7.1.1）"
+        used_by: ["書籍を削除する", "利用者を削除する", "利用者の利用状況を参照する"]
+      - name: "idx_audit_logs_actor_user_number_occurred_at"
+        columns: ["actor_user_number", "occurred_at"]
+        unique: false
+        reason: "操作者単位の監査ログ検索"
+        used_by: ["利用者一覧を参照する"]
+    used_by:
+      - uc: "書籍を削除する"
+        operations: ["INSERT"]
+      - uc: "利用者一覧を参照する"
+        operations: ["INSERT"]
+      - uc: "利用者を削除する"
+        operations: ["INSERT"]
+      - uc: "利用者の利用状況を参照する"
+        operations: ["INSERT"]
+
+# テーブル間の関連図（実線: 物理 FK、点線: 論理参照）
+er_diagram: |
+  erDiagram
+    genres ||--o{ books : "分類する"
+    books ||..o{ book_events : "状態遷移を記録"
+    books ||..o{ loans : "貸し出される"
+    books ||..o{ reservations : "予約される"
+    books ||..o{ loan_statistics : "集計される"
+    users ||--|| credentials : "認証情報"
+    users ||..o{ user_events : "登録・変更を記録"
+    users ||..o{ loans : "借りる"
+    users ||..o{ reservations : "予約する"
+    users ||..o{ notifications : "送信先"
+    users ||..o{ audit_logs : "操作者"
+    loans ||--o{ loan_events : "状態遷移を記録"
+    loans ||--o{ notifications : "リマインド・督促の対象"
+    loans ||..o{ loan_statistics : "集計元"
+    loan_periods ||..o{ loans : "返却期限算出（世代参照）"
+    remind_days_settings ||..o{ loans : "リマインド判定（世代参照）"
+    reservations ||--o{ reservation_events : "状態遷移を記録"
+    reservations ||--o{ notifications : "返却通知の対象"

@@ -1,0 +1,28 @@
+round: 2
+group: api
+findings:
+  # ---- 観点1: ページレスポンス / 検証エラーの配列プロパティに description が無い（round1 未指摘の残り） ----
+  - id: S4-api-009
+    artifact: "openapi.yaml"
+    file: "docs/specs/events/20260903_044456_spec_generation/_cross-cutting/api/openapi.yaml"
+    line: 1665
+    severity: minor
+    viewpoint: 1
+    claim: "PageMeta を allOf で継承するページレスポンス 7 件の `items` 配列プロパティ（BookPageResponse: L1665 / UserPageResponse / OverdueLoanListResponse / MyLoanPageResponse / BookReservationPageResponse / MyReservationPageResponse / InventoryResponse）と ValidationProblemDetails.errors（L1532）に description が無い。round1 で修正した要素スキーマ（BookSummary 等）と粒度が揃っていない"
+    fix: "各 `items` に description を追加する（例: BookPageResponse.items「検索条件に一致した書籍（page / pageSize で切り出した範囲）」、OverdueLoanListResponse.items「延滞中（OVERDUE）の貸出。sort 指定順」、ValidationProblemDetails.errors「項目単位の検証エラー一覧（field / code / message）」）"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍を検索する/_api-summary.yaml"
+      - "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/_api-summary.yaml"
+
+# round1 findings の再検証結果（すべて解消を確認）:
+#   - S4-api-001 / 002 / 003: 貸出・返却・利用状況 / 予約 / 通知・レポート系スキーマの全プロパティに description が付与されている（機械検査で description 欠落は上記 items / errors 8 件のみ）
+#   - S4-api-004: listLoans / listLoanNotifications / getReturnNoticePreview / getUserUsage に `Reveal` パラメータが宣言され、NotificationLogItem.description に「GET /loans（include=latestNotice）/ GET /loans/{loanId}/notifications の reveal も同じ扱い」が明記されている
+#   - S4-api-005: info.description「経路と認可」節に連絡先マスク方針（UserSummary を返す一覧・登録系は平文固定 / 照会系は既定マスク + reveal）が意図的な差として明記されている（fix の第 2 案を採用）
+#   - S4-api-006: ReturnNoticeResponse.notificationType が `$ref: NotificationType` に置き換わっている
+#   - S4-api-007: 公開経路の全操作（GET/POST reservations 系 3 件・reservation-eligibility・me/loans・me/reservations・books・genres）に 429 TooManyRequests が宣言され、info.description に「館内経路にはレート制限を掛けない」が明記されている
+#   - S4-api-008: asyncapi.yaml に messageTrait `dlqHeaders`（DlqMessageHeaders = CommonHeaders + DlqHeaders、attemptCount / lastFailureReason / lastFailedAt / originalChannel を required）が追加され、DLQ 3 チャネルが `*RequestedDead` メッセージ（examples 付き）を参照している
+# 確認済み・指摘なし:
+#   - 観点1 paths 網羅: 30 エンドポイントすべて存在（round1 と変わらず）。required は ReturnLoanRequest / CancelReservationRequest（properties: {} + additionalProperties: false の空ボディ）を除き全スキーマに定義されている
+#   - 観点2 channels: 6 チャネル・9 operations が網羅され、payload は additionalProperties: false + required + examples 付き
+resolved:
+  - {id: S4-api-009, resolution: deferred, reason: "minor。round 2 の残指摘は意図的に見送り（Step6.5 反証レビューで再検証）", by: orchestrator}

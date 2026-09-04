@@ -1,0 +1,31 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-009"
+title: "認可モデル: RBAC + Backend 作り込み（パターン A）、PII を扱う BC は厳格化"
+status: "approved"
+generated_at: "2026-09-03T03:51:01"
+context: |
+  ロールは利用者区分の 2 値（司書 / 利用者）+ タイマー（システム内部）。条件.tsv のアクセス制御条件は「利用状況閲覧範囲判定」（利用者は自分の分のみ閲覧）の
+  所有権ベース 1 パターンのみで、条件ベース（状態・時間帯等）の認可は無い。NFR E.5.2.1 は RBAC を明示する。
+  サブドメイン分類によるデータ感度は、BC-002 利用者（氏名・連絡先）と BC-005 通知（送信先・本文）が高、BC-003 貸出 / BC-004 予約が中（利用者番号で個人に紐づく）、
+  BC-001 蔵書 / BC-006 運営分析が低である。
+decision: |
+  パターン A: RBAC + Backend 作り込み（CTP-002, confidence: high）を採用し、認可サービスティアは置かない。
+  - API Gateway で利用者区分による粗粒度 RBAC（エンドポイント単位）を行う
+  - Backend API の usecase 層で本人限定判定（利用状況閲覧範囲判定）を実装する（LP-007）
+  - PII を扱う BC-002 利用者 / BC-005 通知は厳格化: Gateway RBAC + Backend 本人限定 + データアクセス監査ログ必須（LP-006、NFR E.7.1.1 Lv2）
+  - BC-003 貸出 / BC-004 予約は司書全件・利用者本人分のみ。BC-001 蔵書 / BC-006 運営分析は司書のみ更新、蔵書参照は利用者も可
+  - 監査ログは E-902 として RDB に INSERT のみで保存する
+consequences:
+  positive:
+    - "初期コストが最小で、2 ロール・所有権 1 パターンの要件に過不足なく対応できる"
+    - "PII BC の厳格化により、個人情報保護法準拠（NFR E.1.1.1 / E.1.2.1）の監査証跡を確保できる"
+  negative:
+    - "認可ポリシーの変更がコード変更になる。家族会員などの関係拡張が入るとパターン B / C への移行が必要"
+    - "本人限定判定の実装漏れは静的検査で検出できず、UC 単位のテストで担保する必要がある"
+alternatives_considered:
+  - name: "パターン B: RBAC + Policy Engine（OPA / Cedar サイドカー）（Option B）"
+    reason_rejected: "本人限定・状態ベース判定を宣言的ポリシーに分離できるが、条件ベース認可が 0 件の本システムには学習コストと認可サービスティアの追加が見合わない"
+  - name: "パターン C: ReBAC 外部サービス（Option C）"
+    reason_rejected: "利用者 - 貸出 - 予約の所有関係をグラフで表現でき将来の関係拡張に強いが、本規模には過剰"

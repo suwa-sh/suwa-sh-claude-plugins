@@ -10,7 +10,7 @@ const test = require('node:test');
 // samples/distillery/pipeline の feedback 往復（distillery 1.9.x / --recommended-auto）を固定 fixture として検証する。
 // 旧 sample（2026-07、6 merged / 5 deferred / blocked）は 1.9.3 で全面再生成し、11 applied / completed の run に置き換えた。
 const root = path.resolve(__dirname, '..');
-const sampleRoot = path.join(root, 'samples/distillery/pipeline');
+const sampleRoot = path.join(root, 'samples/distillery/pipeline-opus-medium');
 const feedbackId = '20260902_184257_impl_feedback_d0f57ea2';
 const runDir = path.join(sampleRoot, 'pipeline/feedback-runs', feedbackId);
 const eventsDir = path.join(sampleRoot, 'pipeline/events');

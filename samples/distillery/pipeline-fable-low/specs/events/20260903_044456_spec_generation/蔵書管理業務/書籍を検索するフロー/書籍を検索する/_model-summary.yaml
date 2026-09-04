@@ -1,0 +1,117 @@
+# _model-summary.yaml
+uc: "書籍を検索する"
+business: "蔵書管理業務"
+buc: "書籍を検索するフロー"
+
+bounded_context_id: "BC-001"
+# SELECT のみの UC のため aggregate_id は省略
+
+models:
+  - name: "BookSearchPageState"
+    tier: "tier-frontend-user"
+    layer: "view"
+    type: "state"
+    rdra_info: "書籍"
+  - name: "ListBooksQueryParams（patron api-client）"
+    tier: "tier-frontend-user"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "書籍"
+  - name: "CounterBookSearchState"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "state"
+    rdra_info: "書籍"
+  - name: "ListBooksQueryParams（staff api-client）"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "書籍"
+  - name: "ListBooksRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "SearchBooksQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "書籍"
+  - name: "BookSearchCriteria"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "書籍"
+  - name: "SearchTypeStrategy"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "Genre"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "ジャンル"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+  - name: "GenreRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "ジャンル"
+  - name: "BookPageResponse"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "view-model"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "searchType 別: keyword → (title_normalized LIKE ? OR author_normalized LIKE ? OR publisher_normalized LIKE ? OR isbn LIKE ?) / title・author → 該当正規化列 LIKE ? / isbn → isbn LIKE ? / genre → genre_id = ?。追加で genre_id = ? AND current_status = ?。ORDER BY updated_at DESC, book_id ASC LIMIT ? OFFSET ?"
+      - type: "SELECT"
+        columns: []
+        where: "同条件の COUNT(*)"
+    indexes_needed:
+      - columns: ["title_normalized"]
+        reason: "タイトル検索（前方一致時に利用。中間一致は LIKE 走査を許容: 1 館規模 NFR B.1.1.2）"
+        access_pattern: "WHERE title_normalized LIKE ?"
+      - columns: ["author_normalized"]
+        reason: "著者検索"
+        access_pattern: "WHERE author_normalized LIKE ?"
+      - columns: ["isbn"]
+        reason: "ISBN 検索"
+        access_pattern: "WHERE isbn LIKE ?（isbn はハイフンなしの正規形で保存されるため関数インデックス不要）"
+      - columns: ["genre_id", "updated_at"]
+        reason: "ジャンル検索の一覧取得"
+        access_pattern: "WHERE genre_id = ? ORDER BY updated_at DESC"
+      - columns: ["current_status", "updated_at"]
+        reason: "在庫状況絞り込み（窓口検索）"
+        access_pattern: "WHERE current_status = ? ORDER BY updated_at DESC"
+  - name: "genres"
+    rdra_info: "ジャンル"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "全件（選択肢）/ books との JOIN で genre_name を取得"
+    indexes_needed: []
+
+kvs:
+  - key_pattern: "cache:books:list:{queryHash}"
+    purpose: "cache"
+    value_type: "BookPageResponse JSON"
+    ttl: "60s"
+    operations: ["GET", "SET", "DEL"]
+
+object_storage: []

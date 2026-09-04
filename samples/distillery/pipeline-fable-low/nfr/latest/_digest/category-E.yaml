@@ -1,0 +1,274 @@
+# digest of nfr/latest/nfr-grade.yaml section categories[id=E] (L732-1003); source_sha256: f352e424419f352fb0a55e65541b02a9f420d7d6b9dec9d2a0f3b5de39d04780
+# 派生物。正本は nfr-grade.yaml。編集しない
+  - id: "E"
+    name: "セキュリティ"
+    subcategories:
+      - id: "E.1"
+        name: "前提条件・制約条件"
+        items:
+          - id: "E.1.1"
+            name: "セキュリティポリシー"
+            important: true
+            metrics:
+              - id: "E.1.1.1"
+                name: "セキュリティポリシー"
+                important: true
+                grade: 2
+                grade_description: "組織のセキュリティポリシーに準拠"
+                reason: "情報「利用者」に氏名・連絡先の個人情報を保持し社外の利用者に公開するため、簡易ガイドライン（Lv1）では不足。図書館を運営する組織のポリシーに準拠する"
+                source_model: "情報: 利用者（氏名・連絡先）、アクター: 利用者（社外）"
+                confidence: "medium"
+          - id: "E.1.2"
+            name: "セキュリティ関連法規"
+            important: false
+            metrics:
+              - id: "E.1.2.1"
+                name: "準拠すべき法規・基準"
+                important: false
+                grade: 2
+                grade_description: "個人情報保護法・不正アクセス禁止法に準拠（貸出履歴は思想信条を推知しうるためプライバシー配慮が特に必要）"
+                reason: "情報「利用者」の氏名・メールアドレス・電話番号・住所は個人情報であり、UC「貸出履歴を参照する」の履歴は要配慮情報に準じる"
+                source_model: "情報: 利用者 / 貸出、UC: 貸出履歴を参照する"
+                confidence: "high"
+      - id: "E.2"
+        name: "セキュリティリスク分析"
+        items:
+          - id: "E.2.1"
+            name: "リスク分析"
+            important: true
+            metrics:
+              - id: "E.2.1.1"
+                name: "セキュリティリスク分析"
+                important: true
+                grade: 2
+                grade_description: "リスク分析（脅威・脆弱性評価）"
+                reason: "個人情報を保持し Web 公開するシステムのため、簡易チェックリストでは不足。M2 標準を適用"
+                source_model: "情報: 利用者、アクター: 利用者（社外）"
+                confidence: "medium"
+      - id: "E.3"
+        name: "セキュリティ診断"
+        items:
+          - id: "E.3.1"
+            name: "セキュリティ診断"
+            important: true
+            metrics:
+              - id: "E.3.1.1"
+                name: "セキュリティ診断"
+                important: true
+                grade: 1
+                grade_description: "ツールによる自動診断"
+                reason: "社外公開の Web 画面があるため診断なし（Lv0）は不可だが、1 館・小規模で予算制約が想定されるため手動診断（M2 標準 Lv2）から引き下げた弱い推論"
+                source_model: "アクター: 利用者（社外）"
+                confidence: "low"
+      - id: "E.4"
+        name: "セキュリティリスク管理"
+        items:
+          - id: "E.4.1"
+            name: "リスク管理"
+            important: false
+            metrics:
+              - id: "E.4.1.1"
+                name: "リスク管理プロセス"
+                important: false
+                grade: 1
+                grade_description: "年1回のリスク棚卸しと、利用ミドルウェアの脆弱性情報の定期確認"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+      - id: "E.5"
+        name: "アクセス・利用制限"
+        items:
+          - id: "E.5.1"
+            name: "認証"
+            important: true
+            metrics:
+              - id: "E.5.1.1"
+                name: "認証方式"
+                important: true
+                grade: 2
+                grade_description: "ID/パスワード認証＋パスワードポリシー（複雑性・有効期限）"
+                reason: "アクターは司書・利用者・タイマーの 3 種で、条件「利用状況閲覧範囲判定」により本人限定の情報を Web で参照するためパスワードポリシー付き認証を要する。外部 IdP 連携は RDRA になく MFA（M2 標準 Lv3）は過剰と判断（todo DIST-002 の認証方式仮採用と整合）"
+                source_model: "アクター: 司書 / 利用者 / タイマー、条件: 利用状況閲覧範囲判定"
+                confidence: "medium"
+          - id: "E.5.2"
+            name: "アクセス制御"
+            important: true
+            metrics:
+              - id: "E.5.2.1"
+                name: "アクセス制御"
+                important: true
+                grade: 2
+                grade_description: "ロールベースアクセス制御（RBAC）"
+                reason: "バリエーション「利用者区分（司書・利用者）」と条件「利用状況閲覧範囲判定」で役割別に操作範囲を切り替えることが明示されている"
+                source_model: "バリエーション: 利用者区分、条件: 利用状況閲覧範囲判定"
+                confidence: "high"
+          - id: "E.5.3"
+            name: "利用制限"
+            important: false
+            metrics:
+              - id: "E.5.3.1"
+                name: "利用制限"
+                important: false
+                grade: 1
+                grade_description: "司書向け管理機能（蔵書・利用者管理、貸出・返却登録）は館内ネットワークからのみ利用可、利用者向け検索・予約・照会はインターネットへ公開"
+                reason: "アクター「司書」は社内・提供者、「利用者」は社外・受益者と社内外が区別されているため、機能ごとに接続元を分ける"
+                source_model: "アクター: 司書（社内）/ 利用者（社外）"
+                confidence: "medium"
+      - id: "E.6"
+        name: "データ秘匿"
+        items:
+          - id: "E.6.1"
+            name: "暗号化"
+            important: true
+            metrics:
+              - id: "E.6.1.1"
+                name: "データ暗号化（保管時）"
+                important: true
+                grade: 1
+                grade_description: "機密データのみ暗号化（利用者の氏名・連絡先、認証情報、貸出履歴）"
+                reason: "情報「利用者」に氏名・メールアドレス・電話番号・住所の個人情報が含まれる。クレジット情報等はなく全データ暗号化（Lv2）までは不要"
+                source_model: "情報: 利用者（氏名・連絡先）"
+                confidence: "high"
+              - id: "E.6.1.2"
+                name: "データ暗号化（通信時）"
+                important: true
+                grade: 2
+                grade_description: "全通信暗号化（内部通信を含む）"
+                reason: "外部システム「メール配信サービス」との通信と社外の利用者からの Web アクセスがあり、M1/M2 とも Lv2 が標準"
+                source_model: "外部システム: メール配信サービス、アクター: 利用者（社外）"
+                confidence: "high"
+          - id: "E.6.2"
+            name: "データマスキング"
+            important: false
+            metrics:
+              - id: "E.6.2.1"
+                name: "データマスキング"
+                important: false
+                grade: 1
+                grade_description: "テスト環境・開発環境では利用者の氏名・連絡先を匿名化データへ置換する"
+                reason: "情報「利用者」の個人情報をテスト環境へそのまま複製しないための措置"
+                source_model: "情報: 利用者（氏名・連絡先）"
+                confidence: "medium"
+      - id: "E.7"
+        name: "不正追跡・監視"
+        items:
+          - id: "E.7.1"
+            name: "監査ログ"
+            important: true
+            metrics:
+              - id: "E.7.1.1"
+                name: "監査ログ"
+                important: true
+                grade: 2
+                grade_description: "ログイン/ログアウト＋データアクセスログ"
+                reason: "社外の利用者と管理操作を行う司書が存在し、条件「利用状況閲覧範囲判定」の本人限定参照を検証するためデータアクセスログが必要。金銭取引がないため改ざん検知（Lv3）までは不要"
+                source_model: "アクター: 司書 / 利用者、条件: 利用状況閲覧範囲判定"
+                confidence: "high"
+          - id: "E.7.2"
+            name: "不正監視"
+            important: false
+            metrics:
+              - id: "E.7.2.1"
+                name: "不正監視"
+                important: false
+                grade: 1
+                grade_description: "ログイン失敗の連続検知とアカウントロック"
+                reason: "利用者番号とパスワードによる Web ログインが前提（todo DIST-002）のため、総当たり攻撃への基本対策を置く"
+                source_model: "アクター: 利用者（社外）"
+                confidence: "medium"
+      - id: "E.8"
+        name: "ネットワーク対策"
+        items:
+          - id: "E.8.1"
+            name: "ファイアウォール"
+            important: true
+            metrics:
+              - id: "E.8.1.1"
+                name: "ファイアウォール"
+                important: true
+                grade: 2
+                grade_description: "ステートフルインスペクション"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "E.8.2"
+            name: "IDS/IPS"
+            important: false
+            metrics:
+              - id: "E.8.2.1"
+                name: "IDS/IPS"
+                important: false
+                grade: 1
+                grade_description: "IDS による検知のみ（自動遮断は行わない）"
+                reason: "社外公開があるため検知は必要だが、小規模のため IPS 運用まで求めない弱い推論"
+                source_model: "アクター: 利用者（社外）"
+                confidence: "low"
+          - id: "E.8.3"
+            name: "ネットワーク分離"
+            important: false
+            metrics:
+              - id: "E.8.3.1"
+                name: "ネットワーク分離"
+                important: false
+                grade: 2
+                grade_description: "DMZ（Web層）と内部セグメント（DB層）を分離し、個人情報を保持する DB は外部から直接到達不可とする"
+                reason: "情報「利用者」の個人情報を保持する DB を社外の利用者から直接到達させない"
+                source_model: "情報: 利用者、アクター: 利用者（社外）"
+                confidence: "medium"
+      - id: "E.9"
+        name: "マルウェア対策"
+        items:
+          - id: "E.9.1"
+            name: "マルウェア対策"
+            important: true
+            metrics:
+              - id: "E.9.1.1"
+                name: "マルウェア対策"
+                important: true
+                grade: 2
+                grade_description: "ウイルス対策ソフト導入＋定義ファイル自動更新＋定期スキャン"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+      - id: "E.10"
+        name: "Web対策"
+        items:
+          - id: "E.10.1"
+            name: "WAF"
+            important: true
+            metrics:
+              - id: "E.10.1.1"
+                name: "WAF"
+                important: true
+                grade: 1
+                grade_description: "基本的な WAF ルール適用（マネージドルールセットのデフォルト適用）"
+                reason: "利用者向け検索・予約画面を社外へ公開するため WAF なし（M1 標準 Lv0）は避けるが、カスタムルール運用（M2 標準 Lv2）は小規模には過剰と推定した弱い推論"
+                source_model: "アクター: 利用者（社外）、UC: 書籍を検索する / 予約を登録する"
+                confidence: "low"
+          - id: "E.10.2"
+            name: "Webアプリケーション対策"
+            important: false
+            metrics:
+              - id: "E.10.2.1"
+                name: "Webアプリケーション対策"
+                important: false
+                grade: 2
+                grade_description: "XSS/SQLインジェクション/CSRF 対策をフレームワーク標準機能とコーディング規約で担保し、リリース前に自動診断を実施"
+                reason: "UC「書籍を検索する」は利用者入力（キーワード・ISBN 等）を検索条件に用いるため、インジェクション対策が必須"
+                source_model: "UC: 書籍を検索する、条件: 書籍検索条件判定"
+                confidence: "medium"
+      - id: "E.11"
+        name: "セキュリティインシデント対応"
+        items:
+          - id: "E.11.1"
+            name: "インシデント対応"
+            important: true
+            metrics:
+              - id: "E.11.1.1"
+                name: "インシデント対応計画"
+                important: true
+                grade: 2
+                grade_description: "インシデント対応手順書＋定期訓練"
+                reason: "個人情報漏えい時は個人情報保護法に基づく報告義務があるため、連絡体制のみ（Lv1）では不足"
+                source_model: "情報: 利用者（氏名・連絡先）"
+                confidence: "medium"

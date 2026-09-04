@@ -1,0 +1,47 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-011"
+title: "データモデル戦略: 状態モデルを持つ書籍 / 貸出 / 予約と個人情報の利用者を event_snapshot、通知と監査ログを event、業務パラメータを SCD2 とする"
+status: "approved"
+generated_at: "2026-09-03T03:51:01"
+context: |
+  情報.tsv の 9 情報と NFR 由来の派生 3 エンティティに対して、イミュータブルデータモデルの種別（event_snapshot / event / resource_scd2 / resource_mutable）と
+  ストレージ種別を決める必要がある。
+  状態.tsv は書籍・貸出・予約の 3 モデルを持つ。利用者は個人情報（氏名・連絡先）を持ち NFR E.1.1.1 / E.1.2.1 で個人情報保護法準拠が求められる。
+  貸出期間・リマインド日数は「適用開始日」属性を持つ業務パラメータ。通知は「送信した記録」で送信結果を保持する。
+  貸出統計は「集計日時」「ランキング順位」を持つ派生情報。NFR B.1.1.1 同時〜100・B.1.1.2 〜100 万件/年・B.2.1.3 TAT 10 秒以内。
+decision: |
+  model_type の使い分け基準:
+  - 状態モデルを持つ情報 → event_snapshot: E-001 書籍 / E-004 貸出 / E-007 予約（high）。nullable 日時（返却日・取消日時等）は属性から排除しイベントの occurred_at で管理。スナップショットは current_status / version / updated_at を持つ
+  - 個人情報を持ち変更履歴の追跡が必要 → event_snapshot: E-003 利用者（medium）
+  - 「送信する」「記録する」で登録後不変 → event: E-008 通知（high）、E-902 監査ログ（high）。INSERT のみ、UPDATE / DELETE 禁止
+  - 適用開始日を持つ業務パラメータ → resource_scd2: E-005 貸出期間 / E-006 リマインド日数（medium）。過去の返却期限の根拠を再現できる
+  - 固定マスタ・派生集計・技術エンティティ → resource_mutable: E-002 ジャンル（default）、E-009 貸出統計（Materialized View、日次再集計。confidence: low、DIST-022）、E-901 セッション / E-903 認証情報
+  ストレージ: 9 情報 + 監査ログ + 認証情報は rdb（正本）。ジャンル・貸出期間・リマインド日数の現行世代は Cache-Aside（cache）。セッションは TTL 付き KVS（cache）。
+  利用者の氏名・連絡先、貸出履歴、通知の送信先・本文は保管時暗号化（NFR E.6.1.1）、テスト環境はマスキング（E.6.2.1）。
+  全文検索（search）と Object Storage（file）は不採用。派生 3 エンティティは BC の owned_entity_ids に含めない。
+consequences:
+  positive:
+    - "状態遷移の履歴がイベントとして残り、NFR C.3.3.1 の状態整合性確認と復旧、A.4.1.x のバックアップ / リストア後の検証に使える"
+    - "利用者の変更履歴と監査ログを組み合わせ、個人情報の変更追跡（NFR E.1.x / E.7.1.1）を満たせる"
+    - "SCD2 により過去の貸出の返却期限根拠を再現できる"
+  negative:
+    - "event_snapshot は二重書き込み（履歴 INSERT + スナップショット UPSERT）のため repository の実装コストが増える（LR-008）"
+    - "貸出統計は集計日時までの鮮度しか持たず、集計テーブルの要否はレスポンス実測で変わり得る（DIST-022）"
+    - "通知の遅延した配信結果（バウンス等）は追跡しない。必要になれば event_snapshot 化か配信結果エンティティの追加が要る"
+alternatives_considered:
+  - name: "利用者を resource_mutable / resource_scd2 にする"
+    reason_rejected: "resource_mutable は変更経緯を監査ログに頼ることになり、SCD2 は削除・訂正の表現が煩雑。個人情報の変更追跡を優先し event_snapshot とした"
+  - name: "貸出期間・リマインド日数を resource_mutable の単一行 / 1 エンティティ「貸出ポリシー」に統合した SCD2 にする"
+    reason_rejected: "単一行は過去の返却期限の根拠が失われる。統合は AG-004 の集約案と一致するが属性が増えると世代が細分化するため、独立 2 エンティティで整合させた"
+  - name: "貸出統計をエンティティ化せずオンデマンド集計 / event 型で集計履歴を追記する"
+    reason_rejected: "オンデマンドは 10 秒以内を索引に依存する。event 型はストレージ増と最新集計の特定が必要。情報.tsv に独立情報として定義済みのため集計テーブルを仮採用（DIST-022）"
+  - name: "書籍検索に search + rdb / cache + rdb を使う"
+    reason_rejected: "同時 100 未満・5 秒以内・100GB 未満の規模から RDB の索引で十分。検索条件判定は属性照合で全文検索を要求していない"
+  - name: "監査ログを nosql / APM・ログ基盤のみに出力する"
+    reason_rejected: "利用者・貸出との結合による検証のしやすさと、〜1 万件/日の規模から RDB で足りる。改ざん検知 Lv3 は不要"
+  - name: "派生エンティティ（E-901〜903）を BC-002 利用者に含める"
+    reason_rejected: "NFR 由来の技術エンティティで RDRA の情報.tsv には無い。BC 境界（業務ドメイン）を汚さず、横断的な認証・監査基盤として shared モジュールに配置する"
+  - name: "通知を event_snapshot にして遅延した配信結果を後続イベントで更新する"
+    reason_rejected: "外部システム.tsv のメール配信サービスに非同期応答の記述は無く、Webhook 受信と二重書き込みが必要になる"

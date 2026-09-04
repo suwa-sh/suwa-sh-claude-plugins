@@ -1,0 +1,44 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-007"
+title: "ティアパターン選定: 8 ティア構成（2 系統 SPA + API Gateway + IdP + CaaS(k8s) API + CronJob/MQ ワーカー + RDB/KVS/Object Storage + ACL 外部連携）"
+status: "approved"
+generated_at: "2026-09-03T03:51:01"
+context: |
+  RDRA のアクター（司書 = 社内 / 利用者 = 社外 / タイマー）、外部システム（メール配信サービス）、バッチ UC 4 件・メール送信 UC 3 件と、
+  NFR（A.2.1.1 N+1 冗長、B.3.1.1 スケールアウト、E.5.3.1 館内 / 公開の利用制限、E.10.1.1 WAF、A.1.2.1 外部サービス障害の隔離、A.3.1.1 遠隔地バックアップ）から
+  ティア構成と各ティアの実行基盤パターンを決める必要がある。デプロイ先は未定である。
+decision: |
+  8 ティアを置く。
+  - tier-frontend-user（SPA + CDN, 公開経路）/ tier-frontend-staff（SPA, 館内経路）: アクター種別と NFR E.5.3.1 から 2 系統に分離（medium）
+  - tier-api-gateway（API Gateway / リバースプロキシ + WAF + LB）: トークン検証・粗粒度 RBAC・WAF・経路別 IP 制限・レート制限を一元化（medium）
+  - tier-idp（セルフホスト IdP, OAuth2/OIDC）: 司書・利用者を一元管理（medium）
+  - tier-backend-api（CaaS(k8s)、代替: コンテナ + LB）: N+1 冗長とスケールアウトを同一基盤で運用（medium）
+  - tier-worker（CronJob(k8s) + MQ + コンテナワーカー）: 日次バッチ 4 UC とメール送信を Queue-Based Load Leveling + DLQ で処理（要否 high / MQ medium）
+  - tier-datastore（RDB 正本 + KVS + Object Storage バックアップ）（high）
+  - tier-external-integration（HTTPS / SMTPS クライアント + ACL アダプタ、Retry + Circuit Breaker + Timeout）（要否 high）
+  認可サービスティアは置かない（arch-decision-009）。書籍検索は RDB の索引で実装し Search Engine ティアは置かない（confidence: low、DIST-020）。
+  サポート体制は営業時間内 + 翌営業日再実行（CTP-015, confidence: low、DIST-021）。
+consequences:
+  positive:
+    - "公開経路と館内経路が物理的に分離され、管理機能の館内限定（NFR E.5.3.1）を Gateway と配信の両方で担保できる"
+    - "メール送信を MQ で非同期化し、外部サービス遅延・障害を返却登録などの API 応答から切り離せる"
+    - "CaaS(k8s) で API / CronJob / ワーカーを同一基盤に載せ、監視・デプロイを一系統にできる"
+  negative:
+    - "ティア数 8 は 1 館規模に対して構成要素が多く、IdP・MQ・Gateway の運用対象が増える"
+    - "フロントエンドのビルド・デプロイが 2 系統になる"
+    - "CaaS(k8s) はデプロイ先未定のまま第一候補にしており、dist-infrastructure でコンテナ + LB へ縮退する可能性がある"
+alternatives_considered:
+  - name: "Backend API をコンテナ + LB（オーケストレーションなし）/ FaaS + マネージド DB にする"
+    reason_rejected: "同時〜100 なら 2 台構成でも足りるが、スケールアウトと自動復旧が手動になる。FaaS は越境トランザクションと常駐ワーカーの構成が分散しやすい"
+  - name: "Backend API 内蔵の ID/パスワード認証（IdP ティアなし）/ マネージド IdP"
+    reason_rejected: "内蔵認証はセキュリティ責務が API に集中し自作範囲が広い。マネージド IdP は外部依存とコスト、利用者番号ベースの ID 運用との整合が課題（arch-decision-008）"
+  - name: "CronJob のみ（メール送信は同期呼び出し）/ FaaS + スケジューラ + MQ"
+    reason_rejected: "同期送信は返却通知が外部サービス遅延の影響を直接受け、失敗時の再送が手動になる。FaaS は実行基盤が二系統になり運用・監視が分かれる"
+  - name: "単一フロントエンドで利用者区分によるメニュー切替 / 利用者向け SPA + 司書向け SSR"
+    reason_rejected: "単一 FE は管理画面のコードも公開経路に配信される。SSR 併用は技術スタックが 2 種になる"
+  - name: "リバースプロキシ / LB のみ（Gateway なし）/ BFF"
+    reason_rejected: "FE 2 種 + IP 制限 + WAF の 3 条件が該当し Gateway での一元化が有利。BFF は小規模には過剰"
+  - name: "Search Engine を追加する / KVS キャッシュ + RDB で検索する"
+    reason_rejected: "NFR B に全文検索要件は無く、蔵書数万件・5 条件の検索は RDB の索引で 5 秒以内を満たせると推定（弱い推論のため DIST-020 で要確認）"

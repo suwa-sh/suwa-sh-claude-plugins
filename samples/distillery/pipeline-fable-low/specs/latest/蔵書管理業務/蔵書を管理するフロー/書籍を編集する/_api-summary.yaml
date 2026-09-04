@@ -1,0 +1,183 @@
+# _api-summary.yaml
+uc: "書籍を編集する"
+business: "蔵書管理業務"
+buc: "蔵書を管理するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/books/{bookId}"
+    summary: "書籍 ID で書籍を取得する"
+    response_schema: "BookDetailResponse"
+    tags: ["books"]
+    security: ["bearer", "anonymous"]
+    roles: ["司書", "利用者", "匿名"]
+    parameters:
+      - name: "bookId"
+        in: "path"
+        type: "string"
+        required: true
+    responses:
+      "200": "BookDetailResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "404": "ProblemDetails"
+      "429": "ProblemDetails"
+    errors:
+      - status: "400"
+        code: "VALIDATION_ERROR"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "404"
+        code: "BOOK_NOT_FOUND"
+      - status: "429"
+        code: "RATE_LIMITED"
+  - method: "PUT"
+    path: "/api/v1/books/{bookId}"
+    summary: "書籍情報（タイトル・著者・ISBN・出版社・ジャンル・媒体種別）を更新する（楽観ロック）"
+    request_schema: "UpdateBookRequest"
+    response_schema: "BookDetailResponse"
+    tags: ["books"]
+    security: ["bearer"]
+    roles: ["司書"]
+    parameters:
+      - name: "bookId"
+        in: "path"
+        type: "string"
+        required: true
+    headers:
+      - name: "Idempotency-Key"
+        required: true
+    responses:
+      "200": "BookDetailResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+      "404": "ProblemDetails"
+      "409": "ProblemDetails"
+      "422": "ValidationProblemDetails"
+    errors:
+      - status: "400"
+        code: "BAD_REQUEST"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+      - status: "404"
+        code: "BOOK_NOT_FOUND"
+      - status: "409"
+        code: "MEDIA_TYPE_CHANGE_NOT_ALLOWED"
+      - status: "409"
+        code: "OPTIMISTIC_LOCK_CONFLICT"
+      - status: "422"
+        code: "GENRE_NOT_FOUND"
+      - status: "422"
+        code: "VALIDATION_ERROR"
+async_events: []
+schemas:
+  - name: "UpdateBookRequest"
+    properties:
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "isbn"
+        type: "string"
+        required: false
+      - name: "publisher"
+        type: "string"
+        required: false
+      - name: "genreId"
+        type: "string"
+        required: true
+      - name: "mediaType"
+        type: "string"
+        enum: ["PAPER", "ELECTRONIC"]
+        required: true
+      - name: "version"
+        type: "integer"
+        required: true
+  - name: "BookDetailResponse"
+    properties:
+      - name: "bookId"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "author"
+        type: "string"
+        required: true
+      - name: "isbn"
+        type: "string"
+        required: false
+      - name: "publisher"
+        type: "string"
+        required: false
+      - name: "genreId"
+        type: "string"
+        required: true
+      - name: "genreName"
+        type: "string"
+        required: true
+      - name: "mediaType"
+        type: "string"
+        enum: ["PAPER", "ELECTRONIC"]
+        required: true
+      - name: "status"
+        type: "string"
+        enum: ["AVAILABLE", "ON_LOAN", "RESERVED"]
+        required: true
+      - name: "waitingCount"
+        type: "integer"
+        description: "予約待ち人数（予約状態が RESERVED / NOTIFIED の件数。登録直後は 0）"
+        required: true
+      - name: "version"
+        type: "integer"
+        description: "楽観ロック用バージョン（司書経路のみ返却。公開経路では省略）"
+        required: false
+      - name: "registeredAt"
+        type: "string"
+        format: "date-time"
+        required: true
+      - name: "updatedAt"
+        type: "string"
+        format: "date-time"
+        required: true
+  - name: "ProblemDetails"
+    properties:
+      - name: "type"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "status"
+        type: "integer"
+        required: true
+      - name: "detail"
+        type: "string"
+        required: false
+      - name: "code"
+        type: "string"
+        required: true
+      - name: "traceId"
+        type: "string"
+        required: false
+  - name: "ValidationProblemDetails"
+    properties:
+      - name: "code"
+        type: "string"
+        required: true
+      - name: "errors"
+        type: "array"
+        items: "FieldError"
+        required: true
+  - name: "FieldError"
+    properties:
+      - name: "field"
+        type: "string"
+        required: true
+      - name: "message"
+        type: "string"
+        required: true

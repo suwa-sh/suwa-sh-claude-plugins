@@ -1,0 +1,20 @@
+# digest of design/latest/design-event.yaml section storybook (L1217-1234); source_sha256: 22c0e9cf3d317c1de493b857b44d4e180fc0ab7249b138e3c9edbc450150e729
+# 派生物。正本は design-event.yaml。編集しない
+storybook:
+  framework: "@storybook/nextjs-vite"
+  addons:
+    - "@storybook/addon-docs"
+    - "@storybook/addon-a11y"
+    - "@storybook/addon-vitest"
+    - "@chromatic-com/storybook"
+    - "@storybook/addon-mcp"
+  categories:
+    Introduction: "ブランド・原則・使い方"
+    "Design Tokens": "3 層トークン一覧（CSS 変数名つき）"
+    "Screen Mapping": "RDRA 画面 → ルート → コンポーネント"
+    "State Mapping": "RDRA 状態 → Badge"
+    Brand: "Logo / Icons"
+    UI: "汎用コンポーネント"
+    Domain: "ドメインコンポーネント"
+    Common: "共通レイアウト・状態表示・一覧・フォーム・ナビゲーションの合成コンポーネント"
+    Pages: "UC 単位のページ Story（利用者ポータル / 司書ポータル、全 24 画面）"

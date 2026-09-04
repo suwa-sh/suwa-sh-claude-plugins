@@ -1,0 +1,30 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-005"
+title: "テクノロジースタック: 言語・FW は未定とし、ベンダーニュートラルな制約のみを定める"
+status: "approved"
+generated_at: "2026-09-03T03:51:01"
+context: |
+  technology_context には言語・フレームワーク・技術的制約を記述する必要があるが、ユーザーからの言語 / FW の希望は無く、
+  クラウドベンダーとデプロイ先も未定である。
+  アーキテクチャ設計はベンダーニュートラル（CaaS(k8s) / FaaS / RDB / KVS / MQ / Object Storage 等の汎用用語）で記述する方針であり、
+  特定ベンダーのサービス名を含めない。
+decision: |
+  言語・フレームワークは「未定」と明記し、dist-impl の bootstrap 時に確定する。
+  制約として以下を定める。
+  - クラウドベンダー未定・ベンダーニュートラル（汎用用語で設計し、ベンダー固有サービス名を使わない）
+  - デプロイ先未定（クラウド / オンプレのいずれにも配置可能。CaaS(k8s) を第一候補、コンテナ + LB を代替候補）
+  - 1 館向けの小規模システム（NFR B.1.1.1 同時アクセス〜100）。モジュラモノリス + 単一 RDB で開始
+  - 利用者向け（公開経路）と司書向け（館内経路）の 2 系統フロントエンドを分離（NFR E.5.3.1）
+  - Backend API とワーカーは domain / repository / gateway を共有ライブラリとして共有（モノレポ運用が前提）
+consequences:
+  positive:
+    - "dist-infrastructure でのベンダーマッピング（複数クラウド / オンプレ）を制約せずに進められる"
+    - "実装言語に依存しないレイヤー・データ設計となり、後段で言語を選んでも設計を引き直さない"
+  negative:
+    - "言語・FW 未定のため、フレームワーク固有の制約（ORM の SCD2 / イベントストア対応、認可ライブラリ等）を設計に織り込めていない"
+    - "dist-impl の bootstrap 前に言語・FW の決定が必要になる"
+alternatives_considered:
+  - name: "一般的な Web スタック（TypeScript + SPA フレームワーク + Node.js 系 API）を仮決めする"
+    reason_rejected: "ユーザー希望が無い状態で推測で固定すると、後段での変更コストが発生する。ベンダー・言語ニュートラルに保つ方が安全"

@@ -1,0 +1,45 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "product"
+artifact_id: "product-decision-005"
+title: "単一リージョン複数 AZ 構成とし、遠隔地 DR を設けない"
+status: "accepted"
+generated_at: "2026-09-03T04:07:39"
+source_refs:
+  - "docs/cloud-context/sources/aws/aws-well-architected-framework.md"
+inputs_ref:
+  - "product-library-management-canonical"
+  - "foundation-context"
+
+decision:
+  context: "災害対策の範囲と業務継続の要否がいずれも最小水準（対策なし）である一方、サーバ冗長化は N+1 相当・切替時間 60 分未満が要求されている。データ所在地は国内に限定される"
+  conflict_type: "granularity"
+  options:
+    - id: "opt-single-region-multi-az"
+      description: "東京リージョン内の 2 AZ に冗長配置し、バックアップは同一リージョン内に保持する"
+      pros:
+        - "AZ 障害に対して自動フェイルオーバーでき、切替時間 60 分未満と SLA 99% を満たす"
+        - "データ所在地 japan を確実に満たす"
+        - "コスト方針 balanced に適合する"
+      cons:
+        - "リージョン全体障害時は復旧できず、災害時の業務継続はできない"
+    - id: "opt-multi-region-warm"
+      description: "第 2 リージョンに待機系を常設する"
+      pros:
+        - "リージョン障害時も業務を継続できる"
+      cons:
+        - "月額が概ね 1.8〜2 倍。災害対策が不要と判定された要件に対して過剰"
+    - id: "opt-single-az"
+      description: "単一 AZ に最小構成で配置する"
+      pros:
+        - "最も安価。データ転送費用も発生しない"
+      cons:
+        - "AZ 障害で全面停止し、冗長化と切替時間の要件を満たせない"
+  chosen_option: "opt-single-region-multi-az"
+  rationale: "災害対策は不要と判定されているが、通常障害に対する冗長化と切替時間の要件は満たす必要がある。両者を同時に満たす最小構成が単一リージョン複数 AZ である。バックアップの遠隔地複製は将来オプションとして構成上残す（バックアップボールトのコピー先追加のみで実現できる）"
+  risk_assessment: "リージョン全体障害時の復旧手段がない。災害時の業務継続要件が後から追加された場合は、バックアップのクロスリージョンコピーを先に有効化し、次に待機系の常設を検討する段階的な拡張経路を用意しておく"
+  affected_elements:
+    - "network_segmentation"
+    - "relational_datastore"
+    - "backup_and_recovery"
+  review_date: "2027-03-31"

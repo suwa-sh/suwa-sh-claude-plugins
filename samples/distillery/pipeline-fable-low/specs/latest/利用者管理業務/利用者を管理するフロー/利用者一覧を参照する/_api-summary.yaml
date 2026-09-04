@@ -1,0 +1,117 @@
+# _api-summary.yaml
+uc: "利用者一覧を参照する"
+business: "利用者管理業務"
+buc: "利用者を管理するフロー"
+endpoints:
+  - method: "GET"
+    path: "/api/v1/users"
+    summary: "利用者一覧取得（offset ページネーション + 利用者番号 / 氏名の単一条件絞り込み）"
+    request_schema: "ListUsersQueryParams"
+    response_schema: "UserPageResponse"
+    tags: ["users"]
+    security: ["bearer"]
+    roles: ["司書"]
+    responses:
+      "200": "UserPageResponse"
+      "400": "ValidationProblemDetails"
+      "401": "ProblemDetails"
+      "403": "ProblemDetails"
+    errors:
+      - status: "400"
+        code: "VALIDATION_ERROR"
+      - status: "401"
+        code: "UNAUTHENTICATED"
+      - status: "403"
+        code: "FORBIDDEN"
+async_events: []
+schemas:
+  - name: "ListUsersQueryParams"
+    properties:
+      - name: "q"
+        type: "string"
+        required: false
+      - name: "page"
+        type: "integer"
+        required: false
+      - name: "pageSize"
+        type: "integer"
+        required: false
+  - name: "UserSummary"
+    properties:
+      - name: "userNumber"
+        type: "string"
+        required: true
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "userType"
+        type: "string"
+        enum: ["PATRON", "STAFF"]
+        description: "利用者区分（PATRON=利用者 / STAFF=司書）"
+        required: true
+      - name: "email"
+        type: "string"
+        required: true
+      - name: "phone"
+        type: "string"
+        required: false
+      - name: "registeredAt"
+        type: "string"
+        format: "date-time"
+        required: true
+      - name: "updatedAt"
+        type: "string"
+        format: "date-time"
+        required: true
+  - name: "UserPageResponse"
+    properties:
+      - name: "items"
+        type: "array"
+        items: "UserSummary"
+        required: true
+      - name: "page"
+        type: "integer"
+        required: true
+      - name: "pageSize"
+        type: "integer"
+        required: true
+      - name: "totalCount"
+        type: "integer"
+        required: true
+  - name: "ProblemDetails"
+    properties:
+      - name: "type"
+        type: "string"
+        required: true
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "status"
+        type: "integer"
+        required: true
+      - name: "detail"
+        type: "string"
+        required: false
+      - name: "code"
+        type: "string"
+        required: true
+      - name: "traceId"
+        type: "string"
+        required: false
+  - name: "ValidationProblemDetails"
+    properties:
+      - name: "code"
+        type: "string"
+        required: true
+      - name: "errors"
+        type: "array"
+        items: "FieldError"
+        required: true
+  - name: "FieldError"
+    properties:
+      - name: "field"
+        type: "string"
+        required: true
+      - name: "message"
+        type: "string"
+        required: true

@@ -1,0 +1,32 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-006"
+title: "BC : tier 対応形態: 6 BC を Backend API 内のモジュールとするモジュラモノリス"
+status: "approved"
+generated_at: "2026-09-03T03:51:01"
+context: |
+  6 BC をどのデプロイ単位に対応させるか（単純モノリス / モジュラモノリス / マイクロサービス）を決める必要がある。
+  規模は 1 館・27 UC・同時アクセス〜100（NFR B.1.1.1 Lv1）で小さい。
+  一方で NFR A.2.1.1（N+1 冗長）と F.2.2.1「コンテキスト分割されたモジュラ構成」があり、
+  貸出登録・返却登録は蔵書・貸出・予約の 3 BC をまたぐ状態遷移を伴う。
+decision: |
+  モジュラモノリス（CTP-009, confidence: medium）を採用する。
+  - BC-001 蔵書 / BC-002 利用者 / BC-003 貸出 / BC-004 予約 / BC-005 通知 / BC-006 運営分析 を tier-backend-api 内のモジュールとして配置する
+  - RDB は単一インスタンスを BC ごとのスキーマで論理分離する
+  - BC-003 貸出の日次バッチ（BUC-007 / 008）は tier-worker（CronJob）で実行し、domain / repository / gateway を共有ライブラリで共有する
+  - BC-005 通知は Backend API 内モジュール + tier-worker（MQ 送信）+ tier-external-integration（ACL）の経路で送信する
+  - モジュール間は公開 IF 経由でのみ依存し（LR-003）、依存方向は静的検査（CLR-004）で担保する
+consequences:
+  positive:
+    - "越境状態遷移（貸出登録・返却登録・予約取消）を単一トランザクションで扱え、分散トランザクションを回避できる"
+    - "デプロイ単位が API / ワーカーの 2 つに収まり、1 館規模の運用コストに見合う"
+    - "BC 境界をモジュールとして維持するため、将来の電子書籍対応や BC 単位の切り出しに備えられる"
+  negative:
+    - "モジュール境界の規律（公開 IF 経由・依存方向）をコードレビューと静的検査で維持し続ける必要がある"
+    - "スケールアウトはアプリ全体の単位となり、BC ごとの独立スケールはできない"
+alternatives_considered:
+  - name: "単純モノリス（モジュール境界なし）（Option B）"
+    reason_rejected: "最小コストだが、NFR F.2.2.1 のモジュラ構成に反し、拡張時に境界の引き直しが必要になる"
+  - name: "マイクロサービス（BC ごとにデプロイ）（Option C）"
+    reason_rejected: "独立デプロイ・スケールは得られるが、1 館規模には運用コストが過大で、貸出 / 返却の 3 集約更新が分散トランザクションになる"

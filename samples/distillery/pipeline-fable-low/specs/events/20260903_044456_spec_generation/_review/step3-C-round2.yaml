@@ -1,0 +1,39 @@
+round: 2
+group: C
+# round 1 の S3-C-001〜026 は全件再検証し、修正済みを確認（再掲なし）
+findings:
+  - id: S3-C-027
+    uc: "期限管理業務/延滞者に督促するフロー/延滞を判定する"
+    file: "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/延滞を判定する/_model-summary.yaml"
+    line: 102
+    severity: minor
+    viewpoint: 5
+    claim: "loan_events INSERT の from_status / to_status の格納値が「貸出中」「延滞」の日本語で、loans.current_status（ON_LOAN → OVERDUE）および API 規約（RDB カラムの貸出状態も英語コード）と不一致"
+    fix: "L102 の value を \"ON_LOAN\"、L104 の value を \"OVERDUE\" に置換し、tier-worker.md L60 の from_status / to_status 説明も「ON_LOAN（貸出中）/ OVERDUE（延滞）」に揃える（event_type「延滞」は他 UC と共通の値のため据え置き）"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/_review/api-conventions.md#enum"
+      - "docs/rdra/latest/状態.tsv#貸出の状態"
+  - id: S3-C-028
+    uc: "期限管理業務/延滞者に督促するフロー/督促を送信する"
+    file: "docs/specs/events/20260903_044456_spec_generation/期限管理業務/延滞者に督促するフロー/督促を送信する/_model-summary.yaml"
+    line: 89
+    severity: minor
+    viewpoint: 5
+    claim: "notifications UPDATE の send_result の格納値が「成功 / 失敗 / スキップ」の日本語で、同ファイル L85 の where（send_result = 'PENDING'）や tier-backend-api.md L62（PENDING → SUCCEEDED / FAILED / SKIPPED）と表記が不一致"
+    fix: "L89 の value を \"SUCCEEDED / FAILED / SKIPPED（成功 / 失敗 / スキップ）\" に置換する"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/_review/api-conventions.md#enum"
+  - id: S3-C-029
+    uc: "期限管理業務/返却期限を通知するフロー/リマインドを送信する"
+    file: "docs/specs/events/20260903_044456_spec_generation/期限管理業務/返却期限を通知するフロー/リマインドを送信する/_model-summary.yaml"
+    line: 84
+    severity: minor
+    viewpoint: 5
+    claim: "notifications UPDATE の send_result の格納値が「成功 / 失敗 / スキップ」の日本語で、同ファイル L80/L91 の where（send_result = 'PENDING'）と表記が不一致"
+    fix: "L84 の value を \"SUCCEEDED / FAILED / SKIPPED（成功 / 失敗 / スキップ）\" に置換する"
+    source_refs:
+      - "docs/specs/events/20260903_044456_spec_generation/_review/api-conventions.md#enum"
+resolved:
+  - {id: S3-C-027, resolution: deferred, reason: "minor。round 2 時点で修正対象外（Step4 統合レビューで再検証）", by: orchestrator}
+  - {id: S3-C-028, resolution: deferred, reason: "minor。round 2 時点で修正対象外（Step4 統合レビューで再検証）", by: orchestrator}
+  - {id: S3-C-029, resolution: deferred, reason: "minor。round 2 時点で修正対象外（Step4 統合レビューで再検証）", by: orchestrator}

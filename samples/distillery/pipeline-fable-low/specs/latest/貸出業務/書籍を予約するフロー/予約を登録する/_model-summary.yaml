@@ -1,0 +1,151 @@
+# _model-summary.yaml
+uc: "予約を登録する"
+business: "貸出業務"
+buc: "書籍を予約するフロー"
+
+bounded_context_id: "BC-004"
+aggregate_id: "AG-005"
+
+models:
+  - name: "ReservationApplyPage 状態（eligibility / reservation）"
+    tier: "tier-frontend-user"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "予約"
+  - name: "ReservationEligibility / ReservationResult"
+    tier: "tier-frontend-user"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "予約"
+  - name: "ReservationEligibilityQuery"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "予約"
+  - name: "CreateReservationRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "予約"
+  - name: "CheckReservationEligibilityQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "予約"
+  - name: "RegisterReservationCommand"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "command"
+    rdra_info: "予約"
+  - name: "Reservation"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "ReservationQueue"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "予約"
+  - name: "QueuePosition"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "予約"
+  - name: "ReservationRecord / ReservationEventRecord / BookRecord / UserRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "予約"
+
+tables:
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = ? AND current_status IN ('RESERVED','NOTIFIED')（有効予約数・最大順位・自分の予約の有無）"
+      - type: "INSERT"
+        columns:
+          - name: "reservation_id"
+            value: "ULID 採番"
+          - name: "book_id"
+            value: "リクエストの bookId"
+          - name: "user_number"
+            value: "トークンの利用者番号"
+          - name: "accepted_at"
+            value: "現在時刻"
+          - name: "queue_position"
+            value: "有効予約の最大順位 + 1"
+          - name: "current_status"
+            value: "RESERVED"
+          - name: "version"
+            value: "1"
+          - name: "updated_at"
+            value: "現在時刻"
+        where: ""
+    indexes_needed:
+      - columns: ["book_id", "current_status", "queue_position"]
+        reason: "書籍ごとの有効予約を順位順に取得・最大順位の採番"
+        access_pattern: "WHERE book_id = ? AND current_status IN (...) ORDER BY queue_position"
+      - columns: ["book_id", "queue_position"]
+        reason: "有効予約内の順位一意（部分一意インデックス: current_status IN ('RESERVED','NOTIFIED')）"
+        access_pattern: "INSERT 時の一意制約"
+        unique: true
+      - columns: ["user_number", "book_id", "current_status"]
+        reason: "同一利用者の重複予約判定"
+        access_pattern: "WHERE user_number = ? AND book_id = ? AND current_status IN (...)"
+  - name: "reservation_events"
+    rdra_info: "予約"
+    operations:
+      - type: "INSERT"
+        columns:
+          - name: "reservation_id"
+            value: "作成した予約 ID"
+          - name: "event_type"
+            value: "RESERVED"
+          - name: "occurred_at"
+            value: "現在時刻（accepted_at と同値）"
+          - name: "actor_user_number"
+            value: "利用者本人の利用者番号"
+          - name: "idempotency_key"
+            value: "Idempotency-Key ヘッダ"
+        where: ""
+      - type: "SELECT"
+        columns: []
+        where: "idempotency_key = ?（冪等キー検査）"
+    indexes_needed:
+      - columns: ["idempotency_key"]
+        reason: "冪等キーの一意性と再送検出"
+        access_pattern: "UNIQUE WHERE idempotency_key = ?"
+      - columns: ["reservation_id", "occurred_at"]
+        reason: "予約ごとのイベント履歴"
+        access_pattern: "WHERE reservation_id = ? ORDER BY occurred_at"
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = ?（可否照会）/ book_id = ? FOR UPDATE（順位採番の直列化）"
+    indexes_needed: []
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_number = ?（トークンの利用者が登録済みであることの確認）"
+    indexes_needed: []
+
+kvs:
+  - key_pattern: "cache:books:detail:{bookId}"
+    purpose: "cache"
+    value_type: "書籍詳細 / 在庫状況の参照キャッシュ（予約登録時に無効化）"
+    ttl: "10m"
+    operations: ["DEL"]
+
+object_storage: []

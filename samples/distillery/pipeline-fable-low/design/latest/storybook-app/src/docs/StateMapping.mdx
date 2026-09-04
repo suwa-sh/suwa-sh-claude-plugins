@@ -1,0 +1,53 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+import { BookStatusBadge, LoanStatusBadge, ReservationStatusBadge } from '../components/domain/StatusBadges'
+
+<Meta title="State Mapping" />
+
+# State Mapping
+
+RDRA 状態.tsv の 3 状態モデルを Badge の variant に対応づけます。色だけで意味を伝えず、必ず文言とアイコンを添えます。
+
+## 書籍の状態
+
+<table>
+  <thead>
+    <tr><th>RDRA 状態</th><th>Badge</th><th>variant / token</th><th>司書の操作</th><th>利用者の操作</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>在庫あり</td><td><BookStatusBadge state="在庫あり" /></td><td><code>success</code> / <code>--success</code></td><td>貸出を登録する / 編集 / 削除</td><td>書籍詳細を参照する</td></tr>
+    <tr><td>貸出中</td><td><BookStatusBadge state="貸出中" /></td><td><code>info</code> / <code>--info</code></td><td>返却を登録する / 編集</td><td>予約を登録する</td></tr>
+    <tr><td>予約待ち</td><td><BookStatusBadge state="予約待ち" /></td><td><code>pending</code> / <code>--pending</code></td><td>貸出を登録する（予約順位 1 位） / 予約一覧</td><td>予約を取り消す</td></tr>
+  </tbody>
+</table>
+
+遷移: （登録）→ 在庫あり → 貸出中 → 在庫あり | 予約待ち → 貸出中。在庫ありのみ削除可。
+
+## 貸出の状態
+
+<table>
+  <thead>
+    <tr><th>RDRA 状態</th><th>Badge</th><th>variant / token</th><th>司書</th><th>タイマー</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>貸出中</td><td><LoanStatusBadge state="貸出中" /></td><td><code>info</code></td><td>返却を登録する</td><td>リマインドを送信する / 延滞を判定する</td></tr>
+    <tr><td>延滞</td><td><LoanStatusBadge state="延滞" /></td><td><code>destructive</code></td><td>返却を登録する / 延滞一覧を参照する</td><td>督促を送信する</td></tr>
+    <tr><td>返却済み</td><td><LoanStatusBadge state="返却済み" /></td><td><code>neutral</code></td><td>—</td><td>—</td></tr>
+  </tbody>
+</table>
+
+返却期限は DueDateIndicator が補足する: 余裕あり <code>--due-ok</code> / リマインド日数以内 <code>--due-soon</code> / 超過 <code>--due-overdue</code>。
+
+## 予約の状態
+
+<table>
+  <thead>
+    <tr><th>RDRA 状態</th><th>Badge</th><th>variant / token</th><th>司書</th><th>利用者</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>予約中</td><td><ReservationStatusBadge state="予約中" /></td><td><code>warning</code></td><td>返却通知を送信する</td><td>予約を取り消す</td></tr>
+    <tr><td>通知済み</td><td><ReservationStatusBadge state="通知済み" /></td><td><code>analysis</code></td><td>貸出を登録する</td><td>予約を取り消す</td></tr>
+    <tr><td>取消</td><td><ReservationStatusBadge state="取消" /></td><td><code>neutral</code></td><td>—</td><td>—</td></tr>
+  </tbody>
+</table>
+
+順序性（予約中 → 通知済み → 貸出完了）は ReservationQueueTracker で表現します。

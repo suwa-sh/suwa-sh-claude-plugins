@@ -1,0 +1,102 @@
+# _model-summary.yaml
+uc: "書籍一覧を参照する"
+business: "蔵書管理業務"
+buc: "蔵書を管理するフロー"
+
+bounded_context_id: "BC-001"
+# SELECT のみの UC のため aggregate_id は省略
+
+models:
+  - name: "BookListPageState"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "state"
+    rdra_info: "書籍"
+  - name: "ListBooksQueryParams"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "書籍"
+  - name: "ListBooksRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "ListBooksQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "書籍"
+  - name: "BookSearchCriteria"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "Genre"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "ジャンル"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+  - name: "GenreRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "ジャンル"
+  - name: "BookPageResponse"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "view-model"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "任意: (searchType に応じた正規化列の LIKE) AND genre_id = ? AND current_status = ? ORDER BY updated_at DESC, book_id ASC LIMIT ? OFFSET ?"
+      - type: "SELECT"
+        columns: []
+        where: "同条件の COUNT(*)"
+    indexes_needed:
+      - columns: ["current_status", "updated_at"]
+        reason: "在庫状況で絞り込んだ一覧を更新日時降順でページング"
+        access_pattern: "WHERE current_status = ? ORDER BY updated_at DESC LIMIT/OFFSET"
+      - columns: ["genre_id", "updated_at"]
+        reason: "ジャンル絞り込みの一覧取得"
+        access_pattern: "WHERE genre_id = ? ORDER BY updated_at DESC"
+      - columns: ["updated_at"]
+        reason: "絞り込みなし一覧の並び順"
+        access_pattern: "ORDER BY updated_at DESC LIMIT/OFFSET"
+      - columns: ["title_normalized"]
+        reason: "タイトル部分一致（前方一致時に利用。中間一致は LIKE 走査を許容: 1 館規模）"
+        access_pattern: "WHERE title_normalized LIKE ?"
+      - columns: ["isbn"]
+        reason: "ISBN 検索"
+        access_pattern: "WHERE isbn LIKE ?（q のハイフンを除去した部分一致。「書籍を検索する」と同一式）"
+  - name: "genres"
+    rdra_info: "ジャンル"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "全件（genre_id 昇順）/ books との JOIN で genre_name を取得"
+    indexes_needed: []
+
+kvs:
+  - key_pattern: "cache:books:list:{queryHash}"
+    purpose: "cache"
+    value_type: "BookPageResponse JSON"
+    ttl: "60s"
+    operations: ["GET", "SET", "DEL"]
+
+object_storage: []
