@@ -7,6 +7,9 @@
 catalog modeでは `references/specs/contract-catalog.md` の順序を使う。
 手順6のsummary生成は実施済みの機械生成物を読むだけとし、手順5のAPI型表はoperation参照に置き換える。
 
+`references/specs/implementation-readiness.md` を読み、実装時に結果を選び直す必要がないか確認する。
+不足・矛盾を元出力から保持しただけでは合格にしない。
+
 ## 入力
 
 - `docs/rdra/latest/*.tsv` — RDRA モデル

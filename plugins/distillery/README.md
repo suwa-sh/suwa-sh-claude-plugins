@@ -6,6 +6,9 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 
 ## dist-spec の出力粒度
 
+目標は、実装時に業務挙動を選び直す必要のない仕様です。
+[実装可能性の基準](skills/dist-spec/references/specs/implementation-readiness.md)で不足・矛盾と不要な重複を確認します。
+
 UC 本文は業務ルール・状態遷移・受入条件、tier 仕様は固有の実行条件と画面の接続情報を記述します。
 通常のレイヤー往復図、DB型表、共通UI定義の再掲は不要です。BUCは所属UCと依存・共有定義を示します。
 APIの入出力・エラー表とsummary形式は契約生成元として維持し、既存形式も後段で読み取れます。
@@ -13,7 +16,7 @@ APIの入出力・エラー表とsummary形式は契約生成元として維持�
 
 明示的に `/distillery:dist-spec contract_mode=catalog` を指定すると、検証用の契約カタログ方式を使えます。
 完全なOpenAPI/AsyncAPIを一か所で編集し、統合契約・UC別索引・契約抜粋・BUC/対応付けビューを機械生成します。
-[方式と制限](skills/dist-spec/references/specs/contract-catalog.md)を参照してください。実生成での受入確認は未完了です。
+[方式と制限](skills/dist-spec/references/specs/contract-catalog.md)を参照してください。実装可能性の受入確認は未完了です。
 
 ## Pipeline
 

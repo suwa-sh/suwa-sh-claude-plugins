@@ -17,6 +17,9 @@ catalog modeの場合は `references/specs/contract-catalog.md` と対象UCの `
 型・認可・エラーはsliceに存在すればよく、以下のAPI本文の型表要求はlegacy modeにのみ適用する。
 summaryは機械生成v2としてslice hashとoperation参照を検証し、手修正させない。
 
+`references/specs/implementation-readiness.md` を読み、実装時に結果を選び直す必要がないか確認する。
+不足・矛盾を元出力から保持しただけでは合格にしない。
+
 ## レビュー観点
 
 1. 関連 RDRA モデルと業務ルール・状態遷移（旧形式の各一覧も可）から情報属性、条件、

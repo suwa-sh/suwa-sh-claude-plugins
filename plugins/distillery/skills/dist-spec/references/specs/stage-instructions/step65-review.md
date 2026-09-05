@@ -12,6 +12,9 @@ APIの型表を本文へ戻さない。linkedは対応先の実在であり、�
 - 入力の正: `docs/usdm/latest/` / `docs/rdra/latest/` / `docs/arch/latest/`（`_digest/` があればそちら）/
   `docs/design/latest/`（design ありのみ）
 
+`references/specs/implementation-readiness.md` を読み、実装時に結果を選び直す必要がないか確認する。
+不足・矛盾を元出力から保持しただけでは合格にしない。
+
 ## 観点（後工程の実装ハーネス distillery-impl の実走で「仕様起因の手戻り」になった実例に基づく）
 
 1. **トレーサビリティ**: 全 UC が USDM の SPEC / acceptance_criteria に遡れるか。

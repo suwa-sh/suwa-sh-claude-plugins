@@ -53,3 +53,8 @@ node --test tests/dist-spec-concise-sample.test.js
 
 BDDの完全一致、API契約節・summaryの保持、Markdownリンク、既存Spec/summaryバリデータとの互換性を確認する。
 これらは生成モデルの出力品質や実装完了を保証するテストではない。フルpipeline再生成は未実施。
+
+## 実装可能性の評価
+
+[実装者視点の再評価と記載例](implementation-review.md)では不足・矛盾が見つかっており、
+本比較例は実装可能な完成仕様としては扱わない。行数削減と情報保持の検証結果を、そのまま品質合格としない。

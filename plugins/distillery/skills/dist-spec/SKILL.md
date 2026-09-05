@@ -62,6 +62,12 @@ failed返却は4 ledgerをすべて空配列にし、非空・単一行の`phase
 `post_execution_basis`はcontrollerが内部実測し、stage側では作らない。
 
 
+## 出力の完了基準
+
+`references/specs/implementation-readiness.md` を生成・レビューで適用する。
+対象UCの本文と共有参照から、正常・失敗・競合・再送の結果を追加の業務判断なく決められることを完了基準とする。
+特定のモデルやCLIによる再現、行数削減、構文検証の成功だけを完了条件にしない。
+
 ## 契約生成方式（任意）
 
 `contract_mode=catalog` を明示した場合は、Step1の後に
@@ -669,6 +675,11 @@ Step6 の機械検証は構文・必須項目しか見ない。「検証は通�
    または 3 ラウンド到達(残 findings は確認推奨項目としてユーザーに返す)。minor の修正は任意。
    round-{n}.yaml のトップレベルは `{round: n, findings: [...], resolved: [{id, resolution}]}` とし、
    finding の id はラウンドをまたいで引き継ぐ(再掲は同 id)
+
+Step6.5終了時に `_review/implementation-readiness.md` を確定する。
+結果を変える不足・矛盾が残るUCは `needs-spec-change` とし、該当findingを記録する。
+3ラウンドで解決できなかった場合もドラフトとして保存できるが、実装可能と報告せず、
+Step8のlatestへの昇格は行わない。確認推奨事項への移動やdeferredだけでこの判定を覆さない。
 
 ### Step7: Markdown 生成
 
