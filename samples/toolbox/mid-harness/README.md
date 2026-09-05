@@ -50,10 +50,10 @@ init-output/
 | Codex CLI | 0.145.0 | pass | pass | hook trust を `--dangerously-bypass-hook-trust` でバイパスして配線を検証 |
 | Cursor | 2026.09.02 | pass | pass | `--model auto` (Opus の usage limit 回避) |
 | Grok Build | 1.0.13 | pass | pass | `~/.grok/trusted_folders.toml` に canonical パスで trust が必要 |
-| GitHub Copilot CLI | 1.0.80 | pass | **fail** | `.github/hooks/*.json` が `-p` で発火しない (未解決。user hook は同形式で発火する) |
+| GitHub Copilot CLI | 1.0.83 | pass | pass | `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` で repo hook を有効化 (2026-09-05 再検証) |
 | Antigravity CLI | 1.1.26 | pass | pass | 初回に `agy -p "…" --new-project` で project 登録 + trust。以降 verify は folderUri から引いた project ID を `--project` に渡す |
 
-`logs/04-verify-run1.log` は 1 回目 (grok と antigravity が trust のパス問題で fail) の記録。canonical パスで trust し直した再実行で上表の結果になった。詳細は `plugins/toolbox/skills/mid-harness/references/adapters/README.md` の早見表と各製品の doc。
+`logs/04-verify-run1.log` は 1 回目 (grok と antigravity が trust のパス問題で fail) の記録。canonical パスで trust し直した再実行で上表の結果になった。Copilot はその後、1.0.83 の一時リポで環境変数による opt-in を加えて再検証し、skill 発見・hook 拒否とも pass を確認した。詳細は `plugins/toolbox/skills/mid-harness/references/adapters/README.md` の早見表と各製品の doc。
 
 ## 製品ごとの前提 (verify を通すのに必要だったこと)
 
@@ -61,4 +61,4 @@ init-output/
 - Grok: `~/.grok/trusted_folders.toml` に `[folders."<canonical path>"] trusted = true`
 - Antigravity: `~/.gemini/antigravity-cli/settings.json` の `trustedWorkspaces` に canonical パス + project 登録
 - Cursor: `agent -p --trust --force`
-- Copilot: `copilot -p --allow-all-tools`
+- Copilot: `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true copilot -p "…" --allow-all-tools`

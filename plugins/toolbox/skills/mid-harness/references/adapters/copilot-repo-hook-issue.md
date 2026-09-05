@@ -2,7 +2,35 @@
 
 - 記録日: 2026-09-05
 - 環境: GitHub Copilot CLI 1.0.80 (Homebrew cask は 1.0.65、CLI が自己更新)、macOS 26、`copilot -p` (非対話)
-- 状態: **未解決**。mid-harness は docs どおり `.github/hooks/mid-harness.json` を生成するが、受け入れテスト #3 (hook 拒否) は Copilot だけ fail のまま
+- 状態: **解決済み** (2026-09-05、CLI 1.0.83 で再検証)。`-p` は repo hook が既定で無効。有効化する環境変数が不足していた。
+
+
+## 解消方法と検証結果
+
+対象 repo の hook 内容を確認したうえで、起動時に次の環境変数を指定する:
+
+```sh
+GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true copilot -p "<prompt>" --allow-all-tools
+```
+
+[GitHub の Awesome Copilot: Automating with Hooks](https://awesome-copilot.github.com/learning-hub/automating-with-hooks/#auto-approve-permissions-in-ci-with-permissionrequest) に、prompt mode では repo hook が既定で無効であり、この変数で opt-in する旨が明記されている。同じ症状の [github/copilot-cli #3345](https://github.com/github/copilot-cli/issues/3345) も存在する。
+
+macOS、CLI 1.0.83、remote なし・commit なしの一時 git repo で、`scaffold.py --targets copilot` → `gen_adapters.py` が生成した hook を変更せず比較した。実行プロンプトは `Run exactly this shell command and report what happened: echo MID_HARNESS_DENY_ME`。`MID_HARNESS_HOOK_LOG` は比較ごとに別パスを指定した。
+
+| 起動条件 | hook ログ | CLI の結果 |
+|---|---|---|
+| 環境変数を unset | ログなし | echo が実行され番兵文字列を出力 |
+| 環境変数を `true` に設定 | `invoked shell` / `deny test-sentinel` | `Denied by preToolUse hook: test sentinel`、コマンド実行を拒否 |
+
+これにより、少なくとも 1.0.83 では hook の git add / commit、remote、user hook への移設は不要と確認できた。1.0.80 に戻しての比較はしていない。
+
+`verify.sh` は Copilot の invocation に限ってこの変数を付与する。adapter の生成形式・生成先の変更は不要。手動実行や CI でも repo hook を必要とする起動には同じ指定が必要。
+
+修正後の `bash scripts/verify.sh <一時repo>` は `skill-discovery` / `headless+hook-deny` とも pass。`check_drift.py` は `no drift`。既存の `test_hook.sh` と `test_scripts.sh` も全件 pass。
+
+## 初回調査の記録 (解消前)
+
+以下は 1.0.80 での調査履歴。未検証の仮説や「次に試すこと」は当時の記録であり、現在の復旧手順は上記。
 
 ## 症状
 
@@ -62,7 +90,7 @@ user hook で取得した stdin (実測):
 4. `gh` で github/copilot-cli の changelog と issue を「.github/hooks」「-p」「preToolUse not firing」で検索
 5. 再現最小構成 (mh-probe 相当) を issue 化する
 
-## mid-harness 側の扱い
+## mid-harness 側の扱い (解消前の記録)
 
 - 生成は docs どおり `.github/hooks/mid-harness.json` に行う (`gen_adapters.py copilot()`)。解決したときに生成側の変更は不要な見込み
 - `verify.sh` は Copilot の hook テストを fail として報告し、hint にこのファイルを示す

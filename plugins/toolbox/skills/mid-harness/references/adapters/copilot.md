@@ -1,7 +1,7 @@
 # adapter: GitHub Copilot CLI
 
 - 確認日: 2026-09-05
-- 確認バージョン: GitHub Copilot CLI 1.0.80
+- 確認バージョン: GitHub Copilot CLI 1.0.83 (初回調査: 1.0.80)
 - 確認元: docs.github.com (copilot/reference/hooks-reference, tutorials/copilot-cli-hooks)、github/copilot-cli の _autodocs (configuration, endpoints-hooks, QUICKSTART) を Context7 / WebFetch で照合 + ローカル実測 (`copilot help config`、user hook の stdin)
 
 ## 読込パス
@@ -11,8 +11,8 @@
 | Instructions | `.github/copilot-instructions.md`、`AGENTS.md`、`CLAUDE.md`、`GEMINI.md`、`.github/instructions/**/*.instructions.md` | 複数形式をマージ。`@path` import 対応 |
 | Skills | `.github/skills/`、`.agents/skills/`、`.claude/skills/` (+ user スコープ) | 記事 (2026-08-07) の記載。本セッションでは未実測 (**unverified**、verify.sh の skill 発見テストで確認する) |
 | Agents | `.github/agents/<name>.md` (native)。`.claude/agents/` も互換探索 | 同名は `.github/agents/` が優先 |
-| Hooks | `.github/hooks/*.json` (repo)、`~/.copilot/hooks/*.json` (user)、`~/.copilot/settings.json` / repo settings の `hooks` (inline) | `copilot help config`: "hooks: inline hook definitions, keyed by event name (same schema as .github/hooks/*.json)" |
-| Headless | `copilot -p "<prompt>" --allow-all-tools` | `--allow-all` は tools + paths + urls |
+| Hooks | `.github/hooks/*.json` (repo)、`~/.copilot/hooks/*.json` (user)、`~/.copilot/settings.json` / `.github/copilot/settings.json` の `hooks` (inline) | `copilot help config`: "hooks: inline hook definitions, keyed by event name (same schema as .github/hooks/*.json)" |
+| Headless | `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true copilot -p "<prompt>" --allow-all-tools` | `--allow-all` は tools + paths + urls |
 
 ## Hooks
 
@@ -34,7 +34,7 @@
 - stdin (user hook で実測 2026-09-05): `{"sessionId", "timestamp", "cwd", "toolName": "bash", "toolArgs": {"command": ..., "description": ...}}`。docs は `toolArgs` が **JSON 文字列** の場合があるとする (両方を受ける)
 - hook の cwd は実測でプロジェクト cwd。`cwd` フィールドで上書き可
 - ブロック: stdout `{"permissionDecision": "deny", "permissionDecisionReason": "..."}`。**exit 2 も deny** (stdout JSON はマージ)。preToolUse ではその他の非ゼロ exit も deny (fail-closed)。timeout だけ fail-open
-- **未解決**: `.github/hooks/*.json` を置いた repo で `copilot -p` を実行しても hook が発火しなかった (mh-probe と trust 済みの pkm の両方で再現、1.0.80、2026-09-05)。user hook (`~/.copilot/hooks/`) は同形式で発火する。試したこと・仮説・次の手順は [copilot-repo-hook-issue.md](copilot-repo-hook-issue.md) に整理。生成は docs どおり `.github/hooks/mid-harness.json` に行い、verify.sh の hook テストが fail したらそのファイルを見る
+- **解決済み**: `-p` では repo hook が既定で無効。`GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` を起動時に付けると `.github/hooks/*.json` が読まれる。1.0.83 で未コミットの生成 hook が発火し、番兵コマンドを拒否することを実測した。原因・比較結果・出典は [copilot-repo-hook-issue.md](copilot-repo-hook-issue.md)。
 
 ### 論理イベント → 製品イベント
 
@@ -82,4 +82,4 @@ front matter は公式の custom-agents-configuration に従う: `name` (任意)
 ## 受け入れテストでの注意
 
 - `--allow-all-tools` が無いと headless でツール承認待ちになり実行されない
-- `.github/hooks` の repo hook が発火しない件 (上記) は、本スキル側で解決できていない。fail のまま報告する
+- `verify.sh` は Copilot 起動時だけ `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` を付与する。手動実行や CI でも repo hook を使う場合は同じ指定が必要。対象 repo の hook を確認してから有効化する (user 設定への移設やグローバル export は不要)

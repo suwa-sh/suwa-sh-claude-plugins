@@ -94,7 +94,8 @@ headless_cmd() {  # $1 product, $2 prompt   (各製品の headless 実行。フ�
     codex)       run_with_timeout codex exec --skip-git-repo-check --dangerously-bypass-hook-trust "$2" ;;
     cursor)      run_with_timeout agent -p --trust --force --model auto --output-format text "$2" ;;
     grok)        run_with_timeout grok -p "$2" --always-approve ;;
-    copilot)     run_with_timeout copilot -p "$2" --allow-all-tools ;;
+    # Copilot は -p で repo hook を既定で無効化する。検証する invocation に限り opt-in。
+    copilot)     run_with_timeout env GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true copilot -p "$2" --allow-all-tools ;;
     # Antigravity は session が project に束縛されているときだけ workspace の hooks.json を読む。
     # project は ~/.gemini/config/projects/*.json から folderUri == REPO のものを ID で選ぶ (名前は basename で重複し得る)。
     antigravity)
@@ -141,7 +142,7 @@ else
       hint=""
       case "$t" in
         codex) hint=" (hook trust?)";; grok) hint=" (folder trust: ~/.grok/trusted_folders.toml)";;
-        antigravity) hint=" (workspace を project 登録 + trust: agy --new-project)";; copilot) hint=" (repo hook が -p で読まれない既知の問題: adapters/copilot.md)";;
+        antigravity) hint=" (workspace を project 登録 + trust: agy --new-project)";; copilot) hint=" (repo hook opt-in 済み。設定と disableAllHooks を確認: adapters/copilot.md)";;
       esac
       record "$t" fail "headless: hook never invoked in headless mode$hint (see $LOG)"
     fi

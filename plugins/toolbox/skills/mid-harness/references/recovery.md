@@ -40,9 +40,9 @@
 
 ## Copilot の repo hook (`.github/hooks/*.json`) が `-p` で発火しない
 - 症状: docs どおりの `.github/hooks/mid-harness.json` を置いても hook ログが空。user hook (`~/.copilot/hooks/`) は同形式で発火する
-- 原因: 未特定 (trust 済みの repo でも再現。1.0.80、2026-09-05)
+- 原因: `-p` では repo hook が既定で無効。folder trust や `--allow-all-tools` では有効化されない
 - 検出: `copilot -p ... --log-level debug --log-dir <dir>` の `[rust:hooks] [hook stdout]` 行に repo hook の出力が無い
-- 復旧: 未解決。skill 発見は `.agents/skills` で通るので、hook だけ fail として報告する。試行の一覧と次の手順は `adapters/copilot-repo-hook-issue.md`
+- 復旧: `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true copilot -p "..." --allow-all-tools`。verify.sh は invocation 単位で指定する。1.0.83 で未コミットの repo hook の発火・拒否を確認済み。経緯は `adapters/copilot-repo-hook-issue.md`
 - 最終確認日: 2026-09-05
 
 ## Cursor の `-p` が Opus の usage limit で止まる
