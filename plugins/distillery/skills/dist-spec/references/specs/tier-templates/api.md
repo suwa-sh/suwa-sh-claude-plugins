@@ -7,7 +7,7 @@
 API / バックエンド系ティア（REST API, GraphQL, gRPC など）の場合に使用する。
 該当判定: `tiers[].technology_candidates` に REST, GraphQL, gRPC, API Gateway 等の API 技術が含まれる場合。
 
-```markdown
+````markdown
 # {UC名} - {ティア名}仕様
 
 ## 変更概要
@@ -20,8 +20,9 @@ API / バックエンド系ティア（REST API, GraphQL, gRPC など）の場�
 
 - **メソッド**: GET/POST/PUT/DELETE
 - **パス**: {APIパス}
-- **認証**: {認証方式}
-- **OpenAPI**: [openapi.yaml](../../_cross-cutting/api/openapi.yaml) の `paths.{パス}.{メソッド}` を参照
+- **operationId**: {全UCで一意なID}
+- **認証**: {認証方式・許可するアクター/スコープ}
+- **OpenAPI**: [openapi.yaml](../../../_cross-cutting/api/openapi.yaml) の `paths.{パス}.{メソッド}` を参照
 
 #### リクエスト
 
@@ -48,20 +49,20 @@ API / バックエンド系ティア（REST API, GraphQL, gRPC など）の場�
 
 - **チャネル**: {メッセージキュー/トピック名}
 - **方向**: publish/subscribe
-- **AsyncAPI**: [asyncapi.yaml](../../_cross-cutting/api/asyncapi.yaml) の `channels.{チャネル名}` を参照
+- **AsyncAPI**: [asyncapi.yaml](../../../_cross-cutting/api/asyncapi.yaml) の `channels.{チャネル名}` を参照
 
-## データモデル変更
+## データアクセス・実行条件
 
-### {テーブル/エンティティ名}
+- **操作定義**: [_model-summary.yaml](_model-summary.yaml) の `tables[name={name}].operations`。
+  カラム型は統合 datastore schema を参照し、ここへ再掲しない。
+- **業務ルール**: [spec.md](spec.md) の `{RULE-ID}` を `{処理名}` で適用する。
+- **トランザクション**: {同時に確定する操作、失敗時に戻す範囲、外部副作用の実行時点}
+- **競合制御**: {再判定する条件、ロック / 一意制約等、競合時の結果}
+- **冪等性**: {キーのスコープ・保持期間、同一/異なる本文、処理中、失敗後の再送}
+- **副作用**: {監査・イベント・キャッシュ更新の対象とタイミング}
 
-| カラム | 型 | 説明 | 変更種別 |
-|--------|---|------|---------|
-| {カラム名} | VARCHAR/INT/... | {説明} | 追加/変更/削除 |
-
-## ビジネスルール
-
-- {ビジネスルール1}
-- {ビジネスルール2}
+{該当項目のみ記述。共有規約がある項目はファイル + 見出しを指定し、UC固有の値だけ補足する。
+API のエラー表には条件と応答の対応を残すが、業務ルールの本文を再定義しない。}
 
 ## ティア完了条件（BDD）
 
@@ -73,4 +74,7 @@ Feature: {UC名} - {ティア名}
     When {APIリクエスト}
     Then {APIレスポンス}
 ```
-```
+````
+
+API の型・必須・制約・正常応答・業務エラーの定義は契約生成元として維持する。
+単なる参照にしない。既存契約がある場合は差異を解消し、未使用の項目・該当しない非同期節は生成しない。

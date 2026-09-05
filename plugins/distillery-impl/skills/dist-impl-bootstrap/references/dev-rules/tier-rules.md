@@ -11,6 +11,14 @@ generated[]。種別定義の正本は distillery-impl プラグイン側の con
 契約に無い tier 間依存が必要になったら実装で直接依存せず issues → feedback で契約宣言の
 追加を要求する。
 
+## Spec の参照解決
+
+UCの業務ルールは spec.md、データ操作は _model-summary.yaml、型・制約は登録済み契約、
+固有の原子性・再送・副作用は tier md を読む。旧形式のデータモデル変更表・ビジネスルールも受け付ける。
+共有定義は明示されたファイル + 見出し / ID だけを読み、契約sourceの読込範囲はcontracts.lockに従う。
+共通UIの型・既定値は共通定義、UC固有のvariant・供給値はtierのマッピング表で確認する。
+図や表の再掲がないことを仕様不足としない。
+
 ## frontend 系(例: tier-frontend)
 
 - **入力**: `tier-frontend.md`(画面仕様・コンポーネントマッピング・操作フロー)+
@@ -106,7 +114,7 @@ UI Reviewer は起動せず読解ベースの照合表のみで進む。
 
 ## backend 系(例: tier-backend-api)
 
-- **入力**: `tier-backend-api.md`(API 仕様表・データモデル変更表・ビジネスルール)+
+- **入力**: `tier-backend-api.md`(API 仕様表・データアクセス/実行条件・業務ルール参照)+ `spec.md` +
   `_api-summary.yaml` / `_model-summary.yaml`
 - openapi 契約の provider である場合、API の入出力型・ルーティングは
   `packages/contracts/server-stubs` / `api-types`(生成物)起点。ハンドラ実装だけを書く

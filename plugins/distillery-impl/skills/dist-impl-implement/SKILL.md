@@ -22,7 +22,9 @@ description: >
 - **読む入力を最小に保つ**(コンテキスト 25% 制約): 該当 UC の spec.md / tier md / _api-summary.yaml /
   _model-summary.yaml / docs/dev-rules と、impl-config の contracts[] で自 tier が
   provider/consumers に含まれる契約の生成物・source のみ。
-  他 UC・関与しない契約・契約 source の全量・実装履歴は読まない
+  spec / tier が明示する共有定義はファイル + 見出し / ID の該当箇所だけ追加で読む。
+  契約 source は contracts.lock の source_read / scope に従う。範囲外の定義が必要なら暗黙に読まず issues に記録する。
+  無関係な他 UC・関与しない契約・契約 source の全量・実装履歴は読まない
 - **git 操作禁止**。done ファイルは自分の write-set 内のものだけを書く(state-schema.md の write-set 表)
 - 仕様と実装が両立しない事実を見つけたら、実装で仕様を曲げず
   `docs/impl/latest/{uc_id}/issues/{ts}_{slug}.md` に「仕様の記載 / 実装で判明した事実 / 提案」を書き捨てて先へ進む
@@ -80,13 +82,16 @@ description: >
 単一 (UC × tier) を TDD で実装し、ゲート 1〜4 を通す。
 
 1. 入力を読む: tier md(ファイル名は `{tier_id}.md`。例 `tier-frontend.md`。API 仕様表 /
-   データモデル変更表 / ビジネスルール / ティア完了条件)、_api-summary / _model-summary、
+   データアクセス・実行条件 / spec.md の業務ルール参照 / ティア完了条件。旧形式の
+   データモデル変更表・ビジネスルールも読取可能)、spec.md、_api-summary / _model-summary、
    自 tier が関与する契約の生成物・source(impl-config の contracts[] が正。
    生成物 dir は `docs/impl/latest/contracts.lock.yaml` の該当契約の generated[] のうち
    audience が自 tier の role(provider / consumers)または both で、lang 指定があれば
    自 tier の lang と一致するもの。契約 source は lock の source_read が none 以外の契約のみ・
    scope 指定時は scope 範囲)、
    `docs/dev-rules/` 3 ファイル。
+   図・DB型表・共通Propsがないことを仕様不足と判断しない。参照先の該当定義を確認し、
+   UCのデータ操作は _model-summary、型・制約は契約、固有の実行条件は tier md から読む。
    **tier 種別に応じて追加で読む**(tier-rules.md):
    frontend は read-set 定義(uc-map の `ui_screens` が指す design-event.yaml の該当 screens[] 全行 +
    結線 story + story から到達する packages/ui 内の推移的 import closure)、

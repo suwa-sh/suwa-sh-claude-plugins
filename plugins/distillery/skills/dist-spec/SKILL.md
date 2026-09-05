@@ -5,9 +5,9 @@ description: >
   UC 単位の詳細仕様（Spec）と全体横断 UX/UI 設計仕様を生成するスキル。
   design-system スキルの後段に位置する。
   BUC/UC の階層で仕様を構造化し、RDRA トレーサビリティによる要件網羅率を算出する。
-  UC 単位 Spec は spec.md（BDD + データフロー + 処理フロー）と
+  UC 単位 Spec は spec.md（業務ルール + 状態遷移 + BDD）と
   tier-{tier_id}.md（arch 動的）、_model-summary.yaml（データアクセス定義）を生成する。
-  BUC 単位 Spec は UC 横断データフロー・状態遷移全体図を提供する。
+  BUC 単位 Spec は所属 UC と UC 間の依存・共有定義への参照を提供する。
   全体横断の UX/UI デザイン・データ可視化・共通コンポーネント・OpenAPI/AsyncAPI を _cross-cutting/ に出力し、
   データストアレイアウト（RDB/KVS/Object Storage）を YAML で定義する。
   要件トレーサビリティマトリクスで網羅率を報告する。
@@ -123,9 +123,9 @@ docs/specs/
   events/{event_id}/
     {業務名}/
       {BUC名}/
-        buc-spec.md                    # BUC 俯瞰仕様（UC横断データフロー、状態遷移全体図）
+        buc-spec.md                    # BUC 俯瞰仕様（所属UC、依存・共有定義への参照）
         {UC名}/
-          spec.md                      # UC 概要、データフロー、処理フロー、E2E BDD
+          spec.md                      # UC 概要、業務ルール、状態遷移、E2E BDD
           tier-{tier_id}.md            # ティアごとの仕様（arch-design.yaml の tiers から動的生成）
           _api-summary.yaml            # API エンドポイント中間出力（OpenAPI 統合用）
           _model-summary.yaml          # データモデル中間出力（データストアレイアウト統合用）
@@ -346,17 +346,15 @@ Step3 で生成した各 UC の出力を、**生成 subagent とは別の subage
 Step3 で全 UC Spec が出揃った後に、BUC 単位の俯瞰仕様を生成する。BUC 間は独立しているため subagent で並列実行する（全 BUC グループを単一メッセージで同時起動）。
 
 各 BUC について `buc-spec.md` を生成する:
-1. 所属 UC 一覧
-2. UC 横断データフロー（mermaid graph + 情報 CRUD マトリクス）
-3. 状態遷移全体図（mermaid stateDiagram + 状態遷移 UC マッピング）
-4. BUC 内共有条件一覧（どの条件がどの UC で適用されるか）
-5. BUC 内共有バリエーション一覧（どのバリエーションがどの UC で適用されるか）
+1. 概要と所属 UC 一覧（必須）
+2. UC 間の依存・整合条件（該当時のみ）
+3. 共有条件・バリエーション・状態定義への参照（該当時のみ）
 
-**入力**: Step3 で生成した所属 UC の spec.md（RDRA トレーサビリティテーブル）を参照して集約する。
+**入力**: 所属 UC の spec.md と必要な summary。通常の CRUD / 状態遷移を BUC に複写しない。
+複雑な分岐・合流・非同期連携がある場合だけ図を追加する。
 
-**空コンテンツ防止**: buc-spec.md は必ず上記5セクションすべてを記述すること。所属 UC が1件しかない BUC でも、UC 横断データフロー（その1件の UC のフロー）と状態遷移を記述する。セクションが空の buc-spec.md は不良品として扱う。
-
-**BUC Spec 完了チェック**: 全 BUC の buc-spec.md が生成されたら、各ファイルの行数を確認する。10行未満のファイルはコンテンツが空と判断し、再生成する。
+**BUC Spec 完了チェック**: BUC.tsv の所属 UC が実在する spec.md に全件リンクされ、
+必要な依存・共有定義を辿れることを確認する。単一 UC の BUC に図や最低行数を要求しない。
 
 #### Step3.5-Review: BUC Spec 自己改善ループ
 
@@ -376,14 +374,14 @@ Step3 + Step3.5 完了後に実行。**機能別に subagent を分割して並�
 1. `_cross-cutting/api/openapi.yaml` を生成する:
    - 全 UC の API エンドポイントを統合した OpenAPI 3.1 spec
    - **Step3 で生成した各 UC の `_api-summary.yaml` を入力として paths/schemas を集約する**（tier-backend-api.md を全件再読込するより効率的）
-   - `_api-summary.yaml` が存在しない UC は tier-{tier_id}.md にフォールバック
+   - `_api-summary.yaml` が無い、または型制約・認可・エラー等が不足する UC は、該当 tier-{tier_id}.md の契約節だけを追加で読む。未記載を推測で補わない
    - `references/specs/openapi-rules.md` に従って生成
    - Contract First 開発に使える品質で、スキーマ定義・型情報を具体的に記述
 
 2. `_cross-cutting/api/asyncapi.yaml` を生成する（非同期イベントがある場合のみ）:
    - 全 UC の非同期イベントを統合した AsyncAPI spec
    - **Step3 で生成した各 UC の `_api-summary.yaml` の `async_events` セクションを入力とする**
-   - `_api-summary.yaml` が存在しない UC は tier-{tier_id}.md にフォールバック
+   - `_api-summary.yaml` が無い、または型制約・認可・エラー等が不足する UC は、該当 tier-{tier_id}.md の契約節だけを追加で読む。未記載を推測で補わない
    - `references/specs/asyncapi-rules.md` に従って生成
    - 非同期イベントが1つもない場合はファイルを生成しない
 
@@ -434,7 +432,7 @@ OpenAPI 統合が特に重い場合は、業務単位で分割して並列生成
 
 1. `_cross-cutting/traceability-matrix.md` を生成する:
    - RDRA の全要素（情報属性、条件、バリエーション値、状態遷移パス、外部システム）を分母として棚卸し
-   - 全 UC Spec の RDRA トレーサビリティテーブルから分子（カバー済み要素）を収集
+   - 全 UC Spec の関連 RDRA モデル・業務ルール・状態遷移と参照先から分子（カバー済み要素）を収集
    - カテゴリ別の網羅率サマリーを算出
    - 未カバー要素一覧を生成し、対応方針（要対応/意図的除外/RDRA見直し）を提示
    - **網羅率をユーザーに報告する**
@@ -529,8 +527,10 @@ alternatives_considered:
 **このステップを省略してはならない**（Step4.5。ただし design 無しモードでは Step4c と共に実行しない）。`common-components.md` の設計を各 UC の tier-frontend-*.md にフィードバックする。
 
 1. 各 UC の tier-frontend-*.md に「共通コンポーネント参照」セクションを追加する
-2. 使用する共通コンポーネント名、インポートパス (`@/components/common/{Name}`)、Props マッピングを記載
-3. 共通パターンとの不整合があれば UC Spec 側を修正する
+2. 共通コンポーネント名、定義先の見出し、インポートパス (`@/components/common/{Name}`) を記載する。
+   Props の供給元は既存のマッピング表へ集約し、共通 Props 定義・既定値・フック一般規約を追記で複写しない
+3. 共通パターンとの不整合があれば UC Spec 側を修正する。初期生成で記述した共通説明は、
+   定義先とバインディングを確認して参照へ置換する。UC 固有の Props・状態所有者・イベントは保持する
 4. subagent で業務単位に並列実行可能（各 subagent が担当業務の tier-frontend-*.md を更新）
 
 #### Step4-Review: Cross-Cutting 自己改善ループ
@@ -723,6 +723,9 @@ spec-stories スキルの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/dist-spec-stori
 4. **全体横断 Spec は _cross-cutting/ に配置**: UC 単位 Spec とは異なる粒度で、システム全体を俯瞰する設計情報を提供する
 5. **RDRA モデルから導出できる範囲で記述**: 推測で仕様を追加しない
 6. **BDD シナリオは具体的な値を含める**: 「適切な値」のような曖昧表現は避ける
+
+7. **出力の重複を減らす**: `references/specs/spec-template.md` の出力規約に従い、通常のレイヤー往復図、
+   業務ルール・DB型・共通UI定義の再掲を避ける。API契約生成元と既存summary形式は維持する。
 
 ## 実装上の注意事項
 

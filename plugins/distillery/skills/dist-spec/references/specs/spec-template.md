@@ -1,225 +1,114 @@
 # Spec テンプレート定義
 
-> **読み込みタイミング**: Step3 で使用。UC/BUC Spec のフォーマット定義。
->
-> **正規リファレンス実装**: `docs/specs/latest/会議室利用業務/会議室予約フロー/バーチャル会議室を予約する/spec.md` を参照
+> Step3 で使用。共通の出力規約と spec.md のフォーマット。
 
-BUC 単位・UC 単位の仕様ドキュメントのフォーマットを定義する。
+## 出力規約
+
+- **一つの判断は一箇所に定義する**。業務ルールは spec.md、tier 固有の実行条件は tier md、
+  データアクセスは `_model-summary.yaml`、DB の型・制約は統合 datastore schema に置く。
+  複数 UC の共有規則は既存の共有定義を参照し、同じ本文を UC ごとに再定義しない。
+- **API 契約は現行形式を維持する**。API tier の入出力・エラー表は summary / OpenAPI の生成元として残す。
+  `_api-summary.yaml` は中間出力。完全な契約を持たない summary への参照だけに置き換えない。
+- 参照は **ファイル + 見出し / ルールID / operationId / スキーマ名 / テーブル名**で対象を特定する。
+  「共通仕様に従う」だけの記載は禁止。UC 内は相対リンク、artifact root 基準のパスはその旨を明記する。
+  初回生成で統合先が未生成なら、定義を省かず、Step4 の統合後に参照先と内容を検証する。
+- spec.md に通常のレイヤー往復図やその変換表を生成しない。順序・競合・非同期境界を説明する場合だけ
+  `処理フロー` または `データフロー` を追加する。同じ情報を図と表で重ねない。
+- 該当しない任意セクションは見出しごと省く。「該当なし」の表や、最低行数を満たすための説明を作らない。
+  原子性、認可、冪等性、失敗時の副作用、日付境界等、結果を変える判断は省略しない。
+- BDD は仕様の具体例として残す。UC は利用者から観測できる業務結果、tier は認可・競合・再送・表示など
+  その境界固有の保証を検証する。同じシナリオの言い換えを増やさないが、異なる保証を削らない。
+  各 UC / tier に具体値を含む Given / When / Then を置く。
+- 共通ルールの参照は本文の複写を不要にするだけであり、RDRA 要素と適用箇所・BDD の対応は保持する。
+  未確定の判断を推測で埋めず、確認推奨項目にする。
 
 ## ディレクトリ構成
 
-```
-{業務名}/
-  {BUC名}/
-    buc-spec.md                         # BUC 俯瞰仕様（UC 横断データフロー、状態遷移全体図）
-    {UC名}/
-      spec.md                           # UC の仕様概要（RDRA トレーサビリティ含む）
-      tier-{tier_id}.md                 # ティア別仕様（arch-design.yaml の tiers[].id ごと）
+```text
+{業務名}/{BUC名}/
+  buc-spec.md
+  {UC名}/
+    spec.md
+    tier-{tier_id}.md
+    _api-summary.yaml       # API / 非同期契約がある場合
+    _model-summary.yaml
 ```
 
-ティア構成は `docs/arch/latest/arch-design.yaml` の `system_architecture.tiers` から動的に決定する。
-ファイル名の `{tier_id}` は `tiers[].id` をそのまま使用する（例: `tier-frontend.md`, `tier-backend-api.md`）。
+ティアは arch-design.yaml の `system_architecture.tiers` から選定する。
+対象 kind の `references/specs/tier-templates/` のファイルだけを読む。
 
 ## spec.md フォーマット
 
-```markdown
+````markdown
 # {UC名}
 
 ## 概要
 
-{UC の目的と概要を1-3文で記述}
+{目的・操作するアクター・範囲を1〜3文で記述}
 
-## データフロー
+## 業務ルール
 
-この UC で扱うデータがティア/レイヤーをどう流れ、変換されるかを示す。
-ティアごとに subgraph を描き、各ノードは `"レイヤー名\nモデル名"` 形式で記述する。
-arch-design.yaml の `app_architecture.tier_layers` からレイヤー構成を参照すること。
+| ID | RDRA要素（条件・バリエーション） | 判定・計算・結果、または共有定義への参照 | 適用 tier / 箇所 | BDD Scenario |
+|----|-------------------------------|----------------------------------------|----------------|--------------|
+| RULE-001 | {実在する条件名。関連する値も列挙} | {境界値・計算式・不成立時の結果} | {tier-id / 処理名} | {シナリオ名} |
 
-```mermaid
-graph LR
-  subgraph FE["tier-frontend-user"]
-    FE_View["{レイヤー名}\n{画面名/UIモデル名}"]
-    FE_State["State\n{管理する状態}"]
-    FE_API["API Client\n{HTTPメソッド} {パス}"]
-    FE_View --> FE_State --> FE_API
-  end
-  subgraph BE["tier-backend-api"]
-    BE_Pres["presentation\n{Request DTO名}"]
-    BE_UC["usecase\n{Command/Query名}"]
-    BE_Domain["domain\n{Entity名}\n{主要な状態/属性}"]
-    BE_GW["gateway\n{Record/Repository名}"]
-    BE_Pres --> BE_UC --> BE_Domain
-    BE_UC --> BE_GW
-  end
-  subgraph DB["RDB"]
-    DB_Table[("{テーブル名}\n{主要な値}")]
-  end
-  FE_API -->|"{HTTPメソッド} {パス} {リクエストボディ概要}"| BE_Pres
-  BE_GW -->|"{SQL概要}"| DB_Table
-  DB_Table --> BE_GW --> BE_Domain --> BE_UC --> BE_Pres -->|"HTTP {ステータス} {レスポンス概要}"| FE_API --> FE_State --> FE_View
-```
-
-| レイヤー | データモデル | 変換内容 |
-|---------|------------|---------|
-| FE View | {画面での入力/表示内容} | {ユーザー操作 → 状態/リクエスト変換} |
-| BE presentation | {Request DTO名}({主要パラメータ}) | {バリデーション + Command 変換} |
-| BE gateway | {SQL / テーブル操作概要} | {レコード作成/更新} |
-| Response | {レスポンスボディ概要} | {表示メッセージ用途} |
-
-## 処理フロー
-
-この UC の処理がティア内のレイヤーをどう call stack で辿るかを示す。
-分岐条件・計算ルールを含む処理フローを、レイヤー単位で可視化する。
-
-```mermaid
-sequenceDiagram
-  actor User as {アクター名}
-
-  box rgb(230,240,255) tier-frontend-user
-    participant View as View/Component
-    participant State as State Management
-    participant APIClient as API Client
-  end
-
-  box rgb(240,255,240) tier-backend-api
-    participant Pres as presentation
-    participant UC as usecase
-    participant Domain as domain
-    participant GW as gateway
-  end
-
-  participant DB as RDB
-
-  User->>View: {操作}
-  View->>State: {アクション dispatch}
-  State->>APIClient: {API 呼出し}
-  APIClient->>Pres: {HTTPメソッド} {パス}
-  Pres->>Pres: 入力バリデーション
-  Pres->>UC: {Command/Query}
-  UC->>Domain: {ドメインロジック呼出し}
-  alt {分岐条件名}: {条件が真の場合}
-    Domain->>Domain: {ビジネスルール適用}
-  else {条件が偽の場合}
-    Domain->>Domain: {別ルール適用}
-  end
-  UC->>GW: {永続化/外部連携}
-  GW->>DB: {SQL}
-  DB-->>GW: {結果}
-  GW-->>UC: {ドメインモデル}
-  UC-->>Pres: {結果}
-  Pres-->>APIClient: HTTP {ステータス}
-  APIClient-->>State: {レスポンス}
-  State-->>View: {状態更新}
-  View-->>User: {表示更新}
-```
-
-## バリエーション一覧
-
-| バリエーション名 | 値 | 処理内容 | 適用 tier | 適用箇所 |
-|----------------|---|---------|----------|---------|
-| {バリエーション.tsv のバリエーション名} | {値} | {表示切替/フィルター/ルート分岐等} | {tier-id} | {処理名/API名/画面名} |
-
-## 分岐条件一覧
-
-| 条件名 | 判定ルール | 適用 tier | 適用箇所 | BDD Scenario |
-|--------|----------|----------|---------|-------------|
-| {条件.tsv の条件名} | {条件の説明から抽出した具体的なルール} | {tier-id} | {処理名/API名/画面名} | {対応する BDD Scenario 名} |
-
-## 計算ルール一覧
-
-| 計算名 | 入力情報 | 計算式/ロジック | 出力情報 | 適用 tier |
-|--------|---------|---------------|---------|----------|
-| {計算ルール名} | {情報.tsv の属性} | {具体的な計算式} | {結果の属性} | {tier-id} |
+{複数行の対応表が必要ならここだけに定義する。他のルールはそのIDを参照する。
+日付計算には基準日・タイムゾーン・端点の扱いなど、入力で確定した判断を残す。}
 
 ## 状態遷移一覧
 
-| 状態モデル | 遷移元 | 遷移先 | トリガー | 事前条件 | 事後処理 | 適用 tier |
-|-----------|--------|--------|---------|---------|---------|----------|
-| {状態.tsv の状態モデル} | {遷移元状態} | {遷移先状態} | {この UC の操作} | {遷移の前提条件} | {遷移後の副作用} | {tier-id} |
+| 状態モデル | 遷移元 | 遷移先 | 条件 / 共有遷移定義 | 事後処理 / 操作定義への参照 | 適用 tier |
+|-----------|--------|--------|-------------------|--------------------------|-----------|
+| {モデル名} | {元} | {先} | {RULE-ID または file + 遷移ID} | {_model-summary.yaml の table / operation 等} | {tier-id} |
 
 ## 関連 RDRA モデル
 
-| モデル種別 | 要素名 | 関連 |
-|-----------|--------|------|
-| 業務 | {業務名} | このUCが属する業務 |
-| BUC | {BUC名} | このUCを含むBUC |
-| アクター | {アクター名} | 操作するアクター |
-| 情報 | {情報名} | 参照・更新する情報 |
-| 状態 | {状態名} | 関連する状態遷移 |
-| 条件 | {条件名} | 適用される条件 |
-| 外部システム | {外部システム名} | 連携する外部システム |
+| モデル種別 | 要素名 | 関連 / 適用箇所 |
+|-----------|--------|----------------|
+| 業務 | {業務名} | 所属 |
+| BUC | {BUC名} | 所属 |
+| アクター | {アクター名} | 操作 |
+| 情報 | {情報名と対象属性} | {_model-summary.yaml の model / table、または契約のschema / property} |
+| 条件 / バリエーション | {要素名・値} | {RULE-ID} |
+| 状態 | {状態モデル名} | {状態遷移一覧の行} |
+| 外部システム | {要素名} | {tier md の連携定義} |
 
 ## E2E 完了条件（BDD）
-
-### 正常系
 
 ```gherkin
 Feature: {UC名}
 
-  Scenario: {シナリオ名}
-    Given {前提条件}
-    When {操作}
-    Then {期待結果}
+  Scenario: {正常系の業務結果}
+    Given {具体的な前提}
+    When {アクターの操作}
+    Then {観測可能な結果}
 
-  Scenario: {シナリオ名2}
-    Given {前提条件}
-    When {操作}
-    Then {期待結果}
-```
-
-### 異常系
-
-```gherkin
-  Scenario: {異常シナリオ名}
-    Given {前提条件}
-    When {異常操作}
-    Then {エラーハンドリング結果}
+  Scenario: {不成立時の業務結果}
+    Given {具体的な不成立条件}
+    When {アクターの操作}
+    Then {観測可能な失敗と変更されない情報}
 ```
 
 ## ティア別仕様
 
-{arch-design.yaml の tiers から動的にリンクを生成}
-
 - [{ティア名}](tier-{tier_id}.md)
+- [OpenAPI](../../../_cross-cutting/api/openapi.yaml): `{operationId}`
+- [AsyncAPI](../../../_cross-cutting/api/asyncapi.yaml): `{channel / operation}`（存在する場合のみ）
+````
 
-### 統合 API Spec
+`概要`、`関連 RDRA モデル`、`E2E 完了条件`、`ティア別仕様` は必須。
+`業務ルール` と `状態遷移一覧` は該当時のみ。既存 Spec の分岐条件一覧・計算ルール一覧・
+バリエーション一覧も読取可能とし、新規生成時は業務ルールへまとめる。
+ルール ID は文書内で一意・更新時に維持し、別 UC から参照する場合はファイルも指定する。
 
-- [OpenAPI Spec](../../_cross-cutting/api/openapi.yaml)（全 UC 統合、Contract First 開発用）
-- [AsyncAPI Spec](../../_cross-cutting/api/asyncapi.yaml)（全 UC 統合、非同期イベントがある場合のみ）
-```
+## ティア別フォーマット
 
-## tier-{tier_id}.md フォーマット（ティア種別ごとに別ファイル）
+| kind | ファイル |
+|------|----------|
+| presentation | `references/specs/tier-templates/presentation.md` |
+| api | `references/specs/tier-templates/api.md` |
+| worker | `references/specs/tier-templates/worker.md` |
+| cli | `references/specs/tier-templates/cli.md` |
 
-ティア別フォーマットは `references/specs/tier-templates/` に種別（kind）ごとに分離されている。
-**対象ティアの kind に一致するファイルだけを読む**（kind は Step1 でオーケストレータが確定し、subagent 指示に渡される）:
-
-| kind | ファイル | 対象ティア id の例 |
-|------|---------|------------------|
-| presentation | `references/specs/tier-templates/presentation.md` | id に `frontend` / `presentation` / `ui` を含む |
-| api | `references/specs/tier-templates/api.md` | id に `backend` / `api` / `bff` を含む |
-| worker | `references/specs/tier-templates/worker.md` | id に `worker` / `batch` / `event` を含む |
-| cli | `references/specs/tier-templates/cli.md` | id に `cli` / `command` / `tui` を含む（design 無しモード） |
-
-1 つのティアが複数の種別の特徴を持つ場合は、主要な kind のファイルをベースに必要なセクションを追加する。
-
-## buc-spec.md フォーマット
-
-BUC Spec のテンプレートは別ファイルに分離されている。Step3.5 で生成する際に以下を読み込むこと:
-
-**→ `references/specs/buc-spec-template.md` を参照**
-
-## 注意事項
-
-- ティア構成は `docs/arch/latest/arch-design.yaml` の `system_architecture.tiers` から動的に決定する
-- 各ティアの `tier-{tier_id}.md` のフォーマットは、ティアの種別（Presentation系 / API系 / 非同期処理系）に応じて選択する
-- 1つのティアが複数の種別の特徴を持つ場合は、主要な種別のフォーマットをベースに必要なセクションを追加する
-- OpenAPI/AsyncAPI は UC 単位では生成しない。全 UC 統合で `_cross-cutting/api/openapi.yaml` / `_cross-cutting/api/asyncapi.yaml` として生成する
-- tier-*.md 内の API 仕様テーブルや非同期イベント仕様は設計ドキュメントとしてそのまま記述する。OpenAPI/AsyncAPI への参照リンクは `_cross-cutting/` のファイルを指す
-- **BDD シナリオは必ず Given/When/Then の3キーワードをすべて含めること**。Given のみ + Then（When 省略）は不可。バリデーションで検出される
-- BDD シナリオは具体的な値を含める（「適切な値」のような曖昧表現は避ける）
-- 関連 RDRA モデルは `docs/rdra/latest/*.tsv` の実際の要素名を使用する
-- spec.md の E2E 完了条件はティア横断のシナリオ、tier-*.md の完了条件はティア内で閉じたシナリオにする
-- tier-{tier_id}.md（Presentation系）のコンポーネント設計は design-event.yaml のコンポーネントを参照する。UI の実装（Storybook Story）は後続作業
-- design 無しモード（design-event.yaml が無い）では、画面仕様・コンポーネント設計・デザイントークン参照・`screens` を生成しない。
-  CLI 系ティアは `references/specs/tier-templates/cli.md` のフォーマットを使う
-
+design 無しモードでは、画面仕様・コンポーネント設計・デザイントークン参照・screens を生成しない。
+BUC のフォーマットは `references/specs/buc-spec-template.md`。

@@ -16,7 +16,8 @@ arch-design.yaml の `system_architecture.tiers` でデータストア系ティ�
 ### 出力タイミング
 
 Step3 の UC Spec 生成時に、`_api-summary.yaml` と同じディレクトリに出力する。
-spec.md のデータフロー（mermaid + データ変換テーブル）と tier-backend-api.md のデータモデル変更セクションから導出する。
+RDRA / arch の入力モデルと spec.md の業務ルール・状態遷移、tier md の実行条件から導出する。
+モデル配置とアクセス条件はこの YAML に記述し、図を生成・解析することを前提にしない。
 
 ### スキーマ
 
@@ -74,10 +75,10 @@ object_storage:
 
 ### 導出ルール
 
-1. **models**: spec.md のデータフロー mermaid のノード名から抽出。入れ子 subgraph のティア/レイヤー構造からtier/layerを決定
-2. **tables**: tier-backend-api.md のデータモデル変更セクション + spec.md のデータフローの SQL 概要から導出
+1. **models**: RDRA 情報、arch のモデルとティア/レイヤー構成、UC の責務から name/tier/layer/type を決定する。既存 Spec の図は補助として読めるが、新規生成では不要
+2. **tables**: 情報.tsv の属性、UC の業務ルール・状態遷移、tier の原子性・副作用から操作対象列・値・where 条件を具体化する。既存のデータモデル変更表も読取可能
 3. **rdra_info**: 情報.tsv の情報名と照合。Reservation → 予約情報、Room → 会議室情報 等
-4. **indexes_needed**: tier-backend-api.md の API 仕様の検索条件（クエリパラメータ）や spec.md の分岐条件一覧から導出
+4. **indexes_needed**: tier-backend-api.md の API 仕様の検索条件（クエリパラメータ）や spec.md の業務ルール（既存形式では分岐条件一覧）から導出
 5. **kvs**: arch-design.yaml で KVS が定義されている場合に、セッション管理・キャッシュ・レート制限等のアクセスパターンを記述
 6. **object_storage**: 画像アップロード等のファイル操作がある UC のみ記述
 7. **bounded_context_id**（optional）: arch-design.yaml に `domain_architecture.bounded_contexts` が存在する場合のみ設定する。UC の BUC を `BC.owned_buc_ids[]` に含む BC を採用（複数該当時は UC が write 操作する table 群の primary entity を `BC.owned_entity_ids[]` で照合）。これは UC の **primary BC**（実装ロジックが置かれる側）であり、Customer-Supplier 関係で参照するだけの他 BC は記録しない。値は `BC-{NNN}` 形式
@@ -91,7 +92,7 @@ object_storage:
 
 1. 全 UC の `_model-summary.yaml` の `tables` セクションを収集する
 2. 同名テーブルをマージし、全 UC のカラム・操作を集約する
-3. 情報.tsv の属性からカラム定義（名前、型、制約）を導出する
+3. 情報.tsv の属性と arch のデータ設計からカラム定義（名前、型、制約）を導出する。UC の操作に固有の制約は該当 tier の実行条件を確認する。統合後は型・制約の正本を本ファイルとし、UC 本文の同じ型表を再掲しない
 4. 情報.tsv の「関連情報」列からテーブル間の FK を導出する
 5. 各 UC の `indexes_needed` を集約し、重複を排除してインデックス一覧を生成する
 

@@ -45,3 +45,8 @@ Fable 5.1 × low は同じ要望から一回り小さいモデルを構築し、
 UC を 41 と 27 のどちらに割るかは要件の粒度判断であり、どちらかが誤りではありません。
 
 > **Note**: `pipeline-fable-low/` は Fable の週次上限に達したため、Step6 の確定処理以降（`specs/latest/` の確定、spec-event.yaml、Step6a、Step6b）だけを Opus 5 × medium で実行しています。要件・設計・UC 仕様の本文は Fable 5.1 × low の生成物です。Step6a は両サンプルとも pipeline-config で sonnet を指定しています。
+
+## 出力形式の見直し例
+
+[spec-concise/](spec-concise/README.md) は、Opus側の貸出登録を手編集で簡素化した比較用サンプルです。
+フルpipelineの実行記録ではありません。元のBDDとsummaryを保持して、図・業務ルール・DB型表・共通UI説明の重複を整理しています。

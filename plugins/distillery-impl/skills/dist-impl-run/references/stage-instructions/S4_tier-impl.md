@@ -7,14 +7,17 @@
 
 入力（read-set）は次に限定すること:
 
-- 該当 UC の {tier_id}.md（例 tier-frontend.md）、_api-summary.yaml、_model-summary.yaml
+- 該当 UC の spec.md（業務ルール・状態遷移）と {tier_id}.md（例 tier-frontend.md）、_api-summary.yaml、_model-summary.yaml
 - 実装リポの docs/dev-rules/
 - packages/contracts/ と契約 source のうち、impl-config の contracts[] で自 tier が provider または consumers に含まれる契約のもの
   - 生成物 dir は docs/impl/latest/contracts.lock.yaml の該当契約の generated[] のうち、audience が自 tier の role または both で、lang 指定があれば自 tier の lang と一致するもの
   - 契約 source は lock の source_read が none 以外の契約のみ・scope 指定時は scope 範囲
 - tier 種別の追加入力（tier-rules.md。frontend は uc-map の ui_screens が指す design-event.yaml の該当 screens[] 全行 + 結線 story + story から到達する packages/ui 内の推移的 import closure。ui_screens が空で ui_screen_resolution が記録済みの場合は UI 突合をスキップ）
 
-それ以外（他 UC・関与しない契約・契約 source の全量読み）は読まないこと。
+spec / tier に明示された共有定義はファイル + 見出し / ID の該当箇所だけ追加で読める。
+契約 source の source_read / scope 制限は維持し、範囲外が必要なら issues に記録する。
+それ以外（無関係な他 UC・関与しない契約・契約 source の全量読み）は読まないこと。
+図・DB型表・共通Propsの再掲は不要。参照先にある定義を欠落や未確定の前提と誤認しない。
 
 ## findings の扱い
 
