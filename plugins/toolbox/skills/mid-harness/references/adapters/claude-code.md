@@ -43,7 +43,9 @@
 `skills_mode`:
 
 - `generate`: `.agents/skills/<name>/` を `.claude/skills/<name>/` へ**コピー**し、`.mid-harness-generated` マーカーを置く。マーカーのあるディレクトリだけを再生成・削除する
-- `symlink`: `.claude/skills/<name>` → `../../.agents/skills/<name>` の相対 symlink
+- `symlink`: `.claude/skills/<name>` → `../../.agents/skills/<name>` の相対 symlink。Claude Code が per-skill symlink を辿って skill を発見することは実測済み (2.1.261、2026-09-06)
+
+どちらのモードも `.agents/skills/` 直下の**全ディレクトリ** (SKILL.md の無い、references だけの資料置き場を含む) を対象にする。skill から `../<name>/references/...` のように相対参照されている資料が、`.claude/skills/` 側でも同じ相対パスで解決できるようにするため。
 
 front matter は `name` と `description` をそのまま使う (Claude Code の command 名はディレクトリ名なので `name` は一致させる)。
 
