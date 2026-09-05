@@ -3,12 +3,12 @@
 #
 # usage: verify.sh [<repo>]
 # env:   MID_HARNESS_VERIFY_SKIP_LLM=1  … LLM 呼び出しを伴うテストを全て skip
-#        MID_HARNESS_VERIFY_TIMEOUT=180 … 1 コマンドの秒数上限
+#        MID_HARNESS_VERIFY_TIMEOUT=600 … 1 コマンドの秒数上限 (skill が数百ある repo では Grok の skill 発見が 5 分を超えることがある)
 # exit:  0 = 全 pass または skip / 2 = fail あり
 set -u
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 REPO="$(cd "${1:-.}" && git rev-parse --show-toplevel)" || { echo "not a git repo" >&2; exit 1; }
-TIMEOUT="${MID_HARNESS_VERIFY_TIMEOUT:-180}"
+TIMEOUT="${MID_HARNESS_VERIFY_TIMEOUT:-600}"
 PROBE="mid-harness-probe-$(python3 -c 'import secrets;print(secrets.token_hex(3))')"   # 既存資産と衝突しない一意名
 TOKEN="MID_HARNESS_PROBE_OK"
 RESULTS=()

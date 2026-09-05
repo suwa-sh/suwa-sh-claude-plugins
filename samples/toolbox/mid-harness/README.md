@@ -61,4 +61,4 @@ init-output/
 - Grok: `~/.grok/trusted_folders.toml` に `[folders."<canonical path>"] trusted = true`
 - Antigravity: `~/.gemini/antigravity-cli/settings.json` の `trustedWorkspaces` に canonical パス + project 登録
 - Cursor: `agent -p --trust --force`
-- Copilot: `-p` は repo hook が既定で無効。repo 単位なら `~/.copilot/settings.json` の `trustedFolders` に絶対パスを追加、invocation 単位なら `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true copilot -p "…" --allow-all-tools` (verify はこちら)
+- Copilot: `-p` は repo hook が既定で無効。invocation 単位なら `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true copilot -p "…" --allow-all-tools` (verify はこちら)。repo 単位の `trustedFolders` は手編集だと CLI に書き戻されて消えるので、対話 `copilot` の trust プロンプト経由で入れる
