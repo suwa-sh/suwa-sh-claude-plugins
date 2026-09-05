@@ -1,0 +1,3046 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>dist-spec 出力サンプル｜実際のファイルを読む</title><style>
+:root{--paper:#F4F1EA;--ink:#1A1A1A;--muted:#5C594F;--line:#CFC9BC;--accent:#245DB8}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,'Noto Sans JP','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;font-size:16px;line-height:1.9}main{max-width:1120px;margin:auto;padding:40px}h1{font-size:36px;line-height:1.5;margin:16px 0 24px}h2{font-size:28px;line-height:1.5}h3{font-size:20px;line-height:1.6}h4{font-size:16px}p{margin:12px 0 20px}a{color:var(--accent);text-underline-offset:4px}a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.eyebrow,.meta,.kind{font-size:12px;color:var(--muted)}.eyebrow{letter-spacing:.12em}.lead{font-size:20px}.notice{border-left:4px solid var(--accent);padding:8px 24px;margin:24px 0}.notice p{margin:8px 0}.file-list{border-top:1px solid var(--ink)}.file-list a{display:grid;grid-template-columns:260px 1fr;gap:24px;padding:20px 0;border-bottom:1px solid var(--line);text-decoration:none}.file-list small{font-size:16px;color:var(--muted)}.format{background:#fff;border:1px solid var(--line);border-radius:8px;padding:24px;margin:24px 0}.format pre{border:0;padding:0;margin:0;background:#fff}section{border-top:1px solid var(--line);margin-top:48px;padding-top:32px;scroll-margin-top:24px}.file-head{margin-bottom:24px}.file-head h2{margin:8px 0}.document{background:#fff;padding:32px;border:1px solid var(--line);border-radius:8px;margin:24px 0;overflow-x:auto}.document h1{font-size:28px}.document h2{font-size:24px;margin-top:40px;border-top:1px solid var(--line);padding-top:24px}.document h3{margin-top:32px}.document h4{margin-top:24px}.document table{font-size:14px;min-width:600px}.document pre{font-size:14px}.document a{overflow-wrap:anywhere}table{width:100%;border-collapse:collapse}th,td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:12px}th{font-size:12px;color:var(--muted)}pre{font:14px/1.8 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:#ECE8DE;border:1px solid var(--line);padding:20px;border-radius:4px;tab-size:2}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9em;overflow-wrap:anywhere}details{border-top:1px solid var(--line);padding:16px 0}summary{cursor:pointer;font-weight:600}summary .meta{font-weight:400;margin-left:12px}details>p{padding-left:20px}.back{font-size:12px}footer{border-top:1px solid var(--line);padding-top:24px;margin-top:48px;font-size:12px;color:var(--muted)}.cols{display:grid;grid-template-columns:1fr 1.4fr;gap:32px}.cols h3{margin-top:0}ul{padding-left:24px}li{margin-bottom:8px}@media(max-width:720px){main{padding:24px 16px}h1{font-size:28px}.lead{font-size:16px}.file-list a,.cols{grid-template-columns:1fr;gap:4px}.document{padding:20px 16px}.document table{display:block;overflow-x:auto;min-width:0}.document td{min-width:144px}.format{padding:16px}pre{padding:12px;font-size:12px}}@media print{main{padding:0}.back{display:none}.document{border:0;padding:0}section{break-before:page}pre{white-space:pre-wrap}details:not([open]){display:none}}
+</style></head><body><main><header><p class="eyebrow">DIST-SPEC / OUTPUT SAMPLES</p><h1>実際に、どんなファイルが出るのか</h1><p class="lead"><strong>Markdownで業務と動作を記述し、YAML／JSONで契約と索引を保持します。</strong><br>このHTMLは閲覧用です。実装へ渡す成果物は、下に示すファイル群です。</p><div class="notice"><p><strong>結論：実装者が主に読むのは、UC本文と、その担当部分の仕様です。</strong><br>APIの型・エラー・DB構造・共通UIは共有定義を参照します。必要な契約をUC別に抜き出すファイルも生成します。</p></div></header>
+<section id="format"><h2>目標とするファイル構成</h2><p>既存のディレクトリ構造を維持します。画面や非同期処理など、存在する担当部分だけを出力します。<code>catalog</code>は契約の編集元を一つにする新方式で、現時点では明示指定の実験機能です。</p><div class="format"><pre>docs/specs/events/{event_id}/
+├── spec-event.yaml                 # 生成対象・ファイル一覧などのメタ情報
+├── {業務}/{BUC}/
+│   ├── buc-spec.md                 # 関連UCの一覧・依存関係
+│   └── {UC}/
+│       ├── spec.md                 # 目的・業務ルール・状態・受入条件
+│       ├── tier-frontend-*.md      # 画面の状態・接続・表示動作 ※画面がある場合
+│       ├── tier-backend-*.md       # API処理・更新・競合・失敗時の保証
+│       ├── tier-worker.md          # 非同期処理の固有仕様 ※該当する場合
+│       ├── _model-summary.yaml     # データ操作・モデル配置
+│       ├── _api-summary.yaml       # APIの索引
+│       ├── _contract-slice.json    # 利用するAPIと参照先の完全な定義 ※catalog
+│       └── _trace-links.json       # 要件と根拠の対応 ※catalog
+├── _cross-cutting/
+│   ├── api/
+│   │   ├── contracts.json          # 契約の編集元 ※catalog
+│   │   ├── openapi.yaml            # HTTP APIの完全な定義
+│   │   └── asyncapi.yaml           # イベントの完全な定義 ※該当する場合
+│   ├── datastore/                 # DBなどの共有定義
+│   ├── ux-ui/                     # 共通UIの定義 ※対象に応じて
+│   └── traceability-matrix.md      # 要件対応の一覧
+└── _review/                       # 不足・矛盾と実装可能性の確認記録</pre></div><div class="cols"><div><h3>現在の既定方式</h3><p>本文を簡素化しますが、APIの入出力・エラー表と従来のsummary形式は残っています。</p></div><div><h3>catalog方式で変わる箇所</h3><p>APIの型・制約・認証・エラーは契約の編集元へ集約。担当仕様には操作名、業務ルールへの参照、更新・競合・失敗時の条件と受入条件を残します。索引と契約抜粋は機械生成します。</p></div></div><p class="meta">型表を削る前提は、同じ情報が参照先へ完全に残り、実装者が辿れることです。契約に存在しない判断を省略するものではありません。</p></section>
+<section id="files"><h2>実ファイルを開く</h2><p>以下はリポジトリにあるファイルの内容です。Markdownは読みやすく表示し、必要なら原文も開けます。</p><div class="notice"><p><strong>AとBは別のサンプルです。</strong> Aは実際の貸出登録仕様を手編集で縮約した比較例。Bは契約コンパイラの小さな試験入力から自動生成した例です。両者を組み合わせた完成仕様ではありません。</p></div><div class="file-list"><a href="#uc"><strong>A-1　UCの本文</strong><small>目的・業務ルール・状態遷移・受入条件を読む</small></a><a href="#backend"><strong>A-2　Backend仕様</strong><small>API・原子性・競合・冪等性の実際の記載を読む</small></a><a href="#frontend"><strong>A-3　Frontend仕様</strong><small>画面の状態・Props・送信・再取得の記載を読む</small></a><a href="#summaries"><strong>A-4　既存summary</strong><small>APIの要約と、データ操作の定義を読む</small></a><a href="#catalog"><strong>B　新方式の生成ファイル</strong><small>API索引・契約抜粋・契約の編集元を読む</small></a></div><p><strong>完成仕様か：</strong>Aには冪等キー所有者など5件の不足・矛盾が残っています。Bは出力形式と参照保存を検証するfixtureです。いずれも「業務実装まで受入済み」とは扱いません。<a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/implementation-review.md">5件の指摘と改善例を見る</a></p></section><section id="uc"><div class="file-head"><span class="kind">比較例 / Markdown</span><h2>A-1　UCの本文：貸出を登録する</h2><p>業務として何を成立させるかを定義します。以下は手編集の縮約比較例の全文です。</p><p class="meta">spec.md · 191行 · <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/spec.md">GitHubの実ファイル</a></p></div><details><summary>Markdownのソースを表示</summary><pre># 貸出を登録する
+
+## 概要
+
+司書が窓口で貸出を受け付け、貸出記録を作成する。貸出状態を「貸出中」とし、貸出日を起点に指定された貸出期間区分の日数を加算した返却期限を自動設定する。あわせて書籍状態を「貸出中」へ、利用者状態を「取引進行中」へ遷移させ、取置き中の予約から貸し出した場合は予約状態を「貸出済み」へ遷移させる。
+
+## 業務ルール
+
+| ID | RDRA要素 / 値 | 判定・計算・結果 | 適用 tier / 箇所 | BDD Scenario |
+|----|---------------|----------------|----------------|--------------|
+| RULE-001 | 貸出可否条件 | 登録済み利用者（利用者状態は登録済み / 取引進行中）に在庫ありの書籍を貸し出せる。貸出中は拒否。予約待ちは RULE-002 に従う | tier-backend-api / RegisterLoanCommand | 在庫ありの書籍を登録済み利用者へ貸し出せる / 貸出中の書籍への貸出登録は拒否される |
+| RULE-002 | 取置き中書籍貸出条件 | 書籍が予約待ちの場合、取置き中かつ予約順1位の予約の user_no と要求の user_no が一致するときだけ許可 | tier-backend-api / 予約整合判定 | 取置き中の書籍を予約順1位の利用者へ貸し出せる |
+| RULE-003 | 資料種別利用可否条件 / 資料種別（紙書籍・電子書籍） | 紙書籍のみ貸出可。電子書籍は 409 MATERIAL_TYPE_NOT_SUPPORTED | tier-backend-api / 資料種別判定 | 電子書籍への貸出登録は拒否される |
+| RULE-004 | 返却期限設定条件 / 貸出期間区分・利用者区分 | loan_period_type が下表の選択可能集合に含まれることをサーバーで検証し、due_date = loan_date + 区分の日数。集合外は 409 LOAN_PERIOD_TYPE_MISMATCH | tier-backend-api / 返却期限算出、tier-frontend-staff / 初期選択・disabled・期限見込み | 貸出登録時に返却期限が自動設定される / 選択可能集合に含まれない貸出期間区分は 409 で拒否される / 一般利用者へ短期の貸出期間区分で貸し出せる |
+
+### RULE-004 貸出期間の対応表
+
+| 貸出期間区分 | 日数 |
+|-------------|------|
+| 標準 | 14 日 |
+| 短期 | 7 日 |
+| 長期 | 28 日 |
+
+| 利用者区分 | 既定 | 選択可能 |
+|-----------|------|----------|
+| 一般 | 標準 | 標準 / 短期 |
+| 学生 | 長期 | 長期 / 標準 / 短期 |
+| 団体 | 長期 | 長期 / 標準 / 短期 |
+
+loan_period_type は API の必須項目。既定値はFEの初期選択であり、サーバーで省略を補完しない。
+例: 貸出日 2026-09-02 + 標準14日 = 返却期限 2026-09-16。
+
+## 状態遷移一覧
+
+| 状態モデル | 遷移元 | 遷移先 | トリガー | 事前条件 | 事後処理 | 適用 tier |
+|-----------|--------|--------|---------|---------|---------|----------|
+| 貸出状態 | （なし） | 貸出中 | 貸出を登録する | 貸出可否条件を満たす | 返却期限を自動設定する（返却期限設定条件） | tier-backend-api |
+| 書籍状態 | 在庫あり | 貸出中 | 貸出を登録する | 書籍状態が「在庫あり」 | 検索結果の在庫表示・在庫状況レポートの区分が変わる | tier-backend-api |
+| 書籍状態 | 予約待ち | 貸出中 | 貸出を登録する | 取置き対象である予約順1位の利用者への貸出 | 対応する予約を「貸出済み」へ遷移させる | tier-backend-api |
+| 利用者状態 | 登録済み | 取引進行中 | 貸出を登録する | 利用者が登録済み | 利用者削除可否条件により削除できなくなる | tier-backend-api |
+| 予約状態 | 取置き中 | 貸出済み | 貸出を登録する | 取り置かれた書籍を該当利用者へ貸し出した | 予約状態遷移規則の「取置き中 → 貸出済み」を適用（参照先は下記）。予約状況照会・取置き期限切れ判定から外れる | tier-backend-api |
+
+状態遷移の遷移元・遷移先・同時更新列は `../../pipeline-opus-medium/specs/latest/_cross-cutting/datastore/rdb-schema.yaml` の
+`state_transition_rules`「予約状態遷移規則」を正本とする。具体的な操作列は [_model-summary.yaml](_model-summary.yaml) の tables、
+原子性・競合時の結果は [Backend仕様](tier-backend-api.md#データアクセス実行条件)を参照。
+
+## 関連 RDRA モデル
+
+| モデル種別 | 要素名 | 関連 |
+|-----------|--------|------|
+| 業務 | 蔵書利用業務 | このUCが属する業務 |
+| BUC | 書籍を貸し出すフロー | このUCを含むBUC |
+| アクター | 司書 | 貸出を登録するアクター（提供者） |
+| アクター | 利用者 | 貸出先の利用者（受益者） |
+| 情報 | 貸出 | 作成する情報（貸出ID・貸出日・貸出期間区分・返却期限・貸出状態） |
+| 情報 | 書籍 | 貸出対象の書籍（書籍状態を更新する） |
+| 情報 | 利用者 | 貸出先の利用者（利用者状態を更新する） |
+| 情報 | 予約 | 取置き中の予約から貸し出した場合に予約状態を更新する |
+| 状態 | 貸出状態 | 貸出中で開始する |
+| 状態 | 書籍状態 | 在庫あり / 予約待ち → 貸出中 |
+| 状態 | 利用者状態 | 登録済み → 取引進行中 |
+| 状態 | 予約状態 | 取置き中 → 貸出済み |
+| 条件 | 貸出可否条件 | RULE-001 |
+| 条件 | 返却期限設定条件 | RULE-004 |
+| 条件 | 取置き中書籍貸出条件 | RULE-002 |
+| 条件 | 資料種別利用可否条件 | RULE-003 |
+| バリエーション | 貸出期間区分 | 返却期限の算出単位 |
+| バリエーション | 利用者区分 | 一般 / 学生 / 団体。既定の貸出期間区分の選択に使う |
+| バリエーション | 資料種別 | 紙書籍 / 電子書籍。資料種別利用可否条件の判定に使う |
+| 画面 | 窓口貸出受付画面 | 司書ポータルの対象画面 |
+
+## 受け入れ基準トレーサビリティ
+
+| 受け入れ基準 ID | 役割 | 対応する BDD Scenario |
+|---|---|---|
+| SPEC-002-01#1 | 主担当 | 在庫ありの書籍を登録済み利用者へ貸し出せる |
+| SPEC-002-01#2 | 主担当 | 貸出中の書籍への貸出登録は拒否される |
+| SPEC-003-01#1 | 主担当 | 貸出登録時に返却期限が自動設定される |
+| SPEC-006-01#2 | 補助 | 電子書籍への貸出登録は拒否される |
+
+受け入れ基準 ID の定義は `../../pipeline-opus-medium/specs/latest/_cross-cutting/traceability-matrix.md`「USDM 受け入れ基準 ↔ UC 対応表」を正本とする。
+
+## E2E 完了条件（BDD）
+
+### 正常系
+
+```gherkin
+Feature: 貸出を登録する
+
+  Scenario: 在庫ありの書籍を登録済み利用者へ貸し出せる
+    Given 書籍「吾輩は猫である」（書籍ID &quot;B-000001&quot;、書籍状態 &quot;在庫あり&quot;、資料種別 &quot;紙書籍&quot;）が存在する
+    And 利用者「田中太郎」（利用者番号 &quot;U-000123&quot;、利用者状態 &quot;登録済み&quot;、利用者区分 &quot;一般&quot;）が存在する
+    And 司書「山田花子」が司書ポータルにログイン済みで、貸出可否判定の結果が「貸出可」である
+    When 司書が窓口貸出受付画面で貸出期間区分「標準」を選択して貸出を登録する
+    Then 貸出が貸出状態 &quot;貸出中&quot; で作成され、貸出IDが表示される
+    And 書籍「吾輩は猫である」の書籍状態が &quot;貸出中&quot; になる
+    And 利用者「田中太郎」の利用者状態が &quot;取引進行中&quot; になる
+
+  Scenario: 貸出登録時に返却期限が自動設定される
+    Given 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot; で存在する
+    And 利用者番号 &quot;U-000123&quot; の利用者が利用者区分 &quot;一般&quot; で存在する
+    And 本日が 2026-09-02 である
+    When 司書が貸出期間区分「標準」（14 日）で貸出を登録する
+    Then 返却期限が API 上 &quot;2026-09-16&quot; として自動設定される
+    And DueDateIndicator に「2026年9月16日（あと14日）」と表示される
+
+  Scenario: 利用者区分に対応しない貸出期間区分の指定は拒否される
+    Given 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot; で存在する
+    And 利用者番号 &quot;U-000123&quot; の利用者が利用者区分 &quot;一般&quot; で存在する
+    When 司書が貸出期間区分「長期」で貸出を登録する
+    Then 貸出は作成されず、利用者区分に対応しない貸出期間区分として拒否される
+
+  Scenario: 取置き中の書籍を予約順1位の利用者へ貸し出せる
+    Given 書籍「坊っちゃん」（書籍ID &quot;B-000002&quot;、書籍状態 &quot;予約待ち&quot;）が存在する
+    And 利用者「田中太郎」（利用者番号 &quot;U-000123&quot;）の予約が予約順位 1、予約状態 &quot;取置き中&quot; で存在する
+    When 司書が書籍ID &quot;B-000002&quot; と利用者番号 &quot;U-000123&quot; で貸出を登録する
+    Then 貸出が貸出状態 &quot;貸出中&quot; で作成される
+    And 書籍「坊っちゃん」の書籍状態が &quot;貸出中&quot; になる
+    And 利用者「田中太郎」の予約の予約状態が &quot;貸出済み&quot; になる
+```
+
+### 異常系
+
+```gherkin
+  Scenario: 貸出中の書籍への貸出登録は拒否される
+    Given 書籍「こころ」（書籍ID &quot;B-000003&quot;、書籍状態 &quot;貸出中&quot;）が存在する
+    And 利用者「田中太郎」（利用者番号 &quot;U-000123&quot;、利用者状態 &quot;登録済み&quot;）が存在する
+    When 司書が書籍ID &quot;B-000003&quot; と利用者番号 &quot;U-000123&quot; で貸出を登録する
+    Then HTTP 409 が返り「この書籍は貸出中のため貸し出せません」と表示される
+    And 貸出記録は作成されず、書籍状態は &quot;貸出中&quot; のまま変わらない
+
+  Scenario: 取置き中の書籍を他の利用者へ貸し出そうとすると拒否される
+    Given 書籍ID &quot;B-000002&quot; が書籍状態 &quot;予約待ち&quot; で、利用者番号 &quot;U-000123&quot; の予約が予約状態 &quot;取置き中&quot; で存在する
+    And 利用者「佐藤次郎」（利用者番号 &quot;U-000456&quot;、利用者状態 &quot;登録済み&quot;）が存在する
+    When 司書が書籍ID &quot;B-000002&quot; と利用者番号 &quot;U-000456&quot; で貸出を登録する
+    Then HTTP 409 が返り「この書籍は他の利用者へ取置き中です」と表示される
+    And 貸出記録は作成されない
+
+  Scenario: 未登録の利用者への貸出登録は拒否される
+    Given 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot; で存在する
+    And 利用者番号 &quot;U-999999&quot; の利用者が登録されていない
+    When 司書が書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-999999&quot; で貸出を登録する
+    Then HTTP 404 が返り「該当する利用者が見つかりません」と表示される
+    And 貸出記録は作成されない
+
+  Scenario: 電子書籍への貸出登録は拒否される
+    Given 書籍「デジタル読本」（書籍ID &quot;B-000004&quot;、資料種別 &quot;電子書籍&quot;）が存在する
+    And 利用者「田中太郎」（利用者番号 &quot;U-000123&quot;、利用者状態 &quot;登録済み&quot;）が存在する
+    When 司書が書籍ID &quot;B-000004&quot; と利用者番号 &quot;U-000123&quot; で貸出を登録する
+    Then HTTP 409 が返り「電子書籍は現在ご利用いただけません」と表示される
+    And 貸出記録は作成されない
+
+  Scenario: 同一の冪等キーによる再送では貸出が二重作成されない
+    Given 司書が書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-000123&quot; で貸出を登録し、貸出ID &quot;L-000001&quot; が作成された
+    When 同じ内容・同じ冪等キーで貸出登録リクエストを再送する
+    Then HTTP 201 が返り、貸出ID &quot;L-000001&quot; が返る
+    And 貸出記録は 1 件のままで、書籍状態も &quot;貸出中&quot; のまま変わらない
+
+  Scenario: 同一の冪等キーで異なる内容を送ると 409 で拒否される
+    Given 司書が冪等キー &quot;idem-0001&quot; で書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-000123&quot; の貸出を登録済みである
+    When 同じ冪等キー &quot;idem-0001&quot; で書籍ID &quot;B-000005&quot; と利用者番号 &quot;U-000123&quot; の貸出登録リクエストを送る
+    Then HTTP 409 が返り、code が &quot;IDEMPOTENCY_KEY_CONFLICT&quot; である
+    And 貸出記録は 1 件のままで、書籍ID &quot;B-000005&quot; の書籍状態は変わらない
+
+  Scenario: 取置き中の予約から貸し出すと取置き期限がクリアされる
+    Given 書籍ID &quot;B-000002&quot; が書籍状態 &quot;予約待ち&quot; で、利用者番号 &quot;U-000123&quot; の予約 &quot;R-000001&quot; が予約状態 &quot;取置き中&quot;、取置き期限あり で存在する
+    When 司書が書籍ID &quot;B-000002&quot; と利用者番号 &quot;U-000123&quot; で貸出を登録する
+    Then 予約 &quot;R-000001&quot; の予約状態が &quot;貸出済み&quot; になる
+    And 予約 &quot;R-000001&quot; の取置き期限が未設定になり、取置き開始日時は取置き時の値のまま残る
+```
+
+## ティア別仕様
+
+- [司書ポータル](tier-frontend-staff.md)
+- [バックエンド API](tier-backend-api.md)
+
+### 統合 API Spec
+
+- [OpenAPI Spec](../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml)（全 UC 統合、Contract First 開発用）
+- [UC 間 API 依存マップ](../../pipeline-opus-medium/specs/latest/_cross-cutting/api/uc-api-dependencies.md)（所有 operation と cross-UC 依存の分離ルール）
+
+### 本 UC が利用する API
+
+| 区分 | operationId | 所有 UC | 契約 |
+|------|------------|--------|------|
+| 所有 | `createLoan` | 貸出を登録する（本 UC） | `../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml` |
+| 利用（任意） | `checkLoanEligibility` | 書籍の貸出可否を判定する | `../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml` |
+| 利用（任意） | `getBookAvailability` | 書籍詳細と在庫状況を照会する | `../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml` |
+| 利用（任意） | `getLoanTarget` | 利用者番号で貸出対象利用者を特定する | `../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml` |
+
+機械可読な定義は `_api-summary.yaml` の `endpoints:`（所有）と `consumes:`（利用）が正本。
+</pre></details><article class="document"><h1>貸出を登録する</h1>
+<h2>概要</h2>
+<p>司書が窓口で貸出を受け付け、貸出記録を作成する。貸出状態を「貸出中」とし、貸出日を起点に指定された貸出期間区分の日数を加算した返却期限を自動設定する。あわせて書籍状態を「貸出中」へ、利用者状態を「取引進行中」へ遷移させ、取置き中の予約から貸し出した場合は予約状態を「貸出済み」へ遷移させる。</p>
+<h2>業務ルール</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>RDRA要素 / 値</th>
+<th>判定・計算・結果</th>
+<th>適用 tier / 箇所</th>
+<th>BDD Scenario</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RULE-001</td>
+<td>貸出可否条件</td>
+<td>登録済み利用者（利用者状態は登録済み / 取引進行中）に在庫ありの書籍を貸し出せる。貸出中は拒否。予約待ちは RULE-002 に従う</td>
+<td>tier-backend-api / RegisterLoanCommand</td>
+<td>在庫ありの書籍を登録済み利用者へ貸し出せる / 貸出中の書籍への貸出登録は拒否される</td>
+</tr>
+<tr>
+<td>RULE-002</td>
+<td>取置き中書籍貸出条件</td>
+<td>書籍が予約待ちの場合、取置き中かつ予約順1位の予約の user_no と要求の user_no が一致するときだけ許可</td>
+<td>tier-backend-api / 予約整合判定</td>
+<td>取置き中の書籍を予約順1位の利用者へ貸し出せる</td>
+</tr>
+<tr>
+<td>RULE-003</td>
+<td>資料種別利用可否条件 / 資料種別（紙書籍・電子書籍）</td>
+<td>紙書籍のみ貸出可。電子書籍は 409 MATERIAL_TYPE_NOT_SUPPORTED</td>
+<td>tier-backend-api / 資料種別判定</td>
+<td>電子書籍への貸出登録は拒否される</td>
+</tr>
+<tr>
+<td>RULE-004</td>
+<td>返却期限設定条件 / 貸出期間区分・利用者区分</td>
+<td>loan_period_type が下表の選択可能集合に含まれることをサーバーで検証し、due_date = loan_date + 区分の日数。集合外は 409 LOAN_PERIOD_TYPE_MISMATCH</td>
+<td>tier-backend-api / 返却期限算出、tier-frontend-staff / 初期選択・disabled・期限見込み</td>
+<td>貸出登録時に返却期限が自動設定される / 選択可能集合に含まれない貸出期間区分は 409 で拒否される / 一般利用者へ短期の貸出期間区分で貸し出せる</td>
+</tr>
+</tbody></table>
+<h3>RULE-004 貸出期間の対応表</h3>
+<table>
+<thead>
+<tr>
+<th>貸出期間区分</th>
+<th>日数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>標準</td>
+<td>14 日</td>
+</tr>
+<tr>
+<td>短期</td>
+<td>7 日</td>
+</tr>
+<tr>
+<td>長期</td>
+<td>28 日</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>利用者区分</th>
+<th>既定</th>
+<th>選択可能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>一般</td>
+<td>標準</td>
+<td>標準 / 短期</td>
+</tr>
+<tr>
+<td>学生</td>
+<td>長期</td>
+<td>長期 / 標準 / 短期</td>
+</tr>
+<tr>
+<td>団体</td>
+<td>長期</td>
+<td>長期 / 標準 / 短期</td>
+</tr>
+</tbody></table>
+<p>loan_period_type は API の必須項目。既定値はFEの初期選択であり、サーバーで省略を補完しない。
+例: 貸出日 2026-09-02 + 標準14日 = 返却期限 2026-09-16。</p>
+<h2>状態遷移一覧</h2>
+<table>
+<thead>
+<tr>
+<th>状態モデル</th>
+<th>遷移元</th>
+<th>遷移先</th>
+<th>トリガー</th>
+<th>事前条件</th>
+<th>事後処理</th>
+<th>適用 tier</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>貸出状態</td>
+<td>（なし）</td>
+<td>貸出中</td>
+<td>貸出を登録する</td>
+<td>貸出可否条件を満たす</td>
+<td>返却期限を自動設定する（返却期限設定条件）</td>
+<td>tier-backend-api</td>
+</tr>
+<tr>
+<td>書籍状態</td>
+<td>在庫あり</td>
+<td>貸出中</td>
+<td>貸出を登録する</td>
+<td>書籍状態が「在庫あり」</td>
+<td>検索結果の在庫表示・在庫状況レポートの区分が変わる</td>
+<td>tier-backend-api</td>
+</tr>
+<tr>
+<td>書籍状態</td>
+<td>予約待ち</td>
+<td>貸出中</td>
+<td>貸出を登録する</td>
+<td>取置き対象である予約順1位の利用者への貸出</td>
+<td>対応する予約を「貸出済み」へ遷移させる</td>
+<td>tier-backend-api</td>
+</tr>
+<tr>
+<td>利用者状態</td>
+<td>登録済み</td>
+<td>取引進行中</td>
+<td>貸出を登録する</td>
+<td>利用者が登録済み</td>
+<td>利用者削除可否条件により削除できなくなる</td>
+<td>tier-backend-api</td>
+</tr>
+<tr>
+<td>予約状態</td>
+<td>取置き中</td>
+<td>貸出済み</td>
+<td>貸出を登録する</td>
+<td>取り置かれた書籍を該当利用者へ貸し出した</td>
+<td>予約状態遷移規則の「取置き中 → 貸出済み」を適用（参照先は下記）。予約状況照会・取置き期限切れ判定から外れる</td>
+<td>tier-backend-api</td>
+</tr>
+</tbody></table>
+<p>状態遷移の遷移元・遷移先・同時更新列は <code>../../pipeline-opus-medium/specs/latest/_cross-cutting/datastore/rdb-schema.yaml</code> の
+<code>state_transition_rules</code>「予約状態遷移規則」を正本とする。具体的な操作列は <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/_model-summary.yaml">_model-summary.yaml</a> の tables、
+原子性・競合時の結果は <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/tier-backend-api.md#%E3%83%87%E3%83%BC%E3%82%BF%E3%82%A2%E3%82%AF%E3%82%BB%E3%82%B9%E5%AE%9F%E8%A1%8C%E6%9D%A1%E4%BB%B6">Backend仕様</a>を参照。</p>
+<h2>関連 RDRA モデル</h2>
+<table>
+<thead>
+<tr>
+<th>モデル種別</th>
+<th>要素名</th>
+<th>関連</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>業務</td>
+<td>蔵書利用業務</td>
+<td>このUCが属する業務</td>
+</tr>
+<tr>
+<td>BUC</td>
+<td>書籍を貸し出すフロー</td>
+<td>このUCを含むBUC</td>
+</tr>
+<tr>
+<td>アクター</td>
+<td>司書</td>
+<td>貸出を登録するアクター（提供者）</td>
+</tr>
+<tr>
+<td>アクター</td>
+<td>利用者</td>
+<td>貸出先の利用者（受益者）</td>
+</tr>
+<tr>
+<td>情報</td>
+<td>貸出</td>
+<td>作成する情報（貸出ID・貸出日・貸出期間区分・返却期限・貸出状態）</td>
+</tr>
+<tr>
+<td>情報</td>
+<td>書籍</td>
+<td>貸出対象の書籍（書籍状態を更新する）</td>
+</tr>
+<tr>
+<td>情報</td>
+<td>利用者</td>
+<td>貸出先の利用者（利用者状態を更新する）</td>
+</tr>
+<tr>
+<td>情報</td>
+<td>予約</td>
+<td>取置き中の予約から貸し出した場合に予約状態を更新する</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>貸出状態</td>
+<td>貸出中で開始する</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>書籍状態</td>
+<td>在庫あり / 予約待ち → 貸出中</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>利用者状態</td>
+<td>登録済み → 取引進行中</td>
+</tr>
+<tr>
+<td>状態</td>
+<td>予約状態</td>
+<td>取置き中 → 貸出済み</td>
+</tr>
+<tr>
+<td>条件</td>
+<td>貸出可否条件</td>
+<td>RULE-001</td>
+</tr>
+<tr>
+<td>条件</td>
+<td>返却期限設定条件</td>
+<td>RULE-004</td>
+</tr>
+<tr>
+<td>条件</td>
+<td>取置き中書籍貸出条件</td>
+<td>RULE-002</td>
+</tr>
+<tr>
+<td>条件</td>
+<td>資料種別利用可否条件</td>
+<td>RULE-003</td>
+</tr>
+<tr>
+<td>バリエーション</td>
+<td>貸出期間区分</td>
+<td>返却期限の算出単位</td>
+</tr>
+<tr>
+<td>バリエーション</td>
+<td>利用者区分</td>
+<td>一般 / 学生 / 団体。既定の貸出期間区分の選択に使う</td>
+</tr>
+<tr>
+<td>バリエーション</td>
+<td>資料種別</td>
+<td>紙書籍 / 電子書籍。資料種別利用可否条件の判定に使う</td>
+</tr>
+<tr>
+<td>画面</td>
+<td>窓口貸出受付画面</td>
+<td>司書ポータルの対象画面</td>
+</tr>
+</tbody></table>
+<h2>受け入れ基準トレーサビリティ</h2>
+<table>
+<thead>
+<tr>
+<th>受け入れ基準 ID</th>
+<th>役割</th>
+<th>対応する BDD Scenario</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SPEC-002-01#1</td>
+<td>主担当</td>
+<td>在庫ありの書籍を登録済み利用者へ貸し出せる</td>
+</tr>
+<tr>
+<td>SPEC-002-01#2</td>
+<td>主担当</td>
+<td>貸出中の書籍への貸出登録は拒否される</td>
+</tr>
+<tr>
+<td>SPEC-003-01#1</td>
+<td>主担当</td>
+<td>貸出登録時に返却期限が自動設定される</td>
+</tr>
+<tr>
+<td>SPEC-006-01#2</td>
+<td>補助</td>
+<td>電子書籍への貸出登録は拒否される</td>
+</tr>
+</tbody></table>
+<p>受け入れ基準 ID の定義は <code>../../pipeline-opus-medium/specs/latest/_cross-cutting/traceability-matrix.md</code>「USDM 受け入れ基準 ↔ UC 対応表」を正本とする。</p>
+<h2>E2E 完了条件（BDD）</h2>
+<h3>正常系</h3>
+<pre><code class="language-gherkin">Feature: 貸出を登録する
+
+  Scenario: 在庫ありの書籍を登録済み利用者へ貸し出せる
+    Given 書籍「吾輩は猫である」（書籍ID &quot;B-000001&quot;、書籍状態 &quot;在庫あり&quot;、資料種別 &quot;紙書籍&quot;）が存在する
+    And 利用者「田中太郎」（利用者番号 &quot;U-000123&quot;、利用者状態 &quot;登録済み&quot;、利用者区分 &quot;一般&quot;）が存在する
+    And 司書「山田花子」が司書ポータルにログイン済みで、貸出可否判定の結果が「貸出可」である
+    When 司書が窓口貸出受付画面で貸出期間区分「標準」を選択して貸出を登録する
+    Then 貸出が貸出状態 &quot;貸出中&quot; で作成され、貸出IDが表示される
+    And 書籍「吾輩は猫である」の書籍状態が &quot;貸出中&quot; になる
+    And 利用者「田中太郎」の利用者状態が &quot;取引進行中&quot; になる
+
+  Scenario: 貸出登録時に返却期限が自動設定される
+    Given 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot; で存在する
+    And 利用者番号 &quot;U-000123&quot; の利用者が利用者区分 &quot;一般&quot; で存在する
+    And 本日が 2026-09-02 である
+    When 司書が貸出期間区分「標準」（14 日）で貸出を登録する
+    Then 返却期限が API 上 &quot;2026-09-16&quot; として自動設定される
+    And DueDateIndicator に「2026年9月16日（あと14日）」と表示される
+
+  Scenario: 利用者区分に対応しない貸出期間区分の指定は拒否される
+    Given 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot; で存在する
+    And 利用者番号 &quot;U-000123&quot; の利用者が利用者区分 &quot;一般&quot; で存在する
+    When 司書が貸出期間区分「長期」で貸出を登録する
+    Then 貸出は作成されず、利用者区分に対応しない貸出期間区分として拒否される
+
+  Scenario: 取置き中の書籍を予約順1位の利用者へ貸し出せる
+    Given 書籍「坊っちゃん」（書籍ID &quot;B-000002&quot;、書籍状態 &quot;予約待ち&quot;）が存在する
+    And 利用者「田中太郎」（利用者番号 &quot;U-000123&quot;）の予約が予約順位 1、予約状態 &quot;取置き中&quot; で存在する
+    When 司書が書籍ID &quot;B-000002&quot; と利用者番号 &quot;U-000123&quot; で貸出を登録する
+    Then 貸出が貸出状態 &quot;貸出中&quot; で作成される
+    And 書籍「坊っちゃん」の書籍状態が &quot;貸出中&quot; になる
+    And 利用者「田中太郎」の予約の予約状態が &quot;貸出済み&quot; になる
+</code></pre>
+<h3>異常系</h3>
+<pre><code class="language-gherkin">  Scenario: 貸出中の書籍への貸出登録は拒否される
+    Given 書籍「こころ」（書籍ID &quot;B-000003&quot;、書籍状態 &quot;貸出中&quot;）が存在する
+    And 利用者「田中太郎」（利用者番号 &quot;U-000123&quot;、利用者状態 &quot;登録済み&quot;）が存在する
+    When 司書が書籍ID &quot;B-000003&quot; と利用者番号 &quot;U-000123&quot; で貸出を登録する
+    Then HTTP 409 が返り「この書籍は貸出中のため貸し出せません」と表示される
+    And 貸出記録は作成されず、書籍状態は &quot;貸出中&quot; のまま変わらない
+
+  Scenario: 取置き中の書籍を他の利用者へ貸し出そうとすると拒否される
+    Given 書籍ID &quot;B-000002&quot; が書籍状態 &quot;予約待ち&quot; で、利用者番号 &quot;U-000123&quot; の予約が予約状態 &quot;取置き中&quot; で存在する
+    And 利用者「佐藤次郎」（利用者番号 &quot;U-000456&quot;、利用者状態 &quot;登録済み&quot;）が存在する
+    When 司書が書籍ID &quot;B-000002&quot; と利用者番号 &quot;U-000456&quot; で貸出を登録する
+    Then HTTP 409 が返り「この書籍は他の利用者へ取置き中です」と表示される
+    And 貸出記録は作成されない
+
+  Scenario: 未登録の利用者への貸出登録は拒否される
+    Given 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot; で存在する
+    And 利用者番号 &quot;U-999999&quot; の利用者が登録されていない
+    When 司書が書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-999999&quot; で貸出を登録する
+    Then HTTP 404 が返り「該当する利用者が見つかりません」と表示される
+    And 貸出記録は作成されない
+
+  Scenario: 電子書籍への貸出登録は拒否される
+    Given 書籍「デジタル読本」（書籍ID &quot;B-000004&quot;、資料種別 &quot;電子書籍&quot;）が存在する
+    And 利用者「田中太郎」（利用者番号 &quot;U-000123&quot;、利用者状態 &quot;登録済み&quot;）が存在する
+    When 司書が書籍ID &quot;B-000004&quot; と利用者番号 &quot;U-000123&quot; で貸出を登録する
+    Then HTTP 409 が返り「電子書籍は現在ご利用いただけません」と表示される
+    And 貸出記録は作成されない
+
+  Scenario: 同一の冪等キーによる再送では貸出が二重作成されない
+    Given 司書が書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-000123&quot; で貸出を登録し、貸出ID &quot;L-000001&quot; が作成された
+    When 同じ内容・同じ冪等キーで貸出登録リクエストを再送する
+    Then HTTP 201 が返り、貸出ID &quot;L-000001&quot; が返る
+    And 貸出記録は 1 件のままで、書籍状態も &quot;貸出中&quot; のまま変わらない
+
+  Scenario: 同一の冪等キーで異なる内容を送ると 409 で拒否される
+    Given 司書が冪等キー &quot;idem-0001&quot; で書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-000123&quot; の貸出を登録済みである
+    When 同じ冪等キー &quot;idem-0001&quot; で書籍ID &quot;B-000005&quot; と利用者番号 &quot;U-000123&quot; の貸出登録リクエストを送る
+    Then HTTP 409 が返り、code が &quot;IDEMPOTENCY_KEY_CONFLICT&quot; である
+    And 貸出記録は 1 件のままで、書籍ID &quot;B-000005&quot; の書籍状態は変わらない
+
+  Scenario: 取置き中の予約から貸し出すと取置き期限がクリアされる
+    Given 書籍ID &quot;B-000002&quot; が書籍状態 &quot;予約待ち&quot; で、利用者番号 &quot;U-000123&quot; の予約 &quot;R-000001&quot; が予約状態 &quot;取置き中&quot;、取置き期限あり で存在する
+    When 司書が書籍ID &quot;B-000002&quot; と利用者番号 &quot;U-000123&quot; で貸出を登録する
+    Then 予約 &quot;R-000001&quot; の予約状態が &quot;貸出済み&quot; になる
+    And 予約 &quot;R-000001&quot; の取置き期限が未設定になり、取置き開始日時は取置き時の値のまま残る
+</code></pre>
+<h2>ティア別仕様</h2>
+<ul>
+<li><a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/tier-frontend-staff.md">司書ポータル</a></li>
+<li><a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/tier-backend-api.md">バックエンド API</a></li>
+</ul>
+<h3>統合 API Spec</h3>
+<ul>
+<li><a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml">OpenAPI Spec</a>（全 UC 統合、Contract First 開発用）</li>
+<li><a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/pipeline-opus-medium/specs/latest/_cross-cutting/api/uc-api-dependencies.md">UC 間 API 依存マップ</a>（所有 operation と cross-UC 依存の分離ルール）</li>
+</ul>
+<h3>本 UC が利用する API</h3>
+<table>
+<thead>
+<tr>
+<th>区分</th>
+<th>operationId</th>
+<th>所有 UC</th>
+<th>契約</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>所有</td>
+<td><code>createLoan</code></td>
+<td>貸出を登録する（本 UC）</td>
+<td><code>../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml</code></td>
+</tr>
+<tr>
+<td>利用（任意）</td>
+<td><code>checkLoanEligibility</code></td>
+<td>書籍の貸出可否を判定する</td>
+<td><code>../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml</code></td>
+</tr>
+<tr>
+<td>利用（任意）</td>
+<td><code>getBookAvailability</code></td>
+<td>書籍詳細と在庫状況を照会する</td>
+<td><code>../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml</code></td>
+</tr>
+<tr>
+<td>利用（任意）</td>
+<td><code>getLoanTarget</code></td>
+<td>利用者番号で貸出対象利用者を特定する</td>
+<td><code>../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml</code></td>
+</tr>
+</tbody></table>
+<p>機械可読な定義は <code>_api-summary.yaml</code> の <code>endpoints:</code>（所有）と <code>consumes:</code>（利用）が正本。</p>
+</article><a class="back" href="#files">ファイル一覧へ戻る ↑</a></section><section id="backend"><div class="file-head"><span class="kind">比較例 / Markdown</span><h2>A-2　Backend仕様</h2><p>現時点の比較例は従来形式なのでAPIの型表を含みます。catalog方式ではその部分を完全な契約への参照に置き換えます。</p><p class="meta">tier-backend-api.md · 235行 · <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/tier-backend-api.md">GitHubの実ファイル</a></p></div><details><summary>Markdownのソースを表示</summary><pre># 貸出を登録する - バックエンド API 仕様
+
+## 変更概要
+
+貸出登録 API `POST /api/v1/loans` を追加する。貸出可否条件・取置き中書籍貸出条件・資料種別利用可否条件を再判定したうえで、貸出記録を貸出状態「貸出中」で作成し、返却期限設定条件で返却期限を自動設定する。同一トランザクション内で書籍状態・利用者状態・予約状態を遷移させる。冪等キーによる二重登録防止と、楽観ロックによる競合制御を行う。実装は貸出コンテキスト（BC-003）の集約 AG-003 に置き、書籍（BC-001）・利用者（BC-002）・予約（BC-004）は Customer-Supplier で連携する。
+
+## API 仕様
+
+### 貸出を登録する
+
+- **メソッド**: POST
+- **パス**: `/api/v1/loans`
+- **operationId**: `createLoan`（`_api-summary.yaml` の `endpoints[].operation_id` と一致する。本 UC が所有する唯一の operation）
+- **認証**: OAuth2/OIDC アクセストークン（Bearer）。ロール `司書` のみ（RBAC）。館内ネットワークからのアクセスに限定する
+- **OpenAPI**: [openapi.yaml](../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml) の `paths./api/v1/loans.post` を参照
+
+#### 利用者識別情報の送信方法と検証責務
+
+`openapi.yaml` の `info.description`「利用者識別情報の送信方法」を正本とし、本 UC でも例外を設けない。
+
+| 項目 | 内容 |
+|------|------|
+| 送信方法 | `Authorization: Bearer {access_token}` の JWT クレームだけ。`X-User-No` / `X-Role` 等の独自ヘッダは定義せず、送られても無視する |
+| 必須クレーム | `sub`（司書のアカウントID。監査ログの操作者ID）/ `role`（`司書` であること）/ `exp` |
+| `user_no` クレーム | 本 UC では使わない。貸出先の利用者番号はリクエストボディの `user_no` で受け取る（司書が他人の貸出を作る操作のため、本人限定参照ではない） |
+| API Gateway の責務 | 署名・`exp`・`iss` / `aud` の検証。検証済みトークンだけをバックエンドへ透過する |
+| バックエンド API の責務 | 必須クレームの存在と型の再検証 → 401、`role` の判定 → 403、`sub` を監査ログへ記録 |
+| クライアント / テストの責務 | 統合テスト・スタブも同じ Bearer トークンで識別情報を渡す。テスト専用の識別ヘッダを注入しない |
+
+401 の条件は次の 3 つだけで、いずれも `WWW-Authenticate: Bearer realm=&quot;libra&quot;, error=&quot;invalid_token&quot;, error_description=&quot;{code}&quot;` を付与する。
+
+| code | 条件 |
+|------|------|
+| `UNAUTHENTICATED` | `Authorization` ヘッダ欠落 / Bearer 以外 / 署名不正 |
+| `TOKEN_EXPIRED` | `exp` 超過 |
+| `IDENTITY_CLAIM_MISSING` | `sub` または `role` クレームの欠落・型不正 |
+
+認証が成立しているが `role` が `司書` でない場合は 401 ではなく 403（`FORBIDDEN`）とする。
+
+#### リクエスト
+
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|---|------|------|
+| book_id | string | Yes | 貸出対象の書籍ID |
+| user_no | string | Yes | 貸出先の利用者番号 |
+| loan_period_type | string | Yes | 貸出期間区分（標準 / 短期 / 長期）。返却期限の算出単位 |
+| X-Idempotency-Key | string(header) | Yes | 冪等キー（UUID）。再送時も同一キーを使う |
+| Authorization | string(header) | Yes | `Bearer {access_token}`。司書ロールであること |
+| traceparent | string(header) | No | W3C Trace Context |
+
+#### レスポンス
+
+| フィールド | 型 | 説明 |
+|-----------|---|------|
+| loan_id | string | 作成された貸出ID |
+| book_id | string | 貸出対象の書籍ID |
+| user_no | string | 貸出先の利用者番号 |
+| loan_date | string(date) | 貸出日 |
+| loan_period_type | string | 貸出期間区分（標準 / 短期 / 長期） |
+| due_date | string(date) | 返却期限（返却期限設定条件により自動設定） |
+| loan_status | string | 貸出状態。作成直後は「貸出中」 |
+| book_status | string | 遷移後の書籍状態。作成直後は「貸出中」 |
+| reservation_id | string | 取置き中の予約から貸し出した場合のみ、貸出済みへ遷移した予約ID |
+
+成功時の HTTP ステータスは 201。`Location: /api/v1/loans/{loan_id}` を返す。
+
+#### エラーレスポンス
+
+| ステータスコード | 条件 | レスポンス |
+|----------------|------|-----------|
+| 400 | 必須パラメータ欠落、または loan_period_type がバリエーション（標準 / 短期 / 長期）外 | `{&quot;code&quot;:&quot;INVALID_REQUEST&quot;,&quot;message&quot;:&quot;貸出情報の指定が正しくありません&quot;}` |
+| 400 | X-Idempotency-Key が未指定 | `{&quot;code&quot;:&quot;IDEMPOTENCY_KEY_REQUIRED&quot;,&quot;message&quot;:&quot;冪等キーが必要です&quot;}` |
+| 401 | `Authorization` ヘッダ欠落 / Bearer 以外 / 署名不正 | `{&quot;code&quot;:&quot;UNAUTHENTICATED&quot;,&quot;message&quot;:&quot;再度ログインしてください&quot;}` |
+| 401 | アクセストークンの `exp` 超過 | `{&quot;code&quot;:&quot;TOKEN_EXPIRED&quot;,&quot;message&quot;:&quot;再度ログインしてください&quot;}` |
+| 401 | 必須クレーム（`sub` / `role`）の欠落・型不正 | `{&quot;code&quot;:&quot;IDENTITY_CLAIM_MISSING&quot;,&quot;message&quot;:&quot;再度ログインしてください&quot;}` |
+| 403 | 司書ロールではない | `{&quot;code&quot;:&quot;FORBIDDEN&quot;,&quot;message&quot;:&quot;この操作を行う権限がありません&quot;}` |
+| 404 | 指定された書籍が存在しない | `{&quot;code&quot;:&quot;BOOK_NOT_FOUND&quot;,&quot;message&quot;:&quot;該当する書籍が見つかりません&quot;}` |
+| 404 | 指定された利用者が存在しない | `{&quot;code&quot;:&quot;USER_NOT_FOUND&quot;,&quot;message&quot;:&quot;該当する利用者が見つかりません&quot;}` |
+| 409 | 書籍状態が「貸出中」（貸出可否条件を満たさない） | `{&quot;code&quot;:&quot;BOOK_NOT_AVAILABLE&quot;,&quot;message&quot;:&quot;この書籍は貸出中のため貸し出せません&quot;}` |
+| 409 | 書籍状態が「予約待ち」で、要求利用者が取置き対象者でない（取置き中書籍貸出条件を満たさない） | `{&quot;code&quot;:&quot;BOOK_ON_HOLD_FOR_OTHER&quot;,&quot;message&quot;:&quot;この書籍は他の利用者へ取置き中です&quot;}` |
+| 409 | 資料種別が「電子書籍」（資料種別利用可否条件を満たさない） | `{&quot;code&quot;:&quot;MATERIAL_TYPE_NOT_SUPPORTED&quot;,&quot;message&quot;:&quot;電子書籍は現在ご利用いただけません&quot;}` |
+| 409 | 貸出期間区分が利用者区分の選択可能集合に含まれない（返却期限設定条件を満たさない） | `{&quot;code&quot;:&quot;LOAN_PERIOD_TYPE_MISMATCH&quot;,&quot;message&quot;:&quot;この利用者区分では選択できない貸出期間区分です&quot;}` |
+| 409 | 他の窓口操作と競合し、楽観ロックのバージョンが一致しない | `{&quot;code&quot;:&quot;CONFLICT&quot;,&quot;message&quot;:&quot;他の操作と競合しました。最新の状態を確認して再度お試しください&quot;}` |
+| 409 | 同一の X-Idempotency-Key で先行処理が実行中 | `{&quot;code&quot;:&quot;IDEMPOTENCY_KEY_IN_PROGRESS&quot;,&quot;message&quot;:&quot;処理中です。しばらくしてからお試しください&quot;}`（`Retry-After: 1`） |
+| 409 | 同一の X-Idempotency-Key で異なる内容の要求 | `{&quot;code&quot;:&quot;IDEMPOTENCY_KEY_CONFLICT&quot;,&quot;message&quot;:&quot;同じ冪等キーで異なる内容の登録は実行できません&quot;}` |
+
+#### 冪等キーの判定規則
+
+正本は `../../pipeline-opus-medium/specs/latest/_cross-cutting/datastore/kvs-schema.yaml` の `idem:api:{operation_id}:{idempotency_key}` の `behavior`
+および `openapi.yaml` の `IdempotencyKeyHeader` である。本 UC ではキーを
+`idem:api:createLoan:{X-Idempotency-Key}` として次のとおり判定する。
+
+| 再送の内容 | 判定 | HTTP 応答 | 副作用 |
+|---|---|---|---|
+| キー未存在 | 新規要求 | 本処理どおり 201 | `loans` INSERT ほかを実行する |
+| 同一キー・同一 request_fingerprint・`state=completed` | 既処理のリプレイ | 保存済みの 201 と `LoanResponse`（`Idempotency-Replayed: true`） | 実行しない。`loans` は 1 件のまま |
+| 同一キー・同一 request_fingerprint・`state=in_progress` | 先行処理が未完了 | 409 `IDEMPOTENCY_KEY_IN_PROGRESS`（`Retry-After: 1`） | 実行しない |
+| 同一キー・異なる request_fingerprint | キーの誤再利用 | 409 `IDEMPOTENCY_KEY_CONFLICT` | 実行しない。保存済みレコードを書き換えない |
+| 先行処理が 4xx で終了した後の同一キー再送 | 冪等レコードは破棄済み | 本処理どおり | 通常どおり実行する |
+| TTL 24h 経過後の同一キー再送 | 新規要求 | 本処理どおり 201 | 重複作成の防御は業務側の一意制約（`loans` の `book_id` + `loan_status`）に委ねる |
+
+`request_fingerprint` は「`POST` + `/api/v1/loans` + 正規化 JSON ボディ（キー昇順・空白なし）」の SHA-256 とする。
+`Authorization` / `traceparent` / `X-Idempotency-Key` はフィンガープリントに含めない。
+
+## 非同期イベント（該当する場合）
+
+本 UC 自体は非同期イベントを発行しない。貸出登録による利用者状態・書籍状態の変化は同一トランザクション内で完結する。返却期限リマインドは別 UC（返却期限接近の貸出を判定する）が日次で貸出を走査して発火する。
+
+## データアクセス・実行条件
+
+- **業務ルール**: [spec.md](spec.md#業務ルール) の RULE-001〜004 を RegisterLoanCommand のトランザクション内で再判定する。事前の貸出可否判定結果は時点情報として扱う。
+- **操作定義**: [_model-summary.yaml](_model-summary.yaml) の tables（loans INSERT、books / users / reservations UPDATEと参照）。書誌4列の貸出時点スナップショット、設定値・更新条件を含む。DB型・制約は [rdb-schema.yaml](../../pipeline-opus-medium/specs/latest/_cross-cutting/datastore/rdb-schema.yaml) の同名 tables を参照する。
+- **原子性**: usecase 層で上記更新を1トランザクションとして確定する（LP-005 / LP-009）。いずれかの状態遷移が不可なら全体をロールバックする。利用者が既に取引進行中なら利用者状態は変更しない。
+- **予約完了**: rdb-schema.yaml の state_transition_rules「予約状態遷移規則」の「取置き中 → 貸出済み」に従う。reservation_status と hold_expires_at の同時更新、hold_started_at の保持を含む。
+- **競合**: books の条件付き UPDATE は `WHERE book_id = :book_id AND book_status IN ('在庫あり','予約待ち')`。更新件数0なら 409 CONFLICT（LR-012）。books / users の updated_at は貸出登録イベントの発生時刻を使う。
+- **冪等性**: 本文の「冪等キーの判定規則」を usecase 層で適用する（LP-007）。
+- **監査**: usecase 層で司書の account_id・時刻・書籍・貸出先利用者を記録する（LP-006）。domain 層からログを出さない（LP-010）。
+- **レスポンス**: 利用者の氏名・連絡先を含めず利用者番号だけを返す（LR-003）。
+
+## ティア完了条件（BDD）
+
+```gherkin
+Feature: 貸出を登録する - バックエンド API
+
+  Scenario: 在庫ありの書籍で貸出が作成され返却期限が自動設定される
+    Given 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot;、資料種別 &quot;紙書籍&quot; で存在する
+    And 利用者番号 &quot;U-000123&quot; の利用者が利用者状態 &quot;登録済み&quot;、利用者区分 &quot;一般&quot; で存在する
+    And 本日が 2026-09-02 で、貸出期間区分「標準」の日数が 14 日である
+    When 司書のトークンと冪等キー &quot;idem-0001&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000001&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 201 が返り、loan_status が &quot;貸出中&quot;、due_date が &quot;2026-09-16&quot; である
+    And books の book_status が &quot;貸出中&quot; に更新される
+    And users の user_status が &quot;取引進行中&quot; に更新される
+
+  Scenario: 取置き中の予約から貸し出すと予約が貸出済みになる
+    Given 書籍ID &quot;B-000002&quot; が書籍状態 &quot;予約待ち&quot; で存在する
+    And 書籍ID &quot;B-000002&quot; に利用者番号 &quot;U-000123&quot; の予約 &quot;R-000001&quot; が priority 1、予約状態 &quot;取置き中&quot; で存在する
+    When 司書のトークンと冪等キー &quot;idem-0002&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000002&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 201 が返り、reservation_id が &quot;R-000001&quot; である
+    And reservations の reservation_status が &quot;貸出済み&quot; に更新される
+    And books の book_status が &quot;貸出中&quot; に更新される
+
+  Scenario: 貸出中の書籍への登録は 409 で拒否される
+    Given 書籍ID &quot;B-000003&quot; が書籍状態 &quot;貸出中&quot; で存在する
+    When 司書のトークンと冪等キー &quot;idem-0003&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000003&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 409 が返り、code が &quot;BOOK_NOT_AVAILABLE&quot; である
+    And loans にレコードは作成されない
+
+  Scenario: 取置き対象でない利用者への登録は 409 で拒否される
+    Given 書籍ID &quot;B-000002&quot; が書籍状態 &quot;予約待ち&quot; で、利用者番号 &quot;U-000123&quot; の予約が予約状態 &quot;取置き中&quot; で存在する
+    When 司書のトークンと冪等キー &quot;idem-0004&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000002&quot;,&quot;user_no&quot;:&quot;U-000456&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 409 が返り、code が &quot;BOOK_ON_HOLD_FOR_OTHER&quot; である
+    And loans にレコードは作成されない
+
+  Scenario: 電子書籍への貸出登録は 409 で拒否される
+    Given 書籍ID &quot;B-000004&quot; が資料種別 &quot;電子書籍&quot; で存在する
+    When 司書のトークンと冪等キー &quot;idem-0005&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000004&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 409 が返り、code が &quot;MATERIAL_TYPE_NOT_SUPPORTED&quot; である
+
+  Scenario: 選択可能集合に含まれない貸出期間区分は 409 で拒否される
+    Given 利用者番号 &quot;U-000123&quot; の利用者が利用者区分 &quot;一般&quot; で存在する
+    And 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot; で存在する
+    When 司書のトークンと冪等キー &quot;idem-0006&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000001&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;長期&quot;} を送る
+    Then HTTP 409 が返り、code が &quot;LOAN_PERIOD_TYPE_MISMATCH&quot; であり、loans に行が追加されない
+
+  Scenario: 一般利用者へ短期の貸出期間区分で貸し出せる
+    Given 利用者番号 &quot;U-000123&quot; の利用者が利用者区分 &quot;一般&quot; で存在する
+    And 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot; で存在する
+    And 本日が 2026-09-02 である
+    When 司書のトークンと冪等キー &quot;idem-0007&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000001&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;短期&quot;} を送る
+    Then HTTP 201 が返り、due_date が &quot;2026-09-09&quot; である
+
+  Scenario: 同一冪等キー・同一内容の再送で貸出が二重作成されない
+    Given 冪等キー &quot;idem-0001&quot; で貸出ID &quot;L-000001&quot; が既に作成されている
+    When 同じ冪等キー &quot;idem-0001&quot; で同一内容の貸出登録リクエストを再送する
+    Then HTTP 201 が返り、loan_id が &quot;L-000001&quot; である
+    And Idempotency-Replayed ヘッダが true である
+    And loans のレコード件数は 1 件のままである
+
+  Scenario: 同一冪等キー・異なる内容の再送は 409 で拒否される
+    Given 冪等キー &quot;idem-0001&quot; で {&quot;book_id&quot;:&quot;B-000001&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} が処理済みである
+    When 同じ冪等キー &quot;idem-0001&quot; で {&quot;book_id&quot;:&quot;B-000005&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 409 が返り、code が &quot;IDEMPOTENCY_KEY_CONFLICT&quot; である
+    And loans のレコード件数は 1 件のままで、保存済みの冪等レコードは書き換えられない
+
+  Scenario: 先行処理が実行中の同一冪等キー再送は 409 で待たされる
+    Given 冪等キー &quot;idem-0008&quot; の貸出登録が実行中（state=in_progress）である
+    When 同じ冪等キー &quot;idem-0008&quot; で同一内容のリクエストを送る
+    Then HTTP 409 が返り、code が &quot;IDEMPOTENCY_KEY_IN_PROGRESS&quot; である
+    And Retry-After ヘッダが 1 である
+
+  Scenario: 取置き中の予約から貸し出すと取置き期限が同時にクリアされる
+    Given 書籍ID &quot;B-000002&quot; に利用者番号 &quot;U-000123&quot; の予約 &quot;R-000001&quot; が priority 1、予約状態 &quot;取置き中&quot;、hold_expires_at が設定済み、hold_started_at が設定済み で存在する
+    When 司書のトークンと冪等キー &quot;idem-0009&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000002&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 201 が返る
+    And reservations の reservation_status が &quot;貸出済み&quot;、hold_expires_at が NULL に同一 UPDATE 文で更新される
+    And reservations の hold_started_at は取置き時の値のまま変わらない
+
+  Scenario: Authorization ヘッダが無い要求は 401 で拒否される
+    Given 有効な貸出登録リクエストボディがある
+    When Authorization ヘッダを付けずに POST /api/v1/loans を呼び出す
+    Then HTTP 401 が返り、code が &quot;UNAUTHENTICATED&quot; である
+    And WWW-Authenticate ヘッダに Bearer realm=&quot;libra&quot; と error_description=&quot;UNAUTHENTICATED&quot; が含まれる
+
+  Scenario: 期限切れトークンは 401 TOKEN_EXPIRED で拒否される
+    Given exp が現在時刻より過去のアクセストークンがある
+    When そのトークンで POST /api/v1/loans を呼び出す
+    Then HTTP 401 が返り、code が &quot;TOKEN_EXPIRED&quot; である
+
+  Scenario: role クレームが無いトークンは 401 IDENTITY_CLAIM_MISSING で拒否される
+    Given 署名は有効だが role クレームを持たないアクセストークンがある
+    When そのトークンで POST /api/v1/loans を呼び出す
+    Then HTTP 401 が返り、code が &quot;IDENTITY_CLAIM_MISSING&quot; である
+
+  Scenario: 識別用の独自ヘッダは認証結果に影響しない
+    Given 利用者ロールの有効なアクセストークンがある
+    When X-User-No: &quot;U-000123&quot; と X-Role: &quot;司書&quot; を付けて POST /api/v1/loans を呼び出す
+    Then HTTP 403 が返り、code が &quot;FORBIDDEN&quot; である
+    And 独自ヘッダの値は認可判定に使われない
+
+  Scenario: 冪等キーが無い要求は 400 で拒否される
+    Given 司書のトークンが有効である
+    When X-Idempotency-Key を付けずに POST /api/v1/loans を呼び出す
+    Then HTTP 400 が返り、code が &quot;IDEMPOTENCY_KEY_REQUIRED&quot; である
+
+  Scenario: 不正な貸出期間区分は 400 で拒否される
+    Given 書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-000123&quot; が存在する
+    When 司書のトークンで POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000001&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;無期限&quot;} を送る
+    Then HTTP 400 が返り、code が &quot;INVALID_REQUEST&quot; である
+
+  Scenario: 同時貸出の競合は 409 で拒否される
+    Given 書籍ID &quot;B-000001&quot; に対して 2 つの貸出登録が同時に実行される
+    When 先行トランザクションが book_status を &quot;貸出中&quot; へ更新してコミットする
+    Then 後行トランザクションは HTTP 409（code &quot;CONFLICT&quot; または &quot;BOOK_NOT_AVAILABLE&quot;）で拒否される
+    And loans に作成されるレコードは 1 件だけである
+```
+</pre></details><article class="document"><h1>貸出を登録する - バックエンド API 仕様</h1>
+<h2>変更概要</h2>
+<p>貸出登録 API <code>POST /api/v1/loans</code> を追加する。貸出可否条件・取置き中書籍貸出条件・資料種別利用可否条件を再判定したうえで、貸出記録を貸出状態「貸出中」で作成し、返却期限設定条件で返却期限を自動設定する。同一トランザクション内で書籍状態・利用者状態・予約状態を遷移させる。冪等キーによる二重登録防止と、楽観ロックによる競合制御を行う。実装は貸出コンテキスト（BC-003）の集約 AG-003 に置き、書籍（BC-001）・利用者（BC-002）・予約（BC-004）は Customer-Supplier で連携する。</p>
+<h2>API 仕様</h2>
+<h3>貸出を登録する</h3>
+<ul>
+<li><strong>メソッド</strong>: POST</li>
+<li><strong>パス</strong>: <code>/api/v1/loans</code></li>
+<li><strong>operationId</strong>: <code>createLoan</code>（<code>_api-summary.yaml</code> の <code>endpoints[].operation_id</code> と一致する。本 UC が所有する唯一の operation）</li>
+<li><strong>認証</strong>: OAuth2/OIDC アクセストークン（Bearer）。ロール <code>司書</code> のみ（RBAC）。館内ネットワークからのアクセスに限定する</li>
+<li><strong>OpenAPI</strong>: <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml">openapi.yaml</a> の <code>paths./api/v1/loans.post</code> を参照</li>
+</ul>
+<h4>利用者識別情報の送信方法と検証責務</h4>
+<p><code>openapi.yaml</code> の <code>info.description</code>「利用者識別情報の送信方法」を正本とし、本 UC でも例外を設けない。</p>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>送信方法</td>
+<td><code>Authorization: Bearer {access_token}</code> の JWT クレームだけ。<code>X-User-No</code> / <code>X-Role</code> 等の独自ヘッダは定義せず、送られても無視する</td>
+</tr>
+<tr>
+<td>必須クレーム</td>
+<td><code>sub</code>（司書のアカウントID。監査ログの操作者ID）/ <code>role</code>（<code>司書</code> であること）/ <code>exp</code></td>
+</tr>
+<tr>
+<td><code>user_no</code> クレーム</td>
+<td>本 UC では使わない。貸出先の利用者番号はリクエストボディの <code>user_no</code> で受け取る（司書が他人の貸出を作る操作のため、本人限定参照ではない）</td>
+</tr>
+<tr>
+<td>API Gateway の責務</td>
+<td>署名・<code>exp</code>・<code>iss</code> / <code>aud</code> の検証。検証済みトークンだけをバックエンドへ透過する</td>
+</tr>
+<tr>
+<td>バックエンド API の責務</td>
+<td>必須クレームの存在と型の再検証 → 401、<code>role</code> の判定 → 403、<code>sub</code> を監査ログへ記録</td>
+</tr>
+<tr>
+<td>クライアント / テストの責務</td>
+<td>統合テスト・スタブも同じ Bearer トークンで識別情報を渡す。テスト専用の識別ヘッダを注入しない</td>
+</tr>
+</tbody></table>
+<p>401 の条件は次の 3 つだけで、いずれも <code>WWW-Authenticate: Bearer realm=&quot;libra&quot;, error=&quot;invalid_token&quot;, error_description=&quot;{code}&quot;</code> を付与する。</p>
+<table>
+<thead>
+<tr>
+<th>code</th>
+<th>条件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>UNAUTHENTICATED</code></td>
+<td><code>Authorization</code> ヘッダ欠落 / Bearer 以外 / 署名不正</td>
+</tr>
+<tr>
+<td><code>TOKEN_EXPIRED</code></td>
+<td><code>exp</code> 超過</td>
+</tr>
+<tr>
+<td><code>IDENTITY_CLAIM_MISSING</code></td>
+<td><code>sub</code> または <code>role</code> クレームの欠落・型不正</td>
+</tr>
+</tbody></table>
+<p>認証が成立しているが <code>role</code> が <code>司書</code> でない場合は 401 ではなく 403（<code>FORBIDDEN</code>）とする。</p>
+<h4>リクエスト</h4>
+<table>
+<thead>
+<tr>
+<th>パラメータ</th>
+<th>型</th>
+<th>必須</th>
+<th>説明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>book_id</td>
+<td>string</td>
+<td>Yes</td>
+<td>貸出対象の書籍ID</td>
+</tr>
+<tr>
+<td>user_no</td>
+<td>string</td>
+<td>Yes</td>
+<td>貸出先の利用者番号</td>
+</tr>
+<tr>
+<td>loan_period_type</td>
+<td>string</td>
+<td>Yes</td>
+<td>貸出期間区分（標準 / 短期 / 長期）。返却期限の算出単位</td>
+</tr>
+<tr>
+<td>X-Idempotency-Key</td>
+<td>string(header)</td>
+<td>Yes</td>
+<td>冪等キー（UUID）。再送時も同一キーを使う</td>
+</tr>
+<tr>
+<td>Authorization</td>
+<td>string(header)</td>
+<td>Yes</td>
+<td><code>Bearer {access_token}</code>。司書ロールであること</td>
+</tr>
+<tr>
+<td>traceparent</td>
+<td>string(header)</td>
+<td>No</td>
+<td>W3C Trace Context</td>
+</tr>
+</tbody></table>
+<h4>レスポンス</h4>
+<table>
+<thead>
+<tr>
+<th>フィールド</th>
+<th>型</th>
+<th>説明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>loan_id</td>
+<td>string</td>
+<td>作成された貸出ID</td>
+</tr>
+<tr>
+<td>book_id</td>
+<td>string</td>
+<td>貸出対象の書籍ID</td>
+</tr>
+<tr>
+<td>user_no</td>
+<td>string</td>
+<td>貸出先の利用者番号</td>
+</tr>
+<tr>
+<td>loan_date</td>
+<td>string(date)</td>
+<td>貸出日</td>
+</tr>
+<tr>
+<td>loan_period_type</td>
+<td>string</td>
+<td>貸出期間区分（標準 / 短期 / 長期）</td>
+</tr>
+<tr>
+<td>due_date</td>
+<td>string(date)</td>
+<td>返却期限（返却期限設定条件により自動設定）</td>
+</tr>
+<tr>
+<td>loan_status</td>
+<td>string</td>
+<td>貸出状態。作成直後は「貸出中」</td>
+</tr>
+<tr>
+<td>book_status</td>
+<td>string</td>
+<td>遷移後の書籍状態。作成直後は「貸出中」</td>
+</tr>
+<tr>
+<td>reservation_id</td>
+<td>string</td>
+<td>取置き中の予約から貸し出した場合のみ、貸出済みへ遷移した予約ID</td>
+</tr>
+</tbody></table>
+<p>成功時の HTTP ステータスは 201。<code>Location: /api/v1/loans/{loan_id}</code> を返す。</p>
+<h4>エラーレスポンス</h4>
+<table>
+<thead>
+<tr>
+<th>ステータスコード</th>
+<th>条件</th>
+<th>レスポンス</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>400</td>
+<td>必須パラメータ欠落、または loan_period_type がバリエーション（標準 / 短期 / 長期）外</td>
+<td><code>{&quot;code&quot;:&quot;INVALID_REQUEST&quot;,&quot;message&quot;:&quot;貸出情報の指定が正しくありません&quot;}</code></td>
+</tr>
+<tr>
+<td>400</td>
+<td>X-Idempotency-Key が未指定</td>
+<td><code>{&quot;code&quot;:&quot;IDEMPOTENCY_KEY_REQUIRED&quot;,&quot;message&quot;:&quot;冪等キーが必要です&quot;}</code></td>
+</tr>
+<tr>
+<td>401</td>
+<td><code>Authorization</code> ヘッダ欠落 / Bearer 以外 / 署名不正</td>
+<td><code>{&quot;code&quot;:&quot;UNAUTHENTICATED&quot;,&quot;message&quot;:&quot;再度ログインしてください&quot;}</code></td>
+</tr>
+<tr>
+<td>401</td>
+<td>アクセストークンの <code>exp</code> 超過</td>
+<td><code>{&quot;code&quot;:&quot;TOKEN_EXPIRED&quot;,&quot;message&quot;:&quot;再度ログインしてください&quot;}</code></td>
+</tr>
+<tr>
+<td>401</td>
+<td>必須クレーム（<code>sub</code> / <code>role</code>）の欠落・型不正</td>
+<td><code>{&quot;code&quot;:&quot;IDENTITY_CLAIM_MISSING&quot;,&quot;message&quot;:&quot;再度ログインしてください&quot;}</code></td>
+</tr>
+<tr>
+<td>403</td>
+<td>司書ロールではない</td>
+<td><code>{&quot;code&quot;:&quot;FORBIDDEN&quot;,&quot;message&quot;:&quot;この操作を行う権限がありません&quot;}</code></td>
+</tr>
+<tr>
+<td>404</td>
+<td>指定された書籍が存在しない</td>
+<td><code>{&quot;code&quot;:&quot;BOOK_NOT_FOUND&quot;,&quot;message&quot;:&quot;該当する書籍が見つかりません&quot;}</code></td>
+</tr>
+<tr>
+<td>404</td>
+<td>指定された利用者が存在しない</td>
+<td><code>{&quot;code&quot;:&quot;USER_NOT_FOUND&quot;,&quot;message&quot;:&quot;該当する利用者が見つかりません&quot;}</code></td>
+</tr>
+<tr>
+<td>409</td>
+<td>書籍状態が「貸出中」（貸出可否条件を満たさない）</td>
+<td><code>{&quot;code&quot;:&quot;BOOK_NOT_AVAILABLE&quot;,&quot;message&quot;:&quot;この書籍は貸出中のため貸し出せません&quot;}</code></td>
+</tr>
+<tr>
+<td>409</td>
+<td>書籍状態が「予約待ち」で、要求利用者が取置き対象者でない（取置き中書籍貸出条件を満たさない）</td>
+<td><code>{&quot;code&quot;:&quot;BOOK_ON_HOLD_FOR_OTHER&quot;,&quot;message&quot;:&quot;この書籍は他の利用者へ取置き中です&quot;}</code></td>
+</tr>
+<tr>
+<td>409</td>
+<td>資料種別が「電子書籍」（資料種別利用可否条件を満たさない）</td>
+<td><code>{&quot;code&quot;:&quot;MATERIAL_TYPE_NOT_SUPPORTED&quot;,&quot;message&quot;:&quot;電子書籍は現在ご利用いただけません&quot;}</code></td>
+</tr>
+<tr>
+<td>409</td>
+<td>貸出期間区分が利用者区分の選択可能集合に含まれない（返却期限設定条件を満たさない）</td>
+<td><code>{&quot;code&quot;:&quot;LOAN_PERIOD_TYPE_MISMATCH&quot;,&quot;message&quot;:&quot;この利用者区分では選択できない貸出期間区分です&quot;}</code></td>
+</tr>
+<tr>
+<td>409</td>
+<td>他の窓口操作と競合し、楽観ロックのバージョンが一致しない</td>
+<td><code>{&quot;code&quot;:&quot;CONFLICT&quot;,&quot;message&quot;:&quot;他の操作と競合しました。最新の状態を確認して再度お試しください&quot;}</code></td>
+</tr>
+<tr>
+<td>409</td>
+<td>同一の X-Idempotency-Key で先行処理が実行中</td>
+<td><code>{&quot;code&quot;:&quot;IDEMPOTENCY_KEY_IN_PROGRESS&quot;,&quot;message&quot;:&quot;処理中です。しばらくしてからお試しください&quot;}</code>（<code>Retry-After: 1</code>）</td>
+</tr>
+<tr>
+<td>409</td>
+<td>同一の X-Idempotency-Key で異なる内容の要求</td>
+<td><code>{&quot;code&quot;:&quot;IDEMPOTENCY_KEY_CONFLICT&quot;,&quot;message&quot;:&quot;同じ冪等キーで異なる内容の登録は実行できません&quot;}</code></td>
+</tr>
+</tbody></table>
+<h4>冪等キーの判定規則</h4>
+<p>正本は <code>../../pipeline-opus-medium/specs/latest/_cross-cutting/datastore/kvs-schema.yaml</code> の <code>idem:api:{operation_id}:{idempotency_key}</code> の <code>behavior</code>
+および <code>openapi.yaml</code> の <code>IdempotencyKeyHeader</code> である。本 UC ではキーを
+<code>idem:api:createLoan:{X-Idempotency-Key}</code> として次のとおり判定する。</p>
+<table>
+<thead>
+<tr>
+<th>再送の内容</th>
+<th>判定</th>
+<th>HTTP 応答</th>
+<th>副作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>キー未存在</td>
+<td>新規要求</td>
+<td>本処理どおり 201</td>
+<td><code>loans</code> INSERT ほかを実行する</td>
+</tr>
+<tr>
+<td>同一キー・同一 request_fingerprint・<code>state=completed</code></td>
+<td>既処理のリプレイ</td>
+<td>保存済みの 201 と <code>LoanResponse</code>（<code>Idempotency-Replayed: true</code>）</td>
+<td>実行しない。<code>loans</code> は 1 件のまま</td>
+</tr>
+<tr>
+<td>同一キー・同一 request_fingerprint・<code>state=in_progress</code></td>
+<td>先行処理が未完了</td>
+<td>409 <code>IDEMPOTENCY_KEY_IN_PROGRESS</code>（<code>Retry-After: 1</code>）</td>
+<td>実行しない</td>
+</tr>
+<tr>
+<td>同一キー・異なる request_fingerprint</td>
+<td>キーの誤再利用</td>
+<td>409 <code>IDEMPOTENCY_KEY_CONFLICT</code></td>
+<td>実行しない。保存済みレコードを書き換えない</td>
+</tr>
+<tr>
+<td>先行処理が 4xx で終了した後の同一キー再送</td>
+<td>冪等レコードは破棄済み</td>
+<td>本処理どおり</td>
+<td>通常どおり実行する</td>
+</tr>
+<tr>
+<td>TTL 24h 経過後の同一キー再送</td>
+<td>新規要求</td>
+<td>本処理どおり 201</td>
+<td>重複作成の防御は業務側の一意制約（<code>loans</code> の <code>book_id</code> + <code>loan_status</code>）に委ねる</td>
+</tr>
+</tbody></table>
+<p><code>request_fingerprint</code> は「<code>POST</code> + <code>/api/v1/loans</code> + 正規化 JSON ボディ（キー昇順・空白なし）」の SHA-256 とする。
+<code>Authorization</code> / <code>traceparent</code> / <code>X-Idempotency-Key</code> はフィンガープリントに含めない。</p>
+<h2>非同期イベント（該当する場合）</h2>
+<p>本 UC 自体は非同期イベントを発行しない。貸出登録による利用者状態・書籍状態の変化は同一トランザクション内で完結する。返却期限リマインドは別 UC（返却期限接近の貸出を判定する）が日次で貸出を走査して発火する。</p>
+<h2>データアクセス・実行条件</h2>
+<ul>
+<li><strong>業務ルール</strong>: <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/spec.md#%E6%A5%AD%E5%8B%99%E3%83%AB%E3%83%BC%E3%83%AB">spec.md</a> の RULE-001〜004 を RegisterLoanCommand のトランザクション内で再判定する。事前の貸出可否判定結果は時点情報として扱う。</li>
+<li><strong>操作定義</strong>: <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/_model-summary.yaml">_model-summary.yaml</a> の tables（loans INSERT、books / users / reservations UPDATEと参照）。書誌4列の貸出時点スナップショット、設定値・更新条件を含む。DB型・制約は <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/pipeline-opus-medium/specs/latest/_cross-cutting/datastore/rdb-schema.yaml">rdb-schema.yaml</a> の同名 tables を参照する。</li>
+<li><strong>原子性</strong>: usecase 層で上記更新を1トランザクションとして確定する（LP-005 / LP-009）。いずれかの状態遷移が不可なら全体をロールバックする。利用者が既に取引進行中なら利用者状態は変更しない。</li>
+<li><strong>予約完了</strong>: rdb-schema.yaml の state_transition_rules「予約状態遷移規則」の「取置き中 → 貸出済み」に従う。reservation_status と hold_expires_at の同時更新、hold_started_at の保持を含む。</li>
+<li><strong>競合</strong>: books の条件付き UPDATE は <code>WHERE book_id = :book_id AND book_status IN (&#39;在庫あり&#39;,&#39;予約待ち&#39;)</code>。更新件数0なら 409 CONFLICT（LR-012）。books / users の updated_at は貸出登録イベントの発生時刻を使う。</li>
+<li><strong>冪等性</strong>: 本文の「冪等キーの判定規則」を usecase 層で適用する（LP-007）。</li>
+<li><strong>監査</strong>: usecase 層で司書の account_id・時刻・書籍・貸出先利用者を記録する（LP-006）。domain 層からログを出さない（LP-010）。</li>
+<li><strong>レスポンス</strong>: 利用者の氏名・連絡先を含めず利用者番号だけを返す（LR-003）。</li>
+</ul>
+<h2>ティア完了条件（BDD）</h2>
+<pre><code class="language-gherkin">Feature: 貸出を登録する - バックエンド API
+
+  Scenario: 在庫ありの書籍で貸出が作成され返却期限が自動設定される
+    Given 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot;、資料種別 &quot;紙書籍&quot; で存在する
+    And 利用者番号 &quot;U-000123&quot; の利用者が利用者状態 &quot;登録済み&quot;、利用者区分 &quot;一般&quot; で存在する
+    And 本日が 2026-09-02 で、貸出期間区分「標準」の日数が 14 日である
+    When 司書のトークンと冪等キー &quot;idem-0001&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000001&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 201 が返り、loan_status が &quot;貸出中&quot;、due_date が &quot;2026-09-16&quot; である
+    And books の book_status が &quot;貸出中&quot; に更新される
+    And users の user_status が &quot;取引進行中&quot; に更新される
+
+  Scenario: 取置き中の予約から貸し出すと予約が貸出済みになる
+    Given 書籍ID &quot;B-000002&quot; が書籍状態 &quot;予約待ち&quot; で存在する
+    And 書籍ID &quot;B-000002&quot; に利用者番号 &quot;U-000123&quot; の予約 &quot;R-000001&quot; が priority 1、予約状態 &quot;取置き中&quot; で存在する
+    When 司書のトークンと冪等キー &quot;idem-0002&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000002&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 201 が返り、reservation_id が &quot;R-000001&quot; である
+    And reservations の reservation_status が &quot;貸出済み&quot; に更新される
+    And books の book_status が &quot;貸出中&quot; に更新される
+
+  Scenario: 貸出中の書籍への登録は 409 で拒否される
+    Given 書籍ID &quot;B-000003&quot; が書籍状態 &quot;貸出中&quot; で存在する
+    When 司書のトークンと冪等キー &quot;idem-0003&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000003&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 409 が返り、code が &quot;BOOK_NOT_AVAILABLE&quot; である
+    And loans にレコードは作成されない
+
+  Scenario: 取置き対象でない利用者への登録は 409 で拒否される
+    Given 書籍ID &quot;B-000002&quot; が書籍状態 &quot;予約待ち&quot; で、利用者番号 &quot;U-000123&quot; の予約が予約状態 &quot;取置き中&quot; で存在する
+    When 司書のトークンと冪等キー &quot;idem-0004&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000002&quot;,&quot;user_no&quot;:&quot;U-000456&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 409 が返り、code が &quot;BOOK_ON_HOLD_FOR_OTHER&quot; である
+    And loans にレコードは作成されない
+
+  Scenario: 電子書籍への貸出登録は 409 で拒否される
+    Given 書籍ID &quot;B-000004&quot; が資料種別 &quot;電子書籍&quot; で存在する
+    When 司書のトークンと冪等キー &quot;idem-0005&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000004&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 409 が返り、code が &quot;MATERIAL_TYPE_NOT_SUPPORTED&quot; である
+
+  Scenario: 選択可能集合に含まれない貸出期間区分は 409 で拒否される
+    Given 利用者番号 &quot;U-000123&quot; の利用者が利用者区分 &quot;一般&quot; で存在する
+    And 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot; で存在する
+    When 司書のトークンと冪等キー &quot;idem-0006&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000001&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;長期&quot;} を送る
+    Then HTTP 409 が返り、code が &quot;LOAN_PERIOD_TYPE_MISMATCH&quot; であり、loans に行が追加されない
+
+  Scenario: 一般利用者へ短期の貸出期間区分で貸し出せる
+    Given 利用者番号 &quot;U-000123&quot; の利用者が利用者区分 &quot;一般&quot; で存在する
+    And 書籍ID &quot;B-000001&quot; が書籍状態 &quot;在庫あり&quot; で存在する
+    And 本日が 2026-09-02 である
+    When 司書のトークンと冪等キー &quot;idem-0007&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000001&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;短期&quot;} を送る
+    Then HTTP 201 が返り、due_date が &quot;2026-09-09&quot; である
+
+  Scenario: 同一冪等キー・同一内容の再送で貸出が二重作成されない
+    Given 冪等キー &quot;idem-0001&quot; で貸出ID &quot;L-000001&quot; が既に作成されている
+    When 同じ冪等キー &quot;idem-0001&quot; で同一内容の貸出登録リクエストを再送する
+    Then HTTP 201 が返り、loan_id が &quot;L-000001&quot; である
+    And Idempotency-Replayed ヘッダが true である
+    And loans のレコード件数は 1 件のままである
+
+  Scenario: 同一冪等キー・異なる内容の再送は 409 で拒否される
+    Given 冪等キー &quot;idem-0001&quot; で {&quot;book_id&quot;:&quot;B-000001&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} が処理済みである
+    When 同じ冪等キー &quot;idem-0001&quot; で {&quot;book_id&quot;:&quot;B-000005&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 409 が返り、code が &quot;IDEMPOTENCY_KEY_CONFLICT&quot; である
+    And loans のレコード件数は 1 件のままで、保存済みの冪等レコードは書き換えられない
+
+  Scenario: 先行処理が実行中の同一冪等キー再送は 409 で待たされる
+    Given 冪等キー &quot;idem-0008&quot; の貸出登録が実行中（state=in_progress）である
+    When 同じ冪等キー &quot;idem-0008&quot; で同一内容のリクエストを送る
+    Then HTTP 409 が返り、code が &quot;IDEMPOTENCY_KEY_IN_PROGRESS&quot; である
+    And Retry-After ヘッダが 1 である
+
+  Scenario: 取置き中の予約から貸し出すと取置き期限が同時にクリアされる
+    Given 書籍ID &quot;B-000002&quot; に利用者番号 &quot;U-000123&quot; の予約 &quot;R-000001&quot; が priority 1、予約状態 &quot;取置き中&quot;、hold_expires_at が設定済み、hold_started_at が設定済み で存在する
+    When 司書のトークンと冪等キー &quot;idem-0009&quot; で POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000002&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;標準&quot;} を送る
+    Then HTTP 201 が返る
+    And reservations の reservation_status が &quot;貸出済み&quot;、hold_expires_at が NULL に同一 UPDATE 文で更新される
+    And reservations の hold_started_at は取置き時の値のまま変わらない
+
+  Scenario: Authorization ヘッダが無い要求は 401 で拒否される
+    Given 有効な貸出登録リクエストボディがある
+    When Authorization ヘッダを付けずに POST /api/v1/loans を呼び出す
+    Then HTTP 401 が返り、code が &quot;UNAUTHENTICATED&quot; である
+    And WWW-Authenticate ヘッダに Bearer realm=&quot;libra&quot; と error_description=&quot;UNAUTHENTICATED&quot; が含まれる
+
+  Scenario: 期限切れトークンは 401 TOKEN_EXPIRED で拒否される
+    Given exp が現在時刻より過去のアクセストークンがある
+    When そのトークンで POST /api/v1/loans を呼び出す
+    Then HTTP 401 が返り、code が &quot;TOKEN_EXPIRED&quot; である
+
+  Scenario: role クレームが無いトークンは 401 IDENTITY_CLAIM_MISSING で拒否される
+    Given 署名は有効だが role クレームを持たないアクセストークンがある
+    When そのトークンで POST /api/v1/loans を呼び出す
+    Then HTTP 401 が返り、code が &quot;IDENTITY_CLAIM_MISSING&quot; である
+
+  Scenario: 識別用の独自ヘッダは認証結果に影響しない
+    Given 利用者ロールの有効なアクセストークンがある
+    When X-User-No: &quot;U-000123&quot; と X-Role: &quot;司書&quot; を付けて POST /api/v1/loans を呼び出す
+    Then HTTP 403 が返り、code が &quot;FORBIDDEN&quot; である
+    And 独自ヘッダの値は認可判定に使われない
+
+  Scenario: 冪等キーが無い要求は 400 で拒否される
+    Given 司書のトークンが有効である
+    When X-Idempotency-Key を付けずに POST /api/v1/loans を呼び出す
+    Then HTTP 400 が返り、code が &quot;IDEMPOTENCY_KEY_REQUIRED&quot; である
+
+  Scenario: 不正な貸出期間区分は 400 で拒否される
+    Given 書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-000123&quot; が存在する
+    When 司書のトークンで POST /api/v1/loans に {&quot;book_id&quot;:&quot;B-000001&quot;,&quot;user_no&quot;:&quot;U-000123&quot;,&quot;loan_period_type&quot;:&quot;無期限&quot;} を送る
+    Then HTTP 400 が返り、code が &quot;INVALID_REQUEST&quot; である
+
+  Scenario: 同時貸出の競合は 409 で拒否される
+    Given 書籍ID &quot;B-000001&quot; に対して 2 つの貸出登録が同時に実行される
+    When 先行トランザクションが book_status を &quot;貸出中&quot; へ更新してコミットする
+    Then 後行トランザクションは HTTP 409（code &quot;CONFLICT&quot; または &quot;BOOK_NOT_AVAILABLE&quot;）で拒否される
+    And loans に作成されるレコードは 1 件だけである
+</code></pre>
+</article><a class="back" href="#files">ファイル一覧へ戻る ↑</a></section><section id="frontend"><div class="file-head"><span class="kind">比較例 / Markdown</span><h2>A-3　Frontend仕様</h2><p>画面の状態、データ取得、コンポーネントの接続と受入条件です。既知の矛盾を修正済みのようには扱わず、そのまま表示しています。</p><p class="meta">tier-frontend-staff.md · 201行 · <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/tier-frontend-staff.md">GitHubの実ファイル</a></p></div><details><summary>Markdownのソースを表示</summary><pre># 貸出を登録する - 司書ポータル仕様
+
+## 変更概要
+
+窓口貸出受付画面（`/staff/loans/new`）を追加する。貸出可否判定画面から引き継いだ書籍ID・利用者番号を初期表示し、貸出期間区分を ToggleGroup で選択させる。選択した区分から算出される返却期限を登録前に DueDateIndicator で確認させ、冪等キー付きで貸出を登録する。登録後は貸出一覧・蔵書一覧のキャッシュを無効化する。
+
+## 画面仕様
+
+### 窓口貸出受付画面
+
+- **ルート id**: `staff-loan-new`
+- **URL**: `/staff/loans/new`（正本は `appRoutes`。画面側で URL 文字列を直書きしない）
+- **アクセス権**: 司書（司書ロールのトークンを持つ場合のみ表示。館内ネットワークからのアクセスに限定する）
+- **ポータル**: staff
+
+#### 表示要素とコンポーネントマッピング
+
+| 要素 | 種別 | デザインシステムコンポーネント | 説明 |
+|------|------|------------------------------|------|
+| ポータル骨格 | レイアウト | PortalShell（variant: staff） | 司書ポータル共通レイアウト |
+| 書籍ID入力 | フォーム | Input（variant: default / error） | 判定画面から引き継いだ書籍IDを初期表示 |
+| 利用者番号入力 | フォーム | Input（variant: default / error） | 判定画面から引き継いだ利用者番号を初期表示 |
+| 貸出期間区分の選択 | フォーム | ToggleGroup（variant: single, size: md） | 標準 / 短期 / 長期。利用者区分の既定区分を初期選択し、選択可能集合に含まれない区分（一般利用者の「長期」）は disabled |
+| 対象書籍の提示 | カード | BookCard（variant: default） | タイトル・著者・ジャンル・資料種別・書籍状態を表示 |
+| 対象利用者の提示 | カード | UserProfileCard（variant: default） | 氏名・利用者区分・利用者状態。連絡先は既定でマスク |
+| 返却期限の事前確認 | 期限表示 | DueDateIndicator（variant: safe） | 選択中の貸出期間区分から算出した返却期限（`YYYY年M月D日`）と残日数（`あと{N}日`）を登録前に表示 |
+| 貸出登録 | ボタン | SubmitActionButton（Button variant: default, size: md） | 主操作。送信中は `disabled` / `aria-busy` とし、待機表現は `LoadingState`（`kind=&quot;action&quot;`）に委譲 |
+| 対象の取得待ち | ローディング | LoadingState（`kind=&quot;detail&quot;`） | 引き継ぎ状態が無く書籍・利用者を再取得する間の待機表現（`AsyncSection` 経由） |
+| 登録結果 | 注意喚起 | Alert（variant: success / destructive） | 成功時は貸出IDと返却期限、失敗時は業務エラーの理由を表示 |
+
+共通の色・余白・状態表現は [ui-design.md](../../pipeline-opus-medium/specs/latest/_cross-cutting/ux-ui/ui-design.md) と既存コンポーネントのトークンに従う。値は再掲しない。
+
+#### UIロジック
+
+- **状態管理**: 貸出可否判定画面から引き継いだ書籍ID・利用者番号・利用者区分を状態管理層から取得する（LP-030）。引き継ぎ状態が無い場合（直リンク・再読込）は `_api-summary.yaml` の `consumes:` に記録した `getBookAvailability` / `getLoanTarget` / `checkLoanEligibility` を呼んで再取得する。登録成功後は蔵書一覧（ルート id `staff-book-list`）・利用者名簿（`staff-user-list`）の関連キャッシュを無効化する。
+- **バリデーション**: 書籍ID・利用者番号の必須と形式、貸出期間区分の選択必須を送信前にチェックする。貸出可否そのものはフロント側で独自判定せず、API の応答を表示する（LR-030）。
+- **返却期限の事前表示**: 選択中の貸出期間区分に対応する日数を貸出日（本日）に加算した返却期限を DueDateIndicator で表示する。表示は `ui-design.md`「日付・期限の表示規約」に従い、日付を `YYYY年M月D日`、残日数を `あと{N}日` とする。この表示はあくまで確認用で、正となる返却期限は API のレスポンス（`due_date`、ISO 8601 `YYYY-MM-DD`）で置き換える。
+- **ローディング**: loading 表現は `LoadingState` に一本化する（画面側で独自の loading UI を作らない）。登録中は `SubmitActionButton` が `disabled` / `aria-busy=&quot;true&quot;` にしたうえで `LoadingState`（`kind=&quot;action&quot;`）を出す（arch SR-002）。対象書籍・利用者の再取得中は `AsyncSection` 経由で `LoadingState`（`kind=&quot;detail&quot;`、`label=&quot;貸出対象を読み込み中&quot;`、`delayMs=300`）を出す。
+- **二重送信防止**: 冪等キー（UUID）を画面で 1 回だけ生成し、`X-Idempotency-Key` ヘッダに付与する。再送時も同一キーを使う（LR-032 / arch CTP-006 の 4 層防御のフロントエンド分担）。同一キーでの再送に対する応答（保存済み結果のリプレイ / 409 `IDEMPOTENCY_KEY_IN_PROGRESS` / 409 `IDEMPOTENCY_KEY_CONFLICT`）は `../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml` の `IdempotencyKeyHeader` を正本とし、リプレイ時は登録成功と同じ画面表示にする。
+- **認証情報の送信**: 司書の識別情報は `Authorization: Bearer {access_token}` のクレーム（`sub` / `role`）だけで送る。`X-User-No` 等の独自ヘッダを付けない。401（`UNAUTHENTICATED` / `TOKEN_EXPIRED` / `IDENTITY_CLAIM_MISSING`）は `useApiErrorPresenter` の「認可」分類として再ログイン導線を出す。
+- **エラーハンドリング**: api client から伝播したエラーを状態管理層で分類（通信 / 認可 / 業務ルール違反 / 競合）し（LR-031）、view 層で司書向けメッセージへ変換する。409 は `code` で分岐し、貸出中・取置き中の競合は Alert(destructive) に理由を表示して貸出可否判定画面へ戻る導線を出す。`LOAN_PERIOD_TYPE_MISMATCH` は ToggleGroup 直下にインラインエラー「この利用者区分では選択できない貸出期間区分です」を表示し、既定区分へ戻すアクションを提示する（画面遷移しない）。
+- **日付書式**: `ui-design.md`「日付・期限の表示規約」に従う（arch SR-004）。返却期限は `toLocaleDateString(&quot;ja-JP&quot;, { year: &quot;numeric&quot;, month: &quot;long&quot;, day: &quot;numeric&quot; })` で `YYYY年M月D日` に整形し、残日数は `あと{N}日` と併記する。API との送受信は ISO 8601 `YYYY-MM-DD` のままとする。
+- **画面遷移**: 遷移はすべて `useAppNavigation().navigate(&quot;&lt;ルート id&gt;&quot;)` で行い、URL 文字列を画面側に直書きしない。使用するルート id は `staff-loan-eligibility`（貸出可否判定画面へ戻る）と `staff-loan-new`（続けて貸し出す）。
+
+#### 操作フロー
+
+1. 貸出可否判定画面（`staff-loan-eligibility`）で「貸出可」の判定を受け、`useAppNavigation().navigate(&quot;staff-loan-new&quot;)` で窓口貸出受付画面へ前方遷移する。
+2. 書籍ID・利用者番号が初期表示され、BookCard / UserProfileCard に対象が表示される。
+3. 貸出期間区分の既定値（利用者区分に対応する区分）が選択された状態で、返却期限の見込みが DueDateIndicator に表示される。
+4. 司書が必要に応じて貸出期間区分を選択可能な区分の範囲で変更する。返却期限の表示が即座に更新される。選択不可の区分は disabled のため押下できない。
+5. 司書が「貸出を登録する」を押す。冪等キー付きで `POST /api/v1/loans` を呼び出す。
+6. 成功時、ページが `LoanResponse` を `result` に保持し、`LoanConfirmation` へ確定値として渡す。Alert(success) に貸出IDと確定した返却期限（`YYYY年M月D日`）を表示し、次の行動導線（続けて貸し出す = `staff-loan-new`）を 1 つ提示する（ピーク・エンドの法則）。
+7. 失敗時、Alert(destructive) に理由（貸出中 / 取置き中 / 未登録利用者）と再判定への導線（`staff-loan-eligibility`）を表示する。
+
+## コンポーネント設計
+
+受け渡しの所有権は `../../pipeline-opus-medium/specs/latest/_cross-cutting/ux-ui/common-components.md`「6. コンポーネント間の受け渡し規約」に従う。
+本 UC では次のとおり確定する。
+
+| 役割 | コンポーネント | 保持する state | 受け渡し |
+|------|--------------|---------------|---------|
+| 実行結果の所有者 | `LoanRegistrationPage`（ページ） | `result: LoanResponse \| null` / `submitting: boolean` / `error` | `POST /api/v1/loans`（`createLoan`）を呼ぶ唯一の主体。子へ `submitting` / `result` / ハンドラを渡す |
+| 入力・送信トリガ | `LoanRegistrationForm` | 入力値・項目別エラー・冪等キー | `onSubmit(input)` をページへ通知する。API を直接呼ばず、結果も保持しない |
+| 完了表示 | `LoanConfirmation` | なし（表示専用） | `result: LoanResponse` を確定値として受け取る。`null` の間は描画しない |
+| 期限表示 | `DueDatePreview` | なし（表示専用） | 登録前は見込み、登録後は `result.due_date` |
+
+### LoanRegistrationPage
+
+- **ベースコンポーネント**: `PortalPageLayout` + `AsyncSection` + `LoanRegistrationForm` + `LoanConfirmation`
+- **State**:
+  | State | 型 | 説明 |
+  |-------|---|------|
+  | result | `LoanResponse \| null` | 貸出登録の完了結果。`null` は「未実行」を表し、「結果 0 件」と区別する |
+  | submitting | `boolean` | 送信中フラグ。`SubmitActionButton` 経由で `LoadingState`（`kind=&quot;action&quot;`）に伝わる |
+  | error | `ApiError \| null` | `useApiErrorPresenter` で 4 分類に正規化したエラー |
+- **責務**: `createLoan` の呼び出し、冪等キーの保持（`useIdempotentMutation`）、キャッシュ無効化、次の行動導線の遷移（`useAppNavigation`）
+
+### LoanConfirmation
+
+- **ベースコンポーネント**: Alert（UI, `success`） + DueDatePreview
+- **Props**:
+  | Prop | 型 | 必須 | 説明 |
+  |------|---|------|------|
+  | result | `LoanResponse \| null` | Yes | 貸出登録の確定結果。`null` の間は何も描画しない。型は `_api-summary.yaml` の `response_schema`（`LoanResponse`）と同一で、画面側で別名の再定義をしない |
+  | onLoanSucceeded | `(result: LoanResponse) =&gt; void` | Yes | 次の行動導線（続けて貸し出す / 貸出一覧を見る）を親へ通知する。汎用名 `onLoan` / `onDone` は使わない |
+- **状態**: なし（表示専用。結果を自前の state に写さない）
+- **イベント**: `onLoanSucceeded`（利用者操作による次の行動の要求。遷移の実行主体はページ側）
+- **表示**: `result.loan_id` と `result.due_date`（`YYYY年M月D日` へ整形）、残日数（`あと{N}日`）
+
+### LoanRegistrationForm
+
+- **ベースコンポーネント**: Input（UI） + ToggleGroup（UI） + Button（UI）
+- **Props**:
+  | Prop | 型 | 必須 | 説明 |
+  |------|---|------|------|
+  | initialBookId | string | No | 書籍IDの初期値（判定画面からの引き継ぎ） |
+  | initialUserNo | string | No | 利用者番号の初期値（判定画面からの引き継ぎ） |
+  | userCategory | string | No | 利用者区分。貸出期間区分の既定選択の決定に使う |
+  | loanPeriodOptions | Array&lt;{ value: string; label: string; days: number }&gt; | Yes | 貸出期間区分（標準 / 短期 / 長期）とその日数 |
+  | submitting | boolean | Yes | true のとき `SubmitActionButton` を disabled / aria-busy にし、`LoadingState`（`kind=&quot;action&quot;`）を出す |
+  | onSubmit | (input: { bookId: string; userNo: string; loanPeriodType: string; idempotencyKey: string }) =&gt; void | Yes | 貸出登録をページへ要求する。本コンポーネントは API を直接呼ばない |
+- **状態**: `bookId` / `userNo` / `loanPeriodType`（入力値）、`idempotencyKey`（画面初期化時に 1 回だけ生成）、`fieldErrors`
+- **保持しない状態**: 貸出登録の結果（`LoanResponse`）。結果の所有者は `LoanRegistrationPage` である
+- **イベント**: `onChange`（入力・区分の変更）、`onSubmit`（貸出登録の要求）
+
+### DueDatePreview
+
+- **ベースコンポーネント**: DueDateIndicator（Domain）
+- **Props**:
+  | Prop | 型 | 必須 | 説明 |
+  |------|---|------|------|
+  | dueDate | string(date) | Yes | 選択中の貸出期間区分から算出した返却期限（登録前は見込み、登録後は API の `due_date`） |
+  | today | string(date) | Yes | 本日日付。残日数の算出に使う |
+  | state | &quot;safe&quot; \| &quot;near&quot; \| &quot;due-today&quot; \| &quot;overdue&quot; | Yes | 残日数から決まる表示段階。新規貸出は通常 &quot;safe&quot; |
+  | size | &quot;sm&quot; \| &quot;md&quot; | No | 表示サイズ |
+- **状態**: なし（表示専用）
+- **イベント**: なし
+
+## ティア完了条件（BDD）
+
+```gherkin
+Feature: 貸出を登録する - 司書ポータル
+
+  Scenario: 判定画面からの引き継ぎ値が初期表示される
+    Given 司書「山田花子」が貸出可否判定画面で書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-000123&quot;（利用者区分 &quot;一般&quot;）の「貸出可」判定を受けている
+    When 司書が窓口貸出受付画面（/staff/loans/new）へ進む
+    Then 書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-000123&quot; が入力欄に初期表示される
+    And 貸出期間区分の ToggleGroup で「標準」が初期選択される
+
+  Scenario: 貸出期間区分の変更で返却期限の表示が更新される
+    Given 司書「山田花子」が窓口貸出受付画面を開いており、本日が 2026-09-02 である
+    When 司書が貸出期間区分を「短期」（7 日）に変更する
+    Then DueDateIndicator の返却期限が「2026年9月9日」と表示される
+    And 残日数が「あと7日」と文言で表示される
+
+  Scenario: 選択できない貸出期間区分は押下できない
+    Given 司書「山田花子」が利用者区分 &quot;一般&quot; の利用者について窓口貸出受付画面を開いている
+    When 司書が貸出期間区分の ToggleGroup を確認する
+    Then 「長期」は disabled で aria-disabled が true である
+    And 「標準」「短期」は選択できる
+
+  Scenario: 登録中は二重送信を防止する
+    Given 司書「山田花子」が書籍ID &quot;B-000001&quot;、利用者番号 &quot;U-000123&quot;、貸出期間区分「標準」を指定している
+    When 司書が「貸出を登録する」を連続で 2 回押す
+    Then SubmitActionButton は disabled で aria-busy が true になり、LoadingState（kind=&quot;action&quot;）が表示される
+    And API リクエストは同一の X-Idempotency-Key で 1 回だけ送信される
+
+  Scenario: 対象の再取得中は LoadingState が表示される
+    Given 司書「山田花子」が引き継ぎ状態を持たずに窓口貸出受付画面（ルート id staff-loan-new）を直接開く
+    When 対象書籍と対象利用者の取得が完了していない
+    Then LoadingState（kind=&quot;detail&quot;、label &quot;貸出対象を読み込み中&quot;）が表示され aria-busy が true になる
+    And 画面独自のスピナー・Skeleton は表示されない
+
+  Scenario: 登録成功時に貸出IDと返却期限が表示される
+    Given 司書「山田花子」が窓口貸出受付画面で貸出情報を入力している
+    And API が貸出ID &quot;L-000001&quot;、返却期限 &quot;2026-09-16&quot; を返す
+    When 司書が「貸出を登録する」を押す
+    Then LoanRegistrationPage の result に LoanResponse が保持され、LoanConfirmation へ確定値として渡される
+    And Alert(success) に貸出ID &quot;L-000001&quot; と返却期限「2026年9月16日（あと14日）」が表示される
+    And 次の行動導線（続けて貸し出す）が 1 つ表示され、押下で useAppNavigation().navigate(&quot;staff-loan-new&quot;) が呼ばれる
+
+  Scenario: 貸出中の書籍への登録失敗時に理由と再判定導線を表示する
+    Given 司書「山田花子」が書籍ID &quot;B-000003&quot;、利用者番号 &quot;U-000123&quot; を指定している
+    And API が HTTP 409（code &quot;BOOK_NOT_AVAILABLE&quot;）を返す
+    When 司書が「貸出を登録する」を押す
+    Then Alert(destructive) に「この書籍は貸出中のため貸し出せません」が表示される
+    And 貸出可否判定画面へ戻る導線が表示される
+```
+
+## 共通コンポーネント参照
+
+`../../pipeline-opus-medium/specs/latest/_cross-cutting/ux-ui/common-components.md`（共通コンポーネント設計）を正本とし、本 UC の presentation を共通層へ接続する。共通コンポーネントは既存 UI / Domain コンポーネントの合成であり、新しい視覚表現・状態・トークンは導入しない。
+
+共通定義: [common-components.md](../../pipeline-opus-medium/specs/latest/_cross-cutting/ux-ui/common-components.md) の
+AppShell / PortalPageLayout / LoadingState / AsyncSection / EntityFormSection / SubmitActionButton / PiiMaskedText。
+インポートパスは各々 `@/components/common/{Name}`。使用箇所と供給値は次表で指定する。
+
+### Props マッピング
+
+| 共通コンポーネント | Props ← 本 UC の供給元 |
+|---|---|
+| `PortalPageLayout` | `portal` ← `&quot;staff&quot;` / `title` ← 画面見出し / `width` ← `&quot;contained&quot;` / `breadcrumb` ← 一覧 → 詳細 → 操作の現在位置 / `actions` ← 画面の主操作 / `children` ← 本画面の表示要素 |
+| `AppShell` | `routeId` ← `&quot;staff-loan-new&quot;` / `onNavigate` ← 実装リポのルーターの遷移関数（`router.push`） / `children` ← `LoanRegistrationPage` |
+| `LoadingState` | `kind` ← `&quot;detail&quot;`（対象取得中） / `label` ← `&quot;貸出対象を読み込み中&quot;` / `delayMs` ← `300` |
+| `AsyncSection` | `loading` ← LoanRegistrationForm の対象書籍・利用者の照会結果 の `loading` / `error` ← 同 `error` / `isEmpty` ← 取得件数 0 / `skeleton` ← `&quot;detail&quot;`（`LoadingState` の `kind` にそのまま渡る） / `loadingLabel` ← `&quot;貸出対象を読み込み中&quot;` / `emptyMessage` ← 本 UC の空状態メッセージ / `onRetry` ← 再取得ハンドラ / `announce` ← `true`（件数は `aria-live=&quot;polite&quot;`、エラーは `role=&quot;alert&quot;`） |
+| `EntityFormSection` | `mode` ← `&quot;action&quot;` / `fields` ← 書籍ID / 利用者番号（text）、貸出期間（single） / `value` `onChange` ← LoanRegistrationForm の同名 props / `current` ← — / `errors` ← 項目別エラー（`Input(error)`） / `formError` ← 業務エラー（`Alert`、`role=&quot;alert&quot;`） / `footer` ← `SubmitActionButton` |
+| `SubmitActionButton` | `idempotencyKey` ← `useIdempotentMutation` が画面表示時に発行した UUID（`X-Idempotency-Key`） / `variant` ← `&quot;default&quot;` / `onSubmit` ← 既存の送信ハンドラ / `submitting` ← `submitting`（`disabled` + `aria-busy=&quot;true&quot;`） / `children` ← 既存のボタンラベル |
+| `PiiMaskedText` | `value` ← 連絡先の値 / `kind` ← `email` / `revealable` ← true / `onReveal` ← 開示の監査ログ通知（NFR E.1.2.1 / arch SR-006） |
+
+### 共通フック
+
+| フック | インポートパス | 本 UC での用途 |
+|---|---|---|
+| `useIdempotentMutation` | `@/components/common/hooks/useIdempotentMutation` | 画面表示時に UUID を発行し、送信・再送で同一の `X-Idempotency-Key` を維持する（arch SR-002 / LR-032）。`SubmitActionButton` へ `idempotencyKey` と `submitting` を渡す |
+| `useApiErrorPresenter` | `@/components/common/hooks/useApiErrorPresenter` | API エラーを 4 分類（通信 / 認可 / 業務ルール違反 / 競合）に正規化し、表示先と重篤度を決める（arch LR-031 / CLP-014）。本 UC の「エラーハンドリング」の分岐は本フックの横断規約に従う |
+| `useAppNavigation` | `@/components/common/hooks/useAppNavigation` | 本画面からの遷移 API。`staff-loan-eligibility`（再判定へ戻る） / `staff-loan-new`（続けて貸し出す）をルート id で呼ぶ |
+
+### 適用上の注意
+
+- 上記の UC 固有コンポーネントは廃止せず、共通コンポーネントを内側で使う薄いアダプタとして残す（本書の BDD をそのまま満たすため）
+- ルート表 `appRoutes` と `AppShell` はデザインシステムが所有し、実装リポは `AppShell` の `onNavigate` にルーターの遷移関数を注入するだけにする（URL 文字列を画面側へ直書きしない）
+</pre></details><article class="document"><h1>貸出を登録する - 司書ポータル仕様</h1>
+<h2>変更概要</h2>
+<p>窓口貸出受付画面（<code>/staff/loans/new</code>）を追加する。貸出可否判定画面から引き継いだ書籍ID・利用者番号を初期表示し、貸出期間区分を ToggleGroup で選択させる。選択した区分から算出される返却期限を登録前に DueDateIndicator で確認させ、冪等キー付きで貸出を登録する。登録後は貸出一覧・蔵書一覧のキャッシュを無効化する。</p>
+<h2>画面仕様</h2>
+<h3>窓口貸出受付画面</h3>
+<ul>
+<li><strong>ルート id</strong>: <code>staff-loan-new</code></li>
+<li><strong>URL</strong>: <code>/staff/loans/new</code>（正本は <code>appRoutes</code>。画面側で URL 文字列を直書きしない）</li>
+<li><strong>アクセス権</strong>: 司書（司書ロールのトークンを持つ場合のみ表示。館内ネットワークからのアクセスに限定する）</li>
+<li><strong>ポータル</strong>: staff</li>
+</ul>
+<h4>表示要素とコンポーネントマッピング</h4>
+<table>
+<thead>
+<tr>
+<th>要素</th>
+<th>種別</th>
+<th>デザインシステムコンポーネント</th>
+<th>説明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ポータル骨格</td>
+<td>レイアウト</td>
+<td>PortalShell（variant: staff）</td>
+<td>司書ポータル共通レイアウト</td>
+</tr>
+<tr>
+<td>書籍ID入力</td>
+<td>フォーム</td>
+<td>Input（variant: default / error）</td>
+<td>判定画面から引き継いだ書籍IDを初期表示</td>
+</tr>
+<tr>
+<td>利用者番号入力</td>
+<td>フォーム</td>
+<td>Input（variant: default / error）</td>
+<td>判定画面から引き継いだ利用者番号を初期表示</td>
+</tr>
+<tr>
+<td>貸出期間区分の選択</td>
+<td>フォーム</td>
+<td>ToggleGroup（variant: single, size: md）</td>
+<td>標準 / 短期 / 長期。利用者区分の既定区分を初期選択し、選択可能集合に含まれない区分（一般利用者の「長期」）は disabled</td>
+</tr>
+<tr>
+<td>対象書籍の提示</td>
+<td>カード</td>
+<td>BookCard（variant: default）</td>
+<td>タイトル・著者・ジャンル・資料種別・書籍状態を表示</td>
+</tr>
+<tr>
+<td>対象利用者の提示</td>
+<td>カード</td>
+<td>UserProfileCard（variant: default）</td>
+<td>氏名・利用者区分・利用者状態。連絡先は既定でマスク</td>
+</tr>
+<tr>
+<td>返却期限の事前確認</td>
+<td>期限表示</td>
+<td>DueDateIndicator（variant: safe）</td>
+<td>選択中の貸出期間区分から算出した返却期限（<code>YYYY年M月D日</code>）と残日数（<code>あと{N}日</code>）を登録前に表示</td>
+</tr>
+<tr>
+<td>貸出登録</td>
+<td>ボタン</td>
+<td>SubmitActionButton（Button variant: default, size: md）</td>
+<td>主操作。送信中は <code>disabled</code> / <code>aria-busy</code> とし、待機表現は <code>LoadingState</code>（<code>kind=&quot;action&quot;</code>）に委譲</td>
+</tr>
+<tr>
+<td>対象の取得待ち</td>
+<td>ローディング</td>
+<td>LoadingState（<code>kind=&quot;detail&quot;</code>）</td>
+<td>引き継ぎ状態が無く書籍・利用者を再取得する間の待機表現（<code>AsyncSection</code> 経由）</td>
+</tr>
+<tr>
+<td>登録結果</td>
+<td>注意喚起</td>
+<td>Alert（variant: success / destructive）</td>
+<td>成功時は貸出IDと返却期限、失敗時は業務エラーの理由を表示</td>
+</tr>
+</tbody></table>
+<p>共通の色・余白・状態表現は <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/pipeline-opus-medium/specs/latest/_cross-cutting/ux-ui/ui-design.md">ui-design.md</a> と既存コンポーネントのトークンに従う。値は再掲しない。</p>
+<h4>UIロジック</h4>
+<ul>
+<li><strong>状態管理</strong>: 貸出可否判定画面から引き継いだ書籍ID・利用者番号・利用者区分を状態管理層から取得する（LP-030）。引き継ぎ状態が無い場合（直リンク・再読込）は <code>_api-summary.yaml</code> の <code>consumes:</code> に記録した <code>getBookAvailability</code> / <code>getLoanTarget</code> / <code>checkLoanEligibility</code> を呼んで再取得する。登録成功後は蔵書一覧（ルート id <code>staff-book-list</code>）・利用者名簿（<code>staff-user-list</code>）の関連キャッシュを無効化する。</li>
+<li><strong>バリデーション</strong>: 書籍ID・利用者番号の必須と形式、貸出期間区分の選択必須を送信前にチェックする。貸出可否そのものはフロント側で独自判定せず、API の応答を表示する（LR-030）。</li>
+<li><strong>返却期限の事前表示</strong>: 選択中の貸出期間区分に対応する日数を貸出日（本日）に加算した返却期限を DueDateIndicator で表示する。表示は <code>ui-design.md</code>「日付・期限の表示規約」に従い、日付を <code>YYYY年M月D日</code>、残日数を <code>あと{N}日</code> とする。この表示はあくまで確認用で、正となる返却期限は API のレスポンス（<code>due_date</code>、ISO 8601 <code>YYYY-MM-DD</code>）で置き換える。</li>
+<li><strong>ローディング</strong>: loading 表現は <code>LoadingState</code> に一本化する（画面側で独自の loading UI を作らない）。登録中は <code>SubmitActionButton</code> が <code>disabled</code> / <code>aria-busy=&quot;true&quot;</code> にしたうえで <code>LoadingState</code>（<code>kind=&quot;action&quot;</code>）を出す（arch SR-002）。対象書籍・利用者の再取得中は <code>AsyncSection</code> 経由で <code>LoadingState</code>（<code>kind=&quot;detail&quot;</code>、<code>label=&quot;貸出対象を読み込み中&quot;</code>、<code>delayMs=300</code>）を出す。</li>
+<li><strong>二重送信防止</strong>: 冪等キー（UUID）を画面で 1 回だけ生成し、<code>X-Idempotency-Key</code> ヘッダに付与する。再送時も同一キーを使う（LR-032 / arch CTP-006 の 4 層防御のフロントエンド分担）。同一キーでの再送に対する応答（保存済み結果のリプレイ / 409 <code>IDEMPOTENCY_KEY_IN_PROGRESS</code> / 409 <code>IDEMPOTENCY_KEY_CONFLICT</code>）は <code>../../pipeline-opus-medium/specs/latest/_cross-cutting/api/openapi.yaml</code> の <code>IdempotencyKeyHeader</code> を正本とし、リプレイ時は登録成功と同じ画面表示にする。</li>
+<li><strong>認証情報の送信</strong>: 司書の識別情報は <code>Authorization: Bearer {access_token}</code> のクレーム（<code>sub</code> / <code>role</code>）だけで送る。<code>X-User-No</code> 等の独自ヘッダを付けない。401（<code>UNAUTHENTICATED</code> / <code>TOKEN_EXPIRED</code> / <code>IDENTITY_CLAIM_MISSING</code>）は <code>useApiErrorPresenter</code> の「認可」分類として再ログイン導線を出す。</li>
+<li><strong>エラーハンドリング</strong>: api client から伝播したエラーを状態管理層で分類（通信 / 認可 / 業務ルール違反 / 競合）し（LR-031）、view 層で司書向けメッセージへ変換する。409 は <code>code</code> で分岐し、貸出中・取置き中の競合は Alert(destructive) に理由を表示して貸出可否判定画面へ戻る導線を出す。<code>LOAN_PERIOD_TYPE_MISMATCH</code> は ToggleGroup 直下にインラインエラー「この利用者区分では選択できない貸出期間区分です」を表示し、既定区分へ戻すアクションを提示する（画面遷移しない）。</li>
+<li><strong>日付書式</strong>: <code>ui-design.md</code>「日付・期限の表示規約」に従う（arch SR-004）。返却期限は <code>toLocaleDateString(&quot;ja-JP&quot;, { year: &quot;numeric&quot;, month: &quot;long&quot;, day: &quot;numeric&quot; })</code> で <code>YYYY年M月D日</code> に整形し、残日数は <code>あと{N}日</code> と併記する。API との送受信は ISO 8601 <code>YYYY-MM-DD</code> のままとする。</li>
+<li><strong>画面遷移</strong>: 遷移はすべて <code>useAppNavigation().navigate(&quot;&lt;ルート id&gt;&quot;)</code> で行い、URL 文字列を画面側に直書きしない。使用するルート id は <code>staff-loan-eligibility</code>（貸出可否判定画面へ戻る）と <code>staff-loan-new</code>（続けて貸し出す）。</li>
+</ul>
+<h4>操作フロー</h4>
+<ol>
+<li>貸出可否判定画面（<code>staff-loan-eligibility</code>）で「貸出可」の判定を受け、<code>useAppNavigation().navigate(&quot;staff-loan-new&quot;)</code> で窓口貸出受付画面へ前方遷移する。</li>
+<li>書籍ID・利用者番号が初期表示され、BookCard / UserProfileCard に対象が表示される。</li>
+<li>貸出期間区分の既定値（利用者区分に対応する区分）が選択された状態で、返却期限の見込みが DueDateIndicator に表示される。</li>
+<li>司書が必要に応じて貸出期間区分を選択可能な区分の範囲で変更する。返却期限の表示が即座に更新される。選択不可の区分は disabled のため押下できない。</li>
+<li>司書が「貸出を登録する」を押す。冪等キー付きで <code>POST /api/v1/loans</code> を呼び出す。</li>
+<li>成功時、ページが <code>LoanResponse</code> を <code>result</code> に保持し、<code>LoanConfirmation</code> へ確定値として渡す。Alert(success) に貸出IDと確定した返却期限（<code>YYYY年M月D日</code>）を表示し、次の行動導線（続けて貸し出す = <code>staff-loan-new</code>）を 1 つ提示する（ピーク・エンドの法則）。</li>
+<li>失敗時、Alert(destructive) に理由（貸出中 / 取置き中 / 未登録利用者）と再判定への導線（<code>staff-loan-eligibility</code>）を表示する。</li>
+</ol>
+<h2>コンポーネント設計</h2>
+<p>受け渡しの所有権は <code>../../pipeline-opus-medium/specs/latest/_cross-cutting/ux-ui/common-components.md</code>「6. コンポーネント間の受け渡し規約」に従う。
+本 UC では次のとおり確定する。</p>
+<table>
+<thead>
+<tr>
+<th>役割</th>
+<th>コンポーネント</th>
+<th>保持する state</th>
+<th>受け渡し</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>実行結果の所有者</td>
+<td><code>LoanRegistrationPage</code>（ページ）</td>
+<td><code>result: LoanResponse | null</code> / <code>submitting: boolean</code> / <code>error</code></td>
+<td><code>POST /api/v1/loans</code>（<code>createLoan</code>）を呼ぶ唯一の主体。子へ <code>submitting</code> / <code>result</code> / ハンドラを渡す</td>
+</tr>
+<tr>
+<td>入力・送信トリガ</td>
+<td><code>LoanRegistrationForm</code></td>
+<td>入力値・項目別エラー・冪等キー</td>
+<td><code>onSubmit(input)</code> をページへ通知する。API を直接呼ばず、結果も保持しない</td>
+</tr>
+<tr>
+<td>完了表示</td>
+<td><code>LoanConfirmation</code></td>
+<td>なし（表示専用）</td>
+<td><code>result: LoanResponse</code> を確定値として受け取る。<code>null</code> の間は描画しない</td>
+</tr>
+<tr>
+<td>期限表示</td>
+<td><code>DueDatePreview</code></td>
+<td>なし（表示専用）</td>
+<td>登録前は見込み、登録後は <code>result.due_date</code></td>
+</tr>
+</tbody></table>
+<h3>LoanRegistrationPage</h3>
+<ul>
+<li><strong>ベースコンポーネント</strong>: <code>PortalPageLayout</code> + <code>AsyncSection</code> + <code>LoanRegistrationForm</code> + <code>LoanConfirmation</code></li>
+<li><strong>State</strong>:<table>
+<thead>
+<tr>
+<th>State</th>
+<th>型</th>
+<th>説明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>result</td>
+<td><code>LoanResponse | null</code></td>
+<td>貸出登録の完了結果。<code>null</code> は「未実行」を表し、「結果 0 件」と区別する</td>
+</tr>
+<tr>
+<td>submitting</td>
+<td><code>boolean</code></td>
+<td>送信中フラグ。<code>SubmitActionButton</code> 経由で <code>LoadingState</code>（<code>kind=&quot;action&quot;</code>）に伝わる</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>ApiError | null</code></td>
+<td><code>useApiErrorPresenter</code> で 4 分類に正規化したエラー</td>
+</tr>
+</tbody></table>
+</li>
+<li><strong>責務</strong>: <code>createLoan</code> の呼び出し、冪等キーの保持（<code>useIdempotentMutation</code>）、キャッシュ無効化、次の行動導線の遷移（<code>useAppNavigation</code>）</li>
+</ul>
+<h3>LoanConfirmation</h3>
+<ul>
+<li><strong>ベースコンポーネント</strong>: Alert（UI, <code>success</code>） + DueDatePreview</li>
+<li><strong>Props</strong>:<table>
+<thead>
+<tr>
+<th>Prop</th>
+<th>型</th>
+<th>必須</th>
+<th>説明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>result</td>
+<td><code>LoanResponse | null</code></td>
+<td>Yes</td>
+<td>貸出登録の確定結果。<code>null</code> の間は何も描画しない。型は <code>_api-summary.yaml</code> の <code>response_schema</code>（<code>LoanResponse</code>）と同一で、画面側で別名の再定義をしない</td>
+</tr>
+<tr>
+<td>onLoanSucceeded</td>
+<td><code>(result: LoanResponse) =&gt; void</code></td>
+<td>Yes</td>
+<td>次の行動導線（続けて貸し出す / 貸出一覧を見る）を親へ通知する。汎用名 <code>onLoan</code> / <code>onDone</code> は使わない</td>
+</tr>
+</tbody></table>
+</li>
+<li><strong>状態</strong>: なし（表示専用。結果を自前の state に写さない）</li>
+<li><strong>イベント</strong>: <code>onLoanSucceeded</code>（利用者操作による次の行動の要求。遷移の実行主体はページ側）</li>
+<li><strong>表示</strong>: <code>result.loan_id</code> と <code>result.due_date</code>（<code>YYYY年M月D日</code> へ整形）、残日数（<code>あと{N}日</code>）</li>
+</ul>
+<h3>LoanRegistrationForm</h3>
+<ul>
+<li><strong>ベースコンポーネント</strong>: Input（UI） + ToggleGroup（UI） + Button（UI）</li>
+<li><strong>Props</strong>:<table>
+<thead>
+<tr>
+<th>Prop</th>
+<th>型</th>
+<th>必須</th>
+<th>説明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>initialBookId</td>
+<td>string</td>
+<td>No</td>
+<td>書籍IDの初期値（判定画面からの引き継ぎ）</td>
+</tr>
+<tr>
+<td>initialUserNo</td>
+<td>string</td>
+<td>No</td>
+<td>利用者番号の初期値（判定画面からの引き継ぎ）</td>
+</tr>
+<tr>
+<td>userCategory</td>
+<td>string</td>
+<td>No</td>
+<td>利用者区分。貸出期間区分の既定選択の決定に使う</td>
+</tr>
+<tr>
+<td>loanPeriodOptions</td>
+<td>Array&lt;{ value: string; label: string; days: number }&gt;</td>
+<td>Yes</td>
+<td>貸出期間区分（標準 / 短期 / 長期）とその日数</td>
+</tr>
+<tr>
+<td>submitting</td>
+<td>boolean</td>
+<td>Yes</td>
+<td>true のとき <code>SubmitActionButton</code> を disabled / aria-busy にし、<code>LoadingState</code>（<code>kind=&quot;action&quot;</code>）を出す</td>
+</tr>
+<tr>
+<td>onSubmit</td>
+<td>(input: { bookId: string; userNo: string; loanPeriodType: string; idempotencyKey: string }) =&gt; void</td>
+<td>Yes</td>
+<td>貸出登録をページへ要求する。本コンポーネントは API を直接呼ばない</td>
+</tr>
+</tbody></table>
+</li>
+<li><strong>状態</strong>: <code>bookId</code> / <code>userNo</code> / <code>loanPeriodType</code>（入力値）、<code>idempotencyKey</code>（画面初期化時に 1 回だけ生成）、<code>fieldErrors</code></li>
+<li><strong>保持しない状態</strong>: 貸出登録の結果（<code>LoanResponse</code>）。結果の所有者は <code>LoanRegistrationPage</code> である</li>
+<li><strong>イベント</strong>: <code>onChange</code>（入力・区分の変更）、<code>onSubmit</code>（貸出登録の要求）</li>
+</ul>
+<h3>DueDatePreview</h3>
+<ul>
+<li><strong>ベースコンポーネント</strong>: DueDateIndicator（Domain）</li>
+<li><strong>Props</strong>:<table>
+<thead>
+<tr>
+<th>Prop</th>
+<th>型</th>
+<th>必須</th>
+<th>説明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>dueDate</td>
+<td>string(date)</td>
+<td>Yes</td>
+<td>選択中の貸出期間区分から算出した返却期限（登録前は見込み、登録後は API の <code>due_date</code>）</td>
+</tr>
+<tr>
+<td>today</td>
+<td>string(date)</td>
+<td>Yes</td>
+<td>本日日付。残日数の算出に使う</td>
+</tr>
+<tr>
+<td>state</td>
+<td>&quot;safe&quot; | &quot;near&quot; | &quot;due-today&quot; | &quot;overdue&quot;</td>
+<td>Yes</td>
+<td>残日数から決まる表示段階。新規貸出は通常 &quot;safe&quot;</td>
+</tr>
+<tr>
+<td>size</td>
+<td>&quot;sm&quot; | &quot;md&quot;</td>
+<td>No</td>
+<td>表示サイズ</td>
+</tr>
+</tbody></table>
+</li>
+<li><strong>状態</strong>: なし（表示専用）</li>
+<li><strong>イベント</strong>: なし</li>
+</ul>
+<h2>ティア完了条件（BDD）</h2>
+<pre><code class="language-gherkin">Feature: 貸出を登録する - 司書ポータル
+
+  Scenario: 判定画面からの引き継ぎ値が初期表示される
+    Given 司書「山田花子」が貸出可否判定画面で書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-000123&quot;（利用者区分 &quot;一般&quot;）の「貸出可」判定を受けている
+    When 司書が窓口貸出受付画面（/staff/loans/new）へ進む
+    Then 書籍ID &quot;B-000001&quot; と利用者番号 &quot;U-000123&quot; が入力欄に初期表示される
+    And 貸出期間区分の ToggleGroup で「標準」が初期選択される
+
+  Scenario: 貸出期間区分の変更で返却期限の表示が更新される
+    Given 司書「山田花子」が窓口貸出受付画面を開いており、本日が 2026-09-02 である
+    When 司書が貸出期間区分を「短期」（7 日）に変更する
+    Then DueDateIndicator の返却期限が「2026年9月9日」と表示される
+    And 残日数が「あと7日」と文言で表示される
+
+  Scenario: 選択できない貸出期間区分は押下できない
+    Given 司書「山田花子」が利用者区分 &quot;一般&quot; の利用者について窓口貸出受付画面を開いている
+    When 司書が貸出期間区分の ToggleGroup を確認する
+    Then 「長期」は disabled で aria-disabled が true である
+    And 「標準」「短期」は選択できる
+
+  Scenario: 登録中は二重送信を防止する
+    Given 司書「山田花子」が書籍ID &quot;B-000001&quot;、利用者番号 &quot;U-000123&quot;、貸出期間区分「標準」を指定している
+    When 司書が「貸出を登録する」を連続で 2 回押す
+    Then SubmitActionButton は disabled で aria-busy が true になり、LoadingState（kind=&quot;action&quot;）が表示される
+    And API リクエストは同一の X-Idempotency-Key で 1 回だけ送信される
+
+  Scenario: 対象の再取得中は LoadingState が表示される
+    Given 司書「山田花子」が引き継ぎ状態を持たずに窓口貸出受付画面（ルート id staff-loan-new）を直接開く
+    When 対象書籍と対象利用者の取得が完了していない
+    Then LoadingState（kind=&quot;detail&quot;、label &quot;貸出対象を読み込み中&quot;）が表示され aria-busy が true になる
+    And 画面独自のスピナー・Skeleton は表示されない
+
+  Scenario: 登録成功時に貸出IDと返却期限が表示される
+    Given 司書「山田花子」が窓口貸出受付画面で貸出情報を入力している
+    And API が貸出ID &quot;L-000001&quot;、返却期限 &quot;2026-09-16&quot; を返す
+    When 司書が「貸出を登録する」を押す
+    Then LoanRegistrationPage の result に LoanResponse が保持され、LoanConfirmation へ確定値として渡される
+    And Alert(success) に貸出ID &quot;L-000001&quot; と返却期限「2026年9月16日（あと14日）」が表示される
+    And 次の行動導線（続けて貸し出す）が 1 つ表示され、押下で useAppNavigation().navigate(&quot;staff-loan-new&quot;) が呼ばれる
+
+  Scenario: 貸出中の書籍への登録失敗時に理由と再判定導線を表示する
+    Given 司書「山田花子」が書籍ID &quot;B-000003&quot;、利用者番号 &quot;U-000123&quot; を指定している
+    And API が HTTP 409（code &quot;BOOK_NOT_AVAILABLE&quot;）を返す
+    When 司書が「貸出を登録する」を押す
+    Then Alert(destructive) に「この書籍は貸出中のため貸し出せません」が表示される
+    And 貸出可否判定画面へ戻る導線が表示される
+</code></pre>
+<h2>共通コンポーネント参照</h2>
+<p><code>../../pipeline-opus-medium/specs/latest/_cross-cutting/ux-ui/common-components.md</code>（共通コンポーネント設計）を正本とし、本 UC の presentation を共通層へ接続する。共通コンポーネントは既存 UI / Domain コンポーネントの合成であり、新しい視覚表現・状態・トークンは導入しない。</p>
+<p>共通定義: <a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/pipeline-opus-medium/specs/latest/_cross-cutting/ux-ui/common-components.md">common-components.md</a> の
+AppShell / PortalPageLayout / LoadingState / AsyncSection / EntityFormSection / SubmitActionButton / PiiMaskedText。
+インポートパスは各々 <code>@/components/common/{Name}</code>。使用箇所と供給値は次表で指定する。</p>
+<h3>Props マッピング</h3>
+<table>
+<thead>
+<tr>
+<th>共通コンポーネント</th>
+<th>Props ← 本 UC の供給元</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>PortalPageLayout</code></td>
+<td><code>portal</code> ← <code>&quot;staff&quot;</code> / <code>title</code> ← 画面見出し / <code>width</code> ← <code>&quot;contained&quot;</code> / <code>breadcrumb</code> ← 一覧 → 詳細 → 操作の現在位置 / <code>actions</code> ← 画面の主操作 / <code>children</code> ← 本画面の表示要素</td>
+</tr>
+<tr>
+<td><code>AppShell</code></td>
+<td><code>routeId</code> ← <code>&quot;staff-loan-new&quot;</code> / <code>onNavigate</code> ← 実装リポのルーターの遷移関数（<code>router.push</code>） / <code>children</code> ← <code>LoanRegistrationPage</code></td>
+</tr>
+<tr>
+<td><code>LoadingState</code></td>
+<td><code>kind</code> ← <code>&quot;detail&quot;</code>（対象取得中） / <code>label</code> ← <code>&quot;貸出対象を読み込み中&quot;</code> / <code>delayMs</code> ← <code>300</code></td>
+</tr>
+<tr>
+<td><code>AsyncSection</code></td>
+<td><code>loading</code> ← LoanRegistrationForm の対象書籍・利用者の照会結果 の <code>loading</code> / <code>error</code> ← 同 <code>error</code> / <code>isEmpty</code> ← 取得件数 0 / <code>skeleton</code> ← <code>&quot;detail&quot;</code>（<code>LoadingState</code> の <code>kind</code> にそのまま渡る） / <code>loadingLabel</code> ← <code>&quot;貸出対象を読み込み中&quot;</code> / <code>emptyMessage</code> ← 本 UC の空状態メッセージ / <code>onRetry</code> ← 再取得ハンドラ / <code>announce</code> ← <code>true</code>（件数は <code>aria-live=&quot;polite&quot;</code>、エラーは <code>role=&quot;alert&quot;</code>）</td>
+</tr>
+<tr>
+<td><code>EntityFormSection</code></td>
+<td><code>mode</code> ← <code>&quot;action&quot;</code> / <code>fields</code> ← 書籍ID / 利用者番号（text）、貸出期間（single） / <code>value</code> <code>onChange</code> ← LoanRegistrationForm の同名 props / <code>current</code> ← — / <code>errors</code> ← 項目別エラー（<code>Input(error)</code>） / <code>formError</code> ← 業務エラー（<code>Alert</code>、<code>role=&quot;alert&quot;</code>） / <code>footer</code> ← <code>SubmitActionButton</code></td>
+</tr>
+<tr>
+<td><code>SubmitActionButton</code></td>
+<td><code>idempotencyKey</code> ← <code>useIdempotentMutation</code> が画面表示時に発行した UUID（<code>X-Idempotency-Key</code>） / <code>variant</code> ← <code>&quot;default&quot;</code> / <code>onSubmit</code> ← 既存の送信ハンドラ / <code>submitting</code> ← <code>submitting</code>（<code>disabled</code> + <code>aria-busy=&quot;true&quot;</code>） / <code>children</code> ← 既存のボタンラベル</td>
+</tr>
+<tr>
+<td><code>PiiMaskedText</code></td>
+<td><code>value</code> ← 連絡先の値 / <code>kind</code> ← <code>email</code> / <code>revealable</code> ← true / <code>onReveal</code> ← 開示の監査ログ通知（NFR E.1.2.1 / arch SR-006）</td>
+</tr>
+</tbody></table>
+<h3>共通フック</h3>
+<table>
+<thead>
+<tr>
+<th>フック</th>
+<th>インポートパス</th>
+<th>本 UC での用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>useIdempotentMutation</code></td>
+<td><code>@/components/common/hooks/useIdempotentMutation</code></td>
+<td>画面表示時に UUID を発行し、送信・再送で同一の <code>X-Idempotency-Key</code> を維持する（arch SR-002 / LR-032）。<code>SubmitActionButton</code> へ <code>idempotencyKey</code> と <code>submitting</code> を渡す</td>
+</tr>
+<tr>
+<td><code>useApiErrorPresenter</code></td>
+<td><code>@/components/common/hooks/useApiErrorPresenter</code></td>
+<td>API エラーを 4 分類（通信 / 認可 / 業務ルール違反 / 競合）に正規化し、表示先と重篤度を決める（arch LR-031 / CLP-014）。本 UC の「エラーハンドリング」の分岐は本フックの横断規約に従う</td>
+</tr>
+<tr>
+<td><code>useAppNavigation</code></td>
+<td><code>@/components/common/hooks/useAppNavigation</code></td>
+<td>本画面からの遷移 API。<code>staff-loan-eligibility</code>（再判定へ戻る） / <code>staff-loan-new</code>（続けて貸し出す）をルート id で呼ぶ</td>
+</tr>
+</tbody></table>
+<h3>適用上の注意</h3>
+<ul>
+<li>上記の UC 固有コンポーネントは廃止せず、共通コンポーネントを内側で使う薄いアダプタとして残す（本書の BDD をそのまま満たすため）</li>
+<li>ルート表 <code>appRoutes</code> と <code>AppShell</code> はデザインシステムが所有し、実装リポは <code>AppShell</code> の <code>onNavigate</code> にルーターの遷移関数を注入するだけにする（URL 文字列を画面側へ直書きしない）</li>
+</ul>
+</article><a class="back" href="#files">ファイル一覧へ戻る ↑</a></section><section id="summaries"><h2>A-4　既存のsummary</h2><p>上の3仕様に対応する機械可読なファイルです。比較例では元の内容を保持しています。</p><details ><summary>_api-summary.yaml <span class="meta">81行</span></summary><p>提供するAPI、利用するAPI、型の要約。以下は従来形式です。</p><p class="meta"><a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/_api-summary.yaml">実ファイルを開く</a></p><pre># _api-summary.yaml
+uc: &quot;貸出を登録する&quot;
+business: &quot;蔵書利用業務&quot;
+buc: &quot;書籍を貸し出すフロー&quot;
+endpoints:
+  - operation_id: &quot;createLoan&quot;
+    method: &quot;POST&quot;
+    path: &quot;/api/v1/loans&quot;
+    summary: &quot;貸出記録を作成し、返却期限を自動設定して書籍状態・利用者状態・予約状態を遷移させる（司書ロール限定・冪等キー必須）&quot;
+    request_schema: &quot;CreateLoanRequest&quot;
+    response_schema: &quot;LoanResponse&quot;
+    tags: [&quot;貸出&quot;]
+async_events: []
+
+# cross-UC API 依存。形式と所有一覧は _cross-cutting/api/uc-api-dependencies.md が正本。
+consumes:
+  - operation_id: &quot;checkLoanEligibility&quot;
+    method: &quot;POST&quot;
+    path: &quot;/api/v1/loans/eligibility-checks&quot;
+    owner_uc: &quot;書籍の貸出可否を判定する&quot;
+    contract: &quot;_cross-cutting/api/openapi.yaml&quot;
+    tier: &quot;tier-frontend-staff&quot;
+    purpose: &quot;貸出可否判定画面からの引き継ぎ状態が無い場合（直リンク・再読込）に貸出可否を再取得して登録可否を提示する&quot;
+    required: false
+  - operation_id: &quot;getBookAvailability&quot;
+    method: &quot;GET&quot;
+    path: &quot;/api/v1/books/{book_id}/availability&quot;
+    owner_uc: &quot;書籍詳細と在庫状況を照会する&quot;
+    contract: &quot;_cross-cutting/api/openapi.yaml&quot;
+    tier: &quot;tier-frontend-staff&quot;
+    purpose: &quot;BookCard に表示する対象書籍の書誌・資料種別・書籍状態を取得する（引き継ぎ状態が無い場合の再取得）&quot;
+    required: false
+  - operation_id: &quot;getLoanTarget&quot;
+    method: &quot;GET&quot;
+    path: &quot;/api/v1/loan-targets/{user_no}&quot;
+    owner_uc: &quot;利用者番号で貸出対象利用者を特定する&quot;
+    contract: &quot;_cross-cutting/api/openapi.yaml&quot;
+    tier: &quot;tier-frontend-staff&quot;
+    purpose: &quot;UserProfileCard に表示する貸出先利用者の氏名・利用者区分・利用者状態を取得する（引き継ぎ状態が無い場合の再取得）&quot;
+    required: false
+schemas:
+  - name: &quot;CreateLoanRequest&quot;
+    properties:
+      - name: &quot;book_id&quot;
+        type: &quot;string&quot;
+        required: true
+      - name: &quot;user_no&quot;
+        type: &quot;string&quot;
+        required: true
+      - name: &quot;loan_period_type&quot;
+        type: &quot;string&quot;
+        required: true
+  - name: &quot;LoanResponse&quot;
+    properties:
+      - name: &quot;loan_id&quot;
+        type: &quot;string&quot;
+        required: true
+      - name: &quot;book_id&quot;
+        type: &quot;string&quot;
+        required: true
+      - name: &quot;user_no&quot;
+        type: &quot;string&quot;
+        required: true
+      - name: &quot;loan_date&quot;
+        type: &quot;string(date)&quot;
+        required: true
+      - name: &quot;loan_period_type&quot;
+        type: &quot;string&quot;
+        required: true
+      - name: &quot;due_date&quot;
+        type: &quot;string(date)&quot;
+        required: true
+      - name: &quot;loan_status&quot;
+        type: &quot;string&quot;
+        required: true
+      - name: &quot;book_status&quot;
+        type: &quot;string&quot;
+        required: true
+      - name: &quot;reservation_id&quot;
+        type: &quot;string&quot;
+        required: false
+</pre></details><details ><summary>_model-summary.yaml <span class="meta">179行</span></summary><p>モデル配置、テーブルに対する参照・更新操作など。</p><p class="meta"><a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-concise/loan-registration/_model-summary.yaml">実ファイルを開く</a></p><pre># _model-summary.yaml
+uc: &quot;貸出を登録する&quot;
+business: &quot;蔵書利用業務&quot;
+buc: &quot;書籍を貸し出すフロー&quot;
+
+bounded_context_id: &quot;BC-003&quot;
+aggregate_id: &quot;AG-003&quot;
+
+models:
+  - name: &quot;窓口貸出受付画面（BookCard / UserProfileCard / ToggleGroup / DueDateIndicator）&quot;
+    tier: &quot;tier-frontend-staff&quot;
+    layer: &quot;view&quot;
+    type: &quot;view-model&quot;
+    rdra_info: &quot;貸出&quot;
+  - name: &quot;LoanRegistrationState&quot;
+    tier: &quot;tier-frontend-staff&quot;
+    layer: &quot;state&quot;
+    type: &quot;state&quot;
+    rdra_info: &quot;貸出&quot;
+  - name: &quot;CreateLoanRequest&quot;
+    tier: &quot;tier-frontend-staff&quot;
+    layer: &quot;api-client&quot;
+    type: &quot;request&quot;
+    rdra_info: &quot;貸出&quot;
+  - name: &quot;CreateLoanRequest&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;presentation&quot;
+    type: &quot;request-dto&quot;
+    rdra_info: &quot;貸出&quot;
+  - name: &quot;RegisterLoanCommand&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;usecase&quot;
+    type: &quot;command&quot;
+    rdra_info: &quot;貸出&quot;
+  - name: &quot;Loan&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;domain&quot;
+    type: &quot;entity&quot;
+    rdra_info: &quot;貸出&quot;
+  - name: &quot;DueDate&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;domain&quot;
+    type: &quot;value-object&quot;
+    rdra_info: &quot;貸出&quot;
+  - name: &quot;Book&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;domain&quot;
+    type: &quot;entity&quot;
+    rdra_info: &quot;書籍&quot;
+  - name: &quot;User&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;domain&quot;
+    type: &quot;entity&quot;
+    rdra_info: &quot;利用者&quot;
+  - name: &quot;Reservation&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;domain&quot;
+    type: &quot;entity&quot;
+    rdra_info: &quot;予約&quot;
+  - name: &quot;LoanRecord&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;gateway&quot;
+    type: &quot;record&quot;
+    rdra_info: &quot;貸出&quot;
+  - name: &quot;BookRecord&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;gateway&quot;
+    type: &quot;record&quot;
+    rdra_info: &quot;書籍&quot;
+  - name: &quot;UserRecord&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;gateway&quot;
+    type: &quot;record&quot;
+    rdra_info: &quot;利用者&quot;
+  - name: &quot;ReservationRecord&quot;
+    tier: &quot;tier-backend-api&quot;
+    layer: &quot;gateway&quot;
+    type: &quot;record&quot;
+    rdra_info: &quot;予約&quot;
+
+tables:
+  - name: &quot;loans&quot;
+    rdra_info: &quot;貸出&quot;
+    operations:
+      - type: &quot;INSERT&quot;
+        columns:
+          - name: &quot;loan_id&quot;
+            value: &quot;採番した貸出ID&quot;
+          - name: &quot;book_id&quot;
+            value: &quot;要求の book_id&quot;
+          - name: &quot;user_no&quot;
+            value: &quot;要求の user_no&quot;
+          - name: &quot;loan_date&quot;
+            value: &quot;貸出登録日（本日）&quot;
+          - name: &quot;loan_period_type&quot;
+            value: &quot;要求の loan_period_type（標準/短期/長期）&quot;
+          - name: &quot;due_date&quot;
+            value: &quot;loan_date + 貸出期間区分の日数（返却期限設定条件）&quot;
+          - name: &quot;loan_status&quot;
+            value: &quot;貸出中&quot;
+          - name: &quot;book_title&quot;
+            value: &quot;貸出時点の books の当該値のスナップショット&quot;
+          - name: &quot;book_author&quot;
+            value: &quot;貸出時点の books の当該値のスナップショット&quot;
+          - name: &quot;book_isbn&quot;
+            value: &quot;貸出時点の books の当該値のスナップショット&quot;
+          - name: &quot;book_genre&quot;
+            value: &quot;貸出時点の books の当該値のスナップショット&quot;
+        where: &quot;&quot;
+    indexes_needed:
+      - columns: [&quot;book_id&quot;, &quot;loan_status&quot;]
+        reason: &quot;同一書籍に有効な貸出（貸出中/延滞）が重複しないことの確認と、返却時の対象貸出特定に使う&quot;
+        access_pattern: &quot;書籍IDと貸出状態で有効な貸出の存在確認&quot;
+      - columns: [&quot;user_no&quot;, &quot;loan_status&quot;]
+        reason: &quot;利用者ごとの進行中貸出の有無確認（利用者状態の遷移判定・利用者削除可否条件）に使う&quot;
+        access_pattern: &quot;利用者番号と貸出状態での絞り込み&quot;
+  - name: &quot;books&quot;
+    rdra_info: &quot;書籍&quot;
+    operations:
+      - type: &quot;SELECT&quot;
+        columns: []
+        where: &quot;book_id = :book_id FOR UPDATE&quot;
+      - type: &quot;UPDATE&quot;
+        columns:
+          - name: &quot;book_status&quot;
+            value: &quot;貸出中&quot;
+          - name: &quot;updated_at&quot;
+            value: &quot;貸出登録イベントの発生時刻&quot;
+        where: &quot;book_id = :book_id AND book_status IN ('在庫あり','予約待ち')&quot;
+    indexes_needed:
+      - columns: [&quot;book_id&quot;]
+        reason: &quot;貸出対象書籍の取得と更新。主キーで充足する&quot;
+        access_pattern: &quot;書籍IDによる 1 件取得・更新&quot;
+  - name: &quot;users&quot;
+    rdra_info: &quot;利用者&quot;
+    operations:
+      - type: &quot;SELECT&quot;
+        columns: []
+        where: &quot;user_no = :user_no&quot;
+      - type: &quot;UPDATE&quot;
+        columns:
+          - name: &quot;user_status&quot;
+            value: &quot;取引進行中&quot;
+          - name: &quot;updated_at&quot;
+            value: &quot;貸出登録イベントの発生時刻&quot;
+        where: &quot;user_no = :user_no AND user_status = '登録済み'&quot;
+    indexes_needed:
+      - columns: [&quot;user_no&quot;]
+        reason: &quot;貸出先利用者の取得と更新。主キーで充足する&quot;
+        access_pattern: &quot;利用者番号による 1 件取得・更新&quot;
+  - name: &quot;reservations&quot;
+    rdra_info: &quot;予約&quot;
+    operations:
+      - type: &quot;SELECT&quot;
+        columns: []
+        where: &quot;book_id = :book_id AND reservation_status = '取置き中' ORDER BY priority ASC&quot;
+      # 予約状態遷移規則（_cross-cutting/datastore/rdb-schema.yaml の state_transition_rules
+      # 「予約状態遷移規則」の 取置き中 → 貸出済み）に従う。同時更新列を分割しない。
+      - type: &quot;UPDATE&quot;
+        columns:
+          - name: &quot;reservation_status&quot;
+            value: &quot;貸出済み&quot;
+          - name: &quot;hold_expires_at&quot;
+            value: &quot;NULL（取置きが成立して終了したため保持期限を残さない。reservation_status と同一 UPDATE 文で更新する）&quot;
+        where: &quot;reservation_id = :reservation_id AND reservation_status = '取置き中'&quot;
+    indexes_needed:
+      - columns: [&quot;book_id&quot;, &quot;reservation_status&quot;, &quot;priority&quot;]
+        reason: &quot;取置き中書籍貸出条件で対象書籍の取置き中予約を順位順に特定する&quot;
+        access_pattern: &quot;書籍ID + 予約状態で絞り込み、予約順位の昇順で先頭 1 件を取得&quot;
+
+kvs:
+  - key_pattern: &quot;idem:api:createLoan:{idempotency_key}&quot;
+    purpose: &quot;idem&quot;
+    description: &quot;冪等キー検証（二重登録防止）&quot;
+    value_type: &quot;処理済みの貸出ID&quot;
+    ttl: &quot;24h&quot;
+    operations: [&quot;GET&quot;, &quot;SET&quot;]
+
+object_storage: []
+</pre></details></section><section id="catalog"><h2>B　catalog方式で生成される実物</h2><p>以下は3 UCのHTTP APIとイベントを含む<strong>独立したテスト用サンプル</strong>です。上の実業務サンプルと項目・パス・イベント有無が異なります。形式の確認に使います。</p><p>貸出登録が提供する操作と、書籍照会から利用する操作を索引に記録し、その契約と参照先の型を抜粋に含めています。YAMLファイルはJSON構文（YAML 1.2の一部として解釈できる形式）で直列化しています。</p><details open><summary>生成物：_api-summary.yaml <span class="meta">43行</span></summary><p>操作名、所有者、参照先、抜粋のhashを記録する索引です。型はここで再定義しません。</p><p class="meta"><a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-contracts/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99/%E8%B2%B8%E5%87%BA%E3%83%95%E3%83%AD%E3%83%BC/%E8%B2%B8%E5%87%BA%E7%99%BB%E9%8C%B2/_api-summary.yaml">実ファイルを開く</a></p><pre>{
+  &quot;async_events&quot;: [
+    {
+      &quot;channel&quot;: &quot;#/channels/loan~1created&quot;,
+      &quot;contract_ref&quot;: &quot;asyncapi#/operations/sendLoan&quot;,
+      &quot;direction&quot;: &quot;publish&quot;,
+      &quot;kind&quot;: &quot;asyncapi&quot;,
+      &quot;name&quot;: &quot;sendLoan&quot;,
+      &quot;operation_id&quot;: &quot;sendLoan&quot;,
+      &quot;summary&quot;: &quot;sendLoan&quot;,
+      &quot;tier&quot;: &quot;tier-api&quot;
+    }
+  ],
+  &quot;buc&quot;: &quot;貸出フロー&quot;,
+  &quot;business&quot;: &quot;貸出業務&quot;,
+  &quot;consumes&quot;: [
+    {
+      &quot;contract_ref&quot;: &quot;openapi#/paths/~1books~1{id}/get&quot;,
+      &quot;kind&quot;: &quot;openapi&quot;,
+      &quot;method&quot;: &quot;GET&quot;,
+      &quot;operation_id&quot;: &quot;getBook&quot;,
+      &quot;owner_uc&quot;: &quot;蔵書業務/照会フロー/書籍照会&quot;,
+      &quot;path&quot;: &quot;/books/{id}&quot;,
+      &quot;summary&quot;: &quot;Get book&quot;,
+      &quot;tier&quot;: &quot;tier-frontend&quot;
+    }
+  ],
+  &quot;contract_sha256&quot;: &quot;7700aa5b57a18a85588f72a6a1d40950ae1c25b8910c9cfd09e8cce6b5dce2bb&quot;,
+  &quot;contract_slice&quot;: &quot;_contract-slice.json&quot;,
+  &quot;endpoints&quot;: [
+    {
+      &quot;contract_ref&quot;: &quot;openapi#/paths/~1loans/post&quot;,
+      &quot;kind&quot;: &quot;openapi&quot;,
+      &quot;method&quot;: &quot;POST&quot;,
+      &quot;operation_id&quot;: &quot;createLoan&quot;,
+      &quot;path&quot;: &quot;/loans&quot;,
+      &quot;summary&quot;: &quot;Register loan&quot;,
+      &quot;tier&quot;: &quot;tier-api&quot;
+    }
+  ],
+  &quot;schema_version&quot;: &quot;distillery.api-summary/v2&quot;,
+  &quot;uc&quot;: &quot;貸出登録&quot;
+}
+</pre></details><details ><summary>生成物：_contract-slice.json <span class="meta">274行</span></summary><p>当該UCが提供・利用するAPIと、型・認証・共通エラー等の参照先。こちらに完全な契約を保持します。</p><p class="meta"><a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-contracts/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99/%E8%B2%B8%E5%87%BA%E3%83%95%E3%83%AD%E3%83%BC/%E8%B2%B8%E5%87%BA%E7%99%BB%E9%8C%B2/_contract-slice.json">実ファイルを開く</a></p><pre>{
+  &quot;asyncapi&quot;: {
+    &quot;asyncapi&quot;: &quot;3.0.0&quot;,
+    &quot;channels&quot;: {
+      &quot;loan/created&quot;: {
+        &quot;address&quot;: &quot;loan.created&quot;,
+        &quot;messages&quot;: {
+          &quot;LoanCreated&quot;: {
+            &quot;$ref&quot;: &quot;#/components/messages/LoanCreated&quot;
+          }
+        },
+        &quot;servers&quot;: [
+          {
+            &quot;$ref&quot;: &quot;#/servers/broker&quot;
+          }
+        ]
+      }
+    },
+    &quot;components&quot;: {
+      &quot;messages&quot;: {
+        &quot;LoanCreated&quot;: {
+          &quot;headers&quot;: {
+            &quot;properties&quot;: {
+              &quot;idempotency_key&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;idempotency_key&quot;
+            ],
+            &quot;type&quot;: &quot;object&quot;
+          },
+          &quot;name&quot;: &quot;LoanCreated&quot;,
+          &quot;payload&quot;: {
+            &quot;$ref&quot;: &quot;#/components/schemas/LoanCreatedPayload&quot;
+          },
+          &quot;title&quot;: &quot;Loan created&quot;
+        }
+      },
+      &quot;schemas&quot;: {
+        &quot;LoanCreatedPayload&quot;: {
+          &quot;properties&quot;: {
+            &quot;loanId&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;loanId&quot;
+          ],
+          &quot;title&quot;: &quot;LoanCreatedPayload&quot;,
+          &quot;type&quot;: &quot;object&quot;
+        }
+      }
+    },
+    &quot;info&quot;: {
+      &quot;title&quot;: &quot;Events&quot;,
+      &quot;version&quot;: &quot;1.0.0&quot;
+    },
+    &quot;operations&quot;: {
+      &quot;sendLoan&quot;: {
+        &quot;action&quot;: &quot;send&quot;,
+        &quot;channel&quot;: {
+          &quot;$ref&quot;: &quot;#/channels/loan~1created&quot;
+        },
+        &quot;messages&quot;: [
+          {
+            &quot;$ref&quot;: &quot;#/channels/loan~1created/messages/LoanCreated&quot;
+          }
+        ]
+      }
+    },
+    &quot;servers&quot;: {
+      &quot;broker&quot;: {
+        &quot;host&quot;: &quot;mq.example.com&quot;,
+        &quot;protocol&quot;: &quot;amqp&quot;
+      }
+    }
+  },
+  &quot;openapi&quot;: {
+    &quot;components&quot;: {
+      &quot;parameters&quot;: {
+        &quot;Idempotency&quot;: {
+          &quot;in&quot;: &quot;header&quot;,
+          &quot;name&quot;: &quot;Idempotency-Key&quot;,
+          &quot;required&quot;: true,
+          &quot;schema&quot;: {
+            &quot;format&quot;: &quot;uuid&quot;,
+            &quot;type&quot;: &quot;string&quot;
+          }
+        }
+      },
+      &quot;responses&quot;: {
+        &quot;Conflict&quot;: {
+          &quot;content&quot;: {
+            &quot;application/problem+json&quot;: {
+              &quot;schema&quot;: {
+                &quot;$ref&quot;: &quot;#/components/schemas/Problem&quot;
+              }
+            }
+          },
+          &quot;description&quot;: &quot;conflict&quot;
+        }
+      },
+      &quot;schemas&quot;: {
+        &quot;Book&quot;: {
+          &quot;properties&quot;: {
+            &quot;title&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          },
+          &quot;type&quot;: &quot;object&quot;
+        },
+        &quot;CreateLoan&quot;: {
+          &quot;additionalProperties&quot;: false,
+          &quot;properties&quot;: {
+            &quot;bookId&quot;: {
+              &quot;minLength&quot;: 1,
+              &quot;type&quot;: &quot;string&quot;
+            },
+            &quot;days&quot;: {
+              &quot;enum&quot;: [
+                7,
+                14,
+                28
+              ],
+              &quot;type&quot;: &quot;integer&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;bookId&quot;
+          ],
+          &quot;type&quot;: &quot;object&quot;
+        },
+        &quot;Loan&quot;: {
+          &quot;properties&quot;: {
+            &quot;dueDate&quot;: {
+              &quot;format&quot;: &quot;date&quot;,
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ]
+            },
+            &quot;next&quot;: {
+              &quot;$ref&quot;: &quot;#/components/schemas/Loan&quot;
+            }
+          },
+          &quot;type&quot;: &quot;object&quot;
+        },
+        &quot;Problem&quot;: {
+          &quot;properties&quot;: {
+            &quot;code&quot;: {
+              &quot;enum&quot;: [
+                &quot;BOOK_NOT_AVAILABLE&quot;,
+                &quot;CONFLICT&quot;
+              ],
+              &quot;type&quot;: &quot;string&quot;
+            }
+          },
+          &quot;type&quot;: &quot;object&quot;
+        }
+      },
+      &quot;securitySchemes&quot;: {
+        &quot;bearer&quot;: {
+          &quot;flows&quot;: {
+            &quot;clientCredentials&quot;: {
+              &quot;scopes&quot;: {
+                &quot;staff&quot;: &quot;Staff&quot;
+              },
+              &quot;tokenUrl&quot;: &quot;https://id.example.com/token&quot;
+            }
+          },
+          &quot;type&quot;: &quot;oauth2&quot;
+        }
+      }
+    },
+    &quot;info&quot;: {
+      &quot;title&quot;: &quot;Library&quot;,
+      &quot;version&quot;: &quot;1.0.0&quot;
+    },
+    &quot;openapi&quot;: &quot;3.1.0&quot;,
+    &quot;paths&quot;: {
+      &quot;/books/{id}&quot;: {
+        &quot;get&quot;: {
+          &quot;operationId&quot;: &quot;getBook&quot;,
+          &quot;responses&quot;: {
+            &quot;200&quot;: {
+              &quot;content&quot;: {
+                &quot;application/json&quot;: {
+                  &quot;schema&quot;: {
+                    &quot;$ref&quot;: &quot;#/components/schemas/Book&quot;
+                  }
+                }
+              },
+              &quot;description&quot;: &quot;book&quot;
+            }
+          },
+          &quot;summary&quot;: &quot;Get book&quot;
+        },
+        &quot;parameters&quot;: [
+          {
+            &quot;in&quot;: &quot;path&quot;,
+            &quot;name&quot;: &quot;id&quot;,
+            &quot;required&quot;: true,
+            &quot;schema&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          }
+        ]
+      },
+      &quot;/loans&quot;: {
+        &quot;parameters&quot;: [
+          {
+            &quot;$ref&quot;: &quot;#/components/parameters/Idempotency&quot;
+          }
+        ],
+        &quot;post&quot;: {
+          &quot;operationId&quot;: &quot;createLoan&quot;,
+          &quot;requestBody&quot;: {
+            &quot;content&quot;: {
+              &quot;application/json&quot;: {
+                &quot;schema&quot;: {
+                  &quot;$ref&quot;: &quot;#/components/schemas/CreateLoan&quot;
+                }
+              }
+            },
+            &quot;required&quot;: true
+          },
+          &quot;responses&quot;: {
+            &quot;201&quot;: {
+              &quot;content&quot;: {
+                &quot;application/json&quot;: {
+                  &quot;schema&quot;: {
+                    &quot;$ref&quot;: &quot;#/components/schemas/Loan&quot;
+                  }
+                }
+              },
+              &quot;description&quot;: &quot;created&quot;,
+              &quot;headers&quot;: {
+                &quot;Location&quot;: {
+                  &quot;schema&quot;: {
+                    &quot;type&quot;: &quot;string&quot;
+                  }
+                }
+              }
+            },
+            &quot;409&quot;: {
+              &quot;$ref&quot;: &quot;#/components/responses/Conflict&quot;
+            }
+          },
+          &quot;security&quot;: [
+            {
+              &quot;bearer&quot;: [
+                &quot;staff&quot;
+              ]
+            }
+          ],
+          &quot;summary&quot;: &quot;Register loan&quot;,
+          &quot;x-rule&quot;: &quot;loan-eligibility&quot;
+        }
+      }
+    },
+    &quot;security&quot;: [
+      {
+        &quot;bearer&quot;: []
+      }
+    ],
+    &quot;servers&quot;: [
+      {
+        &quot;url&quot;: &quot;https://library.example.com&quot;
+      }
+    ]
+  },
+  &quot;schema_version&quot;: &quot;distillery.contract-slice/v1&quot;
+}
+</pre></details><details ><summary>編集元：contracts.json <span class="meta">338行</span></summary><p>完全なOpenAPI/AsyncAPIとUCの提供・利用操作の対応を保持する正本です。</p><p class="meta"><a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-contracts/_cross-cutting/api/contracts.json">実ファイルを開く</a></p><pre>{
+  &quot;schema_version&quot;: &quot;distillery.contracts/v1&quot;,
+  &quot;openapi&quot;: {
+    &quot;openapi&quot;: &quot;3.1.0&quot;,
+    &quot;info&quot;: {
+      &quot;title&quot;: &quot;Library&quot;,
+      &quot;version&quot;: &quot;1.0.0&quot;
+    },
+    &quot;servers&quot;: [
+      {
+        &quot;url&quot;: &quot;https://library.example.com&quot;
+      }
+    ],
+    &quot;security&quot;: [
+      {
+        &quot;bearer&quot;: []
+      }
+    ],
+    &quot;paths&quot;: {
+      &quot;/loans&quot;: {
+        &quot;parameters&quot;: [
+          {
+            &quot;$ref&quot;: &quot;#/components/parameters/Idempotency&quot;
+          }
+        ],
+        &quot;post&quot;: {
+          &quot;operationId&quot;: &quot;createLoan&quot;,
+          &quot;summary&quot;: &quot;Register loan&quot;,
+          &quot;security&quot;: [
+            {
+              &quot;bearer&quot;: [
+                &quot;staff&quot;
+              ]
+            }
+          ],
+          &quot;requestBody&quot;: {
+            &quot;required&quot;: true,
+            &quot;content&quot;: {
+              &quot;application/json&quot;: {
+                &quot;schema&quot;: {
+                  &quot;$ref&quot;: &quot;#/components/schemas/CreateLoan&quot;
+                }
+              }
+            }
+          },
+          &quot;responses&quot;: {
+            &quot;201&quot;: {
+              &quot;description&quot;: &quot;created&quot;,
+              &quot;headers&quot;: {
+                &quot;Location&quot;: {
+                  &quot;schema&quot;: {
+                    &quot;type&quot;: &quot;string&quot;
+                  }
+                }
+              },
+              &quot;content&quot;: {
+                &quot;application/json&quot;: {
+                  &quot;schema&quot;: {
+                    &quot;$ref&quot;: &quot;#/components/schemas/Loan&quot;
+                  }
+                }
+              }
+            },
+            &quot;409&quot;: {
+              &quot;$ref&quot;: &quot;#/components/responses/Conflict&quot;
+            }
+          },
+          &quot;x-rule&quot;: &quot;loan-eligibility&quot;
+        }
+      },
+      &quot;/books/{id}&quot;: {
+        &quot;parameters&quot;: [
+          {
+            &quot;name&quot;: &quot;id&quot;,
+            &quot;in&quot;: &quot;path&quot;,
+            &quot;required&quot;: true,
+            &quot;schema&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          }
+        ],
+        &quot;get&quot;: {
+          &quot;operationId&quot;: &quot;getBook&quot;,
+          &quot;summary&quot;: &quot;Get book&quot;,
+          &quot;responses&quot;: {
+            &quot;200&quot;: {
+              &quot;description&quot;: &quot;book&quot;,
+              &quot;content&quot;: {
+                &quot;application/json&quot;: {
+                  &quot;schema&quot;: {
+                    &quot;$ref&quot;: &quot;#/components/schemas/Book&quot;
+                  }
+                }
+              }
+            }
+          }
+        },
+        &quot;delete&quot;: {
+          &quot;operationId&quot;: &quot;deleteBook&quot;,
+          &quot;summary&quot;: &quot;Delete book&quot;,
+          &quot;responses&quot;: {
+            &quot;204&quot;: {
+              &quot;description&quot;: &quot;deleted&quot;
+            }
+          }
+        }
+      }
+    },
+    &quot;components&quot;: {
+      &quot;parameters&quot;: {
+        &quot;Idempotency&quot;: {
+          &quot;name&quot;: &quot;Idempotency-Key&quot;,
+          &quot;in&quot;: &quot;header&quot;,
+          &quot;required&quot;: true,
+          &quot;schema&quot;: {
+            &quot;type&quot;: &quot;string&quot;,
+            &quot;format&quot;: &quot;uuid&quot;
+          }
+        }
+      },
+      &quot;securitySchemes&quot;: {
+        &quot;bearer&quot;: {
+          &quot;type&quot;: &quot;oauth2&quot;,
+          &quot;flows&quot;: {
+            &quot;clientCredentials&quot;: {
+              &quot;tokenUrl&quot;: &quot;https://id.example.com/token&quot;,
+              &quot;scopes&quot;: {
+                &quot;staff&quot;: &quot;Staff&quot;
+              }
+            }
+          }
+        }
+      },
+      &quot;responses&quot;: {
+        &quot;Conflict&quot;: {
+          &quot;description&quot;: &quot;conflict&quot;,
+          &quot;content&quot;: {
+            &quot;application/problem+json&quot;: {
+              &quot;schema&quot;: {
+                &quot;$ref&quot;: &quot;#/components/schemas/Problem&quot;
+              }
+            }
+          }
+        }
+      },
+      &quot;schemas&quot;: {
+        &quot;CreateLoan&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;required&quot;: [
+            &quot;bookId&quot;
+          ],
+          &quot;properties&quot;: {
+            &quot;bookId&quot;: {
+              &quot;type&quot;: &quot;string&quot;,
+              &quot;minLength&quot;: 1
+            },
+            &quot;days&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;enum&quot;: [
+                7,
+                14,
+                28
+              ]
+            }
+          },
+          &quot;additionalProperties&quot;: false
+        },
+        &quot;Loan&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;next&quot;: {
+              &quot;$ref&quot;: &quot;#/components/schemas/Loan&quot;
+            },
+            &quot;dueDate&quot;: {
+              &quot;type&quot;: [
+                &quot;string&quot;,
+                &quot;null&quot;
+              ],
+              &quot;format&quot;: &quot;date&quot;
+            }
+          }
+        },
+        &quot;Book&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;title&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          }
+        },
+        &quot;Problem&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;properties&quot;: {
+            &quot;code&quot;: {
+              &quot;type&quot;: &quot;string&quot;,
+              &quot;enum&quot;: [
+                &quot;BOOK_NOT_AVAILABLE&quot;,
+                &quot;CONFLICT&quot;
+              ]
+            }
+          }
+        },
+        &quot;Unused&quot;: {
+          &quot;type&quot;: &quot;string&quot;
+        }
+      }
+    }
+  },
+  &quot;asyncapi&quot;: {
+    &quot;asyncapi&quot;: &quot;3.0.0&quot;,
+    &quot;info&quot;: {
+      &quot;title&quot;: &quot;Events&quot;,
+      &quot;version&quot;: &quot;1.0.0&quot;
+    },
+    &quot;servers&quot;: {
+      &quot;broker&quot;: {
+        &quot;host&quot;: &quot;mq.example.com&quot;,
+        &quot;protocol&quot;: &quot;amqp&quot;
+      }
+    },
+    &quot;channels&quot;: {
+      &quot;loan/created&quot;: {
+        &quot;address&quot;: &quot;loan.created&quot;,
+        &quot;servers&quot;: [
+          {
+            &quot;$ref&quot;: &quot;#/servers/broker&quot;
+          }
+        ],
+        &quot;messages&quot;: {
+          &quot;LoanCreated&quot;: {
+            &quot;$ref&quot;: &quot;#/components/messages/LoanCreated&quot;
+          }
+        }
+      }
+    },
+    &quot;operations&quot;: {
+      &quot;sendLoan&quot;: {
+        &quot;action&quot;: &quot;send&quot;,
+        &quot;channel&quot;: {
+          &quot;$ref&quot;: &quot;#/channels/loan~1created&quot;
+        },
+        &quot;messages&quot;: [
+          {
+            &quot;$ref&quot;: &quot;#/channels/loan~1created/messages/LoanCreated&quot;
+          }
+        ]
+      }
+    },
+    &quot;components&quot;: {
+      &quot;messages&quot;: {
+        &quot;LoanCreated&quot;: {
+          &quot;name&quot;: &quot;LoanCreated&quot;,
+          &quot;title&quot;: &quot;Loan created&quot;,
+          &quot;payload&quot;: {
+            &quot;$ref&quot;: &quot;#/components/schemas/LoanCreatedPayload&quot;
+          },
+          &quot;headers&quot;: {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;required&quot;: [
+              &quot;idempotency_key&quot;
+            ],
+            &quot;properties&quot;: {
+              &quot;idempotency_key&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              }
+            }
+          }
+        }
+      },
+      &quot;schemas&quot;: {
+        &quot;LoanCreatedPayload&quot;: {
+          &quot;type&quot;: &quot;object&quot;,
+          &quot;title&quot;: &quot;LoanCreatedPayload&quot;,
+          &quot;required&quot;: [
+            &quot;loanId&quot;
+          ],
+          &quot;properties&quot;: {
+            &quot;loanId&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          }
+        }
+      }
+    }
+  },
+  &quot;use_cases&quot;: [
+    {
+      &quot;business&quot;: &quot;貸出業務&quot;,
+      &quot;buc&quot;: &quot;貸出フロー&quot;,
+      &quot;uc&quot;: &quot;貸出登録&quot;,
+      &quot;provides&quot;: [
+        {
+          &quot;kind&quot;: &quot;openapi&quot;,
+          &quot;operation_id&quot;: &quot;createLoan&quot;,
+          &quot;tier&quot;: &quot;tier-api&quot;
+        },
+        {
+          &quot;kind&quot;: &quot;asyncapi&quot;,
+          &quot;operation_id&quot;: &quot;sendLoan&quot;,
+          &quot;tier&quot;: &quot;tier-api&quot;
+        }
+      ],
+      &quot;consumes&quot;: [
+        {
+          &quot;kind&quot;: &quot;openapi&quot;,
+          &quot;operation_id&quot;: &quot;getBook&quot;,
+          &quot;tier&quot;: &quot;tier-frontend&quot;
+        }
+      ]
+    },
+    {
+      &quot;business&quot;: &quot;蔵書業務&quot;,
+      &quot;buc&quot;: &quot;照会フロー&quot;,
+      &quot;uc&quot;: &quot;書籍照会&quot;,
+      &quot;provides&quot;: [
+        {
+          &quot;kind&quot;: &quot;openapi&quot;,
+          &quot;operation_id&quot;: &quot;getBook&quot;,
+          &quot;tier&quot;: &quot;tier-api&quot;
+        }
+      ],
+      &quot;consumes&quot;: []
+    },
+    {
+      &quot;business&quot;: &quot;蔵書業務&quot;,
+      &quot;buc&quot;: &quot;削除フロー&quot;,
+      &quot;uc&quot;: &quot;書籍削除&quot;,
+      &quot;provides&quot;: [
+        {
+          &quot;kind&quot;: &quot;openapi&quot;,
+          &quot;operation_id&quot;: &quot;deleteBook&quot;,
+          &quot;tier&quot;: &quot;tier-api&quot;
+        }
+      ],
+      &quot;consumes&quot;: []
+    }
+  ]
+}</pre></details><details ><summary>生成物：openapi.yaml <span class="meta">206行</span></summary><p>編集元から生成した統合HTTP API契約です。</p><p class="meta"><a href="https://github.com/suwa-sh/suwa-sh-claude-plugins/blob/6665ce5ab6d7d36132bf7525a55e77ecfe29a684/samples/distillery/spec-contracts/_cross-cutting/api/openapi.yaml">実ファイルを開く</a></p><pre>{
+  &quot;components&quot;: {
+    &quot;parameters&quot;: {
+      &quot;Idempotency&quot;: {
+        &quot;in&quot;: &quot;header&quot;,
+        &quot;name&quot;: &quot;Idempotency-Key&quot;,
+        &quot;required&quot;: true,
+        &quot;schema&quot;: {
+          &quot;format&quot;: &quot;uuid&quot;,
+          &quot;type&quot;: &quot;string&quot;
+        }
+      }
+    },
+    &quot;responses&quot;: {
+      &quot;Conflict&quot;: {
+        &quot;content&quot;: {
+          &quot;application/problem+json&quot;: {
+            &quot;schema&quot;: {
+              &quot;$ref&quot;: &quot;#/components/schemas/Problem&quot;
+            }
+          }
+        },
+        &quot;description&quot;: &quot;conflict&quot;
+      }
+    },
+    &quot;schemas&quot;: {
+      &quot;Book&quot;: {
+        &quot;properties&quot;: {
+          &quot;title&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          }
+        },
+        &quot;type&quot;: &quot;object&quot;
+      },
+      &quot;CreateLoan&quot;: {
+        &quot;additionalProperties&quot;: false,
+        &quot;properties&quot;: {
+          &quot;bookId&quot;: {
+            &quot;minLength&quot;: 1,
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;days&quot;: {
+            &quot;enum&quot;: [
+              7,
+              14,
+              28
+            ],
+            &quot;type&quot;: &quot;integer&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;bookId&quot;
+        ],
+        &quot;type&quot;: &quot;object&quot;
+      },
+      &quot;Loan&quot;: {
+        &quot;properties&quot;: {
+          &quot;dueDate&quot;: {
+            &quot;format&quot;: &quot;date&quot;,
+            &quot;type&quot;: [
+              &quot;string&quot;,
+              &quot;null&quot;
+            ]
+          },
+          &quot;next&quot;: {
+            &quot;$ref&quot;: &quot;#/components/schemas/Loan&quot;
+          }
+        },
+        &quot;type&quot;: &quot;object&quot;
+      },
+      &quot;Problem&quot;: {
+        &quot;properties&quot;: {
+          &quot;code&quot;: {
+            &quot;enum&quot;: [
+              &quot;BOOK_NOT_AVAILABLE&quot;,
+              &quot;CONFLICT&quot;
+            ],
+            &quot;type&quot;: &quot;string&quot;
+          }
+        },
+        &quot;type&quot;: &quot;object&quot;
+      },
+      &quot;Unused&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    },
+    &quot;securitySchemes&quot;: {
+      &quot;bearer&quot;: {
+        &quot;flows&quot;: {
+          &quot;clientCredentials&quot;: {
+            &quot;scopes&quot;: {
+              &quot;staff&quot;: &quot;Staff&quot;
+            },
+            &quot;tokenUrl&quot;: &quot;https://id.example.com/token&quot;
+          }
+        },
+        &quot;type&quot;: &quot;oauth2&quot;
+      }
+    }
+  },
+  &quot;info&quot;: {
+    &quot;title&quot;: &quot;Library&quot;,
+    &quot;version&quot;: &quot;1.0.0&quot;
+  },
+  &quot;openapi&quot;: &quot;3.1.0&quot;,
+  &quot;paths&quot;: {
+    &quot;/books/{id}&quot;: {
+      &quot;delete&quot;: {
+        &quot;operationId&quot;: &quot;deleteBook&quot;,
+        &quot;responses&quot;: {
+          &quot;204&quot;: {
+            &quot;description&quot;: &quot;deleted&quot;
+          }
+        },
+        &quot;summary&quot;: &quot;Delete book&quot;
+      },
+      &quot;get&quot;: {
+        &quot;operationId&quot;: &quot;getBook&quot;,
+        &quot;responses&quot;: {
+          &quot;200&quot;: {
+            &quot;content&quot;: {
+              &quot;application/json&quot;: {
+                &quot;schema&quot;: {
+                  &quot;$ref&quot;: &quot;#/components/schemas/Book&quot;
+                }
+              }
+            },
+            &quot;description&quot;: &quot;book&quot;
+          }
+        },
+        &quot;summary&quot;: &quot;Get book&quot;
+      },
+      &quot;parameters&quot;: [
+        {
+          &quot;in&quot;: &quot;path&quot;,
+          &quot;name&quot;: &quot;id&quot;,
+          &quot;required&quot;: true,
+          &quot;schema&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          }
+        }
+      ]
+    },
+    &quot;/loans&quot;: {
+      &quot;parameters&quot;: [
+        {
+          &quot;$ref&quot;: &quot;#/components/parameters/Idempotency&quot;
+        }
+      ],
+      &quot;post&quot;: {
+        &quot;operationId&quot;: &quot;createLoan&quot;,
+        &quot;requestBody&quot;: {
+          &quot;content&quot;: {
+            &quot;application/json&quot;: {
+              &quot;schema&quot;: {
+                &quot;$ref&quot;: &quot;#/components/schemas/CreateLoan&quot;
+              }
+            }
+          },
+          &quot;required&quot;: true
+        },
+        &quot;responses&quot;: {
+          &quot;201&quot;: {
+            &quot;content&quot;: {
+              &quot;application/json&quot;: {
+                &quot;schema&quot;: {
+                  &quot;$ref&quot;: &quot;#/components/schemas/Loan&quot;
+                }
+              }
+            },
+            &quot;description&quot;: &quot;created&quot;,
+            &quot;headers&quot;: {
+              &quot;Location&quot;: {
+                &quot;schema&quot;: {
+                  &quot;type&quot;: &quot;string&quot;
+                }
+              }
+            }
+          },
+          &quot;409&quot;: {
+            &quot;$ref&quot;: &quot;#/components/responses/Conflict&quot;
+          }
+        },
+        &quot;security&quot;: [
+          {
+            &quot;bearer&quot;: [
+              &quot;staff&quot;
+            ]
+          }
+        ],
+        &quot;summary&quot;: &quot;Register loan&quot;,
+        &quot;x-rule&quot;: &quot;loan-eligibility&quot;
+      }
+    }
+  },
+  &quot;security&quot;: [
+    {
+      &quot;bearer&quot;: []
+    }
+  ],
+  &quot;servers&quot;: [
+    {
+      &quot;url&quot;: &quot;https://library.example.com&quot;
+    }
+  ]
+}
+</pre></details></section><footer>原文の基準コミット：6665ce5。原文の業務内容は変更せず、閲覧用の整形とリンクの解決だけを行っています。<br>CSS・表示済み本文をHTML内に収録。外部の画像・フォント・JavaScriptへの依存なし。</footer></main></body></html>
