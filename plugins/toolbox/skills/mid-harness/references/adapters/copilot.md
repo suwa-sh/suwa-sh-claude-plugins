@@ -12,7 +12,7 @@
 | Skills | `.github/skills/`、`.agents/skills/`、`.claude/skills/` (+ user スコープ) | 記事 (2026-08-07) の記載。本セッションでは未実測 (**unverified**、verify.sh の skill 発見テストで確認する) |
 | Agents | `.github/agents/<name>.md` (native)。`.claude/agents/` も互換探索 | 同名は `.github/agents/` が優先 |
 | Hooks | `.github/hooks/*.json` (repo)、`~/.copilot/hooks/*.json` (user)、`~/.copilot/settings.json` / `.github/copilot/settings.json` の `hooks` (inline) | `copilot help config`: "hooks: inline hook definitions, keyed by event name (same schema as .github/hooks/*.json)" |
-| Headless | `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true copilot -p "<prompt>" --allow-all-tools` | `--allow-all` は tools + paths + urls |
+| Headless | `copilot -p "<prompt>" --allow-all-tools` (repo hook を使うなら `trustedFolders` か `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true`) | `--allow-all` は tools + paths + urls |
 
 ## Hooks
 
@@ -34,7 +34,7 @@
 - stdin (user hook で実測 2026-09-05): `{"sessionId", "timestamp", "cwd", "toolName": "bash", "toolArgs": {"command": ..., "description": ...}}`。docs は `toolArgs` が **JSON 文字列** の場合があるとする (両方を受ける)
 - hook の cwd は実測でプロジェクト cwd。`cwd` フィールドで上書き可
 - ブロック: stdout `{"permissionDecision": "deny", "permissionDecisionReason": "..."}`。**exit 2 も deny** (stdout JSON はマージ)。preToolUse ではその他の非ゼロ exit も deny (fail-closed)。timeout だけ fail-open
-- **解決済み**: `-p` では repo hook が既定で無効。`GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` を起動時に付けると `.github/hooks/*.json` が読まれる。1.0.83 で未コミットの生成 hook が発火し、番兵コマンドを拒否することを実測した。原因・比較結果・出典は [copilot-repo-hook-issue.md](copilot-repo-hook-issue.md)。
+- **`-p` では repo hook が既定で無効** (セキュリティ目的)。有効化は 2 通り: ① repo 単位 = `~/.copilot/settings.json` の `trustedFolders` に repo の絶対パスを追加 (ユーザー側の設定。実測で変数なしでも発火)、② invocation 単位 = `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true`。repo 内のファイル (`.env` 等) で有効化する経路は無い。1.0.83 で未コミットの生成 hook が発火し、番兵コマンドを拒否することを両経路で実測した。原因・比較結果・出典は [copilot-repo-hook-issue.md](copilot-repo-hook-issue.md)。
 
 ### 論理イベント → 製品イベント
 
@@ -82,4 +82,4 @@ front matter は公式の custom-agents-configuration に従う: `name` (任意)
 ## 受け入れテストでの注意
 
 - `--allow-all-tools` が無いと headless でツール承認待ちになり実行されない
-- `verify.sh` は Copilot 起動時だけ `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` を付与する。手動実行や CI でも repo hook を使う場合は同じ指定が必要。対象 repo の hook を確認してから有効化する (user 設定への移設やグローバル export は不要)
+- `verify.sh` は Copilot 起動時だけ `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` を付与する (検証用の invocation なので trust 状態に依存させない)。運用で repo hook を常時使う repo は `trustedFolders` に入れる。CI は環境変数。グローバルな export はしない (未知の repo の hook が黙って動く)

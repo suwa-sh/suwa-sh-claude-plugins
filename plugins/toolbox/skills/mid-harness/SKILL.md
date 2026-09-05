@@ -29,7 +29,7 @@ Claude Code / Codex CLI などのコーディングエージェントは、指�
 
 - python3 3.11+ と PyYAML (`python3 -c 'import yaml, tomllib'`)。3.10 以下では `pip install tomli` も必要 (生成した TOML を必ず検証する。検証器が無ければ生成は失敗する)。無ければインストールを案内して停止する
 - 対象製品の CLI (`claude` / `codex` / `agent` / `grok` / `copilot` / `agy`) は verify にだけ必要。無い製品は verify を skip と報告する
-- hook の受け入れテストには製品ごとの trust 前提がある: Codex は hook trust (verify が bypass)、Grok は folder trust (`~/.grok/trusted_folders.toml`)、Antigravity は workspace の project 登録 + trust (`agy --new-project` を一度)。Copilot は `-p` で repo hook が既定で無効なため、`GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` が必要 (verify が invocation 単位で付与。`references/adapters/copilot.md`)
+- hook の受け入れテストには製品ごとの trust 前提がある: Codex は hook trust (verify が bypass)、Grok は folder trust (`~/.grok/trusted_folders.toml`)、Antigravity は workspace の project 登録 + trust (`agy --new-project` を一度)。Copilot は `-p` で repo hook が既定で無効なため、repo 単位なら `~/.copilot/settings.json` の `trustedFolders`、invocation 単位なら `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` で有効化する (verify は後者を付与。`references/adapters/copilot.md`)
 - `references/adapters/<product>.md` の先頭にある **確認日と確認バージョン** を見て、対象製品のバージョンが大きく進んでいたら公式 doc で読込規則を再確認してから進める (推測で adapter を変えない)
 
 ## 手順

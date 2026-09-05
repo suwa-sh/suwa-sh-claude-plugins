@@ -8,7 +8,7 @@
 | Codex CLI | `codex` | `codex.md` | 確認済み。hook trust hash / cwd / tool_name を実測 |
 | Cursor Agent CLI | `cursor` | `cursor.md` | 確認済み。hook stdin (tool_name 無し) を実測 |
 | Grok Build | `grok` | `grok.md` | 確認済み。hook stdin / folder trust / hook ファイル基準の相対パスを実測 |
-| GitHub Copilot CLI | `copilot` | `copilot.md` | 1.0.83 で skill 発見・repo hook 拒否を実測。`-p` は `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` が必要 → 詳細: [copilot-repo-hook-issue.md](copilot-repo-hook-issue.md) |
+| GitHub Copilot CLI | `copilot` | `copilot.md` | 1.0.83 で skill 発見・repo hook 拒否を実測。`-p` の repo hook は `trustedFolders` (repo 単位) か `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` (invocation 単位) で有効化 → 詳細: [copilot-repo-hook-issue.md](copilot-repo-hook-issue.md) |
 | Antigravity CLI | `antigravity` | `antigravity.md` | 確認済み。workspace の project 登録 + trust が前提。hook stdin (toolCall) / cwd (`.agents/`) を実測 |
 
 ### 製品差の早見表

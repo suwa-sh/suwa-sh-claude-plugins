@@ -2,10 +2,22 @@
 
 - 記録日: 2026-09-05
 - 環境: GitHub Copilot CLI 1.0.80 (Homebrew cask は 1.0.65、CLI が自己更新)、macOS 26、`copilot -p` (非対話)
-- 状態: **解決済み** (2026-09-05、CLI 1.0.83 で再検証)。`-p` は repo hook が既定で無効。有効化する環境変数が不足していた。
+- 状態: **解決済み** (2026-09-05、CLI 1.0.83 で再検証)。`-p` は repo hook が既定で無効。repo 単位なら `trustedFolders`、invocation 単位なら環境変数で有効化する (下記「有効化の 3 経路」)。
 
 
-## 解消方法と検証結果
+## 有効化の 3 経路 (2026-09-05 追記、1.0.83 の app.js を読んで実測)
+
+prompt mode で repo hook を読む条件は CLI 内部で次の OR になっている (`app.js`: `COPILOT_ALLOW_ALL==="true" || GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS==="true" || isFolderTrusted(cwd)`)。
+
+| 経路 | 粒度 | 使いどころ |
+|---|---|---|
+| `~/.copilot/settings.json` の `trustedFolders` に repo の絶対パスを追加 (`copilot help config`: "list of folders where permission to read or execute files has been granted") | **repo 単位・ユーザー側の設定** | 手元で常用する repo。対話セッションで trust すると記録される想定の場所。実測: 変数なしで `Loading repo hooks in prompt mode (folder is trusted or opt-in set)` → hook 発火・拒否 |
+| `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` | invocation 単位 | CI、単発の検証 (verify.sh はこれ) |
+| `COPILOT_ALLOW_ALL=true` | invocation 単位 (tools / paths / urls も全許可) | 使わない (hook 以外も全開放) |
+
+repo 内のファイル (`.env` 等) で有効化する経路は無い。Copilot CLI は repo の `.env` を読まず (`copilot help environment` / `help config` に該当なし、app.js に dotenv 読込なし)、これは「未知の repo の hook が黙って動く」のを防ぐ設計意図に沿っている。repo 単位で安全に効かせたいなら `trustedFolders` (ユーザー側) を使う。shell 側で `.envrc` (direnv、`direnv allow` の trust ゲートあり) に export する手もあるが、agent-loop のような非対話シェルでは direnv hook が入っていないと効かない。
+
+## 解消方法と検証結果 (Codex による初回解消: 環境変数)
 
 対象 repo の hook 内容を確認したうえで、起動時に次の環境変数を指定する:
 
