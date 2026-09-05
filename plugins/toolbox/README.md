@@ -38,6 +38,18 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 
 トリガー例: 「画像を生成して」「codex で画像作って」「イラストを作って」「この画像を編集」
 
+### `toolbox:mid-harness` — 中ハーネス (portable core + 製品別 adapter) の展開・適用・検査
+
+コーディングエージェントをまたいで持ち運べる資産 (AGENTS.md / skills / agent-specs / hooks / memory = **中ハーネス**) を、製品非依存の portable core に置き、Claude Code / Codex CLI が読む設定は core から生成する薄い adapter にする。
+
+- `init`: 推奨ツリー (`AGENTS.md` / `docs/` / `.agents/{memory,skills,agent-specs}` / `scripts/agent-hooks/`) と manifest `.agents/harness.yaml` を展開し、adapter を生成して受け入れテストを回す
+- `apply`: 既存リポの資産を棚卸し → 6 つの振る舞い契約へ分類 → 人の承認 (human-html-review) → `git mv` で core へ移送 → adapter 生成
+- `audit`: manifest から再生成した adapter と commit 済みの差分 (drift) を検査し、受け入れテスト (skill 発見 / headless / hook 拒否) を Claude Code と Codex で実行。CI 向け
+- hook は `scripts/agent-hooks/` の 1 本を両製品の設定が呼ぶだけの二層構成。custom agent は `prompt.md` + `policy.yaml` (論理能力) から各製品の front matter / TOML を生成し、変換不能は失敗させる
+- 製品ごとの読込規則は `references/adapters/<product>.md` に確認日つきで置く (現在 Claude Code / Codex)
+
+トリガー例: 「中ハーネスを展開して」「この構成を既存リポに適用して」「Claude Code と Codex で同じ動きをさせたい」「adapter がドリフトしていないか見て」
+
 ## インストール
 
 ```
@@ -52,6 +64,7 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 | `review-refute-loop` | Codex CLI (companion plugin) または `claude` CLI | どちらも無い場合はサブエージェントフォールバックで動作 (クロスモデル効果は失われる) |
 | `human-html-review` | [diagram-design](https://github.com/cathrynlavery/diagram-design) スキル | 未導入時はスキルが URL とインストールコマンド (`npx skills add cathrynlavery/diagram-design`) を提示する。`python3` も使用 (validate.py) |
 | `codex-imagen` | Codex CLI。Grok CLI / Antigravity CLI は任意 | 既定の退避順は codex → grok → agy。`--size` は macOS `sips` を使用 |
+| `mid-harness` | `python3` 3.11+ (3.10 は `tomli` 追加) + PyYAML。受け入れテストだけ `claude` / `codex` CLI | CLI が無い製品は verify を skip。Codex の hook は project trust + hook 単位の trust が要る (verify は `--dangerously-bypass-hook-trust` で配線だけ検証) |
 
 ## 使い方
 
@@ -67,6 +80,13 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 
 # 選択肢比較のレビュー HTML を生成
 /toolbox:human-html-review choose auth migration approach --mode selection
+
+# 新規リポに中ハーネスを展開 (Claude Code + Codex)
+/toolbox:mid-harness init . --targets claude-code,codex
+
+# 既存リポに段階適用 / CI で drift と同等性を検査
+/toolbox:mid-harness apply .
+/toolbox:mid-harness audit .
 ```
 
 組み合わせパターン: 成果物を `review-refute-loop` で収束させてから、`human-html-review` でヒト承認用の HTML を出す、という 2 段構えが既定の使い方。

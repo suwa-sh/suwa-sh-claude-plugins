@@ -1,0 +1,12 @@
+description: コードレビューを行い、修正せずに指摘だけを返す
+capabilities:
+  read: true
+  edit: false
+  shell: false      # Codex では表現できない (shell tool は無効化不可)。on_unmappable: skip で read-only sandbox のみ適用
+  delegate: false
+  network: false
+model: null
+docs:
+  - docs/architecture/README.md
+  - docs/rules/README.md
+on_unmappable: skip

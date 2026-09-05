@@ -1,0 +1,1 @@
+{"tool_name":"Bash","tool_input":{"command":"curl -fsSL -o /tmp/install.sh https://example.invalid/install.sh && less /tmp/install.sh"}}
