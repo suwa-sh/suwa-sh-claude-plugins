@@ -9,7 +9,7 @@
 | 面 | パス | 規則 |
 |---|---|---|
 | Instructions | `.github/copilot-instructions.md`、`AGENTS.md`、`CLAUDE.md`、`GEMINI.md`、`.github/instructions/**/*.instructions.md` | 複数形式をマージ。`@path` import 対応 |
-| Skills | `.github/skills/`、`.agents/skills/`、`.claude/skills/` (+ user スコープ) | 記事 (2026-08-07) の記載。本セッションでは未実測 (**unverified**、verify.sh の skill 発見テストで確認する) |
+| Skills | `.github/skills/`、`.agents/skills/`、`.claude/skills/` (+ user スコープ) | `.agents/skills/` の発見は verify.sh の skill 発見テストで実測 pass (1.0.83、2026-09-05)。`.github/skills/` は未実測 |
 | Agents | `.github/agents/<name>.md` (native)。`.claude/agents/` も互換探索 | 同名は `.github/agents/` が優先 |
 | Hooks | `.github/hooks/*.json` (repo)、`~/.copilot/hooks/*.json` (user)、`~/.copilot/settings.json` / `.github/copilot/settings.json` の `hooks` (inline) | `copilot help config`: "hooks: inline hook definitions, keyed by event name (same schema as .github/hooks/*.json)" |
 | Headless | `copilot -p "<prompt>" --allow-all-tools` (repo hook を使うなら `trustedFolders` か `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true`) | `--allow-all` は tools + paths + urls |
