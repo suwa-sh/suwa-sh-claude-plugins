@@ -42,7 +42,7 @@
 - 症状: docs どおりの `.github/hooks/mid-harness.json` を置いても hook ログが空。user hook (`~/.copilot/hooks/`) は同形式で発火する
 - 原因: 未特定 (trust 済みの repo でも再現。1.0.80、2026-09-05)
 - 検出: `copilot -p ... --log-level debug --log-dir <dir>` の `[rust:hooks] [hook stdout]` 行に repo hook の出力が無い
-- 復旧: 未解決。skill 発見は `.agents/skills` で通るので、hook だけ fail として報告する
+- 復旧: 未解決。skill 発見は `.agents/skills` で通るので、hook だけ fail として報告する。試行の一覧と次の手順は `adapters/copilot-repo-hook-issue.md`
 - 最終確認日: 2026-09-05
 
 ## Cursor の `-p` が Opus の usage limit で止まる

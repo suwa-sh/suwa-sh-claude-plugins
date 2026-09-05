@@ -34,7 +34,7 @@
 - stdin (user hook で実測 2026-09-05): `{"sessionId", "timestamp", "cwd", "toolName": "bash", "toolArgs": {"command": ..., "description": ...}}`。docs は `toolArgs` が **JSON 文字列** の場合があるとする (両方を受ける)
 - hook の cwd は実測でプロジェクト cwd。`cwd` フィールドで上書き可
 - ブロック: stdout `{"permissionDecision": "deny", "permissionDecisionReason": "..."}`。**exit 2 も deny** (stdout JSON はマージ)。preToolUse ではその他の非ゼロ exit も deny (fail-closed)。timeout だけ fail-open
-- **未検証**: `.github/hooks/*.json` を置いた repo で `copilot -p` を実行しても hook が発火しなかった (mh-probe と trust 済みの pkm の両方で再現、1.0.80、2026-09-05)。user hook (`~/.copilot/hooks/`) は同形式で発火する。repo hook の読込条件 (対話セッションでの trust、git remote の有無など) は特定できていない。生成は docs どおり `.github/hooks/mid-harness.json` に行い、verify.sh の hook テストが fail したらこの項目を疑う
+- **未解決**: `.github/hooks/*.json` を置いた repo で `copilot -p` を実行しても hook が発火しなかった (mh-probe と trust 済みの pkm の両方で再現、1.0.80、2026-09-05)。user hook (`~/.copilot/hooks/`) は同形式で発火する。試したこと・仮説・次の手順は [copilot-repo-hook-issue.md](copilot-repo-hook-issue.md) に整理。生成は docs どおり `.github/hooks/mid-harness.json` に行い、verify.sh の hook テストが fail したらそのファイルを見る
 
 ### 論理イベント → 製品イベント
 
