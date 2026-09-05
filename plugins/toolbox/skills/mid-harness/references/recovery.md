@@ -42,8 +42,14 @@
 - 症状: docs どおりの `.github/hooks/mid-harness.json` を置いても hook ログが空。user hook (`~/.copilot/hooks/`) は同形式で発火する
 - 原因: `-p` では repo hook が既定で無効。folder trust や `--allow-all-tools` では有効化されない
 - 検出: `copilot -p ... --log-level debug --log-dir <dir>` の `[rust:hooks] [hook stdout]` 行に repo hook の出力が無い
-- 復旧: repo 単位なら `~/.copilot/settings.json` の `trustedFolders` に repo の絶対パスを追加 (ユーザー側)。invocation 単位なら `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true copilot -p "..." --allow-all-tools` (verify.sh はこちら)。repo 内の `.env` では有効化できない。1.0.83 で両経路とも発火・拒否を確認済み。経緯は `adapters/copilot-repo-hook-issue.md`
+- 復旧: invocation 単位なら `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true copilot -p "..." --allow-all-tools` (verify.sh はこちら、確実)。repo 単位は `~/.copilot/settings.json` の `trustedFolders` だが、手編集は CLI に書き戻されて消える (実測)。永続化は repo で対話 `copilot` を開いて trust する経路 (未実測)。repo 内の `.env` では有効化できない。経緯は `adapters/copilot-repo-hook-issue.md`
 - 最終確認日: 2026-09-05
+
+## Grok の skill 発見テストが timeout する (skill が数百ある repo)
+- 症状: `grok  fail  skill-discovery: token not found in output: timeout` (hook 拒否は pass)
+- 原因: Grok は project + user + 互換パス (`.claude/skills` 等) の skill を全部読む。pkm では 506 skill で 300 秒を超えた
+- 復旧: verify.sh の既定 timeout を 600 秒にした。それでも足りなければ `MID_HARNESS_VERIFY_TIMEOUT=900`
+- 最終確認日: 2026-09-06
 
 ## Cursor の `-p` が Opus の usage limit で止まる
 - 症状: `ActionRequiredError: You've hit your usage limit for Opus`
