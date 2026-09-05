@@ -1,0 +1,206 @@
+{
+  "components": {
+    "parameters": {
+      "Idempotency": {
+        "in": "header",
+        "name": "Idempotency-Key",
+        "required": true,
+        "schema": {
+          "format": "uuid",
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "Conflict": {
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        },
+        "description": "conflict"
+      }
+    },
+    "schemas": {
+      "Book": {
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateLoan": {
+        "additionalProperties": false,
+        "properties": {
+          "bookId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "days": {
+            "enum": [
+              7,
+              14,
+              28
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bookId"
+        ],
+        "type": "object"
+      },
+      "Loan": {
+        "properties": {
+          "dueDate": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next": {
+            "$ref": "#/components/schemas/Loan"
+          }
+        },
+        "type": "object"
+      },
+      "Problem": {
+        "properties": {
+          "code": {
+            "enum": [
+              "BOOK_NOT_AVAILABLE",
+              "CONFLICT"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Unused": {
+        "type": "string"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "flows": {
+          "clientCredentials": {
+            "scopes": {
+              "staff": "Staff"
+            },
+            "tokenUrl": "https://id.example.com/token"
+          }
+        },
+        "type": "oauth2"
+      }
+    }
+  },
+  "info": {
+    "title": "Library",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/books/{id}": {
+      "delete": {
+        "operationId": "deleteBook",
+        "responses": {
+          "204": {
+            "description": "deleted"
+          }
+        },
+        "summary": "Delete book"
+      },
+      "get": {
+        "operationId": "getBook",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            },
+            "description": "book"
+          }
+        },
+        "summary": "Get book"
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/loans": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/Idempotency"
+        }
+      ],
+      "post": {
+        "operationId": "createLoan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLoan"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Loan"
+                }
+              }
+            },
+            "description": "created",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "security": [
+          {
+            "bearer": [
+              "staff"
+            ]
+          }
+        ],
+        "summary": "Register loan",
+        "x-rule": "loan-eligibility"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://library.example.com"
+    }
+  ]
+}

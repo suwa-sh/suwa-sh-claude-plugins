@@ -31,6 +31,11 @@
 読まないもの: 他 UC の Spec、`references/specs/tier-selection-rules.md`（ティア選定はオーケストレータが適用済み）、
 `references/specs/decision-records.md`、`docs/arch/latest/arch-design.yaml` 全文（ダイジェストで足りる場合）。
 
+catalog modeの場合だけ `references/specs/contract-catalog.md` と対象UCの `_api-summary.yaml` / `_contract-slice.json` を追加で読む。
+元のカタログ全体・他UCのsliceは読まない。型表とsummaryの手編集は行わず、APIはoperation参照にする。
+UCの `_trace-links.json` はcatalog modeで生成する。element keyは現在のtraceability-indexから取得し、
+索引がまだ無い場合はStep4dで対応を補完する（キーを推測しない）。
+
 ## 生成
 
 変数ブロックの各 UC について、`spec-generate.md` の手順 2〜7 に従い
@@ -47,6 +52,7 @@
 skill_root: {dist-spec スキルの絶対パス。例 /Users/.../plugins/cache/.../skills/dist-spec}
 event_id: {event_id}
 design_available: {true|false}
+contract_mode: {legacy|catalog}
 対象 UC:
   - 業務: {業務名} / BUC: {BUC名} / UC: {UC名} / 対象ティア: {tier_id} ({kind}), {tier_id} ({kind})
   - ...（1 subagent あたり 8〜10 UC まで）

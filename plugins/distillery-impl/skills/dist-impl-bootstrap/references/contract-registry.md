@@ -124,6 +124,14 @@ lock の機械可読キーに反映する**(スキーマは state-schema.md):
 - kvs-schema.yaml / object-storage-schema.yaml も同型で種別追加できる
   (必要になった時点で本ファイルに節を足す)
 
+## API summary v2
+
+v2では提供/利用operationと参照先を索引として扱う。verifyは `operation_id` / `contract_ref` と
+対象UCの `_contract-slice.json` を使い、統合sourceとの整合を確認する。
+縮退codegenもslice内の標準文書から行い、`schemas[]` の欠如を型情報の欠落と解釈しない。
+生成ヘッダは `// degraded-codegen: from _contract-slice.json` とし、lockにsliceのpath/hashを記録する。
+以下のsummaryからの型生成はlegacyにのみ適用する。
+
 ## 縮退方式(共通)
 
 generator が使えない・生成物が実用に耐えない場合は、**機械可読で最も堅い

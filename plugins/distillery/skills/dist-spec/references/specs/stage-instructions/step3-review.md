@@ -13,6 +13,10 @@
 
 読まないもの: `references/specs/spec-template.md` / `spec-generate.md` / `tier-templates/`（観点は下記で完結する）、対象外の UC。
 
+catalog modeの場合は `references/specs/contract-catalog.md` と対象UCの `_contract-slice.json` を読む。
+型・認可・エラーはsliceに存在すればよく、以下のAPI本文の型表要求はlegacy modeにのみ適用する。
+summaryは機械生成v2としてslice hashとoperation参照を検証し、手修正させない。
+
 ## レビュー観点
 
 1. 関連 RDRA モデルと業務ルール・状態遷移（旧形式の各一覧も可）から情報属性、条件、

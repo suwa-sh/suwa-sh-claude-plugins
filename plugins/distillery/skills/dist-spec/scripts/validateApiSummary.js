@@ -134,7 +134,12 @@ function main() {
       allErrors.push(`_api-summary.yaml YAML parse error: ${e.message}`);
     }
 
-    if (data) {
+    if (data?.schema_version === 'distillery.api-summary/v2') {
+      try { require('./compileContracts').validateSummary(data, ucDir); }
+      catch (e) { allErrors.push(e.message); }
+    } else if (data?.schema_version) {
+      allErrors.push(`Unsupported API summary version: ${data.schema_version}`);
+    } else if (data) {
       const schemaPath = path.join(__dirname, 'schema-api-summary.json');
       const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
       const schemaErrors = validate(data, schema, schema.$defs || {}, '$');

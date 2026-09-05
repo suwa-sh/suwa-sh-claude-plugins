@@ -1,0 +1,14 @@
+{
+  "files": {
+    "_cross-cutting/api/asyncapi.yaml": "71b062909e05addd4d50a759ec56fa5ad084f3d2945780868d1a6cc4e06371b7",
+    "_cross-cutting/api/openapi.yaml": "d96d703bd3b9ac590e34ed4709f56c055ab3afcd751429eec0b927961a42dffb",
+    "蔵書業務/削除フロー/書籍削除/_api-summary.yaml": "d4b5357ae5e2f6bf8b33dd669f6310a639d38565b5b9db407a1b4f8e242ed64b",
+    "蔵書業務/削除フロー/書籍削除/_contract-slice.json": "3c0c3553e72517a138b57b59728f0e7ad0fa91dda7d76e98b0ce37ec97d117aa",
+    "蔵書業務/照会フロー/書籍照会/_api-summary.yaml": "cb8473b235d69a58e302c9a59992192032b184808605018557847ecc8ab43fcd",
+    "蔵書業務/照会フロー/書籍照会/_contract-slice.json": "920e6271c5abdc10814fececb63b9fb2447139d8825f593f1fcf8ba106237b09",
+    "貸出業務/貸出フロー/貸出登録/_api-summary.yaml": "64060d52b242d5f2af5fe114c757fe1d481dfb3b6ae9a3110cafd53855faeaa1",
+    "貸出業務/貸出フロー/貸出登録/_contract-slice.json": "7700aa5b57a18a85588f72a6a1d40950ae1c25b8910c9cfd09e8cce6b5dce2bb"
+  },
+  "schema_version": "distillery.contract-build/v1",
+  "source_sha256": "da4c03f3ee2c5525a8b1d76b10674d25249b9b155bbb2c167217d27a5e64c25e"
+}

@@ -11,6 +11,10 @@ UC 本文は業務ルール・状態遷移・受入条件、tier 仕様は固有
 APIの入出力・エラー表とsummary形式は契約生成元として維持し、既存形式も後段で読み取れます。
 比較用の[手編集サンプル](../../samples/distillery/spec-concise/README.md)を用意しています。
 
+明示的に `/distillery:dist-spec contract_mode=catalog` を指定すると、検証用の契約カタログ方式を使えます。
+完全なOpenAPI/AsyncAPIを一か所で編集し、統合契約・UC別索引・契約抜粋・BUC/対応付けビューを機械生成します。
+[方式と制限](skills/dist-spec/references/specs/contract-catalog.md)を参照してください。実生成での受入確認は未完了です。
+
 ## Pipeline
 
 粗い原料から熟成された成果物へ、蒸留酒の製造工程になぞらえた8ステージ構成です。

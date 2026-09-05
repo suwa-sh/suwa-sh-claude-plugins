@@ -87,6 +87,11 @@ screen 解決は uc-map の `ui_screens` / `ui_screen_resolution`(S1 が確定�
 - 行に `story` / `variants` が無い(optional 不在): その項目の転写はスキップする
   (スキーマ上正常な入力であり矛盾ではない)
 
+`_api-summary.yaml` の `schema_version: distillery.api-summary/v2` は索引である。
+対象UCの `_contract-slice.json` を追加で読み、summaryの `contract_sha256` と実ファイルのSHA-256を照合する。
+型・認可・エラー・イベントpayload/headerはslice内のOpenAPI/AsyncAPIから取得する。
+欠落やhash不一致をlegacy形式として補完しない。提供操作だけでなく `consumes` の依存操作も対象にする。
+
 ### read-set 定義(Implementer / Verifier 対称)
 
 frontend の追加読込は次で構成する:

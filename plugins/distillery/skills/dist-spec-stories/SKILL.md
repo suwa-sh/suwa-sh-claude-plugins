@@ -70,6 +70,10 @@ spec スキルの Step9 として実装されていたものを独立スキル�
   差分マージ（`design-event-diff.yaml` の適用）は正本 `design-event.yaml` に対して行い、`_digest/` は書き換えない（マージ後に再生成される）
 - `docs/design/latest/storybook-app/` — 既存の Storybook プロジェクト
 
+APIレスポンスをStoryのfixtureへ使う場合、対象UCの `_api-summary.yaml` を読む。
+v2では `_contract-slice.json` のhashを照合して、提供/利用operationのレスポンスschemaを使う。
+summaryに型を推測で補わず、型表をUC本文へ復活させない。
+
 ## 読み込み（design スキルの references）
 
 - `${CLAUDE_PLUGIN_ROOT}/skills/dist-design-system/references/design/design-storybook-generate.md` — Storybook 生成ルール + emoji→Icon 置換

@@ -2,6 +2,9 @@
 
 > Step3 で使用。共通の出力規約と spec.md のフォーマット。
 
+catalog modeを明示された場合は `references/specs/contract-catalog.md` の派生物/参照規約を優先する。
+APIの入出力型表とsummaryを手書きする以下の規約はlegacy modeに限る。
+
 ## 出力規約
 
 - **一つの判断は一箇所に定義する**。業務ルールは spec.md、tier 固有の実行条件は tier md、

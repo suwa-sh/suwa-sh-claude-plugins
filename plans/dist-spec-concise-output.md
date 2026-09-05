@@ -37,6 +37,26 @@ API / AsyncAPI の完全な定義元と統合契約の生成方式を決定し�
 契約の型・制約・認可・エラー・依存を欠落なく統合できる検証を先に用意してから、API 本文の項目表を削る。
 BUC / traceability の決定的生成や、参照先だけを取り出す read-set 自動化もこの段階で扱う。
 
+### 第2段階の実装方式
+
+- `_cross-cutting/api/contracts.json` を編集可能な契約カタログとする。
+  OpenAPI 3.1 / AsyncAPI 3.0 の完全な定義と、UCごとの提供/利用operationの対応を保持する。
+  型・認可・エラー・拡張フィールドを独自summary形式へ翻訳せず保持する。
+- 統合契約、UCの `_api-summary.yaml`、依存先まで含む `_contract-slice.json` を決定的に生成する。
+  UC本文はoperation IDと固有の実行条件だけにする。旧summary形式は既存サンプル用に維持する。
+- カタログは単一の担当が更新する。UC生成担当は派生物を編集せず、不足をカタログへの変更要求にする。
+- 参照切れ、operation重複、所有者欠落、未知operationへの依存はエラーとする。標準仕様のlintは別途必須。
+- BUCはカタログの所属と呼出依存から生成する。トレーサビリティはRDRAの要素一覧を分母とし、
+  UCの機械可読な対応記録と照合する。リンクの実在と意味上の充足は別の判定として報告する。
+- 抜粋を実装入力へ追加する際は、そのcontent hashもinput-manifestへ追加する。
+- 実生成検証が通るまではカタログ方式を明示的に選ぶ検証用経路とする。旧イベントを自動移行しない。
+
+### 実生成検証の停止
+
+第1段階のStep6以降再実行はClaudeのセッション利用上限で開始前に停止した。
+生成specは0件。`samples/distillery/spec-concise-generated/` に実モデル・停止結果・固定入力hash・再開手順を保存。
+この間に第2段階の機械生成・検証を進めるが、生成モデルでの受入確認は未完了として扱う。
+
 ## 検証と完了条件
 
 - 既存テスト一式が成功すること。
@@ -66,3 +86,19 @@ BUC / traceability の決定的生成や、参照先だけを取り出す read-s
 - 全Gherkinブロック、両summary、API契約節を保持（比較例の参照パスの調整を除く）。
 - 一時ディレクトリで既存イベントに重ね、Spec / API summary / model summaryのバリデータが成功。
 - フルpipeline生成・Story生成・業務実装の実行検証は未実施。
+
+## 第2段階の実装・検証記録
+
+- [x] 明示選択のcatalog mode、契約compiler、summary v2と参照closure
+- [x] BUC/traceabilityの機械ビュー（リンク実在の検査。意味上の充足は別レビュー）
+- [x] 後段のcodegen/実装/Story入力とmanifestのhash対象を更新
+- [x] 契約fixtureの生成サンプルと回帰テスト
+- [ ] 利用枠回復後の第1段階実生成再開と品質比較
+- [ ] catalog modeのモデル実生成、Story生成、業務実装での受入確認
+
+標準lint: Redocly minimalはエラー0・警告2（fixtureのexample.com/未使用schema）。
+AsyncAPI CLI 4.1.1はエラー0・警告0・情報1（3.1推奨）。
+対応範囲の参照保存・所有者検証・改変検出・旧形式互換をテストし、標準lintの代替にはしていない。
+リリース対象はdistillery 1.10.0 / distillery-impl 0.13.2。実生成受入が通るまではlegacyが既定。
+
+最終 `npm test`: 161件成功。契約サンプルの `compileContracts.js --check` も成功。

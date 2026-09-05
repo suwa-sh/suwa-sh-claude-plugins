@@ -14,6 +14,11 @@ description: >
 `manifest_sha256` は再計算せず done に転記し、`manifest_projection: v2` を併記する
 (state-schema.md の projection 規則)。
 
+`_api-summary.yaml` の `schema_version: distillery.api-summary/v2` は索引である。
+対象UCの `_contract-slice.json` を追加で読み、summaryの `contract_sha256` と実ファイルのSHA-256を照合する。
+型・認可・エラー・イベントpayload/headerはslice内のOpenAPI/AsyncAPIから取得する。
+欠落やhash不一致をlegacy形式として補完しない。提供操作だけでなく `consumes` の依存操作も対象にする。
+
 ## Verifier の掟(Cloudflare VVS の転用)
 
 1. **反証に徹する**。実装コードの修正・追記・削除は禁止(write-set は done と findings のみ)

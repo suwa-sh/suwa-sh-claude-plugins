@@ -3,6 +3,11 @@
 このファイルは dist-impl-run が S4 サブエージェントに渡す追加指示の固定部の正本。
 サブエージェントはこの指示すべてに従うこと。tier_id・findings パス等の可変部はプロンプト側の引数で渡される。
 
+`_api-summary.yaml` の `schema_version: distillery.api-summary/v2` は索引である。
+対象UCの `_contract-slice.json` を追加で読み、summaryの `contract_sha256` と実ファイルのSHA-256を照合する。
+型・認可・エラー・イベントpayload/headerはslice内のOpenAPI/AsyncAPIから取得する。
+欠落やhash不一致をlegacy形式として補完しない。提供操作だけでなく `consumes` の依存操作も対象にする。
+
 ## read-set の限定
 
 入力（read-set）は次に限定すること:

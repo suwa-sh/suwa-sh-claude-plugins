@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "削除フロー",
+  "business": "蔵書業務",
+  "consumes": [],
+  "contract_sha256": "3c0c3553e72517a138b57b59728f0e7ad0fa91dda7d76e98b0ce37ec97d117aa",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1books~1{id}/delete",
+      "kind": "openapi",
+      "method": "DELETE",
+      "operation_id": "deleteBook",
+      "path": "/books/{id}",
+      "summary": "Delete book",
+      "tier": "tier-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "書籍削除"
+}

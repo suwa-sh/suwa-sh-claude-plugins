@@ -1,0 +1,338 @@
+{
+  "schema_version": "distillery.contracts/v1",
+  "openapi": {
+    "openapi": "3.1.0",
+    "info": {
+      "title": "Library",
+      "version": "1.0.0"
+    },
+    "servers": [
+      {
+        "url": "https://library.example.com"
+      }
+    ],
+    "security": [
+      {
+        "bearer": []
+      }
+    ],
+    "paths": {
+      "/loans": {
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "post": {
+          "operationId": "createLoan",
+          "summary": "Register loan",
+          "security": [
+            {
+              "bearer": [
+                "staff"
+              ]
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateLoan"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "created",
+              "headers": {
+                "Location": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Loan"
+                  }
+                }
+              }
+            },
+            "409": {
+              "$ref": "#/components/responses/Conflict"
+            }
+          },
+          "x-rule": "loan-eligibility"
+        }
+      },
+      "/books/{id}": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "get": {
+          "operationId": "getBook",
+          "summary": "Get book",
+          "responses": {
+            "200": {
+              "description": "book",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Book"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "delete": {
+          "operationId": "deleteBook",
+          "summary": "Delete book",
+          "responses": {
+            "204": {
+              "description": "deleted"
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "parameters": {
+        "Idempotency": {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "securitySchemes": {
+        "bearer": {
+          "type": "oauth2",
+          "flows": {
+            "clientCredentials": {
+              "tokenUrl": "https://id.example.com/token",
+              "scopes": {
+                "staff": "Staff"
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "Conflict": {
+          "description": "conflict",
+          "content": {
+            "application/problem+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Problem"
+              }
+            }
+          }
+        }
+      },
+      "schemas": {
+        "CreateLoan": {
+          "type": "object",
+          "required": [
+            "bookId"
+          ],
+          "properties": {
+            "bookId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "days": {
+              "type": "integer",
+              "enum": [
+                7,
+                14,
+                28
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "Loan": {
+          "type": "object",
+          "properties": {
+            "next": {
+              "$ref": "#/components/schemas/Loan"
+            },
+            "dueDate": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date"
+            }
+          }
+        },
+        "Book": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            }
+          }
+        },
+        "Problem": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "enum": [
+                "BOOK_NOT_AVAILABLE",
+                "CONFLICT"
+              ]
+            }
+          }
+        },
+        "Unused": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "asyncapi": {
+    "asyncapi": "3.0.0",
+    "info": {
+      "title": "Events",
+      "version": "1.0.0"
+    },
+    "servers": {
+      "broker": {
+        "host": "mq.example.com",
+        "protocol": "amqp"
+      }
+    },
+    "channels": {
+      "loan/created": {
+        "address": "loan.created",
+        "servers": [
+          {
+            "$ref": "#/servers/broker"
+          }
+        ],
+        "messages": {
+          "LoanCreated": {
+            "$ref": "#/components/messages/LoanCreated"
+          }
+        }
+      }
+    },
+    "operations": {
+      "sendLoan": {
+        "action": "send",
+        "channel": {
+          "$ref": "#/channels/loan~1created"
+        },
+        "messages": [
+          {
+            "$ref": "#/channels/loan~1created/messages/LoanCreated"
+          }
+        ]
+      }
+    },
+    "components": {
+      "messages": {
+        "LoanCreated": {
+          "name": "LoanCreated",
+          "title": "Loan created",
+          "payload": {
+            "$ref": "#/components/schemas/LoanCreatedPayload"
+          },
+          "headers": {
+            "type": "object",
+            "required": [
+              "idempotency_key"
+            ],
+            "properties": {
+              "idempotency_key": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "schemas": {
+        "LoanCreatedPayload": {
+          "type": "object",
+          "title": "LoanCreatedPayload",
+          "required": [
+            "loanId"
+          ],
+          "properties": {
+            "loanId": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "use_cases": [
+    {
+      "business": "貸出業務",
+      "buc": "貸出フロー",
+      "uc": "貸出登録",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "createLoan",
+          "tier": "tier-api"
+        },
+        {
+          "kind": "asyncapi",
+          "operation_id": "sendLoan",
+          "tier": "tier-api"
+        }
+      ],
+      "consumes": [
+        {
+          "kind": "openapi",
+          "operation_id": "getBook",
+          "tier": "tier-frontend"
+        }
+      ]
+    },
+    {
+      "business": "蔵書業務",
+      "buc": "照会フロー",
+      "uc": "書籍照会",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "getBook",
+          "tier": "tier-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "蔵書業務",
+      "buc": "削除フロー",
+      "uc": "書籍削除",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "deleteBook",
+          "tier": "tier-api"
+        }
+      ],
+      "consumes": []
+    }
+  ]
+}

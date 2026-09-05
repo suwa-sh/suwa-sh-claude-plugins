@@ -119,6 +119,10 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
      packages/ui 配下の実体から tree hash を計算する(fail-closed: 実ファイルと
      `.imported.yaml` の path 集合の乖離・per-file sha256 不一致は「取り込みの再実行 or
      変更内容の確認」として提示する)
+     v2 API summaryがある場合は `_contract-slice.json` の実在・hash・operation参照を検証し、
+     `inputs.contract_slice` に実ファイルのSHA-256を記録する。
+     spec/tier本文が明示的に参照する共有Spec定義は、参照先ファイルを解決し
+     `inputs.shared_spec_refs` にpath/hashをpath昇順で記録する（state-schemaの規則）。
   3. UC→ATDD マッピング: uc-map の `atdd_confirmed` が false なら、usdm の
      `requirements[].specifications[].affected_models[]`(type: buc)から BUC 粒度候補を生成し、
      **全 SPEC 一覧(候補外も選択可)と併せて**ユーザー確認 → Scenario 名単位で uc-map に永続化

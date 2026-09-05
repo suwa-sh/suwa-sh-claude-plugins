@@ -251,39 +251,34 @@ function validateCrossCutting(baseDir) {
     return { errors, warnings };
   }
 
-  const requiredFiles = ['ux-ui/ux-design.md', 'ux-ui/ui-design.md', 'ux-ui/data-visualization.md', 'api/openapi.yaml'];
+  const catalogPath = path.join(crossDir, 'api', 'contracts.json');
+  let catalog = null;
+  if (fs.existsSync(catalogPath)) {
+    try {
+      catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+      require('./compileContracts').run(baseDir, true);
+    } catch (e) { errors.push(`Contract catalog: ${e.message}`); }
+  }
+  const requiredFiles = ['ux-ui/ux-design.md', 'ux-ui/ui-design.md', 'ux-ui/data-visualization.md'];
+  if (!catalog || catalog.openapi !== null) requiredFiles.push('api/openapi.yaml');
   for (const file of requiredFiles) {
-    const filePath = path.join(crossDir, file);
-    if (!fs.existsSync(filePath)) {
-      errors.push(`_cross-cutting/${file} が存在しません`);
-    }
+    if (!fs.existsSync(path.join(crossDir, file))) errors.push(`_cross-cutting/${file} が存在しません`);
   }
 
-  // --- openapi.yaml 構文チェック ---
-  const openapiPath = path.join(crossDir, 'api', 'openapi.yaml');
-  if (fs.existsSync(openapiPath)) {
-    const content = fs.readFileSync(openapiPath, 'utf8');
-    if (!content.includes('openapi:')) {
-      errors.push('_cross-cutting/openapi.yaml: "openapi:" フィールドがありません');
-    }
-    if (!content.includes('paths:')) {
-      errors.push('_cross-cutting/openapi.yaml: "paths:" フィールドがありません');
-    }
-    if (!content.includes('info:')) {
-      warnings.push('_cross-cutting/openapi.yaml: "info:" フィールドがありません');
-    }
-  }
-
-  // --- asyncapi.yaml 構文チェック（存在する場合のみ、optional） ---
-  const asyncapiPath = path.join(crossDir, 'api', 'asyncapi.yaml');
-  if (fs.existsSync(asyncapiPath)) {
-    const content = fs.readFileSync(asyncapiPath, 'utf8');
-    if (!content.includes('asyncapi:')) {
-      errors.push('_cross-cutting/asyncapi.yaml: "asyncapi:" フィールドがありません');
-    }
-    if (!content.includes('channels:')) {
-      warnings.push('_cross-cutting/asyncapi.yaml: "channels:" フィールドがありません');
-    }
+  // Parse native JSON/YAML documents rather than searching serialized field names.
+  for (const [kind, required, optional] of [
+    ['openapi', ['openapi', 'paths'], ['info']],
+    ['asyncapi', ['asyncapi'], ['channels']],
+  ]) {
+    const file = path.join(crossDir, 'api', `${kind}.yaml`);
+    if (!fs.existsSync(file)) continue;
+    try {
+      const data = require('./lib/yaml-parser').parseYaml(fs.readFileSync(file, 'utf8'));
+      for (const key of required) if (!data || !Object.prototype.hasOwnProperty.call(data, key))
+        errors.push(`_cross-cutting/api/${kind}.yaml: "${key}" フィールドがありません`);
+      for (const key of optional) if (!data || !Object.prototype.hasOwnProperty.call(data, key))
+        warnings.push(`_cross-cutting/api/${kind}.yaml: "${key}" フィールドがありません`);
+    } catch (e) { errors.push(`_cross-cutting/api/${kind}.yaml: ${e.message}`); }
   }
 
   // --- rdb-schema.yaml 構文チェック（存在する場合） ---

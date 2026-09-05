@@ -1,0 +1,274 @@
+{
+  "asyncapi": {
+    "asyncapi": "3.0.0",
+    "channels": {
+      "loan/created": {
+        "address": "loan.created",
+        "messages": {
+          "LoanCreated": {
+            "$ref": "#/components/messages/LoanCreated"
+          }
+        },
+        "servers": [
+          {
+            "$ref": "#/servers/broker"
+          }
+        ]
+      }
+    },
+    "components": {
+      "messages": {
+        "LoanCreated": {
+          "headers": {
+            "properties": {
+              "idempotency_key": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "idempotency_key"
+            ],
+            "type": "object"
+          },
+          "name": "LoanCreated",
+          "payload": {
+            "$ref": "#/components/schemas/LoanCreatedPayload"
+          },
+          "title": "Loan created"
+        }
+      },
+      "schemas": {
+        "LoanCreatedPayload": {
+          "properties": {
+            "loanId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "loanId"
+          ],
+          "title": "LoanCreatedPayload",
+          "type": "object"
+        }
+      }
+    },
+    "info": {
+      "title": "Events",
+      "version": "1.0.0"
+    },
+    "operations": {
+      "sendLoan": {
+        "action": "send",
+        "channel": {
+          "$ref": "#/channels/loan~1created"
+        },
+        "messages": [
+          {
+            "$ref": "#/channels/loan~1created/messages/LoanCreated"
+          }
+        ]
+      }
+    },
+    "servers": {
+      "broker": {
+        "host": "mq.example.com",
+        "protocol": "amqp"
+      }
+    }
+  },
+  "openapi": {
+    "components": {
+      "parameters": {
+        "Idempotency": {
+          "in": "header",
+          "name": "Idempotency-Key",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      },
+      "responses": {
+        "Conflict": {
+          "content": {
+            "application/problem+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Problem"
+              }
+            }
+          },
+          "description": "conflict"
+        }
+      },
+      "schemas": {
+        "Book": {
+          "properties": {
+            "title": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "CreateLoan": {
+          "additionalProperties": false,
+          "properties": {
+            "bookId": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "days": {
+              "enum": [
+                7,
+                14,
+                28
+              ],
+              "type": "integer"
+            }
+          },
+          "required": [
+            "bookId"
+          ],
+          "type": "object"
+        },
+        "Loan": {
+          "properties": {
+            "dueDate": {
+              "format": "date",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "next": {
+              "$ref": "#/components/schemas/Loan"
+            }
+          },
+          "type": "object"
+        },
+        "Problem": {
+          "properties": {
+            "code": {
+              "enum": [
+                "BOOK_NOT_AVAILABLE",
+                "CONFLICT"
+              ],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "securitySchemes": {
+        "bearer": {
+          "flows": {
+            "clientCredentials": {
+              "scopes": {
+                "staff": "Staff"
+              },
+              "tokenUrl": "https://id.example.com/token"
+            }
+          },
+          "type": "oauth2"
+        }
+      }
+    },
+    "info": {
+      "title": "Library",
+      "version": "1.0.0"
+    },
+    "openapi": "3.1.0",
+    "paths": {
+      "/books/{id}": {
+        "get": {
+          "operationId": "getBook",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Book"
+                  }
+                }
+              },
+              "description": "book"
+            }
+          },
+          "summary": "Get book"
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "/loans": {
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "post": {
+          "operationId": "createLoan",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateLoan"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "201": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Loan"
+                  }
+                }
+              },
+              "description": "created",
+              "headers": {
+                "Location": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "409": {
+              "$ref": "#/components/responses/Conflict"
+            }
+          },
+          "security": [
+            {
+              "bearer": [
+                "staff"
+              ]
+            }
+          ],
+          "summary": "Register loan",
+          "x-rule": "loan-eligibility"
+        }
+      }
+    },
+    "security": [
+      {
+        "bearer": []
+      }
+    ],
+    "servers": [
+      {
+        "url": "https://library.example.com"
+      }
+    ]
+  },
+  "schema_version": "distillery.contract-slice/v1"
+}

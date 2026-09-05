@@ -62,6 +62,16 @@ failed返却は4 ledgerをすべて空配列にし、非空・単一行の`phase
 `post_execution_basis`はcontrollerが内部実測し、stage側では作らない。
 
 
+## 契約生成方式（任意）
+
+`contract_mode=catalog` を明示した場合は、Step1の後に
+`references/specs/contract-catalog.md` を読み、Step2.5で正本カタログと派生物を生成する。
+Step3の全生成・レビュー担当へ `contract_mode: catalog` を渡す。
+Step4aは `scripts/compileContracts.js`、Step3.5/Step4dは `scripts/buildSpecViews.js` を使用し、
+Step6で両スクリプトの `--check` を行う。API本文の型表を要求する規約はlegacyにのみ適用する。
+この方式の出力規約は `references/specs/contract-catalog.md` を優先する。
+省略時は `legacy`（現在のデフォルト）。既存イベントの自動移行は行わない。
+
 ## 前提条件
 
 ### 入力ファイル

@@ -571,6 +571,8 @@ inputs:
   tier_mds: [{tier: tier-frontend, path: "...", sha256: "..."}]   # ファイル名は {tier_id}.md(例 tier-frontend.md)。
                                        #   **tier id 昇順に整列して記録する**(projection の決定論の前提)
   api_summary: {path: "...", sha256: "..."}
+  contract_slice: {path: ".../_contract-slice.json", sha256: "..."} # v2 summaryでは必須、legacyでは省略
+  shared_spec_refs: [{path: "...", sha256: "..."}] # 本UCの明示的な共有定義参照。空なら []
   model_summary: {path: "...", sha256: "..."}
   datastore_schema: {path: "_cross-cutting/datastore/rdb-schema.yaml", sha256: "..."}
   kvs_schema: {path: "_cross-cutting/datastore/kvs-schema.yaml", sha256: "..."}
@@ -609,6 +611,15 @@ inputs:
 lineage_ok: true                       # spec-event の trigger_event と arch/design の event_id 整合
 ```
 
+**契約抜粋と共有定義のhash**: `contract_slice` はファイル全体のbytes、`shared_spec_refs` は
+spec.md / tier mdがファイルと見出し・IDで特定した共有Spec定義のファイル全体をhash化する。
+共有定義から別の共有定義への明示的な参照も辿り、循環は既訪問pathで止める。
+リンク一般や上流ドキュメント全体へ展開せず、対象event内のregular fileに限定する。
+pathを正規化し重複排除して昇順に整列する。参照切れはpreflightエラー。
+両エントリは全stage/tierのprojectionに保持し、追加・削除・内容変更でstaleにする。
+共有ファイルの他の節の変更でも再検証される保守的な粒度とする。
+legacyの旧manifestも再開時に再計算し、必要な参照hashの追加を通常の入力変更として検出する。
+
 **`ui_imported.tree_hash` の計算規則(canonical serialization。S1 が実体から計算する)**:
 
 1. `packages/ui/` 配下の**実ファイルを走査して列挙**する(`.imported.yaml` 自身は除外)
@@ -643,7 +654,7 @@ lineage_ok: true                       # spec-event の trigger_event と arch/d
     (`contracts_lock`)と `_api-summary` / `_model-summary` 経由に限られ、これらは projection に残る
 - **`spec_event` を projection から除外する理由**: spec 再生成のたびに変わる catch-all を含めると、
   無関係な変更(他 UC のみの spec 変更等)で全 done が偽 stale になる。入力の鮮度は content hash
-  (spec_md / tier_mds / api_summary / model_summary / datastore 系 schema / contracts_lock /
+  (spec_md / tier_mds / api_summary / contract_slice / shared_spec_refs / model_summary / datastore 系 schema / contracts_lock /
   design / ui_imported / ui_screen_config / nfr / usdm / arch / dev_rules)で担保する。
   **規範: サブエージェントの read-set に spec 生成物を追加するときは、対応する manifest エントリも
   必ず追加する**(content hash の網羅が spec_event 除外の前提)

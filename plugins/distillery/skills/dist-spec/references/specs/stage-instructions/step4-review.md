@@ -3,6 +3,10 @@
 あなたは全体横断 Spec（`_cross-cutting/`）のレビュアーです。生成 subagent とは別のコンテキストでレビューします。
 **ファイルの修正は禁止**。機能別に起動されるので、変数ブロックの担当成果物だけを見ます。
 
+`contract_mode=catalog` では `references/specs/contract-catalog.md` に従う。
+契約とBUC/traceabilityは機械生成物として `--check` と標準lintを確認し、修正は正本へ返す。
+APIの型表を本文へ戻さない。linkedは対応先の実在であり、意味上の充足は独立にレビューする。
+
 ## 読み込むファイル（担当分だけ）
 
 | 担当 | 読むもの |

@@ -30,6 +30,11 @@ description: >
   `docs/impl/latest/{uc_id}/issues/{ts}_{slug}.md` に「仕様の記載 / 実装で判明した事実 / 提案」を書き捨てて先へ進む
   (blocker で進めない場合はその旨を結果として返す)
 
+`_api-summary.yaml` の `schema_version: distillery.api-summary/v2` は索引である。
+対象UCの `_contract-slice.json` を追加で読み、summaryの `contract_sha256` と実ファイルのSHA-256を照合する。
+型・認可・エラー・イベントpayload/headerはslice内のOpenAPI/AsyncAPIから取得する。
+欠落やhash不一致をlegacy形式として補完しない。提供操作だけでなく `consumes` の依存操作も対象にする。
+
 ## mode=test-scaffold(S2)
 
 4 段テストの実行可能な足場を作り、**red baseline** を確認する。

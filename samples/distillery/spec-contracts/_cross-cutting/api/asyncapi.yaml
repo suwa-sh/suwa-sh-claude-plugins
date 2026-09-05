@@ -1,0 +1,77 @@
+{
+  "asyncapi": "3.0.0",
+  "channels": {
+    "loan/created": {
+      "address": "loan.created",
+      "messages": {
+        "LoanCreated": {
+          "$ref": "#/components/messages/LoanCreated"
+        }
+      },
+      "servers": [
+        {
+          "$ref": "#/servers/broker"
+        }
+      ]
+    }
+  },
+  "components": {
+    "messages": {
+      "LoanCreated": {
+        "headers": {
+          "properties": {
+            "idempotency_key": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "idempotency_key"
+          ],
+          "type": "object"
+        },
+        "name": "LoanCreated",
+        "payload": {
+          "$ref": "#/components/schemas/LoanCreatedPayload"
+        },
+        "title": "Loan created"
+      }
+    },
+    "schemas": {
+      "LoanCreatedPayload": {
+        "properties": {
+          "loanId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loanId"
+        ],
+        "title": "LoanCreatedPayload",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Events",
+    "version": "1.0.0"
+  },
+  "operations": {
+    "sendLoan": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/loan~1created"
+      },
+      "messages": [
+        {
+          "$ref": "#/channels/loan~1created/messages/LoanCreated"
+        }
+      ]
+    }
+  },
+  "servers": {
+    "broker": {
+      "host": "mq.example.com",
+      "protocol": "amqp"
+    }
+  }
+}

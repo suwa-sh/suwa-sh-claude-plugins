@@ -4,6 +4,9 @@
 
 全入力モデル（RDRA, NFR, Arch, Design）から UC 単位の Spec を生成する。
 
+catalog modeでは `references/specs/contract-catalog.md` の順序を使う。
+手順6のsummary生成は実施済みの機械生成物を読むだけとし、手順5のAPI型表はoperation参照に置き換える。
+
 ## 入力
 
 - `docs/rdra/latest/*.tsv` — RDRA モデル
