@@ -205,6 +205,23 @@ printf 'not json\n' > "$FH/.gemini/config/projects/6.json"
 printf '{"id":"p7","projectResources":{"resources":[{"folderUri":"file:///repo/c"}]}}\n' > "$FH/.gemini/config/projects/7.json"
 [ "$(HOME=$FH python3 $S/agy_project_id.py /repo/c 2>/dev/null)" = "p7" ] && ok "agy_project_id: broken entries skipped, valid one found" || ng "agy_project_id: broken entries skipped, valid one found"
 rm -rf "$FH"
+# trust_status: HOME を差し替えて missing / ok / hooks 無し を検査
+FH="$(mktemp -d "${TMPDIR:-/tmp}/mh-fakehome.XXXXXX")"
+printf 'skill_version: "t"\ntargets: [claude-code, codex, grok, copilot, antigravity, cursor]\nskills_mode: manual\nhooks:\n  - event: pre-tool\n    script: scripts/agent-hooks/pre-tool-policy.sh\n' > "$T/.agents/harness.yaml"
+HOME=$FH python3 $S/trust_status.py "$T" > "$FH/out" 2>&1; rc=$?
+[ $rc -eq 3 ] && grep -q "^codex *missing" "$FH/out" && grep -q "^copilot *missing" "$FH/out" && grep -q "^claude-code *-" "$FH/out" && ok "trust_status: reports missing (exit 3)" || ng "trust_status: reports missing (exit 3) rc=$rc"
+grep -q "trustedFolders" "$FH/out" && grep -q "trusted_folders.toml" "$FH/out" && grep -q -- "--new-project" "$FH/out" && ok "trust_status: how-to per product" || ng "trust_status: how-to per product"
+TC="$(cd "$T" && git rev-parse --show-toplevel)"   # trust は canonical パスで照合される
+mkdir -p "$FH/.codex" "$FH/.grok" "$FH/.gemini/antigravity-cli" "$FH/.gemini/config/projects" "$FH/.copilot"
+printf '[projects."%s"]\ntrust_level = "trusted"\n' "$TC" > "$FH/.codex/config.toml"
+printf '[folders."%s"]\ntrusted = true\ndecided_at = 1\n' "$TC" > "$FH/.grok/trusted_folders.toml"
+printf '{"trustedWorkspaces":["%s"]}\n' "$TC" > "$FH/.gemini/antigravity-cli/settings.json"
+printf '{"id":"pX","projectResources":{"resources":[{"folderUri":"file://%s"}]}}\n' "$TC" > "$FH/.gemini/config/projects/x.json"
+printf '{"trustedFolders":["%s"]}\n' "$TC" > "$FH/.copilot/settings.json"
+HOME=$FH python3 $S/trust_status.py "$T" > "$FH/out2" 2>&1 && grep -q "揃っています" "$FH/out2" && ok "trust_status: all ok (exit 0)" || ng "trust_status: all ok (exit 0)"
+printf 'skill_version: "t"\ntargets: [codex]\nskills_mode: manual\nhooks: []\n' > "$T/.agents/harness.yaml"
+HOME=$FH python3 $S/trust_status.py "$T" | grep -q "trust は不要" && ok "trust_status: no hooks -> not needed" || ng "trust_status: no hooks -> not needed"
+rm -rf "$FH"
 # hooks: [] でも他人の hook ファイルは消さない (grok / copilot)、所有ファイルは消す
 printf 'skill_version: "t"\ntargets: [grok, copilot]\nskills_mode: manual\nhooks: []\nagents: []\n' > "$T/.agents/harness.yaml"
 mkdir -p "$T/.grok/hooks" "$T/.github/hooks"

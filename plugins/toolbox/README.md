@@ -46,6 +46,7 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 - `apply`: 既存リポの資産を棚卸し → 6 つの振る舞い契約へ分類 → 人の承認 (human-html-review) → `git mv` で core へ移送 → adapter 生成
 - `audit`: manifest から再生成した adapter と commit 済みの差分 (drift) を検査し、受け入れテスト (skill 発見 / headless / hook 拒否) を targets の製品ごとに実行。CI 向け
 - hook は `scripts/agent-hooks/` の 1 本を各製品の設定が呼ぶだけの二層構成。custom agent は `prompt.md` + `policy.yaml` (論理能力) から各製品の front matter / TOML を生成し、変換不能は失敗させる
+- 各モードの最後に `trust_status.py` で「hook を製品に読ませるためにユーザー側で必要な trust」(Codex の project trust / Grok の folder trust / Antigravity の project 登録 / Copilot の `trustedFolders`) の不足を検査し、付け方を報告に載せる (repo 内のファイルでは有効化できないため)
 - 対応製品は Claude Code / Codex CLI / Cursor / Grok Build / GitHub Copilot CLI / Antigravity CLI の 6 つ。読込規則と実測結果は `references/adapters/<product>.md` に確認日つきで置く。hook スクリプト 1 本が 6 製品の stdin/stdout 形式を吸収する
 - `samples/toolbox/mid-harness/` に 6 製品 targets で `init` した結果と受け入れテストの記録を公開
 

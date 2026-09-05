@@ -49,7 +49,8 @@ Claude Code / Codex CLI などのコーディングエージェントは、指�
    - `.agents/harness.yaml` (manifest) を生成する
 2. `python3 <skill-base-dir>/scripts/gen_adapters.py <repo>` で製品別 adapter を生成する。変換不能な項目や、所有マーカーの無い既存 agent 定義があれば**何も書かずに**非ゼロ終了するので、manifest か policy を直して再実行する (既存の手書き agent 定義を取り込む場合だけ `--adopt`)
 3. `bash <skill-base-dir>/scripts/verify.sh <repo>` で受け入れテスト (skill 発見 / headless / hook 拒否) を回す
-4. 結果を報告する (下記「報告」)
+4. `python3 <skill-base-dir>/scripts/trust_status.py <repo>` で、hook を製品に読ませるためにユーザー側で必要な trust (Codex の project trust、Grok の folder trust、Antigravity の project 登録 + trustedWorkspaces、Copilot の trustedFolders) が揃っているかを検査する。exit 3 なら不足があるので、その出力をそのまま報告に載せる (ユーザー設定は変更しない)
+5. 結果を報告する (下記「報告」)
 
 ### apply
 
@@ -61,14 +62,15 @@ Claude Code / Codex CLI などのコーディングエージェントは、指�
    - `git mv` で core へ移す (履歴を保つ)。既存 symlink (例: `.agents/skills -> ../.claude/skills`) は方向を逆転させる: 実体を `.agents/` 側へ移し、製品側は生成物にする
    - `.agents/harness.yaml` に targets / hooks / agents を追記する
    - 旧パスを読む仕組みが残る場合だけ、薄い shim を置く
-4. `gen_adapters.py --adopt` (移送した手書き agent 定義を取り込む) → `verify.sh` を init と同じ順で回す
+4. `gen_adapters.py --adopt` (移送した手書き agent 定義を取り込む) → `verify.sh` → `trust_status.py` を init と同じ順で回す
 5. 報告する。verify 不合格なら exit 2 (未完了) として、移送済みの差分は残したまま何が足りないかを列挙する
 
 ### audit
 
 1. `python3 <skill-base-dir>/scripts/check_drift.py <repo>` で「manifest から再生成した adapter」と「commit 済み adapter」の差分を出す。差分があれば exit 1
 2. `bash <skill-base-dir>/scripts/verify.sh <repo>` を回す。不合格なら exit 2
-3. リポの資産には書き込まない。verify は一意名のプローブ skill を一時作成して終了時に削除する (LLM 呼び出しを避けるなら `MID_HARNESS_VERIFY_SKIP_LLM=1`)。報告のみ
+3. `python3 <skill-base-dir>/scripts/trust_status.py <repo>` で製品側 trust の不足を報告する
+4. リポの資産には書き込まない。verify は一意名のプローブ skill を一時作成して終了時に削除する (LLM 呼び出しを避けるなら `MID_HARNESS_VERIFY_SKIP_LLM=1`)。報告のみ
 
 ### 生成物の増減で気を付けること (全モード共通)
 
@@ -89,11 +91,12 @@ Claude Code / Codex CLI などのコーディングエージェントは、指�
 
 ## 報告
 
-次の 3 点を必ず含める:
+次の 4 点を必ず含める:
 
 1. 何を判断してほしいか (apply なら配置案の承認、verify 不合格なら対処方針)
 2. 根拠 (inventory 件数、生成した adapter の一覧、verify の pass / fail / skip と各コマンド)
-3. 次に起きること (drift 検査を CI に入れる、残りの製品を targets に足す、など)
+3. **hook を有効にするためにユーザーがやること** (`trust_status.py` の出力をそのまま。製品ごとに repo をユーザー側で信頼する設定が要り、repo 内のファイルでは有効化できない。verify が pass していても、verify は検証用の bypass / 環境変数を使うので運用ではこの設定が別途必要)
+4. 次に起きること (drift 検査を CI に入れる、残りの製品を targets に足す、など)
 
 ## このスキルの学び
 
@@ -108,4 +111,5 @@ Claude Code / Codex CLI などのコーディングエージェントは、指�
 | `references/adapters/claude-code.md` / `codex.md` | gen_adapters の変換規則を疑うとき、製品バージョンが進んだとき |
 | `references/knowledge.md` | docs と `.agents/memory` の置き分け、昇格ルール、OKF front matter |
 | `references/acceptance-tests.md` | verify.sh の 3 項目と、手動で行う残り 5 項目 |
+| `scripts/trust_status.py` | init / apply / audit の最後。製品側 trust の不足と付け方を報告に載せる |
 | `references/recovery.md` | 失敗したとき |
