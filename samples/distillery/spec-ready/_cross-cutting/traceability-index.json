@@ -1,0 +1,91 @@
+{
+  "counts": {
+    "condition": {
+      "linked": 4,
+      "total": 4
+    }
+  },
+  "elements": [
+    {
+      "category": "condition",
+      "element": "予約管理 / 取置き中書籍貸出条件",
+      "evidence": [
+        {
+          "anchor": "RULE-002",
+          "file": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+          "scenarios": [
+            {
+              "file": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+              "name": "取置き中の書籍を予約順1位の利用者へ貸し出せる"
+            }
+          ],
+          "tier": "tier-backend-api",
+          "uc": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+        }
+      ],
+      "key": "[\"condition\",\"予約管理\",\"取置き中書籍貸出条件\"]",
+      "status": "linked"
+    },
+    {
+      "category": "condition",
+      "element": "蔵書管理 / 資料種別利用可否条件",
+      "evidence": [
+        {
+          "anchor": "RULE-003",
+          "file": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+          "scenarios": [
+            {
+              "file": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+              "name": "電子書籍への貸出登録は拒否される"
+            }
+          ],
+          "tier": "tier-backend-api",
+          "uc": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+        }
+      ],
+      "key": "[\"condition\",\"蔵書管理\",\"資料種別利用可否条件\"]",
+      "status": "linked"
+    },
+    {
+      "category": "condition",
+      "element": "貸出管理 / 貸出可否条件",
+      "evidence": [
+        {
+          "anchor": "RULE-001",
+          "file": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+          "scenarios": [
+            {
+              "file": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+              "name": "在庫ありの書籍を登録済み利用者へ貸し出せる"
+            }
+          ],
+          "tier": "tier-backend-api",
+          "uc": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+        }
+      ],
+      "key": "[\"condition\",\"貸出管理\",\"貸出可否条件\"]",
+      "status": "linked"
+    },
+    {
+      "category": "condition",
+      "element": "貸出管理 / 返却期限設定条件",
+      "evidence": [
+        {
+          "anchor": "RULE-004",
+          "file": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+          "scenarios": [
+            {
+              "file": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md",
+              "name": "貸出登録時に返却期限が自動設定される"
+            }
+          ],
+          "tier": "tier-backend-api",
+          "uc": "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する"
+        }
+      ],
+      "key": "[\"condition\",\"貸出管理\",\"返却期限設定条件\"]",
+      "status": "linked"
+    }
+  ],
+  "schema_version": "distillery.traceability/v1"
+}

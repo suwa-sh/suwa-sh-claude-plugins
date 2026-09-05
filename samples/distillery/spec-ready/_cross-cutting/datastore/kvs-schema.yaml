@@ -1,0 +1,3 @@
+version: "1.0"
+datastore: "kvs"
+key_patterns: []
