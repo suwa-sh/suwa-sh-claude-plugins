@@ -33,7 +33,7 @@
 - `matcher` はツール名 (glob、`*` で全ツール)
 - **hook の cwd は hooks.json のあるディレクトリ** (実測: `.agents/`)。command は `git rev-parse --show-toplevel` で root を解決する
 - stdin (実測 2026-09-05): `{"toolCall": {"name": "run_command", "args": {"CommandLine": "echo hi", "Cwd": "...", ...}}, "stepIdx", "conversationId", "modelName", "workspacePaths", "transcriptPath", "artifactDirectoryPath"}`。**イベント名は stdin に無い** (command の引数で渡す)
-- ブロック: stdout `{"decision": "deny"}` (`allow` / `deny` / `ask` / `force_ask` / `deny_unless_prior_grant`)。pre-tool-policy.sh (JSON + exit 2 + stderr) で実測: agent 側に "Execution was prevented by the policy hook" と返り、ログに `JSON hook command stderr: BLOCKED …` が残る。exit 2 単独でブロックできるかは未分離 (**unverified**)
+- ブロック: stdout `{"decision": "deny"}` (`allow` / `deny` / `ask` / `force_ask` / `deny_unless_prior_grant`)。**exit 2 だけ (stdout なし) でもブロックされる** (実測 2026-09-06: agent 側に `Encountered error in tool execution: JSON hook "…" failed: command failed: exit status 2, stderr: …` と返り、ツールは実行されない)。つまり非ゼロ exit は「hook 失敗 = ツール停止」扱いで fail-closed。pre-tool-policy.sh は JSON + exit 2 + stderr を同時に出すので、どちらの経路でも止まる
 
 ### workspace hooks が読まれる条件 (実測)
 

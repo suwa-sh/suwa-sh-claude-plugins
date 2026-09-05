@@ -144,7 +144,7 @@ class Gen:
             name = marker.parent.name
             if marker.parent.is_symlink():
                 continue
-            if not (self.repo / ".agents" / "skills" / name / "SKILL.md").is_file():
+            if not (self.repo / ".agents" / "skills" / name).is_dir():
                 self.removals.append(f".claude/skills/{name}")
 
     def antigravity_drop_key(self) -> None:
@@ -251,7 +251,9 @@ class Gen:
         elif src_root.is_symlink():
             self.problems.append(".agents/skills が symlink です。正本を .agents/skills の実体にしてください (apply の移送対象)")
         elif src_root.is_dir():
-            for skill in sorted(x for x in src_root.iterdir() if x.is_dir() and (x / "SKILL.md").exists()):
+            # SKILL.md の無いディレクトリ (references だけの資料置き場など) も同じ規則で link / copy する
+            # (skill から相対参照されている実績があるため)。隠しディレクトリは対象外
+            for skill in sorted(x for x in src_root.iterdir() if x.is_dir() and not x.name.startswith(".")):
                 rel = f".claude/skills/{skill.name}"
                 cur = self.repo / rel
                 if mode == "symlink":

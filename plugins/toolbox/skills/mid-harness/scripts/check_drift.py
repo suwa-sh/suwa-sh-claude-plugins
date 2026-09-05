@@ -95,7 +95,7 @@ def main() -> int:
         # 3) 孤児: 正本に無い生成 skill / manifest に無い所有マーカー付き agent 定義
         for marker in (repo / ".claude" / "skills").glob(f"*/{GENERATED_MARKER}"):
             name = marker.parent.name
-            if not (repo / ".agents" / "skills" / name / "SKILL.md").exists():
+            if not (repo / ".agents" / "skills" / name).is_dir():
                 drift.append(f"orphan generated skill: .claude/skills/{name}")
         # 3b) 所有マーカー付きの hook ファイル / キーが再生成結果に無いのに残っている (targets から外した後の未生成など)
         for rel in (".grok/hooks/mid-harness.json", ".github/hooks/mid-harness.json"):
