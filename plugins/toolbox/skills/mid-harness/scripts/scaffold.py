@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """init: 推奨ツリーを templates/tree から展開し、manifest を生成する。既存ファイルは上書きしない。
 
-usage: scaffold.py [<repo>] [--targets claude-code,codex] [--skills-mode generate|symlink]
+usage: scaffold.py [<repo>] [--targets claude-code,codex] [--skills-mode generate|symlink|manual] [--manifest-only]
 """
 from __future__ import annotations
 

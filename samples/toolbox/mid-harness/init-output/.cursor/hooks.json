@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "bash scripts/agent-hooks/pre-tool-policy.sh  # mid-harness",
+        "failClosed": true
+      }
+    ]
+  }
+}

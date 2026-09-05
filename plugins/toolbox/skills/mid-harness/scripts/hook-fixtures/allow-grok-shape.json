@@ -1,0 +1,1 @@
+{"hookEventName":"pre_tool_use","toolName":"run_terminal_command","toolInput":{"command":"ls -la"},"tool_name":"run_terminal_command","tool_input":{"command":"ls -la"}}

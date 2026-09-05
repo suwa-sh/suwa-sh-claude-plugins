@@ -40,12 +40,41 @@ def owned_hook_command(cmd) -> bool:
     return isinstance(cmd, str) and cmd.rstrip().endswith("  " + OWNER_TAG)
 
 
+def agy_key_owned(value) -> bool:
+    """Antigravity の named hook 値 (.agents/hooks.json#mid-harness) は、含まれる全 command が所有 ID で終わるときだけ所有と見なす
+    (値の中に未知キーを足すと製品側の parser を壊し得るため、マーカーは command 末尾の所有 ID で代用)。生成側と drift 検査側で共有する."""
+    if not isinstance(value, dict) or not value:
+        return False
+    cmds = []
+    for entries in value.values():
+        if not isinstance(entries, list):
+            return False
+        for e in entries:
+            for h in (e.get("hooks") if isinstance(e, dict) and isinstance(e.get("hooks"), list) else []):
+                cmds.append(h.get("command") if isinstance(h, dict) else None)
+    return bool(cmds) and all(owned_hook_command(c) for c in cmds)
+
+
+def json_owned(doc) -> bool:
+    """mid-harness が丸ごと所有する JSON ファイル (grok / copilot の hook ファイル) の判定."""
+    return isinstance(doc, dict) and doc.get("_generated_by") == OWNER_TAG.lstrip("# ")
+
+
 def manifest_lists(m: dict) -> tuple[list, list]:
     hooks = m.get("hooks", [])
     agents = m.get("agents", [])
     return (hooks if isinstance(hooks, list) else []), (agents if isinstance(agents, list) else [])
 HOOK_SCRIPT_DIR = "scripts/agent-hooks"
-SUPPORTED_TARGETS = ("claude-code", "codex")
+SUPPORTED_TARGETS = ("claude-code", "codex", "cursor", "grok", "copilot", "antigravity")
+# 製品ごとの agent 定義の置き場 (rel_dir, 拡張子, 形式)。antigravity は <name>/agent.md 形式
+AGENT_LAYOUT = {
+    "claude-code": (".claude/agents", ".md", "md"),
+    "codex": (".codex/agents", ".toml", "toml"),
+    "cursor": (".cursor/agents", ".md", "md"),
+    "grok": (".grok/agents", ".md", "md"),
+    "copilot": (".github/agents", ".md", "md"),
+    "antigravity": (".agents/agents", "/agent.md", "md"),
+}
 LOGICAL_EVENTS = ("pre-tool", "post-tool", "session-start", "stop")
 CAPABILITIES = ("read", "edit", "shell", "delegate", "network")
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")

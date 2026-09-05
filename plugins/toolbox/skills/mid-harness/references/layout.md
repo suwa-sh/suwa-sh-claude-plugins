@@ -27,14 +27,26 @@ repository/
 │       ├── prompt.md
 │       └── policy.yaml
 ├── scripts/agent-hooks/           # hook の検査ロジック本体 (製品非依存)
-├── .claude/                       # ← 生成物 (adapter)
-│   ├── settings.json              #   hooks ブロックだけ管理
+├── .claude/                       # ← 生成物 (adapter: claude-code)
+│   ├── settings.json              #   hooks の所有 handler だけ管理
 │   ├── agents/<name>.md
 │   └── skills/<name>/             #   generate (コピー) または symlink
-└── .codex/                        # ← 生成物 (adapter)
-    ├── config.toml                #   mid-harness 管理ブロックだけ
-    ├── hooks.json
-    └── agents/<name>.toml
+├── .codex/                        # ← 生成物 (adapter: codex)
+│   ├── config.toml                #   mid-harness 管理ブロックだけ
+│   ├── hooks.json
+│   └── agents/<name>.toml
+├── .cursor/                       # ← 生成物 (adapter: cursor)
+│   ├── hooks.json                 #   所有 entry だけ管理
+│   └── agents/<name>.md
+├── .grok/                         # ← 生成物 (adapter: grok)
+│   ├── hooks/mid-harness.json     #   このファイルを丸ごと所有
+│   └── agents/<name>.md
+├── .github/                       # ← 生成物 (adapter: copilot)
+│   ├── hooks/mid-harness.json     #   このファイルを丸ごと所有
+│   └── agents/<name>.md
+└── .agents/                       # ← 生成物 (adapter: antigravity。core と同居)
+    ├── hooks.json                 #   top-level キー "mid-harness" だけ管理
+    └── agents/<name>/agent.md
 ```
 
 `.agents/` の各ディレクトリの責務は `contracts.md` の表を参照。`.agents/memory/` は各製品が自動検出する標準ディレクトリではないので、`AGENTS.md` から `index.md` を明示的に参照させる。
@@ -45,7 +57,7 @@ repository/
 
 ```yaml
 skill_version: "0.1"           # 生成に使った mid-harness の版
-targets: [claude-code, codex]  # adapters/<name>.md が存在する製品のみ
+targets: [claude-code, codex]  # claude-code | codex | cursor | grok | copilot | antigravity
 skills_mode: generate          # generate | symlink | manual  (Claude Code 向け .claude/skills の作り方。manual = 管理外)
 hooks:
   - event: pre-tool            # 論理イベント: pre-tool | post-tool | session-start | stop
@@ -58,12 +70,14 @@ agents:
 
 ### 論理イベント → 製品イベント
 
-| 論理 | Claude Code | Codex |
-|---|---|---|
-| `pre-tool` | `PreToolUse` | `PreToolUse` |
-| `post-tool` | `PostToolUse` | `PostToolUse` |
-| `session-start` | `SessionStart` | `SessionStart` |
-| `stop` | `Stop` | `Stop` |
+| 論理 | Claude Code / Codex / Grok | Cursor | Copilot | Antigravity |
+|---|---|---|---|---|
+| `pre-tool` | `PreToolUse` | `beforeShellExecution` (shell のみ) | `preToolUse` | `PreToolUse` (matcher `*`) |
+| `post-tool` | `PostToolUse` | `afterShellExecution` | `postToolUse` | `PostToolUse` |
+| `session-start` | `SessionStart` | `sessionStart` | `sessionStart` | (無し → unmappable) |
+| `stop` | `Stop` | `stop` | (無し → unmappable) | `Stop` |
+
+`matcher` は Claude Code / Codex / Grok にだけ渡す。Cursor はイベントで絞り、Copilot は絞れず、Antigravity は `*` にする (ツール名が `run_command` で Claude 系と違うため)。
 
 対応表の正本は `adapters/<product>.md`。gen_adapters は adapter ファイルでなく `scripts/gen_adapters.py` 内の表を使うので、adapter doc を更新したらスクリプトの表も同時に更新する (check: `grep EVENT_MAP scripts/gen_adapters.py`)。
 
@@ -92,5 +106,5 @@ on_unmappable: fail          # fail | skip
 - `check_drift.py` を CI に入れ、再生成結果と commit 済みの差分をゼロに保つ
 - adapter ファイルのうち mid-harness が管理するのは「生成マーカー付きの部分」だけ。`.claude/settings.json` の `permissions` や `.codex/config.toml` の他設定は触らない
 - manifest から agent を外すと、所有マーカー付きの生成物 (`.claude/agents/<name>.md` / `.codex/agents/<name>.toml` / config.toml の管理ブロック内の行) は次回生成で削除される。targets から製品を外した場合も、その製品の所有マーカー付き agent 定義は削除される。手書き (マーカー無し) は残る
-- ただし targets から外した製品の **hook 設定 (`.claude/settings.json` / `.codex/hooks.json` の所有 handler) は触らない** (その製品の設定ファイルを開かないため)。製品を外すときは手で消すか、一度 targets に残したまま `hooks: []` で生成してから外す
+- targets から製品を外したときの hook 設定: Grok / Copilot の所有ファイルと Antigravity の所有キーは削除される。**Claude Code / Codex / Cursor の既存設定ファイルに埋め込んだ所有 handler は触らない** (その製品の設定ファイルを開かないため)。この 3 製品を外すときは手で消すか、一度 targets に残したまま `hooks: []` で生成してから外す。`check_drift.py` は残った所有ファイル / キーを孤児として検出する
 - `.agents/skills/<name>/` の中に symlink があると generate は失敗する (コピーで実体化されリポ外を取り込むため)

@@ -1,0 +1,17 @@
+{
+  "_generated_by": "mid-harness",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/scripts/agent-hooks/pre-tool-policy.sh\"  # mid-harness",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

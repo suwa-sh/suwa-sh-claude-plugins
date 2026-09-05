@@ -1,0 +1,12 @@
+# mid-harness manifest — 製品別 adapter 生成の唯一の入力。
+# 製品固有の値は書かない (変換規則は mid-harness skill の references/adapters/<product>.md)。
+skill_version: "0.7.0"
+targets: [claude-code, codex, cursor, grok, copilot, antigravity]
+skills_mode: generate   # generate | symlink
+hooks:
+  - event: pre-tool
+    matcher: Bash
+    script: scripts/agent-hooks/pre-tool-policy.sh
+    on_unmappable: fail
+agents:
+  - reviewer

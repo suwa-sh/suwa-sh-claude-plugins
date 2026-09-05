@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "_generated_by": "mid-harness",
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "bash \"$(git rev-parse --show-toplevel)/scripts/agent-hooks/pre-tool-policy.sh\"  # mid-harness",
+        "timeoutSec": 30,
+        "matcher": "bash|powershell"
+      }
+    ]
+  }
+}

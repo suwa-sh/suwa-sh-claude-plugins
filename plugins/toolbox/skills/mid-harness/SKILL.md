@@ -15,7 +15,7 @@ Claude Code / Codex CLI などのコーディングエージェントは、指�
 
 ## 入力
 
-`$ARGUMENTS` = `<mode> [<repo-path>] [--targets a,b] [--skills-mode generate|symlink]`
+`$ARGUMENTS` = `<mode> [<repo-path>] [--targets a,b] [--skills-mode generate|symlink|manual]`
 
 | mode | 用途 | 書き込み |
 |---|---|---|
@@ -23,12 +23,13 @@ Claude Code / Codex CLI などのコーディングエージェントは、指�
 | `apply` | 既存リポの資産を 6 契約へ分類し、人の承認後に core へ移送して adapter を生成する | あり (承認後のみ) |
 | `audit` | 生成物ドリフトと受け入れテストを検査する。CI 向け | なし |
 
-`<repo-path>` 省略時はカレントの git リポ root。`--targets` 省略時は `claude-code,codex`。
+`<repo-path>` 省略時はカレントの git リポ root。`--targets` 省略時は `claude-code,codex`。対応製品は `claude-code` / `codex` / `cursor` / `grok` / `copilot` / `antigravity` (製品ごとの読込規則と実測結果は `references/adapters/README.md` の早見表)。
 
 ## 前提
 
 - python3 3.11+ と PyYAML (`python3 -c 'import yaml, tomllib'`)。3.10 以下では `pip install tomli` も必要 (生成した TOML を必ず検証する。検証器が無ければ生成は失敗する)。無ければインストールを案内して停止する
-- 対象製品の CLI (`claude` / `codex`) は verify にだけ必要。無い製品は verify を skip と報告する
+- 対象製品の CLI (`claude` / `codex` / `agent` / `grok` / `copilot` / `agy`) は verify にだけ必要。無い製品は verify を skip と報告する
+- hook の受け入れテストには製品ごとの trust 前提がある: Codex は hook trust (verify が bypass)、Grok は folder trust (`~/.grok/trusted_folders.toml`)、Antigravity は workspace の project 登録 + trust (`agy --new-project` を一度)。Copilot の repo hook は `-p` で発火しない既知の問題がある (`adapters/copilot.md`)
 - `references/adapters/<product>.md` の先頭にある **確認日と確認バージョン** を見て、対象製品のバージョンが大きく進んでいたら公式 doc で読込規則を再確認してから進める (推測で adapter を変えない)
 
 ## 手順
@@ -72,7 +73,7 @@ Claude Code / Codex CLI などのコーディングエージェントは、指�
 ### 生成物の増減で気を付けること (全モード共通)
 
 - manifest から agent を外す / core から skill を消す / targets から製品を外すと、その所有マーカー付き生成物 (agent 定義、生成 skill ディレクトリ、Codex 管理ブロック) は次回の `gen_adapters.py` で削除される。手書き (マーカー無し) は残る
-- ただし targets から外した製品の **hook 設定は触らない** (その製品の設定ファイルを開かないため)。製品を外すときは、先に `hooks: []` で一度生成してから targets を外す
+- targets から製品を外したときの hook 設定は製品で違う: Grok / Copilot の所有ファイル (`.grok/hooks/mid-harness.json` / `.github/hooks/mid-harness.json`) と Antigravity の所有キー (`.agents/hooks.json#mid-harness`) は削除されるが、Claude Code / Codex / Cursor の**既存設定ファイルに埋め込んだ handler は残る** (その製品の設定ファイルを開かないため)。この 3 製品を外すときは、先に `hooks: []` で一度生成してから targets を外す
 - 生成先 (`.claude/settings.json` 等) やその親が symlink だと生成は失敗する (リポ外への書き込み防止)
 
 ## 完了条件

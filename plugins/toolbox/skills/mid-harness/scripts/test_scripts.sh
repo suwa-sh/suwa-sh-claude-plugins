@@ -139,6 +139,95 @@ python3 $S/gen_adapters.py "$T" --quiet && ok "gen after core skill removal" || 
 [ ! -e "$T/.claude/skills/demo" ] && ok "orphan generated skill removed" || ng "orphan generated skill removed"
 python3 $S/check_drift.py "$T" >/dev/null && ok "no drift after skill removal" || ng "no drift after skill removal"
 
+# 6 製品: 全 targets で生成 → drift ゼロ → 製品を外すと所有生成物だけ消える
+printf 'skill_version: "t"\ntargets: [claude-code, codex, cursor, grok, copilot, antigravity]\nskills_mode: manual\nhooks:\n  - event: pre-tool\n    matcher: Bash\n    script: scripts/agent-hooks/pre-tool-policy.sh\nagents: [reviewer]\n' > "$T/.agents/harness.yaml"
+printf 'Review.\n' > "$T/.agents/agent-specs/reviewer/prompt.md"
+printf '{"other-hook":{"Stop":[{"hooks":[{"type":"command","command":"echo bye"}]}]}}\n' > "$T/.agents/hooks.json"
+python3 $S/gen_adapters.py "$T" --quiet --adopt && ok "gen 6 targets" || ng "gen 6 targets"
+for f in .cursor/hooks.json .cursor/agents/reviewer.md .grok/hooks/mid-harness.json .grok/agents/reviewer.md .github/hooks/mid-harness.json .github/agents/reviewer.md .agents/hooks.json .agents/agents/reviewer/agent.md; do
+  [ -f "$T/$f" ] && ok "generated $f" || ng "generated $f"
+done
+grep -q '"other-hook"' "$T/.agents/hooks.json" && grep -q '"mid-harness"' "$T/.agents/hooks.json" && ok "antigravity: foreign named hook kept" || ng "antigravity: foreign named hook kept"
+grep -q 'beforeShellExecution' "$T/.cursor/hooks.json" && grep -q '"failClosed": true' "$T/.cursor/hooks.json" && ok "cursor: event + failClosed" || ng "cursor: event + failClosed"
+grep -q 'readonly: true' "$T/.cursor/agents/reviewer.md" && ok "cursor: readonly agent" || ng "cursor: readonly agent"
+grep -q 'permissionMode: plan' "$T/.grok/agents/reviewer.md" && ok "grok: permissionMode plan" || ng "grok: permissionMode plan"
+python3 $S/check_drift.py "$T" >/dev/null && ok "no drift (6 targets)" || ng "no drift (6 targets)"
+printf 'skill_version: "t"\ntargets: [claude-code]\nskills_mode: manual\nhooks:\n  - event: pre-tool\n    matcher: Bash\n    script: scripts/agent-hooks/pre-tool-policy.sh\nagents: [reviewer]\n' > "$T/.agents/harness.yaml"
+python3 $S/gen_adapters.py "$T" --quiet && ok "gen after dropping 5 targets" || ng "gen after dropping 5 targets"
+for f in .cursor/agents/reviewer.md .grok/hooks/mid-harness.json .grok/agents/reviewer.md .github/hooks/mid-harness.json .github/agents/reviewer.md .agents/agents/reviewer/agent.md; do
+  [ ! -e "$T/$f" ] && ok "removed $f" || ng "removed $f"
+done
+grep -q 'other-hook' "$T/.agents/hooks.json" && ok "antigravity: foreign hook kept after drop" || ng "antigravity: foreign hook kept after drop"
+python3 $S/check_drift.py "$T" >/dev/null && ok "no drift after dropping 5 targets" || ng "no drift after dropping 5 targets"
+# copilot: tools alias と matcher
+printf 'skill_version: "t"\ntargets: [copilot]\nskills_mode: manual\nhooks:\n  - event: pre-tool\n    matcher: Bash\n    script: scripts/agent-hooks/pre-tool-policy.sh\nagents: [reviewer]\n' > "$T/.agents/harness.yaml"
+python3 $S/gen_adapters.py "$T" --quiet --adopt && ok "gen copilot" || ng "gen copilot"
+grep -q 'tools: \[read, search\]' "$T/.github/agents/reviewer.md" && ok "copilot: tools alias from policy" || ng "copilot: tools alias from policy"
+grep -q '"matcher": "bash|powershell"' "$T/.github/hooks/mid-harness.json" && ok "copilot: matcher Bash -> bash|powershell" || ng "copilot: matcher"
+# copilot / grok: 全 true → tools 省略、全 false → tools: []、model 指定
+mkdir -p "$T/.agents/agent-specs/allt" "$T/.agents/agent-specs/nonet" "$T/.agents/agent-specs/modl"
+printf 'p\n' | tee "$T/.agents/agent-specs/allt/prompt.md" "$T/.agents/agent-specs/nonet/prompt.md" "$T/.agents/agent-specs/modl/prompt.md" >/dev/null
+printf 'description: d\ncapabilities: {read: true, edit: true, shell: true, delegate: true, network: true}\n' > "$T/.agents/agent-specs/allt/policy.yaml"
+printf 'description: d\ncapabilities: {read: false, edit: false, shell: false, delegate: false, network: false}\non_unmappable: skip\n' > "$T/.agents/agent-specs/nonet/policy.yaml"
+printf 'description: d\nmodel: gpt-5.6\ncapabilities: {read: true, edit: true, shell: true, delegate: true, network: true}\n' > "$T/.agents/agent-specs/modl/policy.yaml"
+printf 'skill_version: "t"\ntargets: [copilot, grok]\nskills_mode: manual\nagents: [allt, nonet, modl]\n' > "$T/.agents/harness.yaml"
+python3 $S/gen_adapters.py "$T" --quiet --adopt && ok "gen tools edge cases" || ng "gen tools edge cases"
+grep -q '^tools:' "$T/.github/agents/allt.md" && ng "copilot: all true omits tools" || ok "copilot: all true omits tools"
+grep -q '^tools: \[\]$' "$T/.github/agents/nonet.md" && ok "copilot: all false -> tools: []" || ng "copilot: all false -> tools: []"
+grep -q '^model: gpt-5.6$' "$T/.github/agents/modl.md" && ok "copilot: model emitted" || ng "copilot: model emitted"
+grep -q '^tools:' "$T/.grok/agents/allt.md" && ng "grok: all true omits tools" || ok "grok: all true omits tools"
+grep -q '^tools: \[\]$' "$T/.grok/agents/nonet.md" && ok "grok: all false -> tools: []" || ng "grok: all false -> tools: []"
+python3 -c "import yaml,sys;t=open('$T/.grok/agents/nonet.md').read().split('---')[1];assert yaml.safe_load(t)['tools']==[]" && ok "grok: tools: [] parses as empty list" || ng "grok: tools: [] parses as empty list"
+# targets から外したのに所有 hook ファイル / キーが残っていたら drift として検出
+printf 'skill_version: "t"\ntargets: [copilot, grok, antigravity]\nskills_mode: manual\nhooks:\n  - event: pre-tool\n    script: scripts/agent-hooks/pre-tool-policy.sh\n' > "$T/.agents/harness.yaml"
+python3 $S/gen_adapters.py "$T" --quiet --adopt || ng "gen 3 targets for drift test"
+printf 'skill_version: "t"\ntargets: [cursor]\nskills_mode: manual\nhooks:\n  - event: pre-tool\n    script: scripts/agent-hooks/pre-tool-policy.sh\n' > "$T/.agents/harness.yaml"
+out="$(python3 $S/check_drift.py "$T" 2>&1)"
+printf '%s' "$out" | grep -q "orphan generated hook file: .grok" && printf '%s' "$out" | grep -q "orphan generated hook file: .github" && printf '%s' "$out" | grep -q "orphan generated hook key" && ok "drift detects leftover owned hook files/keys after target drop" || ng "drift detects leftover owned hook files/keys after target drop"
+python3 $S/gen_adapters.py "$T" --quiet && python3 $S/check_drift.py "$T" >/dev/null && ok "no drift after regenerating with dropped targets" || ng "no drift after regenerating with dropped targets"
+# antigravity が targets 外で、手書きの同名キー 'mid-harness' があっても drift の孤児扱いにしない
+printf 'skill_version: "t"\ntargets: [cursor]\nskills_mode: manual\n' > "$T/.agents/harness.yaml"
+printf '{"mid-harness":{"Stop":[{"hooks":[{"command":"echo handwritten"}]}]}}\n' > "$T/.agents/hooks.json"
+python3 $S/gen_adapters.py "$T" --quiet && grep -q 'echo handwritten' "$T/.agents/hooks.json" && ok "antigravity: handwritten key kept when not a target" || ng "antigravity: handwritten key kept when not a target"
+python3 $S/check_drift.py "$T" >/dev/null && ok "drift: handwritten mid-harness key is not an orphan" || ng "drift: handwritten mid-harness key is not an orphan"
+rm -f "$T/.agents/hooks.json"
+# agy_project_id: folderUri 一致 / 複数 / 無し / 壊れたエントリ (HOME を差し替えてテスト)
+FH="$(mktemp -d "${TMPDIR:-/tmp}/mh-fakehome.XXXXXX")"; mkdir -p "$FH/.gemini/config/projects"
+printf '{"id":"p1","name":"x","projectResources":{"resources":[{"folderUri":"file:///repo/a"}]}}\n' > "$FH/.gemini/config/projects/1.json"
+printf '{"id":"p2","name":"x","projectResources":{"resources":[{"folderUri":"file:///repo/a/"}]}}\n' > "$FH/.gemini/config/projects/2.json"
+printf '{"id":"p3","name":"y","projectResources":{"resources":[{"folderUri":"file:///repo/b"}]}}\n' > "$FH/.gemini/config/projects/3.json"
+[ "$(HOME=$FH python3 $S/agy_project_id.py /repo/b)" = "p3" ] && ok "agy_project_id: exact match" || ng "agy_project_id: exact match"
+r="$(HOME=$FH python3 $S/agy_project_id.py /repo/a 2>"$FH/err")"; [ "$r" = "p1" ] && grep -q "複数" "$FH/err" && ok "agy_project_id: multiple -> first + warning" || ng "agy_project_id: multiple -> first + warning"
+[ -z "$(HOME=$FH python3 $S/agy_project_id.py /repo/none)" ] && ok "agy_project_id: none -> empty" || ng "agy_project_id: none -> empty"
+printf '{"id":{"unexpected":true},"projectResources":{"resources":[{"folderUri":"file:///repo/c"}]}}\n' > "$FH/.gemini/config/projects/4.json"
+printf '{"id":"p5","projectResources":{"resources":[{"folderUri":["file:///repo/c"]}]}}\n' > "$FH/.gemini/config/projects/5.json"
+printf 'not json\n' > "$FH/.gemini/config/projects/6.json"
+printf '{"id":"p7","projectResources":{"resources":[{"folderUri":"file:///repo/c"}]}}\n' > "$FH/.gemini/config/projects/7.json"
+[ "$(HOME=$FH python3 $S/agy_project_id.py /repo/c 2>/dev/null)" = "p7" ] && ok "agy_project_id: broken entries skipped, valid one found" || ng "agy_project_id: broken entries skipped, valid one found"
+rm -rf "$FH"
+# hooks: [] でも他人の hook ファイルは消さない (grok / copilot)、所有ファイルは消す
+printf 'skill_version: "t"\ntargets: [grok, copilot]\nskills_mode: manual\nhooks: []\nagents: []\n' > "$T/.agents/harness.yaml"
+mkdir -p "$T/.grok/hooks" "$T/.github/hooks"
+printf '{"hooks":{"Stop":[]}}\n' > "$T/.grok/hooks/mid-harness.json"
+python3 $S/gen_adapters.py "$T" --quiet && ok "gen hooks: [] (grok/copilot)" || ng "gen hooks: [] (grok/copilot)"
+[ -f "$T/.grok/hooks/mid-harness.json" ] && ok "grok: foreign hook file kept on hooks: []" || ng "grok: foreign hook file kept on hooks: []"
+[ ! -e "$T/.github/hooks/mid-harness.json" ] && ok "copilot: owned hook file removed on hooks: []" || ng "copilot: owned hook file removed on hooks: []"
+rm -f "$T/.grok/hooks/mid-harness.json"
+# antigravity: 手書きの同名キー 'mid-harness' は --adopt 無しで上書きしない
+printf 'skill_version: "t"\ntargets: [antigravity]\nskills_mode: manual\nhooks:\n  - event: pre-tool\n    script: scripts/agent-hooks/pre-tool-policy.sh\n' > "$T/.agents/harness.yaml"
+printf '{"mid-harness":{"Stop":[{"hooks":[{"type":"command","command":"echo handwritten"}]}]}}\n' > "$T/.agents/hooks.json"
+if python3 $S/gen_adapters.py "$T" --quiet 2>&1 | grep -q "所有 ID 無し"; then ok "antigravity: foreign 'mid-harness' key protected"; else ng "antigravity: foreign 'mid-harness' key protected"; fi
+grep -q 'echo handwritten' "$T/.agents/hooks.json" && ok "antigravity: handwritten key untouched" || ng "antigravity: handwritten key untouched"
+python3 $S/gen_adapters.py "$T" --quiet --adopt && ok "antigravity: adopt" || ng "antigravity: adopt"
+printf 'skill_version: "t"\ntargets: [claude-code]\nskills_mode: manual\n' > "$T/.agents/harness.yaml"
+python3 $S/gen_adapters.py "$T" --quiet && ok "gen drop antigravity" || ng "gen drop antigravity"
+grep -q '"mid-harness"' "$T/.agents/hooks.json" && ng "antigravity: owned key removed on target drop" || ok "antigravity: owned key removed on target drop"
+# grok の hook ファイルが他人のものなら上書きしない
+printf 'skill_version: "t"\ntargets: [grok]\nskills_mode: manual\nhooks:\n  - event: pre-tool\n    script: scripts/agent-hooks/pre-tool-policy.sh\n' > "$T/.agents/harness.yaml"
+mkdir -p "$T/.grok/hooks"; printf '{"hooks":{"Stop":[]}}\n' > "$T/.grok/hooks/mid-harness.json"
+if python3 $S/gen_adapters.py "$T" --quiet 2>&1 | grep -q "所有マーカー無し"; then ok "grok: foreign hook file protected"; else ng "grok: foreign hook file protected"; fi
+rm -f "$T/.grok/hooks/mid-harness.json"
+
 # verify skip-llm with probe cleanup, and refuse to clobber existing probe-like dirs (名前が一意なので衝突しない)
 printf 'skill_version: "t"\ntargets: [claude-code, codex]\nskills_mode: manual\n' > "$T/.agents/harness.yaml"
 MID_HARNESS_VERIFY_SKIP_LLM=1 bash $S/verify.sh "$T" >/dev/null && ok "verify skip" || ng "verify skip"

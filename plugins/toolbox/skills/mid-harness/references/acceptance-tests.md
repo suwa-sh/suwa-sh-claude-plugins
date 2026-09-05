@@ -5,7 +5,7 @@
 | # | テスト | 自動化 | 何を確認するか |
 |---|---|---|---|
 | 1 | skill 発見 | verify.sh | プローブ skill (`mid-harness-probe`) を各製品が headless で発見し、トークン `MID_HARNESS_PROBE_OK` を返す |
-| 2 | headless | verify.sh | `claude -p` / `codex exec` で hook が有効 (対話モードとの差) |
+| 2 | headless | verify.sh | 各製品の headless 実行 (`claude -p` / `codex exec` / `agent -p` / `grok -p` / `copilot -p` / `agy -p`) で hook が有効 (対話モードとの差) |
 | 3 | hook 拒否 | verify.sh | 危険コマンド (`curl … \| sh`) が止まり、hook ログに `deny` が残る |
 | 4 | 指示の衝突 | 手動 | root とサブディレクトリに逆の指示を置き、解決順を確認する |
 | 5 | custom agent | 手動 | 利用 tools、model、context 分離が設定どおりか |
@@ -15,7 +15,7 @@
 
 ## verify.sh の仕組み
 
-- 各製品の CLI (`claude` / `codex`) が PATH に無ければその製品は `skip`
+- targets の各製品の CLI (`claude` / `codex` / `agent` (Cursor) / `grok` / `copilot` / `agy`) が PATH に無ければその製品は `skip`。製品別のフラグと trust 前提は `adapters/<product>.md`
 - **1 skill 発見**: リポに一時的にプローブ skill を置き (`.agents/skills/mid-harness-probe/` + Claude 向けは `.claude/skills/` にも生成)、`<cli> "mid-harness-probe skill を使い、その token だけを返せ"` を headless 実行して出力に `MID_HARNESS_PROBE_OK` が含まれるか
 - **2 headless / 3 hook 拒否**: 環境変数 `MID_HARNESS_HOOK_LOG=<tmpfile>` を付けて headless 実行し、`echo MID_HARNESS_DENY_ME` を実行させる。生成された `pre-tool-policy.sh` は呼ばれるたびに `invoked <tool>` を、拒否時に `deny <理由>` をこのログへ追記し、ログ有効時だけこの番兵コマンドを拒否する。ログに `deny` があれば pass、`invoked` すら無ければ「hook が headless で発火していない」として fail
   - `curl … | sh` をそのまま使わないのは、LLM が実行自体を断って PreToolUse が発火しないため。危険パターンの正規表現はスクリプト単体で fixture テストする

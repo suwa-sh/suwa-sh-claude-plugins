@@ -1,0 +1,5 @@
+# mid-harness:begin (generated — do not edit)
+[agents.reviewer]
+description = "コードレビューを行い、修正せずに指摘だけを返す"
+config_file = "agents/reviewer.toml"
+# mid-harness:end

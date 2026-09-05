@@ -46,6 +46,7 @@ SURFACES = [
     ("antigravity", "rules", ".agents/rules", "dir"),
     ("antigravity", "agents", ".agents/agents", "dir"),
     ("antigravity", "hooks", ".agents/hooks.json", "file"),
+    ("antigravity", "hooks", ".agent/hooks.json", "file"),
     ("antigravity", "mcp", ".agents/mcp_config.json", "file"),
     ("antigravity", "plugins", ".agents/plugins", "dir"),
     ("grok", "config", ".grok/config.toml", "file"),

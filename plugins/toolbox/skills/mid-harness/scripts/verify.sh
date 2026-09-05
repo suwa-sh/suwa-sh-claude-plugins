@@ -86,15 +86,33 @@ cleanup() {
 trap cleanup EXIT
 
 # ---- 製品ごとのコマンド ---------------------------------------------------------
-headless_cmd() {  # $1 product, $2 prompt
+headless_cmd() {  # $1 product, $2 prompt   (各製品の headless 実行。フラグの根拠は references/adapters/<product>.md)
   case "$1" in
     claude-code) run_with_timeout claude -p --output-format text "$2" ;;
     # Codex は project hook ごとに trust hash を要求し、exec では未 trust の hook を黙って飛ばす。
     # 配線検証が目的なので、この invocation に限り trust review をバイパスする (adapters/codex.md 参照)。
     codex)       run_with_timeout codex exec --skip-git-repo-check --dangerously-bypass-hook-trust "$2" ;;
+    cursor)      run_with_timeout agent -p --trust --force --model auto --output-format text "$2" ;;
+    grok)        run_with_timeout grok -p "$2" --always-approve ;;
+    copilot)     run_with_timeout copilot -p "$2" --allow-all-tools ;;
+    # Antigravity は session が project に束縛されているときだけ workspace の hooks.json を読む。
+    # project は ~/.gemini/config/projects/*.json から folderUri == REPO のものを ID で選ぶ (名前は basename で重複し得る)。
+    antigravity)
+      local pid; pid="$(agy_project_id)"
+      if [ -n "$pid" ]; then run_with_timeout agy -p "$2" --output-format text --dangerously-skip-permissions --project "$pid"
+      else run_with_timeout agy -p "$2" --output-format text --dangerously-skip-permissions; fi ;;
   esac
 }
-cli_present() { case "$1" in claude-code) command -v claude >/dev/null;; codex) command -v codex >/dev/null;; esac; }
+# Antigravity: REPO (canonical) を folderUri に持つ project の ID。無ければ空、複数なら先頭 (stderr に警告)
+agy_project_id() { python3 "$SKILL_DIR/scripts/agy_project_id.py" "$REPO"; }
+cli_present() {
+  case "$1" in
+    claude-code) command -v claude >/dev/null;; codex) command -v codex >/dev/null;;
+    cursor) command -v agent >/dev/null;;       grok) command -v grok >/dev/null;;
+    copilot) command -v copilot >/dev/null;;    antigravity) command -v agy >/dev/null;;
+    *) return 1;;
+  esac
+}
 
 # ---- テスト -----------------------------------------------------------------------
 cd "$REPO" || exit 1
@@ -119,7 +137,14 @@ else
     MID_HARNESS_HOOK_LOG="$LOG" headless_cmd "$t" "Run exactly this shell command and report what happened: echo MID_HARNESS_DENY_ME" >/dev/null 2>&1
     if grep -q '^deny' "$LOG"; then record "$t" pass "headless+hook-deny"
     elif grep -q '^invoked' "$LOG"; then record "$t" fail "hook-deny: hook invoked but did not deny (see $LOG)"
-    else record "$t" fail "headless: hook never invoked in headless mode (see $LOG)"; fi
+    else
+      hint=""
+      case "$t" in
+        codex) hint=" (hook trust?)";; grok) hint=" (folder trust: ~/.grok/trusted_folders.toml)";;
+        antigravity) hint=" (workspace を project 登録 + trust: agy --new-project)";; copilot) hint=" (repo hook が -p で読まれない既知の問題: adapters/copilot.md)";;
+      esac
+      record "$t" fail "headless: hook never invoked in headless mode$hint (see $LOG)"
+    fi
   done
 fi
 

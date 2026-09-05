@@ -40,13 +40,14 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 
 ### `toolbox:mid-harness` — 中ハーネス (portable core + 製品別 adapter) の展開・適用・検査
 
-コーディングエージェントをまたいで持ち運べる資産 (AGENTS.md / skills / agent-specs / hooks / memory = **中ハーネス**) を、製品非依存の portable core に置き、Claude Code / Codex CLI が読む設定は core から生成する薄い adapter にする。
+コーディングエージェントをまたいで持ち運べる資産 (AGENTS.md / skills / agent-specs / hooks / memory = **中ハーネス**) を、製品非依存の portable core に置き、各製品 (Claude Code / Codex CLI / Cursor / Grok Build / GitHub Copilot CLI / Antigravity CLI) が読む設定は core から生成する薄い adapter にする。
 
 - `init`: 推奨ツリー (`AGENTS.md` / `docs/` / `.agents/{memory,skills,agent-specs}` / `scripts/agent-hooks/`) と manifest `.agents/harness.yaml` を展開し、adapter を生成して受け入れテストを回す
 - `apply`: 既存リポの資産を棚卸し → 6 つの振る舞い契約へ分類 → 人の承認 (human-html-review) → `git mv` で core へ移送 → adapter 生成
-- `audit`: manifest から再生成した adapter と commit 済みの差分 (drift) を検査し、受け入れテスト (skill 発見 / headless / hook 拒否) を Claude Code と Codex で実行。CI 向け
-- hook は `scripts/agent-hooks/` の 1 本を両製品の設定が呼ぶだけの二層構成。custom agent は `prompt.md` + `policy.yaml` (論理能力) から各製品の front matter / TOML を生成し、変換不能は失敗させる
-- 製品ごとの読込規則は `references/adapters/<product>.md` に確認日つきで置く (現在 Claude Code / Codex)
+- `audit`: manifest から再生成した adapter と commit 済みの差分 (drift) を検査し、受け入れテスト (skill 発見 / headless / hook 拒否) を targets の製品ごとに実行。CI 向け
+- hook は `scripts/agent-hooks/` の 1 本を各製品の設定が呼ぶだけの二層構成。custom agent は `prompt.md` + `policy.yaml` (論理能力) から各製品の front matter / TOML を生成し、変換不能は失敗させる
+- 対応製品は Claude Code / Codex CLI / Cursor / Grok Build / GitHub Copilot CLI / Antigravity CLI の 6 つ。読込規則と実測結果は `references/adapters/<product>.md` に確認日つきで置く。hook スクリプト 1 本が 6 製品の stdin/stdout 形式を吸収する
+- `samples/toolbox/mid-harness/` に 6 製品 targets で `init` した結果と受け入れテストの記録を公開
 
 トリガー例: 「中ハーネスを展開して」「この構成を既存リポに適用して」「Claude Code と Codex で同じ動きをさせたい」「adapter がドリフトしていないか見て」
 
@@ -64,7 +65,7 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 | `review-refute-loop` | Codex CLI (companion plugin) または `claude` CLI | どちらも無い場合はサブエージェントフォールバックで動作 (クロスモデル効果は失われる) |
 | `human-html-review` | [diagram-design](https://github.com/cathrynlavery/diagram-design) スキル | 未導入時はスキルが URL とインストールコマンド (`npx skills add cathrynlavery/diagram-design`) を提示する。`python3` も使用 (validate.py) |
 | `codex-imagen` | Codex CLI。Grok CLI / Antigravity CLI は任意 | 既定の退避順は codex → grok → agy。`--size` は macOS `sips` を使用 |
-| `mid-harness` | `python3` 3.11+ (3.10 は `tomli` 追加) + PyYAML。受け入れテストだけ `claude` / `codex` CLI | CLI が無い製品は verify を skip。Codex の hook は project trust + hook 単位の trust が要る (verify は `--dangerously-bypass-hook-trust` で配線だけ検証) |
+| `mid-harness` | `python3` 3.11+ (3.10 は `tomli` 追加) + PyYAML。受け入れテストだけ targets に含めた製品の CLI (`claude` / `codex` / `agent` / `grok` / `copilot` / `agy`) | CLI が無い製品は verify を skip。製品ごとの trust 前提 (Codex の hook trust、Grok の folder trust、Antigravity の project 登録) は `references/adapters/<product>.md` |
 
 ## 使い方
 

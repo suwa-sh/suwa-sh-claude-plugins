@@ -24,6 +24,32 @@
 - 復旧: `pre-tool-policy.sh` の番兵 (`MID_HARNESS_HOOK_LOG` 有効時のみ `MID_HARNESS_DENY_ME` を拒否) を使う。curl|sh の正規表現は fixture でスクリプト単体テストする
 - 最終確認日: 2026-09-05
 
+## Grok / Antigravity の trust は canonical パスで登録する
+- 症状: `~/.grok/trusted_folders.toml` や agy の `trustedWorkspaces` に repo を足したのに hook が発火しない
+- 原因: `/tmp/...` のような symlink 経由のパスで登録した。製品側は git root の canonical パス (`/private/tmp/...`) で照合する
+- 検出: `grok inspect` の `Project trusted`、agy のログ `loaded N named hooks from M hooks.json file(s)`
+- 復旧: `git rev-parse --show-toplevel` の出力 (canonical) で登録し直す
+- 最終確認日: 2026-09-05
+
+## Antigravity の headless は project に束縛しないと workspace hooks を読まない
+- 症状: `.agents/hooks.json` があり trust もあるのに `loaded 0 named hooks`
+- 原因: `agy -p` は既定で default project に束縛される。workspace の project は `--new-project` (初回登録) か `--project <project id>` で選ぶ
+- 復旧: 初回だけ `agy -p "reply OK" --new-project` を repo で実行。以降は `--project <id>` (verify.sh は `scripts/agy_project_id.py` で folderUri から ID を引く。名前 = basename でも指定できるが重複し得る)
+- 再発防止: `--new-project` を毎回付けない (同名 project が増える)
+- 最終確認日: 2026-09-05 (agy 1.1.26)
+
+## Copilot の repo hook (`.github/hooks/*.json`) が `-p` で発火しない
+- 症状: docs どおりの `.github/hooks/mid-harness.json` を置いても hook ログが空。user hook (`~/.copilot/hooks/`) は同形式で発火する
+- 原因: 未特定 (trust 済みの repo でも再現。1.0.80、2026-09-05)
+- 検出: `copilot -p ... --log-level debug --log-dir <dir>` の `[rust:hooks] [hook stdout]` 行に repo hook の出力が無い
+- 復旧: 未解決。skill 発見は `.agents/skills` で通るので、hook だけ fail として報告する
+- 最終確認日: 2026-09-05
+
+## Cursor の `-p` が Opus の usage limit で止まる
+- 症状: `ActionRequiredError: You've hit your usage limit for Opus`
+- 復旧: `--model auto` を付ける (verify.sh は既定で付ける)
+- 最終確認日: 2026-09-05
+
 ## PyYAML が無い環境
 - 症状: `ModuleNotFoundError: No module named 'yaml'`
 - 復旧: `pip install pyyaml` (またはその環境の python に合わせて)。scripts は PyYAML 以外の外部依存を持たない

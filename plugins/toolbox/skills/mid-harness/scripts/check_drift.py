@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import filecmp
+import json
 import os
 import stat
 import subprocess
@@ -22,7 +23,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import GENERATED_MARKER, owned_agent_file, resolve_repo  # noqa: E402
+from _common import (AGENT_LAYOUT, GENERATED_MARKER, agy_key_owned, json_owned,  # noqa: E402
+                     owned_agent_file, resolve_repo)
 
 GEN = Path(__file__).resolve().parent / "gen_adapters.py"
 
@@ -95,14 +97,33 @@ def main() -> int:
             name = marker.parent.name
             if not (repo / ".agents" / "skills" / name / "SKILL.md").exists():
                 drift.append(f"orphan generated skill: .claude/skills/{name}")
-        for rel_dir, suffix in ((".claude/agents", ".md"), (".codex/agents", ".toml")):
+        # 3b) 所有マーカー付きの hook ファイル / キーが再生成結果に無いのに残っている (targets から外した後の未生成など)
+        for rel in (".grok/hooks/mid-harness.json", ".github/hooks/mid-harness.json"):
+            cur = repo / rel
+            if cur.is_file() and not (out / rel).exists():
+                try:
+                    if json_owned(json.loads(cur.read_text())):
+                        drift.append(f"orphan generated hook file: {rel} (manifest の targets に無い)")
+                except json.JSONDecodeError:
+                    pass
+        agy_cur, agy_out = repo / ".agents" / "hooks.json", out / ".agents" / "hooks.json"
+        if agy_cur.is_file():
+            try:
+                cur_doc = json.loads(agy_cur.read_text())
+                out_doc = json.loads(agy_out.read_text()) if agy_out.is_file() else {}
+                # 所有判定は生成側と同じ (手書きの同名キーは孤児にしない)
+                if isinstance(cur_doc, dict) and agy_key_owned(cur_doc.get("mid-harness")) \
+                        and "mid-harness" not in (out_doc if isinstance(out_doc, dict) else {}):
+                    drift.append("orphan generated hook key: .agents/hooks.json#mid-harness (manifest の targets に無い)")
+            except json.JSONDecodeError:
+                pass
+        for rel_dir, suffix, fmt in AGENT_LAYOUT.values():
             d = repo / rel_dir
             if not d.is_dir():
                 continue
-            fmt = "md" if suffix == ".md" else "toml"
             for p in sorted(d.glob(f"*{suffix}")):
-                if p.is_file() and owned_agent_file(p.read_text(), fmt) and not (out / rel_dir / p.name).exists():
-                    drift.append(f"orphan generated agent: {rel_dir}/{p.name} (manifest に無い)")
+                if p.is_file() and owned_agent_file(p.read_text(), fmt) and not (out / p.relative_to(repo)).exists():
+                    drift.append(f"orphan generated agent: {p.relative_to(repo)} (manifest に無い)")
 
     if drift:
         print(f"drift detected ({len(drift)}):")
