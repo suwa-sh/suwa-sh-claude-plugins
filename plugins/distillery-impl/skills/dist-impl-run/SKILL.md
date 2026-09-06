@@ -18,6 +18,13 @@ metadata:
 **省略時は uc-map の実施順で次の未完了 UC を自動選択**する。1 UC = 1 branch = 1 PR とし、
 PR 作成後は次の UC へ自動継続しない — 起動シーケンス 3)
 
+## 前段latestを参照するspecの読込
+
+spec本文が参照するRDRA条件/状態、designのcomponent/Story、arch/NFRは各 `latest` の対象要素をstage読込範囲へ加える。
+過去イベントや生成時の抜粋で置き換えない。対象ファイルのhashを実行入力に含め、latestが変わったら影響stageを再検証する。
+参照先欠落・意味の矛盾・`needs-spec-change` は実装開始条件を満たさないため、仕様への変更要求へ戻す。
+API型は生成コードとUC sliceから読み、分割正本との一致検査はbootstrap P4に従う。
+
 ## オーケストレータの原則
 
 - **自分ではファイル本文をほぼ読まない**(コンテキスト 25% 制約)。読むのは

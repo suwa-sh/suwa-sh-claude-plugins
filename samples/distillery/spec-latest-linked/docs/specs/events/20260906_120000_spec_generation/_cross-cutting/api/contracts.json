@@ -1,0 +1,75 @@
+{
+  "asyncapi": null,
+  "openapi": "openapi.yaml",
+  "schema_version": "distillery.contracts/v1",
+  "use_cases": [
+    {
+      "buc": "書籍を貸し出すフロー",
+      "business": "蔵書利用業務",
+      "consumes": [
+        {
+          "kind": "openapi",
+          "operation_id": "checkLoanEligibility",
+          "tier": "tier-frontend-staff"
+        },
+        {
+          "kind": "openapi",
+          "operation_id": "getBookAvailability",
+          "tier": "tier-frontend-staff"
+        },
+        {
+          "kind": "openapi",
+          "operation_id": "getLoanTarget",
+          "tier": "tier-frontend-staff"
+        }
+      ],
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "createLoan",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "uc": "貸出を登録する"
+    },
+    {
+      "buc": "書籍を貸し出すフロー",
+      "business": "蔵書利用業務",
+      "consumes": [],
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "checkLoanEligibility",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "uc": "書籍の貸出可否を判定する"
+    },
+    {
+      "buc": "書籍を検索するフロー",
+      "business": "蔵書利用業務",
+      "consumes": [],
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "getBookAvailability",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "uc": "書籍詳細と在庫状況を照会する"
+    },
+    {
+      "buc": "書籍を貸し出すフロー",
+      "business": "蔵書利用業務",
+      "consumes": [],
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "getLoanTarget",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "uc": "利用者番号で貸出対象利用者を特定する"
+    }
+  ]
+}

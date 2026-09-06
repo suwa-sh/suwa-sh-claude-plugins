@@ -1,0 +1,78 @@
+# 既存出力から引き継いだ参考コンテキスト。今回の意味レビュー対象外。
+uc: "書籍詳細と在庫状況を照会する"
+business: "蔵書利用業務"
+buc: "書籍を検索するフロー"
+
+bounded_context_id: "BC-001"
+
+models:
+  - name: "書籍詳細・在庫状況画面(BookDetailView)"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "書籍"
+  - name: "BookAvailabilityApiClient"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "書籍"
+  - name: "GetBookAvailabilityRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "GetBookAvailabilityQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "書籍"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "BookAvailability"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "書籍"
+  - name: "BookRepository"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "ReservationQueryPort"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "query"
+    rdra_info: "予約"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = ?（書誌情報と書籍状態の取得）"
+    indexes_needed:
+      - columns: ["book_id"]
+        reason: "1 件取得の主キーアクセス"
+        access_pattern: "WHERE book_id = ?"
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = ? AND reservation_status IN ('予約中','取置き中')（予約待ち件数の集計。予約コンテキストの公開インターフェース経由）"
+    indexes_needed:
+      - columns: ["book_id", "reservation_status"]
+        reason: "対象書籍の予約待ち件数を数えるため"
+        access_pattern: "SELECT COUNT(*) WHERE book_id = ? AND reservation_status IN (...)"
+
+kvs: []
+object_storage: []

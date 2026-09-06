@@ -1,5 +1,7 @@
 # Spec スナップショット更新タスク
 
+> 新規生成は `references/specs/latest-linked-spec.md` を優先する。業務条件・状態遷移はRDRA latest、部品契約はdesign latestのStorybookへ参照し、再定義しない。分割OpenAPIを直接編集し、不足はpipelineへ還流する。
+
 UC 差分イベントを latest/ にマージし、cross-cutting を再生成して配置する。
 
 ## 入力
@@ -26,11 +28,11 @@ UC 差分イベントを latest/ にマージし、cross-cutting を再生成し
 
 `latest/` の全 UC を入力として cross-cutting を再生成する:
 
-1. **API 統合**: 全 UC の `_api-summary.yaml` → `_cross-cutting/api/openapi.yaml`
+1. **API 統合**: 新規catalogは人編集の分割OpenAPIからbundle/summary/sliceを再生成する。以下のsummary→OpenAPI逆生成はlegacy入力のみ。
 2. **AsyncAPI**: 全 UC の非同期イベント → `_cross-cutting/api/asyncapi.yaml`（イベントがある場合のみ）
 3. **RDB スキーマ**: 全 UC の `_model-summary.yaml` → `_cross-cutting/datastore/rdb-schema.yaml`
 4. **KVS スキーマ**: KVS アクセスがある場合 → `_cross-cutting/datastore/kvs-schema.yaml`
-5. **共通コンポーネント**: 全 UC の tier-frontend → `_cross-cutting/ux-ui/common-components.md`
+5. **共通コンポーネント**: designありではdesign latestの実装/Storyに対する参照索引を更新する。tierからPropsやtokensを抽出して別正本にしない。
 6. **トレーサビリティ**: RDRA 全要素 vs 全 UC Spec → `_cross-cutting/traceability-matrix.md`
 
 生成結果を `events/{event_id}/_cross-cutting/` に書き出す。

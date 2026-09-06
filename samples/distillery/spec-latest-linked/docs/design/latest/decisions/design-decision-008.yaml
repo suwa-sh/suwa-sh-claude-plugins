@@ -1,0 +1,53 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-008"
+title: "components.ui[] に path / exports を持たせ、Skeleton・Spinner をファイル名ではなく成果物定義から解決させる"
+status: "approved"
+generated_at: "2026-09-02T20:45:27"
+context: |
+  実装フィードバック CR-d0f57ea2-006（再発）で、画面仕様が loading 表示に要求する
+  Skeleton と Spinner を、取り込み済み Storybook components から参照できなかったという
+  指摘を受けた。
+
+  実体を確認したところ、両コンポーネントは前回イベント 20260902_185951_design_system で
+  既に生成済みであり、利用条件（kind による Skeleton / Spinner の出し分け、併用禁止、
+  aria-busy、delayMs）も共通コンポーネント LoadingState として定義されていた。
+  すなわち「component と利用条件が無い」という一次的な欠落ではない。
+
+  実際の欠落は解決性（discoverability）にあった。
+  - Skeleton / Spinner / Alert / EmptyState は単独ファイルではなく
+    src/components/ui/Feedback.tsx に同居している
+  - design-event.yaml の components.ui[] は name / variants / sizes だけを持ち、
+    path を持つのは common[] の一部だけである
+  - 取り込み側（packages/ui）は storybook-app/src の実ファイルを列挙してコピーするため
+    ファイルは存在するが、名前 → ファイル → export の対応表が成果物側に無い
+  結果として「Skeleton.tsx / Spinner.tsx が無い = コンポーネントが無い」と読まれた。
+decision: |
+  1. components.ui[] の全 14 件に path（storybook-app/src 相対）と exports（実 export 名の配列）を
+     追加し、コンポーネント名からファイルと import 対象シンボルを機械的に解決できるようにする。
+     ファイル名とコンポーネント名が 1:1 でない（Feedback.tsx に 4 種同居する）ことを
+     成果物側で明示するのが目的であり、実装ファイルの分割は行わない。
+  2. Skeleton / Spinner には usage を追加し、「画面から直接使わず LoadingState 経由で使う」
+     という利用条件をコンポーネント定義そのものに埋め込む。
+  3. common[] の LoadingState の description に import 規約
+     （画面実装は LoadingState だけを import し Skeleton / Spinner を直接 import しない）を追記する。
+  4. Storybook の Common/LoadingState ドキュメントに「取り込み先での参照（import 解決表）」を追加し、
+     指定 component → ファイル → export の対応を Storybook 上でも読めるようにする。
+  5. 実装ファイルの分割（Skeleton.tsx / Spinner.tsx への切り出し）や再 export バリアの追加は行わない。
+     取り込みは実ファイル列挙で行われるため、解決表があれば足りる。
+consequences:
+  positive:
+    - "コンポーネント名からファイルと export 名を一意に解決でき、同居ファイルでも取りこぼさない"
+    - "loading 表現の利用条件がコンポーネント定義（usage）とドキュメントの両方に載る"
+    - "既存の import パスを変えないため、取り込み済み packages/ui の参照が壊れない"
+  negative:
+    - "components.ui[].path が storybook-app のファイル配置に依存し、配置変更時に同期が必要になる"
+    - "path / exports は design-event.md には描画されず、YAML と _digest でのみ読める"
+alternatives_considered:
+  - name: "Feedback.tsx を Skeleton.tsx / Spinner.tsx / Alert.tsx / EmptyState.tsx に分割する"
+    reason_rejected: "取り込み済み packages/ui の import パスが壊れ、影響範囲が loading 以外にも広がる。ファイル名規約に依存した解決を温存してしまう"
+  - name: "src/components/index.ts のバリアを追加して名前解決させる"
+    reason_rejected: "成果物定義（design-event.yaml）ではなくコードにだけ対応表が生まれ、spec / spec_stories 側から機械的に読めない"
+  - name: "既に component と利用条件は揃っているとして merged 扱いにし、変更しない"
+    reason_rejected: "観測された「参照できなかった」事実が残り、同じ CR が再発する"

@@ -1,5 +1,7 @@
 # tier-{tier_id}.md フォーマット（Presentation 系ティア）
 
+> 新規生成は `references/specs/latest-linked-spec.md` を優先する。業務条件・状態遷移はRDRA latest、部品契約はdesign latestのStorybookへ参照し、再定義しない。分割OpenAPIを直接編集し、不足はpipelineへ還流する。
+
 > Step3 で対象 kind が presentation の場合に読む。
 > 共通規約は `references/specs/spec-template.md`。
 

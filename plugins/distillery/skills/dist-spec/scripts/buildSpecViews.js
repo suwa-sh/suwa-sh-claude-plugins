@@ -58,7 +58,7 @@ function fileInside(root, relative) {
   return real;
 }
 function build(eventRoot, rdraRoot) {
-  const catalog = JSON.parse(fs.readFileSync(path.join(eventRoot, '_cross-cutting/api/contracts.json'), 'utf8'));
+  const catalog = require('./compileContracts').loadCatalog(eventRoot);
   // Use the contract compiler's ownership validation before deriving dependency views.
   require('./compileContracts').compile(catalog);
   const expected = new Set(tsv(fs.readFileSync(path.join(rdraRoot, 'BUC.tsv'), 'utf8'))

@@ -62,3 +62,10 @@ npx skills add suwa-sh/suwa-sh-claude-plugins --all
 ## ライセンス
 
 [MIT License](./LICENSE)
+
+### dist-specの参照と契約
+
+新規specはRDRA latestの条件・状態と、design latestのStorybookを正本として参照します。
+データフロー・分岐つきシーケンス・技術条件・画面のAPI接続をspecに残します。
+OpenAPIは人が編集する分割YAMLからbundle/UC sliceを生成します。不足は `source: distillery-spec` の変更要求としてpipelineへ還流し、未解決のドラフトはlatestへ昇格しません。
+分割契約のローカル検証は `npm ci` 後に実行してください（Redocly CLIを固定）。

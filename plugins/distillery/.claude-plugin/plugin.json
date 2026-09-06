@@ -1,6 +1,6 @@
 {
   "name": "distillery",
-  "version": "1.10.1",
+  "version": "1.11.0",
   "description": "Distill raw requirements or a single implementation-feedback Markdown into production-ready requirements, quality attributes, architecture, infrastructure, design system, and specs with internal stage routing.",
   "author": {
     "name": "suwa-sh"

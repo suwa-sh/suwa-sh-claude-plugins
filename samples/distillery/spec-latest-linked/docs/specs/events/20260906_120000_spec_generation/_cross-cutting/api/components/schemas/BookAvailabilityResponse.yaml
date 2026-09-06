@@ -1,0 +1,23 @@
+description: 書籍詳細と在庫状況の応答
+properties:
+  availability:
+    $ref: ./AvailabilityStatus.yaml
+  book:
+    $ref: ./BookSummary.yaml
+  guidance:
+    description: 利用者への次の行動の案内文（貸出できます / 予約できます 等）
+    type: string
+  reservable:
+    description: 予約可能か。正本は docs/rdra/latest/条件.tsv の予約可否条件。
+    type: boolean
+  reservation_count:
+    description: 予約待ち件数。対象状態と集計条件は docs/rdra/latest/条件.tsv / docs/rdra/latest/状態.tsv を参照。
+    minimum: 0
+    type: integer
+required:
+- book
+- availability
+- reservation_count
+- reservable
+- guidance
+type: object

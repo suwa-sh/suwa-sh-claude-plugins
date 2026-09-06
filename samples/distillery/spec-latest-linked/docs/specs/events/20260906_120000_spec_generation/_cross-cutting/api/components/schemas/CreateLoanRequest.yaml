@@ -1,0 +1,13 @@
+description: 貸出登録リクエスト
+properties:
+  book_id:
+    $ref: ./BookId.yaml
+  loan_period_type:
+    $ref: ./LoanPeriodType.yaml
+  user_no:
+    $ref: ./UserNo.yaml
+required:
+- book_id
+- user_no
+- loan_period_type
+type: object

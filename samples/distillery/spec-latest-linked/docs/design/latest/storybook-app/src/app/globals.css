@@ -1,0 +1,62 @@
+@import 'tailwindcss';
+@import '../styles/design-tokens.css';
+@import '../styles/components.css';
+
+@theme inline {
+  /* Tailwind ネイティブクラス (text-*, bg-*, border-*) から使えるよう公開する。
+     Tailwind v4 では text-[var(--x)] が font-size と解釈されるため、
+     色は必ずこの @theme 経由か style prop で指定する。 */
+  --color-background: var(--background);
+  --color-background-subtle: var(--background-subtle);
+  --color-background-muted: var(--background-muted);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-foreground-inverse: var(--foreground-inverse);
+  --color-border-default: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-light: var(--primary-light);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-info: var(--info);
+  --color-neutral: var(--neutral);
+  --color-pending: var(--pending);
+  --color-analysis: var(--analysis);
+
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-family-sans);
+  line-height: var(--line-height-normal);
+}
+
+*,
+*::before,
+*::after {
+  border-color: var(--border);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* JIS X 8341-3 AA 目標: 動きを減らす設定を尊重する */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

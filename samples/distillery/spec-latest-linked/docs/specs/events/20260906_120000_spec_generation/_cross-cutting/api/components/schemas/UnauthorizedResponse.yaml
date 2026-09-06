@@ -1,0 +1,22 @@
+description: '認証エラーの応答。`ErrorResponse` の `code` を 3 値に限定したもの。
+
+  利用者識別情報の受け渡しは Bearer トークンのクレームだけであり、
+
+  識別用の独自ヘッダが送られても認証結果は変わらない。
+
+  '
+properties:
+  code:
+    $ref: ./UnauthorizedCode.yaml
+  message:
+    description: 利用者向けのエラーメッセージ（識別子・トークンの中身を含めない）
+    examples:
+    - 再度ログインしてください
+    type: string
+  trace_id:
+    description: リクエスト追跡 ID
+    type: string
+required:
+- code
+- message
+type: object

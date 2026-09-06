@@ -1,0 +1,22 @@
+description: 貸出可否の判定結果（永続化しない）
+properties:
+  book:
+    $ref: ./BookSummary.yaml
+  eligible:
+    description: 貸出を許可できるか
+    type: boolean
+  hold:
+    $ref: ./HoldSummary.yaml
+  reasons:
+    description: 評価した条件と充足状況
+    items:
+      $ref: ./EligibilityReason.yaml
+    type: array
+  user:
+    $ref: ./LoanTargetResponse.yaml
+required:
+- eligible
+- reasons
+- book
+- user
+type: object

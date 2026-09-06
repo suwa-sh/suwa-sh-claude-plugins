@@ -45,13 +45,18 @@ lock の機械可読キーに反映する**(スキーマは state-schema.md):
 
 ## type: openapi
 
-- **source**: `_cross-cutting/api/openapi.yaml`(必須入力)
+- **source**: 分割形式では `_cross-cutting/api/generated/openapi.bundle.yaml`。legacyは `_cross-cutting/api/openapi.yaml`。
+  分割形式は `_cross-cutting/api/contracts.json` の `openapi` がファイル参照文字列かで判定する。
+  bootstrapのP4でdist-specの `compileContracts.js <specs-latest-dir> --check` を実行し、分割正本との一致を確認する。
+  bundleが無い/古い場合はspec再生成を要求し、legacyへフォールバックしない。
+  契約入力の変更検知には入口・到達する全分割ファイル・bundleを含める。hashは生成時の監査用であり、意味の参照先は常にspecs/latest。
+  `contracts[].source` へ選択したパスを記録し、以下の `{openapi_source}` として使う。
 - **probe**: source の存在 + `java -version`(openapi-generator は Java 製。無ければ degraded へ)
 - **codegen**(検証済みスパイク 2026-07-29):
 
   ```bash
   npx -y @openapitools/openapi-generator-cli generate \
-    -i {specs_root}/specs/latest/_cross-cutting/api/openapi.yaml \
+    -i {specs_root}/specs/latest/{openapi_source} \
     -g {generator} -o packages/contracts/{出力先}
   ```
 

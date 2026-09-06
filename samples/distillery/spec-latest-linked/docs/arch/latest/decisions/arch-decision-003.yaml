@@ -1,0 +1,33 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-003"
+title: "コンテキストマップの統合方式（ACL / Customer-Supplier / OHS）を確定"
+status: "approved"
+generated_at: "2026-09-02T14:11:27"
+context: |
+  7 BC 間の参照関係をどの統合パターンで結ぶかは、外部依存の隔離コストと責務所有の明確さのトレードオフであり、
+  RDRA からは「誰が誰を参照するか」までしか導出できない。特に次の 2 点が判断を要した。
+  - 外部システム「メール配信サービス」（BC-007）と通知コンテキスト（BC-005）の統合方式
+  - 貸出コンテキスト（BC-003）が予約順位ロジックを参照する際の責務所有
+decision: |
+  コンテキストマップを 11 本（CM-001〜CM-011）定義し、統合パターンを次のとおり確定する。
+  - CM-011（BC-007 → BC-005）: ACL。外部メール配信 API のモデルを隔離し、
+    通知状態（送信待ち / 送信済み / 送信失敗）へ翻訳する。実装先は tier-external-gateway の translator 層。
+  - CM-003（BC-004 → BC-003）/ CM-006（BC-003 → BC-005）/ CM-007（BC-004 → BC-005）: Customer-Supplier。
+    予約順位ロジックの所有者を予約側に固定し、貸出側は「有効な予約の有無」と「対象利用者番号」だけを受け取る。
+  - CM-001/002/004/005/008/009/010: OHS。書籍の在庫状態・利用者区分・貸出実績を公開 API として提供する。
+consequences:
+  positive:
+    - "外部メール配信サービスを乗り換えても影響を BC-005 と tier-external-gateway 内に閉じられる"
+    - "予約順位という最も競合しやすいロジックの所有者が予約 BC に一意に定まる"
+    - "ACL が唯一の凹型（IF 導入）ティアと一致し、テスト時のスタブ化点が 1 箇所に定まる"
+  negative:
+    - "ACL の翻訳層で実装コストが概算 +10% 増える"
+    - "Customer-Supplier により貸出処理に同期呼び出しが 1 本増える"
+    - "OHS 7 本の公開契約をモジュラモノリス内でコードレビューにより維持する必要がある"
+alternatives_considered:
+  - name: "Option B: メール配信サービスと Conformist で統合する"
+    reason_rejected: "外部 API のモデルが通知ドメインへ侵入し、サービス乗り換え時に通知コンテキスト全体が影響を受ける"
+  - name: "Option C: 貸出 → 予約を Shared Kernel で統合する"
+    reason_rejected: "予約順位決定条件を両 BC で共有すると変更のたびに双方の合意が必要になり、Core サブドメインの改善速度が落ちる"

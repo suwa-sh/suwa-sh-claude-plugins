@@ -1,0 +1,5 @@
+# digest of nfr/latest/nfr-grade.yaml section model_system (L6-8); source_sha256: 9ecccca870476f5c8b048641028a922e9f2b393562b9bca87d4bd1f567861198
+# 派生物。正本は nfr-grade.yaml。編集しない
+model_system:
+  type: "model2"
+  reason: "アクター「利用者」が社外・受益者としてインターネット経由で Web 照会を行い、情報「利用者」に氏名・連絡先（メールアドレス）という個人情報を保持する。一方で対象は 1 館運用・登録利用者〜1,000 人規模であり、停止しても社会的混乱には至らない。社会的影響が限定的な自治体・企業サービス相当と判断し model2 を選定した（model3 は金融・社会インフラ級で過剰、model1 は社外向け個人情報を扱う点で不足）"

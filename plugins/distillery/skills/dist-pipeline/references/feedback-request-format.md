@@ -51,6 +51,7 @@ uc_id: 19ec0182
 | front matter | byte 0から開始し、許可keyだけを使う |
 | `feedback_id` | `^[a-z0-9][a-z0-9._-]{0,127}$` |
 | `uc_id` | 通常は小文字英数字8文字、衝突延長時は12文字 |
+| `source` | 実装からは `distillery-impl`、dist-spec で検出した上流不足からは `distillery-spec` |
 | CR | `## CR-...: title`形式で1件以上、IDは一意 |
 | metadata | `severity`と非空の`related_ids`は必須、`related_files`は任意 |
 | 本文 | 4つのH3を表の順序で各1回置き、本文を空にしない |
@@ -78,6 +79,10 @@ fenceは同じCR内で閉じる必要があります。
 
 `related_files`はroutingのヒントであり、ファイルの読取り許可ではありません。
 関連ファイルを開かなくても要求を理解できる本文にします。
+
+`source`は検出元を示し、変更先stageを指定しません。dist-specがRDRAやdesignの不足を
+検出した場合も、同じ4節で観測事実と正本への変更要求を記述します。
+発行しただけの要求には、実行済みを表すowner dispositionやdomain eventのledgerを付けません。
 
 ## candidateの判定
 

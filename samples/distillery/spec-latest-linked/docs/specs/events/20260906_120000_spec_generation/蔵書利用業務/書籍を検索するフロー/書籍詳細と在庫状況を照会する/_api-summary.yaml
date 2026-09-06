@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "書籍を検索するフロー",
+  "business": "蔵書利用業務",
+  "consumes": [],
+  "contract_sha256": "3d4a3679c3473e3fe559210babdd48336be159f68f978f94a18a10a05ad52123",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1api~1v1~1books~1{book_id}~1availability/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getBookAvailability",
+      "path": "/api/v1/books/{book_id}/availability",
+      "summary": "書籍詳細と在庫状況を照会する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "書籍詳細と在庫状況を照会する"
+}

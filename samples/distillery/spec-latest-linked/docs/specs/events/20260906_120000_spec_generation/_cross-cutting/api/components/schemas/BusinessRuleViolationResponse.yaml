@@ -1,0 +1,23 @@
+description: 業務ルール違反の応答。未充足の条件を `reasons` に列挙する
+properties:
+  code:
+    description: 違反した条件を示すエラーコード
+    examples:
+    - BOOK_NOT_DELETABLE
+    type: string
+  message:
+    description: 利用者向けのエラーメッセージ
+    type: string
+  reasons:
+    description: 未充足の理由（条件名とその説明）
+    items:
+      type: string
+    type: array
+  trace_id:
+    description: リクエスト追跡 ID
+    type: string
+required:
+- code
+- message
+- reasons
+type: object

@@ -1,0 +1,35 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-006"
+title: "認可アーキテクチャにパターン A（RBAC + Backend 作り込み）を採用"
+status: "approved"
+generated_at: "2026-09-02T14:11:27"
+context: |
+  認可モデルの選定（RBAC / ABAC / ReBAC、および認可サービスの導入要否）が必要だった。
+  RDRA / NFR のシグナルは次のとおり。
+  - アクターは司書 / 利用者の 2 種のみ（ロール 2 種）
+  - 条件.tsv に「個人情報参照可否条件」があり、利用者は自分の貸出・予約のみ参照可（本人限定参照）
+  - 所有権パターンは 貸出 / 予約 / 利用者情報 の 3 種
+  - NFR E.5.2.1 Lv2（RBAC）/ E.5.3.1 Lv1（司書機能は館内 NW 限定）
+decision: |
+  パターン A（RBAC + Backend 作り込み）を採用する。
+  - 粗粒度の RBAC 判定（司書 / 利用者）は tier-api-gateway で実施する
+  - 本人限定参照（所有者ベース判定）と状態ベース判定は tier-backend-api の domain 層で実装する（SP-016 / SR-007）
+  認可サービスティア（外部ポリシーエンジン）は導入しない。
+  認証は tier-idp のマネージド IdP に委譲し、OAuth2/OIDC でトークンを発行する。
+consequences:
+  positive:
+    - "初期実装コストが最小で、ロール 2 種・所有権パターン 3 種の規模に見合う"
+    - "Gateway 粗粒度 + domain 層所有者判定の 2 段構成で NFR E.5.2.1 Lv2 と本人限定参照を両立できる"
+    - "運用対象ミドルウェアが増えず、小規模運用体制（NFR C.5.2.1 Lv2）と整合する"
+  negative:
+    - "認可ポリシーの変更がコード変更とデプロイを伴う"
+    - "認可ルールがドメイン層に散在しうるため、判定箇所の一覧性を規約（SR-007）で担保する必要がある"
+alternatives_considered:
+  - name: "パターン B: 外部認可サービス（ポリシーエンジン）を導入する"
+    reason_rejected: "ロールは 2 種のみ、所有権パターンは 3 種で、導入・運用コストに見合わない"
+  - name: "パターン C: ABAC / ReBAC による属性・関係ベース認可"
+    reason_rejected: "RDRA に属性ベース・関係ベースの複雑な認可要求がなく、NFR E.5.2.1 も RBAC までしか規定していない"
+  - name: "認証も自前実装する"
+    reason_rejected: "パスワードポリシー・アカウントロック・リセット（NFR E.5.1.1 Lv2）を自前運用すると、小規模運用体制（C.5.2.1 Lv2）に対して負荷が高い"

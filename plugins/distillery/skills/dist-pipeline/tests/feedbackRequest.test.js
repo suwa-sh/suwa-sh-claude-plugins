@@ -166,6 +166,24 @@ test('strict parser binds exact byte spans while fenced fake headings remain dat
   }
 });
 
+test('feedback accepts truthful spec and impl sources without changing routing semantics', () => {
+  for (const source of ['distillery-impl', 'distillery-spec']) {
+    const buffer = Buffer.from(fixtureBuffer().toString('utf8').replace('source: distillery-impl', `source: ${source}`));
+    const input = parseFeedbackRequest(buffer);
+    assert.equal(input.metadata.source, source);
+    assert.equal(input.input_sha256, sha256Bytes(buffer));
+    const routing = buildRouting(input, resolvedProposal(input), 'interactive', routingOptions());
+    const plan = buildPlan(input, routing, { catalogBundle: loadCatalog() });
+    assert.equal(plan.work_units[0].direct_stage, 'requirements');
+    assert.equal(plan.work_units[1].direct_stage, 'spec');
+  }
+  for (const source of ['dist-spec', 'external', '']) {
+    assert.throws(() => parseFeedbackRequest(Buffer.from(fixtureBuffer().toString('utf8').replace(
+      'source: distillery-impl', `source: ${source}`,
+    ))), /source|front matter/);
+  }
+});
+
 test('strict parser rejects non-canonical bytes and structural/schema ambiguity', () => {
   const valid = fixtureBuffer();
   assert.equal(parseFeedbackRequest(Buffer.from(valid.toString('utf8').replace(

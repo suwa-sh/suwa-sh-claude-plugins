@@ -1,5 +1,7 @@
 # Spec 生成タスク
 
+> 新規生成は `references/specs/latest-linked-spec.md` を優先する。業務条件・状態遷移はRDRA latest、部品契約はdesign latestのStorybookへ参照し、再定義しない。分割OpenAPIを直接編集し、不足はpipelineへ還流する。
+
 > **読み込みタイミング**: Step3 で使用。UC Spec 生成手順。
 
 全入力モデル（RDRA, NFR, Arch, Design）から UC 単位の Spec を生成する。

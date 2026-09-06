@@ -1,0 +1,27 @@
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/UnauthorizedResponse.yaml
+description: '認証エラー。次の 3 条件のときだけ返す。
+
+  `UNAUTHENTICATED`（`Authorization` ヘッダ欠落 / Bearer 以外 / 署名不正）、
+
+  `TOKEN_EXPIRED`（`exp` 超過）、`IDENTITY_CLAIM_MISSING`（`sub` / `role` /
+
+  `role = 利用者` のときの `user_no` が欠落）。
+
+  認証は成立しておりロール・所有者が不足する場合は 403（`FORBIDDEN`）とする。
+
+  '
+headers:
+  WWW-Authenticate:
+    description: 'RFC 6750 の challenge。常に `Bearer realm="libra"` で始め、
+
+      `error="invalid_token"` と `error_description` にエラーコードを載せる。
+
+      '
+    required: true
+    schema:
+      examples:
+      - Bearer realm="libra", error="invalid_token", error_description="TOKEN_EXPIRED"
+      type: string

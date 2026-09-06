@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 
-// Contracts are edited once in contracts.json; every output below is a projection.
+// Native contracts are authored once; summaries and slices are projections.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const os = require('node:os');
+const { execFileSync } = require('node:child_process');
 const VERSION = 'distillery.contracts/v1';
 const SUMMARY_VERSION = 'distillery.api-summary/v2';
 const METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];
@@ -215,10 +217,48 @@ function safeTarget(root, rel) {
   }
   return full;
 }
+// A standard bundler owns YAML parsing and external-reference resolution.
+// An explicit empty config avoids ambient preprocessors/decorators changing contracts.
+function loadCatalog(eventDir) {
+  const root = fs.realpathSync(eventDir);
+  const source = path.join(root, '_cross-cutting/api/contracts.json');
+  const catalog = JSON.parse(fs.readFileSync(source, 'utf8'));
+  if (typeof catalog.openapi !== 'string') return catalog;
+  requireThat(catalog.openapi === 'openapi.yaml', 'Split OpenAPI entry must be openapi.yaml');
+  const entry = safeTarget(root, '_cross-cutting/api/openapi.yaml');
+  requireThat(fs.existsSync(entry), 'Missing split OpenAPI entry: openapi.yaml');
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'dist-spec-bundle-'));
+  try {
+    const output = path.join(temp, 'openapi.json');
+    const config = path.join(temp, 'redocly.yaml');
+    fs.writeFileSync(config, '{}');
+    let cli = process.env.REDOCLY_CLI;
+    if (!cli) {
+      try { cli = require.resolve('@redocly/cli/bin/cli.js', { paths: [root, process.cwd(), __dirname] }); }
+      catch { /* Globally installed redocly is the last explicit runtime option. */ }
+    }
+    const args = ['bundle', entry, '--config', config, '--output', output, '--ext', 'json',
+      '--component-renaming-conflicts-severity', 'error'];
+    try {
+      execFileSync(cli ? process.execPath : 'redocly', cli ? [cli, ...args] : args,
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120000, maxBuffer: 8 * 1024 * 1024,
+          env: { ...process.env, REDOCLY_TELEMETRY: 'off', CI: 'true' } });
+    } catch (e) {
+      throw new Error(`OpenAPI bundle failed. Install @redocly/cli@2.51.1 or set REDOCLY_CLI to its bin/cli.js. ${e.stderr || e.message}`);
+    }
+    catalog.openapi = JSON.parse(fs.readFileSync(output, 'utf8'));
+    return catalog;
+  } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+}
 function run(eventDir, check = false) {
   const root = fs.realpathSync(eventDir);
   const source = path.join(root, '_cross-cutting/api/contracts.json');
-  const files = compile(JSON.parse(fs.readFileSync(source, 'utf8')));
+  const split = typeof JSON.parse(fs.readFileSync(source, 'utf8')).openapi === 'string';
+  const files = compile(loadCatalog(root));
+  if (split) {
+    files.set('_cross-cutting/api/generated/openapi.bundle.yaml', files.get('_cross-cutting/api/openapi.yaml'));
+    files.delete('_cross-cutting/api/openapi.yaml');
+  }
   // Preflight every path and compute all outputs before writing any file.
   for (const rel of files.keys()) safeTarget(root, rel);
   const manifestPath = path.join(root, '_cross-cutting/api/.contracts-build.json');
@@ -226,9 +266,11 @@ function run(eventDir, check = false) {
   const previous = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : { files: {} };
   requireThat(object(previous.files), 'Invalid contracts build manifest');
   for (const [rel, hash] of Object.entries(previous.files)) {
-    requireThat(/^(?:_cross-cutting\/api\/(?:openapi|asyncapi)\.yaml|[^/]+\/[^/]+\/[^/]+\/(?:_api-summary\.yaml|_contract-slice\.json))$/.test(rel) && /^[a-f0-9]{64}$/.test(hash),
+    requireThat(/^(?:_cross-cutting\/api\/(?:(?:openapi|asyncapi)\.yaml|generated\/openapi\.bundle\.yaml)|[^/]+\/[^/]+\/[^/]+\/(?:_api-summary\.yaml|_contract-slice\.json))$/.test(rel) && /^[a-f0-9]{64}$/.test(hash),
       `Invalid generated-file manifest entry: ${rel}`);
   }
+  requireThat(!split || !own(previous.files, '_cross-cutting/api/openapi.yaml'),
+    'Before migrating, remove the old generated openapi.yaml entry from .contracts-build.json after converting it to source');
   const obsolete = Object.keys(previous.files).filter(rel => !files.has(rel));
   for (const rel of obsolete) {
     const target = safeTarget(root, rel);
@@ -236,6 +278,7 @@ function run(eventDir, check = false) {
       `Refusing to delete edited generated file: ${rel}`);
   }
   for (const kind of ['openapi', 'asyncapi']) {
+    if (split && kind === 'openapi') continue;
     const rel = `_cross-cutting/api/${kind}.yaml`;
     requireThat(files.has(rel) || !fs.existsSync(path.join(root, rel)) || own(previous.files, rel),
       `Unmanaged obsolete contract must be reconciled explicitly: ${rel}`);
@@ -293,4 +336,4 @@ function validateSummary(data, ucDir) {
   }
   return true;
 }
-module.exports = { compile, run, slice, resolve, encode, sha, ucPath, SUMMARY_VERSION, validateSummary };
+module.exports = { compile, run, loadCatalog, slice, resolve, encode, sha, ucPath, SUMMARY_VERSION, validateSummary };

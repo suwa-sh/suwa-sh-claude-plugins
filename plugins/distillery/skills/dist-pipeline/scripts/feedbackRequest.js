@@ -8,6 +8,7 @@ const { TextDecoder } = require('node:util');
 
 const SCHEMA_VERSION = 'distillery.feedback-request/v1';
 const SOURCE = 'distillery-impl';
+const SOURCES = Object.freeze([SOURCE, 'distillery-spec']);
 const FRONT_MATTER_KEYS = Object.freeze([
   'schema_version',
   'feedback_id',
@@ -92,7 +93,7 @@ function parseFrontMatter(lines) {
   if (!ISO_DATE_TIME_RE.test(metadata.created_at) || !Number.isFinite(Date.parse(metadata.created_at))) {
     throw new Error('created_at must be an ISO 8601 date-time with an explicit timezone');
   }
-  if (metadata.source !== SOURCE) throw new Error(`source must be ${SOURCE}`);
+  if (!SOURCES.includes(metadata.source)) throw new Error(`source must be ${SOURCES.join(' | ')}`);
   if (!UC_ID_RE.test(metadata.uc_id)) {
     throw new Error('uc_id must be exactly 8 or collision-extended 12 lowercase alphanumeric characters');
   }
@@ -326,6 +327,7 @@ module.exports = {
   SCHEMA_VERSION,
   SEVERITIES,
   SOURCE,
+  SOURCES,
   UC_ID_RE,
   charToByteOffset,
   decodeUtf8,

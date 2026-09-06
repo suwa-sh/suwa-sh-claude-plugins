@@ -1,0 +1,10 @@
+description: 貸出可否判定リクエスト
+properties:
+  book_id:
+    $ref: ./BookId.yaml
+  user_no:
+    $ref: ./UserNo.yaml
+required:
+- book_id
+- user_no
+type: object

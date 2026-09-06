@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="64" viewBox="0 0 280 64" role="img" aria-label="Libra 図書館蔵書管理システム">
+  <title>Libra</title>
+  <g transform="translate(4 8) scale(1)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 8 H8 a4 4 0 0 0-4 4 v20 a4 4 0 0 1 4-4 h12 z" stroke="#1D4ED8" stroke-width="3"/>
+    <path d="M20 8 h12 a4 4 0 0 1 4 4 v20 a4 4 0 0 0-4-4 H20 z" stroke="#0F766E" stroke-width="3"/>
+    <path d="M20 8 v20" stroke="#1D4ED8" stroke-width="3"/>
+    <path d="M10 15 h6" stroke="#1D4ED8" stroke-width="2.4"/>
+    <path d="M10 20 h6" stroke="#1D4ED8" stroke-width="2.4"/>
+    <path d="M24 15 h6" stroke="#0F766E" stroke-width="2.4"/>
+    <path d="M24 20 h6" stroke="#0F766E" stroke-width="2.4"/>
+  </g>
+  <text x="56" y="34" font-family="'Noto Sans JP','Inter',system-ui,sans-serif" font-size="26" font-weight="700" fill="#0F172A" letter-spacing="0.5">Libra</text>
+  <text x="57" y="50" font-family="'Noto Sans JP',system-ui,sans-serif" font-size="10" font-weight="500" fill="#475569" letter-spacing="1">図書館蔵書管理システム</text>
+</svg>

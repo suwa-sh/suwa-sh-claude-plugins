@@ -1,0 +1,6 @@
+description: 予約を一意に識別する ID
+examples:
+- RS-00000789
+maxLength: 36
+minLength: 1
+type: string

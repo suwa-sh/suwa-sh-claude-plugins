@@ -1,5 +1,7 @@
 # tier-{tier_id}.md フォーマット（API / バックエンド系ティア）
 
+> 新規生成は `references/specs/latest-linked-spec.md` を優先する。業務条件・状態遷移はRDRA latest、部品契約はdesign latestのStorybookへ参照し、再定義しない。分割OpenAPIを直接編集し、不足はpipelineへ還流する。
+
 > **読み込みタイミング**: Step3 の UC Spec 生成 subagent が、対象ティアの kind に一致するファイル**だけ**を読む
 > （kind はオーケストレータが Step1 で確定し、subagent 指示の「対象ティア」に `(kind)` として渡す）。
 > 共通部（spec.md フォーマット・注意事項）は `references/specs/spec-template.md`。

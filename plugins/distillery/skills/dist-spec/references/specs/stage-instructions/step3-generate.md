@@ -1,5 +1,7 @@
 # Step3 UC Spec 生成 subagent の固定指示
 
+最初に `references/specs/latest-linked-spec.md` を読み、新規生成・レビューではその規約を優先する。前段latestの条件/状態/Storyを辿り、図と分岐の接続を検査する。前段の複写を要求しない。
+
 > オーケストレータはこのファイルの**絶対パス**と変数ブロックだけをプロンプトに書く（本文を貼らない）。
 > subagent は最初にこのファイルを読み、指示に従う。
 
@@ -8,6 +10,7 @@
 `references/...` は変数ブロックの `skill_root`（dist-spec スキルの絶対パス）基準。`docs/...` はプロジェクトルート基準。
 
 1. テンプレート・ルール
+   - `references/specs/latest-linked-spec.md`
    - `references/specs/spec-template.md`（共通部: spec.md フォーマット・注意事項）
    - `references/specs/tier-templates/{kind}.md` — **変数ブロックの対象ティアに現れる kind の分だけ**
      （presentation / api / worker / cli。現れない kind のファイルは読まない）
@@ -24,8 +27,7 @@
    - `docs/specs/events/{event_id}/_cross-cutting/ux-ui/ux-design.md`（Step2 生成済み。**presentation kind があるときだけ**）
    - `docs/specs/events/{event_id}/_cross-cutting/ux-ui/ui-design.md`（Step2 生成済み。**presentation または cli kind があるときだけ**。
      cli では出力規約として使う）
-   - `docs/specs/latest/_cross-cutting/ux-ui/common-components.md`（presentation kind があり `design_available: true` かつ
-     latest に存在する場合のみ。初回実行時は未生成）
+   - `docs/design/latest/storybook-app/` の対象component実装、Props、Story、token、route定義（designありのみ）。名前一覧だけで推測しない。
    - `docs/specs/latest/{業務名}/{BUC名}/{UC名}/`（既存 Spec があれば）
 
 読まないもの: 他 UC の Spec、`references/specs/tier-selection-rules.md`（ティア選定はオーケストレータが適用済み）、

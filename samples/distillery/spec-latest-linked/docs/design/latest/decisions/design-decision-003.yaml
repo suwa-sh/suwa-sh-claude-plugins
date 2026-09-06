@@ -1,0 +1,45 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-003"
+title: "デザイントークンを primitive / semantic / component の 3 層 CSS カスタムプロパティで構成する"
+status: "approved"
+generated_at: "2026-09-02T15:12:00+09:00"
+context: |
+  ポータル 2 つ × テーマ 2 つ（light / dark）の 4 通りの見え方を、
+  コンポーネント側の実装を変えずに切り替える必要がある。
+  さらに arch の technology_context は「ベンダーニュートラルなテクノロジー選定」を制約に挙げており、
+  特定の CSS-in-JS ライブラリやテーマランタイムに依存しない方式が求められる。
+  実装スタックは Tailwind CSS v4 で、`text-[var(--x)]` が font-size として解釈される既知の落とし穴がある。
+decision: |
+  トークンを CSS カスタムプロパティの 3 層で構成した。
+  - primitive: 色スケール・spacing（4px グリッド）・radius・shadow・font・duration・breakpoint の生値
+  - semantic: background / foreground / border / status（success, warning, destructive, info, neutral, pending, analysis）/
+    portal primary / layout（sidebar-width 等）/ spacing セマンティック
+  - component: button / input / card / badge / table / sidebar / modal / alert / skeleton / pagination と
+    ドメイン固有（duedate / queue / kpi / chart / pii）
+
+  切替は 2 軸で行う。
+  - ポータル: `[data-portal="patron"|"staff"]` 属性セレクタで semantic の primary 系を上書き
+  - テーマ: `.dark` クラスと `@media (prefers-color-scheme: dark)` の**両方**に定義
+
+  実装ルールとして次を定めた。
+  - `--color-white` / `--color-black` を :root に明示定義する
+  - dark mode の status `-light` は `-50` 色ではなく `rgba(..., 0.18)` の半透明値を使う
+  - `--hover-muted` を用意し、dark で `--color-gray-700` に切り替える
+  - 色指定は `style` prop か `@theme inline` 経由に限定し、`text-[var(--x)]` は使わない
+consequences:
+  positive:
+    - "ランタイム依存ゼロ。CSS だけでポータル × テーマの 4 通りを賄える"
+    - "コンポーネント側は semantic / component トークンだけを参照すればよく、色の再設計がトークン差し替えで済む"
+    - "dark mode の status 色が背景から浮かない（-50 色の明るすぎ問題を回避）"
+  negative:
+    - "トークン数が多く（primitive 約 90 / semantic 約 45 / component 約 60）、一覧できるドキュメントが必須になる"
+    - "`style` prop で色を当てるため hover / active を CSS 側（components.css）に分離する必要があり、定義が 2 箇所に分かれる"
+alternatives_considered:
+  - name: "Tailwind の theme 設定だけでテーマを表現する"
+    reason_rejected: "ポータル × テーマの 4 通りをクラス合成で表すと組合せ爆発する。data 属性 + CSS 変数のほうが単純"
+  - name: "CSS-in-JS のテーマプロバイダ"
+    reason_rejected: "arch のベンダーニュートラル制約に反し、React ランタイムへの依存が増える。SSR コストも上がる"
+  - name: "dark mode を .dark クラスのみで実装する"
+    reason_rejected: "OS 設定に追従しない。逆に @media のみだと Storybook のツールバー切替ができない。両方定義が必要"

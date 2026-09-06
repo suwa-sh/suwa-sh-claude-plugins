@@ -1,0 +1,17 @@
+# digest of arch/latest/arch-design.yaml section technology_context (L5-19); source_sha256: 46834e61c919f9cd983aae0b6e149c7cc5b7ac1e448018bbd37c400fb295a321
+# 派生物。正本は arch-design.yaml。編集しない
+technology_context:
+  languages:
+    - "TypeScript"
+  frameworks:
+    - "SPA フレームワーク（コンポーネント指向 / ルーティング内蔵）"
+    - "サーバサイド Web フレームワーク（レイヤードアーキテクチャ対応 / DI 可能）"
+    - "OpenAPI 準拠の API 定義とコード生成"
+    - "RDB マイグレーションツール"
+  constraints:
+    - "モノレポ構成（利用者ポータル / 司書ポータル / 共有コンポーネントパッケージ / バックエンド API / ワーカーを単一リポジトリで管理）"
+    - "モジュラモノリス（BC-001〜BC-006 をバックエンド API 内のモジュールとして分離。BC-007 は tier-external-gateway に実装）"
+    - "ベンダーニュートラルなテクノロジー選定（具体的なクラウドサービス名は dist-infrastructure ステージで確定）"
+    - "認証は外部マネージド IdP に委譲し、認可は RBAC + バックエンド作り込み（認可サービスは導入しない）"
+    - "日本語のみ（i18n 対応は行わないが、日付・数値の書式はロケール API 経由で記述する）"
+    - "司書向け機能は館内ネットワークからのみアクセス可能（NFR E.5.3.1）"

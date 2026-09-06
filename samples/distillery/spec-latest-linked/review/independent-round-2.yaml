@@ -1,0 +1,22 @@
+round: 2
+reviewer: feedback_contract
+scope: "独立round1の4findingと修正影響先だけを再確認"
+readiness: needs-spec-change
+findings: []
+resolved:
+  - id: R-001
+    resolution: "createLoan.descriptionから独自の区分別選択集合と状態遷移の再定義が除去され、RDRA latest要素とCR001–003のdraftへ置換された。"
+  - id: R-002
+    resolution: "Frontendに照会3operationの契機・要求値・応答接続、入力世代による中断/遅延応答破棄、取得中/404/その他取得失敗と登録無効化が追加された。BookCard実装とBookSummary契約に対するフィールド変換も確認した。UserProfileCardの不足はCR007で未解決のまま。"
+  - id: R-003
+    resolution: "createLoanに503 TemporarilyUnavailable応答が追加された。共通schemaとBackend T3/Frontendのunknown処理が、未更新を保証しない同じ意味で接続された。"
+  - id: R-004
+    resolution: "Backend T4が、headerの確定済み契約とCR006で確定待ちの回復分岐候補を区別し、保持期間を定義済みとする記載を除いた。"
+verification:
+  compiler_check: "compileContracts.js --check: status=current, files=10"
+  feedback_check: "feedbackRequest.js verify: PASS, 7 requests"
+  feedback_sha256: 07eadeb986aecd7a3b28984c020d3340bacf29981b6a90d6e9493ea41f138b0b
+remaining:
+  - "CR-60d99956-001から007の前段不足はすべて未解決。修正済みfindingとは別に管理する。"
+  - "貸出UCはneeds-spec-changeのイベントドラフト。実装可能・latest昇格可とは判定しない。"
+  - "実アプリのE2E、全UC、Storybook起動、前段修正と再生成は本レビューの検証対象外。"

@@ -1,0 +1,80 @@
+# 既存出力から引き継いだ参考コンテキスト。今回の意味レビュー対象外。
+# _model-summary.yaml
+uc: "利用者番号で貸出対象利用者を特定する"
+business: "蔵書利用業務"
+buc: "書籍を貸し出すフロー"
+
+bounded_context_id: "BC-002"
+
+models:
+  - name: "利用者番号提示画面（UserProfileCard）"
+    tier: "tier-frontend-patron"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "利用者"
+  - name: "LoanTargetResponse"
+    tier: "tier-frontend-patron"
+    layer: "api-client"
+    type: "response"
+    rdra_info: "利用者"
+  - name: "LoanTargetResponse"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "response-dto"
+    rdra_info: "利用者"
+  - name: "IdentifyLoanTargetQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "利用者"
+  - name: "User"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "利用者"
+  - name: "UserRepository"
+    tier: "tier-backend-api"
+    layer: "repository"
+    type: "repository"
+    rdra_info: "利用者"
+  - name: "UserRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+  - name: "UserAccountRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者アカウント"
+
+tables:
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :user_no"
+    indexes_needed:
+      - columns: ["user_no"]
+        reason: "利用者番号での単一検索。主キーで充足する"
+        access_pattern: "窓口で提示された利用者番号による 1 件取得"
+  - name: "user_accounts"
+    rdra_info: "利用者アカウント"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "account_id = :account_id AND is_active = true"
+    indexes_needed:
+      - columns: ["account_id"]
+        reason: "認証コンテキストのアカウントIDから利用者番号を解決する。主キーで充足する"
+        access_pattern: "アクセストークンの sub から利用者番号を引く 1 件取得"
+
+kvs:
+  - key_pattern: "session:account:{session_id}"
+    purpose: "session"
+    value_type: "セッション情報（account_id / user_no / role / expires_at）"
+    ttl: "有効期限まで（IdP のトークン有効期限に合わせる）"
+    operations: ["GET"]
+
+object_storage: []

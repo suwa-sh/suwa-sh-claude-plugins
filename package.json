@@ -4,5 +4,8 @@
   "scripts": {
     "test": "npm run test:feedback",
     "test:feedback": "node --test plugins/distillery/skills/dist-pipeline/tests/*.test.js tests/*.test.js"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.51.1"
   }
 }

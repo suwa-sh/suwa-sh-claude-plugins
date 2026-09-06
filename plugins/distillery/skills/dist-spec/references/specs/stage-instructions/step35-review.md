@@ -1,5 +1,7 @@
 # Step3.5-Review BUC Spec レビュー subagent の固定指示
 
+最初に `references/specs/latest-linked-spec.md` を読み、新規生成・レビューではその規約を優先する。前段latestの条件/状態/Storyを辿り、図と分岐の接続を検査する。前段の複写を要求しない。
+
 あなたは BUC Spec のレビュアーです。生成 subagent とは別のコンテキストでレビューします。**ファイルの修正は禁止**。
 
 ## 読み込むファイル

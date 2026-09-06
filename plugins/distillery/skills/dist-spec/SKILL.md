@@ -5,7 +5,7 @@ description: >
   UC 単位の詳細仕様（Spec）と全体横断 UX/UI 設計仕様を生成するスキル。
   design-system スキルの後段に位置する。
   BUC/UC の階層で仕様を構造化し、RDRA トレーサビリティによる要件網羅率を算出する。
-  UC 単位 Spec は spec.md（業務ルール + 状態遷移 + BDD）と
+  UC 単位 Spec は spec.md（データフロー + 分岐付きシーケンス + 前段参照 + BDD）と
   tier-{tier_id}.md（arch 動的）、_model-summary.yaml（データアクセス定義）を生成する。
   BUC 単位 Spec は所属 UC と UC 間の依存・共有定義への参照を提供する。
   全体横断の UX/UI デザイン・データ可視化・共通コンポーネント・OpenAPI/AsyncAPI を _cross-cutting/ に出力し、
@@ -62,21 +62,29 @@ failed返却は4 ledgerをすべて空配列にし、非空・単一行の`phase
 `post_execution_basis`はcontrollerが内部実測し、stage側では作らない。
 
 
+## 新規生成の方針（優先）
+
+`references/specs/latest-linked-spec.md`を最初に読み、全生成・レビュー担当へ渡す。
+データフローと分岐を含むシーケンスを生成し、業務条件・状態遷移はRDRA latest、UI部品はdesign latestのStorybookへ参照する。
+前段に不足があればspecで補完せず、pipelineが受理できる変更要求を生成する。仕様の参照先はlatestとし固定イベントにしない。
+下記の旧Step説明との競合時はこの規約を優先する。Step2/4c/4eのdesignあり処理は既存部品の参照・接続確認へ置き換える。
+
 ## 出力の完了基準
 
 `references/specs/implementation-readiness.md` を生成・レビューで適用する。
 対象UCの本文と共有参照から、正常・失敗・競合・再送の結果を追加の業務判断なく決められることを完了基準とする。
 特定のモデルやCLIによる再現、行数削減、構文検証の成功だけを完了条件にしない。
 
-## 契約生成方式（任意）
+## 契約生成方式
 
-`contract_mode=catalog` を明示した場合は、Step1の後に
+新規生成の既定は`contract_mode=catalog`。Step1の後に
 `references/specs/contract-catalog.md` を読み、Step2.5で正本カタログと派生物を生成する。
 Step3の全生成・レビュー担当へ `contract_mode: catalog` を渡す。
 Step4aは `scripts/compileContracts.js`、Step3.5/Step4dは `scripts/buildSpecViews.js` を使用し、
 Step6で両スクリプトの `--check` を行う。API本文の型表を要求する規約はlegacyにのみ適用する。
 この方式の出力規約は `references/specs/contract-catalog.md` を優先する。
-省略時は `legacy`（現在のデフォルト）。既存イベントの自動移行は行わない。
+新規生成は分割OpenAPIを人が編集する正本とし、カタログはファイル参照とUC所有/利用の対応だけを保持する。
+`contract_mode=legacy`は既存形式の互換生成を明示的に選ぶ場合のみ。既存イベントの自動移行は行わない。
 
 ## 前提条件
 
@@ -738,15 +746,12 @@ spec-stories スキルの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/dist-spec-stori
 
 ## 設計方針
 
-1. **全体横断 UX/UI 設計を UC Spec 生成の前に確定する（Step2 → Step3）**: Step2 で UX/UI/共通コンポーネント設計を先行し、Step3 の UC Spec 生成で一貫した設計方針を参照する
-2. **Presentation 系ティアはロジックとコンポーネント設計まで（Step3）、Story 実装は spec-stories スキル**: Step3 では design-event.yaml のコンポーネントを参照した設計ドキュメントを生成し、後段の spec-stories スキルが実際の Storybook Story として実装する
-3. **OpenAPI/AsyncAPI は全 UC 統合で _cross-cutting/ に生成**: Contract First 開発のために全エンドポイント・全イベントを1ファイルに集約する。スキーマ定義、リクエスト/レスポンス型を実装可能な品質で具体的に記述する
-4. **全体横断 Spec は _cross-cutting/ に配置**: UC 単位 Spec とは異なる粒度で、システム全体を俯瞰する設計情報を提供する
-5. **RDRA モデルから導出できる範囲で記述**: 推測で仕様を追加しない
-6. **BDD シナリオは具体的な値を含める**: 「適切な値」のような曖昧表現は避ける
-
-7. **出力の重複を減らす**: `references/specs/spec-template.md` の出力規約に従い、通常のレイヤー往復図、
-   業務ルール・DB型・共通UI定義の再掲を避ける。API契約生成元と既存summary形式は維持する。
+1. **前段latestを正本として参照する**: 業務条件と状態はRDRA、部品のProps・tokens・単体挙動はdesignのStorybookを読む。過去イベントへ意味を固定しない。
+2. **Step2はStorybook参照索引、Step3は接続仕様**: データフロー・分岐つきシーケンス・条件の所在・画面のAPI接続を出力する。Step4c/4eでは部品契約を再設計せず接続を確認する。
+3. **OpenAPIは分割して人が直接編集する**: paths/componentsと入口を正本にし、Swagger UI・codegen向けにbundleを生成する。所有者索引・summary・sliceを併用する。
+4. **共通の技術規則だけ_cross-cuttingへ定義する**: 複数UCで同じ意味の規則は一元化し、UC固有の実行条件はtierに残す。
+5. **不足はpipelineへ還流する**: RDRAにない数値やUIにないPropsを創作しない。結果を左右する不足がある場合はneeds-spec-changeでイベントに保存し、latestへ昇格しない。
+6. **BDDは参照した正本に基づく具体例**: 未確定の期待値はblockedとし、上流解決後にlatestを読み直して確定する。
 
 ## 実装上の注意事項
 

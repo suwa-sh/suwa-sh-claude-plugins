@@ -1,28 +1,71 @@
-# 契約カタログ方式（検証用の明示選択）
+# 契約の正本と生成ビュー
 
-`dist-spec contract_mode=catalog` の場合だけ使用する。未指定は第1段階の `legacy`。
-既存イベントを自動変換しない。実装可能性の受入確認が完了するまでデフォルトにしない。生成に使うモデルやCLIは限定しない。
+新規生成では `contract_mode=catalog` を使用する。`legacy` は既存イベントの互換経路として明示選択できる。
+既存イベントを自動変換しない。生成に使うモデルやCLIは限定しない。
 
 ## 編集する正本
 
-`_cross-cutting/api/contracts.json` を単一担当が編集する。
-OpenAPI / AsyncAPI の型・制約・認可・エラー・拡張フィールドをネイティブ形式のまま保持する。
-API本文やsummaryを第二の定義元にしない。
+人と生成担当は分割したネイティブOpenAPIを直接編集する。型表やsummaryは編集しない。
+
+```text
+_cross-cutting/api/
+├── contracts.json                 # UC・operation・tierの所有/利用対応だけ
+├── openapi.yaml                   # 手編集する入口
+├── paths/loans.yaml               # Path Item
+├── components/schemas/Loan.yaml   # 共通型。responses等も必要単位で分割
+└── generated/openapi.bundle.yaml  # 生成物。Swagger UI/codegen入力
+```
+
+入口の例（参照は各ファイルの所在を基準に解決する）:
+
+```yaml
+openapi: 3.1.0
+info: { title: Library, version: 1.0.0 }
+paths:
+  /loans:
+    $ref: ./paths/loans.yaml
+components:
+  schemas:
+    Loan:
+      $ref: ./components/schemas/Loan.yaml
+```
+
+`contracts.json` は次のように入口だけを指定する。
 
 ```json
 {
   "schema_version": "distillery.contracts/v1",
-  "openapi": { "openapi": "3.1.0", "info": { "title": "Example", "version": "1.0.0" }, "paths": {}, "components": {} },
+  "openapi": "openapi.yaml",
   "asyncapi": null,
   "use_cases": [
     {
       "business": "業務名", "buc": "BUC名", "uc": "UC名",
-      "provides": [],
-      "consumes": []
+      "provides": [], "consumes": []
     }
   ]
 }
 ```
+
+分割ファイルには型・制約・認可・エラー・拡張フィールドをネイティブ形式で保持する。
+別ファイルへの `$ref` とPath Itemの参照はRedoclyでbundleしてから既存の所有者検査・slice生成へ渡す。
+入力の `openapi.yaml` は生成処理で上書きしない。生成物は `generated/` にだけ置く。
+編集担当はoperationの重複所有を調整するが、人による直接編集を禁止しない。
+
+### 実行環境と互換性
+
+Redocly CLI **2.51.1** を実行環境へ用意する。リポジトリ内は `npm ci`、
+スキルだけをインストールした環境では `npm install --prefix <runtime-dir> @redocly/cli@2.51.1` を実行し、
+`REDOCLY_CLI=<runtime-dir>/node_modules/@redocly/cli/bin/cli.js` を指定する。
+コンパイラはこの環境変数、利用可能なnode_modules、PATHの `redocly` の順で探す。
+暗黙のネットワークインストールは行わず、不在なら生成を停止する。
+依存バージョンを固定し、bundle時は空の設定を指定して周辺設定のdecorator等による変更を防ぐ。
+
+従来の `openapi: { ... }` 埋め込みと `null` は互換入力として受理する。
+埋め込み形式は従来どおり `api/openapi.yaml` を派生出力する。
+移行時は旧派生物を人が分割正本へ変換し、`.contracts-build.json` の `files` から
+`_cross-cutting/api/openapi.yaml` の旧エントリを除いてからcompileする。
+この明示処理がない場合は正本の誤削除を防ぐため停止する。
+AsyncAPIは引き続きネイティブ文書の埋め込みを受理する（分割入力は今回の対象外）。
 
 `use_cases` は RDRA の全UCを列挙する。各 `provides` / `consumes` の項目:
 
@@ -30,13 +73,13 @@ API本文やsummaryを第二の定義元にしない。
 { "kind": "openapi", "operation_id": "createLoan", "tier": "tier-backend-api" }
 ```
 
-- `openapi` / `asyncapi` は完全な標準仕様文書、対象がない場合は `null`。
+- `openapi` は入口 `"openapi.yaml"`、互換形式の完全な標準文書、対象なしの `null`。`asyncapi` は標準文書または `null`。
 - OpenAPI は `paths` 配下の各HTTP操作に一意な `operationId` を持つ。AsyncAPIは `operations` のキーを使う。
 - 各operationの実装所有者は `provides` の1 UC × tierだけ。呼び出す他UC/tierは `consumes` に宣言する。
   共有operationを複数UCが実装する重複所有にしない。
 - 型・共通エラー・認証は各標準文書のcomponents等に一度だけ定義する。
-- このコンパイラの参照対応範囲はローカルJSON Pointer。外部 `$ref`、anchor参照、`$id` / `$dynamicRef` /
-  `$recursiveRef` は事前bundleが必要として停止する。黙って落とさない。Path Itemはinlineとする。
+- 分割OpenAPIは標準bundlerで外部 `$ref` を解決する。bundle後のslice処理はローカルJSON Pointerを扱う。
+  bundle後にもanchor、`$id` / `$dynamicRef` / `$recursiveRef`、Path Itemの `$ref` が残る場合は停止する。
 - これらはコンパイラの対応範囲であり、OpenAPI / AsyncAPI自体の制限ではない。
   標準仕様全体の検証は既存のRedocly / AsyncAPI lintを別途実行する。
   参照検査は文書全体を保守的に走査するため、exampleや拡張内でも上記の予約キーを参照として扱う。
@@ -50,7 +93,7 @@ API本文やsummaryを第二の定義元にしない。
 3. Step3のUC担当は自身のsummaryとsliceを読む。API本文はoperation ID・認可の適用箇所・
    原子性/競合/冪等性/副作用・tier固有BDDだけを書き、入出力の型表を再定義しない。
 4. UC担当が不足を発見した場合は単一のカタログ担当へ返す。カタログを修正し再compileする。
-   UC担当がsummary/slice/openapi/asyncapiを直接修正してはならない。
+   UC担当は正本の分割OpenAPIを修正できるが、summary/slice/bundleを直接修正してはならない。
 5. Step4aはLLMで統合し直さずcompileする。Step6では `--check` と標準lintを実行する。
 6. Step3.5 / Step4dの機械ビューは `buildSpecViews.js` で生成する。意味上のレビューは省略しない。
 
@@ -63,13 +106,14 @@ node <skill-path>/scripts/buildSpecViews.js docs/specs/events/{event_id} docs/rd
 
 ## 派生物と読み方
 
-- `_cross-cutting/api/openapi.yaml` / `asyncapi.yaml`: 正本の標準文書を無損失で出力する。
+- `_cross-cutting/api/generated/openapi.bundle.yaml`: 分割正本を統合した標準文書。Swagger UIからこの1ファイルを読む。
+- 埋め込み互換入力では `_cross-cutting/api/openapi.yaml`、AsyncAPIは `asyncapi.yaml` を出力する。
 - UCの `_api-summary.yaml`: v2。operation・tier・所有者・参照先・slice hashだけの索引。型は再掲しない。
 - UCの `_contract-slice.json`: 提供/利用operationと参照先のclosure。
   path単位のparameters、共通エラー、security schemes、循環schema、message payload/headerを含む。
 - `_cross-cutting/api/.contracts-build.json`: 生成ファイル集合とhash。削除されたoperation/UCの派生物を
   次回compileで片付けるために使う。手編集された削除対象は上書きせず停止する。
-- 生成 `.yaml` は厳密JSONで直列化した **YAML 1.2のサブセット**。型やエスケープを失わず再現するためで、
+- 生成 `.yaml` は厳密JSONで直列化した **YAML 1.2のサブセット**。型やエスケープを失わず再現するためで、手編集の分割正本は通常のYAMLでよい。
   手編集のYAML規約の例外。既存parserにはこの形式用の厳密JSON読込を追加している。
 - 別UCのAPIが変わっても、そのoperationを参照しないUCのsliceとsummaryは変わらない。
 - native summaryからのdegraded codegenは `_contract-slice.json` の標準文書を使う。

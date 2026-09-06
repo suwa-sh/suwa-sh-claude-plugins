@@ -1,0 +1,38 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "architecture"
+artifact_id: "arch-decision-007"
+title: "非同期通知に MQ 独立ティア + DLQ を採用"
+status: "approved"
+generated_at: "2026-09-02T14:11:27"
+context: |
+  RDRA の外部イベントは 3 件（取置き案内 / 返却期限リマインド / 延滞督促のメール送信依頼）、
+  タイマーは 2 件（返却期限接近判定 / 返却期限超過判定の日次タイマー）である。
+  NFR 制約は次のとおり。
+  - B.1.1.4 / B.2.2.1: バッチ処理量 10 万件を 8 時間以内
+  - B.3.1.1 Lv2: スケールアウト
+  - C.3.3.1 Lv2: 手動復旧
+  - A.2.1.1 Lv3: N+1 冗長
+  一方で運用体制は小規模（C.5.1.1 Lv1 / C.5.2.1 Lv2）であり、運用対象ミドルウェアは増やしたくない。
+decision: |
+  tier-messaging（MQ）を独立ティアとして置き、DLQ を併設する。
+  通知送信要求・集計要求をキューにバッファし、Queue-Based Load Leveling と Competing Consumers を適用する。
+  tier-worker が CronJob(k8s) による日次タイマーと MQ コンシューマの両方を担い、
+  両者は同一デプロイ成果物・別プロセスとする（LR-017）。
+  送信失敗は DLQ へ退避し、手動再処理手順を運用に含める（NFR C.3.3.1 Lv2）。
+consequences:
+  positive:
+    - "送信の再試行・DLQ 退避・水平スケールが MQ の標準機能で得られる"
+    - "日次バッチ 10 万件のピークをキューで平準化し、8 時間以内（B.2.2.1）の達成余裕が生まれる"
+    - "通知コンシューマを独立にスケールでき、NFR B.3.1.1 Lv2 を満たす"
+  negative:
+    - "運用対象のミドルウェアが 1 つ増える"
+    - "DLQ の手動再処理手順を運用ドキュメントとして整備・訓練する必要がある"
+    - "日次バッチのピークが同一成果物の MQ コンシューマとリソースを共有する"
+alternatives_considered:
+  - name: "Option B: DB テーブルをキュー代わりに使う（アウトボックス + ポーリング）"
+    reason_rejected: "再試行・DLQ・水平スケールをすべて自前実装することになり、Generic サブドメイン（SD-004 通知配信）への投資方針と矛盾する"
+  - name: "Option C: バックエンド API から同期でメール送信する"
+    reason_rejected: "外部メール配信サービスの遅延がレスポンスタイム 5 秒目標（B.2.1.1 Lv3）を直撃し、送信失敗時の再試行手段もなくなる"
+  - name: "Worker を Backend API に同居させる"
+    reason_rejected: "日次 10 万件の走査がオンラインのレスポンスタイムを直撃し、スケールアウト単位も分けられない"

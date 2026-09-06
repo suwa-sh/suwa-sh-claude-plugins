@@ -260,7 +260,8 @@ function validateCrossCutting(baseDir) {
     } catch (e) { errors.push(`Contract catalog: ${e.message}`); }
   }
   const requiredFiles = ['ux-ui/ux-design.md', 'ux-ui/ui-design.md', 'ux-ui/data-visualization.md'];
-  if (!catalog || catalog.openapi !== null) requiredFiles.push('api/openapi.yaml');
+  const splitOpenapi = typeof catalog?.openapi === 'string';
+  if (!catalog || catalog.openapi !== null) requiredFiles.push(splitOpenapi ? 'api/generated/openapi.bundle.yaml' : 'api/openapi.yaml');
   for (const file of requiredFiles) {
     if (!fs.existsSync(path.join(crossDir, file))) errors.push(`_cross-cutting/${file} が存在しません`);
   }
@@ -270,7 +271,7 @@ function validateCrossCutting(baseDir) {
     ['openapi', ['openapi', 'paths'], ['info']],
     ['asyncapi', ['asyncapi'], ['channels']],
   ]) {
-    const file = path.join(crossDir, 'api', `${kind}.yaml`);
+    const file = path.join(crossDir, 'api', splitOpenapi && kind === 'openapi' ? 'generated/openapi.bundle.yaml' : `${kind}.yaml`);
     if (!fs.existsSync(file)) continue;
     try {
       const data = require('./lib/yaml-parser').parseYaml(fs.readFileSync(file, 'utf8'));

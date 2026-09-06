@@ -1,0 +1,122 @@
+components:
+  parameters:
+    BookIdPath:
+      $ref: ./components/parameters/BookIdPath.yaml
+    IdempotencyKeyHeader:
+      $ref: ./components/parameters/IdempotencyKeyHeader.yaml
+    UserNoPath:
+      $ref: ./components/parameters/UserNoPath.yaml
+  responses:
+    BadRequest:
+      $ref: ./components/responses/BadRequest.yaml
+    BusinessRuleViolation:
+      $ref: ./components/responses/BusinessRuleViolation.yaml
+    Forbidden:
+      $ref: ./components/responses/Forbidden.yaml
+    NotFound:
+      $ref: ./components/responses/NotFound.yaml
+    Unauthorized:
+      $ref: ./components/responses/Unauthorized.yaml
+  schemas:
+    AvailabilityStatus:
+      $ref: ./components/schemas/AvailabilityStatus.yaml
+    BookAvailabilityResponse:
+      $ref: ./components/schemas/BookAvailabilityResponse.yaml
+    BookId:
+      $ref: ./components/schemas/BookId.yaml
+    BookStatus:
+      $ref: ./components/schemas/BookStatus.yaml
+    BookSummary:
+      $ref: ./components/schemas/BookSummary.yaml
+    BusinessRuleViolationResponse:
+      $ref: ./components/schemas/BusinessRuleViolationResponse.yaml
+    CreateLoanRequest:
+      $ref: ./components/schemas/CreateLoanRequest.yaml
+    EligibilityReason:
+      $ref: ./components/schemas/EligibilityReason.yaml
+    ErrorResponse:
+      $ref: ./components/schemas/ErrorResponse.yaml
+    Genre:
+      $ref: ./components/schemas/Genre.yaml
+    HoldSummary:
+      $ref: ./components/schemas/HoldSummary.yaml
+    LoanEligibilityRequest:
+      $ref: ./components/schemas/LoanEligibilityRequest.yaml
+    LoanEligibilityResponse:
+      $ref: ./components/schemas/LoanEligibilityResponse.yaml
+    LoanId:
+      $ref: ./components/schemas/LoanId.yaml
+    LoanPeriodType:
+      $ref: ./components/schemas/LoanPeriodType.yaml
+    LoanResponse:
+      $ref: ./components/schemas/LoanResponse.yaml
+    LoanStatus:
+      $ref: ./components/schemas/LoanStatus.yaml
+    LoanTargetResponse:
+      $ref: ./components/schemas/LoanTargetResponse.yaml
+    MaterialType:
+      $ref: ./components/schemas/MaterialType.yaml
+    ReservationId:
+      $ref: ./components/schemas/ReservationId.yaml
+    UnauthorizedCode:
+      $ref: ./components/schemas/UnauthorizedCode.yaml
+    UnauthorizedResponse:
+      $ref: ./components/schemas/UnauthorizedResponse.yaml
+    UserCategory:
+      $ref: ./components/schemas/UserCategory.yaml
+    UserNo:
+      $ref: ./components/schemas/UserNo.yaml
+    UserStatus:
+      $ref: ./components/schemas/UserStatus.yaml
+  securitySchemes:
+    bearerAuth:
+      $ref: ./components/securitySchemes/bearerAuth.yaml
+info:
+  contact:
+    name: Libra 開発チーム
+    url: https://libra.example.com/support
+  description: 'DRAFT: 貸出登録と参照依存3操作の契約。現行pipeline出力から型・制約を移行。RDRA/latestの業務条件不足はpipeline還流リクエストで解決し、対応する分岐の実装は保留する。冪等性の保存方式・障害回復・保持期間も未決定であり、このbundleだけで実装可とは判定しない。'
+  license:
+    name: Proprietary
+    url: https://libra.example.com/license
+  summary: 図書館蔵書管理システム Libra の HTTP API
+  title: 貸出登録・依存操作（分割契約draft）
+  version: 1.0.0
+openapi: 3.1.0
+paths:
+  /api/v1/books/{book_id}/availability:
+    $ref: ./paths/getBookAvailability.yaml
+  /api/v1/loan-targets/{user_no}:
+    $ref: ./paths/getLoanTarget.yaml
+  /api/v1/loans:
+    $ref: ./paths/createLoan.yaml
+  /api/v1/loans/eligibility-checks:
+    $ref: ./paths/checkLoanEligibility.yaml
+security:
+- bearerAuth: []
+servers:
+- description: 本番環境（仕様ドキュメント用プレースホルダ）
+  url: https://api.libra.example.com
+- description: ステージング環境（仕様ドキュメント用プレースホルダ）
+  url: https://api.stg.libra.example.com
+tags:
+- description: 蔵書（書籍）の登録・編集・削除・照会・検索
+  name: books
+- description: 利用者の登録・編集・削除・照会（司書ロール限定）
+  name: users
+- description: ログイン中の利用者本人に限定した照会（本人限定参照）
+  name: me
+- description: 貸出の可否判定・登録・返却・照会
+  name: loans
+- description: 予約の登録・取消・順位照会
+  name: reservations
+- description: 取置き（予約順 1 位への取り置き）の候補特定と状況照会
+  name: holds
+- description: 延滞判定と延滞中貸出の照会
+  name: overdues
+- description: 返却期限接近の貸出の判定・照会
+  name: duedates
+- description: 取置き案内 / 返却期限リマインド / 延滞督促の通知実績と再送
+  name: notifications
+- description: 在庫状況・貸出統計の集計要求とレポート参照
+  name: reports
