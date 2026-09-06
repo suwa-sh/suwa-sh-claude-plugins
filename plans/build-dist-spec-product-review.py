@@ -1,5 +1,6 @@
 from pathlib import Path
 import html,json,re,subprocess,os,difflib
+from urllib.parse import unquote
 root=Path(__file__).resolve().parents[1]
 sample=root/'samples/distillery/spec-latest-linked';event=sample/'docs/specs/events/20260906_122355_spec_generation';old=sample/'docs/specs/events/20260906_120000_spec_generation';uc=Path('蔵書利用業務/書籍を貸し出すフロー/貸出を登録する')
 marked=os.environ.get('MARKED_MODULE') or str(next((Path.home()/'.npm/_npx').glob('*/node_modules/marked/lib/marked.cjs')))
@@ -18,6 +19,15 @@ for p in list(files):
 ids={p.resolve():f'f{i}' for i,p in enumerate(files)}
 def section(p,opened=False):
  body=render(p)
+ headings={}
+ def heading(m):
+  text=html.unescape(re.sub('<[^>]+>','',m.group(2)))
+  slug=re.sub(r'[^\w\s-]','',text.lower()).replace(' ','-')
+  anchor=ids[p.resolve()]+'-h'+str(len(headings))
+  headings[slug]=anchor
+  return '<h'+m.group(1)+' id="'+anchor+'">'+m.group(2)+'</h'+m.group(1)+'>'
+ body=re.sub(r'<h([1-6])>(.*?)</h\1>',heading,body)
+ body=re.sub(r'href="#([^"]+)"',lambda m:'href="#'+headings.get(unquote(m.group(1)),ids[p.resolve()])+'"',body)
  def link(m):
   target=(p.parent/m.group(1).split('#')[0]).resolve()
   if target in ids:return 'href="#'+ids[target]+'" onclick="document.getElementById(\''+ids[target]+'\').open=true"'
