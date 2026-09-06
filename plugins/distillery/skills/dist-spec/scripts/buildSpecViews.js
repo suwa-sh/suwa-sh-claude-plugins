@@ -118,17 +118,18 @@ function build(eventRoot, rdraRoot) {
     '機械検査は対応先・tier・Scenarioの実在を確認する。linkedは意味上の充足や実装完了を保証しない。意味上の網羅率は独立レビューで判断する。', '',
     '## 対応付けサマリー', '', '| カテゴリ | 全要素 | linked | unlinked |', '|----------|-------:|-------:|---------:|'];
   for (const [category, count] of Object.entries(counts)) lines.push(`| ${category} | ${count.total} | ${count.linked} | ${count.total - count.linked} |`);
+  const typeLabels = { information: '情報の属性', variation: 'バリエーションの値', condition: '条件', state: '状態遷移', external: '外部システム' };
   const columns = catalog.use_cases.map(uc => ({ path: ucPath(uc), name: uc.uc }));
   const nameCounts = new Map();
   for (const uc of columns) nameCounts.set(uc.name, (nameCounts.get(uc.name) || 0) + 1);
   lines.push('', '## 要素と対応先', '',
     '行はRDRA要素、列は全UC。セルには対応箇所（従来の括弧書き）を表示し、根拠ファイルへリンクする。空欄はそのUCへの対応記録がないことを示す。', '',
-    `| 要素 | 対応状況 | ${columns.map(uc => `[${cell(nameCounts.get(uc.name) > 1 ? uc.path : uc.name)}](${link('../' + uc.path + '/spec.md')})`).join(' | ')} |`,
-    `|------|------|${columns.map(() => '------|').join('')}`);
+    `| 種類 | 要素 | 対応状況 | ${columns.map(uc => `[${cell(nameCounts.get(uc.name) > 1 ? uc.path : uc.name)}](${link('../' + uc.path + '/spec.md')})`).join(' | ')} |`,
+    `|------|------|------|${columns.map(() => '------|').join('')}`);
   for (const row of rows) {
     const cells = columns.map(uc => [...new Set(row.evidence.filter(e => e.uc === uc.path)
       .map(e => `[${cell(e.anchor)}](${link('../' + e.file)})`))].join('<br>'));
-    lines.push(`| ${cell(row.element)} | ${row.status} | ${cells.join(' | ')} |`);
+    lines.push(`| ${typeLabels[row.category]} | ${cell(row.element)} | ${row.status} | ${cells.join(' | ')} |`);
   }
   files.set('_cross-cutting/traceability-matrix.md', lines.join('\n') + '\n');
   return files;

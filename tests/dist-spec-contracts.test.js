@@ -138,13 +138,15 @@ test('mechanical views use RDRA denominators, preserve uncovered elements and re
     assert.ok(views.get('貸出業務/貸出フロー/buc-spec.md').includes('getBook'));
     const matrixRows = views.get('_cross-cutting/traceability-matrix.md').split('## 要素と対応先')[1]
       .split('\n').filter(line => line.startsWith('|')).map(line => line.split('|').slice(1, -1).map(x => x.trim()));
-    assert.equal(matrixRows[0].length, c.use_cases.length + 2);
+    assert.equal(matrixRows[0].length, c.use_cases.length + 3);
     assert.equal(matrixRows.length - 2, inventory.length);
-    const column = c.use_cases.findIndex(u => `${u.business}/${u.buc}/${u.uc}` === uc) + 2;
-    const conditionRow = matrixRows.find(row => row[0] === '貸出 / 貸出可能');
+    const column = c.use_cases.findIndex(u => `${u.business}/${u.buc}/${u.uc}` === uc) + 3;
+    const conditionRow = matrixRows.find(row => row[1] === '貸出 / 貸出可能');
+    assert.deepEqual(matrixRows[0].slice(0, 3), ['種類', '要素', '対応状況']);
+    assert.equal(conditionRow[0], '条件');
     assert.match(conditionRow[column], /^\[RULE-001\]\(/);
-    assert.ok(conditionRow.slice(2).filter((_, i) => i !== column - 2).every(value => value === ''));
-    assert.ok(matrixRows.filter(row => row[1] === 'unlinked').every(row => row.slice(2).every(value => value === '')));
+    assert.ok(conditionRow.slice(3).filter((_, i) => i !== column - 3).every(value => value === ''));
+    assert.ok(matrixRows.filter(row => row[2] === 'unlinked').every(row => row.slice(3).every(value => value === '')));
     trace.links.push({ ...trace.links[0], anchor: 'Given' });
     fs.writeFileSync(traceFile, encode(trace));
     const multiple = build(event, rdra).get('_cross-cutting/traceability-matrix.md');
