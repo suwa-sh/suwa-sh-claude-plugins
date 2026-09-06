@@ -9,7 +9,7 @@ exit:  0 = すべて満たしている / 3 = 未設定あり (報告用。失敗
   codex       ~/.codex/config.toml  [projects."<repo>"] trust_level = "trusted"  (+ hook 単位の trust hash は別途)
   grok        ~/.grok/trusted_folders.toml  [folders."<repo>"] trusted = true
   antigravity ~/.gemini/antigravity-cli/settings.json の trustedWorkspaces と ~/.gemini/config/projects/*.json の folderUri
-  copilot     ~/.copilot/settings.json の trustedFolders
+  copilot     ~/.copilot/config.json の trustedFolders (対話 UI の "remember" が書く正本) と ~/.copilot/settings.json の trustedFolders (手書き用) のどちらか
   claude-code / cursor: 永続的な trust 設定は不要 (Cursor は headless で --trust フラグ)
 """
 from __future__ import annotations
@@ -59,14 +59,22 @@ def check(product: str, repo: str, home: pathlib.Path) -> dict:
         return dict(product=product, needed=True, ok=ok, detail=detail,
                     how=f'repo で一度 `agy -p "reply OK" --new-project` を実行して project 登録し、~/.gemini/antigravity-cli/settings.json の trustedWorkspaces に "{repo}" (canonical パス) を追加')
     if product == "copilot":
-        try:
-            d = json.loads(_read(home / ".copilot" / "settings.json") or "{}")
-        except json.JSONDecodeError:
-            d = {}
-        ok = repo in (d.get("trustedFolders") or [])
+        # config.json は CLI 管理 (先頭に // コメント行がある JSONC)。対話 UI の "remember" はここに書く。
+        # settings.json はユーザー手書き用で、こちらの trustedFolders も CLI は読む。
+        found = []
+        for name in ("config.json", "settings.json"):
+            raw = "\n".join(ln for ln in _read(home / ".copilot" / name).splitlines() if not ln.lstrip().startswith("//"))
+            try:
+                d = json.loads(raw or "{}")
+            except json.JSONDecodeError:
+                d = {}
+            if repo in (d.get("trustedFolders") or []):
+                found.append(name)
+        ok = bool(found)
         return dict(product=product, needed=True, ok=ok,
-                    detail="trustedFolders" + ("" if ok else " に無い"),
-                    how=f'repo で対話 `copilot` を開き trust プロンプトに答える (~/.copilot/settings.json の trustedFolders に "{repo}" が入る。手編集は CLI に書き戻されて消える)。CI や単発なら GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true')
+                    detail=("trustedFolders (" + ", ".join(found) + ")") if ok else "trustedFolders に無い (config.json / settings.json)",
+                    how=f'repo で対話 `copilot` を開き、trust ダイアログで "remember" を選ぶ (~/.copilot/config.json の trustedFolders に "{repo}" が入る。settings.json の手編集は CLI に書き戻されて消える)。'
+                        'VS Code でこの repo を開いているとダイアログが出ない (IDE の trust を見るため) ので、先にそのウィンドウを閉じる。CI や単発なら GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true')
     if product == "cursor":
         return dict(product=product, needed=False, ok=True, detail="永続 trust 不要 (headless は agent -p --trust)", how="")
     if product == "claude-code":
