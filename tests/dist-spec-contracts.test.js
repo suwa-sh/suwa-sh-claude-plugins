@@ -136,6 +136,19 @@ test('mechanical views use RDRA denominators, preserve uncovered elements and re
     assert.deepEqual(report.counts.information, { total: 2, linked: 0 });
     assert.equal(report.elements.filter(e => e.status === 'unlinked').length, 3);
     assert.ok(views.get('貸出業務/貸出フロー/buc-spec.md').includes('getBook'));
+    const matrixRows = views.get('_cross-cutting/traceability-matrix.md').split('## 要素と対応先')[1]
+      .split('\n').filter(line => line.startsWith('|')).map(line => line.split('|').slice(1, -1).map(x => x.trim()));
+    assert.equal(matrixRows[0].length, c.use_cases.length + 2);
+    assert.equal(matrixRows.length - 2, inventory.length);
+    const column = c.use_cases.findIndex(u => `${u.business}/${u.buc}/${u.uc}` === uc) + 2;
+    const conditionRow = matrixRows.find(row => row[0] === '貸出 / 貸出可能');
+    assert.match(conditionRow[column], /^\[RULE-001\]\(/);
+    assert.ok(conditionRow.slice(2).filter((_, i) => i !== column - 2).every(value => value === ''));
+    assert.ok(matrixRows.filter(row => row[1] === 'unlinked').every(row => row.slice(2).every(value => value === '')));
+    trace.links.push({ ...trace.links[0], anchor: 'Given' });
+    fs.writeFileSync(traceFile, encode(trace));
+    const multiple = build(event, rdra).get('_cross-cutting/traceability-matrix.md');
+    assert.match(multiple, /\[RULE-001\]\([^)]*\)<br>\[Given\]\(/);
     trace.links[0].scenarios[0].name = '存在しない'; fs.writeFileSync(traceFile, encode(trace));
     assert.throws(() => build(event, rdra), /missing Scenario/);
     trace.links[0].element = 'fabricated'; fs.writeFileSync(traceFile, encode(trace));
