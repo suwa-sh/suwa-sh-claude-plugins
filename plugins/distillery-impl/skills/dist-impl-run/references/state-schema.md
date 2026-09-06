@@ -326,7 +326,7 @@ contracts:                             # 契約宣言(正本。種別定義は
                                        #  ../../dist-impl-bootstrap/references/contract-registry.md)
   - id: api                            # 契約 id(lock・S3 検証・contracts/ 出力のキー)
     type: openapi                      # レジストリに定義された種別のみ
-    source: "specs/latest/_cross-cutting/api/openapi.yaml"   # specs_root 相対
+    source: "specs/latest/_cross-cutting/api/generated/openapi.bundle.yaml"   # specs_root 相対
     provider: tier-backend-api         # 契約面を実装・所有する tier
     consumers: [tier-frontend]         # 契約面に依存する tier
   - id: mart-tables                    # 例: data pipeline の mart を backend が read model として読む
@@ -433,7 +433,7 @@ contracts:                             # impl-config の contracts[] と同じ i
   - id: api
     type: openapi
     source_read: none                  # 契約 source の読み取り可否: none | scope | full
-    input: {path: "docs/specs/latest/_cross-cutting/api/openapi.yaml", sha256: "..."}
+    input: {path: "docs/specs/latest/_cross-cutting/api/generated/openapi.bundle.yaml", sha256: "..."}
     generated:
       - {dir: "packages/contracts/api-types", generator: "typescript-fetch", audience: both, at: "..."}
       - {dir: "packages/contracts/api-client", generator: "typescript-fetch", audience: consumers, at: "..."}

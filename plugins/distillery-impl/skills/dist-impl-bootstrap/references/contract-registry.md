@@ -47,6 +47,7 @@ lock の機械可読キーに反映する**(スキーマは state-schema.md):
 
 - **source**: 分割形式では `_cross-cutting/api/generated/openapi.bundle.yaml`。legacyは `_cross-cutting/api/openapi.yaml`。
   分割形式は `_cross-cutting/api/contracts.json` の `openapi` がファイル参照文字列かで判定する。
+  編集入口はcatalog値をapiディレクトリ相対で解決する（新形式: `openapi/openapi.yaml`）。変更検知もこの入口から参照を辿り、旧パスを固定しない。
   bootstrapのP4でdist-specの `compileContracts.js <specs-latest-dir> --check` を実行し、分割正本との一致を確認する。
   bundleが無い/古い場合はspec再生成を要求し、legacyへフォールバックしない。
   契約入力の変更検知には入口・到達する全分割ファイル・bundleを含める。hashは生成時の監査用であり、意味の参照先は常にspecs/latest。
@@ -82,7 +83,7 @@ lock の機械可読キーに反映する**(スキーマは state-schema.md):
 ## type: asyncapi
 
 - **source**: 分割形式では `_cross-cutting/api/generated/asyncapi.bundle.yaml`。legacyは `_cross-cutting/api/asyncapi.yaml`（存在する場合のみ）。
-  `contracts.json`のasyncapiが文字列なら分割形式。P4で `compileContracts.js <specs-latest-dir> --check` により正本との一致を検査する。
+  `contracts.json`のasyncapiが文字列なら分割形式。編集入口はcatalog値をapiディレクトリ相対で解決する（新形式: `asyncapi/asyncapi.yaml`）。P1の存在プローブも上記sourceを使う。P4で `compileContracts.js <specs-latest-dir> --check` により正本との一致を検査する。
   未生成/古いbundleをlegacyで代替しない。入口・到達する全分割ファイル・bundleを入力変更検知へ含める。
   選択したパスをcontracts[].sourceと以下の `{asyncapi_source}` に使う。
 - **probe**: source の存在(capability `has_asyncapi`)

@@ -56,12 +56,12 @@ lock・入力ハッシュもその契約のエントリのみ更新する(無指
 2. ddd plugin の有無: Skill 一覧に `ddd:ddd-tactical-implementation` があるか。
    無ければ capability `has_ddd_plugin: false`(implement は dev-rules のみで継続)
 3. 条件付き入力の存在プローブ → capability フラグ化:
-   - `{specs_root}/specs/latest/_cross-cutting/api/asyncapi.yaml` → has_asyncapi
+   - AsyncAPI → `references/contract-registry.md` のsource選択規則で解決したファイルの存在を `has_asyncapi` に記録する。分割形式は `api/generated/asyncapi.bundle.yaml`、legacyは `api/asyncapi.yaml`。パスの基準は `{specs_root}/specs/latest/_cross-cutting/`。
    - `_cross-cutting/datastore/kvs-schema.yaml` → has_kvs / `object-storage-schema.yaml` → has_object_storage
    - `{specs_root}/design/latest/storybook-app/` → has_design_system
    - 加えて `references/contract-registry.md` の各種別の source を probe する
      (P2 の契約宣言案の材料。capability は probe 結果の記録であり、契約の正は contracts[])
-4. **矛盾検査**: spec-event.yaml の `use_cases[].async_event_count > 0` の UC があるのに asyncapi.yaml が
+4. **矛盾検査**: spec-event.yaml の `use_cases[].async_event_count > 0` の UC があるのに、上記で選択したAsyncAPI sourceが
    無い等の矛盾は、bootstrap を止めず「仕様への変更要求」ドラフトとして報告する(起票は S8/ユーザー判断)
 5. **UI 並走レビュー(ui_review)の raw evidence probe**(has_design_system の場合のみ。D7・D10): 実装 tier・
    lang・framework は P2 で初めて確定するため、P1 では**依存の存在を probe して記録するだけで
