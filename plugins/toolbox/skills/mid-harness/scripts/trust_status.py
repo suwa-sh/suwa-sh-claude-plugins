@@ -66,7 +66,8 @@ def check(product: str, repo: str, home: pathlib.Path) -> dict:
         ok = repo in (d.get("trustedFolders") or [])
         return dict(product=product, needed=True, ok=ok,
                     detail="trustedFolders" + ("" if ok else " に無い"),
-                    how=f'repo で対話 `copilot` を開き trust プロンプトに答える (~/.copilot/settings.json の trustedFolders に "{repo}" が入る。手編集は CLI に書き戻されて消える)。CI や単発なら GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true')
+                    how=f'repo で対話 `copilot` を開き、trust ダイアログで "remember" を選ぶ (~/.copilot/settings.json の trustedFolders に "{repo}" が入る。手編集は CLI に書き戻されて消える)。'
+                        'VS Code でこの repo を開いているとダイアログが出ない (IDE の trust を見るため) ので、先にそのウィンドウを閉じる。CI や単発なら GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true')
     if product == "cursor":
         return dict(product=product, needed=False, ok=True, detail="永続 trust 不要 (headless は agent -p --trust)", how="")
     if product == "claude-code":

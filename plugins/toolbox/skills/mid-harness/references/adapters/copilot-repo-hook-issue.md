@@ -15,7 +15,9 @@ prompt mode で repo hook を読む条件は CLI 内部で次の OR になって
 | `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` | invocation 単位 | CI、単発の検証 (verify.sh はこれ) |
 | `COPILOT_ALLOW_ALL=true` | invocation 単位 (tools / paths / urls も全許可) | 使わない (hook 以外も全開放) |
 
-**`trustedFolders` を手で書いても永続しない** (2026-09-06 実測 ×2): `~/.copilot/settings.json` は CLI が終了時に自分の状態で書き戻すため、手編集で足した `trustedFolders` は次の `copilot` 実行後に消えていた (書いた直後の 1 回だけは効く)。永続させるには CLI 自身に書かせる = repo で対話セッション (`copilot`) を開いて trust プロンプトに答える経路 (**未実測**、対話が要るため)。それができない環境では invocation ごとに環境変数を付ける。
+**`trustedFolders` を手で書いても永続しない** (2026-09-06 実測 ×2): `~/.copilot/settings.json` は CLI が終了時に自分の状態で書き戻すため、手編集で足した `trustedFolders` は次の `copilot` 実行後に消えていた (書いた直後の 1 回だけは効く)。永続させるには CLI 自身に書かせる: 対話セッションの trust ダイアログ "Do you trust the files in this folder?" で **remember** を選ぶ (`addTrustedFolder` → `trustedFolders` に書く。"yes" はそのセッション限り)。それができない環境では invocation ごとに環境変数を付ける。
+
+**ダイアログが出ないケース** (2026-09-06 実測): 対話 UI の trust 判定は `trustedFolders` に加えて **`~/.copilot/ide/*.lock` (VS Code の Copilot 拡張が書く、`workspaceFolders` + `isTrusted`)** も見る (`app.js` の `aG()`: IDE lock file を走査)。VS Code でその repo を trust 済みで開いていると、CLI はダイアログを出さず `trustedFolders` にも書かない。一方 `-p` の `isFolderTrusted` は IDE lock を見ないので repo hook は読まれない。ダイアログを出すには、その repo を開いている VS Code ウィンドウを閉じて (lock が消える) から `copilot` を起動し、remember を選ぶ。
 
 repo 内のファイル (`.env` 等) で有効化する経路は無い。Copilot CLI は repo の `.env` を読まず (`copilot help environment` / `help config` に該当なし、app.js に dotenv 読込なし)、これは「未知の repo の hook が黙って動く」のを防ぐ設計意図に沿っている。repo 単位で安全に効かせたいなら `trustedFolders` (ユーザー側) を使う。shell 側で `.envrc` (direnv、`direnv allow` の trust ゲートあり) に export する手もあるが、agent-loop のような非対話シェルでは direnv hook が入っていないと効かない。
 

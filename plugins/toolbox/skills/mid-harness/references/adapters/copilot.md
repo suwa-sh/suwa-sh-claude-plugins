@@ -34,7 +34,7 @@
 - stdin (user hook で実測 2026-09-05): `{"sessionId", "timestamp", "cwd", "toolName": "bash", "toolArgs": {"command": ..., "description": ...}}`。docs は `toolArgs` が **JSON 文字列** の場合があるとする (両方を受ける)
 - hook の cwd は実測でプロジェクト cwd。`cwd` フィールドで上書き可
 - ブロック: stdout `{"permissionDecision": "deny", "permissionDecisionReason": "..."}`。**exit 2 も deny** (stdout JSON はマージ)。preToolUse ではその他の非ゼロ exit も deny (fail-closed)。timeout だけ fail-open
-- **`-p` では repo hook が既定で無効** (セキュリティ目的)。有効化は 2 通り: ① repo 単位 = `~/.copilot/settings.json` の `trustedFolders` に repo の絶対パスが入っていること (実測で変数なしでも発火。ただし**手編集は CLI が settings.json を書き戻すため次回実行で消える**。永続させるには repo で対話 `copilot` を開き trust プロンプトに答える経路 (未実測))、② invocation 単位 = `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` (確実)。repo 内のファイル (`.env` 等) で有効化する経路は無い。1.0.83 で未コミットの生成 hook が発火し、番兵コマンドを拒否することを両経路で実測した。原因・比較結果・出典は [copilot-repo-hook-issue.md](copilot-repo-hook-issue.md)。
+- **`-p` では repo hook が既定で無効** (セキュリティ目的)。有効化は 2 通り: ① repo 単位 = `~/.copilot/settings.json` の `trustedFolders` に repo の絶対パスが入っていること (実測で変数なしでも発火。ただし**手編集は CLI が settings.json を書き戻すため次回実行で消える**。永続させるには repo で対話 `copilot` を開き trust ダイアログで **remember** を選ぶ。VS Code でその repo を trust 済みで開いているとダイアログが出ない (IDE の lock を trust と見なすため。`-p` は lock を見ない) ので、VS Code のウィンドウを閉じてから起動する)、② invocation 単位 = `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` (確実)。repo 内のファイル (`.env` 等) で有効化する経路は無い。1.0.83 で未コミットの生成 hook が発火し、番兵コマンドを拒否することを両経路で実測した。原因・比較結果・出典は [copilot-repo-hook-issue.md](copilot-repo-hook-issue.md)。
 
 ### 論理イベント → 製品イベント
 
