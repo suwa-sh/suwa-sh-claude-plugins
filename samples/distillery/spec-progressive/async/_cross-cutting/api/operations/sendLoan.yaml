@@ -1,0 +1,5 @@
+action: send
+channel:
+  $ref: ../asyncapi.yaml#/channels/loan~1created
+messages:
+  - $ref: ../asyncapi.yaml#/channels/loan~1created/messages/LoanCreated

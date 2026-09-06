@@ -69,3 +69,8 @@ npx skills add suwa-sh/suwa-sh-claude-plugins --all
 データフロー・分岐つきシーケンス・技術条件・画面のAPI接続をspecに残します。
 OpenAPIは人が編集する分割YAMLからbundle/UC sliceを生成します。不足は `source: distillery-spec` の変更要求としてpipelineへ還流し、未解決のドラフトはlatestへ昇格しません。
 分割契約のローカル検証は `npm ci` 後に実行してください（Redocly CLIを固定）。
+
+AsyncAPIもoperation/channel/message/schemaを分割して人が編集し、bundleとUC sliceを生成します。
+RDBはarch latestのサブドメイン所有索引からdomain正本・必要な外部列へ段階的に読み込みます。
+全体bundleは検証とcodegenの入力です。この分割は物理DBの分割を意味しません。
+[分割と段階的開示のサンプル](samples/distillery/spec-progressive/README.md)を参照してください。

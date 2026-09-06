@@ -59,3 +59,5 @@ contract_mode: {legacy|catalog}
   - 業務: {業務名} / BUC: {BUC名} / UC: {UC名} / 対象ティア: {tier_id} ({kind}), {tier_id} ({kind})
   - ...（1 subagent あたり 8〜10 UC まで）
 ```
+
+RDB分割出力がある場合は入口で所有先を特定し、対象サブドメインと_model-summaryで使用するテーブル/カラムだけを読む。FK先のキー以外も使用する場合は所有先の該当列・制約へ段階的に読込を広げる。全体bundleをUCごとにフルロードしない。AsyncAPIも対象UC sliceに含まれるoperation/channel/message/schemaを読む。

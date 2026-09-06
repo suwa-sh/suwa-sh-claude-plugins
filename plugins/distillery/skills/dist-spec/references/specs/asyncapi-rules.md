@@ -1,5 +1,8 @@
 # AsyncAPI Spec 生成ルール
 
+新規生成は `contract-catalog.md` の分割AsyncAPI規約を優先する。入口からoperation/channel/message/schemaへ$refで接続し、人が編集する正本と統合bundleを分離する。UC担当はsummary/sliceから必要な範囲を読み、配送保証や再送等の技術条件へ接続する。
+
+
 > **読み込みタイミング**: Step4a で使用。AsyncAPI 3.0 生成ルール。
 
 非同期メッセージイベントの仕様を AsyncAPI 3.0 形式で記述する。

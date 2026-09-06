@@ -83,7 +83,8 @@ Step3の全生成・レビュー担当へ `contract_mode: catalog` を渡す。
 Step4aは `scripts/compileContracts.js`、Step3.5/Step4dは `scripts/buildSpecViews.js` を使用し、
 Step6で両スクリプトの `--check` を行う。API本文の型表を要求する規約はlegacyにのみ適用する。
 この方式の出力規約は `references/specs/contract-catalog.md` を優先する。
-新規生成は分割OpenAPIを人が編集する正本とし、カタログはファイル参照とUC所有/利用の対応だけを保持する。
+新規生成は分割OpenAPI/AsyncAPIを人が編集する正本とし、カタログはファイル参照とUC所有/利用の対応だけを保持する。
+RDBも `references/specs/progressive-rdb-schema.md` に従い、サブドメインの正本からbundleと読込用sliceを生成する。Step4のdatastore統合で `scripts/compileRdbSchema.js` を実行し、Step6で `--check` を行う。
 `contract_mode=legacy`は既存形式の互換生成を明示的に選ぶ場合のみ。既存イベントの自動移行は行わない。
 
 ## 前提条件
@@ -402,7 +403,7 @@ Step3 + Step3.5 完了後に実行。**機能別に subagent を分割して並�
    - `references/specs/openapi-rules.md` に従って生成
    - Contract First 開発に使える品質で、スキーマ定義・型情報を具体的に記述
 
-2. `_cross-cutting/api/asyncapi.yaml` を生成する（非同期イベントがある場合のみ）:
+2. 新規catalogでは分割AsyncAPIの正本を作りcompileContractsでbundleを生成する。以下のsummaryからの逆生成はlegacyのみ（非同期イベントがある場合のみ）:
    - 全 UC の非同期イベントを統合した AsyncAPI spec
    - **Step3 で生成した各 UC の `_api-summary.yaml` の `async_events` セクションを入力とする**
    - `_api-summary.yaml` が無い、または型制約・認可・エラー等が不足する UC は、該当 tier-{tier_id}.md の契約節だけを追加で読む。未記載を推測で補わない
@@ -415,14 +416,15 @@ OpenAPI 統合が特に重い場合は、業務単位で分割して並列生成
 
 **読み込み:** `references/specs/datastore-rules.md`
 
-1. `_cross-cutting/datastore/rdb-schema.yaml` を生成する:
+1. `progressive-rdb-schema.md` に従い `_cross-cutting/datastore/rdb-schema.yaml` の所有索引とdomainsの正本を生成する:
    - **Step3 で生成した各 UC の `_model-summary.yaml` の `tables` セクションを入力とする**
-   - 同名テーブルをマージし、全 UC のカラム・操作を集約する
+   - 同名テーブルは一つのサブドメイン所有者へ集約する。所有の曖昧さはarch latestへ還流する
    - 情報.tsv の属性からカラム定義（名前、抽象型、制約）を導出する
    - 情報.tsv の「関連情報」列からテーブル間の FK を導出する
    - 各 UC の `indexes_needed` を集約し、重複を排除してインデックス一覧を生成する
-   - mermaid ER 図を `er_diagram` フィールドに含める
+   - ER図は必要なサブドメイン範囲を表示し、境界外は所有者と参照キーで識別する
    - `references/specs/datastore-rules.md` に従って生成
+   - `compileRdbSchema.js <rdb-schema.yamlの入口>` で全体bundleとdomain sliceを生成する。
    - **DDL (SQL) には変換しない**。YAML で抽象型（string, integer, decimal 等）を使う
 
 2. `_cross-cutting/datastore/kvs-schema.yaml` を生成する（KVS アクセスがある場合のみ）:
@@ -613,8 +615,9 @@ node <skill-path>/scripts/validateModelSummary.js docs/specs/events/{event_id}/{
 **Step 6-pre-3: Cross-Cutting YAML スキーマバリデーション**
 
 ```bash
-# rdb-schema.yaml（存在する場合）
-node <skill-path>/scripts/validateRdbSchema.js docs/specs/events/{event_id}/_cross-cutting/datastore/rdb-schema.yaml
+# 分割RDB（存在する場合）。legacyは従来の入口をvalidateRdbSchemaに渡す
+node <skill-path>/scripts/compileRdbSchema.js docs/specs/events/{event_id}/_cross-cutting/datastore/rdb-schema.yaml --check
+node <skill-path>/scripts/validateRdbSchema.js docs/specs/events/{event_id}/_cross-cutting/datastore/generated/rdb-schema.bundle.yaml
 
 # kvs-schema.yaml（存在する場合）
 node <skill-path>/scripts/validateKvsSchema.js docs/specs/events/{event_id}/_cross-cutting/datastore/kvs-schema.yaml
@@ -654,7 +657,8 @@ npx --yes @redocly/cli lint docs/specs/events/{event_id}/_cross-cutting/api/open
 #### 6c. AsyncAPI リント（asyncapi.yaml が存在する場合のみ）
 
 ```bash
-npx --yes @asyncapi/cli validate docs/specs/events/{event_id}/_cross-cutting/api/asyncapi.yaml
+npx --yes @asyncapi/cli validate docs/specs/events/{event_id}/_cross-cutting/api/generated/asyncapi.bundle.yaml
+# legacyでは従来のapi/asyncapi.yamlを指定する
 ```
 
 - エラー 0 → Step7 へ進む

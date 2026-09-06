@@ -271,7 +271,7 @@ function validateCrossCutting(baseDir) {
     ['openapi', ['openapi', 'paths'], ['info']],
     ['asyncapi', ['asyncapi'], ['channels']],
   ]) {
-    const file = path.join(crossDir, 'api', splitOpenapi && kind === 'openapi' ? 'generated/openapi.bundle.yaml' : `${kind}.yaml`);
+    const file = path.join(crossDir, 'api', typeof catalog?.[kind] === 'string' ? `generated/${kind}.bundle.yaml` : `${kind}.yaml`);
     if (!fs.existsSync(file)) continue;
     try {
       const data = require('./lib/yaml-parser').parseYaml(fs.readFileSync(file, 'utf8'));
@@ -286,11 +286,13 @@ function validateCrossCutting(baseDir) {
   const rdbSchemaPath = path.join(crossDir, 'datastore', 'rdb-schema.yaml');
   if (fs.existsSync(rdbSchemaPath)) {
     const content = fs.readFileSync(rdbSchemaPath, 'utf8');
-    if (!content.includes('tables:')) {
-      errors.push('_cross-cutting/rdb-schema.yaml: "tables:" フィールドがありません');
-    }
-    if (!content.includes('datastore:')) {
-      warnings.push('_cross-cutting/rdb-schema.yaml: "datastore:" フィールドがありません');
+    if (/schema_version:\s*["']?distillery\.rdb-split\/v1/.test(content) || /"schema_version"\s*:\s*"distillery\.rdb-split\/v1"/.test(content)) {
+      try {
+        require('./compileRdbSchema').compileRdbSchema(rdbSchemaPath, { check: true });
+      } catch (error) { errors.push(`Split RDB validation failed: ${error.message}`); }
+    } else {
+      if (!content.includes('tables:')) errors.push('_cross-cutting/rdb-schema.yaml: "tables:" フィールドがありません');
+      if (!content.includes('datastore:')) warnings.push('_cross-cutting/rdb-schema.yaml: "datastore:" フィールドがありません');
     }
   }
 

@@ -1,6 +1,6 @@
 {
   "name": "distillery-impl",
-  "version": "0.13.3",
+  "version": "0.13.4",
   "description": "Implementation harness with independent verification, decision-complete human reviews, and one-commit pull-request delivery per use case.",
   "author": {
     "name": "suwa-sh"

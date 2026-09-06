@@ -1,0 +1,21 @@
+asyncapi: 3.0.0
+info:
+  title: Events
+  version: 1.0.0
+servers:
+  broker:
+    host: mq.example.com
+    protocol: amqp
+channels:
+  loan/created:
+    $ref: ./channels/loan-created.yaml
+operations:
+  sendLoan:
+    $ref: ./operations/sendLoan.yaml
+components:
+  messages:
+    LoanCreated:
+      $ref: ./components/messages/LoanCreated.yaml
+  schemas:
+    LoanCreatedPayload:
+      $ref: ./components/schemas/LoanCreatedPayload.yaml

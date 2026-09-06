@@ -1,0 +1,22 @@
+{
+  "async_events": [
+    {
+      "channel": "#/channels/loan~1created",
+      "contract_ref": "asyncapi#/operations/sendLoan",
+      "direction": "publish",
+      "kind": "asyncapi",
+      "name": "sendLoan",
+      "operation_id": "sendLoan",
+      "summary": "sendLoan",
+      "tier": "tier-api"
+    }
+  ],
+  "buc": "貸出フロー",
+  "business": "貸出業務",
+  "consumes": [],
+  "contract_sha256": "92539adc1ab697bf367ed13a70dfac1bd823872241041cc8d55d6ff8f6680387",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "貸出登録"
+}

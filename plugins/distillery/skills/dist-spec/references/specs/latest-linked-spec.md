@@ -11,7 +11,8 @@
 | 業務条件・計算・バリエーション | docs/rdra/latest/ の条件/バリエーション等 | 該当要素へのリンクと適用する分岐ID |
 | 業務状態遷移 | docs/rdra/latest/状態.tsv | 状態モデル・遷移UCを特定するリンク。遷移表を複写しない |
 | 見た目・Props型・コンポーネント単体の振る舞い | docs/design/latest/storybook-app/ の実装・Stories・tokens | component/Story/exportへの参照、API値との接続、画面固有の振る舞い |
-| HTTP契約 | specs内の分割OpenAPI YAML | operationIdと固有の実行条件。型表を再掲しない |
+| HTTP・非同期契約 | specs内の分割OpenAPI / AsyncAPI YAML | operationIdと固有の実行条件。型・message定義を再掲しない |
+| RDBの型・制約 | specs内の分割RDB schema（所有境界はarch latest） | 対象テーブルの読書き操作と参照先。型表を再掲しない |
 | 技術条件・副作用・原子性 | UCのtierまたは_cross-cutting | データフロー、シーケンス、技術分岐、更新操作、BDD |
 
 **意味を参照するリンクは必ずlatestを使う。** docs/rdra/latest、docs/design/latest、docs/arch/latest、docs/nfr/latest、docs/specs/latestが対象。
@@ -66,3 +67,13 @@ pipelineのinspect/planで実際に受理・stageルーティングされるこ�
 未実施の前段修正をapplied扱いせず、stage packetの処理結果ledgerも捏造しない。
 結果を左右する不足が残るspecはneeds-spec-changeのドラフトとしてイベントに保存し、specs/latestへ昇格しない。
 還流で前段latestが更新されたらそれを読み直し、対応する図・分岐・契約・BDDを再生成/検証してから昇格する。
+
+## 契約の段階的開示
+
+段階1は小さい入口の所有索引、段階2は対象UCのoperation sliceまたは対象サブドメインのschema、段階3はそこから必要な依存の型・キー・制約とする。全体bundleは表示・codegen・全体整合検証向けの派生物で、各UC生成担当に最初から全量を読ませない。
+
+AsyncAPIはoperation/channel/message/schemaをネイティブの$refで分割する。配送保証、再試行、ACK、順序、重複処理、障害の意味は操作の技術条件へ接続する。分割したことで実装判断を省かない。詳細はcontract-catalog.md。
+
+RDBはarch latestで定義されたサブドメインのIDを使い、各テーブルの正本所有者を1つにする。詳細はprogressive-rdb-schema.md。外部キーの相手の定義を編集可能なコピーにしない。UCが読む外部カラムは_model-summaryの操作に基づき必要範囲へ追加し、FKキーだけのビューで業務照会を実装可能と誤判定しない。
+
+この所有境界は仕様を編集・閲覧する境界であり、物理DB分割・FK禁止・分散トランザクション化を意味しない。複数所有者の表を更新するUCは、原子性と更新責務を従来どおりarch latest/tierで確定する。所有先が曖昧ならarchへの還流要求にする。

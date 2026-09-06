@@ -1,0 +1,7 @@
+type: object
+title: LoanCreatedPayload
+required:
+  - loanId
+properties:
+  loanId:
+    type: string

@@ -1,0 +1,6 @@
+address: loan.created
+servers:
+  - $ref: ../asyncapi.yaml#/servers/broker
+messages:
+  LoanCreated:
+    $ref: ../asyncapi.yaml#/components/messages/LoanCreated

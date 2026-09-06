@@ -6,6 +6,9 @@
     "test:feedback": "node --test plugins/distillery/skills/dist-pipeline/tests/*.test.js tests/*.test.js"
   },
   "devDependencies": {
-    "@redocly/cli": "2.51.1"
+    "@apidevtools/json-schema-ref-parser": "14.2.1",
+    "@asyncapi/parser": "3.6.3",
+    "@redocly/cli": "2.51.1",
+    "yaml": "2.9.0"
   }
 }

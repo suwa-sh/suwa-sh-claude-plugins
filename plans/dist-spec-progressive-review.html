@@ -1,0 +1,1937 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>契約を段階的に読む — AsyncAPIとRDB</title><style>*{box-sizing:border-box}body{margin:0;background:#F4F1EA;color:#1A1A1A;font:16px/1.8 Inter,"Noto Sans JP",sans-serif}main{max-width:1080px;padding:40px 24px;margin:auto}h1{font-size:32px;line-height:1.5}h2{margin-top:40px;font-size:24px}a{color:#245DB8}table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:12px;text-align:left;vertical-align:top;border-bottom:1px solid #CFC9BC}th{background:#ECE8DE}.note{padding:16px 20px;border-left:4px solid #3B82F6;background:white}details{background:white;border:1px solid #CFC9BC;margin:12px 0;border-radius:4px}summary{padding:16px;cursor:pointer;overflow-wrap:anywhere}pre{background:#ECE8DE;padding:20px;font:13px/1.7 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere}p{max-width:900px}@media(max-width:640px){table{display:block;overflow-x:auto}main{padding:24px 16px}h1{font-size:28px}}</style><main><p>DISTILLERY / 段階的開示 / 2026-09-06</p><h1>小さい索引から、<br>必要な契約だけを読む</h1><p>OpenAPIに加え、AsyncAPIとRDBスキーマにも分割管理を適用しました。正本の編集単位と、実装担当が読む範囲を分けています。</p><table><tr><th>契約</th><th>1. 入口</th><th>2. 対象の詳細</th><th>3. 必要な依存</th></tr><tr><td>OpenAPI</td><td>操作・所有UCの索引</td><td>対象operationのslice</td><td>要求・応答・共通schema</td></tr><tr><td>AsyncAPI</td><td>操作・所有UCの索引</td><td>対象operationとchannel</td><td>message・payload・共通schema</td></tr><tr><td>RDB</td><td>サブドメインの所有索引</td><td>対象domainのテーブル</td><td>外部キーの参照キー、業務操作に必要な外部列</td></tr></table><p class="note">全体bundleは表示・全体整合検証・codegen向けの生成物です。UC担当が最初から全量を読む入力にはしません。正本の型定義は一箇所に置き、派生物を人が修正する運用にしません。</p><h2>AsyncAPIのフォーマット</h2><pre>api/
+  contracts.json                # UC・操作・tierの所有と利用
+  asyncapi.yaml                 # ネイティブの小さい入口
+  operations/sendLoan.yaml
+  channels/loan-created.yaml
+  components/messages/LoanCreated.yaml
+  components/schemas/LoanCreatedPayload.yaml
+  generated/asyncapi.bundle.yaml # 表示・codegen向け生成物
+
+各UC/
+  _api-summary.yaml
+  _contract-slice.json           # 必要な操作と依存の生成物</pre><p>operationからchannel、そのchannelで使用するmessageへの参照関係を維持します。ACK、再試行、順序、重複排除、障害時の振る舞いは技術仕様へ接続します。</p><h2>RDBのフォーマット</h2><pre>datastore/
+  rdb-schema.yaml                # arch latestへの参照・domain索引
+  domains/SD-001.yaml             # 蔵書貸出・予約の正本
+  domains/SD-002.yaml             # 蔵書目録の正本
+  domains/SD-003.yaml             # 利用者管理の正本
+  generated/rdb-schema.bundle.yaml
+  generated/domain-slices/SD-001.yaml
+  generated/domain-slices/SD-002.yaml
+  generated/domain-slices/SD-003.yaml</pre><p>サブドメインとエンティティの所有先はarch latestに従います。対象domainのsliceには自分のテーブルと、外部キーの検証に必要な境界外のキーだけを含めます。外部のemail等を業務処理が使う場合は、その列・制約を所有先から追加で読みます。キーだけの外部ビューから完全なrow型やDDLを生成しません。</p><p class="note">仕様の分割は物理DBやトランザクションの分割を意味しません。複数domainの表を同じ取引で更新する場合、その原子性・更新責務はarch latestとtierに残します。所有先が不明な表は勝手にcommonへ入れず、archへ還流します。</p><h2>生成したサンプルを読む</h2><p>AsyncAPIは既存の契約テスト用サンプルを分割。RDBは現行サンプルのloans・books・usersを既存archのSD-001/002/003へ配置しました。分割・参照・生成の検証用であり、前回の貸出仕様の7件の還流要求を解決したものではありません。以下は実ファイルの全文です。</p><details><summary>README.md</summary><pre># 契約の分割と段階的開示
+
+AsyncAPIとRDBについて、正本を人が分割編集し、読込範囲を小さい索引から広げる構造を実装した。
+
+- [AsyncAPI](async/README.md): 操作・channel・message・schema → 統合bundleとUC slice。既存契約テストのsendLoanを構造を変えずに分割。
+- [RDB](rdb/README.md): arch latestのSD-001/002/003 → domainsの正本 → bundleとdomain slice。現行サンプルのbooks/users/loansを同じ定義のまま分割。
+- [独立レビュー](review.md)
+- [HTMLで読む](../../../plans/dist-spec-progressive-review.html)
+
+読む順序は「所有索引 → 対象UC/domain → 必要な依存」。全体bundleは表示・codegen・全体検証に使い、各UCへ全量を渡さない。
+外部キー確認用のkey-only projectionは、外部表のrow型やDDLの生成元ではない。業務処理で追加の列を使う場合は、所有先の該当列・制約を追加で読む。
+
+分割は文書の所有境界であり、物理DBやトランザクションの分割ではない。
+前回の貸出登録specに残る7件の還流要求を解決した、あるいは全pipelineを再実行したサンプルではない。
+</pre></details><details><summary>async/README.md</summary><pre># 分割AsyncAPIの実行例
+
+`spec-contracts` の貸出登録が送信する既存 `sendLoan` 契約を分割した例。
+業務仕様を追加せず、統合文書が元のAsyncAPIと同値であることをテストする。
+貸出業務本体の全pipeline再生成を表すものではない。
+
+- 編集: `_cross-cutting/api/asyncapi.yaml` → `operations/sendLoan.yaml` → `channels/loan-created.yaml` → `components/messages/LoanCreated.yaml` → `components/schemas/LoanCreatedPayload.yaml`
+- 人が全体を見る/コード生成: `_cross-cutting/api/generated/asyncapi.bundle.yaml`
+- 貸出登録の実装担当: `貸出業務/貸出フロー/貸出登録/_api-summary.yaml` と `_contract-slice.json`
+
+```sh
+node plugins/distillery/skills/dist-spec/scripts/compileContracts.js samples/distillery/spec-progressive/async
+node plugins/distillery/skills/dist-spec/scripts/compileContracts.js samples/distillery/spec-progressive/async --check
+node --test tests/dist-spec-split-asyncapi.test.js
+```
+
+`npm ci` 済みのリポジトリルートから実行する。入力は通常のYAML、生成物は再現性を保つJSON形式のYAML。
+入口・分割ファイルを手編集すると、`--check` がbundleと影響UCの再生成漏れを検出する。
+生成物は直接編集しない。過去イベント固定の参照は使用していない。
+</pre></details><details><summary>async/_cross-cutting/api/.contracts-build.json</summary><pre>{
+  &quot;files&quot;: {
+    &quot;_cross-cutting/api/generated/asyncapi.bundle.yaml&quot;: &quot;71b062909e05addd4d50a759ec56fa5ad084f3d2945780868d1a6cc4e06371b7&quot;,
+    &quot;貸出業務/貸出フロー/貸出登録/_api-summary.yaml&quot;: &quot;cadc5cf9aed42c90e5b40ed3dcc7c6bcf906f9a101db37f9c3bda7e83e0f36c7&quot;,
+    &quot;貸出業務/貸出フロー/貸出登録/_contract-slice.json&quot;: &quot;92539adc1ab697bf367ed13a70dfac1bd823872241041cc8d55d6ff8f6680387&quot;
+  },
+  &quot;schema_version&quot;: &quot;distillery.contract-build/v1&quot;,
+  &quot;source_sha256&quot;: &quot;d96462acde6c3897311c75abb239a45388b27c8467c0b45d64f27b0ddf97cf71&quot;
+}
+</pre></details><details><summary>async/_cross-cutting/api/asyncapi.yaml</summary><pre>asyncapi: 3.0.0
+info:
+  title: Events
+  version: 1.0.0
+servers:
+  broker:
+    host: mq.example.com
+    protocol: amqp
+channels:
+  loan/created:
+    $ref: ./channels/loan-created.yaml
+operations:
+  sendLoan:
+    $ref: ./operations/sendLoan.yaml
+components:
+  messages:
+    LoanCreated:
+      $ref: ./components/messages/LoanCreated.yaml
+  schemas:
+    LoanCreatedPayload:
+      $ref: ./components/schemas/LoanCreatedPayload.yaml
+</pre></details><details><summary>async/_cross-cutting/api/channels/loan-created.yaml</summary><pre>address: loan.created
+servers:
+  - $ref: ../asyncapi.yaml#/servers/broker
+messages:
+  LoanCreated:
+    $ref: ../asyncapi.yaml#/components/messages/LoanCreated
+</pre></details><details><summary>async/_cross-cutting/api/components/messages/LoanCreated.yaml</summary><pre>name: LoanCreated
+title: Loan created
+payload:
+  $ref: ../../asyncapi.yaml#/components/schemas/LoanCreatedPayload
+headers:
+  type: object
+  required:
+    - idempotency_key
+  properties:
+    idempotency_key:
+      type: string
+</pre></details><details><summary>async/_cross-cutting/api/components/schemas/LoanCreatedPayload.yaml</summary><pre>type: object
+title: LoanCreatedPayload
+required:
+  - loanId
+properties:
+  loanId:
+    type: string
+</pre></details><details><summary>async/_cross-cutting/api/contracts.json</summary><pre>{
+  &quot;schema_version&quot;: &quot;distillery.contracts/v1&quot;,
+  &quot;openapi&quot;: null,
+  &quot;asyncapi&quot;: &quot;asyncapi.yaml&quot;,
+  &quot;use_cases&quot;: [
+    {
+      &quot;business&quot;: &quot;貸出業務&quot;,
+      &quot;buc&quot;: &quot;貸出フロー&quot;,
+      &quot;uc&quot;: &quot;貸出登録&quot;,
+      &quot;provides&quot;: [
+        {
+          &quot;kind&quot;: &quot;asyncapi&quot;,
+          &quot;operation_id&quot;: &quot;sendLoan&quot;,
+          &quot;tier&quot;: &quot;tier-api&quot;
+        }
+      ],
+      &quot;consumes&quot;: []
+    }
+  ]
+}
+</pre></details><details><summary>async/_cross-cutting/api/generated/asyncapi.bundle.yaml</summary><pre>{
+  &quot;asyncapi&quot;: &quot;3.0.0&quot;,
+  &quot;channels&quot;: {
+    &quot;loan/created&quot;: {
+      &quot;address&quot;: &quot;loan.created&quot;,
+      &quot;messages&quot;: {
+        &quot;LoanCreated&quot;: {
+          &quot;$ref&quot;: &quot;#/components/messages/LoanCreated&quot;
+        }
+      },
+      &quot;servers&quot;: [
+        {
+          &quot;$ref&quot;: &quot;#/servers/broker&quot;
+        }
+      ]
+    }
+  },
+  &quot;components&quot;: {
+    &quot;messages&quot;: {
+      &quot;LoanCreated&quot;: {
+        &quot;headers&quot;: {
+          &quot;properties&quot;: {
+            &quot;idempotency_key&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;idempotency_key&quot;
+          ],
+          &quot;type&quot;: &quot;object&quot;
+        },
+        &quot;name&quot;: &quot;LoanCreated&quot;,
+        &quot;payload&quot;: {
+          &quot;$ref&quot;: &quot;#/components/schemas/LoanCreatedPayload&quot;
+        },
+        &quot;title&quot;: &quot;Loan created&quot;
+      }
+    },
+    &quot;schemas&quot;: {
+      &quot;LoanCreatedPayload&quot;: {
+        &quot;properties&quot;: {
+          &quot;loanId&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;loanId&quot;
+        ],
+        &quot;title&quot;: &quot;LoanCreatedPayload&quot;,
+        &quot;type&quot;: &quot;object&quot;
+      }
+    }
+  },
+  &quot;info&quot;: {
+    &quot;title&quot;: &quot;Events&quot;,
+    &quot;version&quot;: &quot;1.0.0&quot;
+  },
+  &quot;operations&quot;: {
+    &quot;sendLoan&quot;: {
+      &quot;action&quot;: &quot;send&quot;,
+      &quot;channel&quot;: {
+        &quot;$ref&quot;: &quot;#/channels/loan~1created&quot;
+      },
+      &quot;messages&quot;: [
+        {
+          &quot;$ref&quot;: &quot;#/channels/loan~1created/messages/LoanCreated&quot;
+        }
+      ]
+    }
+  },
+  &quot;servers&quot;: {
+    &quot;broker&quot;: {
+      &quot;host&quot;: &quot;mq.example.com&quot;,
+      &quot;protocol&quot;: &quot;amqp&quot;
+    }
+  }
+}
+</pre></details><details><summary>async/_cross-cutting/api/operations/sendLoan.yaml</summary><pre>action: send
+channel:
+  $ref: ../asyncapi.yaml#/channels/loan~1created
+messages:
+  - $ref: ../asyncapi.yaml#/channels/loan~1created/messages/LoanCreated
+</pre></details><details><summary>async/貸出業務/貸出フロー/貸出登録/_api-summary.yaml</summary><pre>{
+  &quot;async_events&quot;: [
+    {
+      &quot;channel&quot;: &quot;#/channels/loan~1created&quot;,
+      &quot;contract_ref&quot;: &quot;asyncapi#/operations/sendLoan&quot;,
+      &quot;direction&quot;: &quot;publish&quot;,
+      &quot;kind&quot;: &quot;asyncapi&quot;,
+      &quot;name&quot;: &quot;sendLoan&quot;,
+      &quot;operation_id&quot;: &quot;sendLoan&quot;,
+      &quot;summary&quot;: &quot;sendLoan&quot;,
+      &quot;tier&quot;: &quot;tier-api&quot;
+    }
+  ],
+  &quot;buc&quot;: &quot;貸出フロー&quot;,
+  &quot;business&quot;: &quot;貸出業務&quot;,
+  &quot;consumes&quot;: [],
+  &quot;contract_sha256&quot;: &quot;92539adc1ab697bf367ed13a70dfac1bd823872241041cc8d55d6ff8f6680387&quot;,
+  &quot;contract_slice&quot;: &quot;_contract-slice.json&quot;,
+  &quot;endpoints&quot;: [],
+  &quot;schema_version&quot;: &quot;distillery.api-summary/v2&quot;,
+  &quot;uc&quot;: &quot;貸出登録&quot;
+}
+</pre></details><details><summary>async/貸出業務/貸出フロー/貸出登録/_contract-slice.json</summary><pre>{
+  &quot;asyncapi&quot;: {
+    &quot;asyncapi&quot;: &quot;3.0.0&quot;,
+    &quot;channels&quot;: {
+      &quot;loan/created&quot;: {
+        &quot;address&quot;: &quot;loan.created&quot;,
+        &quot;messages&quot;: {
+          &quot;LoanCreated&quot;: {
+            &quot;$ref&quot;: &quot;#/components/messages/LoanCreated&quot;
+          }
+        },
+        &quot;servers&quot;: [
+          {
+            &quot;$ref&quot;: &quot;#/servers/broker&quot;
+          }
+        ]
+      }
+    },
+    &quot;components&quot;: {
+      &quot;messages&quot;: {
+        &quot;LoanCreated&quot;: {
+          &quot;headers&quot;: {
+            &quot;properties&quot;: {
+              &quot;idempotency_key&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;idempotency_key&quot;
+            ],
+            &quot;type&quot;: &quot;object&quot;
+          },
+          &quot;name&quot;: &quot;LoanCreated&quot;,
+          &quot;payload&quot;: {
+            &quot;$ref&quot;: &quot;#/components/schemas/LoanCreatedPayload&quot;
+          },
+          &quot;title&quot;: &quot;Loan created&quot;
+        }
+      },
+      &quot;schemas&quot;: {
+        &quot;LoanCreatedPayload&quot;: {
+          &quot;properties&quot;: {
+            &quot;loanId&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          },
+          &quot;required&quot;: [
+            &quot;loanId&quot;
+          ],
+          &quot;title&quot;: &quot;LoanCreatedPayload&quot;,
+          &quot;type&quot;: &quot;object&quot;
+        }
+      }
+    },
+    &quot;info&quot;: {
+      &quot;title&quot;: &quot;Events&quot;,
+      &quot;version&quot;: &quot;1.0.0&quot;
+    },
+    &quot;operations&quot;: {
+      &quot;sendLoan&quot;: {
+        &quot;action&quot;: &quot;send&quot;,
+        &quot;channel&quot;: {
+          &quot;$ref&quot;: &quot;#/channels/loan~1created&quot;
+        },
+        &quot;messages&quot;: [
+          {
+            &quot;$ref&quot;: &quot;#/channels/loan~1created/messages/LoanCreated&quot;
+          }
+        ]
+      }
+    },
+    &quot;servers&quot;: {
+      &quot;broker&quot;: {
+        &quot;host&quot;: &quot;mq.example.com&quot;,
+        &quot;protocol&quot;: &quot;amqp&quot;
+      }
+    }
+  },
+  &quot;openapi&quot;: null,
+  &quot;schema_version&quot;: &quot;distillery.contract-slice/v1&quot;
+}
+</pre></details><details><summary>rdb/README.md</summary><pre># RDB 分割の実行サンプル
+
+現行 pipeline-opus-medium の `specs/latest/_cross-cutting/datastore/rdb-schema.yaml` から **books / users / loans の 3 テーブルをそのまま抽出**し、arch/latest が宣言する所有者で分割した。全テーブルの移行や業務仕様の再承認を行ったサンプルではない。現行に含まれる「要確認」の説明も勝手に解消せず、そのまま維持する。
+
+| 正本 | arch の対応 | 自領域全文 | 外部参照 |
+|---|---|---|---|
+| domains/SD-001.yaml | BC-003 / E-004 / 蔵書貸出・予約 | loans | books.book_id、users.user_no |
+| domains/SD-002.yaml | BC-001 / E-001 / 蔵書目録 | books | なし |
+| domains/SD-003.yaml | BC-002 / E-002 / 利用者管理 | users | なし |
+
+人が編集するのは `rdb-schema.yaml` の一覧と `domains/*.yaml` の所有テーブル。貸出の実装者は入口から SD-001 だけを開き、FK 対象の型は `generated/domain-slices/SD-001.yaml` で確認する。書籍タイトルや利用者連絡先など参照先の非キー列まで必要なら、該当所有者の正本を追加で開く。
+
+実行は `/private/tmp/dist-progressive-rdb-JuV5pR` に現行 arch/latest と編集用 3 ファイルを置いて行った。`compileRdbSchema.js` で bundle と 3 slice を生成し、`--check` 成功後に本ディレクトリへコピーした。編集ファイルに追加した情報は arch で確認済みの `entity_id` とサブドメインの所有宣言だけ。生成 bundle の 3 テーブルは現行の定義と構造一致する。
+
+再実行（リポジトリルート）:
+
+```sh
+npm ci
+node plugins/distillery/skills/dist-spec/scripts/compileRdbSchema.js samples/distillery/spec-progressive/rdb/rdb-schema.yaml
+node plugins/distillery/skills/dist-spec/scripts/compileRdbSchema.js samples/distillery/spec-progressive/rdb/rdb-schema.yaml --check
+```
+
+これは文書の段階的開示の例であり、別 DB への分離や分散トランザクション化を意味しない。arch 参照は入口の `architecture_ref` が指定する **latest**。
+</pre></details><details><summary>rdb/domains/SD-001.yaml</summary><pre>subdomain_id: SD-001
+tables:
+  - entity_id: E-004
+    name: loans
+    rdra_info: 貸出
+    description: &quot;どの利用者にどの書籍をいつ貸し出したかを記録するスナップショットテーブル。arch E-004（model_type: event_snapshot）に対応する。貸出登録で貸出中として作成し、返却登録で返却済み、日次判定で延滞へ遷移する。返却済みの貸出は貸出統計の集計対象として保持する&quot;
+    columns:
+      - name: loan_id
+        type: string
+        nullable: false
+        description: 貸出ID。貸出1件を一意に識別する主キー（RDRA 情報「貸出」の貸出ID）
+      - name: book_id
+        type: string
+        nullable: true
+        description: 貸出対象の書籍ID。books への参照。書籍が物理削除されると SET NULL となり、書誌の表示は非正規化スナップショット列（book_title / book_author / book_isbn / book_genre）で再現する（UC「書籍を削除する」との整合）
+      - name: user_no
+        type: string
+        nullable: true
+        description: 貸出先の利用者番号。users への参照。本人限定参照の絞り込み条件となる。利用者が物理削除されると SET NULL となり（匿名化方針）、以降は本人限定参照の対象外となる（UC「利用者を削除する」との整合）
+      - name: loan_date
+        type: date
+        nullable: false
+        description: 貸出日。貸出登録イベントの occurred_at を日付へ射影した値。期間別貸出統計の集計期間の判定軸
+      - name: loan_period_type
+        type: string
+        nullable: false
+        description: &quot;貸出期間区分。RDRA バリエーション「貸出期間区分」。値: 標準, 短期, 長期。返却期限の算出単位&quot;
+      - name: due_date
+        type: date
+        nullable: false
+        description: 返却期限。貸出日＋貸出期間区分に対応する日数で自動設定する（返却期限設定条件）。リマインド判定・延滞判定・超過日数算出の基準
+      - name: loan_status
+        type: string
+        nullable: false
+        description: &quot;貸出状態。RDRA 状態モデル「貸出状態」。値: 貸出中, 延滞, 返却済み&quot;
+      - name: returned_at
+        type: date
+        nullable: true
+        description: 返却日。RDRA 情報「貸出」の属性「返却日」に対応する。返却登録時に受付日を設定し、未返却の間は NULL。返却済み貸出一覧および貸出履歴一覧の返却日表示・降順ソートキーの唯一の供給元（イベントからの射影は行わない）。arch E-004 の属性一覧には未記載のため要確認
+      - name: book_title
+        type: string
+        nullable: false
+        description: 貸出時点の書籍タイトルのスナップショット。非正規化カラム。書籍が削除・改題されても貸出履歴と統計の表示を貸出当時の値で再現するために保持する（正規化レベルは要確認）
+      - name: book_author
+        type: string
+        nullable: false
+        description: 貸出時点の書籍著者のスナップショット。非正規化カラム。用途は book_title と同じ（正規化レベルは要確認）
+      - name: book_isbn
+        type: string
+        nullable: true
+        description: 貸出時点の書籍 ISBN のスナップショット。非正規化カラム。books.isbn が NULL 許容のため NULL を許容する（正規化レベルは要確認）
+      - name: book_genre
+        type: string
+        nullable: false
+        description: 貸出時点の書籍ジャンルのスナップショット。非正規化カラム。貸出統計のジャンル別内訳を貸出当時の区分で集計するために保持する（正規化レベルは要確認）
+    primary_key:
+      - loan_id
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: SET NULL
+      - columns:
+          - user_no
+        references:
+          table: users
+          columns:
+            - user_no
+        on_delete: SET NULL
+    indexes:
+      - name: uq_loans_book_id_active
+        columns:
+          - book_id
+        unique: true
+        partial_condition: loan_status IN (&#x27;貸出中&#x27;,&#x27;延滞&#x27;)
+        reason: &quot;ユニーク制約: 同一書籍に有効な貸出（貸出中／延滞）は同時に1件までという業務ルール（arch E-004 の関連説明）を部分インデックスで担保する&quot;
+        used_by:
+          - 貸出を登録する
+          - 返却を登録する
+      - name: idx_loans_user_no_loan_status_due_date
+        columns:
+          - user_no
+          - loan_status
+          - due_date
+        unique: false
+        reason: 本人限定参照の絞り込み（user_no）＋貸出状態フィルタ＋返却期限昇順ソートを 1 本の索引で満たす。現在の貸出・返却対象・延滞中・返却期限接近の各照会で共用する
+        used_by:
+          - 自分の現在の貸出を照会する
+          - 返却対象の貸出を照会する
+          - 自分の貸出内容と返却期限を照会する
+          - 自分の延滞中の貸出を照会する
+          - 自分の返却期限を照会する
+      - name: idx_loans_user_no_loan_status_returned_at
+        columns:
+          - user_no
+          - loan_status
+          - returned_at
+        unique: false
+        reason: 本人の返却済み貸出を返却日の降順でページングする。返却済みは年々蓄積されるため索引なしの走査を避ける
+        used_by:
+          - 自分の返却済み貸出を照会する
+          - 自分の貸出履歴を照会する
+      - name: idx_loans_book_id_loan_status
+        columns:
+          - book_id
+          - loan_status
+        unique: false
+        reason: 返却された書籍から対象貸出を特定する司書向け検索と、書籍単位の有効貸出の存在確認に使う
+        used_by:
+          - 貸出を登録する
+          - 返却を登録する
+      - name: idx_loans_loan_status_due_date
+        columns:
+          - loan_status
+          - due_date
+        unique: false
+        reason: 貸出全件（最大 10 万件）の日次走査（延滞判定・返却期限接近判定）と司書の延滞一覧照会が同一条件で絞り込むため
+        used_by:
+          - 期限超過の貸出を延滞にする
+          - 返却期限接近の貸出を判定する
+          - 延滞中の貸出を照会する
+      - name: idx_loans_book_id_loan_date
+        columns:
+          - book_id
+          - loan_date
+        unique: false
+        reason: 期間別貸出統計の書籍別貸出回数ランキング集計（期間内で book_id ごとに GROUP BY）に使う
+        used_by:
+          - 期間別貸出統計を集計する
+      - name: idx_loans_loan_date
+        columns:
+          - loan_date
+        unique: false
+        reason: 集計期間での範囲絞り込みを高速化する（NFR B.2.1.3 ターンアラウンド 10 秒以内）
+        used_by:
+          - 期間別貸出統計を集計する
+    used_by:
+      - uc: 貸出を登録する
+        operations:
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却対象の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の返却済み貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出内容と返却期限を照会する
+        operations:
+          - SELECT
+      - uc: 自分の現在の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出履歴を照会する
+        operations:
+          - SELECT
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+      - uc: 利用者一覧を照会する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+      - uc: 自分の返却期限を照会する
+        operations:
+          - SELECT
+</pre></details><details><summary>rdb/domains/SD-002.yaml</summary><pre>subdomain_id: SD-002
+tables:
+  - entity_id: E-001
+    name: books
+    rdra_info: 書籍
+    description: &quot;図書館が所蔵する蔵書の1冊を表すスナップショットテーブル。arch E-001（model_type: event_snapshot）に対応する。書籍ID・書誌情報（タイトル/著者/ISBN/出版社/ジャンル/資料種別）と在庫を表す書籍状態を保持し、蔵書管理・検索・貸出可否判定・在庫状況レポートの集計軸となる&quot;
+    columns:
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID。蔵書1冊を一意に識別する主キー（RDRA 情報「書籍」の書籍ID）
+      - name: title
+        type: string
+        nullable: false
+        description: タイトル。蔵書検索のキーワード対象および蔵書一覧の既定ソート表示項目
+      - name: author
+        type: string
+        nullable: false
+        description: 著者。窓口レファレンスの主要な検索軸
+      - name: isbn
+        type: string
+        nullable: true
+        description: ISBN。完全一致検索と重複確認に使う。データ移行時のクレンジング対象（NFR D.4.1.3）のため NULL を許容する
+      - name: publisher
+        type: string
+        nullable: false
+        description: 出版社。キーワード検索の対象項目
+      - name: genre
+        type: string
+        nullable: false
+        description: &quot;ジャンル。RDRA バリエーション「ジャンル」。値: 文学, 人文, 社会科学, 自然科学, 技術, 芸術, 児童, その他&quot;
+      - name: material_type
+        type: string
+        nullable: false
+        description: &quot;資料種別。RDRA バリエーション「資料種別」。値: 紙書籍, 電子書籍。初期リリースは紙書籍のみ受理し電子書籍は 422 で拒否する（資料種別利用可否条件）&quot;
+      - name: book_status
+        type: string
+        nullable: false
+        description: &quot;書籍状態。RDRA 状態モデル「書籍状態」。値: 在庫あり, 貸出中, 予約待ち。在庫状況レポートの区分集計軸となる&quot;
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 登録日時。書籍登録イベントの occurred_at をスナップショットへ射影した値
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 最終更新日時。最新イベントの occurred_at を射影する。蔵書一覧の既定ソートキー（更新日時の降順）
+      - name: version
+        type: integer
+        nullable: false
+        default: &quot;1&quot;
+        description: 楽観ロックの世代番号。RDRA 由来ではなく arch の並行更新制御に由来する技術カラム。書籍情報の編集で version 一致を条件に UPDATE し、+1 する（同時編集の後勝ち上書きを防ぐ）
+    primary_key:
+      - book_id
+    foreign_keys: []
+    indexes:
+      - name: idx_books_title
+        columns:
+          - title
+        unique: false
+        reason: タイトルの部分一致検索と、蔵書検索結果の既定並び順（ORDER BY title）に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+      - name: idx_books_author
+        columns:
+          - author
+        unique: false
+        reason: 著者の部分一致検索が窓口レファレンスの主要な問合せ軸であるため
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+      - name: idx_books_isbn
+        columns:
+          - isbn
+        unique: false
+        reason: &quot;ISBN の完全一致検索と登録時の重複確認に使う。ユニーク制約: 同一 ISBN の複本を許容する運用のため非ユニークとする（_review_notes 参照）&quot;
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 書籍を登録する
+      - name: idx_books_genre
+        columns:
+          - genre
+        unique: false
+        reason: ジャンルによる検索・絞り込みと、在庫状況レポートのジャンル別件数集計に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 蔵書一覧を照会する
+          - 在庫状況を区分別に集計する
+      - name: idx_books_book_status
+        columns:
+          - book_status
+        unique: false
+        reason: 在庫ありのみの絞り込み、蔵書一覧の区分絞り込み、在庫状況レポートの書籍状態別件数集計に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 蔵書一覧を照会する
+          - 在庫状況を区分別に集計する
+          - 返却後の書籍状態を更新する
+      - name: idx_books_updated_at
+        columns:
+          - updated_at
+        unique: false
+        reason: 蔵書一覧の既定並び順（ORDER BY updated_at DESC）のページングに使う
+        used_by:
+          - 蔵書一覧を照会する
+    used_by:
+      - uc: 書籍を登録する
+        operations:
+          - INSERT
+      - uc: 書籍情報を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+          - DELETE
+      - uc: 蔵書一覧を照会する
+        operations:
+          - SELECT
+      - uc: 書籍を検索する
+        operations:
+          - SELECT
+      - uc: 司書向けに蔵書を検索する
+        operations:
+          - SELECT
+      - uc: 書籍詳細と在庫状況を照会する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却後の書籍状態を更新する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却対象の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出内容と返却期限を照会する
+        operations:
+          - SELECT
+      - uc: 自分の現在の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+      - uc: 予約を取り消す
+        operations:
+          - UPDATE
+      - uc: 自分の予約順位を照会する
+        operations:
+          - SELECT
+      - uc: 自分の予約状況を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き中の予約を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 在庫状況を区分別に集計する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+      - uc: 自分の延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+      - uc: 自分の返却期限を照会する
+        operations:
+          - SELECT
+</pre></details><details><summary>rdb/domains/SD-003.yaml</summary><pre>subdomain_id: SD-003
+tables:
+  - entity_id: E-002
+    name: users
+    rdra_info: 利用者
+    description: &quot;図書館の利用者を表すスナップショットテーブル。arch E-002（model_type: event_snapshot）に対応する。利用者番号・氏名・連絡先・利用者区分・利用者状態を保持し、貸出／予約の主体と通知メールの宛先解決に使う。氏名と連絡先は保管時暗号化の対象（NFR E.6.1.1）&quot;
+    columns:
+      - name: user_no
+        type: string
+        nullable: false
+        description: 利用者番号。利用者を一意に識別する主キー（RDRA 情報「利用者」の利用者番号）。窓口で提示され貸出対象利用者の特定に使う
+      - name: name
+        type: string
+        nullable: false
+        description: 氏名。個人情報のため保管時暗号化の対象（NFR E.6.1.1）。利用者名簿のキーワード検索対象
+      - name: email
+        type: string
+        nullable: false
+        description: 連絡先（メールアドレス）。取置き案内・返却期限リマインド・延滞督促メールの宛先。保管時暗号化の対象（NFR E.6.1.1）
+      - name: user_category
+        type: string
+        nullable: false
+        description: &quot;利用者区分。RDRA バリエーション「利用者区分」。値: 一般, 学生, 団体。貸出期間の適用単位および貸出統計の内訳軸&quot;
+      - name: user_status
+        type: string
+        nullable: false
+        description: &quot;利用者状態。RDRA 状態モデル「利用者状態」。値: 登録済み, 取引進行中。取引進行中の利用者は削除できない（利用者削除可否条件）&quot;
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 登録日時。利用者登録イベントの occurred_at を射影した値
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 最終更新日時。最新イベントの occurred_at を射影する。利用者情報の編集では If-Match による楽観ロックの比較対象として使う
+    primary_key:
+      - user_no
+    foreign_keys: []
+    indexes:
+      - name: uq_users_email
+        columns:
+          - email
+        unique: true
+        reason: &quot;ユニーク制約: 連絡先（メールアドレス）は利用者の自然キーであり、重複登録を一意制約で最終防御する（LP-007 の 4 層防御）。編集時も他利用者との重複を検査する。前提: email は保管時暗号化（NFR E.6.1.1）を決定的暗号化方式（固定 IV／同一平文は同一暗号文）で行い、暗号文のまま一意性が判定できるものとする。notifications.recipient_email も同じ決定的暗号化方式に揃える&quot;
+        used_by:
+          - 利用者を登録する
+          - 利用者情報を編集する
+      - name: idx_users_user_category
+        columns:
+          - user_category
+        unique: false
+        reason: 利用者名簿画面の利用者区分による一覧絞り込みに使う
+        used_by:
+          - 利用者一覧を照会する
+      - name: idx_users_name
+        columns:
+          - name
+        unique: false
+        reason: 利用者名簿画面の氏名キーワード検索に使う
+        used_by:
+          - 利用者一覧を照会する
+    used_by:
+      - uc: 利用者を登録する
+        operations:
+          - INSERT
+          - SELECT
+      - uc: 利用者情報を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+          - DELETE
+      - uc: 利用者一覧を照会する
+        operations:
+          - SELECT
+      - uc: 自分の利用者情報を照会する
+        operations:
+          - SELECT
+      - uc: 利用者番号で貸出対象利用者を特定する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却を登録する
+        operations:
+          - UPDATE
+      - uc: 予約を登録する
+        operations:
+          - UPDATE
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+</pre></details><details><summary>rdb/generated/domain-slices/SD-001.yaml</summary><pre>schema_version: distillery.rdb-domain-slice/v1
+generated: true
+subdomain_id: SD-001
+tables:
+  - name: loans
+    rdra_info: 貸出
+    description: &quot;どの利用者にどの書籍をいつ貸し出したかを記録するスナップショットテーブル。arch E-004（model_type: event_snapshot）に対応する。貸出登録で貸出中として作成し、返却登録で返却済み、日次判定で延滞へ遷移する。返却済みの貸出は貸出統計の集計対象として保持する&quot;
+    columns:
+      - name: loan_id
+        type: string
+        nullable: false
+        description: 貸出ID。貸出1件を一意に識別する主キー（RDRA 情報「貸出」の貸出ID）
+      - name: book_id
+        type: string
+        nullable: true
+        description: 貸出対象の書籍ID。books への参照。書籍が物理削除されると SET NULL となり、書誌の表示は非正規化スナップショット列（book_title / book_author / book_isbn / book_genre）で再現する（UC「書籍を削除する」との整合）
+      - name: user_no
+        type: string
+        nullable: true
+        description: 貸出先の利用者番号。users への参照。本人限定参照の絞り込み条件となる。利用者が物理削除されると SET NULL となり（匿名化方針）、以降は本人限定参照の対象外となる（UC「利用者を削除する」との整合）
+      - name: loan_date
+        type: date
+        nullable: false
+        description: 貸出日。貸出登録イベントの occurred_at を日付へ射影した値。期間別貸出統計の集計期間の判定軸
+      - name: loan_period_type
+        type: string
+        nullable: false
+        description: &quot;貸出期間区分。RDRA バリエーション「貸出期間区分」。値: 標準, 短期, 長期。返却期限の算出単位&quot;
+      - name: due_date
+        type: date
+        nullable: false
+        description: 返却期限。貸出日＋貸出期間区分に対応する日数で自動設定する（返却期限設定条件）。リマインド判定・延滞判定・超過日数算出の基準
+      - name: loan_status
+        type: string
+        nullable: false
+        description: &quot;貸出状態。RDRA 状態モデル「貸出状態」。値: 貸出中, 延滞, 返却済み&quot;
+      - name: returned_at
+        type: date
+        nullable: true
+        description: 返却日。RDRA 情報「貸出」の属性「返却日」に対応する。返却登録時に受付日を設定し、未返却の間は NULL。返却済み貸出一覧および貸出履歴一覧の返却日表示・降順ソートキーの唯一の供給元（イベントからの射影は行わない）。arch E-004 の属性一覧には未記載のため要確認
+      - name: book_title
+        type: string
+        nullable: false
+        description: 貸出時点の書籍タイトルのスナップショット。非正規化カラム。書籍が削除・改題されても貸出履歴と統計の表示を貸出当時の値で再現するために保持する（正規化レベルは要確認）
+      - name: book_author
+        type: string
+        nullable: false
+        description: 貸出時点の書籍著者のスナップショット。非正規化カラム。用途は book_title と同じ（正規化レベルは要確認）
+      - name: book_isbn
+        type: string
+        nullable: true
+        description: 貸出時点の書籍 ISBN のスナップショット。非正規化カラム。books.isbn が NULL 許容のため NULL を許容する（正規化レベルは要確認）
+      - name: book_genre
+        type: string
+        nullable: false
+        description: 貸出時点の書籍ジャンルのスナップショット。非正規化カラム。貸出統計のジャンル別内訳を貸出当時の区分で集計するために保持する（正規化レベルは要確認）
+    primary_key:
+      - loan_id
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: SET NULL
+      - columns:
+          - user_no
+        references:
+          table: users
+          columns:
+            - user_no
+        on_delete: SET NULL
+    indexes:
+      - name: uq_loans_book_id_active
+        columns:
+          - book_id
+        unique: true
+        partial_condition: loan_status IN (&#x27;貸出中&#x27;,&#x27;延滞&#x27;)
+        reason: &quot;ユニーク制約: 同一書籍に有効な貸出（貸出中／延滞）は同時に1件までという業務ルール（arch E-004 の関連説明）を部分インデックスで担保する&quot;
+        used_by:
+          - 貸出を登録する
+          - 返却を登録する
+      - name: idx_loans_user_no_loan_status_due_date
+        columns:
+          - user_no
+          - loan_status
+          - due_date
+        unique: false
+        reason: 本人限定参照の絞り込み（user_no）＋貸出状態フィルタ＋返却期限昇順ソートを 1 本の索引で満たす。現在の貸出・返却対象・延滞中・返却期限接近の各照会で共用する
+        used_by:
+          - 自分の現在の貸出を照会する
+          - 返却対象の貸出を照会する
+          - 自分の貸出内容と返却期限を照会する
+          - 自分の延滞中の貸出を照会する
+          - 自分の返却期限を照会する
+      - name: idx_loans_user_no_loan_status_returned_at
+        columns:
+          - user_no
+          - loan_status
+          - returned_at
+        unique: false
+        reason: 本人の返却済み貸出を返却日の降順でページングする。返却済みは年々蓄積されるため索引なしの走査を避ける
+        used_by:
+          - 自分の返却済み貸出を照会する
+          - 自分の貸出履歴を照会する
+      - name: idx_loans_book_id_loan_status
+        columns:
+          - book_id
+          - loan_status
+        unique: false
+        reason: 返却された書籍から対象貸出を特定する司書向け検索と、書籍単位の有効貸出の存在確認に使う
+        used_by:
+          - 貸出を登録する
+          - 返却を登録する
+      - name: idx_loans_loan_status_due_date
+        columns:
+          - loan_status
+          - due_date
+        unique: false
+        reason: 貸出全件（最大 10 万件）の日次走査（延滞判定・返却期限接近判定）と司書の延滞一覧照会が同一条件で絞り込むため
+        used_by:
+          - 期限超過の貸出を延滞にする
+          - 返却期限接近の貸出を判定する
+          - 延滞中の貸出を照会する
+      - name: idx_loans_book_id_loan_date
+        columns:
+          - book_id
+          - loan_date
+        unique: false
+        reason: 期間別貸出統計の書籍別貸出回数ランキング集計（期間内で book_id ごとに GROUP BY）に使う
+        used_by:
+          - 期間別貸出統計を集計する
+      - name: idx_loans_loan_date
+        columns:
+          - loan_date
+        unique: false
+        reason: 集計期間での範囲絞り込みを高速化する（NFR B.2.1.3 ターンアラウンド 10 秒以内）
+        used_by:
+          - 期間別貸出統計を集計する
+    used_by:
+      - uc: 貸出を登録する
+        operations:
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却対象の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の返却済み貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出内容と返却期限を照会する
+        operations:
+          - SELECT
+      - uc: 自分の現在の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出履歴を照会する
+        operations:
+          - SELECT
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+      - uc: 利用者一覧を照会する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+      - uc: 自分の返却期限を照会する
+        operations:
+          - SELECT
+external_tables:
+  - name: books
+    owner_subdomain_id: SD-002
+    read_only: true
+    source: ../../domains/SD-002.yaml
+    columns:
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID。蔵書1冊を一意に識別する主キー（RDRA 情報「書籍」の書籍ID）
+    primary_key:
+      - book_id
+    foreign_keys: []
+    indexes: []
+  - name: users
+    owner_subdomain_id: SD-003
+    read_only: true
+    source: ../../domains/SD-003.yaml
+    columns:
+      - name: user_no
+        type: string
+        nullable: false
+        description: 利用者番号。利用者を一意に識別する主キー（RDRA 情報「利用者」の利用者番号）。窓口で提示され貸出対象利用者の特定に使う
+    primary_key:
+      - user_no
+    foreign_keys: []
+    indexes: []
+</pre></details><details><summary>rdb/generated/domain-slices/SD-002.yaml</summary><pre>schema_version: distillery.rdb-domain-slice/v1
+generated: true
+subdomain_id: SD-002
+tables:
+  - name: books
+    rdra_info: 書籍
+    description: &quot;図書館が所蔵する蔵書の1冊を表すスナップショットテーブル。arch E-001（model_type: event_snapshot）に対応する。書籍ID・書誌情報（タイトル/著者/ISBN/出版社/ジャンル/資料種別）と在庫を表す書籍状態を保持し、蔵書管理・検索・貸出可否判定・在庫状況レポートの集計軸となる&quot;
+    columns:
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID。蔵書1冊を一意に識別する主キー（RDRA 情報「書籍」の書籍ID）
+      - name: title
+        type: string
+        nullable: false
+        description: タイトル。蔵書検索のキーワード対象および蔵書一覧の既定ソート表示項目
+      - name: author
+        type: string
+        nullable: false
+        description: 著者。窓口レファレンスの主要な検索軸
+      - name: isbn
+        type: string
+        nullable: true
+        description: ISBN。完全一致検索と重複確認に使う。データ移行時のクレンジング対象（NFR D.4.1.3）のため NULL を許容する
+      - name: publisher
+        type: string
+        nullable: false
+        description: 出版社。キーワード検索の対象項目
+      - name: genre
+        type: string
+        nullable: false
+        description: &quot;ジャンル。RDRA バリエーション「ジャンル」。値: 文学, 人文, 社会科学, 自然科学, 技術, 芸術, 児童, その他&quot;
+      - name: material_type
+        type: string
+        nullable: false
+        description: &quot;資料種別。RDRA バリエーション「資料種別」。値: 紙書籍, 電子書籍。初期リリースは紙書籍のみ受理し電子書籍は 422 で拒否する（資料種別利用可否条件）&quot;
+      - name: book_status
+        type: string
+        nullable: false
+        description: &quot;書籍状態。RDRA 状態モデル「書籍状態」。値: 在庫あり, 貸出中, 予約待ち。在庫状況レポートの区分集計軸となる&quot;
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 登録日時。書籍登録イベントの occurred_at をスナップショットへ射影した値
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 最終更新日時。最新イベントの occurred_at を射影する。蔵書一覧の既定ソートキー（更新日時の降順）
+      - name: version
+        type: integer
+        nullable: false
+        default: &quot;1&quot;
+        description: 楽観ロックの世代番号。RDRA 由来ではなく arch の並行更新制御に由来する技術カラム。書籍情報の編集で version 一致を条件に UPDATE し、+1 する（同時編集の後勝ち上書きを防ぐ）
+    primary_key:
+      - book_id
+    foreign_keys: []
+    indexes:
+      - name: idx_books_title
+        columns:
+          - title
+        unique: false
+        reason: タイトルの部分一致検索と、蔵書検索結果の既定並び順（ORDER BY title）に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+      - name: idx_books_author
+        columns:
+          - author
+        unique: false
+        reason: 著者の部分一致検索が窓口レファレンスの主要な問合せ軸であるため
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+      - name: idx_books_isbn
+        columns:
+          - isbn
+        unique: false
+        reason: &quot;ISBN の完全一致検索と登録時の重複確認に使う。ユニーク制約: 同一 ISBN の複本を許容する運用のため非ユニークとする（_review_notes 参照）&quot;
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 書籍を登録する
+      - name: idx_books_genre
+        columns:
+          - genre
+        unique: false
+        reason: ジャンルによる検索・絞り込みと、在庫状況レポートのジャンル別件数集計に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 蔵書一覧を照会する
+          - 在庫状況を区分別に集計する
+      - name: idx_books_book_status
+        columns:
+          - book_status
+        unique: false
+        reason: 在庫ありのみの絞り込み、蔵書一覧の区分絞り込み、在庫状況レポートの書籍状態別件数集計に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 蔵書一覧を照会する
+          - 在庫状況を区分別に集計する
+          - 返却後の書籍状態を更新する
+      - name: idx_books_updated_at
+        columns:
+          - updated_at
+        unique: false
+        reason: 蔵書一覧の既定並び順（ORDER BY updated_at DESC）のページングに使う
+        used_by:
+          - 蔵書一覧を照会する
+    used_by:
+      - uc: 書籍を登録する
+        operations:
+          - INSERT
+      - uc: 書籍情報を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+          - DELETE
+      - uc: 蔵書一覧を照会する
+        operations:
+          - SELECT
+      - uc: 書籍を検索する
+        operations:
+          - SELECT
+      - uc: 司書向けに蔵書を検索する
+        operations:
+          - SELECT
+      - uc: 書籍詳細と在庫状況を照会する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却後の書籍状態を更新する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却対象の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出内容と返却期限を照会する
+        operations:
+          - SELECT
+      - uc: 自分の現在の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+      - uc: 予約を取り消す
+        operations:
+          - UPDATE
+      - uc: 自分の予約順位を照会する
+        operations:
+          - SELECT
+      - uc: 自分の予約状況を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き中の予約を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 在庫状況を区分別に集計する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+      - uc: 自分の延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+      - uc: 自分の返却期限を照会する
+        operations:
+          - SELECT
+external_tables: []
+</pre></details><details><summary>rdb/generated/domain-slices/SD-003.yaml</summary><pre>schema_version: distillery.rdb-domain-slice/v1
+generated: true
+subdomain_id: SD-003
+tables:
+  - name: users
+    rdra_info: 利用者
+    description: &quot;図書館の利用者を表すスナップショットテーブル。arch E-002（model_type: event_snapshot）に対応する。利用者番号・氏名・連絡先・利用者区分・利用者状態を保持し、貸出／予約の主体と通知メールの宛先解決に使う。氏名と連絡先は保管時暗号化の対象（NFR E.6.1.1）&quot;
+    columns:
+      - name: user_no
+        type: string
+        nullable: false
+        description: 利用者番号。利用者を一意に識別する主キー（RDRA 情報「利用者」の利用者番号）。窓口で提示され貸出対象利用者の特定に使う
+      - name: name
+        type: string
+        nullable: false
+        description: 氏名。個人情報のため保管時暗号化の対象（NFR E.6.1.1）。利用者名簿のキーワード検索対象
+      - name: email
+        type: string
+        nullable: false
+        description: 連絡先（メールアドレス）。取置き案内・返却期限リマインド・延滞督促メールの宛先。保管時暗号化の対象（NFR E.6.1.1）
+      - name: user_category
+        type: string
+        nullable: false
+        description: &quot;利用者区分。RDRA バリエーション「利用者区分」。値: 一般, 学生, 団体。貸出期間の適用単位および貸出統計の内訳軸&quot;
+      - name: user_status
+        type: string
+        nullable: false
+        description: &quot;利用者状態。RDRA 状態モデル「利用者状態」。値: 登録済み, 取引進行中。取引進行中の利用者は削除できない（利用者削除可否条件）&quot;
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 登録日時。利用者登録イベントの occurred_at を射影した値
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 最終更新日時。最新イベントの occurred_at を射影する。利用者情報の編集では If-Match による楽観ロックの比較対象として使う
+    primary_key:
+      - user_no
+    foreign_keys: []
+    indexes:
+      - name: uq_users_email
+        columns:
+          - email
+        unique: true
+        reason: &quot;ユニーク制約: 連絡先（メールアドレス）は利用者の自然キーであり、重複登録を一意制約で最終防御する（LP-007 の 4 層防御）。編集時も他利用者との重複を検査する。前提: email は保管時暗号化（NFR E.6.1.1）を決定的暗号化方式（固定 IV／同一平文は同一暗号文）で行い、暗号文のまま一意性が判定できるものとする。notifications.recipient_email も同じ決定的暗号化方式に揃える&quot;
+        used_by:
+          - 利用者を登録する
+          - 利用者情報を編集する
+      - name: idx_users_user_category
+        columns:
+          - user_category
+        unique: false
+        reason: 利用者名簿画面の利用者区分による一覧絞り込みに使う
+        used_by:
+          - 利用者一覧を照会する
+      - name: idx_users_name
+        columns:
+          - name
+        unique: false
+        reason: 利用者名簿画面の氏名キーワード検索に使う
+        used_by:
+          - 利用者一覧を照会する
+    used_by:
+      - uc: 利用者を登録する
+        operations:
+          - INSERT
+          - SELECT
+      - uc: 利用者情報を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+          - DELETE
+      - uc: 利用者一覧を照会する
+        operations:
+          - SELECT
+      - uc: 自分の利用者情報を照会する
+        operations:
+          - SELECT
+      - uc: 利用者番号で貸出対象利用者を特定する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却を登録する
+        operations:
+          - UPDATE
+      - uc: 予約を登録する
+        operations:
+          - UPDATE
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+external_tables: []
+</pre></details><details><summary>rdb/generated/rdb-schema.bundle.yaml</summary><pre>version: &quot;1.0&quot;
+datastore: rdb
+tables:
+  - name: books
+    rdra_info: 書籍
+    description: &quot;図書館が所蔵する蔵書の1冊を表すスナップショットテーブル。arch E-001（model_type: event_snapshot）に対応する。書籍ID・書誌情報（タイトル/著者/ISBN/出版社/ジャンル/資料種別）と在庫を表す書籍状態を保持し、蔵書管理・検索・貸出可否判定・在庫状況レポートの集計軸となる&quot;
+    columns:
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID。蔵書1冊を一意に識別する主キー（RDRA 情報「書籍」の書籍ID）
+      - name: title
+        type: string
+        nullable: false
+        description: タイトル。蔵書検索のキーワード対象および蔵書一覧の既定ソート表示項目
+      - name: author
+        type: string
+        nullable: false
+        description: 著者。窓口レファレンスの主要な検索軸
+      - name: isbn
+        type: string
+        nullable: true
+        description: ISBN。完全一致検索と重複確認に使う。データ移行時のクレンジング対象（NFR D.4.1.3）のため NULL を許容する
+      - name: publisher
+        type: string
+        nullable: false
+        description: 出版社。キーワード検索の対象項目
+      - name: genre
+        type: string
+        nullable: false
+        description: &quot;ジャンル。RDRA バリエーション「ジャンル」。値: 文学, 人文, 社会科学, 自然科学, 技術, 芸術, 児童, その他&quot;
+      - name: material_type
+        type: string
+        nullable: false
+        description: &quot;資料種別。RDRA バリエーション「資料種別」。値: 紙書籍, 電子書籍。初期リリースは紙書籍のみ受理し電子書籍は 422 で拒否する（資料種別利用可否条件）&quot;
+      - name: book_status
+        type: string
+        nullable: false
+        description: &quot;書籍状態。RDRA 状態モデル「書籍状態」。値: 在庫あり, 貸出中, 予約待ち。在庫状況レポートの区分集計軸となる&quot;
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 登録日時。書籍登録イベントの occurred_at をスナップショットへ射影した値
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 最終更新日時。最新イベントの occurred_at を射影する。蔵書一覧の既定ソートキー（更新日時の降順）
+      - name: version
+        type: integer
+        nullable: false
+        default: &quot;1&quot;
+        description: 楽観ロックの世代番号。RDRA 由来ではなく arch の並行更新制御に由来する技術カラム。書籍情報の編集で version 一致を条件に UPDATE し、+1 する（同時編集の後勝ち上書きを防ぐ）
+    primary_key:
+      - book_id
+    foreign_keys: []
+    indexes:
+      - name: idx_books_title
+        columns:
+          - title
+        unique: false
+        reason: タイトルの部分一致検索と、蔵書検索結果の既定並び順（ORDER BY title）に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+      - name: idx_books_author
+        columns:
+          - author
+        unique: false
+        reason: 著者の部分一致検索が窓口レファレンスの主要な問合せ軸であるため
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+      - name: idx_books_isbn
+        columns:
+          - isbn
+        unique: false
+        reason: &quot;ISBN の完全一致検索と登録時の重複確認に使う。ユニーク制約: 同一 ISBN の複本を許容する運用のため非ユニークとする（_review_notes 参照）&quot;
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 書籍を登録する
+      - name: idx_books_genre
+        columns:
+          - genre
+        unique: false
+        reason: ジャンルによる検索・絞り込みと、在庫状況レポートのジャンル別件数集計に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 蔵書一覧を照会する
+          - 在庫状況を区分別に集計する
+      - name: idx_books_book_status
+        columns:
+          - book_status
+        unique: false
+        reason: 在庫ありのみの絞り込み、蔵書一覧の区分絞り込み、在庫状況レポートの書籍状態別件数集計に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 蔵書一覧を照会する
+          - 在庫状況を区分別に集計する
+          - 返却後の書籍状態を更新する
+      - name: idx_books_updated_at
+        columns:
+          - updated_at
+        unique: false
+        reason: 蔵書一覧の既定並び順（ORDER BY updated_at DESC）のページングに使う
+        used_by:
+          - 蔵書一覧を照会する
+    used_by:
+      - uc: 書籍を登録する
+        operations:
+          - INSERT
+      - uc: 書籍情報を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+          - DELETE
+      - uc: 蔵書一覧を照会する
+        operations:
+          - SELECT
+      - uc: 書籍を検索する
+        operations:
+          - SELECT
+      - uc: 司書向けに蔵書を検索する
+        operations:
+          - SELECT
+      - uc: 書籍詳細と在庫状況を照会する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却後の書籍状態を更新する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却対象の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出内容と返却期限を照会する
+        operations:
+          - SELECT
+      - uc: 自分の現在の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+      - uc: 予約を取り消す
+        operations:
+          - UPDATE
+      - uc: 自分の予約順位を照会する
+        operations:
+          - SELECT
+      - uc: 自分の予約状況を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き中の予約を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 在庫状況を区分別に集計する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+      - uc: 自分の延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+      - uc: 自分の返却期限を照会する
+        operations:
+          - SELECT
+  - name: loans
+    rdra_info: 貸出
+    description: &quot;どの利用者にどの書籍をいつ貸し出したかを記録するスナップショットテーブル。arch E-004（model_type: event_snapshot）に対応する。貸出登録で貸出中として作成し、返却登録で返却済み、日次判定で延滞へ遷移する。返却済みの貸出は貸出統計の集計対象として保持する&quot;
+    columns:
+      - name: loan_id
+        type: string
+        nullable: false
+        description: 貸出ID。貸出1件を一意に識別する主キー（RDRA 情報「貸出」の貸出ID）
+      - name: book_id
+        type: string
+        nullable: true
+        description: 貸出対象の書籍ID。books への参照。書籍が物理削除されると SET NULL となり、書誌の表示は非正規化スナップショット列（book_title / book_author / book_isbn / book_genre）で再現する（UC「書籍を削除する」との整合）
+      - name: user_no
+        type: string
+        nullable: true
+        description: 貸出先の利用者番号。users への参照。本人限定参照の絞り込み条件となる。利用者が物理削除されると SET NULL となり（匿名化方針）、以降は本人限定参照の対象外となる（UC「利用者を削除する」との整合）
+      - name: loan_date
+        type: date
+        nullable: false
+        description: 貸出日。貸出登録イベントの occurred_at を日付へ射影した値。期間別貸出統計の集計期間の判定軸
+      - name: loan_period_type
+        type: string
+        nullable: false
+        description: &quot;貸出期間区分。RDRA バリエーション「貸出期間区分」。値: 標準, 短期, 長期。返却期限の算出単位&quot;
+      - name: due_date
+        type: date
+        nullable: false
+        description: 返却期限。貸出日＋貸出期間区分に対応する日数で自動設定する（返却期限設定条件）。リマインド判定・延滞判定・超過日数算出の基準
+      - name: loan_status
+        type: string
+        nullable: false
+        description: &quot;貸出状態。RDRA 状態モデル「貸出状態」。値: 貸出中, 延滞, 返却済み&quot;
+      - name: returned_at
+        type: date
+        nullable: true
+        description: 返却日。RDRA 情報「貸出」の属性「返却日」に対応する。返却登録時に受付日を設定し、未返却の間は NULL。返却済み貸出一覧および貸出履歴一覧の返却日表示・降順ソートキーの唯一の供給元（イベントからの射影は行わない）。arch E-004 の属性一覧には未記載のため要確認
+      - name: book_title
+        type: string
+        nullable: false
+        description: 貸出時点の書籍タイトルのスナップショット。非正規化カラム。書籍が削除・改題されても貸出履歴と統計の表示を貸出当時の値で再現するために保持する（正規化レベルは要確認）
+      - name: book_author
+        type: string
+        nullable: false
+        description: 貸出時点の書籍著者のスナップショット。非正規化カラム。用途は book_title と同じ（正規化レベルは要確認）
+      - name: book_isbn
+        type: string
+        nullable: true
+        description: 貸出時点の書籍 ISBN のスナップショット。非正規化カラム。books.isbn が NULL 許容のため NULL を許容する（正規化レベルは要確認）
+      - name: book_genre
+        type: string
+        nullable: false
+        description: 貸出時点の書籍ジャンルのスナップショット。非正規化カラム。貸出統計のジャンル別内訳を貸出当時の区分で集計するために保持する（正規化レベルは要確認）
+    primary_key:
+      - loan_id
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: SET NULL
+      - columns:
+          - user_no
+        references:
+          table: users
+          columns:
+            - user_no
+        on_delete: SET NULL
+    indexes:
+      - name: uq_loans_book_id_active
+        columns:
+          - book_id
+        unique: true
+        partial_condition: loan_status IN (&#x27;貸出中&#x27;,&#x27;延滞&#x27;)
+        reason: &quot;ユニーク制約: 同一書籍に有効な貸出（貸出中／延滞）は同時に1件までという業務ルール（arch E-004 の関連説明）を部分インデックスで担保する&quot;
+        used_by:
+          - 貸出を登録する
+          - 返却を登録する
+      - name: idx_loans_user_no_loan_status_due_date
+        columns:
+          - user_no
+          - loan_status
+          - due_date
+        unique: false
+        reason: 本人限定参照の絞り込み（user_no）＋貸出状態フィルタ＋返却期限昇順ソートを 1 本の索引で満たす。現在の貸出・返却対象・延滞中・返却期限接近の各照会で共用する
+        used_by:
+          - 自分の現在の貸出を照会する
+          - 返却対象の貸出を照会する
+          - 自分の貸出内容と返却期限を照会する
+          - 自分の延滞中の貸出を照会する
+          - 自分の返却期限を照会する
+      - name: idx_loans_user_no_loan_status_returned_at
+        columns:
+          - user_no
+          - loan_status
+          - returned_at
+        unique: false
+        reason: 本人の返却済み貸出を返却日の降順でページングする。返却済みは年々蓄積されるため索引なしの走査を避ける
+        used_by:
+          - 自分の返却済み貸出を照会する
+          - 自分の貸出履歴を照会する
+      - name: idx_loans_book_id_loan_status
+        columns:
+          - book_id
+          - loan_status
+        unique: false
+        reason: 返却された書籍から対象貸出を特定する司書向け検索と、書籍単位の有効貸出の存在確認に使う
+        used_by:
+          - 貸出を登録する
+          - 返却を登録する
+      - name: idx_loans_loan_status_due_date
+        columns:
+          - loan_status
+          - due_date
+        unique: false
+        reason: 貸出全件（最大 10 万件）の日次走査（延滞判定・返却期限接近判定）と司書の延滞一覧照会が同一条件で絞り込むため
+        used_by:
+          - 期限超過の貸出を延滞にする
+          - 返却期限接近の貸出を判定する
+          - 延滞中の貸出を照会する
+      - name: idx_loans_book_id_loan_date
+        columns:
+          - book_id
+          - loan_date
+        unique: false
+        reason: 期間別貸出統計の書籍別貸出回数ランキング集計（期間内で book_id ごとに GROUP BY）に使う
+        used_by:
+          - 期間別貸出統計を集計する
+      - name: idx_loans_loan_date
+        columns:
+          - loan_date
+        unique: false
+        reason: 集計期間での範囲絞り込みを高速化する（NFR B.2.1.3 ターンアラウンド 10 秒以内）
+        used_by:
+          - 期間別貸出統計を集計する
+    used_by:
+      - uc: 貸出を登録する
+        operations:
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却対象の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の返却済み貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出内容と返却期限を照会する
+        operations:
+          - SELECT
+      - uc: 自分の現在の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出履歴を照会する
+        operations:
+          - SELECT
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+      - uc: 利用者一覧を照会する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+      - uc: 自分の返却期限を照会する
+        operations:
+          - SELECT
+  - name: users
+    rdra_info: 利用者
+    description: &quot;図書館の利用者を表すスナップショットテーブル。arch E-002（model_type: event_snapshot）に対応する。利用者番号・氏名・連絡先・利用者区分・利用者状態を保持し、貸出／予約の主体と通知メールの宛先解決に使う。氏名と連絡先は保管時暗号化の対象（NFR E.6.1.1）&quot;
+    columns:
+      - name: user_no
+        type: string
+        nullable: false
+        description: 利用者番号。利用者を一意に識別する主キー（RDRA 情報「利用者」の利用者番号）。窓口で提示され貸出対象利用者の特定に使う
+      - name: name
+        type: string
+        nullable: false
+        description: 氏名。個人情報のため保管時暗号化の対象（NFR E.6.1.1）。利用者名簿のキーワード検索対象
+      - name: email
+        type: string
+        nullable: false
+        description: 連絡先（メールアドレス）。取置き案内・返却期限リマインド・延滞督促メールの宛先。保管時暗号化の対象（NFR E.6.1.1）
+      - name: user_category
+        type: string
+        nullable: false
+        description: &quot;利用者区分。RDRA バリエーション「利用者区分」。値: 一般, 学生, 団体。貸出期間の適用単位および貸出統計の内訳軸&quot;
+      - name: user_status
+        type: string
+        nullable: false
+        description: &quot;利用者状態。RDRA 状態モデル「利用者状態」。値: 登録済み, 取引進行中。取引進行中の利用者は削除できない（利用者削除可否条件）&quot;
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 登録日時。利用者登録イベントの occurred_at を射影した値
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 最終更新日時。最新イベントの occurred_at を射影する。利用者情報の編集では If-Match による楽観ロックの比較対象として使う
+    primary_key:
+      - user_no
+    foreign_keys: []
+    indexes:
+      - name: uq_users_email
+        columns:
+          - email
+        unique: true
+        reason: &quot;ユニーク制約: 連絡先（メールアドレス）は利用者の自然キーであり、重複登録を一意制約で最終防御する（LP-007 の 4 層防御）。編集時も他利用者との重複を検査する。前提: email は保管時暗号化（NFR E.6.1.1）を決定的暗号化方式（固定 IV／同一平文は同一暗号文）で行い、暗号文のまま一意性が判定できるものとする。notifications.recipient_email も同じ決定的暗号化方式に揃える&quot;
+        used_by:
+          - 利用者を登録する
+          - 利用者情報を編集する
+      - name: idx_users_user_category
+        columns:
+          - user_category
+        unique: false
+        reason: 利用者名簿画面の利用者区分による一覧絞り込みに使う
+        used_by:
+          - 利用者一覧を照会する
+      - name: idx_users_name
+        columns:
+          - name
+        unique: false
+        reason: 利用者名簿画面の氏名キーワード検索に使う
+        used_by:
+          - 利用者一覧を照会する
+    used_by:
+      - uc: 利用者を登録する
+        operations:
+          - INSERT
+          - SELECT
+      - uc: 利用者情報を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+          - DELETE
+      - uc: 利用者一覧を照会する
+        operations:
+          - SELECT
+      - uc: 自分の利用者情報を照会する
+        operations:
+          - SELECT
+      - uc: 利用者番号で貸出対象利用者を特定する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却を登録する
+        operations:
+          - UPDATE
+      - uc: 予約を登録する
+        operations:
+          - UPDATE
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+</pre></details><details><summary>rdb/rdb-schema.yaml</summary><pre>schema_version: distillery.rdb-split/v1
+version: &quot;1.0&quot;
+datastore: rdb
+architecture_ref: ../../pipeline-opus-medium/arch/latest/arch-design.yaml
+domains:
+  - id: SD-001
+    file: domains/SD-001.yaml
+  - id: SD-002
+    file: domains/SD-002.yaml
+  - id: SD-003
+    file: domains/SD-003.yaml
+</pre></details><details><summary>review.md</summary><pre># 段階的開示の独立レビュー
+
+対象: 分割 AsyncAPI の compiler/helper、分割 RDB の compiler、生成サンプル、latest-linked-spec / progressive-rdb-schema / distillery-impl の契約読込規約。2026-09-06 に生成担当と別のレビュアーが全スクリプトを読み、以下を実行した。
+
+## 検証結果
+
+- `node --test tests/dist-spec-split-asyncapi.test.js`: 8 件成功。分割正本を変更せず bundle と UC slice を生成し、payload 修正で古い投影を検出する。再生成で伝播し、欠けた参照は出力前に拒否する。consumer の依存 operation / channel / message / payload / server が揃い、無関係な operation は provider の slice に混入しない。循環 payload の参照も有限のまま保持する。公式 AsyncAPI parser でも bundle の error 診断は 0 件。
+- `node --test tests/dist-spec-split-rdb.test.js`: 8 件成功。宣言済み所有者、テーブル所有の一意性、列・キー・参照先・型・無条件 unique の検証、推移的/循環 FK の閉包、正本変更後の更新漏れを確認した。実サンプルの 3 テーブルは現行 latest と構造一致する。
+- 両サンプルの compiler `--check` は成功。さらに RDB サンプルの隔離コピーで FK の列を 1 個増やし、`FK arity mismatch` により生成を拒否することを独立に確認した。
+
+## レビューで修正した点
+
+初期の汎用 AsyncAPI bundle では `operation.messages` が `components/messages` への参照に短縮されていた。生成担当へ指摘し、解決先オブジェクトの同一性を確認して参照中の channel の message に戻す処理と回帰テストが追加された。同名でも異なる payload を持つ message の付け替えは拒否する。これは [AsyncAPI 3.0 の Operation Object 規定](https://www.asyncapi.com/docs/reference/specification/v3.0.0#operationObject) に必要な保持であり、単に JSON Pointer が解決できるだけでは十分でない。
+
+正本一覧の RDB 行が arch 配下の schema を示し、詳細規約が specs 配下を示していたため、統合担当へ表記修正を依頼し、修正を確認した。所有境界・entity の正本は arch/latest、列・型・制約の編集正本は specs の分割 RDB schema と区別する。
+
+## 読み手が判断できる範囲
+
+入口から担当 domain/operation を選び、必要な依存だけを追加で開く構造になっている。RDB slice は自領域の型・制約を保持し、外部領域には参照キーと所有者の正本リンクを残す。非キー列が必要な照会では、その正本を追加で読む。キーだけの外部投影から完全な row 型や DDL を生成してよいという意味ではない。
+
+サブドメインによる文書分割から、物理 DB 分離・FK 禁止・分散トランザクション化を導いていない。RDB サンプルが引き継ぐ現行の「要確認」事項を承認済みに変えておらず、3 テーブルの分割実演は上流の意味や全システム仕様の再承認ではない。
+
+今回の検証は構造・参照・投影更新・限定した AsyncAPI 標準検証である。実 DB への migration、イベント broker 実行、全 UC の再生成は対象外。
+</pre></details><p>仕様の意味はlatestを参照し、過去イベントへの固定は行いません。ソース: samples/distillery/spec-progressive</p></main></html>
