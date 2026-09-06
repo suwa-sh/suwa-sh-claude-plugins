@@ -416,7 +416,7 @@ UC全数、条件、状態遷移、属性などの適用対象について、参
 node <skill-path>/scripts/generateReadme.js docs
 ```
 
-各ドメインの latest/ から主要情報を抽出し、C4 図解・サマリテーブル・UC 一覧・ADRs・イベント履歴を含む README を生成する。
+各ドメインの latest/ から主要情報を抽出し、C4 図解・サマリテーブル・UC 一覧を含む README を生成する。ADRsとイベント履歴はREADMEにドメイン別件数とリンクを載せ、詳細一覧を `_indexes/adrs/{domain}.md` と `_indexes/events/{domain}.md` に分割する。
 
 全 Step 完了後、以下のサマリをユーザーに提示する:
 

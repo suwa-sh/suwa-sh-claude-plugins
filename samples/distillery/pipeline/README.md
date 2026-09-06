@@ -337,54 +337,28 @@ Stories: 24 ファイル
 
 ## ADRs（設計判断記録）
 
-| # | ドメイン | 判断 | ステータス |
-|---|---------|------|----------|
-| 1 | Arch | [サブドメイン分類: 貸出・予約・期限管理を Core、蔵書/利用者/運営分析を Supporting、通知配信を Generic とする](arch/events/20260903_032540_initial_arch/decisions/arch-decision-001.yaml) | approved |
-| 2 | Arch | [BC 設計: 情報.tsv のコンテキスト列に沿った 6 境界づけられたコンテキスト](arch/events/20260903_032540_initial_arch/decisions/arch-decision-002.yaml) | approved |
-| 3 | Arch | [コンテキストマップ統合方式: 蔵書 BC が書籍の状態を所有し Customer-Supplier で遷移を提供、利用者 BC は OHS、通知 BC は外部へ ACL](arch/events/20260903_032540_initial_arch/decisions/arch-decision-003.yaml) | approved |
-| 4 | Arch | [集約境界仮説: 書籍 / 利用者 / 貸出 / 貸出ポリシー設定 / 予約 / 通知 / 貸出統計の 7 集約（仮説・low 確定）](arch/events/20260903_032540_initial_arch/decisions/arch-decision-004.yaml) | approved |
-| 5 | Arch | [テクノロジースタック: 言語・FW は未定とし、ベンダーニュートラルな制約のみを定める](arch/events/20260903_032540_initial_arch/decisions/arch-decision-005.yaml) | approved |
-| 6 | Arch | [BC : tier 対応形態: 6 BC を Backend API 内のモジュールとするモジュラモノリス](arch/events/20260903_032540_initial_arch/decisions/arch-decision-006.yaml) | approved |
-| 7 | Arch | [ティアパターン選定: 8 ティア構成（2 系統 SPA + API Gateway + IdP + CaaS(k8s) API + CronJob/MQ ワーカー + RDB/KVS/Object Storage + ACL 外部連携）](arch/events/20260903_032540_initial_arch/decisions/arch-decision-007.yaml) | approved |
-| 8 | Arch | [認証方式: OAuth2/OIDC をセルフホスト IdP で提供し、API Gateway でトークン検証する](arch/events/20260903_032540_initial_arch/decisions/arch-decision-008.yaml) | approved |
-| 9 | Arch | [認可モデル: RBAC + Backend 作り込み（パターン A）、PII を扱う BC は厳格化](arch/events/20260903_032540_initial_arch/decisions/arch-decision-009.yaml) | approved |
-| 10 | Arch | [レイヤリング戦略: Backend API / ワーカーは 5 層 + 共有ライブラリ、フロントエンドは 2 層、IF なし直接依存で開始](arch/events/20260903_032540_initial_arch/decisions/arch-decision-010.yaml) | approved |
-| 11 | Arch | [データモデル戦略: 状態モデルを持つ書籍 / 貸出 / 予約と個人情報の利用者を event_snapshot、通知と監査ログを event、業務パラメータを SCD2 とする](arch/events/20260903_032540_initial_arch/decisions/arch-decision-011.yaml) | approved |
-| 12 | Arch | [監査・認証と通知要求の保存責任](arch/events/20260906_132303_spec_storage_ownership/decisions/arch-decision-spec-storage.yaml) | approved |
-| 13 | Infra | [アプリケーション実行基盤にコンテナサーバレスを選定する](infra/events/20260903_040307_infra_product_design/docs/cloud-context/decisions/product/product-decision-001.yaml) | accepted |
-| 14 | Infra | [API エッジをロードバランサ + WAF で構成し、トークン検証をアプリケーション層に置く](infra/events/20260903_040307_infra_product_design/docs/cloud-context/decisions/product/product-decision-002.yaml) | accepted |
-| 15 | Infra | [リレーショナルデータストアをマネージド単一インスタンス Multi-AZ 構成とする](infra/events/20260903_040307_infra_product_design/docs/cloud-context/decisions/product/product-decision-003.yaml) | accepted |
-| 16 | Infra | [職員向け面の館内ネットワーク限定を接続元 IP 制限で実現する](infra/events/20260903_040307_infra_product_design/docs/cloud-context/decisions/product/product-decision-004.yaml) | draft |
-| 17 | Infra | [単一リージョン複数 AZ 構成とし、遠隔地 DR を設けない](infra/events/20260903_040307_infra_product_design/docs/cloud-context/decisions/product/product-decision-005.yaml) | accepted |
-| 18 | Infra | [認証基盤をセルフホスト IdP ではなくマネージド IdP で構成する](infra/events/20260903_040307_infra_product_design/docs/cloud-context/decisions/product/product-decision-006.yaml) | accepted |
-| 19 | Design | [ブランドアイデンティティ方向性: 信頼・堅実路線「Libro」](design/events/20260903_041812_design_system/decisions/design-decision-001.yaml) | approved |
-| 20 | Design | [ポータル構成戦略: 利用者 / 司書の 2 ポータル](design/events/20260903_041812_design_system/decisions/design-decision-002.yaml) | approved |
-| 21 | Design | [カラーパレット: Blue（利用者）+ Slate（司書）](design/events/20260903_041812_design_system/decisions/design-decision-003.yaml) | approved |
-| 22 | Design | [タイポグラフィ: Noto Sans JP + Inter](design/events/20260903_041812_design_system/decisions/design-decision-004.yaml) | approved |
-| 23 | Design | [レイアウト方針: 司書=12 列グリッド + サイドバー、利用者=トップナビ](design/events/20260903_041812_design_system/decisions/design-decision-005.yaml) | approved |
-| 24 | Design | [コンポーネントスタイルとアイコノグラフィ: radius 8px / shadow sm / Lucide 準拠 outlined](design/events/20260903_041812_design_system/decisions/design-decision-006.yaml) | approved |
-| 25 | Design | [NFR 起因の UI 判断: PII マスク・確認ステップ・ページネーション](design/events/20260903_041812_design_system/decisions/design-decision-007.yaml) | approved |
-| 26 | Design | [予約条件と対象識別子の接続](design/events/20260906_132217_design_system/decisions/design-decision-901.yaml) | approved |
-| 27 | Specs | [参照する正本と共有技術規則](specs/events/20260906_131731_spec_generation/decisions/spec-decision-001.yaml) | approved |
-| 28 | Specs | [通知受付の再送結果と配信権の保存](specs/events/20260906_131731_spec_generation/decisions/spec-decision-002.yaml) | approved |
+全28件。ドメイン別の一覧から個別の判断記録を参照できます。
+
+| ドメイン | 件数 | 一覧 |
+|---------|-----:|------|
+| Arch | 12 | [判断記録を開く](_indexes/adrs/arch.md) |
+| Infra | 6 | [判断記録を開く](_indexes/adrs/infra.md) |
+| Design | 8 | [判断記録を開く](_indexes/adrs/design.md) |
+| Specs | 2 | [判断記録を開く](_indexes/adrs/specs.md) |
 
 ## イベント履歴
 
-| 日時 | ドメイン | イベントID |
-|------|---------|-----------|
-| 2026-09-03 03:07:44 | USDM（要求分解） | [20260903_030744_initial_build](usdm/events/20260903_030744_initial_build) |
-| 2026-09-03 03:07:44 | RDRA（要件定義） | [20260903_030744_initial_build](rdra/events/20260903_030744_initial_build) |
-| 2026-09-03 03:18:58 | NFR（非機能要求） | [20260903_031858_initial_nfr](nfr/events/20260903_031858_initial_nfr) |
-| 2026-09-03 03:25:40 | Arch（アーキテクチャ） | [20260903_032540_initial_arch](arch/events/20260903_032540_initial_arch) |
-| 2026-09-03 04:03:07 | Infra（インフラ設計） | [20260903_040307_infra_product_design](infra/events/20260903_040307_infra_product_design) |
-| 2026-09-03 04:11:50 | Arch（アーキテクチャ） | [20260903_041150_arch_infra_feedback_20260903_040307_infra_product_design](arch/events/20260903_041150_arch_infra_feedback_20260903_040307_infra_product_design) |
-| 2026-09-03 04:18:12 | Design（デザイン） | [20260903_041812_design_system](design/events/20260903_041812_design_system) |
-| 2026-09-06 13:17:31 | Specs（詳細仕様） | [20260906_131731_spec_generation](specs/events/20260906_131731_spec_generation) |
-| 2026-09-06 13:22:17 | Design（デザイン） | [20260906_132217_design_system](design/events/20260906_132217_design_system) |
-| 2026-09-06 13:23:03 | Arch（アーキテクチャ） | [20260906_132303_spec_storage_ownership](arch/events/20260906_132303_spec_storage_ownership) |
-| 2026-09-06 14:16:33 | USDM（要求分解） | [20260906_141633_spec_business_conditions](usdm/events/20260906_141633_spec_business_conditions) |
-| 2026-09-06 14:16:33 | RDRA（要件定義） | [20260906_141633_spec_business_conditions](rdra/events/20260906_141633_spec_business_conditions) |
-| 2026-09-06 15:22:56 | Design（デザイン） | [20260906_152256_spec_stories](design/events/20260906_152256_spec_stories) |
+全13件。ドメイン別の履歴から個別のイベントを参照できます。
+
+| ドメイン | 件数 | 履歴 |
+|---------|-----:|------|
+| USDM（要求分解） | 2 | [履歴を開く](_indexes/events/usdm.md) |
+| RDRA（要件定義） | 2 | [履歴を開く](_indexes/events/rdra.md) |
+| NFR（非機能要求） | 1 | [履歴を開く](_indexes/events/nfr.md) |
+| Arch（アーキテクチャ） | 3 | [履歴を開く](_indexes/events/arch.md) |
+| Infra（インフラ設計） | 1 | [履歴を開く](_indexes/events/infra.md) |
+| Design（デザイン） | 3 | [履歴を開く](_indexes/events/design.md) |
+| Specs（詳細仕様） | 1 | [履歴を開く](_indexes/events/specs.md) |
 
 ---
 
