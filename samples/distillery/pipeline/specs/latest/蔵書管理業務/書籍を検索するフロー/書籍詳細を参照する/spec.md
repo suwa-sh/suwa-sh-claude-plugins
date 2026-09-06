@@ -49,7 +49,7 @@ sequenceDiagram
 | 分岐ID | 条件の正本 | 成立時 | 不成立時 |
 |---|---|---|---|
 | BR-AUTH | [TR-AUTH](../../../_cross-cutting/technical-rules.md#tr-auth-認証と参照範囲)とgetBookの許可ロール | 書籍の照会へ進む | 認証不成立401、許可外403 |
-| BR-INPUT | [分割契約](../../../_cross-cutting/api/openapi.yaml)のgetBook | 対象の確認へ進む | 400 INVALID_INPUT、業務変更なし |
+| BR-INPUT | [分割契約](../../../_cross-cutting/api/openapi/openapi.yaml)のgetBook | 対象の確認へ進む | 400 INVALID_INPUT、業務変更なし |
 | BR-TARGET | 書籍の識別子が一致しdeleted=false | 対象を処理する | 404 NOT_FOUND、業務変更なし |
 | BR-RESERVE | [条件](../../../../../rdra/latest/条件.tsv)の予約可否判定と媒体種別判定 | 紙の貸出中または予約待ちは予約画面へ進める | 詳細は200で表示し予約操作を無効化する |
 

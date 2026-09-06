@@ -108,3 +108,26 @@ test('latest-linked sample bundle and UC contract projections reproduce from hum
   const bundle = JSON.parse(fs.readFileSync(path.join(sample, '_cross-cutting/api/generated/openapi.bundle.yaml'), 'utf8'));
   assert.equal(Object.keys(bundle.paths).length, 4);
 });
+
+
+test('split openapi supports a dedicated authoring directory with unchanged bundle semantics', t => {
+  const { root, api } = fixture(t);
+  run(root);
+  const bundleFile = path.join(api, 'generated/openapi.bundle.yaml');
+  const before = fs.readFileSync(bundleFile, 'utf8');
+  const destination = path.join(api, 'openapi');
+  fs.mkdirSync(destination);
+  for (const name of ['openapi.yaml', 'paths', 'components']) {
+    fs.renameSync(path.join(api, name), path.join(destination, name));
+  }
+  const file = path.join(api, 'contracts.json');
+  const catalog = JSON.parse(fs.readFileSync(file, 'utf8'));
+  catalog.openapi = 'openapi/openapi.yaml';
+  fs.writeFileSync(file, JSON.stringify(catalog));
+  run(root);
+  assert.equal(fs.readFileSync(bundleFile, 'utf8'), before);
+  assert.equal(run(root, true).status, 'current');
+  catalog.openapi = '../openapi.yaml';
+  fs.writeFileSync(file, JSON.stringify(catalog));
+  assert.throws(() => run(root), /Split .* entry must be/);
+});

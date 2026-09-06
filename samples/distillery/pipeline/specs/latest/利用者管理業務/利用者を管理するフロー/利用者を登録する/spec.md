@@ -50,7 +50,7 @@ sequenceDiagram
 | 分岐ID | 条件の正本 | 成立時 | 不成立時 |
 |---|---|---|---|
 | BR-AUTH | [TR-AUTH](../../../_cross-cutting/technical-rules.md#tr-auth-認証と参照範囲)とcreateUserの許可ロール | 利用者の更新へ進む | 認証不成立401、許可外403 |
-| BR-INPUT | [分割契約](../../../_cross-cutting/api/openapi.yaml)のcreateUser | 登録値の確認へ進む | 400 INVALID_INPUT、業務変更なし |
+| BR-INPUT | [分割契約](../../../_cross-cutting/api/openapi/openapi.yaml)のcreateUser | 登録値の確認へ進む | 400 INVALID_INPUT、業務変更なし |
 | BR-NUMBER | RDBの利用者番号一意制約 | 採番した番号で登録する | 409 VERSION_CONFLICTでrollbackし、別の番号へ再採番しない |
 | BR-REPLAY | [TR-IDEMP](../../../_cross-cutting/technical-rules.md#tr-idemp-再送と結果の回復) | 同じ要求の成功結果を返す | 未処理は新規実行、異なるhashは409 |
 

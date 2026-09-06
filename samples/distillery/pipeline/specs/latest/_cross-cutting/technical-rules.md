@@ -88,7 +88,7 @@ loan_daysは1以上、remind_daysは0以上を要求する。
 
 ## TR-MQ 通知要求と配信結果
 
-[通知契約](api/asyncapi.yaml)と[保存責任](../../../arch/latest/arch-design.yaml)のE-008を参照する。
+[通知契約](api/asyncapi/asyncapi.yaml)と[保存責任](../../../arch/latest/arch-design.yaml)のE-008を参照する。
 
 | 局面 | 処理 |
 |---|---|
@@ -114,7 +114,7 @@ loan_daysは1以上、remind_daysは0以上を要求する。
 
 ## TR-ERROR エラーと画面回復
 
-エラーの型とコードは[OpenAPI](api/openapi.yaml)のErrorを参照する。
+エラーの型とコードは[OpenAPI](api/openapi/openapi.yaml)のErrorを参照する。
 
 | 結果 | 画面の処理 |
 |---|---|

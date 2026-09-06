@@ -49,7 +49,7 @@ sequenceDiagram
 | 分岐ID | 条件の正本 | 成立時 | 不成立時 |
 |---|---|---|---|
 | BR-AUTH | [TR-AUTH](../../../_cross-cutting/technical-rules.md#tr-auth-認証と参照範囲)とsearchBooksの許可ロール | 書籍の照会へ進む | 認証不成立401、許可外403 |
-| BR-INPUT | [分割契約](../../../_cross-cutting/api/openapi.yaml)のsearchBooks | 対象の確認へ進む | 400 INVALID_INPUT、業務変更なし |
+| BR-INPUT | [分割契約](../../../_cross-cutting/api/openapi/openapi.yaml)のsearchBooks | 対象の確認へ進む | 400 INVALID_INPUT、業務変更なし |
 | BR-FILTER | [条件](../../../../../rdra/latest/条件.tsv)の書籍検索条件判定、[TR-SEARCH](../../../_cross-cutting/technical-rules.md#tr-search-検索条件の結合) | 一致する書籍を結果へ含める | 一致しない書籍を除外する |
 | BR-EMPTY | 同じ検索条件の総件数が0件 | 200、items=[]、total=0 | 200、指定ページと総件数 |
 

@@ -18,7 +18,7 @@ APIの型表を本文へ戻さない。linkedは対応先の実在であり、�
 
 | 担当 | 読むもの |
 |------|---------|
-| API 系 | `_cross-cutting/api/openapi.yaml` / `asyncapi.yaml`、全 UC の `_api-summary.yaml` |
+| API 系 | `_cross-cutting/api/openapi/openapi.yaml` / `_cross-cutting/api/asyncapi/asyncapi.yaml`、全 UC の `_api-summary.yaml` |
 | データストア系 | `_cross-cutting/datastore/*.yaml`（rdb / kvs / object-storage。`datastore-schema.md` は Step7 で生成されるため対象外）、全 UC の `_model-summary.yaml`、`docs/rdra/latest/情報.tsv` |
 | UX/UI 系 | `_cross-cutting/ux-ui/*.md`、（design ありのみ）`docs/design/latest/design-event.yaml` の `components` |
 | トレーサビリティ | `_cross-cutting/traceability-matrix.md`、`docs/rdra/latest/*.tsv` |

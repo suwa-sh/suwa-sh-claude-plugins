@@ -84,7 +84,7 @@ UC 差分イベントを latest/ にマージし、cross-cutting を再生成し
 - [UX デザイン仕様](_cross-cutting/ux-ui/ux-design.md)
 - [UI デザイン仕様](_cross-cutting/ux-ui/ui-design.md)
 - [データ可視化仕様](_cross-cutting/ux-ui/data-visualization.md)
-- [OpenAPI](_cross-cutting/api/openapi.yaml)
+- [OpenAPI](_cross-cutting/api/openapi/openapi.yaml)
 - [RDB スキーマ](_cross-cutting/datastore/rdb-schema.yaml)
 - [トレーサビリティ](_cross-cutting/traceability-matrix.md)
 

@@ -26,7 +26,7 @@
 - **トリガー**: {トリガーイベント/スケジュール}
 - **入力チャネル**: {サブスクライブするキュー/トピック}
 - **出力チャネル**: {パブリッシュするキュー/トピック}（該当する場合）
-- **AsyncAPI**: [asyncapi.yaml](../../../_cross-cutting/api/asyncapi.yaml) の `channels.{チャネル名}` を参照
+- **AsyncAPI**: [asyncapi.yaml](../../../_cross-cutting/api/asyncapi/asyncapi.yaml) の `channels.{チャネル名}` を参照
 
 #### 処理フロー
 

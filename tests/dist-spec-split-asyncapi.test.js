@@ -122,3 +122,26 @@ test('official AsyncAPI parser accepts generated bundle', async t => {
   assert.ok(document, JSON.stringify(diagnostics));
   assert.deepEqual(diagnostics.filter(d => d.severity === 0), []);
 });
+
+
+test('split asyncapi supports a dedicated authoring directory with unchanged bundle semantics', t => {
+  const { root, api } = fixture(t);
+  run(root);
+  const bundleFile = path.join(api, 'generated/asyncapi.bundle.yaml');
+  const before = fs.readFileSync(bundleFile, 'utf8');
+  const destination = path.join(api, 'asyncapi');
+  fs.mkdirSync(destination);
+  for (const name of ['asyncapi.yaml', 'channels', 'operations', 'components']) {
+    fs.renameSync(path.join(api, name), path.join(destination, name));
+  }
+  const file = path.join(api, 'contracts.json');
+  const catalog = JSON.parse(fs.readFileSync(file, 'utf8'));
+  catalog.asyncapi = 'asyncapi/asyncapi.yaml';
+  fs.writeFileSync(file, JSON.stringify(catalog));
+  run(root);
+  assert.equal(fs.readFileSync(bundleFile, 'utf8'), before);
+  assert.equal(run(root, true).status, 'current');
+  catalog.asyncapi = '../asyncapi.yaml';
+  fs.writeFileSync(file, JSON.stringify(catalog));
+  assert.throws(() => run(root), /Split .* entry must be/);
+});

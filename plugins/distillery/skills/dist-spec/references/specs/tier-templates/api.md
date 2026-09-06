@@ -16,7 +16,7 @@ legacy生成で型表が必要な場合は、契約生成に必要な項目だ�
 
 | 操作 | 契約の参照先 | 適用する認証と認可 |
 |---|---|---|
-| {operationId} | [OpenAPI](../../../_cross-cutting/api/openapi.yaml)の{operationId} | {共通規則へのリンクと対象アクター} |
+| {operationId} | [OpenAPI](../../../_cross-cutting/api/openapi/openapi.yaml)の{operationId} | {共通規則へのリンクと対象アクター} |
 
 ## 処理順序
 

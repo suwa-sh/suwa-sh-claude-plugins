@@ -61,7 +61,7 @@ sequenceDiagram
 | 分岐ID | 条件の正本 | 成立時 | 不成立時 |
 |---|---|---|---|
 | BR-AUTH | [TR-AUTH](../../../_cross-cutting/technical-rules.md#tr-auth-認証と参照範囲)とupdateBookの許可ロール | 書籍の更新へ進む | 認証不成立401、許可外403 |
-| BR-INPUT | [分割契約](../../../_cross-cutting/api/openapi.yaml)のupdateBook | 対象の確認へ進む | 400 INVALID_INPUT、業務変更なし |
+| BR-INPUT | [分割契約](../../../_cross-cutting/api/openapi/openapi.yaml)のupdateBook | 対象の確認へ進む | 400 INVALID_INPUT、業務変更なし |
 | BR-TARGET | 書籍の識別子が一致しdeleted=false | 対象を処理する | 404 NOT_FOUND、業務変更なし |
 | BR-GENRE | 指定genre_idがgenresに存在する | 書誌情報を更新する | 422 BUSINESS_RULE_VIOLATION、更新なし |
 | BR-REPLAY | [TR-IDEMP](../../../_cross-cutting/technical-rules.md#tr-idemp-再送と結果の回復) | 同じ要求の成功結果を返す | 未処理は新規実行、異なるhashは409 |

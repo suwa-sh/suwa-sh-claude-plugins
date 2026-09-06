@@ -76,8 +76,8 @@ npm run build-storybook
 ## サンプルを開く
 
 - [仕様の一覧](../specs/latest/README.md)
-- [OpenAPI入口](../specs/latest/_cross-cutting/api/openapi.yaml) / [結合済みOpenAPI](../specs/latest/_cross-cutting/api/generated/openapi.bundle.yaml)
-- [AsyncAPI入口](../specs/latest/_cross-cutting/api/asyncapi.yaml) / [結合済みAsyncAPI](../specs/latest/_cross-cutting/api/generated/asyncapi.bundle.yaml)
+- [OpenAPI入口](../specs/latest/_cross-cutting/api/openapi/openapi.yaml) / [結合済みOpenAPI](../specs/latest/_cross-cutting/api/generated/openapi.bundle.yaml)
+- [AsyncAPI入口](../specs/latest/_cross-cutting/api/asyncapi/asyncapi.yaml) / [結合済みAsyncAPI](../specs/latest/_cross-cutting/api/generated/asyncapi.bundle.yaml)
 - [RDB索引](../specs/latest/_cross-cutting/datastore/datastore-schema.md)
 
 Storybookはリポジトリルートから次のコマンドで起動できます。

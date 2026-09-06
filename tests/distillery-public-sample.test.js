@@ -13,6 +13,10 @@ const specs = path.join(sample, 'specs/latest');
 const read = relative => fs.readFileSync(path.join(sample, relative), 'utf8');
 
 test('public regenerated sample has current portable contracts and split RDB projections', () => {
+  const catalog = JSON.parse(read('specs/latest/_cross-cutting/api/contracts.json'));
+  assert.equal(catalog.openapi, 'openapi/openapi.yaml');
+  assert.equal(catalog.asyncapi, 'asyncapi/asyncapi.yaml');
+  assert.equal(fs.existsSync(path.join(specs, '_cross-cutting/api/components')), false);
   assert.equal(run(specs, true).status, 'current');
   const rdb = compileRdbSchema(path.join(specs, '_cross-cutting/datastore/rdb-schema.yaml'), { check: true });
   assert.equal(rdb.domains, 5);

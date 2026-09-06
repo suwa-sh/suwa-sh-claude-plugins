@@ -55,7 +55,7 @@ sequenceDiagram
 | 分岐ID | 条件の正本 | 成立時 | 不成立時 |
 |---|---|---|---|
 | BR-AUTH | [TR-AUTH](../../../_cross-cutting/technical-rules.md#tr-auth-認証と参照範囲)とcreateBookの許可ロール | 書籍の更新へ進む | 認証不成立401、許可外403 |
-| BR-INPUT | [分割契約](../../../_cross-cutting/api/openapi.yaml)のcreateBook | 登録値の確認へ進む | 400 INVALID_INPUT、業務変更なし |
+| BR-INPUT | [分割契約](../../../_cross-cutting/api/openapi/openapi.yaml)のcreateBook | 登録値の確認へ進む | 400 INVALID_INPUT、業務変更なし |
 | BR-GENRE | 指定genre_idがgenresに存在する | 書籍を採番して登録する | 422 BUSINESS_RULE_VIOLATION、登録なし |
 | BR-MEDIA | [条件](../../../../../rdra/latest/条件.tsv)の媒体種別判定 | 紙と電子を登録対象として扱う | 未定義の媒体値はBR-INPUTで400 |
 | BR-REPLAY | [TR-IDEMP](../../../_cross-cutting/technical-rules.md#tr-idemp-再送と結果の回復) | 同じ要求の成功結果を返す | 未処理は新規実行、異なるhashは409 |

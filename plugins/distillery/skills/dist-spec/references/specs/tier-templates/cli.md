@@ -57,5 +57,5 @@ Feature: {UC名} - {ティア名}
     Then 終了コード {n} で stdout に {期待出力} が出る
 ```
 ```
-- tier-{tier_id}.md（API系）の API 仕様は `_cross-cutting/api/openapi.yaml` と整合させる
+- tier-{tier_id}.md（API系）の API 仕様は `_cross-cutting/api/openapi/openapi.yaml` と整合させる
 - `app_architecture.tier_layers[].layers` からティアごとのレイヤー構成を参照し、仕様に反映する

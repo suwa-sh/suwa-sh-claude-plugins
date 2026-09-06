@@ -1,7 +1,7 @@
 {
   "schema_version": "distillery.contracts/v1",
-  "openapi": "openapi.yaml",
-  "asyncapi": "asyncapi.yaml",
+  "openapi": "openapi/openapi.yaml",
+  "asyncapi": "asyncapi/asyncapi.yaml",
   "use_cases": [
     {
       "business": "蔵書管理業務",

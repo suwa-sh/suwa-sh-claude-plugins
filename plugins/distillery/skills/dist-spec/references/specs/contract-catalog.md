@@ -9,17 +9,21 @@
 
 ```text
 _cross-cutting/api/
-├── contracts.json                 # UC・operation・tierの所有/利用対応だけ
-├── openapi.yaml                   # 手編集する入口
-├── paths/loans.yaml               # Path Item
-├── components/schemas/Loan.yaml   # 共通型。responses等も必要単位で分割
-├── generated/openapi.bundle.yaml  # 生成物。Swagger UI/codegen入力
-├── asyncapi.yaml                   # 非同期契約の手編集する入口
-├── channels/loan-created.yaml      # チャネル
-├── operations/sendLoan.yaml        # 送受信操作
-├── components/messages/LoanCreated.yaml
-├── components/schemas/LoanCreatedPayload.yaml
-└── generated/asyncapi.bundle.yaml   # AsyncAPI表示/codegen入力
+├── contracts.json                  # UC・operation・tierの所有/利用対応
+├── openapi/
+│   ├── openapi.yaml                # OpenAPIの編集入口
+│   ├── paths/loans.yaml            # Path Item
+│   └── components/schemas/Loan.yaml
+├── asyncapi/
+│   ├── asyncapi.yaml               # AsyncAPIの編集入口
+│   ├── channels/loan-created.yaml
+│   ├── operations/sendLoan.yaml
+│   └── components/
+│       ├── messages/LoanCreated.yaml
+│       └── schemas/LoanCreatedPayload.yaml
+└── generated/
+    ├── openapi.bundle.yaml         # Swagger UI/codegen入力
+    └── asyncapi.bundle.yaml        # AsyncAPI表示/codegen入力
 ```
 
 入口の例（参照は各ファイルの所在を基準に解決する）:
@@ -41,8 +45,8 @@ components:
 ```json
 {
   "schema_version": "distillery.contracts/v1",
-  "openapi": "openapi.yaml",
-  "asyncapi": "asyncapi.yaml",
+  "openapi": "openapi/openapi.yaml",
+  "asyncapi": "asyncapi/asyncapi.yaml",
   "use_cases": [
     {
       "business": "業務名", "buc": "BUC名", "uc": "UC名",
@@ -54,8 +58,10 @@ components:
 
 分割ファイルには型・制約・認可・エラー・拡張フィールドをネイティブ形式で保持する。
 OpenAPIの別ファイル `$ref` とPath Item参照はRedoclyでbundleする。AsyncAPIは標準JSON Schema $Ref Parserで外部参照をbundleし、operationのchannel/messagesとchannelのserversをAsyncAPI指定の索引へ再接続する。接続は解決先オブジェクトの同一性で検査し、同名や似た型による推測はしない。一意に解決できない参照は停止する。その後で所有者検査・slice生成へ渡す。
-入力の `openapi.yaml` / `asyncapi.yaml` と分割ファイルは生成処理で上書きしない。生成物は `generated/` にだけ置く。
+入力の `openapi/openapi.yaml` / `asyncapi/asyncapi.yaml` と分割ファイルは生成処理で上書きしない。生成物は `generated/` にだけ置く。
 編集担当はoperationの重複所有を調整するが、人による直接編集を禁止しない。
+
+OpenAPIのpaths・componentsは `openapi/`、AsyncAPIのchannels・operations・componentsは `asyncapi/` 配下に置く。各入口から必要なファイルだけを辿れるようにする。
 
 ### 実行環境と互換性
 
@@ -73,6 +79,8 @@ HTTPの外部参照は無効。正本ファイルをローカルへ管理し、�
 RedoclyによるAsyncAPI3のbundleでは必須Reference Objectがインライン化されるため、この処理を分ける。
 CIでは公式 `@asyncapi/parser@3.6.3` でも生成bundleの妥当性を検証する。
 
+従来の入口 `openapi.yaml` / `asyncapi.yaml` も互換入力として受理する。新規生成は種類別ディレクトリを使う。
+
 従来の `openapi: { ... }` / `asyncapi: { ... }` 埋め込みと `null` は互換入力として受理する。
 埋め込み形式は従来どおり `api/openapi.yaml` / `api/asyncapi.yaml` を派生出力する。
 移行時は旧派生物を人が分割正本へ変換し、`.contracts-build.json` の `files` から
@@ -89,7 +97,7 @@ operationのchannelは入口のchannelsを、messagesはそのchannelのmessages
 { "kind": "openapi", "operation_id": "createLoan", "tier": "tier-backend-api" }
 ```
 
-- `openapi` は入口 `"openapi.yaml"`、互換形式の完全な標準文書、対象なしの `null`。`asyncapi` は入口 `"asyncapi.yaml"`、標準文書または `null`。
+- `openapi` は入口 `"openapi/openapi.yaml"`、互換形式の完全な標準文書、対象なしの `null`。`asyncapi` は入口 `"asyncapi/asyncapi.yaml"`、標準文書または `null`。
 - OpenAPI は `paths` 配下の各HTTP操作に一意な `operationId` を持つ。AsyncAPIは `operations` のキーを使う。
 - 各operationの実装所有者は `provides` の1 UC × tierだけ。呼び出す他UC/tierは `consumes` に宣言する。
   共有operationを複数UCが実装する重複所有にしない。

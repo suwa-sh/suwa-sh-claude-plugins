@@ -8,7 +8,7 @@
 
 | 操作 | 契約 | 利用条件 |
 |---|---|---|
-| deleteBook | [分割OpenAPI](../../../_cross-cutting/api/paths/staff_books__book_id_.yaml)のdelete | 司書。契約のx-networkと[TR-AUTH](../../../_cross-cutting/technical-rules.md#tr-auth-認証と参照範囲)を適用 |
+| deleteBook | [分割OpenAPI](../../../_cross-cutting/api/openapi/paths/staff_books__book_id_.yaml)のdelete | 司書。契約のx-networkと[TR-AUTH](../../../_cross-cutting/technical-rules.md#tr-auth-認証と参照範囲)を適用 |
 
 ## 処理と結果
 

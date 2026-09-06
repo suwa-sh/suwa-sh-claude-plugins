@@ -34,8 +34,8 @@
 
 - [技術規則](_cross-cutting/technical-rules.md)
 - [UIの接続](_cross-cutting/ux-ui/ui-design.md)
-- [OpenAPI](_cross-cutting/api/openapi.yaml)
-- [AsyncAPI](_cross-cutting/api/asyncapi.yaml)
+- [OpenAPI](_cross-cutting/api/openapi/openapi.yaml)
+- [AsyncAPI](_cross-cutting/api/asyncapi/asyncapi.yaml)
 - [RDB入口](_cross-cutting/datastore/rdb-schema.yaml)
 - [トレース](_cross-cutting/traceability-matrix.md)
 

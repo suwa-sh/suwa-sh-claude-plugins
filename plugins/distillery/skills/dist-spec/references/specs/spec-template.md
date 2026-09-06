@@ -115,8 +115,8 @@ Feature: {UC名}
 ## ティア別仕様
 
 - [{ティア名}](tier-{tier_id}.md)
-- [OpenAPI](../../../_cross-cutting/api/openapi.yaml): `{operationId}`
-- [AsyncAPI](../../../_cross-cutting/api/asyncapi.yaml): `{channel / operation}`（存在する場合のみ）
+- [OpenAPI](../../../_cross-cutting/api/openapi/openapi.yaml): `{operationId}`
+- [AsyncAPI](../../../_cross-cutting/api/asyncapi/asyncapi.yaml): `{channel / operation}`（存在する場合のみ）
 ````
 
 `概要`、`関連 RDRA モデル`、`E2E 完了条件`、`ティア別仕様` は必須。

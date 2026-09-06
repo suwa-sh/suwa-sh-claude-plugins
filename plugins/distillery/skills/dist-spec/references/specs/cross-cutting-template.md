@@ -20,8 +20,8 @@ _cross-cutting/
     data-visualization.md    # データ可視化設計仕様
     common-components.md     # 共通コンポーネント設計（Step4c で生成）
   api/
-    openapi.yaml             # 全 UC 統合 OpenAPI 3.1 spec（Contract First 開発用）
-    asyncapi.yaml            # 全 UC 統合 AsyncAPI spec（非同期イベントがある場合のみ）
+    openapi/openapi.yaml     # 全 UC 統合 OpenAPI 3.1 spec（Contract First 開発用）
+    asyncapi/asyncapi.yaml   # 全 UC 統合 AsyncAPI spec（非同期イベントがある場合のみ）
   datastore/
     rdb-schema.yaml          # RDB レイアウト
     kvs-schema.yaml          # KVS レイアウト（KVS アクセスがある場合のみ）

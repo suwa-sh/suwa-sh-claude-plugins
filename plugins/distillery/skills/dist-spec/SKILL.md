@@ -162,8 +162,8 @@ docs/specs/
         data-visualization.md          # データ可視化設計仕様
         common-components.md           # 共通コンポーネント設計（UC完了後に抽出）
       api/                             # バックエンド開発者向け
-        openapi.yaml                   # 全 UC 統合 OpenAPI 3.1 spec（Contract First 開発用）
-        asyncapi.yaml                  # 全 UC 統合 AsyncAPI spec（非同期イベントがある場合のみ）
+        openapi/openapi.yaml           # 全 UC 統合 OpenAPI 3.1 spec（Contract First 開発用）
+        asyncapi/asyncapi.yaml         # 全 UC 統合 AsyncAPI spec（非同期イベントがある場合のみ）
       datastore/                       # バックエンド開発者・DBA 向け
         rdb-schema.yaml                # RDB テーブル定義（カラム、FK、インデックス）
         kvs-schema.yaml                # KVS キーパターン定義（KVS使用時のみ）
@@ -397,14 +397,14 @@ Step3 + Step3.5 完了後に実行。**機能別に subagent を分割して並�
 
 **読み込み:** `references/specs/openapi-rules.md`, `references/specs/asyncapi-rules.md`
 
-1. `_cross-cutting/api/openapi.yaml` を生成する:
+1. 新規catalogでは `api/openapi/openapi.yaml` と `api/openapi/` 配下の分割正本を作り、compileContractsでbundleを生成する。以下のsummaryからの逆生成はlegacyのみ（出力は `_cross-cutting/api/openapi.yaml`）:
    - 全 UC の API エンドポイントを統合した OpenAPI 3.1 spec
    - **Step3 で生成した各 UC の `_api-summary.yaml` を入力として paths/schemas を集約する**（tier-backend-api.md を全件再読込するより効率的）
    - `_api-summary.yaml` が無い、または型制約・認可・エラー等が不足する UC は、該当 tier-{tier_id}.md の契約節だけを追加で読む。未記載を推測で補わない
    - `references/specs/openapi-rules.md` に従って生成
    - Contract First 開発に使える品質で、スキーマ定義・型情報を具体的に記述
 
-2. 新規catalogでは分割AsyncAPIの正本を作りcompileContractsでbundleを生成する。以下のsummaryからの逆生成はlegacyのみ（非同期イベントがある場合のみ）:
+2. 新規catalogでは `api/asyncapi/asyncapi.yaml` と `api/asyncapi/` 配下の分割正本を作りcompileContractsでbundleを生成する。以下のsummaryからの逆生成はlegacyのみ（非同期イベントがある場合のみ）:
    - 全 UC の非同期イベントを統合した AsyncAPI spec
    - **Step3 で生成した各 UC の `_api-summary.yaml` の `async_events` セクションを入力とする**
    - `_api-summary.yaml` が無い、または型制約・認可・エラー等が不足する UC は、該当 tier-{tier_id}.md の契約節だけを追加で読む。未記載を推測で補わない
@@ -653,7 +653,8 @@ node <skill-path>/scripts/validateSpecEvent.js docs/specs/events/{event_id}
 #### 6b. OpenAPI リント
 
 ```bash
-npx --yes @redocly/cli lint docs/specs/events/{event_id}/_cross-cutting/api/openapi.yaml
+npx --yes @redocly/cli lint docs/specs/events/{event_id}/_cross-cutting/api/generated/openapi.bundle.yaml
+# legacyでは従来のapi/openapi.yamlを指定する
 ```
 
 - エラー 0 → 6c へ進む

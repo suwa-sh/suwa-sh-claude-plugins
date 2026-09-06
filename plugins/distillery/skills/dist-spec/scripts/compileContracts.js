@@ -226,9 +226,9 @@ function loadCatalog(eventDir) {
   for (const kind of ['openapi', 'asyncapi']) {
     if (typeof catalog[kind] !== 'string') continue;
     const label = kind === 'openapi' ? 'OpenAPI' : 'AsyncAPI';
-    requireThat(catalog[kind] === `${kind}.yaml`, `Split ${label} entry must be ${kind}.yaml`);
-    const entry = safeTarget(root, `_cross-cutting/api/${kind}.yaml`);
-    requireThat(fs.existsSync(entry), `Missing split ${label} entry: ${kind}.yaml`);
+    requireThat([`${kind}/${kind}.yaml`, `${kind}.yaml`].includes(catalog[kind]), `Split ${label} entry must be ${kind}/${kind}.yaml`);
+    const entry = safeTarget(root, `_cross-cutting/api/${catalog[kind]}`);
+    requireThat(fs.existsSync(entry), `Missing split ${label} entry: ${catalog[kind]}`);
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'dist-spec-bundle-'));
     try {
       const output = path.join(temp, `${kind}.json`);

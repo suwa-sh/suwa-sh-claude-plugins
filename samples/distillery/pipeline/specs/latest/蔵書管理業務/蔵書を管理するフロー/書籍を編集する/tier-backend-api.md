@@ -8,7 +8,7 @@ book_idの現行行を排他取得し、If-Matchと一致した版に書誌情�
 
 | 操作 | 契約 | 利用条件 |
 |---|---|---|
-| updateBook | [分割OpenAPI](../../../_cross-cutting/api/paths/staff_books__book_id_.yaml)のput | 司書。契約のx-networkと[TR-AUTH](../../../_cross-cutting/technical-rules.md#tr-auth-認証と参照範囲)を適用 |
+| updateBook | [分割OpenAPI](../../../_cross-cutting/api/openapi/paths/staff_books__book_id_.yaml)のput | 司書。契約のx-networkと[TR-AUTH](../../../_cross-cutting/technical-rules.md#tr-auth-認証と参照範囲)を適用 |
 
 ## 処理と結果
 
