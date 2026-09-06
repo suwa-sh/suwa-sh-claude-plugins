@@ -1,0 +1,49 @@
+post:
+  description: 司書が貸出を登録する。貸出可否と返却期限はdocs/rdra/latest/条件.tsv、状態遷移はdocs/rdra/latest/状態.tsvを参照する。同じキーと要求の再送には期限内の確定応答を返す。
+  operationId: createLoan
+  parameters:
+  - $ref: ../components/parameters/IdempotencyKeyHeader.yaml
+  requestBody:
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/CreateLoanRequest.yaml
+    required: true
+  responses:
+    '201':
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/LoanResponse.yaml
+      description: 登録された貸出
+      headers:
+        Location:
+          description: 作成された貸出リソースの URI
+          schema:
+            format: uri-reference
+            type: string
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '401':
+      $ref: ../components/responses/Unauthorized.yaml
+    '403':
+      $ref: ../components/responses/Forbidden.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '409':
+      description: 業務条件不成立、CONFLICT、IDEMPOTENCY_KEY_CONFLICT、IDEMPOTENCY_KEY_IN_PROGRESS。
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/BusinessRuleViolationResponse.yaml
+    '503':
+      $ref: ../components/responses/TemporarilyUnavailable.yaml
+    '410':
+      description: キー発行から24時間以上経過。codeはIDEMPOTENCY_KEY_EXPIRED。業務更新なし。
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ErrorResponse.yaml
+  summary: 貸出を登録する
+  tags:
+  - loans

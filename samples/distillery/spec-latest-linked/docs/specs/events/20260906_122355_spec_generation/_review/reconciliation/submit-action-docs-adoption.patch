@@ -1,0 +1,25 @@
+--- current-latest/design/latest/storybook-app/src/components/common/SubmitActionButton.tsx
++++ hypothetical-adoption/design/latest/storybook-app/src/components/common/SubmitActionButton.tsx
+@@ -12,8 +12,9 @@
+ }
+ 
+ /**
+- * 更新系 API の二重送信防止を 1 箇所に集約する。押下で disabled + aria-busy="true" + loading にし、
+- * 画面表示時に発行した冪等キー（UUID）を X-Idempotency-Key として送る（arch SR-002 / LR-032）。
++ * 押下時に onSubmit を呼び出す。画面側が HTTP 要求と X-Idempotency-Key ヘッダを送信する。
++ * 画面側から受け取る submitting を Button の loading に渡す。送信中は Button が disabled と aria-busy を設定する。
++ * disabled は Button の disabled へ渡す。idempotencyKey は data-idempotency-key 属性へ渡す。部品は HTTP 通信を行わない。
+  * 館内タブレット運用のためタップ領域は 2.75rem 以上を確保する（size lg）。
+  */
+ export const SubmitActionButton: React.FC<SubmitActionButtonProps> = ({
+--- current-latest/design/latest/storybook-app/src/stories/forms/SubmitActionButton.stories.tsx
++++ hypothetical-adoption/design/latest/storybook-app/src/stories/forms/SubmitActionButton.stories.tsx
+@@ -9,7 +9,7 @@
+     docs: {
+       description: {
+         component:
+-          '更新系 API の二重送信防止を 1 箇所に集約する（Button の合成）。押下で disabled + aria-busy + loading にし、冪等キーを送る（arch SR-002 / LR-032）。',
++          '押下時に onSubmit を呼ぶ。画面側が HTTP と X-Idempotency-Key ヘッダを送信し、submitting を管理する。部品は submitting を Button の loading に渡し、送信中の disabled・aria-busy・loading を表示する。idempotencyKey は data-idempotency-key 属性に設定する。',
+       },
+     },
+   },

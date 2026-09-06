@@ -1,0 +1,37 @@
+description: 登録された貸出の応答型。期限計算は docs/rdra/latest/条件.tsv の返却期限設定条件を参照。
+properties:
+  book_id:
+    $ref: ./BookId.yaml
+  book_status:
+    $ref: ./BookStatus.yaml
+  due_date:
+    description: 返却期限
+    format: date
+    type: string
+  loan_date:
+    description: 貸出日
+    format: date
+    type: string
+  loan_id:
+    $ref: ./LoanId.yaml
+  loan_period_type:
+    $ref: ./LoanPeriodType.yaml
+  loan_status:
+    $ref: ./LoanStatus.yaml
+  reservation_id:
+    description: 関連する予約ID。値を返す業務条件と状態遷移は docs/rdra/latest/条件.tsv / docs/rdra/latest/状態.tsv の予約モデルを参照
+    oneOf:
+    - $ref: ./ReservationId.yaml
+    - type: 'null'
+  user_no:
+    $ref: ./UserNo.yaml
+required:
+- loan_id
+- book_id
+- user_no
+- loan_date
+- loan_period_type
+- due_date
+- loan_status
+- book_status
+type: object

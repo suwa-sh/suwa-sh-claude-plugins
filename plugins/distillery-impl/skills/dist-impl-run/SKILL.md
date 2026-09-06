@@ -23,6 +23,7 @@ PR 作成後は次の UC へ自動継続しない — 起動シーケンス 3)
 spec本文が参照するRDRA条件/状態、designのcomponent/Story、arch/NFRは各 `latest` の対象要素をstage読込範囲へ加える。
 過去イベントや生成時の抜粋で置き換えない。対象ファイルのhashを実行入力に含め、latestが変わったら影響stageを再検証する。
 参照先欠落・意味の矛盾・`needs-spec-change` は実装開始条件を満たさないため、仕様への変更要求へ戻す。
+本文が提案採用後を記述している場合は、イベントのREADME、_review/proposal-baseline.md、readinessを先に確認する。本文に未確定の注記がないことを、上流で採用済みの根拠にしない。
 HTTP/非同期の型は生成コードとUC sliceから読む。RDBは所有索引から対象domainと必要外部列だけを読み、全体bundleをUC担当へ渡さない。分割正本との一致検査はbootstrap P4に従う。
 
 ## オーケストレータの原則

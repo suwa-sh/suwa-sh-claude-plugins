@@ -1,0 +1,10 @@
+description: 貸出状態のwire値。意味・遷移は docs/rdra/latest/状態.tsv の貸出状態を参照。
+enum:
+- 貸出中
+- 返却済み
+- 延滞
+type: string
+x-enum-varnames:
+- ON_LOAN
+- RETURNED
+- OVERDUE

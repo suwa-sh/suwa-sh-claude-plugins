@@ -1,0 +1,8 @@
+description: 利用者状態のwire値。意味・遷移は docs/rdra/latest/状態.tsv の利用者状態を参照。
+enum:
+- 登録済み
+- 取引進行中
+type: string
+x-enum-varnames:
+- REGISTERED
+- IN_TRANSACTION

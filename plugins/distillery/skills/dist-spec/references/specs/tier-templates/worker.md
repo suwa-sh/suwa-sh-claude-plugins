@@ -1,5 +1,8 @@
 # tier-{tier_id}.md フォーマット（非同期処理 / ワーカー系ティア）
 
+`product-spec-writing.md`を適用する。生成本文は実装対象の振る舞いを表、リスト、図で記述し、生成状態は本文外へ記録する。還流後は具体案と最新正本が一致すれば本文を維持して整合確認を記録する。
+
+
 > 新規生成は `references/specs/latest-linked-spec.md` を優先する。業務条件・状態遷移はRDRA latest、部品契約はdesign latestのStorybookへ参照し、再定義しない。分割OpenAPIを直接編集し、不足はpipelineへ還流する。
 
 > **読み込みタイミング**: Step3 の UC Spec 生成 subagent が、対象ティアの kind に一致するファイル**だけ**を読む

@@ -74,3 +74,10 @@ AsyncAPIもoperation/channel/message/schemaを分割して人が編集し、bund
 RDBはarch latestのサブドメイン所有索引からdomain正本・必要な外部列へ段階的に読み込みます。
 全体bundleは検証とcodegenの入力です。この分割は物理DBの分割を意味しません。
 [分割と段階的開示のサンプル](samples/distillery/spec-progressive/README.md)を参照してください。
+
+### spec本文と還流の記録
+
+spec本文は具体的な変更提案を採用した場合のシステムの振る舞いを記述します。
+生成状態と採用状況は本文外のレビュー記録で管理します。
+還流後は更新されたlatestと照合し、同じ案が採用された場合は本文を維持します。
+tier仕様は条件と結果の表、処理順序のリスト、必要なシーケンス図を使い、日本語のテクニカルライティング規範に従います。

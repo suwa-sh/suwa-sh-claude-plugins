@@ -1,5 +1,10 @@
 # latestを接続する貸出仕様と還流サンプル
 
+最新の本文レビュー例: [採用後の目標仕様](docs/specs/events/20260906_122355_spec_generation/README.md)。
+生成状態を本文外へ分離し、tierを表とリストで整理した。[新旧比較HTML](../../../plans/dist-spec-product-review.html)から確認できる。
+以下は前回の不足検出時の記録。
+
+
 変更後dist-specを貸出登録1UCへ適用した実際の出力。独立したdocs/プロジェクトとして読む。
 
 - 生成イベント: [貸出登録spec](docs/specs/events/20260906_120000_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md)

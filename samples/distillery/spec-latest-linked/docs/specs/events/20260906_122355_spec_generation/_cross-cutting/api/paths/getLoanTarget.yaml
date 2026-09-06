@@ -1,0 +1,22 @@
+get:
+  description: 提示された利用者番号から対象を特定する（司書ロール限定）。loanableの業務判定は docs/rdra/latest/条件.tsv の貸出可否条件と docs/rdra/latest/状態.tsv
+    の利用者状態を参照する。
+  operationId: getLoanTarget
+  responses:
+    '200':
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/LoanTargetResponse.yaml
+      description: 貸出対象利用者
+    '401':
+      $ref: ../components/responses/Unauthorized.yaml
+    '403':
+      $ref: ../components/responses/Forbidden.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+  summary: 利用者番号で貸出対象利用者を特定する
+  tags:
+  - loans
+parameters:
+- $ref: ../components/parameters/UserNoPath.yaml

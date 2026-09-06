@@ -1,0 +1,5 @@
+description: 処理結果を確定して返せない。同じキーと要求を保持し、有効期限内は同じ組で再試行する。期限切れは貸出記録を確認する。
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/TemporarilyUnavailableResponse.yaml

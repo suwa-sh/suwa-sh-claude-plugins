@@ -1,0 +1,5 @@
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/BusinessRuleViolationResponse.yaml
+description: 業務ルール違反（条件の未充足、状態の競合、楽観ロック競合）

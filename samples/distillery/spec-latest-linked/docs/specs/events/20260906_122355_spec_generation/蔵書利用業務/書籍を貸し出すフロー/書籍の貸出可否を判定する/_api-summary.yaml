@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "書籍を貸し出すフロー",
+  "business": "蔵書利用業務",
+  "consumes": [],
+  "contract_sha256": "009e49890414952ebf6b02424fd4db2ec9764b2e28c3102cf4451b342d2e51b7",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1api~1v1~1loans~1eligibility-checks/post",
+      "kind": "openapi",
+      "method": "POST",
+      "operation_id": "checkLoanEligibility",
+      "path": "/api/v1/loans/eligibility-checks",
+      "summary": "書籍の貸出可否を判定する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "書籍の貸出可否を判定する"
+}

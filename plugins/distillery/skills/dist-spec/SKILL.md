@@ -64,9 +64,10 @@ failed返却は4 ledgerをすべて空配列にし、非空・単一行の`phase
 
 ## 新規生成の方針（優先）
 
-`references/specs/latest-linked-spec.md`を最初に読み、全生成・レビュー担当へ渡す。
+`references/specs/latest-linked-spec.md`と`references/specs/product-spec-writing.md`を最初に読み、全生成・レビュー担当へ渡す。
+specとtierの本文は実装対象を説明する。生成状態や編集指示は本文外へ分離する。表、リスト、図を内容に応じて使い、日本語技術文書の文章規範に従う。
 データフローと分岐を含むシーケンスを生成し、業務条件・状態遷移はRDRA latest、UI部品はdesign latestのStorybookへ参照する。
-前段に不足があればspecで補完せず、pipelineが受理できる変更要求を生成する。仕様の参照先はlatestとし固定イベントにしない。
+前段に不足があれば具体的な変更提案を還流要求にまとめ、本文には採用後の姿を記述する。採用状況はproposal-baselineで管理し、還流後はlatestとの整合確認を優先する。仕様の参照先はlatestとし固定イベントにしない。
 下記の旧Step説明との競合時はこの規約を優先する。Step2/4c/4eのdesignあり処理は既存部品の参照・接続確認へ置き換える。
 
 ## 出力の完了基準
@@ -612,6 +613,10 @@ node <skill-path>/scripts/validateModelSummary.js docs/specs/events/{event_id}/{
 - `_api-summary.yaml`: paths の method/path/summary 必須、async_events の name/channel 必須
 - `_model-summary.yaml`: models の name/tier/layer/type 必須、tables の name/operations 必須
 
+新規生成した各UCに `node <skill-path>/scripts/validateSpecProse.js <UC-directory>` を実行する。
+この検査は生成状態と編集指示の典型的な混入だけを検出する。参照の意味、提案との対応、文章の明確さはレビュー担当が確認する。
+過去イベントの互換読込には適用しない。
+
 **Step 6-pre-3: Cross-Cutting YAML スキーマバリデーション**
 
 ```bash
@@ -755,7 +760,7 @@ spec-stories スキルの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/dist-spec-stori
 3. **OpenAPIは分割して人が直接編集する**: paths/componentsと入口を正本にし、Swagger UI・codegen向けにbundleを生成する。所有者索引・summary・sliceを併用する。
 4. **共通の技術規則だけ_cross-cuttingへ定義する**: 複数UCで同じ意味の規則は一元化し、UC固有の実行条件はtierに残す。
 5. **不足はpipelineへ還流する**: RDRAにない数値やUIにないPropsを創作しない。結果を左右する不足がある場合はneeds-spec-changeでイベントに保存し、latestへ昇格しない。
-6. **BDDは参照した正本に基づく具体例**: 未確定の期待値はblockedとし、上流解決後にlatestを読み直して確定する。
+6. **BDDは提案採用後の具体例**: 採用状況は本文外で管理する。上流の最新内容と提案が一致すれば、本文を維持して整合確認を記録する。
 
 ## 実装上の注意事項
 

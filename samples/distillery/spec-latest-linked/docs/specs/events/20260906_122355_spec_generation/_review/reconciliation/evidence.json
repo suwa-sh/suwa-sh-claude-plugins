@@ -1,0 +1,65 @@
+{
+  "schema_version": "distillery.reconciliation-demonstration/v1",
+  "scope": "CR-60d99956-004 component docs and Story description only",
+  "execution_kind": "isolated_hypothetical_fixture",
+  "actual_upstream_modified": false,
+  "pipeline_executed": false,
+  "latest_promoted": false,
+  "input_sha256": {
+    "rdra/latest/条件.tsv": "644d3dfb8f304bd3ed92919789e91f144a742af8a85341024585aad4b9c7422b",
+    "rdra/latest/状態.tsv": "b5aece56d84b1e1568c198fd81573f123a0cc9695f257aabc9182bcb10e0f110",
+    "rdra/latest/バリエーション.tsv": "f04939624d34457afd9d256784a8481a14c527fc24d69ba14742b3c017e2fe7c",
+    "arch/latest/arch-design.md": "267c3562bc43e5e7029d917cd23f905f3f37f506a37c128949ccd9f2a5154e2e",
+    "design/latest/storybook-app/src/components/common/SubmitActionButton.tsx": "61574b4369f94d2b6121785ba29ee1246c1cfbd96f06beb43a9d13a0e96e7411",
+    "design/latest/storybook-app/src/stories/forms/SubmitActionButton.stories.tsx": "96cad758bb3a568b635912b489c3c08c2e5b12970be258269ea72690ca944e3d",
+    "design/latest/storybook-app/src/components/ui/Button.tsx": "b189a7c24a6ef8dbf4f470dfbd75480ebe3595adee5859ebfeb827f160b8fe1f",
+    "design/latest/storybook-app/src/components/domain/LoanConfirmation.tsx": "a4e9bb758978cba8360ea35e3af322a86668b69f0fba9a14365faedec9788412",
+    "design/latest/storybook-app/src/components/domain/LoanConfirmation.stories.tsx": "1f9f8493e63bda3115474610fd57fb7aca68f01293535f5368a2220c43466508",
+    "design/latest/storybook-app/src/components/domain/UserProfileCard.tsx": "acde9b6134b792c8c6036e6616dd22dc7481dfebbf3877dce1b0db082efd76f3",
+    "design/latest/storybook-app/src/stories/Pages/司書ポータル/窓口貸出受付画面.stories.tsx": "d197e9a4e3e0f6ef1f546381ba4b33b40e272d5be69cb49abab89c1eff241810"
+  },
+  "target_body_sha256_before": {
+    "_cross-cutting/technical-rules.md": "65c7b11e8fdc7f2b6456ff5f7338fc8cd49ad5c6d6a928daedb8315d3bb4cdf0",
+    "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/_model-summary.yaml": "e64e16c830c35d25d3d926099c40de30c574603c2adf92ab465203384b254b4d",
+    "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/spec.md": "d125b05123e8edba4ec0f309b02d4c746886ed5bb196f45d850ff908a22ea719",
+    "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/tier-backend-api.md": "ce0bd508b933dd2717a98d02de0752160f9455bdef0d32b8ff8dcefd40a28415",
+    "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/_model-summary.yaml": "facdb968de80f772941fb76f59ed1b79dd48f1b0dd0a92ba5324859faab6caba",
+    "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/spec.md": "3e08790622f1db07444472c910c82caa602a4da4e3905be9da9c9602b7c0c38e",
+    "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/tier-backend-api.md": "e3b3b329df202e989cbe0eaf4955ff10bff55cae9caba1a66126bab6d88e7ec7",
+    "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/_model-summary.yaml": "b16cc01cda4b76dc4a574f8ff57c99ca513a3508ec70c16e19c2db92ea06b2a1",
+    "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/spec.md": "fdc98256fc368da32fef245b2d6628bcf2ee64da629734f5f0a4ae21024b82bf",
+    "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/tier-backend-api.md": "f1f9c3005e39833664571516b94f9cc6b0be1af79277e62c91da70ba95d1c8f0",
+    "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml": "ccd4a2fc6d0a954d7e6493b6409b9164cec685be30c7c50cc3e5edb39bc0c021",
+    "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md": "1880a9e936920a99dcd20b9a78df97de03889abd86261304118de42facaf4ccd",
+    "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md": "7a14e88c0bd11c862f78ee7aa5deb9922e559e0ed703fc0a02a0754c7e96bc70",
+    "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md": "463c3fb52c3a9d9a907cb7765f9f7b8b9632b730b8c6d5202ed94c738210769c"
+  },
+  "target_body_sha256_after": {
+    "_cross-cutting/technical-rules.md": "65c7b11e8fdc7f2b6456ff5f7338fc8cd49ad5c6d6a928daedb8315d3bb4cdf0",
+    "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/_model-summary.yaml": "e64e16c830c35d25d3d926099c40de30c574603c2adf92ab465203384b254b4d",
+    "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/spec.md": "d125b05123e8edba4ec0f309b02d4c746886ed5bb196f45d850ff908a22ea719",
+    "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/tier-backend-api.md": "ce0bd508b933dd2717a98d02de0752160f9455bdef0d32b8ff8dcefd40a28415",
+    "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/_model-summary.yaml": "facdb968de80f772941fb76f59ed1b79dd48f1b0dd0a92ba5324859faab6caba",
+    "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/spec.md": "3e08790622f1db07444472c910c82caa602a4da4e3905be9da9c9602b7c0c38e",
+    "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/tier-backend-api.md": "e3b3b329df202e989cbe0eaf4955ff10bff55cae9caba1a66126bab6d88e7ec7",
+    "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/_model-summary.yaml": "b16cc01cda4b76dc4a574f8ff57c99ca513a3508ec70c16e19c2db92ea06b2a1",
+    "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/spec.md": "fdc98256fc368da32fef245b2d6628bcf2ee64da629734f5f0a4ae21024b82bf",
+    "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/tier-backend-api.md": "f1f9c3005e39833664571516b94f9cc6b0be1af79277e62c91da70ba95d1c8f0",
+    "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml": "ccd4a2fc6d0a954d7e6493b6409b9164cec685be30c7c50cc3e5edb39bc0c021",
+    "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/spec.md": "1880a9e936920a99dcd20b9a78df97de03889abd86261304118de42facaf4ccd",
+    "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md": "7a14e88c0bd11c862f78ee7aa5deb9922e559e0ed703fc0a02a0754c7e96bc70",
+    "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md": "463c3fb52c3a9d9a907cb7765f9f7b8b9632b730b8c6d5202ed94c738210769c"
+  },
+  "body_unchanged": true,
+  "checks": {
+    "component_outside_docs_unchanged": true,
+    "story_outside_description_unchanged": true,
+    "button_unchanged": true,
+    "actual_upstream_unchanged": true
+  },
+  "limitations": [
+    "Static source inspection and exact-span equality; no browser interaction or HTTP test.",
+    "Seven actual proposals remain pending; only CR-004 documentation adoption is simulated.",
+    "Hashes establish byte identity, not semantic completeness."
+  ]
+}

@@ -1,0 +1,19 @@
+description: 対象書籍に取置き中の予約がある場合のその予約情報
+properties:
+  hold_expires_at:
+    description: 取置き期限
+    format: date-time
+    type: string
+  holder_user_no:
+    $ref: ./UserNo.yaml
+  priority:
+    description: 予約順位
+    minimum: 1
+    type: integer
+  reservation_id:
+    $ref: ./ReservationId.yaml
+required:
+- reservation_id
+- priority
+- holder_user_no
+type: object

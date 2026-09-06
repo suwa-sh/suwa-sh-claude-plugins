@@ -1,0 +1,6 @@
+description: 書籍を一意に識別する ID
+examples:
+- BK-00000123
+maxLength: 36
+minLength: 1
+type: string

@@ -1,0 +1,104 @@
+# 既存出力から引き継いだ参考コンテキスト。今回の意味レビュー対象外。
+# _model-summary.yaml
+uc: "書籍の貸出可否を判定する"
+business: "蔵書利用業務"
+buc: "書籍を貸し出すフロー"
+
+bounded_context_id: "BC-003"
+
+models:
+  - name: "貸出可否判定画面（BookCard / UserProfileCard / Alert）"
+    tier: "tier-frontend-staff"
+    layer: "view"
+    type: "view-model"
+    rdra_info: "書籍"
+  - name: "EligibilityCheckState"
+    tier: "tier-frontend-staff"
+    layer: "state"
+    type: "state"
+    rdra_info: "書籍"
+  - name: "LoanEligibilityRequest"
+    tier: "tier-frontend-staff"
+    layer: "api-client"
+    type: "request"
+    rdra_info: "書籍"
+  - name: "LoanEligibilityRequest"
+    tier: "tier-backend-api"
+    layer: "presentation"
+    type: "request-dto"
+    rdra_info: "書籍"
+  - name: "CheckLoanEligibilityQuery"
+    tier: "tier-backend-api"
+    layer: "usecase"
+    type: "query"
+    rdra_info: "貸出"
+  - name: "Book"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "書籍"
+  - name: "User"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "利用者"
+  - name: "Reservation"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "entity"
+    rdra_info: "予約"
+  - name: "LoanEligibility"
+    tier: "tier-backend-api"
+    layer: "domain"
+    type: "value-object"
+    rdra_info: "貸出"
+  - name: "BookRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "書籍"
+  - name: "UserRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "利用者"
+  - name: "ReservationRecord"
+    tier: "tier-backend-api"
+    layer: "gateway"
+    type: "record"
+    rdra_info: "予約"
+
+tables:
+  - name: "books"
+    rdra_info: "書籍"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id"
+    indexes_needed:
+      - columns: ["book_id"]
+        reason: "書籍IDでの単一検索。主キーで充足する"
+        access_pattern: "判定対象書籍の 1 件取得"
+  - name: "users"
+    rdra_info: "利用者"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "user_no = :user_no"
+    indexes_needed:
+      - columns: ["user_no"]
+        reason: "利用者番号での単一検索。主キーで充足する"
+        access_pattern: "貸出対象利用者の 1 件取得"
+  - name: "reservations"
+    rdra_info: "予約"
+    operations:
+      - type: "SELECT"
+        columns: []
+        where: "book_id = :book_id AND reservation_status IN ('予約中','取置き中') ORDER BY priority ASC"
+    indexes_needed:
+      - columns: ["book_id", "reservation_status", "priority"]
+        reason: "取置き中書籍貸出条件で対象書籍の有効な予約を順位順に取得する。カーディナリティの高い book_id を先頭に置き、状態で絞って順位でソートする"
+        access_pattern: "書籍ID + 予約状態（予約中/取置き中）で絞り込み、予約順位の昇順で先頭 1 件を判定に使う"
+
+kvs: []
+object_storage: []

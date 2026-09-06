@@ -294,3 +294,10 @@ node <skill-path>/scripts/feedbackLease.js release \
 
 feedback modeでRDRAにない要素が必要になった場合は、通常modeの「TODOへ記録して続行」を上書きし、
 `appendTodo.js`へ記録したうえで当該work unitを`deferred`としてstageを停止する。暗黙追加は禁止。
+
+## 提案採用後のspec照合
+
+specが具体的な変更要求の採用後を記述済みの場合、spec工程へ提案の基準と更新後latestの整合確認を割り当てる。
+同じ案の採用なら本文を維持し、異なる結果をもたらす変更がある場合だけ影響箇所を修正する。
+要求がappliedと申告されたことだけで整合を認めず、対象要素、契約、分岐、BDDを実際のlatestと照合する。
+確認結果と採用状況はレビュー記録で管理する。本文の不変性はstageの成功やno-changeを自動的に意味せず、既存のイベントとledgerの規約を適用する。

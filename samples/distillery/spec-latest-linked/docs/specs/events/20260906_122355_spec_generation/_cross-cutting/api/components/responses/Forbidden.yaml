@@ -1,0 +1,5 @@
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/ErrorResponse.yaml
+description: 認可エラー（ロール不足、または本人限定参照に違反）
