@@ -23,9 +23,10 @@ page='''<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewpor
   domains/SD-001.yaml             # 蔵書貸出・予約の正本
   domains/SD-002.yaml             # 蔵書目録の正本
   domains/SD-003.yaml             # 利用者管理の正本
+  generated/table-index.yaml     # table名→所有者・正本の小さい索引
   generated/rdb-schema.bundle.yaml
   generated/domain-slices/SD-001.yaml
   generated/domain-slices/SD-002.yaml
-  generated/domain-slices/SD-003.yaml</pre><p>サブドメインとエンティティの所有先はarch latestに従います。対象domainのsliceには自分のテーブルと、外部キーの検証に必要な境界外のキーだけを含めます。外部のemail等を業務処理が使う場合は、その列・制約を所有先から追加で読みます。キーだけの外部ビューから完全なrow型やDDLを生成しません。</p><p class="note">仕様の分割は物理DBやトランザクションの分割を意味しません。複数domainの表を同じ取引で更新する場合、その原子性・更新責務はarch latestとtierに残します。所有先が不明な表は勝手にcommonへ入れず、archへ還流します。</p><h2>生成したサンプルを読む</h2><p>AsyncAPIは既存の契約テスト用サンプルを分割。RDBは現行サンプルのloans・books・usersを既存archのSD-001/002/003へ配置しました。分割・参照・生成の検証用であり、前回の貸出仕様の7件の還流要求を解決したものではありません。以下は実ファイルの全文です。</p>'''+''.join(parts)+'''<p>仕様の意味はlatestを参照し、過去イベントへの固定は行いません。ソース: samples/distillery/spec-progressive</p></main></html>'''
+  generated/domain-slices/SD-003.yaml</pre><p>サブドメインとエンティティの所有先はarch latestに従います。table-index.yamlでテーブル名から所有先へ直接進めるため、所在確認のために全領域の本文を読む必要はありません。対象domainのsliceには自分のテーブルと、外部キーの検証に必要な境界外のキーだけを含めます。外部のemail等を業務処理が使う場合は、その列・制約を所有先から追加で読みます。キーだけの外部ビューから完全なrow型やDDLを生成しません。</p><p class="note">仕様の分割は物理DBやトランザクションの分割を意味しません。複数domainの表を同じ取引で更新する場合、その原子性・更新責務はarch latestとtierに残します。所有先が不明な表は勝手にcommonへ入れず、archへ還流します。</p><h2>生成したサンプルを読む</h2><p>AsyncAPIは既存の契約テスト用サンプルを分割。RDBは現行サンプルのloans・books・usersを既存archのSD-001/002/003へ配置しました。分割・参照・生成の検証用であり、前回の貸出仕様の7件の還流要求を解決したものではありません。以下は実ファイルの全文です。</p>'''+''.join(parts)+'''<p>仕様の意味はlatestを参照し、過去イベントへの固定は行いません。ソース: samples/distillery/spec-progressive</p></main></html>'''
 (root/'plans/dist-spec-progressive-review.html').write_text(page)
 print(f'{len(page.encode())} bytes')

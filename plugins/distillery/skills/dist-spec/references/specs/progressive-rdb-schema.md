@@ -11,6 +11,7 @@ _cross-cutting/datastore/
     SD-001.yaml                      # このサブドメインが所有する全テーブル
     SD-002.yaml
   generated/                         # 編集禁止、以下は再生成する
+    table-index.yaml                 # テーブル名 → 所有者と正本の小索引
     rdb-schema.bundle.yaml           # 従来の version/datastore/tables 形
     domain-slices/
       SD-001.yaml                    # 自領域全文 + 他領域の参照キー
@@ -39,7 +40,7 @@ arch が未定義、所有者が不明・複数候補、技術テーブルの対
 
 ## 読む順番
 
-1. 入口で対象サブドメインの ID とファイルを特定する。
+1. 入口で分割形式とサブドメイン一覧を確認し、`generated/table-index.yaml` で対象テーブルの `subdomain_id` と `source` を引く。全領域の本文を開く必要はない。索引にはテーブル名・所有者・正本への相対パスだけを置き、型や制約は複製しない。
 2. その `domains/{id}.yaml` または生成 slice を読む。自領域は型・制約・索引・利用 UC の全文が揃う。
 3. FK の参照先は slice の `external_tables` に所有者、正本への相対 `source`、`read_only: true`、必要なキー列のみを示す。自領域の制約を理解するための投影であり、書き込み権限を定義しない。
 4. 参照先の非キー列や業務上の解釈が実装に必要な場合だけ、その所有者ファイルを追加で読む。全 bundle は全体整合性の検証やマイグレーション生成時に読む。

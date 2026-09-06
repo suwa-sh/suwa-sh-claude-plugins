@@ -8,9 +8,9 @@
 | domains/SD-002.yaml | BC-001 / E-001 / 蔵書目録 | books | なし |
 | domains/SD-003.yaml | BC-002 / E-002 / 利用者管理 | users | なし |
 
-人が編集するのは `rdb-schema.yaml` の一覧と `domains/*.yaml` の所有テーブル。貸出の実装者は入口から SD-001 だけを開き、FK 対象の型は `generated/domain-slices/SD-001.yaml` で確認する。書籍タイトルや利用者連絡先など参照先の非キー列まで必要なら、該当所有者の正本を追加で開く。
+人が編集するのは `rdb-schema.yaml` の一覧と `domains/*.yaml` の所有テーブル。貸出の実装者は入口 → `generated/table-index.yaml` の `loans` → `domains/SD-001.yaml` の順に開き、FK 対象の型は `generated/domain-slices/SD-001.yaml` で確認する。書籍タイトルや利用者連絡先など参照先の非キー列まで必要なら、該当所有者の正本を追加で開く。
 
-実行は `/private/tmp/dist-progressive-rdb-JuV5pR` に現行 arch/latest と編集用 3 ファイルを置いて行った。`compileRdbSchema.js` で bundle と 3 slice を生成し、`--check` 成功後に本ディレクトリへコピーした。編集ファイルに追加した情報は arch で確認済みの `entity_id` とサブドメインの所有宣言だけ。生成 bundle の 3 テーブルは現行の定義と構造一致する。
+実行は `/private/tmp/dist-progressive-rdb-JuV5pR` に現行 arch/latest と編集用 3 ファイルを置いて行った。`compileRdbSchema.js` で bundle と 3 slice を生成し、`--check` 成功後に本ディレクトリへコピーした。その後、テーブル所有者の小索引を生成対象へ追加し、本ディレクトリで再生成・検証した。編集ファイルに追加した情報は arch で確認済みの `entity_id` とサブドメインの所有宣言だけ。生成 bundle の 3 テーブルは現行の定義と構造一致する。
 
 再実行（リポジトリルート）:
 

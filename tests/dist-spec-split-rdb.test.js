@@ -90,3 +90,16 @@ test('real RDB sample preserves latest source definitions and declared ownership
   const slice = YAML.parse(fs.readFileSync(path.join(sample, 'generated/domain-slices/SD-001.yaml'), 'utf8'));
   assert.deepEqual(slice.external_tables.map(t => [t.name, t.columns.map(c => c.name)]), [['books', ['book_id']], ['users', ['user_no']]]);
 });
+test('RDB table index resolves owners without loading domain table definitions', t => {
+  const f = setup(t); f.run();
+  const index = f.read('table-index.yaml');
+  assert.equal(index.generated, true);
+  assert.deepEqual(index.tables.map(x => x.table), ['books', 'loans', 'publishers']);
+  const loans = index.tables.find(x => x.table === 'loans');
+  assert.deepEqual(loans, { table: 'loans', subdomain_id: 'SD-001', source: '../domains/SD-001.yaml' });
+  const ownerFile = path.resolve(f.root, 'schema/generated', loans.source);
+  assert.equal(YAML.parse(fs.readFileSync(ownerFile, 'utf8')).subdomain_id, loans.subdomain_id);
+  assert.ok(index.tables.every(x => Object.keys(x).sort().join(',') === 'source,subdomain_id,table'));
+  fs.writeFileSync(path.join(f.root, 'schema/generated/table-index.yaml'), 'stale');
+  assert.throws(() => f.run({ check: true }), /table-index.yaml/);
+});

@@ -110,6 +110,8 @@ function compileRdbSchema(entryPath, options = {}) {
   const ordered = [...tables.values()].sort((a, b) => a.name.localeCompare(b.name, 'en'));
   const legacyTable = table => { const { entity_id, ...legacy } = table; return legacy; };
   const outputs = new Map();
+  outputs.set('generated/table-index.yaml', encode({ schema_version: 'distillery.rdb-table-index/v1', generated: true,
+    tables: ordered.map(table => ({ table: table.name, subdomain_id: owners.get(table.name), source: `../domains/${owners.get(table.name)}.yaml` })) }));
   outputs.set('generated/rdb-schema.bundle.yaml', encode({ version: source.version, datastore: 'rdb', tables: ordered.map(legacyTable) }));
   for (const domain of [...domains].sort((a, b) => a.id.localeCompare(b.id, 'en'))) {
     const local = ordered.filter(t => owners.get(t.name) === domain.id);

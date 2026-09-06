@@ -74,6 +74,6 @@ pipelineのinspect/planで実際に受理・stageルーティングされるこ�
 
 AsyncAPIはoperation/channel/message/schemaをネイティブの$refで分割する。配送保証、再試行、ACK、順序、重複処理、障害の意味は操作の技術条件へ接続する。分割したことで実装判断を省かない。詳細はcontract-catalog.md。
 
-RDBはarch latestで定義されたサブドメインのIDを使い、各テーブルの正本所有者を1つにする。詳細はprogressive-rdb-schema.md。外部キーの相手の定義を編集可能なコピーにしない。UCが読む外部カラムは_model-summaryの操作に基づき必要範囲へ追加し、FKキーだけのビューで業務照会を実装可能と誤判定しない。
+RDBはarch latestで定義されたサブドメインのIDを使い、各テーブルの正本所有者を1つにする。入口と生成する `generated/table-index.yaml` からテーブル名で所有先を特定できるようにする。詳細はprogressive-rdb-schema.md。外部キーの相手の定義を編集可能なコピーにしない。UCが読む外部カラムは_model-summaryの操作に基づき必要範囲へ追加し、FKキーだけのビューで業務照会を実装可能と誤判定しない。
 
 この所有境界は仕様を編集・閲覧する境界であり、物理DB分割・FK禁止・分散トランザクション化を意味しない。複数所有者の表を更新するUCは、原子性と更新責務を従来どおりarch latest/tierで確定する。所有先が曖昧ならarchへの還流要求にする。

@@ -1,0 +1,12 @@
+schema_version: distillery.rdb-table-index/v1
+generated: true
+tables:
+  - table: books
+    subdomain_id: SD-002
+    source: ../domains/SD-002.yaml
+  - table: loans
+    subdomain_id: SD-001
+    source: ../domains/SD-001.yaml
+  - table: users
+    subdomain_id: SD-003
+    source: ../domains/SD-003.yaml

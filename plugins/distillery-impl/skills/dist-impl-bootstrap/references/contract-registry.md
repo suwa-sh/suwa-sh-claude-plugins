@@ -108,7 +108,7 @@ lock の機械可読キーに反映する**(スキーマは state-schema.md):
 
 - **source**: 入口 `_cross-cutting/datastore/rdb-schema.yaml` のschema_versionが `distillery.rdb-split/v1` なら、`generated/rdb-schema.bundle.yaml` をcodegen入力とする。legacyは入口自体。
   分割形式のP4では `compileRdbSchema.js <入口ファイル> --check` を実行する。入口と全domain正本、生成bundleのhashを変更検知へ含める。
-  実装担当の読込は小さい所有索引 → 対象domain slice → UC操作に必要な外部列・制約の順で広げる。
+  実装担当の読込は入口と `generated/table-index.yaml` の小さい所有索引 → 対象domain slice → UC操作に必要な外部列・制約の順で広げる。
   外部キーの参照キーだけを含むsliceは外部表の完全な定義ではなく、DDLや外部表のrow型の生成には使用しない。codegenは全体検証済みbundleから明示scopeを抽出する。
   `scope`(契約対象テーブル名の
   **完全一致**の配列。glob・正規表現は使わない)で契約対象のテーブル群を絞れる。
