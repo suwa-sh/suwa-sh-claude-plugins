@@ -20,6 +20,7 @@
 | 1.13.6 | API-DIRECTORIES | OpenAPIとAsyncAPIの編集ディレクトリを分離 | [契約](contracts.md)のAPI-DIRECTORIES |
 | 1.13.7 | REPO-ONLY | 開発用plans・testsの整理。利用者の出力への一律変更なし | この表のみ |
 | 1.14.0 | MIGRATION-GUIDE | dist-migre追加。出力契約は1.13.7と同じ | この表のみ |
+| 1.14.1 | INSTALLED-TARGET | インストール済み版への移行とdist-impl-migreへの引継ぎを明記。出力契約の変更なし | この表のみ |
 
 ## 選び方
 

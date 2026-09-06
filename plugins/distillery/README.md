@@ -267,6 +267,7 @@ MIT
 
 ## 既存出力のバージョン移行
 
-`/distillery:dist-migre docs/ を 1.9.4 から 1.14.0 へ移行して`で、該当版の変更点を基にLLMが計画・修正・検証を行います。
+`/distillery:dist-migre docs/ を現在のスキルに合わせて移行して`で、該当版の変更点を基にLLMが計画・修正・検証を行います。
 変更の導入版と判断材料は[移行ガイド](skills/dist-migre/references/migration-catalog.md)に蓄積します。プラグインのインストール更新とは別の処理です。
 [ガイド適用例](../../samples/distillery/migrations/README.md)では、1.13.5からの移行で読む変更点と検証範囲を示します。
+実装出力も移行する場合は、spec移行後に`distillery-impl:dist-impl-migre`を実行します。両スキルは移行先の版をそれぞれインストール済みpluginから読み取ります。

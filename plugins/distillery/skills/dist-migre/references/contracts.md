@@ -59,7 +59,6 @@ RDBのdomain分割は文書の所有境界。物理DB・トランザクション
 
 ## dist-implへの接続
 
-既存実装が対象範囲に含まれる場合、利用中のdistillery-implの規約を確認する。
-対応する版では分割APIのsourceはbundle、UCの型・制約はslice、RDBのcodegenは検証済みbundleを使う。
-旧入口を固定したcapability probeやcontracts lockがあれば、現行の契約レジストリに沿って再評価・再生成する。
-ソースhashだけを書き換えてcodegen済みとみなさない。既存アプリの再実装やS0〜S9の実行を、出力移行だけの依頼に追加しない。
+実装出力の移行は`distillery-impl:dist-impl-migre`へ引き継ぐ。本スキルは移行したspec・契約・未解決項目を示し、実装側のconfig・lock・codegen・stage状態を変更しない。
+後段では、実際の最新版規約に従ってbundle・UC slice・RDB・Storybookへの接続を確認する。
+両方の移行を依頼されている場合は本スキル完了後に実行する。前段が未完了の範囲を実装可能な確定仕様として渡さない。

@@ -9,6 +9,7 @@ description: >
 
 # dist-migre
 
+旧版で実施したoutputが残り、skillsだけが新版に差し替わっている状態から使う。
 成果物の意味を維持しながら、新しい出力構成へ移行する。変更ガイドをLLMの判断材料として使う。
 構造・文言の一括置換で移行完了としない。生成・検証スクリプトは整合確認と派生物の再生成に使う。
 
@@ -18,11 +19,12 @@ description: >
 |---|---|
 | 出力ルート | `specs/latest`、`rdra/latest`等を含むディレクトリ。通常は`docs/` |
 | 移行元バージョン | 過去の移行記録、生成時のplugin versionの記録、ユーザー指定と現物を照合する |
-| 移行先バージョン | ユーザー指定を優先。省略時は`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`を読み、対応表と照合する |
-| 作業範囲 | 出力全体、指定domain、指定UC。既存実装への追随が含まれるかも確認する |
+| 移行先バージョン | 実行中pluginの`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`を読み、対応表と照合する。通常、ユーザーによる指定は不要 |
+| 作業範囲 | Distilleryの出力全体、指定domain、指定UC。既存実装の移行はdist-impl-migreへ引き継ぐ |
 
 現在インストールされたpluginの版を移行元とみなさない。`spec-event.yaml`の`version`はイベントのschema版であり、plugin版ではない。
-版が確定できない場合は現物の構成を調べて候補を示す。候補で移行項目が変わる場合だけユーザーへ確認し、未確定の版を記録へ補わない。
+移行元を特定できなければ現物調査と候補を示して確認する。独立した調査は続け、未確定の版を記録へ補わず、移行完了としない。
+別の移行先を明示された場合は、その版の資材を確認する。現在の規約で代替しない。
 
 ## 実行
 
@@ -41,8 +43,10 @@ description: >
 利用例:
 
 ```text
-/distillery:dist-migre docs/ を 1.9.4 から 1.14.0 へ移行して
-/distillery:dist-migre docs/ の 1.13.5 → 1.14.0 の変更計画だけ作って
+/distillery:dist-migre docs/ を現在のスキルに合わせて移行して
+/distillery:dist-migre docs/ の移行計画だけ作って
 ```
+
+実装出力も対象なら本スキル → `distillery-impl:dist-impl-migre`の順に使う。前段の移行記録・未解決項目・変更したlatestを引き継ぎ、実装コードや実行状態は後段で扱う。
 
 将来の変更点を追加するときだけ `references/maintaining-guides.md` を読む。

@@ -81,6 +81,7 @@ flowchart TD
 
 | skill | 役割 |
 |---|---|
+| `distillery-impl:dist-impl-migre` | 旧版の実装出力をインストール済み版へLLMが移行。設定・契約・状態・コードを比較し、再開範囲を確認 |
 | `distillery-impl:dist-impl-run` | オーケストレータ。UC 指定または引数なし(実施順で自動選択)で実装・人レビュー・1 commit化・PR作成まで運転(通常はこれだけ呼べばよい) |
 | `distillery-impl:dist-impl-bootstrap` | 実装リポの骨格生成・契約 codegen・Storybook 取り込み(冪等) |
 | `distillery-impl:dist-impl-implement` | Implementer(test-scaffold / tier-impl / uc-bdd / atdd の 4 mode) |
@@ -148,3 +149,10 @@ Cloudflare Vulnerability Research Harnessの設計原則を、仕様駆動実装
 
 - 解説記事: [技術調査 - Cloudflare 脆弱性探索ハーネス (VDH/VVS)](https://suwa-sh.github.io/zenn-contents/articles/cloudflare-vulnerability-harness_20260619/)
 - 一次情報: [Build your own vulnerability harness — Cloudflare Blog](https://blog.cloudflare.com/build-your-own-vulnerability-harness/)
+
+## 既存出力のバージョン移行
+
+旧版の出力を残したままskillsを新版へ差し替えた後、`/distillery-impl:dist-impl-migre この実装リポジトリを現在のスキルに合わせて移行して`を使います。
+移行先の版は実行中pluginから取得し、移行元は生成記録等と現物を照合します。特定できなければ確認します。
+[変更ガイド](skills/dist-impl-migre/references/migration-catalog.md)に沿ってLLMが修正・検証します。spec側も移行する場合はdist-migreを先に実行します。
+移行完了とS0〜S9の完了は別に報告し、未実施のstageや承認を完了扱いにしません。
