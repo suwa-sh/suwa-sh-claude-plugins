@@ -1,0 +1,51 @@
+{
+  "async_events": [],
+  "buc": "書籍を貸し出すフロー",
+  "business": "貸出業務",
+  "consumes": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1users~1{user_number}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getUser",
+      "owner_uc": "利用者管理業務/利用者を管理するフロー/利用者を編集する",
+      "path": "/staff/users/{user_number}",
+      "summary": "利用者を編集するの入力・確認データ取得",
+      "tier": "tier-frontend-staff"
+    },
+    {
+      "contract_ref": "openapi#/paths/~1books~1{book_id}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getBook",
+      "owner_uc": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する",
+      "path": "/books/{book_id}",
+      "summary": "書籍詳細を参照する",
+      "tier": "tier-frontend-staff"
+    }
+  ],
+  "contract_sha256": "6f1d67d567645528fa27c72580a368049a32abcea92c19849ab163cf7b92a895",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1loans/post",
+      "kind": "openapi",
+      "method": "POST",
+      "operation_id": "createLoan",
+      "path": "/staff/loans",
+      "summary": "貸出を登録する",
+      "tier": "tier-backend-api"
+    },
+    {
+      "contract_ref": "openapi#/paths/~1staff~1loan-eligibility/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getLoanEligibility",
+      "path": "/staff/loan-eligibility",
+      "summary": "貸出を登録するの入力・確認データ取得",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "貸出を登録する"
+}

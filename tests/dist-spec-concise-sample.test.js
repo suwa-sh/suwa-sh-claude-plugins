@@ -8,10 +8,10 @@ const { spawnSync } = require('node:child_process');
 const test = require('node:test');
 
 const root = path.resolve(__dirname, '..');
-const originalRoot = path.join(root, 'samples/distillery/pipeline-opus-medium/specs/latest');
+const originalRoot = path.join(root, 'tests/fixtures/distillery/legacy-pipeline/specs/latest');
 const ucPath = '蔵書利用業務/書籍を貸し出すフロー/貸出を登録する';
 const original = path.join(originalRoot, ucPath);
-const concise = path.join(root, 'samples/distillery/spec-concise/loan-registration');
+const concise = path.join(root, 'tests/fixtures/distillery/spec-concise/loan-registration');
 const documents = ['spec.md', 'tier-backend-api.md', 'tier-frontend-staff.md'];
 const summaries = ['_api-summary.yaml', '_model-summary.yaml'];
 const scripts = path.join(root, 'plugins/distillery/skills/dist-spec/scripts');
@@ -32,7 +32,7 @@ test('editorial reduction preserves API dependencies and all model operations', 
   }
   // API request/response/error and replay contract remain the generation source in phase 1.
   const apiSection = text => text.slice(text.indexOf('#### リクエスト'), text.indexOf('## 非同期イベント'))
-    .replaceAll('../../pipeline-opus-medium/specs/latest/_cross-cutting/', '_cross-cutting/');
+    .replaceAll('../../legacy-pipeline/specs/latest/_cross-cutting/', '_cross-cutting/');
   assert.equal(apiSection(read(concise, documents[1])), apiSection(read(original, documents[1])));
 });
 
@@ -58,7 +58,7 @@ test('concise UC overlays pass existing event and summary validators in an isola
     const uc = path.join(temp, ucPath);
     for (const name of [...documents, ...summaries]) {
       // The standalone sample links to the original shared definitions; an event uses its own root.
-      const text = read(concise, name).replaceAll('../../pipeline-opus-medium/specs/latest/_cross-cutting/', '../../../_cross-cutting/');
+      const text = read(concise, name).replaceAll('../../legacy-pipeline/specs/latest/_cross-cutting/', '../../../_cross-cutting/');
       fs.writeFileSync(path.join(uc, name), text);
     }
     for (const [script, target] of [

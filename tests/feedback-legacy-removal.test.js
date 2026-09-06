@@ -11,6 +11,7 @@ const scanRoots = [
   path.join(root, 'plugins/distillery'),
   path.join(root, 'plugins/distillery-impl'),
   path.join(root, 'samples/distillery'),
+  path.join(root, 'tests/fixtures/distillery'),
   path.join(root, 'samples/distillery-impl'),
 ];
 const forbidden = [

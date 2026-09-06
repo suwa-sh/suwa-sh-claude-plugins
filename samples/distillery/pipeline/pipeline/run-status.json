@@ -1,0 +1,121 @@
+{
+  "pipeline": {
+    "state": "completed",
+    "started_at": "2026-09-06T04:17:31.401Z",
+    "current_step": "6b",
+    "total_steps": 6,
+    "completed_at": "2026-09-06T06:27:49.482Z"
+  },
+  "steps": [
+    {
+      "id": 1,
+      "name": "requirements",
+      "label": "USDM分解 + RDRA モデル構築",
+      "state": "completed",
+      "started_at": null,
+      "completed_at": "2026-09-06T04:17:31.404Z",
+      "event_id": null,
+      "summary": "(前回完了済み)",
+      "subagent_task": null,
+      "tokens": null
+    },
+    {
+      "id": 2,
+      "name": "quality-attributes",
+      "label": "非機能要求グレード",
+      "state": "completed",
+      "started_at": null,
+      "completed_at": "2026-09-06T04:17:31.404Z",
+      "event_id": null,
+      "summary": "(前回完了済み)",
+      "subagent_task": null,
+      "tokens": null
+    },
+    {
+      "id": 3,
+      "name": "architecture",
+      "label": "アーキテクチャ設計",
+      "state": "completed",
+      "started_at": null,
+      "completed_at": "2026-09-06T04:17:31.404Z",
+      "event_id": null,
+      "summary": "(前回完了済み)",
+      "subagent_task": null,
+      "tokens": null
+    },
+    {
+      "id": "4a",
+      "name": "infrastructure-mcl",
+      "label": "インフラ設計（MCL実行）",
+      "state": "completed",
+      "started_at": null,
+      "completed_at": "2026-09-06T04:17:31.404Z",
+      "event_id": null,
+      "summary": "(前回完了済み)",
+      "subagent_task": null,
+      "tokens": null
+    },
+    {
+      "id": "4b",
+      "name": "infrastructure-record",
+      "label": "インフラ設計（記録・FB）",
+      "state": "completed",
+      "started_at": null,
+      "completed_at": "2026-09-06T04:17:31.404Z",
+      "event_id": null,
+      "summary": "(前回完了済み)",
+      "subagent_task": null,
+      "tokens": null
+    },
+    {
+      "id": 5,
+      "name": "design-system",
+      "label": "デザインシステム",
+      "state": "completed",
+      "started_at": null,
+      "completed_at": "2026-09-06T04:17:31.404Z",
+      "event_id": null,
+      "summary": "(前回完了済み)",
+      "subagent_task": null,
+      "tokens": null
+    },
+    {
+      "id": 6,
+      "name": "spec",
+      "label": "UC仕様生成",
+      "state": "completed",
+      "started_at": "2026-09-06T04:17:31.642Z",
+      "completed_at": "2026-09-06T05:55:43.087Z",
+      "event_id": "20260906_131731_spec_generation",
+      "summary": "27 UC ready、契約・モデル・独立レビュー検査完了",
+      "subagent_task": "27 UCをdesign完了入力から生成",
+      "tokens": null
+    },
+    {
+      "id": "6a",
+      "name": "spec-story-check",
+      "label": "Storybook Story 補完",
+      "state": "completed",
+      "started_at": "2026-09-06T05:55:43.117Z",
+      "completed_at": "2026-09-06T06:27:48.975Z",
+      "event_id": "20260906_152256_spec_stories",
+      "summary": "24画面・169 Stories、全操作検査と独立レビュー完了",
+      "subagent_task": null,
+      "tokens": null
+    },
+    {
+      "id": "6b",
+      "name": "rdra-feedback-loop",
+      "label": "網羅率チェック",
+      "state": "completed",
+      "started_at": "2026-09-06T06:27:49.003Z",
+      "completed_at": "2026-09-06T06:27:49.453Z",
+      "event_id": null,
+      "summary": "27 UC・113要素の参照と独立レビューの整合確認完了",
+      "subagent_task": null,
+      "tokens": null
+    }
+  ],
+  "dialogue": null,
+  "updated_at": "2026-09-06T06:27:49.482Z"
+}

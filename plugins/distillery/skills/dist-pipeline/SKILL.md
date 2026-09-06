@@ -383,10 +383,15 @@ UC_COUNT=$(find docs/specs/latest -name "spec.md" -path "*/UC/*" 2>/dev/null | w
 
 **進捗更新（開始）:** `progress-update.js step 6b running --subagent-task "網羅率チェック"`
 
-`docs/specs/latest/_cross-cutting/rdra-feedback.md` の存在を確認する。
+最新RDRAの対象要素と `docs/specs/latest/_cross-cutting/traceability-index.json` を照合する。
+UC全数、条件、状態遷移、属性などの適用対象について、参照先と実装箇所の対応を確認し、
+分母・対応済み件数・対象外の理由・未対応要素を実行記録へ残す。
+索引のリンク件数だけで意味の網羅を判定せず、分岐・契約・BDDのレビュー結果も確認する。
+`rdra-feedback.md` が存在しないことは、網羅率100%の根拠にしない。
+未対応要素がある場合は具体的な不足を `docs/specs/latest/_cross-cutting/rdra-feedback.md` に記録する。
 
-- **存在しない場合**: 網羅率 100% 達成済み。
-  - **進捗更新（完了）:** `progress-update.js step 6b completed --summary "網羅率100%達成"`
+- **照合で未対応・不整合がない場合**: 検証した範囲と件数を報告する。
+  - **進捗更新（完了）:** `progress-update.js step 6b completed --summary "RDRA・specの対応と整合を確認（件数は実測値）"`
 - **存在する場合**: dialogue_policy で分岐する:
   - **auto_adopt**: 途中で承認を求めない。`appendTodo.js` で `docs/todo.md` に rdra-feedback の要旨を登録し、
     完了サマリの「仮採用（low・要確認）」と同じ枠で一括提示する（差分再実行はユーザーの事後判断。

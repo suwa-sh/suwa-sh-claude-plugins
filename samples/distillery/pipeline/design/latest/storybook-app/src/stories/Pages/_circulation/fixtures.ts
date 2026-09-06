@@ -1,0 +1,230 @@
+// Fixtures checked against the current contract slices.
+export const api = {
+  "book": {
+    "book_id": "B-000102",
+    "title": "リーダブルコード",
+    "author": "Dustin Boswell",
+    "isbn": "9784873115658",
+    "publisher": "オライリー・ジャパン",
+    "genre_id": "G-004",
+    "genre_name": "技術",
+    "media_type": "紙",
+    "current_status": "貸出中",
+    "version": 3,
+    "registered_at": "2026-04-02T00:00:00Z",
+    "updated_at": "2026-09-06T00:00:00Z",
+    "reservation_count": 1,
+    "my_reservation": null
+  },
+  "user": {
+    "user_number": "U-000123",
+    "name": "山田 花子",
+    "email": "hanako.yamada@example.com",
+    "phone": null,
+    "address": null,
+    "user_type": "利用者",
+    "version": 2,
+    "registered_at": "2026-04-15T00:00:00Z",
+    "updated_at": "2026-09-06T00:00:00Z"
+  },
+  "loan": {
+    "loan_id": "L-002001",
+    "book_id": "B-000102",
+    "book_title": "リーダブルコード",
+    "book_author": "Dustin Boswell",
+    "user_number": "U-000123",
+    "user_name": "山田 花子",
+    "loaned_on": "2026-08-23",
+    "due_date": "2026-09-06",
+    "returned_on": null,
+    "current_status": "貸出中",
+    "recorded_by": "S-001",
+    "version": 1,
+    "updated_at": "2026-09-06T00:00:00Z"
+  },
+  "reservation": {
+    "reservation_id": "R-003001",
+    "book_id": "B-000102",
+    "book_title": "リーダブルコード",
+    "book_author": "Dustin Boswell",
+    "user_number": "U-000123",
+    "user_name": "山田 花子",
+    "accepted_at": "2026-09-05T01:00:00Z",
+    "queue_position": 1,
+    "current_status": "予約中",
+    "version": 1,
+    "updated_at": "2026-09-05T01:00:00Z"
+  },
+  "notification": {
+    "notification_id": "N-004001",
+    "user_number": "U-000123",
+    "notification_type": "返却通知",
+    "recipient_email": "hanako.yamada@example.com",
+    "subject": "予約書籍の返却のお知らせ",
+    "body": "予約された書籍が返却されました。来館のうえ貸出を受け付けてください。",
+    "sent_at": "2026-09-06T01:00:00Z",
+    "send_result": "成功",
+    "target_loan_id": null,
+    "target_reservation_id": "R-003001"
+  },
+  "eligibility": {
+    "book": {
+      "book_id": "B-000102",
+      "title": "リーダブルコード",
+      "author": "Dustin Boswell",
+      "isbn": "9784873115658",
+      "publisher": "オライリー・ジャパン",
+      "genre_id": "G-004",
+      "genre_name": "技術",
+      "media_type": "紙",
+      "current_status": "在庫あり",
+      "version": 3,
+      "registered_at": "2026-04-02T00:00:00Z",
+      "updated_at": "2026-09-06T00:00:00Z",
+      "reservation_count": 0,
+      "my_reservation": null
+    },
+    "user": {
+      "user_number": "U-000123",
+      "name": "山田 花子",
+      "email": "hanako.yamada@example.com",
+      "phone": null,
+      "address": null,
+      "user_type": "利用者",
+      "version": 2,
+      "registered_at": "2026-04-15T00:00:00Z",
+      "updated_at": "2026-09-06T00:00:00Z"
+    },
+    "eligible": true,
+    "reason": null,
+    "due_date": "2026-09-20",
+    "loan_period_days": 14,
+    "business_date": "2026-09-06"
+  },
+  "returnPreview": {
+    "loan": {
+      "loan_id": "L-002001",
+      "book_id": "B-000102",
+      "book_title": "リーダブルコード",
+      "book_author": "Dustin Boswell",
+      "user_number": "U-000123",
+      "user_name": "山田 花子",
+      "loaned_on": "2026-08-23",
+      "due_date": "2026-09-06",
+      "returned_on": null,
+      "current_status": "貸出中",
+      "recorded_by": "S-001",
+      "version": 1,
+      "updated_at": "2026-09-06T00:00:00Z"
+    },
+    "book": {
+      "book_id": "B-000102",
+      "title": "リーダブルコード",
+      "author": "Dustin Boswell",
+      "isbn": "9784873115658",
+      "publisher": "オライリー・ジャパン",
+      "genre_id": "G-004",
+      "genre_name": "技術",
+      "media_type": "紙",
+      "current_status": "貸出中",
+      "version": 3,
+      "registered_at": "2026-04-02T00:00:00Z",
+      "updated_at": "2026-09-06T00:00:00Z",
+      "reservation_count": 1,
+      "my_reservation": null
+    },
+    "next_reservation": {
+      "reservation_id": "R-003001",
+      "book_id": "B-000102",
+      "book_title": "リーダブルコード",
+      "book_author": "Dustin Boswell",
+      "user_number": "U-000123",
+      "user_name": "山田 花子",
+      "accepted_at": "2026-09-05T01:00:00Z",
+      "queue_position": 1,
+      "current_status": "予約中",
+      "version": 1,
+      "updated_at": "2026-09-05T01:00:00Z"
+    },
+    "next_book_state": "予約待ち"
+  },
+  "notificationStatus": {
+    "loan_id": "L-002001",
+    "book": {
+      "book_id": "B-000102",
+      "title": "リーダブルコード",
+      "author": "Dustin Boswell",
+      "isbn": "9784873115658",
+      "publisher": "オライリー・ジャパン",
+      "genre_id": "G-004",
+      "genre_name": "技術",
+      "media_type": "紙",
+      "current_status": "予約待ち",
+      "version": 3,
+      "registered_at": "2026-04-02T00:00:00Z",
+      "updated_at": "2026-09-06T00:00:00Z",
+      "reservation_count": 1,
+      "my_reservation": null
+    },
+    "recipient": {
+      "user_number": "U-000123",
+      "name": "山田 花子",
+      "email": "hanako.yamada@example.com",
+      "phone": null,
+      "address": null,
+      "user_type": "利用者",
+      "version": 2,
+      "registered_at": "2026-04-15T00:00:00Z",
+      "updated_at": "2026-09-06T00:00:00Z"
+    },
+    "reservation": {
+      "reservation_id": "R-003001",
+      "book_id": "B-000102",
+      "book_title": "リーダブルコード",
+      "book_author": "Dustin Boswell",
+      "user_number": "U-000123",
+      "user_name": "山田 花子",
+      "accepted_at": "2026-09-05T01:00:00Z",
+      "queue_position": 1,
+      "current_status": "予約中",
+      "version": 1,
+      "updated_at": "2026-09-05T01:00:00Z"
+    },
+    "notifications": [],
+    "pending_requests": []
+  },
+  "overdue": {
+    "loan": {
+      "loan_id": "L-002001",
+      "book_id": "B-000102",
+      "book_title": "リーダブルコード",
+      "book_author": "Dustin Boswell",
+      "user_number": "U-000123",
+      "user_name": "山田 花子",
+      "loaned_on": "2026-08-23",
+      "due_date": "2026-09-03",
+      "returned_on": null,
+      "current_status": "延滞",
+      "recorded_by": "S-001",
+      "version": 1,
+      "updated_at": "2026-09-06T00:00:00Z"
+    },
+    "book_title": "リーダブルコード",
+    "user_name": "山田 花子",
+    "notifications": [
+      {
+        "notification_id": "N-004001",
+        "user_number": "U-000123",
+        "notification_type": "督促",
+        "recipient_email": "hanako.yamada@example.com",
+        "subject": "返却期限を過ぎています",
+        "body": "予約された書籍が返却されました。来館のうえ貸出を受け付けてください。",
+        "sent_at": "2026-09-06T01:00:00Z",
+        "send_result": "成功",
+        "target_loan_id": "L-002001",
+        "target_reservation_id": null
+      }
+    ]
+  }
+} as const
+export const TODAY = "2026-09-06"

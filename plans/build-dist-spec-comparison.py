@@ -4,8 +4,8 @@ from pathlib import Path
 import subprocess, json, html, difflib, re
 
 ROOT = Path(__file__).resolve().parents[1]
-OLD = 'samples/distillery/pipeline-opus-medium/specs/latest/'
-NEW = 'samples/distillery/spec-ready/'
+OLD = 'tests/fixtures/distillery/legacy-pipeline/specs/latest/'
+NEW = 'tests/fixtures/distillery/spec-ready/'
 UC = '蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/'
 REV = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
 # Regenerate from editable inputs in an isolated directory, and compare every derived file.
@@ -13,7 +13,7 @@ probe = r'''
 const fs=require('fs'),os=require('os'),path=require('path'),crypto=require('crypto');
 const {run,compile}=require('./plugins/distillery/skills/dist-spec/scripts/compileContracts');
 const {build}=require('./plugins/distillery/skills/dist-spec/scripts/buildSpecViews');
-const source='samples/distillery/spec-ready',temp=fs.mkdtempSync(path.join(os.tmpdir(),'dist-compare-'));
+const source='tests/fixtures/distillery/spec-ready',temp=fs.mkdtempSync(path.join(os.tmpdir(),'dist-compare-'));
 try {
  fs.cpSync(source,temp,{recursive:true});
  const catalog=JSON.parse(fs.readFileSync(path.join(temp,'_cross-cutting/api/contracts.json')));
@@ -98,7 +98,7 @@ for name in ['spec.md','tier-backend-api.md','tier-frontend-staff.md','_api-summ
     a=len(read(OLD+UC+name).splitlines());b=len(read(NEW+UC+name).splitlines());rows.append((name,a,b,b-a))
 shared=len(read(NEW+'_cross-cutting/datastore/loan-commit.md').splitlines())
 css='''*{box-sizing:border-box}body{margin:0;background:#F4F1EA;color:#1A1A1A;font:16px/1.85 Inter,"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}main{max-width:1280px;margin:auto;padding:40px}h1{font-size:36px;line-height:1.5}h2{font-size:28px}h3{font-size:20px}h4{margin:0 0 8px}a{color:#245DB8;text-underline-offset:4px;overflow-wrap:anywhere}a:focus-visible,summary:focus-visible{outline:3px solid #245DB8;outline-offset:4px}.meta,.path{font-size:12px;color:#5C594F}.lead{font-size:20px;max-width:960px}.notice{border-left:4px solid #245DB8;background:white;padding:16px 24px}.table{overflow:auto}table{border-collapse:collapse;width:100%;min-width:650px}td,th{border-bottom:1px solid #CFC9BC;padding:12px;text-align:left;vertical-align:top}th{background:#EAE5DA}section{margin-top:56px;padding-top:24px;border-top:1px solid #CFC9BC;scroll-margin-top:20px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px}.panel{min-width:0;background:white;border:1px solid #CFC9BC;padding:20px}pre{margin-bottom:0;white-space:pre;overflow:auto;max-height:440px;font:13px/1.75 ui-monospace,monospace;background:#F7F5F0;padding:12px}code{font: .9em ui-monospace,monospace}.panel pre{white-space:pre-wrap;overflow-wrap:anywhere}.owner{padding:16px 20px;background:#E9EFF8;margin:20px 0}.kind{color:#245DB8;font-size:12px;font-weight:700}details{background:white;border:1px solid #CFC9BC;padding:16px;margin:20px 0}summary{cursor:pointer;font-weight:600}.diff span{display:block;min-height:1.75em}.del{background:#FBEAE7}.add{background:#E5F0E6}.nav{display:flex;flex-wrap:wrap;gap:12px 24px;list-style:none;padding:0}.back{display:inline-block;margin-top:16px}@media(max-width:800px){main{padding:24px 16px}.pair{grid-template-columns:1fr}h1{font-size:28px}h2{font-size:24px}.panel{padding:16px}}'''
-parts=[f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>dist-spec 現行と修正版の比較</title><style>{css}</style></head><body><main><header><p class="meta">DIST-SPEC / BEFORE & AFTER · 仕様 {REV[:7]}</p><h1>何を削り、どこへ集約したか。</h1><p class="lead">貸出登録の現行出力と修正版を、実ファイルの記載で比較します。各項目の「管理先」を見れば、仕様変更時にどこを編集すればよいか分かります。</p><div class="notice"><strong>比較の出所</strong><br>現行：pipeline-opus-mediumのdist-pipeline出力。修正版：spec-readyの編集済み本文と、実装済みcompilerから今回再生成した契約・索引。<br>本文全体を新しいdist-pipelineで自動生成し直した比較ではありません。機械生成部分は別ディレクトリで再生成し、{RESULT['regenerated_files']}ファイルの一致を確認しました。</div></header><section id="index"><h2>先に結論</h2><p>人が同じ仕様を何度も編集する箇所を減らしています。派生ファイルには型が残るため、ファイル数や保存容量が必ず減る仕組みではありません。</p><ul class="nav">''']
+parts=[f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>dist-spec 現行と修正版の比較</title><style>{css}</style></head><body><main><header><p class="meta">DIST-SPEC / BEFORE & AFTER · 仕様 {REV[:7]}</p><h1>何を削り、どこへ集約したか。</h1><p class="lead">貸出登録の現行出力と修正版を、実ファイルの記載で比較します。各項目の「管理先」を見れば、仕様変更時にどこを編集すればよいか分かります。</p><div class="notice"><strong>比較の出所</strong><br>現行：legacy-pipelineのdist-pipeline出力。修正版：spec-readyの編集済み本文と、実装済みcompilerから今回再生成した契約・索引。<br>本文全体を新しいdist-pipelineで自動生成し直した比較ではありません。機械生成部分は別ディレクトリで再生成し、{RESULT['regenerated_files']}ファイルの一致を確認しました。</div></header><section id="index"><h2>先に結論</h2><p>人が同じ仕様を何度も編集する箇所を減らしています。派生ファイルには型が残るため、ファイル数や保存容量が必ず減る仕組みではありません。</p><ul class="nav">''']
 parts += [f'<li><a href="#{id}">{title}</a></li>' for id,title,*_ in cases]
 parts += ['<li><a href="#numbers">行数と比較範囲</a></li><li><a href="#diffs">全文差分</a></li></ul><div class="table"><table><tr><th>情報</th><th>人が編集する場所</th><th>読む側 / 生成先</th></tr>']
 for label,owner,consumer in [('API型・制約','contracts.json → openapi内のschemas/paths','compiler → OpenAPI / UC slice / summary'),('業務条件・期限計算','UC/spec.mdのRULE-001〜004','Backend・Frontendは参照、BDDで確認'),('DBの型・制約','共有datastore/rdb-schema.yaml','UCのモデル操作から参照'),('DBの更新値・WHERE','UC/_model-summary.yaml','Backendから参照'),('共通UI','共有ux-ui/ui-design.md / common-components.md','UCには画面固有の表示・動作だけ'),('画面の状態・再取得','UC/tier-frontend-staff.md','Form・Button・API clientへの責務分担'),('commit・再送','共有datastore/loan-commit.md','API処理と画面の再送動作を接続')]:

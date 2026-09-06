@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+required:
+  - run_id
+  - business_date
+properties:
+  run_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  business_date:
+    type: string
+    format: date

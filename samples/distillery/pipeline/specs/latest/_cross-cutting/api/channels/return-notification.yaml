@@ -1,0 +1,4 @@
+address: library.return-notification.v1
+messages:
+  ReturnNotificationRequest:
+    $ref: ../components/messages/ReturnNotificationRequest.yaml

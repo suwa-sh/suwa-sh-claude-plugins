@@ -1,0 +1,88 @@
+uc: 在庫状況一覧を参照する
+business: 運営分析業務
+buc: 蔵書の利用状況を分析するフロー
+bounded_context_id: BC-006
+models:
+  - name: Book
+    tier: tier-backend-api
+    layer: usecase
+    type: query
+  - name: BookTable
+    tier: tier-frontend-staff
+    layer: view
+    type: view-model
+tables:
+  - name: books
+    rdra_info: 書籍
+    operations:
+      - type: SELECT
+        columns:
+          - name: book_id
+            value: 参照する
+          - name: title
+            value: 参照する
+          - name: author
+            value: 参照する
+          - name: isbn
+            value: 参照する
+          - name: publisher
+            value: 参照する
+          - name: genre_id
+            value: 参照する
+          - name: media_type
+            value: 参照する
+          - name: current_status
+            value: 参照する
+          - name: registered_at
+            value: 参照する
+          - name: deleted
+            value: 参照する
+        where: 結果のbook_idで結合する。蔵書一覧はdeleted=false
+    indexes_needed: []
+  - name: genres
+    rdra_info: ジャンル
+    operations:
+      - type: SELECT
+        columns:
+          - name: genre_id
+            value: 参照する
+          - name: genre_name
+            value: 参照する
+        where: books.genre_id = genres.genre_id
+    indexes_needed: []
+  - name: reservations
+    rdra_info: 予約
+    operations:
+      - type: SELECT
+        columns:
+          - name: reservation_id
+            value: 参照する
+          - name: book_id
+            value: 参照する
+          - name: user_number
+            value: 参照する
+          - name: accepted_at
+            value: 参照する
+          - name: queue_position
+            value: 参照する
+          - name: current_status
+            value: 参照する
+        where: books.deleted = false AND current_status IN states（未指定は全状態）
+    indexes_needed: []
+  - name: audit_logs
+    rdra_info: ""
+    operations:
+      - type: INSERT
+        columns:
+          - name: action_type
+            value: データ参照
+          - name: target_entity
+            value: E-001
+          - name: target_id
+            value: 参照主体または集計期間
+          - name: result
+            value: 成功
+        where: ""
+    indexes_needed: []
+kvs: []
+object_storage: []

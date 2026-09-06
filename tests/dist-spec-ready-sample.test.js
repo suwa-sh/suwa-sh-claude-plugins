@@ -6,7 +6,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { run, compile } = require('../plugins/distillery/skills/dist-spec/scripts/compileContracts');
 const { build } = require('../plugins/distillery/skills/dist-spec/scripts/buildSpecViews');
-const root = path.resolve(__dirname, '../samples/distillery/spec-ready');
+const root = path.resolve(__dirname, '../tests/fixtures/distillery/spec-ready');
 const uc = '蔵書利用業務/書籍を貸し出すフロー/貸出を登録する';
 
 test('real loan sample is a valid event with deterministic contracts and selected RDRA views', () => {
@@ -53,4 +53,27 @@ test('persisted transaction probe survives injected disconnects and replays with
   const result = spawnSync('python3', [path.join(root, '_review/recovery_probe.py')], {encoding:'utf8'});
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stderr, /Ran 7 tests/);
+});
+
+test('product spec headings and RDRA reference structures do not require editorial change logs', t => {
+  const temp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'dist-prose-headings-'));
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
+  fs.cpSync(root, temp, { recursive: true });
+  const specPath = path.join(temp, uc, 'spec.md');
+  const original = fs.readFileSync(specPath, 'utf8');
+  const replaceRdra = body => fs.writeFileSync(specPath, original.replace(/(^##[^\n]*関連[^\n]*RDRA[^\n]*\n)[\s\S]*?(?=^## )/m, `$1\n${body}\n\n`));
+  for (const file of fs.readdirSync(path.join(temp, uc)).filter(f => /^tier-.*\.md$/.test(f))) {
+    const target = path.join(temp, uc, file);
+    fs.writeFileSync(target, fs.readFileSync(target, 'utf8').replace(/^##.*変更(?:概要|内容).*$/gm, '## 責務'));
+  }
+  const inspect = () => {
+    const result = spawnSync(process.execPath, [path.resolve('plugins/distillery/skills/dist-spec/scripts/validateSpecEvent.js'), temp, '--json'], { encoding: 'utf8' });
+    return JSON.parse(result.stdout).warnings.filter(w => w.includes(`[${uc}]`));
+  };
+  replaceRdra('| モデル | 要素 |\n|---|---|\n| BUC | 貸出 |');
+  assert.ok(!inspect().some(w => /関連RDRA|責務|変更概要/.test(w)));
+  replaceRdra('- [BUC](BUC.tsv)の貸出を参照する。');
+  assert.ok(!inspect().some(w => /関連RDRA/.test(w)));
+  replaceRdra('参照先未記載');
+  assert.ok(inspect().some(w => /関連RDRA/.test(w)));
 });

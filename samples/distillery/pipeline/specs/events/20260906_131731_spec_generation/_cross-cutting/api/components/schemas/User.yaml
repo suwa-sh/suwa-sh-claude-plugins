@@ -1,0 +1,51 @@
+type: object
+additionalProperties: false
+required:
+  - user_number
+  - name
+  - email
+  - phone
+  - address
+  - user_type
+  - version
+  - updated_at
+  - registered_at
+properties:
+  user_number:
+    type: string
+    minLength: 1
+    maxLength: 255
+  name:
+    type: string
+    minLength: 1
+    maxLength: 255
+  email:
+    type: string
+    format: email
+    maxLength: 254
+  phone:
+    anyOf:
+      - type: string
+        minLength: 1
+        maxLength: 255
+      - type: "null"
+  address:
+    anyOf:
+      - type: string
+        minLength: 1
+        maxLength: 255
+      - type: "null"
+  user_type:
+    type: string
+    enum:
+      - 司書
+      - 利用者
+  version:
+    type: integer
+    minimum: 0
+  updated_at:
+    type: string
+    format: date-time
+  registered_at:
+    type: string
+    format: date-time

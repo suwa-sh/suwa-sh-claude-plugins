@@ -11,9 +11,9 @@ test('event validation detects stale split RDB projections without treating inde
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'dist-rdb-validation-'));
   t.after(()=>fs.rmSync(tmp,{recursive:true,force:true}));
   const event=path.join(tmp,'event'); const dir=path.join(event,'_cross-cutting/datastore');
-  fs.cpSync(path.resolve('samples/distillery/spec-progressive/rdb'),dir,{recursive:true});
+  fs.cpSync(path.resolve('tests/fixtures/distillery/spec-progressive/rdb'),dir,{recursive:true});
   const arch=path.join(tmp,'arch/latest');fs.mkdirSync(arch,{recursive:true});
-  fs.copyFileSync(path.resolve('samples/distillery/pipeline-opus-medium/arch/latest/arch-design.yaml'),path.join(arch,'arch-design.yaml'));
+  fs.copyFileSync(path.resolve('tests/fixtures/distillery/legacy-pipeline/arch/latest/arch-design.yaml'),path.join(arch,'arch-design.yaml'));
   const entry=path.join(dir,'rdb-schema.yaml'); const source=YAML.parse(fs.readFileSync(entry,'utf8'));
   source.architecture_ref='../../../arch/latest/arch-design.yaml'; fs.writeFileSync(entry,YAML.stringify(source));
   compileRdbSchema(entry);

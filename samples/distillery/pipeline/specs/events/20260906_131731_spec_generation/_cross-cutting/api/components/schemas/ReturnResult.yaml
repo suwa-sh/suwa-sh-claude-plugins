@@ -1,0 +1,18 @@
+type: object
+additionalProperties: false
+required:
+  - loan
+  - book_state
+  - notification
+properties:
+  loan:
+    $ref: ./Loan.yaml
+  book_state:
+    type: string
+    enum:
+      - 在庫あり
+      - 予約待ち
+  notification:
+    anyOf:
+      - $ref: ./NotificationAcceptance.yaml
+      - type: "null"

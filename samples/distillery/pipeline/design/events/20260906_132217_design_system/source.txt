@@ -1,0 +1,3 @@
+Step6で検出したCR-renew001-002/003の既存業務条件への接続修正（normal auto_adopt）
+Request: docs/specs/events/20260906_131731_spec_generation/feedback-requests/20260906_132000_spec_feedback_renew001.md
+Controller feedback runは開始していない。normal run内のowner修正。

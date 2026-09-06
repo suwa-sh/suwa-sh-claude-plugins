@@ -1,0 +1,33 @@
+meta:
+  event_id: "20260906_132303_spec_storage_ownership"
+  trigger_event: "spec:20260906_131731_spec_generation"
+  created_at: "2026-09-06T13:23:03+0900"
+domain_architecture:
+  bounded_contexts:
+    - id: "BC-002"
+      name: "利用者コンテキスト"
+      ubiquitous_language:
+        - term: "利用者"
+          definition: "図書館を利用する人。一意の利用者番号で識別し、氏名・連絡先・利用者区分を持つ。貸出・予約の主体であり通知の送信先"
+        - term: "利用者番号"
+          definition: "司書が登録時に付与する一意の識別子。他コンテキストは利用者番号で利用者を参照する"
+        - term: "利用者区分"
+          definition: "司書・利用者の 2 値。操作範囲と利用状況の閲覧範囲（自分のみ / 任意の利用者）を切り替える"
+      related_subdomain_id: "SD-003"
+      owned_entity_ids:
+        - "E-003"
+        - "E-902"
+        - "E-903"
+      owned_buc_ids:
+        - "BUC-003"
+        - "BUC-009"
+      team_ownership: null
+      reason: "情報.tsv のコンテキスト「利用者管理」に対応。条件.tsv で利用状況閲覧範囲判定が利用者管理コンテキストに置かれているため、利用者本人の利用状況参照（BUC-009）もこの BC が扱う。個人情報を集約して保護境界を明確化。認証情報（E-903）と操作者監査ログ（E-902）は利用者IDを扱う技術モデルとして本コンテキストが正本を所有する。他BCは監査記録の追記インターフェースを使用する。"
+      source_model: "情報: 利用者, 条件: 利用状況閲覧範囲判定, バリエーション: 利用者区分, BUC: 利用者を管理するフロー, 自分の利用状況を確認するフロー"
+      confidence: "medium"
+data_architecture:
+  storage_mapping:
+    - entity_id: "E-008"
+      storage_type: "rdb"
+      reason: "INSERT のみの送信記録。同一契機の重複送信防止（対象貸出ID / 対象予約ID × 通知種別の一意制約）と延滞一覧での結合参照のため RDB。送信先メールアドレス・本文は個人情報のため暗号化対象（NFR E.6.1.1）。年間明細 NFR B.1.1.2 の範囲内。同じE-008の技術投影としてnotification_outboxをBC-005 / SD-005で所有する。通知要求の永続化を貸出・予約更新と同一RDBトランザクションに含め、コミット後にMQへ公開する。公開失敗は未公開行を再処理し、通知IDで重複を排除する。"
+      confidence: "high"

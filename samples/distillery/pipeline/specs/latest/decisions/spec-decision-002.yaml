@@ -1,0 +1,22 @@
+schema_version: "1.0"
+artifact_type: decision_record
+skill_type: spec
+artifact_id: spec-decision-002
+title: 通知受付の再送結果と配信権の保存
+status: approved
+generated_at: 2026-09-06T14:50:00
+context: 自動通知とHTTP受付が同じ通知契機を共有する。既存outboxの要求キー1つでは後続HTTP要求の再送を照合できず、lease取得条件がなければ重複配信が起こる。
+decision: ⭐E-008のSD-005にnotification_request_receiptsを配置し、主体と要求キーごとのhashと確定応答を同一SQL取引で保存する。送信はoutboxの状態とleaseを条件にclaimし、結果UPDATEが1件のときだけ確定する。normal auto_adoptで採用。
+consequences:
+  positive:
+    - 同じ通知を再利用する受付要求も異なる入力を検出する
+    - 有効leaseの重複配信と期限切れ後の自動再送を止める
+  negative:
+    - E-008の技術投影が1テーブル増える
+alternatives_considered:
+  - name: ⭐受付記録とoutboxを同じRDBへ保存
+    reason_rejected: 採用。業務通知IDとHTTP要求キーの多対一関係を保持する。
+  - name: KVSだけに確定応答を保存
+    reason_rejected: 失効またはSQL commitとの間の障害で再送照合を失う。
+  - name: outbox1行の要求キーを上書き
+    reason_rejected: 以前の要求の再送照合を失う。

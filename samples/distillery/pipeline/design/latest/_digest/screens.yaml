@@ -1,0 +1,461 @@
+# digest of design/latest/design-event.yaml section screens (L711-1169); source_sha256: 27e77ce1b181d4cf55ecef4e3d1cbe6526126093587c357462033d932e2e6bb7
+# 派生物。正本は design-event.yaml。編集しない
+screens:
+  - name: 蔵書検索画面
+    portal: patron
+    route: /search
+    uc: 書籍を検索する
+    components:
+      - PortalShell
+      - BookSearchFilter
+      - BookCard
+      - Pagination
+      - EmptyState
+      - Skeleton
+    variants:
+      - Default
+      - Empty
+      - Loading
+      - Error
+      - ISBNNormalized
+    story: Pages/利用者ポータル/蔵書検索画面
+  - name: 書籍詳細・在庫状況画面
+    portal: patron
+    route: /books/:bookId
+    uc: 書籍詳細を参照する
+    components:
+      - PortalShell
+      - BookCard
+      - BookStatusBadge
+      - ReservationQueueTracker
+      - Button
+      - Alert
+    variants:
+      - Available
+      - OnLoan
+      - Reserved
+      - OwnReservation
+      - Electronic
+      - Loading
+      - Error
+      - NotFound
+      - DirectLink
+    story: Pages/利用者ポータル/書籍詳細・在庫状況画面
+  - name: 予約申込画面
+    portal: patron
+    route: /books/:bookId/reserve
+    uc: 予約を登録する
+    components:
+      - PortalShell
+      - BookCard
+      - ReservationQueueTracker
+      - ConfirmPanel
+      - Alert
+    variants:
+      - OnLoan
+      - AlreadyAvailable
+      - Submitting
+      - Done
+      - Error
+      - Loading
+      - NotFound
+      - Electronic
+      - ReservationWaiting
+    story: Pages/利用者ポータル/予約申込画面
+  - name: 予約取消画面
+    portal: patron
+    route: /reservations/:reservationId/cancel
+    uc: 予約を取り消す
+    components:
+      - PortalShell
+      - ReservationStatusBadge
+      - ConfirmPanel
+    variants:
+      - Default
+      - Submitting
+      - Done
+      - Error
+      - NotFound
+      - Conflict
+      - DirectLink
+    story: Pages/利用者ポータル/予約取消画面
+  - name: マイ貸出履歴画面
+    portal: patron
+    route: /me/loans
+    uc: 貸出履歴を参照する
+    components:
+      - PortalShell
+      - LoanTable
+      - DueDateIndicator
+      - LoanStatusBadge
+      - Pagination
+      - EmptyState
+    variants:
+      - Default
+      - WithOverdue
+      - Empty
+      - Loading
+      - Error
+      - Retry
+      - Paged
+    story: Pages/利用者ポータル/マイ貸出履歴画面
+  - name: マイ予約状況画面
+    portal: patron
+    route: /me/reservations
+    uc: 予約状況を参照する
+    components:
+      - PortalShell
+      - ReservationTable
+      - ReservationQueueTracker
+      - ReservationStatusBadge
+      - EmptyState
+    variants:
+      - Default
+      - Notified
+      - Empty
+      - Loading
+      - Error
+      - Paged
+    story: Pages/利用者ポータル/マイ予約状況画面
+  - name: 蔵書一覧画面
+    portal: staff
+    route: /staff/books
+    uc: 書籍一覧を参照する
+    components:
+      - PortalShell
+      - BookSearchFilter
+      - BookTable
+      - BookStatusBadge
+      - Pagination
+      - Button
+    variants:
+      - Default
+      - Empty
+      - Loading
+      - Error
+      - ISBNNormalized
+    story: Pages/司書ポータル/蔵書一覧画面
+  - name: 書籍登録画面
+    portal: staff
+    route: /staff/books/new
+    uc: 書籍を登録する
+    components:
+      - PortalShell
+      - BookForm
+      - Button
+      - Alert
+    variants:
+      - Default
+      - ValidationError
+      - Submitting
+      - Registered
+      - Error
+      - Unknown
+      - IdempotencyConflict
+      - Loading
+      - ElectronicRejected
+    story: Pages/司書ポータル/書籍登録画面
+  - name: 書籍編集画面
+    portal: staff
+    route: /staff/books/:bookId/edit
+    uc: 書籍を編集する
+    components:
+      - PortalShell
+      - BookForm
+      - BookStatusBadge
+      - Button
+    variants:
+      - Default
+      - Loading
+      - Error
+      - Submitting
+      - Saved
+      - ValidationError
+      - Conflict
+      - Unknown
+      - DirectLink
+    story: Pages/司書ポータル/書籍編集画面
+  - name: 書籍削除確認画面
+    portal: staff
+    route: /staff/books/:bookId/delete
+    uc: 書籍を削除する
+    components:
+      - PortalShell
+      - ConfirmPanel
+      - BookStatusBadge
+    variants:
+      - Deletable
+      - Blocked
+      - Loading
+      - Error
+      - Submitting
+      - Deleted
+      - Conflict
+      - Unknown
+      - BusinessRejected
+      - DirectLink
+    story: Pages/司書ポータル/書籍削除確認画面
+  - name: 窓口蔵書検索画面
+    portal: staff
+    route: /staff/search
+    uc: 書籍を検索する
+    components:
+      - PortalShell
+      - BookSearchFilter
+      - BookTable
+      - BookStatusBadge
+      - Pagination
+    variants:
+      - Default
+      - Empty
+      - Loading
+      - Error
+      - ISBNNormalized
+    story: Pages/司書ポータル/窓口蔵書検索画面
+  - name: 利用者登録画面
+    portal: staff
+    route: /staff/users/new
+    uc: 利用者を登録する
+    components:
+      - PortalShell
+      - UserForm
+      - Button
+      - Alert
+    variants:
+      - Default
+      - ValidationError
+      - Submitting
+      - Registered
+      - Error
+      - Unknown
+      - IdempotencyConflict
+      - NumberConflict
+    story: Pages/司書ポータル/利用者登録画面
+  - name: 利用者編集画面
+    portal: staff
+    route: /staff/users/:userId/edit
+    uc: 利用者を編集する
+    components:
+      - PortalShell
+      - UserForm
+      - PiiMaskedText
+      - Button
+    variants:
+      - Default
+      - Loading
+      - Error
+      - Submitting
+      - Saved
+      - ValidationError
+      - Conflict
+      - Unknown
+      - DirectLink
+    story: Pages/司書ポータル/利用者編集画面
+  - name: 利用者削除確認画面
+    portal: staff
+    route: /staff/users/:userId/delete
+    uc: 利用者を削除する
+    components:
+      - PortalShell
+      - ConfirmPanel
+      - PiiMaskedText
+    variants:
+      - Deletable
+      - Blocked
+      - Loading
+      - Error
+      - Submitting
+      - Deleted
+      - Conflict
+      - Unknown
+      - BusinessRejected
+      - DirectLink
+    story: Pages/司書ポータル/利用者削除確認画面
+  - name: 利用者一覧画面
+    portal: staff
+    route: /staff/users
+    uc: 利用者一覧を参照する
+    components:
+      - PortalShell
+      - Input
+      - UserTable
+      - PiiMaskedText
+      - Pagination
+      - Button
+    variants:
+      - Default
+      - Empty
+      - Loading
+      - Error
+    story: Pages/司書ポータル/利用者一覧画面
+  - name: 貸出受付画面
+    portal: staff
+    route: /staff/loans/new
+    uc: 貸出を登録する
+    components:
+      - PortalShell
+      - LoanRegisterPanel
+      - BookStatusBadge
+      - DueDateIndicator
+      - Alert
+      - Button
+    variants:
+      - Input
+      - Allowed
+      - Denied
+      - Done
+      - Submitting
+      - Error
+      - NotFound
+      - DirectLink
+      - ReloadPending
+    story: Pages/司書ポータル/貸出受付画面
+  - name: 返却受付画面
+    portal: staff
+    route: /staff/returns/new
+    uc: 返却を登録する
+    components:
+      - PortalShell
+      - ReturnRegisterPanel
+      - LoanStatusBadge
+      - BookStatusBadge
+      - Alert
+      - Button
+    variants:
+      - Input
+      - Found
+      - FoundWithReservation
+      - Done
+      - Submitting
+      - Error
+      - NotFound
+      - ReloadPending
+    story: Pages/司書ポータル/返却受付画面
+  - name: 返却通知送信確認画面
+    portal: staff
+    route: /staff/returns/:loanId/notify
+    uc: 返却通知を送信する
+    components:
+      - PortalShell
+      - ConfirmPanel
+      - ReservationTable
+      - PiiMaskedText
+      - NotificationLogTable
+    variants:
+      - Default
+      - Sent
+      - Failed
+      - Queued
+      - Unknown
+      - Error
+      - Loading
+      - NoReservation
+    story: Pages/司書ポータル/返却通知送信確認画面
+  - name: 書籍別予約状況画面
+    portal: staff
+    route: /staff/books/:bookId/reservations
+    uc: 予約一覧を参照する
+    components:
+      - PortalShell
+      - BookCard
+      - ReservationTable
+      - ReservationQueueTracker
+      - ReservationStatusBadge
+    variants:
+      - Default
+      - Empty
+      - Loading
+      - Error
+      - NotFound
+    story: Pages/司書ポータル/書籍別予約状況画面
+  - name: 延滞・督促状況画面
+    portal: staff
+    route: /staff/overdues
+    uc: 延滞一覧を参照する
+    components:
+      - PortalShell
+      - StatCard
+      - OverdueTable
+      - DueDateIndicator
+      - NotificationLogTable
+      - Pagination
+    variants:
+      - Default
+      - Empty
+      - Loading
+      - Error
+    story: Pages/司書ポータル/延滞・督促状況画面
+  - name: 窓口利用状況照会画面
+    portal: staff
+    route: /staff/users/:userId/status
+    uc: 利用者の利用状況を参照する
+    components:
+      - PortalShell
+      - Input
+      - PiiMaskedText
+      - LoanTable
+      - ReservationTable
+      - LoanStatusBadge
+      - ReservationStatusBadge
+    variants:
+      - Default
+      - NotFound
+      - RecoverNotFound
+      - Loading
+      - Empty
+      - Error
+    story: Pages/司書ポータル/窓口利用状況照会画面
+  - name: 在庫状況一覧画面
+    portal: staff
+    route: /staff/reports/inventory
+    uc: 在庫状況一覧を参照する
+    components:
+      - PortalShell
+      - StatCard
+      - ToggleGroup
+      - BookTable
+      - BookStatusBadge
+      - Pagination
+    variants:
+      - Default
+      - Filtered
+      - Loading
+      - Empty
+      - Error
+      - Paged
+    story: Pages/司書ポータル/在庫状況一覧画面
+  - name: 人気書籍ランキング画面
+    portal: staff
+    route: /staff/reports/ranking
+    uc: 人気書籍ランキングを参照する
+    components:
+      - PortalShell
+      - PeriodSelector
+      - RankingList
+      - StatCard
+      - Skeleton
+    variants:
+      - Default
+      - TiedRanking
+      - Loading
+      - Empty
+      - Error
+      - Paged
+    story: Pages/司書ポータル/人気書籍ランキング画面
+  - name: 期間別貸出統計画面
+    portal: staff
+    route: /staff/reports/loans
+    uc: 期間別貸出統計を参照する
+    components:
+      - PortalShell
+      - PeriodSelector
+      - StatCard
+      - PeriodStatChart
+      - Skeleton
+    variants:
+      - Monthly
+      - Daily
+      - Loading
+      - Empty
+      - Error
+    story: Pages/司書ポータル/期間別貸出統計画面

@@ -1,0 +1,38 @@
+{
+  "round": 1,
+  "findings": [
+    {
+      "id": "ANALYSIS-001",
+      "severity": "major",
+      "target": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/tier-backend-api.md",
+      "claim": "集計投影の粒度がRDBの必須book_idと接続されていない",
+      "evidence": "loan_statisticsは書籍ごとの行だが、本文はbucket全体の置換とだけ記載",
+      "suggested_fix": "bucket×bookで投影を保存し、bucket内sumをseriesへ集約する。NULL book_idを作らない。"
+    },
+    {
+      "id": "ANALYSIS-002",
+      "severity": "major",
+      "target": "運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/tier-frontend-staff.md",
+      "claim": "期間なしの初期routeが必須queryのAPIへ接続できない",
+      "evidence": "period_type/start/end必須、初期routeにはqueryがない",
+      "suggested_fix": "入力値がない場合の初期期間とURL正規化を定義する。"
+    },
+    {
+      "id": "ANALYSIS-003",
+      "severity": "major",
+      "target": "利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/tier-frontend-staff.md",
+      "claim": "ReservationTable必須userNumberとLoanTable必須todayの供給がない",
+      "evidence": "変換表にuser_number→userNumberとtoday供給が未記載",
+      "suggested_fix": "レスポンスからの変換とTR-DATEの供給を記載する。"
+    },
+    {
+      "id": "ANALYSIS-004",
+      "severity": "minor",
+      "target": "6UCのpresentationとspec.md",
+      "claim": "標準状態表の複写と必須見出し表記の欠落",
+      "evidence": "同じrace/error表が6回、関連RDRA見出しが別名",
+      "suggested_fix": "UI-READ参照へ集約し、関連RDRAモデルの見出しへ揃える。"
+    }
+  ],
+  "resolved": []
+}

@@ -1,0 +1,22 @@
+{
+  "async_events": [
+    {
+      "channel": "#/channels/dunning",
+      "contract_ref": "asyncapi#/operations/consumeDunning",
+      "direction": "subscribe",
+      "kind": "asyncapi",
+      "name": "consumeDunning",
+      "operation_id": "consumeDunning",
+      "summary": "consumeDunning",
+      "tier": "tier-worker"
+    }
+  ],
+  "buc": "延滞者に督促するフロー",
+  "business": "期限管理業務",
+  "consumes": [],
+  "contract_sha256": "c47277e46f910e19daca7365e935e085ac187212e78855b5a33dfee09a5d3a85",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "督促を送信する"
+}

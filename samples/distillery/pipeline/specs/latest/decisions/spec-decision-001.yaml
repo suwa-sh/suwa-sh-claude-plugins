@@ -1,0 +1,22 @@
+schema_version: "1.0"
+artifact_type: decision_record
+skill_type: spec
+artifact_id: spec-decision-001
+title: 参照する正本と共有技術規則
+status: approved
+generated_at: 2026-09-06T13:17:31
+context: 前段の業務条件とUI契約を複写すると更新先が分散する。
+decision: ⭐業務条件と状態と部品をlatestで参照し、分割APIとサブドメイン別RDBを人が編集する。複数UCへ同じ意味で適用する実行条件をTRで一元化する。normal auto_adoptで採用。
+consequences:
+  positive:
+    - 共通定義の変更箇所を1つにする
+    - UC単位に必要な契約sliceを読める
+  negative:
+    - 実装時に参照先を辿る必要がある
+alternatives_considered:
+  - name: ⭐前段latest参照と分割契約
+    reason_rejected: 採用。現在の正本とUCの接続を保つ。
+  - name: 全UCへ前段定義を複写
+    reason_rejected: 更新先が分散する。
+  - name: 仕様をAPI契約だけにする
+    reason_rejected: 取引境界と画面の接続が不足する。

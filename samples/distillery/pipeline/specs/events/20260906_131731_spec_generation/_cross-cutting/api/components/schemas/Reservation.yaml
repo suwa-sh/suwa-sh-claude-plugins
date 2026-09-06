@@ -1,0 +1,54 @@
+type: object
+additionalProperties: false
+required:
+  - reservation_id
+  - book_id
+  - user_number
+  - accepted_at
+  - queue_position
+  - current_status
+  - version
+  - updated_at
+  - book_title
+  - book_author
+  - user_name
+properties:
+  reservation_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  book_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  user_number:
+    type: string
+    minLength: 1
+    maxLength: 255
+  accepted_at:
+    type: string
+    format: date-time
+  queue_position:
+    type:
+      - integer
+      - "null"
+    minimum: 1
+  current_status:
+    type: string
+    enum:
+      - 予約中
+      - 通知済み
+      - 取消
+      - 終了
+  version:
+    type: integer
+    minimum: 0
+  updated_at:
+    type: string
+    format: date-time
+  book_title: &a1
+    type: string
+    minLength: 1
+    maxLength: 255
+  book_author: *a1
+  user_name: *a1

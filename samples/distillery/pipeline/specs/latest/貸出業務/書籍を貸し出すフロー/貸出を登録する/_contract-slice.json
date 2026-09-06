@@ -1,0 +1,879 @@
+{
+  "asyncapi": null,
+  "openapi": {
+    "components": {
+      "schemas": {
+        "Book": {
+          "additionalProperties": false,
+          "properties": {
+            "author": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "book_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "current_status": {
+              "enum": [
+                "在庫あり",
+                "貸出中",
+                "予約待ち"
+              ],
+              "type": "string"
+            },
+            "genre_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "genre_name": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "isbn": {
+              "anyOf": [
+                {
+                  "pattern": "^(?:[0-9]{9}[0-9X]|[0-9]{13})$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "media_type": {
+              "enum": [
+                "紙",
+                "電子"
+              ],
+              "type": "string"
+            },
+            "my_reservation": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "current_status": {
+                      "enum": [
+                        "予約中",
+                        "通知済み"
+                      ],
+                      "type": "string"
+                    },
+                    "queue_position": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "reservation_id": {
+                      "maxLength": 255,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "reservation_id",
+                    "queue_position",
+                    "current_status"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "publisher": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "registered_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "reservation_count": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "title": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "version": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "book_id",
+            "title",
+            "author",
+            "isbn",
+            "publisher",
+            "genre_id",
+            "media_type",
+            "current_status",
+            "version",
+            "updated_at",
+            "registered_at",
+            "genre_name",
+            "reservation_count",
+            "my_reservation"
+          ],
+          "type": "object"
+        },
+        "Error": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "enum": [
+                "INVALID_INPUT",
+                "UNAUTHENTICATED",
+                "FORBIDDEN",
+                "NOT_FOUND",
+                "VERSION_CONFLICT",
+                "IDEMPOTENCY_CONFLICT",
+                "BUSINESS_RULE_VIOLATION",
+                "CONFIGURATION_UNAVAILABLE",
+                "DEPENDENCY_UNAVAILABLE"
+              ],
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "trace_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "trace_id"
+          ],
+          "type": "object"
+        },
+        "Loan": {
+          "additionalProperties": false,
+          "properties": {
+            "book_author": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "book_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "book_title": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "current_status": {
+              "enum": [
+                "貸出中",
+                "延滞",
+                "返却済み"
+              ],
+              "type": "string"
+            },
+            "due_date": {
+              "format": "date",
+              "type": "string"
+            },
+            "loan_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "loaned_on": {
+              "format": "date",
+              "type": "string"
+            },
+            "recorded_by": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "returned_on": {
+              "format": "date",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "updated_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "user_name": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "user_number": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "loan_id",
+            "book_id",
+            "user_number",
+            "loaned_on",
+            "due_date",
+            "current_status",
+            "recorded_by",
+            "version",
+            "updated_at",
+            "returned_on",
+            "book_title",
+            "book_author",
+            "user_name"
+          ],
+          "type": "object"
+        },
+        "LoanEligibility": {
+          "additionalProperties": false,
+          "properties": {
+            "book": {
+              "$ref": "#/components/schemas/Book"
+            },
+            "business_date": {
+              "format": "date",
+              "type": "string"
+            },
+            "due_date": {
+              "format": "date",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "eligible": {
+              "type": "boolean"
+            },
+            "loan_period_days": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "user": {
+              "$ref": "#/components/schemas/User"
+            }
+          },
+          "required": [
+            "book",
+            "user",
+            "eligible",
+            "reason",
+            "due_date",
+            "loan_period_days",
+            "business_date"
+          ],
+          "type": "object"
+        },
+        "LoanInput": {
+          "additionalProperties": false,
+          "properties": {
+            "book_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "user_number": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "book_id",
+            "user_number"
+          ],
+          "type": "object"
+        },
+        "User": {
+          "additionalProperties": false,
+          "properties": {
+            "address": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "email": {
+              "format": "email",
+              "maxLength": 254,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "phone": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "registered_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "user_number": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "user_type": {
+              "enum": [
+                "司書",
+                "利用者"
+              ],
+              "type": "string"
+            },
+            "version": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "user_number",
+            "name",
+            "email",
+            "phone",
+            "address",
+            "user_type",
+            "version",
+            "updated_at",
+            "registered_at"
+          ],
+          "type": "object"
+        }
+      },
+      "securitySchemes": {
+        "BearerAuth": {
+          "bearerFormat": "JWT",
+          "scheme": "bearer",
+          "type": "http"
+        }
+      }
+    },
+    "info": {
+      "title": "図書館管理API",
+      "version": "1.0.0"
+    },
+    "openapi": "3.1.0",
+    "paths": {
+      "/books/{book_id}": {
+        "get": {
+          "operationId": "getBook",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "book_id",
+              "required": true,
+              "schema": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Book"
+                  }
+                }
+              },
+              "description": "処理結果"
+            },
+            "400": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "入力形式不正"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "認証が必要"
+            },
+            "403": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "権限または接続経路違反"
+            },
+            "404": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "対象なし"
+            },
+            "409": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "競合または冪等キー不一致"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "業務条件不成立"
+            },
+            "503": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "設定または依存先を利用不可"
+            }
+          },
+          "summary": "書籍詳細を参照する",
+          "tags": [
+            "蔵書管理業務"
+          ],
+          "x-allowed-roles": [
+            "司書",
+            "利用者"
+          ],
+          "x-authorization-rule": "ロールと経路を検証する。",
+          "x-network": "公開"
+        }
+      },
+      "/staff/loan-eligibility": {
+        "get": {
+          "operationId": "getLoanEligibility",
+          "parameters": [
+            {
+              "in": "query",
+              "name": "book_id",
+              "required": true,
+              "schema": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "user_number",
+              "required": true,
+              "schema": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/LoanEligibility"
+                  }
+                }
+              },
+              "description": "処理結果"
+            },
+            "400": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "入力形式不正"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "認証が必要"
+            },
+            "403": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "権限または接続経路違反"
+            },
+            "404": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "対象なし"
+            },
+            "409": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "競合または冪等キー不一致"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "業務条件不成立"
+            },
+            "503": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "設定または依存先を利用不可"
+            }
+          },
+          "summary": "貸出を登録するの入力・確認データ取得",
+          "tags": [
+            "貸出業務"
+          ],
+          "x-allowed-roles": [
+            "司書"
+          ],
+          "x-authorization-rule": "ロールと経路を検証する。",
+          "x-network": "館内"
+        }
+      },
+      "/staff/loans": {
+        "post": {
+          "operationId": "createLoan",
+          "parameters": [
+            {
+              "in": "header",
+              "name": "X-Idempotency-Key",
+              "required": true,
+              "schema": {
+                "format": "uuid",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoanInput"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "201": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Loan"
+                  }
+                }
+              },
+              "description": "処理結果"
+            },
+            "400": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "入力形式不正"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "認証が必要"
+            },
+            "403": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "権限または接続経路違反"
+            },
+            "404": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "対象なし"
+            },
+            "409": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "競合または冪等キー不一致"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "業務条件不成立"
+            },
+            "503": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "設定または依存先を利用不可"
+            }
+          },
+          "summary": "貸出を登録する",
+          "tags": [
+            "貸出業務"
+          ],
+          "x-allowed-roles": [
+            "司書"
+          ],
+          "x-authorization-rule": "ロールと経路を検証する。",
+          "x-network": "館内"
+        }
+      },
+      "/staff/users/{user_number}": {
+        "get": {
+          "operationId": "getUser",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "user_number",
+              "required": true,
+              "schema": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              },
+              "description": "処理結果"
+            },
+            "400": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "入力形式不正"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "認証が必要"
+            },
+            "403": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "権限または接続経路違反"
+            },
+            "404": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "対象なし"
+            },
+            "409": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "競合または冪等キー不一致"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "業務条件不成立"
+            },
+            "503": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "設定または依存先を利用不可"
+            }
+          },
+          "summary": "利用者を編集するの入力・確認データ取得",
+          "tags": [
+            "利用者管理業務"
+          ],
+          "x-allowed-roles": [
+            "司書"
+          ],
+          "x-authorization-rule": "ロールと経路を検証する。",
+          "x-network": "館内"
+        }
+      }
+    },
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "servers": [
+      {
+        "url": "https://library.example.invalid/api"
+      }
+    ]
+  },
+  "schema_version": "distillery.contract-slice/v1"
+}

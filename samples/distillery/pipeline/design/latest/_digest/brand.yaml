@@ -1,0 +1,42 @@
+# digest of design/latest/design-event.yaml section brand (L12-51); source_sha256: 27e77ce1b181d4cf55ecef4e3d1cbe6526126093587c357462033d932e2e6bb7
+# 派生物。正本は design-event.yaml。編集しない
+brand:
+  name: Libro
+  tagline: 図書館蔵書管理システム
+  colors:
+    primary:
+      hex: "#2563EB"
+      name: Libro Blue（利用者ポータル / ブランド基調色）
+    secondary:
+      hex: "#334155"
+      name: Shelf Slate（司書ポータル）
+  typography:
+    sans: Noto Sans JP, Inter, Hiragino Sans, Yu Gothic UI, system-ui, sans-serif
+    mono: JetBrains Mono, SFMono-Regular, Menlo, Consolas, monospace
+    scale:
+      xs: 0.75rem
+      sm: 0.875rem
+      base: 1rem
+      lg: 1.125rem
+      xl: 1.25rem
+      2xl: 1.5rem
+      3xl: 1.875rem
+  voice:
+    tone: 信頼・堅実。公共サービスとして丁寧だが冗長にしない。次に取る操作を必ず示す
+    principles:
+      - 利用者には状態と次の行動をセットで伝える（貸出中 → 予約できます）
+      - "司書には判定結果と根拠を同時に示す（貸出できません: この書籍は貸出中です）"
+      - 個人情報は既定で伏せ、明示操作でのみ開示する（NFR E.1.2.1 / E.6.1.1）
+      - 色だけで意味を伝えない。文言またはアイコンを必ず添える（JIS X 8341-3 AA 目標）
+      - RDRA の業務用語をそのまま使う（在庫あり / 貸出中 / 予約待ち / 延滞 / 督促 / 返却通知）
+  logo:
+    variants:
+      - name: full
+        path: assets/logo-full.svg
+      - name: icon
+        path: assets/logo-icon.svg
+      - name: stacked
+        path: assets/logo-stacked.svg
+  icons:
+    style: outlined（Lucide 準拠 / 24x24 / stroke 2 / currentColor）
+    source_dir: assets/icons

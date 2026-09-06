@@ -1,0 +1,173 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"condition\",\"蔵書管理\",\"書籍検索条件判定\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "属性に対応した検索を行う"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"検索条件種別\",\"ISBN\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "属性に対応した検索を行う"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"検索条件種別\",\"キーワード\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "属性に対応した検索を行う"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"検索条件種別\",\"タイトル\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "属性に対応した検索を行う"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"検索条件種別\",\"著者\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "属性に対応した検索を行う"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"検索条件種別\",\"ジャンル\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "ジャンル区分に一致する書籍を取得する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"ジャンル\",\"文学\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "ジャンル区分に一致する書籍を取得する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"ジャンル\",\"社会科学\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "ジャンル区分に一致する書籍を取得する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"ジャンル\",\"自然科学\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "ジャンル区分に一致する書籍を取得する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"ジャンル\",\"技術\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "ジャンル区分に一致する書籍を取得する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"ジャンル\",\"芸術\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "ジャンル区分に一致する書籍を取得する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"ジャンル\",\"歴史\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "ジャンル区分に一致する書籍を取得する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"ジャンル\",\"児童書\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "ジャンル区分に一致する書籍を取得する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"蔵書管理\",\"ジャンル\",\"その他\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/spec.md",
+          "name": "ジャンル区分に一致する書籍を取得する"
+        }
+      ]
+    }
+  ]
+}

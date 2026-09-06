@@ -1,0 +1,17 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"condition\",\"蔵書管理\",\"在庫状況判定\"]",
+      "tier": "tier-backend-api",
+      "file": "運営分析業務/蔵書の利用状況を分析するフロー/在庫状況一覧を参照する/spec.md",
+      "anchor": "関連 RDRA モデル",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/在庫状況一覧を参照する/spec.md",
+          "name": "書籍の状態と有効予約数を表示する"
+        }
+      ]
+    }
+  ]
+}

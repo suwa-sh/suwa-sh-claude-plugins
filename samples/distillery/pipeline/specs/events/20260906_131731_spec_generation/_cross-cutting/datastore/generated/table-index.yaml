@@ -1,0 +1,54 @@
+schema_version: distillery.rdb-table-index/v1
+generated: true
+tables:
+  - table: audit_logs
+    subdomain_id: SD-003
+    source: ../domains/SD-003.yaml
+  - table: books
+    subdomain_id: SD-002
+    source: ../domains/SD-002.yaml
+  - table: books_events
+    subdomain_id: SD-002
+    source: ../domains/SD-002.yaml
+  - table: credentials
+    subdomain_id: SD-003
+    source: ../domains/SD-003.yaml
+  - table: genres
+    subdomain_id: SD-002
+    source: ../domains/SD-002.yaml
+  - table: loan_periods
+    subdomain_id: SD-001
+    source: ../domains/SD-001.yaml
+  - table: loan_statistics
+    subdomain_id: SD-004
+    source: ../domains/SD-004.yaml
+  - table: loans
+    subdomain_id: SD-001
+    source: ../domains/SD-001.yaml
+  - table: loans_events
+    subdomain_id: SD-001
+    source: ../domains/SD-001.yaml
+  - table: notification_outbox
+    subdomain_id: SD-005
+    source: ../domains/SD-005.yaml
+  - table: notification_request_receipts
+    subdomain_id: SD-005
+    source: ../domains/SD-005.yaml
+  - table: notifications
+    subdomain_id: SD-005
+    source: ../domains/SD-005.yaml
+  - table: remind_days
+    subdomain_id: SD-001
+    source: ../domains/SD-001.yaml
+  - table: reservations
+    subdomain_id: SD-001
+    source: ../domains/SD-001.yaml
+  - table: reservations_events
+    subdomain_id: SD-001
+    source: ../domains/SD-001.yaml
+  - table: users
+    subdomain_id: SD-003
+    source: ../domains/SD-003.yaml
+  - table: users_events
+    subdomain_id: SD-003
+    source: ../domains/SD-003.yaml

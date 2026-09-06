@@ -1,0 +1,149 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"condition\",\"運営分析管理\",\"集計期間判定\"]",
+      "tier": "tier-backend-api",
+      "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+      "anchor": "関連 RDRA モデル",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"運営分析管理\",\"貸出統計\",\"ランキング順位\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: ranking",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"運営分析管理\",\"貸出統計\",\"書籍ID\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: book_id",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"運営分析管理\",\"貸出統計\",\"貸出件数\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: loan_total",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"運営分析管理\",\"貸出統計\",\"貸出回数\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: loan_count",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"運営分析管理\",\"貸出統計\",\"集計ID\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: stat_id",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"運営分析管理\",\"貸出統計\",\"集計対象期間（開始日・終了日）\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: period_start",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"運営分析管理\",\"貸出統計\",\"集計日時\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: aggregated_at",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"運営分析管理\",\"貸出統計\",\"集計期間種別（日・月・年）\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: period_type",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"運営分析管理\",\"集計期間種別\",\"年\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: period_type",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"運営分析管理\",\"集計期間種別\",\"日\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: period_type",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"運営分析管理\",\"集計期間種別\",\"月\"]",
+      "tier": "tier-backend-api",
+      "file": "_cross-cutting/datastore/domains/SD-004.yaml",
+      "anchor": "name: period_type",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/spec.md",
+          "name": "貸出のない日を0件で表示する"
+        }
+      ]
+    }
+  ]
+}

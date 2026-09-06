@@ -1,0 +1,17 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"condition\",\"利用者管理\",\"利用状況閲覧範囲判定\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/spec.md",
+      "anchor": "関連 RDRA モデル",
+      "scenarios": [
+        {
+          "file": "利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/spec.md",
+          "name": "指定利用者の利用状況をまとめて表示する"
+        }
+      ]
+    }
+  ]
+}

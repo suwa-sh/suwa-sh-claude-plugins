@@ -8,7 +8,7 @@ const { compile, run, resolve, encode } = require('../plugins/distillery/skills/
 const { parseYaml } = require('../plugins/distillery/skills/dist-spec/scripts/lib/yaml-parser');
 
 function fixture() {
-  return JSON.parse(fs.readFileSync(path.join(__dirname, '../samples/distillery/spec-contracts/_cross-cutting/api/contracts.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(__dirname, '../tests/fixtures/distillery/spec-contracts/_cross-cutting/api/contracts.json'), 'utf8'));
 }
 const uc = '貸出業務/貸出フロー/貸出登録';
 test('integrated contracts are lossless and UC slices preserve constraints, security, errors, dependencies and cycles', () => {
@@ -183,5 +183,5 @@ test('event validator accepts generated JSON contracts and catalog events withou
 });
 
 test('checked-in compiler example is reproducible from its catalog', () => {
-  assert.equal(run(path.join(__dirname, '../samples/distillery/spec-contracts'), true).status, 'current');
+  assert.equal(run(path.join(__dirname, '../tests/fixtures/distillery/spec-contracts'), true).status, 'current');
 });

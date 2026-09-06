@@ -1,0 +1,4 @@
+dist-pipeline Step6a / distillery:dist-spec-stories / normal auto_adopt
+Input: docs/specs/latest (20260906_131731_spec_generation), docs/design/latest
+Parallel generation: phase1 11 screens; contracts 6 screens; renewed_spec 7 screens
+Independent review: round 1–3; unresolved 0

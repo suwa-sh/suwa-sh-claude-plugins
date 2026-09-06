@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "自分の利用状況を確認するフロー",
+  "business": "利用者サービス業務",
+  "consumes": [],
+  "contract_sha256": "d070d346b7d54132cbb8b5b18310ee70a46ae7cfddbeb75e10fbbc885947d220",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1me~1reservations/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "listMyReservations",
+      "path": "/me/reservations",
+      "summary": "予約状況を参照する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "予約状況を参照する"
+}

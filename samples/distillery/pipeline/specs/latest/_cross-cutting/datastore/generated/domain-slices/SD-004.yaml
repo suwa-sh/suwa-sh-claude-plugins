@@ -1,0 +1,111 @@
+schema_version: distillery.rdb-domain-slice/v1
+generated: true
+subdomain_id: SD-004
+tables:
+  - name: loan_statistics
+    rdra_info: 貸出統計
+    description: 貸出統計の永続化
+    columns:
+      - name: stat_id
+        type: string
+        nullable: false
+        description: 集計ID
+      - name: period_type
+        type: string
+        nullable: false
+        description: "集計期間種別（enum: 日・月・年）"
+      - name: period_start
+        type: date
+        nullable: false
+        description: 集計対象期間 開始日
+      - name: period_end
+        type: date
+        nullable: false
+        description: 集計対象期間 終了日
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID（E-001 への参照）
+      - name: loan_count
+        type: integer
+        nullable: false
+        description: 貸出回数（書籍ごと。人気書籍ランキングの基準）
+      - name: loan_total
+        type: integer
+        nullable: false
+        description: 貸出件数（集計期間内の合計）
+      - name: ranking
+        type: integer
+        nullable: false
+        description: ランキング順位
+      - name: aggregated_at
+        type: datetime
+        nullable: false
+        description: 集計日時（再集計のたびに更新）
+    primary_key:
+      - stat_id
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: RESTRICT
+    indexes:
+      - name: loan_statistics_period_type_period_start_period_end_book_id
+        columns:
+          - period_type
+          - period_start
+          - period_end
+          - book_id
+        unique: true
+    used_by:
+      - uc: 人気書籍ランキングを参照する
+        operations:
+          - SELECT
+          - INSERT
+          - UPDATE
+      - uc: 期間別貸出統計を参照する
+        operations:
+          - SELECT
+          - INSERT
+          - UPDATE
+external_tables:
+  - name: books
+    owner_subdomain_id: SD-002
+    read_only: true
+    source: ../../domains/SD-002.yaml
+    columns:
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID
+      - name: genre_id
+        type: string
+        nullable: false
+        description: ジャンルID（E-002 への参照）
+    primary_key:
+      - book_id
+    foreign_keys:
+      - columns:
+          - genre_id
+        references:
+          table: genres
+          columns:
+            - genre_id
+        on_delete: RESTRICT
+    indexes: []
+  - name: genres
+    owner_subdomain_id: SD-002
+    read_only: true
+    source: ../../domains/SD-002.yaml
+    columns:
+      - name: genre_id
+        type: string
+        nullable: false
+        description: ジャンルID
+    primary_key:
+      - genre_id
+    foreign_keys: []
+    indexes: []

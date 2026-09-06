@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "蔵書の利用状況を分析するフロー",
+  "business": "運営分析業務",
+  "consumes": [],
+  "contract_sha256": "ba57cd8c1b937241fe7668c9ba59bbb3d01d6e1c5345ce3b8108ff4c391cbc65",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1analytics~1inventory/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "listInventory",
+      "path": "/staff/analytics/inventory",
+      "summary": "在庫状況一覧を参照する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "在庫状況一覧を参照する"
+}

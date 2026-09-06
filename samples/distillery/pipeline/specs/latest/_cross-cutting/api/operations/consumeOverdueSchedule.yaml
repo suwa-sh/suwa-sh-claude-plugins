@@ -1,0 +1,5 @@
+action: receive
+channel:
+  $ref: ../asyncapi.yaml#/channels/daily-overdue
+messages:
+  - $ref: ../asyncapi.yaml#/channels/daily-overdue/messages/DailyRun

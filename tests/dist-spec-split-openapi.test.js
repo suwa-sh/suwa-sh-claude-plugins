@@ -100,7 +100,7 @@ test('event validation and dependency views consume split contracts through bund
 });
 
 test('latest-linked sample bundle and UC contract projections reproduce from human-editable split sources', () => {
-  const sample = path.resolve('samples/distillery/spec-latest-linked/docs/specs/events/20260906_120000_spec_generation');
+  const sample = path.resolve('tests/fixtures/distillery/spec-latest-linked/docs/specs/events/20260906_120000_spec_generation');
   assert.equal(run(sample, true).status, 'current');
   const mapping = JSON.parse(fs.readFileSync(path.join(sample, '_cross-cutting/api/contracts.json'), 'utf8'));
   assert.equal(mapping.openapi, 'openapi.yaml');

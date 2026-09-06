@@ -1,0 +1,32 @@
+{
+  "async_events": [],
+  "buc": "書籍を検索するフロー",
+  "business": "蔵書管理業務",
+  "consumes": [
+    {
+      "contract_ref": "openapi#/paths/~1genres/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "listGenres",
+      "owner_uc": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する",
+      "path": "/genres",
+      "summary": "書籍一覧を参照するの入力・確認データ取得",
+      "tier": "tier-frontend-user"
+    }
+  ],
+  "contract_sha256": "0f2c50d7d343d77a46f4fe627b300686d40ee527fae3869040d2554f6b825633",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1books/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "searchBooks",
+      "path": "/books",
+      "summary": "書籍を検索する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "書籍を検索する"
+}

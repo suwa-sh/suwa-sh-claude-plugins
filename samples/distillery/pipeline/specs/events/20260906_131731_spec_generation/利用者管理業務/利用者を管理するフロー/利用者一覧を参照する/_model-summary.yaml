@@ -1,0 +1,69 @@
+uc: 利用者一覧を参照する
+business: 利用者管理業務
+buc: 利用者を管理するフロー
+bounded_context_id: BC-002
+models:
+  - name: listUsersRequest
+    tier: tier-backend-api
+    layer: presentation
+    type: request-dto
+  - name: listUsersQuery
+    tier: tier-backend-api
+    layer: usecase
+    type: query
+  - name: User
+    tier: tier-backend-api
+    layer: domain
+    type: entity
+    rdra_info: 利用者
+  - name: listUsersPageState
+    tier: tier-frontend-staff
+    layer: state
+    type: state
+tables:
+  - name: users
+    rdra_info: 利用者
+    operations:
+      - type: SELECT
+        columns:
+          - name: user_number
+          - name: name
+          - name: email
+          - name: phone
+          - name: address
+          - name: user_type
+          - name: version
+          - name: registered_at
+          - name: updated_at
+          - name: deleted
+            value: "false"
+        where: deleted = false AND (query未指定 OR user_number = query OR nameがqueryを含む)。user_number昇順、page/page_sizeで切出
+    indexes_needed:
+      - columns:
+          - user_number
+        reason: 対象の照会と排他取得
+        access_pattern: deleted = false AND 確定した検索条件
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+  - name: audit_logs
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: audit_id
+            value: 一意の監査ID
+          - name: occurred_at
+            value: 現在時刻
+          - name: actor_user_number
+            value: 認証主体
+          - name: action_type
+            value: データ参照
+          - name: target_entity
+            value: E-003
+          - name: target_id
+            value: 対象識別子。検索はoperation名
+          - name: result
+            value: 成功
+    indexes_needed: []
+kvs: []
+object_storage: []

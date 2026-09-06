@@ -1,0 +1,32 @@
+{
+  "async_events": [
+    {
+      "channel": "#/channels/dunning",
+      "contract_ref": "asyncapi#/operations/publishDunning",
+      "direction": "publish",
+      "kind": "asyncapi",
+      "name": "publishDunning",
+      "operation_id": "publishDunning",
+      "summary": "publishDunning",
+      "tier": "tier-worker"
+    },
+    {
+      "channel": "#/channels/daily-overdue",
+      "contract_ref": "asyncapi#/operations/consumeOverdueSchedule",
+      "direction": "subscribe",
+      "kind": "asyncapi",
+      "name": "consumeOverdueSchedule",
+      "operation_id": "consumeOverdueSchedule",
+      "summary": "consumeOverdueSchedule",
+      "tier": "tier-worker"
+    }
+  ],
+  "buc": "延滞者に督促するフロー",
+  "business": "期限管理業務",
+  "consumes": [],
+  "contract_sha256": "0f365109b04a2d31949884d3b8b78047fbe47591c4b3d3196c98b1271d2f2d6a",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "延滞を判定する"
+}

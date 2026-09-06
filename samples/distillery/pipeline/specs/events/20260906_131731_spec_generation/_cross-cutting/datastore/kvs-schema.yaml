@@ -1,0 +1,29 @@
+version: "1.0"
+datastore: kvs
+key_patterns:
+  - pattern: idempotency:{actor}:{operation}:{key}
+    purpose: 確定済み応答キャッシュ。miss時はRDBイベントまたはnotification_request_receiptsのrequest_keyを照合。
+    ttl: 24h
+    operations:
+      - GET
+      - SET
+    value_type: "JSON: request_hash, HTTP status, headers, body"
+    description: RDBの更新判定を置き換えない。
+  - pattern: cache:book:{book_id}
+    purpose: 書籍参照キャッシュ。更新commit後DEL。
+    ttl: 60s
+    operations:
+      - GET
+      - SET
+      - DEL
+    value_type: "JSON: OpenAPI Book snapshot"
+    description: RDBの更新判定を置き換えない。
+  - pattern: session:{session_id}
+    purpose: IdP発行セッション
+    ttl: 30m
+    operations:
+      - GET
+      - SET
+      - DEL
+    value_type: "JSON: subject, roles, expires_at"
+    description: RDBの更新判定を置き換えない。

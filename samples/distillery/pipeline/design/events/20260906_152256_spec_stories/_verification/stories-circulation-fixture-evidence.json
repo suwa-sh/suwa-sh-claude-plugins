@@ -1,0 +1,82 @@
+[
+  {
+    "fixture": "book",
+    "schema": "Book",
+    "valid": true
+  },
+  {
+    "fixture": "user",
+    "schema": "User",
+    "valid": true
+  },
+  {
+    "fixture": "loan",
+    "schema": "Loan",
+    "valid": true
+  },
+  {
+    "fixture": "reservation",
+    "schema": "Reservation",
+    "valid": true
+  },
+  {
+    "fixture": "notification",
+    "schema": "Notification",
+    "valid": true
+  },
+  {
+    "fixture": "eligibility",
+    "schema": "LoanEligibility",
+    "valid": true
+  },
+  {
+    "fixture": "returnPreview",
+    "schema": "ReturnPreview",
+    "valid": true
+  },
+  {
+    "fixture": "notificationStatus",
+    "schema": "ReturnNotificationStatus",
+    "valid": true
+  },
+  {
+    "fixture": "overdue",
+    "schema": "OverdueLoan",
+    "valid": true
+  },
+  {
+    "uc": "延滞一覧を参照する",
+    "contract_sha256": "c58e2e29d5d752a2e03be759ee495e9b4bb47443930111e6a586780c634ffc8b",
+    "valid": true
+  },
+  {
+    "uc": "予約を取り消す",
+    "contract_sha256": "cd0145c70c01ea9308fc5239d94c76ec15a10b69f28670785b5c7270813fa17b",
+    "valid": true
+  },
+  {
+    "uc": "予約を登録する",
+    "contract_sha256": "aa95a8ea27e624c3c5ca0cd1a1f6752a7a14f7a5975b9783fad2e1acf646116a",
+    "valid": true
+  },
+  {
+    "uc": "予約一覧を参照する",
+    "contract_sha256": "12f58f12f6ed07cd059c81ccb21fd83c34c8d1b2c35a51ab23ac433ea1669951",
+    "valid": true
+  },
+  {
+    "uc": "貸出を登録する",
+    "contract_sha256": "6f1d67d567645528fa27c72580a368049a32abcea92c19849ab163cf7b92a895",
+    "valid": true
+  },
+  {
+    "uc": "返却を登録する",
+    "contract_sha256": "058b916330fc492b143e3abe4067677354bb6838b338004c869e440a45da8ecd",
+    "valid": true
+  },
+  {
+    "uc": "返却通知を送信する",
+    "contract_sha256": "af1917cbdb896ddfb5acbb95ea184014f616d7e4bd7638537398f8a57f14d1a6",
+    "valid": true
+  }
+]

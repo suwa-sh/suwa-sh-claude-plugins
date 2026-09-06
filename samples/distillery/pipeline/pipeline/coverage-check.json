@@ -1,0 +1,55 @@
+{
+  "checked_at": "2026-09-06T06:27:49.426Z",
+  "status": "pass",
+  "uc": {
+    "expected": 27,
+    "generated": 27
+  },
+  "structural_trace": {
+    "condition": {
+      "linked": 15,
+      "total": 15
+    },
+    "external": {
+      "linked": 1,
+      "total": 1
+    },
+    "information": {
+      "linked": 58,
+      "total": 58
+    },
+    "state": {
+      "linked": 16,
+      "total": 16
+    },
+    "variation": {
+      "linked": 23,
+      "total": 23
+    }
+  },
+  "state_rows": {
+    "total": 18,
+    "transitions": 16,
+    "terminal_rows": [
+      {
+        "model": "貸出の状態",
+        "state": "返却済み",
+        "reason": "遷移UCのない終端状態。履歴保持と順位対象外は該当UC・共通ルールで確認。"
+      },
+      {
+        "model": "予約の状態",
+        "state": "取消",
+        "reason": "遷移UCのない終端状態。履歴保持と順位対象外は該当UC・共通ルールで確認。"
+      }
+    ]
+  },
+  "semantic_review": {
+    "result": "27 UCの独立レビューと修正確認済み。構造的リンク率と意味の充足を区別する。",
+    "evidence": [
+      "specs/events/20260906_131731_spec_generation/_review/implementation-readiness.md",
+      "specs/events/20260906_131731_spec_generation/_review/round-2.yaml",
+      "specs/events/20260906_131731_spec_generation/_review/proposal-baseline.md"
+    ]
+  },
+  "unlinked": []
+}

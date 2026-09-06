@@ -1,0 +1,1393 @@
+version: "1.0"
+datastore: rdb
+tables:
+  - name: audit_logs
+    rdra_info: ""
+    description: 監査ログの永続化
+    columns:
+      - name: audit_id
+        type: string
+        nullable: false
+        description: 監査ログID
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: 発生日時
+      - name: actor_user_number
+        type: string
+        nullable: false
+        description: 操作者の利用者番号（バッチはタイマーの固定 ID）
+      - name: action_type
+        type: string
+        nullable: false
+        description: "操作種別（enum: ログイン・ログアウト・ログイン失敗・データ参照・データ更新）"
+      - name: target_entity
+        type: string
+        nullable: false
+        description: 対象エンティティ（E-xxx）
+      - name: target_id
+        type: string
+        nullable: false
+        description: 対象レコード ID（利用状況閲覧範囲判定の検証に使う）
+      - name: result
+        type: string
+        nullable: false
+        description: "結果（enum: 成功・拒否・失敗）"
+    primary_key:
+      - audit_id
+    foreign_keys: []
+    indexes: []
+    used_by:
+      - uc: 予約状況を参照する
+        operations:
+          - INSERT
+      - uc: 利用者の利用状況を参照する
+        operations:
+          - INSERT
+      - uc: 貸出履歴を参照する
+        operations:
+          - INSERT
+      - uc: 利用者を削除する
+        operations:
+          - INSERT
+      - uc: 利用者を登録する
+        operations:
+          - INSERT
+      - uc: 利用者を編集する
+        operations:
+          - INSERT
+      - uc: 利用者一覧を参照する
+        operations:
+          - INSERT
+      - uc: 延滞を判定する
+        operations:
+          - INSERT
+      - uc: 延滞一覧を参照する
+        operations:
+          - INSERT
+      - uc: 督促を送信する
+        operations:
+          - INSERT
+      - uc: リマインドを送信する
+        operations:
+          - INSERT
+      - uc: リマインド対象を抽出する
+        operations:
+          - INSERT
+      - uc: 書籍を検索する
+        operations:
+          - INSERT
+      - uc: 書籍詳細を参照する
+        operations:
+          - INSERT
+      - uc: 書籍を削除する
+        operations:
+          - INSERT
+      - uc: 書籍を登録する
+        operations:
+          - INSERT
+      - uc: 書籍を編集する
+        operations:
+          - INSERT
+      - uc: 書籍一覧を参照する
+        operations:
+          - INSERT
+      - uc: 予約を取り消す
+        operations:
+          - INSERT
+      - uc: 予約を登録する
+        operations:
+          - INSERT
+      - uc: 予約一覧を参照する
+        operations:
+          - INSERT
+      - uc: 貸出を登録する
+        operations:
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - INSERT
+      - uc: 返却通知を送信する
+        operations:
+          - INSERT
+      - uc: 人気書籍ランキングを参照する
+        operations:
+          - INSERT
+      - uc: 在庫状況一覧を参照する
+        operations:
+          - INSERT
+      - uc: 期間別貸出統計を参照する
+        operations:
+          - INSERT
+  - name: books
+    rdra_info: 書籍
+    description: 書籍の現在状態の投影
+    columns:
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID
+      - name: title
+        type: string
+        nullable: false
+        description: タイトル
+      - name: author
+        type: string
+        nullable: false
+        description: 著者
+      - name: isbn
+        type: string
+        nullable: true
+        description: ISBN（移行時に重複・欠損を名寄せする。NFR D.4.1.3）
+      - name: publisher
+        type: string
+        nullable: true
+        description: 出版社
+      - name: genre_id
+        type: string
+        nullable: false
+        description: ジャンルID（E-002 への参照）
+      - name: media_type
+        type: string
+        nullable: false
+        description: "媒体種別（enum: 紙・電子。初期リリースは紙のみ貸出・予約対象）"
+      - name: current_status
+        type: string
+        nullable: false
+        description: "書籍の状態（enum: 在庫あり・貸出中・予約待ち）。スナップショットのキャッシュ的ステータス。遷移はイベント（登録・貸出・返却・予約取消・削除）で記録する"
+      - name: version
+        type: integer
+        nullable: false
+        description: 楽観ロック用バージョン
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: スナップショット最終更新日時。情報.tsv の登録日・更新日は登録イベント / 最新イベントの occurred_at で管理する
+      - name: deleted
+        type: boolean
+        nullable: false
+        description: 削除イベントでtrue。通常参照はfalseに限定。
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 最初の登録イベントのoccurred_at。以後の編集で変更しない。
+    primary_key:
+      - book_id
+    foreign_keys:
+      - columns:
+          - genre_id
+        references:
+          table: genres
+          columns:
+            - genre_id
+        on_delete: RESTRICT
+    indexes:
+      - name: books_isbn
+        columns:
+          - isbn
+        unique: false
+      - name: books_title
+        columns:
+          - title
+        unique: false
+    used_by:
+      - uc: 予約状況を参照する
+        operations:
+          - SELECT
+      - uc: 利用者の利用状況を参照する
+        operations:
+          - SELECT
+      - uc: 貸出履歴を参照する
+        operations:
+          - SELECT
+      - uc: 延滞を判定する
+        operations:
+          - SELECT
+      - uc: 延滞一覧を参照する
+        operations:
+          - SELECT
+      - uc: 督促を送信する
+        operations:
+          - SELECT
+      - uc: リマインドを送信する
+        operations:
+          - SELECT
+      - uc: リマインド対象を抽出する
+        operations:
+          - SELECT
+      - uc: 書籍を検索する
+        operations:
+          - SELECT
+      - uc: 書籍詳細を参照する
+        operations:
+          - SELECT
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 書籍を登録する
+        operations:
+          - INSERT
+      - uc: 書籍を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 書籍一覧を参照する
+        operations:
+          - SELECT
+      - uc: 予約を取り消す
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+      - uc: 予約一覧を参照する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+      - uc: 人気書籍ランキングを参照する
+        operations:
+          - SELECT
+      - uc: 在庫状況一覧を参照する
+        operations:
+          - SELECT
+  - name: books_events
+    rdra_info: 書籍
+    description: 書籍の変更イベント。INSERTのみ。
+    columns:
+      - name: event_id
+        type: string
+        nullable: false
+        description: イベント識別子。新規追記時に生成するUUID。
+      - name: book_id
+        type: string
+        nullable: false
+        description: 対象書籍の識別子。
+      - name: version
+        type: integer
+        nullable: false
+        description: 対象集約の確定版。新規は1、変更ごとに1増加する。
+      - name: event_type
+        type: string
+        nullable: false
+        description: 発生した変更の種別。値とpayloadは当該UCのモデル操作を参照。
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: イベント確定時刻。UTCの時刻を保存する。
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 認証主体の利用者番号。日次・配信はサービス主体ID。
+      - name: request_key
+        type: string
+        nullable: false
+        description: operationとX-Idempotency-Keyの結合。日次・配信はTR-IDEMPの安定キー。
+      - name: request_hash
+        type: string
+        nullable: false
+        description: 本文・path・query・If-Match等の正規化SHA-256。TR-IDEMPを参照。
+      - name: payload
+        type: text
+        nullable: false
+        description: イベント別の変更値をJSONで保持
+      - name: response
+        type: text
+        nullable: false
+        description: 再送時のHTTP statusとbodyをJSONで保持
+    primary_key:
+      - event_id
+    foreign_keys: []
+    indexes:
+      - name: books_events_version
+        columns:
+          - book_id
+          - version
+        unique: true
+      - name: books_events_request
+        columns:
+          - actor_id
+          - request_key
+          - book_id
+        unique: true
+    used_by:
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 書籍を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 書籍を編集する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 予約を取り消す
+        operations:
+          - INSERT
+      - uc: 貸出を登録する
+        operations:
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - INSERT
+  - name: credentials
+    rdra_info: ""
+    description: 認証情報の永続化
+    columns:
+      - name: user_number
+        type: string
+        nullable: false
+        description: 利用者番号（E-003 と 1:1）
+      - name: password_hash
+        type: string
+        nullable: false
+        description: パスワードハッシュ（平文保持禁止。ソルト付きハッシュ）
+      - name: password_updated_at
+        type: datetime
+        nullable: false
+        description: パスワード最終更新日時（有効期限ポリシーの判定基準）
+      - name: failed_attempts
+        type: integer
+        nullable: false
+        description: 連続ログイン失敗回数
+      - name: locked_until
+        type: datetime
+        nullable: true
+        description: アカウントロック解除日時（未ロックは NULL）
+    primary_key:
+      - user_number
+    foreign_keys:
+      - columns:
+          - user_number
+        references:
+          table: users
+          columns:
+            - user_number
+        on_delete: RESTRICT
+    indexes: []
+    used_by: []
+  - name: genres
+    rdra_info: ジャンル
+    description: ジャンルの永続化
+    columns:
+      - name: genre_id
+        type: string
+        nullable: false
+        description: ジャンルID
+      - name: genre_name
+        type: string
+        nullable: false
+        description: ジャンル名（文学・社会科学・自然科学・技術・芸術・歴史・児童書・その他）
+      - name: description
+        type: text
+        nullable: true
+        description: 説明
+    primary_key:
+      - genre_id
+    foreign_keys: []
+    indexes: []
+    used_by:
+      - uc: 書籍を検索する
+        operations:
+          - SELECT
+      - uc: 書籍詳細を参照する
+        operations:
+          - SELECT
+      - uc: 書籍を登録する
+        operations:
+          - SELECT
+      - uc: 書籍を編集する
+        operations:
+          - SELECT
+      - uc: 書籍一覧を参照する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+      - uc: 人気書籍ランキングを参照する
+        operations:
+          - SELECT
+      - uc: 在庫状況一覧を参照する
+        operations:
+          - SELECT
+  - name: loan_periods
+    rdra_info: 貸出期間
+    description: 貸出期間の永続化
+    columns:
+      - name: loan_period_id
+        type: string
+        nullable: false
+        description: 貸出期間設定ID（世代ごとに採番）
+      - name: loan_days
+        type: integer
+        nullable: false
+        description: 貸出期間（日数）
+      - name: valid_from
+        type: date
+        nullable: false
+        description: 適用開始日
+      - name: valid_to
+        type: date
+        nullable: true
+        description: 適用終了日（現行世代は NULL）
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 更新日時
+    primary_key:
+      - loan_period_id
+    foreign_keys: []
+    indexes: []
+    used_by:
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+  - name: loan_statistics
+    rdra_info: 貸出統計
+    description: 貸出統計の永続化
+    columns:
+      - name: stat_id
+        type: string
+        nullable: false
+        description: 集計ID
+      - name: period_type
+        type: string
+        nullable: false
+        description: "集計期間種別（enum: 日・月・年）"
+      - name: period_start
+        type: date
+        nullable: false
+        description: 集計対象期間 開始日
+      - name: period_end
+        type: date
+        nullable: false
+        description: 集計対象期間 終了日
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID（E-001 への参照）
+      - name: loan_count
+        type: integer
+        nullable: false
+        description: 貸出回数（書籍ごと。人気書籍ランキングの基準）
+      - name: loan_total
+        type: integer
+        nullable: false
+        description: 貸出件数（集計期間内の合計）
+      - name: ranking
+        type: integer
+        nullable: false
+        description: ランキング順位
+      - name: aggregated_at
+        type: datetime
+        nullable: false
+        description: 集計日時（再集計のたびに更新）
+    primary_key:
+      - stat_id
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: RESTRICT
+    indexes:
+      - name: loan_statistics_period_type_period_start_period_end_book_id
+        columns:
+          - period_type
+          - period_start
+          - period_end
+          - book_id
+        unique: true
+    used_by:
+      - uc: 人気書籍ランキングを参照する
+        operations:
+          - SELECT
+          - INSERT
+          - UPDATE
+      - uc: 期間別貸出統計を参照する
+        operations:
+          - SELECT
+          - INSERT
+          - UPDATE
+  - name: loans
+    rdra_info: 貸出
+    description: 貸出の現在状態の投影
+    columns:
+      - name: loan_id
+        type: string
+        nullable: false
+        description: 貸出ID
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID（E-001 への参照）
+      - name: user_number
+        type: string
+        nullable: false
+        description: 利用者番号（E-003 への参照。貸出履歴は要配慮情報に準じる NFR E.1.2.1 / E.6.1.1）
+      - name: loaned_on
+        type: date
+        nullable: false
+        description: 貸出日（貸出登録イベントの発生日。INSERT 時に確定）
+      - name: due_date
+        type: date
+        nullable: false
+        description: "返却期限（貸出日 + 貸出期間で自動設定。条件: 返却期限算出）"
+      - name: current_status
+        type: string
+        nullable: false
+        description: "貸出の状態（enum: 貸出中・延滞・返却済み）。返却日（情報.tsv）は nullable 日時のため排除し、返却登録イベントの occurred_at で管理する"
+      - name: recorded_by
+        type: string
+        nullable: false
+        description: 記録した司書（利用者区分=司書の利用者番号。E-003 への参照）
+      - name: version
+        type: integer
+        nullable: false
+        description: 楽観ロック用バージョン
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: スナップショット最終更新日時
+      - name: returned_on
+        type: date
+        nullable: true
+        description: 返却イベントから投影する返却日
+    primary_key:
+      - loan_id
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: RESTRICT
+      - columns:
+          - user_number
+        references:
+          table: users
+          columns:
+            - user_number
+        on_delete: RESTRICT
+      - columns:
+          - recorded_by
+        references:
+          table: users
+          columns:
+            - user_number
+        on_delete: RESTRICT
+    indexes:
+      - name: loans_book_id_active
+        columns:
+          - book_id
+        unique: true
+        where: current_status IN ('貸出中','延滞')
+      - name: loans_user_number_loaned_on
+        columns:
+          - user_number
+          - loaned_on
+        unique: false
+      - name: loans_current_status_due_date
+        columns:
+          - current_status
+          - due_date
+        unique: false
+    used_by:
+      - uc: 利用者の利用状況を参照する
+        operations:
+          - SELECT
+      - uc: 貸出履歴を参照する
+        operations:
+          - SELECT
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+      - uc: 延滞を判定する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 延滞一覧を参照する
+        operations:
+          - SELECT
+      - uc: 督促を送信する
+        operations:
+          - SELECT
+      - uc: リマインドを送信する
+        operations:
+          - SELECT
+      - uc: リマインド対象を抽出する
+        operations:
+          - SELECT
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+  - name: loans_events
+    rdra_info: 貸出
+    description: 貸出の変更イベント。INSERTのみ。
+    columns:
+      - name: event_id
+        type: string
+        nullable: false
+        description: イベント識別子。新規追記時に生成するUUID。
+      - name: loan_id
+        type: string
+        nullable: false
+        description: 対象貸出の識別子。
+      - name: version
+        type: integer
+        nullable: false
+        description: 対象集約の確定版。新規は1、変更ごとに1増加する。
+      - name: event_type
+        type: string
+        nullable: false
+        description: 発生した変更の種別。値とpayloadは当該UCのモデル操作を参照。
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: イベント確定時刻。UTCの時刻を保存する。
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 認証主体の利用者番号。日次・配信はサービス主体ID。
+      - name: request_key
+        type: string
+        nullable: false
+        description: operationとX-Idempotency-Keyの結合。日次・配信はTR-IDEMPの安定キー。
+      - name: request_hash
+        type: string
+        nullable: false
+        description: 本文・path・query・If-Match等の正規化SHA-256。TR-IDEMPを参照。
+      - name: payload
+        type: text
+        nullable: false
+        description: イベント別の変更値をJSONで保持
+      - name: response
+        type: text
+        nullable: false
+        description: 再送時のHTTP statusとbodyをJSONで保持
+    primary_key:
+      - event_id
+    foreign_keys: []
+    indexes:
+      - name: loans_events_version
+        columns:
+          - loan_id
+          - version
+        unique: true
+      - name: loans_events_request
+        columns:
+          - actor_id
+          - request_key
+          - loan_id
+        unique: true
+    used_by:
+      - uc: 延滞を判定する
+        operations:
+          - INSERT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 人気書籍ランキングを参照する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を参照する
+        operations:
+          - SELECT
+  - name: notification_outbox
+    rdra_info: 通知
+    description: 通知要求の保存・MQ公開・送信処理の進行状態。通知結果の正本はnotifications。
+    columns:
+      - name: notification_id
+        type: string
+        nullable: false
+        description: 通知要求識別子。同じcause_keyで共有する。
+      - name: cause_key
+        type: string
+        nullable: false
+        description: notification_type + target_id。同じ契機の要求を一意にする
+      - name: notification_type
+        type: string
+        nullable: false
+        description: 通知種別。返却通知・リマインド・督促のいずれか。
+      - name: target_loan_id
+        type: string
+        nullable: true
+        description: リマインド・督促の対象貸出ID。返却通知ではNULL。
+      - name: target_reservation_id
+        type: string
+        nullable: true
+        description: 返却通知の対象予約ID。他の種別ではNULL。
+      - name: state
+        type: string
+        nullable: false
+        description: queued / published / sending / sent / failed / unknown
+      - name: payload
+        type: text
+        nullable: false
+        description: AsyncAPI message payloadのJSON。通知IDと対象IDのみ
+      - name: created_at
+        type: datetime
+        nullable: false
+        description: 要求または受付記録を作成したUTC時刻。
+      - name: attempts
+        type: integer
+        nullable: false
+        description: 外部配信のclaim取得回数。初期0。claimごとに1増やす。
+      - name: next_attempt_at
+        type: datetime
+        nullable: true
+        description: 確実な未送信の再試行を許すUTC時刻。初回と終端はNULL。
+      - name: lease_until
+        type: datetime
+        nullable: true
+        description: 配信権の有効期限。claim取得時刻+120秒。終端はNULL。
+      - name: provider_message_id
+        type: string
+        nullable: true
+        description: 配信事業者が返した識別子。未取得はNULL。不明結果の手動照合に使用。
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 認証主体の利用者番号。日次・配信はサービス主体ID。
+      - name: request_key
+        type: string
+        nullable: false
+        description: operationとX-Idempotency-Keyの結合。日次・配信はTR-IDEMPの安定キー。
+      - name: request_hash
+        type: string
+        nullable: false
+        description: 本文・path・query・If-Match等の正規化SHA-256。TR-IDEMPを参照。
+      - name: response
+        type: text
+        nullable: false
+        description: 要求確定時のHTTP status・headers・bodyのJSON。日次要求はACK結果。TR-IDEMPによる再送ではこの確定値を返す。配信状態の更新では変更しない
+    primary_key:
+      - notification_id
+    foreign_keys:
+      - columns:
+          - target_loan_id
+        references:
+          table: loans
+          columns:
+            - loan_id
+        on_delete: RESTRICT
+      - columns:
+          - target_reservation_id
+        references:
+          table: reservations
+          columns:
+            - reservation_id
+        on_delete: RESTRICT
+    indexes:
+      - name: notification_outbox_cause
+        columns:
+          - cause_key
+        unique: true
+      - name: notification_outbox_request
+        columns:
+          - actor_id
+          - request_key
+        unique: true
+      - name: notification_outbox_dispatch
+        columns:
+          - state
+          - next_attempt_at
+        unique: false
+    used_by:
+      - uc: 延滞を判定する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 督促を送信する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: リマインドを送信する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: リマインド対象を抽出する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 予約を取り消す
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+          - INSERT
+          - UPDATE
+  - name: notification_request_receipts
+    rdra_info: 通知
+    description: 通知受付コマンドの再送照合。同じ通知契機を再利用する別要求も記録する。
+    columns:
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 認証主体の利用者番号。日次・配信はサービス主体ID。
+      - name: request_key
+        type: string
+        nullable: false
+        description: operationとX-Idempotency-Keyの結合。日次・配信はTR-IDEMPの安定キー。
+      - name: request_hash
+        type: string
+        nullable: false
+        description: 本文・path・query・If-Match等の正規化SHA-256。TR-IDEMPを参照。
+      - name: response
+        type: text
+        nullable: false
+        description: 要求確定時のHTTP status・headers・bodyのJSON。TR-IDEMPの再送応答で使用する。
+      - name: notification_id
+        type: string
+        nullable: false
+        description: 通知要求識別子。同じcause_keyで共有する。
+      - name: created_at
+        type: datetime
+        nullable: false
+        description: 要求または受付記録を作成したUTC時刻。
+    primary_key:
+      - actor_id
+      - request_key
+    foreign_keys:
+      - columns:
+          - notification_id
+        references:
+          table: notification_outbox
+          columns:
+            - notification_id
+        on_delete: RESTRICT
+    indexes: []
+    used_by:
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+          - INSERT
+  - name: notifications
+    rdra_info: 通知
+    description: 通知の永続化
+    columns:
+      - name: notification_id
+        type: string
+        nullable: false
+        description: 通知ID
+      - name: user_number
+        type: string
+        nullable: false
+        description: 利用者番号（E-003 への参照）
+      - name: notification_type
+        type: string
+        nullable: false
+        description: "通知種別（enum: 返却通知・リマインド・督促）"
+      - name: recipient_email
+        type: string
+        nullable: false
+        description: 送信先メールアドレス（送信時点の値のコピー。個人情報。NFR E.6.1.1）
+      - name: subject
+        type: string
+        nullable: false
+        description: 件名
+      - name: body
+        type: text
+        nullable: false
+        description: 本文
+      - name: sent_at
+        type: datetime
+        nullable: false
+        description: 送信日時（イベント発生日時 occurred_at）
+      - name: send_result
+        type: string
+        nullable: false
+        description: "送信結果（enum: 成功・失敗。メール配信サービスの応答を ACL で翻訳した値）"
+      - name: target_loan_id
+        type: string
+        nullable: true
+        description: 対象貸出ID（リマインド・督促のとき。E-004 への参照。返却通知では NULL）
+      - name: target_reservation_id
+        type: string
+        nullable: true
+        description: 対象予約ID（返却通知のとき。E-007 への参照。リマインド・督促では NULL）
+    primary_key:
+      - notification_id
+    foreign_keys:
+      - columns:
+          - user_number
+        references:
+          table: users
+          columns:
+            - user_number
+        on_delete: RESTRICT
+      - columns:
+          - target_loan_id
+        references:
+          table: loans
+          columns:
+            - loan_id
+        on_delete: RESTRICT
+      - columns:
+          - target_reservation_id
+        references:
+          table: reservations
+          columns:
+            - reservation_id
+        on_delete: RESTRICT
+    indexes:
+      - name: notifications_target_loan_id_notification_type_active
+        columns:
+          - target_loan_id
+          - notification_type
+        unique: true
+        where: send_result = '成功' AND target_loan_id IS NOT NULL
+      - name: notifications_target_reservation_id_notification_type_active
+        columns:
+          - target_reservation_id
+          - notification_type
+        unique: true
+        where: send_result = '成功' AND target_reservation_id IS NOT NULL
+    used_by:
+      - uc: 延滞一覧を参照する
+        operations:
+          - SELECT
+      - uc: 督促を送信する
+        operations:
+          - INSERT
+      - uc: リマインドを送信する
+        operations:
+          - INSERT
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+          - INSERT
+  - name: remind_days
+    rdra_info: リマインド日数
+    description: リマインド日数の永続化
+    columns:
+      - name: remind_days_id
+        type: string
+        nullable: false
+        description: リマインド日数設定ID（世代ごとに採番）
+      - name: remind_days
+        type: integer
+        nullable: false
+        description: リマインド日数（返却期限の何日前か）
+      - name: valid_from
+        type: date
+        nullable: false
+        description: 適用開始日
+      - name: valid_to
+        type: date
+        nullable: true
+        description: 適用終了日（現行世代は NULL）
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 更新日時
+    primary_key:
+      - remind_days_id
+    foreign_keys: []
+    indexes: []
+    used_by:
+      - uc: リマインドを送信する
+        operations:
+          - SELECT
+      - uc: リマインド対象を抽出する
+        operations:
+          - SELECT
+  - name: reservations
+    rdra_info: 予約
+    description: 予約の現在状態の投影
+    columns:
+      - name: reservation_id
+        type: string
+        nullable: false
+        description: 予約ID
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID（E-001 への参照）
+      - name: user_number
+        type: string
+        nullable: false
+        description: 利用者番号（E-003 への参照）
+      - name: accepted_at
+        type: datetime
+        nullable: false
+        description: 受付日時（予約登録イベントの発生日時。予約順位の決定基準）
+      - name: queue_position
+        type: integer
+        nullable: true
+        description: "予約順位（同一書籍内の受付順。取消時に繰り上げる。条件: 予約順位決定）"
+      - name: current_status
+        type: string
+        nullable: false
+        description: "予約の状態（enum: 予約中・通知済み・取消・終了）。取消日時（情報.tsv）は nullable 日時のため排除し、取消イベントの occurred_at で管理する"
+      - name: version
+        type: integer
+        nullable: false
+        description: 楽観ロック用バージョン
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: スナップショット最終更新日時
+    primary_key:
+      - reservation_id
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: RESTRICT
+      - columns:
+          - user_number
+        references:
+          table: users
+          columns:
+            - user_number
+        on_delete: RESTRICT
+    indexes:
+      - name: reservations_book_id_queue_position_active
+        columns:
+          - book_id
+          - queue_position
+        unique: true
+        where: current_status IN ('予約中','通知済み')
+      - name: reservations_user_number_accepted_at
+        columns:
+          - user_number
+          - accepted_at
+        unique: false
+    used_by:
+      - uc: 予約状況を参照する
+        operations:
+          - SELECT
+      - uc: 利用者の利用状況を参照する
+        operations:
+          - SELECT
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+      - uc: 書籍を検索する
+        operations:
+          - SELECT
+      - uc: 書籍詳細を参照する
+        operations:
+          - SELECT
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+      - uc: 書籍を編集する
+        operations:
+          - SELECT
+      - uc: 書籍一覧を参照する
+        operations:
+          - SELECT
+      - uc: 予約を取り消す
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 予約一覧を参照する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 在庫状況一覧を参照する
+        operations:
+          - SELECT
+  - name: reservations_events
+    rdra_info: 予約
+    description: 予約の変更イベント。INSERTのみ。
+    columns:
+      - name: event_id
+        type: string
+        nullable: false
+        description: イベント識別子。新規追記時に生成するUUID。
+      - name: reservation_id
+        type: string
+        nullable: false
+        description: 対象予約の識別子。
+      - name: version
+        type: integer
+        nullable: false
+        description: 対象集約の確定版。新規は1、変更ごとに1増加する。
+      - name: event_type
+        type: string
+        nullable: false
+        description: 発生した変更の種別。値とpayloadは当該UCのモデル操作を参照。
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: イベント確定時刻。UTCの時刻を保存する。
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 認証主体の利用者番号。日次・配信はサービス主体ID。
+      - name: request_key
+        type: string
+        nullable: false
+        description: operationとX-Idempotency-Keyの結合。日次・配信はTR-IDEMPの安定キー。
+      - name: request_hash
+        type: string
+        nullable: false
+        description: 本文・path・query・If-Match等の正規化SHA-256。TR-IDEMPを参照。
+      - name: payload
+        type: text
+        nullable: false
+        description: イベント別の変更値をJSONで保持
+      - name: response
+        type: text
+        nullable: false
+        description: 再送時のHTTP statusとbodyをJSONで保持
+    primary_key:
+      - event_id
+    foreign_keys: []
+    indexes:
+      - name: reservations_events_version
+        columns:
+          - reservation_id
+          - version
+        unique: true
+      - name: reservations_events_request
+        columns:
+          - actor_id
+          - request_key
+          - reservation_id
+        unique: true
+    used_by:
+      - uc: 予約を取り消す
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 貸出を登録する
+        operations:
+          - INSERT
+      - uc: 返却通知を送信する
+        operations:
+          - INSERT
+  - name: users
+    rdra_info: 利用者
+    description: 利用者の現在状態の投影
+    columns:
+      - name: user_number
+        type: string
+        nullable: false
+        description: 利用者番号（司書が登録時に付与する一意の識別子）
+      - name: name
+        type: string
+        nullable: false
+        description: 氏名（個人情報。保管時暗号化対象 NFR E.6.1.1、テスト環境マスキング対象 NFR E.6.2.1）
+      - name: email
+        type: string
+        nullable: false
+        description: メールアドレス（通知の送信先。移行時に欠損を補完する NFR D.4.1.3。個人情報）
+      - name: phone
+        type: string
+        nullable: true
+        description: 電話番号（個人情報）
+      - name: address
+        type: string
+        nullable: true
+        description: 住所（個人情報）
+      - name: user_type
+        type: string
+        nullable: false
+        description: "利用者区分（enum: 司書・利用者）。RBAC のロール源泉（NFR E.5.2.1）"
+      - name: version
+        type: integer
+        nullable: false
+        description: 楽観ロック用バージョン
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: スナップショット最終更新日時。登録日・更新日は登録 / 属性変更イベントの occurred_at で管理する
+      - name: deleted
+        type: boolean
+        nullable: false
+        description: 削除イベントでtrue。通常参照はfalseに限定。
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 最初の登録イベントのoccurred_at。以後の編集で変更しない。
+    primary_key:
+      - user_number
+    foreign_keys: []
+    indexes: []
+    used_by:
+      - uc: 利用者の利用状況を参照する
+        operations:
+          - SELECT
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 利用者を登録する
+        operations:
+          - INSERT
+      - uc: 利用者を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 利用者一覧を参照する
+        operations:
+          - SELECT
+      - uc: 延滞一覧を参照する
+        operations:
+          - SELECT
+      - uc: 督促を送信する
+        operations:
+          - SELECT
+      - uc: リマインドを送信する
+        operations:
+          - SELECT
+      - uc: 予約を取り消す
+        operations:
+          - SELECT
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+      - uc: 予約一覧を参照する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+  - name: users_events
+    rdra_info: 利用者
+    description: 利用者の変更イベント。INSERTのみ。
+    columns:
+      - name: event_id
+        type: string
+        nullable: false
+        description: イベント識別子。新規追記時に生成するUUID。
+      - name: user_number
+        type: string
+        nullable: false
+        description: 対象利用者の識別子。
+      - name: version
+        type: integer
+        nullable: false
+        description: 対象集約の確定版。新規は1、変更ごとに1増加する。
+      - name: event_type
+        type: string
+        nullable: false
+        description: 発生した変更の種別。値とpayloadは当該UCのモデル操作を参照。
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: イベント確定時刻。UTCの時刻を保存する。
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 認証主体の利用者番号。日次・配信はサービス主体ID。
+      - name: request_key
+        type: string
+        nullable: false
+        description: operationとX-Idempotency-Keyの結合。日次・配信はTR-IDEMPの安定キー。
+      - name: request_hash
+        type: string
+        nullable: false
+        description: 本文・path・query・If-Match等の正規化SHA-256。TR-IDEMPを参照。
+      - name: payload
+        type: text
+        nullable: false
+        description: イベント別の変更値をJSONで保持
+      - name: response
+        type: text
+        nullable: false
+        description: 再送時のHTTP statusとbodyをJSONで保持
+    primary_key:
+      - event_id
+    foreign_keys: []
+    indexes:
+      - name: users_events_version
+        columns:
+          - user_number
+          - version
+        unique: true
+      - name: users_events_request
+        columns:
+          - actor_id
+          - request_key
+          - user_number
+        unique: true
+    used_by:
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 利用者を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 利用者を編集する
+        operations:
+          - SELECT
+          - INSERT

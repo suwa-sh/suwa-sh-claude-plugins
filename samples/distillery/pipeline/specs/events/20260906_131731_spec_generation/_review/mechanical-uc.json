@@ -1,0 +1,488 @@
+[
+  {
+    "uc": "在庫状況一覧を参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/在庫状況一覧を参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "在庫状況一覧を参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/在庫状況一覧を参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "在庫状況一覧を参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "期間別貸出統計を参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "期間別貸出統計を参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "期間別貸出統計を参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "人気書籍ランキングを参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "人気書籍ランキングを参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "人気書籍ランキングを参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "延滞を判定する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/延滞を判定する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "延滞を判定する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/延滞を判定する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "延滞を判定する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "延滞一覧を参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "延滞一覧を参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "延滞一覧を参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "督促を送信する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/督促を送信する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "督促を送信する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/督促を送信する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "督促を送信する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "リマインドを送信する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/返却期限を通知するフロー/リマインドを送信する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "リマインドを送信する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/返却期限を通知するフロー/リマインドを送信する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "リマインドを送信する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "リマインド対象を抽出する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "リマインド対象を抽出する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "リマインド対象を抽出する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "予約状況を参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/予約状況を参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "予約状況を参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/予約状況を参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "予約状況を参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "利用者の利用状況を参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "利用者の利用状況を参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "利用者の利用状況を参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "貸出履歴を参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/貸出履歴を参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "貸出履歴を参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/貸出履歴を参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "貸出履歴を参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "貸出を登録する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "貸出を登録する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "貸出を登録する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "予約を登録する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約を登録する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "予約を登録する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約を登録する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "予約を登録する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "予約一覧を参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約一覧を参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "予約一覧を参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約一覧を参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "予約一覧を参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "予約を取り消す",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約を取り消す/_api-summary.yaml\n"
+  },
+  {
+    "uc": "予約を取り消す",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約を取り消す/_model-summary.yaml\n"
+  },
+  {
+    "uc": "予約を取り消す",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "返却を登録する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を返却するフロー/返却を登録する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "返却を登録する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を返却するフロー/返却を登録する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "返却を登録する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "返却通知を送信する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "返却通知を送信する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "返却通知を送信する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "書籍を登録する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "書籍を登録する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "書籍を登録する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "書籍を編集する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を編集する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "書籍を編集する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を編集する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "書籍を編集する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "書籍を削除する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "書籍を削除する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "書籍を削除する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "書籍一覧を参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "書籍一覧を参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "書籍一覧を参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "書籍詳細を参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "書籍詳細を参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "書籍詳細を参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "書籍を検索する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍を検索する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "書籍を検索する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍を検索する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "書籍を検索する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "利用者一覧を参照する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を参照する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "利用者一覧を参照する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を参照する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "利用者一覧を参照する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "利用者を登録する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "利用者を登録する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "利用者を登録する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "利用者を編集する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を編集する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "利用者を編集する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を編集する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "利用者を編集する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  },
+  {
+    "uc": "利用者を削除する",
+    "check": "validateApiSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_api-summary.yaml\n"
+  },
+  {
+    "uc": "利用者を削除する",
+    "check": "validateModelSummary",
+    "exit_code": 0,
+    "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_model-summary.yaml\n"
+  },
+  {
+    "uc": "利用者を削除する",
+    "check": "validateSpecProse",
+    "exit_code": 0,
+    "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+  }
+]

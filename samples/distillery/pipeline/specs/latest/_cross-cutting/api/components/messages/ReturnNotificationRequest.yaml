@@ -1,0 +1,17 @@
+name: ReturnNotificationRequest
+title: 返却通知を送信する
+contentType: application/json
+payload:
+  $ref: ../schemas/ReturnNotificationRequestPayload.yaml
+headers:
+  type: object
+  additionalProperties: false
+  required:
+    - message_id
+  properties:
+    message_id:
+      type: string
+      minLength: 1
+      maxLength: 255
+correlationId:
+  location: $message.header#/message_id

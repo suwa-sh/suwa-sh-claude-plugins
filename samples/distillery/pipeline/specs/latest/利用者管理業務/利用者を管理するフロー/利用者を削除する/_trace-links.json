@@ -1,0 +1,17 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"condition\",\"利用者管理\",\"利用者削除可否判定\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を削除する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "利用者管理業務/利用者を管理するフロー/利用者を削除する/spec.md",
+          "name": "継続中の取引がある利用者を保持する"
+        }
+      ]
+    }
+  ]
+}

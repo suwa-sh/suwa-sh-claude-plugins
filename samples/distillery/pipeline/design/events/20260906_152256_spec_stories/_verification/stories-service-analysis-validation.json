@@ -1,0 +1,74 @@
+[
+  {
+    "uc": "貸出履歴を参照する",
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "予約状況を参照する",
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "利用者の利用状況を参照する",
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "在庫状況一覧を参照する",
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "人気書籍ランキングを参照する",
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "期間別貸出統計を参照する",
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "予約状況を参照する",
+    "variant": "Paged",
+    "page": 1,
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "予約状況を参照する",
+    "variant": "Paged",
+    "page": 2,
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "在庫状況一覧を参照する",
+    "variant": "Paged",
+    "page": 1,
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "在庫状況一覧を参照する",
+    "variant": "Paged",
+    "page": 2,
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "人気書籍ランキングを参照する",
+    "variant": "Paged",
+    "page": 1,
+    "valid": true,
+    "errors": null
+  },
+  {
+    "uc": "人気書籍ランキングを参照する",
+    "variant": "Paged",
+    "page": 2,
+    "valid": true,
+    "errors": null
+  }
+]

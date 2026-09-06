@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "自分の利用状況を確認するフロー",
+  "business": "利用者サービス業務",
+  "consumes": [],
+  "contract_sha256": "e65c30826b0e68bba15861d4939b78b2a31ea37aab461f84ea00c996a1e8327d",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1users~1{user_number}~1activity/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getUserActivity",
+      "path": "/staff/users/{user_number}/activity",
+      "summary": "利用者の利用状況を参照する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "利用者の利用状況を参照する"
+}

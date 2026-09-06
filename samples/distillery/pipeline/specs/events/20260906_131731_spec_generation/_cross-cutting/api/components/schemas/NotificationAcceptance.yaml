@@ -1,0 +1,18 @@
+type: object
+additionalProperties: false
+required:
+  - notification_id
+  - state
+properties:
+  notification_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  state:
+    type: string
+    enum:
+      - queued
+      - sent
+      - failed
+      - unknown
+    description: 受付状態。内部のqueued/published/sendingはqueued、sent/failed/unknownは同名へ投影する。対象外抑止もfailed。

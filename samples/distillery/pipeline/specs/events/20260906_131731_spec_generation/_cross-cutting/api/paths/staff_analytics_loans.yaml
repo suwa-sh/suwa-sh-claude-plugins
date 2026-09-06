@@ -1,0 +1,80 @@
+get:
+  operationId: getLoanStatistics
+  summary: 期間別貸出統計を参照する
+  tags:
+    - 運営分析業務
+  parameters:
+    - name: period_type
+      in: query
+      required: true
+      schema:
+        type: string
+        enum:
+          - 日
+          - 月
+          - 年
+    - name: period_start
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+    - name: period_end
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+  responses:
+    "200":
+      description: 処理結果
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PeriodStatistics.yaml
+    "400":
+      description: 入力形式不正
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "401":
+      description: 認証が必要
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "403":
+      description: 権限または接続経路違反
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "404":
+      description: 対象なし
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "409":
+      description: 競合または冪等キー不一致
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "422":
+      description: 業務条件不成立
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "503":
+      description: 設定または依存先を利用不可
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+  x-allowed-roles:
+    - 司書
+  x-network: 館内
+  x-authorization-rule: ロールと経路を検証する。

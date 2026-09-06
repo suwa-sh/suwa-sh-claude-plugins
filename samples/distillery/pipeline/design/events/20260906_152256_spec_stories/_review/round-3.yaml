@@ -1,0 +1,329 @@
+round: 3
+reviewer: independent-read-only-context
+scope: SSR-001の残りと変更影響をread-only再確認。前ラウンドの解消5件は維持。ブラウザplayは再実行せず、保存済み結果JSONと対応するStory/assertionを確認した。
+findings: []
+resolved:
+- id: SSR-001
+  resolution: fixed
+  verification: hook.pendingはsnapshot.currentの有無から導出する。貸出/返却のlookup、入力変更、resetがpending中に状態を変えない。Error
+    Storyでは確認する操作と入力変更試行後にも入力値・保存snapshotが同じであり、元要求の再送後にだけ保存情報を解除することを検査する。通常scenario=Inputから未確認draftを復元するReloadPendingも両画面に追加。返却はphaseから独立した結果確認buttonを持ち、入力phaseでも回復できる。
+  evidence:
+  - file: docs/design/latest/storybook-app/src/stories/Pages/_circulation/view.ts
+    line: 47
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/貸出受付画面.stories.tsx
+    line: 26
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/返却受付画面.stories.tsx
+    line: 27
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/貸出受付画面.stories.tsx
+    line: 50
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/返却受付画面.stories.tsx
+    line: 49
+- id: SSR-002
+  resolution: fixed
+  verification: 3画面でPaginationを追加または修正。displayedにpage/pageSizeのsliceを使い、page/page_sizeをURLへ反映する。各Paged
+    Storyは22件を用い21〜22件目の表示、1件目の非表示、URL page=2を検査している。
+- id: SSR-003
+  resolution: fixed
+  verification: 貸出受付はbookId Props/queryを読み、DirectLinkでB-009999の確認要求を検査する。予約取消はreservationIdを取得/取消要求へ渡しR-009999で検査する。書籍詳細、書籍編集/削除、利用者編集/削除はtargetIdから別fixtureと識別子を選択し、5件のDirectLinkで別ID/If-Matchを確認する。
+- id: SSR-004
+  resolution: fixed
+  verification: 利用者登録からretryReadとerror取得bannerを除去。Error Storyは検証済みsubmitでunknownへ進み、保存したbody/headerを持つ要求とexact同一の再送を行い、onRequestが2回だけであることを検査する。
+- id: SSR-005
+  resolution: fixed
+  verification: ページ全ソースからgetMyReservations/getUserStatusの残存0を確認。予約側はlistMyReservations、利用者更新側はgetUserActivityへ置換した。
+- id: SSR-006
+  resolution: fixed
+  verification: design-event+予定差分の24画面と全167exportの集合が一致。ISBNNormalized、DirectLink、Pagedの追加を含む。
+counts:
+  blocker: 0
+  unresolved_major: 0
+  unresolved_minor: 0
+  screens: 24
+  actual_page_exports: 169
+test_evidence:
+  file: spec-stories-planned/vitest-recovery-reload.json
+  sha256: c8c7eaedb804785b075d8d29bb92601fe491911bab34197235271cf778f496e3
+  total: 17
+  passed: 17
+  failed: 0
+limitations:
+- 対象17テストの再実行結果を確認。全169 Storyの再実行成功をこのレビューで主張していない。
+- 保存snapshotの一致はJSON値比較で検証する。シリアライズ文字列のbyte比較とは区別する。
+declaration_check:
+  status: passed
+  basis: design-event.yaml + design-event-diff.yamlをnameで統合し、実ファイルtitleとexportの集合を24画面全数照合した。
+  diff_sha256: 1ac6cb8f31fb9885926f00dc3a0ee3922c183798c607741685f1634bbcb7645d
+screens:
+- screen: 蔵書検索画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/蔵書検索画面.stories.tsx
+  sha256: 1875194c27765cacb5216e9addfcb8f161b7de60347dd26fec3b03eafc4a0b56
+  variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  - ISBNNormalized
+- screen: 書籍詳細・在庫状況画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/書籍詳細・在庫状況画面.stories.tsx
+  sha256: f831242982fc0f5a72d71696cb5990091f359f6fd835319ee56c4343de17af01
+  variants:
+  - Available
+  - OnLoan
+  - Reserved
+  - OwnReservation
+  - Electronic
+  - Loading
+  - Error
+  - NotFound
+  - DirectLink
+- screen: 予約申込画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/予約申込画面.stories.tsx
+  sha256: d31737d14a3c9d444a68d2725fcd2fcfc560a7663c945bcf4873a233b762ac8b
+  variants:
+  - OnLoan
+  - AlreadyAvailable
+  - Submitting
+  - Done
+  - Error
+  - Loading
+  - NotFound
+  - Electronic
+  - ReservationWaiting
+- screen: 予約取消画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/予約取消画面.stories.tsx
+  sha256: 0c3a380b12bb560e2d5ed14d4e2cc4aaa1b94d3ae80daf0e5713f6a8156567aa
+  variants:
+  - Default
+  - Submitting
+  - Done
+  - Error
+  - NotFound
+  - Conflict
+  - DirectLink
+- screen: マイ貸出履歴画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/マイ貸出履歴画面.stories.tsx
+  sha256: 08d5f7c9bd8a31b4c56998867f528bde52f8b79fedb4e490dd42ad7ae4ecbc0a
+  variants:
+  - Default
+  - WithOverdue
+  - Empty
+  - Loading
+  - Error
+  - Retry
+  - Paged
+- screen: マイ予約状況画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/マイ予約状況画面.stories.tsx
+  sha256: 751742341e1649b571cb91c617741d956ba06c16916e9c1157ab3bd3b3908588
+  variants:
+  - Default
+  - Notified
+  - Empty
+  - Loading
+  - Error
+  - Paged
+- screen: 蔵書一覧画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/蔵書一覧画面.stories.tsx
+  sha256: a10a38d0a6efd242a6d795c1da0d9b89a9e838cb72b9c8d6bf33efce79ca307b
+  variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  - ISBNNormalized
+- screen: 書籍登録画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍登録画面.stories.tsx
+  sha256: 87026494d5f7b07d56af974b30cd5fde0ff1f3c736ae4b4d2d92c089f91f9cea
+  variants:
+  - Default
+  - ValidationError
+  - Submitting
+  - Registered
+  - Error
+  - Unknown
+  - IdempotencyConflict
+  - Loading
+  - ElectronicRejected
+- screen: 書籍編集画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍編集画面.stories.tsx
+  sha256: 69416b4f12b1d896b838ea9269ca3a48bba61c8bfa0e9e1ac9fef1fd939bdec4
+  variants:
+  - Default
+  - Loading
+  - Error
+  - Submitting
+  - Saved
+  - ValidationError
+  - Conflict
+  - Unknown
+  - DirectLink
+- screen: 書籍削除確認画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍削除確認画面.stories.tsx
+  sha256: 344316ba71bfeb0b3e2b8cfea584212c95444e26c52ce9b1713118fb95be8669
+  variants:
+  - Deletable
+  - Blocked
+  - Loading
+  - Error
+  - Submitting
+  - Deleted
+  - Conflict
+  - Unknown
+  - BusinessRejected
+  - DirectLink
+- screen: 窓口蔵書検索画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/窓口蔵書検索画面.stories.tsx
+  sha256: 87ddbd09855be17615afd1352241c9a0b241ac93348a05c0faf2b5392e277e57
+  variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  - ISBNNormalized
+- screen: 利用者登録画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者登録画面.stories.tsx
+  sha256: fade7ab2bdf293b25644c60ce4aaeeb2845357118f310c7ca57a88d7af50da87
+  variants:
+  - Default
+  - ValidationError
+  - Submitting
+  - Registered
+  - Error
+  - Unknown
+  - IdempotencyConflict
+  - NumberConflict
+- screen: 利用者編集画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者編集画面.stories.tsx
+  sha256: 8ce80d1fd6b24f838377597ab8f373cbdbb89750fd98fe1fc43fde9fd25da726
+  variants:
+  - Default
+  - Loading
+  - Error
+  - Submitting
+  - Saved
+  - ValidationError
+  - Conflict
+  - Unknown
+  - DirectLink
+- screen: 利用者削除確認画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者削除確認画面.stories.tsx
+  sha256: 9b177ae2f2c62552a120126f9c426121c308b4bd62aa2a62040ca6c7befb17e1
+  variants:
+  - Deletable
+  - Blocked
+  - Loading
+  - Error
+  - Submitting
+  - Deleted
+  - Conflict
+  - Unknown
+  - BusinessRejected
+  - DirectLink
+- screen: 利用者一覧画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者一覧画面.stories.tsx
+  sha256: c8fb3fc6e76412b3c1f5483e60f0c6dafa5a156f3b18c0c43795c90c49fdea03
+  variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+- screen: 貸出受付画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/貸出受付画面.stories.tsx
+  sha256: d38cbcc1633a7285d0f7152a45df98930352b1027d19853b325e76f6d3aba588
+  variants:
+  - Input
+  - Allowed
+  - Denied
+  - Done
+  - Submitting
+  - Error
+  - NotFound
+  - DirectLink
+  - ReloadPending
+- screen: 返却受付画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/返却受付画面.stories.tsx
+  sha256: 98eb952d8ac83f5f931fc1c006fa584b46e511d6946e2aa5f47b6215fd49c843
+  variants:
+  - Input
+  - Found
+  - FoundWithReservation
+  - Done
+  - Submitting
+  - Error
+  - NotFound
+  - ReloadPending
+- screen: 返却通知送信確認画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/返却通知送信確認画面.stories.tsx
+  sha256: 9d926ba9266dcaf9a52cad9f35a3f64cadcd483f759624c2b7ff80603edc2e9e
+  variants:
+  - Default
+  - Sent
+  - Failed
+  - Queued
+  - Unknown
+  - Error
+  - Loading
+  - NoReservation
+- screen: 書籍別予約状況画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍別予約状況画面.stories.tsx
+  sha256: e82e44f3e2f95f5f7087f82a88ad6f14c589ab4b483dbf6654949d46f1dfbeee
+  variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  - NotFound
+- screen: 延滞・督促状況画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/延滞・督促状況画面.stories.tsx
+  sha256: 3efef277eb8a971ce056c2daf8eca676be14895395c774eedbd0f23061b2de18
+  variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+- screen: 窓口利用状況照会画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/窓口利用状況照会画面.stories.tsx
+  sha256: 2d6a14a63132f2c6a56a7f5c1e73b4c39991ec2da1c6ef7b665bc02cfd39791c
+  variants:
+  - Default
+  - NotFound
+  - RecoverNotFound
+  - Loading
+  - Empty
+  - Error
+- screen: 在庫状況一覧画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/在庫状況一覧画面.stories.tsx
+  sha256: 52aea3df356f061a4942ff7569426d75c244a93561f8bf32caa27c2dd0988e7f
+  variants:
+  - Default
+  - Filtered
+  - Loading
+  - Empty
+  - Error
+  - Paged
+- screen: 人気書籍ランキング画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/人気書籍ランキング画面.stories.tsx
+  sha256: 45cb07682f8802d0d11f8fe43f0e446c351e37d71c77bac19b575976ca9c5cd7
+  variants:
+  - Default
+  - TiedRanking
+  - Loading
+  - Empty
+  - Error
+  - Paged
+- screen: 期間別貸出統計画面
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/期間別貸出統計画面.stories.tsx
+  sha256: 58210a9ca298243b092275ed273f6407ce7b0ee1440c6b872d56c2ab0f6b8d9b
+  variants:
+  - Monthly
+  - Daily
+  - Loading
+  - Empty
+  - Error
+source_hashes:
+  docs/design/latest/storybook-app/src/stories/Pages/_circulation/view.ts: 33e6483e6ecdd0309415d15ee317bbc9fddab70764589f51368dfb3dd040c07f
+  docs/design/latest/storybook-app/src/components/domain/CounterPanels.tsx: 87f80143393c74ede870e171bd077052fb06040362c052510d7de5ebbe99e461
+prior_test_evidence:
+  file: spec-stories-planned/vitest-round2.json
+  total: 167
+  passed: 167
+  note: 変更前の全数結果。最終169件の全数結果とは区別する。

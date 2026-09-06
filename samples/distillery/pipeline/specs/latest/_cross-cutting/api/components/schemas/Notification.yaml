@@ -1,0 +1,59 @@
+type: object
+additionalProperties: false
+required:
+  - notification_id
+  - user_number
+  - notification_type
+  - recipient_email
+  - subject
+  - body
+  - sent_at
+  - send_result
+  - target_loan_id
+  - target_reservation_id
+properties:
+  notification_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  user_number:
+    type: string
+    minLength: 1
+    maxLength: 255
+  notification_type:
+    type: string
+    enum:
+      - 返却通知
+      - リマインド
+      - 督促
+  recipient_email:
+    type: string
+    format: email
+    maxLength: 254
+  subject:
+    type: string
+    minLength: 1
+    maxLength: 255
+  body:
+    type: string
+    maxLength: 10000
+  sent_at:
+    type: string
+    format: date-time
+  send_result:
+    type: string
+    enum:
+      - 成功
+      - 失敗
+  target_loan_id:
+    anyOf:
+      - type: string
+        minLength: 1
+        maxLength: 255
+      - type: "null"
+  target_reservation_id:
+    anyOf:
+      - type: string
+        minLength: 1
+        maxLength: 255
+      - type: "null"

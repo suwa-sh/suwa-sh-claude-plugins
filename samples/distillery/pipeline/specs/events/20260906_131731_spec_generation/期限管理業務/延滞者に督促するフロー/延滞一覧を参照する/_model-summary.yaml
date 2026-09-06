@@ -1,0 +1,130 @@
+uc: 延滞一覧を参照する
+business: 期限管理業務
+buc: 延滞者に督促するフロー
+models:
+  - name: loans
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: books
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: users
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: notifications
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: audit_logs
+    tier: tier-backend-api
+    layer: repository
+    type: record
+tables:
+  - name: loans
+    rdra_info: 貸出
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_id
+          - name: book_id
+          - name: user_number
+          - name: loaned_on
+          - name: due_date
+          - name: returned_on
+          - name: current_status
+          - name: recorded_by
+          - name: version
+          - name: updated_at
+        where: current_status = 延滞 ORDER BY due_date ASC, loan_id ASC LIMIT page_size OFFSET (page-1)*page_size
+        purpose: 同じsnapshotでtotalを集計し返却済みを除く。totalはLIMIT/OFFSETを除く同じ述語のCOUNT(*)を同じ参照snapshotで求める
+    indexes_needed:
+      - columns:
+          - loan_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+      - columns:
+          - current_status
+          - due_date
+          - loan_id
+        reason: 期限対象の絞り込みと安定走査
+        unique: false
+        access_pattern: 期限対象の絞り込みと安定走査
+  - name: books
+    rdra_info: 書籍
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: book_id
+          - name: title
+          - name: author
+        where: book_id IN (応答貸出のbook_id)
+        purpose: 書誌を結合。履歴キーを保持
+    indexes_needed:
+      - columns:
+          - book_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: users
+    rdra_info: 利用者
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: user_number
+          - name: name
+        where: user_number IN (応答貸出のuser_number)
+        purpose: 対象利用者名
+    indexes_needed:
+      - columns:
+          - user_number
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: notifications
+    rdra_info: 通知
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-005.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: notification_id
+          - name: notification_type
+          - name: user_number
+          - name: recipient_email
+          - name: subject
+          - name: body
+          - name: sent_at
+          - name: send_result
+          - name: target_loan_id
+          - name: target_reservation_id
+        where: notification_type = 督促 AND target_loan_id IN (応答loan_id) ORDER BY sent_at DESC, notification_id ASC
+        purpose: 各貸出の督促履歴と最新結果。リマインドを混ぜない
+    indexes_needed: []
+  - name: audit_logs
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: audit_id
+            value: 一意の監査ID
+          - name: occurred_at
+            value: 操作結果を確定するサーバー時刻
+          - name: actor_user_number
+            value: 認証主体の利用者番号
+          - name: action_type
+            value: データ参照
+          - name: target_entity
+            value: E-004
+          - name: target_id
+            value: 要求対象ID。全体照会はoperation名
+          - name: result
+            value: 成功
+        purpose: TR-AUDIT。更新では業務取引に含め、参照では応答前に確定
+    indexes_needed: []

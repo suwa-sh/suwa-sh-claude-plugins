@@ -1,0 +1,493 @@
+{
+  "schema_version": "distillery.validation-evidence/v1",
+  "model_operations": 188,
+  "semantic_column_errors": [],
+  "checks": [
+    {
+      "script": "validateModelSummary.js",
+      "path": "利用者サービス業務/自分の利用状況を確認するフロー/予約状況を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/予約状況を参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "利用者サービス業務/自分の利用状況を確認するフロー/予約状況を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/予約状況を参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "利用者サービス業務/自分の利用状況を確認するフロー/予約状況を参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "利用者サービス業務/自分の利用状況を確認するフロー/貸出履歴を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/貸出履歴を参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "利用者サービス業務/自分の利用状況を確認するフロー/貸出履歴を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者サービス業務/自分の利用状況を確認するフロー/貸出履歴を参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "利用者サービス業務/自分の利用状況を確認するフロー/貸出履歴を参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者を削除する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者を削除する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を削除する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者を削除する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者を登録する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者を登録する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を登録する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者を登録する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者を編集する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を編集する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者を編集する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者を編集する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者を編集する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者一覧を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者一覧を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/利用者管理業務/利用者を管理するフロー/利用者一覧を参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "利用者管理業務/利用者を管理するフロー/利用者一覧を参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "期限管理業務/延滞者に督促するフロー/延滞を判定する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/延滞を判定する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "期限管理業務/延滞者に督促するフロー/延滞を判定する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/延滞を判定する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "期限管理業務/延滞者に督促するフロー/延滞を判定する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "期限管理業務/延滞者に督促するフロー/督促を送信する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/督促を送信する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "期限管理業務/延滞者に督促するフロー/督促を送信する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/延滞者に督促するフロー/督促を送信する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "期限管理業務/延滞者に督促するフロー/督促を送信する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "期限管理業務/返却期限を通知するフロー/リマインドを送信する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/返却期限を通知するフロー/リマインドを送信する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "期限管理業務/返却期限を通知するフロー/リマインドを送信する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/返却期限を通知するフロー/リマインドを送信する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "期限管理業務/返却期限を通知するフロー/リマインドを送信する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "蔵書管理業務/書籍を検索するフロー/書籍を検索する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍を検索する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "蔵書管理業務/書籍を検索するフロー/書籍を検索する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍を検索する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "蔵書管理業務/書籍を検索するフロー/書籍を検索する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍を削除する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍を削除する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を削除する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍を削除する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍を登録する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍を登録する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を登録する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍を登録する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍を編集する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を編集する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍を編集する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍を編集する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍を編集する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "貸出業務/書籍を予約するフロー/予約を取り消す",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約を取り消す/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "貸出業務/書籍を予約するフロー/予約を取り消す",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約を取り消す/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "貸出業務/書籍を予約するフロー/予約を取り消す",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "貸出業務/書籍を予約するフロー/予約を登録する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約を登録する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "貸出業務/書籍を予約するフロー/予約を登録する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約を登録する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "貸出業務/書籍を予約するフロー/予約を登録する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "貸出業務/書籍を予約するフロー/予約一覧を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約一覧を参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "貸出業務/書籍を予約するフロー/予約一覧を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を予約するフロー/予約一覧を参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "貸出業務/書籍を予約するフロー/予約一覧を参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "貸出業務/書籍を貸し出すフロー/貸出を登録する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "貸出業務/書籍を貸し出すフロー/貸出を登録する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "貸出業務/書籍を貸し出すフロー/貸出を登録する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "貸出業務/書籍を返却するフロー/返却を登録する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を返却するフロー/返却を登録する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "貸出業務/書籍を返却するフロー/返却を登録する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を返却するフロー/返却を登録する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "貸出業務/書籍を返却するフロー/返却を登録する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "貸出業務/書籍を返却するフロー/返却通知を送信する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "貸出業務/書籍を返却するフロー/返却通知を送信する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/貸出業務/書籍を返却するフロー/返却通知を送信する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "貸出業務/書籍を返却するフロー/返却通知を送信する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "運営分析業務/蔵書の利用状況を分析するフロー/在庫状況一覧を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/在庫状況一覧を参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "運営分析業務/蔵書の利用状況を分析するフロー/在庫状況一覧を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/在庫状況一覧を参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "運営分析業務/蔵書の利用状況を分析するフロー/在庫状況一覧を参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    },
+    {
+      "script": "validateModelSummary.js",
+      "path": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/_model-summary.yaml\n"
+    },
+    {
+      "script": "validateApiSummary.js",
+      "path": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する",
+      "exit": 0,
+      "output": "PASS: /private/tmp/distillery-renewal-20260906/docs/specs/events/20260906_131731_spec_generation/運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/_api-summary.yaml\n"
+    },
+    {
+      "script": "validateSpecProse.js",
+      "path": "運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する",
+      "exit": 0,
+      "output": "{\n  \"status\": \"pass\",\n  \"findings\": []\n}\n"
+    }
+  ]
+}

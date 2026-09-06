@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const yaml = require('yaml');
 const { run, validateSummary, sha } = require('../plugins/distillery/skills/dist-spec/scripts/compileContracts');
-const sample = path.resolve('samples/distillery/spec-progressive/async');
+const sample = path.resolve('tests/fixtures/distillery/spec-progressive/async');
 const uc = '貸出業務/貸出フロー/貸出登録';
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'split-asyncapi-test-'));
@@ -28,7 +28,7 @@ test('split AsyncAPI preserves editable source and native message/channel refere
   run(root);
   assert.deepEqual(sourcePaths.map(p => fs.readFileSync(path.join(api, p), 'utf8')), before);
   const bundle = read(path.join(api, 'generated/asyncapi.bundle.yaml'));
-  const legacy = JSON.parse(fs.readFileSync('samples/distillery/spec-contracts/_cross-cutting/api/contracts.json', 'utf8')).asyncapi;
+  const legacy = JSON.parse(fs.readFileSync('tests/fixtures/distillery/spec-contracts/_cross-cutting/api/contracts.json', 'utf8')).asyncapi;
   assert.deepEqual(bundle, legacy);
   assert.equal(bundle.operations.sendLoan.channel.$ref, '#/channels/loan~1created');
   assert.equal(bundle.operations.sendLoan.messages[0].$ref, '#/channels/loan~1created/messages/LoanCreated');

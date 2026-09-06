@@ -1,0 +1,20 @@
+schema_version: "1.0"
+artifact_type: decision_record
+skill_type: architecture
+artifact_id: arch-decision-spec-storage
+title: 監査・認証と通知要求の保存責任
+status: approved
+generated_at: 2026-09-06T13:23:03+0900
+context: 既存E-902/E-903にはRDB配置があるがBC所有が欠け、E-008にはコミット後の通知要求再公開手段がない。
+decision: BC-002がE-902/E-903を所有し、BC-005がE-008のnotification_outbox投影を所有する。auto_adoptで推奨案を採用。
+consequences:
+  positive:
+    - 既存IDと保存責任を一致させる
+    - 通知要求の消失を回復できる
+  negative:
+    - 通知outboxの公開・再処理実装が必要
+alternatives_considered:
+  - name: 共通技術サブドメイン
+    reason_rejected: 新境界が増える
+  - name: 所有者を省略
+    reason_rejected: 責任が不明になる

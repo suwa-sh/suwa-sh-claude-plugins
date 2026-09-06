@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "書籍を予約するフロー",
+  "business": "貸出業務",
+  "consumes": [],
+  "contract_sha256": "12f58f12f6ed07cd059c81ccb21fd83c34c8d1b2c35a51ab23ac433ea1669951",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1books~1{book_id}~1reservations/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "listReservations",
+      "path": "/staff/books/{book_id}/reservations",
+      "summary": "予約一覧を参照する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "予約一覧を参照する"
+}

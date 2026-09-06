@@ -80,7 +80,7 @@ CIでは公式 `@asyncapi/parser@3.6.3` でも生成bundleの妥当性を検証�
 この明示処理がない場合は正本の誤削除を防ぐため停止する。
 AsyncAPI入口のchannels / operations / componentsは各分割ファイルを `$ref` で指す。
 operationのchannelは入口のchannelsを、messagesはそのchannelのmessagesを指す。
-詳細は `samples/distillery/spec-progressive/async/` の実行済み例を参照。
+詳細は `samples/distillery/pipeline/specs/latest/_cross-cutting/api/` の実行済み例を参照。
 入口→該当operation→channel/message/schemaという読み順を使い、UC担当にbundle全体を必読にしない。
 
 `use_cases` は RDRA の全UCを列挙する。各 `provides` / `consumes` の項目:

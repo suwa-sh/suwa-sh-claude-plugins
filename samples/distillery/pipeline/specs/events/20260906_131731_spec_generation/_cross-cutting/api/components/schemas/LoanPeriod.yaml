@@ -1,0 +1,27 @@
+type: object
+additionalProperties: false
+required:
+  - loan_period_id
+  - loan_days
+  - valid_from
+  - valid_to
+  - updated_at
+properties:
+  loan_period_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  loan_days:
+    type: integer
+    minimum: 0
+  valid_from:
+    type: string
+    format: date
+  valid_to:
+    anyOf:
+      - type: string
+        format: date
+      - type: "null"
+  updated_at:
+    type: string
+    format: date-time

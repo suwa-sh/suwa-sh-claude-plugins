@@ -1,0 +1,101 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"利用者番号\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+          "name": "利用者を登録するの業務結果"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"氏名\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+          "name": "利用者の氏名と連絡先を保存する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"連絡先（メールアドレス・電話番号・住所）\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+          "name": "利用者の氏名と連絡先を保存する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"登録日\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+          "name": "利用者の登録日時を記録する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"更新日\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+          "name": "利用者の登録日時を記録する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"利用者区分（司書・利用者）\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+          "name": "利用者区分を保存する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"利用者管理\",\"利用者区分\",\"司書\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+          "name": "利用者区分を保存する"
+        }
+      ]
+    },
+    {
+      "element": "[\"variation\",\"利用者管理\",\"利用者区分\",\"利用者\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+          "name": "利用者区分を保存する"
+        }
+      ]
+    }
+  ]
+}

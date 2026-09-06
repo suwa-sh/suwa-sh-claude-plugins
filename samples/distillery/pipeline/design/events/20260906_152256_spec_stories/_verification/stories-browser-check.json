@@ -1,0 +1,146 @@
+[
+  {
+    "id": "pages-patron-my-reservations--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-patron-loan-history--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-patron-cancel--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-patron-reserve--on-loan",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-patron-get-book--available",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-patron-search-books--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-popular-books--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-list-users--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-delete-user--deletable",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-create-user--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-update-user--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-inventory--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-overdues--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-reservations--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-delete-book--deletable",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-create-book--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-update-book--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-loan-statistics--monthly",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-user-activity--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-search-books--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-list-books--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-loan-register--input",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-return-register--input",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  },
+  {
+    "id": "pages-staff-return-notify--default",
+    "overflow": false,
+    "error": false,
+    "errors": []
+  }
+]

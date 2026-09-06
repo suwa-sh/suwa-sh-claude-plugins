@@ -82,9 +82,9 @@ test('RDB rejects traversal, source and output symlinks, pinned refs and stale e
   f.run(); f.write('schema/generated/domain-slices/old.yaml', {}); assert.throws(() => f.run({ check: true }), /unexpected generated files/);
 });
 test('real RDB sample preserves latest source definitions and declared ownership', () => {
-  const sample = path.resolve(__dirname, '../samples/distillery/spec-progressive/rdb');
+  const sample = path.resolve(__dirname, '../tests/fixtures/distillery/spec-progressive/rdb');
   compileRdbSchema(path.join(sample, 'rdb-schema.yaml'), { check: true });
-  const original = YAML.parse(fs.readFileSync(path.resolve(__dirname, '../samples/distillery/pipeline-opus-medium/specs/latest/_cross-cutting/datastore/rdb-schema.yaml'), 'utf8'));
+  const original = YAML.parse(fs.readFileSync(path.resolve(__dirname, '../tests/fixtures/distillery/legacy-pipeline/specs/latest/_cross-cutting/datastore/rdb-schema.yaml'), 'utf8'));
   const generated = YAML.parse(fs.readFileSync(path.join(sample, 'generated/rdb-schema.bundle.yaml'), 'utf8'));
   for (const table of generated.tables) assert.deepEqual(table, original.tables.find(t => t.name === table.name));
   const slice = YAML.parse(fs.readFileSync(path.join(sample, 'generated/domain-slices/SD-001.yaml'), 'utf8'));
@@ -102,4 +102,36 @@ test('RDB table index resolves owners without loading domain table definitions',
   assert.ok(index.tables.every(x => Object.keys(x).sort().join(',') === 'source,subdomain_id,table'));
   fs.writeFileSync(path.join(f.root, 'schema/generated/table-index.yaml'), 'stale');
   assert.throws(() => f.run({ check: true }), /table-index.yaml/);
+});
+
+
+test('datastore Markdown indexes split sources and refreshes stale projections without duplicating column definitions', t => {
+  const f = setup(t);
+  f.run();
+  f.domains[1].tables[0].columns.push(col('new_authoritative_column'));
+  f.write('schema/domains/SD-002.yaml', f.domains[1]);
+  fs.renameSync(path.join(f.root, 'schema'), path.join(f.root, 'datastore'));
+  const script = path.resolve(__dirname, '../plugins/distillery/skills/dist-spec/scripts/generateDatastoreMd.js');
+  const output = require('node:child_process').execFileSync(process.execPath, [script, f.root], { encoding: 'utf8' });
+  const md = fs.readFileSync(path.join(f.root, 'datastore/datastore-schema.md'), 'utf8');
+  assert.match(output, /3 tables, 3 domains/);
+  assert.match(md, /RDB: 3 テーブル \/ 3 サブドメイン/);
+  assert.match(md, /\[定義\]\(domains\/SD-002.yaml\)/);
+  assert.match(md, /`books`/);
+  assert.doesNotMatch(md, /new_authoritative_column/);
+  const bundle = YAML.parse(fs.readFileSync(path.join(f.root, 'datastore/generated/rdb-schema.bundle.yaml'), 'utf8'));
+  assert.ok(bundle.tables.find(x => x.name === 'books').columns.some(x => x.name === 'new_authoritative_column'));
+  compileRdbSchema(path.join(f.root, 'datastore/rdb-schema.yaml'), { check: true });
+});
+
+test('datastore Markdown rejects an invalid split source before writing an index', t => {
+  const f = setup(t);
+  f.domains[0].tables[0].foreign_keys[0].references.table = 'missing';
+  f.write('schema/domains/SD-001.yaml', f.domains[0]);
+  fs.renameSync(path.join(f.root, 'schema'), path.join(f.root, 'datastore'));
+  const script = path.resolve(__dirname, '../plugins/distillery/skills/dist-spec/scripts/generateDatastoreMd.js');
+  const result = require('node:child_process').spawnSync(process.execPath, [script, f.root], { encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /missing FK target/);
+  assert.ok(!fs.existsSync(path.join(f.root, 'datastore/datastore-schema.md')));
 });

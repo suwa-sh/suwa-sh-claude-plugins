@@ -1,0 +1,4 @@
+address: library.daily-overdue.v1
+messages:
+  DailyRun:
+    $ref: ../components/messages/DailyRun.yaml

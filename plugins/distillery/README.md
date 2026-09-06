@@ -9,14 +9,10 @@ Distillery は、漠然とした要望テキストを段階的に精製し、要
 目標は、実装時に業務挙動を選び直す必要のない仕様です。
 [実装可能性の基準](skills/dist-spec/references/specs/implementation-readiness.md)で不足・矛盾と不要な重複を確認します。
 
-UC 本文は業務ルール・状態遷移・受入条件、tier 仕様は固有の実行条件と画面の接続情報を記述します。
-通常のレイヤー往復図、DB型表、共通UI定義の再掲は不要です。BUCは所属UCと依存・共有定義を示します。
-APIの入出力・エラー表とsummary形式は契約生成元として維持し、既存形式も後段で読み取れます。
-比較用の[手編集サンプル](../../samples/distillery/spec-concise/README.md)を用意しています。
+UC本文にはデータフロー、分岐つきシーケンス、受入条件を記述します。業務条件と状態遷移はRDRA latest、UIのPropsとトークンはdesign latestのStorybookを参照します。tier仕様には固有の技術条件と画面の接続情報を記述します。
 
-明示的に `/distillery:dist-spec contract_mode=catalog` を指定すると、検証用の契約カタログ方式を使えます。
-完全なOpenAPI/AsyncAPIを一か所で編集し、統合契約・UC別索引・契約抜粋・BUC/対応付けビューを機械生成します。
-[方式と制限](skills/dist-spec/references/specs/contract-catalog.md)を参照してください。実装可能性の受入確認は未完了です。
+新規生成では`contract_mode=catalog`が既定です。人が編集するOpenAPI・AsyncAPIを分割YAMLで管理し、bundle・UC別索引・契約sliceを生成します。RDBもサブドメインごとの正本から全体bundleと読込用sliceを生成します。
+[契約の生成方式](skills/dist-spec/references/specs/contract-catalog.md)と[公開pipelineサンプル](../../samples/distillery/pipeline/README.md)を参照してください。
 
 ## Pipeline
 

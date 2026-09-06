@@ -1,0 +1,17 @@
+name: DailyRun
+title: 延滞を判定する
+contentType: application/json
+payload:
+  $ref: ../schemas/DailyRunPayload.yaml
+headers:
+  type: object
+  additionalProperties: false
+  required:
+    - message_id
+  properties:
+    message_id:
+      type: string
+      minLength: 1
+      maxLength: 255
+correlationId:
+  location: $message.header#/message_id

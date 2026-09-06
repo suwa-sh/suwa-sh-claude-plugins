@@ -1,0 +1,32 @@
+{
+  "async_events": [],
+  "buc": "蔵書を管理するフロー",
+  "business": "蔵書管理業務",
+  "consumes": [
+    {
+      "contract_ref": "openapi#/paths/~1books~1{book_id}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getBook",
+      "owner_uc": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する",
+      "path": "/books/{book_id}",
+      "summary": "書籍詳細を参照する",
+      "tier": "tier-frontend-staff"
+    }
+  ],
+  "contract_sha256": "64aeb297bc7813aa5d613514bea2d91b88a2ede69c55bcbed14c31094e870931",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1books~1{book_id}/delete",
+      "kind": "openapi",
+      "method": "DELETE",
+      "operation_id": "deleteBook",
+      "path": "/staff/books/{book_id}",
+      "summary": "書籍を削除する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "書籍を削除する"
+}

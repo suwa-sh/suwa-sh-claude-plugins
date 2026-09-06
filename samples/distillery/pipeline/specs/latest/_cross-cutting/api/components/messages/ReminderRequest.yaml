@@ -1,0 +1,17 @@
+name: ReminderRequest
+title: リマインドを送信する
+contentType: application/json
+payload:
+  $ref: ../schemas/ReminderRequestPayload.yaml
+headers:
+  type: object
+  additionalProperties: false
+  required:
+    - message_id
+  properties:
+    message_id:
+      type: string
+      minLength: 1
+      maxLength: 255
+correlationId:
+  location: $message.header#/message_id

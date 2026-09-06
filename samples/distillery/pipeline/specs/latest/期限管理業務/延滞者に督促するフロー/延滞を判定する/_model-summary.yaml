@@ -1,0 +1,193 @@
+uc: 延滞を判定する
+business: 期限管理業務
+buc: 延滞者に督促するフロー
+models:
+  - name: loans
+    tier: tier-worker
+    layer: repository
+    type: record
+  - name: books
+    tier: tier-worker
+    layer: repository
+    type: read-model
+  - name: notification_outbox
+    tier: tier-worker
+    layer: repository
+    type: record
+  - name: loans_events
+    tier: tier-worker
+    layer: repository
+    type: record
+  - name: audit_logs
+    tier: tier-worker
+    layer: repository
+    type: record
+tables:
+  - name: loans
+    rdra_info: 貸出
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_id
+          - name: book_id
+          - name: user_number
+          - name: due_date
+          - name: returned_on
+          - name: current_status
+          - name: version
+        where: current_status = 貸出中 AND returned_on IS NULL AND due_date < business_date。loan_id昇順のkeysetで100件ずつ
+        purpose: 候補抽出後、同じloan_idをlockして状態と期限を再確認
+        lock: TR-TXの書籍→貸出lock
+      - type: UPDATE
+        columns:
+          - name: current_status
+            value: 延滞
+          - name: version
+            value: version + 1
+          - name: updated_at
+            value: 判定取引の確定時刻
+        where: loan_id = 対象ID AND current_status = 貸出中 AND returned_on IS NULL AND due_date < business_date AND version = lock後のversion
+        purpose: 督促要求と同じ取引で延滞にする
+    indexes_needed:
+      - columns:
+          - loan_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+      - columns:
+          - current_status
+          - due_date
+          - loan_id
+        reason: 期限対象の絞り込みと安定走査
+        unique: false
+        access_pattern: 期限対象の絞り込みと安定走査
+  - name: books
+    rdra_info: 書籍
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: book_id
+        where: book_id = 候補貸出.book_id
+        purpose: 返却と日次処理の更新順序を直列化
+        lock: TR-TXの書籍lock
+    indexes_needed:
+      - columns:
+          - book_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: notification_outbox
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-005.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: notification_id
+          - name: cause_key
+          - name: state
+          - name: actor_id
+          - name: request_key
+          - name: request_hash
+          - name: response
+        where: cause_key = 督促と対象loan_idの結合
+        purpose: 同じ契機の既存通知IDと確定要求を照合し、重複INSERTを防ぐ
+        lock: TR-IDEMP/書籍lockの下で読み、cause_keyの一意制約で競合を防止
+      - type: INSERT
+        columns:
+          - name: notification_id
+            value: 通知種別と対象IDに対応する一意の通知ID
+          - name: cause_key
+            value: 督促とloan_idを結合
+          - name: notification_type
+            value: 督促
+          - name: target_loan_id
+            value: 対象loan_id
+          - name: target_reservation_id
+            value: "null"
+          - name: state
+            value: queued
+          - name: payload
+            value: 対応AsyncAPI messageのnotification_idとloan_idを持つJSON
+          - name: created_at
+            value: 要求を確定するサーバー時刻
+          - name: attempts
+            value: "0"
+          - name: next_attempt_at
+            value: "null"
+          - name: lease_until
+            value: "null"
+          - name: provider_message_id
+            value: "null"
+          - name: actor_id
+            value: タイマーの固定ID
+          - name: request_key
+            value: TR-IDEMPの安定要求キー
+          - name: request_hash
+            value: 正規化した要求のSHA-256
+          - name: response
+            value: 対象ごとに確定する日次処理ACK結果のJSON。配信後も不変
+        purpose: cause_keyが未登録の場合だけ業務取引に含める。既存時はその通知IDを使用
+    indexes_needed:
+      - columns:
+          - cause_key
+        reason: 同じ通知種別と対象IDの要求を一意にする
+        unique: true
+        access_pattern: 同じ通知種別と対象IDの要求を一意にする
+  - name: loans_events
+    rdra_info: 貸出
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: event_id
+            value: 一意のイベントID
+          - name: loan_id
+            value: 当該loans行の識別子
+          - name: version
+            value: 同じ取引で確定するsnapshotのversion
+          - name: event_type
+            value: markOverdue
+          - name: occurred_at
+            value: snapshot更新と同じサーバー時刻
+          - name: actor_id
+            value: タイマーの固定ID
+          - name: request_key
+            value: TR-IDEMPのoperationとキー。ジョブではbusiness_dateと対象IDと通知種別の安定キー
+          - name: request_hash
+            value: TR-IDEMPで定義する正規化要求のSHA-256
+          - name: payload
+            value: business_dateと延滞状態
+          - name: response
+            value: 同じ取引で確定する操作のstatusとbodyまたはジョブ結果のJSON
+        purpose: 延滞へ変更した対象だけ追記
+    indexes_needed:
+      - columns:
+          - loan_id
+          - version
+        reason: 対象の版を一意に記録
+        unique: true
+        access_pattern: 対象の版を一意に記録
+  - name: audit_logs
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: audit_id
+            value: 一意の監査ID
+          - name: occurred_at
+            value: 操作結果を確定するサーバー時刻
+          - name: actor_user_number
+            value: タイマーの固定ID
+          - name: action_type
+            value: データ更新
+          - name: target_entity
+            value: E-004
+          - name: target_id
+            value: 当該取引で処理した対象ID
+          - name: result
+            value: 成功
+        purpose: TR-AUDIT。更新では業務取引に含め、参照では応答前に確定
+    indexes_needed: []

@@ -2,7 +2,7 @@ from pathlib import Path
 import html,json,re,subprocess,os,difflib
 from urllib.parse import unquote
 root=Path(__file__).resolve().parents[1]
-sample=root/'samples/distillery/spec-latest-linked';event=sample/'docs/specs/events/20260906_122355_spec_generation';old=sample/'docs/specs/events/20260906_120000_spec_generation';uc=Path('蔵書利用業務/書籍を貸し出すフロー/貸出を登録する')
+sample=root/'tests/fixtures/distillery/spec-latest-linked';event=sample/'docs/specs/events/20260906_122355_spec_generation';old=sample/'docs/specs/events/20260906_120000_spec_generation';uc=Path('蔵書利用業務/書籍を貸し出すフロー/貸出を登録する')
 marked=os.environ.get('MARKED_MODULE') or str(next((Path.home()/'.npm/_npx').glob('*/node_modules/marked/lib/marked.cjs')))
 def render(p):
  if p.suffix!='.md':return '<pre>'+html.escape(p.read_text())+'</pre>'

@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "自分の利用状況を確認するフロー",
+  "business": "利用者サービス業務",
+  "consumes": [],
+  "contract_sha256": "966c92e3cc4501e91586e25918356f3c8c14cf573ce1f8749efcd192f1a5f673",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1me~1loans/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "listMyLoanHistory",
+      "path": "/me/loans",
+      "summary": "貸出履歴を参照する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "貸出履歴を参照する"
+}

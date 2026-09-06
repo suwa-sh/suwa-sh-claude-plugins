@@ -1,0 +1,67 @@
+get:
+  operationId: getBook
+  summary: 書籍詳細を参照する
+  tags:
+    - 蔵書管理業務
+  parameters:
+    - name: book_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+  responses:
+    "200":
+      description: 処理結果
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Book.yaml
+    "400":
+      description: 入力形式不正
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "401":
+      description: 認証が必要
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "403":
+      description: 権限または接続経路違反
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "404":
+      description: 対象なし
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "409":
+      description: 競合または冪等キー不一致
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "422":
+      description: 業務条件不成立
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "503":
+      description: 設定または依存先を利用不可
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+  x-allowed-roles:
+    - 司書
+    - 利用者
+  x-network: 公開
+  x-authorization-rule: ロールと経路を検証する。

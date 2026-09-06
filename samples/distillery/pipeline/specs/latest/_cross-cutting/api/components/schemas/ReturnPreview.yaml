@@ -1,0 +1,21 @@
+type: object
+additionalProperties: false
+required:
+  - loan
+  - book
+  - next_reservation
+  - next_book_state
+properties:
+  loan:
+    $ref: ./Loan.yaml
+  book:
+    $ref: ./Book.yaml
+  next_reservation:
+    anyOf:
+      - $ref: ./Reservation.yaml
+      - type: "null"
+  next_book_state:
+    type: string
+    enum:
+      - 在庫あり
+      - 予約待ち

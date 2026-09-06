@@ -1,0 +1,114 @@
+round: 1
+reviewers:
+  - phase1_regeneration
+  - contracts
+  - renewed_spec (他著者6UC)
+findings:
+  - id: CIRC-001
+    severity: major
+    viewpoint: 4
+    target: 貸出業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml
+    claim: モデル操作の列、更新値、照合条件が省略されている
+    evidence: 詳細根拠は cross-circulation-deadline.json の同じIDを参照
+    suggested_fix: 各table/operationに使用列、値、識別子/版/状態条件、索引要件を具体化する。型は分割schemaへ参照し、同じ目的文の複写を削除する。
+  - id: CIRC-002
+    severity: major
+    viewpoint: 4
+    target: 期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する/spec.md
+    claim: 期限管理の読取依存がモデル一覧に存在しない
+    evidence: 詳細根拠は cross-circulation-deadline.json の同じIDを参照
+    suggested_fix: booksの識別子とlock条件、remind_daysの有効世代照会列/条件を該当UCの_model-summaryへ追加し、対応する所有schemaを参照する。
+  - id: CIRC-003
+    severity: major
+    viewpoint: 4
+    target: 貸出業務/書籍を返却するフロー/返却通知を送信する/tier-worker.md
+    claim: 送信中の有効leaseと対象外抑止後の終端状態が定まらない
+    evidence: 詳細根拠は cross-circulation-deadline.json の同じIDを参照
+    suggested_fix: claim可能状態と条件付きUPDATEを定義する。sendingかつlease有効は送信しない、lease切れはunknownへ遷移する。対象外を保存する終端状態と理由を既存enumまたは契約変更で定義し、重複受信のBDDを追加する。
+  - id: CIRC-004
+    severity: major
+    viewpoint: 4
+    target: 貸出業務/書籍を返却するフロー/返却通知を送信する/tier-frontend-staff.md
+    claim: outbox内部状態からHTTP受付状態への対応がない
+    evidence: 詳細根拠は cross-circulation-deadline.json の同じIDを参照
+    suggested_fix: HTTPではpublished/sendingをqueuedへ投影するなどの対応表を定義し、queuedの意味を受付済み未確定とする。対象外終端状態もCIRC-003の解決に合わせて投影を確定する。
+  - id: CIRC-005
+    severity: major
+    viewpoint: 4
+    target: 貸出業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md
+    claim: nullableなAPI値と必須UI Propsの接続が不完全
+    evidence: 詳細根拠は cross-circulation-deadline.json の同じIDを参照
+    suggested_fix: null→undefinedの変換を明記する。返却todayと貸出の照会前todayの供給元を定め、予約受付後はcurrent_status→stateとqueue_position→positionを明示する。実Propsに合わせたページ接続を検証する。
+  - id: CIRC-006
+    severity: major
+    viewpoint: 4
+    target: 貸出業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md
+    claim: 利用者削除と新規貸出/予約が同じ利用者行で直列化されない
+    evidence: 詳細根拠は cross-circulation-deadline.json の同じIDを参照
+    suggested_fix: 新規貸出と予約も利用者行の共有または排他lockを取り、deletedと利用可否をlock後に再評価する。削除と全取引で矛盾しないlock順をTR-TXへ統一し、同時削除/新規取引BDDを追加する。
+  - id: CIRC-007
+    severity: minor
+    viewpoint: 4
+    target: 貸出業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md
+    claim: 対象外の汎用文と共通保証の複写が残る
+    evidence: 詳細根拠は cross-circulation-deadline.json の同じIDを参照
+    suggested_fix: 対象UCに存在しない版/設定/通知種別の記載を除去し、共通保証はTR規則と共有BDDを参照する。tierにはその境界に固有の取引/状態/入力変換を残す。
+  - id: S3-catalogue-users-001
+    severity: major
+    viewpoint: 3
+    target: _cross-cutting/api/paths/books.yaml
+    claim: searchBooksのqueryが必須かつminLength=1のため、RDRAと画面が許す空検索・ジャンルだけの検索が400になる。
+    evidence: 詳細根拠は step3-catalogue-users-round1.yaml の同じIDを参照
+    suggested_fix: queryを任意にし、省略時は検索語による制限を加えない。kindのジャンル時にもgenre_idsだけで検索できること、全条件空で全蔵書を返すことを契約とBDDで検証する。
+  - id: S3-catalogue-users-002
+    severity: minor
+    viewpoint: 5
+    target: 蔵書管理業務/書籍を検索するフロー/書籍を検索する/_model-summary.yaml
+    claim: indexes_needed.access_patternは存在しないdeleted_at列を条件にし、operationsとRDBのdeleted
+      booleanと食い違う。
+    evidence: 詳細根拠は step3-catalogue-users-round1.yaml の同じIDを参照
+    suggested_fix: 対象10UCに残るdeleted_at IS
+      NULLをdeleted=falseへ揃える。登録UCの存在しないpath.book_id/path.user_numberも、採番後のIDを表す記述へ修正する。
+  - id: S3-catalogue-users-003
+    severity: minor
+    viewpoint: 3
+    target: 利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md
+    claim: 利用者番号の競合で採番し直す分岐は、同一主体・operation・キーからIDを決定するTR-IDEMPと両立する再採番方法がない。
+    evidence: 詳細根拠は step3-catalogue-users-round1.yaml の同じIDを参照
+    suggested_fix: TR-IDEMPを唯一の採番規則として参照する。既存の同じ要求は再送応答、別要求のID衝突は確定したエラーにするなど、同じ入力で採番ループしない出口を定義する。
+  - id: S3-catalogue-users-004
+    severity: minor
+    viewpoint: 6
+    target: 蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/tier-backend-api.md
+    claim: 単体getBookの本文にitems/total、ページ移動、検索文字列、利用者連絡先の定型説明が残り、実際の入力と応答の理解を妨げる。
+    evidence: 詳細根拠は step3-catalogue-users-round1.yaml の同じIDを参照
+    suggested_fix: getBookには書籍と本人予約の同一snapshot取得と監査結果を残し、一覧専用の説明を除く。他9UCも対象外の定型説明と「完了結果を捏造せず」の生成指示を削る。
+  - id: ANALYSIS-001
+    severity: major
+    viewpoint: 4
+    target: 運営分析業務/蔵書の利用状況を分析するフロー/期間別貸出統計を参照する/tier-backend-api.md
+    claim: 集計投影の粒度がRDBの必須book_idと接続されていない
+    evidence: 詳細根拠は step3-analysis-service-round1.yaml の同じIDを参照
+    suggested_fix: bucket×bookで投影を保存し、bucket内sumをseriesへ集約する。NULL book_idを作らない。
+  - id: ANALYSIS-002
+    severity: major
+    viewpoint: 4
+    target: 運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/tier-frontend-staff.md
+    claim: 期間なしの初期routeが必須queryのAPIへ接続できない
+    evidence: 詳細根拠は step3-analysis-service-round1.yaml の同じIDを参照
+    suggested_fix: 入力値がない場合の初期期間とURL正規化を定義する。
+  - id: ANALYSIS-003
+    severity: major
+    viewpoint: 4
+    target: 利用者サービス業務/自分の利用状況を確認するフロー/利用者の利用状況を参照する/tier-frontend-staff.md
+    claim: ReservationTable必須userNumberとLoanTable必須todayの供給がない
+    evidence: 詳細根拠は step3-analysis-service-round1.yaml の同じIDを参照
+    suggested_fix: レスポンスからの変換とTR-DATEの供給を記載する。
+  - id: ANALYSIS-004
+    severity: minor
+    viewpoint: 4
+    target: 6UCのpresentationとspec.md
+    claim: 標準状態表の複写と必須見出し表記の欠落
+    evidence: 詳細根拠は step3-analysis-service-round1.yaml の同じIDを参照
+    suggested_fix: UI-READ参照へ集約し、関連RDRAモデルの見出しへ揃える。
+resolved: []

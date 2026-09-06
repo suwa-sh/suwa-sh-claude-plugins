@@ -1,0 +1,311 @@
+{
+  "asyncapi": null,
+  "openapi": {
+    "components": {
+      "schemas": {
+        "Error": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "enum": [
+                "INVALID_INPUT",
+                "UNAUTHENTICATED",
+                "FORBIDDEN",
+                "NOT_FOUND",
+                "VERSION_CONFLICT",
+                "IDEMPOTENCY_CONFLICT",
+                "BUSINESS_RULE_VIOLATION",
+                "CONFIGURATION_UNAVAILABLE",
+                "DEPENDENCY_UNAVAILABLE"
+              ],
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "trace_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "trace_id"
+          ],
+          "type": "object"
+        },
+        "User": {
+          "additionalProperties": false,
+          "properties": {
+            "address": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "email": {
+              "format": "email",
+              "maxLength": 254,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "phone": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "registered_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "user_number": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "user_type": {
+              "enum": [
+                "司書",
+                "利用者"
+              ],
+              "type": "string"
+            },
+            "version": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "user_number",
+            "name",
+            "email",
+            "phone",
+            "address",
+            "user_type",
+            "version",
+            "updated_at",
+            "registered_at"
+          ],
+          "type": "object"
+        },
+        "UserInput": {
+          "additionalProperties": false,
+          "properties": {
+            "address": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "email": {
+              "format": "email",
+              "maxLength": 254,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "phone": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "user_type": {
+              "enum": [
+                "司書",
+                "利用者"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "email",
+            "phone",
+            "address",
+            "user_type"
+          ],
+          "type": "object"
+        }
+      },
+      "securitySchemes": {
+        "BearerAuth": {
+          "bearerFormat": "JWT",
+          "scheme": "bearer",
+          "type": "http"
+        }
+      }
+    },
+    "info": {
+      "title": "図書館管理API",
+      "version": "1.0.0"
+    },
+    "openapi": "3.1.0",
+    "paths": {
+      "/staff/users": {
+        "post": {
+          "operationId": "createUser",
+          "parameters": [
+            {
+              "in": "header",
+              "name": "X-Idempotency-Key",
+              "required": true,
+              "schema": {
+                "format": "uuid",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserInput"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "201": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              },
+              "description": "処理結果"
+            },
+            "400": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "入力形式不正"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "認証が必要"
+            },
+            "403": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "権限または接続経路違反"
+            },
+            "404": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "対象なし"
+            },
+            "409": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "競合または冪等キー不一致"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "業務条件不成立"
+            },
+            "503": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "設定または依存先を利用不可"
+            }
+          },
+          "summary": "利用者を登録する",
+          "tags": [
+            "利用者管理業務"
+          ],
+          "x-allowed-roles": [
+            "司書"
+          ],
+          "x-authorization-rule": "ロールと経路を検証する。",
+          "x-network": "館内"
+        }
+      }
+    },
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "servers": [
+      {
+        "url": "https://library.example.invalid/api"
+      }
+    ]
+  },
+  "schema_version": "distillery.contract-slice/v1"
+}

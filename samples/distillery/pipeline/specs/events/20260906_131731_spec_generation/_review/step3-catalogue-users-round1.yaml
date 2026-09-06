@@ -1,0 +1,63 @@
+{
+  "round": 1,
+  "group": "catalogue-users",
+  "findings": [
+    {
+      "id": "S3-catalogue-users-001",
+      "uc": "蔵書管理業務/書籍を検索するフロー/書籍を検索する",
+      "file": "_cross-cutting/api/paths/books.yaml",
+      "line": 31,
+      "severity": "major",
+      "viewpoint": 3,
+      "claim": "searchBooksのqueryが必須かつminLength=1のため、RDRAと画面が許す空検索・ジャンルだけの検索が400になる。",
+      "fix": "queryを任意にし、省略時は検索語による制限を加えない。kindのジャンル時にもgenre_idsだけで検索できること、全条件空で全蔵書を返すことを契約とBDDで検証する。",
+      "source_refs": [
+        "docs/rdra/latest/条件.tsv#書籍検索条件判定",
+        "蔵書管理業務/書籍を検索するフロー/書籍を検索する/tier-frontend-user.md#検索条件の送信",
+        "_cross-cutting/api/paths/books.yaml#get"
+      ]
+    },
+    {
+      "id": "S3-catalogue-users-002",
+      "uc": "蔵書管理業務/書籍を検索するフロー/書籍を検索する",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/_model-summary.yaml",
+      "line": 94,
+      "severity": "minor",
+      "viewpoint": 5,
+      "claim": "indexes_needed.access_patternは存在しないdeleted_at列を条件にし、operationsとRDBのdeleted booleanと食い違う。",
+      "fix": "対象10UCに残るdeleted_at IS NULLをdeleted=falseへ揃える。登録UCの存在しないpath.book_id/path.user_numberも、採番後のIDを表す記述へ修正する。",
+      "source_refs": [
+        "_cross-cutting/datastore/domains/SD-002.yaml#books",
+        "_cross-cutting/datastore/domains/SD-003.yaml#users"
+      ]
+    },
+    {
+      "id": "S3-catalogue-users-003",
+      "uc": "利用者管理業務/利用者を管理するフロー/利用者を登録する",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+      "line": 54,
+      "severity": "minor",
+      "viewpoint": 3,
+      "claim": "利用者番号の競合で採番し直す分岐は、同一主体・operation・キーからIDを決定するTR-IDEMPと両立する再採番方法がない。",
+      "fix": "TR-IDEMPを唯一の採番規則として参照する。既存の同じ要求は再送応答、別要求のID衝突は確定したエラーにするなど、同じ入力で採番ループしない出口を定義する。",
+      "source_refs": [
+        "_cross-cutting/technical-rules.md#TR-IDEMP",
+        "利用者管理業務/利用者を管理するフロー/利用者を登録する/tier-backend-api.md#採番と連絡先"
+      ]
+    },
+    {
+      "id": "S3-catalogue-users-004",
+      "uc": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/tier-backend-api.md",
+      "line": 31,
+      "severity": "minor",
+      "viewpoint": 6,
+      "claim": "単体getBookの本文にitems/total、ページ移動、検索文字列、利用者連絡先の定型説明が残り、実際の入力と応答の理解を妨げる。",
+      "fix": "getBookには書籍と本人予約の同一snapshot取得と監査結果を残し、一覧専用の説明を除く。他9UCも対象外の定型説明と「完了結果を捏造せず」の生成指示を削る。",
+      "source_refs": [
+        "_cross-cutting/api/paths/books__book_id_.yaml#get",
+        "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/tier-frontend-user.md#データの取得"
+      ]
+    }
+  ]
+}

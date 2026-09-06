@@ -1,0 +1,32 @@
+type: object
+additionalProperties: false
+required:
+  - book
+  - user
+  - eligible
+  - reason
+  - due_date
+  - loan_period_days
+  - business_date
+properties:
+  book:
+    $ref: ./Book.yaml
+  user:
+    $ref: ./User.yaml
+  eligible:
+    type: boolean
+  reason:
+    type:
+      - string
+      - "null"
+  due_date:
+    type:
+      - string
+      - "null"
+    format: date
+  loan_period_days:
+    type: integer
+    minimum: 1
+  business_date:
+    type: string
+    format: date

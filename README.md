@@ -73,7 +73,7 @@ OpenAPIは人が編集する分割YAMLからbundle/UC sliceを生成します。
 AsyncAPIもoperation/channel/message/schemaを分割して人が編集し、bundleとUC sliceを生成します。
 RDBはarch latestのサブドメイン所有索引からdomain正本・必要な外部列へ段階的に読み込みます。
 全体bundleは検証とcodegenの入力です。この分割は物理DBの分割を意味しません。
-[分割と段階的開示のサンプル](samples/distillery/spec-progressive/README.md)を参照してください。
+[公開pipelineサンプル](samples/distillery/pipeline/README.md)を参照してください。
 
 ### spec本文と還流の記録
 

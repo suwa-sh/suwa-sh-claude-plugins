@@ -189,9 +189,12 @@ function validateUcDir(ucInfo) {
       errors.push(`[${ucLabel}] spec.md に BDD シナリオ（Given/When/Then）が不完全です`);
     }
 
-    // 関連RDRAモデルのテーブル検証
-    if (!content.includes('| モデル種別') && !content.includes('|モデル種別')) {
-      warnings.push(`[${ucLabel}] spec.md の関連RDRAモデルがテーブル形式ではありません`);
+    // 列名は固定せず、関連モデルの節に表または参照リストがあることを確認する。
+    const rdraSection = content.match(/^##[^\n]*関連[^\n]*RDRA[^\n]*\n([\s\S]*?)(?=^## |$(?![\s\S]))/m)?.[1] || '';
+    const hasTable = /^\s*\|\s*:?-{3,}:?\s*\|/m.test(rdraSection);
+    const hasReferenceList = /^\s*[-*]\s+.*\[[^\]]+\]\([^)]+\)/m.test(rdraSection);
+    if (!hasTable && !hasReferenceList) {
+      warnings.push(`[${ucLabel}] spec.md の関連RDRAモデルに表または参照リストがありません`);
     }
   }
 
@@ -204,8 +207,8 @@ function validateUcDir(ucInfo) {
     for (const tierFile of tierMdFiles) {
       const tierPath = path.join(ucDir, tierFile);
       const content = fs.readFileSync(tierPath, 'utf8');
-      if (!/##.*変更概要|##.*変更内容/i.test(content)) {
-        warnings.push(`[${ucLabel}] ${tierFile}: "変更概要" セクションがありません`);
+      if (!/^##.*(?:責務|概要|画面|変更内容)/im.test(content)) {
+        warnings.push(`[${ucLabel}] ${tierFile}: 責務または概要を示すセクションがありません`);
       }
     }
   }

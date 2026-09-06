@@ -1,0 +1,110 @@
+uc: 書籍一覧を参照する
+business: 蔵書管理業務
+buc: 蔵書を管理するフロー
+bounded_context_id: BC-001
+models:
+  - name: listBooksRequest
+    tier: tier-backend-api
+    layer: presentation
+    type: request-dto
+  - name: listBooksQuery
+    tier: tier-backend-api
+    layer: usecase
+    type: query
+  - name: Book
+    tier: tier-backend-api
+    layer: domain
+    type: entity
+    rdra_info: 書籍
+  - name: listBooksPageState
+    tier: tier-frontend-staff
+    layer: state
+    type: state
+tables:
+  - name: books
+    rdra_info: 書籍
+    operations:
+      - type: SELECT
+        columns:
+          - name: book_id
+          - name: title
+          - name: author
+          - name: isbn
+          - name: publisher
+          - name: genre_id
+          - name: media_type
+          - name: current_status
+          - name: version
+          - name: registered_at
+          - name: updated_at
+          - name: deleted
+            value: "false"
+        where: deleted = false AND TR-SEARCHで確定したkind/query/genre_ids/states。book_id昇順、page/page_sizeで切出
+    indexes_needed:
+      - columns:
+          - book_id
+        reason: 対象の照会と排他取得
+        access_pattern: deleted = false AND 確定した検索条件
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+  - name: genres
+    rdra_info: ジャンル
+    operations:
+      - type: SELECT
+        columns:
+          - name: genre_id
+          - name: genre_name
+        where: genre_id IN (対象書籍のgenre_id)
+      - type: SELECT
+        columns:
+          - name: genre_id
+          - name: genre_name
+          - name: description
+        where: listGenresのpage/page_size。genre_id昇順。同一snapshotの全件数も取得
+    indexes_needed:
+      - columns:
+          - genre_id
+        reason: 対象の照会と排他取得
+        access_pattern: genre_id = 書籍のgenre_idまたは入力genre_id
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+  - name: audit_logs
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: audit_id
+            value: 一意の監査ID
+          - name: occurred_at
+            value: 現在時刻
+          - name: actor_user_number
+            value: 認証主体
+          - name: action_type
+            value: データ参照
+          - name: target_entity
+            value: E-001
+          - name: target_id
+            value: 対象識別子。検索はoperation名
+          - name: result
+            value: 成功
+    indexes_needed: []
+  - name: reservations
+    rdra_info: 予約
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: reservation_id
+          - name: book_id
+          - name: user_number
+          - name: queue_position
+          - name: current_status
+        where: book_id IN (応答する書籍ID) AND current_status IN (予約中, 通知済み)。総数を集計し、本人分はuser_number = 認証主体
+    indexes_needed:
+      - columns:
+          - book_id
+          - current_status
+          - user_number
+        reason: 有効予約総数と本人予約を応答へ接続する
+        access_pattern: 書籍IDと主体による照会
+kvs: []
+object_storage: []

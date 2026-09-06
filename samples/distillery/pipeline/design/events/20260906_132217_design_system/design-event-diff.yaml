@@ -1,0 +1,29 @@
+event_id: 20260906_132217_design_system
+created_at: 2026-09-06T13:22:17+09:00
+source: Step6で検出したCR-renew001-002/003の既存業務条件への接続修正（normal auto_adopt）
+trigger_event:
+  rdra: 20260903_030744_initial_build
+  arch: 20260903_041150_arch_infra_feedback_20260903_040307_infra_product_design
+components:
+  ui:
+    - name: PortalShell
+      variants:
+        - patron
+        - staff
+        - staff-collapsed
+      description: ポータルの外枠。司書ホームと書籍別予約状況の入口は蔵書一覧へ、窓口利用状況照会の入口は利用者一覧へ接続し、選択後に対象識別子を渡す。
+  domain:
+    - name: BookCard
+      description: 利用者向け書籍カード。紙の貸出中または予約待ちの書籍で予約操作を有効にする。電子と在庫ありは予約不可。
+      screens:
+        - 蔵書検索画面
+        - 書籍詳細・在庫状況画面
+        - 予約申込画面
+      props:
+        - book
+        - variant
+        - onSelect
+        - onReserve
+      variants:
+        - compact
+        - detail

@@ -1,0 +1,48 @@
+{
+  "round": 2,
+  "group": "catalogue-users",
+  "findings": [],
+  "resolved": [
+    "S3-catalogue-users-001",
+    "S3-catalogue-users-002",
+    "S3-catalogue-users-003",
+    "S3-catalogue-users-004"
+  ],
+  "evidence": [
+    {
+      "id": "S3-catalogue-users-001",
+      "file": "_cross-cutting/api/paths/books.yaml",
+      "sha256": "1968ba7e4f69e1260384dc8c711327058fd3d1a0030c6ecd4dd2d6691d226160",
+      "status": "resolved"
+    },
+    {
+      "id": "S3-catalogue-users-002",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍を検索する/_model-summary.yaml",
+      "sha256": "8f8b5d973bcd3fe8995ed2df9b322e72621c3c570c1dc5de589d99d907c609ab",
+      "status": "resolved"
+    },
+    {
+      "id": "S3-catalogue-users-003",
+      "file": "利用者管理業務/利用者を管理するフロー/利用者を登録する/spec.md",
+      "sha256": "5ee4a483c5b9a62d93f1a5fd5f2eb29298bdfcb98b25e508bd22e002f1f7dce6",
+      "status": "resolved"
+    },
+    {
+      "id": "S3-catalogue-users-004",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/tier-backend-api.md",
+      "sha256": "b0866bbe60c146a47768f4c3d2dc5ec4015361d5ede8d1cbae7b4e6f21284e1f",
+      "status": "resolved"
+    }
+  ],
+  "validation": {
+    "prose": {
+      "passed": 10,
+      "failed": 0
+    },
+    "model": {
+      "passed": 10,
+      "failed": 0
+    },
+    "compile": "executed after search query edit; final global --check saw concurrent return-notification contract changes, coordinator to recompile"
+  }
+}

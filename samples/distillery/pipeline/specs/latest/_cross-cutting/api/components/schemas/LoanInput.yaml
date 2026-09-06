@@ -1,0 +1,11 @@
+type: object
+additionalProperties: false
+required:
+  - book_id
+  - user_number
+properties:
+  book_id: &a1
+    type: string
+    minLength: 1
+    maxLength: 255
+  user_number: *a1

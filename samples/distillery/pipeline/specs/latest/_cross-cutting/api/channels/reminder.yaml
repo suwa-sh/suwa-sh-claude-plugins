@@ -1,0 +1,4 @@
+address: library.reminder.v1
+messages:
+  ReminderRequest:
+    $ref: ../components/messages/ReminderRequest.yaml

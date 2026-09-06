@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "延滞者に督促するフロー",
+  "business": "期限管理業務",
+  "consumes": [],
+  "contract_sha256": "c58e2e29d5d752a2e03be759ee495e9b4bb47443930111e6a586780c634ffc8b",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1loans~1overdue/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "listOverdueLoans",
+      "path": "/staff/loans/overdue",
+      "summary": "延滞一覧を参照する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "延滞一覧を参照する"
+}

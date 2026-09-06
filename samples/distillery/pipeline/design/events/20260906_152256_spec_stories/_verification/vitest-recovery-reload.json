@@ -1,0 +1,124 @@
+{
+  "raw_report_workspace_only": "spec-stories-planned/vitest-recovery-reload.json",
+  "success": true,
+  "total": 17,
+  "passed": 17,
+  "failed": 0,
+  "suites": [
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/貸出受付画面.stories.tsx",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "Input",
+          "status": "passed",
+          "duration_ms": 878.7999999523163,
+          "failureMessages": []
+        },
+        {
+          "name": "Allowed",
+          "status": "passed",
+          "duration_ms": 57.5,
+          "failureMessages": []
+        },
+        {
+          "name": "Denied",
+          "status": "passed",
+          "duration_ms": 53,
+          "failureMessages": []
+        },
+        {
+          "name": "Done",
+          "status": "passed",
+          "duration_ms": 56.10000014305115,
+          "failureMessages": []
+        },
+        {
+          "name": "Submitting",
+          "status": "passed",
+          "duration_ms": 54.299999952316284,
+          "failureMessages": []
+        },
+        {
+          "name": "Error",
+          "status": "passed",
+          "duration_ms": 502.7000000476837,
+          "failureMessages": []
+        },
+        {
+          "name": "Not Found",
+          "status": "passed",
+          "duration_ms": 39.799999952316284,
+          "failureMessages": []
+        },
+        {
+          "name": "Direct Link",
+          "status": "passed",
+          "duration_ms": 66.29999995231628,
+          "failureMessages": []
+        },
+        {
+          "name": "Reload Pending",
+          "status": "passed",
+          "duration_ms": 412.89999985694885,
+          "failureMessages": []
+        }
+      ]
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/返却受付画面.stories.tsx",
+      "status": "passed",
+      "tests": [
+        {
+          "name": "Input",
+          "status": "passed",
+          "duration_ms": 877.4000000953674,
+          "failureMessages": []
+        },
+        {
+          "name": "Found",
+          "status": "passed",
+          "duration_ms": 59.299999952316284,
+          "failureMessages": []
+        },
+        {
+          "name": "Found With Reservation",
+          "status": "passed",
+          "duration_ms": 58.5,
+          "failureMessages": []
+        },
+        {
+          "name": "Done",
+          "status": "passed",
+          "duration_ms": 55.90000009536743,
+          "failureMessages": []
+        },
+        {
+          "name": "Submitting",
+          "status": "passed",
+          "duration_ms": 57.69999980926514,
+          "failureMessages": []
+        },
+        {
+          "name": "Error",
+          "status": "passed",
+          "duration_ms": 495.90000009536743,
+          "failureMessages": []
+        },
+        {
+          "name": "Not Found",
+          "status": "passed",
+          "duration_ms": 64.70000004768372,
+          "failureMessages": []
+        },
+        {
+          "name": "Reload Pending",
+          "status": "passed",
+          "duration_ms": 417.7000000476837,
+          "failureMessages": []
+        }
+      ]
+    }
+  ],
+  "scope": "貸出受付画面・返却受付画面の17バリアント（通常 Input から保存済みリクエストを復元する ReloadPending を含む）"
+}

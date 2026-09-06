@@ -1,0 +1,32 @@
+{
+  "async_events": [],
+  "buc": "書籍を予約するフロー",
+  "business": "貸出業務",
+  "consumes": [
+    {
+      "contract_ref": "openapi#/paths/~1books~1{book_id}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getBook",
+      "owner_uc": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する",
+      "path": "/books/{book_id}",
+      "summary": "書籍詳細を参照する",
+      "tier": "tier-frontend-user"
+    }
+  ],
+  "contract_sha256": "aa95a8ea27e624c3c5ca0cd1a1f6752a7a14f7a5975b9783fad2e1acf646116a",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1reservations/post",
+      "kind": "openapi",
+      "method": "POST",
+      "operation_id": "createReservation",
+      "path": "/reservations",
+      "summary": "予約を登録する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "予約を登録する"
+}

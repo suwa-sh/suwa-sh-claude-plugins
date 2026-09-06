@@ -10,8 +10,8 @@ const { execFileSync, spawnSync } = require('node:child_process');
 const { sliceSection, listItemValues, extract, renderMarkdown, sha256, stripTrailingComment } = require('../scripts/extractSections');
 const { buildAll, readIndexSha, readIndex, digestIsCurrent, expectedRowsOf, DOMAINS } = require('../scripts/buildDigest');
 
-// 実リポジトリでは samples/ を fixture に使う。レビュー用コピー等では DIST_SAMPLE_ROOT で差し替えられる
-const sampleRoot = process.env.DIST_SAMPLE_ROOT || path.resolve(__dirname, '../../../../../samples/distillery/pipeline-opus-medium');
+// 実リポジトリでは tests/fixtures/distillery/ の固定入力を使う。レビュー用コピー等では DIST_SAMPLE_ROOT で差し替えられる
+const sampleRoot = process.env.DIST_SAMPLE_ROOT || path.resolve(__dirname, '../../../../../tests/fixtures/distillery/legacy-pipeline');
 const archYaml = path.join(sampleRoot, 'arch/latest/arch-design.yaml');
 const nfrYaml = path.join(sampleRoot, 'nfr/latest/nfr-grade.yaml');
 const designYaml = path.join(sampleRoot, 'design/latest/design-event.yaml');

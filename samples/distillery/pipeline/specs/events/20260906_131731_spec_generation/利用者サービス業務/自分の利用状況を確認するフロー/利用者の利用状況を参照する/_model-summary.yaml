@@ -1,0 +1,117 @@
+uc: 利用者の利用状況を参照する
+business: 利用者サービス業務
+buc: 自分の利用状況を確認するフロー
+bounded_context_id: BC-002
+models:
+  - name: UserActivity
+    tier: tier-backend-api
+    layer: usecase
+    type: query
+  - name: LoanTable / ReservationTable
+    tier: tier-frontend-staff
+    layer: view
+    type: view-model
+tables:
+  - name: users
+    rdra_info: 利用者
+    operations:
+      - type: SELECT
+        columns:
+          - name: user_number
+            value: 参照する
+          - name: name
+            value: 参照する
+          - name: email
+            value: 参照する
+          - name: phone
+            value: 参照する
+          - name: address
+            value: 参照する
+          - name: deleted
+            value: 参照する
+        where: user_number = path.user_number
+    indexes_needed: []
+  - name: loans
+    rdra_info: 貸出
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_id
+            value: 参照する
+          - name: book_id
+            value: 参照する
+          - name: user_number
+            value: 参照する
+          - name: loaned_on
+            value: 参照する
+          - name: due_date
+            value: 参照する
+          - name: returned_on
+            value: 参照する
+          - name: current_status
+            value: 参照する
+        where: user_number = path.user_number
+    indexes_needed: []
+  - name: reservations
+    rdra_info: 予約
+    operations:
+      - type: SELECT
+        columns:
+          - name: reservation_id
+            value: 参照する
+          - name: book_id
+            value: 参照する
+          - name: user_number
+            value: 参照する
+          - name: accepted_at
+            value: 参照する
+          - name: queue_position
+            value: 参照する
+          - name: current_status
+            value: 参照する
+        where: user_number = path.user_number
+    indexes_needed: []
+  - name: books
+    rdra_info: 書籍
+    operations:
+      - type: SELECT
+        columns:
+          - name: book_id
+            value: 参照する
+          - name: title
+            value: 参照する
+          - name: author
+            value: 参照する
+          - name: isbn
+            value: 参照する
+          - name: publisher
+            value: 参照する
+          - name: genre_id
+            value: 参照する
+          - name: media_type
+            value: 参照する
+          - name: current_status
+            value: 参照する
+          - name: registered_at
+            value: 参照する
+          - name: deleted
+            value: 参照する
+        where: 結果のbook_idで結合する。蔵書一覧はdeleted=false
+    indexes_needed: []
+  - name: audit_logs
+    rdra_info: ""
+    operations:
+      - type: INSERT
+        columns:
+          - name: action_type
+            value: データ参照
+          - name: target_entity
+            value: E-003
+          - name: target_id
+            value: 参照主体または集計期間
+          - name: result
+            value: 成功
+        where: ""
+    indexes_needed: []
+kvs: []
+object_storage: []
