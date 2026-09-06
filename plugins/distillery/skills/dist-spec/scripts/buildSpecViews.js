@@ -114,11 +114,11 @@ function build(eventRoot, rdraRoot) {
     return [category, { total: subset.length, linked: subset.filter(r => r.status === 'linked').length }];
   }));
   files.set('_cross-cutting/traceability-index.json', encode({ schema_version: 'distillery.traceability/v1', counts, elements: rows }));
+  const typeLabels = { information: '情報の属性', variation: 'バリエーションの値', condition: '条件', state: '状態遷移', external: '外部システム' };
   const lines = ['# 要件トレーサビリティマトリクス', '',
     '機械検査は対応先・tier・Scenarioの実在を確認する。linkedは意味上の充足や実装完了を保証しない。意味上の網羅率は独立レビューで判断する。', '',
-    '## 対応付けサマリー', '', '| カテゴリ | 全要素 | linked | unlinked |', '|----------|-------:|-------:|---------:|'];
-  for (const [category, count] of Object.entries(counts)) lines.push(`| ${category} | ${count.total} | ${count.linked} | ${count.total - count.linked} |`);
-  const typeLabels = { information: '情報の属性', variation: 'バリエーションの値', condition: '条件', state: '状態遷移', external: '外部システム' };
+    '## 対応付けサマリー', '', '| 種類 | 全要素 | linked | unlinked |', '|----------|-------:|-------:|---------:|'];
+  for (const [category, count] of Object.entries(counts)) lines.push(`| ${typeLabels[category]} | ${count.total} | ${count.linked} | ${count.total - count.linked} |`);
   const columns = catalog.use_cases.map(uc => ({ path: ucPath(uc), name: uc.uc }));
   const nameCounts = new Map();
   for (const uc of columns) nameCounts.set(uc.name, (nameCounts.get(uc.name) || 0) + 1);
