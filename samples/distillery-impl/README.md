@@ -46,3 +46,7 @@ pipeline側の実行記録は[feedback-runs/](../distillery/pipeline/pipeline/fe
 ```text
 /distillery-impl:dist-impl-run 貸出管理業務/貸出管理フロー/書籍を貸出する specs_root={samples/distillery/pipeline の複製} repo_root={空のgit repository}
 ```
+
+## 旧版出力の移行
+
+旧outputを保持して新版skillsへ差し替えた場合はdist-impl-migreを使います。[ガイド選択例](docs/migration-guide-example.md)に通常の呼び出しと確認範囲を示します。実装サンプル全体の移行実績とは区別してください。

@@ -146,5 +146,7 @@ test('human review shows assumptions with answer template; feedback publishes on
 test('readme and version advertise the feature', () => {
   assert.match(readme, /暗黙前提の可視化/);
   assert.match(readme, /8項目|8 観点/);
-  assert.match(pluginJson.version, /^0\.13\.\d+$/);
+  assert.match(pluginJson.version, /^\d+\.\d+\.\d+$/);
+  const [major, minor] = pluginJson.version.split('.').map(Number);
+  assert.ok(major > 0 || minor >= 13, 'AssumptionRecord requires version 0.13.0 or later');
 });
