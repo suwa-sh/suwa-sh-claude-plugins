@@ -1,7 +1,7 @@
 # latestを接続する貸出仕様と還流サンプル
 
 最新の本文レビュー例: [採用後の目標仕様](docs/specs/events/20260906_122355_spec_generation/README.md)。
-生成状態を本文外へ分離し、tierを表とリストで整理した。[新旧比較HTML](../../../plans/dist-spec-product-review.html)から確認できる。
+生成状態を本文外へ分離し、tierを表とリストで整理した。
 以下は前回の不足検出時の記録。
 
 
@@ -18,6 +18,5 @@ APIの型や共通Props、業務状態表の再掲はしない。図と分岐の
 
 - [pipeline dry plan実測](pipeline-preview/README.md) / [CLIの計画出力](pipeline-preview/plan.json)
 - [独立レビューround2](review/independent-round-2.yaml): ローカル指摘4件解消、上流7CRは未解決
-- [比較HTML](../../../plans/dist-spec-latest-review.html): 現行との差分・生成仕様・参照元・還流要求
 
 分割契約再生成テストを含む171テストを確認（全体170成功、version制約の失敗1件はpatch version修正後に対象7件を再実行して成功）。CIで全体を再検証する。
