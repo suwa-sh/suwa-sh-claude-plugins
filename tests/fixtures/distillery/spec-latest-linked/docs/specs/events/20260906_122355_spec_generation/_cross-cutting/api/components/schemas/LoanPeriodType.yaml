@@ -1,0 +1,10 @@
+description: 貸出期間区分のwire値。正本は docs/rdra/latest/バリエーション.tsv の貸出期間区分。期間日数・利用者区分ごとの適用集合は
+enum:
+- 標準
+- 短期
+- 長期
+type: string
+x-enum-varnames:
+- STANDARD
+- SHORT
+- LONG

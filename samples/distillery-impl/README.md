@@ -1,7 +1,8 @@
 # distillery-impl実行サンプル
 
 このdirectoryは、UC「書籍を貸出する」をS0からS9まで実行した結果です。
-入力仕様は[samples/distillery/pipeline/](../distillery/pipeline/)にあります。
+現行の公開仕様は[samples/distillery/pipeline/](../distillery/pipeline/)にあります。
+この実装サンプルは従来仕様での実行結果です。新構成に対する確認範囲と結果は[入力互換性確認](docs/spec-input-compatibility.md)を参照してください。
 
 ## 確認するファイル
 

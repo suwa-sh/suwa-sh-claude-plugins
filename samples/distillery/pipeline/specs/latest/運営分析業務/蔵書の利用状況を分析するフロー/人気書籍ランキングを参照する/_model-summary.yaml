@@ -1,0 +1,117 @@
+uc: 人気書籍ランキングを参照する
+business: 運営分析業務
+buc: 蔵書の利用状況を分析するフロー
+bounded_context_id: BC-006
+models:
+  - name: LoanStatistic
+    tier: tier-backend-api
+    layer: usecase
+    type: query
+  - name: RankingList
+    tier: tier-frontend-staff
+    layer: view
+    type: view-model
+tables:
+  - name: loans_events
+    rdra_info: 貸出
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_id
+            value: 参照する
+          - name: event_type
+            value: 参照する
+          - name: payload
+            value: 参照する
+          - name: occurred_at
+            value: 参照する
+        where: event_type = 'LoanCreated' AND occurred business_date within requested dates
+    indexes_needed: []
+  - name: books
+    rdra_info: 書籍
+    operations:
+      - type: SELECT
+        columns:
+          - name: book_id
+            value: 参照する
+          - name: title
+            value: 参照する
+          - name: author
+            value: 参照する
+          - name: isbn
+            value: 参照する
+          - name: publisher
+            value: 参照する
+          - name: genre_id
+            value: 参照する
+          - name: media_type
+            value: 参照する
+          - name: current_status
+            value: 参照する
+          - name: registered_at
+            value: 参照する
+          - name: deleted
+            value: 参照する
+        where: 結果のbook_idで結合する。蔵書一覧はdeleted=false
+    indexes_needed: []
+  - name: genres
+    rdra_info: ジャンル
+    operations:
+      - type: SELECT
+        columns:
+          - name: genre_id
+            value: 参照する
+          - name: genre_name
+            value: 参照する
+        where: books.genre_id = genres.genre_id
+    indexes_needed: []
+  - name: loan_statistics
+    rdra_info: 貸出統計
+    operations:
+      - type: SELECT
+        columns:
+          - name: period_type
+            value: 参照する
+          - name: period_start
+            value: 参照する
+          - name: period_end
+            value: 参照する
+          - name: book_id
+            value: 参照する
+          - name: loan_count
+            value: 参照する
+          - name: loan_total
+            value: 参照する
+          - name: ranking
+            value: 参照する
+          - name: aggregated_at
+            value: 参照する
+        where: 要求したperiod_type/period_start/period_endに一致
+      - type: INSERT
+        columns:
+          - name: loan_count
+            value: 対象期間の貸出IDを重複排除した件数
+        where: 同じ期間キーの投影を置換する
+      - type: UPDATE
+        columns:
+          - name: aggregated_at
+            value: 集計確定時刻
+        where: period_type/period_start/period_end/book_id一致
+    indexes_needed: []
+  - name: audit_logs
+    rdra_info: ""
+    operations:
+      - type: INSERT
+        columns:
+          - name: action_type
+            value: データ参照
+          - name: target_entity
+            value: E-009
+          - name: target_id
+            value: 参照主体または集計期間
+          - name: result
+            value: 成功
+        where: ""
+    indexes_needed: []
+kvs: []
+object_storage: []

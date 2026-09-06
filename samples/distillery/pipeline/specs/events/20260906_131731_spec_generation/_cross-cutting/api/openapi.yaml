@@ -1,0 +1,110 @@
+openapi: 3.1.0
+info:
+  title: 図書館管理API
+  version: 1.0.0
+servers:
+  - url: https://library.example.invalid/api
+security:
+  - BearerAuth: []
+paths:
+  /staff/books:
+    $ref: ./paths/staff_books.yaml
+  /genres:
+    $ref: ./paths/genres.yaml
+  /staff/books/{book_id}:
+    $ref: ./paths/staff_books__book_id_.yaml
+  /books:
+    $ref: ./paths/books.yaml
+  /books/{book_id}:
+    $ref: ./paths/books__book_id_.yaml
+  /staff/users:
+    $ref: ./paths/staff_users.yaml
+  /staff/users/{user_number}:
+    $ref: ./paths/staff_users__user_number_.yaml
+  /staff/loans:
+    $ref: ./paths/staff_loans.yaml
+  /staff/loan-eligibility:
+    $ref: ./paths/staff_loan-eligibility.yaml
+  /staff/loans/{loan_id}/return:
+    $ref: ./paths/staff_loans__loan_id__return.yaml
+  /staff/books/{book_id}/return-preview:
+    $ref: ./paths/staff_books__book_id__return-preview.yaml
+  /staff/reservations/{reservation_id}/notifications:
+    $ref: ./paths/staff_reservations__reservation_id__notifications.yaml
+  /staff/loans/{loan_id}/notification-status:
+    $ref: ./paths/staff_loans__loan_id__notification-status.yaml
+  /reservations:
+    $ref: ./paths/reservations.yaml
+  /reservations/{reservation_id}/cancel:
+    $ref: ./paths/reservations__reservation_id__cancel.yaml
+  /reservations/{reservation_id}:
+    $ref: ./paths/reservations__reservation_id_.yaml
+  /staff/books/{book_id}/reservations:
+    $ref: ./paths/staff_books__book_id__reservations.yaml
+  /staff/loans/overdue:
+    $ref: ./paths/staff_loans_overdue.yaml
+  /me/loans:
+    $ref: ./paths/me_loans.yaml
+  /me/reservations:
+    $ref: ./paths/me_reservations.yaml
+  /staff/users/{user_number}/activity:
+    $ref: ./paths/staff_users__user_number__activity.yaml
+  /staff/analytics/inventory:
+    $ref: ./paths/staff_analytics_inventory.yaml
+  /staff/analytics/popular-books:
+    $ref: ./paths/staff_analytics_popular-books.yaml
+  /staff/analytics/loans:
+    $ref: ./paths/staff_analytics_loans.yaml
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Book:
+      $ref: ./components/schemas/Book.yaml
+    Genre:
+      $ref: ./components/schemas/Genre.yaml
+    User:
+      $ref: ./components/schemas/User.yaml
+    Loan:
+      $ref: ./components/schemas/Loan.yaml
+    LoanPeriod:
+      $ref: ./components/schemas/LoanPeriod.yaml
+    RemindDays:
+      $ref: ./components/schemas/RemindDays.yaml
+    Reservation:
+      $ref: ./components/schemas/Reservation.yaml
+    Notification:
+      $ref: ./components/schemas/Notification.yaml
+    LoanStatistic:
+      $ref: ./components/schemas/LoanStatistic.yaml
+    BookInput:
+      $ref: ./components/schemas/BookInput.yaml
+    UserInput:
+      $ref: ./components/schemas/UserInput.yaml
+    LoanInput:
+      $ref: ./components/schemas/LoanInput.yaml
+    ReservationInput:
+      $ref: ./components/schemas/ReservationInput.yaml
+    VersionInput:
+      $ref: ./components/schemas/VersionInput.yaml
+    Error:
+      $ref: ./components/schemas/Error.yaml
+    NotificationAcceptance:
+      $ref: ./components/schemas/NotificationAcceptance.yaml
+    UserActivity:
+      $ref: ./components/schemas/UserActivity.yaml
+    OverdueLoan:
+      $ref: ./components/schemas/OverdueLoan.yaml
+    LoanEligibility:
+      $ref: ./components/schemas/LoanEligibility.yaml
+    ReturnPreview:
+      $ref: ./components/schemas/ReturnPreview.yaml
+    ReturnNotificationStatus:
+      $ref: ./components/schemas/ReturnNotificationStatus.yaml
+    ReturnResult:
+      $ref: ./components/schemas/ReturnResult.yaml
+    PeriodStatistics:
+      $ref: ./components/schemas/PeriodStatistics.yaml

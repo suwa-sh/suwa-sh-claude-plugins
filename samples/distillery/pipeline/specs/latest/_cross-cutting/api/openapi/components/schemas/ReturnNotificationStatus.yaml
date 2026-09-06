@@ -1,0 +1,32 @@
+type: object
+additionalProperties: false
+required:
+  - loan_id
+  - reservation
+  - notifications
+  - pending_requests
+  - book
+  - recipient
+properties:
+  loan_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  reservation:
+    anyOf:
+      - $ref: ./Reservation.yaml
+      - type: "null"
+  notifications:
+    type: array
+    items:
+      $ref: ./Notification.yaml
+  pending_requests:
+    type: array
+    items:
+      $ref: ./NotificationAcceptance.yaml
+  book:
+    $ref: ./Book.yaml
+  recipient:
+    anyOf:
+      - $ref: ./User.yaml
+      - type: "null"

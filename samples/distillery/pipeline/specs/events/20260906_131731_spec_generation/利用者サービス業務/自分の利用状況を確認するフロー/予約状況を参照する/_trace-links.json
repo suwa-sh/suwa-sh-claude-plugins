@@ -1,0 +1,17 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"condition\",\"利用者管理\",\"利用状況閲覧範囲判定\"]",
+      "tier": "tier-backend-api",
+      "file": "利用者サービス業務/自分の利用状況を確認するフロー/予約状況を参照する/spec.md",
+      "anchor": "関連 RDRA モデル",
+      "scenarios": [
+        {
+          "file": "利用者サービス業務/自分の利用状況を確認するフロー/予約状況を参照する/spec.md",
+          "name": "本人の有効予約と順位を表示する"
+        }
+      ]
+    }
+  ]
+}

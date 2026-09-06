@@ -1,0 +1,91 @@
+type: object
+additionalProperties: false
+required:
+  - book_id
+  - title
+  - author
+  - isbn
+  - publisher
+  - genre_id
+  - media_type
+  - current_status
+  - version
+  - updated_at
+  - registered_at
+  - genre_name
+  - reservation_count
+  - my_reservation
+properties:
+  book_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  title:
+    type: string
+    minLength: 1
+    maxLength: 255
+  author:
+    type: string
+    minLength: 1
+    maxLength: 255
+  isbn:
+    anyOf:
+      - type: string
+        pattern: ^(?:[0-9]{9}[0-9X]|[0-9]{13})$
+      - type: "null"
+  publisher:
+    anyOf:
+      - type: string
+        minLength: 1
+        maxLength: 255
+      - type: "null"
+  genre_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  media_type:
+    type: string
+    enum:
+      - 紙
+      - 電子
+  current_status:
+    type: string
+    enum:
+      - 在庫あり
+      - 貸出中
+      - 予約待ち
+  version:
+    type: integer
+    minimum: 0
+  updated_at:
+    type: string
+    format: date-time
+  registered_at:
+    type: string
+    format: date-time
+  genre_name: &a1
+    type: string
+    minLength: 1
+    maxLength: 255
+  reservation_count:
+    type: integer
+    minimum: 0
+  my_reservation:
+    anyOf:
+      - type: object
+        additionalProperties: false
+        required:
+          - reservation_id
+          - queue_position
+          - current_status
+        properties:
+          reservation_id: *a1
+          queue_position:
+            type: integer
+            minimum: 1
+          current_status:
+            type: string
+            enum:
+              - 予約中
+              - 通知済み
+      - type: "null"

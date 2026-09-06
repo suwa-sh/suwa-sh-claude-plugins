@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "書籍を貸し出すフロー",
+  "business": "蔵書利用業務",
+  "consumes": [],
+  "contract_sha256": "a0a6b1f11823d8c4530e3b898561447465e9ef0e3be896f6fc31349a657a6755",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1api~1v1~1loan-targets~1{user_no}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getLoanTarget",
+      "path": "/api/v1/loan-targets/{user_no}",
+      "summary": "利用者番号で貸出対象利用者を特定する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "利用者番号で貸出対象利用者を特定する"
+}

@@ -1,0 +1,30 @@
+{
+  "async_events": [],
+  "buc": "蔵書を管理するフロー",
+  "business": "蔵書管理業務",
+  "consumes": [],
+  "contract_sha256": "dc5f8a05ce3675d50457ce82abd8947b64a9274549dbda6687e69a5e9199edd1",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1books/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "listBooks",
+      "path": "/staff/books",
+      "summary": "書籍一覧を参照する",
+      "tier": "tier-backend-api"
+    },
+    {
+      "contract_ref": "openapi#/paths/~1genres/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "listGenres",
+      "path": "/genres",
+      "summary": "書籍一覧を参照するの入力・確認データ取得",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "書籍一覧を参照する"
+}

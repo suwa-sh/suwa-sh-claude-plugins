@@ -1,0 +1,46 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-005"
+title: "Storybook を Next.js 16 + Tailwind v4 + Storybook 10 で構成し、外部 CDN に依存しない"
+status: "approved"
+generated_at: "2026-09-02T15:12:00+09:00"
+context: |
+  arch の technology_context は言語 TypeScript、フレームワークに
+  「SPA フレームワーク（コンポーネント指向 / ルーティング内蔵）」を挙げ、
+  モノレポ構成と「利用者ポータル / 司書ポータル / 共有コンポーネントパッケージ」の分離を制約にしている。
+  また NFR F.1.1.2（Chrome / Edge / Safari 最新版）と
+  F.3.1.2（JIS X 8341-3:2016 レベル AA 目標）を満たす必要がある。
+  デザインシステムの成果物は後段の dist-impl-bootstrap が packages/ui として取り込む。
+decision: |
+  Storybook プロジェクトを次の構成で生成した。
+  - Next.js 16 + React 19 + TypeScript + Tailwind CSS v4
+  - Storybook 10（`@storybook/nextjs-vite`）+ addon-docs / addon-a11y / addon-vitest
+  - グローバル toolbar に portal（patron / staff）と theme（light / dark）を用意し、
+    decorator で `data-portal` 属性・`.dark` / `.light` クラス・body の背景色を設定する
+
+  外部 CDN への依存を排除するため、次を守った。
+  - アイコンは Lucide 準拠の SVG 42 種をリポジトリ内に持ち、
+    ビルド時定数のインライン SVG（`icons.generated.ts`）として `currentColor` で着色する
+  - ロゴ 3 バリアント（full / icon / stacked）も自前の SVG コードとして生成する
+  - Web フォントは読み込まず、`Noto Sans JP` / `Inter` はローカルにあれば使い、
+    無ければ `Hiragino Sans` / `Yu Gothic UI` / `system-ui` へフォールバックする
+
+  アクセシビリティ対応として addon-a11y を有効化し、
+  全コンポーネントに aria 属性・キーボード操作・色以外の手掛かり（アイコン / dot / 文言）を実装要件とした。
+consequences:
+  positive:
+    - "オフラインでもビルド・表示できる。CDN 障害や社内プロキシ制約の影響を受けない"
+    - "アイコンが currentColor で着色できるため、ポータル × テーマの色切替がアイコンにも自動で効く"
+    - "addon-a11y により JIS X 8341-3 AA 目標の逸脱をカタログ上で継続的に検知できる"
+  negative:
+    - "Web フォントを読まないため、Noto Sans JP が未インストールの環境では字形が変わる"
+    - "アイコンを追加するたびに SVG と TS registry の両方を再生成する必要がある"
+    - "Storybook 10 は `@storybook/blocks` を提供しないため、MDX は `@storybook/addon-docs/blocks` を使う制約がある"
+alternatives_considered:
+  - name: "Vite + React（Next.js を使わない）"
+    reason_rejected: "arch がルーティング内蔵の SPA フレームワークを挙げており、後段の impl と同じ土台にしたほうが移植コストが低い"
+  - name: "lucide-react パッケージを依存に入れる"
+    reason_rejected: "アイコン追加のたびに依存更新が必要で、ドメイン固有アイコンを同じ描画規則で足せない。SVG 自前保持のほうが制御しやすい"
+  - name: "Google Fonts を CDN から読み込む"
+    reason_rejected: "館内ネットワーク限定の司書ポータル（NFR E.5.3.1）で外部通信が遮断される可能性がある。フォールバック方式にした"

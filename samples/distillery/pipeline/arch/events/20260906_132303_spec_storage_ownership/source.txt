@@ -1,0 +1,1 @@
+dist-specで検出した保存モデルの所有者不足と通知要求の送信漏れ対策。通常pipelineのauto_adoptによる差分設計。formal feedback packetの実行ではない。

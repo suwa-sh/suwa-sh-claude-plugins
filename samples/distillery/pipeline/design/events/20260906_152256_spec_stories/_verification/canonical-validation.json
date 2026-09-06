@@ -1,0 +1,23 @@
+{
+  "design_event": {
+    "command": "node plugins/distillery/skills/dist-design-system/scripts/validateDesignEvent.js docs/design/latest/design-event.yaml",
+    "exit_code": 0,
+    "portals": 2,
+    "components": 38,
+    "screens": 24,
+    "state_models": 3
+  },
+  "design_markdown": {
+    "generated": true
+  },
+  "digest": {
+    "command": "node plugins/distillery/skills/dist-pipeline/scripts/buildDigest.js docs --domain design",
+    "exit_code": 0,
+    "sections": 8
+  },
+  "typescript": {
+    "command": "./node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "docs/design/latest/storybook-app",
+    "exit_code": 0
+  }
+}

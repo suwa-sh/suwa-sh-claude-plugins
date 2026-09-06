@@ -1,0 +1,157 @@
+put:
+  operationId: updateBook
+  summary: 書籍を編集する
+  tags:
+    - 蔵書管理業務
+  parameters:
+    - name: book_id
+      in: path
+      required: true
+      schema: &a1
+        type: string
+        minLength: 1
+        maxLength: 255
+    - name: X-Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: If-Match
+      in: header
+      required: true
+      description: 取得したversionを二重引用符で囲んだ値。
+      schema:
+        type: string
+        pattern: ^"[0-9]+"$
+  responses:
+    "200":
+      description: 処理結果
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Book.yaml
+    "400":
+      description: 入力形式不正
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "401":
+      description: 認証が必要
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "403":
+      description: 権限または接続経路違反
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "404":
+      description: 対象なし
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "409":
+      description: 競合または冪等キー不一致
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "422":
+      description: 業務条件不成立
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "503":
+      description: 設定または依存先を利用不可
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+  x-allowed-roles:
+    - 司書
+  x-network: 館内
+  x-authorization-rule: ロールと経路を検証する。
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/BookInput.yaml
+delete:
+  operationId: deleteBook
+  summary: 書籍を削除する
+  tags:
+    - 蔵書管理業務
+  parameters:
+    - name: book_id
+      in: path
+      required: true
+      schema: *a1
+    - name: X-Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: If-Match
+      in: header
+      required: true
+      description: 取得したversionを二重引用符で囲んだ値。
+      schema:
+        type: string
+        pattern: ^"[0-9]+"$
+  responses:
+    "204":
+      description: 削除完了
+    "400":
+      description: 入力形式不正
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "401":
+      description: 認証が必要
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "403":
+      description: 権限または接続経路違反
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "404":
+      description: 対象なし
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "409":
+      description: 競合または冪等キー不一致
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "422":
+      description: 業務条件不成立
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+    "503":
+      description: 設定または依存先を利用不可
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Error.yaml
+  x-allowed-roles:
+    - 司書
+  x-network: 館内
+  x-authorization-rule: ロールと経路を検証する。

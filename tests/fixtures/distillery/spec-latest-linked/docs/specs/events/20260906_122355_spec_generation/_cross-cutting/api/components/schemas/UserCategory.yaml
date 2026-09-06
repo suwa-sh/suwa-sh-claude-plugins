@@ -1,0 +1,10 @@
+description: 利用者区分のwire値。正本は docs/rdra/latest/バリエーション.tsv の利用者区分。貸出期間との対応は
+enum:
+- 一般
+- 学生
+- 団体
+type: string
+x-enum-varnames:
+- GENERAL
+- STUDENT
+- GROUP

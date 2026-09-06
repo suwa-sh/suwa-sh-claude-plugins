@@ -1,0 +1,276 @@
+subdomain_id: SD-005
+tables:
+  - name: notifications
+    entity_id: E-008
+    rdra_info: 通知
+    description: 通知の永続化
+    columns:
+      - name: notification_id
+        type: string
+        nullable: false
+        description: 通知ID
+      - name: user_number
+        type: string
+        nullable: false
+        description: 利用者番号（E-003 への参照）
+      - name: notification_type
+        type: string
+        nullable: false
+        description: "通知種別（enum: 返却通知・リマインド・督促）"
+      - name: recipient_email
+        type: string
+        nullable: false
+        description: 送信先メールアドレス（送信時点の値のコピー。個人情報。NFR E.6.1.1）
+      - name: subject
+        type: string
+        nullable: false
+        description: 件名
+      - name: body
+        type: text
+        nullable: false
+        description: 本文
+      - name: sent_at
+        type: datetime
+        nullable: false
+        description: 送信日時（イベント発生日時 occurred_at）
+      - name: send_result
+        type: string
+        nullable: false
+        description: "送信結果（enum: 成功・失敗。メール配信サービスの応答を ACL で翻訳した値）"
+      - name: target_loan_id
+        type: string
+        nullable: true
+        description: 対象貸出ID（リマインド・督促のとき。E-004 への参照。返却通知では NULL）
+      - name: target_reservation_id
+        type: string
+        nullable: true
+        description: 対象予約ID（返却通知のとき。E-007 への参照。リマインド・督促では NULL）
+    primary_key:
+      - notification_id
+    foreign_keys:
+      - columns:
+          - user_number
+        references:
+          table: users
+          columns:
+            - user_number
+        on_delete: RESTRICT
+      - columns:
+          - target_loan_id
+        references:
+          table: loans
+          columns:
+            - loan_id
+        on_delete: RESTRICT
+      - columns:
+          - target_reservation_id
+        references:
+          table: reservations
+          columns:
+            - reservation_id
+        on_delete: RESTRICT
+    indexes:
+      - name: notifications_target_loan_id_notification_type_active
+        columns:
+          - target_loan_id
+          - notification_type
+        unique: true
+        where: send_result = '成功' AND target_loan_id IS NOT NULL
+      - name: notifications_target_reservation_id_notification_type_active
+        columns:
+          - target_reservation_id
+          - notification_type
+        unique: true
+        where: send_result = '成功' AND target_reservation_id IS NOT NULL
+    used_by:
+      - uc: 延滞一覧を参照する
+        operations:
+          - SELECT
+      - uc: 督促を送信する
+        operations:
+          - INSERT
+      - uc: リマインドを送信する
+        operations:
+          - INSERT
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+          - INSERT
+  - name: notification_outbox
+    entity_id: E-008
+    rdra_info: 通知
+    description: 通知要求の保存・MQ公開・送信処理の進行状態。通知結果の正本はnotifications。
+    columns:
+      - name: notification_id
+        type: string
+        nullable: false
+        description: 通知要求識別子。同じcause_keyで共有する。
+      - name: cause_key
+        type: string
+        nullable: false
+        description: notification_type + target_id。同じ契機の要求を一意にする
+      - name: notification_type
+        type: string
+        nullable: false
+        description: 通知種別。返却通知・リマインド・督促のいずれか。
+      - name: target_loan_id
+        type: string
+        nullable: true
+        description: リマインド・督促の対象貸出ID。返却通知ではNULL。
+      - name: target_reservation_id
+        type: string
+        nullable: true
+        description: 返却通知の対象予約ID。他の種別ではNULL。
+      - name: state
+        type: string
+        nullable: false
+        description: queued / published / sending / sent / failed / unknown
+      - name: payload
+        type: text
+        nullable: false
+        description: AsyncAPI message payloadのJSON。通知IDと対象IDのみ
+      - name: created_at
+        type: datetime
+        nullable: false
+        description: 要求または受付記録を作成したUTC時刻。
+      - name: attempts
+        type: integer
+        nullable: false
+        description: 外部配信のclaim取得回数。初期0。claimごとに1増やす。
+      - name: next_attempt_at
+        type: datetime
+        nullable: true
+        description: 確実な未送信の再試行を許すUTC時刻。初回と終端はNULL。
+      - name: lease_until
+        type: datetime
+        nullable: true
+        description: 配信権の有効期限。claim取得時刻+120秒。終端はNULL。
+      - name: provider_message_id
+        type: string
+        nullable: true
+        description: 配信事業者が返した識別子。未取得はNULL。不明結果の手動照合に使用。
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 認証主体の利用者番号。日次・配信はサービス主体ID。
+      - name: request_key
+        type: string
+        nullable: false
+        description: operationとX-Idempotency-Keyの結合。日次・配信はTR-IDEMPの安定キー。
+      - name: request_hash
+        type: string
+        nullable: false
+        description: 本文・path・query・If-Match等の正規化SHA-256。TR-IDEMPを参照。
+      - name: response
+        type: text
+        nullable: false
+        description: 要求確定時のHTTP
+          status・headers・bodyのJSON。日次要求はACK結果。TR-IDEMPによる再送ではこの確定値を返す。配信状態の更新では変更しない
+    primary_key:
+      - notification_id
+    foreign_keys:
+      - columns:
+          - target_loan_id
+        references:
+          table: loans
+          columns:
+            - loan_id
+        on_delete: RESTRICT
+      - columns:
+          - target_reservation_id
+        references:
+          table: reservations
+          columns:
+            - reservation_id
+        on_delete: RESTRICT
+    indexes:
+      - name: notification_outbox_cause
+        columns:
+          - cause_key
+        unique: true
+      - name: notification_outbox_request
+        columns:
+          - actor_id
+          - request_key
+        unique: true
+      - name: notification_outbox_dispatch
+        columns:
+          - state
+          - next_attempt_at
+        unique: false
+    used_by:
+      - uc: 延滞を判定する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 督促を送信する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: リマインドを送信する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: リマインド対象を抽出する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 予約を取り消す
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+          - INSERT
+          - UPDATE
+  - name: notification_request_receipts
+    entity_id: E-008
+    rdra_info: 通知
+    description: 通知受付コマンドの再送照合。同じ通知契機を再利用する別要求も記録する。
+    columns:
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 認証主体の利用者番号。日次・配信はサービス主体ID。
+      - name: request_key
+        type: string
+        nullable: false
+        description: operationとX-Idempotency-Keyの結合。日次・配信はTR-IDEMPの安定キー。
+      - name: request_hash
+        type: string
+        nullable: false
+        description: 本文・path・query・If-Match等の正規化SHA-256。TR-IDEMPを参照。
+      - name: response
+        type: text
+        nullable: false
+        description: 要求確定時のHTTP status・headers・bodyのJSON。TR-IDEMPの再送応答で使用する。
+      - name: notification_id
+        type: string
+        nullable: false
+        description: 通知要求識別子。同じcause_keyで共有する。
+      - name: created_at
+        type: datetime
+        nullable: false
+        description: 要求または受付記録を作成したUTC時刻。
+    primary_key:
+      - actor_id
+      - request_key
+    foreign_keys:
+      - columns:
+          - notification_id
+        references:
+          table: notification_outbox
+          columns:
+            - notification_id
+        on_delete: RESTRICT
+    indexes: []
+    used_by:
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+          - INSERT

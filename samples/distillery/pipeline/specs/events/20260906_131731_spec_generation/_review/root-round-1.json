@@ -1,0 +1,31 @@
+{
+  "round": 1,
+  "reviewer": "root independent of UC generation",
+  "scope": "first6loanUC",
+  "findings": [
+    {
+      "id": "ROOT-001",
+      "severity": "major",
+      "scope": "貸出業務の6UC spec.md",
+      "finding": "分岐表が全業務条件を同じgeneric成否と失敗応答へ写している。返却時の有効予約なしは正常に在庫ありへ進むが409/422と記載される。順位決定など値の算出規則も失敗条件として扱われる。",
+      "required": "条件ごとに実際の分岐、値の算出、正常な複数結果を区別し、sequenceとBDDと一致させる。共通の認証等はTRの決定へリンクする。",
+      "status": "open"
+    },
+    {
+      "id": "ROOT-002",
+      "severity": "major",
+      "scope": "貸出を登録する/tier-tier-backend-api.md 実行条件",
+      "finding": "有効期間の最新開始行を選ぶ記載はTR-PARAMのvalid_toと重複世代検知に矛盾する。",
+      "required": "TR-PARAMを参照して有効世代が正確に1件の場合だけ使用する。0件と複数件は503。",
+      "status": "open"
+    },
+    {
+      "id": "ROOT-003",
+      "severity": "major",
+      "scope": "予約一覧を参照する/spec.md T-01",
+      "finding": "読取operationにもcommit済み保存結果の再送分岐を要求し、更新operation限定のTR-IDEMPと矛盾する。",
+      "required": "読取は最新snapshotの再取得にする。書込向け再送行やversion競合の汎用記載を読取UCに出力しない。",
+      "status": "open"
+    }
+  ]
+}

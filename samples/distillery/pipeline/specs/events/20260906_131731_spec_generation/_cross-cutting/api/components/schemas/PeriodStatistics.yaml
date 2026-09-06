@@ -1,0 +1,38 @@
+type: object
+additionalProperties: false
+required:
+  - period_type
+  - period_start
+  - period_end
+  - total_loans
+  - series
+properties:
+  period_type:
+    type: string
+    enum:
+      - 日
+      - 月
+      - 年
+  period_start:
+    type: string
+    format: date
+  period_end:
+    type: string
+    format: date
+  total_loans:
+    type: integer
+    minimum: 0
+  series:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+        value:
+          type: integer
+          minimum: 0

@@ -1,0 +1,120 @@
+subdomain_id: SD-003
+tables:
+  - entity_id: E-002
+    name: users
+    rdra_info: 利用者
+    description: "図書館の利用者を表すスナップショットテーブル。arch E-002（model_type: event_snapshot）に対応する。利用者番号・氏名・連絡先・利用者区分・利用者状態を保持し、貸出／予約の主体と通知メールの宛先解決に使う。氏名と連絡先は保管時暗号化の対象（NFR E.6.1.1）"
+    columns:
+      - name: user_no
+        type: string
+        nullable: false
+        description: 利用者番号。利用者を一意に識別する主キー（RDRA 情報「利用者」の利用者番号）。窓口で提示され貸出対象利用者の特定に使う
+      - name: name
+        type: string
+        nullable: false
+        description: 氏名。個人情報のため保管時暗号化の対象（NFR E.6.1.1）。利用者名簿のキーワード検索対象
+      - name: email
+        type: string
+        nullable: false
+        description: 連絡先（メールアドレス）。取置き案内・返却期限リマインド・延滞督促メールの宛先。保管時暗号化の対象（NFR E.6.1.1）
+      - name: user_category
+        type: string
+        nullable: false
+        description: "利用者区分。RDRA バリエーション「利用者区分」。値: 一般, 学生, 団体。貸出期間の適用単位および貸出統計の内訳軸"
+      - name: user_status
+        type: string
+        nullable: false
+        description: "利用者状態。RDRA 状態モデル「利用者状態」。値: 登録済み, 取引進行中。取引進行中の利用者は削除できない（利用者削除可否条件）"
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 登録日時。利用者登録イベントの occurred_at を射影した値
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 最終更新日時。最新イベントの occurred_at を射影する。利用者情報の編集では If-Match による楽観ロックの比較対象として使う
+    primary_key:
+      - user_no
+    foreign_keys: []
+    indexes:
+      - name: uq_users_email
+        columns:
+          - email
+        unique: true
+        reason: "ユニーク制約: 連絡先（メールアドレス）は利用者の自然キーであり、重複登録を一意制約で最終防御する（LP-007 の 4 層防御）。編集時も他利用者との重複を検査する。前提: email は保管時暗号化（NFR E.6.1.1）を決定的暗号化方式（固定 IV／同一平文は同一暗号文）で行い、暗号文のまま一意性が判定できるものとする。notifications.recipient_email も同じ決定的暗号化方式に揃える"
+        used_by:
+          - 利用者を登録する
+          - 利用者情報を編集する
+      - name: idx_users_user_category
+        columns:
+          - user_category
+        unique: false
+        reason: 利用者名簿画面の利用者区分による一覧絞り込みに使う
+        used_by:
+          - 利用者一覧を照会する
+      - name: idx_users_name
+        columns:
+          - name
+        unique: false
+        reason: 利用者名簿画面の氏名キーワード検索に使う
+        used_by:
+          - 利用者一覧を照会する
+    used_by:
+      - uc: 利用者を登録する
+        operations:
+          - INSERT
+          - SELECT
+      - uc: 利用者情報を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+          - DELETE
+      - uc: 利用者一覧を照会する
+        operations:
+          - SELECT
+      - uc: 自分の利用者情報を照会する
+        operations:
+          - SELECT
+      - uc: 利用者番号で貸出対象利用者を特定する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却を登録する
+        operations:
+          - UPDATE
+      - uc: 予約を登録する
+        operations:
+          - UPDATE
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT

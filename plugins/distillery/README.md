@@ -4,6 +4,16 @@
 
 Distillery は、漠然とした要望テキストを段階的に精製し、要件定義・非機能要求・アーキテクチャ・インフラ・デザインシステム・詳細仕様までを一気通貫で生成する Claude Code プラグインです。RDRA 2.0 / USDM / IPA 非機能要求グレード / Event Sourcing / Spec-Driven Development をパイプラインとして統合しています。
 
+## dist-spec の出力粒度
+
+目標は、実装時に業務挙動を選び直す必要のない仕様です。
+[実装可能性の基準](skills/dist-spec/references/specs/implementation-readiness.md)で不足・矛盾と不要な重複を確認します。
+
+UC本文にはデータフロー、分岐つきシーケンス、受入条件を記述します。業務条件と状態遷移はRDRA latest、UIのPropsとトークンはdesign latestのStorybookを参照します。tier仕様には固有の技術条件と画面の接続情報を記述します。
+
+新規生成では`contract_mode=catalog`が既定です。人が編集するOpenAPI・AsyncAPIを分割YAMLで管理し、bundle・UC別索引・契約sliceを生成します。RDBもサブドメインごとの正本から全体bundleと読込用sliceを生成します。
+[契約の生成方式](skills/dist-spec/references/specs/contract-catalog.md)と[公開pipelineサンプル](../../samples/distillery/pipeline/README.md)を参照してください。
+
 ## Pipeline
 
 粗い原料から熟成された成果物へ、蒸留酒の製造工程になぞらえた8ステージ構成です。

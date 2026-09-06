@@ -1,0 +1,477 @@
+{
+  "schema_version": "distillery.contracts/v1",
+  "openapi": "openapi/openapi.yaml",
+  "asyncapi": "asyncapi/asyncapi.yaml",
+  "use_cases": [
+    {
+      "business": "蔵書管理業務",
+      "buc": "蔵書を管理するフロー",
+      "uc": "書籍一覧を参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "listBooks",
+          "tier": "tier-backend-api"
+        },
+        {
+          "kind": "openapi",
+          "operation_id": "listGenres",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "蔵書管理業務",
+      "buc": "蔵書を管理するフロー",
+      "uc": "書籍を登録する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "createBook",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": [
+        {
+          "kind": "openapi",
+          "operation_id": "listGenres",
+          "tier": "tier-frontend-staff"
+        }
+      ]
+    },
+    {
+      "business": "蔵書管理業務",
+      "buc": "蔵書を管理するフロー",
+      "uc": "書籍を編集する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "updateBook",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": [
+        {
+          "kind": "openapi",
+          "operation_id": "listGenres",
+          "tier": "tier-frontend-staff"
+        },
+        {
+          "kind": "openapi",
+          "operation_id": "getBook",
+          "tier": "tier-frontend-staff"
+        }
+      ]
+    },
+    {
+      "business": "蔵書管理業務",
+      "buc": "蔵書を管理するフロー",
+      "uc": "書籍を削除する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "deleteBook",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": [
+        {
+          "kind": "openapi",
+          "operation_id": "getBook",
+          "tier": "tier-frontend-staff"
+        }
+      ]
+    },
+    {
+      "business": "蔵書管理業務",
+      "buc": "書籍を検索するフロー",
+      "uc": "書籍を検索する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "searchBooks",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": [
+        {
+          "kind": "openapi",
+          "operation_id": "listGenres",
+          "tier": "tier-frontend-user"
+        }
+      ]
+    },
+    {
+      "business": "蔵書管理業務",
+      "buc": "書籍を検索するフロー",
+      "uc": "書籍詳細を参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "getBook",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "利用者管理業務",
+      "buc": "利用者を管理するフロー",
+      "uc": "利用者を登録する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "createUser",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "利用者管理業務",
+      "buc": "利用者を管理するフロー",
+      "uc": "利用者を編集する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "updateUser",
+          "tier": "tier-backend-api"
+        },
+        {
+          "kind": "openapi",
+          "operation_id": "getUser",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "利用者管理業務",
+      "buc": "利用者を管理するフロー",
+      "uc": "利用者を削除する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "deleteUser",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": [
+        {
+          "kind": "openapi",
+          "operation_id": "getUser",
+          "tier": "tier-frontend-staff"
+        }
+      ]
+    },
+    {
+      "business": "利用者管理業務",
+      "buc": "利用者を管理するフロー",
+      "uc": "利用者一覧を参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "listUsers",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "貸出業務",
+      "buc": "書籍を貸し出すフロー",
+      "uc": "貸出を登録する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "createLoan",
+          "tier": "tier-backend-api"
+        },
+        {
+          "kind": "openapi",
+          "operation_id": "getLoanEligibility",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": [
+        {
+          "kind": "openapi",
+          "operation_id": "getUser",
+          "tier": "tier-frontend-staff"
+        },
+        {
+          "kind": "openapi",
+          "operation_id": "getBook",
+          "tier": "tier-frontend-staff"
+        }
+      ]
+    },
+    {
+      "business": "貸出業務",
+      "buc": "書籍を返却するフロー",
+      "uc": "返却を登録する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "returnLoan",
+          "tier": "tier-backend-api"
+        },
+        {
+          "kind": "openapi",
+          "operation_id": "getReturnPreview",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": [
+        {
+          "kind": "asyncapi",
+          "operation_id": "publishReturnNotification",
+          "tier": "tier-backend-api"
+        }
+      ]
+    },
+    {
+      "business": "貸出業務",
+      "buc": "書籍を返却するフロー",
+      "uc": "返却通知を送信する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "requestReturnNotification",
+          "tier": "tier-backend-api"
+        },
+        {
+          "kind": "openapi",
+          "operation_id": "getReturnNotificationStatus",
+          "tier": "tier-backend-api"
+        },
+        {
+          "kind": "asyncapi",
+          "operation_id": "publishReturnNotification",
+          "tier": "tier-backend-api"
+        },
+        {
+          "kind": "asyncapi",
+          "operation_id": "consumeReturnNotification",
+          "tier": "tier-worker"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "貸出業務",
+      "buc": "書籍を予約するフロー",
+      "uc": "予約を登録する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "createReservation",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": [
+        {
+          "kind": "openapi",
+          "operation_id": "getBook",
+          "tier": "tier-frontend-user"
+        }
+      ]
+    },
+    {
+      "business": "貸出業務",
+      "buc": "書籍を予約するフロー",
+      "uc": "予約を取り消す",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "cancelReservation",
+          "tier": "tier-backend-api"
+        },
+        {
+          "kind": "openapi",
+          "operation_id": "getReservation",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": [
+        {
+          "kind": "openapi",
+          "operation_id": "getBook",
+          "tier": "tier-frontend-user"
+        },
+        {
+          "kind": "asyncapi",
+          "operation_id": "publishReturnNotification",
+          "tier": "tier-backend-api"
+        }
+      ]
+    },
+    {
+      "business": "貸出業務",
+      "buc": "書籍を予約するフロー",
+      "uc": "予約一覧を参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "listReservations",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "期限管理業務",
+      "buc": "返却期限を通知するフロー",
+      "uc": "リマインド対象を抽出する",
+      "provides": [
+        {
+          "kind": "asyncapi",
+          "operation_id": "publishReminder",
+          "tier": "tier-worker"
+        },
+        {
+          "kind": "asyncapi",
+          "operation_id": "consumeReminderSchedule",
+          "tier": "tier-worker"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "期限管理業務",
+      "buc": "返却期限を通知するフロー",
+      "uc": "リマインドを送信する",
+      "provides": [
+        {
+          "kind": "asyncapi",
+          "operation_id": "consumeReminder",
+          "tier": "tier-worker"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "期限管理業務",
+      "buc": "延滞者に督促するフロー",
+      "uc": "延滞を判定する",
+      "provides": [
+        {
+          "kind": "asyncapi",
+          "operation_id": "publishDunning",
+          "tier": "tier-worker"
+        },
+        {
+          "kind": "asyncapi",
+          "operation_id": "consumeOverdueSchedule",
+          "tier": "tier-worker"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "期限管理業務",
+      "buc": "延滞者に督促するフロー",
+      "uc": "督促を送信する",
+      "provides": [
+        {
+          "kind": "asyncapi",
+          "operation_id": "consumeDunning",
+          "tier": "tier-worker"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "期限管理業務",
+      "buc": "延滞者に督促するフロー",
+      "uc": "延滞一覧を参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "listOverdueLoans",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "利用者サービス業務",
+      "buc": "自分の利用状況を確認するフロー",
+      "uc": "貸出履歴を参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "listMyLoanHistory",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "利用者サービス業務",
+      "buc": "自分の利用状況を確認するフロー",
+      "uc": "予約状況を参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "listMyReservations",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "利用者サービス業務",
+      "buc": "自分の利用状況を確認するフロー",
+      "uc": "利用者の利用状況を参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "getUserActivity",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "運営分析業務",
+      "buc": "蔵書の利用状況を分析するフロー",
+      "uc": "在庫状況一覧を参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "listInventory",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "運営分析業務",
+      "buc": "蔵書の利用状況を分析するフロー",
+      "uc": "人気書籍ランキングを参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "getPopularBooks",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    },
+    {
+      "business": "運営分析業務",
+      "buc": "蔵書の利用状況を分析するフロー",
+      "uc": "期間別貸出統計を参照する",
+      "provides": [
+        {
+          "kind": "openapi",
+          "operation_id": "getLoanStatistics",
+          "tier": "tier-backend-api"
+        }
+      ],
+      "consumes": []
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "async_events": [],
+  "buc": "利用者を管理するフロー",
+  "business": "利用者管理業務",
+  "consumes": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1users~1{user_number}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getUser",
+      "owner_uc": "利用者管理業務/利用者を管理するフロー/利用者を編集する",
+      "path": "/staff/users/{user_number}",
+      "summary": "利用者を編集するの入力・確認データ取得",
+      "tier": "tier-frontend-staff"
+    }
+  ],
+  "contract_sha256": "da0cc6295280fc243bd07ebb52a1acb35cb4e20823698a34b460c2cdfcfe2f81",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1users~1{user_number}/delete",
+      "kind": "openapi",
+      "method": "DELETE",
+      "operation_id": "deleteUser",
+      "path": "/staff/users/{user_number}",
+      "summary": "利用者を削除する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "利用者を削除する"
+}

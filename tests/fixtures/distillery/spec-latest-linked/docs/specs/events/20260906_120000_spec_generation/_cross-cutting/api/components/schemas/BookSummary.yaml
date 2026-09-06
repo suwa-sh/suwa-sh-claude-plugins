@@ -1,0 +1,44 @@
+description: 書籍の要約情報（一覧・関連表示用）
+properties:
+  author:
+    description: 著者
+    maxLength: 100
+    type: string
+  book_id:
+    $ref: ./BookId.yaml
+  book_status:
+    $ref: ./BookStatus.yaml
+  genre:
+    $ref: ./Genre.yaml
+  isbn:
+    description: ISBN（13 桁または 10 桁。未設定の場合は null）
+    type:
+    - string
+    - 'null'
+  material_type:
+    $ref: ./MaterialType.yaml
+  publisher:
+    description: 出版社
+    maxLength: 100
+    type: string
+  registered_at:
+    description: 登録日時
+    format: date-time
+    type: string
+  title:
+    description: タイトル
+    maxLength: 200
+    type: string
+  updated_at:
+    description: 更新日時
+    format: date-time
+    type: string
+required:
+- book_id
+- title
+- author
+- publisher
+- genre
+- material_type
+- book_status
+type: object

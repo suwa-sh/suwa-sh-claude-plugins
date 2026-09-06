@@ -189,9 +189,12 @@ function validateUcDir(ucInfo) {
       errors.push(`[${ucLabel}] spec.md に BDD シナリオ（Given/When/Then）が不完全です`);
     }
 
-    // 関連RDRAモデルのテーブル検証
-    if (!content.includes('| モデル種別') && !content.includes('|モデル種別')) {
-      warnings.push(`[${ucLabel}] spec.md の関連RDRAモデルがテーブル形式ではありません`);
+    // 列名は固定せず、関連モデルの節に表または参照リストがあることを確認する。
+    const rdraSection = content.match(/^##[^\n]*関連[^\n]*RDRA[^\n]*\n([\s\S]*?)(?=^## |$(?![\s\S]))/m)?.[1] || '';
+    const hasTable = /^\s*\|\s*:?-{3,}:?\s*\|/m.test(rdraSection);
+    const hasReferenceList = /^\s*[-*]\s+.*\[[^\]]+\]\([^)]+\)/m.test(rdraSection);
+    if (!hasTable && !hasReferenceList) {
+      warnings.push(`[${ucLabel}] spec.md の関連RDRAモデルに表または参照リストがありません`);
     }
   }
 
@@ -204,8 +207,8 @@ function validateUcDir(ucInfo) {
     for (const tierFile of tierMdFiles) {
       const tierPath = path.join(ucDir, tierFile);
       const content = fs.readFileSync(tierPath, 'utf8');
-      if (!/##.*変更概要|##.*変更内容/i.test(content)) {
-        warnings.push(`[${ucLabel}] ${tierFile}: "変更概要" セクションがありません`);
+      if (!/^##.*(?:責務|概要|画面|変更内容)/im.test(content)) {
+        warnings.push(`[${ucLabel}] ${tierFile}: 責務または概要を示すセクションがありません`);
       }
     }
   }
@@ -251,50 +254,48 @@ function validateCrossCutting(baseDir) {
     return { errors, warnings };
   }
 
-  const requiredFiles = ['ux-ui/ux-design.md', 'ux-ui/ui-design.md', 'ux-ui/data-visualization.md', 'api/openapi.yaml'];
+  const catalogPath = path.join(crossDir, 'api', 'contracts.json');
+  let catalog = null;
+  if (fs.existsSync(catalogPath)) {
+    try {
+      catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+      require('./compileContracts').run(baseDir, true);
+    } catch (e) { errors.push(`Contract catalog: ${e.message}`); }
+  }
+  const requiredFiles = ['ux-ui/ux-design.md', 'ux-ui/ui-design.md', 'ux-ui/data-visualization.md'];
+  const splitOpenapi = typeof catalog?.openapi === 'string';
+  if (!catalog || catalog.openapi !== null) requiredFiles.push(splitOpenapi ? 'api/generated/openapi.bundle.yaml' : 'api/openapi.yaml');
   for (const file of requiredFiles) {
-    const filePath = path.join(crossDir, file);
-    if (!fs.existsSync(filePath)) {
-      errors.push(`_cross-cutting/${file} が存在しません`);
-    }
+    if (!fs.existsSync(path.join(crossDir, file))) errors.push(`_cross-cutting/${file} が存在しません`);
   }
 
-  // --- openapi.yaml 構文チェック ---
-  const openapiPath = path.join(crossDir, 'api', 'openapi.yaml');
-  if (fs.existsSync(openapiPath)) {
-    const content = fs.readFileSync(openapiPath, 'utf8');
-    if (!content.includes('openapi:')) {
-      errors.push('_cross-cutting/openapi.yaml: "openapi:" フィールドがありません');
-    }
-    if (!content.includes('paths:')) {
-      errors.push('_cross-cutting/openapi.yaml: "paths:" フィールドがありません');
-    }
-    if (!content.includes('info:')) {
-      warnings.push('_cross-cutting/openapi.yaml: "info:" フィールドがありません');
-    }
-  }
-
-  // --- asyncapi.yaml 構文チェック（存在する場合のみ、optional） ---
-  const asyncapiPath = path.join(crossDir, 'api', 'asyncapi.yaml');
-  if (fs.existsSync(asyncapiPath)) {
-    const content = fs.readFileSync(asyncapiPath, 'utf8');
-    if (!content.includes('asyncapi:')) {
-      errors.push('_cross-cutting/asyncapi.yaml: "asyncapi:" フィールドがありません');
-    }
-    if (!content.includes('channels:')) {
-      warnings.push('_cross-cutting/asyncapi.yaml: "channels:" フィールドがありません');
-    }
+  // Parse native JSON/YAML documents rather than searching serialized field names.
+  for (const [kind, required, optional] of [
+    ['openapi', ['openapi', 'paths'], ['info']],
+    ['asyncapi', ['asyncapi'], ['channels']],
+  ]) {
+    const file = path.join(crossDir, 'api', typeof catalog?.[kind] === 'string' ? `generated/${kind}.bundle.yaml` : `${kind}.yaml`);
+    if (!fs.existsSync(file)) continue;
+    try {
+      const data = require('./lib/yaml-parser').parseYaml(fs.readFileSync(file, 'utf8'));
+      for (const key of required) if (!data || !Object.prototype.hasOwnProperty.call(data, key))
+        errors.push(`_cross-cutting/api/${kind}.yaml: "${key}" フィールドがありません`);
+      for (const key of optional) if (!data || !Object.prototype.hasOwnProperty.call(data, key))
+        warnings.push(`_cross-cutting/api/${kind}.yaml: "${key}" フィールドがありません`);
+    } catch (e) { errors.push(`_cross-cutting/api/${kind}.yaml: ${e.message}`); }
   }
 
   // --- rdb-schema.yaml 構文チェック（存在する場合） ---
   const rdbSchemaPath = path.join(crossDir, 'datastore', 'rdb-schema.yaml');
   if (fs.existsSync(rdbSchemaPath)) {
     const content = fs.readFileSync(rdbSchemaPath, 'utf8');
-    if (!content.includes('tables:')) {
-      errors.push('_cross-cutting/rdb-schema.yaml: "tables:" フィールドがありません');
-    }
-    if (!content.includes('datastore:')) {
-      warnings.push('_cross-cutting/rdb-schema.yaml: "datastore:" フィールドがありません');
+    if (/schema_version:\s*["']?distillery\.rdb-split\/v1/.test(content) || /"schema_version"\s*:\s*"distillery\.rdb-split\/v1"/.test(content)) {
+      try {
+        require('./compileRdbSchema').compileRdbSchema(rdbSchemaPath, { check: true });
+      } catch (error) { errors.push(`Split RDB validation failed: ${error.message}`); }
+    } else {
+      if (!content.includes('tables:')) errors.push('_cross-cutting/rdb-schema.yaml: "tables:" フィールドがありません');
+      if (!content.includes('datastore:')) warnings.push('_cross-cutting/rdb-schema.yaml: "datastore:" フィールドがありません');
     }
   }
 

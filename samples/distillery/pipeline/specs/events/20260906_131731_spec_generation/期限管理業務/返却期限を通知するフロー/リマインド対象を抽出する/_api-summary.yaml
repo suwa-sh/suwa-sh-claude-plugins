@@ -1,0 +1,32 @@
+{
+  "async_events": [
+    {
+      "channel": "#/channels/reminder",
+      "contract_ref": "asyncapi#/operations/publishReminder",
+      "direction": "publish",
+      "kind": "asyncapi",
+      "name": "publishReminder",
+      "operation_id": "publishReminder",
+      "summary": "publishReminder",
+      "tier": "tier-worker"
+    },
+    {
+      "channel": "#/channels/daily-reminder",
+      "contract_ref": "asyncapi#/operations/consumeReminderSchedule",
+      "direction": "subscribe",
+      "kind": "asyncapi",
+      "name": "consumeReminderSchedule",
+      "operation_id": "consumeReminderSchedule",
+      "summary": "consumeReminderSchedule",
+      "tier": "tier-worker"
+    }
+  ],
+  "buc": "返却期限を通知するフロー",
+  "business": "期限管理業務",
+  "consumes": [],
+  "contract_sha256": "c38d1f701c8693730a993e0b41cd7a2f4ee87308b9866a9f1c61944e7adea97a",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "リマインド対象を抽出する"
+}

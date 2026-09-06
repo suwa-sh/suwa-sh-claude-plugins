@@ -1,0 +1,9 @@
+allOf:
+- $ref: ./ErrorResponse.yaml
+- type: object
+  properties:
+    code:
+      type: string
+      const: TEMPORARILY_UNAVAILABLE
+  required:
+  - code

@@ -1,0 +1,28 @@
+post:
+  description: 書籍と利用者の組合せに対する貸出可否と根拠条件を返す。業務条件の正本は docs/rdra/latest/条件.tsv の貸出可否条件・取置き中書籍貸出条件・資料種別利用可否条件。CR002/CR003の未解決分岐はdraftであり、API
+    descriptionから補完しない。判定による永続化は行わない。
+  operationId: checkLoanEligibility
+  requestBody:
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/LoanEligibilityRequest.yaml
+    required: true
+  responses:
+    '200':
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/LoanEligibilityResponse.yaml
+      description: 貸出可否の判定結果
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '401':
+      $ref: ../components/responses/Unauthorized.yaml
+    '403':
+      $ref: ../components/responses/Forbidden.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+  summary: 書籍の貸出可否を判定する
+  tags:
+  - loans

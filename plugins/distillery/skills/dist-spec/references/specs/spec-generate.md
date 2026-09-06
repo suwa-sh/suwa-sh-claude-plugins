@@ -1,8 +1,19 @@
 # Spec 生成タスク
 
+`product-spec-writing.md`を適用する。生成本文は実装対象の振る舞いを表、リスト、図で記述し、生成状態は本文外へ記録する。還流後は具体案と最新正本が一致すれば本文を維持して整合確認を記録する。
+
+
+> 新規生成は `references/specs/latest-linked-spec.md` を優先する。業務条件・状態遷移はRDRA latest、部品契約はdesign latestのStorybookへ参照し、再定義しない。分割OpenAPIを直接編集し、不足はpipelineへ還流する。
+
 > **読み込みタイミング**: Step3 で使用。UC Spec 生成手順。
 
 全入力モデル（RDRA, NFR, Arch, Design）から UC 単位の Spec を生成する。
+
+catalog modeでは `references/specs/contract-catalog.md` の順序を使う。
+手順6のsummary生成は実施済みの機械生成物を読むだけとし、手順5のAPI型表はoperation参照に置き換える。
+
+`references/specs/implementation-readiness.md` を読み、実装時に結果を選び直す必要がないか確認する。
+不足・矛盾を元出力から保持しただけでは合格にしない。
 
 ## 入力
 
@@ -70,7 +81,7 @@
 
 - **概要**: UC の目的と範囲
 - **関連 RDRA モデル**: `docs/rdra/latest/*.tsv` の実際の要素名を使用。業務名も記載する
-- **アーキテクチャコンテキスト**: arch-design.yaml から該当するティア構成と技術スタック
+- **データフローとシーケンス**: 分岐IDからRDRA latestの条件と状態へ接続する。具体的な変更提案の採用後の振る舞いを記述する。
 - **E2E 完了条件**: Gherkin 形式の BDD シナリオ
   - 正常系: 主要なユーザーフローを網羅
   - 異常系: エラーケース、バリデーション失敗、権限エラーなど
@@ -84,12 +95,12 @@ Step 1 で決定した各ティアについて、ティア種別に応じたフ�
 **Presentation 系ティアの場合:**
 - **画面仕様**: design-event.yaml の screens から該当画面のルート・コンポーネントを参照
 - **表示要素とコンポーネントマッピング**: design-event.yaml の components（ui + domain）への参照
-- **デザイントークン参照**: design-event.yaml の tokens から該当トークン
-- **UIロジック**: 状態管理、バリデーション、ローディング、エラーハンドリング
-- **コンポーネント設計**: Props、状態、イベントの定義
+- **共通規約参照**: ファイル + 見出し / component 名で特定し、トークン値・共通 Props・既定値は再掲しない
+- **UIロジック**: 状態の所有者、API へのバインディング、再読込・未実行・0件・送信・失敗からの復帰
+- **部品への接続**: design latestのPropsとcallbackへの供給元と処理の表
 - **ティア完了条件**: 画面操作に閉じた BDD シナリオ
 
-コンポーネント設計では、design-event.yaml のコンポーネントを「ベースコンポーネント」として参照し、この UC 固有の Props や状態を定義する。UI の実装（Storybook Story）は後続作業。
+部品の実装とStoryを読み、入力値、callback、画面が所有する状態を接続する。部品契約の変更は具体的な還流提案に記録する。
 
 **CLI 系ティアの場合**（`references/specs/tier-templates/cli.md` のフォーマット）:
 - **コマンド契約**: コマンド名、引数、オプション（型・既定値・必須）、stdin の受け付け
@@ -102,20 +113,20 @@ Step 1 で決定した各ティアについて、ティア種別に応じたフ�
 **API / バックエンド系ティアの場合:**
 - **API 仕様**: arch-design.yaml の該当ティアのレイヤー構成から導出したエンドポイント
 - **非同期イベント**: 外部システム連携や状態遷移通知で非同期が必要な場合
-- **データモデル変更**: 情報.tsv の属性から導出
-- **ビジネスルール**: 条件.tsv, バリエーション.tsv から導出
+- **データアクセス・実行条件**: `_model-summary.yaml` の操作参照と原子性・競合・再送・副作用。DB 型表は統合スキーマへ集約
+- **業務ルールの適用**: spec.md の分岐IDと実行箇所。RDRA latestの条件名へのリンク
 - **ティア完了条件**: API レベルの BDD シナリオ
 
 **非同期処理 / ワーカー系ティアの場合:**
 - **イベント処理仕様**: トリガー、入出力チャネル、処理フロー
 - **エラーハンドリング**: リトライ、DLQ の方針
-- **データモデル変更**: 情報.tsv の属性から導出
-- **ビジネスルール**: 条件.tsv, バリエーション.tsv から導出
+- **データアクセス・実行条件**: `_model-summary.yaml` の操作参照と原子性・競合・再送・副作用。DB 型表は統合スキーマへ集約
+- **業務ルールの適用**: spec.md の分岐IDと実行箇所。RDRA latestの条件名へのリンク
 - **ティア完了条件**: イベント処理の BDD シナリオ
 
 ### 6. API サマリーの出力
 
-tier-backend-api.md（API 系ティア）を生成した後、同じ UC ディレクトリに `_api-summary.yaml` を出力する。このファイルは後続の OpenAPI 統合生成（Step3）の入力となり、全 tier-backend-api.md を再読込する必要をなくす。
+tier-backend-api.md（API 系ティア）を生成した後、同じ UC ディレクトリに `_api-summary.yaml` を出力する。このファイルは後続の OpenAPI 統合生成（Step4a）の入力となり、全 tier-backend-api.md を再読込する必要をなくす。
 
 ```yaml
 # _api-summary.yaml
@@ -156,7 +167,7 @@ schemas:
 
 ### 7. モデルサマリーの出力
 
-spec.md のデータフロー（mermaid + データ変換テーブル）と tier-backend-api.md のデータモデル変更セクションから、同じ UC ディレクトリに `_model-summary.yaml` を出力する。このファイルは後続のデータストアレイアウト統合（Step4）の入力となる。
+RDRA の情報・条件・状態と arch のティア/レイヤー、UC の業務ルール・tier の実行条件から、同じ UC ディレクトリに `_model-summary.yaml` を出力する。このファイルは後続のデータストアレイアウト統合（Step4）の入力となる。
 
 ```yaml
 # _model-summary.yaml
@@ -172,7 +183,7 @@ bounded_context_id: "BC-{NNN}"
 aggregate_id: "AG-{NNN}"
 
 models:
-  - name: "{モデル/型名}"         # spec.md データフローのノード名
+  - name: "{モデル/型名}"         # 入力モデルとUC責務から決定した名前
     tier: "{ティアID}"
     layer: "{レイヤー名}"
     type: "{モデル種別}"          # view-model, state, request, request-dto, command, query, entity, value-object, record
@@ -198,11 +209,14 @@ object_storage: []                # Object Storage アクセスがある場合�
 
 導出ルールの詳細は `references/specs/datastore-rules.md` を参照。
 
-**注意**: `_model-summary.yaml` はデータストアレイアウト統合のための中間出力であり、仕様の正本は `spec.md` のデータフローと `tier-backend-api.md` のデータモデル変更セクションである。
+**注意**: `_model-summary.yaml` は UC のモデル配置・データアクセス定義を保持する。図から抽出することを前提にしない。
+操作対象列・設定値・検索/更新条件・インデックス要件・KVS/Storageアクセスを省略せず、同じ内容を tier md に複写しない。
+DB 型・制約は Step4b で RDRA / arch と統合して確定する。tier md に固有の型・制約の判断がある場合は
+統合時にその箇所も読み、統合済みの参照先へ置き換える。
 
 ## 出力ルール
 
-**注意**: OpenAPI/AsyncAPI yaml ファイルは UC 単位では生成しない。全 UC の API を統合した `_cross-cutting/api/openapi.yaml` と `_cross-cutting/api/asyncapi.yaml` は、全 UC の Spec 生成完了後に Step3（全体横断 Spec 生成）で生成する。
+**注意**: OpenAPI/AsyncAPI yaml ファイルは UC 単位では生成しない。全 UC の API を統合した `_cross-cutting/api/openapi.yaml` と `_cross-cutting/api/asyncapi.yaml` は、全 UC の Spec 生成完了後に Step4a（全体横断 Spec 生成）で生成する。
 
 - ディレクトリ名にスラッシュ(/)を含めない。"/" が含まれる場合は "-" に置き換える
 - **BDD シナリオは必ず Given/When/Then の3キーワードをすべて含めること**。Given → Then のみ（When 省略）は不可。バリデーションで検出される
@@ -214,4 +228,11 @@ object_storage: []                # Object Storage アクセスがある場合�
 - 指示で渡された対象ティア以外のファイルは生成しない（選定ルールの正本は `references/specs/tier-selection-rules.md`。オーケストレータが適用済み）
 - tier-*.md 内の API 仕様テーブルや非同期イベント仕様は、後続の `_cross-cutting/api/openapi.yaml` / `asyncapi.yaml` 生成の入力になるため、具体的に記述する
 - API 系ティアの生成時は `_api-summary.yaml` も出力する（手順 6 参照）
-- 全 UC で `_model-summary.yaml` も出力する（手順 7 参照）。spec.md のデータフローと tier-backend-api.md から導出
+- 全 UC で `_model-summary.yaml` も出力する（手順 7 参照）。入力モデル・UC の業務ルール・tier の実行条件から導出
+
+## 簡素化と情報保持
+
+`references/specs/spec-template.md` の出力規約を適用する。API 本文と summary の契約形式は維持する。
+BDD は UC と tier で検証する保証を分け、既存の具体的な受入条件を単に行数削減のために削らない。
+summary の形式・列定義を省略して短縮しない。Step4 の統合先が未生成の間は
+既存共有定義がある項目だけ参照化し、新しい共有定義は統合して参照検証を終えるまで保持する。

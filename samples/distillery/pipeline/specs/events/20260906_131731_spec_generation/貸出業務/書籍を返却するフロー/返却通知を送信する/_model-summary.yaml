@@ -1,0 +1,418 @@
+uc: 返却通知を送信する
+business: 貸出業務
+buc: 書籍を返却するフロー
+models:
+  - name: loans
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: books
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: genres
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: reservations
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: users
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: notifications
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: notification_outbox
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: reservations_events
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: audit_logs
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: notification_request_receipts
+    tier: tier-backend-api
+    layer: repository
+    type: record
+tables:
+  - name: loans
+    rdra_info: 貸出
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_id
+          - name: book_id
+          - name: user_number
+          - name: current_status
+        where: loan_id = getReturnNotificationStatus.path.loan_id
+        purpose: URLの貸出IDから書籍と返却状況を特定
+        lock: 状態照会のみ。lock不要
+    indexes_needed:
+      - columns:
+          - loan_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: books
+    rdra_info: 書籍
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: book_id
+          - name: title
+          - name: author
+          - name: isbn
+          - name: publisher
+          - name: genre_id
+          - name: media_type
+          - name: current_status
+          - name: version
+          - name: registered_at
+          - name: updated_at
+          - name: deleted
+        where: book_id = 対象貸出/予約のbook_id
+        purpose: 書誌表示と状態判定。履歴を返す照会ではdeletedで除外しない
+        lock: 送信権取得の取引ではTR-TX順でFOR UPDATE。参照APIはlock不要
+    indexes_needed:
+      - columns:
+          - book_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: genres
+    rdra_info: ジャンル
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: genre_id
+          - name: genre_name
+        where: genre_id = 対象書籍のgenre_id
+        purpose: Book.genre_nameの結合
+    indexes_needed:
+      - columns:
+          - genre_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: reservations
+    rdra_info: 予約
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: reservation_id
+          - name: book_id
+          - name: user_number
+          - name: accepted_at
+          - name: queue_position
+          - name: current_status
+          - name: version
+          - name: updated_at
+        where: reservation_id = request.path.reservation_id または書籍の有効先頭予約。workerはmessage.reservation_idとoutbox対象を照合
+        purpose: 通知対象、版、現在順位を再取得
+        lock: 送信権取得の取引ではTR-TX順でFOR UPDATE。参照APIはlock不要
+      - type: UPDATE
+        columns:
+          - name: current_status
+            value: 通知済み
+          - name: version
+            value: version + 1
+          - name: updated_at
+            value: 配信結果確定時刻
+        where: reservation_id = message.reservation_id AND current_status = 予約中 AND queue_position = 1 AND 対象書籍.current_status = 予約待ち AND version = 再lock後のversion
+        purpose: 送信受理後に再確認し、現在も対象の予約だけ通知済みにする
+    indexes_needed:
+      - columns:
+          - reservation_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+      - columns:
+          - book_id
+          - current_status
+          - queue_position
+        reason: 書籍ごとの有効予約と先頭/後続の照会
+        unique: false
+        access_pattern: 書籍ごとの有効予約と先頭/後続の照会
+  - name: users
+    rdra_info: 利用者
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: user_number
+          - name: name
+          - name: email
+          - name: phone
+          - name: address
+          - name: user_type
+          - name: version
+          - name: registered_at
+          - name: updated_at
+          - name: deleted
+        where: user_number = 対象予約.user_number
+        purpose: status.recipientと送信直前の宛先を取得
+    indexes_needed:
+      - columns:
+          - user_number
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: notifications
+    rdra_info: 通知
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-005.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: notification_id
+          - name: notification_type
+          - name: user_number
+          - name: recipient_email
+          - name: subject
+          - name: body
+          - name: sent_at
+          - name: send_result
+          - name: target_loan_id
+          - name: target_reservation_id
+        where: notification_type = 返却通知 AND target_reservation_id IN (対象書籍の予約ID) ORDER BY sent_at DESC, notification_id
+        purpose: 確定通知履歴を照会
+      - type: INSERT
+        columns:
+          - name: notification_id
+            value: outbox.notification_id
+          - name: user_number
+            value: 対象予約.user_number
+          - name: notification_type
+            value: 返却通知
+          - name: recipient_email
+            value: 送信権取得後に取得したusers.email
+          - name: subject
+            value: tier-workerのメール本文仕様に従う実際の件名
+          - name: body
+            value: tier-workerの書籍名と来館案内から組み立てた実際の送信本文
+          - name: sent_at
+            value: 配信結果を確定したサーバー時刻
+          - name: send_result
+            value: 配信受理成功は成功。確実な未送信の終端障害は失敗
+          - name: target_loan_id
+            value: "null"
+          - name: target_reservation_id
+            value: 対象reservation_id
+        purpose: claimのattempts・lease_until一致を条件にしたoutbox更新と同じ取引で確定成功/確定失敗を保存。更新0件は取引全体rollback。unknown・対象外はINSERTしない
+    indexes_needed:
+      - columns:
+          - notification_id
+        reason: 同じ通知の確定結果重複を防ぐ
+        unique: true
+        access_pattern: 同じ通知の確定結果重複を防ぐ
+  - name: notification_outbox
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-005.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: notification_id
+          - name: cause_key
+          - name: notification_type
+          - name: target_loan_id
+          - name: target_reservation_id
+          - name: state
+          - name: payload
+          - name: attempts
+          - name: next_attempt_at
+          - name: lease_until
+          - name: provider_message_id
+          - name: actor_id
+          - name: request_key
+          - name: request_hash
+          - name: response
+        where: "worker: notification_id = message.notification_id AND target_reservation_id = message.reservation_id。受付API: cause_key = 返却通知と対象reservation_id。状態API: target_reservation_id IN (対象書籍の予約ID)"
+        purpose: 通知要求の同一性、送信権、再実行、対象外判定
+        lock: FOR UPDATE。claimの適用状態とlease条件はTR-MQ
+      - type: INSERT
+        columns:
+          - name: notification_id
+            value: 通知種別と対象IDに対応する一意の通知ID
+          - name: cause_key
+            value: 返却通知とreservation_idを結合
+          - name: notification_type
+            value: 返却通知
+          - name: target_loan_id
+            value: "null"
+          - name: target_reservation_id
+            value: 対象reservation_id
+          - name: state
+            value: queued
+          - name: payload
+            value: 対応AsyncAPI messageのnotification_idとreservation_idを持つJSON
+          - name: created_at
+            value: 要求を確定するサーバー時刻
+          - name: attempts
+            value: "0"
+          - name: next_attempt_at
+            value: "null"
+          - name: lease_until
+            value: "null"
+          - name: provider_message_id
+            value: "null"
+          - name: actor_id
+            value: 認証主体の利用者番号
+          - name: request_key
+            value: TR-IDEMPの安定要求キー
+          - name: request_hash
+            value: 正規化した要求のSHA-256
+          - name: response
+            value: 要求確定時のHTTP status・headers・bodyのJSON。配信後も不変
+        purpose: cause_keyが未登録の場合だけ業務取引に含める。既存時はその通知IDを使用
+      - type: UPDATE
+        columns:
+          - name: state
+            value: sending
+          - name: lease_until
+            value: 現在時刻 + 120秒
+          - name: attempts
+            value: attempts + 1
+        where: notification_id = message.notification_id AND state IN (queued, published) AND (next_attempt_at IS NULL OR next_attempt_at <= 現在時刻)
+        purpose: TR-MQの排他下で送信権を取得。外部送信前にcommit
+      - type: UPDATE
+        columns:
+          - name: state
+            value: sentまたはfailed。TR-MQで確定した結果
+          - name: lease_until
+            value: "null"
+          - name: next_attempt_at
+            value: "null"
+          - name: provider_message_id
+            value: 配信サービスの受理ID。確定失敗でIDがなければnull
+        where: notification_id = message.notification_id AND state = sending AND attempts = 取得時のattempts AND lease_until = 取得時のlease_until
+        purpose: 通知結果と同じ取引で確定。送信権を再取得した別処理の値を上書きしない
+      - type: UPDATE
+        columns:
+          - name: state
+            value: unknown
+          - name: lease_until
+            value: "null"
+        where: notification_id = message.notification_id AND state = sending AND ((attempts = 取得時のattempts AND lease_until = 取得時のlease_until AND 受付結果不明) OR lease_until <= 復旧時刻)
+        purpose: TR-MQの結果不明。自動再送を停止する
+      - type: UPDATE
+        columns:
+          - name: state
+            value: failed
+          - name: lease_until
+            value: "null"
+          - name: next_attempt_at
+            value: "null"
+        where: notification_id = message.notification_id AND state IN (queued, published) AND 外部未送信かつ対象の現在状態が送信条件外
+        purpose: 対象外を終端化し、TARGET_INACTIVE監査と同一取引でcommit後ACK。notificationsはINSERTしない
+      - type: UPDATE
+        columns:
+          - name: state
+            value: published
+          - name: lease_until
+            value: "null"
+          - name: next_attempt_at
+            value: 現在時刻 + TR-MQの試行回数別jitter待機
+        where: notification_id = message.notification_id AND state = sending AND attempts = 取得時のattempts AND lease_until = 取得時のlease_until AND 確実な未受付の一時障害 AND attempts < 5
+        purpose: 再試行予定を保持。受付不明をこの経路へ入れない
+    indexes_needed:
+      - columns:
+          - cause_key
+        reason: 同じ通知種別と対象IDの要求を一意にする
+        unique: true
+        access_pattern: 同じ通知種別と対象IDの要求を一意にする
+  - name: reservations_events
+    rdra_info: 予約
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: event_id
+            value: 一意のイベントID
+          - name: reservation_id
+            value: 当該reservations行の識別子
+          - name: version
+            value: 同じ取引で確定するsnapshotのversion
+          - name: event_type
+            value: returnNotificationDelivered
+          - name: occurred_at
+            value: snapshot更新と同じサーバー時刻
+          - name: actor_id
+            value: outbox.actor_id
+          - name: request_key
+            value: returnNotificationDeliveredとnotification_idの結合
+          - name: request_hash
+            value: notification_idとreservation_idを正規化したSHA-256
+          - name: payload
+            value: 通知IDと通知済み状態
+          - name: response
+            value: 配信確定ACK結果のJSON
+        purpose: 実際に状態変更した予約だけ通知結果と同じ取引で追記
+    indexes_needed:
+      - columns:
+          - reservation_id
+          - version
+        reason: 対象の版を一意に記録
+        unique: true
+        access_pattern: 対象の版を一意に記録
+  - name: audit_logs
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: audit_id
+            value: 一意の監査ID
+          - name: occurred_at
+            value: 操作結果を確定するサーバー時刻
+          - name: actor_user_number
+            value: 受付APIは認証主体、workerはoutbox.actor_id
+          - name: action_type
+            value: データ更新
+          - name: target_entity
+            value: E-008
+          - name: target_id
+            value: outbox.notification_id
+          - name: result
+            value: 確定した処理結果。対象外抑止ではTARGET_INACTIVE
+        purpose: TR-AUDIT。更新では業務取引に含め、参照では応答前に確定
+    indexes_needed: []
+  - name: notification_request_receipts
+    rdra_info: 通知
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-005.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: actor_id
+          - name: request_key
+          - name: request_hash
+          - name: response
+          - name: notification_id
+        where: actor_id = 認証主体 AND request_key = requestReturnNotificationとX-Idempotency-Keyの結合
+        purpose: API取引先頭のadvisory lock後に照合。同hashは保存応答を再生、異hashは409
+      - type: INSERT
+        columns:
+          - name: actor_id
+            value: 認証主体
+          - name: request_key
+            value: requestReturnNotificationとX-Idempotency-Keyの結合
+          - name: request_hash
+            value: TR-IDEMPによる正規化要求のSHA-256
+          - name: response
+            value: 要求確定時のHTTP status・headers・bodyのJSON。配信更新では不変
+          - name: notification_id
+            value: 新規またはcause_key一致の既存outbox.notification_id
+          - name: created_at
+            value: 要求確定時刻
+        purpose: 新規HTTP要求ごとにoutbox新規作成または既存再利用と同一取引で保存。workerは使用しない
+    indexes_needed: []

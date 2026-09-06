@@ -19,7 +19,8 @@
  *   kvs-schema.yaml            — KVS キーパターン定義（存在する場合のみ）
  *   object-storage-schema.yaml — Object Storage パス定義（存在する場合のみ）
  *
- * npm 依存なし。Node.js 18+ 標準モジュールのみ使用。
+ * 分割 RDB は compileRdbSchema.js で検証・投影し、正本への索引を生成する。
+ * 分割形式のみ yaml パッケージを使用（YAML_MODULE で指定可能）。
  */
 'use strict';
 
@@ -395,13 +396,40 @@ function main() {
   }
 
   // YAML 読み込み
-  const rdb = loadYaml(path.join(crossDir, 'datastore', 'rdb-schema.yaml'));
+  const rdbPath = path.join(crossDir, 'datastore', 'rdb-schema.yaml');
+  const rdb = loadYaml(rdbPath);
   const kvs = loadYaml(path.join(crossDir, 'datastore', 'kvs-schema.yaml'));
   const os = loadYaml(path.join(crossDir, 'datastore', 'object-storage-schema.yaml'));
 
   if (!rdb && !kvs && !os) {
     console.error('No datastore schema files found.');
     process.exit(1);
+  }
+
+  if (rdb?.schema_version === 'distillery.rdb-split/v1') {
+    // Compile from authoritative domains so a missing/stale bundle cannot hide edits.
+    const { compileRdbSchema } = require('./compileRdbSchema');
+    const YAML = require(process.env.YAML_MODULE || 'yaml');
+    const result = compileRdbSchema(rdbPath);
+    const root = path.dirname(rdbPath);
+    const index = YAML.parse(fs.readFileSync(path.join(root, 'generated/table-index.yaml'), 'utf8'));
+    const source = YAML.parse(fs.readFileSync(rdbPath, 'utf8'));
+    const link = (label, relative) => {
+      const target = path.relative(path.dirname(outputPath), path.resolve(root, relative)).split(path.sep).join('/');
+      return `[${label}](${encodeURI(target).replace(/#/g, '%23').replace(/\(/g, '%28').replace(/\)/g, '%29')})`;
+    };
+    const lines = ['# データ保存の索引', '', `RDB: ${result.tables} テーブル / ${result.domains} サブドメイン。`, '',
+      '| サブドメイン | テーブル | 正本 | 関連キーを含む参照用スキーマ |', '|---|---|---|---|'];
+    for (const domain of source.domains) {
+      const tables = index.tables.filter(table => table.subdomain_id === domain.id).map(table => `\`${table.table}\``).join(', ');
+      lines.push(`| ${domain.id} | ${tables} | ${link('定義', domain.file)} | ${link('参照', `generated/domain-slices/${domain.id}.yaml`)} |`);
+    }
+    lines.push('', `${link('RDB入口', 'rdb-schema.yaml')} / ${link('全体スキーマ', 'generated/rdb-schema.bundle.yaml')}`);
+    if (kvs) lines.push('', `キー・有効期限は${link('KVSスキーマ', 'kvs-schema.yaml')}を参照する。`);
+    if (os) lines.push('', `保存先・ライフサイクルは${link('Object Storageスキーマ', 'object-storage-schema.yaml')}を参照する。`);
+    fs.writeFileSync(outputPath, lines.join('\n') + '\n', 'utf8');
+    console.log(`Generated: ${outputPath}\n  RDB: ${result.tables} tables, ${result.domains} domains`);
+    return;
   }
 
   // 統計

@@ -1,0 +1,248 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="State Mapping" />
+
+# 状態マッピング
+
+RDRA の状態モデル（`docs/rdra/latest/状態.tsv`）**6 種**を Badge の色トークンへ対応づけた一覧です。
+
+状態名は RDRA の表記を正とし、`src/components/domain/stateMaps.ts` に集約しています。ここに無い状態をコンポーネント側で追加してはいけません。
+
+色だけで意味を伝えないよう、Badge には必ずアイコンかドットを併用します（JIS X 8341-3:2016 レベル AA 目標）。
+
+## 書籍状態
+
+<table>
+  <thead>
+    <tr>
+      <th>RDRA 状態</th>
+      <th>Badge ラベル</th>
+      <th>色</th>
+      <th>Color Token</th>
+      <th>アクター別に実行できる操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>在庫あり</code></td>
+      <td>在庫あり</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--success)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />green</td>
+      <td><code>var(--success)</code> / <code>var(--success-light)</code></td>
+      <td><strong>司書</strong>: 貸出を登録する / 書籍情報を編集する / 書籍を削除する<br /><strong>利用者</strong>: 在庫状況を確認する（予約は不可: 在庫あり書籍予約不可ポリシー）</td>
+    </tr>
+    <tr>
+      <td><code>貸出中</code></td>
+      <td>貸出中</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--info)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />blue</td>
+      <td><code>var(--info)</code> / <code>var(--info-light)</code></td>
+      <td><strong>司書</strong>: 返却を登録する<br /><strong>利用者</strong>: 予約を登録する</td>
+    </tr>
+    <tr>
+      <td><code>予約待ち</code></td>
+      <td>予約待ち</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--warning)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />amber</td>
+      <td><code>var(--warning)</code> / <code>var(--warning-light)</code></td>
+      <td><strong>司書</strong>: 予約順1位の利用者へ貸出を登録する / 取置き通知メールを送信する<br /><strong>利用者</strong>: 取置き状況を照会する / 予約を取り消す</td>
+    </tr>
+  </tbody>
+</table>
+
+## 貸出状態
+
+<table>
+  <thead>
+    <tr>
+      <th>RDRA 状態</th>
+      <th>Badge ラベル</th>
+      <th>色</th>
+      <th>Color Token</th>
+      <th>アクター別に実行できる操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>貸出中</code></td>
+      <td>貸出中</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--info)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />blue</td>
+      <td><code>var(--info)</code> / <code>var(--info-light)</code></td>
+      <td><strong>司書</strong>: 返却を登録する / 返却期限接近の貸出を判定する<br /><strong>利用者</strong>: 自分の貸出内容と返却期限を照会する</td>
+    </tr>
+    <tr>
+      <td><code>延滞</code></td>
+      <td>延滞</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--destructive)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />red</td>
+      <td><code>var(--destructive)</code> / <code>var(--destructive-light)</code></td>
+      <td><strong>司書</strong>: 督促メールを送信する / 返却を登録する<br /><strong>利用者</strong>: 自分の延滞中の貸出を照会する</td>
+    </tr>
+    <tr>
+      <td><code>返却済み</code></td>
+      <td>返却済み</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--neutral)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />gray</td>
+      <td><code>var(--neutral)</code> / <code>var(--neutral-light)</code></td>
+      <td><strong>司書</strong>: 貸出統計の集計対象として参照する<br /><strong>利用者</strong>: 自分の貸出履歴を照会する</td>
+    </tr>
+  </tbody>
+</table>
+
+## 予約状態
+
+<table>
+  <thead>
+    <tr>
+      <th>RDRA 状態</th>
+      <th>Badge ラベル</th>
+      <th>色</th>
+      <th>Color Token</th>
+      <th>アクター別に実行できる操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>予約中</code></td>
+      <td>予約中</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--info)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />blue</td>
+      <td><code>var(--info)</code> / <code>var(--info-light)</code></td>
+      <td><strong>司書</strong>: 予約順1位の利用者を特定する<br /><strong>利用者</strong>: 自分の予約順位を照会する / 予約を取り消す</td>
+    </tr>
+    <tr>
+      <td><code>取置き中</code></td>
+      <td>取置き中</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--warning)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />amber</td>
+      <td><code>var(--warning)</code> / <code>var(--warning-light)</code></td>
+      <td><strong>司書</strong>: 貸出を登録する / 取置き期限切れで取り消す<br /><strong>利用者</strong>: 自分の取置き状況を照会する / 予約を取り消す</td>
+    </tr>
+    <tr>
+      <td><code>貸出済み</code></td>
+      <td>貸出済み</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--success)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />green</td>
+      <td><code>var(--success)</code> / <code>var(--success-light)</code></td>
+      <td><strong>司書</strong>: （終了。予約状況照会の対象外）<br /><strong>利用者</strong>: 自分の貸出内容と返却期限を照会する</td>
+    </tr>
+    <tr>
+      <td><code>キャンセル</code></td>
+      <td>キャンセル</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--neutral)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />gray</td>
+      <td><code>var(--neutral)</code> / <code>var(--neutral-light)</code></td>
+      <td><strong>司書</strong>: 次順位者への取置きへ引き継ぐ<br /><strong>利用者</strong>: （終了）</td>
+    </tr>
+  </tbody>
+</table>
+
+## 利用者状態
+
+<table>
+  <thead>
+    <tr>
+      <th>RDRA 状態</th>
+      <th>Badge ラベル</th>
+      <th>色</th>
+      <th>Color Token</th>
+      <th>アクター別に実行できる操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>登録済み</code></td>
+      <td>登録済み</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--success)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />green</td>
+      <td><code>var(--success)</code> / <code>var(--success-light)</code></td>
+      <td><strong>司書</strong>: 利用者情報を編集する / 利用者を削除する / 貸出を登録する<br /><strong>利用者</strong>: 自分の利用者情報を照会する</td>
+    </tr>
+    <tr>
+      <td><code>取引進行中</code></td>
+      <td>取引進行中</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--info)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />blue</td>
+      <td><code>var(--info)</code> / <code>var(--info-light)</code></td>
+      <td><strong>司書</strong>: 返却を登録する / 予約を取り消す（削除は不可）<br /><strong>利用者</strong>: 自分の現在の貸出・予約状況を照会する</td>
+    </tr>
+  </tbody>
+</table>
+
+## 通知状態
+
+<table>
+  <thead>
+    <tr>
+      <th>RDRA 状態</th>
+      <th>Badge ラベル</th>
+      <th>色</th>
+      <th>Color Token</th>
+      <th>アクター別に実行できる操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>送信待ち</code></td>
+      <td>送信待ち</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--warning)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />amber</td>
+      <td><code>var(--warning)</code> / <code>var(--warning-light)</code></td>
+      <td><strong>司書</strong>: 送信を実行する</td>
+    </tr>
+    <tr>
+      <td><code>送信済み</code></td>
+      <td>送信済み</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--success)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />green</td>
+      <td><code>var(--success)</code> / <code>var(--success-light)</code></td>
+      <td><strong>司書</strong>: 送信実績として参照する（重複送信は抑止される）</td>
+    </tr>
+    <tr>
+      <td><code>送信失敗</code></td>
+      <td>送信失敗</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--destructive)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />red</td>
+      <td><code>var(--destructive)</code> / <code>var(--destructive-light)</code></td>
+      <td><strong>司書</strong>: 再送する / 未達として追跡する</td>
+    </tr>
+  </tbody>
+</table>
+
+## 統計レポート状態
+
+<table>
+  <thead>
+    <tr>
+      <th>RDRA 状態</th>
+      <th>Badge ラベル</th>
+      <th>色</th>
+      <th>Color Token</th>
+      <th>アクター別に実行できる操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>集計中</code></td>
+      <td>集計中</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--analysis)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />violet</td>
+      <td><code>var(--analysis)</code> / <code>var(--analysis-light)</code></td>
+      <td><strong>司書</strong>: 集計完了を待つ</td>
+    </tr>
+    <tr>
+      <td><code>作成済み</code></td>
+      <td>作成済み</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--success)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />green</td>
+      <td><code>var(--success)</code> / <code>var(--success-light)</code></td>
+      <td><strong>司書</strong>: 在庫状況レポート／貸出統計レポートを参照する</td>
+    </tr>
+    <tr>
+      <td><code>実績なし</code></td>
+      <td>実績なし</td>
+      <td><span style={{ display: 'inline-block', width: 16, height: 16, backgroundColor: 'var(--neutral)', borderRadius: 8, verticalAlign: 'middle', marginRight: 6 }} />gray</td>
+      <td><code>var(--neutral)</code> / <code>var(--neutral-light)</code></td>
+      <td><strong>司書</strong>: 集計期間を変更して再集計する</td>
+    </tr>
+  </tbody>
+</table>
+
+## 実装
+
+状態 Badge は `src/components/domain/StatusBadges.tsx` に実装しています。
+表示例は <a href="/?path=/docs/domain-statusbadges--docs">Domain / StatusBadges</a> を参照してください。
+
+```tsx
+import { BookStatusBadge, LoanStatusBadge } from '@/components/domain/StatusBadges'
+
+<BookStatusBadge state="在庫あり" />
+<LoanStatusBadge state="延滞" dot />
+```
+
+状態名は `stateMaps.ts` の `as const` 配列から型が導出されるため、
+RDRA に存在しない状態文字列を渡すと型エラーになります。

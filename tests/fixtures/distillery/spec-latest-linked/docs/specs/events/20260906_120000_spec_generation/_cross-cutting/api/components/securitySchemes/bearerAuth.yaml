@@ -1,0 +1,33 @@
+bearerFormat: JWT
+description: '外部マネージド IdP（OAuth2/OIDC）が発行したアクセストークン。
+
+  API Gateway でトークンを検証し、`sub`（user_id）・役割（司書 / 利用者）・利用者番号を
+
+  クレームとしてバックエンド API へ伝播する。
+
+
+  本 API における利用者識別情報の送信方法はこのスキームだけであり、識別用の独自ヘッダ
+
+  （`X-User-No` 等）は定義しない。必須クレームと 401 の条件は `info.description`
+
+  「利用者識別情報の送信方法」に従う。
+
+
+  必須クレーム:
+
+
+  | クレーム | 型 | 必須 | 説明 |
+
+  |---|---|---|---|
+
+  | `sub` | string | 常に必須 | IdP のアカウント ID。監査ログの操作者 ID に使う |
+
+  | `role` | string | 常に必須 | `司書` または `利用者`。RBAC の粗粒度判定に使う |
+
+  | `user_no` | string | `role = 利用者` のとき必須 | 本人限定参照の絞り込み条件の唯一の入力 |
+
+  | `exp` | integer | 常に必須 | 失効時刻。超過時は `TOKEN_EXPIRED` |
+
+  '
+scheme: bearer
+type: http

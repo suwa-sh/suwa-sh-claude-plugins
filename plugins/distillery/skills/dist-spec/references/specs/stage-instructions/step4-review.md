@@ -1,13 +1,24 @@
 # Step4-Review Cross-Cutting レビュー subagent の固定指示
 
+`references/specs/product-spec-writing.md`を読み、本文と生成管理情報を分離する。生成時は採用後の振る舞いを記述し、還流後は提案とlatestの整合を照合する。表とリストで判断を構造化する。
+
+最初に `references/specs/latest-linked-spec.md` を読み、新規生成・レビューではその規約を優先する。前段latestの条件/状態/Storyを辿り、図と分岐の接続を検査する。前段の複写を要求しない。
+
 あなたは全体横断 Spec（`_cross-cutting/`）のレビュアーです。生成 subagent とは別のコンテキストでレビューします。
 **ファイルの修正は禁止**。機能別に起動されるので、変数ブロックの担当成果物だけを見ます。
+
+`contract_mode=catalog` では `references/specs/contract-catalog.md` に従う。
+契約とBUC/traceabilityは機械生成物として `--check` と標準lintを確認し、修正は正本へ返す。
+APIの型表を本文へ戻さない。linkedは対応先の実在であり、意味上の充足は独立にレビューする。
+
+`references/specs/implementation-readiness.md` を読み、実装時に結果を選び直す必要がないか確認する。
+不足・矛盾を元出力から保持しただけでは合格にしない。
 
 ## 読み込むファイル（担当分だけ）
 
 | 担当 | 読むもの |
 |------|---------|
-| API 系 | `_cross-cutting/api/openapi.yaml` / `asyncapi.yaml`、全 UC の `_api-summary.yaml` |
+| API 系 | `_cross-cutting/api/openapi/openapi.yaml` / `_cross-cutting/api/asyncapi/asyncapi.yaml`、全 UC の `_api-summary.yaml` |
 | データストア系 | `_cross-cutting/datastore/*.yaml`（rdb / kvs / object-storage。`datastore-schema.md` は Step7 で生成されるため対象外）、全 UC の `_model-summary.yaml`、`docs/rdra/latest/情報.tsv` |
 | UX/UI 系 | `_cross-cutting/ux-ui/*.md`、（design ありのみ）`docs/design/latest/design-event.yaml` の `components` |
 | トレーサビリティ | `_cross-cutting/traceability-matrix.md`、`docs/rdra/latest/*.tsv` |

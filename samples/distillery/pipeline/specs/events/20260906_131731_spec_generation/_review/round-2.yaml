@@ -1,0 +1,63 @@
+round: 2
+findings: []
+resolved:
+  - id: CIRC-001
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: CIRC-002
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: CIRC-003
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: CIRC-004
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: CIRC-005
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: CIRC-006
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: CIRC-007
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: S3-catalogue-users-001
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: S3-catalogue-users-002
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: S3-catalogue-users-003
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: S3-catalogue-users-004
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: ANALYSIS-001
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: ANALYSIS-002
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: ANALYSIS-003
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"
+  - id: ANALYSIS-004
+    resolution: "同一IDの修正・再確認記録:
+      cross-circulation-deadline.json、step3-catalogue-users-round2.yaml、step3-a\
+      nalysis-service-round2.yaml。実装着手判定はimplementation-readiness.md。"

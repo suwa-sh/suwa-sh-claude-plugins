@@ -1,0 +1,9 @@
+{
+  "files": {
+    "_cross-cutting/api/generated/asyncapi.bundle.yaml": "71b062909e05addd4d50a759ec56fa5ad084f3d2945780868d1a6cc4e06371b7",
+    "貸出業務/貸出フロー/貸出登録/_api-summary.yaml": "cadc5cf9aed42c90e5b40ed3dcc7c6bcf906f9a101db37f9c3bda7e83e0f36c7",
+    "貸出業務/貸出フロー/貸出登録/_contract-slice.json": "92539adc1ab697bf367ed13a70dfac1bd823872241041cc8d55d6ff8f6680387"
+  },
+  "schema_version": "distillery.contract-build/v1",
+  "source_sha256": "d96462acde6c3897311c75abb239a45388b27c8467c0b45d64f27b0ddf97cf71"
+}

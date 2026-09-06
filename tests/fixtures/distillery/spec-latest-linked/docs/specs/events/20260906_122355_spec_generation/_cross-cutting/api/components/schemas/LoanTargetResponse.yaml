@@ -1,0 +1,24 @@
+description: 貸出対象利用者（利用者カード情報）
+properties:
+  loanable:
+    description: 貸出可否条件の利用者側判定結果。docs/rdra/latest/条件.tsv を参照。
+    type: boolean
+  name:
+    description: 氏名
+    type: string
+  reason:
+    description: '`loanable` が false のときの理由'
+    type: string
+  user_category:
+    $ref: ./UserCategory.yaml
+  user_no:
+    $ref: ./UserNo.yaml
+  user_status:
+    $ref: ./UserStatus.yaml
+required:
+- user_no
+- name
+- user_category
+- user_status
+- loanable
+type: object

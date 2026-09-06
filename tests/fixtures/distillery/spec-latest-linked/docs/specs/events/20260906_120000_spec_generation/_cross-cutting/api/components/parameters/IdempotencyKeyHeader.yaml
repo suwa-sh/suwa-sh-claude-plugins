@@ -1,0 +1,7 @@
+description: UUID v4を必須とする。欠落時400 IDEMPOTENCY_KEY_REQUIRED、不正時400 INVALID_REQUEST。同一キー再送時の原子性・保存期間・回復手順は未確定。元出力の24時間TTLを確定仕様として継承せず、spec内の技術判断対象とする。
+in: header
+name: X-Idempotency-Key
+required: true
+schema:
+  format: uuid
+  type: string

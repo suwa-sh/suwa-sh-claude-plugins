@@ -1,0 +1,42 @@
+{
+  "async_events": [],
+  "buc": "書籍を返却するフロー",
+  "business": "貸出業務",
+  "consumes": [
+    {
+      "channel": "#/channels/return-notification",
+      "contract_ref": "asyncapi#/operations/publishReturnNotification",
+      "direction": "publish",
+      "kind": "asyncapi",
+      "name": "publishReturnNotification",
+      "operation_id": "publishReturnNotification",
+      "owner_uc": "貸出業務/書籍を返却するフロー/返却通知を送信する",
+      "summary": "publishReturnNotification",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "contract_sha256": "058b916330fc492b143e3abe4067677354bb6838b338004c869e440a45da8ecd",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1loans~1{loan_id}~1return/post",
+      "kind": "openapi",
+      "method": "POST",
+      "operation_id": "returnLoan",
+      "path": "/staff/loans/{loan_id}/return",
+      "summary": "返却を登録する",
+      "tier": "tier-backend-api"
+    },
+    {
+      "contract_ref": "openapi#/paths/~1staff~1books~1{book_id}~1return-preview/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getReturnPreview",
+      "path": "/staff/books/{book_id}/return-preview",
+      "summary": "返却を登録するの入力・確認データ取得",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "返却を登録する"
+}

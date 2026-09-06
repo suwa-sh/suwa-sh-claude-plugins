@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "利用者を管理するフロー",
+  "business": "利用者管理業務",
+  "consumes": [],
+  "contract_sha256": "bb064b155970753745860030dab2f7ccc68942d87cad20f1da70f98862c8b1e5",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1users/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "listUsers",
+      "path": "/staff/users",
+      "summary": "利用者一覧を参照する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "利用者一覧を参照する"
+}

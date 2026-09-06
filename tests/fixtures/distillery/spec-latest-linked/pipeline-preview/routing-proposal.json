@@ -1,0 +1,181 @@
+{
+  "schema_version": "distillery.feedback-routing-proposal/v1",
+  "input_sha256": "07eadeb986aecd7a3b28984c020d3340bacf29981b6a90d6e9493ea41f138b0b",
+  "requests": [
+    {
+      "request_id": "CR-60d99956-001",
+      "decision_state": "resolved",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "requirements"
+        }
+      ],
+      "confidence": "high",
+      "work_units": [
+        {
+          "direct_stage": "requirements",
+          "constraint_key": "loan-period-policy",
+          "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+          "evidence": [
+            {
+              "kind": "semantic_target",
+              "value": "requirements"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-002",
+      "decision_state": "resolved",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "requirements"
+        }
+      ],
+      "confidence": "high",
+      "work_units": [
+        {
+          "direct_stage": "requirements",
+          "constraint_key": "reservation-priority",
+          "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+          "evidence": [
+            {
+              "kind": "semantic_target",
+              "value": "requirements"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-003",
+      "decision_state": "resolved",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "requirements"
+        }
+      ],
+      "confidence": "high",
+      "work_units": [
+        {
+          "direct_stage": "requirements",
+          "constraint_key": "user-state-policy",
+          "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+          "evidence": [
+            {
+              "kind": "semantic_target",
+              "value": "requirements"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-004",
+      "decision_state": "resolved",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "design_system"
+        }
+      ],
+      "confidence": "high",
+      "work_units": [
+        {
+          "direct_stage": "design_system",
+          "constraint_key": "submit-action-responsibility",
+          "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+          "evidence": [
+            {
+              "kind": "semantic_target",
+              "value": "design_system"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-005",
+      "decision_state": "resolved",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "design_system"
+        }
+      ],
+      "confidence": "high",
+      "work_units": [
+        {
+          "direct_stage": "design_system",
+          "constraint_key": "confirmation-today-default",
+          "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+          "evidence": [
+            {
+              "kind": "semantic_target",
+              "value": "design_system"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-006",
+      "decision_state": "resolved",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "architecture"
+        }
+      ],
+      "confidence": "high",
+      "work_units": [
+        {
+          "direct_stage": "architecture",
+          "constraint_key": "loan-replay-recovery",
+          "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+          "evidence": [
+            {
+              "kind": "semantic_target",
+              "value": "architecture"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-007",
+      "decision_state": "resolved",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "design_system"
+        }
+      ],
+      "confidence": "high",
+      "work_units": [
+        {
+          "direct_stage": "design_system",
+          "constraint_key": "loan-user-card-binding",
+          "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+          "evidence": [
+            {
+              "kind": "semantic_target",
+              "value": "design_system"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -70,6 +70,10 @@ spec スキルの Step9 として実装されていたものを独立スキル�
   差分マージ（`design-event-diff.yaml` の適用）は正本 `design-event.yaml` に対して行い、`_digest/` は書き換えない（マージ後に再生成される）
 - `docs/design/latest/storybook-app/` — 既存の Storybook プロジェクト
 
+APIレスポンスをStoryのfixtureへ使う場合、対象UCの `_api-summary.yaml` を読む。
+v2では `_contract-slice.json` のhashを照合して、提供/利用operationのレスポンスschemaを使う。
+summaryに型を推測で補わず、型表をUC本文へ復活させない。
+
 ## 読み込み（design スキルの references）
 
 - `${CLAUDE_PLUGIN_ROOT}/skills/dist-design-system/references/design/design-storybook-generate.md` — Storybook 生成ルール + emoji→Icon 置換
@@ -85,16 +89,23 @@ spec スキルの Step9 として実装されていたものを独立スキル�
 
 ## 手順
 
-1. **共通コンポーネントの実装（最初に実施）**: `_cross-cutting/ux-ui/common-components.md` で定義された共通コンポーネントを TSX + Story として実装する。**ページ Story より先に共通コンポーネントを作る**ことで、ページ Story から参照できる
-   - `src/components/common/` に TSX を配置
-   - `src/stories/badges/`, `src/stories/feedback/`, `src/stories/modals/`, `src/stories/forms/`, `src/stories/data/` に Story を配置
-   - 対象: StatusBadge, EmptyState, LoadingSkeleton, ErrorBanner, ProcessingState, ConfirmActionModal, EntityEditForm, SearchFilterPanel, PaginatedList
-   - レイアウト Shell の Story を `src/stories/layout/` に配置（UserPortalShell, OwnerPortalShell, AdminPortalShell）
+1. **共通コンポーネントの接続確認（最初に実施）**: `_cross-cutting/ux-ui/common-components.md`の参照先から、design latestのStorybook実装とStoryを確認する。
+   - Props、既定値、トークン、部品の振る舞いは既存のStorybookを正本とする。ページStoryはその部品を組み合わせる。
+   - specに示されたUC固有の値、データ供給元、状態更新、操作結果を接続する。
+   - 新規部品が必要な場合は具体的なdesign変更要求を記録する。未採用の部品契約を共通部品として独自に追加しない。
 2. **対象画面の特定**: Presentation 系ティアの tier-{tier_id}.md から画面仕様（URL、コンポーネントマッピング、操作フロー）を収集する
 3. **ページ Story の生成（全 UC 必須）**: 各画面を CSF3 形式の Story として実装する
    - design-event.yaml の既存コンポーネント（UI + Domain）を組み合わせて画面を構成する
    - `_cross-cutting/ux-ui/ui-design.md` のレイアウトパターンに従う
    - tier-{tier_id}.md のコンポーネント設計（Props、状態、イベント）を反映する
+   - 日本語のtitleとは別に、一意で安定したASCIIの`meta.id`を指定する。
+   - 動的な画面識別子はroute引数またはqueryから受け取り、取得・更新・遷移へ接続する。fixtureの既定IDと異なる値でも確認する。
+   - 更新後の再取得・無効化先には、契約に存在するoperation IDを使う。
+   - ページ分割がある一覧は、page_sizeを超えるfixtureで要求・表示行・URLの更新を確認する。
+   - 結果不明の更新は保存した対象・本文・キーを再読込後も復元する。同じ要求の照合が終わるまで入力変更や新しいキーの発行を止める。
+   - 共通 Props・既定値・トークン値は tier 本文への再掲を要求せず、明示された共通定義の見出し / component 名を読む。
+     tier のマッピング表の UC 固有値・供給元と合わせて実装し、状態の所有者・再取得・失敗時の分岐を保持する。
+     参照先が存在しない、または値が矛盾する場合は仕様不足として報告し、独自の値で補わない。
    - **全ポータルの全画面を生成する**（代表画面だけでなく、tier-frontend-*.md が存在する全 UC のページ Story を作成する）
    - **UC 全数チェック**: `docs/specs/latest/` 配下の Presentation 系ティアを持つ UC を列挙し、対応するページ Story が存在することを検証する。欠落がある場合は追加生成してから次に進む
    - UC 数が多い場合は subagent で業務単位に分割して並列生成する（1 subagent あたり 8-10 UC が上限）。
@@ -107,6 +118,8 @@ spec スキルの Step9 として実装されていたものを独立スキル�
    - 当たり前品質チェック（はみ出し、文字切れ、コントラスト、クリッカブル、色の適用）
    - 問題があれば修正 → 再確認のループ
 6. **ビルド検証**: `npx storybook build` でエラーがないことを確認する
+   - 既存のStorybookテスト設定がある場合は、追加した全ページのplayを実行する。送信結果不明からの回復、動的ID、ページ移動など、今回生成した接続を検査する。
+   - テスト登録件数と実行結果を記録する。`No test suite found`や0件実行を成功と扱わず、設定または変換処理を確認する。
 7. **反証レビューループ（宣言と実体の全数突合）**: 生成とは別コンテキストの反証専用サブエージェント
    （修正禁止）にレビューさせ、指摘を修正して収束させる
    - 突合対象:

@@ -1,0 +1,368 @@
+uc: 貸出を登録する
+business: 貸出業務
+buc: 書籍を貸し出すフロー
+models:
+  - name: books
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: genres
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: users
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: loans
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: loan_periods
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: reservations
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: loans_events
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: books_events
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: reservations_events
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: audit_logs
+    tier: tier-backend-api
+    layer: repository
+    type: record
+tables:
+  - name: books
+    rdra_info: 書籍
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: book_id
+          - name: title
+          - name: author
+          - name: isbn
+          - name: publisher
+          - name: genre_id
+          - name: media_type
+          - name: current_status
+          - name: version
+          - name: registered_at
+          - name: updated_at
+          - name: deleted
+        where: book_id = body.book_id AND deleted = false
+        purpose: 貸出対象とLoanEligibility.bookを取得
+        lock: TR-TXの書籍行lock
+      - type: UPDATE
+        columns:
+          - name: current_status
+            value: 貸出中
+          - name: version
+            value: version + 1
+          - name: updated_at
+            value: 確定時刻
+        where: book_id = body.book_id AND version = lock後のversion AND deleted = false AND RDRA貸出可否判定成立
+        purpose: 貸出と同時確定
+    indexes_needed:
+      - columns:
+          - book_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: genres
+    rdra_info: ジャンル
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: genre_id
+          - name: genre_name
+        where: genre_id = books.genre_id
+        purpose: 確認応答のジャンル名
+    indexes_needed:
+      - columns:
+          - genre_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: users
+    rdra_info: 利用者
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: user_number
+          - name: name
+          - name: email
+          - name: phone
+          - name: address
+          - name: user_type
+          - name: version
+          - name: registered_at
+          - name: updated_at
+          - name: deleted
+        where: user_number = body.user_number AND deleted = false
+        purpose: 貸出先とLoanEligibility.userを取得
+        lock: TR-IDEMPのadvisory lock後、書籍lock前にuser_number昇順のFOR UPDATE。取得後にdeleted=falseを再確認し、削除済みは404
+    indexes_needed:
+      - columns:
+          - user_number
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: loans
+    rdra_info: 貸出
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_id
+          - name: book_id
+          - name: current_status
+          - name: returned_on
+        where: book_id = body.book_id AND current_status IN (貸出中, 延滞)
+        purpose: 未返却貸出との重複を判定
+      - type: INSERT
+        columns:
+          - name: loan_id
+            value: TR-IDEMPで決定的に生成する新規貸出ID
+          - name: book_id
+            value: body.book_id
+          - name: user_number
+            value: body.user_number
+          - name: loaned_on
+            value: 確定処理を開始したbusiness_date
+          - name: due_date
+            value: loaned_on + 有効loan_days
+          - name: returned_on
+            value: "null"
+          - name: current_status
+            value: 貸出中
+          - name: recorded_by
+            value: 認証主体の利用者番号
+          - name: version
+            value: "0"
+          - name: updated_at
+            value: 確定時刻
+        purpose: 貸出作成
+    indexes_needed:
+      - columns:
+          - loan_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: loan_periods
+    rdra_info: 貸出期間
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_period_id
+          - name: loan_days
+          - name: valid_from
+          - name: valid_to
+        where: valid_from <= business_date AND (valid_to IS NULL OR business_date < valid_to)
+        purpose: TR-PARAM。有効世代がちょうど1件であることを確認
+    indexes_needed:
+      - columns:
+          - valid_from
+          - valid_to
+        reason: 有効期間の検索と重複検査
+        unique: false
+        access_pattern: 有効期間の検索と重複検査
+  - name: reservations
+    rdra_info: 予約
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: reservation_id
+          - name: book_id
+          - name: user_number
+          - name: accepted_at
+          - name: queue_position
+          - name: current_status
+          - name: version
+          - name: updated_at
+        where: book_id = body.book_id AND current_status IN (予約中, 通知済み) ORDER BY queue_position, reservation_id
+        purpose: 先頭の優先権と終了後の順位を決定
+        lock: TR-TXの予約行lock
+      - type: UPDATE
+        columns:
+          - name: current_status
+            value: 終了
+          - name: queue_position
+            value: "null"
+          - name: version
+            value: version + 1
+          - name: updated_at
+            value: 確定時刻
+        where: reservation_id = 当該利用者の先頭予約ID AND current_status IN (予約中, 通知済み) AND version = lock後のversion
+        purpose: 該当先頭予約がある場合だけ終了
+      - type: UPDATE
+        columns:
+          - name: queue_position
+            value: 元のqueue_position - 1
+          - name: version
+            value: version + 1
+          - name: updated_at
+            value: 確定時刻
+        where: book_id = body.book_id AND current_status IN (予約中, 通知済み) AND 元のqueue_position > 終了予約の元順位
+        purpose: 終了した予約がある場合だけ後続を繰上げ
+    indexes_needed:
+      - columns:
+          - reservation_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+      - columns:
+          - book_id
+          - current_status
+          - queue_position
+        reason: 書籍ごとの有効予約と先頭/後続の照会
+        unique: false
+        access_pattern: 書籍ごとの有効予約と先頭/後続の照会
+  - name: loans_events
+    rdra_info: 貸出
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_id
+          - name: actor_id
+          - name: request_key
+          - name: request_hash
+          - name: response
+        where: actor_id = 認証主体 AND request_key = operationと要求キーの結合
+        purpose: TR-IDEMPのadvisory lock取得後に既存結果を照合
+      - type: INSERT
+        columns:
+          - name: event_id
+            value: 一意のイベントID
+          - name: loan_id
+            value: 当該loans行の識別子
+          - name: version
+            value: 同じ取引で確定するsnapshotのversion
+          - name: event_type
+            value: createLoan
+          - name: occurred_at
+            value: snapshot更新と同じサーバー時刻
+          - name: actor_id
+            value: 認証主体の利用者番号
+          - name: request_key
+            value: createLoanとX-Idempotency-Keyの結合
+          - name: request_hash
+            value: TR-IDEMPで定義する正規化要求のSHA-256
+          - name: payload
+            value: 貸出の識別子、利用者、書籍、貸出日、返却期限
+          - name: response
+            value: 当該操作の確定HTTP status・headers・bodyのJSON
+        purpose: 対象行の変更と同じRDB取引で追記
+    indexes_needed:
+      - columns:
+          - loan_id
+          - version
+        reason: 対象の版を一意に記録
+        unique: true
+        access_pattern: 対象の版を一意に記録
+  - name: books_events
+    rdra_info: 書籍
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: event_id
+            value: 一意のイベントID
+          - name: book_id
+            value: 当該books行の識別子
+          - name: version
+            value: 同じ取引で確定するsnapshotのversion
+          - name: event_type
+            value: createLoan
+          - name: occurred_at
+            value: snapshot更新と同じサーバー時刻
+          - name: actor_id
+            value: 認証主体の利用者番号
+          - name: request_key
+            value: createLoanとX-Idempotency-Keyの結合
+          - name: request_hash
+            value: TR-IDEMPで定義する正規化要求のSHA-256
+          - name: payload
+            value: 貸出中への状態変更
+          - name: response
+            value: 当該操作の確定HTTP status・headers・bodyのJSON
+        purpose: 対象行の変更と同じRDB取引で追記
+    indexes_needed:
+      - columns:
+          - book_id
+          - version
+        reason: 対象の版を一意に記録
+        unique: true
+        access_pattern: 対象の版を一意に記録
+  - name: reservations_events
+    rdra_info: 予約
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: event_id
+            value: 一意のイベントID
+          - name: reservation_id
+            value: 当該reservations行の識別子
+          - name: version
+            value: 同じ取引で確定するsnapshotのversion
+          - name: event_type
+            value: completeForLoan
+          - name: occurred_at
+            value: snapshot更新と同じサーバー時刻
+          - name: actor_id
+            value: 認証主体の利用者番号
+          - name: request_key
+            value: createLoanとX-Idempotency-Keyの結合
+          - name: request_hash
+            value: TR-IDEMPで定義する正規化要求のSHA-256
+          - name: payload
+            value: 当該先頭の終了または後続の更新順位
+          - name: response
+            value: 当該操作の確定HTTP status・headers・bodyのJSON
+        purpose: 変更された予約ごとに追記。先頭予約がなければ追記しない
+    indexes_needed:
+      - columns:
+          - reservation_id
+          - version
+        reason: 対象の版を一意に記録
+        unique: true
+        access_pattern: 対象の版を一意に記録
+  - name: audit_logs
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: audit_id
+            value: 一意の監査ID
+          - name: occurred_at
+            value: 操作結果を確定するサーバー時刻
+          - name: actor_user_number
+            value: 認証主体の利用者番号
+          - name: action_type
+            value: データ更新
+          - name: target_entity
+            value: E-004
+          - name: target_id
+            value: 当該取引で処理した対象ID
+          - name: result
+            value: 成功
+        purpose: TR-AUDIT。更新では業務取引に含め、参照では応答前に確定
+    indexes_needed: []

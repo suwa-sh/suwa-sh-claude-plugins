@@ -1,0 +1,361 @@
+{
+  "schema_version": "distillery.feedback-plan/v1",
+  "feedback_request_id": "20260906_122355_spec_feedback_60d99956",
+  "input_sha256": "2982ad3b0005a4887a820d9324a16db90dc9192234f227c114d7af367a173f55",
+  "ambiguity_policy": "interactive",
+  "routing_basis": {
+    "ownership_catalog_version": "1.0.0",
+    "ownership_catalog_sha256": "801750c2abe99945a3de9387b82339b2bc96ccb2da564f9923cc0e9b76a2bd39",
+    "routing_policy_version": "1.1.0",
+    "routing_policy_sha256": "3873275bf4adb3d9d7b7c41c22c9463d054a3614df7bbcab7514f0c1e23e166e",
+    "prompt_schema_sha256": "bf7c7f34d7a2fc5976ccd2589a454172a4630e1448c509966b620f88029732c4",
+    "stage_packet_renderer_version": "1",
+    "skipped_stages": [],
+    "repository_head": null,
+    "latest_domain_event_ids": {
+      "requirements": {
+        "rdra/events": null,
+        "usdm/events": null
+      },
+      "quality_attributes": {
+        "nfr/events": null
+      },
+      "architecture": {
+        "arch/events": null
+      },
+      "infrastructure": {
+        "infra/events": null
+      },
+      "design_system": {
+        "design/events": null
+      },
+      "spec": {
+        "specs/events": null
+      },
+      "spec_stories": {
+        "design/events": null
+      }
+    },
+    "domain_event_root_snapshots": {
+      "rdra/events": {
+        "head_event_id": null,
+        "head_event_sha256": null,
+        "event_ids": [],
+        "event_set_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "latest_tree_sha256": null
+      },
+      "usdm/events": {
+        "head_event_id": null,
+        "head_event_sha256": null,
+        "event_ids": [],
+        "event_set_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "latest_tree_sha256": null
+      },
+      "nfr/events": {
+        "head_event_id": null,
+        "head_event_sha256": null,
+        "event_ids": [],
+        "event_set_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "latest_tree_sha256": null
+      },
+      "arch/events": {
+        "head_event_id": null,
+        "head_event_sha256": null,
+        "event_ids": [],
+        "event_set_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "latest_tree_sha256": null
+      },
+      "infra/events": {
+        "head_event_id": null,
+        "head_event_sha256": null,
+        "event_ids": [],
+        "event_set_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "latest_tree_sha256": null
+      },
+      "design/events": {
+        "head_event_id": null,
+        "head_event_sha256": null,
+        "event_ids": [],
+        "event_set_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "latest_tree_sha256": null
+      },
+      "specs/events": {
+        "head_event_id": null,
+        "head_event_sha256": null,
+        "event_ids": [],
+        "event_set_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "latest_tree_sha256": null
+      }
+    }
+  },
+  "request_ids": [
+    "CR-60d99956-001",
+    "CR-60d99956-002",
+    "CR-60d99956-003",
+    "CR-60d99956-004",
+    "CR-60d99956-005",
+    "CR-60d99956-006",
+    "CR-60d99956-007"
+  ],
+  "work_units": [
+    {
+      "request_id": "CR-60d99956-001",
+      "constraint_key": "loan-period-policy",
+      "direct_stage": "requirements",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "requirements"
+        }
+      ],
+      "id": "CR-60d99956-001#1",
+      "required_closure_stages": [
+        "requirements",
+        "quality_attributes",
+        "architecture",
+        "infrastructure",
+        "design_system",
+        "spec",
+        "spec_stories"
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-002",
+      "constraint_key": "reservation-priority",
+      "direct_stage": "requirements",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "requirements"
+        }
+      ],
+      "id": "CR-60d99956-002#1",
+      "required_closure_stages": [
+        "requirements",
+        "quality_attributes",
+        "architecture",
+        "infrastructure",
+        "design_system",
+        "spec",
+        "spec_stories"
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-003",
+      "constraint_key": "user-state-policy",
+      "direct_stage": "requirements",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "requirements"
+        }
+      ],
+      "id": "CR-60d99956-003#1",
+      "required_closure_stages": [
+        "requirements",
+        "quality_attributes",
+        "architecture",
+        "infrastructure",
+        "design_system",
+        "spec",
+        "spec_stories"
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-004",
+      "constraint_key": "submit-action-responsibility",
+      "direct_stage": "design_system",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "design_system"
+        }
+      ],
+      "id": "CR-60d99956-004#1",
+      "required_closure_stages": [
+        "design_system",
+        "spec",
+        "spec_stories"
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-005",
+      "constraint_key": "confirmation-today-default",
+      "direct_stage": "design_system",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "design_system"
+        }
+      ],
+      "id": "CR-60d99956-005#1",
+      "required_closure_stages": [
+        "design_system",
+        "spec",
+        "spec_stories"
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-006",
+      "constraint_key": "loan-replay-recovery",
+      "direct_stage": "architecture",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "architecture"
+        }
+      ],
+      "id": "CR-60d99956-006#1",
+      "required_closure_stages": [
+        "architecture",
+        "infrastructure",
+        "design_system",
+        "spec",
+        "spec_stories"
+      ]
+    },
+    {
+      "request_id": "CR-60d99956-007",
+      "constraint_key": "loan-user-card-binding",
+      "direct_stage": "design_system",
+      "reason": "変更要求の正本を所有する工程へ還流する（業務値や設計内容の決定は含まない）",
+      "evidence": [
+        {
+          "kind": "semantic_target",
+          "value": "design_system"
+        }
+      ],
+      "id": "CR-60d99956-007#1",
+      "required_closure_stages": [
+        "design_system",
+        "spec",
+        "spec_stories"
+      ]
+    }
+  ],
+  "execution_stages": [
+    {
+      "id": "requirements",
+      "steps": [
+        "1"
+      ],
+      "direct_work_unit_ids": [
+        "CR-60d99956-001#1",
+        "CR-60d99956-002#1",
+        "CR-60d99956-003#1"
+      ],
+      "causal_work_unit_ids": [
+        "CR-60d99956-001#1",
+        "CR-60d99956-002#1",
+        "CR-60d99956-003#1"
+      ],
+      "stage_packet": "stage-packets/requirements.md"
+    },
+    {
+      "id": "quality_attributes",
+      "steps": [
+        "2"
+      ],
+      "direct_work_unit_ids": [],
+      "causal_work_unit_ids": [
+        "CR-60d99956-001#1",
+        "CR-60d99956-002#1",
+        "CR-60d99956-003#1"
+      ],
+      "stage_packet": "stage-packets/quality_attributes.md"
+    },
+    {
+      "id": "architecture",
+      "steps": [
+        "3"
+      ],
+      "direct_work_unit_ids": [
+        "CR-60d99956-006#1"
+      ],
+      "causal_work_unit_ids": [
+        "CR-60d99956-001#1",
+        "CR-60d99956-002#1",
+        "CR-60d99956-003#1",
+        "CR-60d99956-006#1"
+      ],
+      "stage_packet": "stage-packets/architecture.md"
+    },
+    {
+      "id": "infrastructure",
+      "steps": [
+        "4a",
+        "4b"
+      ],
+      "direct_work_unit_ids": [],
+      "causal_work_unit_ids": [
+        "CR-60d99956-001#1",
+        "CR-60d99956-002#1",
+        "CR-60d99956-003#1",
+        "CR-60d99956-006#1"
+      ],
+      "stage_packet": "stage-packets/infrastructure.md"
+    },
+    {
+      "id": "design_system",
+      "steps": [
+        "5"
+      ],
+      "direct_work_unit_ids": [
+        "CR-60d99956-004#1",
+        "CR-60d99956-005#1",
+        "CR-60d99956-007#1"
+      ],
+      "causal_work_unit_ids": [
+        "CR-60d99956-001#1",
+        "CR-60d99956-002#1",
+        "CR-60d99956-003#1",
+        "CR-60d99956-004#1",
+        "CR-60d99956-005#1",
+        "CR-60d99956-006#1",
+        "CR-60d99956-007#1"
+      ],
+      "stage_packet": "stage-packets/design_system.md"
+    },
+    {
+      "id": "spec",
+      "steps": [
+        "6"
+      ],
+      "direct_work_unit_ids": [],
+      "causal_work_unit_ids": [
+        "CR-60d99956-001#1",
+        "CR-60d99956-002#1",
+        "CR-60d99956-003#1",
+        "CR-60d99956-004#1",
+        "CR-60d99956-005#1",
+        "CR-60d99956-006#1",
+        "CR-60d99956-007#1"
+      ],
+      "stage_packet": "stage-packets/spec.md"
+    },
+    {
+      "id": "spec_stories",
+      "steps": [
+        "6a"
+      ],
+      "direct_work_unit_ids": [],
+      "causal_work_unit_ids": [
+        "CR-60d99956-001#1",
+        "CR-60d99956-002#1",
+        "CR-60d99956-003#1",
+        "CR-60d99956-004#1",
+        "CR-60d99956-005#1",
+        "CR-60d99956-006#1",
+        "CR-60d99956-007#1"
+      ],
+      "stage_packet": "stage-packets/spec_stories.md"
+    }
+  ],
+  "outside_work_unit_ids": []
+}

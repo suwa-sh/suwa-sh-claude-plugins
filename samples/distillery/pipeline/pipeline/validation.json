@@ -1,0 +1,47 @@
+{
+  "checked_at": "2026-09-06T06:24:45.085Z",
+  "plugin_version": "1.13.1",
+  "spec_event": "20260906_131731_spec_generation",
+  "spec": {
+    "uc_count": 27,
+    "api_operations": 29,
+    "async_operations": 8,
+    "rdb_domains": 5,
+    "rdb_tables": 17,
+    "validation": "pass",
+    "warnings": 0,
+    "uc_checks_passed": 81,
+    "model_operations_checked": 188
+  },
+  "storybook": {
+    "screens": 24,
+    "test_cases": 169,
+    "passed": 169,
+    "failed": 0,
+    "success": true,
+    "build": "pass",
+    "typescript": "pass",
+    "independent_review": {
+      "rounds": 3,
+      "unresolved_blocker": 0,
+      "unresolved_major": 0,
+      "unresolved_minor": 0
+    }
+  },
+  "visual": {
+    "desktop": {
+      "width": 1366,
+      "pages": 24,
+      "page_errors": 0,
+      "horizontal_overflow": 0
+    },
+    "patron_small_screen": {
+      "width": 390,
+      "pages": 6,
+      "page_errors": 0,
+      "horizontal_overflow": 0
+    },
+    "staff_small_screen": "NFR F.1.1.3の対象はPC。390px観測では横方向のはみ出しがあり、スマートフォン対応済みとは扱わない。"
+  },
+  "coverage": "coverage-check.json"
+}

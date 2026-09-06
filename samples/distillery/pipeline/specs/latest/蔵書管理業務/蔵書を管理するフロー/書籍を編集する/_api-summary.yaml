@@ -1,0 +1,42 @@
+{
+  "async_events": [],
+  "buc": "蔵書を管理するフロー",
+  "business": "蔵書管理業務",
+  "consumes": [
+    {
+      "contract_ref": "openapi#/paths/~1genres/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "listGenres",
+      "owner_uc": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する",
+      "path": "/genres",
+      "summary": "書籍一覧を参照するの入力・確認データ取得",
+      "tier": "tier-frontend-staff"
+    },
+    {
+      "contract_ref": "openapi#/paths/~1books~1{book_id}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getBook",
+      "owner_uc": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する",
+      "path": "/books/{book_id}",
+      "summary": "書籍詳細を参照する",
+      "tier": "tier-frontend-staff"
+    }
+  ],
+  "contract_sha256": "1acd31db0302e644b7bf69e6bc1fc6a98c476f34c747b7733c9d0f5ba6d9d262",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1books~1{book_id}/put",
+      "kind": "openapi",
+      "method": "PUT",
+      "operation_id": "updateBook",
+      "path": "/staff/books/{book_id}",
+      "summary": "書籍を編集する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "書籍を編集する"
+}

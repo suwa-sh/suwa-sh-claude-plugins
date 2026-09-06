@@ -1,0 +1,10 @@
+description: 書籍状態のwire値。意味・遷移は docs/rdra/latest/状態.tsv の書籍状態を参照。
+enum:
+- 在庫あり
+- 貸出中
+- 予約待ち
+type: string
+x-enum-varnames:
+- AVAILABLE
+- ON_LOAN
+- RESERVED

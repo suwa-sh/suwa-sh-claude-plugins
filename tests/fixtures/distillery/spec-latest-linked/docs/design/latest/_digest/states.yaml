@@ -1,0 +1,117 @@
+# digest of design/latest/design-event.yaml section states (L1530-1644); source_sha256: a7c591614e86518c64bedfab204693aecdd149bcc2c0a230692d585870a9e4cf
+# 派生物。正本は design-event.yaml。編集しない
+states:
+  - model: "書籍状態"
+    entries:
+      - state: "在庫あり"
+        label: "在庫あり"
+        color: "green"
+        actions:
+          司書: "貸出を登録する / 書籍情報を編集する / 書籍を削除する"
+          利用者: "在庫状況を確認する（予約は不可: 在庫あり書籍予約不可ポリシー）"
+      - state: "貸出中"
+        label: "貸出中"
+        color: "blue"
+        actions:
+          司書: "返却を登録する"
+          利用者: "予約を登録する"
+      - state: "予約待ち"
+        label: "予約待ち"
+        color: "amber"
+        actions:
+          司書: "予約順1位の利用者へ貸出を登録する / 取置き通知メールを送信する"
+          利用者: "取置き状況を照会する / 予約を取り消す"
+  - model: "貸出状態"
+    entries:
+      - state: "貸出中"
+        label: "貸出中"
+        color: "blue"
+        actions:
+          司書: "返却を登録する / 返却期限接近の貸出を判定する"
+          利用者: "自分の貸出内容と返却期限を照会する"
+      - state: "延滞"
+        label: "延滞"
+        color: "red"
+        actions:
+          司書: "督促メールを送信する / 返却を登録する"
+          利用者: "自分の延滞中の貸出を照会する"
+      - state: "返却済み"
+        label: "返却済み"
+        color: "gray"
+        actions:
+          司書: "貸出統計の集計対象として参照する"
+          利用者: "自分の貸出履歴を照会する"
+  - model: "予約状態"
+    entries:
+      - state: "予約中"
+        label: "予約中"
+        color: "blue"
+        actions:
+          司書: "予約順1位の利用者を特定する"
+          利用者: "自分の予約順位を照会する / 予約を取り消す"
+      - state: "取置き中"
+        label: "取置き中"
+        color: "amber"
+        actions:
+          司書: "貸出を登録する / 取置き期限切れで取り消す"
+          利用者: "自分の取置き状況を照会する / 予約を取り消す"
+      - state: "貸出済み"
+        label: "貸出済み"
+        color: "green"
+        actions:
+          司書: "（終了。予約状況照会の対象外）"
+          利用者: "自分の貸出内容と返却期限を照会する"
+      - state: "キャンセル"
+        label: "キャンセル"
+        color: "gray"
+        actions:
+          司書: "次順位者への取置きへ引き継ぐ"
+          利用者: "（終了）"
+  - model: "利用者状態"
+    entries:
+      - state: "登録済み"
+        label: "登録済み"
+        color: "green"
+        actions:
+          司書: "利用者情報を編集する / 利用者を削除する / 貸出を登録する"
+          利用者: "自分の利用者情報を照会する"
+      - state: "取引進行中"
+        label: "取引進行中"
+        color: "blue"
+        actions:
+          司書: "返却を登録する / 予約を取り消す（削除は不可）"
+          利用者: "自分の現在の貸出・予約状況を照会する"
+  - model: "通知状態"
+    entries:
+      - state: "送信待ち"
+        label: "送信待ち"
+        color: "amber"
+        actions:
+          司書: "送信を実行する"
+      - state: "送信済み"
+        label: "送信済み"
+        color: "green"
+        actions:
+          司書: "送信実績として参照する（重複送信は抑止される）"
+      - state: "送信失敗"
+        label: "送信失敗"
+        color: "red"
+        actions:
+          司書: "再送する / 未達として追跡する"
+  - model: "統計レポート状態"
+    entries:
+      - state: "集計中"
+        label: "集計中"
+        color: "violet"
+        actions:
+          司書: "集計完了を待つ"
+      - state: "作成済み"
+        label: "作成済み"
+        color: "green"
+        actions:
+          司書: "在庫状況レポート／貸出統計レポートを参照する"
+      - state: "実績なし"
+        label: "実績なし"
+        color: "gray"
+        actions:
+          司書: "集計期間を変更して再集計する"

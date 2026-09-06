@@ -1,0 +1,807 @@
+round: 1
+reviewer: independent-read-only-context
+scope: dist-spec-stories Step7。生成物を修正せず、最新の宣言と予定差分、全24presentation tier、全ページ実体と部品exportを静的に照合した。ビルド/ブラウザplayの成功はこのレビューで再実行していない。
+findings:
+- id: SSR-001
+  severity: major
+  title: 結果不明の更新要求を再読込後に復元できない
+  status: open
+  evidence:
+  - file: docs/design/latest/storybook-app/src/stories/Pages/_circulation/view.ts
+    line: 17
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/貸出受付画面.stories.tsx
+    line: 25
+  - file: docs/specs/latest/_cross-cutting/ux-ui/ui-design.md
+    line: 60
+  expected: UI-WRITEに従い、主体別sessionStorageから未確認の本文・対象・キーを復元し、照合完了まで入力変更や新キー発行を停止する。Error/再読込のStoryで同一要求を検証する。
+  actual: useDemoActionはsessionStorage.setItemを実行するがgetItemを実行しない。Error初期状態のsnapshotも空で、結果確認のrunで新しいキーを作る。貸出と返却の入力変更はresetで保存要求を削除する。予約申込・取消・通知も同じhookを利用する。
+- id: SSR-002
+  severity: major
+  title: ページ移動が欠けるか表示行に接続されていない
+  status: open
+  evidence:
+  - file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/マイ予約状況画面.stories.tsx
+    line: 15
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/人気書籍ランキング画面.stories.tsx
+    line: 17
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/在庫状況一覧画面.stories.tsx
+    line: 19
+  expected: 3UCのtierに指定されたPaginationへpage/page_size/totalを渡し、ページ操作でURLと要求を更新して対象ページの行を表示する。21件以上のfixtureで2ページ目を確認する。
+  actual: マイ予約状況にPagination JSXがない。人気書籍ランキングもPaginationがなくRankingList.limit=20固定。在庫一覧はpageを更新するがBookTableには常にitems全件を渡し、onChangeはURLも更新しない。
+- id: SSR-003
+  severity: major
+  title: 選択した識別子を遷移先画面が受け取らない
+  status: open
+  evidence:
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/窓口蔵書検索画面.stories.tsx
+    line: 37
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/貸出受付画面.stories.tsx
+    line: 20
+  - file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/マイ予約状況画面.stories.tsx
+    line: 18
+  - file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/予約取消画面.stories.tsx
+    line: 20
+  expected: 貸出受付はtierのquery.bookIdを初期入力へ渡す。予約取消は遷移元のreservationIdを対象へ使う。Storyではroute引数またはqueryを使い、固定fixtureとは異なるIDで引渡しを確認できるようにする。
+  actual: 窓口検索がbookIdを渡しても貸出受付はapi.book.book_idを初期値とする。マイ予約状況がiframe queryにreservationIdを付与しても予約取消はapi.reservationを固定参照する。他の書籍詳細・編集・削除もrouteの識別子を受け取るProps/query処理がなく固定対象である。
+- id: SSR-004
+  severity: major
+  title: 利用者登録の取得失敗回復が未検証の登録要求を発行する
+  status: open
+  evidence:
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者登録画面.stories.tsx
+    line: 43
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者登録画面.stories.tsx
+    line: 48
+  expected: 取得回復でcreateUserを発行しない。送信結果不明の回復であれば保存済みの本文・キーを使う。初期入力へ戻すだけの場合は更新要求を通知しない。
+  actual: Error Storyの再取得操作はretryReadからonRequest({operation:createUser,path:{}})を呼ぶ。bodyも冪等キーもなく、登録検証・送信スナップショットを迂回する。
+- id: SSR-005
+  severity: major
+  title: 成功後の再取得先が契約のoperation名と異なる
+  status: open
+  evidence:
+  - file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/予約申込画面.stories.tsx
+    line: 27
+  - file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/予約取消画面.stories.tsx
+    line: 25
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者編集画面.stories.tsx
+    line: 34
+  - file: docs/specs/latest/_cross-cutting/api/paths/me_reservations.yaml
+    line: 2
+  - file: docs/specs/latest/_cross-cutting/api/paths/staff_users__user_number__activity.yaml
+    line: 2
+  expected: 本人予約一覧の再取得はlistMyReservations、利用者利用状況の無効化はgetUserActivityに接続する。callbackの引数を実際の契約operationで検証する。
+  actual: 予約申込/取消はgetMyReservationsという未定義operationをonRequestへ渡す。利用者登録/編集/削除はgetUserStatusという未定義の照会名をonInvalidateへ渡す。正しい契約名で接続すると更新後表示が再取得されない。
+- id: SSR-006
+  severity: minor
+  title: レビュー中追加されたStory exportが予定差分に未反映
+  status: open
+  evidence:
+  - file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/蔵書検索画面.stories.tsx
+    exports: &id001
+    - ISBNNormalized
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/蔵書一覧画面.stories.tsx
+    exports: &id002
+    - ISBNNormalized
+  - file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/窓口蔵書検索画面.stories.tsx
+    exports: &id003
+    - ISBNNormalized
+  expected: イベント記録前にvariantsへ追加exportを反映して全数を再照合する。
+  actual: ISBNNormalized等の追加は実装に存在するが現在の予定差分にない。
+resolved: []
+counts:
+  screens: 24
+  presentation_tiers: 24
+  declared_components: 38
+  actual_page_exports: 157
+  blocker: 0
+  major: 5
+  minor: 1
+screens:
+- screen: 蔵書検索画面
+  uc: 書籍を検索する
+  route: /search
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/蔵書検索画面.stories.tsx
+  sha256: 1875194c27765cacb5216e9addfcb8f161b7de60347dd26fec3b03eafc4a0b56
+  declared_variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  actual_exports:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  - ISBNNormalized
+  missing: []
+  extra: *id001
+  title_matches: true
+- screen: 書籍詳細・在庫状況画面
+  uc: 書籍詳細を参照する
+  route: /books/:bookId
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/書籍詳細・在庫状況画面.stories.tsx
+  sha256: 215bffd2a3f58dd8ab657684f8265da88f64994949b194f833e67c3ac3e65624
+  declared_variants:
+  - Available
+  - OnLoan
+  - Reserved
+  - OwnReservation
+  - Electronic
+  - Loading
+  - Error
+  - NotFound
+  actual_exports:
+  - Available
+  - OnLoan
+  - Reserved
+  - OwnReservation
+  - Electronic
+  - Loading
+  - Error
+  - NotFound
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 予約申込画面
+  uc: 予約を登録する
+  route: /books/:bookId/reserve
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/予約申込画面.stories.tsx
+  sha256: 1f4d45af94868743ee1e5431e20ef4bbcfc7cfe34b309222466cf517a378c93a
+  declared_variants:
+  - OnLoan
+  - AlreadyAvailable
+  - Submitting
+  - Done
+  - Error
+  - Loading
+  - NotFound
+  - Electronic
+  - ReservationWaiting
+  actual_exports:
+  - OnLoan
+  - AlreadyAvailable
+  - Submitting
+  - Done
+  - Error
+  - Loading
+  - NotFound
+  - Electronic
+  - ReservationWaiting
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 予約取消画面
+  uc: 予約を取り消す
+  route: /reservations/:reservationId/cancel
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/予約取消画面.stories.tsx
+  sha256: b626d3460846026523578bd2870cf1047473e2da381f782c80db1d989cc2eae1
+  declared_variants:
+  - Default
+  - Submitting
+  - Done
+  - Error
+  - NotFound
+  - Conflict
+  actual_exports:
+  - Default
+  - Submitting
+  - Done
+  - Error
+  - NotFound
+  - Conflict
+  missing: []
+  extra: []
+  title_matches: true
+- screen: マイ貸出履歴画面
+  uc: 貸出履歴を参照する
+  route: /me/loans
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/マイ貸出履歴画面.stories.tsx
+  sha256: 08d5f7c9bd8a31b4c56998867f528bde52f8b79fedb4e490dd42ad7ae4ecbc0a
+  declared_variants:
+  - Default
+  - WithOverdue
+  - Empty
+  - Loading
+  - Error
+  - Retry
+  - Paged
+  actual_exports:
+  - Default
+  - WithOverdue
+  - Empty
+  - Loading
+  - Error
+  - Retry
+  - Paged
+  missing: []
+  extra: []
+  title_matches: true
+- screen: マイ予約状況画面
+  uc: 予約状況を参照する
+  route: /me/reservations
+  file: docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/マイ予約状況画面.stories.tsx
+  sha256: 90440fc8f7ff57957839ee655336654b5207d4ebf2f5f24d400f5d3aad38b2ce
+  declared_variants:
+  - Default
+  - Notified
+  - Empty
+  - Loading
+  - Error
+  actual_exports:
+  - Default
+  - Notified
+  - Empty
+  - Loading
+  - Error
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 蔵書一覧画面
+  uc: 書籍一覧を参照する
+  route: /staff/books
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/蔵書一覧画面.stories.tsx
+  sha256: a10a38d0a6efd242a6d795c1da0d9b89a9e838cb72b9c8d6bf33efce79ca307b
+  declared_variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  actual_exports:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  - ISBNNormalized
+  missing: []
+  extra: *id002
+  title_matches: true
+- screen: 書籍登録画面
+  uc: 書籍を登録する
+  route: /staff/books/new
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍登録画面.stories.tsx
+  sha256: 7d87af652c95e5ba2f098749e05382585f74c966639af0b50515fdc2cc64371a
+  declared_variants:
+  - Default
+  - ValidationError
+  - Submitting
+  - Registered
+  - Error
+  - Unknown
+  - IdempotencyConflict
+  - Loading
+  - ElectronicRejected
+  actual_exports:
+  - Default
+  - ValidationError
+  - Submitting
+  - Registered
+  - Error
+  - Unknown
+  - IdempotencyConflict
+  - Loading
+  - ElectronicRejected
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 書籍編集画面
+  uc: 書籍を編集する
+  route: /staff/books/:bookId/edit
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍編集画面.stories.tsx
+  sha256: ee530b92bc504ed516f82e9ae148b484d7124624bbfb165dfdebeb40a031e355
+  declared_variants:
+  - Default
+  - Loading
+  - Error
+  - Submitting
+  - Saved
+  - ValidationError
+  - Conflict
+  - Unknown
+  actual_exports:
+  - Default
+  - Loading
+  - Error
+  - Submitting
+  - Saved
+  - ValidationError
+  - Conflict
+  - Unknown
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 書籍削除確認画面
+  uc: 書籍を削除する
+  route: /staff/books/:bookId/delete
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍削除確認画面.stories.tsx
+  sha256: a7d45686d542bfc98af7f82e99f12bbed2d41090ab66306b73fb78821a40e11f
+  declared_variants:
+  - Deletable
+  - Blocked
+  - Loading
+  - Error
+  - Submitting
+  - Deleted
+  - Conflict
+  - Unknown
+  - BusinessRejected
+  actual_exports:
+  - Deletable
+  - Blocked
+  - Loading
+  - Error
+  - Submitting
+  - Deleted
+  - Conflict
+  - Unknown
+  - BusinessRejected
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 窓口蔵書検索画面
+  uc: 書籍を検索する
+  route: /staff/search
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/窓口蔵書検索画面.stories.tsx
+  sha256: 87ddbd09855be17615afd1352241c9a0b241ac93348a05c0faf2b5392e277e57
+  declared_variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  actual_exports:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  - ISBNNormalized
+  missing: []
+  extra: *id003
+  title_matches: true
+- screen: 利用者登録画面
+  uc: 利用者を登録する
+  route: /staff/users/new
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者登録画面.stories.tsx
+  sha256: 5325d7a4172bab622c43ae3efec211243dbef217766940322a9e4e11463ba2e1
+  declared_variants:
+  - Default
+  - ValidationError
+  - Submitting
+  - Registered
+  - Error
+  - Unknown
+  - IdempotencyConflict
+  - NumberConflict
+  actual_exports:
+  - Default
+  - ValidationError
+  - Submitting
+  - Registered
+  - Error
+  - Unknown
+  - IdempotencyConflict
+  - NumberConflict
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 利用者編集画面
+  uc: 利用者を編集する
+  route: /staff/users/:userId/edit
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者編集画面.stories.tsx
+  sha256: 9f6f68174b0c8ada6e99350e7a9a6d5df8f1c0bbe263ecba55f20c6f11c8b8e5
+  declared_variants:
+  - Default
+  - Loading
+  - Error
+  - Submitting
+  - Saved
+  - ValidationError
+  - Conflict
+  - Unknown
+  actual_exports:
+  - Default
+  - Loading
+  - Error
+  - Submitting
+  - Saved
+  - ValidationError
+  - Conflict
+  - Unknown
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 利用者削除確認画面
+  uc: 利用者を削除する
+  route: /staff/users/:userId/delete
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者削除確認画面.stories.tsx
+  sha256: 5e4c89e1f96983d135c9ed4e5cece578c43b3fa6471befb6ea359ec92bf64637
+  declared_variants:
+  - Deletable
+  - Blocked
+  - Loading
+  - Error
+  - Submitting
+  - Deleted
+  - Conflict
+  - Unknown
+  - BusinessRejected
+  actual_exports:
+  - Deletable
+  - Blocked
+  - Loading
+  - Error
+  - Submitting
+  - Deleted
+  - Conflict
+  - Unknown
+  - BusinessRejected
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 利用者一覧画面
+  uc: 利用者一覧を参照する
+  route: /staff/users
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者一覧画面.stories.tsx
+  sha256: c8fb3fc6e76412b3c1f5483e60f0c6dafa5a156f3b18c0c43795c90c49fdea03
+  declared_variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  actual_exports:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 貸出受付画面
+  uc: 貸出を登録する
+  route: /staff/loans/new
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/貸出受付画面.stories.tsx
+  sha256: fc721988ae0ae087b9ae6c7d87eab4b49f98a207985aea32733f4181451f0d76
+  declared_variants:
+  - Input
+  - Allowed
+  - Denied
+  - Done
+  - Submitting
+  - Error
+  - NotFound
+  actual_exports:
+  - Input
+  - Allowed
+  - Denied
+  - Done
+  - Submitting
+  - Error
+  - NotFound
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 返却受付画面
+  uc: 返却を登録する
+  route: /staff/returns/new
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/返却受付画面.stories.tsx
+  sha256: 37137b9492b037e59b6b48491b0cdb51d2a3fb39597f4ad6e352ed6fdfe2dfe7
+  declared_variants:
+  - Input
+  - Found
+  - FoundWithReservation
+  - Done
+  - Submitting
+  - Error
+  - NotFound
+  actual_exports:
+  - Input
+  - Found
+  - FoundWithReservation
+  - Done
+  - Submitting
+  - Error
+  - NotFound
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 返却通知送信確認画面
+  uc: 返却通知を送信する
+  route: /staff/returns/:loanId/notify
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/返却通知送信確認画面.stories.tsx
+  sha256: ee58b3fbbb3e99180c7db65a1252b2f1112f755c27a903255ca986fdb0df7ceb
+  declared_variants:
+  - Default
+  - Sent
+  - Failed
+  - Queued
+  - Unknown
+  - Error
+  - Loading
+  - NoReservation
+  actual_exports:
+  - Default
+  - Sent
+  - Failed
+  - Queued
+  - Unknown
+  - Error
+  - Loading
+  - NoReservation
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 書籍別予約状況画面
+  uc: 予約一覧を参照する
+  route: /staff/books/:bookId/reservations
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍別予約状況画面.stories.tsx
+  sha256: 0e7284cc24e7b1e3908bfddabfa568422c4d28c351af9bb163f4034a1078fd72
+  declared_variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  - NotFound
+  actual_exports:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  - NotFound
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 延滞・督促状況画面
+  uc: 延滞一覧を参照する
+  route: /staff/overdues
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/延滞・督促状況画面.stories.tsx
+  sha256: a3eef26bab7e795161cb4d1f44da9d12b84c70deb26dcf0a8a1f3fe047acc2bf
+  declared_variants:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  actual_exports:
+  - Default
+  - Empty
+  - Loading
+  - Error
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 窓口利用状況照会画面
+  uc: 利用者の利用状況を参照する
+  route: /staff/users/:userId/status
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/窓口利用状況照会画面.stories.tsx
+  sha256: 18650fa3f9a81d78c31efd0f44be6c3bfc9b9e0d26a3c19c6350e4efc9ee3d39
+  declared_variants:
+  - Default
+  - NotFound
+  - RecoverNotFound
+  - Loading
+  - Empty
+  - Error
+  actual_exports:
+  - Default
+  - NotFound
+  - RecoverNotFound
+  - Loading
+  - Empty
+  - Error
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 在庫状況一覧画面
+  uc: 在庫状況一覧を参照する
+  route: /staff/reports/inventory
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/在庫状況一覧画面.stories.tsx
+  sha256: dda6b215b1f47663f284369ec6f7cb1bd3f1127c2c327d854f5d451139581d7d
+  declared_variants:
+  - Default
+  - Filtered
+  - Loading
+  - Empty
+  - Error
+  actual_exports:
+  - Default
+  - Filtered
+  - Loading
+  - Empty
+  - Error
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 人気書籍ランキング画面
+  uc: 人気書籍ランキングを参照する
+  route: /staff/reports/ranking
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/人気書籍ランキング画面.stories.tsx
+  sha256: d5665cff3c3152247b82ef9b4b3acdb46bd4df692fe6281d5a18d81bdc5c426a
+  declared_variants:
+  - Default
+  - TiedRanking
+  - Loading
+  - Empty
+  - Error
+  actual_exports:
+  - Default
+  - TiedRanking
+  - Loading
+  - Empty
+  - Error
+  missing: []
+  extra: []
+  title_matches: true
+- screen: 期間別貸出統計画面
+  uc: 期間別貸出統計を参照する
+  route: /staff/reports/loans
+  file: docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/期間別貸出統計画面.stories.tsx
+  sha256: 58210a9ca298243b092275ed273f6407ce7b0ee1440c6b872d56c2ab0f6b8d9b
+  declared_variants:
+  - Monthly
+  - Daily
+  - Loading
+  - Empty
+  - Error
+  actual_exports:
+  - Monthly
+  - Daily
+  - Loading
+  - Empty
+  - Error
+  missing: []
+  extra: []
+  title_matches: true
+components:
+- name: Button
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Button.tsx
+- name: Badge
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Badge.tsx
+- name: Card
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Card.tsx
+- name: Input
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Input.tsx
+- name: Select
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Input.tsx
+- name: ToggleGroup
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/ToggleGroup.tsx
+- name: Table
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Table.tsx
+- name: Alert
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Feedback.tsx
+- name: EmptyState
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Feedback.tsx
+- name: Skeleton
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Feedback.tsx
+- name: Spinner
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Feedback.tsx
+- name: Pagination
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Pagination.tsx
+- name: Modal
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Modal.tsx
+- name: Icon
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/Icon.tsx
+- name: PortalShell
+  group: ui
+  export_files:
+  - docs/design/latest/storybook-app/src/components/ui/PortalShell.tsx
+- name: BookStatusBadge
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/StatusBadges.tsx
+- name: LoanStatusBadge
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/StatusBadges.tsx
+- name: ReservationStatusBadge
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/StatusBadges.tsx
+- name: ReservationQueueTracker
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/ReservationQueueTracker.tsx
+- name: DueDateIndicator
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/DueDateIndicator.tsx
+- name: BookSearchFilter
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/BookSearchFilter.tsx
+- name: BookCard
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/BookCard.tsx
+- name: BookTable
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/BookTable.tsx
+- name: BookForm
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/Forms.tsx
+- name: UserForm
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/Forms.tsx
+- name: UserTable
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/UserTable.tsx
+- name: PiiMaskedText
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/PiiMaskedText.tsx
+- name: LoanTable
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/LoanTables.tsx
+- name: OverdueTable
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/LoanTables.tsx
+- name: NotificationLogTable
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/LoanTables.tsx
+- name: LoanRegisterPanel
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/CounterPanels.tsx
+- name: ReturnRegisterPanel
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/CounterPanels.tsx
+- name: ReservationTable
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/LoanTables.tsx
+- name: ConfirmPanel
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/CounterPanels.tsx
+- name: StatCard
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/Reports.tsx
+- name: RankingList
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/Reports.tsx
+- name: PeriodSelector
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/Reports.tsx
+- name: PeriodStatChart
+  group: domain
+  export_files:
+  - docs/design/latest/storybook-app/src/components/domain/Reports.tsx
+observations:
+- 親レビューで指摘された検索対象とISBN空白正規化は現在ソースで修正を確認。
+- 38宣言部品はすべて実ファイルのexportを確認。LogoやLoadingBlock等の合成補助exportも存在するが、宣言部品の欠落はない。
+- route文字列の宣言一致と、動的識別子を画面が使うことは区別して確認した。

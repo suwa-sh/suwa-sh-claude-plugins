@@ -1,0 +1,5 @@
+description: 現在確定結果を返せない。一時的な接続障害・永続化失敗に対する技術応答。未更新を保証しない。クライアントは結果不明状態として扱い、CR006の回復規則確定まで自動再送しない。
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/TemporarilyUnavailableResponse.yaml

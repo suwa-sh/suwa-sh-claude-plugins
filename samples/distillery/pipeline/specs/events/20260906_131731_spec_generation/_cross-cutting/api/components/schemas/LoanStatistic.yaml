@@ -1,0 +1,57 @@
+type: object
+additionalProperties: false
+required:
+  - stat_id
+  - period_type
+  - period_start
+  - period_end
+  - book_id
+  - loan_count
+  - loan_total
+  - ranking
+  - aggregated_at
+  - book_title
+  - book_author
+  - genre_name
+properties:
+  stat_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  period_type:
+    type: string
+    enum:
+      - 日
+      - 月
+      - 年
+  period_start:
+    type: string
+    format: date
+  period_end:
+    type: string
+    format: date
+  book_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  loan_count:
+    type: integer
+    minimum: 0
+  loan_total:
+    type: integer
+    minimum: 0
+  ranking:
+    type: integer
+    minimum: 0
+  aggregated_at:
+    type: string
+    format: date-time
+  book_title:
+    type: string
+    minLength: 1
+  book_author:
+    type: string
+    minLength: 1
+  genre_name:
+    type: string
+    minLength: 1

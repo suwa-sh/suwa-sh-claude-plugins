@@ -1,0 +1,51 @@
+asyncapi: 3.0.0
+info:
+  title: 図書館通知・日次処理契約
+  version: 1.0.0
+channels:
+  return-notification:
+    $ref: ./channels/return-notification.yaml
+  reminder:
+    $ref: ./channels/reminder.yaml
+  dunning:
+    $ref: ./channels/dunning.yaml
+  daily-reminder:
+    $ref: ./channels/daily-reminder.yaml
+  daily-overdue:
+    $ref: ./channels/daily-overdue.yaml
+operations:
+  publishReturnNotification:
+    $ref: ./operations/publishReturnNotification.yaml
+  consumeReturnNotification:
+    $ref: ./operations/consumeReturnNotification.yaml
+  publishReminder:
+    $ref: ./operations/publishReminder.yaml
+  consumeReminder:
+    $ref: ./operations/consumeReminder.yaml
+  publishDunning:
+    $ref: ./operations/publishDunning.yaml
+  consumeDunning:
+    $ref: ./operations/consumeDunning.yaml
+  consumeReminderSchedule:
+    $ref: ./operations/consumeReminderSchedule.yaml
+  consumeOverdueSchedule:
+    $ref: ./operations/consumeOverdueSchedule.yaml
+components:
+  messages:
+    ReturnNotificationRequest:
+      $ref: ./components/messages/ReturnNotificationRequest.yaml
+    ReminderRequest:
+      $ref: ./components/messages/ReminderRequest.yaml
+    DunningRequest:
+      $ref: ./components/messages/DunningRequest.yaml
+    DailyRun:
+      $ref: ./components/messages/DailyRun.yaml
+  schemas:
+    ReturnNotificationRequestPayload:
+      $ref: ./components/schemas/ReturnNotificationRequestPayload.yaml
+    ReminderRequestPayload:
+      $ref: ./components/schemas/ReminderRequestPayload.yaml
+    DunningRequestPayload:
+      $ref: ./components/schemas/DunningRequestPayload.yaml
+    DailyRunPayload:
+      $ref: ./components/schemas/DailyRunPayload.yaml

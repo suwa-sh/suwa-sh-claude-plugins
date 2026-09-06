@@ -1,0 +1,11 @@
+name: LoanCreated
+title: Loan created
+payload:
+  $ref: ../../asyncapi.yaml#/components/schemas/LoanCreatedPayload
+headers:
+  type: object
+  required:
+    - idempotency_key
+  properties:
+    idempotency_key:
+      type: string

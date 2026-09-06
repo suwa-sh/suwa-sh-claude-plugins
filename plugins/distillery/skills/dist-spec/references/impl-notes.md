@@ -10,6 +10,7 @@
 
 - common-components.md 生成後に UC の tier-frontend-*.md へのフィードバックを**省略してはならない**
 - 省略すると UC Spec と共通コンポーネント設計が乖離し、Storybook 実装時に不整合が発生する
+- フィードバックは定義先参照とUC固有バインディングの更新。共通Propsや規約本文の追記ではない
 
 ## 共通コンポーネント Story を先に作る（spec-stories スキル。旧 Step9）
 

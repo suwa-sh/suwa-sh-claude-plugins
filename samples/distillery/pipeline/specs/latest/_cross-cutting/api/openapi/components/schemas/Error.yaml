@@ -1,0 +1,23 @@
+type: object
+additionalProperties: false
+required:
+  - code
+  - message
+  - trace_id
+properties:
+  code:
+    type: string
+    enum:
+      - INVALID_INPUT
+      - UNAUTHENTICATED
+      - FORBIDDEN
+      - NOT_FOUND
+      - VERSION_CONFLICT
+      - IDEMPOTENCY_CONFLICT
+      - BUSINESS_RULE_VIOLATION
+      - CONFIGURATION_UNAVAILABLE
+      - DEPENDENCY_UNAVAILABLE
+  message:
+    type: string
+  trace_id:
+    type: string

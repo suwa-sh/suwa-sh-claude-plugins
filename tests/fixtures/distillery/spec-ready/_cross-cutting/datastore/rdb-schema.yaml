@@ -1,0 +1,591 @@
+version: '1.0'
+datastore: rdb
+tables:
+  - name: books
+    rdra_info: 書籍
+    columns:
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID。蔵書1冊を一意に識別する主キー（RDRA 情報「書籍」の書籍ID）
+      - name: title
+        type: string
+        nullable: false
+        description: タイトル。蔵書検索のキーワード対象および蔵書一覧の既定ソート表示項目
+      - name: author
+        type: string
+        nullable: false
+        description: 著者。窓口レファレンスの主要な検索軸
+      - name: isbn
+        type: string
+        nullable: true
+        description: ISBN。完全一致検索と重複確認に使う。データ移行時のクレンジング対象（NFR D.4.1.3）のため NULL を許容する
+      - name: publisher
+        type: string
+        nullable: false
+        description: 出版社。キーワード検索の対象項目
+      - name: genre
+        type: string
+        nullable: false
+        description: 'ジャンル。RDRA バリエーション「ジャンル」。値: 文学, 人文, 社会科学, 自然科学, 技術, 芸術, 児童, その他'
+      - name: material_type
+        type: string
+        nullable: false
+        description: '資料種別。RDRA バリエーション「資料種別」。値: 紙書籍, 電子書籍。初期リリースは紙書籍のみ受理し電子書籍は 422 で拒否する（資料種別利用可否条件）'
+      - name: book_status
+        type: string
+        nullable: false
+        description: '書籍状態。RDRA 状態モデル「書籍状態」。値: 在庫あり, 貸出中, 予約待ち。在庫状況レポートの区分集計軸となる'
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 登録日時。書籍登録イベントの occurred_at をスナップショットへ射影した値
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 最終更新日時。最新イベントの occurred_at を射影する。蔵書一覧の既定ソートキー（更新日時の降順）
+      - name: version
+        type: integer
+        nullable: false
+        default: '1'
+        description: 楽観ロックの世代番号。RDRA 由来ではなく arch の並行更新制御に由来する技術カラム。書籍情報の編集で version 一致を条件に UPDATE し、+1 する（同時編集の後勝ち上書きを防ぐ）
+    primary_key:
+      - book_id
+    foreign_keys: []
+    indexes: []
+    used_by:
+      - uc: 書籍を登録する
+        operations:
+          - INSERT
+      - uc: 書籍情報を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+          - DELETE
+      - uc: 蔵書一覧を照会する
+        operations:
+          - SELECT
+      - uc: 書籍を検索する
+        operations:
+          - SELECT
+      - uc: 司書向けに蔵書を検索する
+        operations:
+          - SELECT
+      - uc: 書籍詳細と在庫状況を照会する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却後の書籍状態を更新する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却対象の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出内容と返却期限を照会する
+        operations:
+          - SELECT
+      - uc: 自分の現在の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+      - uc: 予約を取り消す
+        operations:
+          - UPDATE
+      - uc: 自分の予約順位を照会する
+        operations:
+          - SELECT
+      - uc: 自分の予約状況を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き中の予約を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 在庫状況を区分別に集計する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+      - uc: 自分の延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+      - uc: 自分の返却期限を照会する
+        operations:
+          - SELECT
+  - name: users
+    rdra_info: 利用者
+    columns:
+      - name: user_no
+        type: string
+        nullable: false
+        description: 利用者番号。利用者を一意に識別する主キー（RDRA 情報「利用者」の利用者番号）。窓口で提示され貸出対象利用者の特定に使う
+      - name: name
+        type: string
+        nullable: false
+        description: 氏名。個人情報のため保管時暗号化の対象（NFR E.6.1.1）。利用者名簿のキーワード検索対象
+      - name: email
+        type: string
+        nullable: false
+        description: 連絡先（メールアドレス）。取置き案内・返却期限リマインド・延滞督促メールの宛先。保管時暗号化の対象（NFR E.6.1.1）
+      - name: user_category
+        type: string
+        nullable: false
+        description: '利用者区分。RDRA バリエーション「利用者区分」。値: 一般, 学生, 団体。貸出期間の適用単位および貸出統計の内訳軸'
+      - name: user_status
+        type: string
+        nullable: false
+        description: '利用者状態。RDRA 状態モデル「利用者状態」。値: 登録済み, 取引進行中。取引進行中の利用者は削除できない（利用者削除可否条件）'
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 登録日時。利用者登録イベントの occurred_at を射影した値
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 最終更新日時。最新イベントの occurred_at を射影する。利用者情報の編集では If-Match による楽観ロックの比較対象として使う
+    primary_key:
+      - user_no
+    foreign_keys: []
+    indexes:
+      - name: uq_users_email
+        columns:
+          - email
+        unique: true
+        reason: 既存利用者テーブルの一意制約。貸出UCはemailを取得・変更しない。
+    used_by:
+      - uc: 利用者を登録する
+        operations:
+          - INSERT
+          - SELECT
+      - uc: 利用者情報を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+          - DELETE
+      - uc: 利用者一覧を照会する
+        operations:
+          - SELECT
+      - uc: 自分の利用者情報を照会する
+        operations:
+          - SELECT
+      - uc: 利用者番号で貸出対象利用者を特定する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却を登録する
+        operations:
+          - UPDATE
+      - uc: 予約を登録する
+        operations:
+          - UPDATE
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+  - name: loans
+    rdra_info: 貸出
+    columns:
+      - name: loan_id
+        type: string
+        nullable: false
+        description: 貸出ID。貸出1件を一意に識別する主キー（RDRA 情報「貸出」の貸出ID）
+      - name: book_id
+        type: string
+        nullable: true
+        description: 貸出対象の書籍ID。books への参照。書籍が物理削除されると SET NULL となり、書誌の表示は非正規化スナップショット列（book_title / book_author / book_isbn / book_genre）で再現する（UC「書籍を削除する」との整合）
+      - name: user_no
+        type: string
+        nullable: true
+        description: 貸出先の利用者番号。users への参照。本人限定参照の絞り込み条件となる。利用者が物理削除されると SET NULL となり（匿名化方針）、以降は本人限定参照の対象外となる（UC「利用者を削除する」との整合）
+      - name: loan_date
+        type: date
+        nullable: false
+        description: 貸出日。貸出登録イベントの occurred_at を日付へ射影した値。期間別貸出統計の集計期間の判定軸
+      - name: loan_period_type
+        type: string
+        nullable: false
+        description: '貸出期間区分。RDRA バリエーション「貸出期間区分」。値: 標準, 短期, 長期。返却期限の算出単位'
+      - name: due_date
+        type: date
+        nullable: false
+        description: 返却期限。貸出日＋貸出期間区分に対応する日数で自動設定する（返却期限設定条件）。リマインド判定・延滞判定・超過日数算出の基準
+      - name: loan_status
+        type: string
+        nullable: false
+        description: '貸出状態。RDRA 状態モデル「貸出状態」。値: 貸出中, 延滞, 返却済み'
+      - name: returned_at
+        type: date
+        nullable: true
+        description: 返却日。RDRA 情報「貸出」の属性「返却日」に対応する。返却登録時に受付日を設定し、未返却の間は NULL。返却済み貸出一覧および貸出履歴一覧の返却日表示・降順ソートキーの唯一の供給元（イベントからの射影は行わない）。arch E-004
+          の属性一覧には未記載のため要確認
+      - name: book_title
+        type: string
+        nullable: false
+        description: 貸出時点の書籍タイトルのスナップショット。非正規化カラム。書籍が削除・改題されても貸出履歴と統計の表示を貸出当時の値で再現するために保持する（正規化レベルは要確認）
+      - name: book_author
+        type: string
+        nullable: false
+        description: 貸出時点の書籍著者のスナップショット。非正規化カラム。用途は book_title と同じ（正規化レベルは要確認）
+      - name: book_isbn
+        type: string
+        nullable: true
+        description: 貸出時点の書籍 ISBN のスナップショット。非正規化カラム。books.isbn が NULL 許容のため NULL を許容する（正規化レベルは要確認）
+      - name: book_genre
+        type: string
+        nullable: false
+        description: 貸出時点の書籍ジャンルのスナップショット。非正規化カラム。貸出統計のジャンル別内訳を貸出当時の区分で集計するために保持する（正規化レベルは要確認）
+    primary_key:
+      - loan_id
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: SET NULL
+      - columns:
+          - user_no
+        references:
+          table: users
+          columns:
+            - user_no
+        on_delete: SET NULL
+    indexes:
+      - name: uq_loans_book_id_active
+        columns:
+          - book_id
+        unique: true
+        partial_condition: loan_status IN ('貸出中','延滞')
+        reason: 'ユニーク制約: 同一書籍に有効な貸出（貸出中／延滞）は同時に1件までという業務ルール（arch E-004 の関連説明）を部分インデックスで担保する'
+      - name: idx_loans_book_id_loan_status
+        columns:
+          - book_id
+          - loan_status
+        unique: false
+        reason: 返却された書籍から対象貸出を特定する司書向け検索と、書籍単位の有効貸出の存在確認に使う
+    used_by:
+      - uc: 貸出を登録する
+        operations:
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却対象の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の返却済み貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出内容と返却期限を照会する
+        operations:
+          - SELECT
+      - uc: 自分の現在の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出履歴を照会する
+        operations:
+          - SELECT
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+      - uc: 利用者一覧を照会する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+      - uc: 自分の返却期限を照会する
+        operations:
+          - SELECT
+  - name: reservations
+    rdra_info: 予約
+    columns:
+      - name: reservation_id
+        type: string
+        nullable: false
+        description: 予約ID。予約1件を一意に識別する主キー（RDRA 情報「予約」の予約ID）
+      - name: book_id
+        type: string
+        nullable: true
+        description: 予約対象の書籍ID。books への参照。予約待ち行列の単位となる。書籍が物理削除されると SET NULL となる（削除可否条件により有効予約は残らないため、NULL になるのはキャンセル／貸出済みの履歴行のみ）
+      - name: user_no
+        type: string
+        nullable: true
+        description: 予約申込者の利用者番号。users への参照。本人限定参照の絞り込み条件となる。利用者が物理削除されると SET NULL となる（匿名化方針。削除可否条件により有効予約は残らない）
+      - name: applied_at
+        type: datetime
+        nullable: false
+        description: 予約申込日時。予約順位決定条件の昇順ソートキーであり、予約状況一覧の降順ソートキーでもある
+      - name: priority
+        type: integer
+        nullable: false
+        description: 予約順位。同一書籍の有効予約件数＋1 で採番し、取消時は後続を繰り上げ再計算する
+      - name: reservation_status
+        type: string
+        nullable: false
+        description: '予約状態。RDRA 状態モデル「予約状態」。値: 予約中, 取置き中, 貸出済み, キャンセル。有効な予約は 予約中／取置き中 を指す。遷移元・遷移先・同時更新列は本ファイルの state_transition_rules「予約状態遷移規則」が唯一の正本であり、UC
+          側で個別定義しない'
+      - name: hold_expires_at
+        type: datetime
+        nullable: true
+        description: 取置き期限。取置き遷移時に設定し、取置き期限切れの日次判定でインデックス検索するためスナップショットに保持する（arch のイミュータブル原則の明示的例外）。取置き中以外は NULL（貸出済み・キャンセルへの遷移時に同一トランザクションで NULL
+          へ戻す。state_transition_rules「予約状態遷移規則」の invariants を参照）
+      - name: hold_started_at
+        type: datetime
+        nullable: true
+        description: 取置き開始日時。取置き遷移時に設定する。取置き状況照会（取置き開始日時の表示）がこの値を参照する。取置きを経ていない予約は NULL
+    primary_key:
+      - reservation_id
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: SET NULL
+      - columns:
+          - user_no
+        references:
+          table: users
+          columns:
+            - user_no
+        on_delete: SET NULL
+    indexes:
+      - name: idx_reservations_book_id_reservation_status_priority
+        columns:
+          - book_id
+          - reservation_status
+          - priority
+        unique: false
+        reason: 書籍単位の有効予約を予約順位の昇順で走査する。予約順1位の抽出・取置き対象特定・順位繰り上げ・有効予約件数の集計を 1 本の索引で満たす（カーディナリティの高い book_id を先頭に置く）
+    used_by:
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 予約を取り消す
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 自分の予約順位を照会する
+        operations:
+          - SELECT
+      - uc: 自分の予約状況を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き中の予約を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 取置き通知メールを送信する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 書籍詳細と在庫状況を照会する
+        operations:
+          - SELECT
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+      - uc: 返却後の書籍状態を更新する
+        operations:
+          - SELECT
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+      - uc: 利用者一覧を照会する
+        operations:
+          - SELECT
+  - name: api_operation_results
+    description: 貸出と同一取引で成功応答を保存。期限なし。loan-commit.md参照。
+    columns:
+      - name: actor_sub
+        type: text
+        nullable: false
+      - name: operation_id
+        type: text
+        nullable: false
+      - name: idempotency_key
+        type: uuid
+        nullable: false
+      - name: request_fingerprint
+        type: char(64)
+        nullable: false
+      - name: response_status
+        type: integer
+        nullable: false
+      - name: response_body
+        type: jsonb
+        nullable: false
+      - name: location
+        type: text
+        nullable: false
+      - name: committed_at
+        type: timestamptz
+        nullable: false
+    primary_key:
+      - actor_sub
+      - operation_id
+      - idempotency_key
+    foreign_keys: []
+    checks:
+      - response_status = 201
+    indexes: []
+state_transition_rules:
+  - name: 予約状態遷移規則
+    table: reservations
+    state_column: reservation_status
+    description: 'RDRA 状態モデル「予約状態」の遷移を、UC 仕様・_model-summary.yaml・DB 制約の
+
+      唯一の正本としてここで定義する。各 UC は本表の遷移行をそのまま参照し、
+
+      遷移元・遷移先・同時更新列を UC 側で個別に定義しない。
+
+      同時更新列に挙げた列は、遷移と同一トランザクション内で必ず一緒に更新する
+
+      （どれか 1 つでも欠けると参照先ごとに異なる状態が見えるため不整合となる）。
+
+      '
+    transitions:
+      - from: （なし）
+        to: 予約中
+        trigger_uc: 予約を登録する
+        guard: 予約可否条件（対象書籍が貸出中）かつ重複予約でないこと
+        also_sets:
+          - column: priority
+            value: 同一書籍の有効予約件数 + 1（予約順位決定条件）
+          - column: hold_expires_at
+            value: 'NULL'
+          - column: hold_started_at
+            value: 'NULL'
+      - from: 予約中
+        to: 取置き中
+        trigger_uc: 取置き通知メールを送信する
+        guard: 取置き通知対象条件を満たし、取置き案内メールの送信が成功したこと
+        also_sets:
+          - column: hold_started_at
+            value: 送信実行日時
+          - column: hold_expires_at
+            value: 送信実行日時 + 取置き保持日数（運用パラメータ）
+      - from: 取置き中
+        to: 貸出済み
+        trigger_uc: 貸出を登録する
+        guard: 取置き中書籍貸出条件（priority = 1 かつ予約者と貸出先が一致）
+        also_sets:
+          - column: hold_expires_at
+            value: NULL（取置きは成立して終了したため保持期限を残さない）
+          - column: hold_started_at
+            value: 変更しない（取置きの実績として保持する）
+      - from: 予約中 / 取置き中
+        to: キャンセル
+        trigger_uc: 予約を取り消す
+        guard: 予約取消可否条件（本人の有効な予約であること）
+        also_sets:
+          - column: hold_expires_at
+            value: 'NULL'
+          - column: hold_started_at
+            value: 変更しない
+    invariants:
+      - 有効な予約は reservation_status IN ('予約中','取置き中') の行だけを指す
+      - hold_expires_at が非 NULL になるのは reservation_status = '取置き中' の行だけとする（貸出済み・キャンセル・予約中では必ず NULL）
+      - hold_started_at は取置きを 1 度でも経た予約で非 NULL となり、以後の遷移でクリアしない
+      - 終端状態（貸出済み / キャンセル）からの再遷移は行わない。再予約は新しい reservation_id を採番する

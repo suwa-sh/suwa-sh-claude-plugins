@@ -1,8 +1,0 @@
-distillery:dist-spec-stories
-
-spec スキル（Step1〜Step8, event_id: 20260903_044456_spec_generation）で確定した UC Spec・全体横断 UX/UI 設計と、
-design-system スキル（event_id: 20260903_041812_design_system）で構築された Storybook プロジェクトを入力として、
-全 24 画面（23 UC）のページ Story を生成した。
-
-dialogue_policy: auto_adopt
-AskUserQuestion: 不使用

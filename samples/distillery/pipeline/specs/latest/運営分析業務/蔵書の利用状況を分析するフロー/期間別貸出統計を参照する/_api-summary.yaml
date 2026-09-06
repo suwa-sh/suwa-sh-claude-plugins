@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "蔵書の利用状況を分析するフロー",
+  "business": "運営分析業務",
+  "consumes": [],
+  "contract_sha256": "5996998110cbef9dc37863c0ca9fb535b33bd7bf9424cd1172434d78498c0e75",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1analytics~1loans/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getLoanStatistics",
+      "path": "/staff/analytics/loans",
+      "summary": "期間別貸出統計を参照する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "期間別貸出統計を参照する"
+}

@@ -1,0 +1,6 @@
+design_available: true
+
+contract_mode: catalog
+dialogue_policy: auto_adopt
+
+入力はStep5までの復元済みlatest。旧specと旧ページStoriesを参照していない。業務条件の意味はRDRA latestを参照する。技術提案は決定記録へ保存し、上流差分はfeedback-requestsで追跡する。

@@ -1,0 +1,5 @@
+action: send
+channel:
+  $ref: ../asyncapi.yaml#/channels/dunning
+messages:
+  - $ref: ../asyncapi.yaml#/channels/dunning/messages/DunningRequest

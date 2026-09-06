@@ -1,0 +1,4 @@
+address: library.dunning.v1
+messages:
+  DunningRequest:
+    $ref: ../components/messages/DunningRequest.yaml

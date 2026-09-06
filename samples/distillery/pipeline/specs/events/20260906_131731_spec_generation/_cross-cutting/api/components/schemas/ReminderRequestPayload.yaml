@@ -1,0 +1,13 @@
+type: object
+additionalProperties: false
+required:
+  - notification_id
+  - loan_id
+  - trace_id
+properties:
+  notification_id: &a1
+    type: string
+    minLength: 1
+    maxLength: 255
+  loan_id: *a1
+  trace_id: *a1

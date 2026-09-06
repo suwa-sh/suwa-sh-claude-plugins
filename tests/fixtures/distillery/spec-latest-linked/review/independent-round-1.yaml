@@ -1,0 +1,45 @@
+round: 1
+reviewer: feedback_contract
+scope: "Step3 / Step6.5: 貸出を登録する。照会3UCは契約参照コンテキストのみ"
+readiness: needs-spec-change
+findings:
+  - id: R-001
+    viewpoint: 4
+    severity: major
+    target: docs/specs/events/20260906_120000_spec_generation/_cross-cutting/api/paths/createLoan.yaml
+    claim: "OpenAPI説明が、RDRAで未定義と検出した利用者区分別の期間選択集合を確定仕様として保持している"
+    evidence: "descriptionに一般=標準/短期、学生・団体=長期/標準/短期とある。CR-60d99956-001はまさにこの対応を上流で定義する要求。業務状態遷移も同descriptionで再掲されている。"
+    suggested_fix: "独自の期間対応と状態遷移の説明をRDRA latestの具体的要素参照へ置換し、CR001解決待ちを示す。型のenumはAPI契約として維持し、description内の業務判断は継承しない。bundle/sliceを再生成する。"
+  - id: R-002
+    viewpoint: 2
+    severity: major
+    target: docs/specs/events/20260906_120000_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md
+    claim: "宣言済み照会APIの呼出条件と画面への接続が未定義"
+    evidence: "summaryはcheckLoanEligibility/getBookAvailability/getLoanTargetをconsumes宣言するが、Frontend本文とシーケンスに呼出タイミング・ID取得元・成功/失敗/遅延応答の扱いがない。CR007はUserProfileCard不足値を扱うが、残る画面のAPI接続を定義していない。"
+    suggested_fix: "入力確定時などの呼出契機、要求値、使用する応答項目、読込/404/取得失敗時の表示と登録可否を接続表またはシーケンスに追加する。上流不足に依存する箇所は既存CRに紐付けてblockedとし、古い入力への遅延応答を採用しない条件も示す。"
+  - id: R-003
+    viewpoint: 3
+    severity: major
+    target: docs/specs/events/20260906_120000_spec_generation/_cross-cutting/api/paths/createLoan.yaml
+    claim: "技術障害の応答が本文で参照されるがOpenAPIに定義されていない"
+    evidence: "Backend T3は接続障害等を共通技術エラーとして返し、Frontendは5xxをunknownへ遷移させる。一方createLoan.responsesは201/400/401/403/404/409だけで、ERROR-1もこのOpenAPIへの参照に留まる。"
+    suggested_fix: "アプリが返せる技術障害のstatus/bodyを共通OpenAPI responseで定義してoperationに接続する。応答が届かない場合はHTTP応答契約と区別してFrontendのunknown処理へ接続する。"
+  - id: R-004
+    viewpoint: 4
+    severity: minor
+    target: docs/specs/events/20260906_120000_spec_generation/蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md
+    claim: "T4の参照説明が、参照先で未定義とされる保持期間・キー競合・処理中応答を定義済みとして扱う"
+    evidence: "T4冒頭はIdempotencyKeyHeaderの保持期間等を適用すると書くが、現在のheader.descriptionは保存期間と回復手順が未確定と明記している。"
+    suggested_fix: "headerにあるUUIDの契約と、T4の技術分岐案およびCR006の確定待ちを区別して記述し、存在しない参照定義を適用したことにしない。"
+known_upstream_requests:
+  status: unresolved
+  request_file: docs/specs/events/20260906_120000_spec_generation/feedback-requests/20260906_120000_spec_feedback_60d99956.md
+  request_count: 7
+  verification: "feedbackRequest.js verify PASS; source=distillery-spec; sha256=07eadeb986aecd7a3b28984c020d3340bacf29981b6a90d6e9493ea41f138b0b"
+  note: "前段不足は既に明示されているので新規findingと重複計上しない。解決・appliedとは判定しない。"
+positive_checks:
+  - "RDRA/arch/designへの意味参照はlatestを使用し、具体的な条件名・状態モデル・Story exportを特定している。"
+  - "参照したSubmitActionButton/LoanConfirmationの実装とStory exportは実在する。指摘した上流不一致も実物で確認した。"
+  - "本文は状態遷移表とProps一覧を再定義していない。未確定の業務BDDはblockedで、仕様不足を実行時の新エラーに置換していない。"
+  - "draftをlatestへ昇格せず、全UC/E2Eや上流修正の完了を主張していない。"
+resolved: []

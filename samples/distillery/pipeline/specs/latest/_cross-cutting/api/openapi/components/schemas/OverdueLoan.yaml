@@ -1,0 +1,19 @@
+type: object
+additionalProperties: false
+required:
+  - loan
+  - book_title
+  - user_name
+  - notifications
+properties:
+  loan:
+    $ref: ./Loan.yaml
+  book_title: &a1
+    type: string
+    minLength: 1
+    maxLength: 255
+  user_name: *a1
+  notifications:
+    type: array
+    items:
+      $ref: ./Notification.yaml

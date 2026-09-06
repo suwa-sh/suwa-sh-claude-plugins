@@ -1,0 +1,52 @@
+{
+  "async_events": [],
+  "buc": "書籍を貸し出すフロー",
+  "business": "蔵書利用業務",
+  "consumes": [
+    {
+      "contract_ref": "openapi#/paths/~1api~1v1~1loans~1eligibility-checks/post",
+      "kind": "openapi",
+      "method": "POST",
+      "operation_id": "checkLoanEligibility",
+      "owner_uc": "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する",
+      "path": "/api/v1/loans/eligibility-checks",
+      "summary": "書籍の貸出可否を判定する",
+      "tier": "tier-frontend-staff"
+    },
+    {
+      "contract_ref": "openapi#/paths/~1api~1v1~1books~1{book_id}~1availability/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getBookAvailability",
+      "owner_uc": "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する",
+      "path": "/api/v1/books/{book_id}/availability",
+      "summary": "書籍詳細と在庫状況を照会する",
+      "tier": "tier-frontend-staff"
+    },
+    {
+      "contract_ref": "openapi#/paths/~1api~1v1~1loan-targets~1{user_no}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getLoanTarget",
+      "owner_uc": "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する",
+      "path": "/api/v1/loan-targets/{user_no}",
+      "summary": "利用者番号で貸出対象利用者を特定する",
+      "tier": "tier-frontend-staff"
+    }
+  ],
+  "contract_sha256": "a184bd7b586922b4f6ac62612e97d36f2d77c9c55e10938290fbc2ce44654b49",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1api~1v1~1loans/post",
+      "kind": "openapi",
+      "method": "POST",
+      "operation_id": "createLoan",
+      "path": "/api/v1/loans",
+      "summary": "貸出を登録する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "貸出を登録する"
+}

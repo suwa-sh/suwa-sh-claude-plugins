@@ -1,0 +1,1 @@
+Fable由来のStep5完了入力から現行dist-specを実行。旧spec本文と旧ページStoriesを生成入力へ使用していない。

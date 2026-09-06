@@ -1,0 +1,151 @@
+uc: 貸出を登録する
+business: 蔵書利用業務
+buc: 書籍を貸し出すフロー
+bounded_context_id: BC-003
+aggregate_id: AG-003
+models:
+- name: 窓口貸出受付画面（BookCard / UserProfileCard / ToggleGroup / DueDateIndicator）
+  tier: tier-frontend-staff
+  layer: view
+  type: view-model
+  rdra_info: 貸出
+- name: LoanRegistrationState
+  tier: tier-frontend-staff
+  layer: state
+  type: state
+  rdra_info: 貸出
+- name: RegisterLoanCommand
+  tier: tier-backend-api
+  layer: usecase
+  type: command
+  rdra_info: 貸出
+- name: Loan
+  tier: tier-backend-api
+  layer: domain
+  type: entity
+  rdra_info: 貸出
+- name: DueDate
+  tier: tier-backend-api
+  layer: domain
+  type: value-object
+  rdra_info: 貸出
+- name: Book
+  tier: tier-backend-api
+  layer: domain
+  type: entity
+  rdra_info: 書籍
+- name: User
+  tier: tier-backend-api
+  layer: domain
+  type: entity
+  rdra_info: 利用者
+- name: Reservation
+  tier: tier-backend-api
+  layer: domain
+  type: entity
+  rdra_info: 予約
+tables:
+- name: loans
+  rdra_info: 貸出
+  operations:
+  - type: INSERT
+    columns:
+    - name: loan_id
+      value: 採番した貸出ID
+    - name: book_id
+      value: 要求の book_id
+    - name: user_no
+      value: 要求の user_no
+    - name: loan_date
+      value: 貸出登録日（本日）
+    - name: loan_period_type
+      value: 要求のloan_period_type。適用可否はRDRA latest（CR001 blocked）
+    - name: due_date
+      value: 'docs/rdra/latest/条件.tsv: 貸出管理/返却期限設定条件（CR001 blocked）'
+    - name: loan_status
+      value: 'docs/rdra/latest/状態.tsv: 状態モデル=貸出状態; 遷移UC=貸出を登録する'
+    - name: book_title
+      value: 貸出時点の books の当該値のスナップショット
+    - name: book_author
+      value: 貸出時点の books の当該値のスナップショット
+    - name: book_isbn
+      value: 貸出時点の books の当該値のスナップショット
+    - name: book_genre
+      value: 貸出時点の books の当該値のスナップショット
+    where: ''
+  indexes_needed:
+  - columns:
+    - book_id
+    - loan_status
+    reason: 同一書籍に有効な貸出（貸出中/延滞）が重複しないことの確認と、返却時の対象貸出特定に使う
+    access_pattern: 書籍IDと貸出状態で有効な貸出の存在確認
+  - columns:
+    - user_no
+    - loan_status
+    reason: 利用者ごとの進行中貸出の有無確認（利用者状態の遷移判定・利用者削除可否条件）に使う
+    access_pattern: 利用者番号と貸出状態での絞り込み
+- name: books
+  rdra_info: 書籍
+  operations:
+  - type: SELECT
+    columns: []
+    where: book_id = :book_id FOR UPDATE
+  - type: UPDATE
+    columns:
+    - name: book_status
+      value: 'docs/rdra/latest/状態.tsv: 状態モデル=書籍状態; 遷移UC=貸出を登録する'
+    - name: updated_at
+      value: 貸出登録イベントの発生時刻
+    where: ロック取得済み対象の主キー一致。適用可能な現状態はRDRA latestの該当遷移（CR002/003を解決後確定）
+  indexes_needed:
+  - columns:
+    - book_id
+    reason: 貸出対象書籍の取得と更新。主キーで充足する
+    access_pattern: 書籍IDによる 1 件取得・更新
+- name: users
+  rdra_info: 利用者
+  operations:
+  - type: SELECT
+    columns: []
+    where: user_no = :user_no
+  - type: UPDATE
+    columns:
+    - name: user_status
+      value: 'docs/rdra/latest/状態.tsv: 状態モデル=利用者状態; 遷移UC=貸出を登録する'
+    - name: updated_at
+      value: 貸出登録イベントの発生時刻
+    where: ロック取得済み対象の主キー一致。適用可能な現状態はRDRA latestの該当遷移（CR002/003を解決後確定）
+  indexes_needed:
+  - columns:
+    - user_no
+    reason: 貸出先利用者の取得と更新。主キーで充足する
+    access_pattern: 利用者番号による 1 件取得・更新
+- name: reservations
+  rdra_info: 予約
+  operations:
+  - type: SELECT
+    columns: []
+    where: book_id = :book_id AND reservation_status = '取置き中' ORDER BY priority ASC
+  - type: UPDATE
+    columns:
+    - name: reservation_status
+      value: 'docs/rdra/latest/状態.tsv: 状態モデル=予約状態; 遷移UC=貸出を登録する'
+    - name: hold_expires_at
+      value: NULL（取置きが成立して終了したため保持期限を残さない。reservation_status と同一 UPDATE 文で更新する）
+    where: ロック取得済み対象の主キー一致。適用可能な現状態はRDRA latestの該当遷移（CR002/003を解決後確定）
+  indexes_needed:
+  - columns:
+    - book_id
+    - reservation_status
+    - priority
+    reason: 取置き中書籍貸出条件で対象書籍の取置き中予約を順位順に特定する
+    access_pattern: 書籍ID + 予約状態で絞り込み、予約順位の昇順で先頭 1 件を取得
+kvs: []
+object_storage: []
+status: needs-spec-change
+mutation_set: register-loan
+unresolved:
+- CR-60d99956-001
+- CR-60d99956-002
+- CR-60d99956-003
+- CR-60d99956-006

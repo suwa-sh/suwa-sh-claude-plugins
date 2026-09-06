@@ -1,0 +1,324 @@
+schema_version: distillery.rdb-domain-slice/v1
+generated: true
+subdomain_id: SD-003
+tables:
+  - name: audit_logs
+    rdra_info: ""
+    description: 監査ログの永続化
+    columns:
+      - name: audit_id
+        type: string
+        nullable: false
+        description: 監査ログID
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: 発生日時
+      - name: actor_user_number
+        type: string
+        nullable: false
+        description: 操作者の利用者番号（バッチはタイマーの固定 ID）
+      - name: action_type
+        type: string
+        nullable: false
+        description: "操作種別（enum: ログイン・ログアウト・ログイン失敗・データ参照・データ更新）"
+      - name: target_entity
+        type: string
+        nullable: false
+        description: 対象エンティティ（E-xxx）
+      - name: target_id
+        type: string
+        nullable: false
+        description: 対象レコード ID（利用状況閲覧範囲判定の検証に使う）
+      - name: result
+        type: string
+        nullable: false
+        description: "結果（enum: 成功・拒否・失敗）"
+    primary_key:
+      - audit_id
+    foreign_keys: []
+    indexes: []
+    used_by:
+      - uc: 予約状況を参照する
+        operations:
+          - INSERT
+      - uc: 利用者の利用状況を参照する
+        operations:
+          - INSERT
+      - uc: 貸出履歴を参照する
+        operations:
+          - INSERT
+      - uc: 利用者を削除する
+        operations:
+          - INSERT
+      - uc: 利用者を登録する
+        operations:
+          - INSERT
+      - uc: 利用者を編集する
+        operations:
+          - INSERT
+      - uc: 利用者一覧を参照する
+        operations:
+          - INSERT
+      - uc: 延滞を判定する
+        operations:
+          - INSERT
+      - uc: 延滞一覧を参照する
+        operations:
+          - INSERT
+      - uc: 督促を送信する
+        operations:
+          - INSERT
+      - uc: リマインドを送信する
+        operations:
+          - INSERT
+      - uc: リマインド対象を抽出する
+        operations:
+          - INSERT
+      - uc: 書籍を検索する
+        operations:
+          - INSERT
+      - uc: 書籍詳細を参照する
+        operations:
+          - INSERT
+      - uc: 書籍を削除する
+        operations:
+          - INSERT
+      - uc: 書籍を登録する
+        operations:
+          - INSERT
+      - uc: 書籍を編集する
+        operations:
+          - INSERT
+      - uc: 書籍一覧を参照する
+        operations:
+          - INSERT
+      - uc: 予約を取り消す
+        operations:
+          - INSERT
+      - uc: 予約を登録する
+        operations:
+          - INSERT
+      - uc: 予約一覧を参照する
+        operations:
+          - INSERT
+      - uc: 貸出を登録する
+        operations:
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - INSERT
+      - uc: 返却通知を送信する
+        operations:
+          - INSERT
+      - uc: 人気書籍ランキングを参照する
+        operations:
+          - INSERT
+      - uc: 在庫状況一覧を参照する
+        operations:
+          - INSERT
+      - uc: 期間別貸出統計を参照する
+        operations:
+          - INSERT
+  - name: credentials
+    rdra_info: ""
+    description: 認証情報の永続化
+    columns:
+      - name: user_number
+        type: string
+        nullable: false
+        description: 利用者番号（E-003 と 1:1）
+      - name: password_hash
+        type: string
+        nullable: false
+        description: パスワードハッシュ（平文保持禁止。ソルト付きハッシュ）
+      - name: password_updated_at
+        type: datetime
+        nullable: false
+        description: パスワード最終更新日時（有効期限ポリシーの判定基準）
+      - name: failed_attempts
+        type: integer
+        nullable: false
+        description: 連続ログイン失敗回数
+      - name: locked_until
+        type: datetime
+        nullable: true
+        description: アカウントロック解除日時（未ロックは NULL）
+    primary_key:
+      - user_number
+    foreign_keys:
+      - columns:
+          - user_number
+        references:
+          table: users
+          columns:
+            - user_number
+        on_delete: RESTRICT
+    indexes: []
+    used_by: []
+  - name: users
+    rdra_info: 利用者
+    description: 利用者の現在状態の投影
+    columns:
+      - name: user_number
+        type: string
+        nullable: false
+        description: 利用者番号（司書が登録時に付与する一意の識別子）
+      - name: name
+        type: string
+        nullable: false
+        description: 氏名（個人情報。保管時暗号化対象 NFR E.6.1.1、テスト環境マスキング対象 NFR E.6.2.1）
+      - name: email
+        type: string
+        nullable: false
+        description: メールアドレス（通知の送信先。移行時に欠損を補完する NFR D.4.1.3。個人情報）
+      - name: phone
+        type: string
+        nullable: true
+        description: 電話番号（個人情報）
+      - name: address
+        type: string
+        nullable: true
+        description: 住所（個人情報）
+      - name: user_type
+        type: string
+        nullable: false
+        description: "利用者区分（enum: 司書・利用者）。RBAC のロール源泉（NFR E.5.2.1）"
+      - name: version
+        type: integer
+        nullable: false
+        description: 楽観ロック用バージョン
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: スナップショット最終更新日時。登録日・更新日は登録 / 属性変更イベントの occurred_at で管理する
+      - name: deleted
+        type: boolean
+        nullable: false
+        description: 削除イベントでtrue。通常参照はfalseに限定。
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 最初の登録イベントのoccurred_at。以後の編集で変更しない。
+    primary_key:
+      - user_number
+    foreign_keys: []
+    indexes: []
+    used_by:
+      - uc: 利用者の利用状況を参照する
+        operations:
+          - SELECT
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 利用者を登録する
+        operations:
+          - INSERT
+      - uc: 利用者を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 利用者一覧を参照する
+        operations:
+          - SELECT
+      - uc: 延滞一覧を参照する
+        operations:
+          - SELECT
+      - uc: 督促を送信する
+        operations:
+          - SELECT
+      - uc: リマインドを送信する
+        operations:
+          - SELECT
+      - uc: 予約を取り消す
+        operations:
+          - SELECT
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+      - uc: 予約一覧を参照する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+  - name: users_events
+    rdra_info: 利用者
+    description: 利用者の変更イベント。INSERTのみ。
+    columns:
+      - name: event_id
+        type: string
+        nullable: false
+        description: イベント識別子。新規追記時に生成するUUID。
+      - name: user_number
+        type: string
+        nullable: false
+        description: 対象利用者の識別子。
+      - name: version
+        type: integer
+        nullable: false
+        description: 対象集約の確定版。新規は1、変更ごとに1増加する。
+      - name: event_type
+        type: string
+        nullable: false
+        description: 発生した変更の種別。値とpayloadは当該UCのモデル操作を参照。
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: イベント確定時刻。UTCの時刻を保存する。
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 認証主体の利用者番号。日次・配信はサービス主体ID。
+      - name: request_key
+        type: string
+        nullable: false
+        description: operationとX-Idempotency-Keyの結合。日次・配信はTR-IDEMPの安定キー。
+      - name: request_hash
+        type: string
+        nullable: false
+        description: 本文・path・query・If-Match等の正規化SHA-256。TR-IDEMPを参照。
+      - name: payload
+        type: text
+        nullable: false
+        description: イベント別の変更値をJSONで保持
+      - name: response
+        type: text
+        nullable: false
+        description: 再送時のHTTP statusとbodyをJSONで保持
+    primary_key:
+      - event_id
+    foreign_keys: []
+    indexes:
+      - name: users_events_version
+        columns:
+          - user_number
+          - version
+        unique: true
+      - name: users_events_request
+        columns:
+          - actor_id
+          - request_key
+          - user_number
+        unique: true
+    used_by:
+      - uc: 利用者を削除する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 利用者を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 利用者を編集する
+        operations:
+          - SELECT
+          - INSERT
+external_tables: []

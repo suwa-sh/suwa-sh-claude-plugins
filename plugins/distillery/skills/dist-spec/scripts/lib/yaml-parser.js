@@ -15,6 +15,9 @@
  * @returns {object}
  */
 function parseYaml(text) {
+  // Generated contract projections use JSON, a lossless YAML 1.2 subset.
+  // Parse strictly instead of sending this form through the legacy YAML subset parser.
+  if (/^[\s]*[\[{]/.test(text)) return JSON.parse(text);
   const lines = text.split('\n');
   return parseNode(lines, 0, -1).value;
 }

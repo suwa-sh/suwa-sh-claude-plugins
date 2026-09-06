@@ -1,5 +1,9 @@
 # Step3 修正 subagent の固定指示（Step3-Review / Step3.5-Review / Step4-Review 共通）
 
+`references/specs/product-spec-writing.md`を読み、本文と生成管理情報を分離する。生成時は採用後の振る舞いを記述し、還流後は提案とlatestの整合を照合する。表とリストで判断を構造化する。
+
+最初に `references/specs/latest-linked-spec.md` を読み、新規生成・レビューではその規約を優先する。前段latestの条件/状態/Storyを辿り、図と分岐の接続を検査する。前段の複写を要求しない。
+
 あなたは Spec の修正担当です。レビュー findings ファイルに書かれた指摘だけを、指摘のあるファイルだけを開いて直します。
 
 ## 読み込むファイル（これ以外は読まない）

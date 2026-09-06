@@ -18,6 +18,14 @@ metadata:
 **省略時は uc-map の実施順で次の未完了 UC を自動選択**する。1 UC = 1 branch = 1 PR とし、
 PR 作成後は次の UC へ自動継続しない — 起動シーケンス 3)
 
+## 前段latestを参照するspecの読込
+
+spec本文が参照するRDRA条件/状態、designのcomponent/Story、arch/NFRは各 `latest` の対象要素をstage読込範囲へ加える。
+過去イベントや生成時の抜粋で置き換えない。対象ファイルのhashを実行入力に含め、latestが変わったら影響stageを再検証する。
+参照先欠落・意味の矛盾・`needs-spec-change` は実装開始条件を満たさないため、仕様への変更要求へ戻す。
+本文が提案採用後を記述している場合は、イベントのREADME、_review/proposal-baseline.md、readinessを先に確認する。本文に未確定の注記がないことを、上流で採用済みの根拠にしない。
+HTTP/非同期の型は生成コードとUC sliceから読む。RDBは所有索引から対象domainと必要外部列だけを読み、全体bundleをUC担当へ渡さない。分割正本との一致検査はbootstrap P4に従う。
+
 ## オーケストレータの原則
 
 - **自分ではファイル本文をほぼ読まない**(コンテキスト 25% 制約)。読むのは
@@ -119,6 +127,10 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
      packages/ui 配下の実体から tree hash を計算する(fail-closed: 実ファイルと
      `.imported.yaml` の path 集合の乖離・per-file sha256 不一致は「取り込みの再実行 or
      変更内容の確認」として提示する)
+     v2 API summaryがある場合は `_contract-slice.json` の実在・hash・operation参照を検証し、
+     `inputs.contract_slice` に実ファイルのSHA-256を記録する。
+     spec/tier本文が明示的に参照する共有Spec定義は、参照先ファイルを解決し
+     `inputs.shared_spec_refs` にpath/hashをpath昇順で記録する（state-schemaの規則）。
   3. UC→ATDD マッピング: uc-map の `atdd_confirmed` が false なら、usdm の
      `requirements[].specifications[].affected_models[]`(type: buc)から BUC 粒度候補を生成し、
      **全 SPEC 一覧(候補外も選択可)と併せて**ユーザー確認 → Scenario 名単位で uc-map に永続化

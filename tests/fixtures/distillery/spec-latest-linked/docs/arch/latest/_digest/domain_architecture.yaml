@@ -1,0 +1,397 @@
+# digest of arch/latest/arch-design.yaml section domain_architecture (L20-414); source_sha256: 46834e61c919f9cd983aae0b6e149c7cc5b7ac1e448018bbd37c400fb295a321
+# 派生物。正本は arch-design.yaml。編集しない
+domain_architecture:
+  subdomains:
+    - id: "SD-001"
+      name: "蔵書貸出・予約"
+      type: "core"
+      investment_policy: "最優先で深いモデリングと継続的リファクタリングに投資。チーム最強の人材を配置"
+      related_buc_ids:
+        - "BUC-004"
+        - "BUC-005"
+        - "BUC-006"
+        - "BUC-010"
+        - "BUC-011"
+      reason: "システム概要が「貸出・返却・予約を Web 画面から行えるようにする」ことを本システムの目的として明示しており、貸出可否判定・返却期限自動設定・予約順位/取置きという業務ルールの密度が最も高い。図書館サービスの価値の中心であり、外部調達で置き換えられない。ただしシステム概要に「競争優位」「差別化」の明示的キーワードは無いため経営判断の確認が必要"
+      source_model: "システム概要: 貸出・返却・予約の一元管理, BUC: 書籍を貸し出すフロー/書籍を返却するフロー/書籍を予約するフロー/貸出履歴を確認するフロー/予約状況を確認するフロー, 条件: 貸出可否条件/予約可否条件/予約順位決定条件"
+      confidence: "medium"
+    - id: "SD-002"
+      name: "蔵書目録"
+      type: "supporting"
+      investment_policy: "good enough な品質で安定運用。標準的なフレームワーク採用"
+      related_buc_ids:
+        - "BUC-001"
+        - "BUC-003"
+      reason: "書籍マスタの登録・編集・削除と検索は貸出・予約業務の前提となる基盤だが、それ自体は差別化要因ではない。資料種別による将来の電子書籍対応の拡張点を持つため、標準的な CRUD + 検索で十分"
+      source_model: "BUC: 蔵書を管理するフロー/書籍を検索するフロー, 情報: 書籍, 条件: 書籍検索条件/蔵書削除可否条件/資料種別利用可否条件"
+      confidence: "medium"
+    - id: "SD-003"
+      name: "利用者管理"
+      type: "supporting"
+      investment_policy: "good enough な品質で安定運用。標準的なフレームワーク採用"
+      related_buc_ids:
+        - "BUC-002"
+      reason: "利用者の登録・編集・削除とアカウント役割管理は貸出・予約の前提条件（利用者登録ポリシー）を支える業務。中核業務を支援するが差別化要因ではない"
+      source_model: "BUC: 利用者を管理するフロー, 情報: 利用者/利用者アカウント, 条件: 利用者削除可否条件/個人情報参照可否条件"
+      confidence: "medium"
+    - id: "SD-004"
+      name: "通知配信"
+      type: "generic"
+      investment_policy: "外部 SaaS / ライブラリ採用、自作回避。コスト効率優先"
+      related_buc_ids:
+        - "BUC-007"
+        - "BUC-008"
+        - "BUC-009"
+      reason: "取置き案内・返却期限リマインド・延滞督促のメール送信は外部システム「メール配信サービス」の機能カテゴリ（メール）と一致する汎用機能。送信基盤は自作せず外部サービスを利用する。ただし通知対象の判定条件（取置き通知対象条件・リマインド通知対象条件・督促通知対象条件）は業務ルールであり、この点は要確認"
+      source_model: "外部システム: メール配信サービス, BUC: 予約者へ通知するフロー/返却期限をリマインドするフロー/延滞を督促するフロー, 情報: 通知"
+      confidence: "high"
+    - id: "SD-005"
+      name: "蔵書分析"
+      type: "supporting"
+      investment_policy: "good enough な品質で安定運用。標準的なフレームワーク採用"
+      related_buc_ids:
+        - "BUC-012"
+        - "BUC-013"
+      reason: "在庫状況・人気書籍ランキング・期間別貸出統計は司書の選書・運用改善を支援する派生情報であり、貸出業務の実績から導出される。中核業務を支援するが差別化要因ではない"
+      source_model: "BUC: 在庫状況を把握するフロー/貸出統計を把握するフロー, 情報: 統計レポート, 条件: 在庫状況集計条件/貸出統計集計条件"
+      confidence: "medium"
+  bounded_contexts:
+    - id: "BC-001"
+      name: "蔵書コンテキスト"
+      ubiquitous_language:
+        - term: "書籍"
+          definition: "図書館が所蔵する資料の目録上の1件。書籍ID で一意に識別し、タイトル・著者・ISBN・出版社・ジャンル・資料種別を持つ。貸出コンテキストでの「貸出対象物」、分析コンテキストでの「集計軸」とは関心が異なる"
+        - term: "書籍状態"
+          definition: "蔵書1冊の在庫状況（在庫あり／貸出中／予約待ち）。貸出可否判定・検索結果の在庫表示・在庫集計の基準となる、蔵書コンテキストが唯一の更新責任を持つ状態"
+        - term: "資料種別"
+          definition: "紙書籍／電子書籍の区分。初期リリースでは紙書籍のみ有効で、将来の電子書籍対応に備えた拡張点"
+        - term: "除籍"
+          definition: "蔵書から書籍を外すこと。在庫ありかつ有効な予約が無い場合に限り許可される"
+      related_subdomain_id: "SD-002"
+      owned_entity_ids:
+        - "E-001"
+      owned_buc_ids:
+        - "BUC-001"
+        - "BUC-003"
+      team_ownership: null
+      reason: "情報.tsv のコンテキスト「蔵書管理」に対応。書籍と書籍状態の更新責任を単一の境界に閉じることで、貸出・予約・分析から在庫の解釈が分岐するのを防ぐ。主アクターは司書（登録・編集・削除）と利用者（検索・在庫照会）"
+      source_model: "情報: 書籍（コンテキスト=蔵書管理）, 状態: 書籍状態, BUC: 蔵書を管理するフロー/書籍を検索するフロー, 条件: 蔵書削除可否条件/書籍検索条件/返却後状態決定条件"
+      confidence: "medium"
+    - id: "BC-002"
+      name: "利用者コンテキスト"
+      ubiquitous_language:
+        - term: "利用者"
+          definition: "図書館の利用登録を行った人。利用者番号で一意に識別し、氏名・連絡先・利用者区分を持つ。貸出コンテキストでの「貸出責任者」、通知コンテキストでの「宛先」とは関心が異なる"
+        - term: "利用者アカウント"
+          definition: "ログイン済み操作者の識別単位。役割（司書／利用者）と有効フラグを持ち、本人限定参照の判定に使う"
+        - term: "利用者状態"
+          definition: "登録済み／取引進行中の区分。進行中の貸出・予約がある間は取引進行中となり、退会（削除）できない"
+        - term: "利用者区分"
+          definition: "一般／学生／団体。貸出可能冊数や貸出期間などの利用条件を決める属性"
+      related_subdomain_id: "SD-003"
+      owned_entity_ids:
+        - "E-002"
+        - "E-003"
+        - "E-901"
+      owned_buc_ids:
+        - "BUC-002"
+      team_ownership: null
+      reason: "情報.tsv のコンテキスト「利用者管理」に対応。個人情報（氏名・メールアドレス）と認証情報（ログインID・役割）を単一の境界に集約し、他コンテキストからは利用者番号での参照に限定してデータ感度を局所化する"
+      source_model: "情報: 利用者/利用者アカウント（コンテキスト=利用者管理）, 状態: 利用者状態, BUC: 利用者を管理するフロー, アクター: 司書/利用者, 条件: 利用者削除可否条件/個人情報参照可否条件"
+      confidence: "medium"
+    - id: "BC-003"
+      name: "貸出コンテキスト"
+      ubiquitous_language:
+        - term: "貸出"
+          definition: "どの利用者にどの書籍をいつ貸したかの記録1件。貸出ID で一意に識別し、返却期限と返却日を持つ"
+        - term: "返却期限"
+          definition: "貸出日に利用者区分に対応する貸出期間区分の日数を加算して自動設定される期日。リマインド・督促の判定基準"
+        - term: "延滞"
+          definition: "返却期限を超過した貸出の状態。督促メールの送信対象となり、返却登録で解消する"
+        - term: "貸出履歴"
+          definition: "返却済みとなった過去の貸出。利用者本人の照会対象であり、貸出統計の集計対象として保持される"
+      related_subdomain_id: "SD-001"
+      owned_entity_ids:
+        - "E-004"
+      owned_buc_ids:
+        - "BUC-004"
+        - "BUC-005"
+        - "BUC-010"
+      team_ownership: null
+      reason: "情報.tsv のコンテキスト「貸出管理」に対応。貸出状態（貸出中／延滞／返却済み）が予約状態・書籍状態と独立したライフサイクルを持ち、貸出・返却・履歴照会の UC 群が同一エンティティに閉じる"
+      source_model: "情報: 貸出（コンテキスト=貸出管理）, 状態: 貸出状態, BUC: 書籍を貸し出すフロー/書籍を返却するフロー/貸出履歴を確認するフロー, 条件: 貸出可否条件/返却期限設定条件"
+      confidence: "medium"
+    - id: "BC-004"
+      name: "予約コンテキスト"
+      ubiquitous_language:
+        - term: "予約"
+          definition: "貸出中の書籍に対する利用者の順番待ちの申込1件。予約ID で一意に識別し、申込日時・予約順位・取置き状況を持つ"
+        - term: "予約順位"
+          definition: "同一書籍への予約を申込日時の昇順で並べた順番。貸出済み／キャンセルの予約は対象から外し、後続を繰り上げる"
+        - term: "取置き"
+          definition: "予約順1位の利用者のために返却された書籍を確保している状態。取置き期限までに来館がなければキャンセルし次順位へ引き継ぐ"
+      related_subdomain_id: "SD-001"
+      owned_entity_ids:
+        - "E-005"
+      owned_buc_ids:
+        - "BUC-006"
+        - "BUC-011"
+      team_ownership: null
+      reason: "情報.tsv のコンテキスト「予約管理」に対応。予約順位の決定と取置きの引き継ぎという固有の業務ルールを持ち、状態.tsv でも予約状態が独立したライフサイクル（予約中／取置き中／貸出済み／キャンセル）を形成する"
+      source_model: "情報: 予約（コンテキスト=予約管理）, 状態: 予約状態, BUC: 書籍を予約するフロー/予約状況を確認するフロー, 条件: 予約可否条件/重複予約禁止条件/予約順位決定条件/取置き中書籍貸出条件"
+      confidence: "medium"
+    - id: "BC-005"
+      name: "通知コンテキスト"
+      ubiquitous_language:
+        - term: "通知"
+          definition: "取置き案内・返却期限リマインド・延滞督促のメール送信1件の記録。送信待ち／送信済み／送信失敗で送信進行を管理し、重複送信防止と未達追跡に使う"
+        - term: "通知種別"
+          definition: "取置き案内／返却期限リマインド／延滞督促。送信の契機と文面を使い分ける区分"
+        - term: "通知タイミング区分"
+          definition: "期限前リマインド／期限当日／期限超過督促。いつ送るかの判定基準となる区分"
+        - term: "宛先"
+          definition: "通知の送信先メールアドレス。利用者コンテキストの連絡先を送信時点で解決した値"
+      related_subdomain_id: "SD-004"
+      owned_entity_ids:
+        - "E-006"
+        - "E-902"
+      owned_buc_ids:
+        - "BUC-007"
+        - "BUC-008"
+        - "BUC-009"
+      team_ownership: null
+      reason: "情報.tsv のコンテキスト「通知管理」に対応。通知状態が送信の進行のみを扱い、貸出・予約のライフサイクルから独立している。タイマー駆動（返却期限接近判定日次タイマー／返却期限超過判定日次タイマー）で起動する非同期領域として境界を切る"
+      source_model: "情報: 通知（コンテキスト=通知管理）, 状態: 通知状態, BUC: 予約者へ通知するフロー/返却期限をリマインドするフロー/延滞を督促するフロー, 外部システム: メール配信サービス, 条件: 取置き通知対象条件/リマインド通知対象条件/督促通知対象条件"
+      confidence: "medium"
+    - id: "BC-006"
+      name: "蔵書分析コンテキスト"
+      ubiquitous_language:
+        - term: "統計レポート"
+          definition: "在庫状況・人気書籍ランキング・期間別貸出統計の集計結果1件。集計中／作成済み／実績なしで作成進行を管理する"
+        - term: "集計期間区分"
+          definition: "日次／月次／年次。貸出実績とランキングを同一粒度で比較するための期間単位"
+        - term: "在庫状況区分"
+          definition: "分析文脈における書籍状態の集計軸（在庫あり／貸出中／予約待ち）。蔵書コンテキストの「書籍状態」を読み取り専用に射影したもの"
+      related_subdomain_id: "SD-005"
+      owned_entity_ids:
+        - "E-007"
+      owned_buc_ids:
+        - "BUC-012"
+        - "BUC-013"
+      team_ownership: null
+      reason: "情報.tsv のコンテキスト「分析管理」に対応。書籍と貸出の実績を読み取り専用に集計する派生情報の領域であり、更新責任を持たないため独立した BC として読み取りモデルを分離できる"
+      source_model: "情報: 統計レポート（コンテキスト=分析管理）, 状態: 統計レポート状態, BUC: 在庫状況を把握するフロー/貸出統計を把握するフロー, 条件: 在庫状況集計条件/貸出統計集計条件"
+      confidence: "medium"
+    - id: "BC-007"
+      name: "メール配信コンテキスト"
+      ubiquitous_language:
+        - term: "メール送信依頼"
+          definition: "外部メール配信サービスへ渡す送信要求。宛先アドレスと本文を持つ、外部サービス側の語彙"
+        - term: "配信結果"
+          definition: "外部メール配信サービスが返す送信可否。通知コンテキストの送信済み／送信失敗へ翻訳される"
+      related_subdomain_id: "SD-004"
+      owned_entity_ids: []
+      owned_buc_ids: []
+      team_ownership: null
+      reason: "外部システム「メール配信サービス」を独立 BC として明示し、コンテキストマップ上で統合パターン（ACL）を宣言するためのプレースホルダ。自システムのエンティティ・BUC は所有しない"
+      source_model: "外部システム: メール配信サービス, BUC: 予約者へ通知するフロー/返却期限をリマインドするフロー/延滞を督促するフロー（イベント: 取置き案内メール送信依頼/返却期限リマインドメール送信依頼/延滞督促メール送信依頼）"
+      confidence: "medium"
+  context_map:
+    - id: "CM-001"
+      from_bc_id: "BC-003"
+      to_bc_id: "BC-001"
+      pattern: "ohs"
+      direction: "downstream"
+      translator_description: "蔵書コンテキストが「在庫状況照会」「貸出時の在庫あり→貸出中への状態変更」「返却時の状態更新」を公開インタフェースとして提供し、貸出コンテキストはそれを利用する。書籍状態の更新責任は蔵書側に残す"
+      integration_events: []
+      reason: "蔵書コンテキストは貸出・予約・分析の3つの下流を持つため、上流に OHS + Published Language を置いて在庫参照/更新の契約を一本化する"
+      source_model: "状態: 書籍状態（貸出を登録する→貸出中）, 条件: 貸出可否条件/返却後状態決定条件, BUC: 書籍を貸し出すフロー/書籍を返却するフロー"
+      confidence: "medium"
+    - id: "CM-002"
+      from_bc_id: "BC-004"
+      to_bc_id: "BC-001"
+      pattern: "ohs"
+      direction: "downstream"
+      translator_description: "予約コンテキストが蔵書コンテキストの公開インタフェースで書籍状態を参照して予約可否（貸出中のみ受付）を判定し、取置き成立時に予約待ちへの状態変更を依頼する"
+      integration_events: []
+      reason: "同じ蔵書コンテキストの公開契約を予約側も利用する。下流が複数のため OHS + Published Language を維持する"
+      source_model: "条件: 予約可否条件/返却後状態決定条件, 状態: 書籍状態（予約待ち）, BUC: 書籍を予約するフロー"
+      confidence: "medium"
+    - id: "CM-003"
+      from_bc_id: "BC-003"
+      to_bc_id: "BC-004"
+      pattern: "customer_supplier"
+      direction: "downstream"
+      translator_description: "返却受付時に貸出コンテキストが予約コンテキストへ「対象書籍に有効な予約があるか」を問い合わせ、取置き中の予約に対する貸出成立を通知する。予約順位の解釈は予約側に閉じ、貸出側は可否と対象利用者番号のみ受け取る"
+      integration_events: []
+      reason: "返却時取置き優先ポリシーと取置き中書籍貸出条件で貸出と予約が双方向に関わるが、順位ロジックの所有者は予約側であるため貸出を顧客、予約を供給者とする Customer-Supplier とする"
+      source_model: "条件: 返却後状態決定条件/取置き中書籍貸出条件, 状態: 予約状態（取置き中→貸出済み）, BUC: 書籍を返却するフロー/書籍を貸し出すフロー"
+      confidence: "medium"
+    - id: "CM-004"
+      from_bc_id: "BC-003"
+      to_bc_id: "BC-002"
+      pattern: "ohs"
+      direction: "downstream"
+      translator_description: "利用者コンテキストが「利用者番号による貸出対象利用者の特定」「利用者区分の提供」を公開インタフェースとして提供する。貸出コンテキストは利用者番号のみを保持し、氏名・連絡先は保持しない"
+      integration_events: []
+      reason: "利用者コンテキストは貸出・予約・通知の3つの下流を持つ。個人情報を上流に閉じ込め、下流には識別子と利用条件だけを渡すため OHS とする"
+      source_model: "情報: 利用者/貸出（利用者番号）, 条件: 貸出可否条件/返却期限設定条件（利用者区分）, BUC: 書籍を貸し出すフロー"
+      confidence: "medium"
+    - id: "CM-005"
+      from_bc_id: "BC-004"
+      to_bc_id: "BC-002"
+      pattern: "ohs"
+      direction: "downstream"
+      translator_description: "予約コンテキストが利用者コンテキストの公開インタフェースで登録済み利用者を確認し、予約に利用者番号のみを保持する"
+      integration_events: []
+      reason: "利用者登録ポリシーにより予約は登録済み利用者に限定される。個人情報の局所化のため CM-004 と同じ OHS 契約を利用する"
+      source_model: "情報: 利用者/予約（利用者番号）, 状態: 利用者状態（予約を登録する→取引進行中）, BUC: 書籍を予約するフロー"
+      confidence: "medium"
+    - id: "CM-006"
+      from_bc_id: "BC-005"
+      to_bc_id: "BC-003"
+      pattern: "customer_supplier"
+      direction: "downstream"
+      translator_description: "通知コンテキストが貸出コンテキストから「返却期限接近の貸出」「延滞対象の貸出」を取得し、通知1件へ翻訳する。延滞への状態遷移そのものは貸出コンテキストが行う"
+      integration_events: []
+      reason: "リマインド・督促の対象抽出は貸出データに依存するが、通知の送信進行は通知側に閉じる。通知が顧客、貸出が供給者"
+      source_model: "条件: リマインド通知対象条件/督促通知対象条件, 状態: 貸出状態（貸出中／延滞）, BUC: 返却期限をリマインドするフロー/延滞を督促するフロー"
+      confidence: "medium"
+    - id: "CM-007"
+      from_bc_id: "BC-005"
+      to_bc_id: "BC-004"
+      pattern: "customer_supplier"
+      direction: "downstream"
+      translator_description: "通知コンテキストが予約コンテキストから「予約順1位かつ予約中の予約」を取得して取置き案内を送信し、送信成功を予約側へ返して取置き中への遷移を促す"
+      integration_events: []
+      reason: "取置き通知対象条件は予約順位ロジックに依存するため、判定の所有者は予約側。通知は対象を受け取って送信のみ担う"
+      source_model: "条件: 取置き通知対象条件/予約順位決定条件, 状態: 予約状態（予約中→取置き中）, BUC: 予約者へ通知するフロー"
+      confidence: "medium"
+    - id: "CM-008"
+      from_bc_id: "BC-005"
+      to_bc_id: "BC-002"
+      pattern: "ohs"
+      direction: "downstream"
+      translator_description: "通知コンテキストが利用者コンテキストの公開インタフェースで宛先メールアドレスを解決し、通知レコードには送信時点の宛先を記録する"
+      integration_events: []
+      reason: "連絡先は個人情報であり利用者コンテキストが唯一の正データを持つ。下流には送信時点の宛先のみを渡す"
+      source_model: "情報: 利用者（連絡先）/通知（宛先メールアドレス）, BUC: 予約者へ通知するフロー/返却期限をリマインドするフロー/延滞を督促するフロー"
+      confidence: "medium"
+    - id: "CM-009"
+      from_bc_id: "BC-006"
+      to_bc_id: "BC-001"
+      pattern: "ohs"
+      direction: "downstream"
+      translator_description: "蔵書分析コンテキストが蔵書コンテキストの公開インタフェースから書籍と書籍状態を読み取り専用で取得し、在庫状況区分という集計軸へ射影する"
+      integration_events: []
+      reason: "分析は更新責任を持たない読み取り専用の下流。上流の公開契約をそのまま利用する"
+      source_model: "条件: 在庫状況集計条件, 情報: 書籍/統計レポート, BUC: 在庫状況を把握するフロー"
+      confidence: "medium"
+    - id: "CM-010"
+      from_bc_id: "BC-006"
+      to_bc_id: "BC-003"
+      pattern: "ohs"
+      direction: "downstream"
+      translator_description: "蔵書分析コンテキストが貸出コンテキストの公開インタフェースから返却済みを含む貸出実績を読み取り専用で取得し、貸出件数・書籍別貸出回数へ集計する"
+      integration_events: []
+      reason: "貸出統計は貸出実績の派生情報。更新責任を持たない読み取り専用の下流として OHS を利用する"
+      source_model: "条件: 貸出統計集計条件, 状態: 貸出状態（返却済みを集計対象として保持）, BUC: 貸出統計を把握するフロー"
+      confidence: "medium"
+    - id: "CM-011"
+      from_bc_id: "BC-005"
+      to_bc_id: "BC-007"
+      pattern: "acl"
+      direction: "downstream"
+      translator_description: "通知コンテキストが外部メール配信サービスの API モデル（メール送信依頼・配信結果）を ACL で隔離し、自身の通知状態（送信待ち／送信済み／送信失敗）へ翻訳する。外部障害時の再送は通知側の送信失敗→送信待ちの遷移として表現する"
+      integration_events: []
+      reason: "外部システム連携であり、外部 API のモデル変更が通知の業務モデルへ波及しないよう ACL で隔離する。送信失敗の再送・未達追跡という自ドメインの関心を外部モデルから守る"
+      source_model: "外部システム: メール配信サービス, 状態: 通知状態（送信失敗→送信待ち）, BUC: 予約者へ通知するフロー/返却期限をリマインドするフロー/延滞を督促するフロー"
+      confidence: "high"
+  aggregate_hypotheses:
+    - id: "AG-001"
+      bounded_context_id: "BC-001"
+      root_entity_id: "E-001"
+      member_entity_ids: []
+      invariants:
+        - "書籍状態が「在庫あり」であり、かつ予約状態が「予約中」「取置き中」の予約が存在しない場合に限り削除を許可する"
+        - "資料種別が「紙書籍」の蔵書のみ初期リリースで登録・貸出の対象とし、「電子書籍」は登録しない"
+        - "返却受付時に有効な予約（予約中）が存在する場合は書籍状態を「予約待ち」とし、存在しない場合は「在庫あり」とする"
+      note: "仮説。最終確定は dist-spec または ddd-tactical-implementation で行う"
+      source_model: "情報: 書籍, 状態: 書籍状態, 条件: 蔵書削除可否条件/資料種別利用可否条件/返却後状態決定条件"
+      confidence: "low"
+    - id: "AG-002"
+      bounded_context_id: "BC-002"
+      root_entity_id: "E-002"
+      member_entity_ids:
+        - "E-003"
+      invariants:
+        - "貸出状態が「貸出中」「延滞」の貸出、および予約状態が「予約中」「取置き中」の予約が存在しない場合に限り利用者を削除できる"
+        - "貸出・予約は登録済み利用者に限定する"
+        - "貸出履歴・予約状況の照会はログイン中の利用者本人に紐づくもののみを対象とする"
+      note: "仮説。最終確定は dist-spec または ddd-tactical-implementation で行う。利用者アカウントを別集約に分離する案もある（認証情報のライフサイクルが利用者と異なる場合）"
+      source_model: "情報: 利用者/利用者アカウント, 状態: 利用者状態, 条件: 利用者削除可否条件/個人情報参照可否条件"
+      confidence: "low"
+    - id: "AG-003"
+      bounded_context_id: "BC-003"
+      root_entity_id: "E-004"
+      member_entity_ids: []
+      invariants:
+        - "書籍状態が「在庫あり」であり、かつ貸出先が登録済みで利用可能な利用者であるときに限り貸出を許可する"
+        - "貸出記録の作成時に、貸出日を起点として利用者区分に対応する貸出期間区分の日数を加算した日を返却期限として自動設定する"
+        - "貸出状態が「返却済み」になった時点で督促を停止し、以降の状態遷移を行わない"
+      note: "仮説。最終確定は dist-spec または ddd-tactical-implementation で行う"
+      source_model: "情報: 貸出, 状態: 貸出状態, 条件: 貸出可否条件/返却期限設定条件/督促通知対象条件"
+      confidence: "low"
+    - id: "AG-004"
+      bounded_context_id: "BC-004"
+      root_entity_id: "E-005"
+      member_entity_ids: []
+      invariants:
+        - "書籍状態が「貸出中」の書籍に対してのみ予約を受け付ける"
+        - "同一利用者が同一書籍に対して「予約中」または「取置き中」の予約を既に持つ場合、再度の予約申込を受け付けない"
+        - "同一書籍への予約は申込日時の昇順で順位を付与し、「貸出済み」「キャンセル」の予約は順位対象から除外して後続を繰り上げる"
+        - "予約状態が「取置き中」の書籍は、取置き対象である予約順1位の利用者に対してのみ貸出を許可する"
+      note: "仮説。最終確定は dist-spec または ddd-tactical-implementation で行う。同一書籍の予約列全体を1集約（書籍単位の予約待ち行列）とする案は強整合と競合の観点で要検討"
+      source_model: "情報: 予約, 状態: 予約状態, 条件: 予約可否条件/重複予約禁止条件/予約順位決定条件/取置き中書籍貸出条件"
+      confidence: "low"
+    - id: "AG-005"
+      bounded_context_id: "BC-005"
+      root_entity_id: "E-006"
+      member_entity_ids: []
+      invariants:
+        - "メール配信サービスへの送信が成功した通知は送信済みとし、同一対象への重複送信を抑止する"
+        - "書籍状態が「予約待ち」となった書籍について、予約順1位かつ予約中の予約1件のみを取置き通知の対象とする"
+        - "貸出状態が「返却済み」の貸出はリマインド・督促の対象外とする"
+      note: "仮説。最終確定は dist-spec または ddd-tactical-implementation で行う"
+      source_model: "情報: 通知, 状態: 通知状態, 条件: 取置き通知対象条件/リマインド通知対象条件/督促通知対象条件"
+      confidence: "low"
+    - id: "AG-006"
+      bounded_context_id: "BC-006"
+      root_entity_id: "E-007"
+      member_entity_ids: []
+      invariants:
+        - "蔵書全件を書籍状態（在庫あり／貸出中／予約待ち）で区分し、区分ごとの件数と書籍一覧を集計する"
+        - "対象期間に貸出実績が存在しない場合は「実績なし」として扱い、作成済みとしない"
+      note: "仮説。最終確定は dist-spec または ddd-tactical-implementation で行う。集計明細は書籍と貸出から導出する読み取りモデルであり、集約として保持するか都度算出するかは Part 3（データ）と要調整"
+      source_model: "情報: 統計レポート, 状態: 統計レポート状態, 条件: 在庫状況集計条件/貸出統計集計条件"
+      confidence: "low"
+  diagram_mermaid: |
+    graph LR
+      BC1["蔵書コンテキスト"]
+      BC2["利用者コンテキスト"]
+      BC3["貸出コンテキスト"]
+      BC4["予約コンテキスト"]
+      BC5["通知コンテキスト"]
+      BC6["蔵書分析コンテキスト"]
+      BC7["メール配信コンテキスト"]
+      BC3 -->|OHS+PL| BC1
+      BC4 -->|OHS+PL| BC1
+      BC3 -->|Customer-Supplier| BC4
+      BC3 -->|OHS+PL| BC2
+      BC4 -->|OHS+PL| BC2
+      BC5 -->|Customer-Supplier| BC3
+      BC5 -->|Customer-Supplier| BC4
+      BC5 -->|OHS+PL| BC2
+      BC6 -->|OHS+PL| BC1
+      BC6 -->|OHS+PL| BC3
+      BC5 -->|ACL| BC7

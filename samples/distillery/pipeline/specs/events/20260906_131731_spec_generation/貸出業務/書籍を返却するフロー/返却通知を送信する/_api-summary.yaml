@@ -1,0 +1,51 @@
+{
+  "async_events": [
+    {
+      "channel": "#/channels/return-notification",
+      "contract_ref": "asyncapi#/operations/publishReturnNotification",
+      "direction": "publish",
+      "kind": "asyncapi",
+      "name": "publishReturnNotification",
+      "operation_id": "publishReturnNotification",
+      "summary": "publishReturnNotification",
+      "tier": "tier-backend-api"
+    },
+    {
+      "channel": "#/channels/return-notification",
+      "contract_ref": "asyncapi#/operations/consumeReturnNotification",
+      "direction": "subscribe",
+      "kind": "asyncapi",
+      "name": "consumeReturnNotification",
+      "operation_id": "consumeReturnNotification",
+      "summary": "consumeReturnNotification",
+      "tier": "tier-worker"
+    }
+  ],
+  "buc": "書籍を返却するフロー",
+  "business": "貸出業務",
+  "consumes": [],
+  "contract_sha256": "af1917cbdb896ddfb5acbb95ea184014f616d7e4bd7638537398f8a57f14d1a6",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1reservations~1{reservation_id}~1notifications/post",
+      "kind": "openapi",
+      "method": "POST",
+      "operation_id": "requestReturnNotification",
+      "path": "/staff/reservations/{reservation_id}/notifications",
+      "summary": "返却通知を送信する",
+      "tier": "tier-backend-api"
+    },
+    {
+      "contract_ref": "openapi#/paths/~1staff~1loans~1{loan_id}~1notification-status/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getReturnNotificationStatus",
+      "path": "/staff/loans/{loan_id}/notification-status",
+      "summary": "返却通知を送信するの入力・確認データ取得",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "返却通知を送信する"
+}

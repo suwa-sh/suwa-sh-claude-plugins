@@ -1,0 +1,40 @@
+post:
+  description: 貸出記録を作成する（司書ロール限定・冪等キー必須）。業務分岐は docs/rdra/latest/条件.tsv の貸出可否条件・取置き中書籍貸出条件・返却期限設定条件を参照する。CR001（期間日数と利用者区分対応）、CR002（予約待ちと取置き優先）、CR003（利用可能状態）が未確定のdraft。状態遷移は
+    docs/rdra/latest/状態.tsv の貸出・書籍・利用者・予約状態を参照し、ここでは再定義しない。
+  operationId: createLoan
+  parameters:
+  - $ref: ../components/parameters/IdempotencyKeyHeader.yaml
+  requestBody:
+    content:
+      application/json:
+        schema:
+          $ref: ../components/schemas/CreateLoanRequest.yaml
+    required: true
+  responses:
+    '201':
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/LoanResponse.yaml
+      description: 登録された貸出
+      headers:
+        Location:
+          description: 作成された貸出リソースの URI
+          schema:
+            format: uri-reference
+            type: string
+    '400':
+      $ref: ../components/responses/BadRequest.yaml
+    '401':
+      $ref: ../components/responses/Unauthorized.yaml
+    '403':
+      $ref: ../components/responses/Forbidden.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+    '409':
+      $ref: ../components/responses/BusinessRuleViolation.yaml
+    '503':
+      $ref: ../components/responses/TemporarilyUnavailable.yaml
+  summary: 貸出を登録する
+  tags:
+  - loans

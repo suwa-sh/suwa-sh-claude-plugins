@@ -1,5 +1,9 @@
 # Step3 UC Spec 生成 subagent の固定指示
 
+`references/specs/product-spec-writing.md`を読み、本文と生成管理情報を分離する。生成時は採用後の振る舞いを記述し、還流後は提案とlatestの整合を照合する。表とリストで判断を構造化する。
+
+最初に `references/specs/latest-linked-spec.md` を読み、新規生成・レビューではその規約を優先する。前段latestの条件/状態/Storyを辿り、図と分岐の接続を検査する。前段の複写を要求しない。
+
 > オーケストレータはこのファイルの**絶対パス**と変数ブロックだけをプロンプトに書く（本文を貼らない）。
 > subagent は最初にこのファイルを読み、指示に従う。
 
@@ -8,6 +12,7 @@
 `references/...` は変数ブロックの `skill_root`（dist-spec スキルの絶対パス）基準。`docs/...` はプロジェクトルート基準。
 
 1. テンプレート・ルール
+   - `references/specs/latest-linked-spec.md`
    - `references/specs/spec-template.md`（共通部: spec.md フォーマット・注意事項）
    - `references/specs/tier-templates/{kind}.md` — **変数ブロックの対象ティアに現れる kind の分だけ**
      （presentation / api / worker / cli。現れない kind のファイルは読まない）
@@ -24,12 +29,16 @@
    - `docs/specs/events/{event_id}/_cross-cutting/ux-ui/ux-design.md`（Step2 生成済み。**presentation kind があるときだけ**）
    - `docs/specs/events/{event_id}/_cross-cutting/ux-ui/ui-design.md`（Step2 生成済み。**presentation または cli kind があるときだけ**。
      cli では出力規約として使う）
-   - `docs/specs/latest/_cross-cutting/ux-ui/common-components.md`（presentation kind があり `design_available: true` かつ
-     latest に存在する場合のみ。初回実行時は未生成）
+   - `docs/design/latest/storybook-app/` の対象component実装、Props、Story、token、route定義（designありのみ）。名前一覧だけで推測しない。
    - `docs/specs/latest/{業務名}/{BUC名}/{UC名}/`（既存 Spec があれば）
 
 読まないもの: 他 UC の Spec、`references/specs/tier-selection-rules.md`（ティア選定はオーケストレータが適用済み）、
 `references/specs/decision-records.md`、`docs/arch/latest/arch-design.yaml` 全文（ダイジェストで足りる場合）。
+
+catalog modeの場合だけ `references/specs/contract-catalog.md` と対象UCの `_api-summary.yaml` / `_contract-slice.json` を追加で読む。
+元のカタログ全体・他UCのsliceは読まない。型表とsummaryの手編集は行わず、APIはoperation参照にする。
+UCの `_trace-links.json` はcatalog modeで生成する。element keyは現在のtraceability-indexから取得し、
+索引がまだ無い場合はStep4dで対応を補完する（キーを推測しない）。
 
 ## 生成
 
@@ -47,7 +56,10 @@
 skill_root: {dist-spec スキルの絶対パス。例 /Users/.../plugins/cache/.../skills/dist-spec}
 event_id: {event_id}
 design_available: {true|false}
+contract_mode: {legacy|catalog}
 対象 UC:
   - 業務: {業務名} / BUC: {BUC名} / UC: {UC名} / 対象ティア: {tier_id} ({kind}), {tier_id} ({kind})
   - ...（1 subagent あたり 8〜10 UC まで）
 ```
+
+RDB分割出力がある場合は入口で所有先を特定し、対象サブドメインと_model-summaryで使用するテーブル/カラムだけを読む。FK先のキー以外も使用する場合は所有先の該当列・制約へ段階的に読込を広げる。全体bundleをUCごとにフルロードしない。AsyncAPIも対象UC sliceに含まれるoperation/channel/message/schemaを読む。

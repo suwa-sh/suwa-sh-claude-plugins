@@ -1,0 +1,6 @@
+# 還流計画の検証
+
+具体案を含む7件の変更要求をverifyで検証し、既存の所有工程に従ってdry planを生成した。
+RDRAの3件はrequirements、部品契約の3件はdesign_system、冪等処理の1件はarchitectureに渡す。
+planはCLIの出力である。正式runの開始、上流の修正、提案採用は行っていない。
+更新後のspec工程はproposal-baselineと最新正本を照合し、同案なら本文を維持する。

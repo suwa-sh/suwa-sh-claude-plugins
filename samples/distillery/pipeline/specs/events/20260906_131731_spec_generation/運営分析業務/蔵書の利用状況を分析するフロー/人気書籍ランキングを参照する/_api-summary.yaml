@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "蔵書の利用状況を分析するフロー",
+  "business": "運営分析業務",
+  "consumes": [],
+  "contract_sha256": "f8e9b744b9d52be6da0b250d637b0d76b3160f575f7acddaa9c34a741ad8fe43",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1analytics~1popular-books/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getPopularBooks",
+      "path": "/staff/analytics/popular-books",
+      "summary": "人気書籍ランキングを参照する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "人気書籍ランキングを参照する"
+}

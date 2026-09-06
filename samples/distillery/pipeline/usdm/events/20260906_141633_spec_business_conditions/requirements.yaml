@@ -1,0 +1,38 @@
+version: "1.0"
+event_id: "20260906_141633_spec_business_conditions"
+created_at: "2026-09-06T14:16:33"
+source: "Step6 CR-renew001-004/005のnormal auto_adopt"
+system_name: "図書館蔵書管理システム"
+requirements:
+  - id: "REQ-007"
+    requirement: "未完了取引を保護し、検索とランキングの判断結果を一意にする"
+    reason: "詳細仕様の生成で未定義の境界が見つかったため。normal auto_adoptで具体案を採用する。"
+    priority: "must"
+    specifications:
+      - id: "SPEC-007-01"
+        specification: "未返却貸出または有効予約がある利用者は削除できない。履歴は維持する。"
+        acceptance_criteria:
+          - "未返却貸出あり、有効予約ありの場合は削除拒否。両方なしの場合は一覧から除外。"
+        affected_models:
+          - type: "condition"
+            action: "add"
+            target: "利用者削除可否判定"
+          - type: "buc"
+            action: "modify"
+            target: "利用者を管理するフロー"
+      - id: "SPEC-007-02"
+        specification: "文字列検索はNFKC正規化、キーワードはタイトルまたは著者の部分一致、ISBNは空白とハイフンを除去して完全一致、ジャンルはID一致。同種の複数選択はOR、異種条件はAND。空検索は全蔵書。"
+        acceptance_criteria:
+          - "タイトルの一部で該当書籍を検索できる。ISBNは完全一致。空検索は全蔵書。"
+        affected_models:
+          - type: "condition"
+            action: "modify"
+            target: "書籍検索条件判定"
+      - id: "SPEC-007-03"
+        specification: "同数の貸出回数は同順位とし、次順位は先行書籍数+1。貸出回数降順、同数は書籍ID昇順。"
+        acceptance_criteria:
+          - "貸出回数10、10、8の順位は1、1、3。"
+        affected_models:
+          - type: "condition"
+            action: "modify"
+            target: "人気書籍ランキング判定"

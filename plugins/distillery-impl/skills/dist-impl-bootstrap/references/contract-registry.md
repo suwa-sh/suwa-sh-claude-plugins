@@ -45,13 +45,19 @@ lock の機械可読キーに反映する**(スキーマは state-schema.md):
 
 ## type: openapi
 
-- **source**: `_cross-cutting/api/openapi.yaml`(必須入力)
+- **source**: 分割形式では `_cross-cutting/api/generated/openapi.bundle.yaml`。legacyは `_cross-cutting/api/openapi.yaml`。
+  分割形式は `_cross-cutting/api/contracts.json` の `openapi` がファイル参照文字列かで判定する。
+  編集入口はcatalog値をapiディレクトリ相対で解決する（新形式: `openapi/openapi.yaml`）。変更検知もこの入口から参照を辿り、旧パスを固定しない。
+  bootstrapのP4でdist-specの `compileContracts.js <specs-latest-dir> --check` を実行し、分割正本との一致を確認する。
+  bundleが無い/古い場合はspec再生成を要求し、legacyへフォールバックしない。
+  契約入力の変更検知には入口・到達する全分割ファイル・bundleを含める。hashは生成時の監査用であり、意味の参照先は常にspecs/latest。
+  `contracts[].source` へ選択したパスを記録し、以下の `{openapi_source}` として使う。
 - **probe**: source の存在 + `java -version`(openapi-generator は Java 製。無ければ degraded へ)
 - **codegen**(検証済みスパイク 2026-07-29):
 
   ```bash
   npx -y @openapitools/openapi-generator-cli generate \
-    -i {specs_root}/specs/latest/_cross-cutting/api/openapi.yaml \
+    -i {specs_root}/specs/latest/{openapi_source} \
     -g {generator} -o packages/contracts/{出力先}
   ```
 
@@ -76,13 +82,16 @@ lock の機械可読キーに反映する**(スキーマは state-schema.md):
 
 ## type: asyncapi
 
-- **source**: `_cross-cutting/api/asyncapi.yaml`(存在する場合のみ)
+- **source**: 分割形式では `_cross-cutting/api/generated/asyncapi.bundle.yaml`。legacyは `_cross-cutting/api/asyncapi.yaml`（存在する場合のみ）。
+  `contracts.json`のasyncapiが文字列なら分割形式。編集入口はcatalog値をapiディレクトリ相対で解決する（新形式: `asyncapi/asyncapi.yaml`）。P1の存在プローブも上記sourceを使う。P4で `compileContracts.js <specs-latest-dir> --check` により正本との一致を検査する。
+  未生成/古いbundleをlegacyで代替しない。入口・到達する全分割ファイル・bundleを入力変更検知へ含める。
+  選択したパスをcontracts[].sourceと以下の `{asyncapi_source}` に使う。
 - **probe**: source の存在(capability `has_asyncapi`)
 - **codegen**:
 
   ```bash
   npx -y @asyncapi/cli generate models {lang} \
-    {specs_root}/specs/latest/_cross-cutting/api/asyncapi.yaml \
+    {specs_root}/specs/latest/{asyncapi_source} \
     -o packages/contracts/async-types
   ```
 
@@ -98,7 +107,11 @@ lock の機械可読キーに反映する**(スキーマは state-schema.md):
 
 ## type: rdb-schema
 
-- **source**: `_cross-cutting/datastore/rdb-schema.yaml`。`scope`(契約対象テーブル名の
+- **source**: 入口 `_cross-cutting/datastore/rdb-schema.yaml` のschema_versionが `distillery.rdb-split/v1` なら、`generated/rdb-schema.bundle.yaml` をcodegen入力とする。legacyは入口自体。
+  分割形式のP4では `compileRdbSchema.js <入口ファイル> --check` を実行する。入口と全domain正本、生成bundleのhashを変更検知へ含める。
+  実装担当の読込は入口と `generated/table-index.yaml` の小さい所有索引 → 対象domain slice → UC操作に必要な外部列・制約の順で広げる。
+  外部キーの参照キーだけを含むsliceは外部表の完全な定義ではなく、DDLや外部表のrow型の生成には使用しない。codegenは全体検証済みbundleから明示scopeを抽出する。
+  `scope`(契約対象テーブル名の
   **完全一致**の配列。glob・正規表現は使わない)で契約対象のテーブル群を絞れる。
   scope のいずれかが source に存在しない、または一致 0 件の場合は停止して確認する(推測しない)
 - **用途例**: data pipeline が生成する mart を backend が read model として読む場合、
@@ -123,6 +136,14 @@ lock の機械可読キーに反映する**(スキーマは state-schema.md):
   migration / DDL 資産は provider tier の dir 配下に置く(tier-rules.md)
 - kvs-schema.yaml / object-storage-schema.yaml も同型で種別追加できる
   (必要になった時点で本ファイルに節を足す)
+
+## API summary v2
+
+v2では提供/利用operationと参照先を索引として扱う。verifyは `operation_id` / `contract_ref` と
+対象UCの `_contract-slice.json` を使い、統合sourceとの整合を確認する。
+縮退codegenもslice内の標準文書から行い、`schemas[]` の欠如を型情報の欠落と解釈しない。
+生成ヘッダは `// degraded-codegen: from _contract-slice.json` とし、lockにsliceのpath/hashを記録する。
+以下のsummaryからの型生成はlegacyにのみ適用する。
 
 ## 縮退方式(共通)
 

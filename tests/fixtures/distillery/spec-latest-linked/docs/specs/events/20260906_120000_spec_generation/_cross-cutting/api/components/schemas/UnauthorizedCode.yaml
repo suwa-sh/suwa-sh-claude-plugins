@@ -1,0 +1,18 @@
+description: '401 のエラーコード。
+
+  `UNAUTHENTICATED` = ヘッダ欠落 / Bearer 以外 / 署名不正、
+
+  `TOKEN_EXPIRED` = `exp` 超過、
+
+  `IDENTITY_CLAIM_MISSING` = 必須クレーム欠落。
+
+  '
+enum:
+- UNAUTHENTICATED
+- TOKEN_EXPIRED
+- IDENTITY_CLAIM_MISSING
+type: string
+x-enum-varnames:
+- UNAUTHENTICATED
+- TOKEN_EXPIRED
+- IDENTITY_CLAIM_MISSING

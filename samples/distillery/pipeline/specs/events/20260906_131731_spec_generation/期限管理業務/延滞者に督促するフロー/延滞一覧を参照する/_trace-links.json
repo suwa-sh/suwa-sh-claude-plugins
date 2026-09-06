@@ -1,0 +1,425 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"condition\",\"貸出管理\",\"延滞判定\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "延滞判定",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"利用者区分（司書・利用者）\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "利用者",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"利用者番号\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "利用者",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"更新日\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "利用者",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"氏名\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "利用者",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"登録日\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "利用者",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"利用者管理\",\"利用者\",\"連絡先（メールアドレス・電話番号・住所）\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "利用者",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"書籍\",\"ISBN\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "書籍",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"書籍\",\"ジャンル\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "書籍",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"書籍\",\"タイトル\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "書籍",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"書籍\",\"出版社\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "書籍",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"書籍\",\"媒体種別（紙・電子）\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "書籍",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"書籍\",\"更新日\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "書籍",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"書籍\",\"書籍ID\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "書籍",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"書籍\",\"書籍の状態（在庫あり・貸出中・予約待ち）\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "書籍",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"書籍\",\"登録日\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "書籍",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"書籍\",\"著者\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "書籍",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"貸出管理\",\"貸出\",\"利用者番号\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "貸出",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"貸出管理\",\"貸出\",\"書籍ID\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "貸出",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"貸出管理\",\"貸出\",\"記録した司書\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "貸出",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"貸出管理\",\"貸出\",\"貸出ID\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "貸出",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"貸出管理\",\"貸出\",\"貸出の状態（貸出中・延滞・返却済み）\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "貸出",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"貸出管理\",\"貸出\",\"貸出日\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "貸出",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"貸出管理\",\"貸出\",\"返却日\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "貸出",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"貸出管理\",\"貸出\",\"返却期限\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "貸出",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"通知管理\",\"通知\",\"件名\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "通知",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"通知管理\",\"通知\",\"利用者番号\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "通知",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"通知管理\",\"通知\",\"対象予約ID\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "通知",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"通知管理\",\"通知\",\"対象貸出ID\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "通知",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"通知管理\",\"通知\",\"本文\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "通知",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"通知管理\",\"通知\",\"送信先メールアドレス\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "通知",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"通知管理\",\"通知\",\"送信日時\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "通知",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"通知管理\",\"通知\",\"送信結果\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "通知",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"通知管理\",\"通知\",\"通知ID\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "通知",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"通知管理\",\"通知\",\"通知種別（返却通知・リマインド・督促）\"]",
+      "tier": "tier-backend-api",
+      "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+      "anchor": "通知",
+      "scenarios": [
+        {
+          "file": "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md",
+          "name": "延滞と督促結果を確認する"
+        }
+      ]
+    }
+  ]
+}

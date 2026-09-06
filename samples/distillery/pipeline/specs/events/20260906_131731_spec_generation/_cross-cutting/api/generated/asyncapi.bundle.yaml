@@ -1,0 +1,342 @@
+{
+  "asyncapi": "3.0.0",
+  "channels": {
+    "daily-overdue": {
+      "address": "library.daily-overdue.v1",
+      "messages": {
+        "DailyRun": {
+          "$ref": "#/components/messages/DailyRun"
+        }
+      }
+    },
+    "daily-reminder": {
+      "address": "library.daily-reminder.v1",
+      "messages": {
+        "DailyRun": {
+          "$ref": "#/components/messages/DailyRun"
+        }
+      }
+    },
+    "dunning": {
+      "address": "library.dunning.v1",
+      "messages": {
+        "DunningRequest": {
+          "$ref": "#/components/messages/DunningRequest"
+        }
+      }
+    },
+    "reminder": {
+      "address": "library.reminder.v1",
+      "messages": {
+        "ReminderRequest": {
+          "$ref": "#/components/messages/ReminderRequest"
+        }
+      }
+    },
+    "return-notification": {
+      "address": "library.return-notification.v1",
+      "messages": {
+        "ReturnNotificationRequest": {
+          "$ref": "#/components/messages/ReturnNotificationRequest"
+        }
+      }
+    }
+  },
+  "components": {
+    "messages": {
+      "DailyRun": {
+        "contentType": "application/json",
+        "correlationId": {
+          "location": "$message.header#/message_id"
+        },
+        "headers": {
+          "additionalProperties": false,
+          "properties": {
+            "message_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "message_id"
+          ],
+          "type": "object"
+        },
+        "name": "DailyRun",
+        "payload": {
+          "$ref": "#/components/schemas/DailyRunPayload"
+        },
+        "title": "延滞を判定する"
+      },
+      "DunningRequest": {
+        "contentType": "application/json",
+        "correlationId": {
+          "location": "$message.header#/message_id"
+        },
+        "headers": {
+          "additionalProperties": false,
+          "properties": {
+            "message_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "message_id"
+          ],
+          "type": "object"
+        },
+        "name": "DunningRequest",
+        "payload": {
+          "$ref": "#/components/schemas/DunningRequestPayload"
+        },
+        "title": "督促を送信する"
+      },
+      "ReminderRequest": {
+        "contentType": "application/json",
+        "correlationId": {
+          "location": "$message.header#/message_id"
+        },
+        "headers": {
+          "additionalProperties": false,
+          "properties": {
+            "message_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "message_id"
+          ],
+          "type": "object"
+        },
+        "name": "ReminderRequest",
+        "payload": {
+          "$ref": "#/components/schemas/ReminderRequestPayload"
+        },
+        "title": "リマインドを送信する"
+      },
+      "ReturnNotificationRequest": {
+        "contentType": "application/json",
+        "correlationId": {
+          "location": "$message.header#/message_id"
+        },
+        "headers": {
+          "additionalProperties": false,
+          "properties": {
+            "message_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "message_id"
+          ],
+          "type": "object"
+        },
+        "name": "ReturnNotificationRequest",
+        "payload": {
+          "$ref": "#/components/schemas/ReturnNotificationRequestPayload"
+        },
+        "title": "返却通知を送信する"
+      }
+    },
+    "schemas": {
+      "DailyRunPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "business_date": {
+            "format": "date",
+            "type": "string"
+          },
+          "run_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "business_date"
+        ],
+        "type": "object"
+      },
+      "DunningRequestPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "loan_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "notification_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "trace_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "notification_id",
+          "loan_id",
+          "trace_id"
+        ],
+        "type": "object"
+      },
+      "ReminderRequestPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "loan_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "notification_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "trace_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "notification_id",
+          "loan_id",
+          "trace_id"
+        ],
+        "type": "object"
+      },
+      "ReturnNotificationRequestPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "notification_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reservation_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "trace_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "notification_id",
+          "reservation_id",
+          "trace_id"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "図書館通知・日次処理契約",
+    "version": "1.0.0"
+  },
+  "operations": {
+    "consumeDunning": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/dunning"
+      },
+      "messages": [
+        {
+          "$ref": "#/channels/dunning/messages/DunningRequest"
+        }
+      ]
+    },
+    "consumeOverdueSchedule": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/daily-overdue"
+      },
+      "messages": [
+        {
+          "$ref": "#/channels/daily-overdue/messages/DailyRun"
+        }
+      ]
+    },
+    "consumeReminder": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/reminder"
+      },
+      "messages": [
+        {
+          "$ref": "#/channels/reminder/messages/ReminderRequest"
+        }
+      ]
+    },
+    "consumeReminderSchedule": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/daily-reminder"
+      },
+      "messages": [
+        {
+          "$ref": "#/channels/daily-reminder/messages/DailyRun"
+        }
+      ]
+    },
+    "consumeReturnNotification": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/return-notification"
+      },
+      "messages": [
+        {
+          "$ref": "#/channels/return-notification/messages/ReturnNotificationRequest"
+        }
+      ]
+    },
+    "publishDunning": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/dunning"
+      },
+      "messages": [
+        {
+          "$ref": "#/channels/dunning/messages/DunningRequest"
+        }
+      ]
+    },
+    "publishReminder": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/reminder"
+      },
+      "messages": [
+        {
+          "$ref": "#/channels/reminder/messages/ReminderRequest"
+        }
+      ]
+    },
+    "publishReturnNotification": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/return-notification"
+      },
+      "messages": [
+        {
+          "$ref": "#/channels/return-notification/messages/ReturnNotificationRequest"
+        }
+      ]
+    }
+  }
+}

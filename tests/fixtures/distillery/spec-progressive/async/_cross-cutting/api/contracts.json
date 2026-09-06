@@ -1,0 +1,20 @@
+{
+  "schema_version": "distillery.contracts/v1",
+  "openapi": null,
+  "asyncapi": "asyncapi.yaml",
+  "use_cases": [
+    {
+      "business": "貸出業務",
+      "buc": "貸出フロー",
+      "uc": "貸出登録",
+      "provides": [
+        {
+          "kind": "asyncapi",
+          "operation_id": "sendLoan",
+          "tier": "tier-api"
+        }
+      ],
+      "consumes": []
+    }
+  ]
+}

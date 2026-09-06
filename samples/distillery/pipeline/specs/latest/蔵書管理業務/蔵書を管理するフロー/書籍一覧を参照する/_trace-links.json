@@ -1,0 +1,53 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"condition\",\"蔵書管理\",\"在庫状況判定\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/spec.md",
+          "name": "書籍一覧を参照するの業務結果"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"ジャンル\",\"ジャンルID\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/spec.md",
+          "name": "ジャンルの識別子と表示名を取得する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"ジャンル\",\"ジャンル名（文学・社会科学・自然科学・技術・芸術・歴史・児童書・その他）\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/spec.md",
+          "name": "ジャンルの識別子と表示名を取得する"
+        }
+      ]
+    },
+    {
+      "element": "[\"information\",\"蔵書管理\",\"ジャンル\",\"説明\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/蔵書を管理するフロー/書籍一覧を参照する/spec.md",
+          "name": "ジャンルの識別子と表示名を取得する"
+        }
+      ]
+    }
+  ]
+}

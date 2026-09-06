@@ -1,0 +1,45 @@
+schema_version: "1.0"
+artifact_type: "decision_record"
+skill_type: "design_system"
+artifact_id: "design-decision-004"
+title: "ドメインコンポーネントを RDRA の状態モデル・情報・バリエーションから機械的に導出する"
+status: "approved"
+generated_at: "2026-09-02T15:12:00+09:00"
+context: |
+  デザインシステムのコンポーネント構成は、恣意的に決めると RDRA との対応が切れて
+  後段の spec / impl でトレーサビリティを取れなくなる。
+  一方で RDRA には状態モデル 6 種・情報 7 種・バリエーション 9 種・画面 41 件があり、
+  すべてを個別コンポーネント化すると重複が大量に発生する。
+  また過去事例として、運用監視目的で RDRA に存在しない「管理ダッシュボード」を
+  自動追加してしまった事案がある。
+decision: |
+  design-components-generate.md の導出パターンを RDRA モデルへ機械的に適用し、
+  ドメインコンポーネント 18 件を導出した。RDRA に無い画面・要素は一切追加していない。
+
+  - 状態モデル 6 種 → StatusBadge 6 種（Book / Loan / Reservation / User / Notification / Report）。
+    状態名・状態遷移は `stateMaps.ts` に集約し、ここに無い状態を追加することを禁止した
+  - 画面名に「検索」を含む → BookSearchFilter
+  - 画面名に「一覧」を含む → BookCard / LoanTable / UserTable
+  - 状態数 3 以上 + 順序性あり（予約中 → 取置き中 → 貸出済み）→ ReservationQueueTracker
+  - 情報に期限属性（貸出.返却期限 / 予約.取置き期限）→ DueDateIndicator / HoldPickupCard
+  - 情報に集計属性（統計レポート.集計明細）→ ReportKpiCard / ReportPeriodSelector / LoanTrendChart
+  - 通知の送信実績追跡（通知.送信結果）→ NotificationLogTable
+  - 個人情報（利用者.氏名・連絡先）+ NFR E.1.2.1 → UserProfileCard（連絡先を既定でマスク）
+
+  逆に、情報.tsv に評価・金額・画像・問合せの属性が存在しないため、
+  StarRating / PriceDisplay / ImageCard / MessageThread は生成しないと明示的に決めた。
+consequences:
+  positive:
+    - "全コンポーネントが RDRA の情報・状態・バリエーションへ遡れる（design-event.yaml の screens[].components でトレース可能）"
+    - "状態の追加・変更が stateMaps.ts の 1 箇所に閉じる"
+    - "RDRA に無い画面を作らないため、要件網羅率の計算が歪まない"
+  negative:
+    - "汎用的な UX 上あると便利な要素（ダッシュボード、通知センター等）を追加できない。必要なら RDRA へ戻す往復が発生する"
+    - "StatusBadge が 6 種に分かれ、見た目がほぼ同じコンポーネントが並ぶ"
+alternatives_considered:
+  - name: "汎用 StatusBadge 1 つで全状態モデルを賄う"
+    reason_rejected: "状態名の型安全が失われ、RDRA に無い状態文字列を渡せてしまう。エンティティ別に型を分けるほうが誤りを防げる"
+  - name: "UX 上の必要性から管理ダッシュボードを追加する"
+    reason_rejected: "RDRA 整合性ルールで禁止。同種の事案が過去に発生している。必要なら docs/todo.md 経由で requirements へ差し戻す"
+  - name: "画面ごとに専用コンポーネントを作る（41 件）"
+    reason_rejected: "重複が大量に発生し保守できない。18 件のドメインコンポーネントの組合せで 41 画面を構成する方針とした"

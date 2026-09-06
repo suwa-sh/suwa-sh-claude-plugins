@@ -1,0 +1,9 @@
+description: 暗号学的乱数で生成したUUIDv7。認証主体とoperationIdごとに一意。埋込発行時刻から24時間未満の要求を受け付け、期限以上は410
+  IDEMPOTENCY_KEY_EXPIRED。未来5分超の時刻または形式不正は400 INVALID_REQUEST。同一キーの異なる要求は409 IDEMPOTENCY_KEY_CONFLICT。
+in: header
+name: X-Idempotency-Key
+required: true
+schema:
+  format: uuid
+  type: string
+  pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$

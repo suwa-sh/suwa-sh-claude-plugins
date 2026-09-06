@@ -5,9 +5,9 @@ description: >
   UC 単位の詳細仕様（Spec）と全体横断 UX/UI 設計仕様を生成するスキル。
   design-system スキルの後段に位置する。
   BUC/UC の階層で仕様を構造化し、RDRA トレーサビリティによる要件網羅率を算出する。
-  UC 単位 Spec は spec.md（BDD + データフロー + 処理フロー）と
+  UC 単位 Spec は spec.md（データフロー + 分岐付きシーケンス + 前段参照 + BDD）と
   tier-{tier_id}.md（arch 動的）、_model-summary.yaml（データアクセス定義）を生成する。
-  BUC 単位 Spec は UC 横断データフロー・状態遷移全体図を提供する。
+  BUC 単位 Spec は所属 UC と UC 間の依存・共有定義への参照を提供する。
   全体横断の UX/UI デザイン・データ可視化・共通コンポーネント・OpenAPI/AsyncAPI を _cross-cutting/ に出力し、
   データストアレイアウト（RDB/KVS/Object Storage）を YAML で定義する。
   要件トレーサビリティマトリクスで網羅率を報告する。
@@ -61,6 +61,32 @@ changedが1件以上なら全domain rootをnormal eventまたはno-change manife
 failed返却は4 ledgerをすべて空配列にし、非空・単一行の`phase / reason`を返す。
 `post_execution_basis`はcontrollerが内部実測し、stage側では作らない。
 
+
+## 新規生成の方針（優先）
+
+`references/specs/latest-linked-spec.md`と`references/specs/product-spec-writing.md`を最初に読み、全生成・レビュー担当へ渡す。
+specとtierの本文は実装対象を説明する。生成状態や編集指示は本文外へ分離する。表、リスト、図を内容に応じて使い、日本語技術文書の文章規範に従う。
+データフローと分岐を含むシーケンスを生成し、業務条件・状態遷移はRDRA latest、UI部品はdesign latestのStorybookへ参照する。
+前段に不足があれば具体的な変更提案を還流要求にまとめ、本文には採用後の姿を記述する。採用状況はproposal-baselineで管理し、還流後はlatestとの整合確認を優先する。仕様の参照先はlatestとし固定イベントにしない。
+下記の旧Step説明との競合時はこの規約を優先する。Step2/4c/4eのdesignあり処理は既存部品の参照・接続確認へ置き換える。
+
+## 出力の完了基準
+
+`references/specs/implementation-readiness.md` を生成・レビューで適用する。
+対象UCの本文と共有参照から、正常・失敗・競合・再送の結果を追加の業務判断なく決められることを完了基準とする。
+特定のモデルやCLIによる再現、行数削減、構文検証の成功だけを完了条件にしない。
+
+## 契約生成方式
+
+新規生成の既定は`contract_mode=catalog`。Step1の後に
+`references/specs/contract-catalog.md` を読み、Step2.5で正本カタログと派生物を生成する。
+Step3の全生成・レビュー担当へ `contract_mode: catalog` を渡す。
+Step4aは `scripts/compileContracts.js`、Step3.5/Step4dは `scripts/buildSpecViews.js` を使用し、
+Step6で両スクリプトの `--check` を行う。API本文の型表を要求する規約はlegacyにのみ適用する。
+この方式の出力規約は `references/specs/contract-catalog.md` を優先する。
+新規生成は分割OpenAPI/AsyncAPIを人が編集する正本とし、カタログはファイル参照とUC所有/利用の対応だけを保持する。
+RDBも `references/specs/progressive-rdb-schema.md` に従い、サブドメインの正本からbundleと読込用sliceを生成する。Step4のdatastore統合で `scripts/compileRdbSchema.js` を実行し、Step6で `--check` を行う。
+`contract_mode=legacy`は既存形式の互換生成を明示的に選ぶ場合のみ。既存イベントの自動移行は行わない。
 
 ## 前提条件
 
@@ -123,9 +149,9 @@ docs/specs/
   events/{event_id}/
     {業務名}/
       {BUC名}/
-        buc-spec.md                    # BUC 俯瞰仕様（UC横断データフロー、状態遷移全体図）
+        buc-spec.md                    # BUC 俯瞰仕様（所属UC、依存・共有定義への参照）
         {UC名}/
-          spec.md                      # UC 概要、データフロー、処理フロー、E2E BDD
+          spec.md                      # UC 概要、業務ルール、状態遷移、E2E BDD
           tier-{tier_id}.md            # ティアごとの仕様（arch-design.yaml の tiers から動的生成）
           _api-summary.yaml            # API エンドポイント中間出力（OpenAPI 統合用）
           _model-summary.yaml          # データモデル中間出力（データストアレイアウト統合用）
@@ -136,8 +162,8 @@ docs/specs/
         data-visualization.md          # データ可視化設計仕様
         common-components.md           # 共通コンポーネント設計（UC完了後に抽出）
       api/                             # バックエンド開発者向け
-        openapi.yaml                   # 全 UC 統合 OpenAPI 3.1 spec（Contract First 開発用）
-        asyncapi.yaml                  # 全 UC 統合 AsyncAPI spec（非同期イベントがある場合のみ）
+        openapi/openapi.yaml           # 全 UC 統合 OpenAPI 3.1 spec（Contract First 開発用）
+        asyncapi/asyncapi.yaml         # 全 UC 統合 AsyncAPI spec（非同期イベントがある場合のみ）
       datastore/                       # バックエンド開発者・DBA 向け
         rdb-schema.yaml                # RDB テーブル定義（カラム、FK、インデックス）
         kvs-schema.yaml                # KVS キーパターン定義（KVS使用時のみ）
@@ -346,17 +372,15 @@ Step3 で生成した各 UC の出力を、**生成 subagent とは別の subage
 Step3 で全 UC Spec が出揃った後に、BUC 単位の俯瞰仕様を生成する。BUC 間は独立しているため subagent で並列実行する（全 BUC グループを単一メッセージで同時起動）。
 
 各 BUC について `buc-spec.md` を生成する:
-1. 所属 UC 一覧
-2. UC 横断データフロー（mermaid graph + 情報 CRUD マトリクス）
-3. 状態遷移全体図（mermaid stateDiagram + 状態遷移 UC マッピング）
-4. BUC 内共有条件一覧（どの条件がどの UC で適用されるか）
-5. BUC 内共有バリエーション一覧（どのバリエーションがどの UC で適用されるか）
+1. 概要と所属 UC 一覧（必須）
+2. UC 間の依存・整合条件（該当時のみ）
+3. 共有条件・バリエーション・状態定義への参照（該当時のみ）
 
-**入力**: Step3 で生成した所属 UC の spec.md（RDRA トレーサビリティテーブル）を参照して集約する。
+**入力**: 所属 UC の spec.md と必要な summary。通常の CRUD / 状態遷移を BUC に複写しない。
+複雑な分岐・合流・非同期連携がある場合だけ図を追加する。
 
-**空コンテンツ防止**: buc-spec.md は必ず上記5セクションすべてを記述すること。所属 UC が1件しかない BUC でも、UC 横断データフロー（その1件の UC のフロー）と状態遷移を記述する。セクションが空の buc-spec.md は不良品として扱う。
-
-**BUC Spec 完了チェック**: 全 BUC の buc-spec.md が生成されたら、各ファイルの行数を確認する。10行未満のファイルはコンテンツが空と判断し、再生成する。
+**BUC Spec 完了チェック**: BUC.tsv の所属 UC が実在する spec.md に全件リンクされ、
+必要な依存・共有定義を辿れることを確認する。単一 UC の BUC に図や最低行数を要求しない。
 
 #### Step3.5-Review: BUC Spec 自己改善ループ
 
@@ -373,17 +397,17 @@ Step3 + Step3.5 完了後に実行。**機能別に subagent を分割して並�
 
 **読み込み:** `references/specs/openapi-rules.md`, `references/specs/asyncapi-rules.md`
 
-1. `_cross-cutting/api/openapi.yaml` を生成する:
+1. 新規catalogでは `api/openapi/openapi.yaml` と `api/openapi/` 配下の分割正本を作り、compileContractsでbundleを生成する。以下のsummaryからの逆生成はlegacyのみ（出力は `_cross-cutting/api/openapi.yaml`）:
    - 全 UC の API エンドポイントを統合した OpenAPI 3.1 spec
    - **Step3 で生成した各 UC の `_api-summary.yaml` を入力として paths/schemas を集約する**（tier-backend-api.md を全件再読込するより効率的）
-   - `_api-summary.yaml` が存在しない UC は tier-{tier_id}.md にフォールバック
+   - `_api-summary.yaml` が無い、または型制約・認可・エラー等が不足する UC は、該当 tier-{tier_id}.md の契約節だけを追加で読む。未記載を推測で補わない
    - `references/specs/openapi-rules.md` に従って生成
    - Contract First 開発に使える品質で、スキーマ定義・型情報を具体的に記述
 
-2. `_cross-cutting/api/asyncapi.yaml` を生成する（非同期イベントがある場合のみ）:
+2. 新規catalogでは `api/asyncapi/asyncapi.yaml` と `api/asyncapi/` 配下の分割正本を作りcompileContractsでbundleを生成する。以下のsummaryからの逆生成はlegacyのみ（非同期イベントがある場合のみ）:
    - 全 UC の非同期イベントを統合した AsyncAPI spec
    - **Step3 で生成した各 UC の `_api-summary.yaml` の `async_events` セクションを入力とする**
-   - `_api-summary.yaml` が存在しない UC は tier-{tier_id}.md にフォールバック
+   - `_api-summary.yaml` が無い、または型制約・認可・エラー等が不足する UC は、該当 tier-{tier_id}.md の契約節だけを追加で読む。未記載を推測で補わない
    - `references/specs/asyncapi-rules.md` に従って生成
    - 非同期イベントが1つもない場合はファイルを生成しない
 
@@ -393,14 +417,15 @@ OpenAPI 統合が特に重い場合は、業務単位で分割して並列生成
 
 **読み込み:** `references/specs/datastore-rules.md`
 
-1. `_cross-cutting/datastore/rdb-schema.yaml` を生成する:
+1. `progressive-rdb-schema.md` に従い `_cross-cutting/datastore/rdb-schema.yaml` の所有索引とdomainsの正本を生成する:
    - **Step3 で生成した各 UC の `_model-summary.yaml` の `tables` セクションを入力とする**
-   - 同名テーブルをマージし、全 UC のカラム・操作を集約する
+   - 同名テーブルは一つのサブドメイン所有者へ集約する。所有の曖昧さはarch latestへ還流する
    - 情報.tsv の属性からカラム定義（名前、抽象型、制約）を導出する
    - 情報.tsv の「関連情報」列からテーブル間の FK を導出する
    - 各 UC の `indexes_needed` を集約し、重複を排除してインデックス一覧を生成する
-   - mermaid ER 図を `er_diagram` フィールドに含める
+   - ER図は必要なサブドメイン範囲を表示し、境界外は所有者と参照キーで識別する
    - `references/specs/datastore-rules.md` に従って生成
+   - `compileRdbSchema.js <rdb-schema.yamlの入口>` で全体bundleとdomain sliceを生成する。
    - **DDL (SQL) には変換しない**。YAML で抽象型（string, integer, decimal 等）を使う
 
 2. `_cross-cutting/datastore/kvs-schema.yaml` を生成する（KVS アクセスがある場合のみ）:
@@ -434,7 +459,7 @@ OpenAPI 統合が特に重い場合は、業務単位で分割して並列生成
 
 1. `_cross-cutting/traceability-matrix.md` を生成する:
    - RDRA の全要素（情報属性、条件、バリエーション値、状態遷移パス、外部システム）を分母として棚卸し
-   - 全 UC Spec の RDRA トレーサビリティテーブルから分子（カバー済み要素）を収集
+   - 全 UC Spec の関連 RDRA モデル・業務ルール・状態遷移と参照先から分子（カバー済み要素）を収集
    - カテゴリ別の網羅率サマリーを算出
    - 未カバー要素一覧を生成し、対応方針（要対応/意図的除外/RDRA見直し）を提示
    - **網羅率をユーザーに報告する**
@@ -529,8 +554,10 @@ alternatives_considered:
 **このステップを省略してはならない**（Step4.5。ただし design 無しモードでは Step4c と共に実行しない）。`common-components.md` の設計を各 UC の tier-frontend-*.md にフィードバックする。
 
 1. 各 UC の tier-frontend-*.md に「共通コンポーネント参照」セクションを追加する
-2. 使用する共通コンポーネント名、インポートパス (`@/components/common/{Name}`)、Props マッピングを記載
-3. 共通パターンとの不整合があれば UC Spec 側を修正する
+2. 共通コンポーネント名、定義先の見出し、インポートパス (`@/components/common/{Name}`) を記載する。
+   Props の供給元は既存のマッピング表へ集約し、共通 Props 定義・既定値・フック一般規約を追記で複写しない
+3. 共通パターンとの不整合があれば UC Spec 側を修正する。初期生成で記述した共通説明は、
+   定義先とバインディングを確認して参照へ置換する。UC 固有の Props・状態所有者・イベントは保持する
 4. subagent で業務単位に並列実行可能（各 subagent が担当業務の tier-frontend-*.md を更新）
 
 #### Step4-Review: Cross-Cutting 自己改善ループ
@@ -586,11 +613,16 @@ node <skill-path>/scripts/validateModelSummary.js docs/specs/events/{event_id}/{
 - `_api-summary.yaml`: paths の method/path/summary 必須、async_events の name/channel 必須
 - `_model-summary.yaml`: models の name/tier/layer/type 必須、tables の name/operations 必須
 
+新規生成した各UCに `node <skill-path>/scripts/validateSpecProse.js <UC-directory>` を実行する。
+この検査は生成状態と編集指示の典型的な混入だけを検出する。参照の意味、提案との対応、文章の明確さはレビュー担当が確認する。
+過去イベントの互換読込には適用しない。
+
 **Step 6-pre-3: Cross-Cutting YAML スキーマバリデーション**
 
 ```bash
-# rdb-schema.yaml（存在する場合）
-node <skill-path>/scripts/validateRdbSchema.js docs/specs/events/{event_id}/_cross-cutting/datastore/rdb-schema.yaml
+# 分割RDB（存在する場合）。legacyは従来の入口をvalidateRdbSchemaに渡す
+node <skill-path>/scripts/compileRdbSchema.js docs/specs/events/{event_id}/_cross-cutting/datastore/rdb-schema.yaml --check
+node <skill-path>/scripts/validateRdbSchema.js docs/specs/events/{event_id}/_cross-cutting/datastore/generated/rdb-schema.bundle.yaml
 
 # kvs-schema.yaml（存在する場合）
 node <skill-path>/scripts/validateKvsSchema.js docs/specs/events/{event_id}/_cross-cutting/datastore/kvs-schema.yaml
@@ -621,7 +653,8 @@ node <skill-path>/scripts/validateSpecEvent.js docs/specs/events/{event_id}
 #### 6b. OpenAPI リント
 
 ```bash
-npx --yes @redocly/cli lint docs/specs/events/{event_id}/_cross-cutting/api/openapi.yaml
+npx --yes @redocly/cli lint docs/specs/events/{event_id}/_cross-cutting/api/generated/openapi.bundle.yaml
+# legacyでは従来のapi/openapi.yamlを指定する
 ```
 
 - エラー 0 → 6c へ進む
@@ -630,7 +663,8 @@ npx --yes @redocly/cli lint docs/specs/events/{event_id}/_cross-cutting/api/open
 #### 6c. AsyncAPI リント（asyncapi.yaml が存在する場合のみ）
 
 ```bash
-npx --yes @asyncapi/cli validate docs/specs/events/{event_id}/_cross-cutting/api/asyncapi.yaml
+npx --yes @asyncapi/cli validate docs/specs/events/{event_id}/_cross-cutting/api/generated/asyncapi.bundle.yaml
+# legacyでは従来のapi/asyncapi.yamlを指定する
 ```
 
 - エラー 0 → Step7 へ進む
@@ -659,6 +693,11 @@ Step6 の機械検証は構文・必須項目しか見ない。「検証は通�
    または 3 ラウンド到達(残 findings は確認推奨項目としてユーザーに返す)。minor の修正は任意。
    round-{n}.yaml のトップレベルは `{round: n, findings: [...], resolved: [{id, resolution}]}` とし、
    finding の id はラウンドをまたいで引き継ぐ(再掲は同 id)
+
+Step6.5終了時に `_review/implementation-readiness.md` を確定する。
+結果を変える不足・矛盾が残るUCは `needs-spec-change` とし、該当findingを記録する。
+3ラウンドで解決できなかった場合もドラフトとして保存できるが、実装可能と報告せず、
+Step8のlatestへの昇格は行わない。確認推奨事項への移動やdeferredだけでこの判定を覆さない。
 
 ### Step7: Markdown 生成
 
@@ -717,12 +756,12 @@ spec-stories スキルの詳細は `${CLAUDE_PLUGIN_ROOT}/skills/dist-spec-stori
 
 ## 設計方針
 
-1. **全体横断 UX/UI 設計を UC Spec 生成の前に確定する（Step2 → Step3）**: Step2 で UX/UI/共通コンポーネント設計を先行し、Step3 の UC Spec 生成で一貫した設計方針を参照する
-2. **Presentation 系ティアはロジックとコンポーネント設計まで（Step3）、Story 実装は spec-stories スキル**: Step3 では design-event.yaml のコンポーネントを参照した設計ドキュメントを生成し、後段の spec-stories スキルが実際の Storybook Story として実装する
-3. **OpenAPI/AsyncAPI は全 UC 統合で _cross-cutting/ に生成**: Contract First 開発のために全エンドポイント・全イベントを1ファイルに集約する。スキーマ定義、リクエスト/レスポンス型を実装可能な品質で具体的に記述する
-4. **全体横断 Spec は _cross-cutting/ に配置**: UC 単位 Spec とは異なる粒度で、システム全体を俯瞰する設計情報を提供する
-5. **RDRA モデルから導出できる範囲で記述**: 推測で仕様を追加しない
-6. **BDD シナリオは具体的な値を含める**: 「適切な値」のような曖昧表現は避ける
+1. **前段latestを正本として参照する**: 業務条件と状態はRDRA、部品のProps・tokens・単体挙動はdesignのStorybookを読む。過去イベントへ意味を固定しない。
+2. **Step2はStorybook参照索引、Step3は接続仕様**: データフロー・分岐つきシーケンス・条件の所在・画面のAPI接続を出力する。Step4c/4eでは部品契約を再設計せず接続を確認する。
+3. **OpenAPIは分割して人が直接編集する**: paths/componentsと入口を正本にし、Swagger UI・codegen向けにbundleを生成する。所有者索引・summary・sliceを併用する。
+4. **共通の技術規則だけ_cross-cuttingへ定義する**: 複数UCで同じ意味の規則は一元化し、UC固有の実行条件はtierに残す。
+5. **不足はpipelineへ還流する**: RDRAにない数値やUIにないPropsを創作しない。結果を左右する不足がある場合はneeds-spec-changeでイベントに保存し、latestへ昇格しない。
+6. **BDDは提案採用後の具体例**: 採用状況は本文外で管理する。上流の最新内容と提案が一致すれば、本文を維持して整合確認を記録する。
 
 ## 実装上の注意事項
 

@@ -1,0 +1,8 @@
+description: 資料種別のwire値。正本は docs/rdra/latest/バリエーション.tsv の資料種別。利用可能範囲は docs/rdra/latest/条件.tsv の資料種別利用可否条件を参照。
+enum:
+- 紙書籍
+- 電子書籍
+type: string
+x-enum-varnames:
+- PAPER_BOOK
+- EBOOK

@@ -1,0 +1,333 @@
+uc: 返却を登録する
+business: 貸出業務
+buc: 書籍を返却するフロー
+models:
+  - name: loans
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: books
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: genres
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: users
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: reservations
+    tier: tier-backend-api
+    layer: repository
+    type: read-model
+  - name: notification_outbox
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: loans_events
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: books_events
+    tier: tier-backend-api
+    layer: repository
+    type: record
+  - name: audit_logs
+    tier: tier-backend-api
+    layer: repository
+    type: record
+tables:
+  - name: loans
+    rdra_info: 貸出
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_id
+          - name: book_id
+          - name: user_number
+          - name: loaned_on
+          - name: due_date
+          - name: returned_on
+          - name: current_status
+          - name: recorded_by
+          - name: version
+          - name: updated_at
+        where: loan_id = path.loan_id。previewはbook_id = path.book_id AND current_status IN (貸出中, 延滞)
+        purpose: 返却対象を取得。preview0件404、複数件503
+        lock: TR-TXの書籍行に続く貸出行lock
+      - type: UPDATE
+        columns:
+          - name: current_status
+            value: 返却済み
+          - name: returned_on
+            value: 返却確定時のbusiness_date
+          - name: version
+            value: version + 1
+          - name: updated_at
+            value: 確定時刻
+        where: loan_id = path.loan_id AND version = body.version AND current_status IN (貸出中, 延滞)
+        purpose: 返却確定
+    indexes_needed:
+      - columns:
+          - loan_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: books
+    rdra_info: 書籍
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: book_id
+          - name: title
+          - name: author
+          - name: isbn
+          - name: publisher
+          - name: genre_id
+          - name: media_type
+          - name: current_status
+          - name: version
+          - name: registered_at
+          - name: updated_at
+          - name: deleted
+        where: book_id = 対象貸出/予約のbook_id
+        purpose: 書誌表示と状態判定。履歴を返す照会ではdeletedで除外しない
+        lock: 返却更新はTR-TXの書籍行FOR UPDATE。preview照会はlock不要
+      - type: UPDATE
+        columns:
+          - name: current_status
+            value: 有効予約ありは予約待ち、なしは在庫あり
+          - name: version
+            value: version + 1
+          - name: updated_at
+            value: 確定時刻
+        where: book_id = loans.book_id AND version = lock後のversion
+        purpose: 返却と同じ取引
+    indexes_needed:
+      - columns:
+          - book_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: genres
+    rdra_info: ジャンル
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: genre_id
+          - name: genre_name
+        where: genre_id = 対象書籍のgenre_id
+        purpose: Book.genre_nameの結合
+    indexes_needed:
+      - columns:
+          - genre_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: users
+    rdra_info: 利用者
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: user_number
+          - name: name
+        where: user_number IN (対象貸出と先頭予約のuser_number)
+        purpose: 返却確認と応答の利用者名
+    indexes_needed:
+      - columns:
+          - user_number
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: reservations
+    rdra_info: 予約
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: reservation_id
+          - name: book_id
+          - name: user_number
+          - name: accepted_at
+          - name: queue_position
+          - name: current_status
+          - name: version
+          - name: updated_at
+        where: book_id = loans.book_id AND current_status IN (予約中, 通知済み) ORDER BY queue_position, reservation_id
+        purpose: 返却後状態と通知先を決定
+        lock: TR-TXの予約行lock
+    indexes_needed:
+      - columns:
+          - reservation_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+      - columns:
+          - book_id
+          - current_status
+          - queue_position
+        reason: 書籍ごとの有効予約と先頭/後続の照会
+        unique: false
+        access_pattern: 書籍ごとの有効予約と先頭/後続の照会
+  - name: notification_outbox
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-005.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: notification_id
+          - name: cause_key
+          - name: state
+          - name: actor_id
+          - name: request_key
+          - name: request_hash
+          - name: response
+        where: cause_key = 返却通知と先頭reservation_idの結合
+        purpose: 同じ契機の既存通知IDと確定要求を照合し、重複INSERTを防ぐ
+        lock: TR-IDEMP/書籍lockの下で読み、cause_keyの一意制約で競合を防止
+      - type: INSERT
+        columns:
+          - name: notification_id
+            value: 通知種別と対象IDに対応する一意の通知ID
+          - name: cause_key
+            value: 返却通知とreservation_idを結合
+          - name: notification_type
+            value: 返却通知
+          - name: target_loan_id
+            value: "null"
+          - name: target_reservation_id
+            value: 対象reservation_id
+          - name: state
+            value: queued
+          - name: payload
+            value: 対応AsyncAPI messageのnotification_idとreservation_idを持つJSON
+          - name: created_at
+            value: 要求を確定するサーバー時刻
+          - name: attempts
+            value: "0"
+          - name: next_attempt_at
+            value: "null"
+          - name: lease_until
+            value: "null"
+          - name: provider_message_id
+            value: "null"
+          - name: actor_id
+            value: 認証主体の利用者番号
+          - name: request_key
+            value: TR-IDEMPの安定要求キー
+          - name: request_hash
+            value: 正規化した要求のSHA-256
+          - name: response
+            value: 要求確定時のHTTP status・headers・bodyのJSON。配信後も不変
+        purpose: 有効予約がある場合だけ返却と同じ取引で作成。既存cause_keyなら既存通知ID
+    indexes_needed:
+      - columns:
+          - cause_key
+        reason: 同じ通知種別と対象IDの要求を一意にする
+        unique: true
+        access_pattern: 同じ通知種別と対象IDの要求を一意にする
+  - name: loans_events
+    rdra_info: 貸出
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_id
+          - name: actor_id
+          - name: request_key
+          - name: request_hash
+          - name: response
+        where: actor_id = 認証主体 AND request_key = operationと要求キーの結合
+        purpose: TR-IDEMPのadvisory lock取得後に既存結果を照合
+      - type: INSERT
+        columns:
+          - name: event_id
+            value: 一意のイベントID
+          - name: loan_id
+            value: 当該loans行の識別子
+          - name: version
+            value: 同じ取引で確定するsnapshotのversion
+          - name: event_type
+            value: returnLoan
+          - name: occurred_at
+            value: snapshot更新と同じサーバー時刻
+          - name: actor_id
+            value: 認証主体の利用者番号
+          - name: request_key
+            value: returnLoanとX-Idempotency-Keyの結合
+          - name: request_hash
+            value: TR-IDEMPで定義する正規化要求のSHA-256
+          - name: payload
+            value: 返却日と返却済み状態、返却結果
+          - name: response
+            value: 当該操作の確定HTTP status・headers・bodyのJSON
+        purpose: 対象行の変更と同じRDB取引で追記
+    indexes_needed:
+      - columns:
+          - loan_id
+          - version
+        reason: 対象の版を一意に記録
+        unique: true
+        access_pattern: 対象の版を一意に記録
+  - name: books_events
+    rdra_info: 書籍
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: event_id
+            value: 一意のイベントID
+          - name: book_id
+            value: 当該books行の識別子
+          - name: version
+            value: 同じ取引で確定するsnapshotのversion
+          - name: event_type
+            value: returnLoan
+          - name: occurred_at
+            value: snapshot更新と同じサーバー時刻
+          - name: actor_id
+            value: 認証主体の利用者番号
+          - name: request_key
+            value: returnLoanとX-Idempotency-Keyの結合
+          - name: request_hash
+            value: TR-IDEMPで定義する正規化要求のSHA-256
+          - name: payload
+            value: 返却後の書籍状態
+          - name: response
+            value: 当該操作の確定HTTP status・headers・bodyのJSON
+        purpose: 対象行の変更と同じRDB取引で追記
+    indexes_needed:
+      - columns:
+          - book_id
+          - version
+        reason: 対象の版を一意に記録
+        unique: true
+        access_pattern: 対象の版を一意に記録
+  - name: audit_logs
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: audit_id
+            value: 一意の監査ID
+          - name: occurred_at
+            value: 操作結果を確定するサーバー時刻
+          - name: actor_user_number
+            value: 認証主体の利用者番号
+          - name: action_type
+            value: データ更新
+          - name: target_entity
+            value: E-004
+          - name: target_id
+            value: 当該取引で処理した対象ID
+          - name: result
+            value: 成功
+        purpose: TR-AUDIT。更新では業務取引に含め、参照では応答前に確定
+    indexes_needed: []

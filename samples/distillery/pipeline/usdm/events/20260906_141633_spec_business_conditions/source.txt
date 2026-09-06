@@ -1,0 +1,2 @@
+CR-renew001-004/005: docs/specs/events/20260906_131731_spec_generation/feedback-requests/20260906_132000_spec_feedback_renew001.md
+normal auto_adopt。controller feedback runは開始していない。

@@ -1,0 +1,160 @@
+# digest of nfr/latest/nfr-grade.yaml section categories[id=F] (L1004-1161); source_sha256: 9ecccca870476f5c8b048641028a922e9f2b393562b9bca87d4bd1f567861198
+# 派生物。正本は nfr-grade.yaml。編集しない
+  - id: "F"
+    name: "システム環境・エコロジー"
+    subcategories:
+      - id: "F.1"
+        name: "システム制約・前提条件"
+        items:
+          - id: "F.1.1"
+            name: "システム制約"
+            important: true
+            metrics:
+              - id: "F.1.1.1"
+                name: "対応OS"
+                important: true
+                grade: 2
+                grade_description: "主要2-3 OS対応（Windows / macOS を対象とする Web アプリケーション）"
+                reason: "システム概要の interface_kind が gui であり、司書の館内端末と利用者の個人端末の双方から Web ブラウザで利用するため単一 OS 固定にはできない"
+                source_model: "システム概要: interface_kind=gui、アクター: 司書（社内）/ 利用者（社外）"
+                confidence: "medium"
+              - id: "F.1.1.2"
+                name: "対応ブラウザ"
+                important: true
+                grade: 2
+                grade_description: "主要ブラウザ2-3種対応（Chrome / Edge / Safari の最新版）"
+                reason: "利用者が個人端末から Web 照会するためマルチブラウザ対応が必要と推論したが、RDRA にモバイル対応の明示的な記述がないため、モバイルブラウザまで含む Lv3 ではなく保守的に Lv2 とした"
+                source_model: "アクター: 利用者（社外）、システム概要: interface_kind=gui"
+                confidence: "low"
+              - id: "F.1.1.3"
+                name: "対応デバイス"
+                important: false
+                grade: 2
+                grade_description: "PC（司書窓口）＋PC/タブレット（利用者照会）。スマートフォン対応は要確認"
+                reason: "F.1.1.2 と同様に、利用者の端末種別が RDRA に記述されていないため保守的に設定した"
+                source_model: "アクター: 司書 / 利用者"
+                confidence: "low"
+          - id: "F.1.2"
+            name: "ネットワーク制約"
+            important: false
+            metrics:
+              - id: "F.1.2.1"
+                name: "通信プロトコル"
+                important: false
+                grade: 1
+                grade_description: "HTTPS（TLS1.2以上）と SMTP/SMTPS（メール配信サービス連携）"
+                reason: "外部システム「メール配信サービス」へのメール送信と、利用者向け Web 画面の HTTPS 提供が必要"
+                source_model: "外部システム: メール配信サービス、システム概要: interface_kind=gui"
+                confidence: "high"
+              - id: "F.1.2.2"
+                name: "帯域要件"
+                important: false
+                grade: 1
+                grade_description: "〜100Mbps（画面主体・大容量添付なし）"
+                reason: "情報にファイル添付・画像属性がないためテキスト主体と推論したが、書影表示等の要件は RDRA に記述がない"
+                source_model: "情報: 書籍（テキスト属性のみ）"
+                confidence: "low"
+      - id: "F.2"
+        name: "システム特性"
+        items:
+          - id: "F.2.1"
+            name: "可搬性"
+            important: false
+            metrics:
+              - id: "F.2.1.1"
+                name: "可搬性"
+                important: false
+                grade: 2
+                grade_description: "同一ベンダ内での移行可能"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "F.2.2"
+            name: "拡張性"
+            important: false
+            metrics:
+              - id: "F.2.2.1"
+                name: "アーキテクチャ拡張性"
+                important: false
+                grade: 2
+                grade_description: "コンテキスト分割されたモジュラ構成（蔵書管理／利用者管理／貸出管理／予約管理／通知管理／分析管理）。資料種別による電子書籍対応を拡張点とする"
+                reason: "情報のコンテキストが 6 つに分かれており、システム概要に「将来の電子書籍対応に備えて蔵書を資料種別で区別できるモデルとする」と拡張要件が明記されている"
+                source_model: "情報: コンテキスト（蔵書管理/利用者管理/貸出管理/予約管理/通知管理/分析管理）、システム概要: 将来の電子書籍対応、条件: 資料種別利用可否条件"
+                confidence: "medium"
+      - id: "F.3"
+        name: "適合規格"
+        items:
+          - id: "F.3.1"
+            name: "適合規格"
+            important: false
+            metrics:
+              - id: "F.3.1.1"
+                name: "業界標準・規格"
+                important: false
+                grade: 1
+                grade_description: "ISBN（ISO 2108）に準拠した書誌データ管理"
+                reason: "情報「書籍」に ISBN 属性があり、条件「書籍検索条件」でも ISBN が検索条件種別に含まれる"
+                source_model: "情報: 書籍（ISBN）、バリエーション: 検索条件種別（ISBN）"
+                confidence: "medium"
+              - id: "F.3.1.2"
+                name: "アクセシビリティ"
+                important: false
+                grade: 2
+                grade_description: "JIS X 8341-3:2016 レベル AA 準拠を目標とする（公共図書館の利用者向け画面）"
+                reason: "不特定の図書館利用者が Web 画面を使うためアクセシビリティ配慮が望ましいと推論したが、RDRA に適合規格の記述はない"
+                source_model: "アクター: 利用者（社外・受益者）"
+                confidence: "low"
+      - id: "F.4"
+        name: "機材設置環境条件"
+        items:
+          - id: "F.4.1"
+            name: "設置環境"
+            important: false
+            metrics:
+              - id: "F.4.1.1"
+                name: "耐震クラス"
+                important: false
+                grade: 2
+                grade_description: "データセンタ（耐震）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+              - id: "F.4.1.2"
+                name: "空調・温度管理"
+                important: false
+                grade: 2
+                grade_description: "データセンタ標準の空調（温度18〜27℃、冗長構成）"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+              - id: "F.4.1.3"
+                name: "物理セキュリティ"
+                important: false
+                grade: 2
+                grade_description: "入退室管理（ICカード）＋監視カメラ"
+                reason: "モデルシステム2のデフォルト値を適用（個人情報を保持するため設置場所の物理的保護が必要）"
+                source_model: "情報: 利用者（氏名、連絡先）"
+                confidence: "default"
+      - id: "F.5"
+        name: "環境マネージメント"
+        items:
+          - id: "F.5.1"
+            name: "環境対策"
+            important: false
+            metrics:
+              - id: "F.5.1.1"
+                name: "CO2排出量"
+                important: false
+                grade: 1
+                grade_description: "省電力機器の選定"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+              - id: "F.5.1.2"
+                name: "廃棄物・リサイクル"
+                important: false
+                grade: 1
+                grade_description: "IT機器は産業廃棄物として適正処理し、記憶媒体は物理破壊＋証明書取得とする"
+                reason: "モデルシステム2のデフォルト値を適用（個人情報を保持する媒体の廃棄手順が必要）"
+                source_model: "情報: 利用者（氏名、連絡先）"
+                confidence: "default"

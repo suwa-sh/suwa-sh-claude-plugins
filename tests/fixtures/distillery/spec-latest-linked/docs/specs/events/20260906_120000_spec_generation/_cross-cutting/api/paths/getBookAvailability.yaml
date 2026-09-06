@@ -1,0 +1,20 @@
+get:
+  description: 書籍の書誌情報・在庫状況・予約待ち件数・案内を返す。状態の意味は docs/rdra/latest/状態.tsv の書籍状態、予約可否・集計条件は docs/rdra/latest/条件.tsv
+    の該当条件を参照する。業務条件をこの契約へ複写しない。今回の依存参照contextであり意味上の受入対象外。
+  operationId: getBookAvailability
+  responses:
+    '200':
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/BookAvailabilityResponse.yaml
+      description: 書籍詳細と在庫状況
+    '401':
+      $ref: ../components/responses/Unauthorized.yaml
+    '404':
+      $ref: ../components/responses/NotFound.yaml
+  summary: 書籍詳細と在庫状況を照会する
+  tags:
+  - books
+parameters:
+- $ref: ../components/parameters/BookIdPath.yaml

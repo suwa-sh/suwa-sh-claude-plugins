@@ -1,0 +1,62 @@
+type: object
+additionalProperties: false
+required:
+  - loan_id
+  - book_id
+  - user_number
+  - loaned_on
+  - due_date
+  - current_status
+  - recorded_by
+  - version
+  - updated_at
+  - returned_on
+  - book_title
+  - book_author
+  - user_name
+properties:
+  loan_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  book_id:
+    type: string
+    minLength: 1
+    maxLength: 255
+  user_number:
+    type: string
+    minLength: 1
+    maxLength: 255
+  loaned_on:
+    type: string
+    format: date
+  due_date:
+    type: string
+    format: date
+  current_status:
+    type: string
+    enum:
+      - 貸出中
+      - 延滞
+      - 返却済み
+  recorded_by:
+    type: string
+    minLength: 1
+    maxLength: 255
+  version:
+    type: integer
+    minimum: 0
+  updated_at:
+    type: string
+    format: date-time
+  returned_on:
+    type:
+      - string
+      - "null"
+    format: date
+  book_title: &a1
+    type: string
+    minLength: 1
+    maxLength: 255
+  book_author: *a1
+  user_name: *a1

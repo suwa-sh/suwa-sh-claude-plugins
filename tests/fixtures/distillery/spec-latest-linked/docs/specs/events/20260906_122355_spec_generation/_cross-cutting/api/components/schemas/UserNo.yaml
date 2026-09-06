@@ -1,0 +1,6 @@
+description: 利用者を一意に識別する利用者番号
+examples:
+- U-000123
+maxLength: 20
+minLength: 1
+type: string

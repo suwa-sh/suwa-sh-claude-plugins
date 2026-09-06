@@ -1,5 +1,8 @@
 # tier-{tier_id}.md フォーマット（CLI 系ティア。id に cli / command / tui を含む）
 
+`product-spec-writing.md`を適用する。生成本文は実装対象の振る舞いを表、リスト、図で記述し、生成状態は本文外へ記録する。還流後は具体案と最新正本が一致すれば本文を維持して整合確認を記録する。
+
+
 > **読み込みタイミング**: Step3 の UC Spec 生成 subagent が、対象ティアの kind に一致するファイル**だけ**を読む
 > （kind はオーケストレータが Step1 で確定し、subagent 指示の「対象ティア」に `(kind)` として渡す）。
 > 共通部（spec.md フォーマット・注意事項）は `references/specs/spec-template.md`。
@@ -54,5 +57,5 @@ Feature: {UC名} - {ティア名}
     Then 終了コード {n} で stdout に {期待出力} が出る
 ```
 ```
-- tier-{tier_id}.md（API系）の API 仕様は `_cross-cutting/api/openapi.yaml` と整合させる
+- tier-{tier_id}.md（API系）の API 仕様は `_cross-cutting/api/openapi/openapi.yaml` と整合させる
 - `app_architecture.tier_layers[].layers` からティアごとのレイヤー構成を参照し、仕様に反映する

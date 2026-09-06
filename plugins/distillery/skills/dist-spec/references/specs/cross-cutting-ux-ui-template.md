@@ -1,5 +1,7 @@
 # 全体横断 Spec テンプレート定義（UX/UI）
 
+> 新規生成は `references/specs/latest-linked-spec.md` を優先する。業務条件・状態遷移はRDRA latest、部品契約はdesign latestのStorybookへ参照し、再定義しない。分割OpenAPIを直接編集し、不足はpipelineへ還流する。
+
 > **読み込みタイミング**: Step2（全体横断 UX/UI 設計）/ Step4c（共通コンポーネント抽出）で使用。
 > 全体横断 Spec の全体像（ディレクトリ構成・API/データストア概要）は `cross-cutting-template.md` を参照。
 > トレーサビリティマトリクスのフォーマットは `cross-cutting-traceability-template.md` を参照。

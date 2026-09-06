@@ -1,0 +1,32 @@
+description: エラー応答の共通形式
+properties:
+  code:
+    description: エラーコード
+    examples:
+    - VALIDATION_ERROR
+    type: string
+  details:
+    description: 項目単位のエラー内訳
+    items:
+      properties:
+        field:
+          description: エラー対象の項目名
+          type: string
+        message:
+          description: 項目単位のエラーメッセージ
+          type: string
+      required:
+      - field
+      - message
+      type: object
+    type: array
+  message:
+    description: 利用者向けのエラーメッセージ
+    type: string
+  trace_id:
+    description: リクエスト追跡 ID（問い合わせ時の識別子）
+    type: string
+required:
+- code
+- message
+type: object

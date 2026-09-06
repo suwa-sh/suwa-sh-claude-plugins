@@ -1,0 +1,235 @@
+uc: リマインドを送信する
+business: 期限管理業務
+buc: 返却期限を通知するフロー
+models:
+  - name: notification_outbox
+    tier: tier-worker
+    layer: repository
+    type: record
+  - name: loans
+    tier: tier-worker
+    layer: repository
+    type: read-model
+  - name: books
+    tier: tier-worker
+    layer: repository
+    type: read-model
+  - name: users
+    tier: tier-worker
+    layer: repository
+    type: read-model
+  - name: remind_days
+    tier: tier-worker
+    layer: repository
+    type: read-model
+  - name: notifications
+    tier: tier-worker
+    layer: repository
+    type: record
+  - name: audit_logs
+    tier: tier-worker
+    layer: repository
+    type: record
+tables:
+  - name: notification_outbox
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-005.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: notification_id
+          - name: notification_type
+          - name: target_loan_id
+          - name: state
+          - name: attempts
+          - name: next_attempt_at
+          - name: lease_until
+          - name: provider_message_id
+          - name: actor_id
+        where: notification_id = message.notification_id AND notification_type = リマインド
+        purpose: 通知要求の同一性、送信権、再実行、対象外判定
+        lock: FOR UPDATE。claimの適用状態とlease条件はTR-MQ
+      - type: UPDATE
+        columns:
+          - name: state
+            value: sending
+          - name: lease_until
+            value: 現在時刻 + 120秒
+          - name: attempts
+            value: attempts + 1
+        where: notification_id = message.notification_id AND state IN (queued, published) AND (next_attempt_at IS NULL OR next_attempt_at <= 現在時刻)
+        purpose: TR-MQの排他下で送信権を取得。外部送信前にcommit
+      - type: UPDATE
+        columns:
+          - name: state
+            value: sentまたはfailed。TR-MQで確定した結果
+          - name: lease_until
+            value: "null"
+          - name: next_attempt_at
+            value: "null"
+          - name: provider_message_id
+            value: 配信サービスの受理ID。確定失敗でIDがなければnull
+        where: notification_id = message.notification_id AND state = sending AND attempts = 取得時のattempts AND lease_until = 取得時のlease_until
+        purpose: 通知結果と同じ取引で確定。送信権を再取得した別処理の値を上書きしない
+      - type: UPDATE
+        columns:
+          - name: state
+            value: unknown
+          - name: lease_until
+            value: "null"
+        where: notification_id = message.notification_id AND state = sending AND ((attempts = 取得時のattempts AND lease_until = 取得時のlease_until AND 受付結果不明) OR lease_until <= 復旧時刻)
+        purpose: TR-MQの結果不明。自動再送を停止する
+      - type: UPDATE
+        columns:
+          - name: state
+            value: failed
+          - name: lease_until
+            value: "null"
+          - name: next_attempt_at
+            value: "null"
+        where: notification_id = message.notification_id AND state IN (queued, published) AND 外部未送信かつ対象の現在状態が送信条件外
+        purpose: 対象外を終端化し、TARGET_INACTIVE監査と同一取引でcommit後ACK。notificationsはINSERTしない
+      - type: UPDATE
+        columns:
+          - name: state
+            value: published
+          - name: lease_until
+            value: "null"
+          - name: next_attempt_at
+            value: 現在時刻 + TR-MQの試行回数別jitter待機
+        where: notification_id = message.notification_id AND state = sending AND attempts = 取得時のattempts AND lease_until = 取得時のlease_until AND 確実な未受付の一時障害 AND attempts < 5
+        purpose: 再試行予定を保持。受付不明をこの経路へ入れない
+    indexes_needed:
+      - columns:
+          - cause_key
+        reason: 同じ通知種別と対象IDの要求を一意にする
+        unique: true
+        access_pattern: 同じ通知種別と対象IDの要求を一意にする
+  - name: loans
+    rdra_info: 貸出
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: loan_id
+          - name: book_id
+          - name: user_number
+          - name: due_date
+          - name: returned_on
+          - name: current_status
+        where: loan_id = outbox.target_loan_id AND loan_id = message.loan_id
+        purpose: 送信直前に現在状態、宛先主体、期限を再確認
+        lock: 送信権取得の取引ではTR-TX順でFOR UPDATE
+    indexes_needed:
+      - columns:
+          - loan_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: books
+    rdra_info: 書籍
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: book_id
+          - name: title
+        where: book_id = 対象貸出.book_id
+        purpose: 送信本文の書籍名
+        lock: 送信権取得の取引ではTR-TX順でFOR UPDATE
+    indexes_needed:
+      - columns:
+          - book_id
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: users
+    rdra_info: 利用者
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: user_number
+          - name: email
+        where: user_number = 対象貸出.user_number
+        purpose: 現在の送信先メール
+    indexes_needed:
+      - columns:
+          - user_number
+        reason: 識別子による照会と条件付き更新
+        unique: false
+        access_pattern: 識別子による照会と条件付き更新
+  - name: remind_days
+    rdra_info: リマインド日数
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-001.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: remind_days_id
+          - name: remind_days
+          - name: valid_from
+          - name: valid_to
+        where: valid_from <= business_date AND (valid_to IS NULL OR business_date < valid_to)
+        purpose: TR-PARAM。有効世代がちょうど1件であることを確認
+    indexes_needed:
+      - columns:
+          - valid_from
+          - valid_to
+        reason: 有効期間の検索と重複検査
+        unique: false
+        access_pattern: 有効期間の検索と重複検査
+  - name: notifications
+    rdra_info: 通知
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-005.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: notification_id
+            value: outbox.notification_id
+          - name: user_number
+            value: 対象貸出.user_number
+          - name: notification_type
+            value: リマインド
+          - name: recipient_email
+            value: 送信権取得後に取得したusers.email
+          - name: subject
+            value: tier-workerのメール本文仕様に従う実際の件名
+          - name: body
+            value: tier-workerの書籍名と返却期限から組み立てた実際の送信本文
+          - name: sent_at
+            value: 配信結果を確定したサーバー時刻
+          - name: send_result
+            value: 配信受理成功は成功。確実な未送信の終端障害は失敗
+          - name: target_loan_id
+            value: 対象loan_id
+          - name: target_reservation_id
+            value: "null"
+        purpose: claimのattempts・lease_until一致を条件にしたoutbox更新と同じ取引で確定成功/確定失敗を保存。更新0件は取引全体rollback。unknown・対象外はINSERTしない
+    indexes_needed:
+      - columns:
+          - notification_id
+        reason: 同じ通知の確定結果重複を防ぐ
+        unique: true
+        access_pattern: 同じ通知の確定結果重複を防ぐ
+  - name: audit_logs
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: audit_id
+            value: 一意の監査ID
+          - name: occurred_at
+            value: 操作結果を確定するサーバー時刻
+          - name: actor_user_number
+            value: タイマーの固定ID
+          - name: action_type
+            value: データ更新
+          - name: target_entity
+            value: E-008
+          - name: target_id
+            value: outbox.notification_id
+          - name: result
+            value: 確定した処理結果。対象外抑止ではTARGET_INACTIVE
+        purpose: TR-AUDIT。更新では業務取引に含め、参照では応答前に確定
+    indexes_needed: []

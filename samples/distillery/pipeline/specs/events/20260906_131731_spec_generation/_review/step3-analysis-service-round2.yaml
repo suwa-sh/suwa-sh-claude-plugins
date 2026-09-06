@@ -1,0 +1,26 @@
+{
+  "round": 2,
+  "findings": [
+    {
+      "id": "ANALYSIS-004",
+      "severity": "minor",
+      "target": "6UCのpresentationとspec.md",
+      "claim": "関連RDRA見出しへの変更後も6UCの_trace-links.json anchorが旧見出しを指している",
+      "evidence": "各spec.mdは「関連 RDRA モデル」へ変更済み、各_trace-links.jsonはanchor「状態と要件の参照」のまま",
+      "suggested_fix": "traceのanchorを実在する見出しに揃える"
+    }
+  ],
+  "resolved": [
+    "ANALYSIS-001",
+    "ANALYSIS-002",
+    "ANALYSIS-003",
+    "ANALYSIS-004"
+  ],
+  "evidence": [
+    "期間別APIのbucket×book保存/series sumを確認",
+    "ランキング画面の当月1日〜当日/日粒度初期化を確認",
+    "窓口画面のuserNumber/today供給を確認",
+    "6画面UI-READ集約とspec見出し変更を確認、旧trace anchorだけ未解決",
+    "生成担当が6UC trace anchorを関連 RDRA モデルへ修正し、buildSpecViews --checkで参照の存在と一致を確認。"
+  ]
+}

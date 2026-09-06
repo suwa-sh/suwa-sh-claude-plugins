@@ -1,0 +1,6 @@
+description: 利用者番号
+in: path
+name: user_no
+required: true
+schema:
+  $ref: ../schemas/UserNo.yaml

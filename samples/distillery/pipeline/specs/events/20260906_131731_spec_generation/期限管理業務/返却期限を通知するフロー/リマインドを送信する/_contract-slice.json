@@ -1,0 +1,91 @@
+{
+  "asyncapi": {
+    "asyncapi": "3.0.0",
+    "channels": {
+      "reminder": {
+        "address": "library.reminder.v1",
+        "messages": {
+          "ReminderRequest": {
+            "$ref": "#/components/messages/ReminderRequest"
+          }
+        }
+      }
+    },
+    "components": {
+      "messages": {
+        "ReminderRequest": {
+          "contentType": "application/json",
+          "correlationId": {
+            "location": "$message.header#/message_id"
+          },
+          "headers": {
+            "additionalProperties": false,
+            "properties": {
+              "message_id": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "message_id"
+            ],
+            "type": "object"
+          },
+          "name": "ReminderRequest",
+          "payload": {
+            "$ref": "#/components/schemas/ReminderRequestPayload"
+          },
+          "title": "リマインドを送信する"
+        }
+      },
+      "schemas": {
+        "ReminderRequestPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "loan_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "notification_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "trace_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "notification_id",
+            "loan_id",
+            "trace_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    "info": {
+      "title": "図書館通知・日次処理契約",
+      "version": "1.0.0"
+    },
+    "operations": {
+      "consumeReminder": {
+        "action": "receive",
+        "channel": {
+          "$ref": "#/channels/reminder"
+        },
+        "messages": [
+          {
+            "$ref": "#/channels/reminder/messages/ReminderRequest"
+          }
+        ]
+      }
+    }
+  },
+  "openapi": null,
+  "schema_version": "distillery.contract-slice/v1"
+}

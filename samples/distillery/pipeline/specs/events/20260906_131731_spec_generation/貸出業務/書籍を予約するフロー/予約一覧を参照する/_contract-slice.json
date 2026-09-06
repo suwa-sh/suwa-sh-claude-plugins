@@ -1,0 +1,293 @@
+{
+  "asyncapi": null,
+  "openapi": {
+    "components": {
+      "schemas": {
+        "Error": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "enum": [
+                "INVALID_INPUT",
+                "UNAUTHENTICATED",
+                "FORBIDDEN",
+                "NOT_FOUND",
+                "VERSION_CONFLICT",
+                "IDEMPOTENCY_CONFLICT",
+                "BUSINESS_RULE_VIOLATION",
+                "CONFIGURATION_UNAVAILABLE",
+                "DEPENDENCY_UNAVAILABLE"
+              ],
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "trace_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "trace_id"
+          ],
+          "type": "object"
+        },
+        "Reservation": {
+          "additionalProperties": false,
+          "properties": {
+            "accepted_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "book_author": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "book_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "book_title": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "current_status": {
+              "enum": [
+                "予約中",
+                "通知済み",
+                "取消",
+                "終了"
+              ],
+              "type": "string"
+            },
+            "queue_position": {
+              "minimum": 1,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "reservation_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "user_name": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "user_number": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "version": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "reservation_id",
+            "book_id",
+            "user_number",
+            "accepted_at",
+            "queue_position",
+            "current_status",
+            "version",
+            "updated_at",
+            "book_title",
+            "book_author",
+            "user_name"
+          ],
+          "type": "object"
+        }
+      },
+      "securitySchemes": {
+        "BearerAuth": {
+          "bearerFormat": "JWT",
+          "scheme": "bearer",
+          "type": "http"
+        }
+      }
+    },
+    "info": {
+      "title": "図書館管理API",
+      "version": "1.0.0"
+    },
+    "openapi": "3.1.0",
+    "paths": {
+      "/staff/books/{book_id}/reservations": {
+        "get": {
+          "operationId": "listReservations",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "book_id",
+              "required": true,
+              "schema": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "page",
+              "schema": {
+                "default": 1,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            {
+              "in": "query",
+              "name": "page_size",
+              "schema": {
+                "default": 20,
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "items": {
+                        "items": {
+                          "$ref": "#/components/schemas/Reservation"
+                        },
+                        "type": "array"
+                      },
+                      "page": {
+                        "type": "integer"
+                      },
+                      "page_size": {
+                        "type": "integer"
+                      },
+                      "total": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "items",
+                      "page",
+                      "page_size",
+                      "total"
+                    ],
+                    "type": "object"
+                  }
+                }
+              },
+              "description": "処理結果"
+            },
+            "400": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "入力形式不正"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "認証が必要"
+            },
+            "403": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "権限または接続経路違反"
+            },
+            "404": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "対象なし"
+            },
+            "409": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "競合または冪等キー不一致"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "業務条件不成立"
+            },
+            "503": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "設定または依存先を利用不可"
+            }
+          },
+          "summary": "予約一覧を参照する",
+          "tags": [
+            "貸出業務"
+          ],
+          "x-allowed-roles": [
+            "司書"
+          ],
+          "x-authorization-rule": "ロールと経路を検証する。",
+          "x-network": "館内"
+        }
+      }
+    },
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "servers": [
+      {
+        "url": "https://library.example.invalid/api"
+      }
+    ]
+  },
+  "schema_version": "distillery.contract-slice/v1"
+}

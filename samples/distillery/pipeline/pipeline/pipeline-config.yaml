@@ -1,0 +1,6 @@
+schema_version: distillery.pipeline-config/v1
+dialogue_policy: auto_adopt
+step_models:
+  step6: null
+  step6a: null
+skip_steps: []

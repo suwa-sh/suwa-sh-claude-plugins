@@ -1,0 +1,23 @@
+schema_version: "1.0"
+artifact_type: decision_record
+skill_type: design_system
+artifact_id: design-decision-901
+title: 予約条件と対象識別子の接続
+status: approved
+generated_at: 2026-09-06T13:22:17+09:00
+context: RDRAの予約可否とBookCardの操作条件が不一致。PortalShellには定義済み画面へ解決しないリンクがあった。
+decision: ⭐既存RDRA条件に部品実装を一致させ、識別子が必要な画面は既存一覧の選択から到達する。normal pipeline auto_adoptで採用。
+consequences:
+  positive:
+    - 紙の予約待ちを予約できる
+    - 電子の予約を拒否する
+    - 既存画面だけで対象を選択できる
+  negative:
+    - 一覧から対象を選ぶ操作が必要
+alternatives_considered:
+  - name: ⭐既存部品と既存一覧の接続を修正
+    reason_rejected: 採用。RDRAの意味とPropsを維持できる。
+  - name: 専用選択画面を追加
+    reason_rejected: RDRAにない画面を増やす。
+  - name: RDRAを現状UIへ変更
+    reason_rejected: 合意済み業務条件を変えてしまう。

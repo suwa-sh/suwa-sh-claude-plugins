@@ -1,0 +1,29 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"condition\",\"運営分析管理\",\"人気書籍ランキング判定\"]",
+      "tier": "tier-backend-api",
+      "file": "運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/spec.md",
+      "anchor": "関連 RDRA モデル",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/spec.md",
+          "name": "同数を同順位として表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"condition\",\"運営分析管理\",\"集計期間判定\"]",
+      "tier": "tier-backend-api",
+      "file": "運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/spec.md",
+      "anchor": "関連 RDRA モデル",
+      "scenarios": [
+        {
+          "file": "運営分析業務/蔵書の利用状況を分析するフロー/人気書籍ランキングを参照する/spec.md",
+          "name": "同数を同順位として表示する"
+        }
+      ]
+    }
+  ]
+}

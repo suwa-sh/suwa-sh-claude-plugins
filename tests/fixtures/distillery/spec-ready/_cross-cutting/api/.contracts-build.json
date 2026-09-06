@@ -1,0 +1,15 @@
+{
+  "files": {
+    "_cross-cutting/api/openapi.yaml": "bccb280209f6b88ff9d520f1af40b75c1a0874ede9bf51fcbd40bc34df64e311",
+    "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/_api-summary.yaml": "d99a18c6b8ba91b2feed9509b58b5519254e1f572394d133f334c06ddff80fd2",
+    "蔵書利用業務/書籍を検索するフロー/書籍詳細と在庫状況を照会する/_contract-slice.json": "25731a0a9db720a040b11e5faf7c92061c9b123994ee2900f8d6499f7c488caf",
+    "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/_api-summary.yaml": "2be1a74cecaabb217484a9cce163fd35d84d4f7d8d07ba365589ffc37c8c4ecf",
+    "蔵書利用業務/書籍を貸し出すフロー/利用者番号で貸出対象利用者を特定する/_contract-slice.json": "58d99c3be28f52fd1ebd28214724cb6271bf72d85797d5d6d0318d54763b16e6",
+    "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/_api-summary.yaml": "7b8da29dc8be8b043062920d16d44c8b78388b759c4bed377797252568fbc5c6",
+    "蔵書利用業務/書籍を貸し出すフロー/書籍の貸出可否を判定する/_contract-slice.json": "fccc24d99c72d01ef8723b5f258265a1ce8e4f054594d80d4426e7129d301356",
+    "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_api-summary.yaml": "3dfcfab735027ab1056e64df5368d6ab310345ec9046731ac2dec65732d8bf8e",
+    "蔵書利用業務/書籍を貸し出すフロー/貸出を登録する/_contract-slice.json": "c05de4ba68e0a993f13804b089246a10525a8c16eb5dae0c4a58963a2fd808b2"
+  },
+  "schema_version": "distillery.contract-build/v1",
+  "source_sha256": "2769d0960ad5e2a2d7a2fe1b2d244bca5e77faf51c32480690ec995d3db29ebc"
+}

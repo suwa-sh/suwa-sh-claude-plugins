@@ -1,0 +1,52 @@
+{
+  "async_events": [],
+  "buc": "書籍を予約するフロー",
+  "business": "貸出業務",
+  "consumes": [
+    {
+      "contract_ref": "openapi#/paths/~1books~1{book_id}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getBook",
+      "owner_uc": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する",
+      "path": "/books/{book_id}",
+      "summary": "書籍詳細を参照する",
+      "tier": "tier-frontend-user"
+    },
+    {
+      "channel": "#/channels/return-notification",
+      "contract_ref": "asyncapi#/operations/publishReturnNotification",
+      "direction": "publish",
+      "kind": "asyncapi",
+      "name": "publishReturnNotification",
+      "operation_id": "publishReturnNotification",
+      "owner_uc": "貸出業務/書籍を返却するフロー/返却通知を送信する",
+      "summary": "publishReturnNotification",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "contract_sha256": "cd0145c70c01ea9308fc5239d94c76ec15a10b69f28670785b5c7270813fa17b",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1reservations~1{reservation_id}~1cancel/post",
+      "kind": "openapi",
+      "method": "POST",
+      "operation_id": "cancelReservation",
+      "path": "/reservations/{reservation_id}/cancel",
+      "summary": "予約を取り消す",
+      "tier": "tier-backend-api"
+    },
+    {
+      "contract_ref": "openapi#/paths/~1reservations~1{reservation_id}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getReservation",
+      "path": "/reservations/{reservation_id}",
+      "summary": "予約を取り消すの入力・確認データ取得",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "予約を取り消す"
+}

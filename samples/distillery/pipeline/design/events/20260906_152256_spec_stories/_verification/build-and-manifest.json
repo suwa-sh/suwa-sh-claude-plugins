@@ -1,0 +1,129 @@
+{
+  "screens": 24,
+  "story_exports": 169,
+  "build": {
+    "command": "npm run build-storybook",
+    "exit_code": 0,
+    "raw_log_workspace_only": "spec-stories-planned/build-final.log"
+  },
+  "tests": {
+    "passed": 169,
+    "total": 169,
+    "failed": 0
+  },
+  "source_manifest": [
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/_circulation/fixtures.ts",
+      "sha256": "ba3a1b8f1dde4bf044d1bab531ba7bab68bb00b40fe5c3434b6d1105a0cb59cc"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/_circulation/view.ts",
+      "sha256": "33e6483e6ecdd0309415d15ee317bbc9fddab70764589f51368dfb3dd040c07f"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/_serviceAnalysis.ts",
+      "sha256": "63378b40d3331e610c1d91b6a225346c3bf0587a32d62953d4706d72a3d1de44"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/マイ予約状況画面.stories.tsx",
+      "sha256": "751742341e1649b571cb91c617741d956ba06c16916e9c1157ab3bd3b3908588"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/マイ貸出履歴画面.stories.tsx",
+      "sha256": "08d5f7c9bd8a31b4c56998867f528bde52f8b79fedb4e490dd42ad7ae4ecbc0a"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/予約取消画面.stories.tsx",
+      "sha256": "0c3a380b12bb560e2d5ed14d4e2cc4aaa1b94d3ae80daf0e5713f6a8156567aa"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/予約申込画面.stories.tsx",
+      "sha256": "d31737d14a3c9d444a68d2725fcd2fcfc560a7663c945bcf4873a233b762ac8b"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/書籍詳細・在庫状況画面.stories.tsx",
+      "sha256": "f831242982fc0f5a72d71696cb5990091f359f6fd835319ee56c4343de17af01"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/利用者ポータル/蔵書検索画面.stories.tsx",
+      "sha256": "1875194c27765cacb5216e9addfcb8f161b7de60347dd26fec3b03eafc4a0b56"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/人気書籍ランキング画面.stories.tsx",
+      "sha256": "45cb07682f8802d0d11f8fe43f0e446c351e37d71c77bac19b575976ca9c5cd7"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者一覧画面.stories.tsx",
+      "sha256": "c8fb3fc6e76412b3c1f5483e60f0c6dafa5a156f3b18c0c43795c90c49fdea03"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者削除確認画面.stories.tsx",
+      "sha256": "189232edbae1b91a49f9835a8e0723c7fba81ef84f50d62d2eac481ebc136300"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者登録画面.stories.tsx",
+      "sha256": "13df2665c968ed78e95b892c8e53f9b279d291f55674b03b86b9e8f57efcfa9c"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/利用者編集画面.stories.tsx",
+      "sha256": "cbff9c34810a42a0431d4a7640081096d2aa43344c268987e2b263ac77b505c3"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/在庫状況一覧画面.stories.tsx",
+      "sha256": "52aea3df356f061a4942ff7569426d75c244a93561f8bf32caa27c2dd0988e7f"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/延滞・督促状況画面.stories.tsx",
+      "sha256": "3efef277eb8a971ce056c2daf8eca676be14895395c774eedbd0f23061b2de18"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍別予約状況画面.stories.tsx",
+      "sha256": "e82e44f3e2f95f5f7087f82a88ad6f14c589ab4b483dbf6654949d46f1dfbeee"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍削除確認画面.stories.tsx",
+      "sha256": "66e10369f0f8ed7a9282aa14fedac889aceda448e8e73b69144cd3193df76142"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍登録画面.stories.tsx",
+      "sha256": "87026494d5f7b07d56af974b30cd5fde0ff1f3c736ae4b4d2d92c089f91f9cea"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/書籍編集画面.stories.tsx",
+      "sha256": "bec236404bea6a76b333a80bd6c99b17b3094e942e05ab027b5c545777b37538"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/期間別貸出統計画面.stories.tsx",
+      "sha256": "58210a9ca298243b092275ed273f6407ce7b0ee1440c6b872d56c2ab0f6b8d9b"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/窓口利用状況照会画面.stories.tsx",
+      "sha256": "2d6a14a63132f2c6a56a7f5c1e73b4c39991ec2da1c6ef7b665bc02cfd39791c"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/窓口蔵書検索画面.stories.tsx",
+      "sha256": "87ddbd09855be17615afd1352241c9a0b241ac93348a05c0faf2b5392e277e57"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/蔵書一覧画面.stories.tsx",
+      "sha256": "a10a38d0a6efd242a6d795c1da0d9b89a9e838cb72b9c8d6bf33efce79ca307b"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/貸出受付画面.stories.tsx",
+      "sha256": "d38cbcc1633a7285d0f7152a45df98930352b1027d19853b325e76f6d3aba588"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/返却受付画面.stories.tsx",
+      "sha256": "98eb952d8ac83f5f931fc1c006fa584b46e511d6946e2aa5f47b6215fd49c843"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/src/stories/Pages/司書ポータル/返却通知送信確認画面.stories.tsx",
+      "sha256": "9d926ba9266dcaf9a52cad9f35a3f64cadcd483f759624c2b7ff80603edc2e9e"
+    },
+    {
+      "path": "docs/design/latest/storybook-app/vitest.config.ts",
+      "sha256": "14bee9238a57e3cf6a96f5e5d9d9a6ce06e4d1eb5736094764f731fc38a76830"
+    }
+  ],
+  "formatting_after_verification": "Only trailing whitespace removed from generated Pages; independent review hashes remain observation-time evidence."
+}

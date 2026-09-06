@@ -1,0 +1,91 @@
+{
+  "asyncapi": {
+    "asyncapi": "3.0.0",
+    "channels": {
+      "dunning": {
+        "address": "library.dunning.v1",
+        "messages": {
+          "DunningRequest": {
+            "$ref": "#/components/messages/DunningRequest"
+          }
+        }
+      }
+    },
+    "components": {
+      "messages": {
+        "DunningRequest": {
+          "contentType": "application/json",
+          "correlationId": {
+            "location": "$message.header#/message_id"
+          },
+          "headers": {
+            "additionalProperties": false,
+            "properties": {
+              "message_id": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "message_id"
+            ],
+            "type": "object"
+          },
+          "name": "DunningRequest",
+          "payload": {
+            "$ref": "#/components/schemas/DunningRequestPayload"
+          },
+          "title": "督促を送信する"
+        }
+      },
+      "schemas": {
+        "DunningRequestPayload": {
+          "additionalProperties": false,
+          "properties": {
+            "loan_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "notification_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "trace_id": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "notification_id",
+            "loan_id",
+            "trace_id"
+          ],
+          "type": "object"
+        }
+      }
+    },
+    "info": {
+      "title": "図書館通知・日次処理契約",
+      "version": "1.0.0"
+    },
+    "operations": {
+      "consumeDunning": {
+        "action": "receive",
+        "channel": {
+          "$ref": "#/channels/dunning"
+        },
+        "messages": [
+          {
+            "$ref": "#/channels/dunning/messages/DunningRequest"
+          }
+        ]
+      }
+    }
+  },
+  "openapi": null,
+  "schema_version": "distillery.contract-slice/v1"
+}

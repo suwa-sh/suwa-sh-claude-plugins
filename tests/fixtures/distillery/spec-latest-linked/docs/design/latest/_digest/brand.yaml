@@ -1,0 +1,42 @@
+# digest of design/latest/design-event.yaml section brand (L9-48); source_sha256: a7c591614e86518c64bedfab204693aecdd149bcc2c0a230692d585870a9e4cf
+# 派生物。正本は design-event.yaml。編集しない
+brand:
+  name: "Libra"
+  tagline: "図書館蔵書管理システム"
+  colors:
+    primary:
+      hex: "#1D4ED8"
+      name: "Libra Blue（利用者ポータル / ブランド基調色）"
+    secondary:
+      hex: "#0F766E"
+      name: "Stack Teal（司書ポータル）"
+  typography:
+    sans: "Noto Sans JP, Inter, Hiragino Sans, Yu Gothic UI, system-ui, sans-serif"
+    mono: "JetBrains Mono, SFMono-Regular, Consolas, Menlo, monospace"
+    scale:
+      xs: "0.75rem"
+      sm: "0.875rem"
+      base: "1rem"
+      lg: "1.125rem"
+      xl: "1.25rem"
+      2xl: "1.5rem"
+      3xl: "1.875rem"
+  voice:
+    tone: "信頼・堅実。公共サービスとして、断定しすぎず、次に何をすればよいかを必ず示す"
+    principles:
+      - "利用者には「できること」を先に伝える（在庫あり / 予約できます / あと N 日）"
+      - "司書には「判定結果と根拠」を並べて示す（貸出できません + 蔵書削除制限ポリシー）"
+      - "個人情報は既定で伏せ、必要なときだけ明示操作で開く"
+      - "色だけで意味を伝えない。必ず文言かアイコンを添える（JIS X 8341-3 AA 目標）"
+      - "専門用語は RDRA の業務用語をそのまま使う（除籍 / 取置き / 督促）"
+  logo:
+    variants:
+      - name: "full"
+        path: "assets/logo-full.svg"
+      - name: "icon"
+        path: "assets/logo-icon.svg"
+      - name: "stacked"
+        path: "assets/logo-stacked.svg"
+  icons:
+    style: "outlined（Lucide 準拠 / 24x24 / stroke / currentColor）"
+    source_dir: "assets/icons"

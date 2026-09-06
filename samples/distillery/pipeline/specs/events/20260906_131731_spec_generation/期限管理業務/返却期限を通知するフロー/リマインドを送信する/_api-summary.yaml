@@ -1,0 +1,22 @@
+{
+  "async_events": [
+    {
+      "channel": "#/channels/reminder",
+      "contract_ref": "asyncapi#/operations/consumeReminder",
+      "direction": "subscribe",
+      "kind": "asyncapi",
+      "name": "consumeReminder",
+      "operation_id": "consumeReminder",
+      "summary": "consumeReminder",
+      "tier": "tier-worker"
+    }
+  ],
+  "buc": "返却期限を通知するフロー",
+  "business": "期限管理業務",
+  "consumes": [],
+  "contract_sha256": "4362dc46aaf37207515e262983f99663a3a3f34f587bac2ece6135233526ce5e",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "リマインドを送信する"
+}

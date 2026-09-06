@@ -62,3 +62,27 @@ npx skills add suwa-sh/suwa-sh-claude-plugins --all
 ## ライセンス
 
 [MIT License](./LICENSE)
+
+### dist-specの参照と契約
+
+新規specはRDRA latestの条件・状態と、design latestのStorybookを正本として参照します。
+データフロー・分岐つきシーケンス・技術条件・画面のAPI接続をspecに残します。
+OpenAPIは人が編集する分割YAMLからbundle/UC sliceを生成します。不足は `source: distillery-spec` の変更要求としてpipelineへ還流し、未解決のドラフトはlatestへ昇格しません。
+分割契約のローカル検証は `npm ci` 後に実行してください（Redocly CLIを固定）。
+
+AsyncAPIもoperation/channel/message/schemaを分割して人が編集し、bundleとUC sliceを生成します。
+RDBはarch latestのサブドメイン所有索引からdomain正本・必要な外部列へ段階的に読み込みます。
+全体bundleは検証とcodegenの入力です。この分割は物理DBの分割を意味しません。
+[公開pipelineサンプル](samples/distillery/pipeline/README.md)を参照してください。
+
+### spec本文と還流の記録
+
+spec本文は具体的な変更提案を採用した場合のシステムの振る舞いを記述します。
+生成状態と採用状況は本文外のレビュー記録で管理します。
+還流後は更新されたlatestと照合し、同じ案が採用された場合は本文を維持します。
+tier仕様は条件と結果の表、処理順序のリスト、必要なシーケンス図を使い、日本語のテクニカルライティング規範に従います。
+
+## 開発時のテスト
+
+`npm ci` の後、`npm test` で全pluginとplugin間連携のテストを実行します。
+plugin・skill単位の実行方法とfixtureの配置は[テストの案内](tests/README.md)を参照してください。

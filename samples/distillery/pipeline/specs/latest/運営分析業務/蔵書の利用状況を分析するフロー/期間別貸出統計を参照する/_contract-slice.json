@@ -1,0 +1,247 @@
+{
+  "asyncapi": null,
+  "openapi": {
+    "components": {
+      "schemas": {
+        "Error": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "enum": [
+                "INVALID_INPUT",
+                "UNAUTHENTICATED",
+                "FORBIDDEN",
+                "NOT_FOUND",
+                "VERSION_CONFLICT",
+                "IDEMPOTENCY_CONFLICT",
+                "BUSINESS_RULE_VIOLATION",
+                "CONFIGURATION_UNAVAILABLE",
+                "DEPENDENCY_UNAVAILABLE"
+              ],
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "trace_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "trace_id"
+          ],
+          "type": "object"
+        },
+        "PeriodStatistics": {
+          "additionalProperties": false,
+          "properties": {
+            "period_end": {
+              "format": "date",
+              "type": "string"
+            },
+            "period_start": {
+              "format": "date",
+              "type": "string"
+            },
+            "period_type": {
+              "enum": [
+                "日",
+                "月",
+                "年"
+              ],
+              "type": "string"
+            },
+            "series": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "label",
+                  "value"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "total_loans": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "period_type",
+            "period_start",
+            "period_end",
+            "total_loans",
+            "series"
+          ],
+          "type": "object"
+        }
+      },
+      "securitySchemes": {
+        "BearerAuth": {
+          "bearerFormat": "JWT",
+          "scheme": "bearer",
+          "type": "http"
+        }
+      }
+    },
+    "info": {
+      "title": "図書館管理API",
+      "version": "1.0.0"
+    },
+    "openapi": "3.1.0",
+    "paths": {
+      "/staff/analytics/loans": {
+        "get": {
+          "operationId": "getLoanStatistics",
+          "parameters": [
+            {
+              "in": "query",
+              "name": "period_type",
+              "required": true,
+              "schema": {
+                "enum": [
+                  "日",
+                  "月",
+                  "年"
+                ],
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "period_start",
+              "required": true,
+              "schema": {
+                "format": "date",
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "period_end",
+              "required": true,
+              "schema": {
+                "format": "date",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/PeriodStatistics"
+                  }
+                }
+              },
+              "description": "処理結果"
+            },
+            "400": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "入力形式不正"
+            },
+            "401": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "認証が必要"
+            },
+            "403": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "権限または接続経路違反"
+            },
+            "404": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "対象なし"
+            },
+            "409": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "競合または冪等キー不一致"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "業務条件不成立"
+            },
+            "503": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              },
+              "description": "設定または依存先を利用不可"
+            }
+          },
+          "summary": "期間別貸出統計を参照する",
+          "tags": [
+            "運営分析業務"
+          ],
+          "x-allowed-roles": [
+            "司書"
+          ],
+          "x-authorization-rule": "ロールと経路を検証する。",
+          "x-network": "館内"
+        }
+      }
+    },
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "servers": [
+      {
+        "url": "https://library.example.invalid/api"
+      }
+    ]
+  },
+  "schema_version": "distillery.contract-slice/v1"
+}

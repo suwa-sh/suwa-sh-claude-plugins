@@ -1,0 +1,203 @@
+schema_version: distillery.rdb-domain-slice/v1
+generated: true
+subdomain_id: SD-002
+tables:
+  - name: books
+    rdra_info: 書籍
+    description: "図書館が所蔵する蔵書の1冊を表すスナップショットテーブル。arch E-001（model_type: event_snapshot）に対応する。書籍ID・書誌情報（タイトル/著者/ISBN/出版社/ジャンル/資料種別）と在庫を表す書籍状態を保持し、蔵書管理・検索・貸出可否判定・在庫状況レポートの集計軸となる"
+    columns:
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID。蔵書1冊を一意に識別する主キー（RDRA 情報「書籍」の書籍ID）
+      - name: title
+        type: string
+        nullable: false
+        description: タイトル。蔵書検索のキーワード対象および蔵書一覧の既定ソート表示項目
+      - name: author
+        type: string
+        nullable: false
+        description: 著者。窓口レファレンスの主要な検索軸
+      - name: isbn
+        type: string
+        nullable: true
+        description: ISBN。完全一致検索と重複確認に使う。データ移行時のクレンジング対象（NFR D.4.1.3）のため NULL を許容する
+      - name: publisher
+        type: string
+        nullable: false
+        description: 出版社。キーワード検索の対象項目
+      - name: genre
+        type: string
+        nullable: false
+        description: "ジャンル。RDRA バリエーション「ジャンル」。値: 文学, 人文, 社会科学, 自然科学, 技術, 芸術, 児童, その他"
+      - name: material_type
+        type: string
+        nullable: false
+        description: "資料種別。RDRA バリエーション「資料種別」。値: 紙書籍, 電子書籍。初期リリースは紙書籍のみ受理し電子書籍は 422 で拒否する（資料種別利用可否条件）"
+      - name: book_status
+        type: string
+        nullable: false
+        description: "書籍状態。RDRA 状態モデル「書籍状態」。値: 在庫あり, 貸出中, 予約待ち。在庫状況レポートの区分集計軸となる"
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 登録日時。書籍登録イベントの occurred_at をスナップショットへ射影した値
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 最終更新日時。最新イベントの occurred_at を射影する。蔵書一覧の既定ソートキー（更新日時の降順）
+      - name: version
+        type: integer
+        nullable: false
+        default: "1"
+        description: 楽観ロックの世代番号。RDRA 由来ではなく arch の並行更新制御に由来する技術カラム。書籍情報の編集で version 一致を条件に UPDATE し、+1 する（同時編集の後勝ち上書きを防ぐ）
+    primary_key:
+      - book_id
+    foreign_keys: []
+    indexes:
+      - name: idx_books_title
+        columns:
+          - title
+        unique: false
+        reason: タイトルの部分一致検索と、蔵書検索結果の既定並び順（ORDER BY title）に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+      - name: idx_books_author
+        columns:
+          - author
+        unique: false
+        reason: 著者の部分一致検索が窓口レファレンスの主要な問合せ軸であるため
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+      - name: idx_books_isbn
+        columns:
+          - isbn
+        unique: false
+        reason: "ISBN の完全一致検索と登録時の重複確認に使う。ユニーク制約: 同一 ISBN の複本を許容する運用のため非ユニークとする（_review_notes 参照）"
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 書籍を登録する
+      - name: idx_books_genre
+        columns:
+          - genre
+        unique: false
+        reason: ジャンルによる検索・絞り込みと、在庫状況レポートのジャンル別件数集計に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 蔵書一覧を照会する
+          - 在庫状況を区分別に集計する
+      - name: idx_books_book_status
+        columns:
+          - book_status
+        unique: false
+        reason: 在庫ありのみの絞り込み、蔵書一覧の区分絞り込み、在庫状況レポートの書籍状態別件数集計に使う
+        used_by:
+          - 書籍を検索する
+          - 司書向けに蔵書を検索する
+          - 蔵書一覧を照会する
+          - 在庫状況を区分別に集計する
+          - 返却後の書籍状態を更新する
+      - name: idx_books_updated_at
+        columns:
+          - updated_at
+        unique: false
+        reason: 蔵書一覧の既定並び順（ORDER BY updated_at DESC）のページングに使う
+        used_by:
+          - 蔵書一覧を照会する
+    used_by:
+      - uc: 書籍を登録する
+        operations:
+          - INSERT
+      - uc: 書籍情報を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+          - DELETE
+      - uc: 蔵書一覧を照会する
+        operations:
+          - SELECT
+      - uc: 書籍を検索する
+        operations:
+          - SELECT
+      - uc: 司書向けに蔵書を検索する
+        operations:
+          - SELECT
+      - uc: 書籍詳細と在庫状況を照会する
+        operations:
+          - SELECT
+      - uc: 書籍の貸出可否を判定する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却後の書籍状態を更新する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却対象の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 自分の貸出内容と返却期限を照会する
+        operations:
+          - SELECT
+      - uc: 自分の現在の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+      - uc: 予約を取り消す
+        operations:
+          - UPDATE
+      - uc: 自分の予約順位を照会する
+        operations:
+          - SELECT
+      - uc: 自分の予約状況を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き中の予約を照会する
+        operations:
+          - SELECT
+      - uc: 自分の取置き状況を照会する
+        operations:
+          - SELECT
+      - uc: 予約順1位の利用者を特定する
+        operations:
+          - SELECT
+      - uc: 在庫状況を区分別に集計する
+        operations:
+          - SELECT
+      - uc: 期間別貸出統計を集計する
+        operations:
+          - SELECT
+      - uc: 延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 期限超過の貸出を延滞にする
+        operations:
+          - SELECT
+      - uc: 自分の延滞中の貸出を照会する
+        operations:
+          - SELECT
+      - uc: 督促メールを送信する
+        operations:
+          - SELECT
+      - uc: リマインドメールを送信する
+        operations:
+          - SELECT
+      - uc: 返却期限接近の貸出を判定する
+        operations:
+          - SELECT
+      - uc: 自分の返却期限を照会する
+        operations:
+          - SELECT
+external_tables: []

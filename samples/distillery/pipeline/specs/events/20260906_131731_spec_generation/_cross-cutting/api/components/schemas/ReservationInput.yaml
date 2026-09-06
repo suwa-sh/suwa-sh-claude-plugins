@@ -1,0 +1,9 @@
+type: object
+additionalProperties: false
+required:
+  - book_id
+properties:
+  book_id:
+    type: string
+    minLength: 1
+    maxLength: 255

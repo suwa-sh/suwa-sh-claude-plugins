@@ -1,0 +1,377 @@
+version: "1.0"
+event_id: 20260906_131731_spec_generation
+created_at: 2026-09-06T13:17:31
+source: design完了チェックポイントから現行dist-specを実行。上流への具体案をnormal auto_adoptで所有工程に反映し整合確認する。
+use_cases:
+  - business: 蔵書管理業務
+    buc: 蔵書を管理するフロー
+    uc: 書籍一覧を参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 2
+    async_event_count: 0
+  - business: 蔵書管理業務
+    buc: 蔵書を管理するフロー
+    uc: 書籍を登録する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 蔵書管理業務
+    buc: 蔵書を管理するフロー
+    uc: 書籍を編集する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 蔵書管理業務
+    buc: 蔵書を管理するフロー
+    uc: 書籍を削除する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 蔵書管理業務
+    buc: 書籍を検索するフロー
+    uc: 書籍を検索する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+      - tier-frontend-user.md
+    api_count: 1
+    async_event_count: 0
+  - business: 蔵書管理業務
+    buc: 書籍を検索するフロー
+    uc: 書籍詳細を参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-user.md
+    api_count: 1
+    async_event_count: 0
+  - business: 利用者管理業務
+    buc: 利用者を管理するフロー
+    uc: 利用者を登録する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 利用者管理業務
+    buc: 利用者を管理するフロー
+    uc: 利用者を編集する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 2
+    async_event_count: 0
+  - business: 利用者管理業務
+    buc: 利用者を管理するフロー
+    uc: 利用者を削除する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 利用者管理業務
+    buc: 利用者を管理するフロー
+    uc: 利用者一覧を参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 貸出業務
+    buc: 書籍を貸し出すフロー
+    uc: 貸出を登録する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 2
+    async_event_count: 0
+  - business: 貸出業務
+    buc: 書籍を返却するフロー
+    uc: 返却を登録する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 2
+    async_event_count: 0
+  - business: 貸出業務
+    buc: 書籍を返却するフロー
+    uc: 返却通知を送信する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+      - tier-worker.md
+    api_count: 2
+    async_event_count: 2
+  - business: 貸出業務
+    buc: 書籍を予約するフロー
+    uc: 予約を登録する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-user.md
+    api_count: 1
+    async_event_count: 0
+  - business: 貸出業務
+    buc: 書籍を予約するフロー
+    uc: 予約を取り消す
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-user.md
+    api_count: 2
+    async_event_count: 0
+  - business: 貸出業務
+    buc: 書籍を予約するフロー
+    uc: 予約一覧を参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 期限管理業務
+    buc: 返却期限を通知するフロー
+    uc: リマインド対象を抽出する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-worker.md
+    api_count: 0
+    async_event_count: 2
+  - business: 期限管理業務
+    buc: 返却期限を通知するフロー
+    uc: リマインドを送信する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-worker.md
+    api_count: 0
+    async_event_count: 1
+  - business: 期限管理業務
+    buc: 延滞者に督促するフロー
+    uc: 延滞を判定する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-worker.md
+    api_count: 0
+    async_event_count: 2
+  - business: 期限管理業務
+    buc: 延滞者に督促するフロー
+    uc: 督促を送信する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-worker.md
+    api_count: 0
+    async_event_count: 1
+  - business: 期限管理業務
+    buc: 延滞者に督促するフロー
+    uc: 延滞一覧を参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 利用者サービス業務
+    buc: 自分の利用状況を確認するフロー
+    uc: 貸出履歴を参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-user.md
+    api_count: 1
+    async_event_count: 0
+  - business: 利用者サービス業務
+    buc: 自分の利用状況を確認するフロー
+    uc: 予約状況を参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-user.md
+    api_count: 1
+    async_event_count: 0
+  - business: 利用者サービス業務
+    buc: 自分の利用状況を確認するフロー
+    uc: 利用者の利用状況を参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 運営分析業務
+    buc: 蔵書の利用状況を分析するフロー
+    uc: 在庫状況一覧を参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 運営分析業務
+    buc: 蔵書の利用状況を分析するフロー
+    uc: 人気書籍ランキングを参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+  - business: 運営分析業務
+    buc: 蔵書の利用状況を分析するフロー
+    uc: 期間別貸出統計を参照する
+    files:
+      - _api-summary.yaml
+      - _contract-slice.json
+      - _model-summary.yaml
+      - _trace-links.json
+      - spec.md
+      - tier-backend-api.md
+      - tier-frontend-staff.md
+    api_count: 1
+    async_event_count: 0
+cross_cutting:
+  ux_design:
+    user_flows: 6
+    ia_pages: 24
+    psychology_principles: 0
+  ui_design:
+    layout_patterns: 5
+    responsive_breakpoints: 3
+    component_guidelines: 6
+  data_visualization:
+    target_screens: 4
+    chart_types: 3
+  openapi:
+    api_count: 29
+  asyncapi:
+    async_event_count: 8
+stats:
+  total_ucs: 27
+  total_apis: 29
+  total_async_events: 8
+  businesses: 6
+  bucs: 10
+story_generation: required

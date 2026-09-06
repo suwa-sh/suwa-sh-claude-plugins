@@ -1,0 +1,20 @@
+description: 'ジャンル（バリエーション: ジャンル）'
+enum:
+- 文学
+- 人文
+- 社会科学
+- 自然科学
+- 技術
+- 芸術
+- 児童
+- その他
+type: string
+x-enum-varnames:
+- LITERATURE
+- HUMANITIES
+- SOCIAL_SCIENCE
+- NATURAL_SCIENCE
+- TECHNOLOGY
+- ART
+- CHILDREN
+- OTHER

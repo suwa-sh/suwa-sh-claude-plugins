@@ -1,0 +1,43 @@
+{
+  "async_events": [
+    {
+      "channel": "#/channels/loan~1created",
+      "contract_ref": "asyncapi#/operations/sendLoan",
+      "direction": "publish",
+      "kind": "asyncapi",
+      "name": "sendLoan",
+      "operation_id": "sendLoan",
+      "summary": "sendLoan",
+      "tier": "tier-api"
+    }
+  ],
+  "buc": "貸出フロー",
+  "business": "貸出業務",
+  "consumes": [
+    {
+      "contract_ref": "openapi#/paths/~1books~1{id}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getBook",
+      "owner_uc": "蔵書業務/照会フロー/書籍照会",
+      "path": "/books/{id}",
+      "summary": "Get book",
+      "tier": "tier-frontend"
+    }
+  ],
+  "contract_sha256": "7700aa5b57a18a85588f72a6a1d40950ae1c25b8910c9cfd09e8cce6b5dce2bb",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1loans/post",
+      "kind": "openapi",
+      "method": "POST",
+      "operation_id": "createLoan",
+      "path": "/loans",
+      "summary": "Register loan",
+      "tier": "tier-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "貸出登録"
+}

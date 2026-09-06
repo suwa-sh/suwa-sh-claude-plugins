@@ -1,0 +1,394 @@
+# digest of design/latest/design-event.yaml section components (L319-710); source_sha256: 27e77ce1b181d4cf55ecef4e3d1cbe6526126093587c357462033d932e2e6bb7
+# 派生物。正本は design-event.yaml。編集しない
+components:
+  ui:
+    - name: Button
+      variants:
+        - default
+        - secondary
+        - outline
+        - ghost
+        - destructive
+      sizes:
+        - sm
+        - md
+        - lg
+    - name: Badge
+      variants:
+        - default
+        - success
+        - warning
+        - destructive
+        - info
+        - pending
+        - analysis
+        - neutral
+        - outline
+    - name: Card
+      variants:
+        - default
+        - hoverable
+        - flush
+    - name: Input
+      variants:
+        - default
+        - with-icon
+        - error
+        - disabled
+    - name: Select
+      variants:
+        - default
+        - error
+        - disabled
+    - name: ToggleGroup
+      variants:
+        - single
+        - multi
+      sizes:
+        - sm
+        - md
+    - name: Table
+      variants:
+        - default
+        - empty
+        - loading
+    - name: Alert
+      variants:
+        - info
+        - success
+        - warning
+        - destructive
+    - name: EmptyState
+      variants:
+        - default
+        - with-action
+    - name: Skeleton
+      variants:
+        - line
+        - table
+        - card
+    - name: Spinner
+      sizes:
+        - sm
+        - md
+        - lg
+    - name: Pagination
+      variants:
+        - default
+        - single-page
+    - name: Modal
+      variants:
+        - confirm
+        - destructive-confirm
+      sizes:
+        - sm
+        - md
+    - name: Icon
+      variants:
+        - outlined
+    - name: PortalShell
+      variants:
+        - patron
+        - staff
+        - staff-collapsed
+      description: ポータルの外枠。司書ホームと書籍別予約状況の入口は蔵書一覧へ、窓口利用状況照会の入口は利用者一覧へ接続し、選択後に対象識別子を渡す。
+  domain:
+    - name: BookStatusBadge
+      description: 書籍の状態（在庫あり / 貸出中 / 予約待ち）を色 + 文言で示す。状態.tsv「書籍の状態」に対応
+      screens:
+        - 蔵書一覧画面
+        - 蔵書検索画面
+        - 書籍詳細・在庫状況画面
+        - 窓口蔵書検索画面
+        - 在庫状況一覧画面
+        - 貸出受付画面
+      props:
+        - state
+        - dot
+      states:
+        - 在庫あり
+        - 貸出中
+        - 予約待ち
+    - name: LoanStatusBadge
+      description: 貸出の状態（貸出中 / 延滞 / 返却済み）を示す。状態.tsv「貸出の状態」に対応
+      screens:
+        - マイ貸出履歴画面
+        - 延滞・督促状況画面
+        - 窓口利用状況照会画面
+        - 返却受付画面
+      props:
+        - state
+        - dot
+      states:
+        - 貸出中
+        - 延滞
+        - 返却済み
+    - name: ReservationStatusBadge
+      description: 予約の状態（予約中 / 通知済み / 取消）を示す。状態.tsv「予約の状態」に対応
+      screens:
+        - マイ予約状況画面
+        - 書籍別予約状況画面
+        - 予約取消画面
+        - 窓口利用状況照会画面
+      props:
+        - state
+        - dot
+      states:
+        - 予約中
+        - 通知済み
+        - 取消
+    - name: ReservationQueueTracker
+      description: 予約の進行（予約中 → 通知済み → 貸出完了）と予約順位をステップで示す。予約の状態は順序性があり状態数 3 のためトラッカー化
+      screens:
+        - マイ予約状況画面
+        - 書籍詳細・在庫状況画面
+        - 書籍別予約状況画面
+      props:
+        - state
+        - position
+        - total
+      variants:
+        - waiting
+        - notified
+        - completed
+        - cancelled
+    - name: DueDateIndicator
+      description: 返却期限と残日数を表示し、リマインド日数以内は warning、期限超過は destructive で強調する。貸出.返却期限 +
+        リマインド日数から導出
+      screens:
+        - マイ貸出履歴画面
+        - 延滞・督促状況画面
+        - 窓口利用状況照会画面
+        - 貸出受付画面
+      props:
+        - dueDate
+        - today
+        - remindDays
+        - returned
+      variants:
+        - ok
+        - soon
+        - overdue
+        - returned
+    - name: BookSearchFilter
+      description: 検索条件種別（キーワード / タイトル / 著者 / ISBN / ジャンル）を ToggleGroup
+        で切り替え、ジャンルと在庫状況で絞り込む。バリエーション「検索条件種別」「ジャンル」に対応
+      screens:
+        - 蔵書検索画面
+        - 窓口蔵書検索画面
+        - 蔵書一覧画面
+      props:
+        - value
+        - onChange
+        - onSubmit
+        - compact
+      variants:
+        - patron
+        - staff
+    - name: BookCard
+      description: 利用者向け書籍カード。紙の貸出中または予約待ちの書籍で予約操作を有効にする。電子と在庫ありは予約不可。
+      screens:
+        - 蔵書検索画面
+        - 書籍詳細・在庫状況画面
+        - 予約申込画面
+      props:
+        - book
+        - variant
+        - onSelect
+        - onReserve
+      variants:
+        - compact
+        - detail
+    - name: BookTable
+      description: 司書向けの書籍一覧テーブル。書籍 ID / タイトル / 著者 / ISBN / 出版社 / ジャンル / 媒体 / 状態 /
+        操作列。情報「書籍」の属性数 8 でテーブル表示
+      screens:
+        - 蔵書一覧画面
+        - 窓口蔵書検索画面
+        - 在庫状況一覧画面
+      props:
+        - books
+        - onEdit
+        - onDelete
+        - onSelect
+        - loading
+      variants:
+        - manage
+        - inventory
+        - select
+    - name: BookForm
+      description: 書籍登録・編集フォーム。タイトル / 著者 / ISBN / 出版社 / ジャンル / 媒体種別（初期は紙固定）。中央寄せ 8col
+      screens:
+        - 書籍登録画面
+        - 書籍編集画面
+      props:
+        - initial
+        - mode
+        - onSubmit
+        - submitting
+        - errors
+      variants:
+        - create
+        - edit
+    - name: UserForm
+      description: 利用者登録・編集フォーム。氏名 / メールアドレス / 電話番号 / 住所。利用者番号は登録後にシステム採番
+      screens:
+        - 利用者登録画面
+        - 利用者編集画面
+      props:
+        - initial
+        - mode
+        - onSubmit
+        - submitting
+        - errors
+      variants:
+        - create
+        - edit
+    - name: UserTable
+      description: 利用者一覧テーブル。利用者番号 / 氏名 / 連絡先（PiiMaskedText） / 登録日 / 操作列
+      screens:
+        - 利用者一覧画面
+      props:
+        - users
+        - onEdit
+        - onDelete
+        - loading
+    - name: PiiMaskedText
+      description: メールアドレス・電話番号・住所を既定でマスク表示し、目のアイコンで明示的に開示する。NFR E.1.2.1 / E.6.1.1
+      screens:
+        - 利用者一覧画面
+        - 利用者編集画面
+        - 窓口利用状況照会画面
+        - 延滞・督促状況画面
+      props:
+        - value
+        - kind
+        - revealable
+      variants:
+        - email
+        - phone
+        - address
+    - name: LoanTable
+      description: 貸出一覧テーブル。書籍 / 貸出日 / 返却期限（DueDateIndicator） /
+        状態（LoanStatusBadge）。利用者向けは本人分のみ
+      screens:
+        - マイ貸出履歴画面
+        - 窓口利用状況照会画面
+      props:
+        - loans
+        - today
+        - showUser
+        - loading
+      variants:
+        - current
+        - history
+    - name: OverdueTable
+      description: 延滞中の貸出と督促送信状況を一覧表示。利用者 / 書籍 / 返却期限 / 延滞日数 / 最終督促日時 / 送信結果
+      screens:
+        - 延滞・督促状況画面
+      props:
+        - rows
+        - today
+        - loading
+    - name: NotificationLogTable
+      description: 通知（返却通知 / リマインド / 督促）の送信記録。通知種別 / 送信先 / 送信日時 / 送信結果
+      screens:
+        - 延滞・督促状況画面
+        - 返却通知送信確認画面
+      props:
+        - logs
+        - loading
+    - name: LoanRegisterPanel
+      description: 貸出受付。利用者番号と書籍 ID の 2 入力で貸出可否を判定し、返却期限の自動算出結果を表示して確定する。SP-006 最少操作 /
+        SR-005 確認 + 二重送信防止
+      screens:
+        - 貸出受付画面
+      props:
+        - lookup
+        - onConfirm
+        - submitting
+      variants:
+        - input
+        - allowed
+        - denied
+        - done
+    - name: ReturnRegisterPanel
+      description: 返却受付。書籍 ID から貸出を特定し、返却後の書籍状態（在庫あり / 予約待ち）と予約者の有無を表示して確定する
+      screens:
+        - 返却受付画面
+        - 返却通知送信確認画面
+      props:
+        - lookup
+        - onConfirm
+        - submitting
+      variants:
+        - input
+        - found
+        - found-with-reservation
+        - done
+    - name: ReservationTable
+      description: 書籍別の予約一覧。予約順位 / 利用者 / 受付日時 / 状態。司書は返却時の引き渡し先を把握する
+      screens:
+        - 書籍別予約状況画面
+        - マイ予約状況画面
+      props:
+        - reservations
+        - showUser
+        - onCancel
+    - name: ConfirmPanel
+      description: "削除 / 取消 / 送信の確認ステップ。対象の要約 + 影響（例: 貸出中のため削除不可）+ 確定・戻るボタン。送信中は disabled"
+      screens:
+        - 書籍削除確認画面
+        - 利用者削除確認画面
+        - 返却通知送信確認画面
+        - 予約取消画面
+      props:
+        - title
+        - summary
+        - impact
+        - tone
+        - onConfirm
+        - onCancel
+        - submitting
+        - blocked
+      variants:
+        - destructive
+        - primary
+        - blocked
+    - name: StatCard
+      description: KPI カード。貸出件数 / 延滞件数 / 予約件数などの集計値とラベル、前期比
+      screens:
+        - 期間別貸出統計画面
+        - 人気書籍ランキング画面
+        - 在庫状況一覧画面
+      props:
+        - label
+        - value
+        - unit
+        - delta
+        - icon
+    - name: RankingList
+      description: 貸出回数の多い順の書籍ランキング。順位 / 書籍 / ジャンル / 貸出回数バー
+      screens:
+        - 人気書籍ランキング画面
+      props:
+        - items
+        - limit
+    - name: PeriodSelector
+      description: 集計期間種別（日 / 月 / 年）の切り替えと期間範囲の指定。バリエーション「集計期間種別」に対応
+      screens:
+        - 期間別貸出統計画面
+        - 人気書籍ランキング画面
+      props:
+        - granularity
+        - from
+        - to
+        - onChange
+    - name: PeriodStatChart
+      description: 期間別貸出件数の棒グラフ（SVG）。集計中は Skeleton、データなしは EmptyState
+      screens:
+        - 期間別貸出統計画面
+      props:
+        - series
+        - granularity
+        - loading

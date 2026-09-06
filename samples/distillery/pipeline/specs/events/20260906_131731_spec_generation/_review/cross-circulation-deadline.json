@@ -1,0 +1,276 @@
+{
+  "schema_version": "distillery.semantic-review/v1",
+  "round": 1,
+  "reviewer": "phase1_regeneration (different author group)",
+  "reviewed_at": "2026-09-06T05:33:10.055621+00:00",
+  "scope": [
+    "貸出業務/書籍を貸し出すフロー/貸出を登録する",
+    "貸出業務/書籍を返却するフロー/返却を登録する",
+    "貸出業務/書籍を返却するフロー/返却通知を送信する",
+    "貸出業務/書籍を予約するフロー/予約を登録する",
+    "貸出業務/書籍を予約するフロー/予約を取り消す",
+    "貸出業務/書籍を予約するフロー/予約一覧を参照する",
+    "期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する",
+    "期限管理業務/返却期限を通知するフロー/リマインドを送信する",
+    "期限管理業務/延滞者に督促するフロー/延滞を判定する",
+    "期限管理業務/延滞者に督促するフロー/督促を送信する",
+    "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する"
+  ],
+  "findings": [
+    {
+      "id": "CIRC-001",
+      "severity": "major",
+      "title": "モデル操作の列、更新値、照合条件が省略されている",
+      "evidence": [
+        {
+          "path": "貸出業務/書籍を貸し出すフロー/貸出を登録する/_model-summary.yaml",
+          "line": 47,
+          "excerpt": "\"purpose\": \"貸出作成、書籍状態更新、対象予約の終了、各イベント追記\"",
+          "sha256": "32f70fe68bd95d026a538b74f34116cd84d320fd43c6833e1564c4304b83203a"
+        },
+        {
+          "path": "貸出業務/書籍を予約するフロー/予約を取り消す/_model-summary.yaml",
+          "line": 41,
+          "excerpt": "\"purpose\": \"予約取消、後続順位更新、必要な書籍状態更新、次の先頭への通知要求\"",
+          "sha256": "ed6e1a10013bb6d78e2415aaf04c1d88fe8d6da8bf2215f64701940dc59d9b12"
+        }
+      ],
+      "impact": "対象11UCの全93操作でcolumnsとwhereがない。purposeに同じUC説明を繰り返すだけなので、貸出日/期限/版、取消時queue_position=null、outboxのcause_key/状態/応答、イベントpayload/responseの値を操作定義から決められない。分割schemaの必要列読込も導出できず、構文validatorのPASSで実装可能とは判定できない。",
+      "suggested_fix": "各table/operationに使用列、値、識別子/版/状態条件、索引要件を具体化する。型は分割schemaへ参照し、同じ目的文の複写を削除する。",
+      "resolution": "open"
+    },
+    {
+      "id": "CIRC-002",
+      "severity": "major",
+      "title": "期限管理の読取依存がモデル一覧に存在しない",
+      "evidence": [
+        {
+          "path": "期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する/spec.md",
+          "line": 31,
+          "excerpt": "W->>DB: 書籍→貸出をlockし現在値を再取得",
+          "sha256": "24c184310778019934c12866874c8d3b0e0abac4189ce19f29ed92a09800bf6a"
+        },
+        {
+          "path": "期限管理業務/延滞者に督促するフロー/延滞を判定する/spec.md",
+          "line": 31,
+          "excerpt": "W->>DB: 書籍→貸出をlockし現在値を再取得",
+          "sha256": "edc46ecc21230b80859b9e2f02ed69188a41c66103d89301c65d7d16c8be5328"
+        },
+        {
+          "path": "期限管理業務/返却期限を通知するフロー/リマインドを送信する/tier-worker.md",
+          "line": 20,
+          "excerpt": "送信時の業務日と有効remind_daysでリマインド条件を照合",
+          "sha256": "4545c5c086a417df597ff9269b28cdcca9b392bce56928d882569f9e0e819320"
+        }
+      ],
+      "impact": "両抽出UCの_model-summaryにbooksがなく、リマインド送信UCにはremind_daysがない。取引のlock対象と送信直前再評価に必要なデータを、UCの宣言依存から取得できない。",
+      "suggested_fix": "booksの識別子とlock条件、remind_daysの有効世代照会列/条件を該当UCの_model-summaryへ追加し、対応する所有schemaを参照する。",
+      "resolution": "open"
+    },
+    {
+      "id": "CIRC-003",
+      "severity": "major",
+      "title": "送信中の有効leaseと対象外抑止後の終端状態が定まらない",
+      "evidence": [
+        {
+          "path": "貸出業務/書籍を返却するフロー/返却通知を送信する/tier-worker.md",
+          "line": 22,
+          "excerpt": "alt T-01 確定済みまたはunknown",
+          "sha256": "2f63b761005afcae59bdad74a8f224163c2dd3c6648aa2d2c172f87d1bcd1073"
+        },
+        {
+          "path": "期限管理業務/延滞者に督促するフロー/督促を送信する/spec.md",
+          "line": 27,
+          "excerpt": "alt T-01 sent / failed / unknown",
+          "sha256": "fb971368e10c73a4714c3c9b62561e8fe6d90a06582a398679c96b1d1432370e"
+        },
+        {
+          "path": "_cross-cutting/technical-rules.md",
+          "excerpt": "受信はsent/failed/unknownだけACKし、配信前にsendingとlease_untilをcommitする。sendingの有効lease中の受信分岐はない。"
+        }
+      ],
+      "impact": "worker Aがsendingをcommitして外部送信中に同じ通知をworker Bが受信すると、処理済み3状態に一致せずBも送信権を取得する解釈が残る。対象外でACKする経路も保存するstateが未指定で、次の再配信時に送信対象として再評価され得る。",
+      "suggested_fix": "claim可能状態と条件付きUPDATEを定義する。sendingかつlease有効は送信しない、lease切れはunknownへ遷移する。対象外を保存する終端状態と理由を既存enumまたは契約変更で定義し、重複受信のBDDを追加する。",
+      "resolution": "open"
+    },
+    {
+      "id": "CIRC-004",
+      "severity": "major",
+      "title": "outbox内部状態からHTTP受付状態への対応がない",
+      "evidence": [
+        {
+          "path": "貸出業務/書籍を返却するフロー/返却通知を送信する/tier-frontend-staff.md",
+          "line": 27,
+          "excerpt": "pending_requestsにqueued/unknown",
+          "sha256": "7a9beaf918bde6468e6434f0918ec44e589622abb6de1b22ff453fd835d75692"
+        },
+        {
+          "path": "_cross-cutting/api/components/schemas/NotificationAcceptance.yaml",
+          "excerpt": "stateのenumはqueued/sent/failed/unknownのみ。"
+        },
+        {
+          "path": "_cross-cutting/datastore/domains/SD-005.yaml",
+          "excerpt": "notification_outbox.stateはqueued/published/sending/sent/failed/unknown。"
+        }
+      ],
+      "impact": "MQ公開後や送信中にgetReturnNotificationStatusを呼ぶとpublished/sendingをそのまま返せず、どの状態を返すか定まらない。画面の確定抑止と5秒ポーリングもqueuedしか扱っていない。",
+      "suggested_fix": "HTTPではpublished/sendingをqueuedへ投影するなどの対応表を定義し、queuedの意味を受付済み未確定とする。対象外終端状態もCIRC-003の解決に合わせて投影を確定する。",
+      "resolution": "open"
+    },
+    {
+      "id": "CIRC-005",
+      "severity": "major",
+      "title": "nullableなAPI値と必須UI Propsの接続が不完全",
+      "evidence": [
+        {
+          "path": "貸出業務/書籍を貸し出すフロー/貸出を登録する/tier-frontend-staff.md",
+          "line": 28,
+          "excerpt": "due_date→dueDate",
+          "sha256": "74a209c20a40b2e4b338dd7aa152960e35bbc29a549cdd5920cfc2ed535748f3"
+        },
+        {
+          "path": "貸出業務/書籍を返却するフロー/返却を登録する/tier-frontend-staff.md",
+          "line": 27,
+          "excerpt": "next_reservation→firstReservation",
+          "sha256": "df4515b059b883e8a49b55355b13f8897b9badd822a9cf89634a192a2ff907fa"
+        },
+        {
+          "path": "貸出業務/書籍を予約するフロー/予約を登録する/tier-frontend-user.md",
+          "line": 29,
+          "excerpt": "応答のqueue_positionをReservationQueueTrackerへ渡し",
+          "sha256": "90db087fe37bec343b778f93e31d6266c009dc1b70da9777eb66645f8d79a5c4"
+        }
+      ],
+      "impact": "LoanEligibilityのreason/due_dateはnull可能だがLoanLookupのdeniedReason/dueDateはoptional stringでnull不可。ReturnPreview.next_reservationもnull可能だがReturnLookup.firstReservationはoptionalでnull不可。ReturnRegisterPanel.todayが必須なのに供給元がなく、ReservationQueueTracker.stateが必須なのに予約受付後の接続表はqueue_positionしか指定していない。",
+      "suggested_fix": "null→undefinedの変換を明記する。返却todayと貸出の照会前todayの供給元を定め、予約受付後はcurrent_status→stateとqueue_position→positionを明示する。実Propsに合わせたページ接続を検証する。",
+      "resolution": "open"
+    },
+    {
+      "id": "CIRC-006",
+      "severity": "major",
+      "title": "利用者削除と新規貸出/予約が同じ利用者行で直列化されない",
+      "evidence": [
+        {
+          "path": "貸出業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+          "line": 27,
+          "excerpt": "書籍行をロックし、利用者、先頭予約、有効な貸出期間を読む",
+          "sha256": "12b5c26070ed1d6168737b04c28bdfdbb268d5e7fecdb280e97236990614f42a"
+        },
+        {
+          "path": "貸出業務/書籍を予約するフロー/予約を登録する/tier-backend-api.md",
+          "line": 25,
+          "excerpt": "対象書籍と有効予約を書籍行ロックの下で読む",
+          "sha256": "6ae1adcc5bf6a139216634ec1d0a7b878336a03f5f0011d1ec15313c0cafc391"
+        },
+        {
+          "path": "_cross-cutting/technical-rules.md",
+          "excerpt": "TR-TXの取得順は書籍→貸出→予約で利用者row lockを規定していない。利用者削除のtierは利用者行をlockして有効取引を確認する。"
+        }
+      ],
+      "impact": "削除が利用者行をlockして有効取引0件を確認した後、別処理の貸出/予約が削除前の利用者を読んでINSERTすると、deleted=true利用者に新規有効取引が生じ得る。FKは論理削除を拒否しない。",
+      "suggested_fix": "新規貸出と予約も利用者行の共有または排他lockを取り、deletedと利用可否をlock後に再評価する。削除と全取引で矛盾しないlock順をTR-TXへ統一し、同時削除/新規取引BDDを追加する。",
+      "resolution": "open"
+    },
+    {
+      "id": "CIRC-007",
+      "severity": "minor",
+      "title": "対象外の汎用文と共通保証の複写が残る",
+      "evidence": [
+        {
+          "path": "貸出業務/書籍を貸し出すフロー/貸出を登録する/tier-backend-api.md",
+          "line": 36,
+          "excerpt": "| version不一致 | 409を返し",
+          "sha256": "12b5c26070ed1d6168737b04c28bdfdbb268d5e7fecdb280e97236990614f42a"
+        },
+        {
+          "path": "貸出業務/書籍を予約するフロー/予約を登録する/tier-backend-api.md",
+          "line": 34,
+          "excerpt": "| version不一致 | 409を返し",
+          "sha256": "6ae1adcc5bf6a139216634ec1d0a7b878336a03f5f0011d1ec15313c0cafc391"
+        },
+        {
+          "path": "期限管理業務/返却期限を通知するフロー/リマインドを送信する/tier-worker.md",
+          "line": 16,
+          "excerpt": "督促には返却期限を超過した旨",
+          "sha256": "4545c5c086a417df597ff9269b28cdcca9b392bce56928d882569f9e0e819320"
+        },
+        {
+          "path": "期限管理業務/延滞者に督促するフロー/延滞を判定する/spec.md",
+          "line": 26,
+          "excerpt": "T-01 設定と対象候補を取得",
+          "sha256": "edc46ecc21230b80859b9e2f02ed69188a41c66103d89301c65d7d16c8be5328"
+        }
+      ],
+      "impact": "createLoanとcreateReservationは版入力を持たないのにversion不一致を共通表に置く。リマインド本文に督促の文言が残り、期間設定を参照しない延滞判定もTR-PARAMの設定不足で停止する汎用分岐を持つ。複数API tierの責務がspec概要と同文で、共通再送表や権限BDDも反復する。",
+      "suggested_fix": "対象UCに存在しない版/設定/通知種別の記載を除去し、共通保証はTR規則と共有BDDを参照する。tierにはその境界に固有の取引/状態/入力変換を残す。",
+      "resolution": "open"
+    }
+  ],
+  "verified": [
+    {
+      "id": "ROOT004",
+      "result": "verified_fixed",
+      "evidence": "リマインド対象抽出と延滞判定のシーケンスはT-04を持ち、全対象が確定または対象外のときだけACK、未確定対象/失敗ありは同じbusiness_dateでNACKを規定。"
+    },
+    {
+      "result": "contract_presence",
+      "evidence": "対象11UCの_contract-slice.jsonを読み、HTTP入出力と非同期operationの存在を照合。参照したLoans Stories exportsは実在。"
+    },
+    {
+      "result": "schema_table_existence",
+      "evidence": "宣言されたmodel table名は分割RDB schemaに実在。列指定が0件のため列一致検証の成功とは扱わない。"
+    },
+    {
+      "result": "reference_anchors",
+      "evidence": "TR-*とUI-READ/UI-WRITEの明示HTML idが存在する。古いアンカー欠落は再掲しない。"
+    }
+  ],
+  "limitations": [
+    "実装コードとメール配信実行は対象外。",
+    "生成中のためproposal-baseline.mdと最終readinessは検証時点で存在しない。未解決提案の最終昇格gateは親の集約時に確認が必要。",
+    "本レビューは他著者UCを修正せず、指摘のみを記録した。"
+  ],
+  "resolved": [
+    {
+      "id": "CIRC-001",
+      "resolution": "対象11UCの111操作を列・値・照合条件へ具体化。全27UC188操作の実列照合0件エラー。mechanical-final.jsonを参照。"
+    },
+    {
+      "id": "CIRC-002",
+      "resolution": "抽出2UCのbooks lockとリマインド送信のremind_days有効世代読取をモデルへ追加。"
+    },
+    {
+      "id": "CIRC-003",
+      "resolution": "TR-MQで条件付きclaim、有効leaseのACK、期限切れunknown、対象外failed+監査、claim UPDATE件数1、毎分復旧走査を定義。配信権と結果確定BDDを追加。親の独立再確認で解決。"
+    },
+    {
+      "id": "CIRC-004",
+      "resolution": "TR-MQとNotificationAcceptanceで内部queued/published/sending→HTTP queuedを定義。対象外はfailed受付だけに投影。"
+    },
+    {
+      "id": "CIRC-005",
+      "resolution": "nullable値をundefinedへ変換し、today供給、予約stateとpositionを実Propsへ接続。"
+    },
+    {
+      "id": "CIRC-006",
+      "resolution": "TR-TXで利用者→書籍のlock順に統一。新規取引と削除の先行順両方をBDD化。"
+    },
+    {
+      "id": "CIRC-007",
+      "resolution": "createの存在しないversion分岐、延滞の不要な設定分岐、別通知種別の文言を削除。API責務をtier境界の説明へ修正。"
+    }
+  ],
+  "resolution_evidence": {
+    "期限管理業務/延滞者に督促するフロー/延滞を判定する/spec.md": "d5aeccde1c566f8762f56e0762dd8fbf52b7787fae9db6f2c96e8578d6facc27",
+    "期限管理業務/延滞者に督促するフロー/延滞一覧を参照する/spec.md": "cf2d71ea56923f86dd8c5e832939b36ade281a6a62e774e10631398fc709ab2f",
+    "期限管理業務/延滞者に督促するフロー/督促を送信する/spec.md": "6c67583848634cc51f79a1dbc265155b3e096e4783be9755f64b174678a99eb6",
+    "期限管理業務/返却期限を通知するフロー/リマインドを送信する/spec.md": "a352661484dcff28602bc56932267afc3875da87080aa23816770323076935b5",
+    "期限管理業務/返却期限を通知するフロー/リマインド対象を抽出する/spec.md": "24c184310778019934c12866874c8d3b0e0abac4189ce19f29ed92a09800bf6a",
+    "貸出業務/書籍を予約するフロー/予約を取り消す/spec.md": "f347d8eeb9411e9ace40af0165e1418f92d60f28949aaedb367adc69ee532e24",
+    "貸出業務/書籍を予約するフロー/予約を登録する/spec.md": "abb4dba48ea6b2bd874b1bd06fc0c81eb8e666a178931d71c807b0535c409e21",
+    "貸出業務/書籍を予約するフロー/予約一覧を参照する/spec.md": "e91b4412a88954c7d220decf1ae3666d278d9654a983565913a7da758a54a00a",
+    "貸出業務/書籍を貸し出すフロー/貸出を登録する/spec.md": "223f6328cf93584aa2291f8ccc195639169486b518cb3d63b23498035bdd4b78",
+    "貸出業務/書籍を返却するフロー/返却を登録する/spec.md": "60de4ccd0898cd30e0154609595fbc23f8f89397e85a51ac1ffb999abedd4c26",
+    "貸出業務/書籍を返却するフロー/返却通知を送信する/spec.md": "e2a9db3ea17573f62a7819b4e4048f24094e9809c558aabd4b09f80fdbe4f4a2"
+  }
+}

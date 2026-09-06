@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "利用者を管理するフロー",
+  "business": "利用者管理業務",
+  "consumes": [],
+  "contract_sha256": "23ae1ac1158179c7eaf99525313a6b99c20e8c9e2516145e22470d72fdd8165b",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1staff~1users/post",
+      "kind": "openapi",
+      "method": "POST",
+      "operation_id": "createUser",
+      "path": "/staff/users",
+      "summary": "利用者を登録する",
+      "tier": "tier-backend-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "利用者を登録する"
+}

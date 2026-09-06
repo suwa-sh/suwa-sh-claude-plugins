@@ -1,0 +1,15 @@
+description: 貸出可否判定の根拠となる条件 1 件
+properties:
+  condition_name:
+    description: 条件名（貸出可否条件 / 取置き中書籍貸出条件 等）
+    type: string
+  detail:
+    description: 判定の詳細説明
+    type: string
+  satisfied:
+    description: その条件を満たすか
+    type: boolean
+required:
+- condition_name
+- satisfied
+type: object

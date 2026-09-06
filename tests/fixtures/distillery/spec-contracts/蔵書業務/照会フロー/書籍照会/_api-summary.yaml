@@ -1,0 +1,21 @@
+{
+  "async_events": [],
+  "buc": "照会フロー",
+  "business": "蔵書業務",
+  "consumes": [],
+  "contract_sha256": "920e6271c5abdc10814fececb63b9fb2447139d8825f593f1fcf8ba106237b09",
+  "contract_slice": "_contract-slice.json",
+  "endpoints": [
+    {
+      "contract_ref": "openapi#/paths/~1books~1{id}/get",
+      "kind": "openapi",
+      "method": "GET",
+      "operation_id": "getBook",
+      "path": "/books/{id}",
+      "summary": "Get book",
+      "tier": "tier-api"
+    }
+  ],
+  "schema_version": "distillery.api-summary/v2",
+  "uc": "書籍照会"
+}

@@ -1,0 +1,142 @@
+uc: 書籍を登録する
+business: 蔵書管理業務
+buc: 蔵書を管理するフロー
+bounded_context_id: BC-001
+models:
+  - name: createBookRequest
+    tier: tier-backend-api
+    layer: presentation
+    type: request-dto
+  - name: createBookCommand
+    tier: tier-backend-api
+    layer: usecase
+    type: command
+  - name: Book
+    tier: tier-backend-api
+    layer: domain
+    type: entity
+    rdra_info: 書籍
+  - name: createBookPageState
+    tier: tier-frontend-staff
+    layer: state
+    type: state
+tables:
+  - name: books
+    rdra_info: 書籍
+    operations:
+      - type: INSERT
+        columns:
+          - name: title
+            value: 契約入力のtitle
+          - name: author
+            value: 契約入力のauthor
+          - name: isbn
+            value: 契約入力のisbn
+          - name: publisher
+            value: 契約入力のpublisher
+          - name: genre_id
+            value: 契約入力のgenre_id
+          - name: media_type
+            value: 契約入力のmedia_type
+          - name: book_id
+            value: サーバーで一意に採番
+          - name: registered_at
+            value: 処理のサーバー時刻
+          - name: updated_at
+            value: 同じサーバー時刻
+          - name: version
+            value: "0"
+          - name: deleted
+            value: "false"
+          - name: current_status
+            value: RDRA状態モデルの登録遷移先
+        where: ""
+    indexes_needed:
+      - columns:
+          - book_id
+        reason: 対象の照会と排他取得
+        access_pattern: book_id = 採番後のbook_id AND deleted = false
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+  - name: genres
+    rdra_info: ジャンル
+    operations:
+      - type: SELECT
+        columns:
+          - name: genre_id
+          - name: genre_name
+        where: genre_id = 入力genre_id
+    indexes_needed:
+      - columns:
+          - genre_id
+        reason: 対象の照会と排他取得
+        access_pattern: genre_id = 書籍のgenre_idまたは入力genre_id
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+  - name: books_events
+    rdra_info: 書籍
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-002.yaml
+    operations:
+      - type: SELECT
+        columns:
+          - name: actor_id
+          - name: request_key
+          - name: request_hash
+          - name: response
+        where: actor_id = 認証主体 AND request_key = operationとキーの結合
+      - type: INSERT
+        columns:
+          - name: event_id
+            value: 一意のイベントID
+          - name: book_id
+            value: 更新対象の識別子
+          - name: version
+            value: 更新後のversion
+          - name: event_type
+            value: createBook
+          - name: occurred_at
+            value: 業務更新と同じサーバー時刻
+          - name: actor_id
+            value: 認証主体の利用者番号
+          - name: request_key
+            value: operation + X-Idempotency-Key
+          - name: request_hash
+            value: TR-IDEMPの正規化要求SHA-256
+          - name: payload
+            value: 更新する属性と値のJSON
+          - name: response
+            value: HTTP statusとbodyのJSON
+    indexes_needed:
+      - columns:
+          - actor_id
+          - request_key
+        reason: 同一主体の同一要求を一意にする
+        access_pattern: TR-IDEMPの並行要求排他
+  - name: audit_logs
+    rdra_info: ""
+    schema_ref: ../../../_cross-cutting/datastore/domains/SD-003.yaml
+    operations:
+      - type: INSERT
+        columns:
+          - name: audit_id
+            value: 一意の監査ID
+          - name: occurred_at
+            value: 現在時刻
+          - name: actor_user_number
+            value: 認証主体
+          - name: action_type
+            value: データ更新
+          - name: target_entity
+            value: E-001
+          - name: target_id
+            value: 対象識別子。検索はoperation名
+          - name: result
+            value: 成功
+    indexes_needed: []
+kvs:
+  - key_pattern: idempotency:{actor}:{operation}:{key}
+    purpose: 確定済み応答キャッシュ。TR-IDEMPに従いRDBを正本とする
+    value_type: HTTP status/body
+    ttl: 24h
+    operations:
+      - GET
+      - SET
+object_storage: []

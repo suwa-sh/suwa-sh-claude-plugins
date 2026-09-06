@@ -1,0 +1,274 @@
+# digest of nfr/latest/nfr-grade.yaml section categories[id=E] (L732-1003); source_sha256: 9ecccca870476f5c8b048641028a922e9f2b393562b9bca87d4bd1f567861198
+# 派生物。正本は nfr-grade.yaml。編集しない
+  - id: "E"
+    name: "セキュリティ"
+    subcategories:
+      - id: "E.1"
+        name: "前提条件・制約条件"
+        items:
+          - id: "E.1.1"
+            name: "セキュリティポリシー"
+            important: true
+            metrics:
+              - id: "E.1.1.1"
+                name: "セキュリティポリシー"
+                important: true
+                grade: 2
+                grade_description: "組織のセキュリティポリシーに準拠"
+                reason: "情報「利用者」に氏名・連絡先（メールアドレス）という個人情報を保持するため、設置母体（自治体・法人）のセキュリティポリシー準拠が必要。ISMS 等の第三者認証（Lv3）までは 1 館規模には過剰"
+                source_model: "情報: 利用者（氏名・連絡先）"
+                confidence: "medium"
+          - id: "E.1.2"
+            name: "セキュリティ関連法規"
+            important: false
+            metrics:
+              - id: "E.1.2.1"
+                name: "準拠すべき法規・基準"
+                important: false
+                grade: 2
+                grade_description: "個人情報保護法・不正アクセス禁止法に準拠（図書館の貸出履歴は思想信条を推知しうるためプライバシー配慮が特に必要）"
+                reason: "情報「利用者」に氏名・連絡先、情報「貸出」に誰が何を借りたかの履歴が保持され、条件「個人情報参照可否条件」で本人限定参照が定められている"
+                source_model: "情報: 利用者（氏名・連絡先）/ 貸出、条件: 個人情報参照可否条件"
+                confidence: "high"
+      - id: "E.2"
+        name: "セキュリティリスク分析"
+        items:
+          - id: "E.2.1"
+            name: "リスク分析"
+            important: true
+            metrics:
+              - id: "E.2.1.1"
+                name: "セキュリティリスク分析"
+                important: true
+                grade: 2
+                grade_description: "リスク分析（脅威・脆弱性評価）"
+                reason: "モデルシステム2のデフォルト値を適用（インターネット公開する利用者向け画面と個人情報の組み合わせに対し脅威分析が必要）"
+                source_model: "アクター: 利用者（社外）"
+                confidence: "medium"
+      - id: "E.3"
+        name: "セキュリティ診断"
+        items:
+          - id: "E.3.1"
+            name: "セキュリティ診断"
+            important: true
+            metrics:
+              - id: "E.3.1.1"
+                name: "セキュリティ診断"
+                important: true
+                grade: 1
+                grade_description: "ツールによる自動診断"
+                reason: "インターネット公開する利用者向け画面があるため無診断（Lv0）は不可だが、1 館規模・決済なしのためモデルシステム2 デフォルトの手動脆弱性診断（Lv2）より 1 段低く設定した。RDRA に診断要件の記述がないため確信度は低い"
+                source_model: "アクター: 利用者（社外）"
+                confidence: "low"
+      - id: "E.4"
+        name: "セキュリティリスク管理"
+        items:
+          - id: "E.4.1"
+            name: "リスク管理"
+            important: false
+            metrics:
+              - id: "E.4.1.1"
+                name: "リスク管理プロセス"
+                important: false
+                grade: 1
+                grade_description: "年1回のリスク棚卸しと、利用ミドルウェアの脆弱性情報の定期確認"
+                reason: "モデルシステム2のデフォルト値を適用（C.2.1.2 の四半期パッチ適用と連動）"
+                source_model: ""
+                confidence: "default"
+      - id: "E.5"
+        name: "アクセス・利用制限"
+        items:
+          - id: "E.5.1"
+            name: "認証"
+            important: true
+            metrics:
+              - id: "E.5.1.1"
+                name: "認証方式"
+                important: true
+                grade: 2
+                grade_description: "ID/パスワード認証＋パスワードポリシー（複雑性・有効期限）"
+                reason: "情報「利用者アカウント」にログインIDと役割（司書／利用者）が定義されており認証が前提。ただし外部システムは通知メール配信のみで認証連携がなく、一般利用者に多要素認証（Lv3）を課すと利用障壁になるため Lv2 とした"
+                source_model: "情報: 利用者アカウント（ログインID、役割）、外部システム: メール配信サービス"
+                confidence: "medium"
+          - id: "E.5.2"
+            name: "アクセス制御"
+            important: true
+            metrics:
+              - id: "E.5.2.1"
+                name: "アクセス制御"
+                important: true
+                grade: 2
+                grade_description: "ロールベースアクセス制御（RBAC）"
+                reason: "情報「利用者アカウント」の属性「役割（司書／利用者）」で利用権限を分け、司書向け照会と利用者向け Web 照会を出し分けると明記されている"
+                source_model: "情報: 利用者アカウント（役割（司書／利用者））、条件: 個人情報参照可否条件"
+                confidence: "high"
+          - id: "E.5.3"
+            name: "利用制限"
+            important: false
+            metrics:
+              - id: "E.5.3.1"
+                name: "利用制限"
+                important: false
+                grade: 1
+                grade_description: "司書向け管理機能は館内ネットワークからのみ利用可、利用者向け照会はインターネットへ公開"
+                reason: "アクター「司書」は社内、アクター「利用者」は社外という区分から接続元の分離が推論できるが、館内ネットワーク制限の要否は RDRA に記述がない"
+                source_model: "アクター: 司書（社内）/ 利用者（社外）"
+                confidence: "low"
+      - id: "E.6"
+        name: "データ秘匿"
+        items:
+          - id: "E.6.1"
+            name: "暗号化"
+            important: true
+            metrics:
+              - id: "E.6.1.1"
+                name: "データ暗号化（保管時）"
+                important: true
+                grade: 1
+                grade_description: "機密データのみ暗号化（利用者の氏名・連絡先、利用者アカウントのパスワード、貸出履歴）"
+                reason: "情報「利用者」に氏名・連絡先（メールアドレス）、情報「利用者アカウント」にログインIDが含まれ、情報「貸出」は誰が何を借りたかの履歴となるため保管時暗号化が必要"
+                source_model: "情報: 利用者（氏名、連絡先（メールアドレス））/ 利用者アカウント / 貸出"
+                confidence: "high"
+              - id: "E.6.1.2"
+                name: "データ暗号化（通信時）"
+                important: true
+                grade: 2
+                grade_description: "全通信暗号化（内部通信を含む）"
+                reason: "アクター「利用者」が社外から Web 照会を行い、外部システム「メール配信サービス」へ宛先メールアドレスを送信するため、外部通信・内部通信ともに暗号化が必要"
+                source_model: "アクター: 利用者（社外）、外部システム: メール配信サービス、情報: 通知（宛先メールアドレス）"
+                confidence: "high"
+          - id: "E.6.2"
+            name: "データマスキング"
+            important: false
+            metrics:
+              - id: "E.6.2.1"
+                name: "データマスキング"
+                important: false
+                grade: 1
+                grade_description: "テスト環境・開発環境では利用者の氏名・連絡先を匿名化データへ置換する"
+                reason: "C.4.1.1 で簡易テスト環境を設けるため、情報「利用者」の個人情報がテスト環境へ流出しないようマスキングが必要"
+                source_model: "情報: 利用者（氏名、連絡先）"
+                confidence: "medium"
+      - id: "E.7"
+        name: "不正追跡・監視"
+        items:
+          - id: "E.7.1"
+            name: "監査ログ"
+            important: true
+            metrics:
+              - id: "E.7.1.1"
+                name: "監査ログ"
+                important: true
+                grade: 2
+                grade_description: "ログイン/ログアウト＋データアクセスログ"
+                reason: "条件「個人情報参照可否条件」で本人以外の貸出履歴・予約状況の参照を禁じており、逸脱を検知するにはデータアクセスログが必須。改ざん検知（Lv3）は金銭取引がないため要さない"
+                source_model: "条件: 個人情報参照可否条件、情報: 利用者アカウント（役割）"
+                confidence: "high"
+          - id: "E.7.2"
+            name: "不正監視"
+            important: false
+            metrics:
+              - id: "E.7.2.1"
+                name: "不正監視"
+                important: false
+                grade: 1
+                grade_description: "ログイン失敗の連続検知とアカウントロック"
+                reason: "情報「利用者アカウント」に有効フラグがあり、不正ログイン試行への無効化が想定できる"
+                source_model: "情報: 利用者アカウント（有効フラグ）"
+                confidence: "medium"
+      - id: "E.8"
+        name: "ネットワーク対策"
+        items:
+          - id: "E.8.1"
+            name: "ファイアウォール"
+            important: true
+            metrics:
+              - id: "E.8.1.1"
+                name: "ファイアウォール"
+                important: true
+                grade: 2
+                grade_description: "ステートフルインスペクション"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+          - id: "E.8.2"
+            name: "IDS/IPS"
+            important: false
+            metrics:
+              - id: "E.8.2.1"
+                name: "IDS/IPS"
+                important: false
+                grade: 1
+                grade_description: "IDS による検知のみ（自動遮断は行わない）"
+                reason: "インターネット公開があるため検知は必要と推論したが、遮断まで要するかは RDRA に記述がない"
+                source_model: "アクター: 利用者（社外）"
+                confidence: "low"
+          - id: "E.8.3"
+            name: "ネットワーク分離"
+            important: false
+            metrics:
+              - id: "E.8.3.1"
+                name: "ネットワーク分離"
+                important: false
+                grade: 2
+                grade_description: "DMZ（Web層）と内部セグメント（DB層）を分離し、個人情報を保持する DB は外部から直接到達不可とする"
+                reason: "情報「利用者」「貸出」の個人情報をインターネット公開画面から参照させるため、DB 層の直接露出を避ける必要がある"
+                source_model: "情報: 利用者 / 貸出、アクター: 利用者（社外）"
+                confidence: "medium"
+      - id: "E.9"
+        name: "マルウェア対策"
+        items:
+          - id: "E.9.1"
+            name: "マルウェア対策"
+            important: true
+            metrics:
+              - id: "E.9.1.1"
+                name: "マルウェア対策"
+                important: true
+                grade: 2
+                grade_description: "ウイルス対策ソフト導入＋定義ファイル自動更新＋定期スキャン"
+                reason: "モデルシステム2のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
+      - id: "E.10"
+        name: "Web対策"
+        items:
+          - id: "E.10.1"
+            name: "WAF"
+            important: true
+            metrics:
+              - id: "E.10.1.1"
+                name: "WAF"
+                important: true
+                grade: 1
+                grade_description: "基本的な WAF ルール適用（マネージドルールセットのデフォルト適用）"
+                reason: "インターネット公開する利用者向け Web 画面があるため WAF なし（Lv0）は不可だが、1 館規模で決済を伴わないためモデルシステム2 デフォルトのカスタムルール＋定期チューニング（Lv2）は運用負荷に見合わないと判断した。RDRA に Web 攻撃対策の記述がないため確信度は低い"
+                source_model: "アクター: 利用者（社外）、システム概要: interface_kind=gui"
+                confidence: "low"
+          - id: "E.10.2"
+            name: "Webアプリケーション対策"
+            important: false
+            metrics:
+              - id: "E.10.2.1"
+                name: "Webアプリケーション対策"
+                important: false
+                grade: 2
+                grade_description: "XSS/SQLインジェクション/CSRF 対策をフレームワーク標準機能とコーディング規約で担保し、リリース前に自動診断を実施"
+                reason: "システム概要の interface_kind が gui であり、UC「書籍を検索する」で利用者入力を検索条件に用いるためインジェクション対策が必須"
+                source_model: "システム概要: interface_kind=gui、UC: 書籍を検索する、条件: 書籍検索条件"
+                confidence: "medium"
+      - id: "E.11"
+        name: "セキュリティインシデント対応"
+        items:
+          - id: "E.11.1"
+            name: "インシデント対応"
+            important: true
+            metrics:
+              - id: "E.11.1.1"
+                name: "インシデント対応計画"
+                important: true
+                grade: 2
+                grade_description: "インシデント対応手順書＋定期訓練"
+                reason: "情報「利用者」の個人情報漏えい時には個人情報保護法上の報告・通知義務が生じるため、連絡体制のみ（Lv1）では不十分"
+                source_model: "情報: 利用者（氏名、連絡先）"
+                confidence: "medium"

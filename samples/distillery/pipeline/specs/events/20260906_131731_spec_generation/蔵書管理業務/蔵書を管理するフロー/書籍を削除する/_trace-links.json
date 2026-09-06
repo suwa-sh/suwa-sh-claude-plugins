@@ -1,0 +1,17 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"state\",\"蔵書管理\",\"書籍の状態\",\"在庫あり\",\"\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/蔵書を管理するフロー/書籍を削除する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/蔵書を管理するフロー/書籍を削除する/spec.md",
+          "name": "書籍を削除するの業務結果"
+        }
+      ]
+    }
+  ]
+}

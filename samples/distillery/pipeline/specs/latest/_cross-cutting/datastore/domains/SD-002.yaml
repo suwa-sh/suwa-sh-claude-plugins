@@ -1,0 +1,281 @@
+subdomain_id: SD-002
+tables:
+  - name: books
+    entity_id: E-001
+    rdra_info: 書籍
+    description: 書籍の現在状態の投影
+    columns:
+      - name: book_id
+        type: string
+        nullable: false
+        description: 書籍ID
+      - name: title
+        type: string
+        nullable: false
+        description: タイトル
+      - name: author
+        type: string
+        nullable: false
+        description: 著者
+      - name: isbn
+        type: string
+        nullable: true
+        description: ISBN（移行時に重複・欠損を名寄せする。NFR D.4.1.3）
+      - name: publisher
+        type: string
+        nullable: true
+        description: 出版社
+      - name: genre_id
+        type: string
+        nullable: false
+        description: ジャンルID（E-002 への参照）
+      - name: media_type
+        type: string
+        nullable: false
+        description: "媒体種別（enum: 紙・電子。初期リリースは紙のみ貸出・予約対象）"
+      - name: current_status
+        type: string
+        nullable: false
+        description: "書籍の状態（enum:
+          在庫あり・貸出中・予約待ち）。スナップショットのキャッシュ的ステータス。遷移はイベント（登録・貸出・返却・予約取消・削除）で記録する"
+      - name: version
+        type: integer
+        nullable: false
+        description: 楽観ロック用バージョン
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: スナップショット最終更新日時。情報.tsv の登録日・更新日は登録イベント / 最新イベントの occurred_at で管理する
+      - name: deleted
+        type: boolean
+        nullable: false
+        description: 削除イベントでtrue。通常参照はfalseに限定。
+      - name: registered_at
+        type: datetime
+        nullable: false
+        description: 最初の登録イベントのoccurred_at。以後の編集で変更しない。
+    primary_key:
+      - book_id
+    foreign_keys:
+      - columns:
+          - genre_id
+        references:
+          table: genres
+          columns:
+            - genre_id
+        on_delete: RESTRICT
+    indexes:
+      - name: books_isbn
+        columns:
+          - isbn
+        unique: false
+      - name: books_title
+        columns:
+          - title
+        unique: false
+    used_by:
+      - uc: 予約状況を参照する
+        operations:
+          - SELECT
+      - uc: 利用者の利用状況を参照する
+        operations:
+          - SELECT
+      - uc: 貸出履歴を参照する
+        operations:
+          - SELECT
+      - uc: 延滞を判定する
+        operations:
+          - SELECT
+      - uc: 延滞一覧を参照する
+        operations:
+          - SELECT
+      - uc: 督促を送信する
+        operations:
+          - SELECT
+      - uc: リマインドを送信する
+        operations:
+          - SELECT
+      - uc: リマインド対象を抽出する
+        operations:
+          - SELECT
+      - uc: 書籍を検索する
+        operations:
+          - SELECT
+      - uc: 書籍詳細を参照する
+        operations:
+          - SELECT
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 書籍を登録する
+        operations:
+          - INSERT
+      - uc: 書籍を編集する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 書籍一覧を参照する
+        operations:
+          - SELECT
+      - uc: 予約を取り消す
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 予約を登録する
+        operations:
+          - SELECT
+      - uc: 予約一覧を参照する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+          - UPDATE
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+      - uc: 人気書籍ランキングを参照する
+        operations:
+          - SELECT
+      - uc: 在庫状況一覧を参照する
+        operations:
+          - SELECT
+  - name: books_events
+    entity_id: E-001
+    rdra_info: 書籍
+    description: 書籍の変更イベント。INSERTのみ。
+    columns:
+      - name: event_id
+        type: string
+        nullable: false
+        description: イベント識別子。新規追記時に生成するUUID。
+      - name: book_id
+        type: string
+        nullable: false
+        description: 対象書籍の識別子。
+      - name: version
+        type: integer
+        nullable: false
+        description: 対象集約の確定版。新規は1、変更ごとに1増加する。
+      - name: event_type
+        type: string
+        nullable: false
+        description: 発生した変更の種別。値とpayloadは当該UCのモデル操作を参照。
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: イベント確定時刻。UTCの時刻を保存する。
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 認証主体の利用者番号。日次・配信はサービス主体ID。
+      - name: request_key
+        type: string
+        nullable: false
+        description: operationとX-Idempotency-Keyの結合。日次・配信はTR-IDEMPの安定キー。
+      - name: request_hash
+        type: string
+        nullable: false
+        description: 本文・path・query・If-Match等の正規化SHA-256。TR-IDEMPを参照。
+      - name: payload
+        type: text
+        nullable: false
+        description: イベント別の変更値をJSONで保持
+      - name: response
+        type: text
+        nullable: false
+        description: 再送時のHTTP statusとbodyをJSONで保持
+    primary_key:
+      - event_id
+    foreign_keys: []
+    indexes:
+      - name: books_events_version
+        columns:
+          - book_id
+          - version
+        unique: true
+      - name: books_events_request
+        columns:
+          - actor_id
+          - request_key
+          - book_id
+        unique: true
+    used_by:
+      - uc: 書籍を削除する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 書籍を登録する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 書籍を編集する
+        operations:
+          - SELECT
+          - INSERT
+      - uc: 予約を取り消す
+        operations:
+          - INSERT
+      - uc: 貸出を登録する
+        operations:
+          - INSERT
+      - uc: 返却を登録する
+        operations:
+          - INSERT
+  - name: genres
+    entity_id: E-002
+    rdra_info: ジャンル
+    description: ジャンルの永続化
+    columns:
+      - name: genre_id
+        type: string
+        nullable: false
+        description: ジャンルID
+      - name: genre_name
+        type: string
+        nullable: false
+        description: ジャンル名（文学・社会科学・自然科学・技術・芸術・歴史・児童書・その他）
+      - name: description
+        type: text
+        nullable: true
+        description: 説明
+    primary_key:
+      - genre_id
+    foreign_keys: []
+    indexes: []
+    used_by:
+      - uc: 書籍を検索する
+        operations:
+          - SELECT
+      - uc: 書籍詳細を参照する
+        operations:
+          - SELECT
+      - uc: 書籍を登録する
+        operations:
+          - SELECT
+      - uc: 書籍を編集する
+        operations:
+          - SELECT
+      - uc: 書籍一覧を参照する
+        operations:
+          - SELECT
+      - uc: 貸出を登録する
+        operations:
+          - SELECT
+      - uc: 返却を登録する
+        operations:
+          - SELECT
+      - uc: 返却通知を送信する
+        operations:
+          - SELECT
+      - uc: 人気書籍ランキングを参照する
+        operations:
+          - SELECT
+      - uc: 在庫状況一覧を参照する
+        operations:
+          - SELECT

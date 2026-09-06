@@ -1,0 +1,5 @@
+action: send
+channel:
+  $ref: ../asyncapi.yaml#/channels/reminder
+messages:
+  - $ref: ../asyncapi.yaml#/channels/reminder/messages/ReminderRequest

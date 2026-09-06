@@ -1,0 +1,29 @@
+{
+  "schema_version": "distillery.trace-links/v1",
+  "links": [
+    {
+      "element": "[\"condition\",\"蔵書管理\",\"媒体種別判定\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/spec.md",
+          "name": "予約操作の可否を表示する"
+        }
+      ]
+    },
+    {
+      "element": "[\"condition\",\"予約管理\",\"予約可否判定\"]",
+      "tier": "tier-backend-api",
+      "file": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/spec.md",
+      "anchor": "E2E完了条件",
+      "scenarios": [
+        {
+          "file": "蔵書管理業務/書籍を検索するフロー/書籍詳細を参照する/spec.md",
+          "name": "予約操作の可否を表示する"
+        }
+      ]
+    }
+  ]
+}

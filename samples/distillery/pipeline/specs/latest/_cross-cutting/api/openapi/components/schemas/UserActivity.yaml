@@ -1,0 +1,17 @@
+type: object
+additionalProperties: false
+required:
+  - user
+  - loans
+  - reservations
+properties:
+  user:
+    $ref: ./User.yaml
+  loans:
+    type: array
+    items:
+      $ref: ./Loan.yaml
+  reservations:
+    type: array
+    items:
+      $ref: ./Reservation.yaml
