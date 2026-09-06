@@ -78,6 +78,7 @@ UC本文にはデータフロー、分岐つきシーケンス、受入条件を
 
 | Skill | Role |
 |---|---|
+| `distillery:dist-migre` | バージョン間の変更ガイドを選び、LLMが既存出力を移行・検証する |
 | `distillery:dist-harvest` | 既存プロジェクトから要求を逆生成し USDM + RDRA を初期構築（as-is 分析・任意）。`--preflight` で、実装内部を読まずに変更の影響範囲を判定する軽量調査モード |
 | `distillery:dist-requirements` | USDM 分解 + RDRA モデルの差分/フルビルド |
 | `distillery:dist-quality-attributes` | IPA 非機能要求グレード 2018 による品質特性推論 |
@@ -263,3 +264,9 @@ RDRA ナレッジおよび初期実装は [suwa-sh/RDRAAgent](https://github.com
 ## License
 
 MIT
+
+## 既存出力のバージョン移行
+
+`/distillery:dist-migre docs/ を 1.9.4 から 1.14.0 へ移行して`で、該当版の変更点を基にLLMが計画・修正・検証を行います。
+変更の導入版と判断材料は[移行ガイド](skills/dist-migre/references/migration-catalog.md)に蓄積します。プラグインのインストール更新とは別の処理です。
+[ガイド適用例](../../samples/distillery/migrations/README.md)では、1.13.5からの移行で読む変更点と検証範囲を示します。
