@@ -20,6 +20,10 @@ use_cases:
       - tier-{tier_id}.md   # arch-design.yaml の tiers から動的に決定
     api_count: {APIエンドポイント数}
     async_event_count: {非同期イベント数}
+    usdm:                     # spec.md「関連 USDM」表と同内容。USDM が無いプロジェクトでは省略
+      - req_id: "REQ-001"
+        spec_id: "SPEC-001-01"
+        scenarios: ["{対応する BDD Scenario 名}"]
 
 # 全体横断仕様
 cross_cutting:
@@ -70,6 +74,7 @@ story_generation: required   # design ありなら required、design 無しモ�
 | フィールド | 型 | 説明 |
 |-----------|---|------|
 | story_generation | `required` \| `not_applicable` | Storybook Story 生成の要否。design 無しモードでは `not_applicable`。省略時は `required` 相当（1.4.x 以前の互換） |
+| use_cases[].usdm | array | UC が実現する USDM の REQ / SPEC 対応。USDM を使うプロジェクトでは必ず出す |
 
 ### use_cases[].files
 
@@ -77,6 +82,21 @@ UC ディレクトリに存在するファイルの一覧。以下のファイ�
 
 - `spec.md` — 必須
 - `tier-{tier_id}.md` — arch-design.yaml の tiers から動的に決定（例: tier-frontend.md, tier-api.md, tier-worker.md）
+
+### use_cases[].usdm
+
+UC が実現する USDM の REQ / SPEC 対応。`spec.md`「関連 USDM」表と**同内容**を機械可読にしたもの。
+
+| フィールド | 必須 | 説明 |
+|---|---|---|
+| req_id | ○ | `docs/usdm/latest/requirements.yaml` の `requirements[].id`（`REQ-nnn`） |
+| spec_id | ○ | 同 `specifications[].id`（`SPEC-nnn-mm`）。`req_id` の配下であること |
+| scenarios | | `spec_id` の acceptance_criteria に対応する spec.md 内の BDD Scenario 名 |
+
+- `docs/usdm/latest/requirements.yaml` が無いプロジェクト（USDM 未使用）では省略する
+- `validateSpecEvent.js` が `spec_id` の USDM 実在と `req_id` の親子関係を検査する
+- Markdown 表だけに置かないこと。後工程（distillery-impl の ATDD 生成、`usdm-acceptance-matrix.md` 再生成）が
+  Markdown を再パースせずに済むよう、YAML を機械照合の正本とする
 
 ### confidence 値
 

@@ -21,6 +21,11 @@
  *  11. _cross-cutting/object-storage-schema.yaml の基本構文チェック（存在する場合のみ）
  *  12. 各 UC の _model-summary.yaml 存在チェック + models/tables フィールド検証
  *  13. ディレクトリ名にスラッシュが含まれない
+ *  14. spec-event.yaml の use_cases[].usdm の spec_id が USDM に実在し req_id 配下であること
+ *
+ * オプション:
+ *   --usdm <path>  USDM requirements.yaml のパス
+ *                  （既定: {event-dir}/../../../usdm/latest/requirements.yaml）
  *
  * 終了コード:
  *   0 = 全チェック PASS
@@ -108,6 +113,108 @@ function validate(data, schema, defs, jsonPath) {
 }
 
 // ---------------------------------------------------------------------------
+// USDM 参照検証
+// ---------------------------------------------------------------------------
+
+/**
+ * イベントディレクトリから USDM requirements.yaml のパスを導く。
+ *
+ * 規約上の入口 `{root}/specs/latest` と `{root}/specs/events/{id}` だけを認め、
+ * `{root}/usdm/latest/requirements.yaml` に解決する。
+ * 祖先探索はしない（別プロジェクトや無関係な `specs` の USDM を拾わないため）。
+ * 規約外の配置では null を返し、`--usdm` での明示指定を求める。
+ *
+ * @param {string} eventDir - イベントまたは latest ディレクトリの絶対パス
+ * @returns {string|null} USDM のパス（存在するとは限らない）。規約外の配置なら null
+ */
+function findUsdmPath(eventDir) {
+  const parent = path.dirname(eventDir);
+  let specsDir = null;
+  if (path.basename(eventDir) === 'latest' && path.basename(parent) === 'specs') {
+    specsDir = parent;
+  } else if (path.basename(parent) === 'events' && path.basename(path.dirname(parent)) === 'specs') {
+    specsDir = path.dirname(parent);
+  }
+  if (!specsDir) return null;
+  return path.join(path.dirname(specsDir), 'usdm', 'latest', 'requirements.yaml');
+}
+
+/**
+ * USDM requirements.yaml から SPEC ID → REQ ID の対応表を作る。
+ *
+ * `requirements[].specifications[]` の構造から作るため、キー順に依存しない。
+ *
+ * @param {string} usdmPath - requirements.yaml のパス
+ * @returns {Map<string,string>|null} spec_id → req_id。ファイルが無い・構造が読めなければ null
+ */
+function loadUsdmIndex(usdmPath) {
+  if (!usdmPath || !fs.existsSync(usdmPath)) return null;
+  let document;
+  try {
+    document = parseYaml(fs.readFileSync(usdmPath, 'utf8'));
+  } catch (_) {
+    return null;
+  }
+  const requirements = Array.isArray(document?.requirements) ? document.requirements : null;
+  if (!requirements) return null;
+
+  const index = new Map();
+  for (const requirement of requirements) {
+    const reqId = requirement?.id;
+    if (typeof reqId !== 'string') continue;
+    for (const specification of (Array.isArray(requirement.specifications) ? requirement.specifications : [])) {
+      const specId = specification?.id;
+      if (typeof specId === 'string' && !index.has(specId)) index.set(specId, reqId);
+    }
+  }
+  return index;
+}
+
+/**
+ * spec-event.yaml の use_cases[].usdm を USDM の実在と照合する。
+ *
+ * @param {object} data - spec-event.yaml のパース結果
+ * @param {Map<string,string>|null} usdmIndex - loadUsdmIndex の戻り値
+ * @param {string} usdmPath - 表示用の USDM パス
+ * @returns {{errors: string[], warnings: string[], checked: number}}
+ */
+function validateUsdmRefs(data, usdmIndex, usdmPath) {
+  const errors = [];
+  const warnings = [];
+  let checked = 0;
+
+  const useCases = Array.isArray(data?.use_cases) ? data.use_cases : [];
+  const withRefs = useCases.filter(uc => Array.isArray(uc?.usdm) && uc.usdm.length > 0);
+  if (withRefs.length === 0) return { errors, warnings, checked };
+
+  if (!usdmIndex) {
+    const where = usdmPath || '規約上の入口（specs/latest または specs/events/{id}）ではないため未解決。--usdm で指定してください';
+    warnings.push(`spec-event.yaml に usdm 参照があるが USDM が見つからないため実在チェックを skip: ${where}`);
+    return { errors, warnings, checked };
+  }
+
+  for (const uc of withRefs) {
+    const label = `${uc.business}/${uc.buc}/${uc.uc}`;
+    for (let i = 0; i < uc.usdm.length; i++) {
+      const ref = uc.usdm[i];
+      const at = `spec-event.yaml use_cases(${label}).usdm[${i}]`;
+      if (!ref || typeof ref !== 'object') continue;
+      checked++;
+      if (!usdmIndex.has(ref.spec_id)) {
+        errors.push(`${at}: spec_id "${ref.spec_id}" が USDM に存在しません (${usdmPath})`);
+        continue;
+      }
+      const owner = usdmIndex.get(ref.spec_id);
+      if (owner !== ref.req_id) {
+        errors.push(`${at}: spec_id "${ref.spec_id}" の親は "${owner}" です（req_id "${ref.req_id}" と不一致）`);
+      }
+    }
+  }
+
+  return { errors, warnings, checked };
+}
+
+// ---------------------------------------------------------------------------
 // UC ディレクトリ検証
 // ---------------------------------------------------------------------------
 
@@ -150,6 +257,7 @@ function findUcDirs(baseDir) {
 function validateUcDir(ucInfo) {
   const errors = [];
   const warnings = [];
+  let hasUsdmSection = false;
   const ucDir = ucInfo.path;
   const ucLabel = `${ucInfo.business}/${ucInfo.buc}/${ucInfo.uc}`;
 
@@ -196,6 +304,9 @@ function validateUcDir(ucInfo) {
     if (!hasTable && !hasReferenceList) {
       warnings.push(`[${ucLabel}] spec.md の関連RDRAモデルに表または参照リストがありません`);
     }
+
+    // 「関連 USDM」節の有無。spec-event.yaml の usdm 参照と対で持つべきなので main で突き合わせる
+    hasUsdmSection = /^##[^\n]*関連[^\n]*USDM/im.test(content);
   }
 
   // --- tier-*.md 検証（動的ティア） ---
@@ -237,7 +348,7 @@ function validateUcDir(ucInfo) {
     }
   }
 
-  return { errors, warnings, tierFiles: allFiles };
+  return { errors, warnings, tierFiles: allFiles, hasUsdmSection };
 }
 
 // ---------------------------------------------------------------------------
@@ -327,11 +438,25 @@ function validateCrossCutting(baseDir) {
 function main() {
   const args = process.argv.slice(2);
   const jsonFlag = args.includes('--json');
-  const nonFlagArgs = args.filter(a => !a.startsWith('--'));
+  const usdmFlagIdx = args.indexOf('--usdm');
+  const usdmValueIdx = usdmFlagIdx >= 0 ? usdmFlagIdx + 1 : -1;
+  const usdmOverride = usdmValueIdx >= 0 ? args[usdmValueIdx] : null;
+  const nonFlagArgs = args.filter((a, i) => !a.startsWith('--') && i !== usdmValueIdx);
 
+  const usage = 'Usage: node validateSpecEvent.js <path-to-spec-event-dir> [--json] [--usdm <requirements.yaml>]';
   if (nonFlagArgs.length === 0) {
-    console.error('Usage: node validateSpecEvent.js <path-to-spec-event-dir> [--json]');
+    console.error(usage);
     process.exit(2);
+  }
+  if (usdmFlagIdx >= 0) {
+    if (args.lastIndexOf('--usdm') !== usdmFlagIdx) {
+      console.error('--usdm は 1 回だけ指定してください');
+      process.exit(2);
+    }
+    if (!usdmOverride || usdmOverride.startsWith('--')) {
+      console.error(`--usdm には requirements.yaml のパスが必要です\n${usage}`);
+      process.exit(2);
+    }
   }
 
   const eventDir = path.resolve(nonFlagArgs[0]);
@@ -349,6 +474,7 @@ function main() {
   const allWarnings = [];
 
   // --- spec-event.yaml バリデーション ---
+  let specEventData = null;
   const yamlPath = path.join(eventDir, 'spec-event.yaml');
   if (!fs.existsSync(yamlPath)) {
     allErrors.push('spec-event.yaml が存在しません');
@@ -360,6 +486,7 @@ function main() {
     let data;
     try {
       data = parseYaml(yamlText);
+      specEventData = data;
     } catch (e) {
       allErrors.push(`spec-event.yaml YAML parse error: ${e.message}`);
     }
@@ -406,6 +533,26 @@ function main() {
     allWarnings.push(...result.warnings);
   }
 
+  // --- USDM 参照検証 ---
+  const usdmPath = usdmOverride ? path.resolve(usdmOverride) : findUsdmPath(eventDir);
+  const usdmIndex = loadUsdmIndex(usdmPath);
+  const usdmResult = validateUsdmRefs(specEventData, usdmIndex, usdmPath);
+  allErrors.push(...usdmResult.errors);
+  allWarnings.push(...usdmResult.warnings);
+
+  // spec.md に「関連 USDM」節がある UC は spec-event.yaml にも usdm 参照を持つべき
+  const usdmByUc = new Map(
+    (Array.isArray(specEventData?.use_cases) ? specEventData.use_cases : [])
+      .map(uc => [`${uc?.business}/${uc?.buc}/${uc?.uc}`, uc?.usdm])
+  );
+  for (const uc of ucResults) {
+    const key = `${uc.business}/${uc.buc}/${uc.uc}`;
+    const refs = usdmByUc.get(key);
+    if (uc.hasUsdmSection && !(Array.isArray(refs) && refs.length > 0)) {
+      allWarnings.push(`[${key}] spec.md に「関連 USDM」節があるが spec-event.yaml の use_cases[].usdm がありません`);
+    }
+  }
+
   // --- _cross-cutting 検証 ---
   const crossResult = validateCrossCutting(eventDir);
   allErrors.push(...crossResult.errors);
@@ -421,7 +568,8 @@ function main() {
       stats: {
         uc_count: ucDirs.length,
         businesses: new Set(ucDirs.map(u => u.business)).size,
-        bucs: new Set(ucDirs.map(u => `${u.business}/${u.buc}`)).size
+        bucs: new Set(ucDirs.map(u => `${u.business}/${u.buc}`)).size,
+        usdm_refs: usdmResult.checked
       }
     };
     console.log(JSON.stringify(result, null, 2));

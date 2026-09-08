@@ -7,7 +7,7 @@ infra イベントのメタデータ、変換サマリ、MCL 実行結果、arch
 ```yaml
 # === 必須フィールド ===
 version: "1.0"                          # スキーマバージョン
-event_id: string                        # イベント ID（{YYYYMMDD_HHMMSS}_infra_product_design）
+event_id: string                        # イベント ID（{YYYYMMDD_HHMMSS}_infra_product_design / feedback mode は {YYYYMMDD_HHMMSS}_feedback_{feedback_id}）
 created_at: string                      # ISO 8601 日時
 source: string                          # トリガー説明
 
@@ -60,9 +60,14 @@ arch_feedback:                          # null | object
 
 ### event_id
 
-形式: `{YYYYMMDD_HHMMSS}_infra_product_design`
+形式:
 
-例: `20260328_140000_infra_product_design`
+| mode | 形式 | 例 |
+|---|---|---|
+| 通常 | `{YYYYMMDD_HHMMSS}_infra_product_design` | `20260328_140000_infra_product_design` |
+| feedback | `{YYYYMMDD_HHMMSS}_feedback_{feedback_id}` | `20260907_124000_feedback_abort_consistency` |
+
+重複回避のサフィックス `_2` / `_3` は通常 mode の形式に付与できる。
 
 ### source
 

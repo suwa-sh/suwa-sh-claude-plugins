@@ -96,6 +96,12 @@ sequenceDiagram
 | 状態 | {状態モデル名} | {状態モデル+遷移UC} |
 | 外部システム | {要素名} | {tier md の連携定義} |
 
+## 関連 USDM
+
+| REQ ID | SPEC ID | 対応 BDD Scenario |
+|---|---|---|
+| REQ-{nnn} | SPEC-{nnn}-{mm} | {下の BDD Scenario 名} |
+
 ## E2E 完了条件（BDD）
 
 ```gherkin
@@ -120,6 +126,8 @@ Feature: {UC名}
 ````
 
 `概要`、`関連 RDRA モデル`、`E2E 完了条件`、`ティア別仕様` は必須。
+`関連 USDM` は `docs/usdm/latest/requirements.yaml` があるプロジェクトでは必須。
+同内容を `spec-event.yaml` の `use_cases[].usdm` にも出す（Markdown 表だけに置かない）。
 新規生成はデータフロー・シーケンス・分岐接続を含める。状態遷移参照は該当時のみ。
 分岐IDは文書内で一意とし、更新時に維持する。既存の業務ルール表は読取互換のみ。
 

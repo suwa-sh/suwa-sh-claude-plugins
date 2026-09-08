@@ -14,6 +14,8 @@
  *   4. 各カラムに description があること（error）
  *   5. indexes の各要素に name があること（空文字禁止）
  *   6. テーブル名が snake_case であること（/^[a-z][a-z0-9_]*$/）
+ *   7. columns[].enum が空でない一意な文字列配列であること（error）
+ *   8. 列挙列に enum があること（既存 schema を壊さないよう warning）
  *
  * 終了コード:
  *   0 = 全チェック PASS
@@ -106,10 +108,28 @@ function validate(data, schema, defs, jsonPath) {
 
 const SNAKE_CASE_RE = /^[a-z][a-z0-9_]*$/;
 
+// description 中に列挙値が埋まっている典型パターン。
+//   - "値: STARTED(作成直後), RUNNING(起動後)" のような日本語の値列挙
+//   - "実行状態(pending / running / completed)" のような括弧付き選択肢
+// enum が無い列挙列を検出して警告するためだけに使う。
+// 「初期値: 0」「初期値: localhost、任意のホスト名に変更可能」のような単一値の説明に反応しないよう、
+// 区切りの両側にコード値（英字始まりの識別子、または数字コード）があることを要求する。
+const CODE_VALUE = '(?:[A-Za-z][A-Za-z0-9_]*|[0-9]+)';
+const CODE_PAREN = '(?:\\([^)）]*\\)|（[^)）]*）)?';
+// 2 つ目の値の直後。ここで終わる（区切り・括弧・句点・行末）ものだけをコード値と見なす。
+// 「初期値: localhost、DNS名も指定可能」の "DNS名" を列挙と誤認しないための終端条件。
+const CODE_END = '(?:\\s*[,、/|｜。)）]|\\s*$)';
+const INLINE_ENUM_RES = [
+  new RegExp(`値\\s*[:：]\\s*${CODE_VALUE}${CODE_PAREN}\\s*[,、/|｜]\\s*${CODE_VALUE}${CODE_PAREN}${CODE_END}`),
+  new RegExp(`[（(]\\s*${CODE_VALUE}(?:\\s*[/|｜]\\s*${CODE_VALUE}){1,}\\s*[)）]`),
+];
+const TYPE_ENUM_RE = /^enum\s*[（(]/i;
+
 function validateRdbExtra(data) {
   const errors = [];
+  const warnings = [];
 
-  if (!data.tables || !Array.isArray(data.tables)) return errors;
+  if (!data.tables || !Array.isArray(data.tables)) return { errors, warnings };
 
   for (let i = 0; i < data.tables.length; i++) {
     const table = data.tables[i];
@@ -129,8 +149,32 @@ function validateRdbExtra(data) {
     if (table.columns && Array.isArray(table.columns)) {
       for (let j = 0; j < table.columns.length; j++) {
         const col = table.columns[j];
-        if (!col.description || (typeof col.description === 'string' && col.description.trim().length === 0)) {
-          errors.push(`${label}.columns[${j}](${col.name || '?'}): description がありません`);
+        const colLabel = `${label}.columns[${j}](${col.name || '?'})`;
+        const description = typeof col.description === 'string' ? col.description : '';
+        if (!col.description || description.trim().length === 0) {
+          errors.push(`${colLabel}: description がありません`);
+        }
+
+        // 列挙列の enum 検証
+        if (col.enum !== undefined) {
+          if (!Array.isArray(col.enum)) {
+            errors.push(`${colLabel}: enum は配列である必要があります`);
+          } else {
+            const seen = new Set();
+            for (const value of col.enum) {
+              if (typeof value !== 'string' || value.trim().length === 0) {
+                errors.push(`${colLabel}: enum の値は空でない文字列である必要があります`);
+              } else if (seen.has(value)) {
+                errors.push(`${colLabel}: enum の値が重複しています: "${value}"`);
+              } else {
+                seen.add(value);
+              }
+            }
+          }
+        } else if (typeof col.type === 'string' && TYPE_ENUM_RE.test(col.type.trim())) {
+          warnings.push(`${colLabel}: type が enum(...) なのに enum がありません（enum を正本にしてください）`);
+        } else if (INLINE_ENUM_RES.some(re => re.test(description))) {
+          warnings.push(`${colLabel}: description に列挙値があるのに enum がありません（codegen が description を正規表現で読む必要をなくすため enum を付けてください）`);
         }
       }
     }
@@ -146,7 +190,7 @@ function validateRdbExtra(data) {
     }
   }
 
-  return errors;
+  return { errors, warnings };
 }
 
 // ---------------------------------------------------------------------------
@@ -188,8 +232,9 @@ function main() {
     allErrors.push(...schemaErrors.map(e => `${e.path}: ${e.message}`));
 
     // 追加チェック
-    const extraErrors = validateRdbExtra(data);
-    allErrors.push(...extraErrors);
+    const extra = validateRdbExtra(data);
+    allErrors.push(...extra.errors);
+    allWarnings.push(...extra.warnings);
   }
 
   // --- 結果出力 ---

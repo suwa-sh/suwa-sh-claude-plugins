@@ -51,7 +51,33 @@
           "items": { "type": "string" }
         },
         "api_count": { "type": "integer", "minimum": 0 },
-        "async_event_count": { "type": "integer", "minimum": 0 }
+        "async_event_count": { "type": "integer", "minimum": 0 },
+        "usdm": {
+          "type": "array",
+          "description": "UC が実現する USDM の REQ / SPEC 対応。spec.md「関連 USDM」表と同内容を機械可読にしたもの。docs/usdm/latest/requirements.yaml が無いプロジェクトでは省略する",
+          "items": { "$ref": "#/$defs/UsdmRef" }
+        }
+      }
+    },
+    "UsdmRef": {
+      "type": "object",
+      "required": ["req_id", "spec_id"],
+      "properties": {
+        "req_id": {
+          "type": "string",
+          "pattern": "^REQ-[0-9]+$",
+          "description": "USDM の requirements[].id"
+        },
+        "spec_id": {
+          "type": "string",
+          "pattern": "^SPEC-[0-9]+-[0-9]+$",
+          "description": "USDM の requirements[].specifications[].id。req_id の配下であること"
+        },
+        "scenarios": {
+          "type": "array",
+          "description": "spec_id の acceptance_criteria に対応する spec.md 内の BDD Scenario 名",
+          "items": { "type": "string", "minLength": 1 }
+        }
       }
     },
     "CrossCutting": {

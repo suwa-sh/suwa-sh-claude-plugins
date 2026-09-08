@@ -231,7 +231,7 @@ OpenAPI/AsyncAPI は `_cross-cutting/` に全 UC 統合で生成される（UC �
 | `scripts/schema-model-summary.json` | _model-summary.yaml の JSON Schema |
 | `scripts/validateModelSummary.js` | UC 単位 _model-summary.yaml バリデーション (exit 0/1/2) |
 | `scripts/schema-rdb-schema.json` | rdb-schema.yaml の JSON Schema |
-| `scripts/validateRdbSchema.js` | rdb-schema.yaml バリデーション + snake_case/description 必須チェック (exit 0/1/2) |
+| `scripts/validateRdbSchema.js` | rdb-schema.yaml バリデーション + snake_case/description 必須・列挙列の enum チェック (exit 0/1/2) |
 | `scripts/schema-kvs-schema.json` | kvs-schema.yaml の JSON Schema |
 | `scripts/validateKvsSchema.js` | kvs-schema.yaml バリデーション (exit 0/1/2) |
 | `scripts/lib/yaml-parser.js` | 簡易 YAML パーサー（全スクリプト共用、外部依存なし） |
@@ -583,6 +583,8 @@ Step4a〜4d の各成果物を、**生成 subagent とは別の subagent でレ�
 - UC 一覧（業務/BUC/UC の階層、各 UC のファイル構成）
 - 全体横断仕様のサマリー
 - 生成統計（UC 数、API 数、非同期イベント数）
+- `use_cases[].usdm`: 各 UC の spec.md「関連 USDM」表と**同内容**の REQ / SPEC 対応
+  （`docs/usdm/latest/requirements.yaml` が無いプロジェクトでは省略。Markdown 表だけに置かない）
 - `story_generation`: design ありなら `required`、design 無しモードなら `not_applicable`
   （**この時点で events/ 側の YAML に書く**。latest へは Step8 のコピーで伝播する。後から latest だけを書き換えない）
 
@@ -648,6 +650,8 @@ node <skill-path>/scripts/validateSpecEvent.js docs/specs/events/{event_id}
   - `_cross-cutting/api/asyncapi.yaml` の構文エラー（存在する場合）
   - `_cross-cutting/datastore/rdb-schema.yaml` の構文エラー（存在する場合）
   - spec-event.yaml の構造エラー
+  - `use_cases[].usdm` の `spec_id` が USDM に存在しない、または `req_id` の配下でない
+    （USDM の既定パスは `{event-dir}/../../../usdm/latest/requirements.yaml`。`--usdm <path>` で上書きできる）
 - exit 2 (システムエラー) → ファイルパス・形式を確認
 
 #### 6b. OpenAPI リント
