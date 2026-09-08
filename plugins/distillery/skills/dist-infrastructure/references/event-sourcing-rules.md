@@ -98,10 +98,11 @@ docs/arch/
 
 ### infra イベント ID
 
-- 形式: `{YYYYMMDD_HHMMSS}_infra_product_design`
+- 通常 mode の形式: `{YYYYMMDD_HHMMSS}_infra_product_design`
+- feedback mode の形式: `{YYYYMMDD_HHMMSS}_feedback_{feedback_id}`（`feedback_id` は pipeline controller が渡す）
 - **日時部分は `date '+%Y%m%d_%H%M%S'` コマンドで取得する。LLM が日時を推測してはならない**
 - `created_at` 等のタイムスタンプも `date '+%Y-%m-%dT%H:%M:%S'` コマンドで取得する
-- 例: `20260328_140000_infra_product_design`
+- 例: `20260328_140000_infra_product_design` / `20260907_124000_feedback_abort_consistency`
 
 ### arch フィードバックイベント ID
 

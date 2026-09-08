@@ -25,7 +25,13 @@
                 "name": { "type": "string", "minLength": 1 },
                 "type": { "type": "string", "minLength": 1 },
                 "nullable": { "type": "boolean" },
-                "description": { "type": "string", "minLength": 1 }
+                "description": { "type": "string", "minLength": 1 },
+                "enum": {
+                  "type": "array",
+                  "minItems": 1,
+                  "description": "列挙列の取りうる値。bash 定数・SQL CHECK 制約・状態コード表の codegen 元になる。description の日本語文から正規表現で抽出させないため、列挙列には必ず付ける",
+                  "items": { "type": "string", "minLength": 1 }
+                }
               }
             }
           },

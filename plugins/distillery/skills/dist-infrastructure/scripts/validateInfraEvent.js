@@ -234,7 +234,15 @@ const VALID_COST_POSTURES = ['cost_optimized', 'balanced', 'performance_optimize
 const VALID_TARGET_CLOUDS = ['aws', 'azure', 'gcp', 'onprem'];
 const VALID_FEEDBACK_ACTIONS = ['add', 'upgrade'];
 const VALID_MCL_STATUSES = ['completed', 'partial', 'failed'];
-const EVENT_ID_PATTERN = /^\d{8}_\d{6}_infra_product_design$/;
+// 通常 mode: {YYYYMMDD_HHMMSS}_infra_product_design
+// feedback mode: {YYYYMMDD_HHMMSS}_feedback_{feedback_id}（controller が feedback_id を決める）
+// feedback_id の文字種は dist-pipeline の SAFE_RUN_ID_RE (/^[a-z0-9][a-z0-9._-]{0,127}$/) に合わせる
+// 通常 mode は重複回避サフィックス _2 / _3 を許容する
+const EVENT_ID_PATTERNS = [
+  /^\d{8}_\d{6}_infra_product_design(?:_\d+)?$/,
+  /^\d{8}_\d{6}_feedback_[a-z0-9][a-z0-9._-]{0,127}$/,
+];
+const EVENT_ID_EXPECTED = 'YYYYMMDD_HHMMSS_infra_product_design or YYYYMMDD_HHMMSS_feedback_{feedback_id}';
 
 function validateInfraEvent(data) {
   const errors = [];
@@ -267,8 +275,8 @@ function validateInfraEvent(data) {
   // --- event_id pattern ---
   if (data.event_id !== undefined && data.event_id !== null) {
     const eid = String(data.event_id);
-    if (!EVENT_ID_PATTERN.test(eid)) {
-      errors.push({ path: '$.event_id', message: `event_id "${eid}" does not match pattern YYYYMMDD_HHMMSS_infra_product_design` });
+    if (!EVENT_ID_PATTERNS.some(re => re.test(eid))) {
+      errors.push({ path: '$.event_id', message: `event_id "${eid}" does not match pattern ${EVENT_ID_EXPECTED}` });
     }
   }
 

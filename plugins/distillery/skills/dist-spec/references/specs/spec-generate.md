@@ -18,6 +18,7 @@ catalog modeでは `references/specs/contract-catalog.md` の順序を使う。
 ## 入力
 
 - `docs/rdra/latest/*.tsv` — RDRA モデル
+- `docs/usdm/latest/requirements.yaml` — USDM の REQ / SPEC（存在する場合。「関連 USDM」表の出所）
 - `docs/specs/events/{event_id}/_inputs-digest.md` — Step1 生成の arch/nfr ダイジェスト（**優先**。
   NFR グレード・ティア構成・レイヤー構成・エンティティ・技術スタックの転写と、冒頭に転写済みセクションのチェックリストを含む）
 - `docs/nfr/latest/nfr-grade.yaml` — NFR グレード（ダイジェストが無ければフルロード。チェックリストでセクション欠落があれば欠けた分だけ読む）
@@ -81,6 +82,9 @@ catalog modeでは `references/specs/contract-catalog.md` の順序を使う。
 
 - **概要**: UC の目的と範囲
 - **関連 RDRA モデル**: `docs/rdra/latest/*.tsv` の実際の要素名を使用。業務名も記載する
+- **関連 USDM**: `docs/usdm/latest/requirements.yaml` がある場合は必須。UC が実現する `REQ-nnn` / `SPEC-nnn-mm` と、
+  その acceptance_criteria に対応する BDD Scenario 名を表にする。
+  同内容を Step5 で `spec-event.yaml` の `use_cases[].usdm` にも出す（Markdown 表だけに置かない）
 - **データフローとシーケンス**: 分岐IDからRDRA latestの条件と状態へ接続する。具体的な変更提案の採用後の振る舞いを記述する。
 - **E2E 完了条件**: Gherkin 形式の BDD シナリオ
   - 正常系: 主要なユーザーフローを網羅

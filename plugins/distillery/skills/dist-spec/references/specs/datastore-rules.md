@@ -115,6 +115,7 @@ tables:
         nullable: false             # true / false
         default: "{デフォルト値}"    # 省略可
         description: "{説明}"
+        enum: ["{値1}", "{値2}"]    # 列挙列のみ。取りうる値を機械可読に列挙する
     primary_key: ["{カラム名}"]
     foreign_keys:
       - columns: ["{カラム名}"]
@@ -151,10 +152,20 @@ RDRA 情報モデルの属性からの型推定:
 | *数, *人数 | integer | 収容人数, 利用回数 |
 | *率 | decimal | キャンセル料率, 手数料率 |
 | *状態, *可否 | string (enum) | 予約状態, 貸出可否 |
+| *モード, *区分, *種別 | string (enum) | 実行モード, 権限区分 |
 | *スコア | decimal | 評価スコア |
 | *メール* | string | メールアドレス |
 | *URL* | string | 会議URL |
 | *フラグ, *可否 | boolean | 録画可否 |
+
+### 列挙列ルール
+
+`string (enum)` と判定した列は `enum` フィールドに取りうる値を必ず列挙する。
+
+- 値は実装で使うコード値そのものを書く（日本語の説明ではなく `pending` / `running` 等）
+- `description` は意味の説明に使い、値の列挙は `enum` を正本とする
+- 状態列は RDRA `状態.tsv` の状態名、モード・区分列は `バリエーション.tsv` の値と一致させる
+- 理由: bash 定数・SQL CHECK 制約・状態コード表の codegen が `description` の日本語文を正規表現で読む必要をなくす
 
 ## 全体横断: kvs-schema.yaml
 

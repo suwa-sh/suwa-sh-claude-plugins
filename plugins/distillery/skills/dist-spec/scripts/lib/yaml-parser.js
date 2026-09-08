@@ -9,6 +9,11 @@
  */
 'use strict';
 
+// ブロックスカラーの開始記号。チョンピング(-/+)とインデント指定(数字)は順不同で、
+// 後続コメントも付き得る（`|`, `|-`, `|2-`, `|-2`, `>+`, `|- # note`）。
+// これを取りこぼすと本文がマッピングや配列として読まれ、値が黙って壊れる。
+const BLOCK_SCALAR_RE = /^[|>](?:[0-9]+[-+]?|[-+][0-9]*)?(?:\s*#.*)?$/;
+
 /**
  * YAML テキストを JavaScript オブジェクトにパースする。
  * @param {string} text - YAML テキスト
@@ -52,21 +57,22 @@ function parseNode(lines, startIdx, parentIndent) {
       const key = content.slice(0, colonIdx).trim();
       const rawValue = content.slice(colonIdx + 1).trim();
 
-      if (rawValue === '' || rawValue === '>' || rawValue === '|') {
+      if (rawValue === '' || BLOCK_SCALAR_RE.test(rawValue)) {
         const nextLineIdx = findNextNonEmpty(lines, i + 1);
         if (nextLineIdx < lines.length) {
           const nextIndent = lines[nextLineIdx].search(/\S/);
           if (nextIndent > indent) {
             const nextContent = lines[nextLineIdx].trimStart();
-            if (nextContent.startsWith('- ')) {
-              const arr = parseArray(lines, nextLineIdx, indent);
-              result[key] = arr.value;
-              i = arr.nextIdx;
-              continue;
-            } else if (rawValue === '>' || rawValue === '|') {
+            // ブロックスカラーは本文が "- " で始まっても配列ではない。判定を配列より先に行う
+            if (BLOCK_SCALAR_RE.test(rawValue)) {
               const scalar = parseFoldedScalar(lines, i + 1, indent);
               result[key] = scalar.value;
               i = scalar.nextIdx;
+              continue;
+            } else if (nextContent.startsWith('- ')) {
+              const arr = parseArray(lines, nextLineIdx, indent);
+              result[key] = arr.value;
+              i = arr.nextIdx;
               continue;
             } else {
               const child = parseNode(lines, i + 1, indent);
@@ -122,12 +128,23 @@ function parseArray(lines, startIdx, parentIndent) {
       const k = itemContent.slice(0, colonIdx).trim();
       const v = itemContent.slice(colonIdx + 1).trim();
 
-      if (v === '' || v === '>' || v === '|') {
+      if (v === '' || BLOCK_SCALAR_RE.test(v)) {
         const nextLineIdx = findNextNonEmpty(lines, i + 1);
         if (nextLineIdx < lines.length) {
           const nextIndent = lines[nextLineIdx].search(/\S/);
           if (nextIndent > itemIndent) {
             const nextContent = lines[nextLineIdx].trimStart();
+            if (BLOCK_SCALAR_RE.test(v)) {
+              // `- key: |-` の本文。キー列(itemIndent + 2)より深い行だけが本文。
+              // 本文が "- " で始まっても配列ではないので、配列判定より先に処理する
+              const scalar = parseFoldedScalar(lines, i + 1, itemIndent + 2);
+              obj[k] = scalar.value;
+              const child = parseNode(lines, scalar.nextIdx, itemIndent);
+              Object.assign(obj, child.value);
+              arr.push(obj);
+              i = findNextAtOrAbove(lines, scalar.nextIdx, itemIndent);
+              continue;
+            }
             if (nextContent.startsWith('- ')) {
               const sub = parseArray(lines, nextLineIdx, itemIndent);
               obj[k] = sub.value;
