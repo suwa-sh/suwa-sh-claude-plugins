@@ -243,6 +243,73 @@ node <skill-path>/scripts/feedbackLease.js release \
 
 ---
 
+## controller が踏みやすい verifier の制約
+
+`verifyFeedbackResult.js` は controller の書いた成果物を厳密に検証する。
+実運用で繰り返し FAIL した 3 点を先に示す。terminal event を書く前に確認する。
+
+### 1. `domain_event_refs` に載せられるファイル
+
+拡張子は `.json` / `.yaml` / `.yml` のみ。`.md` / `.txt` は
+`domain event must use a .json, .yaml, or .yml extension` で落ちる。
+`decisions/*.yaml` のように envelope を持たないファイルも載せられない。
+
+### 2. lineage envelope は exact 4 キー・正準順序
+
+feedback ID や input SHA-256 を含む domain event ファイルには、top-level に
+`feedback_request` envelope をちょうど 1 つ置き、`domain_event_refs` に列挙する。
+
+```yaml
+feedback_request:
+  feedback_request_id: "20260907_abort_consistency"
+  input_sha256: "70cda63f…"
+  request_ids: ["CR-c770d8f0-016"]
+  work_unit_ids: ["CR-c770d8f0-016#1"]
+```
+
+- キーは `feedback_request_id` → `input_sha256` → `request_ids` → `work_unit_ids` の
+  **この順序で 4 つだけ**。過不足・順序違いは
+  `feedback_request object must contain exactly the canonical lineage fields in canonical order`
+- YAML は `feedback_request:` の値を空にし、各フィールドを 2 スペース字下げ・JSON 互換の
+  引用構文で書く。タブ・コメント・複数行・重複キーは不可。LF 改行・UTF-8 のみ
+- 該当しやすいファイル: `nfr-grade-diff.yaml`、`infra-event.yaml`、`infra-event-diff.yaml`
+
+### 3. 無関係な root の `latest` を変更しない
+
+stage event は自分の catalog root にだけ domain event を 1 つ追加できる。
+他ドメインの `latest/_digest/` を stage の途中で再生成すると
+`stage event may not mutate an unrelated or no-change domain latest tree` で落ちる。
+
+- 自分の root（no-change manifest でないもの）は `latest` を**必ず**更新する。
+  更新が無いと `normal domain event must update its domain latest tree`
+- 他の root と no-change manifest の root は `latest_tree_sha256` を**変えない**
+- 追加する domain event ID は prior head より後ろにソートされる必要がある
+
+### controller 実装の補助
+
+controller event（`feedback_run_started` / `feedback_stage_completed` /
+`feedback_stage_failed` / `feedback_run_completed` / `feedback_run_aborted`）と
+`status.json` / `result.json` を書くスクリプトは同梱していない。オーケストレータが書く。
+
+`post_execution_basis` は推測せず `planFeedbackRequest.js` の exports で実測する。
+
+```js
+const planner = require('<skill-path>/scripts/planFeedbackRequest.js');
+const catalog = planner.loadCatalog().value;
+const snapshots = planner.snapshotDomainEventRoots(artifactRoot, catalog);
+const basis = {
+  repository_head: planner.deriveRepositoryHead(artifactRoot),
+  latest_domain_event_ids: planner.latestDomainEventIdsFromSnapshots(catalog, snapshots),
+  domain_event_root_snapshots: snapshots,
+};
+```
+
+JSON は `scripts/canonicalJson.js` の `writeCanonicalJson` / `readCanonicalJson` で読み書きする。
+RDRA member manifest と no-change manifest の `created_at` は controller event と一致する必要があるため、
+**controller が `created_at` と domain event ID を先に固定して subagent へ渡す**。
+
+---
+
 ## subagent への `{feedback_instructions}`（`references/subagent-template.md` の変数）
 
 - 通常 mode: `{feedback_instructions}` は空
