@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>判断待ちページの作り方を変える</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --content-max: 1760px;
+      --paper: #f7f5f0;
+      --card: #ffffff;
+      --card-2: #f0eee9;
+      --ink: #1f2328;
+      --muted: #6b7280;
+      --rule: #d6d3cc;
+      --accent: #c2410c;
+      --accent-soft: #fde8dc;
+      --link: #1d4ed8;
+      --ok: #166534;   --ok-soft: #dcfce7;
+      --warn: #92400e; --warn-soft: #fef3c7;
+      --stop: #991b1b; --stop-soft: #fee2e2;
+      --guess: #5b21b6; --guess-soft: #ede9fe;
+      --unknown: #374151; --unknown-soft: #e5e7eb;
+      font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); line-height: 1.6; font-size: 15px; }
+    a { color: var(--link); }
+    a:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: .92em; }
+    .shell { width: min(var(--content-max), 100% - 48px); margin: 0 auto; }
+    @media (max-width: 600px) { .shell { width: calc(100% - 24px); } }
+    header.top { padding: 32px 0 8px; }
+    header.top h1 { margin: 0 0 6px; font-size: clamp(1.5rem, 2.6vw, 2.2rem); line-height: 1.25; }
+    header.top .sub { margin: 0; color: var(--muted); }
+    header.top .meta { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: .85rem; }
+    h2 { margin: 0 0 12px; font-size: 1.25rem; line-height: 1.3; padding-left: 12px; border-left: 4px solid var(--accent); }
+    h3 { margin: 0 0 8px; font-size: 1.02rem; }
+    section { margin: 20px 0; }
+    section.card { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 20px 24px; }
+    p { margin: 6px 0; }
+    ul, ol { margin: 6px 0; padding-left: 1.4em; }
+    li { margin: 2px 0; }
+    .now { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 20px 24px; }
+    .ask { background: var(--accent-soft); border: 2px solid var(--accent); border-radius: 8px; padding: 20px 24px; }
+    .ask h2 { border-left-color: var(--ink); }
+    .ask-q { font-size: 1.15rem; font-weight: 700; margin: 4px 0 8px; }
+    .ask-how { margin: 0; }
+    .reply { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 20px 24px; }
+    pre.copy { margin: 0; padding: 12px 14px; background: var(--card-2); border: 1px dashed var(--muted); border-radius: 6px; white-space: pre-wrap; }
+    .grid { display: grid; gap: 16px; }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .split { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; align-items: start; }
+    .scroll-x { overflow-x: auto; max-width: 100%; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pair-label { margin: 0 0 4px; font-weight: 700; color: var(--ink); }
+    @media (max-width: 900px) { .grid.cols-2, .grid.cols-3, .split, .pair { grid-template-columns: 1fr; } }
+    figure.fig { margin: 0; }
+    figure.fig svg { width: 100%; height: auto; display: block; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; }
+    figcaption { margin-top: 6px; color: var(--muted); font-size: .9rem; }
+    figure.fig.scroll { overflow-x: auto; }
+    figure.fig.scroll svg { min-width: var(--min, 720px); }
+    table { width: 100%; border-collapse: collapse; background: var(--card); font-size: .93rem; }
+    th, td { border: 1px solid var(--rule); padding: 8px 10px; text-align: left; vertical-align: top; }
+    thead th { background: var(--card-2); font-weight: 700; }
+    tbody th[scope="row"] { background: var(--card-2); font-weight: 600; white-space: nowrap; }
+    table.after td:first-child { font-weight: 700; white-space: nowrap; }
+    .tag { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: .8rem; font-weight: 700; border: 1px solid currentColor; vertical-align: middle; }
+    .tag.ok { color: var(--ok); background: var(--ok-soft); }
+    .tag.claim { color: var(--warn); background: var(--warn-soft); }
+    .tag.guess { color: var(--guess); background: var(--guess-soft); }
+    .tag.unknown { color: var(--unknown); background: var(--unknown-soft); }
+    .note { margin: 10px 0; padding: 10px 14px; border-radius: 6px; border-left: 5px solid; }
+    .note.warn { border-color: var(--warn); background: var(--warn-soft); }
+    .note.stop { border-color: var(--stop); background: var(--stop-soft); }
+    .note.info { border-color: var(--link); background: #e8eefc; }
+    dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; }
+    dl.facts dt { font-weight: 700; color: var(--muted); }
+    dl.facts dd { margin: 0; }
+    @media (max-width: 480px) { dl.facts { grid-template-columns: 1fr; } dl.facts dd { margin-bottom: 6px; } }
+    details.appendix { margin: 12px 0; border: 1px solid var(--rule); border-radius: 6px; padding: 8px 14px; background: var(--card); }
+    details.appendix summary { cursor: pointer; font-weight: 700; }
+    details.appendix > *:not(summary) { margin-top: 10px; }
+    footer { padding: 24px 0 40px; color: var(--muted); font-size: .85rem; }
+    @media print { .shell { width: 100%; } section.card, .now, .ask, .reply { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <header class="top shell">
+    <h1>判断待ちページの作り方を変える</h1>
+    <p class="sub">「ヒトに確認を求めるページ」を作る仕組みを根本から書き直したので、この方向で公開してよいか確認したい</p>
+    <p class="meta"><span>作成: 2026-09-17</span><span>対象: toolbox プラグインの human-html-review スキル</span></p>
+  </header>
+
+  <main class="shell">
+
+    <section class="now" data-role="context" aria-labelledby="now-h">
+      <h2 id="now-h">いま何の話か</h2>
+      <div class="split">
+        <figure class="fig scroll" style="--min: 960px">
+          <svg viewBox="0 0 960 128" role="img" aria-labelledby="f1-t">
+            <title id="f1-t">作業全体の流れと現在地。書き直しまで済み、このページでの確認で止まっている</title>
+            <defs>
+              <marker id="ar1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#6b7280"/></marker>
+            </defs>
+            <line x1="148" y1="68" x2="172" y2="68" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar1)"/>
+            <line x1="308" y1="68" x2="332" y2="68" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar1)"/>
+            <line x1="468" y1="68" x2="492" y2="68" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar1)"/>
+            <line x1="628" y1="68" x2="652" y2="68" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar1)"/>
+            <line x1="788" y1="68" x2="812" y2="68" stroke="#6b7280" stroke-width="1.2" marker-end="url(#ar1)"/>
+            <rect x="12" y="40" width="136" height="56" rx="6" fill="#f0eee9" stroke="#d6d3cc"/>
+            <text x="80" y="72" text-anchor="middle" font-size="13" font-weight="700" fill="#6b7280">要望を聞く</text>
+            <text x="80" y="112" text-anchor="middle" font-size="10" fill="#6b7280">済</text>
+            <rect x="172" y="40" width="136" height="56" rx="6" fill="#f0eee9" stroke="#d6d3cc"/>
+            <text x="240" y="72" text-anchor="middle" font-size="13" font-weight="700" fill="#6b7280">方針を決める</text>
+            <text x="240" y="112" text-anchor="middle" font-size="10" fill="#6b7280">済</text>
+            <rect x="332" y="40" width="136" height="56" rx="6" fill="#f0eee9" stroke="#d6d3cc"/>
+            <text x="400" y="72" text-anchor="middle" font-size="13" font-weight="700" fill="#6b7280">書き直す</text>
+            <text x="400" y="112" text-anchor="middle" font-size="10" fill="#6b7280">済</text>
+            <text x="560" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#c2410c">いまここ</text>
+            <rect x="492" y="40" width="136" height="56" rx="6" fill="#fde8dc" stroke="#c2410c" stroke-width="2"/>
+            <text x="560" y="72" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">確認してもらう</text>
+            <text x="560" y="112" text-anchor="middle" font-size="10" fill="#c2410c">このページ</text>
+            <rect x="652" y="40" width="136" height="56" rx="6" fill="#ffffff" stroke="#1f2328"/>
+            <text x="720" y="72" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">外部レビュー</text>
+            <text x="720" y="112" text-anchor="middle" font-size="10" fill="#6b7280">未</text>
+            <rect x="812" y="40" width="136" height="56" rx="6" fill="#ffffff" stroke="#1f2328"/>
+            <text x="880" y="72" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">公開する</text>
+            <text x="880" y="112" text-anchor="middle" font-size="10" fill="#6b7280">未</text>
+          </svg>
+          <figcaption>書き直しは終わっている。公開 (コミットとプラグイン更新) の前に、方向性を見てもらう段階。</figcaption>
+        </figure>
+        <dl class="facts">
+          <dt>何の作業</dt><dd>Claude Code のプラグイン集「toolbox」にある、<b>ヒトに確認を求めるページを作るスキル</b>を作り直している</dd>
+          <dt>いまどこ</dt><dd>スキルの説明書・部品・検査スクリプトの書き直しが終わった。まだコミットしていない</dd>
+          <dt>なぜ聞く</dt><dd>「決まった枠に当てはめる」方式から「読者の問いに合わせて毎回組む」方式へ根本から変えた。公開前に方向性を確認したい</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="ask" data-role="ask" aria-labelledby="ask-h">
+      <h2 id="ask-h">決めてほしいこと</h2>
+      <p class="ask-q">この新しい作り方 (このページ自体がその見本) で公開してよいか</p>
+      <p class="ask-how">答え方: <b>承認</b>。OK か、直してほしい点を添えて</p>
+    </section>
+
+    <section class="card" aria-labelledby="diff-h">
+      <h2 id="diff-h">何が変わったか</h2>
+      <div class="pair">
+        <figure class="fig scroll" style="--min: 480px">
+          <figcaption class="pair-label">前: 同じ枠に毎回はめる</figcaption>
+          <svg viewBox="0 0 480 312" role="img" aria-labelledby="f2a-t">
+            <title id="f2a-t">前の方式。6 つの決まったセクションを毎回同じ順で埋める</title>
+            <defs>
+              <marker id="ar2a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#6b7280"/></marker>
+            </defs>
+            <line x1="260" y1="52" x2="260" y2="64" stroke="#6b7280" marker-end="url(#ar2a)"/>
+            <line x1="260" y1="100" x2="260" y2="112" stroke="#6b7280" marker-end="url(#ar2a)"/>
+            <line x1="260" y1="148" x2="260" y2="160" stroke="#6b7280" marker-end="url(#ar2a)"/>
+            <line x1="260" y1="196" x2="260" y2="208" stroke="#6b7280" marker-end="url(#ar2a)"/>
+            <line x1="260" y1="244" x2="260" y2="256" stroke="#6b7280" marker-end="url(#ar2a)"/>
+            <rect x="140" y="16" width="240" height="36" rx="6" fill="#f0eee9" stroke="#d6d3cc"/>
+            <text x="260" y="39" text-anchor="middle" font-size="13" font-weight="700" fill="#6b7280">判断契約 (9 項目)</text>
+            <rect x="140" y="64" width="240" height="36" rx="6" fill="#f0eee9" stroke="#d6d3cc"/>
+            <text x="260" y="87" text-anchor="middle" font-size="13" font-weight="700" fill="#6b7280">例外サマリ</text>
+            <rect x="140" y="112" width="240" height="36" rx="6" fill="#f0eee9" stroke="#d6d3cc"/>
+            <text x="260" y="135" text-anchor="middle" font-size="13" font-weight="700" fill="#6b7280">因果タイムライン (4 枠)</text>
+            <rect x="140" y="160" width="240" height="36" rx="6" fill="#f0eee9" stroke="#d6d3cc"/>
+            <text x="260" y="183" text-anchor="middle" font-size="13" font-weight="700" fill="#6b7280">構造・振る舞い・データの図 (必ず 3 枚)</text>
+            <rect x="140" y="208" width="240" height="36" rx="6" fill="#f0eee9" stroke="#d6d3cc"/>
+            <text x="260" y="231" text-anchor="middle" font-size="13" font-weight="700" fill="#6b7280">検証表</text>
+            <rect x="140" y="256" width="240" height="36" rx="6" fill="#f0eee9" stroke="#d6d3cc"/>
+            <text x="260" y="279" text-anchor="middle" font-size="13" font-weight="700" fill="#6b7280">承認 or 選択</text>
+            <text x="16" y="148" font-size="11" fill="#6b7280">毎回</text>
+            <text x="16" y="164" font-size="11" fill="#6b7280">同じ 6 枠</text>
+          </svg>
+        </figure>
+        <figure class="fig scroll" style="--min: 480px">
+          <figcaption class="pair-label">後: 読者の問いの順に組む</figcaption>
+          <svg viewBox="0 0 480 312" role="img" aria-labelledby="f2b-t">
+            <title id="f2b-t">後の方式。必須は 3 つだけで、間の問いは対象ごとに変わる</title>
+            <defs>
+              <marker id="ar2b" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#6b7280"/></marker>
+            </defs>
+            <line x1="260" y1="52" x2="260" y2="64" stroke="#6b7280" marker-end="url(#ar2b)"/>
+            <line x1="260" y1="100" x2="260" y2="112" stroke="#6b7280" marker-end="url(#ar2b)"/>
+            <line x1="260" y1="148" x2="260" y2="160" stroke="#6b7280" marker-end="url(#ar2b)"/>
+            <line x1="260" y1="196" x2="260" y2="208" stroke="#6b7280" marker-end="url(#ar2b)"/>
+            <line x1="260" y1="244" x2="260" y2="256" stroke="#6b7280" marker-end="url(#ar2b)"/>
+            <rect x="140" y="16" width="240" height="36" rx="6" fill="#fde8dc" stroke="#c2410c" stroke-width="2"/>
+            <text x="260" y="39" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">いま何の話か (必須)</text>
+            <rect x="140" y="64" width="240" height="36" rx="6" fill="#fde8dc" stroke="#c2410c" stroke-width="2"/>
+            <text x="260" y="87" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">何を決めてほしいか (必須)</text>
+            <rect x="140" y="112" width="240" height="36" rx="6" fill="#ffffff" stroke="#6b7280" stroke-dasharray="4 3"/>
+            <text x="260" y="135" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">読者の問い → 図か表</text>
+            <rect x="140" y="160" width="240" height="36" rx="6" fill="#ffffff" stroke="#6b7280" stroke-dasharray="4 3"/>
+            <text x="260" y="183" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">読者の問い → 図か表</text>
+            <rect x="140" y="208" width="240" height="36" rx="6" fill="#ffffff" stroke="#1f2328"/>
+            <text x="260" y="231" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">決めたら何が起きる (表)</text>
+            <rect x="140" y="256" width="240" height="36" rx="6" fill="#fde8dc" stroke="#c2410c" stroke-width="2"/>
+            <text x="260" y="279" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">どう答えるか (必須)</text>
+            <text x="16" y="132" font-size="11" fill="#6b7280">点線は</text>
+            <text x="16" y="148" font-size="11" fill="#6b7280">対象ごとに</text>
+            <text x="16" y="164" font-size="11" fill="#6b7280">変わる</text>
+          </svg>
+        </figure>
+      </div>
+      <p>前は 6 つの枠と 3 枚の図が必ず要求され、内容が枠に合わないときも埋める必要があった。後は必須を 3 つに減らし、間は「読者が次に何を知りたいか」で決める。 <span class="tag ok">確認済み</span></p>
+    </section>
+
+    <section class="card" aria-labelledby="req-h">
+      <h2 id="req-h">要望 8 点をどこで実現したか</h2>
+      <p>表の内容は書き直した手引きと検査スクリプトの記述で確認した。 <span class="tag ok">確認済み</span></p>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>要望</th><th>実現した場所</th><th>具体的に</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">枠にはめず、内容を都度考える</th><td>説明書 / 方法論</td><td>固定セクションを廃止。「読者の問いの階段」を書き出してから組む手順にした</td></tr>
+          <tr><th scope="row">読者は文脈を忘れている</th><td>必須部品</td><td>「いま何の話か」を最初の画面に必須化。何の作業・いまどこ・なぜ聞く、の 3 点と現在地マップ</td></tr>
+          <tr><th scope="row">専門用語より平易な表現</th><td>方法論 / 検査</td><td>言い換え表を用意。初出で 1 行説明する規則</td></tr>
+          <tr><th scope="row">内部 ID ではなく名前</th><td>方法論 / 検査</td><td>「大文字 + ハイフン + 連番」や 16 進の並びのような ID を本文から検出して警告。対応表は付録にだけ置く</td></tr>
+          <tr><th scope="row">テクニカルライティング</th><td>方法論</td><td>一文一義、結論を先に、同じものは同じ名前で、段落は 3 文まで</td></tr>
+          <tr><th scope="row">文章よりリスト・表・構造</th><td>方法論 / 検査</td><td>「見せ方の優先順位」を図 → 表 → リスト → 文と定義。長い段落を警告</td></tr>
+          <tr><th scope="row">文章より図解、図の割合を増やす</th><td>図の手引き / 検査</td><td>問いごとの図の型を用意。見出し 2 つに図 1 つ未満なら警告</td></tr>
+          <tr><th scope="row">横幅を広く</th><td>部品の見た目</td><td>本文幅の上限を 1180px から 1760px に広げ、図と説明を横に並べる部品を追加</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="flow-h">
+      <h2 id="flow-h">新しい作り方の流れ</h2>
+      <figure class="fig scroll" style="--min: 960px">
+        <svg viewBox="0 0 960 120" role="img" aria-labelledby="f3-t">
+          <title id="f3-t">ページを作る 7 段階。HTML を書く前に問いと見せ方を決める</title>
+          <defs>
+            <marker id="ar3" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#6b7280"/></marker>
+          </defs>
+          <line x1="132" y1="48" x2="148" y2="48" stroke="#6b7280" marker-end="url(#ar3)"/>
+          <line x1="268" y1="48" x2="284" y2="48" stroke="#6b7280" marker-end="url(#ar3)"/>
+          <line x1="404" y1="48" x2="420" y2="48" stroke="#6b7280" marker-end="url(#ar3)"/>
+          <line x1="540" y1="48" x2="556" y2="48" stroke="#6b7280" marker-end="url(#ar3)"/>
+          <line x1="676" y1="48" x2="692" y2="48" stroke="#6b7280" marker-end="url(#ar3)"/>
+          <line x1="812" y1="48" x2="828" y2="48" stroke="#6b7280" marker-end="url(#ar3)"/>
+          <rect x="12" y="24" width="120" height="48" rx="6" fill="#fde8dc" stroke="#c2410c" stroke-width="2"/>
+          <text x="72" y="52" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">問いを書き出す</text>
+          <text x="72" y="96" text-anchor="middle" font-size="10" fill="#6b7280">5〜8 個。先頭 3 つは固定</text>
+          <rect x="148" y="24" width="120" height="48" rx="6" fill="#fde8dc" stroke="#c2410c" stroke-width="2"/>
+          <text x="208" y="52" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">見せ方を決める</text>
+          <text x="208" y="96" text-anchor="middle" font-size="10" fill="#6b7280">図 → 表 → リスト → 文</text>
+          <rect x="284" y="24" width="120" height="48" rx="6" fill="#ffffff" stroke="#1f2328"/>
+          <text x="344" y="52" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">事実を分類する</text>
+          <text x="344" y="96" text-anchor="middle" font-size="10" fill="#6b7280">4 種のラベル</text>
+          <rect x="420" y="24" width="120" height="48" rx="6" fill="#ffffff" stroke="#1f2328"/>
+          <text x="480" y="52" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">言葉を整える</text>
+          <text x="480" y="96" text-anchor="middle" font-size="10" fill="#6b7280">ID → 名前、用語 → 平易に</text>
+          <rect x="556" y="24" width="120" height="48" rx="6" fill="#ffffff" stroke="#1f2328"/>
+          <text x="616" y="52" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">HTML を組む</text>
+          <text x="616" y="96" text-anchor="middle" font-size="10" fill="#6b7280">部品を選んで並べる</text>
+          <rect x="692" y="24" width="120" height="48" rx="6" fill="#ffffff" stroke="#1f2328"/>
+          <text x="752" y="52" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">検査する</text>
+          <text x="752" y="96" text-anchor="middle" font-size="10" fill="#6b7280">エラーは直す、警告は見る</text>
+          <rect x="828" y="24" width="120" height="48" rx="6" fill="#ffffff" stroke="#1f2328"/>
+          <text x="888" y="52" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">見せる</text>
+          <text x="888" y="96" text-anchor="middle" font-size="10" fill="#6b7280">スマホで開ける URL</text>
+        </svg>
+        <figcaption>前の方式には無かった「問いを書き出す」「見せ方を決める」の 2 段階を、HTML を書く前に置いた。ここが方式の核。</figcaption>
+      </figure>
+      <p>7 段階は新しい説明書の手順どおり。 <span class="tag ok">確認済み</span></p>
+    </section>
+
+    <section class="card" aria-labelledby="files-h">
+      <h2 id="files-h">スキルを構成するファイルの前後</h2>
+      <div class="grid cols-2">
+        <div>
+          <h3>前</h3>
+          <table>
+            <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
+            <tbody>
+              <tr><td>説明書</td><td>8 段階の手順。固定 6 セクションを要求</td></tr>
+              <tr><td>情報契約</td><td>各セクションの必須フィールド一覧</td></tr>
+              <tr><td>HTML の雛形</td><td>セクションが埋め込まれた完成形。差し替えて使う</td></tr>
+              <tr><td>検査スクリプト</td><td>6 セクションと 3 図の存在を必須にする</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>後</h3>
+          <table>
+            <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
+            <tbody>
+              <tr><td>説明書</td><td>7 つの原則と 7 段階の手順。必須は 3 部品</td></tr>
+              <tr><td>コンテンツ設計の手引き</td><td>問いの階段、言葉の規則、見せ方の選び方</td></tr>
+              <tr><td>図解の手引き</td><td>問いごとの図の型、複雑さの上限、描き方の最小ルール</td></tr>
+              <tr><td>部品カタログ</td><td>必須 3 部品と、選んで使う部品の HTML 断片</td></tr>
+              <tr><td>HTML の下地</td><td>見た目 (CSS) と必須 3 部品の骨組みだけ</td></tr>
+              <tr><td>検査スクリプト</td><td>必須 3 部品と自己完結性を検査。ID・長文・図解不足を警告</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p>情報契約と完成形の雛形は削除した。代わりに「考え方」の手引きが 3 本に増えた。 <span class="tag ok">確認済み</span></p>
+    </section>
+
+    <section class="card" aria-labelledby="check-h">
+      <h2 id="check-h">検査スクリプトが守ること</h2>
+      <div class="split">
+        <figure class="fig scroll" style="--min: 560px">
+          <svg viewBox="0 0 560 176" role="img" aria-labelledby="f4-t">
+            <title id="f4-t">検査の流れ。エラーは必ず直し、警告は直すか理由を報告する</title>
+            <defs>
+              <marker id="ar4" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#6b7280"/></marker>
+              <marker id="ar4a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#c2410c"/></marker>
+            </defs>
+            <line x1="136" y1="88" x2="176" y2="88" stroke="#6b7280" marker-end="url(#ar4)"/>
+            <path d="M296 72 H328 A8 8 0 0 0 336 64 V40 A8 8 0 0 1 344 32 H400" fill="none" stroke="#c2410c" stroke-width="1.5" marker-end="url(#ar4a)"/>
+            <path d="M296 104 H328 A8 8 0 0 1 336 112 V136 A8 8 0 0 0 344 144 H400" fill="none" stroke="#6b7280" marker-end="url(#ar4)"/>
+            <rect x="16" y="64" width="120" height="48" rx="6" fill="#ffffff" stroke="#1f2328"/>
+            <text x="76" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">HTML</text>
+            <rect x="176" y="64" width="120" height="48" rx="6" fill="#fde8dc" stroke="#c2410c" stroke-width="2"/>
+            <text x="236" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">検査する</text>
+            <rect x="400" y="8" width="120" height="48" rx="6" fill="#fee2e2" stroke="#991b1b"/>
+            <text x="460" y="30" text-anchor="middle" font-size="13" font-weight="700" fill="#991b1b">エラー</text>
+            <text x="460" y="46" text-anchor="middle" font-size="10" fill="#991b1b">必ず直して再検査</text>
+            <rect x="400" y="120" width="120" height="48" rx="6" fill="#fef3c7" stroke="#92400e"/>
+            <text x="460" y="142" text-anchor="middle" font-size="13" font-weight="700" fill="#92400e">警告</text>
+            <text x="460" y="158" text-anchor="middle" font-size="10" fill="#92400e">直すか、理由を報告</text>
+          </svg>
+          <figcaption>エラーは形式の最低限、警告は読みやすさの原則。警告は機械判定なので誤検知を許し、人が最終判断する。</figcaption>
+        </figure>
+        <div class="scroll-x">
+          <table>
+            <thead><tr><th>種類</th><th>検査項目</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">エラー</th><td>外部ファイル・JavaScript・iframe が無い / 必須 3 部品がある / 図に説明文がついている / 差し替え忘れの穴が無い</td></tr>
+              <tr><th scope="row">警告</th><td>本文や図に内部 ID らしき文字列 / 4 文以上または 160 字を超える段落 / 見出し 2 つに図 1 つ未満 / 本文幅が 1400px 未満</td></tr>
+            </tbody>
+          </table>
+          <p>この見本ページを検査した結果は「エラー 0、警告 0」。 <span class="tag ok">確認済み</span></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="risk-h">
+      <h2 id="risk-h">気になる所と、まだ確かめていないこと</h2>
+      <aside class="note warn"><b>大きな対象で使うと重くなるかもしれない:</b> 図を増やす方針なので、判断材料が 10 個を超える対象では図の枚数も増える。前の方式で 140KB 級のページが出ていた実績があり、同程度になる可能性がある。 <span class="tag guess">推測</span></aside>
+      <aside class="note warn"><b>内部 ID の検出は誤検知がある:</b> 「大文字 + ハイフン + 数字」と「16 進の並び」で機械判定している。製品名 (例: <code>S3</code>) は除外リストで逃がしたが、漏れは残る。警告止まりにしてあるので、作業は止まらない。 <span class="tag ok">確認済み</span></aside>
+      <aside class="note info"><b>他のスキルへの影響は無い:</b> このスキルを呼ぶ側 (中ハーネス展開スキルと、ユーザー共通指示のプランモード規則) は名前だけを参照しており、削除した「承認 / 選択モード」の引数を使っていない。中ハーネス側の文言だけ合わせて直した。 <span class="tag ok">確認済み</span></aside>
+      <aside class="note info"><b>図の描画ライブラリは任意にした:</b> 前は外部スキル diagram-design のインストールを求めていた。後は「あれば従う、無ければ同梱の最小ルール」に変え、インストールを求めない。 <span class="tag ok">確認済み</span></aside>
+      <aside class="note stop"><b>実案件での使い勝手はまだ試していない:</b> 見本はこのページだけ。次に本物の判断待ち (プラン確認や実装レビュー) で使ったときに、手引きの過不足が出る可能性がある。 <span class="tag unknown">未確認</span></aside>
+    </section>
+
+    <section class="card" aria-labelledby="after-h">
+      <h2 id="after-h">決めた後に起きること</h2>
+      <table class="after">
+        <thead><tr><th>答え</th><th>次に起きること</th><th>戻せるか</th></tr></thead>
+        <tbody>
+          <tr><td>OK</td><td>別系統のエージェントに外部レビューさせて仕上げる → バージョン 0.9.0 としてコミット・プッシュ → プラグインを入れ直す → CI を確認</td><td>戻せる。前のバージョンを再インストールすれば元に戻る</td></tr>
+          <tr><td>直す</td><td>指摘を反映して、このページを作り直して再提示</td><td>—</td></tr>
+          <tr><td>やめる</td><td>変更を捨てて前の方式のまま</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="reply" data-role="reply" aria-labelledby="reply-h">
+      <h2 id="reply-h">答え方 (コピーして返信)</h2>
+      <div class="grid cols-3">
+        <pre class="copy">OK。この方式で公開してください</pre>
+        <pre class="copy">直してほしい: (例) 必須部品に「何が変わったか」も入れてください</pre>
+        <pre class="copy">やめる。前の方式に戻してください</pre>
+      </div>
+    </section>
+
+    <details class="appendix" data-role="appendix">
+      <summary>付録: 変更したファイルの一覧</summary>
+      <table>
+        <thead><tr><th>操作</th><th>パス</th></tr></thead>
+        <tbody>
+          <tr><td>書き直し</td><td><code>plugins/toolbox/skills/human-html-review/SKILL.md</code></td></tr>
+          <tr><td>新規</td><td><code>plugins/toolbox/skills/human-html-review/references/content-design.md</code></td></tr>
+          <tr><td>新規</td><td><code>plugins/toolbox/skills/human-html-review/references/diagrams.md</code></td></tr>
+          <tr><td>新規</td><td><code>plugins/toolbox/skills/human-html-review/references/components.md</code></td></tr>
+          <tr><td>新規</td><td><code>plugins/toolbox/skills/human-html-review/assets/base.html</code></td></tr>
+          <tr><td>書き直し</td><td><code>plugins/toolbox/skills/human-html-review/scripts/validate.py</code></td></tr>
+          <tr><td>削除</td><td><code>plugins/toolbox/skills/human-html-review/references/review-contract.md</code></td></tr>
+          <tr><td>削除</td><td><code>plugins/toolbox/skills/human-html-review/assets/review-template.html</code></td></tr>
+          <tr><td>更新</td><td><code>plugins/toolbox/skills/human-html-review/agents/openai.yaml</code></td></tr>
+          <tr><td>更新</td><td><code>plugins/toolbox/README.md</code> / <code>README.md</code> / <code>.claude-plugin/marketplace.json</code></td></tr>
+          <tr><td>更新</td><td><code>plugins/toolbox/skills/mid-harness/SKILL.md</code> (呼び出し文言)</td></tr>
+          <tr><td>更新</td><td><code>plugins/toolbox/.claude-plugin/plugin.json</code> (0.8.7 → 0.9.0)</td></tr>
+        </tbody>
+      </table>
+    </details>
+
+    <details class="appendix" data-role="appendix">
+      <summary>付録: 用語の対応</summary>
+      <table>
+        <thead><tr><th>このページの言葉</th><th>実体</th></tr></thead>
+        <tbody>
+          <tr><td>説明書</td><td>SKILL.md</td></tr>
+          <tr><td>検査スクリプト</td><td>scripts/validate.py</td></tr>
+          <tr><td>HTML の下地</td><td>assets/base.html</td></tr>
+          <tr><td>外部レビュー</td><td>toolbox:review-refute-loop スキル (Codex による第三者レビュー)</td></tr>
+          <tr><td>中ハーネス展開スキル</td><td>toolbox:mid-harness</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </main>
+
+  <footer class="shell">
+    <p>このページは判断のための要約です。正本はリポジトリの差分にあります。</p>
+  </footer>
+</body>
+</html>

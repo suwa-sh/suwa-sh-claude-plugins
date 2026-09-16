@@ -14,16 +14,18 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 
 トリガー例: 「外部レビューして」「セカンドオピニオン」「指摘を反証して」「この diff/プランをレビューに投げて」
 
-### `toolbox:human-html-review` — 判断可能な自己完結レビュー HTML 生成
+### `toolbox:human-html-review` — ヒトの判断待ちページを図と表で作る
 
-前提知識ゼロのレビュアーが、背景 → 代替案 → 対象の構造/振る舞い/データモデル → 証拠 → 残リスク → 承認後に起きること、の順でメンタルモデルを再構築して判断できる、自己完結 HTML を 1 ファイル生成する。
+文脈を忘れている読者でも 1 ページで状況を思い出し、判断できる自己完結 HTML を 1 ファイル生成する。固定フォーマットは無く、読者の問いの順にコンテンツを毎回設計する。
 
-- 決定モードは `approval` (承認/差し戻し) と `selection` (選択肢の比較選定) の 2 種
-- 主張を observed / agent-claim / inference / human-decision に分類する evidence ledger
-- 図解は `diagram-design` スキル (依存) の設計システムに従う
-- `scripts/validate.py` による構造検証つき
+- 必須は 3 部品だけ: 「いま何の話か」(現在地マップつき) / 「何を決めてほしいか」 / 「どう答えるか」(コピーして返せる回答例)
+- 平易な言葉で書き、内部 ID (`UC-06` / ハッシュ / ステージ番号) を本文に出さず名前で呼ぶ
+- 見出し 2 つにつき図 1 つ以上。本文幅の上限 1760px で図と説明を横に並べる
+- 主張には「確認済み / 報告のみ / 推測 / 未確認」の文字ラベルを付ける
+- `scripts/validate.py` が自己完結性と必須部品を検査し、内部 ID・長い段落・図解不足を警告する
+- `references/`: `content-design.md` (問いの階段と言葉の規則) / `diagrams.md` (図の型と描き方) / `components.md` (部品カタログ)
 
-トリガー例: 「このプランをレビュー用 HTML にして」「承認に必要な情報をまとめて」「選択肢を比較できる形で見せて」
+トリガー例: 「このプランを確認用の HTML にして」「承認に必要な情報をまとめて」「選択肢を比較できる形で見せて」「レビューをお願いする画面を作って」
 
 ### `toolbox:codex-imagen` — Codex → Grok → AGY の画像生成/編集
 
@@ -64,7 +66,7 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 | スキル | 依存 | 備考 |
 |---|---|---|
 | `review-refute-loop` | Codex CLI (companion plugin) または `claude` CLI | どちらも無い場合はサブエージェントフォールバックで動作 (クロスモデル効果は失われる) |
-| `human-html-review` | [diagram-design](https://github.com/cathrynlavery/diagram-design) スキル | 未導入時はスキルが URL とインストールコマンド (`npx skills add cathrynlavery/diagram-design`) を提示する。`python3` も使用 (validate.py) |
+| `human-html-review` | `python3` (validate.py)。[diagram-design](https://github.com/cathrynlavery/diagram-design) スキルは任意 | diagram-design があれば図の描き方をそれに従わせる。無ければ `references/diagrams.md` の最小ルールで描く (インストールを求めない) |
 | `codex-imagen` | Codex CLI。Grok CLI / Antigravity CLI は任意 | 既定の退避順は codex → grok → agy。`--size` は macOS `sips` を使用 |
 | `mid-harness` | `python3` 3.11+ (3.10 は `tomli` 追加) + PyYAML。受け入れテストだけ targets に含めた製品の CLI (`claude` / `codex` / `agent` / `grok` / `copilot` / `agy`) | CLI が無い製品は verify を skip。製品ごとの trust 前提 (Codex の hook trust、Grok の folder trust、Antigravity の project 登録) は `references/adapters/<product>.md` |
 
@@ -77,11 +79,14 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 # 対象を指定してレビュー
 /toolbox:review-refute-loop notes/zenn/articles/foo.md
 
-# 現在の変更の承認レビュー HTML を生成
-/toolbox:human-html-review current changes --mode approval
+# いま会話で判断待ちになっている事柄を確認ページにする
+/toolbox:human-html-review
 
-# 選択肢比較のレビュー HTML を生成
-/toolbox:human-html-review choose auth migration approach --mode selection
+# 現在の変更の承認ページを生成
+/toolbox:human-html-review current changes
+
+# 選択肢比較のページを生成
+/toolbox:human-html-review 認証の移行方式を A と B から選ぶ
 
 # 新規リポに中ハーネスを展開 (Claude Code + Codex)
 /toolbox:mid-harness init . --targets claude-code,codex

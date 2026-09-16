@@ -57,7 +57,7 @@ Claude Code / Codex CLI などのコーディングエージェントは、指�
 1. inventory.json を読み、各資産を `references/contracts.md` の **6 契約** (Rules / Skills / Agents / Hooks / MCP / Memory-Knowledge) と **配置先** (core のどこか、adapter として残すか、対象外か) に分類する。分類は LLM の判断で行い、`inventory.json` の各要素に `contract` と `target` を書き足した `placement.json` を作る
    - 判断基準は contracts.md の「各ファイルに何を書くか」表。迷ったら「人にも必要か → docs、複数 skill か → memory、1 skill か → references」
    - 製品固有 field (Claude の `allowed-tools` / `model` / `hooks` など) は core に持ち込まず adapter 側へ残す
-2. 配置案を **human-html-review** (`toolbox:human-html-review`、approval モード) で提示し、承認を待つ。**承認前にファイルを動かさない**
+2. 配置案を **human-html-review** (`toolbox:human-html-review`、承認を求める形) で提示し、承認を待つ。**承認前にファイルを動かさない**
 3. 承認後、移送する
    - `git mv` で core へ移す (履歴を保つ)。既存 symlink (例: `.agents/skills -> ../.claude/skills`) は方向を逆転させる: 実体を `.agents/` 側へ移し、製品側は生成物にする
    - `.agents/harness.yaml` に targets / hooks / agents を追記する
