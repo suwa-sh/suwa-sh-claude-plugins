@@ -8,7 +8,7 @@ tier とディレクトリの対応は **`impl-config.yaml` の `tiers[].dir` �
   {tiers[].dir}/                   # 実装 tier ごと。例 frontend/ backend-api/ worker/
     src/                           # 実装本体
     test/                          # ④ TDD 単体(命名: テスト対象_XXXの場合_YYYであること + AAA)
-    features/                      # ③ tier BDD({uc_id}.feature + steps/)
+    features/                      # ③ tier BDD({uc_slug}.feature + steps/)
   packages/
     contracts/                     # 契約 codegen 出力(S4 実行中 read-only。再生成は S0/S3 のみ)
                                    # サブ dir は impl-config の contracts[] 宣言から決まる
@@ -24,7 +24,7 @@ tier とディレクトリの対応は **`impl-config.yaml` の `tiers[].dir` �
       components/ tokens/ stories/ # storybook-app/src/ の実ファイル列挙で取り込み(bootstrap P5)
       .imported.yaml               # 取り込み元 design event_id とファイル一覧
   features/
-    uc/{uc_id}.feature             # ② UC BDD(integration writer 所有)
+    uc/{uc_slug}.feature           # ② UC BDD(integration writer 所有)
     uc/steps/
     atdd/{spec_id}.feature         # ① ATDD(S0 で全 SPEC 分生成。integration writer 所有)
     atdd/steps/
@@ -51,4 +51,6 @@ format-check → lint → tdd(tier 並列 matrix) → tier-bdd(tier 並列 matri
 ## 命名規則
 
 - tier ディレクトリ名 = tier id から `tier-` プレフィックスを除いた名前を既定とする(宣言で上書き可)
-- feature ファイル名は uc_id / spec_id のみ(日本語パス禁止。対応表は uc-map.yaml)
+- UC 系 feature ファイル名は `{uc_slug}`(= uc-map の `branch_slug`、UC 英語名の kebab-case)、
+  ATDD は `{spec_id}`(日本語パス禁止)。step definition も同じ slug で揃える。
+  uc_id ↔ uc_slug の対応表は uc-map.yaml が正本(test-strategy.md と同一規約)
