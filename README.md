@@ -18,7 +18,7 @@ Claude Code で以下を実行:
 | [distillery](./plugins/distillery/) | 要望テキストから要件定義・アーキ・インフラ・デザインシステム・仕様までを蒸留生成（RDRA/USDM/NFR パイプライン）。[出力サンプル](samples/distillery) | `/plugin install distillery@suwa-sh-claude-plugins` |
 | [ddd](./plugins/ddd/) | ドメイン駆動設計の実装常用（値オブジェクト/振る舞いを持ったenum/集約/貧血回避）とアーキ設計（境界づけられたコンテキスト/サブドメイン/コンテキストマップ）の2スキル。増田亨・little_hands・Fowler ベース | `/plugin install ddd@suwa-sh-claude-plugins` |
 | [distillery-impl](./plugins/distillery-impl/) | distillery の仕様書を入力に実装を回す実装ハーネス。契約駆動 codegen + 4 段テスト先行（ATDD/UC BDD/tier BDD/TDD）+ tier 並走実装 + 別モデル Verifier の反証 + ファイル駆動の冪等再開 | `/plugin install distillery-impl@suwa-sh-claude-plugins` |
-| [toolbox](./plugins/toolbox/) | 汎用ワークフロースキル集。クロスモデル外部レビュー収束ループ（`toolbox:review-refute-loop`）、自己完結レビュー HTML 生成（`toolbox:human-html-review`）、Codex → Grok → AGY の画像生成/編集（`toolbox:codex-imagen`）、中ハーネス = portable core + 製品別 adapter の展開・適用・検査（`toolbox:mid-harness`）。今後も汎用スキルを追加予定 | `/plugin install toolbox@suwa-sh-claude-plugins` |
+| [toolbox](./plugins/toolbox/) | 汎用ワークフロースキル集。クロスモデル外部レビュー収束ループ（`toolbox:review-refute-loop`）、ヒトの判断待ちページを図と表で作る（`toolbox:human-html-review`）、Codex → Grok → AGY の画像生成/編集（`toolbox:codex-imagen`）、中ハーネス = portable core + 製品別 adapter の展開・適用・検査（`toolbox:mid-harness`）。今後も汎用スキルを追加予定 | `/plugin install toolbox@suwa-sh-claude-plugins` |
 
 ## npx skills でのインストール（Claude Code 以外のエージェントにも）
 
@@ -43,7 +43,7 @@ npx skills add suwa-sh/suwa-sh-claude-plugins --all
 | cc | ⚠️ プラグイン推奨 | `cc:launch-claude` は依存チェックスクリプト同梱で対応。`cc:handover` は `/cc:handover` 手動実行は可能だが、自動引き継ぎ（hooks）は Claude Code プラグイン形式が必要 |
 | distillery | ⚠️ プラグイン推奨 | スキル間が `${CLAUDE_PLUGIN_ROOT}` のクロス参照で密結合したパイプラインのため、スキル単位配布では連携が解決できない |
 | distillery-impl | ⚠️ プラグイン推奨 | オーケストレータがサブエージェント + skill 呼び出しで各 stage を運転するため、スキル単位配布では連携が解決できない |
-| toolbox | ✅ 完全対応 | 各スキルが scripts / references 同梱で自己完結（パス解決はスキル読込時の Base directory 基準）。`human-html-review` は別途 [diagram-design](https://github.com/cathrynlavery/diagram-design) スキルに依存（未導入時は導入コマンドを案内） |
+| toolbox | ✅ 完全対応 | 各スキルが scripts / references 同梱で自己完結（パス解決はスキル読込時の Base directory 基準）。`human-html-review` は [diagram-design](https://github.com/cathrynlavery/diagram-design) スキルがあれば図の描き方に利用（任意。無ければ同梱の最小ルールで描く） |
 
 > 全機能を使うには、上記「インストール」のプラグイン形式（`/plugin marketplace add`）を推奨します。
 
