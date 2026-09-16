@@ -49,6 +49,27 @@
     .ask-how { margin: 0; }
     .reply { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 20px 24px; }
     pre.copy { margin: 0; padding: 12px 14px; background: var(--card-2); border: 1px dashed var(--muted); border-radius: 6px; white-space: pre-wrap; }
+
+    /* ---- 回答ビルダー (選ぶ → 文面が組み上がる → コピー) ---- */
+    .builder { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .builder { grid-template-columns: 1fr; } }
+    fieldset.pick { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 6px; background: var(--card-2); }
+    fieldset.pick legend { padding: 0 6px; font-weight: 700; font-size: .95rem; }
+    label.opt { display: flex; gap: 10px; align-items: flex-start; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+    label.opt:hover { background: var(--accent-soft); }
+    label.opt input { margin: 4px 0 0; width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+    label.opt .hint { display: block; color: var(--muted); font-size: .88rem; }
+    label.opt input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .builder textarea { width: 100%; min-height: 64px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); color: var(--ink); font: inherit; resize: vertical; }
+    .builder .note-label { display: block; font-weight: 700; font-size: .95rem; margin: 0 0 4px; }
+    .builder-out-h { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 6px; font-weight: 700; }
+    .copy-btn { padding: 6px 14px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+    .copy-btn:hover { filter: brightness(1.08); }
+    .copy-btn[disabled] { opacity: .5; cursor: not-allowed; }
+    .copy-btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+    .copy-status { color: var(--ok); font-weight: 700; font-size: .9rem; }
+    .copy-status.ng { color: var(--stop); }
+    .builder-fallback { color: var(--muted); font-size: .88rem; }
     .grid { display: grid; gap: 16px; }
     .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -334,7 +355,7 @@
           <table>
             <thead><tr><th>種類</th><th>検査項目</th></tr></thead>
             <tbody>
-              <tr><th scope="row">エラー</th><td>外部ファイル・JavaScript・iframe が無い / 必須 3 部品がある / 図に説明文がついている / 差し替え忘れの穴が無い</td></tr>
+              <tr><th scope="row">エラー</th><td>外部ファイル・iframe が無い / 同梱スクリプト以外の JavaScript が無い / 必須 3 部品がある / 図に説明文がついている / 差し替え忘れの穴が無い</td></tr>
               <tr><th scope="row">警告</th><td>本文や図に内部 ID らしき文字列 / 4 文以上または 160 字を超える段落 / 見出し 2 つに図 1 つ未満 / 本文幅が 1400px 未満</td></tr>
             </tbody>
           </table>
@@ -365,11 +386,39 @@
     </section>
 
     <section class="reply" data-role="reply" aria-labelledby="reply-h">
-      <h2 id="reply-h">答え方 (コピーして返信)</h2>
-      <div class="grid cols-3">
-        <pre class="copy">OK。この方式で公開してください</pre>
-        <pre class="copy">直してほしい: (例) 必須部品に「何が変わったか」も入れてください</pre>
-        <pre class="copy">やめる。前の方式に戻してください</pre>
+      <h2 id="reply-h">答え方 (選ぶとコピーする文面が組み上がる)</h2>
+      <div class="builder" data-builder>
+        <div>
+          <noscript>
+            <p class="note warn">この画面では選択が使えません。右の文面をそのまま返信するか、書き換えて返信してください。</p>
+          </noscript>
+          <fieldset class="pick" data-needs-js disabled>
+            <legend>この方式で公開してよいか</legend>
+            <label class="opt">
+              <input type="radio" name="d1" data-reply="この方式で公開してください" checked>
+              <span>公開してよい<span class="hint">そのまま進める</span></span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="d1" data-reply="公開の前に直してほしいところがあります">
+              <span>直してほしい<span class="hint">下の補足に内容を書く</span></span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="d1" data-reply="この方式はやめて、前の方式に戻してください">
+              <span>やめる<span class="hint">前の方式に戻す</span></span>
+            </label>
+          </fieldset>
+          <label class="note-label" for="reply-note">補足 (任意)</label>
+          <textarea id="reply-note" rows="2" data-reply-note data-needs-js disabled placeholder="直してほしい点・条件があれば"></textarea>
+        </div>
+        <div>
+          <p class="builder-out-h">
+            返信する文面
+            <button type="button" class="copy-btn" data-copy="reply-text" data-needs-js disabled>コピー</button>
+            <span class="copy-status" role="status" aria-live="polite"></span>
+          </p>
+          <pre class="copy" id="reply-text" data-reply-out>この方式で公開してください</pre>
+          <p class="builder-fallback">この文面をそのまま返信してください。手で書き換えてもかまいません。</p>
+        </div>
       </div>
     </section>
 
@@ -412,5 +461,64 @@
   <footer class="shell">
     <p>このページは判断のための要約です。正本はリポジトリの差分にあります。</p>
   </footer>
+  <!-- 回答の組み立てとコピーだけを行う。通信・外部読み込みはしない。このまま貼る (書き換えない) -->
+  <script>
+  (function () {
+    function buildText(root) {
+      var parts = [];
+      Array.prototype.forEach.call(root.querySelectorAll("input[data-reply]"), function (el) {
+        if (el.checked) parts.push(el.getAttribute("data-reply"));
+      });
+      var note = root.querySelector("[data-reply-note]");
+      var typed = note && typeof note.value === "string" ? note.value.trim() : "";
+      if (typed) parts.push(typed);
+      return parts.join("\n");
+    }
+    Array.prototype.forEach.call(document.querySelectorAll("[data-needs-js]"), function (el) {
+      el.disabled = false;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-builder]"), function (root) {
+      var out = root.querySelector("[data-reply-out]");
+      if (!out) return;
+      function sync() { out.textContent = buildText(root) || "(上から選んでください)"; }
+      root.addEventListener("change", sync);
+      root.addEventListener("input", sync);
+      sync();
+    });
+    function legacyCopy(text) {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.top = "-1000px";
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      } catch (e) { return false; }
+    }
+    Array.prototype.forEach.call(document.querySelectorAll(".copy-btn"), function (btn) {
+      var status = btn.parentNode.querySelector(".copy-status");
+      function tell(ok) {
+        if (!status) return;
+        status.textContent = ok ? "コピーしました" : "コピーできません。文面を選択して手でコピーしてください";
+        status.className = ok ? "copy-status" : "copy-status ng";
+        setTimeout(function () { status.textContent = ""; }, 3000);
+      }
+      btn.addEventListener("click", function () {
+        var target = document.getElementById(btn.getAttribute("data-copy"));
+        if (!target) return;
+        var text = target.value !== undefined && target.value !== null ? target.value : target.textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { tell(true); }, function () { tell(legacyCopy(text)); });
+        } else {
+          tell(legacyCopy(text));
+        }
+      });
+    });
+  })();
+  </script>
 </body>
 </html>

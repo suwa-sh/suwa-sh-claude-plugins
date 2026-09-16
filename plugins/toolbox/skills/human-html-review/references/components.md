@@ -38,17 +38,92 @@
 
 ### どう答えるか (`data-role="reply"`)
 
-コピーして返せる例を置く。
+**選ぶと返信の文面が組み上がり、ボタン 1 つでコピーできる**形にする。読者に文章を書かせない。
 
 ```html
 <section class="reply" data-role="reply" aria-labelledby="reply-h">
-  <h2 id="reply-h">答え方 (コピーして返信)</h2>
-  <div class="grid cols-2">
-    <pre class="copy">A で進めてください</pre>
-    <pre class="copy">B で進めてください。ただし保存期間は 1 年にしてください</pre>
+  <h2 id="reply-h">答え方 (選ぶとコピーする文面が組み上がる)</h2>
+  <div class="builder" data-builder>
+    <div>
+      <noscript>
+        <p class="note warn">この画面では選択が使えません。右の文面をそのまま返信するか、書き換えて返信してください。</p>
+      </noscript>
+      <fieldset class="pick" data-needs-js disabled>
+        <legend>保存先</legend>
+        <label class="opt">
+          <input type="radio" name="d1" data-reply="いまのデータベースに保存する案で進めてください" checked>
+          <span>いまのデータベース<span class="hint">すぐ作れるが費用が高い</span></span>
+        </label>
+        <label class="opt">
+          <input type="radio" name="d1" data-reply="新しいファイル置き場に保存する案で進めてください">
+          <span>新しいファイル置き場<span class="hint">安いが 2 日多くかかる</span></span>
+        </label>
+      </fieldset>
+      <fieldset class="pick" data-needs-js disabled>
+        <legend>条件 (任意・複数選べる)</legend>
+        <label class="opt">
+          <input type="checkbox" data-reply="保存期間は 1 年にしてください">
+          <span>保存期間は 1 年</span>
+        </label>
+      </fieldset>
+      <label class="note-label" for="reply-note">補足 (任意)</label>
+      <textarea id="reply-note" rows="2" data-reply-note data-needs-js disabled placeholder="気になる点・条件があれば"></textarea>
+    </div>
+    <div>
+      <p class="builder-out-h">
+        返信する文面
+        <button type="button" class="copy-btn" data-copy="reply-text" data-needs-js disabled>コピー</button>
+        <span class="copy-status" role="status" aria-live="polite"></span>
+      </p>
+      <pre class="copy" id="reply-text" data-reply-out>いまのデータベースに保存する案で進めてください</pre>
+      <p class="builder-fallback">この文面をそのまま返信してください。手で書き換えてもかまいません。</p>
+    </div>
   </div>
 </section>
 ```
+
+組み立ての仕組み:
+
+| 属性 | 付ける先 | 役割 |
+|---|---|---|
+| `data-builder` | 囲みの `div` | この中の選択を 1 つの文面にまとめる |
+| `data-needs-js` + `disabled` | `fieldset` / `textarea` / `button.copy-btn` | スクリプトが動いたときだけ操作できるようにする。選択したのに文面が変わらない食い違いを防ぐ |
+| `data-reply="返信に入る 1 行"` | `input` (radio / checkbox) | 選ばれた行だけが、上から並んだ順に文面へ入る |
+| `data-reply-note` | `textarea` | 書かれていれば最後の行として足す |
+| `data-reply-out` | `pre` | 組み上がった文面の表示先。`id` を付ける |
+| `data-copy="<pre の id>"` | `button.copy-btn` | その要素の文字をクリップボードへ入れる |
+
+書き方の決まり:
+
+- `data-reply` の文字列は、**そのまま返信として意味が通る 1 文**にする (「A」だけにしない)
+- 択一は `radio`、任意の追加条件は `checkbox`、自由記入は `textarea` 1 つ
+- **`radio` の `name` は判断ごとに変える** (`d1` / `d2` …)。同じ `name` はページ全体で 1 つのグループになり、別の判断を選ぶと前の判断が外れる
+- 操作する部品には `data-needs-js disabled` を付け、`<noscript>` で「文面を書き換えて返信してほしい」と添える
+- 初期状態で ⭐ 推奨案を `checked` にし、`pre` の初期表示も同じ文面にする (JS が動かない環境でもコピーできる)
+- 選択肢の補足は `<span class="hint">` で 1 行。判断材料そのものは本文の図や表に置く
+
+判断が複数あるときは `fieldset.pick` を判断の数だけ並べ、`radio` の `name` を判断ごとに変える。並んだ順に文面の行が並ぶ。
+
+### 例文だけを置く場合 (承認だけを求めるとき)
+
+選ぶものが無いときも、コピーボタンは付ける。
+
+```html
+<div class="grid cols-2">
+  <div>
+    <p class="builder-out-h">承認する<button type="button" class="copy-btn" data-copy="r-ok" data-needs-js disabled>コピー</button>
+      <span class="copy-status" role="status" aria-live="polite"></span></p>
+    <pre class="copy" id="r-ok">この内容で進めてください</pre>
+  </div>
+  <div>
+    <p class="builder-out-h">直してほしい<button type="button" class="copy-btn" data-copy="r-ng" data-needs-js disabled>コピー</button>
+      <span class="copy-status" role="status" aria-live="polite"></span></p>
+    <pre class="copy" id="r-ng">この内容で進めてください。ただし〜を直してください</pre>
+  </div>
+</div>
+```
+
+`copy-status` はボタンと同じ親要素に置く。置き場所が違うと結果の表示が出ない。
 
 ## レイアウト部品
 

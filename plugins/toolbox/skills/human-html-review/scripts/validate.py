@@ -14,13 +14,17 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 MAX_BYTES = 16 * 1024 * 1024
-FORBIDDEN_TAGS = {"script", "iframe", "form", "object", "embed"}
+FORBIDDEN_TAGS = {"iframe", "form", "object", "embed"}
+# 通信・外部読み込みを行う JS は禁止 (回答の組み立てとコピーだけを許す)
+NETWORK_JS_RE = re.compile(
+    r"\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|importScripts)\s*\(|navigator\.sendBeacon|import\s*\("
+)
 REQUIRED_ROLES = {"context", "ask", "reply"}
 TEXT_BLOCKS = {"p", "li", "td", "th", "dd"}
 # ID 検査で子要素をまたいで連結する単位 (見出し・ラベル類を含む)
 ID_UNIT_TAGS = TEXT_BLOCKS | {"h1", "h2", "h3", "h4", "dt", "figcaption", "summary"}
 # pre = コマンド・回答例。code (inline) は本文とみなして ID 検査の対象にする
-SKIP_ID_TAGS = {"pre", "kbd", "samp", "style"}
+SKIP_ID_TAGS = {"pre", "kbd", "samp", "style", "script"}
 SVG_TEXT_TAGS = {"text", "tspan", "textpath"}
 VOID_TAGS = {
     "area", "base", "br", "col", "embed", "hr", "img", "input", "link",
@@ -52,6 +56,18 @@ class ReviewParser(HTMLParser):
         self.external: list[str] = []
         self.roles: dict[str, int] = {}
         self.h2_count = 0
+        self.copy_buttons_in_reply = 0
+        self.element_ids: dict[str, int] = {}
+        self.bad_note_tags: list[str] = []
+        self.copy_targets: list[str] = []
+        self.copy_btn_bad_tags: list[str] = []
+        self.scripts: list[dict] = []        # {"attrs": dict, "content": str}
+        self.self_closing_scripts = 0
+        self.builders: list[dict] = []       # {"out": int, "inputs": int}
+        self.reply_out_total = 0
+        self.reply_inputs_outside = 0
+        self.radio_groups: dict[str, set[int]] = {}  # name -> fieldset の識別子の集合
+        self._fieldset_seq = 0
         self.long_blocks: list[str] = []
         self.many_sentences: list[str] = []
         self.id_hits: dict[str, int] = {}
@@ -61,6 +77,10 @@ class ReviewParser(HTMLParser):
         # 要素スタック (void を除く)。各 "範囲" は (深さ, 付随情報) のスタックで管理する
         self._stack: list[str] = []
         self._appendix_depths: list[int] = []
+        self._reply_depths: list[int] = []
+        self._script_open: list[tuple[int, int]] = []   # (深さ, scripts の index)
+        self._builder_open: list[tuple[int, int]] = []  # (深さ, builders の index)
+        self._fieldset_open: list[tuple[int, int]] = []  # (深さ, fieldset の識別子)
         self._skip_depths: list[int] = []
         self._title_depths: list[int] = []
         self._caption_depths: list[int] = []
@@ -110,6 +130,26 @@ class ReviewParser(HTMLParser):
             self.has_viewport |= attrs.get("name", "").lower() == "viewport"
         if tag == "h2":
             self.h2_count += 1
+        if attrs.get("id"):
+            self.element_ids[attrs["id"]] = self.element_ids.get(attrs["id"], 0) + 1
+        if "copy-btn" in attrs.get("class", "").split():
+            self.copy_targets.append(attrs.get("data-copy", ""))
+            if tag != "button":
+                self.copy_btn_bad_tags.append(tag)
+            if self._reply_depths:
+                self.copy_buttons_in_reply += 1
+        if "data-reply-out" in attrs:
+            self.reply_out_total += 1
+            if self._builder_open:
+                self.builders[self._builder_open[-1][1]]["out"] += 1
+        if tag == "input" and "data-reply" in attrs:
+            if self._builder_open:
+                self.builders[self._builder_open[-1][1]]["inputs"] += 1
+            else:
+                self.reply_inputs_outside += 1
+            if attrs.get("type", "").lower() == "radio" and attrs.get("name"):
+                fs = self._fieldset_open[-1][1] if self._fieldset_open else -1
+                self.radio_groups.setdefault(attrs["name"], set()).add(fs)
         src = attrs.get("src", "").strip()
         if src and not src.startswith("data:"):
             self.external.append(f'<{tag} src="{src}">')
@@ -121,9 +161,29 @@ class ReviewParser(HTMLParser):
             self.roles[role] = self.roles.get(role, 0) + 1
             if role == "appendix" and push:
                 self._appendix_depths.append(depth)
+            if role == "reply" and push:
+                self._reply_depths.append(depth)
+
+        if "data-reply-note" in attrs:
+            if tag != "textarea":
+                self.bad_note_tags.append(tag)
+            elif self._builder_open:
+                self.builders[self._builder_open[-1][1]]["note"] += 1
 
         if not push:
+            # <script/> のような自己終了形。HTML では閉じタグ扱いされないため中身の検査ができない
+            if tag == "script":
+                self.self_closing_scripts += 1
             return
+        if tag == "script":
+            self.scripts.append({"attrs": attrs, "content": ""})
+            self._script_open.append((depth, len(self.scripts) - 1))
+        if "data-builder" in attrs:
+            self.builders.append({"out": 0, "inputs": 0, "note": 0})
+            self._builder_open.append((depth, len(self.builders) - 1))
+        if tag == "fieldset":
+            self._fieldset_seq += 1
+            self._fieldset_open.append((depth, self._fieldset_seq))
         if tag in SKIP_ID_TAGS:
             self._skip_depths.append(depth)
         if tag == "title":
@@ -160,12 +220,12 @@ class ReviewParser(HTMLParser):
 
     def _close_at_depth(self, depth: int) -> None:
         for lst in (
-            self._appendix_depths, self._skip_depths, self._title_depths,
+            self._appendix_depths, self._reply_depths, self._skip_depths, self._title_depths,
             self._caption_depths, self._svgtext_depths,
         ):
             if lst and lst[-1] == depth:
                 lst.pop()
-        for pairs in (self._svg_open, self._figure_open):
+        for pairs in (self._svg_open, self._figure_open, self._script_open, self._builder_open, self._fieldset_open):
             if pairs and pairs[-1][0] == depth:
                 pairs.pop()
         if self._blocks and self._blocks[-1][1] == depth:
@@ -195,6 +255,8 @@ class ReviewParser(HTMLParser):
         return True
 
     def handle_data(self, data: str) -> None:
+        if self._script_open:
+            self.scripts[self._script_open[-1][1]]["content"] += data
         if self.in_title:
             if self.in_svg:
                 idx = self._svg_open[-1][1]
@@ -211,6 +273,56 @@ class ReviewParser(HTMLParser):
             return
         if checkable and data.strip():
             self._scan_ids(data)
+
+
+def canonical_script() -> str | None:
+    """assets/base.html に同梱したスクリプト本文 (正規化済み) を返す。読めなければ None"""
+    base = Path(__file__).resolve().parent.parent / "assets" / "base.html"
+    try:
+        m = re.search(r"<script\b[^>]*>(.*?)</script>", base.read_text(encoding="utf-8"), re.S | re.I)
+    except OSError:
+        return None
+    return normalize_js(m.group(1)) if m else None
+
+
+def normalize_js(code: str) -> str:
+    """インデントと空行の違いだけを吸収する。改行の位置は保つ (改行は JS の意味を変える)"""
+    lines = [ln.strip() for ln in code.replace("\r\n", "\n").replace("\r", "\n").split("\n")]
+    return "\n".join(ln for ln in lines if ln)
+
+
+def check_scripts(p: "ReviewParser") -> list[str]:
+    """JS は base.html 同梱のもの 1 つだけ。書き換え・追加・外部読み込みを弾く"""
+    errors: list[str] = []
+    if p.self_closing_scripts:
+        errors.append("<script/> の自己終了形は禁止 (中身を検査できず、実行もされない)")
+    if not p.scripts:
+        if p.builders or p.copy_targets:
+            errors.append("回答欄があるのに base.html 同梱のスクリプトが無い (組み立てもコピーも動かない)")
+        return errors
+    if len(p.scripts) > 1:
+        errors.append(f"<script> は 1 つだけにする ({len(p.scripts)} 個ある)")
+    want = canonical_script()
+    if want is None:
+        errors.append("assets/base.html の同梱スクリプトを読めないため、JS を照合できない (スキルの assets が揃っているか確認する)")
+    for i, s in enumerate(p.scripts, 1):
+        attrs = s["attrs"]
+        if "src" in attrs:
+            errors.append(f"script #{i}: 外部スクリプトの読み込みは禁止 (src を付けない)")
+            continue
+        if "nomodule" in attrs:
+            errors.append(f"script #{i}: nomodule は付けない (実行されない)")
+        stype = attrs.get("type", "").strip().lower()
+        if stype not in {"", "text/javascript", "application/javascript", "module"}:
+            errors.append(f'script #{i}: type="{stype}" では実行されない (type は付けない)')
+        got = normalize_js(s["content"])
+        if not got:
+            errors.append(f"script #{i}: 中身が空")
+        elif want is not None and got != want:
+            errors.append(f"script #{i}: base.html 同梱のスクリプトと一致しない (書き換えず、そのまま貼る)")
+        elif want is None and NETWORK_JS_RE.search(s["content"]):
+            errors.append(f"script #{i}: JS が通信・外部読み込みを行っている")
+    return errors
 
 
 def content_max_px(text: str) -> int | None:
@@ -266,6 +378,39 @@ def validate(path: Path) -> tuple[list[str], list[str]]:
     for role in ("context", "ask"):
         if p.roles.get(role, 0) > 1:
             errors.append(f'data-role="{role}" must appear exactly once (found {p.roles[role]})')
+    errors.extend(check_scripts(p))
+    for tag in sorted(set(p.copy_btn_bad_tags)):
+        errors.append(f"copy-btn は <button> にする (<{tag}> になっている)")
+    for i, b in enumerate(p.builders, 1):
+        if not b["out"]:
+            errors.append(f"回答ビルダー #{i} に出力先 (data-reply-out) が無い")
+        if not b["inputs"] and not b["note"]:
+            errors.append(f"回答ビルダー #{i} に入力元 (input の data-reply か textarea の data-reply-note) が無い")
+    if p.reply_inputs_outside:
+        errors.append("data-reply の選択肢が data-builder の外にある (文面に反映されない)")
+    if p.reply_out_total and not p.builders:
+        errors.append("data-reply-out があるのに data-builder の囲みが無い")
+    for name, fieldsets in sorted(p.radio_groups.items()):
+        if len(fieldsets) > 1:
+            errors.append(f'radio の name="{name}" を複数の判断 (fieldset) で使い回している。判断ごとに変える')
+    for tag in sorted(set(p.bad_note_tags)):
+        errors.append(f"data-reply-note は <textarea> に付ける (<{tag}> に付いている)")
+    seen_targets: set[str] = set()
+    for tgt in p.copy_targets:
+        if tgt and tgt in seen_targets:
+            continue
+        seen_targets.add(tgt)
+        if not tgt:
+            errors.append("copy-btn に data-copy (コピー元の id) が無い")
+        elif tgt not in p.element_ids:
+            errors.append(f'copy-btn の data-copy="{tgt}" に一致する id が無い')
+        elif p.element_ids[tgt] > 1:
+            errors.append(f'id="{tgt}" が {p.element_ids[tgt]} 個ある。コピー元を取り違える')
+    dup_other = sorted(k for k, n in p.element_ids.items() if n > 1 and k not in set(p.copy_targets))
+    if dup_other:
+        warns.append("同じ id が複数ある: " + ", ".join(dup_other))
+    if not p.copy_buttons_in_reply:
+        errors.append('data-role="reply" 内に copy-btn (コピーボタン) が必要')
     if not p.svgs:
         errors.append("at least one inline <svg> diagram is required")
     for i, svg in enumerate(p.svgs, 1):
