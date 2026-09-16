@@ -81,7 +81,9 @@ print(hashlib.sha256(json.dumps(parts, ensure_ascii=False).encode()).hexdigest()
 
 - 入力は **canonical JSON 配列**(区切り文字入り名でも安全)、**必ず NFC 正規化**(macOS の NFD 分解対策)
 - 既定 8 桁。uc-map 生成時に全 UC で衝突検査し、衝突したら**その uc-map 全体を 12 桁に延長**(決定論的)
-- 実装リポ・feature ファイル・状態ファイルは uc_id のみを使う(日本語パスをコード側へ持ち込まない)
+- 実装リポ・状態ファイルは uc_id のみを使う(日本語パスをコード側へ持ち込まない)
+- **feature ファイル名は uc_id を使わない**。UC/tier BDD は `{uc_slug}`(= uc-map の `branch_slug`)、
+  ATDD は `{spec_id}`(正本は dev-rules の test-strategy.md)。uc_id ↔ uc_slug の対応表は uc-map.yaml
 
 ## イベントスキーマ(events/{event_id}/event.yaml)
 

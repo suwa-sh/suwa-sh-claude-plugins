@@ -203,7 +203,7 @@ h2{font-size:17px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var
     <div class="sid"><span class="code">S6</span><span class="who subag">🤖 委譲</span></div>
     <div class="sbody">
       <span class="sname">uc-bdd — 全 tier 結合の E2E(integration writer・直列)</span>
-      <div class="sdesc">features/uc/{uc_id}.feature の step を実装して結合実行。fail 時は「どの tier が仕様と食い違うか」の分析だけ返す(差し戻し判断はオーケストレータ)。fail の処置は 3 択: ①原因 tier の S4 差し戻し / ②仕様ブロックで S8 へ / <b>③(推奨)仕様不整合を issues に書き残してテストが通るまで実装を進め、as-built 差分として S8 で変更要求化</b>。仕様ギャップ起因の統合前提(認証ヘッダ等)の欠落は、issue 参照コメント付きで steps 内ハーネス注入を許容</div>
+      <div class="sdesc">features/uc/{uc_slug}.feature の step を実装して結合実行。fail 時は「どの tier が仕様と食い違うか」の分析だけ返す(差し戻し判断はオーケストレータ)。fail の処置は 3 択: ①原因 tier の S4 差し戻し / ②仕様ブロックで S8 へ / <b>③(推奨)仕様不整合を issues に書き残してテストが通るまで実装を進め、as-built 差分として S8 で変更要求化</b>。仕様ギャップ起因の統合前提(認証ヘッダ等)の欠落は、issue 参照コメント付きで steps 内ハーネス注入を許容</div>
       <div class="gate">ゲート 5: UC BDD(E2E 完了条件)</div>
     </div>
     <div class="sfiles"><div class="t">📄 STATE</div><code>S6_uc-bdd.done.yaml</code></div>

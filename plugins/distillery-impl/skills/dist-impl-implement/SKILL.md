@@ -141,7 +141,7 @@ description: >
 
 integration writer として統合テストを実装・実行する。**tier 実装コードは変更禁止**。
 
-1. `features/uc/{uc_id}.feature`(S7 は uc-map の `atdd_scenarios` に列挙された Scenario
+1. `features/uc/{uc_slug}.feature`(S7 は uc-map の `atdd_scenarios` に列挙された Scenario
    **だけ**を対象に、**一意タグ `@atdd_{SPEC-ID}-{連番}` の完全一致フィルタ**で選択実行する —
    SPEC は複数 UC にまたがるため feature 全体を回さず、名前の部分一致フィルタも使わない。
    **実行された Scenario 件数が atdd_scenarios の件数と一致することを確認**する)の
