@@ -1,0 +1,2324 @@
+{
+  "generatedAt": "2026-09-21T15:59:11.722Z",
+  "model": "jev-1.13.0",
+  "lang": "en",
+  "docsDir": "samples/distillery/pipeline",
+  "name": "library",
+  "judge": "patterns",
+  "codeDecided": {
+    "bulkhead": {
+      "decidedBy": "excludeCodeSignal",
+      "applied": false,
+      "gateResults": [
+        {
+          "feature": "nfr.A.2.1.1",
+          "op": ">=",
+          "threshold": 3,
+          "actual": 3,
+          "pass": true
+        }
+      ],
+      "excludeCodeSignalResults": [
+        {
+          "key": "single_external_system",
+          "feature": "counts.externalSystems",
+          "op": "<=",
+          "threshold": 1,
+          "actual": 1,
+          "pass": true
+        }
+      ]
+    },
+    "health-endpoint-monitoring": {
+      "decidedBy": "always",
+      "applied": true,
+      "reason": "arch-design-patterns.md: Health Endpoint Monitoring（RDRAシグナル: 常に推奨）"
+    },
+    "cqrs": {
+      "decidedBy": "gate",
+      "applied": false,
+      "gateResults": [
+        {
+          "feature": "nfr.B.1.1.1",
+          "op": ">=",
+          "threshold": 3,
+          "actual": 1,
+          "pass": false
+        }
+      ]
+    },
+    "event-sourcing": {
+      "decidedBy": "codeSignal",
+      "applied": false,
+      "gateResults": [],
+      "codeSignalResults": [
+        {
+          "key": "eight_or_more_state_transitions",
+          "feature": "counts.maxStateTransitions",
+          "op": ">=",
+          "threshold": 8,
+          "actual": 7,
+          "pass": false
+        }
+      ],
+      "excludeCodeSignalResults": []
+    },
+    "sharding": {
+      "decidedBy": "gate",
+      "applied": false,
+      "gateResults": [
+        {
+          "feature": "nfr.B.1.1.2",
+          "op": ">=",
+          "threshold": 3,
+          "actual": 1,
+          "pass": false
+        }
+      ]
+    },
+    "deployment-stamps": {
+      "decidedBy": "gate",
+      "applied": false,
+      "gateResults": [
+        {
+          "feature": "nfr.A.3.1.1",
+          "op": ">=",
+          "threshold": 3,
+          "actual": 1,
+          "pass": false
+        }
+      ]
+    }
+  },
+  "requests": [
+    {
+      "group": "external-integration",
+      "patternIds": [
+        "circuit-breaker",
+        "retry",
+        "timeout",
+        "saga",
+        "compensating-transaction"
+      ],
+      "state": {
+        "activities": [
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "蔵書の登録状況を確認する",
+            "uc": "書籍一覧を参照する",
+            "description": "司書が登録済みの書籍を一覧で参照し、登録・編集・削除の対象と登録状況を確認する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を登録する",
+            "uc": "書籍を登録する",
+            "description": "司書がタイトル・著者・ISBN・出版社・ジャンル・媒体種別（紙・電子）を入力して書籍を蔵書として登録する。初期リリースでは媒体種別は紙のみ運用する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を編集する",
+            "uc": "書籍を編集する",
+            "description": "司書が登録済みの書籍情報を修正して保存し、変更内容を蔵書に反映する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を削除する",
+            "uc": "書籍を削除する",
+            "description": "司書が不要になった書籍を削除し、蔵書一覧から除外する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "読みたい書籍を探す",
+            "uc": "書籍を検索する",
+            "description": "利用者がキーワード・タイトル・著者・ISBN・ジャンルのいずれかを条件に蔵書を検索し、該当する書籍の一覧を表示する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "書籍の詳細と在庫状況を確認する",
+            "uc": "書籍詳細を参照する",
+            "description": "利用者が検索結果から書籍を選び、書籍の詳細と在庫状況（在庫あり・貸出中・予約待ち）を確認する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "利用者の問い合わせに応じて書籍を探す",
+            "uc": "書籍を検索する",
+            "description": "司書が窓口で利用者からの問い合わせに応じ、同じ検索機能で蔵書と在庫状況を確認して案内する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用登録を申し込む",
+            "uc": "",
+            "description": "利用者が窓口で氏名・連絡先を提示して図書館の利用登録を申し込む（システムを使わない作業）"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を登録する",
+            "uc": "利用者を登録する",
+            "description": "司書が氏名・連絡先を入力して利用者を登録し、一意の利用者番号を付与する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を編集する",
+            "uc": "利用者を編集する",
+            "description": "司書が登録済みの利用者情報（氏名・連絡先等）を修正して保存する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を削除する",
+            "uc": "利用者を削除する",
+            "description": "司書が利用を終了した利用者を削除し、利用者一覧から除外する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者の登録状況を確認する",
+            "uc": "利用者一覧を参照する",
+            "description": "司書が登録済みの利用者を一覧で参照し、利用者番号や連絡先を確認する"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "借りたい書籍を窓口に持ち込む",
+            "uc": "",
+            "description": "利用者が在庫ありの書籍を書架から取り、利用者番号とともに窓口に提示する（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "貸出を記録する",
+            "uc": "貸出を登録する",
+            "description": "司書が利用者と書籍を指定して貸出記録を作成し、書籍の状態を在庫ありから貸出中に遷移させる。返却期限は貸出日に所定の貸出期間を加算して自動設定する。書籍が貸出中の場合は貸出できない旨を表示する"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "返却期限を確認して書籍を受け取る",
+            "uc": "",
+            "description": "利用者が司書から返却期限の案内を受け、書籍を受け取る（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "書籍を窓口に返却する",
+            "uc": "",
+            "description": "利用者が借りていた書籍を窓口に返却する（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "返却を記録する",
+            "uc": "返却を登録する",
+            "description": "司書が返却を登録し、貸出の状態を返却済みに遷移させる。書籍の状態は予約がなければ在庫あり、予約があれば予約待ちに遷移させる"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "予約者へ返却を通知する",
+            "uc": "返却通知を送信する",
+            "description": "返却登録に伴い、予約順位1位の利用者にメール配信サービス経由で返却通知メールを送信し、予約の状態を予約中から通知済みに遷移させる"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "返却通知を受け取る",
+            "uc": "",
+            "description": "予約順位1位の利用者が返却通知メールを受け取り、来館して書籍を借りる準備をする（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "貸出中の書籍を予約する",
+            "uc": "予約を登録する",
+            "description": "利用者が貸出中の書籍に予約を登録し、受付順の予約順位つきで予約中として管理される。在庫ありの書籍には予約できない旨を表示する"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "予約を取り消す",
+            "uc": "予約を取り消す",
+            "description": "利用者が自分の予約を取り消し、予約の状態を取消に遷移させる。後続の予約順位を繰り上げる"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "書籍の予約状況を確認する",
+            "uc": "予約一覧を参照する",
+            "description": "司書が書籍ごとの予約順位と予約状態を確認し、返却時に引き渡す利用者を把握する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "日次でリマインド対象を抽出する",
+            "uc": "リマインド対象を抽出する",
+            "description": "日次バッチが返却期限まで所定日数以内で未返却の貸出を抽出し、リマインド対象を判定する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "リマインドメールを送信する",
+            "uc": "リマインドを送信する",
+            "description": "抽出した貸出の利用者にメール配信サービス経由でリマインドメールを自動送信し、通知を記録する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "リマインドを受け取り返却の準備をする",
+            "uc": "",
+            "description": "利用者がリマインドメールを受け取り、返却期限までに書籍を返却する準備をする（システムを使わない作業）"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "日次で延滞を判定する",
+            "uc": "延滞を判定する",
+            "description": "日次バッチが返却期限を超過して未返却の貸出を抽出し、貸出の状態を貸出中から延滞に遷移させる"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "督促メールを送信する",
+            "uc": "督促を送信する",
+            "description": "延滞と判定した貸出の利用者にメール配信サービス経由で督促メールを自動送信し、通知を記録する"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "延滞状況を確認する",
+            "uc": "延滞一覧を参照する",
+            "description": "司書が延滞中の貸出と督促の送信状況を一覧で確認し、手作業の期限管理・督促なしに延滞の状況を把握する"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "現在の貸出と貸出履歴を確認する",
+            "uc": "貸出履歴を参照する",
+            "description": "利用者がWeb画面で自分の現在の貸出（返却期限つき）と過去の貸出履歴を一覧で確認する。自分の情報のみ閲覧できる"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "予約状況を確認する",
+            "uc": "予約状況を参照する",
+            "description": "利用者がWeb画面で自分の予約中の書籍と予約順位、予約の状態を一覧で確認する。自分の情報のみ閲覧できる"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "利用者からの問い合わせに対応する",
+            "uc": "利用者の利用状況を参照する",
+            "description": "司書が窓口で利用者番号を指定して該当利用者の貸出と予約の状況を確認し、Web画面を使えない利用者に案内する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "在庫状況を把握する",
+            "uc": "在庫状況一覧を参照する",
+            "description": "司書が書籍ごとの状態（貸出中・在庫あり・予約待ち）を一覧で確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "人気書籍を把握する",
+            "uc": "人気書籍ランキングを参照する",
+            "description": "司書が貸出記録に基づく貸出回数の多い順の書籍ランキングを確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "期間別の貸出傾向を把握する",
+            "uc": "期間別貸出統計を参照する",
+            "description": "司書が期間（日・月・年）を指定して期間内の貸出件数の集計を確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "分析結果を選書・運営改善に活かす",
+            "uc": "",
+            "description": "司書が在庫状況・ランキング・貸出統計をもとに選書や運営改善の判断を行う（システムを使わない作業）"
+          }
+        ],
+        "externalSystems": [
+          {
+            "name": "メール配信サービス",
+            "role": "返却通知メール、返却期限リマインドメール、督促メールを利用者に配信する"
+          }
+        ]
+      },
+      "questions": {
+        "circuit-breaker.calls_external": {
+          "type": "noul",
+          "instructions": "Do any of the `activities` call one of the `externalSystems` over the network?"
+        },
+        "circuit-breaker.exclude.excl_inmemory": {
+          "type": "noul",
+          "instructions": "Do the `activities` that call `externalSystems` treat the target as an in-memory resource or local cache rather than a real network call?"
+        },
+        "circuit-breaker.exclude.excl_batch_retry": {
+          "type": "noul",
+          "instructions": "Is the call from `activities` to `externalSystems` made from a batch or background activity where latency does not matter, so a simple retry without a circuit breaker would be enough?"
+        },
+        "retry.calls_external": {
+          "type": "noul",
+          "instructions": "Do any of the `activities` call one of the `externalSystems` over the network?"
+        },
+        "retry.exclude.excl_permanent_failure": {
+          "type": "noul",
+          "instructions": "Do the `activities` that call `externalSystems` mainly fail with permanent errors, such as authentication or permission errors, rather than transient network issues?"
+        },
+        "retry.exclude.excl_nonidempotent": {
+          "type": "noul",
+          "instructions": "Would retrying one of the `activities` that call `externalSystems` risk duplicating a non-idempotent side effect, such as sending a duplicate email?"
+        },
+        "timeout.calls_external": {
+          "type": "noul",
+          "instructions": "Do any of the `activities` call one of the `externalSystems` over the network?"
+        },
+        "timeout.exclude.excl_long_running": {
+          "type": "noul",
+          "instructions": "Are the `activities` that call `externalSystems` inherently long-running operations, such as large data aggregation, rather than quick request/response calls?"
+        },
+        "saga.multi_step_flow": {
+          "type": "noul",
+          "instructions": "Does completing one of the `activities` require calling one of the `externalSystems` as one step in a multi-step business process spanning more than one entity?"
+        },
+        "saga.exclude.excl_single_service": {
+          "type": "noul",
+          "instructions": "Does the multi-step business process described in `activities` complete within a single service using a normal ACID database transaction, without coordinating with any of the `externalSystems`?"
+        },
+        "compensating-transaction.multi_step_flow_ct": {
+          "type": "noul",
+          "instructions": "Does completing one of the `activities` require calling one of the `externalSystems` as one step in a multi-step business process spanning more than one entity?"
+        },
+        "compensating-transaction.exclude.excl_irreversible": {
+          "type": "noul",
+          "instructions": "Are the steps in the multi-step process described in `activities` physical actions that cannot be undone, such as a physical delivery, rather than reversible data changes?"
+        }
+      },
+      "usage": {
+        "input_tokens": 4555,
+        "output_tokens": 278
+      },
+      "latencyMs": 604
+    },
+    {
+      "group": "security",
+      "patternIds": [
+        "rate-limiting-throttling",
+        "federated-identity",
+        "valet-key",
+        "gatekeeper-gateway-offloading"
+      ],
+      "state": {
+        "actors": [
+          {
+            "name": "司書",
+            "role": "書籍情報・利用者情報の登録・編集・削除、貸出・返却の記録、予約状況・延滞状況の確認、在庫状況・人気書籍ランキング・期間別貸出統計の確認による選書・運営改善を行う",
+            "internalExternal": "社内"
+          },
+          {
+            "name": "利用者",
+            "role": "書籍の検索、貸出中書籍の予約・予約取消、自分の貸出履歴と予約状況の確認を行い、窓口で利用登録・貸出・返却を受ける。返却通知・リマインド・督促メールを受け取る",
+            "internalExternal": "社外"
+          },
+          {
+            "name": "タイマー",
+            "role": "日次バッチとしてリマインド対象の抽出・リマインド送信、延滞判定・督促送信を定時起動で自動実行する",
+            "internalExternal": "社内"
+          }
+        ],
+        "externalSystems": [
+          {
+            "name": "メール配信サービス",
+            "role": "返却通知メール、返却期限リマインドメール、督促メールを利用者に配信する"
+          }
+        ],
+        "activities": [
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "蔵書の登録状況を確認する",
+            "uc": "書籍一覧を参照する",
+            "description": "司書が登録済みの書籍を一覧で参照し、登録・編集・削除の対象と登録状況を確認する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を登録する",
+            "uc": "書籍を登録する",
+            "description": "司書がタイトル・著者・ISBN・出版社・ジャンル・媒体種別（紙・電子）を入力して書籍を蔵書として登録する。初期リリースでは媒体種別は紙のみ運用する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を編集する",
+            "uc": "書籍を編集する",
+            "description": "司書が登録済みの書籍情報を修正して保存し、変更内容を蔵書に反映する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を削除する",
+            "uc": "書籍を削除する",
+            "description": "司書が不要になった書籍を削除し、蔵書一覧から除外する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "読みたい書籍を探す",
+            "uc": "書籍を検索する",
+            "description": "利用者がキーワード・タイトル・著者・ISBN・ジャンルのいずれかを条件に蔵書を検索し、該当する書籍の一覧を表示する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "書籍の詳細と在庫状況を確認する",
+            "uc": "書籍詳細を参照する",
+            "description": "利用者が検索結果から書籍を選び、書籍の詳細と在庫状況（在庫あり・貸出中・予約待ち）を確認する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "利用者の問い合わせに応じて書籍を探す",
+            "uc": "書籍を検索する",
+            "description": "司書が窓口で利用者からの問い合わせに応じ、同じ検索機能で蔵書と在庫状況を確認して案内する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用登録を申し込む",
+            "uc": "",
+            "description": "利用者が窓口で氏名・連絡先を提示して図書館の利用登録を申し込む（システムを使わない作業）"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を登録する",
+            "uc": "利用者を登録する",
+            "description": "司書が氏名・連絡先を入力して利用者を登録し、一意の利用者番号を付与する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を編集する",
+            "uc": "利用者を編集する",
+            "description": "司書が登録済みの利用者情報（氏名・連絡先等）を修正して保存する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を削除する",
+            "uc": "利用者を削除する",
+            "description": "司書が利用を終了した利用者を削除し、利用者一覧から除外する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者の登録状況を確認する",
+            "uc": "利用者一覧を参照する",
+            "description": "司書が登録済みの利用者を一覧で参照し、利用者番号や連絡先を確認する"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "借りたい書籍を窓口に持ち込む",
+            "uc": "",
+            "description": "利用者が在庫ありの書籍を書架から取り、利用者番号とともに窓口に提示する（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "貸出を記録する",
+            "uc": "貸出を登録する",
+            "description": "司書が利用者と書籍を指定して貸出記録を作成し、書籍の状態を在庫ありから貸出中に遷移させる。返却期限は貸出日に所定の貸出期間を加算して自動設定する。書籍が貸出中の場合は貸出できない旨を表示する"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "返却期限を確認して書籍を受け取る",
+            "uc": "",
+            "description": "利用者が司書から返却期限の案内を受け、書籍を受け取る（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "書籍を窓口に返却する",
+            "uc": "",
+            "description": "利用者が借りていた書籍を窓口に返却する（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "返却を記録する",
+            "uc": "返却を登録する",
+            "description": "司書が返却を登録し、貸出の状態を返却済みに遷移させる。書籍の状態は予約がなければ在庫あり、予約があれば予約待ちに遷移させる"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "予約者へ返却を通知する",
+            "uc": "返却通知を送信する",
+            "description": "返却登録に伴い、予約順位1位の利用者にメール配信サービス経由で返却通知メールを送信し、予約の状態を予約中から通知済みに遷移させる"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "返却通知を受け取る",
+            "uc": "",
+            "description": "予約順位1位の利用者が返却通知メールを受け取り、来館して書籍を借りる準備をする（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "貸出中の書籍を予約する",
+            "uc": "予約を登録する",
+            "description": "利用者が貸出中の書籍に予約を登録し、受付順の予約順位つきで予約中として管理される。在庫ありの書籍には予約できない旨を表示する"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "予約を取り消す",
+            "uc": "予約を取り消す",
+            "description": "利用者が自分の予約を取り消し、予約の状態を取消に遷移させる。後続の予約順位を繰り上げる"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "書籍の予約状況を確認する",
+            "uc": "予約一覧を参照する",
+            "description": "司書が書籍ごとの予約順位と予約状態を確認し、返却時に引き渡す利用者を把握する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "日次でリマインド対象を抽出する",
+            "uc": "リマインド対象を抽出する",
+            "description": "日次バッチが返却期限まで所定日数以内で未返却の貸出を抽出し、リマインド対象を判定する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "リマインドメールを送信する",
+            "uc": "リマインドを送信する",
+            "description": "抽出した貸出の利用者にメール配信サービス経由でリマインドメールを自動送信し、通知を記録する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "リマインドを受け取り返却の準備をする",
+            "uc": "",
+            "description": "利用者がリマインドメールを受け取り、返却期限までに書籍を返却する準備をする（システムを使わない作業）"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "日次で延滞を判定する",
+            "uc": "延滞を判定する",
+            "description": "日次バッチが返却期限を超過して未返却の貸出を抽出し、貸出の状態を貸出中から延滞に遷移させる"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "督促メールを送信する",
+            "uc": "督促を送信する",
+            "description": "延滞と判定した貸出の利用者にメール配信サービス経由で督促メールを自動送信し、通知を記録する"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "延滞状況を確認する",
+            "uc": "延滞一覧を参照する",
+            "description": "司書が延滞中の貸出と督促の送信状況を一覧で確認し、手作業の期限管理・督促なしに延滞の状況を把握する"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "現在の貸出と貸出履歴を確認する",
+            "uc": "貸出履歴を参照する",
+            "description": "利用者がWeb画面で自分の現在の貸出（返却期限つき）と過去の貸出履歴を一覧で確認する。自分の情報のみ閲覧できる"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "予約状況を確認する",
+            "uc": "予約状況を参照する",
+            "description": "利用者がWeb画面で自分の予約中の書籍と予約順位、予約の状態を一覧で確認する。自分の情報のみ閲覧できる"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "利用者からの問い合わせに対応する",
+            "uc": "利用者の利用状況を参照する",
+            "description": "司書が窓口で利用者番号を指定して該当利用者の貸出と予約の状況を確認し、Web画面を使えない利用者に案内する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "在庫状況を把握する",
+            "uc": "在庫状況一覧を参照する",
+            "description": "司書が書籍ごとの状態（貸出中・在庫あり・予約待ち）を一覧で確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "人気書籍を把握する",
+            "uc": "人気書籍ランキングを参照する",
+            "description": "司書が貸出記録に基づく貸出回数の多い順の書籍ランキングを確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "期間別の貸出傾向を把握する",
+            "uc": "期間別貸出統計を参照する",
+            "description": "司書が期間（日・月・年）を指定して期間内の貸出件数の集計を確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "分析結果を選書・運営改善に活かす",
+            "uc": "",
+            "description": "司書が在庫状況・ランキング・貸出統計をもとに選書や運営改善の判断を行う（システムを使わない作業）"
+          }
+        ],
+        "information": [
+          {
+            "name": "書籍",
+            "attributes": "書籍ID、タイトル、著者、ISBN、出版社、ジャンル、媒体種別（紙・電子）、書籍の状態（在庫あり・貸出中・予約待ち）、登録日、更新日",
+            "description": "蔵書として一元管理する書籍。司書が登録・編集・削除し、利用者・司書がキーワード・タイトル・著者・ISBN・ジャンルで検索する。貸出・返却・予約により書籍の状態が遷移し、在庫状況一覧の表示に用いる。貸出中・予約待ちの書籍は削除できない。媒体種別は初期リリースでは紙のみ運用し、将来の電子書籍対応の拡張起点となる"
+          },
+          {
+            "name": "ジャンル",
+            "attributes": "ジャンルID、ジャンル名（文学・社会科学・自然科学・技術・芸術・歴史・児童書・その他）、説明",
+            "description": "書籍を分類する区分。書籍登録時に指定し、検索条件および選書・運営改善の分析単位として用いる"
+          },
+          {
+            "name": "利用者",
+            "attributes": "利用者番号、氏名、連絡先（メールアドレス・電話番号・住所）、利用者区分（司書・利用者）、登録日、更新日",
+            "description": "図書館を利用する人。司書が登録・編集・削除し、一意の利用者番号で識別する。貸出・予約の主体であり、返却通知・リマインド・督促の送信先となる。利用者区分により操作範囲を切り替え、利用者は自分の貸出履歴・予約状況のみ閲覧できる"
+          },
+          {
+            "name": "貸出",
+            "attributes": "貸出ID、書籍ID、利用者番号、貸出日、返却期限、返却日、貸出の状態（貸出中・延滞・返却済み）、記録した司書",
+            "description": "利用者に書籍を貸し出した記録。司書が貸出を登録すると貸出中になり、返却期限は貸出日に貸出期間を加算して自動設定する。日次バッチがリマインド日数と返却期限からリマインド対象を判定し、返却期限超過で延滞に遷移させて督促する。返却登録で返却済みになり、貸出履歴の表示と貸出統計の集計の元データとなる"
+          },
+          {
+            "name": "貸出期間",
+            "attributes": "貸出期間（日数）、適用開始日、更新日",
+            "description": "貸出時に返却期限を自動設定するための業務ルール上の期間設定。返却期限=貸出日+貸出期間として返却期限算出に用いる"
+          },
+          {
+            "name": "リマインド日数",
+            "attributes": "リマインド日数（返却期限の何日前か）、適用開始日、更新日",
+            "description": "返却期限の何日前からリマインドメールを送るかを定める設定値。日次バッチのリマインド対象判定に用いる"
+          },
+          {
+            "name": "予約",
+            "attributes": "予約ID、書籍ID、利用者番号、受付日時、予約順位、予約の状態（予約中・通知済み・取消）、取消日時",
+            "description": "貸出中の書籍に対する利用者の予約記録。在庫ありの書籍には予約できない。受付順に順位を付与し、取消時は後続の順位を繰り上げる。返却時に予約順位1位の利用者を返却通知の送信先として特定し、通知済みに遷移させる。司書は予約一覧で書籍ごとの予約順位と状態を確認する"
+          },
+          {
+            "name": "通知",
+            "attributes": "通知ID、利用者番号、通知種別（返却通知・リマインド・督促）、送信先メールアドレス、件名、本文、送信日時、送信結果、対象貸出ID、対象予約ID",
+            "description": "利用者に送信した返却通知・リマインド・督促のメール記録。返却登録・リマインド対象抽出・延滞判定を契機にメール配信サービス経由で送信し、送信内容・送信日時・送信結果を保持する。通知の重複や漏れを防ぎ、司書が延滞一覧で督促の送信状況を確認するために用いる"
+          },
+          {
+            "name": "貸出統計",
+            "attributes": "集計ID、集計期間種別（日・月・年）、集計対象期間（開始日・終了日）、書籍ID、貸出回数、貸出件数、ランキング順位、集計日時",
+            "description": "貸出記録を集計した情報。書籍ごとの貸出回数による人気書籍ランキングと、集計期間種別ごとの貸出件数を保持し、司書が選書や運営改善の判断材料として用いる"
+          }
+        ]
+      },
+      "questions": {
+        "rate-limiting-throttling.exclude.excl_internal_only": {
+          "type": "noul",
+          "instructions": "Are all of the `actors` internal (`社内`), with no external-facing access to this system?"
+        },
+        "federated-identity.exclude.excl_internal_simple_auth": {
+          "type": "noul",
+          "instructions": "Are all of the `actors` internal users for whom simple, self-managed authentication would be sufficient?"
+        },
+        "valet-key.has_file_attributes": {
+          "type": "noul",
+          "instructions": "Do any of the `information` items have a file or image attribute (such as a photo or document)?"
+        },
+        "valet-key.has_transfer_activity": {
+          "type": "noul",
+          "instructions": "Do `activities` include uploading or downloading such a file directly?"
+        },
+        "gatekeeper-gateway-offloading.receives_external_api_calls": {
+          "type": "noul",
+          "instructions": "Does this system receive API calls from `externalSystems` acting as callers, rather than only calling out to them?"
+        },
+        "gatekeeper-gateway-offloading.diverse_frontend_needs": {
+          "type": "noul",
+          "instructions": "Do the `actors` need more than one kind of frontend (such as a public user-facing frontend and a separate admin frontend), each calling this system's API differently?"
+        }
+      },
+      "usage": {
+        "input_tokens": 6145,
+        "output_tokens": 160
+      },
+      "latencyMs": 619
+    },
+    {
+      "group": "messaging",
+      "patternIds": [
+        "queue-based-load-leveling",
+        "publisher-subscriber",
+        "competing-consumers",
+        "asynchronous-request-reply",
+        "claim-check",
+        "priority-queue"
+      ],
+      "state": {
+        "activities": [
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "蔵書の登録状況を確認する",
+            "uc": "書籍一覧を参照する",
+            "description": "司書が登録済みの書籍を一覧で参照し、登録・編集・削除の対象と登録状況を確認する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を登録する",
+            "uc": "書籍を登録する",
+            "description": "司書がタイトル・著者・ISBN・出版社・ジャンル・媒体種別（紙・電子）を入力して書籍を蔵書として登録する。初期リリースでは媒体種別は紙のみ運用する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を編集する",
+            "uc": "書籍を編集する",
+            "description": "司書が登録済みの書籍情報を修正して保存し、変更内容を蔵書に反映する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を削除する",
+            "uc": "書籍を削除する",
+            "description": "司書が不要になった書籍を削除し、蔵書一覧から除外する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "読みたい書籍を探す",
+            "uc": "書籍を検索する",
+            "description": "利用者がキーワード・タイトル・著者・ISBN・ジャンルのいずれかを条件に蔵書を検索し、該当する書籍の一覧を表示する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "書籍の詳細と在庫状況を確認する",
+            "uc": "書籍詳細を参照する",
+            "description": "利用者が検索結果から書籍を選び、書籍の詳細と在庫状況（在庫あり・貸出中・予約待ち）を確認する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "利用者の問い合わせに応じて書籍を探す",
+            "uc": "書籍を検索する",
+            "description": "司書が窓口で利用者からの問い合わせに応じ、同じ検索機能で蔵書と在庫状況を確認して案内する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用登録を申し込む",
+            "uc": "",
+            "description": "利用者が窓口で氏名・連絡先を提示して図書館の利用登録を申し込む（システムを使わない作業）"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を登録する",
+            "uc": "利用者を登録する",
+            "description": "司書が氏名・連絡先を入力して利用者を登録し、一意の利用者番号を付与する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を編集する",
+            "uc": "利用者を編集する",
+            "description": "司書が登録済みの利用者情報（氏名・連絡先等）を修正して保存する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を削除する",
+            "uc": "利用者を削除する",
+            "description": "司書が利用を終了した利用者を削除し、利用者一覧から除外する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者の登録状況を確認する",
+            "uc": "利用者一覧を参照する",
+            "description": "司書が登録済みの利用者を一覧で参照し、利用者番号や連絡先を確認する"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "借りたい書籍を窓口に持ち込む",
+            "uc": "",
+            "description": "利用者が在庫ありの書籍を書架から取り、利用者番号とともに窓口に提示する（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "貸出を記録する",
+            "uc": "貸出を登録する",
+            "description": "司書が利用者と書籍を指定して貸出記録を作成し、書籍の状態を在庫ありから貸出中に遷移させる。返却期限は貸出日に所定の貸出期間を加算して自動設定する。書籍が貸出中の場合は貸出できない旨を表示する"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "返却期限を確認して書籍を受け取る",
+            "uc": "",
+            "description": "利用者が司書から返却期限の案内を受け、書籍を受け取る（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "書籍を窓口に返却する",
+            "uc": "",
+            "description": "利用者が借りていた書籍を窓口に返却する（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "返却を記録する",
+            "uc": "返却を登録する",
+            "description": "司書が返却を登録し、貸出の状態を返却済みに遷移させる。書籍の状態は予約がなければ在庫あり、予約があれば予約待ちに遷移させる"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "予約者へ返却を通知する",
+            "uc": "返却通知を送信する",
+            "description": "返却登録に伴い、予約順位1位の利用者にメール配信サービス経由で返却通知メールを送信し、予約の状態を予約中から通知済みに遷移させる"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "返却通知を受け取る",
+            "uc": "",
+            "description": "予約順位1位の利用者が返却通知メールを受け取り、来館して書籍を借りる準備をする（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "貸出中の書籍を予約する",
+            "uc": "予約を登録する",
+            "description": "利用者が貸出中の書籍に予約を登録し、受付順の予約順位つきで予約中として管理される。在庫ありの書籍には予約できない旨を表示する"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "予約を取り消す",
+            "uc": "予約を取り消す",
+            "description": "利用者が自分の予約を取り消し、予約の状態を取消に遷移させる。後続の予約順位を繰り上げる"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "書籍の予約状況を確認する",
+            "uc": "予約一覧を参照する",
+            "description": "司書が書籍ごとの予約順位と予約状態を確認し、返却時に引き渡す利用者を把握する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "日次でリマインド対象を抽出する",
+            "uc": "リマインド対象を抽出する",
+            "description": "日次バッチが返却期限まで所定日数以内で未返却の貸出を抽出し、リマインド対象を判定する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "リマインドメールを送信する",
+            "uc": "リマインドを送信する",
+            "description": "抽出した貸出の利用者にメール配信サービス経由でリマインドメールを自動送信し、通知を記録する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "リマインドを受け取り返却の準備をする",
+            "uc": "",
+            "description": "利用者がリマインドメールを受け取り、返却期限までに書籍を返却する準備をする（システムを使わない作業）"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "日次で延滞を判定する",
+            "uc": "延滞を判定する",
+            "description": "日次バッチが返却期限を超過して未返却の貸出を抽出し、貸出の状態を貸出中から延滞に遷移させる"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "督促メールを送信する",
+            "uc": "督促を送信する",
+            "description": "延滞と判定した貸出の利用者にメール配信サービス経由で督促メールを自動送信し、通知を記録する"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "延滞状況を確認する",
+            "uc": "延滞一覧を参照する",
+            "description": "司書が延滞中の貸出と督促の送信状況を一覧で確認し、手作業の期限管理・督促なしに延滞の状況を把握する"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "現在の貸出と貸出履歴を確認する",
+            "uc": "貸出履歴を参照する",
+            "description": "利用者がWeb画面で自分の現在の貸出（返却期限つき）と過去の貸出履歴を一覧で確認する。自分の情報のみ閲覧できる"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "予約状況を確認する",
+            "uc": "予約状況を参照する",
+            "description": "利用者がWeb画面で自分の予約中の書籍と予約順位、予約の状態を一覧で確認する。自分の情報のみ閲覧できる"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "利用者からの問い合わせに対応する",
+            "uc": "利用者の利用状況を参照する",
+            "description": "司書が窓口で利用者番号を指定して該当利用者の貸出と予約の状況を確認し、Web画面を使えない利用者に案内する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "在庫状況を把握する",
+            "uc": "在庫状況一覧を参照する",
+            "description": "司書が書籍ごとの状態（貸出中・在庫あり・予約待ち）を一覧で確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "人気書籍を把握する",
+            "uc": "人気書籍ランキングを参照する",
+            "description": "司書が貸出記録に基づく貸出回数の多い順の書籍ランキングを確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "期間別の貸出傾向を把握する",
+            "uc": "期間別貸出統計を参照する",
+            "description": "司書が期間（日・月・年）を指定して期間内の貸出件数の集計を確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "分析結果を選書・運営改善に活かす",
+            "uc": "",
+            "description": "司書が在庫状況・ランキング・貸出統計をもとに選書や運営改善の判断を行う（システムを使わない作業）"
+          }
+        ],
+        "actors": [
+          {
+            "name": "司書",
+            "role": "書籍情報・利用者情報の登録・編集・削除、貸出・返却の記録、予約状況・延滞状況の確認、在庫状況・人気書籍ランキング・期間別貸出統計の確認による選書・運営改善を行う",
+            "internalExternal": "社内"
+          },
+          {
+            "name": "利用者",
+            "role": "書籍の検索、貸出中書籍の予約・予約取消、自分の貸出履歴と予約状況の確認を行い、窓口で利用登録・貸出・返却を受ける。返却通知・リマインド・督促メールを受け取る",
+            "internalExternal": "社外"
+          },
+          {
+            "name": "タイマー",
+            "role": "日次バッチとしてリマインド対象の抽出・リマインド送信、延滞判定・督促送信を定時起動で自動実行する",
+            "internalExternal": "社内"
+          }
+        ]
+      },
+      "questions": {
+        "queue-based-load-leveling.async_tolerant": {
+          "type": "noul",
+          "instructions": "Do any of the `activities` describe a batch, bulk, notification, asynchronous, or aggregation task where some processing delay during peak load is acceptable?"
+        },
+        "queue-based-load-leveling.exclude.excl_realtime_required": {
+          "type": "noul",
+          "instructions": "Do the batch/bulk/notification/async/aggregation `activities` require an immediate, real-time response with no tolerance for delay?"
+        },
+        "publisher-subscriber.notification_activity": {
+          "type": "noul",
+          "instructions": "Do any of the `activities` describe sending a notification or email, or triggering another system, as a result of an event?"
+        },
+        "publisher-subscriber.exclude.excl_sync_required": {
+          "type": "noul",
+          "instructions": "Does this event require a synchronous request/response instead of an asynchronous notification?"
+        },
+        "publisher-subscriber.exclude.excl_single_subscriber": {
+          "type": "noul",
+          "instructions": "Does exactly one recipient consume the event described by these `activities`, with no other business process needing the same event?"
+        },
+        "competing-consumers.bulk_messaging": {
+          "type": "noul",
+          "instructions": "Do any of the `activities` describe sending a large volume of messages or processing a large batch, such as bulk notification sending?"
+        },
+        "competing-consumers.exclude.excl_strict_order": {
+          "type": "noul",
+          "instructions": "Does processing the messages produced by these `activities` require strict, guaranteed ordering?"
+        },
+        "asynchronous-request-reply.long_running_activity": {
+          "type": "noul",
+          "instructions": "Do any of the `activities` describe a long-running operation, such as a large calculation, data aggregation, report generation, or bulk data import?"
+        },
+        "asynchronous-request-reply.exclude.excl_fast_enough": {
+          "type": "noul",
+          "instructions": "Is the long-running operation described in `activities` fast enough that a normal synchronous response, without a background job, is possible?"
+        },
+        "claim-check.large_message_payload": {
+          "type": "noul",
+          "instructions": "Do any of the `activities` involve uploading a file or transferring a large amount of data together with a notification or message?"
+        },
+        "priority-queue.differing_priority_actors": {
+          "type": "noul",
+          "instructions": "Do `actors` include more than one type of actor with a different service level or urgency for the same kind of request?"
+        },
+        "priority-queue.exclude.excl_same_priority": {
+          "type": "noul",
+          "instructions": "Are all messages produced by these `activities` processed at the same priority, with no actor needing faster handling than another?"
+        }
+      },
+      "usage": {
+        "input_tokens": 4718,
+        "output_tokens": 301
+      },
+      "latencyMs": 274
+    },
+    {
+      "group": "data",
+      "patternIds": [
+        "cache-aside",
+        "materialized-view",
+        "static-content-hosting"
+      ],
+      "state": {
+        "activities": [
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "蔵書の登録状況を確認する",
+            "uc": "書籍一覧を参照する",
+            "description": "司書が登録済みの書籍を一覧で参照し、登録・編集・削除の対象と登録状況を確認する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を登録する",
+            "uc": "書籍を登録する",
+            "description": "司書がタイトル・著者・ISBN・出版社・ジャンル・媒体種別（紙・電子）を入力して書籍を蔵書として登録する。初期リリースでは媒体種別は紙のみ運用する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を編集する",
+            "uc": "書籍を編集する",
+            "description": "司書が登録済みの書籍情報を修正して保存し、変更内容を蔵書に反映する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を削除する",
+            "uc": "書籍を削除する",
+            "description": "司書が不要になった書籍を削除し、蔵書一覧から除外する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "読みたい書籍を探す",
+            "uc": "書籍を検索する",
+            "description": "利用者がキーワード・タイトル・著者・ISBN・ジャンルのいずれかを条件に蔵書を検索し、該当する書籍の一覧を表示する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "書籍の詳細と在庫状況を確認する",
+            "uc": "書籍詳細を参照する",
+            "description": "利用者が検索結果から書籍を選び、書籍の詳細と在庫状況（在庫あり・貸出中・予約待ち）を確認する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "利用者の問い合わせに応じて書籍を探す",
+            "uc": "書籍を検索する",
+            "description": "司書が窓口で利用者からの問い合わせに応じ、同じ検索機能で蔵書と在庫状況を確認して案内する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用登録を申し込む",
+            "uc": "",
+            "description": "利用者が窓口で氏名・連絡先を提示して図書館の利用登録を申し込む（システムを使わない作業）"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を登録する",
+            "uc": "利用者を登録する",
+            "description": "司書が氏名・連絡先を入力して利用者を登録し、一意の利用者番号を付与する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を編集する",
+            "uc": "利用者を編集する",
+            "description": "司書が登録済みの利用者情報（氏名・連絡先等）を修正して保存する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を削除する",
+            "uc": "利用者を削除する",
+            "description": "司書が利用を終了した利用者を削除し、利用者一覧から除外する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者の登録状況を確認する",
+            "uc": "利用者一覧を参照する",
+            "description": "司書が登録済みの利用者を一覧で参照し、利用者番号や連絡先を確認する"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "借りたい書籍を窓口に持ち込む",
+            "uc": "",
+            "description": "利用者が在庫ありの書籍を書架から取り、利用者番号とともに窓口に提示する（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "貸出を記録する",
+            "uc": "貸出を登録する",
+            "description": "司書が利用者と書籍を指定して貸出記録を作成し、書籍の状態を在庫ありから貸出中に遷移させる。返却期限は貸出日に所定の貸出期間を加算して自動設定する。書籍が貸出中の場合は貸出できない旨を表示する"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "返却期限を確認して書籍を受け取る",
+            "uc": "",
+            "description": "利用者が司書から返却期限の案内を受け、書籍を受け取る（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "書籍を窓口に返却する",
+            "uc": "",
+            "description": "利用者が借りていた書籍を窓口に返却する（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "返却を記録する",
+            "uc": "返却を登録する",
+            "description": "司書が返却を登録し、貸出の状態を返却済みに遷移させる。書籍の状態は予約がなければ在庫あり、予約があれば予約待ちに遷移させる"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "予約者へ返却を通知する",
+            "uc": "返却通知を送信する",
+            "description": "返却登録に伴い、予約順位1位の利用者にメール配信サービス経由で返却通知メールを送信し、予約の状態を予約中から通知済みに遷移させる"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "返却通知を受け取る",
+            "uc": "",
+            "description": "予約順位1位の利用者が返却通知メールを受け取り、来館して書籍を借りる準備をする（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "貸出中の書籍を予約する",
+            "uc": "予約を登録する",
+            "description": "利用者が貸出中の書籍に予約を登録し、受付順の予約順位つきで予約中として管理される。在庫ありの書籍には予約できない旨を表示する"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "予約を取り消す",
+            "uc": "予約を取り消す",
+            "description": "利用者が自分の予約を取り消し、予約の状態を取消に遷移させる。後続の予約順位を繰り上げる"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "書籍の予約状況を確認する",
+            "uc": "予約一覧を参照する",
+            "description": "司書が書籍ごとの予約順位と予約状態を確認し、返却時に引き渡す利用者を把握する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "日次でリマインド対象を抽出する",
+            "uc": "リマインド対象を抽出する",
+            "description": "日次バッチが返却期限まで所定日数以内で未返却の貸出を抽出し、リマインド対象を判定する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "リマインドメールを送信する",
+            "uc": "リマインドを送信する",
+            "description": "抽出した貸出の利用者にメール配信サービス経由でリマインドメールを自動送信し、通知を記録する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "リマインドを受け取り返却の準備をする",
+            "uc": "",
+            "description": "利用者がリマインドメールを受け取り、返却期限までに書籍を返却する準備をする（システムを使わない作業）"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "日次で延滞を判定する",
+            "uc": "延滞を判定する",
+            "description": "日次バッチが返却期限を超過して未返却の貸出を抽出し、貸出の状態を貸出中から延滞に遷移させる"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "督促メールを送信する",
+            "uc": "督促を送信する",
+            "description": "延滞と判定した貸出の利用者にメール配信サービス経由で督促メールを自動送信し、通知を記録する"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "延滞状況を確認する",
+            "uc": "延滞一覧を参照する",
+            "description": "司書が延滞中の貸出と督促の送信状況を一覧で確認し、手作業の期限管理・督促なしに延滞の状況を把握する"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "現在の貸出と貸出履歴を確認する",
+            "uc": "貸出履歴を参照する",
+            "description": "利用者がWeb画面で自分の現在の貸出（返却期限つき）と過去の貸出履歴を一覧で確認する。自分の情報のみ閲覧できる"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "予約状況を確認する",
+            "uc": "予約状況を参照する",
+            "description": "利用者がWeb画面で自分の予約中の書籍と予約順位、予約の状態を一覧で確認する。自分の情報のみ閲覧できる"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "利用者からの問い合わせに対応する",
+            "uc": "利用者の利用状況を参照する",
+            "description": "司書が窓口で利用者番号を指定して該当利用者の貸出と予約の状況を確認し、Web画面を使えない利用者に案内する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "在庫状況を把握する",
+            "uc": "在庫状況一覧を参照する",
+            "description": "司書が書籍ごとの状態（貸出中・在庫あり・予約待ち）を一覧で確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "人気書籍を把握する",
+            "uc": "人気書籍ランキングを参照する",
+            "description": "司書が貸出記録に基づく貸出回数の多い順の書籍ランキングを確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "期間別の貸出傾向を把握する",
+            "uc": "期間別貸出統計を参照する",
+            "description": "司書が期間（日・月・年）を指定して期間内の貸出件数の集計を確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "分析結果を選書・運営改善に活かす",
+            "uc": "",
+            "description": "司書が在庫状況・ランキング・貸出統計をもとに選書や運営改善の判断を行う（システムを使わない作業）"
+          }
+        ],
+        "information": [
+          {
+            "name": "書籍",
+            "attributes": "書籍ID、タイトル、著者、ISBN、出版社、ジャンル、媒体種別（紙・電子）、書籍の状態（在庫あり・貸出中・予約待ち）、登録日、更新日",
+            "description": "蔵書として一元管理する書籍。司書が登録・編集・削除し、利用者・司書がキーワード・タイトル・著者・ISBN・ジャンルで検索する。貸出・返却・予約により書籍の状態が遷移し、在庫状況一覧の表示に用いる。貸出中・予約待ちの書籍は削除できない。媒体種別は初期リリースでは紙のみ運用し、将来の電子書籍対応の拡張起点となる"
+          },
+          {
+            "name": "ジャンル",
+            "attributes": "ジャンルID、ジャンル名（文学・社会科学・自然科学・技術・芸術・歴史・児童書・その他）、説明",
+            "description": "書籍を分類する区分。書籍登録時に指定し、検索条件および選書・運営改善の分析単位として用いる"
+          },
+          {
+            "name": "利用者",
+            "attributes": "利用者番号、氏名、連絡先（メールアドレス・電話番号・住所）、利用者区分（司書・利用者）、登録日、更新日",
+            "description": "図書館を利用する人。司書が登録・編集・削除し、一意の利用者番号で識別する。貸出・予約の主体であり、返却通知・リマインド・督促の送信先となる。利用者区分により操作範囲を切り替え、利用者は自分の貸出履歴・予約状況のみ閲覧できる"
+          },
+          {
+            "name": "貸出",
+            "attributes": "貸出ID、書籍ID、利用者番号、貸出日、返却期限、返却日、貸出の状態（貸出中・延滞・返却済み）、記録した司書",
+            "description": "利用者に書籍を貸し出した記録。司書が貸出を登録すると貸出中になり、返却期限は貸出日に貸出期間を加算して自動設定する。日次バッチがリマインド日数と返却期限からリマインド対象を判定し、返却期限超過で延滞に遷移させて督促する。返却登録で返却済みになり、貸出履歴の表示と貸出統計の集計の元データとなる"
+          },
+          {
+            "name": "貸出期間",
+            "attributes": "貸出期間（日数）、適用開始日、更新日",
+            "description": "貸出時に返却期限を自動設定するための業務ルール上の期間設定。返却期限=貸出日+貸出期間として返却期限算出に用いる"
+          },
+          {
+            "name": "リマインド日数",
+            "attributes": "リマインド日数（返却期限の何日前か）、適用開始日、更新日",
+            "description": "返却期限の何日前からリマインドメールを送るかを定める設定値。日次バッチのリマインド対象判定に用いる"
+          },
+          {
+            "name": "予約",
+            "attributes": "予約ID、書籍ID、利用者番号、受付日時、予約順位、予約の状態（予約中・通知済み・取消）、取消日時",
+            "description": "貸出中の書籍に対する利用者の予約記録。在庫ありの書籍には予約できない。受付順に順位を付与し、取消時は後続の順位を繰り上げる。返却時に予約順位1位の利用者を返却通知の送信先として特定し、通知済みに遷移させる。司書は予約一覧で書籍ごとの予約順位と状態を確認する"
+          },
+          {
+            "name": "通知",
+            "attributes": "通知ID、利用者番号、通知種別（返却通知・リマインド・督促）、送信先メールアドレス、件名、本文、送信日時、送信結果、対象貸出ID、対象予約ID",
+            "description": "利用者に送信した返却通知・リマインド・督促のメール記録。返却登録・リマインド対象抽出・延滞判定を契機にメール配信サービス経由で送信し、送信内容・送信日時・送信結果を保持する。通知の重複や漏れを防ぎ、司書が延滞一覧で督促の送信状況を確認するために用いる"
+          },
+          {
+            "name": "貸出統計",
+            "attributes": "集計ID、集計期間種別（日・月・年）、集計対象期間（開始日・終了日）、書籍ID、貸出回数、貸出件数、ランキング順位、集計日時",
+            "description": "貸出記録を集計した情報。書籍ごとの貸出回数による人気書籍ランキングと、集計期間種別ごとの貸出件数を保持し、司書が選書や運営改善の判断材料として用いる"
+          }
+        ]
+      },
+      "questions": {
+        "cache-aside.read_heavy_master_data": {
+          "type": "noul",
+          "instructions": "Does `information` include reference/master data that is read frequently by search or lookup activities in `activities`?"
+        },
+        "cache-aside.exclude.excl_frequently_updated": {
+          "type": "noul",
+          "instructions": "Is the data in `information` updated so frequently that callers always need the very latest value, making a cache unsuitable?"
+        },
+        "materialized-view.aggregation_uc": {
+          "type": "noul",
+          "instructions": "Do `activities` include a dashboard, report, or aggregation use case that combines data from more than one item in `information`?"
+        },
+        "materialized-view.exclude.excl_source_volatile": {
+          "type": "noul",
+          "instructions": "Does the source data in `information` change so frequently that maintaining a pre-computed view would be too costly to keep fresh?"
+        },
+        "static-content-hosting.has_file_attributes": {
+          "type": "noul",
+          "instructions": "Do any of the `information` items have an image or file attribute (such as a photo or document) that needs to be delivered to users?"
+        },
+        "static-content-hosting.exclude.excl_text_only": {
+          "type": "noul",
+          "instructions": "Does `information` explicitly consist only of text/data fields, with no item having a file or image attribute?"
+        }
+      },
+      "usage": {
+        "input_tokens": 5783,
+        "output_tokens": 151
+      },
+      "latencyMs": 238
+    },
+    {
+      "group": "structure",
+      "patternIds": [
+        "backends-for-frontends",
+        "sidecar",
+        "anti-corruption-layer",
+        "strangler-fig",
+        "ambassador"
+      ],
+      "state": {
+        "actors": [
+          {
+            "name": "司書",
+            "role": "書籍情報・利用者情報の登録・編集・削除、貸出・返却の記録、予約状況・延滞状況の確認、在庫状況・人気書籍ランキング・期間別貸出統計の確認による選書・運営改善を行う",
+            "internalExternal": "社内"
+          },
+          {
+            "name": "利用者",
+            "role": "書籍の検索、貸出中書籍の予約・予約取消、自分の貸出履歴と予約状況の確認を行い、窓口で利用登録・貸出・返却を受ける。返却通知・リマインド・督促メールを受け取る",
+            "internalExternal": "社外"
+          },
+          {
+            "name": "タイマー",
+            "role": "日次バッチとしてリマインド対象の抽出・リマインド送信、延滞判定・督促送信を定時起動で自動実行する",
+            "internalExternal": "社内"
+          }
+        ],
+        "overview": {
+          "system_name": "図書館蔵書管理システム",
+          "system_overview": "1館の図書館を対象に、紙台帳と表計算ファイルに分散していた蔵書情報と利用者情報を一元管理し、貸出・返却・予約をWeb画面から行えるようにするシステム。貸出時の返却期限自動設定、期限前リマインドと延滞督促のメール自動送信、返却時の予約者への通知により司書の手作業とミスを削減する。利用者は自分の貸出履歴と予約状況をWeb画面で確認でき、司書は在庫状況・人気書籍ランキング・期間別貸出統計をレポートとして把握できる。将来の電子書籍対応を見据え、書籍に媒体種別を持たせる。",
+          "interface_kind": "gui"
+        },
+        "externalSystems": [
+          {
+            "name": "メール配信サービス",
+            "role": "返却通知メール、返却期限リマインドメール、督促メールを利用者に配信する"
+          }
+        ],
+        "activities": [
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "蔵書の登録状況を確認する",
+            "uc": "書籍一覧を参照する",
+            "description": "司書が登録済みの書籍を一覧で参照し、登録・編集・削除の対象と登録状況を確認する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を登録する",
+            "uc": "書籍を登録する",
+            "description": "司書がタイトル・著者・ISBN・出版社・ジャンル・媒体種別（紙・電子）を入力して書籍を蔵書として登録する。初期リリースでは媒体種別は紙のみ運用する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を編集する",
+            "uc": "書籍を編集する",
+            "description": "司書が登録済みの書籍情報を修正して保存し、変更内容を蔵書に反映する"
+          },
+          {
+            "buc": "蔵書を管理するフロー",
+            "activity": "書籍情報を削除する",
+            "uc": "書籍を削除する",
+            "description": "司書が不要になった書籍を削除し、蔵書一覧から除外する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "読みたい書籍を探す",
+            "uc": "書籍を検索する",
+            "description": "利用者がキーワード・タイトル・著者・ISBN・ジャンルのいずれかを条件に蔵書を検索し、該当する書籍の一覧を表示する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "書籍の詳細と在庫状況を確認する",
+            "uc": "書籍詳細を参照する",
+            "description": "利用者が検索結果から書籍を選び、書籍の詳細と在庫状況（在庫あり・貸出中・予約待ち）を確認する"
+          },
+          {
+            "buc": "書籍を検索するフロー",
+            "activity": "利用者の問い合わせに応じて書籍を探す",
+            "uc": "書籍を検索する",
+            "description": "司書が窓口で利用者からの問い合わせに応じ、同じ検索機能で蔵書と在庫状況を確認して案内する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用登録を申し込む",
+            "uc": "",
+            "description": "利用者が窓口で氏名・連絡先を提示して図書館の利用登録を申し込む（システムを使わない作業）"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を登録する",
+            "uc": "利用者を登録する",
+            "description": "司書が氏名・連絡先を入力して利用者を登録し、一意の利用者番号を付与する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を編集する",
+            "uc": "利用者を編集する",
+            "description": "司書が登録済みの利用者情報（氏名・連絡先等）を修正して保存する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者情報を削除する",
+            "uc": "利用者を削除する",
+            "description": "司書が利用を終了した利用者を削除し、利用者一覧から除外する"
+          },
+          {
+            "buc": "利用者を管理するフロー",
+            "activity": "利用者の登録状況を確認する",
+            "uc": "利用者一覧を参照する",
+            "description": "司書が登録済みの利用者を一覧で参照し、利用者番号や連絡先を確認する"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "借りたい書籍を窓口に持ち込む",
+            "uc": "",
+            "description": "利用者が在庫ありの書籍を書架から取り、利用者番号とともに窓口に提示する（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "貸出を記録する",
+            "uc": "貸出を登録する",
+            "description": "司書が利用者と書籍を指定して貸出記録を作成し、書籍の状態を在庫ありから貸出中に遷移させる。返却期限は貸出日に所定の貸出期間を加算して自動設定する。書籍が貸出中の場合は貸出できない旨を表示する"
+          },
+          {
+            "buc": "書籍を貸し出すフロー",
+            "activity": "返却期限を確認して書籍を受け取る",
+            "uc": "",
+            "description": "利用者が司書から返却期限の案内を受け、書籍を受け取る（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "書籍を窓口に返却する",
+            "uc": "",
+            "description": "利用者が借りていた書籍を窓口に返却する（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "返却を記録する",
+            "uc": "返却を登録する",
+            "description": "司書が返却を登録し、貸出の状態を返却済みに遷移させる。書籍の状態は予約がなければ在庫あり、予約があれば予約待ちに遷移させる"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "予約者へ返却を通知する",
+            "uc": "返却通知を送信する",
+            "description": "返却登録に伴い、予約順位1位の利用者にメール配信サービス経由で返却通知メールを送信し、予約の状態を予約中から通知済みに遷移させる"
+          },
+          {
+            "buc": "書籍を返却するフロー",
+            "activity": "返却通知を受け取る",
+            "uc": "",
+            "description": "予約順位1位の利用者が返却通知メールを受け取り、来館して書籍を借りる準備をする（システムを使わない作業）"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "貸出中の書籍を予約する",
+            "uc": "予約を登録する",
+            "description": "利用者が貸出中の書籍に予約を登録し、受付順の予約順位つきで予約中として管理される。在庫ありの書籍には予約できない旨を表示する"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "予約を取り消す",
+            "uc": "予約を取り消す",
+            "description": "利用者が自分の予約を取り消し、予約の状態を取消に遷移させる。後続の予約順位を繰り上げる"
+          },
+          {
+            "buc": "書籍を予約するフロー",
+            "activity": "書籍の予約状況を確認する",
+            "uc": "予約一覧を参照する",
+            "description": "司書が書籍ごとの予約順位と予約状態を確認し、返却時に引き渡す利用者を把握する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "日次でリマインド対象を抽出する",
+            "uc": "リマインド対象を抽出する",
+            "description": "日次バッチが返却期限まで所定日数以内で未返却の貸出を抽出し、リマインド対象を判定する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "リマインドメールを送信する",
+            "uc": "リマインドを送信する",
+            "description": "抽出した貸出の利用者にメール配信サービス経由でリマインドメールを自動送信し、通知を記録する"
+          },
+          {
+            "buc": "返却期限を通知するフロー",
+            "activity": "リマインドを受け取り返却の準備をする",
+            "uc": "",
+            "description": "利用者がリマインドメールを受け取り、返却期限までに書籍を返却する準備をする（システムを使わない作業）"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "日次で延滞を判定する",
+            "uc": "延滞を判定する",
+            "description": "日次バッチが返却期限を超過して未返却の貸出を抽出し、貸出の状態を貸出中から延滞に遷移させる"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "督促メールを送信する",
+            "uc": "督促を送信する",
+            "description": "延滞と判定した貸出の利用者にメール配信サービス経由で督促メールを自動送信し、通知を記録する"
+          },
+          {
+            "buc": "延滞者に督促するフロー",
+            "activity": "延滞状況を確認する",
+            "uc": "延滞一覧を参照する",
+            "description": "司書が延滞中の貸出と督促の送信状況を一覧で確認し、手作業の期限管理・督促なしに延滞の状況を把握する"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "現在の貸出と貸出履歴を確認する",
+            "uc": "貸出履歴を参照する",
+            "description": "利用者がWeb画面で自分の現在の貸出（返却期限つき）と過去の貸出履歴を一覧で確認する。自分の情報のみ閲覧できる"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "予約状況を確認する",
+            "uc": "予約状況を参照する",
+            "description": "利用者がWeb画面で自分の予約中の書籍と予約順位、予約の状態を一覧で確認する。自分の情報のみ閲覧できる"
+          },
+          {
+            "buc": "自分の利用状況を確認するフロー",
+            "activity": "利用者からの問い合わせに対応する",
+            "uc": "利用者の利用状況を参照する",
+            "description": "司書が窓口で利用者番号を指定して該当利用者の貸出と予約の状況を確認し、Web画面を使えない利用者に案内する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "在庫状況を把握する",
+            "uc": "在庫状況一覧を参照する",
+            "description": "司書が書籍ごとの状態（貸出中・在庫あり・予約待ち）を一覧で確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "人気書籍を把握する",
+            "uc": "人気書籍ランキングを参照する",
+            "description": "司書が貸出記録に基づく貸出回数の多い順の書籍ランキングを確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "期間別の貸出傾向を把握する",
+            "uc": "期間別貸出統計を参照する",
+            "description": "司書が期間（日・月・年）を指定して期間内の貸出件数の集計を確認する"
+          },
+          {
+            "buc": "蔵書の利用状況を分析するフロー",
+            "activity": "分析結果を選書・運営改善に活かす",
+            "uc": "",
+            "description": "司書が在庫状況・ランキング・貸出統計をもとに選書や運営改善の判断を行う（システムを使わない作業）"
+          }
+        ]
+      },
+      "questions": {
+        "backends-for-frontends.divergent_ui_needs": {
+          "type": "noul",
+          "instructions": "Do the different `actors` have UI needs that are substantially different from each other, such as mobile versus desktop versus an admin screen?"
+        },
+        "backends-for-frontends.exclude.excl_similar_frontend_needs": {
+          "type": "noul",
+          "instructions": "Are the API needs of the different `actors` nearly identical?"
+        },
+        "backends-for-frontends.exclude.excl_single_frontend": {
+          "type": "noul",
+          "instructions": "Is there really only one kind of frontend among the `actors`?"
+        },
+        "sidecar.cross_cutting_concerns": {
+          "type": "noul",
+          "instructions": "Does `overview` describe a system made of more than one independently deployed service that would each need the same cross-cutting concern, such as logging, metrics, or an auth proxy?"
+        },
+        "sidecar.exclude.excl_monolith": {
+          "type": "noul",
+          "instructions": "Does `overview` describe a single monolithic application rather than multiple independently deployed services?"
+        },
+        "sidecar.exclude.excl_few_services_library_ok": {
+          "type": "noul",
+          "instructions": "Are there few enough independently deployed services described in `overview` that sharing a library, rather than deploying a sidecar process per service, would be enough?"
+        },
+        "anti-corruption-layer.legacy_model_mismatch": {
+          "type": "noul",
+          "instructions": "Do any of the `externalSystems` use a legacy system or a data model that differs substantially from this system's own domain model?"
+        },
+        "anti-corruption-layer.exclude.excl_models_aligned": {
+          "type": "noul",
+          "instructions": "Are the data models of `externalSystems` already well aligned with this system's own model, so no translation layer is needed?"
+        },
+        "strangler-fig.replacing_legacy_system": {
+          "type": "noul",
+          "instructions": "Is one of the `externalSystems` a legacy system that some of the `activities` currently depend on and that is being replaced gradually?"
+        },
+        "ambassador.need_unified_comm_pattern": {
+          "type": "noul",
+          "instructions": "Do `activities` call more than one of the `externalSystems` in a way that would benefit from a single, unified retry/timeout communication pattern?"
+        },
+        "ambassador.exclude.excl_simple_pattern": {
+          "type": "noul",
+          "instructions": "Is the communication pattern with `externalSystems` simple enough that unifying it offers no real benefit?"
+        }
+      },
+      "usage": {
+        "input_tokens": 5045,
+        "output_tokens": 287
+      },
+      "latencyMs": 246
+    },
+    {
+      "group": "operations",
+      "patternIds": [
+        "external-configuration-store"
+      ],
+      "state": {
+        "overview": {
+          "system_name": "図書館蔵書管理システム",
+          "system_overview": "1館の図書館を対象に、紙台帳と表計算ファイルに分散していた蔵書情報と利用者情報を一元管理し、貸出・返却・予約をWeb画面から行えるようにするシステム。貸出時の返却期限自動設定、期限前リマインドと延滞督促のメール自動送信、返却時の予約者への通知により司書の手作業とミスを削減する。利用者は自分の貸出履歴と予約状況をWeb画面で確認でき、司書は在庫状況・人気書籍ランキング・期間別貸出統計をレポートとして把握できる。将来の電子書籍対応を見据え、書籍に媒体種別を持たせる。",
+          "interface_kind": "gui"
+        }
+      },
+      "questions": {
+        "external-configuration-store.multi_env_ops": {
+          "type": "noul",
+          "instructions": "Does `overview` suggest this system will run across more than one environment, such as development, staging, and production, needing centrally managed configuration?"
+        }
+      },
+      "usage": {
+        "input_tokens": 570,
+        "output_tokens": 28
+      },
+      "latencyMs": 196
+    }
+  ],
+  "rawAnswers": {
+    "circuit-breaker.calls_external": {
+      "type": "noul",
+      "noul": 0.7
+    },
+    "circuit-breaker.exclude.excl_inmemory": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "circuit-breaker.exclude.excl_batch_retry": {
+      "type": "noul",
+      "noul": 0.34
+    },
+    "retry.calls_external": {
+      "type": "noul",
+      "noul": 0.72
+    },
+    "retry.exclude.excl_permanent_failure": {
+      "type": "noul",
+      "noul": 0.17
+    },
+    "retry.exclude.excl_nonidempotent": {
+      "type": "noul",
+      "noul": 0.84
+    },
+    "timeout.calls_external": {
+      "type": "noul",
+      "noul": 0.71
+    },
+    "timeout.exclude.excl_long_running": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "saga.multi_step_flow": {
+      "type": "noul",
+      "noul": 0.91
+    },
+    "saga.exclude.excl_single_service": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "compensating-transaction.multi_step_flow_ct": {
+      "type": "noul",
+      "noul": 0.92
+    },
+    "compensating-transaction.exclude.excl_irreversible": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "rate-limiting-throttling.codesignal.external_actor_exists": {
+      "type": "noul",
+      "noul": 1,
+      "codeSignal": true
+    },
+    "federated-identity.codesignal.external_actor_exists": {
+      "type": "noul",
+      "noul": 1,
+      "codeSignal": true
+    },
+    "gatekeeper-gateway-offloading.codesignal.two_or_more_external_actors": {
+      "type": "noul",
+      "noul": 0,
+      "codeSignal": true
+    },
+    "rate-limiting-throttling.exclude.excl_internal_only": {
+      "type": "noul",
+      "noul": 0.01
+    },
+    "federated-identity.exclude.excl_internal_simple_auth": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "valet-key.has_file_attributes": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "valet-key.has_transfer_activity": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "gatekeeper-gateway-offloading.receives_external_api_calls": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "gatekeeper-gateway-offloading.diverse_frontend_needs": {
+      "type": "noul",
+      "noul": 0.69
+    },
+    "queue-based-load-leveling.async_tolerant": {
+      "type": "noul",
+      "noul": 0.98
+    },
+    "queue-based-load-leveling.exclude.excl_realtime_required": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "publisher-subscriber.notification_activity": {
+      "type": "noul",
+      "noul": 0.99
+    },
+    "publisher-subscriber.exclude.excl_sync_required": {
+      "type": "noul",
+      "noul": 0.35
+    },
+    "publisher-subscriber.exclude.excl_single_subscriber": {
+      "type": "noul",
+      "noul": 0.15
+    },
+    "competing-consumers.bulk_messaging": {
+      "type": "noul",
+      "noul": 0.5
+    },
+    "competing-consumers.exclude.excl_strict_order": {
+      "type": "noul",
+      "noul": 0.29
+    },
+    "asynchronous-request-reply.long_running_activity": {
+      "type": "noul",
+      "noul": 0.62
+    },
+    "asynchronous-request-reply.exclude.excl_fast_enough": {
+      "type": "noul",
+      "noul": 0.29
+    },
+    "claim-check.large_message_payload": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "priority-queue.differing_priority_actors": {
+      "type": "noul",
+      "noul": 0.42
+    },
+    "priority-queue.exclude.excl_same_priority": {
+      "type": "noul",
+      "noul": 0.1
+    },
+    "cache-aside.read_heavy_master_data": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "cache-aside.exclude.excl_frequently_updated": {
+      "type": "noul",
+      "noul": 0.14
+    },
+    "materialized-view.aggregation_uc": {
+      "type": "noul",
+      "noul": 0.91
+    },
+    "materialized-view.exclude.excl_source_volatile": {
+      "type": "noul",
+      "noul": 0.19
+    },
+    "static-content-hosting.has_file_attributes": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "static-content-hosting.exclude.excl_text_only": {
+      "type": "noul",
+      "noul": 0.97
+    },
+    "backends-for-frontends.codesignal.three_or_more_actor_types": {
+      "type": "noul",
+      "noul": 1,
+      "codeSignal": true
+    },
+    "backends-for-frontends.divergent_ui_needs": {
+      "type": "noul",
+      "noul": 0.57
+    },
+    "backends-for-frontends.exclude.excl_similar_frontend_needs": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "backends-for-frontends.exclude.excl_single_frontend": {
+      "type": "noul",
+      "noul": 0.46
+    },
+    "sidecar.cross_cutting_concerns": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "sidecar.exclude.excl_monolith": {
+      "type": "noul",
+      "noul": 0.9
+    },
+    "sidecar.exclude.excl_few_services_library_ok": {
+      "type": "noul",
+      "noul": 0.79
+    },
+    "anti-corruption-layer.legacy_model_mismatch": {
+      "type": "noul",
+      "noul": 0.51
+    },
+    "anti-corruption-layer.exclude.excl_models_aligned": {
+      "type": "noul",
+      "noul": 0.26
+    },
+    "strangler-fig.replacing_legacy_system": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "ambassador.need_unified_comm_pattern": {
+      "type": "noul",
+      "noul": 0.21
+    },
+    "ambassador.exclude.excl_simple_pattern": {
+      "type": "noul",
+      "noul": 0.55
+    },
+    "external-configuration-store.multi_env_ops": {
+      "type": "noul",
+      "noul": 0.1
+    }
+  },
+  "labels": {
+    "circuit-breaker": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 726,
+          "alias": "Circuit Breaker",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 727,
+          "alias": "サーキットブレーカー",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 733,
+          "alias": "サーキットブレーカー",
+          "classification": "adopted"
+        }
+      ]
+    },
+    "retry": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 726,
+          "alias": "Retry",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1122,
+          "alias": "リトライ",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1606,
+          "alias": "Retry",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 643,
+          "alias": "リトライ",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 778,
+          "alias": "リトライ",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1123,
+          "alias": "リトライ",
+          "classification": "weak"
+        }
+      ]
+    },
+    "bulkhead": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "health-endpoint-monitoring": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 788,
+          "alias": "ヘルスチェック",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 333,
+          "alias": "ヘルスチェック",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 789,
+          "alias": "ヘルスチェック",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 874,
+          "alias": "ヘルスチェック",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 352,
+          "alias": "ヘルスチェック",
+          "classification": "weak"
+        }
+      ]
+    },
+    "timeout": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 726,
+          "alias": "Timeout",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1606,
+          "alias": "Timeout",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 313,
+          "alias": "Timeout",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 643,
+          "alias": "タイムアウト",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 727,
+          "alias": "Timeout",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1148,
+          "alias": "タイムアウト",
+          "classification": "weak"
+        }
+      ]
+    },
+    "rate-limiting-throttling": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 478,
+          "alias": "レート制限",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 503,
+          "alias": "レート制限",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 504,
+          "alias": "レート制限",
+          "classification": "adopted"
+        }
+      ]
+    },
+    "saga": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "compensating-transaction": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "queue-based-load-leveling": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 630,
+          "alias": "Queue-Based Load Leveling",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 276,
+          "alias": "Queue-Based Load Leveling",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/decisions/arch-decision-007.yaml",
+          "line": 18,
+          "alias": "Queue-Based Load Leveling",
+          "classification": "adopted"
+        }
+      ]
+    },
+    "cache-aside": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 801,
+          "alias": "Cache-Aside",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1128,
+          "alias": "Cache-Aside",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1129,
+          "alias": "Cache-Aside",
+          "classification": "adopted"
+        }
+      ]
+    },
+    "cqrs": {
+      "label": "not_applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/decisions/arch-decision-010.yaml",
+          "line": 21,
+          "alias": "CQRS",
+          "classification": "rejected"
+        },
+        {
+          "file": "arch/latest/decisions/arch-decision-010.yaml",
+          "line": 45,
+          "alias": "CQRS",
+          "classification": "rejected"
+        }
+      ]
+    },
+    "event-sourcing": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "materialized-view": {
+      "label": "ambiguous",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 2144,
+          "alias": "Materialized View",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 2304,
+          "alias": "Materialized View",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 1017,
+          "alias": "Materialized View",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/decisions/arch-decision-010.yaml",
+          "line": 45,
+          "alias": "Materialized View",
+          "classification": "rejected"
+        }
+      ]
+    },
+    "sharding": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "static-content-hosting": {
+      "label": "ambiguous",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 399,
+          "alias": "CDN",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 409,
+          "alias": "CDN",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 170,
+          "alias": "CDN",
+          "classification": "weak"
+        }
+      ]
+    },
+    "publisher-subscriber": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "competing-consumers": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 631,
+          "alias": "Competing Consumers",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 276,
+          "alias": "Competing Consumers",
+          "classification": "adopted"
+        }
+      ]
+    },
+    "asynchronous-request-reply": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "claim-check": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "priority-queue": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "federated-identity": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "valet-key": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "gatekeeper-gateway-offloading": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 477,
+          "alias": "API Gateway",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1463,
+          "alias": "API Gateway",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1556,
+          "alias": "API Gateway",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 428,
+          "alias": "API Gateway",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 453,
+          "alias": "API Gateway",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 466,
+          "alias": "API Gateway",
+          "classification": "weak"
+        }
+      ]
+    },
+    "backends-for-frontends": {
+      "label": "ambiguous",
+      "occurrences": [
+        {
+          "file": "arch/latest/decisions/arch-decision-007.yaml",
+          "line": 41,
+          "alias": "BFF",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/decisions/arch-decision-007.yaml",
+          "line": 42,
+          "alias": "BFF",
+          "classification": "weak"
+        }
+      ]
+    },
+    "sidecar": {
+      "label": "not_applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/decisions/arch-decision-009.yaml",
+          "line": 28,
+          "alias": "サイドカー",
+          "classification": "rejected"
+        }
+      ]
+    },
+    "anti-corruption-layer": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 720,
+          "alias": "ACL",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1336,
+          "alias": "ACL",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1594,
+          "alias": "ACL",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 713,
+          "alias": "ACL",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 717,
+          "alias": "ACL",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 1332,
+          "alias": "ACL",
+          "classification": "weak"
+        }
+      ]
+    },
+    "strangler-fig": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "ambassador": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "external-configuration-store": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "deployment-stamps": {
+      "label": "not_applied",
+      "occurrences": []
+    }
+  },
+  "requestCount": 6
+}

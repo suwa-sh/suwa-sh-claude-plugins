@@ -1,0 +1,1159 @@
+{
+  "sourceDoc": "plugins/distillery/skills/dist-architecture/references/arch-design-patterns.md",
+  "note": "arch-design-patterns.md には ### 見出しが35件あるが、うち5件（外部連携の回復性スタック 等）は「パターンの組み合わせ」節の組み合わせ見出しであり、単独のRDRA/NFRシグナルを持つ個別パターンではない。個別パターンの ### 見出しは30件で、本ファイルはその30件と1対1対応する。",
+  "patterns": [
+    {
+      "id": "circuit-breaker",
+      "name": "Circuit Breaker",
+      "aliases": [
+        "Circuit Breaker",
+        "サーキットブレーカー"
+      ],
+      "group": "external-integration",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "counts.externalSystems",
+          "op": ">=",
+          "value": 1
+        }
+      ],
+      "questions": [
+        {
+          "key": "calls_external",
+          "en": "Do any of the `activities` call one of the `externalSystems` over the network?",
+          "ja": "`activities` の中に、`externalSystems` のいずれかをネットワーク越しに呼び出すものがあるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_inmemory",
+          "en": "Do the `activities` that call `externalSystems` treat the target as an in-memory resource or local cache rather than a real network call?",
+          "ja": "`externalSystems` を呼び出す `activities` は、その呼び出し先をインメモリのリソースやローカルキャッシュとして扱っているか（実際のネットワーク呼び出しではないか）"
+        },
+        {
+          "key": "excl_batch_retry",
+          "en": "Is the call from `activities` to `externalSystems` made from a batch or background activity where latency does not matter, so a simple retry without a circuit breaker would be enough?",
+          "ja": "`activities` から `externalSystems` へのその呼び出しは、レイテンシが問題にならないバッチ・バックグラウンドのアクティビティから行われ、サーキットブレーカーなしの単純なリトライで十分か"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Circuit Breaker",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities",
+        "externalSystems"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "retry",
+      "name": "Retry",
+      "aliases": [],
+      "group": "external-integration",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "counts.externalSystems",
+          "op": ">=",
+          "value": 1
+        }
+      ],
+      "questions": [
+        {
+          "key": "calls_external",
+          "en": "Do any of the `activities` call one of the `externalSystems` over the network?",
+          "ja": "`activities` の中に、`externalSystems` のいずれかをネットワーク越しに呼び出すものがあるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_permanent_failure",
+          "en": "Do the `activities` that call `externalSystems` mainly fail with permanent errors, such as authentication or permission errors, rather than transient network issues?",
+          "ja": "`externalSystems` を呼び出す `activities` の失敗は、一時的なネットワーク不調ではなく、認証エラーや権限不足のような恒久的な障害が主か"
+        },
+        {
+          "key": "excl_nonidempotent",
+          "en": "Would retrying one of the `activities` that call `externalSystems` risk duplicating a non-idempotent side effect, such as sending a duplicate email?",
+          "ja": "`externalSystems` を呼び出す `activities` を再試行すると、メールの二重送信のような冪等でない副作用が重複するおそれがあるか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Retry",
+      "codeSignals": [],
+      "weakAliases": [
+        "Retry",
+        "リトライ"
+      ],
+      "slices": [
+        "activities",
+        "externalSystems"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "bulkhead",
+      "name": "Bulkhead",
+      "aliases": [
+        "Bulkhead",
+        "バルクヘッド"
+      ],
+      "group": "external-integration",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "nfr.A.2.1.1",
+          "op": ">=",
+          "value": 3
+        }
+      ],
+      "questions": [
+        {
+          "key": "mixed_importance_business",
+          "en": "Do the `activities` mix business flows of clearly different importance within the same BUC structure (such as a business-critical flow alongside a minor one)?",
+          "ja": "`activities` の中に、同じBUC構成の中で明らかに重要度の異なる業務フロー（重要な業務とそうでない業務）が混在しているか"
+        }
+      ],
+      "excludeQuestions": [],
+      "combine": "any",
+      "source": "arch-design-patterns.md: Bulkhead",
+      "notes": "RDRAシグナルは「外部システムが3つ以上、または重要度の異なる業務が混在するBUC構成」というOR条件。3つ以上の閾値は codeSignals の three_or_more_external_systems として扱い、業務混在は mixed_importance_business 質問で判定し、combine を any にした（レビュー指摘1: 件数条件を必須gateからコード判定のシグナルへ）。NFR上位ID A.2.1（サーバ冗長化）はメトリクスA.2.1.1に対応づけ、見本の決定記録（arch-decision-010.yaml:46）が同種の閾値を決め手にしている例に倣い、明示的な閾値（>= Lv3）として numericGates（hard gate）に残した。 「適用すべきでない場合」の後半（外部連携先が1つのみで障害分離の意味がない場合）は数値条件のため、excludeCodeSignals（counts.externalSystems <= 1）で判定し、Jevには聞かない（レビュー指摘2）。 「適用すべきでない場合」の前半（リソース隔離コストがサービス重要度に見合わない場合）は、実装・運用コストというstate のどの slice にも無い情報を必要とするため未モデル化（入力に情報なし）とした（レビュー指摘A）。",
+      "codeSignals": [
+        {
+          "key": "three_or_more_external_systems",
+          "feature": "counts.externalSystems",
+          "op": ">=",
+          "value": 3
+        }
+      ],
+      "weakAliases": [],
+      "slices": [
+        "activities"
+      ],
+      "excludeCodeSignals": [
+        {
+          "key": "single_external_system",
+          "feature": "counts.externalSystems",
+          "op": "<=",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "health-endpoint-monitoring",
+      "name": "Health Endpoint Monitoring",
+      "aliases": [
+        "Health Endpoint Monitoring"
+      ],
+      "group": "operations",
+      "always": true,
+      "numericGates": [],
+      "questions": [],
+      "excludeQuestions": [],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Health Endpoint Monitoring（RDRAシグナル: 常に推奨）",
+      "codeSignals": [],
+      "weakAliases": [
+        "ヘルスチェック",
+        "ヘルスエンドポイント"
+      ],
+      "slices": [],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "timeout",
+      "name": "Timeout",
+      "aliases": [],
+      "group": "external-integration",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "counts.externalSystems",
+          "op": ">=",
+          "value": 1
+        }
+      ],
+      "questions": [
+        {
+          "key": "calls_external",
+          "en": "Do any of the `activities` call one of the `externalSystems` over the network?",
+          "ja": "`activities` の中に、`externalSystems` のいずれかをネットワーク越しに呼び出すものがあるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_long_running",
+          "en": "Are the `activities` that call `externalSystems` inherently long-running operations, such as large data aggregation, rather than quick request/response calls?",
+          "ja": "`externalSystems` を呼び出す `activities` は、素早い要求応答ではなく、大量データ集計のような本質的に処理時間が長い操作か"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Timeout",
+      "codeSignals": [],
+      "weakAliases": [
+        "Timeout",
+        "タイムアウト"
+      ],
+      "slices": [
+        "activities",
+        "externalSystems"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "rate-limiting-throttling",
+      "name": "Rate Limiting / Throttling",
+      "aliases": [
+        "Rate Limiting",
+        "Throttling",
+        "レート制限"
+      ],
+      "group": "security",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "receives_external_requests",
+          "en": "Does an external (`社外`) actor in `actors` send requests to this system over a public network, rather than the system only calling out to `externalSystems`?",
+          "ja": "`actors` に含まれる社外のアクターが、このシステムに対して公開ネットワーク越しにリクエストを送るか（システムが `externalSystems` を呼び出すだけではないか）"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_internal_only",
+          "en": "Are all of the `actors` internal (`社内`), with no external-facing access to this system?",
+          "ja": "`actors` はすべて社内のアクターで、このシステムに外部からアクセスする経路がないか"
+        }
+      ],
+      "combine": "any",
+      "source": "arch-design-patterns.md: Rate Limiting / Throttling",
+      "codeSignals": [
+        {
+          "key": "external_actor_exists",
+          "feature": "counts.externalActors",
+          "op": ">=",
+          "value": 1
+        }
+      ],
+      "weakAliases": [],
+      "notes": "RDRAシグナルは「外部アクターが存在する（公開Webサービス）。外部システムからのAPI呼び出しを受ける」という並列の2シグナル。存在チェック（外部アクター>=1）は codeSignals に移し、受信側であるかを問う receives_external_requests 質問と combine を any にした（レビュー指摘1）。",
+      "slices": [
+        "actors",
+        "externalSystems"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "saga",
+      "name": "Saga",
+      "aliases": [
+        "Saga",
+        "サーガ"
+      ],
+      "group": "external-integration",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "counts.externalSystems",
+          "op": ">=",
+          "value": 1
+        }
+      ],
+      "questions": [
+        {
+          "key": "multi_step_flow",
+          "en": "Does completing one of the `activities` require calling one of the `externalSystems` as one step in a multi-step business process spanning more than one entity?",
+          "ja": "`activities` のいずれかを完了させるために、`externalSystems` のいずれかへの呼び出しが、複数のエンティティにまたがる複数ステップの業務フローの一部として必要か"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_single_service",
+          "en": "Does the multi-step business process described in `activities` complete within a single service using a normal ACID database transaction, without coordinating with any of the `externalSystems`?",
+          "ja": "`activities` が表す複数ステップの業務フローは、`externalSystems` を調停する必要がなく、単一サービス内の通常のACIDトランザクションで完結するか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Saga",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities",
+        "externalSystems"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "compensating-transaction",
+      "name": "Compensating Transaction",
+      "aliases": [
+        "Compensating Transaction",
+        "補償トランザクション"
+      ],
+      "group": "external-integration",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "counts.externalSystems",
+          "op": ">=",
+          "value": 1
+        }
+      ],
+      "questions": [
+        {
+          "key": "multi_step_flow_ct",
+          "en": "Does completing one of the `activities` require calling one of the `externalSystems` as one step in a multi-step business process spanning more than one entity?",
+          "ja": "`activities` のいずれかを完了させるために、`externalSystems` のいずれかへの呼び出しが、複数のエンティティにまたがる複数ステップの業務フローの一部として必要か"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_irreversible",
+          "en": "Are the steps in the multi-step process described in `activities` physical actions that cannot be undone, such as a physical delivery, rather than reversible data changes?",
+          "ja": "`activities` が表す複数ステップの各操作は、可逆的なデータ変更ではなく、物理的な配送のような取り消し不可能な物理的アクションか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Compensating Transaction",
+      "notes": "RDRAシグナル「Sagaパターン適用時に自動的に必要」はパターン間の依存関係であり、本ハーネスの入力（RDRA/NFR）からは直接判定できない。Sagaと同じ多段フロー質問で代替した。",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities",
+        "externalSystems"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "queue-based-load-leveling",
+      "name": "Queue-Based Load Leveling",
+      "aliases": [
+        "Queue-Based Load Leveling",
+        "キューベースの負荷平準化"
+      ],
+      "group": "messaging",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "async_tolerant",
+          "en": "Do any of the `activities` describe a batch, bulk, notification, asynchronous, or aggregation task where some processing delay during peak load is acceptable?",
+          "ja": "`activities` の中に、ピーク時の処理遅延が許容される「バッチ」「一括」「通知」「非同期」「集計」の作業を表すものがあるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_realtime_required",
+          "en": "Do the batch/bulk/notification/async/aggregation `activities` require an immediate, real-time response with no tolerance for delay?",
+          "ja": "バッチ・一括・通知・非同期・集計を表す `activities` は、遅延を許容できない即時のリアルタイム応答を必要とするか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Queue-Based Load Leveling",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "cache-aside",
+      "name": "Cache-Aside",
+      "aliases": [
+        "Cache-Aside",
+        "キャッシュアサイド"
+      ],
+      "group": "data",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "read_heavy_master_data",
+          "en": "Does `information` include reference/master data that is read frequently by search or lookup activities in `activities`?",
+          "ja": "`information` に、`activities` の検索・照会系アクティビティから頻繁に読み取られるマスタ・参照データが含まれるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_frequently_updated",
+          "en": "Is the data in `information` updated so frequently that callers always need the very latest value, making a cache unsuitable?",
+          "ja": "`information` のこのデータは常に最新値が必要になるほど頻繁に更新され、キャッシュに向かないか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Cache-Aside",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities",
+        "information"
+      ],
+      "excludeCodeSignals": [],
+      "notes": "「適用すべきでない場合」の後半（キャッシュ対象データが大きすぎる場合）は、本ハーネスのfeaturesにデータサイズを表す入力が無いため未モデル化（入力に情報なし）とした（レビュー指摘2）。"
+    },
+    {
+      "id": "cqrs",
+      "name": "CQRS（Command Query Responsibility Segregation）",
+      "aliases": [
+        "CQRS"
+      ],
+      "group": "data",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "nfr.B.1.1.1",
+          "op": ">=",
+          "value": 3
+        }
+      ],
+      "questions": [
+        {
+          "key": "mixed_read_write",
+          "en": "Do `activities` include both search/lookup use cases and separate registration/update use cases on the same `information`, with asymmetric read and write load?",
+          "ja": "`activities` に、同じ `information` を対象とした検索・照会系ユースケースと、登録・更新系ユースケースの両方があり、読み書きの負荷が非対称か"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_simple_crud",
+          "en": "Would simple CRUD operations on `information`, without separating reads from writes, be enough to satisfy the requirements?",
+          "ja": "`information` に対する単純なCRUD操作（読み書きを分離しない）で要件を満たせるか"
+        },
+        {
+          "key": "excl_simple_data_model",
+          "en": "Is the data model in `information` simple enough that separating read and write models would bring little benefit?",
+          "ja": "`information` のデータモデルは単純で、読み書きモデルを分離しても恩恵が薄いか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: CQRS",
+      "notes": "NFR上位ID B.1.1（同時アクセス数）はメトリクスB.1.1.1（同時アクセス数）に対応づけた（名称一致で一意）。「適用すべきでない場合」の後半（データモデルが単純で分離の恩恵が薄い場合）を独立したexcludeQuestionとして追加した（レビュー指摘2）。",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities",
+        "information"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "event-sourcing",
+      "name": "Event Sourcing",
+      "aliases": [
+        "Event Sourcing",
+        "イベントソーシング"
+      ],
+      "group": "data",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "full_history_or_audit_needed",
+          "en": "Do `conditions` or `information` describe a need to keep a complete history of past changes, or an audit/evidence-trail business rule, beyond just the current state?",
+          "ja": "`conditions` や `information` に、現在の状態だけでなく変更の完全な履歴の保持や監査・証跡に関する業務ルールを必要とする記述があるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_current_state_only",
+          "en": "Would keeping only the current state in `stateModels`, without a full history of past changes, be enough for this system?",
+          "ja": "`stateModels` の現在状態のみを保持し、過去の変更履歴を持たなくてもこのシステムには十分か"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Event Sourcing",
+      "notes": "RDRAシグナル「状態遷移が多く（8種以上）、変更履歴の完全な追跡が必要。条件.tsvに監査・証跡に関するビジネスルールがある」を読み直した。前半（8種以上、変更履歴の完全な追跡が必要）は読点でつながれた1つの連言（AND）であり、「8種以上」単独では適用を確定できない（レビュー指摘1・2ラウンド目: codeSignal単独で適用を確定させてはいけない）。後半（監査証跡ルールの存在）も同じ結論（変更履歴の追跡が必要）を別の角度から支持する記述と読めるため、両者を1つの質問（full_history_or_audit_needed）にまとめ、codeSignal（8種以上）とcombine: all にした。8種以上の閾値だけでは適用にならず、質問への回答（完全な履歴保持または監査証跡の必要性）も真である必要がある。",
+      "codeSignals": [
+        {
+          "key": "eight_or_more_state_transitions",
+          "feature": "counts.maxStateTransitions",
+          "op": ">=",
+          "value": 8
+        }
+      ],
+      "weakAliases": [],
+      "slices": [
+        "conditions",
+        "information",
+        "stateModels"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "materialized-view",
+      "name": "Materialized View",
+      "aliases": [
+        "Materialized View",
+        "マテリアライズドビュー"
+      ],
+      "group": "data",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "aggregation_uc",
+          "en": "Do `activities` include a dashboard, report, or aggregation use case that combines data from more than one item in `information`?",
+          "ja": "`activities` に、`information` の複数の項目を組み合わせるダッシュボード・レポート・集計系のユースケースがあるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_source_volatile",
+          "en": "Does the source data in `information` change so frequently that maintaining a pre-computed view would be too costly to keep fresh?",
+          "ja": "`information` の元データは、事前計算したビューの更新コストが見合わないほど頻繁に更新されるか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Materialized View",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities",
+        "information"
+      ],
+      "excludeCodeSignals": [],
+      "notes": "「適用すべきでない場合」は「ソースデータが頻繁に変わり、ビュー更新コストが高い場合」と「リアルタイム性が最優先の場合」の独立した2条件のため、excludeQuestionsを2問に分割した（レビュー指摘2）。 「適用すべきでない場合」の後半（リアルタイム性が最優先の場合）は、応答時間要件というNFRグレード相当の情報（本ハーネスの対象外。DESIGN.md 目的と範囲を参照）に依存するため未モデル化（入力に情報なし）とした（レビュー指摘A）。"
+    },
+    {
+      "id": "sharding",
+      "name": "Sharding",
+      "aliases": [
+        "Sharding",
+        "シャーディング"
+      ],
+      "group": "data",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "nfr.B.1.1.2",
+          "op": ">=",
+          "value": 3
+        }
+      ],
+      "questions": [
+        {
+          "key": "many_entities",
+          "en": "Do the `information` items suggest a large number of entities where a single database is expected to reach its scaling limits?",
+          "ja": "`information` のエンティティ数は、単一データベースがスケールの限界に達すると見込まれるほど多いか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_single_db_sufficient",
+          "en": "Would a single database be sufficient to scale for `information` in this system, without splitting data across shards?",
+          "ja": "`information` に対して、シャードに分割しなくても単一データベースで十分にスケールできるか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Sharding",
+      "notes": "NFR上位ID B.1.1（データ量）はメトリクスB.1.1.2（データ量）に対応づけた（名称一致で一意。B.1.1.1 同時アクセス数とは別メトリクス）。 「適用すべきでない場合」の後半（クロスシャードの結合クエリが頻繁に必要な場合）は、本ハーネスのfeaturesにクエリパターンを表す入力が無いため未モデル化（入力に情報なし）とした（レビュー指摘2）。",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "information"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "static-content-hosting",
+      "name": "Static Content Hosting",
+      "aliases": [
+        "Static Content Hosting",
+        "静的コンテンツ配信"
+      ],
+      "group": "data",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "has_file_attributes",
+          "en": "Do any of the `information` items have an image or file attribute (such as a photo or document) that needs to be delivered to users?",
+          "ja": "`information` の項目に、利用者に配信する必要がある画像・ファイル属性（写真や文書等）を持つものがあるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_text_only",
+          "en": "Does `information` explicitly consist only of text/data fields, with no item having a file or image attribute?",
+          "ja": "`information` が、ファイル・画像属性を持つ項目が一つも無く、テキスト・データ項目のみで構成されると明記されているか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Static Content Hosting",
+      "codeSignals": [],
+      "weakAliases": [
+        "CDN"
+      ],
+      "slices": [
+        "information"
+      ],
+      "excludeCodeSignals": [],
+      "notes": "除外質問は当初「静的コンテンツがほぼ無いことの判定」（不在判定）だったため、`information` に明記された事実（テキスト・データ項目のみで構成される）を問う肯定形に直した（レビュー指摘B、点検で発見）。"
+    },
+    {
+      "id": "publisher-subscriber",
+      "name": "Publisher-Subscriber",
+      "aliases": [
+        "Publisher-Subscriber",
+        "Pub/Sub",
+        "パブリッシャーサブスクライバー"
+      ],
+      "group": "messaging",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "notification_activity",
+          "en": "Do any of the `activities` describe sending a notification or email, or triggering another system, as a result of an event?",
+          "ja": "`activities` の中に、あるイベントの結果として通知・メール送信や他システムの起動を行うものがあるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_sync_required",
+          "en": "Does this event require a synchronous request/response instead of an asynchronous notification?",
+          "ja": "このイベントは非同期通知ではなく、同期的なリクエスト/レスポンスを必要とするか"
+        },
+        {
+          "key": "excl_single_subscriber",
+          "en": "Does exactly one recipient consume the event described by these `activities`, with no other business process needing the same event?",
+          "ja": "`activities` が表すイベントを消費するのはただ一つの受信者だけで、他の業務が同じイベントを必要としないか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Publisher-Subscriber",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities"
+      ],
+      "excludeCodeSignals": [],
+      "notes": "「適用すべきでない場合」は「同期的なリクエスト/レスポンスが必要な場合」と「サブスクライバーが常に1つだけの場合」の独立した2条件のため、excludeQuestionsを2問に分割した（レビュー指摘2）。"
+    },
+    {
+      "id": "competing-consumers",
+      "name": "Competing Consumers",
+      "aliases": [
+        "Competing Consumers",
+        "競合コンシューマー"
+      ],
+      "group": "messaging",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "bulk_messaging",
+          "en": "Do any of the `activities` describe sending a large volume of messages or processing a large batch, such as bulk notification sending?",
+          "ja": "`activities` の中に、一括通知送信のような、大量のメッセージ送信や大規模なバッチ処理を表すものがあるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_strict_order",
+          "en": "Does processing the messages produced by these `activities` require strict, guaranteed ordering?",
+          "ja": "`activities` が生成するこれらのメッセージの処理には、厳密な順序保証が必要か"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Competing Consumers",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "asynchronous-request-reply",
+      "name": "Asynchronous Request-Reply",
+      "aliases": [
+        "Asynchronous Request-Reply",
+        "非同期リクエストリプライ"
+      ],
+      "group": "messaging",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "long_running_activity",
+          "en": "Do any of the `activities` describe a long-running operation, such as a large calculation, data aggregation, report generation, or bulk data import?",
+          "ja": "`activities` の中に、大量の計算・データ集計・レポート生成・大量データインポートのような処理時間の長い操作を表すものがあるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_fast_enough",
+          "en": "Is the long-running operation described in `activities` fast enough that a normal synchronous response, without a background job, is possible?",
+          "ja": "`activities` が表すこの処理時間の長い操作は、バックグラウンドジョブなしの通常の同期応答が可能なほど十分に高速か"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Asynchronous Request-Reply",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "claim-check",
+      "name": "Claim Check",
+      "aliases": [
+        "Claim Check",
+        "クレームチェック"
+      ],
+      "group": "messaging",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "large_message_payload",
+          "en": "Do any of the `activities` involve uploading a file or transferring a large amount of data together with a notification or message?",
+          "ja": "`activities` の中に、通知やメッセージと合わせてファイルのアップロードや大量データの受け渡しを行うものがあるか"
+        }
+      ],
+      "excludeQuestions": [],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Claim Check",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities"
+      ],
+      "excludeCodeSignals": [],
+      "notes": "「適用すべきでない場合」（メッセージが常に小さく、MQのサイズ制限内に収まる場合）は、メッセージのバイトサイズというstate に無い数値情報を必要とするため未モデル化（入力に情報なし）とした（レビュー指摘A）。"
+    },
+    {
+      "id": "priority-queue",
+      "name": "Priority Queue",
+      "aliases": [
+        "Priority Queue",
+        "優先度付きキュー"
+      ],
+      "group": "messaging",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "differing_priority_actors",
+          "en": "Do `actors` include more than one type of actor with a different service level or urgency for the same kind of request?",
+          "ja": "`actors` に、同種のリクエストに対して異なるサービスレベルや緊急度を持つ、2種類以上のアクターが含まれるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_same_priority",
+          "en": "Are all messages produced by these `activities` processed at the same priority, with no actor needing faster handling than another?",
+          "ja": "これらの `activities` が生成するメッセージはすべて同一の優先度で処理され、他より速い処理を必要とするアクターがいないか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Priority Queue",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities",
+        "actors"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "federated-identity",
+      "name": "Federated Identity",
+      "aliases": [
+        "Federated Identity",
+        "フェデレーテッドアイデンティティ"
+      ],
+      "group": "security",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "sso_across_apps",
+          "en": "Does this system need the same identity among the `actors` to work for single sign-on across more than one application?",
+          "ja": "このシステムは、`actors` の同じ認証情報を複数のアプリケーションにまたがるシングルサインオン（SSO）として使う必要があるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_internal_simple_auth",
+          "en": "Are all of the `actors` internal users for whom simple, self-managed authentication would be sufficient?",
+          "ja": "`actors` はすべて社内の利用者であり、簡易な自前の認証で十分か"
+        }
+      ],
+      "combine": "any",
+      "source": "arch-design-patterns.md: Federated Identity",
+      "codeSignals": [
+        {
+          "key": "external_actor_exists",
+          "feature": "counts.externalActors",
+          "op": ">=",
+          "value": 1
+        }
+      ],
+      "weakAliases": [],
+      "notes": "RDRAシグナルは「外部アクター（社外ユーザー）が存在する。複数アプリケーションでのSSOが必要」の並列2シグナル。存在チェックを codeSignals に移し、質問を第二シグナル（SSO要否）に直接対応させ、combine を any にした（レビュー指摘1）。",
+      "slices": [
+        "actors"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "valet-key",
+      "name": "Valet Key",
+      "aliases": [
+        "Valet Key",
+        "ヴァレットキー"
+      ],
+      "group": "security",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "has_file_attributes",
+          "en": "Do any of the `information` items have a file or image attribute (such as a photo or document)?",
+          "ja": "`information` の項目に、ファイル・画像属性（写真や文書等）を持つものがあるか"
+        },
+        {
+          "key": "has_transfer_activity",
+          "en": "Do `activities` include uploading or downloading such a file directly?",
+          "ja": "`activities` に、そのファイルを直接アップロード・ダウンロードするものがあるか"
+        }
+      ],
+      "excludeQuestions": [],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Valet Key",
+      "codeSignals": [],
+      "weakAliases": [
+        "署名付きURL"
+      ],
+      "slices": [
+        "activities",
+        "information"
+      ],
+      "excludeCodeSignals": [],
+      "notes": "「適用すべきでない場合」（ファイルが小さくBackend API経由でも性能問題がない場合）は、ファイルサイズ・転送性能というstate に無い数値情報を必要とするため未モデル化（入力に情報なし）とした（レビュー指摘A）。"
+    },
+    {
+      "id": "gatekeeper-gateway-offloading",
+      "name": "Gatekeeper / Gateway Offloading",
+      "aliases": [
+        "Gatekeeper",
+        "Gateway Offloading"
+      ],
+      "group": "security",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "receives_external_api_calls",
+          "en": "Does this system receive API calls from `externalSystems` acting as callers, rather than only calling out to them?",
+          "ja": "このシステムは `externalSystems` から呼び出される側（API呼び出しを受ける側）でもあるか（一方的に呼び出すだけではないか）"
+        },
+        {
+          "key": "diverse_frontend_needs",
+          "en": "Do the `actors` need more than one kind of frontend (such as a public user-facing frontend and a separate admin frontend), each calling this system's API differently?",
+          "ja": "`actors` は、利用者向けと管理者向けのように2種類以上の異なるフロントエンドを必要とし、それぞれがこのシステムのAPIを異なる形で呼び出すか"
+        }
+      ],
+      "excludeQuestions": [],
+      "combine": "any",
+      "source": "arch-design-patterns.md: Gatekeeper / Gateway Offloading",
+      "notes": "RDRAシグナルは「外部アクター2種以上。フロントエンド2種以上（利用者向け+管理者向け等）。外部システムからのAPI呼び出しを受ける」の並列3シグナル。外部アクター数の閾値は codeSignals に移し、フロントエンド種別・APIの受け手であるかの2質問と combine を any にした（レビュー指摘1）。 「適用すべきでない場合」（Backend APIが1つのみでGatewayを導入するまでもない場合）は、バックエンドサービスの数というティア構成（arch出力であり、本ハーネスのRDRA/NFR入力ではない）に依存する情報のため未モデル化（入力に情報なし）とした（レビュー指摘A）。",
+      "codeSignals": [
+        {
+          "key": "two_or_more_external_actors",
+          "feature": "counts.externalActors",
+          "op": ">=",
+          "value": 2
+        }
+      ],
+      "weakAliases": [
+        "API Gateway"
+      ],
+      "slices": [
+        "actors",
+        "externalSystems"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "backends-for-frontends",
+      "name": "Backends for Frontends（BFF）",
+      "aliases": [
+        "Backends for Frontends"
+      ],
+      "group": "structure",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "divergent_ui_needs",
+          "en": "Do the different `actors` have UI needs that are substantially different from each other, such as mobile versus desktop versus an admin screen?",
+          "ja": "異なる `actors` の間で、モバイル・デスクトップ・管理画面のように、UI要件が大きく異なるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_similar_frontend_needs",
+          "en": "Are the API needs of the different `actors` nearly identical?",
+          "ja": "異なる `actors` のAPI要件はほぼ同一か"
+        },
+        {
+          "key": "excl_single_frontend",
+          "en": "Is there really only one kind of frontend among the `actors`?",
+          "ja": "`actors` の間で、実質的にフロントエンドは1種類しかないか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Backends for Frontends（BFF）",
+      "codeSignals": [
+        {
+          "key": "three_or_more_actor_types",
+          "feature": "counts.actors",
+          "op": ">=",
+          "value": 3
+        }
+      ],
+      "weakAliases": [
+        "BFF"
+      ],
+      "notes": "RDRAシグナルは「アクター種別が3以上でUI要件が大きく異なる（モバイルvsデスクトップvs管理画面）。BUCのUCに画面固有の集約パターンがある」。前半は「アクター種別3以上」と「UI要件の相違」の連言（AND）なので、codeSignals（アクター種別3以上）と質問（UI要件の相違）を combine: all で組み合わせる。アクター数だけで適用に確定させない。後半の独立シグナル（画面固有の集約パターン）は、本スキーマがパターン単位で単一のcombineモードしか持てないため未モデル化とした。後半だけが成り立つケースは非適用側に倒れる（既知の限界）。 「適用すべきでない場合」は「フロントエンド種別間でAPI要件がほぼ同一の場合」と「フロントエンドが1種類のみの場合」の独立した2条件のため、excludeQuestionsを2問に分割した（レビュー指摘2）。",
+      "slices": [
+        "actors"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "sidecar",
+      "name": "Sidecar",
+      "aliases": [
+        "Sidecar",
+        "サイドカー"
+      ],
+      "group": "structure",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "cross_cutting_concerns",
+          "en": "Does `overview` describe a system made of more than one independently deployed service that would each need the same cross-cutting concern, such as logging, metrics, or an auth proxy?",
+          "ja": "`overview` は、ログ収集・メトリクス送信・認証プロキシのような横断的関心事を共通で必要とする、独立にデプロイされる複数のサービスからなるシステムを表しているか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_monolith",
+          "en": "Does `overview` describe a single monolithic application rather than multiple independently deployed services?",
+          "ja": "`overview` は、複数の独立してデプロイされるサービスではなく、単一のモノリシックなアプリケーションを表しているか"
+        },
+        {
+          "key": "excl_few_services_library_ok",
+          "en": "Are there few enough independently deployed services described in `overview` that sharing a library, rather than deploying a sidecar process per service, would be enough?",
+          "ja": "`overview` が表す独立してデプロイされるサービスの数は少なく、サービスごとにサイドカーを配置するのではなく、ライブラリ共有で十分か"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Sidecar",
+      "notes": "RDRAシグナル「ティア数が多い場合（3ティア以上）」は本ハーネスのfeaturesにティア数の項目がないためgateにできない（ティア構成はarch出力であり入力ではない）。質問で代替した。 「適用すべきでない場合」は「モノリシックな単一アプリケーション」と「サービス数が少なくライブラリ共有で十分な場合」の独立した2条件のため、excludeQuestionsを2問に分割した（レビュー指摘2）。",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "overview"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "anti-corruption-layer",
+      "name": "Anti-Corruption Layer（ACL）",
+      "aliases": [
+        "Anti-Corruption Layer",
+        "腐敗防止層"
+      ],
+      "group": "structure",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "counts.externalSystems",
+          "op": ">=",
+          "value": 1
+        }
+      ],
+      "questions": [
+        {
+          "key": "legacy_model_mismatch",
+          "en": "Do any of the `externalSystems` use a legacy system or a data model that differs substantially from this system's own domain model?",
+          "ja": "`externalSystems` のいずれかは、このシステム自身のドメインモデルと大きく異なるレガシーシステムやデータモデルを使っているか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_models_aligned",
+          "en": "Are the data models of `externalSystems` already well aligned with this system's own model, so no translation layer is needed?",
+          "ja": "`externalSystems` のデータモデルはこのシステム自身のモデルと十分に整合しており、変換層は不要か"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Anti-Corruption Layer（ACL）",
+      "codeSignals": [],
+      "weakAliases": [
+        "ACL"
+      ],
+      "slices": [
+        "externalSystems"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "strangler-fig",
+      "name": "Strangler Fig",
+      "aliases": [
+        "Strangler Fig",
+        "ストラングラーフィグ"
+      ],
+      "group": "structure",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "counts.externalSystems",
+          "op": ">=",
+          "value": 1
+        }
+      ],
+      "questions": [
+        {
+          "key": "replacing_legacy_system",
+          "en": "Is one of the `externalSystems` a legacy system that some of the `activities` currently depend on and that is being replaced gradually?",
+          "ja": "`externalSystems` のいずれかは、`activities` の一部が現在依存しており、段階的に置き換えられているレガシーシステムか"
+        }
+      ],
+      "excludeQuestions": [],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Strangler Fig",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities",
+        "externalSystems"
+      ],
+      "excludeCodeSignals": [],
+      "notes": "「適用すべきでない場合」（小規模システムで完全リプレースのリスクが低い場合）は、システム規模・移行リスクの評価というstate のどの slice にも無い情報を必要とするため未モデル化（入力に情報なし）とした（レビュー指摘A）。"
+    },
+    {
+      "id": "ambassador",
+      "name": "Ambassador",
+      "aliases": [
+        "Ambassador",
+        "アンバサダー"
+      ],
+      "group": "structure",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "counts.externalSystems",
+          "op": ">=",
+          "value": 1
+        }
+      ],
+      "questions": [
+        {
+          "key": "need_unified_comm_pattern",
+          "en": "Do `activities` call more than one of the `externalSystems` in a way that would benefit from a single, unified retry/timeout communication pattern?",
+          "ja": "`activities` は複数の `externalSystems` を呼び出しており、リトライ・タイムアウトの通信パターンを一元管理すると効果があるか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_simple_pattern",
+          "en": "Is the communication pattern with `externalSystems` simple enough that unifying it offers no real benefit?",
+          "ja": "`externalSystems` との通信パターンはシンプルで、一元管理しても実質的な効果がないか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Ambassador",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "activities",
+        "externalSystems"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "external-configuration-store",
+      "name": "External Configuration Store",
+      "aliases": [
+        "External Configuration Store",
+        "外部構成ストア"
+      ],
+      "group": "operations",
+      "always": false,
+      "numericGates": [],
+      "questions": [
+        {
+          "key": "multi_env_ops",
+          "en": "Does `overview` suggest this system will run across more than one environment, such as development, staging, and production, needing centrally managed configuration?",
+          "ja": "`overview` は、開発・ステージング・本番のように複数の環境でこのシステムが動作し、構成を一元管理する必要があることを示しているか"
+        }
+      ],
+      "excludeQuestions": [],
+      "combine": "all",
+      "source": "arch-design-patterns.md: External Configuration Store",
+      "notes": "RDRAシグナル「ティア数が多い場合（3ティア以上）」はfeaturesにティア数の項目がないためgateにできない。質問で代替した。 「適用すべきでない場合」（単一サービスで環境変数管理が十分な場合）は、サービス・環境の数というティア構成（arch出力であり、本ハーネスのRDRA/NFR入力ではない）に依存する情報のため未モデル化（入力に情報なし）とした（レビュー指摘A）。",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "overview"
+      ],
+      "excludeCodeSignals": []
+    },
+    {
+      "id": "deployment-stamps",
+      "name": "Deployment Stamps",
+      "aliases": [
+        "Deployment Stamps",
+        "デプロイメントスタンプ"
+      ],
+      "group": "operations",
+      "always": false,
+      "numericGates": [
+        {
+          "feature": "nfr.A.3.1.1",
+          "op": ">=",
+          "value": 3
+        }
+      ],
+      "questions": [
+        {
+          "key": "multi_region_or_tenant_isolation",
+          "en": "Does `overview` describe a need for deployment across more than one region, or complete data isolation between more than one tenant?",
+          "ja": "`overview` は、複数リージョンへのデプロイ、または複数テナント間の完全なデータ分離の必要性を表しているか"
+        }
+      ],
+      "excludeQuestions": [
+        {
+          "key": "excl_single_region_sufficient",
+          "en": "Does `overview` explicitly state that operating in a single region is sufficient for this system?",
+          "ja": "`overview` に、単一リージョンでの運用で十分であると明記されているか"
+        },
+        {
+          "key": "excl_no_tenant_isolation_needed",
+          "en": "Does `overview` explicitly state that data may be shared across tenants (full per-tenant isolation is not required)?",
+          "ja": "`overview` に、テナント間でデータを共有してよい（テナントごとの完全な分離は不要）と明記されているか"
+        }
+      ],
+      "combine": "all",
+      "source": "arch-design-patterns.md: Deployment Stamps",
+      "notes": "NFR上位ID A.3.1（災害対策）はメトリクスA.3.1.1（災害対策の範囲）に対応づけた。 「適用すべきでない場合」は「単一リージョンで十分な場合」と「テナント分離要件がない場合」の独立した2条件のため、excludeQuestionsを2問に分割した（レビュー指摘2）。 除外質問は当初「記述が無いことの判定」（否定形）だったため、「明記されているか」という肯定形（記述の有無ではなく明記された事実の有無を問う形）に直した（レビュー指摘B）。",
+      "codeSignals": [],
+      "weakAliases": [],
+      "slices": [
+        "overview"
+      ],
+      "excludeCodeSignals": []
+    }
+  ]
+}

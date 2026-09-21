@@ -1,0 +1,1199 @@
+{
+  "generatedAt": "2026-09-21T15:59:43.538Z",
+  "model": "jev-1.13.0",
+  "lang": "ja",
+  "docsDir": "/private/tmp/distillery-jev-test/docs",
+  "name": "equipment",
+  "judge": "patterns",
+  "codeDecided": {
+    "bulkhead": {
+      "decidedBy": "gate",
+      "applied": false,
+      "gateResults": [
+        {
+          "feature": "nfr.A.2.1.1",
+          "op": ">=",
+          "threshold": 3,
+          "actual": 1,
+          "pass": false
+        }
+      ]
+    },
+    "health-endpoint-monitoring": {
+      "decidedBy": "always",
+      "applied": true,
+      "reason": "arch-design-patterns.md: Health Endpoint Monitoring（RDRAシグナル: 常に推奨）"
+    },
+    "cqrs": {
+      "decidedBy": "gate",
+      "applied": false,
+      "gateResults": [
+        {
+          "feature": "nfr.B.1.1.1",
+          "op": ">=",
+          "threshold": 3,
+          "actual": 1,
+          "pass": false
+        }
+      ]
+    },
+    "event-sourcing": {
+      "decidedBy": "codeSignal",
+      "applied": false,
+      "gateResults": [],
+      "codeSignalResults": [
+        {
+          "key": "eight_or_more_state_transitions",
+          "feature": "counts.maxStateTransitions",
+          "op": ">=",
+          "threshold": 8,
+          "actual": 5,
+          "pass": false
+        }
+      ],
+      "excludeCodeSignalResults": []
+    },
+    "sharding": {
+      "decidedBy": "gate",
+      "applied": false,
+      "gateResults": [
+        {
+          "feature": "nfr.B.1.1.2",
+          "op": ">=",
+          "threshold": 3,
+          "actual": 1,
+          "pass": false
+        }
+      ]
+    },
+    "backends-for-frontends": {
+      "decidedBy": "codeSignal",
+      "applied": false,
+      "gateResults": [],
+      "codeSignalResults": [
+        {
+          "key": "three_or_more_actor_types",
+          "feature": "counts.actors",
+          "op": ">=",
+          "threshold": 3,
+          "actual": 2,
+          "pass": false
+        }
+      ],
+      "excludeCodeSignalResults": []
+    },
+    "deployment-stamps": {
+      "decidedBy": "gate",
+      "applied": false,
+      "gateResults": [
+        {
+          "feature": "nfr.A.3.1.1",
+          "op": ">=",
+          "threshold": 3,
+          "actual": 1,
+          "pass": false
+        }
+      ]
+    }
+  },
+  "requests": [
+    {
+      "group": "external-integration",
+      "patternIds": [
+        "circuit-breaker",
+        "retry",
+        "timeout",
+        "saga",
+        "compensating-transaction"
+      ],
+      "state": {
+        "activities": [
+          {
+            "buc": "備品予約フロー",
+            "activity": "空き状況を確認する",
+            "uc": "備品の空き状況を確認する",
+            "description": "社員が期間と備品種別を指定して、備品ごとの予約の有無を確認する"
+          },
+          {
+            "buc": "備品予約フロー",
+            "activity": "備品を予約する",
+            "uc": "備品を予約する",
+            "description": "社員が備品と貸出開始日・返却予定日を指定して予約を登録する。予約期間の重複と 14 日超の期間は拒否する"
+          },
+          {
+            "buc": "備品貸出返却フロー",
+            "activity": "備品を貸し出す",
+            "uc": "貸出を記録する",
+            "description": "総務担当が予約済みの予約を選んで貸出を記録する。返却期限は予約の返却予定日とする"
+          },
+          {
+            "buc": "備品貸出返却フロー",
+            "activity": "返却された備品を受け取る",
+            "uc": "返却を記録する",
+            "description": "総務担当が返却された備品の貸出について返却を記録する"
+          },
+          {
+            "buc": "返却期限超過通知フロー",
+            "activity": "返却期限超過を確認する",
+            "uc": "返却期限超過を通知する",
+            "description": "毎朝 1 回、返却期限を過ぎた未返却の貸出を抽出して返却期限超過にし、借りている社員と総務担当へ社内チャットで通知する"
+          }
+        ],
+        "externalSystems": [
+          {
+            "name": "社内チャットサービス",
+            "role": "返却期限超過の通知を、借りている社員と総務担当へ届ける。API で通知を受け付ける"
+          },
+          {
+            "name": "社内シングルサインオン",
+            "role": "社員と総務担当を認証する既存の社内認証サービス"
+          }
+        ]
+      },
+      "questions": {
+        "circuit-breaker.calls_external": {
+          "type": "noul",
+          "instructions": "`activities` の中に、`externalSystems` のいずれかをネットワーク越しに呼び出すものがあるか"
+        },
+        "circuit-breaker.exclude.excl_inmemory": {
+          "type": "noul",
+          "instructions": "`externalSystems` を呼び出す `activities` は、その呼び出し先をインメモリのリソースやローカルキャッシュとして扱っているか（実際のネットワーク呼び出しではないか）"
+        },
+        "circuit-breaker.exclude.excl_batch_retry": {
+          "type": "noul",
+          "instructions": "`activities` から `externalSystems` へのその呼び出しは、レイテンシが問題にならないバッチ・バックグラウンドのアクティビティから行われ、サーキットブレーカーなしの単純なリトライで十分か"
+        },
+        "retry.calls_external": {
+          "type": "noul",
+          "instructions": "`activities` の中に、`externalSystems` のいずれかをネットワーク越しに呼び出すものがあるか"
+        },
+        "retry.exclude.excl_permanent_failure": {
+          "type": "noul",
+          "instructions": "`externalSystems` を呼び出す `activities` の失敗は、一時的なネットワーク不調ではなく、認証エラーや権限不足のような恒久的な障害が主か"
+        },
+        "retry.exclude.excl_nonidempotent": {
+          "type": "noul",
+          "instructions": "`externalSystems` を呼び出す `activities` を再試行すると、メールの二重送信のような冪等でない副作用が重複するおそれがあるか"
+        },
+        "timeout.calls_external": {
+          "type": "noul",
+          "instructions": "`activities` の中に、`externalSystems` のいずれかをネットワーク越しに呼び出すものがあるか"
+        },
+        "timeout.exclude.excl_long_running": {
+          "type": "noul",
+          "instructions": "`externalSystems` を呼び出す `activities` は、素早い要求応答ではなく、大量データ集計のような本質的に処理時間が長い操作か"
+        },
+        "saga.multi_step_flow": {
+          "type": "noul",
+          "instructions": "`activities` のいずれかを完了させるために、`externalSystems` のいずれかへの呼び出しが、複数のエンティティにまたがる複数ステップの業務フローの一部として必要か"
+        },
+        "saga.exclude.excl_single_service": {
+          "type": "noul",
+          "instructions": "`activities` が表す複数ステップの業務フローは、`externalSystems` を調停する必要がなく、単一サービス内の通常のACIDトランザクションで完結するか"
+        },
+        "compensating-transaction.multi_step_flow_ct": {
+          "type": "noul",
+          "instructions": "`activities` のいずれかを完了させるために、`externalSystems` のいずれかへの呼び出しが、複数のエンティティにまたがる複数ステップの業務フローの一部として必要か"
+        },
+        "compensating-transaction.exclude.excl_irreversible": {
+          "type": "noul",
+          "instructions": "`activities` が表す複数ステップの各操作は、可逆的なデータ変更ではなく、物理的な配送のような取り消し不可能な物理的アクションか"
+        }
+      },
+      "usage": {
+        "input_tokens": 1720,
+        "output_tokens": 278
+      },
+      "latencyMs": 568
+    },
+    {
+      "group": "security",
+      "patternIds": [
+        "rate-limiting-throttling",
+        "federated-identity",
+        "valet-key",
+        "gatekeeper-gateway-offloading"
+      ],
+      "state": {
+        "actors": [
+          {
+            "name": "社員",
+            "role": "備品の空き状況を確認して予約し、備品を借りる。返却期限超過の通知を受け取る",
+            "internalExternal": "社内"
+          },
+          {
+            "name": "総務担当",
+            "role": "予約に基づいて貸出と返却を記録し、返却期限超過の通知を受けて返却を促す",
+            "internalExternal": "社内"
+          }
+        ],
+        "externalSystems": [
+          {
+            "name": "社内チャットサービス",
+            "role": "返却期限超過の通知を、借りている社員と総務担当へ届ける。API で通知を受け付ける"
+          },
+          {
+            "name": "社内シングルサインオン",
+            "role": "社員と総務担当を認証する既存の社内認証サービス"
+          }
+        ],
+        "activities": [
+          {
+            "buc": "備品予約フロー",
+            "activity": "空き状況を確認する",
+            "uc": "備品の空き状況を確認する",
+            "description": "社員が期間と備品種別を指定して、備品ごとの予約の有無を確認する"
+          },
+          {
+            "buc": "備品予約フロー",
+            "activity": "備品を予約する",
+            "uc": "備品を予約する",
+            "description": "社員が備品と貸出開始日・返却予定日を指定して予約を登録する。予約期間の重複と 14 日超の期間は拒否する"
+          },
+          {
+            "buc": "備品貸出返却フロー",
+            "activity": "備品を貸し出す",
+            "uc": "貸出を記録する",
+            "description": "総務担当が予約済みの予約を選んで貸出を記録する。返却期限は予約の返却予定日とする"
+          },
+          {
+            "buc": "備品貸出返却フロー",
+            "activity": "返却された備品を受け取る",
+            "uc": "返却を記録する",
+            "description": "総務担当が返却された備品の貸出について返却を記録する"
+          },
+          {
+            "buc": "返却期限超過通知フロー",
+            "activity": "返却期限超過を確認する",
+            "uc": "返却期限超過を通知する",
+            "description": "毎朝 1 回、返却期限を過ぎた未返却の貸出を抽出して返却期限超過にし、借りている社員と総務担当へ社内チャットで通知する"
+          }
+        ],
+        "information": [
+          {
+            "name": "備品",
+            "attributes": "備品ID、備品名、備品種別",
+            "description": "貸し出す対象を一意に識別し、空き状況の確認と予約に使う"
+          },
+          {
+            "name": "予約",
+            "attributes": "予約ID、備品ID、社員ID、社員名、貸出開始日、返却予定日、予約日時、予約状態",
+            "description": "どの社員がどの備品をいつからいつまで使うかを記録し、予約期間の重複を防ぐ"
+          },
+          {
+            "name": "貸出",
+            "attributes": "貸出ID、予約ID、備品ID、社員ID、貸出日、返却期限、返却日、貸出状態",
+            "description": "予約に基づく貸出と返却を記録し、返却期限の超過判定と通知先の特定に使う"
+          }
+        ]
+      },
+      "questions": {
+        "rate-limiting-throttling.receives_external_requests": {
+          "type": "noul",
+          "instructions": "`actors` に含まれる社外のアクターが、このシステムに対して公開ネットワーク越しにリクエストを送るか（システムが `externalSystems` を呼び出すだけではないか）"
+        },
+        "rate-limiting-throttling.exclude.excl_internal_only": {
+          "type": "noul",
+          "instructions": "`actors` はすべて社内のアクターで、このシステムに外部からアクセスする経路がないか"
+        },
+        "federated-identity.sso_across_apps": {
+          "type": "noul",
+          "instructions": "このシステムは、`actors` の同じ認証情報を複数のアプリケーションにまたがるシングルサインオン（SSO）として使う必要があるか"
+        },
+        "federated-identity.exclude.excl_internal_simple_auth": {
+          "type": "noul",
+          "instructions": "`actors` はすべて社内の利用者であり、簡易な自前の認証で十分か"
+        },
+        "valet-key.has_file_attributes": {
+          "type": "noul",
+          "instructions": "`information` の項目に、ファイル・画像属性（写真や文書等）を持つものがあるか"
+        },
+        "valet-key.has_transfer_activity": {
+          "type": "noul",
+          "instructions": "`activities` に、そのファイルを直接アップロード・ダウンロードするものがあるか"
+        },
+        "gatekeeper-gateway-offloading.receives_external_api_calls": {
+          "type": "noul",
+          "instructions": "このシステムは `externalSystems` から呼び出される側（API呼び出しを受ける側）でもあるか（一方的に呼び出すだけではないか）"
+        },
+        "gatekeeper-gateway-offloading.diverse_frontend_needs": {
+          "type": "noul",
+          "instructions": "`actors` は、利用者向けと管理者向けのように2種類以上の異なるフロントエンドを必要とし、それぞれがこのシステムのAPIを異なる形で呼び出すか"
+        }
+      },
+      "usage": {
+        "input_tokens": 1744,
+        "output_tokens": 212
+      },
+      "latencyMs": 503
+    },
+    {
+      "group": "messaging",
+      "patternIds": [
+        "queue-based-load-leveling",
+        "publisher-subscriber",
+        "competing-consumers",
+        "asynchronous-request-reply",
+        "claim-check",
+        "priority-queue"
+      ],
+      "state": {
+        "activities": [
+          {
+            "buc": "備品予約フロー",
+            "activity": "空き状況を確認する",
+            "uc": "備品の空き状況を確認する",
+            "description": "社員が期間と備品種別を指定して、備品ごとの予約の有無を確認する"
+          },
+          {
+            "buc": "備品予約フロー",
+            "activity": "備品を予約する",
+            "uc": "備品を予約する",
+            "description": "社員が備品と貸出開始日・返却予定日を指定して予約を登録する。予約期間の重複と 14 日超の期間は拒否する"
+          },
+          {
+            "buc": "備品貸出返却フロー",
+            "activity": "備品を貸し出す",
+            "uc": "貸出を記録する",
+            "description": "総務担当が予約済みの予約を選んで貸出を記録する。返却期限は予約の返却予定日とする"
+          },
+          {
+            "buc": "備品貸出返却フロー",
+            "activity": "返却された備品を受け取る",
+            "uc": "返却を記録する",
+            "description": "総務担当が返却された備品の貸出について返却を記録する"
+          },
+          {
+            "buc": "返却期限超過通知フロー",
+            "activity": "返却期限超過を確認する",
+            "uc": "返却期限超過を通知する",
+            "description": "毎朝 1 回、返却期限を過ぎた未返却の貸出を抽出して返却期限超過にし、借りている社員と総務担当へ社内チャットで通知する"
+          }
+        ],
+        "actors": [
+          {
+            "name": "社員",
+            "role": "備品の空き状況を確認して予約し、備品を借りる。返却期限超過の通知を受け取る",
+            "internalExternal": "社内"
+          },
+          {
+            "name": "総務担当",
+            "role": "予約に基づいて貸出と返却を記録し、返却期限超過の通知を受けて返却を促す",
+            "internalExternal": "社内"
+          }
+        ]
+      },
+      "questions": {
+        "queue-based-load-leveling.async_tolerant": {
+          "type": "noul",
+          "instructions": "`activities` の中に、ピーク時の処理遅延が許容される「バッチ」「一括」「通知」「非同期」「集計」の作業を表すものがあるか"
+        },
+        "queue-based-load-leveling.exclude.excl_realtime_required": {
+          "type": "noul",
+          "instructions": "バッチ・一括・通知・非同期・集計を表す `activities` は、遅延を許容できない即時のリアルタイム応答を必要とするか"
+        },
+        "publisher-subscriber.notification_activity": {
+          "type": "noul",
+          "instructions": "`activities` の中に、あるイベントの結果として通知・メール送信や他システムの起動を行うものがあるか"
+        },
+        "publisher-subscriber.exclude.excl_sync_required": {
+          "type": "noul",
+          "instructions": "このイベントは非同期通知ではなく、同期的なリクエスト/レスポンスを必要とするか"
+        },
+        "publisher-subscriber.exclude.excl_single_subscriber": {
+          "type": "noul",
+          "instructions": "`activities` が表すイベントを消費するのはただ一つの受信者だけで、他の業務が同じイベントを必要としないか"
+        },
+        "competing-consumers.bulk_messaging": {
+          "type": "noul",
+          "instructions": "`activities` の中に、一括通知送信のような、大量のメッセージ送信や大規模なバッチ処理を表すものがあるか"
+        },
+        "competing-consumers.exclude.excl_strict_order": {
+          "type": "noul",
+          "instructions": "`activities` が生成するこれらのメッセージの処理には、厳密な順序保証が必要か"
+        },
+        "asynchronous-request-reply.long_running_activity": {
+          "type": "noul",
+          "instructions": "`activities` の中に、大量の計算・データ集計・レポート生成・大量データインポートのような処理時間の長い操作を表すものがあるか"
+        },
+        "asynchronous-request-reply.exclude.excl_fast_enough": {
+          "type": "noul",
+          "instructions": "`activities` が表すこの処理時間の長い操作は、バックグラウンドジョブなしの通常の同期応答が可能なほど十分に高速か"
+        },
+        "claim-check.large_message_payload": {
+          "type": "noul",
+          "instructions": "`activities` の中に、通知やメッセージと合わせてファイルのアップロードや大量データの受け渡しを行うものがあるか"
+        },
+        "priority-queue.differing_priority_actors": {
+          "type": "noul",
+          "instructions": "`actors` に、同種のリクエストに対して異なるサービスレベルや緊急度を持つ、2種類以上のアクターが含まれるか"
+        },
+        "priority-queue.exclude.excl_same_priority": {
+          "type": "noul",
+          "instructions": "これらの `activities` が生成するメッセージはすべて同一の優先度で処理され、他より速い処理を必要とするアクターがいないか"
+        }
+      },
+      "usage": {
+        "input_tokens": 1596,
+        "output_tokens": 301
+      },
+      "latencyMs": 218
+    },
+    {
+      "group": "data",
+      "patternIds": [
+        "cache-aside",
+        "materialized-view",
+        "static-content-hosting"
+      ],
+      "state": {
+        "activities": [
+          {
+            "buc": "備品予約フロー",
+            "activity": "空き状況を確認する",
+            "uc": "備品の空き状況を確認する",
+            "description": "社員が期間と備品種別を指定して、備品ごとの予約の有無を確認する"
+          },
+          {
+            "buc": "備品予約フロー",
+            "activity": "備品を予約する",
+            "uc": "備品を予約する",
+            "description": "社員が備品と貸出開始日・返却予定日を指定して予約を登録する。予約期間の重複と 14 日超の期間は拒否する"
+          },
+          {
+            "buc": "備品貸出返却フロー",
+            "activity": "備品を貸し出す",
+            "uc": "貸出を記録する",
+            "description": "総務担当が予約済みの予約を選んで貸出を記録する。返却期限は予約の返却予定日とする"
+          },
+          {
+            "buc": "備品貸出返却フロー",
+            "activity": "返却された備品を受け取る",
+            "uc": "返却を記録する",
+            "description": "総務担当が返却された備品の貸出について返却を記録する"
+          },
+          {
+            "buc": "返却期限超過通知フロー",
+            "activity": "返却期限超過を確認する",
+            "uc": "返却期限超過を通知する",
+            "description": "毎朝 1 回、返却期限を過ぎた未返却の貸出を抽出して返却期限超過にし、借りている社員と総務担当へ社内チャットで通知する"
+          }
+        ],
+        "information": [
+          {
+            "name": "備品",
+            "attributes": "備品ID、備品名、備品種別",
+            "description": "貸し出す対象を一意に識別し、空き状況の確認と予約に使う"
+          },
+          {
+            "name": "予約",
+            "attributes": "予約ID、備品ID、社員ID、社員名、貸出開始日、返却予定日、予約日時、予約状態",
+            "description": "どの社員がどの備品をいつからいつまで使うかを記録し、予約期間の重複を防ぐ"
+          },
+          {
+            "name": "貸出",
+            "attributes": "貸出ID、予約ID、備品ID、社員ID、貸出日、返却期限、返却日、貸出状態",
+            "description": "予約に基づく貸出と返却を記録し、返却期限の超過判定と通知先の特定に使う"
+          }
+        ]
+      },
+      "questions": {
+        "cache-aside.read_heavy_master_data": {
+          "type": "noul",
+          "instructions": "`information` に、`activities` の検索・照会系アクティビティから頻繁に読み取られるマスタ・参照データが含まれるか"
+        },
+        "cache-aside.exclude.excl_frequently_updated": {
+          "type": "noul",
+          "instructions": "`information` のこのデータは常に最新値が必要になるほど頻繁に更新され、キャッシュに向かないか"
+        },
+        "materialized-view.aggregation_uc": {
+          "type": "noul",
+          "instructions": "`activities` に、`information` の複数の項目を組み合わせるダッシュボード・レポート・集計系のユースケースがあるか"
+        },
+        "materialized-view.exclude.excl_source_volatile": {
+          "type": "noul",
+          "instructions": "`information` の元データは、事前計算したビューの更新コストが見合わないほど頻繁に更新されるか"
+        },
+        "static-content-hosting.has_file_attributes": {
+          "type": "noul",
+          "instructions": "`information` の項目に、利用者に配信する必要がある画像・ファイル属性（写真や文書等）を持つものがあるか"
+        },
+        "static-content-hosting.exclude.excl_text_only": {
+          "type": "noul",
+          "instructions": "`information` が、ファイル・画像属性を持つ項目が一つも無く、テキスト・データ項目のみで構成されると明記されているか"
+        }
+      },
+      "usage": {
+        "input_tokens": 1363,
+        "output_tokens": 151
+      },
+      "latencyMs": 208
+    },
+    {
+      "group": "structure",
+      "patternIds": [
+        "sidecar",
+        "anti-corruption-layer",
+        "strangler-fig",
+        "ambassador"
+      ],
+      "state": {
+        "overview": {
+          "system_name": "社内備品貸出システム",
+          "system_overview": "総務部が表計算ソフトの台帳で管理しているノート PC・プロジェクター・検証用スマートフォンの貸出を、社内ネットワークからブラウザで使う Web システムに置き換える。社員は空き状況を見て期間を指定して備品を予約し、総務担当は予約に基づいて貸出と返却を記録する。同じ備品の予約期間の重複を防ぎ、貸出期間は最長 14 日とする。毎朝 1 回、返却期限を過ぎた未返却の貸出を確認し、借りている社員と総務担当へ社内チャットで通知する。認証は社内の既存シングルサインオンを使う。",
+          "interface_kind": "gui"
+        },
+        "externalSystems": [
+          {
+            "name": "社内チャットサービス",
+            "role": "返却期限超過の通知を、借りている社員と総務担当へ届ける。API で通知を受け付ける"
+          },
+          {
+            "name": "社内シングルサインオン",
+            "role": "社員と総務担当を認証する既存の社内認証サービス"
+          }
+        ],
+        "activities": [
+          {
+            "buc": "備品予約フロー",
+            "activity": "空き状況を確認する",
+            "uc": "備品の空き状況を確認する",
+            "description": "社員が期間と備品種別を指定して、備品ごとの予約の有無を確認する"
+          },
+          {
+            "buc": "備品予約フロー",
+            "activity": "備品を予約する",
+            "uc": "備品を予約する",
+            "description": "社員が備品と貸出開始日・返却予定日を指定して予約を登録する。予約期間の重複と 14 日超の期間は拒否する"
+          },
+          {
+            "buc": "備品貸出返却フロー",
+            "activity": "備品を貸し出す",
+            "uc": "貸出を記録する",
+            "description": "総務担当が予約済みの予約を選んで貸出を記録する。返却期限は予約の返却予定日とする"
+          },
+          {
+            "buc": "備品貸出返却フロー",
+            "activity": "返却された備品を受け取る",
+            "uc": "返却を記録する",
+            "description": "総務担当が返却された備品の貸出について返却を記録する"
+          },
+          {
+            "buc": "返却期限超過通知フロー",
+            "activity": "返却期限超過を確認する",
+            "uc": "返却期限超過を通知する",
+            "description": "毎朝 1 回、返却期限を過ぎた未返却の貸出を抽出して返却期限超過にし、借りている社員と総務担当へ社内チャットで通知する"
+          }
+        ]
+      },
+      "questions": {
+        "sidecar.cross_cutting_concerns": {
+          "type": "noul",
+          "instructions": "`overview` は、ログ収集・メトリクス送信・認証プロキシのような横断的関心事を共通で必要とする、独立にデプロイされる複数のサービスからなるシステムを表しているか"
+        },
+        "sidecar.exclude.excl_monolith": {
+          "type": "noul",
+          "instructions": "`overview` は、複数の独立してデプロイされるサービスではなく、単一のモノリシックなアプリケーションを表しているか"
+        },
+        "sidecar.exclude.excl_few_services_library_ok": {
+          "type": "noul",
+          "instructions": "`overview` が表す独立してデプロイされるサービスの数は少なく、サービスごとにサイドカーを配置するのではなく、ライブラリ共有で十分か"
+        },
+        "anti-corruption-layer.legacy_model_mismatch": {
+          "type": "noul",
+          "instructions": "`externalSystems` のいずれかは、このシステム自身のドメインモデルと大きく異なるレガシーシステムやデータモデルを使っているか"
+        },
+        "anti-corruption-layer.exclude.excl_models_aligned": {
+          "type": "noul",
+          "instructions": "`externalSystems` のデータモデルはこのシステム自身のモデルと十分に整合しており、変換層は不要か"
+        },
+        "strangler-fig.replacing_legacy_system": {
+          "type": "noul",
+          "instructions": "`externalSystems` のいずれかは、`activities` の一部が現在依存しており、段階的に置き換えられているレガシーシステムか"
+        },
+        "ambassador.need_unified_comm_pattern": {
+          "type": "noul",
+          "instructions": "`activities` は複数の `externalSystems` を呼び出しており、リトライ・タイムアウトの通信パターンを一元管理すると効果があるか"
+        },
+        "ambassador.exclude.excl_simple_pattern": {
+          "type": "noul",
+          "instructions": "`externalSystems` との通信パターンはシンプルで、一元管理しても実質的な効果がないか"
+        }
+      },
+      "usage": {
+        "input_tokens": 1669,
+        "output_tokens": 201
+      },
+      "latencyMs": 219
+    },
+    {
+      "group": "operations",
+      "patternIds": [
+        "external-configuration-store"
+      ],
+      "state": {
+        "overview": {
+          "system_name": "社内備品貸出システム",
+          "system_overview": "総務部が表計算ソフトの台帳で管理しているノート PC・プロジェクター・検証用スマートフォンの貸出を、社内ネットワークからブラウザで使う Web システムに置き換える。社員は空き状況を見て期間を指定して備品を予約し、総務担当は予約に基づいて貸出と返却を記録する。同じ備品の予約期間の重複を防ぎ、貸出期間は最長 14 日とする。毎朝 1 回、返却期限を過ぎた未返却の貸出を確認し、借りている社員と総務担当へ社内チャットで通知する。認証は社内の既存シングルサインオンを使う。",
+          "interface_kind": "gui"
+        }
+      },
+      "questions": {
+        "external-configuration-store.multi_env_ops": {
+          "type": "noul",
+          "instructions": "`overview` は、開発・ステージング・本番のように複数の環境でこのシステムが動作し、構成を一元管理する必要があることを示しているか"
+        }
+      },
+      "usage": {
+        "input_tokens": 602,
+        "output_tokens": 28
+      },
+      "latencyMs": 216
+    }
+  ],
+  "rawAnswers": {
+    "circuit-breaker.calls_external": {
+      "type": "noul",
+      "noul": 0.65
+    },
+    "circuit-breaker.exclude.excl_inmemory": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "circuit-breaker.exclude.excl_batch_retry": {
+      "type": "noul",
+      "noul": 0.51
+    },
+    "retry.calls_external": {
+      "type": "noul",
+      "noul": 0.66
+    },
+    "retry.exclude.excl_permanent_failure": {
+      "type": "noul",
+      "noul": 0.24
+    },
+    "retry.exclude.excl_nonidempotent": {
+      "type": "noul",
+      "noul": 0.59
+    },
+    "timeout.calls_external": {
+      "type": "noul",
+      "noul": 0.65
+    },
+    "timeout.exclude.excl_long_running": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "saga.multi_step_flow": {
+      "type": "noul",
+      "noul": 0.84
+    },
+    "saga.exclude.excl_single_service": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "compensating-transaction.multi_step_flow_ct": {
+      "type": "noul",
+      "noul": 0.83
+    },
+    "compensating-transaction.exclude.excl_irreversible": {
+      "type": "noul",
+      "noul": 0.07
+    },
+    "rate-limiting-throttling.codesignal.external_actor_exists": {
+      "type": "noul",
+      "noul": 0,
+      "codeSignal": true
+    },
+    "federated-identity.codesignal.external_actor_exists": {
+      "type": "noul",
+      "noul": 0,
+      "codeSignal": true
+    },
+    "gatekeeper-gateway-offloading.codesignal.two_or_more_external_actors": {
+      "type": "noul",
+      "noul": 0,
+      "codeSignal": true
+    },
+    "rate-limiting-throttling.receives_external_requests": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "rate-limiting-throttling.exclude.excl_internal_only": {
+      "type": "noul",
+      "noul": 0.77
+    },
+    "federated-identity.sso_across_apps": {
+      "type": "noul",
+      "noul": 0.43
+    },
+    "federated-identity.exclude.excl_internal_simple_auth": {
+      "type": "noul",
+      "noul": 0.32
+    },
+    "valet-key.has_file_attributes": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "valet-key.has_transfer_activity": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "gatekeeper-gateway-offloading.receives_external_api_calls": {
+      "type": "noul",
+      "noul": 0.67
+    },
+    "gatekeeper-gateway-offloading.diverse_frontend_needs": {
+      "type": "noul",
+      "noul": 0.36
+    },
+    "queue-based-load-leveling.async_tolerant": {
+      "type": "noul",
+      "noul": 0.93
+    },
+    "queue-based-load-leveling.exclude.excl_realtime_required": {
+      "type": "noul",
+      "noul": 0.14
+    },
+    "publisher-subscriber.notification_activity": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "publisher-subscriber.exclude.excl_sync_required": {
+      "type": "noul",
+      "noul": 0.18
+    },
+    "publisher-subscriber.exclude.excl_single_subscriber": {
+      "type": "noul",
+      "noul": 0.18
+    },
+    "competing-consumers.bulk_messaging": {
+      "type": "noul",
+      "noul": 0.51
+    },
+    "competing-consumers.exclude.excl_strict_order": {
+      "type": "noul",
+      "noul": 0.57
+    },
+    "asynchronous-request-reply.long_running_activity": {
+      "type": "noul",
+      "noul": 0.12
+    },
+    "asynchronous-request-reply.exclude.excl_fast_enough": {
+      "type": "noul",
+      "noul": 0.37
+    },
+    "claim-check.large_message_payload": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "priority-queue.differing_priority_actors": {
+      "type": "noul",
+      "noul": 0.19
+    },
+    "priority-queue.exclude.excl_same_priority": {
+      "type": "noul",
+      "noul": 0.26
+    },
+    "cache-aside.read_heavy_master_data": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "cache-aside.exclude.excl_frequently_updated": {
+      "type": "noul",
+      "noul": 0.4
+    },
+    "materialized-view.aggregation_uc": {
+      "type": "noul",
+      "noul": 0.25
+    },
+    "materialized-view.exclude.excl_source_volatile": {
+      "type": "noul",
+      "noul": 0.18
+    },
+    "static-content-hosting.has_file_attributes": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "static-content-hosting.exclude.excl_text_only": {
+      "type": "noul",
+      "noul": 0.12
+    },
+    "sidecar.cross_cutting_concerns": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "sidecar.exclude.excl_monolith": {
+      "type": "noul",
+      "noul": 0.77
+    },
+    "sidecar.exclude.excl_few_services_library_ok": {
+      "type": "noul",
+      "noul": 0.75
+    },
+    "anti-corruption-layer.legacy_model_mismatch": {
+      "type": "noul",
+      "noul": 0.64
+    },
+    "anti-corruption-layer.exclude.excl_models_aligned": {
+      "type": "noul",
+      "noul": 0.33
+    },
+    "strangler-fig.replacing_legacy_system": {
+      "type": "noul",
+      "noul": 0.14
+    },
+    "ambassador.need_unified_comm_pattern": {
+      "type": "noul",
+      "noul": 0.61
+    },
+    "ambassador.exclude.excl_simple_pattern": {
+      "type": "noul",
+      "noul": 0.41
+    },
+    "external-configuration-store.multi_env_ops": {
+      "type": "noul",
+      "noul": 0.04
+    }
+  },
+  "labels": {
+    "circuit-breaker": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 341,
+          "alias": "Circuit Breaker",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 342,
+          "alias": "Circuit Breaker",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 992,
+          "alias": "Circuit Breaker",
+          "classification": "adopted"
+        }
+      ]
+    },
+    "retry": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 992,
+          "alias": "Retry",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 494,
+          "alias": "Retry",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 341,
+          "alias": "リトライ",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 342,
+          "alias": "Retry",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 177,
+          "alias": "Retry",
+          "classification": "weak"
+        }
+      ]
+    },
+    "bulkhead": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "health-endpoint-monitoring": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 295,
+          "alias": "ヘルスチェック",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 159,
+          "alias": "ヘルスチェック",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 296,
+          "alias": "ヘルスチェック",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 447,
+          "alias": "ヘルスチェック",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 509,
+          "alias": "ヘルスチェック",
+          "classification": "weak"
+        }
+      ]
+    },
+    "timeout": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 289,
+          "alias": "タイムアウト",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 340,
+          "alias": "タイムアウト",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 595,
+          "alias": "タイムアウト",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 290,
+          "alias": "タイムアウト",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 341,
+          "alias": "タイムアウト",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 342,
+          "alias": "Timeout",
+          "classification": "weak"
+        }
+      ]
+    },
+    "rate-limiting-throttling": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "saga": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "compensating-transaction": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "queue-based-load-leveling": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "cache-aside": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "cqrs": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "event-sourcing": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "materialized-view": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "sharding": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "static-content-hosting": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "publisher-subscriber": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "competing-consumers": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "asynchronous-request-reply": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "claim-check": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "priority-queue": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "federated-identity": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 392,
+          "alias": "Federated Identity",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 201,
+          "alias": "Federated Identity",
+          "classification": "adopted"
+        },
+        {
+          "file": "arch/latest/decisions/arch-decision-008.yaml",
+          "line": 13,
+          "alias": "Federated Identity",
+          "classification": "adopted"
+        }
+      ]
+    },
+    "valet-key": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "gatekeeper-gateway-offloading": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 416,
+          "alias": "API Gateway",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 205,
+          "alias": "API Gateway",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 417,
+          "alias": "API Gateway",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/decisions/arch-decision-007.yaml",
+          "line": 18,
+          "alias": "API Gateway",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/decisions/arch-decision-007.yaml",
+          "line": 37,
+          "alias": "API Gateway",
+          "classification": "weak"
+        }
+      ]
+    },
+    "backends-for-frontends": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "sidecar": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "anti-corruption-layer": {
+      "label": "applied",
+      "occurrences": [
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 321,
+          "alias": "ACL",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 986,
+          "alias": "ACL",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.md",
+          "line": 169,
+          "alias": "ACL",
+          "classification": "adopted",
+          "structuredWeak": true
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 127,
+          "alias": "ACL",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 129,
+          "alias": "ACL",
+          "classification": "weak"
+        },
+        {
+          "file": "arch/latest/arch-design.yaml",
+          "line": 176,
+          "alias": "ACL",
+          "classification": "weak"
+        }
+      ]
+    },
+    "strangler-fig": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "ambassador": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "external-configuration-store": {
+      "label": "not_applied",
+      "occurrences": []
+    },
+    "deployment-stamps": {
+      "label": "not_applied",
+      "occurrences": []
+    }
+  },
+  "requestCount": 6
+}

@@ -1,0 +1,633 @@
+{
+  "generatedAt": "2026-09-21T15:47:24.476Z",
+  "model": "jev-1.13.0",
+  "lang": "ja",
+  "docsDir": "/private/tmp/distillery-jev-test/docs",
+  "name": "equipment",
+  "judge": "model-types",
+  "requests": [
+    {
+      "specId": "SPEC-001-01",
+      "state": {
+        "requirement": "社員が備品の空き状況を見て、期間を指定して備品を予約できる",
+        "reason": "表計算ソフトの台帳運用では同じ備品の予約が重複する事故が月に数件起きている。社員自身が空き状況を確認して予約することで重複をなくす",
+        "specification": "社員は、備品（ノート PC、プロジェクター、検証用スマートフォン）ごとの空き状況を、指定した期間について社内ネットワークのブラウザから確認できる",
+        "acceptance_criteria": [
+          "Given 社員がシングルサインオンでログイン済み When 期間を指定して空き状況を表示する Then 備品ごとに指定期間の予約有無が表示される",
+          "Given 備品種別を指定する When 空き状況を表示する Then 指定種別の備品だけが表示される"
+        ]
+      },
+      "questions": {
+        "SPEC-001-01.actor": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のアクターモデルに要素を追加する、または既存要素の記述を変更する必要があるか。アクターモデルとは: システムを操作したり価値をやり取りしたりする、人・タイマー・外部の役割"
+        },
+        "SPEC-001-01.information": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の情報モデルに要素を追加する、または既存要素の記述を変更する必要があるか。情報モデルとは: システムが管理する、名前と属性を持つ業務エンティティやマスタ・トランザクションデータ"
+        },
+        "SPEC-001-01.state": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の状態モデルに要素を追加する、または既存要素の記述を変更する必要があるか。状態モデルとは: あるエンティティが遷移するライフサイクル上の状態と、その遷移を引き起こすユースケース"
+        },
+        "SPEC-001-01.buc": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のBUC（ビジネスユースケース）モデルに要素を追加する、または既存要素の記述を変更する必要があるか。BUC（ビジネスユースケース）モデルとは: アクターに価値を届けるアクティビティの一連の流れ"
+        },
+        "SPEC-001-01.condition": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の条件モデルに要素を追加する、または既存要素の記述を変更する必要があるか。条件モデルとは: 判定・計算のロジックを定める業務ルール"
+        },
+        "SPEC-001-01.variation": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のバリエーションモデルに要素を追加する、または既存要素の記述を変更する必要があるか。バリエーションモデルとは: システム内で使われる区分・種別を表す、名前の付いた値の集合"
+        },
+        "SPEC-001-01.external_system": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の外部システムモデルに要素を追加する、または既存要素の記述を変更する必要があるか。外部システムモデルとは: このシステムの外側にあり、このシステムが呼び出す、またはこのシステムを呼び出すシステム"
+        },
+        "SPEC-001-01.business_policy": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のビジネスポリシーモデルに要素を追加する、または既存要素の記述を変更する必要があるか。ビジネスポリシーモデルとは: 取引記録ではなく、ルールや計算に使われる業務パラメータやポリシー値（数値設定等）"
+        }
+      },
+      "usage": {
+        "input_tokens": 1562,
+        "output_tokens": 203
+      },
+      "latencyMs": 621
+    },
+    {
+      "specId": "SPEC-001-02",
+      "state": {
+        "requirement": "社員が備品の空き状況を見て、期間を指定して備品を予約できる",
+        "reason": "表計算ソフトの台帳運用では同じ備品の予約が重複する事故が月に数件起きている。社員自身が空き状況を確認して予約することで重複をなくす",
+        "specification": "社員は、備品と貸出開始日・返却予定日を指定して予約を登録できる。同じ備品で予約期間が重なる予約は登録できない",
+        "acceptance_criteria": [
+          "Given 備品Aに 10/1〜10/5 の予約がある When 社員が備品Aを 10/4〜10/8 で予約する Then 予約期間の重複として登録が拒否される",
+          "Given 備品Aに 10/1〜10/5 の予約がある When 社員が備品Aを 10/6〜10/8 で予約する Then 予約が登録され予約済みになる"
+        ]
+      },
+      "questions": {
+        "SPEC-001-02.actor": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のアクターモデルに要素を追加する、または既存要素の記述を変更する必要があるか。アクターモデルとは: システムを操作したり価値をやり取りしたりする、人・タイマー・外部の役割"
+        },
+        "SPEC-001-02.information": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の情報モデルに要素を追加する、または既存要素の記述を変更する必要があるか。情報モデルとは: システムが管理する、名前と属性を持つ業務エンティティやマスタ・トランザクションデータ"
+        },
+        "SPEC-001-02.state": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の状態モデルに要素を追加する、または既存要素の記述を変更する必要があるか。状態モデルとは: あるエンティティが遷移するライフサイクル上の状態と、その遷移を引き起こすユースケース"
+        },
+        "SPEC-001-02.buc": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のBUC（ビジネスユースケース）モデルに要素を追加する、または既存要素の記述を変更する必要があるか。BUC（ビジネスユースケース）モデルとは: アクターに価値を届けるアクティビティの一連の流れ"
+        },
+        "SPEC-001-02.condition": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の条件モデルに要素を追加する、または既存要素の記述を変更する必要があるか。条件モデルとは: 判定・計算のロジックを定める業務ルール"
+        },
+        "SPEC-001-02.variation": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のバリエーションモデルに要素を追加する、または既存要素の記述を変更する必要があるか。バリエーションモデルとは: システム内で使われる区分・種別を表す、名前の付いた値の集合"
+        },
+        "SPEC-001-02.external_system": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の外部システムモデルに要素を追加する、または既存要素の記述を変更する必要があるか。外部システムモデルとは: このシステムの外側にあり、このシステムが呼び出す、またはこのシステムを呼び出すシステム"
+        },
+        "SPEC-001-02.business_policy": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のビジネスポリシーモデルに要素を追加する、または既存要素の記述を変更する必要があるか。ビジネスポリシーモデルとは: 取引記録ではなく、ルールや計算に使われる業務パラメータやポリシー値（数値設定等）"
+        }
+      },
+      "usage": {
+        "input_tokens": 1578,
+        "output_tokens": 203
+      },
+      "latencyMs": 547
+    },
+    {
+      "specId": "SPEC-001-03",
+      "state": {
+        "requirement": "社員が備品の空き状況を見て、期間を指定して備品を予約できる",
+        "reason": "表計算ソフトの台帳運用では同じ備品の予約が重複する事故が月に数件起きている。社員自身が空き状況を確認して予約することで重複をなくす",
+        "specification": "予約期間（貸出開始日から返却予定日まで）は最長 14 日とし、超える期間の予約は登録できない",
+        "acceptance_criteria": [
+          "Given 社員が予約を登録する When 期間が 14 日 Then 予約が登録される",
+          "Given 社員が予約を登録する When 期間が 15 日 Then 貸出期間の上限超過として登録が拒否される"
+        ]
+      },
+      "questions": {
+        "SPEC-001-03.actor": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のアクターモデルに要素を追加する、または既存要素の記述を変更する必要があるか。アクターモデルとは: システムを操作したり価値をやり取りしたりする、人・タイマー・外部の役割"
+        },
+        "SPEC-001-03.information": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の情報モデルに要素を追加する、または既存要素の記述を変更する必要があるか。情報モデルとは: システムが管理する、名前と属性を持つ業務エンティティやマスタ・トランザクションデータ"
+        },
+        "SPEC-001-03.state": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の状態モデルに要素を追加する、または既存要素の記述を変更する必要があるか。状態モデルとは: あるエンティティが遷移するライフサイクル上の状態と、その遷移を引き起こすユースケース"
+        },
+        "SPEC-001-03.buc": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のBUC（ビジネスユースケース）モデルに要素を追加する、または既存要素の記述を変更する必要があるか。BUC（ビジネスユースケース）モデルとは: アクターに価値を届けるアクティビティの一連の流れ"
+        },
+        "SPEC-001-03.condition": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の条件モデルに要素を追加する、または既存要素の記述を変更する必要があるか。条件モデルとは: 判定・計算のロジックを定める業務ルール"
+        },
+        "SPEC-001-03.variation": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のバリエーションモデルに要素を追加する、または既存要素の記述を変更する必要があるか。バリエーションモデルとは: システム内で使われる区分・種別を表す、名前の付いた値の集合"
+        },
+        "SPEC-001-03.external_system": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の外部システムモデルに要素を追加する、または既存要素の記述を変更する必要があるか。外部システムモデルとは: このシステムの外側にあり、このシステムが呼び出す、またはこのシステムを呼び出すシステム"
+        },
+        "SPEC-001-03.business_policy": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のビジネスポリシーモデルに要素を追加する、または既存要素の記述を変更する必要があるか。ビジネスポリシーモデルとは: 取引記録ではなく、ルールや計算に使われる業務パラメータやポリシー値（数値設定等）"
+        }
+      },
+      "usage": {
+        "input_tokens": 1512,
+        "output_tokens": 203
+      },
+      "latencyMs": 263
+    },
+    {
+      "specId": "SPEC-002-01",
+      "state": {
+        "requirement": "総務担当が、予約に基づいて貸出を記録し、返却されたら返却を記録できる",
+        "reason": "台帳への手作業記録をやめ、貸出中の備品と返却状況をシステムで正確に把握するため",
+        "specification": "総務担当は、予約済みの予約を選んで貸出を記録する。貸出の返却期限は予約の返却予定日とする",
+        "acceptance_criteria": [
+          "Given 予約済みの予約がある When 総務担当が貸出を記録する Then 貸出が貸出中で登録され、予約は貸出済みになる",
+          "Given 貸出を記録した When 貸出内容を確認する Then 返却期限に予約の返却予定日が設定されている"
+        ]
+      },
+      "questions": {
+        "SPEC-002-01.actor": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のアクターモデルに要素を追加する、または既存要素の記述を変更する必要があるか。アクターモデルとは: システムを操作したり価値をやり取りしたりする、人・タイマー・外部の役割"
+        },
+        "SPEC-002-01.information": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の情報モデルに要素を追加する、または既存要素の記述を変更する必要があるか。情報モデルとは: システムが管理する、名前と属性を持つ業務エンティティやマスタ・トランザクションデータ"
+        },
+        "SPEC-002-01.state": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の状態モデルに要素を追加する、または既存要素の記述を変更する必要があるか。状態モデルとは: あるエンティティが遷移するライフサイクル上の状態と、その遷移を引き起こすユースケース"
+        },
+        "SPEC-002-01.buc": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のBUC（ビジネスユースケース）モデルに要素を追加する、または既存要素の記述を変更する必要があるか。BUC（ビジネスユースケース）モデルとは: アクターに価値を届けるアクティビティの一連の流れ"
+        },
+        "SPEC-002-01.condition": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の条件モデルに要素を追加する、または既存要素の記述を変更する必要があるか。条件モデルとは: 判定・計算のロジックを定める業務ルール"
+        },
+        "SPEC-002-01.variation": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のバリエーションモデルに要素を追加する、または既存要素の記述を変更する必要があるか。バリエーションモデルとは: システム内で使われる区分・種別を表す、名前の付いた値の集合"
+        },
+        "SPEC-002-01.external_system": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の外部システムモデルに要素を追加する、または既存要素の記述を変更する必要があるか。外部システムモデルとは: このシステムの外側にあり、このシステムが呼び出す、またはこのシステムを呼び出すシステム"
+        },
+        "SPEC-002-01.business_policy": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のビジネスポリシーモデルに要素を追加する、または既存要素の記述を変更する必要があるか。ビジネスポリシーモデルとは: 取引記録ではなく、ルールや計算に使われる業務パラメータやポリシー値（数値設定等）"
+        }
+      },
+      "usage": {
+        "input_tokens": 1505,
+        "output_tokens": 203
+      },
+      "latencyMs": 213
+    },
+    {
+      "specId": "SPEC-002-02",
+      "state": {
+        "requirement": "総務担当が、予約に基づいて貸出を記録し、返却されたら返却を記録できる",
+        "reason": "台帳への手作業記録をやめ、貸出中の備品と返却状況をシステムで正確に把握するため",
+        "specification": "総務担当は、貸出中または返却期限超過の貸出について返却を記録する",
+        "acceptance_criteria": [
+          "Given 貸出中の貸出がある When 総務担当が返却を記録する Then 貸出は返却済みになり返却日が記録される",
+          "Given 返却期限超過の貸出がある When 総務担当が返却を記録する Then 貸出は返却済みになり以後の超過通知対象から外れる"
+        ]
+      },
+      "questions": {
+        "SPEC-002-02.actor": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のアクターモデルに要素を追加する、または既存要素の記述を変更する必要があるか。アクターモデルとは: システムを操作したり価値をやり取りしたりする、人・タイマー・外部の役割"
+        },
+        "SPEC-002-02.information": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の情報モデルに要素を追加する、または既存要素の記述を変更する必要があるか。情報モデルとは: システムが管理する、名前と属性を持つ業務エンティティやマスタ・トランザクションデータ"
+        },
+        "SPEC-002-02.state": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の状態モデルに要素を追加する、または既存要素の記述を変更する必要があるか。状態モデルとは: あるエンティティが遷移するライフサイクル上の状態と、その遷移を引き起こすユースケース"
+        },
+        "SPEC-002-02.buc": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のBUC（ビジネスユースケース）モデルに要素を追加する、または既存要素の記述を変更する必要があるか。BUC（ビジネスユースケース）モデルとは: アクターに価値を届けるアクティビティの一連の流れ"
+        },
+        "SPEC-002-02.condition": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の条件モデルに要素を追加する、または既存要素の記述を変更する必要があるか。条件モデルとは: 判定・計算のロジックを定める業務ルール"
+        },
+        "SPEC-002-02.variation": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のバリエーションモデルに要素を追加する、または既存要素の記述を変更する必要があるか。バリエーションモデルとは: システム内で使われる区分・種別を表す、名前の付いた値の集合"
+        },
+        "SPEC-002-02.external_system": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の外部システムモデルに要素を追加する、または既存要素の記述を変更する必要があるか。外部システムモデルとは: このシステムの外側にあり、このシステムが呼び出す、またはこのシステムを呼び出すシステム"
+        },
+        "SPEC-002-02.business_policy": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のビジネスポリシーモデルに要素を追加する、または既存要素の記述を変更する必要があるか。ビジネスポリシーモデルとは: 取引記録ではなく、ルールや計算に使われる業務パラメータやポリシー値（数値設定等）"
+        }
+      },
+      "usage": {
+        "input_tokens": 1501,
+        "output_tokens": 203
+      },
+      "latencyMs": 217
+    },
+    {
+      "specId": "SPEC-003-01",
+      "state": {
+        "requirement": "返却期限を過ぎても返却されていない貸出があれば、借りている社員と総務担当に社内チャットで通知する",
+        "reason": "返却忘れが月に数件起きている。期限超過を本人と総務担当へ自動で知らせ、返却を促すため",
+        "specification": "システムは 1 日 1 回、朝に、返却期限を過ぎても返却されていない貸出を抽出し、返却期限超過にする",
+        "acceptance_criteria": [
+          "Given 返却期限が昨日で未返却の貸出がある When 朝の定時確認が実行される Then その貸出は返却期限超過になる",
+          "Given 返却期限が今日の貸出がある When 朝の定時確認が実行される Then その貸出は超過として扱われない"
+        ]
+      },
+      "questions": {
+        "SPEC-003-01.actor": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のアクターモデルに要素を追加する、または既存要素の記述を変更する必要があるか。アクターモデルとは: システムを操作したり価値をやり取りしたりする、人・タイマー・外部の役割"
+        },
+        "SPEC-003-01.information": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の情報モデルに要素を追加する、または既存要素の記述を変更する必要があるか。情報モデルとは: システムが管理する、名前と属性を持つ業務エンティティやマスタ・トランザクションデータ"
+        },
+        "SPEC-003-01.state": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の状態モデルに要素を追加する、または既存要素の記述を変更する必要があるか。状態モデルとは: あるエンティティが遷移するライフサイクル上の状態と、その遷移を引き起こすユースケース"
+        },
+        "SPEC-003-01.buc": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のBUC（ビジネスユースケース）モデルに要素を追加する、または既存要素の記述を変更する必要があるか。BUC（ビジネスユースケース）モデルとは: アクターに価値を届けるアクティビティの一連の流れ"
+        },
+        "SPEC-003-01.condition": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の条件モデルに要素を追加する、または既存要素の記述を変更する必要があるか。条件モデルとは: 判定・計算のロジックを定める業務ルール"
+        },
+        "SPEC-003-01.variation": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のバリエーションモデルに要素を追加する、または既存要素の記述を変更する必要があるか。バリエーションモデルとは: システム内で使われる区分・種別を表す、名前の付いた値の集合"
+        },
+        "SPEC-003-01.external_system": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の外部システムモデルに要素を追加する、または既存要素の記述を変更する必要があるか。外部システムモデルとは: このシステムの外側にあり、このシステムが呼び出す、またはこのシステムを呼び出すシステム"
+        },
+        "SPEC-003-01.business_policy": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のビジネスポリシーモデルに要素を追加する、または既存要素の記述を変更する必要があるか。ビジネスポリシーモデルとは: 取引記録ではなく、ルールや計算に使われる業務パラメータやポリシー値（数値設定等）"
+        }
+      },
+      "usage": {
+        "input_tokens": 1527,
+        "output_tokens": 203
+      },
+      "latencyMs": 210
+    },
+    {
+      "specId": "SPEC-003-02",
+      "state": {
+        "requirement": "返却期限を過ぎても返却されていない貸出があれば、借りている社員と総務担当に社内チャットで通知する",
+        "reason": "返却忘れが月に数件起きている。期限超過を本人と総務担当へ自動で知らせ、返却を促すため",
+        "specification": "返却期限超過の貸出ごとに、借りている社員と総務担当へ社内チャットサービスの API で通知を送る",
+        "acceptance_criteria": [
+          "Given 返却期限超過の貸出がある When 朝の定時確認が実行される Then 借りている社員と総務担当へ社内チャットで通知が送信される",
+          "Given 返却済みの貸出 When 朝の定時確認が実行される Then 通知は送信されない"
+        ]
+      },
+      "questions": {
+        "SPEC-003-02.actor": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のアクターモデルに要素を追加する、または既存要素の記述を変更する必要があるか。アクターモデルとは: システムを操作したり価値をやり取りしたりする、人・タイマー・外部の役割"
+        },
+        "SPEC-003-02.information": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の情報モデルに要素を追加する、または既存要素の記述を変更する必要があるか。情報モデルとは: システムが管理する、名前と属性を持つ業務エンティティやマスタ・トランザクションデータ"
+        },
+        "SPEC-003-02.state": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の状態モデルに要素を追加する、または既存要素の記述を変更する必要があるか。状態モデルとは: あるエンティティが遷移するライフサイクル上の状態と、その遷移を引き起こすユースケース"
+        },
+        "SPEC-003-02.buc": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のBUC（ビジネスユースケース）モデルに要素を追加する、または既存要素の記述を変更する必要があるか。BUC（ビジネスユースケース）モデルとは: アクターに価値を届けるアクティビティの一連の流れ"
+        },
+        "SPEC-003-02.condition": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の条件モデルに要素を追加する、または既存要素の記述を変更する必要があるか。条件モデルとは: 判定・計算のロジックを定める業務ルール"
+        },
+        "SPEC-003-02.variation": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のバリエーションモデルに要素を追加する、または既存要素の記述を変更する必要があるか。バリエーションモデルとは: システム内で使われる区分・種別を表す、名前の付いた値の集合"
+        },
+        "SPEC-003-02.external_system": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA の外部システムモデルに要素を追加する、または既存要素の記述を変更する必要があるか。外部システムモデルとは: このシステムの外側にあり、このシステムが呼び出す、またはこのシステムを呼び出すシステム"
+        },
+        "SPEC-003-02.business_policy": {
+          "type": "noul",
+          "instructions": "`specification` と `acceptance_criteria` に書かれた内容により、RDRA のビジネスポリシーモデルに要素を追加する、または既存要素の記述を変更する必要があるか。ビジネスポリシーモデルとは: 取引記録ではなく、ルールや計算に使われる業務パラメータやポリシー値（数値設定等）"
+        }
+      },
+      "usage": {
+        "input_tokens": 1519,
+        "output_tokens": 203
+      },
+      "latencyMs": 222
+    }
+  ],
+  "rawAnswers": {
+    "SPEC-001-01.actor": {
+      "type": "noul",
+      "noul": 0.45
+    },
+    "SPEC-001-01.information": {
+      "type": "noul",
+      "noul": 0.81
+    },
+    "SPEC-001-01.state": {
+      "type": "noul",
+      "noul": 0.62
+    },
+    "SPEC-001-01.buc": {
+      "type": "noul",
+      "noul": 0.69
+    },
+    "SPEC-001-01.condition": {
+      "type": "noul",
+      "noul": 0.77
+    },
+    "SPEC-001-01.variation": {
+      "type": "noul",
+      "noul": 0.55
+    },
+    "SPEC-001-01.external_system": {
+      "type": "noul",
+      "noul": 0.52
+    },
+    "SPEC-001-01.business_policy": {
+      "type": "noul",
+      "noul": 0.25
+    },
+    "SPEC-001-02.actor": {
+      "type": "noul",
+      "noul": 0.42
+    },
+    "SPEC-001-02.information": {
+      "type": "noul",
+      "noul": 0.85
+    },
+    "SPEC-001-02.state": {
+      "type": "noul",
+      "noul": 0.74
+    },
+    "SPEC-001-02.buc": {
+      "type": "noul",
+      "noul": 0.71
+    },
+    "SPEC-001-02.condition": {
+      "type": "noul",
+      "noul": 0.81
+    },
+    "SPEC-001-02.variation": {
+      "type": "noul",
+      "noul": 0.38
+    },
+    "SPEC-001-02.external_system": {
+      "type": "noul",
+      "noul": 0.15
+    },
+    "SPEC-001-02.business_policy": {
+      "type": "noul",
+      "noul": 0.34
+    },
+    "SPEC-001-03.actor": {
+      "type": "noul",
+      "noul": 0.27
+    },
+    "SPEC-001-03.information": {
+      "type": "noul",
+      "noul": 0.72
+    },
+    "SPEC-001-03.state": {
+      "type": "noul",
+      "noul": 0.53
+    },
+    "SPEC-001-03.buc": {
+      "type": "noul",
+      "noul": 0.67
+    },
+    "SPEC-001-03.condition": {
+      "type": "noul",
+      "noul": 0.85
+    },
+    "SPEC-001-03.variation": {
+      "type": "noul",
+      "noul": 0.38
+    },
+    "SPEC-001-03.external_system": {
+      "type": "noul",
+      "noul": 0.14
+    },
+    "SPEC-001-03.business_policy": {
+      "type": "noul",
+      "noul": 0.84
+    },
+    "SPEC-002-01.actor": {
+      "type": "noul",
+      "noul": 0.54
+    },
+    "SPEC-002-01.information": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "SPEC-002-01.state": {
+      "type": "noul",
+      "noul": 0.86
+    },
+    "SPEC-002-01.buc": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "SPEC-002-01.condition": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "SPEC-002-01.variation": {
+      "type": "noul",
+      "noul": 0.52
+    },
+    "SPEC-002-01.external_system": {
+      "type": "noul",
+      "noul": 0.21
+    },
+    "SPEC-002-01.business_policy": {
+      "type": "noul",
+      "noul": 0.28
+    },
+    "SPEC-002-02.actor": {
+      "type": "noul",
+      "noul": 0.51
+    },
+    "SPEC-002-02.information": {
+      "type": "noul",
+      "noul": 0.83
+    },
+    "SPEC-002-02.state": {
+      "type": "noul",
+      "noul": 0.86
+    },
+    "SPEC-002-02.buc": {
+      "type": "noul",
+      "noul": 0.75
+    },
+    "SPEC-002-02.condition": {
+      "type": "noul",
+      "noul": 0.79
+    },
+    "SPEC-002-02.variation": {
+      "type": "noul",
+      "noul": 0.57
+    },
+    "SPEC-002-02.external_system": {
+      "type": "noul",
+      "noul": 0.16
+    },
+    "SPEC-002-02.business_policy": {
+      "type": "noul",
+      "noul": 0.38
+    },
+    "SPEC-003-01.actor": {
+      "type": "noul",
+      "noul": 0.73
+    },
+    "SPEC-003-01.information": {
+      "type": "noul",
+      "noul": 0.82
+    },
+    "SPEC-003-01.state": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "SPEC-003-01.buc": {
+      "type": "noul",
+      "noul": 0.7
+    },
+    "SPEC-003-01.condition": {
+      "type": "noul",
+      "noul": 0.77
+    },
+    "SPEC-003-01.variation": {
+      "type": "noul",
+      "noul": 0.65
+    },
+    "SPEC-003-01.external_system": {
+      "type": "noul",
+      "noul": 0.35
+    },
+    "SPEC-003-01.business_policy": {
+      "type": "noul",
+      "noul": 0.56
+    },
+    "SPEC-003-02.actor": {
+      "type": "noul",
+      "noul": 0.7
+    },
+    "SPEC-003-02.information": {
+      "type": "noul",
+      "noul": 0.45
+    },
+    "SPEC-003-02.state": {
+      "type": "noul",
+      "noul": 0.54
+    },
+    "SPEC-003-02.buc": {
+      "type": "noul",
+      "noul": 0.7
+    },
+    "SPEC-003-02.condition": {
+      "type": "noul",
+      "noul": 0.71
+    },
+    "SPEC-003-02.variation": {
+      "type": "noul",
+      "noul": 0.41
+    },
+    "SPEC-003-02.external_system": {
+      "type": "noul",
+      "noul": 0.85
+    },
+    "SPEC-003-02.business_policy": {
+      "type": "noul",
+      "noul": 0.39
+    }
+  },
+  "labels": {
+    "SPEC-001-01": [
+      "actor",
+      "information",
+      "variation",
+      "buc",
+      "external_system"
+    ],
+    "SPEC-001-02": [
+      "information",
+      "state",
+      "condition",
+      "buc"
+    ],
+    "SPEC-001-03": [
+      "condition",
+      "business_policy"
+    ],
+    "SPEC-002-01": [
+      "actor",
+      "information",
+      "state",
+      "buc"
+    ],
+    "SPEC-002-02": [
+      "information",
+      "state",
+      "buc"
+    ],
+    "SPEC-003-01": [
+      "condition",
+      "state",
+      "buc"
+    ],
+    "SPEC-003-02": [
+      "external_system",
+      "buc"
+    ]
+  },
+  "requestCount": 7
+}
