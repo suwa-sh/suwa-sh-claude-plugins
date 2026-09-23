@@ -14,6 +14,10 @@
  *   4. supersedes / superseded_by の参照整合性 (双方向リンク)
  *   5. ステータス遷移 (superseded_by を持つなら status: superseded)
  *   6. rules[].scope の書式 (schema で検証)
+ *   7. ティア構成 / テスト方針の追加 front matter:
+ *      - scope に system を含む accepted ADR は tiers[] と、tiers[].id を指す datastore_owner を持つ
+ *      - tiers[] を宣言する accepted ADR は 1 つだけ (各 tier の形は schema で検証)
+ *      - capabilities は任意だが、あるなら { browser: boolean } (schema で検証)
  *
  * 終了コード: 0 = PASS / 1 = エラー / 2 = 読み込み失敗
  */
@@ -86,9 +90,38 @@ function crossAdrErrors(adrs) {
   return errors;
 }
 
+const isAccepted = fm => String(fm.status).toLowerCase() === 'accepted';
+const hasScope = (fm, s) => (Array.isArray(fm.scope) ? fm.scope.includes(s) : fm.scope === s);
+
+/** ティア構成 ADR (scope に system を含む accepted) の tiers[] / datastore_owner を検証する。 */
+function tierStructureErrors(adrs) {
+  const errors = [];
+  const declaring = []; // tiers[] を宣言する accepted ADR
+  for (const { file, fm } of adrs) {
+    if (!isAccepted(fm)) continue;
+    if (Array.isArray(fm.tiers) && fm.tiers.length) declaring.push(file);
+    if (!hasScope(fm, 'system')) continue;
+    if (!Array.isArray(fm.tiers) || fm.tiers.length === 0) {
+      errors.push({ file, message: 'scope に system を含む accepted ADR は tiers[] を持つ必要がある (段階③のティア骨格の入力)' });
+      continue;
+    }
+    const ids = new Set(fm.tiers.map(t => t && t.id).filter(Boolean));
+    if (!fm.datastore_owner) {
+      errors.push({ file, message: 'scope に system を含む accepted ADR は datastore_owner を持つ必要がある' });
+    } else if (!ids.has(fm.datastore_owner)) {
+      errors.push({ file, message: `datastore_owner "${fm.datastore_owner}" が tiers[].id のいずれにも一致しない` });
+    }
+  }
+  if (declaring.length > 1) {
+    errors.push({ file: declaring.join(', '), message: `tiers[] を宣言する accepted ADR は 1 つだけにする (${declaring.length} 件が宣言している)` });
+  }
+  return errors;
+}
+
 function validateAdrDir(dir) {
   const { adrs, errors } = loadAdrDir(dir);
   errors.push(...crossAdrErrors(adrs));
+  errors.push(...tierStructureErrors(adrs));
   return { adrs, errors };
 }
 
@@ -114,4 +147,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { parseFrontMatter, loadAdrDir, crossAdrErrors, validateAdrDir };
+module.exports = { parseFrontMatter, loadAdrDir, crossAdrErrors, tierStructureErrors, validateAdrDir };

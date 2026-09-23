@@ -123,7 +123,7 @@ uc: "register-loan"
 tier: "tier-facade"
 attempt: 1
 verified_at: "2026-08-30T10:00:00+09:00"
-gates_read: {static: pass, unit: pass, contract: pass, uc-bdd: pass, acceptance: skipped}
+gates_read: {static: pass, unit: pass, contract: pass, uc-bdd: pass, acceptance: pass}
 viewpoints_checked:
   uc_intent: {status: done}
   assumption_conformance: {status: done}
@@ -279,7 +279,7 @@ uc: "register-loan"
 tier: "tier-facade"
 attempt: 1
 verified_at: "2026-08-30T10:00:00+09:00"
-gates_read: {static: pass, unit: pass, contract: pass, uc-bdd: pass, acceptance: skipped}
+gates_read: {static: pass, unit: pass, contract: pass, uc-bdd: pass, acceptance: pass}
 viewpoints_checked:
   uc_intent: {status: done}
   assumption_conformance: {status: done}

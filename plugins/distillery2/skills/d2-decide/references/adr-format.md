@@ -102,6 +102,14 @@ ui:
 - `A.superseded_by = B` なら `B.supersedes` に `A.id` を含める (双方向リンク)。逆も同様。
 - 参照先が存在しない (dangling) / id 重複はエラー。
 
+## ティア構成 / テスト方針の追加 front matter (validateAdr が検査)
+
+- `scope` に `system` を含む `status: accepted` の ADR は `tiers[]` を持つ (空は不可)。各 tier は
+  `id` / `dir` / `kind` (`frontend` | `backend` | `worker` | `data-pipeline` | `cli` | `mcp-server`) / `lang` が必須。
+- 同じ ADR は `datastore_owner` を持ち、その値は自分の `tiers[].id` のいずれかと一致させる。
+- `tiers[]` を宣言する `accepted` ADR は 1 つだけ (2 つ以上はエラー)。
+- `capabilities` は任意。あるなら `{ browser: boolean }` の形 (それ以外のキーはエラー)。
+
 ## 検証と索引生成
 
 ```bash

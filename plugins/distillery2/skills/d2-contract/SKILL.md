@@ -44,6 +44,12 @@ contracts/
 
 `--check` は書き込まずに、生成物が古いと exit 1。CI と d2-run のチェックポイントで使う。
 
+`genContractTests.js` の挙動:
+- 全生成 (`--uc` なし) では、所有する旧生成物 (契約テスト・stub・validators) のうち今回作らないものを stale として掃除する
+  (生成時は削除、`--check` 時は報告して exit 1)。operation の削除・改名で旧テストが残らない。
+- `--uc <slug>` 指定時は、`generated/slices/<slug>/contract-slice.json` の実在 (無ければ exit 2) と、
+  source からの bundle 鮮度 (`compileContracts --check` 相当、古ければ exit 1) を先に検証する。古い契約からテストを作らない。
+
 ## mode=skeleton (段階③)
 
 ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用意する。UC 個別の operation はまだ書かない。

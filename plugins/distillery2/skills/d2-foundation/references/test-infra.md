@@ -5,7 +5,8 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 
 | ライブラリ | 検証バージョン | Context7 で確認したこと |
 |---|---|---|
-| `@cucumber/cucumber` | 13.2.1 | `setWorldConstructor(World 継承クラス)`、`Before/After(hook => …)`、`cucumber.js` の default プロファイル (`paths` / `require` / `requireModule` / `format`)、CLI `--format json:<path>` |
+| `@cucumber/cucumber` | 13.2.1 | `setWorldConstructor(World 継承クラス)`、`Before/After(hook => …)`、ESM プロジェクト (`"type":"module"`) では `cucumber.js` を `export default { default: {...} }` で書く、TypeScript は `import` オプション + `tsx` で読む (`requireModule: ts-node/register` は使わない)、CLI `--format json:<path>` |
+| `tsx` | 4.20.x (系) | Cucumber の ESM TypeScript ローダ。`tsx-register.js` が `import { register } from 'tsx/esm/api'; register()` を呼び、`cucumber.js` の `import: ['./tsx-register.js', 'features/**/*.ts']` で登録する |
 | `@electric-sql/pglite` | 0.5.8 | `new PGlite()` → `await pg.waitReady`、`pg.exec(multiStatementSql)` (migration 向け)、`pg.query(text, params)`、`pg.transaction(fn)` (例外で rollback)、`pg.close()` |
 | `dependency-cruiser` | 18.4.0 | `.cjs` は `module.exports = { forbidden, allowed?, options }`。forbidden[].{name, severity, from:{path 正規表現}, to:{path|circular|orphan}}。`options.doNotFollow.path`、`options.tsConfig.fileName` |
 | `vitest` | 3.2.x (系) | 単体テストランナ。`--run --reporter=json --outputFile=<path>` で JSON レポート |

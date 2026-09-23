@@ -30,5 +30,5 @@ pending だった step を実装し、テスト用の composition root に計装
 ## 完了条件
 
 - `node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc <slug> --from uc-bdd` が exit 0 (uc-bdd → acceptance)
-- 受入 (`@acceptance:`) のシナリオが UC の spec_ids の受入基準を全部覆っている (`checkScenario.js` で再確認)
+- 受入 (`@acceptance:`) のシナリオが UC の spec_ids の受入基準を全部覆っている (`checkScenario.js <feature> --use-cases ... --requirements ... --acceptance-dir features/acceptance` で再確認)
 - 報告に「シナリオ数と結果 / トレース出力の有無 / 失敗時の分析 (ティアと食い違い)」を書く

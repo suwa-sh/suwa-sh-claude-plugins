@@ -14,6 +14,8 @@
 1. **テスト用 composition root** を `apps/<backend>/src/test-app.ts` に置き、`export function createTestApp(deps)` で
    express アプリを返す。中で最初に `setTier('<tier id>')` を呼び、`expressScenarioMiddleware({ resolveOperationId })` を最初に use する
    (`resolveOperationId` は `createOperationIdResolver(require('contracts/generated/slices/<slug>/contract-slice.json'))`。
+   contract-slice.json は `{ schema_version, uc, openapi: { paths }, asyncapi }` の形で、`createOperationIdResolver` は
+   その `openapi.paths` を読む。slice 全体を渡してよい (openapi 部分だけ渡す `slice.openapi` の形も受け付ける)。
    as-built はこの operationId で API の経路を抽出する)。DB クライアントは `tracePg(client, 'LoanRepository')` のように
    発行元の名前を付けて包み、publisher は `tracePublisher(port, 'EventPublisher')`、usecase は `traced('RegisterLoan', obj)` で包む。
    トレースの `meta.tier` / `meta.component` が as-built のシーケンス図の送受信者になる。

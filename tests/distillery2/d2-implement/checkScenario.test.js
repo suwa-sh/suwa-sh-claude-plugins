@@ -57,3 +57,13 @@ test('cross-UC acceptance feature in --acceptance-dir counts as coverage', () =>
   const r = check({ files: [s.feature], useCases: s.useCases, requirements: s.requirements, acceptanceDir: accDir });
   assert.equal(r.ok, true);
 });
+
+test('acceptance scenarios of another UC do not count as coverage', () => {
+  const s = setup(FULL.replace('  @acceptance:SPEC-002-01-2 @browser\n', ''));
+  const accDir = path.join(s.dir, 'acceptance');
+  fs.mkdirSync(accDir);
+  fs.writeFileSync(path.join(accDir, 'SPEC-002-01.feature'), '@uc:return-book\nFeature: other\n  @acceptance:SPEC-002-01-2\n  Scenario: limit\n    Then rejected\n');
+  const r = check({ files: [s.feature], useCases: s.useCases, requirements: s.requirements, acceptanceDir: accDir });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.missing.map(m => m.tag), ['@acceptance:SPEC-002-01-2']);
+});

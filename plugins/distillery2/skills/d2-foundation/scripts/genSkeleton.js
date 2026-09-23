@@ -65,6 +65,7 @@ function rootPackageJson(tierDirs) {
       '@playwright/test': '^1.63.0',
       ajv: '^8.20.0',
       'ajv-formats': '^3.0.1',
+      tsx: '^4.20.0',
       typescript: '^5.9.0',
     },
   }, null, 2) + '\n';

@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const rs = require('../../../plugins/distillery2/scripts/lib/runState');
-const { buildTrailers, render } = require('../../../plugins/distillery2/scripts/prTrailers');
+const { buildTrailers, render, strictProblems } = require('../../../plugins/distillery2/scripts/prTrailers');
 
 function git(cwd, ...args) { return execFileSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@x', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@x' } }).trim(); }
 
@@ -36,4 +36,27 @@ test('trailers are built from use-cases, gates.json, basis and events', () => {
   assert.match(text, /^Assumptions: confirmed=1 auto=1 rejected=0$/m);
   assert.match(text, /^As-Built: docs\/as-built\/貸出業務\/貸出を登録する\/index.md$/m);
   assert.match(text, /^Feedback: rule:https:\/\/example\/pr\/1$/m);
+
+  // strict: gates.json covers only 2 gates → not deliverable
+  const problems = strictProblems(t, repo);
+  assert.ok(problems.some(p => /must list contract exactly once \(found 0\)/.test(p)), problems.join(';'));
+  assert.ok(problems.some(p => /As-Built file not found/.test(p)));
+});
+
+test('strict mode rejects missing UC / gates / approval', () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-trailers-'));
+  git(repo, 'init', '-q');
+  const run = rs.openRun(repo, 'unknown-uc');
+  const problems = strictProblems(buildTrailers({ cwd: repo, runDir: run }));
+  for (const key of ['UC', 'Basis-Requirements', 'Gates', 'Assumptions', 'As-Built']) assert.ok(problems.includes(`missing ${key}`), key);
+  fs.writeFileSync(path.join(run, 'reports/gates.json'), JSON.stringify({ gates: ['static', 'unit', 'contract', 'uc-bdd', 'acceptance'].map(name => ({ name, status: name === 'unit' ? 'fail' : 'pass' })) }));
+  assert.ok(strictProblems(buildTrailers({ cwd: repo, runDir: run })).some(p => /Gates not all pass: unit=fail/.test(p)));
+  // five "x=pass" entries are not five gates
+  const fake = strictProblems([['Gates', 'x=pass x=pass x=pass x=pass x=pass']], repo);
+  assert.ok(fake.some(p => /must list static exactly once/.test(p)) && fake.some(p => /unknown gate/.test(p)), fake.join(';'));
+  // As-Built must exist on disk
+  assert.ok(strictProblems([['As-Built', 'docs/as-built/x/y/index.md']], repo).some(p => /As-Built file not found/.test(p)));
+  fs.mkdirSync(path.join(repo, 'docs/as-built/x/y'), { recursive: true });
+  fs.writeFileSync(path.join(repo, 'docs/as-built/x/y/index.md'), '# ok');
+  assert.ok(!strictProblems([['As-Built', 'docs/as-built/x/y/index.md']], repo).some(p => /As-Built/.test(p)));
 });

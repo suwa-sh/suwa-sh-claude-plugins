@@ -83,8 +83,15 @@ description: >-
 
 1. `docs/requirements/requirements.yaml` に要求・仕様・受入基準を追記／修正する。ID は既存と重複させない。
 2. 影響する `docs/requirements/rdra/*.tsv` を編集する。
-3. Step0 の手順 2・3・5・8 を再実行して検証・Markdown・ビュー・不整合チェックを更新する
-   （手順 6 の関連データ・ZeroOne も TSV を変えたら再生成する）。
+3. Step0 の手順 2・3・5・8 を再実行して検証・Markdown・ビュー・不整合チェックを更新する。
+   **差分更新では入力ディレクトリを `docs/requirements/rdra` にする**（一時ディレクトリ `1_RDRA/` は
+   Step0 の手順 9 で削除済みのため）。手順 5・6 のコマンドは次に読み替える:
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/generateRdraMd.js docs/requirements/rdra --lint
+   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/makeGraphData.js docs/requirements/rdra
+   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/makeZeroOneData.js docs/requirements/rdra
+   ```
+   （関連データ・ZeroOne は TSV を変えたときだけ再生成する）。
 4. **UC 一覧**を再生成する（既存の `slug`・`spec_ids`・`status` は uc_id で引き継がれる）。
 5. **確認材料**を作り直す。
 6. 最終報告に「変更したファイル」と「追加／変更／削除した要求・UC」を列挙する。
@@ -113,8 +120,11 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/genUseCases.js
 | `status` | 既定 `planned`（`planned` / `in_progress` / `done`）|
 
 **LLM の作業**: 生成後、各 UC の `slug` を英名へ、`spec_ids` を実現する SPEC へ編集する。
-既存 use-cases.yaml があれば `slug`・`spec_ids`・`status`・`tiers_hint` は uc_id で引き継がれるので、
-再生成しても LLM の編集は消えない。編集後にバリデートする:
+既存 use-cases.yaml があれば `slug`・`status`・`tiers_hint` は uc_id で引き継がれるので、再生成しても
+LLM の編集は消えない。`spec_ids` は**既存値（LLM が絞った SPEC）と新たな推定候補の和集合**になり、
+SPEC を取りこぼさない。再生成で新規に増えた候補は各 UC の `spec_ids_added` に記録されるので、
+**LLM は `spec_ids_added` を見て採否を判断し、実現する SPEC だけに絞ったら `spec_ids_added` を削除する**。
+編集後にバリデートする:
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/validateUseCases.js docs/requirements/use-cases.yaml

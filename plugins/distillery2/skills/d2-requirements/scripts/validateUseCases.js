@@ -9,8 +9,9 @@
  * Usage:
  *   node validateUseCases.js <use-cases.yaml> [requirements.yaml] [--json]
  *   既定 requirements: use-cases.yaml と同じディレクトリの requirements.yaml
+ *   requirements.yaml は spec_ids 実在チェックの正本。無い/読めない場合は省略せず exit 2。
  *
- * 終了コード: 0 = PASS / 1 = エラー / 2 = 読み込み失敗
+ * 終了コード: 0 = PASS / 1 = エラー / 2 = 読み込み失敗 (use-cases/requirements の不在・解析不能)
  * npm 依存なし。共有ライブラリ (../../../scripts/lib) のみ使用。
  */
 'use strict';
@@ -64,8 +65,15 @@ function main() {
 
   let data;
   try { data = loadDataFile(ucPath); } catch (e) { console.error(`Parse error: ${e.message}`); process.exit(2); }
-  let specIdSet = null;
-  if (fs.existsSync(reqPath)) { try { specIdSet = collectSpecIds(loadDataFile(reqPath)); } catch { specIdSet = null; } }
+  // spec_ids 実在チェックは requirements.yaml が正本。無い/読めない場合は省略せず読み込み失敗 (exit 2) とする。
+  if (!fs.existsSync(reqPath)) {
+    console.error(`requirements.yaml not found: ${reqPath}`);
+    console.error('  spec_ids の実在チェックに必須。第2引数で明示するか use-cases.yaml と同じディレクトリに置く。');
+    process.exit(2);
+  }
+  let specIdSet;
+  try { specIdSet = collectSpecIds(loadDataFile(reqPath)); }
+  catch (e) { console.error(`requirements.yaml parse error (${reqPath}): ${e.message}`); process.exit(2); }
 
   const schema = JSON.parse(fs.readFileSync(path.join(__dirname, 'schema-use-cases.json'), 'utf8'));
   const errors = [...validateWithSchema(data, schema), ...validateSemantics(data, specIdSet)];
@@ -73,7 +81,6 @@ function main() {
   if (!errors.length) {
     console.log(`PASS: ${ucPath}`);
     console.log(`  UCs: ${(data.use_cases || []).length}`);
-    if (!specIdSet) console.log('  (requirements.yaml が無いため spec_ids 実在チェックは省略)');
     if (flags.has('--json')) console.log(JSON.stringify({ status: 'pass', file: ucPath }, null, 2));
     process.exit(0);
   }

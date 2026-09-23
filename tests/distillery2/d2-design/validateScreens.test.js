@@ -44,6 +44,16 @@ test('app dir に実装が無い component を検出する', () => {
   assert.ok(errors.some(e => e.includes('GhostWidget') && e.includes('app dir')), errors.join('\n'));
 });
 
+test('正常な screens.yaml の tokens.file は app dir に実在する', () => {
+  const { errors } = run('screens-pass.yaml');
+  assert.ok(!errors.some(e => e.includes('tokens.file')), errors.join('\n'));
+});
+
+test('存在しない tokens.file を検出する', () => {
+  const { errors } = run('screens-missing-tokens.yaml');
+  assert.ok(errors.some(e => e.includes('tokens.file') && e.includes('does-not-exist.json')), errors.join('\n'));
+});
+
 test('--app 無しでもスキーマ + 一意性は検査する', () => {
   const { errors } = validate({ screensPath: path.join(FIX, 'screens-dup-route.yaml') });
   assert.ok(errors.some(e => e.includes('重複')), errors.join('\n'));

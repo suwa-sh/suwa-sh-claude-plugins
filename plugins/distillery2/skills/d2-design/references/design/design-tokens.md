@@ -1,7 +1,8 @@
 # デザイントークン生成 (design-tokens)
 
 3 層 (primitive → semantic → component) のトークンを、JSON と CSS 変数の 2 形式で出力する。
-出力先は Storybook app の `tokens/tokens.json` と `styles/design-tokens.css`。
+出力先は Storybook app の `src/tokens/tokens.json` と `src/styles/design-tokens.css`
+(どちらも `src/` 配下。F6 の `importUi.js` は `src/` だけを取り込むため)。
 
 ## 3 層構造
 
@@ -26,7 +27,7 @@ Component (固有)     button / input / card / badge / avatar / sidebar / table 
 }
 ```
 
-screens.yaml の `tokens.file` はこのパス (app からの相対、既定 `tokens/tokens.json`) を指す。
+screens.yaml の `tokens.file` はこのパス (`src/` からの相対、既定 `tokens/tokens.json` = `src/tokens/tokens.json`) を指す。
 
 ## design-tokens.css (必須ルール)
 

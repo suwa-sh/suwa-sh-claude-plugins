@@ -40,14 +40,32 @@ function walk(dir, base, files) {
 
 function run(o) {
   const fromRoot = path.resolve(o.cwd, o.from);
-  const srcDir = fs.existsSync(path.join(fromRoot, 'src')) ? path.join(fromRoot, 'src') : fromRoot;
+  const hasSrc = fs.existsSync(path.join(fromRoot, 'src'));
+  const srcDir = hasSrc ? path.join(fromRoot, 'src') : fromRoot;
   if (!fs.existsSync(srcDir)) { console.error(`source not found: ${srcDir}`); return { code: 1 }; }
   const uiDir = path.resolve(o.cwd, 'packages/ui');
   fs.mkdirSync(uiDir, { recursive: true });
-  const rels = walk(srcDir, srcDir, []).sort();
+
+  // 取り込む (絶対パス, packages/ui 内の相対パス) の一覧を作る。src/ を基本に取り込む。
+  const tasks = walk(srcDir, srcDir, []).sort().map((rel) => ({ abs: path.join(srcDir, rel), rel }));
+
+  // 防御的措置: src/ レイアウトで、トークンが src/ の外 (storybook-app 直下の tokens/) に
+  // 置かれた場合も取りこぼさないよう、ルート直下の tokens/ を tokens/ 配下として取り込む。
+  // (正は src/tokens/。src/tokens/ が既にあればそちらを優先し、重複はスキップする。)
+  if (hasSrc) {
+    const rootTokens = path.join(fromRoot, 'tokens');
+    if (fs.existsSync(rootTokens) && fs.statSync(rootTokens).isDirectory()) {
+      const seen = new Set(tasks.map((t) => t.rel));
+      for (const sub of walk(rootTokens, rootTokens, []).sort()) {
+        const rel = path.join('tokens', sub);
+        if (!seen.has(rel)) tasks.push({ abs: path.join(rootTokens, sub), rel });
+      }
+    }
+  }
+
   const files = [];
-  for (const rel of rels) {
-    const buf = fs.readFileSync(path.join(srcDir, rel));
+  for (const { abs, rel } of tasks) {
+    const buf = fs.readFileSync(abs);
     const dst = path.join(uiDir, rel);
     fs.mkdirSync(path.dirname(dst), { recursive: true });
     fs.writeFileSync(dst, buf);

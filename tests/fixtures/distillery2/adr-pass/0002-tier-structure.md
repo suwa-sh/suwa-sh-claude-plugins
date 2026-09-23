@@ -9,6 +9,26 @@ basis: requirements@abc1234
 nfr_refs: ["A.1.1", "B.1.1"]
 scope: [system]
 confidence: high
+tiers:
+  - id: frontend
+    dir: apps/frontend
+    kind: frontend
+    lang: typescript
+    provides: []
+    consumes: [api]
+  - id: backend-api
+    dir: apps/backend-api
+    kind: backend
+    lang: typescript
+    provides: [api, events]
+    consumes: [db]
+  - id: worker
+    dir: apps/worker
+    kind: worker
+    lang: typescript
+    provides: []
+    consumes: [events, db]
+datastore_owner: backend-api
 rules:
   - scope: common
     text: "ティアは frontend / backend-api / worker の 3 つに分ける"

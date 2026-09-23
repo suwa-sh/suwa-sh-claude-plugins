@@ -53,12 +53,23 @@ test('actors と tiers_hint を導出する', () => {
   assert.deepEqual(byUc['リマインドを送信する'].tiers_hint, ['backend', 'worker']); // タイマー
 });
 
-test('既存 use-cases の slug/spec_ids/status を uc_id で引き継ぐ', () => {
-  const existing = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: ['SPEC-001-01'], status: 'in_progress' }]]);
+test('既存 use-cases の slug/status/tiers_hint を uc_id で引き継ぐ', () => {
+  const existing = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: ['SPEC-001-01', 'SPEC-001-02'], status: 'in_progress' }]]);
   const byUc = Object.fromEntries(generate(reqData, bucText, existing).use_cases.map(u => [u.uc, u]));
   assert.equal(byUc['貸出を登録する'].slug, 'register-a-loan');
-  assert.deepEqual(byUc['貸出を登録する'].spec_ids, ['SPEC-001-01']);
   assert.equal(byUc['貸出を登録する'].status, 'in_progress');
+  // 既存 spec_ids が推定候補を網羅していれば追加はなく spec_ids_added は付かない
+  assert.deepEqual(byUc['貸出を登録する'].spec_ids, ['SPEC-001-01', 'SPEC-001-02']);
+  assert.ok(!('spec_ids_added' in byUc['貸出を登録する']));
+});
+
+test('spec_ids は既存値と新推定候補の和集合になり、追加分を spec_ids_added に記録する', () => {
+  // LLM が SPEC-001-01 だけに絞った後、フローに SPEC-001-02 が新たに紐づいた状況を再現
+  const existing = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: ['SPEC-001-01'], status: 'planned' }]]);
+  const byUc = Object.fromEntries(generate(reqData, bucText, existing).use_cases.map(u => [u.uc, u]));
+  const uc = byUc['貸出を登録する'];
+  assert.deepEqual(uc.spec_ids, ['SPEC-001-01', 'SPEC-001-02'], '和集合 (sorted/unique)');
+  assert.deepEqual(uc.spec_ids_added, ['SPEC-001-02'], '新規に増えた候補だけを記録');
 });
 
 test('生成物は validateUseCases.js を通る', () => {

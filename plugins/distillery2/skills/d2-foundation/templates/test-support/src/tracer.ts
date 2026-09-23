@@ -33,15 +33,19 @@ export function currentScenarioId(): string | undefined {
   return storage.getStore()?.scenarioId;
 }
 
-interface SliceLike { paths?: Record<string, Record<string, { operationId?: string }>> }
+type PathsMap = Record<string, Record<string, { operationId?: string }>>;
+interface SliceLike { paths?: PathsMap; openapi?: { paths?: PathsMap } }
 
 /**
  * contract-slice.json (OpenAPI bundle の部分集合) から、method + path → operationId の解決関数を作る。
+ * slice は `{ schema_version, uc, openapi: { paths }, asyncapi }` の形なので paths は `openapi.paths` にある。
+ * openapi 部分 (`slice.openapi`) を直接渡された場合の `slice.paths` も受け付ける (どちらの形でも動く)。
  * path template (`/loans/{id}`) は 1 セグメント一致で照合する。as-built の operation 抽出はこの operationId を出所にする。
  */
 export function createOperationIdResolver(slice: SliceLike): (method: string, urlPath: string) => string | undefined {
   const entries: { method: string; re: RegExp; operationId: string }[] = [];
-  for (const [tpl, item] of Object.entries(slice.paths || {})) {
+  const paths: PathsMap = slice.openapi?.paths || slice.paths || {};
+  for (const [tpl, item] of Object.entries(paths)) {
     const re = new RegExp('^' + tpl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{[^}]+\\\}/g, '[^/]+') + '/?$');
     for (const [m, op] of Object.entries(item || {})) if (op && op.operationId) entries.push({ method: m.toUpperCase(), re, operationId: op.operationId });
   }

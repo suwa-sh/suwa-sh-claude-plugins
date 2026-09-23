@@ -35,14 +35,18 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
    `git merge-base --is-ancestor <base_head> HEAD`、`git log <base_head>..HEAD` に merge commit が無いことを確認
 2. 復旧用 ref `refs/distillery2/pre-squash/<slug>/<timestamp>` を `git update-ref` で現在 HEAD に作る。作れなければ squash しない
 3. `git reset --soft <base_head>`。staged が当該 UC の変更だけであることを確認する
-4. `scripts/prTrailers.js --run .distillery/runs/<slug>` で trailer を作り、`git commit -F <本文ファイル>` で
+4. `scripts/prTrailers.js --run .distillery/runs/<slug> --strict --commit-message "feat: <UC 名>"` で本文を作り (必須 trailer が
+   欠けていれば exit 1 で止まる)、`git commit -F <本文ファイル>` で
    exactly 1 commit を作る。件名は `feat: <UC 名 (日本語)>`。`git rev-list --count <base_head>..HEAD` が 1 でなければ push しない。
    失敗したら `git reset --soft <復旧用 ref>` で戻す
 5. `gh auth status` を確認し `git push -u origin feature/<slug>`。force push はしない
 6. `gh pr list --state all --head feature/<slug> --json number,url,state` で既存 PR を確認。無ければ
    `gh pr create --base <base_branch> --head feature/<slug> --title "feat: <UC 名>" --body-file <本文>`。
    本文は UC の目的、主な変更、ゲート結果、承認した前提、as-built のパス、既知の制約を人が読める名前で書く
-7. `events.jsonl` に `delivered {pr_url, recovery_ref}` を追記し、PR URL と復旧用 ref を報告して終了する。
+7. 配送の記録は **commit に入れない** (squash 後に追跡ファイルを書くと tree が汚れ、PR に 2 個目の commit が要るため)。
+   `reports/delivered.json` (`.distillery/runs/*/reports` は gitignore 済み) に `{pr_url, recovery_ref, head, at}` を書き、
+   PR URL と復旧用 ref を報告して終了する。**配送済みかどうかの正は GitHub** (`gh pr list --head feature/<slug>`)。
+   再開時は `gh pr list` を先に照合し、PR があれば deliver 段階を完了扱いにする (done ファイルは作らない)。
    次の UC へ自動継続しない (PR が merge され base branch を fetch した後の新しい run で始める)
 
 ## commit trailer

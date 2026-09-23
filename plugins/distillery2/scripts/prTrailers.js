@@ -3,8 +3,10 @@
  * prTrailers.js — UC の squash commit / PR 本文に付ける trailer を run state から作る
  *
  * Usage:
- *   node prTrailers.js --run .distillery/runs/<slug> [--cwd <repo>] [--body <path>]  # trailer 行を stdout に出す
- *   node prTrailers.js --run ... --commit-message "feat: 貸出を登録する"                 # 件名 + 空行 + trailer を出す
+ *   node prTrailers.js --run .distillery/runs/<slug> [--cwd <repo>] [--strict]        # trailer 行を stdout に出す
+ *   node prTrailers.js --run ... --commit-message "feat: 貸出を登録する" --strict     # 件名 + 空行 + trailer を出す
+ *
+ * --strict (配送時に使う): UC / Basis-Requirements / Gates (全段 pass) / Assumptions / As-Built が揃わなければ exit 1
  *
  * 入力: use-cases.yaml (docs/requirements)、reports/gates.json、events.jsonl (review_approved / feedback_filed)、
  *       basis.js stamp (requirements / adr / contracts)
@@ -25,6 +27,7 @@ function parseArgs(argv) {
     else if (a === '--cwd') o.cwd = path.resolve(argv[++i]);
     else if (a === '--commit-message') o.message = argv[++i];
     else if (a === '--docs-root') o.docsRoot = argv[++i];
+    else if (a === '--strict') o.strict = true;
     else throw new Error(`Unknown arg: ${a}`);
   }
   if (!o.run) throw new Error('--run <runDir> is required');
@@ -65,16 +68,44 @@ function buildTrailers({ cwd, runDir, docsRoot = 'docs' }) {
 
 function render(trailers) { return trailers.map(([k, v]) => `${k}: ${v}`).join('\n'); }
 
+/** 配送に必要な trailer が揃っているか。欠落と、Gates に pass 以外の段があるものを返す */
+const GATE_NAMES = ['static', 'unit', 'contract', 'uc-bdd', 'acceptance'];
+
+function strictProblems(trailers, cwd = process.cwd()) {
+  const map = new Map(trailers);
+  const problems = [];
+  for (const k of ['UC', 'UC-Slug', 'Basis-Requirements', 'Gates', 'Assumptions', 'As-Built']) if (!map.has(k)) problems.push(`missing ${k}`);
+  const gates = map.get('Gates');
+  if (gates) {
+    const entries = gates.split(' ').map(p => p.split('='));
+    const notPass = entries.filter(([, s]) => s !== 'pass').map(([n, s]) => `${n}=${s}`);
+    if (notPass.length) problems.push(`Gates not all pass: ${notPass.join(' ')}`);
+    for (const name of GATE_NAMES) {
+      const n = entries.filter(([g]) => g === name).length;
+      if (n !== 1) problems.push(`Gates must list ${name} exactly once (found ${n})`);
+    }
+    const extra = entries.map(([g]) => g).filter(g => !GATE_NAMES.includes(g));
+    if (extra.length) problems.push(`Gates has unknown gate(s): ${extra.join(' ')}`);
+  }
+  const asBuilt = map.get('As-Built');
+  if (asBuilt && !fs.existsSync(path.resolve(cwd, asBuilt))) problems.push(`As-Built file not found: ${asBuilt}`);
+  return problems;
+}
+
 function main(argv) {
   let o;
   try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const runDir = path.resolve(o.cwd, o.run);
   if (!fs.existsSync(runDir)) { console.error(`run dir not found: ${runDir}`); return 2; }
   const trailers = buildTrailers({ cwd: o.cwd, runDir, docsRoot: o.docsRoot });
+  if (o.strict) {
+    const problems = strictProblems(trailers, o.cwd);
+    if (problems.length) { console.error(`prTrailers --strict: ${problems.join('; ')}`); return 1; }
+  }
   console.log(o.message ? `${o.message}\n\n${render(trailers)}` : render(trailers));
   return 0;
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { buildTrailers, render };
+module.exports = { buildTrailers, render, strictProblems };

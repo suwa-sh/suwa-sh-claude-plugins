@@ -36,6 +36,6 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
 | scenario_approved / review_approved | 人の承認。承認した内容の要点と評価対象のハッシュを持つ |
 | assumption_decided | 前提の承認・却下 (id と処遇) |
 | feedback_filed | 還流 (kind と PR / issue の URL) |
-| delivered | squash / push / PR 作成 |
+| (delivered) | events には書かない。squash 後の追記は tree を汚すため、`reports/delivered.json` (gitignore) と GitHub の PR を正にする |
 
 status ファイルは持たない。必要なら events と done から都度計算する。

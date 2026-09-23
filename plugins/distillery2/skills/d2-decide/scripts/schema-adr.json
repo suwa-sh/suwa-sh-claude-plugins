@@ -19,9 +19,32 @@
       "items": { "type": "string", "enum": ["system", "app", "data", "infra", "ui", "testing"] }
     },
     "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
-    "rules": { "type": "array", "items": { "$ref": "#/$defs/Rule" } }
+    "rules": { "type": "array", "items": { "$ref": "#/$defs/Rule" } },
+    "tiers": { "type": "array", "items": { "$ref": "#/$defs/Tier" } },
+    "datastore_owner": { "type": "string", "minLength": 1 },
+    "capabilities": {
+      "type": "object",
+      "required": ["browser"],
+      "additionalProperties": false,
+      "properties": {
+        "browser": { "type": "boolean" }
+      }
+    },
+    "ui": { "type": "object" }
   },
   "$defs": {
+    "Tier": {
+      "type": "object",
+      "required": ["id", "dir", "kind", "lang"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "dir": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["frontend", "backend", "worker", "data-pipeline", "cli", "mcp-server"] },
+        "lang": { "type": "string", "minLength": 1 },
+        "provides": { "type": "array", "items": { "type": "string" } },
+        "consumes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
     "Rule": {
       "type": "object",
       "required": ["scope", "text"],

@@ -32,3 +32,13 @@ test('rules[].scope の書式違反を検出する', () => {
   const { errors } = validateAdrDir(path.join(FIX, 'adr-bad-scope'));
   assert.ok(errors.some(e => /rules\[0\]\.scope/.test(e.message) && /pattern/.test(e.message)), JSON.stringify(errors));
 });
+
+test('scope に system を含む accepted ADR に tiers が無いとエラー', () => {
+  const { errors } = validateAdrDir(path.join(FIX, 'adr-missing-tiers'));
+  assert.ok(errors.some(e => /tiers\[\] を持つ必要がある/.test(e.message)), JSON.stringify(errors));
+});
+
+test('tiers[].kind が enum 外だとスキーマエラー', () => {
+  const { errors } = validateAdrDir(path.join(FIX, 'adr-bad-tier-kind'));
+  assert.ok(errors.some(e => /tiers\[0\]\.kind/.test(e.message) && /enum/.test(e.message)), JSON.stringify(errors));
+});

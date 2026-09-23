@@ -37,8 +37,24 @@ ucs:
 
 UC が使う各 OpenAPI operation には、次の example が無ければ `validateUcIndex.js` が停止する:
 
-- `requestBody` があるなら request example が 1 つ以上
 - ドキュメント化された各 2xx / 4xx status (content を持つもの) に response example が 1 つ以上
+- `requestBody` があるなら、各 response example と **同名の request example** があること
+  (その status を起こす入力を契約が持つ、という意味)
+
+### request と response の名前対応
+
+契約テストは status ごとに「その status を起こす入力」を送る必要がある。そのため request と response の
+example を **同じ名前** で対応づける:
+
+| 要素 | 名前 |
+|---|---|
+| `responses.<status>.content.<mt>.examples.<name>` | この status を返すケースの名前 |
+| `requestBody.content.<mt>.examples.<name>` | 同名の入力 (この status を起こす) |
+
+- 例: 201 の response example `success` ↔ request example `success`、409 の `conflict` ↔ request `conflict`。
+- request が単数形 `example` (名前なし) のときは、2xx にだけ対応づく。
+- 同名の request example が無い status は、生成テストで `it.todo('<status>: request example "<name>" missing')` になる
+  (誤って共通の入力を送って必ず落ちる契約テストを作らない)。
 
 example を書けないシナリオに行き当たったら、契約を推測で埋めず、`.distillery/runs/<slug>/issues/` に
 課題ドラフトを残して止まる (mode=uc の停止条件)。AsyncAPI の message example は必須ではなく、

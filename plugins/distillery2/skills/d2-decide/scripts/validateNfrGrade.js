@@ -22,8 +22,23 @@ const fs = require('node:fs');
 
 const EXPECTED_CATEGORY_IDS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
+/**
+ * カタログ (references/nfr-grade-catalog.md) からメトリクス ID の正本を抽出する。
+ * カタログは各メトリクスを `##### A.1.1.1 名称` の見出しで列挙しており、それが機械可読の ID 集合になる。
+ * 読めない場合は空配列を返し、網羅チェックをスキップ (プラグイン同梱物なので通常は存在する)。
+ */
+function catalogMetricIds() {
+  try {
+    const catalogPath = path.join(__dirname, '..', 'references', 'nfr-grade-catalog.md');
+    const text = fs.readFileSync(catalogPath, 'utf8');
+    const ids = [];
+    for (const m of text.matchAll(/^#{5}\s+([A-F]\.\d+\.\d+\.\d+)/gm)) ids.push(m[1]);
+    return ids;
+  } catch { return []; }
+}
+
 /** スキーマでは表現しづらい NFR 固有の制約 */
-function nfrSpecificErrors(data) {
+function nfrSpecificErrors(data, expectedMetricIds = catalogMetricIds()) {
   const errors = [];
   const categories = data.categories || [];
   const actualIds = categories.map(c => c.id);
@@ -32,11 +47,13 @@ function nfrSpecificErrors(data) {
   }
   let metricCount = 0;
   let importantCount = 0;
+  const actualMetricIds = new Set();
   for (const cat of categories) {
     for (const sub of cat.subcategories || []) {
       for (const item of sub.items || []) {
         for (const metric of item.metrics || []) {
           metricCount++;
+          if (metric.id) actualMetricIds.add(metric.id);
           if (metric.important) importantCount++;
           if (typeof metric.grade === 'number' && (metric.grade < 0 || metric.grade > 5)) {
             errors.push({ path: `$.categories[${cat.id}].${metric.id}`, message: `grade ${metric.grade} out of range [0-5]` });
@@ -44,6 +61,11 @@ function nfrSpecificErrors(data) {
         }
       }
     }
+  }
+  // カタログの全メトリクスが揃っているか (欠落した ID を列挙する)。
+  const missing = (expectedMetricIds || []).filter(id => !actualMetricIds.has(id));
+  if (missing.length) {
+    errors.push({ path: '$.categories', message: `Missing metrics (${missing.length}/${expectedMetricIds.length}): ${missing.join(', ')}` });
   }
   return { errors, metricCount, importantCount };
 }
@@ -82,4 +104,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { validateNfrGrade, nfrSpecificErrors };
+module.exports = { validateNfrGrade, nfrSpecificErrors, catalogMetricIds };

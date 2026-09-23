@@ -13,7 +13,9 @@ UC 着手の最初に、その UC の Gherkin を `features/<業務>/<slug>.feat
 
 ## 書くもの
 
-`features/<業務>/<slug>.feature` 1 ファイル。先頭にコメントで basis を書く (`# basis: requirements@<sha>`)。
+- `features/<業務>/<slug>.feature` 1 ファイル (この UC のシナリオ)。先頭にコメントで basis を書く (`# basis: requirements@<sha>`)
+- UC をまたぐ受入基準があるときだけ、`features/acceptance/<SPEC-ID>.feature` を作るか既存に追記する
+  (そのシナリオにも `@uc:<slug>` を付ける。付いていないシナリオはこの UC の充足に数えない)。それ以外のファイルは書かない
 
 ```gherkin
 # basis: requirements@abc123...
@@ -42,7 +44,7 @@ UC 着手の最初に、その UC の Gherkin を `features/<業務>/<slug>.feat
 1. **受入基準との対応**: UC の spec_ids が持つ `acceptance_criteria` の各項目を、少なくとも 1 つのシナリオに
    `@acceptance:<SPEC-ID>-<連番>` タグで対応させる (受入基準の文言を意訳せず、シナリオの Then に反映する)。
    UC をまたぐ受入基準 (この UC だけでは確かめられないもの) は `features/acceptance/<SPEC-ID>.feature` に書くか、
-   既にあればそのシナリオに `@uc:<slug>` を追加する
+   既にあればそのシナリオに `@uc:<slug>` を追加する (`@uc:<slug>` が無いシナリオは対応として数えない)
 2. **業務条件と状態遷移を網羅する**: `条件.tsv` の該当条件ごとに、成立する場合と成立しない場合のシナリオを書く。
    `状態.tsv` の該当遷移は Then で状態を確かめる
 3. **観測できる結果だけを Then に書く**: 内部実装 (テーブル名・関数名) を書かない。API の応答、状態、発行されるイベント、画面表示
@@ -55,6 +57,6 @@ UC 着手の最初に、その UC の Gherkin を `features/<業務>/<slug>.feat
 
 ## 完了条件
 
-- `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-implement/scripts/checkScenario.js <feature> --use-cases docs/requirements/use-cases.yaml --requirements docs/requirements/requirements.yaml`
+- `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-implement/scripts/checkScenario.js <feature> --use-cases docs/requirements/use-cases.yaml --requirements docs/requirements/requirements.yaml --acceptance-dir features/acceptance`
   が ok (parse できる、`@uc:` タグがある、spec_ids の受入基準がすべてタグで対応済み、未対応があれば列挙)
 - 報告に「シナリオ数 / 受入基準の対応 / @browser の数 / 起票した issue」を書く。人の承認は d2-run が取る (このモードでは聞かない)

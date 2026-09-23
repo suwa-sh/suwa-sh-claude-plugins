@@ -16,9 +16,13 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateLoan'
             examples:
-              basic:
+              success:
                 value:
                   bookId: book-1
+                  days: 14
+              conflict:
+                value:
+                  bookId: book-2
                   days: 14
       responses:
         '201':
@@ -28,7 +32,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Loan'
               examples:
-                created:
+                success:
                   value:
                     id: loan-1
                     bookId: book-1
@@ -41,7 +45,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
               examples:
-                unavailable:
+                conflict:
                   value:
                     code: BOOK_NOT_AVAILABLE
                     detail: already borrowed

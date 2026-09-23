@@ -16,7 +16,10 @@
 - **exit code が正**。出力文字列の grep で pass 判定しない
 - pending / skipped のシナリオは pass に数えない (cucumber は strict で実行する)
 - 定義の無いコマンドは skipped (失敗ではない)。ただし unit と uc-bdd が skipped のまま UC を完了にしない
-- scaffold の red baseline は `--only unit --expect-red unit` で「落ちること」を確認する。パースエラー・設定ミスは red と認めない
+- scaffold の red baseline は `--only unit --expect-red unit` で確認する。red と認めるのは「ジョブが実行され、`{report}` の JSON に
+  失敗テストが 1 以上ある」ときだけ。skipped・レポート無し (起動失敗や設定ミス)・失敗 0 は fail
+- 部分実行 (`--from` / `--upto` / `--only`) は `reports/gates.json` の実行した段だけを置き換え、他段の結果を残す。
+  未実行の段は `missing`。Verifier と配送は `all_recorded: true` かつ全段 pass を前提にする
 
 ## check-only 規約 (ティア並列中)
 

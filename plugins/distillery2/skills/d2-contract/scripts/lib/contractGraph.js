@@ -208,13 +208,24 @@ function mediaExamples(holder) {
 const is2xx = s => /^2\d\d$/.test(s);
 const is4xx = s => /^4\d\d$/.test(s);
 
-/** examples 必須ルール: request (requestBody があるとき) と全 2xx/4xx status に example があるか検査。 */
+/**
+ * examples 必須ルール (名前対応):
+ *  - ドキュメント化された各 2xx/4xx status (content あり) に response example が 1 つ以上。
+ *  - requestBody があるなら、その各 response example と同名の request example があること
+ *    (単数形 `example` は 2xx にだけ対応づく)。requestBody が無ければ request 対応は不要。
+ */
 function exampleGaps(entry) {
   const ex = operationExamples(entry);
   const gaps = [];
-  if (ex.hasRequestBody && ex.requestExamples.length === 0) gaps.push('request');
+  const reqNames = new Set(ex.requestExamples.map(r => r.name));
   for (const [status, r] of Object.entries(ex.responses)) {
-    if ((is2xx(status) || is4xx(status)) && r.hasContent && r.examples.length === 0) gaps.push(`response ${status}`);
+    if (!(is2xx(status) || is4xx(status)) || !r.hasContent) continue;
+    if (r.examples.length === 0) { gaps.push(`response ${status}`); continue; }
+    if (!ex.hasRequestBody) continue;
+    for (const example of r.examples) {
+      const paired = reqNames.has(example.name) || (is2xx(status) && reqNames.has('example'));
+      if (!paired) gaps.push(`request example "${example.name}" for ${status}`);
+    }
   }
   return gaps;
 }

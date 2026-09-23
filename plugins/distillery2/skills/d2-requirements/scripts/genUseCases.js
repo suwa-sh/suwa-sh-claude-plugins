@@ -8,8 +8,10 @@
  * 導出できない項目: slug (英語 kebab-case)。暫定で `uc-<uc_id>` を置き、LLM が意味のある英名へ差し替える。
  * spec_ids はフロー (BUC) 単位で当てた候補。LLM が UC が実現する SPEC へ絞り込む。
  *
- * 既存 use-cases.yaml があれば uc_id をキーに slug / spec_ids / status / tiers_hint を引き継ぐ
+ * 既存 use-cases.yaml があれば uc_id をキーに slug / status / tiers_hint を引き継ぐ
  * (LLM が編集した値を再生成で上書きしない)。
+ * spec_ids は「既存値 (LLM が絞った SPEC) ∪ 新たな推定候補」の和集合 (sorted / unique) にし、
+ * 追加された候補を spec_ids_added に記録する (LLM が採否を再度絞るための差分)。
  *
  * Usage:
  *   node genUseCases.js [requirements.yaml] [BUC.tsv] [out.yaml]
@@ -125,8 +127,12 @@ function generate(reqData, bucText, existingById) {
     const prev = existingById.get(id) || {};
     const flowKey = stripFlow(g.buc);
     const inferredSpecs = Array.from(flowSpec.get(flowKey) || []).sort();
-    const specIds = Array.isArray(prev.spec_ids) && prev.spec_ids.length ? prev.spec_ids : inferredSpecs;
-    return {
+    // 既存の spec_ids (LLM が絞った値) と新たな推定候補の和集合を取り、SPEC を取りこぼさない。
+    // 既存があるときだけ、新規に増えた候補を spec_ids_added に記録し、LLM が採否を絞れるようにする。
+    const prevSpecs = Array.isArray(prev.spec_ids) ? prev.spec_ids : [];
+    const specIds = Array.from(new Set([...prevSpecs, ...inferredSpecs])).sort();
+    const added = prevSpecs.length ? inferredSpecs.filter((s) => !prevSpecs.includes(s)) : [];
+    const uc = {
       uc_id: id,
       business: g.business,
       buc: g.buc,
@@ -137,6 +143,8 @@ function generate(reqData, bucText, existingById) {
       tiers_hint: Array.isArray(prev.tiers_hint) && prev.tiers_hint.length ? prev.tiers_hint : inferTiers(g),
       status: typeof prev.status === 'string' ? prev.status : 'planned',
     };
+    if (added.length) uc.spec_ids_added = added;
+    return uc;
   });
 
   return {

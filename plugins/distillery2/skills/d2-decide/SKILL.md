@@ -45,7 +45,7 @@ NFR の推論は v1 手順を移植している。順に参照する:
 - [references/nfr-grade-catalog.md](references/nfr-grade-catalog.md) — IPA 6 大項目 (A 可用性 / B 性能 / C 運用 / D 移行 / E セキュリティ / F 環境) カタログ
 - [references/nfr-inference-rules.md](references/nfr-inference-rules.md) — RDRA → NFR 推論ルール
 - [references/nfr/nfr-infer.md](references/nfr/nfr-infer.md) — 推論の進め方
-- [references/nfr/nfr-dialogue.md](references/nfr/nfr-dialogue.md) — 規模感の確認 (auto-adopt 時は推奨を仮置き)
+- [references/nfr/nfr-dialogue.md](references/nfr/nfr-dialogue.md) — 確定の実行モード分岐。**auto-adopt (d2-run 経由の既定) は問い合わせず推奨値を採用し `confidence: low` を付ける**。`--interactive` 指定時のみ対話する
 - [references/nfr-grade-schema.md](references/nfr-grade-schema.md) / [references/nfr/nfr-grade-output.md](references/nfr/nfr-grade-output.md) — 出力形式
 
 出力後、検証と Markdown 生成を実行する:

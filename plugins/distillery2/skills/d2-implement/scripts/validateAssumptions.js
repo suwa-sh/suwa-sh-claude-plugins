@@ -158,6 +158,7 @@ function validateVerdicts(findingsDoc, assumptionsDoc, expect, errors) {
   else {
     for (const g of GATES) {
       if (!['pass', 'fail', 'skipped'].includes(gr[g])) errors.push(`gates_read.${g} must be pass|fail|skipped (got ${JSON.stringify(gr[g])})`);
+      else if (gr[g] !== 'pass') errors.push(`gates_read.${g} must be pass before verification (got ${gr[g]}); run all gates first`);
     }
   }
   const vc = findingsDoc.viewpoints_checked;

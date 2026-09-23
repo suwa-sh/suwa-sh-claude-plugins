@@ -60,7 +60,7 @@ gates_read:                      # reports/gates.json から転記 (再実行し
   unit: pass
   contract: pass
   uc-bdd: pass
-  acceptance: skipped
+  acceptance: pass
 viewpoints_checked:
   uc_intent: {status: done, note: "..."}
   assumption_conformance: {status: done}

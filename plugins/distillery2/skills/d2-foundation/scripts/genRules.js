@@ -20,17 +20,22 @@ const { stamp, headerLine } = require('../../../scripts/lib/basis');
 const DEFAULT_TEMPLATES = path.join(__dirname, '..', 'references', 'rule-templates');
 
 function parseArgs(argv) {
-  const o = { adr: 'docs/adr', out: 'docs/rules', templates: DEFAULT_TEMPLATES, cwd: process.cwd() };
+  const o = { adr: 'docs/adr', out: 'docs/rules', templates: DEFAULT_TEMPLATES, cwd: process.cwd(), force: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], next = () => argv[++i];
     if (a === '--adr') o.adr = next();
     else if (a === '--out') o.out = next();
     else if (a === '--templates') o.templates = next();
     else if (a === '--cwd') o.cwd = path.resolve(next());
+    else if (a === '--force') o.force = true;
     else throw new Error(`Unknown arg: ${a}`);
   }
   return o;
 }
+
+const HEADER_SCAN_LINES = 10;
+/** 生成物か? 先頭数行に basis ヘッダ (`basis:`) があれば生成物とみなす。手書きは持たない。 */
+function isGenerated(text) { return /basis:/.test(text.split('\n').slice(0, HEADER_SCAN_LINES).join('\n')); }
 
 /** rule の scope を出力ファイル名に対応づける。未知なら null。 */
 function scopeToFile(scope) {
@@ -89,22 +94,29 @@ function run(o) {
   const kinds = presentKinds(adrs);
   const targets = ['index.md', 'common.md', 'testing.md', ...kinds.map(k => `tier-${k}.md`)];
   fs.mkdirSync(outDir, { recursive: true });
-  const written = [];
+  const written = [], skipped = [];
   for (const name of targets) {
     const tplPath = path.join(o.templates, name);
-    if (!fs.existsSync(tplPath)) { console.error(`ERROR template not found: ${tplPath}`); return { code: 1, written }; }
+    if (!fs.existsSync(tplPath)) { console.error(`ERROR template not found: ${tplPath}`); return { code: 1, written, skipped }; }
+    const outFile = path.join(outDir, name);
+    // 手書きルールを握り潰さない: 既存が生成ヘッダを持たなければ --force が無い限り上書きしない。
+    if (fs.existsSync(outFile) && !o.force && !isGenerated(fs.readFileSync(outFile, 'utf8'))) {
+      console.error(`WARN existing ${path.join(o.out, name)} lacks basis header (hand-written?) — 上書きしない。上書きするなら --force`);
+      skipped.push(name);
+      continue;
+    }
     const tpl = fs.readFileSync(tplPath, 'utf8');
     const content = renderFile(tpl, byScope[name], basisLine);
-    fs.writeFileSync(path.join(outDir, name), content);
+    fs.writeFileSync(outFile, content);
     written.push(name);
   }
-  return { code: 0, written, adrs: adrs.length, kinds };
+  return { code: skipped.length ? 1 : 0, written, skipped, adrs: adrs.length, kinds };
 }
 
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
-  if (r.code === 0) console.log(`genRules: ${r.written.length} files (kinds: ${r.kinds.join(', ')}) from ${r.adrs} ADRs`);
+  console.log(`genRules: ${r.written.length} files (kinds: ${(r.kinds || []).join(', ')}) from ${r.adrs || 0} ADRs${r.skipped && r.skipped.length ? `, skipped ${r.skipped.length} (hand-written; use --force)` : ''}`);
   return r.code;
 }
 

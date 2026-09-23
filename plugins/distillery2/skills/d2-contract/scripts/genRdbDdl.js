@@ -40,20 +40,28 @@ function columnDef(table, col) {
   return `  ${col.name} ${type}${col.nullable ? '' : ' NOT NULL'}`;
 }
 
+/** FK 制約名。テーブル名 + FK 列で決定論的に組む (循環時も安定)。 */
+function fkConstraintName(table, fk) { return `${table.name}_${fk.columns.join('_')}_fkey`; }
+
 function tableSql(table) {
   const lines = [];
   const cols = table.columns.map(c => columnDef(table, c));
   cols.push(`  PRIMARY KEY (${table.primary_key.join(', ')})`);
-  for (const fk of table.foreign_keys || []) {
-    const onDelete = fk.on_delete ? ` ON DELETE ${fk.on_delete}` : '';
-    cols.push(`  FOREIGN KEY (${fk.columns.join(', ')}) REFERENCES ${fk.references.table} (${fk.references.columns.join(', ')})${onDelete}`);
-  }
+  // FK は CREATE TABLE に埋めず、全テーブル作成後に ALTER TABLE で足す (循環 FK でも参照先が必ず存在する)。
   for (const idx of table.indexes || []) if (idx.unique) cols.push(`  CONSTRAINT ${idx.name} UNIQUE (${idx.columns.join(', ')})`);
   lines.push(`CREATE TABLE IF NOT EXISTS ${table.name} (`);
   lines.push(cols.join(',\n'));
   lines.push(`);`);
   for (const idx of table.indexes || []) if (!idx.unique) lines.push(`CREATE INDEX IF NOT EXISTS ${idx.name} ON ${table.name} (${idx.columns.join(', ')});`);
   return lines.join('\n');
+}
+
+/** 1 本の FK を冪等な ALTER TABLE ADD CONSTRAINT にする。ADD CONSTRAINT には IF NOT EXISTS が無いため DO ブロックで冪等化。 */
+function foreignKeySql(table, fk) {
+  const onDelete = fk.on_delete ? ` ON DELETE ${fk.on_delete}` : '';
+  const name = fkConstraintName(table, fk);
+  const clause = `ALTER TABLE ${table.name} ADD CONSTRAINT ${name} FOREIGN KEY (${fk.columns.join(', ')}) REFERENCES ${fk.references.table} (${fk.references.columns.join(', ')})${onDelete}`;
+  return `DO $$ BEGIN\n  ${clause};\nEXCEPTION WHEN duplicate_object THEN null;\nEND $$;`;
 }
 
 function enumTypeSql(table, col) {
@@ -70,6 +78,12 @@ function buildSql(tables) {
   for (const [t, c] of enumCols) blocks.push(enumTypeSql(t, c));
   if (enumCols.length) blocks.push('');
   for (const t of ordered) { blocks.push(tableSql(t)); blocks.push(''); }
+  // 全テーブル作成後に FK を足す。テーブル名昇順で決定論的に (循環 FK でも順序に依存しない)。
+  const fkBlocks = [];
+  for (const t of [...tables].sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
+    for (const fk of t.foreign_keys || []) fkBlocks.push(foreignKeySql(t, fk));
+  }
+  if (fkBlocks.length) { blocks.push('-- foreign keys (ALTER で後付け: 循環参照に対応)'); for (const b of fkBlocks) { blocks.push(b); blocks.push(''); } }
   return blocks.join('\n').replace(/\n+$/, '\n');
 }
 
@@ -169,7 +183,7 @@ function run(contractsDir, { configPath, outRoot, check = false }) {
   return { status: check ? 'current' : 'generated', written, files: [...files.keys()] };
 }
 
-module.exports = { run, buildSql, rowTypes, dbSchemaTest };
+module.exports = { run, buildSql, rowTypes, dbSchemaTest, foreignKeySql, fkConstraintName };
 
 if (require.main === module) {
   try {

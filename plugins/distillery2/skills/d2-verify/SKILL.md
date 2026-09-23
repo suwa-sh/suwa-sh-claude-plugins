@@ -31,8 +31,8 @@ description: >-
 
 ## 手順
 
-1. `reports/gates.json` を読み、5 ゲートの結果を `gates_read` に転記する。`result: fail` のまま呼ばれていたら
-   呼び出し側の誤りとして停止する (Verifier は pass 後にだけ動く)
+1. `reports/gates.json` を読み、5 ゲートの結果を `gates_read` に転記する。`all_recorded: true` でない (`missing` の段がある)、
+   または pass でない段があれば、呼び出し側の誤りとして停止する (Verifier は全段 pass の後にだけ動く)
 2. 観点 1 (uc_intent) を viewpoints.md の突き合わせ表どおりに行う。根拠 (レポートの該当箇所・トレースの行・要求の行) を
    findings の `evidence` に書く。この間、前提ファイルは開かない。候補 (仕様に根拠の無い判断) を控える
 3. 観点 2 (assumption_conformance) を blind join の手順どおりに行う

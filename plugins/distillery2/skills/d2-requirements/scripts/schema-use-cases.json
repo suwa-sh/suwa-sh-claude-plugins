@@ -36,6 +36,11 @@
           "type": "array",
           "items": { "type": "string", "pattern": "^SPEC-[0-9]{3}-[0-9]{2}$" }
         },
+        "spec_ids_added": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^SPEC-[0-9]{3}-[0-9]{2}$" },
+          "description": "再生成で新たに推定候補へ増えた SPEC。LLM が採否を絞るための差分 (絞り込み後は削除してよい)"
+        },
         "actors": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }

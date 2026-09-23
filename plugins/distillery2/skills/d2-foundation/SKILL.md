@@ -56,6 +56,8 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from <d2-d
 
 - 生成物は `basis:` ヘッダ (basis.js) を持つものだけ上書き再生成する: `docs/rules/*`、`.dependency-cruiser.cjs`、
   `.distillery/config.yaml`、`packages/ui/.imported.yaml`。直したい変更は ADR・契約・design に戻す。
+  `genConfig.js` / `genRules.js` は、出力先に `basis:` ヘッダの無い手書きファイルがあると上書きせず警告して exit 1 する
+  (意図的に潰すときだけ `--force`)。手書き設定・ルールを phase 再実行で失わないため。
 - 骨格とテンプレート展開 (package.json、tsconfig.base.json、apps/packages のディレクトリ、
   packages/test-support/**、features/support/**、cucumber.js) は **既存ファイルを上書きしない** (skip として報告)。
   リポ側のローカル改訂を消さないため。
@@ -63,8 +65,9 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from <d2-d
 
 ## チェックポイント
 
-- 空リポで F1→F5 を通した後、`runGates.js --uc <slug> --upto static` が通ること
-  (コマンドが無いゲートは skip。arch test は node_modules 未インストールなら skip 相当で fail しない構成)。
+- 空リポで F1→F5 を通した後、対象リポルートで **`npm install` を実行してから** `runGates.js --uc <slug> --upto static` を通すこと。
+  static ゲートの arch test は `npx depcruise` を実行するため、`dependency-cruiser` が入っていないと fail する
+  (未インストールでも skip はされない)。コマンド定義そのものが無いゲートだけ skip される。
 - `genRules.js` を 2 回実行して diff が無いこと。
 
 ## F4 と d2-design への受け渡し

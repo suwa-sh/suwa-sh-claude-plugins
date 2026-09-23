@@ -44,9 +44,19 @@ function acceptanceIndex(reqDoc) {
   return idx;
 }
 
-function collectTags(features) {
+/**
+ * タグを集める。追加 feature (acceptance/ 等) は、対象 UC のタグ (@uc:<slug>) を Feature か Scenario に持つシナリオだけ数える
+ * (他 UC 向けのシナリオが同じ受入基準タグを持っていても、対象 UC の充足にはしない)
+ */
+function collectTags(features, slug) {
   const tags = new Set();
-  for (const f of features) for (const s of f.scenarios) for (const t of [...f.tags, ...s.tags]) tags.add(t);
+  features.forEach((f, i) => {
+    for (const s of f.scenarios) {
+      const all = [...f.tags, ...s.tags];
+      if (i > 0 && slug && !all.includes(`@uc:${slug}`)) continue;
+      for (const t of all) tags.add(t);
+    }
+  });
   return tags;
 }
 
@@ -69,7 +79,7 @@ function check(o) {
   if (o.acceptanceDir && fs.existsSync(o.acceptanceDir)) {
     for (const name of fs.readdirSync(o.acceptanceDir)) if (name.endsWith('.feature')) others.push(parseFeature(fs.readFileSync(path.join(o.acceptanceDir, name), 'utf8')));
   }
-  const tags = collectTags([main, ...others]);
+  const tags = collectTags([main, ...others], slug);
   const covered = new Set();
   const unknown = [];
   for (const t of tags) {

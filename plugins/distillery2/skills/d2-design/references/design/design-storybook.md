@@ -28,8 +28,11 @@ storybook-app/
     components/domain/       # ドメイン部品 + *.stories.tsx
     docs/                    # Introduction.mdx / DesignTokens.mdx / ScreenMapping.mdx
     stories/                 # 画面 (Screen) Story。screens.yaml の story はここを指す
-  tokens/tokens.json        # tokens.json (screens.yaml の tokens.file)
+    tokens/tokens.json      # tokens.json (screens.yaml の tokens.file。src/ 配下に置く)
 ```
+
+> **重要**: `tokens/` は必ず `src/` 配下に置く。F6 の `importUi.js` は `src/` だけを `packages/ui/` に
+> コピーするため、`src/` の外 (storybook-app 直下など) に置くとトークン JSON が取り込まれない。
 
 ## .storybook/main.ts (framework)
 
@@ -116,5 +119,8 @@ CSS 変数の未定義 (→ design-tokens.css に追加)、TypeScript 型エラ�
 - 生成物一式を `docs/design/storybook-app/` に置く。
 - d2-foundation phase=F6 (`importUi.js --from docs/design/storybook-app`) が
   ソースを `packages/ui/` にコピーし、取り込み記録を `packages/ui/.imported.yaml` に残す。
-- screens.yaml の `story` / `components` / `tokens.file` は storybook-app 内の相対パス。
-  取り込み後も同じ相対構造を `packages/ui/` 側で保つ。
+- screens.yaml の `story` / `components` / `tokens.file` は **`src/` からの相対パス**
+  (`validateScreens.js --app docs/design/storybook-app/src` が実在を検査する)。
+  例: `tokens.file: tokens/tokens.json` は `src/tokens/tokens.json` を指す。
+- `src/` を `packages/ui/` にコピーするため、取り込み後は `packages/ui/tokens/tokens.json` になり、
+  同じ相対構造 (`tokens/tokens.json`) を保つ。

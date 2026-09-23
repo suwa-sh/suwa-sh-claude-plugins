@@ -9,6 +9,7 @@
  *   templates/test-support/**     → packages/test-support/**
  *   templates/features-support/** → features/support/**
  *   templates/cucumber.js         → cucumber.js (リポルート)
+ *   templates/tsx-register.js     → tsx-register.js (リポルート、cucumber.js の ESM ローダ登録)
  *
  * 既存ファイルは上書きしない (skip として報告)。ディレクトリ構造はそのまま複製する。
  */
@@ -52,6 +53,7 @@ function run(o) {
   copyTree(path.join(o.templates, 'test-support'), path.resolve(o.cwd, 'packages/test-support'), 'packages/test-support', created, skipped);
   copyTree(path.join(o.templates, 'features-support'), path.resolve(o.cwd, 'features/support'), 'features/support', created, skipped);
   copyFile(path.join(o.templates, 'cucumber.js'), path.resolve(o.cwd, 'cucumber.js'), 'cucumber.js', created, skipped);
+  copyFile(path.join(o.templates, 'tsx-register.js'), path.resolve(o.cwd, 'tsx-register.js'), 'tsx-register.js', created, skipped);
   return { code: 0, created, skipped };
 }
 

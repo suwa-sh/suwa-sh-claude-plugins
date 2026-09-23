@@ -39,7 +39,8 @@ LLM 主体のステージ。d2-run が段階③で、F3 (test-support) と F6 (�
 
 `references/design/design-tokens.md` を読む。
 
-- primitive → semantic → component の 3 層で `tokens/tokens.json` と `styles/design-tokens.css` を作る。
+- primitive → semantic → component の 3 層で `src/tokens/tokens.json` と `src/styles/design-tokens.css` を作る
+  (どちらも `src/` 配下。F6 は `src/` だけを取り込むため)。
 - レイアウト / スペーシングは `design-infer.md` 5 節の推論値を使う (任意値をハードコードしない)。
 - 提案バリアントは出さず、⭐推奨のトークンを自動採用する。低確信の色・フォント選択は手順 6 の要約に明記する。
 
@@ -62,6 +63,11 @@ LLM 主体のステージ。d2-run が段階③で、F3 (test-support) と F6 (�
 - 部品群の生成は独立性が高いので、**サブエージェント分割 / 並列 Write** で時間を短縮する
   (派遣時はパスだけ渡す)。
 - ビルド検証: `npx storybook build` が通ること。
+- **目視確認 (完了条件)**: ビルドが通っても表示崩れは残る。代表 Story と主要 variants を
+  ブラウザ (または `storybook-static/` の静的ビルドを開いて) 目視し、**はみ出し・文字切れ・
+  コントラスト**を確認する。崩れがあれば部品を直して再ビルドする。
+  環境の都合でブラウザを開けない場合は、手順 6 の要約と最終報告に**「目視未実施」**と明記する
+  (通過扱いにしない)。
 
 ### 5. screens.yaml を書いて検証する
 
@@ -72,7 +78,8 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/lib/basis.js stamp requirements=docs/requirem
 ```
 
 出力の `basis: requirements@<sha> adr@<sha>` を `docs/design/screens.yaml` の先頭キー `basis:` に入れ、
-`screens:` (画面ごとの行) と `tokens: {file: tokens/tokens.json}` を書く。検証:
+`screens:` (画面ごとの行) と `tokens: {file: tokens/tokens.json}` を書く
+(`tokens.file` は `--app` = `src/` からの相対。実体は `src/tokens/tokens.json`)。検証:
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-design/scripts/validateScreens.js \
@@ -82,7 +89,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-design/scripts/validateScreens.js \
 ```
 
 exit 0 = PASS。1 = 違反 (uc_slug 未定義 / story 不在 / variant 未 export / name・route 重複 /
-component 不在) を直す。2 = 読み込み失敗。
+component 不在 / tokens.file 不在) を直す。2 = 読み込み失敗。
 
 ### 6. _review-summary.md を書く
 
