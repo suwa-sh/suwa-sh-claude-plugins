@@ -55,3 +55,27 @@ test('requirements.yaml に無い spec_id はエラー (exit 1)', () => {
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /SPEC-999-99/);
 });
+
+test('spec_ids_rejected が spec_ids と重複するとエラー (exit 1)', () => {
+  const dir = tmpProject();
+  fs.copyFileSync(path.join(FIX, 'requirements-pass.yaml'), path.join(dir, 'requirements.yaml'));
+  const doc = parseYaml(fs.readFileSync(path.join(dir, 'use-cases.yaml'), 'utf8'));
+  const uc = doc.use_cases.find(u => u.spec_ids.length);
+  uc.spec_ids_rejected = [uc.spec_ids[0]];
+  fs.writeFileSync(path.join(dir, 'use-cases.yaml'), stringifyYaml(doc) + '\n');
+  const r = run(dir);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /spec_ids_rejected/);
+  assert.match(r.stdout, /重複/);
+});
+
+test('requirements.yaml に無い spec_ids_rejected はエラー (exit 1)', () => {
+  const dir = tmpProject();
+  fs.copyFileSync(path.join(FIX, 'requirements-pass.yaml'), path.join(dir, 'requirements.yaml'));
+  const doc = parseYaml(fs.readFileSync(path.join(dir, 'use-cases.yaml'), 'utf8'));
+  doc.use_cases[0].spec_ids_rejected = ['SPEC-888-88'];
+  fs.writeFileSync(path.join(dir, 'use-cases.yaml'), stringifyYaml(doc) + '\n');
+  const r = run(dir);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /SPEC-888-88/);
+});

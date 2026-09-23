@@ -81,6 +81,17 @@ function parseFrontMatter(text) {
 function mdEscape(s) { return String(s == null ? '' : s).replace(/\|/g, '\\|').replace(/[\r\n]+/g, ' '); }
 function tagList(tags) { return (Array.isArray(tags) ? tags : []).join(' '); }
 
+/** gates.json の all_recorded (全段が記録済みか)。旧形式 (all_recorded 無し) は missing 段の有無で判定する。 */
+function gatesAllRecorded(gates) {
+  if (!gates) return false;
+  if (typeof gates.all_recorded === 'boolean') return gates.all_recorded;
+  return ((gates.gates) || []).every((g) => g.status !== 'missing');
+}
+/** 未実行 (missing) ゲート名の一覧。 */
+function gatesMissing(gates) {
+  return (((gates && gates.gates) || []).filter((g) => g.status === 'missing')).map((g) => g.name);
+}
+
 // ---------------------------------------------------------------------------
 // レポートの解釈 (Context7 で確認済みの形)
 // ---------------------------------------------------------------------------
@@ -436,11 +447,16 @@ function buildIndexMd(ctx, preserved) {
   L.push('');
   L.push('ゲート:');
   if (ctx.gates && ctx.gates.gates) {
+    const allRecorded = gatesAllRecorded(ctx.gates);
+    const missing = gatesMissing(ctx.gates);
     L.push('');
     L.push('| ゲート | 結果 |');
     L.push('|---|---|');
     for (const g of ctx.gates.gates) L.push(`| ${g.name} | ${g.status} |`);
-    L.push(`| (総合) | ${ctx.gates.result || '-'} |`);
+    // 部分実行 (未実行ゲートあり) では総合を pass と書かず、未実行段を明示する。
+    const total = allRecorded ? (ctx.gates.result || '-') : `部分実行 (未実行: ${missing.join(', ') || '不明'})`;
+    L.push(`| (総合) | ${total} |`);
+    L.push(`| (全ゲート記録 all_recorded) | ${allRecorded ? 'yes' : 'no'} |`);
   } else L.push('- gates.json なし');
   L.push('');
   L.push('単体・契約テスト件数:');
@@ -608,6 +624,7 @@ function ucEntry(ctx) {
     messages: ctx.derived.messages,
     files: ctx.files.all,
     gates: (ctx.gates && ctx.gates.result) || 'unknown',
+    gates_complete: gatesAllRecorded(ctx.gates),
     generated_at: ctx.generatedAt,
     as_built: `${ctx.docsRoot}/as-built/${ctx.uc.business}/${ctx.uc.uc}/`,
   };

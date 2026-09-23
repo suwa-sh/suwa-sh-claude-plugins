@@ -54,6 +54,11 @@ test('存在しない tokens.file を検出する', () => {
   assert.ok(errors.some(e => e.includes('tokens.file') && e.includes('does-not-exist.json')), errors.join('\n'));
 });
 
+test('tokens キーを省くとスキーマエラー (tokens は必須)', () => {
+  const { errors } = run('screens-no-tokens.yaml');
+  assert.ok(errors.some(e => e.includes('tokens') && /required|必須|missing/i.test(e)), errors.join('\n'));
+});
+
 test('--app 無しでもスキーマ + 一意性は検査する', () => {
   const { errors } = validate({ screensPath: path.join(FIX, 'screens-dup-route.yaml') });
   assert.ok(errors.some(e => e.includes('重複')), errors.join('\n'));

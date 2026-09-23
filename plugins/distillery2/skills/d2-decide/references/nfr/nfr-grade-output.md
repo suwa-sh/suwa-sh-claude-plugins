@@ -72,7 +72,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/generateNfrGradeMd.js docs/n
 
 ## 注意事項
 
-- nfr-grade.yaml は全238メトリクスを含む完全版であること（部分出力は不可）
+- nfr-grade.yaml はカタログの全メトリクス（validateNfrGrade が件数を検査する）を含む完全版であること（部分出力は不可）
 - 先頭フィールドは必ず `basis`
 - YAML の文字列はダブルクォートで囲む
 - 日本語の文字列は UTF-8

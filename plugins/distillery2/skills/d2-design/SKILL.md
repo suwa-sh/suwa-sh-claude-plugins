@@ -78,8 +78,8 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/lib/basis.js stamp requirements=docs/requirem
 ```
 
 出力の `basis: requirements@<sha> adr@<sha>` を `docs/design/screens.yaml` の先頭キー `basis:` に入れ、
-`screens:` (画面ごとの行) と `tokens: {file: tokens/tokens.json}` を書く
-(`tokens.file` は `--app` = `src/` からの相対。実体は `src/tokens/tokens.json`)。検証:
+`screens:` (画面ごとの行) と `tokens: {file: tokens/tokens.json}` を書く (`tokens` は必須。省くとスキーマエラー)
+(`tokens.file` は `--app` = `src/` からの相対。実体は `src/tokens/tokens.json`。`--app` 指定時は実在も検査する)。検証:
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-design/scripts/validateScreens.js \

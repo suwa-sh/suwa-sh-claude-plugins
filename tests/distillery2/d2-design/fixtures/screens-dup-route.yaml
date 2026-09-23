@@ -12,3 +12,5 @@ screens:
     story: stories/BookSearch.stories.tsx
     variants: [Empty]
     components: [BookCard]
+tokens:
+  file: tokens/tokens.json

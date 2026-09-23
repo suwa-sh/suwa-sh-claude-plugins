@@ -4,7 +4,5 @@ screens:
     route: /books
     uc_slugs: [book-search]
     story: stories/BookSearch.stories.tsx
-    variants: [Default, Loading]
+    variants: [Default, Empty]
     components: [BookCard, Button]
-tokens:
-  file: tokens/tokens.json

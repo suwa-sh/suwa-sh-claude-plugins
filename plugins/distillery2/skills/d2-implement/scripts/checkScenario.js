@@ -92,6 +92,16 @@ function check(o) {
     if (!idx[spec]) { missing.push({ spec, n: null, text: '(requirements.yaml に無い SPEC id)' }); continue; }
     idx[spec].forEach((text, i) => { if (!covered.has(`${spec}-${i + 1}`)) missing.push({ spec, n: i + 1, tag: `@acceptance:${spec}-${i + 1}`, text }); });
   }
+  // 印タグの整合: @acceptance:<SPEC>-<n> を持つシナリオは @acceptance も持つ (受入ゲートのタグ式はワイルドカードを使えない)
+  for (const f of [main, ...others]) {
+    for (const s of f.scenarios) {
+      const all = [...f.tags, ...s.tags];
+      const hasCriteria = all.some(t => t.startsWith('@acceptance:'));
+      const hasMarker = all.includes('@acceptance');
+      if (hasCriteria && !hasMarker) errors.push(`シナリオ「${s.name}」は @acceptance:<SPEC>-<n> を持つのに印の @acceptance がありません`);
+      if (hasMarker && !hasCriteria) errors.push(`シナリオ「${s.name}」は @acceptance だけで、対応する @acceptance:<SPEC>-<n> がありません`);
+    }
+  }
   const browser = main.scenarios.filter(s => s.tags.includes('@browser')).length;
   const ok = errors.length === 0 && missing.length === 0 && unknown.length === 0;
   return { ok, slug, feature: main.name, scenarios: main.scenarios.length, browser, covered: [...covered].sort(), missing, unknown_tags: unknown, errors };

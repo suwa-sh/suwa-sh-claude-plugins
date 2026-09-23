@@ -92,7 +92,7 @@ description: >-
    node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/makeZeroOneData.js docs/requirements/rdra
    ```
    （関連データ・ZeroOne は TSV を変えたときだけ再生成する）。
-4. **UC 一覧**を再生成する（既存の `slug`・`spec_ids`・`status` は uc_id で引き継がれる）。
+4. **UC 一覧**を再生成する（既存の `slug`・`status`・`tiers_hint`・`spec_ids_rejected` は uc_id で引き継がれ、`spec_ids` は却下済みを除いた推定候補との和集合になる）。
 5. **確認材料**を作り直す。
 6. 最終報告に「変更したファイル」と「追加／変更／削除した要求・UC」を列挙する。
 
@@ -116,21 +116,24 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/genUseCases.js
 | `actors` | BUC.tsv の「アクター」関連オブジェクト |
 | `tiers_hint` | 画面あり→frontend、タイマーあり→worker、常に backend（暫定ヒント。ティアは d2-decide が決める）|
 | `spec_ids` | **スクリプトはフロー（BUC）単位で候補を当てる**。LLM が UC が実現する SPEC へ絞り込む |
+| `spec_ids_rejected` | **LLM が `spec_ids` から外した SPEC の置き場**（スクリプトは空配列を置く）。再生成で uc_id を引き継ぎ、却下済みは `spec_ids` へ戻さない |
 | `slug` | **スクリプトは暫定 `uc-<uc_id>` を置く**。LLM が意味のある英語 kebab-case（`^[a-z0-9]+(-[a-z0-9]+)*$`・一意）へ差し替える |
 | `status` | 既定 `planned`（`planned` / `in_progress` / `done`）|
 
 **LLM の作業**: 生成後、各 UC の `slug` を英名へ、`spec_ids` を実現する SPEC へ編集する。
-既存 use-cases.yaml があれば `slug`・`status`・`tiers_hint` は uc_id で引き継がれるので、再生成しても
-LLM の編集は消えない。`spec_ids` は**既存値（LLM が絞った SPEC）と新たな推定候補の和集合**になり、
-SPEC を取りこぼさない。再生成で新規に増えた候補は各 UC の `spec_ids_added` に記録されるので、
-**LLM は `spec_ids_added` を見て採否を判断し、実現する SPEC だけに絞ったら `spec_ids_added` を削除する**。
+既存 use-cases.yaml があれば `slug`・`status`・`tiers_hint`・`spec_ids_rejected` は uc_id で引き継がれるので、
+再生成しても LLM の編集は消えない。`spec_ids` は**既存値（LLM が絞った SPEC）と今回はじめて出た推定候補の和集合**になり、
+SPEC を取りこぼさない。**外した SPEC は削除せず `spec_ids_rejected` へ移す**と、再生成で候補へ戻らない。
+今回新規に増えた候補だけが各 UC の `spec_ids_added` に記録されるので（無ければキーごと出ない）、
+**LLM は `spec_ids_added` を見て採否を判断し、採用は `spec_ids` に残し、不採用は `spec_ids_rejected` へ移して `spec_ids_added` を削除する**。
 編集後にバリデートする:
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/validateUseCases.js docs/requirements/use-cases.yaml
 ```
 
-チェック内容: 構造（schema-use-cases.json）、uc_id 一意、slug 一意・パターン、spec_ids が requirements.yaml に実在。
+チェック内容: 構造（schema-use-cases.json）、uc_id 一意、slug 一意・パターン、spec_ids が requirements.yaml に実在、
+`spec_ids_rejected` が requirements.yaml に実在し `spec_ids` と重複しない。
 
 ---
 

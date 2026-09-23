@@ -41,8 +41,8 @@ contracts:
 commands:                            # ティアをまたぐコマンド。{slug} は UC slug、{report} はレポート出力先
   arch_test: npx depcruise --config .dependency-cruiser.cjs --output-type err apps packages
   uc_bdd: npx cucumber-js --tags "@uc:{slug}" --format json:{report}
-  acceptance_api: npx cucumber-js --tags "@uc:{slug} and @acceptance:* and not @browser" --format json:{report}
-  acceptance_browser: npx cucumber-js --tags "@uc:{slug} and @acceptance:* and @browser" --format json:{report}
+  acceptance_api: npx cucumber-js --tags "@uc:{slug} and @acceptance and not @browser" --format json:{report}
+  acceptance_browser: npx cucumber-js --tags "@uc:{slug} and @acceptance and @browser" --format json:{report}
 capabilities:
   browser: false                     # true のとき受入ゲートで acceptance_browser も実行する
   has_asyncapi: true

@@ -10,7 +10,7 @@
  *  3. uc_slugs が use-cases.yaml の use_cases[].slug に実在 (--use-cases 指定時)
  *  4. story パスが app dir 配下に実在 / components が app dir に <name>.tsx として実在 (--app 指定時)
  *  5. variants が Story ファイルの named export (`export const <Name>`) として存在 (--app 指定時)
- *  6. tokens.file が app dir 配下に実在 (--app 指定時。tokens を書いた場合)
+ *  6. tokens は必須 (スキーマ)。tokens.file が app dir 配下に実在 (--app 指定時は常に検査)
  *
  * --app / --use-cases はそれぞれ指定したときだけ該当グループを検査する。
  * 終了コード: 0 = PASS / 1 = 違反あり / 2 = 読み込み失敗。
@@ -110,7 +110,7 @@ function validate({ screensPath, appDir, useCasesPath }) {
           if (!components.has(c)) errors.push(`${s.name}: component "${c}" の実装ファイル (${c}.tsx 等) が app dir に無い`);
         }
       }
-      // 6. tokens.file 実在 (screens.yaml に tokens を書いた場合)
+      // 6. tokens.file 実在 (tokens はスキーマ必須。--app 指定時は常に検査する)
       const tokenFile = screensDoc && screensDoc.tokens && screensDoc.tokens.file;
       if (tokenFile && !fs.existsSync(path.join(appDir, tokenFile))) {
         errors.push(`tokens.file "${tokenFile}" が app dir に存在しない (${path.join(appDir, tokenFile)})`);

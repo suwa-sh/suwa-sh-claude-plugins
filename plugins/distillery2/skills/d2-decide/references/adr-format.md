@@ -76,7 +76,7 @@ rules:                      # 機械可読。段階③ (d2-foundation) の rules
 (正本: `../../d2-foundation/references/adr-inputs.md`)。`status: accepted` の ADR だけが寄与する。
 
 ```yaml
-# ティア構成の ADR (scope に system を含む) — 必須
+# ティア構成の ADR (tiers[] を宣言する 1 本だけ。通常 scope に system を含む) — 必須
 tiers:
   - id: backend-api            # apps/ 配下のディレクトリ名と同じ
     dir: apps/backend-api
@@ -104,11 +104,20 @@ ui:
 
 ## ティア構成 / テスト方針の追加 front matter (validateAdr が検査)
 
-- `scope` に `system` を含む `status: accepted` の ADR は `tiers[]` を持つ (空は不可)。各 tier は
-  `id` / `dir` / `kind` (`frontend` | `backend` | `worker` | `data-pipeline` | `cli` | `mcp-server`) / `lang` が必須。
-- 同じ ADR は `datastore_owner` を持ち、その値は自分の `tiers[].id` のいずれかと一致させる。
-- `tiers[]` を宣言する `accepted` ADR は 1 つだけ (2 つ以上はエラー)。
+- `tiers[]` を宣言する `status: accepted` の ADR は**ちょうど 1 つ** (0 件も 2 件以上もエラー)。この 1 本が
+  ティア構成の ADR。各 tier は `id` / `dir` / `kind` (`frontend` | `backend` | `worker` | `data-pipeline` | `cli` | `mcp-server`) / `lang` が必須。
+- ティア構成の ADR **だけ**が `datastore_owner` を持ち、その値は自分の `tiers[].id` のいずれかと一致させる
+  (他の `scope: system` の ADR に `tiers[]` は要らない。決定領域ごとに ADR を分けてよい)。
 - `capabilities` は任意。あるなら `{ browser: boolean }` の形 (それ以外のキーはエラー)。
+
+## rules[] のカバレッジ (validateAdr が検査)
+
+下流の `genRules` / `genArchTests` の入力を担保するため、次を検査する。
+
+- `scope` に `system` / `app` / `data` / `testing` / `ui` を含む `accepted` ADR は `rules[]` を最低 1 つ持つ
+  (`infra` 専用の ADR は `rules` を持たなくてよい)。
+- ティア構成の ADR (`tiers[]` を宣言する) は `arch_test` を持つ `rule` を最低 1 つ持つ (ティア依存方向の機械検証)。
+- `accepted` かつ `scope` に `app` を含む ADR があるなら、そのうち最低 1 つが `arch_test` (レイヤ依存規則) を持つ。
 
 ## 検証と索引生成
 

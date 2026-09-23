@@ -14,10 +14,14 @@
  *   4. supersedes / superseded_by の参照整合性 (双方向リンク)
  *   5. ステータス遷移 (superseded_by を持つなら status: superseded)
  *   6. rules[].scope の書式 (schema で検証)
- *   7. ティア構成 / テスト方針の追加 front matter:
- *      - scope に system を含む accepted ADR は tiers[] と、tiers[].id を指す datastore_owner を持つ
- *      - tiers[] を宣言する accepted ADR は 1 つだけ (各 tier の形は schema で検証)
+ *   7. ティア構成の追加 front matter:
+ *      - tiers[] を宣言する accepted ADR はちょうど 1 つ (0 件・2 件以上はエラー)
+ *      - その ADR は tiers[].id を指す datastore_owner を持つ (他の ADR には不要)
  *      - capabilities は任意だが、あるなら { browser: boolean } (schema で検証)
+ *   8. rules[] のカバレッジ (下流の rules 文書 / アーキテスト生成の入力):
+ *      - scope に system/app/data/testing/ui を含む accepted ADR は rules[] を最低 1 つ持つ (infra 専用は不要)
+ *      - ティア構成 ADR は arch_test を持つ rule を最低 1 つ持つ
+ *      - accepted な app scope ADR があるなら、そのうち最低 1 つが arch_test (レイヤ依存規則) を持つ
  *
  * 終了コード: 0 = PASS / 1 = エラー / 2 = 読み込み失敗
  */
@@ -92,28 +96,64 @@ function crossAdrErrors(adrs) {
 
 const isAccepted = fm => String(fm.status).toLowerCase() === 'accepted';
 const hasScope = (fm, s) => (Array.isArray(fm.scope) ? fm.scope.includes(s) : fm.scope === s);
+const hasAnyScope = (fm, scopes) => scopes.some(s => hasScope(fm, s));
+const declaresTiers = fm => Array.isArray(fm.tiers) && fm.tiers.length > 0;
+const ruleHasArchTest = r => Boolean(r && r.arch_test && typeof r.arch_test === 'object');
 
-/** ティア構成 ADR (scope に system を含む accepted) の tiers[] / datastore_owner を検証する。 */
+// rules[] を最低 1 つ要求する scope。infra 専用の ADR は rules を持たなくてよい。
+const SCOPES_REQUIRING_RULES = ['system', 'app', 'data', 'testing', 'ui'];
+
+/**
+ * ティア構成 ADR (tiers[] を宣言する accepted ADR) の存在と datastore_owner を検証する。
+ * - tiers[] を宣言する accepted ADR はちょうど 1 つ (0 件・2 件以上はエラー)。
+ * - その ADR だけが datastore_owner を持てばよく、値は自分の tiers[].id と一致する。
+ * scope に system を含む一般の ADR には tiers[] を要求しない (決定領域ごとに ADR を分けられる)。
+ */
 function tierStructureErrors(adrs) {
   const errors = [];
-  const declaring = []; // tiers[] を宣言する accepted ADR
-  for (const { file, fm } of adrs) {
-    if (!isAccepted(fm)) continue;
-    if (Array.isArray(fm.tiers) && fm.tiers.length) declaring.push(file);
-    if (!hasScope(fm, 'system')) continue;
-    if (!Array.isArray(fm.tiers) || fm.tiers.length === 0) {
-      errors.push({ file, message: 'scope に system を含む accepted ADR は tiers[] を持つ必要がある (段階③のティア骨格の入力)' });
-      continue;
-    }
+  const declaring = adrs.filter(a => isAccepted(a.fm) && declaresTiers(a.fm));
+  if (declaring.length === 0) {
+    errors.push({ file: '(なし)', message: 'ティア構成の ADR が無い (tiers[] を宣言する accepted ADR がちょうど 1 つ必要)' });
+    return errors;
+  }
+  if (declaring.length > 1) {
+    errors.push({ file: declaring.map(d => d.file).join(', '), message: `tiers[] を宣言する accepted ADR は 1 つだけにする (${declaring.length} 件が宣言している)` });
+  }
+  for (const { file, fm } of declaring) {
     const ids = new Set(fm.tiers.map(t => t && t.id).filter(Boolean));
     if (!fm.datastore_owner) {
-      errors.push({ file, message: 'scope に system を含む accepted ADR は datastore_owner を持つ必要がある' });
+      errors.push({ file, message: 'ティア構成 ADR (tiers[] を宣言する) は datastore_owner を持つ必要がある' });
     } else if (!ids.has(fm.datastore_owner)) {
       errors.push({ file, message: `datastore_owner "${fm.datastore_owner}" が tiers[].id のいずれにも一致しない` });
     }
   }
-  if (declaring.length > 1) {
-    errors.push({ file: declaring.join(', '), message: `tiers[] を宣言する accepted ADR は 1 つだけにする (${declaring.length} 件が宣言している)` });
+  return errors;
+}
+
+/**
+ * rules[] のカバレッジを検証する (下流 genRules / genArchTests の入力を担保する)。
+ * - scope に system/app/data/testing/ui を含む accepted ADR は rules[] を最低 1 つ持つ (infra 専用は不要)。
+ * - ティア構成 ADR (tiers[] を宣言) は arch_test を持つ rule を最低 1 つ持つ (依存方向の機械検証)。
+ * - accepted な app scope ADR があるなら、そのうち最低 1 つが arch_test (レイヤ依存規則) を持つ。
+ */
+function ruleCoverageErrors(adrs) {
+  const errors = [];
+  const accepted = adrs.filter(a => isAccepted(a.fm));
+  for (const { file, fm } of accepted) {
+    if (!hasAnyScope(fm, SCOPES_REQUIRING_RULES)) continue; // infra 専用など
+    if (!Array.isArray(fm.rules) || fm.rules.length === 0) {
+      errors.push({ file, message: 'scope に system/app/data/testing/ui を含む accepted ADR は rules[] を最低 1 つ持つ必要がある' });
+    }
+  }
+  for (const { file, fm } of accepted.filter(a => declaresTiers(a.fm))) {
+    const rules = Array.isArray(fm.rules) ? fm.rules : [];
+    if (!rules.some(ruleHasArchTest)) {
+      errors.push({ file, message: 'ティア構成 ADR は arch_test を持つ rule を最低 1 つ持つ必要がある (依存方向の機械検証)' });
+    }
+  }
+  const appAdrs = accepted.filter(a => hasScope(a.fm, 'app'));
+  if (appAdrs.length && !appAdrs.some(a => (Array.isArray(a.fm.rules) ? a.fm.rules : []).some(ruleHasArchTest))) {
+    errors.push({ file: appAdrs.map(a => a.file).join(', '), message: 'scope に app を含む accepted ADR のうち最低 1 つは arch_test (レイヤ依存規則) を持つ必要がある' });
   }
   return errors;
 }
@@ -122,6 +162,7 @@ function validateAdrDir(dir) {
   const { adrs, errors } = loadAdrDir(dir);
   errors.push(...crossAdrErrors(adrs));
   errors.push(...tierStructureErrors(adrs));
+  errors.push(...ruleCoverageErrors(adrs));
   return { adrs, errors };
 }
 
@@ -147,4 +188,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { parseFrontMatter, loadAdrDir, crossAdrErrors, tierStructureErrors, validateAdrDir };
+module.exports = { parseFrontMatter, loadAdrDir, crossAdrErrors, tierStructureErrors, ruleCoverageErrors, validateAdrDir };

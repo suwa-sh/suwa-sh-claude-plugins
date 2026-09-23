@@ -6,3 +6,5 @@ screens:
     story: stories/DoesNotExist.stories.tsx
     variants: [Default]
     components: [BookCard]
+tokens:
+  file: tokens/tokens.json

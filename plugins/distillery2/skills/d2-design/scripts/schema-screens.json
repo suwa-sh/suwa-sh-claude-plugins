@@ -3,7 +3,7 @@
   "title": "Screens (distillery2)",
   "description": "docs/design/screens.yaml のスキーマ。画面 ↔ Story ↔ UC ↔ コンポーネントの対応。design-event.yaml の置き換えとして、design が残す唯一の doc。",
   "type": "object",
-  "required": ["basis", "screens"],
+  "required": ["basis", "screens", "tokens"],
   "additionalProperties": false,
   "properties": {
     "basis": {

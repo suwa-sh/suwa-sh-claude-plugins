@@ -28,7 +28,7 @@ docs/as-built/
 | 4 | データの読み書き | 抽出 | シナリオごとの読み/書きテーブルと発行メッセージ (db.query / publish トレース) |
 | 5 | 整合性の守り方 | 要約 | AssumptionRecord (persistence/error_handling/data_format) をヒントに LLM が要約 |
 | 6 | 画面 | 抽出 | screens.yaml の該当 UC 行 (コンポーネント・バリアント)。無ければ「画面定義なし」 |
-| 7 | 検証の証跡 | 抽出 | cucumber JSON のシナリオ表、gates.json のゲート結果、vitest JSON のティア別件数 |
+| 7 | 検証の証跡 | 抽出 | cucumber JSON のシナリオ表、gates.json のゲート結果、vitest JSON のティア別件数。`all_recorded` が false (未実行ゲートあり) なら総合を pass とせず「部分実行 (未実行: …)」と明示する |
 | 8 | 補った前提と処遇 | 転記 | assumptions.<tier>.yaml + findings の verdict + events の review_approved 決定 |
 | 9 | 逸脱と既知の課題 | 抽出 + 要約 | issues/*.md (front matter kind/title)、Verifier findings、要約ブロック |
 
@@ -46,7 +46,10 @@ docs/as-built/
   シナリオの結果はステップから導く (1 つでも failed なら failed、など)。
 - **vitest JSON reporter** (`--reporter=json`): `numTotalTests` / `numPassedTests` / `numFailedTests` /
   `numPendingTests` / `numTodoTests` と `testResults[]`。ティア別件数はこの数を使う。
-- **gates.json** (`runGates.js`): `{uc, result, gates:[{name, status, jobs:[...]}]}`。
+- **gates.json** (`runGates.js`): `{uc, result, all_recorded, gates:[{name, status, jobs:[...]}]}`。
+  未実行の段は `status: missing` として残り、`all_recorded` は全段が記録済みなら true。
+  部分実行 (`--from`/`--upto`/`--only`) では `result: pass` でも `all_recorded: false` になり得る。
+  traceability-index の UC エントリは `gates_complete` にこの値を持つ。
 
 ## トレース JSONL が持つべき meta (消費側の期待)
 

@@ -6,7 +6,7 @@
  *   node genCi.js --config .distillery/config.yaml [--out .github/workflows/ci.yml] [--cwd <repo>]
  *
  * 5 ゲートを順に job にし、needs で依存を表す:
- *   static → unit → contract → uc-bdd (@uc:* 全部) → acceptance (api)
+ *   static → unit → contract → uc-bdd (全 UC シナリオ) → acceptance (api)
  * コマンドは runGates.js と等価にする (config の commands をそのまま使う)。
  */
 const fs = require('node:fs');
@@ -40,8 +40,8 @@ function render(config) {
   if (cmds.arch_test) staticSteps.push(`      - run: ${cmds.arch_test}`);
   const unitSteps = tiers.filter(t => t.commands && t.commands.unit).map(t => `      - run: npm run test -w ${t.dir}`);
   const contractSteps = tiers.filter(t => t.commands && t.commands.contract).map(t => `      - run: npm run test:contract -w ${t.dir}`);
-  const ucBddSteps = ['      - run: npx cucumber-js --tags "@uc:*"'];
-  const acceptanceSteps = ['      - run: npx cucumber-js --tags "@acceptance:* and not @browser"'];
+  const ucBddSteps = ['      - run: npx cucumber-js --tags "not @browser"'];
+  const acceptanceSteps = ['      - run: npx cucumber-js --tags "@acceptance and not @browser"'];
   return [
     'name: ci',
     'on:',

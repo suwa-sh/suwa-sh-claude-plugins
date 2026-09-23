@@ -20,11 +20,11 @@ function setup(featureText) {
 const FULL = `# language: ja
 @uc:register-loan
 機能: 貸出を登録する
-  @acceptance:SPEC-002-01-1
+  @acceptance @acceptance:SPEC-002-01-1
   シナリオ: 在庫のある書籍を貸し出す
     もし 司書が貸し出す
     ならば 記録される
-  @acceptance:SPEC-002-01-2 @browser
+  @acceptance @acceptance:SPEC-002-01-2 @browser
   シナリオ: 上限に達している
     もし 司書が貸し出す
     ならば 拒否される
@@ -41,7 +41,7 @@ test('fully covered feature passes and reports browser count', () => {
 });
 
 test('missing acceptance mapping, unknown tag and missing uc tag are reported', () => {
-  const s = setup(FULL.replace('@acceptance:SPEC-002-01-2 @browser', '@acceptance:SPEC-999-01-1').replace('@uc:register-loan\n', ''));
+  const s = setup(FULL.replace('@acceptance @acceptance:SPEC-002-01-2 @browser', '@acceptance @acceptance:SPEC-999-01-1').replace('@uc:register-loan\n', ''));
   const r = check({ files: [s.feature], useCases: s.useCases, requirements: s.requirements, uc: 'register-loan' });
   assert.equal(r.ok, false);
   assert.deepEqual(r.missing.map(m => m.tag), ['@acceptance:SPEC-002-01-2']);
@@ -50,20 +50,30 @@ test('missing acceptance mapping, unknown tag and missing uc tag are reported', 
 });
 
 test('cross-UC acceptance feature in --acceptance-dir counts as coverage', () => {
-  const s = setup(FULL.replace('  @acceptance:SPEC-002-01-2 @browser\n', ''));
+  const s = setup(FULL.replace('  @acceptance @acceptance:SPEC-002-01-2 @browser\n', ''));
   const accDir = path.join(s.dir, 'acceptance');
   fs.mkdirSync(accDir);
-  fs.writeFileSync(path.join(accDir, 'SPEC-002-01.feature'), '@uc:register-loan\nFeature: cross\n  @acceptance:SPEC-002-01-2\n  Scenario: limit\n    Then rejected\n');
+  fs.writeFileSync(path.join(accDir, 'SPEC-002-01.feature'), '@uc:register-loan\nFeature: cross\n  @acceptance @acceptance:SPEC-002-01-2\n  Scenario: limit\n    Then rejected\n');
   const r = check({ files: [s.feature], useCases: s.useCases, requirements: s.requirements, acceptanceDir: accDir });
   assert.equal(r.ok, true);
 });
 
 test('acceptance scenarios of another UC do not count as coverage', () => {
-  const s = setup(FULL.replace('  @acceptance:SPEC-002-01-2 @browser\n', ''));
+  const s = setup(FULL.replace('  @acceptance @acceptance:SPEC-002-01-2 @browser\n', ''));
   const accDir = path.join(s.dir, 'acceptance');
   fs.mkdirSync(accDir);
-  fs.writeFileSync(path.join(accDir, 'SPEC-002-01.feature'), '@uc:return-book\nFeature: other\n  @acceptance:SPEC-002-01-2\n  Scenario: limit\n    Then rejected\n');
+  fs.writeFileSync(path.join(accDir, 'SPEC-002-01.feature'), '@uc:return-book\nFeature: other\n  @acceptance @acceptance:SPEC-002-01-2\n  Scenario: limit\n    Then rejected\n');
   const r = check({ files: [s.feature], useCases: s.useCases, requirements: s.requirements, acceptanceDir: accDir });
   assert.equal(r.ok, false);
   assert.deepEqual(r.missing.map(m => m.tag), ['@acceptance:SPEC-002-01-2']);
+});
+
+test('marker tag @acceptance and criteria tags must appear together', () => {
+  const s = setup(FULL.replace('  @acceptance @acceptance:SPEC-002-01-1\n', '  @acceptance:SPEC-002-01-1\n'));
+  const r = check({ files: [s.feature], useCases: s.useCases, requirements: s.requirements });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some(e => /印の @acceptance がありません/.test(e)), r.errors.join(';'));
+  const s2 = setup(FULL.replace('  @acceptance @acceptance:SPEC-002-01-1\n', '  @acceptance\n'));
+  const r2 = check({ files: [s2.feature], useCases: s2.useCases, requirements: s2.requirements });
+  assert.ok(r2.errors.some(e => /@acceptance だけで/.test(e)), r2.errors.join(';'));
 });

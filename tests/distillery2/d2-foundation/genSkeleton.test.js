@@ -62,5 +62,7 @@ test('genCi: renders 5-gate workflow with needs chain', () => {
   const ci = fs.readFileSync(path.join(c, '.github/workflows/ci.yml'), 'utf8');
   for (const j of ['static:', 'unit:', 'contract:', 'uc-bdd:', 'acceptance:']) assert.ok(ci.includes(j), `missing job ${j}`);
   assert.ok(ci.includes('needs: static') && ci.includes('needs: uc-bdd'));
-  assert.ok(ci.includes('@uc:*') && ci.includes('@acceptance:* and not @browser'));
+  // Cucumber のタグ式にワイルドカードは無い。uc-bdd は全 feature (not @browser)、acceptance は素の @acceptance で選ぶ。
+  assert.ok(!ci.includes('@uc:*') && !ci.includes('@acceptance:*'), 'ワイルドカードタグは使わない');
+  assert.ok(ci.includes('--tags "not @browser"') && ci.includes('@acceptance and not @browser'));
 });

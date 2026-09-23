@@ -27,14 +27,14 @@ UC 着手の最初に、その UC の Gherkin を `features/<業務>/<slug>.feat
   背景:
     前提 利用者 "m1" が登録されている
 
-  @acceptance:SPEC-002-1
+  @acceptance @acceptance:SPEC-002-1
   シナリオ: 在庫のある書籍を貸し出す
     前提 書籍 "b1" は在庫ありである
     もし 司書が "b1" を "m1" に貸し出す
     ならば 貸出が記録され、返却期限は 14 日後である
     かつ "b1" の状態は貸出中になる
 
-  @acceptance:SPEC-002-3 @browser
+  @acceptance @acceptance:SPEC-002-3 @browser
   シナリオ: 貸出画面から貸し出す
     ...
 ```
@@ -43,6 +43,8 @@ UC 着手の最初に、その UC の Gherkin を `features/<業務>/<slug>.feat
 
 1. **受入基準との対応**: UC の spec_ids が持つ `acceptance_criteria` の各項目を、少なくとも 1 つのシナリオに
    `@acceptance:<SPEC-ID>-<連番>` タグで対応させる (受入基準の文言を意訳せず、シナリオの Then に反映する)。
+   そのシナリオには印として **`@acceptance` も併記する** (Cucumber のタグ式にワイルドカードは無いので、受入ゲートは
+   `@uc:<slug> and @acceptance` で選ぶ。`@acceptance:` だけで `@acceptance` が無い、またはその逆は checkScenario がエラーにする)。
    UC をまたぐ受入基準 (この UC だけでは確かめられないもの) は `features/acceptance/<SPEC-ID>.feature` に書くか、
    既にあればそのシナリオに `@uc:<slug>` を追加する (`@uc:<slug>` が無いシナリオは対応として数えない)
 2. **業務条件と状態遷移を網羅する**: `条件.tsv` の該当条件ごとに、成立する場合と成立しない場合のシナリオを書く。

@@ -14,6 +14,9 @@
 - 意訳・要約・補完を禁止する。受入基準は 1 criterion = 1 Scenario に展開し、原文の文言のまま書く。
 - 受入基準と Scenario の対応は **タグで表す** (別ファイルへの転写ではない)。
   各受入 Scenario に `@acceptance:<SPEC>-<n>` を、UC のシナリオに `@uc:<slug>` を付ける。
+- **`@acceptance:` タグを持つ Scenario には、素の目印タグ `@acceptance` も必ず併記する。**
+  Cucumber のタグ式に前方一致はないため、受入だけを選ぶフィルタ (`@acceptance and not @browser` 等) はこの素の目印で行う。
+  `@acceptance:<SPEC>-<n>` は個別の受入基準への対応を表し、フィルタ選択には使わない。
 - UC の spec_ids が指す受入基準が、どこかの Scenario に `@acceptance:` タグで必ず現れること (網羅チェック)。
 
 ## 契約テスト (③) は契約から生成する

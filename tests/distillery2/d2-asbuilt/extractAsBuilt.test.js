@@ -283,6 +283,23 @@ test('traceability-index.json は canonical で、他 UC のエントリとマ�
   assert.deepEqual(idx.acceptance['SPEC-001-01-1'], { scenarios: ['在庫ありの書籍を貸し出す'], ucs: ['register-loan'] });
 });
 
+test('部分実行 (missing ゲート) は総合を pass とせず部分実行と明示し、index に gates_complete:false を持つ', () => {
+  const repo = buildRepo();
+  // 未実行段 (acceptance) を missing にした部分実行。result は pass だが all_recorded は false。
+  const partial = { uc: 'register-loan', result: 'pass', all_recorded: false, gates: [
+    { name: 'static', status: 'pass' }, { name: 'unit', status: 'pass' }, { name: 'contract', status: 'pass' },
+    { name: 'uc-bdd', status: 'pass' }, { name: 'acceptance', status: 'missing' },
+  ] };
+  W(repo.dir, '.distillery/runs/register-loan/reports/gates.json', JSON.stringify(partial, null, 2) + '\n');
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| \(総合\) \| 部分実行 \(未実行: acceptance\) \|/, '総合を部分実行と明示する');
+  assert.doesNotMatch(md, /\| \(総合\) \| pass \|/, '未完了なのに総合 pass と書かない');
+  assert.match(md, /all_recorded\) \| no \|/, 'all_recorded を表示する');
+  const idx = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json'));
+  assert.equal(idx.ucs['register-loan'].gates_complete, false);
+});
+
 test('api-inventory は未使用・未実装を印付けする', () => {
   const repo = buildRepo();
   run(opts(repo));

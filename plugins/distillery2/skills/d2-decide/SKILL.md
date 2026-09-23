@@ -45,7 +45,7 @@ NFR の推論は v1 手順を移植している。順に参照する:
 - [references/nfr-grade-catalog.md](references/nfr-grade-catalog.md) — IPA 6 大項目 (A 可用性 / B 性能 / C 運用 / D 移行 / E セキュリティ / F 環境) カタログ
 - [references/nfr-inference-rules.md](references/nfr-inference-rules.md) — RDRA → NFR 推論ルール
 - [references/nfr/nfr-infer.md](references/nfr/nfr-infer.md) — 推論の進め方
-- [references/nfr/nfr-dialogue.md](references/nfr/nfr-dialogue.md) — 確定の実行モード分岐。**auto-adopt (d2-run 経由の既定) は問い合わせず推奨値を採用し `confidence: low` を付ける**。`--interactive` 指定時のみ対話する
+- [references/nfr/nfr-dialogue.md](references/nfr/nfr-dialogue.md) — 確定の実行モード分岐。**auto-adopt では対話の各選択肢を推奨値で仮置きし、その仮置きに依存するメトリクスだけ `confidence: low` にする。推論根拠 (RDRA の事実) から決まるメトリクスは high / medium を保つ。人の確認一覧は important かつ low。** `--interactive` 指定時のみ対話する
 - [references/nfr-grade-schema.md](references/nfr-grade-schema.md) / [references/nfr/nfr-grade-output.md](references/nfr/nfr-grade-output.md) — 出力形式
 
 出力後、検証と Markdown 生成を実行する:
@@ -93,7 +93,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/validateAdr.js docs/adr
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements
 ```
 
-- `validateAdr.js` はスキーマ・id 一意性・参照整合性 (supersedes / superseded_by の双方向)・status 遷移・`rules[].scope` 書式を検査する。PASS するまで直す。
+- `validateAdr.js` はスキーマ・id 一意性・参照整合性 (supersedes / superseded_by の双方向)・status 遷移・`rules[].scope` 書式に加え、ティア構成 ADR がちょうど 1 本あること・`rules[]` のカバレッジ (該当 scope の rules 必須、ティア/レイヤの `arch_test`) を検査する。PASS するまで直す。
 - `genAdrIndex.js` は id 昇順で決定論的に `index.md` を生成する。
 
 ### 4. 人レビュー用の要約を書く

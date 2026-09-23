@@ -67,8 +67,8 @@ function buildConfig({ tiers, datastore_owner }, contracts, caps, warnings) {
     commands: {
       arch_test: 'npx depcruise --config .dependency-cruiser.cjs --output-type err apps packages',
       uc_bdd: 'npx cucumber-js --tags "@uc:{slug}" --format json:{report}',
-      acceptance_api: 'npx cucumber-js --tags "@uc:{slug} and @acceptance:* and not @browser" --format json:{report}',
-      acceptance_browser: 'npx cucumber-js --tags "@uc:{slug} and @acceptance:* and @browser" --format json:{report}',
+      acceptance_api: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and not @browser" --format json:{report}',
+      acceptance_browser: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and @browser" --format json:{report}',
     },
     capabilities: {
       browser: Boolean(caps.browser),

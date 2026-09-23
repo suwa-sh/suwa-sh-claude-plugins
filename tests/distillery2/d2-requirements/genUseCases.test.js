@@ -72,6 +72,21 @@ test('spec_ids は既存値と新推定候補の和集合になり、追加分�
   assert.deepEqual(uc.spec_ids_added, ['SPEC-001-02'], '新規に増えた候補だけを記録');
 });
 
+test('spec_ids_rejected の SPEC は再生成で spec_ids へ戻らない', () => {
+  // LLM が SPEC-001-02 を却下 (spec_ids から外し spec_ids_rejected へ移動) した状況を再現
+  const existing = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: ['SPEC-001-01'], spec_ids_rejected: ['SPEC-001-02'], status: 'planned' }]]);
+  const byUc = Object.fromEntries(generate(reqData, bucText, existing).use_cases.map(u => [u.uc, u]));
+  const uc = byUc['貸出を登録する'];
+  assert.deepEqual(uc.spec_ids, ['SPEC-001-01'], '却下済み候補は spec_ids へ戻らない');
+  assert.deepEqual(uc.spec_ids_rejected, ['SPEC-001-02'], 'spec_ids_rejected は uc_id で引き継ぐ');
+  assert.ok(!('spec_ids_added' in uc), '却下済みは新規候補にならない');
+});
+
+test('新規 UC は空の spec_ids_rejected を持つ (LLM が却下 id を移す置き場)', () => {
+  const byUc = Object.fromEntries(generate(reqData, bucText, new Map()).use_cases.map(u => [u.uc, u]));
+  assert.deepEqual(byUc['貸出を登録する'].spec_ids_rejected, []);
+});
+
 test('生成物は validateUseCases.js を通る', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2uc-'));
   const { stringifyYaml } = require(path.resolve(SCRIPTS, '../../../scripts/lib/yaml'));

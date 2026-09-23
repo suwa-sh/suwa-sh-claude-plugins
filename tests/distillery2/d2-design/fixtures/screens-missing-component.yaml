@@ -6,3 +6,5 @@ screens:
     story: stories/BookSearch.stories.tsx
     variants: [Default]
     components: [BookCard, GhostWidget]
+tokens:
+  file: tokens/tokens.json

@@ -45,6 +45,10 @@ test('genConfig: tiers/contracts/commands/capabilities correct and re-parseable'
   assert.equal(cfg.models.implementer, null);
   // uc_bdd コマンドに {slug} プレースホルダがある
   assert.ok(cfg.commands.uc_bdd.includes('{slug}'));
+  // 受入コマンドはワイルドカードを使わず、素の @acceptance 目印で選ぶ
+  assert.ok(!cfg.commands.acceptance_api.includes('@acceptance:*'), 'ワイルドカードタグは使わない');
+  assert.ok(cfg.commands.acceptance_api.includes('@uc:{slug} and @acceptance and not @browser'));
+  assert.ok(cfg.commands.acceptance_browser.includes('@uc:{slug} and @acceptance and @browser'));
 });
 
 test('genConfig: hand-written config は上書きせず exit 1、--force で上書き', () => {

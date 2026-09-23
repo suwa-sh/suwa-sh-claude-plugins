@@ -14,11 +14,19 @@ d2-decide は最低限、次の 8 領域を ADR で覆う。該当しない領�
 | 7 | 認証 / 認可 | system, app | [auth.md](decision-candidates/auth.md) | authn 方式と authz モデル |
 | 8 | UI 部品の方針 | ui | [ui.md](decision-candidates/ui.md) | presentation ティアがあるときのみ |
 
-## ルール付与の要件
+## ルール付与の要件 (validateAdr が検査)
 
-- 該当するすべての ADR は `rules[]` を最低 1 つ持つ。
-- **1 (ティア構成)** と **2 (レイヤ構成)** の ADR は `arch_test` エントリを持つ (依存方向を機械検証するため)。
+- `scope` に `system` / `app` / `data` / `testing` / `ui` を含む accepted ADR は `rules[]` を最低 1 つ持つ
+  (`infra` 専用の ADR は持たなくてよい)。
+- **1 (ティア構成)** の ADR は `arch_test` を持つ `rule` を最低 1 つ持つ (ティア依存方向の機械検証)。
+- **2 (レイヤ構成)** のように `scope` に `app` を含む accepted ADR があるなら、そのうち最低 1 つが
+  `arch_test` (レイヤ依存規則) を持つ。
 - `rules[]` が段階③ の rules 文書とアーキテストの唯一の入力になる。人が rules 文書を手で直さない。
+
+## ティア構成 ADR の要件 (validateAdr が検査)
+
+- `tiers[]` を宣言する accepted ADR は**ちょうど 1 つ** (0 件・2 件以上はエラー)。この 1 本だけが `datastore_owner` を持つ。
+- 決定領域 1・3・6・7 のように複数の accepted ADR が `scope: system` を持ってよい。`tiers[]` は分割せず 1 本に集約する。
 
 ## auto-adopt 方針
 

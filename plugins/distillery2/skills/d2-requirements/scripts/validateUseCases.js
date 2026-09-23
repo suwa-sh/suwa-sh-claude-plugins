@@ -49,6 +49,12 @@ function validateSemantics(data, specIdSet) {
         if (!specIdSet.has(sid)) errors.push({ path: `${p}.spec_ids`, message: `spec_id ${sid} は requirements.yaml に存在しない` });
       }
     }
+    // spec_ids_rejected: requirements.yaml に実在し、かつ spec_ids と重複しないこと
+    const specSet = new Set((uc && uc.spec_ids) || []);
+    for (const rid of (uc && uc.spec_ids_rejected) || []) {
+      if (specSet.has(rid)) errors.push({ path: `${p}.spec_ids_rejected`, message: `spec_id ${rid} は spec_ids と重複している (採用と却下は排他)` });
+      if (specIdSet && !specIdSet.has(rid)) errors.push({ path: `${p}.spec_ids_rejected`, message: `spec_id ${rid} は requirements.yaml に存在しない` });
+    }
   }
   return errors;
 }

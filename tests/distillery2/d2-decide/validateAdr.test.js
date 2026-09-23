@@ -33,12 +33,28 @@ test('rules[].scope の書式違反を検出する', () => {
   assert.ok(errors.some(e => /rules\[0\]\.scope/.test(e.message) && /pattern/.test(e.message)), JSON.stringify(errors));
 });
 
-test('scope に system を含む accepted ADR に tiers が無いとエラー', () => {
+test('tiers[] を宣言する accepted ADR が無いとエラー', () => {
   const { errors } = validateAdrDir(path.join(FIX, 'adr-missing-tiers'));
-  assert.ok(errors.some(e => /tiers\[\] を持つ必要がある/.test(e.message)), JSON.stringify(errors));
+  assert.ok(errors.some(e => /ティア構成の ADR が無い/.test(e.message)), JSON.stringify(errors));
 });
 
 test('tiers[].kind が enum 外だとスキーマエラー', () => {
   const { errors } = validateAdrDir(path.join(FIX, 'adr-bad-tier-kind'));
   assert.ok(errors.some(e => /tiers\[0\]\.kind/.test(e.message) && /enum/.test(e.message)), JSON.stringify(errors));
+});
+
+test('ティア構成 ADR + tiers 無しの system/app scope accepted ADR は PASS (指摘1)', () => {
+  const { adrs, errors } = validateAdrDir(path.join(FIX, 'adr-two-accepted-system'));
+  assert.equal(adrs.length, 2);
+  assert.deepEqual(errors, [], `unexpected errors: ${JSON.stringify(errors)}`);
+});
+
+test('rules[] が無い accepted ADR を検出する (指摘4)', () => {
+  const { errors } = validateAdrDir(path.join(FIX, 'adr-no-rules'));
+  assert.ok(errors.some(e => /rules\[\] を最低 1 つ持つ必要がある/.test(e.message)), JSON.stringify(errors));
+});
+
+test('ティア構成 ADR に arch_test を持つ rule が無いと検出する (指摘4)', () => {
+  const { errors } = validateAdrDir(path.join(FIX, 'adr-tiers-no-archtest'));
+  assert.ok(errors.some(e => /ティア構成 ADR は arch_test を持つ rule/.test(e.message)), JSON.stringify(errors));
 });

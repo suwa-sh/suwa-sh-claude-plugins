@@ -8,10 +8,14 @@
  * 導出できない項目: slug (英語 kebab-case)。暫定で `uc-<uc_id>` を置き、LLM が意味のある英名へ差し替える。
  * spec_ids はフロー (BUC) 単位で当てた候補。LLM が UC が実現する SPEC へ絞り込む。
  *
- * 既存 use-cases.yaml があれば uc_id をキーに slug / status / tiers_hint を引き継ぐ
+ * 既存 use-cases.yaml があれば uc_id をキーに slug / status / tiers_hint / spec_ids_rejected を引き継ぐ
  * (LLM が編集した値を再生成で上書きしない)。
- * spec_ids は「既存値 (LLM が絞った SPEC) ∪ 新たな推定候補」の和集合 (sorted / unique) にし、
- * 追加された候補を spec_ids_added に記録する (LLM が採否を再度絞るための差分)。
+ * spec_ids の再生成は却下済みを尊重する:
+ *   candidates   = 今回の推定 − 既存 spec_ids − 既存 spec_ids_rejected (今回はじめて出た候補だけ)
+ *   spec_ids     = 既存 spec_ids ∪ candidates (sorted / unique。既に絞った SPEC は保持)
+ *   spec_ids_added = candidates (新規候補だけ。無ければキーごと省く)
+ * spec_ids_rejected は LLM が外した SPEC の置き場。毎回 [] を出力し (LLM が id を移す)、
+ * 再生成では uc_id をキーに引き継ぐので、一度却下した候補は spec_ids へ戻らない。
  *
  * Usage:
  *   node genUseCases.js [requirements.yaml] [BUC.tsv] [out.yaml]
@@ -127,11 +131,12 @@ function generate(reqData, bucText, existingById) {
     const prev = existingById.get(id) || {};
     const flowKey = stripFlow(g.buc);
     const inferredSpecs = Array.from(flowSpec.get(flowKey) || []).sort();
-    // 既存の spec_ids (LLM が絞った値) と新たな推定候補の和集合を取り、SPEC を取りこぼさない。
-    // 既存があるときだけ、新規に増えた候補を spec_ids_added に記録し、LLM が採否を絞れるようにする。
+    // 既存の spec_ids (LLM が絞った値) と却下済み (spec_ids_rejected) を尊重する。
+    // candidates は「今回はじめて推定された候補」だけ。既に外した SPEC は再び戻さない。
     const prevSpecs = Array.isArray(prev.spec_ids) ? prev.spec_ids : [];
-    const specIds = Array.from(new Set([...prevSpecs, ...inferredSpecs])).sort();
-    const added = prevSpecs.length ? inferredSpecs.filter((s) => !prevSpecs.includes(s)) : [];
+    const prevRejected = Array.isArray(prev.spec_ids_rejected) ? prev.spec_ids_rejected : [];
+    const candidates = inferredSpecs.filter((s) => !prevSpecs.includes(s) && !prevRejected.includes(s));
+    const specIds = Array.from(new Set([...prevSpecs, ...candidates])).sort();
     const uc = {
       uc_id: id,
       business: g.business,
@@ -139,11 +144,13 @@ function generate(reqData, bucText, existingById) {
       uc: g.uc,
       slug: typeof prev.slug === 'string' && prev.slug && prev.slug !== `uc-${id}` ? prev.slug : `uc-${id}`,
       spec_ids: specIds,
+      spec_ids_rejected: Array.from(new Set(prevRejected)).sort(),
       actors: Array.from(g.actors),
       tiers_hint: Array.isArray(prev.tiers_hint) && prev.tiers_hint.length ? prev.tiers_hint : inferTiers(g),
       status: typeof prev.status === 'string' ? prev.status : 'planned',
     };
-    if (added.length) uc.spec_ids_added = added;
+    // spec_ids_added は「新規候補があるときだけ」出す (無ければキーごと省く)。
+    if (candidates.length) uc.spec_ids_added = candidates.slice().sort();
     return uc;
   });
 
