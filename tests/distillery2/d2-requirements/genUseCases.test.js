@@ -87,11 +87,55 @@ test('新規 UC は空の spec_ids_rejected を持つ (LLM が却下 id を移�
   assert.deepEqual(byUc['貸出を登録する'].spec_ids_rejected, []);
 });
 
-test('生成物は validateUseCases.js を通る', () => {
+const { stringifyYaml } = require(path.resolve(SCRIPTS, '../../../scripts/lib/yaml'));
+
+/** spec_ids が空の UC は no_spec_reason + status: blocked にして validate を通す (指摘2 の逃げ道)。 */
+function fillEmpties(doc) {
+  for (const uc of doc.use_cases) {
+    if (!uc.spec_ids.length) { uc.no_spec_reason = '対応 SPEC が未確定 (テスト)'; uc.status = 'blocked'; }
+  }
+  return doc;
+}
+
+test('spec_ids を埋めた (または no_spec_reason を書いた) 生成物は validateUseCases.js を通る', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2uc-'));
-  const { stringifyYaml } = require(path.resolve(SCRIPTS, '../../../scripts/lib/yaml'));
+  fs.copyFileSync(path.join(FIX, 'requirements-pass.yaml'), path.join(dir, 'requirements.yaml'));
+  fs.writeFileSync(path.join(dir, 'use-cases.yaml'), stringifyYaml(fillEmpties(generate(reqData, bucText, new Map()))) + '\n');
+  const r = spawnSync(process.execPath, [path.join(SCRIPTS, 'validateUseCases.js'), path.join(dir, 'use-cases.yaml')], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+});
+
+test('spec_ids が空のままの生成物は validateUseCases.js で FAIL する (指摘2)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2uc-'));
   fs.copyFileSync(path.join(FIX, 'requirements-pass.yaml'), path.join(dir, 'requirements.yaml'));
   fs.writeFileSync(path.join(dir, 'use-cases.yaml'), stringifyYaml(generate(reqData, bucText, new Map())) + '\n');
   const r = spawnSync(process.execPath, [path.join(SCRIPTS, 'validateUseCases.js'), path.join(dir, 'use-cases.yaml')], { encoding: 'utf8' });
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /spec_ids が空/);
+});
+
+test('genUseCases は spec_ids が空の UC を警告に列挙する (指摘2)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2uc-'));
+  fs.copyFileSync(path.join(FIX, 'requirements-pass.yaml'), path.join(dir, 'requirements.yaml'));
+  fs.copyFileSync(path.join(FIX, 'BUC.tsv'), path.join(dir, 'BUC.tsv'));
+  const r = spawnSync(process.execPath, [path.join(SCRIPTS, 'genUseCases.js'), path.join(dir, 'requirements.yaml'), path.join(dir, 'BUC.tsv'), path.join(dir, 'use-cases.yaml')], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stderr, /spec_ids が空の UC/);
+});
+
+test('壊れた既存 use-cases.yaml があると genUseCases は上書きせず exit 2 / --force-rebuild で作り直す (指摘7)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2uc-'));
+  fs.copyFileSync(path.join(FIX, 'requirements-pass.yaml'), path.join(dir, 'requirements.yaml'));
+  fs.copyFileSync(path.join(FIX, 'BUC.tsv'), path.join(dir, 'BUC.tsv'));
+  const out = path.join(dir, 'use-cases.yaml');
+  const broken = 'version: "1.0"\nuse_cases: broken-not-a-list\n'; // use_cases が配列にならない構文誤り
+  fs.writeFileSync(out, broken);
+  const args = [path.join(SCRIPTS, 'genUseCases.js'), path.join(dir, 'requirements.yaml'), path.join(dir, 'BUC.tsv'), out];
+  const r = spawnSync(process.execPath, args, { encoding: 'utf8' });
+  assert.equal(r.status, 2, r.stdout + r.stderr);
+  assert.match(r.stderr, /解析に失敗/);
+  assert.equal(fs.readFileSync(out, 'utf8'), broken, '壊れたファイルを上書きしない');
+  const r2 = spawnSync(process.execPath, [...args, '--force-rebuild'], { encoding: 'utf8' });
+  assert.equal(r2.status, 0, r2.stdout + r2.stderr);
+  assert.notEqual(fs.readFileSync(out, 'utf8'), broken, '--force-rebuild で作り直す');
 });

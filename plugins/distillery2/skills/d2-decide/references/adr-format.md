@@ -26,6 +26,7 @@ rules:                      # 機械可読。段階③ (d2-foundation) の rules
       from: "apps/backend-api/src/domain/**"
       to: "apps/backend-api/src/infrastructure/**"
       effect: forbid        # forbid | allow
+      level: layer          # tier | layer。arch_test があるとき必須 (下記)
 ---
 
 # 背景
@@ -68,7 +69,10 @@ rules:                      # 機械可読。段階③ (d2-foundation) の rules
 
 - `scope`: `common` (全ティア) / `testing` / `tier:<kind>` (`tier:frontend` `tier:backend` `tier:worker` 等)。
 - `text`: `docs/rules/*.md` に転記される 1 文。
-- `arch_test` (任意): `from` / `to` (glob) と `effect` (`forbid` / `allow`)。依存方向のアーキテストになる。
+- `arch_test` (任意): `from` / `to` (glob) と `effect` (`forbid` / `allow`) と `level` (`tier` / `layer`)。依存方向のアーキテストになる。
+  - `level`: `arch_test` があるとき**必須**。`tier` = ティア間の依存方向規則 (例: frontend → backend-api の内部)、
+    `layer` = ティア内のレイヤ依存規則 (例: domain → infrastructure)。段階③の `genArchTests` は `level` を読まない
+    (dependency-cruiser のルールは `from`/`to`/`effect` だけで作る)。`level` は下記カバレッジ検証専用の宣言。
 
 ## 段階③が読む追加の front matter (ティア構成 / テスト方針の ADR)
 
@@ -104,11 +108,15 @@ ui:
 
 ## ティア構成 / テスト方針の追加 front matter (validateAdr が検査)
 
-- `tiers[]` を宣言する `status: accepted` の ADR は**ちょうど 1 つ** (0 件も 2 件以上もエラー)。この 1 本が
+- `tiers[]` を非空で宣言する `status: accepted` の ADR は**ちょうど 1 つ** (0 件も 2 件以上もエラー)。この 1 本が
   ティア構成の ADR。各 tier は `id` / `dir` / `kind` (`frontend` | `backend` | `worker` | `data-pipeline` | `cli` | `mcp-server`) / `lang` が必須。
-- ティア構成の ADR **だけ**が `datastore_owner` を持ち、その値は自分の `tiers[].id` のいずれかと一致させる
-  (他の `scope: system` の ADR に `tiers[]` は要らない。決定領域ごとに ADR を分けてよい)。
-- `capabilities` は任意。あるなら `{ browser: boolean }` の形 (それ以外のキーはエラー)。
+- ティア構成の ADR は `scope` に `system` を含む (下流はティア構成を system ADR から読む)。
+- ティア構成の ADR **以外**は `tiers` キーを持てない (空配列でもエラー)。検証を通った空 `tiers[]` が下流で先に読まれて
+  ティアが消える取り違えを防ぐ。決定領域ごとに ADR を分けてよいが、その ADR に `tiers` は書かない。
+- ティア構成の ADR **だけ**が `datastore_owner` を持ち、その値は自分の `tiers[].id` のいずれかと一致させる。
+- `capabilities` は `scope` に `testing` を含む ADR だけが宣言でき、あるなら `{ browser: boolean }` の形
+  (それ以外のキーはエラー)。`accepted` かつ `scope` に `testing` を含む ADR は `capabilities.browser` を**必須**とし、
+  `capabilities` を宣言する `accepted` ADR は**1 本まで**。
 
 ## rules[] のカバレッジ (validateAdr が検査)
 
@@ -116,8 +124,8 @@ ui:
 
 - `scope` に `system` / `app` / `data` / `testing` / `ui` を含む `accepted` ADR は `rules[]` を最低 1 つ持つ
   (`infra` 専用の ADR は `rules` を持たなくてよい)。
-- ティア構成の ADR (`tiers[]` を宣言する) は `arch_test` を持つ `rule` を最低 1 つ持つ (ティア依存方向の機械検証)。
-- `accepted` かつ `scope` に `app` を含む ADR があるなら、そのうち最低 1 つが `arch_test` (レイヤ依存規則) を持つ。
+- ティア構成の ADR (`tiers[]` を宣言する) は `arch_test.level: tier` を持つ `rule` を最低 1 つ持つ (ティア間依存方向の機械検証)。
+- `accepted` かつ `scope` に `app` を含む ADR があるなら、いずれかの `accepted` ADR が `arch_test.level: layer` を持つ `rule` (レイヤ依存規則) を最低 1 つ持つ。
 
 ## 検証と索引生成
 

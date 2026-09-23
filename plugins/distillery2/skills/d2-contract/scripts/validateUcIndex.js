@@ -44,7 +44,7 @@ function validate(contractsDir) {
 
     for (const op of uc.operations) {
       if (!openapiIndex.has(op)) { errors.push(`${uc.slug}: operation ${op} は openapi.bundle に存在しない`); continue; }
-      const gaps = G.exampleGaps(openapiIndex.get(op));
+      const gaps = G.exampleGaps(openapiIndex.get(op), openapi);
       for (const gap of gaps) errors.push(`${uc.slug}: operation ${op} に example がない (${gap}) — examples 必須`);
     }
     for (const m of uc.messages) if (!messageNames.has(m)) errors.push(`${uc.slug}: message ${m} は asyncapi.bundle の components.messages に存在しない`);

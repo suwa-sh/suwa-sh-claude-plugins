@@ -2,6 +2,7 @@
 
 各ティアの内部レイヤと依存方向を決める。ADR の `scope: [app]`。
 レイヤ構成 ADR には依存方向を守らせる `arch_test` を最低 1 つ付ける (プランの必須要件)。
+レイヤ内の依存規則なので `arch_test.level: layer` を付ける (ティア間規則は `level: tier`。tiers.md 参照)。
 
 ---
 
@@ -20,7 +21,7 @@
 
 - **domain は最内層**: 他レイヤへ依存しない。ログ出力もしない (ドメインイベント / 例外で通知する)。
 - **gateway は Driven Side**: adapter はデータストアモデルと 1:1、client は SDK ラッパー。
-- **派生するルール例 (arch_test 付き)**:
+- **派生するルール例 (arch_test 付き。レイヤ規則なので `level: layer`)**:
   ```yaml
   - scope: tier:backend
     text: "domain 層は他レイヤ・外部ライブラリへ依存してはならない"
@@ -28,12 +29,14 @@
       from: "apps/backend-api/src/domain/**"
       to: "apps/backend-api/src/infrastructure/**"
       effect: forbid
+      level: layer
   - scope: tier:backend
     text: "presentation は usecase を経由し、repository を直接呼ばない"
     arch_test:
       from: "apps/backend-api/src/presentation/**"
       to: "apps/backend-api/src/repository/**"
       effect: forbid
+      level: layer
   ```
 
 ## インターフェイス導入 (凹型 / 依存逆転)

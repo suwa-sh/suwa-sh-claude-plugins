@@ -15,9 +15,16 @@ const reqData = parseYaml(fs.readFileSync(path.join(FIX, 'requirements-pass.yaml
 const bucText = fs.readFileSync(path.join(FIX, 'BUC.tsv'), 'utf8');
 const VALIDATE = path.join(SCRIPTS, 'validateUseCases.js');
 
+/** spec_ids が空の UC は no_spec_reason + status: blocked にして baseline を PASS 可能にする (指摘2)。 */
+function fillEmpties(doc) {
+  for (const uc of doc.use_cases) {
+    if (!uc.spec_ids.length) { uc.no_spec_reason = '対応 SPEC が未確定 (テスト)'; uc.status = 'blocked'; }
+  }
+  return doc;
+}
 function tmpProject() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2vuc-'));
-  fs.writeFileSync(path.join(dir, 'use-cases.yaml'), stringifyYaml(generate(reqData, bucText, new Map())) + '\n');
+  fs.writeFileSync(path.join(dir, 'use-cases.yaml'), stringifyYaml(fillEmpties(generate(reqData, bucText, new Map()))) + '\n');
   return dir;
 }
 function run(dir, extra = []) {
@@ -78,4 +85,31 @@ test('requirements.yaml に無い spec_ids_rejected はエラー (exit 1)', () =
   const r = run(dir);
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stdout, /SPEC-888-88/);
+});
+
+test('spec_ids が空で no_spec_reason も無いとエラー (指摘2, exit 1)', () => {
+  const dir = tmpProject();
+  fs.copyFileSync(path.join(FIX, 'requirements-pass.yaml'), path.join(dir, 'requirements.yaml'));
+  const doc = parseYaml(fs.readFileSync(path.join(dir, 'use-cases.yaml'), 'utf8'));
+  const uc = doc.use_cases.find(u => u.spec_ids.length);
+  uc.spec_ids = [];
+  delete uc.no_spec_reason;
+  fs.writeFileSync(path.join(dir, 'use-cases.yaml'), stringifyYaml(doc) + '\n');
+  const r = run(dir);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /spec_ids が空/);
+});
+
+test('no_spec_reason があるのに status が blocked でないとエラー (指摘2, exit 1)', () => {
+  const dir = tmpProject();
+  fs.copyFileSync(path.join(FIX, 'requirements-pass.yaml'), path.join(dir, 'requirements.yaml'));
+  const doc = parseYaml(fs.readFileSync(path.join(dir, 'use-cases.yaml'), 'utf8'));
+  const uc = doc.use_cases.find(u => u.spec_ids.length);
+  uc.spec_ids = [];
+  uc.no_spec_reason = '対応 SPEC が無い';
+  uc.status = 'planned';
+  fs.writeFileSync(path.join(dir, 'use-cases.yaml'), stringifyYaml(doc) + '\n');
+  const r = run(dir);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout, /status: blocked/);
 });

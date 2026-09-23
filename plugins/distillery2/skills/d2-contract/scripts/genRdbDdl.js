@@ -18,6 +18,9 @@ const { parseYaml } = require('../../../scripts/lib/yaml');
 const PG_TYPE = { string: 'text', text: 'text', integer: 'integer', bigint: 'bigint', decimal: 'numeric', boolean: 'boolean', date: 'date', datetime: 'timestamptz', uuid: 'uuid' };
 const TS_TYPE = { string: 'string', text: 'string', uuid: 'string', integer: 'number', bigint: 'number', decimal: 'number', boolean: 'boolean', date: 'string', datetime: 'string' };
 const enumTypeName = (table, col) => `${table}_${col}`;
+// SQL 識別子を二重引用符で囲う。ハイフン等を含む名前でも生成 DDL が壊れない (Finding 2)。
+// 組み込み型 (PG_TYPE の値) は識別子ではないので囲わない。ユーザー定義の enum 型だけ囲う。
+const q = id => `"${String(id).replace(/"/g, '""')}"`;
 
 /** FK 依存順 (参照先が先) にテーブルを並べる。循環時はアルファベット順にフォールバック。 */
 function topoSort(tables) {
@@ -36,8 +39,8 @@ function topoSort(tables) {
 }
 
 function columnDef(table, col) {
-  const type = col.enum ? enumTypeName(table.name, col.name) : (PG_TYPE[col.type] || 'text');
-  return `  ${col.name} ${type}${col.nullable ? '' : ' NOT NULL'}`;
+  const type = col.enum ? q(enumTypeName(table.name, col.name)) : (PG_TYPE[col.type] || 'text');
+  return `  ${q(col.name)} ${type}${col.nullable ? '' : ' NOT NULL'}`;
 }
 
 /** FK 制約名。テーブル名 + FK 列で決定論的に組む (循環時も安定)。 */
@@ -46,13 +49,13 @@ function fkConstraintName(table, fk) { return `${table.name}_${fk.columns.join('
 function tableSql(table) {
   const lines = [];
   const cols = table.columns.map(c => columnDef(table, c));
-  cols.push(`  PRIMARY KEY (${table.primary_key.join(', ')})`);
+  cols.push(`  PRIMARY KEY (${table.primary_key.map(q).join(', ')})`);
   // FK は CREATE TABLE に埋めず、全テーブル作成後に ALTER TABLE で足す (循環 FK でも参照先が必ず存在する)。
-  for (const idx of table.indexes || []) if (idx.unique) cols.push(`  CONSTRAINT ${idx.name} UNIQUE (${idx.columns.join(', ')})`);
-  lines.push(`CREATE TABLE IF NOT EXISTS ${table.name} (`);
+  for (const idx of table.indexes || []) if (idx.unique) cols.push(`  CONSTRAINT ${q(idx.name)} UNIQUE (${idx.columns.map(q).join(', ')})`);
+  lines.push(`CREATE TABLE IF NOT EXISTS ${q(table.name)} (`);
   lines.push(cols.join(',\n'));
   lines.push(`);`);
-  for (const idx of table.indexes || []) if (!idx.unique) lines.push(`CREATE INDEX IF NOT EXISTS ${idx.name} ON ${table.name} (${idx.columns.join(', ')});`);
+  for (const idx of table.indexes || []) if (!idx.unique) lines.push(`CREATE INDEX IF NOT EXISTS ${q(idx.name)} ON ${q(table.name)} (${idx.columns.map(q).join(', ')});`);
   return lines.join('\n');
 }
 
@@ -60,14 +63,14 @@ function tableSql(table) {
 function foreignKeySql(table, fk) {
   const onDelete = fk.on_delete ? ` ON DELETE ${fk.on_delete}` : '';
   const name = fkConstraintName(table, fk);
-  const clause = `ALTER TABLE ${table.name} ADD CONSTRAINT ${name} FOREIGN KEY (${fk.columns.join(', ')}) REFERENCES ${fk.references.table} (${fk.references.columns.join(', ')})${onDelete}`;
+  const clause = `ALTER TABLE ${q(table.name)} ADD CONSTRAINT ${q(name)} FOREIGN KEY (${fk.columns.map(q).join(', ')}) REFERENCES ${q(fk.references.table)} (${fk.references.columns.map(q).join(', ')})${onDelete}`;
   return `DO $$ BEGIN\n  ${clause};\nEXCEPTION WHEN duplicate_object THEN null;\nEND $$;`;
 }
 
 function enumTypeSql(table, col) {
   const values = col.enum.map(v => `'${String(v).replace(/'/g, "''")}'`).join(', ');
   // CREATE TYPE には IF NOT EXISTS が無いため DO ブロックで冪等化する
-  return `DO $$ BEGIN\n  CREATE TYPE ${enumTypeName(table.name, col.name)} AS ENUM (${values});\nEXCEPTION WHEN duplicate_object THEN null;\nEND $$;`;
+  return `DO $$ BEGIN\n  CREATE TYPE ${q(enumTypeName(table.name, col.name))} AS ENUM (${values});\nEXCEPTION WHEN duplicate_object THEN null;\nEND $$;`;
 }
 
 function buildSql(tables) {

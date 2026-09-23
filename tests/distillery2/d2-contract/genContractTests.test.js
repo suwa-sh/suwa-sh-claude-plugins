@@ -7,6 +7,7 @@ const { SCRIPTS, CONFIG, freshContracts, outRoot } = require('./support');
 
 const compileContracts = require(path.join(SCRIPTS, 'compileContracts.js'));
 const genContractTests = require(path.join(SCRIPTS, 'genContractTests.js'));
+const contractGraph = require(path.join(SCRIPTS, 'lib/contractGraph.js'));
 
 function generated(uc) {
   const { contractsDir } = freshContracts();
@@ -199,4 +200,70 @@ test('--uc は bundle が古いと stale として throw する', () => {
     () => genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, uc: 'loan-register' }),
     /stale/,
   );
+});
+
+test('全 --check も bundle の鮮度を検証する (Finding 8)', () => {
+  const { contractsDir } = freshContracts();
+  compileContracts.run(contractsDir);
+  const out = outRoot();
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out });
+  // source を書き換えて generated を古くする → 全生成 --check も stale で throw
+  const openapiPath = path.join(contractsDir, 'openapi', 'openapi.yaml');
+  fs.writeFileSync(openapiPath, fs.readFileSync(openapiPath, 'utf8').replace('title: Library', 'title: Library v2'));
+  assert.throws(() => genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true }), /stale/);
+});
+
+test('operationExamples は response/requestBody/example の $ref を解決する (Finding 1)', () => {
+  const doc = {
+    openapi: '3.1.0',
+    info: { title: 't', version: '1' },
+    paths: { '/x': { post: {
+      operationId: 'createX',
+      requestBody: { $ref: '#/components/requestBodies/CreateX' },
+      responses: { '201': { $ref: '#/components/responses/Created' } },
+    } } },
+    components: {
+      requestBodies: { CreateX: { content: { 'application/json': { examples: { success: { $ref: '#/components/examples/ReqEx' } } } } } },
+      responses: { Created: { description: 'ok', content: { 'application/json': { schema: { type: 'object' }, examples: { success: { $ref: '#/components/examples/ResEx' } } } } } },
+      examples: { ReqEx: { value: { bookId: 'book-1' } }, ResEx: { value: { id: 'x1' } } },
+    },
+  };
+  const index = contractGraph.operations(doc, 'openapi');
+  const ex = contractGraph.operationExamples(index.get('createX'), doc);
+  assert.equal(ex.hasRequestBody, true);
+  assert.deepEqual(ex.requestExamples.map(r => r.name), ['success']);
+  assert.deepEqual(ex.requestExamples[0].value, { bookId: 'book-1' });
+  assert.equal(ex.responses['201'].hasContent, true);
+  assert.deepEqual(ex.responses['201'].examples[0].value, { id: 'x1' });
+  // $ref 解決後は example が揃うので gap 無し
+  assert.deepEqual(contractGraph.exampleGaps(index.get('createX'), doc), []);
+});
+
+test('AsyncAPI 共有ファイルは UC 指定でも全 message から生成する (Finding 3)', () => {
+  const { contractsDir } = freshContracts();
+  // message を持たない UC を追加する
+  const uc = path.join(contractsDir, 'uc-index.yaml');
+  fs.appendFileSync(uc, '  - slug: book-browse\n    operations: []\n    messages: []\n    tables: []\n');
+  compileContracts.run(contractsDir);
+  const out = outRoot();
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out }); // 全生成
+  assert.match(read(out, 'apps/backend-api/test/contract/messages.test.ts'), /LoanCreated example/);
+  // messages 空の UC を --uc 生成しても共有ファイルは LoanCreated を保持する
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, uc: 'book-browse' });
+  assert.match(read(out, 'apps/backend-api/test/contract/messages.test.ts'), /LoanCreated example/);
+  assert.match(read(out, 'packages/contracts/events/validators.ts'), /LoanCreated/);
+});
+
+test('--uc 生成は stub マニフェストへ union で追記する (Finding 4)', () => {
+  const { contractsDir } = freshContracts();
+  compileContracts.run(contractsDir);
+  const out = outRoot();
+  // 別 UC 由来の stub を先にマニフェストへ登録しておく
+  const stubsDir = path.join(out, 'packages/contracts/api/stubs');
+  fs.mkdirSync(stubsDir, { recursive: true });
+  fs.writeFileSync(path.join(stubsDir, '.distillery2-generated.json'), JSON.stringify(['returnLoan.200.json'], null, 2) + '\n');
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, uc: 'loan-register' });
+  const names = JSON.parse(fs.readFileSync(path.join(stubsDir, '.distillery2-generated.json'), 'utf8'));
+  assert.ok(names.includes('returnLoan.200.json'), '前回マニフェストを残す');
+  assert.ok(names.includes('createLoan.201.json') && names.includes('getBook.200.json'), '今回 UC の stub を追記');
 });

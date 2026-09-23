@@ -34,7 +34,13 @@
         },
         "spec_ids": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^SPEC-[0-9]{3}-[0-9]{2}$" }
+          "items": { "type": "string", "pattern": "^SPEC-[0-9]{3}-[0-9]{2}$" },
+          "description": "UC が実現する SPEC。原則 1 件以上 (validateUseCases が意味検証する)。対応 SPEC が無い UC は no_spec_reason を書き status: blocked にすると空を許す"
+        },
+        "no_spec_reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "spec_ids を空にする理由。書くと spec_ids が空でも許され、その UC は status: blocked でなければならない (validateUseCases が両方を強制する)"
         },
         "spec_ids_added": {
           "type": "array",
@@ -56,7 +62,7 @@
         },
         "status": {
           "type": "string",
-          "enum": ["planned", "in_progress", "done"]
+          "enum": ["planned", "in_progress", "done", "blocked"]
         }
       }
     }

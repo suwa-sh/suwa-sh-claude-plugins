@@ -21,7 +21,9 @@ const { parseYaml } = require('../../../scripts/lib/yaml');
 
 const ENTRY_VERSION = 'distillery2.rdb-split/v1';
 const ALLOWED_TYPES = new Set(['string', 'integer', 'bigint', 'decimal', 'boolean', 'date', 'datetime', 'text', 'uuid']);
-const safeName = v => typeof v === 'string' && /^[A-Za-z0-9_-]+$/.test(v);
+// 生成 SQL の識別子として安全な名前だけ許す。ハイフン等を含む名前は引用が要り、DDL に素で埋めると壊れる。
+// 生成側 (genRdbDdl) は識別子を二重引用符で囲うが、入口でも SQL 識別子規則に制限しておく (Finding 2)。
+const safeName = v => typeof v === 'string' && /^[a-z][a-z0-9_]*$/.test(v);
 const assert = (ok, msg) => { if (!ok) throw new Error(msg); };
 const arr = (v, label) => { assert(Array.isArray(v), `${label}: expected array`); return v; };
 const unique = (v, label) => assert(new Set(v).size === v.length, `${label}: duplicate`);
@@ -159,7 +161,7 @@ function run(contractsDir, check = false) {
   const dir = fs.realpathSync(contractsDir);
   const { files } = compile(dir);
   const genDir = C.generatedDir(dir);
-  const stale = [], written = [];
+  const stale = [], written = [], removed = [];
   for (const [rel, text] of files) {
     const target = path.join(genDir, rel);
     if (fs.existsSync(target) && fs.readFileSync(target, 'utf8') === text) continue;
@@ -168,8 +170,20 @@ function run(contractsDir, check = false) {
     fs.writeFileSync(target, text);
     written.push(`generated/${rel}`);
   }
+  // 旧 rdb-slice の掃除 (Finding 5): 期待集合 = tables を持つ UC の rdb-slice。
+  // tables を空にした / 消えた UC の rdb-slice は、生成で削除し --check で stale とする。
+  // slices/<uc>/ 配下の contract-slice.json は compileContracts の所有物なので触らない。
+  const expected = new Set([...files.keys()].filter(rel => rel.endsWith('/rdb-slice.yaml')));
+  const slicesDir = path.join(genDir, 'slices');
+  if (fs.existsSync(slicesDir)) for (const name of fs.readdirSync(slicesDir)) {
+    const rel = `slices/${name}/rdb-slice.yaml`;
+    if (!expected.has(rel) && fs.existsSync(path.join(genDir, rel))) {
+      if (check) stale.push(`generated/${rel} (obsolete)`);
+      else { fs.rmSync(path.join(genDir, rel), { force: true }); removed.push(`generated/${rel}`); }
+    }
+  }
   assert(!check || stale.length === 0, `Stale generated RDB files: ${stale.join(', ')}`);
-  return { status: check ? 'current' : 'generated', files: files.size, written, tables: [...new Set([...files.keys()])].length };
+  return { status: check ? 'current' : 'generated', files: files.size, written, removed, tables: [...new Set([...files.keys()])].length };
 }
 
 module.exports = { compile, run, loadTables, ucSlice, validateTables };

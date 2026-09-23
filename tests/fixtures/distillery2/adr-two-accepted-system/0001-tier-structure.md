@@ -26,12 +26,20 @@ datastore_owner: backend-api
 rules:
   - scope: common
     text: "ティアは frontend / backend-api の 2 つに分ける"
+  - scope: common
+    text: "frontend は backend-api の内部実装へ直接依存してはならない (API 経由で呼ぶ)"
+    arch_test:
+      from: "apps/frontend/**"
+      to: "apps/backend-api/src/**"
+      effect: forbid
+      level: tier
   - scope: tier:backend
     text: "backend-api の domain 層は infrastructure 層へ依存してはならない"
     arch_test:
       from: "apps/backend-api/src/domain/**"
       to: "apps/backend-api/src/infrastructure/**"
       effect: forbid
+      level: layer
 ---
 
 # 背景

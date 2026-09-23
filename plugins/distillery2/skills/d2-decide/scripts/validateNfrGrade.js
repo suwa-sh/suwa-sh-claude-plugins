@@ -13,6 +13,8 @@
  *   - パーサ / スキーマ検証を共有ライブラリに委譲
  *   - basis (requirements@<sha>) を持つ v2 出力も、basis を持たない v1 サンプルも通す
  *     (schema で basis を任意にしているため)
+ *   - メトリクス ID の重複・カタログ外 ID・件数不一致 (actual ≠ catalog) を弾く
+ *     (同一指標に矛盾するグレードが混ざる表を防ぐ)
  */
 'use strict';
 
@@ -48,12 +50,18 @@ function nfrSpecificErrors(data, expectedMetricIds = catalogMetricIds()) {
   let metricCount = 0;
   let importantCount = 0;
   const actualMetricIds = new Set();
+  const seenMetricIds = new Set();
+  const dupMetricIds = new Set();
   for (const cat of categories) {
     for (const sub of cat.subcategories || []) {
       for (const item of sub.items || []) {
         for (const metric of item.metrics || []) {
           metricCount++;
-          if (metric.id) actualMetricIds.add(metric.id);
+          if (metric.id) {
+            if (seenMetricIds.has(metric.id)) dupMetricIds.add(metric.id);
+            seenMetricIds.add(metric.id);
+            actualMetricIds.add(metric.id);
+          }
           if (metric.important) importantCount++;
           if (typeof metric.grade === 'number' && (metric.grade < 0 || metric.grade > 5)) {
             errors.push({ path: `$.categories[${cat.id}].${metric.id}`, message: `grade ${metric.grade} out of range [0-5]` });
@@ -62,10 +70,27 @@ function nfrSpecificErrors(data, expectedMetricIds = catalogMetricIds()) {
       }
     }
   }
-  // カタログの全メトリクスが揃っているか (欠落した ID を列挙する)。
-  const missing = (expectedMetricIds || []).filter(id => !actualMetricIds.has(id));
-  if (missing.length) {
-    errors.push({ path: '$.categories', message: `Missing metrics (${missing.length}/${expectedMetricIds.length}): ${missing.join(', ')}` });
+  // メトリクス ID の重複を禁止する (同一指標に矛盾するグレードが混ざるのを防ぐ)。
+  if (dupMetricIds.size) {
+    errors.push({ path: '$.categories', message: `Duplicate metric ids (${dupMetricIds.size}): ${[...dupMetricIds].sort().join(', ')}` });
+  }
+  const expected = expectedMetricIds || [];
+  if (expected.length) {
+    const expectedSet = new Set(expected);
+    // カタログの全メトリクスが揃っているか (欠落した ID を列挙する)。
+    const missing = expected.filter(id => !actualMetricIds.has(id));
+    if (missing.length) {
+      errors.push({ path: '$.categories', message: `Missing metrics (${missing.length}/${expected.length}): ${missing.join(', ')}` });
+    }
+    // カタログに無い ID を禁止する。
+    const extra = [...actualMetricIds].filter(id => !expectedSet.has(id)).sort();
+    if (extra.length) {
+      errors.push({ path: '$.categories', message: `Unknown metrics not in catalog (${extra.length}): ${extra.join(', ')}` });
+    }
+    // 件数はカタログとちょうど一致させる (重複や余剰で膨らんだ表を弾く)。
+    if (metricCount !== expected.length) {
+      errors.push({ path: '$.categories', message: `Metric count mismatch: actual ${metricCount}, catalog ${expected.length}` });
+    }
   }
   return { errors, metricCount, importantCount };
 }

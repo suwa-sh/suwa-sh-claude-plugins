@@ -70,7 +70,7 @@ function sendClause(reqExample) { return reqExample ? `\n      .send(${json(reqE
 function openapiTest(op, entry, doc, testRel, componentsVar) {
   const method = entry.method.toLowerCase();
   const url = entry.path.replace(/\{([^}]+)\}/g, (_, p) => `test-${p}`);
-  const ex = G.operationExamples(entry);
+  const ex = G.operationExamples(entry, doc);
   const title = `${op} (${entry.method} ${entry.path})`;
   const blocks = [];
 
@@ -131,18 +131,19 @@ function run(contractsDir, { configPath, outRoot, uc = null, check = false }) {
   if (uc) {
     ucRow = ucIndex.ucs.find(u => u.slug === uc);
     if (!ucRow) throw new Error(`unknown uc: ${uc}`);
-    // UC 指定時は slice の実在と bundle の鮮度を先に確かめる (古い契約からテストを作らない)。
+    // UC 指定時は slice の実在を先に確かめる (未 compile なら exit 2 で compile を促す)。
     const slicePath = path.join(C.generatedDir(dir), 'slices', uc, 'contract-slice.json');
     if (!fs.existsSync(slicePath)) {
       const e = new Error(`contract slice not found for uc "${uc}": generated/slices/${uc}/contract-slice.json が無い。compileContracts を先に実行`);
       e.exitCode = 2;
       throw e;
     }
-    try {
-      compileContracts.run(dir, true); // --check 相当: source から再 bundle して generated と突合
-    } catch (e) {
-      throw new Error(`contracts are stale for uc "${uc}": ${e.message}. compileContracts を先に実行してから再生成する`);
-    }
+  }
+  // bundle の鮮度を確かめる (古い契約からテストを作らない)。全生成・全 --check・--uc すべてで検証する (Finding 8)。
+  try {
+    compileContracts.run(dir, true); // --check 相当: source から再 bundle して generated と突合
+  } catch (e) {
+    throw new Error(`contracts are stale${uc ? ` for uc "${uc}"` : ''}: ${e.message}. compileContracts を先に実行してから再生成する`);
   }
 
   const openapiContract = C.contractsOfType(catalog, 'openapi')[0];
@@ -178,7 +179,7 @@ ${body}
 `.replace(/\{"__ref":"components"\}/g, 'components');
       files.set(testRel, text);
       // consumer stubs: status ごとに最初の response example
-      const ex = G.operationExamples(entry);
+      const ex = G.operationExamples(entry, bundle);
       for (const [status, r] of Object.entries(ex.responses)) {
         if (!r.examples.length) continue;
         const stubRel = path.posix.join('packages', 'contracts', openapiContract.id, 'stubs', `${op}.${status}.json`);
@@ -194,9 +195,10 @@ ${body}
     const providerDir = U.tierDir(config, asyncapiContract.provider);
     const messages = bundle.components?.messages || {};
     const componentsJson = json({ schemas: bundle.components?.schemas || {} });
-    let names = Object.keys(messages);
-    if (ucRow) names = names.filter(n => ucRow.messages.includes(n));
-    names.sort();
+    // 共有ファイル (messages.test.ts / validators.ts) は全 message から生成する。UC で絞ると
+    // 先に作った UC の message 検証が上書きで消える (Finding 3)。UC 絞り込みは OpenAPI の
+    // operation 別テスト・stub にだけ効かせる。
+    const names = Object.keys(messages).sort();
 
     const payloadSchemas = {};
     const testBlocks = [];
@@ -254,8 +256,8 @@ ${testBlocks.join('\n')}
 
   // 不要になった旧生成物の掃除。UC 指定時は subset しか作らないので掃除しない (他 UC の生成物を消さない)。
   const removed = [], orphaned = [];
+  const acc = { removed, orphaned, written, stale };
   if (!ucRow) {
-    const acc = { removed, orphaned, written, stale };
     // (a) provider テスト・validators (.ts): OWNER_TAG で所有を判定し、全 apps/*/test/contract を走査する。
     //     provider を別ティアへ移すと旧ティア配下の .ts も orphan として検出できる (Finding 3)。
     const current = new Set([...files.keys()]);
@@ -267,6 +269,10 @@ ${testBlocks.join('\n')}
     }
     // (b) consumer stubs: マニフェスト方式でのみ掃除する。手書き stub は列挙しないので消さない (Finding 2)。
     reconcileStubManifests(outRoot, files, check, acc);
+  } else {
+    // UC 指定時は掃除しないが、生成した stub をマニフェストへ union で登録する (Finding 4)。
+    // これで後の全生成が、不要になった UC 由来 stub を掃除できる。
+    mergeStubManifests(outRoot, files, check, acc);
   }
 
   if (check && (stale.length || orphaned.length)) {
@@ -355,6 +361,20 @@ function reconcileStubManifests(outRoot, files, check, acc) {
     for (const n of obsolete) { fs.rmSync(path.join(dirAbs, n), { force: true }); acc.removed.push(path.posix.join(dirRel, n)); }
     if (now.length) U.writeFileDet(manifestAbs, manifestText(now), false, [], acc.written, manifestRel);
     else if (fs.existsSync(manifestAbs)) { fs.rmSync(manifestAbs, { force: true }); acc.removed.push(manifestRel); }
+  }
+}
+
+/**
+ * --uc 生成時の stub マニフェスト更新 (Finding 4)。
+ * 前回マニフェスト ∪ 今回 UC で生成した stub 名を書く。UC は subset しか作らないので削除はしない。
+ */
+function mergeStubManifests(outRoot, files, check, acc) {
+  for (const [dirRel, set] of groupStubsByDir(files)) {
+    const dirAbs = path.join(outRoot, dirRel);
+    const manifestAbs = path.join(dirAbs, STUB_MANIFEST);
+    const manifestRel = path.posix.join(dirRel, STUB_MANIFEST);
+    const merged = [...new Set([...readManifest(manifestAbs), ...set])].sort();
+    U.writeFileDet(manifestAbs, manifestText(merged), check, acc.stale, acc.written, manifestRel);
   }
 }
 

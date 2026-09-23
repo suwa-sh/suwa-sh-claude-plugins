@@ -177,27 +177,43 @@ function deref(doc, node, seen = new Set()) {
   return node;
 }
 
-/** operation の全 media-type examples を列挙する。request と status 別 response を返す。 */
-function operationExamples(entry) {
+/** node が $ref を持つなら doc で解決する ($ref 連鎖も辿る)。doc 未指定なら素通し。 */
+function derefMaybe(doc, node) {
+  return doc && object(node) && typeof node.$ref === 'string' ? deref(doc, node) : node;
+}
+
+/**
+ * operation の全 media-type examples を列挙する。request と status 別 response を返す。
+ * bundle では requestBody / response / example が components への $ref のことがあるため doc で解決する。
+ */
+function operationExamples(entry, doc) {
   const op = entry.operation;
-  const requestBodies = mediaExamples(op.requestBody);
-  const hasRequestBody = object(op.requestBody) && object(op.requestBody.content);
+  const requestBody = derefMaybe(doc, op.requestBody);
+  const requestBodies = mediaExamples(requestBody, doc);
+  const hasRequestBody = object(requestBody) && object(requestBody.content);
   const responses = {};
-  for (const [status, resp] of Object.entries(op.responses || {})) {
-    responses[status] = { examples: mediaExamples(resp), hasContent: object(resp) && object(resp.content) };
+  for (const [status, respRaw] of Object.entries(op.responses || {})) {
+    const resp = derefMaybe(doc, respRaw);
+    responses[status] = { examples: mediaExamples(resp, doc), hasContent: object(resp) && object(resp.content) };
   }
   return { requestExamples: requestBodies, hasRequestBody, responses };
 }
 
-/** requestBody / response オブジェクトの content[*].example|examples を [{mediaType, name, value}] に平坦化。 */
-function mediaExamples(holder) {
+/**
+ * requestBody / response オブジェクトの content[*].example|examples を [{mediaType, name, value}] に平坦化。
+ * holder・media・個々の example が $ref のときは doc で解決する (components/requestBodies・responses・examples)。
+ */
+function mediaExamples(holder, doc) {
   const out = [];
+  holder = derefMaybe(doc, holder);
   if (!object(holder) || !object(holder.content)) return out;
-  for (const [mediaType, media] of Object.entries(holder.content)) {
+  for (const [mediaType, mediaRaw] of Object.entries(holder.content)) {
+    const media = derefMaybe(doc, mediaRaw);
     if (!object(media)) continue;
     if (own(media, 'example')) out.push({ mediaType, name: 'example', value: media.example });
     if (object(media.examples)) {
-      for (const [name, ex] of Object.entries(media.examples)) {
+      for (const [name, exRaw] of Object.entries(media.examples)) {
+        const ex = derefMaybe(doc, exRaw);
         if (object(ex) && own(ex, 'value')) out.push({ mediaType, name, value: ex.value });
       }
     }
@@ -214,8 +230,8 @@ const is4xx = s => /^4\d\d$/.test(s);
  *  - requestBody があるなら、その各 response example と同名の request example があること
  *    (単数形 `example` は 2xx にだけ対応づく)。requestBody が無ければ request 対応は不要。
  */
-function exampleGaps(entry) {
-  const ex = operationExamples(entry);
+function exampleGaps(entry, doc) {
+  const ex = operationExamples(entry, doc);
   const gaps = [];
   const reqNames = new Set(ex.requestExamples.map(r => r.name));
   for (const [status, r] of Object.entries(ex.responses)) {

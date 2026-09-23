@@ -56,11 +56,16 @@
     },
     "ArchTest": {
       "type": "object",
-      "required": ["from", "to", "effect"],
+      "required": ["from", "to", "effect", "level"],
       "properties": {
         "from": { "type": "string", "minLength": 1 },
         "to": { "type": "string", "minLength": 1 },
-        "effect": { "type": "string", "enum": ["forbid", "allow"] }
+        "effect": { "type": "string", "enum": ["forbid", "allow"] },
+        "level": {
+          "type": "string",
+          "enum": ["tier", "layer"],
+          "description": "tier = ティア間の依存方向規則 / layer = ティア内のレイヤ依存規則。arch_test があるとき必須。genArchTests は level を読まない (検証専用の宣言)"
+        }
       }
     }
   }

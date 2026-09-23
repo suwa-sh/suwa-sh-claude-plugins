@@ -8,10 +8,15 @@ Next.js + TypeScript + Tailwind CSS v4 + Storybook のアプリを生成する�
 
 ## プロジェクト初期化
 
+出力先は `docs/design/storybook-app/`。**必ず `docs/design` へ移動してから** `create-next-app` を実行する
+(リポジトリルートで実行するとルート直下に `storybook-app/` ができ、F6 の `--from docs/design/storybook-app` が空になる)。
+
 ```bash
+mkdir -p docs/design
+cd docs/design
 npx --yes create-next-app@latest storybook-app \
   --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm --yes
-cd storybook-app
+cd storybook-app   # 以降このディレクトリ (docs/design/storybook-app) で作業する
 npx --yes storybook@latest init --yes --no-dev
 ```
 
@@ -116,7 +121,7 @@ CSS 変数の未定義 (→ design-tokens.css に追加)、TypeScript 型エラ�
 
 ## F6 への受け渡し
 
-- 生成物一式を `docs/design/storybook-app/` に置く。
+- 生成物一式を `docs/design/storybook-app/` に置く (初期化を `docs/design` で実行していれば自然にここに入る)。
 - d2-foundation phase=F6 (`importUi.js --from docs/design/storybook-app`) が
   ソースを `packages/ui/` にコピーし、取り込み記録を `packages/ui/.imported.yaml` に残す。
 - screens.yaml の `story` / `components` / `tokens.file` は **`src/` からの相対パス**

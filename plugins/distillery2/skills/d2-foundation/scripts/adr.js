@@ -4,8 +4,8 @@
  *
  * 読む front matter キー (adr-inputs.md が正本):
  *   id, title, status, scope[], nfr_refs[]
- *   rules[]: { scope, text, arch_test?: {from, to, effect} }
- *   scope に "system" を含む ADR: tiers[]{id,dir,kind,lang,provides[],consumes[]}, datastore_owner
+ *   rules[]: { scope, text, arch_test?: {from, to, effect, level} }  ※ level は d2-decide の検証専用。ここでは読まない
+ *   ティア構成 ADR (accepted かつ非空の tiers[] を持つ 1 本): tiers[]{id,dir,kind,lang,provides[],consumes[]}, datastore_owner
  *   scope に "testing" を含む ADR: capabilities{browser}
  *
  * `status: accepted` の ADR だけが rules / tiers / capabilities に寄与する。
@@ -40,14 +40,17 @@ function loadAdrs(adrDir) {
 
 const isAccepted = adr => String(adr.status).toLowerCase() === 'accepted';
 const hasScope = (adr, s) => Array.isArray(adr.scope) ? adr.scope.includes(s) : adr.scope === s;
+const declaresTiers = adr => Array.isArray(adr.tiers) && adr.tiers.length > 0;
 
-/** 採用済み ADR の tiers[] を集める (先に現れた system ADR を優先)。 */
+/**
+ * ティア構成 ADR (accepted かつ非空の tiers[] を持つ 1 本) の tiers[] を集める。
+ * 選択条件は validateAdr の tierStructureErrors と一致させる (検証を通れば必ず 1 本)。
+ * 空 tiers[] の system ADR を先に拾ってティアが消える取り違えを避けるため、
+ * 「非空の tiers[]」で選ぶ (旧実装は "先に現れた system ADR" で空配列を拾いえた)。
+ */
 function collectTiers(adrs) {
-  for (const adr of adrs) {
-    if (isAccepted(adr) && hasScope(adr, 'system') && Array.isArray(adr.tiers)) {
-      return { tiers: adr.tiers, datastore_owner: adr.datastore_owner || null };
-    }
-  }
+  const declaring = adrs.find(adr => isAccepted(adr) && declaresTiers(adr));
+  if (declaring) return { tiers: declaring.tiers, datastore_owner: declaring.datastore_owner || null };
   return { tiers: [], datastore_owner: null };
 }
 
@@ -59,4 +62,4 @@ function collectCapabilities(adrs) {
   return {};
 }
 
-module.exports = { TIER_KINDS, parseFrontMatter, loadAdrs, isAccepted, hasScope, collectTiers, collectCapabilities };
+module.exports = { TIER_KINDS, parseFrontMatter, loadAdrs, isAccepted, hasScope, declaresTiers, collectTiers, collectCapabilities };

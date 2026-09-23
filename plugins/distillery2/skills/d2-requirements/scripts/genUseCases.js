@@ -106,13 +106,40 @@ function inferTiers(g) {
   return tiers;
 }
 
-function readExisting(outPath) {
+/**
+ * 既存 use-cases.yaml を uc_id をキーに読む。
+ * 解析できないファイルを黙って捨てると slug / status / spec_ids_rejected などの手編集が失われるため、
+ * forceRebuild でない限り解析失敗を例外にする (呼び出し側で exit 2)。
+ */
+function parseErr(msg, forceRebuild) {
+  if (forceRebuild) return null;
+  const err = new Error(`既存 use-cases.yaml の解析に失敗: ${msg}`);
+  err.code = 'EXISTING_PARSE';
+  return err;
+}
+
+function readExisting(outPath, { forceRebuild = false } = {}) {
   const byId = new Map();
   if (!fs.existsSync(outPath)) return byId;
+  const raw = fs.readFileSync(outPath, 'utf8');
+  if (raw.trim() === '') return byId; // 空ファイルは「既存なし」扱い
+  let prev;
   try {
-    const prev = parseYaml(fs.readFileSync(outPath, 'utf8'));
-    for (const uc of (prev && prev.use_cases) || []) if (uc && uc.uc_id) byId.set(uc.uc_id, uc);
-  } catch { /* 壊れていれば無視して作り直す */ }
+    prev = parseYaml(raw);
+  } catch (e) {
+    // 共有パーサは JSON パス (先頭が [ / {) でだけ例外を投げる。
+    const err = parseErr(e.message, forceRebuild);
+    if (err) throw err;
+    return byId;
+  }
+  // それ以外の構文誤りは例外にならず壊れたオブジェクトになるため、構造で判定する。
+  // use_cases が配列として読めない非空ファイルは、手編集の取りこぼしを避けて解析失敗扱いにする。
+  if (!prev || typeof prev !== 'object' || Array.isArray(prev) || !Array.isArray(prev.use_cases)) {
+    const err = parseErr('use_cases 配列として読み取れない (構文誤りの可能性)', forceRebuild);
+    if (err) throw err;
+    return byId;
+  }
+  for (const uc of prev.use_cases) if (uc && uc.uc_id) byId.set(uc.uc_id, uc);
   return byId;
 }
 
@@ -162,23 +189,44 @@ function generate(reqData, bucText, existingById) {
 }
 
 function main() {
-  const reqPath = path.resolve(process.argv[2] || 'docs/requirements/requirements.yaml');
-  const bucPath = path.resolve(process.argv[3] || 'docs/requirements/rdra/BUC.tsv');
-  const outPath = path.resolve(process.argv[4] || 'docs/requirements/use-cases.yaml');
+  const argv = process.argv.slice(2);
+  const forceRebuild = argv.includes('--force-rebuild');
+  const positional = argv.filter((a) => !a.startsWith('--'));
+  const reqPath = path.resolve(positional[0] || 'docs/requirements/requirements.yaml');
+  const bucPath = path.resolve(positional[1] || 'docs/requirements/rdra/BUC.tsv');
+  const outPath = path.resolve(positional[2] || 'docs/requirements/use-cases.yaml');
   for (const [label, p] of [['requirements.yaml', reqPath], ['BUC.tsv', bucPath]]) {
     if (!fs.existsSync(p)) { console.error(`File not found (${label}): ${p}`); process.exit(2); }
   }
+  let existing;
+  try {
+    existing = readExisting(outPath, { forceRebuild });
+  } catch (e) {
+    if (e.code === 'EXISTING_PARSE') {
+      console.error(e.message);
+      console.error('  上書きを避けて中断した。手編集の値 (slug / status / spec_ids_rejected) を失わないため。');
+      console.error('  壊れた use-cases.yaml を直すか、破棄してよければ --force-rebuild を付けて作り直す。');
+      process.exit(2);
+    }
+    throw e;
+  }
   const reqData = parseYaml(fs.readFileSync(reqPath, 'utf8'));
   const bucText = fs.readFileSync(bucPath, 'utf8');
-  const doc = generate(reqData, bucText, readExisting(outPath));
+  const doc = generate(reqData, bucText, existing);
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, stringifyYaml(doc) + '\n', 'utf8');
   const filled = doc.use_cases.filter((u) => u.spec_ids.length).length;
   const named = doc.use_cases.filter((u) => !/^uc-[0-9a-f]+$/.test(u.slug)).length;
   console.log(`Generated: ${outPath}`);
   console.log(`  UCs: ${doc.use_cases.length}  spec_ids 推定済: ${filled}  slug 確定済: ${named}`);
+  // spec_ids が空のままの UC は validateUseCases で FAIL する。LLM が SPEC を当てるか no_spec_reason を書く必要がある。
+  const empty = doc.use_cases.filter((u) => !u.spec_ids.length);
+  if (empty.length) {
+    console.warn(`  警告: spec_ids が空の UC が ${empty.length} 件ある。SPEC を当てるか no_spec_reason を書いて status: blocked にするまで validateUseCases は FAIL する:`);
+    for (const u of empty) console.warn(`    - ${u.business} / ${u.buc} / ${u.uc} (uc_id: ${u.uc_id})`);
+  }
 }
 
 if (require.main === module) main();
 
-module.exports = { ucId, buildFlowSpecMap, parseBucTsv, inferTiers, generate };
+module.exports = { ucId, buildFlowSpecMap, parseBucTsv, inferTiers, generate, readExisting };

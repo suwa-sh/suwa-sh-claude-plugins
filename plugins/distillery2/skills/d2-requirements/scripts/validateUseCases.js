@@ -4,7 +4,8 @@
  *
  * use-cases.yaml を検証する。
  *   - 構造: schema-use-cases.json
- *   - 意味: uc_id 一意 / slug 一意 / slug パターン / spec_ids が requirements.yaml に実在
+ *   - 意味: uc_id 一意 / slug 一意 / slug パターン / spec_ids が requirements.yaml に実在 /
+ *     spec_ids は原則 1 件以上 (空は no_spec_reason + status: blocked の UC だけ許す)
  *
  * Usage:
  *   node validateUseCases.js <use-cases.yaml> [requirements.yaml] [--json]
@@ -48,6 +49,18 @@ function validateSemantics(data, specIdSet) {
       for (const sid of (uc && uc.spec_ids) || []) {
         if (!specIdSet.has(sid)) errors.push({ path: `${p}.spec_ids`, message: `spec_id ${sid} は requirements.yaml に存在しない` });
       }
+    }
+    // spec_ids は原則 1 件以上。空を許すのは no_spec_reason を書いた UC だけで、その UC は status: blocked。
+    const specIds = Array.isArray(uc && uc.spec_ids) ? uc.spec_ids : [];
+    const hasReason = typeof (uc && uc.no_spec_reason) === 'string' && uc.no_spec_reason.trim() !== '';
+    if (specIds.length === 0) {
+      if (!hasReason) {
+        errors.push({ path: `${p}.spec_ids`, message: 'spec_ids が空。実現する SPEC を 1 件以上書くか、no_spec_reason に理由を書いて status: blocked にする' });
+      } else if (uc.status !== 'blocked') {
+        errors.push({ path: `${p}.status`, message: `no_spec_reason を持つ UC は status: blocked にする (現在: ${uc && uc.status})` });
+      }
+    } else if (hasReason) {
+      errors.push({ path: `${p}.no_spec_reason`, message: 'spec_ids があるのに no_spec_reason が書かれている (SPEC を持つなら理由は不要)' });
     }
     // spec_ids_rejected: requirements.yaml に実在し、かつ spec_ids と重複しないこと
     const specSet = new Set((uc && uc.spec_ids) || []);

@@ -66,3 +66,48 @@ test('genCi: renders 5-gate workflow with needs chain', () => {
   assert.ok(!ci.includes('@uc:*') && !ci.includes('@acceptance:*'), 'ワイルドカードタグは使わない');
   assert.ok(ci.includes('--tags "not @browser"') && ci.includes('@acceptance and not @browser'));
 });
+
+test('genCi: config のコマンドから job を組み、browser 有効時はブラウザ step を足す (Finding 6)', () => {
+  const genCi = require(path.join(SKILL, 'scripts/genCi.js'));
+  const config = {
+    tiers: [{ id: 'api', dir: 'apps/api', commands: {
+      format_check: 'npm run format:check -w apps/api',
+      lint: 'npm run lint -w apps/api',
+      typecheck: 'npm run typecheck -w apps/api',
+      unit: 'npm run test -w apps/api -- --run --reporter=json --outputFile={report}',
+      contract: 'npm run test:contract -w apps/api -- --run --reporter=json --outputFile={report}',
+    } }],
+    commands: {
+      arch_test: 'npx depcruise apps packages',
+      uc_bdd: 'npx cucumber-js --tags "@uc:{slug}" --format json:{report}',
+      acceptance_api: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and not @browser" --format json:{report}',
+      acceptance_browser: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and @browser" --format json:{report}',
+    },
+    capabilities: { browser: true },
+  };
+  const yml = genCi.render(config);
+  // unit / contract は config の各ティアコマンドから (固定コマンドではない)
+  assert.ok(yml.includes('npm run test -w apps/api -- --run'), 'custom unit command');
+  assert.ok(yml.includes('npm run test:contract -w apps/api -- --run'), 'custom contract command');
+  // CI では {report} / {slug} プレースホルダは残さない
+  assert.ok(!yml.includes('{report}'), '{report} を残さない');
+  assert.ok(!yml.includes('@uc:{slug}'), '{slug} を残さない');
+  // browser 有効なのでブラウザ受入 step が入る
+  assert.ok(yml.includes('--tags "@acceptance and @browser"'), 'browser acceptance step');
+  assert.ok(yml.includes('--tags "not @browser"') && yml.includes('--tags "@acceptance and not @browser"'));
+});
+
+test('genCi: browser 無効ならブラウザ step を入れない (Finding 6)', () => {
+  const genCi = require(path.join(SKILL, 'scripts/genCi.js'));
+  const config = {
+    tiers: [{ id: 'api', dir: 'apps/api', commands: { unit: 'npm run test -w apps/api', contract: 'npm run test:contract -w apps/api' } }],
+    commands: {
+      uc_bdd: 'npx cucumber-js --tags "@uc:{slug}" --format json:{report}',
+      acceptance_api: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and not @browser" --format json:{report}',
+      acceptance_browser: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and @browser" --format json:{report}',
+    },
+    capabilities: { browser: false },
+  };
+  const yml = genCi.render(config);
+  assert.ok(!yml.includes('@acceptance and @browser'), 'browser off ならブラウザ step 無し');
+});

@@ -41,6 +41,24 @@ test('カタログはメトリクス ID の正本を返す (サンプルと同�
   assert.ok(ids.includes('A.1.1.1') && ids.includes('F.5.1.2'));
 });
 
+test('メトリクス ID が重複すると FAIL (指摘5)', () => {
+  const data = loadDataFile(V1_SAMPLE);
+  const m0 = data.categories[0].subcategories[0].items[0].metrics[0];
+  // 同じ ID・別グレードのメトリクスを 1 件追加する
+  data.categories[0].subcategories[0].items[0].metrics.push({ id: m0.id, name: 'dup', important: false, grade: (m0.grade + 1) % 6 });
+  const { errors } = validateNfrGrade(data);
+  assert.ok(errors.some(e => /Duplicate metric ids/.test(e.message)), JSON.stringify(errors));
+  assert.ok(errors.some(e => /Metric count mismatch/.test(e.message)), JSON.stringify(errors));
+});
+
+test('カタログに無いメトリクス ID があると FAIL (指摘5)', () => {
+  const data = loadDataFile(V1_SAMPLE);
+  data.categories[0].subcategories[0].items[0].metrics.push({ id: 'Z.9.9.9', name: 'bogus', important: false, grade: 1 });
+  const { errors } = validateNfrGrade(data);
+  assert.ok(errors.some(e => /Unknown metrics not in catalog/.test(e.message) && /Z\.9\.9\.9/.test(e.message)), JSON.stringify(errors));
+  assert.ok(errors.some(e => /Metric count mismatch/.test(e.message)), JSON.stringify(errors));
+});
+
 test('カテゴリだけ揃えても各 1 メトリクスの不完全な表は FAIL (欠落 ID を列挙)', () => {
   const seed = ['A.1.1.1', 'B.1.1.1', 'C.1.1.1', 'D.1.1.1', 'E.1.1.1', 'F.1.1.1'];
   const data = {

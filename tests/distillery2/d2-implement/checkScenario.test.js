@@ -77,3 +77,11 @@ test('marker tag @acceptance and criteria tags must appear together', () => {
   const r2 = check({ files: [s2.feature], useCases: s2.useCases, requirements: s2.requirements });
   assert.ok(r2.errors.some(e => /@acceptance だけで/.test(e)), r2.errors.join(';'));
 });
+
+test('a UC without spec_ids is rejected instead of passing on an empty set', () => {
+  const s = setup(FULL);
+  fs.writeFileSync(s.useCases, ['use_cases:', '  - business: 貸出業務', '    uc: 貸出を登録する', '    slug: register-loan', '    spec_ids: []'].join('\n'));
+  const r = check({ files: [s.feature], useCases: s.useCases, requirements: s.requirements });
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some(e => /spec_ids がありません/.test(e)), r.errors.join(';'));
+});

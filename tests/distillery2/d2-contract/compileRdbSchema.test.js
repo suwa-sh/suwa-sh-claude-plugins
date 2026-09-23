@@ -36,6 +36,29 @@ test('UC が一部テーブルだけ使う場合、FK 参照先は external_tabl
   assert.deepEqual(books.columns.map(c => c.name), ['id']);
 });
 
+test('ハイフン付きテーブル名は SQL 識別子規則に反するので reject する (Finding 2)', () => {
+  const { contractsDir } = freshContracts();
+  const dom = path.join(contractsDir, 'db/domains/loans.yaml');
+  fs.writeFileSync(dom, fs.readFileSync(dom, 'utf8').replace('- name: loans', '- name: order-items'));
+  assert.throws(() => compileRdbSchema.run(contractsDir), /invalid table name/);
+});
+
+test('tables を空にした UC の rdb-slice は削除し、--check で stale とする (Finding 5)', () => {
+  const { contractsDir } = freshContracts();
+  compileRdbSchema.run(contractsDir);
+  const slicePath = path.join(contractsDir, 'generated/slices/loan-register/rdb-slice.yaml');
+  assert.ok(fs.existsSync(slicePath), '初回生成で rdb-slice がある');
+  // UC の tables を空にする
+  const uc = path.join(contractsDir, 'uc-index.yaml');
+  fs.writeFileSync(uc, fs.readFileSync(uc, 'utf8').replace(/    tables:\n      - loans\n      - books/, '    tables: []'));
+  // --check は旧 slice を stale (obsolete) として報告
+  assert.throws(() => compileRdbSchema.run(contractsDir, true), /obsolete|Stale generated RDB/);
+  // 通常生成は旧 slice を削除する
+  const r = compileRdbSchema.run(contractsDir);
+  assert.ok(!fs.existsSync(slicePath), 'tables 空の UC の rdb-slice は削除される');
+  assert.ok(r.removed.includes('generated/slices/loan-register/rdb-slice.yaml'));
+});
+
 test('--check は生成直後は成功し、domain を編集すると失敗する', () => {
   const { contractsDir } = freshContracts();
   compileRdbSchema.run(contractsDir);

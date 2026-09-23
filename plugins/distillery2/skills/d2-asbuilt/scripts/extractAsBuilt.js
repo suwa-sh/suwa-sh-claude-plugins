@@ -166,7 +166,9 @@ function collect(opts) {
   const gates = readJsonIfExists(path.join(reportsDir, 'gates.json'));
   const ucBdd = parseCucumberReport(readJsonIfExists(path.join(reportsDir, 'uc-bdd.json')));
   const acceptance = parseCucumberReport(readJsonIfExists(path.join(reportsDir, 'acceptance-api.json')));
-  const scenarios = mergeScenarios(ucBdd, acceptance);
+  // ブラウザ受入だけ再実行した結果も証跡・追跡表へ取り込む (Finding 7)。同じ cucumber JSON 形。
+  const acceptanceBrowser = parseCucumberReport(readJsonIfExists(path.join(reportsDir, 'acceptance-browser.json')));
+  const scenarios = mergeScenarios(ucBdd, acceptance, acceptanceBrowser);
 
   const tiers = config.tiers || [];
   const unitByTier = {};
@@ -216,9 +218,9 @@ function collect(opts) {
   };
 }
 
-function mergeScenarios(a, b) {
+function mergeScenarios(...lists) {
   const map = new Map();
-  for (const s of [...a, ...b]) {
+  for (const s of lists.flat()) {
     const key = `${s.feature}\u0000${s.name}`;
     if (!map.has(key)) map.set(key, s);
     else {

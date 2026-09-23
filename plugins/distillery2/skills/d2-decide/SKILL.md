@@ -78,8 +78,8 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/generateNfrGradeMd.js docs/n
 
 - front matter の必須フィールド: `id` (クォート必須) / `title` / `status` / `date` / `basis` / `scope`。
 - 本文は日本語で 背景 / 決定 / 却下した案 / 影響 の 4 節。
-- 該当する ADR は `rules[]` を最低 1 つ持つ。**ティア構成とレイヤ構成の ADR は `arch_test` を持つ**。
-- **ティア構成の ADR は front matter に `tiers[]` と `datastore_owner` を、テスト方針の ADR は `capabilities.browser` を持つ**
+- 該当する ADR は `rules[]` を最低 1 つ持つ。**ティア構成の ADR は `arch_test.level: tier` を、レイヤ構成の ADR は `arch_test.level: layer` を持つ**。
+- **ティア構成の ADR は front matter に `tiers[]` と `datastore_owner` を (scope に system を含む 1 本だけ)、accepted なテスト方針の ADR (scope に testing を含む) は `capabilities.browser` を持つ**
   (段階③の config / 骨格 / rules の入力。形は adr-format.md「段階③が読む追加の front matter」)。
 - `rules[]` は段階③ の入力になる。カタログの「派生するルール例」を土台にする。
 - 言語 / FW が未定なら「未定」と明記した ADR を書く (ベンダーニュートラル。特定サービス名を使わない)。
@@ -93,7 +93,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/validateAdr.js docs/adr
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements
 ```
 
-- `validateAdr.js` はスキーマ・id 一意性・参照整合性 (supersedes / superseded_by の双方向)・status 遷移・`rules[].scope` 書式に加え、ティア構成 ADR がちょうど 1 本あること・`rules[]` のカバレッジ (該当 scope の rules 必須、ティア/レイヤの `arch_test`) を検査する。PASS するまで直す。
+- `validateAdr.js` はスキーマ・id 一意性・参照整合性 (supersedes / superseded_by の双方向)・status 遷移・`rules[].scope` 書式に加え、ティア構成 ADR がちょうど 1 本 (system scope・tiers キーは他 ADR に持たせない) あること・accepted な testing ADR の `capabilities.browser` (宣言は 1 本まで)・`rules[]` のカバレッジ (該当 scope の rules 必須、ティア間 `level: tier`・レイヤ `level: layer` の `arch_test`) を検査する。PASS するまで直す。
 - `genAdrIndex.js` は id 昇順で決定論的に `index.md` を生成する。
 
 ### 4. 人レビュー用の要約を書く

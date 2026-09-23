@@ -25,10 +25,42 @@ function parseArgs(argv) {
   return o;
 }
 
+/**
+ * config のコマンドを CI 用に整える。
+ *  - {report} を書き出すフラグは CI では要らない (判定は exit code)。素で埋めると壊れるので落とす。
+ *  - 残った {report} は保険で CI パスへ置換する。
+ */
+function stripReport(cmd) {
+  return String(cmd)
+    .replace(/\s*--reporter=json\s+--outputFile=\{report\}/g, '')
+    .replace(/\s*--format\s+json:\{report\}/g, '')
+    .replace(/\s*--outputFile=\{report\}/g, '')
+    .replace(/\{report\}/g, 'reports/ci.json')
+    .trim();
+}
+
+/**
+ * cucumber コマンドを CI 変種にする。ローカルは {slug} で 1 UC に絞るが CI は全 UC を回すので、
+ * --tags 式から `@uc:{slug}` を外し、空になったら fallbackTags (not @browser 等) を入れる。
+ */
+function ciCucumber(cmd, fallbackTags) {
+  return stripReport(cmd).replace(/--tags\s+"([^"]*)"/, (_, expr) => {
+    let e = expr
+      .replace(/@uc:\{slug\}\s+and\s+/g, '')
+      .replace(/\s+and\s+@uc:\{slug\}/g, '')
+      .replace(/@uc:\{slug\}/g, '')
+      .trim();
+    if (!e) e = fallbackTags;
+    return `--tags "${e}"`;
+  });
+}
+
 function render(config) {
   const tiers = config.tiers || [];
   const cmds = config.commands || {};
+  const caps = config.capabilities || {};
   const setup = ['      - uses: actions/checkout@v4', '      - uses: actions/setup-node@v4', '        with:', '          node-version: 20', '      - run: npm ci'];
+  const step = cmd => `      - run: ${cmd}`;
   const job = (id, needs, steps) => {
     const lines = [`  ${id}:`, '    runs-on: ubuntu-latest'];
     if (needs) lines.push(`    needs: ${needs}`);
@@ -36,12 +68,15 @@ function render(config) {
     return lines.join('\n');
   };
   const staticSteps = [];
-  for (const t of tiers) for (const k of ['format_check', 'lint', 'typecheck']) if (t.commands && t.commands[k]) staticSteps.push(`      - run: ${t.commands[k]}`);
-  if (cmds.arch_test) staticSteps.push(`      - run: ${cmds.arch_test}`);
-  const unitSteps = tiers.filter(t => t.commands && t.commands.unit).map(t => `      - run: npm run test -w ${t.dir}`);
-  const contractSteps = tiers.filter(t => t.commands && t.commands.contract).map(t => `      - run: npm run test:contract -w ${t.dir}`);
-  const ucBddSteps = ['      - run: npx cucumber-js --tags "not @browser"'];
-  const acceptanceSteps = ['      - run: npx cucumber-js --tags "@acceptance and not @browser"'];
+  for (const t of tiers) for (const k of ['format_check', 'lint', 'typecheck']) if (t.commands && t.commands[k]) staticSteps.push(step(stripReport(t.commands[k])));
+  if (cmds.arch_test) staticSteps.push(step(stripReport(cmds.arch_test)));
+  // unit / contract は config の各ティアコマンドから組む (runGates と同じソース)。
+  const unitSteps = tiers.filter(t => t.commands && t.commands.unit).map(t => step(stripReport(t.commands.unit)));
+  const contractSteps = tiers.filter(t => t.commands && t.commands.contract).map(t => step(stripReport(t.commands.contract)));
+  const ucBddSteps = [step(cmds.uc_bdd ? ciCucumber(cmds.uc_bdd, 'not @browser') : 'npx cucumber-js --tags "not @browser"')];
+  const acceptanceSteps = [step(cmds.acceptance_api ? ciCucumber(cmds.acceptance_api, '@acceptance and not @browser') : 'npx cucumber-js --tags "@acceptance and not @browser"')];
+  // capabilities.browser: true のときだけブラウザ受入を CI にも足す (runGates と対応)。
+  if (caps.browser) acceptanceSteps.push(step(cmds.acceptance_browser ? ciCucumber(cmds.acceptance_browser, '@acceptance and @browser') : 'npx cucumber-js --tags "@acceptance and @browser"'));
   return [
     'name: ci',
     'on:',

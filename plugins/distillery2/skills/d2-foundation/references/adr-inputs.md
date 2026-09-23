@@ -19,6 +19,7 @@ rules:
       from: "apps/backend-api/src/domain/**"
       to: "apps/backend-api/src/infrastructure/**"
       effect: forbid        # forbid | allow
+      level: layer          # tier | layer。d2-decide の検証専用 (下記)。F2 は読まない
 ---
 ```
 
@@ -30,22 +31,30 @@ rules:
 | `id` | 差し込み順 (昇順) と arch_test 名の一部 |
 | `rules[].scope` | 出力ファイルの振り分け。未知の scope は exit 1 |
 | `rules[].text` | `## プロジェクトの決定から` に 1 行で差し込む |
-| `tiers[].kind` | tier ファイルを生成する kind の集合 (下記 system ADR) |
+| `tiers[].kind` | tier ファイルを生成する kind の集合 (下記ティア構成 ADR) |
 
 ## F2 (genArchTests) が読むキー
 
 - `rules[].arch_test.{from, to, effect}`。forbid → forbidden ルール、allow → allowed。名前は `adr-<id>-<n>`。
+- **`arch_test.level` (`tier` | `layer`) は読まない**。level は d2-decide の `validateAdr` が
+  「ティア構成 ADR は level: tier を、app scope があれば level: layer を最低 1 つ持つ」を検査するための
+  宣言であり、生成される dependency-cruiser ルールには影響しない (from/to/effect だけが規則になる)。
 
-## system ADR (scope に `system` を含む)
+## ティア構成 ADR (accepted かつ非空の `tiers[]` を持つ 1 本)
 
 ```yaml
-scope: [system]
+scope: [system]             # ティア構成 ADR は scope に system を含む (validateAdr が要求)
 tiers:
   - { id: backend-api, dir: apps/backend-api, kind: backend, lang: typescript, provides: [api], consumes: [db] }
   - { id: frontend, dir: apps/frontend, kind: frontend, lang: typescript, provides: [], consumes: [api] }
 datastore_owner: backend-api
 ```
 
+- **選択規則**: `collectTiers` は「`status: accepted` かつ非空の `tiers[]` を持つ ADR」を 1 本選ぶ
+  (`validateAdr` の `tierStructureErrors` と同じ条件。検証を通れば必ずちょうど 1 本)。
+  「先に現れた system ADR」ではない。空の `tiers[]` を持つ system ADR を先に拾ってティアが消えるのを避ける。
+- `validateAdr` はティア構成 ADR **以外**が `tiers` キーを持つこと (空配列を含む) を禁止する。
+  基盤が取り違える入力は検証段階で弾かれる前提。
 - F1: `tiers[].kind` の集合で tier ルールファイルを絞る。
 - F5: `tiers[]` から config の `tiers[]` と apps 骨格、`datastore_owner` を作る。
 
@@ -56,7 +65,10 @@ scope: [testing]
 capabilities: { browser: false }
 ```
 
-- F5: `capabilities.browser` を config の `capabilities.browser` にする (既定 false)。
+- `validateAdr` は accepted な testing ADR に `capabilities: { browser: <bool> }` を要求し、
+  `capabilities` を宣言する accepted ADR は 1 本までに制限する。
+- F5: `collectCapabilities` が accepted な testing ADR の `capabilities.browser` を読み、
+  config の `capabilities.browser` にする (既定 false)。false ならブラウザ受入ジョブを組まない。
 
 ## 契約入力 (contracts/contracts.json)
 

@@ -73,6 +73,8 @@ function check(o) {
   else if (o.uc && ucTag !== `@uc:${o.uc}`) errors.push(`@uc タグ (${ucTag}) が引数の slug (${o.uc}) と違います`);
   const uc = listUseCases(ucDoc).find(u => u.slug === slug);
   if (!uc) errors.push(`use-cases.yaml に slug ${slug} がありません`);
+  // 受入基準の対応先が無い UC は静的確認が空集合で通ってしまう。spec_ids が空なら明示的に止める
+  else if (!Array.isArray(uc.spec_ids) || uc.spec_ids.length === 0) errors.push(`use-cases.yaml の ${slug} に spec_ids がありません (受入基準の対応先が無い UC は実装に進めない。要求段階で spec_ids を確定する)`);
   const idx = acceptanceIndex(reqDoc);
   const others = [];
   for (const f of o.files.slice(1)) others.push(parseFeature(fs.readFileSync(f, 'utf8')));

@@ -115,12 +115,16 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/genUseCases.js
 | `business` / `buc` / `uc` | BUC.tsv の 業務 / BUC / UC 列 |
 | `actors` | BUC.tsv の「アクター」関連オブジェクト |
 | `tiers_hint` | 画面あり→frontend、タイマーあり→worker、常に backend（暫定ヒント。ティアは d2-decide が決める）|
-| `spec_ids` | **スクリプトはフロー（BUC）単位で候補を当てる**。LLM が UC が実現する SPEC へ絞り込む |
+| `spec_ids` | **スクリプトはフロー（BUC）単位で候補を当てる**。LLM が UC が実現する SPEC へ絞り込む。**原則 1 件以上**（空は下記 `no_spec_reason` を書いた UC だけ許す）|
+| `no_spec_reason` | 対応 SPEC が無い UC の理由。書くと `spec_ids` を空にでき、その UC は `status: blocked` にする（`validateUseCases` が両方を強制）|
 | `spec_ids_rejected` | **LLM が `spec_ids` から外した SPEC の置き場**（スクリプトは空配列を置く）。再生成で uc_id を引き継ぎ、却下済みは `spec_ids` へ戻さない |
 | `slug` | **スクリプトは暫定 `uc-<uc_id>` を置く**。LLM が意味のある英語 kebab-case（`^[a-z0-9]+(-[a-z0-9]+)*$`・一意）へ差し替える |
-| `status` | 既定 `planned`（`planned` / `in_progress` / `done`）|
+| `status` | 既定 `planned`（`planned` / `in_progress` / `done` / `blocked`）。`no_spec_reason` を書いた UC は `blocked` |
 
 **LLM の作業**: 生成後、各 UC の `slug` を英名へ、`spec_ids` を実現する SPEC へ編集する。
+**`spec_ids` が空の UC を残さない**。`genUseCases` は空の UC を警告に列挙する。対応 SPEC を当てるか、
+本当に無いなら `no_spec_reason` に理由を書いて `status: blocked` にする。どちらもしないと `validateUseCases` が FAIL する
+（下流の受入基準網羅検査が空集合で素通りするのを防ぐため）。
 既存 use-cases.yaml があれば `slug`・`status`・`tiers_hint`・`spec_ids_rejected` は uc_id で引き継がれるので、
 再生成しても LLM の編集は消えない。`spec_ids` は**既存値（LLM が絞った SPEC）と今回はじめて出た推定候補の和集合**になり、
 SPEC を取りこぼさない。**外した SPEC は削除せず `spec_ids_rejected` へ移す**と、再生成で候補へ戻らない。
@@ -133,6 +137,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/validateUseCases.js do
 ```
 
 チェック内容: 構造（schema-use-cases.json）、uc_id 一意、slug 一意・パターン、spec_ids が requirements.yaml に実在、
+`spec_ids` が原則 1 件以上（空は `no_spec_reason` + `status: blocked` の UC だけ）、
 `spec_ids_rejected` が requirements.yaml に実在し `spec_ids` と重複しない。
 
 ---

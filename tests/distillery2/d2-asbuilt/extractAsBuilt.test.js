@@ -351,6 +351,25 @@ test('入力が欠けても落ちない (トレース・レポートなし)', ()
   assert.match(md, /トレースなし/);
 });
 
+test('acceptance-browser.json のシナリオを証跡・追跡表に取り込む (Finding 7)', () => {
+  const repo = buildRepo();
+  const BROWSER = [{
+    name: 'ブラウザ受入',
+    elements: [
+      { type: 'scenario', name: 'ブラウザで貸出する', tags: [{ name: '@acceptance:SPEC-001-01-1' }, { name: '@browser' }], steps: [{ result: { status: 'failed', duration: 3000000 } }] },
+    ],
+  }];
+  W(repo.dir, '.distillery/runs/register-loan/reports/acceptance-browser.json', JSON.stringify(BROWSER, null, 2) + '\n');
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  // 検証の証跡テーブルにブラウザシナリオが失敗として出る
+  assert.match(md, /ブラウザで貸出する \| @acceptance:SPEC-001-01-1 @browser \| failed/);
+  // 追跡表 (traceability-index) にもマージされる
+  const idx = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json'));
+  const names = idx.ucs['register-loan'].scenarios.map((s) => s.name);
+  assert.ok(names.includes('ブラウザで貸出する'), 'browser scenario merged into traceability');
+});
+
 function sortDeep(v) {
   if (Array.isArray(v)) return v.map(sortDeep);
   if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v).sort()) o[k] = sortDeep(v[k]); return o; }
