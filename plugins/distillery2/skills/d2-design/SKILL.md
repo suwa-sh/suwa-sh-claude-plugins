@@ -121,10 +121,10 @@ d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せ�
 | [`references/design/design-components.md`](references/design/design-components.md) | 手順 3: RDRA からのコンポーネント導出 |
 | [`references/design/design-storybook.md`](references/design/design-storybook.md) | 手順 4: Storybook 生成・F6 受け渡し (`docs/design/storybook-app/` → `packages/ui/`) |
 
-## v1 から持ち込まないもの (イテレーション 1)
+## v1 から持ち込まないもの
 
 | 廃止 | 理由 |
 |---|---|
 | 設計イベント YAML / イベント履歴ディレクトリ | screens.yaml + Git 履歴に置き換え。中間 `_inference.md` も残さない |
 | 提案バリアント (proposal-variants) | ⭐推奨を自動採用。低確信の選択はレビュー要約に書く |
-| アセット生成 (Logo / Icon SVG) | イテレーション 1 では対象外。必要なら SVG 直書きで代替 (次イテレーションで検討) |
+| アセット生成 (Logo / Icon SVG) | 現版では対象外。必要なら SVG 直書きで代替 |

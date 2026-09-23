@@ -115,4 +115,4 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs
 
 - 設計 yaml (レイヤ図・データモデルの詳細) は書かない。
 - インフラ / ベンダー選定はしない (ベンダーニュートラルに保つ)。
-- 差分モード・スナップショットマージはイテレーション 1 では扱わない (履歴は Git)。
+- 差分モード・スナップショットマージは扱わない (履歴は Git)。

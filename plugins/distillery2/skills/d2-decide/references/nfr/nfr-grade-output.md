@@ -77,4 +77,4 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/generateNfrGradeMd.js docs/n
 - YAML の文字列はダブルクォートで囲む
 - 日本語の文字列は UTF-8
 - grade の値は整数（0〜5）
-- 履歴はイテレーション 1 では持たない（差分モードは次イテレーション）。過去の版は Git のコミット履歴で追う
+- 履歴は持たない（差分モードは未対応）。過去の版は Git のコミット履歴で追う

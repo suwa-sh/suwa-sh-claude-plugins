@@ -65,7 +65,7 @@ docs/as-built/
 | `call` | `{component, fn, tier?, args_summary?, duration_ms?}` | (呼び元)→component |
 
 `tier` / `component` が meta に無ければ、直近の http.in / call から推定する。tracer がこれらを meta に入れると
-図がより正確になる (P3 test-support への拡張要望)。
+図がより正確になる (test-support の tracer が付ける)。
 
 ## 決定論の規則
 

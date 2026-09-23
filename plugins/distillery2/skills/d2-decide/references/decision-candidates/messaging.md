@@ -1,7 +1,7 @@
 # 決定候補カタログ: メッセージング
 
 同期 / 非同期、outbox、冪等性を決める。ADR の `scope: [app]` または `[system]`。
-AsyncAPI が要るプロダクトのときだけ ADR を書く (プランの条件付き必須)。
+AsyncAPI が要るプロダクトのときだけ ADR を書く (required-decisions.md の条件付き必須)。
 
 ---
 

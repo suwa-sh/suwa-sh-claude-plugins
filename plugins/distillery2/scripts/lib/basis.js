@@ -10,7 +10,7 @@
  *   node basis.js stamp requirements=docs/requirements adr=docs/adr      # 1 行を stdout に出す
  *   node basis.js check <file>... requirements=docs/requirements ...     # 古い basis を報告。--strict で exit 1
  *
- * イテレーション 1 では stamp / check だけ。差分 (diff) は次イテレーション。
+ * 現版は stamp / check のみ。差分 (diff) は未対応。
  */
 'use strict';
 

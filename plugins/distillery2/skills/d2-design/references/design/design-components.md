@@ -34,7 +34,7 @@ RDRA の情報 / 画面 / 状態から、UI 共通部品とドメイン特化部
 - status 背景は semantic token (`--success-light` 等)。`--color-green-50` を直接使わない。
 - hover は `--hover-muted` + fallback。
 - コンポーネント内で emoji を使わない。アイコンが要るなら SVG を直接埋め込むか
-  `<Icon name="..." />` パターンにする (アイコンアセットの自動生成はイテレーション 1 では対象外)。
+  `<Icon name="..." />` パターンにする (アイコンアセットの自動生成は現版では対象外)。
 - Badge をフィルター選択肢に使わない → `<button>` トグル。
 - 固定幅 input は `flex-1 min-w-0`。
 

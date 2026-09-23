@@ -4,7 +4,7 @@ version の正本は `.claude-plugin/plugin.json`。
 
 ## [0.1.0] - 2026-09-23
 
-イテレーション 1 (縦切り 1 UC が通るまで) の初版。distillery + distillery-impl の再設計。
+初版。distillery + distillery-impl の再設計。UC 1 つの縦切りが通る範囲を対象にする。
 
 ### Added
 
@@ -21,6 +21,6 @@ version の正本は `.claude-plugin/plugin.json`。
 - `d2-asbuilt`: 実装からの文書抽出 (抽出 / 要約の分離、追跡表、シーケンス図)
 - `agents/d2-verifier.md`
 
-### 次イテレーションへ
+### 未対応 (今後の版で)
 
 harvest、リリース後の 3 入口、ドリフト検知、`@browser` の既定 on、プロセスをまたぐトレース、KVS 契約

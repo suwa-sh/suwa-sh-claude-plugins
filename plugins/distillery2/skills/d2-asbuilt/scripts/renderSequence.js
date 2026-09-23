@@ -10,7 +10,7 @@
  *   publish  meta: {message, channel, component?}
  *   call     meta: {component, fn, tier?, args_summary?, duration_ms?}
  *
- * 変換規則 (プランの as-built 章):
+ * 変換規則:
  *   http.in  → 実行者->>ティア: METHOD path、ティア-->>実行者: status
  *   call     → ティア->>コンポーネント: fn
  *   db.query → コンポーネント->>DB: verb tables

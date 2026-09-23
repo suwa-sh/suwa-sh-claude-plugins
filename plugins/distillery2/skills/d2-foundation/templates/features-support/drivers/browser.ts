@@ -1,7 +1,7 @@
 /**
  * browser.ts — @browser 受入シナリオ用のブラウザドライバ (スタブ)。
  *
- * ブラウザ実行は opt-in (capabilities.browser: true のときだけ)。イテレーション 1 のサンプルは off。
+ * ブラウザ実行は opt-in (capabilities.browser: true のときだけ)。既定は off。
  * Playwright を **ライブラリとして** 使う (別ディレクトリの e2e spec は作らない)。
  * 有効化するときは下記 TODO を実装する。
  *

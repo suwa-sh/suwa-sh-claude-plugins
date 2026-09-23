@@ -11,7 +11,7 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 | `dependency-cruiser` | 18.4.0 | `.cjs` は `module.exports = { forbidden, allowed?, options }`。forbidden[].{name, severity, from:{path 正規表現}, to:{path|circular|orphan}}。`options.doNotFollow.path`、`options.tsConfig.fileName` |
 | `vitest` | 3.2.x (系) | 単体テストランナ。`--run --reporter=json --outputFile=<path>` で JSON レポート |
 | `supertest` | 7.3.0 | `request(app).<method>(path).set().send()` で composition root を叩く |
-| `@playwright/test` | 1.63.0 | @browser 受入用。ライブラリとして `chromium.launch()` (イテレーション 1 はスタブ) |
+| `@playwright/test` | 1.63.0 | @browser 受入用。ライブラリとして `chromium.launch()` (現版はスタブ) |
 | `ajv` + `ajv-formats` | 8.20.0 / 3.0.1 | 契約テスト (F4, d2-contract) の JSON Schema 検証。2020-12 |
 | `typescript` | 5.9.x (系) | tsconfig.base.json は `module: ESNext` / `moduleResolution: bundler` |
 
@@ -19,7 +19,7 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 
 - **DB 隔離はトランザクション rollback** (pglite-harness.ts)。スキーマ再作成より速く migration の再適用が要らない。
   pglite は単一プロセスの埋め込み DB なのでテストは直列。並列が必要になったらインスタンス分離 + schema 隔離へ。
-- **トレースは in-process のみ** (supertest 経由)。out-of-process の AsyncAPI トレースは次イテレーション。
+- **トレースは in-process のみ** (supertest 経由)。out-of-process の AsyncAPI トレースは未対応。
 - **ブラウザは opt-in**。`capabilities.browser: false` の間は BrowserDriver はスタブ。別ディレクトリの e2e spec は作らない。
 
 ## v1 から落としたもの (理由 1 行)

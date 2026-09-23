@@ -2,7 +2,7 @@
 
 プロダクトの形から、どのティア (frontend / backend-api / worker / API Gateway / IdP) を置くかを決める。
 ベンダーニュートラルに書く (FaaS / CaaS / RDB のような汎用語)。ADR の `scope: [system]`。
-ティア構成と各ティアの依存方向を決める ADR には**ティア間**の `arch_test` を最低 1 つ付ける (`level: tier`。プランの必須要件)。
+ティア構成と各ティアの依存方向を決める ADR には**ティア間**の `arch_test` を最低 1 つ付ける (`level: tier`。validateAdr が検査する)。
 ティア間規則の例 (frontend はバックエンドの内部実装へ直接依存せず、契約経由で呼ぶ):
 
 ```yaml

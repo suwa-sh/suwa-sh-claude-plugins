@@ -1,7 +1,7 @@
 # 決定候補カタログ: アプリのレイヤ構成と依存方向
 
 各ティアの内部レイヤと依存方向を決める。ADR の `scope: [app]`。
-レイヤ構成 ADR には依存方向を守らせる `arch_test` を最低 1 つ付ける (プランの必須要件)。
+レイヤ構成 ADR には依存方向を守らせる `arch_test` を最低 1 つ付ける (validateAdr が検査する)。
 レイヤ内の依存規則なので `arch_test.level: layer` を付ける (ティア間規則は `level: tier`。tiers.md 参照)。
 
 ---

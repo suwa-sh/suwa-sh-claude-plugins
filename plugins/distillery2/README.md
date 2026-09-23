@@ -68,5 +68,5 @@ docs/                  requirements/ nfr/ adr/ rules/ design/ as-built/
 
 ## 状態
 
-イテレーション 1 (縦切り 1 UC が通るまで) を実装中。変更履歴は [CHANGELOG.md](CHANGELOG.md)。
+0.1.x は UC 1 つの縦切りが通る範囲を対象にする。リリース後の変更入口・ドリフト検知・既存プロダクトの取り込みは未対応。変更履歴は [CHANGELOG.md](CHANGELOG.md)。
 旧版 (`distillery` / `distillery-impl`) はそのまま残る。
