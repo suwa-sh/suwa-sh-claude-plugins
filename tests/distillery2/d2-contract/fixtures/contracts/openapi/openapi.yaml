@@ -1,0 +1,146 @@
+openapi: 3.1.0
+info:
+  title: Library
+  version: 1.0.0
+servers:
+  - url: https://library.example.com
+paths:
+  /loans:
+    post:
+      operationId: createLoan
+      summary: 貸出を登録する
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLoan'
+            examples:
+              basic:
+                value:
+                  bookId: book-1
+                  days: 14
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+              examples:
+                created:
+                  value:
+                    id: loan-1
+                    bookId: book-1
+                    status: borrowed
+                    dueDate: '2026-10-07'
+        '409':
+          description: conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                unavailable:
+                  value:
+                    code: BOOK_NOT_AVAILABLE
+                    detail: already borrowed
+  /loans/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: returnLoan
+      summary: 貸出を返却する
+      responses:
+        '200':
+          description: returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+  /books/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getBook
+      summary: 書籍を照会する
+      responses:
+        '200':
+          description: book
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+              examples:
+                one:
+                  value:
+                    id: book-1
+                    title: Refactoring
+components:
+  schemas:
+    CreateLoan:
+      type: object
+      required:
+        - bookId
+      additionalProperties: false
+      properties:
+        bookId:
+          type: string
+          minLength: 1
+        days:
+          type: integer
+          enum:
+            - 7
+            - 14
+            - 28
+    Loan:
+      type: object
+      required:
+        - id
+        - bookId
+        - status
+      properties:
+        id:
+          type: string
+        bookId:
+          type: string
+        status:
+          type: string
+          enum:
+            - borrowed
+            - returned
+        dueDate:
+          type:
+            - string
+            - 'null'
+          format: date
+    Book:
+      type: object
+      required:
+        - id
+        - title
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+    Problem:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          enum:
+            - BOOK_NOT_AVAILABLE
+            - CONFLICT
+        detail:
+          type: string

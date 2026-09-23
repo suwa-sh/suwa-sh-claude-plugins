@@ -1,0 +1,66 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+
+const SKILL = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-foundation');
+const script = path.join(SKILL, 'scripts/genRules.js');
+const adrDir = path.join(__dirname, 'fixtures/adr');
+
+function tmp() { return fs.mkdtempSync(path.join(os.tmpdir(), 'd2-rules-')); }
+function run(cwd, args) {
+  try { return { code: 0, out: execFileSync(process.execPath, [script, '--cwd', cwd, ...args], { encoding: 'utf8' }) }; }
+  catch (e) { return { code: e.status, out: (e.stdout || '') + (e.stderr || '') }; }
+}
+
+test('genRules: deterministic across two runs', () => {
+  const a = tmp(), b = tmp();
+  run(a, ['--adr', adrDir, '--out', 'docs/rules']);
+  run(b, ['--adr', adrDir, '--out', 'docs/rules']);
+  for (const f of fs.readdirSync(path.join(a, 'docs/rules'))) {
+    assert.equal(fs.readFileSync(path.join(a, 'docs/rules', f), 'utf8'), fs.readFileSync(path.join(b, 'docs/rules', f), 'utf8'), `differ: ${f}`);
+  }
+});
+
+test('genRules: proposed ADR is excluded', () => {
+  const c = tmp();
+  run(c, ['--adr', adrDir, '--out', 'docs/rules']);
+  const all = fs.readdirSync(path.join(c, 'docs/rules')).map(f => fs.readFileSync(path.join(c, 'docs/rules', f), 'utf8')).join('\n');
+  assert.ok(!all.includes('proposed なので rules に出てはいけない'), 'proposed rule leaked');
+});
+
+test('genRules: rules land under correct scope file', () => {
+  const c = tmp();
+  run(c, ['--adr', adrDir, '--out', 'docs/rules']);
+  const backend = fs.readFileSync(path.join(c, 'docs/rules/tier-backend.md'), 'utf8');
+  const common = fs.readFileSync(path.join(c, 'docs/rules/common.md'), 'utf8');
+  const testing = fs.readFileSync(path.join(c, 'docs/rules/testing.md'), 'utf8');
+  assert.ok(backend.includes('domain は infrastructure に依存しない'), 'backend rule missing');
+  assert.ok(backend.includes('(ADR 0002)'), 'backend rule not attributed');
+  assert.ok(common.includes('契約型 (packages/contracts) を直接編集しない'), 'common rule missing');
+  assert.ok(testing.includes('pglite の実体で検証する'), 'testing rule missing');
+  // scope 分離: common の決定にレイヤ規則が混ざらない
+  assert.ok(!common.includes('domain は infrastructure'), 'backend rule leaked into common');
+});
+
+test('genRules: only present tier kinds get files', () => {
+  const c = tmp();
+  run(c, ['--adr', adrDir, '--out', 'docs/rules']);
+  const files = fs.readdirSync(path.join(c, 'docs/rules')).sort();
+  assert.ok(files.includes('tier-backend.md') && files.includes('tier-frontend.md') && files.includes('tier-worker.md'));
+  assert.ok(!files.includes('tier-cli.md'), 'cli not declared but emitted');
+  assert.ok(files.includes('index.md'));
+});
+
+test('genRules: unknown scope exits 1', () => {
+  const c = tmp();
+  const bad = path.join(c, 'adr');
+  fs.mkdirSync(bad, { recursive: true });
+  fs.writeFileSync(path.join(bad, '0001-x.md'), '---\nid: 1\nstatus: accepted\nscope: [backend]\nrules:\n  - scope: tier:nonsense\n    text: "bad"\n---\n');
+  const r = run(c, ['--adr', bad, '--out', 'docs/rules']);
+  assert.equal(r.code, 1, r.out);
+  assert.ok(r.out.includes('unknown rule scope'), r.out);
+});

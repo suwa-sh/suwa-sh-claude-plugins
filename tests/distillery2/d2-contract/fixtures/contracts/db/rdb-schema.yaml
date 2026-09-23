@@ -1,0 +1,8 @@
+schema_version: distillery2.rdb-split/v1
+version: '1.0'
+datastore: rdb
+domains:
+  - id: catalog
+    file: domains/catalog.yaml
+  - id: loans
+    file: domains/loans.yaml

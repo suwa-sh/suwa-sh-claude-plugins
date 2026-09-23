@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "distillery2 nfr-grade.yaml (v2)",
+  "description": "IPA 非機能要求グレード表。v1 との違い: 先頭に basis (requirements@<sha>) を持つ。event_id / created_at / source は任意 (v1 サンプルとの互換のため許容し、必須にはしない)。",
+  "type": "object",
+  "required": ["version", "model_system", "categories"],
+  "properties": {
+    "version": { "type": "string", "pattern": "^[12]\\.0$" },
+    "basis": { "type": "string", "minLength": 1 },
+    "event_id": { "type": "string" },
+    "created_at": { "type": "string" },
+    "source": { "type": "string" },
+    "model_system": { "$ref": "#/$defs/ModelSystem" },
+    "categories": {
+      "type": "array",
+      "minItems": 6,
+      "items": { "$ref": "#/$defs/Category" }
+    }
+  },
+  "$defs": {
+    "ModelSystem": {
+      "type": "object",
+      "required": ["type", "reason"],
+      "properties": {
+        "type": { "type": "string", "enum": ["model1", "model2", "model3"] },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "Category": {
+      "type": "object",
+      "required": ["id", "name", "subcategories"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-F]$" },
+        "name": { "type": "string", "minLength": 1 },
+        "subcategories": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Subcategory" } }
+      }
+    },
+    "Subcategory": {
+      "type": "object",
+      "required": ["id", "name", "items"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-F]\\.[0-9]+$" },
+        "name": { "type": "string", "minLength": 1 },
+        "items": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Item" } }
+      }
+    },
+    "Item": {
+      "type": "object",
+      "required": ["id", "name", "important", "metrics"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-F]\\.[0-9]+\\.[0-9]+$" },
+        "name": { "type": "string", "minLength": 1 },
+        "important": { "type": "boolean" },
+        "metrics": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Metric" } }
+      }
+    },
+    "Metric": {
+      "type": "object",
+      "required": ["id", "name", "important", "grade", "grade_description", "reason", "confidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-F]\\.[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "name": { "type": "string", "minLength": 1 },
+        "important": { "type": "boolean" },
+        "grade": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "grade_description": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "source_model": { "type": ["string", "null"] },
+        "confidence": { "type": "string", "enum": ["high", "medium", "low", "default", "user"] }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+basis: requirements@0123456789abcdef0123456789abcdef01234567 adr@89abcdef0123456789abcdef0123456789abcdef
+screens:
+  - name: BookSearch
+    route: /books
+    uc_slugs: [book-search]
+    story: stories/BookSearch.stories.tsx
+    variants: [Default, Loading]
+    components: [BookCard, Button]

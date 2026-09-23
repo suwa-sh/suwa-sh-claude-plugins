@@ -1,0 +1,47 @@
+schema_version: "2.0"
+docs_root: docs
+tiers:
+  - id: backend-api
+    dir: apps/backend-api
+    kind: backend
+    lang: typescript
+    provides:
+      - api
+      - events
+    consumes:
+      - db
+  - id: frontend
+    dir: apps/frontend
+    kind: frontend
+    lang: typescript
+    provides: []
+    consumes:
+      - api
+datastore_owner: backend-api
+contracts:
+  - id: api
+    type: openapi
+    source: contracts/openapi/openapi.yaml
+    provider: backend-api
+    consumers:
+      - frontend
+  - id: events
+    type: asyncapi
+    source: contracts/asyncapi/asyncapi.yaml
+    provider: backend-api
+    consumers:
+      - worker
+  - id: db
+    type: rdb-schema
+    source: contracts/db/rdb-schema.yaml
+    provider: backend-api
+    consumers:
+      - worker
+capabilities:
+  browser: false
+  has_asyncapi: true
+  has_kvs: false
+  has_design_system: true
+models:
+  implementer: null
+  verifier: claude-opus-5

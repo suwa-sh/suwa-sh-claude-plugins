@@ -1,0 +1,33 @@
+version: "1.0"
+event_id: "20260101_000000_test"
+created_at: "2026-01-01T00:00:00"
+source: "test/input.txt"
+system_name: "テスト図書館システム"
+requirements:
+  - id: "REQ-001"
+    requirement: "貸出を管理できるようにする"
+    reason: "手作業の貸出管理を減らすため"
+    priority: "must"
+    specifications:
+      - id: "SPEC-001-01"
+        specification: "司書が利用者と書籍を指定して貸出を登録できる"
+        acceptance_criteria:
+          - "Given 在庫ありの書籍がある When 司書が貸出を登録する Then 書籍が貸出中になる"
+        affected_models:
+          - type: "information"
+            action: "add"
+            target: "貸出"
+          - type: "buc"
+            action: "add"
+            target: "書籍を貸し出す"
+      - id: "SPEC-001-02"
+        specification: "司書が返却を登録できる"
+        acceptance_criteria:
+          - "Given 書籍が貸出中 When 司書が返却を登録する Then 在庫ありになる"
+        affected_models:
+          - type: "information"
+            action: "modify"
+            target: "貸出"
+          - type: "buc"
+            action: "add"
+            target: "書籍を貸し出す"

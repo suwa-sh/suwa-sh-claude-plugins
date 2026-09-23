@@ -1,0 +1,7 @@
+{
+  "contracts": [
+    { "id": "api", "type": "openapi", "source": "contracts/openapi/openapi.yaml", "provider": "backend-api", "consumers": ["frontend"] },
+    { "id": "events", "type": "asyncapi", "source": "contracts/asyncapi/asyncapi.yaml", "provider": "backend-api", "consumers": ["worker"] },
+    { "id": "db", "type": "rdb-schema", "source": "contracts/db/rdb-schema.yaml", "provider": "backend-api", "consumers": ["worker"] }
+  ]
+}

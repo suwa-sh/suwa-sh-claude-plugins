@@ -1,0 +1,19 @@
+version: "1.0"
+system_name: 図書館蔵書管理
+use_cases:
+  - uc_id: "a1b2c3d4"
+    business: 蔵書管理業務
+    buc: 蔵書を貸し出す
+    uc: 蔵書を検索する
+    slug: book-search
+    spec_ids: [SPEC-001-01]
+    actors: [利用者]
+    status: planned
+  - uc_id: "e5f6a7b8"
+    business: 蔵書管理業務
+    buc: 蔵書を貸し出す
+    uc: 貸出を登録する
+    slug: loan-register
+    spec_ids: [SPEC-002-01]
+    actors: [司書]
+    status: planned
