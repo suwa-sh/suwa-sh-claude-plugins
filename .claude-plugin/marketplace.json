@@ -28,6 +28,11 @@
       "name": "toolbox",
       "source": "./plugins/toolbox",
       "description": "汎用ワークフロースキル集: クロスモデル外部レビュー収束ループ(toolbox:review-refute-loop)、文脈を忘れた読者でも判断できる図と表の確認ページ生成(toolbox:human-html-review)、Codex→Grok→AGYの画像生成/編集(toolbox:codex-imagen)。今後も汎用スキルを追加予定"
+    },
+    {
+      "name": "distillery2",
+      "source": "./plugins/distillery2",
+      "description": "要求→決定→基盤→UC縦切り実装を1プラグインで回す (distillery + distillery-impl の再設計)。人が決めるもの・機械が検証するもの・コードから抽出するものを分け、個別仕様の事前生成と上流再生成をなくす"
     }
   ]
 }

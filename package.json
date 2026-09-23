@@ -5,6 +5,7 @@
     "test": "node tests/run-tests.js",
     "test:distillery": "node tests/run-tests.js distillery",
     "test:distillery-impl": "node tests/run-tests.js distillery-impl",
+    "test:distillery2": "node tests/run-tests.js distillery2",
     "test:toolbox": "node tests/run-tests.js toolbox",
     "test:integration": "node tests/run-tests.js integration",
     "test:feedback": "node tests/run-tests.js"
