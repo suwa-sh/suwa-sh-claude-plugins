@@ -1,0 +1,45 @@
+asyncapi: 3.0.0
+info:
+  title: Library Events
+  version: 1.0.0
+servers:
+  broker:
+    host: mq.example.com
+    protocol: amqp
+channels:
+  loanCreated:
+    address: loan.created
+    messages:
+      LoanCreated:
+        $ref: '#/components/messages/LoanCreated'
+operations:
+  sendLoanCreated:
+    action: send
+    channel:
+      $ref: '#/channels/loanCreated'
+    messages:
+      - $ref: '#/channels/loanCreated/messages/LoanCreated'
+components:
+  messages:
+    LoanCreated:
+      name: LoanCreated
+      title: Loan created
+      payload:
+        $ref: '#/components/schemas/LoanCreatedPayload'
+      examples:
+        - name: basic
+          payload:
+            loanId: loan-1
+            bookId: book-1
+  schemas:
+    LoanCreatedPayload:
+      type: object
+      title: LoanCreatedPayload
+      required:
+        - loanId
+        - bookId
+      properties:
+        loanId:
+          type: string
+        bookId:
+          type: string

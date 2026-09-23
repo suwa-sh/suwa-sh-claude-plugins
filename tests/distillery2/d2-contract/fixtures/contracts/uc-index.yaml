@@ -1,0 +1,11 @@
+schema_version: distillery2.uc-index/v1
+ucs:
+  - slug: loan-register
+    operations:
+      - createLoan
+      - getBook
+    messages:
+      - LoanCreated
+    tables:
+      - loans
+      - books

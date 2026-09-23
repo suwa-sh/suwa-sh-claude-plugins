@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "distillery2 ADR front matter",
+  "description": "docs/adr/NNNN-<slug>.md の YAML front matter。--- で挟まれた先頭ブロックだけを検証する。id は必ずクォートする (0003 のように 0 始まりのため)。",
+  "type": "object",
+  "required": ["id", "title", "status", "date", "basis", "scope"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[0-9]{4}$" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["proposed", "accepted", "superseded", "deprecated"] },
+    "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "supersedes": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]{4}$" } },
+    "superseded_by": { "type": ["string", "null"], "pattern": "^[0-9]{4}$" },
+    "basis": { "type": "string", "minLength": 1 },
+    "nfr_refs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "scope": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "enum": ["system", "app", "data", "infra", "ui", "testing"] }
+    },
+    "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+    "rules": { "type": "array", "items": { "$ref": "#/$defs/Rule" } },
+    "tiers": { "type": "array", "items": { "$ref": "#/$defs/Tier" } },
+    "datastore_owner": { "type": "string", "minLength": 1 },
+    "capabilities": {
+      "type": "object",
+      "required": ["browser"],
+      "additionalProperties": false,
+      "properties": {
+        "browser": { "type": "boolean" }
+      }
+    },
+    "ui": { "type": "object" }
+  },
+  "$defs": {
+    "Tier": {
+      "type": "object",
+      "required": ["id", "dir", "kind", "lang"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "dir": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["frontend", "backend", "worker", "data-pipeline", "cli", "mcp-server"] },
+        "lang": { "type": "string", "minLength": 1 },
+        "provides": { "type": "array", "items": { "type": "string" } },
+        "consumes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Rule": {
+      "type": "object",
+      "required": ["scope", "text"],
+      "properties": {
+        "scope": { "type": "string", "pattern": "^(common|testing|tier:[a-z][a-z0-9-]*)$" },
+        "text": { "type": "string", "minLength": 1 },
+        "arch_test": { "$ref": "#/$defs/ArchTest" }
+      }
+    },
+    "ArchTest": {
+      "type": "object",
+      "required": ["from", "to", "effect", "level"],
+      "properties": {
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "effect": { "type": "string", "enum": ["forbid", "allow"] },
+        "level": {
+          "type": "string",
+          "enum": ["tier", "layer"],
+          "description": "tier = ティア間の依存方向規則 / layer = ティア内のレイヤ依存規則。arch_test があるとき必須。genArchTests は level を読まない (検証専用の宣言)"
+        }
+      }
+    }
+  }
+}

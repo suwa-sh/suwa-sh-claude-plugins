@@ -1,0 +1,120 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * genConfig.js (F5) — ADR tiers + contracts.json から .distillery/config.yaml を生成する
+ *
+ *   node genConfig.js --adr docs/adr --contracts contracts/contracts.json \
+ *                     --out .distillery/config.yaml [--cwd <repo>]
+ *
+ * - 形は skills/d2-run/references/config-schema.md が正本。
+ * - TypeScript の npm workspaces を既定のコマンド構成にする (`npm run <script> -w apps/<dir>`)。
+ * - contracts.json が無ければ contracts: [] にして警告する。
+ * - models.verifier 既定は claude-opus-5、capabilities.browser は testing ADR から (既定 false)。
+ */
+const fs = require('node:fs');
+const path = require('node:path');
+const { loadAdrs, collectTiers, collectCapabilities } = require('./adr');
+const { stamp, headerLine } = require('../../../scripts/lib/basis');
+const { stringifyYaml, parseYaml } = require('../../../scripts/lib/yaml');
+
+function parseArgs(argv) {
+  const o = { adr: 'docs/adr', contracts: 'contracts/contracts.json', out: '.distillery/config.yaml', cwd: process.cwd(), force: false };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i], next = () => argv[++i];
+    if (a === '--adr') o.adr = next();
+    else if (a === '--contracts') o.contracts = next();
+    else if (a === '--out') o.out = next();
+    else if (a === '--cwd') o.cwd = path.resolve(next());
+    else if (a === '--force') o.force = true;
+    else throw new Error(`Unknown arg: ${a}`);
+  }
+  return o;
+}
+
+const HEADER_SCAN_LINES = 10;
+/** 生成物か? 先頭数行に basis ヘッダ (basis.js が書く `basis:`) があれば生成物とみなす。手書きは持たない。 */
+function isGenerated(text) { return /basis:/.test(text.split('\n').slice(0, HEADER_SCAN_LINES).join('\n')); }
+
+function tierCommands(dir) {
+  return {
+    format_check: `npm run format:check -w apps/${dir}`,
+    lint: `npm run lint -w apps/${dir}`,
+    typecheck: `npm run typecheck -w apps/${dir}`,
+    unit: `npm run test -w apps/${dir} -- --run --reporter=json --outputFile={report}`,
+    contract: `npm run test:contract -w apps/${dir} -- --run --reporter=json --outputFile={report}`,
+  };
+}
+
+function buildConfig({ tiers, datastore_owner }, contracts, caps, warnings) {
+  const providesOf = id => contracts.filter(c => c.provider === id).map(c => c.id);
+  const consumesOf = id => contracts.filter(c => Array.isArray(c.consumers) && c.consumers.includes(id)).map(c => c.id);
+  const tierList = tiers.map(t => {
+    const dir = t.dir ? String(t.dir).replace(/^apps\//, '') : t.id;
+    return {
+      id: t.id, dir: `apps/${dir}`, kind: t.kind || 'backend', lang: t.lang || 'typescript',
+      provides: t.provides && t.provides.length ? t.provides : providesOf(t.id),
+      consumes: t.consumes && t.consumes.length ? t.consumes : consumesOf(t.id),
+      commands: tierCommands(dir),
+    };
+  });
+  const hasFrontend = tiers.some(t => t.kind === 'frontend');
+  return {
+    schema_version: '2.0',
+    docs_root: 'docs',
+    tiers: tierList,
+    datastore_owner: datastore_owner || (tierList.find(t => t.kind === 'backend') || tierList[0] || {}).id || null,
+    contracts: contracts.map(c => ({ id: c.id, type: c.type, source: c.source, provider: c.provider, consumers: c.consumers || [] })),
+    commands: {
+      arch_test: 'npx depcruise --config .dependency-cruiser.cjs --output-type err apps packages',
+      uc_bdd: 'npx cucumber-js --tags "@uc:{slug}" --format json:{report}',
+      acceptance_api: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and not @browser" --format json:{report}',
+      acceptance_browser: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and @browser" --format json:{report}',
+    },
+    capabilities: {
+      browser: Boolean(caps.browser),
+      has_asyncapi: contracts.some(c => c.type === 'asyncapi'),
+      has_kvs: contracts.some(c => c.type === 'kvs-schema'),
+      has_design_system: hasFrontend,
+    },
+    models: { implementer: null, verifier: 'claude-opus-5' },
+  };
+}
+
+function run(o) {
+  const adrs = loadAdrs(path.resolve(o.cwd, o.adr));
+  const tierInfo = collectTiers(adrs);
+  const caps = collectCapabilities(adrs);
+  const warnings = [];
+  let contracts = [];
+  const contractsPath = path.resolve(o.cwd, o.contracts);
+  if (fs.existsSync(contractsPath)) {
+    const parsed = parseYaml(fs.readFileSync(contractsPath, 'utf8'));
+    contracts = (parsed && parsed.contracts) || [];
+  } else {
+    warnings.push(`contracts file not found: ${o.contracts} — contracts: []`);
+  }
+  const config = buildConfig(tierInfo, contracts, caps, warnings);
+  const outPath = path.resolve(o.cwd, o.out);
+  // 手書き設定を握り潰さない: 既存が生成ヘッダを持たなければ --force が無い限り上書きしない。
+  if (fs.existsSync(outPath) && !o.force && !isGenerated(fs.readFileSync(outPath, 'utf8'))) {
+    warnings.push(`existing ${o.out} lacks basis header (hand-written?) — 上書きしない。上書きするなら --force`);
+    return { code: 1, config, warnings, out: outPath, skipped: true };
+  }
+  const basisLine = headerLine(stamp({ adr: o.adr, contracts: path.dirname(o.contracts) }, o.cwd));
+  const body = `# ${basisLine}\n# generated by d2-foundation genConfig.js — 生成物。config-schema.md が形の正本\n` + stringifyYaml(config);
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, body);
+  return { code: 0, config, warnings, out: outPath };
+}
+
+function main(argv) {
+  let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
+  const r = run(o);
+  for (const w of r.warnings) console.warn(`WARN ${w}`);
+  if (r.skipped) { console.error(`genConfig: skipped ${o.out} (hand-written; use --force)`); return r.code; }
+  console.log(`genConfig: ${r.config.tiers.length} tiers, ${r.config.contracts.length} contracts → ${o.out}`);
+  return r.code;
+}
+
+if (require.main === module) process.exit(main(process.argv.slice(2)));
+module.exports = { parseArgs, tierCommands, buildConfig, run };

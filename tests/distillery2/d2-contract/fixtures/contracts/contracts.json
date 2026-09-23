@@ -1,0 +1,26 @@
+{
+  "schema_version": "distillery2.contracts/v1",
+  "contracts": [
+    {
+      "id": "api",
+      "type": "openapi",
+      "source": "openapi/openapi.yaml",
+      "provider": "backend-api",
+      "consumers": ["frontend"]
+    },
+    {
+      "id": "events",
+      "type": "asyncapi",
+      "source": "asyncapi/asyncapi.yaml",
+      "provider": "backend-api",
+      "consumers": ["worker"]
+    },
+    {
+      "id": "db",
+      "type": "rdb-schema",
+      "source": "db/rdb-schema.yaml",
+      "provider": "backend-api",
+      "consumers": ["worker"]
+    }
+  ]
+}

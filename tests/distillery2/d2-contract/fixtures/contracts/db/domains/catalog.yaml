@@ -1,0 +1,27 @@
+subdomain_id: catalog
+tables:
+  - name: books
+    description: 蔵書
+    columns:
+      - name: id
+        type: uuid
+        nullable: false
+        description: 書籍ID
+      - name: title
+        type: text
+        nullable: false
+        description: 書名
+      - name: status
+        type: string
+        nullable: false
+        description: 在庫状態
+        enum:
+          - available
+          - borrowed
+    primary_key:
+      - id
+    indexes:
+      - name: books_title_idx
+        columns:
+          - title
+        unique: false

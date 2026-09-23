@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Screens (distillery2)",
+  "description": "docs/design/screens.yaml のスキーマ。画面 ↔ Story ↔ UC ↔ コンポーネントの対応。design-event.yaml の置き換えとして、design が残す唯一の doc。",
+  "type": "object",
+  "required": ["basis", "screens", "tokens"],
+  "additionalProperties": false,
+  "properties": {
+    "basis": {
+      "type": "string",
+      "minLength": 1,
+      "description": "basis.js が刻む 'requirements@<sha> adr@<sha>' 形式の 1 行"
+    },
+    "screens": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/screen" }
+    },
+    "tokens": {
+      "type": "object",
+      "required": ["file"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Storybook app からの相対パス (例: tokens/tokens.json)"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "screen": {
+      "type": "object",
+      "required": ["name", "route", "uc_slugs", "story", "variants", "components"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*$",
+          "description": "PascalCase の画面名。screens 内で一意"
+        },
+        "route": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "/ 始まりのルート。screens 内で一意"
+        },
+        "uc_slugs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+          "description": "この画面が担う UC の slug。use-cases.yaml の use_cases[].slug に実在すること"
+        },
+        "story": {
+          "type": "string",
+          "pattern": "\\.stories\\.(tsx|ts|jsx|js)$",
+          "description": "Storybook app からの相対パス (例: stories/BookSearch.stories.tsx)"
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+          "description": "Story ファイルの named export (例: Default / Empty / Error / Loading)"
+        },
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+          "description": "画面が使うコンポーネント名。Storybook app に <name>.tsx が実在すること"
+        }
+      }
+    }
+  }
+}

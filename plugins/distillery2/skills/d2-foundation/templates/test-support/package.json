@@ -1,0 +1,16 @@
+{
+  "name": "@repo/test-support",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tracer": "./src/tracer.ts",
+    "./pglite-harness": "./src/pglite-harness.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  }
+}

@@ -1,0 +1,43 @@
+subdomain_id: loans
+tables:
+  - name: loans
+    description: 貸出
+    columns:
+      - name: id
+        type: uuid
+        nullable: false
+        description: 貸出ID
+      - name: book_id
+        type: uuid
+        nullable: false
+        description: 対象書籍ID
+      - name: status
+        type: string
+        nullable: false
+        description: 貸出状態
+        enum:
+          - borrowed
+          - returned
+      - name: due_date
+        type: date
+        nullable: true
+        description: 返却期限
+      - name: created_at
+        type: datetime
+        nullable: false
+        description: 作成日時
+    primary_key:
+      - id
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - id
+        on_delete: RESTRICT
+    indexes:
+      - name: loans_book_id_idx
+        columns:
+          - book_id
+        unique: false

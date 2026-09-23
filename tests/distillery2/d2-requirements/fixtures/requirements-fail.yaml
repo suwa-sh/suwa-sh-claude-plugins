@@ -1,0 +1,17 @@
+version: "1.0"
+event_id: "20260101_000000_test"
+created_at: "2026-01-01T00:00:00"
+source: "test/input.txt"
+system_name: "テスト図書館システム"
+requirements:
+  - id: "REQ-001"
+    requirement: "貸出を管理できるようにする"
+    specifications:
+      - id: "SPEC-001-01"
+        specification: "司書が貸出を登録できる"
+        acceptance_criteria:
+          - "Given 在庫あり When 貸出を登録する Then 貸出中になる"
+        affected_models:
+          - type: "information"
+            action: "add"
+            target: "貸出"
