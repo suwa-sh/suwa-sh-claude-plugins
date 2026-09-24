@@ -276,9 +276,25 @@ function latestDecisions(events) {
   if (!approvals.length) return {};
   const raw = approvals[approvals.length - 1].assumption_decisions;
   const map = {};
-  if (Array.isArray(raw)) for (const d of raw) { if (d && d.id) map[d.id] = d; }
-  else if (raw && typeof raw === 'object') for (const [k, v] of Object.entries(raw)) map[k] = (v && typeof v === 'object') ? v : { decision: v };
+  // 前提は tier + id で一意 (別ティアの同 id が上書きし合わないようにする)。
+  // tier が付いていれば `${tier}\u0000${id}` を正キーにし、id 単独キーは後方互換のフォールバックとして
+  // 「最初に見たものだけ」保持する (ティア付きキーがあればそちらを優先して引く)。
+  const put = (tier, id, v) => {
+    if (id == null) return;
+    if (tier != null && tier !== '') map[`${tier}\u0000${id}`] = v;
+    if (!(id in map)) map[id] = v;
+  };
+  if (Array.isArray(raw)) for (const d of raw) { if (d && d.id) put(d.tier, d.id, d); }
+  else if (raw && typeof raw === 'object') for (const [k, v] of Object.entries(raw)) {
+    const val = (v && typeof v === 'object') ? v : { decision: v };
+    put(val.tier, k, val);
+  }
   return map;
+}
+
+/** 前提の処遇を tier + id で引く (無ければ id 単独へフォールバック)。 */
+function decisionFor(decisions, tier, id) {
+  return decisions[`${tier}\u0000${id}`] || decisions[id];
 }
 
 function decisionText(d) {
@@ -483,7 +499,7 @@ function buildIndexMd(ctx, preserved) {
     L.push('|---|---|---|---|---|---|');
     for (const a of ctx.assumptions) {
       const verdict = verdictById[`${a.tier}\u0000${a.id}`] || '-';
-      const dec = decisionText(ctx.decisions[a.id]);
+      const dec = decisionText(decisionFor(ctx.decisions, a.tier, a.id));
       L.push(`| ${a.id} | ${a.tier} | ${a.category || '-'} | ${mdEscape(a.assumption)} | ${verdict} | ${mdEscape(dec)} |`);
     }
   } else L.push('補った前提なし。');
@@ -816,5 +832,5 @@ if (require.main === module) process.exit(main(process.argv.slice(2)));
 module.exports = {
   run, collect, buildIndexMd, buildSequenceMd, buildCoverageMd, buildApiInventory, buildDependencyGraph,
   buildSystemIndex, rebuildIndex, ucEntry, extractPreserved, parseCucumberReport, parseVitestReport,
-  scenarioStatus, parseFrontMatter, main,
+  scenarioStatus, parseFrontMatter, latestDecisions, decisionFor, loadAssumptions, main,
 };
