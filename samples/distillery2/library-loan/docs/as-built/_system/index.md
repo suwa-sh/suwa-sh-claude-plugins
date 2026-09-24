@@ -1,7 +1,9 @@
-# as-built 一覧 (抽出)
+# 実装の記録 (UC ごと)
 
-| 業務 / UC | slug | ゲート | 生成日時 | ドキュメント |
-|---|---|---|---|---|
-| 貸出業務 / 貸出を登録する | register-loan | pass | 2026-09-24T00:12:39.628Z | [index](docs/as-built/貸出業務/貸出を登録する/index.md) |
+UC 名を押すと、その UC の記録 (概要 → 結果 → 入口 → どう動くか → 何を守るか → 決めたこと → 課題 → 証跡) に移る。
 
-横断: [API インベントリ](api-inventory.md) / [データフロー](data-flow.md) / [依存グラフ](dependency-graph.md)
+| 業務 | UC (記録へ) | ゲート | 生成日時 |
+|---|---|---|---|
+| 貸出業務 | [貸出を登録する](../%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99/%E8%B2%B8%E5%87%BA%E3%82%92%E7%99%BB%E9%8C%B2%E3%81%99%E3%82%8B/index.md) | pass | 2026-09-24T00:12:39.628Z |
+
+横断して見る: [API インベントリ](api-inventory.md) / [データフロー](data-flow.md) / [依存グラフ](dependency-graph.md) / [追跡表 (機械向け)](traceability-index.json)

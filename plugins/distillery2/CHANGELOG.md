@@ -2,6 +2,17 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.8] - 2026-09-25
+
+### Changed
+
+- 辿りやすさの指摘 4 件 (ユーザー)
+  - `docs/README.md` の「② 決定」: `adr/architecture.md` (C4 図) が無ければ「C4 図: 未生成 (d2-decide の genArchitectureDoc.js で生成)」と明示する (決めることに挙げた文書はリンクか未生成かを必ず書く)
+  - `docs/rules/index.md`: 「ファイル | 対象」表を実在する (生成する) ファイルへのリンクにする (雛形の `tier-<kind>.md` ではなく `tier-backend.md` など)。`genRules.js` が `<!-- rules:files -->` を置き換える
+  - as-built のデータフロー図の辺ラベルを `Read` / `Write` / `Read/Write` / `Publish` にする (旧: 読 / 書 / 読/書 / 発行)
+  - `docs/as-built/_system/index.md`: 見出しを「実装の記録 (UC ごと)」にし、UC 名そのものをリンクにする (slug 列と「index」リンクをやめる)
+- サンプル: `docs/adr/architecture.md` (C4 図) を 0.1.3 の `genArchitectureDoc.js` で生成、rules / as-built / README を再生成
+
 ## [0.1.7] - 2026-09-25
 
 ### Added

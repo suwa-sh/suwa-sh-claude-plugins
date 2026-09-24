@@ -1,7 +1,7 @@
 ---
 basis: requirements@10d88a0262c31662f8fc16dcbe00973c396363cd adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659 contracts@10d88a0262c31662f8fc16dcbe00973c396363cd
 generated_at: 2026-09-24T00:12:39.628Z
-code: 4c751e84a3af4e6cf526fde75cf2d8dbc8d63660
+code: 1f429059b7da128f868634a197a047838c2c13b6
 uc: 貸出を登録する
 slug: register-loan
 attempt: 1
@@ -104,7 +104,7 @@ sequenceDiagram
 
 ### データの流れ
 
-全シナリオを合算。点線は読み、太線は書き。
+全シナリオを合算。点線は Read、太線は Write。
 
 ```mermaid
 flowchart LR
@@ -126,13 +126,13 @@ flowchart LR
         n4[貸出受付画面]
     end
     n0 --> n4
-    n2 == 書 ==> n6
-    n2 == 読/書 ==> n7
-    n2 == 書 ==> n8
-    n2 == 読/書 ==> n9
-    n2 -. 読 .-> n10
-    n2 == 書 ==> n11
-    n2 == 読/書 ==> n12
+    n2 == Write ==> n6
+    n2 == Read/Write ==> n7
+    n2 == Write ==> n8
+    n2 == Read/Write ==> n9
+    n2 -. Read .-> n10
+    n2 == Write ==> n11
+    n2 == Read/Write ==> n12
     n3 --> n1
     n3 --> n2
     n4 --> n5
@@ -402,7 +402,7 @@ flowchart LR
 <summary>生成情報</summary>
 
 - 上流: requirements@10d88a0 adr@2f9d373 contracts@10d88a0
-- コード: 4c751e8
+- コード: 1f42905
 - 生成日時: 2026-09-24T00:12:39.628Z / 実行試行: 1
 - 凡例: (抽出) はスクリプトが生成、(要約) は LLM がコード位置を根拠に書く、(転記) は実行記録からの写し
 

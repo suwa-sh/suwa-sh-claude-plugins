@@ -1,8 +1,10 @@
 ---
-basis: requirements@ca8f7fb28b2dc8ef6b6abfcee29c0898fa879a12
+basis: requirements@a95f7e218c9d28eb2e5bf5eabb876187fb1b1d01
 ---
 
 # アーキテクチャ決定記録 (ADR) 一覧
+
+決定から描いた C4 図: [architecture.md](architecture.md)
 
 | 番号 | タイトル | ステータス | supersedes | superseded_by |
 |------|---------|-----------|-----------|---------------|
