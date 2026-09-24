@@ -22,6 +22,7 @@
     "rules": { "type": "array", "items": { "$ref": "#/$defs/Rule" } },
     "tiers": { "type": "array", "items": { "$ref": "#/$defs/Tier" } },
     "datastore_owner": { "type": "string", "minLength": 1 },
+    "contexts": { "type": "array", "items": { "$ref": "#/$defs/Context" } },
     "capabilities": {
       "type": "object",
       "required": ["browser"],
@@ -30,9 +31,68 @@
         "browser": { "type": "boolean" }
       }
     },
-    "ui": { "type": "object" }
+    "ui": {
+      "type": "object",
+      "properties": {
+        "framework": { "type": "string", "minLength": 1 },
+        "rendering": { "type": "string", "enum": ["spa", "ssr", "ssg"] },
+        "styling": { "type": "string", "minLength": 1 },
+        "design_system": { "type": "boolean" },
+        "component_lib": { "type": "boolean" },
+        "brand": { "$ref": "#/$defs/Brand" }
+      }
+    }
   },
   "$defs": {
+    "Context": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "owner_tier": { "type": "string", "minLength": 1 },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["to", "kind"],
+            "properties": {
+              "to": { "type": "string", "minLength": 1 },
+              "kind": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "Brand": {
+      "type": "object",
+      "required": ["name", "colors", "typography", "source"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "tagline": { "type": "string" },
+        "colors": {
+          "type": "object",
+          "required": ["primary"],
+          "properties": {
+            "primary": { "type": "string", "minLength": 1 },
+            "secondary": { "type": "string", "minLength": 1 },
+            "accent": { "type": "string", "minLength": 1 },
+            "neutral": { "type": "string", "minLength": 1 }
+          }
+        },
+        "typography": {
+          "type": "object",
+          "required": ["heading", "body"],
+          "properties": {
+            "heading": { "type": "string", "minLength": 1 },
+            "body": { "type": "string", "minLength": 1 }
+          }
+        },
+        "tone": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+        "source": { "type": "string", "minLength": 1 }
+      }
+    },
     "Tier": {
       "type": "object",
       "required": ["id", "dir", "kind", "lang"],

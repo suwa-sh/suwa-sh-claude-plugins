@@ -7,7 +7,7 @@ const path = require('node:path');
 
 const SCRIPTS = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-asbuilt/scripts');
 const LIB = path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib');
-const { run, buildIndexMd, collect, extractPreserved, latestDecisions, decisionFor } = require(path.join(SCRIPTS, 'extractAsBuilt'));
+const { run, buildIndexMd, collect, extractPreserved, latestDecisions, decisionFor, buildDependencyGraph } = require(path.join(SCRIPTS, 'extractAsBuilt'));
 const { writeCanonicalJson, readCanonicalJson } = require(path.join(LIB, 'canonicalJson'));
 
 // --- フェイクリポジトリを組み立てる -----------------------------------------
@@ -381,6 +381,63 @@ test('前提の処遇は tier + id で引く (別ティアの同 id が上書き
   const decisions = latestDecisions(events);
   assert.equal(decisionFor(decisions, 'backend-api', 'A-005').decision, '採用(バックエンド)');
   assert.equal(decisionFor(decisions, 'frontend-staff', 'A-005').decision, '却下(フロント)');
+});
+
+test('dependency-graph は depcruise JSON があれば実態を描き違反を出す', () => {
+  const depcruise = {
+    modules: [
+      { source: 'apps/frontend-patron/src/a.ts', dependencies: [{ resolved: 'apps/backend-api/src/x.ts', module: '../backend' }] },
+    ],
+    summary: { violations: [{ from: 'apps/frontend-patron/src/a.ts', to: 'apps/backend-api/src/x.ts', rule: { name: 'no-cross-tier', severity: 'error' } }] },
+  };
+  const config = { tiers: [], contracts: [] };
+  const md = buildDependencyGraph({ depcruise, config });
+  assert.match(md, /## 実態 \(dependency-cruiser\)/);
+  // ノード宣言 + プレーンな辺 (ラベルはノード宣言側だけに書く)
+  assert.match(md, /n_apps_frontend_patron\["apps\/frontend-patron"\]/);
+  assert.match(md, /n_apps_backend_api\["apps\/backend-api"\]/);
+  assert.match(md, /n_apps_frontend_patron --> n_apps_backend_api/);
+  assert.match(md, /no-cross-tier \| error/);
+  assert.doesNotMatch(md, /決定からの図/);
+});
+
+test('dependency-graph は実態でティア間の辺が無くても modules[].source からティアをノードに出す', () => {
+  const depcruise = {
+    // apps/backend-api 内で完結する import だけ (ティア間の依存が無い)
+    modules: [
+      { source: 'apps/backend-api/src/a.ts', dependencies: [{ resolved: 'apps/backend-api/src/b.ts', module: './b' }] },
+      { source: 'apps/backend-api/src/b.ts', dependencies: [] },
+    ],
+    summary: { violations: [] },
+  };
+  const md = buildDependencyGraph({ depcruise, config: { tiers: [], contracts: [] } });
+  assert.match(md, /## 実態 \(dependency-cruiser\)/);
+  // 辺が無くてもティアはノードとして描かれる
+  assert.match(md, /n_apps_backend_api\["apps\/backend-api"\]/);
+  assert.doesNotMatch(md, /-->/); // ティア間の辺は無い
+  assert.match(md, /違反なし。/);
+});
+
+test('dependency-graph は depcruise JSON が無ければ config から決定の図を描き実態未取得を明示する', () => {
+  const config = {
+    tiers: [
+      { id: 'frontend-patron', dir: 'apps/frontend-patron' },
+      { id: 'backend-api', dir: 'apps/backend-api' },
+      { id: 'worker', dir: 'apps/worker' },
+    ],
+    contracts: [
+      { id: 'api', provider: 'backend-api', consumers: ['frontend-patron'] },
+      { id: 'db', provider: 'backend-api', consumers: ['worker'] },
+    ],
+  };
+  const md = buildDependencyGraph({ depcruise: null, config });
+  assert.match(md, /## 決定からの図 \(dependency-cruiser 未実行\)/);
+  assert.match(md, /実態 .* は未取得/);
+  // consumer → provider のラベル付き辺
+  assert.match(md, /n_apps_frontend_patron -->\|api\| n_apps_backend_api/);
+  assert.match(md, /n_apps_worker -->\|db\| n_apps_backend_api/);
+  // 全ティアがノードとして出る
+  assert.match(md, /n_apps_frontend_patron\["apps\/frontend-patron"\]/);
 });
 
 function sortDeep(v) {

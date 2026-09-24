@@ -60,7 +60,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/generateNfrGradeMd.js docs/n
 
 ### 3. 決定を導いて ADR を書く
 
-[references/required-decisions.md](references/required-decisions.md) の 8 領域を最低限すべて覆う。該当しない領域は「不要」と 1 本の ADR で明記する (黙って省かない)。
+[references/required-decisions.md](references/required-decisions.md) の 8 領域を最低限すべて覆う。該当しない領域は「不要」と 1 本の ADR で明記する (黙って省かない)。9 番目「コンテキストの境界」は任意 (業務ドメインが複数に分かれるときだけ `contexts[]` を書く)。
 
 各領域の判断材料は決定候補カタログにある:
 
@@ -83,18 +83,26 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/generateNfrGradeMd.js docs/n
   (段階③の config / 骨格 / rules の入力。形は adr-format.md「段階③が読む追加の front matter」)。
 - `rules[]` は段階③ の入力になる。カタログの「派生するルール例」を土台にする。
 - 言語 / FW が未定なら「未定」と明記した ADR を書く (ベンダーニュートラル。特定サービス名を使わない)。
+- **UI ADR (scope に ui を含む) は `ui.brand` を埋める** (presentation ティアがあるとき)。`brand` スキル
+  (`~/.claude/skills/brand` / `~/.agents/skills/brand` / `.claude/skills/brand`、またはプラグインのスキル一覧)
+  があれば走らせ / 出力を読んで `source: "brand skill"` で埋める。無ければ RDRA から推論し `source: "inferred"` と
+  `brand.confidence: low` を付ける (詳細は [decision-candidates/ui.md](references/decision-candidates/ui.md))。
+  ブランドは d2-design のトークンの起点になる (design 側で再推論しない)。
 
 **auto-adopt 方針**: 各領域で推奨案を採用して完走する。推論の確信度が低い決定は front matter に `confidence: low` を付け、手順 4 のレビュー要約で人の確認対象にする。
 
-ADR を書き終えたら検証と索引生成:
+ADR を書き終えたら検証・C4 図・索引を生成する (この順):
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/validateAdr.js docs/adr
+node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md \
+  --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements
 ```
 
 - `validateAdr.js` はスキーマ・id 一意性・参照整合性 (supersedes / superseded_by の双方向)・status 遷移・`rules[].scope` 書式に加え、ティア構成 ADR がちょうど 1 本 (system scope・tiers キーは他 ADR に持たせない) あること・accepted な testing ADR の `capabilities.browser` (宣言は 1 本まで)・`rules[]` のカバレッジ (該当 scope の rules 必須、ティア間 `level: tier`・レイヤ `level: layer` の `arch_test`) を検査する。PASS するまで直す。
-- `genAdrIndex.js` は id 昇順で決定論的に `index.md` を生成する。
+- `genArchitectureDoc.js` は accepted な ADR (ティア構成 ADR の `tiers[]` / `datastore_owner` / 任意の `contexts[]`)・`contracts/contracts.json`・RDRA の `アクター.tsv` / `外部システム.tsv` から「決めたもの」の C4 図 (`docs/adr/architecture.md`) を決定論的に描く。システムコンテキスト図 (C4Context) とコンテナ図 (C4Container)、`contexts[]` があればコンテキストマップ (flowchart) を出す。契約・RDRA は任意 (無ければその図を省くか、ティアのみ描く)。実態の依存図は段階④の `docs/as-built/_system/dependency-graph.md` が別に描く。
+- `genAdrIndex.js` は id 昇順で決定論的に `index.md` を生成する (`architecture.md` があればその C4 図へのリンクを載せる。上の順で先に architecture.md を作るため必ずリンクが付く)。
 
 ### 4. 人レビュー用の要約を書く
 
@@ -103,6 +111,8 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs
 - NFR 表のハイライト (重要メトリクスと確信度が低い項目)。
 - 各 ADR を「決定」と「却下した案」の対で、平易な言葉で説明する。内部 ID や専門ジャーゴンを本文に出さない。
 - `confidence: low` の決定を「確認してほしいこと」として明示する。
+- **ブランド方針の由来** (`ui.brand.source`) を書く。`inferred` (RDRA から推論・低確信) のときは色とフォントを
+  「確認してほしいこと」に含める。`brand skill` のときはその旨を記す。
 
 ## 完了報告
 

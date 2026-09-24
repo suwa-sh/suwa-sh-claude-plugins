@@ -40,6 +40,9 @@ LLM 主体のステージ。d2-run が段階③で、F3 (test-support) と F6 (�
 
 `references/design/design-tokens.md` を読む。
 
+- **`ui.brand` があれば primitive トークンはそこを起点にする** (再推論しない)。`brand.colors` (primary /
+  secondary / accent / neutral) を primitive の色スケールの基点に、`brand.typography` (heading / body) を
+  フォント指定に使う。`ui.brand` が無いときだけ RDRA から推論する。
 - primitive → semantic → component の 3 層で `src/tokens/tokens.json` と `src/styles/design-tokens.css` を作る
   (どちらも `src/` 配下。F6 は `src/` だけを取り込むため)。
 - レイアウト / スペーシングは `design-infer.md` 5 節の推論値を使う (任意値をハードコードしない)。
@@ -53,6 +56,16 @@ LLM 主体のステージ。d2-run が段階③で、F3 (test-support) と F6 (�
 - RDRA の情報 / 画面 / 状態からドメイン部品を導出する。RDRA に無い画面を増やさない。
 - 各画面について `name / route / uc_slugs / story / variants / components` を決める。
   `uc_slugs` は use-cases.yaml の `slug` を指す。
+
+### 3.5 アセットを生成する (ロゴ / ファビコン / アイコン)
+
+`references/design/design-assets.md` を読む。コンポーネントを導出した後、Storybook アプリ生成の一部として作る。
+
+- SVG 直書きで `docs/design/storybook-app/src/assets/` に `logo-full.svg` / `logo-icon.svg` / `logo-stacked.svg` /
+  `favicon.svg` / `icons/<name>.svg` / `icons/index.md` を置く。外部 API は使わない。
+- ロゴ・ファビコンの主要色は `ui.brand.colors.primary` (無ければトークンの主要色) を使う。フォントは `ui.brand.typography`。
+- アイコンは RDRA (画面 / 情報 / アクター) から導いたものだけ作る (勝手に増やさない)。
+- `src/assets/` 配下なので F6 の `importUi.js` (`src/` を丸ごと取り込む) が `packages/ui/assets/` に取り込む。
 
 ### 4. Storybook アプリを生成する
 
@@ -68,11 +81,19 @@ LLM 主体のステージ。d2-run が段階③で、F3 (test-support) と F6 (�
 - 部品群の生成は独立性が高いので、**サブエージェント分割 / 並列 Write** で時間を短縮する
   (派遣時はパスだけ渡す)。
 - ビルド検証: `npx storybook build` が通ること。
-- **目視確認 (完了条件)**: ビルドが通っても表示崩れは残る。代表 Story と主要 variants を
-  ブラウザ (または `storybook-static/` の静的ビルドを開いて) 目視し、**はみ出し・文字切れ・
-  コントラスト**を確認する。崩れがあれば部品を直して再ビルドする。
-  環境の都合でブラウザを開けない場合は、手順 6 の要約と最終報告に**「目視未実施」**と明記する
-  (通過扱いにしない)。
+- **目視確認 (完了条件)**: ビルドが通っても表示崩れは残る。`captureStories.js` で各 Story を撮り、
+  **はみ出し・文字切れ・コントラスト**を確認する。崩れがあれば部品を直して再ビルドする。
+
+  ```bash
+  node ${CLAUDE_PLUGIN_ROOT}/skills/d2-design/scripts/captureStories.js --cwd .
+  ```
+
+  - Storybook を静的ビルドし、`playwright` が対象リポで解決できれば headless chromium で各 Story を撮って
+    `docs/design/screenshots/<StoryId>.png` と `index.md` (一覧) を書く (exit 0)。
+  - **`playwright` が無い / ビルド失敗 / Story 0 件 / chromium 起動・撮影失敗なら exit 2** で「目視未実施」を出す。この場合は手順 6 の要約と最終報告に
+    **「目視未実施」**と明記する (通過扱いにしない)。目視を行うには対象リポの devDependency に `playwright` を足す
+    (`capabilities.browser` が true、または画面の目視証跡が要るとき)。
+  - 撮れた `docs/design/screenshots/` は目視の証跡として残す。
 
 ### 5. screens.yaml を書いて検証する
 
@@ -103,6 +124,8 @@ component 不在 / tokens.file 不在) を直す。2 = 読み込み失敗。
 - UC ごとの画面 (何を操作する画面か)
 - コンポーネント一覧 (共通 + ドメイン)
 - トークンの要点 (主要色 / フォント / 余白方針)、および自動採用した低確信の選択
+- **ブランドの由来** (`ui.brand.source`): `brand skill` / `inferred` (低確信) / 参照パス のいずれか。
+  `inferred` のときは色・フォントを「確認してほしいこと」に含める
 - 内部 ID・ジャーゴンは本文に出さない
 
 d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せる。
@@ -113,6 +136,7 @@ d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せ�
 |---|---|
 | [`scripts/schema-screens.json`](scripts/schema-screens.json) | screens.yaml の JSON Schema |
 | [`scripts/validateScreens.js`](scripts/validateScreens.js) | screens.yaml 検証 (exit 0/1/2)。`--app` / `--use-cases` で実在検査 |
+| [`scripts/captureStories.js`](scripts/captureStories.js) | 手順 4 目視: Storybook をビルドし playwright で各 Story を撮る (exit 0)。playwright 無し / ビルド失敗は exit 2 (目視未実施) |
 
 共有ライブラリは `${CLAUDE_PLUGIN_ROOT}/scripts/lib/` (basis.js, yaml.js, schemaValidate.js) を使う。
 スキル内スクリプトは他プラグインを require しない。
@@ -124,6 +148,7 @@ d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せ�
 | [`references/design/design-infer.md`](references/design/design-infer.md) | 手順 1・3: モデル分析・画面/コンポーネント/レイアウト推論 |
 | [`references/design/design-tokens.md`](references/design/design-tokens.md) | 手順 2: 3 層トークン生成ルール |
 | [`references/design/design-components.md`](references/design/design-components.md) | 手順 3: RDRA からのコンポーネント導出 |
+| [`references/design/design-assets.md`](references/design/design-assets.md) | 手順 3.5: ロゴ / ファビコン / アイコンの SVG 生成 (`src/assets/`) |
 | [`references/design/design-storybook.md`](references/design/design-storybook.md) | 手順 4: Storybook 生成・F6 受け渡し (`docs/design/storybook-app/` → `packages/ui/`) |
 
 ## v1 から持ち込まないもの
@@ -132,4 +157,3 @@ d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せ�
 |---|---|
 | 設計イベント YAML / イベント履歴ディレクトリ | screens.yaml + Git 履歴に置き換え。中間 `_inference.md` も残さない |
 | 提案バリアント (proposal-variants) | ⭐推奨を自動採用。低確信の選択はレビュー要約に書く |
-| アセット生成 (Logo / Icon SVG) | 現版では対象外。必要なら SVG 直書きで代替 |
