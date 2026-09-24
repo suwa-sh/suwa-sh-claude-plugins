@@ -2,6 +2,15 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.9] - 2026-09-25
+
+### Changed
+
+- `docs/adr/architecture.md` のシステムコンテキスト図とコンテナ図を Mermaid の `graph` で描く (ユーザー指摘: C4Context / C4Container 記法はレンダラで崩れて読みづらい)。
+  アクターは丸端の箱 (社外は「(社外)」を添える)、システムは subgraph、ティアは箱 (kind / lang と役割)、データストアは円筒、
+  契約は consumer → provider のラベル付き辺。色は classDef (actor / system / tier / store / external)。内容と向きは変えない
+- サンプルの `architecture.md` を再生成
+
 ## [0.1.8] - 2026-09-25
 
 ### Changed

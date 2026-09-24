@@ -101,7 +101,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs
 ```
 
 - `validateAdr.js` はスキーマ・id 一意性・参照整合性 (supersedes / superseded_by の双方向)・status 遷移・`rules[].scope` 書式に加え、ティア構成 ADR がちょうど 1 本 (system scope・tiers キーは他 ADR に持たせない) あること・accepted な testing ADR の `capabilities.browser` (宣言は 1 本まで)・`rules[]` のカバレッジ (該当 scope の rules 必須、ティア間 `level: tier`・レイヤ `level: layer` の `arch_test`) を検査する。PASS するまで直す。
-- `genArchitectureDoc.js` は accepted な ADR (ティア構成 ADR の `tiers[]` / `datastore_owner` / 任意の `contexts[]`)・`contracts/contracts.json`・RDRA の `アクター.tsv` / `外部システム.tsv` から「決めたもの」の C4 図 (`docs/adr/architecture.md`) を決定論的に描く。システムコンテキスト図 (C4Context) とコンテナ図 (C4Container)、`contexts[]` があればコンテキストマップ (flowchart) を出す。契約・RDRA は任意 (無ければその図を省くか、ティアのみ描く)。実態の依存図は段階④の `docs/as-built/_system/dependency-graph.md` が別に描く。
+- `genArchitectureDoc.js` は accepted な ADR (ティア構成 ADR の `tiers[]` / `datastore_owner` / 任意の `contexts[]`)・`contracts/contracts.json`・RDRA の `アクター.tsv` / `外部システム.tsv` から「決めたもの」の C4 図 (`docs/adr/architecture.md`) を決定論的に描く。システムコンテキスト図とコンテナ図 (どちらも Mermaid の `graph`。C4Context / C4Container 記法はレンダラで崩れて読みづらいため使わない)、`contexts[]` があればコンテキストマップ (flowchart) を出す。契約・RDRA は任意 (無ければその図を省くか、ティアのみ描く)。実態の依存図は段階④の `docs/as-built/_system/dependency-graph.md` が別に描く。
 - `genAdrIndex.js` は id 昇順で決定論的に `index.md` を生成する (`architecture.md` があればその C4 図へのリンクを載せる。上の順で先に architecture.md を作るため必ずリンクが付く)。
 
 ### 4. 人レビュー用の要約を書く

@@ -6,9 +6,9 @@
  * ADR (ティア構成 ADR の tiers[] / datastore_owner / contexts) と、任意で
  * contracts/contracts.json (provider/consumers) と RDRA の アクター.tsv / 外部システム.tsv を入力にする。
  *
- * 図 (Mermaid C4。Context7 で C4Context/C4Container のサポートを確認済み):
- *   (a) システムコンテキスト図 (C4Context): アクター → システム → 外部システム
- *   (b) コンテナ図 (C4Container): ティアをコンテナ、契約を consumer→provider のラベル付き辺 (C4 の uses は利用側→提供側)、datastore_owner を明示
+ * 図 (C4 モデルのレベル 1 / 2 を Mermaid の graph で描く。C4Context / C4Container 記法はレンダラで崩れて読みづらい (0.1.9 で廃止)):
+ *   (a) システムコンテキスト図 (graph LR): アクター → システム → 外部システム
+ *   (b) コンテナ図 (graph LR + subgraph): ティアを箱、契約を consumer→provider のラベル付き辺、datastore_owner を円筒で明示
  *   (c) コンテキストマップ図 (flowchart。任意): ADR front matter の contexts[] があるときだけ
  *
  * Usage:
@@ -38,10 +38,33 @@ function readJsonIfExists(p) { const t = readTextIfExists(p); if (t == null) ret
  */
 function cmpStr(a, b) { a = String(a); b = String(b); return a < b ? -1 : a > b ? 1 : 0; }
 
-/** C4 の別名 (alias) に使える識別子へ変換する。先頭が数字なら a_ を付ける。 */
+/** Mermaid flowchart の予約語 (ノード ID に使うと構文が壊れる)。 */
+const MERMAID_RESERVED = new Set(['end', 'subgraph', 'graph', 'flowchart', 'style', 'class', 'classDef', 'click', 'linkStyle', 'direction', 'default']);
+
+/** Mermaid のノード ID に使える識別子へ変換する。先頭が数字なら a_、予約語 (end 等) なら n_ を付ける。 */
 function c4Id(s) {
   const id = String(s == null ? '' : s).replace(/[^A-Za-z0-9_]/g, '_');
-  return /^[A-Za-z_]/.test(id) ? id : `a_${id}`;
+  if (!/^[A-Za-z_]/.test(id)) return `a_${id}`;
+  return MERMAID_RESERVED.has(id.toLowerCase()) ? `n_${id}` : id;
+}
+
+/**
+ * 1 つの図の中で衝突しない ID 表。同じ元名には同じ ID、違う元名が同じ ID に潰れたら `_2`, `_3` … を付ける
+ * (例: `end` と `n_end`、`a-b` と `a_b`、固定要素の `datastore` と同名のティア)。図ごとに作り、ノードと辺で同じ表を使う。
+ */
+function idMapper(reserved = []) {
+  const byRaw = new Map();
+  const taken = new Set(reserved); // 図の固定要素 (sys / datastore / ext_N) の ID を先に押さえる
+  return (raw) => {
+    const key = String(raw == null ? '' : raw);
+    if (byRaw.has(key)) return byRaw.get(key);
+    const base = c4Id(key);
+    let id = base;
+    for (let n = 2; taken.has(id); n += 1) id = `${base}_${n}`;
+    byRaw.set(key, id);
+    taken.add(id);
+    return id;
+  };
 }
 /** C4 のラベル (二重引用符で囲む) 用に無害化する。 */
 function c4Label(s) { return String(s == null ? '' : s).replace(/"/g, "'").replace(/[\r\n]+/g, ' ').trim(); }
@@ -117,22 +140,30 @@ function readContracts(p) {
 
 // --- 図の生成 ---------------------------------------------------------------
 
+const CLASS_DEFS = [
+  'classDef actor fill:#2563EB,color:#fff,stroke:none',
+  'classDef system fill:#1E3A8A,color:#fff,stroke:none',
+  'classDef tier fill:#3B82F6,color:#fff,stroke:none',
+  'classDef store fill:#0EA5E9,color:#fff,stroke:none',
+  'classDef external fill:#6B7280,color:#fff,stroke:none',
+];
+
+/**
+ * システムコンテキスト図 (C4 のレベル 1 を Mermaid の graph で描く。C4Context 記法はレンダラで読みづらいため使わない)。
+ * アクターは丸端の箱、外部システムは灰色。社外のアクターは "(社外)" を添える。
+ */
 function renderContextDiagram(sysName, actors, externals) {
   const L = [];
-  const sysAlias = 'sys';
   const actorAlias = (i) => `actor_${i + 1}`;
   const extAlias = (i) => `ext_${i + 1}`;
   L.push('```mermaid');
-  L.push('C4Context');
-  L.push(`title システムコンテキスト図: ${c4Label(sysName)}`);
-  actors.forEach((a, i) => {
-    const kind = a.external ? 'Person_Ext' : 'Person';
-    L.push(`${kind}(${actorAlias(i)}, "${c4Label(a.name)}")`);
-  });
-  L.push(`System(${sysAlias}, "${c4Label(sysName)}", "")`);
-  externals.forEach((e, i) => L.push(`System_Ext(${extAlias(i)}, "${c4Label(e)}", "")`));
-  actors.forEach((a, i) => L.push(`Rel(${actorAlias(i)}, ${sysAlias}, "利用する")`));
-  externals.forEach((e, i) => L.push(`Rel(${sysAlias}, ${extAlias(i)}, "連携する")`));
+  L.push('graph LR');
+  actors.forEach((a, i) => L.push(`  ${actorAlias(i)}(["${c4Label(a.name)}${a.external ? '<br/>(社外)' : ''}"]):::actor`));
+  L.push(`  sys["${c4Label(sysName)}"]:::system`);
+  externals.forEach((e, i) => L.push(`  ${extAlias(i)}["${c4Label(e)}"]:::external`));
+  actors.forEach((a, i) => L.push(`  ${actorAlias(i)} -->|利用する| sys`));
+  externals.forEach((e, i) => L.push(`  sys -->|連携する| ${extAlias(i)}`));
+  for (const d of CLASS_DEFS) L.push(`  ${d}`);
   L.push('```');
   return L.join('\n');
 }
@@ -142,30 +173,35 @@ const TIER_KIND_JA = {
   'data-pipeline': 'データパイプライン', cli: 'CLI', 'mcp-server': 'MCP サーバー',
 };
 
+/**
+ * コンテナ図 (C4 のレベル 2 を Mermaid の graph で描く)。システムを subgraph、ティアを箱 (kind / lang と役割)、
+ * データストアを円筒、契約を consumer → provider のラベル付き辺にする。外部システムは subgraph の外。
+ */
 function renderContainerDiagram(sysName, tiers, datastoreOwner, contracts, externals) {
   const L = [];
   const sorted = [...tiers].sort((a, b) => cmpStr(a.id, b.id));
+  const nid = idMapper(['sys', 'datastore', ...externals.map((_, i) => `ext_${i + 1}`)]);
+  for (const t of sorted) nid(t.id); // ティアの順で ID を確定する (辺で同じ表を引く)
   L.push('```mermaid');
-  L.push('C4Container');
-  L.push(`title コンテナ図: ${c4Label(sysName)}`);
-  L.push(`System_Boundary(sys, "${c4Label(sysName)}") {`);
+  L.push('graph LR');
+  L.push(`  subgraph sys["${c4Label(sysName)}"]`);
   for (const t of sorted) {
-    const tech = `${t.kind || '-'}/${t.lang || '-'}`;
-    const isOwner = t.id === datastoreOwner;
-    const note = isOwner ? 'データストア所有 (migration)' : '';
-    L.push(`  Container(${c4Id(t.id)}, "${c4Label(t.id)}", "${c4Label(tech)}", "${c4Label(note)}")`);
+    const tech = `${t.kind || '-'} / ${t.lang || '-'}`;
+    const note = t.id === datastoreOwner ? '<br/>データストア所有 (migration)' : '';
+    L.push(`    ${nid(t.id)}["${c4Label(t.id)}<br/>${c4Label(tech)}${note}"]:::tier`);
   }
-  if (datastoreOwner) L.push('  ContainerDb(datastore, "データストア", "RDB 等", "")');
-  L.push('}');
-  externals.forEach((e, i) => L.push(`System_Ext(ext_${i + 1}, "${c4Label(e)}", "")`));
-  // 契約: consumer → provider のラベル付き辺 (id / type)。C4 の "uses" は利用側→提供側。
+  if (datastoreOwner) L.push('    datastore[("データストア<br/>RDB 等")]:::store');
+  L.push('  end');
+  externals.forEach((e, i) => L.push(`  ext_${i + 1}["${c4Label(e)}"]:::external`));
+  // 契約: consumer → provider のラベル付き辺 (id / type)。利用側→提供側の向き
   for (const c of contracts) {
     if (!c.provider) continue;
     for (const consumer of [...(c.consumers || [])].sort(cmpStr)) {
-      L.push(`Rel(${c4Id(consumer)}, ${c4Id(c.provider)}, "${c4Label(c.id)} (${c4Label(c.type)})")`);
+      L.push(`  ${nid(consumer)} -->|"${c4Label(c.id)} (${c4Label(c.type)})"| ${nid(c.provider)}`); // 括弧を含むので引用する
     }
   }
-  if (datastoreOwner) L.push(`Rel(${c4Id(datastoreOwner)}, datastore, "所有・migration")`);
+  if (datastoreOwner) L.push(`  ${nid(datastoreOwner)} -->|所有・migration| datastore`);
+  for (const d of CLASS_DEFS) L.push(`  ${d}`);
   L.push('```');
   return L.join('\n');
 }
@@ -176,9 +212,10 @@ function renderContextMap(contexts) {
   const L = [];
   L.push('```mermaid');
   L.push('flowchart LR');
+  const nid = idMapper();
   for (const c of [...contexts].sort((a, b) => cmpStr(a.id, b.id))) {
     const owner = c.owner_tier ? `<br/>(${c4Label(c.owner_tier)})` : '';
-    L.push(`  ${c4Id(c.id)}["${c4Label(c.name || c.id)}${owner}"]`);
+    L.push(`  ${nid(c.id)}["${c4Label(c.name || c.id)}${owner}"]`);
   }
   const edges = [];
   for (const c of contexts) {
@@ -190,7 +227,7 @@ function renderContextMap(contexts) {
   edges.sort((a, b) => cmpStr(`${a.from}\u0000${a.to}\u0000${a.kind}`, `${b.from}\u0000${b.to}\u0000${b.kind}`));
   for (const e of edges) {
     const label = e.kind ? ` |${c4Label(e.kind)}|` : '';
-    L.push(`  ${c4Id(e.from)} -->${label} ${c4Id(e.to)}`);
+    L.push(`  ${nid(e.from)} -->${label} ${nid(e.to)}`);
   }
   L.push('```');
   return L.join('\n');
@@ -203,7 +240,7 @@ function renderArchitectureDoc(input) {
   const L = [];
   if (basisLine) L.push('---', basisLine, '---', '');
   L.push('# アーキテクチャ (決めたもの)', '');
-  L.push('accepted な ADR とティア構成・契約・RDRA から決定論的に描いた C4 図。実装の実態は `docs/as-built/_system/dependency-graph.md` を見る。', '');
+  L.push('accepted な ADR とティア構成・契約・RDRA から決定論的に描いた構成図 (C4 モデルのレベル 1 / 2)。実装の実態は `docs/as-built/_system/dependency-graph.md` を見る。', '');
 
   L.push('## システムコンテキスト図', '');
   if (actors.length || externals.length) {
