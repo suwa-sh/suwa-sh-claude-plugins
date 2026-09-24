@@ -149,6 +149,21 @@ test('inProcessFetch は Request 入力の method / headers / body を読み、2
   assert.deepEqual(lines.map((l) => [l.kind, l.meta.method, l.meta.status]), [['http.out', 'POST', 201], ['http.out', 'DELETE', 204]]);
 });
 
+test('inProcessFetch: init.body の null は本文なし、Blob は中身を読む', async () => {
+  const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
+  const t = loadTracer(traceDir);
+  const seen = [];
+  const f = t.inProcessFetch(async (req) => { seen.push(req); return { status: 200, body: {} }; });
+  await t.withScenario('uc#s8', async () => {
+    await f(new Request('http://x/a', { method: 'POST', body: '{"a":1}' }), { body: null });
+    await f('http://x/b', { method: 'POST', body: new Blob(['{"b":2}']) });
+    await f('http://x/c', { method: 'POST', body: 'plain text' });
+  });
+  assert.equal(seen[0].body, undefined);
+  assert.deepEqual(seen[1].body, { b: 2 });
+  assert.equal(seen[2].body, 'plain text');
+});
+
 test('seq はプロセスごとに基数が違い、別プロセスの行と衝突しにくい', () => {
   const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
   const t = loadTracer(traceDir);

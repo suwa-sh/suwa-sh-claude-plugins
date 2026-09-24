@@ -411,6 +411,18 @@ test('計装の範囲: 全トレースに無いティアは「計装なし」、
   assert.match(md, /\| 計装の範囲 \| backend-api \|/);
 });
 
+test('scenarioStatus は hook の結果を数えない (本体が全部 skipped なら skipped)', () => {
+  const { scenarioStatus } = require(path.join(SCRIPTS, 'extractAsBuilt'));
+  const skippedWithHook = [
+    { keyword: 'Before', name: '', result: { status: 'skipped' } },
+    { keyword: '前提', name: 'x', result: { status: 'skipped' } },
+    { keyword: 'After', name: '', result: { status: 'passed' } },
+  ];
+  assert.equal(scenarioStatus(skippedWithHook), 'skipped');
+  assert.equal(scenarioStatus([{ keyword: 'Before', name: '', result: { status: 'failed' } }, { keyword: 'もし', name: 'y', result: { status: 'passed' } }]), 'passed');
+  assert.equal(scenarioStatus([{ keyword: 'After', name: '', result: { status: 'passed' } }]), 'passed'); // 本体が無ければ全 step で判定
+});
+
 test('前提の処遇は tier + id で引く (別ティアの同 id が上書きしない)', () => {
   const events = [{
     type: 'review_approved',

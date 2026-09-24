@@ -254,7 +254,8 @@ export function inProcessFetch(
     const headers: Record<string, string> = {};
     req.headers.forEach((v, k) => { headers[k] = v; });
     let body: unknown;
-    if (req.body != null) body = parseJsonIfPossible(String(req.body));
+    if (init && init.body === null) body = undefined; // 明示的な null は「本文なし」(Request の本文も使わない)
+    else if (req.body != null) body = parseJsonIfPossible(typeof req.body === 'string' ? req.body : await new Response(req.body).text());
     else if (typeof Request !== 'undefined' && input instanceof Request && input.method !== 'GET' && input.method !== 'HEAD') {
       const text = await input.clone().text();
       if (text) body = parseJsonIfPossible(text);

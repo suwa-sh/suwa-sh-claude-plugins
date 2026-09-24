@@ -131,7 +131,10 @@ function parseCucumberReport(json) {
 }
 
 function scenarioStatus(steps) {
-  const st = (steps || []).map((s) => (s.result && s.result.status) || 'unknown');
+  // hook (Before / After。name が無い) は本体の結果に数えない: @browser を off で skip したシナリオは
+  // 本体が全部 skipped でも After hook が passed になり、passed と誤判定していた
+  const body = (steps || []).filter((s) => s && s.name != null && s.name !== '' && !/^(Before|After)\s*$/.test(String(s.keyword || '')));
+  const st = (body.length ? body : (steps || [])).map((s) => (s.result && s.result.status) || 'unknown');
   if (!st.length) return 'unknown';
   if (st.includes('failed')) return 'failed';
   if (st.includes('undefined')) return 'undefined';

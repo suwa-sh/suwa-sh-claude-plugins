@@ -251,7 +251,7 @@
         },
         {
           "name": "貸出受付画面で貸出中の書籍を貸し出そうとすると貸出できない旨が表示される",
-          "status": "passed",
+          "status": "skipped",
           "tags": [
             "@acceptance",
             "@acceptance:SPEC-002-01-2",
