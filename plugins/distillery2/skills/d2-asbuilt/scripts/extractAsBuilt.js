@@ -781,8 +781,8 @@ function buildIndexMd(ctx, preserved) {
 function relLink(ctx, absPath, label) {
   if (!absPath || !fs.existsSync(absPath)) return null;
   const from = path.resolve(ctx.cwd, ctx.docsRoot, 'as-built', ctx.uc.business, ctx.uc.uc);
-  const rel = path.relative(from, absPath).split(path.sep).join('/');
-  return `[${mdEscape(label)}](${encodeURI(rel)})`;
+  const rel = path.relative(from, absPath).split(path.sep).map((seg) => (seg === '..' || seg === '.' ? seg : encodeURIComponent(seg))).join('/');
+  return `[${mdEscape(label)}](${rel})`;
 }
 
 /** 上流 (要求 / シナリオ / 契約 slice) へのリンク。features は @uc:<slug> タグで探す。 */

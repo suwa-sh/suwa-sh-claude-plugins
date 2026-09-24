@@ -138,11 +138,12 @@ function collect(opts) {
 function build(ctx) {
   const readmePath = ctx.D('README.md');
   const readmeDir = path.dirname(readmePath);
-  const L = makeLinker(readmeDir);
+  const referenced = new Set(); // 参照した docs 配下の絶対パス (「その他」に載せない)
+  const L0 = makeLinker(readmeDir);
+  const L = { links: L0.links, to(abs, label) { referenced.add(abs); return L0.to(abs, label); } };
   const link = (abs, label) => (fs.existsSync(abs) ? L.to(abs, label) : null); // 任意 (無ければ載せない)
   const must = (abs, label) => L.to(abs, label); // 正本が指す文書 (無ければリンク切れとして exit 1)
-  const referenced = new Set(); // 参照した docs 配下の絶対パス
-  const ref = (abs, label) => { const s = link(abs, label); if (s) referenced.add(abs); return s; };
+  const ref = link;
   const out = [];
   const { D } = ctx;
 
@@ -175,8 +176,13 @@ function build(ctx) {
     const specText = Object.fromEntries(ctx.specs.map((s) => [s.id, s]));
     const reqMd = D('requirements', 'requirements.md');
     const rows = ctx.ucs.slice().sort((a, b) => cmpStr(`${a.business}\u0000${a.buc}\u0000${a.uc}`, `${b.business}\u0000${b.buc}\u0000${b.uc}`));
-    const isDone = (t) => Boolean(t && t.gates_complete && t.gates === 'pass');
-    const done = rows.filter((u) => isDone(ctx.trace.ucs && ctx.trace.ucs[u.slug])).length;
+    // 状態は 1 か所で決める (件数と状態列で同じ判定)
+    const statusOf = (u) => {
+      const t = ctx.trace.ucs && ctx.trace.ucs[u.slug];
+      if (t) return t.gates_complete && t.gates === 'pass' ? '実装済み' : `実装中 (ゲート ${t.gates || '-'})`;
+      return { planned: '未着手', in_progress: '実装中', done: '実装済み', blocked: '要求待ち' }[u.status] || (u.status || '-');
+    };
+    const done = rows.filter((u) => statusOf(u) === '実装済み').length;
     const blocked = rows.filter((u) => u.status === 'blocked').length;
     out.push(`UC ${rows.length} 件 (実装済み ${done}、要求待ち ${blocked})。1 行で要求 → シナリオ → 契約 → 画面 → 実装の記録まで辿れる。`);
     if (fs.existsSync(reqMd)) out.push(`要求の列の SPEC は ${ref(reqMd, '要求仕様書')} の行。`);
@@ -186,9 +192,7 @@ function build(ctx) {
     let lastBiz = null;
     for (const u of rows) {
       const t = ctx.trace.ucs && ctx.trace.ucs[u.slug];
-      let status;
-      if (t) status = isDone(t) ? '実装済み' : `実装中 (ゲート ${t.gates || '-'})`;
-      else status = { planned: '未着手', in_progress: '実装中', done: '実装済み', blocked: '要求待ち' }[u.status] || (u.status || '-');
+      const status = statusOf(u);
       const specs = (u.spec_ids || []).map((id) => (specText[id] ? `${id}` : id));
       const specCell = specs.length ? specs.join(', ') : 'なし';
       const feats = (ctx.features[u.slug] || []).map((f) => `${L.to(f.path, path.basename(f.path))} (${f.scenarios} 本)`);
@@ -262,30 +266,36 @@ function build(ctx) {
     out.push('');
   }
 
-  // 6. 知っているディレクトリの中の、参照しなかった md (そのディレクトリの index.md / README.md が参照するものは参照済み扱い)
+  // 6. 知っているディレクトリの中 (下位も) の、参照しなかった md。
+  //    各階層の index.md / README.md が参照するもの (リンク、`x.md` の言及、`tier-<kind>.md` の雛形) は参照済み扱い
   const others = [];
-  for (const dir of KNOWN_DIRS) {
+  const collectRefs = (dir) => {
     for (const idx of ['index.md', 'README.md']) {
-      const text = readText(D(dir, idx));
+      const text = readText(path.join(dir, idx));
       if (!text) continue;
-      // リンク [..](x.md) と、表で `x.md` と書いた言及の両方を参照とみなす (rules/index.md は後者)
       for (const m of text.matchAll(/\]\(([^)#]+)\)|`([^`\s]+\.md)`/g)) {
         const target = m[1] || m[2];
+        if (/^[a-z]+:/.test(target)) continue; // URL
         if (/<[^>]+>/.test(target)) {
-          // `tier-<kind>.md` のような雛形の言及は、当てはまるファイル全部を参照済みにする
           const re = new RegExp('^' + target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/<[^>]+>/g, '[^/]+') + '$');
-          for (const e of listDir(D(dir))) if (e.isFile() && re.test(e.name)) referenced.add(D(dir, e.name));
+          for (const e of listDir(dir)) if (e.isFile() && re.test(e.name)) referenced.add(path.join(dir, e.name));
           continue;
         }
-        try { referenced.add(path.resolve(D(dir), decodeURI(target))); } catch { /* 壊れたリンクは無視 */ }
+        try { referenced.add(path.resolve(dir, decodeURI(target))); } catch { /* 壊れたリンクは無視 */ }
       }
     }
-    for (const e of listDir(D(dir))) {
-      const abs = D(dir, e.name);
-      if (!e.isFile() || !e.name.endsWith('.md') || referenced.has(abs)) continue;
-      others.push(L.to(abs, `${dir}/${e.name}`));
+    for (const e of listDir(dir)) if (e.isDirectory()) collectRefs(path.join(dir, e.name));
+  };
+  const listUnreferenced = (dir, base) => {
+    for (const e of listDir(dir)) {
+      const abs = path.join(dir, e.name);
+      if (e.isDirectory()) { listUnreferenced(abs, base); continue; }
+      if (!e.name.endsWith('.md') || referenced.has(abs)) continue;
+      if (['index.md', 'README.md'].includes(e.name) && referenced.has(abs)) continue;
+      others.push(L.to(abs, path.relative(base, abs).split(path.sep).join('/')));
     }
-  }
+  };
+  for (const dir of KNOWN_DIRS) { if (fs.existsSync(D(dir))) { collectRefs(D(dir)); listUnreferenced(D(dir), ctx.docsDir); } }
   // 7. docs 直下の知らないもの
   const unknown = [];
   for (const e of listDir(ctx.docsDir)) {
@@ -328,7 +338,7 @@ function build(ctx) {
  * 印が片方だけ / 逆順 / 複数のときは、外側の手書きを消す恐れがあるので書き換えずに throw する。
  */
 function merge(existing, block) {
-  if (existing == null) return block + '\n';
+  if (existing == null || existing.trim() === '') return block + '\n';
   const begins = [...existing.matchAll(new RegExp(BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'))].map((m) => m.index);
   const ends = [...existing.matchAll(new RegExp(END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'))].map((m) => m.index);
   if (!begins.length && !ends.length) {

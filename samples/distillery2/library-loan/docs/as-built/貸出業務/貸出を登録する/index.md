@@ -1,7 +1,7 @@
 ---
 basis: requirements@10d88a0262c31662f8fc16dcbe00973c396363cd adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659 contracts@10d88a0262c31662f8fc16dcbe00973c396363cd
 generated_at: 2026-09-24T00:12:39.628Z
-code: a3bfbdde50caf0d2fcbf0935bf6db10c85239f20
+code: 4c751e84a3af4e6cf526fde75cf2d8dbc8d63660
 uc: 貸出を登録する
 slug: register-loan
 attempt: 1
@@ -278,7 +278,7 @@ flowchart LR
 ## 付録 (抽出)
 
 <details>
-<summary>変更ファイル (93)</summary>
+<summary>変更ファイル (94)</summary>
 
 - backend-api (35)
   - apps/backend-api/migrations/0001_schema.sql
@@ -326,7 +326,7 @@ flowchart LR
   - apps/frontend-staff/src/screens/loan-checkout/submit-loan-checkout.test.ts
   - apps/frontend-staff/src/screens/loan-checkout/submit-loan-checkout.ts
   - apps/frontend-staff/tsconfig.json
-- その他 (49)
+- その他 (50)
   - "docs/as-built/\350\262\270\345\207\272\346\245\255\345\213\231/\350\262\270\345\207\272\343\202\222\347\231\273\351\214\262\343\201\231\343\202\213/index.md"
   - "docs/as-built/\350\262\270\345\207\272\346\245\255\345\213\231/\350\262\270\345\207\272\343\202\222\347\231\273\351\214\262\343\201\231\343\202\213/sequence.md"
   - "features/\350\262\270\345\207\272\346\245\255\345\213\231/register-loan.feature"
@@ -355,6 +355,7 @@ flowchart LR
   - contracts/openapi/paths/loans.yaml
   - contracts/uc-index.yaml
   - cucumber.js
+  - docs/README.md
   - docs/as-built/_system/api-inventory.md
   - docs/as-built/_system/data-flow.md
   - docs/as-built/_system/dependency-graph.md
@@ -401,7 +402,7 @@ flowchart LR
 <summary>生成情報</summary>
 
 - 上流: requirements@10d88a0 adr@2f9d373 contracts@10d88a0
-- コード: a3bfbdd
+- コード: 4c751e8
 - 生成日時: 2026-09-24T00:12:39.628Z / 実行試行: 1
 - 凡例: (抽出) はスクリプトが生成、(要約) は LLM がコード位置を根拠に書く、(転記) は実行記録からの写し
 

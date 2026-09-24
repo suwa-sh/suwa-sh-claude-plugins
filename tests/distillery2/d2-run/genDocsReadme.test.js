@@ -132,6 +132,9 @@ test('distillery2 以外の文書は名前と入口だけ列挙し、知って�
   W(dir, 'docs/deep/guide/runbook.md', '# 下位だけ\n');
   W(dir, 'docs/glossary.md', '# 用語\n');
   W(dir, 'docs/requirements/memo.md', 'メモ\n');
+  W(dir, 'docs/requirements/rdra/private/memo2.md', '下位のメモ\n');
+  W(dir, 'docs/rules/sub/README.md', '# sub\n\n[detail.md](detail.md)\n');
+  W(dir, 'docs/rules/sub/detail.md', '# detail\n');
   run(opts(dir));
   const md = fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8');
   assert.match(md, /## distillery2 以外の文書/);
@@ -139,6 +142,9 @@ test('distillery2 以外の文書は名前と入口だけ列挙し、知って�
   assert.match(md, /\| deep\/ \| \[guide\/runbook\.md\]\(deep\/guide\/runbook\.md\) \| 1 \|/);
   assert.match(md, /\| \[glossary\.md\]\(glossary\.md\) \| - \| 1 \|/);
   assert.match(md, /- \[requirements\/memo\.md\]\(requirements\/memo\.md\)/);
+  assert.match(md, /- \[requirements\/rdra\/private\/memo2\.md\]\(requirements\/rdra\/private\/memo2\.md\)/, '下位の未参照 md');
+  assert.match(md, /- \[rules\/sub\/README\.md\]/, '下位の README 自身は未参照');
+  assert.doesNotMatch(md, /rules\/sub\/detail\.md/, '下位の README が参照する md は載せない');
   assert.doesNotMatch(md, /ops\/runbook/); // 中身は要約しない (入口だけ)
 });
 
@@ -162,6 +168,23 @@ test('段階が未着手なら「未着手」と書き、空の節を出さな�
   const dir3 = repo();
   fs.rmSync(path.join(dir3, 'contracts/generated'), { recursive: true });
   assert.ok(run(opts(dir3)).broken.some((b) => /contract-slice\.json$/.test(b)));
+});
+
+test('空の README と末尾改行の無い README にも壊さず足す。追跡表の無い done は状態と件数が一致する', () => {
+  const dir = repo();
+  const p = path.join(dir, 'docs/README.md');
+  fs.writeFileSync(p, '');
+  assert.equal(run(opts(dir)).code, 0);
+  assert.ok(fs.readFileSync(p, 'utf8').startsWith(BEGIN));
+  fs.writeFileSync(p, '# 手書き');
+  assert.equal(run(opts(dir)).code, 0);
+  assert.ok(fs.readFileSync(p, 'utf8').startsWith('# 手書き\n\n' + BEGIN));
+  fs.rmSync(path.join(dir, 'docs/as-built/_system/traceability-index.json'));
+  fs.writeFileSync(path.join(dir, 'docs/requirements/use-cases.yaml'), fs.readFileSync(path.join(dir, 'docs/requirements/use-cases.yaml'), 'utf8').replace('status: planned', 'status: done'));
+  assert.equal(run(opts(dir)).code, 0);
+  const md = fs.readFileSync(p, 'utf8');
+  assert.match(md, /UC 2 件 \(実装済み 1、要求待ち 1\)/);
+  assert.match(md, /貸出を登録する \| 実装済み \|/);
 });
 
 test('共有 feature はシナリオごとの @uc タグで数え、# を含むファイル名もリンクできる、実装済みの件数は状態と同じ条件', () => {
