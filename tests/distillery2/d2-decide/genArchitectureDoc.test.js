@@ -180,6 +180,14 @@ test('Mermaid の予約語 (end 等) や数字始まりのティア ID はノー
   assert.match(md2, /n_end_2 -->\|"api \(openapi\)"\| n_end/);
   assert.match(md2, /a_b\["a-b</);
   assert.match(md2, /a_b_2\["a_b</);
+  // 固定要素 (sys / datastore / ext_N) と同名のティアも別ノードになる
+  const md3 = renderContainerDiagram('S', [{ id: 'datastore' }, { id: 'ext_1' }, { id: 'sys' }], 'datastore', [], ['メール']);
+  assert.match(md3, /datastore_2\["datastore</);
+  assert.match(md3, /datastore\[\("データストア/);
+  assert.match(md3, /datastore_2 -->\|所有・migration\| datastore/);
+  assert.match(md3, /ext_1_2\["ext_1</);
+  assert.match(md3, /ext_1\["メール"\]:::external/);
+  assert.match(md3, /sys_2\["sys</);
 });
 
 test('決定論: 同じ入力なら 2 回の生成がバイト一致する', () => {

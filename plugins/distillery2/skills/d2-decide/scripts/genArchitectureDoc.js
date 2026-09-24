@@ -50,11 +50,11 @@ function c4Id(s) {
 
 /**
  * 1 つの図の中で衝突しない ID 表。同じ元名には同じ ID、違う元名が同じ ID に潰れたら `_2`, `_3` … を付ける
- * (例: `end` と `n_end`、`a-b` と `a_b`)。図ごとに作り、ノードと辺で同じ表を使う。
+ * (例: `end` と `n_end`、`a-b` と `a_b`、固定要素の `datastore` と同名のティア)。図ごとに作り、ノードと辺で同じ表を使う。
  */
-function idMapper() {
+function idMapper(reserved = []) {
   const byRaw = new Map();
-  const taken = new Set();
+  const taken = new Set(reserved); // 図の固定要素 (sys / datastore / ext_N) の ID を先に押さえる
   return (raw) => {
     const key = String(raw == null ? '' : raw);
     if (byRaw.has(key)) return byRaw.get(key);
@@ -180,7 +180,7 @@ const TIER_KIND_JA = {
 function renderContainerDiagram(sysName, tiers, datastoreOwner, contracts, externals) {
   const L = [];
   const sorted = [...tiers].sort((a, b) => cmpStr(a.id, b.id));
-  const nid = idMapper();
+  const nid = idMapper(['sys', 'datastore', ...externals.map((_, i) => `ext_${i + 1}`)]);
   for (const t of sorted) nid(t.id); // ティアの順で ID を確定する (辺で同じ表を引く)
   L.push('```mermaid');
   L.push('graph LR');
