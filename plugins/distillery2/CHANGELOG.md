@@ -2,6 +2,23 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.1] - 2026-09-24
+
+初回サンプル実走 (register-loan) で見つかった不具合の修正。
+
+### Fixed
+
+- **genSkeleton / importUi**: apps/*/package.json の scripts を実コマンド化 (`vitest run` / `tsc --noEmit -p .` / `biome lint .` / `biome format .`)。echo プレースホルダで静的ゲートが偽の pass になる問題を解消。root devDependencies に biome / @redocly/cli / json-schema-ref-parser を追加、frontend ティア時は react 系も追加。各 app に tsconfig.json / vitest.config.ts、root に biome.json を生成。importUi が packages/ui/package.json (@repo/ui) を書き npm workspace で解決可能に。
+- **.gitignore**: `reports/` と `traces/` のみ除外し `attempt-*/` は追跡する (run-state.md と整合)。
+- **cucumber 設定**: ESM の default export を既定プロファイルそのものにする (`{ default: {...} }` の二重包みを解消)。実装アプリ未生成でも `--dry-run` できる `dryrun` プロファイルを追加。
+- **tracer**: sanitizeScenarioId に sha256 8 桁を接尾し、日本語シナリオ名が同一ファイルへ衝突する問題を解消。
+- **消費側 API クライアント生成**: genApiClient.js を追加し、OpenAPI から types.ts / client.ts / server.ts を生成する (v1 の openapi-generator codegen の置き換え)。
+- **as-built**: 前提の処遇を tier + id で引き、別ティアの同 id が上書きする問題を解消。
+- **prTrailers**: url が無い還流を `Feedback: rule:null` として出さない。
+- **config**: verifier 既定を有効な model 別名 `opus` にする (`claude-opus-5` は model パラメータとして無効)。
+- **d2-run ドキュメント**: サブエージェント報告の捏造禁止、clean-tree 判定の範囲、implementer/verifier のモデル解決を明記。
+- **決定候補 / d2-design**: 単一 frontend を既定にし、d2-design が ADR の `ui:` ヒント (framework / SPA vs SSR) に従うようにする。
+
 ## [0.1.0] - 2026-09-23
 
 初版。distillery + distillery-impl の再設計。UC 1 つの縦切りが通る範囲を対象にする。
