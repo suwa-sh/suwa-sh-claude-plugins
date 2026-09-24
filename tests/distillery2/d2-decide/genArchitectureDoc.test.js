@@ -102,32 +102,35 @@ function opts(dir, over = {}) {
   return { cwd: dir, adrDir: 'docs/adr', contracts: 'contracts/contracts.json', rdra: 'docs/requirements/rdra', docsRoot: 'docs', dirs: {}, ...over };
 }
 
-test('システムコンテキスト図に C4Context・アクター (社内/社外)・外部システムが出る', () => {
+test('システムコンテキスト図は graph で、アクター (社内/社外)・システム・外部システムが出る (C4 記法は使わない)', () => {
   const dir = buildRepo();
   const md = build(opts(dir));
   assert.match(md, /## システムコンテキスト図/);
-  assert.match(md, /```mermaid\nC4Context/);
+  assert.match(md, /```mermaid\ngraph LR/);
+  assert.doesNotMatch(md, /C4Context|C4Container|Person\(|System_Ext\(|Rel\(/);
   // コードポイント順 (利 U+5229 < 司 U+53F8): 利用者 が先、司書 が後
-  assert.match(md, /Person_Ext\(actor_1, "利用者"\)/); // 社外 → Person_Ext
-  assert.match(md, /Person\(actor_2, "司書"\)/);
-  assert.match(md, /System\(sys, "図書館システム", ""\)/);
-  assert.match(md, /System_Ext\(ext_1, "メール配信サービス", ""\)/);
-  assert.match(md, /Rel\(sys, ext_1, "連携する"\)/);
+  assert.match(md, /actor_1\(\["利用者<br\/>\(社外\)"\]\):::actor/);
+  assert.match(md, /actor_2\(\["司書"\]\):::actor/);
+  assert.match(md, /sys\["図書館システム"\]:::system/);
+  assert.match(md, /ext_1\["メール配信サービス"\]:::external/);
+  assert.match(md, /actor_1 -->\|利用する\| sys/);
+  assert.match(md, /sys -->\|連携する\| ext_1/);
+  assert.match(md, /classDef actor /);
 });
 
-test('コンテナ図に C4Container・ティア・契約辺 (provider→consumer)・datastore_owner が出る', () => {
+test('コンテナ図は graph + subgraph で、ティア・契約辺 (consumer→provider)・datastore_owner が出る', () => {
   const dir = buildRepo();
   const md = build(opts(dir));
   assert.match(md, /## コンテナ図/);
-  assert.match(md, /```mermaid\nC4Container/);
-  assert.match(md, /Container\(backend_api, "backend-api", "backend\/typescript", "データストア所有 \(migration\)"\)/);
-  assert.match(md, /Container\(worker, "worker", "worker\/typescript", ""\)/);
-  assert.match(md, /ContainerDb\(datastore, "データストア"/);
-  // 契約は consumer → provider のラベル付き辺 (C4 の uses は利用側→提供側)
-  assert.match(md, /Rel\(frontend_patron, backend_api, "api \(openapi\)"\)/);
-  assert.match(md, /Rel\(worker, backend_api, "db \(rdb-schema\)"\)/);
-  // datastore は所有者 → データストアの向きのまま
-  assert.match(md, /Rel\(backend_api, datastore, "所有・migration"\)/);
+  assert.match(md, /```mermaid\ngraph LR\n  subgraph sys\["図書館システム"\]/);
+  assert.match(md, /backend_api\["backend-api<br\/>backend \/ typescript<br\/>データストア所有 \(migration\)"\]:::tier/);
+  assert.match(md, /worker\["worker<br\/>worker \/ typescript"\]:::tier/);
+  assert.match(md, /datastore\[\("データストア<br\/>RDB 等"\)\]:::store/);
+  // 契約は consumer → provider のラベル付き辺
+  assert.match(md, /frontend_patron -->\|"api \(openapi\)"\| backend_api/);
+  assert.match(md, /worker -->\|"db \(rdb-schema\)"\| backend_api/);
+  // datastore は所有者 → データストアの向き
+  assert.match(md, /backend_api -->\|所有・migration\| datastore/);
 });
 
 test('contexts があるとコンテキストマップ (flowchart) を kind ラベル付きで描く', () => {
@@ -149,9 +152,9 @@ test('contexts が無ければコンテキストマップ節を出さない', ()
 test('contracts.json が無ければティアのみ描き、契約の辺が無い旨を記す', () => {
   const dir = buildRepo({ withContracts: false });
   const md = build(opts(dir));
-  assert.match(md, /```mermaid\nC4Container/);
-  assert.match(md, /Container\(backend_api,/);
-  assert.doesNotMatch(md, /Rel\(backend_api, frontend_patron/);
+  assert.match(md, /```mermaid\ngraph LR/);
+  assert.match(md, /backend_api\["backend-api/);
+  assert.doesNotMatch(md, /-->\|api/);
   assert.match(md, /契約 \(contracts\.json\) が無いため/);
 });
 
@@ -159,7 +162,7 @@ test('RDRA が無ければコンテキスト図を省略し、コンテナ図は
   const dir = buildRepo({ withRdra: false });
   const md = build(opts(dir));
   assert.match(md, /アクター \/ 外部システムの情報 \(RDRA\) が無いため省略/);
-  assert.match(md, /```mermaid\nC4Container/);
+  assert.match(md, /```mermaid\ngraph LR\n  subgraph sys/);
 });
 
 test('決定論: 同じ入力なら 2 回の生成がバイト一致する', () => {
@@ -178,10 +181,11 @@ test('実サンプル (library-loan) の ADR・RDRA・contracts から C4 図を
     rdra: 'docs/requirements/rdra', docsRoot: 'docs', dirs: {},
   };
   const a = build(o);
-  assert.match(a, /```mermaid\nC4Context/);
-  assert.match(a, /```mermaid\nC4Container/);
+  assert.match(a, /## システムコンテキスト図\n\n```mermaid\ngraph LR/);
+  assert.match(a, /## コンテナ図\n\n```mermaid\ngraph LR\n  subgraph sys/);
+  assert.doesNotMatch(a, /C4Context|C4Container/);
   // 契約辺は consumer → provider
-  assert.match(a, /Rel\(frontend_patron, backend_api, "api \(openapi\)"\)/);
+  assert.match(a, /frontend_patron -->\|"api \(openapi\)"\| backend_api/);
   // 2 回の生成がバイト一致 (環境非依存の決定論)
   const b = build(o);
   assert.equal(a, b);
