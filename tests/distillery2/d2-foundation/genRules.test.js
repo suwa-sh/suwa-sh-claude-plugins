@@ -39,7 +39,11 @@ test('genRules: rules land under correct scope file', () => {
   const common = fs.readFileSync(path.join(c, 'docs/rules/common.md'), 'utf8');
   const testing = fs.readFileSync(path.join(c, 'docs/rules/testing.md'), 'utf8');
   assert.ok(backend.includes('domain は infrastructure に依存しない'), 'backend rule missing');
-  assert.ok(backend.includes('(ADR 0002)'), 'backend rule not attributed');
+  // 依存の向き (arch_test 付き) は表、それ以外は ADR ごとの見出し。平坦な "(ADR nnnn) ..." 箇条書きにしない
+  assert.ok(backend.includes('## 依存の向き (アーキテストが強制する)'), 'arch table heading missing');
+  assert.match(backend, /\| `apps\/backend-api\/src\/domain\/\*\*` \| 禁止 \| `apps\/backend-api\/src\/infrastructure\/\*\*` \|[^|]*\| domain は infrastructure に依存しない。? \| ADR 0002 \|/);
+  assert.ok(!/^- \(ADR \d+\)/m.test(backend), 'flat attributed bullets must not remain');
+  assert.ok(common.includes('## 決定ごとのルール') && /^### ADR \d{4} /m.test(common), 'per-ADR headings missing in common');
   assert.ok(common.includes('契約型 (packages/contracts) を直接編集しない'), 'common rule missing');
   assert.ok(testing.includes('pglite の実体で検証する'), 'testing rule missing');
   // scope 分離: common の決定にレイヤ規則が混ざらない
