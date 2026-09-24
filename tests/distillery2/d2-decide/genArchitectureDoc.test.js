@@ -173,6 +173,13 @@ test('Mermaid の予約語 (end 等) や数字始まりのティア ID はノー
   assert.match(md, /a_3d -->\|"api \(openapi\)"\| n_end/);
   assert.match(md, /n_end -->\|所有・migration\| datastore/);
   assert.doesNotMatch(md, /^\s+end\[/m);
+  // 別のティア名が同じ ID に潰れない (end と n_end、a-b と a_b)
+  const md2 = renderContainerDiagram('S', [{ id: 'end' }, { id: 'n_end' }, { id: 'a-b' }, { id: 'a_b' }], null, [{ id: 'api', type: 'openapi', provider: 'end', consumers: ['n_end'] }], []);
+  assert.match(md2, /n_end\["end</);
+  assert.match(md2, /n_end_2\["n_end</);
+  assert.match(md2, /n_end_2 -->\|"api \(openapi\)"\| n_end/);
+  assert.match(md2, /a_b\["a-b</);
+  assert.match(md2, /a_b_2\["a_b</);
 });
 
 test('決定論: 同じ入力なら 2 回の生成がバイト一致する', () => {

@@ -47,6 +47,25 @@ function c4Id(s) {
   if (!/^[A-Za-z_]/.test(id)) return `a_${id}`;
   return MERMAID_RESERVED.has(id.toLowerCase()) ? `n_${id}` : id;
 }
+
+/**
+ * 1 つの図の中で衝突しない ID 表。同じ元名には同じ ID、違う元名が同じ ID に潰れたら `_2`, `_3` … を付ける
+ * (例: `end` と `n_end`、`a-b` と `a_b`)。図ごとに作り、ノードと辺で同じ表を使う。
+ */
+function idMapper() {
+  const byRaw = new Map();
+  const taken = new Set();
+  return (raw) => {
+    const key = String(raw == null ? '' : raw);
+    if (byRaw.has(key)) return byRaw.get(key);
+    const base = c4Id(key);
+    let id = base;
+    for (let n = 2; taken.has(id); n += 1) id = `${base}_${n}`;
+    byRaw.set(key, id);
+    taken.add(id);
+    return id;
+  };
+}
 /** C4 のラベル (二重引用符で囲む) 用に無害化する。 */
 function c4Label(s) { return String(s == null ? '' : s).replace(/"/g, "'").replace(/[\r\n]+/g, ' ').trim(); }
 
@@ -161,13 +180,15 @@ const TIER_KIND_JA = {
 function renderContainerDiagram(sysName, tiers, datastoreOwner, contracts, externals) {
   const L = [];
   const sorted = [...tiers].sort((a, b) => cmpStr(a.id, b.id));
+  const nid = idMapper();
+  for (const t of sorted) nid(t.id); // ティアの順で ID を確定する (辺で同じ表を引く)
   L.push('```mermaid');
   L.push('graph LR');
   L.push(`  subgraph sys["${c4Label(sysName)}"]`);
   for (const t of sorted) {
     const tech = `${t.kind || '-'} / ${t.lang || '-'}`;
     const note = t.id === datastoreOwner ? '<br/>データストア所有 (migration)' : '';
-    L.push(`    ${c4Id(t.id)}["${c4Label(t.id)}<br/>${c4Label(tech)}${note}"]:::tier`);
+    L.push(`    ${nid(t.id)}["${c4Label(t.id)}<br/>${c4Label(tech)}${note}"]:::tier`);
   }
   if (datastoreOwner) L.push('    datastore[("データストア<br/>RDB 等")]:::store');
   L.push('  end');
@@ -176,10 +197,10 @@ function renderContainerDiagram(sysName, tiers, datastoreOwner, contracts, exter
   for (const c of contracts) {
     if (!c.provider) continue;
     for (const consumer of [...(c.consumers || [])].sort(cmpStr)) {
-      L.push(`  ${c4Id(consumer)} -->|"${c4Label(c.id)} (${c4Label(c.type)})"| ${c4Id(c.provider)}`); // 括弧を含むので引用する
+      L.push(`  ${nid(consumer)} -->|"${c4Label(c.id)} (${c4Label(c.type)})"| ${nid(c.provider)}`); // 括弧を含むので引用する
     }
   }
-  if (datastoreOwner) L.push(`  ${c4Id(datastoreOwner)} -->|所有・migration| datastore`);
+  if (datastoreOwner) L.push(`  ${nid(datastoreOwner)} -->|所有・migration| datastore`);
   for (const d of CLASS_DEFS) L.push(`  ${d}`);
   L.push('```');
   return L.join('\n');
@@ -191,9 +212,10 @@ function renderContextMap(contexts) {
   const L = [];
   L.push('```mermaid');
   L.push('flowchart LR');
+  const nid = idMapper();
   for (const c of [...contexts].sort((a, b) => cmpStr(a.id, b.id))) {
     const owner = c.owner_tier ? `<br/>(${c4Label(c.owner_tier)})` : '';
-    L.push(`  ${c4Id(c.id)}["${c4Label(c.name || c.id)}${owner}"]`);
+    L.push(`  ${nid(c.id)}["${c4Label(c.name || c.id)}${owner}"]`);
   }
   const edges = [];
   for (const c of contexts) {
@@ -205,7 +227,7 @@ function renderContextMap(contexts) {
   edges.sort((a, b) => cmpStr(`${a.from}\u0000${a.to}\u0000${a.kind}`, `${b.from}\u0000${b.to}\u0000${b.kind}`));
   for (const e of edges) {
     const label = e.kind ? ` |${c4Label(e.kind)}|` : '';
-    L.push(`  ${c4Id(e.from)} -->${label} ${c4Id(e.to)}`);
+    L.push(`  ${nid(e.from)} -->${label} ${nid(e.to)}`);
   }
   L.push('```');
   return L.join('\n');
