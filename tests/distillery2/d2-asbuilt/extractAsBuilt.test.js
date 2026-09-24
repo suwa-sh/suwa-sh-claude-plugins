@@ -393,6 +393,24 @@ test('acceptance-browser.json のシナリオを証跡・追跡表に取り込�
   assert.ok(names.includes('ブラウザで貸出する'), 'browser scenario merged into traceability');
 });
 
+test('計装の範囲: 全トレースに無いティアは「計装なし」、正常系に call が無いティアは「正常系に部品なし」', () => {
+  const { instrumentationCoverage } = require(path.join(SCRIPTS, 'extractAsBuilt'));
+  const ev = (kind, meta, status) => ({ ts: 't', seq: 1, scenario: 's', kind, name: 'n', meta: { status, ...meta } });
+  const uc = { tiers: ['backend-api', 'frontend-staff', 'worker'] };
+  const traces = [
+    { scenario: 'ok', lines: [ev('http.in', { tier: 'backend-api', path: '/x', method: 'POST' }, 201)] },
+    { scenario: 'ng', lines: [ev('http.out', { tier: 'frontend-staff', url: '/x', method: 'POST' }, 409), ev('call', { tier: 'frontend-staff', component: 'S', fn: 'f' })] },
+  ];
+  const r = instrumentationCoverage(uc, { byTier: {} }, traces, {});
+  assert.deepEqual(r.gaps, ['worker']);
+  // 正常系 (201 の ok) に call が無い backend-api / frontend-staff は正常系の不備
+  assert.deepEqual(r.happy_gaps, ['backend-api', 'frontend-staff']);
+  const repo = buildRepo();
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| 計装の範囲 \| backend-api \|/);
+});
+
 test('前提の処遇は tier + id で引く (別ティアの同 id が上書きしない)', () => {
   const events = [{
     type: 'review_approved',

@@ -405,7 +405,13 @@ function instrumentationCoverage(uc, files, traces, adrLayers) {
     const known = adrLayers[t] || [];
     rows.push({ tier: t, expected: expected.includes(t), observed: observed.has(t), layers: layers || [], adr_layers: known, missing_layers: layers ? known.filter((l) => !layers.includes(l)) : known });
   }
-  return { expected, rows, gaps: rows.filter((r) => r.expected && !r.observed).map((r) => r.tier) };
+  // 正常系 1 本に、期待する全ティアの部品 (call) が現れるか (integrate.md の完了条件と同じ判定)
+  const happy = pickHappyPath(traces);
+  const happyTiers = new Set();
+  if (happy) for (const l of happy.lines) if (l.kind === 'call' && l.meta && l.meta.tier) happyTiers.add(l.meta.tier);
+  const gaps = rows.filter((r) => r.expected && !r.observed).map((r) => r.tier);
+  const happyGaps = happy ? expected.filter((t) => !happyTiers.has(t) && !gaps.includes(t)) : [];
+  return { expected, rows, gaps, happy_gaps: happyGaps };
 }
 
 // ---------------------------------------------------------------------------
@@ -514,7 +520,7 @@ function buildIndexMd(ctx, preserved) {
   L.push(`| 未決の課題 | ${ctx.issues.length ? `${ctx.issues.length} 件 (${issueParts.join('、')})` : 'なし'} |`);
   const ins = ctx.instrumentation;
   const insParts = ins.rows.filter((r) => r.observed).map((r) => `${r.tier}${r.layers.length ? ` (${r.layers.join(', ')})` : ''}`);
-  const gapParts = ins.gaps.map((t) => `${t}: 計装なし`);
+  const gapParts = [...ins.gaps.map((t) => `${t}: 計装なし`), ...ins.happy_gaps.map((t) => `${t}: 正常系に部品なし`)];
   L.push(`| 計装の範囲 | ${[...insParts, ...gapParts].join('、') || 'トレースなし'} |`);
   L.push('');
 
@@ -850,6 +856,7 @@ function ucEntry(ctx) {
     gates: (ctx.gates && ctx.gates.result) || 'unknown',
     gates_complete: gatesAllRecorded(ctx.gates),
     instrumentation_gaps: ctx.instrumentation.gaps,
+    instrumentation_happy_gaps: ctx.instrumentation.happy_gaps,
     generated_at: ctx.generatedAt,
     as_built: `${ctx.docsRoot}/as-built/${ctx.uc.business}/${ctx.uc.uc}/`,
   };
@@ -1050,7 +1057,7 @@ function run(opts) {
   ensureWrite(path.join(systemDir, 'data-flow.md'), renderSystemDataFlow(ordered));
   ensureWrite(path.join(systemDir, 'index.md'), buildSystemIndex(index));
 
-  return { asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length, instrumentation_gaps: ctx.instrumentation.gaps };
+  return { asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length, instrumentation_gaps: ctx.instrumentation.gaps, instrumentation_happy_gaps: ctx.instrumentation.happy_gaps };
 }
 
 function parseArgs(argv) {
@@ -1074,7 +1081,8 @@ function main(argv) {
   let o;
   try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
-  const gap = r.instrumentation_gaps.length ? ` 計装なしのティア: ${r.instrumentation_gaps.join(', ')}` : '';
+  const gap = (r.instrumentation_gaps.length ? ` 計装なしのティア: ${r.instrumentation_gaps.join(', ')}` : '')
+    + (r.instrumentation_happy_gaps.length ? ` 正常系に部品 (call) が無いティア: ${r.instrumentation_happy_gaps.join(', ')}` : '');
   console.log(`as-built: ${path.relative(o.cwd, r.asBuiltDir)} (scenarios=${r.scenarios}, operations=${r.operations})${gap}`);
   return 0;
 }

@@ -57,8 +57,11 @@ function store(): ScenarioContext | undefined { return storage.getStore() ?? fal
 let currentTier: string | undefined = process.env.D2_TIER;
 export function setTier(tier: string): void { currentTier = tier; }
 
-/** 開始順の通し番号 (プロセス内で単調増加)。 */
-let nextSeq = 1;
+/**
+ * 開始順の通し番号 (プロセス内で単調増加)。プロセスごとに pid 由来の基数を足し、別プロセスの行が
+ * 同じトレースファイルに混ざっても seq が衝突しにくくする (hooks は実行ごとにファイルを作り直すのが前提)。
+ */
+let nextSeq = (process.pid % 100000) * 1_000_000 + 1;
 
 export function currentScenarioId(): string | undefined {
   return store()?.scenarioId;
@@ -213,16 +216,60 @@ export function readScenarioHeaders(headers: Record<string, unknown>): { scenari
  */
 export function tracedFetch(base: typeof fetch, placement?: Placement): typeof fetch {
   return (input, init) => {
-    const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
-    for (const [k, v] of Object.entries(scenarioHeaders())) headers.set(k, v);
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-    const method = init?.method || 'GET';
-    return span('http.out', url, withTier({ method, url }, placement), async (h) => {
-      const res = await base(input as Request, { ...init, headers });
+    const req = normalizeFetchInput(input, init);
+    for (const [k, v] of Object.entries(scenarioHeaders())) req.headers.set(k, v);
+    return span('http.out', req.url, withTier({ method: req.method, url: req.url }, placement), async (h) => {
+      const res = await base(input as Request, { ...init, method: req.method, headers: req.headers });
       h.set({ status: res.status });
       return res;
     });
   };
+}
+
+/** fetch の (input, init) から method / url / headers / body を取り出す。Request が渡されたときはその値を既定にする。 */
+export function normalizeFetchInput(input: RequestInfo | URL, init?: RequestInit): { method: string; url: string; headers: Headers; body: BodyInit | null | undefined } {
+  const isReq = typeof Request !== 'undefined' && input instanceof Request;
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+  const method = (init?.method ?? (isReq ? (input as Request).method : undefined) ?? 'GET').toUpperCase();
+  const headers = new Headers(init?.headers ?? (isReq ? (input as Request).headers : undefined));
+  const body = init?.body !== undefined ? init.body : undefined;
+  return { method, url, headers, body };
+}
+
+/** 本文を持てないステータス (Response のコンストラクタが拒否する)。 */
+const NULL_BODY_STATUS = new Set([101, 204, 205, 304]);
+
+/**
+ * in-process の送信関数 (supertest 等) を fetch の形に包む。生成クライアントの `options.fetch` に渡す。
+ * Request 入力の method / headers / body も読み、本文を持てないステータスは空の Response にする。
+ * api ドライバの `asFetch` はこれで作る。
+ */
+export function inProcessFetch(
+  send: (req: { method: string; path: string; body?: unknown; headers: Record<string, string> }) => Promise<{ status: number; body: unknown; headers?: Record<string, string> }>,
+  placement?: Placement,
+): typeof fetch {
+  const base: typeof fetch = async (input, init) => {
+    const req = normalizeFetchInput(input, init);
+    const u = new URL(req.url, 'http://in-process');
+    const headers: Record<string, string> = {};
+    req.headers.forEach((v, k) => { headers[k] = v; });
+    let body: unknown;
+    if (req.body != null) body = parseJsonIfPossible(String(req.body));
+    else if (typeof Request !== 'undefined' && input instanceof Request && input.method !== 'GET' && input.method !== 'HEAD') {
+      const text = await input.clone().text();
+      if (text) body = parseJsonIfPossible(text);
+    }
+    const res = await send({ method: req.method, path: u.pathname + u.search, body, headers });
+    const resHeaders: Record<string, string> = { ...(res.headers || {}) };
+    if (NULL_BODY_STATUS.has(res.status)) return new Response(null, { status: res.status, headers: resHeaders });
+    if (!Object.keys(resHeaders).some((k) => k.toLowerCase() === 'content-type')) resHeaders['content-type'] = 'application/json';
+    return new Response(res.body === undefined ? null : JSON.stringify(res.body), { status: res.status, headers: resHeaders });
+  };
+  return tracedFetch(base, placement);
+}
+
+function parseJsonIfPossible(text: string): unknown {
+  try { return JSON.parse(text); } catch { return text; }
 }
 
 /** グローバル fetch を包む (tracedFetch のグローバル版)。返り値は元の fetch を復元する関数。 */

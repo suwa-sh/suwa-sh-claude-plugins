@@ -14,7 +14,7 @@
  */
 import request from 'supertest';
 import type { Driver } from './types';
-import { scenarioHeaders, tracedFetch, type Placement } from '@repo/test-support/tracer';
+import { inProcessFetch, scenarioHeaders, type Placement } from '@repo/test-support/tracer';
 // createTestApp は実装リポの backend ティアが提供する。パスはプロジェクトで調整する。
 import { createTestApp } from '../../../apps/backend-api/src/test-app';
 
@@ -34,16 +34,7 @@ export class ApiDriver implements Driver {
    * URL のパス部分を supertest に流し、http.out (placement のティア) → http.in (backend) の入れ子を作る。
    */
   asFetch(placement: Placement): typeof fetch {
-    const send: typeof fetch = async (input, init) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-      const u = new URL(url, 'http://in-process');
-      const headers: Record<string, string> = {};
-      new Headers(init?.headers).forEach((v, k) => { headers[k] = v; });
-      const body = init?.body == null ? undefined : JSON.parse(String(init.body));
-      const res = await this.request(init?.method || 'GET', u.pathname + u.search, body, headers);
-      return new Response(JSON.stringify(res.body), { status: res.status, headers: { 'content-type': 'application/json' } });
-    };
-    return tracedFetch(send, placement);
+    return inProcessFetch((req) => this.request(req.method, req.path, req.body, req.headers), placement);
   }
 
   async teardown() {

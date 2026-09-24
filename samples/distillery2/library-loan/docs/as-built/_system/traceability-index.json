@@ -76,7 +76,6 @@
       "as_built": "docs/as-built/貸出業務/貸出を登録する/",
       "business": "貸出業務",
       "files": [
-        "\"docs/as-built/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/\\350\\262\\270\\345\\207\\272\\343\\202\\222\\347\\231\\273\\351\\214\\262\\343\\201\\231\\343\\202\\213/coverage.md\"",
         "\"docs/as-built/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/\\350\\262\\270\\345\\207\\272\\343\\202\\222\\347\\231\\273\\351\\214\\262\\343\\201\\231\\343\\202\\213/index.md\"",
         "\"docs/as-built/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/\\350\\262\\270\\345\\207\\272\\343\\202\\222\\347\\231\\273\\351\\214\\262\\343\\201\\231\\343\\202\\213/sequence.md\"",
         "\"features/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/register-loan.feature\"",
@@ -150,12 +149,15 @@
         "contracts/uc-index.yaml",
         "cucumber.js",
         "docs/as-built/_system/api-inventory.md",
+        "docs/as-built/_system/data-flow.md",
         "docs/as-built/_system/dependency-graph.md",
         "docs/as-built/_system/index.md",
         "docs/as-built/_system/traceability-index.json",
         "docs/requirements/use-cases.yaml",
         "features/step_definitions/register-loan.steps.ts",
         "features/support/drivers/api.ts",
+        "features/support/drivers/browser.ts",
+        "features/support/drivers/types.ts",
         "features/support/hooks.ts",
         "features/support/scenario-db.ts",
         "features/support/world.ts",
@@ -165,12 +167,14 @@
         "packages/contracts/api/stubs/createLoan.404.json",
         "packages/contracts/api/stubs/createLoan.409.json",
         "packages/contracts/db/tables.ts",
+        "packages/test-support/README.md",
         "packages/test-support/src/tracer.ts"
       ],
       "gates": "pass",
       "gates_complete": true,
       "generated_at": "2026-09-24T00:12:39.628Z",
       "instrumentation_gaps": [],
+      "instrumentation_happy_gaps": [],
       "messages": [],
       "operations": [
         "createLoan"

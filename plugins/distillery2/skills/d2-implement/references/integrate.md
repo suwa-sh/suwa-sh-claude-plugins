@@ -46,7 +46,7 @@ pending だった step を実装し、テスト用の composition root に計装
 
   ```bash
   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js --run .distillery/runs/<slug>
-  # 標準出力に「計装なしのティア」が出なければよい (出たら結線を足す)
+  # 標準出力に「計装なしのティア」(全トレースに現れない) も「正常系に部品 (call) が無いティア」も出なければよい (出たら結線を足す)
   ```
 
 - 報告に「シナリオ数と結果 / トレース出力の有無と計装の範囲 (ティアとレイヤ) / 失敗時の分析 (ティアと食い違い)」を書く

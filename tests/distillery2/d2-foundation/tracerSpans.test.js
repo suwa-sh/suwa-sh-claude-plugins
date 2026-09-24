@@ -126,6 +126,37 @@ test('enterScenario の文脈は別の async 連鎖 (cucumber の step) から�
   assert.equal(t.currentScenarioId(), undefined);
 });
 
+test('inProcessFetch は Request 入力の method / headers / body を読み、204 は本文なしの Response にする', async () => {
+  const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
+  const t = loadTracer(traceDir);
+  const seen = [];
+  const f = t.inProcessFetch(async (req) => { seen.push(req); return req.method === 'DELETE' ? { status: 204, body: undefined } : { status: 201, body: { ok: 1 }, headers: { 'x-a': 'b' } }; }, { tier: 'frontend-staff', layer: 'api-client' });
+  await t.withScenario('uc#s6', async () => {
+    const res1 = await f(new Request('http://x/api/v1/loans?q=1', { method: 'POST', headers: { 'content-type': 'application/json', 'x-h': 'v' }, body: JSON.stringify({ a: 1 }) }));
+    assert.equal(res1.status, 201);
+    assert.deepEqual(await res1.json(), { ok: 1 });
+    assert.equal(res1.headers.get('x-a'), 'b');
+    const res2 = await f('http://x/api/v1/loans/1', { method: 'DELETE' });
+    assert.equal(res2.status, 204);
+    assert.equal(await res2.text(), '');
+  });
+  assert.equal(seen[0].method, 'POST');
+  assert.equal(seen[0].path, '/api/v1/loans?q=1');
+  assert.deepEqual(seen[0].body, { a: 1 });
+  assert.equal(seen[0].headers['x-h'], 'v');
+  assert.equal(decodeURIComponent(seen[0].headers['x-scenario-id']), 'uc#s6');
+  const lines = readTrace(traceDir);
+  assert.deepEqual(lines.map((l) => [l.kind, l.meta.method, l.meta.status]), [['http.out', 'POST', 201], ['http.out', 'DELETE', 204]]);
+});
+
+test('seq はプロセスごとに基数が違い、別プロセスの行と衝突しにくい', () => {
+  const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
+  const t = loadTracer(traceDir);
+  t.withScenario('uc#s7', () => t.emit('call', 'x'));
+  const [line] = readTrace(traceDir);
+  assert.equal(line.seq, (process.pid % 100000) * 1000000 + 1);
+});
+
 test('文脈が無ければ何も書かず、そのまま実行する', async () => {
   const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
   const t = loadTracer(traceDir);

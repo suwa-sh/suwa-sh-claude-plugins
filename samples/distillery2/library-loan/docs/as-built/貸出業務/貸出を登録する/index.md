@@ -1,7 +1,7 @@
 ---
 basis: requirements@10d88a0262c31662f8fc16dcbe00973c396363cd adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659 contracts@10d88a0262c31662f8fc16dcbe00973c396363cd
 generated_at: 2026-09-24T00:12:39.628Z
-code: 10d88a0262c31662f8fc16dcbe00973c396363cd
+code: 98f5edc533873a1436957b3e4da1c08d489f06fb
 uc: 貸出を登録する
 slug: register-loan
 attempt: 1
@@ -244,7 +244,7 @@ flowchart LR
 ## 付録 (抽出)
 
 <details>
-<summary>変更ファイル (90)</summary>
+<summary>変更ファイル (93)</summary>
 
 - backend-api (35)
   - apps/backend-api/migrations/0001_schema.sql
@@ -292,8 +292,7 @@ flowchart LR
   - apps/frontend-staff/src/screens/loan-checkout/submit-loan-checkout.test.ts
   - apps/frontend-staff/src/screens/loan-checkout/submit-loan-checkout.ts
   - apps/frontend-staff/tsconfig.json
-- その他 (46)
-  - "docs/as-built/\350\262\270\345\207\272\346\245\255\345\213\231/\350\262\270\345\207\272\343\202\222\347\231\273\351\214\262\343\201\231\343\202\213/coverage.md"
+- その他 (49)
   - "docs/as-built/\350\262\270\345\207\272\346\245\255\345\213\231/\350\262\270\345\207\272\343\202\222\347\231\273\351\214\262\343\201\231\343\202\213/index.md"
   - "docs/as-built/\350\262\270\345\207\272\346\245\255\345\213\231/\350\262\270\345\207\272\343\202\222\347\231\273\351\214\262\343\201\231\343\202\213/sequence.md"
   - "features/\350\262\270\345\207\272\346\245\255\345\213\231/register-loan.feature"
@@ -323,12 +322,15 @@ flowchart LR
   - contracts/uc-index.yaml
   - cucumber.js
   - docs/as-built/_system/api-inventory.md
+  - docs/as-built/_system/data-flow.md
   - docs/as-built/_system/dependency-graph.md
   - docs/as-built/_system/index.md
   - docs/as-built/_system/traceability-index.json
   - docs/requirements/use-cases.yaml
   - features/step_definitions/register-loan.steps.ts
   - features/support/drivers/api.ts
+  - features/support/drivers/browser.ts
+  - features/support/drivers/types.ts
   - features/support/hooks.ts
   - features/support/scenario-db.ts
   - features/support/world.ts
@@ -338,6 +340,7 @@ flowchart LR
   - packages/contracts/api/stubs/createLoan.404.json
   - packages/contracts/api/stubs/createLoan.409.json
   - packages/contracts/db/tables.ts
+  - packages/test-support/README.md
   - packages/test-support/src/tracer.ts
 
 </details>
@@ -347,13 +350,13 @@ flowchart LR
 
 | シナリオ | 種別 | 結果 | 時間 (ms) |
 |---|---|---|---|
-| 利用者は貸出を登録できない | UC | passed | 6 |
-| 削除済みの利用者には貸し出せない | UC | passed | 5 |
-| 削除済みの書籍は貸し出せない | UC | passed | 5 |
-| 取置の書籍は取置中の予約を持たない利用者には貸し出せない | UC | passed | 6 |
-| 取置中の予約を持つ予約順 1 位の利用者には取置の書籍を貸し出せる | UC | passed | 10 |
-| 在庫ありの書籍を登録済みの利用者に貸し出す | 受入 | passed | 1031 |
-| 延滞中の貸出を持つ利用者には貸し出せない | UC | passed | 7 |
+| 利用者は貸出を登録できない | UC | passed | 8 |
+| 削除済みの利用者には貸し出せない | UC | passed | 7 |
+| 削除済みの書籍は貸し出せない | UC | passed | 8 |
+| 取置の書籍は取置中の予約を持たない利用者には貸し出せない | UC | passed | 9 |
+| 取置中の予約を持つ予約順 1 位の利用者には取置の書籍を貸し出せる | UC | passed | 17 |
+| 在庫ありの書籍を登録済みの利用者に貸し出す | 受入 | passed | 1088 |
+| 延滞中の貸出を持つ利用者には貸し出せない | UC | passed | 9 |
 | 貸出を登録すると返却期限が自動で設定される | 受入 | passed | 9 |
 | 貸出中の書籍は同じ書籍として貸し出せない | 受入 | passed | 8 |
 | 貸出受付画面で貸出中の書籍を貸し出そうとすると貸出できない旨が表示される | 受入・ブラウザ | passed | 0 |
@@ -364,7 +367,7 @@ flowchart LR
 <summary>生成情報</summary>
 
 - 上流: requirements@10d88a0 adr@2f9d373 contracts@10d88a0
-- コード: 10d88a0
+- コード: 98f5edc
 - 生成日時: 2026-09-24T00:12:39.628Z / 実行試行: 1
 - 凡例: (抽出) はスクリプトが生成、(要約) は LLM がコード位置を根拠に書く、(転記) は実行記録からの写し
 
