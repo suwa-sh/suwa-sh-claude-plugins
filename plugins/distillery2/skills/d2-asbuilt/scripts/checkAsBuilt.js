@@ -1,0 +1,130 @@
+#!/usr/bin/env node
+/**
+ * checkAsBuilt.js — as-built index.md の要約ブロックが「表で短く」書かれているかを機械で検査する
+ *
+ * 人の目視に頼らず、d2-asbuilt (LLM) の書式違反をその場で差し戻すためのゲート。検査するのは要約ブロック
+ * (`<!-- 要約:begin <名前> -->` … `<!-- 要約:end -->`) の中だけ (抽出節は生成側で長さを縛っている)。
+ *
+ * 規則 (references/asbuilt-format.md「要約の書式」が正本):
+ *   R1 各ブロックは空でない
+ *   R2 各ブロックに、見出し行 + 区切り行 + データ行 1 行以上 の表がある
+ *   R3 表のセル 1 行 (`<br>` で分けた単位) は 40 字以内 (見出し行も)。見出しがちょうど「根拠」の列だけ数えない。
+ *      数えないのはコード位置 `path:line` と URL と強調記号だけ。`code` の中身や句読点は表示されるので数える
+ *   R4 表の外に文を書かない (空行とコメント以外の行はすべて表の一部であること。空行で表は終わる)
+ *   R5 見出し (#) を使わない (節の階層を壊す)
+ *
+ * Usage: node checkAsBuilt.js <index.md> [--max-cell 40]
+ * 出力: 違反の一覧。違反があれば exit 1。npm 依存なし。
+ */
+'use strict';
+
+const fs = require('node:fs');
+
+const DEFAULTS = { maxCell: 40 };
+
+/** 表示される字数。コード位置 (path:line)・URL・強調記号は数えない。`code` の中身と句読点は数える。 */
+function visibleLength(text) {
+  const stripped = String(text)
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/(?:^|(?<=[\s(（,、/]))[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+\.[A-Za-z]{1,5}:\d+/g, '') // path/to/file.ext:line (行番号必須。無ければ表示文として数える)
+    .replace(/(?<![A-Za-z0-9])[A-Za-z0-9_-]+\.[A-Za-z]{1,5}:\d+/g, '') // file.ext:line
+    .replace(/(?<=[\s,、/])(?::\d+)(?=[\s,、/)）]|$)/g, '') // 同じファイルの :行 の列挙
+    .replace(/\*\*/g, '')
+    .replace(/(^|[^*\w])\*(?=\S)|(?<=\S)\*(?=[^*\w]|$)/g, '$1') // 単一の * による強調
+    .replace(/`/g, '')
+    .replace(/\\\|/g, '|')
+    .replace(/[(（]\s*[)）]/g, '') // 参照を除いて空になった括弧
+    .replace(/(?:^|\s)[,、/]+(?=\s|$)/g, '') // 参照の列挙に使っていた区切りだけが残ったもの
+    .replace(/\s+/g, '');
+  return Array.from(stripped).length;
+}
+
+function extractBlocks(md) {
+  const out = [];
+  const re = /<!-- 要約:begin(?: ([^\s>]+))? -->\n?([\s\S]*?)<!-- 要約:end -->/g;
+  let m;
+  let i = 0;
+  while ((m = re.exec(md)) !== null) { out.push({ name: m[1] || `#${i}`, body: m[2], offset: m.index }); i += 1; }
+  return out;
+}
+
+function lineNumberAt(md, offset) { return md.slice(0, offset).split('\n').length; }
+
+const isTableRow = (l) => /^\|.*\|$/.test(l);
+const isSeparator = (l) => /^\|(?:\s*:?-+:?\s*\|)+$/.test(l);
+function splitCells(l) { return l.replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map((c) => c.trim()); }
+
+/**
+ * @returns {{violations: Array<{block:string, rule:string, line:number, text:string}>, blocks: number}}
+ */
+function check(md, opts = {}) {
+  const maxCell = opts.maxCell || DEFAULTS.maxCell;
+  const violations = [];
+  const blocks = extractBlocks(md);
+  for (const b of blocks) {
+    const baseLine = lineNumberAt(md, b.offset);
+    const lines = b.body.split('\n');
+    const push = (rule, idx, text) => violations.push({ block: b.name, rule, line: baseLine + idx + 1, text: String(text).slice(0, 80) });
+    if (!lines.some((l) => l.trim())) { push('R1 空のブロック', 0, ''); continue; }
+    let tables = 0;
+    // 表の状態機械: header → separator → data... (空行で表は終わる)
+    let state = 'none';
+    let evidenceCol = -1; // 見出しがちょうど「根拠」の列だけ字数を数えない (行がその列を省いていれば全セルを数える)
+    const checkCells = (cells, idx) => {
+      cells.forEach((cell, ci) => {
+        if (ci === evidenceCol) return;
+        for (const part of cell.split(/<br\s*\/?>/i)) {
+          const n = visibleLength(part);
+          if (n > maxCell) push(`R3 セルが ${maxCell} 字超 (${n} 字、${ci + 1} 列目)`, idx, part);
+        }
+      });
+    };
+    // 区切り行が続かなかった「見出し行」はパイプで囲んだだけの文 → R4
+    let pendingHeader = null;
+    const dropPendingHeader = () => { if (pendingHeader) { push('R4 表の外に文を書かない', pendingHeader.idx, pendingHeader.l); pendingHeader = null; } };
+    lines.forEach((raw, idx) => {
+      const l = raw.trim();
+      if (!l) { dropPendingHeader(); state = 'none'; return; }
+      if (/^<!--.*-->$/.test(l)) return;
+      if (/^#/.test(l)) { dropPendingHeader(); push('R5 見出しを使わない', idx, l); state = 'none'; return; }
+      if (!isTableRow(l)) { dropPendingHeader(); push('R4 表の外に文を書かない', idx, l); state = 'none'; return; }
+      if (isSeparator(l)) { if (state === 'header') { pendingHeader = null; state = 'separator'; } else state = 'none'; return; }
+      if (state === 'none' || state === 'header') {
+        dropPendingHeader();
+        const header = splitCells(l);
+        evidenceCol = header.findIndex((c) => c === '根拠');
+        checkCells(header, idx); // 見出し行も数える (根拠列は除く)
+        state = 'header';
+        pendingHeader = { idx, l };
+        return;
+      }
+      if (state === 'separator' || state === 'data') {
+        if (state === 'separator') tables += 1;
+        state = 'data';
+        checkCells(splitCells(l), idx);
+        return;
+      }
+    });
+    dropPendingHeader();
+    if (!tables) push('R2 表が無い (見出し行 + 区切り行 + データ行)', 0, lines.find((l) => l.trim()) || '');
+  }
+  return { violations, blocks: blocks.length };
+}
+
+function main(argv) {
+  const file = argv[0];
+  if (!file || file.startsWith('--')) { console.error('Usage: checkAsBuilt.js <index.md> [--max-cell N]'); return 2; }
+  const opts = {};
+  for (let i = 1; i < argv.length; i++) if (argv[i] === '--max-cell') opts.maxCell = Number(argv[++i]);
+  const md = fs.readFileSync(file, 'utf8');
+  const r = check(md, opts);
+  if (!r.blocks) { console.error('要約ブロックが見つからない (extractAsBuilt.js を先に実行する)'); return 2; }
+  if (!r.violations.length) { console.log(`ok: 要約ブロック ${r.blocks} 個、違反なし`); return 0; }
+  for (const v of r.violations) console.log(`${file}:${v.line} [${v.block}] ${v.rule}: ${v.text}`);
+  console.log(`違反 ${r.violations.length} 件。表だけで書き、1 セルを短くする (references/asbuilt-format.md)`);
+  return 1;
+}
+
+if (require.main === module) process.exit(main(process.argv.slice(2)));
+
+module.exports = { check, visibleLength, extractBlocks, DEFAULTS };

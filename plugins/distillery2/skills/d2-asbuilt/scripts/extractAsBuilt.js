@@ -42,6 +42,7 @@ const { readEvents } = require('../../../scripts/lib/runState');
 const { renderScenario, pickHappyPath, summarizeScenario } = require('./renderSequence');
 const { buildFlows, renderFlowchart, renderSystemDataFlow } = require('./renderDataFlow');
 const { buildTree, observedPlacements, cmpStr } = require('./traceTree');
+const { check: checkSummaries } = require('./checkAsBuilt');
 const { deriveFromTraces, groupChangedFiles, changedFilesFromGit, loadTraces } = require('./buildTraceIndex');
 
 // ---------------------------------------------------------------------------
@@ -486,7 +487,7 @@ function buildIndexMd(ctx, preserved) {
   L.push('');
   L.push(`# ${ctx.uc.business} / ${ctx.uc.uc}`);
   L.push('');
-  L.push('<!-- 要約: この UC が「誰の・どんな操作を・何をもって完了とするか」を 1〜2 文で。根拠はコード位置 path:line -->');
+  L.push('<!-- 要約: 表 1 つ (| 項目 | 内容 | 根拠 |)。行は 誰が / 何をする / 完了の条件。内容は 40 字以内、根拠はコード位置 path:line -->');
   L.push(summaryBegin('概要'));
   if (preserved['概要']) L.push(preserved['概要']);
   L.push(SUMMARY_END);
@@ -525,9 +526,11 @@ function buildIndexMd(ctx, preserved) {
   const issueParts = Object.keys(issueKinds).sort(cmpStr).map((k) => `${ja(KIND_JA, k, k)} ${issueKinds[k]}`);
   L.push(`| 未決の課題 | ${ctx.issues.length ? `${ctx.issues.length} 件 (${issueParts.join('、')})` : 'なし'} |`);
   const ins = ctx.instrumentation;
-  const insParts = ins.rows.filter((r) => r.observed).map((r) => `${r.tier}${r.layers.length ? ` (${r.layers.join(', ')})` : ''}`);
-  const gapParts = [...ins.gaps.map((t) => `${t}: 計装なし`), ...ins.happy_gaps.map((t) => `${t}: 正常系に部品なし`)];
-  L.push(`| 計装の範囲 | ${[...insParts, ...gapParts].join('、') || 'トレースなし'} |`);
+  const insRows = ins.rows.filter((r) => r.observed);
+  for (const r of insRows) L.push(`| 計装の範囲 (${r.tier}) | ${r.layers.length ? r.layers.join(', ') : '部品名のみ'} |`);
+  for (const t of ins.gaps) L.push(`| 計装の範囲 (${t}) | **計装なし** |`);
+  for (const t of ins.happy_gaps) L.push(`| 計装の範囲 (${t}) | **正常系に部品なし** |`);
+  if (!insRows.length && !ins.gaps.length) L.push('| 計装の範囲 | トレースなし |');
   L.push('');
 
   // 入口
@@ -591,7 +594,7 @@ function buildIndexMd(ctx, preserved) {
   // 何を守るか
   L.push('## 何を守るか (要約)');
   L.push('');
-  L.push('<!-- 要約: 原子性 / 競合 / 冪等 / 障害と副作用 の 4 見出しに 2〜3 文ずつ。根拠のコード位置は各見出しの末尾に 1 行でまとめる -->');
+  L.push('<!-- 要約: 表 1 つ (| 守ること | 手段 | 根拠 |)。守ること = 原子性 / 競合 / 冪等 / 障害と副作用。手段は 1 行 1 つ (<br> 区切り、各 40 字以内)、根拠はコード位置 -->');
   L.push(summaryBegin('整合性'));
   if (preserved['整合性']) L.push(preserved['整合性']);
   L.push(SUMMARY_END);
@@ -618,15 +621,22 @@ function buildIndexMd(ctx, preserved) {
     any = true;
     L.push(`### ${title} (${list.length})`);
     L.push('');
-    L.push('| ティア | 分類 | 前提 | 検証 | 場所 |');
+    L.push('| ティア | 分類 | 何を決めたか | 検証 | 場所 |');
     L.push('|---|---|---|---|---|');
     for (const a of list) {
       const v = verdictById[`${a.tier}\u0000${a.id}`];
       const f = v && v.finding_id ? sevById[`${a.tier}\u0000${v.finding_id}`] : null;
       let verdict = v ? ja(VERDICT_JA, v.verdict, '-') : '-';
       if (f && f.severity && f.severity !== 'info') verdict = ['blocker', 'major'].includes(f.severity) ? `**${verdict} (${f.severity})**` : `${verdict} (${f.severity})`;
-      L.push(`| ${a.tier} | ${ja(CATEGORY_JA, a.category, '-')} | ${mdEscape(a.assumption)} | ${verdict} | ${mdEscape(shortTarget(a.target))} |`);
+      L.push(`| ${a.tier} | ${ja(CATEGORY_JA, a.category, '-')} | ${mdEscape(a.title || a.assumption)} | ${verdict} | ${mdEscape(shortTarget(a.target))} |`);
     }
+    L.push('');
+    L.push('<details>');
+    L.push('<summary>前提の全文</summary>');
+    L.push('');
+    for (const a of list) L.push(`- **${mdEscape(a.title || a.id)}** (${a.tier}): ${mdEscape(a.assumption)}`);
+    L.push('');
+    L.push('</details>');
     L.push('');
   }
   if (!any) { L.push('実装者が決めた前提なし。'); L.push(''); }
@@ -647,16 +657,24 @@ function buildIndexMd(ctx, preserved) {
     const minors = other.filter((f) => f.severity === 'minor');
     L.push(`### Verifier の指摘 (前提以外、${other.length})`);
     L.push('');
-    for (const f of majors) L.push(`- **${f.severity}** ${mdEscape(f.claim || f.kind)} (${f.tier}${f.target ? `, ${shortTarget(f.target)}` : ''})`);
+    const line = (f) => `- ${f.severity !== 'minor' ? `**${f.severity}** ` : ''}${mdEscape(f.title || f.claim || f.kind)} (${f.tier}${f.target ? `, ${shortTarget(f.target)}` : ''})`;
+    for (const f of majors) L.push(line(f));
     if (minors.length) {
       if (majors.length) L.push('');
       L.push('<details>');
       L.push(`<summary>minor ${minors.length} 件</summary>`);
       L.push('');
-      for (const f of minors) L.push(`- ${mdEscape(f.claim || f.kind)} (${f.tier}${f.target ? `, ${shortTarget(f.target)}` : ''})`);
+      for (const f of minors) L.push(line(f));
       L.push('');
       L.push('</details>');
     }
+    L.push('');
+    L.push('<details>');
+    L.push('<summary>指摘の全文</summary>');
+    L.push('');
+    for (const f of other) L.push(`- **${mdEscape(f.title || f.id)}** (${f.tier}, ${f.severity}): ${mdEscape(f.claim || f.kind)}`);
+    L.push('');
+    L.push('</details>');
     L.push('');
   }
 
@@ -669,7 +687,7 @@ function buildIndexMd(ctx, preserved) {
     for (const it of ctx.issues) L.push(`| ${ja(KIND_JA, it.kind, it.kind)} | ${mdEscape(it.title)} |`);
   } else L.push('未決の課題なし。');
   L.push('');
-  L.push('<!-- 要約: 課題の背景と対処方針。課題 1 つにつき 背景 / 現在の実装 / 対処 を 1 文ずつ。根拠はコード位置 path:line -->');
+  L.push('<!-- 要約: 表 1 つ (| 課題 | 背景 | 今の実装 | 対処 | 根拠 |)。課題 1 つ 1 行、セルは 40 字以内、根拠はコード位置 -->');
   L.push(summaryBegin('課題'));
   if (preserved['課題']) L.push(preserved['課題']);
   L.push(SUMMARY_END);
@@ -696,11 +714,11 @@ function buildIndexMd(ctx, preserved) {
   if (cov.length) {
     L.push('受入基準の対応:');
     L.push('');
-    L.push('| 受入基準 | シナリオ (結果) |');
-    L.push('|---|---|');
+    L.push('| 基準 | 内容 | シナリオ (結果) |');
+    L.push('|---|---|---|');
     for (const r of cov) {
       const sc = r.scenarios.map((s) => `${s.name} (${s.status})`);
-      L.push(`| ${r.critId === '-' ? r.specId : r.critId} ${mdEscape(r.criterion)} | ${sc.length ? mdEscape(sc.join('; ')) : '**未カバー**'} |`);
+      L.push(`| ${r.critId === '-' ? r.specId : r.critId} | ${gwtLines(r.criterion)} | ${sc.length ? sc.map(mdEscape).join('<br>') : '**未カバー**'} |`);
     }
     L.push('');
   }
@@ -752,6 +770,13 @@ function buildIndexMd(ctx, preserved) {
   L.push('');
 
   return L.join('\n');
+}
+
+/** 受入基準 "Given … When … Then …" を 3 行 (`<br>`) に分ける。分けられなければそのまま。 */
+function gwtLines(text) {
+  const t = mdEscape(text);
+  const parts = t.split(/\s+(?=(?:When|Then)\s)/);
+  return parts.length > 1 ? parts.join('<br>') : t;
 }
 
 function shortTarget(t) {
@@ -1038,7 +1063,10 @@ function run(opts) {
 
   const indexPath = path.join(asBuiltDir, 'index.md');
   const preserved = extractPreserved(readTextIfExists(indexPath));
-  ensureWrite(indexPath, buildIndexMd(ctx, preserved));
+  const indexMd = buildIndexMd(ctx, preserved);
+  ensureWrite(indexPath, indexMd);
+  // 引き継いだ要約 (旧形式の文章を含む) が書式規則を満たすか。違反は d2-asbuilt が書き直す (checkAsBuilt.js がゲート)
+  const summaryViolations = checkSummaries(indexMd).violations.filter((v) => !/R1/.test(v.rule));
   ensureWrite(path.join(asBuiltDir, 'sequence.md'), buildSequenceMd(ctx));
   // 0.1.4 以前の coverage.md は index.md の「証跡」に統合した
   const legacyCoverage = path.join(asBuiltDir, 'coverage.md');
@@ -1063,7 +1091,7 @@ function run(opts) {
   ensureWrite(path.join(systemDir, 'data-flow.md'), renderSystemDataFlow(ordered));
   ensureWrite(path.join(systemDir, 'index.md'), buildSystemIndex(index));
 
-  return { asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length, instrumentation_gaps: ctx.instrumentation.gaps, instrumentation_happy_gaps: ctx.instrumentation.happy_gaps };
+  return { asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length, instrumentation_gaps: ctx.instrumentation.gaps, instrumentation_happy_gaps: ctx.instrumentation.happy_gaps, summary_violations: summaryViolations.length };
 }
 
 function parseArgs(argv) {
@@ -1089,7 +1117,8 @@ function main(argv) {
   const r = run(o);
   const gap = (r.instrumentation_gaps.length ? ` 計装なしのティア: ${r.instrumentation_gaps.join(', ')}` : '')
     + (r.instrumentation_happy_gaps.length ? ` 正常系に部品 (call) が無いティア: ${r.instrumentation_happy_gaps.join(', ')}` : '');
-  console.log(`as-built: ${path.relative(o.cwd, r.asBuiltDir)} (scenarios=${r.scenarios}, operations=${r.operations})${gap}`);
+  const sv = r.summary_violations ? ` 要約ブロックに書式違反 ${r.summary_violations} 件 (引き継いだ旧形式を含む。checkAsBuilt.js で確認し d2-asbuilt が書き直す)` : '';
+  console.log(`as-built: ${path.relative(o.cwd, r.asBuiltDir)} (scenarios=${r.scenarios}, operations=${r.operations})${gap}${sv}`);
   return 0;
 }
 

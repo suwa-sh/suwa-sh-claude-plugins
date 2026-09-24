@@ -3,6 +3,7 @@ kind: rule
 uc: register-loan
 tier: frontend-staff
 status: open
+title: frontend-staff のツールチェーン不足
 ---
 
 # frontend-staff で画面部品の結線と lint / format の検査に使う依存が入っていない

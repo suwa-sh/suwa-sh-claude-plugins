@@ -21,7 +21,7 @@ function write(text) {
   return file;
 }
 
-const RECORD = `schema_version: "2.0"
+const RECORD = `schema_version: "2.1"
 uc: "register-loan"
 tier: "tier-facade"
 attempt: 1
@@ -32,6 +32,7 @@ extraction:
 assumptions:
   - id: A-001
     category: data_format
+    title: "occurred_at は秒精度"
     assumption: "occurred_at は秒精度 ISO8601 UTC"
     target: "facade/src/id_gateway.sh:28"
     reason: "契約に時刻精度の定義が無い"
@@ -39,6 +40,7 @@ assumptions:
     spec_refs: ["rdb-schema.yaml#runner_result_events"]
   - id: A-002
     category: error_handling
+    title: "SSH 失敗時は FAILED"
     assumption: "SSH 失敗時は status を FAILED にする"
     target: "facade/src/launch_gateway.sh:32"
     reason: "失敗時の status が tier md に無いと判断した"
@@ -82,6 +84,7 @@ function findings(overrides = {}) {
     assumption_id: A-001
     severity: major
     target: "facade/src/id_gateway.sh:28"
+    title: "時刻精度は仕様に無い"
     claim: "時刻精度は仕様に無い"
     evidence: "..."
   - id: F-013
@@ -90,6 +93,7 @@ function findings(overrides = {}) {
     assumption_id: A-001
     severity: minor
     target: "facade/src/id_gateway.sh:28"
+    title: "分類は persistence が妥当"
     claim: "分類は persistence が妥当"
     evidence: "..."
   - id: F-011
@@ -98,6 +102,7 @@ function findings(overrides = {}) {
     assumption_id: A-002
     severity: blocker
     target: "facade/src/launch_gateway.sh:32"
+    title: "STARTING 固定に違反"
     claim: "STARTING 固定に違反"
     evidence: "..."
   - id: F-012
@@ -106,6 +111,7 @@ function findings(overrides = {}) {
     assumption_id: V-001
     severity: minor
     target: "facade/src/domain.sh:40"
+    title: "黙って決めた canonical 順"
     claim: "黙って決めた canonical 順"
     evidence: "..."
 `,
@@ -118,7 +124,7 @@ function findings(overrides = {}) {
   };
   const o = { ...base, ...overrides };
   const sha = o.sha ?? validator.run(['record', write(RECORD), ...ID]).sha256;
-  return `schema_version: "2.0"
+  return `schema_version: "2.1"
 uc: "register-loan"
 tier: "tier-facade"
 attempt: 1
@@ -143,6 +149,28 @@ test('record: valid file passes with counts and deterministic sha256', () => {
   const b = validator.run(['record', write(RECORD), ...ID]);
   assert.equal(a.sha256, b.sha256);
   assert.match(a.sha256, /^[0-9a-f]{64}$/);
+});
+
+test('record / verdicts: title は必須で 30 字以内・1 行 (as-built の表に載る見出し)', () => {
+  const noTitle = RECORD.replace(/\n\s*title: "occurred_at は秒精度"/, '');
+  assert.notEqual(noTitle, RECORD);
+  assert.match(validator.run(['record', write(noTitle), ...ID]).errors.join('\n'), /assumptions\[0\]\.title is required/);
+  const longTitle = RECORD.replace('title: "occurred_at は秒精度"', 'title: "' + 'あ'.repeat(31) + '"');
+  assert.match(validator.run(['record', write(longTitle), ...ID]).errors.join('\n'), /title must be <= 30 characters/);
+  const f = findings();
+  const noFindingTitle = f.replace(/\n    title: "時刻精度は仕様に無い"/, '');
+  assert.notEqual(noFindingTitle, f);
+  assert.match(validator.run(verdictsArgs(write(noFindingTitle), write(RECORD))).errors.join('\n'), /findings\[0\] \(F-010\)\.title is required/);
+});
+
+test('schema 2.0 (0.1.5 以前) は title 任意、2.1 は必須。title は hash を変えない', () => {
+  const v20 = RECORD.replace('schema_version: "2.1"', 'schema_version: "2.0"').replace(/\n\s*title: "[^"]*"/g, '');
+  const r20 = validator.run(['record', write(v20), ...ID]);
+  assert.equal(r20.ok, true, JSON.stringify(r20));
+  const withTitle = validator.run(['record', write(RECORD), ...ID]);
+  assert.equal(withTitle.sha256, r20.sha256, 'title は RECORD_HASH_KEYS に無いので sha256 は同じ');
+  const bad = validator.run(['record', write(RECORD.replace('schema_version: "2.1"', 'schema_version: "3.0"')), ...ID]);
+  assert.match(bad.errors.join('\n'), /schema_version must be one of "2.0"\|"2.1"/);
 });
 
 test('record: zero assumptions must be an explicit empty array', () => {
@@ -302,6 +330,7 @@ findings:
     assumption_id: V-001
     severity: major
     target: "facade/src/domain.sh:40"
+    title: "黙って決めた"
     claim: "黙って決めた"
     evidence: "..."
 summary: {blocker: 0, major: 1, minor: 0}

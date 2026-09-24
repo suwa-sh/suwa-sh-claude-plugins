@@ -1,7 +1,7 @@
 ---
 kind: rule
 stage: scaffold
-title: 基盤の生成物でテストの配線が抜けている (test script と cucumber.js)
+title: 基盤のテスト配線が抜けている
 ---
 
 # 基盤の生成物でテストの配線が抜けている

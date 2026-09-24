@@ -1,4 +1,4 @@
-schema_version: "2.0"
+schema_version: "2.1"
 uc: "register-loan"
 tier: "backend-api"
 attempt: 1
@@ -188,6 +188,7 @@ findings:
     kind: spec_absent
     assumption_id: A-001
     severity: minor
+    title: "貸出期間の対応表が要求に無い"
     target: "apps/backend-api/src/domain/loan/loan-period.ts:20"
     claim: "貸出期間の利用者区分×媒体種別対応表は要求に値が無く、全組み合わせ 14 日を仮置きしている"
     evidence: "docs/requirements/rdra/条件.tsv#返却期限算出条件; issues/20260924_120000_loan-period-mapping.md"
@@ -196,6 +197,7 @@ findings:
     kind: spec_absent
     assumption_id: A-002
     severity: minor
+    title: "貸出上限冊数の判定が無い"
     target: "apps/backend-api/src/domain/loan/loan.ts:81"
     claim: "貸出可否条件の『利用者区分ごとの貸出上限冊数を超えない』を実装していない (値が要求に無い)"
     evidence: "docs/requirements/rdra/条件.tsv#貸出可否条件; docs/requirements/requirements.yaml#SPEC-002-01; issues/20260924_120001_loan-limit-count.md"
@@ -204,6 +206,7 @@ findings:
     kind: spec_absent
     assumption_id: A-003
     severity: minor
+    title: "判定順序は要求に無い"
     target: "apps/backend-api/src/domain/loan/loan.ts:89"
     claim: "貸出可否条件の複数条件を満たさない場合の判定順序 (存在→書籍状態→延滞) は要求に明記が無い"
     evidence: "contracts/openapi/paths/loans.yaml#createLoan.responses.409.examples.bookOnHoldForAnother; apps/backend-api/src/testing/contract-fixture.ts"
@@ -212,6 +215,7 @@ findings:
     kind: spec_absent
     assumption_id: A-004
     severity: minor
+    title: "404 の文言は契約に無い"
     target: "apps/backend-api/src/domain/loan/errors.ts:27"
     claim: "未登録 (未削除でなく存在しない) 書籍・利用者の 404 文言は契約に規定が無い"
     evidence: "contracts/openapi/paths/loans.yaml#createLoan.responses.404.examples"
@@ -220,6 +224,7 @@ findings:
     kind: spec_absent
     assumption_id: A-005
     severity: major
+    title: "本番用 OIDC 検証が無い"
     target: "apps/backend-api/src/testing/test-authenticator.ts:10"
     claim: "本番用 OIDC 検証 Authenticator の実装は無く、テスト専用の代替認証だけが存在する"
     evidence: "docs/rules/common.md#ADR 0006; apps/backend-api/src/presentation/http/authenticator.ts (インターフェイスのみ); apps/backend-api/src/test-app.ts"
@@ -228,6 +233,7 @@ findings:
     kind: spec_absent
     assumption_id: A-006
     severity: minor
+    title: "タイムゾーンは仕様に無い"
     target: "apps/backend-api/src/gateway/clock/clocks.ts:6"
     claim: "業務日付のタイムゾーン (Asia/Tokyo) は契約・ルールに規定が無い"
     evidence: "contracts/openapi/openapi.yaml#components.schemas.CreateLoanRequest; contracts/generated/slices/register-loan/rdb-slice.yaml#loans.loaned_on"
@@ -236,6 +242,7 @@ findings:
     kind: spec_absent
     assumption_id: A-007
     severity: major
+    title: "アクセスログの項目は ADR に無い"
     target: "apps/backend-api/src/usecase/loan/register-loan.ts:25"
     claim: "データアクセスログの出力項目・拒否時の記録有無・除外項目は ADR に規定が無い"
     evidence: "docs/rules/tier-backend.md#ADR 0006"
@@ -244,6 +251,7 @@ findings:
     kind: spec_absent
     assumption_id: A-008
     severity: minor
+    title: "500 応答の形式は契約に無い"
     target: "apps/backend-api/src/presentation/http/problem.ts:58"
     claim: "想定外失敗時の 500 応答形式は契約に規定が無い"
     evidence: "contracts/openapi/paths/loans.yaml#createLoan.responses; contracts/openapi/openapi.yaml#components.responses"
@@ -252,6 +260,7 @@ findings:
     kind: spec_absent
     assumption_id: A-009
     severity: minor
+    title: "本文サイズ上限は契約に無い"
     target: "apps/backend-api/src/presentation/http/http-io.ts:5"
     claim: "リクエスト本文サイズ上限 (64KiB) は契約に規定が無い"
     evidence: "contracts/openapi/paths/loans.yaml#createLoan.responses.400; contracts/openapi/openapi.yaml#components.responses.BadRequest"
@@ -260,6 +269,7 @@ findings:
     kind: spec_absent
     assumption_id: A-010
     severity: major
+    title: "400 と 403 の優先順位は仕様に無い"
     target: "apps/backend-api/src/presentation/http/loans/create-loan-handler.ts:43"
     claim: "入力検証 (400) と認可判定 (403) の優先順位は契約・ルールに規定が無く、権限チェックの位置の判断にあたる"
     evidence: "contracts/openapi/paths/loans.yaml#createLoan.responses; docs/rules/tier-backend.md#ADR 0006"
@@ -268,6 +278,7 @@ findings:
     kind: spec_absent
     assumption_id: A-011
     severity: major
+    title: "payload と初期版番号は契約に無い"
     target: "apps/backend-api/src/repository/loan/pg-loan-registration-repository.ts:96"
     claim: "イベント payload の項目構成と貸出の初期版番号は契約に規定が無い"
     evidence: "contracts/generated/slices/register-loan/rdb-slice.yaml#book_events.payload; #loan_events.payload; #reservation_events.payload"
@@ -276,6 +287,7 @@ findings:
     kind: spec_absent
     assumption_id: A-012
     severity: major
+    title: "読み取り境界と予約の版照合は ADR に無い"
     target: "apps/backend-api/src/repository/loan/pg-loan-registration-repository.ts:165"
     claim: "読み取りのトランザクション境界と予約側版番号の楽観ロック照合は ADR 0004 に明記が無い"
     evidence: "docs/rules/tier-backend.md#ADR 0004"
@@ -284,6 +296,7 @@ findings:
     kind: category_mismatch
     assumption_id: A-010
     severity: minor
+    title: "A-010 の分類が Verifier と不一致"
     target: "apps/backend-api/src/presentation/http/loans/create-loan-handler.ts:43"
     claim: "A-010 の category (error_handling) と Verifier 独立判定の verified_category (security) が不一致"
     evidence: "d2-implement/references/assumption-record.md#カテゴリ (6値) security の例『権限チェックの位置』に A-010 の判断内容 (400 と 403 の優先順位) が直接該当する"

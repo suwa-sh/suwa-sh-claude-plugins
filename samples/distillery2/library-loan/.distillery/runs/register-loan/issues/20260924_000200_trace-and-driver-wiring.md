@@ -1,7 +1,7 @@
 ---
 kind: rule
 stage: integrate
-title: 計装の基盤が日本語のシナリオ名と usecase の計装に対応していない
+title: 計装が日本語シナリオ名と usecase に未対応
 ---
 
 # 計装の基盤が日本語のシナリオ名と usecase の計装に対応していない

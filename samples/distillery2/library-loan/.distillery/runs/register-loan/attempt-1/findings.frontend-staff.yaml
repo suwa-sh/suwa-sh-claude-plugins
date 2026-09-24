@@ -1,4 +1,4 @@
-schema_version: "2.0"
+schema_version: "2.1"
 uc: "register-loan"
 tier: "frontend-staff"
 attempt: 1
@@ -92,6 +92,7 @@ findings:
     viewpoint: uc_intent
     kind: rule_not_enforced
     severity: major
+    title: "生成クライアントでなく手書き"
     target: "apps/frontend-staff/src/api-client/loan-api-types.ts, apps/frontend-staff/src/api-client/loan-api.ts"
     claim: "docs/rules/tier-frontend.md の必須指示『API 呼び出しは packages/contracts の生成クライアント経由。fetch / axios の直書き禁止』『入力: 自ティアが consumer の契約 (OpenAPI) の生成物』に反し、契約の生成型・生成クライアントが存在しないため、contract-slice.json の schemas を手書きで写した型 (loan-api-types.ts) と手書きの API クライアント (loan-api.ts) を使っている。"
     evidence: "docs/rules/tier-frontend.md:8 (API 呼び出しは packages/contracts の生成クライアント経由。fetch / axios の直書き禁止), docs/rules/tier-frontend.md:6 (入力は自ティアが consumer の契約の生成物); packages/contracts/api/ には stubs/createLoan.*.json しかなく TypeScript 型・クライアントの生成物が無い (packages/contracts に package.json も無く workspace パッケージとして import不可); apps/frontend-staff/src/api-client/loan-api-types.ts:1-8, loan-api.ts:1-8 のコメントで契約生成物が無いための暫定writeと明記。.distillery/runs/register-loan/issues/20260924_130000_frontend-api-client-missing.md (kind: contract) に事実・暫定対応・確認事項を起票済み。実体としては fetch/axios を直接呼んではおらず (ApiTransport 注入に隔離)、packages/contracts/ の生成物自体も書き換えていない (common.md #1 は非違反)ため、ルール全体を無視した実装ではなく、生成物が届くまでの一時代替であることが issue で追跡可能。ゲート (contract.frontend-staff) は passWithNoTests のため機械では検出できない。要求・契約の内容自体には違反しておらず (型・パス・コードは契約と一致、下記 F-002〜F-009 で個別確認)、機能は成立しているため『修正なしで先に進めない』状態ではなく、d2-contract 側でのフロント向け生成物追加の要否を人レビューで判断する必要がある。"
@@ -100,6 +101,7 @@ findings:
     kind: spec_absent
     assumption_id: A-001
     severity: minor
+    title: "404 の表示先は仕様に無い"
     target: "apps/frontend-staff/src/screens/loan-checkout/loan-checkout-state.ts:70"
     claim: "404 → notLendable variant の割当は仕様に明示が無い真の前提 (spec_absent)。"
     evidence: "packages/ui/stories/LoanCheckout.stories.tsx#LoanCheckoutVariant; features/貸出業務/register-loan.feature#削除済みの書籍は貸し出せない; contract-slice.json#paths./loans.post.responses.404"
@@ -108,6 +110,7 @@ findings:
     kind: spec_absent
     assumption_id: A-002
     severity: minor
+    title: "400 の表示先は仕様に無い"
     target: "apps/frontend-staff/src/screens/loan-checkout/loan-checkout-state.ts:101"
     claim: "400 の画面表示先 (default variant + 項目エラー) は仕様に明示が無い真の前提 (spec_absent)。"
     evidence: "contract-slice.json#components.schemas.ValidationProblem; features/貸出業務/register-loan.feature (400 シナリオ無し)"
@@ -116,6 +119,7 @@ findings:
     kind: spec_absent
     assumption_id: A-003
     severity: minor
+    title: "その他ステータスの表示は仕様に無い"
     target: "apps/frontend-staff/src/screens/loan-checkout/loan-checkout-state.ts:144"
     claim: "401/403/5xx 等その他ステータスの表示方針は仕様に明示が無い真の前提 (spec_absent)。"
     evidence: "features/貸出業務/register-loan.feature#利用者は貸出を登録できない; contract-slice.json#paths./loans.post.responses.403"
@@ -124,6 +128,7 @@ findings:
     kind: spec_absent
     assumption_id: A-004
     severity: minor
+    title: "code と欄の対応は仕様に無い"
     target: "apps/frontend-staff/src/screens/loan-checkout/loan-checkout-state.ts:91"
     claim: "Problem.code から入力欄 (患者/書籍) への割当は仕様に明示が無い真の前提 (spec_absent)。実装が使う code 集合は契約の実コード一覧と一致することを確認した。"
     evidence: "contract-slice.json#paths./loans.post.responses.409 の code一覧; contract-slice.json#paths./loans.post.responses.404 の code一覧"
@@ -132,6 +137,7 @@ findings:
     kind: spec_absent
     assumption_id: A-005
     severity: minor
+    title: "Alert 文言の出所は仕様に無い"
     target: "apps/frontend-staff/src/screens/loan-checkout/loan-checkout-state.ts:89"
     claim: "notLendable Alert の文言をサーバ Problem から組み立てる方針は仕様に明示が無い真の前提 (spec_absent)。"
     evidence: "packages/ui/stories/LoanCheckout.stories.tsx#NotLendable; contract-slice.json#components.schemas.Problem"
@@ -140,6 +146,7 @@ findings:
     kind: spec_absent
     assumption_id: A-006
     severity: minor
+    title: "daysLeft の算出は仕様に無い"
     target: "apps/frontend-staff/src/screens/loan-checkout/loan-checkout-state.ts:133"
     claim: "daysLeft = loanPeriodDays の算出は仕様に明示が無い真の前提 (spec_absent)。当該シナリオの前提 (本日=貸出日) の範囲では矛盾しない。"
     evidence: "contract-slice.json#components.schemas.Loan; features/貸出業務/register-loan.feature#貸出を登録すると返却期限が自動で設定される"
@@ -148,6 +155,7 @@ findings:
     kind: spec_absent
     assumption_id: A-007
     severity: minor
+    title: "完了メッセージの項目は仕様に無い"
     target: "apps/frontend-staff/src/screens/loan-checkout/loan-checkout-state.ts:124"
     claim: "完了メッセージに氏名でなく利用者番号を使い利用者区分を表示しない方針は仕様に明示が無い真の前提 (spec_absent)。createLoan 応答に該当フィールドが無いことを確認した。"
     evidence: "contract-slice.json#components.schemas.Loan; contract-slice.json#paths (register-loan slice に patron/book 取得 operation なし)"
@@ -156,6 +164,7 @@ findings:
     kind: spec_absent
     assumption_id: A-008
     severity: minor
+    title: "事前検証しない方針は仕様に無い"
     target: "apps/frontend-staff/src/screens/loan-checkout/submit-loan-checkout.ts:9"
     claim: "trim のみで形式の事前検証をしない方針は仕様に明示が無い真の前提 (spec_absent)。"
     evidence: "contract-slice.json#components.schemas.PatronNumber; contract-slice.json#paths./loans.post.responses.400"
