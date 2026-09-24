@@ -35,7 +35,7 @@ description: >-
 ## 起動シーケンス
 
 1. 引数を解釈し、段階を決める (上の自動選択)
-2. `.distillery/config.yaml` があれば読み、`models.implementer` と `models.verifier` を解決する。**同じなら停止して確認** (独立検証の条件)
+2. `.distillery/config.yaml` があれば読み、`models.implementer` と `models.verifier` を解決する。`implementer: null` はセッション既定モデルなので、**実際のモデル名に解決してから** verifier と比較する。`verifier` は `opus` などの短い別名で書く (フル ID は `model` パラメータとして無効)。**解決後に両者が同じなら停止して確認** (独立検証の条件)
 3. ④ なら UC を解決する: 引数が slug なら `use-cases.yaml` と照合、UC 名なら NFC 正規化して一意に一致する行を探す (複数なら候補を示して選ばせる)
 4. `git status --porcelain` が空でなければ、勝手に stash / commit せず整理を依頼して停止する (④ の開始時。再開時は branch 一致を確認)
 

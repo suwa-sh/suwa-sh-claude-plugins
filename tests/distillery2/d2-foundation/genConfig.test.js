@@ -41,7 +41,7 @@ test('genConfig: tiers/contracts/commands/capabilities correct and re-parseable'
   assert.equal(cfg.capabilities.browser, false);
   assert.equal(cfg.capabilities.has_asyncapi, true);
   assert.equal(cfg.capabilities.has_design_system, true); // frontend tier あり
-  assert.equal(cfg.models.verifier, 'claude-opus-5');
+  assert.equal(cfg.models.verifier, 'opus');
   assert.equal(cfg.models.implementer, null);
   // uc_bdd コマンドに {slug} プレースホルダがある
   assert.ok(cfg.commands.uc_bdd.includes('{slug}'));
