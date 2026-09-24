@@ -1,0 +1,7 @@
+/distillery2:d2-run stage=decide
+
+これは headless の自動実行です。対話で止まらず最後まで完了してください。
+- 確認推奨項目・選択肢はすべて推奨どおり (⭐推奨) を自動採用してください (auto-adopt)
+- 人の承認が必要な場面 (NFR 表と ADR の承認) は「承認された」ものとして扱い、確認ページ (HTML) は作らずに次へ進んでください。ただし docs/adr/_review-summary.md は必ず作ってください
+- git の commit は行ってください。push・PR 作成は行わないでください
+- 完了したら、生成したファイル一覧、ADR の件数と題名、tiers を宣言した ADR の tiers / datastore_owner、confidence: low の決定、検証スクリプト (validateNfrGrade / validateAdr) の結果 (exit code) を報告してください

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+
+# distillery2 実行状態
+.distillery/runs/*/reports/
+.distillery/runs/*/traces/
+.distillery/runs/*/attempt-*/

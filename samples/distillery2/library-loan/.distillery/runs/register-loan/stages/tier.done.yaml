@@ -1,0 +1,10 @@
+stage: tier
+completed_at: "2026-09-23T23:54:32.521Z"
+attempt: 1
+tiers:
+  backend-api:
+    assumptions: 12
+    sha256: 3de30a998b53cfe6a63beca3aaed7568f8831a20ffbc31f5ebb4f1fef3960d44
+  frontend-staff:
+    assumptions: 8
+    sha256: 586b0026e789f97f445f035824116f975a976b745c8e96182af0e8eaad20a2a7

@@ -1,0 +1,8 @@
+/distillery2:d2-run uc=貸出を登録する
+
+これは headless の自動実行です。対話で止まらず最後まで完了してください。
+- UC 名の解決で候補が複数あれば「貸出業務 / 書籍を貸し出すフロー / 貸出を登録する」を選んでください
+- 確認推奨項目・選択肢はすべて推奨どおり (⭐推奨) を自動採用してください
+- 人の承認が必要な場面 (シナリオの承認、最終レビュー) は「承認された」ものとして扱い、確認ページ (HTML) は作らずに次へ進んでください。回答必須の前提 (AssumptionRecord) はすべて「承認」として扱ってください。requirement 起因の課題があれば issue は作らず、報告に書いてください
+- git の commit と feature branch の作成は行ってください。push・PR 作成は行わず、squash まで済ませて止めてください
+- 完了したら、段階ごとの結果 (scenario / contract / scaffold / tier / contract-gate / integrate / verify / review / asbuilt / feedback)、reports/gates.json の各ゲートの状態、findings の件数 (blocker / major / minor)、AssumptionRecord の件数、生成された docs/as-built のパス、詰まった箇所とその原因を報告してください

@@ -1,0 +1,17 @@
+# basis: requirements@ca8f7fb28b2dc8ef6b6abfcee29c0898fa879a12 adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659
+# UC ごとに使う operation / message / table の索引。d2-contract mode=uc が UC 単位で追記する。
+schema_version: distillery2.uc-index/v1
+ucs:
+  - slug: register-loan
+    operations:
+      - createLoan
+    messages: []
+    tables:
+      - books
+      - book_events
+      - patrons
+      - loans
+      - loan_events
+      - reservations
+      - reservation_events
+

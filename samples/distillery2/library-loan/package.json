@@ -1,0 +1,45 @@
+{
+  "name": "workspace-root",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "lint": "echo \"run per-workspace lint via -w\"",
+    "typecheck": "echo \"run per-workspace typecheck via -w\"",
+    "bdd": "cucumber-js",
+    "test:frontend-patron": "npm run test -w apps/frontend-patron",
+    "lint:frontend-patron": "npm run lint -w apps/frontend-patron",
+    "typecheck:frontend-patron": "npm run typecheck -w apps/frontend-patron",
+    "test:contract:frontend-patron": "npm run test:contract -w apps/frontend-patron",
+    "test:frontend-staff": "npm run test -w apps/frontend-staff",
+    "lint:frontend-staff": "npm run lint -w apps/frontend-staff",
+    "typecheck:frontend-staff": "npm run typecheck -w apps/frontend-staff",
+    "test:contract:frontend-staff": "npm run test:contract -w apps/frontend-staff",
+    "test:backend-api": "npm run test -w apps/backend-api",
+    "lint:backend-api": "npm run lint -w apps/backend-api",
+    "typecheck:backend-api": "npm run typecheck -w apps/backend-api",
+    "test:contract:backend-api": "npm run test:contract -w apps/backend-api",
+    "test:worker": "npm run test -w apps/worker",
+    "lint:worker": "npm run lint -w apps/worker",
+    "typecheck:worker": "npm run typecheck -w apps/worker",
+    "test:contract:worker": "npm run test:contract -w apps/worker"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^13.2.1",
+    "@electric-sql/pglite": "^0.5.8",
+    "@redocly/cli": "2.51.1",
+    "dependency-cruiser": "^18.4.0",
+    "vitest": "^3.2.0",
+    "supertest": "^7.3.0",
+    "@types/supertest": "^7.2.1",
+    "@playwright/test": "^1.63.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

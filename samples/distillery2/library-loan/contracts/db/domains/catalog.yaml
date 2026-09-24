@@ -1,0 +1,109 @@
+# RDRA コンテキスト: 蔵書管理 / 情報: 書籍 / 状態モデル: 書籍状態
+subdomain_id: catalog
+tables:
+  - name: books
+    description: 書籍の現在状態 (スナップショット)。削除は status=deleted への遷移で表し物理削除しない
+    columns:
+      - name: book_id
+        type: uuid
+        nullable: false
+        description: 書籍ID
+      - name: isbn
+        type: string
+        nullable: true
+        description: ISBN (ハイフン無し)。同じ ISBN の複本があり得るため一意にしない
+      - name: title
+        type: string
+        nullable: false
+        description: タイトル
+      - name: author
+        type: string
+        nullable: false
+        description: 著者
+      - name: publisher
+        type: string
+        nullable: true
+        description: 出版社
+      - name: genre
+        type: string
+        nullable: false
+        description: "ジャンル (文学・歴史・自然科学・社会科学・芸術・技術・工学・児童書・参考図書)"
+        enum: [literature, history, natural_science, social_science, art, engineering, children, reference]
+      - name: media_type
+        type: string
+        nullable: false
+        description: "媒体種別 (paper=紙, electronic=電子)"
+        enum: [paper, electronic]
+      - name: status
+        type: string
+        nullable: false
+        description: "書籍状態 (available=在庫あり, on_loan=貸出中, on_hold=予約待ち(取置), deleted=削除済み)"
+        enum: [available, on_loan, on_hold, deleted]
+      - name: version
+        type: integer
+        nullable: false
+        description: 楽観ロックの版番号。同じ書籍への貸出・返却・予約の登録を直列化する
+      - name: registered_on
+        type: date
+        nullable: false
+        description: 登録日
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 更新日時
+    primary_key: [book_id]
+    indexes:
+      - name: books_isbn_idx
+        unique: false
+        columns: [isbn]
+      - name: books_title_idx
+        unique: false
+        columns: [title]
+      - name: books_author_idx
+        unique: false
+        columns: [author]
+      - name: books_status_idx
+        unique: false
+        columns: [status]
+  - name: book_events
+    description: 書籍のイベント (追記のみ。物理更新・物理削除しない)
+    columns:
+      - name: event_id
+        type: uuid
+        nullable: false
+        description: イベントID
+      - name: book_id
+        type: uuid
+        nullable: false
+        description: 対象の書籍ID
+      - name: book_version
+        type: integer
+        nullable: false
+        description: このイベント適用後の書籍の版番号
+      - name: event_type
+        type: string
+        nullable: false
+        description: "イベント種別 (例 BookRegistered, BookUpdated, BookLoaned, BookReturned, BookHeld, BookDeleted)"
+      - name: payload
+        type: text
+        nullable: false
+        description: イベント内容 (JSON 文字列)
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 操作者 (IdP の subject、または worker のジョブ名)
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: 発生日時
+    primary_key: [event_id]
+    foreign_keys:
+      - columns: [book_id]
+        references:
+          table: books
+          columns: [book_id]
+        on_delete: RESTRICT
+    indexes:
+      - name: book_events_book_version_uq
+        unique: true
+        columns: [book_id, book_version]

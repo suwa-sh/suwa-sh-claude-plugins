@@ -1,0 +1,8 @@
+stage: feedback
+completed_at: "2026-09-24T00:12:39.627Z"
+classified:
+  rule: 3
+  contract: 2
+  requirement: 2
+filed: 0
+note: "headless: PR / issue 作成なし"

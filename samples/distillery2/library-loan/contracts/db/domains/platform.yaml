@@ -1,0 +1,68 @@
+# 業務横断の技術テーブル。冪等性の担保に使う (ADR-0001, ADR-0005)
+subdomain_id: platform
+tables:
+  - name: idempotency_keys
+    description: 利用者の更新系 API の Idempotency-Key と初回の応答。同じキーの再送で副作用を重複させない
+    columns:
+      - name: actor_id
+        type: string
+        nullable: false
+        description: キーを送った操作者 (IdP の subject)。キーは操作者ごとに一意
+      - name: idempotency_key
+        type: string
+        nullable: false
+        description: Idempotency-Key ヘッダの値
+      - name: request_hash
+        type: string
+        nullable: false
+        description: リクエスト (メソッド・パス・本文) のハッシュ。同じキーで内容が違う再送を検出する
+      - name: response_status
+        type: integer
+        nullable: false
+        description: 初回の応答ステータス
+      - name: response_body
+        type: text
+        nullable: false
+        description: 初回の応答本文 (JSON 文字列)
+      - name: created_at
+        type: datetime
+        nullable: false
+        description: 作成日時
+      - name: expires_at
+        type: datetime
+        nullable: false
+        description: 失効日時。これ以降は削除してよい
+    primary_key: [actor_id, idempotency_key]
+    indexes:
+      - name: idempotency_keys_expires_at_idx
+        unique: false
+        columns: [expires_at]
+  - name: job_runs
+    description: worker の定期ジョブの実行記録。ジョブ種別と対象日の組で二重実行を防ぐ
+    columns:
+      - name: job_type
+        type: string
+        nullable: false
+        description: "ジョブ種別 (daily_due_check=日次の期限チェック など)"
+      - name: target_date
+        type: date
+        nullable: false
+        description: 対象日
+      - name: status
+        type: string
+        nullable: false
+        description: "実行状態 (running=実行中, succeeded=成功, failed=失敗)"
+        enum: [running, succeeded, failed]
+      - name: started_at
+        type: datetime
+        nullable: false
+        description: 開始日時
+      - name: finished_at
+        type: datetime
+        nullable: true
+        description: 終了日時
+      - name: last_error
+        type: text
+        nullable: true
+        description: 失敗の理由
+    primary_key: [job_type, target_date]

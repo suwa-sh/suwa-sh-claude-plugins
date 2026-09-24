@@ -1,0 +1,20 @@
+# basis: requirements@ca8f7fb28b2dc8ef6b6abfcee29c0898fa879a12 adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659
+# RDB 契約の入口。テーブルは domains/<id>.yaml に置く (入口に tables を書かない)。
+# 状態を持つ情報 (書籍・利用者・貸出・予約・通知) はイベント (追記のみ) と現在状態のスナップショットで持つ (ADR-0004)。
+# 貸出統計は保存せず貸出の記録から要求時に集計するため、蔵書分析管理のテーブルは持たない (ADR-0004)。
+schema_version: distillery2.rdb-split/v1
+datastore: rdb
+version: 0.1.0
+domains:
+  - id: catalog
+    file: domains/catalog.yaml
+  - id: patron
+    file: domains/patron.yaml
+  - id: loan
+    file: domains/loan.yaml
+  - id: reservation
+    file: domains/reservation.yaml
+  - id: notification
+    file: domains/notification.yaml
+  - id: platform
+    file: domains/platform.yaml

@@ -1,0 +1,7 @@
+stage: scaffold
+completed_at: "2026-09-23T23:39:59.901Z"
+red:
+  backend-api: 2
+  frontend-staff: 2
+dry_run_undefined: 0
+step_definitions: 28

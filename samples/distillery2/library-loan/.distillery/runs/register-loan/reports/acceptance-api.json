@@ -1,0 +1,729 @@
+[
+  {
+    "description": "  司書が利用者番号と書籍を指定して貸出を登録する。\n  貸出可否条件を満たす場合だけ貸出を記録し、貸出日と貸出期間から返却期限を自動で設定する。\n  書籍状態と貸出状態を貸出中にし、取置中の予約に基づく貸出では予約状態を受取済みにする。",
+    "elements": [
+      {
+        "description": "",
+        "id": "貸出を登録する;在庫ありの書籍を登録済みの利用者に貸し出す",
+        "keyword": "シナリオ",
+        "line": 24,
+        "name": "在庫ありの書籍を登録済みの利用者に貸し出す",
+        "steps": [
+          {
+            "result": {
+              "status": "passed",
+              "duration": 1064026584
+            },
+            "keyword": "Before",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 267833
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 10,
+            "name": "本日は \"2026-10-01\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:193"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 231749
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 11,
+            "name": "司書がログインしている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:197"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 2749749
+            },
+            "arguments": [
+              {
+                "rows": [
+                  {
+                    "cells": [
+                      "利用者番号",
+                      "氏名",
+                      "連絡先",
+                      "利用者区分",
+                      "利用者状態"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "P000123",
+                      "図書 太郎",
+                      "taro@example.com",
+                      "一般",
+                      "有効"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "P000456",
+                      "書架 花子",
+                      "hanako@example.com",
+                      "一般",
+                      "有効"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "keyword": "かつ",
+            "line": 12,
+            "name": "次の利用者が登録されている:",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:202"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 2439166
+            },
+            "arguments": [
+              {
+                "rows": [
+                  {
+                    "cells": [
+                      "タイトル",
+                      "著者",
+                      "ISBN",
+                      "出版社",
+                      "ジャンル",
+                      "媒体種別"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "架空の物語A",
+                      "山田 一郎",
+                      "9784000000011",
+                      "架空出版",
+                      "文学",
+                      "紙"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "架空の歴史B",
+                      "佐藤 二郎",
+                      "9784000000028",
+                      "架空出版",
+                      "歴史",
+                      "紙"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "keyword": "かつ",
+            "line": 16,
+            "name": "次の書籍が登録されている:",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:219"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 2091707
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 25,
+            "name": "書籍 \"架空の物語A\" の書籍状態は \"在庫あり\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:245"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 31616041
+            },
+            "arguments": [],
+            "keyword": "もし",
+            "line": 26,
+            "name": "司書が利用者 \"P000123\" に書籍 \"架空の物語A\" の貸出を登録する",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:306"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 2418791
+            },
+            "arguments": [],
+            "keyword": "ならば",
+            "line": 27,
+            "name": "貸出が記録され書籍の状態が貸出中になる",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:327"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 754540
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 28,
+            "name": "利用者 \"P000123\" の書籍 \"架空の物語A\" の貸出が 1 件記録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:338"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 650750
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 29,
+            "name": "その貸出の貸出状態は \"貸出中\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:347"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 495415
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 30,
+            "name": "書籍 \"架空の物語A\" の書籍状態は \"貸出中\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:245"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 542707
+            },
+            "keyword": "After",
+            "hidden": true
+          }
+        ],
+        "tags": [
+          {
+            "name": "@uc:register-loan",
+            "line": 3
+          },
+          {
+            "name": "@acceptance",
+            "line": 23
+          },
+          {
+            "name": "@acceptance:SPEC-002-01-1",
+            "line": 23
+          }
+        ],
+        "type": "scenario"
+      },
+      {
+        "description": "",
+        "id": "貸出を登録する;貸出を登録すると返却期限が自動で設定される",
+        "keyword": "シナリオ",
+        "line": 35,
+        "name": "貸出を登録すると返却期限が自動で設定される",
+        "steps": [
+          {
+            "result": {
+              "status": "passed",
+              "duration": 636707
+            },
+            "keyword": "Before",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 49582
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 10,
+            "name": "本日は \"2026-10-01\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:193"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 38416
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 11,
+            "name": "司書がログインしている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:197"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 586665
+            },
+            "arguments": [
+              {
+                "rows": [
+                  {
+                    "cells": [
+                      "利用者番号",
+                      "氏名",
+                      "連絡先",
+                      "利用者区分",
+                      "利用者状態"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "P000123",
+                      "図書 太郎",
+                      "taro@example.com",
+                      "一般",
+                      "有効"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "P000456",
+                      "書架 花子",
+                      "hanako@example.com",
+                      "一般",
+                      "有効"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "keyword": "かつ",
+            "line": 12,
+            "name": "次の利用者が登録されている:",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:202"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 445207
+            },
+            "arguments": [
+              {
+                "rows": [
+                  {
+                    "cells": [
+                      "タイトル",
+                      "著者",
+                      "ISBN",
+                      "出版社",
+                      "ジャンル",
+                      "媒体種別"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "架空の物語A",
+                      "山田 一郎",
+                      "9784000000011",
+                      "架空出版",
+                      "文学",
+                      "紙"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "架空の歴史B",
+                      "佐藤 二郎",
+                      "9784000000028",
+                      "架空出版",
+                      "歴史",
+                      "紙"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "keyword": "かつ",
+            "line": 16,
+            "name": "次の書籍が登録されている:",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:219"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 321208
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 36,
+            "name": "書籍 \"架空の物語A\" の書籍状態は \"在庫あり\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:245"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 5907249
+            },
+            "arguments": [],
+            "keyword": "もし",
+            "line": 37,
+            "name": "司書が利用者 \"P000123\" に書籍 \"架空の物語A\" の貸出を登録する",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:306"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 511958
+            },
+            "arguments": [],
+            "keyword": "ならば",
+            "line": 38,
+            "name": "貸出日と貸出期間から算出した返却期限が自動で設定される",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:354"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 304791
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 39,
+            "name": "その貸出の貸出日は \"2026-10-01\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:365"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 263166
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 40,
+            "name": "その貸出の貸出期間は 7 日・14 日・21 日のいずれかである",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:370"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 279625
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 41,
+            "name": "その貸出の返却期限は貸出日に貸出期間の日数を加えた日付である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:375"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 185750
+            },
+            "keyword": "After",
+            "hidden": true
+          }
+        ],
+        "tags": [
+          {
+            "name": "@uc:register-loan",
+            "line": 3
+          },
+          {
+            "name": "@acceptance",
+            "line": 34
+          },
+          {
+            "name": "@acceptance:SPEC-003-01-1",
+            "line": 34
+          }
+        ],
+        "type": "scenario"
+      },
+      {
+        "description": "",
+        "id": "貸出を登録する;貸出中の書籍は同じ書籍として貸し出せない",
+        "keyword": "シナリオ",
+        "line": 44,
+        "name": "貸出中の書籍は同じ書籍として貸し出せない",
+        "steps": [
+          {
+            "result": {
+              "status": "passed",
+              "duration": 363458
+            },
+            "keyword": "Before",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 27542
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 10,
+            "name": "本日は \"2026-10-01\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:193"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 12083
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 11,
+            "name": "司書がログインしている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:197"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 467333
+            },
+            "arguments": [
+              {
+                "rows": [
+                  {
+                    "cells": [
+                      "利用者番号",
+                      "氏名",
+                      "連絡先",
+                      "利用者区分",
+                      "利用者状態"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "P000123",
+                      "図書 太郎",
+                      "taro@example.com",
+                      "一般",
+                      "有効"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "P000456",
+                      "書架 花子",
+                      "hanako@example.com",
+                      "一般",
+                      "有効"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "keyword": "かつ",
+            "line": 12,
+            "name": "次の利用者が登録されている:",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:202"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 398959
+            },
+            "arguments": [
+              {
+                "rows": [
+                  {
+                    "cells": [
+                      "タイトル",
+                      "著者",
+                      "ISBN",
+                      "出版社",
+                      "ジャンル",
+                      "媒体種別"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "架空の物語A",
+                      "山田 一郎",
+                      "9784000000011",
+                      "架空出版",
+                      "文学",
+                      "紙"
+                    ]
+                  },
+                  {
+                    "cells": [
+                      "架空の歴史B",
+                      "佐藤 二郎",
+                      "9784000000028",
+                      "架空出版",
+                      "歴史",
+                      "紙"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "keyword": "かつ",
+            "line": 16,
+            "name": "次の書籍が登録されている:",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:219"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 637958
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 45,
+            "name": "書籍 \"架空の物語A\" は利用者 \"P000456\" に貸出中である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:254"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 4754500
+            },
+            "arguments": [],
+            "keyword": "もし",
+            "line": 46,
+            "name": "司書が利用者 \"P000123\" に書籍 \"架空の物語A\" の貸出を登録しようとする",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:311"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 734999
+            },
+            "arguments": [],
+            "keyword": "ならば",
+            "line": 47,
+            "name": "貸出できない旨が表示され貸出は記録されない",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:382"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 543875
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 48,
+            "name": "利用者 \"P000123\" の貸出は 0 件である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:388"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 360584
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 49,
+            "name": "書籍 \"架空の物語A\" の書籍状態は \"貸出中\" のままである",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:401"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 393125
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 50,
+            "name": "利用者 \"P000456\" の書籍 \"架空の物語A\" の貸出の貸出状態は \"貸出中\" のままである",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:405"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 189416
+            },
+            "keyword": "After",
+            "hidden": true
+          }
+        ],
+        "tags": [
+          {
+            "name": "@uc:register-loan",
+            "line": 3
+          },
+          {
+            "name": "@acceptance",
+            "line": 43
+          },
+          {
+            "name": "@acceptance:SPEC-002-01-2",
+            "line": 43
+          }
+        ],
+        "type": "scenario"
+      }
+    ],
+    "id": "貸出を登録する",
+    "line": 4,
+    "keyword": "機能",
+    "name": "貸出を登録する",
+    "tags": [
+      {
+        "name": "@uc:register-loan",
+        "line": 3
+      }
+    ],
+    "uri": "features/貸出業務/register-loan.feature"
+  }
+]

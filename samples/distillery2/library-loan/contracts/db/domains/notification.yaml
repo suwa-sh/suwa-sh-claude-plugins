@@ -1,0 +1,149 @@
+# RDRA コンテキスト: 通知管理 / 情報: 通知 / 状態モデル: 通知状態
+# 通知は送信待ちレコード (outbox) を兼ねる。業務の更新と同じトランザクションで作り、worker が送る (ADR-0005)
+subdomain_id: notification
+tables:
+  - name: notifications
+    description: 通知の現在状態 (スナップショット)。取置通知・返却期限リマインド・延滞督促
+    columns:
+      - name: notification_id
+        type: uuid
+        nullable: false
+        description: 通知ID。worker はこの単位で送信し二重送信しない
+      - name: patron_number
+        type: string
+        nullable: false
+        description: 宛先の利用者番号
+      - name: type
+        type: string
+        nullable: false
+        description: "通知種別 (hold_ready=取置通知, reminder=返却期限リマインド, overdue_notice=延滞督促)"
+        enum: [hold_ready, reminder, overdue_notice]
+      - name: loan_id
+        type: uuid
+        nullable: true
+        description: 契機の貸出ID (リマインド・督促)
+      - name: reservation_id
+        type: uuid
+        nullable: true
+        description: 契機の予約ID (取置通知)
+      - name: reminder_timing
+        type: string
+        nullable: true
+        description: "リマインド時期 (three_days_before=返却期限の3日前, one_day_before=返却期限の1日前)。リマインドのときだけ値を持つ"
+        enum: [three_days_before, one_day_before]
+      - name: dedupe_key
+        type: string
+        nullable: false
+        description: >-
+          重複作成防止キー。通知種別・貸出ID・予約ID・リマインド時期を連結した値 (ADR-0005 の一意制約)。
+          null を含む複合一意制約は重複を防げないため、連結値の列で一意にする
+      - name: recipient_email_encrypted
+        type: text
+        nullable: false
+        description: 宛先メールアドレス (アプリで暗号化した値)
+      - name: subject
+        type: string
+        nullable: false
+        description: 件名
+      - name: body
+        type: text
+        nullable: false
+        description: 本文
+      - name: status
+        type: string
+        nullable: false
+        description: "通知状態 (pending=送信待ち, sent=送信済み, failed=送信失敗)"
+        enum: [pending, sent, failed]
+      - name: attempt_count
+        type: integer
+        nullable: false
+        description: 送信を試みた回数
+      - name: last_error
+        type: text
+        nullable: true
+        description: 直近の送信失敗の理由
+      - name: version
+        type: integer
+        nullable: false
+        description: 版番号
+      - name: created_at
+        type: datetime
+        nullable: false
+        description: 作成日時
+      - name: sent_at
+        type: datetime
+        nullable: true
+        description: 送信日時
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 更新日時
+    primary_key: [notification_id]
+    foreign_keys:
+      - columns: [patron_number]
+        references:
+          table: patrons
+          columns: [patron_number]
+        on_delete: RESTRICT
+      - columns: [loan_id]
+        references:
+          table: loans
+          columns: [loan_id]
+        on_delete: RESTRICT
+      - columns: [reservation_id]
+        references:
+          table: reservations
+          columns: [reservation_id]
+        on_delete: RESTRICT
+    indexes:
+      - name: notifications_dedupe_key_uq
+        unique: true
+        columns: [dedupe_key]
+      - name: notifications_status_created_idx
+        unique: false
+        columns: [status, created_at]
+      - name: notifications_patron_number_idx
+        unique: false
+        columns: [patron_number]
+  - name: notification_events
+    description: 通知のイベント (追記のみ)。送信結果の経緯を残す
+    columns:
+      - name: event_id
+        type: uuid
+        nullable: false
+        description: イベントID
+      - name: notification_id
+        type: uuid
+        nullable: false
+        description: 対象の通知ID
+      - name: notification_version
+        type: integer
+        nullable: false
+        description: このイベント適用後の通知の版番号
+      - name: event_type
+        type: string
+        nullable: false
+        description: "イベント種別 (例 NotificationQueued, NotificationSent, NotificationFailed, NotificationRequeued)"
+      - name: payload
+        type: text
+        nullable: false
+        description: イベント内容 (JSON 文字列)
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 操作者 (worker のジョブ名、または IdP の subject)
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: 発生日時
+    primary_key: [event_id]
+    foreign_keys:
+      - columns: [notification_id]
+        references:
+          table: notifications
+          columns: [notification_id]
+        on_delete: RESTRICT
+    indexes:
+      - name: notification_events_notification_version_uq
+        unique: true
+        columns: [notification_id, notification_version]

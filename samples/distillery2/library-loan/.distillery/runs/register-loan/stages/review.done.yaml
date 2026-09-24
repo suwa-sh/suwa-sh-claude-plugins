@@ -1,0 +1,8 @@
+stage: review
+completed_at: "2026-09-24T00:10:02.801Z"
+approver: headless-auto
+assumptions:
+  confirmed: 5
+  auto_confirmed: 15
+  rejected: 0
+assumption_evidence_sha256: 2e3a6bc08d4bbffa96e4bef3fa7f12189b7bacbbbb5ed93c2a127163b7dd0750
