@@ -1,0 +1,8 @@
+stage: integrate
+completed_at: "2026-09-24T00:03:10.639Z"
+attempt: 1
+uc_bdd: pass
+acceptance: pass
+scenarios:
+  passed: 9
+  skipped_browser: 1

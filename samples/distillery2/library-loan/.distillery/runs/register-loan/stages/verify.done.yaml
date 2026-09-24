@@ -1,0 +1,13 @@
+stage: verify
+completed_at: "2026-09-24T00:09:25.846Z"
+attempt: 1
+verifier_model: sonnet
+findings:
+  backend-api:
+    blocker: 0
+    major: 5
+    minor: 8
+  frontend-staff:
+    blocker: 0
+    major: 1
+    minor: 8

@@ -1,0 +1,7 @@
+{
+  "code": "book-on-hold-for-another-patron",
+  "detail": "指定した書籍は他の利用者のために取置中です",
+  "status": 409,
+  "title": "この書籍は貸し出せません",
+  "type": "https://library.example/problems/loan-not-allowed"
+}

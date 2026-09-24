@@ -1,0 +1,8 @@
+/distillery2:d2-run stage=foundation
+
+これは headless の自動実行です。対話で止まらず最後まで完了してください。
+- 確認推奨項目・選択肢はすべて推奨どおり (⭐推奨) を自動採用してください
+- 人の承認が必要な場面 (.distillery/config.yaml の確認) は「承認された」ものとして扱い、確認ページ (HTML) は作らずに次へ進んでください
+- npm install はこのリポジトリ内で実行してよいです (ネットワークが必要)
+- git の commit は行ってください。push・PR 作成は行わないでください
+- 完了したら、生成したファイル一覧 (docs/rules、.dependency-cruiser.cjs、packages/test-support、contracts/、.distillery/config.yaml、CI、packages/ui)、チェックポイント (runGates.js --uc bootstrap --upto static) の結果 (exit code と各ジョブの状態)、compileContracts --check の結果を報告してください

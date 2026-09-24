@@ -1,0 +1,76 @@
+要求段階は途中で止まっています。この環境では `node` の実行に承認が必要で、headless では承認できません。そのため、検証と生成のスクリプトを 1 本も実行できていません。サブエージェントも私も同じ理由でブロックされました。python などで実行を迂回することはしていません。
+
+未検証の成果物を「要求の承認済み」としてコミットすると誤解を招くため、**commit はしていません**。
+
+## 生成したファイル (`docs/requirements/` 配下、未コミット)
+
+| ファイル | 状態 |
+|---|---|
+| `requirements.yaml` | 作成済み。要求 6 件、仕様 16 件、1 行 Gherkin の受入基準つき。YAML として読めることだけ確認済み |
+| `rdra/アクター.tsv`・`外部システム.tsv`・`情報.tsv`・`状態.tsv`・`条件.tsv`・`バリエーション.tsv`・`BUC.tsv` | 作成済み |
+| `rdra/システム概要.json` | 作成済み (GUI) |
+| `_review-summary.md` | 作成済み。UC 一覧・業務ルール・状態遷移・受入基準・未決事項を記載。内部 ID は出していない |
+| `requirements.md`・`rdra/関連データ.txt`・`rdra/ZeroOne.txt`・`rdra/views/*.md` | **未作成** (node が必要) |
+| `use-cases.yaml` | **未作成** (node が必要) |
+
+作業用の `1_RDRA/` と `0_RDRAZeroOne/` は削除済みです。書き込みは `docs/requirements/` の中だけで、それ以外への書き込みはありません。
+
+## UC の件数
+
+`BUC.tsv` 上では 32 件です。ただし `use-cases.yaml` はまだありません。
+
+| 業務 | UC 数 |
+|---|---|
+| 蔵書管理業務 | 6 |
+| 利用者管理業務 | 4 |
+| 貸出業務 | 19 |
+| 蔵書分析業務 | 3 |
+
+## 「貸出を登録する」UC
+
+この名前の UC は貸出業務の貸出フローにあります。ただし、まだどのファイルにも slug と spec_ids は入っていません。値の設定には `genUseCases.js` の実行が必要です。
+
+- slug の案: `register-loan`
+- spec_ids の案: `SPEC-002-01` (貸出を登録する)、`SPEC-003-01` (返却期限を自動で決める)
+
+## 検証スクリプトの結果
+
+| スクリプト | exit code |
+|---|---|
+| `validateRequirements.js` | 未実行 (node がブロックされた) |
+| `generateRdraMd.js --lint` | 未実行 |
+| `validateUseCases.js` | 未実行 |
+
+公式の lint の代わりに、サブエージェントが python で簡易の参照チェックをしました。このチェックで見つかった不備は 3 件で、すべて修正済みです。
+- 予約の状態モデルが空欄だった
+- TSV の列が一部欠けていた
+- 取置期限条件がどこからも参照されていなかった
+
+## 自動で採用した推奨事項 (要望に記載がなかったもの)
+
+- 貸出期間を 7 / 14 / 21 日にした。利用者の種別と媒体の種別で決まる
+- 返却期限の案内を期限の 3 日前と 1 日前に送る
+- 利用者の種別を一般・児童・学生の 3 つにした
+- 取置期限と、期限切れの取置を自動で取り消す処理を足した。取置の日数は未決
+- 期限の案内・延滞・取置期限切れを、日次のタイマー処理で扱う
+- 「貸出実績を蓄積する」は独立した UC にせず、貸出と返却の登録に含めた
+- 送信に失敗した通知を再送する処理を足した。要望に記載はなく推測
+- 図書館は 1 館だけとし、今は紙の本だけを扱う
+
+## 次にすること
+
+次のどちらかで `node` を実行できるようにして、ブロックされた手順を再実行する必要があります。
+- 設定の許可リストに `node` を追加する
+- 対話セッションで承認する
+
+1. `node .../d2-requirements/scripts/validateRequirements.js docs/requirements/requirements.yaml`
+2. `generateRequirementsMd.js docs/requirements/requirements.yaml`
+3. `generateRdraMd.js docs/requirements/rdra --lint`
+4. `makeGraphData.js docs/requirements/rdra`、続いて `makeZeroOneData.js docs/requirements/rdra`
+5. `generateRdraMd.js docs/requirements/rdra`
+6. `genUseCases.js` を実行し、各 UC の slug と spec_ids を編集する
+7. `validateUseCases.js docs/requirements/use-cases.yaml`
+
+すべて exit 0 になったら、`git add docs/requirements && git commit -m "req: initial requirements"` でコミットします。node を使えるようにしたうえで、同じコマンドを再実行してください。そこから再開します。
+SessionEnd hook [http://localhost:7676/hooks/session-end] failed: Hook cancelled
+EXIT=0

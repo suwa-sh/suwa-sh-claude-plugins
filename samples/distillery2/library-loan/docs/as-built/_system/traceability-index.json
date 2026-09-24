@@ -1,0 +1,265 @@
+{
+  "acceptance": {
+    "SPEC-002-01-1": {
+      "scenarios": [
+        "在庫ありの書籍を登録済みの利用者に貸し出す"
+      ],
+      "ucs": [
+        "register-loan"
+      ]
+    },
+    "SPEC-002-01-2": {
+      "scenarios": [
+        "貸出中の書籍は同じ書籍として貸し出せない",
+        "貸出受付画面で貸出中の書籍を貸し出そうとすると貸出できない旨が表示される"
+      ],
+      "ucs": [
+        "register-loan"
+      ]
+    },
+    "SPEC-003-01-1": {
+      "scenarios": [
+        "貸出を登録すると返却期限が自動で設定される"
+      ],
+      "ucs": [
+        "register-loan"
+      ]
+    }
+  },
+  "operations": {
+    "createLoan": {
+      "provider_tier": "backend-api",
+      "ucs": [
+        "register-loan"
+      ]
+    }
+  },
+  "tables": {
+    "book_events": {
+      "ucs": [
+        "register-loan"
+      ]
+    },
+    "books": {
+      "ucs": [
+        "register-loan"
+      ]
+    },
+    "loan_events": {
+      "ucs": [
+        "register-loan"
+      ]
+    },
+    "loans": {
+      "ucs": [
+        "register-loan"
+      ]
+    },
+    "patrons": {
+      "ucs": [
+        "register-loan"
+      ]
+    },
+    "reservation_events": {
+      "ucs": [
+        "register-loan"
+      ]
+    },
+    "reservations": {
+      "ucs": [
+        "register-loan"
+      ]
+    }
+  },
+  "ucs": {
+    "register-loan": {
+      "as_built": "docs/as-built/貸出業務/貸出を登録する/",
+      "business": "貸出業務",
+      "files": [
+        ".distillery/runs/register-loan/events.jsonl",
+        ".distillery/runs/register-loan/issues/20260924_000100_foundation-test-wiring.md",
+        ".distillery/runs/register-loan/issues/20260924_000200_trace-and-driver-wiring.md",
+        ".distillery/runs/register-loan/issues/20260924_090000_register-loan.md",
+        ".distillery/runs/register-loan/issues/20260924_120000_loan-period-mapping.md",
+        ".distillery/runs/register-loan/issues/20260924_120001_loan-limit-count.md",
+        ".distillery/runs/register-loan/issues/20260924_130000_frontend-api-client-missing.md",
+        ".distillery/runs/register-loan/issues/20260924_130001_frontend-staff-toolchain.md",
+        ".distillery/runs/register-loan/stages/contract-gate.done.yaml",
+        ".distillery/runs/register-loan/stages/contract.done.yaml",
+        ".distillery/runs/register-loan/stages/integrate.done.yaml",
+        ".distillery/runs/register-loan/stages/review.done.yaml",
+        ".distillery/runs/register-loan/stages/scaffold.done.yaml",
+        ".distillery/runs/register-loan/stages/scenario.done.yaml",
+        ".distillery/runs/register-loan/stages/tier.done.yaml",
+        ".distillery/runs/register-loan/stages/verify.done.yaml",
+        "\"features/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/register-loan.feature\"",
+        "apps/backend-api/migrations/0001_schema.sql",
+        "apps/backend-api/package.json",
+        "apps/backend-api/src/domain/loan/due-date.test.ts",
+        "apps/backend-api/src/domain/loan/due-date.ts",
+        "apps/backend-api/src/domain/loan/errors.ts",
+        "apps/backend-api/src/domain/loan/loan-period.test.ts",
+        "apps/backend-api/src/domain/loan/loan-period.ts",
+        "apps/backend-api/src/domain/loan/loan-registration-repository.ts",
+        "apps/backend-api/src/domain/loan/loan.test.ts",
+        "apps/backend-api/src/domain/loan/loan.ts",
+        "apps/backend-api/src/domain/shared/business-date.ts",
+        "apps/backend-api/src/gateway/clock/clocks.ts",
+        "apps/backend-api/src/gateway/db/sql-client.ts",
+        "apps/backend-api/src/gateway/log/access-log-writers.ts",
+        "apps/backend-api/src/presentation/http/app.test.ts",
+        "apps/backend-api/src/presentation/http/app.ts",
+        "apps/backend-api/src/presentation/http/authenticator.ts",
+        "apps/backend-api/src/presentation/http/http-io.ts",
+        "apps/backend-api/src/presentation/http/loans/create-loan-handler.ts",
+        "apps/backend-api/src/presentation/http/loans/create-loan-request.test.ts",
+        "apps/backend-api/src/presentation/http/loans/create-loan-request.ts",
+        "apps/backend-api/src/presentation/http/problem.ts",
+        "apps/backend-api/src/repository/loan/pg-loan-registration-repository.test.ts",
+        "apps/backend-api/src/repository/loan/pg-loan-registration-repository.ts",
+        "apps/backend-api/src/test-app.test.ts",
+        "apps/backend-api/src/test-app.ts",
+        "apps/backend-api/src/testing/contract-fixture.ts",
+        "apps/backend-api/src/testing/test-authenticator.ts",
+        "apps/backend-api/src/usecase/auth/principal.ts",
+        "apps/backend-api/src/usecase/loan/register-loan.test.ts",
+        "apps/backend-api/src/usecase/loan/register-loan.ts",
+        "apps/backend-api/src/usecase/ports/access-log.ts",
+        "apps/backend-api/test/contract/createLoan.test.ts",
+        "apps/backend-api/test/contract/db-schema.test.ts",
+        "apps/backend-api/tsconfig.json",
+        "apps/frontend-staff/package.json",
+        "apps/frontend-staff/src/api-client/loan-api-types.ts",
+        "apps/frontend-staff/src/api-client/loan-api.test.ts",
+        "apps/frontend-staff/src/api-client/loan-api.ts",
+        "apps/frontend-staff/src/screens/loan-checkout/loan-checkout-state.test.ts",
+        "apps/frontend-staff/src/screens/loan-checkout/loan-checkout-state.ts",
+        "apps/frontend-staff/src/screens/loan-checkout/submit-loan-checkout.test.ts",
+        "apps/frontend-staff/src/screens/loan-checkout/submit-loan-checkout.ts",
+        "apps/frontend-staff/tsconfig.json",
+        "contracts/generated/openapi.bundle.yaml",
+        "contracts/generated/slices/register-loan/contract-slice.json",
+        "contracts/generated/slices/register-loan/rdb-slice.yaml",
+        "contracts/openapi/openapi.yaml",
+        "contracts/openapi/paths/loans.yaml",
+        "contracts/uc-index.yaml",
+        "cucumber.js",
+        "docs/requirements/use-cases.yaml",
+        "features/step_definitions/register-loan.steps.ts",
+        "features/support/drivers/api.ts",
+        "features/support/hooks.ts",
+        "features/support/scenario-db.ts",
+        "features/support/world.ts",
+        "packages/contracts/api/stubs/.distillery2-generated.json",
+        "packages/contracts/api/stubs/createLoan.201.json",
+        "packages/contracts/api/stubs/createLoan.400.json",
+        "packages/contracts/api/stubs/createLoan.404.json",
+        "packages/contracts/api/stubs/createLoan.409.json",
+        "packages/contracts/db/tables.ts",
+        "packages/test-support/src/tracer.ts"
+      ],
+      "gates": "pass",
+      "gates_complete": true,
+      "generated_at": "2026-09-24T00:10:02.802Z",
+      "messages": [],
+      "operations": [
+        "createLoan"
+      ],
+      "scenarios": [
+        {
+          "name": "延滞中の貸出を持つ利用者には貸し出せない",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "在庫ありの書籍を登録済みの利用者に貸し出す",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-1",
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "削除済みの書籍は貸し出せない",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "削除済みの利用者には貸し出せない",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "取置の書籍は取置中の予約を持たない利用者には貸し出せない",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "取置中の予約を持つ予約順 1 位の利用者には取置の書籍を貸し出せる",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "貸出を登録すると返却期限が自動で設定される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-003-01-1",
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "貸出受付画面で貸出中の書籍を貸し出そうとすると貸出できない旨が表示される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-2",
+            "@browser",
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "貸出中の書籍は同じ書籍として貸し出せない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-2",
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "利用者は貸出を登録できない",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        }
+      ],
+      "spec_ids": [
+        "SPEC-002-01",
+        "SPEC-003-01"
+      ],
+      "tables": [
+        "book_events",
+        "books",
+        "loan_events",
+        "loans",
+        "patrons",
+        "reservation_events",
+        "reservations"
+      ],
+      "uc": "貸出を登録する"
+    }
+  }
+}

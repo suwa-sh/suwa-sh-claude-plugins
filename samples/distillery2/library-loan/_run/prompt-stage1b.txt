@@ -1,0 +1,14 @@
+/distillery2:d2-requirements の「UC 一覧 (use-cases.yaml)」の LLM 作業だけを行ってください。
+
+状況: docs/requirements/ には requirements.yaml、rdra/*.tsv、views/、use-cases.yaml (genUseCases.js が生成済み。32 UC) があります。
+検証スクリプトは exit 0 ですが、validateUseCases.js は「全 UC の spec_ids が空」で FAIL しています。
+
+やること:
+1. docs/requirements/use-cases.yaml の各 UC について、`slug` を英語の kebab-case (一意) に、`spec_ids` を requirements.yaml の specifications のうちその UC が実現するもの (1 件以上) に編集する。
+   requirements.yaml の specification と affected_models (buc / information / state の target) を手掛かりにする。
+   実現する SPEC が本当に無い UC だけ `no_spec_reason` を書いて `status: blocked` にする (安易に blocked にしない)。
+2. `node ~/.claude/plugins/cache/suwa-sh-claude-plugins/distillery2/0.1.0/skills/d2-requirements/scripts/validateUseCases.js docs/requirements/use-cases.yaml` が exit 0 になるまで直す。
+3. docs/requirements/_review-summary.md の UC 一覧が use-cases.yaml と一致していることを確認する (内部 ID は本文に出さない)。
+4. `git add docs/requirements && git commit -m "req: initial requirements"` でコミットする。push はしない。
+
+これは headless の自動実行です。対話で止まらず完了してください。完了したら、UC 数、blocked にした UC とその理由、貸出業務の「貸出を登録する」の slug と spec_ids、validateUseCases の exit code を報告してください。

@@ -1,0 +1,115 @@
+# RDRA コンテキスト: 予約管理 / 情報: 予約 / 状態モデル: 予約状態
+subdomain_id: reservation
+tables:
+  - name: reservations
+    description: 予約の現在状態 (スナップショット)。予約順は書籍ごとの先着順
+    columns:
+      - name: reservation_id
+        type: uuid
+        nullable: false
+        description: 予約ID
+      - name: book_id
+        type: uuid
+        nullable: false
+        description: 書籍ID
+      - name: patron_number
+        type: string
+        nullable: false
+        description: 利用者番号
+      - name: reserved_at
+        type: datetime
+        nullable: false
+        description: 予約日時
+      - name: queue_position
+        type: integer
+        nullable: true
+        description: "予約順 (1 始まり)。受取済み・取消済みになったら null にし、後続を繰り上げる"
+      - name: status
+        type: string
+        nullable: false
+        description: "予約状態 (waiting=予約中, on_hold=取置中, picked_up=受取済み, cancelled=取消済み)"
+        enum: [waiting, on_hold, picked_up, cancelled]
+      - name: hold_started_on
+        type: date
+        nullable: true
+        description: 取置開始日
+      - name: hold_expires_on
+        type: date
+        nullable: true
+        description: 取置期限
+      - name: version
+        type: integer
+        nullable: false
+        description: 版番号
+      - name: created_at
+        type: datetime
+        nullable: false
+        description: 作成日時
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 更新日時
+    primary_key: [reservation_id]
+    foreign_keys:
+      - columns: [book_id]
+        references:
+          table: books
+          columns: [book_id]
+        on_delete: RESTRICT
+      - columns: [patron_number]
+        references:
+          table: patrons
+          columns: [patron_number]
+        on_delete: RESTRICT
+    indexes:
+      - name: reservations_book_queue_uq
+        unique: true
+        columns: [book_id, queue_position]
+      - name: reservations_patron_number_idx
+        unique: false
+        columns: [patron_number]
+      - name: reservations_status_hold_expires_idx
+        unique: false
+        columns: [status, hold_expires_on]
+  - name: reservation_events
+    description: 予約のイベント (追記のみ)
+    columns:
+      - name: event_id
+        type: uuid
+        nullable: false
+        description: イベントID
+      - name: reservation_id
+        type: uuid
+        nullable: false
+        description: 対象の予約ID
+      - name: reservation_version
+        type: integer
+        nullable: false
+        description: このイベント適用後の予約の版番号
+      - name: event_type
+        type: string
+        nullable: false
+        description: "イベント種別 (例 ReservationPlaced, ReservationHeld, ReservationPickedUp, ReservationCancelled, QueueAdvanced)"
+      - name: payload
+        type: text
+        nullable: false
+        description: イベント内容 (JSON 文字列)
+      - name: actor_id
+        type: string
+        nullable: false
+        description: 操作者 (IdP の subject、または worker のジョブ名)
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: 発生日時
+    primary_key: [event_id]
+    foreign_keys:
+      - columns: [reservation_id]
+        references:
+          table: reservations
+          columns: [reservation_id]
+        on_delete: RESTRICT
+    indexes:
+      - name: reservation_events_reservation_version_uq
+        unique: true
+        columns: [reservation_id, reservation_version]

@@ -1,0 +1,7 @@
+{
+  "code": "book-not-found",
+  "detail": "指定した書籍は削除済みのため貸し出せません",
+  "status": 404,
+  "title": "対象が見つかりません",
+  "type": "https://library.example/problems/not-found"
+}

@@ -1,0 +1,89 @@
+「貸出を登録する」は feedback 段階まで通り、squash して止めました。全ゲートが pass し、blocker は 0 件です。push と PR 作成は指示どおり行っていません。
+
+- **branch:** `feature/register-loan`
+- **squash commit:** `10d88a0 feat: 貸出を登録する`
+- **復旧用 ref:** `refs/distillery2/pre-squash/register-loan/20260924T001300Z`
+
+## 段階ごとの結果
+
+| 段階 | 結果 |
+|---|---|
+| scenario | シナリオ 10 件。受入基準 3 件をすべて網羅し、画面での確認 (ブラウザ) は 1 件。承認は自動扱い |
+| contract | `POST /loans` を追加。3 つの検査が exit 0。関与ティアは backend-api と frontend-staff で、use-cases.yaml に書き戻した |
+| scaffold | 両ティアが 2 件ずつ失敗する状態 (red baseline) を確認。step 未定義は 0 件。基盤の不備を 3 か所直してから通した (下記) |
+| tier | 2 ティアを並列で実装。前提は backend-api 12 件、frontend-staff 8 件で、検証は ok |
+| contract-gate | static / unit / contract が pass。1 回目で通過 |
+| integrate | uc-bdd は 9 件 pass (ブラウザの 1 件は skip)。受入は 3 件 pass |
+| verify | 両ティアとも blocker 0。差し戻しなし |
+| review | 回答必須の前提 5 件を含め、全 20 件を承認扱いにした |
+| asbuilt | 抽出と要約を完了 |
+| feedback | 課題 7 件を分類した。指示どおり PR / issue は作っていない |
+
+## `reports/gates.json`
+
+- 総合: `result: pass`、`all_recorded: true`
+- ゲート別: static / unit / contract / uc-bdd / acceptance がすべて pass
+
+## findings の件数
+
+| ティア | blocker | major | minor |
+|---|---|---|---|
+| backend-api | 0 | 5 | 8 |
+| frontend-staff | 0 | 1 | 8 |
+| 合計 | 0 | 6 | 16 |
+
+- **backend-api の major 5 件:** 次の前提です。いずれも要回答で、承認扱いにしました。
+  - 本番の認証 (OIDC) が無く、テスト用の認証で代用している
+  - アクセスログの項目
+  - 入力エラー (400) と権限エラー (403) の判定順
+  - イベントの中身
+  - トランザクションと予約の版番号照合
+- **frontend-staff の major 1 件:** 生成された API クライアントが無いため、型を手で写している。
+
+## AssumptionRecord の件数
+
+- 合計 20 件 (backend-api 12 件、frontend-staff 8 件)
+- 内訳: confirmed 5 件、auto_confirmed 15 件、rejected 0 件
+- 分類別: error_handling 8 件、input_validation 4 件、data_format 4 件、security 2 件、persistence 2 件
+
+## 生成された as-built
+
+- `docs/as-built/貸出業務/貸出を登録する/index.md`、`sequence.md`、`coverage.md`
+- `docs/as-built/_system/` の 4 ファイル
+
+## 要求起因の課題 (issue は作っていない)
+
+1. **貸出期間の対応表が無い:** 利用者区分 × 媒体種別と、7 / 14 / 21 日の対応が要求にありません。実装は全組み合わせを 14 日で仮置きしています。
+2. **貸出上限冊数の値が無い:** 利用者区分ごとの値が要求にありません。そのため上限の判定は実装していません。
+
+rule 3 件と contract 2 件の課題は `.distillery/runs/register-loan/issues/` に残しています。
+
+## 詰まった箇所とその原因
+
+| 箇所 | 原因 | 対処 |
+|---|---|---|
+| scaffold で red baseline を作れない | 基盤の生成物で、各ティアの test script が `echo` のままだった | 2 ティアを vitest に配線した |
+| 同上 | `cucumber.js` の書き方が誤っていた。ESM では `export default { default: {...} }` だと既定の設定として読まれない (公式ドキュメントで確認) | 正しい形に直した |
+| 同上 | テスト用アプリの読み込みで dry-run が落ちる | 読み込みを省く `dryrun` 設定を追加した |
+| integrate のトレース | 日本語のシナリオ名が同じファイル名に潰れ、9 シナリオのトレースが 2 ファイルに混ざった | `packages/test-support/src/tracer.ts` を直して再実行した。9 ファイルに分かれた |
+| as-built の前提一覧 | 抽出スクリプトが前提を ID だけで引く (プラグイン側の不具合)。backend-api の A-005 / A-007 (confirmed) が、frontend-staff の同じ ID (auto_confirmed) で上書きされて表示される | 未修正 |
+| trailer の生成 | 未起票の還流が `Feedback: rule:null` のように出力された | squash のメッセージから外し、本文に未起票と書いた |
+| Verifier の model | 設定値 `claude-opus-5` は指定できない。`opus` は実装者と同じ model になるおそれがある | `sonnet` で実行した |
+| 開始時の未追跡ファイル | ルートに実行用のファイル (`run-stage.sh` など) があり、開始条件の「clean」を満たさなかった。`.git/info/exclude` への追記は権限で拒否された | 触らずに進め、commit にも含めていない |
+| 前提と findings が git に入らない | `.gitignore` が `attempt-*/` を除外している。手順書の「attempt は commit に含める」と矛盾する | 未修正 |
+
+実装の残課題は次のとおりです。
+
+- 静的検査の一部は、まだ中身の無い `echo` です。
+  - 整形チェックは両ティアとも。frontend-staff は lint も
+  - prettier / eslint が未導入のため
+- 画面の TSX は未実装です。react が未導入のため
+- 本番の認証 (OIDC) 検証がまだ無く、テスト用の認証で代用しています
+
+## 次にすること
+
+1. `git push -u origin feature/register-loan` をしてから PR を作成する。remote が未設定なので、先に設定が必要。
+2. rule / contract の課題 5 件を、還流の PR にするか判断する。
+3. 要求の課題 2 件に回答する。
+
+外部サービスの補足: legal プラグインの atlassian / box / docusign / egnyte は認証が必要で、今は使えません。使うには `/mcp` などで認証してください。今回の作業には影響ありません。

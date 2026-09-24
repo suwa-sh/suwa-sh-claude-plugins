@@ -1,0 +1,162 @@
+basis: "requirements@ca8f7fb28b2dc8ef6b6abfcee29c0898fa879a12 adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659"
+tokens:
+  file: tokens/tokens.json
+screens:
+  # ---- 利用者向け (frontend-patron / data-portal=user) ----
+  - name: BookSearch
+    route: "/books"
+    uc_slugs: [search-books]
+    story: stories/BookSearch.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [PatronLayout, PageHeader, BookSearchFilter, BookSummaryCard, Button, AsyncContent]
+  - name: BookDetail
+    route: "/books/:bookId"
+    uc_slugs: [view-book-detail]
+    story: stories/BookDetail.stories.tsx
+    variants: [Default, OnLoan, Loading, Error]
+    components: [PatronLayout, PageHeader, BookInfoPanel, Card, Button, Alert, AsyncContent]
+  - name: Login
+    route: "/login"
+    uc_slugs: [log-in]
+    story: stories/Login.stories.tsx
+    variants: [Default, InvalidCredentials, Submitting]
+    components: [PatronLayout, PageHeader, Input, Button, Card, Alert]
+  - name: MyCurrentLoans
+    route: "/my/loans"
+    uc_slugs: [view-current-loans]
+    story: stories/MyCurrentLoans.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [PatronLayout, PageHeader, Card, LoanStatusBadge, DueDateDisplay, AsyncContent]
+  - name: ReservationApply
+    route: "/books/:bookId/reserve"
+    uc_slugs: [place-reservation]
+    story: stories/ReservationApply.stories.tsx
+    variants: [Default, Completed, NotReservable, Error]
+    components: [PatronLayout, PageHeader, BookInfoPanel, ConfirmDialog, Alert, Card]
+  - name: ReservationCancel
+    route: "/my/reservations/:reservationId/cancel"
+    uc_slugs: [cancel-reservation]
+    story: stories/ReservationCancel.stories.tsx
+    variants: [Default, Completed, Error]
+    components: [PatronLayout, PageHeader, ConfirmDialog, ReservationStatusBadge, ReservationTracker, Alert]
+  - name: MyOverdueLoans
+    route: "/my/overdue-loans"
+    uc_slugs: [view-my-overdue-loans]
+    story: stories/MyOverdueLoans.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [PatronLayout, PageHeader, Card, LoanStatusBadge, DueDateDisplay, Alert, AsyncContent]
+  - name: MyLoanHistory
+    route: "/my/loan-history"
+    uc_slugs: [view-loan-history]
+    story: stories/MyLoanHistory.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [PatronLayout, PageHeader, DataTable, LoanStatusBadge, AsyncContent]
+  - name: MyReservations
+    route: "/my/reservations"
+    uc_slugs: [view-my-reservations]
+    story: stories/MyReservations.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [PatronLayout, PageHeader, Card, ReservationStatusBadge, ReservationTracker, Button, AsyncContent]
+  # ---- 司書向け (frontend-staff / data-portal=admin) ----
+  - name: BookRegister
+    route: "/staff/books/new"
+    uc_slugs: [register-book]
+    story: stories/BookRegister.stories.tsx
+    variants: [Default, DuplicateIsbn, Submitting, Error]
+    components: [StaffLayout, PageHeader, BookForm, Card, Alert]
+  - name: BookEdit
+    route: "/staff/books/:bookId/edit"
+    uc_slugs: [update-book]
+    story: stories/BookEdit.stories.tsx
+    variants: [Default, ValidationError, Loading, Error]
+    components: [StaffLayout, PageHeader, BookForm, Card, Alert, AsyncContent]
+  - name: BookDeleteConfirm
+    route: "/staff/books/:bookId/delete"
+    uc_slugs: [delete-book]
+    story: stories/BookDeleteConfirm.stories.tsx
+    variants: [Default, NotDeletable, Loading, Error]
+    components: [StaffLayout, PageHeader, ConfirmDialog, BookInfoPanel, AsyncContent]
+  - name: HoldingsSearch
+    route: "/staff/books"
+    uc_slugs: [search-library-holdings]
+    story: stories/HoldingsSearch.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [StaffLayout, PageHeader, BookSearchFilter, DataTable, BookStatusBadge, Button, AsyncContent]
+  - name: PatronRegister
+    route: "/staff/patrons/new"
+    uc_slugs: [register-patron]
+    story: stories/PatronRegister.stories.tsx
+    variants: [Default, ValidationError, Submitting, Error]
+    components: [StaffLayout, PageHeader, PatronForm, Card, Alert]
+  - name: PatronEdit
+    route: "/staff/patrons/:patronNo/edit"
+    uc_slugs: [update-patron]
+    story: stories/PatronEdit.stories.tsx
+    variants: [Default, Loading, Error]
+    components: [StaffLayout, PageHeader, PatronForm, Card, AsyncContent]
+  - name: PatronDeleteConfirm
+    route: "/staff/patrons/:patronNo/delete"
+    uc_slugs: [delete-patron]
+    story: stories/PatronDeleteConfirm.stories.tsx
+    variants: [Default, NotDeletable, Loading, Error]
+    components: [StaffLayout, PageHeader, ConfirmDialog, PatronInfoPanel, AsyncContent]
+  - name: LoanCheckout
+    route: "/staff/loans/new"
+    uc_slugs: [register-loan]
+    story: stories/LoanCheckout.stories.tsx
+    variants: [Default, Completed, NotLendable, Error]
+    components: [StaffLayout, PageHeader, CounterLookup, Card, Alert, BookInfoPanel, DueDateDisplay]
+  - name: LoanReturn
+    route: "/staff/returns"
+    uc_slugs: [register-return]
+    story: stories/LoanReturn.stories.tsx
+    variants: [Default, Completed, CompletedWithReservation, Error]
+    components: [StaffLayout, PageHeader, CounterLookup, Card, Alert, LoanStatusBadge, DueDateDisplay]
+  - name: HoldRegister
+    route: "/staff/holds"
+    uc_slugs: [register-hold]
+    story: stories/HoldRegister.stories.tsx
+    variants: [Default, Registered, Empty, Error]
+    components: [StaffLayout, PageHeader, DataTable, ReservationStatusBadge, Button, Alert, AsyncContent]
+  - name: ReservationQueue
+    route: "/staff/books/:bookId/reservations"
+    uc_slugs: [view-book-reservations]
+    story: stories/ReservationQueue.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [StaffLayout, PageHeader, BookInfoPanel, DataTable, ReservationStatusBadge, Card, AsyncContent]
+  - name: NotificationStatus
+    route: "/staff/notifications"
+    uc_slugs: [view-notification-status]
+    story: stories/NotificationStatus.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [StaffLayout, PageHeader, DataTable, NotificationStatusBadge, Select, Alert, AsyncContent]
+  - name: OverdueLoanList
+    route: "/staff/overdue-loans"
+    uc_slugs: [list-overdue-loans]
+    story: stories/OverdueLoanList.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [StaffLayout, PageHeader, DataTable, LoanStatusBadge, DueDateDisplay, NotificationStatusBadge, AsyncContent]
+  - name: PatronUsage
+    route: "/staff/patrons/:patronNo/usage"
+    uc_slugs: [view-patron-usage]
+    story: stories/PatronUsage.stories.tsx
+    variants: [Default, NotFound, Loading, Error]
+    components: [StaffLayout, PageHeader, PatronInfoPanel, DataTable, LoanStatusBadge, ReservationStatusBadge, DueDateDisplay, Card, Input, Button, AsyncContent]
+  - name: InventoryReport
+    route: "/staff/reports/inventory"
+    uc_slugs: [show-inventory-report]
+    story: stories/InventoryReport.stories.tsx
+    variants: [Default, Loading, Error]
+    components: [StaffLayout, PageHeader, SummaryCard, BarChart, Card, AsyncContent]
+  - name: PopularBooksRanking
+    route: "/staff/reports/ranking"
+    uc_slugs: [show-popular-books-ranking]
+    story: stories/PopularBooksRanking.stories.tsx
+    variants: [Default, CustomPeriod, Empty, Loading, Error]
+    components: [StaffLayout, PageHeader, ReportPeriodSelector, DataTable, Card, AsyncContent]
+  - name: LoanStatistics
+    route: "/staff/reports/loan-statistics"
+    uc_slugs: [aggregate-loan-statistics]
+    story: stories/LoanStatistics.stories.tsx
+    variants: [Default, CustomPeriod, Empty, Loading, Error]
+    components: [StaffLayout, PageHeader, ReportPeriodSelector, SummaryCard, BarChart, Card, AsyncContent]

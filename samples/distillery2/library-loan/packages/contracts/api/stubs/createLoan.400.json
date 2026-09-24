@@ -1,0 +1,12 @@
+{
+  "detail": "入力項目を確認してください",
+  "errors": [
+    {
+      "field": "bookId",
+      "message": "書籍IDは必須です"
+    }
+  ],
+  "status": 400,
+  "title": "入力内容に誤りがあります",
+  "type": "https://library.example/problems/validation-error"
+}
