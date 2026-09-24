@@ -8,7 +8,7 @@
  *
  * 図 (Mermaid C4。Context7 で C4Context/C4Container のサポートを確認済み):
  *   (a) システムコンテキスト図 (C4Context): アクター → システム → 外部システム
- *   (b) コンテナ図 (C4Container): ティアをコンテナ、契約を provider→consumer のラベル付き辺、datastore_owner を明示
+ *   (b) コンテナ図 (C4Container): ティアをコンテナ、契約を consumer→provider のラベル付き辺 (C4 の uses は利用側→提供側)、datastore_owner を明示
  *   (c) コンテキストマップ図 (flowchart。任意): ADR front matter の contexts[] があるときだけ
  *
  * Usage:
@@ -30,6 +30,13 @@ const basisLib = require('../../../scripts/lib/basis');
 
 function readTextIfExists(p) { return p && fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null; }
 function readJsonIfExists(p) { const t = readTextIfExists(p); if (t == null) return null; try { return JSON.parse(t); } catch { return null; } }
+
+/**
+ * コードポイント (UTF-16 コード単位) での文字列比較。
+ * localeCompare は実行環境の ICU ロケールで順序が変わり生成物が非決定的になるため、
+ * 決定論を要する並び替えはすべてこの比較関数を使う。
+ */
+function cmpStr(a, b) { a = String(a); b = String(b); return a < b ? -1 : a > b ? 1 : 0; }
 
 /** C4 の別名 (alias) に使える識別子へ変換する。先頭が数字なら a_ を付ける。 */
 function c4Id(s) {
@@ -77,7 +84,7 @@ function readActors(rdraDir) {
   const nameCol = header.includes('アクター') ? 'アクター' : header[1];
   const kindCol = header.includes('社内外') ? '社内外' : null;
   const out = rows.map((r) => ({ name: r[nameCol], external: kindCol ? /社外/.test(r[kindCol]) : false })).filter((a) => a.name);
-  out.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  out.sort((a, b) => cmpStr(a.name, b.name));
   return out;
 }
 
@@ -88,7 +95,7 @@ function readExternals(rdraDir) {
   const { header, rows } = parseTsv(t);
   const nameCol = header.includes('外部システム') ? '外部システム' : header[1];
   const out = rows.map((r) => r[nameCol]).filter(Boolean);
-  return [...new Set(out)].sort((a, b) => a.localeCompare(b));
+  return [...new Set(out)].sort(cmpStr);
 }
 
 /** システム概要.json / use-cases.yaml からシステム名を得る。 */
@@ -105,7 +112,7 @@ function parseYamlIfExists(p) { const t = readTextIfExists(p); return t == null 
 function readContracts(p) {
   const j = readJsonIfExists(p);
   const list = (j && Array.isArray(j.contracts)) ? j.contracts : [];
-  return [...list].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  return [...list].sort((a, b) => cmpStr(a.id, b.id));
 }
 
 // --- 図の生成 ---------------------------------------------------------------
@@ -137,7 +144,7 @@ const TIER_KIND_JA = {
 
 function renderContainerDiagram(sysName, tiers, datastoreOwner, contracts, externals) {
   const L = [];
-  const sorted = [...tiers].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  const sorted = [...tiers].sort((a, b) => cmpStr(a.id, b.id));
   L.push('```mermaid');
   L.push('C4Container');
   L.push(`title コンテナ図: ${c4Label(sysName)}`);
@@ -151,11 +158,11 @@ function renderContainerDiagram(sysName, tiers, datastoreOwner, contracts, exter
   if (datastoreOwner) L.push('  ContainerDb(datastore, "データストア", "RDB 等", "")');
   L.push('}');
   externals.forEach((e, i) => L.push(`System_Ext(ext_${i + 1}, "${c4Label(e)}", "")`));
-  // 契約: provider → consumer のラベル付き辺 (id / type)。
+  // 契約: consumer → provider のラベル付き辺 (id / type)。C4 の "uses" は利用側→提供側。
   for (const c of contracts) {
     if (!c.provider) continue;
-    for (const consumer of [...(c.consumers || [])].sort()) {
-      L.push(`Rel(${c4Id(c.provider)}, ${c4Id(consumer)}, "${c4Label(c.id)} (${c4Label(c.type)})")`);
+    for (const consumer of [...(c.consumers || [])].sort(cmpStr)) {
+      L.push(`Rel(${c4Id(consumer)}, ${c4Id(c.provider)}, "${c4Label(c.id)} (${c4Label(c.type)})")`);
     }
   }
   if (datastoreOwner) L.push(`Rel(${c4Id(datastoreOwner)}, datastore, "所有・migration")`);
@@ -169,7 +176,7 @@ function renderContextMap(contexts) {
   const L = [];
   L.push('```mermaid');
   L.push('flowchart LR');
-  for (const c of [...contexts].sort((a, b) => String(a.id).localeCompare(String(b.id)))) {
+  for (const c of [...contexts].sort((a, b) => cmpStr(a.id, b.id))) {
     const owner = c.owner_tier ? `<br/>(${c4Label(c.owner_tier)})` : '';
     L.push(`  ${c4Id(c.id)}["${c4Label(c.name || c.id)}${owner}"]`);
   }
@@ -180,7 +187,7 @@ function renderContextMap(contexts) {
       edges.push({ from: c.id, to: r.to, kind: r.kind || '' });
     }
   }
-  edges.sort((a, b) => `${a.from}\u0000${a.to}\u0000${a.kind}`.localeCompare(`${b.from}\u0000${b.to}\u0000${b.kind}`));
+  edges.sort((a, b) => cmpStr(`${a.from}\u0000${a.to}\u0000${a.kind}`, `${b.from}\u0000${b.to}\u0000${b.kind}`));
   for (const e of edges) {
     const label = e.kind ? ` |${c4Label(e.kind)}|` : '';
     L.push(`  ${c4Id(e.from)} -->${label} ${c4Id(e.to)}`);

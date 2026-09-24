@@ -107,8 +107,9 @@ test('システムコンテキスト図に C4Context・アクター (社内/社�
   const md = build(opts(dir));
   assert.match(md, /## システムコンテキスト図/);
   assert.match(md, /```mermaid\nC4Context/);
-  assert.match(md, /Person\(actor_1, "司書"\)/);
-  assert.match(md, /Person_Ext\(actor_2, "利用者"\)/); // 社外 → Person_Ext
+  // コードポイント順 (利 U+5229 < 司 U+53F8): 利用者 が先、司書 が後
+  assert.match(md, /Person_Ext\(actor_1, "利用者"\)/); // 社外 → Person_Ext
+  assert.match(md, /Person\(actor_2, "司書"\)/);
   assert.match(md, /System\(sys, "図書館システム", ""\)/);
   assert.match(md, /System_Ext\(ext_1, "メール配信サービス", ""\)/);
   assert.match(md, /Rel\(sys, ext_1, "連携する"\)/);
@@ -122,9 +123,10 @@ test('コンテナ図に C4Container・ティア・契約辺 (provider→consume
   assert.match(md, /Container\(backend_api, "backend-api", "backend\/typescript", "データストア所有 \(migration\)"\)/);
   assert.match(md, /Container\(worker, "worker", "worker\/typescript", ""\)/);
   assert.match(md, /ContainerDb\(datastore, "データストア"/);
-  // 契約は provider → consumer のラベル付き辺
-  assert.match(md, /Rel\(backend_api, frontend_patron, "api \(openapi\)"\)/);
-  assert.match(md, /Rel\(backend_api, worker, "db \(rdb-schema\)"\)/);
+  // 契約は consumer → provider のラベル付き辺 (C4 の uses は利用側→提供側)
+  assert.match(md, /Rel\(frontend_patron, backend_api, "api \(openapi\)"\)/);
+  assert.match(md, /Rel\(worker, backend_api, "db \(rdb-schema\)"\)/);
+  // datastore は所有者 → データストアの向きのまま
   assert.match(md, /Rel\(backend_api, datastore, "所有・migration"\)/);
 });
 
@@ -164,5 +166,23 @@ test('決定論: 同じ入力なら 2 回の生成がバイト一致する', () 
   const dir = buildRepo();
   const a = build(opts(dir));
   const b = build(opts(dir));
+  assert.equal(a, b);
+});
+
+test('実サンプル (library-loan) の ADR・RDRA・contracts から C4 図を決定論的に生成する', () => {
+  // 読み取り専用の実サンプルを入力にし、build は純粋関数なのでファイルは書かない
+  const sample = path.resolve(__dirname, '../../../samples/distillery2/library-loan');
+  if (!fs.existsSync(sample)) return; // サンプル未同梱の環境ではスキップ
+  const o = {
+    cwd: sample, adrDir: 'docs/adr', contracts: 'contracts/contracts.json',
+    rdra: 'docs/requirements/rdra', docsRoot: 'docs', dirs: {},
+  };
+  const a = build(o);
+  assert.match(a, /```mermaid\nC4Context/);
+  assert.match(a, /```mermaid\nC4Container/);
+  // 契約辺は consumer → provider
+  assert.match(a, /Rel\(frontend_patron, backend_api, "api \(openapi\)"\)/);
+  // 2 回の生成がバイト一致 (環境非依存の決定論)
+  const b = build(o);
   assert.equal(a, b);
 });

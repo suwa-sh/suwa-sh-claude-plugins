@@ -9,7 +9,7 @@ version の正本は `.claude-plugin/plugin.json`。
 - **C4 図 (決めたもの)**: `genArchitectureDoc.js` を追加。accepted な ADR (ティア構成 ADR の `tiers[]` /
   `datastore_owner` / 任意の `contexts[]`)・`contracts/contracts.json`・RDRA (`アクター.tsv` / `外部システム.tsv`)
   から `docs/adr/architecture.md` を決定論的に生成する。システムコンテキスト図 (Mermaid `C4Context`)・コンテナ図
-  (`C4Container`、契約を provider→consumer のラベル付き辺にし datastore_owner を明示)・コンテキストマップ
+  (`C4Container`、契約を consumer→provider のラベル付き辺 (C4 の uses は利用側→提供側) にし datastore_owner を明示)・コンテキストマップ
   (flowchart。`contexts[]` があるときだけ) を描く。d2-decide 手順 3 で `genAdrIndex` の前に走らせ、`index.md` から
   `architecture.md` へリンクする。決定領域に「コンテキストの境界」(任意の 9 番目) を追加。
 - **C4 図 (実態)**: as-built 段階で `depcruise --output-type json` を撮り、`extractAsBuilt.js` の `dependency-graph.md`
@@ -24,7 +24,8 @@ version の正本は `.claude-plugin/plugin.json`。
   に取り込む (`src/` を丸ごとコピーするため設定変更不要)。
 - **目視の証跡**: `captureStories.js` を追加。Storybook を静的ビルドし、`playwright` が対象リポで解決できれば
   headless chromium で各 Story を撮って `docs/design/screenshots/<StoryId>.png` と `index.md` を書く (exit 0)。
-  playwright 無し / ビルド失敗は exit 2 (目視未実施) を明示する。d2-design 手順 4 の目視確認で使う。
+  playwright 無し / ビルド失敗 / Story 0 件 / chromium 起動・撮影失敗は exit 2 (目視未実施) を明示する。
+  再撮影時は現行 Story ID に無い古い PNG を除いて証跡を実行履歴に依存させない。d2-design 手順 4 の目視確認で使う。
 
 ### Changed
 

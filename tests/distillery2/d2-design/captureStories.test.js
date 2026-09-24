@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { parseStories, run } = require('../../../plugins/distillery2/skills/d2-design/scripts/captureStories');
+const { parseStories, run, prunePngs } = require('../../../plugins/distillery2/skills/d2-design/scripts/captureStories');
 
 test('parseStories は v7 の entries から story だけを id 昇順で返す', () => {
   const index = {
@@ -54,4 +54,50 @@ test('index.json が無ければ exit 2 (目視未実施)', async () => {
   const r = await run({ cwd: dir, buildDir });
   assert.equal(r.code, 2);
   assert.equal(r.reason, 'index_missing');
+});
+
+test('Story が 0 件なら exit 2 (目視未実施・撮影完了にしない)', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2cap-'));
+  const buildDir = path.join(dir, 'static');
+  fs.mkdirSync(buildDir, { recursive: true });
+  // entries は空 (または docs だけで story が残らない)
+  fs.writeFileSync(path.join(buildDir, 'index.json'), JSON.stringify({ v: 5, entries: {} }));
+  const r = await run({ cwd: dir, buildDir });
+  assert.equal(r.code, 2);
+  assert.equal(r.reason, 'no_stories');
+  assert.equal(fs.existsSync(path.join(dir, 'docs/design/screenshots')), false);
+});
+
+test('chromium の起動に失敗したら exit 2 (目視未実施・capture_failed)', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2cap-'));
+  const buildDir = path.join(dir, 'static');
+  fs.mkdirSync(buildDir, { recursive: true });
+  fs.writeFileSync(path.join(buildDir, 'index.json'), JSON.stringify({
+    v: 5, entries: { 'ui-button--primary': { id: 'ui-button--primary', name: 'Primary', title: 'UI/Button', type: 'story' } },
+  }));
+  // playwright を解決させるが chromium.launch が投げる偽モジュールを PLAYWRIGHT で差し込む
+  const fake = path.join(dir, 'fake-playwright.js');
+  fs.writeFileSync(fake, 'module.exports = { chromium: { launch: async () => { throw new Error("no browser binary"); } } };');
+  const prev = process.env.PLAYWRIGHT;
+  process.env.PLAYWRIGHT = fake;
+  try {
+    const r = await run({ cwd: dir, buildDir });
+    assert.equal(r.code, 2);
+    assert.equal(r.reason, 'capture_failed');
+    assert.equal(r.stories.length, 1);
+  } finally {
+    if (prev === undefined) delete process.env.PLAYWRIGHT; else process.env.PLAYWRIGHT = prev;
+  }
+});
+
+test('prunePngs は現行 Story ID に無い PNG だけ消す (管理外は触らない)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2cap-'));
+  fs.writeFileSync(path.join(dir, 'a--x.png'), 'keep');    // 現行 → 残す
+  fs.writeFileSync(path.join(dir, 'old--y.png'), 'stale'); // 現行に無い → 消す
+  fs.writeFileSync(path.join(dir, 'index.md'), 'md');      // png 以外 → 触らない
+  const removed = prunePngs(dir, ['a--x']);
+  assert.deepEqual(removed, ['old--y.png']);
+  assert.equal(fs.existsSync(path.join(dir, 'a--x.png')), true);
+  assert.equal(fs.existsSync(path.join(dir, 'old--y.png')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'index.md')), true);
 });

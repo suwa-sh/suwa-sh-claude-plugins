@@ -393,9 +393,29 @@ test('dependency-graph は depcruise JSON があれば実態を描き違反を�
   const config = { tiers: [], contracts: [] };
   const md = buildDependencyGraph({ depcruise, config });
   assert.match(md, /## 実態 \(dependency-cruiser\)/);
-  assert.match(md, /n_apps_frontend_patron\["apps\/frontend-patron"\] --> n_apps_backend_api\["apps\/backend-api"\]/);
+  // ノード宣言 + プレーンな辺 (ラベルはノード宣言側だけに書く)
+  assert.match(md, /n_apps_frontend_patron\["apps\/frontend-patron"\]/);
+  assert.match(md, /n_apps_backend_api\["apps\/backend-api"\]/);
+  assert.match(md, /n_apps_frontend_patron --> n_apps_backend_api/);
   assert.match(md, /no-cross-tier \| error/);
   assert.doesNotMatch(md, /決定からの図/);
+});
+
+test('dependency-graph は実態でティア間の辺が無くても modules[].source からティアをノードに出す', () => {
+  const depcruise = {
+    // apps/backend-api 内で完結する import だけ (ティア間の依存が無い)
+    modules: [
+      { source: 'apps/backend-api/src/a.ts', dependencies: [{ resolved: 'apps/backend-api/src/b.ts', module: './b' }] },
+      { source: 'apps/backend-api/src/b.ts', dependencies: [] },
+    ],
+    summary: { violations: [] },
+  };
+  const md = buildDependencyGraph({ depcruise, config: { tiers: [], contracts: [] } });
+  assert.match(md, /## 実態 \(dependency-cruiser\)/);
+  // 辺が無くてもティアはノードとして描かれる
+  assert.match(md, /n_apps_backend_api\["apps\/backend-api"\]/);
+  assert.doesNotMatch(md, /-->/); // ティア間の辺は無い
+  assert.match(md, /違反なし。/);
 });
 
 test('dependency-graph は depcruise JSON が無ければ config から決定の図を描き実態未取得を明示する', () => {

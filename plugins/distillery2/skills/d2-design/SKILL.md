@@ -90,7 +90,7 @@ LLM 主体のステージ。d2-run が段階③で、F3 (test-support) と F6 (�
 
   - Storybook を静的ビルドし、`playwright` が対象リポで解決できれば headless chromium で各 Story を撮って
     `docs/design/screenshots/<StoryId>.png` と `index.md` (一覧) を書く (exit 0)。
-  - **`playwright` が無い / ビルド失敗なら exit 2** で「目視未実施」を出す。この場合は手順 6 の要約と最終報告に
+  - **`playwright` が無い / ビルド失敗 / Story 0 件 / chromium 起動・撮影失敗なら exit 2** で「目視未実施」を出す。この場合は手順 6 の要約と最終報告に
     **「目視未実施」**と明記する (通過扱いにしない)。目視を行うには対象リポの devDependency に `playwright` を足す
     (`capabilities.browser` が true、または画面の目視証跡が要るとき)。
   - 撮れた `docs/design/screenshots/` は目視の証跡として残す。

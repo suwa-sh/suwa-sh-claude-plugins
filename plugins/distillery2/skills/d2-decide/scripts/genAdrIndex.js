@@ -17,13 +17,16 @@ const path = require('node:path');
 const { loadAdrDir } = require('./validateAdr');
 const basisLib = require('../../../scripts/lib/basis');
 
+/** コードポイント比較。localeCompare は実行環境のロケールで順序が変わり非決定的なため使わない。 */
+function cmpStr(a, b) { a = String(a); b = String(b); return a < b ? -1 : a > b ? 1 : 0; }
+
 /**
  * @param {{file:string, fm:object}[]} adrs
  * @param {string|null} basisLine  例 "basis: requirements@abc123" (無ければ null)
  * @param {{architecture?: string}} opts  architecture を渡すと C4 図へのリンクを一覧の直後に載せる
  */
 function renderIndex(adrs, basisLine = null, opts = {}) {
-  const sorted = [...adrs].sort((a, b) => String(a.fm.id).localeCompare(String(b.fm.id)));
+  const sorted = [...adrs].sort((a, b) => cmpStr(a.fm.id, b.fm.id));
   const lines = [];
   if (basisLine) lines.push('---', basisLine, '---', '');
   lines.push('# アーキテクチャ決定記録 (ADR) 一覧', '');
