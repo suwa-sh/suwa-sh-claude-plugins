@@ -24,6 +24,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { parseYaml } = require('./lib/yaml');
+const { parseFeature } = require('./lib/gherkin');
 
 const BEGIN = '<!-- distillery2:begin -->';
 const END = '<!-- distillery2:end -->';
@@ -47,14 +48,17 @@ function frontMatter(text) {
   return { data: parseYaml(lines.slice(1, end).join('\n')) || {}, body: lines.slice(end + 1).join('\n') };
 }
 
+/** 相対パスをセグメントごとに URL エンコードする (`#` や `?` を含む名前も正しく指す。`..` はそのまま)。 */
+function encodeRel(rel) { return rel.split('/').map((seg) => (seg === '..' || seg === '.' ? seg : encodeURIComponent(seg))).join('/'); }
+
 /** 相対リンク (README から見た) を作る。実在確認のため absolute も返す。 */
-function makeLinker(readmeDir, cwd) {
+function makeLinker(readmeDir) {
   const links = [];
   return {
     to(absPath, label) {
       const rel = path.relative(readmeDir, absPath).split(path.sep).join('/');
       links.push({ rel, abs: absPath, label });
-      return `[${mdEscape(label)}](${encodeURI(rel)})`;
+      return `[${mdEscape(label)}](${encodeRel(rel)})`;
     },
     links,
   };
@@ -88,11 +92,14 @@ function collect(opts) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) walk(p);
       else if (e.name.endsWith('.feature')) {
-        const text = fs.readFileSync(p, 'utf8');
-        const m = text.match(/@uc:([A-Za-z0-9_-]+)/);
-        if (!m) continue;
-        const scenarios = (text.match(/^\s*(?:シナリオ(?:アウトライン| アウトライン|テンプレート)?|Scenario(?: Outline| Template)?|Example):/gm) || []).length;
-        (features[m[1]] = features[m[1]] || []).push({ path: p, scenarios });
+        // feature タグは全シナリオに効き、シナリオ固有のタグはそのシナリオだけ。UC ごとに本数を数える
+        const feature = parseFeature(fs.readFileSync(p, 'utf8'));
+        const counts = {};
+        for (const sc of feature.scenarios) {
+          const slugs = new Set([...feature.tags, ...(sc.tags || [])].map((t) => (t.match(/^@uc:([A-Za-z0-9_-]+)$/) || [])[1]).filter(Boolean));
+          for (const slug of slugs) counts[slug] = (counts[slug] || 0) + 1;
+        }
+        for (const slug of Object.keys(counts).sort(cmpStr)) (features[slug] = features[slug] || []).push({ path: p, scenarios: counts[slug] });
       }
     }
   };
@@ -131,8 +138,9 @@ function collect(opts) {
 function build(ctx) {
   const readmePath = ctx.D('README.md');
   const readmeDir = path.dirname(readmePath);
-  const L = makeLinker(readmeDir, ctx.cwd);
-  const link = (abs, label) => (fs.existsSync(abs) ? L.to(abs, label) : null);
+  const L = makeLinker(readmeDir);
+  const link = (abs, label) => (fs.existsSync(abs) ? L.to(abs, label) : null); // 任意 (無ければ載せない)
+  const must = (abs, label) => L.to(abs, label); // 正本が指す文書 (無ければリンク切れとして exit 1)
   const referenced = new Set(); // 参照した docs 配下の絶対パス
   const ref = (abs, label) => { const s = link(abs, label); if (s) referenced.add(abs); return s; };
   const out = [];
@@ -167,7 +175,8 @@ function build(ctx) {
     const specText = Object.fromEntries(ctx.specs.map((s) => [s.id, s]));
     const reqMd = D('requirements', 'requirements.md');
     const rows = ctx.ucs.slice().sort((a, b) => cmpStr(`${a.business}\u0000${a.buc}\u0000${a.uc}`, `${b.business}\u0000${b.buc}\u0000${b.uc}`));
-    const done = rows.filter((u) => ctx.trace.ucs && ctx.trace.ucs[u.slug]).length;
+    const isDone = (t) => Boolean(t && t.gates_complete && t.gates === 'pass');
+    const done = rows.filter((u) => isDone(ctx.trace.ucs && ctx.trace.ucs[u.slug])).length;
     const blocked = rows.filter((u) => u.status === 'blocked').length;
     out.push(`UC ${rows.length} 件 (実装済み ${done}、要求待ち ${blocked})。1 行で要求 → シナリオ → 契約 → 画面 → 実装の記録まで辿れる。`);
     if (fs.existsSync(reqMd)) out.push(`要求の列の SPEC は ${ref(reqMd, '要求仕様書')} の行。`);
@@ -178,7 +187,7 @@ function build(ctx) {
     for (const u of rows) {
       const t = ctx.trace.ucs && ctx.trace.ucs[u.slug];
       let status;
-      if (t) status = t.gates_complete && t.gates === 'pass' ? '実装済み' : `実装中 (ゲート ${t.gates || '-'})`;
+      if (t) status = isDone(t) ? '実装済み' : `実装中 (ゲート ${t.gates || '-'})`;
       else status = { planned: '未着手', in_progress: '実装中', done: '実装済み', blocked: '要求待ち' }[u.status] || (u.status || '-');
       const specs = (u.spec_ids || []).map((id) => (specText[id] ? `${id}` : id));
       const specCell = specs.length ? specs.join(', ') : 'なし';
@@ -189,10 +198,10 @@ function build(ctx) {
         const slice = path.resolve(ctx.cwd, 'contracts', 'generated', 'slices', u.slug, 'contract-slice.json');
         const ops = (ci.operations || []).join(', ');
         const label = [ops, (ci.messages || []).length ? `イベント ${ci.messages.length}` : '', (ci.tables || []).length ? `テーブル ${ci.tables.length}` : ''].filter(Boolean).join(' / ');
-        contractParts.push(fs.existsSync(slice) ? L.to(slice, label || 'slice') : label);
+        contractParts.push(must(slice, label || 'slice')); // uc-index にある UC の slice は必須
       }
       const screens = ctx.screensBySlug[u.slug] || [];
-      const asBuilt = t && t.as_built ? link(path.resolve(ctx.cwd, t.as_built, 'index.md'), 'index.md') : null;
+      const asBuilt = t && t.as_built ? must(path.resolve(ctx.cwd, t.as_built, 'index.md'), 'index.md') : null; // 追跡表にある as-built は必須
       const biz = u.business === lastBiz ? '' : mdEscape(u.business);
       lastBiz = u.business;
       out.push(`| ${biz} | ${mdEscape(u.uc)} | ${status} | ${specCell} | ${feats.join('<br>') || '-'} | ${contractParts.join('<br>') || '-'} | ${screens.map(mdEscape).join('<br>') || '-'} | ${asBuilt || '-'} |`);
@@ -220,7 +229,7 @@ function build(ctx) {
     out.push('');
   } else out.push('ADR は未着手 (決定の段階で作られる)。\n');
   const decided = [];
-  if (ctx.nfr) decided.push(`- 非機能: ${ref(D('nfr', 'nfr-grade.md'), '非機能グレード表')} (モデルシステム ${mdEscape(ctx.nfrModel || '-')}、重要項目 ${ctx.nfrImportant} / ${ctx.nfrCount})。性能テストの閾値の出典`);
+  if (ctx.nfr) decided.push(`- 非機能: ${ref(D('nfr', 'nfr-grade.md'), '非機能グレード表') || ref(D('nfr', 'nfr-grade.yaml'), 'nfr-grade.yaml')} (モデルシステム ${mdEscape(ctx.nfrModel || '-')}、重要項目 ${ctx.nfrImportant} / ${ctx.nfrCount})。性能テストの閾値の出典`);
   if (fs.existsSync(D('adr', 'architecture.md'))) decided.push(`- 構成: ${ref(D('adr', 'architecture.md'), 'C4 図')} (決めたもの)。実態は ${ref(D('as-built', '_system', 'dependency-graph.md'), '依存グラフ') || 'as-built の依存グラフ'}`);
   if (fs.existsSync(D('rules', 'index.md'))) decided.push(`- 開発ルール: ${ref(D('rules', 'index.md'), '目次')}。実装時は common + 自ティア + testing だけ読む (生成物。直したい変更は ADR へ)`);
   for (const l of decided) out.push(l);
@@ -283,10 +292,13 @@ function build(ctx) {
     if (e.name === 'README.md' || KNOWN_DIRS.includes(e.name) || e.name.startsWith('.')) continue;
     const abs = D(e.name);
     if (e.isDirectory()) {
-      const entry = ['README.md', 'index.md'].map((n) => path.join(abs, n)).find((p) => fs.existsSync(p))
-        || listDir(abs).filter((x) => x.isFile() && x.name.endsWith('.md')).map((x) => path.join(abs, x.name))[0];
-      const count = listDir(abs).filter((x) => x.isFile()).length;
-      unknown.push(`| ${mdEscape(e.name)}/ | ${entry ? L.to(entry, path.basename(entry)) : '-'} | ${count} |`);
+      const all = [];
+      const walkAll = (d) => { for (const x of listDir(d)) { const q = path.join(d, x.name); if (x.isDirectory()) walkAll(q); else all.push(q); } };
+      walkAll(abs);
+      const entry = ['README.md', 'index.md'].map((n) => path.join(abs, n)).find((q) => fs.existsSync(q))
+        || all.filter((q) => q.endsWith('.md')).sort(cmpStr)[0];
+      const entryLabel = entry ? path.relative(abs, entry).split(path.sep).join('/') : null;
+      unknown.push(`| ${mdEscape(e.name)}/ | ${entry ? L.to(entry, entryLabel) : L.to(abs, 'ディレクトリ')} | ${all.length} |`);
     } else unknown.push(`| ${L.to(abs, e.name)} | - | 1 |`);
   }
   if (others.length || unknown.length) {
@@ -311,14 +323,22 @@ function build(ctx) {
   return { block: out.join('\n'), links: L.links, readmePath };
 }
 
-/** 既存 README に管理ブロックを差し込む (外は触らない)。 */
+/**
+ * 既存 README に管理ブロックを差し込む (外は触らない)。
+ * 印が片方だけ / 逆順 / 複数のときは、外側の手書きを消す恐れがあるので書き換えずに throw する。
+ */
 function merge(existing, block) {
   if (existing == null) return block + '\n';
-  const b = existing.indexOf(BEGIN);
-  const e = existing.indexOf(END);
-  if (b >= 0 && e > b) return existing.slice(0, b) + block + existing.slice(e + END.length);
-  const sep = existing.endsWith('\n') ? (existing.endsWith('\n\n') ? '' : '\n') : '\n\n';
-  return existing + sep + block + '\n';
+  const begins = [...existing.matchAll(new RegExp(BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'))].map((m) => m.index);
+  const ends = [...existing.matchAll(new RegExp(END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'))].map((m) => m.index);
+  if (!begins.length && !ends.length) {
+    const sep = existing.endsWith('\n') ? (existing.endsWith('\n\n') ? '' : '\n') : '\n\n';
+    return existing + sep + block + '\n';
+  }
+  if (begins.length !== 1 || ends.length !== 1 || ends[0] < begins[0]) {
+    throw new Error(`管理ブロックの印が壊れている (begin ${begins.length} 個、end ${ends.length} 個)。手で直してから再実行する: ${BEGIN} と ${END} を 1 組だけ、この順に置く`);
+  }
+  return existing.slice(0, begins[0]) + block + existing.slice(ends[0] + END.length);
 }
 
 function run(opts) {
@@ -327,7 +347,8 @@ function run(opts) {
   const broken = links.filter((l) => !fs.existsSync(l.abs)).map((l) => l.rel);
   if (broken.length) return { code: 1, readmePath, broken, changed: false };
   const existing = readText(readmePath);
-  const next = merge(existing, block);
+  let next;
+  try { next = merge(existing, block); } catch (e) { return { code: 1, readmePath, broken: [], changed: false, error: e.message }; }
   const changed = existing !== next;
   if (opts.check) return { code: changed ? 1 : 0, readmePath, broken: [], changed };
   if (changed) { fs.mkdirSync(path.dirname(readmePath), { recursive: true }); fs.writeFileSync(readmePath, next); }
@@ -352,6 +373,7 @@ function main(argv) {
   try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
   const rel = path.relative(o.cwd, r.readmePath);
+  if (r.error) { console.error(`${rel}: ${r.error}`); return 1; }
   if (r.broken.length) { console.error(`${rel}: リンク先が無い (${r.broken.length}): ${r.broken.join(', ')}`); return 1; }
   if (o.check) { console.log(r.changed ? `${rel}: 生成結果と一致しない (再生成が必要)` : `${rel}: 最新`); return r.code; }
   console.log(`${rel}: ${r.changed ? '更新' : '変更なし'}`);

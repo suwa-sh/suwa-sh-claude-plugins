@@ -111,21 +111,35 @@ test('人が書いた README の外側は触らず、印の無い README には�
   // merge: 管理ブロックの中を手で変えても次で戻る
   const merged = merge('前\n' + BEGIN + '\n手で変えた\n' + END + '\n後\n', BEGIN + '\n生成\n' + END);
   assert.equal(merged, '前\n' + BEGIN + '\n生成\n' + END + '\n後\n');
+  // ブロック内のドリフトは --check で検出する
+  fs.writeFileSync(p, md.replace('<!-- この間は distillery2', '<!-- 手で変えた'));
+  assert.equal(run(opts(dir, { check: true })).code, 1);
+  // 壊れた印 (begin だけ / 逆順 / 複数) は書き換えず exit 1。外側の手書きは残る
+  for (const broken of ['前\n' + BEGIN + '\n手書き\n', '前\n' + END + '\n中\n' + BEGIN + '\n後\n', BEGIN + '\nA\n' + END + '\n' + BEGIN + '\nB\n' + END + '\n']) {
+    fs.writeFileSync(p, broken);
+    const r = run(opts(dir));
+    assert.equal(r.code, 1, broken);
+    assert.match(r.error, /管理ブロックの印が壊れている/);
+    assert.equal(fs.readFileSync(p, 'utf8'), broken, '書き換えない');
+  }
+  assert.throws(() => merge('x\n' + BEGIN + '\n', 'block'), /印が壊れている/);
 });
 
 test('distillery2 以外の文書は名前と入口だけ列挙し、知っているディレクトリの未参照 md も列挙する', () => {
   const dir = repo();
   W(dir, 'docs/ops/README.md', '# 運用\n');
   W(dir, 'docs/ops/runbook.md', '# runbook\n');
+  W(dir, 'docs/deep/guide/runbook.md', '# 下位だけ\n');
   W(dir, 'docs/glossary.md', '# 用語\n');
   W(dir, 'docs/requirements/memo.md', 'メモ\n');
   run(opts(dir));
   const md = fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8');
   assert.match(md, /## distillery2 以外の文書/);
   assert.match(md, /\| ops\/ \| \[README\.md\]\(ops\/README\.md\) \| 2 \|/);
+  assert.match(md, /\| deep\/ \| \[guide\/runbook\.md\]\(deep\/guide\/runbook\.md\) \| 1 \|/);
   assert.match(md, /\| \[glossary\.md\]\(glossary\.md\) \| - \| 1 \|/);
   assert.match(md, /- \[requirements\/memo\.md\]\(requirements\/memo\.md\)/);
-  assert.doesNotMatch(md, /runbook/); // 中身は要約しない (入口だけ)
+  assert.doesNotMatch(md, /ops\/runbook/); // 中身は要約しない (入口だけ)
 });
 
 test('段階が未着手なら「未着手」と書き、空の節を出さない。リンク切れは exit 1 で書き換えない', () => {
@@ -137,10 +151,29 @@ test('段階が未着手なら「未着手」と書き、空の節を出さな�
   assert.match(md, /\| ① 要求 \| .* \| 未着手 \| - \|/);
   assert.match(md, /未着手 \(要求の段階で `use-cases\.yaml` が作られる\)/);
   assert.doesNotMatch(md, /## 横断して見る/);
-  // リンク切れ: traceability が指す as-built が無い
+  // リンク切れ: 追跡表が指す as-built が無い → 正本が指す文書は必須なので exit 1、README は書かない
   const dir2 = repo();
   fs.rmSync(path.join(dir2, 'docs/as-built/貸出業務'), { recursive: true });
-  // as_built が無い UC は as-built 列が '-' になる (実在するものだけ載せる) → リンク切れにはならない
-  assert.equal(run(opts(dir2)).code, 0);
-  assert.match(fs.readFileSync(path.join(dir2, 'docs/README.md'), 'utf8'), /\| LoanCheckout \| - \|/);
+  const r2 = run(opts(dir2));
+  assert.equal(r2.code, 1);
+  assert.ok(r2.broken.some((b) => /index\.md$/.test(b)), JSON.stringify(r2.broken));
+  assert.ok(!fs.existsSync(path.join(dir2, 'docs/README.md')));
+  // uc-index にある UC の slice が無いのも同じ
+  const dir3 = repo();
+  fs.rmSync(path.join(dir3, 'contracts/generated'), { recursive: true });
+  assert.ok(run(opts(dir3)).broken.some((b) => /contract-slice\.json$/.test(b)));
+});
+
+test('共有 feature はシナリオごとの @uc タグで数え、# を含むファイル名もリンクできる、実装済みの件数は状態と同じ条件', () => {
+  const dir = repo();
+  W(dir, 'features/shared.feature', '機能: 共有\n  @uc:register-loan\n  シナリオ: A\n  @uc:return-loan\n  シナリオ: B\n  @uc:register-loan @uc:return-loan\n  シナリオ: C\n');
+  W(dir, 'docs/input/proposal#1.md', 'x');
+  W(dir, 'docs/as-built/_system/traceability-index.json', { ucs: { 'register-loan': { as_built: 'docs/as-built/貸出業務/貸出を登録する/', gates: 'fail', gates_complete: false } } });
+  assert.equal(run(opts(dir)).code, 0);
+  const md = fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8');
+  assert.match(md, /\[shared\.feature\]\(\.\.\/features\/shared\.feature\) \(2 本\)<br>\[register-loan\.feature\]\([^)]*\) \(2 本\)/);
+  assert.match(md, /返却を登録する \| 要求待ち \| なし \| \[shared\.feature\]\(\.\.\/features\/shared\.feature\) \(2 本\)/);
+  assert.match(md, /\[proposal#1\.md\]\(input\/proposal%231\.md\)/);
+  assert.match(md, /UC 2 件 \(実装済み 0、要求待ち 1\)/);
+  assert.match(md, /貸出を登録する \| 実装中 \(ゲート fail\)/);
 });

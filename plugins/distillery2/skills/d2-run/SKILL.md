@@ -53,7 +53,7 @@ description: >-
 
 1. sub `d2-decide` を派遣する
 2. `docs/adr/_review-summary.md` を材料に確認ページ (非機能グレード表の要点、各決定と却下した案、confidence: low の決定は選択肢として提示)
-3. 承認されたら `genDocsReadme.js` で `docs/README.md` を更新し、`git commit -m "decide: nfr and adr"`。選択が変わった決定は ADR を直して (sub に戻す) 再提示
+3. 承認されたら `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add docs && git commit -m "decide: nfr and adr"`。選択が変わった決定は ADR を直して (sub に戻す) 再提示
 
 ## ③ 基盤
 
@@ -63,7 +63,7 @@ description: >-
 2. 依存を入れる (`npm install`。オーケストレータが単一 writer として行う)
 3. チェックポイント: `node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc bootstrap --upto static` が exit 0
    (`bootstrap` は仮の slug。reports は捨ててよい)
-4. `.distillery/config.yaml` の tiers / contracts / commands / capabilities を確認ページで人に見せ、承認後に `genDocsReadme.js` で `docs/README.md` を更新し `git commit -m "foundation: rules, tests, contracts, config"`
+4. `.distillery/config.yaml` の tiers / contracts / commands / capabilities を確認ページで人に見せ、承認後に `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add -A && git commit -m "foundation: rules, tests, contracts, config"`
 
 ## ④ UC の縦切り
 
