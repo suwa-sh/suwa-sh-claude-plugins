@@ -99,7 +99,7 @@ const TSCONFIG_BASE = JSON.stringify({
 // GITIGNORE_ANCHOR を含む行を管理ブロックの先頭とみなし、直後に続く `.distillery/runs/` 行までを
 // migrate で置き換える (指摘 5)。
 const GITIGNORE_ANCHOR = 'distillery2 実行状態';
-const GITIGNORE_MANAGED = ['# distillery2 実行状態 (reports / traces は生成物なので追跡しない)', '.distillery/runs/*/reports/', '.distillery/runs/*/traces/'];
+const GITIGNORE_MANAGED = ['# distillery2 実行状態 (reports / traces / logs は生成物なので追跡しない)', '.distillery/runs/*/reports/', '.distillery/runs/*/traces/', '.distillery/logs/'];
 const GITIGNORE = ['node_modules/', 'dist/', '*.log', '', ...GITIGNORE_MANAGED, ''].join('\n');
 
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。

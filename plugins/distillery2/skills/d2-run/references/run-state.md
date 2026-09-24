@@ -23,7 +23,8 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
 
 - **commit する (追跡)**: `events.jsonl` / `stages/*.done.yaml` / `attempt-<n>/**` (assumptions・findings) / `issues/**` / `learnings/**` / `invalidated/**`。これらは実行の記録なので履歴に残す。
 - **commit しない (gitignore)**: `reports/`(gates.json と各ゲートの JSON レポート) と `traces/`(計装トレース JSONL) のみ。いずれもテスト実行のたびに再生成できる生成物。`reports/delivered.json` も同様。
-- genSkeleton が書く `.gitignore` は `.distillery/runs/*/reports/` と `.distillery/runs/*/traces/` だけを無視する。`attempt-*/` は無視しない。
+- genSkeleton が書く `.gitignore` は `.distillery/runs/*/reports/`、`.distillery/runs/*/traces/`、`.distillery/logs/` だけを無視する。`attempt-*/` は無視しない。
+- **`.distillery/logs/`**: headless 実行のプロンプト・起動スクリプト・完了報告ログなど、セッション単位の実行記録の置き場。UC に紐づかない記録はここに置き、リポ直下に独自ディレクトリ (`_run/` など) を作らない。git 管理外
 
 ## 段階 (stage) の順
 

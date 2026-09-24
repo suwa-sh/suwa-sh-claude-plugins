@@ -2,6 +2,13 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.4] - 2026-09-24
+
+### Changed
+
+- 実行記録 (headless 実行のプロンプト・起動スクリプト・完了報告ログ) の置き場を `.distillery/logs/` と定め、
+  生成する `.gitignore` の管理ブロックで git 管理外にする。リポ直下に独自ディレクトリを作らない (run-state.md)
+
 ## [0.1.3] - 2026-09-24
 
 ### Added
