@@ -25,6 +25,15 @@ const CATEGORIES = ['input_validation', 'data_format', 'error_handling', 'persis
 const CONFIDENCES = ['high', 'medium', 'low'];
 const VERDICTS = ['consistent', 'spec_absent', 'contradicts', 'unlisted'];
 const HIGH_RISK = ['security', 'persistence'];
+/** title (見出し) の上限。as-built の表にはこれだけを載せるので、1 行で読める長さに縛る (コードポイント数) */
+const TITLE_MAX = 30;
+function checkTitle(value, max, label, errors) {
+  if (!isNonEmptyString(value)) return; // 必須検査は呼び出し側
+  if (/[\r\n]/.test(value)) errors.push(`${label} must be a single line`);
+  const len = Array.from(String(value)).length;
+  if (len > max) errors.push(`${label} must be <= ${max} characters (got ${len}): 見出しは短く、詳細は assumption / claim に書く`);
+}
+
 const RECORD_HASH_KEYS = ['id', 'category', 'assumption', 'target', 'reason', 'confidence', 'spec_refs'];
 const VERDICT_HASH_KEYS = ['id', 'tier', 'assumption', 'target', 'category', 'verified_category', 'verdict'];
 const VERDICT_KIND = { consistent: 'restatement', spec_absent: 'spec_absent', contradicts: 'contradicts', unlisted: 'unlisted' };
@@ -130,9 +139,10 @@ function validateRecord(doc, expect, errors) {
     else ids.add(a.id);
     if (!CATEGORIES.includes(a.category)) errors.push(`${label}.category must be one of ${CATEGORIES.join('|')} (got ${JSON.stringify(a.category)})`);
     else byCategory[a.category] += 1;
-    for (const key of ['assumption', 'target', 'reason']) {
+    for (const key of ['title', 'assumption', 'target', 'reason']) {
       if (!isNonEmptyString(a[key])) errors.push(`${label}.${key} is required`);
     }
+    checkTitle(a.title, TITLE_MAX, `${label}.title`, errors);
     if (!CONFIDENCES.includes(a.confidence)) errors.push(`${label}.confidence must be one of ${CONFIDENCES.join('|')}`);
     if (!Array.isArray(a.spec_refs) || a.spec_refs.length === 0 || !a.spec_refs.every(isNonEmptyString)) {
       errors.push(`${label}.spec_refs must be a non-empty array of strings (where you looked and found nothing)`);
@@ -187,9 +197,10 @@ function validateVerdicts(findingsDoc, assumptionsDoc, expect, errors) {
     if (!f || typeof f !== 'object' || !isNonEmptyString(f.id)) { errors.push(`findings[${i}] must have id`); return; }
     if (findingById.has(f.id)) { errors.push(`findings[${i}].id duplicated: ${f.id}`); return; }
     findingById.set(f.id, f);
-    for (const key of ['viewpoint', 'severity', 'target', 'claim', 'evidence']) {
+    for (const key of ['title', 'viewpoint', 'severity', 'target', 'claim', 'evidence']) {
       if (!isNonEmptyString(f[key])) errors.push(`findings[${i}] (${f.id}).${key} is required`);
     }
+    checkTitle(f.title, TITLE_MAX, `findings[${i}] (${f.id}).title`, errors);
     if (!SEVERITIES.includes(f.severity)) errors.push(`findings[${i}] (${f.id}).severity must be one of ${SEVERITIES.join('|')}`);
     else severityCounts[f.severity] += 1;
     if (!VIEWPOINTS.includes(f.viewpoint)) errors.push(`findings[${i}] (${f.id}).viewpoint must be one of ${VIEWPOINTS.join('|')}`);

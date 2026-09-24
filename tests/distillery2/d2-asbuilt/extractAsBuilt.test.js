@@ -111,6 +111,7 @@ extraction:
 assumptions:
   - id: A-001
     category: persistence
+    title: "単一トランザクションで登録"
     assumption: "貸出は単一トランザクションで登録する"
     target: "apps/backend-api/src/usecase/registerLoan.ts:40"
     reason: "契約に境界の定義が無い"
@@ -118,6 +119,7 @@ assumptions:
     spec_refs: ["contracts/db/rdb-schema.yaml#loans"]
   - id: A-002
     category: data_format
+    title: "due_at は日付のみ"
     assumption: "due_at は日付のみで記録する"
     target: "apps/backend-api/src/domain/loan.ts:28"
     reason: "精度の定義が無い"
@@ -143,12 +145,14 @@ findings:
     viewpoint: assumption_conformance
     kind: spec_absent
     severity: major
+    title: "トランザクション境界は仕様に無い"
     target: "apps/backend-api/src/usecase/registerLoan.ts:40"
     claim: "トランザクション境界を実装者が決めた"
   - id: F-003
     viewpoint: uc_intent
     kind: rule_not_enforced
     severity: minor
+    title: "上限チェックの位置"
     claim: "上限チェックの位置が読み取りにくい"
 summary: {blocker: 0, major: 1, minor: 1}
 `;
@@ -225,7 +229,7 @@ test('index.md は読者の問いの順の節と、名前付きの要約ブロ�
   // 結果の表
   assert.match(md, /\| ゲート \| 5 段すべて pass \|/);
   assert.match(md, /\| 受入基準 \| 2 \/ 2 をシナリオが覆う \|/);
-  assert.match(md, /\| 計装の範囲 \| backend-api \|/);
+  assert.match(md, /\| 計装の範囲 \(backend-api\) \| 部品名のみ \|/);
   // 変更ファイルは付録の折りたたみ
   assert.match(md, /<summary>変更ファイル \(3\)<\/summary>/);
 });
@@ -250,7 +254,9 @@ test('抽出節にトレース由来の operation / table / message / 前提が�
   assert.match(md, /loan\.registered/);
   assert.match(md, /\[\(books\)\]/); // データフロー図のテーブル
   assert.match(md, /\| 画面 \| 貸出登録画面 \|/);
-  assert.match(md, /\| backend-api \| 永続化 \| 貸出は単一トランザクションで登録する \| \*\*仕様に無い \(major\)\*\* \| registerLoan\.ts:40 \|/);
+  assert.match(md, /\| backend-api \| 永続化 \| 単一トランザクションで登録 \| \*\*仕様に無い \(major\)\*\* \| registerLoan\.ts:40 \|/); // 表は見出し
+  assert.match(md, /- \*\*単一トランザクションで登録\*\* \(backend-api\): 貸出は単一トランザクションで登録する/); // 全文は折りたたみ
+  assert.match(md, /- 上限チェックの位置 \(backend-api\)/); // 指摘は見出し
   assert.match(md, /\| ルール \| 貸出上限のルールが契約に無い \|/); // issues
   assert.match(md, /apps\/backend-api\/src\/usecase\/registerLoan\.ts/); // 付録の変更ファイル
   assert.match(md, /主要な部品 .*\n\n- backend-api: LoanService/);
@@ -278,8 +284,8 @@ test('受入基準 → シナリオの対応は index.md の証跡に出る (cov
   W(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/coverage.md', 'old\n');
   run(opts(repo));
   const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
-  assert.match(md, /\| SPEC-001-01-1 Given 在庫あり When 貸出登録 Then 貸出中になる \| 在庫ありの書籍を貸し出す \(passed\) \|/);
-  assert.match(md, /\| SPEC-001-01-2 .* \| 上限を超える貸出を拒否する \(passed\) \|/);
+  assert.match(md, /\| SPEC-001-01-1 \| Given 在庫あり<br>When 貸出登録<br>Then 貸出中になる \| 在庫ありの書籍を貸し出す \(passed\) \|/);
+  assert.match(md, /\| SPEC-001-01-2 \| .* \| 上限を超える貸出を拒否する \(passed\) \|/);
   assert.ok(!fs.existsSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/coverage.md')));
 });
 
@@ -408,7 +414,7 @@ test('計装の範囲: 全トレースに無いティアは「計装なし」、
   const repo = buildRepo();
   run(opts(repo));
   const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
-  assert.match(md, /\| 計装の範囲 \| backend-api \|/);
+  assert.match(md, /\| 計装の範囲 \(backend-api\) \| 部品名のみ \|/);
 });
 
 test('scenarioStatus は hook の結果を数えない (本体が全部 skipped なら skipped)', () => {

@@ -91,13 +91,15 @@ findings:
     kind: spec_absent
     assumption_id: A-001
     severity: minor
+    title: "時刻精度は仕様に無い"      # 見出し。30 字以内・1 行。as-built とレビュー画面の一覧にはこれだけが載る
     target: "apps/backend-api/src/domain/loan.ts:28"
-    claim: "..."
+    claim: "..."                     # 何が問題か (1〜2 文)。ルールの引用や経緯は evidence に
     evidence: "..."
   - id: F-003
     viewpoint: uc_intent
     kind: rule_not_enforced
     severity: blocker
+    title: "貸出上限 5 冊の判定が無い"
     target: "apps/backend-api/src/usecase/registerLoan.ts"
     claim: "条件『貸出上限 5 冊』を担保する箇所が無い"
     evidence: "docs/requirements/rdra/条件.tsv#貸出上限; traces/register-loan#上限超過.jsonl に判定の呼び出し無し"

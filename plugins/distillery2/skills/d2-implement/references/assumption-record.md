@@ -27,6 +27,7 @@ extraction:                  # 抽出過程の検査可能性 (復唱で埋め�
 assumptions:                 # 0 件なら [] を明示
   - id: A-001                # ティア内で一意。attempt をまたいで安定させる (同じ判断には同じ id)
     category: data_format    # 下表の 6 値
+    title: "due_at は日付のみ"  # 見出し。30 字以内・1 行。as-built とレビュー画面の表にはこれだけが載る
     assumption: "loans.due_at は日付のみ (時刻なし) で記録する"
     target: "apps/backend-api/src/domain/loan.ts:28"    # 判断が実装されている箇所 (file:line)
     reason: "契約 contracts/db/rdb-schema.yaml の loans.due_at に精度の定義が無い"
@@ -58,7 +59,8 @@ Verifier が独立に `verified_category` を判定し、不一致は minor find
    `docs/rules/` / mode=tier の固定指示 (`d2-implement/references/tier-impl.md`)。
    可変プロンプト (派遣時の引数・findings パス等) は除外集合に含めない。その内容を判断に使ったなら前提として書く
 2. 各前提に**「どこを探して無かったか」(`spec_refs`) を必ず書く**。探していない前提は書かない
-3. 判断の粒度は「Verifier が要求・契約 1 箇所と突き合わせて真偽を言える 1 文」にする
+3. 判断の粒度は「Verifier が要求・契約 1 箇所と突き合わせて真偽を言える 1 文」にする。`title` は「何を決めたか」を
+   30 字以内で (例: `貸出期間は全組み合わせ 14 日`)。条件・理由・値の列挙は `assumption` / `reason` に書く
 4. 「仕様と両立しない事実」(要求どおりに実装すると動かない) は前提ではなく `issues/` に起票する。二重記録しない
 5. `extraction` の 3 値を正直に書く。`recorded_count` は `assumptions[]` の件数と一致させる (検証器が照合する)
 

@@ -9,6 +9,7 @@ extraction:
 assumptions:
   - id: A-001
     category: data_format
+    title: "貸出期間は全組み合わせ 14 日"
     assumption: "貸出期間は利用者区分 (一般・児童・学生) と媒体種別 (紙・電子) のすべての組み合わせで 14 日とする"
     target: "apps/backend-api/src/domain/loan/loan-period.ts:20"
     reason: "要求は利用者区分と媒体種別に応じた貸出期間 (7・14・21 日) とだけ定め、対応表が無い。確定値は契約 createLoan の 201 例 (一般 × 紙 → 14 日) だけなので、他の組み合わせも 14 日で仮置きし 1 箇所に集約した (issue 20260924_120000_loan-period-mapping.md が open)"
@@ -20,6 +21,7 @@ assumptions:
       - "features/貸出業務/register-loan.feature#貸出を登録すると返却期限が自動で設定される"
   - id: A-002
     category: input_validation
+    title: "貸出上限冊数は判定しない"
     assumption: "利用者区分ごとの貸出上限冊数は判定せず、上限による貸出拒否を行わない"
     target: "apps/backend-api/src/domain/loan/loan.ts:81"
     reason: "貸出可否条件に上限冊数の条件はあるが値が要求に無く、契約の description も未定義としている (issue 20260924_120001_loan-limit-count.md が open)。値を発明せず判定自体を外した"
@@ -30,6 +32,7 @@ assumptions:
       - "contracts/openapi/paths/loans.yaml#createLoan.description"
   - id: A-003
     category: error_handling
+    title: "貸出可否の判定順序"
     assumption: "貸出可否の判定は 利用者の存在 → 書籍の存在 → 書籍状態 (貸出中・取置) → 利用者の延滞 の順に行い、最初に満たさない条件の code だけを返す"
     target: "apps/backend-api/src/domain/loan/loan.ts:89"
     reason: "複数の条件を同時に満たさない場合の優先順位が要求・契約に無い。契約例 bookOnHoldForAnother は延滞中の貸出を持つ P000456 を使いながら code=book-on-hold-for-another-patron を示すため、書籍状態を延滞より先に判定した"
@@ -40,6 +43,7 @@ assumptions:
       - "features/貸出業務/register-loan.feature#貸出可否条件"
   - id: A-004
     category: error_handling
+    title: "存在しない書籍・利用者も 404"
     assumption: "削除済みでなく存在しない書籍・利用者も 404 (code book-not-found / patron-not-found) とし、detail を「指定した書籍は見つかりません」「指定した利用者は見つかりません」とする"
     target: "apps/backend-api/src/domain/loan/errors.ts:27"
     reason: "契約の 404 例は削除済みの detail だけを示し、未登録の場合の文言が無い"
@@ -49,6 +53,7 @@ assumptions:
       - "contracts/openapi/openapi.yaml#components.responses.NotFound"
   - id: A-005
     category: security
+    title: "テスト用トークンの解釈"
     assumption: "テスト用 composition root では Authorization ヘッダが無いリクエストを司書 (subject test-staff) とみなし、Bearer test-staff:<sub> / test-patron:<利用者番号> を検証済みトークンとして扱う"
     target: "apps/backend-api/src/testing/test-authenticator.ts:10"
     reason: "生成された契約テストは認証ヘッダを送らず 201 を期待する。テストでのトークン表現と既定の操作者は契約・ルールに無い。本番の OIDC 検証は未実装で、この認証は test-app だけが使う"
@@ -60,6 +65,7 @@ assumptions:
       - "packages/test-support/README.md"
   - id: A-006
     category: data_format
+    title: "業務日付は Asia/Tokyo の暦日"
     assumption: "業務日付 (貸出日) は Asia/Tokyo の暦日で決める。テストの固定時計は発生日時を業務日付の 09:00+09:00 とする"
     target: "apps/backend-api/src/gateway/clock/clocks.ts:6"
     reason: "貸出日は業務日付とだけ定められ、日付の境界を決めるタイムゾーンが要求・契約・ルールに無い"
@@ -70,6 +76,7 @@ assumptions:
       - "docs/rules/tier-backend.md"
   - id: A-007
     category: security
+    title: "データアクセスログの項目"
     assumption: "データアクセスログは action=loan.register、操作者の subject とロール、対象の書籍ID・利用者番号・貸出ID、結果 (succeeded / denied / rejected と理由 code) を 1 行 JSON で記録し、氏名・連絡先は載せない"
     target: "apps/backend-api/src/usecase/loan/register-loan.ts:25"
     reason: "ADR 0006 は貸出の更新をデータアクセスログとして記録するとだけ定め、項目・拒否時の記録有無・出力先が無い"
@@ -79,6 +86,7 @@ assumptions:
       - "docs/rules/common.md"
   - id: A-008
     category: error_handling
+    title: "想定外の失敗は 500 Problem"
     assumption: "想定外の失敗は 500 と Problem (type .../internal-error、title サーバでエラーが発生しました) で返し、例外の内容は応答に出さない"
     target: "apps/backend-api/src/presentation/http/problem.ts:58"
     reason: "契約 createLoan と共通レスポンスに 500 の定義が無い"
@@ -88,6 +96,7 @@ assumptions:
       - "contracts/openapi/openapi.yaml#components.responses"
   - id: A-009
     category: input_validation
+    title: "本文は 64 KiB 上限"
     assumption: "リクエスト本文は 64 KiB を上限とし、超過や JSON として読めない本文は 400 ValidationProblem (field body) で返す"
     target: "apps/backend-api/src/presentation/http/http-io.ts:5"
     reason: "契約は 400 を必須項目の欠落・型の不一致とだけ定め、本文の上限や JSON 構文エラーの扱いが無い"
@@ -97,6 +106,7 @@ assumptions:
       - "contracts/openapi/openapi.yaml#components.responses.BadRequest"
   - id: A-010
     category: error_handling
+    title: "入力検証 400 を認可 403 より先に"
     assumption: "入力検証 (400) を認可判定 (403) より先に行う。利用者ロールが不正な本文を送ると 400 になる"
     target: "apps/backend-api/src/presentation/http/loans/create-loan-handler.ts:43"
     reason: "認可は usecase 層で行う (ADR 0006) ため、presentation の入力検証が先に走る。400 と 403 の優先順位は契約に無い"
@@ -106,6 +116,7 @@ assumptions:
       - "docs/rules/tier-backend.md#ADR 0006"
   - id: A-011
     category: persistence
+    title: "イベント payload の項目と初期版番号"
     assumption: "イベント payload は JSON で、BookLoaned は status・loanId・patronNumber、LoanCreated は貸出の全項目と pickedUpReservationId、ReservationPickedUp は status・loanId、QueueAdvanced は繰り上げ前後の予約順を持つ。貸出の版番号は 1 から始める"
     target: "apps/backend-api/src/repository/loan/pg-loan-registration-repository.ts:96"
     reason: "契約はイベント種別名の例と payload が JSON 文字列であることだけを定め、payload の項目と初期の版番号が無い"
@@ -116,6 +127,7 @@ assumptions:
       - "contracts/generated/slices/register-loan/rdb-slice.yaml#reservation_events.payload"
   - id: A-012
     category: persistence
+    title: "読み取りはトランザクション外、予約も版照合"
     assumption: "貸出可否の判定に使う読み取りはトランザクションの外で行い、書き込みトランザクションで書籍の版番号に加えて受取済みにする予約の版番号と取置中の状態も照合し、どちらかが変わっていれば 409 version-conflict で全体を巻き戻す"
     target: "apps/backend-api/src/repository/loan/pg-loan-registration-repository.ts:165"
     reason: "ADR 0004 は書籍単位の楽観ロックを定めるが、読み取りのトランザクション境界と予約側の版番号照合は定めていない"
