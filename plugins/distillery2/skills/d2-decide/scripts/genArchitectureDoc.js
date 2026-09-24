@@ -38,10 +38,14 @@ function readJsonIfExists(p) { const t = readTextIfExists(p); if (t == null) ret
  */
 function cmpStr(a, b) { a = String(a); b = String(b); return a < b ? -1 : a > b ? 1 : 0; }
 
-/** C4 の別名 (alias) に使える識別子へ変換する。先頭が数字なら a_ を付ける。 */
+/** Mermaid flowchart の予約語 (ノード ID に使うと構文が壊れる)。 */
+const MERMAID_RESERVED = new Set(['end', 'subgraph', 'graph', 'flowchart', 'style', 'class', 'classDef', 'click', 'linkStyle', 'direction', 'default']);
+
+/** Mermaid のノード ID に使える識別子へ変換する。先頭が数字なら a_、予約語 (end 等) なら n_ を付ける。 */
 function c4Id(s) {
   const id = String(s == null ? '' : s).replace(/[^A-Za-z0-9_]/g, '_');
-  return /^[A-Za-z_]/.test(id) ? id : `a_${id}`;
+  if (!/^[A-Za-z_]/.test(id)) return `a_${id}`;
+  return MERMAID_RESERVED.has(id.toLowerCase()) ? `n_${id}` : id;
 }
 /** C4 のラベル (二重引用符で囲む) 用に無害化する。 */
 function c4Label(s) { return String(s == null ? '' : s).replace(/"/g, "'").replace(/[\r\n]+/g, ' ').trim(); }

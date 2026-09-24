@@ -165,6 +165,16 @@ test('RDRA が無ければコンテキスト図を省略し、コンテナ図は
   assert.match(md, /```mermaid\ngraph LR\n  subgraph sys/);
 });
 
+test('Mermaid の予約語 (end 等) や数字始まりのティア ID はノード ID に接頭辞を付け、ラベルは元のまま', () => {
+  const { renderContainerDiagram } = require('../../../plugins/distillery2/skills/d2-decide/scripts/genArchitectureDoc');
+  const md = renderContainerDiagram('S', [{ id: 'end', kind: 'backend', lang: 'cpp' }, { id: '3d', kind: 'frontend', lang: 'ts' }], 'end', [{ id: 'api', type: 'openapi', provider: 'end', consumers: ['3d'] }], []);
+  assert.match(md, /n_end\["end<br\/>backend \/ cpp<br\/>データストア所有 \(migration\)"\]:::tier/);
+  assert.match(md, /a_3d\["3d<br\/>frontend \/ ts"\]:::tier/);
+  assert.match(md, /a_3d -->\|"api \(openapi\)"\| n_end/);
+  assert.match(md, /n_end -->\|所有・migration\| datastore/);
+  assert.doesNotMatch(md, /^\s+end\[/m);
+});
+
 test('決定論: 同じ入力なら 2 回の生成がバイト一致する', () => {
   const dir = buildRepo();
   const a = build(opts(dir));
