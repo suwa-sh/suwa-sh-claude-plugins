@@ -12,7 +12,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 1024861666
+              "duration": 963449333
             },
             "keyword": "Before",
             "hidden": true
@@ -20,33 +20,33 @@
           {
             "result": {
               "status": "passed",
-              "duration": 207374
+              "duration": 249041
             },
             "arguments": [],
             "keyword": "前提",
             "line": 10,
             "name": "本日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:193"
+              "location": "features/step_definitions/register-loan.steps.ts:208"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 50375
+              "duration": 75417
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 11,
             "name": "司書がログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:197"
+              "location": "features/step_definitions/register-loan.steps.ts:212"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 2922166
+              "duration": 2076957
             },
             "arguments": [
               {
@@ -85,13 +85,13 @@
             "line": 12,
             "name": "次の利用者が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:202"
+              "location": "features/step_definitions/register-loan.steps.ts:217"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 1214416
+              "duration": 928333
             },
             "arguments": [
               {
@@ -133,91 +133,91 @@
             "line": 16,
             "name": "次の書籍が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:219"
+              "location": "features/step_definitions/register-loan.steps.ts:234"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 945375
+              "duration": 754625
             },
             "arguments": [],
             "keyword": "前提",
             "line": 25,
             "name": "書籍 \"架空の物語A\" の書籍状態は \"在庫あり\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:245"
+              "location": "features/step_definitions/register-loan.steps.ts:260"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 18798125
+              "duration": 17314458
             },
             "arguments": [],
             "keyword": "もし",
             "line": 26,
             "name": "司書が利用者 \"P000123\" に書籍 \"架空の物語A\" の貸出を登録する",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:306"
+              "location": "features/step_definitions/register-loan.steps.ts:321"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 1913540
+              "duration": 1542875
             },
             "arguments": [],
             "keyword": "ならば",
             "line": 27,
             "name": "貸出が記録され書籍の状態が貸出中になる",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:327"
+              "location": "features/step_definitions/register-loan.steps.ts:342"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 675375
+              "duration": 603957
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 28,
             "name": "利用者 \"P000123\" の書籍 \"架空の物語A\" の貸出が 1 件記録されている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:338"
+              "location": "features/step_definitions/register-loan.steps.ts:353"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 491083
+              "duration": 454500
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 29,
             "name": "その貸出の貸出状態は \"貸出中\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:347"
+              "location": "features/step_definitions/register-loan.steps.ts:362"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 354166
+              "duration": 337041
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 30,
             "name": "書籍 \"架空の物語A\" の書籍状態は \"貸出中\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:245"
+              "location": "features/step_definitions/register-loan.steps.ts:260"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 518250
+              "duration": 476374
             },
             "keyword": "After",
             "hidden": true
@@ -249,7 +249,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 472374
+              "duration": 492541
             },
             "keyword": "Before",
             "hidden": true
@@ -257,33 +257,33 @@
           {
             "result": {
               "status": "passed",
-              "duration": 45917
+              "duration": 59875
             },
             "arguments": [],
             "keyword": "前提",
             "line": 10,
             "name": "本日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:193"
+              "location": "features/step_definitions/register-loan.steps.ts:208"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 34375
+              "duration": 19457
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 11,
             "name": "司書がログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:197"
+              "location": "features/step_definitions/register-loan.steps.ts:212"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 598499
+              "duration": 630540
             },
             "arguments": [
               {
@@ -322,13 +322,13 @@
             "line": 12,
             "name": "次の利用者が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:202"
+              "location": "features/step_definitions/register-loan.steps.ts:217"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 464708
+              "duration": 429917
             },
             "arguments": [
               {
@@ -370,91 +370,91 @@
             "line": 16,
             "name": "次の書籍が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:219"
+              "location": "features/step_definitions/register-loan.steps.ts:234"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 380833
+              "duration": 321833
             },
             "arguments": [],
             "keyword": "前提",
             "line": 36,
             "name": "書籍 \"架空の物語A\" の書籍状態は \"在庫あり\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:245"
+              "location": "features/step_definitions/register-loan.steps.ts:260"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 7761457
+              "duration": 5424125
             },
             "arguments": [],
             "keyword": "もし",
             "line": 37,
             "name": "司書が利用者 \"P000123\" に書籍 \"架空の物語A\" の貸出を登録する",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:306"
+              "location": "features/step_definitions/register-loan.steps.ts:321"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 532625
+              "duration": 545833
             },
             "arguments": [],
             "keyword": "ならば",
             "line": 38,
             "name": "貸出日と貸出期間から算出した返却期限が自動で設定される",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:354"
+              "location": "features/step_definitions/register-loan.steps.ts:369"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 324250
+              "duration": 333624
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 39,
             "name": "その貸出の貸出日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:365"
+              "location": "features/step_definitions/register-loan.steps.ts:380"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 282499
+              "duration": 286416
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 40,
             "name": "その貸出の貸出期間は 7 日・14 日・21 日のいずれかである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:370"
+              "location": "features/step_definitions/register-loan.steps.ts:385"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 316791
+              "duration": 279999
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 41,
             "name": "その貸出の返却期限は貸出日に貸出期間の日数を加えた日付である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:375"
+              "location": "features/step_definitions/register-loan.steps.ts:390"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 240083
+              "duration": 189624
             },
             "keyword": "After",
             "hidden": true
@@ -486,7 +486,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 398249
+              "duration": 263790
             },
             "keyword": "Before",
             "hidden": true
@@ -494,33 +494,33 @@
           {
             "result": {
               "status": "passed",
-              "duration": 40875
+              "duration": 25957
             },
             "arguments": [],
             "keyword": "前提",
             "line": 10,
             "name": "本日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:193"
+              "location": "features/step_definitions/register-loan.steps.ts:208"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 13374
+              "duration": 12083
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 11,
             "name": "司書がログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:197"
+              "location": "features/step_definitions/register-loan.steps.ts:212"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 532124
+              "duration": 442500
             },
             "arguments": [
               {
@@ -559,13 +559,13 @@
             "line": 12,
             "name": "次の利用者が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:202"
+              "location": "features/step_definitions/register-loan.steps.ts:217"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 397791
+              "duration": 372708
             },
             "arguments": [
               {
@@ -607,91 +607,91 @@
             "line": 16,
             "name": "次の書籍が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:219"
+              "location": "features/step_definitions/register-loan.steps.ts:234"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 628500
+              "duration": 557917
             },
             "arguments": [],
             "keyword": "前提",
             "line": 45,
             "name": "書籍 \"架空の物語A\" は利用者 \"P000456\" に貸出中である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:254"
+              "location": "features/step_definitions/register-loan.steps.ts:269"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 5454542
+              "duration": 3717124
             },
             "arguments": [],
             "keyword": "もし",
             "line": 46,
             "name": "司書が利用者 \"P000123\" に書籍 \"架空の物語A\" の貸出を登録しようとする",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:311"
+              "location": "features/step_definitions/register-loan.steps.ts:326"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 555624
+              "duration": 386999
             },
             "arguments": [],
             "keyword": "ならば",
             "line": 47,
             "name": "貸出できない旨が表示され貸出は記録されない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:382"
+              "location": "features/step_definitions/register-loan.steps.ts:397"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 372749
+              "duration": 310541
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 48,
             "name": "利用者 \"P000123\" の貸出は 0 件である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:388"
+              "location": "features/step_definitions/register-loan.steps.ts:403"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 265707
+              "duration": 225082
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 49,
             "name": "書籍 \"架空の物語A\" の書籍状態は \"貸出中\" のままである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:401"
+              "location": "features/step_definitions/register-loan.steps.ts:416"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 361917
+              "duration": 299208
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 50,
             "name": "利用者 \"P000456\" の書籍 \"架空の物語A\" の貸出の貸出状態は \"貸出中\" のままである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:405"
+              "location": "features/step_definitions/register-loan.steps.ts:420"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 196667
+              "duration": 193915
             },
             "keyword": "After",
             "hidden": true
@@ -723,7 +723,7 @@
           {
             "result": {
               "status": "skipped",
-              "duration": 61541
+              "duration": 30665
             },
             "keyword": "Before",
             "hidden": true
@@ -738,7 +738,7 @@
             "line": 10,
             "name": "本日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:193"
+              "location": "features/step_definitions/register-loan.steps.ts:208"
             }
           },
           {
@@ -751,7 +751,7 @@
             "line": 11,
             "name": "司書がログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:197"
+              "location": "features/step_definitions/register-loan.steps.ts:212"
             }
           },
           {
@@ -796,7 +796,7 @@
             "line": 12,
             "name": "次の利用者が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:202"
+              "location": "features/step_definitions/register-loan.steps.ts:217"
             }
           },
           {
@@ -844,7 +844,7 @@
             "line": 16,
             "name": "次の書籍が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:219"
+              "location": "features/step_definitions/register-loan.steps.ts:234"
             }
           },
           {
@@ -857,7 +857,7 @@
             "line": 54,
             "name": "書籍 \"架空の物語A\" は利用者 \"P000456\" に貸出中である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:254"
+              "location": "features/step_definitions/register-loan.steps.ts:269"
             }
           },
           {
@@ -870,7 +870,7 @@
             "line": 55,
             "name": "司書が利用者 \"P000123\" に書籍 \"架空の物語A\" の貸出を登録しようとする",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:311"
+              "location": "features/step_definitions/register-loan.steps.ts:326"
             }
           },
           {
@@ -883,7 +883,7 @@
             "line": 56,
             "name": "貸出できない旨が表示され貸出は記録されない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:382"
+              "location": "features/step_definitions/register-loan.steps.ts:397"
             }
           },
           {
@@ -896,13 +896,13 @@
             "line": 57,
             "name": "利用者 \"P000123\" の貸出は 0 件である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:388"
+              "location": "features/step_definitions/register-loan.steps.ts:403"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 120749
+              "duration": 15916
             },
             "keyword": "After",
             "hidden": true
@@ -938,7 +938,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 800083
+              "duration": 235999
             },
             "keyword": "Before",
             "hidden": true
@@ -946,33 +946,33 @@
           {
             "result": {
               "status": "passed",
-              "duration": 60915
+              "duration": 22874
             },
             "arguments": [],
             "keyword": "前提",
             "line": 10,
             "name": "本日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:193"
+              "location": "features/step_definitions/register-loan.steps.ts:208"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 11542
+              "duration": 24750
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 11,
             "name": "司書がログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:197"
+              "location": "features/step_definitions/register-loan.steps.ts:212"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 1871375
+              "duration": 479415
             },
             "arguments": [
               {
@@ -1011,13 +1011,13 @@
             "line": 12,
             "name": "次の利用者が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:202"
+              "location": "features/step_definitions/register-loan.steps.ts:217"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 759708
+              "duration": 348875
             },
             "arguments": [
               {
@@ -1059,78 +1059,78 @@
             "line": 16,
             "name": "次の書籍が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:219"
+              "location": "features/step_definitions/register-loan.steps.ts:234"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 394624
+              "duration": 260833
             },
             "arguments": [],
             "keyword": "前提",
             "line": 62,
             "name": "書籍 \"架空の歴史B\" の書籍状態は \"削除済み\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:245"
+              "location": "features/step_definitions/register-loan.steps.ts:260"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 3635707
+              "duration": 2747582
             },
             "arguments": [],
             "keyword": "もし",
             "line": 63,
             "name": "司書が利用者 \"P000123\" に書籍 \"架空の歴史B\" の貸出を登録しようとする",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:311"
+              "location": "features/step_definitions/register-loan.steps.ts:326"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 324708
+              "duration": 228333
             },
             "arguments": [],
             "keyword": "ならば",
             "line": 64,
             "name": "貸出できない旨が表示され貸出は記録されない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:382"
+              "location": "features/step_definitions/register-loan.steps.ts:397"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 305833
+              "duration": 249542
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 65,
             "name": "利用者 \"P000123\" の貸出は 0 件である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:388"
+              "location": "features/step_definitions/register-loan.steps.ts:403"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 220665
+              "duration": 341083
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 66,
             "name": "書籍 \"架空の歴史B\" の書籍状態は \"削除済み\" のままである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:401"
+              "location": "features/step_definitions/register-loan.steps.ts:416"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 264249
+              "duration": 294208
             },
             "keyword": "After",
             "hidden": true
@@ -1154,7 +1154,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 251500
+              "duration": 273541
             },
             "keyword": "Before",
             "hidden": true
@@ -1162,33 +1162,33 @@
           {
             "result": {
               "status": "passed",
-              "duration": 24540
+              "duration": 27041
             },
             "arguments": [],
             "keyword": "前提",
             "line": 10,
             "name": "本日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:193"
+              "location": "features/step_definitions/register-loan.steps.ts:208"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 9792
+              "duration": 52541
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 11,
             "name": "司書がログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:197"
+              "location": "features/step_definitions/register-loan.steps.ts:212"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 456125
+              "duration": 450540
             },
             "arguments": [
               {
@@ -1227,13 +1227,13 @@
             "line": 12,
             "name": "次の利用者が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:202"
+              "location": "features/step_definitions/register-loan.steps.ts:217"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 362833
+              "duration": 365249
             },
             "arguments": [
               {
@@ -1275,7 +1275,7 @@
             "line": 16,
             "name": "次の書籍が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:219"
+              "location": "features/step_definitions/register-loan.steps.ts:234"
             }
           },
           {
@@ -1288,91 +1288,91 @@
             "line": 71,
             "name": "書籍 \"架空の歴史B\" の書籍状態は \"予約待ち（取置）\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:245"
+              "location": "features/step_definitions/register-loan.steps.ts:260"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 548042
+              "duration": 517458
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 72,
             "name": "利用者 \"P000123\" の書籍 \"架空の歴史B\" の予約は予約順 1 位で予約状態が \"取置中\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:259"
+              "location": "features/step_definitions/register-loan.steps.ts:274"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 8537458
+              "duration": 6797415
             },
             "arguments": [],
             "keyword": "もし",
             "line": 73,
             "name": "司書が利用者 \"P000123\" に書籍 \"架空の歴史B\" の貸出を登録する",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:306"
+              "location": "features/step_definitions/register-loan.steps.ts:321"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 512333
+              "duration": 427417
             },
             "arguments": [],
             "keyword": "ならば",
             "line": 74,
             "name": "利用者 \"P000123\" の書籍 \"架空の歴史B\" の貸出が 1 件記録されている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:338"
+              "location": "features/step_definitions/register-loan.steps.ts:353"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 283249
+              "duration": 244541
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 75,
             "name": "その貸出の貸出状態は \"貸出中\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:347"
+              "location": "features/step_definitions/register-loan.steps.ts:362"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 215332
+              "duration": 292541
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 76,
             "name": "書籍 \"架空の歴史B\" の書籍状態は \"貸出中\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:245"
+              "location": "features/step_definitions/register-loan.steps.ts:260"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 305417
+              "duration": 344541
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 77,
             "name": "利用者 \"P000123\" の書籍 \"架空の歴史B\" の予約の予約状態は \"受取済み\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:416"
+              "location": "features/step_definitions/register-loan.steps.ts:431"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 182624
+              "duration": 177333
             },
             "keyword": "After",
             "hidden": true
@@ -1396,7 +1396,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 318375
+              "duration": 287584
             },
             "keyword": "Before",
             "hidden": true
@@ -1404,33 +1404,33 @@
           {
             "result": {
               "status": "passed",
-              "duration": 25999
+              "duration": 20999
             },
             "arguments": [],
             "keyword": "前提",
             "line": 10,
             "name": "本日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:193"
+              "location": "features/step_definitions/register-loan.steps.ts:208"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 10208
+              "duration": 8458
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 11,
             "name": "司書がログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:197"
+              "location": "features/step_definitions/register-loan.steps.ts:212"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 430875
+              "duration": 407916
             },
             "arguments": [
               {
@@ -1469,13 +1469,13 @@
             "line": 12,
             "name": "次の利用者が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:202"
+              "location": "features/step_definitions/register-loan.steps.ts:217"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 362125
+              "duration": 343041
             },
             "arguments": [
               {
@@ -1517,104 +1517,104 @@
             "line": 16,
             "name": "次の書籍が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:219"
+              "location": "features/step_definitions/register-loan.steps.ts:234"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 262999
+              "duration": 226832
             },
             "arguments": [],
             "keyword": "前提",
             "line": 80,
             "name": "書籍 \"架空の歴史B\" の書籍状態は \"予約待ち（取置）\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:245"
+              "location": "features/step_definitions/register-loan.steps.ts:260"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 351249
+              "duration": 293791
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 81,
             "name": "利用者 \"P000123\" の書籍 \"架空の歴史B\" の予約は予約順 1 位で予約状態が \"取置中\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:259"
+              "location": "features/step_definitions/register-loan.steps.ts:274"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 3840625
+              "duration": 3274666
             },
             "arguments": [],
             "keyword": "もし",
             "line": 82,
             "name": "司書が利用者 \"P000456\" に書籍 \"架空の歴史B\" の貸出を登録しようとする",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:311"
+              "location": "features/step_definitions/register-loan.steps.ts:326"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 409875
+              "duration": 277958
             },
             "arguments": [],
             "keyword": "ならば",
             "line": 83,
             "name": "貸出できない旨が表示され貸出は記録されない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:382"
+              "location": "features/step_definitions/register-loan.steps.ts:397"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 343209
+              "duration": 279083
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 84,
             "name": "利用者 \"P000456\" の貸出は 0 件である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:388"
+              "location": "features/step_definitions/register-loan.steps.ts:403"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 237415
+              "duration": 198249
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 85,
             "name": "書籍 \"架空の歴史B\" の書籍状態は \"予約待ち（取置）\" のままである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:401"
+              "location": "features/step_definitions/register-loan.steps.ts:416"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 309209
+              "duration": 245708
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 86,
             "name": "利用者 \"P000123\" の書籍 \"架空の歴史B\" の予約の予約状態は \"取置中\" のままである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:424"
+              "location": "features/step_definitions/register-loan.steps.ts:439"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 177666
+              "duration": 152417
             },
             "keyword": "After",
             "hidden": true
@@ -1638,7 +1638,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 250457
+              "duration": 213582
             },
             "keyword": "Before",
             "hidden": true
@@ -1646,33 +1646,33 @@
           {
             "result": {
               "status": "passed",
-              "duration": 29874
+              "duration": 19416
             },
             "arguments": [],
             "keyword": "前提",
             "line": 10,
             "name": "本日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:193"
+              "location": "features/step_definitions/register-loan.steps.ts:208"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 9792
+              "duration": 8459
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 11,
             "name": "司書がログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:197"
+              "location": "features/step_definitions/register-loan.steps.ts:212"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 458374
+              "duration": 365333
             },
             "arguments": [
               {
@@ -1711,13 +1711,13 @@
             "line": 12,
             "name": "次の利用者が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:202"
+              "location": "features/step_definitions/register-loan.steps.ts:217"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 365957
+              "duration": 328625
             },
             "arguments": [
               {
@@ -1759,91 +1759,91 @@
             "line": 16,
             "name": "次の書籍が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:219"
+              "location": "features/step_definitions/register-loan.steps.ts:234"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 658707
+              "duration": 559874
             },
             "arguments": [],
             "keyword": "前提",
             "line": 91,
             "name": "利用者 \"P000456\" は書籍 \"架空の歴史B\" の貸出を持ち、その貸出状態は \"延滞\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:281"
+              "location": "features/step_definitions/register-loan.steps.ts:296"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 195124
+              "duration": 188999
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 92,
             "name": "書籍 \"架空の物語A\" の書籍状態は \"在庫あり\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:245"
+              "location": "features/step_definitions/register-loan.steps.ts:260"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 4885457
+              "duration": 4244000
             },
             "arguments": [],
             "keyword": "もし",
             "line": 93,
             "name": "司書が利用者 \"P000456\" に書籍 \"架空の物語A\" の貸出を登録しようとする",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:311"
+              "location": "features/step_definitions/register-loan.steps.ts:326"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 529042
+              "duration": 316125
             },
             "arguments": [],
             "keyword": "ならば",
             "line": 94,
             "name": "貸出できない旨が表示され貸出は記録されない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:382"
+              "location": "features/step_definitions/register-loan.steps.ts:397"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 453750
+              "duration": 358249
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 95,
             "name": "利用者 \"P000456\" の書籍 \"架空の物語A\" の貸出は 0 件である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:393"
+              "location": "features/step_definitions/register-loan.steps.ts:408"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 249957
+              "duration": 205957
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 96,
             "name": "書籍 \"架空の物語A\" の書籍状態は \"在庫あり\" のままである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:401"
+              "location": "features/step_definitions/register-loan.steps.ts:416"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 179292
+              "duration": 157916
             },
             "keyword": "After",
             "hidden": true
@@ -1867,7 +1867,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 276208
+              "duration": 220291
             },
             "keyword": "Before",
             "hidden": true
@@ -1875,33 +1875,33 @@
           {
             "result": {
               "status": "passed",
-              "duration": 32375
+              "duration": 22041
             },
             "arguments": [],
             "keyword": "前提",
             "line": 10,
             "name": "本日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:193"
+              "location": "features/step_definitions/register-loan.steps.ts:208"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 11792
+              "duration": 9584
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 11,
             "name": "司書がログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:197"
+              "location": "features/step_definitions/register-loan.steps.ts:212"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 487415
+              "duration": 415333
             },
             "arguments": [
               {
@@ -1940,13 +1940,13 @@
             "line": 12,
             "name": "次の利用者が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:202"
+              "location": "features/step_definitions/register-loan.steps.ts:217"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 365915
+              "duration": 340709
             },
             "arguments": [
               {
@@ -1988,91 +1988,91 @@
             "line": 16,
             "name": "次の書籍が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:219"
+              "location": "features/step_definitions/register-loan.steps.ts:234"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 342167
+              "duration": 300832
             },
             "arguments": [],
             "keyword": "前提",
             "line": 99,
             "name": "利用者 \"P000456\" の利用者状態は \"削除済み\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:292"
+              "location": "features/step_definitions/register-loan.steps.ts:307"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 208458
+              "duration": 185541
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 100,
             "name": "書籍 \"架空の物語A\" の書籍状態は \"在庫あり\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:245"
+              "location": "features/step_definitions/register-loan.steps.ts:260"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 2978500
+              "duration": 2836125
             },
             "arguments": [],
             "keyword": "もし",
             "line": 101,
             "name": "司書が利用者 \"P000456\" に書籍 \"架空の物語A\" の貸出を登録しようとする",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:311"
+              "location": "features/step_definitions/register-loan.steps.ts:326"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 298999
+              "duration": 247166
             },
             "arguments": [],
             "keyword": "ならば",
             "line": 102,
             "name": "貸出できない旨が表示され貸出は記録されない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:382"
+              "location": "features/step_definitions/register-loan.steps.ts:397"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 305292
+              "duration": 265208
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 103,
             "name": "利用者 \"P000456\" の貸出は 0 件である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:388"
+              "location": "features/step_definitions/register-loan.steps.ts:403"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 220167
+              "duration": 188957
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 104,
             "name": "書籍 \"架空の物語A\" の書籍状態は \"在庫あり\" のままである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:401"
+              "location": "features/step_definitions/register-loan.steps.ts:416"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 157834
+              "duration": 145709
             },
             "keyword": "After",
             "hidden": true
@@ -2096,7 +2096,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 383790
+              "duration": 341000
             },
             "keyword": "Before",
             "hidden": true
@@ -2104,33 +2104,33 @@
           {
             "result": {
               "status": "passed",
-              "duration": 25624
+              "duration": 19416
             },
             "arguments": [],
             "keyword": "前提",
             "line": 10,
             "name": "本日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:193"
+              "location": "features/step_definitions/register-loan.steps.ts:208"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 48083
+              "duration": 8291
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 11,
             "name": "司書がログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:197"
+              "location": "features/step_definitions/register-loan.steps.ts:212"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 441958
+              "duration": 377667
             },
             "arguments": [
               {
@@ -2169,13 +2169,13 @@
             "line": 12,
             "name": "次の利用者が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:202"
+              "location": "features/step_definitions/register-loan.steps.ts:217"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 364957
+              "duration": 325583
             },
             "arguments": [
               {
@@ -2217,91 +2217,91 @@
             "line": 16,
             "name": "次の書籍が登録されている:",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:219"
+              "location": "features/step_definitions/register-loan.steps.ts:234"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 70625
+              "duration": 39917
             },
             "arguments": [],
             "keyword": "前提",
             "line": 112,
             "name": "利用者 \"P000123\" としてログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:299"
+              "location": "features/step_definitions/register-loan.steps.ts:314"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 273333
+              "duration": 241958
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 113,
             "name": "書籍 \"架空の物語A\" の書籍状態は \"在庫あり\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:245"
+              "location": "features/step_definitions/register-loan.steps.ts:260"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 3875999
+              "duration": 3837749
             },
             "arguments": [],
             "keyword": "もし",
             "line": 114,
             "name": "利用者 \"P000123\" が自分に書籍 \"架空の物語A\" の貸出を登録しようとする",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:318"
+              "location": "features/step_definitions/register-loan.steps.ts:333"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 432250
+              "duration": 460665
             },
             "arguments": [],
             "keyword": "ならば",
             "line": 115,
             "name": "操作する権限がない旨が表示され貸出は記録されない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:434"
+              "location": "features/step_definitions/register-loan.steps.ts:449"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 341666
+              "duration": 330459
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 116,
             "name": "利用者 \"P000123\" の貸出は 0 件である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:388"
+              "location": "features/step_definitions/register-loan.steps.ts:403"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 234167
+              "duration": 220874
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 117,
             "name": "書籍 \"架空の物語A\" の書籍状態は \"在庫あり\" のままである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:401"
+              "location": "features/step_definitions/register-loan.steps.ts:416"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 212042
+              "duration": 186374
             },
             "keyword": "After",
             "hidden": true

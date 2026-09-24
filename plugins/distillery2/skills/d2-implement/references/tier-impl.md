@@ -30,12 +30,15 @@
 1. 契約の生成型を起点に、ハンドラ / ユースケース / ドメイン / アダプタを `docs/rules/tier-<kind>.md` のレイヤ規約どおりに刻む。
    red → green → refactor。単体テストは振る舞い単位、I/O 実体はアダプタ層のテストだけ (pglite は test-support が起動する)
 2. 提供側なら `apps/<tier>/src/test-app.ts` に `createTestApp()` を用意し、契約テストと UC BDD の API ドライバが同じ入口を使えるようにする
-   (計装の結線は integrate 段階が行う。ここでは export だけ)
-3. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `typecheck` / `unit` (`.distillery/config.yaml` の commands)。
+   (計装の結線は integrate 段階が行う。ここでは export だけ)。usecase / repository / gateway は **注入で差し替えられるオブジェクト**にする
+   (integrate が `traced()` で包んで図の参加者にする)
+3. frontend なら、画面の操作を **ブラウザ無しで呼べる入口関数** (例: `submitLoanCheckout(api, input)`) として export し、
+   API 呼び出しは生成クライアントの `options.fetch` で差し替えられる形にする (UC BDD が in-process で画面 → API を通すため)
+4. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `typecheck` / `unit` (`.distillery/config.yaml` の commands)。
    書き換えを伴う formatter は使わない (並列ティアの write-set を侵すため)
-4. 自分で決めた判断を AssumptionRecord に書く (`references/assumption-record.md`)。書いたら
+5. 自分で決めた判断を AssumptionRecord に書く (`references/assumption-record.md`)。書いたら
    `validateAssumptions.js record` を実行し ok を確認する
-5. 契約テスト (`test/contract/`) は生成物。落ちるなら実装を直す。契約の側が間違っていると思うなら `issues/` に `kind: contract` で起票し、
+6. 契約テスト (`test/contract/`) は生成物。落ちるなら実装を直す。契約の側が間違っていると思うなら `issues/` に `kind: contract` で起票し、
    実装は契約どおりにする (「動くように契約と違うことをする」を禁止)
 
 ## 禁止

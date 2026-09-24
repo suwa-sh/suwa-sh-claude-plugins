@@ -1,1 +1,0 @@
-{"ts":"2026-09-24T00:02:57.757Z","scenario":"register-loan#利用者は貸出を登録できない","kind":"http.in","name":"/loans","meta":{"method":"POST","path":"/loans","status":403,"operationId":"createLoan","tier":"backend-api"}}

@@ -4,10 +4,11 @@
  *
  * 入力 (すべて任意。無ければ該当節に「なし」と書く):
  *   .distillery/config.yaml                       ティア・契約・docs_root
- *   docs/requirements/use-cases.yaml              UC 一覧 (run の slug で該当 UC を引く)
- *   docs/requirements/requirements.yaml           受入基準 (coverage.md)
+ *   docs/requirements/use-cases.yaml              UC 一覧 (run の slug で該当 UC を引く。actors / tiers)
+ *   docs/requirements/requirements.yaml           受入基準
+ *   docs/adr/*.md                                 レイヤ規則 (arch_test.level: layer) → 計装の範囲の期待値
  *   <run>/reports/gates.json / *.json             ゲート結果・cucumber JSON・vitest JSON
- *   <run>/traces/<scenario>.jsonl                 実行トレース
+ *   <run>/traces/<scenario>.jsonl                 実行トレース (traceTree.js の形)
  *   <run>/attempt-<n>/assumptions.<tier>.yaml     AssumptionRecord
  *   <run>/attempt-<n>/findings.<tier>.yaml        Verifier の findings
  *   <run>/events.jsonl                            review_approved の決定・generated_at の元
@@ -18,14 +19,15 @@
  *   <run>/reports/depcruise.json (または --depcruise)  dependency-graph.md 用
  *
  * 出力:
- *   docs/as-built/<業務>/<UC>/{index.md, sequence.md, coverage.md}
- *   docs/as-built/_system/{traceability-index.json, api-inventory.md, dependency-graph.md, index.md}
+ *   docs/as-built/<業務>/<UC>/{index.md, sequence.md}
+ *   docs/as-built/_system/{traceability-index.json, api-inventory.md, dependency-graph.md, data-flow.md, index.md}
  *
+ * index.md は読者の問いの順 (何をする → 結果 → 入口 → どう動く → 何を守る → 決めたこと → 課題 → 証跡 → 付録)。
  * 決定論: 同じ入力なら同じ出力。generated_at のみ最新イベント ts (壁時計ではない)。
- * 要約節は `<!-- 要約:begin -->…<!-- 要約:end -->` の中身を再実行でも保存する。
+ * 要約節は `<!-- 要約:begin <名前> -->…<!-- 要約:end -->` の中身を再実行でも保存する。
  *
  * Usage:
- *   node extractAsBuilt.js --run <runDir> [--cwd <repo>] [--config <path>] [--docs-root <dir>] [--depcruise <path>]
+ *   node extractAsBuilt.js --run <runDir> [--cwd <repo>] [--config <path>] [--docs-root <dir>] [--depcruise <path>] [--changed <file>]
  * npm 依存なし。共有ライブラリ (../../../scripts/lib) のみ。
  */
 'use strict';
@@ -37,7 +39,9 @@ const { parseYaml } = require('../../../scripts/lib/yaml');
 const { stamp, headerLine } = require('../../../scripts/lib/basis');
 const { writeCanonicalJson, readCanonicalJson } = require('../../../scripts/lib/canonicalJson');
 const { readEvents } = require('../../../scripts/lib/runState');
-const { renderScenario } = require('./renderSequence');
+const { renderScenario, pickHappyPath, summarizeScenario } = require('./renderSequence');
+const { buildFlows, renderFlowchart, renderSystemDataFlow } = require('./renderDataFlow');
+const { buildTree, observedPlacements, cmpStr } = require('./traceTree');
 const { deriveFromTraces, groupChangedFiles, changedFilesFromGit, loadTraces } = require('./buildTraceIndex');
 
 // ---------------------------------------------------------------------------
@@ -46,9 +50,6 @@ const { deriveFromTraces, groupChangedFiles, changedFilesFromGit, loadTraces } =
 
 function readTextIfExists(p) { return p && fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null; }
 function readYamlIfExists(p) { const t = readTextIfExists(p); return t == null ? null : parseYaml(t); }
-
-/** コードポイント比較。localeCompare は実行環境のロケールで順序が変わり生成物が非決定的なため使わない。 */
-function cmpStr(a, b) { a = String(a); b = String(b); return a < b ? -1 : a > b ? 1 : 0; }
 function readJsonIfExists(p) { const t = readTextIfExists(p); if (t == null) return null; try { return JSON.parse(t); } catch { return null; } }
 
 function ensureWrite(p, content) {
@@ -82,7 +83,7 @@ function parseFrontMatter(text) {
 }
 
 function mdEscape(s) { return String(s == null ? '' : s).replace(/\|/g, '\\|').replace(/[\r\n]+/g, ' '); }
-function tagList(tags) { return (Array.isArray(tags) ? tags : []).join(' '); }
+function short(sha) { return sha ? String(sha).slice(0, 7) : ''; }
 
 /** gates.json の all_recorded (全段が記録済みか)。旧形式 (all_recorded 無し) は missing 段の有無で判定する。 */
 function gatesAllRecorded(gates) {
@@ -90,10 +91,16 @@ function gatesAllRecorded(gates) {
   if (typeof gates.all_recorded === 'boolean') return gates.all_recorded;
   return ((gates.gates) || []).every((g) => g.status !== 'missing');
 }
-/** 未実行 (missing) ゲート名の一覧。 */
 function gatesMissing(gates) {
   return (((gates && gates.gates) || []).filter((g) => g.status === 'missing')).map((g) => g.name);
 }
+
+// 内部 ID → 読める言葉
+const CATEGORY_JA = { persistence: '永続化', error_handling: 'エラー処理', data_format: 'データ形式', input_validation: '入力検証', security: 'セキュリティ', concurrency: '並行性' };
+const VERDICT_JA = { consistent: '仕様と一致', spec_absent: '仕様に無い', contradicts: '仕様と矛盾', unlisted: '未申告' };
+const DECISION_JA = { confirmed: '人が承認', auto_confirmed: '自動承認', rejected: '却下' };
+const KIND_JA = { rule: 'ルール', contract: '契約', requirement: '要求' };
+const ja = (map, v, fallback) => (v == null || v === '' ? fallback : (map[v] || String(v)));
 
 // ---------------------------------------------------------------------------
 // レポートの解釈 (Context7 で確認済みの形)
@@ -169,7 +176,7 @@ function collect(opts) {
   const gates = readJsonIfExists(path.join(reportsDir, 'gates.json'));
   const ucBdd = parseCucumberReport(readJsonIfExists(path.join(reportsDir, 'uc-bdd.json')));
   const acceptance = parseCucumberReport(readJsonIfExists(path.join(reportsDir, 'acceptance-api.json')));
-  // ブラウザ受入だけ再実行した結果も証跡・追跡表へ取り込む (Finding 7)。同じ cucumber JSON 形。
+  // ブラウザ受入だけ再実行した結果も証跡・追跡表へ取り込む。同じ cucumber JSON 形。
   const acceptanceBrowser = parseCucumberReport(readJsonIfExists(path.join(reportsDir, 'acceptance-browser.json')));
   const scenarios = mergeScenarios(ucBdd, acceptance, acceptanceBrowser);
 
@@ -213,11 +220,15 @@ function collect(opts) {
 
   const basis = stamp({ requirements: path.join(docsRoot, 'requirements'), adr: path.join(docsRoot, 'adr'), contracts: 'contracts' }, cwd);
 
+  const actor = (Array.isArray(uc.actors) && uc.actors.length ? String(uc.actors[0]) : null) || 'シナリオ実行者';
+  const adrLayers = layersFromAdr(docs('adr'), tiers);
+  const instrumentation = instrumentationCoverage(uc, files, traces, adrLayers);
+
   return {
     cwd, runDir, slug, config, docsRoot, docs, uc, reqDoc, gates, scenarios,
     tiers, unitByTier, contractByTier, traces, derived, generatedAt, decisions,
     attempt, assumptions, findings, issues, slice, openapiBundle, screens, files, depcruise, basis,
-    head: headSha(cwd),
+    head: headSha(cwd), actor, adrLayers, instrumentation,
   };
 }
 
@@ -227,7 +238,6 @@ function mergeScenarios(...lists) {
     const key = `${s.feature}\u0000${s.name}`;
     if (!map.has(key)) map.set(key, s);
     else {
-      // 同名は tags を統合し、より強い status を残す
       const cur = map.get(key);
       cur.tags = [...new Set([...(cur.tags || []), ...(s.tags || [])])].sort();
       cur.duration_ms = Math.max(cur.duration_ms, s.duration_ms);
@@ -320,7 +330,8 @@ function screensRowsForUc(doc, uc) {
   const rows = doc.screens || doc.rows || (Array.isArray(doc) ? doc : []);
   const out = [];
   for (const r of rows) {
-    const ucField = r.uc || r.ucs || r.uc_slug;
+    // d2-design の screens.yaml は uc_slugs (validateScreens の形)。旧い uc / ucs / uc_slug も受ける
+    const ucField = r.uc_slugs || r.uc || r.ucs || r.uc_slug;
     const list = Array.isArray(ucField) ? ucField : [ucField];
     if (list.includes(uc.slug) || list.includes(uc.uc)) out.push(r);
   }
@@ -347,12 +358,107 @@ function openapiProvider(config) {
   return c ? c.provider : null;
 }
 
+/**
+ * ADR の arch_test (level: layer) の glob から、ティアごとのレイヤ名を拾う。
+ * glob は `apps/<tier or glob>/src/<layer>/**` の形を期待する。それ以外は無視。
+ * @returns {Record<string, string[]>} tierId → layers (昇順)
+ */
+function layersFromAdr(adrDir, tiers) {
+  const out = {};
+  if (!fs.existsSync(adrDir)) return out;
+  const dirOf = (t) => String(t.dir || `apps/${t.id}`).replace(/\/+$/, '');
+  const matchTiers = (tierGlob) => {
+    const re = new RegExp('^' + tierGlob.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
+    return (tiers || []).filter((t) => re.test(dirOf(t)) || re.test(t.id)).map((t) => t.id);
+  };
+  for (const f of fs.readdirSync(adrDir).filter((n) => /^\d{4}-.*\.md$/.test(n)).sort()) {
+    const { data } = parseFrontMatter(fs.readFileSync(path.join(adrDir, f), 'utf8'));
+    if (!data || data.status !== 'accepted') continue;
+    for (const r of data.rules || []) {
+      const at = r && r.arch_test;
+      if (!at || at.level !== 'layer') continue;
+      for (const g of [at.from, at.to]) {
+        const m = String(g || '').match(/^((?:apps|packages)\/[^/]+)\/src\/([^/*]+)\//);
+        if (!m) continue;
+        for (const id of matchTiers(m[1])) (out[id] = out[id] || new Set()).add(m[2]);
+      }
+    }
+  }
+  for (const k of Object.keys(out)) out[k] = [...out[k]].sort(cmpStr);
+  return out;
+}
+
+/**
+ * 計装の範囲: UC が通るはずのティア (use-cases.yaml の tiers、無ければ変更ファイルのティア) と、
+ * トレースに現れたティア・レイヤを突き合わせる。
+ */
+function instrumentationCoverage(uc, files, traces, adrLayers) {
+  const expected = (Array.isArray(uc.tiers) && uc.tiers.length ? uc.tiers.slice() : Object.keys(files.byTier)).sort(cmpStr);
+  const observed = new Map();
+  for (const tr of traces) for (const p of observedPlacements(buildTree(tr.lines))) {
+    if (!observed.has(p.tier)) observed.set(p.tier, new Set());
+    for (const l of p.layers) observed.get(p.tier).add(l);
+  }
+  const rows = [];
+  for (const t of [...new Set([...expected, ...observed.keys()])].sort(cmpStr)) {
+    const layers = observed.has(t) ? [...observed.get(t)].sort(cmpStr) : null;
+    const known = adrLayers[t] || [];
+    rows.push({ tier: t, expected: expected.includes(t), observed: observed.has(t), layers: layers || [], adr_layers: known, missing_layers: layers ? known.filter((l) => !layers.includes(l)) : known });
+  }
+  return { expected, rows, gaps: rows.filter((r) => r.expected && !r.observed).map((r) => r.tier) };
+}
+
 // ---------------------------------------------------------------------------
 // index.md
 // ---------------------------------------------------------------------------
 
-const SUMMARY_BEGIN = '<!-- 要約:begin -->';
 const SUMMARY_END = '<!-- 要約:end -->';
+const SUMMARY_NAMES = ['概要', '整合性', '課題'];
+function summaryBegin(name) { return `<!-- 要約:begin ${name} -->`; }
+
+function yamlScalar(s) {
+  const str = String(s == null ? '' : s);
+  return /[:#\[\]{}]|^\s|\s$/.test(str) ? JSON.stringify(str) : str;
+}
+
+function gatesSummary(gates) {
+  if (!gates || !gates.gates) return 'ゲート結果なし';
+  const list = gates.gates;
+  const failed = list.filter((g) => g.status === 'fail').map((g) => g.name);
+  if (failed.length) return `**fail** (落ちた段: ${failed.join(', ')})`;
+  if (!gatesAllRecorded(gates)) return `部分実行 (未実行: ${gatesMissing(gates).join(', ') || '不明'})`;
+  return `${list.length} 段すべて ${gates.result || 'pass'}`;
+}
+
+function specById(reqDoc) {
+  const map = {};
+  for (const req of (reqDoc && reqDoc.requirements) || []) for (const s of req.specifications || []) if (s.id) map[s.id] = s;
+  return map;
+}
+
+/** 受入基準 → シナリオの対応行。 */
+function coverageRows(ctx) {
+  const specMap = specById(ctx.reqDoc);
+  const rows = [];
+  for (const specId of (ctx.uc.spec_ids || []).slice().sort(cmpStr)) {
+    const spec = specMap[specId];
+    const criteria = (spec && spec.acceptance_criteria) || [];
+    if (!criteria.length) { rows.push({ specId, critId: '-', criterion: '(受入基準なし)', scenarios: [] }); continue; }
+    criteria.forEach((crit, idx) => {
+      const critId = `${specId}-${idx + 1}`;
+      const tag = `@acceptance:${critId}`;
+      const scenarios = ctx.scenarios.filter((s) => (s.tags || []).includes(tag)).map((s) => ({ name: s.name, status: s.status }));
+      rows.push({ specId, critId, criterion: crit, scenarios });
+    });
+  }
+  return rows;
+}
+
+function findingSeverityById(ctx) {
+  const map = {};
+  for (const f of ctx.findings.findings) map[`${f.tier}\u0000${f.id}`] = f;
+  return map;
+}
 
 function buildIndexMd(ctx, preserved) {
   const L = [];
@@ -363,182 +469,302 @@ function buildIndexMd(ctx, preserved) {
   L.push(`code: ${ctx.head || ''}`);
   L.push(`uc: ${yamlScalar(ctx.uc.uc)}`);
   L.push(`slug: ${ctx.slug}`);
+  L.push(`attempt: ${ctx.attempt == null ? '' : ctx.attempt}`);
   L.push('---');
   L.push('');
-  L.push(`# ${ctx.uc.business} / ${ctx.uc.uc} (as-built)`);
+  L.push(`# ${ctx.uc.business} / ${ctx.uc.uc}`);
   L.push('');
-
-  // 1. 見出し
-  L.push('## 1. 見出し (抽出)');
-  L.push('');
-  L.push(`- 業務 / BUC / UC: ${ctx.uc.business} / ${ctx.uc.buc || '-'} / ${ctx.uc.uc}`);
-  L.push(`- いつ (generated_at): ${ctx.generatedAt || '不明'}`);
-  L.push(`- 何を基に (code): ${ctx.head || '不明'}`);
-  L.push(`- 実行試行 (attempt): ${ctx.attempt == null ? 'なし' : ctx.attempt}`);
-  L.push(`- 上流 (basis): ${basisVal || 'なし'}`);
-  L.push('');
-
-  // 2. 実現の経路
-  L.push('## 2. 実現の経路 (抽出)');
-  L.push('');
-  const involvedTiers = [...new Set([...Object.keys(ctx.files.byTier), ...ctx.tiers.filter((t) => ctx.derived.operations.length && openapiProvider(ctx.config) === t.id).map((t) => t.id)])].sort();
-  L.push(`- 関与ティア: ${involvedTiers.length ? involvedTiers.join(', ') : 'なし'}`);
-  const opPaths = operationPaths(ctx.slice);
-  if (ctx.derived.operations.length) {
-    L.push('- API operation:');
-    for (const op of ctx.derived.operations) {
-      const p = opPaths[op];
-      L.push(`  - ${op}${p ? ` (${p.method} ${p.path})` : ''}`);
-    }
-  } else L.push('- API operation: なし');
-  if (ctx.screens.length) {
-    L.push('- 画面:');
-    for (const s of ctx.screens) L.push(`  - ${s.name || s.screen || s.id}`);
-  } else L.push('- 画面: なし');
-  if (ctx.derived.messages.length) {
-    L.push('- 発行イベント:');
-    for (const m of ctx.derived.messages) L.push(`  - ${m}`);
-  } else L.push('- 発行イベント: なし');
-  const subs = sliceSubscriptions(ctx.slice);
-  L.push(`- 購読イベント: ${subs.length ? subs.join(', ') : 'なし'}`);
-  L.push('- 入口ファイル (変更):');
-  if (Object.keys(ctx.files.byTier).length) {
-    for (const tier of Object.keys(ctx.files.byTier).sort()) {
-      L.push(`  - ${tier}:`);
-      for (const f of ctx.files.byTier[tier]) L.push(`    - ${f}`);
-    }
-  } else L.push('  - なし');
-  L.push('');
-
-  // 3. シーケンス
-  L.push('## 3. シーケンス (抽出)');
-  L.push('');
-  L.push(`- シナリオ数: ${ctx.traces.length}`);
-  L.push('- [シーケンス図](sequence.md)');
-  L.push('');
-
-  // 4. データの読み書き
-  L.push('## 4. データの読み書き (抽出)');
-  L.push('');
-  if (ctx.derived.perScenario.length) {
-    L.push('| シナリオ | 読み | 書き | 発行 |');
-    L.push('|---|---|---|---|');
-    for (const s of ctx.derived.perScenario) {
-      L.push(`| ${mdEscape(s.scenario)} | ${mdEscape(s.tables_read.join(', ') || '-')} | ${mdEscape(s.tables_written.join(', ') || '-')} | ${mdEscape(s.messages.join(', ') || '-')} |`);
-    }
-  } else L.push('トレースなし。');
-  L.push('');
-
-  // 5. 整合性の守り方 (要約)
-  L.push('## 5. 整合性の守り方 (要約)');
-  L.push('');
-  L.push('<!-- 要約: 原子性の境界・冪等キー・競合判定・再送と障害回復・副作用。根拠はコード位置 path:line -->');
-  L.push('');
-  const hintCats = new Set(['persistence', 'error_handling', 'data_format']);
-  const hints = ctx.assumptions.filter((a) => hintCats.has(a.category));
-  L.push('ヒント (AssumptionRecord から。要約の手がかり):');
-  if (hints.length) for (const a of hints) L.push(`- [${a.category}] ${mdEscape(a.assumption)} — ${a.target || '?'}`);
-  else L.push('- なし');
-  L.push('');
-  L.push(SUMMARY_BEGIN);
-  if (preserved[0]) L.push(preserved[0]);
+  L.push('<!-- 要約: この UC が「誰の・どんな操作を・何をもって完了とするか」を 1〜2 文で。根拠はコード位置 path:line -->');
+  L.push(summaryBegin('概要'));
+  if (preserved['概要']) L.push(preserved['概要']);
   L.push(SUMMARY_END);
   L.push('');
 
-  // 6. 画面
-  L.push('## 6. 画面 (抽出)');
-  L.push('');
-  if (ctx.screens.length) {
-    L.push('| 画面 | コンポーネント | バリアント |');
-    L.push('|---|---|---|');
-    for (const s of ctx.screens) {
-      L.push(`| ${mdEscape(s.name || s.screen || s.id)} | ${mdEscape((s.components || s.component || []).toString() || '-')} | ${mdEscape((s.variants || []).toString() || '-')} |`);
-    }
-  } else L.push('画面定義なし。');
-  L.push('');
-
-  // 7. 検証の証跡
-  L.push('## 7. 検証の証跡 (抽出)');
-  L.push('');
-  if (ctx.scenarios.length) {
-    L.push('| シナリオ | タグ | 結果 | 時間(ms) |');
-    L.push('|---|---|---|---|');
-    for (const s of ctx.scenarios) L.push(`| ${mdEscape(s.name)} | ${mdEscape(tagList(s.tags))} | ${s.status} | ${s.duration_ms} |`);
-  } else L.push('シナリオレポートなし。');
-  L.push('');
-  L.push('ゲート:');
-  if (ctx.gates && ctx.gates.gates) {
-    const allRecorded = gatesAllRecorded(ctx.gates);
-    const missing = gatesMissing(ctx.gates);
-    L.push('');
-    L.push('| ゲート | 結果 |');
-    L.push('|---|---|');
-    for (const g of ctx.gates.gates) L.push(`| ${g.name} | ${g.status} |`);
-    // 部分実行 (未実行ゲートあり) では総合を pass と書かず、未実行段を明示する。
-    const total = allRecorded ? (ctx.gates.result || '-') : `部分実行 (未実行: ${missing.join(', ') || '不明'})`;
-    L.push(`| (総合) | ${total} |`);
-    L.push(`| (全ゲート記録 all_recorded) | ${allRecorded ? 'yes' : 'no'} |`);
-  } else L.push('- gates.json なし');
-  L.push('');
-  L.push('単体・契約テスト件数:');
-  L.push('');
-  L.push('| ティア | 単体 (pass/total) | 契約 (pass/total) |');
-  L.push('|---|---|---|');
-  for (const t of ctx.tiers) {
-    const u = ctx.unitByTier[t.id];
-    const c = ctx.contractByTier[t.id];
-    L.push(`| ${t.id} | ${u ? `${u.passed}/${u.total}` : '-'} | ${c ? `${c.passed}/${c.total}` : '-'} |`);
+  // 結果
+  const cov = coverageRows(ctx);
+  const covered = cov.filter((r) => r.scenarios.length).length;
+  const scenarioPass = ctx.scenarios.filter((s) => s.status === 'passed').length;
+  const isAcc = (s) => (s.tags || []).some((t) => t === '@acceptance' || t.startsWith('@acceptance:'));
+  const scenarioAcc = ctx.scenarios.filter(isAcc).length;
+  const scenarioBrowser = ctx.scenarios.filter((s) => (s.tags || []).includes('@browser'));
+  const decCount = { confirmed: 0, auto_confirmed: 0, rejected: 0, other: 0 };
+  for (const a of ctx.assumptions) {
+    const d = decisionText(decisionFor(ctx.decisions, a.tier, a.id));
+    if (d in decCount) decCount[d] += 1; else decCount.other += 1;
   }
-  if (!ctx.tiers.length) L.push('| - | - | - |');
+  const issueKinds = {};
+  for (const it of ctx.issues) issueKinds[it.kind] = (issueKinds[it.kind] || 0) + 1;
+  L.push('## 結果 (抽出)');
+  L.push('');
+  L.push('| 項目 | 結果 |');
+  L.push('|---|---|');
+  L.push(`| ゲート | ${gatesSummary(ctx.gates)} |`);
+  L.push(`| 受入基準 | ${cov.length ? `${covered} / ${cov.length} をシナリオが覆う` : 'なし'} |`);
+  const scParts = [];
+  if (scenarioAcc) scParts.push(`受入 ${scenarioAcc}`);
+  if (scenarioBrowser.length) scParts.push(`ブラウザ ${scenarioBrowser.length}${scenarioBrowser.every((s) => s.status === 'skipped') ? ' (未実行)' : ''}`);
+  L.push(`| シナリオ | ${ctx.scenarios.length ? `${ctx.scenarios.length} 本中 ${scenarioPass} 本 pass${scParts.length ? ` (${scParts.join('、')})` : ''}` : 'レポートなし'} |`);
+  const decParts = [];
+  if (decCount.confirmed) decParts.push(`人が承認 ${decCount.confirmed}`);
+  if (decCount.auto_confirmed) decParts.push(`自動承認 ${decCount.auto_confirmed}`);
+  if (decCount.rejected) decParts.push(`却下 ${decCount.rejected}`);
+  if (decCount.other) decParts.push(`未確認 ${decCount.other}`);
+  L.push(`| 実装者が決めた前提 | ${ctx.assumptions.length ? `${ctx.assumptions.length} 件 (${decParts.join('、')})` : 'なし'} |`);
+  const issueParts = Object.keys(issueKinds).sort(cmpStr).map((k) => `${ja(KIND_JA, k, k)} ${issueKinds[k]}`);
+  L.push(`| 未決の課題 | ${ctx.issues.length ? `${ctx.issues.length} 件 (${issueParts.join('、')})` : 'なし'} |`);
+  const ins = ctx.instrumentation;
+  const insParts = ins.rows.filter((r) => r.observed).map((r) => `${r.tier}${r.layers.length ? ` (${r.layers.join(', ')})` : ''}`);
+  const gapParts = ins.gaps.map((t) => `${t}: 計装なし`);
+  L.push(`| 計装の範囲 | ${[...insParts, ...gapParts].join('、') || 'トレースなし'} |`);
   L.push('');
 
-  // 8. 補った前提と処遇
-  L.push('## 8. 補った前提と処遇 (転記)');
+  // 入口
+  L.push('## 入口 (抽出)');
   L.push('');
-  const verdictById = {};
-  for (const v of ctx.findings.verdicts) verdictById[`${v.tier}\u0000${v.id}`] = v.verdict;
-  if (ctx.assumptions.length) {
-    L.push('| id | ティア | 分類 | 前提 | 判定 | 処遇 |');
-    L.push('|---|---|---|---|---|---|');
-    for (const a of ctx.assumptions) {
-      const verdict = verdictById[`${a.tier}\u0000${a.id}`] || '-';
-      const dec = decisionText(decisionFor(ctx.decisions, a.tier, a.id));
-      L.push(`| ${a.id} | ${a.tier} | ${a.category || '-'} | ${mdEscape(a.assumption)} | ${verdict} | ${mdEscape(dec)} |`);
+  const opPaths = operationPaths(ctx.slice);
+  const ops = ctx.derived.operations.map((op) => { const p = opPaths[op]; return `${op}${p ? ` (${p.method} ${p.path})` : ''}`; });
+  const subs = sliceSubscriptions(ctx.slice);
+  L.push('| 種類 | 名前 |');
+  L.push('|---|---|');
+  L.push(`| API | ${ops.length ? ops.map(mdEscape).join('、') : 'なし'} |`);
+  L.push(`| 画面 | ${ctx.screens.length ? ctx.screens.map((s) => mdEscape(s.name || s.screen || s.id)).join('、') : 'なし'} |`);
+  L.push(`| 発行イベント | ${ctx.derived.messages.length ? ctx.derived.messages.map(mdEscape).join('、') : 'なし'} |`);
+  L.push(`| 購読イベント | ${subs.length ? subs.map(mdEscape).join('、') : 'なし'} |`);
+  L.push('');
+  const comps = componentsByTier(ctx.traces);
+  if (comps.length) {
+    L.push('主要な部品 (トレースに現れたもの):');
+    L.push('');
+    for (const c of comps) L.push(`- ${c.tier}: ${c.components.map(mdEscape).join('、')}`);
+  } else L.push('計装した部品なし (`traced()` で包んだ部品がここと図の参加者になる)。');
+  L.push('');
+
+  // どう動くか
+  L.push('## どう動くか (抽出)');
+  L.push('');
+  const happy = pickHappyPath(ctx.traces);
+  if (happy) {
+    L.push(`正常系: ${mdEscape(scenarioTitle(happy.scenario, ctx.slug))}`);
+    L.push('');
+    L.push('```mermaid');
+    L.push(renderScenario(happy.lines, { actor: ctx.actor }));
+    L.push('```');
+    L.push('');
+    const others = ctx.traces.filter((t) => t !== happy);
+    if (others.length) {
+      L.push('分岐 (他のシナリオとの違い):');
+      L.push('');
+      L.push('| シナリオ | 応答 | 書き込み | 発行 |');
+      L.push('|---|---|---|---|');
+      for (const t of others) {
+        const s = summarizeScenario(t.lines);
+        L.push(`| ${mdEscape(scenarioTitle(t.scenario, ctx.slug))} | ${mdEscape(s.status)} | ${s.writes.length ? mdEscape(s.writes.join(', ')) : 'なし'} | ${s.messages.length ? mdEscape(s.messages.join(', ')) : 'なし'} |`);
+      }
+      L.push('');
     }
-  } else L.push('補った前提なし。');
-  // Verifier が見つけた unlisted (V-*) も転記
+    L.push('全シナリオの図は [sequence.md](sequence.md)。');
+  } else L.push('トレースなし。UC BDD を計装付きで実行すると図が出る。');
+  L.push('');
+  if (ctx.traces.length) {
+    L.push('### データの流れ');
+    L.push('');
+    L.push('全シナリオを合算。点線は読み、太線は書き。');
+    L.push('');
+    L.push('```mermaid');
+    L.push(renderFlowchart(buildFlows(ctx.traces, { actor: ctx.actor })));
+    L.push('```');
+    L.push('');
+  }
+
+  // 何を守るか
+  L.push('## 何を守るか (要約)');
+  L.push('');
+  L.push('<!-- 要約: 原子性 / 競合 / 冪等 / 障害と副作用 の 4 見出しに 2〜3 文ずつ。根拠のコード位置は各見出しの末尾に 1 行でまとめる -->');
+  L.push(summaryBegin('整合性'));
+  if (preserved['整合性']) L.push(preserved['整合性']);
+  L.push(SUMMARY_END);
+  L.push('');
+
+  // 決めたこと
+  L.push('## 決めたこと (転記)');
+  L.push('');
+  L.push('仕様に書かれておらず、実装者が決めた前提。検証は Verifier の判定、処遇は人のレビューの結果。');
+  L.push('');
+  const sevById = findingSeverityById(ctx);
+  const verdictById = {};
+  for (const v of ctx.findings.verdicts) verdictById[`${v.tier}\u0000${v.id}`] = v;
+  const groups = { confirmed: [], auto_confirmed: [], rejected: [], other: [] };
+  for (const a of ctx.assumptions) {
+    const d = decisionText(decisionFor(ctx.decisions, a.tier, a.id));
+    (groups[d] || groups.other).push(a);
+  }
+  const groupTitles = [['confirmed', '人が承認した前提'], ['auto_confirmed', '自動承認した前提'], ['rejected', '却下した前提'], ['other', '未確認の前提']];
+  let any = false;
+  for (const [key, title] of groupTitles) {
+    const list = groups[key];
+    if (!list.length) continue;
+    any = true;
+    L.push(`### ${title} (${list.length})`);
+    L.push('');
+    L.push('| ティア | 分類 | 前提 | 検証 | 場所 |');
+    L.push('|---|---|---|---|---|');
+    for (const a of list) {
+      const v = verdictById[`${a.tier}\u0000${a.id}`];
+      const f = v && v.finding_id ? sevById[`${a.tier}\u0000${v.finding_id}`] : null;
+      let verdict = v ? ja(VERDICT_JA, v.verdict, '-') : '-';
+      if (f && f.severity && f.severity !== 'info') verdict = ['blocker', 'major'].includes(f.severity) ? `**${verdict} (${f.severity})**` : `${verdict} (${f.severity})`;
+      L.push(`| ${a.tier} | ${ja(CATEGORY_JA, a.category, '-')} | ${mdEscape(a.assumption)} | ${verdict} | ${mdEscape(shortTarget(a.target))} |`);
+    }
+    L.push('');
+  }
+  if (!any) { L.push('実装者が決めた前提なし。'); L.push(''); }
   const unlisted = ctx.findings.verdicts.filter((v) => v.verdict === 'unlisted');
   if (unlisted.length) {
+    L.push(`### Verifier が見つけた未申告の判断 (${unlisted.length})`);
     L.push('');
-    L.push('Verifier が追記した黙った判断 (unlisted):');
-    for (const v of unlisted) L.push(`- ${v.id} (${v.tier}): ${mdEscape(v.assumption)} — ${v.target || '?'}`);
+    L.push('| ティア | 判断 | 場所 |');
+    L.push('|---|---|---|');
+    for (const v of unlisted) L.push(`| ${v.tier} | ${mdEscape(v.assumption)} | ${mdEscape(shortTarget(v.target))} |`);
+    L.push('');
   }
+  // 前提に紐づかない指摘 (uc_intent 等)
+  const linked = new Set(ctx.findings.verdicts.map((v) => `${v.tier}\u0000${v.finding_id}`));
+  const other = ctx.findings.findings.filter((f) => !linked.has(`${f.tier}\u0000${f.id}`) && ['blocker', 'major', 'minor'].includes(f.severity));
+  if (other.length) {
+    const majors = other.filter((f) => f.severity !== 'minor');
+    const minors = other.filter((f) => f.severity === 'minor');
+    L.push(`### Verifier の指摘 (前提以外、${other.length})`);
+    L.push('');
+    for (const f of majors) L.push(`- **${f.severity}** ${mdEscape(f.claim || f.kind)} (${f.tier}${f.target ? `, ${shortTarget(f.target)}` : ''})`);
+    if (minors.length) {
+      if (majors.length) L.push('');
+      L.push('<details>');
+      L.push(`<summary>minor ${minors.length} 件</summary>`);
+      L.push('');
+      for (const f of minors) L.push(`- ${mdEscape(f.claim || f.kind)} (${f.tier}${f.target ? `, ${shortTarget(f.target)}` : ''})`);
+      L.push('');
+      L.push('</details>');
+    }
+    L.push('');
+  }
+
+  // 課題
+  L.push('## 課題 (抽出 + 要約)');
+  L.push('');
+  if (ctx.issues.length) {
+    L.push('| 種類 | 課題 |');
+    L.push('|---|---|');
+    for (const it of ctx.issues) L.push(`| ${ja(KIND_JA, it.kind, it.kind)} | ${mdEscape(it.title)} |`);
+  } else L.push('未決の課題なし。');
+  L.push('');
+  L.push('<!-- 要約: 課題の背景と対処方針。課題 1 つにつき 背景 / 現在の実装 / 対処 を 1 文ずつ。根拠はコード位置 path:line -->');
+  L.push(summaryBegin('課題'));
+  if (preserved['課題']) L.push(preserved['課題']);
+  L.push(SUMMARY_END);
   L.push('');
 
-  // 9. 逸脱と既知の課題
-  L.push('## 9. 逸脱と既知の課題 (抽出 + 要約)');
+  // 証跡
+  L.push('## 証跡 (抽出)');
   L.push('');
-  L.push('未解決の課題 (issues):');
-  if (ctx.issues.length) for (const it of ctx.issues) L.push(`- [${it.kind}] ${mdEscape(it.title)}`);
-  else L.push('- なし');
+  if (ctx.gates && ctx.gates.gates) {
+    L.push(`ゲート: ${ctx.gates.gates.map((g) => `${g.name} ${g.status}`).join(' / ')}`);
+    L.push('');
+  }
+  const involved = ctx.tiers.filter((t) => ctx.unitByTier[t.id] || ctx.contractByTier[t.id]);
+  if (involved.length) {
+    L.push('| ティア | 単体 (pass/total) | 契約 (pass/total) |');
+    L.push('|---|---|---|');
+    for (const t of involved) {
+      const u = ctx.unitByTier[t.id];
+      const c = ctx.contractByTier[t.id];
+      L.push(`| ${t.id} | ${u ? `${u.passed}/${u.total}` : '-'} | ${c ? `${c.passed}/${c.total}` : '-'} |`);
+    }
+    L.push('');
+  }
+  if (cov.length) {
+    L.push('受入基準の対応:');
+    L.push('');
+    L.push('| 受入基準 | シナリオ (結果) |');
+    L.push('|---|---|');
+    for (const r of cov) {
+      const sc = r.scenarios.map((s) => `${s.name} (${s.status})`);
+      L.push(`| ${r.critId === '-' ? r.specId : r.critId} ${mdEscape(r.criterion)} | ${sc.length ? mdEscape(sc.join('; ')) : '**未カバー**'} |`);
+    }
+    L.push('');
+  }
+
+  // 付録
+  L.push('## 付録 (抽出)');
   L.push('');
-  L.push('Verifier の指摘:');
-  const notable = ctx.findings.findings.filter((f) => ['blocker', 'major', 'minor'].includes(f.severity));
-  if (notable.length) for (const f of notable) L.push(`- [${f.severity}] ${mdEscape(f.claim || f.kind)} (${f.tier}${f.target ? ', ' + f.target : ''})`);
-  else L.push('- なし');
+  L.push('<details>');
+  L.push(`<summary>変更ファイル (${ctx.files.all.length})</summary>`);
   L.push('');
-  L.push('<!-- 要約: 既知の課題の背景と対処方針。根拠はコード位置 path:line -->');
-  L.push(SUMMARY_BEGIN);
-  if (preserved[1]) L.push(preserved[1]);
-  L.push(SUMMARY_END);
+  if (Object.keys(ctx.files.byTier).length || ctx.files.other.length) {
+    for (const tier of Object.keys(ctx.files.byTier).sort(cmpStr)) {
+      L.push(`- ${tier} (${ctx.files.byTier[tier].length})`);
+      for (const f of ctx.files.byTier[tier]) L.push(`  - ${f}`);
+    }
+    if (ctx.files.other.length) {
+      L.push(`- その他 (${ctx.files.other.length})`);
+      for (const f of ctx.files.other) L.push(`  - ${f}`);
+    }
+  } else L.push('- なし');
+  L.push('');
+  L.push('</details>');
+  L.push('');
+  L.push('<details>');
+  L.push(`<summary>シナリオの実行結果 (${ctx.scenarios.length})</summary>`);
+  L.push('');
+  if (ctx.scenarios.length) {
+    L.push('| シナリオ | 種別 | 結果 | 時間 (ms) |');
+    L.push('|---|---|---|---|');
+    for (const s of ctx.scenarios) {
+      const kinds = [];
+      if (isAcc(s)) kinds.push('受入');
+      if ((s.tags || []).includes('@browser')) kinds.push('ブラウザ');
+      L.push(`| ${mdEscape(s.name)} | ${kinds.join('・') || 'UC'} | ${s.status} | ${s.duration_ms} |`);
+    }
+  } else L.push('シナリオレポートなし。');
+  L.push('');
+  L.push('</details>');
+  L.push('');
+  L.push('<details>');
+  L.push('<summary>生成情報</summary>');
+  L.push('');
+  L.push(`- 上流: ${basisVal ? basisVal.replace(/@([0-9a-f]{40})/g, (_, h) => '@' + short(h)) : 'なし'}`);
+  L.push(`- コード: ${short(ctx.head) || '不明'}`);
+  L.push(`- 生成日時: ${ctx.generatedAt || '不明'} / 実行試行: ${ctx.attempt == null ? 'なし' : ctx.attempt}`);
+  L.push('- 凡例: (抽出) はスクリプトが生成、(要約) は LLM がコード位置を根拠に書く、(転記) は実行記録からの写し');
+  L.push('');
+  L.push('</details>');
   L.push('');
 
   return L.join('\n');
 }
 
-function yamlScalar(s) {
-  const str = String(s == null ? '' : s);
-  return /[:#\[\]{}]|^\s|\s$/.test(str) ? JSON.stringify(str) : str;
+function shortTarget(t) {
+  if (!t) return '-';
+  return String(t).split(/,\s*/).map((x) => x.trim().split('/').pop()).join(', ');
+}
+
+/** `slug#名前` → `名前`。 */
+function scenarioTitle(scenarioId, slug) {
+  const s = String(scenarioId || '');
+  return s.startsWith(`${slug}#`) ? s.slice(slug.length + 1) : s;
+}
+
+/** トレースに現れた部品 (call の component) をティアごとに。 */
+function componentsByTier(traces) {
+  const map = new Map();
+  for (const tr of traces) for (const l of tr.lines || []) {
+    if (l.kind !== 'call') continue;
+    const tier = (l.meta && l.meta.tier) || '(ティア不明)';
+    const comp = (l.meta && l.meta.component) || l.name;
+    if (!comp) continue;
+    if (!map.has(tier)) map.set(tier, new Set());
+    map.get(tier).add(String(comp));
+  }
+  return [...map.keys()].sort(cmpStr).map((t) => ({ tier: t, components: [...map.get(t)].sort(cmpStr) }));
 }
 
 function sliceSubscriptions(slice) {
@@ -552,24 +778,31 @@ function sliceSubscriptions(slice) {
       if (m.name) out.push(m.name);
     }
   }
-  return [...new Set(out)].sort();
+  return [...new Set(out)].sort(cmpStr);
 }
 
-/** 既存 index.md から 要約:begin..end の中身を順に取り出す。 */
+/**
+ * 既存 index.md から要約ブロックの中身を取り出す。名前付き (`<!-- 要約:begin 概要 -->`) は名前で、
+ * 旧形式の名前無しブロックは出現順に [整合性, 課題] へ対応づける。
+ */
 function extractPreserved(text) {
-  const out = [];
+  const out = {};
   if (!text) return out;
-  const re = new RegExp(`${SUMMARY_BEGIN}\\n?([\\s\\S]*?)${SUMMARY_END}`, 'g');
+  const re = /<!-- 要約:begin(?: ([^\s>]+))? -->\n?([\s\S]*?)<!-- 要約:end -->/g;
+  const legacyOrder = ['整合性', '課題'];
   let m;
+  let i = 0;
   while ((m = re.exec(text)) !== null) {
-    const inner = m[1].replace(/\n+$/, '').replace(/^\n+/, '');
-    out.push(inner);
+    const name = m[1] || legacyOrder[i] || `_${i}`;
+    const inner = m[2].replace(/\n+$/, '').replace(/^\n+/, '');
+    if (inner) out[name] = inner;
+    i += 1;
   }
   return out;
 }
 
 // ---------------------------------------------------------------------------
-// sequence.md / coverage.md
+// sequence.md
 // ---------------------------------------------------------------------------
 
 function basisComment(ctx) {
@@ -581,53 +814,20 @@ function buildSequenceMd(ctx) {
   const L = [];
   L.push(basisComment(ctx));
   L.push('');
-  L.push(`# ${ctx.uc.business} / ${ctx.uc.uc} — シーケンス (抽出)`);
+  L.push(`# ${ctx.uc.business} / ${ctx.uc.uc} — 全シナリオのシーケンス (抽出)`);
   L.push('');
   if (!ctx.traces.length) { L.push('トレースなし。'); L.push(''); return L.join('\n'); }
+  L.push(`アクターは ${ctx.actor}。正常系は [index.md](index.md) の「どう動くか」にも載せている。`);
+  L.push('');
   for (const tr of ctx.traces) {
-    L.push(`## ${tr.scenario}`);
+    L.push(`## ${scenarioTitle(tr.scenario, ctx.slug)}`);
     L.push('');
     L.push('```mermaid');
-    L.push(renderScenario(tr.lines));
+    L.push(renderScenario(tr.lines, { actor: ctx.actor }));
     L.push('```');
     L.push('');
   }
   return L.join('\n');
-}
-
-function buildCoverageMd(ctx) {
-  const L = [];
-  L.push(basisComment(ctx));
-  L.push('');
-  L.push(`# ${ctx.uc.business} / ${ctx.uc.uc} — 受入基準カバレッジ (抽出)`);
-  L.push('');
-  const specMap = specById(ctx.reqDoc);
-  const specIds = (ctx.uc.spec_ids || []).slice().sort();
-  if (!specIds.length) { L.push('spec_ids なし。'); L.push(''); return L.join('\n'); }
-  L.push('| SPEC | 受入基準 | 基準ID | シナリオ (結果) |');
-  L.push('|---|---|---|---|');
-  for (const specId of specIds) {
-    const spec = specMap[specId];
-    const criteria = (spec && spec.acceptance_criteria) || [];
-    if (!criteria.length) {
-      L.push(`| ${specId} | (受入基準なし) | - | - |`);
-      continue;
-    }
-    criteria.forEach((crit, idx) => {
-      const critId = `${specId}-${idx + 1}`;
-      const tag = `@acceptance:${critId}`;
-      const matched = ctx.scenarios.filter((s) => (s.tags || []).includes(tag)).map((s) => `${s.name} (${s.status})`);
-      L.push(`| ${specId} | ${mdEscape(crit)} | ${critId} | ${mdEscape(matched.join('; ') || '未カバー')} |`);
-    });
-  }
-  L.push('');
-  return L.join('\n');
-}
-
-function specById(reqDoc) {
-  const map = {};
-  for (const req of (reqDoc && reqDoc.requirements) || []) for (const s of req.specifications || []) if (s.id) map[s.id] = s;
-  return map;
 }
 
 // ---------------------------------------------------------------------------
@@ -635,17 +835,21 @@ function specById(reqDoc) {
 // ---------------------------------------------------------------------------
 
 function ucEntry(ctx) {
+  const tablesRw = {};
+  for (const t of ctx.derived.tables) tablesRw[t.name] = t.modes;
   return {
     business: ctx.uc.business,
     uc: ctx.uc.uc,
-    spec_ids: (ctx.uc.spec_ids || []).slice().sort(),
+    spec_ids: (ctx.uc.spec_ids || []).slice().sort(cmpStr),
     scenarios: ctx.scenarios.map((s) => ({ name: s.name, tags: s.tags, status: s.status })),
     operations: ctx.derived.operations,
     tables: ctx.derived.tables.map((t) => t.name),
+    tables_rw: tablesRw,
     messages: ctx.derived.messages,
     files: ctx.files.all,
     gates: (ctx.gates && ctx.gates.result) || 'unknown',
     gates_complete: gatesAllRecorded(ctx.gates),
+    instrumentation_gaps: ctx.instrumentation.gaps,
     generated_at: ctx.generatedAt,
     as_built: `${ctx.docsRoot}/as-built/${ctx.uc.business}/${ctx.uc.uc}/`,
   };
@@ -656,7 +860,7 @@ function rebuildIndex(index, config) {
   const acceptance = {};
   const operations = {};
   const tables = {};
-  for (const slug of Object.keys(index.ucs).sort()) {
+  for (const slug of Object.keys(index.ucs).sort(cmpStr)) {
     const e = index.ucs[slug];
     for (const sc of e.scenarios || []) {
       for (const tag of sc.tags || []) {
@@ -677,9 +881,9 @@ function rebuildIndex(index, config) {
       if (!rec.ucs.includes(slug)) rec.ucs.push(slug);
     }
   }
-  for (const r of Object.values(acceptance)) { r.ucs.sort(); r.scenarios.sort(); }
-  for (const r of Object.values(operations)) r.ucs.sort();
-  for (const r of Object.values(tables)) r.ucs.sort();
+  for (const r of Object.values(acceptance)) { r.ucs.sort(cmpStr); r.scenarios.sort(cmpStr); }
+  for (const r of Object.values(operations)) r.ucs.sort(cmpStr);
+  for (const r of Object.values(tables)) r.ucs.sort(cmpStr);
   index.acceptance = acceptance;
   index.operations = operations;
   index.tables = tables;
@@ -782,9 +986,9 @@ function buildDependencyGraph(ctx) {
   L.push('```mermaid');
   L.push('graph LR');
   const nodes = new Set(tiers.map((t) => label(t.id)));
-  for (const e of [...edges].sort()) { const [a, b] = e.split('\u0000'); nodes.add(a); nodes.add(b); }
-  for (const n of [...nodes].sort()) L.push(`  ${nodeId(n)}["${n}"]`);
-  for (const e of [...edges].sort()) {
+  for (const e of [...edges].sort(cmpStr)) { const [a, b] = e.split('\u0000'); nodes.add(a); nodes.add(b); }
+  for (const n of [...nodes].sort(cmpStr)) L.push(`  ${nodeId(n)}["${n}"]`);
+  for (const e of [...edges].sort(cmpStr)) {
     const [a, b, id] = e.split('\u0000');
     L.push(`  ${nodeId(a)} -->|${mdEscape(id)}| ${nodeId(b)}`);
   }
@@ -794,16 +998,18 @@ function buildDependencyGraph(ctx) {
 }
 function nodeId(label) { return 'n_' + String(label).replace(/[^A-Za-z0-9]/g, '_'); }
 
-function buildSystemIndex(index, docsRoot) {
+function buildSystemIndex(index) {
   const L = [];
   L.push('# as-built 一覧 (抽出)');
   L.push('');
   L.push('| 業務 / UC | slug | ゲート | 生成日時 | ドキュメント |');
   L.push('|---|---|---|---|---|');
-  for (const slug of Object.keys(index.ucs).sort()) {
+  for (const slug of Object.keys(index.ucs).sort(cmpStr)) {
     const e = index.ucs[slug];
     L.push(`| ${mdEscape(e.business)} / ${mdEscape(e.uc)} | ${slug} | ${e.gates || '-'} | ${e.generated_at || '-'} | [index](${e.as_built}index.md) |`);
   }
+  L.push('');
+  L.push('横断: [API インベントリ](api-inventory.md) / [データフロー](data-flow.md) / [依存グラフ](dependency-graph.md)');
   L.push('');
   return L.join('\n');
 }
@@ -821,7 +1027,9 @@ function run(opts) {
   const preserved = extractPreserved(readTextIfExists(indexPath));
   ensureWrite(indexPath, buildIndexMd(ctx, preserved));
   ensureWrite(path.join(asBuiltDir, 'sequence.md'), buildSequenceMd(ctx));
-  ensureWrite(path.join(asBuiltDir, 'coverage.md'), buildCoverageMd(ctx));
+  // 0.1.4 以前の coverage.md は index.md の「証跡」に統合した
+  const legacyCoverage = path.join(asBuiltDir, 'coverage.md');
+  if (fs.existsSync(legacyCoverage)) fs.rmSync(legacyCoverage);
 
   // traceability-index.json (マージ)
   fs.mkdirSync(systemDir, { recursive: true });
@@ -834,14 +1042,15 @@ function run(opts) {
   index.ucs[ctx.slug] = ucEntry(ctx);
   rebuildIndex(index, ctx.config);
   const ordered = { ucs: {}, acceptance: index.acceptance, operations: index.operations, tables: index.tables };
-  for (const slug of Object.keys(index.ucs).sort()) ordered.ucs[slug] = index.ucs[slug];
+  for (const slug of Object.keys(index.ucs).sort(cmpStr)) ordered.ucs[slug] = index.ucs[slug];
   writeCanonicalJson(indexJsonPath, sortKeysDeep(ordered));
 
   ensureWrite(path.join(systemDir, 'api-inventory.md'), buildApiInventory(ctx, index));
   ensureWrite(path.join(systemDir, 'dependency-graph.md'), buildDependencyGraph(ctx));
-  ensureWrite(path.join(systemDir, 'index.md'), buildSystemIndex(index, ctx.docsRoot));
+  ensureWrite(path.join(systemDir, 'data-flow.md'), renderSystemDataFlow(ordered));
+  ensureWrite(path.join(systemDir, 'index.md'), buildSystemIndex(index));
 
-  return { asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length };
+  return { asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length, instrumentation_gaps: ctx.instrumentation.gaps };
 }
 
 function parseArgs(argv) {
@@ -865,14 +1074,16 @@ function main(argv) {
   let o;
   try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
-  console.log(`as-built: ${path.relative(o.cwd, r.asBuiltDir)} (scenarios=${r.scenarios}, operations=${r.operations})`);
+  const gap = r.instrumentation_gaps.length ? ` 計装なしのティア: ${r.instrumentation_gaps.join(', ')}` : '';
+  console.log(`as-built: ${path.relative(o.cwd, r.asBuiltDir)} (scenarios=${r.scenarios}, operations=${r.operations})${gap}`);
   return 0;
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
 module.exports = {
-  run, collect, buildIndexMd, buildSequenceMd, buildCoverageMd, buildApiInventory, buildDependencyGraph,
+  run, collect, buildIndexMd, buildSequenceMd, buildApiInventory, buildDependencyGraph,
   buildSystemIndex, rebuildIndex, ucEntry, extractPreserved, parseCucumberReport, parseVitestReport,
-  scenarioStatus, parseFrontMatter, latestDecisions, decisionFor, loadAssumptions, main,
+  scenarioStatus, parseFrontMatter, latestDecisions, decisionFor, loadAssumptions, layersFromAdr,
+  instrumentationCoverage, coverageRows, main, SUMMARY_NAMES,
 };

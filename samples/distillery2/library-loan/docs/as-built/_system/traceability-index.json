@@ -76,6 +76,10 @@
       "as_built": "docs/as-built/貸出業務/貸出を登録する/",
       "business": "貸出業務",
       "files": [
+        "\"docs/as-built/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/\\350\\262\\270\\345\\207\\272\\343\\202\\222\\347\\231\\273\\351\\214\\262\\343\\201\\231\\343\\202\\213/coverage.md\"",
+        "\"docs/as-built/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/\\350\\262\\270\\345\\207\\272\\343\\202\\222\\347\\231\\273\\351\\214\\262\\343\\201\\231\\343\\202\\213/index.md\"",
+        "\"docs/as-built/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/\\350\\262\\270\\345\\207\\272\\343\\202\\222\\347\\231\\273\\351\\214\\262\\343\\201\\231\\343\\202\\213/sequence.md\"",
+        "\"features/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/register-loan.feature\"",
         ".distillery/runs/register-loan/events.jsonl",
         ".distillery/runs/register-loan/issues/20260924_000100_foundation-test-wiring.md",
         ".distillery/runs/register-loan/issues/20260924_000200_trace-and-driver-wiring.md",
@@ -84,15 +88,16 @@
         ".distillery/runs/register-loan/issues/20260924_120001_loan-limit-count.md",
         ".distillery/runs/register-loan/issues/20260924_130000_frontend-api-client-missing.md",
         ".distillery/runs/register-loan/issues/20260924_130001_frontend-staff-toolchain.md",
+        ".distillery/runs/register-loan/stages/asbuilt.done.yaml",
         ".distillery/runs/register-loan/stages/contract-gate.done.yaml",
         ".distillery/runs/register-loan/stages/contract.done.yaml",
+        ".distillery/runs/register-loan/stages/feedback.done.yaml",
         ".distillery/runs/register-loan/stages/integrate.done.yaml",
         ".distillery/runs/register-loan/stages/review.done.yaml",
         ".distillery/runs/register-loan/stages/scaffold.done.yaml",
         ".distillery/runs/register-loan/stages/scenario.done.yaml",
         ".distillery/runs/register-loan/stages/tier.done.yaml",
         ".distillery/runs/register-loan/stages/verify.done.yaml",
-        "\"features/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/register-loan.feature\"",
         "apps/backend-api/migrations/0001_schema.sql",
         "apps/backend-api/package.json",
         "apps/backend-api/src/domain/loan/due-date.test.ts",
@@ -144,6 +149,10 @@
         "contracts/openapi/paths/loans.yaml",
         "contracts/uc-index.yaml",
         "cucumber.js",
+        "docs/as-built/_system/api-inventory.md",
+        "docs/as-built/_system/dependency-graph.md",
+        "docs/as-built/_system/index.md",
+        "docs/as-built/_system/traceability-index.json",
         "docs/requirements/use-cases.yaml",
         "features/step_definitions/register-loan.steps.ts",
         "features/support/drivers/api.ts",
@@ -160,30 +169,15 @@
       ],
       "gates": "pass",
       "gates_complete": true,
-      "generated_at": "2026-09-24T00:10:02.802Z",
+      "generated_at": "2026-09-24T00:12:39.628Z",
+      "instrumentation_gaps": [],
       "messages": [],
       "operations": [
         "createLoan"
       ],
       "scenarios": [
         {
-          "name": "延滞中の貸出を持つ利用者には貸し出せない",
-          "status": "passed",
-          "tags": [
-            "@uc:register-loan"
-          ]
-        },
-        {
-          "name": "在庫ありの書籍を登録済みの利用者に貸し出す",
-          "status": "passed",
-          "tags": [
-            "@acceptance",
-            "@acceptance:SPEC-002-01-1",
-            "@uc:register-loan"
-          ]
-        },
-        {
-          "name": "削除済みの書籍は貸し出せない",
+          "name": "利用者は貸出を登録できない",
           "status": "passed",
           "tags": [
             "@uc:register-loan"
@@ -191,6 +185,13 @@
         },
         {
           "name": "削除済みの利用者には貸し出せない",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "削除済みの書籍は貸し出せない",
           "status": "passed",
           "tags": [
             "@uc:register-loan"
@@ -211,21 +212,27 @@
           ]
         },
         {
+          "name": "在庫ありの書籍を登録済みの利用者に貸し出す",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-1",
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "延滞中の貸出を持つ利用者には貸し出せない",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        },
+        {
           "name": "貸出を登録すると返却期限が自動で設定される",
           "status": "passed",
           "tags": [
             "@acceptance",
             "@acceptance:SPEC-003-01-1",
-            "@uc:register-loan"
-          ]
-        },
-        {
-          "name": "貸出受付画面で貸出中の書籍を貸し出そうとすると貸出できない旨が表示される",
-          "status": "passed",
-          "tags": [
-            "@acceptance",
-            "@acceptance:SPEC-002-01-2",
-            "@browser",
             "@uc:register-loan"
           ]
         },
@@ -239,9 +246,12 @@
           ]
         },
         {
-          "name": "利用者は貸出を登録できない",
+          "name": "貸出受付画面で貸出中の書籍を貸し出そうとすると貸出できない旨が表示される",
           "status": "passed",
           "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-2",
+            "@browser",
             "@uc:register-loan"
           ]
         }
@@ -259,6 +269,32 @@
         "reservation_events",
         "reservations"
       ],
+      "tables_rw": {
+        "book_events": [
+          "write"
+        ],
+        "books": [
+          "read",
+          "write"
+        ],
+        "loan_events": [
+          "write"
+        ],
+        "loans": [
+          "read",
+          "write"
+        ],
+        "patrons": [
+          "read"
+        ],
+        "reservation_events": [
+          "write"
+        ],
+        "reservations": [
+          "read",
+          "write"
+        ]
+      },
       "uc": "貸出を登録する"
     }
   }

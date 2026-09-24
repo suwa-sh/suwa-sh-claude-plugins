@@ -3,7 +3,7 @@
  * 同じ入口を使う。supertest に渡せる RequestListener を同期で返す (DB の準備はリクエスト時に待つ)。
  *
  * 引数なしで呼ぶと、使い捨ての PGlite を起動して migration を当て、契約の例が前提にする fixture を投入する。
- * 計装 (tracer) の結線は integrate 段階で行う。
+ * 計装 (tracer) の結線は integrate 段階が `decorate` フックで行う。
  */
 import { randomUUID } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -34,6 +34,11 @@ export interface TestAppDeps {
   /** 経路の接頭辞。契約テストは '/loans' を直接叩くため既定は '' */
   basePath?: string;
   newId?: () => string;
+  /**
+   * レイヤの境界オブジェクトを包むフック (UC BDD の integrate が tracer の traced() を渡し、as-built の図の参加者にする)。
+   * 省略時はそのまま返す。ティア実装は tracer を知らない
+   */
+  decorate?: <T extends object>(name: string, obj: T, layer: 'usecase' | 'repository' | 'gateway') => T;
 }
 
 export type TestApp = RequestListener & {
@@ -68,16 +73,21 @@ export function createTestApp(deps: TestAppDeps = {}): TestApp {
   // 失敗はリクエスト時に 500 として返す。未処理の reject としては扱わない
   ready.catch(() => undefined);
 
+  const decorate = deps.decorate ?? (<T extends object>(_name: string, obj: T) => obj);
   const clock = new FixedClock(deps.businessDate ?? DEFAULT_BUSINESS_DATE);
   const accessLog = new InMemoryAccessLog();
   const auth = new TestAuthenticator();
   const newId = deps.newId ?? randomUUID;
-  const registerLoan = new RegisterLoan({
-    repository: new PgLoanRegistrationRepository(db, newId),
-    clock,
-    accessLog,
-    newId,
-  });
+  const registerLoan = decorate(
+    'RegisterLoan',
+    new RegisterLoan({
+      repository: decorate('PgLoanRegistrationRepository', new PgLoanRegistrationRepository(db, newId), 'repository'),
+      clock,
+      accessLog: decorate('AccessLog', accessLog, 'gateway'),
+      newId,
+    }),
+    'usecase',
+  );
   const http = createHttpApp({
     authenticator: deps.authenticator ?? auth,
     registerLoan,

@@ -13,7 +13,8 @@ export class BrowserDriver implements Driver {
   // TODO(browser opt-in): capabilities.browser を有効にするとき、
   //   import { chromium, type Browser, type Page } from 'playwright';
   //   launch() で Browser/Page を持ち、request() を実 UI 操作に写像する。
-  //   x-scenario-id は page.setExtraHTTPHeaders({ 'x-scenario-id': currentScenarioId() }) で伝える。
+  //   シナリオ文脈は page.setExtraHTTPHeaders(scenarioHeaders()) で伝える (x-scenario-id と x-scenario-span。
+  //   backend の expressScenarioMiddleware が読み、ブラウザ経由でも同じ入れ子の図になる)。
 
   async request(_method: string, _path: string, _body?: unknown): Promise<{ status: number; body: unknown }> {
     throw new Error(

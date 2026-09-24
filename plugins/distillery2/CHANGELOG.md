@@ -2,6 +2,35 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.5] - 2026-09-24
+
+### Changed
+
+- **as-built を読者の問いの順に組み替え** (ユーザー指摘: 認知負荷が高い)。`index.md` は 概要 (要約) → 結果 → 入口 → どう動くか →
+  何を守るか (要約) → 決めたこと → 課題 (抽出 + 要約) → 証跡 → 付録。メタ情報・変更ファイルの全列挙・シナリオ表は
+  付録の `<details>` へ、内部 ID (`spec_absent` / `auto_confirmed` / category / issue kind) は日本語へ、sha は 7 桁へ、
+  シナリオ名の `slug#` は外す。前提は処遇 (人が承認 / 自動承認 / 却下) でグループ化し、Verifier の判定を「検証」列に統合
+  (5 節のヒント・8 節の表・9 節の指摘の三重化を解消)。`coverage.md` は「証跡」に統合して廃止。要約ブロックは
+  名前付き (`<!-- 要約:begin 概要|整合性|課題 -->`) にし、旧形式の名前無しブロックは順序で引き継ぐ
+- **シーケンス図を e2e の入れ子で描く**: tracer v2 (`seq` / `parent` / `ts_end`) と `traceTree.js` で
+  画面 → API → ユースケース → リポジトリ → DB の呼び出しの木を復元し、要求受信を DB クエリより前に描く
+  (旧: 応答完了時に記録していたため順序が逆だった)。参加者は読める名前 (アクターは use-cases.yaml の actors、
+  部品は component 名)、ティアが複数あれば `box` で囲む、連続する SELECT は 1 本にまとめる。index.md には正常系 1 本と
+  分岐表だけを載せ、全シナリオは sequence.md
+- **計装を部品ごとのティア・レイヤに**: `traced(name, obj, {tier, layer})` / `tracedFn` / `tracePg` / `tracePublisher` /
+  `tracedFetch` が placement を受け、同一プロセスで複数ティアを動かす in-process 実行に対応。`expressScenarioMiddleware` は
+  `x-scenario-span` ヘッダで HTTP 越しの親子を運ぶ。api ドライバに `asFetch(placement)` を追加し、step が frontend の
+  画面ロジックを経由して backend を叩けるようにした (integrate.md: 入口は UC の最前のティアから、レイヤ境界は全部 `traced()` で包む)
+- **計装の範囲を検出**: UC の `tiers` のうちトレースに現れないティアを「計装なし」として結果の表・標準出力・
+  traceability-index の `instrumentation_gaps` に出す。d2-run の asbuilt 行はこれを integrate の結線漏れとして扱う
+
+### Added
+
+- **データフロー図** `renderDataFlow.js`: UC の全シナリオを合算した flowchart (アクター → ティアごとの部品 → テーブル / メッセージ。
+  読み = 点線、書き = 太線) を index.md の「どう動くか」に、UC × テーブルの読み書き表と UC → テーブルの図を
+  `_system/data-flow.md` に出す (traceability-index に `tables_rw`)
+- tracer の実行テスト (`tracerSpans.test.js`: transpile して span の親子・開始順・ヘッダ伝播・エラー記録を実測)
+
 ## [0.1.4] - 2026-09-24
 
 ### Changed

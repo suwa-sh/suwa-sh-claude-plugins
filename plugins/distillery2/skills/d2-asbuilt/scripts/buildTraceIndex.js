@@ -18,7 +18,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseTraceLines, sqlVerb } = require('./renderSequence');
+const { parseTraceLines, sqlVerb, cmpStr } = require('./traceTree');
 
 const READ_VERBS = new Set(['SELECT', 'WITH', 'SHOW', 'EXPLAIN']);
 const WRITE_VERBS = new Set(['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT', 'REPLACE', 'CREATE', 'ALTER', 'DROP', 'TRUNCATE']);
@@ -31,7 +31,7 @@ function classifySql(sql) {
 }
 
 function sortUnique(arr) {
-  return [...new Set(arr.filter((x) => x != null && x !== ''))].sort((a, b) => String(a).localeCompare(String(b)));
+  return [...new Set(arr.filter((x) => x != null && x !== ''))].sort((a, b) => cmpStr(a, b));
 }
 
 /**
@@ -72,11 +72,11 @@ function deriveFromTraces(scenarios) {
       tables_written: sortUnique(scWrite),
     });
   }
-  const tables = [...tableModes.keys()].sort((a, b) => a.localeCompare(b)).map((name) => ({
+  const tables = [...tableModes.keys()].sort(cmpStr).map((name) => ({
     name,
     modes: [...tableModes.get(name)].sort(),
   }));
-  perScenario.sort((a, b) => String(a.scenario).localeCompare(String(b.scenario)));
+  perScenario.sort((a, b) => cmpStr(a.scenario, b.scenario));
   return { operations: sortUnique(operations), tables, messages: sortUnique(messages), perScenario };
 }
 
@@ -128,7 +128,7 @@ function loadTraces(tracesDir) {
     const scenario = (lines.find((l) => l && l.scenario) || {}).scenario || f.replace(/\.jsonl$/, '');
     out.push({ file: f, scenario, lines });
   }
-  out.sort((a, b) => String(a.scenario).localeCompare(String(b.scenario)));
+  out.sort((a, b) => cmpStr(a.scenario, b.scenario));
   return out;
 }
 

@@ -1,154 +1,270 @@
-<!-- basis: requirements@c99a17fdd8915399a17cdd205937316c051e9e02 adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659 contracts@c99a17fdd8915399a17cdd205937316c051e9e02 | generated_at: 2026-09-24T00:10:02.802Z | slug: register-loan -->
+<!-- basis: requirements@10d88a0262c31662f8fc16dcbe00973c396363cd adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659 contracts@10d88a0262c31662f8fc16dcbe00973c396363cd | generated_at: 2026-09-24T00:12:39.628Z | slug: register-loan -->
 
-# 貸出業務 / 貸出を登録する — シーケンス (抽出)
+# 貸出業務 / 貸出を登録する — 全シナリオのシーケンス (抽出)
 
-## register-loan#延滞中の貸出を持つ利用者には貸し出せない
+アクターは 司書。正常系は [index.md](index.md) の「どう動くか」にも載せている。
+
+## 利用者は貸出を登録できない
 
 ```mermaid
 sequenceDiagram
-    actor p0________ as シナリオ実行者
-    participant p1_PgLoanRegistrationRepository as PgLoanRegistrationRepository
-    participant p2_DB as DB
-    participant p3_backend_api as backend-api
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT loans, patrons
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT books
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT reservations
-    p0________->>p3_backend_api: POST /loans
-    p3_backend_api-->>p0________: 409
+    actor p0 as 司書
+    box transparent frontend-staff
+        participant p1 as 貸出受付画面
+    end
+    box transparent backend-api
+        participant p2 as backend-api
+        participant p3 as RegisterLoan
+        participant p4 as AccessLog
+    end
+    p0->>+p1: submit
+    p1->>p2: POST /api/v1/loans
+    p2->>+p3: execute
+    p3->>p4: record
+    p3-->>-p2: error
+    p2-->>p1: 403
+    p1-->>-p0: ok
 ```
 
-## register-loan#在庫ありの書籍を登録済みの利用者に貸し出す
+## 削除済みの利用者には貸し出せない
 
 ```mermaid
 sequenceDiagram
-    actor p0________ as シナリオ実行者
-    participant p1_PgLoanRegistrationRepository as PgLoanRegistrationRepository
-    participant p2_DB as DB
-    participant p3_backend_api as backend-api
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT loans, patrons
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT books
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT reservations
-    p1_PgLoanRegistrationRepository->>p2_DB: SAVEPOINT
-    p1_PgLoanRegistrationRepository->>p2_DB: UPDATE books
-    p1_PgLoanRegistrationRepository->>p2_DB: INSERT book_events
-    p1_PgLoanRegistrationRepository->>p2_DB: INSERT loans
-    p1_PgLoanRegistrationRepository->>p2_DB: INSERT loan_events
-    p1_PgLoanRegistrationRepository->>p2_DB: RELEASE
-    p0________->>p3_backend_api: POST /loans
-    p3_backend_api-->>p0________: 201
+    actor p0 as 司書
+    box transparent frontend-staff
+        participant p1 as 貸出受付画面
+    end
+    box transparent backend-api
+        participant p2 as backend-api
+        participant p3 as RegisterLoan
+        participant p4 as PgLoanRegistrationRepository
+        participant p6 as AccessLog
+    end
+    participant p5 as DB
+    p0->>+p1: submit
+    p1->>p2: POST /api/v1/loans
+    p2->>+p3: execute
+    p3->>+p4: loadLendingContext
+    p4->>p5: SELECT loans, patrons, books, reservations
+    p4-->>-p3: ok
+    p3->>p6: record
+    p3-->>-p2: error
+    p2-->>p1: 404
+    p1-->>-p0: ok
 ```
 
-## register-loan#削除済みの書籍は貸し出せない
+## 削除済みの書籍は貸し出せない
 
 ```mermaid
 sequenceDiagram
-    actor p0________ as シナリオ実行者
-    participant p1_PgLoanRegistrationRepository as PgLoanRegistrationRepository
-    participant p2_DB as DB
-    participant p3_backend_api as backend-api
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT loans, patrons
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT books
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT reservations
-    p0________->>p3_backend_api: POST /loans
-    p3_backend_api-->>p0________: 404
+    actor p0 as 司書
+    box transparent frontend-staff
+        participant p1 as 貸出受付画面
+    end
+    box transparent backend-api
+        participant p2 as backend-api
+        participant p3 as RegisterLoan
+        participant p4 as PgLoanRegistrationRepository
+        participant p6 as AccessLog
+    end
+    participant p5 as DB
+    p0->>+p1: submit
+    p1->>p2: POST /api/v1/loans
+    p2->>+p3: execute
+    p3->>+p4: loadLendingContext
+    p4->>p5: SELECT loans, patrons, books, reservations
+    p4-->>-p3: ok
+    p3->>p6: record
+    p3-->>-p2: error
+    p2-->>p1: 404
+    p1-->>-p0: ok
 ```
 
-## register-loan#削除済みの利用者には貸し出せない
+## 取置の書籍は取置中の予約を持たない利用者には貸し出せない
 
 ```mermaid
 sequenceDiagram
-    actor p0________ as シナリオ実行者
-    participant p1_PgLoanRegistrationRepository as PgLoanRegistrationRepository
-    participant p2_DB as DB
-    participant p3_backend_api as backend-api
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT loans, patrons
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT books
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT reservations
-    p0________->>p3_backend_api: POST /loans
-    p3_backend_api-->>p0________: 404
+    actor p0 as 司書
+    box transparent frontend-staff
+        participant p1 as 貸出受付画面
+    end
+    box transparent backend-api
+        participant p2 as backend-api
+        participant p3 as RegisterLoan
+        participant p4 as PgLoanRegistrationRepository
+        participant p6 as AccessLog
+    end
+    participant p5 as DB
+    p0->>+p1: submit
+    p1->>p2: POST /api/v1/loans
+    p2->>+p3: execute
+    p3->>+p4: loadLendingContext
+    p4->>p5: SELECT loans, patrons, books, reservations
+    p4-->>-p3: ok
+    p3->>p6: record
+    p3-->>-p2: error
+    p2-->>p1: 409
+    p1-->>-p0: ok
 ```
 
-## register-loan#取置の書籍は取置中の予約を持たない利用者には貸し出せない
+## 取置中の予約を持つ予約順 1 位の利用者には取置の書籍を貸し出せる
 
 ```mermaid
 sequenceDiagram
-    actor p0________ as シナリオ実行者
-    participant p1_PgLoanRegistrationRepository as PgLoanRegistrationRepository
-    participant p2_DB as DB
-    participant p3_backend_api as backend-api
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT loans, patrons
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT books
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT reservations
-    p0________->>p3_backend_api: POST /loans
-    p3_backend_api-->>p0________: 409
+    actor p0 as 司書
+    box transparent frontend-staff
+        participant p1 as 貸出受付画面
+    end
+    box transparent backend-api
+        participant p2 as backend-api
+        participant p3 as RegisterLoan
+        participant p4 as PgLoanRegistrationRepository
+        participant p6 as AccessLog
+    end
+    participant p5 as DB
+    p0->>+p1: submit
+    p1->>p2: POST /api/v1/loans
+    p2->>+p3: execute
+    p3->>+p4: loadLendingContext
+    p4->>p5: SELECT loans, patrons, books, reservations
+    p4-->>-p3: ok
+    p3->>+p4: save
+    p4->>p5: SAVEPOINT
+    p4->>p5: UPDATE books
+    p4->>p5: INSERT book_events
+    p4->>p5: INSERT loans
+    p4->>p5: INSERT loan_events
+    p4->>p5: UPDATE reservations
+    p4->>p5: INSERT reservation_events
+    p4->>p5: SELECT reservations
+    p4->>p5: RELEASE
+    p4-->>-p3: ok
+    p3->>p6: record
+    p3-->>-p2: ok
+    p2-->>p1: 201
+    p1-->>-p0: ok
 ```
 
-## register-loan#取置中の予約を持つ予約順 1 位の利用者には取置の書籍を貸し出せる
+## 在庫ありの書籍を登録済みの利用者に貸し出す
 
 ```mermaid
 sequenceDiagram
-    actor p0________ as シナリオ実行者
-    participant p1_PgLoanRegistrationRepository as PgLoanRegistrationRepository
-    participant p2_DB as DB
-    participant p3_backend_api as backend-api
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT loans, patrons
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT books
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT reservations
-    p1_PgLoanRegistrationRepository->>p2_DB: SAVEPOINT
-    p1_PgLoanRegistrationRepository->>p2_DB: UPDATE books
-    p1_PgLoanRegistrationRepository->>p2_DB: INSERT book_events
-    p1_PgLoanRegistrationRepository->>p2_DB: INSERT loans
-    p1_PgLoanRegistrationRepository->>p2_DB: INSERT loan_events
-    p1_PgLoanRegistrationRepository->>p2_DB: UPDATE reservations
-    p1_PgLoanRegistrationRepository->>p2_DB: INSERT reservation_events
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT reservations
-    p1_PgLoanRegistrationRepository->>p2_DB: RELEASE
-    p0________->>p3_backend_api: POST /loans
-    p3_backend_api-->>p0________: 201
+    actor p0 as 司書
+    box transparent frontend-staff
+        participant p1 as 貸出受付画面
+    end
+    box transparent backend-api
+        participant p2 as backend-api
+        participant p3 as RegisterLoan
+        participant p4 as PgLoanRegistrationRepository
+        participant p6 as AccessLog
+    end
+    participant p5 as DB
+    p0->>+p1: submit
+    p1->>p2: POST /api/v1/loans
+    p2->>+p3: execute
+    p3->>+p4: loadLendingContext
+    p4->>p5: SELECT loans, patrons, books, reservations
+    p4-->>-p3: ok
+    p3->>+p4: save
+    p4->>p5: SAVEPOINT
+    p4->>p5: UPDATE books
+    p4->>p5: INSERT book_events
+    p4->>p5: INSERT loans
+    p4->>p5: INSERT loan_events
+    p4->>p5: RELEASE
+    p4-->>-p3: ok
+    p3->>p6: record
+    p3-->>-p2: ok
+    p2-->>p1: 201
+    p1-->>-p0: ok
 ```
 
-## register-loan#貸出を登録すると返却期限が自動で設定される
+## 延滞中の貸出を持つ利用者には貸し出せない
 
 ```mermaid
 sequenceDiagram
-    actor p0________ as シナリオ実行者
-    participant p1_PgLoanRegistrationRepository as PgLoanRegistrationRepository
-    participant p2_DB as DB
-    participant p3_backend_api as backend-api
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT loans, patrons
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT books
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT reservations
-    p1_PgLoanRegistrationRepository->>p2_DB: SAVEPOINT
-    p1_PgLoanRegistrationRepository->>p2_DB: UPDATE books
-    p1_PgLoanRegistrationRepository->>p2_DB: INSERT book_events
-    p1_PgLoanRegistrationRepository->>p2_DB: INSERT loans
-    p1_PgLoanRegistrationRepository->>p2_DB: INSERT loan_events
-    p1_PgLoanRegistrationRepository->>p2_DB: RELEASE
-    p0________->>p3_backend_api: POST /loans
-    p3_backend_api-->>p0________: 201
+    actor p0 as 司書
+    box transparent frontend-staff
+        participant p1 as 貸出受付画面
+    end
+    box transparent backend-api
+        participant p2 as backend-api
+        participant p3 as RegisterLoan
+        participant p4 as PgLoanRegistrationRepository
+        participant p6 as AccessLog
+    end
+    participant p5 as DB
+    p0->>+p1: submit
+    p1->>p2: POST /api/v1/loans
+    p2->>+p3: execute
+    p3->>+p4: loadLendingContext
+    p4->>p5: SELECT loans, patrons, books, reservations
+    p4-->>-p3: ok
+    p3->>p6: record
+    p3-->>-p2: error
+    p2-->>p1: 409
+    p1-->>-p0: ok
 ```
 
-## register-loan#貸出中の書籍は同じ書籍として貸し出せない
+## 貸出を登録すると返却期限が自動で設定される
 
 ```mermaid
 sequenceDiagram
-    actor p0________ as シナリオ実行者
-    participant p1_PgLoanRegistrationRepository as PgLoanRegistrationRepository
-    participant p2_DB as DB
-    participant p3_backend_api as backend-api
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT loans, patrons
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT books
-    p1_PgLoanRegistrationRepository->>p2_DB: SELECT reservations
-    p0________->>p3_backend_api: POST /loans
-    p3_backend_api-->>p0________: 409
+    actor p0 as 司書
+    box transparent frontend-staff
+        participant p1 as 貸出受付画面
+    end
+    box transparent backend-api
+        participant p2 as backend-api
+        participant p3 as RegisterLoan
+        participant p4 as PgLoanRegistrationRepository
+        participant p6 as AccessLog
+    end
+    participant p5 as DB
+    p0->>+p1: submit
+    p1->>p2: POST /api/v1/loans
+    p2->>+p3: execute
+    p3->>+p4: loadLendingContext
+    p4->>p5: SELECT loans, patrons, books, reservations
+    p4-->>-p3: ok
+    p3->>+p4: save
+    p4->>p5: SAVEPOINT
+    p4->>p5: UPDATE books
+    p4->>p5: INSERT book_events
+    p4->>p5: INSERT loans
+    p4->>p5: INSERT loan_events
+    p4->>p5: RELEASE
+    p4-->>-p3: ok
+    p3->>p6: record
+    p3-->>-p2: ok
+    p2-->>p1: 201
+    p1-->>-p0: ok
 ```
 
-## register-loan#利用者は貸出を登録できない
+## 貸出中の書籍は同じ書籍として貸し出せない
 
 ```mermaid
 sequenceDiagram
-    actor p0________ as シナリオ実行者
-    participant p1_backend_api as backend-api
-    p0________->>p1_backend_api: POST /loans
-    p1_backend_api-->>p0________: 403
+    actor p0 as 司書
+    box transparent frontend-staff
+        participant p1 as 貸出受付画面
+    end
+    box transparent backend-api
+        participant p2 as backend-api
+        participant p3 as RegisterLoan
+        participant p4 as PgLoanRegistrationRepository
+        participant p6 as AccessLog
+    end
+    participant p5 as DB
+    p0->>+p1: submit
+    p1->>p2: POST /api/v1/loans
+    p2->>+p3: execute
+    p3->>+p4: loadLendingContext
+    p4->>p5: SELECT loans, patrons, books, reservations
+    p4-->>-p3: ok
+    p3->>p6: record
+    p3-->>-p2: error
+    p2-->>p1: 409
+    p1-->>-p0: ok
 ```

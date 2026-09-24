@@ -24,8 +24,10 @@ export interface ApiResponse {
 export interface UcState {
   /** もし (When) を実行したか。前提と事後確認で同じ文言を使う step の切り替えに使う */
   acted: boolean;
-  /** 直近の API 応答 */
+  /** 直近の API 応答 (画面の transport が観測したもの) */
   lastResponse?: ApiResponse;
+  /** 直近の画面状態 (貸出受付画面の submit の結果) */
+  lastView?: unknown;
   /** もし の直前の貸出件数 (「貸出は記録されない」の確認用) */
   loanCountBeforeAct?: number;
   /** 「その貸出」が指す貸出ID */
@@ -46,7 +48,7 @@ export class D2World extends World {
 
   /** タグからドライバを選ぶ。hooks.ts の Before から呼ぶ。 */
   selectDriver(tags: readonly string[]): void {
-    this.driver = tags.includes('@browser') ? new BrowserDriver() : new ApiDriver(this.scenario.listener, this.scenarioId);
+    this.driver = tags.includes('@browser') ? new BrowserDriver() : new ApiDriver(this.scenario.listener);
   }
 
   /** api ドライバ (非 @browser) を取り出す。 */

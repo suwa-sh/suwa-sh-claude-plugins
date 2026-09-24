@@ -41,9 +41,9 @@ test('v1 の廃止概念を含まない', () => {
   }
 });
 
-test('asbuilt-format.md が 9 節すべてを列挙する', () => {
+test('asbuilt-format.md が index.md の節すべてを列挙する', () => {
   const text = fs.readFileSync(path.join(SKILL_DIR, 'references/asbuilt-format.md'), 'utf8');
-  for (const s of ['見出し', '実現の経路', 'シーケンス', 'データの読み書き', '整合性の守り方', '画面', '検証の証跡', '補った前提と処遇', '逸脱と既知の課題']) {
+  for (const s of ['結果', '入口', 'どう動くか', 'データの流れ', '何を守るか', '決めたこと', '課題', '証跡', '付録', '概要', '整合性']) {
     assert.ok(text.includes(s), `asbuilt-format.md に節 "${s}" が無い`);
   }
 });

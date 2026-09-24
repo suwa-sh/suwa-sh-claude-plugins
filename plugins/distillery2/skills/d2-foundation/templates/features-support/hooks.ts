@@ -7,7 +7,7 @@
  * scenario_id の uc_slug は feature のタグ @uc:<slug> から取る。無ければ feature ファイル名を使う。
  */
 import { Before, After, type ITestCaseHookParameter } from '@cucumber/cucumber';
-import { enterScenario } from '@repo/test-support/tracer';
+import { enterScenario, exitScenario } from '@repo/test-support/tracer';
 import type { D2World } from './world';
 
 function ucSlug(pickle: ITestCaseHookParameter['pickle']): string {
@@ -26,4 +26,5 @@ Before(function (this: D2World, hook: ITestCaseHookParameter) {
 
 After(async function (this: D2World) {
   if (this.driver) await this.driver.teardown();
+  exitScenario();
 });
