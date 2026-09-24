@@ -24,9 +24,15 @@ test('trailers are built from use-cases, gates.json, basis and events', () => {
   fs.writeFileSync(path.join(run, 'reports/gates.json'), JSON.stringify({ gates: [{ name: 'static', status: 'pass' }, { name: 'unit', status: 'pass' }] }));
   rs.appendEvent(run, 'review_approved', { assumption_decisions: [{ id: 'A-001', decision: 'confirmed' }, { id: 'A-002', decision: 'auto_confirmed' }] });
   rs.appendEvent(run, 'feedback_filed', { kind: 'rule', url: 'https://example/pr/1' });
+  // 未起票の還流 (url なし / 空) は trailer に出さない
+  rs.appendEvent(run, 'feedback_filed', { kind: 'rule', url: null });
+  rs.appendEvent(run, 'feedback_filed', { kind: 'contract', url: '' });
 
   const t = buildTrailers({ cwd: repo, runDir: run });
   const text = render(t);
+  assert.doesNotMatch(text, /Feedback: rule:null/);
+  assert.doesNotMatch(text, /Feedback: contract:$/m);
+  assert.equal((text.match(/^Feedback:/gm) || []).length, 1, 'url ありの 1 件だけ出す');
   assert.match(text, /^UC: 貸出業務\/書籍を貸し出すフロー\/貸出を登録する$/m);
   assert.match(text, /^UC-Slug: register-loan$/m);
   assert.match(text, new RegExp(`^Basis-Requirements: ${sha}$`, 'm'));
