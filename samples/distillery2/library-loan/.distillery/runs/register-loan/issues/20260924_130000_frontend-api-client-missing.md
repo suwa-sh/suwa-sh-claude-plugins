@@ -3,6 +3,7 @@ kind: contract
 uc: register-loan
 tier: frontend-staff
 status: open
+title: 生成 API クライアントが無い
 ---
 
 # frontend 向けの生成型・生成クライアントが packages/contracts/api に無い

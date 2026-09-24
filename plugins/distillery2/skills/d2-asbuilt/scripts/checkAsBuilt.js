@@ -8,9 +8,9 @@
  * 規則 (references/asbuilt-format.md「要約の書式」が正本):
  *   R1 各ブロックは空でない
  *   R2 各ブロックに、見出し行 + 区切り行 + データ行 1 行以上 の表がある
- *   R3 表のセル 1 行 (`<br>` で分けた単位) は 40 字以内。最後の列 (根拠) は数えない。
+ *   R3 表のセル 1 行 (`<br>` で分けた単位) は 40 字以内 (見出し行も)。見出しが「根拠」の最後の列だけ数えない。
  *      数えないのはコード位置 `path:line` と URL と強調記号だけ。`code` の中身や句読点は表示されるので数える
- *   R4 表の外に文を書かない (空行とコメント以外の行はすべて表の一部であること)
+ *   R4 表の外に文を書かない (空行とコメント以外の行はすべて表の一部であること。空行で表は終わる)
  *   R5 見出し (#) を使わない (節の階層を壊す)
  *
  * Usage: node checkAsBuilt.js <index.md> [--max-cell 40]
@@ -26,10 +26,11 @@ const DEFAULTS = { maxCell: 40 };
 function visibleLength(text) {
   const stripped = String(text)
     .replace(/https?:\/\/\S+/g, '')
-    .replace(/(?:^|(?<=[\s(（,、/]))[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+\.[A-Za-z]{1,5}(?::\d+)?/g, '') // path/to/file.ext:line
+    .replace(/(?:^|(?<=[\s(（,、/]))[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+\.[A-Za-z]{1,5}:\d+/g, '') // path/to/file.ext:line (行番号必須。無ければ表示文として数える)
     .replace(/(?<![A-Za-z0-9])[A-Za-z0-9_-]+\.[A-Za-z]{1,5}:\d+/g, '') // file.ext:line
     .replace(/(?<=[\s,、/])(?::\d+)(?=[\s,、/)）]|$)/g, '') // 同じファイルの :行 の列挙
     .replace(/\*\*/g, '')
+    .replace(/(^|[^*\w])\*(?=\S)|(?<=\S)\*(?=[^*\w]|$)/g, '$1') // 単一の * による強調
     .replace(/`/g, '')
     .replace(/\\\|/g, '|')
     .replace(/[(（]\s*[)）]/g, '') // 参照を除いて空になった括弧
@@ -66,31 +67,44 @@ function check(md, opts = {}) {
     const push = (rule, idx, text) => violations.push({ block: b.name, rule, line: baseLine + idx + 1, text: String(text).slice(0, 80) });
     if (!lines.some((l) => l.trim())) { push('R1 空のブロック', 0, ''); continue; }
     let tables = 0;
-    // 表の状態機械: header → separator → data...
+    // 表の状態機械: header → separator → data... (空行で表は終わる)
     let state = 'none';
+    let skipLast = false; // 最後の列が「根拠」のときだけ字数を数えない
+    const checkCells = (cells, idx) => {
+      cells.slice(0, skipLast ? -1 : undefined).forEach((cell, ci) => {
+        for (const part of cell.split(/<br\s*\/?>/i)) {
+          const n = visibleLength(part);
+          if (n > maxCell) push(`R3 セルが ${maxCell} 字超 (${n} 字、${ci + 1} 列目)`, idx, part);
+        }
+      });
+    };
+    // 区切り行が続かなかった「見出し行」はパイプで囲んだだけの文 → R4
+    let pendingHeader = null;
+    const dropPendingHeader = () => { if (pendingHeader) { push('R4 表の外に文を書かない', pendingHeader.idx, pendingHeader.l); pendingHeader = null; } };
     lines.forEach((raw, idx) => {
       const l = raw.trim();
-      if (!l || /^<!--.*-->$/.test(l)) return;
-      if (/^#/.test(l)) { push('R5 見出しを使わない', idx, l); state = 'none'; return; }
-      if (!isTableRow(l)) { push('R4 表の外に文を書かない', idx, l); state = 'none'; return; }
-      if (isSeparator(l)) { state = state === 'header' ? 'separator' : 'none'; return; }
-      if (state === 'none') { state = 'header'; return; } // 見出し行 (字数は見ない)
+      if (!l) { dropPendingHeader(); state = 'none'; return; }
+      if (/^<!--.*-->$/.test(l)) return;
+      if (/^#/.test(l)) { dropPendingHeader(); push('R5 見出しを使わない', idx, l); state = 'none'; return; }
+      if (!isTableRow(l)) { dropPendingHeader(); push('R4 表の外に文を書かない', idx, l); state = 'none'; return; }
+      if (isSeparator(l)) { if (state === 'header') { pendingHeader = null; state = 'separator'; } else state = 'none'; return; }
+      if (state === 'none' || state === 'header') {
+        dropPendingHeader();
+        const header = splitCells(l);
+        skipLast = /^根拠/.test(header[header.length - 1] || '');
+        checkCells(header.map((c) => c), idx); // 見出し行も数える (根拠列は除く)
+        state = 'header';
+        pendingHeader = { idx, l };
+        return;
+      }
       if (state === 'separator' || state === 'data') {
         if (state === 'separator') tables += 1;
         state = 'data';
-        const cells = splitCells(l);
-        cells.slice(0, -1).forEach((cell, ci) => {
-          for (const part of cell.split(/<br\s*\/?>/i)) {
-            const n = visibleLength(part);
-            if (n > maxCell) push(`R3 セルが ${maxCell} 字超 (${n} 字、${ci + 1} 列目)`, idx, part);
-          }
-        });
+        checkCells(splitCells(l), idx);
         return;
       }
-      // header の直後に区切り行が無い → 表になっていない
-      push('R4 表の外に文を書かない', idx, l);
-      state = 'none';
     });
+    dropPendingHeader();
     if (!tables) push('R2 表が無い (見出し行 + 区切り行 + データ行)', 0, lines.find((l) => l.trim()) || '');
   }
   return { violations, blocks: blocks.length };

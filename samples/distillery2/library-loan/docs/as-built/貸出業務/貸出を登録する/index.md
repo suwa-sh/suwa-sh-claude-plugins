@@ -1,7 +1,7 @@
 ---
 basis: requirements@10d88a0262c31662f8fc16dcbe00973c396363cd adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659 contracts@10d88a0262c31662f8fc16dcbe00973c396363cd
 generated_at: 2026-09-24T00:12:39.628Z
-code: 31872195626cd5135a9af7a81e5452f0cb4ea353
+code: 3f39f34bd15d6b8fec454fbf7dac20fc7f7a5d71
 uc: 貸出を登録する
 slug: register-loan
 attempt: 1
@@ -239,11 +239,11 @@ flowchart LR
 |---|---|
 | ルール | 基盤のテスト配線が抜けている |
 | ルール | 計装が日本語シナリオ名と usecase に未対応 |
-| 契約 | 20260924_090000_register-loan |
-| 要求 | 20260924_120000_loan-period-mapping |
-| 要求 | 20260924_120001_loan-limit-count |
-| 契約 | 20260924_130000_frontend-api-client-missing |
-| ルール | 20260924_130001_frontend-staff-toolchain |
+| 契約 | 契約に無い前提 (認証・エラー形式) |
+| 要求 | 貸出期間の対応表が未決 |
+| 要求 | 貸出上限冊数が未決 |
+| 契約 | 生成 API クライアントが無い |
+| ルール | frontend-staff のツールチェーン不足 |
 
 <!-- 要約: 表 1 つ (| 課題 | 背景 | 今の実装 | 対処 | 根拠 |)。課題 1 つ 1 行、セルは 40 字以内、根拠はコード位置 -->
 <!-- 要約:begin 課題 -->
@@ -398,7 +398,7 @@ flowchart LR
 <summary>生成情報</summary>
 
 - 上流: requirements@10d88a0 adr@2f9d373 contracts@10d88a0
-- コード: 3187219
+- コード: 3f39f34
 - 生成日時: 2026-09-24T00:12:39.628Z / 実行試行: 1
 - 凡例: (抽出) はスクリプトが生成、(要約) は LLM がコード位置を根拠に書く、(転記) は実行記録からの写し
 

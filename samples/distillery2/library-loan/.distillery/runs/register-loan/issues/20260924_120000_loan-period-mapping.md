@@ -4,6 +4,7 @@ uc: register-loan
 spec_ids:
   - "SPEC-003-01"
 status: open
+title: 貸出期間の対応表が未決
 ---
 
 # 貸出期間 (7日・14日・21日) の適用規則が要求に無い

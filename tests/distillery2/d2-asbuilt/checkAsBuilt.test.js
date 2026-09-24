@@ -41,6 +41,17 @@ test('誤検知しない: 根拠列は数えない、エスケープした縦棒
   assert.deepEqual(check(md).violations, []);
 });
 
+test('見逃さない: 長い見出しセル、根拠列の無い表の最後の列、空行の後のパイプ行、行番号の無いパス', () => {
+  const longHeader = wrap('概要', '| 項目 | ' + 'あ'.repeat(41) + ' | 根拠 |\n|---|---|---|\n| a | b | x.ts:1 |');
+  assert.ok(check(longHeader).violations.some((v) => v.rule.startsWith('R3')), '見出し行');
+  const noEvidence = wrap('概要', '| 項目 | 内容 |\n|---|---|\n| a | ' + 'あ'.repeat(41) + ' |');
+  assert.ok(check(noEvidence).violations.some((v) => v.rule.startsWith('R3')), '根拠列が無ければ最後の列も数える');
+  const afterBlank = wrap('概要', table(['| a | b | x.ts:1 |']) + '\n\n| これは表の外の文です |');
+  assert.ok(check(afterBlank).violations.some((v) => v.rule.startsWith('R4')), '空行の後のパイプ行');
+  assert.equal(visibleLength('apps/backend-api/src/repository/loan/pg-loan-registration-repository.ts'), 71, '行番号の無いパスは表示文');
+  assert.equal(visibleLength('*' + 'あ'.repeat(40) + '*'), 40, '単一の * は強調記号');
+});
+
 test('自由文だけ・見出し・空を検出し、行番号はファイル内の行', () => {
   const md = [wrap('概要', 'あ'.repeat(10) + '。'), wrap('整合性', table(['| 原子性 | 短い | x.ts:1 |']) + '\n## 見出し'), wrap('課題', '')].join('\n');
   const r = check(md);
