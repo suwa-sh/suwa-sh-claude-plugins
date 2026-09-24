@@ -10,6 +10,7 @@
 | ルール | `docs/rules/common.md`、`docs/rules/tier-<kind>.md`、`docs/rules/testing.md` (`index.md` から辿る) |
 | シナリオ | `features/<業務>/<slug>.feature` (自ティアが担う step を知る) |
 | 契約 | `contracts/generated/slices/<slug>/contract-slice.json`、`rdb-slice.yaml`。生成物 `packages/contracts/<id>/` のうち自ティアが provider / consumer の契約 |
+| 契約型・クライアント | **consumer (frontend 等)** は `packages/contracts/<id>/client.ts` (operationId ごとの型付き fetch 関数) を import して API を呼ぶ (URL・型を手書きしない)。**provider (backend)** は `packages/contracts/<id>/types.ts` (リクエスト/レスポンス型) と `server.ts` (operationId ↔ method/path 表) を import して経路と型を突き合わせる。いずれも genApiClient の生成物で、手で直さない |
 | 要求 | `docs/requirements/use-cases.yaml` の該当行、`requirements.yaml` の spec_ids、RDRA の `条件.tsv` / `状態.tsv` の該当行 |
 | 画面 (frontend) | `docs/design/screens.yaml` の該当画面、`packages/ui/` の部品と story |
 | 足場 | 自ティアの test ファイル、`packages/test-support/README.md` |

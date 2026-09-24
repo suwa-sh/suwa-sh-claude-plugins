@@ -32,7 +32,19 @@ test('provider テスト・consumer stub のファイル名が期待どおり', 
     'packages/contracts/api/stubs/createLoan.409.json',
     'packages/contracts/api/stubs/getBook.200.json',
     'packages/contracts/events/validators.ts',
+    // 消費側 API クライアント (genApiClient 経由)
+    'packages/contracts/api/types.ts',
+    'packages/contracts/api/client.ts',
+    'packages/contracts/api/server.ts',
   ]) assert.ok(set.has(f), `missing ${f}`);
+});
+
+test('--uc でも消費側 API クライアントは全 operation から生成する', () => {
+  const out = generated('loan-register');
+  const client = read(out, 'packages/contracts/api/client.ts');
+  // UC に含まれない returnLoan も client には出る (型・経路・クライアントは UC 横断)
+  assert.match(client, /export async function returnLoan\(/);
+  assert.match(client, /export async function createLoan\(/);
 });
 
 test('example の無い operation は it.todo になる', () => {
