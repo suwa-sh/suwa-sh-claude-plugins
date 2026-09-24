@@ -30,6 +30,11 @@ test('src/ 配下の tokens/tokens.json を packages/ui に取り込む', () => 
   assert.ok(fs.existsSync(path.join(cwd, 'packages/ui/components/ui/Button.tsx')));
   const paths = manifest(cwd).files.map(f => f.path);
   assert.ok(paths.includes('tokens/tokens.json'), JSON.stringify(paths));
+  // npm workspace 用の package.json (@repo/ui) を書く
+  const uiPkg = JSON.parse(fs.readFileSync(path.join(cwd, 'packages/ui/package.json'), 'utf8'));
+  assert.equal(uiPkg.name, '@repo/ui');
+  assert.equal(uiPkg.type, 'module');
+  assert.ok(uiPkg.main, 'main entry set');
 });
 
 test('src/ の外 (ルート直下) の tokens/ も防御的に取り込む', () => {

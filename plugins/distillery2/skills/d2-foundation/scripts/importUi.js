@@ -71,10 +71,23 @@ function run(o) {
     fs.writeFileSync(dst, buf);
     files.push({ path: rel, sha256: crypto.createHash('sha256').update(buf).digest('hex') });
   }
+  // npm workspace として解決できるよう packages/ui/package.json を書く (@repo/ui)。
+  // main はエントリを推定する (index.ts(x) があればそれ、無ければ最初の components 実体)。
+  const relPaths = files.map(f => f.path);
+  const entry = ['index.ts', 'index.tsx', 'index.js'].find(e => relPaths.includes(e))
+    || relPaths.find(p => /^components\/.*\.(t|j)sx?$/.test(p))
+    || relPaths.find(p => /\.(t|j)sx?$/.test(p))
+    || 'index.ts';
+  const uiPkg = {
+    name: '@repo/ui', version: '0.0.0', private: true, type: 'module',
+    main: entry, module: entry, types: entry,
+  };
+  fs.writeFileSync(path.join(uiDir, 'package.json'), JSON.stringify(uiPkg, null, 2) + '\n');
+
   const basisLine = headerLine(stamp({ design: o.from }, o.cwd));
-  const manifest = { basis: basisLine.replace(/^basis:\s*/, ''), from: o.from, imported_at: new Date().toISOString(), files };
+  const manifest = { basis: basisLine.replace(/^basis:\s*/, ''), from: o.from, imported_at: new Date().toISOString(), entry, files };
   fs.writeFileSync(path.join(uiDir, '.imported.yaml'), `# ${basisLine}\n` + stringifyYaml(manifest));
-  return { code: 0, count: files.length };
+  return { code: 0, count: files.length, entry };
 }
 
 function main(argv) {

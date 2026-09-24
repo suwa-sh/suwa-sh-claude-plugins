@@ -19,6 +19,12 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
     invalidated/<ts>_<stage>.done.yaml   # 無効化した done の退避
 ```
 
+## Git 追跡の方針 (`.gitignore` と整合)
+
+- **commit する (追跡)**: `events.jsonl` / `stages/*.done.yaml` / `attempt-<n>/**` (assumptions・findings) / `issues/**` / `learnings/**` / `invalidated/**`。これらは実行の記録なので履歴に残す。
+- **commit しない (gitignore)**: `reports/`(gates.json と各ゲートの JSON レポート) と `traces/`(計装トレース JSONL) のみ。いずれもテスト実行のたびに再生成できる生成物。`reports/delivered.json` も同様。
+- genSkeleton が書く `.gitignore` は `.distillery/runs/*/reports/` と `.distillery/runs/*/traces/` だけを無視する。`attempt-*/` は無視しない。
+
 ## 段階 (stage) の順
 
 `scenario → contract → scaffold → tier → contract-gate → integrate → verify → review → asbuilt → feedback → deliver`

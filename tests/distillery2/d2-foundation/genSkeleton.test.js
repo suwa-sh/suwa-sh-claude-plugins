@@ -25,10 +25,29 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   // 各 app に最小 package.json があり、静的ゲートの -w が解決できる
   const appPkg = JSON.parse(fs.readFileSync(path.join(c, 'apps/backend-api/package.json'), 'utf8'));
   for (const s of ['format:check', 'lint', 'typecheck', 'test', 'test:contract']) assert.ok(appPkg.scripts[s], `app script ${s} missing`);
+  // scripts は実コマンド (echo プレースホルダではない)
+  assert.equal(appPkg.scripts.test, 'vitest run');
+  assert.equal(appPkg.scripts.typecheck, 'tsc --noEmit -p .');
+  assert.equal(appPkg.scripts.lint, 'biome lint .');
+  assert.equal(appPkg.scripts['format:check'], 'biome format .');
+  for (const s of Object.values(appPkg.scripts)) assert.ok(!/^echo /.test(s), `placeholder script remains: ${s}`);
+  // 各 app に tsconfig.json / vitest.config.ts、ルートに biome.json
+  assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/tsconfig.json')), 'app tsconfig.json');
+  assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/vitest.config.ts')), 'app vitest.config.ts');
+  assert.ok(fs.existsSync(path.join(c, 'biome.json')), 'root biome.json');
+  // frontend tier の tsconfig は jsx を有効化する
+  const feTs = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/tsconfig.json'), 'utf8'));
+  assert.equal(feTs.compilerOptions.jsx, 'react-jsx');
+  // root devDependencies に実ゲート用の依存が入る (frontend があるので react も)
+  for (const d of ['@biomejs/biome', '@redocly/cli', '@apidevtools/json-schema-ref-parser', 'react', 'react-dom', '@types/react']) {
+    assert.ok(pkg.devDependencies[d], `root devDependency ${d} missing`);
+  }
   assert.ok(pkg.scripts['test:backend-api'].includes('-w apps/backend-api'));
   assert.ok(fs.existsSync(path.join(c, 'tsconfig.base.json')));
   const gitignore = fs.readFileSync(path.join(c, '.gitignore'), 'utf8');
   assert.ok(gitignore.includes('.distillery/runs/*/reports/') && gitignore.includes('traces/'));
+  // attempt-*/ は commit 対象なので除外しない (run-state.md と整合)
+  assert.ok(!gitignore.includes('attempt-'), 'attempt-*/ は gitignore しない');
 });
 
 test('genSkeleton: does not overwrite an existing package.json', () => {
