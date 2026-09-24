@@ -13,7 +13,7 @@ function gen(script, cwd, args) {
   execFileSync(process.execPath, [path.join(SKILL, 'scripts', script), '--cwd', cwd, ...args], { encoding: 'utf8' });
 }
 
-test('生成した cucumber.js は ESM で node が読める (module is not defined にならない)', () => {
+test('生成した cucumber.js は ESM で node が読める (module is not defined にならない)', async () => {
   const c = tmp();
   gen('genSkeleton.js', c, ['--adr', adrDir]); // package.json ("type":"module") を書く
   gen('genTestSupport.js', c, []);             // cucumber.js と tsx-register.js を展開
@@ -27,6 +27,17 @@ test('生成した cucumber.js は ESM で node が読める (module is not defi
   const r = spawnSync(process.execPath, ['cucumber.js'], { cwd: c, encoding: 'utf8' });
   assert.equal(r.status, 0, `node cucumber.js failed: ${r.stderr}`);
   assert.doesNotMatch(r.stderr || '', /module is not defined/);
+
+  // default export は既定プロファイルそのもの ({ default: {...} } で包まない) で dryrun を追加 export する。
+  // ESM モジュールを動的 import して形を検査する。
+  const mod = await import('file://' + path.join(c, 'cucumber.js'));
+  assert.ok(Array.isArray(mod.default.paths), 'default export に paths[] がある (既定プロファイル)');
+  assert.equal(mod.default.default, undefined, 'default export を { default: {...} } で包まない');
+  assert.ok(mod.dryrun, 'dryrun プロファイルを export する');
+  assert.ok(Array.isArray(mod.dryrun.import), 'dryrun.import[] がある');
+  // dryrun はアプリを読み込む world.ts / drivers を import しない
+  assert.ok(!mod.dryrun.import.some((i) => /world|drivers/.test(i)), 'dryrun は world/drivers を読まない');
+  assert.ok(mod.dryrun.import.some((i) => /step_definitions/.test(i)), 'dryrun は step_definitions を読む');
 });
 
 test('genSkeleton は tsx を devDependencies に入れる', () => {

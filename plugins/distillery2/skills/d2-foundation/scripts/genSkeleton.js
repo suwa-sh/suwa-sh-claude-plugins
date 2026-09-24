@@ -19,11 +19,12 @@ const path = require('node:path');
 const { loadAdrs, collectTiers } = require('./adr');
 
 function parseArgs(argv) {
-  const o = { adr: 'docs/adr', cwd: process.cwd() };
+  const o = { adr: 'docs/adr', cwd: process.cwd(), migrate: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], next = () => argv[++i];
     if (a === '--adr') o.adr = next();
     else if (a === '--cwd') o.cwd = path.resolve(next());
+    else if (a === '--migrate') o.migrate = true;
     else throw new Error(`Unknown arg: ${a}`);
   }
   return o;
@@ -39,10 +40,12 @@ function writeIfAbsent(cwd, rel, content, created, skipped) {
   created.push(rel);
 }
 
-function rootPackageJson(tierDirs) {
+function rootPackageJson(tierDirs, hasFrontend) {
   const scripts = {
     lint: 'echo "run per-workspace lint via -w"',
     typecheck: 'echo "run per-workspace typecheck via -w"',
+    format: 'biome format --write .',
+    'format:check': 'biome format .',
     bdd: 'cucumber-js',
   };
   for (const dir of tierDirs) {
@@ -51,23 +54,35 @@ function rootPackageJson(tierDirs) {
     scripts[`typecheck:${dir}`] = `npm run typecheck -w apps/${dir}`;
     scripts[`test:contract:${dir}`] = `npm run test:contract -w apps/${dir}`;
   }
+  const devDependencies = {
+    '@biomejs/biome': '^2.2.0',
+    '@cucumber/cucumber': '^13.2.1',
+    '@electric-sql/pglite': '^0.5.8',
+    '@redocly/cli': '^2.4.0',
+    '@apidevtools/json-schema-ref-parser': '^15.1.0',
+    'dependency-cruiser': '^18.4.0',
+    vitest: '^3.2.0',
+    supertest: '^7.3.0',
+    '@types/supertest': '^7.2.1',
+    '@playwright/test': '^1.63.0',
+    ajv: '^8.20.0',
+    'ajv-formats': '^3.0.1',
+    tsx: '^4.20.0',
+    typescript: '^5.9.0',
+  };
+  if (hasFrontend) {
+    devDependencies.react = '^19.2.0';
+    devDependencies['react-dom'] = '^19.2.0';
+    devDependencies['@types/react'] = '^19.2.0';
+    devDependencies['@types/react-dom'] = '^19.2.0';
+    // frontend の vitest.config.ts は environment: 'jsdom' を使うので jsdom を依存に加える (指摘 2)。
+    devDependencies.jsdom = '^25.0.0';
+  }
   return JSON.stringify({
     name: 'workspace-root', private: true, version: '0.0.0', type: 'module',
     workspaces: ['apps/*', 'packages/*'],
     scripts,
-    devDependencies: {
-      '@cucumber/cucumber': '^13.2.1',
-      '@electric-sql/pglite': '^0.5.8',
-      'dependency-cruiser': '^18.4.0',
-      vitest: '^3.2.0',
-      supertest: '^7.3.0',
-      '@types/supertest': '^7.2.1',
-      '@playwright/test': '^1.63.0',
-      ajv: '^8.20.0',
-      'ajv-formats': '^3.0.1',
-      tsx: '^4.20.0',
-      typescript: '^5.9.0',
-    },
+    devDependencies,
   }, null, 2) + '\n';
 }
 
@@ -79,20 +94,125 @@ const TSCONFIG_BASE = JSON.stringify({
   },
 }, null, 2) + '\n';
 
-const GITIGNORE = ['node_modules/', 'dist/', '*.log', '', '# distillery2 実行状態', '.distillery/runs/*/reports/', '.distillery/runs/*/traces/', '.distillery/runs/*/attempt-*/', ''].join('\n');
+// .gitignore の distillery2 管理ブロック。除外は reports/ と traces/ のみ。attempt-*/ は成果物として
+// commit するので除外しない (run-state.md と整合。旧版 0.1.0 は attempt-*/ を除外していた)。
+// GITIGNORE_ANCHOR を含む行を管理ブロックの先頭とみなし、直後に続く `.distillery/runs/` 行までを
+// migrate で置き換える (指摘 5)。
+const GITIGNORE_ANCHOR = 'distillery2 実行状態';
+const GITIGNORE_MANAGED = ['# distillery2 実行状態 (reports / traces は生成物なので追跡しない)', '.distillery/runs/*/reports/', '.distillery/runs/*/traces/'];
+const GITIGNORE = ['node_modules/', 'dist/', '*.log', '', ...GITIGNORE_MANAGED, ''].join('\n');
 
-/** 各 app の最小 package.json。scripts はプレースホルダ (no-op)。実装で本物に差し替える (上書きしない)。 */
+// biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
+const BIOME_JSON = JSON.stringify({
+  $schema: 'https://biomejs.dev/schemas/2.2.0/schema.json',
+  vcs: { enabled: true, clientKind: 'git', useIgnoreFile: true },
+  files: { ignoreUnknown: true },
+  formatter: { enabled: true, indentStyle: 'space', indentWidth: 2, lineWidth: 100 },
+  linter: { enabled: true, rules: { recommended: true } },
+  javascript: { formatter: { quoteStyle: 'single' } },
+}, null, 2) + '\n';
+
+/** 各 app の scripts (実コマンド)。migrate は 0.1.0 の echo プレースホルダをこの値へ置き換える。 */
+function appScripts() {
+  return {
+    'format:check': 'biome format .',
+    lint: 'biome lint .',
+    typecheck: 'tsc --noEmit -p .',
+    test: 'vitest run',
+    'test:contract': 'vitest run test/contract',
+  };
+}
+
+// 0.1.0 が生成した app package.json の echo プレースホルダ。値が完全一致するときだけ migrate で
+// 実コマンドへ差し替える (指摘 5)。手編集済みの script は触らない。
+const LEGACY_APP_SCRIPTS = {
+  'format:check': 'echo "format:check placeholder — d2 で本物に差し替える"',
+  lint: 'echo "lint placeholder"',
+  typecheck: 'echo "typecheck placeholder"',
+  test: 'echo "no unit tests yet"',
+  'test:contract': 'echo "no contract tests yet"',
+};
+
+/** 各 app の最小 package.json。scripts は実コマンド (vitest / tsc / biome)。実装で必要なら上書きされない。 */
 function appPackageJson(dir) {
   return JSON.stringify({
     name: `@app/${dir}`, version: '0.0.0', private: true, type: 'module',
-    scripts: {
-      'format:check': 'echo "format:check placeholder — d2 で本物に差し替える"',
-      lint: 'echo "lint placeholder"',
-      typecheck: 'echo "typecheck placeholder"',
-      test: 'echo "no unit tests yet"',
-      'test:contract': 'echo "no contract tests yet"',
-    },
+    scripts: appScripts(),
   }, null, 2) + '\n';
+}
+
+/**
+ * 各 app の tsconfig.json。ルートの tsconfig.base.json を継承する。frontend は jsx を有効化する。
+ * rootDir は付けない (指摘 1)。付けると include の `test` が rootDir 外になり、契約テスト生成後に
+ * `tsc --noEmit -p .` が TS6059 で失敗する。rootDir 未指定なら tsc が入力から推定するので typecheck が通る。
+ */
+function appTsconfig(kind) {
+  const compilerOptions = { outDir: 'dist' };
+  if (kind === 'frontend') compilerOptions.jsx = 'react-jsx';
+  return JSON.stringify({
+    extends: '../../tsconfig.base.json',
+    compilerOptions,
+    include: ['src', 'test'],
+  }, null, 2) + '\n';
+}
+
+/** 各 app の最小 vitest.config.ts。frontend は jsdom + 自動 JSX 変換。 */
+function appVitestConfig(kind) {
+  const isFrontend = kind === 'frontend';
+  const env = isFrontend ? 'jsdom' : 'node';
+  const esbuild = isFrontend ? "\n  esbuild: { jsx: 'automatic' }," : '';
+  return `import { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    environment: '${env}',\n    include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/**/*.{test,spec}.{ts,tsx}'],\n  },${esbuild}\n});\n`;
+}
+
+// ---- 0.1.0 生成物の移行 (--migrate) ---------------------------------------
+
+/** .gitignore の管理ブロックを最新へ書き換える (0.1.0 の attempt 除外行を除去)。変更したら記録する。 */
+function migrateGitignore(cwd, changes) {
+  const p = path.resolve(cwd, '.gitignore');
+  if (!fs.existsSync(p)) return;
+  const orig = fs.readFileSync(p, 'utf8');
+  const lines = orig.split('\n');
+  const start = lines.findIndex((l) => l.includes(GITIGNORE_ANCHOR));
+  if (start < 0) return;
+  let end = start + 1;
+  while (end < lines.length && lines[end].startsWith('.distillery/runs/')) end++;
+  const next = [...lines.slice(0, start), ...GITIGNORE_MANAGED, ...lines.slice(end)].join('\n');
+  if (next === orig) return;
+  fs.writeFileSync(p, next);
+  changes.push('.gitignore: 管理ブロックを更新 (attempt-*/ を追跡対象へ)');
+}
+
+/** app package.json の 0.1.0 echo プレースホルダを実コマンドへ差し替える。変更したら記録する。 */
+function migrateAppScripts(cwd, rel, changes) {
+  const p = path.resolve(cwd, rel);
+  if (!fs.existsSync(p)) return;
+  let pkg;
+  try { pkg = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return; }
+  if (!pkg || !pkg.scripts) return;
+  const real = appScripts();
+  const replaced = [];
+  for (const [name, legacy] of Object.entries(LEGACY_APP_SCRIPTS)) {
+    if (pkg.scripts[name] === legacy) { pkg.scripts[name] = real[name]; replaced.push(name); }
+  }
+  if (!replaced.length) return;
+  fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+  changes.push(`${rel}: echo プレースホルダを実コマンド化 (${replaced.join(', ')})`);
+}
+
+/**
+ * 0.1.0 で生成したプロジェクトを 0.1.1 相当へ移行する。呼び出し元 (run) が先に writeIfAbsent で
+ * 不足ファイル (app tsconfig / vitest.config / biome.json 等) を作り、その後でこの関数が
+ * 既存ファイル (writeIfAbsent が skip するもの) を書き換える。
+ */
+function migrate(cwd) {
+  const changes = [];
+  migrateGitignore(cwd, changes);
+  const appsDir = path.resolve(cwd, 'apps');
+  const entries = fs.existsSync(appsDir) ? fs.readdirSync(appsDir, { withFileTypes: true }) : [];
+  for (const entry of entries) {
+    if (entry.isDirectory()) migrateAppScripts(cwd, `apps/${entry.name}/package.json`, changes);
+  }
+  return changes;
 }
 
 function run(o) {
@@ -100,18 +220,24 @@ function run(o) {
   const adrs = loadAdrs(path.resolve(cwd, o.adr));
   const { tiers } = collectTiers(adrs);
   const tierDirs = tiers.map(t => (t.dir ? String(t.dir).replace(/^apps\//, '') : t.id));
+  const hasFrontend = tiers.some(t => t.kind === 'frontend');
   const created = [], skipped = [];
-  for (const dir of tierDirs) {
+  for (const t of tiers) {
+    const dir = t.dir ? String(t.dir).replace(/^apps\//, '') : t.id;
     ensureDir(cwd, `apps/${dir}/src`, created);
     ensureDir(cwd, `apps/${dir}/test/contract`, created);
     writeIfAbsent(cwd, `apps/${dir}/package.json`, appPackageJson(dir), created, skipped);
+    writeIfAbsent(cwd, `apps/${dir}/tsconfig.json`, appTsconfig(t.kind), created, skipped);
+    writeIfAbsent(cwd, `apps/${dir}/vitest.config.ts`, appVitestConfig(t.kind), created, skipped);
   }
   for (const pkg of ['contracts', 'ui', 'test-support']) ensureDir(cwd, `packages/${pkg}`, created);
   ensureDir(cwd, 'features', created);
-  writeIfAbsent(cwd, 'package.json', rootPackageJson(tierDirs), created, skipped);
+  writeIfAbsent(cwd, 'package.json', rootPackageJson(tierDirs, hasFrontend), created, skipped);
   writeIfAbsent(cwd, 'tsconfig.base.json', TSCONFIG_BASE, created, skipped);
+  writeIfAbsent(cwd, 'biome.json', BIOME_JSON, created, skipped);
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
-  return { code: 0, created, skipped, tierDirs };
+  const migrated = o.migrate ? migrate(cwd) : [];
+  return { code: 0, created, skipped, tierDirs, migrated };
 }
 
 function main(argv) {
@@ -119,6 +245,10 @@ function main(argv) {
   const r = run(o);
   console.log(`genSkeleton: created ${r.created.length}, skipped ${r.skipped.length}`);
   for (const s of r.skipped) console.log(`  skip (exists): ${s}`);
+  if (o.migrate) {
+    console.log(`migrate: ${r.migrated.length} change(s)`);
+    for (const c of r.migrated) console.log(`  ${c}`);
+  }
   return r.code;
 }
 

@@ -62,7 +62,11 @@ function buildTrailers({ cwd, runDir, docsRoot = 'docs' }) {
     trailers.push(['Assumptions', `confirmed=${count('confirmed')} auto=${count('auto_confirmed')} rejected=${count('rejected')}`]);
   }
   if (uc) trailers.push(['As-Built', `${docsRoot}/as-built/${uc.business}/${uc.uc}/index.md`]);
-  for (const e of events.filter(e => e.type === 'feedback_filed')) trailers.push(['Feedback', `${e.kind}:${e.url}`]);
+  // 未起票 (url が null / 空) の還流は trailer に出さない (`Feedback: rule:null` を防ぐ)。
+  for (const e of events.filter(e => e.type === 'feedback_filed')) {
+    if (e.url == null || String(e.url).trim() === '') continue;
+    trailers.push(['Feedback', `${e.kind}:${e.url}`]);
+  }
   return trailers;
 }
 

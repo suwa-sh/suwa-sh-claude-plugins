@@ -9,7 +9,10 @@
  * - 形は skills/d2-run/references/config-schema.md が正本。
  * - TypeScript の npm workspaces を既定のコマンド構成にする (`npm run <script> -w apps/<dir>`)。
  * - contracts.json が無ければ contracts: [] にして警告する。
- * - models.verifier 既定は claude-opus-5、capabilities.browser は testing ADR から (既定 false)。
+ * - models.verifier 既定は `opus` (Agent/Task の model パラメータに渡せる有効値。`claude-opus-5` のような
+ *   フル ID は model パラメータとして無効なので使わない)。implementer は null = セッション既定モデル。
+ *   d2-run は verifier を implementer と別モデルに解決する (config-schema.md 参照)。
+ * - capabilities.browser は testing ADR から (既定 false)。
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -76,7 +79,7 @@ function buildConfig({ tiers, datastore_owner }, contracts, caps, warnings) {
       has_kvs: contracts.some(c => c.type === 'kvs-schema'),
       has_design_system: hasFrontend,
     },
-    models: { implementer: null, verifier: 'claude-opus-5' },
+    models: { implementer: null, verifier: 'opus' },
   };
 }
 

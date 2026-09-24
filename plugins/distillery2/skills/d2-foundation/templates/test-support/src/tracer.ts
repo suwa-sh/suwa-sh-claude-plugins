@@ -7,6 +7,7 @@
  * scenario_id は `<uc_slug>#<scenario name>`。ファイル名にはサニタイズした値を使う。
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -56,9 +57,18 @@ export function createOperationIdResolver(slice: SliceLike): (method: string, ur
   };
 }
 
-/** シナリオ id をファイル名に使える形へ変換する。 */
+/**
+ * シナリオ id をファイル名に使える形へ変換する。
+ *
+ * 日本語などの非 ASCII を含む id は、そのまま `_` に潰すと別シナリオが同名ファイルに衝突する
+ * (実走で 9 シナリオが 2 ファイルに混ざった)。読める ASCII 接頭辞に、**元の id 全体**の
+ * sha256 先頭 8 桁を接尾して必ず一意にする。ファイル名から元の id は復元できないので、
+ * トレースの読み手 (buildTraceIndex / extractAsBuilt) は JSONL の `scenario` フィールドを使う。
+ */
 export function sanitizeScenarioId(scenarioId: string): string {
-  return scenarioId.replace(/[^A-Za-z0-9._#-]+/g, '_').slice(0, 200);
+  const ascii = scenarioId.replace(/[^A-Za-z0-9._#-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 100);
+  const hash = crypto.createHash('sha256').update(scenarioId, 'utf8').digest('hex').slice(0, 8);
+  return `${ascii || 'scenario'}-${hash}`;
 }
 
 /** 1 イベントを D2_TRACE_DIR 配下の JSONL に追記する。文脈が無い / 未設定なら何もしない。 */

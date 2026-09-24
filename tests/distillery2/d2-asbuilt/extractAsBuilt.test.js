@@ -7,7 +7,7 @@ const path = require('node:path');
 
 const SCRIPTS = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-asbuilt/scripts');
 const LIB = path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib');
-const { run, buildIndexMd, collect, extractPreserved } = require(path.join(SCRIPTS, 'extractAsBuilt'));
+const { run, buildIndexMd, collect, extractPreserved, latestDecisions, decisionFor } = require(path.join(SCRIPTS, 'extractAsBuilt'));
 const { writeCanonicalJson, readCanonicalJson } = require(path.join(LIB, 'canonicalJson'));
 
 // --- フェイクリポジトリを組み立てる -----------------------------------------
@@ -368,6 +368,19 @@ test('acceptance-browser.json のシナリオを証跡・追跡表に取り込�
   const idx = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json'));
   const names = idx.ucs['register-loan'].scenarios.map((s) => s.name);
   assert.ok(names.includes('ブラウザで貸出する'), 'browser scenario merged into traceability');
+});
+
+test('前提の処遇は tier + id で引く (別ティアの同 id が上書きしない)', () => {
+  const events = [{
+    type: 'review_approved',
+    assumption_decisions: [
+      { tier: 'backend-api', id: 'A-005', decision: '採用(バックエンド)' },
+      { tier: 'frontend-staff', id: 'A-005', decision: '却下(フロント)' },
+    ],
+  }];
+  const decisions = latestDecisions(events);
+  assert.equal(decisionFor(decisions, 'backend-api', 'A-005').decision, '採用(バックエンド)');
+  assert.equal(decisionFor(decisions, 'frontend-staff', 'A-005').decision, '却下(フロント)');
 });
 
 function sortDeep(v) {

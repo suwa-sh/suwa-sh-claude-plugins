@@ -49,9 +49,14 @@ capabilities:
   has_kvs: false
   has_design_system: true
 models:
-  implementer: null                  # null = セッション既定
-  verifier: claude-opus-5            # implementer と同じにしてはいけない (独立検証の条件)
+  implementer: null                  # null = セッション既定モデル。d2-run が実際のモデル名に解決する
+  verifier: opus                     # Agent/Task の model パラメータに渡せる有効値 (opus / sonnet / haiku 等)。
+                                     # `claude-opus-5` のようなフル ID は model パラメータとして無効なので使わない。
+                                     # implementer と同じにしてはいけない (独立検証の条件)
 ```
+
+- `verifier` は `Agent` / `Task` ツールの `model` パラメータへそのまま渡せる短い別名 (`opus` / `sonnet` / `haiku` など) を書く。フルのモデル ID は `model` パラメータとして無効になる。
+- `implementer: null` はセッション既定モデルを指す。d2-run は起動時に implementer を実際のモデル名へ解決し、`verifier` と一致していないことを確認する。一致するときは独立検証が成立しないため停止して確認する。
 
 ## ゲートとコマンドの対応
 

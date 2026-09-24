@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 
 const SKILL = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-foundation');
 const adrDir = path.join(__dirname, 'fixtures/adr');
@@ -25,10 +25,97 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   // 各 app に最小 package.json があり、静的ゲートの -w が解決できる
   const appPkg = JSON.parse(fs.readFileSync(path.join(c, 'apps/backend-api/package.json'), 'utf8'));
   for (const s of ['format:check', 'lint', 'typecheck', 'test', 'test:contract']) assert.ok(appPkg.scripts[s], `app script ${s} missing`);
+  // scripts は実コマンド (echo プレースホルダではない)
+  assert.equal(appPkg.scripts.test, 'vitest run');
+  assert.equal(appPkg.scripts.typecheck, 'tsc --noEmit -p .');
+  assert.equal(appPkg.scripts.lint, 'biome lint .');
+  assert.equal(appPkg.scripts['format:check'], 'biome format .');
+  for (const s of Object.values(appPkg.scripts)) assert.ok(!/^echo /.test(s), `placeholder script remains: ${s}`);
+  // 各 app に tsconfig.json / vitest.config.ts、ルートに biome.json
+  assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/tsconfig.json')), 'app tsconfig.json');
+  assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/vitest.config.ts')), 'app vitest.config.ts');
+  assert.ok(fs.existsSync(path.join(c, 'biome.json')), 'root biome.json');
+  // frontend tier の tsconfig は jsx を有効化する
+  const feTs = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/tsconfig.json'), 'utf8'));
+  assert.equal(feTs.compilerOptions.jsx, 'react-jsx');
+  // root devDependencies に実ゲート用の依存が入る (frontend があるので react も)
+  for (const d of ['@biomejs/biome', '@redocly/cli', '@apidevtools/json-schema-ref-parser', 'react', 'react-dom', '@types/react']) {
+    assert.ok(pkg.devDependencies[d], `root devDependency ${d} missing`);
+  }
   assert.ok(pkg.scripts['test:backend-api'].includes('-w apps/backend-api'));
   assert.ok(fs.existsSync(path.join(c, 'tsconfig.base.json')));
   const gitignore = fs.readFileSync(path.join(c, '.gitignore'), 'utf8');
   assert.ok(gitignore.includes('.distillery/runs/*/reports/') && gitignore.includes('traces/'));
+  // attempt-*/ は commit 対象なので除外しない (run-state.md と整合)
+  assert.ok(!gitignore.includes('attempt-'), 'attempt-*/ は gitignore しない');
+});
+
+test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り、frontend は jsdom を依存に持つ (Finding 8)', () => {
+  const c = tmp();
+  run('genSkeleton.js', c, ['--adr', adrDir]);
+  // 契約テストを置く。app tsconfig に rootDir が付いていれば TS6059 で失敗する。
+  fs.writeFileSync(path.join(c, 'apps/backend-api/test/contract/x.test.ts'), 'export const x: number = 1;\n');
+  const tsc = path.resolve(__dirname, '../../../node_modules/.bin/tsc');
+  assert.ok(fs.existsSync(tsc), 'node_modules/.bin/tsc が無い (npm install 済みか)');
+  const res = spawnSync(tsc, ['--noEmit', '-p', path.join(c, 'apps/backend-api/tsconfig.json')], { encoding: 'utf8' });
+  assert.equal(res.status, 0, `tsc failed:\n${res.stdout || ''}${res.stderr || ''}`);
+  // frontend ティアがあるので jsdom が root devDependencies に入る
+  const pkg = JSON.parse(fs.readFileSync(path.join(c, 'package.json'), 'utf8'));
+  assert.ok(pkg.devDependencies.jsdom, 'frontend があるとき jsdom を依存に入れる');
+});
+
+test('genSkeleton --migrate: 0.1.0 生成物を移行する (Finding 5)', () => {
+  const c = tmp();
+  // 0.1.0 相当の既存プロジェクトを用意する (echo プレースホルダ / attempt-*/ を含む .gitignore)
+  fs.mkdirSync(path.join(c, 'apps/backend-api'), { recursive: true });
+  fs.writeFileSync(path.join(c, 'apps/backend-api/package.json'), JSON.stringify({
+    name: '@app/backend-api', version: '0.0.0', private: true, type: 'module',
+    scripts: {
+      'format:check': 'echo "format:check placeholder — d2 で本物に差し替える"',
+      lint: 'echo "lint placeholder"',
+      typecheck: 'echo "typecheck placeholder"',
+      test: 'echo "no unit tests yet"',
+      'test:contract': 'echo "no contract tests yet"',
+    },
+  }, null, 2) + '\n');
+  fs.writeFileSync(path.join(c, '.gitignore'), ['node_modules/', 'dist/', '*.log', '', '# distillery2 実行状態', '.distillery/runs/*/reports/', '.distillery/runs/*/traces/', '.distillery/runs/*/attempt-*/', ''].join('\n'));
+
+  const r = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  assert.equal(r.code, 0, r.out);
+
+  // .gitignore: attempt-*/ を除去し reports/traces は残す
+  const gi = fs.readFileSync(path.join(c, '.gitignore'), 'utf8');
+  assert.ok(!gi.includes('attempt-'), 'attempt-*/ を除去する');
+  assert.ok(gi.includes('.distillery/runs/*/reports/') && gi.includes('traces/'), 'reports/traces は残す');
+
+  // 既存の app package.json: echo プレースホルダが実コマンドへ差し替わる
+  const appPkg = JSON.parse(fs.readFileSync(path.join(c, 'apps/backend-api/package.json'), 'utf8'));
+  assert.equal(appPkg.scripts.test, 'vitest run');
+  assert.equal(appPkg.scripts.typecheck, 'tsc --noEmit -p .');
+  assert.equal(appPkg.scripts.lint, 'biome lint .');
+  assert.equal(appPkg.scripts['format:check'], 'biome format .');
+  for (const s of Object.values(appPkg.scripts)) assert.ok(!/^echo /.test(s), `echo が残る: ${s}`);
+
+  // 0.1.0 に無かった config は新規作成される (これで静的ゲートが実際に動く)
+  assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/tsconfig.json')), 'app tsconfig を作成');
+  assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/vitest.config.ts')), 'app vitest.config を作成');
+  assert.ok(fs.existsSync(path.join(c, 'biome.json')), 'root biome.json を作成');
+
+  // 変更内容を報告する
+  assert.ok(r.out.includes('migrate:'), r.out);
+  assert.ok(r.out.includes('.gitignore') && r.out.includes('backend-api'), r.out);
+});
+
+test('genSkeleton --migrate: 手編集済み script は触らない (echo でなければ据え置き)', () => {
+  const c = tmp();
+  fs.mkdirSync(path.join(c, 'apps/backend-api'), { recursive: true });
+  fs.writeFileSync(path.join(c, 'apps/backend-api/package.json'), JSON.stringify({
+    name: '@app/backend-api', scripts: { test: 'vitest run --coverage', lint: 'echo "lint placeholder"' },
+  }, null, 2) + '\n');
+  run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  const appPkg = JSON.parse(fs.readFileSync(path.join(c, 'apps/backend-api/package.json'), 'utf8'));
+  assert.equal(appPkg.scripts.test, 'vitest run --coverage', '手編集 script は保持');
+  assert.equal(appPkg.scripts.lint, 'biome lint .', 'echo プレースホルダだけ差し替える');
 });
 
 test('genSkeleton: does not overwrite an existing package.json', () => {

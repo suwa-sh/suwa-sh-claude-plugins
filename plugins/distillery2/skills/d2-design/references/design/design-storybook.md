@@ -1,6 +1,9 @@
 # Storybook アプリ生成 (design-storybook)
 
-Next.js + TypeScript + Tailwind CSS v4 + Storybook のアプリを生成する。
+> **技術構成は ADR の `ui:` ヒントに従う (SKILL.md 手順 1・4)。** 以下は `rendering: ssr`/`ssg` (Next.js) を選んだ場合の手順。
+> `rendering: spa` (ヒント無しの既定) のときは、`create-next-app` の代わりに **Vite + React + TypeScript + Storybook (`@storybook/react-vite`)** で同じ構成 (tokens / components / stories / MDX) を作る。framework 名 (`@storybook/nextjs-vite` → `@storybook/react-vite`) と初期化コマンドを読み替え、それ以外の手順 (トークン CSS・部品・Story・F6 受け渡し) は共通。ADR が SPA 方針なのに Next.js を選ばない。
+
+Next.js + TypeScript + Tailwind CSS v4 + Storybook のアプリを生成する (SSR/SSG 構成)。
 出力先は `docs/design/storybook-app/` (d2-foundation phase=F6 がここを `packages/ui/` に取り込む)。
 
 > API・パッケージ名は Context7 (Storybook / Tailwind CSS v4 公式ドキュメント, 2026-09-23 確認) に基づく。

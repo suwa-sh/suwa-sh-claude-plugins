@@ -24,6 +24,21 @@ presentation ティア (frontend) があるときだけ ADR を書く。ADR の 
 - **向く条件 (BFF)**: フロント種別 3 以上で UI 要件が大きく異なる。
 - **向かない**: 利用者だけ・管理者だけの単純プロダクトは単一フロントで十分。
 
+## ADR に残す `ui:` ヒント (d2-design が読む)
+
+`scope: [ui]` の ADR の front matter に、後段 d2-design が従う UI 技術の決定を `ui:` として残す。d2-design はここを読み、無ければ SPA を既定にする (実走で ADR に `ui:` が無く、design が既定の Next.js を選んで ADR の SPA 方針と食い違った)。
+
+```yaml
+ui:
+  framework: react            # react / vue / svelte 等 (既定 react)
+  rendering: spa              # spa / ssr / ssg (既定 spa)。SSR/SSG が要るときだけ ssr/ssg
+  styling: tailwind           # 任意 (tailwind / css-modules 等)
+  component_lib: true         # packages/ui を持つか
+```
+
+- `rendering: spa` なら d2-design は SPA 構成 (例 Vite + React) で Storybook を作る。Next.js は `rendering: ssr`/`ssg` を選んだときだけ使う。
+- モバイル / SEO 要件から SSR/SSG が必要かは [tiers.md](tiers.md) の frontend の目安に従って決める。
+
 ## 国際化 (i18n)
 
 - **向く条件**: 多言語要件がある。

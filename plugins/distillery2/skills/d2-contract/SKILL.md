@@ -39,7 +39,8 @@ contracts/
 | `compileContracts.js <contracts-dir> [--check]` | OpenAPI/AsyncAPI を bundle し、UC ごとの contract-slice.json を生成 |
 | `compileRdbSchema.js <contracts-dir> [--check]` | RDB を bundle し、table-index と UC ごとの rdb-slice.yaml を生成 |
 | `validateUcIndex.js <contracts-dir>` | 参照実在性と examples 必須ルールを検査 |
-| `genContractTests.js <contracts-dir> --config <config.yaml> [--uc <slug>] --out-root <repo>` | provider 契約テスト・consumer stub・validators を生成 |
+| `genContractTests.js <contracts-dir> --config <config.yaml> [--uc <slug>] --out-root <repo>` | provider 契約テスト・consumer stub・validators、および消費側 API クライアント (下記 genApiClient を内部で呼ぶ) を生成 |
+| `genApiClient.js <contracts-dir> --config <config.yaml> --out-root <repo> [--check]` | OpenAPI bundle から消費側の型付き API クライアントを生成: `packages/contracts/<id>/types.ts` (スキーマ→TS 型)・`client.ts` (operationId ごとの型付き fetch)・`server.ts` (operationId ↔ method/path 表)。外部依存なし・決定論的 |
 | `genRdbDdl.js <contracts-dir> --config <config.yaml> --out-root <repo>` | Postgres migration・DB 契約テスト・row 型を生成 |
 
 `--check` は書き込まずに、生成物が古いと exit 1。CI と d2-run のチェックポイントで使う。
@@ -50,6 +51,7 @@ contracts/
   - consumer stub (`.json`) は各 `stubs/` の `.distillery2-generated.json` (生成一覧) に載るファイルだけを削除対象にする。手書き stub は消さない。
 - `--uc <slug>` 指定時は、`generated/slices/<slug>/contract-slice.json` の実在 (無ければ exit 2) と、
   source からの bundle 鮮度 (`compileContracts --check` 相当、古ければ exit 1) を先に検証する。古い契約からテストを作らない。
+- **消費側 API クライアント** (`types.ts` / `client.ts` / `server.ts`) は全生成でも `--uc` でも**全 operation から生成する** (型・経路・クライアントは UC 横断。UC で縮めると先に作った UC 分が消えるため)。consumer は `client.ts` を、provider は `types.ts` / `server.ts` を使う ([tier-impl.md](../d2-implement/references/tier-impl.md) の read-set)。
 
 ## mode=skeleton (段階③)
 

@@ -28,6 +28,7 @@ const C = require('./lib/contractsDir');
 const G = require('./lib/contractGraph');
 const U = require('./lib/genUtil');
 const compileContracts = require('./compileContracts');
+const genApiClient = require('./genApiClient');
 
 const posixRel = (fromDir, to) => path.posix.relative(fromDir, to);
 const json = v => JSON.stringify(v);
@@ -186,6 +187,10 @@ ${body}
         files.set(stubRel, U.jsonDet(r.examples[0].value));
       }
     }
+    // 消費側 API クライアント (types.ts / client.ts / server.ts) を生成する。
+    // 型・経路・クライアントは UC 横断で全 operation から作る (UC 絞り込みは operation 別テスト・stub にだけ効かせる。
+    // UC で縮めると先に作った UC 分が消えるため。Finding: 消費側クライアントが v2 で生成されない件)。
+    for (const [rel, text] of genApiClient.buildFiles({ bundle, contract: openapiContract, head })) files.set(rel, text);
   }
 
   // --- AsyncAPI message tests + validators ---
