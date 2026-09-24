@@ -428,6 +428,29 @@ test('入口の上流リンク (要求 / シナリオ / 契約) は as-built か
   assert.match(md, /\| 契約 \| \[contract-slice\.json\]\(\.\.\/\.\.\/\.\.\/\.\.\/contracts\/generated\/slices\/register-loan\/contract-slice\.json\) \|/);
 });
 
+test('_system/index.md は「実装の記録 (UC ごと)」で、UC 名のリンクが実在する index.md を指す (docs_root を変えても)', () => {
+  for (const docsRoot of ['docs', 'documents/spec']) {
+    const repo = buildRepo();
+    if (docsRoot !== 'docs') {
+      fs.renameSync(path.join(repo.dir, 'docs'), path.join(repo.dir, 'docs.tmp'));
+      fs.mkdirSync(path.join(repo.dir, 'documents'), { recursive: true });
+      fs.renameSync(path.join(repo.dir, 'docs.tmp'), path.join(repo.dir, docsRoot));
+      W(repo.dir, '.distillery/config.yaml', CONFIG.replace('docs_root: docs', `docs_root: ${docsRoot}`));
+    }
+    run(opts(repo));
+    const sysDir = path.join(repo.dir, docsRoot, 'as-built/_system');
+    const md = fs.readFileSync(path.join(sysDir, 'index.md'), 'utf8');
+    assert.match(md, /^# 実装の記録 \(UC ごと\)/m);
+    assert.match(md, /\| 業務 \| UC \(記録へ\) \| ゲート \| 生成日時 \|/);
+    assert.doesNotMatch(md, /\| slug \||\[index\]/);
+    const m = md.match(/\| 貸出業務 \| \[貸出を登録する\]\(([^)]+)\) \| pass \|/);
+    assert.ok(m, `UC 名のリンク (docs_root=${docsRoot}): ${md}`);
+    const target = path.resolve(sysDir, decodeURIComponent(m[1]));
+    assert.ok(fs.existsSync(target), `リンク先が実在する: ${target}`);
+    assert.equal(path.basename(path.dirname(target)), '貸出を登録する');
+  }
+});
+
 test('scenarioStatus は hook の結果を数えない (本体が全部 skipped なら skipped)', () => {
   const { scenarioStatus } = require(path.join(SCRIPTS, 'extractAsBuilt'));
   const skippedWithHook = [
