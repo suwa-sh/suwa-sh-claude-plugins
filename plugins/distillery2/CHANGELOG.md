@@ -2,6 +2,21 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.7] - 2026-09-25
+
+### Added
+
+- **`docs/README.md` の生成** `scripts/genDocsReadme.js` (ユーザー要望: どこに何があるか覚えないと仕様を辿れない)。
+  読者の問い 3 つ (どこに何があるか / この UC は上流のどれから来てどこまでできたか / 決めたことは何か) に、
+  段階の表・UC 一覧 (業務 → UC の 1 行に 要求 → シナリオ → 契約 → 画面 → as-built) ・ADR / 非機能 / ルール / 契約 / 横断 で答える。
+  既存の正本 (use-cases.yaml、requirements.yaml、features の @uc タグ、uc-index.yaml、screens.yaml、traceability-index、ADR の front matter) から
+  決定論生成。d2-run が各段階の commit 前に実行する
+  - 書くのは `<!-- distillery2:begin/end -->` の管理ブロックだけ。人が書いた部分は触らない。印の無い既存 README には末尾に足す
+  - docs/ 直下の知らないディレクトリ・ファイルは「distillery2 以外の文書」に名前と入口だけ列挙 (消さない・要約しない)。
+    知っているディレクトリの中で参照しなかった md も列挙
+  - 実在するものだけ載せ、ブロック内のリンク切れは exit 1。`--check` で生成結果との一致 (ドリフト) を検査
+- as-built の「入口」に上流へのリンク (要求 / シナリオ / 契約 slice) を追加。下流から上流へも辿れる
+
 ## [0.1.6] - 2026-09-25
 
 ### Changed

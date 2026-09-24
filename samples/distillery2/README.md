@@ -56,6 +56,11 @@ as-built の認知負荷 (節が機械の都合順、前提が 3 か所に重複
 長い文の認知負荷が高いという指摘で、前提 20 件と findings 22 件に `title` (30 字以内) を手で足し、要約 3 ブロックを表に書き直した。
 `checkAsBuilt.js` (表なし / セル 40 字超 / 表の外の文 を検出) が ok になるまで直した。フル再実走はしていない。
 
+## 0.1.7: docs/README.md (上流から辿る入口)
+
+`genDocsReadme.js` で `library-loan/docs/README.md` を生成した。段階の表、UC 32 件の 1 行ずつに 要求 → シナリオ → 契約 → 画面 → 実装の記録、ADR / 非機能 / ルール / 契約 / 横断。
+as-built の「入口」にも要求・シナリオ・契約への逆リンクを足した。
+
 ## トークンと時間 (v1 との比較)
 
 `scripts/tokenReport.js` で各段階のセッションを集計した (重み: input 1 / cache_creation 1.25 / cache_read 0.1 / output 0)。
