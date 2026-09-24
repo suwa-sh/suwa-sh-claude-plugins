@@ -545,6 +545,11 @@ function buildIndexMd(ctx, preserved) {
   L.push(`| 画面 | ${ctx.screens.length ? ctx.screens.map((s) => mdEscape(s.name || s.screen || s.id)).join('、') : 'なし'} |`);
   L.push(`| 発行イベント | ${ctx.derived.messages.length ? ctx.derived.messages.map(mdEscape).join('、') : 'なし'} |`);
   L.push(`| 購読イベント | ${subs.length ? subs.map(mdEscape).join('、') : 'なし'} |`);
+  // 上流へのリンク (下流から要求・シナリオ・契約へ戻れるように)
+  const up = upstreamLinks(ctx);
+  L.push(`| 要求 | ${up.requirements} |`);
+  L.push(`| シナリオ | ${up.features} |`);
+  L.push(`| 契約 | ${up.contract} |`);
   L.push('');
   const comps = componentsByTier(ctx.traces);
   if (comps.length) {
@@ -770,6 +775,34 @@ function buildIndexMd(ctx, preserved) {
   L.push('');
 
   return L.join('\n');
+}
+
+/** as-built から見た相対リンク。実在しなければ null。 */
+function relLink(ctx, absPath, label) {
+  if (!absPath || !fs.existsSync(absPath)) return null;
+  const from = path.resolve(ctx.cwd, ctx.docsRoot, 'as-built', ctx.uc.business, ctx.uc.uc);
+  const rel = path.relative(from, absPath).split(path.sep).map((seg) => (seg === '..' || seg === '.' ? seg : encodeURIComponent(seg))).join('/');
+  return `[${mdEscape(label)}](${rel})`;
+}
+
+/** 上流 (要求 / シナリオ / 契約 slice) へのリンク。features は @uc:<slug> タグで探す。 */
+function upstreamLinks(ctx) {
+  const specs = (ctx.uc.spec_ids || []).slice().sort(cmpStr);
+  const reqMd = relLink(ctx, ctx.docs('requirements/requirements.md'), '要求仕様書');
+  const requirements = specs.length ? `${specs.join(', ')}${reqMd ? ` (${reqMd})` : ''}` : 'なし';
+  const featureFiles = [];
+  const walk = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => cmpStr(a.name, b.name))) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.feature') && new RegExp(`@uc:${ctx.slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z0-9_-])`).test(fs.readFileSync(p, 'utf8'))) featureFiles.push(p);
+    }
+  };
+  walk(path.resolve(ctx.cwd, 'features'));
+  const features = featureFiles.map((p) => relLink(ctx, p, path.basename(p))).filter(Boolean).join('<br>') || 'なし';
+  const contract = relLink(ctx, path.resolve(ctx.cwd, 'contracts', 'generated', 'slices', ctx.slug, 'contract-slice.json'), 'contract-slice.json') || 'なし';
+  return { requirements, features, contract };
 }
 
 /** 受入基準 "Given … When … Then …" を 3 行 (`<br>`) に分ける。分けられなければそのまま。 */

@@ -23,6 +23,9 @@ description: >-
 
 ## 原則
 
+- `docs/README.md` は上流から下流まで辿る入口。`${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` が既存の正本から生成する
+  (管理ブロックの中だけ。人が書いた部分と distillery2 以外の文書は触らず、名前だけ列挙する)。各段階の commit 前に更新する
+
 - **自分では本文をほぼ読まない**。読むのは `.distillery/config.yaml`、`use-cases.yaml`、run の events / done / reports、
   サブエージェントの報告だけ。各段階は fresh なサブエージェントに委譲する ([references/subagent-template.md](references/subagent-template.md))
 - **git 操作は自分だけが行う** (単一コミッタ)。サブエージェントには git 禁止を必ず伝える ([references/git-delivery.md](references/git-delivery.md))
@@ -44,13 +47,13 @@ description: >-
 1. sub `d2-requirements` (input=<要望テキスト>) を派遣する
 2. 完了後、`docs/requirements/_review-summary.md` を材料に human-html-review で確認ページを作る
    (UC 一覧、業務ルール、状態遷移、受入基準。判断は「この要求で進めてよいか / 直す点」)
-3. 承認されたら `git add docs/requirements && git commit -m "req: initial requirements"`。差し戻しなら指摘を input に足して 1 に戻る
+3. 承認されたら `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add docs && git commit -m "req: initial requirements"`。差し戻しなら指摘を input に足して 1 に戻る
 
 ## ② 決定
 
 1. sub `d2-decide` を派遣する
 2. `docs/adr/_review-summary.md` を材料に確認ページ (非機能グレード表の要点、各決定と却下した案、confidence: low の決定は選択肢として提示)
-3. 承認されたら `git commit -m "decide: nfr and adr"`。選択が変わった決定は ADR を直して (sub に戻す) 再提示
+3. 承認されたら `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add docs && git commit -m "decide: nfr and adr"`。選択が変わった決定は ADR を直して (sub に戻す) 再提示
 
 ## ③ 基盤
 
@@ -60,7 +63,7 @@ description: >-
 2. 依存を入れる (`npm install`。オーケストレータが単一 writer として行う)
 3. チェックポイント: `node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc bootstrap --upto static` が exit 0
    (`bootstrap` は仮の slug。reports は捨ててよい)
-4. `.distillery/config.yaml` の tiers / contracts / commands / capabilities を確認ページで人に見せ、承認後に `git commit -m "foundation: rules, tests, contracts, config"`
+4. `.distillery/config.yaml` の tiers / contracts / commands / capabilities を確認ページで人に見せ、承認後に `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add -A && git commit -m "foundation: rules, tests, contracts, config"`
 
 ## ④ UC の縦切り
 
@@ -69,7 +72,7 @@ description: >-
 
 | 段階 | すること | done の条件 |
 |---|---|---|
-| **scenario** | branch `feature/<slug>` を切る (git-delivery.md)。sub `d2-implement mode=scenario`。`checkScenario.js` が ok。human-html-review でシナリオを確認 (問い: この振る舞いで合っているか)。承認を `scenario_approved` に記録し `req(<slug>): scenarios` で commit | 承認済み |
+| **scenario** | branch `feature/<slug>` を切る (git-delivery.md)。sub `d2-implement mode=scenario`。`checkScenario.js` が ok。human-html-review でシナリオを確認 (問い: この振る舞いで合っているか)。承認を `scenario_approved` に記録し、`node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` で README のシナリオ列を更新して `git add docs features && git commit -m "req(<slug>): scenarios"` | 承認済み |
 | **contract** | sub `d2-contract mode=uc uc=<slug>`。`compileContracts.js contracts --check`、`compileRdbSchema.js contracts --check`、`validateUcIndex.js contracts` が exit 0。examples 不足で止まったら issue を確認ページで見せ、契約を補うか要求に戻すかを選ばせる | slice と契約テストが生成済み |
 | **scaffold** | sub `d2-implement mode=scaffold`。`runGates.js --uc <slug> --only unit --expect-red unit` が exit 0、dry-run で undefined step 0 | red baseline |
 | **tier** | attempt = `currentAttempt`。関与ティア (下記「関与ティアの決め方」) ごとに sub `d2-implement mode=tier` を**同じメッセージで並列派遣** (model = implementer)。受理時に `validateAssumptions.js record` を全ティアで実行 | 全ティアの assumptions が ok、各ティアの static / unit が pass |
@@ -77,7 +80,7 @@ description: >-
 | **integrate** | sub `d2-implement mode=integrate`。`runGates.js --uc <slug> --from uc-bdd`。落ちたら報告の分析に従い該当ティアを attempt++ で tier に戻る | acceptance まで pass |
 | **verify** | ティアごとに sub `d2-verify` を**同じメッセージで並列派遣** (agent_type `distillery2:d2-verifier`、model = verifier、変更ファイル一覧を渡す)。受理時に `validateAssumptions.js verdicts`。blocker があれば該当ティアを attempt++ で tier に戻る (最大 3 回。超えたら人に報告して停止) | 全ティアの findings が ok で blocker 0 |
 | **review** | 下記「人レビュー」 | `review_approved` 記録済み |
-| **asbuilt** | 依存グラフの実態を取る: `npx depcruise --config .dependency-cruiser.cjs --output-type json apps packages > <run>/reports/depcruise.json` (`.dependency-cruiser.cjs` は F2 生成)。続けて `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js --run <run> --depcruise <run>/reports/depcruise.json` → sub `d2-asbuilt` (要約ブロック 3 つ) → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/checkAsBuilt.js docs/as-built/<業務>/<UC>/index.md` が exit 0 (違反があれば d2-asbuilt に差し戻す)。commit。depcruise が失敗/未実行でも extractAsBuilt は config から「決定からの図」を描く (空にならない)。標準出力に「計装なしのティア」か「正常系に部品 (call) が無いティア」が出たら integrate の結線漏れ: integrate へ戻して結線を足す (図に出ないティア・部品は as-built の価値を落とす) | as-built が生成済み、計装なし / 正常系に部品なしのティアが無い |
+| **asbuilt** | 依存グラフの実態を取る: `npx depcruise --config .dependency-cruiser.cjs --output-type json apps packages > <run>/reports/depcruise.json` (`.dependency-cruiser.cjs` は F2 生成)。続けて `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js --run <run> --depcruise <run>/reports/depcruise.json` → sub `d2-asbuilt` (要約ブロック 3 つ) → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/checkAsBuilt.js docs/as-built/<業務>/<UC>/index.md` が exit 0 (違反があれば d2-asbuilt に差し戻す) → `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` (docs/README.md の UC 一覧に実装の記録を載せる。リンク切れなら exit 1)。commit。depcruise が失敗/未実行でも extractAsBuilt は config から「決定からの図」を描く (空にならない)。標準出力に「計装なしのティア」か「正常系に部品 (call) が無いティア」が出たら integrate の結線漏れ: integrate へ戻して結線を足す (図に出ないティア・部品は as-built の価値を落とす) | as-built が生成済み、計装なし / 正常系に部品なしのティアが無い |
 | **feedback** | 下記「還流」 | issues が全部 PR か issue になっている |
 | **deliver** | git-delivery.md の手順で squash → push → PR。配送の記録は commit に入れず `reports/delivered.json` に書く。`use-cases.yaml` の `status: done` は PR merge 後の次 run で更新する | `gh pr list --head feature/<slug>` に PR がある (done ファイルは作らない) |
 

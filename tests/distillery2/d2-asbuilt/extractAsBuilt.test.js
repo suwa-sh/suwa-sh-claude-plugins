@@ -417,6 +417,17 @@ test('計装の範囲: 全トレースに無いティアは「計装なし」、
   assert.match(md, /\| 計装の範囲 \(backend-api\) \| 部品名のみ \|/);
 });
 
+test('入口の上流リンク (要求 / シナリオ / 契約) は as-built から見た相対パスで、セグメントごとに URL エンコードする', () => {
+  const repo = buildRepo();
+  W(repo.dir, 'features/貸出業務/flow#1.feature', '@uc:register-loan\n機能: x\n');
+  W(repo.dir, 'docs/requirements/requirements.md', '# USDM\n');
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| 要求 \| SPEC-001-01 \(\[要求仕様書\]\(\.\.\/\.\.\/\.\.\/requirements\/requirements\.md\)\) \|/); // docs/as-built/<業務>/<UC>/ から docs/ は 3 つ上
+  assert.match(md, /\| シナリオ \| \[flow#1\.feature\]\(\.\.\/\.\.\/\.\.\/\.\.\/features\/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99\/flow%231\.feature\) \|/);
+  assert.match(md, /\| 契約 \| \[contract-slice\.json\]\(\.\.\/\.\.\/\.\.\/\.\.\/contracts\/generated\/slices\/register-loan\/contract-slice\.json\) \|/);
+});
+
 test('scenarioStatus は hook の結果を数えない (本体が全部 skipped なら skipped)', () => {
   const { scenarioStatus } = require(path.join(SCRIPTS, 'extractAsBuilt'));
   const skippedWithHook = [

@@ -42,6 +42,8 @@ v2 は成果物を 3 つに分ける。
 | `distillery2:d2-verify` | ④ 別モデルの検証 (UC の意図・前提の整合) |
 | `distillery2:d2-asbuilt` | ④ 実装からの文書抽出 |
 
+`docs/README.md` は `scripts/genDocsReadme.js` が各段階の commit 前に生成する (上流から下流まで辿る入口。管理ブロックの外と distillery2 以外の文書は触らない)。
+
 ## 対象プロジェクトの構成
 
 一般的なモノレポ + Cucumber + Playwright + ADR の慣習に合わせる。独自のテストディレクトリは作らない。

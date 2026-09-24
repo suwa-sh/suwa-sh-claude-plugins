@@ -148,6 +148,7 @@
         "contracts/openapi/paths/loans.yaml",
         "contracts/uc-index.yaml",
         "cucumber.js",
+        "docs/README.md",
         "docs/as-built/_system/api-inventory.md",
         "docs/as-built/_system/data-flow.md",
         "docs/as-built/_system/dependency-graph.md",
