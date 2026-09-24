@@ -34,9 +34,9 @@ v2 は成果物を 3 つに分ける。
 |---|---|
 | `distillery2:d2-run` | オーケストレータ。通常はこれだけ呼ぶ |
 | `distillery2:d2-requirements` | ① 要求。USDM / RDRA / UC 一覧 |
-| `distillery2:d2-decide` | ② 決定。非機能要求グレード表 + ADR (機械可読 rules 付き) |
+| `distillery2:d2-decide` | ② 決定。非機能要求グレード表 + ADR (機械可読 rules 付き) + C4 図 (architecture.md) |
 | `distillery2:d2-foundation` | ③ 基盤。rules / arch test / テスト基盤 / 契約テスト / 設定 / CI |
-| `distillery2:d2-design` | ③ 画面部品。tokens + Storybook |
+| `distillery2:d2-design` | ③ 画面部品。tokens (ブランド起点) + Storybook + アセット + 目視証跡 |
 | `distillery2:d2-contract` | 契約カタログ (skeleton / uc の 2 モード) |
 | `distillery2:d2-implement` | ④ 実装者 (scenario / scaffold / tier / integrate) |
 | `distillery2:d2-verify` | ④ 別モデルの検証 (UC の意図・前提の整合) |
@@ -49,7 +49,7 @@ v2 は成果物を 3 つに分ける。
 ```
 apps/<tier>/           src/ (単体テストは同居)  test/contract/ (生成物)  migrations/
 packages/contracts/    契約からの codegen
-packages/ui/           tokens + 部品 + stories
+packages/ui/           tokens + 部品 + stories + assets (ロゴ/アイコン)
 packages/test-support/ tracer (計装)、pglite、Cucumber World
 contracts/             契約の正本 (openapi/ asyncapi/ db/) と generated/
 features/              <業務>/<uc>.feature (UC シナリオ = 要求)、acceptance/、step_definitions/、support/drivers/{api,browser}

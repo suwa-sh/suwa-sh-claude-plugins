@@ -2,6 +2,35 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.3] - 2026-09-24
+
+### Added
+
+- **C4 図 (決めたもの)**: `genArchitectureDoc.js` を追加。accepted な ADR (ティア構成 ADR の `tiers[]` /
+  `datastore_owner` / 任意の `contexts[]`)・`contracts/contracts.json`・RDRA (`アクター.tsv` / `外部システム.tsv`)
+  から `docs/adr/architecture.md` を決定論的に生成する。システムコンテキスト図 (Mermaid `C4Context`)・コンテナ図
+  (`C4Container`、契約を provider→consumer のラベル付き辺にし datastore_owner を明示)・コンテキストマップ
+  (flowchart。`contexts[]` があるときだけ) を描く。d2-decide 手順 3 で `genAdrIndex` の前に走らせ、`index.md` から
+  `architecture.md` へリンクする。決定領域に「コンテキストの境界」(任意の 9 番目) を追加。
+- **C4 図 (実態)**: as-built 段階で `depcruise --output-type json` を撮り、`extractAsBuilt.js` の `dependency-graph.md`
+  を「実態 (dependency-cruiser)」として描く。JSON が無いときは `.distillery/config.yaml` のティア・契約から
+  「決定からの図」(契約の consumer→provider) を描き、実態か決定かを本文に明記する (ファイルを空にしない)。
+- **ブランド方針**: ADR の `ui.brand` (`name` / `colors` / `typography` / `tone` / `source` / `confidence`) を追加。
+  d2-decide は `brand` スキルがあれば走らせて (`source: brand skill`)、無ければ RDRA から推論 (`source: inferred`・
+  `confidence: low`) して埋める。d2-design のトークンは `ui.brand` を起点にする (再推論しない)。`_review-summary.md`
+  にブランドの由来を載せる。
+- **アセット生成の復活**: `references/design/design-assets.md` を追加 (ロゴ SVG / ファビコン / アイコンセットの方針)。
+  d2-design 手順 3.5 で `docs/design/storybook-app/src/assets/` に書き、F6 の `importUi.js` が `packages/ui/assets/`
+  に取り込む (`src/` を丸ごとコピーするため設定変更不要)。
+- **目視の証跡**: `captureStories.js` を追加。Storybook を静的ビルドし、`playwright` が対象リポで解決できれば
+  headless chromium で各 Story を撮って `docs/design/screenshots/<StoryId>.png` と `index.md` を書く (exit 0)。
+  playwright 無し / ビルド失敗は exit 2 (目視未実施) を明示する。d2-design 手順 4 の目視確認で使う。
+
+### Changed
+
+- ADR スキーマ (`schema-adr.json`) に `contexts[]` と `ui.brand` / `ui.rendering` 等の型を追加。
+- d2-run / d2-asbuilt の as-built 手順に depcruise JSON の生成を追記。
+
 ## [0.1.2] - 2026-09-24
 
 ### Changed
