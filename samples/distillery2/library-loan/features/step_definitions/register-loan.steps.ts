@@ -4,7 +4,9 @@
  * シナリオ: features/貸出業務/register-loan.feature
  * 契約 slice: contracts/generated/slices/register-loan/ (operationId: createLoan, POST /loans)
  *
- * - もし は api ドライバ (this.driver) で POST /loans を叩く。実装の内部関数は呼ばない
+ * - もし は UC の入口 = frontend-staff の貸出受付画面の入口関数 (submitLoanCheckout) から入る。画面の API 呼び出しには
+ *   api ドライバの transport を注入するので、画面 → API クライアント → backend-api → DB が 1 本のトレースに乗る。
+ *   実装の内部関数 (usecase / repository) は呼ばない
  * - 前提の状態は、状態を作る API (書籍登録・予約など) がこの UC の契約に無いため、シナリオ隔離 DB に直接書く
  * - ならば は API 応答と、DB に残った状態 (貸出・書籍状態・予約状態) を観測する。
  *   この UC の契約に参照 API (GET) が無いため、永続化された状態は DB から読む
@@ -14,6 +16,9 @@ import { strict as assert } from 'node:assert';
 import { randomUUID } from 'node:crypto';
 import { Given, When, Then, type DataTable } from '@cucumber/cucumber';
 import type { ApiResponse, D2World } from '../support/world';
+import { tracedFn } from '@repo/test-support/tracer';
+import { createLoanApi } from '../../apps/frontend-staff/src/api-client/loan-api';
+import { submitLoanCheckout } from '../../apps/frontend-staff/src/screens/loan-checkout/submit-loan-checkout';
 
 // --- シナリオの語 → 契約 / スキーマの値 ---
 
@@ -159,10 +164,20 @@ async function reservationStatus(world: D2World, patronNumber: string, title: st
 
 // --- もし の共通処理 ---
 
+const FRONTEND_TIER = 'frontend-staff';
+
+/** 貸出受付画面の「貸出する」を、画面ロジック → API クライアント → backend の順に通す (in-process の e2e)。 */
 async function requestLoan(world: D2World, patronNumber: string, title: string): Promise<ApiResponse> {
   world.uc.loanCountBeforeAct = await totalLoans(world);
-  const res = await world.driver.request('POST', '/loans', { patronNumber, bookId: bookId(world, title) });
+  let captured: ApiResponse | undefined;
+  const api = createLoanApi(world.api.asTransport({ tier: FRONTEND_TIER, layer: 'api-client' }, (res) => (captured = res)));
+  const submit = tracedFn('貸出受付画面', 'submit', (input: { patronNumber: string; bookId: string }) => submitLoanCheckout(api, input), {
+    tier: FRONTEND_TIER,
+    layer: 'screen',
+  });
+  world.uc.lastView = await submit({ patronNumber, bookId: bookId(world, title) });
   world.uc.acted = true;
+  const res = captured ?? { status: 0, body: undefined };
   world.uc.lastResponse = res;
   const body = res.body as { loanId?: string } | undefined;
   if (res.status === 201 && body?.loanId) world.uc.subjectLoanId = body.loanId;

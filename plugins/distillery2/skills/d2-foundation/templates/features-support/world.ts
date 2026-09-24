@@ -23,6 +23,12 @@ export class D2World extends World {
   selectDriver(tags: readonly string[]): void {
     this.driver = tags.includes('@browser') ? new BrowserDriver() : new ApiDriver();
   }
+
+  /** api ドライバ (非 @browser) を取り出す。画面ロジックに `this.api.asFetch(placement)` を渡すときに使う。 */
+  get api(): ApiDriver {
+    if (!(this.driver instanceof ApiDriver)) throw new Error('この step は api ドライバ (非 @browser) でのみ実行できます');
+    return this.driver;
+  }
 }
 
 setWorldConstructor(D2World);

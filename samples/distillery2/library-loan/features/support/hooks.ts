@@ -14,7 +14,7 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import * as path from 'node:path';
 import { After, AfterAll, Before, type ITestCaseHookParameter } from '@cucumber/cucumber';
-import { enterScenario, sanitizeScenarioId } from '@repo/test-support/tracer';
+import { enterScenario, exitScenario, sanitizeScenarioId } from '@repo/test-support/tracer';
 import { ScenarioContext, stopSharedHarness } from './scenario-db';
 import type { D2World } from './world';
 
@@ -61,6 +61,7 @@ Before(async function (this: D2World, hook: ITestCaseHookParameter) {
 After(async function (this: D2World) {
   if (this.driver) await this.driver.teardown();
   if (this.scenario) await this.scenario.close();
+  exitScenario();
 });
 
 AfterAll(async function () {

@@ -207,16 +207,27 @@ function opts(repo) { return { cwd: repo.dir, run: repo.runDir, config: '.distil
 
 // --- テスト ------------------------------------------------------------------
 
-test('index.md に 9 節すべてと正しい 抽出/要約 ラベルが出る', () => {
+test('index.md は読者の問いの順の節と、名前付きの要約ブロック 3 つを持つ', () => {
   const repo = buildRepo();
   run(opts(repo));
   const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
-  const headings = [
-    '## 1. 見出し (抽出)', '## 2. 実現の経路 (抽出)', '## 3. シーケンス (抽出)',
-    '## 4. データの読み書き (抽出)', '## 5. 整合性の守り方 (要約)', '## 6. 画面 (抽出)',
-    '## 7. 検証の証跡 (抽出)', '## 8. 補った前提と処遇 (転記)', '## 9. 逸脱と既知の課題 (抽出 + 要約)',
-  ];
-  for (const h of headings) assert.ok(md.includes(h), `missing: ${h}`);
+  const headings = ['## 結果 (抽出)', '## 入口 (抽出)', '## どう動くか (抽出)', '### データの流れ', '## 何を守るか (要約)', '## 決めたこと (転記)', '## 課題 (抽出 + 要約)', '## 証跡 (抽出)', '## 付録 (抽出)'];
+  let last = -1;
+  for (const h of headings) { const i = md.indexOf(h); assert.ok(i >= 0, `missing: ${h}`); assert.ok(i > last, `順序が違う: ${h}`); last = i; }
+  for (const n of ['概要', '整合性', '課題']) assert.ok(md.includes(`<!-- 要約:begin ${n} -->`), `要約ブロック ${n}`);
+  // 旧 9 節の見出しは出ない
+  assert.doesNotMatch(md, /## 1\. 見出し/);
+  // 内部 ID は読める言葉に置き換わる
+  assert.doesNotMatch(md, /spec_absent|auto_confirmed/);
+  assert.match(md, /仕様に無い/);
+  assert.match(md, /自動承認した前提 \(1\)/);
+  assert.match(md, /人が承認した前提 \(1\)/);
+  // 結果の表
+  assert.match(md, /\| ゲート \| 5 段すべて pass \|/);
+  assert.match(md, /\| 受入基準 \| 2 \/ 2 をシナリオが覆う \|/);
+  assert.match(md, /\| 計装の範囲 \| backend-api \|/);
+  // 変更ファイルは付録の折りたたみ
+  assert.match(md, /<summary>変更ファイル \(3\)<\/summary>/);
 });
 
 test('front matter に basis / generated_at / code / uc / slug がある', () => {
@@ -235,33 +246,41 @@ test('抽出節にトレース由来の operation / table / message / 前提が�
   const repo = buildRepo();
   run(opts(repo));
   const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
-  assert.match(md, /createLoan \(POST \/loans\)/); // slice からパス
+  assert.match(md, /\| API \| createLoan \(POST \/loans\) \|/); // slice からパス
   assert.match(md, /loan\.registered/);
-  assert.match(md, /books/);
-  assert.match(md, /loans/);
-  assert.match(md, /貸出登録画面/); // 画面節
-  assert.match(md, /A-001 \| backend-api \| persistence/); // 前提と処遇
-  assert.match(md, /confirmed/);
-  assert.match(md, /\[rule\] 貸出上限のルールが契約に無い/); // issues
-  assert.match(md, /apps\/backend-api\/src\/usecase\/registerLoan\.ts/); // 入口ファイル
+  assert.match(md, /\[\(books\)\]/); // データフロー図のテーブル
+  assert.match(md, /\| 画面 \| 貸出登録画面 \|/);
+  assert.match(md, /\| backend-api \| 永続化 \| 貸出は単一トランザクションで登録する \| \*\*仕様に無い \(major\)\*\* \| registerLoan\.ts:40 \|/);
+  assert.match(md, /\| ルール \| 貸出上限のルールが契約に無い \|/); // issues
+  assert.match(md, /apps\/backend-api\/src\/usecase\/registerLoan\.ts/); // 付録の変更ファイル
+  assert.match(md, /主要な部品 .*\n\n- backend-api: LoanService/);
 });
 
-test('sequence.md はトレースごとに 1 つの sequenceDiagram を持つ', () => {
+test('sequence.md はトレースごとに 1 つの sequenceDiagram を持ち、index には正常系 1 本と分岐表が出る', () => {
   const repo = buildRepo();
   run(opts(repo));
   const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/sequence.md'), 'utf8');
   const diagrams = md.match(/sequenceDiagram/g) || [];
   assert.equal(diagrams.length, 2);
   assert.match(md, /SELECT books \(x2\)/); // db collapse
-  assert.ok(md.includes(SC1) && md.includes(SC2));
+  // 見出しは slug# を外したシナリオ名、アクターは use-cases.yaml の actors
+  assert.match(md, /## 在庫ありの書籍を貸し出す/);
+  assert.doesNotMatch(md, /## register-loan#/);
+  assert.match(md, /actor p0 as 司書/);
+  const index = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(index, /正常系: 在庫ありの書籍を貸し出す/);
+  assert.equal((index.match(/sequenceDiagram/g) || []).length, 1);
+  assert.match(index, /\| 上限を超える貸出を拒否する \| 422 \| なし \| なし \|/);
 });
 
-test('coverage.md は受入基準をシナリオに対応づける', () => {
+test('受入基準 → シナリオの対応は index.md の証跡に出る (coverage.md は作らない・古いものは消す)', () => {
   const repo = buildRepo();
+  W(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/coverage.md', 'old\n');
   run(opts(repo));
-  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/coverage.md'), 'utf8');
-  assert.match(md, /SPEC-001-01-1 \| 在庫ありの書籍を貸し出す \(passed\)/);
-  assert.match(md, /SPEC-001-01-2 \| 上限を超える貸出を拒否する \(passed\)/);
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| SPEC-001-01-1 Given 在庫あり When 貸出登録 Then 貸出中になる \| 在庫ありの書籍を貸し出す \(passed\) \|/);
+  assert.match(md, /\| SPEC-001-01-2 .* \| 上限を超える貸出を拒否する \(passed\) \|/);
+  assert.ok(!fs.existsSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/coverage.md')));
 });
 
 test('traceability-index.json は canonical で、他 UC のエントリとマージする', () => {
@@ -293,9 +312,9 @@ test('部分実行 (missing ゲート) は総合を pass とせず部分実行�
   W(repo.dir, '.distillery/runs/register-loan/reports/gates.json', JSON.stringify(partial, null, 2) + '\n');
   run(opts(repo));
   const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
-  assert.match(md, /\| \(総合\) \| 部分実行 \(未実行: acceptance\) \|/, '総合を部分実行と明示する');
-  assert.doesNotMatch(md, /\| \(総合\) \| pass \|/, '未完了なのに総合 pass と書かない');
-  assert.match(md, /all_recorded\) \| no \|/, 'all_recorded を表示する');
+  assert.match(md, /\| ゲート \| 部分実行 \(未実行: acceptance\) \|/, '総合を部分実行と明示する');
+  assert.doesNotMatch(md, /\| ゲート \| 5 段すべて pass \|/, '未完了なのに総合 pass と書かない');
+  assert.match(md, /ゲート: static pass \/ unit pass \/ contract pass \/ uc-bdd pass \/ acceptance missing/);
   const idx = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json'));
   assert.equal(idx.ucs['register-loan'].gates_complete, false);
 });
@@ -314,8 +333,8 @@ test('2 回目の実行はバイト一致する (generated_at は最新イベン
   const files = [
     'docs/as-built/貸出業務/貸出を登録する/index.md',
     'docs/as-built/貸出業務/貸出を登録する/sequence.md',
-    'docs/as-built/貸出業務/貸出を登録する/coverage.md',
     'docs/as-built/_system/traceability-index.json',
+    'docs/as-built/_system/data-flow.md',
     'docs/as-built/_system/api-inventory.md',
   ];
   const before = files.map((f) => fs.readFileSync(path.join(repo.dir, f)));
@@ -324,19 +343,22 @@ test('2 回目の実行はバイト一致する (generated_at は最新イベン
   for (let i = 0; i < files.length; i++) assert.ok(before[i].equals(after[i]), `changed on re-run: ${files[i]}`);
 });
 
-test('手書きの 要約 ブロックは再実行で保存される', () => {
+test('手書きの 要約 ブロックは名前で再実行に持ち越され、旧形式 (名前無し) は順序で対応づける', () => {
   const repo = buildRepo();
   run(opts(repo));
   const p = path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md');
   let md = fs.readFileSync(p, 'utf8');
-  // 最初の 要約:begin の直後に本文を差し込む
-  md = md.replace('<!-- 要約:begin -->\n<!-- 要約:end -->', '<!-- 要約:begin -->\n貸出は registerLoan.ts:40 で単一トランザクションにまとめている。\n<!-- 要約:end -->');
+  md = md.replace('<!-- 要約:begin 整合性 -->\n<!-- 要約:end -->', '<!-- 要約:begin 整合性 -->\n貸出は registerLoan.ts:40 で単一トランザクションにまとめている。\n<!-- 要約:end -->');
+  md = md.replace('<!-- 要約:begin 概要 -->\n<!-- 要約:end -->', '<!-- 要約:begin 概要 -->\n司書が貸出を登録する。\n<!-- 要約:end -->');
   fs.writeFileSync(p, md);
   run(opts(repo));
   const after = fs.readFileSync(p, 'utf8');
-  assert.match(after, /貸出は registerLoan\.ts:40 で単一トランザクションにまとめている。/);
-  // 2 つの 要約 ブロックが健在
-  assert.equal(extractPreserved(after).length, 2);
+  assert.match(after, /<!-- 要約:begin 概要 -->\n司書が貸出を登録する。\n<!-- 要約:end -->/);
+  assert.match(after, /<!-- 要約:begin 整合性 -->\n貸出は registerLoan\.ts:40 で単一トランザクションにまとめている。\n<!-- 要約:end -->/);
+  assert.deepEqual(Object.keys(extractPreserved(after)).sort(), ['整合性', '概要']);
+  // 旧形式: 名前無しブロック 2 つは 整合性 / 課題 の順
+  const legacy = '<!-- 要約:begin -->\nA\n<!-- 要約:end -->\nx\n<!-- 要約:begin -->\nB\n<!-- 要約:end -->';
+  assert.deepEqual(extractPreserved(legacy), { '整合性': 'A', '課題': 'B' });
 });
 
 test('入力が欠けても落ちない (トレース・レポートなし)', () => {
@@ -362,12 +384,45 @@ test('acceptance-browser.json のシナリオを証跡・追跡表に取り込�
   W(repo.dir, '.distillery/runs/register-loan/reports/acceptance-browser.json', JSON.stringify(BROWSER, null, 2) + '\n');
   run(opts(repo));
   const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
-  // 検証の証跡テーブルにブラウザシナリオが失敗として出る
-  assert.match(md, /ブラウザで貸出する \| @acceptance:SPEC-001-01-1 @browser \| failed/);
+  // 付録のシナリオ表にブラウザシナリオが失敗として出る (種別は 受入・ブラウザ)
+  assert.match(md, /\| ブラウザで貸出する \| 受入・ブラウザ \| failed \| 3 \|/);
+  assert.match(md, /\| シナリオ \| 3 本中 2 本 pass \(受入 3、ブラウザ 1\) \|/);
   // 追跡表 (traceability-index) にもマージされる
   const idx = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json'));
   const names = idx.ucs['register-loan'].scenarios.map((s) => s.name);
   assert.ok(names.includes('ブラウザで貸出する'), 'browser scenario merged into traceability');
+});
+
+test('計装の範囲: 全トレースに無いティアは「計装なし」、正常系に call が無いティアは「正常系に部品なし」', () => {
+  const { instrumentationCoverage } = require(path.join(SCRIPTS, 'extractAsBuilt'));
+  const ev = (kind, meta, status) => ({ ts: 't', seq: 1, scenario: 's', kind, name: 'n', meta: { status, ...meta } });
+  const uc = { tiers: ['backend-api', 'frontend-staff', 'worker'] };
+  const traces = [
+    { scenario: 'ok', lines: [ev('http.in', { tier: 'backend-api', path: '/x', method: 'POST' }, 201)] },
+    { scenario: 'ng', lines: [ev('http.out', { tier: 'frontend-staff', url: '/x', method: 'POST' }, 409), ev('call', { tier: 'frontend-staff', component: 'S', fn: 'f' })] },
+  ];
+  const r = instrumentationCoverage(uc, { byTier: {} }, traces, {});
+  assert.deepEqual(r.gaps, ['worker']);
+  // 正常系 (201 の ok) に call が無い backend-api / frontend-staff は正常系の不備
+  assert.deepEqual(r.happy_gaps, ['backend-api', 'frontend-staff']);
+  const repo = buildRepo();
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| 計装の範囲 \| backend-api \|/);
+});
+
+test('scenarioStatus は hook の結果を数えない (本体が全部 skipped なら skipped)', () => {
+  const { scenarioStatus } = require(path.join(SCRIPTS, 'extractAsBuilt'));
+  const skippedWithHook = [
+    { keyword: 'Before', name: '', result: { status: 'skipped' } },
+    { keyword: '前提', name: 'x', result: { status: 'skipped' } },
+    { keyword: 'After', name: '', result: { status: 'passed' } },
+  ];
+  assert.equal(scenarioStatus(skippedWithHook), 'skipped');
+  // hook の失敗はシナリオの失敗
+  assert.equal(scenarioStatus([{ keyword: 'Before', name: '', result: { status: 'failed' } }, { keyword: 'もし', name: 'y', result: { status: 'skipped' } }]), 'failed');
+  assert.equal(scenarioStatus([{ keyword: 'もし', name: 'y', result: { status: 'passed' } }, { keyword: 'After', name: '', result: { status: 'failed' } }]), 'failed');
+  assert.equal(scenarioStatus([{ keyword: 'After', name: '', result: { status: 'passed' } }]), 'passed'); // 本体が無ければ全 step で判定
 });
 
 test('前提の処遇は tier + id で引く (別ティアの同 id が上書きしない)', () => {

@@ -36,7 +36,20 @@ headless (`claude -p`) で実走した結果。要求 → 決定 → 基盤 → 
 | findings | blocker 0 / major 6 / minor 16。差し戻しなし (attempt 1 で完了) |
 | 還流の課題 | 7 件 (rule 3 / contract 2 / requirement 2)。headless のため PR / issue は未起票 |
 | squash | `feat: 貸出を登録する` 1 commit。trailer に UC / Basis / Gates / Assumptions / As-Built |
-| as-built | `docs/as-built/貸出業務/貸出を登録する/{index,sequence,coverage}.md` と `_system/` 4 ファイル。シーケンス図はトレース 9 本から生成 |
+| as-built | `docs/as-built/貸出業務/貸出を登録する/{index,sequence}.md` と `_system/` 5 ファイル (追跡表、API 一覧、データフロー、依存グラフ、一覧)。図はトレース 9 本から生成 (0.1.5 で再抽出、下記) |
+
+## 0.1.5 での再結線と as-built の再抽出
+
+as-built の認知負荷 (節が機械の都合順、前提が 3 か所に重複、シーケンス図がバックエンドの一部のレイヤしか出ない) を直した
+0.1.5 で、段階④の integrate 相当を手で当て直し、UC BDD → 受入ゲート → as-built 抽出だけを再実行した (要求〜実装は再実走していない)。
+
+- 結線の変更: `features/support/` (api ドライバの `asTransport`、composition root の `decorate` フックで usecase / repository / gateway を
+  `traced()`、tracePg と middleware に placement)、`features/step_definitions/` (もし は frontend-staff の画面ロジック `submitLoanCheckout`
+  から入る)、`apps/backend-api/src/test-app.ts` (`decorate` フックの追加)、`packages/test-support/` (tracer v2)
+- 結果: uc-bdd / acceptance pass。トレース 9 本に frontend-staff (screen, api-client) と backend-api (presentation, usecase, repository, gateway)
+  が乗り、シーケンス図が 司書 → 貸出受付画面 → backend-api → RegisterLoan → PgLoanRegistrationRepository → DB の入れ子になった
+- `index.md` は 概要 → 結果 → 入口 → どう動くか (正常系 1 本 + 分岐表 + データフロー図) → 何を守るか → 決めたこと → 課題 → 証跡 → 付録。
+  要約 3 ブロック (概要 / 整合性 / 課題) は 0.1.0 の要約を新しい書式 (見出しごとに根拠 1 行) に手で詰め直した
 
 ## トークンと時間 (v1 との比較)
 
@@ -69,4 +82,6 @@ v1 との比較は同条件では取れていない。参考値として、v1 �
 ## 注意
 
 - `.distillery/runs/*/reports` と `traces` は対象リポでは gitignore されるが、サンプルとして残している
+- as-built の `basis` / `code` / 付録の変更ファイルは対象リポの git から取る。このサンプルは git 履歴を含まないコピーなので、
+  `extractAsBuilt.js --run` をこのコピーに当てても、それらの欄と図以外の一部は同じにならない (図・表・要約は再現する)
 - パスは `<repo>` (対象リポの root) と `~` に置き換えている

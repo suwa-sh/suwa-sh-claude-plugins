@@ -6,8 +6,11 @@
  *   (トランザクションを After まで開いたままにするため、PgHarness.withRollback ではなく pg.transaction を直接使う)
  * - アプリには savepointClient(tx) で包んだ DB を渡す。PGlite は入れ子の transaction を持てないため
  *   (backend-api 実装者からの申し送り)
- * - 計装: setTier('backend-api')、expressScenarioMiddleware (operationId は contract-slice から解決)、
- *   tracePg(DB, 'PgLoanRegistrationRepository') を結線する。step 側の準備・確認用クエリはトレースしない
+ * - 計装: expressScenarioMiddleware (presentation。operationId は contract-slice から解決)、createTestApp の decorate フックで
+ *   usecase / repository / gateway を traced() で包み、tracePg(DB, 'PgLoanRegistrationRepository') を結線する。
+ *   すべて placement { tier: 'backend-api', layer } 付き (frontend-staff と同一プロセスで動くため)。
+ *   step 側の準備・確認用クエリはトレースしない
+ * - アプリは契約の servers[0].url に合わせて /api/v1 配下で配信する (frontend-staff の画面が呼ぶパス)
  */
 import { readFileSync } from 'node:fs';
 import type { IncomingMessage, RequestListener, ServerResponse } from 'node:http';
@@ -15,13 +18,15 @@ import { PgHarness } from '@repo/test-support/pglite-harness';
 import {
   createOperationIdResolver,
   expressScenarioMiddleware,
-  setTier,
+  traced,
   tracePg,
 } from '@repo/test-support/tracer';
 import { savepointClient, type SqlQueryable } from '../../apps/backend-api/src/gateway/db/sql-client';
 import { createTestApp, type TestApp } from '../../apps/backend-api/src/test-app';
 
 const PROVIDER_TIER = 'backend-api';
+/** 契約の servers[0].url。frontend-staff の API クライアントはこの接頭辞付きで呼ぶ */
+const BASE_PATH = '/api/v1';
 
 let harness: PgHarness | undefined;
 let harnessReady: Promise<PgHarness> | undefined;
@@ -53,14 +58,6 @@ function operationIdResolver(ucSlug: string) {
     resolverCache.set(ucSlug, r);
   }
   return r;
-}
-
-function safeDecode(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
 }
 
 /** 1 シナリオ分の隔離 DB とアプリ。 */
@@ -117,16 +114,24 @@ export class ScenarioContext {
         query(text: string, params?: unknown[]): Promise<unknown>;
       },
       'PgLoanRegistrationRepository',
+      { tier: PROVIDER_TIER, layer: 'repository' },
     );
-    const app = createTestApp({ db: savepointClient(appQueryable), seedContractFixture: false });
+    const app = createTestApp({
+      db: savepointClient(appQueryable),
+      seedContractFixture: false,
+      basePath: BASE_PATH,
+      decorate: (name, obj, layer) => traced(name, obj, { tier: PROVIDER_TIER, layer }),
+    });
     await app.ready;
 
-    setTier(PROVIDER_TIER);
-    const middleware = expressScenarioMiddleware({ resolveOperationId: operationIdResolver(ucSlug) });
+    const resolve = operationIdResolver(ucSlug);
+    const middleware = expressScenarioMiddleware({
+      // 契約の paths は接頭辞無し (/loans) なので、解決前に basePath を外す
+      resolveOperationId: (method, path) => resolve(method, path.startsWith(BASE_PATH) ? path.slice(BASE_PATH.length) : path),
+      placement: { tier: PROVIDER_TIER, layer: 'presentation' },
+    });
     const listener: RequestListener = (req: IncomingMessage, res: ServerResponse) => {
-      // api ドライバは x-scenario-id を URI エンコードして送る (非 ASCII のシナリオ名をヘッダに載せるため)
-      const raw = req.headers['x-scenario-id'];
-      if (typeof raw === 'string') req.headers['x-scenario-id'] = safeDecode(raw);
+      // x-scenario-id / x-scenario-span は middleware が読む (URI エンコードされたシナリオ名も復号する)
       middleware(req as unknown as Parameters<typeof middleware>[0], res, () => app(req, res));
     };
     return new ScenarioContext(tx, app, listener, release, done);
