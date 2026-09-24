@@ -10,19 +10,19 @@ headless (`claude -p`) で実走した結果。要求 → 決定 → 基盤 → 
 | `library-loan/features/` | 貸出 UC のシナリオ (10 件)、step 定義、Cucumber の support (API ドライバ、tracer 結線) |
 | `library-loan/apps/`, `packages/` | 実装 (backend-api、frontend-staff) とテスト基盤。`packages/ui` と Storybook アプリは容量の都合で除外 |
 | `library-loan/.distillery/` | 実行設定と、UC の実行状態 (events、done、AssumptionRecord、findings、ゲート結果、トレース、課題) |
-| `library-loan/_run/` | 段階ごとのプロンプト、起動スクリプト、各段階の完了報告 (ログ)、見つかった課題一覧 |
 
 ## 実走の手順
 
-段階ごとに `claude -p` を 1 回ずつ起動した (`_run/run-stage.sh`)。人の承認は「推奨どおり承認」としてプロンプトに埋め込んだ。
-`--allowedTools` で node / npm / git を許可しないと検証スクリプトが飛ばされる (`_run/run-stage1.log` がその例。①は 2 回に分けた)。
+段階ごとに `claude -p` を 1 回ずつ起動した。プロンプトは各段階の d2-run 呼び出し (`stage=requirements input=...` / `stage=decide` / `stage=foundation` / `uc=貸出を登録する`) に「人の承認は推奨どおり承認したものとして進める」「push・PR はしない」を添えたもの。
+`--allowedTools` で node / npm / git を許可しないと検証スクリプトが飛ばされる (①は 2 回に分けた)。
+実行時のプロンプトとログは対象リポの `.distillery/logs/` (git 管理外) に置く規約にしたため、このサンプルには含めない。
 
-| 段階 | プロンプト | 所要 | 結果 |
+| 段階 | 備考 | 所要 | 結果 |
 |---|---|---|---|
-| ① 要求 | `prompt-stage1.txt` + `prompt-stage1b.txt` | 31 分 | UC 32 件 (うち 6 件は対応する仕様が無く blocked)。検証すべて exit 0 |
-| ② 決定 | `prompt-stage2.txt` | 16 分 | NFR 97 項目、ADR 8 件 (ティア 4: frontend-patron / frontend-staff / backend-api / worker)。ブラウザ受入は手で off にした |
-| ③ 基盤 | `prompt-stage3.txt` | 43 分 | rules 6 / 依存規則 19 / test-support / 契約骨格 (API + DB) / config / CI / Storybook 部品 77 ファイル。static ゲート exit 0 |
-| ④ 縦切り | `prompt-stage4.txt` | 55 分 | シナリオ 10 → 契約 `POST /loans` → 足場 (red 確認) → 2 ティア並列実装 → 5 ゲート pass → 別モデル検証 (blocker 0) → as-built → squash |
+| ① 要求 | (2 回) | 31 分 | UC 32 件 (うち 6 件は対応する仕様が無く blocked)。検証すべて exit 0 |
+| ② 決定 | | 16 分 | NFR 97 項目、ADR 8 件 (ティア 4: frontend-patron / frontend-staff / backend-api / worker)。ブラウザ受入は手で off にした |
+| ③ 基盤 | | 43 分 | rules 6 / 依存規則 19 / test-support / 契約骨格 (API + DB) / config / CI / Storybook 部品 77 ファイル。static ゲート exit 0 |
+| ④ 縦切り | | 55 分 | シナリオ 10 → 契約 `POST /loans` → 足場 (red 確認) → 2 ティア並列実装 → 5 ゲート pass → 別モデル検証 (blocker 0) → as-built → squash |
 
 合計 2 時間 25 分 (私の確認待ちの間隔を含む)。
 
@@ -56,7 +56,7 @@ v1 との比較は同条件では取れていない。参考値として、v1 �
 
 ## 実走で見つかった課題
 
-`_run/findings-from-sample-run.md` に段階ごとに列挙した。0.1.1 で対応する主なもの:
+[`findings-0.1.0.md`](findings-0.1.0.md) に段階ごとに列挙した。0.1.1 で対応する主なもの:
 
 - 生成した `apps/*/package.json` の test / lint / typecheck が仮の echo コマンド (static ゲートが本物ではない pass になる)
 - `cucumber.js` の ESM 形式の誤り、dry-run 用プロファイルの不在
@@ -68,6 +68,5 @@ v1 との比較は同条件では取れていない。参考値として、v1 �
 
 ## 注意
 
-- `_run/*.log` は headless 実行の最終報告で、途中の作業ログは含まない
 - `.distillery/runs/*/reports` と `traces` は対象リポでは gitignore されるが、サンプルとして残している
 - パスは `<repo>` (対象リポの root) と `~` に置き換えている

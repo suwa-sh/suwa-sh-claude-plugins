@@ -1,7 +1,0 @@
-/distillery2:d2-run stage=requirements input=docs/input/初期要望.txt
-
-これは headless の自動実行です。対話で止まらず最後まで完了してください。
-- 確認推奨項目・選択肢はすべて推奨どおり (⭐推奨) を自動採用してください
-- 人の承認が必要な場面 (要求の承認) は「承認された」ものとして扱い、確認ページ (HTML) は作らずに次へ進んでください。ただし承認の材料である docs/requirements/_review-summary.md は必ず作ってください
-- git の commit は行ってください (作業ディレクトリはこのリポジトリです)。push・PR 作成は行わないでください
-- 完了したら、生成したファイル一覧、UC の件数、貸出業務の「貸出を登録する」UC の slug と spec_ids、実行した検証スクリプトの結果 (exit code) を報告してください
