@@ -37,7 +37,7 @@ description: >-
 1. 引数を解釈し、段階を決める (上の自動選択)
 2. `.distillery/config.yaml` があれば読み、`models.implementer` と `models.verifier` を解決する。`implementer: null` はセッション既定モデルなので、**実際のモデル名に解決してから** verifier と比較する。`verifier` は `opus` などの短い別名で書く (フル ID は `model` パラメータとして無効)。**解決後に両者が同じなら停止して確認** (独立検証の条件)
 3. ④ なら UC を解決する: 引数が slug なら `use-cases.yaml` と照合、UC 名なら NFC 正規化して一意に一致する行を探す (複数なら候補を示して選ばせる)
-4. `git status --porcelain` が空でなければ、勝手に stash / commit せず整理を依頼して停止する (④ の開始時。再開時は branch 一致を確認)
+4. 作業ツリーの clean 判定 (④ の開始時。再開時は branch 一致を確認): `git status --porcelain` のうち、**追跡済みの変更**と、**未追跡でも `docs/` `apps/` `packages/` `contracts/` `features/` `.distillery/` 配下のファイル**だけを対象にする。これらがあれば勝手に stash / commit せず整理を依頼して停止する。それ以外のルート直下の未追跡ファイル (ハーネスの `run-stage.sh` などの実行スクリプト) は clean 判定に含めず、**報告に一覧として載せて無視**する (実走でハーネスのファイルが clean 条件を満たせなかったため)。`.git/info/exclude` への書き込みは前提にしない (権限で拒否されうる)
 
 ## ① 要求
 
