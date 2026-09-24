@@ -20,12 +20,14 @@ const basisLib = require('../../../scripts/lib/basis');
 /**
  * @param {{file:string, fm:object}[]} adrs
  * @param {string|null} basisLine  例 "basis: requirements@abc123" (無ければ null)
+ * @param {{architecture?: string}} opts  architecture を渡すと C4 図へのリンクを一覧の直後に載せる
  */
-function renderIndex(adrs, basisLine = null) {
+function renderIndex(adrs, basisLine = null, opts = {}) {
   const sorted = [...adrs].sort((a, b) => String(a.fm.id).localeCompare(String(b.fm.id)));
   const lines = [];
   if (basisLine) lines.push('---', basisLine, '---', '');
   lines.push('# アーキテクチャ決定記録 (ADR) 一覧', '');
+  if (opts.architecture) lines.push(`決定から描いた C4 図: [${opts.architecture}](${opts.architecture})`, '');
   lines.push('| 番号 | タイトル | ステータス | supersedes | superseded_by |');
   lines.push('|------|---------|-----------|-----------|---------------|');
   for (const { file, fm } of sorted) {
@@ -49,7 +51,9 @@ function main(argv) {
   const { adrs } = loadAdrDir(dir);
   let basisLine = null;
   if (Object.keys(dirs).length) basisLine = basisLib.headerLine(basisLib.stamp(dirs));
-  fs.writeFileSync(output, renderIndex(adrs, basisLine), 'utf8');
+  // architecture.md が同ディレクトリにあるときだけリンクを載せる (dangling を避ける)。
+  const opts = fs.existsSync(path.join(dir, 'architecture.md')) ? { architecture: 'architecture.md' } : {};
+  fs.writeFileSync(output, renderIndex(adrs, basisLine, opts), 'utf8');
   console.log(`Generated: ${output} (${adrs.length} ADRs)`);
   return 0;
 }

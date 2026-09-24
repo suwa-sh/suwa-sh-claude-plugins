@@ -90,15 +90,59 @@ tiers:
     consumes: [db]
 datastore_owner: backend-api   # migration を持つティア
 
+# コンテキストの境界 (任意。通常はティア構成 ADR に書く) — genArchitectureDoc がコンテキストマップ図を描く
+contexts:
+  - id: loan                   # 境界の id (ascii)
+    name: 貸出コンテキスト       # 図に出す名前
+    owner_tier: backend-api    # 任意。この境界を所有するティア id
+    relations:
+      - to: catalog            # 相手の context id
+        kind: OHS              # 境界間の関係 (OHS / ACL / Conformist 等)
+  - id: catalog
+    name: 蔵書コンテキスト
+
 # テスト方針の ADR (scope に testing を含む) — 任意
 capabilities:
   browser: false               # @browser シナリオをブラウザドライバで実行するか (既定 false)
 
 # UI 部品の方針の ADR (scope に ui を含む) — 任意。d2-design がヒントとして読む
 ui:
-  framework: next              # 例。ベンダー名でなく方式で書く
+  framework: react             # 例。ベンダー名でなく方式で書く
+  rendering: spa               # spa | ssr | ssg
+  styling: tailwind
   design_system: true
+  component_lib: true
+  brand:                       # ブランド方針。d2-design のトークンはここを起点にする (再推論しない)
+    name: 図書館システム
+    tagline: 蔵書をすぐ探せる    # 任意
+    colors:
+      primary: "#2563EB"       # 必須
+      secondary: "#0EA5E9"     # 任意
+      accent: "#F59E0B"        # 任意
+      neutral: "#64748B"       # 任意
+    typography:
+      heading: "Inter"
+      body: "Inter"
+    tone: [信頼できる, 静か]     # 任意
+    source: "brand skill"      # "brand skill" | "inferred" | "<path>"
+    confidence: low            # inferred のときは low を付ける (UI ADR が人の確認箇所)
 ```
+
+## コンテキストの境界 `contexts[]` (任意)
+
+業務ドメインを複数の境界づけられたコンテキストに分けるとき、いずれかの accepted ADR (通常はティア構成 ADR) の
+front matter に `contexts: [{id, name, owner_tier?, relations: [{to, kind}]}]` を書く。`genArchitectureDoc.js`
+がこれを読んで `docs/adr/architecture.md` にコンテキストマップ図 (flowchart) を描く。単一ドメインの小さな
+プロダクトでは書かなくてよい (書かなければ図は出ない)。決定領域の 9 番目 (任意) として `required-decisions.md` に載る。
+
+## ブランド方針 `ui.brand` (任意)
+
+`scope: [ui]` の ADR の `ui:` に `brand` を持たせる。**ブランドは UI ADR が人の決める場所**であり、d2-design は
+ここを起点にトークン (色・タイポグラフィ) を作る (再推論しない)。`source` の値で由来を示す:
+
+- `brand skill`: `brand` スキル (`~/.claude/skills/brand` 等) を走らせて埋めた。
+- `inferred`: RDRA から推論した。`confidence: low` を付け、レビューで人が確認する。
+- `<path>`: 既存のブランド資料を参照した。
 
 ## status 遷移と参照整合性 (validateAdr が検査)
 

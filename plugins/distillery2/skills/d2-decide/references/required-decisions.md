@@ -13,6 +13,13 @@ d2-decide は最低限、次の 8 領域を ADR で覆う。該当しない領�
 | 6 | メッセージング | app, system | [messaging.md](decision-candidates/messaging.md) | AsyncAPI が要るときのみ (同期完結なら「不要」ADR) |
 | 7 | 認証 / 認可 | system, app | [auth.md](decision-candidates/auth.md) | authn 方式と authz モデル |
 | 8 | UI 部品の方針 | ui | [ui.md](decision-candidates/ui.md) | presentation ティアがあるときのみ |
+| 9 | コンテキストの境界 (任意) | system | (カタログなし) | 業務ドメインが複数に分かれるときのみ。決めたら ADR front matter に `contexts[]` を書く |
+
+**9 コンテキストの境界 (任意)**: 業務ドメインを複数の境界づけられたコンテキストに分けるかを決める。分ける
+なら、いずれかの accepted ADR (通常はティア構成 ADR) の front matter に `contexts: [{id, name, owner_tier?,
+relations: [{to, kind}]}]` を書く。`kind` は境界間の関係 (例 OHS / ACL / Conformist)。`genArchitectureDoc.js`
+がこれを読んで `docs/adr/architecture.md` にコンテキストマップ図を描く。単一ドメインの小さなプロダクトでは
+不要 (書かなければマップ図は出ない)。
 
 ## ルール付与の要件 (validateAdr が検査)
 

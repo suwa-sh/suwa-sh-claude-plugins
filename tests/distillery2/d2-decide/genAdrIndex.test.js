@@ -34,3 +34,11 @@ test('basisLine を渡すと front matter が付く', () => {
   const out = renderIndex(adrs, 'basis: requirements@abc1234');
   assert.ok(out.startsWith('---\nbasis: requirements@abc1234\n---\n'));
 });
+
+test('architecture を渡すと C4 図へのリンクを一覧の前に載せる', () => {
+  const { adrs } = loadAdrDir(FIX);
+  const out = renderIndex(adrs, null, { architecture: 'architecture.md' });
+  assert.match(out, /決定から描いた C4 図: \[architecture\.md\]\(architecture\.md\)/);
+  // リンクは表より前
+  assert.ok(out.indexOf('architecture.md') < out.indexOf('| 番号 |'));
+});
