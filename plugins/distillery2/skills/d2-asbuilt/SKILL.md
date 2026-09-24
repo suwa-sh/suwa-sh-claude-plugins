@@ -20,11 +20,17 @@ description: >-
 1. **抽出 (スクリプト)**: d2-run が次を実行する (このスキルは実行結果を前提にしてよい)。
 
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js" --run .distillery/runs/<slug>
+   # 依存グラフの実態を取る (.dependency-cruiser.cjs は F2 生成)。失敗しても後続は続ける。
+   npx depcruise --config .dependency-cruiser.cjs --output-type json apps packages \
+     > .distillery/runs/<slug>/reports/depcruise.json
+   node "${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js" \
+     --run .distillery/runs/<slug> --depcruise .distillery/runs/<slug>/reports/depcruise.json
    ```
 
    - 書くもの: `docs/as-built/<業務>/<UC>/{index.md, sequence.md, coverage.md}`、
      `docs/as-built/_system/{traceability-index.json, api-inventory.md, dependency-graph.md, index.md}`
+   - `dependency-graph.md` は depcruise JSON があれば「実態 (dependency-cruiser)」を、無ければ config の
+     ティア・契約から「決定からの図」を描く (どちらのラベルか本文に明記され、ファイルは空にならない)
    - 決定論。同じ入力なら同じ出力。`generated_at` だけ最新イベント ts を使う
    - 再実行しても、既存の `<!-- 要約:begin -->…<!-- 要約:end -->` の中身は保存する
 

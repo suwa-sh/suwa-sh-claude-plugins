@@ -14,7 +14,8 @@ docs/as-built/
   _system/
     traceability-index.json     # 全 UC 横断の追跡表 (canonical JSON。UC 単位でマージ)
     api-inventory.md            # openapi bundle の全 operation と使用状況
-    dependency-graph.md         # dependency-cruiser JSON からの依存グラフと違反
+    dependency-graph.md         # 実態 (dependency-cruiser JSON) の依存グラフと違反。JSON が無ければ config の
+                                # ティア・契約から「決定からの図」を描く (実態か決定かを本文に明記。空にしない)
     index.md                    # 全 UC の as-built 一覧
 ```
 

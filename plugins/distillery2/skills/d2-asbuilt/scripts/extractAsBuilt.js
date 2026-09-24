@@ -716,37 +716,73 @@ function buildDependencyGraph(ctx) {
   const L = [];
   L.push('# 依存グラフ (抽出)');
   L.push('');
-  if (!ctx.depcruise) { L.push('dependency-cruiser の JSON なし。'); L.push(''); return L.join('\n'); }
-  const collapse = (mod) => {
-    const m = String(mod).match(/^(apps\/[^/]+|packages\/[^/]+)/);
-    return m ? m[1] : String(mod).split('/').slice(0, 1)[0];
-  };
+  if (ctx.depcruise) {
+    // 実態: dependency-cruiser の JSON からティア / パッケージ単位の依存を描く。
+    L.push('## 実態 (dependency-cruiser)');
+    L.push('');
+    L.push('コードの import から抽出した実際の依存。');
+    L.push('');
+    const collapse = (mod) => {
+      const m = String(mod).match(/^(apps\/[^/]+|packages\/[^/]+)/);
+      return m ? m[1] : String(mod).split('/').slice(0, 1)[0];
+    };
+    const edges = new Set();
+    for (const mod of ctx.depcruise.modules || []) {
+      const from = collapse(mod.source);
+      for (const dep of mod.dependencies || []) {
+        const to = collapse(dep.resolved || dep.module);
+        if (from && to && from !== to) edges.add(`${from}\u0000${to}`);
+      }
+    }
+    L.push('```mermaid');
+    L.push('graph LR');
+    const nodes = new Set();
+    for (const e of [...edges].sort()) { const [a, b] = e.split('\u0000'); nodes.add(a); nodes.add(b); }
+    for (const e of [...edges].sort()) { const [a, b] = e.split('\u0000'); L.push(`  ${nodeId(a)}["${a}"] --> ${nodeId(b)}["${b}"]`); }
+    if (!edges.size) for (const n of [...nodes].sort()) L.push(`  ${nodeId(n)}["${n}"]`);
+    L.push('```');
+    L.push('');
+    const violations = (ctx.depcruise.summary && ctx.depcruise.summary.violations) || [];
+    L.push('## 違反');
+    L.push('');
+    if (violations.length) {
+      L.push('| from | to | rule | severity |');
+      L.push('|---|---|---|---|');
+      for (const v of violations.slice().sort((a, b) => String(a.from).localeCompare(String(b.from)))) {
+        L.push(`| ${mdEscape(v.from)} | ${mdEscape(v.to)} | ${mdEscape(v.rule && v.rule.name)} | ${mdEscape(v.rule && v.rule.severity)} |`);
+      }
+    } else L.push('違反なし。');
+    L.push('');
+    return L.join('\n');
+  }
+  // 実態が無いとき: config.yaml のティア・契約から「決定からの図」を描き、実態は未取得と明示する。
+  L.push('## 決定からの図 (dependency-cruiser 未実行)');
+  L.push('');
+  L.push('実態 (コードの import) は未取得 (`reports/depcruise.json` が無い)。下図は `.distillery/config.yaml` の');
+  L.push('ティアと契約から描いた**決定上の依存** (契約の consumer → provider)。実態を得るには asbuilt 段階で');
+  L.push('`depcruise --output-type json` を実行する。');
+  L.push('');
+  const tiers = ctx.config.tiers || [];
+  const contracts = ctx.config.contracts || [];
+  const dirOf = new Map(tiers.map((t) => [t.id, t.dir || `apps/${t.id}`]));
+  const label = (id) => dirOf.get(id) || id;
   const edges = new Set();
-  for (const mod of ctx.depcruise.modules || []) {
-    const from = collapse(mod.source);
-    for (const dep of mod.dependencies || []) {
-      const to = collapse(dep.resolved || dep.module);
-      if (from && to && from !== to) edges.add(`${from}\u0000${to}`);
+  for (const c of contracts) {
+    if (!c.provider) continue;
+    for (const consumer of (c.consumers || [])) {
+      edges.add(`${label(consumer)}\u0000${label(c.provider)}\u0000${c.id}`);
     }
   }
   L.push('```mermaid');
   L.push('graph LR');
-  const nodes = new Set();
+  const nodes = new Set(tiers.map((t) => label(t.id)));
   for (const e of [...edges].sort()) { const [a, b] = e.split('\u0000'); nodes.add(a); nodes.add(b); }
-  for (const e of [...edges].sort()) { const [a, b] = e.split('\u0000'); L.push(`  ${nodeId(a)}["${a}"] --> ${nodeId(b)}["${b}"]`); }
-  if (!edges.size) for (const n of [...nodes].sort()) L.push(`  ${nodeId(n)}["${n}"]`);
+  for (const n of [...nodes].sort()) L.push(`  ${nodeId(n)}["${n}"]`);
+  for (const e of [...edges].sort()) {
+    const [a, b, id] = e.split('\u0000');
+    L.push(`  ${nodeId(a)} -->|${mdEscape(id)}| ${nodeId(b)}`);
+  }
   L.push('```');
-  L.push('');
-  const violations = (ctx.depcruise.summary && ctx.depcruise.summary.violations) || [];
-  L.push('## 違反');
-  L.push('');
-  if (violations.length) {
-    L.push('| from | to | rule | severity |');
-    L.push('|---|---|---|---|');
-    for (const v of violations.slice().sort((a, b) => String(a.from).localeCompare(String(b.from)))) {
-      L.push(`| ${mdEscape(v.from)} | ${mdEscape(v.to)} | ${mdEscape(v.rule && v.rule.name)} | ${mdEscape(v.rule && v.rule.severity)} |`);
-    }
-  } else L.push('違反なし。');
   L.push('');
   return L.join('\n');
 }
