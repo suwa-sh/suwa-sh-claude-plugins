@@ -41,11 +41,11 @@ test('buildFlows は全シナリオを合算し、読み書きを辺の種類で
   // books は s1 で読み、s2 で書く → 読/書
   const booksId = text.match(/(n\d+)\[\(books\)\]/)[1];
   const ucId = text.match(/(n\d+)\[RegisterLoan\]/)[1];
-  assert.ok(text.includes(`${ucId} == 読/書 ==> ${booksId}`), text);
+  assert.ok(text.includes(`${ucId} == Read/Write ==> ${booksId}`), text);
   const loansId = text.match(/(n\d+)\[\(loans\)\]/)[1];
-  assert.ok(text.includes(`${ucId} == 書 ==> ${loansId}`));
+  assert.ok(text.includes(`${ucId} == Write ==> ${loansId}`));
   // 発行
-  assert.match(text, /-- 発行 --> n\d+/);
+  assert.match(text, /-- Publish --> n\d+/);
   // 画面 → API は 1 本 (http.out 自身のノードは無い)
   assert.doesNotMatch(text, /\/api\/v1\/loans/);
   // 決定論
@@ -80,7 +80,7 @@ test('renderSystemDataFlow は UC × テーブルの表と図を描く', () => {
   assert.match(md, /\| books \| RW \| - \|/);
   assert.match(md, /\| loans \| W \| ● \|/);
   assert.match(md, /flowchart LR/);
-  assert.match(md, /== 読\/書 ==>/);
+  assert.match(md, /== Read\/Write ==>/);
   assert.equal(renderSystemDataFlow(index), md);
   assert.match(renderSystemDataFlow({ ucs: {} }), /トレースなし/);
 });

@@ -111,8 +111,21 @@ function presentKinds(adrs) {
   return kinds.size ? [...kinds].filter(k => TIER_KINDS.includes(k)) : [...TIER_KINDS];
 }
 
-function renderFile(templateBody, rules, basisLine) {
-  let body = templateBody.replace(/\s+$/, '');
+/** index.md の「ファイル | 対象」表の行。実在する (生成する) ファイルだけをリンクで並べる。 */
+function renderFileTable(targets) {
+  const label = (name) => {
+    if (name === 'common.md') return '全ティア共通';
+    if (name === 'testing.md') return 'テスト 4 段・転写規約・実体 I/O';
+    const m = name.match(/^tier-(.+)\.md$/);
+    return m ? `${m[1]} ティア` : name;
+  };
+  // 並びは読む順: common → 自ティア → testing
+  const order = (n) => (n === 'common.md' ? 0 : n === 'testing.md' ? 2 : 1);
+  return targets.filter((n) => n !== 'index.md').sort((a, b) => order(a) - order(b) || (a < b ? -1 : a > b ? 1 : 0)).map((n) => `| [${n}](${n}) | ${label(n)} |`).join('\n');
+}
+
+function renderFile(templateBody, rules, basisLine, targets = []) {
+  let body = templateBody.replace(/\s+$/, '').replace('<!-- rules:files -->', renderFileTable(targets));
   if (rules && rules.length) {
     body += '\n\n' + renderDecisionRules(rules);
   }
@@ -144,7 +157,7 @@ function run(o) {
       continue;
     }
     const tpl = fs.readFileSync(tplPath, 'utf8');
-    const content = renderFile(tpl, byScope[name], basisLine);
+    const content = renderFile(tpl, byScope[name], basisLine, targets);
     fs.writeFileSync(outFile, content);
     written.push(name);
   }
@@ -159,4 +172,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { parseArgs, scopeToFile, collectRules, presentKinds, renderFile, renderDecisionRules, run };
+module.exports = { parseArgs, scopeToFile, collectRules, presentKinds, renderFile, renderFileTable, renderDecisionRules, run };

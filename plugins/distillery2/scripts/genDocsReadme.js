@@ -163,7 +163,9 @@ function build(ctx) {
   const inputs = listDir(D('input')).filter((e) => e.isFile()).map((e) => ref(D('input', e.name), e.name));
   stage('入力', '初期要望', inputs, []);
   stage('① 要求', '要求・仕様・受入基準、業務と UC', [ref(D('requirements', 'requirements.md'), '要求仕様書 (USDM)'), ref(D('requirements', 'rdra', 'views', 'README.md'), 'RDRA の図解'), ref(D('requirements', '_review-summary.md'), '確認材料')], [ref(D('requirements', 'requirements.yaml'), 'requirements.yaml'), ref(D('requirements', 'use-cases.yaml'), 'use-cases.yaml'), ref(D('requirements', 'rdra'), 'rdra/')]);
-  stage('② 決定', '非機能グレード、ADR、C4 図', [ref(D('nfr', 'nfr-grade.md'), '非機能グレード表'), ref(D('adr', 'index.md'), 'ADR 一覧'), ref(D('adr', 'architecture.md'), 'C4 図'), ref(D('adr', '_review-summary.md'), '確認材料')], [ref(D('nfr', 'nfr-grade.yaml'), 'nfr-grade.yaml'), ref(D('adr'), 'adr/*.md の front matter')]);
+  // 「決めること」に挙げたものは、無くても「未生成」と書く (どこにあるはずかを読者が探さなくて済むように)
+  const c4 = ref(D('adr', 'architecture.md'), 'C4 図') || (ctx.adrs.length ? 'C4 図: 未生成 (d2-decide の `genArchitectureDoc.js` で `adr/architecture.md` に生成)' : null);
+  stage('② 決定', '非機能グレード、ADR、C4 図', [ref(D('nfr', 'nfr-grade.md'), '非機能グレード表'), ref(D('adr', 'index.md'), 'ADR 一覧'), c4, ref(D('adr', '_review-summary.md'), '確認材料')], [ref(D('nfr', 'nfr-grade.yaml'), 'nfr-grade.yaml'), ref(D('adr'), 'adr/*.md の front matter')]);
   stage('③ 基盤', '開発ルール、契約、テスト基盤、画面部品', [ref(D('rules', 'index.md'), '開発ルール'), ref(D('design', '_review-summary.md'), '画面の確認材料')], [ref(path.resolve(ctx.cwd, 'contracts', 'contracts.json'), 'contracts/'), ref(path.resolve(ctx.cwd, '.distillery', 'config.yaml'), '.distillery/config.yaml'), ref(D('design', 'screens.yaml'), 'screens.yaml')]);
   stage('④ UC', 'シナリオ、契約差分、実装、as-built', [ref(D('as-built', '_system', 'index.md'), 'as-built 一覧')], [ref(path.resolve(ctx.cwd, 'features'), 'features/'), ref(D('as-built', '_system', 'traceability-index.json'), '追跡表')]);
   out.push('');

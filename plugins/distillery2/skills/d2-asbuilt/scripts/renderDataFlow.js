@@ -6,7 +6,7 @@
  *   - 外部実体: UC のアクター ((名前))
  *   - 処理    : ティアごとの subgraph に、API operation と部品 (call の component)
  *   - データ  : テーブル [(name)]、発行メッセージ >name]、外部ホスト [[host]]
- *   - 辺      : 呼び出し -->、読み -. 読 .->、書き == 書 ==>、読み書き両方は == 読/書 ==>
+ *   - 辺      : 呼び出し -->、読み -. Read .->、書き == Write ==>、両方 == Read/Write ==>、発行 -- Publish -->
  * すべて重複排除・ソート済み (決定論)。
  *
  * システム横断 (_system/data-flow.md) は traceability-index の UC × テーブルから CRUD 表と UC → テーブルの図を描く。
@@ -114,10 +114,10 @@ function esc(s) { return String(s == null ? '' : s).replace(/"/g, "'").replace(/
 function edgeText(modes) {
   const m = new Set(modes);
   const rw = m.has('read') && m.has('write') ? 'rw' : m.has('write') ? 'w' : m.has('read') ? 'r' : null;
-  if (rw === 'rw') return '== 読/書 ==>';
-  if (rw === 'w') return '== 書 ==>';
-  if (rw === 'r') return '-. 読 .->';
-  if (m.has('publish')) return '-- 発行 -->';
+  if (rw === 'rw') return '== Read/Write ==>';
+  if (rw === 'w') return '== Write ==>';
+  if (rw === 'r') return '-. Read .->';
+  if (m.has('publish')) return '-- Publish -->';
   return '-->';
 }
 
@@ -167,7 +167,7 @@ function renderSystemDataFlow(index) {
   const L = [];
   L.push('# データフロー (抽出)');
   L.push('');
-  L.push('UC がどのテーブルを読み書きするか。R = 読む、W = 書く、RW = 両方。UC ごとの詳しい流れは各 as-built の「どう動くか」。');
+  L.push('UC がどのテーブルを読み書きするか。R = Read、W = Write、RW = 両方。UC ごとの詳しい流れは各 UC の実装の記録の「どう動くか」。');
   L.push('');
   if (!slugs.length || !tables.size) { L.push('トレースなし。'); L.push(''); return L.join('\n'); }
   L.push(`| テーブル | ${slugs.map((s) => index.ucs[s].uc || s).join(' | ')} |`);

@@ -57,6 +57,12 @@ test('genRules: only present tier kinds get files', () => {
   assert.ok(files.includes('tier-backend.md') && files.includes('tier-frontend.md') && files.includes('tier-worker.md'));
   assert.ok(!files.includes('tier-cli.md'), 'cli not declared but emitted');
   assert.ok(files.includes('index.md'));
+  // index.md は各ルールへのリンクを持つ (雛形の `tier-<kind>.md` ではなく実在するファイル)
+  const index = fs.readFileSync(path.join(c, 'docs/rules/index.md'), 'utf8');
+  assert.match(index, /\| \[common\.md\]\(common\.md\) \| 全ティア共通 \|/);
+  assert.match(index, /\| \[testing\.md\]\(testing\.md\) \|/);
+  for (const f of files.filter((n) => n.startsWith('tier-'))) assert.ok(index.includes(`[${f}](${f})`), f);
+  assert.doesNotMatch(index, /tier-<kind>|rules:files/);
 });
 
 test('genRules: hand-written rule ファイルは上書きせず exit 1、--force で上書き', () => {

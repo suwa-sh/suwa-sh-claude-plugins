@@ -588,7 +588,7 @@ function buildIndexMd(ctx, preserved) {
   if (ctx.traces.length) {
     L.push('### データの流れ');
     L.push('');
-    L.push('全シナリオを合算。点線は読み、太線は書き。');
+    L.push('全シナリオを合算。点線は Read、太線は Write。');
     L.push('');
     L.push('```mermaid');
     L.push(renderFlowchart(buildFlows(ctx.traces, { actor: ctx.actor })));
@@ -1071,16 +1071,23 @@ function nodeId(label) { return 'n_' + String(label).replace(/[^A-Za-z0-9]/g, '_
 
 function buildSystemIndex(index) {
   const L = [];
-  L.push('# as-built 一覧 (抽出)');
+  L.push('# 実装の記録 (UC ごと)');
   L.push('');
-  L.push('| 業務 / UC | slug | ゲート | 生成日時 | ドキュメント |');
-  L.push('|---|---|---|---|---|');
-  for (const slug of Object.keys(index.ucs).sort(cmpStr)) {
+  L.push('UC 名を押すと、その UC の記録 (概要 → 結果 → 入口 → どう動くか → 何を守るか → 決めたこと → 課題 → 証跡) に移る。');
+  L.push('');
+  L.push('| 業務 | UC (記録へ) | ゲート | 生成日時 |');
+  L.push('|---|---|---|---|');
+  let lastBiz = null;
+  for (const slug of Object.keys(index.ucs).sort((a, b) => cmpStr(`${index.ucs[a].business}\u0000${index.ucs[a].uc}`, `${index.ucs[b].business}\u0000${index.ucs[b].uc}`))) {
     const e = index.ucs[slug];
-    L.push(`| ${mdEscape(e.business)} / ${mdEscape(e.uc)} | ${slug} | ${e.gates || '-'} | ${e.generated_at || '-'} | [index](${e.as_built}index.md) |`);
+    const biz = e.business === lastBiz ? '' : mdEscape(e.business);
+    lastBiz = e.business;
+    // このファイル (docs/as-built/_system/index.md) から見た相対パス
+    const rel = path.relative(path.join(index.__docsRoot || 'docs', 'as-built', '_system'), path.join(e.as_built, 'index.md')).split(path.sep).map((x) => (x === '..' ? x : encodeURIComponent(x))).join('/');
+    L.push(`| ${biz} | [${mdEscape(e.uc)}](${rel}) | ${e.gates || '-'} | ${e.generated_at || '-'} |`);
   }
   L.push('');
-  L.push('横断: [API インベントリ](api-inventory.md) / [データフロー](data-flow.md) / [依存グラフ](dependency-graph.md)');
+  L.push('横断して見る: [API インベントリ](api-inventory.md) / [データフロー](data-flow.md) / [依存グラフ](dependency-graph.md) / [追跡表 (機械向け)](traceability-index.json)');
   L.push('');
   return L.join('\n');
 }
@@ -1122,7 +1129,7 @@ function run(opts) {
   ensureWrite(path.join(systemDir, 'api-inventory.md'), buildApiInventory(ctx, index));
   ensureWrite(path.join(systemDir, 'dependency-graph.md'), buildDependencyGraph(ctx));
   ensureWrite(path.join(systemDir, 'data-flow.md'), renderSystemDataFlow(ordered));
-  ensureWrite(path.join(systemDir, 'index.md'), buildSystemIndex(index));
+  ensureWrite(path.join(systemDir, 'index.md'), buildSystemIndex({ ...index, __docsRoot: ctx.docsRoot }));
 
   return { asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length, instrumentation_gaps: ctx.instrumentation.gaps, instrumentation_happy_gaps: ctx.instrumentation.happy_gaps, summary_violations: summaryViolations.length };
 }

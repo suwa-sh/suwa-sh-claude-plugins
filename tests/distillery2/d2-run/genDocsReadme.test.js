@@ -85,6 +85,10 @@ test('段階の表・UC 一覧 (背骨)・決めたこと・契約を、実在�
   assert.match(md, /\| {2}\| 返却を登録する \| 要求待ち \| なし \| - \| - \| - \| - \|/);
   assert.match(md, /<summary>要求待ちの理由 \(1\)<\/summary>\n\n- 返却を登録する: 対応する仕様が無い/);
   assert.match(md, /\| \[0001\]\(adr\/0001-tiers\.md\) \| ティアは 2 つ \| accepted \|/);
+  assert.match(md, /C4 図: 未生成 \(d2-decide の/); // ADR はあるが architecture.md が無い
+  W(dir, 'docs/adr/architecture.md', '# C4\n');
+  run(opts(dir));
+  assert.match(fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8'), /\[C4 図\]\(adr\/architecture\.md\)/);
   assert.match(md, /モデルシステム model2、重要項目 1 \/ 2/);
   assert.match(md, /\| api \| openapi \| backend-api \| frontend \| \[openapi\/openapi\.yaml\]\(\.\.\/contracts\/openapi\/openapi\.yaml\) \|/);
   assert.doesNotMatch(md, /distillery2 以外の文書/);

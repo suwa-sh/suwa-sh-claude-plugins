@@ -1,6 +1,6 @@
 # データフロー (抽出)
 
-UC がどのテーブルを読み書きするか。R = 読む、W = 書く、RW = 両方。UC ごとの詳しい流れは各 as-built の「どう動くか」。
+UC がどのテーブルを読み書きするか。R = Read、W = Write、RW = 両方。UC ごとの詳しい流れは各 UC の実装の記録の「どう動くか」。
 
 | テーブル | 貸出を登録する |
 |---|---|
@@ -22,11 +22,11 @@ flowchart LR
     n4[(patrons)]
     n5[(reservation_events)]
     n6[(reservations)]
-    n7 == 書 ==> n0
-    n7 == 読/書 ==> n1
-    n7 == 書 ==> n2
-    n7 == 読/書 ==> n3
-    n7 -. 読 .-> n4
-    n7 == 書 ==> n5
-    n7 == 読/書 ==> n6
+    n7 == Write ==> n0
+    n7 == Read/Write ==> n1
+    n7 == Write ==> n2
+    n7 == Read/Write ==> n3
+    n7 -. Read .-> n4
+    n7 == Write ==> n5
+    n7 == Read/Write ==> n6
 ```
