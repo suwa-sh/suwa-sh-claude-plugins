@@ -13,11 +13,31 @@ version の正本は `.claude-plugin/plugin.json`。
 - **cucumber 設定**: ESM の default export を既定プロファイルそのものにする (`{ default: {...} }` の二重包みを解消)。実装アプリ未生成でも `--dry-run` できる `dryrun` プロファイルを追加。
 - **tracer**: sanitizeScenarioId に sha256 8 桁を接尾し、日本語シナリオ名が同一ファイルへ衝突する問題を解消。
 - **消費側 API クライアント生成**: genApiClient.js を追加し、OpenAPI から types.ts / client.ts / server.ts を生成する (v1 の openapi-generator codegen の置き換え)。
+- **genApiClient の型変換**: JSON Schema → TypeScript の境界ケースを正しく変換する。名前付き・インライン object の `allOf` を交差型 (`A & B & { ... }`) として保持し、既知プロパティと衝突する `additionalProperties` は index signature ではなく `{ ... } & Record<string, T>` にして TS2411 を回避。ハイフン等の識別子にできない path/query パラメータ名は `args["book-id"]` でアクセスし、`args.["book-id"]` の構文エラーを解消。
+- **genSkeleton の app tsconfig**: `rootDir` を外し、契約テスト (`test/contract/*.test.ts`) 生成後も `tsc --noEmit -p .` が TS6059 を出さないようにする。frontend ティアがある場合は `jsdom` を root devDependencies へ追加 (frontend の vitest は `environment: 'jsdom'`)。
+- **importUi の冪等化**: 既存の `packages/ui/package.json` は管理キー (`name` / `type` / `main`) だけ更新し、手編集した `exports` 等を保持する。`.imported.yaml` に `content_sha256` を持たせ、取り込み内容が同じなら `imported_at` を据え置いて再実行をバイト一致させる。
 - **as-built**: 前提の処遇を tier + id で引き、別ティアの同 id が上書きする問題を解消。
 - **prTrailers**: url が無い還流を `Feedback: rule:null` として出さない。
 - **config**: verifier 既定を有効な model 別名 `opus` にする (`claude-opus-5` は model パラメータとして無効)。
 - **d2-run ドキュメント**: サブエージェント報告の捏造禁止、clean-tree 判定の範囲、implementer/verifier のモデル解決を明記。
 - **決定候補 / d2-design**: 単一 frontend を既定にし、d2-design が ADR の `ui:` ヒント (framework / SPA vs SSR) に従うようにする。
+
+### 移行手順 (0.1.0 → 0.1.1)
+
+0.1.0 で生成済みのプロジェクトは、リポジトリのルートで移行コマンドを 1 回実行する。
+
+```bash
+node <plugin>/skills/d2-foundation/scripts/genSkeleton.js --adr docs/adr --migrate
+```
+
+`--migrate` は次を行う。既存ファイルは書き換え対象を限定し、手編集は保持する。
+
+- **不足ファイルの生成**: 0.1.0 に無かった各 app の `tsconfig.json` / `vitest.config.ts` と root の `biome.json` を新規作成する (既存は上書きしない)。
+- **`.gitignore` の管理ブロック更新**: `# distillery2 実行状態` から始まる管理ブロックを最新化し、`.distillery/runs/*/attempt-*/` の除外を外す (attempt は成果物として追跡する)。
+- **app package.json の実コマンド化**: `apps/*/package.json` の scripts が 0.1.0 の echo プレースホルダと完全一致する場合だけ、実コマンド (`vitest run` / `tsc --noEmit -p .` / `biome lint .` / `biome format .`) へ差し替える。手編集済みの script は触らない。
+- **変更の報告**: 変更したファイルと内容を標準出力へ列挙する。
+
+移行後は `npm install` で追加依存 (frontend では `jsdom`) を取得する。
 
 ## [0.1.0] - 2026-09-23
 

@@ -51,14 +51,13 @@ function schemaToTs(schema) {
   } else if (Array.isArray(schema.oneOf) || Array.isArray(schema.anyOf)) {
     const alts = (schema.oneOf || schema.anyOf).map((s) => wrapUnion(schemaToTs(s)));
     parts.push(alts.join(' | '));
-  } else if (Array.isArray(schema.allOf)) {
-    parts.push(schema.allOf.map((s) => wrapUnion(schemaToTs(s))).join(' & '));
+  } else if (Array.isArray(schema.allOf) || types === 'object' || isObj(schema.properties) || schema.additionalProperties != null) {
+    // allOf は交差型として保持し、object の既知プロパティ・additionalProperties と合成する
+    parts.push(objectTs(schema));
   } else if (Array.isArray(types)) {
     parts.push(types.map((t) => scalarTs(t, schema)).map(wrapUnion).join(' | '));
   } else if (types === 'array' || schema.items) {
     parts.push(`${wrapUnion(schemaToTs(schema.items || {}))}[]`);
-  } else if (types === 'object' || isObj(schema.properties) || schema.additionalProperties != null) {
-    parts.push(objectTs(schema));
   } else if (typeof types === 'string') {
     parts.push(scalarTs(types, schema));
   } else {
@@ -87,8 +86,17 @@ function wrapUnion(expr) {
   return /[|&]/.test(expr) && !/^\(.*\)$/.test(expr) ? `(${expr})` : expr;
 }
 
-/** object スキーマを `{ key: T; key?: T }` 形へ。additionalProperties でインデックス型を足す。 */
+/**
+ * object スキーマを型式へ。allOf は交差型 (A & B) として保持し、既知プロパティの `{ ... }` と
+ * additionalProperties の `Record<string, T>` を交差で合成する。
+ * additionalProperties を index signature ではなく Record 交差にすることで、既知プロパティの型と
+ * index 型が衝突しても TS2411 にならず必ずコンパイルできる (指摘 3)。
+ */
 function objectTs(schema) {
+  const parts = [];
+  if (Array.isArray(schema.allOf)) {
+    for (const sub of schema.allOf) parts.push(wrapUnion(schemaToTs(sub)));
+  }
   const props = isObj(schema.properties) ? schema.properties : {};
   const required = new Set(Array.isArray(schema.required) ? schema.required : []);
   const fields = [];
@@ -96,23 +104,43 @@ function objectTs(schema) {
     const opt = required.has(key) ? '' : '?';
     fields.push(`${tsIdent(key)}${opt}: ${schemaToTs(sub)}`);
   }
+  if (fields.length) parts.push(`{ ${fields.join('; ')} }`);
   const ap = schema.additionalProperties;
-  if (ap === true) fields.push('[key: string]: unknown');
-  else if (isObj(ap)) fields.push(`[key: string]: ${schemaToTs(ap)}`);
-  if (!fields.length) return 'Record<string, never>';
-  return `{ ${fields.join('; ')} }`;
+  let apType = null;
+  if (ap === true) apType = 'unknown';
+  else if (isObj(ap)) apType = schemaToTs(ap);
+  if (apType !== null) parts.push(`Record<string, ${apType}>`);
+  if (!parts.length) return 'Record<string, never>';
+  return parts.join(' & ');
 }
 
-/** 名前付き component スキーマを export 宣言に。object は interface、その他は type alias。 */
+/** 交差や Record を含まない単一の `{ ... }` リテラルか判定する (interface に展開できるか)。 */
+function isSingleObjectLiteral(expr) {
+  const s = expr.trim();
+  if (s[0] !== '{') return false;
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '{' || ch === '(' || ch === '[') depth++;
+    else if (ch === '}' || ch === ')' || ch === ']') { depth--; if (depth === 0) return i === s.length - 1; }
+  }
+  return false;
+}
+
+/** 名前付き component スキーマを export 宣言に。単一 object リテラルは interface、交差型・その他は type alias。 */
 function renderNamedSchema(name, schema) {
-  const isPlainObject = isObj(schema) && !schema.$ref && !schema.enum
-    && (schema.type === 'object' || (isObj(schema.properties) && !Array.isArray(schema.type)));
-  if (isPlainObject) {
+  const objectLike = isObj(schema) && !schema.$ref && !schema.enum
+    && !Array.isArray(schema.oneOf) && !Array.isArray(schema.anyOf) && !Array.isArray(schema.type)
+    && (schema.type === 'object' || isObj(schema.properties) || Array.isArray(schema.allOf) || schema.additionalProperties != null);
+  if (objectLike) {
     const body = objectTs(schema);
-    // `{ a: b; c: d }` を複数行 interface に展開する
-    const inner = body.replace(/^\{ /, '').replace(/ \}$/, '');
-    const lines = inner === 'Record<string, never>' ? [] : splitFields(inner);
-    return `export interface ${name} {\n${lines.map((l) => `  ${l};`).join('\n')}${lines.length ? '\n' : ''}}`;
+    if (isSingleObjectLiteral(body)) {
+      // `{ a: b; c: d }` を複数行 interface に展開する
+      const inner = body.replace(/^\{ /, '').replace(/ \}$/, '');
+      const lines = splitFields(inner);
+      return `export interface ${name} {\n${lines.map((l) => `  ${l};`).join('\n')}${lines.length ? '\n' : ''}}`;
+    }
+    return `export type ${name} = ${body};`;
   }
   return `export type ${name} = ${schemaToTs(schema)};`;
 }
@@ -246,7 +274,7 @@ function buildClient(bundle, index) {
     const resultDecl = `export type ${resultType} =\n${resultAlts.map((a) => `  | ${a}`).join('\n')};\n\n`;
 
     // パス構築
-    const pathExpr = '`${options.baseUrl ?? \'\'}' + entry.path.replace(/\{([^}]+)\}/g, (_, n) => '${encodeURIComponent(String(args.' + jsAccess(n) + '))}') + '`';
+    const pathExpr = '`${options.baseUrl ?? \'\'}' + entry.path.replace(/\{([^}]+)\}/g, (_, n) => '${encodeURIComponent(String(' + argAccess(n) + '))}') + '`';
     const argParam = hasArgs ? `args: ${argsType}, ` : '';
     const queryLine = queryParams.length
       ? `  const url = withQuery(${pathExpr}, args.query as Record<string, unknown> | undefined);\n`
@@ -296,7 +324,8 @@ async function parseBody(res: Response): Promise<unknown> {
   return `${preamble}\n${fnBlocks.join('\n\n')}\n`;
 }
 
-const jsAccess = (name) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : `[${JSON.stringify(name)}]`);
+// 識別子として使える名前は `args.name`、そうでなければ `args["name"]` を組み立てる (指摘 4)。
+const argAccess = (name) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? `args.${name}` : `args[${JSON.stringify(name)}]`);
 
 /**
  * openapi 契約 1 件から生成ファイル Map (rel → ヘッダ付き本文) を作る純関数。

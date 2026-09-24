@@ -15,7 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { stamp, headerLine } = require('../../../scripts/lib/basis');
-const { stringifyYaml } = require('../../../scripts/lib/yaml');
+const { stringifyYaml, parseYaml } = require('../../../scripts/lib/yaml');
 
 function parseArgs(argv) {
   const o = { cwd: process.cwd() };
@@ -78,15 +78,35 @@ function run(o) {
     || relPaths.find(p => /^components\/.*\.(t|j)sx?$/.test(p))
     || relPaths.find(p => /\.(t|j)sx?$/.test(p))
     || 'index.ts';
-  const uiPkg = {
-    name: '@repo/ui', version: '0.0.0', private: true, type: 'module',
-    main: entry, module: entry, types: entry,
-  };
-  fs.writeFileSync(path.join(uiDir, 'package.json'), JSON.stringify(uiPkg, null, 2) + '\n');
+  // 既存の package.json は管理キー (name/type/main) だけ更新し、手編集した設定 (exports 等) を保持する (指摘 6)。
+  const uiPkgPath = path.join(uiDir, 'package.json');
+  const managed = { name: '@repo/ui', type: 'module', main: entry };
+  let uiPkg = null;
+  if (fs.existsSync(uiPkgPath)) {
+    try { uiPkg = JSON.parse(fs.readFileSync(uiPkgPath, 'utf8')); } catch { uiPkg = null; }
+  }
+  if (uiPkg && typeof uiPkg === 'object' && !Array.isArray(uiPkg)) {
+    Object.assign(uiPkg, managed);
+  } else {
+    uiPkg = { name: '@repo/ui', version: '0.0.0', private: true, type: 'module', main: entry, module: entry, types: entry };
+  }
+  fs.writeFileSync(uiPkgPath, JSON.stringify(uiPkg, null, 2) + '\n');
 
+  // 取り込み内容のハッシュ (ファイル一覧 path+sha256 から導出)。内容が同じなら imported_at を据え置き、
+  // 同じ入力での再実行が .imported.yaml をバイト一致させる (指摘 7)。
+  const contentSha256 = crypto.createHash('sha256')
+    .update(files.map(f => `${f.path}:${f.sha256}`).join('\n')).digest('hex');
+  const manifestPath = path.join(uiDir, '.imported.yaml');
+  let importedAt = new Date().toISOString();
+  if (fs.existsSync(manifestPath)) {
+    try {
+      const prev = parseYaml(fs.readFileSync(manifestPath, 'utf8').split('\n').filter(l => !l.startsWith('#')).join('\n'));
+      if (prev && prev.content_sha256 === contentSha256 && typeof prev.imported_at === 'string') importedAt = prev.imported_at;
+    } catch { /* 壊れた manifest は無視して作り直す */ }
+  }
   const basisLine = headerLine(stamp({ design: o.from }, o.cwd));
-  const manifest = { basis: basisLine.replace(/^basis:\s*/, ''), from: o.from, imported_at: new Date().toISOString(), entry, files };
-  fs.writeFileSync(path.join(uiDir, '.imported.yaml'), `# ${basisLine}\n` + stringifyYaml(manifest));
+  const manifest = { basis: basisLine.replace(/^basis:\s*/, ''), from: o.from, imported_at: importedAt, entry, content_sha256: contentSha256, files };
+  fs.writeFileSync(manifestPath, `# ${basisLine}\n` + stringifyYaml(manifest));
   return { code: 0, count: files.length, entry };
 }
 
