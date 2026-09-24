@@ -39,6 +39,35 @@ ui:
 - `rendering: spa` なら d2-design は SPA 構成 (例 Vite + React) で Storybook を作る。Next.js は `rendering: ssr`/`ssg` を選んだときだけ使う。
 - モバイル / SEO 要件から SSR/SSG が必要かは [tiers.md](tiers.md) の frontend の目安に従って決める。
 
+## ブランド方針 `ui.brand` (d2-design のトークンの起点)
+
+**ブランドは UI ADR が人の決める場所**。`ui:` に `brand` を持たせ、d2-design はここを起点に色・タイポグラフィの
+primitive トークンを作る (design 側で再推論しない)。決め方:
+
+- `brand` スキルが使えるなら (`~/.claude/skills/brand` / `~/.agents/skills/brand` / `.claude/skills/brand`、
+  またはプラグインのスキル一覧) それを走らせ / 出力を読み、`ui.brand` を埋める。`source: "brand skill"`。
+- 使えなければ RDRA (システム名・アクター・ドメイン語) から推論し、`source: "inferred"` と `confidence: low` を付ける。
+  低確信なので `_review-summary.md` に「確認してほしいこと」として載せ、人が UI ADR で確定する。
+
+```yaml
+ui:
+  framework: react
+  rendering: spa
+  design_system: true
+  component_lib: true
+  brand:
+    name: 図書館システム
+    tagline: 蔵書をすぐ探せる      # 任意
+    colors: { primary: "#2563EB", secondary: "#0EA5E9", accent: "#F59E0B", neutral: "#64748B" }
+    typography: { heading: "Inter", body: "Inter" }
+    tone: [信頼できる, 静か]        # 任意
+    source: "inferred"            # brand skill | inferred | <path>
+    confidence: low
+```
+
+- 必須は `name` / `colors.primary` / `typography.heading` / `typography.body` / `source`。他は任意。
+- 色は 16 進 (`#RRGGBB`)。ベンダー名でなく値で書く。
+
 ## 国際化 (i18n)
 
 - **向く条件**: 多言語要件がある。

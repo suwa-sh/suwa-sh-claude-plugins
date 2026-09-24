@@ -4,6 +4,18 @@
 出力先は Storybook app の `src/tokens/tokens.json` と `src/styles/design-tokens.css`
 (どちらも `src/` 配下。F6 の `importUi.js` は `src/` だけを取り込むため)。
 
+## ブランド起点 (再推論しない)
+
+**UI ADR の `ui.brand` があれば primitive トークンはそこを起点にする。** 色・フォントを design 側で推論し直さない
+(決定は ADR に集約する)。
+
+- `brand.colors.primary` → primitive の主要色スケールの基点 (600 相当)。`secondary` / `accent` / `neutral` が
+  あればそれぞれ対応する色スケールの基点にする。
+- `brand.typography.heading` / `body` → フォントファミリの primitive。
+- `ui.brand` が無いときだけ RDRA (システム名・ドメイン語) から色・フォントを推論する。
+- `brand.source` (brand skill / inferred / パス) は `_review-summary.md` に載せる。`inferred` の色・フォントは
+  低確信として「確認してほしいこと」に含める。
+
 ## 3 層構造
 
 ```
