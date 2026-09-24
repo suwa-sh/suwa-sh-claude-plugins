@@ -8,7 +8,7 @@
  * 規則 (references/asbuilt-format.md「要約の書式」が正本):
  *   R1 各ブロックは空でない
  *   R2 各ブロックに、見出し行 + 区切り行 + データ行 1 行以上 の表がある
- *   R3 表のセル 1 行 (`<br>` で分けた単位) は 40 字以内 (見出し行も)。見出しが「根拠」の最後の列だけ数えない。
+ *   R3 表のセル 1 行 (`<br>` で分けた単位) は 40 字以内 (見出し行も)。見出しがちょうど「根拠」の列だけ数えない。
  *      数えないのはコード位置 `path:line` と URL と強調記号だけ。`code` の中身や句読点は表示されるので数える
  *   R4 表の外に文を書かない (空行とコメント以外の行はすべて表の一部であること。空行で表は終わる)
  *   R5 見出し (#) を使わない (節の階層を壊す)
@@ -69,9 +69,10 @@ function check(md, opts = {}) {
     let tables = 0;
     // 表の状態機械: header → separator → data... (空行で表は終わる)
     let state = 'none';
-    let skipLast = false; // 最後の列が「根拠」のときだけ字数を数えない
+    let evidenceCol = -1; // 見出しがちょうど「根拠」の列だけ字数を数えない (行がその列を省いていれば全セルを数える)
     const checkCells = (cells, idx) => {
-      cells.slice(0, skipLast ? -1 : undefined).forEach((cell, ci) => {
+      cells.forEach((cell, ci) => {
+        if (ci === evidenceCol) return;
         for (const part of cell.split(/<br\s*\/?>/i)) {
           const n = visibleLength(part);
           if (n > maxCell) push(`R3 セルが ${maxCell} 字超 (${n} 字、${ci + 1} 列目)`, idx, part);
@@ -91,8 +92,8 @@ function check(md, opts = {}) {
       if (state === 'none' || state === 'header') {
         dropPendingHeader();
         const header = splitCells(l);
-        skipLast = /^根拠/.test(header[header.length - 1] || '');
-        checkCells(header.map((c) => c), idx); // 見出し行も数える (根拠列は除く)
+        evidenceCol = header.findIndex((c) => c === '根拠');
+        checkCells(header, idx); // 見出し行も数える (根拠列は除く)
         state = 'header';
         pendingHeader = { idx, l };
         return;

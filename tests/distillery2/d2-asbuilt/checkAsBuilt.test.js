@@ -50,6 +50,15 @@ test('見逃さない: 長い見出しセル、根拠列の無い表の最後の
   assert.ok(check(afterBlank).violations.some((v) => v.rule.startsWith('R4')), '空行の後のパイプ行');
   assert.equal(visibleLength('apps/backend-api/src/repository/loan/pg-loan-registration-repository.ts'), 71, '行番号の無いパスは表示文');
   assert.equal(visibleLength('*' + 'あ'.repeat(40) + '*'), 40, '単一の * は強調記号');
+  // 根拠セルを省いた行は、内容セルが最後の列になっても数える
+  const omitted = wrap('概要', '| 項目 | 内容 | 根拠 |\n|---|---|---|\n| 誰が | ' + 'あ'.repeat(41) + ' |');
+  assert.ok(check(omitted).violations.some((v) => v.rule.startsWith('R3')), '根拠セルを省いた行');
+  // 「根拠なし」のような別名は根拠列と認めない
+  const alias = wrap('概要', '| 項目 | 内容 | 根拠なし |\n|---|---|---|\n| 誰が | 短い | ' + 'あ'.repeat(41) + ' |');
+  assert.ok(check(alias).violations.some((v) => v.rule.startsWith('R3')), '根拠の別名');
+  // 根拠列が途中にあっても、その列だけ除外する
+  const middle = wrap('概要', '| 項目 | 根拠 | 内容 |\n|---|---|---|\n| 誰が | ' + 'い'.repeat(100) + ' x.ts:1 | 短い |');
+  assert.deepEqual(check(middle).violations, []);
 });
 
 test('自由文だけ・見出し・空を検出し、行番号はファイル内の行', () => {
