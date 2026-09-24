@@ -1,0 +1,57 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const { parseStories, run } = require('../../../plugins/distillery2/skills/d2-design/scripts/captureStories');
+
+test('parseStories は v7 の entries から story だけを id 昇順で返す', () => {
+  const index = {
+    v: 5,
+    entries: {
+      'button--primary': { id: 'button--primary', name: 'Primary', title: 'UI/Button', type: 'story' },
+      'button--docs': { id: 'button--docs', name: 'Docs', title: 'UI/Button', type: 'docs' },
+      'card--default': { id: 'card--default', name: 'Default', title: 'UI/Card', type: 'story' },
+    },
+  };
+  const stories = parseStories(index);
+  assert.deepEqual(stories.map((s) => s.id), ['button--primary', 'card--default']); // docs 除外・昇順
+  assert.equal(stories[0].title, 'UI/Button');
+});
+
+test('parseStories は v6 の stories 形式も読む (type 省略は story 扱い)', () => {
+  const index = { v: 3, stories: { 'a--x': { id: 'a--x', name: 'X', title: 'A' } } };
+  assert.deepEqual(parseStories(index).map((s) => s.id), ['a--x']);
+});
+
+test('parseStories は空・不正入力でも落ちない', () => {
+  assert.deepEqual(parseStories(null), []);
+  assert.deepEqual(parseStories({}), []);
+});
+
+test('playwright が無ければ exit 2 (目視未実施) で、Story 一覧は解析済み', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2cap-'));
+  const buildDir = path.join(dir, 'static');
+  fs.mkdirSync(buildDir, { recursive: true });
+  fs.writeFileSync(path.join(buildDir, 'index.json'), JSON.stringify({
+    v: 5, entries: { 'ui-button--primary': { id: 'ui-button--primary', name: 'Primary', title: 'UI/Button', type: 'story' } },
+  }));
+  // cwd を tmp にして playwright を解決不能にする (このリポにも playwright は無い)
+  const r = await run({ cwd: dir, buildDir });
+  assert.equal(r.code, 2);
+  assert.equal(r.reason, 'playwright_unavailable');
+  assert.equal(r.stories.length, 1);
+  // 撮影していないので png / index.md は書かれない
+  assert.equal(fs.existsSync(path.join(dir, 'docs/design/screenshots')), false);
+});
+
+test('index.json が無ければ exit 2 (目視未実施)', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2cap-'));
+  const buildDir = path.join(dir, 'static');
+  fs.mkdirSync(buildDir, { recursive: true });
+  const r = await run({ cwd: dir, buildDir });
+  assert.equal(r.code, 2);
+  assert.equal(r.reason, 'index_missing');
+});
