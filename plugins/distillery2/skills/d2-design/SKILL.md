@@ -34,6 +34,7 @@ LLM 主体のステージ。d2-run が段階③で、F3 (test-support) と F6 (�
   (省略時 `gui`) が `gui` 以外、または ADR の tier に `frontend` / `presentation` / `ui` が無いなら、
   design を生成せず「画面を持たないプロダクトのため design を skip」と報告して終了する。
 - GUI なら RDRA / use-cases.yaml / ADR / NFR を読み、ポータル・画面一覧・コンポーネント候補を抽出する。
+- **ADR の `ui:` ヒントを読み、従う。** `scope: [ui]` の ADR front matter の `ui:` (`framework` / `rendering` / `styling` / `component_lib`) を取り出す。手順 4 の技術選定はこのヒントに従う。`ui:` が無ければ **`framework: react` / `rendering: spa` を既定**にする (既定で Next.js を選ばない。ADR が SPA 方針でも Next.js になる食い違いを防ぐ)。
 
 ### 2. デザイントークンを推論する
 
@@ -57,8 +58,12 @@ LLM 主体のステージ。d2-run が段階③で、F3 (test-support) と F6 (�
 
 `references/design/design-storybook.md` を読む。
 
-- Next.js + TypeScript + Tailwind CSS v4 + Storybook (`@storybook/nextjs-vite`) で
-  `docs/design/storybook-app/` を生成する。
+- **手順 1 で読んだ `ui:` ヒントの `framework` / `rendering` / `styling` に従って**技術構成を選ぶ。
+  - `rendering: spa` (既定): SPA 構成 (例 Vite + React + TypeScript + Storybook) で生成する。**既定で Next.js を使わない。**
+  - `rendering: ssr` / `ssg`: SSR/SSG 構成 (例 Next.js + Storybook `@storybook/nextjs-vite`) を選ぶ。
+  - `styling` (既定 Tailwind CSS v4) と `framework` (既定 React) もヒントに従う。
+  - ADR の方針と食い違う技術 (SPA 指定なのに Next.js 等) を選ばない。
+- 選んだ構成で `docs/design/storybook-app/` を生成する。
 - トークン CSS、UI 部品、ドメイン部品、画面 Story (`stories/<Name>.stories.tsx`)、MDX を作る。
 - 部品群の生成は独立性が高いので、**サブエージェント分割 / 並列 Write** で時間を短縮する
   (派遣時はパスだけ渡す)。
