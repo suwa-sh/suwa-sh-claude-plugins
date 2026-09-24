@@ -30,7 +30,7 @@ pending だった step を実装し、テスト用の composition root に計装
 - **レイヤの境界オブジェクトを全部 `traced()` で包む**: 画面の入口 (`tracedFn`、layer `screen`)、backend の usecase / repository / gateway、
   DB クライアント (`tracePg`)、publisher (`tracePublisher`)。それぞれ `{ tier, layer }` を付ける (README の結線契約)。
   純粋関数だけの層 (domain) は包まなくてよい
-- Then はシナリオの観測結果を確かめる。トレースの結線が正しく、`.distillery/runs/<slug>/traces/<scenario_id>.jsonl` が
+- Then はシナリオの観測結果を確かめる。トレースの結線が正しく、`.distillery/runs/<slug>/traces/<sanitize した scenario_id>.jsonl` が
   シナリオごとに出ることを確認する (as-built がこれを読む)
 - ティア実装 (`apps/*/src`) は変更しない。UC BDD が落ちたら「どのティアの何が要求と食い違うか」を分析して報告する
   (修正は d2-run が attempt++ で該当ティアに戻す)

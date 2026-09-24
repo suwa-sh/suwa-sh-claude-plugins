@@ -242,6 +242,8 @@ const NULL_BODY_STATUS = new Set([101, 204, 205, 304]);
 /**
  * in-process の送信関数 (supertest 等) を fetch の形に包む。生成クライアントの `options.fetch` に渡す。
  * Request 入力の method / headers / body も読み、本文を持てないステータスは空の Response にする。
+ * 本文はテキスト (JSON なら parse) として扱う。生成クライアントは JSON しか送らないので、バイナリ (Blob / ArrayBuffer) の
+ * 本文はそのままの byte 列にならない (対象外)。応答は content-type が JSON でない文字列本文をそのまま返す。
  * api ドライバの `asFetch` はこれで作る。
  */
 export function inProcessFetch(
@@ -263,8 +265,11 @@ export function inProcessFetch(
     const res = await send({ method: req.method, path: u.pathname + u.search, body, headers });
     const resHeaders: Record<string, string> = { ...(res.headers || {}) };
     if (NULL_BODY_STATUS.has(res.status)) return new Response(null, { status: res.status, headers: resHeaders });
-    if (!Object.keys(resHeaders).some((k) => k.toLowerCase() === 'content-type')) resHeaders['content-type'] = 'application/json';
-    return new Response(res.body === undefined ? null : JSON.stringify(res.body), { status: res.status, headers: resHeaders });
+    const ctKey = Object.keys(resHeaders).find((k) => k.toLowerCase() === 'content-type');
+    const isJson = ctKey ? /json/i.test(resHeaders[ctKey]) : typeof res.body !== 'string';
+    if (!ctKey) resHeaders['content-type'] = isJson ? 'application/json' : 'text/plain';
+    const text = res.body === undefined ? null : isJson ? JSON.stringify(res.body) : String(res.body);
+    return new Response(text, { status: res.status, headers: resHeaders });
   };
   return tracedFetch(base, placement);
 }

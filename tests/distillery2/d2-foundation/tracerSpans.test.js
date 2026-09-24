@@ -164,6 +164,16 @@ test('inProcessFetch: init.body の null は本文なし、Blob は中身を読�
   assert.equal(seen[2].body, 'plain text');
 });
 
+test('inProcessFetch: JSON でない文字列応答はそのまま返す', async () => {
+  const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
+  const t = loadTracer(traceDir);
+  const f = t.inProcessFetch(async (req) => (req.path === '/t' ? { status: 200, body: 'hello', headers: { 'content-type': 'text/plain' } } : { status: 200, body: { a: 1 }, headers: { 'content-type': 'application/problem+json' } }));
+  await t.withScenario('uc#s9', async () => {
+    assert.equal(await (await f('http://x/t')).text(), 'hello');
+    assert.deepEqual(await (await f('http://x/j')).json(), { a: 1 });
+  });
+});
+
 test('seq はプロセスごとに基数が違い、別プロセスの行と衝突しにくい', () => {
   const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
   const t = loadTracer(traceDir);

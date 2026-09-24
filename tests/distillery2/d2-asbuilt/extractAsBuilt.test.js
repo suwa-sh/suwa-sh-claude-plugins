@@ -419,7 +419,9 @@ test('scenarioStatus は hook の結果を数えない (本体が全部 skipped 
     { keyword: 'After', name: '', result: { status: 'passed' } },
   ];
   assert.equal(scenarioStatus(skippedWithHook), 'skipped');
-  assert.equal(scenarioStatus([{ keyword: 'Before', name: '', result: { status: 'failed' } }, { keyword: 'もし', name: 'y', result: { status: 'passed' } }]), 'passed');
+  // hook の失敗はシナリオの失敗
+  assert.equal(scenarioStatus([{ keyword: 'Before', name: '', result: { status: 'failed' } }, { keyword: 'もし', name: 'y', result: { status: 'skipped' } }]), 'failed');
+  assert.equal(scenarioStatus([{ keyword: 'もし', name: 'y', result: { status: 'passed' } }, { keyword: 'After', name: '', result: { status: 'failed' } }]), 'failed');
   assert.equal(scenarioStatus([{ keyword: 'After', name: '', result: { status: 'passed' } }]), 'passed'); // 本体が無ければ全 step で判定
 });
 
