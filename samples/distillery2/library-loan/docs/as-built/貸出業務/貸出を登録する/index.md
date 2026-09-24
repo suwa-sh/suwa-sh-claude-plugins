@@ -1,7 +1,7 @@
 ---
 basis: requirements@10d88a0262c31662f8fc16dcbe00973c396363cd adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659 contracts@10d88a0262c31662f8fc16dcbe00973c396363cd
 generated_at: 2026-09-24T00:12:39.628Z
-code: 51b26532d0a654bc95d0abcad14956f56b65102b
+code: 31872195626cd5135a9af7a81e5452f0cb4ea353
 uc: 貸出を登録する
 slug: register-loan
 attempt: 1
@@ -237,8 +237,8 @@ flowchart LR
 
 | 種類 | 課題 |
 |---|---|
-| ルール | 基盤の生成物でテストの配線が抜けている (test script と cucumber.js) |
-| ルール | 計装の基盤が日本語のシナリオ名と usecase の計装に対応していない |
+| ルール | 基盤のテスト配線が抜けている |
+| ルール | 計装が日本語シナリオ名と usecase に未対応 |
 | 契約 | 20260924_090000_register-loan |
 | 要求 | 20260924_120000_loan-period-mapping |
 | 要求 | 20260924_120001_loan-limit-count |
@@ -398,7 +398,7 @@ flowchart LR
 <summary>生成情報</summary>
 
 - 上流: requirements@10d88a0 adr@2f9d373 contracts@10d88a0
-- コード: 51b2653
+- コード: 3187219
 - 生成日時: 2026-09-24T00:12:39.628Z / 実行試行: 1
 - 凡例: (抽出) はスクリプトが生成、(要約) は LLM がコード位置を根拠に書く、(転記) は実行記録からの写し
 

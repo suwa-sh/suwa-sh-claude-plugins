@@ -16,7 +16,7 @@ v1 (distillery-impl) からの変更は、置き場所と照合先だけ。抽�
 ## スキーマ
 
 ```yaml
-schema_version: "2.0"
+schema_version: "2.1"          # 2.1 = title 必須 (0.1.6〜)。2.0 は 0.1.5 以前の記録で title 任意
 uc: "register-loan"          # use-cases.yaml の slug
 tier: "backend-api"
 attempt: 1

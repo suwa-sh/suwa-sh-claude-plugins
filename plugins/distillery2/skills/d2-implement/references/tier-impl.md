@@ -22,7 +22,7 @@
 
 - `apps/<tier>/src/**` (実装とテスト)。frontend は `packages/ui` の部品だけを使う (自作しない)
 - `.distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml` (0 件でも必ず)
-- `.distillery/runs/<slug>/issues/<ts>_<slug>.md` (仕様と両立しない事実。front matter `kind: rule | contract | requirement`)
+- `.distillery/runs/<slug>/issues/<ts>_<slug>.md` (仕様と両立しない事実。front matter `kind: rule | contract | requirement`、`title` は 40 字以内 (as-built の課題の表に載る)。詳細は本文)
 - backend の datastore_owner ティアは `apps/<tier>/migrations/` の追加 migration (契約の DB 変更に追随するときだけ。DDL 生成物は書き換えない)
 
 ## 進め方

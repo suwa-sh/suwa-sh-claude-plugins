@@ -8,10 +8,13 @@ version の正本は `.claude-plugin/plugin.json`。
 
 - **as-built の長い文をなくす** (ユーザー指摘: 長い文章の認知負荷が高い。テクニカルライティング、リストや表で伝える)
   - AssumptionRecord と findings に `title` (30 字以内・1 行) を必須にし、`validateAssumptions.js` が字数を検査する。
-    as-built の「決めたこと」「Verifier の指摘」の表には title だけを載せ、全文 (`assumption` / `claim`) は折りたたみに置く
+    as-built の「決めたこと」の表と「Verifier の指摘」の箇条書きには title だけを載せ、全文 (`assumption` / `claim`) は折りたたみに置く。
+    `schema_version: "2.1"` で title 必須、`"2.0"` (0.1.5 以前の記録) は title 任意 (as-built は全文で代用)
   - 要約ブロック 3 つ (概要 / 整合性 / 課題) は**表で書く**ことに固定 (列と行を asbuilt-format.md に規定)。
     `checkAsBuilt.js` を追加し、空 / 表なし / セル 40 字超 / 文 50 字超 / 見出し を機械で検査する (d2-asbuilt の完了条件、d2-run の asbuilt 段階のゲート)
-  - 抽出側: 受入基準は Given / When / Then を 3 行に分ける、「計装の範囲」はティアごとに 1 行
+  - 抽出側: 受入基準は Given / When / Then を 3 行に分ける、「計装の範囲」はティアごとに 1 行。再抽出時に引き継いだ要約が
+    書式違反なら標準出力で知らせる (旧形式の文章は d2-asbuilt が表に書き直す)
+  - issues の `title` は 40 字以内 (課題の表に載る)
 - サンプル: 前提 20 件・findings 22 件に title を追記 (hash 対象外なので sha256 は不変)、要約 3 ブロックを表に書き直して再抽出
 
 ## [0.1.5] - 2026-09-24

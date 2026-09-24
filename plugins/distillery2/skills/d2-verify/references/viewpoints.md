@@ -50,7 +50,7 @@ v1 の 8 観点のうち、機械のゲート (静的検査・単体・契約・
 ## findings.yaml の形
 
 ```yaml
-schema_version: "2.0"
+schema_version: "2.1"          # 2.1 = title 必須 (0.1.6〜)。2.0 は 0.1.5 以前の記録で title 任意
 uc: "register-loan"
 tier: "backend-api"
 attempt: 1

@@ -42,6 +42,7 @@ const { readEvents } = require('../../../scripts/lib/runState');
 const { renderScenario, pickHappyPath, summarizeScenario } = require('./renderSequence');
 const { buildFlows, renderFlowchart, renderSystemDataFlow } = require('./renderDataFlow');
 const { buildTree, observedPlacements, cmpStr } = require('./traceTree');
+const { check: checkSummaries } = require('./checkAsBuilt');
 const { deriveFromTraces, groupChangedFiles, changedFilesFromGit, loadTraces } = require('./buildTraceIndex');
 
 // ---------------------------------------------------------------------------
@@ -1062,7 +1063,10 @@ function run(opts) {
 
   const indexPath = path.join(asBuiltDir, 'index.md');
   const preserved = extractPreserved(readTextIfExists(indexPath));
-  ensureWrite(indexPath, buildIndexMd(ctx, preserved));
+  const indexMd = buildIndexMd(ctx, preserved);
+  ensureWrite(indexPath, indexMd);
+  // 引き継いだ要約 (旧形式の文章を含む) が書式規則を満たすか。違反は d2-asbuilt が書き直す (checkAsBuilt.js がゲート)
+  const summaryViolations = checkSummaries(indexMd).violations.filter((v) => !/R1/.test(v.rule));
   ensureWrite(path.join(asBuiltDir, 'sequence.md'), buildSequenceMd(ctx));
   // 0.1.4 以前の coverage.md は index.md の「証跡」に統合した
   const legacyCoverage = path.join(asBuiltDir, 'coverage.md');
@@ -1087,7 +1091,7 @@ function run(opts) {
   ensureWrite(path.join(systemDir, 'data-flow.md'), renderSystemDataFlow(ordered));
   ensureWrite(path.join(systemDir, 'index.md'), buildSystemIndex(index));
 
-  return { asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length, instrumentation_gaps: ctx.instrumentation.gaps, instrumentation_happy_gaps: ctx.instrumentation.happy_gaps };
+  return { asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length, instrumentation_gaps: ctx.instrumentation.gaps, instrumentation_happy_gaps: ctx.instrumentation.happy_gaps, summary_violations: summaryViolations.length };
 }
 
 function parseArgs(argv) {
@@ -1113,7 +1117,8 @@ function main(argv) {
   const r = run(o);
   const gap = (r.instrumentation_gaps.length ? ` 計装なしのティア: ${r.instrumentation_gaps.join(', ')}` : '')
     + (r.instrumentation_happy_gaps.length ? ` 正常系に部品 (call) が無いティア: ${r.instrumentation_happy_gaps.join(', ')}` : '');
-  console.log(`as-built: ${path.relative(o.cwd, r.asBuiltDir)} (scenarios=${r.scenarios}, operations=${r.operations})${gap}`);
+  const sv = r.summary_violations ? ` 要約ブロックに書式違反 ${r.summary_violations} 件 (引き継いだ旧形式を含む。checkAsBuilt.js で確認し d2-asbuilt が書き直す)` : '';
+  console.log(`as-built: ${path.relative(o.cwd, r.asBuiltDir)} (scenarios=${r.scenarios}, operations=${r.operations})${gap}${sv}`);
   return 0;
 }
 

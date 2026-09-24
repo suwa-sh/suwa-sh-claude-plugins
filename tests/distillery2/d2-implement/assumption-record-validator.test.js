@@ -21,7 +21,7 @@ function write(text) {
   return file;
 }
 
-const RECORD = `schema_version: "2.0"
+const RECORD = `schema_version: "2.1"
 uc: "register-loan"
 tier: "tier-facade"
 attempt: 1
@@ -124,7 +124,7 @@ function findings(overrides = {}) {
   };
   const o = { ...base, ...overrides };
   const sha = o.sha ?? validator.run(['record', write(RECORD), ...ID]).sha256;
-  return `schema_version: "2.0"
+  return `schema_version: "2.1"
 uc: "register-loan"
 tier: "tier-facade"
 attempt: 1
@@ -161,6 +161,16 @@ test('record / verdicts: title は必須で 30 字以内・1 行 (as-built の�
   const noFindingTitle = f.replace(/\n    title: "時刻精度は仕様に無い"/, '');
   assert.notEqual(noFindingTitle, f);
   assert.match(validator.run(verdictsArgs(write(noFindingTitle), write(RECORD))).errors.join('\n'), /findings\[0\] \(F-010\)\.title is required/);
+});
+
+test('schema 2.0 (0.1.5 以前) は title 任意、2.1 は必須。title は hash を変えない', () => {
+  const v20 = RECORD.replace('schema_version: "2.1"', 'schema_version: "2.0"').replace(/\n\s*title: "[^"]*"/g, '');
+  const r20 = validator.run(['record', write(v20), ...ID]);
+  assert.equal(r20.ok, true, JSON.stringify(r20));
+  const withTitle = validator.run(['record', write(RECORD), ...ID]);
+  assert.equal(withTitle.sha256, r20.sha256, 'title は RECORD_HASH_KEYS に無いので sha256 は同じ');
+  const bad = validator.run(['record', write(RECORD.replace('schema_version: "2.1"', 'schema_version: "3.0"')), ...ID]);
+  assert.match(bad.errors.join('\n'), /schema_version must be one of "2.0"\|"2.1"/);
 });
 
 test('record: zero assumptions must be an explicit empty array', () => {

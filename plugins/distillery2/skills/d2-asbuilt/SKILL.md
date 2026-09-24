@@ -49,8 +49,9 @@ description: >-
    node "${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/checkAsBuilt.js" docs/as-built/<業務>/<UC>/index.md
    ```
 
-   検査する規則: ブロックが空でない / 表がある / セル 1 行 40 字以内 / 表の外の文は 50 字以内 / 見出しを使わない。
-   根拠列とコード位置 `path:line` は字数に数えない。
+   検査する規則: ブロックが空でない / 表がある / セル 1 行 40 字以内 / 表の外に文を書かない / 見出しを使わない。
+   根拠列とコード位置 `path:line` は字数に数えない (`code` の中身と句読点は数える)。
+   0.1.5 以前の要約 (文章) を引き継いだときも違反になるので、表に書き直す (extractAsBuilt の標準出力に件数が出る)。
 
 ## 要約の書き方 (厳守)
 
