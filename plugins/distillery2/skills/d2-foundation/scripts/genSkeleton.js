@@ -55,13 +55,13 @@ function rootPackageJson(tierDirs, hasFrontend) {
     scripts[`test:contract:${dir}`] = `npm run test:contract -w apps/${dir}`;
   }
   const devDependencies = {
-    '@biomejs/biome': '^2.2.0',
+    '@biomejs/biome': BIOME_VERSION, // exact (biome.json の $schema と qlty の版と揃える)
     '@cucumber/cucumber': '^13.2.1',
     '@electric-sql/pglite': '^0.5.8',
     '@redocly/cli': '^2.4.0',
     '@apidevtools/json-schema-ref-parser': '^15.1.0',
     'dependency-cruiser': '^18.4.0',
-    vitest: '^3.2.0',
+    vitest: '^4.1.11', // それ未満は CVE-2026-84373 (@vitest/mocker) が未修正 (OSV: fixed 4.1.11)
     supertest: '^7.3.0',
     '@types/supertest': '^7.2.1',
     '@playwright/test': '^1.63.0',
@@ -102,15 +102,83 @@ const GITIGNORE_ANCHOR = 'distillery2 実行状態';
 const GITIGNORE_MANAGED = ['# distillery2 実行状態 (reports / traces / logs は生成物なので追跡しない)', '.distillery/runs/*/reports/', '.distillery/runs/*/traces/', '.distillery/logs/'];
 const GITIGNORE = ['node_modules/', 'dist/', '*.log', '', ...GITIGNORE_MANAGED, ''].join('\n');
 
+// biome の版は 1 か所で決める。npm の devDependency (exact)、biome.json の $schema、qlty の biome プラグインを同じ版にする
+// (版が違うと biome が「schema と CLI の版が一致しない」を medium で出し、qlty のゲートが落ちる)
+const BIOME_VERSION = '2.2.5';
+
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
 const BIOME_JSON = JSON.stringify({
-  $schema: 'https://biomejs.dev/schemas/2.2.0/schema.json',
+  $schema: `https://biomejs.dev/schemas/${BIOME_VERSION}/schema.json`,
   vcs: { enabled: true, clientKind: 'git', useIgnoreFile: true },
   files: { ignoreUnknown: true },
   formatter: { enabled: true, indentStyle: 'space', indentWidth: 2, lineWidth: 100 },
   linter: { enabled: true, rules: { recommended: true } },
   javascript: { formatter: { quoteStyle: 'single' } },
 }, null, 2) + '\n';
+
+// .qlty/qlty.toml (リポルート): formatter / linter / SAST を 1 つのゲートにまとめる。
+// - 検査は `qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium` (config の commands.quality)
+// - `qlty check --fix` は使わない (formatter がリポ全体に適用され、修正候補の位置ずれで識別子が壊れる実績)。整形は `qlty fmt --all`
+// - 生成物・vendored (packages/ui、packages/contracts、contracts/generated、Storybook、契約テスト) は exclude_patterns で検査対象外
+// - コードスメル (radarlint-js) は [[triage]] で low に降格 (助言扱い)。ルール単位の無視は [[ignore]] / [[triage]] で書く ([[exclude]] に rules は書けない)
+const QLTY_TOML = `# distillery2 genSkeleton.js が生成した qlty の設定。ゲートは commands.quality (.distillery/config.yaml)。
+# 整形は \`qlty fmt --all\`。\`qlty check --fix\` は使わない (リポ全体を整形して壊す)。
+# 仕様の正本: https://docs.qlty.sh/cli/qlty-toml
+config_version = "0"
+
+exclude_patterns = [
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/build/**",
+  "**/*.d.ts",
+  "**/*.min.*",
+  ".distillery/**",
+  "packages/ui/**",
+  "packages/contracts/**",
+  "contracts/generated/**",
+  "docs/design/storybook-app/**",
+  "docs/design/screenshots/**",
+  "**/test/contract/**",
+]
+
+test_patterns = [
+  "**/test/**",
+  "**/*.test.*",
+  "**/*.spec.*",
+  "features/**",
+]
+
+[smells]
+mode = "comment"
+
+[[source]]
+name = "default"
+default = true
+
+# コードスメルは助言 (ゲートを止めない)
+[[triage]]
+match.plugins = ["radarlint-js"]
+set.level = "low"
+
+[[plugin]]
+name = "biome"
+version = "${BIOME_VERSION}"
+
+[[plugin]]
+name = "radarlint-js"
+
+[[plugin]]
+name = "actionlint"
+
+[[plugin]]
+name = "zizmor"
+
+[[plugin]]
+name = "trufflehog"
+
+[[plugin]]
+name = "osv-scanner"
+`;
 
 /** 各 app の scripts (実コマンド)。migrate は 0.1.0 の echo プレースホルダをこの値へ置き換える。 */
 function appScripts() {
@@ -235,6 +303,7 @@ function run(o) {
   writeIfAbsent(cwd, 'package.json', rootPackageJson(tierDirs, hasFrontend), created, skipped);
   writeIfAbsent(cwd, 'tsconfig.base.json', TSCONFIG_BASE, created, skipped);
   writeIfAbsent(cwd, 'biome.json', BIOME_JSON, created, skipped);
+  writeIfAbsent(cwd, '.qlty/qlty.toml', QLTY_TOML, created, skipped);
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
   const migrated = o.migrate ? migrate(cwd) : [];
   return { code: 0, created, skipped, tierDirs, migrated };

@@ -133,7 +133,7 @@ describe('db schema contract', () => {
   for (const table of expected) {
     it(\`\${table.name} matches the contract bundle\`, async () => {
       const cols = await db.query<{ column_name: string; data_type: string; udt_name: string; is_nullable: string }>(
-        \`SELECT column_name, data_type, udt_name, is_nullable FROM information_schema.columns WHERE table_name = $1\`, [table.name]);
+        'SELECT column_name, data_type, udt_name, is_nullable FROM information_schema.columns WHERE table_name = $1', [table.name]);
       const actual = new Map(cols.rows.map(r => [r.column_name, r]));
       expect(new Set(actual.keys())).toEqual(new Set(table.columns.map(c => c.name)));
       for (const col of table.columns) {

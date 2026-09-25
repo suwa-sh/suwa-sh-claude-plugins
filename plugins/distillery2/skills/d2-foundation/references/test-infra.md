@@ -38,5 +38,11 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 - **ティア BDD (第 3 段)**: 契約から生成する契約テストに置換 (`{tier_dir}/features/` を作らない)。
 - **events/ + latest/ + status/lease/NEXT**: 履歴は Git、実行状態は `.distillery/runs/`、下流は `basis:` ヘッダ。
 - **impl-config の specs_root / repo_root 分離**: docs と実装コードを同一リポに置く。
-- **qlty / biome の焼き込み**: 生成は formatter / linter をプロジェクト側の npm scripts に委ね、config は最小。
+- **qlty の焼き込み** (0.1.11〜): `genSkeleton.js` が `.qlty/qlty.toml` を生成する (plugins: biome / radarlint-js / actionlint / zizmor / trufflehog / osv-scanner。
+  生成物・vendored は `exclude_patterns`、コードスメルは `[[triage]]` で low)。ゲートは `.distillery/config.yaml` の `commands.quality` =
+  `qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium` で、static ゲートと CI がリポ全体で 1 回回す。
+  各ティアの `format:check` / `lint` (biome) は実装者の手元の速い検査として残す。**`qlty check --fix` は使わない** (formatter がリポ全体に
+  適用され、修正候補の位置ずれで識別子が壊れる実績)。整形は `qlty fmt --all`。ルール単位の無視は `[[ignore]]` / `[[triage]]` で書き、
+  `[[exclude]]` に `rules` は書かない (そのパスでプラグイン全体が外れる)。qlty CLI は対象マシンに要インストール (公式の install script。CI は `qltysh/qlty-action/install`)。
+  仕様の正本は https://docs.qlty.sh/cli/qlty-toml (要約に頼らず使い捨てコピーで実測する)。
 - **DOM snapshot / capture_review / ui_review capability**: 受入の `@browser` シナリオに集約。

@@ -13,6 +13,9 @@
  * 参照: supertest v7.3.0 (request(app).<method>(path))。
  */
 import request from 'supertest';
+
+/** supertest の 1 リクエスト (型は request(app).get の戻りから取る。@types/supertest の export 形に依存しない) */
+type SuperTestRequest = ReturnType<ReturnType<typeof request>['get']>;
 import type { Driver } from './types';
 import { inProcessFetch, scenarioHeaders, type Placement } from '@repo/test-support/tracer';
 // createTestApp は実装リポの backend ティアが提供する。パスはプロジェクトで調整する。
@@ -22,7 +25,7 @@ export class ApiDriver implements Driver {
   private app = createTestApp();
 
   async request(method: string, path: string, body?: unknown, headers: Record<string, string> = {}) {
-    let req = (request(this.app) as unknown as Record<string, (p: string) => any>)[method.toLowerCase()](path);
+    let req = (request(this.app) as unknown as Record<string, (p: string) => SuperTestRequest>)[method.toLowerCase()](path);
     for (const [k, v] of Object.entries({ ...scenarioHeaders(), ...headers })) req = req.set(k, v);
     if (body !== undefined) req = req.send(body as object);
     const res = await req;

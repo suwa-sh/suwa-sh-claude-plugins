@@ -6,7 +6,7 @@
  *
  * 参照 (Context7 /cucumber/cucumber-js v13.2.1): setWorldConstructor(CustomWorld); World を継承。
  */
-import { World, setWorldConstructor, type IWorldOptions } from '@cucumber/cucumber';
+import { World, setWorldConstructor } from '@cucumber/cucumber';
 import type { Driver } from './drivers/types';
 import { ApiDriver } from './drivers/api';
 import { BrowserDriver } from './drivers/browser';
@@ -14,10 +14,6 @@ import { BrowserDriver } from './drivers/browser';
 export class D2World extends World {
   driver!: Driver;
   scenarioId = '';
-
-  constructor(options: IWorldOptions) {
-    super(options);
-  }
 
   /** タグからドライバを選ぶ。hooks.ts の Before から呼ぶ。 */
   selectDriver(tags: readonly string[]): void {

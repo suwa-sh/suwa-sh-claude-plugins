@@ -35,6 +35,19 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/tsconfig.json')), 'app tsconfig.json');
   assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/vitest.config.ts')), 'app vitest.config.ts');
   assert.ok(fs.existsSync(path.join(c, 'biome.json')), 'root biome.json');
+  // qlty: formatter / linter / SAST を 1 つのゲートに。生成物・vendored は除外、スメルは low
+  const qlty = fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8');
+  for (const plugin of ['biome', 'radarlint-js', 'actionlint', 'zizmor', 'trufflehog', 'osv-scanner']) assert.ok(qlty.includes(`name = "${plugin}"`), `qlty plugin ${plugin}`);
+  for (const ex of ['packages/ui/**', 'packages/contracts/**', 'contracts/generated/**', '**/test/contract/**', '.distillery/**']) assert.ok(qlty.includes(`"${ex}"`), `qlty exclude ${ex}`);
+  assert.match(qlty, /\[\[triage\]\]\nmatch\.plugins = \["radarlint-js"\]\nset\.level = "low"/);
+  assert.ok(!qlty.includes('[[exclude]]'), '[[exclude]] に rules を書く誤用を招かないよう exclude セクションは出さない');
+  assert.match(pkg.devDependencies.vitest, /\^4\.1\.11/);
+  // biome の版は npm (exact) / biome.json の $schema / qlty のプラグインで同じ
+  const biomeVer = pkg.devDependencies['@biomejs/biome'];
+  assert.match(biomeVer, /^\d+\.\d+\.\d+$/, 'biome は exact pin');
+  assert.ok(fs.readFileSync(path.join(c, 'biome.json'), 'utf8').includes(`/schemas/${biomeVer}/schema.json`));
+  assert.ok(qlty.includes(`name = "biome"\nversion = "${biomeVer}"`), 'qlty の biome も同じ版');
+  assert.ok(!qlty.includes('package-lock.json'), 'lockfile は osv-scanner の入力なので除外しない');
   // frontend tier の tsconfig は jsx を有効化する
   const feTs = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/tsconfig.json'), 'utf8'));
   assert.equal(feTs.compilerOptions.jsx, 'react-jsx');
@@ -149,6 +162,10 @@ test('genCi: renders 5-gate workflow with needs chain', () => {
   const ci = fs.readFileSync(path.join(c, '.github/workflows/ci.yml'), 'utf8');
   for (const j of ['static:', 'unit:', 'contract:', 'uc-bdd:', 'acceptance:']) assert.ok(ci.includes(j), `missing job ${j}`);
   assert.ok(ci.includes('needs: static') && ci.includes('needs: uc-bdd'));
+  // zizmor: permissions は最小、checkout は credential を残さない。qlty は install action (SHA ピン) の後にゲート
+  assert.match(ci, /^permissions:\n  contents: read$/m);
+  assert.match(ci, /actions\/checkout@v4\n\s+with:\n\s+persist-credentials: false/);
+  assert.match(ci, /uses: qltysh\/qlty-action\/install@[0-9a-f]{40} # v2\.3\.0\n\s+- run: qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium/);
   // Cucumber のタグ式にワイルドカードは無い。uc-bdd は全 feature (not @browser)、acceptance は素の @acceptance で選ぶ。
   assert.ok(!ci.includes('@uc:*') && !ci.includes('@acceptance:*'), 'ワイルドカードタグは使わない');
   assert.ok(ci.includes('--tags "not @browser"') && ci.includes('@acceptance and not @browser'));

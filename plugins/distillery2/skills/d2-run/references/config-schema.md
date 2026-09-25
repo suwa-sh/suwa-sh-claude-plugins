@@ -40,6 +40,7 @@ contracts:
     consumers: [worker]
 commands:                            # ティアをまたぐコマンド。{slug} は UC slug、{report} はレポート出力先
   arch_test: npx depcruise --config .dependency-cruiser.cjs --output-type err apps packages
+  quality: qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium   # lint + SAST (qlty)。static ゲートでリポ全体に 1 回
   uc_bdd: npx cucumber-js --tags "@uc:{slug}" --format json:{report}
   acceptance_api: npx cucumber-js --tags "@uc:{slug} and @acceptance and not @browser" --format json:{report}
   acceptance_browser: npx cucumber-js --tags "@uc:{slug} and @acceptance and @browser" --format json:{report}
@@ -62,7 +63,7 @@ models:
 
 | ゲート | 実行するもの | 並列 |
 |---|---|---|
-| static | 各ティアの `format_check` / `lint` / `typecheck` と `commands.arch_test` | ティア並列 |
+| static | 各ティアの `format_check` / `lint` / `typecheck` と `commands.arch_test`、`commands.quality` (qlty。リポ全体で 1 回) | ティア並列 |
 | unit | 各ティアの `unit` | ティア並列 |
 | contract | 各ティアの `contract` (定義があるティアだけ) | ティア並列 |
 | uc-bdd | `commands.uc_bdd` | 単発 |

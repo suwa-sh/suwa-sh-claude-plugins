@@ -69,6 +69,8 @@ function buildConfig({ tiers, datastore_owner }, contracts, caps, warnings) {
     contracts: contracts.map(c => ({ id: c.id, type: c.type, source: c.source, provider: c.provider, consumers: c.consumers || [] })),
     commands: {
       arch_test: 'npx depcruise --config .dependency-cruiser.cjs --output-type err apps packages',
+      // formatter / linter / SAST のゲート (qlty)。--no-fix を外さない (--fix はリポ全体を整形して壊す)
+      quality: 'qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium',
       uc_bdd: 'npx cucumber-js --tags "@uc:{slug}" --format json:{report}',
       acceptance_api: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and not @browser" --format json:{report}',
       acceptance_browser: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and @browser" --format json:{report}',

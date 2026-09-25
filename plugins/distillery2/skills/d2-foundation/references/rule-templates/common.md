@@ -9,7 +9,10 @@
 2. **共通 UI 部品は `packages/ui/` のみ使用**: 新規コンポーネントの自作は禁止。不足は design への変更要求を経由する。
 3. **仕様を実装側で曲げない**: 契約・ルールと実装が矛盾したら、実装を合わせるか issues/ に書く。
    「動くように契約と違うことをする」を禁止する。
-4. **formatter / linter を通過する**: コマンドは `.distillery/config.yaml` の `commands` が正。
+4. **formatter / linter / SAST を通過する**: コマンドは `.distillery/config.yaml` の `commands` が正。手元の速い検査は自ティアの
+   `format:check` / `lint` (biome)、リポ全体のゲートは `commands.quality` (qlty: lint + SAST、medium 以上で fail)。
+   整形は `qlty fmt --all` (または `biome format --write`)。**`qlty check --fix` は使わない**。指摘を消す目的で `[[exclude]]` にルールを書かない
+   (無視は `[[ignore]]` / `[[triage]]`)。
 5. **Conventional Commits**: コミットは d2-run のみが行い、scope に UC slug を刻む。
 
 ## 推奨 (Verifier が指摘する品質基準)

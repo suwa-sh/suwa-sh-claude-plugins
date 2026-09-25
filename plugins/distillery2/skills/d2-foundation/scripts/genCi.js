@@ -59,7 +59,8 @@ function render(config) {
   const tiers = config.tiers || [];
   const cmds = config.commands || {};
   const caps = config.capabilities || {};
-  const setup = ['      - uses: actions/checkout@v4', '      - uses: actions/setup-node@v4', '        with:', '          node-version: 20', '      - run: npm ci'];
+  // zizmor の指摘に従い、checkout の credential 保持を切り、permissions は最小 (contents: read) にする
+  const setup = ['      - uses: actions/checkout@v4', '        with:', '          persist-credentials: false', '      - uses: actions/setup-node@v4', '        with:', '          node-version: 20', '      - run: npm ci'];
   const step = cmd => `      - run: ${cmd}`;
   const job = (id, needs, steps) => {
     const lines = [`  ${id}:`, '    runs-on: ubuntu-latest'];
@@ -70,6 +71,11 @@ function render(config) {
   const staticSteps = [];
   for (const t of tiers) for (const k of ['format_check', 'lint', 'typecheck']) if (t.commands && t.commands[k]) staticSteps.push(step(stripReport(t.commands[k])));
   if (cmds.arch_test) staticSteps.push(step(stripReport(cmds.arch_test)));
+  if (cmds.quality) {
+    // qlty CLI を入れてから quality ゲート (lint + SAST) を回す。action は SHA でピン留め
+    staticSteps.push('      - uses: qltysh/qlty-action/install@08a0a862c159eae9b9003081da6663d96efef637 # v2.3.0');
+    staticSteps.push(step(stripReport(cmds.quality)));
+  }
   // unit / contract は config の各ティアコマンドから組む (runGates と同じソース)。
   const unitSteps = tiers.filter(t => t.commands && t.commands.unit).map(t => step(stripReport(t.commands.unit)));
   const contractSteps = tiers.filter(t => t.commands && t.commands.contract).map(t => step(stripReport(t.commands.contract)));
@@ -83,6 +89,9 @@ function render(config) {
     '  push:',
     '    branches: [main]',
     '  pull_request:',
+    '',
+    'permissions:',
+    '  contents: read',
     '',
     'jobs:',
     job('static', null, staticSteps.length ? staticSteps : ['      - run: echo "no static commands"']),
