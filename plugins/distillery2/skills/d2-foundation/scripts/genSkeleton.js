@@ -55,13 +55,13 @@ function rootPackageJson(tierDirs, hasFrontend) {
     scripts[`test:contract:${dir}`] = `npm run test:contract -w apps/${dir}`;
   }
   const devDependencies = {
-    '@biomejs/biome': '^2.2.0',
+    '@biomejs/biome': BIOME_VERSION, // exact (biome.json の $schema と qlty の版と揃える)
     '@cucumber/cucumber': '^13.2.1',
     '@electric-sql/pglite': '^0.5.8',
     '@redocly/cli': '^2.4.0',
     '@apidevtools/json-schema-ref-parser': '^15.1.0',
     'dependency-cruiser': '^18.4.0',
-    vitest: '^3.2.0',
+    vitest: '^4.1.11', // それ未満は CVE-2026-84373 (@vitest/mocker) が未修正 (OSV: fixed 4.1.11)
     supertest: '^7.3.0',
     '@types/supertest': '^7.2.1',
     '@playwright/test': '^1.63.0',
@@ -102,15 +102,99 @@ const GITIGNORE_ANCHOR = 'distillery2 実行状態';
 const GITIGNORE_MANAGED = ['# distillery2 実行状態 (reports / traces / logs は生成物なので追跡しない)', '.distillery/runs/*/reports/', '.distillery/runs/*/traces/', '.distillery/logs/'];
 const GITIGNORE = ['node_modules/', 'dist/', '*.log', '', ...GITIGNORE_MANAGED, ''].join('\n');
 
+// biome の版は 1 か所で決める。npm の devDependency (exact)、biome.json の $schema、qlty の biome プラグインを同じ版にする
+// (版が違うと biome が「schema と CLI の版が一致しない」を medium で出し、qlty のゲートが落ちる)
+const BIOME_VERSION = '2.2.5';
+
+// 既存リポ (package.json が既にある) では、そのリポが使っている biome の版を qlty 側に使う (Codex 0.1.11 指摘 1)。
+// lockfile の解決済み版 → package.json の devDependency (範囲指定の ^ ~ を落とす) → 既定 の順。
+function readJsonSafe(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } }
+function existingBiomeVersion(cwd) {
+  const lock = readJsonSafe(path.resolve(cwd, 'package-lock.json'));
+  const locked = lock?.packages?.['node_modules/@biomejs/biome']?.version;
+  if (locked && /^\d+\.\d+\.\d+$/.test(locked)) return locked;
+  const pkg = readJsonSafe(path.resolve(cwd, 'package.json'));
+  const dep = pkg?.devDependencies?.['@biomejs/biome'] ?? pkg?.dependencies?.['@biomejs/biome'];
+  const m = dep && String(dep).match(/(\d+\.\d+\.\d+)/);
+  if (m) return m[1];
+  const schema = readJsonSafe(path.resolve(cwd, 'biome.json'))?.$schema;
+  const s = schema && String(schema).match(/\/schemas\/(\d+\.\d+\.\d+)\//);
+  return s ? s[1] : null;
+}
+
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
-const BIOME_JSON = JSON.stringify({
-  $schema: 'https://biomejs.dev/schemas/2.2.0/schema.json',
+const biomeJson = (biomeVersion) => JSON.stringify({
+  $schema: `https://biomejs.dev/schemas/${biomeVersion}/schema.json`,
   vcs: { enabled: true, clientKind: 'git', useIgnoreFile: true },
   files: { ignoreUnknown: true },
   formatter: { enabled: true, indentStyle: 'space', indentWidth: 2, lineWidth: 100 },
   linter: { enabled: true, rules: { recommended: true } },
   javascript: { formatter: { quoteStyle: 'single' } },
 }, null, 2) + '\n';
+
+// .qlty/qlty.toml (リポルート): formatter / linter / SAST を 1 つのゲートにまとめる。
+// - 検査は `qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium` (config の commands.quality)
+// - `qlty check --fix` は使わない (formatter がリポ全体に適用され、修正候補の位置ずれで識別子が壊れる実績)。整形は `qlty fmt --all`
+// - 生成物・vendored (packages/ui、packages/contracts、contracts/generated、Storybook、契約テスト) は exclude_patterns で検査対象外
+// - コードスメル (radarlint-js) は [[triage]] で low に降格 (助言扱い)。ルール単位の無視は [[ignore]] / [[triage]] で書く ([[exclude]] に rules は書けない)
+const qltyToml = (biomeVersion) => `# distillery2 genSkeleton.js が生成した qlty の設定。ゲートは commands.quality (.distillery/config.yaml)。
+# 整形は \`qlty fmt --all\`。\`qlty check --fix\` は使わない (リポ全体を整形して壊す)。
+# 仕様の正本: https://docs.qlty.sh/cli/qlty-toml
+config_version = "0"
+
+exclude_patterns = [
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/build/**",
+  "**/*.d.ts",
+  "**/*.min.*",
+  ".distillery/**",
+  "packages/ui/**",
+  "packages/contracts/**",
+  "contracts/generated/**",
+  "docs/design/storybook-app/**",
+  "docs/design/screenshots/**",
+  "**/test/contract/**",
+]
+
+test_patterns = [
+  "**/test/**",
+  "**/*.test.*",
+  "**/*.spec.*",
+  "features/**",
+]
+
+[smells]
+mode = "comment"
+
+[[source]]
+name = "default"
+default = true
+
+# コードスメルは助言 (ゲートを止めない)
+[[triage]]
+match.plugins = ["radarlint-js"]
+set.level = "low"
+
+[[plugin]]
+name = "biome"
+version = "${biomeVersion}"
+
+[[plugin]]
+name = "radarlint-js"
+
+[[plugin]]
+name = "actionlint"
+
+[[plugin]]
+name = "zizmor"
+
+[[plugin]]
+name = "trufflehog"
+
+[[plugin]]
+name = "osv-scanner"
+`;
 
 /** 各 app の scripts (実コマンド)。migrate は 0.1.0 の echo プレースホルダをこの値へ置き換える。 */
 function appScripts() {
@@ -199,14 +283,33 @@ function migrateAppScripts(cwd, rel, changes) {
   changes.push(`${rel}: echo プレースホルダを実コマンド化 (${replaced.join(', ')})`);
 }
 
+/** 既存 biome.json の $schema の版が決定した版と違うとき、$schema だけ書き換える (Codex 0.1.11 ラウンド 3)。 */
+function migrateBiomeSchema(cwd, biomeVersion, changes) {
+  const p = path.resolve(cwd, 'biome.json');
+  const cfg = readJsonSafe(p);
+  const cur = cfg?.$schema && String(cfg.$schema).match(/\/schemas\/(\d+\.\d+\.\d+)\//);
+  if (!cur || cur[1] === biomeVersion) return;
+  cfg.$schema = `https://biomejs.dev/schemas/${biomeVersion}/schema.json`;
+  fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\n');
+  changes.push(`biome.json: $schema を ${cur[1]} → ${biomeVersion} (lockfile / package.json の biome と揃える)`);
+}
+
+/** 既存 biome.json の $schema が決定した版と違えば警告 (migrate でないときは書き換えない)。 */
+function warnBiomeSchema(cwd, biomeVersion) {
+  const cur = readJsonSafe(path.resolve(cwd, 'biome.json'))?.$schema;
+  const m = cur && String(cur).match(/\/schemas\/(\d+\.\d+\.\d+)\//);
+  if (m && m[1] !== biomeVersion) console.error(`warn: biome.json の $schema (${m[1]}) と biome の版 (${biomeVersion}) が違う。--migrate で揃えるか手で直す`);
+}
+
 /**
  * 0.1.0 で生成したプロジェクトを 0.1.1 相当へ移行する。呼び出し元 (run) が先に writeIfAbsent で
  * 不足ファイル (app tsconfig / vitest.config / biome.json 等) を作り、その後でこの関数が
  * 既存ファイル (writeIfAbsent が skip するもの) を書き換える。
  */
-function migrate(cwd) {
+function migrate(cwd, biomeVersion) {
   const changes = [];
   migrateGitignore(cwd, changes);
+  migrateBiomeSchema(cwd, biomeVersion, changes);
   const appsDir = path.resolve(cwd, 'apps');
   const entries = fs.existsSync(appsDir) ? fs.readdirSync(appsDir, { withFileTypes: true }) : [];
   for (const entry of entries) {
@@ -234,9 +337,14 @@ function run(o) {
   ensureDir(cwd, 'features', created);
   writeIfAbsent(cwd, 'package.json', rootPackageJson(tierDirs, hasFrontend), created, skipped);
   writeIfAbsent(cwd, 'tsconfig.base.json', TSCONFIG_BASE, created, skipped);
-  writeIfAbsent(cwd, 'biome.json', BIOME_JSON, created, skipped);
+  // package.json を今回作ったなら BIOME_VERSION、既存なら既存の版 (lockfile → package.json → biome.json)。
+  // biome.json の $schema と qlty のプラグインを同じ版にする (Codex 0.1.11 指摘 1、ラウンド 2)
+  const biomeVersion = (created.includes('package.json') ? null : existingBiomeVersion(cwd)) ?? BIOME_VERSION;
+  writeIfAbsent(cwd, 'biome.json', biomeJson(biomeVersion), created, skipped);
+  writeIfAbsent(cwd, '.qlty/qlty.toml', qltyToml(biomeVersion), created, skipped);
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
-  const migrated = o.migrate ? migrate(cwd) : [];
+  const migrated = o.migrate ? migrate(cwd, biomeVersion) : [];
+  if (!o.migrate) warnBiomeSchema(cwd, biomeVersion);
   return { code: 0, created, skipped, tierDirs, migrated };
 }
 

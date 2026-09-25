@@ -94,7 +94,7 @@ function openapiTest(op, entry, doc, testRel, componentsVar) {
         }
         blocks.push(`  it('responds ${status} (no body)', async () => {
     const app = await createTestApp();
-    const res = await request(app).${method}(\`${url}\`)${sendClause(reqExample)};
+    const res = await request(app).${method}(${JSON.stringify(url)})${sendClause(reqExample)};
     expect(res.status).toBe(${Number(status)});
   });`);
         continue;
@@ -111,7 +111,7 @@ function openapiTest(op, entry, doc, testRel, componentsVar) {
           : '';
         blocks.push(`  it('responds ${status} (example: ${example.name})', async () => {
     const app = await createTestApp();
-    const res = await request(app).${method}(\`${url}\`)${sendClause(reqExample)};
+    const res = await request(app).${method}(${JSON.stringify(url)})${sendClause(reqExample)};
     expect(res.status).toBe(${Number(status)});${validateExpr}
   });`);
       }

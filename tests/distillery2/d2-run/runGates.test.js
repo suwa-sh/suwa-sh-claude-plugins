@@ -81,6 +81,16 @@ test('planGate substitutes slug and report paths and skips undefined commands', 
   assert.deepEqual(acc.jobs.map(j => j.skipped === true), [true, true]);
 });
 
+test('static gate runs commands.quality (qlty) once for the repo, and skips it when undefined', () => {
+  const ctx = { slug: 'loan', reportsDir: '/r' };
+  const withQ = planGate('static', { tiers: [{ id: 'api', commands: { lint: 'l' } }], commands: { arch_test: 'a', quality: 'qlty check --all --no-fix' } }, ctx);
+  const q = withQ.jobs.find(j => j.name === 'quality');
+  assert.equal(q.cmd, 'qlty check --all --no-fix');
+  assert.equal(q.tier, undefined, 'quality はティア単位ではなくリポ全体');
+  const withoutQ = planGate('static', { tiers: [{ id: 'api', commands: { lint: 'l' } }], commands: { arch_test: 'a' } }, ctx);
+  assert.equal(withoutQ.jobs.find(j => j.name === 'quality').skipped, true);
+});
+
 test('runs gates in order, stops at first failure, writes gates.json', () => {
   const repo = makeRepo(CONFIG);
   const r = run(repo, ['--uc', 'loan']);

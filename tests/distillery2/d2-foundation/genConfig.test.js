@@ -37,6 +37,7 @@ test('genConfig: tiers/contracts/commands/capabilities correct and re-parseable'
   const frontend = cfg.tiers.find(t => t.id === 'frontend');
   assert.deepEqual(frontend.consumes, ['api']);
   assert.equal(cfg.datastore_owner, 'backend-api');
+  assert.equal(cfg.commands.quality, 'qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium');
   assert.equal(cfg.contracts.length, 3);
   assert.equal(cfg.capabilities.browser, false);
   assert.equal(cfg.capabilities.has_asyncapi, true);

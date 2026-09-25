@@ -85,6 +85,8 @@ function planGate(gate, config, ctx) {
     case 'static':
       for (const t of tiers) for (const k of ['format_check', 'lint', 'typecheck']) jobs.push(tierJob(t, k));
       jobs.push(cmds.arch_test ? { name: 'arch_test', cmd: sub(cmds.arch_test, null, 'arch_test') } : { name: 'arch_test', skipped: true });
+      // quality (qlty: lint + SAST) はリポ全体で 1 回。config に無ければ skipped
+      jobs.push(cmds.quality ? { name: 'quality', cmd: sub(cmds.quality, null, 'quality') } : { name: 'quality', skipped: true });
       return { parallel: true, jobs };
     case 'unit': for (const t of tiers) jobs.push(tierJob(t, 'unit', null, true)); return { parallel: true, jobs };
     case 'contract': for (const t of tiers) jobs.push(tierJob(t, 'contract', null, providers.has(t.id) || (t.provides || []).length > 0)); return { parallel: true, jobs };

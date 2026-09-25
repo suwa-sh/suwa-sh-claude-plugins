@@ -32,7 +32,7 @@ adr=docs/adr            # ADR ディレクトリ
 | F2 | `genArchTests.js` | ADR の `rules[].arch_test` | `.dependency-cruiser.cjs` |
 | F3 | `genTestSupport.js` | `templates/test-support/`、`templates/features-support/`、`templates/cucumber.js` | `packages/test-support/**`、`features/support/**`、`cucumber.js` |
 | F4 | (d2-contract) | — | 契約テスト・DB migration は **d2-contract が持つ** (下記) |
-| F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` | ADR の `tiers[]`・`datastore_owner`・testing `capabilities`、`contracts/contracts.json` | `.distillery/config.yaml`、`package.json`・`tsconfig.base.json`・`.gitignore`・`apps/`・`packages/`、`.github/workflows/ci.yml` |
+| F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` | ADR の `tiers[]`・`datastore_owner`・testing `capabilities`、`contracts/contracts.json` | `.distillery/config.yaml` (`commands.quality` = qlty ゲート)、`package.json`・`tsconfig.base.json`・`.gitignore`・`biome.json`・`.qlty/qlty.toml`・`apps/`・`packages/`、`.github/workflows/ci.yml` (permissions 最小 + qlty) |
 | F6 | `importUi.js` | `--from <d2-design 出力>` の `src/` | `packages/ui/**`、`packages/ui/.imported.yaml` |
 
 ### phase=all の順

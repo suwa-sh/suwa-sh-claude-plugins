@@ -35,6 +35,19 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/tsconfig.json')), 'app tsconfig.json');
   assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/vitest.config.ts')), 'app vitest.config.ts');
   assert.ok(fs.existsSync(path.join(c, 'biome.json')), 'root biome.json');
+  // qlty: formatter / linter / SAST を 1 つのゲートに。生成物・vendored は除外、スメルは low
+  const qlty = fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8');
+  for (const plugin of ['biome', 'radarlint-js', 'actionlint', 'zizmor', 'trufflehog', 'osv-scanner']) assert.ok(qlty.includes(`name = "${plugin}"`), `qlty plugin ${plugin}`);
+  for (const ex of ['packages/ui/**', 'packages/contracts/**', 'contracts/generated/**', '**/test/contract/**', '.distillery/**']) assert.ok(qlty.includes(`"${ex}"`), `qlty exclude ${ex}`);
+  assert.match(qlty, /\[\[triage\]\]\nmatch\.plugins = \["radarlint-js"\]\nset\.level = "low"/);
+  assert.ok(!qlty.includes('[[exclude]]'), '[[exclude]] に rules を書く誤用を招かないよう exclude セクションは出さない');
+  assert.match(pkg.devDependencies.vitest, /\^4\.1\.11/);
+  // biome の版は npm (exact) / biome.json の $schema / qlty のプラグインで同じ
+  const biomeVer = pkg.devDependencies['@biomejs/biome'];
+  assert.match(biomeVer, /^\d+\.\d+\.\d+$/, 'biome は exact pin');
+  assert.ok(fs.readFileSync(path.join(c, 'biome.json'), 'utf8').includes(`/schemas/${biomeVer}/schema.json`));
+  assert.ok(qlty.includes(`name = "biome"\nversion = "${biomeVer}"`), 'qlty の biome も同じ版');
+  assert.ok(!qlty.includes('package-lock.json'), 'lockfile は osv-scanner の入力なので除外しない');
   // frontend tier の tsconfig は jsx を有効化する
   const feTs = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/tsconfig.json'), 'utf8'));
   assert.equal(feTs.compilerOptions.jsx, 'react-jsx');
@@ -62,6 +75,45 @@ test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り
   // frontend ティアがあるので jsdom が root devDependencies に入る
   const pkg = JSON.parse(fs.readFileSync(path.join(c, 'package.json'), 'utf8'));
   assert.ok(pkg.devDependencies.jsdom, 'frontend があるとき jsdom を依存に入れる');
+});
+
+test('genSkeleton: 既存リポでは qlty の biome 版を lockfile / package.json に合わせる (Codex 0.1.11 指摘 1)', () => {
+  // package.json が範囲指定、lockfile が解決済み → lockfile の版
+  const c1 = tmp();
+  fs.writeFileSync(path.join(c1, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '^2.2.0' } }));
+  fs.writeFileSync(path.join(c1, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/@biomejs/biome': { version: '2.5.14' } } }));
+  run('genSkeleton.js', c1, ['--adr', adrDir, '--migrate']);
+  assert.ok(fs.readFileSync(path.join(c1, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.5.14"'));
+  assert.ok(fs.readFileSync(path.join(c1, 'biome.json'), 'utf8').includes('/schemas/2.5.14/'), '新規 biome.json の $schema も既存の版');
+  // lockfile 無し → package.json の範囲から版を取る
+  const c2 = tmp();
+  fs.writeFileSync(path.join(c2, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '~2.3.1' } }));
+  run('genSkeleton.js', c2, ['--adr', adrDir]);
+  assert.ok(fs.readFileSync(path.join(c2, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.3.1"'));
+  // lockfile も devDependency も無く biome.json だけある → その $schema の版
+  const c4 = tmp();
+  fs.writeFileSync(path.join(c4, 'package.json'), JSON.stringify({ devDependencies: {} }));
+  fs.writeFileSync(path.join(c4, 'biome.json'), JSON.stringify({ $schema: 'https://biomejs.dev/schemas/2.4.0/schema.json' }));
+  run('genSkeleton.js', c4, ['--adr', adrDir]);
+  assert.ok(fs.readFileSync(path.join(c4, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.4.0"'));
+  // 既存 biome.json の $schema が lockfile の版と違う → --migrate で $schema だけ揃える。migrate なしは警告のみ
+  const c5 = tmp();
+  fs.writeFileSync(path.join(c5, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '^2.2.0' } }));
+  fs.writeFileSync(path.join(c5, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/@biomejs/biome': { version: '2.5.14' } } }));
+  fs.writeFileSync(path.join(c5, 'biome.json'), JSON.stringify({ $schema: 'https://biomejs.dev/schemas/2.2.0/schema.json', linter: { enabled: true } }));
+  const r5 = spawnSync(process.execPath, [path.join(SKILL, 'scripts/genSkeleton.js'), '--cwd', c5, '--adr', adrDir], { encoding: 'utf8' });
+  assert.ok(r5.stderr.includes('warn: biome.json の $schema (2.2.0)'), r5.stderr);
+  assert.ok(fs.readFileSync(path.join(c5, 'biome.json'), 'utf8').includes('2.2.0'), 'migrate なしでは既存 biome.json を触らない');
+  const r5m = run('genSkeleton.js', c5, ['--adr', adrDir, '--migrate']);
+  assert.ok(r5m.out.includes('biome.json: $schema を 2.2.0 → 2.5.14'), r5m.out);
+  const b5 = JSON.parse(fs.readFileSync(path.join(c5, 'biome.json'), 'utf8'));
+  assert.equal(b5.$schema, 'https://biomejs.dev/schemas/2.5.14/schema.json');
+  assert.deepEqual(b5.linter, { enabled: true }, '$schema 以外は保持');
+  // biome を使っていない既存リポ → 既定の版
+  const c3 = tmp();
+  fs.writeFileSync(path.join(c3, 'package.json'), JSON.stringify({ devDependencies: {} }));
+  run('genSkeleton.js', c3, ['--adr', adrDir]);
+  assert.match(fs.readFileSync(path.join(c3, '.qlty/qlty.toml'), 'utf8'), /name = "biome"\nversion = "\d+\.\d+\.\d+"/);
 });
 
 test('genSkeleton --migrate: 0.1.0 生成物を移行する (Finding 5)', () => {
@@ -149,6 +201,10 @@ test('genCi: renders 5-gate workflow with needs chain', () => {
   const ci = fs.readFileSync(path.join(c, '.github/workflows/ci.yml'), 'utf8');
   for (const j of ['static:', 'unit:', 'contract:', 'uc-bdd:', 'acceptance:']) assert.ok(ci.includes(j), `missing job ${j}`);
   assert.ok(ci.includes('needs: static') && ci.includes('needs: uc-bdd'));
+  // zizmor: permissions は最小、checkout は credential を残さない。qlty は install action (SHA ピン) の後にゲート
+  assert.match(ci, /^permissions:\n  contents: read$/m);
+  assert.match(ci, /actions\/checkout@v4\n\s+with:\n\s+persist-credentials: false/);
+  assert.match(ci, /uses: qltysh\/qlty-action\/install@[0-9a-f]{40} # v2\.3\.0\n\s+- run: qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium/);
   // Cucumber のタグ式にワイルドカードは無い。uc-bdd は全 feature (not @browser)、acceptance は素の @acceptance で選ぶ。
   assert.ok(!ci.includes('@uc:*') && !ci.includes('@acceptance:*'), 'ワイルドカードタグは使わない');
   assert.ok(ci.includes('--tags "not @browser"') && ci.includes('@acceptance and not @browser'));

@@ -2,6 +2,25 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.11] - 2026-09-25
+
+### Added
+
+- **qlty を基盤に入れる** (ユーザー指摘: v1 同様 fmt / lint / test / SAST は qlty で。pkm の idea-implement のナレッジを移植)
+  - `genSkeleton.js` が `.qlty/qlty.toml` を生成 (plugins: biome / radarlint-js / actionlint / zizmor / trufflehog / osv-scanner。
+    生成物・vendored は `exclude_patterns`、コードスメルは `[[triage]]` で low)
+  - `.distillery/config.yaml` に `commands.quality` (`qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium`)。
+    `runGates.js` の static ゲートがリポ全体で 1 回回す (config に無ければ skipped)。`genCi.js` は `qltysh/qlty-action/install` (SHA ピン) の後に同じコマンド
+  - 規則を `docs/rules/common.md` と test-infra.md に焼き込む: `qlty check --fix` は使わない、整形は `qlty fmt --all`、無視は `[[ignore]]` / `[[triage]]`
+
+### Changed
+
+- `genCi.js`: zizmor の指摘に従い `permissions: contents: read` と checkout の `persist-credentials: false` を付ける
+- 生成物・テンプレートが biome を通るように修正: `genContractTests.js` / `genRdbDdl.js` の補間の無いテンプレートリテラル、
+  hooks.ts の非 null アサーション、world.ts の不要なコンストラクタ、tracer.ts の文字列連結と optional chain
+- 既存リポ (package.json あり) では qlty の biome プラグインの版を lockfile / package.json の版に合わせる (Codex 指摘: 新規既定の 2.2.5 と食い違う)
+- vitest を `^4.1.11` に (それ未満は CVE-2026-84373 (@vitest/mocker) が未修正で osv-scanner が止める)
+
 ## [0.1.10] - 2026-09-25
 
 ### Added
