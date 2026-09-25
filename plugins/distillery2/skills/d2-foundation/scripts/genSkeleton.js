@@ -106,6 +106,19 @@ const GITIGNORE = ['node_modules/', 'dist/', '*.log', '', ...GITIGNORE_MANAGED, 
 // (版が違うと biome が「schema と CLI の版が一致しない」を medium で出し、qlty のゲートが落ちる)
 const BIOME_VERSION = '2.2.5';
 
+// 既存リポ (package.json が既にある) では、そのリポが使っている biome の版を qlty 側に使う (Codex 0.1.11 指摘 1)。
+// lockfile の解決済み版 → package.json の devDependency (範囲指定の ^ ~ を落とす) → 既定 の順。
+function readJsonSafe(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } }
+function existingBiomeVersion(cwd) {
+  const lock = readJsonSafe(path.resolve(cwd, 'package-lock.json'));
+  const locked = lock?.packages?.['node_modules/@biomejs/biome']?.version;
+  if (locked && /^\d+\.\d+\.\d+$/.test(locked)) return locked;
+  const pkg = readJsonSafe(path.resolve(cwd, 'package.json'));
+  const dep = pkg?.devDependencies?.['@biomejs/biome'] ?? pkg?.dependencies?.['@biomejs/biome'];
+  const m = dep && String(dep).match(/(\d+\.\d+\.\d+)/);
+  return m ? m[1] : null;
+}
+
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
 const BIOME_JSON = JSON.stringify({
   $schema: `https://biomejs.dev/schemas/${BIOME_VERSION}/schema.json`,
@@ -121,7 +134,7 @@ const BIOME_JSON = JSON.stringify({
 // - `qlty check --fix` は使わない (formatter がリポ全体に適用され、修正候補の位置ずれで識別子が壊れる実績)。整形は `qlty fmt --all`
 // - 生成物・vendored (packages/ui、packages/contracts、contracts/generated、Storybook、契約テスト) は exclude_patterns で検査対象外
 // - コードスメル (radarlint-js) は [[triage]] で low に降格 (助言扱い)。ルール単位の無視は [[ignore]] / [[triage]] で書く ([[exclude]] に rules は書けない)
-const QLTY_TOML = `# distillery2 genSkeleton.js が生成した qlty の設定。ゲートは commands.quality (.distillery/config.yaml)。
+const qltyToml = (biomeVersion) => `# distillery2 genSkeleton.js が生成した qlty の設定。ゲートは commands.quality (.distillery/config.yaml)。
 # 整形は \`qlty fmt --all\`。\`qlty check --fix\` は使わない (リポ全体を整形して壊す)。
 # 仕様の正本: https://docs.qlty.sh/cli/qlty-toml
 config_version = "0"
@@ -162,7 +175,7 @@ set.level = "low"
 
 [[plugin]]
 name = "biome"
-version = "${BIOME_VERSION}"
+version = "${biomeVersion}"
 
 [[plugin]]
 name = "radarlint-js"
@@ -303,7 +316,9 @@ function run(o) {
   writeIfAbsent(cwd, 'package.json', rootPackageJson(tierDirs, hasFrontend), created, skipped);
   writeIfAbsent(cwd, 'tsconfig.base.json', TSCONFIG_BASE, created, skipped);
   writeIfAbsent(cwd, 'biome.json', BIOME_JSON, created, skipped);
-  writeIfAbsent(cwd, '.qlty/qlty.toml', QLTY_TOML, created, skipped);
+  // package.json を今回作ったなら BIOME_VERSION、既存なら既存の版 (3 か所の版を揃える)
+  const biomeVersion = (created.includes('package.json') ? null : existingBiomeVersion(cwd)) ?? BIOME_VERSION;
+  writeIfAbsent(cwd, '.qlty/qlty.toml', qltyToml(biomeVersion), created, skipped);
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
   const migrated = o.migrate ? migrate(cwd) : [];
   return { code: 0, created, skipped, tierDirs, migrated };

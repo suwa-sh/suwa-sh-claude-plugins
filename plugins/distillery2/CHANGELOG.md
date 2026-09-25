@@ -18,6 +18,7 @@ version の正本は `.claude-plugin/plugin.json`。
 - `genCi.js`: zizmor の指摘に従い `permissions: contents: read` と checkout の `persist-credentials: false` を付ける
 - 生成物・テンプレートが biome を通るように修正: `genContractTests.js` / `genRdbDdl.js` の補間の無いテンプレートリテラル、
   hooks.ts の非 null アサーション、world.ts の不要なコンストラクタ、tracer.ts の文字列連結と optional chain
+- 既存リポ (package.json あり) では qlty の biome プラグインの版を lockfile / package.json の版に合わせる (Codex 指摘: 新規既定の 2.2.5 と食い違う)
 - vitest を `^4.1.11` に (それ未満は CVE-2026-84373 (@vitest/mocker) が未修正で osv-scanner が止める)
 
 ## [0.1.10] - 2026-09-25

@@ -77,6 +77,25 @@ test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り
   assert.ok(pkg.devDependencies.jsdom, 'frontend があるとき jsdom を依存に入れる');
 });
 
+test('genSkeleton: 既存リポでは qlty の biome 版を lockfile / package.json に合わせる (Codex 0.1.11 指摘 1)', () => {
+  // package.json が範囲指定、lockfile が解決済み → lockfile の版
+  const c1 = tmp();
+  fs.writeFileSync(path.join(c1, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '^2.2.0' } }));
+  fs.writeFileSync(path.join(c1, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/@biomejs/biome': { version: '2.5.14' } } }));
+  run('genSkeleton.js', c1, ['--adr', adrDir, '--migrate']);
+  assert.ok(fs.readFileSync(path.join(c1, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.5.14"'));
+  // lockfile 無し → package.json の範囲から版を取る
+  const c2 = tmp();
+  fs.writeFileSync(path.join(c2, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '~2.3.1' } }));
+  run('genSkeleton.js', c2, ['--adr', adrDir]);
+  assert.ok(fs.readFileSync(path.join(c2, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.3.1"'));
+  // biome を使っていない既存リポ → 既定の版
+  const c3 = tmp();
+  fs.writeFileSync(path.join(c3, 'package.json'), JSON.stringify({ devDependencies: {} }));
+  run('genSkeleton.js', c3, ['--adr', adrDir]);
+  assert.match(fs.readFileSync(path.join(c3, '.qlty/qlty.toml'), 'utf8'), /name = "biome"\nversion = "\d+\.\d+\.\d+"/);
+});
+
 test('genSkeleton --migrate: 0.1.0 生成物を移行する (Finding 5)', () => {
   const c = tmp();
   // 0.1.0 相当の既存プロジェクトを用意する (echo プレースホルダ / attempt-*/ を含む .gitignore)
