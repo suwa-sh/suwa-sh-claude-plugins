@@ -35,19 +35,13 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/tsconfig.json')), 'app tsconfig.json');
   assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/vitest.config.ts')), 'app vitest.config.ts');
   assert.ok(fs.existsSync(path.join(c, 'biome.json')), 'root biome.json');
-  // qlty: formatter / linter / SAST を 1 つのゲートに。生成物・vendored は除外、スメルは low
-  const qlty = fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8');
-  for (const plugin of ['biome', 'radarlint-js', 'actionlint', 'zizmor', 'trufflehog', 'osv-scanner']) assert.ok(qlty.includes(`name = "${plugin}"`), `qlty plugin ${plugin}`);
-  for (const ex of ['packages/ui/**', 'packages/contracts/**', 'contracts/generated/**', '**/test/contract/**', '.distillery/**']) assert.ok(qlty.includes(`"${ex}"`), `qlty exclude ${ex}`);
-  assert.match(qlty, /\[\[triage\]\]\nmatch\.plugins = \["radarlint-js"\]\nset\.level = "low"/);
-  assert.ok(!qlty.includes('[[exclude]]'), '[[exclude]] に rules を書く誤用を招かないよう exclude セクションは出さない');
+  // .qlty/qlty.toml は genQlty.js が作る (genQlty.test.js)
+  assert.ok(!fs.existsSync(path.join(c, '.qlty/qlty.toml')), 'genSkeleton は qlty.toml を書かない');
   assert.match(pkg.devDependencies.vitest, /\^4\.1\.11/);
   // biome の版は npm (exact) / biome.json の $schema / qlty のプラグインで同じ
   const biomeVer = pkg.devDependencies['@biomejs/biome'];
   assert.match(biomeVer, /^\d+\.\d+\.\d+$/, 'biome は exact pin');
   assert.ok(fs.readFileSync(path.join(c, 'biome.json'), 'utf8').includes(`/schemas/${biomeVer}/schema.json`));
-  assert.ok(qlty.includes(`name = "biome"\nversion = "${biomeVer}"`), 'qlty の biome も同じ版');
-  assert.ok(!qlty.includes('package-lock.json'), 'lockfile は osv-scanner の入力なので除外しない');
   // frontend tier の tsconfig は jsx を有効化する
   const feTs = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/tsconfig.json'), 'utf8'));
   assert.equal(feTs.compilerOptions.jsx, 'react-jsx');
@@ -77,25 +71,24 @@ test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り
   assert.ok(pkg.devDependencies.jsdom, 'frontend があるとき jsdom を依存に入れる');
 });
 
-test('genSkeleton: 既存リポでは qlty の biome 版を lockfile / package.json に合わせる (Codex 0.1.11 指摘 1)', () => {
+test('genSkeleton: 既存リポでは biome.json の $schema を lockfile / package.json の版に合わせる (Codex 0.1.11 指摘 1)', () => {
   // package.json が範囲指定、lockfile が解決済み → lockfile の版
   const c1 = tmp();
   fs.writeFileSync(path.join(c1, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '^2.2.0' } }));
   fs.writeFileSync(path.join(c1, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/@biomejs/biome': { version: '2.5.14' } } }));
   run('genSkeleton.js', c1, ['--adr', adrDir, '--migrate']);
-  assert.ok(fs.readFileSync(path.join(c1, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.5.14"'));
   assert.ok(fs.readFileSync(path.join(c1, 'biome.json'), 'utf8').includes('/schemas/2.5.14/'), '新規 biome.json の $schema も既存の版');
   // lockfile 無し → package.json の範囲から版を取る
   const c2 = tmp();
   fs.writeFileSync(path.join(c2, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '~2.3.1' } }));
   run('genSkeleton.js', c2, ['--adr', adrDir]);
-  assert.ok(fs.readFileSync(path.join(c2, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.3.1"'));
+  assert.ok(fs.readFileSync(path.join(c2, 'biome.json'), 'utf8').includes('/schemas/2.3.1/'));
   // lockfile も devDependency も無く biome.json だけある → その $schema の版
   const c4 = tmp();
   fs.writeFileSync(path.join(c4, 'package.json'), JSON.stringify({ devDependencies: {} }));
   fs.writeFileSync(path.join(c4, 'biome.json'), JSON.stringify({ $schema: 'https://biomejs.dev/schemas/2.4.0/schema.json' }));
   run('genSkeleton.js', c4, ['--adr', adrDir]);
-  assert.ok(fs.readFileSync(path.join(c4, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.4.0"'));
+  assert.equal(require(path.join(SKILL, 'scripts/genSkeleton.js')).existingBiomeVersion(c4), '2.4.0');
   // 既存 biome.json の $schema が lockfile の版と違う → --migrate で $schema だけ揃える。migrate なしは警告のみ
   const c5 = tmp();
   fs.writeFileSync(path.join(c5, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '^2.2.0' } }));
@@ -113,7 +106,7 @@ test('genSkeleton: 既存リポでは qlty の biome 版を lockfile / package.j
   const c3 = tmp();
   fs.writeFileSync(path.join(c3, 'package.json'), JSON.stringify({ devDependencies: {} }));
   run('genSkeleton.js', c3, ['--adr', adrDir]);
-  assert.match(fs.readFileSync(path.join(c3, '.qlty/qlty.toml'), 'utf8'), /name = "biome"\nversion = "\d+\.\d+\.\d+"/);
+  assert.match(fs.readFileSync(path.join(c3, 'biome.json'), 'utf8'), /\/schemas\/\d+\.\d+\.\d+\//);
 });
 
 test('genSkeleton --migrate: 0.1.0 生成物を移行する (Finding 5)', () => {

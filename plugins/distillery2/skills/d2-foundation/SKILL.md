@@ -32,12 +32,13 @@ adr=docs/adr            # ADR ディレクトリ
 | F2 | `genArchTests.js` | ADR の `rules[].arch_test` | `.dependency-cruiser.cjs` |
 | F3 | `genTestSupport.js` | `templates/test-support/`、`templates/features-support/`、`templates/cucumber.js` | `packages/test-support/**`、`features/support/**`、`cucumber.js` |
 | F4 | (d2-contract) | — | 契約テスト・DB migration は **d2-contract が持つ** (下記) |
-| F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` | ADR の `tiers[]`・`datastore_owner`・testing `capabilities`、`contracts/contracts.json` | `.distillery/config.yaml` (`commands.quality` = qlty ゲート)、`package.json`・`tsconfig.base.json`・`.gitignore`・`biome.json`・`.qlty/qlty.toml`・`apps/`・`packages/`、`.github/workflows/ci.yml` (permissions 最小 + qlty) |
+| F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` / `genQlty.js` | ADR の `tiers[]`・`datastore_owner`・testing `capabilities`、`contracts/contracts.json` | `.distillery/config.yaml` (`commands.quality` = qlty ゲート)、`package.json`・`tsconfig.base.json`・`.gitignore`・`biome.json`・`.qlty/qlty.toml`・`apps/`・`packages/`、`.github/workflows/ci.yml` (permissions 最小 + qlty)。`.qlty/qlty.toml` は **qlty 自身の提案 (`qlty init --dry-run`) を土台**に distillery2 の上乗せ (biome 版固定・生成物の除外・radarlint を low)。qlty CLI が無ければ固定リスト |
 | F6 | `importUi.js` | `--from <d2-design 出力>` の `src/` | `packages/ui/**`、`packages/ui/.imported.yaml` |
 
 ### phase=all の順
 
-F1 → F2 → F3 → F5 (genConfig → genSkeleton → genCi)。F5 の genCi は config.yaml を読むので genConfig の後に走らせる。
+F1 → F2 → F3 → F5 (genConfig → genSkeleton → genCi → genQlty)。F5 の genCi は config.yaml を読むので genConfig の後に走らせる。
+genQlty は qlty init の自動検出に package.json / biome.json / workflow を見せるため **最後** に走らせる (未追跡ファイルは一時的に `git add -N` して戻す)。
 F4・F6 は all に含めない (F4 は d2-contract、F6 は d2-design の後に d2-run が呼ぶ)。
 
 ## 実行 (例)
@@ -49,6 +50,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genTestSupport.js --cwd 
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd <repo>
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genSkeleton.js --adr docs/adr --cwd <repo>
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>
+node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --cwd <repo>   # qlty init の提案 + 上乗せ。--fallback で固定リスト、--force で作り直し
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from <d2-design 出力> --cwd <repo>   # F6
 ```
 

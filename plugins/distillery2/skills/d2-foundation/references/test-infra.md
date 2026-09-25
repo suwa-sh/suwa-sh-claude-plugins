@@ -38,8 +38,11 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 - **ティア BDD (第 3 段)**: 契約から生成する契約テストに置換 (`{tier_dir}/features/` を作らない)。
 - **events/ + latest/ + status/lease/NEXT**: 履歴は Git、実行状態は `.distillery/runs/`、下流は `basis:` ヘッダ。
 - **impl-config の specs_root / repo_root 分離**: docs と実装コードを同一リポに置く。
-- **qlty の焼き込み** (0.1.11〜): `genSkeleton.js` が `.qlty/qlty.toml` を生成する (plugins: biome / radarlint-js / actionlint / zizmor / trufflehog / osv-scanner。
-  生成物・vendored は `exclude_patterns`、コードスメルは `[[triage]]` で low)。ゲートは `.distillery/config.yaml` の `commands.quality` =
+- **qlty の焼き込み** (0.1.11〜): `genQlty.js` が `.qlty/qlty.toml` を生成する。**プラグインの選定は qlty 自身の提案を優先**する
+  (`qlty init --yes --dry-run` の出力を土台にする。qlty init は git 追跡済みファイルしか見ないので、未追跡ファイルを `git add -N` で一時的に見せ、保存した index ファイルを書き戻す)。
+  distillery2 は上乗せだけ: biome の版を lockfile / package.json に固定 (qlty 既定の 1.9.4 は biome 2 系の設定を読めない)、生成物・vendored を
+  `exclude_patterns` に追加、qlty 既定除外の `**/db/**` `**/config/**` は外す (実装のレイヤ名になりやすい)、lockfile は除外しない、
+  `features/**` を test、radarlint-* は `[[triage]]` で low。qlty CLI が無いときは固定リスト (biome / radarlint-js / actionlint / zizmor / trufflehog / osv-scanner) にフォールバック。ゲートは `.distillery/config.yaml` の `commands.quality` =
   `qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium` で、static ゲートと CI がリポ全体で 1 回回す。
   各ティアの `format:check` / `lint` (biome) は実装者の手元の速い検査として残す。**`qlty check --fix` は使わない** (formatter がリポ全体に
   適用され、修正候補の位置ずれで識別子が壊れる実績)。整形は `qlty fmt --all`。ルール単位の無視は `[[ignore]]` / `[[triage]]` で書き、
