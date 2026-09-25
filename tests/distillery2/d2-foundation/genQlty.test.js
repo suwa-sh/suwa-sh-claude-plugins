@@ -115,6 +115,53 @@ test('genQlty: qlty init --dry-run が exit≠0 なら部分出力を採用せ�
   assert.ok(pluginBlocks(fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8')).some((p) => p.name === 'radarlint-js'), '固定リストが土台');
 });
 
+/** 偽の qlty: --version は成功、init --dry-run は fixture をそのまま出す (CI に qlty が無くても成功経路を検証する) */
+function fakeQltyBin() {
+  const bin = tmp();
+  fs.writeFileSync(path.join(bin, 'qlty'), `#!/bin/sh\nif [ "$1" = "--version" ]; then echo qlty 0.0.0; exit 0; fi\ncat "${path.join(__dirname, 'fixtures/qlty-init.toml')}"\n`);
+  fs.chmodSync(path.join(bin, 'qlty'), 0o755);
+  return bin;
+}
+
+test('genQlty (suggest, 偽 qlty): 利用者の index を壊さない (staged 削除と同名の未追跡、* 入りの名前、空白・日本語) (Codex 0.1.12 ラウンド 2 指摘 1)', () => {
+  const c = tmp();
+  const git = (...a) => spawnSync('git', a, { cwd: c, encoding: 'utf8' });
+  git('init', '-q');
+  for (const f of ['deleted.js', 'starA.js', 'keep.js']) fs.writeFileSync(path.join(c, f), `// ${f}\n`);
+  fs.writeFileSync(path.join(c, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '2.2.5' } }));
+  git('add', '-A');
+  git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'init');
+  // staged 削除の後に同名の未追跡ファイルを再作成 / staged 変更 + `*` 入りの未追跡名 / 空白・日本語の未追跡名
+  git('rm', '-q', '--cached', 'deleted.js');
+  fs.writeFileSync(path.join(c, 'deleted.js'), '// recreated\n');
+  fs.writeFileSync(path.join(c, 'starA.js'), '// staged change\n');
+  git('add', 'starA.js');
+  fs.writeFileSync(path.join(c, 'starA.js'), '// unstaged change on top\n');
+  fs.writeFileSync(path.join(c, 'star*.js'), '// glob-like name\n');
+  fs.writeFileSync(path.join(c, 'with space 日本語.ts'), 'export {};\n');
+  const before = { status: git('status', '--porcelain', '-z').stdout, cached: git('diff', '--cached', '--name-status', '-z').stdout };
+  const r = run(c, [], { PATH: `${fakeQltyBin()}:${NO_QLTY_PATH}` });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.ok(r.stdout.includes('土台: suggest'), r.stdout);
+  const after = { status: git('status', '--porcelain', '-z').stdout, cached: git('diff', '--cached', '--name-status', '-z').stdout };
+  assert.equal(after.cached, before.cached, 'staged の内容が変わらない');
+  assert.equal(after.status.replace('?? .qlty/\0', ''), before.status, '.qlty/ 以外の status が変わらない');
+  assert.equal(fs.readFileSync(path.join(c, 'starA.js'), 'utf8'), '// unstaged change on top\n', '作業ツリーも変わらない');
+  const toml = fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8');
+  assert.ok(pluginBlocks(toml).some((p) => p.name === 'zizmor'), '偽 qlty の提案 (fixture) が土台');
+});
+
+test('genQlty (suggest, 偽 qlty): コミットの無い新規リポでも index を残さない', () => {
+  const c = tmp();
+  const git = (...a) => spawnSync('git', a, { cwd: c, encoding: 'utf8' });
+  git('init', '-q');
+  fs.writeFileSync(path.join(c, 'package.json'), '{}');
+  const r = run(c, [], { PATH: `${fakeQltyBin()}:${NO_QLTY_PATH}` });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.ok(r.stdout.includes('土台: suggest'), r.stdout);
+  assert.equal(git('status', '--porcelain').stdout, '?? .qlty/\n?? package.json\n');
+});
+
 test('genQlty: --fallback は qlty があっても固定リスト', () => {
   const c = tmp();
   fs.writeFileSync(path.join(c, 'package.json'), '{}');

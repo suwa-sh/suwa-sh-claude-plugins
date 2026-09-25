@@ -111,14 +111,22 @@ function suggestToml(cwd) {
   if (git(cwd, ['rev-parse', '--is-inside-work-tree']).status !== 0) return { toml: null, reason: 'git リポジトリではない' };
   const ls = git(cwd, ['ls-files', '--others', '--exclude-standard', '-z']);
   const untracked = ls.status === 0 ? ls.stdout.split('\0').filter(Boolean) : [];
-  const pathspec = untracked.join('\0');
-  if (untracked.length) git(cwd, ['add', '-N', '--pathspec-from-file=-', '--pathspec-file-nul'], pathspec);
+  // index の復元は「index ファイルをそのまま戻す」で行う (Codex 0.1.12 ラウンド 2 指摘 1:
+  // pathspec で git reset すると、同名の staged 削除や `*` 入りの名前で利用者の staged 変更まで解除した)。
+  // worktree ごとの index は `git rev-parse --git-path index`。無ければ (初回 add 前) 終わったら消す。
+  const indexPath = path.resolve(cwd, git(cwd, ['rev-parse', '--git-path', 'index']).stdout.trim());
+  const saved = fs.existsSync(indexPath) ? fs.readFileSync(indexPath) : null;
+  // 名前は glob として解釈しない (--literal-pathspecs)
+  if (untracked.length) git(cwd, ['--literal-pathspecs', 'add', '-N', '--pathspec-from-file=-', '--pathspec-file-nul'], untracked.join('\0'));
   let out;
   try {
     const r = spawnSync('qlty', ['init', '--yes', '--dry-run', '--no-upgrade-check'], { cwd, encoding: 'utf8' });
     out = (r.error || r.status !== 0) ? '' : (r.stdout || '');  // 失敗 (exit≠0) の部分出力は採用しない (Codex 0.1.12 指摘 1)
   } finally {
-    if (untracked.length) git(cwd, ['reset', '-q', '--pathspec-from-file=-', '--pathspec-file-nul'], pathspec);
+    if (untracked.length) {
+      if (saved) fs.writeFileSync(indexPath, saved);
+      else fs.rmSync(indexPath, { force: true });
+    }
   }
   if (!/^config_version\s*=/m.test(out)) return { toml: null, reason: 'qlty init --dry-run が失敗したか、出力に設定が無い' };
   return { toml: out, reason: null };
