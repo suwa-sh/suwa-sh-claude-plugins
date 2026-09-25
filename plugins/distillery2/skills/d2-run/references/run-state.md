@@ -39,6 +39,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
 | type | いつ |
 |---|---|
 | run_opened | 初回 open |
+| models_resolved | open 直後。`{session, implementer, verifier}` (解決済みのモデル名)。as-built の生成情報に転記される |
 | stage_completed / stage_invalidated | done の作成 / 退避 |
 | scenario_approved / review_approved | 人の承認。承認した内容の要点と評価対象のハッシュを持つ |
 | assumption_decided | 前提の承認・却下 (id と処遇) |
