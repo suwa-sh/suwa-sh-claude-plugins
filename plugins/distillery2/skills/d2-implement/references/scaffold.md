@@ -20,7 +20,9 @@ v1 の 4 段 red baseline を「上位段は静的確認、実行して落とす
 ## 完了条件 (静的確認 + 単体の red)
 
 1. `node ${CLAUDE_PLUGIN_ROOT}/scripts/lib/gherkin.js` 相当の静的確認: feature が parse でき、
-   `npx cucumber-js --dry-run --tags "@uc:<slug>"` で undefined / ambiguous step が 0 (pending は可)
+   `npx cucumber-js -p dryrun --dry-run --tags "@uc:<slug>"` で undefined / ambiguous step が 0 (pending は可)。
+   `-p dryrun` は cucumber.js の dryrun プロファイル (アプリを import しない)。既定プロファイルは world.ts 経由で `apps/<backend>/src/test-app` を読むので、
+   実装前は解決に失敗する (0.1.10 実走 ④-4)
 2. `node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc <slug> --only unit --expect-red unit` が exit 0
    (単体ゲートが「テストの assertion で落ちること」を確認する。各ティアの unit コマンドは `{report}` に JSON レポートを書く設定で、
    runGates はレポートの失敗テスト数が 1 以上のときだけ red と認める。レポートが無い・skipped・失敗 0 は設定ミスとして fail になる)

@@ -243,7 +243,9 @@ function collect(opts) {
 /** 実行したモデル: events の最後の models_resolved。無ければ config.models (implementer null はセッション既定)。 */
 function latestModels(events, config) {
   const ev = [...events].reverse().find((e) => e.type === 'models_resolved');
-  if (ev) return { session: ev.session || null, implementer: ev.implementer || null, verifier: ev.verifier || null, source: 'events' };
+  // 値はモデル ID だけのはず。注記が混ざっていたら最初の語だけを使う (0.1.10 実走 ④-12: 別名と注記の長い文字列がそのまま出た)
+  const idOnly = (v) => (v == null ? null : String(v).trim().split(/[\s(]/)[0] || null);
+  if (ev) return { session: idOnly(ev.session), implementer: idOnly(ev.implementer), verifier: idOnly(ev.verifier), source: 'events' };
   const m = (config && config.models) || {};
   return { session: null, implementer: m.implementer || null, verifier: m.verifier || null, source: 'config' };
 }

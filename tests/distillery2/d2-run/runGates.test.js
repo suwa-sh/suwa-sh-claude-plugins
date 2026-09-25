@@ -27,6 +27,7 @@ const CONFIG = [
   '  - id: api',
   '    dir: apps/api',
   '    kind: backend',
+  '    provides: [api]',  // 提供側だけ contract ゲートが回る (0.1.10 実走 ④-1)
   '    commands:',
   '      lint: node -e "process.exit(0)"',
   '      unit: node -e "require(\'fs\').writeFileSync(process.argv[1], \'{}\'); process.exit(0)" {report}',

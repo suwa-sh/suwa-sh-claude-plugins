@@ -37,8 +37,11 @@ function basisComment(contractsDir, docsRoot = 'docs') {
 }
 function gitCwd(dir) { try { return fs.statSync(dir).isDirectory() ? dir : path.dirname(dir); } catch { return process.cwd(); } }
 
+// 生成した .ts は biome の整形・lint を丸ごと抑止する (埋め込み JSON を biome が展開して format_check が落ちた。0.1.10 実走 ④-2)。
+// biome 2 の biome-ignore-all はファイル先頭のコメントで有効 (実測 2.2.x)
+const BIOME_IGNORE_ALL = '// biome-ignore-all format: generated (do not edit)\n// biome-ignore-all lint: generated (do not edit)';
 function header(contractsDir, docsRoot) {
-  return `${DO_NOT_EDIT}\n${basisComment(contractsDir, docsRoot)}`;
+  return `${DO_NOT_EDIT}\n${BIOME_IGNORE_ALL}\n${basisComment(contractsDir, docsRoot)}`;
 }
 
 function writeFileDet(target, text, check, stale, written, rel) {

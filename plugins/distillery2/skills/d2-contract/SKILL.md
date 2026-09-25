@@ -85,7 +85,8 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
 3. **examples を書く**: [`references/uc-index.md`](references/uc-index.md) の examples 必須ルールに従い、
    requestBody と各 2xx/4xx response に example を付ける。
    **シナリオから example を作れないときは、契約を推測で埋めず**、
-   `.distillery/runs/<slug>/issues/` に課題ドラフトを残して停止する。
+   `.distillery/runs/<slug>/issues/<ts>_<slug>.md` に課題ドラフトを残して停止する。書式は実装の課題と同じ:
+   front matter に `kind: contract` と `title` (40 字以内)。front matter が無いと as-built の課題の表で「未分類」になる (0.1.10 実走 ④-11)。
 4. **uc-index を更新**: `uc-index.yaml` の該当 `slug` に `operations` / `messages` / `tables` を書く。
 5. **compile + validate**: `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js`。
    examples 不足や参照ずれは validate が exit 1 で止める。

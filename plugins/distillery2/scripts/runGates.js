@@ -89,7 +89,13 @@ function planGate(gate, config, ctx) {
       jobs.push(cmds.quality ? { name: 'quality', cmd: sub(cmds.quality, null, 'quality') } : { name: 'quality', skipped: true });
       return { parallel: true, jobs };
     case 'unit': for (const t of tiers) jobs.push(tierJob(t, 'unit', null, true)); return { parallel: true, jobs };
-    case 'contract': for (const t of tiers) jobs.push(tierJob(t, 'contract', null, providers.has(t.id) || (t.provides || []).length > 0)); return { parallel: true, jobs };
+    case 'contract':
+      // 契約テストは提供側にしか生成されない。消費側で回すとテスト 0 件で vitest が exit 1 になる (0.1.10 実走 ④-1) ので提供側だけ
+      for (const t of tiers) {
+        const provider = providers.has(t.id) || (t.provides || []).length > 0;
+        jobs.push(provider ? tierJob(t, 'contract', null, true) : { name: 'contract', tier: t.id, required: false, skipped: true, reason: 'not a provider' });
+      }
+      return { parallel: true, jobs };
     case 'uc-bdd':
       jobs.push(cmds.uc_bdd ? { name: 'uc_bdd', cmd: sub(cmds.uc_bdd, null, 'uc-bdd'), report: rep('uc-bdd') } : { name: 'uc_bdd', skipped: true });
       return { parallel: false, jobs };

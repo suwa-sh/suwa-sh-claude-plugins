@@ -42,6 +42,19 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   const biomeVer = pkg.devDependencies['@biomejs/biome'];
   assert.match(biomeVer, /^\d+\.\d+\.\d+$/, 'biome は exact pin');
   assert.ok(fs.readFileSync(path.join(c, 'biome.json'), 'utf8').includes(`/schemas/${biomeVer}/schema.json`));
+  // 0.1.10 実走の課題 (③-1 / ③-2 / ④-5): tsconfig の配列は biome と同じ 1 行、空の src/index.ts、単体と契約テストの vitest 設定を分ける
+  const tsRaw = fs.readFileSync(path.join(c, 'apps/backend-api/tsconfig.json'), 'utf8');
+  assert.ok(tsRaw.includes('"include": ["src", "test"]'), `tsconfig の配列は 1 行 (biome format と一致):\n${tsRaw}`);
+  assert.ok(tsRaw.includes('"types": ["node"]'));
+  assert.equal(fs.readFileSync(path.join(c, 'apps/backend-api/src/index.ts'), 'utf8').includes('export {};'), true, '空の src/index.ts');
+  assert.ok(pkg.devDependencies['@types/node'], 'types: node のための @types/node');
+  const unitCfg = fs.readFileSync(path.join(c, 'apps/backend-api/vitest.config.ts'), 'utf8');
+  const contractCfg = fs.readFileSync(path.join(c, 'apps/backend-api/vitest.contract.config.ts'), 'utf8');
+  assert.ok(unitCfg.includes("['src/**/*.{test,spec}.{ts,tsx}']") && !unitCfg.includes("'test/"), '単体は src/ だけ');
+  assert.ok(contractCfg.includes("['test/contract/**/*.{test,spec}.{ts,tsx}']"), '契約テストは test/contract/ だけ');
+  assert.equal(appPkg.scripts['test:contract'], 'vitest run -c vitest.contract.config.ts');
+  const biomeCfg = JSON.parse(fs.readFileSync(path.join(c, 'biome.json'), 'utf8'));
+  assert.deepEqual(biomeCfg.files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app'], '生成物はルートの整形から外す');
   // frontend tier の tsconfig は jsx を有効化する
   const feTs = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/tsconfig.json'), 'utf8'));
   assert.equal(feTs.compilerOptions.jsx, 'react-jsx');
@@ -64,6 +77,8 @@ test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り
   fs.writeFileSync(path.join(c, 'apps/backend-api/test/contract/x.test.ts'), 'export const x: number = 1;\n');
   const tsc = path.resolve(__dirname, '../../../node_modules/.bin/tsc');
   assert.ok(fs.existsSync(tsc), 'node_modules/.bin/tsc が無い (npm install 済みか)');
+  // app tsconfig は types: ['node'] を持つ (対象リポでは devDependencies の @types/node)。ここではリポの node_modules を見せる
+  fs.symlinkSync(path.resolve(__dirname, '../../../node_modules'), path.join(c, 'node_modules'));
   const res = spawnSync(tsc, ['--noEmit', '-p', path.join(c, 'apps/backend-api/tsconfig.json')], { encoding: 'utf8' });
   assert.equal(res.status, 0, `tsc failed:\n${res.stdout || ''}${res.stderr || ''}`);
   // frontend ティアがあるので jsdom が root devDependencies に入る
@@ -149,6 +164,18 @@ test('genSkeleton --migrate: 0.1.0 生成物を移行する (Finding 5)', () => 
   // 変更内容を報告する
   assert.ok(r.out.includes('migrate:'), r.out);
   assert.ok(r.out.includes('.gitignore') && r.out.includes('backend-api'), r.out);
+});
+
+test('genSkeleton --migrate: 0.1.12 以前の test:contract (単体と重なる) を契約専用設定へ差し替える', () => {
+  const c = tmp();
+  run('genSkeleton.js', c, ['--adr', adrDir]);
+  const p = path.join(c, 'apps/backend-api/package.json');
+  const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+  pkg.scripts['test:contract'] = 'vitest run test/contract';
+  fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+  const r = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  assert.ok(r.out.includes('test:contract'), r.out);
+  assert.equal(JSON.parse(fs.readFileSync(p, 'utf8')).scripts['test:contract'], 'vitest run -c vitest.contract.config.ts');
 });
 
 test('genSkeleton --migrate: 手編集済み script は触らない (echo でなければ据え置き)', () => {

@@ -5,6 +5,8 @@
  * Usage:
  *   node prTrailers.js --run .distillery/runs/<slug> [--cwd <repo>] [--strict]        # trailer 行を stdout に出す
  *   node prTrailers.js --run ... --commit-message "feat: 貸出を登録する" --strict     # 件名 + 空行 + trailer を出す
+ *   --base <ref>            Basis-* の起点 (既定: origin/HEAD → main → master との merge-base。squash で消える branch 上の commit を指さない)
+ *   --co-author "<Name <email>>"  Co-Authored-By trailer (複数可。ハーネスの attribution 行をそのまま渡す)
  *
  * --strict (配送時に使う): UC / Basis-Requirements / Gates (全段 pass) / Assumptions / As-Built が揃わなければ exit 1
  *
@@ -15,6 +17,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { parseYaml } = require('./lib/yaml');
 const basis = require('./lib/basis');
 const { readEvents } = require('./lib/runState');
@@ -28,6 +31,8 @@ function parseArgs(argv) {
     else if (a === '--commit-message') o.message = argv[++i];
     else if (a === '--docs-root') o.docsRoot = argv[++i];
     else if (a === '--strict') o.strict = true;
+    else if (a === '--base') o.base = argv[++i];
+    else if (a === '--co-author') (o.coAuthors ||= []).push(argv[++i]);
     else throw new Error(`Unknown arg: ${a}`);
   }
   if (!o.run) throw new Error('--run <runDir> is required');
@@ -41,15 +46,41 @@ function findUseCase(cwd, docsRoot, slug) {
   return (doc.use_cases || doc.ucs || []).find(u => u.slug === slug) || null;
 }
 
-function buildTrailers({ cwd, runDir, docsRoot = 'docs' }) {
+function gitOut(cwd, args) {
+  try { return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; }
+}
+
+/**
+ * Basis の起点。squash すると UC branch 上の commit は履歴から消えるので、base branch との merge-base から遡る
+ * (0.1.10 実走 ④-6: Basis-Requirements が squash 前の `impl(<slug>): contract` を指した)。
+ * base は --base で指定、無ければ origin/HEAD → main → master の順に探す。見つからなければ null (HEAD から遡る)。
+ */
+function resolveBaseRef(cwd, base) {
+  const candidates = base ? [base] : [gitOut(cwd, ['symbolic-ref', '-q', '--short', 'refs/remotes/origin/HEAD']), 'main', 'master'].filter(Boolean);
+  for (const c of candidates) {
+    if (gitOut(cwd, ['rev-parse', '--verify', '-q', `${c}^{commit}`]) == null) continue;
+    const mb = gitOut(cwd, ['merge-base', 'HEAD', c]);
+    if (mb) return mb;
+  }
+  return null;
+}
+
+function buildTrailers({ cwd, runDir, docsRoot = 'docs', base = null, coAuthors = [] }) {
   const events = readEvents(runDir);
   const slug = (events[0] && events[0].slug) || path.basename(runDir);
   const uc = findUseCase(cwd, docsRoot, slug);
   const trailers = [];
   if (uc) trailers.push(['UC', [uc.business, uc.buc, uc.uc].filter(Boolean).join('/')]);
   trailers.push(['UC-Slug', slug]);
-  const stamped = basis.stamp({ requirements: `${docsRoot}/requirements`, adr: `${docsRoot}/adr`, contracts: 'contracts' }, cwd);
+  const dirs = { requirements: `${docsRoot}/requirements`, adr: `${docsRoot}/adr`, contracts: 'contracts' };
+  const baseRef = resolveBaseRef(cwd, base);
+  const stamped = basis.stamp(dirs, cwd, baseRef);
   for (const [name, key] of [['requirements', 'Basis-Requirements'], ['adr', 'Basis-Adr'], ['contracts', 'Basis-Contracts']]) if (stamped[name]) trailers.push([key, stamped[name]]);
+  // base 以降に UC branch で変えた上流 (この squash commit 自身に差分が入る)。Basis-* は base 側の sha なので、変更の有無をここで示す
+  if (baseRef) {
+    const changed = Object.entries(dirs).filter(([, dir]) => (gitOut(cwd, ['diff', '--name-only', baseRef, 'HEAD', '--', dir]) || '') !== '').map(([n]) => n);
+    if (changed.length) trailers.push(['Basis-Changed', changed.join(' ')]);
+  }
   const gatesFile = path.join(runDir, 'reports', 'gates.json');
   if (fs.existsSync(gatesFile)) {
     const g = JSON.parse(fs.readFileSync(gatesFile, 'utf8'));
@@ -67,6 +98,8 @@ function buildTrailers({ cwd, runDir, docsRoot = 'docs' }) {
     if (e.url == null || String(e.url).trim() === '') continue;
     trailers.push(['Feedback', `${e.kind}:${e.url}`]);
   }
+  // 共著 (ハーネスの attribution 行をそのまま渡す。0.1.10 実走 ④-7: オーケストレータが手で足していた)
+  for (const c of coAuthors) trailers.push(['Co-Authored-By', c]);
   return trailers;
 }
 
@@ -101,7 +134,7 @@ function main(argv) {
   try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const runDir = path.resolve(o.cwd, o.run);
   if (!fs.existsSync(runDir)) { console.error(`run dir not found: ${runDir}`); return 2; }
-  const trailers = buildTrailers({ cwd: o.cwd, runDir, docsRoot: o.docsRoot });
+  const trailers = buildTrailers({ cwd: o.cwd, runDir, docsRoot: o.docsRoot, base: o.base, coAuthors: o.coAuthors || [] });
   if (o.strict) {
     const problems = strictProblems(trailers, o.cwd);
     if (problems.length) { console.error(`prTrailers --strict: ${problems.join('; ')}`); return 1; }
@@ -112,4 +145,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { buildTrailers, render, strictProblems };
+module.exports = { buildTrailers, render, strictProblems, resolveBaseRef };

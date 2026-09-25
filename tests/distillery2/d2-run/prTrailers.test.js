@@ -38,6 +38,8 @@ test('trailers are built from use-cases, gates.json, basis and events', () => {
   assert.match(text, new RegExp(`^Basis-Requirements: ${sha}$`, 'm'));
   assert.match(text, new RegExp(`^Basis-Adr: ${sha}$`, 'm'));
   assert.doesNotMatch(text, /Basis-Contracts/);
+  assert.doesNotMatch(text, /Basis-Changed/, 'base branch が無ければ Basis-Changed は出ない');
+  assert.doesNotMatch(text, /Co-Authored-By/);
   assert.match(text, /^Gates: static=pass unit=pass$/m);
   assert.match(text, /^Assumptions: confirmed=1 auto=1 rejected=0$/m);
   assert.match(text, /^As-Built: docs\/as-built\/貸出業務\/貸出を登録する\/index.md$/m);
@@ -65,4 +67,30 @@ test('strict mode rejects missing UC / gates / approval', () => {
   fs.mkdirSync(path.join(repo, 'docs/as-built/x/y'), { recursive: true });
   fs.writeFileSync(path.join(repo, 'docs/as-built/x/y/index.md'), '# ok');
   assert.ok(!strictProblems([['As-Built', 'docs/as-built/x/y/index.md']], repo).some(p => /As-Built/.test(p)));
+});
+
+test('Basis-* は base branch との merge-base から遡り、UC branch で変えた上流は Basis-Changed に出る (0.1.10 実走 ④-6 / ④-7)', () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-trailers-'));
+  git(repo, 'init', '-q', '-b', 'main');
+  fs.mkdirSync(path.join(repo, 'docs/requirements'), { recursive: true });
+  fs.mkdirSync(path.join(repo, 'docs/adr'), { recursive: true });
+  fs.mkdirSync(path.join(repo, '.distillery/runs/loan'), { recursive: true });
+  fs.writeFileSync(path.join(repo, 'docs/requirements/use-cases.yaml'), 'use_cases:\n  - slug: loan\n    business: b\n    buc: f\n    uc: u\n');
+  fs.writeFileSync(path.join(repo, 'docs/adr/0001.md'), '# adr\n');
+  fs.writeFileSync(path.join(repo, '.distillery/runs/loan/events.jsonl'), JSON.stringify({ type: 'opened', slug: 'loan' }) + '\n');
+  git(repo, 'add', '.'); git(repo, 'commit', '-q', '-m', 'base');
+  const baseSha = git(repo, 'rev-parse', 'HEAD');
+  // UC branch で requirements を変える (squash で消える commit)
+  git(repo, 'checkout', '-q', '-b', 'feature/loan');
+  fs.writeFileSync(path.join(repo, 'docs/requirements/use-cases.yaml'), 'use_cases:\n  - slug: loan\n    business: b\n    buc: f\n    uc: u\n    status: doing\n');
+  git(repo, 'add', '.'); git(repo, 'commit', '-q', '-m', 'impl(loan): scenario');
+  const branchSha = git(repo, 'rev-parse', 'HEAD');
+  const text = render(buildTrailers({ cwd: repo, runDir: path.join(repo, '.distillery/runs/loan'), coAuthors: ['Bot <bot@example.com>'] }));
+  assert.match(text, new RegExp(`^Basis-Requirements: ${baseSha}$`, 'm'), text);
+  assert.doesNotMatch(text, new RegExp(branchSha), 'branch 上の commit を指さない');
+  assert.match(text, /^Basis-Changed: requirements$/m);
+  assert.match(text, /^Co-Authored-By: Bot <bot@example.com>$/m);
+  // --base で起点を明示できる
+  const explicit = render(buildTrailers({ cwd: repo, runDir: path.join(repo, '.distillery/runs/loan'), base: 'main' }));
+  assert.match(explicit, new RegExp(`^Basis-Adr: ${baseSha}$`, 'm'));
 });

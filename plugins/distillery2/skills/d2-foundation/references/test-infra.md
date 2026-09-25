@@ -38,6 +38,9 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 - **ティア BDD (第 3 段)**: 契約から生成する契約テストに置換 (`{tier_dir}/features/` を作らない)。
 - **events/ + latest/ + status/lease/NEXT**: 履歴は Git、実行状態は `.distillery/runs/`、下流は `basis:` ヘッダ。
 - **impl-config の specs_root / repo_root 分離**: docs と実装コードを同一リポに置く。
+- **vitest の設定は単体と契約テストで分ける** (0.1.13〜): `apps/<tier>/vitest.config.ts` (unit: `src/**`) と
+  `vitest.contract.config.ts` (test:contract: `test/contract/**`)。同じ include だと契約テストの失敗が unit ゲートにも出る。
+  生成した .ts は先頭の `biome-ignore-all format / lint` で biome の対象外 (埋め込み JSON を展開されて format_check が落ちるため)。
 - **qlty の焼き込み** (0.1.11〜): `genQlty.js` が `.qlty/qlty.toml` を生成する。**プラグインの選定は qlty 自身の提案を優先**する
   (`qlty init --yes --dry-run` の出力を土台にする。qlty init は git 追跡済みファイルしか見ないので、未追跡ファイルを `git add -N` で一時的に見せ、保存した index ファイルを書き戻す)。
   distillery2 は上乗せだけ: biome の版を lockfile / package.json に固定 (qlty 既定の 1.9.4 は biome 2 系の設定を読めない)、生成物・vendored を
