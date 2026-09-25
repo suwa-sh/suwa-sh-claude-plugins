@@ -96,6 +96,19 @@ test('genSkeleton: 既存リポでは qlty の biome 版を lockfile / package.j
   fs.writeFileSync(path.join(c4, 'biome.json'), JSON.stringify({ $schema: 'https://biomejs.dev/schemas/2.4.0/schema.json' }));
   run('genSkeleton.js', c4, ['--adr', adrDir]);
   assert.ok(fs.readFileSync(path.join(c4, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.4.0"'));
+  // 既存 biome.json の $schema が lockfile の版と違う → --migrate で $schema だけ揃える。migrate なしは警告のみ
+  const c5 = tmp();
+  fs.writeFileSync(path.join(c5, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '^2.2.0' } }));
+  fs.writeFileSync(path.join(c5, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/@biomejs/biome': { version: '2.5.14' } } }));
+  fs.writeFileSync(path.join(c5, 'biome.json'), JSON.stringify({ $schema: 'https://biomejs.dev/schemas/2.2.0/schema.json', linter: { enabled: true } }));
+  const r5 = spawnSync(process.execPath, [path.join(SKILL, 'scripts/genSkeleton.js'), '--cwd', c5, '--adr', adrDir], { encoding: 'utf8' });
+  assert.ok(r5.stderr.includes('warn: biome.json の $schema (2.2.0)'), r5.stderr);
+  assert.ok(fs.readFileSync(path.join(c5, 'biome.json'), 'utf8').includes('2.2.0'), 'migrate なしでは既存 biome.json を触らない');
+  const r5m = run('genSkeleton.js', c5, ['--adr', adrDir, '--migrate']);
+  assert.ok(r5m.out.includes('biome.json: $schema を 2.2.0 → 2.5.14'), r5m.out);
+  const b5 = JSON.parse(fs.readFileSync(path.join(c5, 'biome.json'), 'utf8'));
+  assert.equal(b5.$schema, 'https://biomejs.dev/schemas/2.5.14/schema.json');
+  assert.deepEqual(b5.linter, { enabled: true }, '$schema 以外は保持');
   // biome を使っていない既存リポ → 既定の版
   const c3 = tmp();
   fs.writeFileSync(path.join(c3, 'package.json'), JSON.stringify({ devDependencies: {} }));

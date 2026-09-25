@@ -283,14 +283,33 @@ function migrateAppScripts(cwd, rel, changes) {
   changes.push(`${rel}: echo プレースホルダを実コマンド化 (${replaced.join(', ')})`);
 }
 
+/** 既存 biome.json の $schema の版が決定した版と違うとき、$schema だけ書き換える (Codex 0.1.11 ラウンド 3)。 */
+function migrateBiomeSchema(cwd, biomeVersion, changes) {
+  const p = path.resolve(cwd, 'biome.json');
+  const cfg = readJsonSafe(p);
+  const cur = cfg?.$schema && String(cfg.$schema).match(/\/schemas\/(\d+\.\d+\.\d+)\//);
+  if (!cur || cur[1] === biomeVersion) return;
+  cfg.$schema = `https://biomejs.dev/schemas/${biomeVersion}/schema.json`;
+  fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\n');
+  changes.push(`biome.json: $schema を ${cur[1]} → ${biomeVersion} (lockfile / package.json の biome と揃える)`);
+}
+
+/** 既存 biome.json の $schema が決定した版と違えば警告 (migrate でないときは書き換えない)。 */
+function warnBiomeSchema(cwd, biomeVersion) {
+  const cur = readJsonSafe(path.resolve(cwd, 'biome.json'))?.$schema;
+  const m = cur && String(cur).match(/\/schemas\/(\d+\.\d+\.\d+)\//);
+  if (m && m[1] !== biomeVersion) console.error(`warn: biome.json の $schema (${m[1]}) と biome の版 (${biomeVersion}) が違う。--migrate で揃えるか手で直す`);
+}
+
 /**
  * 0.1.0 で生成したプロジェクトを 0.1.1 相当へ移行する。呼び出し元 (run) が先に writeIfAbsent で
  * 不足ファイル (app tsconfig / vitest.config / biome.json 等) を作り、その後でこの関数が
  * 既存ファイル (writeIfAbsent が skip するもの) を書き換える。
  */
-function migrate(cwd) {
+function migrate(cwd, biomeVersion) {
   const changes = [];
   migrateGitignore(cwd, changes);
+  migrateBiomeSchema(cwd, biomeVersion, changes);
   const appsDir = path.resolve(cwd, 'apps');
   const entries = fs.existsSync(appsDir) ? fs.readdirSync(appsDir, { withFileTypes: true }) : [];
   for (const entry of entries) {
@@ -324,7 +343,8 @@ function run(o) {
   writeIfAbsent(cwd, 'biome.json', biomeJson(biomeVersion), created, skipped);
   writeIfAbsent(cwd, '.qlty/qlty.toml', qltyToml(biomeVersion), created, skipped);
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
-  const migrated = o.migrate ? migrate(cwd) : [];
+  const migrated = o.migrate ? migrate(cwd, biomeVersion) : [];
+  if (!o.migrate) warnBiomeSchema(cwd, biomeVersion);
   return { code: 0, created, skipped, tierDirs, migrated };
 }
 
