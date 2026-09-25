@@ -71,6 +71,17 @@ test('a tier without a unit command fails the unit gate instead of passing silen
   assert.equal(c.code, 0, c.out);
 });
 
+test('契約の提供側が 1 つも無い config では contract ゲートは pass (検査対象なし) で、配送の strict を止めない (Codex 0.1.13 指摘 2)', () => {
+  const repo = makeRepo(CONFIG.replace('    provides: [api]\n', ''));
+  const r = run(repo, ['--uc', 'loan', '--only', 'contract']);
+  assert.equal(r.code, 0, r.out);
+  const summary = JSON.parse(fs.readFileSync(path.join(repo, '.distillery/runs/loan/reports/gates.json'), 'utf8'));
+  const contract = summary.gates.find(g => g.name === 'contract');
+  assert.equal(contract.status, 'pass');
+  assert.match(contract.note, /no provider tiers/);
+  assert.ok(contract.jobs.every(j => j.status === 'skipped' && j.reason === 'not a provider'));
+});
+
 test('planGate substitutes slug and report paths and skips undefined commands', () => {
   const config = { tiers: [{ id: 'api', commands: { unit: 'x {report}' } }], commands: { uc_bdd: 'cuke {slug} {report}' }, capabilities: { browser: true } };
   const ctx = { slug: 'loan', reportsDir: '/r' };

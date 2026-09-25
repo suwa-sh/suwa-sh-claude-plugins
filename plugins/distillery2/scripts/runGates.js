@@ -95,7 +95,8 @@ function planGate(gate, config, ctx) {
         const provider = providers.has(t.id) || (t.provides || []).length > 0;
         jobs.push(provider ? tierJob(t, 'contract', null, true) : { name: 'contract', tier: t.id, required: false, skipped: true, reason: 'not a provider' });
       }
-      return { parallel: true, jobs };
+      // 提供側が 1 つも無い (契約を持たない構成) なら検査対象が無いので pass (skipped だと配送の --strict が止まる)
+      return { parallel: true, jobs, passIfNothingRan: jobs.every(j => j.skipped), note: jobs.every(j => j.skipped) ? 'no provider tiers (nothing to check)' : undefined };
     case 'uc-bdd':
       jobs.push(cmds.uc_bdd ? { name: 'uc_bdd', cmd: sub(cmds.uc_bdd, null, 'uc-bdd'), report: rep('uc-bdd') } : { name: 'uc_bdd', skipped: true });
       return { parallel: false, jobs };
@@ -123,7 +124,8 @@ async function runGate(gate, config, ctx) {
   const failed = results.some(r => r.status === 'fail');
   const ran = results.some(r => r.status !== 'skipped');
   const requiredSkipped = results.filter(r => r.required && r.status === 'skipped');
-  const out = { name: gate, status: failed ? 'fail' : ran ? 'pass' : 'skipped', duration_ms: Date.now() - started, jobs: results };
+  const out = { name: gate, status: failed ? 'fail' : ran ? 'pass' : plan.passIfNothingRan ? 'pass' : 'skipped', duration_ms: Date.now() - started, jobs: results };
+  if (!ran && plan.passIfNothingRan && plan.note) out.note = plan.note;
   if (!failed && requiredSkipped.length) { out.status = 'fail'; out.note = `required job(s) skipped (no command in config): ${requiredSkipped.map(j => `${j.tier}:${j.name}`).join(', ')}`; }
   return out;
 }

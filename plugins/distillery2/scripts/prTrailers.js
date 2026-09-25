@@ -56,7 +56,12 @@ function gitOut(cwd, args) {
  * base は --base で指定、無ければ origin/HEAD → main → master の順に探す。見つからなければ null (HEAD から遡る)。
  */
 function resolveBaseRef(cwd, base) {
-  const candidates = base ? [base] : [gitOut(cwd, ['symbolic-ref', '-q', '--short', 'refs/remotes/origin/HEAD']), 'main', 'master'].filter(Boolean);
+  if (base) {
+    // 明示した base が解決できなければ黙って HEAD に戻さない (squash で消える commit を Basis-* に記録しうる)
+    if (gitOut(cwd, ['rev-parse', '--verify', '-q', `${base}^{commit}`]) == null) throw new Error(`--base ${base} を解決できない (branch / commit が無い)`);
+    return gitOut(cwd, ['merge-base', 'HEAD', base]);
+  }
+  const candidates = [gitOut(cwd, ['symbolic-ref', '-q', '--short', 'refs/remotes/origin/HEAD']), 'main', 'master'].filter(Boolean);
   for (const c of candidates) {
     if (gitOut(cwd, ['rev-parse', '--verify', '-q', `${c}^{commit}`]) == null) continue;
     const mb = gitOut(cwd, ['merge-base', 'HEAD', c]);
@@ -78,7 +83,9 @@ function buildTrailers({ cwd, runDir, docsRoot = 'docs', base = null, coAuthors 
   for (const [name, key] of [['requirements', 'Basis-Requirements'], ['adr', 'Basis-Adr'], ['contracts', 'Basis-Contracts']]) if (stamped[name]) trailers.push([key, stamped[name]]);
   // base 以降に UC branch で変えた上流 (この squash commit 自身に差分が入る)。Basis-* は base 側の sha なので、変更の有無をここで示す
   if (baseRef) {
-    const changed = Object.entries(dirs).filter(([, dir]) => (gitOut(cwd, ['diff', '--name-only', baseRef, 'HEAD', '--', dir]) || '') !== '').map(([n]) => n);
+    trailers.push(['Basis-Base', baseRef]);
+    // squash 手順は `git reset --soft <base>` の後に trailer を作る (HEAD = base、変更は staged)。index と base の差で見る
+    const changed = Object.entries(dirs).filter(([, dir]) => (gitOut(cwd, ['diff', '--name-only', '--cached', baseRef, '--', dir]) || '') !== '').map(([n]) => n);
     if (changed.length) trailers.push(['Basis-Changed', changed.join(' ')]);
   }
   const gatesFile = path.join(runDir, 'reports', 'gates.json');
@@ -112,6 +119,8 @@ function strictProblems(trailers, cwd = process.cwd()) {
   const map = new Map(trailers);
   const problems = [];
   for (const k of ['UC', 'UC-Slug', 'Basis-Requirements', 'Gates', 'Assumptions', 'As-Built']) if (!map.has(k)) problems.push(`missing ${k}`);
+  // 配送では Basis-* が base 側の sha であること (base が解決できたこと) を要求する
+  if (!map.has('Basis-Base')) problems.push('missing Basis-Base (base branch を解決できない。--base <ref> を渡す)');
   const gates = map.get('Gates');
   if (gates) {
     const entries = gates.split(' ').map(p => p.split('='));

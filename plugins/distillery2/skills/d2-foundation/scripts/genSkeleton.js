@@ -194,6 +194,16 @@ function appTsconfig(kind) {
 }
 
 /** 空の src/ では tsc が対象ファイルを見つけられず typecheck が落ちる (0.1.10 実走 ③-2)。実装が置き換える。 */
+/**
+ * 提供側 (backend / worker) の仮の composition root。契約テスト (genContractTests) と api ドライバが `src/test-app` を import するので、
+ * 実装前でも typecheck が通るように置く。呼ぶと失敗する (契約ゲートは実装まで red で正しい)。実装 (d2-implement mode=tier / integrate) が置き換える。
+ */
+const STUB_TEST_APP_TS = `// distillery2 genSkeleton.js が置いた仮の composition root。実装 (d2-implement mode=tier / integrate) で置き換える。
+// 契約テストと features/support/drivers/api.ts はここの createTestApp() を入口にする。
+export function createTestApp(): unknown {
+  throw new Error('test-app は未結線 (d2-implement で createTestApp を実装する)');
+}
+`;
 const EMPTY_INDEX_TS = '// distillery2 genSkeleton.js が置いた空のエントリ。実装で置き換える (typecheck が対象ファイル 0 で落ちないため)\nexport {};\n';
 
 /**
@@ -295,6 +305,7 @@ function run(o) {
     writeIfAbsent(cwd, `apps/${dir}/vitest.config.ts`, appVitestConfig(t.kind), created, skipped);
     writeIfAbsent(cwd, `apps/${dir}/vitest.contract.config.ts`, appVitestConfig(t.kind, 'contract'), created, skipped);
     writeIfAbsent(cwd, `apps/${dir}/src/index.ts`, EMPTY_INDEX_TS, created, skipped);
+    if (t.kind !== 'frontend') writeIfAbsent(cwd, `apps/${dir}/src/test-app.ts`, STUB_TEST_APP_TS, created, skipped);
   }
   for (const pkg of ['contracts', 'ui', 'test-support']) ensureDir(cwd, `packages/${pkg}`, created);
   ensureDir(cwd, 'features', created);

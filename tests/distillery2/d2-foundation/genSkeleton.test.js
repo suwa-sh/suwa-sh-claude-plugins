@@ -47,6 +47,10 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(tsRaw.includes('"include": ["src", "test"]'), `tsconfig の配列は 1 行 (biome format と一致):\n${tsRaw}`);
   assert.ok(tsRaw.includes('"types": ["node"]'));
   assert.equal(fs.readFileSync(path.join(c, 'apps/backend-api/src/index.ts'), 'utf8').includes('export {};'), true, '空の src/index.ts');
+  // 提供側の仮 test-app (契約テストと api ドライバの import 先)。frontend には置かない
+  assert.match(fs.readFileSync(path.join(c, 'apps/backend-api/src/test-app.ts'), 'utf8'), /export function createTestApp\(\)/);
+  assert.ok(fs.existsSync(path.join(c, 'apps/worker/src/test-app.ts')));
+  assert.ok(!fs.existsSync(path.join(c, 'apps/frontend/src/test-app.ts')));
   assert.ok(pkg.devDependencies['@types/node'], 'types: node のための @types/node');
   const unitCfg = fs.readFileSync(path.join(c, 'apps/backend-api/vitest.config.ts'), 'utf8');
   const contractCfg = fs.readFileSync(path.join(c, 'apps/backend-api/vitest.contract.config.ts'), 'utf8');
@@ -74,7 +78,8 @@ test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り
   const c = tmp();
   run('genSkeleton.js', c, ['--adr', adrDir]);
   // 契約テストを置く。app tsconfig に rootDir が付いていれば TS6059 で失敗する。
-  fs.writeFileSync(path.join(c, 'apps/backend-api/test/contract/x.test.ts'), 'export const x: number = 1;\n');
+  // 契約テストは実装前でも src/test-app を import する (③ の static チェックポイントで typecheck が通る必要がある。Codex 0.1.13 指摘 1)
+  fs.writeFileSync(path.join(c, 'apps/backend-api/test/contract/x.test.ts'), "import { createTestApp } from '../../src/test-app';\nexport const x: number = 1;\nexport const app = createTestApp();\n");
   const tsc = path.resolve(__dirname, '../../../node_modules/.bin/tsc');
   assert.ok(fs.existsSync(tsc), 'node_modules/.bin/tsc が無い (npm install 済みか)');
   // app tsconfig は types: ['node'] を持つ (対象リポでは devDependencies の @types/node)。ここではリポの node_modules を見せる
@@ -228,12 +233,15 @@ test('genCi: renders 5-gate workflow with needs chain', () => {
   // Cucumber のタグ式にワイルドカードは無い。uc-bdd は全 feature (not @browser)、acceptance は素の @acceptance で選ぶ。
   assert.ok(!ci.includes('@uc:*') && !ci.includes('@acceptance:*'), 'ワイルドカードタグは使わない');
   assert.ok(ci.includes('--tags "not @browser"') && ci.includes('@acceptance and not @browser'));
+  // contract job は提供側 (backend-api) だけ。消費側 (frontend / worker) の test:contract は入れない (Codex 0.1.13 指摘 5)
+  assert.ok(ci.includes('npm run test:contract -w apps/backend-api'));
+  assert.ok(!ci.includes('test:contract -w apps/frontend') && !ci.includes('test:contract -w apps/worker'));
 });
 
 test('genCi: config のコマンドから job を組み、browser 有効時はブラウザ step を足す (Finding 6)', () => {
   const genCi = require(path.join(SKILL, 'scripts/genCi.js'));
   const config = {
-    tiers: [{ id: 'api', dir: 'apps/api', commands: {
+    tiers: [{ id: 'api', dir: 'apps/api', provides: ['api'], commands: {
       format_check: 'npm run format:check -w apps/api',
       lint: 'npm run lint -w apps/api',
       typecheck: 'npm run typecheck -w apps/api',

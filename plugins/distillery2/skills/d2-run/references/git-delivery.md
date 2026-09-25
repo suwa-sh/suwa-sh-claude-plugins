@@ -58,6 +58,7 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 | UC | `<業務>/<BUC>/<UC>` |
 | UC-Slug | slug |
 | Basis-Requirements / Basis-Adr / Basis-Contracts | 各上流ディレクトリの最終 commit sha (basis.js stamp)。**base branch との merge-base から遡る** (UC branch 上の commit は squash で消えるため。`--base` で起点を指定できる) |
+| Basis-Base | Basis-* の起点 (base branch との merge-base の sha)。`--strict` では必須 (解決できなければ `--base` を渡す) |
 | Basis-Changed | base 以降に UC branch で変えた上流 (`requirements adr contracts` のうち該当)。この squash commit 自身が差分を含む印 (無ければ省略) |
 | Co-Authored-By | `--co-author` で渡した行 (ハーネスが指定する attribution をそのまま。複数可) |
 | Gates | `static=pass unit=pass contract=pass uc-bdd=pass acceptance=pass` (gates.json から) |
