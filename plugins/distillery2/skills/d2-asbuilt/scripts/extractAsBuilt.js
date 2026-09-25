@@ -201,6 +201,7 @@ function collect(opts) {
   const events = readEvents(runDir);
   const generatedAt = events.length ? events[events.length - 1].ts : '';
   const decisions = latestDecisions(events);
+  const models = latestModels(events, config);
 
   const attempt = latestAttempt(runDir);
   const assumptions = loadAssumptions(runDir, attempt);
@@ -235,8 +236,16 @@ function collect(opts) {
     cwd, runDir, slug, config, docsRoot, docs, uc, reqDoc, gates, scenarios,
     tiers, unitByTier, contractByTier, traces, derived, generatedAt, decisions,
     attempt, assumptions, findings, issues, slice, openapiBundle, screens, files, depcruise, basis,
-    head: headSha(cwd), actor, adrLayers, instrumentation,
+    head: headSha(cwd), actor, adrLayers, instrumentation, models,
   };
+}
+
+/** 実行したモデル: events の最後の models_resolved。無ければ config.models (implementer null はセッション既定)。 */
+function latestModels(events, config) {
+  const ev = [...events].reverse().find((e) => e.type === 'models_resolved');
+  if (ev) return { session: ev.session || null, implementer: ev.implementer || null, verifier: ev.verifier || null, source: 'events' };
+  const m = (config && config.models) || {};
+  return { session: null, implementer: m.implementer || null, verifier: m.verifier || null, source: 'config' };
 }
 
 function mergeScenarios(...lists) {
@@ -769,6 +778,11 @@ function buildIndexMd(ctx, preserved) {
   L.push(`- 上流: ${basisVal ? basisVal.replace(/@([0-9a-f]{40})/g, (_, h) => '@' + short(h)) : 'なし'}`);
   L.push(`- コード: ${short(ctx.head) || '不明'}`);
   L.push(`- 生成日時: ${ctx.generatedAt || '不明'} / 実行試行: ${ctx.attempt == null ? 'なし' : ctx.attempt}`);
+  const m = ctx.models;
+  const modelText = m.source === 'events'
+    ? `実装 ${m.implementer || '不明'} / 検証 ${m.verifier || '不明'}${m.session ? ` / オーケストレータ ${m.session}` : ''}`
+    : `実装 ${m.implementer || 'セッション既定 (未解決)'} / 検証 ${m.verifier || '不明'} (config の設定値。実行時の解決名は未記録)`;
+  L.push(`- モデル: ${modelText}`);
   L.push('- 凡例: (抽出) はスクリプトが生成、(要約) は LLM がコード位置を根拠に書く、(転記) は実行記録からの写し');
   L.push('');
   L.push('</details>');

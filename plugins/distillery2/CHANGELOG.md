@@ -2,6 +2,15 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.10] - 2026-09-25
+
+### Added
+
+- **どのモデルで実行したかを残す** (ユーザー要望)。d2-run は run を開いた直後に `models_resolved` イベント
+  (`{session, implementer, verifier}` の解決済みモデル名) を記録し、as-built の付録「生成情報」に
+  「モデル: 実装 … / 検証 … / オーケストレータ …」を転記する。イベントが無い旧 run は config の設定値を
+  「実行時の解決名は未記録」と明示して出す。セッション単位のモデルは `tokenReport.js` が transcript から集計する
+
 ## [0.1.9] - 2026-09-25
 
 ### Changed

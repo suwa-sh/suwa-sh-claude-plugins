@@ -68,6 +68,8 @@ description: >-
 ## ④ UC の縦切り
 
 `<run>` = `.distillery/runs/<slug>`。`node runState.js open . <slug>` で開き、`node runState.js status <run>` で次の段階を決める。
+開いた直後 (再開時も) に、起動シーケンス 2 で解決したモデル名を記録する (as-built の生成情報とトークン集計で「どのモデルで実行したか」を示すため):
+`node runState.js event <run> models_resolved '{"session":"<このセッションのモデル名>","implementer":"<実装者の解決名>","verifier":"<Verifier の解決名>"}'`
 各段階の done を書いたら `impl(<slug>): <stage>` で commit する。
 
 | 段階 | すること | done の条件 |

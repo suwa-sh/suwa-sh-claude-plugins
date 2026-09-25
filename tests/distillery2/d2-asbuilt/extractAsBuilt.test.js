@@ -451,6 +451,17 @@ test('_system/index.md は「実装の記録 (UC ごと)」で、UC 名のリン
   }
 });
 
+test('生成情報に実行したモデルを出す (events の models_resolved。無ければ config の設定値と明示)', () => {
+  const repo = buildRepo();
+  run(opts(repo));
+  let md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /- モデル: 実装 セッション既定 \(未解決\) \/ 検証 不明 \(config の設定値。実行時の解決名は未記録\)/);
+  fs.appendFileSync(path.join(repo.runDir, 'events.jsonl'), JSON.stringify({ seq: 4, ts: '2026-09-23T10:00:00.000Z', type: 'models_resolved', session: 'claude-opus-5-5', implementer: 'claude-opus-5-5', verifier: 'claude-opus-4-7' }) + '\n');
+  run(opts(repo));
+  md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /- モデル: 実装 claude-opus-5-5 \/ 検証 claude-opus-4-7 \/ オーケストレータ claude-opus-5-5/);
+});
+
 test('scenarioStatus は hook の結果を数えない (本体が全部 skipped なら skipped)', () => {
   const { scenarioStatus } = require(path.join(SCRIPTS, 'extractAsBuilt'));
   const skippedWithHook = [
