@@ -3,21 +3,24 @@ schema_version: distillery2.rdb-table-index/v1
 tables:
   - source: ../db/domains/catalog.yaml
     subdomain_id: catalog
-    table: book_events
+    table: books
   - source: ../db/domains/catalog.yaml
     subdomain_id: catalog
-    table: books
-  - source: ../db/domains/platform.yaml
-    subdomain_id: platform
-    table: idempotency_keys
-  - source: ../db/domains/platform.yaml
-    subdomain_id: platform
-    table: job_runs
-  - source: ../db/domains/loan.yaml
-    subdomain_id: loan
+    table: copies
+  - source: ../db/domains/catalog.yaml
+    subdomain_id: catalog
+    table: copy_events
+  - source: ../db/domains/patron.yaml
+    subdomain_id: patron
+    table: librarians
+  - source: ../db/domains/circulation.yaml
+    subdomain_id: circulation
     table: loan_events
-  - source: ../db/domains/loan.yaml
-    subdomain_id: loan
+  - source: ../db/domains/circulation.yaml
+    subdomain_id: circulation
+    table: loan_rules
+  - source: ../db/domains/circulation.yaml
+    subdomain_id: circulation
     table: loans
   - source: ../db/domains/notification.yaml
     subdomain_id: notification
@@ -27,13 +30,10 @@ tables:
     table: notifications
   - source: ../db/domains/patron.yaml
     subdomain_id: patron
-    table: patron_events
-  - source: ../db/domains/patron.yaml
-    subdomain_id: patron
     table: patrons
-  - source: ../db/domains/reservation.yaml
-    subdomain_id: reservation
+  - source: ../db/domains/circulation.yaml
+    subdomain_id: circulation
     table: reservation_events
-  - source: ../db/domains/reservation.yaml
-    subdomain_id: reservation
+  - source: ../db/domains/circulation.yaml
+    subdomain_id: circulation
     table: reservations

@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "format:check": "echo \"format:check placeholder — d2 で本物に差し替える\"",
-    "lint": "echo \"lint placeholder\"",
-    "typecheck": "echo \"typecheck placeholder\"",
-    "test": "echo \"no unit tests yet\"",
-    "test:contract": "echo \"no contract tests yet\""
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run",
+    "test:contract": "vitest run test/contract"
   }
 }

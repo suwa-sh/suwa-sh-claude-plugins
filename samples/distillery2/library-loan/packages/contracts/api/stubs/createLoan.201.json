@@ -1,10 +1,12 @@
 {
-  "bookId": "22222222-2222-4222-8222-222222222222",
-  "dueOn": "2026-10-15",
-  "loanId": "6e3d8c2b-9f5a-4b4c-8d7e-2f3a4b5c6d7e",
-  "loanPeriodDays": 14,
-  "loanedOn": "2026-10-01",
-  "patronNumber": "P000123",
-  "pickedUpReservationId": "7f4e9d3c-0a6b-4c5d-9e8f-3a4b5c6d7e8f",
+  "book_title": "こころ",
+  "copy_id": "33333333-3333-4333-8333-333333333333",
+  "copy_status": "on_loan",
+  "due_on": "2026-10-04",
+  "fulfilled_reservation_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  "loan_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "loaned_on": "2026-09-20",
+  "patron_number": "P-2026-00001",
+  "returned_on": null,
   "status": "on_loan"
 }

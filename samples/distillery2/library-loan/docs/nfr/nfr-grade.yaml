@@ -1,8 +1,8 @@
-basis: "requirements@ca8f7fb28b2dc8ef6b6abfcee29c0898fa879a12"
+basis: "requirements@4422a431dd381e737d643e7055432ad4b2330c9d"
 version: "2.0"
 model_system:
-  type: "model2"
-  reason: "アクター「利用者」は社外の図書館利用者で Web 画面から予約・利用状況照会を行う一般向けサービスのため、社内業務システム（モデルシステム1）ではなくモデルシステム2を採用した。金融・医療・行政等の外部システムは無く、初期要望は「まずは 1 館での運用」のため、モデルシステム3には当たらない。規模に依存する項目（処理量・性能）はモデルシステム2の既定より低めに補正した（auto-adopt で推論値を採用）"
+  type: "model1"
+  reason: "まずは 1 館での運用、アクターは利用者と司書の 2 種、外部システムはメール配信サービス 1 つのみで、金銭取引・行政・医療・金融の連携が無く、停止時の社会的影響は極めて限定的なため (auto-adopt で推論値を仮採用。社外の利用者と個人情報を扱う点はセキュリティ項目を個別に引き上げて補う)"
 categories:
   - id: "A"
     name: "可用性"
@@ -19,23 +19,23 @@ categories:
                 important: true
                 grade: 3
                 grade_description: "1時間程度の停止（9時〜翌8時）"
-                reason: "アクター「利用者」（社外）が Web 画面で予約・利用状況照会を行い、日次の期限チェック（タイマー）も動くため、夜間も概ね稼働させる"
-                source_model: "アクター: 利用者 / 情報: 貸出（日次の期限チェック）"
+                reason: "BUC「書籍を探すフロー」「書籍を予約するフロー」「自分の利用状況を確認するフロー」で社外アクター「利用者」が Web 画面から開館時間外も利用するため"
+                source_model: "BUC: 書籍を探すフロー / 書籍を予約するフロー / 自分の利用状況を確認するフロー, アクター: 利用者(社外)"
                 confidence: "medium"
               - id: "A.1.1.2"
                 name: "運用時間（特定日）"
                 important: false
                 grade: 0
                 grade_description: "規定なし"
-                reason: "モデルシステム2のデフォルト値を適用"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "A.1.1.3"
                 name: "計画停止の有無"
                 important: true
-                grade: 3
-                grade_description: "不定期に計画停止あり（事前通知3日前）"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "定期的に計画停止あり（月次等）"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "A.1.2"
@@ -45,11 +45,11 @@ categories:
               - id: "A.1.2.1"
                 name: "サービス切替時間"
                 important: true
-                grade: 2
-                grade_description: "2時間未満（手動切替）"
-                reason: "1 館運用の小規模システムで、停止時はカウンター業務を短時間止めて許容できる想定を仮置きした（デプロイ環境・運用体制が未定）"
-                source_model: "docs/input/初期要望.txt（1 館での運用）"
-                confidence: "low"
+                grade: 1
+                grade_description: "24時間未満（部品交換による復旧）"
+                reason: "モデルシステム1のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
       - id: "A.2"
         name: "耐障害性"
         items:
@@ -62,9 +62,9 @@ categories:
                 important: true
                 grade: 2
                 grade_description: "電源・ディスク冗長化"
-                reason: "外部システムはメール配信サービス 1 つのみで、1 館運用の小規模構成のため電源・ディスクの冗長化にとどめる"
-                source_model: "外部システム: メール配信サービス"
-                confidence: "medium"
+                reason: "外部システムは「メール配信サービス」1 つのみだが社外アクター「利用者」がいるため、再起動復旧に加えディスク冗長を置く (デプロイ環境は未定として仮置き)"
+                source_model: "外部システム: メール配信サービス, アクター: 利用者(社外)"
+                confidence: "low"
           - id: "A.2.2"
             name: "端末"
             important: false
@@ -74,7 +74,7 @@ categories:
                 important: false
                 grade: 1
                 grade_description: "冗長化なし"
-                reason: "モデルシステム2のデフォルト値を適用"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "A.2.3"
@@ -84,9 +84,9 @@ categories:
               - id: "A.2.3.1"
                 name: "ネットワーク機器の冗長化"
                 important: true
-                grade: 2
-                grade_description: "一部機器の冗長化"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "冗長化なし"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "A.2.4"
@@ -96,9 +96,9 @@ categories:
               - id: "A.2.4.1"
                 name: "回線の冗長化"
                 important: false
-                grade: 2
-                grade_description: "一部回線の冗長化"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "冗長化なし"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "A.2.5"
@@ -108,9 +108,9 @@ categories:
               - id: "A.2.5.1"
                 name: "ストレージの冗長化"
                 important: true
-                grade: 2
-                grade_description: "RAID5（パリティ）"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "RAID1（ミラーリング）"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "A.2.6"
@@ -120,17 +120,17 @@ categories:
               - id: "A.2.6.1"
                 name: "建物の耐震・免震"
                 important: false
-                grade: 2
-                grade_description: "耐震構造"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "一般建築基準"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "A.2.6.2"
                 name: "電源の冗長化"
                 important: true
-                grade: 2
-                grade_description: "UPS（無停電電源装置）"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "冗長化なし"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "A.3"
@@ -143,17 +143,17 @@ categories:
               - id: "A.3.1.1"
                 name: "災害対策の範囲"
                 important: true
-                grade: 1
-                grade_description: "バックアップを遠隔地に保管"
-                reason: "モデルシステム2の推論では災害対策 Lv1〜2。1 館運用のためバックアップの遠隔保管を仮置きした（ビジネス判断が必要）"
-                source_model: ""
+                grade: 0
+                grade_description: "対策なし"
+                reason: "モデルシステム1推定かつ 1 館運用のため災害対策拠点は置かない (デプロイ環境未定の仮置き)"
+                source_model: "システム概要: まずは 1 館での運用"
                 confidence: "low"
               - id: "A.3.1.2"
                 name: "業務継続の要否"
                 important: true
-                grade: 1
-                grade_description: "業務継続要（24時間以内に復旧）"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 0
+                grade_description: "業務継続不要"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "A.4"
@@ -166,25 +166,25 @@ categories:
               - id: "A.4.1.1"
                 name: "RPO（目標復旧地点）"
                 important: true
-                grade: 3
-                grade_description: "障害直前まで"
-                reason: "状態「書籍状態」「予約状態」「通知状態」がそれぞれ 4 状態以上あり、貸出・予約順の記録を失うと予約順の公平性が崩れるため障害直前まで復旧する"
-                source_model: "状態: 書籍状態 / 予約状態 / 貸出状態"
+                grade: 2
+                grade_description: "数時間前まで"
+                reason: "情報「貸出」「予約」「蔵書」がそれぞれ状態モデル (貸出の状態 / 予約の状態 / 書籍の状態) を持ち、貸出・予約記録を 1 日分失うと窓口で再現できないため数時間前まで復旧する"
+                source_model: "状態: 貸出の状態 / 予約の状態 / 書籍の状態"
                 confidence: "medium"
               - id: "A.4.1.2"
                 name: "RTO（目標復旧時間）"
                 important: true
-                grade: 3
-                grade_description: "2時間以内"
-                reason: "司書のカウンターでの貸出・返却登録がオンライン処理のため、2 時間以内に復旧する"
-                source_model: "BUC: 貸出フロー / 返却フロー"
-                confidence: "medium"
+                grade: 1
+                grade_description: "1営業日以内"
+                reason: "モデルシステム1のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
               - id: "A.4.1.3"
                 name: "RLO（目標復旧レベル）"
                 important: false
-                grade: 2
-                grade_description: "平常時の80%の処理能力"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "縮退運転（主要機能のみ）"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
   - id: "B"
@@ -202,32 +202,32 @@ categories:
                 important: true
                 grade: 1
                 grade_description: "〜100"
-                reason: "初期要望で「まずは 1 館での運用」と明示されており、アクターは司書と利用者の 2 種のため同時アクセスは 100 以下と見込む"
-                source_model: "docs/input/初期要望.txt / アクター: 司書, 利用者"
-                confidence: "medium"
+                reason: "アクターは「利用者」「司書」の 2 種で 1 館運用のため同時アクセスは 100 以下と見積もる"
+                source_model: "アクター: 利用者 / 司書, システム概要: 1 館"
+                confidence: "low"
               - id: "B.1.1.2"
                 name: "データ量"
                 important: false
-                grade: 2
-                grade_description: "書籍・利用者・貸出・予約・通知・貸出統計の 6 情報。1 館規模（書籍・利用者は数万〜数十万件、貸出は年数十万件以下）"
-                reason: "情報モデルが 6 情報で、1 館運用の規模を前提にデータ量を見積もった"
-                source_model: "情報.tsv（6 情報）"
-                confidence: "medium"
+                grade: 1
+                grade_description: "1 館分の蔵書 数万冊・利用者 数千人・貸出 年数万件 (数 GB 未満)"
+                reason: "情報「書籍」「蔵書」「利用者」「貸出」「予約」「通知」の 1 館分で、数万件規模・数 GB 未満と見積もる"
+                source_model: "情報: 書籍 / 蔵書 / 利用者 / 貸出 / 予約 / 通知"
+                confidence: "low"
               - id: "B.1.1.3"
                 name: "オンラインリクエスト件数"
                 important: true
                 grade: 2
                 grade_description: "〜10,000件/日"
-                reason: "1 館の利用者による検索・予約・照会と司書のカウンター処理を合わせて 1 日 1 万件以下と見込む（規模の仮置き）"
-                source_model: "docs/input/初期要望.txt（1 館での運用）"
+                reason: "社外アクター「利用者」の検索・予約・照会と司書の窓口操作を合わせ、1 館で 1 日 1 万件以下と見積もる"
+                source_model: "UC: 書籍を検索する / 書籍を予約する / 貸出を登録する"
                 confidence: "low"
               - id: "B.1.1.4"
                 name: "バッチ処理件数"
                 important: false
                 grade: 1
-                grade_description: "日次の期限チェックで扱う未返却の貸出（1 館規模で数千件以下）"
-                reason: "情報「貸出」の日次の期限チェック（リマインド・延滞判定）がバッチの唯一の対象のため"
-                source_model: "条件: リマインド送信条件 / 延滞判定条件"
+                grade_description: "日次バッチで未返却の貸出 数千件以下を走査"
+                reason: "タイマー「毎日のリマインド判定」「毎日の延滞判定」が 1 館分の未返却貸出を日次で走査する"
+                source_model: "タイマー: 毎日のリマインド判定 / 毎日の延滞判定"
                 confidence: "medium"
           - id: "B.1.2"
             name: "ピーク時の業務量"
@@ -236,17 +236,17 @@ categories:
               - id: "B.1.2.1"
                 name: "ピーク時同時アクセス数"
                 important: true
-                grade: 2
-                grade_description: "通常時の2倍"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "通常時の1.5倍"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "B.1.2.2"
                 name: "ピーク時データ量"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。ピーク時の処理データ量を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "ピーク時も通常時の 1.5 倍以内"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "B.2"
@@ -261,25 +261,25 @@ categories:
                 important: true
                 grade: 3
                 grade_description: "5秒以内"
-                reason: "社外アクター「利用者」向けの Web 画面操作（検索・予約・照会）が多いため"
-                source_model: "アクター: 利用者 / BUC: 書籍検索フロー"
+                reason: "社外アクター「利用者」向けの検索・予約・照会画面があるため"
+                source_model: "アクター: 利用者(社外), UC: 書籍を検索する"
                 confidence: "medium"
               - id: "B.2.1.2"
                 name: "スループット"
                 important: true
                 grade: 1
                 grade_description: "〜10 TPS"
-                reason: "同時アクセス 100 以下の 1 館運用のため 10 TPS で足りる"
-                source_model: "docs/input/初期要望.txt（1 館での運用）"
-                confidence: "medium"
+                reason: "1 館運用で同時アクセス 100 以下の見積もりから 10 TPS 以下とする"
+                source_model: "システム概要: 1 館"
+                confidence: "low"
               - id: "B.2.1.3"
                 name: "ターンアラウンドタイム"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。オンラインバッチ等のターンアラウンドタイムを定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
-                source_model: ""
-                confidence: "default"
+                grade: 1
+                grade_description: "レポート集計の表示は 10 秒以内 (オンラインバッチなし)"
+                reason: "レポート系 UC (在庫状況・人気書籍ランキング・貸出統計) は画面上の集計表示であり、長時間のオンラインバッチは無い"
+                source_model: "UC: 在庫状況レポートを確認する / 人気書籍ランキングを確認する / 貸出統計を確認する"
+                confidence: "medium"
           - id: "B.2.2"
             name: "バッチ"
             important: false
@@ -287,17 +287,17 @@ categories:
               - id: "B.2.2.1"
                 name: "バッチ処理時間"
                 important: true
-                grade: 2
-                grade_description: "8時間以内"
-                reason: "日次の期限チェック（リマインド・督促の作成）が翌開館前に終わればよいため"
-                source_model: "条件: リマインド送信条件 / 延滞判定条件"
+                grade: 1
+                grade_description: "翌営業日開始まで"
+                reason: "日次タイマーの通知バッチは翌開館前までに終われば業務を満たすため"
+                source_model: "タイマー: 毎日のリマインド判定 / 毎日の延滞判定"
                 confidence: "medium"
               - id: "B.2.2.2"
                 name: "バッチ処理量"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。バッチ処理の対象データ量・件数を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "日次バッチ 1 回あたり数千件以下"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "B.3"
@@ -310,11 +310,11 @@ categories:
               - id: "B.3.1.1"
                 name: "CPU拡張性"
                 important: true
-                grade: 2
-                grade_description: "スケールアウト（サーバ追加）"
-                reason: "モデルシステム2のデフォルト値を適用"
-                source_model: ""
-                confidence: "default"
+                grade: 1
+                grade_description: "スケールアップ（CPU追加・交換）"
+                reason: "1 館運用で利用者規模の急増要因が RDRA に無いためスケールアップで足りる"
+                source_model: "システム概要: まずは 1 館での運用"
+                confidence: "medium"
           - id: "B.3.2"
             name: "メモリ"
             important: false
@@ -322,9 +322,9 @@ categories:
               - id: "B.3.2.1"
                 name: "メモリ拡張性"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。メモリの拡張方式を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "スケールアップで対応"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "B.3.3"
@@ -334,9 +334,9 @@ categories:
               - id: "B.3.3.1"
                 name: "ストレージ拡張性"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。ストレージの拡張方式を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "容量追加で対応"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "B.3.4"
@@ -346,9 +346,9 @@ categories:
               - id: "B.3.4.1"
                 name: "ネットワーク拡張性"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。ネットワーク帯域の拡張方式を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "拡張なし (1 館運用)"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "B.4"
@@ -361,9 +361,9 @@ categories:
               - id: "B.4.1.1"
                 name: "性能テスト"
                 important: true
-                grade: 3
-                grade_description: "負荷テスト（ピーク時想定）"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "単体での性能テスト"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
   - id: "C"
@@ -381,23 +381,23 @@ categories:
                 important: true
                 grade: 3
                 grade_description: "1時間程度の停止あり"
-                reason: "可用性の運用時間（A.1.1.1 Lv3）に連動させる"
+                reason: "A.1.1.1 運用時間 Lv3 と揃えるため (運用監視時間は可用性の運用時間に連動)"
                 source_model: "A.1.1.1"
                 confidence: "medium"
               - id: "C.1.1.2"
                 name: "バックアップ時間帯"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。バックアップ取得の時間帯を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "閉館後の夜間"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "C.1.1.3"
                 name: "計画停止対応時間"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。計画停止作業に要する時間を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "閉館日・夜間に実施"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "C.1.2"
@@ -409,23 +409,23 @@ categories:
                 important: true
                 grade: 2
                 grade_description: "フル+差分バックアップ（日次）"
-                reason: "情報モデルの属性数が合計 54（50 以上）のため日次のフル+差分バックアップとする"
-                source_model: "情報.tsv（属性合計 54）"
+                reason: "情報モデルの属性数が合計 60 と 50 を超え、RPO Lv2 を満たすため日次フル+差分に加えて DB のトランザクションログを数時間単位で退避する"
+                source_model: "情報: 全 10 エンティティ (属性合計 60)"
                 confidence: "medium"
               - id: "C.1.2.2"
                 name: "バックアップ対象"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。バックアップ対象の範囲（データ/構成/ログ等）を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
-                source_model: ""
-                confidence: "default"
+                grade: 1
+                grade_description: "業務 DB 全体 (集計結果は再計算できるため対象外)"
+                reason: "業務データ (書籍・蔵書・利用者・貸出・予約・通知・貸出ルール) を対象とする"
+                source_model: "情報: 書籍 / 蔵書 / 利用者 / 貸出 / 予約 / 通知 / 貸出ルール"
+                confidence: "medium"
               - id: "C.1.2.3"
                 name: "バックアップ世代管理"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。バックアップの保持世代数を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "7 世代"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "C.1.3"
@@ -437,23 +437,23 @@ categories:
                 important: true
                 grade: 3
                 grade_description: "+アプリケーション監視"
-                reason: "状態「通知状態」に送信失敗があり、通知の連絡漏れを検知するアプリケーション監視が要るため"
-                source_model: "状態: 通知状態（送信失敗）"
+                reason: "情報「通知」の状態 (送信待ち→送信済み) とタイマー起動の督促・リマインドが止まっても利用者は気付けないため、アプリケーション監視までを範囲に含める"
+                source_model: "状態: 通知の状態, タイマー: 毎日のリマインド判定 / 毎日の延滞判定"
                 confidence: "medium"
               - id: "C.1.3.2"
                 name: "監視方式"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。監視の方式（エージェント型/エージェントレス型/外形監視等）を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "外形監視+アプリケーションのエラーログ監視"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "C.1.3.3"
                 name: "監視間隔"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。監視のポーリング間隔・通知タイミングを定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "5 分間隔"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "C.2"
@@ -466,17 +466,17 @@ categories:
               - id: "C.2.1.1"
                 name: "計画保守の時間帯"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。定期保守作業の実施時間帯を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "閉館日・夜間"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "C.2.1.2"
                 name: "パッチ適用方針"
                 important: true
-                grade: 2
-                grade_description: "定期的パッチ適用（四半期）"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "セキュリティパッチのみ随時"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "C.2.2"
@@ -486,9 +486,9 @@ categories:
               - id: "C.2.2.1"
                 name: "ライフサイクル管理"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。ソフトウェアのバージョン管理・EOL対応方針を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "EOL の 6 ヶ月前までに更新"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "C.3"
@@ -503,9 +503,9 @@ categories:
                 important: true
                 grade: 2
                 grade_description: "監視ツールによる検知（アラート通知）"
-                reason: "モデルシステム2のデフォルト値を適用"
-                source_model: ""
-                confidence: "default"
+                reason: "自動送信の通知バッチ失敗はユーザ申告では検知できないため、監視ツールのアラートで検知する"
+                source_model: "BUC: 返却期限を通知するフロー / 延滞を督促するフロー"
+                confidence: "medium"
           - id: "C.3.2"
             name: "障害通知"
             important: false
@@ -513,9 +513,9 @@ categories:
               - id: "C.3.2.1"
                 name: "障害通知方式"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。障害発生時の通知手段・エスカレーション先を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "メール等で開発・運用担当へ通知"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "C.3.3"
@@ -525,9 +525,9 @@ categories:
               - id: "C.3.3.1"
                 name: "障害復旧方式"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。障害発生時の復旧手順・体制を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "手順書に基づく手動復旧"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "C.4"
@@ -542,9 +542,9 @@ categories:
                 important: true
                 grade: 2
                 grade_description: "簡易テスト環境（本番縮小構成）"
-                reason: "モデルシステム2のデフォルト値を適用"
-                source_model: ""
-                confidence: "default"
+                reason: "受入基準 (Gherkin) を API ドライバで自動実行するため、本番縮小構成のテスト環境を用意する (運用体制は未確認の仮置き)"
+                source_model: "requirements.yaml: 受入基準"
+                confidence: "low"
           - id: "C.4.2"
             name: "開発環境"
             important: false
@@ -552,9 +552,9 @@ categories:
               - id: "C.4.2.1"
                 name: "開発環境"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。開発環境の構成・本番との差異を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "開発者ローカル環境 (本番と同じ構成を縮小)"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "C.5"
@@ -569,9 +569,9 @@ categories:
                 important: true
                 grade: 1
                 grade_description: "営業時間内（9時〜17時）"
-                reason: "運用体制が未定のため、開発チーム兼務で図書館の開館時間内に対応する体制を仮置きした"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
-                confidence: "low"
+                confidence: "default"
           - id: "C.5.2"
             name: "エスカレーション"
             important: false
@@ -579,9 +579,9 @@ categories:
               - id: "C.5.2.1"
                 name: "エスカレーション体制"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。エスカレーションルートと対応時間を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "担当者から開発チームへの 1 段エスカレーション"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "C.6"
@@ -596,16 +596,16 @@ categories:
                 important: true
                 grade: 2
                 grade_description: "3ヶ月"
-                reason: "金銭・取引を扱わない一般業務のため 3 か月を仮置きした（個人情報アクセスの監査要件は要確認）"
-                source_model: ""
+                reason: "金銭取引の BUC は無く一般業務のため 3ヶ月とする"
+                source_model: "BUC: 全業務 (金銭取引なし)"
                 confidence: "low"
               - id: "C.6.1.2"
                 name: "ログ種別"
                 important: false
-                grade: 2
-                grade_description: "アクセスログ・操作ログ（司書の登録・変更・削除）・エラーログ・通知送信ログ"
-                reason: "司書による利用者情報の変更・削除と、通知の送信結果（送信済み・送信失敗）を追跡するため"
-                source_model: "情報: 利用者 / 状態: 通知状態"
+                grade: 1
+                grade_description: "アクセスログ・エラーログ・司書の操作ログ・通知送信ログ"
+                reason: "司書の管理操作 (条件「操作権限」) と通知送信記録 (情報「通知」) を追跡するため"
+                source_model: "条件: 操作権限, 情報: 通知"
                 confidence: "medium"
   - id: "D"
     name: "移行性"
@@ -620,11 +620,11 @@ categories:
               - id: "D.1.1.1"
                 name: "移行時期"
                 important: false
-                grade: 2
-                grade_description: "稼働開始前に紙台帳・表計算ファイルから一括で移行する"
-                reason: "初期要望の背景で蔵書と利用者の情報が紙台帳と表計算ファイルに分散しているため、稼働前の移行を仮置きした"
-                source_model: "docs/input/初期要望.txt（背景）"
-                confidence: "low"
+                grade: 1
+                grade_description: "稼働開始前に一括で実施 (時期の制約は未確認)"
+                reason: "紙台帳と表計算ファイルからの移行時期の制約は RDRA に記載が無いため、モデルシステム1のデフォルト値を適用"
+                source_model: ""
+                confidence: "default"
       - id: "D.2"
         name: "移行方式"
         items:
@@ -637,9 +637,9 @@ categories:
                 important: true
                 grade: 1
                 grade_description: "一括移行（ビッグバン方式）"
-                reason: "1 館運用で移行元がシステムではなく紙台帳と表計算ファイルのため、一括移行を仮置きした"
-                source_model: "docs/input/初期要望.txt（背景）"
-                confidence: "low"
+                reason: "移行元は紙台帳と表計算ファイルで稼働中の旧システムが無いため一括移行とする"
+                source_model: "初期要望: 背景 (紙台帳と表計算ファイルに分散)"
+                confidence: "medium"
       - id: "D.3"
         name: "移行対象（機器）"
         items:
@@ -650,17 +650,17 @@ categories:
               - id: "D.3.1.1"
                 name: "移行対象機器"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。移行対象となるハードウェア・ソフトウェアの範囲を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "なし (旧システムなし)"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "D.3.1.2"
                 name: "移行元環境の廃棄"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。移行元環境の廃棄方針・データ消去方法を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "移行元の表計算ファイルは移行後に保管規程に従い廃棄"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "D.4"
@@ -675,24 +675,24 @@ categories:
                 important: true
                 grade: 1
                 grade_description: "〜100GB"
-                reason: "移行元が紙台帳と表計算ファイルで、1 館分の書籍・利用者情報のため 100GB 以下"
-                source_model: "docs/input/初期要望.txt（背景）"
-                confidence: "medium"
+                reason: "移行元が表計算ファイルと紙台帳で、1 館分のデータ量は 100GB を大きく下回るため"
+                source_model: "初期要望: 背景, システム概要: 1 館"
+                confidence: "high"
               - id: "D.4.1.2"
                 name: "データ変換"
                 important: false
-                grade: 2
-                grade_description: "表計算ファイルの列を書籍（ISBN・タイトル・著者・出版社・ジャンル・媒体種別）と利用者（氏名・連絡先・利用者区分）へ変換し、利用者番号を付与する"
-                reason: "移行先の情報「書籍」「利用者」の属性と条件「利用者登録条件」に合わせた変換が要るため"
-                source_model: "情報: 書籍 / 利用者"
+                grade: 1
+                grade_description: "表計算ファイルを取込用 CSV に変換し、同じ ISBN を 1 書籍+複数蔵書に分ける"
+                reason: "表計算ファイルの蔵書・利用者を情報「書籍」「蔵書」「利用者」の属性へ変換する必要がある"
+                source_model: "情報: 書籍 / 蔵書 / 利用者"
                 confidence: "medium"
               - id: "D.4.1.3"
                 name: "データクレンジング"
                 important: false
-                grade: 2
-                grade_description: "ISBN の重複排除、メールアドレス欠落の補完、ジャンル・媒体種別の既定値付与"
-                reason: "条件「書籍登録条件」が ISBN の重複登録を禁じ、条件「利用者登録条件」がメールアドレスを必須とするため"
-                source_model: "条件: 書籍登録条件 / 利用者登録条件"
+                grade: 1
+                grade_description: "タイトル必須・メール形式・ISBN 重複を取込前に検査し修正する"
+                reason: "条件「書籍登録入力チェック」「利用者登録入力チェック」を移行データにも適用する必要がある"
+                source_model: "条件: 書籍登録入力チェック / 利用者登録入力チェック"
                 confidence: "medium"
       - id: "D.5"
         name: "移行計画"
@@ -706,23 +706,23 @@ categories:
                 important: true
                 grade: 1
                 grade_description: "1回実施"
-                reason: "一括移行でデータ量が小さいため、リハーサル 1 回を仮置きした"
-                source_model: ""
+                reason: "データ変換があるため取込を 1 回リハーサルする (規模は小さいため 1 回で足りると仮置き)"
+                source_model: "初期要望: 背景"
                 confidence: "low"
               - id: "D.5.1.2"
                 name: "移行判定基準"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。移行の成功/失敗判定基準を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "件数照合と抜き取り確認で判定"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "D.5.1.3"
                 name: "切り戻し計画"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。移行失敗時の切り戻し手順・判断基準を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "移行失敗時は紙台帳運用へ戻す"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
   - id: "E"
@@ -738,9 +738,9 @@ categories:
               - id: "E.1.1.1"
                 name: "セキュリティポリシー"
                 important: true
-                grade: 2
-                grade_description: "組織のセキュリティポリシーに準拠"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "簡易的なガイドラインあり"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "E.1.2"
@@ -750,10 +750,10 @@ categories:
               - id: "E.1.2.1"
                 name: "準拠すべき法規・基準"
                 important: false
-                grade: 2
-                grade_description: "個人情報保護法（利用者の氏名・連絡先・住所・電話番号、貸出履歴）"
-                reason: "情報「利用者」に氏名・メールアドレス・電話番号・住所があり、貸出履歴も個人に紐づくため"
-                source_model: "情報: 利用者 / 貸出"
+                grade: 1
+                grade_description: "個人情報保護法、不正アクセス禁止法"
+                reason: "情報「利用者」に氏名・メールアドレスの個人情報を持つため"
+                source_model: "情報: 利用者 (氏名、メールアドレス)"
                 confidence: "high"
       - id: "E.2"
         name: "セキュリティリスク分析"
@@ -765,9 +765,9 @@ categories:
               - id: "E.2.1.1"
                 name: "セキュリティリスク分析"
                 important: true
-                grade: 2
-                grade_description: "リスク分析（脅威・脆弱性評価）"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "簡易チェックリストによる確認"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "E.3"
@@ -780,11 +780,11 @@ categories:
               - id: "E.3.1.1"
                 name: "セキュリティ診断"
                 important: true
-                grade: 2
-                grade_description: "手動による脆弱性診断"
-                reason: "モデルシステム2のデフォルト値を適用"
-                source_model: ""
-                confidence: "default"
+                grade: 1
+                grade_description: "ツールによる自動診断"
+                reason: "社外アクター「利用者」がインターネットから個人情報を含む画面を使うため、ツールによる自動診断を行う"
+                source_model: "アクター: 利用者(社外), 情報: 利用者"
+                confidence: "medium"
       - id: "E.4"
         name: "セキュリティリスク管理"
         items:
@@ -795,9 +795,9 @@ categories:
               - id: "E.4.1.1"
                 name: "リスク管理プロセス"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。セキュリティリスクの継続的な管理方針を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "年 1 回の見直し"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "E.5"
@@ -812,8 +812,8 @@ categories:
                 important: true
                 grade: 2
                 grade_description: "+パスワードポリシー（複雑性・有効期限）"
-                reason: "アクターは 2 種で外部認証連携は無い。利用者は ID/パスワード+パスワードポリシーとし、司書アカウントの多要素認証は推奨として仮置きした"
-                source_model: "アクター: 司書, 利用者 / 条件: 操作権限条件"
+                reason: "社外アクター「利用者」が自分の貸出・予約を参照するため、ID/パスワードにパスワードポリシーを加える (多要素認証の要否は未確認の仮置き)"
+                source_model: "UC: 利用者がログインする / 司書がログインする"
                 confidence: "low"
           - id: "E.5.2"
             name: "アクセス制御"
@@ -824,8 +824,8 @@ categories:
                 important: true
                 grade: 2
                 grade_description: "ロールベースアクセス制御（RBAC）"
-                reason: "条件「操作権限条件」が司書と利用者の操作を分け、条件「利用状況閲覧範囲条件」が本人の貸出・予約だけの閲覧を定めるため、ロールと所有者で制御する"
-                source_model: "条件: 操作権限条件 / 利用状況閲覧範囲条件"
+                reason: "条件「操作権限」が利用者区分 (利用者/司書) で機能を出し分けるため RBAC とする (本人のデータ限定は条件「本人情報参照制限」で扱う)"
+                source_model: "条件: 操作権限 / 本人情報参照制限, バリエーション: 利用者区分"
                 confidence: "high"
           - id: "E.5.3"
             name: "利用制限"
@@ -834,10 +834,10 @@ categories:
               - id: "E.5.3.1"
                 name: "利用制限"
                 important: false
-                grade: 2
-                grade_description: "司書向け機能は館内ネットワークからの接続に限定し、利用者向け機能はインターネットに公開する"
-                reason: "司書だけが行える操作（利用者情報の登録・削除、レポート閲覧）があり、アクセス経路を分けるのが望ましいため（接続元制限は仮置き）"
-                source_model: "条件: 操作権限条件"
+                grade: 1
+                grade_description: "接続元・端末の制限なし (司書画面の接続元制限は未確認)"
+                reason: "利用者・司書ともに Web 画面から利用し、接続元を限定する記載が RDRA に無い"
+                source_model: "要求: Web 画面へのログイン"
                 confidence: "low"
       - id: "E.6"
         name: "データ秘匿"
@@ -851,17 +851,17 @@ categories:
                 important: true
                 grade: 1
                 grade_description: "機密データのみ暗号化"
-                reason: "情報「利用者」に氏名・住所・電話番号などの個人情報があるため機密データを暗号化する"
-                source_model: "情報: 利用者"
+                reason: "情報「利用者」に氏名・メールアドレスが含まれるため機密データを暗号化する"
+                source_model: "情報: 利用者 (氏名、メールアドレス)"
                 confidence: "high"
               - id: "E.6.1.2"
                 name: "データ暗号化（通信時）"
                 important: true
-                grade: 2
-                grade_description: "全通信暗号化（内部通信含む）"
-                reason: "インターネット経由の利用者アクセスと外部システム「メール配信サービス」への通信があるため、全通信を暗号化する"
-                source_model: "アクター: 利用者 / 外部システム: メール配信サービス"
-                confidence: "medium"
+                grade: 1
+                grade_description: "外部通信のみ暗号化（TLS）"
+                reason: "インターネット経由の Web 画面と外部システム「メール配信サービス」との通信があるため"
+                source_model: "外部システム: メール配信サービス, アクター: 利用者(社外)"
+                confidence: "high"
           - id: "E.6.2"
             name: "データマスキング"
             important: false
@@ -869,9 +869,9 @@ categories:
               - id: "E.6.2.1"
                 name: "データマスキング"
                 important: false
-                grade: 2
-                grade_description: "テスト・開発環境では利用者の氏名・連絡先・住所・電話番号をマスクしたデータを使う"
-                reason: "情報「利用者」の個人情報をテスト環境へ持ち出さないため"
+                grade: 1
+                grade_description: "テスト・開発環境では氏名・メールアドレスをマスキングしたデータを使う"
+                reason: "情報「利用者」の個人情報をテスト環境へ持ち込まないため"
                 source_model: "情報: 利用者"
                 confidence: "medium"
       - id: "E.7"
@@ -886,8 +886,8 @@ categories:
                 important: true
                 grade: 2
                 grade_description: "+データアクセスログ"
-                reason: "社外アクター「利用者」のログインと、司書による利用者情報の管理操作があるため、データアクセスログまで取る"
-                source_model: "アクター: 利用者, 司書"
+                reason: "社外アクター「利用者」と司書の管理操作があるため、データアクセスログまで取得する"
+                source_model: "アクター: 利用者(社外) / 司書, 条件: 操作権限"
                 confidence: "medium"
           - id: "E.7.2"
             name: "不正監視"
@@ -896,9 +896,9 @@ categories:
               - id: "E.7.2.1"
                 name: "不正監視"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。不正アクセス・不正利用の監視方式を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "ログインの連続失敗を検知"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "E.8"
@@ -911,9 +911,9 @@ categories:
               - id: "E.8.1.1"
                 name: "ファイアウォール"
                 important: true
-                grade: 2
-                grade_description: "ステートフルインスペクション"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "パケットフィルタリング"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "E.8.2"
@@ -923,9 +923,9 @@ categories:
               - id: "E.8.2.1"
                 name: "IDS/IPS"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。侵入検知/防止システムの導入方針を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "導入なし"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
           - id: "E.8.3"
@@ -935,9 +935,9 @@ categories:
               - id: "E.8.3.1"
                 name: "ネットワーク分離"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。DMZ・セグメント分離等のネットワーク設計方針を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "公開層と DB 層を分離"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "E.9"
@@ -950,9 +950,9 @@ categories:
               - id: "E.9.1.1"
                 name: "マルウェア対策"
                 important: true
-                grade: 2
-                grade_description: "+定義ファイル自動更新+定期スキャン"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "ウイルス対策ソフト導入"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "E.10"
@@ -965,11 +965,11 @@ categories:
               - id: "E.10.1.1"
                 name: "WAF"
                 important: true
-                grade: 2
-                grade_description: "カスタムルール+定期チューニング"
-                reason: "モデルシステム2のデフォルト値を適用"
-                source_model: ""
-                confidence: "default"
+                grade: 1
+                grade_description: "基本的なWAFルール適用"
+                reason: "個人情報を扱う画面をインターネットに公開するため基本的な WAF ルールを適用する (配置は未定の仮置き)"
+                source_model: "アクター: 利用者(社外), 情報: 利用者"
+                confidence: "low"
           - id: "E.10.2"
             name: "Webアプリケーション対策"
             important: false
@@ -977,11 +977,11 @@ categories:
               - id: "E.10.2.1"
                 name: "Webアプリケーション対策"
                 important: false
-                grade: 2
-                grade_description: "XSS・SQL インジェクション・CSRF 対策を標準で実装する"
-                reason: "社外アクター「利用者」がインターネット経由で Web 画面を使うため"
-                source_model: "アクター: 利用者"
-                confidence: "medium"
+                grade: 1
+                grade_description: "XSS / SQL インジェクション / CSRF 対策を実装する"
+                reason: "Web 画面で検索条件・利用者情報を入力するため"
+                source_model: "条件: 書籍検索条件 / 利用者登録入力チェック"
+                confidence: "high"
       - id: "E.11"
         name: "セキュリティインシデント対応"
         items:
@@ -992,9 +992,9 @@ categories:
               - id: "E.11.1.1"
                 name: "インシデント対応計画"
                 important: true
-                grade: 2
-                grade_description: "インシデント対応手順書+定期訓練"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "基本的な連絡体制のみ"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
   - id: "F"
@@ -1012,24 +1012,24 @@ categories:
                 important: true
                 grade: 3
                 grade_description: "マルチプラットフォーム（OS非依存）"
-                reason: "Web 画面で利用する Web アプリケーションのため OS に依存しない"
-                source_model: "システム概要（interface_kind: gui / Web 画面）"
+                reason: "Web アプリケーションとして利用者の手持ち端末からも使うため OS に依存しない"
+                source_model: "要求: Web 画面から利用"
                 confidence: "medium"
               - id: "F.1.1.2"
                 name: "対応ブラウザ"
                 important: true
                 grade: 2
                 grade_description: "主要ブラウザ2-3種対応"
-                reason: "モデルシステム2のデフォルト値を適用"
-                source_model: ""
-                confidence: "default"
+                reason: "Web 画面で利用するがモバイル対応の記載は RDRA に無いため主要ブラウザ 2-3 種とする"
+                source_model: "要求: Web 画面から利用"
+                confidence: "medium"
               - id: "F.1.1.3"
                 name: "対応デバイス"
                 important: false
-                grade: 2
-                grade_description: "司書は PC、利用者は PC とスマートフォンのブラウザ"
-                reason: "利用者が Web 画面から予約・照会を行うためスマートフォン利用を想定した（仮置き）"
-                source_model: "アクター: 利用者"
+                grade: 1
+                grade_description: "PC (司書・利用者)。スマートフォンは未確認"
+                reason: "司書は館内 PC、利用者は自分の PC から使う想定 (スマートフォン対応は未確認)"
+                source_model: "アクター: 司書 / 利用者"
                 confidence: "low"
           - id: "F.1.2"
             name: "ネットワーク制約"
@@ -1038,17 +1038,17 @@ categories:
               - id: "F.1.2.1"
                 name: "通信プロトコル"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。使用する通信プロトコルの制約を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "HTTPS"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "F.1.2.2"
                 name: "帯域要件"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。ネットワーク帯域の要件を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "一般的なインターネット回線"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "F.2"
@@ -1061,11 +1061,11 @@ categories:
               - id: "F.2.1.1"
                 name: "可搬性"
                 important: false
-                grade: 2
-                grade_description: "同一ベンダ内での移行可能"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 3
+                grade_description: "クラウド/オンプレ間移行可能"
+                reason: "デプロイ環境が未定のため、特定ベンダーに依存しない構成でクラウド/オンプレ間を移行できるようにする (仮置き)"
                 source_model: ""
-                confidence: "default"
+                confidence: "low"
           - id: "F.2.2"
             name: "拡張性"
             important: false
@@ -1073,10 +1073,10 @@ categories:
               - id: "F.2.2.1"
                 name: "アーキテクチャ拡張性"
                 important: false
-                grade: 2
-                grade_description: "業務モジュール単位のモジュラ構成とし、媒体種別（紙・電子）の追加で電子書籍へ拡張できるようにする"
-                reason: "要求「将来的に電子書籍にも対応できるようにしておきたい」とバリエーション「媒体種別」があるため"
-                source_model: "バリエーション: 媒体種別 / REQ-006"
+                grade: 1
+                grade_description: "モジュラモノリス (業務モジュール単位で拡張可能)"
+                reason: "要求「将来的に電子書籍にも対応」とバリエーション「媒体種別」に備え、業務モジュール単位で拡張できる構成にする"
+                source_model: "要求: 電子書籍対応, バリエーション: 媒体種別"
                 confidence: "medium"
       - id: "F.3"
         name: "適合規格"
@@ -1088,18 +1088,18 @@ categories:
               - id: "F.3.1.1"
                 name: "業界標準・規格"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。準拠すべき業界標準や規格（ISO/IEC等）を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "特になし"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "F.3.1.2"
                 name: "アクセシビリティ"
                 important: false
-                grade: 2
-                grade_description: "JIS X 8341-3 の適合レベル AA を目標とする"
-                reason: "公共図書館の一般利用者向け Web 画面のため、アクセシビリティ対応を仮置きした"
-                source_model: "アクター: 利用者"
+                grade: 1
+                grade_description: "WCAG 2.1 AA を目標とする"
+                reason: "公共の図書館サービスとして社外アクター「利用者」が使うため (規格準拠の要否は未確認)"
+                source_model: "アクター: 利用者(社外)"
                 confidence: "low"
       - id: "F.4"
         name: "機材設置環境条件"
@@ -1111,25 +1111,25 @@ categories:
               - id: "F.4.1.1"
                 name: "耐震クラス"
                 important: false
-                grade: 2
-                grade_description: "データセンタ（耐震）"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "一般オフィス"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "F.4.1.2"
                 name: "空調・温度管理"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。サーバルーム/データセンタの空調要件を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "設置先の標準に従う"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "F.4.1.3"
                 name: "物理セキュリティ"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。入退室管理・監視カメラ等の物理セキュリティを定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "設置先の標準に従う"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
       - id: "F.5"
@@ -1142,16 +1142,16 @@ categories:
               - id: "F.5.1.1"
                 name: "CO2排出量"
                 important: false
-                grade: 1
-                grade_description: "省電力機器の選定"
-                reason: "モデルシステム2のデフォルト値を適用"
+                grade: 0
+                grade_description: "考慮なし"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"
               - id: "F.5.1.2"
                 name: "廃棄物・リサイクル"
                 important: false
-                grade: 2
-                grade_description: "レベル定義なし（モデルシステム2相当）。IT機器の廃棄・リサイクル方針を定義"
-                reason: "レベル定義のないメトリクスのため、モデルシステム2のデフォルト値を適用"
+                grade: 1
+                grade_description: "設置先の標準に従う"
+                reason: "モデルシステム1のデフォルト値を適用"
                 source_model: ""
                 confidence: "default"

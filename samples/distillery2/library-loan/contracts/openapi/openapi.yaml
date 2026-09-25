@@ -1,56 +1,49 @@
-# basis: requirements@ca8f7fb28b2dc8ef6b6abfcee29c0898fa879a12 adr@2f9d373dc26f6467cf0f95c62a65831fce0f9659
-# 契約の正本 (分割可)。paths は d2-contract mode=uc が UC 単位で追記する。
-# 生成物 (generated/openapi.bundle.yaml) は compileContracts.js が作る。手で編集しない。
+# basis: requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08
+# 入口ファイル。UC ごとの path item は d2-contract mode=uc が paths/ に分割して足す。
 openapi: 3.1.0
 info:
   title: 図書館蔵書管理システム API
   version: 0.1.0
-  description: >-
-    backend-api が提供し、frontend-patron (利用者向け) と frontend-staff (司書向け) が利用する API。
-    認証は OIDC 準拠の外部 IdP が発行するアクセストークン (Bearer) で行う (ADR-0006)。
-    認可はロール (司書 / 利用者) と本人確認 (利用者番号の一致) を usecase 層で判定する。
-    エラーは RFC 9457 の Problem Details (application/problem+json) で返す。
+  description: "backend-api が提供し、frontend と worker が利用する HTTP API (ADR 0001 / 0005 / 0006)。"
+  x-basis: "requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08"
 servers:
-  - url: /api/v1
-    description: backend-api (フロントと同一オリジンから相対パスで呼ぶ)
+  - url: /api
+    description: "backend-api (ベースパス /api)"
 security:
   - bearerAuth: []
+tags:
+  - name: catalog
+    description: 蔵書 (書籍・蔵書)
+  - name: patron
+    description: "利用者 (利用者・司書・ログイン)"
+  - name: circulation
+    description: "貸出予約 (貸出・返却・予約)"
+  - name: notification
+    description: "通知 (worker が起動するジョブ API)"
+  - name: analytics
+    description: "蔵書分析 (在庫状況・人気ランキング・貸出統計)"
 paths:
   /loans:
-    $ref: './paths/loans.yaml'
+    $ref: "paths/loans.yaml"
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: >-
-        OIDC IdP が発行するアクセストークン。利用者向けと司書向けは別の OIDC クライアントで発行する。
-        トークンのクレームからロール (patron / staff) と利用者番号 (patron のみ) を取り出す。
+      description: "OIDC の認証基盤が発行したアクセストークン。backend-api が検証し、主体 ID を利用者または司書に対応づける (ADR 0006)。"
   parameters:
-    IdempotencyKey:
-      name: Idempotency-Key
-      in: header
-      required: true
-      description: >-
-        利用者が行う更新系 API の再送重複を防ぐキー (ADR-0005)。
-        同じキーの再送では副作用を重複させず、初回と同じ応答を返す。
-      schema:
-        type: string
-        minLength: 8
-        maxLength: 128
-      example: 7f3c2a9e-5b1d-4c8e-9f0a-2d6b8e4c1a37
     Page:
       name: page
       in: query
       required: false
-      description: 取得するページ番号 (1 始まり)
+      description: 1 始まりのページ番号
       schema:
         type: integer
         minimum: 1
         default: 1
     PageSize:
-      name: pageSize
+      name: size
       in: query
       required: false
       description: 1 ページの件数
@@ -59,111 +52,80 @@ components:
         minimum: 1
         maximum: 100
         default: 20
-    BookId:
-      name: bookId
-      in: path
-      required: true
-      description: 書籍ID
-      schema:
-        $ref: '#/components/schemas/BookId'
-    PatronNumber:
-      name: patronNumber
-      in: path
-      required: true
-      description: 利用者番号
-      schema:
-        $ref: '#/components/schemas/PatronNumber'
-    LoanId:
-      name: loanId
-      in: path
-      required: true
-      description: 貸出ID
-      schema:
-        $ref: '#/components/schemas/LoanId'
-    ReservationId:
-      name: reservationId
-      in: path
-      required: true
-      description: 予約ID
-      schema:
-        $ref: '#/components/schemas/ReservationId'
-    NotificationId:
-      name: notificationId
-      in: path
-      required: true
-      description: 通知ID
-      schema:
-        $ref: '#/components/schemas/NotificationId'
   responses:
     BadRequest:
-      description: 入力の形式が不正 (必須項目の欠落・型の不一致など)
+      description: "入力が不正 (必須項目の欠落・形式エラー)"
       content:
         application/problem+json:
           schema:
-            $ref: '#/components/schemas/ValidationProblem'
+            $ref: "#/components/schemas/Problem"
           examples:
-            badRequest:
+            validation:
               value:
-                type: https://library.example/problems/validation-error
+                type: "https://library.example/problems/validation-error"
                 title: 入力内容に誤りがあります
                 status: 400
-                detail: 入力項目を確認してください
                 errors:
                   - field: title
+                    code: required
                     message: タイトルは必須です
     Unauthorized:
-      description: アクセストークンが無い、または無効
+      description: 認証されていない (トークンが無い・無効)
       content:
         application/problem+json:
           schema:
-            $ref: '#/components/schemas/Problem'
+            $ref: "#/components/schemas/Problem"
           examples:
-            unauthorized:
+            unauthenticated:
               value:
-                type: https://library.example/problems/unauthorized
+                type: "https://library.example/problems/unauthenticated"
                 title: ログインが必要です
                 status: 401
     Forbidden:
-      description: ロールまたは本人確認の認可で拒否された
+      description: "権限が無い (利用者区分・本人所有の判定で拒否)"
       content:
         application/problem+json:
           schema:
-            $ref: '#/components/schemas/Problem'
+            $ref: "#/components/schemas/Problem"
           examples:
             forbidden:
               value:
-                type: https://library.example/problems/forbidden
+                type: "https://library.example/problems/forbidden"
                 title: この操作を行う権限がありません
                 status: 403
     NotFound:
-      description: 対象が存在しない (削除済みを含む)
+      description: 対象が存在しない
       content:
         application/problem+json:
           schema:
-            $ref: '#/components/schemas/Problem'
+            $ref: "#/components/schemas/Problem"
           examples:
             notFound:
               value:
-                type: https://library.example/problems/not-found
+                type: "https://library.example/problems/not-found"
                 title: 対象が見つかりません
                 status: 404
     Conflict:
-      description: 楽観ロックの版番号の不一致、または業務ルール (状態) により操作できない
+      description: "業務ルールにより操作できない (状態による可否・重複)"
       content:
         application/problem+json:
           schema:
-            $ref: '#/components/schemas/Problem'
+            $ref: "#/components/schemas/Problem"
           examples:
             conflict:
               value:
-                type: https://library.example/problems/conflict
-                title: 他の操作と競合しました
+                type: "https://library.example/problems/business-rule-violation"
+                title: 現在の状態ではこの操作を行えません
                 status: 409
-                detail: 最新の状態を取得してからやり直してください
+                code: business_rule_violation
   schemas:
+    CreateLoanRequest:
+      $ref: "components/schemas/CreateLoanRequest.yaml"
+    Loan:
+      $ref: "components/schemas/Loan.yaml"
     Problem:
       type: object
-      description: RFC 9457 Problem Details。全 API 共通のエラー型
+      description: "エラー応答 (RFC 9457 Problem Details)。全 UC が 4xx/5xx で返す。"
       required:
         - type
         - title
@@ -172,231 +134,175 @@ components:
         type:
           type: string
           format: uri
-          description: 問題の種類を識別する URI
+          description: 問題種別の URI
         title:
           type: string
-          description: 問題の短い要約 (利用者に表示できる文言)
+          description: 利用者に見せる短い説明
         status:
           type: integer
-          minimum: 400
-          maximum: 599
-          description: HTTP ステータスコード
+          description: HTTP ステータス
         detail:
           type: string
-          description: この発生に固有の説明
+          description: 発生事例の詳細
         instance:
           type: string
-          description: この発生を識別する URI 参照
+          description: 発生事例の識別子
         code:
           type: string
-          description: 業務エラーコード (例 book-on-loan, patron-has-active-loans)
-    ValidationProblem:
-      description: 入力検証エラー。項目ごとのエラーを持つ Problem
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-        - type: object
-          required:
-            - errors
-          properties:
-            errors:
-              type: array
-              items:
-                $ref: '#/components/schemas/FieldError'
+          description: "業務エラーの識別子 (例: loan_not_allowed)"
+        errors:
+          type: array
+          description: 入力項目ごとの検証エラー
+          items:
+            $ref: "#/components/schemas/FieldError"
     FieldError:
       type: object
       required:
         - field
+        - code
         - message
       properties:
         field:
           type: string
-          description: エラーの入力項目名
+          description: 項目名
+        code:
+          type: string
+          description: "検証エラーの識別子 (例: required, format, duplicate)"
         message:
           type: string
-          description: エラーの説明
+          description: 利用者に見せるメッセージ
     PageMeta:
       type: object
-      description: 一覧取得のページング情報
+      description: 一覧応答のページ情報
       required:
         - page
-        - pageSize
-        - totalCount
+        - size
+        - total
       properties:
         page:
           type: integer
           minimum: 1
-        pageSize:
+        size:
           type: integer
           minimum: 1
-        totalCount:
+        total:
           type: integer
           minimum: 0
-    Version:
-      type: integer
-      minimum: 1
-      description: 楽観ロックの版番号 (書籍単位)。更新時に取得時の値を送る
-    BookId:
+    Id:
       type: string
       format: uuid
-      description: 書籍ID
-    PatronNumber:
-      type: string
-      pattern: '^P[0-9]{6}$'
-      description: 利用者番号
-      examples:
-        - P000123
-    LoanId:
-      type: string
-      format: uuid
-      description: 貸出ID
-    ReservationId:
-      type: string
-      format: uuid
-      description: 予約ID
-    NotificationId:
-      type: string
-      format: uuid
-      description: 通知ID
+      description: システムが採番する内部 ID
     Isbn:
       type: string
-      pattern: '^(97[89])?[0-9]{9}[0-9X]$'
-      description: ISBN (ハイフン無しの 10 桁または 13 桁)
+      pattern: "^(97[89])?[0-9]{9}[0-9X]$"
+      description: "ISBN (ハイフンなし 10 桁または 13 桁)"
+    PatronNumber:
+      type: string
+      description: システムが一意に採番する利用者番号
+    UserRole:
+      type: string
+      enum:
+        - patron
+        - librarian
+      description: "利用者区分 (patron=利用者, librarian=司書)"
     Genre:
       type: string
-      description: >-
-        ジャンル。literature=文学, history=歴史, natural_science=自然科学, social_science=社会科学,
-        art=芸術, engineering=技術・工学, children=児童書, reference=参考図書
       enum:
         - literature
         - history
-        - natural_science
         - social_science
-        - art
-        - engineering
+        - natural_science
+        - technology
+        - arts
         - children
-        - reference
+        - other
+      description: "ジャンル (文学・歴史・社会科学・自然科学・技術・芸術・児童書・その他)"
     MediaType:
       type: string
-      description: 媒体種別。paper=紙, electronic=電子 (将来の電子書籍に備える)
       enum:
         - paper
         - electronic
-    BookStatus:
+      description: "媒体種別 (paper=紙, electronic=電子)。未指定時は paper"
+    SearchConditionType:
       type: string
-      description: 書籍状態。available=在庫あり, on_loan=貸出中, on_hold=予約待ち (取置), deleted=削除済み
+      enum:
+        - keyword
+        - title
+        - author
+        - isbn
+        - genre
+      description: 検索条件種別
+    CopyStatus:
+      type: string
       enum:
         - available
         - on_loan
         - on_hold
-        - deleted
-    PatronCategory:
-      type: string
-      description: 利用者区分。general=一般, child=児童, student=学生 (貸出期間の決定に使う)
-      enum:
-        - general
-        - child
-        - student
-    PatronStatus:
-      type: string
-      description: 利用者状態。active=有効, deleted=削除済み
-      enum:
-        - active
-        - deleted
-    LoanPeriodDays:
-      type: integer
-      description: 貸出期間 (日数)
-      enum:
-        - 7
-        - 14
-        - 21
+        - withdrawn
+      description: "書籍の状態 (在庫あり・貸出中・取り置き中・除籍済み)"
     LoanStatus:
       type: string
-      description: 貸出状態。on_loan=貸出中, overdue=延滞, returned=返却済み
       enum:
         - on_loan
         - overdue
         - returned
-    CreateLoanRequest:
-      type: object
-      description: 貸出登録の入力。貸出日は業務日付、貸出期間と返却期限はサーバが決める
-      additionalProperties: false
-      required:
-        - patronNumber
-        - bookId
-      properties:
-        patronNumber:
-          $ref: '#/components/schemas/PatronNumber'
-        bookId:
-          $ref: '#/components/schemas/BookId'
-    Loan:
-      type: object
-      description: 貸出
-      required:
-        - loanId
-        - bookId
-        - patronNumber
-        - loanedOn
-        - loanPeriodDays
-        - dueOn
-        - status
-      properties:
-        loanId:
-          $ref: '#/components/schemas/LoanId'
-        bookId:
-          $ref: '#/components/schemas/BookId'
-        patronNumber:
-          $ref: '#/components/schemas/PatronNumber'
-        loanedOn:
-          type: string
-          format: date
-          description: 貸出日
-        loanPeriodDays:
-          $ref: '#/components/schemas/LoanPeriodDays'
-        dueOn:
-          type: string
-          format: date
-          description: 返却期限。貸出日に貸出期間の日数を加えた日付
-        status:
-          $ref: '#/components/schemas/LoanStatus'
-        pickedUpReservationId:
-          description: この貸出で受取済みにした予約の予約ID。取置中の予約に基づかない貸出では null
-          oneOf:
-            - $ref: '#/components/schemas/ReservationId'
-            - type: 'null'
+      description: "貸出の状態 (貸出中・延滞中・返却済み)"
     ReservationStatus:
       type: string
-      description: 予約状態。waiting=予約中, on_hold=取置中, picked_up=受取済み, cancelled=取消済み
       enum:
         - waiting
         - on_hold
-        - picked_up
+        - fulfilled
         - cancelled
+      description: "予約の状態 (待機中・取り置き中・受取済み・取消済み)"
     NotificationType:
       type: string
-      description: 通知種別。hold_ready=取置通知, reminder=返却期限リマインド, overdue_notice=延滞督促
       enum:
-        - hold_ready
-        - reminder
+        - reservation_ready
+        - due_reminder
         - overdue_notice
+      description: "通知種別 (受取可能通知・返却期限リマインド・延滞督促)"
     NotificationStatus:
       type: string
-      description: 通知状態。pending=送信待ち, sent=送信済み, failed=送信失敗
       enum:
         - pending
         - sent
-        - failed
-    ReminderTiming:
+      description: "通知の状態 (送信待ち・送信済み)"
+    InventoryCategory:
       type: string
-      description: リマインド時期。three_days_before=返却期限の3日前, one_day_before=返却期限の1日前
       enum:
-        - three_days_before
-        - one_day_before
-    ReportPeriod:
+        - available
+        - on_loan
+        - waiting_reservation
+      description: "在庫状況区分 (在庫あり・貸出中・予約待ち)"
+    AggregationUnit:
       type: string
-      description: 集計期間。daily=日次, weekly=週次, monthly=月次, yearly=年次, custom=任意期間
       enum:
-        - daily
-        - weekly
-        - monthly
-        - yearly
-        - custom
+        - day
+        - month
+        - year
+      description: "集計期間単位 (日・月・年)"
+    JobRunResult:
+      type: object
+      description: "worker が起動するジョブ API の実行結果。同じ実行日の再実行は冪等 (ADR 0001 / 0005)。"
+      required:
+        - job
+        - run_date
+        - processed
+        - skipped
+      properties:
+        job:
+          type: string
+          description: ジョブ名
+        run_date:
+          type: string
+          format: date
+          description: 実行日
+        processed:
+          type: integer
+          minimum: 0
+          description: 処理した件数
+        skipped:
+          type: integer
+          minimum: 0
+          description: "重複などで処理しなかった件数"

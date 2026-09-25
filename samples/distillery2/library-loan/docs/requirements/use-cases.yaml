@@ -1,71 +1,76 @@
 version: "1.0"
 system_name: 図書館蔵書管理システム
 use_cases:
-  - uc_id: b32010dd
+  - uc_id: b233ce21
     business: 蔵書管理業務
-    buc: 蔵書管理フロー
+    buc: 蔵書を管理するフロー
+    uc: 司書がログインする
+    slug: librarian-login
+    spec_ids:
+      - SPEC-010-01
+    spec_ids_rejected:
+      - SPEC-001-01
+      - SPEC-001-02
+    actors:
+      - 司書
+    tiers_hint:
+      - frontend
+      - backend
+    status: planned
+  - uc_id: e0e7f5b9
+    business: 蔵書管理業務
+    buc: 蔵書を管理するフロー
     uc: 書籍を登録する
     slug: register-book
     spec_ids:
       - SPEC-001-01
-      - SPEC-006-01
-    spec_ids_rejected: []
+      - SPEC-009-01
+    spec_ids_rejected:
+      - SPEC-001-02
     actors:
       - 司書
     tiers_hint:
       - frontend
       - backend
     status: planned
-  - uc_id: 4aa63e01
+  - uc_id: 24a32b33
     business: 蔵書管理業務
-    buc: 蔵書管理フロー
-    uc: 書籍情報を変更する
-    slug: update-book
+    buc: 蔵書を管理するフロー
+    uc: 書籍情報を編集する
+    slug: edit-book
     spec_ids:
+      - SPEC-001-02
+    spec_ids_rejected:
       - SPEC-001-01
-    spec_ids_rejected: []
     actors:
       - 司書
     tiers_hint:
       - frontend
       - backend
     status: planned
-  - uc_id: 7b9a3730
+  - uc_id: ba655c17
     business: 蔵書管理業務
-    buc: 蔵書管理フロー
+    buc: 蔵書を管理するフロー
     uc: 書籍を削除する
     slug: delete-book
     spec_ids:
+      - SPEC-001-03
+    spec_ids_rejected:
       - SPEC-001-01
-    spec_ids_rejected: []
+      - SPEC-001-02
     actors:
       - 司書
     tiers_hint:
       - frontend
       - backend
     status: planned
-  - uc_id: 9b20ceb1
+  - uc_id: 2d6e8423
     business: 蔵書管理業務
-    buc: 蔵書管理フロー
-    uc: 書籍詳細を表示する
-    slug: view-book-detail
-    spec_ids:
-      - SPEC-001-03
-    spec_ids_rejected: []
-    actors:
-      - 利用者
-    tiers_hint:
-      - frontend
-      - backend
-    status: planned
-  - uc_id: a9e36a19
-    business: 蔵書管理業務
-    buc: 書籍検索フロー
+    buc: 書籍を探すフロー
     uc: 書籍を検索する
     slug: search-books
     spec_ids:
-      - SPEC-001-03
-      - SPEC-006-01
+      - SPEC-003-01
     spec_ids_rejected: []
     actors:
       - 利用者
@@ -73,13 +78,13 @@ use_cases:
       - frontend
       - backend
     status: planned
-  - uc_id: 0a9606f7
+  - uc_id: 7e87fe9e
     business: 蔵書管理業務
-    buc: 書籍検索フロー
-    uc: 所蔵書籍を検索する
-    slug: search-library-holdings
+    buc: 書籍を探すフロー
+    uc: 書籍の所在を検索する
+    slug: librarian-search-books
     spec_ids:
-      - SPEC-001-03
+      - SPEC-003-01
     spec_ids_rejected: []
     actors:
       - 司書
@@ -87,13 +92,13 @@ use_cases:
       - frontend
       - backend
     status: planned
-  - uc_id: 8aed3164
+  - uc_id: 6813061b
     business: 利用者管理業務
-    buc: 利用者管理フロー
+    buc: 利用者を管理するフロー
     uc: 利用者を登録する
     slug: register-patron
     spec_ids:
-      - SPEC-001-02
+      - SPEC-002-01
     spec_ids_rejected: []
     actors:
       - 司書
@@ -101,57 +106,44 @@ use_cases:
       - frontend
       - backend
     status: planned
-  - uc_id: bfe3a7b8
+  - uc_id: 0539176c
     business: 利用者管理業務
-    buc: 利用者管理フロー
-    uc: 利用者情報を変更する
-    slug: update-patron
+    buc: 利用者を管理するフロー
+    uc: 利用者情報を編集する
+    slug: edit-patron
     spec_ids:
-      - SPEC-001-02
-    spec_ids_rejected: []
+      - SPEC-002-02
+    spec_ids_rejected:
+      - SPEC-002-01
     actors:
       - 司書
     tiers_hint:
       - frontend
       - backend
     status: planned
-  - uc_id: 52376cef
+  - uc_id: a69aa9e6
     business: 利用者管理業務
-    buc: 利用者管理フロー
+    buc: 利用者を管理するフロー
     uc: 利用者を削除する
     slug: delete-patron
     spec_ids:
-      - SPEC-001-02
-    spec_ids_rejected: []
+      - SPEC-002-03
+    spec_ids_rejected:
+      - SPEC-002-01
     actors:
       - 司書
     tiers_hint:
       - frontend
       - backend
     status: planned
-  - uc_id: fa4c90c7
-    business: 利用者管理業務
-    buc: 利用者管理フロー
-    uc: ログインする
-    slug: log-in
-    spec_ids:
-      - SPEC-002-03
-      - SPEC-004-01
-    spec_ids_rejected: []
-    actors:
-      - 利用者
-    tiers_hint:
-      - frontend
-      - backend
-    status: planned
-  - uc_id: 58825d3c
+  - uc_id: 348d7250
     business: 貸出業務
-    buc: 貸出フロー
+    buc: 書籍を貸し出すフロー
     uc: 貸出を登録する
     slug: register-loan
     spec_ids:
-      - SPEC-002-01
-      - SPEC-003-01
+      - SPEC-004-01
+      - SPEC-006-01
     spec_ids_rejected: []
     actors:
       - 司書
@@ -160,290 +152,179 @@ use_cases:
       - backend
     tiers:
       - backend-api
-      - frontend-staff
-    status: planned
-  - uc_id: 12691abe
-    business: 貸出業務
-    buc: 貸出フロー
-    uc: 貸出内容を照会する
-    slug: view-current-loans
-    spec_ids:
-      - SPEC-004-01
-    spec_ids_rejected: []
-    actors:
-      - 利用者
-    tiers_hint:
       - frontend
-      - backend
     status: planned
-  - uc_id: 5cd287f8
+  - uc_id: 4e7568ad
     business: 貸出業務
-    buc: 返却フロー
+    buc: 書籍の返却を受け付けるフロー
     uc: 返却を登録する
     slug: register-return
-    spec_ids:
-      - SPEC-002-02
-    spec_ids_rejected: []
-    actors:
-      - 司書
-    tiers_hint:
-      - frontend
-      - backend
-    status: planned
-  - uc_id: 997de876
-    business: 貸出業務
-    buc: 返却フロー
-    uc: 取置を登録する
-    slug: register-hold
-    spec_ids:
-      - SPEC-002-02
-      - SPEC-002-04
-    spec_ids_rejected: []
-    actors:
-      - 司書
-    tiers_hint:
-      - frontend
-      - backend
-    status: planned
-  - uc_id: 12b67aad
-    business: 貸出業務
-    buc: 返却フロー
-    uc: 取置を通知する
-    slug: notify-hold
-    spec_ids:
-      - SPEC-002-04
-    spec_ids_rejected: []
-    actors: []
-    tiers_hint:
-      - backend
-    status: planned
-  - uc_id: b58bf819
-    business: 貸出業務
-    buc: 予約フロー
-    uc: 予約を登録する
-    slug: place-reservation
-    spec_ids:
-      - SPEC-002-03
-    spec_ids_rejected: []
-    actors:
-      - 利用者
-    tiers_hint:
-      - frontend
-      - backend
-    status: planned
-  - uc_id: 2787c6bc
-    business: 貸出業務
-    buc: 予約フロー
-    uc: 予約を取り消す
-    slug: cancel-reservation
-    spec_ids: []
-    no_spec_reason: 予約の取消（取消済みへの遷移と後続予約順の繰り上げ）を定める仕様・受入基準が要求に無い。予約の仕様は登録のみを扱う
-    spec_ids_rejected: []
-    actors:
-      - 利用者
-    tiers_hint:
-      - frontend
-      - backend
-    status: blocked
-  - uc_id: 7952fb02
-    business: 貸出業務
-    buc: 予約フロー
-    uc: 書籍の予約状況を照会する
-    slug: view-book-reservations
-    spec_ids: []
-    no_spec_reason: 司書が書籍ごとの予約者・予約順・予約状態を確認する仕様・受入基準が要求に無い。予約状況の確認は利用者本人向けの仕様だけがある
-    spec_ids_rejected: []
-    actors:
-      - 司書
-    tiers_hint:
-      - frontend
-      - backend
-    status: blocked
-  - uc_id: a0a725dd
-    business: 貸出業務
-    buc: 予約フロー
-    uc: 取置期限切れの予約を取り消す
-    slug: cancel-expired-holds
-    spec_ids: []
-    no_spec_reason: 取置期限と、期限切れ時の予約取消・次の予約者への取置を定める仕様・受入基準が要求に無い
-    spec_ids_rejected: []
-    actors: []
-    tiers_hint:
-      - backend
-      - worker
-    status: blocked
-  - uc_id: 2d086a18
-    business: 貸出業務
-    buc: 返却期限通知フロー
-    uc: 返却期限間近の貸出を抽出する
-    slug: extract-due-soon-loans
-    spec_ids:
-      - SPEC-003-02
-    spec_ids_rejected: []
-    actors: []
-    tiers_hint:
-      - backend
-      - worker
-    status: planned
-  - uc_id: 326fa587
-    business: 貸出業務
-    buc: 返却期限通知フロー
-    uc: 返却期限リマインドを送信する
-    slug: send-due-reminders
-    spec_ids:
-      - SPEC-003-02
-    spec_ids_rejected: []
-    actors: []
-    tiers_hint:
-      - backend
-      - worker
-    status: planned
-  - uc_id: d6e5df4b
-    business: 貸出業務
-    buc: 返却期限通知フロー
-    uc: 通知送信状況を照会する
-    slug: view-notification-status
-    spec_ids: []
-    no_spec_reason: 司書が通知（リマインド・督促・取置）の送信状況を確認する仕様・受入基準が要求に無い。通知の仕様は自動送信のみを扱う
-    spec_ids_rejected: []
-    actors:
-      - 司書
-    tiers_hint:
-      - frontend
-      - backend
-    status: blocked
-  - uc_id: 85b8b1a7
-    business: 貸出業務
-    buc: 延滞督促フロー
-    uc: 延滞貸出を判定する
-    slug: detect-overdue-loans
-    spec_ids:
-      - SPEC-003-03
-    spec_ids_rejected: []
-    actors: []
-    tiers_hint:
-      - backend
-      - worker
-    status: planned
-  - uc_id: 3667a160
-    business: 貸出業務
-    buc: 延滞督促フロー
-    uc: 督促を送信する
-    slug: send-overdue-notices
-    spec_ids:
-      - SPEC-003-03
-    spec_ids_rejected: []
-    actors: []
-    tiers_hint:
-      - backend
-      - worker
-    status: planned
-  - uc_id: b9217105
-    business: 貸出業務
-    buc: 延滞督促フロー
-    uc: 延滞貸出一覧を照会する
-    slug: list-overdue-loans
-    spec_ids: []
-    no_spec_reason: 司書が延滞中の貸出と督促の送信状況を一覧で確認する仕様・受入基準が要求に無い。延滞の仕様は延滞判定と督促メールの自動送信のみを扱う
-    spec_ids_rejected: []
-    actors:
-      - 司書
-    tiers_hint:
-      - frontend
-      - backend
-    status: blocked
-  - uc_id: 3b4e6785
-    business: 貸出業務
-    buc: 延滞督促フロー
-    uc: 延滞中の貸出を確認する
-    slug: view-my-overdue-loans
-    spec_ids:
-      - SPEC-004-01
-    spec_ids_rejected: []
-    actors:
-      - 利用者
-    tiers_hint:
-      - frontend
-      - backend
-    status: planned
-  - uc_id: 82c60a7b
-    business: 貸出業務
-    buc: 利用状況確認フロー
-    uc: 貸出履歴を照会する
-    slug: view-loan-history
-    spec_ids:
-      - SPEC-004-01
-    spec_ids_rejected: []
-    actors:
-      - 利用者
-    tiers_hint:
-      - frontend
-      - backend
-    status: planned
-  - uc_id: eb006b35
-    business: 貸出業務
-    buc: 利用状況確認フロー
-    uc: 予約状況を照会する
-    slug: view-my-reservations
     spec_ids:
       - SPEC-004-02
     spec_ids_rejected: []
     actors:
+      - 司書
+    tiers_hint:
+      - frontend
+      - backend
+    status: planned
+  - uc_id: 8830cad8
+    business: 予約業務
+    buc: 書籍を予約するフロー
+    uc: 書籍を予約する
+    slug: reserve-book
+    spec_ids:
+      - SPEC-005-01
+    spec_ids_rejected: []
+    actors:
       - 利用者
     tiers_hint:
       - frontend
       - backend
     status: planned
-  - uc_id: 30cb704f
-    business: 貸出業務
-    buc: 利用状況確認フロー
-    uc: 利用者の利用状況を照会する
-    slug: view-patron-usage
-    spec_ids: []
-    no_spec_reason: 司書が利用者番号を指定して他の利用者の貸出・予約状況を確認する仕様・受入基準が要求に無い。利用状況の確認は利用者本人向けの仕様だけがある
-    spec_ids_rejected: []
-    actors:
-      - 司書
-    tiers_hint:
-      - frontend
-      - backend
-    status: blocked
-  - uc_id: d05559b0
-    business: 蔵書分析業務
-    buc: 蔵書利用状況分析フロー
-    uc: 在庫状況レポートを表示する
-    slug: show-inventory-report
-    spec_ids:
-      - SPEC-005-01
-    spec_ids_rejected: []
-    actors:
-      - 司書
-    tiers_hint:
-      - frontend
-      - backend
-    status: planned
-  - uc_id: 0242518b
-    business: 蔵書分析業務
-    buc: 蔵書利用状況分析フロー
-    uc: 人気書籍ランキングを表示する
-    slug: show-popular-books-ranking
+  - uc_id: 33e7eedb
+    business: 予約業務
+    buc: 書籍を予約するフロー
+    uc: 予約を取り消す
+    slug: cancel-reservation
     spec_ids:
       - SPEC-005-02
-    spec_ids_rejected: []
+    spec_ids_rejected:
+      - SPEC-005-01
     actors:
-      - 司書
+      - 利用者
     tiers_hint:
       - frontend
       - backend
     status: planned
-  - uc_id: d8be7c24
-    business: 蔵書分析業務
-    buc: 蔵書利用状況分析フロー
-    uc: 貸出統計を集計する
-    slug: aggregate-loan-statistics
+  - uc_id: e31ffa26
+    business: 予約業務
+    buc: 予約者に通知するフロー
+    uc: 受取可能を通知する
+    slug: notify-reservation-ready
     spec_ids:
       - SPEC-005-03
     spec_ids_rejected: []
+    actors: []
+    tiers_hint:
+      - backend
+    status: planned
+  - uc_id: 6db5d723
+    business: 貸出期限管理業務
+    buc: 返却期限を通知するフロー
+    uc: 返却期限をリマインドする
+    slug: remind-due-date
+    spec_ids:
+      - SPEC-006-02
+    spec_ids_rejected: []
+    actors:
+      - 利用者
+    tiers_hint:
+      - backend
+      - worker
+    status: planned
+  - uc_id: 54eb0c62
+    business: 貸出期限管理業務
+    buc: 延滞を督促するフロー
+    uc: 延滞を督促する
+    slug: dun-overdue-loans
+    spec_ids:
+      - SPEC-006-03
+    spec_ids_rejected: []
+    actors:
+      - 利用者
+    tiers_hint:
+      - backend
+      - worker
+    status: planned
+  - uc_id: db70d941
+    business: 利用者サービス業務
+    buc: 自分の利用状況を確認するフロー
+    uc: 利用者がログインする
+    slug: patron-login
+    spec_ids:
+      - SPEC-010-01
+    spec_ids_rejected:
+      - SPEC-007-01
+      - SPEC-007-02
+    actors:
+      - 利用者
+    tiers_hint:
+      - frontend
+      - backend
+    status: planned
+  - uc_id: 7c41fa21
+    business: 利用者サービス業務
+    buc: 自分の利用状況を確認するフロー
+    uc: 貸出状況を照会する
+    slug: view-my-loans
+    spec_ids:
+      - SPEC-007-01
+    spec_ids_rejected:
+      - SPEC-007-02
+    actors:
+      - 利用者
+    tiers_hint:
+      - frontend
+      - backend
+    status: planned
+  - uc_id: d5aca5b5
+    business: 利用者サービス業務
+    buc: 自分の利用状況を確認するフロー
+    uc: 予約状況を照会する
+    slug: view-my-reservations
+    spec_ids:
+      - SPEC-007-02
+    spec_ids_rejected:
+      - SPEC-007-01
+    actors:
+      - 利用者
+    tiers_hint:
+      - frontend
+      - backend
+    status: planned
+  - uc_id: a5339345
+    business: 蔵書分析業務
+    buc: 蔵書の利用状況を分析するフロー
+    uc: 在庫状況レポートを確認する
+    slug: view-inventory-report
+    spec_ids:
+      - SPEC-008-01
+    spec_ids_rejected:
+      - SPEC-008-02
+      - SPEC-008-03
+    actors:
+      - 司書
+    tiers_hint:
+      - frontend
+      - backend
+    status: planned
+  - uc_id: 5414f0eb
+    business: 蔵書分析業務
+    buc: 蔵書の利用状況を分析するフロー
+    uc: 人気書籍ランキングを確認する
+    slug: view-popular-books-ranking
+    spec_ids:
+      - SPEC-008-02
+    spec_ids_rejected:
+      - SPEC-008-01
+      - SPEC-008-03
+    actors:
+      - 司書
+    tiers_hint:
+      - frontend
+      - backend
+    status: planned
+  - uc_id: 41a7699e
+    business: 蔵書分析業務
+    buc: 蔵書の利用状況を分析するフロー
+    uc: 貸出統計を確認する
+    slug: view-loan-statistics
+    spec_ids:
+      - SPEC-008-03
+    spec_ids_rejected:
+      - SPEC-008-01
+      - SPEC-008-02
     actors:
       - 司書
     tiers_hint:

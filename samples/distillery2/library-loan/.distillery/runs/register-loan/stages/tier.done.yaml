@@ -1,10 +1,14 @@
 stage: tier
-completed_at: "2026-09-23T23:54:32.521Z"
-attempt: 1
+completed_at: "2026-09-25T02:18:04.202Z"
+attempt: 2
 tiers:
   backend-api:
-    assumptions: 12
-    sha256: 3de30a998b53cfe6a63beca3aaed7568f8831a20ffbc31f5ebb4f1fef3960d44
-  frontend-staff:
-    assumptions: 8
-    sha256: 586b0026e789f97f445f035824116f975a976b745c8e96182af0e8eaad20a2a7
+    assumptions: 14
+    sha256: b3aa44e65bad426132b15b4687812a59d042cea0b343cf65cc06ab83eb0796c1
+    carried_forward: true
+  frontend:
+    assumptions: 6
+    sha256: 2daeb130c41105965733589f0768baab1f27f397ee726602301f6fc6e39f7ea4
+gates:
+  static: pass
+  unit: pass

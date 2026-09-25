@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "format:check": "echo \"format:check placeholder — prettier が未導入 (追加パッケージ待ち)\"",
-    "lint": "tsc -p tsconfig.json --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --noImplicitOverride",
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest --dir src",
-    "test:contract": "vitest --dir test/contract --passWithNoTests"
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run",
+    "test:contract": "vitest run test/contract"
   }
 }
