@@ -460,6 +460,11 @@ test('生成情報に実行したモデルを出す (events の models_resolved�
   run(opts(repo));
   md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
   assert.match(md, /- モデル: 実装 claude-opus-5-5 \/ 検証 claude-opus-4-7 \/ オーケストレータ claude-opus-5-5/);
+  // 欠けたキーは「不明」と明示する (項目を消さない)
+  fs.appendFileSync(path.join(repo.runDir, 'events.jsonl'), JSON.stringify({ seq: 5, ts: '2026-09-23T10:00:01.000Z', type: 'models_resolved', implementer: 'x' }) + '\n');
+  run(opts(repo));
+  md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /- モデル: 実装 x \/ 検証 不明 \/ オーケストレータ 不明/);
 });
 
 test('scenarioStatus は hook の結果を数えない (本体が全部 skipped なら skipped)', () => {

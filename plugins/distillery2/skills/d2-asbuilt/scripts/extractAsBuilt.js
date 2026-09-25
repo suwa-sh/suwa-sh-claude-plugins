@@ -780,7 +780,7 @@ function buildIndexMd(ctx, preserved) {
   L.push(`- 生成日時: ${ctx.generatedAt || '不明'} / 実行試行: ${ctx.attempt == null ? 'なし' : ctx.attempt}`);
   const m = ctx.models;
   const modelText = m.source === 'events'
-    ? `実装 ${m.implementer || '不明'} / 検証 ${m.verifier || '不明'}${m.session ? ` / オーケストレータ ${m.session}` : ''}`
+    ? `実装 ${m.implementer || '不明'} / 検証 ${m.verifier || '不明'} / オーケストレータ ${m.session || '不明'}`
     : `実装 ${m.implementer || 'セッション既定 (未解決)'} / 検証 ${m.verifier || '不明'} (config の設定値。実行時の解決名は未記録)`;
   L.push(`- モデル: ${modelText}`);
   L.push('- 凡例: (抽出) はスクリプトが生成、(要約) は LLM がコード位置を根拠に書く、(転記) は実行記録からの写し');
