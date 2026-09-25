@@ -84,11 +84,18 @@ test('genSkeleton: 既存リポでは qlty の biome 版を lockfile / package.j
   fs.writeFileSync(path.join(c1, 'package-lock.json'), JSON.stringify({ packages: { 'node_modules/@biomejs/biome': { version: '2.5.14' } } }));
   run('genSkeleton.js', c1, ['--adr', adrDir, '--migrate']);
   assert.ok(fs.readFileSync(path.join(c1, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.5.14"'));
+  assert.ok(fs.readFileSync(path.join(c1, 'biome.json'), 'utf8').includes('/schemas/2.5.14/'), '新規 biome.json の $schema も既存の版');
   // lockfile 無し → package.json の範囲から版を取る
   const c2 = tmp();
   fs.writeFileSync(path.join(c2, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '~2.3.1' } }));
   run('genSkeleton.js', c2, ['--adr', adrDir]);
   assert.ok(fs.readFileSync(path.join(c2, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.3.1"'));
+  // lockfile も devDependency も無く biome.json だけある → その $schema の版
+  const c4 = tmp();
+  fs.writeFileSync(path.join(c4, 'package.json'), JSON.stringify({ devDependencies: {} }));
+  fs.writeFileSync(path.join(c4, 'biome.json'), JSON.stringify({ $schema: 'https://biomejs.dev/schemas/2.4.0/schema.json' }));
+  run('genSkeleton.js', c4, ['--adr', adrDir]);
+  assert.ok(fs.readFileSync(path.join(c4, '.qlty/qlty.toml'), 'utf8').includes('name = "biome"\nversion = "2.4.0"'));
   // biome を使っていない既存リポ → 既定の版
   const c3 = tmp();
   fs.writeFileSync(path.join(c3, 'package.json'), JSON.stringify({ devDependencies: {} }));

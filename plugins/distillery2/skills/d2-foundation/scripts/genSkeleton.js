@@ -116,12 +116,15 @@ function existingBiomeVersion(cwd) {
   const pkg = readJsonSafe(path.resolve(cwd, 'package.json'));
   const dep = pkg?.devDependencies?.['@biomejs/biome'] ?? pkg?.dependencies?.['@biomejs/biome'];
   const m = dep && String(dep).match(/(\d+\.\d+\.\d+)/);
-  return m ? m[1] : null;
+  if (m) return m[1];
+  const schema = readJsonSafe(path.resolve(cwd, 'biome.json'))?.$schema;
+  const s = schema && String(schema).match(/\/schemas\/(\d+\.\d+\.\d+)\//);
+  return s ? s[1] : null;
 }
 
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
-const BIOME_JSON = JSON.stringify({
-  $schema: `https://biomejs.dev/schemas/${BIOME_VERSION}/schema.json`,
+const biomeJson = (biomeVersion) => JSON.stringify({
+  $schema: `https://biomejs.dev/schemas/${biomeVersion}/schema.json`,
   vcs: { enabled: true, clientKind: 'git', useIgnoreFile: true },
   files: { ignoreUnknown: true },
   formatter: { enabled: true, indentStyle: 'space', indentWidth: 2, lineWidth: 100 },
@@ -315,9 +318,10 @@ function run(o) {
   ensureDir(cwd, 'features', created);
   writeIfAbsent(cwd, 'package.json', rootPackageJson(tierDirs, hasFrontend), created, skipped);
   writeIfAbsent(cwd, 'tsconfig.base.json', TSCONFIG_BASE, created, skipped);
-  writeIfAbsent(cwd, 'biome.json', BIOME_JSON, created, skipped);
-  // package.json を今回作ったなら BIOME_VERSION、既存なら既存の版 (3 か所の版を揃える)
+  // package.json を今回作ったなら BIOME_VERSION、既存なら既存の版 (lockfile → package.json → biome.json)。
+  // biome.json の $schema と qlty のプラグインを同じ版にする (Codex 0.1.11 指摘 1、ラウンド 2)
   const biomeVersion = (created.includes('package.json') ? null : existingBiomeVersion(cwd)) ?? BIOME_VERSION;
+  writeIfAbsent(cwd, 'biome.json', biomeJson(biomeVersion), created, skipped);
   writeIfAbsent(cwd, '.qlty/qlty.toml', qltyToml(biomeVersion), created, skipped);
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
   const migrated = o.migrate ? migrate(cwd) : [];
