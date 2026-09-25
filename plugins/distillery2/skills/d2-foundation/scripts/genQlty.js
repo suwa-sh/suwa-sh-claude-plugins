@@ -6,7 +6,7 @@
  * 方針: プラグインの選定は qlty 自身の提案 (`qlty init` の自動検出) を優先し、distillery2 は上乗せだけする。
  *   1. `qlty init --yes --dry-run` の出力を土台にする (ファイルは書かず stdout に出る)。
  *      qlty init は git で追跡済み (index にある) ファイルしか見ないので、未追跡ファイルを `git add -N` (intent-to-add) で
- *      一時的に index へ載せ、終わったら `git reset` で元に戻す (実測: 未追跡のままだと trufflehog しか提案されない)。
+ *      一時的に index へ載せ、終わったら保存しておいた index ファイルをそのまま書き戻す (実測: 未追跡のままだと trufflehog しか提案されない)。
  *   2. qlty CLI が無い / git 外 / 出力が取れないときは固定リスト (フォールバック) を土台にする。
  *   3. 土台に distillery2 の上乗せをする (overlay。同じ入力に 2 回当てても同じ結果):
  *      - biome の版を lockfile / package.json の版に固定 (qlty の既定 1.9.4 は biome 2 系の設定を読めない)
@@ -117,7 +117,13 @@ function suggestToml(cwd) {
   const indexPath = path.resolve(cwd, git(cwd, ['rev-parse', '--git-path', 'index']).stdout.trim());
   const saved = fs.existsSync(indexPath) ? fs.readFileSync(indexPath) : null;
   // 名前は glob として解釈しない (--literal-pathspecs)
-  if (untracked.length) git(cwd, ['--literal-pathspecs', 'add', '-N', '--pathspec-from-file=-', '--pathspec-file-nul'], untracked.join('\0'));
+  if (untracked.length) {
+    const a = git(cwd, ['--literal-pathspecs', 'add', '-N', '--pathspec-from-file=-', '--pathspec-file-nul'], untracked.join('\0'));
+    if (a.status !== 0) {  // index.lock 等で見せられなければ、検出不足の提案を採用しない (Codex 0.1.12 ラウンド 3 指摘 1)
+      if (saved) fs.writeFileSync(indexPath, saved); else fs.rmSync(indexPath, { force: true });
+      return { toml: null, reason: `未追跡ファイルを index に載せられない (git add -N: ${(a.stderr || '').trim().split('\n')[0]})` };
+    }
+  }
   let out;
   try {
     const r = spawnSync('qlty', ['init', '--yes', '--dry-run', '--no-upgrade-check'], { cwd, encoding: 'utf8' });

@@ -162,6 +162,19 @@ test('genQlty (suggest, 偽 qlty): コミットの無い新規リポでも index
   assert.equal(git('status', '--porcelain').stdout, '?? .qlty/\n?? package.json\n');
 });
 
+test('genQlty (suggest, 偽 qlty): git add -N が失敗 (index.lock) したら検出不足の提案を採用せずフォールバック (Codex 0.1.12 ラウンド 3 指摘 1)', () => {
+  const c = tmp();
+  const git = (...a) => spawnSync('git', a, { cwd: c, encoding: 'utf8' });
+  git('init', '-q');
+  fs.writeFileSync(path.join(c, 'package.json'), '{}');
+  fs.writeFileSync(path.join(c, '.git/index.lock'), '');
+  const r = run(c, [], { PATH: `${fakeQltyBin()}:${NO_QLTY_PATH}` });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.ok(r.stdout.includes('土台: fallback'), r.stdout);
+  assert.ok(r.stdout.includes('index に載せられない'), r.stdout);
+  assert.ok(pluginBlocks(fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8')).some((p) => p.name === 'radarlint-js'), '固定リストが土台');
+});
+
 test('genQlty: --fallback は qlty があっても固定リスト', () => {
   const c = tmp();
   fs.writeFileSync(path.join(c, 'package.json'), '{}');

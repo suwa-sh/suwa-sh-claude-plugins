@@ -39,7 +39,7 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 - **events/ + latest/ + status/lease/NEXT**: 履歴は Git、実行状態は `.distillery/runs/`、下流は `basis:` ヘッダ。
 - **impl-config の specs_root / repo_root 分離**: docs と実装コードを同一リポに置く。
 - **qlty の焼き込み** (0.1.11〜): `genQlty.js` が `.qlty/qlty.toml` を生成する。**プラグインの選定は qlty 自身の提案を優先**する
-  (`qlty init --yes --dry-run` の出力を土台にする。qlty init は git 追跡済みファイルしか見ないので、未追跡ファイルを `git add -N` で一時的に見せて戻す)。
+  (`qlty init --yes --dry-run` の出力を土台にする。qlty init は git 追跡済みファイルしか見ないので、未追跡ファイルを `git add -N` で一時的に見せ、保存した index ファイルを書き戻す)。
   distillery2 は上乗せだけ: biome の版を lockfile / package.json に固定 (qlty 既定の 1.9.4 は biome 2 系の設定を読めない)、生成物・vendored を
   `exclude_patterns` に追加、qlty 既定除外の `**/db/**` `**/config/**` は外す (実装のレイヤ名になりやすい)、lockfile は除外しない、
   `features/**` を test、radarlint-* は `[[triage]]` で low。qlty CLI が無いときは固定リスト (biome / radarlint-js / actionlint / zizmor / trufflehog / osv-scanner) にフォールバック。ゲートは `.distillery/config.yaml` の `commands.quality` =

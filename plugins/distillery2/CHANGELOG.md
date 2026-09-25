@@ -10,7 +10,8 @@ version の正本は `.claude-plugin/plugin.json`。
   - 新規 `genQlty.js` (F5 の最後): `qlty init --yes --dry-run` の出力を土台に distillery2 の上乗せ (biome 版固定・生成物の除外・
     `**/db/**` `**/config/**` は除外しない・lockfile 非除外・`features/**` を test・radarlint-* を low)。同じ入力に 2 回当てても同じ結果
   - qlty init は git 追跡済みファイルしか見ない (実測: 未追跡だと trufflehog しか提案されない) ので、未追跡ファイルを `git add -N` で
-    一時的に index に載せて提案を取り、`git reset` で戻す。qlty CLI が無い / git 外なら固定リストにフォールバック (`--fallback` で強制)
+    一時的に index に載せて提案を取り、保存しておいた index ファイルをそのまま書き戻す (利用者の staged 変更を壊さない)。
+    qlty CLI が無い / git 外 / dry-run や add -N が失敗なら固定リストにフォールバック (`--fallback` で強制)
   - `genSkeleton.js` は `.qlty/qlty.toml` を書かない (biome.json の $schema の版決めは共有: `existingBiomeVersion`)
   - 実測 (0.1.10 実走リポのコピー): 提案 9 plugins (actionlint / bandit / biome / osv-scanner / radarlint-python / ripgrep / ruff / trufflehog / zizmor)、
     上乗せ後のゲートで biome の指摘 0 件 (版固定前は 65 件)
