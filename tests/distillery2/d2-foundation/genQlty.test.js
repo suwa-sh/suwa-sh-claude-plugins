@@ -24,7 +24,8 @@ function arr(toml, key) {
   const m = toml.match(new RegExp(`^${key} = \\[\\n([\\s\\S]*?)\\n\\]`, 'm'));
   return m ? [...m[1].matchAll(/"([^"]*)"/g)].map((x) => x[1]) : null;
 }
-const qltyOnPath = !spawnSync('qlty', ['--version'], { encoding: 'utf8' }).error;
+const qltyProbe = spawnSync('qlty', ['--version'], { encoding: 'utf8' });
+const qltyOnPath = !qltyProbe.error && qltyProbe.status === 0;
 
 test('overlay: qlty init の提案を土台に distillery2 の上乗せをする', () => {
   const out = overlay(INIT_FIXTURE, { biomeVersion: '2.2.5', source: 'suggest', hasBiomeDep: true });
@@ -56,6 +57,12 @@ test('overlay: radarlint-* が提案に含まれれば low に降格。2 回当�
   assert.match(once, /\[\[triage\]\]\nmatch\.plugins = \["radarlint-js", "radarlint-python"\]\nset\.level = "low"/);
   const twice = overlay(once, { biomeVersion: '2.2.5', source: 'suggest', hasBiomeDep: true });
   assert.equal(twice, once);
+  // biome ブロック内で version が name の直後に無くても置き換える (キー重複で qlty が読めなくなる。Codex 0.1.12 指摘 2)
+  const reordered = INIT_FIXTURE.replace('[[plugin]]\nname = "biome"', '[[plugin]]\nname = "biome"\nmode = "comment"\nversion = "1.9.4"');
+  const pinned = overlay(reordered, { biomeVersion: '2.2.5', source: 'suggest', hasBiomeDep: true });
+  assert.match(pinned, /\[\[plugin\]\]\nname = "biome"\nmode = "comment"\nversion = "2.2.5"\n/);
+  assert.equal((pinned.match(/^version = /gm) || []).length, 1, 'version は 1 行だけ');
+  assert.ok(!pinned.includes('1.9.4'));
   // 版の更新は既存の version 行を置き換える (重複しない)
   const bumped = overlay(once, { biomeVersion: '2.5.14', source: 'suggest', hasBiomeDep: true });
   assert.equal(pluginBlocks(bumped).filter((p) => p.name === 'biome').length, 1);
@@ -91,6 +98,21 @@ test('genQlty (fallback): qlty CLI が無いときは固定リストを土台に
   const r3 = run(c, ['--force'], { PATH: NO_QLTY_PATH });
   assert.equal(r3.status, 0);
   assert.ok(fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8').startsWith('# distillery2 genQlty.js'));
+});
+
+test('genQlty: qlty init --dry-run が exit≠0 なら部分出力を採用せずフォールバック (Codex 0.1.12 指摘 1)', () => {
+  // 偽の qlty: 設定らしきものを出して失敗する
+  const bin = tmp();
+  fs.writeFileSync(path.join(bin, 'qlty'), '#!/bin/sh\nif [ "$1" = "--version" ]; then echo qlty 0.0.0; exit 0; fi\necho \'config_version = "0"\'\necho \'[[plugin]]\'\necho \'name = "biome"\'\nexit 7\n');
+  fs.chmodSync(path.join(bin, 'qlty'), 0o755);
+  const c = tmp();
+  spawnSync('git', ['init', '-q'], { cwd: c });
+  fs.writeFileSync(path.join(c, 'package.json'), '{}');
+  const r = run(c, [], { PATH: `${bin}:${NO_QLTY_PATH}` });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.ok(r.stdout.includes('土台: fallback'), r.stdout);
+  assert.ok(r.stdout.includes('失敗'), r.stdout);
+  assert.ok(pluginBlocks(fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8')).some((p) => p.name === 'radarlint-js'), '固定リストが土台');
 });
 
 test('genQlty: --fallback は qlty があっても固定リスト', () => {

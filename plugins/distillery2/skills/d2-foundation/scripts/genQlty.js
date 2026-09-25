@@ -100,7 +100,7 @@ function git(cwd, args, input) {
 
 function qltyAvailable() {
   const r = spawnSync('qlty', ['--version'], { encoding: 'utf8' });
-  return !r.error && r.status === 0;
+  return !r.error && r.status === 0;  // 起動できない CLI は「無い」扱い
 }
 
 /**
@@ -116,11 +116,11 @@ function suggestToml(cwd) {
   let out;
   try {
     const r = spawnSync('qlty', ['init', '--yes', '--dry-run', '--no-upgrade-check'], { cwd, encoding: 'utf8' });
-    out = r.error ? '' : (r.stdout || '');
+    out = (r.error || r.status !== 0) ? '' : (r.stdout || '');  // 失敗 (exit≠0) の部分出力は採用しない (Codex 0.1.12 指摘 1)
   } finally {
     if (untracked.length) git(cwd, ['reset', '-q', '--pathspec-from-file=-', '--pathspec-file-nul'], pathspec);
   }
-  if (!/^config_version\s*=/m.test(out)) return { toml: null, reason: 'qlty init --dry-run の出力に設定が無い' };
+  if (!/^config_version\s*=/m.test(out)) return { toml: null, reason: 'qlty init --dry-run が失敗したか、出力に設定が無い' };
   return { toml: out, reason: null };
 }
 
@@ -169,12 +169,15 @@ function pluginNames(lines) {
   return names;
 }
 
-/** [[plugin]] name = "biome" の直後に version を置く (既存の version 行は置き換える)。 */
+/** [[plugin]] name = "biome" のブロック内の version を置き換える (無ければ name の直後に置く。ブロックは次のセクション見出しまで)。 */
 function pinBiome(lines, version) {
   const i = lines.findIndex((l, k) => /^\[\[plugin\]\]/.test(l) && /^name\s*=\s*"biome"/.test(lines[k + 1] || ''));
   if (i < 0) return [...lines, '', '[[plugin]]', 'name = "biome"', `version = "${version}"`];
   const out = lines.slice();
-  if (/^version\s*=/.test(out[i + 2] || '')) out[i + 2] = `version = "${version}"`;
+  let end = i + 1;
+  while (end + 1 < out.length && !/^\[/.test(out[end + 1])) end++;
+  const v = out.findIndex((l, k) => k > i && k <= end && /^version\s*=/.test(l));
+  if (v >= 0) out[v] = `version = "${version}"`;
   else out.splice(i + 2, 0, `version = "${version}"`);
   return out;
 }
