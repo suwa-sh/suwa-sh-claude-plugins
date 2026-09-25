@@ -2,7 +2,7 @@ node_modules/
 dist/
 *.log
 
-# distillery2 実行状態
+# distillery2 実行状態 (reports / traces / logs は生成物なので追跡しない)
 .distillery/runs/*/reports/
 .distillery/runs/*/traces/
-.distillery/runs/*/attempt-*/
+.distillery/logs/

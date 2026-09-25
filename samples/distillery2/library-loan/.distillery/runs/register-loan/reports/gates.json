@@ -1,8 +1,11 @@
 {
   "uc": "register-loan",
-  "started_at": "2026-09-24T11:59:09.748Z",
+  "started_at": "2026-09-25T02:17:19.826Z",
   "expect_red": null,
   "run_gates": [
+    "static",
+    "unit",
+    "contract",
     "uc-bdd",
     "acceptance"
   ],
@@ -10,39 +13,39 @@
     {
       "name": "static",
       "status": "pass",
-      "duration_ms": 1723,
+      "duration_ms": 1268,
       "jobs": [
         {
           "name": "format_check",
-          "tier": "frontend-staff",
+          "tier": "frontend",
           "required": false,
-          "cmd": "npm run format:check -w apps/frontend-staff",
+          "cmd": "npm run format:check -w apps/frontend",
           "report": null,
           "exit": 0,
-          "duration_ms": 321,
-          "output_tail": "\n> @app/frontend-staff@0.0.0 format:check\n> echo \"format:check placeholder — d2 で本物に差し替える\"\n\nformat:check placeholder — d2 で本物に差し替える\n",
+          "duration_ms": 323,
+          "output_tail": "\n> @app/frontend@0.0.0 format:check\n> biome format .\n\nChecked 11 files in 24ms. No fixes applied.\n",
           "status": "pass"
         },
         {
           "name": "lint",
-          "tier": "frontend-staff",
+          "tier": "frontend",
           "required": false,
-          "cmd": "npm run lint -w apps/frontend-staff",
+          "cmd": "npm run lint -w apps/frontend",
           "report": null,
           "exit": 0,
-          "duration_ms": 324,
-          "output_tail": "\n> @app/frontend-staff@0.0.0 lint\n> echo \"lint placeholder\"\n\nlint placeholder\n",
+          "duration_ms": 334,
+          "output_tail": "\n> @app/frontend@0.0.0 lint\n> biome lint .\n\nChecked 11 files in 46ms. No fixes applied.\n",
           "status": "pass"
         },
         {
           "name": "typecheck",
-          "tier": "frontend-staff",
+          "tier": "frontend",
           "required": false,
-          "cmd": "npm run typecheck -w apps/frontend-staff",
+          "cmd": "npm run typecheck -w apps/frontend",
           "report": null,
           "exit": 0,
-          "duration_ms": 1439,
-          "output_tail": "\n> @app/frontend-staff@0.0.0 typecheck\n> tsc -p tsconfig.json\n\n",
+          "duration_ms": 1266,
+          "output_tail": "\n> @app/frontend@0.0.0 typecheck\n> tsc --noEmit -p .\n\n",
           "status": "pass"
         },
         {
@@ -52,8 +55,8 @@
           "cmd": "npm run format:check -w apps/backend-api",
           "report": null,
           "exit": 0,
-          "duration_ms": 323,
-          "output_tail": "\n> @app/backend-api@0.0.0 format:check\n> echo \"format:check placeholder — prettier が未導入 (追加パッケージ待ち)\"\n\nformat:check placeholder — prettier が未導入 (追加パッケージ待ち)\n",
+          "duration_ms": 322,
+          "output_tail": "\n> @app/backend-api@0.0.0 format:check\n> biome format .\n\nChecked 31 files in 24ms. No fixes applied.\n",
           "status": "pass"
         },
         {
@@ -63,8 +66,8 @@
           "cmd": "npm run lint -w apps/backend-api",
           "report": null,
           "exit": 0,
-          "duration_ms": 1715,
-          "output_tail": "\n> @app/backend-api@0.0.0 lint\n> tsc -p tsconfig.json --noUnusedLocals --noUnusedParameters --noImplicitReturns --noFallthroughCasesInSwitch --noImplicitOverride\n\n",
+          "duration_ms": 333,
+          "output_tail": "\n> @app/backend-api@0.0.0 lint\n> biome lint .\n\ntest/contract/db-schema.test.ts:687:21 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  ! Forbidden non-null assertion.\n  \n    685 │       expect(new Set(actual.keys())).toEqual(new Set(table.columns.map(c => c.name)));\n    686 │       for (const col of table.columns) {\n  > 687 │         const got = actual.get(col.name)!;\n        │                     ^^^^^^^^^^^^^^^^^^^^^\n    688 │         const gotType = got.data_type === 'USER-DEFINED' ? got.udt_name : got.data_type;\n    689 │         expect(normalize(gotType)).toBe(normalize(col.type));\n  \n\nChecked 33 files in 47ms. No fixes applied.\nFound 1 warning.\n",
           "status": "pass"
         },
         {
@@ -74,35 +77,35 @@
           "cmd": "npm run typecheck -w apps/backend-api",
           "report": null,
           "exit": 0,
-          "duration_ms": 1638,
-          "output_tail": "\n> @app/backend-api@0.0.0 typecheck\n> tsc -p tsconfig.json\n\n",
+          "duration_ms": 1090,
+          "output_tail": "\n> @app/backend-api@0.0.0 typecheck\n> tsc --noEmit -p .\n\n",
           "status": "pass"
         },
         {
           "name": "arch_test",
           "cmd": "npx depcruise --config .dependency-cruiser.cjs --output-type err apps packages",
           "exit": 0,
-          "duration_ms": 1431,
-          "output_tail": "\n  warn no-orphans: packages/ui/app/page.tsx\n\nx 1 dependency violations (0 errors, 1 warnings). 132 modules, 452 dependencies cruised.\n\n",
+          "duration_ms": 1084,
+          "output_tail": "\n  warn no-orphans: packages/contracts/db/tables.ts\n  warn no-orphans: apps/worker/src/index.ts\n\nx 2 dependency violations (0 errors, 2 warnings). 166 modules, 550 dependencies cruised.\n\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-24T00:02:42.502Z"
+      "run_at": "2026-09-25T02:17:21.095Z"
     },
     {
       "name": "unit",
       "status": "pass",
-      "duration_ms": 6173,
+      "duration_ms": 8565,
       "jobs": [
         {
           "name": "unit",
-          "tier": "frontend-staff",
+          "tier": "frontend",
           "required": true,
-          "cmd": "npm run test -w apps/frontend-staff -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.frontend-staff.json",
-          "report": "<repo>/.distillery/runs/register-loan/reports/unit.frontend-staff.json",
+          "cmd": "npm run test -w apps/frontend -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.frontend.json",
+          "report": "<repo>/.distillery/runs/register-loan/reports/unit.frontend.json",
           "exit": 0,
-          "duration_ms": 1220,
-          "output_tail": "\n> @app/frontend-staff@0.0.0 test\n> vitest --dir src --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.frontend-staff.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/unit.frontend-staff.json\n",
+          "duration_ms": 2137,
+          "output_tail": "\n> @app/frontend@0.0.0 test\n> vitest run --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.frontend.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/unit.frontend.json\n",
           "status": "pass"
         },
         {
@@ -112,27 +115,27 @@
           "cmd": "npm run test -w apps/backend-api -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.backend-api.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/unit.backend-api.json",
           "exit": 0,
-          "duration_ms": 6172,
-          "output_tail": "\n> @app/backend-api@0.0.0 test\n> vitest --dir src --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.backend-api.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/unit.backend-api.json\n",
+          "duration_ms": 8564,
+          "output_tail": "\n> @app/backend-api@0.0.0 test\n> vitest run --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.backend-api.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/unit.backend-api.json\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-24T00:02:48.675Z"
+      "run_at": "2026-09-25T02:17:29.660Z"
     },
     {
       "name": "contract",
       "status": "pass",
-      "duration_ms": 7115,
+      "duration_ms": 5578,
       "jobs": [
         {
           "name": "contract",
-          "tier": "frontend-staff",
+          "tier": "frontend",
           "required": false,
-          "cmd": "npm run test:contract -w apps/frontend-staff -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.frontend-staff.json",
-          "report": "<repo>/.distillery/runs/register-loan/reports/contract.frontend-staff.json",
+          "cmd": "npm run test:contract -w apps/frontend -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.frontend.json",
+          "report": "<repo>/.distillery/runs/register-loan/reports/contract.frontend.json",
           "exit": 0,
-          "duration_ms": 372,
-          "output_tail": "\n> @app/frontend-staff@0.0.0 test:contract\n> vitest --dir test/contract --passWithNoTests --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.frontend-staff.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/contract.frontend-staff.json\n",
+          "duration_ms": 404,
+          "output_tail": "\n> @app/frontend@0.0.0 test:contract\n> vitest run test/contract --passWithNoTests --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.frontend.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/contract.frontend.json\n",
           "status": "pass"
         },
         {
@@ -142,49 +145,49 @@
           "cmd": "npm run test:contract -w apps/backend-api -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.backend-api.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/contract.backend-api.json",
           "exit": 0,
-          "duration_ms": 7113,
-          "output_tail": "\n> @app/backend-api@0.0.0 test:contract\n> vitest --dir test/contract --passWithNoTests --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.backend-api.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/contract.backend-api.json\n",
+          "duration_ms": 5577,
+          "output_tail": "\n> @app/backend-api@0.0.0 test:contract\n> vitest run test/contract --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.backend-api.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/contract.backend-api.json\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-24T00:02:55.791Z"
+      "run_at": "2026-09-25T02:17:35.238Z"
     },
     {
       "name": "uc-bdd",
       "status": "pass",
-      "duration_ms": 2266,
+      "duration_ms": 11654,
       "jobs": [
         {
           "name": "uc_bdd",
           "cmd": "npx cucumber-js --tags \"@uc:register-loan\" --format json:<repo>/.distillery/runs/register-loan/reports/uc-bdd.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/uc-bdd.json",
           "exit": 0,
-          "duration_ms": 2266,
-          "output_tail": "\n1 hook (1 passed)\n10 scenarios (9 passed, 1 skipped)\n119 steps (110 passed, 9 skipped)\n0m 1.196s (0m 1.165s executing your code)\n",
+          "duration_ms": 11653,
+          "output_tail": "\n6 scenarios (6 passed)\n74 steps (74 passed)\n0m 1.11s (0m 0.989s executing your code)\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-24T11:59:12.015Z"
+      "run_at": "2026-09-25T02:17:46.892Z"
     },
     {
       "name": "acceptance",
       "status": "pass",
-      "duration_ms": 1710,
+      "duration_ms": 11455,
       "jobs": [
         {
           "name": "acceptance_api",
           "cmd": "npx cucumber-js --tags \"@uc:register-loan and @acceptance and not @browser\" --format json:<repo>/.distillery/runs/register-loan/reports/acceptance-api.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/acceptance-api.json",
           "exit": 0,
-          "duration_ms": 1709,
-          "output_tail": "\n1 hook (1 passed)\n3 scenarios (3 passed)\n36 steps (36 passed)\n0m 1.74s (0m 1.51s executing your code)\n",
+          "duration_ms": 11455,
+          "output_tail": "\n4 scenarios (4 passed)\n50 steps (50 passed)\n0m 0.988s (0m 0.967s executing your code)\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-24T11:59:13.725Z"
+      "run_at": "2026-09-25T02:17:58.347Z"
     }
   ],
-  "finished_at": "2026-09-24T11:59:13.725Z",
+  "finished_at": "2026-09-25T02:17:58.347Z",
   "result": "pass",
   "all_recorded": true
 }

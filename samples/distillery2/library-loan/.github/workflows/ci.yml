@@ -13,12 +13,9 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - run: npm run format:check -w apps/frontend-patron
-      - run: npm run lint -w apps/frontend-patron
-      - run: npm run typecheck -w apps/frontend-patron
-      - run: npm run format:check -w apps/frontend-staff
-      - run: npm run lint -w apps/frontend-staff
-      - run: npm run typecheck -w apps/frontend-staff
+      - run: npm run format:check -w apps/frontend
+      - run: npm run lint -w apps/frontend
+      - run: npm run typecheck -w apps/frontend
       - run: npm run format:check -w apps/backend-api
       - run: npm run lint -w apps/backend-api
       - run: npm run typecheck -w apps/backend-api
@@ -35,8 +32,7 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - run: npm run test -w apps/frontend-patron -- --run
-      - run: npm run test -w apps/frontend-staff -- --run
+      - run: npm run test -w apps/frontend -- --run
       - run: npm run test -w apps/backend-api -- --run
       - run: npm run test -w apps/worker -- --run
   contract:
@@ -48,8 +44,7 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - run: npm run test:contract -w apps/frontend-patron -- --run
-      - run: npm run test:contract -w apps/frontend-staff -- --run
+      - run: npm run test:contract -w apps/frontend -- --run
       - run: npm run test:contract -w apps/backend-api -- --run
       - run: npm run test:contract -w apps/worker -- --run
   uc-bdd:

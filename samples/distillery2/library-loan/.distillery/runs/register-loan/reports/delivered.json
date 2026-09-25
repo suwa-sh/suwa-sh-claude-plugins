@@ -1,9 +1,0 @@
-{
-  "pr_url": null,
-  "pushed": false,
-  "note": "headless 実行の指示で push と PR 作成は行わず、squash までで停止",
-  "recovery_ref": "refs/distillery2/pre-squash/register-loan/20260924T001300Z",
-  "head": "10d88a0",
-  "base_head": "f5b408fe4a589b86fe4205021c086b01792e7604",
-  "at": "2026-09-24T00:14:00Z"
-}

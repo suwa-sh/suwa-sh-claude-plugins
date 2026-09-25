@@ -1,120 +1,68 @@
 datastore: rdb
 tables:
   - columns:
-      - description: イベントID
-        name: event_id
-        nullable: false
-        type: uuid
-      - description: 対象の書籍ID
+      - description: 書籍 ID
         name: book_id
         nullable: false
         type: uuid
-      - description: このイベント適用後の書籍の版番号
-        name: book_version
-        nullable: false
-        type: integer
-      - description: イベント種別 (例 BookRegistered, BookUpdated, BookLoaned, BookReturned, BookHeld, BookDeleted)
-        name: event_type
-        nullable: false
-        type: string
-      - description: イベント内容 (JSON 文字列)
-        name: payload
-        nullable: false
-        type: text
-      - description: 操作者 (IdP の subject、または worker のジョブ名)
-        name: actor_id
-        nullable: false
-        type: string
-      - description: 発生日時
-        name: occurred_at
-        nullable: false
-        type: datetime
-    description: 書籍のイベント (追記のみ。物理更新・物理削除しない)
-    foreign_keys:
-      - columns:
-          - book_id
-        on_delete: RESTRICT
-        references:
-          columns:
-            - book_id
-          table: books
-    indexes:
-      - columns:
-          - book_id
-          - book_version
-        name: book_events_book_version_uq
-        unique: true
-    name: book_events
-    primary_key:
-      - event_id
-  - columns:
-      - description: 書籍ID
-        name: book_id
-        nullable: false
-        type: uuid
-      - description: ISBN (ハイフン無し)。同じ ISBN の複本があり得るため一意にしない
+      - description: ISBN (ハイフンなし)。登録済みの ISBN とは重複させない
         name: isbn
         nullable: true
         type: string
-      - description: タイトル
+      - description: タイトル (必須)
         name: title
         nullable: false
         type: string
       - description: 著者
         name: author
-        nullable: false
+        nullable: true
         type: string
       - description: 出版社
         name: publisher
         nullable: true
         type: string
-      - description: ジャンル (文学・歴史・自然科学・社会科学・芸術・技術・工学・児童書・参考図書)
+      - description: ジャンル (文学・歴史・社会科学・自然科学・技術・芸術・児童書・その他)
         enum:
           - literature
           - history
-          - natural_science
           - social_science
-          - art
-          - engineering
+          - natural_science
+          - technology
+          - arts
           - children
-          - reference
+          - other
         name: genre
-        nullable: false
+        nullable: true
         type: string
-      - description: 媒体種別 (paper=紙, electronic=電子)
+      - description: 媒体種別 (紙・電子)。未指定時は paper を入れる
         enum:
           - paper
           - electronic
         name: media_type
         nullable: false
         type: string
-      - description: 書籍状態 (available=在庫あり, on_loan=貸出中, on_hold=予約待ち(取置), deleted=削除済み)
-        enum:
-          - available
-          - on_loan
-          - on_hold
-          - deleted
-        name: status
-        nullable: false
-        type: string
-      - description: 楽観ロックの版番号。同じ書籍への貸出・返却・予約の登録を直列化する
-        name: version
-        nullable: false
-        type: integer
       - description: 登録日
         name: registered_on
         nullable: false
         type: date
+      - description: 論理削除日時 (未削除は NULL)
+        name: deleted_at
+        nullable: true
+        type: datetime
+      - description: 作成日時
+        name: created_at
+        nullable: false
+        type: datetime
       - description: 更新日時
         name: updated_at
         nullable: false
         type: datetime
-    description: 書籍の現在状態 (スナップショット)。削除は status=deleted への遷移で表し物理削除しない
+    description: 書籍 (書誌情報)。同じ ISBN の所蔵資料は copies に複数行で紐づく。削除は deleted_at による論理削除。
     indexes:
       - columns:
           - isbn
-        name: books_isbn_idx
-        unique: false
+        name: books_isbn_key
+        unique: true
       - columns:
           - title
         name: books_title_idx
@@ -124,182 +72,43 @@ tables:
         name: books_author_idx
         unique: false
       - columns:
-          - status
-        name: books_status_idx
+          - genre
+        name: books_genre_idx
         unique: false
     name: books
     primary_key:
       - book_id
   - columns:
-      - description: キーを送った操作者 (IdP の subject)。キーは操作者ごとに一意
-        name: actor_id
-        nullable: false
-        type: string
-      - description: Idempotency-Key ヘッダの値
-        name: idempotency_key
-        nullable: false
-        type: string
-      - description: リクエスト (メソッド・パス・本文) のハッシュ。同じキーで内容が違う再送を検出する
-        name: request_hash
-        nullable: false
-        type: string
-      - description: 初回の応答ステータス
-        name: response_status
-        nullable: false
-        type: integer
-      - description: 初回の応答本文 (JSON 文字列)
-        name: response_body
-        nullable: false
-        type: text
-      - description: 作成日時
-        name: created_at
-        nullable: false
-        type: datetime
-      - description: 失効日時。これ以降は削除してよい
-        name: expires_at
-        nullable: false
-        type: datetime
-    description: 利用者の更新系 API の Idempotency-Key と初回の応答。同じキーの再送で副作用を重複させない
-    indexes:
-      - columns:
-          - expires_at
-        name: idempotency_keys_expires_at_idx
-        unique: false
-    name: idempotency_keys
-    primary_key:
-      - actor_id
-      - idempotency_key
-  - columns:
-      - description: ジョブ種別 (daily_due_check=日次の期限チェック など)
-        name: job_type
-        nullable: false
-        type: string
-      - description: 対象日
-        name: target_date
-        nullable: false
-        type: date
-      - description: 実行状態 (running=実行中, succeeded=成功, failed=失敗)
-        enum:
-          - running
-          - succeeded
-          - failed
-        name: status
-        nullable: false
-        type: string
-      - description: 開始日時
-        name: started_at
-        nullable: false
-        type: datetime
-      - description: 終了日時
-        name: finished_at
-        nullable: true
-        type: datetime
-      - description: 失敗の理由
-        name: last_error
-        nullable: true
-        type: text
-    description: worker の定期ジョブの実行記録。ジョブ種別と対象日の組で二重実行を防ぐ
-    name: job_runs
-    primary_key:
-      - job_type
-      - target_date
-  - columns:
-      - description: イベントID
-        name: event_id
+      - description: 蔵書 ID
+        name: copy_id
         nullable: false
         type: uuid
-      - description: 対象の貸出ID
-        name: loan_id
-        nullable: false
-        type: uuid
-      - description: このイベント適用後の貸出の版番号
-        name: loan_version
-        nullable: false
-        type: integer
-      - description: イベント種別 (例 LoanCreated, LoanOverdue, LoanReturned)
-        name: event_type
-        nullable: false
-        type: string
-      - description: イベント内容 (JSON 文字列)
-        name: payload
-        nullable: false
-        type: text
-      - description: 操作者 (IdP の subject、または worker のジョブ名)
-        name: actor_id
-        nullable: false
-        type: string
-      - description: 発生日時
-        name: occurred_at
-        nullable: false
-        type: datetime
-    description: 貸出のイベント (追記のみ)
-    foreign_keys:
-      - columns:
-          - loan_id
-        on_delete: RESTRICT
-        references:
-          columns:
-            - loan_id
-          table: loans
-    indexes:
-      - columns:
-          - loan_id
-          - loan_version
-        name: loan_events_loan_version_uq
-        unique: true
-    name: loan_events
-    primary_key:
-      - event_id
-  - columns:
-      - description: 貸出ID
-        name: loan_id
-        nullable: false
-        type: uuid
-      - description: 書籍ID
+      - description: 書籍 ID
         name: book_id
         nullable: false
         type: uuid
-      - description: 利用者番号
-        name: patron_number
-        nullable: false
-        type: string
-      - description: 貸出日
-        name: loaned_on
-        nullable: false
-        type: date
-      - description: 貸出期間の日数 (7, 14, 21)。利用者区分から決まる
-        name: loan_period_days
-        nullable: false
-        type: integer
-      - description: 返却期限。貸出日と貸出期間から算出する
-        name: due_on
-        nullable: false
-        type: date
-      - description: 返却日。返却済みのときだけ値を持つ
-        name: returned_on
-        nullable: true
-        type: date
-      - description: 貸出状態 (on_loan=貸出中, overdue=延滞, returned=返却済み)
+      - description: 書籍の状態 (在庫あり・貸出中・取り置き中・除籍済み)
         enum:
+          - available
           - on_loan
-          - overdue
-          - returned
+          - on_hold
+          - withdrawn
         name: status
         nullable: false
         type: string
-      - description: 版番号
+      - description: 受入日
+        name: acquired_on
+        nullable: false
+        type: date
+      - description: 最後に反映した copy_events の sequence (楽観ロックに使う)
         name: version
         nullable: false
         type: integer
-      - description: 作成日時
-        name: created_at
-        nullable: false
-        type: datetime
       - description: 更新日時
         name: updated_at
         nullable: false
         type: datetime
-    description: 貸出の現在状態 (スナップショット)
+    description: 蔵書 (所蔵資料 1 冊) の現在値スナップショット。状態変化は copy_events に追記し、同じトランザクションで本表を更新する。
     foreign_keys:
       - columns:
           - book_id
@@ -308,64 +117,401 @@ tables:
           columns:
             - book_id
           table: books
-      - columns:
-          - patron_number
-        on_delete: RESTRICT
-        references:
-          columns:
-            - patron_number
-          table: patrons
     indexes:
       - columns:
-          - status
-          - due_on
-        name: loans_status_due_on_idx
-        unique: false
-      - columns:
-          - patron_number
-        name: loans_patron_number_idx
-        unique: false
-      - columns:
           - book_id
-        name: loans_book_id_idx
+        name: copies_book_id_idx
         unique: false
       - columns:
-          - loaned_on
-        name: loans_loaned_on_idx
+          - status
+        name: copies_status_idx
         unique: false
-    name: loans
+    name: copies
     primary_key:
-      - loan_id
+      - copy_id
   - columns:
-      - description: イベントID
+      - description: イベント ID
         name: event_id
         nullable: false
         type: uuid
-      - description: 対象の通知ID
-        name: notification_id
+      - description: 蔵書 ID
+        name: copy_id
         nullable: false
         type: uuid
-      - description: このイベント適用後の通知の版番号
-        name: notification_version
+      - description: 蔵書ごとの連番 (1 始まり)
+        name: sequence
         nullable: false
         type: integer
-      - description: イベント種別 (例 NotificationQueued, NotificationSent, NotificationFailed, NotificationRequeued)
+      - description: イベント種別 (登録・貸出・返却で在庫あり・返却で取り置き・除籍)
+        enum:
+          - registered
+          - loaned
+          - returned_to_shelf
+          - held
+          - withdrawn
         name: event_type
         nullable: false
         type: string
-      - description: イベント内容 (JSON 文字列)
-        name: payload
-        nullable: false
-        type: text
-      - description: 操作者 (worker のジョブ名、または IdP の subject)
-        name: actor_id
+      - description: 遷移前の状態 (登録時は NULL)
+        enum:
+          - available
+          - on_loan
+          - on_hold
+          - withdrawn
+        name: from_status
+        nullable: true
+        type: string
+      - description: 遷移後の状態
+        enum:
+          - available
+          - on_loan
+          - on_hold
+          - withdrawn
+        name: to_status
         nullable: false
         type: string
       - description: 発生日時
         name: occurred_at
         nullable: false
         type: datetime
-    description: 通知のイベント (追記のみ)。送信結果の経緯を残す
+      - description: 操作した司書 (システム起因は NULL)
+        name: actor_librarian_id
+        nullable: true
+        type: uuid
+      - description: 付帯情報 (JSON 文字列)
+        name: payload
+        nullable: true
+        type: text
+    description: 蔵書の状態変化の履歴 (追記のみ。更新・削除しない)。
+    foreign_keys:
+      - columns:
+          - copy_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - copy_id
+          table: copies
+      - columns:
+          - actor_librarian_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - librarian_id
+          table: librarians
+    indexes:
+      - columns:
+          - copy_id
+          - sequence
+        name: copy_events_copy_sequence_key
+        unique: true
+    name: copy_events
+    primary_key:
+      - event_id
+  - columns:
+      - description: 司書の内部 ID
+        name: librarian_id
+        nullable: false
+        type: uuid
+      - description: 職員 ID
+        name: staff_id
+        nullable: false
+        type: string
+      - description: 氏名
+        name: name
+        nullable: false
+        type: string
+      - description: ログイン ID
+        name: login_id
+        nullable: false
+        type: string
+      - description: 認証基盤の主体 ID (アカウント作成前は NULL)
+        name: idp_subject
+        nullable: true
+        type: string
+      - description: 論理削除日時 (未削除は NULL)
+        name: deleted_at
+        nullable: true
+        type: datetime
+      - description: 作成日時
+        name: created_at
+        nullable: false
+        type: datetime
+      - description: 更新日時
+        name: updated_at
+        nullable: false
+        type: datetime
+    description: 司書 (職員アカウント)。利用者区分は librarian 固定。
+    indexes:
+      - columns:
+          - staff_id
+        name: librarians_staff_id_key
+        unique: true
+      - columns:
+          - login_id
+        name: librarians_login_id_key
+        unique: true
+      - columns:
+          - idp_subject
+        name: librarians_idp_subject_key
+        unique: true
+    name: librarians
+    primary_key:
+      - librarian_id
+  - columns:
+      - description: イベント ID
+        name: event_id
+        nullable: false
+        type: uuid
+      - description: 貸出 ID
+        name: loan_id
+        nullable: false
+        type: uuid
+      - description: 貸出ごとの連番 (1 始まり)
+        name: sequence
+        nullable: false
+        type: integer
+      - description: イベント種別 (貸出・延滞判定・返却)
+        enum:
+          - loaned
+          - marked_overdue
+          - returned
+        name: event_type
+        nullable: false
+        type: string
+      - description: 遷移前の状態 (貸出時は NULL)
+        enum:
+          - on_loan
+          - overdue
+          - returned
+        name: from_status
+        nullable: true
+        type: string
+      - description: 遷移後の状態
+        enum:
+          - on_loan
+          - overdue
+          - returned
+        name: to_status
+        nullable: false
+        type: string
+      - description: 発生日時
+        name: occurred_at
+        nullable: false
+        type: datetime
+      - description: 操作した司書 (日次ジョブ起因は NULL)
+        name: actor_librarian_id
+        nullable: true
+        type: uuid
+      - description: 付帯情報 (JSON 文字列)
+        name: payload
+        nullable: true
+        type: text
+    description: 貸出の状態変化の履歴 (追記のみ。更新・削除しない)。
+    foreign_keys:
+      - columns:
+          - loan_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - loan_id
+          table: loans
+      - columns:
+          - actor_librarian_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - librarian_id
+          table: librarians
+    indexes:
+      - columns:
+          - loan_id
+          - sequence
+        name: loan_events_loan_sequence_key
+        unique: true
+    name: loan_events
+    primary_key:
+      - event_id
+  - columns:
+      - description: 貸出ルール ID
+        name: loan_rule_id
+        nullable: false
+        type: uuid
+      - description: 貸出期間 (日数)
+        name: loan_period_days
+        nullable: false
+        type: integer
+      - description: リマインド日数 (返却期限の何日前に送るか)
+        name: reminder_days_before
+        nullable: false
+        type: integer
+      - description: 適用開始日
+        name: effective_from
+        nullable: false
+        type: date
+      - description: 作成日時
+        name: created_at
+        nullable: false
+        type: datetime
+    description: 貸出ルールの世代。返却期限の算出には貸出日時点で有効な (適用開始日が貸出日以前で最新の) 世代を使う。行は更新しない。
+    indexes:
+      - columns:
+          - effective_from
+        name: loan_rules_effective_from_key
+        unique: true
+    name: loan_rules
+    primary_key:
+      - loan_rule_id
+  - columns:
+      - description: 貸出 ID
+        name: loan_id
+        nullable: false
+        type: uuid
+      - description: 借りた利用者
+        name: patron_id
+        nullable: false
+        type: uuid
+      - description: 貸し出した蔵書
+        name: copy_id
+        nullable: false
+        type: uuid
+      - description: 返却期限の算出に使った貸出ルールの世代
+        name: loan_rule_id
+        nullable: false
+        type: uuid
+      - description: 貸出日
+        name: loaned_on
+        nullable: false
+        type: date
+      - description: 返却期限 (貸出日 + 貸出期間)
+        name: due_on
+        nullable: false
+        type: date
+      - description: 返却日 (未返却は NULL)
+        name: returned_on
+        nullable: true
+        type: date
+      - description: 貸出の状態 (貸出中・延滞中・返却済み)
+        enum:
+          - on_loan
+          - overdue
+          - returned
+        name: status
+        nullable: false
+        type: string
+      - description: 貸出を登録した司書
+        name: loaned_by_librarian_id
+        nullable: false
+        type: uuid
+      - description: 返却を登録した司書 (未返却は NULL)
+        name: returned_by_librarian_id
+        nullable: true
+        type: uuid
+      - description: 最後に反映した loan_events の sequence (楽観ロックに使う)
+        name: version
+        nullable: false
+        type: integer
+      - description: 更新日時
+        name: updated_at
+        nullable: false
+        type: datetime
+    description: 貸出の現在値スナップショット。状態変化は loan_events に追記し、同じトランザクションで本表を更新する。
+    foreign_keys:
+      - columns:
+          - patron_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - patron_id
+          table: patrons
+      - columns:
+          - copy_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - copy_id
+          table: copies
+      - columns:
+          - loan_rule_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - loan_rule_id
+          table: loan_rules
+      - columns:
+          - loaned_by_librarian_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - librarian_id
+          table: librarians
+      - columns:
+          - returned_by_librarian_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - librarian_id
+          table: librarians
+    indexes:
+      - columns:
+          - patron_id
+        name: loans_patron_id_idx
+        unique: false
+      - columns:
+          - copy_id
+        name: loans_copy_id_idx
+        unique: false
+      - columns:
+          - status
+          - due_on
+        name: loans_status_due_on_idx
+        unique: false
+    name: loans
+    primary_key:
+      - loan_id
+  - columns:
+      - description: イベント ID
+        name: event_id
+        nullable: false
+        type: uuid
+      - description: 通知 ID
+        name: notification_id
+        nullable: false
+        type: uuid
+      - description: 通知ごとの連番 (1 始まり)
+        name: sequence
+        nullable: false
+        type: integer
+      - description: イベント種別 (送信待ち登録・送信成功・送信失敗)
+        enum:
+          - queued
+          - sent
+          - send_failed
+        name: event_type
+        nullable: false
+        type: string
+      - description: 遷移前の状態 (登録時は NULL)
+        enum:
+          - pending
+          - sent
+        name: from_status
+        nullable: true
+        type: string
+      - description: 遷移後の状態 (送信失敗時は pending のまま)
+        enum:
+          - pending
+          - sent
+        name: to_status
+        nullable: false
+        type: string
+      - description: 発生日時
+        name: occurred_at
+        nullable: false
+        type: datetime
+      - description: 付帯情報 (JSON 文字列。失敗理由など)
+        name: payload
+        nullable: true
+        type: text
+    description: 通知の状態変化と送信試行の履歴 (追記のみ。更新・削除しない)。
     foreign_keys:
       - columns:
           - notification_id
@@ -377,77 +523,69 @@ tables:
     indexes:
       - columns:
           - notification_id
-          - notification_version
-        name: notification_events_notification_version_uq
+          - sequence
+        name: notification_events_notification_sequence_key
         unique: true
     name: notification_events
     primary_key:
       - event_id
   - columns:
-      - description: 通知ID。worker はこの単位で送信し二重送信しない
+      - description: 通知 ID
         name: notification_id
         nullable: false
         type: uuid
-      - description: 宛先の利用者番号
-        name: patron_number
-        nullable: false
-        type: string
-      - description: 通知種別 (hold_ready=取置通知, reminder=返却期限リマインド, overdue_notice=延滞督促)
+      - description: 通知種別 (受取可能通知・返却期限リマインド・延滞督促)
         enum:
-          - hold_ready
-          - reminder
+          - reservation_ready
+          - due_reminder
           - overdue_notice
-        name: type
+        name: notification_type
         nullable: false
         type: string
-      - description: 契機の貸出ID (リマインド・督促)
+      - description: 対象の ID (reservation_ready は予約 ID、それ以外は貸出 ID)。重複抑止の一意キーに使う
+        name: target_id
+        nullable: false
+        type: uuid
+      - description: 対象の貸出 (due_reminder / overdue_notice のとき)
         name: loan_id
         nullable: true
         type: uuid
-      - description: 契機の予約ID (取置通知)
+      - description: 対象の予約 (reservation_ready のとき)
         name: reservation_id
         nullable: true
         type: uuid
-      - description: リマインド時期 (three_days_before=返却期限の3日前, one_day_before=返却期限の1日前)。リマインドのときだけ値を持つ
-        enum:
-          - three_days_before
-          - one_day_before
-        name: reminder_timing
-        nullable: true
-        type: string
-      - description: 重複作成防止キー。通知種別・貸出ID・予約ID・リマインド時期を連結した値 (ADR-0005 の一意制約)。 null を含む複合一意制約は重複を防げないため、連結値の列で一意にする
-        name: dedupe_key
+      - description: 宛先の利用者
+        name: patron_id
         nullable: false
-        type: string
-      - description: 宛先メールアドレス (アプリで暗号化した値)
+        type: uuid
+      - description: 宛先メールアドレス (暗号化済み。記録時点の値)
         name: recipient_email_encrypted
         nullable: false
         type: text
-      - description: 件名
-        name: subject
+      - description: 送信日 (同日の重複送信を抑止する単位)
+        name: scheduled_on
         nullable: false
-        type: string
-      - description: 本文
-        name: body
-        nullable: false
-        type: text
-      - description: 通知状態 (pending=送信待ち, sent=送信済み, failed=送信失敗)
+        type: date
+      - description: 通知の状態 (送信待ち・送信済み)
         enum:
           - pending
           - sent
-          - failed
         name: status
         nullable: false
         type: string
+      - description: 送信日時 (未送信は NULL)
+        name: sent_at
+        nullable: true
+        type: datetime
       - description: 送信を試みた回数
         name: attempt_count
         nullable: false
         type: integer
-      - description: 直近の送信失敗の理由
+      - description: 直近の送信失敗の内容 (失敗が無ければ NULL)
         name: last_error
         nullable: true
         type: text
-      - description: 版番号
+      - description: 最後に反映した notification_events の sequence (楽観ロックに使う)
         name: version
         nullable: false
         type: integer
@@ -455,23 +593,12 @@ tables:
         name: created_at
         nullable: false
         type: datetime
-      - description: 送信日時
-        name: sent_at
-        nullable: true
-        type: datetime
       - description: 更新日時
         name: updated_at
         nullable: false
         type: datetime
-    description: 通知の現在状態 (スナップショット)。取置通知・返却期限リマインド・延滞督促
+    description: 通知の現在値スナップショット。業務更新と同じトランザクションで送信待ちとして記録し、worker 起動の送信ジョブが送信済みにする。通知種別・対象・送信日の組で一意。
     foreign_keys:
-      - columns:
-          - patron_number
-        on_delete: RESTRICT
-        references:
-          columns:
-            - patron_number
-          table: patrons
       - columns:
           - loan_id
         on_delete: RESTRICT
@@ -486,224 +613,60 @@ tables:
           columns:
             - reservation_id
           table: reservations
+      - columns:
+          - patron_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - patron_id
+          table: patrons
     indexes:
       - columns:
-          - dedupe_key
-        name: notifications_dedupe_key_uq
+          - notification_type
+          - target_id
+          - scheduled_on
+        name: notifications_dedup_key
         unique: true
       - columns:
           - status
-          - created_at
-        name: notifications_status_created_idx
-        unique: false
-      - columns:
-          - patron_number
-        name: notifications_patron_number_idx
+        name: notifications_status_idx
         unique: false
     name: notifications
     primary_key:
       - notification_id
   - columns:
-      - description: イベントID
-        name: event_id
+      - description: 利用者の内部 ID
+        name: patron_id
         nullable: false
         type: uuid
-      - description: 対象の利用者番号
+      - description: システムが一意に採番する利用者番号
         name: patron_number
         nullable: false
         type: string
-      - description: このイベント適用後の利用者の版番号
-        name: patron_version
-        nullable: false
-        type: integer
-      - description: イベント種別 (例 PatronRegistered, PatronUpdated, PatronDeleted)
-        name: event_type
-        nullable: false
-        type: string
-      - description: イベント内容 (JSON 文字列。個人情報は暗号化した値)
-        name: payload
+      - description: 氏名 (暗号化済み)
+        name: name_encrypted
         nullable: false
         type: text
-      - description: 操作者 (IdP の subject)
-        name: actor_id
-        nullable: false
-        type: string
-      - description: 発生日時
-        name: occurred_at
-        nullable: false
-        type: datetime
-    description: 利用者のイベント (追記のみ)。個人情報はペイロード内でも暗号化した値で持つ
-    foreign_keys:
-      - columns:
-          - patron_number
-        on_delete: RESTRICT
-        references:
-          columns:
-            - patron_number
-          table: patrons
-    indexes:
-      - columns:
-          - patron_number
-          - patron_version
-        name: patron_events_patron_version_uq
-        unique: true
-    name: patron_events
-    primary_key:
-      - event_id
-  - columns:
-      - description: 利用者番号
-        name: patron_number
-        nullable: false
-        type: string
-      - description: OIDC IdP のアカウント識別子 (sub)。IdP 連携方法は未決 (ADR-0006 の残課題) のため null を許す
-        name: idp_subject
-        nullable: true
-        type: string
-      - description: 氏名 (アプリで暗号化した値)
-        name: full_name_encrypted
-        nullable: false
-        type: text
-      - description: 連絡先メールアドレス (アプリで暗号化した値)。通知の宛先
+      - description: メールアドレス (暗号化済み)
         name: email_encrypted
         nullable: false
         type: text
-      - description: 電話番号 (アプリで暗号化した値)
-        name: phone_encrypted
-        nullable: true
-        type: text
-      - description: 住所 (アプリで暗号化した値)
-        name: address_encrypted
-        nullable: true
-        type: text
-      - description: 利用者区分 (general=一般, child=児童, student=学生)。貸出期間の決定に使う
-        enum:
-          - general
-          - child
-          - student
-        name: category
+      - description: ログイン ID
+        name: login_id
         nullable: false
         type: string
-      - description: 利用者状態 (active=有効, deleted=削除済み)
-        enum:
-          - active
-          - deleted
-        name: status
-        nullable: false
+      - description: 認証基盤の主体 ID (アカウント作成前は NULL)
+        name: idp_subject
+        nullable: true
         type: string
-      - description: 楽観ロックの版番号
-        name: version
-        nullable: false
-        type: integer
       - description: 登録日
         name: registered_on
         nullable: false
         type: date
-      - description: 更新日時
-        name: updated_at
-        nullable: false
-        type: datetime
-    description: 利用者の現在状態 (スナップショット)。削除は status=deleted への遷移で表し物理削除しない
-    indexes:
-      - columns:
-          - idp_subject
-        name: patrons_idp_subject_uq
-        unique: true
-      - columns:
-          - status
-        name: patrons_status_idx
-        unique: false
-    name: patrons
-    primary_key:
-      - patron_number
-  - columns:
-      - description: イベントID
-        name: event_id
-        nullable: false
-        type: uuid
-      - description: 対象の予約ID
-        name: reservation_id
-        nullable: false
-        type: uuid
-      - description: このイベント適用後の予約の版番号
-        name: reservation_version
-        nullable: false
-        type: integer
-      - description: イベント種別 (例 ReservationPlaced, ReservationHeld, ReservationPickedUp, ReservationCancelled, QueueAdvanced)
-        name: event_type
-        nullable: false
-        type: string
-      - description: イベント内容 (JSON 文字列)
-        name: payload
-        nullable: false
-        type: text
-      - description: 操作者 (IdP の subject、または worker のジョブ名)
-        name: actor_id
-        nullable: false
-        type: string
-      - description: 発生日時
-        name: occurred_at
-        nullable: false
-        type: datetime
-    description: 予約のイベント (追記のみ)
-    foreign_keys:
-      - columns:
-          - reservation_id
-        on_delete: RESTRICT
-        references:
-          columns:
-            - reservation_id
-          table: reservations
-    indexes:
-      - columns:
-          - reservation_id
-          - reservation_version
-        name: reservation_events_reservation_version_uq
-        unique: true
-    name: reservation_events
-    primary_key:
-      - event_id
-  - columns:
-      - description: 予約ID
-        name: reservation_id
-        nullable: false
-        type: uuid
-      - description: 書籍ID
-        name: book_id
-        nullable: false
-        type: uuid
-      - description: 利用者番号
-        name: patron_number
-        nullable: false
-        type: string
-      - description: 予約日時
-        name: reserved_at
-        nullable: false
-        type: datetime
-      - description: 予約順 (1 始まり)。受取済み・取消済みになったら null にし、後続を繰り上げる
-        name: queue_position
+      - description: 論理削除 (退会) 日時。未削除は NULL
+        name: deleted_at
         nullable: true
-        type: integer
-      - description: 予約状態 (waiting=予約中, on_hold=取置中, picked_up=受取済み, cancelled=取消済み)
-        enum:
-          - waiting
-          - on_hold
-          - picked_up
-          - cancelled
-        name: status
-        nullable: false
-        type: string
-      - description: 取置開始日
-        name: hold_started_on
-        nullable: true
-        type: date
-      - description: 取置期限
-        name: hold_expires_on
-        nullable: true
-        type: date
-      - description: 版番号
-        name: version
-        nullable: false
-        type: integer
+        type: datetime
       - description: 作成日時
         name: created_at
         nullable: false
@@ -712,8 +675,160 @@ tables:
         name: updated_at
         nullable: false
         type: datetime
-    description: 予約の現在状態 (スナップショット)。予約順は書籍ごとの先着順
+    description: 利用者。利用者区分は patron 固定。退会は deleted_at による論理削除。パスワードは保持しない (OIDC 認証基盤が持つ)。
+    indexes:
+      - columns:
+          - patron_number
+        name: patrons_patron_number_key
+        unique: true
+      - columns:
+          - login_id
+        name: patrons_login_id_key
+        unique: true
+      - columns:
+          - idp_subject
+        name: patrons_idp_subject_key
+        unique: true
+    name: patrons
+    primary_key:
+      - patron_id
+  - columns:
+      - description: イベント ID
+        name: event_id
+        nullable: false
+        type: uuid
+      - description: 予約 ID
+        name: reservation_id
+        nullable: false
+        type: uuid
+      - description: 予約ごとの連番 (1 始まり)
+        name: sequence
+        nullable: false
+        type: integer
+      - description: イベント種別 (予約・順位繰り上げ・取り置き・受取・取消)
+        enum:
+          - reserved
+          - position_advanced
+          - held
+          - fulfilled
+          - cancelled
+        name: event_type
+        nullable: false
+        type: string
+      - description: 遷移前の状態 (予約時は NULL)
+        enum:
+          - waiting
+          - on_hold
+          - fulfilled
+          - cancelled
+        name: from_status
+        nullable: true
+        type: string
+      - description: 遷移後の状態
+        enum:
+          - waiting
+          - on_hold
+          - fulfilled
+          - cancelled
+        name: to_status
+        nullable: false
+        type: string
+      - description: 発生日時
+        name: occurred_at
+        nullable: false
+        type: datetime
+      - description: 操作した司書 (利用者本人やシステム起因は NULL)
+        name: actor_librarian_id
+        nullable: true
+        type: uuid
+      - description: 付帯情報 (JSON 文字列。順位の変化など)
+        name: payload
+        nullable: true
+        type: text
+    description: 予約の状態変化と予約順位の変化の履歴 (追記のみ。更新・削除しない)。
     foreign_keys:
+      - columns:
+          - reservation_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - reservation_id
+          table: reservations
+      - columns:
+          - actor_librarian_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - librarian_id
+          table: librarians
+    indexes:
+      - columns:
+          - reservation_id
+          - sequence
+        name: reservation_events_reservation_sequence_key
+        unique: true
+    name: reservation_events
+    primary_key:
+      - event_id
+  - columns:
+      - description: 予約 ID
+        name: reservation_id
+        nullable: false
+        type: uuid
+      - description: 予約した利用者
+        name: patron_id
+        nullable: false
+        type: uuid
+      - description: 予約対象の書籍 (ISBN は books から引く)
+        name: book_id
+        nullable: false
+        type: uuid
+      - description: 取り置き対象の蔵書 (取り置き前は NULL)
+        name: held_copy_id
+        nullable: true
+        type: uuid
+      - description: 予約日時
+        name: reserved_at
+        nullable: false
+        type: datetime
+      - description: 予約順位 (待機中のみ。取り置き以降は NULL)
+        name: queue_position
+        nullable: true
+        type: integer
+      - description: 予約の状態 (待機中・取り置き中・受取済み・取消済み)
+        enum:
+          - waiting
+          - on_hold
+          - fulfilled
+          - cancelled
+        name: status
+        nullable: false
+        type: string
+      - description: 取り置き開始日 (取り置き前は NULL)
+        name: hold_started_on
+        nullable: true
+        type: date
+      - description: 有効な予約 (待機中・取り置き中) のとき patron_id と book_id を連結した値、それ以外は NULL。同じ利用者・同じ書籍の有効な予約を 1 件に制限する (ADR 0005)
+        name: active_key
+        nullable: true
+        type: string
+      - description: 最後に反映した reservation_events の sequence (楽観ロックに使う)
+        name: version
+        nullable: false
+        type: integer
+      - description: 更新日時
+        name: updated_at
+        nullable: false
+        type: datetime
+    description: 予約の現在値スナップショット。状態変化と予約順位の繰り上げは reservation_events に追記し、同じトランザクションで本表を更新する。
+    foreign_keys:
+      - columns:
+          - patron_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - patron_id
+          table: patrons
       - columns:
           - book_id
         on_delete: RESTRICT
@@ -722,26 +837,26 @@ tables:
             - book_id
           table: books
       - columns:
-          - patron_number
+          - held_copy_id
         on_delete: RESTRICT
         references:
           columns:
-            - patron_number
-          table: patrons
+            - copy_id
+          table: copies
     indexes:
       - columns:
-          - book_id
-          - queue_position
-        name: reservations_book_queue_uq
+          - active_key
+        name: reservations_active_key_key
         unique: true
       - columns:
-          - patron_number
-        name: reservations_patron_number_idx
+          - book_id
+          - status
+          - queue_position
+        name: reservations_book_status_position_idx
         unique: false
       - columns:
-          - status
-          - hold_expires_on
-        name: reservations_status_hold_expires_idx
+          - patron_id
+        name: reservations_patron_id_idx
         unique: false
     name: reservations
     primary_key:

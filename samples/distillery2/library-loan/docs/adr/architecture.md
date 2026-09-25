@@ -1,5 +1,5 @@
 ---
-basis: requirements@a95f7e218c9d28eb2e5bf5eabb876187fb1b1d01
+basis: requirements@4422a431dd381e737d643e7055432ad4b2330c9d
 ---
 
 # アーキテクチャ (決めたもの)
@@ -30,19 +30,34 @@ graph LR
 graph LR
   subgraph sys["図書館蔵書管理システム"]
     backend_api["backend-api<br/>backend / typescript<br/>データストア所有 (migration)"]:::tier
-    frontend_patron["frontend-patron<br/>frontend / typescript"]:::tier
-    frontend_staff["frontend-staff<br/>frontend / typescript"]:::tier
+    frontend["frontend<br/>frontend / typescript"]:::tier
     worker["worker<br/>worker / typescript"]:::tier
     datastore[("データストア<br/>RDB 等")]:::store
   end
   ext_1["メール配信サービス"]:::external
-  frontend_patron -->|"api (openapi)"| backend_api
-  frontend_staff -->|"api (openapi)"| backend_api
-  worker -->|"db (rdb-schema)"| backend_api
   backend_api -->|所有・migration| datastore
   classDef actor fill:#2563EB,color:#fff,stroke:none
   classDef system fill:#1E3A8A,color:#fff,stroke:none
   classDef tier fill:#3B82F6,color:#fff,stroke:none
   classDef store fill:#0EA5E9,color:#fff,stroke:none
   classDef external fill:#6B7280,color:#fff,stroke:none
+```
+
+契約 (contracts.json) が無いため、契約の辺は描いていない (ティアのみ)。
+
+## コンテキストマップ
+
+```mermaid
+flowchart LR
+  analytics["蔵書分析<br/>(backend-api)"]
+  catalog["蔵書<br/>(backend-api)"]
+  circulation["貸出予約<br/>(backend-api)"]
+  notification["通知<br/>(backend-api)"]
+  patron["利用者<br/>(backend-api)"]
+  analytics --> |Conformist| catalog
+  analytics --> |Conformist| circulation
+  circulation --> |OHS| catalog
+  circulation --> |OHS| patron
+  notification --> |Conformist| circulation
+  notification --> |OHS| patron
 ```

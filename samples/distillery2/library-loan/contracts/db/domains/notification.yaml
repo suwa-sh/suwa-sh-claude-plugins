@@ -1,59 +1,52 @@
-# RDRA コンテキスト: 通知管理 / 情報: 通知 / 状態モデル: 通知状態
-# 通知は送信待ちレコード (outbox) を兼ねる。業務の更新と同じトランザクションで作り、worker が送る (ADR-0005)
+# basis: requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08
 subdomain_id: notification
+description: "通知。送信待ちレコード (トランザクショナル outbox) を履歴+スナップショットで持つ (ADR 0004 / 0005)。"
 tables:
   - name: notifications
-    description: 通知の現在状態 (スナップショット)。取置通知・返却期限リマインド・延滞督促
+    description: "通知の現在値スナップショット。業務更新と同じトランザクションで送信待ちとして記録し、worker 起動の送信ジョブが送信済みにする。通知種別・対象・送信日の組で一意。"
     columns:
       - name: notification_id
         type: uuid
         nullable: false
-        description: 通知ID。worker はこの単位で送信し二重送信しない
-      - name: patron_number
+        description: 通知 ID
+      - name: notification_type
         type: string
         nullable: false
-        description: 宛先の利用者番号
-      - name: type
-        type: string
+        enum: [reservation_ready, due_reminder, overdue_notice]
+        description: "通知種別 (受取可能通知・返却期限リマインド・延滞督促)"
+      - name: target_id
+        type: uuid
         nullable: false
-        description: "通知種別 (hold_ready=取置通知, reminder=返却期限リマインド, overdue_notice=延滞督促)"
-        enum: [hold_ready, reminder, overdue_notice]
+        description: "対象の ID (reservation_ready は予約 ID、それ以外は貸出 ID)。重複抑止の一意キーに使う"
       - name: loan_id
         type: uuid
         nullable: true
-        description: 契機の貸出ID (リマインド・督促)
+        description: "対象の貸出 (due_reminder / overdue_notice のとき)"
       - name: reservation_id
         type: uuid
         nullable: true
-        description: 契機の予約ID (取置通知)
-      - name: reminder_timing
-        type: string
-        nullable: true
-        description: "リマインド時期 (three_days_before=返却期限の3日前, one_day_before=返却期限の1日前)。リマインドのときだけ値を持つ"
-        enum: [three_days_before, one_day_before]
-      - name: dedupe_key
-        type: string
+        description: "対象の予約 (reservation_ready のとき)"
+      - name: patron_id
+        type: uuid
         nullable: false
-        description: >-
-          重複作成防止キー。通知種別・貸出ID・予約ID・リマインド時期を連結した値 (ADR-0005 の一意制約)。
-          null を含む複合一意制約は重複を防げないため、連結値の列で一意にする
+        description: 宛先の利用者
       - name: recipient_email_encrypted
         type: text
         nullable: false
-        description: 宛先メールアドレス (アプリで暗号化した値)
-      - name: subject
-        type: string
+        description: "宛先メールアドレス (暗号化済み。記録時点の値)"
+      - name: scheduled_on
+        type: date
         nullable: false
-        description: 件名
-      - name: body
-        type: text
-        nullable: false
-        description: 本文
+        description: "送信日 (同日の重複送信を抑止する単位)"
       - name: status
         type: string
         nullable: false
-        description: "通知状態 (pending=送信待ち, sent=送信済み, failed=送信失敗)"
-        enum: [pending, sent, failed]
+        enum: [pending, sent]
+        description: "通知の状態 (送信待ち・送信済み)"
+      - name: sent_at
+        type: datetime
+        nullable: true
+        description: "送信日時 (未送信は NULL)"
       - name: attempt_count
         type: integer
         nullable: false
@@ -61,30 +54,21 @@ tables:
       - name: last_error
         type: text
         nullable: true
-        description: 直近の送信失敗の理由
+        description: "直近の送信失敗の内容 (失敗が無ければ NULL)"
       - name: version
         type: integer
         nullable: false
-        description: 版番号
+        description: "最後に反映した notification_events の sequence (楽観ロックに使う)"
       - name: created_at
         type: datetime
         nullable: false
         description: 作成日時
-      - name: sent_at
-        type: datetime
-        nullable: true
-        description: 送信日時
       - name: updated_at
         type: datetime
         nullable: false
         description: 更新日時
     primary_key: [notification_id]
     foreign_keys:
-      - columns: [patron_number]
-        references:
-          table: patrons
-          columns: [patron_number]
-        on_delete: RESTRICT
       - columns: [loan_id]
         references:
           table: loans
@@ -95,47 +79,56 @@ tables:
           table: reservations
           columns: [reservation_id]
         on_delete: RESTRICT
+      - columns: [patron_id]
+        references:
+          table: patrons
+          columns: [patron_id]
+        on_delete: RESTRICT
     indexes:
-      - name: notifications_dedupe_key_uq
+      - name: notifications_dedup_key
         unique: true
-        columns: [dedupe_key]
-      - name: notifications_status_created_idx
+        columns: [notification_type, target_id, scheduled_on]
+      - name: notifications_status_idx
         unique: false
-        columns: [status, created_at]
-      - name: notifications_patron_number_idx
-        unique: false
-        columns: [patron_number]
+        columns: [status]
   - name: notification_events
-    description: 通知のイベント (追記のみ)。送信結果の経緯を残す
+    description: "通知の状態変化と送信試行の履歴 (追記のみ。更新・削除しない)。"
     columns:
       - name: event_id
         type: uuid
         nullable: false
-        description: イベントID
+        description: イベント ID
       - name: notification_id
         type: uuid
         nullable: false
-        description: 対象の通知ID
-      - name: notification_version
+        description: 通知 ID
+      - name: sequence
         type: integer
         nullable: false
-        description: このイベント適用後の通知の版番号
+        description: "通知ごとの連番 (1 始まり)"
       - name: event_type
         type: string
         nullable: false
-        description: "イベント種別 (例 NotificationQueued, NotificationSent, NotificationFailed, NotificationRequeued)"
-      - name: payload
-        type: text
-        nullable: false
-        description: イベント内容 (JSON 文字列)
-      - name: actor_id
+        enum: [queued, sent, send_failed]
+        description: "イベント種別 (送信待ち登録・送信成功・送信失敗)"
+      - name: from_status
+        type: string
+        nullable: true
+        enum: [pending, sent]
+        description: "遷移前の状態 (登録時は NULL)"
+      - name: to_status
         type: string
         nullable: false
-        description: 操作者 (worker のジョブ名、または IdP の subject)
+        enum: [pending, sent]
+        description: "遷移後の状態 (送信失敗時は pending のまま)"
       - name: occurred_at
         type: datetime
         nullable: false
         description: 発生日時
+      - name: payload
+        type: text
+        nullable: true
+        description: "付帯情報 (JSON 文字列。失敗理由など)"
     primary_key: [event_id]
     foreign_keys:
       - columns: [notification_id]
@@ -144,6 +137,6 @@ tables:
           columns: [notification_id]
         on_delete: RESTRICT
     indexes:
-      - name: notification_events_notification_version_uq
+      - name: notification_events_notification_sequence_key
         unique: true
-        columns: [notification_id, notification_version]
+        columns: [notification_id, sequence]

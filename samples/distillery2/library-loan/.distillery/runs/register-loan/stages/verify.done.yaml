@@ -1,13 +1,14 @@
 stage: verify
-completed_at: "2026-09-24T00:09:25.846Z"
-attempt: 1
-verifier_model: sonnet
+completed_at: "2026-09-25T02:21:45.409Z"
+attempt: 2
 findings:
   backend-api:
     blocker: 0
-    major: 5
-    minor: 8
-  frontend-staff:
+    major: 7
+    minor: 11
+    verdicts_sha256: e5dc6591b955b09a3daaa2f7ff4e7c944dd46d798a6e589c31d8b925a2998ed4
+  frontend:
     blocker: 0
     major: 1
-    minor: 8
+    minor: 5
+    verdicts_sha256: 5e63e06359abd27cbbb7e84035c12333ace9e336c413486d746d88d0c7752b7a

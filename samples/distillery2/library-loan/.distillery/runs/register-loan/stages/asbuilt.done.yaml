@@ -1,5 +1,6 @@
 stage: asbuilt
-completed_at: "2026-09-24T00:12:05.332Z"
-path: docs/as-built/貸出業務/貸出を登録する/index.md
-scenarios: 10
-operations: 1
+completed_at: "2026-09-25T02:24:18.971Z"
+index: docs/as-built/貸出業務/貸出を登録する/index.md
+check: ok
+uninstrumented_tiers: []
+tiers_without_calls: []

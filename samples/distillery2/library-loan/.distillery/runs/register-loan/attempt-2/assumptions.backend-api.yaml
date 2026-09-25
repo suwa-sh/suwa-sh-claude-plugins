@@ -1,0 +1,153 @@
+schema_version: "2.1"
+uc: "register-loan"
+tier: "backend-api"
+attempt: 2
+extraction:
+  candidate_count: 26
+  excluded_as_explicit: 12
+  recorded_count: 14
+assumptions:
+  - id: A-001
+    category: data_format
+    title: "業務日付は Asia/Tokyo で決める"
+    assumption: "貸出日 (loaned_on) は Clock.today() が返す Asia/Tokyo の暦日とし、返却期限もこの暦日から算出する"
+    target: "apps/backend-api/src/gateway/clock.ts:7"
+    reason: "契約 Loan.loaned_on と rdb loans.loaned_on は format date だが、日付を決めるタイムゾーンの定義が無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#Loan.loaned_on"
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#loans.loaned_on"
+      - "docs/requirements/rdra/条件.tsv#返却期限算出"
+      - "features/貸出業務/register-loan.feature#貸出登録時に貸出日に貸出期間を加えた返却期限が設定される"
+  - id: A-002
+    category: security
+    title: "テストでは認証ヘッダ無しを司書扱い"
+    assumption: "createTestApp の偽の認証基盤は Authorization ヘッダが無い要求を司書 lib1 として通す (defaultPrincipal で変更でき、null なら 401)"
+    target: "apps/backend-api/src/test-app.ts:27"
+    reason: "契約は bearerAuth を要求するが、生成された契約テストは Authorization ヘッダを付けずに 201 を期待する。テストでの認証の差し替え方は ADR 0007 に「in-memory の偽物」とあるだけで既定の主体が無い"
+    confidence: medium
+    spec_refs:
+      - "apps/backend-api/test/contract/createLoan.test.ts"
+      - "contracts/generated/slices/register-loan/contract-slice.json#security"
+      - "docs/rules/testing.md#ADR 0007"
+  - id: A-003
+    category: security
+    title: "401/403 の Problem の形を自前で決定"
+    assumption: "認証なしは 401 (type .../problems/unauthorized, code unauthorized)、利用者区分が利用者なら 403 (type .../problems/forbidden, code forbidden) を Problem で返す"
+    target: "apps/backend-api/src/presentation/http/problem.ts:46"
+    reason: "契約 createLoan の description は 401/403 を Problem で返すと書くが、responses に 401/403 の定義・examples が無く type と code が決まっていない"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#paths./loans.post.responses"
+      - "docs/rules/tier-backend.md#ADR 0006"
+  - id: A-004
+    category: input_validation
+    title: "空白だけの利用者番号は未入力扱い"
+    assumption: "patron_number と copy_id が未指定・null・空白だけの文字列なら code required の 400 を返す (値の前後の空白は除去しない)"
+    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:42"
+    reason: "契約 examples は空文字の 400 だけを示し、空白だけの値や前後空白の扱いの定義が無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#CreateLoanRequest"
+      - "contracts/generated/slices/register-loan/contract-slice.json#responses.400.examples.validation"
+  - id: A-005
+    category: input_validation
+    title: "未知の項目は unknown_field で 400"
+    assumption: "CreateLoanRequest に無い項目 (例: due_on) を受けたら field=項目名、code=unknown_field の検証エラーで 400 を返す"
+    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:80"
+    reason: "契約は additionalProperties false だが、違反時の FieldError.code の値の定義が無い (例は required, format, duplicate のみ)"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#CreateLoanRequest"
+      - "contracts/generated/slices/register-loan/contract-slice.json#FieldError.code"
+  - id: A-006
+    category: input_validation
+    title: "JSON でない本文は field=body で 400"
+    assumption: "本文が JSON として読めない、またはオブジェクトでないときは field=body、code=format の検証エラーで 400 を返す"
+    target: "apps/backend-api/src/presentation/http/server.ts:46"
+    reason: "契約の 400 は必須項目の欠落・形式エラーを指すが、本文全体が壊れている場合の FieldError の field の定義が無い"
+    confidence: high
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#responses.400"
+  - id: A-007
+    category: error_handling
+    title: "利用者の存在確認を蔵書より先に行う"
+    assumption: "利用者番号と蔵書 ID の両方が存在しないときは patron_not_found の 404 を返す (利用者を先に確認する)"
+    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:41"
+    reason: "契約 404 は patronNotFound と copyNotFound を別々に示すだけで、両方該当時の優先順位の定義が無い"
+    confidence: high
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#responses.404"
+      - "features/貸出業務/register-loan.feature"
+  - id: A-008
+    category: error_handling
+    title: "除籍済みの貸出拒否の detail 文言"
+    assumption: "除籍済みの蔵書は code loan_not_allowed の 409 で detail を「この蔵書は除籍済みです。」とする"
+    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:34"
+    reason: "契約 409 の description は除籍済みを含むが、examples は貸出中と他の利用者向け取り置き中だけで除籍済みの detail が無い"
+    confidence: high
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#responses.409"
+      - "docs/requirements/rdra/条件.tsv#貸出可否"
+  - id: A-009
+    category: error_handling
+    title: "楽観ロック競合は 409 concurrent_update"
+    assumption: "蔵書・予約の version が読み取り後に進んでいたら全体を rollback し、code concurrent_update の 409 を返す (自動再試行しない)"
+    target: "apps/backend-api/src/presentation/http/problem.ts:64"
+    reason: "rdb 契約は version を楽観ロックに使うとだけ書き、競合時の応答が契約に無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#copies.version"
+      - "contracts/generated/slices/register-loan/contract-slice.json#responses.409"
+  - id: A-010
+    category: error_handling
+    title: "有効な貸出ルールが無ければ 500"
+    assumption: "貸出日時点で有効な貸出ルールの世代が無いときは貸出を記録せず 500 (code internal_error) を返す"
+    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:49"
+    reason: "ADR 0004 と rdb 契約 loan_rules は貸出日時点で有効な世代を使うとするが、世代が無い場合の扱いが無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#loan_rules"
+      - "docs/rules/tier-backend.md#ADR 0004"
+      - "docs/requirements/rdra/条件.tsv#返却期限算出"
+  - id: A-011
+    category: persistence
+    title: "退会済み利用者は存在しない扱い"
+    assumption: "patrons.deleted_at が設定された (退会した) 利用者の利用者番号は patron_not_found の 404 にする"
+    target: "apps/backend-api/src/repository/patron/pgPatronRepository.ts:14"
+    reason: "退会は論理削除 (ADR 0004) だが、退会済み利用者への貸出登録の可否が要求・条件・契約に無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#patrons.deleted_at"
+      - "docs/requirements/rdra/条件.tsv#貸出可否"
+      - "docs/rules/tier-backend.md#ADR 0004"
+  - id: A-012
+    category: persistence
+    title: "貸出登録の events の payload は空"
+    assumption: "貸出登録で追記する loan_events / copy_events / reservation_events の payload は NULL とし、付帯情報は snapshots だけに持つ"
+    target: "apps/backend-api/src/repository/circulation/pgLoanRepository.ts:127"
+    reason: "rdb 契約は payload を付帯情報 (JSON 文字列、nullable) とするだけで、貸出イベントに何を入れるかの定義が無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#loan_events.payload"
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#copy_events.payload"
+  - id: A-013
+    category: security
+    title: "貸出登録は監査ログに記録しない"
+    assumption: "貸出登録は ADR 0006 の「司書の管理操作」に含めず、監査ログを出力しない"
+    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:37"
+    reason: "ADR 0006 は司書の管理操作を監査ログに記録するとするが、貸出登録が管理操作に当たるかと、監査ログの記録先 (テーブル・形式) の定義が契約に無い"
+    confidence: low
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0006"
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml"
+  - id: A-014
+    category: error_handling
+    title: "取り置き予約が無い取り置き中蔵書は貸出不可"
+    assumption: "蔵書の状態が取り置き中なのに、その蔵書を held_copy_id に持つ取り置き中の予約が無いときは、他の利用者向けの取り置きとして 409 にする"
+    target: "apps/backend-api/src/repository/circulation/pgLoanRepository.ts:49"
+    reason: "条件「貸出可否」は取り置き先の利用者が分かる前提で書かれ、蔵書と予約の状態が食い違う場合の定義が無い"
+    confidence: medium
+    spec_refs:
+      - "docs/requirements/rdra/条件.tsv#貸出可否"
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#reservations.held_copy_id"

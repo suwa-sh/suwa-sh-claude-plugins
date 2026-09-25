@@ -1,103 +1,104 @@
-# RDRA コンテキスト: 利用者管理 / 情報: 利用者 / 状態モデル: 利用者状態
-# 氏名・住所・電話番号・メールアドレスは保管時に暗号化する列に置く (ADR-0004, NFR E.6.1.1)
+# basis: requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08
 subdomain_id: patron
+description: "利用者 (利用者・司書)。論理削除のマスタ。利用者の氏名とメールアドレスは暗号化して保管する (ADR 0004 / 0006)。"
 tables:
   - name: patrons
-    description: 利用者の現在状態 (スナップショット)。削除は status=deleted への遷移で表し物理削除しない
+    description: "利用者。利用者区分は patron 固定。退会は deleted_at による論理削除。パスワードは保持しない (OIDC 認証基盤が持つ)。"
     columns:
+      - name: patron_id
+        type: uuid
+        nullable: false
+        description: 利用者の内部 ID
       - name: patron_number
         type: string
         nullable: false
-        description: 利用者番号
-      - name: idp_subject
-        type: string
-        nullable: true
-        description: "OIDC IdP のアカウント識別子 (sub)。IdP 連携方法は未決 (ADR-0006 の残課題) のため null を許す"
-      - name: full_name_encrypted
+        description: システムが一意に採番する利用者番号
+      - name: name_encrypted
         type: text
         nullable: false
-        description: 氏名 (アプリで暗号化した値)
+        description: "氏名 (暗号化済み)"
       - name: email_encrypted
         type: text
         nullable: false
-        description: 連絡先メールアドレス (アプリで暗号化した値)。通知の宛先
-      - name: phone_encrypted
-        type: text
-        nullable: true
-        description: 電話番号 (アプリで暗号化した値)
-      - name: address_encrypted
-        type: text
-        nullable: true
-        description: 住所 (アプリで暗号化した値)
-      - name: category
+        description: "メールアドレス (暗号化済み)"
+      - name: login_id
         type: string
         nullable: false
-        description: "利用者区分 (general=一般, child=児童, student=学生)。貸出期間の決定に使う"
-        enum: [general, child, student]
-      - name: status
+        description: ログイン ID
+      - name: idp_subject
         type: string
-        nullable: false
-        description: "利用者状態 (active=有効, deleted=削除済み)"
-        enum: [active, deleted]
-      - name: version
-        type: integer
-        nullable: false
-        description: 楽観ロックの版番号
+        nullable: true
+        description: "認証基盤の主体 ID (アカウント作成前は NULL)"
       - name: registered_on
         type: date
         nullable: false
         description: 登録日
+      - name: deleted_at
+        type: datetime
+        nullable: true
+        description: "論理削除 (退会) 日時。未削除は NULL"
+      - name: created_at
+        type: datetime
+        nullable: false
+        description: 作成日時
       - name: updated_at
         type: datetime
         nullable: false
         description: 更新日時
-    primary_key: [patron_number]
+    primary_key: [patron_id]
     indexes:
-      - name: patrons_idp_subject_uq
+      - name: patrons_patron_number_key
+        unique: true
+        columns: [patron_number]
+      - name: patrons_login_id_key
+        unique: true
+        columns: [login_id]
+      - name: patrons_idp_subject_key
         unique: true
         columns: [idp_subject]
-      - name: patrons_status_idx
-        unique: false
-        columns: [status]
-  - name: patron_events
-    description: 利用者のイベント (追記のみ)。個人情報はペイロード内でも暗号化した値で持つ
+  - name: librarians
+    description: "司書 (職員アカウント)。利用者区分は librarian 固定。"
     columns:
-      - name: event_id
+      - name: librarian_id
         type: uuid
         nullable: false
-        description: イベントID
-      - name: patron_number
+        description: 司書の内部 ID
+      - name: staff_id
         type: string
         nullable: false
-        description: 対象の利用者番号
-      - name: patron_version
-        type: integer
-        nullable: false
-        description: このイベント適用後の利用者の版番号
-      - name: event_type
+        description: 職員 ID
+      - name: name
         type: string
         nullable: false
-        description: "イベント種別 (例 PatronRegistered, PatronUpdated, PatronDeleted)"
-      - name: payload
-        type: text
-        nullable: false
-        description: イベント内容 (JSON 文字列。個人情報は暗号化した値)
-      - name: actor_id
+        description: 氏名
+      - name: login_id
         type: string
         nullable: false
-        description: 操作者 (IdP の subject)
-      - name: occurred_at
+        description: ログイン ID
+      - name: idp_subject
+        type: string
+        nullable: true
+        description: "認証基盤の主体 ID (アカウント作成前は NULL)"
+      - name: deleted_at
+        type: datetime
+        nullable: true
+        description: "論理削除日時 (未削除は NULL)"
+      - name: created_at
         type: datetime
         nullable: false
-        description: 発生日時
-    primary_key: [event_id]
-    foreign_keys:
-      - columns: [patron_number]
-        references:
-          table: patrons
-          columns: [patron_number]
-        on_delete: RESTRICT
+        description: 作成日時
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: 更新日時
+    primary_key: [librarian_id]
     indexes:
-      - name: patron_events_patron_version_uq
+      - name: librarians_staff_id_key
         unique: true
-        columns: [patron_number, patron_version]
+        columns: [staff_id]
+      - name: librarians_login_id_key
+        unique: true
+        columns: [login_id]
+      - name: librarians_idp_subject_key
+        unique: true
+        columns: [idp_subject]
