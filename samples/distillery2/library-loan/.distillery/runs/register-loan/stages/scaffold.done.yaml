@@ -1,7 +1,6 @@
 stage: scaffold
-completed_at: "2026-09-25T01:47:41.021Z"
-red:
-  backend-api: 6
+completed_at: "2026-09-26T01:32:35.555Z"
+red_baseline:
+  backend-api: 2
   frontend: 2
-dry_run_undefined: 0
-note: dry-run requires -p dryrun profile
+undefined_steps: 0

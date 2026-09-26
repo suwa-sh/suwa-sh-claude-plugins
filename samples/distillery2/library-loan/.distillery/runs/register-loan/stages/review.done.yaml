@@ -1,6 +1,7 @@
 stage: review
-completed_at: "2026-09-25T02:22:44.489Z"
-assumption_evidence_sha256: e7d8f227d1621b90693c1b426ddd4dd848ecc39dbeaa7e48e6c08426f292145e
-confirmed: 8
-auto_confirmed: 15
+completed_at: "2026-09-26T02:13:22.591Z"
+attempt: 2
+confirmed: 7
+auto_confirmed: 11
 rejected: 0
+assumption_evidence_sha256: a4f6b8a03fe6d1d38bf176a05e3180064b57c3f3604eec7cde2a94335ae2b9cb

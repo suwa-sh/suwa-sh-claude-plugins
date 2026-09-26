@@ -6,6 +6,7 @@
 
 ```mermaid
 graph LR
+  n__repo["@repo"]
   n__storybook["@storybook"]
   n_apps_backend_api["apps/backend-api"]
   n_apps_frontend["apps/frontend"]
@@ -20,6 +21,9 @@ graph LR
   n_packages_ui["packages/ui"]
   n_path["path"]
   n_url["url"]
+  n_apps_backend_api --> n__repo
+  n_apps_backend_api --> n_async_hooks
+  n_apps_backend_api --> n_crypto
   n_apps_backend_api --> n_fs
   n_apps_backend_api --> n_http
   n_apps_backend_api --> n_node_modules
@@ -44,4 +48,5 @@ graph LR
 | from | to | rule | severity |
 |---|---|---|---|
 | apps/worker/src/index.ts | apps/worker/src/index.ts | no-orphans | warn |
-| packages/contracts/db/tables.ts | packages/contracts/db/tables.ts | no-orphans | warn |
+| apps/worker/src/test-app.ts | apps/worker/src/test-app.ts | no-orphans | warn |
+| packages/contracts/library-db/tables.ts | packages/contracts/library-db/tables.ts | no-orphans | warn |

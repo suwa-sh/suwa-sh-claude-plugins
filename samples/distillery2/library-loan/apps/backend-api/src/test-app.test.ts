@@ -1,187 +1,141 @@
 /**
- * createLoan (POST /loans) を composition root 経由で通す (presentation の入力検証・エラー変換と、
- * 要求どおりの状態変化を確かめる)。DB は createTestApp が起動する pglite。
+ * createTestApp (composition root) を通した貸出登録の結線テスト。usecase・repository・pglite を実体でつなぐ。
  */
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { FixedClock } from './gateway/clock';
-import { fixtureIds, fixturePatronNumbers } from './testing/contractFixtures';
-import { createTestApp } from './test-app';
+import type { SqlDatabase } from './repository/db-context';
+import { createTestApp, startTestDatabase, TEST_TOKENS } from './test-app';
+import { CONTRACT_EXAMPLE_IDS, seedContractExamples } from './test-fixtures/contract-examples';
 
-describe('POST /loans', () => {
-  it('在庫ありの蔵書を貸し出す場合、201 で返却期限 2026-09-15 の貸出を返すこと', async () => {
+const ids = CONTRACT_EXAMPLE_IDS;
+
+type TestApp = Awaited<ReturnType<typeof createTestApp>>;
+
+async function setUp(): Promise<{ database: SqlDatabase; app: TestApp }> {
+  const database = await startTestDatabase();
+  await seedContractExamples(database);
+  const app = await createTestApp({ database, defaultHeaders: false });
+  return { database, app };
+}
+
+function registerLoan(app: TestApp, key: string) {
+  return request(app)
+    .post('/loans')
+    .set('Authorization', `Bearer ${TEST_TOKENS.librarian}`)
+    .set('Idempotency-Key', key);
+}
+
+describe('createTestApp 経由の貸出登録', () => {
+  it('同じ Idempotency-Key で再送した場合、初回と同じ応答を返し貸出は 1 件だけであること', async () => {
     // Arrange
-    const app = createTestApp({ clock: FixedClock.onDate('2026-09-01') });
+    const { database, app } = await setUp();
+    const body = { bookId: ids.availableBook, patronNumber: ids.patron };
+    const first = await registerLoan(app, 'key-1').send(body);
 
     // Act
-    const res = await request(app)
-      .post('/loans')
-      .send({ patron_number: fixturePatronNumbers.m1, copy_id: fixtureIds.copyAvailable });
+    const second = await registerLoan(app, 'key-1').send(body);
 
     // Assert
-    expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({
-      patron_number: 'P-2026-00001',
-      copy_id: fixtureIds.copyAvailable,
-      book_title: '吾輩は猫である',
-      loaned_on: '2026-09-01',
-      due_on: '2026-09-15',
-      returned_on: null,
-      status: 'on_loan',
-      copy_status: 'on_loan',
-      fulfilled_reservation_id: null,
-    });
-  });
-
-  it('本人向けに取り置き中の蔵書を貸し出す場合、受取済みにした予約 ID を返すこと', async () => {
-    // Arrange
-    const app = createTestApp({ clock: FixedClock.onDate('2026-09-20') });
-
-    // Act
-    const res = await request(app)
-      .post('/loans')
-      .send({ patron_number: fixturePatronNumbers.m1, copy_id: fixtureIds.copyOnHold });
-
-    // Assert
-    expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({
-      due_on: '2026-10-04',
-      fulfilled_reservation_id: fixtureIds.heldReservation,
-    });
-  });
-
-  it('同じ蔵書を続けて貸し出す場合、2 回目は貸出中として 409 を返すこと', async () => {
-    // Arrange
-    const app = createTestApp();
-    const body = { patron_number: fixturePatronNumbers.m1, copy_id: fixtureIds.copyAvailable };
-    await request(app).post('/loans').send(body);
-
-    // Act
-    const res = await request(app)
-      .post('/loans')
-      .send({ ...body, patron_number: fixturePatronNumbers.m2 });
-
-    // Assert
-    expect(res.status).toBe(409);
-    expect(res.body).toMatchObject({ code: 'loan_not_allowed', detail: 'この蔵書は貸出中です。' });
-  });
-
-  it('他の利用者向けに取り置き中の蔵書の場合、409 で取り置き中の旨を返すこと', async () => {
-    // Arrange
-    const app = createTestApp();
-
-    // Act
-    const res = await request(app)
-      .post('/loans')
-      .send({ patron_number: fixturePatronNumbers.m2, copy_id: fixtureIds.copyOnHold });
-
-    // Assert
-    expect(res.status).toBe(409);
-    expect(res.headers['content-type']).toContain('application/problem+json');
-    expect(res.body).toMatchObject({
-      code: 'loan_not_allowed',
-      title: '貸し出せません',
-      detail: 'この蔵書は他の利用者向けに取り置き中です。',
-    });
-  });
-
-  it('利用者番号が空の場合、400 で項目ごとの検証エラーを返すこと', async () => {
-    // Arrange
-    const app = createTestApp();
-
-    // Act
-    const res = await request(app)
-      .post('/loans')
-      .send({ patron_number: '', copy_id: fixtureIds.copyAvailable });
-
-    // Assert
-    expect(res.status).toBe(400);
-    expect(res.body).toEqual({
-      type: 'https://library.example/problems/validation-error',
-      title: '入力内容に誤りがあります',
-      status: 400,
-      errors: [{ field: 'patron_number', code: 'required', message: '利用者番号は必須です' }],
-    });
-  });
-
-  it('蔵書 ID が UUID でなく未知の項目もある場合、400 で両方を返すこと', async () => {
-    // Arrange
-    const app = createTestApp();
-
-    // Act
-    const res = await request(app)
-      .post('/loans')
-      .send({ patron_number: 'P-2026-00001', copy_id: 'abc', due_on: '2026-12-31' });
-
-    // Assert
-    expect(res.status).toBe(400);
-    expect(res.body.errors).toEqual([
-      { field: 'copy_id', code: 'format', message: '蔵書 ID の形式が正しくありません' },
-      { field: 'due_on', code: 'unknown_field', message: '受け付けない項目です: due_on' },
+    expect(second.status).toBe(201);
+    expect(second.body).toEqual(first.body);
+    const loans = await database.query('SELECT 1 FROM loans WHERE book_id = $1', [
+      ids.availableBook,
     ]);
+    expect(loans.rows).toHaveLength(1);
   });
 
-  it('存在しない利用者・蔵書の場合、それぞれの code で 404 を返すこと', async () => {
+  it('予約待ちの書籍を予約順 1 位の利用者に貸し出した場合、予約を完了にし書籍を貸出中にすること', async () => {
     // Arrange
-    const app = createTestApp();
+    const { database, app } = await setUp();
 
     // Act
-    const patron = await request(app)
-      .post('/loans')
-      .send({ patron_number: 'P-2026-99999', copy_id: fixtureIds.copyAvailable });
-    const copy = await request(app)
-      .post('/loans')
-      .send({ patron_number: 'P-2026-00001', copy_id: '99999999-9999-4999-8999-999999999999' });
+    const res = await registerLoan(app, 'key-2').send({
+      bookId: ids.awaitingBookForPatron,
+      patronNumber: ids.patron,
+    });
 
     // Assert
-    expect([patron.status, patron.body.code]).toEqual([404, 'patron_not_found']);
-    expect([copy.status, copy.body.code]).toEqual([404, 'copy_not_found']);
+    expect(res.status).toBe(201);
+    expect(res.body.loan).toMatchObject({
+      reservationId: ids.reservationForPatron,
+      loanedOn: '2026-10-01',
+      dueDate: '2026-10-15',
+    });
+    const reservation = await database.query<{ status: string }>(
+      'SELECT status FROM reservations WHERE reservation_id = $1',
+      [ids.reservationForPatron],
+    );
+    expect(reservation.rows).toEqual([{ status: 'completed' }]);
+    const book = await database.query<{ status: string }>(
+      'SELECT status FROM books WHERE book_id = $1',
+      [ids.awaitingBookForPatron],
+    );
+    expect(book.rows).toEqual([{ status: 'on_loan' }]);
   });
 
-  it('認証されていない場合、401 を返すこと', async () => {
+  it('予約順 1 位以外の利用者に貸し出そうとした場合、409 で貸出も予約も変えないこと', async () => {
     // Arrange
-    const app = createTestApp({ defaultPrincipal: null });
+    const { database, app } = await setUp();
+
+    // Act
+    const res = await registerLoan(app, 'key-3').send({
+      bookId: ids.awaitingBookForOther,
+      patronNumber: ids.patron,
+    });
+
+    // Assert
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('not_first_in_reservation_queue');
+    const loans = await database.query('SELECT 1 FROM loans WHERE book_id = $1', [
+      ids.awaitingBookForOther,
+    ]);
+    expect(loans.rows).toHaveLength(0);
+    const reservation = await database.query<{ status: string }>(
+      'SELECT status FROM reservations WHERE reservation_id = $1',
+      [ids.reservationForOther],
+    );
+    expect(reservation.rows).toEqual([{ status: 'notified' }]);
+  });
+
+  it('拒否された要求を同じ Idempotency-Key で再送した場合、書籍が貸し出せる状態に戻っていても初回と同じ 409 を返し貸出を記録しないこと', async () => {
+    // Arrange
+    const { database, app } = await setUp();
+    const body = { bookId: ids.onLoanBook, patronNumber: ids.patron };
+    const first = await registerLoan(app, 'key-5').send(body);
+    await database.query("UPDATE books SET status = 'available' WHERE book_id = $1", [
+      ids.onLoanBook,
+    ]);
+
+    // Act
+    const second = await registerLoan(app, 'key-5').send(body);
+
+    // Assert
+    expect(first.status).toBe(409);
+    expect(second.status).toBe(409);
+    expect(second.text).toBe(first.text);
+    const loans = await database.query(
+      'SELECT 1 FROM loans WHERE book_id = $1 AND patron_number = $2',
+      [ids.onLoanBook, ids.patron],
+    );
+    expect(loans.rows).toHaveLength(0);
+    const stored = await database.query<{ response_status: number }>(
+      'SELECT response_status FROM idempotency_keys WHERE idempotency_key = $1',
+      ['key-5'],
+    );
+    expect(stored.rows).toEqual([{ response_status: 409 }]);
+  });
+
+  it('既定ヘッダを無効にしてトークンを送らない場合、401 を返すこと', async () => {
+    // Arrange
+    const { app } = await setUp();
 
     // Act
     const res = await request(app)
       .post('/loans')
-      .send({ patron_number: fixturePatronNumbers.m1, copy_id: fixtureIds.copyAvailable });
+      .set('Idempotency-Key', 'key-4')
+      .send({ bookId: ids.availableBook, patronNumber: ids.patron });
 
     // Assert
     expect(res.status).toBe(401);
-  });
-
-  it('利用者区分が利用者の場合、403 を返し貸出を記録しないこと', async () => {
-    // Arrange
-    const app = createTestApp({
-      tokens: { 'patron-token': { role: 'patron', patronNumber: fixturePatronNumbers.m1 } },
-    });
-
-    // Act
-    const res = await request(app)
-      .post('/loans')
-      .set('authorization', 'Bearer patron-token')
-      .send({ patron_number: fixturePatronNumbers.m1, copy_id: fixtureIds.copyAvailable });
-
-    // Assert
-    expect(res.status).toBe(403);
-    const retry = await request(app)
-      .post('/loans')
-      .send({ patron_number: fixturePatronNumbers.m1, copy_id: fixtureIds.copyAvailable });
-    expect(retry.status).toBe(201);
-  });
-
-  it('JSON として読めない本文の場合、400 を返すこと', async () => {
-    // Arrange
-    const app = createTestApp();
-
-    // Act
-    const res = await request(app)
-      .post('/loans')
-      .set('content-type', 'application/json')
-      .send('{"patron_number":');
-
-    // Assert
-    expect(res.status).toBe(400);
   });
 });

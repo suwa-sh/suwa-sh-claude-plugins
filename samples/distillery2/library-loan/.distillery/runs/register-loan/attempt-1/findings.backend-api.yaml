@@ -2,7 +2,7 @@ schema_version: "2.1"
 uc: "register-loan"
 tier: "backend-api"
 attempt: 1
-verified_at: "2026-09-25T11:30:00+09:00"
+verified_at: "2026-09-26T11:30:00+09:00"
 gates_read:
   static: pass
   unit: pass
@@ -12,332 +12,260 @@ gates_read:
 viewpoints_checked:
   uc_intent:
     status: done
-    note: "uc-bdd 6/6、acceptance 4/4 が pass で、pending と skipped は無い。@acceptance タグが SPEC-004-01 の 3 件と SPEC-006-01 の 1 件の受入基準をすべて覆う。トレースでは copies の更新、copy_events、loans、loan_events、reservations の受取済み化、reservation_events が 1 トランザクション内で通っている。状態.tsv の遷移 (在庫あり/取り置き中から貸出中、予約の取り置き中から受取済み) と一致する。条件『貸出可否』は loanEligibility.ts、『返却期限算出』は dueDate.ts と loan_rules の世代選択、『操作権限』は usecase の requireLibrarian が担う。blocker は無い。"
+    note: "uc-bdd 6/6 pass、acceptance-api 3/3 pass (pending/skipped 無し)。受入タグ SPEC-003-01-1 / SPEC-003-01-2 / SPEC-005-01-1 で spec_ids の受入基準 3 件を全て覆う。6 トレースとも想定経路どおり (成功系は loans+loan_events / books+book_events / 予約時は reservations+reservation_events / idempotency_keys を書き、拒否系は SELECT のみで書き込み無し)。貸出可否条件・返却期限算出条件・状態遷移 (書籍 在庫あり/予約待ち→貸出中、貸出 →貸出中、予約 通知済→完了) の担保箇所を lend-book.ts / register-loan.ts / pg-loan-repositories.ts で特定できた。契約テスト 17/17 pass。"
   assumption_conformance:
     status: done
-assumptions_sha256: "b3aa44e65bad426132b15b4687812a59d042cea0b343cf65cc06ab83eb0796c1"
+assumptions_sha256: "8d7e68978d89ceb1528b231e27ee5752dc348758aef43d7420d7fddc43f8c0dd"
 assumption_verdicts:
   - id: A-001
     tier: backend-api
-    assumption: "貸出日 (loaned_on) は Clock.today() が返す Asia/Tokyo の暦日とし、返却期限もこの暦日から算出する"
-    target: "apps/backend-api/src/gateway/clock.ts:7"
+    assumption: "貸出期間の日数を全利用者・全書籍 (媒体種別を問わず) で一律 14 日とし、返却期限を貸出日 + 14 日にする"
+    target: "apps/backend-api/src/domain/loan/loan-policy.ts:7"
     category: data_format
     verified_category: data_format
     verdict: spec_absent
     finding_id: F-001
-    evidence: "contract-slice.json の Loan.loaned_on と rdb-slice.yaml の loans.loaned_on は format date のみで、タイムゾーンの定義が無い。feature の『今日の日付は 2026-09-01 である』も暦日だけを指す"
+    evidence: "条件.tsv 返却期限算出条件に貸出期間の値が無い。contract-slice.json /paths/~1loans/post/description に「貸出期間の日数は要求に値が無く、この契約では固定しない。example の dueDate は形を示すための値」とある"
   - id: A-002
     tier: backend-api
-    assumption: "createTestApp の偽の認証基盤は Authorization ヘッダが無い要求を司書 lib1 として通す (defaultPrincipal で変更でき、null なら 401)"
-    target: "apps/backend-api/src/test-app.ts:27"
-    category: security
-    verified_category: security
+    assumption: "貸出日 (サーバーの当日の日付) を Asia/Tokyo タイムゾーンの暦日で決める"
+    target: "apps/backend-api/src/domain/loan/loan-policy.ts:10"
+    category: data_format
+    verified_category: data_format
     verdict: spec_absent
     finding_id: F-002
-    evidence: "testing.md の ADR 0007 は『認証基盤はテストで in-memory の偽物に差し替え』とだけ書き、既定の主体を定めていない。contract-slice.json はグローバルに security bearerAuth を要求する。テスト専用の composition root に限られ、本番の app.ts は authenticate の注入を必須にしている"
+    evidence: "contract-slice.json RegisterLoanRequest.description は「貸出日はサーバーの当日の日付」のみでタイムゾーンの定義が無い。common.md 推奨 (時刻精度等は 1 箇所に集約し AssumptionRecord に記録) に従い loan-policy.ts に集約されている"
   - id: A-003
     tier: backend-api
-    assumption: "認証なしは 401 (type .../problems/unauthorized, code unauthorized)、利用者区分が利用者なら 403 (type .../problems/forbidden, code forbidden) を Problem で返す"
-    target: "apps/backend-api/src/presentation/http/problem.ts:46"
-    category: security
-    verified_category: security
+    assumption: "書籍が貸出中などで、かつ利用者も未登録のときは patron_not_registered を返す (判定順は 書籍の存在 → 利用者の登録 → 書籍状態 → 予約順位)"
+    target: "apps/backend-api/src/domain/loan/lend-book.ts:43"
+    category: error_handling
+    verified_category: error_handling
     verdict: spec_absent
     finding_id: F-003
-    evidence: "contract-slice.json の paths./loans.post.description は『認証なしは 401、利用者区分が利用者なら 403 を Problem で返す』と書くが、responses には 201/400/404/409 だけがあり、401/403 の type と code が無い。issues/contract-auth-responses-not-in-createLoan.md で契約側の課題として起票済み"
+    evidence: "条件.tsv 貸出可否条件と契約 409 examples は拒否理由を列挙するだけで優先順位が無い。実装順は register-loan.ts:103-105 (書籍存在) → lend-book.ts:43-51 (利用者→貸出中→予約順位) で記述どおり"
   - id: A-004
     tier: backend-api
-    assumption: "patron_number と copy_id が未指定・null・空白だけの文字列なら code required の 400 を返す (値の前後の空白は除去しない)"
-    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:42"
-    category: input_validation
-    verified_category: input_validation
+    assumption: "書籍IDの書籍が無い、または論理削除済みのときは 404 (code not_found) を返し、何も書き込まない"
+    target: "apps/backend-api/src/usecase/register-loan.ts:104"
+    category: error_handling
+    verified_category: error_handling
     verdict: spec_absent
     finding_id: F-004
-    evidence: "CreateLoanRequest と PatronNumber に minLength や pattern が無い。400 の example (validation) は空文字だけを示す"
+    evidence: "contract-slice.json /paths/~1loans/post/responses は 201/400/409 のみで、書籍不在の扱いが無い。ProblemCode enum に not_found はある。貸出可否条件 (条件.tsv) も書籍不在に触れない。404 は契約に宣言されていない応答なので、契約へ 404 を足すかの還流判断が要る"
   - id: A-005
     tier: backend-api
-    assumption: "CreateLoanRequest に無い項目 (例: due_on) を受けたら field=項目名、code=unknown_field の検証エラーで 400 を返す"
-    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:80"
-    category: input_validation
-    verified_category: input_validation
-    verdict: spec_absent
+    assumption: "Idempotency-Key は 201 の応答だけを貸出と同じトランザクションで idempotency_keys に保存する。409 などの拒否は保存せず再送時に再判定する。同じキーで本文 (bookId と patronNumber の SHA-256) が違う再送は 409 idempotency_key_conflict を返す"
+    target: "apps/backend-api/src/usecase/register-loan.ts:96"
+    category: persistence
+    verified_category: persistence
+    verdict: contradicts
     finding_id: F-005
-    evidence: "CreateLoanRequest は additionalProperties false なので 400 で拒否することは契約どおり。FieldError.code の例は required, format, duplicate だけで、unknown_field という値は契約に無い"
+    evidence: "contract-slice.json components/parameters/IdempotencyKey.description「同じキーの再送では副作用を重複させず、初回と同じ応答を返す」、rdb-slice.yaml idempotency_keys.description「同じキーの再送に初回と同じ応答を返す」(response_status は integer で 201 に限定されず response_body は nullable)。拒否 (409) を保存しないと、初回 409 の後に書籍が返却されれば同じキーの再送が 201 になり貸出を記録する (初回と異なる応答かつ初回に無かった副作用)。reason の「副作用を重複させないことだけを定め」は契約の後半を読み落としている"
   - id: A-006
     tier: backend-api
-    assumption: "本文が JSON として読めない、またはオブジェクトでないときは field=body、code=format の検証エラーで 400 を返す"
-    target: "apps/backend-api/src/presentation/http/server.ts:46"
-    category: input_validation
-    verified_category: input_validation
-    verdict: spec_absent
-    finding_id: F-006
-    evidence: "契約の 400 の description は『必須項目の欠落・形式エラー』で、本文全体が壊れている場合の FieldError.field の値を定めていない"
-  - id: A-007
-    tier: backend-api
-    assumption: "利用者番号と蔵書 ID の両方が存在しないときは patron_not_found の 404 を返す (利用者を先に確認する)"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:41"
-    category: error_handling
-    verified_category: error_handling
-    verdict: spec_absent
-    finding_id: F-007
-    evidence: "契約の 404 examples は patronNotFound と copyNotFound を別々に示すだけで、両方に当たる場合の優先順位が無い"
-  - id: A-008
-    tier: backend-api
-    assumption: "除籍済みの蔵書は code loan_not_allowed の 409 で detail を「この蔵書は除籍済みです。」とする"
-    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:34"
-    category: error_handling
-    verified_category: error_handling
-    verdict: spec_absent
-    finding_id: F-008
-    evidence: "409 で除籍済みを拒否することは契約の 409 の description『貸出中・他の利用者向けに取り置き中・除籍済み』に明記がある。一方で除籍済みの detail の文言は examples (heldForOther, onLoan) に無く、実装者が決めた"
-  - id: A-009
-    tier: backend-api
-    assumption: "蔵書・予約の version が読み取り後に進んでいたら全体を rollback し、code concurrent_update の 409 を返す (自動再試行しない)"
-    target: "apps/backend-api/src/presentation/http/problem.ts:64"
-    category: error_handling
-    verified_category: error_handling
-    verdict: spec_absent
-    finding_id: F-009
-    evidence: "rdb-slice.yaml の copies.version と reservations.version は『楽観ロックに使う』とだけ書く。契約の 409 の description は『貸出可否により貸し出せない』だけを挙げ、競合での 409 と code concurrent_update は契約に無い。rollback 自体は tier-backend.md の ADR 0009 (1 トランザクション) に沿う"
-  - id: A-010
-    tier: backend-api
-    assumption: "貸出日時点で有効な貸出ルールの世代が無いときは貸出を記録せず 500 (code internal_error) を返す"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:49"
-    category: error_handling
-    verified_category: error_handling
-    verdict: spec_absent
-    finding_id: F-010
-    evidence: "tier-backend.md の ADR 0004 と rdb-slice.yaml の loan_rules は『貸出日時点で有効な世代を使う』とするが、世代が無い場合を定めていない。契約の createLoan に 500 は無い"
-  - id: A-011
-    tier: backend-api
-    assumption: "patrons.deleted_at が設定された (退会した) 利用者の利用者番号は patron_not_found の 404 にする"
-    target: "apps/backend-api/src/repository/patron/pgPatronRepository.ts:14"
-    category: persistence
-    verified_category: persistence
-    verdict: spec_absent
-    finding_id: F-011
-    evidence: "rdb-slice.yaml の patrons.deleted_at は『論理削除 (退会) 日時』とだけ書く。条件.tsv の貸出可否は書籍の状態しか見ておらず、退会済み利用者への貸出の可否は要求・条件・契約のどれにも無い"
-  - id: A-012
-    tier: backend-api
-    assumption: "貸出登録で追記する loan_events / copy_events / reservation_events の payload は NULL とし、付帯情報は snapshots だけに持つ"
-    target: "apps/backend-api/src/repository/circulation/pgLoanRepository.ts:127"
-    category: persistence
-    verified_category: persistence
-    verdict: spec_absent
-    finding_id: F-012
-    evidence: "rdb-slice.yaml の *_events.payload は『付帯情報 (JSON 文字列)』、nullable true とだけ書き、貸出イベントに何を入れるかを定めていない。トレース register-loan#-bf238760.jsonl の seq 2889000074/76/78 の INSERT は payload 列を指定していない"
-  - id: A-013
-    tier: backend-api
-    assumption: "貸出登録は ADR 0006 の「司書の管理操作」に含めず、監査ログを出力しない"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:37"
+    assumption: "Authorization の Bearer トークンが無い・検証できないときは 401 (unauthorized)、librarian 以外のロールは usecase で 403 (forbidden) を返す"
+    target: "apps/backend-api/src/usecase/register-loan.ts:82"
     category: security
     verified_category: security
     verdict: spec_absent
-    finding_id: F-013
-    evidence: "tier-backend.md の ADR 0006 には『ログイン・司書の管理操作・個人情報の参照を監査ログに記録する』とある。同じ ADR は『司書向けの操作 (蔵書・利用者管理、貸出・返却登録、レポート)』とも書き、『管理操作』が貸出登録を含むかをルールから確定できない。rdb-slice.yaml に監査ログの記録先が無い。apps/backend-api/src に監査ログの実装は無い (grep audit/監査 の結果 0 件)"
-  - id: A-014
+    finding_id: F-006
+    evidence: "認可を usecase でロール判定する位置は tier-backend.md ADR 0006 に明示があり一致。一方 contract-slice.json /paths/~1loans/post/responses に 401/403 の宣言が無く、ステータスの割当ては契約に無い (ProblemCode に unauthorized/forbidden はある)"
+  - id: A-007
     tier: backend-api
-    assumption: "蔵書の状態が取り置き中なのに、その蔵書を held_copy_id に持つ取り置き中の予約が無いときは、他の利用者向けの取り置きとして 409 にする"
-    target: "apps/backend-api/src/repository/circulation/pgLoanRepository.ts:49"
-    category: error_handling
-    verified_category: error_handling
+    assumption: "追記するイベント種別を 書籍=lent、貸出=registered、予約=completed とし、payload は JSON 文字列 (書籍・予約は loanId と状態の遷移、貸出は Loan 全体) にする"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:27"
+    category: data_format
+    verified_category: data_format
     verdict: spec_absent
-    finding_id: F-014
-    evidence: "条件.tsv の貸出可否は『その利用者向けに取り置き中の書籍だけ貸し出せる』とし、取り置き先の予約が無い不整合状態を定めていない。貸出を拒否する側に倒すのは条件の意図に沿う。ただし detail は『他の利用者向けに取り置き中です』になり、実態と合わない"
+    finding_id: F-007
+    evidence: "rdb-slice.yaml book_events/loan_events/reservation_events の event_type は「値は UC で定める」で、この UC の値は契約・要求に無い"
+  - id: A-008
+    tier: backend-api
+    assumption: "予約を完了にするとき、その予約の queue_position を null にするだけで、後続の予約 (予約中) の queue_position は変えない"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:135"
+    category: persistence
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-008
+    evidence: "rdb-slice.yaml reservations.queue_position「完了・取消で予約順位の管理対象から外れたら null」、状態.tsv の順位繰上げは 予約を取り消す UC (予約中→取消) にだけ書かれ、通知済→完了 には無い。findFirstInQueueForUpdate は ORDER BY queue_position の最小を 1 位とみなすので本 UC の判定は崩れないが、後続 UC の「予約順位」表示の意味は未定"
+  - id: A-009
+    tier: backend-api
+    assumption: "テスト用 composition root (createTestApp) は、Authorization と Idempotency-Key が無い要求に司書のテストトークンと新しい Idempotency-Key を補う (defaultHeaders false で無効化できる。本番の createApp は補わない)"
+    target: "apps/backend-api/src/test-app.ts:53"
+    category: security
+    verified_category: security
+    verdict: spec_absent
+    finding_id: F-009
+    evidence: "生成契約テスト apps/backend-api/test/contract/registerLoan.test.ts は Authorization / Idempotency-Key を送らない。tier-impl.md 手順 6 どおり issues/20260926T1045_register-loan-contract-test-headers.md を起票済み。本番 app.ts は補完しない。unit レポート「既定ヘッダを無効にしてトークンを送らない場合、401 を返すこと」pass で本番経路の 401 は別途確認されている"
+  - id: A-010
+    tier: backend-api
+    assumption: "1 トランザクションの中で書籍と予約順 1 位の予約を SELECT ... FOR UPDATE でロックしてから判定し、スナップショット更新は version 一致を条件にする。版が合わなければ例外で全体を巻き戻し 500 を返す"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:52"
+    category: persistence
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-010
+    evidence: "tier-backend.md ADR 0004 は snapshot を events と同じトランザクションで更新することのみ、rdb-slice.yaml books.version は「楽観ロック」とだけ書き、同時貸出の防ぎ方と競合時の応答 (契約 responses に 5xx 無し) が無い。トレースで SELECT ... FOR UPDATE → UPDATE → INSERT が UnitOfWork.run 内で実行されていることを確認"
+  - id: A-011
+    tier: backend-api
+    assumption: "要求本文が JSON として読めない、または JSON オブジェクトでないときは 400 validation_error (field body) を返す"
+    target: "apps/backend-api/src/presentation/http-app.ts:52"
+    category: input_validation
+    verified_category: input_validation
+    verdict: consistent
+    finding_id: F-011
+    evidence: "contract-slice.json /paths/~1loans/post/responses/400.description「入力が不正 (必須項目の欠落・形式違反)」。壊れた JSON や非オブジェクトは形式違反に含まれ、400 validation_error は契約の明示の範囲"
   - id: V-001
     tier: backend-api
-    assumption: "利用者の存在確認 (FindPatronByNumber) を貸出登録のトランザクションの外で行い、蔵書の読み取りと更新だけをトランザクション内で行う"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:40"
+    assumption: "認証 (401) を本文・Idempotency-Key の入力検証 (400) より先に判定する"
+    target: "apps/backend-api/src/presentation/http-app.ts:107"
     category: null
-    verified_category: persistence
+    verified_category: error_handling
     verdict: unlisted
-    finding_id: F-015
-    evidence: "registerLoan.ts:40 で利用者を引いてから :44 の inTransaction に入る。トレース register-loan#-bf238760.jsonl では PatronRepository.findActiveByPatronNumber (seq 2889000068) が LoanRepository.inTransaction (seq 2889000070) の外にある。tier-backend.md の ADR 0009 は他モジュールを usecase 経由で使うことと、蔵書・貸出・予約の更新を 1 トランザクションで行うことを定めるが、他モジュールの読み取りをトランザクションに含めるかは定めていない。確認後に利用者が退会すると、退会済み利用者に貸出が記録されうる"
+    finding_id: F-012
+    evidence: "http-app.ts handleRegisterLoan は authenticate を readJsonBody / validateRegisterLoanRequest より先に呼ぶ。契約は 400 と bearerAuth を定めるが、同時に当てはまるときの優先順位は無い"
   - id: V-002
     tier: backend-api
-    assumption: "経路の解決を認証より先に行い、未定義の経路には認証なしでも 404 (route_not_found) を返す"
-    target: "apps/backend-api/src/presentation/http/server.ts:69"
+    assumption: "予約待ちの書籍で予約順 1 位が本人でも予約状態が予約中 (未通知) の場合、または予約順位の管理対象の予約が 1 件も無い場合も not_first_in_reservation_queue で拒否する"
+    target: "apps/backend-api/src/usecase/register-loan.ts:70"
     category: null
-    verified_category: security
+    verified_category: error_handling
     verdict: unlisted
-    finding_id: F-016
-    evidence: "server.ts:67-72 では resolveOperation の後に authenticate を呼ぶ。未認証の要求にも経路の有無が分かる。contract-slice.json はグローバルに security bearerAuth を要求するが、未定義経路の扱いは定めていない。assumptions.backend-api.yaml の A-003 は 401/403 の形だけを扱い、この判定順は記録されていない"
-  - id: V-003
-    tier: backend-api
-    assumption: "貸出期間が 1 未満または整数でない貸出ルールでは返却期限を算出せず RangeError を投げる"
-    target: "apps/backend-api/src/domain/circulation/dueDate.ts:31"
-    category: null
-    verified_category: input_validation
-    verdict: unlisted
-    finding_id: F-017
-    evidence: "rdb-slice.yaml の loan_rules.loan_period_days は integer, nullable false だけで範囲の定義が無い。条件.tsv の返却期限算出にも範囲は無い。単体テスト loan.test.ts の『calculateDueOn_貸出期間が0日の場合_例外を投げること』がこの判断を固定している。RangeError は presentation で拾われず、server.ts:93 で 500 になる"
+    finding_id: F-013
+    evidence: "契約 description「予約順 1 位 (通知済) の利用者にだけ貸し出せる」により拒否自体は契約どおり。ただし本人が 1 位で未通知のとき、detail は http-app.ts:93「利用者 X は予約順 1 位ではありません」となり事実と異なる。どの ProblemCode を使うかは契約・シナリオに無い"
 assumption_verdicts_summary:
-  consistent: 0
-  spec_absent: 14
-  contradicts: 0
-  unlisted: 3
+  consistent: 1
+  spec_absent: 9
+  contradicts: 1
+  unlisted: 2
 findings:
   - id: F-001
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-001
     severity: minor
-    title: "業務日付の TZ が契約に無い"
-    target: "apps/backend-api/src/gateway/clock.ts:7"
-    claim: "貸出日を Asia/Tokyo の暦日で決めている。契約にタイムゾーンの定義が無い。"
-    evidence: "contract-slice.json#Loan.loaned_on (format date のみ)。common.md の推奨『時刻精度などの共有算出規則は契約に定義されるまで確定しない。仮置きは 1 箇所に集約し記録する』に対し、gateway/clock.ts の LIBRARY_TIME_ZONE 1 箇所に集約され、記録もあるので推奨どおり"
+    title: "貸出期間 14 日は仕様に無い"
+    target: "apps/backend-api/src/domain/loan/loan-policy.ts:7"
+    claim: "貸出期間の日数を 14 日に仮置きしている。要求と契約に値が無い。"
+    evidence: "条件.tsv#返却期限算出条件; contract-slice.json /paths/~1loans/post/description「この契約では固定しない」"
   - id: F-002
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-002
-    severity: major
-    title: "テストで無認証を司書扱いにする"
-    target: "apps/backend-api/src/test-app.ts:27"
-    claim: "テスト用 composition root は Authorization ヘッダが無い要求を司書 lib1 として通す。テスト専用だが、認証の既定を決めた判断なので人の回答が要る。"
-    evidence: "testing.md の ADR 0007 に既定の主体の定めが無い。contract-slice.json#security は bearerAuth。本番の app.ts は authenticate の注入を必須にしており、既定の司書は test-app.ts の中だけにある"
+    severity: minor
+    title: "当日判定の TZ は仕様に無い"
+    target: "apps/backend-api/src/domain/loan/loan-policy.ts:10"
+    claim: "貸出日を Asia/Tokyo の暦日で決めている。契約にタイムゾーンの定義が無い。"
+    evidence: "contract-slice.json RegisterLoanRequest.description; common.md 推奨 (複数ティア共有の算出規則は 1 箇所に集約)"
   - id: F-003
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-003
-    severity: major
-    title: "401/403 の type と code を自前で決定"
-    target: "apps/backend-api/src/presentation/http/problem.ts:46"
-    claim: "401/403 の Problem の type と code (unauthorized / forbidden) が契約に無いまま実装で決まっている。"
-    evidence: "contract-slice.json#paths./loans.post の description は 401/403 に触れるが responses に定義が無い。issues/contract-auth-responses-not-in-createLoan.md で起票済み。単体テスト test-app.test.ts の『認証されていない場合、401 を返すこと』『利用者区分が利用者の場合、403 を返し貸出を記録しないこと』は pass"
+    severity: minor
+    title: "拒否理由の優先順位は仕様に無い"
+    target: "apps/backend-api/src/domain/loan/lend-book.ts:43"
+    claim: "複数の拒否理由が重なったときの優先順位を実装で決めている。"
+    evidence: "条件.tsv#貸出可否条件; contract-slice.json responses/409 examples"
   - id: F-004
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-004
     severity: minor
-    title: "空白だけの入力を未入力として扱う"
-    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:42"
-    claim: "空白だけの patron_number と copy_id を required の 400 にしている。契約に定義が無い。"
-    evidence: "contract-slice.json#CreateLoanRequest と #PatronNumber に長さや形式の制約が無い"
+    title: "書籍不在の 404 は契約に未宣言"
+    target: "apps/backend-api/src/usecase/register-loan.ts:104"
+    claim: "書籍不在で 404 を返すが、契約の registerLoan の応答は 201/400/409 だけである。"
+    evidence: "contract-slice.json /paths/~1loans/post/responses; unit レポート「書籍が登録されていない場合、404 を返すこと」pass。契約へ 404 を追加するか 409 に寄せるかの還流判断が要る"
   - id: F-005
     viewpoint: assumption_conformance
-    kind: spec_absent
+    kind: contradicts
     assumption_id: A-005
-    severity: minor
-    title: "unknown_field の code は契約に無い"
-    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:80"
-    claim: "未知の項目を 400 で拒否するのは契約どおり。FieldError.code の値 unknown_field は実装者が決めた。"
-    evidence: "contract-slice.json#CreateLoanRequest.additionalProperties は false。#FieldError.code の例は required, format, duplicate だけ"
+    severity: blocker
+    title: "拒否応答を冪等キーに保存しない"
+    target: "apps/backend-api/src/usecase/register-loan.ts:121"
+    claim: "409 などの拒否を idempotency_keys に保存しないため、同じキーの再送が初回と異なる応答 (後から 201) になり得る。契約の「初回と同じ応答を返す」に反する。"
+    evidence: "contract-slice.json components/parameters/IdempotencyKey.description「同じキーの再送では副作用を重複させず、初回と同じ応答を返す」; rdb-slice.yaml idempotency_keys.description「同じキーの再送に初回と同じ応答を返す」、response_status integer / response_body nullable; register-loan.ts:121-123 は rejected を save せずに return し、save は :145 の成功時だけ; traces/register-loan#-92f652f8.jsonl と #-3d4395be.jsonl (409) に idempotency_keys への INSERT が無い"
   - id: F-006
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-006
-    severity: minor
-    title: "壊れた JSON は field=body で 400"
-    target: "apps/backend-api/src/presentation/http/server.ts:46"
-    claim: "本文が JSON でないときの FieldError.field=body は契約に無い値である。"
-    evidence: "contract-slice.json#paths./loans.post.responses.400 の description は『必須項目の欠落・形式エラー』だけ"
+    severity: major
+    title: "401/403 は契約の応答に未宣言"
+    target: "apps/backend-api/src/usecase/register-loan.ts:82"
+    claim: "認可の位置は ADR 0006 どおりだが、401/403 の応答が契約に宣言されていない。security のため人の確認が要る。"
+    evidence: "tier-backend.md ADR 0006; contract-slice.json /paths/~1loans/post/responses (201/400/409 のみ)"
   - id: F-007
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-007
     severity: minor
-    title: "404 は利用者の確認を優先する"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:41"
-    claim: "利用者と蔵書の両方が無いときは patron_not_found を返す。この優先順位は契約に無い。"
-    evidence: "contract-slice.json#responses.404.examples は patronNotFound と copyNotFound を別々に示すだけ"
+    title: "イベント種別の値は仕様に無い"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:27"
+    claim: "event_type と payload の形を実装で決めている。"
+    evidence: "rdb-slice.yaml book_events/loan_events/reservation_events.event_type「値は UC で定める」"
   - id: F-008
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-008
-    severity: minor
-    title: "除籍済みの detail 文言は契約に無い"
-    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:34"
-    claim: "除籍済みを 409 で拒否するのは契約どおり。detail の文言は examples に無く、実装者が決めた。"
-    evidence: "contract-slice.json#responses.409.description は除籍済みを含む。examples は heldForOther と onLoan だけ"
+    severity: major
+    title: "予約完了時に順位を詰めない"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:135"
+    claim: "完了した予約の後続の queue_position を繰り上げない。仕様に規定が無く、persistence のため人の確認が要る。"
+    evidence: "rdb-slice.yaml reservations.queue_position; 状態.tsv 予約状態 (繰上げは予約を取り消す UC のみ)"
   - id: F-009
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-009
-    severity: minor
-    title: "競合時の 409 は契約の 409 と別の意味"
-    target: "apps/backend-api/src/presentation/http/problem.ts:64"
-    claim: "楽観ロックの競合を code concurrent_update の 409 で返す。契約の 409 は貸出可否だけを挙げるので、契約への追記が要るかを人が判断する。"
-    evidence: "contract-slice.json#responses.409.description は『貸出可否により貸し出せない』。rdb-slice.yaml#copies.version は楽観ロックに使うとだけ書く。pgLoanRepository.test.ts の『ConcurrentUpdateError で全体を巻き戻すこと』は pass"
+    severity: major
+    title: "テスト入口が認証ヘッダを補う"
+    target: "apps/backend-api/src/test-app.ts:53"
+    claim: "契約テストは既定ヘッダの補完に頼って 201/409 を検証しており、認証経路は契約テストで確かめていない。security のため人の確認が要る。"
+    evidence: "test/contract/registerLoan.test.ts はヘッダ無し; issues/20260926T1045_register-loan-contract-test-headers.md 起票済み; unit レポート「既定ヘッダを無効にしてトークンを送らない場合、401 を返すこと」pass"
   - id: F-010
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-010
-    severity: minor
-    title: "貸出ルール未設定は 500 で返す"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:49"
-    claim: "貸出日時点で有効な貸出ルールが無いと 500 になる。この場合の扱いは要求にも契約にも無い。"
-    evidence: "tier-backend.md#ADR 0004 と rdb-slice.yaml#loan_rules は世代の選び方だけを定める。registerLoan.test.ts の『LoanRuleNotConfiguredError を投げること』は pass"
+    severity: major
+    title: "同時貸出の防止方式は仕様に無い"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:52"
+    claim: "行ロックと version 条件で同時貸出を防ぎ、競合時は 500 にしている。競合時の応答は契約に無い。"
+    evidence: "tier-backend.md ADR 0004; rdb-slice.yaml books.version「楽観ロック」; contract-slice.json responses に 5xx 無し"
   - id: F-011
     viewpoint: assumption_conformance
-    kind: spec_absent
+    kind: restatement
     assumption_id: A-011
-    severity: major
-    title: "退会済み利用者への貸出を 404 に"
-    target: "apps/backend-api/src/repository/patron/pgPatronRepository.ts:14"
-    claim: "退会済み (deleted_at あり) の利用者は存在しない扱いで貸出できない。退会済み利用者に貸せるかは要求に無い。"
-    evidence: "rdb-slice.yaml#patrons.deleted_at。条件.tsv の貸出可否は書籍の状態だけを見る。トレース register-loan#-bf238760.jsonl seq 2889000069 の SQL に deleted_at IS NULL がある"
-  - id: F-012
-    viewpoint: assumption_conformance
-    kind: spec_absent
-    assumption_id: A-012
-    severity: major
-    title: "貸出イベントの payload を空にする"
-    target: "apps/backend-api/src/repository/circulation/pgLoanRepository.ts:127"
-    claim: "追記型の履歴 (events) に付帯情報を残さない方針を実装で決めた。履歴の保持内容に関わる判断である。"
-    evidence: "rdb-slice.yaml#loan_events.payload、#copy_events.payload、#reservation_events.payload は nullable の付帯情報とだけ書く。tier-backend.md#ADR 0004 は events への追記を定めるが、内容は定めていない"
-  - id: F-013
-    viewpoint: assumption_conformance
-    kind: spec_absent
-    assumption_id: A-013
-    severity: major
-    title: "貸出登録の監査ログが無い"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:37"
-    claim: "貸出登録を監査ログの対象外と解釈して、監査ログを出していない。人が貸出登録を『司書の管理操作』と判断すれば、ルール違反 (contradicts) になり差し戻し対象になる。"
-    evidence: "tier-backend.md の ADR 0006『ログイン・司書の管理操作・個人情報の参照を監査ログに記録する』。同じ節に『司書向けの操作 (蔵書・利用者管理、貸出・返却登録、レポート)』とあり、どちらとも読める。rdb-slice.yaml に監査ログの記録先が無い。apps/backend-api/src に audit/監査 の実装は 0 件"
-  - id: F-014
-    viewpoint: assumption_conformance
-    kind: spec_absent
-    assumption_id: A-014
     severity: minor
-    title: "予約が欠けた取り置き中蔵書は貸出不可"
-    target: "apps/backend-api/src/repository/circulation/pgLoanRepository.ts:49"
-    claim: "取り置き先の予約が見つからない取り置き中の蔵書は拒否する。拒否は安全側だが、detail は『他の利用者向けに取り置き中です』になり実態と合わない。"
-    evidence: "条件.tsv#貸出可否。loanEligibility.ts:25 は heldForPatronNumber が null のとき held_for_other を返す。createLoanHandler.ts:33 はこれを『他の利用者向けに取り置き中です。』に変換する"
-  - id: F-015
+    title: "壊れた本文の 400 は契約の復唱"
+    target: "apps/backend-api/src/presentation/http-app.ts:52"
+    claim: "契約の 400「形式違反」に含まれるため前提ではない。"
+    evidence: "contract-slice.json /paths/~1loans/post/responses/400.description"
+  - id: F-012
     viewpoint: assumption_conformance
     kind: unlisted
     assumption_id: V-001
-    severity: major
-    title: "利用者の確認がトランザクション外"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:40"
-    claim: "利用者の存在確認をトランザクションの外で行う判断が記録されていない。確認と記録の間に退会すると、退会済み利用者に貸出が残りうる。"
-    evidence: "トレース register-loan#-bf238760.jsonl: FindPatronByNumber.execute (seq 2889000067) は RegisterLoan.execute (seq 2889000066) の直下にあり、LoanRepository.inTransaction (seq 2889000070) の外にある。tier-backend.md#ADR 0009 はモジュールをまたぐ読み取りのトランザクション境界を定めていない"
-  - id: F-016
+    severity: minor
+    title: "401 を 400 より先に判定 (未記録)"
+    target: "apps/backend-api/src/presentation/http-app.ts:107"
+    claim: "認証と入力検証の優先順位を実装で決めているが、AssumptionRecord に無い。"
+    evidence: "http-app.ts:107-139 の呼び出し順; 契約に優先順位の定義無し"
+  - id: F-013
     viewpoint: assumption_conformance
     kind: unlisted
     assumption_id: V-002
-    severity: major
-    title: "認証より先に経路の有無を返す"
-    target: "apps/backend-api/src/presentation/http/server.ts:69"
-    claim: "未認証の要求にも、未定義の経路では 404 (route_not_found) を返す。認証と経路解決の判定順が記録されていない。"
-    evidence: "server.ts:67-72 は resolveOperation、handler の有無の確認、authenticate の順で動く。contract-slice.json#security は bearerAuth をグローバルに要求する。A-003 は 401/403 の形だけを記録している"
-  - id: F-017
-    viewpoint: assumption_conformance
-    kind: unlisted
-    assumption_id: V-003
     severity: minor
-    title: "貸出期間 1 日未満を例外にする"
-    target: "apps/backend-api/src/domain/circulation/dueDate.ts:31"
-    claim: "貸出期間が 1 未満または整数でないときは RangeError を投げ、応答は 500 になる。範囲の定義は契約に無く、この判断は記録されていない。"
-    evidence: "rdb-slice.yaml#loan_rules.loan_period_days は integer, nullable false だけ。条件.tsv#返却期限算出に範囲の定めは無い。unit.backend-api.json の『calculateDueOn_貸出期間が0日の場合_例外を投げること』は pass"
-  - id: F-018
+    title: "未通知の 1 位も順位外として拒否"
+    target: "apps/backend-api/src/usecase/register-loan.ts:70"
+    claim: "本人が予約順 1 位で未通知の場合も not_first_in_reservation_queue を返し、detail が「予約順 1 位ではありません」と事実と異なる。AssumptionRecord に無い。"
+    evidence: "register-loan.ts:70-76 isFirstInQueue が status notified を要求; http-app.ts:93 の detail 文言; common.md 推奨「エラーは利用者が直せる言葉で返す」"
+  - id: F-014
     viewpoint: uc_intent
-    kind: generated_type_unused
+    kind: rule_deviation
     severity: minor
-    title: "生成した DB 行型を使っていない"
-    target: "apps/backend-api/src/repository/circulation/pgLoanRepository.ts:17"
-    claim: "repository は行の型 (LendableCopyRow, LoanRuleRow, PatronRow) を手で宣言している。生成型 packages/contracts/db/tables.ts (LoanRulesRow, CopiesRow など) はどこからも使われていない。"
-    evidence: "reports/gates.json の static.arch_test の output_tail に『warn no-orphans: packages/contracts/db/tables.ts』がある。common.md の ADR 0002 は『共有する型は packages/contracts から取り込み、手書きで複製しない』と定める。DB は backend-api 専用で、行型は結合による射影 (book_title, hold_patron_number) なので違反とまでは言えない。そのため改善提案にとどめる"
+    title: "契約の列挙型を repository で再定義"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:12"
+    claim: "BookStatus と ReservationStatus を契約生成型から import せず手で再定義している。"
+    evidence: "common.md ADR 0002「ティア間でやり取りする型は契約から生成したものを使い、手で重複定義しない」; 同ファイル :9 は packages/contracts/library-api/types から Loan を import しており、同じ場所から取れる"
 summary:
-  blocker: 0
-  major: 7
-  minor: 11
+  blocker: 1
+  major: 4
+  minor: 9

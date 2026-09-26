@@ -1,7 +1,7 @@
 stage: integrate
-completed_at: "2026-09-25T02:19:01.775Z"
+completed_at: "2026-09-26T02:08:41.669Z"
 attempt: 2
-gates:
-  uc-bdd: pass
-  acceptance: pass
-note: no step/support change needed; frontend public API unchanged
+uc_bdd: pass
+acceptance: pass
+gates: pass
+note: step 結線は attempt-1 のまま変更不要。全段を再実行して pass

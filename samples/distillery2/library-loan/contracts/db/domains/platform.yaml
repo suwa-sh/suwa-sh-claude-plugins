@@ -1,0 +1,81 @@
+# basis: requirements@d1987660054f32fca4d1af3a7f36b312eb6e6518 adr@481506aca70dae9b5b64cefa6ea032e220651c7d
+# 業務コンテキストを横断する共通テーブル。Idempotency-Key の記録 (ADR 0005) と個人情報アクセスの監査ログ (ADR 0006)。
+subdomain_id: platform
+tables:
+  - name: idempotency_keys
+    description: "更新系 API の Idempotency-Key と初回応答。同じキーの再送に初回と同じ応答を返す"
+    columns:
+      - name: idempotency_key
+        type: string
+        nullable: false
+        description: "Idempotency-Key ヘッダの値"
+      - name: principal_subject
+        type: string
+        nullable: false
+        description: "要求した主体 (IdP の subject)"
+      - name: operation_id
+        type: string
+        nullable: false
+        description: "OpenAPI の operationId"
+      - name: request_hash
+        type: string
+        nullable: false
+        description: "要求本文のハッシュ。同じキーで本文が異なる再送を検出する"
+      - name: response_status
+        type: integer
+        nullable: false
+        description: "初回応答の HTTP ステータス"
+      - name: response_body
+        type: text
+        nullable: true
+        description: "初回応答の本文 (JSON 文字列)"
+      - name: created_at
+        type: datetime
+        nullable: false
+        description: "記録日時"
+    primary_key:
+      - idempotency_key
+      - principal_subject
+      - operation_id
+  - name: audit_logs
+    description: "監査ログ (追記のみ)。利用者情報の登録・編集・削除と個人情報を返す参照を記録する"
+    columns:
+      - name: audit_id
+        type: uuid
+        nullable: false
+        description: "監査ログID"
+      - name: actor_subject
+        type: string
+        nullable: false
+        description: "操作した主体 (IdP の subject)"
+      - name: actor_role
+        type: string
+        nullable: false
+        enum:
+          - librarian
+          - patron
+        description: "操作した主体のロール。librarian=司書、patron=利用者"
+      - name: action
+        type: string
+        nullable: false
+        description: "操作 (operationId など)"
+      - name: target_type
+        type: string
+        nullable: false
+        description: "対象の種類 (patron など)"
+      - name: target_id
+        type: string
+        nullable: false
+        description: "対象の識別子 (利用者番号など)"
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: "発生日時"
+    primary_key:
+      - audit_id
+    indexes:
+      - name: audit_logs_target_idx
+        unique: false
+        columns:
+          - target_type
+          - target_id

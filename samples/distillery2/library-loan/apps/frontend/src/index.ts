@@ -1,21 +1,18 @@
-// frontend ティアのエントリ。画面の入口関数と画面コンポーネントを公開する
+// frontend ティアの公開口。UC BDD の step は画面の入口関数をここから呼ぶ。
 export {
-  API_BASE_URL,
-  type ApiOptions,
   type LoanCheckoutInput,
-  registerLoan,
-} from './api-client/loan-api';
-export {
-  type LoanCheckoutField,
   type LoanCheckoutView,
+  newIdempotencyKey,
+  type SubmitLoanCheckoutOptions,
   submitLoanCheckout,
-  UNEXPECTED_ERROR_DETAIL,
-  UNEXPECTED_ERROR_TITLE,
-} from './state/loan-checkout';
+  UNEXPECTED_FAILURE_MESSAGE,
+} from './screens/loan-checkout/submit-loan-checkout';
 export {
-  LOAN_CHECKOUT_ROUTE,
-  LoanCheckoutPage,
-  type LoanCheckoutPageProps,
-  LoanCheckoutScreen,
-  type LoanCheckoutScreenProps,
-} from './view/LoanCheckoutPage';
+  bookStatusLabel,
+  type LoanRegisterBook,
+  type LoanRegisterPatron,
+  LoanRegisterScreen,
+  type LoanRegisterScreenProps,
+  LoanRegisterView,
+  type LoanRegisterViewProps,
+} from './view/loan-register/LoanRegisterScreen';

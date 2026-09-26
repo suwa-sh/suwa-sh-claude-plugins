@@ -1,0 +1,13 @@
+{
+  "bookStatus": "on_loan",
+  "loan": {
+    "bookId": "0b6f3c1e-2a4d-4e8f-9b1a-3c5d7e9f1a2b",
+    "dueDate": "2026-10-15",
+    "loanId": "3f8a2d6c-1b4e-4a7f-9c2d-5e8b1a4d7c0e",
+    "loanedOn": "2026-10-01",
+    "patronNumber": "P-00000001",
+    "reservationId": null,
+    "returnedOn": null,
+    "status": "on_loan"
+  }
+}

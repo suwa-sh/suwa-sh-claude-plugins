@@ -1,167 +1,120 @@
-# basis: requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08
+# basis: requirements@d1987660054f32fca4d1af3a7f36b312eb6e6518 adr@481506aca70dae9b5b64cefa6ea032e220651c7d
+# 蔵書コンテキスト。書籍は event_snapshot (ADR 0004): book_events へ追記し、books を同じトランザクションで更新する。
 subdomain_id: catalog
-description: "蔵書 (書籍・蔵書)。書籍は論理削除のマスタ、蔵書は履歴+スナップショット (ADR 0004)。"
 tables:
   - name: books
-    description: "書籍 (書誌情報)。同じ ISBN の所蔵資料は copies に複数行で紐づく。削除は deleted_at による論理削除。"
+    description: "書籍のスナップショット。書籍ID単位に書誌情報・媒体種別・書籍状態を持つ。削除は deleted_on による論理削除"
     columns:
       - name: book_id
         type: uuid
         nullable: false
-        description: 書籍 ID
-      - name: isbn
-        type: string
-        nullable: true
-        description: "ISBN (ハイフンなし)。登録済みの ISBN とは重複させない"
+        description: "書籍ID"
       - name: title
         type: string
         nullable: false
-        description: "タイトル (必須)"
+        description: "タイトル"
       - name: author
         type: string
+        nullable: false
+        description: "著者"
+      - name: isbn
+        type: string
         nullable: true
-        description: 著者
+        description: "ISBN"
       - name: publisher
         type: string
         nullable: true
-        description: 出版社
+        description: "出版社"
       - name: genre
         type: string
         nullable: true
-        enum: [literature, history, social_science, natural_science, technology, arts, children, other]
-        description: "ジャンル (文学・歴史・社会科学・自然科学・技術・芸術・児童書・その他)"
+        description: "ジャンル"
       - name: media_type
         type: string
         nullable: false
-        enum: [paper, electronic]
-        description: "媒体種別 (紙・電子)。未指定時は paper を入れる"
-      - name: registered_on
-        type: date
-        nullable: false
-        description: 登録日
-      - name: deleted_at
-        type: datetime
-        nullable: true
-        description: "論理削除日時 (未削除は NULL)"
-      - name: created_at
-        type: datetime
-        nullable: false
-        description: 作成日時
-      - name: updated_at
-        type: datetime
-        nullable: false
-        description: 更新日時
-    primary_key: [book_id]
-    indexes:
-      - name: books_isbn_key
-        unique: true
-        columns: [isbn]
-      - name: books_title_idx
-        unique: false
-        columns: [title]
-      - name: books_author_idx
-        unique: false
-        columns: [author]
-      - name: books_genre_idx
-        unique: false
-        columns: [genre]
-  - name: copies
-    description: "蔵書 (所蔵資料 1 冊) の現在値スナップショット。状態変化は copy_events に追記し、同じトランザクションで本表を更新する。"
-    columns:
-      - name: copy_id
-        type: uuid
-        nullable: false
-        description: 蔵書 ID
-      - name: book_id
-        type: uuid
-        nullable: false
-        description: 書籍 ID
+        enum:
+          - paper
+          - ebook
+        description: "媒体種別。paper=紙の書籍、ebook=電子書籍"
       - name: status
         type: string
         nullable: false
-        enum: [available, on_loan, on_hold, withdrawn]
-        description: "書籍の状態 (在庫あり・貸出中・取り置き中・除籍済み)"
-      - name: acquired_on
+        enum:
+          - available
+          - on_loan
+          - awaiting_pickup
+        description: "書籍状態。available=在庫あり、on_loan=貸出中、awaiting_pickup=予約待ち"
+      - name: registered_on
         type: date
         nullable: false
-        description: 受入日
+        description: "登録日"
+      - name: deleted_on
+        type: date
+        nullable: true
+        description: "削除日。値があれば論理削除済みで一覧と検索から除く"
       - name: version
         type: integer
         nullable: false
-        description: "最後に反映した copy_events の sequence (楽観ロックに使う)"
+        description: "スナップショットの版。book_events の最新 sequence と一致する (楽観ロック)"
       - name: updated_at
         type: datetime
         nullable: false
-        description: 更新日時
-    primary_key: [copy_id]
-    foreign_keys:
-      - columns: [book_id]
-        references:
-          table: books
-          columns: [book_id]
-        on_delete: RESTRICT
+        description: "スナップショットの最終更新日時"
+    primary_key:
+      - book_id
     indexes:
-      - name: copies_book_id_idx
+      - name: books_isbn_idx
         unique: false
-        columns: [book_id]
-      - name: copies_status_idx
+        columns:
+          - isbn
+      - name: books_status_idx
         unique: false
-        columns: [status]
-  - name: copy_events
-    description: "蔵書の状態変化の履歴 (追記のみ。更新・削除しない)。"
+        columns:
+          - status
+  - name: book_events
+    description: "書籍の追記型イベント。物理更新・物理削除しない"
     columns:
       - name: event_id
         type: uuid
         nullable: false
-        description: イベント ID
-      - name: copy_id
+        description: "イベントID"
+      - name: book_id
         type: uuid
         nullable: false
-        description: 蔵書 ID
+        description: "対象の書籍ID"
       - name: sequence
         type: integer
         nullable: false
-        description: "蔵書ごとの連番 (1 始まり)"
+        description: "書籍ごとの連番 (1 始まり)"
       - name: event_type
         type: string
         nullable: false
-        enum: [registered, loaned, returned_to_shelf, held, withdrawn]
-        description: "イベント種別 (登録・貸出・返却で在庫あり・返却で取り置き・除籍)"
-      - name: from_status
+        description: "イベント種別 (登録・編集・貸出・返却・削除など。値は UC で定める)"
+      - name: payload
+        type: text
+        nullable: false
+        description: "イベント内容 (JSON 文字列)"
+      - name: actor_subject
         type: string
         nullable: true
-        enum: [available, on_loan, on_hold, withdrawn]
-        description: "遷移前の状態 (登録時は NULL)"
-      - name: to_status
-        type: string
-        nullable: false
-        enum: [available, on_loan, on_hold, withdrawn]
-        description: 遷移後の状態
+        description: "操作した主体 (IdP の subject)。ジョブ起因なら null"
       - name: occurred_at
         type: datetime
         nullable: false
-        description: 発生日時
-      - name: actor_librarian_id
-        type: uuid
-        nullable: true
-        description: "操作した司書 (システム起因は NULL)"
-      - name: payload
-        type: text
-        nullable: true
-        description: "付帯情報 (JSON 文字列)"
-    primary_key: [event_id]
-    foreign_keys:
-      - columns: [copy_id]
-        references:
-          table: copies
-          columns: [copy_id]
-        on_delete: RESTRICT
-      - columns: [actor_librarian_id]
-        references:
-          table: librarians
-          columns: [librarian_id]
-        on_delete: RESTRICT
+        description: "発生日時"
+    primary_key:
+      - event_id
     indexes:
-      - name: copy_events_copy_sequence_key
+      - name: book_events_book_sequence_uq
         unique: true
-        columns: [copy_id, sequence]
+        columns:
+          - book_id
+          - sequence
+    foreign_keys:
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: RESTRICT

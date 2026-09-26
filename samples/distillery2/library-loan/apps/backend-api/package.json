@@ -8,6 +8,6 @@
     "lint": "biome lint .",
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
-    "test:contract": "vitest run test/contract"
+    "test:contract": "vitest run -c vitest.contract.config.ts"
   }
 }

@@ -1,16 +1,16 @@
 {
   "schema_version": "distillery2.contracts/v1",
-  "basis": "requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08",
+  "basis": "requirements@d1987660054f32fca4d1af3a7f36b312eb6e6518 adr@481506aca70dae9b5b64cefa6ea032e220651c7d",
   "contracts": [
     {
-      "id": "api",
+      "id": "library-api",
       "type": "openapi",
       "source": "openapi/openapi.yaml",
       "provider": "backend-api",
       "consumers": ["frontend", "worker"]
     },
     {
-      "id": "db",
+      "id": "library-db",
       "type": "rdb-schema",
       "source": "db/rdb-schema.yaml",
       "provider": "backend-api",

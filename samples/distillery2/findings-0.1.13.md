@@ -38,6 +38,8 @@
 | 1 | genQlty の提案に osv-scanner が無い。genQlty が npm install の前に走り lockfile が無かった | 0.1.14 (`--refresh` を npm install 後と integrate 前に) |
 | 2 | npm 10 の `npm install` が `Cannot read properties of null (reading 'edgesOut')` で失敗 (optional peer: vitest → browser-playwright → jsdom → canvas)。`npx npm@11 install` で lockfile を作ると npm 10 の `npm ci` は通る | 未対応 (devDependencies の見直しか、手順に npm 11 を明記) |
 | 3 | design の後に `npm install` をもう一度実行する必要があった (packages/ui が workspace に加わる) | 0.1.14 (手順に明記) |
+| 4 | ③ で契約の骨格を作った後も `docs/adr/architecture.md` (C4 図) は ② の時点のままで、契約の矢印が無い (config / CI は再生成するが C4 図は再生成していない) | 未対応 (③ で genArchitectureDoc も再生成する) |
+| 5 | qlty の作業ディレクトリ (`.qlty/logs` `out` `results` `plugin_cachedir`) が gitignore されず commit された (`qlty init --dry-run` は `.qlty/.gitignore` を書かない) | 未対応 (genSkeleton の .gitignore に足す) |
 
 ### 段階④ 貸出を登録する
 

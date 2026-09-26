@@ -210,7 +210,7 @@ test('実サンプル (library-loan) の ADR・RDRA・contracts から C4 図を
   assert.match(a, /## コンテナ図\n\n```mermaid\ngraph LR\n  subgraph sys/);
   assert.doesNotMatch(a, /C4Context|C4Container/);
   // 契約辺は consumer → provider
-  assert.match(a, /frontend -->\|"api \(openapi\)"\| backend_api/); // 0.1.10 の実走: ティアは frontend / backend-api / worker
+  assert.match(a, /frontend -->\|"library-api \(openapi\)"\| backend_api/); // 0.1.13 の実走: ティアは frontend / backend-api / worker、契約 id は library-api
   // 2 回の生成がバイト一致 (環境非依存の決定論)
   const b = build(o);
   assert.equal(a, b);

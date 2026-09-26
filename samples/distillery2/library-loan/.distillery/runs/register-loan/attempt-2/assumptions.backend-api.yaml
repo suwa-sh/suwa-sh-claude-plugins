@@ -3,151 +3,140 @@ uc: "register-loan"
 tier: "backend-api"
 attempt: 2
 extraction:
-  candidate_count: 26
-  excluded_as_explicit: 12
-  recorded_count: 14
+  candidate_count: 16
+  excluded_as_explicit: 4
+  recorded_count: 12
 assumptions:
   - id: A-001
     category: data_format
-    title: "業務日付は Asia/Tokyo で決める"
-    assumption: "貸出日 (loaned_on) は Clock.today() が返す Asia/Tokyo の暦日とし、返却期限もこの暦日から算出する"
-    target: "apps/backend-api/src/gateway/clock.ts:7"
-    reason: "契約 Loan.loaned_on と rdb loans.loaned_on は format date だが、日付を決めるタイムゾーンの定義が無い"
+    title: "貸出期間は一律 14 日"
+    assumption: "貸出期間の日数を全利用者・全書籍 (媒体種別を問わず) で一律 14 日とし、返却期限を貸出日 + 14 日にする"
+    target: "apps/backend-api/src/domain/loan/loan-policy.ts:7"
+    reason: "返却期限算出条件に貸出期間の値が無い。契約は日数を固定しないと明記し、example の dueDate が貸出日 + 14 日の形だったため、その値に合わせた (派遣時の指示でも前提として記録するよう求められた)"
     confidence: medium
     spec_refs:
-      - "contracts/generated/slices/register-loan/contract-slice.json#Loan.loaned_on"
-      - "contracts/generated/slices/register-loan/rdb-slice.yaml#loans.loaned_on"
-      - "docs/requirements/rdra/条件.tsv#返却期限算出"
-      - "features/貸出業務/register-loan.feature#貸出登録時に貸出日に貸出期間を加えた返却期限が設定される"
+      - "docs/requirements/rdra/条件.tsv#返却期限算出条件"
+      - "docs/requirements/requirements.yaml#SPEC-005-01"
+      - "features/貸出業務/register-loan.feature#貸出を登録すると返却期限が自動で設定される"
+      - "contracts/generated/slices/register-loan/contract-slice.json#/paths/~1loans/post/description"
   - id: A-002
-    category: security
-    title: "テストでは認証ヘッダ無しを司書扱い"
-    assumption: "createTestApp の偽の認証基盤は Authorization ヘッダが無い要求を司書 lib1 として通す (defaultPrincipal で変更でき、null なら 401)"
-    target: "apps/backend-api/src/test-app.ts:27"
-    reason: "契約は bearerAuth を要求するが、生成された契約テストは Authorization ヘッダを付けずに 201 を期待する。テストでの認証の差し替え方は ADR 0007 に「in-memory の偽物」とあるだけで既定の主体が無い"
+    category: data_format
+    title: "貸出日の当日は Asia/Tokyo で決める"
+    assumption: "貸出日 (サーバーの当日の日付) を Asia/Tokyo タイムゾーンの暦日で決める"
+    target: "apps/backend-api/src/domain/loan/loan-policy.ts:10"
+    reason: "契約は「貸出日はサーバーの当日の日付」とだけ書き、どのタイムゾーンの当日かが無い。国内の図書館と想定した"
     confidence: medium
     spec_refs:
-      - "apps/backend-api/test/contract/createLoan.test.ts"
-      - "contracts/generated/slices/register-loan/contract-slice.json#security"
-      - "docs/rules/testing.md#ADR 0007"
+      - "contracts/generated/slices/register-loan/contract-slice.json#/components/schemas/RegisterLoanRequest"
+      - "docs/requirements/rdra/条件.tsv#返却期限算出条件"
+      - "docs/rules/common.md#推奨 (時刻精度は契約に定義されるまで確定しない)"
   - id: A-003
-    category: security
-    title: "401/403 の Problem の形を自前で決定"
-    assumption: "認証なしは 401 (type .../problems/unauthorized, code unauthorized)、利用者区分が利用者なら 403 (type .../problems/forbidden, code forbidden) を Problem で返す"
-    target: "apps/backend-api/src/presentation/http/problem.ts:46"
-    reason: "契約 createLoan の description は 401/403 を Problem で返すと書くが、responses に 401/403 の定義・examples が無く type と code が決まっていない"
-    confidence: medium
-    spec_refs:
-      - "contracts/generated/slices/register-loan/contract-slice.json#paths./loans.post.responses"
-      - "docs/rules/tier-backend.md#ADR 0006"
-  - id: A-004
-    category: input_validation
-    title: "空白だけの利用者番号は未入力扱い"
-    assumption: "patron_number と copy_id が未指定・null・空白だけの文字列なら code required の 400 を返す (値の前後の空白は除去しない)"
-    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:42"
-    reason: "契約 examples は空文字の 400 だけを示し、空白だけの値や前後空白の扱いの定義が無い"
-    confidence: medium
-    spec_refs:
-      - "contracts/generated/slices/register-loan/contract-slice.json#CreateLoanRequest"
-      - "contracts/generated/slices/register-loan/contract-slice.json#responses.400.examples.validation"
-  - id: A-005
-    category: input_validation
-    title: "未知の項目は unknown_field で 400"
-    assumption: "CreateLoanRequest に無い項目 (例: due_on) を受けたら field=項目名、code=unknown_field の検証エラーで 400 を返す"
-    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:80"
-    reason: "契約は additionalProperties false だが、違反時の FieldError.code の値の定義が無い (例は required, format, duplicate のみ)"
-    confidence: medium
-    spec_refs:
-      - "contracts/generated/slices/register-loan/contract-slice.json#CreateLoanRequest"
-      - "contracts/generated/slices/register-loan/contract-slice.json#FieldError.code"
-  - id: A-006
-    category: input_validation
-    title: "JSON でない本文は field=body で 400"
-    assumption: "本文が JSON として読めない、またはオブジェクトでないときは field=body、code=format の検証エラーで 400 を返す"
-    target: "apps/backend-api/src/presentation/http/server.ts:46"
-    reason: "契約の 400 は必須項目の欠落・形式エラーを指すが、本文全体が壊れている場合の FieldError の field の定義が無い"
-    confidence: high
-    spec_refs:
-      - "contracts/generated/slices/register-loan/contract-slice.json#responses.400"
-  - id: A-007
     category: error_handling
-    title: "利用者の存在確認を蔵書より先に行う"
-    assumption: "利用者番号と蔵書 ID の両方が存在しないときは patron_not_found の 404 を返す (利用者を先に確認する)"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:41"
-    reason: "契約 404 は patronNotFound と copyNotFound を別々に示すだけで、両方該当時の優先順位の定義が無い"
-    confidence: high
+    title: "拒否理由は利用者の登録を先に判定"
+    assumption: "書籍が貸出中などで、かつ利用者も未登録のときは patron_not_registered を返す (判定順は 書籍の存在 → 利用者の登録 → 書籍状態 → 予約順位)"
+    target: "apps/backend-api/src/domain/loan/lend-book.ts:43"
+    reason: "貸出可否条件と契約は拒否理由を列挙するが、複数が同時に当てはまるときの優先順位が無い"
+    confidence: medium
     spec_refs:
-      - "contracts/generated/slices/register-loan/contract-slice.json#responses.404"
+      - "docs/requirements/rdra/条件.tsv#貸出可否条件"
+      - "contracts/generated/slices/register-loan/contract-slice.json#/paths/~1loans/post/responses/409"
       - "features/貸出業務/register-loan.feature"
-  - id: A-008
+  - id: A-004
     category: error_handling
-    title: "除籍済みの貸出拒否の detail 文言"
-    assumption: "除籍済みの蔵書は code loan_not_allowed の 409 で detail を「この蔵書は除籍済みです。」とする"
-    target: "apps/backend-api/src/presentation/circulation/createLoanHandler.ts:34"
-    reason: "契約 409 の description は除籍済みを含むが、examples は貸出中と他の利用者向け取り置き中だけで除籍済みの detail が無い"
+    title: "未登録・削除済みの書籍は 404"
+    assumption: "書籍IDの書籍が無い、または論理削除済みのときは 404 (code not_found) を返し、貸出・書籍・予約には何も書き込まない"
+    target: "apps/backend-api/src/usecase/register-loan.ts:112"
+    reason: "registerLoan の応答は 201 / 400 / 409 だけで、書籍が存在しない場合の扱いが契約・シナリオに無い。貸出可否条件の拒否 (409) とは性質が違うため ProblemCode の not_found を使った。契約へ 404 を足すか 409 に寄せるかは issues/20260926T1200_register-loan-book-not-found-404.md で還流を求めた"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#/paths/~1loans/post/responses"
+      - "features/貸出業務/register-loan.feature"
+      - "docs/requirements/rdra/条件.tsv#貸出可否条件"
+  - id: A-005
+    category: persistence
+    title: "冪等キーに業務判定後の応答を全て保存"
+    assumption: "Idempotency-Key には、書籍を引いた後の業務判定の応答 (201 貸出・409 貸出可否条件の拒否・404 書籍不在) をステータスと本文 (JSON 文字列) のまま、判定と同じトランザクションで保存し、同じキー・同じ本文の再送には保存した応答をそのまま返す。401 (認証)・400 (入力検証)・403 (ロール)・409 idempotency_key_conflict は業務判定の前に返すため保存しない。同じキーで本文 (bookId と patronNumber の SHA-256) が違う再送は 409 idempotency_key_conflict を返す"
+    target: "apps/backend-api/src/usecase/register-loan.ts:188"
+    reason: "契約 parameters/IdempotencyKey と rdb-slice の idempotency_keys は「同じキーの再送に初回と同じ応答を返す」と定めるので、拒否応答も保存する (attempt-1 の F-005 を修正)。一方、業務判定に届かない認証・入力検証・ロールの失敗を保存するか、本文ハッシュの算出方法、本文不一致時のステータスは契約・ADR 0005 に無い"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/common.md#ADR 0005"
+      - "contracts/generated/slices/register-loan/contract-slice.json#/components/parameters/IdempotencyKey"
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#idempotency_keys"
+  - id: A-006
+    category: security
+    title: "トークン無効は 401、司書以外は 403"
+    assumption: "Authorization の Bearer トークンが無い・検証できないときは 401 (unauthorized)、librarian 以外のロールは usecase で 403 (forbidden) を返す"
+    target: "apps/backend-api/src/usecase/register-loan.ts:157"
+    reason: "契約の registerLoan は bearerAuth と「librarian ロールだけが呼べる」を定めるが、401 / 403 の応答を定義していない。契約への追加は issues/20260926T1201_register-loan-auth-responses.md で求めた"
     confidence: high
     spec_refs:
-      - "contracts/generated/slices/register-loan/contract-slice.json#responses.409"
-      - "docs/requirements/rdra/条件.tsv#貸出可否"
-  - id: A-009
-    category: error_handling
-    title: "楽観ロック競合は 409 concurrent_update"
-    assumption: "蔵書・予約の version が読み取り後に進んでいたら全体を rollback し、code concurrent_update の 409 を返す (自動再試行しない)"
-    target: "apps/backend-api/src/presentation/http/problem.ts:64"
-    reason: "rdb 契約は version を楽観ロックに使うとだけ書き、競合時の応答が契約に無い"
-    confidence: medium
-    spec_refs:
-      - "contracts/generated/slices/register-loan/rdb-slice.yaml#copies.version"
-      - "contracts/generated/slices/register-loan/contract-slice.json#responses.409"
-  - id: A-010
-    category: error_handling
-    title: "有効な貸出ルールが無ければ 500"
-    assumption: "貸出日時点で有効な貸出ルールの世代が無いときは貸出を記録せず 500 (code internal_error) を返す"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:49"
-    reason: "ADR 0004 と rdb 契約 loan_rules は貸出日時点で有効な世代を使うとするが、世代が無い場合の扱いが無い"
-    confidence: medium
-    spec_refs:
-      - "contracts/generated/slices/register-loan/rdb-slice.yaml#loan_rules"
-      - "docs/rules/tier-backend.md#ADR 0004"
-      - "docs/requirements/rdra/条件.tsv#返却期限算出"
-  - id: A-011
-    category: persistence
-    title: "退会済み利用者は存在しない扱い"
-    assumption: "patrons.deleted_at が設定された (退会した) 利用者の利用者番号は patron_not_found の 404 にする"
-    target: "apps/backend-api/src/repository/patron/pgPatronRepository.ts:14"
-    reason: "退会は論理削除 (ADR 0004) だが、退会済み利用者への貸出登録の可否が要求・条件・契約に無い"
-    confidence: medium
-    spec_refs:
-      - "contracts/generated/slices/register-loan/rdb-slice.yaml#patrons.deleted_at"
-      - "docs/requirements/rdra/条件.tsv#貸出可否"
-      - "docs/rules/tier-backend.md#ADR 0004"
-  - id: A-012
-    category: persistence
-    title: "貸出登録の events の payload は空"
-    assumption: "貸出登録で追記する loan_events / copy_events / reservation_events の payload は NULL とし、付帯情報は snapshots だけに持つ"
-    target: "apps/backend-api/src/repository/circulation/pgLoanRepository.ts:127"
-    reason: "rdb 契約は payload を付帯情報 (JSON 文字列、nullable) とするだけで、貸出イベントに何を入れるかの定義が無い"
-    confidence: medium
-    spec_refs:
-      - "contracts/generated/slices/register-loan/rdb-slice.yaml#loan_events.payload"
-      - "contracts/generated/slices/register-loan/rdb-slice.yaml#copy_events.payload"
-  - id: A-013
-    category: security
-    title: "貸出登録は監査ログに記録しない"
-    assumption: "貸出登録は ADR 0006 の「司書の管理操作」に含めず、監査ログを出力しない"
-    target: "apps/backend-api/src/usecase/circulation/registerLoan.ts:37"
-    reason: "ADR 0006 は司書の管理操作を監査ログに記録するとするが、貸出登録が管理操作に当たるかと、監査ログの記録先 (テーブル・形式) の定義が契約に無い"
-    confidence: low
-    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#/paths/~1loans/post/responses"
       - "docs/rules/tier-backend.md#ADR 0006"
-      - "contracts/generated/slices/register-loan/rdb-slice.yaml"
-  - id: A-014
-    category: error_handling
-    title: "取り置き予約が無い取り置き中蔵書は貸出不可"
-    assumption: "蔵書の状態が取り置き中なのに、その蔵書を held_copy_id に持つ取り置き中の予約が無いときは、他の利用者向けの取り置きとして 409 にする"
-    target: "apps/backend-api/src/repository/circulation/pgLoanRepository.ts:49"
-    reason: "条件「貸出可否」は取り置き先の利用者が分かる前提で書かれ、蔵書と予約の状態が食い違う場合の定義が無い"
+  - id: A-007
+    category: data_format
+    title: "貸出時のイベント種別の値"
+    assumption: "追記するイベント種別を 書籍=lent、貸出=registered、予約=completed とし、payload は JSON 文字列 (書籍・予約は loanId と状態の遷移、貸出は Loan 全体) にする"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:27"
+    reason: "rdb-schema の event_type は「値は UC で定める」とあり、この UC の値が契約・要求に無い"
     confidence: medium
     spec_refs:
-      - "docs/requirements/rdra/条件.tsv#貸出可否"
-      - "contracts/generated/slices/register-loan/rdb-slice.yaml#reservations.held_copy_id"
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#book_events"
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#loan_events"
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#reservation_events"
+  - id: A-008
+    category: persistence
+    title: "予約完了時に後続の予約順位は詰めない"
+    assumption: "予約を完了にするとき、その予約の queue_position を null にするだけで、後続の予約 (予約中) の queue_position は変えない"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:136"
+    reason: "rdb-schema は「完了・取消で予約順位の管理対象から外れたら null」とするが、後続の順位を繰り上げるかが無い (繰上げは予約取消 UC にだけ書かれている)。シナリオは後続の予約状態が予約中のまま変わらないことだけを確かめる"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#reservations.queue_position"
+      - "docs/requirements/rdra/状態.tsv#予約状態 通知済 → 完了"
+      - "features/貸出業務/register-loan.feature#予約待ちの書籍を予約順 1 位の利用者に貸し出す"
+  - id: A-009
+    category: security
+    title: "テスト入口は認証ヘッダを補う"
+    assumption: "テスト用 composition root (createTestApp) は、Authorization と Idempotency-Key が無い要求に司書のテストトークンと新しい Idempotency-Key を補う (defaultHeaders false で無効化できる。本番の createApp は補わない)"
+    target: "apps/backend-api/src/test-app.ts:53"
+    reason: "生成された契約テスト (test/contract/registerLoan.test.ts) は必須の Authorization と Idempotency-Key を送らないため、そのままでは 201 を検証できない。生成物は手で直せない (issues/20260926T1045_register-loan-contract-test-headers.md 起票済み)"
+    confidence: medium
+    spec_refs:
+      - "apps/backend-api/test/contract/registerLoan.test.ts"
+      - "contracts/generated/slices/register-loan/contract-slice.json#/components/parameters/IdempotencyKey"
+      - "docs/rules/testing.md#契約テスト"
+  - id: A-010
+    category: persistence
+    title: "書籍と予約を行ロックして判定する"
+    assumption: "1 トランザクションの中で書籍と予約順 1 位の予約を SELECT ... FOR UPDATE でロックしてから判定し、スナップショット更新は version 一致を条件にする。版が合わなければ例外で全体を巻き戻し 500 を返す"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:53"
+    reason: "ADR 0004 は snapshot を events と同じトランザクションで更新することと version (楽観ロック) を定めるが、同じ書籍への同時貸出の防ぎ方と競合時の応答が無い"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0004"
+      - "contracts/generated/slices/register-loan/rdb-slice.yaml#books.version"
+      - "contracts/generated/slices/register-loan/contract-slice.json#/paths/~1loans/post/responses"
+  - id: A-012
+    category: error_handling
+    title: "401 を 400 より先に判定する"
+    assumption: "認証 (401) を、本文と Idempotency-Key の入力検証 (400) より先に判定する。トークンが無効なら本文が壊れていても 401 を返す"
+    target: "apps/backend-api/src/presentation/http-app.ts:100"
+    reason: "契約は 400 と bearerAuth を定めるが、両方が同時に当てはまるときの優先順位が無い。認証されていない相手に入力検証の詳細を返さないため、認証を先にした (attempt-1 の F-012 で未記録と指摘された判断)"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#/paths/~1loans/post/responses/400"
+      - "contracts/generated/slices/register-loan/contract-slice.json#/security"
+      - "docs/rules/tier-backend.md#ADR 0006"
+  - id: A-013
+    category: error_handling
+    title: "未通知の予約順 1 位も順位外として拒否"
+    assumption: "予約待ちの書籍で、借り手が予約順 1 位でも予約状態が予約中 (未通知) のとき、または予約順位の管理対象の予約が 1 件も無いときも not_first_in_reservation_queue (409) で拒否する。1 位で未通知のときだけ detail を「利用者 X の予約はまだ通知済になっていません」にし、それ以外は契約 example と同じ「予約順 1 位ではありません」にする"
+    target: "apps/backend-api/src/usecase/register-loan.ts:94"
+    reason: "契約 description は「予約順 1 位 (通知済) の利用者にだけ貸し出せる」とするので拒否は契約どおり。ただし 1 位で未通知の場合に使う ProblemCode と説明文は契約・シナリオに無い。新しい ProblemCode は契約の変更になるため既存の code を使い、detail だけ事実に合わせた (attempt-1 の F-013)"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#/paths/~1loans/post/description"
+      - "contracts/generated/slices/register-loan/contract-slice.json#/paths/~1loans/post/responses/409"
+      - "docs/requirements/rdra/条件.tsv#貸出可否条件"
+      - "features/貸出業務/register-loan.feature"
