@@ -107,7 +107,7 @@ attempt++ のとき: 戻すティアの `tier` 以降の done を `runState.js i
 複製したファイルの `attempt` フィールドを新しい番号に書き換える (hash の対象外なので値は変わらない)。複製後に全ティアで
 `validateAssumptions.js record --attempt <n+1>` を再実行して ok を確認してから verify に進む。
 
-**関与ティアの決め方** (scaffold / tier / contract-gate の `--tiers` と派遣先に使う。正は 1 か所):
+**関与ティアの決め方** (scaffold / tier / contract-gate / integrate / 全段の証跡の `--tiers` と派遣先に使う。正は 1 か所):
 contract 段階の完了時に、契約 slice の provider / consumers (`contracts.json` と `uc-index.yaml`) から関与ティアを確定し、
 `use-cases.yaml` の該当行の `tiers` に書き戻す (d2-run の write-set)。以後はこの `tiers` だけを読む。
 `tiers_hint` (要求段階の推定) は slice が無い間の仮値であり、slice と食い違えば slice を優先する。
