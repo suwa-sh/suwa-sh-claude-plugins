@@ -198,6 +198,31 @@ test('genSkeleton --migrate: 0.1.12 以前の test:contract (単体と重なる)
   assert.ok(fs.readFileSync(path.join(c, 'apps/frontend/vitest.config.ts'), 'utf8').endsWith('// edited\n'), '手編集は保持');
 });
 
+test('genSkeleton --migrate: 旧 tsconfig (複数行配列・types 無し) / root の @types/node / biome.json の files.includes を移行する (Codex 0.1.13 ラウンド 3 指摘 1, 2)', () => {
+  const c = tmp();
+  run('genSkeleton.js', c, ['--adr', adrDir]);
+  // 0.1.12 以前の形に戻す
+  const legacyTs = JSON.stringify({ extends: '../../tsconfig.base.json', compilerOptions: { outDir: 'dist' }, include: ['src', 'test'] }, null, 2) + '\n';
+  fs.writeFileSync(path.join(c, 'apps/backend-api/tsconfig.json'), legacyTs);
+  fs.writeFileSync(path.join(c, 'apps/worker/tsconfig.json'), legacyTs.replace('"dist"', '"dist"\n    ,"strict": false'));  // 手編集
+  const rootP = path.join(c, 'package.json');
+  const root = JSON.parse(fs.readFileSync(rootP, 'utf8')); delete root.devDependencies['@types/node']; fs.writeFileSync(rootP, JSON.stringify(root, null, 2) + '\n');
+  const biomeP = path.join(c, 'biome.json');
+  const biome = JSON.parse(fs.readFileSync(biomeP, 'utf8')); delete biome.files.includes; fs.writeFileSync(biomeP, JSON.stringify(biome, null, 2) + '\n');
+  const r = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  assert.ok(r.out.includes('apps/backend-api/tsconfig.json: 配列を 1 行'), r.out);
+  assert.ok(fs.readFileSync(path.join(c, 'apps/backend-api/tsconfig.json'), 'utf8').includes('"include": ["src", "test"]'));
+  assert.ok(fs.readFileSync(path.join(c, 'apps/backend-api/tsconfig.json'), 'utf8').includes('"types": ["node"]'));
+  assert.ok(r.out.includes('apps/worker/tsconfig.json: 手編集済みのため据え置き'), r.out);
+  assert.ok(fs.readFileSync(path.join(c, 'apps/worker/tsconfig.json'), 'utf8').includes('"strict": false'), '手編集は保持');
+  assert.ok(JSON.parse(fs.readFileSync(rootP, 'utf8')).devDependencies['@types/node'], '@types/node を足す');
+  assert.ok(r.out.includes('package.json: devDependencies に @types/node'), r.out);
+  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app']);
+  // もう一度 migrate しても変更なし (冪等)
+  const r2 = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  assert.match(r2.out, /migrate: 1 change\(s\)/, r2.out);  // 残るのは手編集の worker tsconfig の報告だけ
+});
+
 test('genSkeleton --migrate: 手編集済み script は触らない (echo でなければ据え置き)', () => {
   const c = tmp();
   fs.mkdirSync(path.join(c, 'apps/backend-api'), { recursive: true });

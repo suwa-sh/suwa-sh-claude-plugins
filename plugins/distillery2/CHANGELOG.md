@@ -24,6 +24,12 @@ version の正本は `.claude-plugin/plugin.json`。
   - d2-contract: 課題ドラフトは `issues/<ts>_<slug>.md` + front matter (`kind: contract`, `title`) (④-11)
   - models_resolved はモデル ID だけ。Verifier は報告 1 行目に `model: <ID>` を書き、d2-run が記録し直す。extractAsBuilt は注記が混ざっても最初の語だけ使う (④-12)
   - genSkeleton --migrate: .gitignore の管理ブロック更新が `.distillery/logs/` を取りこぼして毎回書き換わっていたのを直す
+- **Codex レビュー (3 ラウンド、指摘 13 件) で直したもの**
+  - 提供側ティアに仮の `src/test-app.ts` (`createTestApp(): never`) を置く (契約テストと api ドライバの import 先。③ の static チェックポイントで typecheck が通る)
+  - runGates: 提供側が 1 つも無い config では contract ゲートを pass (検査対象なし)。provider の無い / tiers に無い契約エントリと空の `--tiers` は設定エラー
+  - genCi の contract job も提供側だけ
+  - prTrailers: `Basis-Changed` は index と base の差 (squash 手順の reset --soft の後でも出る)、`--base` の解決失敗はエラー、`Basis-Base` trailer (--strict で必須)。配送手順は `--base <base_head>` を渡す
+  - `--migrate` が旧 vitest.config.ts / tsconfig / root の @types/node / biome.json の files.includes も移行する (手編集は据え置いて報告)
 
 ## [0.1.12] - 2026-09-25
 

@@ -89,6 +89,22 @@ test('contracts[].provider が tiers に無ければ設定エラー (contract �
   assert.match(r.out, /contract provider not in tiers: api-spec→missing-api/);
 });
 
+test('provider の無い契約エントリは設定エラー。空の --tiers は引数エラー。消費側だけに絞った contract は pass にしない (Codex 0.1.13 ラウンド 3 指摘 3, 4)', () => {
+  const noProv = makeRepo(CONFIG + '\ncontracts:\n  - id: api\n    type: openapi\n    source: contracts/openapi/openapi.yaml\n');
+  const a = run(noProv, ['--uc', 'loan', '--only', 'contract']);
+  assert.equal(a.code, 2, a.out);
+  assert.match(a.out, /contract without provider: api/);
+  const repo = makeRepo(CONFIG);
+  const b = run(repo, ['--uc', 'loan', '--only', 'contract', '--tiers', '']);
+  assert.equal(b.code, 2, b.out);
+  assert.match(b.out, /--tiers is empty/);
+  // 提供側 (api) がある config で消費側 (web) だけに絞る → 検査対象なしの pass にはならない (skipped)
+  const c = run(repo, ['--uc', 'loan', '--only', 'contract', '--tiers', 'web']);
+  assert.equal(c.code, 0, c.out);
+  const summary = JSON.parse(fs.readFileSync(path.join(repo, '.distillery/runs/loan/reports/gates.json'), 'utf8'));
+  assert.equal(summary.gates.find(g => g.name === 'contract').status, 'skipped');
+});
+
 test('planGate substitutes slug and report paths and skips undefined commands', () => {
   const config = { tiers: [{ id: 'api', commands: { unit: 'x {report}' } }], commands: { uc_bdd: 'cuke {slug} {report}' }, capabilities: { browser: true } };
   const ctx = { slug: 'loan', reportsDir: '/r' };

@@ -123,12 +123,14 @@ function existingBiomeVersion(cwd) {
   return s ? s[1] : null;
 }
 
+// 生成物 (契約の codegen / bundle / Storybook 出力) はルートの整形・lint から外す (`!!` = フォルダごと無視)
+const BIOME_FILES_INCLUDES = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app'];
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
 const biomeJson = (biomeVersion) => JSON.stringify({
   $schema: `https://biomejs.dev/schemas/${biomeVersion}/schema.json`,
   vcs: { enabled: true, clientKind: 'git', useIgnoreFile: true },
   // 生成物 (契約の codegen / bundle / Storybook 出力) はルートの整形・lint から外す (ティアの biome format . には元から入らない)
-  files: { ignoreUnknown: true, includes: ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app'] },
+  files: { ignoreUnknown: true, includes: BIOME_FILES_INCLUDES },
   formatter: { enabled: true, indentStyle: 'space', indentWidth: 2, lineWidth: 100 },
   linter: { enabled: true, rules: { recommended: true } },
   javascript: { formatter: { quoteStyle: 'single' } },
@@ -300,10 +302,57 @@ function migrateVitestConfig(cwd, rel, kind, changes) {
   }
 }
 
+/** 0.1.12 以前の app tsconfig (JSON.stringify の複数行配列、types 無し)。これと完全一致するときだけ差し替える。 */
+function legacyAppTsconfig(kind) {
+  const compilerOptions = { outDir: 'dist' };
+  if (kind === 'frontend') compilerOptions.jsx = 'react-jsx';
+  return JSON.stringify({ extends: '../../tsconfig.base.json', compilerOptions, include: ['src', 'test'] }, null, 2) + '\n';
+}
+
+/** 旧 app tsconfig を新しい形 (配列 1 行、types: node) に差し替える (Codex 0.1.13 ラウンド 3 指摘 1)。手編集なら報告だけ。 */
+function migrateAppTsconfig(cwd, rel, kind, changes) {
+  const p = path.resolve(cwd, rel);
+  if (!fs.existsSync(p)) return;
+  const cur = fs.readFileSync(p, 'utf8');
+  if (cur === appTsconfig(kind)) return;
+  if (cur === legacyAppTsconfig(kind)) {
+    fs.writeFileSync(p, appTsconfig(kind));
+    changes.push(`${rel}: 配列を 1 行 (biome と一致) にし types: ["node"] を追加`);
+    return;
+  }
+  const cfg = readJsonSafe(p);
+  const notes = [];
+  if (/\[\n\s+"/.test(cur)) notes.push('配列が複数行 (biome format と不一致)');
+  if (!cfg?.compilerOptions?.types?.includes('node')) notes.push('types に node が無い');
+  if (notes.length) changes.push(`${rel}: 手編集済みのため据え置き (${notes.join('、')}。手で直すこと)`);
+}
+
+/** root package.json に @types/node が無ければ足す (app tsconfig の types: node のため)。 */
+function migrateRootTypesNode(cwd, changes) {
+  const p = path.resolve(cwd, 'package.json');
+  const pkg = readJsonSafe(p);
+  if (!pkg || !pkg.devDependencies || pkg.devDependencies['@types/node'] || pkg.dependencies?.['@types/node']) return;
+  pkg.devDependencies['@types/node'] = '^26.0.0';
+  fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+  changes.push('package.json: devDependencies に @types/node を追加 (npm install が必要)');
+}
+
+/** 旧 biome.json に生成物除外 (files.includes) が無ければ足す (Codex 0.1.13 ラウンド 3 指摘 2)。 */
+function migrateBiomeIncludes(cwd, changes) {
+  const p = path.resolve(cwd, 'biome.json');
+  const cfg = readJsonSafe(p);
+  if (!cfg || cfg.files?.includes) return;
+  cfg.files = { ...(cfg.files || {}), includes: BIOME_FILES_INCLUDES };
+  fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\n');
+  changes.push('biome.json: files.includes に生成物ディレクトリの除外を追加');
+}
+
 function migrate(cwd, biomeVersion, tiers = []) {
   const changes = [];
   migrateGitignore(cwd, changes);
   migrateBiomeSchema(cwd, biomeVersion, changes);
+  migrateBiomeIncludes(cwd, changes);
+  migrateRootTypesNode(cwd, changes);
   const appsDir = path.resolve(cwd, 'apps');
   const entries = fs.existsSync(appsDir) ? fs.readdirSync(appsDir, { withFileTypes: true }) : [];
   const kindOf = new Map(tiers.map(t => [t.dir ? String(t.dir).replace(/^apps\//, '') : t.id, t.kind]));
@@ -311,6 +360,7 @@ function migrate(cwd, biomeVersion, tiers = []) {
     if (!entry.isDirectory()) continue;
     migrateAppScripts(cwd, `apps/${entry.name}/package.json`, changes);
     migrateVitestConfig(cwd, `apps/${entry.name}/vitest.config.ts`, kindOf.get(entry.name) || 'backend', changes);
+    migrateAppTsconfig(cwd, `apps/${entry.name}/tsconfig.json`, kindOf.get(entry.name) || 'backend', changes);
   }
   return changes;
 }

@@ -36,7 +36,10 @@ function parseArgs(argv) {
     else if (a === '--from') o.from = next();
     else if (a === '--only') o.only = next();
     else if (a === '--expect-red') o.expectRed = next();
-    else if (a === '--tiers') o.tiers = next().split(',').map(s => s.trim()).filter(Boolean);
+    else if (a === '--tiers') {
+      o.tiers = next().split(',').map(s => s.trim()).filter(Boolean);
+      if (!o.tiers.length) throw new Error('--tiers is empty (変数展開で空になっていないか)');
+    }
     else if (a === '--config') o.config = next();
     else if (a === '--cwd') o.cwd = path.resolve(next());
     else if (a === '--json') o.json = true;
@@ -95,8 +98,10 @@ function planGate(gate, config, ctx) {
         const provider = providers.has(t.id) || (t.provides || []).length > 0;
         jobs.push(provider ? tierJob(t, 'contract', null, true) : { name: 'contract', tier: t.id, required: false, skipped: true, reason: 'not a provider' });
       }
-      // 提供側が 1 つも無い (契約を持たない構成) なら検査対象が無いので pass (skipped だと配送の --strict が止まる)
-      return { parallel: true, jobs, passIfNothingRan: jobs.every(j => j.skipped), note: jobs.every(j => j.skipped) ? 'no provider tiers (nothing to check)' : undefined };
+      // config 全体に提供側が 1 つも無い (契約を持たない構成) なら検査対象が無いので pass (skipped だと配送の --strict が止まる)。
+      // --tiers で消費側だけに絞ったときは skipped のまま (提供側の検査が済んだことにはならない)
+      const noProviderAtAll = (config.tiers || []).every(t => !(providers.has(t.id) || (t.provides || []).length > 0));
+      return { parallel: true, jobs, passIfNothingRan: noProviderAtAll && jobs.every(j => j.skipped), note: noProviderAtAll ? 'no provider tiers (nothing to check)' : undefined };
     case 'uc-bdd':
       jobs.push(cmds.uc_bdd ? { name: 'uc_bdd', cmd: sub(cmds.uc_bdd, null, 'uc-bdd'), report: rep('uc-bdd') } : { name: 'uc_bdd', skipped: true });
       return { parallel: false, jobs };
@@ -149,7 +154,9 @@ async function main(argv) {
   }
   // 契約の provider が tiers に無い (改名・設定ミス) と contract ゲートが「提供側なし」で緑になる。設定エラーとして止める
   const tierIds = new Set((config.tiers || []).map(t => t.id));
-  const orphan = (config.contracts || []).filter(c => c.provider && !tierIds.has(c.provider));
+  const noProvider = (config.contracts || []).filter(c => !c.provider);
+  if (noProvider.length) { console.error(`contract without provider: ${noProvider.map(c => c.id || '(no id)').join(', ')} (contracts.json / config.yaml の contracts[].provider は必須)`); return 2; }
+  const orphan = (config.contracts || []).filter(c => !tierIds.has(c.provider));
   if (orphan.length) { console.error(`contract provider not in tiers: ${orphan.map(c => `${c.id}→${c.provider}`).join(', ')} (config.yaml の contracts[].provider / tiers[].id を確認)`); return 2; }
   const ctx = { cwd: o.cwd, slug: o.uc, reportsDir, tiers: o.tiers || null };
   const selected = selectGates(o);
