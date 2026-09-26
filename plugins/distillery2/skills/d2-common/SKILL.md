@@ -16,7 +16,7 @@ distillery2 の各スキルが共通に参照する定義の置き場。単独�
 | ファイル | 内容 |
 |---|---|
 | [references/dataflow.yaml](references/dataflow.yaml) | **入出力の正本**。処理 (スキル・mode・d2-run・スクリプト) と、読み書きするファイル (store) と、段階の順 |
-| [references/dataflow.md](references/dataflow.md) | 正本から生成した DFD (Mermaid)。全体図・段階ごとの詳細図・ファイルの一覧。手で直さない |
+| [references/dataflow.md](references/dataflow.md) | 正本から生成した DFD (Mermaid)。全体図 3 枚 (① 〜 ④ / ④ 実装まで / ④ 検証と as-built)・処理ごとの図・ファイルの一覧。手で直さない |
 | `scripts/dataflow.js` | 正本の読み込みとパス照合 (図の生成と整合性テストが使う) |
 | `scripts/genDataflow.js` | `dataflow.md` の生成。`--check` で古ければ exit 1 |
 
@@ -30,3 +30,6 @@ distillery2 の各スキルが共通に参照する定義の置き場。単独�
 - 派遣表の write-set にあるパスでない制約・例外は、`notes` に同じ文字列で持つ
 - 並列に動く処理が書くファイルは、パスに `<tier>` を含めてティアごとに分ける
 - 手順書の略記 (`rdb-slice.yaml` など) は store の `aliases` に足す
+- store を足したら `group` (`store_groups` のどれか) を付ける。図はファイル群の単位でまとめて描く
+  (全体図は段階を箱・受け渡しを矢印にしてラベルにファイル群を書く。処理ごとの図はファイルが 8 を超えるとファイル群にまとめる)。
+  各図は箱 9 以下・矢印 12 以下をテストで守る。超えたら図の分け方を見直す
