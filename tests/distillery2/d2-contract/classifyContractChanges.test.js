@@ -8,7 +8,7 @@ const { execFileSync } = require('node:child_process');
 const { SCRIPTS } = require('./support');
 
 const SCRIPT = path.join(SCRIPTS, 'classifyContractChanges.js');
-const { classify, pathOfPorcelain } = require(SCRIPT);
+const { classify, pathsOfPorcelain } = require(SCRIPT);
 
 const ucIndex = {
   schema_version: 'distillery2.uc-index/v1',
@@ -59,12 +59,29 @@ test('契約の生成物を own / other_uc / shared に分ける', () => {
   assert.equal(r.ignored, 2);
 });
 
-test('porcelain の行からパスを取る (rename は新しい側、引用符を外す)', () => {
-  assert.equal(pathOfPorcelain(' M apps/a/test/contract/x.test.ts'), 'apps/a/test/contract/x.test.ts');
-  assert.equal(pathOfPorcelain('?? packages/contracts/api/types.ts'), 'packages/contracts/api/types.ts');
-  assert.equal(pathOfPorcelain('R  old.test.ts -> apps/a/test/contract/new.test.ts'), 'apps/a/test/contract/new.test.ts');
-  assert.equal(pathOfPorcelain(' M "contracts/generated/slices/貸出/x.json"'), 'contracts/generated/slices/貸出/x.json');
-  assert.equal(pathOfPorcelain(''), null);
+test('porcelain の行からパスを取る (rename は旧・新の両方、引用符を外す)', () => {
+  assert.deepEqual(pathsOfPorcelain(' M apps/a/test/contract/x.test.ts'), ['apps/a/test/contract/x.test.ts']);
+  assert.deepEqual(pathsOfPorcelain('?? packages/contracts/api/types.ts'), ['packages/contracts/api/types.ts']);
+  assert.deepEqual(pathsOfPorcelain('R  apps/a/test/contract/registerLoan.test.ts -> apps/a/test/contract/createLoan.test.ts'),
+    ['apps/a/test/contract/registerLoan.test.ts', 'apps/a/test/contract/createLoan.test.ts']);
+  assert.deepEqual(pathsOfPorcelain('R  "old dir/x.test.ts" -> "contracts/generated/slices/貸出/x.json"'),
+    ['old dir/x.test.ts', 'contracts/generated/slices/貸出/x.json']);
+  assert.deepEqual(pathsOfPorcelain(''), []);
+});
+
+test('CLI: staged の rename は旧テストも分類に残る', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-classify-'));
+  const git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8' });
+  git('init', '-q'); git('config', 'user.email', 't@example.com'); git('config', 'user.name', 't');
+  fs.mkdirSync(path.join(root, 'contracts'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'contracts', 'uc-index.yaml'), 'schema_version: distillery2.uc-index/v1\nucs:\n  - slug: register-loan\n    operations: [registerLoan]\n    messages: []\n    tables: []\n  - slug: register-return\n    operations: [registerReturn]\n    messages: []\n    tables: []\n');
+  const dir = path.join(root, 'apps/backend-api/test/contract');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'registerLoan.test.ts'), 'same content\n');
+  git('add', '.'); git('commit', '-q', '-m', 'init');
+  git('mv', 'apps/backend-api/test/contract/registerLoan.test.ts', 'apps/backend-api/test/contract/renamedLoan.test.ts');
+  const json = JSON.parse(execFileSync('node', [SCRIPT, '--uc', 'register-return', '--cwd', root, '--json'], { encoding: 'utf8' }));
+  assert.deepEqual(json.other_uc.map(o => [o.operation, o.used_by]), [['registerLoan', ['register-loan']], ['renamedLoan', []]]);
 });
 
 test('CLI: git status から分類し、他 UC に効く変更を表示する', () => {

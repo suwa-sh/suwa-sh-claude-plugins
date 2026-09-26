@@ -32,14 +32,16 @@ const GENERATED = [
   /^contracts\/generated\//,
 ];
 
-/** `git status --porcelain` の 1 行からパスを取る (rename は新しい側。quotepath=off 前提で引用符だけ外す) */
-function pathOfPorcelain(line) {
-  if (line.length < 4) return null;
-  let p = line.slice(3);
-  const arrow = p.indexOf(' -> ');
-  if (arrow >= 0) p = p.slice(arrow + 4);
-  if (p.startsWith('"') && p.endsWith('"')) p = p.slice(1, -1);
-  return p;
+/**
+ * `git status --porcelain` の 1 行からパスを取る。rename / copy は旧・新の両方を返す
+ * (他 UC のテストの改名で「旧テストが消えた」ことも分類に残すため)。quotepath=off 前提で引用符だけ外す
+ */
+function pathsOfPorcelain(line) {
+  if (line.length < 4) return [];
+  const unquote = p => (p.startsWith('"') && p.endsWith('"') ? p.slice(1, -1) : p);
+  const rest = line.slice(3);
+  const arrow = rest.indexOf(' -> ');
+  return arrow >= 0 ? [unquote(rest.slice(0, arrow)), unquote(rest.slice(arrow + 4))] : [unquote(rest)];
 }
 
 function classify({ slug, ucIndex, files }) {
@@ -78,7 +80,7 @@ function classify({ slug, ucIndex, files }) {
 
 function changedFiles(cwd) {
   const text = execFileSync('git', ['-c', 'core.quotepath=off', 'status', '--porcelain', '--untracked-files=all'], { cwd, encoding: 'utf8' });
-  return text.split('\n').map(pathOfPorcelain).filter(Boolean);
+  return text.split('\n').flatMap(pathsOfPorcelain).filter(Boolean);
 }
 
 function argVal(args, name) { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; }
@@ -105,4 +107,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { classify, pathOfPorcelain };
+module.exports = { classify, pathsOfPorcelain };
