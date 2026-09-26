@@ -54,7 +54,7 @@ as-built の付録「生成情報」に「モデル: 実装 … / 検証 … / �
 
 ## 実走で見つかった課題
 
-[`findings-0.1.10.md`](findings-0.1.10.md) に段階ごとに列挙した。主なもの:
+[`findings-0.1.10.md`](findings-0.1.10.md) に段階ごとに列挙した (0.1.13 のフル再実走での再確認と新しい気づきは [`findings-0.1.13.md`](findings-0.1.13.md))。主なもの:
 
 - 消費側ティアにも contract ゲートが走り、テスト 0 件で落ちる (`runGates.js`)
 - 生成した契約テストが biome format を通らない (`genContractTests.js`)

@@ -58,7 +58,7 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(contractCfg.includes("['test/contract/**/*.{test,spec}.{ts,tsx}']"), '契約テストは test/contract/ だけ');
   assert.equal(appPkg.scripts['test:contract'], 'vitest run -c vitest.contract.config.ts');
   const biomeCfg = JSON.parse(fs.readFileSync(path.join(c, 'biome.json'), 'utf8'));
-  assert.deepEqual(biomeCfg.files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app'], '生成物はルートの整形から外す');
+  assert.deepEqual(biomeCfg.files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract/**'], '生成物はルートの整形から外す');
   // frontend tier の tsconfig は jsx を有効化する
   const feTs = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/tsconfig.json'), 'utf8'));
   assert.equal(feTs.compilerOptions.jsx, 'react-jsx');
@@ -208,7 +208,8 @@ test('genSkeleton --migrate: 旧 tsconfig (複数行配列・types 無し) / roo
   const rootP = path.join(c, 'package.json');
   const root = JSON.parse(fs.readFileSync(rootP, 'utf8')); delete root.devDependencies['@types/node']; fs.writeFileSync(rootP, JSON.stringify(root, null, 2) + '\n');
   const biomeP = path.join(c, 'biome.json');
-  const biome = JSON.parse(fs.readFileSync(biomeP, 'utf8')); delete biome.files.includes; fs.writeFileSync(biomeP, JSON.stringify(biome, null, 2) + '\n');
+  // 0.1.14 の形 (test/contract の除外が無い) にする → 足りない項目だけ足す
+  const biome = JSON.parse(fs.readFileSync(biomeP, 'utf8')); biome.files.includes = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!custom/**']; fs.writeFileSync(biomeP, JSON.stringify(biome, null, 2) + '\n');
   const r = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
   assert.ok(r.out.includes('apps/backend-api/tsconfig.json: 配列を 1 行'), r.out);
   assert.ok(fs.readFileSync(path.join(c, 'apps/backend-api/tsconfig.json'), 'utf8').includes('"include": ["src", "test"]'));
@@ -217,7 +218,8 @@ test('genSkeleton --migrate: 旧 tsconfig (複数行配列・types 無し) / roo
   assert.ok(fs.readFileSync(path.join(c, 'apps/worker/tsconfig.json'), 'utf8').includes('"strict": false'), '手編集は保持');
   assert.ok(JSON.parse(fs.readFileSync(rootP, 'utf8')).devDependencies['@types/node'], '@types/node を足す');
   assert.ok(r.out.includes('package.json: devDependencies に @types/node'), r.out);
-  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app']);
+  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!custom/**', '!**/test/contract/**'], '手編集の項目を残して足りない分を足す');
+  assert.ok(r.out.includes('biome.json: files.includes に生成物の除外を追加 (!**/test/contract/**)'), r.out);
   // もう一度 migrate しても変更なし (冪等)
   const r2 = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
   assert.match(r2.out, /migrate: 1 change\(s\)/, r2.out);  // 残るのは手編集の worker tsconfig の報告だけ

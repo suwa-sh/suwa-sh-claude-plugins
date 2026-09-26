@@ -38,7 +38,8 @@ function basisComment(contractsDir, docsRoot = 'docs') {
 function gitCwd(dir) { try { return fs.statSync(dir).isDirectory() ? dir : path.dirname(dir); } catch { return process.cwd(); } }
 
 // 生成した .ts は biome の整形・lint を丸ごと抑止する (埋め込み JSON を biome が展開して format_check が落ちた。0.1.10 実走 ④-2)。
-// biome 2 の biome-ignore-all はファイル先頭のコメントで有効 (実測 2.2.x)
+// biome-ignore-all はファイル先頭のコメントで有効だが、format の抑止は biome 2.2.5 では効かない (2.5.14 では効く。0.1.13 実走で実測)。
+// そのためルート biome.json の files.includes でも `!**/test/contract/**` を外す (genSkeleton)。lint の抑止は残す
 const BIOME_IGNORE_ALL = '// biome-ignore-all format: generated (do not edit)\n// biome-ignore-all lint: generated (do not edit)';
 function header(contractsDir, docsRoot) {
   return `${DO_NOT_EDIT}\n${BIOME_IGNORE_ALL}\n${basisComment(contractsDir, docsRoot)}`;

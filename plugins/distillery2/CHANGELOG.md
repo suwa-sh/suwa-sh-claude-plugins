@@ -2,6 +2,16 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.15] - 2026-09-26
+
+0.1.13 のフル再実走 (`samples/distillery2/findings-0.1.13.md`) で分かったこと。
+
+### Fixed
+
+- 生成した契約テストの `biome-ignore-all format` は **biome 2.2.5 では効かない** (2.5.14 では効く)。ルート `biome.json` の `files.includes` に
+  `!**/test/contract/**` を足して版に依らず外す (`!!` は 2.2.5 では `**` 入りを受け付けない)。`--migrate` は includes に足りない項目だけ足す
+- d2-run ④: 全段の証跡を揃える `runGates.js` は `--tiers <関与ティア>` 付きで回す (省くと UC に関与しないティアの unit がテスト 0 件で落ちる)
+
 ## [0.1.14] - 2026-09-26
 
 ### Added

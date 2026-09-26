@@ -41,7 +41,8 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 - **impl-config の specs_root / repo_root 分離**: docs と実装コードを同一リポに置く。
 - **vitest の設定は単体と契約テストで分ける** (0.1.13〜): `apps/<tier>/vitest.config.ts` (unit: `src/**`) と
   `vitest.contract.config.ts` (test:contract: `test/contract/**`)。同じ include だと契約テストの失敗が unit ゲートにも出る。
-  生成した .ts は先頭の `biome-ignore-all format / lint` で biome の対象外 (埋め込み JSON を展開されて format_check が落ちるため)。
+  生成した .ts は先頭の `biome-ignore-all format / lint` を持つが、format の抑止は biome 2.2.5 では効かない (2.5.14 では効く) ので、
+  ルート `biome.json` の `files.includes` で `!**/test/contract/**` も外す (0.1.15〜。0.1.13 実走で実装者が app の biome.json で回避していた)。
 - **qlty の焼き込み** (0.1.11〜): `genQlty.js` が `.qlty/qlty.toml` を生成する。**プラグインの選定は qlty 自身の提案を優先**する
   (`qlty init --yes --dry-run` の出力を土台にする。qlty init は git 追跡済みファイルしか見ないので、未追跡ファイルを `git add -N` で一時的に見せ、保存した index ファイルを書き戻す)。
   distillery2 は上乗せだけ: biome の版を lockfile / package.json に固定 (qlty 既定の 1.9.4 は biome 2 系の設定を読めない)、生成物・vendored を
