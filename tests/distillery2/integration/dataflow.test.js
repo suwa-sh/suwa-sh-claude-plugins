@@ -17,17 +17,22 @@ const procs = new Map(df.processes.map(p => [p.id, p]));
 const read = rel => fs.readFileSync(path.join(PLUGIN, rel), 'utf8');
 const cells = line => line.split('|').slice(1, -1).map(c => c.trim());
 
-/** token 群と store 群の双方向の照合。問題を文字列で返す */
-function compare(label, tokens, storeIds, scripts = []) {
+/**
+ * token 群と store 群の双方向の照合。問題を文字列で返す。
+ * strict: 包含の向きを区別する (手順書の具体例が正本の表記に合うときだけ一致)。write-set の照合に使う
+ * (ディレクトリ全体の表記を逆向きに許すと、`apps/<tier>/**` が `apps/<tier>/src/**` と一致して許可範囲の広がりを見逃す)
+ */
+function compare(label, tokens, storeIds, { scripts = [], strict = false } = {}) {
   const problems = [];
   const list = storeIds.map(id => stores.get(id));
+  const hits = (t, s) => strict ? D.spellings(s).some(sp => sp === t || D.toRegex(sp).test(D.sample(t))) : D.storesFor(t, [s]).length > 0;
   for (const t of tokens) {
     if (scripts.includes(t)) continue;
-    if (!D.storesFor(t, list).length) problems.push(`${label}: 手順書にあるが正本に無い \`${t}\``);
+    if (!list.some(s => hits(t, s))) problems.push(`${label}: 手順書にあるが正本に無い \`${t}\``);
   }
   for (const s of list) {
     if (s.outside_repo) continue;
-    if (!tokens.some(t => D.storesFor(t, [s]).length)) problems.push(`${label}: 正本にあるが手順書に無い ${s.id} (${s.path})`);
+    if (!tokens.some(t => hits(t, s))) problems.push(`${label}: 正本にあるが手順書に無い ${s.id} (${s.path})`);
   }
   return problems;
 }
@@ -70,6 +75,7 @@ test('(b) 生成される store には書き手が、最終成果物以外には
   const readBy = new Set(df.processes.flatMap(p => p.reads || []));
   const problems = [];
   for (const s of df.stores) {
+    if (s.scope_only) continue;
     if (s.origin === 'produced' && !written.has(s.id)) problems.push(`書き手がいない: ${s.id}`);
     if (!s.terminal && !readBy.has(s.id)) problems.push(`読み手がいない: ${s.id}`);
   }
@@ -88,9 +94,9 @@ test('(c) 同じ段階の並列処理が同じ store に書かない (パスに 
   assert.deepEqual(problems, []);
 });
 
-test('親の writes / reads は子 (phase ごとのスクリプト) の和を含む', () => {
+test('サブエージェントの親の writes / reads は子 (phase ごとのスクリプト) の和を含む (派遣表の write-set と照合するため)', () => {
   const problems = [];
-  for (const p of df.processes.filter(x => x.parent)) {
+  for (const p of df.processes.filter(x => x.parent && procs.get(x.parent).kind === 'subagent')) {
     const parent = procs.get(p.parent);
     for (const key of ['reads', 'writes']) for (const id of p[key] || []) if (!(parent[key] || []).includes(id)) problems.push(`${p.parent}.${key} に子 ${p.id} の ${id} が無い`);
   }
@@ -110,7 +116,7 @@ test('(d) 派遣表の write-set = allowed_writes、writes ⊆ allowed_writes、
       if (!cell.includes(n)) problems.push(`${p.id}: notes の文言が派遣表に無い: ${n}`);
       cell = cell.split(n).join(' ');
     }
-    problems.push(...compare(`${p.id} write-set`, D.backticks(cell), p.allowed_writes || []));
+    problems.push(...compare(`${p.id} write-set`, D.backticks(cell), p.allowed_writes || [], { strict: true }));
     const residual = cell.replace(/`[^`]+`/g, '').replace(/[\s、,()（）・/+=.:：。*]/g, '');
     if (residual) problems.push(`${p.id}: パスでも notes でもない文言: ${residual}`);
     const allowed = (p.allowed_writes || []).map(id => stores.get(id));
@@ -142,7 +148,7 @@ test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run �
   ];
   for (const [id, key, rel, re] of sections) {
     const p = procs.get(id);
-    problems.push(...compare(`${id} ${key} (${path.basename(rel)})`, D.backticks(section(rel, re)).filter(D.looksLikePath), p[key], p.scripts));
+    problems.push(...compare(`${id} ${key} (${path.basename(rel)})`, D.backticks(section(rel, re)).filter(D.looksLikePath), p[key], { scripts: p.scripts }));
   }
   const fnd = read('skills/d2-foundation/SKILL.md').split('\n');
   for (const p of df.processes.filter(x => x.phase)) {
@@ -152,17 +158,20 @@ test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run �
     problems.push(...compare(`${p.id} 読む`, D.backticks(c[2]).filter(D.looksLikePath), p.reads));
     problems.push(...compare(`${p.id} 書く`, D.backticks(c[3]).filter(D.looksLikePath), p.writes));
   }
+  // d2-run の表: 処理ごとに 1 行。行の「処理」列 = run_table_row
   const run = section('skills/d2-run/SKILL.md', /^## d2-run が直接読み書きするもの/).split('\n');
   const runProcs = df.processes.filter(p => p.run_table_row);
   for (const p of runProcs) {
     const line = run.find(l => l.startsWith(`| ${p.run_table_row} |`));
     if (!line) { problems.push(`${p.id}: d2-run の表に行が無い (${p.run_table_row})`); continue; }
     const c = cells(line);
-    const children = df.processes.filter(x => x.parent === p.id);
-    const union = key => [...new Set([p, ...children].flatMap(x => x[key] || []))];
-    problems.push(...compare(`${p.id} 読む`, D.backticks(c[1]).filter(D.looksLikePath), union('reads')));
-    problems.push(...compare(`${p.id} 書く`, D.backticks(c[2]).filter(D.looksLikePath), union('writes')));
+    problems.push(...compare(`${p.id} 読む`, D.backticks(c[1]).filter(D.looksLikePath), p.reads || []));
+    problems.push(...compare(`${p.id} 書く`, D.backticks(c[2]).filter(D.looksLikePath), p.writes || []));
   }
+  const tableRows = run.filter(l => /^\| [①②③④]/.test(l)).map(l => cells(l)[0]);
+  for (const r of tableRows) if (!runProcs.some(p => p.run_table_row === r)) problems.push(`d2-run の表の行 ${r} が正本に無い`);
+  // d2-run が actor の処理は全部 d2-run の表に載る
+  for (const p of df.processes.filter(x => x.actor === 'd2-run' && !x.run_table_row)) problems.push(`${p.id}: d2-run の処理だが表の行 (run_table_row) が無い`);
   assert.deepEqual(problems, []);
 });
 
