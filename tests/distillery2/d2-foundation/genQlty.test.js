@@ -201,10 +201,23 @@ test('genQlty --refresh: 提案で増えた plugins だけ足し、既存の内�
   assert.match(after, /\[\[triage\]\]\nmatch\.plugins = \["radarlint-python"\]\nset\.level = "low"/, '増えた radarlint は low に');
   assert.match(after, /\[\[ignore\]\]\nrules = \["biome:lint\/suspicious\/noExplicitAny"\]/, '手編集の ignore を保持');
   assert.equal(pluginBlocks(after).find((x) => x.name === 'biome').version, '2.2.5', 'biome の版固定を保持');
+  // 手書きの先頭コメントは refresh で消えない (自分のヘッダだけ置き換える。Codex 0.1.14 指摘 1)
+  fs.writeFileSync(p, '# handwritten policy: keep this\n' + fs.readFileSync(p, 'utf8'));
+  const later2 = tmp();
+  fs.writeFileSync(path.join(later2, 'qlty'), fs.readFileSync(path.join(later, 'qlty'), 'utf8').replace('name = "ruff"', 'name = "ruff"\n\n[[plugin]]\nname = "bandit"'));
+  fs.chmodSync(path.join(later2, 'qlty'), 0o755);
+  const rh = run(c, ['--refresh'], { PATH: `${later2}:${NO_QLTY_PATH}` });
+  assert.ok(rh.stdout.includes('追加: bandit'), rh.stdout);
+  const withHand = fs.readFileSync(p, 'utf8');
+  assert.ok(withHand.startsWith('# distillery2 genQlty.js'), '自分のヘッダは先頭に付け直す');
+  assert.ok(withHand.includes('# handwritten policy: keep this'), '手書きコメントを保持');
+  assert.equal((withHand.match(/^# distillery2 genQlty\.js/gm) || []).length, 1, 'ヘッダは重複しない');
+  fs.writeFileSync(p, withHand.replace('# handwritten policy: keep this\n', ''));
+  const after2 = fs.readFileSync(p, 'utf8');
   // 2 回目は追加なし、内容も変わらない (冪等)
-  const r3 = run(c, ['--refresh'], { PATH: `${later}:${NO_QLTY_PATH}` });
+  const r3 = run(c, ['--refresh'], { PATH: `${later2}:${NO_QLTY_PATH}` });
   assert.ok(r3.stdout.includes('追加なし'), r3.stdout);
-  assert.equal(fs.readFileSync(p, 'utf8'), after);
+  assert.equal(fs.readFileSync(p, 'utf8'), after2);
   // 提案から消えたプラグインは減らさない (最初の fixture だけを返す qlty で refresh)
   const r4 = run(c, ['--refresh'], { PATH: `${fakeQltyBin()}:${NO_QLTY_PATH}` });
   assert.ok(r4.stdout.includes('追加なし'), r4.stdout);
@@ -213,7 +226,7 @@ test('genQlty --refresh: 提案で増えた plugins だけ足し、既存の内�
   const r5 = run(c, ['--refresh'], { PATH: NO_QLTY_PATH });
   assert.equal(r5.status, 0);
   assert.ok(r5.stdout.includes('追加なし (qlty CLI が無い)'), r5.stdout);
-  assert.equal(fs.readFileSync(p, 'utf8'), after);
+  assert.equal(fs.readFileSync(p, 'utf8'), after2);
   void before;
 });
 

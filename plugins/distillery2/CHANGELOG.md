@@ -8,7 +8,7 @@ version の正本は `.claude-plugin/plugin.json`。
 
 - **`genQlty.js --refresh`**: 既存の `.qlty/qlty.toml` に、いまの qlty の提案で増えたプラグインだけを足す (減らさない。上乗せと手編集は保持、冪等)。
   提案はその時点でリポにあるファイル種別で決まる (0.1.13 の実走では genQlty が npm install の前に走り lockfile が無く osv-scanner が抜けた)。
-  d2-run は ③ の npm install の後と、④ の各 UC の asbuilt の後 (squash の前) に回す。増えたら static ゲートを回して新しい指摘を直す (ユーザー方針: 骨格を広げてから導入 + 実装後に提案を追加する段)
+  d2-run は ③ の npm install の後と、④ の各 UC の integrate で全ゲートを回す前に回す (増えた plugins の指摘は static に出て、verify / review / as-built の前に直す) (ユーザー方針: 骨格を広げてから導入 + 実装後に提案を追加する段)
 
 ### Changed
 
