@@ -275,6 +275,7 @@ components:
         - book_on_loan
         - not_first_in_reservation_queue
         - patron_not_registered
+        - no_active_loan
       type: string
     RegisterLoanRequest:
       additionalProperties: false
@@ -286,6 +287,15 @@ components:
           $ref: "#/components/schemas/PatronNumber"
       required:
         - patronNumber
+        - bookId
+      type: object
+    RegisterReturnRequest:
+      additionalProperties: false
+      description: 返却の登録要求。返却日はサーバーの当日の日付で決まるため要求に含めない。対象の貸出は書籍の未返却の貸出から決まる
+      properties:
+        bookId:
+          $ref: "#/components/schemas/BookId"
+      required:
         - bookId
       type: object
     ReportType:
@@ -307,6 +317,17 @@ components:
         - completed
         - cancelled
       type: string
+    ReturnRegistration:
+      description: 返却の登録結果。返却済にした貸出と、返却後の書籍状態 (available または awaiting_pickup) を返す
+      properties:
+        bookStatus:
+          $ref: "#/components/schemas/BookStatus"
+        loan:
+          $ref: "#/components/schemas/Loan"
+      required:
+        - loan
+        - bookStatus
+      type: object
     Role:
       description: アクターのロール (トークンのクレーム)
       enum:
@@ -448,6 +469,158 @@ paths:
       summary: 貸出を登録する
       tags:
         - loan
+      x-test-headers:
+        Authorization: Bearer test-librarian-token
+        Idempotency-Key: "{uuid}"
+  /returns:
+    post:
+      description: "司書が返却された書籍の書籍IDを指定して返却を登録する。librarian ロールだけが呼べる。\n返却日はサーバーの当日の日付とする。\n対象はその書籍の未返却の貸出 (貸出状態が貸出中 on_loan または延滞 overdue) である。\n成功すると次のように状態を変える。\n- 貸出状態を返却済 (returned) にし、返却日を記録する。延滞 (overdue) の貸出も返却済にする。\n- 書籍に予約中 (waiting) の予約が無ければ、書籍状態を在庫あり (available) にする。\n- 書籍に予約中 (waiting) の予約があれば、書籍状態を予約待ち (awaiting_pickup) にする。予約状態はこの操作では変えない。\n未返却の貸出が無い書籍 (在庫あり・予約待ち) は返却できない。409 を返し、貸出と書籍状態を変えない。\n書籍IDの書籍が存在しない (論理削除済みを含む) ときは 404 を返す。\n判定の順序は 401 (認証) → 403 (ロール) → 400 (入力検証) → 404 / 409 (業務条件) とする。\n返却通知の送信依頼 (通知の outbox) は UC「返却通知を送信する」(notify-reserved-book-returned) の契約で扱う。\n"
+      operationId: registerReturn
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            examples:
+              badRequest:
+                summary: 書籍IDが無い
+                value: {}
+              forbidden:
+                summary: 利用者 (patron ロール) が返却を登録しようとする
+                value:
+                  bookId: 4c1d7e2a-8b3f-4e6a-9c1d-2f5a8b3e6c9d
+                x-headers:
+                  Authorization: Bearer test-patron-token
+              noActiveLoan:
+                summary: 未返却の貸出が無い (在庫ありの) 書籍の返却を登録しようとする
+                value:
+                  bookId: 6e9b2d5a-1f4c-4a8e-9b3d-7a2e5c8f1b4d
+              notFound:
+                summary: 存在しない書籍の返却を登録しようとする
+                value:
+                  bookId: 0e5c8b1f-4a7d-4f2c-8e9b-3d6a1c4f7b2e
+              success:
+                summary: 予約のない貸出中の書籍の返却
+                value:
+                  bookId: 4c1d7e2a-8b3f-4e6a-9c1d-2f5a8b3e6c9d
+              successOverdue:
+                summary: 延滞している貸出の書籍の返却
+                value:
+                  bookId: 3a6d9c2f-7b4e-4f1a-8c5d-2e9b6a3f1d4c
+              successWithReservation:
+                summary: 予約中の予約がある貸出中の書籍の返却
+                value:
+                  bookId: 8d3f6a1c-5e2b-4c7d-9a3e-6b1d4f7a2c5e
+              unauthorized:
+                summary: アクセストークンを付けずに返却を登録しようとする
+                value:
+                  bookId: 4c1d7e2a-8b3f-4e6a-9c1d-2f5a8b3e6c9d
+                x-headers:
+                  Authorization: null
+            schema:
+              $ref: "#/components/schemas/RegisterReturnRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              examples:
+                success:
+                  summary: 予約が無いので書籍は在庫ありになる
+                  value:
+                    bookStatus: available
+                    loan:
+                      bookId: 4c1d7e2a-8b3f-4e6a-9c1d-2f5a8b3e6c9d
+                      dueDate: 2026-10-15
+                      loanId: 7e2b5d8a-3c6f-4a1e-8d4b-9f2c5e8a1b3d
+                      loanedOn: 2026-10-01
+                      patronNumber: P-00000001
+                      reservationId: null
+                      returnedOn: 2026-10-15
+                      status: returned
+                successOverdue:
+                  summary: 延滞していた貸出も返却済になる
+                  value:
+                    bookStatus: available
+                    loan:
+                      bookId: 3a6d9c2f-7b4e-4f1a-8c5d-2e9b6a3f1d4c
+                      dueDate: 2026-09-15
+                      loanId: 5b8e1a4d-2c7f-4d3b-9e6a-1c4f7b2d5e8a
+                      loanedOn: 2026-09-01
+                      patronNumber: P-00000001
+                      reservationId: null
+                      returnedOn: 2026-10-15
+                      status: returned
+                successWithReservation:
+                  summary: 予約中の予約があるので書籍は予約待ちになる
+                  value:
+                    bookStatus: awaiting_pickup
+                    loan:
+                      bookId: 8d3f6a1c-5e2b-4c7d-9a3e-6b1d4f7a2c5e
+                      dueDate: 2026-10-15
+                      loanId: 1f4a7c2e-9d3b-4e6f-8a2c-5d8b1e4f7a3c
+                      loanedOn: 2026-10-01
+                      patronNumber: P-00000001
+                      reservationId: null
+                      returnedOn: 2026-10-15
+                      status: returned
+              schema:
+                $ref: "#/components/schemas/ReturnRegistration"
+          description: 貸出を返却済にし、書籍を在庫ありまたは予約待ちにした
+        "400":
+          content:
+            application/problem+json:
+              examples:
+                badRequest:
+                  value:
+                    code: validation_error
+                    errors:
+                      - field: bookId
+                        message: 書籍IDは必須です
+                    status: 400
+                    title: 入力内容に誤りがあります
+                    type: "https://library.example/problems/validation-error"
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: 入力が不正 (必須項目の欠落・形式違反)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          content:
+            application/problem+json:
+              examples:
+                notFound:
+                  value:
+                    code: not_found
+                    detail: 書籍 0e5c8b1f-4a7d-4f2c-8e9b-3d6a1c4f7b2e は見つかりません
+                    status: 404
+                    title: 対象が見つかりません
+                    type: "https://library.example/problems/not-found"
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: 書籍IDの書籍が存在しない (論理削除済みを含む)。貸出と書籍状態は変わらない
+        "409":
+          content:
+            application/problem+json:
+              examples:
+                noActiveLoan:
+                  value:
+                    code: no_active_loan
+                    detail: 書籍 6e9b2d5a-1f4c-4a8e-9b3d-7a2e5c8f1b4d には未返却の貸出がありません
+                    status: 409
+                    title: この書籍には返却できる貸出がありません
+                    type: "https://library.example/problems/no-active-loan"
+              schema:
+                $ref: "#/components/schemas/Problem"
+          description: 未返却の貸出が無いため返却できない。貸出と書籍状態は変わらない
+      summary: 返却を登録する
+      tags:
+        - loan
+      x-test-headers:
+        Authorization: Bearer test-librarian-token
+        Idempotency-Key: "{uuid}"
 security:
   - bearerAuth: []
 servers:

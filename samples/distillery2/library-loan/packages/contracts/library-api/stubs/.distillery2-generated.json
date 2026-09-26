@@ -1,5 +1,11 @@
 [
   "registerLoan.201.json",
   "registerLoan.400.json",
-  "registerLoan.409.json"
+  "registerLoan.409.json",
+  "registerReturn.201.json",
+  "registerReturn.400.json",
+  "registerReturn.401.json",
+  "registerReturn.403.json",
+  "registerReturn.404.json",
+  "registerReturn.409.json"
 ]

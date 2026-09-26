@@ -1,0 +1,348 @@
+[
+  {
+    "description": "  司書が返却された書籍の返却を登録し、貸出を返却済にする。\n  予約がなければ書籍を在庫ありに、予約があれば予約待ちにする。",
+    "elements": [
+      {
+        "description": "",
+        "id": "返却を登録する;予約のない貸出中の書籍の返却を登録する",
+        "keyword": "シナリオ",
+        "line": 18,
+        "name": "予約のない貸出中の書籍の返却を登録する",
+        "steps": [
+          {
+            "result": {
+              "status": "passed",
+              "duration": 981291
+            },
+            "keyword": "Before",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 141500
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 13,
+            "name": "今日は \"2026-10-15\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:53"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 34667
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 14,
+            "name": "司書としてログインしている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:57"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 882386333
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 15,
+            "name": "利用者 \"山田 花子\" が登録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:62"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 2433166
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 19,
+            "name": "書籍 \"吾輩は猫である\" が登録され、\"山田 花子\" に貸出中である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:72"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 32109000
+            },
+            "arguments": [],
+            "keyword": "もし",
+            "line": 20,
+            "name": "司書が \"吾輩は猫である\" の返却を登録する",
+            "match": {
+              "location": "features/step_definitions/register-return.steps.ts:75"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 946208
+            },
+            "arguments": [],
+            "keyword": "ならば",
+            "line": 21,
+            "name": "貸出が返却済みになり書籍の状態が在庫ありになる",
+            "match": {
+              "location": "features/step_definitions/register-return.steps.ts:85"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 520250
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 22,
+            "name": "\"山田 花子\" の \"吾輩は猫である\" の貸出は、返却日が \"2026-10-15\" で貸出状態が返却済である",
+            "match": {
+              "location": "features/step_definitions/register-return.steps.ts:93"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 380792
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 23,
+            "name": "書籍 \"吾輩は猫である\" の状態は在庫ありである",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:202"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 1508042
+            },
+            "keyword": "After",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 96791
+            },
+            "keyword": "After",
+            "hidden": true
+          }
+        ],
+        "tags": [
+          {
+            "name": "@uc:register-return",
+            "line": 7
+          },
+          {
+            "name": "@acceptance",
+            "line": 17
+          },
+          {
+            "name": "@acceptance:SPEC-003-02-1",
+            "line": 17
+          }
+        ],
+        "type": "scenario"
+      },
+      {
+        "description": "",
+        "id": "返却を登録する;予約のある貸出中の書籍の返却を登録する",
+        "keyword": "シナリオ",
+        "line": 26,
+        "name": "予約のある貸出中の書籍の返却を登録する",
+        "steps": [
+          {
+            "result": {
+              "status": "passed",
+              "duration": 434916
+            },
+            "keyword": "Before",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 143042
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 13,
+            "name": "今日は \"2026-10-15\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:53"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 27082
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 14,
+            "name": "司書としてログインしている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:57"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 638575374
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 15,
+            "name": "利用者 \"山田 花子\" が登録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:62"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 442125
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 27,
+            "name": "利用者 \"佐藤 太郎\" が登録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:62"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 1016917
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 28,
+            "name": "書籍 \"坊っちゃん\" が登録され、\"山田 花子\" に貸出中である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:72"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 509165
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 29,
+            "name": "\"坊っちゃん\" の予約順 1 位は \"佐藤 太郎\" で、予約状態は予約中である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:94"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 17317958
+            },
+            "arguments": [],
+            "keyword": "もし",
+            "line": 30,
+            "name": "司書が \"坊っちゃん\" の返却を登録する",
+            "match": {
+              "location": "features/step_definitions/register-return.steps.ts:75"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 704083
+            },
+            "arguments": [],
+            "keyword": "ならば",
+            "line": 31,
+            "name": "貸出が返却済みになり書籍の状態が予約待ちになる",
+            "match": {
+              "location": "features/step_definitions/register-return.steps.ts:89"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 329000
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 32,
+            "name": "\"山田 花子\" の \"坊っちゃん\" の貸出は、返却日が \"2026-10-15\" で貸出状態が返却済である",
+            "match": {
+              "location": "features/step_definitions/register-return.steps.ts:93"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 239500
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 33,
+            "name": "書籍 \"坊っちゃん\" の状態は予約待ちである",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:198"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 1294416
+            },
+            "keyword": "After",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 161959
+            },
+            "keyword": "After",
+            "hidden": true
+          }
+        ],
+        "tags": [
+          {
+            "name": "@uc:register-return",
+            "line": 7
+          },
+          {
+            "name": "@acceptance",
+            "line": 25
+          },
+          {
+            "name": "@acceptance:SPEC-003-02-2",
+            "line": 25
+          }
+        ],
+        "type": "scenario"
+      }
+    ],
+    "id": "返却を登録する",
+    "line": 8,
+    "keyword": "機能",
+    "name": "返却を登録する",
+    "tags": [
+      {
+        "name": "@uc:register-return",
+        "line": 7
+      }
+    ],
+    "uri": "features/貸出業務/register-return.feature"
+  }
+]

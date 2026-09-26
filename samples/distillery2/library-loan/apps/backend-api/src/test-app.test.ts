@@ -14,7 +14,7 @@ type TestApp = Awaited<ReturnType<typeof createTestApp>>;
 async function setUp(): Promise<{ database: SqlDatabase; app: TestApp }> {
   const database = await startTestDatabase();
   await seedContractExamples(database);
-  const app = await createTestApp({ database, defaultHeaders: false });
+  const app = await createTestApp({ database });
   return { database, app };
 }
 
@@ -125,7 +125,7 @@ describe('createTestApp 経由の貸出登録', () => {
     expect(stored.rows).toEqual([{ response_status: 409 }]);
   });
 
-  it('既定ヘッダを無効にしてトークンを送らない場合、401 を返すこと', async () => {
+  it('アクセストークンを送らない場合、ヘッダを補わずに 401 を返すこと', async () => {
     // Arrange
     const { app } = await setUp();
 

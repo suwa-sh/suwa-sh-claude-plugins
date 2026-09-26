@@ -1,0 +1,12 @@
+stage: verify
+completed_at: "2026-09-26T04:25:15.827Z"
+attempt: 1
+findings:
+  backend-api:
+    blocker: 0
+    major: 4
+    minor: 7
+  frontend:
+    blocker: 0
+    major: 1
+    minor: 9

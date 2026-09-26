@@ -17,7 +17,7 @@
 
 ## 業務と UC (上流から下流へ)
 
-UC 27 件 (実装済み 1、要求待ち 4)。1 行で要求 → シナリオ → 契約 → 画面 → 実装の記録まで辿れる。
+UC 27 件 (実装済み 2、要求待ち 4)。1 行で要求 → シナリオ → 契約 → 画面 → 実装の記録まで辿れる。
 要求の列の SPEC は [要求仕様書](requirements/requirements.md) の行。
 
 | 業務 | UC | 状態 | 要求 | シナリオ | 契約 | 画面 | 実装の記録 |
@@ -47,7 +47,7 @@ UC 27 件 (実装済み 1、要求待ち 4)。1 行で要求 → シナリオ �
 |  | 貸出を登録する | 実装済み | SPEC-003-01, SPEC-005-01 | [register-loan.feature](../features/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99/register-loan.feature) (6 本) | [registerLoan / テーブル 8](../contracts/generated/slices/register-loan/contract-slice.json) | LoanRegister | [index.md](as-built/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99/%E8%B2%B8%E5%87%BA%E3%82%92%E7%99%BB%E9%8C%B2%E3%81%99%E3%82%8B/index.md) |
 |  | 貸出可否を確認する | 未着手 | SPEC-003-01 | - | - | LoanEligibilityCheck | - |
 |  | 予約待ちの書籍を確認する | 要求待ち | なし | - | - | HoldShelfList | - |
-|  | 返却を登録する | 未着手 | SPEC-003-02 | - | - | ReturnRegister | - |
+|  | 返却を登録する | 実装済み | SPEC-003-02 | [register-return.feature](../features/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99/register-return.feature) (4 本) | [registerReturn / テーブル 6](../contracts/generated/slices/register-return/contract-slice.json) | ReturnRegister | [index.md](as-built/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99/%E8%BF%94%E5%8D%B4%E3%82%92%E7%99%BB%E9%8C%B2%E3%81%99%E3%82%8B/index.md) |
 |  | 返却通知を送信する | 未着手 | SPEC-004-02 | - | - | - | - |
 
 <details>

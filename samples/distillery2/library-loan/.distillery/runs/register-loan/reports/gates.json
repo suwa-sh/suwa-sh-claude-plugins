@@ -1,11 +1,8 @@
 {
   "uc": "register-loan",
-  "started_at": "2026-09-26T02:05:43.871Z",
+  "started_at": "2026-09-26T04:19:04.317Z",
   "expect_red": null,
   "run_gates": [
-    "static",
-    "unit",
-    "contract",
     "uc-bdd",
     "acceptance"
   ],
@@ -160,39 +157,39 @@
     {
       "name": "uc-bdd",
       "status": "pass",
-      "duration_ms": 5760,
+      "duration_ms": 4904,
       "jobs": [
         {
           "name": "uc_bdd",
           "cmd": "npx cucumber-js --tags \"@uc:register-loan\" --format json:<repo>/.distillery/runs/register-loan/reports/uc-bdd.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/uc-bdd.json",
           "exit": 0,
-          "duration_ms": 5759,
-          "output_tail": "\n6 scenarios (6 passed)\n74 steps (74 passed)\n0m 4.884s (0m 4.853s executing your code)\n",
+          "duration_ms": 4904,
+          "output_tail": "\n6 scenarios (6 passed)\n74 steps (74 passed)\n0m 4.280s (0m 4.246s executing your code)\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-26T02:06:04.777Z"
+      "run_at": "2026-09-26T04:19:09.222Z"
     },
     {
       "name": "acceptance",
       "status": "pass",
-      "duration_ms": 3438,
+      "duration_ms": 2968,
       "jobs": [
         {
           "name": "acceptance_api",
           "cmd": "npx cucumber-js --tags \"@uc:register-loan and @acceptance and not @browser\" --format json:<repo>/.distillery/runs/register-loan/reports/acceptance-api.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/acceptance-api.json",
           "exit": 0,
-          "duration_ms": 3438,
-          "output_tail": "\n3 scenarios (3 passed)\n34 steps (34 passed)\n0m 2.790s (0m 2.767s executing your code)\n",
+          "duration_ms": 2967,
+          "output_tail": "\n3 scenarios (3 passed)\n34 steps (34 passed)\n0m 2.348s (0m 2.327s executing your code)\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-26T02:06:08.215Z"
+      "run_at": "2026-09-26T04:19:12.190Z"
     }
   ],
-  "finished_at": "2026-09-26T02:06:08.215Z",
+  "finished_at": "2026-09-26T04:19:12.190Z",
   "result": "pass",
   "all_recorded": true
 }

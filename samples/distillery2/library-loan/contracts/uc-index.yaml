@@ -15,3 +15,14 @@ ucs:
       - reservations
       - reservation_events
       - idempotency_keys
+  - slug: register-return
+    operations:
+      - registerReturn
+    messages: []
+    tables:
+      - loans
+      - loan_events
+      - books
+      - book_events
+      - reservations
+      - idempotency_keys

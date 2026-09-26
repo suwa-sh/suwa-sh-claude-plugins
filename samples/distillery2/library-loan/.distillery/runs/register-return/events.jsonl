@@ -1,0 +1,21 @@
+{"seq":1,"ts":"2026-09-26T03:48:13.590Z","type":"run_opened","slug":"register-return"}
+{"seq":2,"ts":"2026-09-26T03:48:17.132Z","type":"models_resolved","session":"claude-opus-5-5","implementer":"claude-opus-5-5","verifier":"opus"}
+{"seq":3,"ts":"2026-09-26T03:48:18.096Z","type":"branch_started","base_branch":"main","base_head":"f75677ff4b363c1afb894735e67de64f767a55ea","feature_branch":"feature/register-return"}
+{"seq":4,"ts":"2026-09-26T03:50:56.366Z","type":"scenario_approved","feature":"features/貸出業務/register-return.feature","feature_sha256":"65144f81de40a98646f7212c52a7817d6b7dfc1f335dd02452f917c7e7ff3937","scenarios":4,"by":"headless-auto"}
+{"seq":5,"ts":"2026-09-26T03:50:57.654Z","type":"stage_completed","stage":"scenario"}
+{"seq":6,"ts":"2026-09-26T03:56:46.808Z","type":"stage_completed","stage":"contract"}
+{"seq":7,"ts":"2026-09-26T04:01:17.622Z","type":"stage_completed","stage":"scaffold"}
+{"seq":8,"ts":"2026-09-26T04:13:37.372Z","type":"stage_completed","stage":"tier","attempt":1}
+{"seq":9,"ts":"2026-09-26T04:17:09.902Z","type":"stage_completed","stage":"contract-gate","attempt":1}
+{"seq":10,"ts":"2026-09-26T04:20:47.230Z","type":"stage_completed","stage":"integrate","attempt":1}
+{"seq":11,"ts":"2026-09-26T04:25:14.653Z","type":"models_resolved","session":"claude-opus-5-5","implementer":"claude-opus-5-5","verifier":"claude-opus-5-5"}
+{"seq":12,"ts":"2026-09-26T04:25:15.828Z","type":"stage_completed","stage":"verify","attempt":1}
+{"seq":13,"ts":"2026-09-26T04:26:12.355Z","type":"stage_completed","stage":"review","attempt":1}
+{"seq":14,"ts":"2026-09-26T04:26:25.991Z","type":"stage_invalidated","stage":"review","reason":"review_approved の記録失敗 (スクリプトが ESM 扱い) の後に done を書いたため","moved_to":"invalidated/20260926_042625_review.done.yaml"}
+{"seq":15,"ts":"2026-09-26T04:26:26.971Z","type":"review_approved","by":"headless-auto","attempt":1,"assumption_decisions":[{"tier":"backend-api","id":"A-101","decision":"auto_confirmed","required":false},{"tier":"backend-api","id":"A-102","decision":"auto_confirmed","required":false},{"tier":"backend-api","id":"A-103","decision":"auto_confirmed","required":false},{"tier":"backend-api","id":"A-104","decision":"confirmed","required":true},{"tier":"backend-api","id":"A-105","decision":"confirmed","required":true},{"tier":"backend-api","id":"A-106","decision":"confirmed","required":true},{"tier":"backend-api","id":"A-107","decision":"confirmed","required":true},{"tier":"backend-api","id":"A-108","decision":"auto_confirmed","required":false},{"tier":"backend-api","id":"A-109","decision":"auto_confirmed","required":false},{"tier":"frontend","id":"A-001","decision":"confirmed","required":true},{"tier":"frontend","id":"A-002","decision":"auto_confirmed","required":false},{"tier":"frontend","id":"A-003","decision":"auto_confirmed","required":false},{"tier":"frontend","id":"A-004","decision":"auto_confirmed","required":false},{"tier":"frontend","id":"A-005","decision":"auto_confirmed","required":false},{"tier":"frontend","id":"A-006","decision":"auto_confirmed","required":false},{"tier":"frontend","id":"A-007","decision":"auto_confirmed","required":false}],"assumption_evidence_sha256":"516eb7f8f92d0c08db6e23a424285431d0248c54de451e582ab3a11ae10fdeef","gates_result":"pass"}
+{"seq":16,"ts":"2026-09-26T04:26:30.681Z","type":"stage_completed","stage":"review","attempt":1}
+{"seq":17,"ts":"2026-09-26T04:28:17.298Z","type":"stage_completed","stage":"asbuilt"}
+{"seq":18,"ts":"2026-09-26T04:28:55.284Z","type":"feedback_filed","kind":"requirement","issue":"issues/20260926T1300_register-return-not-on-loan.md","url":null,"status":"deferred","reason":"headless run: push / PR / issue creation not allowed"}
+{"seq":19,"ts":"2026-09-26T04:28:55.313Z","type":"feedback_filed","kind":"contract","issue":"issues/20260926T1400_register-return-error-responses.md","url":null,"status":"deferred","reason":"headless run: push / PR / issue creation not allowed"}
+{"seq":20,"ts":"2026-09-26T04:28:55.341Z","type":"feedback_filed","kind":"requirement","issue":"issues/20260926T1500_register-return-story-loan-table.md","url":null,"status":"deferred","reason":"headless run: push / PR / issue creation not allowed"}
+{"seq":21,"ts":"2026-09-26T04:28:55.369Z","type":"stage_completed","stage":"feedback"}

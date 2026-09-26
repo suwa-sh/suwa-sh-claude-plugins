@@ -11,6 +11,7 @@ import type {
   RegisterLoanDecision,
   RegisterLoanOutcome,
 } from '../usecase/register-loan';
+import type { RegisterReturn } from '../usecase/register-return';
 import { createHttpApp } from './http-app';
 import { renderRegisterLoanDecision } from './register-loan-response';
 
@@ -20,9 +21,18 @@ const verifier: TokenVerifier = {
   verify: async (token) => (token === TOKEN ? { subject: 'lib-1', role: 'librarian' } : null),
 };
 
-function fakeUsecase(outcome: RegisterLoanOutcome | Error) {
+/** POST /returns を使わないテストで渡す usecase (呼ばれたら失敗させる) */
+const unusedReturn: RegisterReturn = {
+  isAllowed: () => true,
+  execute: async () => {
+    throw new Error('registerReturn は呼ばれない想定');
+  },
+};
+
+function fakeUsecase(outcome: RegisterLoanOutcome | Error, allowed = true) {
   const calls: RegisterLoanCommand[] = [];
   const usecase: RegisterLoan = {
+    isAllowed: () => allowed,
     execute: async (command) => {
       calls.push(command);
       if (outcome instanceof Error) throw outcome;
@@ -54,7 +64,11 @@ const registered = decided({ kind: 'registered', registration });
 
 function post(outcome: RegisterLoanOutcome | Error = registered) {
   const { usecase, calls } = fakeUsecase(outcome);
-  const app = createHttpApp({ registerLoan: usecase, tokenVerifier: verifier });
+  const app = createHttpApp({
+    registerLoan: usecase,
+    registerReturn: unusedReturn,
+    tokenVerifier: verifier,
+  });
   const req = request(app)
     .post('/loans')
     .set('Authorization', `Bearer ${TOKEN}`)
@@ -113,7 +127,11 @@ describe('POST /loans', () => {
   it('Idempotency-Key が無い場合、400 を返すこと', async () => {
     // Arrange
     const { usecase } = fakeUsecase(registered);
-    const app = createHttpApp({ registerLoan: usecase, tokenVerifier: verifier });
+    const app = createHttpApp({
+      registerLoan: usecase,
+      registerReturn: unusedReturn,
+      tokenVerifier: verifier,
+    });
 
     // Act
     const res = await request(app)
@@ -143,7 +161,11 @@ describe('POST /loans', () => {
   it('アクセストークンが無効な場合、401 を返すこと', async () => {
     // Arrange
     const { usecase, calls } = fakeUsecase(registered);
-    const app = createHttpApp({ registerLoan: usecase, tokenVerifier: verifier });
+    const app = createHttpApp({
+      registerLoan: usecase,
+      registerReturn: unusedReturn,
+      tokenVerifier: verifier,
+    });
 
     // Act
     const res = await request(app)
@@ -193,6 +215,28 @@ describe('POST /loans', () => {
     // Assert
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('forbidden');
+  });
+
+  it('司書以外が不正な本文で呼んだ場合、入力検証より先に 403 を返し usecase を実行しないこと', async () => {
+    // Arrange
+    const { usecase, calls } = fakeUsecase(registered, false);
+    const app = createHttpApp({
+      registerLoan: usecase,
+      registerReturn: unusedReturn,
+      tokenVerifier: verifier,
+    });
+
+    // Act
+    const res = await request(app)
+      .post('/loans')
+      .set('Authorization', `Bearer ${TOKEN}`)
+      .set('Idempotency-Key', 'key-1')
+      .send({});
+
+    // Assert
+    expect(res.status).toBe(403);
+    expect(res.body).toMatchObject({ code: 'forbidden', detail: '貸出の登録は司書だけが行えます' });
+    expect(calls).toHaveLength(0);
   });
 
   it('書籍が登録されていない場合、404 を返すこと', async () => {
@@ -264,6 +308,7 @@ describe('経路', () => {
     const { usecase } = fakeUsecase(registered);
     const app = createHttpApp({
       registerLoan: usecase,
+      registerReturn: unusedReturn,
       tokenVerifier: verifier,
       middlewares: [
         (_req, _res, next) => {

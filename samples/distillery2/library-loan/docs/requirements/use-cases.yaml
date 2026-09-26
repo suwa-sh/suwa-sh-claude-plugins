@@ -223,7 +223,7 @@ use_cases:
     tiers:
       - "backend-api"
       - "frontend"
-    status: "planned"
+    status: "done"
   - uc_id: "5cd287f8"
     business: "貸出業務"
     buc: "返却フロー"
@@ -238,6 +238,9 @@ use_cases:
     tiers_hint:
       - "frontend"
       - "backend"
+    tiers:
+      - "backend-api"
+      - "frontend"
     status: "planned"
   - uc_id: "60304959"
     business: "貸出業務"

@@ -31,6 +31,8 @@ tags:
 paths:
   /loans:
     $ref: "./paths/loans.yaml"
+  /returns:
+    $ref: "./paths/returns.yaml"
 components:
   securitySchemes:
     bearerAuth:
@@ -188,6 +190,8 @@ components:
         - book_on_loan
         - not_first_in_reservation_queue
         - patron_not_registered
+        # register-return: 未返却の貸出が無い書籍の返却 (409)
+        - no_active_loan
     FieldError:
       type: object
       required:
@@ -338,6 +342,26 @@ components:
     LoanRegistration:
       type: object
       description: "貸出の登録結果。登録した貸出と、貸出後の書籍状態を返す"
+      required:
+        - loan
+        - bookStatus
+      properties:
+        loan:
+          $ref: "#/components/schemas/Loan"
+        bookStatus:
+          $ref: "#/components/schemas/BookStatus"
+    RegisterReturnRequest:
+      type: object
+      description: "返却の登録要求。返却日はサーバーの当日の日付で決まるため要求に含めない。対象の貸出は書籍の未返却の貸出から決まる"
+      additionalProperties: false
+      required:
+        - bookId
+      properties:
+        bookId:
+          $ref: "#/components/schemas/BookId"
+    ReturnRegistration:
+      type: object
+      description: "返却の登録結果。返却済にした貸出と、返却後の書籍状態 (available または awaiting_pickup) を返す"
       required:
         - loan
         - bookStatus

@@ -1,0 +1,377 @@
+external_tables:
+  - columns:
+      - description: 利用者番号
+        name: patron_number
+        nullable: false
+        type: string
+    foreign_keys: []
+    indexes: []
+    name: patrons
+    owner_subdomain_id: patron
+    primary_key:
+      - patron_number
+    read_only: true
+schema_version: distillery2.rdb-slice/v1
+tables:
+  - columns:
+      - description: イベントID
+        name: event_id
+        nullable: false
+        type: uuid
+      - description: 対象の書籍ID
+        name: book_id
+        nullable: false
+        type: uuid
+      - description: 書籍ごとの連番 (1 始まり)
+        name: sequence
+        nullable: false
+        type: integer
+      - description: イベント種別 (登録・編集・貸出・返却・削除など。値は UC で定める)
+        name: event_type
+        nullable: false
+        type: string
+      - description: イベント内容 (JSON 文字列)
+        name: payload
+        nullable: false
+        type: text
+      - description: 操作した主体 (IdP の subject)。ジョブ起因なら null
+        name: actor_subject
+        nullable: true
+        type: string
+      - description: 発生日時
+        name: occurred_at
+        nullable: false
+        type: datetime
+    description: 書籍の追記型イベント。物理更新・物理削除しない
+    foreign_keys:
+      - columns:
+          - book_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - book_id
+          table: books
+    indexes:
+      - columns:
+          - book_id
+          - sequence
+        name: book_events_book_sequence_uq
+        unique: true
+    name: book_events
+    primary_key:
+      - event_id
+  - columns:
+      - description: 書籍ID
+        name: book_id
+        nullable: false
+        type: uuid
+      - description: タイトル
+        name: title
+        nullable: false
+        type: string
+      - description: 著者
+        name: author
+        nullable: false
+        type: string
+      - description: ISBN
+        name: isbn
+        nullable: true
+        type: string
+      - description: 出版社
+        name: publisher
+        nullable: true
+        type: string
+      - description: ジャンル
+        name: genre
+        nullable: true
+        type: string
+      - description: 媒体種別。paper=紙の書籍、ebook=電子書籍
+        enum:
+          - paper
+          - ebook
+        name: media_type
+        nullable: false
+        type: string
+      - description: 書籍状態。available=在庫あり、on_loan=貸出中、awaiting_pickup=予約待ち
+        enum:
+          - available
+          - on_loan
+          - awaiting_pickup
+        name: status
+        nullable: false
+        type: string
+      - description: 登録日
+        name: registered_on
+        nullable: false
+        type: date
+      - description: 削除日。値があれば論理削除済みで一覧と検索から除く
+        name: deleted_on
+        nullable: true
+        type: date
+      - description: スナップショットの版。book_events の最新 sequence と一致する (楽観ロック)
+        name: version
+        nullable: false
+        type: integer
+      - description: スナップショットの最終更新日時
+        name: updated_at
+        nullable: false
+        type: datetime
+    description: 書籍のスナップショット。書籍ID単位に書誌情報・媒体種別・書籍状態を持つ。削除は deleted_on による論理削除
+    indexes:
+      - columns:
+          - isbn
+        name: books_isbn_idx
+        unique: false
+      - columns:
+          - status
+        name: books_status_idx
+        unique: false
+    name: books
+    primary_key:
+      - book_id
+  - columns:
+      - description: Idempotency-Key ヘッダの値
+        name: idempotency_key
+        nullable: false
+        type: string
+      - description: 要求した主体 (IdP の subject)
+        name: principal_subject
+        nullable: false
+        type: string
+      - description: OpenAPI の operationId
+        name: operation_id
+        nullable: false
+        type: string
+      - description: 要求本文のハッシュ。同じキーで本文が異なる再送を検出する
+        name: request_hash
+        nullable: false
+        type: string
+      - description: 初回応答の HTTP ステータス
+        name: response_status
+        nullable: false
+        type: integer
+      - description: 初回応答の本文 (JSON 文字列)
+        name: response_body
+        nullable: true
+        type: text
+      - description: 記録日時
+        name: created_at
+        nullable: false
+        type: datetime
+    description: 更新系 API の Idempotency-Key と初回応答。同じキーの再送に初回と同じ応答を返す
+    name: idempotency_keys
+    primary_key:
+      - idempotency_key
+      - principal_subject
+      - operation_id
+  - columns:
+      - description: イベントID
+        name: event_id
+        nullable: false
+        type: uuid
+      - description: 対象の貸出ID
+        name: loan_id
+        nullable: false
+        type: uuid
+      - description: 貸出ごとの連番 (1 始まり)
+        name: sequence
+        nullable: false
+        type: integer
+      - description: イベント種別 (貸出・返却・延滞など。値は UC で定める)
+        name: event_type
+        nullable: false
+        type: string
+      - description: イベント内容 (JSON 文字列)
+        name: payload
+        nullable: false
+        type: text
+      - description: 操作した主体 (IdP の subject)。ジョブ起因なら null
+        name: actor_subject
+        nullable: true
+        type: string
+      - description: 発生日時
+        name: occurred_at
+        nullable: false
+        type: datetime
+    description: 貸出の追記型イベント。物理更新・物理削除しない
+    foreign_keys:
+      - columns:
+          - loan_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - loan_id
+          table: loans
+    indexes:
+      - columns:
+          - loan_id
+          - sequence
+        name: loan_events_loan_sequence_uq
+        unique: true
+    name: loan_events
+    primary_key:
+      - event_id
+  - columns:
+      - description: 貸出ID
+        name: loan_id
+        nullable: false
+        type: uuid
+      - description: 借りた利用者の利用者番号
+        name: patron_number
+        nullable: false
+        type: string
+      - description: 貸し出した書籍ID
+        name: book_id
+        nullable: false
+        type: uuid
+      - description: 予約者への貸出のとき、完了した予約の予約ID
+        name: reservation_id
+        nullable: true
+        type: uuid
+      - description: 貸出日
+        name: loaned_on
+        nullable: false
+        type: date
+      - description: 返却期限 (貸出日 + 貸出期間)
+        name: due_date
+        nullable: false
+        type: date
+      - description: 返却日。未返却なら null
+        name: returned_on
+        nullable: true
+        type: date
+      - description: 貸出状態。on_loan=貸出中、returned=返却済、overdue=延滞
+        enum:
+          - on_loan
+          - returned
+          - overdue
+        name: status
+        nullable: false
+        type: string
+      - description: スナップショットの版。loan_events の最新 sequence と一致する (楽観ロック)
+        name: version
+        nullable: false
+        type: integer
+      - description: スナップショットの最終更新日時
+        name: updated_at
+        nullable: false
+        type: datetime
+    description: 貸出のスナップショット。誰がどの書籍をいつまで借りているかと貸出状態を持つ
+    foreign_keys:
+      - columns:
+          - patron_number
+        on_delete: RESTRICT
+        references:
+          columns:
+            - patron_number
+          table: patrons
+      - columns:
+          - book_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - book_id
+          table: books
+      - columns:
+          - reservation_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - reservation_id
+          table: reservations
+    indexes:
+      - columns:
+          - patron_number
+        name: loans_patron_idx
+        unique: false
+      - columns:
+          - book_id
+        name: loans_book_idx
+        unique: false
+      - columns:
+          - status
+          - due_date
+        name: loans_status_due_idx
+        unique: false
+    name: loans
+    primary_key:
+      - loan_id
+  - columns:
+      - description: 予約ID
+        name: reservation_id
+        nullable: false
+        type: uuid
+      - description: 予約した利用者の利用者番号
+        name: patron_number
+        nullable: false
+        type: string
+      - description: 予約した書籍ID
+        name: book_id
+        nullable: false
+        type: uuid
+      - description: 受付日時
+        name: received_at
+        nullable: false
+        type: datetime
+      - description: 予約順位 (1 始まり)。完了・取消で予約順位の管理対象から外れたら null
+        name: queue_position
+        nullable: true
+        type: integer
+      - description: 予約状態。waiting=予約中、notified=通知済、completed=完了、cancelled=取消
+        enum:
+          - waiting
+          - notified
+          - completed
+          - cancelled
+        name: status
+        nullable: false
+        type: string
+      - description: 通知日時
+        name: notified_at
+        nullable: true
+        type: datetime
+      - description: 完了日時
+        name: completed_at
+        nullable: true
+        type: datetime
+      - description: 取消日時
+        name: cancelled_at
+        nullable: true
+        type: datetime
+      - description: スナップショットの版。reservation_events の最新 sequence と一致する (楽観ロック)
+        name: version
+        nullable: false
+        type: integer
+      - description: スナップショットの最終更新日時
+        name: updated_at
+        nullable: false
+        type: datetime
+    description: 予約のスナップショット。貸出中の書籍の予約を受付順の予約順位と予約状態で持つ
+    foreign_keys:
+      - columns:
+          - patron_number
+        on_delete: RESTRICT
+        references:
+          columns:
+            - patron_number
+          table: patrons
+      - columns:
+          - book_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - book_id
+          table: books
+    indexes:
+      - columns:
+          - book_id
+          - status
+        name: reservations_book_status_idx
+        unique: false
+      - columns:
+          - patron_number
+        name: reservations_patron_idx
+        unique: false
+    name: reservations
+    primary_key:
+      - reservation_id

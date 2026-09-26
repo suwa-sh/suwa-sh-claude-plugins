@@ -35,7 +35,7 @@
 
 | # | 内容 | 対応 |
 |---|---|---|
-| 1 | genQlty の提案に osv-scanner が無い。genQlty が npm install の前に走り lockfile が無かった | 0.1.14 (`--refresh` を npm install 後と integrate 前に) |
+| 1 | genQlty の提案に osv-scanner が無い。genQlty が npm install の前に走り lockfile が無かった | 0.1.14 (`--refresh` を npm install 後と integrate 前に)、再確認済み (返却 UC の integrate で追加) |
 | 2 | npm 10 の `npm install` が `Cannot read properties of null (reading 'edgesOut')` で失敗 (optional peer: vitest → browser-playwright → jsdom → canvas)。`npx npm@11 install` で lockfile を作ると npm 10 の `npm ci` は通る | 0.1.16 (TROUBLESHOOTING.md にためる。ユーザー判断: 手順には書かない) |
 | 3 | design の後に `npm install` をもう一度実行する必要があった (packages/ui が workspace に加わる) | 0.1.14 (手順に明記) |
 | 4 | ③ で契約の骨格を作った後も `docs/adr/architecture.md` (C4 図) は ② の時点のままで、契約の矢印が無い (config / CI は再生成するが C4 図は再生成していない) | 0.1.16 (③ で genArchitectureDoc も再生成) |
@@ -46,10 +46,10 @@
 | # | 内容 | 対応 |
 |---|---|---|
 | 1 | `runGates.js --uc` を `--tiers` なしで流すと、UC に関与しない worker (テスト 0 件) の unit が落ちる。d2-run が「引数なしで 1 回通す」と指示していた | 0.1.15 (`--tiers <関与ティア>` を明記) |
-| 2 | **Verifier も claude-opus-5-5 に解決された**。`models.verifier: opus` (Agent ツールの別名) が今回はセッションと同じモデルになった (transcript で確認。0.1.10 では claude-opus-4-7)。独立検証の条件を ID の上で満たさない | 0.1.16 (ユーザー判断: 同じでも進める。条件は別サブエージェント + 同等以上のモデル) |
-| 3 | 生成される契約テストが Authorization / Idempotency-Key を送らない。提供側にテスト専用のヘッダ補完を入れるしかない (0.1.10 の ④-3 と同根) | 0.1.16 (`x-test-headers` / example の `x-headers`) |
-| 4 | `genApiClient.js --check` を単体で流すと exit 1 (所有タグの有無が genContractTests の出力と食い違う) | 0.1.16 |
-| 5 | integrate 担当が計装を確かめるために `extractAsBuilt.js` を回すと `docs/as-built/` に書き、write-set の外に出る | 0.1.16 (`--dry-run`) |
+| 2 | **Verifier も claude-opus-5-5 に解決された**。`models.verifier: opus` (Agent ツールの別名) が今回はセッションと同じモデルになった (transcript で確認。0.1.10 では claude-opus-4-7)。独立検証の条件を ID の上で満たさない | 0.1.16 (ユーザー判断: 同じでも進める。条件は別サブエージェント + 同等以上のモデル)、再確認済み (止まらず ID で記録) |
+| 3 | 生成される契約テストが Authorization / Idempotency-Key を送らない。提供側にテスト専用のヘッダ補完を入れるしかない (0.1.10 の ④-3 と同根) | 0.1.16 (`x-test-headers` / example の `x-headers`)、再確認済み (提供側の補完を外して 401 が pass) |
+| 4 | `genApiClient.js --check` を単体で流すと exit 1 (所有タグの有無が genContractTests の出力と食い違う) | 0.1.16 (再実走では未確認) |
+| 5 | integrate 担当が計装を確かめるために `extractAsBuilt.js` を回すと `docs/as-built/` に書き、write-set の外に出る | 0.1.16 (`--dry-run`)、再確認済み |
 | 6 | attempt 2 の integrate で結線を変える必要が無い場合の扱いが `runState status` に無い (ゲートの再実行だけで done にした) | 未対応 (0.1.10 の ④-9 と同根) |
 | 7 | push / PR を禁止された実行で feedback 段をどう終えるかが未定義 (`status: deferred`、URL なしで記録) | 未対応 (0.1.10 の ④-8 と同根) |
 | 8 | frontend には契約テストが無く `test:contract` を直接流すと exit 1 (runGates では skipped で実害なし) | 対応不要 |

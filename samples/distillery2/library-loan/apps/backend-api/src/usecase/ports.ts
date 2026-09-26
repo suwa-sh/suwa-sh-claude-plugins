@@ -87,6 +87,36 @@ export interface LoanRepository {
   register(loan: Loan, context: EventContext): Promise<void>;
 }
 
+/** 返却を登録する UC が使う書籍の操作 */
+export interface BookReturnRepository {
+  /** 論理削除されていない書籍を、更新のためにロックして取得する */
+  findForUpdate(bookId: string): Promise<BookSnapshot | null>;
+  /** 返却後の書籍状態 (在庫あり・予約待ち) にし、書籍イベントを追記する */
+  markReturned(
+    book: BookSnapshot,
+    status: Extract<BookStatus, 'available' | 'awaiting_pickup'>,
+    loanId: string,
+    context: EventContext,
+  ): Promise<void>;
+}
+
+/** 貸出のスナップショット (契約 Loan と楽観ロックの版) */
+export type LoanSnapshot = Loan & { version: number };
+
+/** 返却を登録する UC が使う貸出の操作 */
+export interface LoanReturnRepository {
+  /** 書籍の未返却の貸出 (貸出中・延滞) を、更新のためにロックして取得する */
+  findUnreturnedByBookForUpdate(bookId: string): Promise<LoanSnapshot | null>;
+  /** 貸出を返却済にして返却日を記録し、貸出イベントを追記する */
+  markReturned(loan: LoanSnapshot, returnedOn: string, context: EventContext): Promise<void>;
+}
+
+/** 返却を登録する UC が使う予約の参照 */
+export interface WaitingReservationReader {
+  /** 書籍に予約中 (waiting) の予約があるか */
+  hasWaiting(bookId: string): Promise<boolean>;
+}
+
 /** Idempotency-Key の適用範囲 (契約 idempotency_keys の主キー) */
 export type IdempotencyScope = {
   idempotencyKey: string;

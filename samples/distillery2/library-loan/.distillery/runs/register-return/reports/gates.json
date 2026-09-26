@@ -1,0 +1,198 @@
+{
+  "uc": "register-return",
+  "started_at": "2026-09-26T04:20:07.553Z",
+  "expect_red": null,
+  "run_gates": [
+    "static",
+    "unit",
+    "contract",
+    "uc-bdd",
+    "acceptance"
+  ],
+  "gates": [
+    {
+      "name": "static",
+      "status": "pass",
+      "duration_ms": 2450,
+      "jobs": [
+        {
+          "name": "format_check",
+          "tier": "frontend",
+          "required": false,
+          "cmd": "npm run format:check -w apps/frontend",
+          "report": null,
+          "exit": 0,
+          "duration_ms": 479,
+          "output_tail": "\n> @app/frontend@0.0.0 format:check\n> biome format .\n\nChecked 18 files in 34ms. No fixes applied.\n",
+          "status": "pass"
+        },
+        {
+          "name": "lint",
+          "tier": "frontend",
+          "required": false,
+          "cmd": "npm run lint -w apps/frontend",
+          "report": null,
+          "exit": 0,
+          "duration_ms": 492,
+          "output_tail": "\n> @app/frontend@0.0.0 lint\n> biome lint .\n\nChecked 18 files in 50ms. No fixes applied.\n",
+          "status": "pass"
+        },
+        {
+          "name": "typecheck",
+          "tier": "frontend",
+          "required": false,
+          "cmd": "npm run typecheck -w apps/frontend",
+          "report": null,
+          "exit": 0,
+          "duration_ms": 2350,
+          "output_tail": "\n> @app/frontend@0.0.0 typecheck\n> tsc --noEmit -p .\n\n",
+          "status": "pass"
+        },
+        {
+          "name": "format_check",
+          "tier": "backend-api",
+          "required": false,
+          "cmd": "npm run format:check -w apps/backend-api",
+          "report": null,
+          "exit": 0,
+          "duration_ms": 476,
+          "output_tail": "\n> @app/backend-api@0.0.0 format:check\n> biome format .\n\nChecked 41 files in 34ms. No fixes applied.\n",
+          "status": "pass"
+        },
+        {
+          "name": "lint",
+          "tier": "backend-api",
+          "required": false,
+          "cmd": "npm run lint -w apps/backend-api",
+          "report": null,
+          "exit": 0,
+          "duration_ms": 490,
+          "output_tail": "\n> @app/backend-api@0.0.0 lint\n> biome lint .\n\nChecked 41 files in 54ms. No fixes applied.\n",
+          "status": "pass"
+        },
+        {
+          "name": "typecheck",
+          "tier": "backend-api",
+          "required": false,
+          "cmd": "npm run typecheck -w apps/backend-api",
+          "report": null,
+          "exit": 0,
+          "duration_ms": 1979,
+          "output_tail": "\n> @app/backend-api@0.0.0 typecheck\n> tsc --noEmit -p .\n\n",
+          "status": "pass"
+        },
+        {
+          "name": "arch_test",
+          "cmd": "npx depcruise --config .dependency-cruiser.cjs --output-type err apps packages",
+          "exit": 0,
+          "duration_ms": 1723,
+          "output_tail": "\n  warn no-orphans: packages/contracts/library-db/tables.ts\n  warn no-orphans: apps/worker/src/test-app.ts\n  warn no-orphans: apps/worker/src/index.ts\n\nx 3 dependency violations (0 errors, 3 warnings). 173 modules, 627 dependencies cruised.\n\n",
+          "status": "pass"
+        },
+        {
+          "name": "quality",
+          "cmd": "qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium",
+          "exit": 0,
+          "duration_ms": 2443,
+          "output_tail": "\n ISSUES: 3 \n\nfeatures/support/drivers/browser.ts:6:6\n    6:6  note    * 有効化するときは下記 TODO を実装する。                          ripgrep:TODO\n  13:13  note    // TODO(browser opt-in): capabilities.browser を有効にするとき、  ripgrep:TODO\n  26:26  note    // TODO: await this.browser?.close();                             ripgrep:TODO\n\n✖ 3 issues\n",
+          "status": "pass"
+        }
+      ],
+      "run_at": "2026-09-26T04:20:10.003Z"
+    },
+    {
+      "name": "unit",
+      "status": "pass",
+      "duration_ms": 8396,
+      "jobs": [
+        {
+          "name": "unit",
+          "tier": "frontend",
+          "required": true,
+          "cmd": "npm run test -w apps/frontend -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-return/reports/unit.frontend.json",
+          "report": "<repo>/.distillery/runs/register-return/reports/unit.frontend.json",
+          "exit": 0,
+          "duration_ms": 1853,
+          "output_tail": "\n> @app/frontend@0.0.0 test\n> vitest run --run --reporter=json --outputFile=<repo>/.distillery/runs/register-return/reports/unit.frontend.json\n\n\u001b[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.\u001b[39m The following esbuild options were set: `{ jsx: 'automatic' }`\nJSON report written to <repo>/.distillery/runs/register-return/reports/unit.frontend.json\n",
+          "status": "pass"
+        },
+        {
+          "name": "unit",
+          "tier": "backend-api",
+          "required": true,
+          "cmd": "npm run test -w apps/backend-api -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-return/reports/unit.backend-api.json",
+          "report": "<repo>/.distillery/runs/register-return/reports/unit.backend-api.json",
+          "exit": 0,
+          "duration_ms": 8395,
+          "output_tail": "\n> @app/backend-api@0.0.0 test\n> vitest run --run --reporter=json --outputFile=<repo>/.distillery/runs/register-return/reports/unit.backend-api.json\n\nJSON report written to <repo>/.distillery/runs/register-return/reports/unit.backend-api.json\n",
+          "status": "pass"
+        }
+      ],
+      "run_at": "2026-09-26T04:20:18.399Z"
+    },
+    {
+      "name": "contract",
+      "status": "pass",
+      "duration_ms": 6570,
+      "jobs": [
+        {
+          "name": "contract",
+          "tier": "frontend",
+          "required": false,
+          "skipped": true,
+          "reason": "not a provider",
+          "status": "skipped"
+        },
+        {
+          "name": "contract",
+          "tier": "backend-api",
+          "required": true,
+          "cmd": "npm run test:contract -w apps/backend-api -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-return/reports/contract.backend-api.json",
+          "report": "<repo>/.distillery/runs/register-return/reports/contract.backend-api.json",
+          "exit": 0,
+          "duration_ms": 6569,
+          "output_tail": "\n> @app/backend-api@0.0.0 test:contract\n> vitest run -c vitest.contract.config.ts --run --reporter=json --outputFile=<repo>/.distillery/runs/register-return/reports/contract.backend-api.json\n\nJSON report written to <repo>/.distillery/runs/register-return/reports/contract.backend-api.json\n",
+          "status": "pass"
+        }
+      ],
+      "run_at": "2026-09-26T04:20:24.969Z"
+    },
+    {
+      "name": "uc-bdd",
+      "status": "pass",
+      "duration_ms": 3857,
+      "jobs": [
+        {
+          "name": "uc_bdd",
+          "cmd": "npx cucumber-js --tags \"@uc:register-return\" --format json:<repo>/.distillery/runs/register-return/reports/uc-bdd.json",
+          "report": "<repo>/.distillery/runs/register-return/reports/uc-bdd.json",
+          "exit": 0,
+          "duration_ms": 3857,
+          "output_tail": "\n4 scenarios (4 passed)\n46 steps (46 passed)\n0m 3.32s (0m 3.10s executing your code)\n",
+          "status": "pass"
+        }
+      ],
+      "run_at": "2026-09-26T04:20:28.826Z"
+    },
+    {
+      "name": "acceptance",
+      "status": "pass",
+      "duration_ms": 2207,
+      "jobs": [
+        {
+          "name": "acceptance_api",
+          "cmd": "npx cucumber-js --tags \"@uc:register-return and @acceptance and not @browser\" --format json:<repo>/.distillery/runs/register-return/reports/acceptance-api.json",
+          "report": "<repo>/.distillery/runs/register-return/reports/acceptance-api.json",
+          "exit": 0,
+          "duration_ms": 2207,
+          "output_tail": "\n2 scenarios (2 passed)\n24 steps (24 passed)\n0m 1.600s (0m 1.582s executing your code)\n",
+          "status": "pass"
+        }
+      ],
+      "run_at": "2026-09-26T04:20:31.033Z"
+    }
+  ],
+  "finished_at": "2026-09-26T04:20:31.033Z",
+  "result": "pass",
+  "all_recorded": true
+}

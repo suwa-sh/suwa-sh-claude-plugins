@@ -1,0 +1,6 @@
+{
+  "code": "forbidden",
+  "status": 403,
+  "title": "この操作を行う権限がありません",
+  "type": "https://library.example/problems/forbidden"
+}

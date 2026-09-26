@@ -5,10 +5,14 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { operations } from '../../../../packages/contracts/library-api/server';
 import type { Problem } from '../../../../packages/contracts/library-api/types';
+import type { RecordedResponse } from '../usecase/idempotent-command';
 import type { Principal, TokenVerifier } from '../usecase/ports';
-import type { RecordedResponse, RegisterLoan, RegisterLoanOutcome } from '../usecase/register-loan';
+import type { RegisterLoan } from '../usecase/register-loan';
+import type { RegisterReturn } from '../usecase/register-return';
 import { problem } from './problem';
-import { validateIdempotencyKey, validateRegisterLoanRequest } from './register-loan-request';
+import { validateRegisterLoanRequest } from './register-loan-request';
+import { validateRegisterReturnRequest } from './register-return-request';
+import { type Validated, validateIdempotencyKey } from './request-validation';
 
 export type RequestListener = (req: IncomingMessage, res: ServerResponse) => void;
 /** 計装などを差し込むためのミドルウェア (express 互換の (req, res, next)) */
@@ -16,6 +20,7 @@ export type Middleware = (req: IncomingMessage, res: ServerResponse, next: () =>
 
 export type HttpAppDeps = {
   registerLoan: RegisterLoan;
+  registerReturn: RegisterReturn;
   tokenVerifier: TokenVerifier;
   middlewares?: Middleware[];
   onError?: (error: unknown) => void;
@@ -71,14 +76,41 @@ function sendRecorded(res: ServerResponse, response: RecordedResponse): void {
   res.end(response.body);
 }
 
-function toResponse(res: ServerResponse, outcome: RegisterLoanOutcome): void {
+/** 更新系 API の usecase の結果 (貸出・返却で共通の形) */
+type CommandOutcome =
+  | { kind: 'decided' | 'replayed'; response: RecordedResponse }
+  | { kind: 'forbidden' }
+  | { kind: 'idempotency_key_conflict'; idempotencyKey: string };
+
+type CommandUsecase<R> = {
+  isAllowed(principal: Principal): boolean;
+  execute(command: {
+    principal: Principal;
+    idempotencyKey: string;
+    request: R;
+  }): Promise<CommandOutcome>;
+};
+
+/** 更新系 API 1 本分の入口 (入力検証と usecase の組) */
+type CommandRoute<R> = {
+  usecase: CommandUsecase<R>;
+  validate(body: unknown): Validated<R>;
+  /** 403 の detail */
+  forbiddenDetail: string;
+};
+
+function sendForbidden(res: ServerResponse, detail: string): void {
+  sendProblem(res, problem('forbidden', { detail }));
+}
+
+function toResponse(res: ServerResponse, outcome: CommandOutcome, forbiddenDetail: string): void {
   switch (outcome.kind) {
     case 'decided':
     case 'replayed':
       sendRecorded(res, outcome.response);
       return;
     case 'forbidden':
-      sendProblem(res, problem('forbidden', { detail: '貸出の登録は司書だけが行えます' }));
+      sendForbidden(res, forbiddenDetail);
       return;
     case 'idempotency_key_conflict':
       sendProblem(
@@ -91,18 +123,26 @@ function toResponse(res: ServerResponse, outcome: RegisterLoanOutcome): void {
   }
 }
 
-async function handleRegisterLoan(
+/**
+ * 判定の順序は 401 (認証) → 403 (ロール) → 400 (入力検証) → 404 / 409 (業務条件) とする
+ * (契約 registerReturn の description。registerLoan にも同じ順序を当てる: AssumptionRecord A-106)
+ */
+async function handleCommand<R>(
   req: IncomingMessage,
   res: ServerResponse,
-  deps: HttpAppDeps,
+  tokenVerifier: TokenVerifier,
+  route: CommandRoute<R>,
 ): Promise<void> {
-  // 認証 (401) を本文・Idempotency-Key の入力検証 (400) より先に判定する (AssumptionRecord A-012)
-  const principal = await authenticate(req, deps.tokenVerifier);
+  const principal = await authenticate(req, tokenVerifier);
   if (!principal) {
     sendProblem(
       res,
       problem('unauthorized', { detail: '有効なアクセストークンを指定してください' }),
     );
+    return;
+  }
+  if (!route.usecase.isAllowed(principal)) {
+    sendForbidden(res, route.forbiddenDetail);
     return;
   }
   let body: unknown;
@@ -120,7 +160,7 @@ async function handleRegisterLoan(
     }
     throw error;
   }
-  const request = validateRegisterLoanRequest(body);
+  const request = route.validate(body);
   const idempotencyKey = validateIdempotencyKey(req.headers['idempotency-key']);
   const errors = [
     ...(request.ok ? [] : request.errors),
@@ -130,19 +170,31 @@ async function handleRegisterLoan(
     sendProblem(res, problem('validation_error', { errors }));
     return;
   }
-  const outcome = await deps.registerLoan.execute({
+  const outcome = await route.usecase.execute({
     principal,
     idempotencyKey: idempotencyKey.value,
     request: request.value,
   });
-  toResponse(res, outcome);
+  toResponse(res, outcome, route.forbiddenDetail);
 }
 
 async function route(req: IncomingMessage, res: ServerResponse, deps: HttpAppDeps): Promise<void> {
   const path = (req.url ?? '/').split('?')[0];
-  const { registerLoan } = operations;
+  const { registerLoan, registerReturn } = operations;
   if (req.method === registerLoan.method && path === registerLoan.path) {
-    await handleRegisterLoan(req, res, deps);
+    await handleCommand(req, res, deps.tokenVerifier, {
+      usecase: deps.registerLoan,
+      validate: validateRegisterLoanRequest,
+      forbiddenDetail: '貸出の登録は司書だけが行えます',
+    });
+    return;
+  }
+  if (req.method === registerReturn.method && path === registerReturn.path) {
+    await handleCommand(req, res, deps.tokenVerifier, {
+      usecase: deps.registerReturn,
+      validate: validateRegisterReturnRequest,
+      forbiddenDetail: '返却の登録は司書だけが行えます',
+    });
     return;
   }
   sendProblem(res, problem('not_found', { detail: `${req.method} ${path} は提供していません` }));

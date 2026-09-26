@@ -1,0 +1,9 @@
+stage: tier
+completed_at: "2026-09-26T04:13:37.371Z"
+attempt: 1
+tiers:
+  - backend-api
+  - frontend
+assumptions:
+  backend-api: 9
+  frontend: 7

@@ -1,0 +1,183 @@
+schema_version: "2.1"
+uc: "register-return"
+tier: "frontend"
+attempt: 1
+verified_at: "2026-09-26T13:30:00+09:00"
+gates_read:
+  static: pass
+  unit: pass
+  contract: pass
+  uc-bdd: pass
+  acceptance: pass
+viewpoints_checked:
+  uc_intent:
+    status: done
+    note: "uc-bdd 4/4 pass (46 steps passed、pending/skipped なし)、acceptance 2/2 pass。@acceptance:SPEC-003-02-1 / -2 が SPEC-003-02 の受入基準 2 件を覆う。4 トレースすべてで 返却受付画面.submit (frontend/screen) → http.out /returns (frontend/api-client) → http.in /returns (backend-api) の経路を確認。API 呼び出しは生成クライアント registerReturn 経由で fetch 直書きなし。frontend の contract ゲートは consumer のため skipped (not a provider)。画面は story の部品 (PageHeader/Card/Input/Button/Alert/BookStatusBadge) だけを使う。story との乖離は issues/20260926T1500 で変更要求済み"
+  assumption_conformance:
+    status: done
+assumptions_sha256: "dba52c7b97a8bb8c568465f9f940f9a702be2be1a08dba117fc5255904038496"
+assumption_verdicts:
+  - id: A-001
+    tier: frontend
+    assumption: "Idempotency-Key は UUID v4 (crypto.randomUUID) とする。返却受付画面では、結果が不確かな失敗 (通信できない・契約外の応答) の後は同じキーで再送し、結果が確定した応答 (201 返却済み、Problem で返却できない) の後と、書籍IDの入力が変わったときは新しいキーに替える。入口関数 submitReturnCheckout はキー省略時に呼び出しごとに新しいキーを作る"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:128"
+    category: persistence
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-001
+    evidence: "contract-slice.json#components.parameters.IdempotencyKey は required・1〜128 文字・同じキーの再送で初回と同じ応答、とだけ定める。キー形式と同じキーを使う操作の範囲は契約・common.md ADR 0005・feature に無い"
+  - id: A-002
+    tier: frontend
+    assumption: "registerReturn の応答が 201 以外で、本文が Problem 形式 (code と title を持つ) なら返却できない旨と title を表示し、Problem 形式でなければ status を保持した failed として固定の再試行を促す文言を表示する"
+    target: "apps/frontend/src/screens/return-checkout/submit-return-checkout.ts:66"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-002
+    evidence: "contract-slice.json#paths./returns.post.responses は 201/400/401/403/404/409 だけを定義。5xx や非 Problem 応答の画面の扱いは契約・feature・tier-frontend.md に無い"
+  - id: A-003
+    tier: frontend
+    assumption: "registerReturn の 201 応答で loan.returnedOn が null の場合は、返却済みと表示せず、契約外の応答として再試行を促す failed を返す"
+    target: "apps/frontend/src/screens/return-checkout/submit-return-checkout.ts:59"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-003
+    evidence: "contract-slice.json#components.schemas.Loan.returnedOn は string|null (未返却なら null)。201 の description『貸出を返却済にし』と examples は返却日を入れるが、null を受けたときのクライアントの扱いは契約に無い。契約と矛盾はしない"
+  - id: A-004
+    tier: frontend
+    assumption: "fetch 自体が例外を投げた (通信できない) 場合、画面は status 0 の failed として通信状態の確認と再試行を促す文言を表示し、同じ Idempotency-Key で再送できる状態に戻す"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:142"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-004
+    evidence: "feature の 4 シナリオと contract-slice に通信失敗の振る舞いは無い。story ReturnRegister の Error variant は固定文言 1 つだけで通信失敗を区別しない"
+  - id: A-005
+    tier: frontend
+    assumption: "返却受付画面の Default は書籍IDの入力欄と登録ボタンだけを出し、story の「この書籍の貸出」(LoanTable) は出さない。返却後の Alert は書籍名の代わりに「書籍ID {bookId} の書籍は」と書籍IDで示す"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:81"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-005
+    evidence: "packages/ui/stories/ReturnRegister.stories.tsx は Default に Card『この書籍の貸出』+LoanTable、結果 Alert に loan.bookTitle を出す。一方 contract-slice の operation は POST /returns だけで、ReturnRegistration.loan (Loan) に書籍名・利用者氏名が無い。story と契約が両立しない。tier-frontend.md『乖離が必要なら実装で曲げず issues → 還流で変更要求する』に従い issues/20260926T1500_register-return-story-loan-table.md で起票済み。暫定表示の是非は人レビュー (案 1〜3) で決まる"
+  - id: A-006
+    tier: frontend
+    assumption: "返却できなかったときの Alert 本文は、story の固定文言 (この書籍IDの貸出が見つかりません…) ではなく応答 Problem の title をそのまま表示する"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:96"
+    category: data_format
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-006
+    evidence: "feature『返却できない旨が表示され返却は記録されない』は文言を定めない。contract-slice.json#components.schemas.Problem.title は『利用者に表示できる文言』。tier-frontend.md は構造的整合 (部品在庫・画面状態) までを担保範囲とし文言は含めない。構造 (Alert destructive + title『返却を登録できませんでした』) は story と一致"
+  - id: V-001
+    tier: frontend
+    assumption: "201 応答の bookStatus が awaiting_pickup 以外 (契約上ありえない on_loan を含む) なら、success の『返却を登録しました』Alert を出す"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:78"
+    category: null
+    verified_category: error_handling
+    verdict: unlisted
+    finding_id: F-008
+    evidence: "contract-slice.json#components.schemas.ReturnRegistration の description は返却後の書籍状態を available または awaiting_pickup とするが、schema は BookStatus enum (on_loan を含む)。A-003 では returnedOn null を契約外として failed に倒したのに、bookStatus=on_loan は成功表示にする判断が前提ファイルに無い"
+  - id: A-007
+    tier: frontend
+    assumption: "返却受付画面は入力された書籍IDを加工 (trim 等) も事前検証もせずにそのまま送り、形式違反・空欄の判定は backend の 400 (validation_error) に委ねる"
+    target: "apps/frontend/src/screens/return-checkout/submit-return-checkout.ts:47"
+    category: input_validation
+    verified_category: input_validation
+    verdict: spec_absent
+    finding_id: F-007
+    evidence: "contract-slice.json#components.schemas.RegisterReturnRequest.bookId は必須の uuid。画面での事前検証・正規化の要否は feature・tier-frontend.md・story に無い。400 の Problem.errors (項目別) は画面に出さず title だけ出る"
+assumption_verdicts_summary: {consistent: 0, spec_absent: 7, contradicts: 0, unlisted: 1}
+findings:
+  - id: F-001
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-001
+    severity: major
+    title: "再送判定キーの切替規則は仕様に無い"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:128"
+    claim: "Idempotency-Key の形式 (UUID v4) と、同じキーを使い続ける範囲 (不確かな失敗後は再利用、確定応答後・書籍ID変更時は更新) を実装者が決めた。persistence のため人レビューで回答が要る"
+    evidence: "contract-slice.json#components.parameters.IdempotencyKey; docs/rules/common.md ADR 0005『同じキーの再送で副作用を重複させない』は範囲を定めない。apps/frontend/src/screens/shared/idempotency-key.ts:14 nextIdempotencyKey"
+  - id: F-002
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-002
+    severity: minor
+    title: "契約外応答の表示方法は仕様に無い"
+    target: "apps/frontend/src/screens/return-checkout/submit-return-checkout.ts:66"
+    claim: "201 以外の応答を Problem 形式かどうかで rejected / failed に分ける判断は契約に根拠が無い"
+    evidence: "contract-slice.json#paths./returns.post.responses は 201/400/401/403/404/409 のみ。unit.frontend.json『契約に無い応答が返った場合、再試行を促す失敗を表示すること』passed"
+  - id: F-003
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-003
+    severity: minor
+    title: "201 の返却日 null の扱いは仕様に無い"
+    target: "apps/frontend/src/screens/return-checkout/submit-return-checkout.ts:59"
+    claim: "201 で loan.returnedOn が null のとき failed にする判断は契約に明示が無いが、201 の意味 (返却済にした) と矛盾しない"
+    evidence: "contract-slice.json#components.schemas.Loan.returnedOn (string|null、未返却なら null); paths./returns.post.responses.201.description"
+  - id: F-004
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-004
+    severity: minor
+    title: "通信失敗時の表示と再送は仕様に無い"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:142"
+    claim: "通信例外を status 0 の failed とし、専用文言と同じキーでの再送可能状態にする判断は仕様に根拠が無い"
+    evidence: "features/貸出業務/register-return.feature に通信失敗のシナリオ無し; packages/ui/stories/ReturnRegister.stories.tsx の Error は固定文言 1 つ"
+  - id: F-005
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-005
+    severity: minor
+    title: "story の貸出表と書籍名を暫定で省略"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:81"
+    claim: "story の Default の LoanTable と結果 Alert の書籍名を出さず、書籍IDで示す。契約にデータが無いため story と契約が両立せず、issue で還流中の暫定表示である"
+    evidence: "packages/ui/stories/ReturnRegister.stories.tsx (Default の Card『この書籍の貸出』、Alert の「{loan.bookTitle}」); contract-slice.json#components.schemas.ReturnRegistration / Loan に書籍名なし; .distillery/runs/register-return/issues/20260926T1500_register-return-story-loan-table.md (推奨案 1 は story 側の変更)。人レビューで案が決まるまで as-built の課題として残す"
+  - id: F-006
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-006
+    severity: minor
+    title: "返却不可の本文は Problem の title"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:96"
+    claim: "返却できない理由として story の固定文言ではなく Problem.title を出す判断は、feature に文言の定めが無く、契約の title 定義 (利用者に表示できる文言) と矛盾しない"
+    evidence: "contract-slice.json#components.schemas.Problem.title; 409 example title『この書籍には返却できる貸出がありません』; docs/rules/tier-frontend.md『担保するのは構造的整合 (部品在庫・画面状態) まで』"
+  - id: F-007
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-007
+    severity: minor
+    title: "書籍IDの事前検証をしない判断"
+    target: "apps/frontend/src/screens/return-checkout/submit-return-checkout.ts:47"
+    claim: "書籍IDを画面で検証・正規化せず 400 に委ねる判断は仕様に根拠が無い。400 の項目別エラー (errors) は表示されない"
+    evidence: "contract-slice.json#components.schemas.RegisterReturnRequest (bookId 必須・uuid); 400 example の errors[{field: bookId}]"
+  - id: F-008
+    viewpoint: assumption_conformance
+    kind: unlisted
+    assumption_id: V-001
+    severity: minor
+    title: "201 の bookStatus 想定外値を成功表示"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:78"
+    claim: "201 の bookStatus が awaiting_pickup 以外なら一律に success Alert を出す。契約上ありえない on_loan の扱いを黙って決めており、前提ファイルに無い"
+    evidence: "contract-slice.json#components.schemas.ReturnRegistration.description (available または awaiting_pickup) と BookStatus enum (on_loan を含む); A-003 は同種の契約外 201 を failed に倒しており扱いが揃っていない"
+  - id: F-009
+    viewpoint: assumption_conformance
+    kind: category_mismatch
+    assumption_id: A-006
+    severity: minor
+    title: "A-006 の分類は error_handling"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:96"
+    claim: "返却できなかったときに何を表示するかは失敗時の振る舞いであり、data_format ではなく error_handling に当たる"
+    evidence: "d2-implement/references/assumption-record.md カテゴリ表: error_handling = 失敗時の振る舞い、data_format = 時刻精度・シリアライズ形式・ID 形式"
+  - id: F-010
+    viewpoint: uc_intent
+    kind: test_gap
+    severity: minor
+    title: "画面の状態遷移に単体テストが無い"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:118"
+    claim: "ReturnRegisterScreen (状態を持つ画面) の再送キー切替 (A-001) と通信例外時の failed (A-004) を確かめる単体テストが無い。UC BDD は入口関数 submitReturnCheckout を直接呼ぶため、この画面の処理を通らない"
+    evidence: "reports/unit.frontend.json の返却関連 11 件は submitReturnCheckout 7 件と ReturnRegisterView 4 件だけ; features/step_definitions/register-return.steps.ts:33 は submitReturnCheckout を tracedFn で包んで呼ぶ"
+summary: {blocker: 0, major: 1, minor: 9}

@@ -65,7 +65,7 @@ const decorate: Decorate = (name, obj, layer) => traced(name, obj, { tier: BACKE
  * createTestApp に渡す計装済みの options。
  * - database: 前提データを入れた DB (計装はここで被せる。前提データの投入と結果の確認は計装しない素の DB で行う)
  * - clock: シナリオの「今日」
- * 認証ヘッダと Idempotency-Key は画面 (submitLoanCheckout) が契約どおりに送るので、既定ヘッダの補完は切る。
+ * 認証ヘッダと Idempotency-Key は createTestApp が補わない。画面の入口関数 (submitLoanCheckout 等) が契約どおりに送る。
  */
 export function tracedTestAppOptions(slug: string, database: SqlDatabase, clock: Clock): TestAppOptions {
   const scenarioMiddleware = expressScenarioMiddleware({
@@ -75,7 +75,6 @@ export function tracedTestAppOptions(slug: string, database: SqlDatabase, clock:
   return {
     database: traceDatabase(database),
     seedContractExamples: false,
-    defaultHeaders: false,
     clock,
     decorate,
     middlewares: [scenarioMiddleware],

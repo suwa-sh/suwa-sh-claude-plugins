@@ -12,7 +12,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 1135959
+              "duration": 2715042
             },
             "keyword": "Before",
             "hidden": true
@@ -20,7 +20,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 148250
+              "duration": 168625
             },
             "arguments": [],
             "keyword": "前提",
@@ -33,7 +33,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 126333
+              "duration": 41499
             },
             "arguments": [],
             "keyword": "かつ",
@@ -46,7 +46,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 1244568416
+              "duration": 1002034583
             },
             "arguments": [],
             "keyword": "かつ",
@@ -59,7 +59,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 1072374
+              "duration": 1030833
             },
             "arguments": [],
             "keyword": "前提",
@@ -72,7 +72,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 34952667
+              "duration": 30644250
             },
             "arguments": [],
             "keyword": "もし",
@@ -85,7 +85,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 1167333
+              "duration": 1175874
             },
             "arguments": [],
             "keyword": "ならば",
@@ -98,7 +98,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 558291
+              "duration": 546749
             },
             "arguments": [],
             "keyword": "かつ",
@@ -111,7 +111,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 369834
+              "duration": 380916
             },
             "arguments": [],
             "keyword": "かつ",
@@ -124,7 +124,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 1327332
+              "duration": 1161833
             },
             "keyword": "After",
             "hidden": true
@@ -132,7 +132,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 95666
+              "duration": 108167
             },
             "keyword": "After",
             "hidden": true
@@ -164,7 +164,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 472916
+              "duration": 419958
             },
             "keyword": "Before",
             "hidden": true
@@ -172,7 +172,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 247375
+              "duration": 138500
             },
             "arguments": [],
             "keyword": "前提",
@@ -185,7 +185,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 46124
+              "duration": 26917
             },
             "arguments": [],
             "keyword": "かつ",
@@ -198,7 +198,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 689755249
+              "duration": 619609708
             },
             "arguments": [],
             "keyword": "かつ",
@@ -211,7 +211,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 669458
+              "duration": 652708
             },
             "arguments": [],
             "keyword": "前提",
@@ -224,7 +224,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 19496291
+              "duration": 15837833
             },
             "arguments": [],
             "keyword": "もし",
@@ -237,7 +237,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 713958
+              "duration": 775125
             },
             "arguments": [],
             "keyword": "ならば",
@@ -250,7 +250,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 403999
+              "duration": 442042
             },
             "arguments": [],
             "keyword": "かつ",
@@ -263,7 +263,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 869916
+              "duration": 850374
             },
             "keyword": "After",
             "hidden": true
@@ -271,7 +271,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 47875
+              "duration": 44332
             },
             "keyword": "After",
             "hidden": true
@@ -303,7 +303,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 358041
+              "duration": 368332
             },
             "keyword": "Before",
             "hidden": true
@@ -311,7 +311,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 47666
+              "duration": 45624
             },
             "arguments": [],
             "keyword": "前提",
@@ -324,7 +324,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 17749
+              "duration": 17792
             },
             "arguments": [],
             "keyword": "かつ",
@@ -337,7 +337,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 713301166
+              "duration": 620000583
             },
             "arguments": [],
             "keyword": "かつ",
@@ -350,7 +350,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 397042
+              "duration": 656082
             },
             "arguments": [],
             "keyword": "前提",
@@ -363,7 +363,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 994541
+              "duration": 1197333
             },
             "arguments": [],
             "keyword": "かつ",
@@ -376,7 +376,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 16307500
+              "duration": 14705207
             },
             "arguments": [],
             "keyword": "もし",
@@ -389,7 +389,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 512875
+              "duration": 539959
             },
             "arguments": [],
             "keyword": "ならば",
@@ -402,7 +402,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 382333
+              "duration": 405374
             },
             "arguments": [],
             "keyword": "かつ",
@@ -415,7 +415,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 340125
+              "duration": 353667
             },
             "arguments": [],
             "keyword": "かつ",
@@ -428,7 +428,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 250000
+              "duration": 223833
             },
             "arguments": [],
             "keyword": "かつ",
@@ -441,7 +441,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 768333
+              "duration": 881167
             },
             "keyword": "After",
             "hidden": true
@@ -449,7 +449,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 70375
+              "duration": 57625
             },
             "keyword": "After",
             "hidden": true
@@ -481,7 +481,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 667292
+              "duration": 618000
             },
             "keyword": "Before",
             "hidden": true
@@ -489,7 +489,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 47082
+              "duration": 57832
             },
             "arguments": [],
             "keyword": "前提",
@@ -502,7 +502,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 16167
+              "duration": 29749
             },
             "arguments": [],
             "keyword": "かつ",
@@ -515,7 +515,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 711850084
+              "duration": 626392917
             },
             "arguments": [],
             "keyword": "かつ",
@@ -528,7 +528,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 345041
+              "duration": 365667
             },
             "arguments": [],
             "keyword": "前提",
@@ -541,7 +541,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 453334
+              "duration": 462499
             },
             "arguments": [],
             "keyword": "かつ",
@@ -554,7 +554,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 614084
+              "duration": 616208
             },
             "arguments": [],
             "keyword": "かつ",
@@ -567,7 +567,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 370499
+              "duration": 366999
             },
             "arguments": [],
             "keyword": "かつ",
@@ -580,7 +580,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 19530708
+              "duration": 18702084
             },
             "arguments": [],
             "keyword": "もし",
@@ -593,7 +593,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 837333
+              "duration": 813417
             },
             "arguments": [],
             "keyword": "ならば",
@@ -606,7 +606,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 257250
+              "duration": 241625
             },
             "arguments": [],
             "keyword": "かつ",
@@ -619,7 +619,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 630541
+              "duration": 564041
             },
             "arguments": [],
             "keyword": "かつ",
@@ -632,7 +632,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 583249
+              "duration": 248541
             },
             "arguments": [],
             "keyword": "かつ",
@@ -645,7 +645,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 1097125
+              "duration": 874291
             },
             "keyword": "After",
             "hidden": true
@@ -653,7 +653,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 77083
+              "duration": 38833
             },
             "keyword": "After",
             "hidden": true
@@ -677,7 +677,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 782583
+              "duration": 353333
             },
             "keyword": "Before",
             "hidden": true
@@ -685,7 +685,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 81584
+              "duration": 36915
             },
             "arguments": [],
             "keyword": "前提",
@@ -698,7 +698,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 17334
+              "duration": 15000
             },
             "arguments": [],
             "keyword": "かつ",
@@ -711,7 +711,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 654727417
+              "duration": 616485041
             },
             "arguments": [],
             "keyword": "かつ",
@@ -724,7 +724,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 330708
+              "duration": 310583
             },
             "arguments": [],
             "keyword": "前提",
@@ -737,7 +737,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 407916
+              "duration": 387624
             },
             "arguments": [],
             "keyword": "かつ",
@@ -750,7 +750,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 1184583
+              "duration": 560333
             },
             "arguments": [],
             "keyword": "かつ",
@@ -763,7 +763,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 20068832
+              "duration": 14778542
             },
             "arguments": [],
             "keyword": "もし",
@@ -776,7 +776,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 1159375
+              "duration": 464207
             },
             "arguments": [],
             "keyword": "ならば",
@@ -789,7 +789,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 680500
+              "duration": 335666
             },
             "arguments": [],
             "keyword": "かつ",
@@ -802,7 +802,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 482042
+              "duration": 250084
             },
             "arguments": [],
             "keyword": "かつ",
@@ -815,7 +815,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 711207
+              "duration": 448750
             },
             "arguments": [],
             "keyword": "かつ",
@@ -828,7 +828,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 4638792
+              "duration": 805832
             },
             "keyword": "After",
             "hidden": true
@@ -836,7 +836,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 117709
+              "duration": 51541
             },
             "keyword": "After",
             "hidden": true
@@ -860,7 +860,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 630709
+              "duration": 358541
             },
             "keyword": "Before",
             "hidden": true
@@ -868,7 +868,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 76332
+              "duration": 48124
             },
             "arguments": [],
             "keyword": "前提",
@@ -881,7 +881,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 19624
+              "duration": 18999
             },
             "arguments": [],
             "keyword": "かつ",
@@ -894,7 +894,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 679927666
+              "duration": 625044500
             },
             "arguments": [],
             "keyword": "かつ",
@@ -907,7 +907,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 498749
+              "duration": 470083
             },
             "arguments": [],
             "keyword": "前提",
@@ -920,7 +920,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 589750
+              "duration": 552415
             },
             "arguments": [],
             "keyword": "かつ",
@@ -933,7 +933,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 15526208
+              "duration": 14786124
             },
             "arguments": [],
             "keyword": "もし",
@@ -946,7 +946,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 477709
+              "duration": 495832
             },
             "arguments": [],
             "keyword": "ならば",
@@ -959,7 +959,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 322083
+              "duration": 355083
             },
             "arguments": [],
             "keyword": "かつ",
@@ -972,7 +972,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 857415
+              "duration": 876124
             },
             "keyword": "After",
             "hidden": true
@@ -980,7 +980,7 @@
           {
             "result": {
               "status": "passed",
-              "duration": 39250
+              "duration": 41916
             },
             "keyword": "After",
             "hidden": true
