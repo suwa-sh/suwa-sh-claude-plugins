@@ -35,7 +35,7 @@ description: >-
   内部 ID (uc_id、SPEC-xxx、段階名) を本文に出さず名前で呼ぶ。回答は選択肢からコピーできる形にする
 - 上流 (要求・ADR・契約) の再生成はしない。ズレは `basis.js check` で見つけ、差分 PR か issue にする
 
-詰まったら [`../../TROUBLESHOOTING.md`](../../TROUBLESHOOTING.md) (環境依存の症状と回避策) を見る。手順に無い回避策を使ったら報告に書く。
+詰まったら各スキルの `references/troubleshooting.md` (環境依存の症状と回避策) を見る: [d2-run](references/troubleshooting.md) / [d2-foundation](../d2-foundation/references/troubleshooting.md) / [d2-contract](../d2-contract/references/troubleshooting.md)。手順に無い回避策を使ったら報告に書く。
 
 ## 起動シーケンス
 
@@ -159,4 +159,5 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 - [references/run-state.md](references/run-state.md) — events / done / attempt
 - [references/subagent-template.md](references/subagent-template.md) — 派遣の変数と write-set
 - [references/git-delivery.md](references/git-delivery.md) — branch / squash / PR / trailer
+- [references/troubleshooting.md](references/troubleshooting.md) — 実行環境 (headless の許可、npm、補助スクリプト) で踏んだ問題と回避策
 - `${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js`、`prTrailers.js`、`tokenReport.js`

@@ -91,4 +91,5 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from <d2-d
 - [references/test-infra.md](references/test-infra.md) — 検証済みライブラリ版と API、v1 から落としたもの
 - [references/repo-layout.md](references/repo-layout.md) — 対象リポのレイアウト
 - [references/ci.md](references/ci.md) — CI の job 構成
+- [references/troubleshooting.md](references/troubleshooting.md) — qlty / biome で踏んだ問題と回避策
 - 実行設定の形: [../d2-run/references/config-schema.md](../d2-run/references/config-schema.md)

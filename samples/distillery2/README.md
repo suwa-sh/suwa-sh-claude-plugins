@@ -27,7 +27,7 @@ headless (`claude -p`) で実走した結果。要求 → 決定 → 基盤 → 
 | 実装者 (tier / integrate / scaffold など) | claude-opus-5-5 (`models.implementer: null` = セッション既定) | `models_resolved` イベント |
 | Verifier (d2-verify) | **claude-opus-5-5** (`models.verifier: opus` を Agent ツールに渡した結果。0.1.10 の実走では claude-opus-4-7 だった) | Verifier の報告 1 行目 `model:`、`models_resolved` イベント、transcript (`subagents/agent-*.jsonl`) |
 
-実装者と Verifier が同じモデルに解決された。独立検証の条件を ID の上では満たしていない (課題。`findings-0.1.13.md`)。
+実装者と Verifier が同じモデルに解決された。0.1.16 以降は止めずに進める (独立検証の条件は「別のサブエージェント + 実装役と同等以上のモデル」)。
 as-built の付録「生成情報」に「モデル: 実装 … / 検証 … / オーケストレータ …」として転記される。
 
 ## 段階ごとの結果
@@ -69,15 +69,7 @@ as-built の付録「生成情報」に「モデル: 実装 … / 検証 … / �
 
 ## 実走で見つかった課題
 
-[`findings-0.1.13.md`](findings-0.1.13.md) に、0.1.10 の課題の再確認結果と新しい気づきを列挙した (0.1.16 の再実走での再確認と新しい気づきは [`findings-0.1.16.md`](findings-0.1.16.md))。主なもの:
-
-- Verifier が実装者と同じ claude-opus-5-5 に解決された (`opus` 別名の解決先が変わった)
-- 生成した契約テストの `biome-ignore-all format` が biome 2.2.5 では効かない (0.1.15 でルート biome.json の除外を追加)
-- `runGates.js` を `--tiers` なしで流すと UC に関与しない worker の unit がテスト 0 件で落ちる (0.1.15 で手順を修正)
-- genQlty の提案に osv-scanner が無い (lockfile が無い時点で走った。0.1.14 の `--refresh` で対応)
-- npm 10 の `npm install` が optional peer 依存で失敗し、npm 11 で回避した
-
-0.1.10 の実走で見つかった課題は [`findings-0.1.10.md`](findings-0.1.10.md) (0.1.13 で 12 件対応)、0.1.0 のものは [`findings-0.1.0.md`](findings-0.1.0.md) (0.1.1 で対応済み)。
+課題の一覧 (作業メモ) は git 管理外に置く。直したものは [CHANGELOG](../../plugins/distillery2/CHANGELOG.md) に、環境依存の回避策は各スキルの `references/troubleshooting.md` に残る。
 
 ## 注意
 
