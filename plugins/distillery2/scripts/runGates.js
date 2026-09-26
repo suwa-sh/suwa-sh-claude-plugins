@@ -36,7 +36,10 @@ function parseArgs(argv) {
     else if (a === '--from') o.from = next();
     else if (a === '--only') o.only = next();
     else if (a === '--expect-red') o.expectRed = next();
-    else if (a === '--tiers') o.tiers = next().split(',').map(s => s.trim()).filter(Boolean);
+    else if (a === '--tiers') {
+      o.tiers = next().split(',').map(s => s.trim()).filter(Boolean);
+      if (!o.tiers.length) throw new Error('--tiers is empty (変数展開で空になっていないか)');
+    }
     else if (a === '--config') o.config = next();
     else if (a === '--cwd') o.cwd = path.resolve(next());
     else if (a === '--json') o.json = true;
@@ -89,7 +92,16 @@ function planGate(gate, config, ctx) {
       jobs.push(cmds.quality ? { name: 'quality', cmd: sub(cmds.quality, null, 'quality') } : { name: 'quality', skipped: true });
       return { parallel: true, jobs };
     case 'unit': for (const t of tiers) jobs.push(tierJob(t, 'unit', null, true)); return { parallel: true, jobs };
-    case 'contract': for (const t of tiers) jobs.push(tierJob(t, 'contract', null, providers.has(t.id) || (t.provides || []).length > 0)); return { parallel: true, jobs };
+    case 'contract':
+      // 契約テストは提供側にしか生成されない。消費側で回すとテスト 0 件で vitest が exit 1 になる (0.1.10 実走 ④-1) ので提供側だけ
+      for (const t of tiers) {
+        const provider = providers.has(t.id) || (t.provides || []).length > 0;
+        jobs.push(provider ? tierJob(t, 'contract', null, true) : { name: 'contract', tier: t.id, required: false, skipped: true, reason: 'not a provider' });
+      }
+      // config 全体に提供側が 1 つも無い (契約を持たない構成) なら検査対象が無いので pass (skipped だと配送の --strict が止まる)。
+      // --tiers で消費側だけに絞ったときは skipped のまま (提供側の検査が済んだことにはならない)
+      const noProviderAtAll = (config.tiers || []).every(t => !(providers.has(t.id) || (t.provides || []).length > 0));
+      return { parallel: true, jobs, passIfNothingRan: noProviderAtAll && jobs.every(j => j.skipped), note: noProviderAtAll ? 'no provider tiers (nothing to check)' : undefined };
     case 'uc-bdd':
       jobs.push(cmds.uc_bdd ? { name: 'uc_bdd', cmd: sub(cmds.uc_bdd, null, 'uc-bdd'), report: rep('uc-bdd') } : { name: 'uc_bdd', skipped: true });
       return { parallel: false, jobs };
@@ -117,7 +129,8 @@ async function runGate(gate, config, ctx) {
   const failed = results.some(r => r.status === 'fail');
   const ran = results.some(r => r.status !== 'skipped');
   const requiredSkipped = results.filter(r => r.required && r.status === 'skipped');
-  const out = { name: gate, status: failed ? 'fail' : ran ? 'pass' : 'skipped', duration_ms: Date.now() - started, jobs: results };
+  const out = { name: gate, status: failed ? 'fail' : ran ? 'pass' : plan.passIfNothingRan ? 'pass' : 'skipped', duration_ms: Date.now() - started, jobs: results };
+  if (!ran && plan.passIfNothingRan && plan.note) out.note = plan.note;
   if (!failed && requiredSkipped.length) { out.status = 'fail'; out.note = `required job(s) skipped (no command in config): ${requiredSkipped.map(j => `${j.tier}:${j.name}`).join(', ')}`; }
   return out;
 }
@@ -139,6 +152,12 @@ async function main(argv) {
     const unknown = o.tiers.filter(t => !known.has(t));
     if (unknown.length) { console.error(`unknown tier(s) in --tiers: ${unknown.join(', ')}`); return 2; }
   }
+  // 契約の provider が tiers に無い (改名・設定ミス) と contract ゲートが「提供側なし」で緑になる。設定エラーとして止める
+  const tierIds = new Set((config.tiers || []).map(t => t.id));
+  const noProvider = (config.contracts || []).filter(c => !c.provider);
+  if (noProvider.length) { console.error(`contract without provider: ${noProvider.map(c => c.id || '(no id)').join(', ')} (contracts.json / config.yaml の contracts[].provider は必須)`); return 2; }
+  const orphan = (config.contracts || []).filter(c => !tierIds.has(c.provider));
+  if (orphan.length) { console.error(`contract provider not in tiers: ${orphan.map(c => `${c.id}→${c.provider}`).join(', ')} (config.yaml の contracts[].provider / tiers[].id を確認)`); return 2; }
   const ctx = { cwd: o.cwd, slug: o.uc, reportsDir, tiers: o.tiers || null };
   const selected = selectGates(o);
   // 部分実行 (--from / --upto / --only) では既存の gates.json を読み、今回実行した段だけ置き換える (他段の証跡を消さない)

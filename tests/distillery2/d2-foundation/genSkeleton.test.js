@@ -42,6 +42,23 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   const biomeVer = pkg.devDependencies['@biomejs/biome'];
   assert.match(biomeVer, /^\d+\.\d+\.\d+$/, 'biome は exact pin');
   assert.ok(fs.readFileSync(path.join(c, 'biome.json'), 'utf8').includes(`/schemas/${biomeVer}/schema.json`));
+  // 0.1.10 実走の課題 (③-1 / ③-2 / ④-5): tsconfig の配列は biome と同じ 1 行、空の src/index.ts、単体と契約テストの vitest 設定を分ける
+  const tsRaw = fs.readFileSync(path.join(c, 'apps/backend-api/tsconfig.json'), 'utf8');
+  assert.ok(tsRaw.includes('"include": ["src", "test"]'), `tsconfig の配列は 1 行 (biome format と一致):\n${tsRaw}`);
+  assert.ok(tsRaw.includes('"types": ["node"]'));
+  assert.equal(fs.readFileSync(path.join(c, 'apps/backend-api/src/index.ts'), 'utf8').includes('export {};'), true, '空の src/index.ts');
+  // 提供側の仮 test-app (契約テストと api ドライバの import 先)。frontend には置かない
+  assert.match(fs.readFileSync(path.join(c, 'apps/backend-api/src/test-app.ts'), 'utf8'), /export function createTestApp\(\)/);
+  assert.ok(fs.existsSync(path.join(c, 'apps/worker/src/test-app.ts')));
+  assert.ok(!fs.existsSync(path.join(c, 'apps/frontend/src/test-app.ts')));
+  assert.ok(pkg.devDependencies['@types/node'], 'types: node のための @types/node');
+  const unitCfg = fs.readFileSync(path.join(c, 'apps/backend-api/vitest.config.ts'), 'utf8');
+  const contractCfg = fs.readFileSync(path.join(c, 'apps/backend-api/vitest.contract.config.ts'), 'utf8');
+  assert.ok(unitCfg.includes("['src/**/*.{test,spec}.{ts,tsx}']") && !unitCfg.includes("'test/"), '単体は src/ だけ');
+  assert.ok(contractCfg.includes("['test/contract/**/*.{test,spec}.{ts,tsx}']"), '契約テストは test/contract/ だけ');
+  assert.equal(appPkg.scripts['test:contract'], 'vitest run -c vitest.contract.config.ts');
+  const biomeCfg = JSON.parse(fs.readFileSync(path.join(c, 'biome.json'), 'utf8'));
+  assert.deepEqual(biomeCfg.files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app'], '生成物はルートの整形から外す');
   // frontend tier の tsconfig は jsx を有効化する
   const feTs = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/tsconfig.json'), 'utf8'));
   assert.equal(feTs.compilerOptions.jsx, 'react-jsx');
@@ -61,9 +78,18 @@ test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り
   const c = tmp();
   run('genSkeleton.js', c, ['--adr', adrDir]);
   // 契約テストを置く。app tsconfig に rootDir が付いていれば TS6059 で失敗する。
-  fs.writeFileSync(path.join(c, 'apps/backend-api/test/contract/x.test.ts'), 'export const x: number = 1;\n');
+  // 契約テストは実装前でも src/test-app を import する (③ の static チェックポイントで typecheck が通る必要がある。Codex 0.1.13 指摘 1)
+  // 生成される契約テストと同じ使い方 (supertest の request(app) 相当の厳しい引数型に渡す) で型検査する (Codex 0.1.13 ラウンド 2 指摘 1)
+  fs.writeFileSync(path.join(c, 'apps/backend-api/test/contract/x.test.ts'), [
+    "import { createTestApp } from '../../src/test-app';",
+    "import type { Server } from 'node:http';",
+    'function request(_app: Server | ((req: unknown, res: unknown) => void)): { get(p: string): void } { return { get() {} }; }',
+    'export async function probe() { const app = await createTestApp(); request(app).get("/x"); }',
+  ].join('\n') + '\n');
   const tsc = path.resolve(__dirname, '../../../node_modules/.bin/tsc');
   assert.ok(fs.existsSync(tsc), 'node_modules/.bin/tsc が無い (npm install 済みか)');
+  // app tsconfig は types: ['node'] を持つ (対象リポでは devDependencies の @types/node)。ここではリポの node_modules を見せる
+  fs.symlinkSync(path.resolve(__dirname, '../../../node_modules'), path.join(c, 'node_modules'));
   const res = spawnSync(tsc, ['--noEmit', '-p', path.join(c, 'apps/backend-api/tsconfig.json')], { encoding: 'utf8' });
   assert.equal(res.status, 0, `tsc failed:\n${res.stdout || ''}${res.stderr || ''}`);
   // frontend ティアがあるので jsdom が root devDependencies に入る
@@ -151,6 +177,52 @@ test('genSkeleton --migrate: 0.1.0 生成物を移行する (Finding 5)', () => 
   assert.ok(r.out.includes('.gitignore') && r.out.includes('backend-api'), r.out);
 });
 
+test('genSkeleton --migrate: 0.1.12 以前の test:contract (単体と重なる) を契約専用設定へ差し替える', () => {
+  const c = tmp();
+  run('genSkeleton.js', c, ['--adr', adrDir]);
+  const p = path.join(c, 'apps/backend-api/package.json');
+  const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+  pkg.scripts['test:contract'] = 'vitest run test/contract';
+  fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+  // 旧 vitest.config.ts (単体 + 契約) も置く。生成物と一致すれば単体専用に差し替える
+  const legacy = "import { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    environment: 'node',\n    include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/**/*.{test,spec}.{ts,tsx}'],\n  },\n});\n";
+  fs.writeFileSync(path.join(c, 'apps/backend-api/vitest.config.ts'), legacy);
+  // 手編集された設定 (frontend) は触らず報告だけ
+  fs.writeFileSync(path.join(c, 'apps/frontend/vitest.config.ts'), legacy.replace("'node'", "'jsdom'") + '// edited\n');
+  const r = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  assert.ok(r.out.includes('test:contract'), r.out);
+  assert.equal(JSON.parse(fs.readFileSync(p, 'utf8')).scripts['test:contract'], 'vitest run -c vitest.contract.config.ts');
+  assert.ok(r.out.includes('apps/backend-api/vitest.config.ts: 単体専用'), r.out);
+  assert.ok(!fs.readFileSync(path.join(c, 'apps/backend-api/vitest.config.ts'), 'utf8').includes("'test/**"), '旧設定は単体専用に差し替わる');
+  assert.ok(r.out.includes('apps/frontend/vitest.config.ts: 手編集済みのため据え置き'), r.out);
+  assert.ok(fs.readFileSync(path.join(c, 'apps/frontend/vitest.config.ts'), 'utf8').endsWith('// edited\n'), '手編集は保持');
+});
+
+test('genSkeleton --migrate: 旧 tsconfig (複数行配列・types 無し) / root の @types/node / biome.json の files.includes を移行する (Codex 0.1.13 ラウンド 3 指摘 1, 2)', () => {
+  const c = tmp();
+  run('genSkeleton.js', c, ['--adr', adrDir]);
+  // 0.1.12 以前の形に戻す
+  const legacyTs = JSON.stringify({ extends: '../../tsconfig.base.json', compilerOptions: { outDir: 'dist' }, include: ['src', 'test'] }, null, 2) + '\n';
+  fs.writeFileSync(path.join(c, 'apps/backend-api/tsconfig.json'), legacyTs);
+  fs.writeFileSync(path.join(c, 'apps/worker/tsconfig.json'), legacyTs.replace('"dist"', '"dist"\n    ,"strict": false'));  // 手編集
+  const rootP = path.join(c, 'package.json');
+  const root = JSON.parse(fs.readFileSync(rootP, 'utf8')); delete root.devDependencies['@types/node']; fs.writeFileSync(rootP, JSON.stringify(root, null, 2) + '\n');
+  const biomeP = path.join(c, 'biome.json');
+  const biome = JSON.parse(fs.readFileSync(biomeP, 'utf8')); delete biome.files.includes; fs.writeFileSync(biomeP, JSON.stringify(biome, null, 2) + '\n');
+  const r = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  assert.ok(r.out.includes('apps/backend-api/tsconfig.json: 配列を 1 行'), r.out);
+  assert.ok(fs.readFileSync(path.join(c, 'apps/backend-api/tsconfig.json'), 'utf8').includes('"include": ["src", "test"]'));
+  assert.ok(fs.readFileSync(path.join(c, 'apps/backend-api/tsconfig.json'), 'utf8').includes('"types": ["node"]'));
+  assert.ok(r.out.includes('apps/worker/tsconfig.json: 手編集済みのため据え置き'), r.out);
+  assert.ok(fs.readFileSync(path.join(c, 'apps/worker/tsconfig.json'), 'utf8').includes('"strict": false'), '手編集は保持');
+  assert.ok(JSON.parse(fs.readFileSync(rootP, 'utf8')).devDependencies['@types/node'], '@types/node を足す');
+  assert.ok(r.out.includes('package.json: devDependencies に @types/node'), r.out);
+  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app']);
+  // もう一度 migrate しても変更なし (冪等)
+  const r2 = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  assert.match(r2.out, /migrate: 1 change\(s\)/, r2.out);  // 残るのは手編集の worker tsconfig の報告だけ
+});
+
 test('genSkeleton --migrate: 手編集済み script は触らない (echo でなければ据え置き)', () => {
   const c = tmp();
   fs.mkdirSync(path.join(c, 'apps/backend-api'), { recursive: true });
@@ -201,12 +273,15 @@ test('genCi: renders 5-gate workflow with needs chain', () => {
   // Cucumber のタグ式にワイルドカードは無い。uc-bdd は全 feature (not @browser)、acceptance は素の @acceptance で選ぶ。
   assert.ok(!ci.includes('@uc:*') && !ci.includes('@acceptance:*'), 'ワイルドカードタグは使わない');
   assert.ok(ci.includes('--tags "not @browser"') && ci.includes('@acceptance and not @browser'));
+  // contract job は提供側 (backend-api) だけ。消費側 (frontend / worker) の test:contract は入れない (Codex 0.1.13 指摘 5)
+  assert.ok(ci.includes('npm run test:contract -w apps/backend-api'));
+  assert.ok(!ci.includes('test:contract -w apps/frontend') && !ci.includes('test:contract -w apps/worker'));
 });
 
 test('genCi: config のコマンドから job を組み、browser 有効時はブラウザ step を足す (Finding 6)', () => {
   const genCi = require(path.join(SKILL, 'scripts/genCi.js'));
   const config = {
-    tiers: [{ id: 'api', dir: 'apps/api', commands: {
+    tiers: [{ id: 'api', dir: 'apps/api', provides: ['api'], commands: {
       format_check: 'npm run format:check -w apps/api',
       lint: 'npm run lint -w apps/api',
       typecheck: 'npm run typecheck -w apps/api',

@@ -69,6 +69,7 @@ function rootPackageJson(tierDirs, hasFrontend) {
     'ajv-formats': '^3.0.1',
     tsx: '^4.20.0',
     typescript: '^5.9.0',
+    '@types/node': '^26.0.0', // app tsconfig の types: ['node']
   };
   if (hasFrontend) {
     devDependencies.react = '^19.2.0';
@@ -122,11 +123,14 @@ function existingBiomeVersion(cwd) {
   return s ? s[1] : null;
 }
 
+// 生成物 (契約の codegen / bundle / Storybook 出力) はルートの整形・lint から外す (`!!` = フォルダごと無視)
+const BIOME_FILES_INCLUDES = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app'];
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
 const biomeJson = (biomeVersion) => JSON.stringify({
   $schema: `https://biomejs.dev/schemas/${biomeVersion}/schema.json`,
   vcs: { enabled: true, clientKind: 'git', useIgnoreFile: true },
-  files: { ignoreUnknown: true },
+  // 生成物 (契約の codegen / bundle / Storybook 出力) はルートの整形・lint から外す (ティアの biome format . には元から入らない)
+  files: { ignoreUnknown: true, includes: BIOME_FILES_INCLUDES },
   formatter: { enabled: true, indentStyle: 'space', indentWidth: 2, lineWidth: 100 },
   linter: { enabled: true, rules: { recommended: true } },
   javascript: { formatter: { quoteStyle: 'single' } },
@@ -141,18 +145,19 @@ function appScripts() {
     lint: 'biome lint .',
     typecheck: 'tsc --noEmit -p .',
     test: 'vitest run',
-    'test:contract': 'vitest run test/contract',
+    'test:contract': 'vitest run -c vitest.contract.config.ts',
   };
 }
 
 // 0.1.0 が生成した app package.json の echo プレースホルダ。値が完全一致するときだけ migrate で
 // 実コマンドへ差し替える (指摘 5)。手編集済みの script は触らない。
 const LEGACY_APP_SCRIPTS = {
-  'format:check': 'echo "format:check placeholder — d2 で本物に差し替える"',
-  lint: 'echo "lint placeholder"',
-  typecheck: 'echo "typecheck placeholder"',
-  test: 'echo "no unit tests yet"',
-  'test:contract': 'echo "no contract tests yet"',
+  'format:check': ['echo "format:check placeholder — d2 で本物に差し替える"'],
+  lint: ['echo "lint placeholder"'],
+  typecheck: ['echo "typecheck placeholder"'],
+  test: ['echo "no unit tests yet"'],
+  // 0.1.12 以前の 'vitest run test/contract' は単体の include と重なる (0.1.10 実走 ④-5)
+  'test:contract': ['echo "no contract tests yet"', 'vitest run test/contract'],
 };
 
 /** 各 app の最小 package.json。scripts は実コマンド (vitest / tsc / biome)。実装で必要なら上書きされない。 */
@@ -168,22 +173,53 @@ function appPackageJson(dir) {
  * rootDir は付けない (指摘 1)。付けると include の `test` が rootDir 外になり、契約テスト生成後に
  * `tsc --noEmit -p .` が TS6059 で失敗する。rootDir 未指定なら tsc が入力から推定するので typecheck が通る。
  */
+/**
+ * biome の JSON 整形に合わせる: 文字列だけの短い配列は 1 行にする (JSON.stringify は常に複数行にするので
+ * tsconfig の include が format_check で落ちた。0.1.10 実走 ③-1)。
+ */
+function stringifyLikeBiome(obj) {
+  return JSON.stringify(obj, null, 2).replace(/\[\n\s+("[^"\n]*"(?:,\n\s+"[^"\n]*")*)\n\s*\]/g, (m, inner) => {
+    const one = `[${inner.replace(/,\n\s+/g, ', ')}]`;
+    return one.length <= 80 ? one : m;
+  }) + '\n';
+}
+
 function appTsconfig(kind) {
-  const compilerOptions = { outDir: 'dist' };
+  // types: node は process / Buffer 等を使う実装と test-app のため (0.1.10 実走で実装者が手で足した)
+  const compilerOptions = { outDir: 'dist', types: ['node'] };
   if (kind === 'frontend') compilerOptions.jsx = 'react-jsx';
-  return JSON.stringify({
+  return stringifyLikeBiome({
     extends: '../../tsconfig.base.json',
     compilerOptions,
     include: ['src', 'test'],
-  }, null, 2) + '\n';
+  });
 }
 
-/** 各 app の最小 vitest.config.ts。frontend は jsdom + 自動 JSX 変換。 */
-function appVitestConfig(kind) {
+/** 空の src/ では tsc が対象ファイルを見つけられず typecheck が落ちる (0.1.10 実走 ③-2)。実装が置き換える。 */
+/**
+ * 提供側 (backend / worker) の仮の composition root。契約テスト (genContractTests) と api ドライバが `src/test-app` を import するので、
+ * 実装前でも typecheck が通るように置く。呼ぶと失敗する (契約ゲートは実装まで red で正しい)。実装 (d2-implement mode=tier / integrate) が置き換える。
+ */
+const STUB_TEST_APP_TS = `// distillery2 genSkeleton.js が置いた仮の composition root。実装 (d2-implement mode=tier / integrate) で置き換える。
+// 契約テストと features/support/drivers/api.ts はここの createTestApp() を入口にする。
+// 戻り値は never (常に投げる)。契約テストの request(app) と api ドライバのどちらにも型として渡せる。実装では実際の app 型に置き換える
+export function createTestApp(): never {
+  throw new Error('test-app は未結線 (d2-implement で createTestApp を実装する)');
+}
+`;
+const EMPTY_INDEX_TS = '// distillery2 genSkeleton.js が置いた空のエントリ。実装で置き換える (typecheck が対象ファイル 0 で落ちないため)\nexport {};\n';
+
+/**
+ * 各 app の vitest 設定。単体 (vitest.config.ts) は src/ だけ、契約テスト (vitest.contract.config.ts) は test/contract/ だけを対象にする
+ * (同じ include だと契約テストの失敗が unit ゲートにも出る。0.1.10 実走 ④-5)。frontend は jsdom + 自動 JSX 変換。
+ */
+function appVitestConfig(kind, scope = 'unit') {
   const isFrontend = kind === 'frontend';
   const env = isFrontend ? 'jsdom' : 'node';
   const esbuild = isFrontend ? "\n  esbuild: { jsx: 'automatic' }," : '';
-  return `import { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    environment: '${env}',\n    include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/**/*.{test,spec}.{ts,tsx}'],\n  },${esbuild}\n});\n`;
+  const include = scope === 'contract' ? "['test/contract/**/*.{test,spec}.{ts,tsx}']" : "['src/**/*.{test,spec}.{ts,tsx}']";
+  const note = scope === 'contract' ? '// 契約テスト専用 (test:contract)。単体は vitest.config.ts\n' : '// 単体テスト専用 (test)。契約テストは vitest.contract.config.ts\n';
+  return `${note}import { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    environment: '${env}',\n    include: ${include},\n  },${esbuild}\n});\n`;
 }
 
 // ---- 0.1.0 生成物の移行 (--migrate) ---------------------------------------
@@ -197,7 +233,7 @@ function migrateGitignore(cwd, changes) {
   const start = lines.findIndex((l) => l.includes(GITIGNORE_ANCHOR));
   if (start < 0) return;
   let end = start + 1;
-  while (end < lines.length && lines[end].startsWith('.distillery/runs/')) end++;
+  while (end < lines.length && lines[end].startsWith('.distillery/')) end++;  // runs/ と logs/ の行 (logs/ を取りこぼすと毎回書き換わる)
   const next = [...lines.slice(0, start), ...GITIGNORE_MANAGED, ...lines.slice(end)].join('\n');
   if (next === orig) return;
   fs.writeFileSync(p, next);
@@ -214,7 +250,7 @@ function migrateAppScripts(cwd, rel, changes) {
   const real = appScripts();
   const replaced = [];
   for (const [name, legacy] of Object.entries(LEGACY_APP_SCRIPTS)) {
-    if (pkg.scripts[name] === legacy) { pkg.scripts[name] = real[name]; replaced.push(name); }
+    if (legacy.includes(pkg.scripts[name])) { pkg.scripts[name] = real[name]; replaced.push(name); }
   }
   if (!replaced.length) return;
   fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
@@ -244,14 +280,87 @@ function warnBiomeSchema(cwd, biomeVersion) {
  * 不足ファイル (app tsconfig / vitest.config / biome.json 等) を作り、その後でこの関数が
  * 既存ファイル (writeIfAbsent が skip するもの) を書き換える。
  */
-function migrate(cwd, biomeVersion) {
+/** 0.1.12 以前の app vitest.config.ts (単体と契約テストを同じ include で回す)。これと完全一致するときだけ差し替える。 */
+function legacyVitestConfig(kind) {
+  const isFrontend = kind === 'frontend';
+  const env = isFrontend ? 'jsdom' : 'node';
+  const esbuild = isFrontend ? "\n  esbuild: { jsx: 'automatic' }," : '';
+  return `import { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    environment: '${env}',\n    include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/**/*.{test,spec}.{ts,tsx}'],\n  },${esbuild}\n});\n`;
+}
+
+/** 旧 vitest.config.ts を単体専用に差し替える (Codex 0.1.13 ラウンド 2 指摘 2)。手編集されていれば触らず報告する。 */
+function migrateVitestConfig(cwd, rel, kind, changes) {
+  const p = path.resolve(cwd, rel);
+  if (!fs.existsSync(p)) return;
+  const cur = fs.readFileSync(p, 'utf8');
+  if (cur === appVitestConfig(kind)) return;
+  if (cur === legacyVitestConfig(kind)) {
+    fs.writeFileSync(p, appVitestConfig(kind));
+    changes.push(`${rel}: 単体専用 (src/ だけ) に差し替え。契約テストは vitest.contract.config.ts`);
+  } else if (cur.includes("'test/**/*.{test,spec}.{ts,tsx}'")) {
+    changes.push(`${rel}: 手編集済みのため据え置き (include に test/** が残っている。契約テストが unit ゲートにも出る。vitest.contract.config.ts に寄せて test/** を外すこと)`);
+  }
+}
+
+/** 0.1.12 以前の app tsconfig (JSON.stringify の複数行配列、types 無し)。これと完全一致するときだけ差し替える。 */
+function legacyAppTsconfig(kind) {
+  const compilerOptions = { outDir: 'dist' };
+  if (kind === 'frontend') compilerOptions.jsx = 'react-jsx';
+  return JSON.stringify({ extends: '../../tsconfig.base.json', compilerOptions, include: ['src', 'test'] }, null, 2) + '\n';
+}
+
+/** 旧 app tsconfig を新しい形 (配列 1 行、types: node) に差し替える (Codex 0.1.13 ラウンド 3 指摘 1)。手編集なら報告だけ。 */
+function migrateAppTsconfig(cwd, rel, kind, changes) {
+  const p = path.resolve(cwd, rel);
+  if (!fs.existsSync(p)) return;
+  const cur = fs.readFileSync(p, 'utf8');
+  if (cur === appTsconfig(kind)) return;
+  if (cur === legacyAppTsconfig(kind)) {
+    fs.writeFileSync(p, appTsconfig(kind));
+    changes.push(`${rel}: 配列を 1 行 (biome と一致) にし types: ["node"] を追加`);
+    return;
+  }
+  const cfg = readJsonSafe(p);
+  const notes = [];
+  if (/\[\n\s+"/.test(cur)) notes.push('配列が複数行 (biome format と不一致)');
+  if (!cfg?.compilerOptions?.types?.includes('node')) notes.push('types に node が無い');
+  if (notes.length) changes.push(`${rel}: 手編集済みのため据え置き (${notes.join('、')}。手で直すこと)`);
+}
+
+/** root package.json に @types/node が無ければ足す (app tsconfig の types: node のため)。 */
+function migrateRootTypesNode(cwd, changes) {
+  const p = path.resolve(cwd, 'package.json');
+  const pkg = readJsonSafe(p);
+  if (!pkg || !pkg.devDependencies || pkg.devDependencies['@types/node'] || pkg.dependencies?.['@types/node']) return;
+  pkg.devDependencies['@types/node'] = '^26.0.0';
+  fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+  changes.push('package.json: devDependencies に @types/node を追加 (npm install が必要)');
+}
+
+/** 旧 biome.json に生成物除外 (files.includes) が無ければ足す (Codex 0.1.13 ラウンド 3 指摘 2)。 */
+function migrateBiomeIncludes(cwd, changes) {
+  const p = path.resolve(cwd, 'biome.json');
+  const cfg = readJsonSafe(p);
+  if (!cfg || cfg.files?.includes) return;
+  cfg.files = { ...(cfg.files || {}), includes: BIOME_FILES_INCLUDES };
+  fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\n');
+  changes.push('biome.json: files.includes に生成物ディレクトリの除外を追加');
+}
+
+function migrate(cwd, biomeVersion, tiers = []) {
   const changes = [];
   migrateGitignore(cwd, changes);
   migrateBiomeSchema(cwd, biomeVersion, changes);
+  migrateBiomeIncludes(cwd, changes);
+  migrateRootTypesNode(cwd, changes);
   const appsDir = path.resolve(cwd, 'apps');
   const entries = fs.existsSync(appsDir) ? fs.readdirSync(appsDir, { withFileTypes: true }) : [];
+  const kindOf = new Map(tiers.map(t => [t.dir ? String(t.dir).replace(/^apps\//, '') : t.id, t.kind]));
   for (const entry of entries) {
-    if (entry.isDirectory()) migrateAppScripts(cwd, `apps/${entry.name}/package.json`, changes);
+    if (!entry.isDirectory()) continue;
+    migrateAppScripts(cwd, `apps/${entry.name}/package.json`, changes);
+    migrateVitestConfig(cwd, `apps/${entry.name}/vitest.config.ts`, kindOf.get(entry.name) || 'backend', changes);
+    migrateAppTsconfig(cwd, `apps/${entry.name}/tsconfig.json`, kindOf.get(entry.name) || 'backend', changes);
   }
   return changes;
 }
@@ -270,6 +379,9 @@ function run(o) {
     writeIfAbsent(cwd, `apps/${dir}/package.json`, appPackageJson(dir), created, skipped);
     writeIfAbsent(cwd, `apps/${dir}/tsconfig.json`, appTsconfig(t.kind), created, skipped);
     writeIfAbsent(cwd, `apps/${dir}/vitest.config.ts`, appVitestConfig(t.kind), created, skipped);
+    writeIfAbsent(cwd, `apps/${dir}/vitest.contract.config.ts`, appVitestConfig(t.kind, 'contract'), created, skipped);
+    writeIfAbsent(cwd, `apps/${dir}/src/index.ts`, EMPTY_INDEX_TS, created, skipped);
+    if (t.kind !== 'frontend') writeIfAbsent(cwd, `apps/${dir}/src/test-app.ts`, STUB_TEST_APP_TS, created, skipped);
   }
   for (const pkg of ['contracts', 'ui', 'test-support']) ensureDir(cwd, `packages/${pkg}`, created);
   ensureDir(cwd, 'features', created);
@@ -280,7 +392,7 @@ function run(o) {
   const biomeVersion = (created.includes('package.json') ? null : existingBiomeVersion(cwd)) ?? BIOME_VERSION;
   writeIfAbsent(cwd, 'biome.json', biomeJson(biomeVersion), created, skipped);
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
-  const migrated = o.migrate ? migrate(cwd, biomeVersion) : [];
+  const migrated = o.migrate ? migrate(cwd, biomeVersion, tiers) : [];
   if (!o.migrate) warnBiomeSchema(cwd, biomeVersion);
   return { code: 0, created, skipped, tierDirs, migrated };
 }

@@ -65,7 +65,7 @@ models:
 |---|---|---|
 | static | 各ティアの `format_check` / `lint` / `typecheck` と `commands.arch_test`、`commands.quality` (qlty。リポ全体で 1 回) | ティア並列 |
 | unit | 各ティアの `unit` | ティア並列 |
-| contract | 各ティアの `contract` (定義があるティアだけ) | ティア並列 |
+| contract | 契約の提供側ティア (`contracts[].provider` / `tiers[].provides`) の `contract` だけ。消費側は skipped (not a provider)。提供側が無ければ pass (検査対象なし) | ティア並列 |
 | uc-bdd | `commands.uc_bdd` | 単発 |
 | acceptance | `commands.acceptance_api`、`capabilities.browser` が true なら続けて `commands.acceptance_browser` | 順次 |
 

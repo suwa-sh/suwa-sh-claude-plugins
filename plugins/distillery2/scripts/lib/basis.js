@@ -21,17 +21,18 @@ const { execFileSync } = require('node:child_process');
 const HEADER_RE = /basis:\s*((?:[A-Za-z0-9_-]+@[0-9a-f]{7,40}\s*)+)/;
 const SCAN_LINES = 10;
 
-function lastCommit(dir, cwd = process.cwd()) {
+function lastCommit(dir, cwd = process.cwd(), ref = null) {
   try {
-    const out = execFileSync('git', ['log', '-1', '--format=%H', '--', dir], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    const out = execFileSync('git', ['log', '-1', '--format=%H', ...(ref ? [ref] : []), '--', dir], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
     return out || null;
   } catch { return null; }
 }
 
 /** @param {Record<string,string>} dirs  name → directory */
-function stamp(dirs, cwd = process.cwd()) {
+/** ref を渡すとその commit から遡る (配送 trailer は squash で消える branch 上の commit を指さないよう base 側で取る) */
+function stamp(dirs, cwd = process.cwd(), ref = null) {
   const basis = {};
-  for (const [name, dir] of Object.entries(dirs)) basis[name] = lastCommit(dir, cwd);
+  for (const [name, dir] of Object.entries(dirs)) basis[name] = lastCommit(dir, cwd, ref);
   return basis;
 }
 

@@ -78,7 +78,10 @@ function render(config) {
   }
   // unit / contract は config の各ティアコマンドから組む (runGates と同じソース)。
   const unitSteps = tiers.filter(t => t.commands && t.commands.unit).map(t => step(stripReport(t.commands.unit)));
-  const contractSteps = tiers.filter(t => t.commands && t.commands.contract).map(t => step(stripReport(t.commands.contract)));
+  // contract は提供側 (contracts[].provider / tiers[].provides) だけ (runGates と同じ判定。消費側はテスト 0 件で vitest が exit 1)
+  const providers = new Set((config.contracts || []).map(c => c.provider).filter(Boolean));
+  const isProvider = t => providers.has(t.id) || (t.provides || []).length > 0;
+  const contractSteps = tiers.filter(t => isProvider(t) && t.commands && t.commands.contract).map(t => step(stripReport(t.commands.contract)));
   const ucBddSteps = [step(cmds.uc_bdd ? ciCucumber(cmds.uc_bdd, 'not @browser') : 'npx cucumber-js --tags "not @browser"')];
   const acceptanceSteps = [step(cmds.acceptance_api ? ciCucumber(cmds.acceptance_api, '@acceptance and not @browser') : 'npx cucumber-js --tags "@acceptance and not @browser"')];
   // capabilities.browser: true のときだけブラウザ受入を CI にも足す (runGates と対応)。

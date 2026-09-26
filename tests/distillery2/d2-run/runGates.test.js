@@ -27,6 +27,7 @@ const CONFIG = [
   '  - id: api',
   '    dir: apps/api',
   '    kind: backend',
+  '    provides: [api]',  // 提供側だけ contract ゲートが回る (0.1.10 実走 ④-1)
   '    commands:',
   '      lint: node -e "process.exit(0)"',
   '      unit: node -e "require(\'fs\').writeFileSync(process.argv[1], \'{}\'); process.exit(0)" {report}',
@@ -68,6 +69,40 @@ test('a tier without a unit command fails the unit gate instead of passing silen
   // contract is required only for providers: web provides nothing → skipped is fine
   const c = run(repo, ['--uc', 'loan', '--only', 'contract', '--tiers', 'web']);
   assert.equal(c.code, 0, c.out);
+});
+
+test('契約の提供側が 1 つも無い config では contract ゲートは pass (検査対象なし) で、配送の strict を止めない (Codex 0.1.13 指摘 2)', () => {
+  const repo = makeRepo(CONFIG.replace('    provides: [api]\n', ''));
+  const r = run(repo, ['--uc', 'loan', '--only', 'contract']);
+  assert.equal(r.code, 0, r.out);
+  const summary = JSON.parse(fs.readFileSync(path.join(repo, '.distillery/runs/loan/reports/gates.json'), 'utf8'));
+  const contract = summary.gates.find(g => g.name === 'contract');
+  assert.equal(contract.status, 'pass');
+  assert.match(contract.note, /no provider tiers/);
+  assert.ok(contract.jobs.every(j => j.status === 'skipped' && j.reason === 'not a provider'));
+});
+
+test('contracts[].provider が tiers に無ければ設定エラー (contract ゲートが緑にならない) (Codex 0.1.13 ラウンド 2 指摘 3)', () => {
+  const repo = makeRepo(CONFIG.replace('    provides: [api]\n', '') + '\ncontracts:\n  - id: api-spec\n    provider: missing-api\n');
+  const r = run(repo, ['--uc', 'loan', '--only', 'contract']);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /contract provider not in tiers: api-spec→missing-api/);
+});
+
+test('provider の無い契約エントリは設定エラー。空の --tiers は引数エラー。消費側だけに絞った contract は pass にしない (Codex 0.1.13 ラウンド 3 指摘 3, 4)', () => {
+  const noProv = makeRepo(CONFIG + '\ncontracts:\n  - id: api\n    type: openapi\n    source: contracts/openapi/openapi.yaml\n');
+  const a = run(noProv, ['--uc', 'loan', '--only', 'contract']);
+  assert.equal(a.code, 2, a.out);
+  assert.match(a.out, /contract without provider: api/);
+  const repo = makeRepo(CONFIG);
+  const b = run(repo, ['--uc', 'loan', '--only', 'contract', '--tiers', '']);
+  assert.equal(b.code, 2, b.out);
+  assert.match(b.out, /--tiers is empty/);
+  // 提供側 (api) がある config で消費側 (web) だけに絞る → 検査対象なしの pass にはならない (skipped)
+  const c = run(repo, ['--uc', 'loan', '--only', 'contract', '--tiers', 'web']);
+  assert.equal(c.code, 0, c.out);
+  const summary = JSON.parse(fs.readFileSync(path.join(repo, '.distillery/runs/loan/reports/gates.json'), 'utf8'));
+  assert.equal(summary.gates.find(g => g.name === 'contract').status, 'skipped');
 });
 
 test('planGate substitutes slug and report paths and skips undefined commands', () => {

@@ -2,6 +2,35 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.13] - 2026-09-26
+
+0.1.10 フル再実走の課題 (`samples/distillery2/findings-0.1.10.md`) のうち、ゲートを止める 7 件と小さな修正 5 件。
+
+### Fixed
+
+- **基盤③**
+  - genSkeleton: tsconfig の配列を biome の整形 (短い配列は 1 行) と同じ形で書く (③-1)。空の `src/index.ts` (`export {};`) を置き、
+    `types: ["node"]` と `@types/node` を入れる (③-2)
+  - d2-run ③ の順序を「骨格 → npm install → 契約の骨格 → 契約込みで genConfig / genCi を再生成 → design → 契約テスト」にする (③-3 / ③-5)
+- **縦切り④**
+  - runGates: contract ゲートは契約の提供側ティアだけに回す (消費側はテスト 0 件で vitest が exit 1 になっていた。④-1)
+  - 生成する .ts (契約テスト・codegen・DB 契約テスト) の先頭に `biome-ignore-all format / lint` を置き、biome の整形・lint を丸ごと抑止する
+    (埋め込み JSON を biome が展開して format_check が落ちた。④-2)。ルートの biome.json も生成物ディレクトリを `!!` で外す
+  - genSkeleton: 単体 (`vitest.config.ts` = src/) と契約テスト (`vitest.contract.config.ts` = test/contract/) の設定を分ける (④-5)。
+    `--migrate` が旧 `test:contract` を差し替える
+  - scaffold.md: dry-run は `-p dryrun` プロファイルで (④-4)
+  - prTrailers: `Basis-*` は base branch との merge-base から遡る (squash で消える branch 上の commit を指していた。④-6)。
+    `--base <ref>` で起点指定、UC branch で変えた上流は `Basis-Changed` に出す。`--co-author` で Co-Authored-By を付ける (④-7)
+  - d2-contract: 課題ドラフトは `issues/<ts>_<slug>.md` + front matter (`kind: contract`, `title`) (④-11)
+  - models_resolved はモデル ID だけ。Verifier は報告 1 行目に `model: <ID>` を書き、d2-run が記録し直す。extractAsBuilt は注記が混ざっても最初の語だけ使う (④-12)
+  - genSkeleton --migrate: .gitignore の管理ブロック更新が `.distillery/logs/` を取りこぼして毎回書き換わっていたのを直す
+- **Codex レビュー (3 ラウンド、指摘 13 件) で直したもの**
+  - 提供側ティアに仮の `src/test-app.ts` (`createTestApp(): never`) を置く (契約テストと api ドライバの import 先。③ の static チェックポイントで typecheck が通る)
+  - runGates: 提供側が 1 つも無い config では contract ゲートを pass (検査対象なし)。provider の無い / tiers に無い契約エントリと空の `--tiers` は設定エラー
+  - genCi の contract job も提供側だけ
+  - prTrailers: `Basis-Changed` は index と base の差 (squash 手順の reset --soft の後でも出る)、`--base` の解決失敗はエラー、`Basis-Base` trailer (--strict で必須)。配送手順は `--base <base_head>` を渡す
+  - `--migrate` が旧 vitest.config.ts / tsconfig / root の @types/node / biome.json の files.includes も移行する (手編集は据え置いて報告)
+
 ## [0.1.12] - 2026-09-25
 
 ### Changed
