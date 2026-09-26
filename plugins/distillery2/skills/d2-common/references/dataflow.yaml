@@ -317,8 +317,10 @@ stores:
     name: UC の as-built
     path: "docs/as-built/<業務>/<UC>/**"
     origin: produced
-    aliases:
-      - "docs/as-built/<業務>/<UC>/index.md"
+  - id: asbuilt-index
+    name: UC の as-built の index.md (要約ブロックを含む)
+    path: "docs/as-built/<業務>/<UC>/index.md"
+    origin: produced
   - id: asbuilt-system
     name: システム横断の as-built
     path: "docs/as-built/_system/**"
@@ -505,9 +507,9 @@ processes:
     stage: asbuilt
     kind: subagent
     template_row: "④ asbuilt"
-    reads: [asbuilt-uc, assumptions, tier-src]
-    writes: [asbuilt-uc]
-    allowed_writes: [asbuilt-uc]
+    reads: [asbuilt-index, assumptions, tier-src]
+    writes: [asbuilt-index]
+    allowed_writes: [asbuilt-index]
     notes:
       - "要約ブロックの中だけ。sequence.md と _system はスクリプトの生成物"
   # ================= d2-run の直接作業 =================
@@ -529,7 +531,7 @@ processes:
     actor: d2-run
     scripts: [genDocsReadme.js]
     run_table_row: "① ② の genDocsReadme.js"
-    reads: [use-cases, adr, nfr]
+    reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules]
     writes: [docs-readme]
   - id: run.foundation
     name: d2-run (③)
@@ -558,16 +560,36 @@ processes:
     run_table_row: "③ の genQlty.js --refresh"
     reads: [skeleton, lockfile, qlty-config]
     writes: [qlty-config]
-  - id: run.foundation.regen
-    name: 設定・CI・C4 図を契約込みで作り直す
+  - id: run.foundation.gen-config
+    name: 実行設定を契約込みで作り直す
     parent: run.foundation
     stage: foundation
     kind: script
     actor: d2-run
-    scripts: [genConfig.js, genCi.js, genArchitectureDoc.js]
-    run_table_row: "③ の genConfig.js / genCi.js / genArchitectureDoc.js"
+    scripts: [genConfig.js]
+    run_table_row: "③ の genConfig.js"
+    reads: [adr, contracts-catalog]
+    writes: [config]
+  - id: run.foundation.gen-ci
+    name: CI を作り直す
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    scripts: [genCi.js]
+    run_table_row: "③ の genCi.js"
+    reads: [config]
+    writes: [ci]
+  - id: run.foundation.gen-architecture
+    name: C4 図を契約込みで作り直す
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    scripts: [genArchitectureDoc.js]
+    run_table_row: "③ の genArchitectureDoc.js"
     reads: [adr, contracts-catalog, req-rdra]
-    writes: [config, ci, adr-architecture]
+    writes: [adr-architecture]
   - id: foundation.F6
     name: F6 画面部品の取り込み
     parent: run.foundation
@@ -607,7 +629,7 @@ processes:
     actor: d2-run
     scripts: [genDocsReadme.js]
     run_table_row: "③ の genDocsReadme.js"
-    reads: [config, use-cases, adr, nfr, rules, contracts-catalog, design]
+    reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules]
     writes: [docs-readme]
   - id: run.uc
     name: d2-run (④)
@@ -627,15 +649,35 @@ processes:
     run_table_row: "④ の checkScenario.js"
     reads: [feature, acceptance, use-cases, req-usdm]
     writes: []
-  - id: run.uc.contract-check
-    name: 契約の検査
+  - id: run.uc.compile-contracts
+    name: 契約の bundle の鮮度 (--check)
     parent: run.uc
     stage: uc
     kind: script
     actor: d2-run
-    scripts: [compileContracts.js, compileRdbSchema.js, validateUcIndex.js]
-    run_table_row: "④ の compileContracts.js / compileRdbSchema.js / validateUcIndex.js (--check)"
-    reads: [contracts-src, uc-index]
+    scripts: [compileContracts.js]
+    run_table_row: "④ の compileContracts.js --check"
+    reads: [contracts-src]
+    writes: []
+  - id: run.uc.compile-rdb
+    name: RDB スキーマの鮮度 (--check)
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [compileRdbSchema.js]
+    run_table_row: "④ の compileRdbSchema.js --check"
+    reads: [contracts-src]
+    writes: []
+  - id: run.uc.validate-uc-index
+    name: UC の契約の索引の検査
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [validateUcIndex.js]
+    run_table_row: "④ の validateUcIndex.js"
+    reads: [uc-index, contracts-src]
     writes: []
   - id: run.uc.classify
     name: 契約の変更の分類
@@ -646,7 +688,7 @@ processes:
     scripts: [classifyContractChanges.js]
     run_table_row: "④ の classifyContractChanges.js"
     reads: [uc-index, contract-tests, contracts-code, migrations, contract-slice]
-    writes: [run-events]
+    writes: []
   - id: run.uc.gates
     name: ゲートの実行
     parent: run.uc
@@ -684,8 +726,8 @@ processes:
     actor: d2-run
     scripts: [extractAsBuilt.js]
     run_table_row: "④ の extractAsBuilt.js"
-    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-system]
-    writes: [asbuilt-uc, asbuilt-system]
+    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system]
+    writes: [asbuilt-uc, asbuilt-index, asbuilt-system]
   - id: run.uc.check-asbuilt
     name: as-built の書式の検査
     parent: run.uc
@@ -694,7 +736,7 @@ processes:
     actor: d2-run
     scripts: [checkAsBuilt.js]
     run_table_row: "④ の checkAsBuilt.js"
-    reads: [asbuilt-uc]
+    reads: [asbuilt-index]
     writes: []
   - id: run.uc.docs-readme
     name: 文書の入口の更新 (④)
@@ -704,7 +746,7 @@ processes:
     actor: d2-run
     scripts: [genDocsReadme.js]
     run_table_row: "④ の genDocsReadme.js"
-    reads: [config, use-cases, adr, nfr, rules, contracts-catalog, design, feature, asbuilt-uc, asbuilt-system]
+    reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules]
     writes: [docs-readme]
   - id: run.uc.deliver
     name: 配送 (squash・PR)
