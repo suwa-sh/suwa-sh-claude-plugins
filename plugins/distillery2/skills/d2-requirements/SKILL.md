@@ -1,5 +1,5 @@
 ---
-name: distillery2:d2-requirements
+name: d2-requirements
 description: >-
   段階①「要求」。要望テキストを USDM (要求・仕様・受入基準) と RDRA (アクター・業務・UC・情報・状態・条件) に分解し、
   UC 一覧 (docs/requirements/use-cases.yaml) を作る。受入基準は 1 行 Gherkin としてここで人が確認する。
@@ -8,6 +8,8 @@ description: >-
 ---
 
 # d2-requirements（段階① 要求）
+
+入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 要望テキストを USDM と RDRA に分解し、UC 一覧を作る。履歴は git が持つ（イベントソーシングは使わない）。
 生成物は `docs/requirements/` 直下に**直接**書き出す。

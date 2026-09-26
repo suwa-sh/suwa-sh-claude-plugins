@@ -14,9 +14,9 @@ function walk(dir) {
 }
 const mdFiles = walk(SKILL_DIR).filter(f => f.endsWith('.md'));
 
-test('SKILL.md の name は distillery2:d2-design', () => {
+test('SKILL.md の name は d2-design (Agent Skills 仕様: ディレクトリ名と同じ)', () => {
   const text = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
-  assert.match(text, /^name:\s*distillery2:d2-design\s*$/m);
+  assert.match(text, /^name:\s*d2-design\s*$/m);
 });
 
 test('v1 の廃止概念 (design-event.yaml events/ latest/) を含まない', () => {

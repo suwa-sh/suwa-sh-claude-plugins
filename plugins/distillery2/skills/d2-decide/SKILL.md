@@ -1,5 +1,5 @@
 ---
-name: distillery2:d2-decide
+name: d2-decide
 description: >-
   段階②「決定」。RDRA と USDM から非機能要求グレード表 (docs/nfr/) を推論し、アーキテクチャ決定記録 (docs/adr/) を書く。
   設計書 (arch design の yaml) は書かない。ADR の front matter に機械可読の rules を持たせ、段階③がルール文書とアーキテストを生成する。
@@ -8,6 +8,8 @@ description: >-
 ---
 
 # d2-decide (段階② 決定)
+
+入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 RDRA モデル・USDM・UC 一覧から、人が決めるべき 2 種類の成果物を作る。
 

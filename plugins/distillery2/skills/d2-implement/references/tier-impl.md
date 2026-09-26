@@ -7,22 +7,22 @@
 
 | 種類 | パス |
 |---|---|
-| ルール | `docs/rules/common.md`、`docs/rules/tier-<kind>.md`、`docs/rules/testing.md` (`index.md` から辿る) |
+| ルール | `docs/rules/common.md`、`docs/rules/tier-<kind>.md`、`docs/rules/testing.md` (`docs/rules/index.md` から辿る) |
 | シナリオ | `features/<業務>/<slug>.feature` (自ティアが担う step を知る) |
 | 契約 | `contracts/generated/slices/<slug>/contract-slice.json`、`rdb-slice.yaml`。生成物 `packages/contracts/<id>/` のうち自ティアが provider / consumer の契約 |
 | 契約型・クライアント | **consumer (frontend 等)** は `packages/contracts/<id>/client.ts` (operationId ごとの型付き fetch 関数) を import して API を呼ぶ (URL・型を手書きしない)。**provider (backend)** は `packages/contracts/<id>/types.ts` (リクエスト/レスポンス型) と `server.ts` (operationId ↔ method/path 表) を import して経路と型を突き合わせる。いずれも genApiClient の生成物で、手で直さない |
 | 要求 | `docs/requirements/use-cases.yaml` の該当行、`requirements.yaml` の spec_ids、RDRA の `条件.tsv` / `状態.tsv` の該当行 |
 | 画面 (frontend) | `docs/design/screens.yaml` の該当画面、`packages/ui/` の部品と story |
-| 足場 | 自ティアの test ファイル、`packages/test-support/README.md` |
+| 足場 | 自ティアの test ファイル (`apps/<tier>/src/**/*.test.ts`)、`packages/test-support/README.md` |
 | 指摘 (再実行時) | 引数で渡された `findings.<tier>.yaml` の blocker |
 
 設計書・個別仕様書は存在しない。他ティアのコード、関与しない契約、契約 source の全量は読まない。
 
 ## 書くもの (write-set)
 
-- `apps/<tier>/src/**` (実装とテスト)。frontend は `packages/ui` の部品だけを使う (自作しない)
+- `apps/<tier>/src/**` (実装とテスト)。frontend の画面は、読むものの画面部品だけで組む (自作しない)
 - `.distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml` (0 件でも必ず)
-- `.distillery/runs/<slug>/issues/<ts>_<slug>.md` (仕様と両立しない事実。front matter `kind: rule | contract | requirement`、`title` は 40 字以内 (as-built の課題の表に載る)。詳細は本文)
+- `.distillery/runs/<slug>/issues/<ts>_<tier>_<slug>.md` (ファイル名に自ティアを入れる。並列の他ティアと同じ時刻に書いても衝突しない。仕様と両立しない事実。front matter `kind: rule | contract | requirement`、`title` は 40 字以内 (as-built の課題の表に載る)。詳細は本文)
 - backend の datastore_owner ティアは `apps/<tier>/migrations/` の追加 migration (契約の DB 変更に追随するときだけ。DDL 生成物は書き換えない)
 
 ## 進め方

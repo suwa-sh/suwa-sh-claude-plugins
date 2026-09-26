@@ -14,9 +14,9 @@ function walk(dir) {
 }
 const mdFiles = walk(SKILL_DIR).filter(f => f.endsWith('.md'));
 
-test('SKILL.md の name は distillery2:d2-contract', () => {
+test('SKILL.md の name は d2-contract (Agent Skills 仕様: ディレクトリ名と同じ)', () => {
   const text = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
-  assert.match(text, /^name:\s*distillery2:d2-contract\s*$/m);
+  assert.match(text, /^name:\s*d2-contract\s*$/m);
 });
 
 test('SKILL.md は 220 行以下', () => {

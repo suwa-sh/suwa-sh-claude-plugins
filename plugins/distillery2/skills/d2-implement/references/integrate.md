@@ -20,6 +20,7 @@ pending だった step を実装し、テスト用の composition root に計装
 - `features/step_definitions/<slug>.steps.ts` (pending を実装に置き換える)
 - `features/support/**` の追加 (World への UC 固有の補助、composition root の結線)。共通 helper の構造署名や tracer 本体は変更しない
 - `capabilities.browser: true` かつ `@browser` シナリオがある場合: `features/support/drivers/browser.ts` の該当操作
+- `<run>/reports/` と `<run>/traces/`: 完了条件の `runGates.js` と UC BDD が書くゲートの記録とトレース (自分では書かない)
 
 ## 規則
 

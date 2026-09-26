@@ -6,7 +6,7 @@ v1 の 4 段 red baseline を「上位段は静的確認、実行して落とす
 ## 読むもの
 
 - `features/<業務>/<slug>.feature` (と関係する `features/acceptance/*.feature`)
-- 既存の `features/step_definitions/**` と `features/support/**` (packages/test-support の README を含む)
+- 既存の `features/step_definitions/**` と `features/support/**`、`packages/test-support/README.md`
 - `contracts/generated/slices/<slug>/contract-slice.json`、`rdb-slice.yaml`
 - `docs/rules/testing.md`、`.distillery/config.yaml` (tiers と commands)
 
@@ -16,6 +16,7 @@ v1 の 4 段 red baseline を「上位段は静的確認、実行して落とす
 |---|---|
 | `features/step_definitions/<slug>.steps.ts` | シナリオの全 step に対応する定義。**本体は `return 'pending'`** (cucumber の pending)。既存の step と同文のものは再定義しない |
 | `apps/<tier>/src/**/*.test.ts` | ティアごとに、UC の中心となる振る舞い 1 つに対する**失敗する単体テスト 1 本以上** (未実装のモジュールを import して落ちるのではなく、実装が無いことを理由に assert が落ちる形) |
+| `<run>/reports/` | 完了条件の `runGates.js --expect-red unit` が書くゲートの記録 (自分では書かない) |
 | `apps/<tier>/src/**` の入口スタブ | テストが import する入口 (frontend の画面の入口関数、backend のユースケース) がまだ無ければ、**新規ファイルとして**最小のスタブを置く。export した関数は**型に合う中立の値** (空配列・`undefined`・失敗を表す結果) を返し、テストの assertion で落ちるようにする (throw で落とさない。例外は assertion の前に落ちるので red の理由にならない)。tier 段階で実装に置き換わる前提 |
 
 ## 完了条件 (静的確認 + 単体の red)

@@ -1,5 +1,5 @@
 ---
-name: distillery2:d2-run
+name: d2-run
 description: >-
   distillery2 のオーケストレータ。要求→決定→基盤→UC 縦切りの段階を振り分け、サブエージェントを派遣し、
   ゲートを安い順に実行し、人の判断が要る場面だけ確認ページ (toolbox:human-html-review) を出す。
@@ -36,6 +36,17 @@ description: >-
 - 上流 (要求・ADR・契約) の再生成はしない。ズレは `basis.js check` で見つけ、差分 PR か issue にする
 
 詰まったら各スキルの `references/troubleshooting.md` (環境依存の症状と回避策) を見る: [d2-run](references/troubleshooting.md) / [d2-foundation](../d2-foundation/references/troubleshooting.md) / [d2-contract](../d2-contract/references/troubleshooting.md)。手順に無い回避策を使ったら報告に書く。
+
+## d2-run が直接読み書きするもの
+
+サブエージェントに任せず、d2-run 自身 (と d2-run が回すスクリプト) が読み書きするもの。入出力の正本は
+[../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図は [dataflow.md](../d2-common/references/dataflow.md))。
+
+| 段階 | 読む | 書く |
+|---|---|---|
+| ① ② | `docs/requirements/_review-summary.md`、`docs/adr/_review-summary.md` | `docs/README.md` |
+| ③ | `docs/adr/*.md`、`contracts/contracts.json`、`docs/requirements/rdra/`、`docs/design/storybook-app/src/` | `package-lock.json`、`.distillery/config.yaml`、`.github/workflows/ci.yml`、`docs/adr/architecture.md`、`.qlty/qlty.toml`、`packages/ui/**`、`apps/*/test/contract/**`、`docs/README.md` |
+| ④ | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/stages/**`、`<run>/reports/**`、`<run>/traces/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/issues/**`、`contracts/uc-index.yaml`、`docs/as-built/_system/traceability-index.json`、`.dependency-cruiser.cjs`。ゲートの実行 (runGates) が読む: `package.json`、`package-lock.json`、`cucumber.js`、`.qlty/qlty.toml`、`apps/<tier>/src/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`features/step_definitions/**`、`features/support/**` | `<run>/events.jsonl`、`<run>/stages/**`、`docs/requirements/use-cases.yaml` (`tiers` の書き戻し)、`<run>/reports/**` (runGates・depcruise・delivered.json)、`<run>/traces/**` (UC BDD の実行)、`docs/as-built/<業務>/<UC>/**` と `docs/as-built/_system/**` (extractAsBuilt)、`docs/README.md`、`.qlty/qlty.toml` (genQlty --refresh)、GitHub の PR と issue |
 
 ## 起動シーケンス
 

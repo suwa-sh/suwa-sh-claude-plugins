@@ -1,5 +1,5 @@
 ---
-name: distillery2:d2-asbuilt
+name: d2-asbuilt
 description: >-
   段階④の最後に、実装からドキュメントを抽出する。テスト結果・実行トレース・契約 slice・変更ファイルから UC ごとの as-built
   (docs/as-built/<業務>/<UC>/) と全体横断の追跡表 (docs/as-built/_system/) を作る。抽出 (決定論スクリプト) と要約 (LLM) を節ごとに分け、
@@ -7,6 +7,8 @@ description: >-
 ---
 
 # d2-asbuilt
+
+入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 引数: `uc=<slug> run=<.distillery/runs/<slug> へのパス>`
 
@@ -76,7 +78,7 @@ description: >-
 
 ## 書いてよいもの (write-set)
 
-`docs/as-built/<業務>/<UC>/index.md` の要約ブロックの中身だけ。sequence.md / `_system/*` は
+`docs/as-built/<業務>/<UC>/index.md` の要約ブロックの中身だけ。sequence.md と _system 配下は
 スクリプトの生成物であり、LLM は書き換えない。git を使わない。
 
 ## 報告

@@ -2,6 +2,30 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.20] - 2026-09-26
+
+スキル群の整合性を保つため、処理と入出力の正本を共通スキルに置き、手順書との食い違いをテストで検出する。
+
+### Added
+
+- 共通スキル `skills/d2-common/`。`references/dataflow.yaml` (処理・ファイル・段階の正本。`writes` / `allowed_writes` / `notes` / `origin` など) と、
+  `scripts/genDataflow.js` で生成する DFD `references/dataflow.md` (全体図・段階ごとの詳細図・ファイルの一覧)。各スキルの SKILL.md から相対パスで参照する
+- `tests/distillery2/integration/dataflow.test.js`: 正本と手順書 (派遣表の write-set、各スキルの読む / 書く、基盤の phase 表、d2-run の表) の照合、
+  並列の処理が同じファイルに書かないこと、書き手・読み手のいないファイル、図の鮮度、Agent Skills 仕様 (name・frontmatter)
+- d2-run SKILL に「d2-run が直接読み書きするもの」の表 (ゲートの実行が読むファイルを含む)
+
+### Changed
+
+- 全スキルの `name` を Agent Skills 仕様に合わせてディレクトリ名 (`d2-run` など) にした。Claude Code での呼び出し名 (`/distillery2:d2-run`) は変わらない
+- 基盤の phase 表を、パスだけの列と表の外の説明に分けた (F4 は委譲と明記、F5 の説明は表の下へ)
+
+### Fixed (正本を起こして見つかった食い違い)
+
+- 並列のティア実装者が同じ `issues/` に同じ形の名前で書いていた。ティアの課題は `<ts>_<tier>_<slug>.md` にする
+- 派遣表の write-set: 基盤に `cucumber.js`・`.qlty/qlty.toml` が無かった / 画面部品の担当に `packages/ui/**` を許していた (取り込みは d2-run の F6) /
+  要約役に `docs/as-built/_system/**` を許していた (スクリプトの生成物)
+- 読む / 書くの記述がパスになっていなかった箇所 (Verifier の前提ファイル、ティアの test ファイル、scaffold の test-support、scaffold / integrate が完了条件で書く reports / traces)
+
 ## [0.1.19] - 2026-09-26
 
 実走 (0.1.10 / 0.1.13 / 0.1.16) で手順が止まった箇所と、記録・報告が見えなかった箇所を直す。

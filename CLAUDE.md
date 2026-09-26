@@ -4,10 +4,12 @@
 
 ### スキル命名規則
 
-- SKILL.md の `name` フィールドに `プラグイン名:スキル名` 形式でフルプリフィックスを記載する
-  - 例: `name: distillery:dist-pipeline`
-  - プラグイン名からの自動付与はされない。name フィールドの値がそのままスラッシュコマンドのサジェストに表示される
-- スキルディレクトリ名にも短縮プリフィックスを付けて、ディレクトリ一覧でどのプラグインのスキルか判別できるようにする
+- SKILL.md の `name` は **ディレクトリ名と同じ**にする (Agent Skills 仕様: 英小文字・数字・ハイフンのみ、親ディレクトリ名と一致。https://agentskills.io/specification)
+  - 例: `skills/dist-pipeline/SKILL.md` に `name: dist-pipeline`
+  - Claude Code はプラグイン名を自動で前置する (`/distillery:dist-pipeline`。https://code.claude.com/docs/en/skills 、2026-09-26 確認)。`name` に `プラグイン名:` を書かない
+  - frontmatter は仕様の許可項目 (`name` / `description` / `license` / `compatibility` / `metadata` / `allowed-tools`) だけにする。Claude Code 専用の項目 (`user-invocable` 等) は仕様の検証ツールでエラーになる
+  - 移行: distillery2 は 0.1.20 で移行済み。`プラグイン名:スキル名` のままの既存プラグインは、次に触るときに合わせる
+- スキルディレクトリ名に短縮プリフィックスを付けて、ディレクトリ一覧でどのプラグインのスキルか判別できるようにする
   - 例: `skills/dist-pipeline/`（distillery の pipeline スキル）
 
 ### マーケットプレイス操作

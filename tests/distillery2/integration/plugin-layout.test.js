@@ -1,5 +1,5 @@
 'use strict';
-// プラグインの配布形の整合: skill name の接頭辞、plugin.json の version、marketplace 登録、他プラグインを require しないこと
+// プラグインの配布形の整合: skill name (= ディレクトリ名)、plugin.json の version、marketplace 登録、他プラグインを require しないこと
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -7,16 +7,17 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '../../..');
 const plugin = path.join(root, 'plugins/distillery2');
-const EXPECTED_SKILLS = ['d2-run', 'd2-requirements', 'd2-decide', 'd2-foundation', 'd2-design', 'd2-contract', 'd2-implement', 'd2-verify', 'd2-asbuilt'];
+const EXPECTED_SKILLS = ['d2-common', 'd2-run', 'd2-requirements', 'd2-decide', 'd2-foundation', 'd2-design', 'd2-contract', 'd2-implement', 'd2-verify', 'd2-asbuilt'];
 
-test('every skill exists and is named distillery2:<dir>', () => {
+// name は Agent Skills 仕様どおりディレクトリ名と同じ。Claude Code はプラグイン名を自動で前置する (/distillery2:<dir>)
+test('every skill exists and is named <dir> (Agent Skills spec)', () => {
   const dirs = fs.readdirSync(path.join(plugin, 'skills')).sort();
   assert.deepEqual(dirs, [...EXPECTED_SKILLS].sort());
   for (const d of dirs) {
     const text = fs.readFileSync(path.join(plugin, 'skills', d, 'SKILL.md'), 'utf8');
     const m = text.match(/^name:\s*(\S+)/m);
     assert.ok(m, `${d}: name missing`);
-    assert.equal(m[1], `distillery2:${d}`);
+    assert.equal(m[1], d);
     assert.match(text, /^description:/m, `${d}: description missing`);
   }
 });

@@ -14,9 +14,9 @@ function walk(dir) {
 }
 const mdFiles = walk(SKILL_DIR).filter(f => f.endsWith('.md'));
 
-test('SKILL.md の name は distillery2:d2-decide', () => {
+test('SKILL.md の name は d2-decide (Agent Skills 仕様: ディレクトリ名と同じ)', () => {
   const text = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
-  assert.match(text, /^name:\s*distillery2:d2-decide\s*$/m);
+  assert.match(text, /^name:\s*d2-decide\s*$/m);
 });
 
 test('v1 の廃止概念 (events/ latest/ arch-design.yaml) を含まない', () => {

@@ -14,9 +14,9 @@ function walk(dir) {
 }
 const mdFiles = walk(SKILL_DIR).filter(f => f.endsWith('.md'));
 
-test('SKILL.md の name は distillery2:d2-requirements', () => {
+test('SKILL.md の name は d2-requirements (Agent Skills 仕様: ディレクトリ名と同じ)', () => {
   const text = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
-  assert.match(text, /^name:\s*distillery2:d2-requirements\s*$/m);
+  assert.match(text, /^name:\s*d2-requirements\s*$/m);
 });
 
 test('SKILL.md はイベントソーシングの廃止概念を含まない', () => {

@@ -8,7 +8,7 @@ const SKILL = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-fo
 const skillMd = fs.readFileSync(path.join(SKILL, 'SKILL.md'), 'utf8');
 
 test('SKILL.md has correct name', () => {
-  assert.ok(/^name:\s*distillery2:d2-foundation\s*$/m.test(skillMd), 'name field wrong');
+  assert.ok(/^name:\s*d2-foundation\s*$/m.test(skillMd), 'name field wrong');
 });
 
 test('SKILL.md drops v1 concepts', () => {
