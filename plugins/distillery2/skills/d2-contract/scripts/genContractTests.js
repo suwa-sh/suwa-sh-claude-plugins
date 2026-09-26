@@ -74,8 +74,14 @@ function sendClause(reqExample) { return reqExample ? `\n      .send(${json(reqE
  * 生成される契約テストは認証情報を送れなかった (0.1.10 ④-3 / 0.1.13 ④-3) ので、契約側でテスト用の値を宣言できるようにする。
  */
 function testHeaders(doc, operation, reqExample) {
-  const merged = { ...(object(doc['x-test-headers']) ? doc['x-test-headers'] : {}), ...(object(operation['x-test-headers']) ? operation['x-test-headers'] : {}), ...(reqExample && object(reqExample.headers) ? reqExample.headers : {}) };
-  return Object.entries(merged).filter(([, v]) => v !== null && v !== undefined);
+  // HTTP ヘッダ名は大文字小文字を区別しない。小文字化したキーで重ね、最後に指定された表記と値を使う (Codex 0.1.16 ラウンド 2 指摘 1:
+  // example の `authorization: null` で既定の `Authorization` を取り消せなかった)
+  const merged = new Map();
+  for (const src of [doc['x-test-headers'], operation['x-test-headers'], reqExample && reqExample.headers]) {
+    if (!object(src)) continue;
+    for (const [k, v] of Object.entries(src)) merged.set(k.toLowerCase(), [k, v]);
+  }
+  return [...merged.values()].filter(([, v]) => v !== null && v !== undefined);
 }
 function object(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
 function setClause(headers) {

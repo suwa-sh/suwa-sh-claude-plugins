@@ -302,7 +302,23 @@ test('x-test-headers (文書 / operation) と request example の x-headers で�
   const block409 = /responds 409 \(example: conflict\)[\s\S]*?\.send\(/.exec(t)[0];
   assert.ok(block409.includes(`.set("Authorization", "Bearer test-patron")`), block409);
   assert.ok(!block409.includes('Idempotency-Key'), 'null のヘッダは送らない');
+  assert.equal((block409.match(/\.set\("[Aa]uthorization"/g) || []).length, 1, 'Authorization は 1 回だけ (上書き)');
   assert.ok(t.includes("import { randomUUID } from 'node:crypto';"), '{uuid} を使うときだけ import する');
+  // ヘッダ名は大文字小文字を区別しない: example の `authorization: null` で既定の `Authorization` を取り消せる (Codex 0.1.16 ラウンド 2 指摘 1)
+  const { contractsDir: c2 } = freshContracts();
+  const oa2 = path.join(c2, 'openapi/openapi.yaml');
+  let y2 = fs.readFileSync(oa2, 'utf8');
+  y2 = y2.replace('paths:\n', "x-test-headers:\n  Authorization: Bearer test-librarian\npaths:\n");
+  y2 = y2.replace('              conflict:\n                value:\n', "              conflict:\n                x-headers:\n                  authorization: null\n                value:\n");
+  fs.writeFileSync(oa2, y2);
+  compileContracts.run(c2);
+  const out2 = outRoot();
+  genContractTests.run(c2, { configPath: CONFIG, outRoot: out2 });
+  const t2 = read(out2, 'apps/backend-api/test/contract/createLoan.test.ts');
+  const b409 = /responds 409 \(example: conflict\)[\s\S]*?\.send\(/.exec(t2)[0];
+  assert.ok(!/\.set\("[Aa]uthorization"/.test(b409), `小文字の null で既定を取り消す: ${b409}`);
+  const b201 = /responds 201 \(example: success\)[\s\S]*?\.send\(/.exec(t2)[0];
+  assert.ok(b201.includes('.set("Authorization", "Bearer test-librarian")'), '他の example には既定が付く');
   // 既定ヘッダの無い fixture では .set も import も出ない
   const plain = read(generated(), 'apps/backend-api/test/contract/createLoan.test.ts');
   assert.ok(!plain.includes('.set(') && !plain.includes('randomUUID'));

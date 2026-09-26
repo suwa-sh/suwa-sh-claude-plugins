@@ -39,7 +39,7 @@
   example が無い operation / status も `it.todo` (実装ではなく契約に example を足すべき合図)。
 - **要求ヘッダ** (0.1.16〜): 認証や冪等キーのように body で決まらない入力は、契約側でテスト用の値を宣言する。
   文書直下または operation の `x-test-headers` (既定。例: `Authorization: Bearer test-librarian`、`Idempotency-Key: '{uuid}'`) と、
-  request example の `x-headers` (その example だけの上書き。値 `null` はそのヘッダを送らない) を重ねて `.set()` で送る。
+  request example の `x-headers` (その example だけの上書き。値 `null` はそのヘッダを送らない) を重ねて `.set()` で送る。ヘッダ名の大文字小文字は区別しない (`authorization: null` で `Authorization` を取り消せる)。
   `'{uuid}'` は毎回新しい UUID。401 は `x-headers: { Authorization: null }`、403 は別ロールのトークンを持つ request example で表す。
   提供側の `createTestApp()` は `x-test-headers` のトークン値を受け付ける (本番の入口は受け付けない)。テスト用のヘッダ補完を実装側に書かせない。
 - consumer stub は `packages/contracts/<id>/stubs/<operationId>.<status>.json` (response example の中身)。
