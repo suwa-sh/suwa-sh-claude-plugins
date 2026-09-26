@@ -1,9 +1,8 @@
 stage: feedback
-completed_at: "2026-09-25T02:24:54.132Z"
-issues: 3
-classified:
-  contract: 3
-  rule: 0
-  requirement: 0
+completed_at: "2026-09-26T02:15:50.188Z"
+issues: 5
+rule: 1
+contract: 3
+requirement: 1
 filed: 0
-note: PR/issue creation deferred per headless instructions (no push/PR)
+note: "headless: PR / issue は作らず分類のみ"

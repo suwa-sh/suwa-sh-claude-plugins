@@ -1,32 +1,24 @@
 {
   "acceptance": {
-    "SPEC-004-01-1": {
+    "SPEC-003-01-1": {
       "scenarios": [
-        "在庫ありの蔵書を貸し出す"
+        "在庫ありの書籍を登録済みの利用者に貸し出す"
       ],
       "ucs": [
         "register-loan"
       ]
     },
-    "SPEC-004-01-2": {
+    "SPEC-003-01-2": {
       "scenarios": [
-        "貸出中の蔵書は貸し出せない"
+        "貸出中の書籍は貸し出せない"
       ],
       "ucs": [
         "register-loan"
       ]
     },
-    "SPEC-004-01-3": {
+    "SPEC-005-01-1": {
       "scenarios": [
-        "他の利用者向けに取り置き中の蔵書は貸し出せない"
-      ],
-      "ucs": [
-        "register-loan"
-      ]
-    },
-    "SPEC-006-01-1": {
-      "scenarios": [
-        "貸出登録時に貸出日に貸出期間を加えた返却期限が設定される"
+        "貸出を登録すると返却期限が自動で設定される"
       ],
       "ucs": [
         "register-loan"
@@ -34,7 +26,7 @@
     }
   },
   "operations": {
-    "createLoan": {
+    "registerLoan": {
       "provider_tier": "backend-api",
       "ucs": [
         "register-loan"
@@ -42,27 +34,22 @@
     }
   },
   "tables": {
+    "book_events": {
+      "ucs": [
+        "register-loan"
+      ]
+    },
     "books": {
       "ucs": [
         "register-loan"
       ]
     },
-    "copies": {
-      "ucs": [
-        "register-loan"
-      ]
-    },
-    "copy_events": {
+    "idempotency_keys": {
       "ucs": [
         "register-loan"
       ]
     },
     "loan_events": {
-      "ucs": [
-        "register-loan"
-      ]
-    },
-    "loan_rules": {
       "ucs": [
         "register-loan"
       ]
@@ -103,12 +90,14 @@
         ".distillery/runs/register-loan/attempt-2/findings.backend-api.yaml",
         ".distillery/runs/register-loan/attempt-2/findings.frontend.yaml",
         ".distillery/runs/register-loan/events.jsonl",
-        ".distillery/runs/register-loan/invalidated/20260925_021353_integrate.done.yaml",
-        ".distillery/runs/register-loan/invalidated/20260925_021354_contract-gate.done.yaml",
-        ".distillery/runs/register-loan/invalidated/20260925_021356_tier.done.yaml",
-        ".distillery/runs/register-loan/issues/20260925T020000Z_register-loan.md",
-        ".distillery/runs/register-loan/issues/20260925T021609Z_register-loan.md",
-        ".distillery/runs/register-loan/issues/contract-auth-responses-not-in-createLoan.md",
+        ".distillery/runs/register-loan/invalidated/20260926_015748_tier.done.yaml",
+        ".distillery/runs/register-loan/invalidated/20260926_015749_contract-gate.done.yaml",
+        ".distillery/runs/register-loan/invalidated/20260926_015750_integrate.done.yaml",
+        ".distillery/runs/register-loan/issues/20260926T1045_register-loan-contract-test-headers.md",
+        ".distillery/runs/register-loan/issues/20260926T1046_register-loan-generated-test-format.md",
+        ".distillery/runs/register-loan/issues/20260926T1100_register-loan-story-prefilled-dates.md",
+        ".distillery/runs/register-loan/issues/20260926T1200_register-loan-book-not-found-404.md",
+        ".distillery/runs/register-loan/issues/20260926T1201_register-loan-auth-responses.md",
         ".distillery/runs/register-loan/stages/contract-gate.done.yaml",
         ".distillery/runs/register-loan/stages/contract.done.yaml",
         ".distillery/runs/register-loan/stages/integrate.done.yaml",
@@ -120,163 +109,147 @@
         "apps/backend-api/biome.json",
         "apps/backend-api/migrations/0001_schema.sql",
         "apps/backend-api/src/app.ts",
-        "apps/backend-api/src/domain/circulation/copyStatus.ts",
-        "apps/backend-api/src/domain/circulation/dueDate.ts",
-        "apps/backend-api/src/domain/circulation/loan.test.ts",
-        "apps/backend-api/src/domain/circulation/loan.ts",
-        "apps/backend-api/src/domain/circulation/loanEligibility.ts",
-        "apps/backend-api/src/domain/circulation/loanRepository.ts",
-        "apps/backend-api/src/domain/circulation/loanRule.ts",
-        "apps/backend-api/src/domain/patron/patron.ts",
-        "apps/backend-api/src/domain/shared/clock.ts",
-        "apps/backend-api/src/gateway/clock.ts",
-        "apps/backend-api/src/gateway/database.ts",
+        "apps/backend-api/src/domain/loan/calendar-date.test.ts",
+        "apps/backend-api/src/domain/loan/calendar-date.ts",
+        "apps/backend-api/src/domain/loan/lend-book.test.ts",
+        "apps/backend-api/src/domain/loan/lend-book.ts",
+        "apps/backend-api/src/domain/loan/loan-policy.ts",
+        "apps/backend-api/src/gateway/in-memory-token-verifier.ts",
+        "apps/backend-api/src/gateway/system.ts",
         "apps/backend-api/src/index.ts",
-        "apps/backend-api/src/presentation/circulation/createLoanHandler.ts",
-        "apps/backend-api/src/presentation/http/problem.ts",
-        "apps/backend-api/src/presentation/http/server.ts",
-        "apps/backend-api/src/register-loan.test.ts",
-        "apps/backend-api/src/repository/circulation/pgLoanRepository.test.ts",
-        "apps/backend-api/src/repository/circulation/pgLoanRepository.ts",
-        "apps/backend-api/src/repository/patron/pgPatronRepository.ts",
+        "apps/backend-api/src/presentation/http-app.test.ts",
+        "apps/backend-api/src/presentation/http-app.ts",
+        "apps/backend-api/src/presentation/problem.ts",
+        "apps/backend-api/src/presentation/register-loan-request.ts",
+        "apps/backend-api/src/presentation/register-loan-response.test.ts",
+        "apps/backend-api/src/presentation/register-loan-response.ts",
+        "apps/backend-api/src/repository/db-context.ts",
+        "apps/backend-api/src/repository/pg-loan-repositories.test.ts",
+        "apps/backend-api/src/repository/pg-loan-repositories.ts",
         "apps/backend-api/src/test-app.test.ts",
         "apps/backend-api/src/test-app.ts",
-        "apps/backend-api/src/testing/contractFixtures.ts",
-        "apps/backend-api/src/usecase/circulation/registerLoan.test.ts",
-        "apps/backend-api/src/usecase/circulation/registerLoan.ts",
-        "apps/backend-api/src/usecase/patron/findPatronByNumber.ts",
-        "apps/backend-api/src/usecase/shared/principal.ts",
-        "apps/backend-api/test/contract/createLoan.test.ts",
+        "apps/backend-api/src/test-fixtures/contract-examples.ts",
+        "apps/backend-api/src/usecase/ports.ts",
+        "apps/backend-api/src/usecase/register-loan.test.ts",
+        "apps/backend-api/src/usecase/register-loan.ts",
         "apps/backend-api/test/contract/db-schema.test.ts",
-        "apps/backend-api/tsconfig.json",
-        "apps/frontend/package.json",
-        "apps/frontend/src/api-client/loan-api.ts",
+        "apps/backend-api/test/contract/registerLoan.test.ts",
+        "apps/frontend/src/api-client/register-loan.ts",
+        "apps/frontend/src/assets.d.ts",
         "apps/frontend/src/index.ts",
-        "apps/frontend/src/register-loan.test.ts",
-        "apps/frontend/src/state/loan-checkout.test.ts",
-        "apps/frontend/src/state/loan-checkout.ts",
-        "apps/frontend/src/view/LoanCheckoutPage.submit.test.tsx",
-        "apps/frontend/src/view/LoanCheckoutPage.test.tsx",
-        "apps/frontend/src/view/LoanCheckoutPage.tsx",
+        "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.test.ts",
+        "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.ts",
+        "apps/frontend/src/view/loan-register/LoanRegisterScreen.test.tsx",
+        "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx",
         "contracts/generated/openapi.bundle.yaml",
         "contracts/generated/slices/register-loan/contract-slice.json",
         "contracts/generated/slices/register-loan/rdb-slice.yaml",
-        "contracts/openapi/components/schemas/CreateLoanRequest.yaml",
-        "contracts/openapi/components/schemas/Loan.yaml",
         "contracts/openapi/openapi.yaml",
         "contracts/openapi/paths/loans.yaml",
         "contracts/uc-index.yaml",
         "docs/README.md",
         "docs/requirements/use-cases.yaml",
         "features/step_definitions/register-loan.steps.ts",
-        "features/support/datastore.hooks.ts",
-        "features/support/datastore.ts",
+        "features/support/composition.ts",
         "features/support/drivers/api.ts",
-        "features/support/library-fixtures.ts",
-        "features/support/tiers.ts",
-        "features/support/world.ts",
-        "packages/contracts/api/client.ts",
-        "packages/contracts/api/server.ts",
-        "packages/contracts/api/stubs/.distillery2-generated.json",
-        "packages/contracts/api/stubs/createLoan.201.json",
-        "packages/contracts/api/stubs/createLoan.400.json",
-        "packages/contracts/api/stubs/createLoan.404.json",
-        "packages/contracts/api/stubs/createLoan.409.json",
-        "packages/contracts/api/types.ts",
-        "packages/contracts/db/tables.ts"
+        "features/support/library-hooks.ts",
+        "features/support/library-scenario.ts",
+        "packages/contracts/library-api/client.ts",
+        "packages/contracts/library-api/server.ts",
+        "packages/contracts/library-api/stubs/.distillery2-generated.json",
+        "packages/contracts/library-api/stubs/registerLoan.201.json",
+        "packages/contracts/library-api/stubs/registerLoan.400.json",
+        "packages/contracts/library-api/stubs/registerLoan.409.json",
+        "packages/contracts/library-api/types.ts",
+        "packages/contracts/library-db/tables.ts"
       ],
       "gates": "pass",
       "gates_complete": true,
-      "generated_at": "2026-09-25T02:22:44.490Z",
+      "generated_at": "2026-09-26T02:13:22.592Z",
       "instrumentation_gaps": [],
       "instrumentation_happy_gaps": [],
       "messages": [],
       "operations": [
-        "createLoan"
+        "registerLoan"
       ],
       "scenarios": [
         {
-          "name": "他の利用者向けに取り置き中の蔵書は貸し出せない",
+          "name": "予約待ちの書籍は予約順 1 位以外の利用者に貸し出せない",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "予約待ちの書籍を予約順 1 位の利用者に貸し出す",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "在庫ありの書籍を登録済みの利用者に貸し出す",
           "status": "passed",
           "tags": [
             "@acceptance",
-            "@acceptance:SPEC-004-01-3",
+            "@acceptance:SPEC-003-01-1",
             "@uc:register-loan"
           ]
         },
         {
-          "name": "在庫ありの蔵書を貸し出す",
+          "name": "登録されていない利用者には貸し出せない",
+          "status": "passed",
+          "tags": [
+            "@uc:register-loan"
+          ]
+        },
+        {
+          "name": "貸出を登録すると返却期限が自動で設定される",
           "status": "passed",
           "tags": [
             "@acceptance",
-            "@acceptance:SPEC-004-01-1",
+            "@acceptance:SPEC-005-01-1",
             "@uc:register-loan"
           ]
         },
         {
-          "name": "月をまたぐ返却期限も貸出日に貸出期間を加えて設定される",
-          "status": "passed",
-          "tags": [
-            "@uc:register-loan"
-          ]
-        },
-        {
-          "name": "本人向けに取り置き中の蔵書を貸し出すと予約が受取済みになる",
-          "status": "passed",
-          "tags": [
-            "@uc:register-loan"
-          ]
-        },
-        {
-          "name": "貸出中の蔵書は貸し出せない",
+          "name": "貸出中の書籍は貸し出せない",
           "status": "passed",
           "tags": [
             "@acceptance",
-            "@acceptance:SPEC-004-01-2",
-            "@uc:register-loan"
-          ]
-        },
-        {
-          "name": "貸出登録時に貸出日に貸出期間を加えた返却期限が設定される",
-          "status": "passed",
-          "tags": [
-            "@acceptance",
-            "@acceptance:SPEC-006-01-1",
+            "@acceptance:SPEC-003-01-2",
             "@uc:register-loan"
           ]
         }
       ],
       "spec_ids": [
-        "SPEC-004-01",
-        "SPEC-006-01"
+        "SPEC-003-01",
+        "SPEC-005-01"
       ],
       "tables": [
+        "book_events",
         "books",
-        "copies",
-        "copy_events",
+        "idempotency_keys",
         "loan_events",
-        "loan_rules",
         "loans",
         "patrons",
         "reservation_events",
         "reservations"
       ],
       "tables_rw": {
-        "books": [
-          "read"
+        "book_events": [
+          "write"
         ],
-        "copies": [
+        "books": [
           "read",
           "write"
         ],
-        "copy_events": [
+        "idempotency_keys": [
+          "read",
           "write"
         ],
         "loan_events": [
           "write"
-        ],
-        "loan_rules": [
-          "read"
         ],
         "loans": [
           "write"

@@ -85,8 +85,8 @@ export function createOperationIdResolver(slice: SliceLike): (method: string, ur
   const entries: { method: string; re: RegExp; operationId: string }[] = [];
   const paths: PathsMap = slice.openapi?.paths || slice.paths || {};
   for (const [tpl, item] of Object.entries(paths)) {
-    const re = new RegExp('^' + tpl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{[^}]+\\\}/g, '[^/]+') + '/?$');
-    for (const [m, op] of Object.entries(item || {})) if (op && op.operationId) entries.push({ method: m.toUpperCase(), re, operationId: op.operationId });
+    const re = new RegExp(`^${tpl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{[^}]+\\\}/g, '[^/]+')}/?$`);
+    for (const [m, op] of Object.entries(item || {})) if (op?.operationId) entries.push({ method: m.toUpperCase(), re, operationId: op.operationId });
   }
   return (method, urlPath) => {
     const p = urlPath.split('?')[0];
@@ -114,7 +114,7 @@ function writeEvent(event: TraceEvent): void {
   if (!dir) return;
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${sanitizeScenarioId(event.scenario)}.jsonl`);
-  fs.appendFileSync(file, JSON.stringify(event) + '\n');
+  fs.appendFileSync(file, `${JSON.stringify(event)}\n`);
 }
 
 function withTier(meta: Record<string, unknown> | undefined, placement?: Placement): Record<string, unknown> {
@@ -317,8 +317,7 @@ export function expressScenarioMiddleware(opts: { resolveOperationId?: (method: 
 export function extractTables(sql: string): string[] {
   const tables = new Set<string>();
   const re = /\b(?:from|join|into|update)\s+["`]?([A-Za-z_][A-Za-z0-9_."]*)/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(sql)) !== null) tables.add(m[1].replace(/"/g, ''));
+  for (const m of sql.matchAll(re)) tables.add(m[1].replace(/"/g, ''));
   return [...tables];
 }
 

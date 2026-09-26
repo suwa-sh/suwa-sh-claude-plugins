@@ -1,16 +1,20 @@
-# basis: requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08
-# 入口ファイル。テーブルは domains/<id>.yaml に置く (ADR 0004 / 0009)。
-# analytics (在庫状況・貸出統計) は保存せず問い合わせ時に集計するため、テーブルを持たない。
+# basis: requirements@d1987660054f32fca4d1af3a7f36b312eb6e6518 adr@481506aca70dae9b5b64cefa6ea032e220651c7d
+# RDB 契約の入口。テーブルは domains/<id>.yaml に置く。所有者は backend-api (ADR 0001 / 0004)。
 schema_version: distillery2.rdb-split/v1
 datastore: rdb
-version: 0.1.0
-basis: "requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08"
+version: "0.1.0"
 domains:
   - id: catalog
     file: domains/catalog.yaml
   - id: patron
     file: domains/patron.yaml
-  - id: circulation
-    file: domains/circulation.yaml
+  - id: loan
+    file: domains/loan.yaml
+  - id: reservation
+    file: domains/reservation.yaml
   - id: notification
     file: domains/notification.yaml
+  - id: analytics
+    file: domains/analytics.yaml
+  - id: platform
+    file: domains/platform.yaml

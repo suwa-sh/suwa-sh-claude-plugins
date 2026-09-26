@@ -1,6 +1,6 @@
 {
   "uc": "register-loan",
-  "started_at": "2026-09-25T02:17:19.826Z",
+  "started_at": "2026-09-26T02:05:43.871Z",
   "expect_red": null,
   "run_gates": [
     "static",
@@ -13,7 +13,7 @@
     {
       "name": "static",
       "status": "pass",
-      "duration_ms": 1268,
+      "duration_ms": 2576,
       "jobs": [
         {
           "name": "format_check",
@@ -22,8 +22,8 @@
           "cmd": "npm run format:check -w apps/frontend",
           "report": null,
           "exit": 0,
-          "duration_ms": 323,
-          "output_tail": "\n> @app/frontend@0.0.0 format:check\n> biome format .\n\nChecked 11 files in 24ms. No fixes applied.\n",
+          "duration_ms": 531,
+          "output_tail": "\n> @app/frontend@0.0.0 format:check\n> biome format .\n\nChecked 11 files in 48ms. No fixes applied.\n",
           "status": "pass"
         },
         {
@@ -33,8 +33,8 @@
           "cmd": "npm run lint -w apps/frontend",
           "report": null,
           "exit": 0,
-          "duration_ms": 334,
-          "output_tail": "\n> @app/frontend@0.0.0 lint\n> biome lint .\n\nChecked 11 files in 46ms. No fixes applied.\n",
+          "duration_ms": 532,
+          "output_tail": "\n> @app/frontend@0.0.0 lint\n> biome lint .\n\nChecked 11 files in 49ms. No fixes applied.\n",
           "status": "pass"
         },
         {
@@ -44,7 +44,7 @@
           "cmd": "npm run typecheck -w apps/frontend",
           "report": null,
           "exit": 0,
-          "duration_ms": 1266,
+          "duration_ms": 2340,
           "output_tail": "\n> @app/frontend@0.0.0 typecheck\n> tsc --noEmit -p .\n\n",
           "status": "pass"
         },
@@ -55,8 +55,8 @@
           "cmd": "npm run format:check -w apps/backend-api",
           "report": null,
           "exit": 0,
-          "duration_ms": 322,
-          "output_tail": "\n> @app/backend-api@0.0.0 format:check\n> biome format .\n\nChecked 31 files in 24ms. No fixes applied.\n",
+          "duration_ms": 524,
+          "output_tail": "\n> @app/backend-api@0.0.0 format:check\n> biome format .\n\nChecked 29 files in 39ms. No fixes applied.\n",
           "status": "pass"
         },
         {
@@ -66,8 +66,8 @@
           "cmd": "npm run lint -w apps/backend-api",
           "report": null,
           "exit": 0,
-          "duration_ms": 333,
-          "output_tail": "\n> @app/backend-api@0.0.0 lint\n> biome lint .\n\ntest/contract/db-schema.test.ts:687:21 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n  ! Forbidden non-null assertion.\n  \n    685 │       expect(new Set(actual.keys())).toEqual(new Set(table.columns.map(c => c.name)));\n    686 │       for (const col of table.columns) {\n  > 687 │         const got = actual.get(col.name)!;\n        │                     ^^^^^^^^^^^^^^^^^^^^^\n    688 │         const gotType = got.data_type === 'USER-DEFINED' ? got.udt_name : got.data_type;\n    689 │         expect(normalize(gotType)).toBe(normalize(col.type));\n  \n\nChecked 33 files in 47ms. No fixes applied.\nFound 1 warning.\n",
+          "duration_ms": 538,
+          "output_tail": "\n> @app/backend-api@0.0.0 lint\n> biome lint .\n\nChecked 29 files in 56ms. No fixes applied.\n",
           "status": "pass"
         },
         {
@@ -77,7 +77,7 @@
           "cmd": "npm run typecheck -w apps/backend-api",
           "report": null,
           "exit": 0,
-          "duration_ms": 1090,
+          "duration_ms": 1882,
           "output_tail": "\n> @app/backend-api@0.0.0 typecheck\n> tsc --noEmit -p .\n\n",
           "status": "pass"
         },
@@ -85,17 +85,25 @@
           "name": "arch_test",
           "cmd": "npx depcruise --config .dependency-cruiser.cjs --output-type err apps packages",
           "exit": 0,
-          "duration_ms": 1084,
-          "output_tail": "\n  warn no-orphans: packages/contracts/db/tables.ts\n  warn no-orphans: apps/worker/src/index.ts\n\nx 2 dependency violations (0 errors, 2 warnings). 166 modules, 550 dependencies cruised.\n\n",
+          "duration_ms": 1827,
+          "output_tail": "\n  warn no-orphans: packages/contracts/library-db/tables.ts\n  warn no-orphans: apps/worker/src/test-app.ts\n  warn no-orphans: apps/worker/src/index.ts\n\nx 3 dependency violations (0 errors, 3 warnings). 153 modules, 550 dependencies cruised.\n\n",
+          "status": "pass"
+        },
+        {
+          "name": "quality",
+          "cmd": "qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium",
+          "exit": 0,
+          "duration_ms": 2567,
+          "output_tail": "\n ISSUES: 3 \n\nfeatures/support/drivers/browser.ts:6:6\n    6:6  note    * 有効化するときは下記 TODO を実装する。                          ripgrep:TODO\n  13:13  note    // TODO(browser opt-in): capabilities.browser を有効にするとき、  ripgrep:TODO\n  26:26  note    // TODO: await this.browser?.close();                             ripgrep:TODO\n\n✖ 3 issues\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-25T02:17:21.095Z"
+      "run_at": "2026-09-26T02:05:46.448Z"
     },
     {
       "name": "unit",
       "status": "pass",
-      "duration_ms": 8565,
+      "duration_ms": 7004,
       "jobs": [
         {
           "name": "unit",
@@ -104,8 +112,8 @@
           "cmd": "npm run test -w apps/frontend -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.frontend.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/unit.frontend.json",
           "exit": 0,
-          "duration_ms": 2137,
-          "output_tail": "\n> @app/frontend@0.0.0 test\n> vitest run --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.frontend.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/unit.frontend.json\n",
+          "duration_ms": 1489,
+          "output_tail": "\n> @app/frontend@0.0.0 test\n> vitest run --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.frontend.json\n\n\u001b[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.\u001b[39m The following esbuild options were set: `{ jsx: 'automatic' }`\nJSON report written to <repo>/.distillery/runs/register-loan/reports/unit.frontend.json\n",
           "status": "pass"
         },
         {
@@ -115,28 +123,25 @@
           "cmd": "npm run test -w apps/backend-api -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.backend-api.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/unit.backend-api.json",
           "exit": 0,
-          "duration_ms": 8564,
+          "duration_ms": 7002,
           "output_tail": "\n> @app/backend-api@0.0.0 test\n> vitest run --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/unit.backend-api.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/unit.backend-api.json\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-25T02:17:29.660Z"
+      "run_at": "2026-09-26T02:05:53.453Z"
     },
     {
       "name": "contract",
       "status": "pass",
-      "duration_ms": 5578,
+      "duration_ms": 5564,
       "jobs": [
         {
           "name": "contract",
           "tier": "frontend",
           "required": false,
-          "cmd": "npm run test:contract -w apps/frontend -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.frontend.json",
-          "report": "<repo>/.distillery/runs/register-loan/reports/contract.frontend.json",
-          "exit": 0,
-          "duration_ms": 404,
-          "output_tail": "\n> @app/frontend@0.0.0 test:contract\n> vitest run test/contract --passWithNoTests --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.frontend.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/contract.frontend.json\n",
-          "status": "pass"
+          "skipped": true,
+          "reason": "not a provider",
+          "status": "skipped"
         },
         {
           "name": "contract",
@@ -145,49 +150,49 @@
           "cmd": "npm run test:contract -w apps/backend-api -- --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.backend-api.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/contract.backend-api.json",
           "exit": 0,
-          "duration_ms": 5577,
-          "output_tail": "\n> @app/backend-api@0.0.0 test:contract\n> vitest run test/contract --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.backend-api.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/contract.backend-api.json\n",
+          "duration_ms": 5564,
+          "output_tail": "\n> @app/backend-api@0.0.0 test:contract\n> vitest run -c vitest.contract.config.ts --run --reporter=json --outputFile=<repo>/.distillery/runs/register-loan/reports/contract.backend-api.json\n\nJSON report written to <repo>/.distillery/runs/register-loan/reports/contract.backend-api.json\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-25T02:17:35.238Z"
+      "run_at": "2026-09-26T02:05:59.017Z"
     },
     {
       "name": "uc-bdd",
       "status": "pass",
-      "duration_ms": 11654,
+      "duration_ms": 5760,
       "jobs": [
         {
           "name": "uc_bdd",
           "cmd": "npx cucumber-js --tags \"@uc:register-loan\" --format json:<repo>/.distillery/runs/register-loan/reports/uc-bdd.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/uc-bdd.json",
           "exit": 0,
-          "duration_ms": 11653,
-          "output_tail": "\n6 scenarios (6 passed)\n74 steps (74 passed)\n0m 1.11s (0m 0.989s executing your code)\n",
+          "duration_ms": 5759,
+          "output_tail": "\n6 scenarios (6 passed)\n74 steps (74 passed)\n0m 4.884s (0m 4.853s executing your code)\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-25T02:17:46.892Z"
+      "run_at": "2026-09-26T02:06:04.777Z"
     },
     {
       "name": "acceptance",
       "status": "pass",
-      "duration_ms": 11455,
+      "duration_ms": 3438,
       "jobs": [
         {
           "name": "acceptance_api",
           "cmd": "npx cucumber-js --tags \"@uc:register-loan and @acceptance and not @browser\" --format json:<repo>/.distillery/runs/register-loan/reports/acceptance-api.json",
           "report": "<repo>/.distillery/runs/register-loan/reports/acceptance-api.json",
           "exit": 0,
-          "duration_ms": 11455,
-          "output_tail": "\n4 scenarios (4 passed)\n50 steps (50 passed)\n0m 0.988s (0m 0.967s executing your code)\n",
+          "duration_ms": 3438,
+          "output_tail": "\n3 scenarios (3 passed)\n34 steps (34 passed)\n0m 2.790s (0m 2.767s executing your code)\n",
           "status": "pass"
         }
       ],
-      "run_at": "2026-09-25T02:17:58.347Z"
+      "run_at": "2026-09-26T02:06:08.215Z"
     }
   ],
-  "finished_at": "2026-09-25T02:17:58.347Z",
+  "finished_at": "2026-09-26T02:06:08.215Z",
   "result": "pass",
   "all_recorded": true
 }

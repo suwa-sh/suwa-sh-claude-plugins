@@ -1,7 +1,0 @@
-{
-  "code": "loan_not_allowed",
-  "detail": "この蔵書は他の利用者向けに取り置き中です。",
-  "status": 409,
-  "title": "貸し出せません",
-  "type": "https://library.example/problems/business-rule-violation"
-}

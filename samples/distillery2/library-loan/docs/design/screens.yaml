@@ -1,120 +1,154 @@
-basis: "requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08"
-tokens:
-  file: tokens/tokens.json
+basis: "requirements@d1987660054f32fca4d1af3a7f36b312eb6e6518 adr@481506aca70dae9b5b64cefa6ea032e220651c7d"
+# 画面 ↔ Story ↔ UC ↔ コンポーネントの対応 (Story = 画面構造の正)。
+# story / components / tokens.file は docs/design/storybook-app/src からの相対。
+# RDRA のメール 3 種 (返却のお知らせ・返却期限のお知らせ・延滞返却のお願い) は Web 画面ではないため載せない。
 screens:
-  # ---- 利用者向け (data-portal=user) ----
-  - name: PatronLogin
-    route: /login
-    uc_slugs: [patron-login]
-    story: stories/PatronLogin.stories.tsx
-    variants: [Default, Error]
-    components: [LoginPanel, Logo, Alert, Button, Icon]
+  # ---- 利用者ポータル (data-portal=user) ----
   - name: BookSearch
     route: /books
     uc_slugs: [search-books]
     story: stories/BookSearch.stories.tsx
-    variants: [Default, Empty, Error, Loading]
-    components: [AppShell, PageHeader, Card, BookSearchFilter, BookResultList, AvailabilityBadge, Input, Select, Button, Alert, EmptyState, LoadingState]
-  - name: BookReservation
-    route: /books/:isbn/reserve
+    variants: [Default, Empty, Loading, Error]
+    components: [AppShell, PageHeader, BookSearchFilter, BookCard, BookStatusBadge, MediaTypeBadge, Pagination, EmptyState, Spinner, Alert]
+  - name: BookDetail
+    route: /books/:bookId
+    uc_slugs: [view-book-detail]
+    story: stories/BookDetail.stories.tsx
+    variants: [Default, OnLoan, Loading, Error]
+    components: [AppShell, PageHeader, BookDetailPanel, BookStatusBadge, MediaTypeBadge, Button, Alert, Spinner]
+  - name: ReservationApply
+    route: /books/:bookId/reserve
     uc_slugs: [reserve-book]
-    story: stories/BookReservation.stories.tsx
-    variants: [Default, Error, Loading, Completed]
-    components: [AppShell, PageHeader, Card, ConfirmActionPanel, BookSummary, ReservationStatusBadge, Alert, Button, LoadingState]
-  - name: ReservationCancel
-    route: /my/reservations/:reservationId/cancel
-    uc_slugs: [cancel-reservation]
-    story: stories/ReservationCancel.stories.tsx
-    variants: [Default, Error, Completed]
-    components: [AppShell, PageHeader, Card, ConfirmActionPanel, ReservationStatusBadge, Alert, Button]
-  - name: MyLoans
+    story: stories/ReservationApply.stories.tsx
+    variants: [Default, Completed, NotReservable, Error]
+    components: [AppShell, PageHeader, Card, BookStatusBadge, Button, Alert]
+  - name: MyLoanHistory
     route: /my/loans
-    uc_slugs: [view-my-loans]
-    story: stories/MyLoans.stories.tsx
-    variants: [Default, Empty, Error, Loading]
-    components: [AppShell, PageHeader, Card, MyLoanList, DueDateText, LoanStatusBadge, DataTable, Alert, Button, EmptyState, LoadingState]
+    uc_slugs: [view-my-loan-history]
+    story: stories/MyLoanHistory.stories.tsx
+    variants: [Default, Past, Empty, Loading, Error]
+    components: [AppShell, PageHeader, Card, Tabs, LoanTable, DueDateDisplay, LoanStatusBadge, EmptyState, Spinner, Alert]
   - name: MyReservations
     route: /my/reservations
     uc_slugs: [view-my-reservations]
     story: stories/MyReservations.stories.tsx
-    variants: [Default, Empty, Error, Loading]
-    components: [AppShell, PageHeader, MyReservationList, ReservationStatusBadge, ReservationTracker, Alert, Button, EmptyState, LoadingState]
-  # ---- 司書向け (data-portal=admin) ----
-  - name: LibrarianLogin
-    route: /admin/login
-    uc_slugs: [librarian-login]
-    story: stories/LibrarianLogin.stories.tsx
-    variants: [Default, Error]
-    components: [LoginPanel, Logo, Alert, Button, Icon]
-  - name: BookLocationSearch
-    route: /admin/books
-    uc_slugs: [librarian-search-books]
-    story: stories/BookLocationSearch.stories.tsx
-    variants: [Default, Empty, Error, Loading]
-    components: [AppShell, PageHeader, Card, BookSearchFilter, BookResultList, AvailabilityBadge, Input, Select, Button, Alert, EmptyState, LoadingState]
-  - name: BookRegistration
+    variants: [Default, Empty, Loading, Error]
+    components: [AppShell, PageHeader, Card, ReservationStatusBadge, ReservationTracker, Button, EmptyState, Spinner, Alert]
+  - name: ReservationCancel
+    route: /my/reservations/:reservationId/cancel
+    uc_slugs: [cancel-reservation]
+    story: stories/ReservationCancel.stories.tsx
+    variants: [Default, Completed, Error]
+    components: [AppShell, PageHeader, ConfirmPanel, ReservationTracker, Alert]
+
+  # ---- 司書ポータル (data-portal=admin) ----
+  - name: BookRegister
     route: /admin/books/new
     uc_slugs: [register-book]
-    story: stories/BookRegistration.stories.tsx
-    variants: [Default, Error, Completed]
-    components: [AppShell, PageHeader, Card, BookForm, BookSummary, CopyStatusBadge, Input, Select, Button, Alert]
+    story: stories/BookRegister.stories.tsx
+    variants: [Default, ValidationError, Submitting, Completed]
+    components: [AppShell, PageHeader, BookForm, Card, Input, Select, Button, Alert]
   - name: BookEdit
-    route: /admin/books/:isbn/edit
+    route: /admin/books/:bookId/edit
     uc_slugs: [edit-book]
     story: stories/BookEdit.stories.tsx
-    variants: [Default, Error, Loading, Completed]
-    components: [AppShell, PageHeader, Card, BookForm, Input, Select, Button, Alert, LoadingState]
-  - name: BookRemoval
-    route: /admin/books/:isbn/remove
+    variants: [Default, ValidationError, Loading, Error]
+    components: [AppShell, PageHeader, BookForm, Card, Input, Select, Button, Alert, Spinner]
+  - name: BookDeleteConfirm
+    route: /admin/books/:bookId/delete
     uc_slugs: [delete-book]
-    story: stories/BookRemoval.stories.tsx
-    variants: [Default, Error, Completed]
-    components: [AppShell, PageHeader, Card, ConfirmActionPanel, BookSummary, CopyStatusBadge, Alert, Button]
-  - name: PatronRegistration
+    story: stories/BookDeleteConfirm.stories.tsx
+    variants: [Default, Blocked, Error]
+    components: [AppShell, PageHeader, ConfirmPanel, BookStatusBadge, MediaTypeBadge, Alert]
+  - name: BookList
+    route: /admin/books
+    uc_slugs: [list-books]
+    story: stories/BookList.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [AppShell, PageHeader, Card, BookTable, BookStatusBadge, MediaTypeBadge, Table, Pagination, Button, EmptyState, Spinner, Alert]
+  - name: CollectionSearch
+    route: /admin/books/search
+    uc_slugs: [search-collection-by-librarian]
+    story: stories/CollectionSearch.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [AppShell, PageHeader, Card, BookSearchFilter, BookTable, BookStatusBadge, Table, EmptyState, Spinner, Alert]
+  - name: PatronRegister
     route: /admin/patrons/new
     uc_slugs: [register-patron]
-    story: stories/PatronRegistration.stories.tsx
-    variants: [Default, Error, Completed]
-    components: [AppShell, PageHeader, Card, PatronForm, PatronSummary, PiiMaskedText, Input, Button, Alert]
+    story: stories/PatronRegister.stories.tsx
+    variants: [Default, ValidationError, Completed]
+    components: [AppShell, PageHeader, PatronForm, Card, Input, Button, Alert]
   - name: PatronEdit
-    route: /admin/patrons/:patronNo/edit
+    route: /admin/patrons/:patronNumber/edit
     uc_slugs: [edit-patron]
     story: stories/PatronEdit.stories.tsx
-    variants: [Default, Error, Completed]
-    components: [AppShell, PageHeader, Card, PatronLookup, PatronForm, Input, Button, Alert]
-  - name: PatronWithdrawal
-    route: /admin/patrons/:patronNo/withdraw
+    variants: [Default, ValidationError, Loading, Error]
+    components: [AppShell, PageHeader, PatronForm, Card, Input, Button, Spinner, Alert]
+  - name: PatronDeleteConfirm
+    route: /admin/patrons/:patronNumber/delete
     uc_slugs: [delete-patron]
-    story: stories/PatronWithdrawal.stories.tsx
-    variants: [Default, Error, Completed]
-    components: [AppShell, PageHeader, Card, PatronLookup, ConfirmActionPanel, PatronSummary, PiiMaskedText, Alert, Button]
-  - name: LoanCheckout
+    story: stories/PatronDeleteConfirm.stories.tsx
+    variants: [Default, Blocked, Error]
+    components: [AppShell, PageHeader, ConfirmPanel, PatronSummaryCard, PiiMaskedText, Alert]
+  - name: PatronLookup
+    route: /admin/loans/patron
+    uc_slugs: [identify-patron-for-loan]
+    story: stories/PatronLookup.stories.tsx
+    variants: [Default, NotFound, Loading, Error]
+    components: [AppShell, PageHeader, Card, Input, Button, PatronSummaryCard, PiiMaskedText, Spinner, Alert]
+  - name: LoanEligibilityCheck
+    route: /admin/loans/eligibility
+    uc_slugs: [check-loan-eligibility]
+    story: stories/LoanEligibilityCheck.stories.tsx
+    variants: [Default, Ineligible, Loading, Error]
+    components: [AppShell, PageHeader, Card, Input, Button, LoanEligibilityResult, BookStatusBadge, PatronSummaryCard, Spinner, Alert]
+  - name: LoanRegister
     route: /admin/loans/new
     uc_slugs: [register-loan]
-    story: stories/LoanCheckout.stories.tsx
-    variants: [Default, Error, Completed]
-    components: [AppShell, PageHeader, Card, LoanCheckoutForm, LoanStatusBadge, DueDateText, Input, Button, Alert]
-  - name: LoanReturn
-    route: /admin/returns/new
+    story: stories/LoanRegister.stories.tsx
+    variants: [Default, Completed, Error]
+    components: [AppShell, PageHeader, Card, BookStatusBadge, PiiMaskedText, Button, Alert]
+  - name: ReturnRegister
+    route: /admin/returns
     uc_slugs: [register-return]
-    story: stories/LoanReturn.stories.tsx
-    variants: [Default, Error, Completed, CompletedWithHold]
-    components: [AppShell, PageHeader, Card, ReturnForm, CopyStatusBadge, Input, Button, Alert]
-  - name: InventoryReport
+    story: stories/ReturnRegister.stories.tsx
+    variants: [Default, ReturnedAvailable, ReturnedOnHold, Error]
+    components: [AppShell, PageHeader, Card, Input, Button, LoanTable, BookStatusBadge, Alert]
+  - name: HoldShelfList
+    route: /admin/holds
+    uc_slugs: [list-books-on-hold]
+    story: stories/HoldShelfList.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [AppShell, PageHeader, Card, Table, BookStatusBadge, ReservationStatusBadge, PiiMaskedText, EmptyState, Spinner, Alert]
+  - name: OverdueLoanList
+    route: /admin/overdues
+    uc_slugs: [list-overdue-loans]
+    story: stories/OverdueLoanList.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [AppShell, PageHeader, Card, Table, DueDateDisplay, LoanStatusBadge, NotificationLogList, NotificationTypeBadge, PiiMaskedText, EmptyState, Spinner, Alert]
+  - name: ReservationStatusList
+    route: /admin/reservations
+    uc_slugs: [list-reservations-by-librarian]
+    story: stories/ReservationStatusList.stories.tsx
+    variants: [Default, Empty, Loading, Error]
+    components: [AppShell, PageHeader, Card, ReservationTable, ReservationStatusBadge, PiiMaskedText, EmptyState, Spinner, Alert]
+  - name: InventoryDashboard
     route: /admin/reports/inventory
-    uc_slugs: [view-inventory-report]
-    story: stories/InventoryReport.stories.tsx
-    variants: [Default, Empty, Error, Loading]
-    components: [AppShell, PageHeader, Card, InventorySummaryCards, InventoryTable, AvailabilityBadge, DataTable, Alert, Button, EmptyState, LoadingState]
+    uc_slugs: [view-inventory-status-report]
+    story: stories/InventoryDashboard.stories.tsx
+    variants: [Default, Loading, Error]
+    components: [AppShell, PageHeader, Tabs, InventoryStatusSummary, StatCard, Card, BookTable, Spinner, Alert]
   - name: PopularBooksRanking
-    route: /admin/reports/popular-books
+    route: /admin/reports/ranking
     uc_slugs: [view-popular-books-ranking]
     story: stories/PopularBooksRanking.stories.tsx
-    variants: [Default, Empty, Error, Loading]
-    components: [AppShell, PageHeader, Card, ReportPeriodFilter, PopularBooksTable, DataTable, Input, Button, Alert, EmptyState, LoadingState]
+    variants: [Default, Empty, Loading, Error]
+    components: [AppShell, PageHeader, Tabs, Card, RankingTable, EmptyState, Spinner, Alert]
   - name: LoanStatistics
     route: /admin/reports/loan-statistics
-    uc_slugs: [view-loan-statistics]
+    uc_slugs: [view-loan-statistics-by-period]
     story: stories/LoanStatistics.stories.tsx
-    variants: [Default, Empty, Error, Loading]
-    components: [AppShell, PageHeader, Card, ReportPeriodFilter, LoanStatisticsChart, Input, Button, Alert, EmptyState, LoadingState]
+    variants: [Default, InvalidPeriod, Loading, Error]
+    components: [AppShell, PageHeader, Tabs, Card, DateRangeField, Button, LoanStatisticsResult, StatCard, Spinner, Alert]
+tokens:
+  file: tokens/tokens.json

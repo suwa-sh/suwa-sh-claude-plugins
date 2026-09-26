@@ -1,41 +1,51 @@
 components:
   parameters:
-    Page:
-      description: 1 始まりのページ番号
-      in: query
-      name: page
-      required: false
+    IdempotencyKey:
+      description: 更新系 API の再送判定キー。同じキーの再送では副作用を重複させず、初回と同じ応答を返す
+      example: 7c1e8a52-3f0d-4c1b-9d2e-6a4b5c3d2e1f
+      in: header
+      name: Idempotency-Key
+      required: true
       schema:
-        default: 1
-        minimum: 1
-        type: integer
-    PageSize:
-      description: 1 ページの件数
+        maxLength: 128
+        minLength: 1
+        type: string
+    Limit:
+      description: 1 ページの最大件数
       in: query
-      name: size
+      name: limit
       required: false
       schema:
         default: 20
         maximum: 100
         minimum: 1
         type: integer
+    Offset:
+      description: 先頭から読み飛ばす件数
+      in: query
+      name: offset
+      required: false
+      schema:
+        default: 0
+        minimum: 0
+        type: integer
   responses:
     BadRequest:
       content:
         application/problem+json:
           examples:
-            validation:
+            badRequest:
               value:
+                code: validation_error
                 errors:
-                  - code: required
-                    field: title
+                  - field: title
                     message: タイトルは必須です
                 status: 400
                 title: 入力内容に誤りがあります
                 type: "https://library.example/problems/validation-error"
           schema:
             $ref: "#/components/schemas/Problem"
-      description: 入力が不正 (必須項目の欠落・形式エラー)
+      description: 入力が不正 (必須項目の欠落・形式違反)
     Conflict:
       content:
         application/problem+json:
@@ -43,172 +53,101 @@ components:
             conflict:
               value:
                 code: business_rule_violation
+                detail: 貸出中の書籍は削除できません
                 status: 409
                 title: 現在の状態ではこの操作を行えません
                 type: "https://library.example/problems/business-rule-violation"
           schema:
             $ref: "#/components/schemas/Problem"
-      description: 業務ルールにより操作できない (状態による可否・重複)
+      description: 業務ルールまたは状態により処理できない (貸出中の書籍の削除など)
     Forbidden:
       content:
         application/problem+json:
           examples:
             forbidden:
               value:
+                code: forbidden
                 status: 403
                 title: この操作を行う権限がありません
                 type: "https://library.example/problems/forbidden"
           schema:
             $ref: "#/components/schemas/Problem"
-      description: 権限が無い (利用者区分・本人所有の判定で拒否)
+      description: 権限が無い (ロール不一致・本人以外のデータ)
     NotFound:
       content:
         application/problem+json:
           examples:
             notFound:
               value:
+                code: not_found
                 status: 404
                 title: 対象が見つかりません
                 type: "https://library.example/problems/not-found"
           schema:
             $ref: "#/components/schemas/Problem"
-      description: 対象が存在しない
+      description: 対象が存在しない (論理削除済みを含む)
     Unauthorized:
       content:
         application/problem+json:
           examples:
-            unauthenticated:
+            unauthorized:
               value:
+                code: unauthorized
                 status: 401
-                title: ログインが必要です
-                type: "https://library.example/problems/unauthenticated"
+                title: 認証が必要です
+                type: "https://library.example/problems/unauthorized"
           schema:
             $ref: "#/components/schemas/Problem"
       description: 認証されていない (トークンが無い・無効)
   schemas:
-    AggregationUnit:
-      description: 集計期間単位 (日・月・年)
-      enum:
-        - day
-        - month
-        - year
+    BookId:
+      description: 書籍ID
+      format: uuid
       type: string
-    CopyStatus:
-      description: 書籍の状態 (在庫あり・貸出中・取り置き中・除籍済み)
+    BookStatus:
+      description: 書籍状態。available=在庫あり、on_loan=貸出中、awaiting_pickup=予約待ち
       enum:
         - available
         - on_loan
-        - on_hold
-        - withdrawn
+        - awaiting_pickup
       type: string
-    CreateLoanRequest:
-      additionalProperties: false
-      description: 貸出登録の入力 (利用者番号 + 蔵書 ID)。返却期限はサーバーが算出するため受け取らない。
-      properties:
-        copy_id:
-          $ref: "#/components/schemas/Id"
-        patron_number:
-          $ref: "#/components/schemas/PatronNumber"
-      required:
-        - patron_number
-        - copy_id
-      type: object
     FieldError:
       properties:
-        code:
-          description: "検証エラーの識別子 (例: required, format, duplicate)"
-          type: string
         field:
-          description: 項目名
+          description: エラーのある入力項目名
           type: string
         message:
-          description: 利用者に見せるメッセージ
+          description: 項目ごとのエラー文言
           type: string
       required:
         - field
-        - code
         - message
       type: object
-    Genre:
-      description: ジャンル (文学・歴史・社会科学・自然科学・技術・芸術・児童書・その他)
-      enum:
-        - literature
-        - history
-        - social_science
-        - natural_science
-        - technology
-        - arts
-        - children
-        - other
-      type: string
-    Id:
-      description: システムが採番する内部 ID
-      format: uuid
-      type: string
-    InventoryCategory:
-      description: 在庫状況区分 (在庫あり・貸出中・予約待ち)
-      enum:
-        - available
-        - on_loan
-        - waiting_reservation
-      type: string
-    Isbn:
-      description: ISBN (ハイフンなし 10 桁または 13 桁)
-      pattern: "^(97[89])?[0-9]{9}[0-9X]$"
-      type: string
-    JobRunResult:
-      description: worker が起動するジョブ API の実行結果。同じ実行日の再実行は冪等 (ADR 0001 / 0005)。
-      properties:
-        job:
-          description: ジョブ名
-          type: string
-        processed:
-          description: 処理した件数
-          minimum: 0
-          type: integer
-        run_date:
-          description: 実行日
-          format: date
-          type: string
-        skipped:
-          description: 重複などで処理しなかった件数
-          minimum: 0
-          type: integer
-      required:
-        - job
-        - run_date
-        - processed
-        - skipped
-      type: object
     Loan:
-      description: 貸出 (どの利用者にどの蔵書をいつ貸し出したか)。貸出登録の応答で、蔵書の状態と受取済みにした予約も返す。
+      description: 貸出
       properties:
-        book_title:
-          description: 貸し出した蔵書の書籍タイトル
-          type: string
-        copy_id:
-          $ref: "#/components/schemas/Id"
-        copy_status:
-          $ref: "#/components/schemas/CopyStatus"
-        due_on:
-          description: 返却期限 (貸出日 + 貸出日時点で有効な貸出ルールの貸出期間)
+        bookId:
+          $ref: "#/components/schemas/BookId"
+        dueDate:
+          description: 返却期限。貸出日に貸出期間を加えた日 (返却期限算出条件)
           format: date
           type: string
-        fulfilled_reservation_id:
-          description: 本人向けの取り置きを貸し出して受取済みにした予約の ID (該当しなければ null)
-          oneOf:
-            - $ref: "#/components/schemas/Id"
-            - type: "null"
-        loan_id:
-          $ref: "#/components/schemas/Id"
-        loaned_on:
+        loanId:
+          $ref: "#/components/schemas/LoanId"
+        loanedOn:
           description: 貸出日
           format: date
           type: string
-        patron_number:
+        patronNumber:
           $ref: "#/components/schemas/PatronNumber"
-        returned_on:
-          description: 返却日 (未返却は null)
+        reservationId:
+          description: 予約順 1 位の利用者への貸出のとき、完了にした予約の予約ID。それ以外は null
+          format: uuid
+          type:
+            - string
+            - "null"
+        returnedOn:
+          description: 返却日。未返却なら null
           format: date
           type:
             - string
@@ -216,85 +155,102 @@ components:
         status:
           $ref: "#/components/schemas/LoanStatus"
       required:
-        - loan_id
-        - patron_number
-        - copy_id
-        - book_title
-        - loaned_on
-        - due_on
-        - returned_on
+        - loanId
+        - patronNumber
+        - bookId
+        - reservationId
+        - loanedOn
+        - dueDate
+        - returnedOn
         - status
-        - copy_status
-        - fulfilled_reservation_id
+      type: object
+    LoanId:
+      description: 貸出ID
+      format: uuid
+      type: string
+    LoanRegistration:
+      description: 貸出の登録結果。登録した貸出と、貸出後の書籍状態を返す
+      properties:
+        bookStatus:
+          $ref: "#/components/schemas/BookStatus"
+        loan:
+          $ref: "#/components/schemas/Loan"
+      required:
+        - loan
+        - bookStatus
       type: object
     LoanStatus:
-      description: 貸出の状態 (貸出中・延滞中・返却済み)
+      description: 貸出状態。on_loan=貸出中、returned=返却済、overdue=延滞
       enum:
         - on_loan
-        - overdue
         - returned
+        - overdue
       type: string
     MediaType:
-      description: 媒体種別 (paper=紙, electronic=電子)。未指定時は paper
+      description: 媒体種別 (バリエーション)。paper=紙の書籍、ebook=電子書籍。将来追加できる区分
       enum:
         - paper
-        - electronic
+        - ebook
       type: string
-    NotificationStatus:
-      description: 通知の状態 (送信待ち・送信済み)
-      enum:
-        - pending
-        - sent
+    NotificationId:
+      description: 通知ID
+      format: uuid
       type: string
     NotificationType:
-      description: 通知種別 (受取可能通知・返却期限リマインド・延滞督促)
+      description: 通知種別 (バリエーション)。return_notice=返却通知、reminder=リマインド、overdue_notice=督促
       enum:
-        - reservation_ready
-        - due_reminder
+        - return_notice
+        - reminder
         - overdue_notice
       type: string
     PageMeta:
-      description: 一覧応答のページ情報
+      description: オフセット方式のページング情報。一覧応答は items と page を持つ
       properties:
-        page:
+        limit:
+          description: 1 ページの最大件数
           minimum: 1
           type: integer
-        size:
-          minimum: 1
+        offset:
+          description: 先頭から読み飛ばした件数
+          minimum: 0
           type: integer
         total:
+          description: 条件に一致する総件数
           minimum: 0
           type: integer
       required:
-        - page
-        - size
         - total
+        - limit
+        - offset
       type: object
     PatronNumber:
-      description: システムが一意に採番する利用者番号
+      description: 利用者番号 (一意)
+      maxLength: 32
+      minLength: 1
       type: string
     Problem:
-      description: エラー応答 (RFC 9457 Problem Details)。全 UC が 4xx/5xx で返す。
+      description: RFC 9457 Problem Details。code はクライアントが分岐に使う安定した識別子
       properties:
         code:
-          description: "業務エラーの識別子 (例: loan_not_allowed)"
-          type: string
+          $ref: "#/components/schemas/ProblemCode"
         detail:
-          description: 発生事例の詳細
+          description: この発生に固有の説明
           type: string
         errors:
-          description: 入力項目ごとの検証エラー
+          description: 入力検証エラーの項目別内訳 (code が validation_error のとき)
           items:
             $ref: "#/components/schemas/FieldError"
           type: array
         instance:
-          description: 発生事例の識別子
+          description: この発生を識別する URI 参照
           type: string
         status:
-          description: HTTP ステータス
+          description: HTTP ステータスコード
+          maximum: 599
+          minimum: 400
           type: integer
         title:
-          description: 利用者に見せる短い説明
+          description: 問題種別の要約 (利用者に表示できる文言)
           type: string
         type:
           description: 問題種別の URI
@@ -304,193 +260,209 @@ components:
         - type
         - title
         - status
+        - code
       type: object
+    ProblemCode:
+      description: エラーの安定識別子。業務ルール違反の細分は UC で enum に足す
+      enum:
+        - validation_error
+        - unauthorized
+        - forbidden
+        - not_found
+        - business_rule_violation
+        - idempotency_key_conflict
+        - internal_error
+        - book_on_loan
+        - not_first_in_reservation_queue
+        - patron_not_registered
+      type: string
+    RegisterLoanRequest:
+      additionalProperties: false
+      description: 貸出の登録要求。貸出日はサーバーの当日の日付で決まるため要求に含めない
+      properties:
+        bookId:
+          $ref: "#/components/schemas/BookId"
+        patronNumber:
+          $ref: "#/components/schemas/PatronNumber"
+      required:
+        - patronNumber
+        - bookId
+      type: object
+    ReportType:
+      description: レポート種別 (バリエーション)。inventory_status=在庫状況レポート、popular_books=人気書籍ランキング、loan_statistics=貸出統計
+      enum:
+        - inventory_status
+        - popular_books
+        - loan_statistics
+      type: string
+    ReservationId:
+      description: 予約ID
+      format: uuid
+      type: string
     ReservationStatus:
-      description: 予約の状態 (待機中・取り置き中・受取済み・取消済み)
+      description: 予約状態。waiting=予約中、notified=通知済、completed=完了、cancelled=取消
       enum:
         - waiting
-        - on_hold
-        - fulfilled
+        - notified
+        - completed
         - cancelled
       type: string
-    SearchConditionType:
-      description: 検索条件種別
+    Role:
+      description: アクターのロール (トークンのクレーム)
       enum:
-        - keyword
-        - title
-        - author
-        - isbn
-        - genre
-      type: string
-    UserRole:
-      description: 利用者区分 (patron=利用者, librarian=司書)
-      enum:
-        - patron
         - librarian
+        - patron
       type: string
   securitySchemes:
     bearerAuth:
       bearerFormat: JWT
-      description: OIDC の認証基盤が発行したアクセストークン。backend-api が検証し、主体 ID を利用者または司書に対応づける (ADR 0006)。
+      description: OIDC IdP が発行するアクセストークン。ロール (librarian / patron) と利用者番号をクレームに持つ
       scheme: bearer
       type: http
 info:
-  description: backend-api が提供し、frontend と worker が利用する HTTP API (ADR 0001 / 0005 / 0006)。
+  description: "図書館蔵書管理システムの backend-api が提供する API。\nconsumers は frontend (利用者・司書の画面) と worker (日次期限チェック・通知送信ジョブの起動)。\n認証は OIDC 準拠の IdP が発行するアクセストークン (Bearer) で行う (ADR 0006)。\nエラーは RFC 9457 の application/problem+json で返す。\n更新系 API (貸出・返却・予約・登録) は Idempotency-Key ヘッダを受け取る (ADR 0005)。\n"
   title: 図書館蔵書管理システム API
   version: 0.1.0
-  x-basis: requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08
 openapi: 3.1.0
 paths:
   /loans:
     post:
-      description: 司書が利用者番号と蔵書 ID を指定して貸出を登録する。在庫ありの蔵書、またはその利用者向けに取り置き中の蔵書だけ貸し出せる (条件「貸出可否」)。返却期限は貸出日に、貸出日時点で有効な貸出ルールの貸出期間を加えて設定する (条件「返却期限算出」)。本人向けの取り置き中の蔵書を貸し出すと、その予約は受取済みになる。司書だけが操作できる (条件「操作権限」。認証なしは 401、利用者区分が利用者なら 403 を Problem で返す)。
-      operationId: createLoan
+      description: "司書が利用者番号と書籍IDを指定して貸出を登録する。librarian ロールだけが呼べる。\n貸出日はサーバーの当日の日付とし、返却期限は貸出日に貸出期間を加えた日を自動で設定する (返却期限算出条件)。\n貸出期間の日数は要求に値が無く、この契約では固定しない。example の dueDate は形を示すための値である。\n貸出可否条件:\n- 書籍状態が在庫あり (available) なら、登録済みの利用者に貸し出せる。\n- 書籍状態が予約待ち (awaiting_pickup) なら、予約順 1 位 (通知済) の利用者にだけ貸し出せる。このとき その予約を完了 (completed) にする。\n- 書籍状態が貸出中 (on_loan) の書籍は貸し出せない。\n- 登録されていない (論理削除済みを含む) 利用者には貸し出せない。\n貸し出せないときは 409 を返し、貸出を記録せず、書籍状態と予約状態を変えない。\n成功すると書籍状態を貸出中 (on_loan) にする。\n"
+      operationId: registerLoan
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         content:
           application/json:
             examples:
-              copyNotFound:
-                summary: 存在しない蔵書 ID
+              badRequest:
+                summary: 書籍IDが無い
                 value:
-                  copy_id: 99999999-9999-4999-8999-999999999999
-                  patron_number: P-2026-00001
-              heldForOther:
-                summary: 他の利用者向けに取り置き中の蔵書を貸し出そうとする
+                  patronNumber: P-00000001
+              bookOnLoan:
+                summary: 貸出中の書籍を貸し出そうとする
                 value:
-                  copy_id: 33333333-3333-4333-8333-333333333333
-                  patron_number: P-2026-00002
-              heldForSelf:
-                summary: 本人向けに取り置き中の蔵書を貸し出す
+                  bookId: 9e4a1c7b-3d5f-4a2e-8b6c-1f3e5a7c9b0d
+                  patronNumber: P-00000001
+              notFirstInReservationQueue:
+                summary: 予約待ちの書籍を予約順 1 位以外の利用者に貸し出そうとする
                 value:
-                  copy_id: 33333333-3333-4333-8333-333333333333
-                  patron_number: P-2026-00001
-              onLoan:
-                summary: 他の利用者に貸出中の蔵書を貸し出そうとする
+                  bookId: 2c7f9b3e-6a1d-4c8e-9f2b-7d4a1e6c3b5f
+                  patronNumber: P-00000001
+              patronNotRegistered:
+                summary: 登録されていない利用者に貸し出そうとする
                 value:
-                  copy_id: 22222222-2222-4222-8222-222222222222
-                  patron_number: P-2026-00002
-              patronNotFound:
-                summary: 登録されていない利用者番号
-                value:
-                  copy_id: 11111111-1111-4111-8111-111111111111
-                  patron_number: P-2026-99999
+                  bookId: 0b6f3c1e-2a4d-4e8f-9b1a-3c5d7e9f1a2b
+                  patronNumber: P-99999999
               success:
-                summary: 在庫ありの蔵書を貸し出す
+                summary: 在庫ありの書籍を登録済みの利用者に貸し出す
                 value:
-                  copy_id: 11111111-1111-4111-8111-111111111111
-                  patron_number: P-2026-00001
-              validation:
-                summary: 利用者番号が空
+                  bookId: 0b6f3c1e-2a4d-4e8f-9b1a-3c5d7e9f1a2b
+                  patronNumber: P-00000001
+              successFromReservation:
+                summary: 予約待ちの書籍を予約順 1 位 (通知済) の利用者に貸し出す
                 value:
-                  copy_id: 11111111-1111-4111-8111-111111111111
-                  patron_number: ""
+                  bookId: 5d2e8a41-7c3b-4f60-8e1d-9a2b4c6d8e0f
+                  patronNumber: P-00000001
             schema:
-              $ref: "#/components/schemas/CreateLoanRequest"
+              $ref: "#/components/schemas/RegisterLoanRequest"
         required: true
       responses:
         "201":
           content:
             application/json:
               examples:
-                heldForSelf:
-                  value:
-                    book_title: こころ
-                    copy_id: 33333333-3333-4333-8333-333333333333
-                    copy_status: on_loan
-                    due_on: 2026-10-04
-                    fulfilled_reservation_id: cccccccc-cccc-4ccc-8ccc-cccccccccccc
-                    loan_id: bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb
-                    loaned_on: 2026-09-20
-                    patron_number: P-2026-00001
-                    returned_on: null
-                    status: on_loan
                 success:
+                  summary: 在庫ありの書籍の貸出
                   value:
-                    book_title: 吾輩は猫である
-                    copy_id: 11111111-1111-4111-8111-111111111111
-                    copy_status: on_loan
-                    due_on: 2026-09-15
-                    fulfilled_reservation_id: null
-                    loan_id: aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
-                    loaned_on: 2026-09-01
-                    patron_number: P-2026-00001
-                    returned_on: null
-                    status: on_loan
+                    bookStatus: on_loan
+                    loan:
+                      bookId: 0b6f3c1e-2a4d-4e8f-9b1a-3c5d7e9f1a2b
+                      dueDate: 2026-10-15
+                      loanId: 3f8a2d6c-1b4e-4a7f-9c2d-5e8b1a4d7c0e
+                      loanedOn: 2026-10-01
+                      patronNumber: P-00000001
+                      reservationId: null
+                      returnedOn: null
+                      status: on_loan
+                successFromReservation:
+                  summary: 予約順 1 位の利用者への貸出。予約は完了になる
+                  value:
+                    bookStatus: on_loan
+                    loan:
+                      bookId: 5d2e8a41-7c3b-4f60-8e1d-9a2b4c6d8e0f
+                      dueDate: 2026-10-15
+                      loanId: 6a1c4e8b-2d5f-4b9a-8e3c-7f1a3d5b9c2e
+                      loanedOn: 2026-10-01
+                      patronNumber: P-00000001
+                      reservationId: 8b3d5f7a-4c2e-4d1b-9a6f-2e8c4a6b1d3f
+                      returnedOn: null
+                      status: on_loan
               schema:
-                $ref: "#/components/schemas/Loan"
-          description: 貸出を登録した
+                $ref: "#/components/schemas/LoanRegistration"
+          description: 貸出を記録し、返却期限を設定し、書籍を貸出中にした
         "400":
           content:
             application/problem+json:
               examples:
-                validation:
+                badRequest:
                   value:
+                    code: validation_error
                     errors:
-                      - code: required
-                        field: patron_number
-                        message: 利用者番号は必須です
+                      - field: bookId
+                        message: 書籍IDは必須です
                     status: 400
                     title: 入力内容に誤りがあります
                     type: "https://library.example/problems/validation-error"
               schema:
                 $ref: "#/components/schemas/Problem"
-          description: 入力が不正 (必須項目の欠落・形式エラー)
-        "404":
-          content:
-            application/problem+json:
-              examples:
-                copyNotFound:
-                  value:
-                    code: copy_not_found
-                    status: 404
-                    title: 蔵書が見つかりません
-                    type: "https://library.example/problems/not-found"
-                patronNotFound:
-                  value:
-                    code: patron_not_found
-                    status: 404
-                    title: 利用者が見つかりません
-                    type: "https://library.example/problems/not-found"
-              schema:
-                $ref: "#/components/schemas/Problem"
-          description: 利用者または蔵書が存在しない
+          description: 入力が不正 (必須項目の欠落・形式違反)
         "409":
           content:
             application/problem+json:
               examples:
-                heldForOther:
+                bookOnLoan:
                   value:
-                    code: loan_not_allowed
-                    detail: この蔵書は他の利用者向けに取り置き中です。
+                    code: book_on_loan
+                    detail: 書籍 9e4a1c7b-3d5f-4a2e-8b6c-1f3e5a7c9b0d は貸出中です
                     status: 409
-                    title: 貸し出せません
-                    type: "https://library.example/problems/business-rule-violation"
-                onLoan:
+                    title: この書籍は貸出中のため貸し出せません
+                    type: "https://library.example/problems/book-on-loan"
+                notFirstInReservationQueue:
                   value:
-                    code: loan_not_allowed
-                    detail: この蔵書は貸出中です。
+                    code: not_first_in_reservation_queue
+                    detail: 書籍 2c7f9b3e-6a1d-4c8e-9f2b-7d4a1e6c3b5f は予約待ちで、利用者 P-00000001 は予約順 1 位ではありません
                     status: 409
-                    title: 貸し出せません
-                    type: "https://library.example/problems/business-rule-violation"
+                    title: この書籍は予約順 1 位の利用者にだけ貸し出せます
+                    type: "https://library.example/problems/not-first-in-reservation-queue"
+                patronNotRegistered:
+                  value:
+                    code: patron_not_registered
+                    detail: 利用者番号 P-99999999 の利用者は登録されていません
+                    status: 409
+                    title: 登録されていない利用者には貸し出せません
+                    type: "https://library.example/problems/patron-not-registered"
               schema:
                 $ref: "#/components/schemas/Problem"
-          description: 貸出可否により貸し出せない (貸出中・他の利用者向けに取り置き中・除籍済み)
+          description: 貸出可否条件を満たさないため貸し出せない。貸出は記録されず、書籍状態と予約状態は変わらない
       summary: 貸出を登録する
       tags:
-        - circulation
+        - loan
 security:
   - bearerAuth: []
 servers:
-  - description: backend-api (ベースパス /api)
-    url: /api
+  - description: ローカル開発
+    url: "http://localhost:3000"
 tags:
-  - description: 蔵書 (書籍・蔵書)
+  - description: 蔵書 (書籍の登録・編集・削除・検索)
     name: catalog
-  - description: 利用者 (利用者・司書・ログイン)
+  - description: 利用者 (登録・編集・削除)
     name: patron
-  - description: 貸出予約 (貸出・返却・予約)
-    name: circulation
-  - description: 通知 (worker が起動するジョブ API)
+  - description: 貸出・返却・貸出履歴
+    name: loan
+  - description: 予約・予約取消・予約状況
+    name: reservation
+  - description: 通知 (返却通知・リマインド・督促) とジョブ起動
     name: notification
-  - description: 蔵書分析 (在庫状況・人気ランキング・貸出統計)
+  - description: 蔵書分析 (在庫状況・人気書籍ランキング・貸出統計)
     name: analytics

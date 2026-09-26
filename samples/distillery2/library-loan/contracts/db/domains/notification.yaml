@@ -1,142 +1,110 @@
-# basis: requirements@4422a431dd381e737d643e7055432ad4b2330c9d adr@090e13b71116c495162f84a620b4d303817fac08
+# basis: requirements@d1987660054f32fca4d1af3a7f36b312eb6e6518 adr@481506aca70dae9b5b64cefa6ea032e220651c7d
+# 通知コンテキスト。通知は event (登録後に変えない) で outbox を兼ねる (ADR 0004 / 0005)。送信結果は notification_attempts に追記する。
 subdomain_id: notification
-description: "通知。送信待ちレコード (トランザクショナル outbox) を履歴+スナップショットで持つ (ADR 0004 / 0005)。"
 tables:
   - name: notifications
-    description: "通知の現在値スナップショット。業務更新と同じトランザクションで送信待ちとして記録し、worker 起動の送信ジョブが送信済みにする。通知種別・対象・送信日の組で一意。"
+    description: "通知の送信依頼 (outbox)。業務の更新と同じトランザクションで記録し、登録後は変更しない"
     columns:
       - name: notification_id
         type: uuid
         nullable: false
-        description: 通知 ID
-      - name: notification_type
+        description: "通知ID"
+      - name: patron_number
         type: string
         nullable: false
-        enum: [reservation_ready, due_reminder, overdue_notice]
-        description: "通知種別 (受取可能通知・返却期限リマインド・延滞督促)"
-      - name: target_id
-        type: uuid
+        description: "宛先利用者番号"
+      - name: email_encrypted
+        type: text
         nullable: false
-        description: "対象の ID (reservation_ready は予約 ID、それ以外は貸出 ID)。重複抑止の一意キーに使う"
+        description: "宛先メールアドレスの暗号文 (依頼時点の連絡先)"
       - name: loan_id
         type: uuid
         nullable: true
-        description: "対象の貸出 (due_reminder / overdue_notice のとき)"
+        description: "対象貸出ID"
       - name: reservation_id
         type: uuid
         nullable: true
-        description: "対象の予約 (reservation_ready のとき)"
-      - name: patron_id
-        type: uuid
-        nullable: false
-        description: 宛先の利用者
-      - name: recipient_email_encrypted
-        type: text
-        nullable: false
-        description: "宛先メールアドレス (暗号化済み。記録時点の値)"
-      - name: scheduled_on
-        type: date
-        nullable: false
-        description: "送信日 (同日の重複送信を抑止する単位)"
-      - name: status
+        description: "対象予約ID (返却通知のとき)"
+      - name: notification_type
         type: string
         nullable: false
-        enum: [pending, sent]
-        description: "通知の状態 (送信待ち・送信済み)"
-      - name: sent_at
-        type: datetime
-        nullable: true
-        description: "送信日時 (未送信は NULL)"
-      - name: attempt_count
-        type: integer
-        nullable: false
-        description: 送信を試みた回数
-      - name: last_error
-        type: text
-        nullable: true
-        description: "直近の送信失敗の内容 (失敗が無ければ NULL)"
-      - name: version
-        type: integer
-        nullable: false
-        description: "最後に反映した notification_events の sequence (楽観ロックに使う)"
-      - name: created_at
+        enum:
+          - return_notice
+          - reminder
+          - overdue_notice
+        description: "通知種別。return_notice=返却通知、reminder=リマインド、overdue_notice=督促"
+      - name: requested_at
         type: datetime
         nullable: false
-        description: 作成日時
-      - name: updated_at
-        type: datetime
-        nullable: false
-        description: 更新日時
-    primary_key: [notification_id]
+        description: "送信依頼日時"
+    primary_key:
+      - notification_id
+    indexes:
+      - name: notifications_loan_type_uq
+        unique: true
+        columns:
+          - loan_id
+          - notification_type
+      - name: notifications_patron_idx
+        unique: false
+        columns:
+          - patron_number
     foreign_keys:
-      - columns: [loan_id]
-        references:
-          table: loans
-          columns: [loan_id]
-        on_delete: RESTRICT
-      - columns: [reservation_id]
-        references:
-          table: reservations
-          columns: [reservation_id]
-        on_delete: RESTRICT
-      - columns: [patron_id]
+      - columns:
+          - patron_number
         references:
           table: patrons
-          columns: [patron_id]
+          columns:
+            - patron_number
         on_delete: RESTRICT
-    indexes:
-      - name: notifications_dedup_key
-        unique: true
-        columns: [notification_type, target_id, scheduled_on]
-      - name: notifications_status_idx
-        unique: false
-        columns: [status]
-  - name: notification_events
-    description: "通知の状態変化と送信試行の履歴 (追記のみ。更新・削除しない)。"
+      - columns:
+          - loan_id
+        references:
+          table: loans
+          columns:
+            - loan_id
+        on_delete: RESTRICT
+      - columns:
+          - reservation_id
+        references:
+          table: reservations
+          columns:
+            - reservation_id
+        on_delete: RESTRICT
+  - name: notification_attempts
+    description: "通知の送信結果 (追記のみ)。送信日時は result=sent の行の attempted_at"
     columns:
-      - name: event_id
-        type: uuid
-        nullable: false
-        description: イベント ID
       - name: notification_id
         type: uuid
         nullable: false
-        description: 通知 ID
-      - name: sequence
+        description: "対象の通知ID"
+      - name: attempt_no
         type: integer
         nullable: false
-        description: "通知ごとの連番 (1 始まり)"
-      - name: event_type
+        description: "送信試行の連番 (1 始まり)"
+      - name: result
         type: string
         nullable: false
-        enum: [queued, sent, send_failed]
-        description: "イベント種別 (送信待ち登録・送信成功・送信失敗)"
-      - name: from_status
-        type: string
-        nullable: true
-        enum: [pending, sent]
-        description: "遷移前の状態 (登録時は NULL)"
-      - name: to_status
-        type: string
-        nullable: false
-        enum: [pending, sent]
-        description: "遷移後の状態 (送信失敗時は pending のまま)"
-      - name: occurred_at
-        type: datetime
-        nullable: false
-        description: 発生日時
-      - name: payload
+        enum:
+          - sent
+          - failed
+        description: "送信結果。sent=送信済、failed=失敗"
+      - name: error_message
         type: text
         nullable: true
-        description: "付帯情報 (JSON 文字列。失敗理由など)"
-    primary_key: [event_id]
+        description: "失敗時の理由 (メールアドレス等の個人情報を含めない)"
+      - name: attempted_at
+        type: datetime
+        nullable: false
+        description: "送信試行日時"
+    primary_key:
+      - notification_id
+      - attempt_no
     foreign_keys:
-      - columns: [notification_id]
+      - columns:
+          - notification_id
         references:
           table: notifications
-          columns: [notification_id]
+          columns:
+            - notification_id
         on_delete: RESTRICT
-    indexes:
-      - name: notification_events_notification_sequence_key
-        unique: true
-        columns: [notification_id, sequence]

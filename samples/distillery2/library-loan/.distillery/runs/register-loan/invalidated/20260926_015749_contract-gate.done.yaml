@@ -1,0 +1,8 @@
+stage: contract-gate
+completed_at: "2026-09-26T01:47:57.556Z"
+attempt: 1
+static: pass
+unit: pass
+contract: pass
+skipped_consumers:
+  - frontend

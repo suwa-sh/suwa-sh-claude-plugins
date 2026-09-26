@@ -1,0 +1,7 @@
+{
+  "code": "book_on_loan",
+  "detail": "書籍 9e4a1c7b-3d5f-4a2e-8b6c-1f3e5a7c9b0d は貸出中です",
+  "status": 409,
+  "title": "この書籍は貸出中のため貸し出せません",
+  "type": "https://library.example/problems/book-on-loan"
+}

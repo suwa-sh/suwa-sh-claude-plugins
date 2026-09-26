@@ -1,0 +1,4 @@
+# basis: requirements@d1987660054f32fca4d1af3a7f36b312eb6e6518 adr@481506aca70dae9b5b64cefa6ea032e220651c7d
+# 蔵書分析コンテキスト。レポート (在庫状況・人気書籍ランキング・貸出統計) はテーブルに保存せず、books と loans から都度集計する (ADR 0004)。
+subdomain_id: analytics
+tables: []

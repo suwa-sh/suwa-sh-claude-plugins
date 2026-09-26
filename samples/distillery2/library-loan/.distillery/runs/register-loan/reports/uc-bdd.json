@@ -1,18 +1,18 @@
 [
   {
-    "description": "  司書が利用者と蔵書を指定して貸出を登録し、貸出日に貸出期間を加えた返却期限を自動で設定する。\n  在庫ありの蔵書、またはその利用者向けに取り置き中の蔵書だけを貸し出せる (条件「貸出可否」「返却期限算出」)。",
+    "description": "  司書が利用者と書籍を指定して貸出を登録する。\n  貸出日に貸出期間を加えた日を返却期限として自動で設定し、書籍を貸出中にする。",
     "elements": [
       {
         "description": "",
-        "id": "貸出を登録する;在庫ありの蔵書を貸し出す",
+        "id": "貸出を登録する;在庫ありの書籍を登録済みの利用者に貸し出す",
         "keyword": "シナリオ",
-        "line": 15,
-        "name": "在庫ありの蔵書を貸し出す",
+        "line": 17,
+        "name": "在庫ありの書籍を登録済みの利用者に貸し出す",
         "steps": [
           {
             "result": {
               "status": "passed",
-              "duration": 860772833
+              "duration": 1135959
             },
             "keyword": "Before",
             "hidden": true
@@ -20,132 +20,119 @@
           {
             "result": {
               "status": "passed",
-              "duration": 2678208
-            },
-            "keyword": "Before",
-            "hidden": true
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 1705874
+              "duration": 148250
             },
             "arguments": [],
             "keyword": "前提",
-            "line": 9,
-            "name": "司書 \"lib1\" がログインしている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:38"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 578125
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 10,
-            "name": "貸出期間が 14 日に設定されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:46"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 1074708
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 11,
-            "name": "利用者 \"m1\" が登録されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 491625
-            },
-            "arguments": [],
-            "keyword": "かつ",
             "line": 12,
-            "name": "利用者 \"m2\" が登録されている",
+            "name": "今日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
+              "location": "features/step_definitions/register-loan.steps.ts:53"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 2358249
+              "duration": 126333
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 13,
+            "name": "司書としてログインしている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:57"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 1244568416
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 14,
+            "name": "利用者 \"山田 花子\" が登録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:62"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 1072374
             },
             "arguments": [],
             "keyword": "前提",
-            "line": 16,
-            "name": "蔵書 \"c1\" の書籍の状態は在庫ありである",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:60"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 28762292
-            },
-            "arguments": [],
-            "keyword": "もし",
-            "line": 17,
-            "name": "司書が蔵書 \"c1\" を利用者 \"m1\" に貸し出す",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:80"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 689791
-            },
-            "arguments": [],
-            "keyword": "ならば",
             "line": 18,
-            "name": "蔵書 \"c1\" の利用者 \"m1\" への貸出が記録される",
+            "name": "書籍 \"吾輩は猫である\" が登録され、在庫ありである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:98"
+              "location": "features/step_definitions/register-loan.steps.ts:68"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 385792
+              "duration": 34952667
             },
             "arguments": [],
-            "keyword": "かつ",
+            "keyword": "もし",
             "line": 19,
-            "name": "蔵書 \"c1\" の書籍の状態は貸出中になる",
+            "name": "司書が \"吾輩は猫である\" を \"山田 花子\" に貸し出す",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:158"
+              "location": "features/step_definitions/register-loan.steps.ts:107"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 656750
+              "duration": 1167333
             },
             "arguments": [],
-            "keyword": "かつ",
+            "keyword": "ならば",
             "line": 20,
-            "name": "蔵書 \"c1\" の利用者 \"m1\" への貸出の状態は貸出中である",
+            "name": "貸出が記録され書籍の状態が貸出中になる",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:121"
+              "location": "features/step_definitions/register-loan.steps.ts:129"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 50707
+              "duration": 558291
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 21,
+            "name": "\"山田 花子\" の \"吾輩は猫である\" の貸出は、貸出日が \"2026-10-01\" で貸出状態が貸出中である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:139"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 369834
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 22,
+            "name": "書籍 \"吾輩は猫である\" の状態は貸出中である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:194"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 1327332
+            },
+            "keyword": "After",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 95666
             },
             "keyword": "After",
             "hidden": true
@@ -154,30 +141,30 @@
         "tags": [
           {
             "name": "@uc:register-loan",
-            "line": 3
+            "line": 6
           },
           {
             "name": "@acceptance",
-            "line": 14
+            "line": 16
           },
           {
-            "name": "@acceptance:SPEC-004-01-1",
-            "line": 14
+            "name": "@acceptance:SPEC-003-01-1",
+            "line": 16
           }
         ],
         "type": "scenario"
       },
       {
         "description": "",
-        "id": "貸出を登録する;貸出登録時に貸出日に貸出期間を加えた返却期限が設定される",
+        "id": "貸出を登録する;貸出を登録すると返却期限が自動で設定される",
         "keyword": "シナリオ",
-        "line": 23,
-        "name": "貸出登録時に貸出日に貸出期間を加えた返却期限が設定される",
+        "line": 25,
+        "name": "貸出を登録すると返却期限が自動で設定される",
         "steps": [
           {
             "result": {
               "status": "passed",
-              "duration": 7179916
+              "duration": 472916
             },
             "keyword": "Before",
             "hidden": true
@@ -185,132 +172,106 @@
           {
             "result": {
               "status": "passed",
-              "duration": 290917
-            },
-            "keyword": "Before",
-            "hidden": true
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 697291
+              "duration": 247375
             },
             "arguments": [],
             "keyword": "前提",
-            "line": 9,
-            "name": "司書 \"lib1\" がログインしている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:38"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 367874
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 10,
-            "name": "貸出期間が 14 日に設定されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:46"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 372666
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 11,
-            "name": "利用者 \"m1\" が登録されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 231999
-            },
-            "arguments": [],
-            "keyword": "かつ",
             "line": 12,
-            "name": "利用者 \"m2\" が登録されている",
+            "name": "今日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
+              "location": "features/step_definitions/register-loan.steps.ts:53"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 102124
-            },
-            "arguments": [],
-            "keyword": "前提",
-            "line": 24,
-            "name": "今日の日付は 2026-09-01 である",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:56"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 1156250
+              "duration": 46124
             },
             "arguments": [],
             "keyword": "かつ",
-            "line": 25,
-            "name": "蔵書 \"c1\" の書籍の状態は在庫ありである",
+            "line": 13,
+            "name": "司書としてログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:60"
+              "location": "features/step_definitions/register-loan.steps.ts:57"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 7514375
+              "duration": 689755249
             },
             "arguments": [],
-            "keyword": "もし",
+            "keyword": "かつ",
+            "line": 14,
+            "name": "利用者 \"山田 花子\" が登録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:62"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 669458
+            },
+            "arguments": [],
+            "keyword": "前提",
             "line": 26,
-            "name": "司書が蔵書 \"c1\" を利用者 \"m1\" に貸し出す",
+            "name": "書籍 \"吾輩は猫である\" が登録され、在庫ありである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:80"
+              "location": "features/step_definitions/register-loan.steps.ts:68"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 428625
+              "duration": 19496291
+            },
+            "arguments": [],
+            "keyword": "もし",
+            "line": 27,
+            "name": "司書が \"吾輩は猫である\" を \"山田 花子\" に貸し出す",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:107"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 713958
             },
             "arguments": [],
             "keyword": "ならば",
-            "line": 27,
-            "name": "蔵書 \"c1\" の利用者 \"m1\" への貸出の貸出日は 2026-09-01 である",
+            "line": 28,
+            "name": "貸出日から貸出期間を加えた日が返却期限として設定される",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:132"
+              "location": "features/step_definitions/register-loan.steps.ts:149"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 359874
+              "duration": 403999
             },
             "arguments": [],
             "keyword": "かつ",
-            "line": 28,
-            "name": "蔵書 \"c1\" の利用者 \"m1\" への貸出の返却期限は 2026-09-15 である",
+            "line": 29,
+            "name": "\"山田 花子\" の \"吾輩は猫である\" の貸出の返却期限は \"2026-10-01\" に貸出期間の日数を加えた日である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:145"
+              "location": "features/step_definitions/register-loan.steps.ts:161"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 31000
+              "duration": 869916
+            },
+            "keyword": "After",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 47875
             },
             "keyword": "After",
             "hidden": true
@@ -319,30 +280,30 @@
         "tags": [
           {
             "name": "@uc:register-loan",
-            "line": 3
+            "line": 6
           },
           {
             "name": "@acceptance",
-            "line": 22
+            "line": 24
           },
           {
-            "name": "@acceptance:SPEC-006-01-1",
-            "line": 22
+            "name": "@acceptance:SPEC-005-01-1",
+            "line": 24
           }
         ],
         "type": "scenario"
       },
       {
         "description": "",
-        "id": "貸出を登録する;月をまたぐ返却期限も貸出日に貸出期間を加えて設定される",
+        "id": "貸出を登録する;貸出中の書籍は貸し出せない",
         "keyword": "シナリオ",
-        "line": 30,
-        "name": "月をまたぐ返却期限も貸出日に貸出期間を加えて設定される",
+        "line": 32,
+        "name": "貸出中の書籍は貸し出せない",
         "steps": [
           {
             "result": {
               "status": "passed",
-              "duration": 6865291
+              "duration": 358041
             },
             "keyword": "Before",
             "hidden": true
@@ -350,119 +311,145 @@
           {
             "result": {
               "status": "passed",
-              "duration": 259375
-            },
-            "keyword": "Before",
-            "hidden": true
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 552832
+              "duration": 47666
             },
             "arguments": [],
             "keyword": "前提",
-            "line": 9,
-            "name": "司書 \"lib1\" がログインしている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:38"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 310541
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 10,
-            "name": "貸出期間が 14 日に設定されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:46"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 345917
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 11,
-            "name": "利用者 \"m1\" が登録されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 218666
-            },
-            "arguments": [],
-            "keyword": "かつ",
             "line": 12,
-            "name": "利用者 \"m2\" が登録されている",
+            "name": "今日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
+              "location": "features/step_definitions/register-loan.steps.ts:53"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 24042
-            },
-            "arguments": [],
-            "keyword": "前提",
-            "line": 31,
-            "name": "今日の日付は 2026-09-20 である",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:56"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 1078041
+              "duration": 17749
             },
             "arguments": [],
             "keyword": "かつ",
-            "line": 32,
-            "name": "蔵書 \"c1\" の書籍の状態は在庫ありである",
+            "line": 13,
+            "name": "司書としてログインしている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:60"
+              "location": "features/step_definitions/register-loan.steps.ts:57"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 5986167
+              "duration": 713301166
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 14,
+            "name": "利用者 \"山田 花子\" が登録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:62"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 397042
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 33,
+            "name": "利用者 \"佐藤 太郎\" が登録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:62"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 994541
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 34,
+            "name": "書籍 \"吾輩は猫である\" が登録され、\"佐藤 太郎\" に貸出中である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:72"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 16307500
             },
             "arguments": [],
             "keyword": "もし",
-            "line": 33,
-            "name": "司書が蔵書 \"c1\" を利用者 \"m1\" に貸し出す",
+            "line": 35,
+            "name": "司書が \"吾輩は猫である\" を \"山田 花子\" に貸し出そうとする",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:80"
+              "location": "features/step_definitions/register-loan.steps.ts:112"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 434207
+              "duration": 512875
             },
             "arguments": [],
             "keyword": "ならば",
-            "line": 34,
-            "name": "蔵書 \"c1\" の利用者 \"m1\" への貸出の返却期限は 2026-10-04 である",
+            "line": 36,
+            "name": "貸出できない旨が表示され貸出は記録されない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:145"
+              "location": "features/step_definitions/register-loan.steps.ts:170"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 18624
+              "duration": 382333
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 37,
+            "name": "\"山田 花子\" の貸出は 0 件である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:178"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 340125
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 38,
+            "name": "\"佐藤 太郎\" の \"吾輩は猫である\" の貸出は、貸出状態が貸出中のまま変わらない",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:182"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 250000
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 39,
+            "name": "書籍 \"吾輩は猫である\" の状態は貸出中である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:194"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 768333
+            },
+            "keyword": "After",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 70375
             },
             "keyword": "After",
             "hidden": true
@@ -471,22 +458,30 @@
         "tags": [
           {
             "name": "@uc:register-loan",
-            "line": 3
+            "line": 6
+          },
+          {
+            "name": "@acceptance",
+            "line": 31
+          },
+          {
+            "name": "@acceptance:SPEC-003-01-2",
+            "line": 31
           }
         ],
         "type": "scenario"
       },
       {
         "description": "",
-        "id": "貸出を登録する;貸出中の蔵書は貸し出せない",
+        "id": "貸出を登録する;予約待ちの書籍を予約順-1-位の利用者に貸し出す",
         "keyword": "シナリオ",
-        "line": 37,
-        "name": "貸出中の蔵書は貸し出せない",
+        "line": 41,
+        "name": "予約待ちの書籍を予約順 1 位の利用者に貸し出す",
         "steps": [
           {
             "result": {
               "status": "passed",
-              "duration": 7101000
+              "duration": 667292
             },
             "keyword": "Before",
             "hidden": true
@@ -494,323 +489,171 @@
           {
             "result": {
               "status": "passed",
-              "duration": 319874
-            },
-            "keyword": "Before",
-            "hidden": true
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 710041
+              "duration": 47082
             },
             "arguments": [],
             "keyword": "前提",
-            "line": 9,
-            "name": "司書 \"lib1\" がログインしている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:38"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 431790
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 10,
-            "name": "貸出期間が 14 日に設定されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:46"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 443042
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 11,
-            "name": "利用者 \"m1\" が登録されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 733875
-            },
-            "arguments": [],
-            "keyword": "かつ",
             "line": 12,
-            "name": "利用者 \"m2\" が登録されている",
+            "name": "今日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
+              "location": "features/step_definitions/register-loan.steps.ts:53"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 2237208
+              "duration": 16167
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 13,
+            "name": "司書としてログインしている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:57"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 711850084
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 14,
+            "name": "利用者 \"山田 花子\" が登録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:62"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 345041
             },
             "arguments": [],
             "keyword": "前提",
-            "line": 38,
-            "name": "蔵書 \"c1\" は利用者 \"m1\" に貸出中である",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:64"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 4396249
-            },
-            "arguments": [],
-            "keyword": "もし",
-            "line": 39,
-            "name": "司書が蔵書 \"c1\" を利用者 \"m2\" に貸し出す",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:80"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 39917
-            },
-            "arguments": [],
-            "keyword": "ならば",
-            "line": 40,
-            "name": "貸出できない旨のエラーが表示される",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:186"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 364958
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 41,
-            "name": "蔵書 \"c1\" の利用者 \"m2\" への貸出は記録されない",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:113"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 212708
-            },
-            "arguments": [],
-            "keyword": "かつ",
             "line": 42,
-            "name": "蔵書 \"c1\" の書籍の状態は貸出中のままである",
+            "name": "利用者 \"佐藤 太郎\" が登録されている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:164"
+              "location": "features/step_definitions/register-loan.steps.ts:62"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 255250
+              "duration": 453334
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 43,
-            "name": "蔵書 \"c1\" の利用者 \"m1\" への貸出の状態は貸出中である",
+            "name": "書籍 \"坊っちゃん\" が登録され、予約待ちである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:121"
+              "location": "features/step_definitions/register-loan.steps.ts:81"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 16416
-            },
-            "keyword": "After",
-            "hidden": true
-          }
-        ],
-        "tags": [
-          {
-            "name": "@uc:register-loan",
-            "line": 3
-          },
-          {
-            "name": "@acceptance",
-            "line": 36
-          },
-          {
-            "name": "@acceptance:SPEC-004-01-2",
-            "line": 36
-          }
-        ],
-        "type": "scenario"
-      },
-      {
-        "description": "",
-        "id": "貸出を登録する;他の利用者向けに取り置き中の蔵書は貸し出せない",
-        "keyword": "シナリオ",
-        "line": 46,
-        "name": "他の利用者向けに取り置き中の蔵書は貸し出せない",
-        "steps": [
-          {
-            "result": {
-              "status": "passed",
-              "duration": 7861625
-            },
-            "keyword": "Before",
-            "hidden": true
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 288749
-            },
-            "keyword": "Before",
-            "hidden": true
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 678042
-            },
-            "arguments": [],
-            "keyword": "前提",
-            "line": 9,
-            "name": "司書 \"lib1\" がログインしている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:38"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 326624
+              "duration": 614084
             },
             "arguments": [],
             "keyword": "かつ",
-            "line": 10,
-            "name": "貸出期間が 14 日に設定されている",
+            "line": 44,
+            "name": "\"坊っちゃん\" の予約順 1 位は \"山田 花子\" で、予約状態は通知済である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:46"
+              "location": "features/step_definitions/register-loan.steps.ts:87"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 417083
+              "duration": 370499
             },
             "arguments": [],
             "keyword": "かつ",
-            "line": 11,
-            "name": "利用者 \"m1\" が登録されている",
+            "line": 45,
+            "name": "\"坊っちゃん\" の予約順 2 位は \"佐藤 太郎\" で、予約状態は予約中である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
+              "location": "features/step_definitions/register-loan.steps.ts:94"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 211625
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 12,
-            "name": "利用者 \"m2\" が登録されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 2396124
-            },
-            "arguments": [],
-            "keyword": "前提",
-            "line": 47,
-            "name": "蔵書 \"c1\" は利用者 \"m1\" 向けに取り置き中である",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:71"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 4730542
+              "duration": 19530708
             },
             "arguments": [],
             "keyword": "もし",
-            "line": 48,
-            "name": "司書が蔵書 \"c1\" を利用者 \"m2\" に貸し出す",
+            "line": 46,
+            "name": "司書が \"坊っちゃん\" を \"山田 花子\" に貸し出す",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:80"
+              "location": "features/step_definitions/register-loan.steps.ts:107"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 25957
+              "duration": 837333
             },
             "arguments": [],
             "keyword": "ならば",
-            "line": 49,
-            "name": "貸出できない旨のエラーが表示される",
+            "line": 47,
+            "name": "貸出が記録され書籍の状態が貸出中になる",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:186"
+              "location": "features/step_definitions/register-loan.steps.ts:129"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 511750
+              "duration": 257250
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 48,
+            "name": "書籍 \"坊っちゃん\" の状態は貸出中である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:194"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 630541
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 49,
+            "name": "\"山田 花子\" の \"坊っちゃん\" の予約の予約状態は完了である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:208"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 583249
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 50,
-            "name": "蔵書 \"c1\" の利用者 \"m2\" への貸出は記録されない",
+            "name": "\"佐藤 太郎\" の \"坊っちゃん\" の予約の予約状態は予約中のまま変わらない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:113"
+              "location": "features/step_definitions/register-loan.steps.ts:215"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 256250
+              "duration": 1097125
             },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 51,
-            "name": "蔵書 \"c1\" の書籍の状態は取り置き中のままである",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:168"
-            }
+            "keyword": "After",
+            "hidden": true
           },
           {
             "result": {
               "status": "passed",
-              "duration": 266084
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 52,
-            "name": "利用者 \"m1\" の蔵書 \"c1\" に対する予約の状態は取り置き中のままである",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:172"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 16999
+              "duration": 77083
             },
             "keyword": "After",
             "hidden": true
@@ -819,30 +662,22 @@
         "tags": [
           {
             "name": "@uc:register-loan",
-            "line": 3
-          },
-          {
-            "name": "@acceptance",
-            "line": 45
-          },
-          {
-            "name": "@acceptance:SPEC-004-01-3",
-            "line": 45
+            "line": 6
           }
         ],
         "type": "scenario"
       },
       {
         "description": "",
-        "id": "貸出を登録する;本人向けに取り置き中の蔵書を貸し出すと予約が受取済みになる",
+        "id": "貸出を登録する;予約待ちの書籍は予約順-1-位以外の利用者に貸し出せない",
         "keyword": "シナリオ",
-        "line": 54,
-        "name": "本人向けに取り置き中の蔵書を貸し出すと予約が受取済みになる",
+        "line": 52,
+        "name": "予約待ちの書籍は予約順 1 位以外の利用者に貸し出せない",
         "steps": [
           {
             "result": {
               "status": "passed",
-              "duration": 6749082
+              "duration": 782583
             },
             "keyword": "Before",
             "hidden": true
@@ -850,145 +685,158 @@
           {
             "result": {
               "status": "passed",
-              "duration": 253457
-            },
-            "keyword": "Before",
-            "hidden": true
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 599750
+              "duration": 81584
             },
             "arguments": [],
             "keyword": "前提",
-            "line": 9,
-            "name": "司書 \"lib1\" がログインしている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:38"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 318999
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 10,
-            "name": "貸出期間が 14 日に設定されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:46"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 624749
-            },
-            "arguments": [],
-            "keyword": "かつ",
-            "line": 11,
-            "name": "利用者 \"m1\" が登録されている",
-            "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
-            }
-          },
-          {
-            "result": {
-              "status": "passed",
-              "duration": 252458
-            },
-            "arguments": [],
-            "keyword": "かつ",
             "line": 12,
-            "name": "利用者 \"m2\" が登録されている",
+            "name": "今日は \"2026-10-01\" である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:50"
+              "location": "features/step_definitions/register-loan.steps.ts:53"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 2255625
+              "duration": 17334
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 13,
+            "name": "司書としてログインしている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:57"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 654727417
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 14,
+            "name": "利用者 \"山田 花子\" が登録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:62"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 330708
             },
             "arguments": [],
             "keyword": "前提",
-            "line": 55,
-            "name": "蔵書 \"c1\" は利用者 \"m1\" 向けに取り置き中である",
+            "line": 53,
+            "name": "利用者 \"佐藤 太郎\" が登録されている",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:71"
+              "location": "features/step_definitions/register-loan.steps.ts:62"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 7284957
+              "duration": 407916
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 54,
+            "name": "書籍 \"坊っちゃん\" が登録され、予約待ちである",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:81"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 1184583
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 55,
+            "name": "\"坊っちゃん\" の予約順 1 位は \"佐藤 太郎\" で、予約状態は通知済である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:87"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 20068832
             },
             "arguments": [],
             "keyword": "もし",
             "line": 56,
-            "name": "司書が蔵書 \"c1\" を利用者 \"m1\" に貸し出す",
+            "name": "司書が \"坊っちゃん\" を \"山田 花子\" に貸し出そうとする",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:80"
+              "location": "features/step_definitions/register-loan.steps.ts:112"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 352958
+              "duration": 1159375
             },
             "arguments": [],
             "keyword": "ならば",
             "line": 57,
-            "name": "蔵書 \"c1\" の利用者 \"m1\" への貸出が記録される",
+            "name": "貸出できない旨が表示され貸出は記録されない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:98"
+              "location": "features/step_definitions/register-loan.steps.ts:170"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 204666
+              "duration": 680500
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 58,
-            "name": "蔵書 \"c1\" の書籍の状態は貸出中になる",
+            "name": "\"山田 花子\" の貸出は 0 件である",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:158"
+              "location": "features/step_definitions/register-loan.steps.ts:178"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 349165
+              "duration": 482042
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 59,
-            "name": "蔵書 \"c1\" の利用者 \"m1\" への貸出の状態は貸出中である",
+            "name": "書籍 \"坊っちゃん\" の状態は予約待ちである",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:121"
+              "location": "features/step_definitions/register-loan.steps.ts:198"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 265000
+              "duration": 711207
             },
             "arguments": [],
             "keyword": "かつ",
             "line": 60,
-            "name": "利用者 \"m1\" の蔵書 \"c1\" に対する予約の状態は受取済みになる",
+            "name": "\"佐藤 太郎\" の \"坊っちゃん\" の予約の予約状態は通知済のまま変わらない",
             "match": {
-              "location": "features/step_definitions/register-loan.steps.ts:179"
+              "location": "features/step_definitions/register-loan.steps.ts:222"
             }
           },
           {
             "result": {
               "status": "passed",
-              "duration": 16333
+              "duration": 4638792
+            },
+            "keyword": "After",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 117709
             },
             "keyword": "After",
             "hidden": true
@@ -997,20 +845,164 @@
         "tags": [
           {
             "name": "@uc:register-loan",
-            "line": 3
+            "line": 6
+          }
+        ],
+        "type": "scenario"
+      },
+      {
+        "description": "",
+        "id": "貸出を登録する;登録されていない利用者には貸し出せない",
+        "keyword": "シナリオ",
+        "line": 62,
+        "name": "登録されていない利用者には貸し出せない",
+        "steps": [
+          {
+            "result": {
+              "status": "passed",
+              "duration": 630709
+            },
+            "keyword": "Before",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 76332
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 12,
+            "name": "今日は \"2026-10-01\" である",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:53"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 19624
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 13,
+            "name": "司書としてログインしている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:57"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 679927666
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 14,
+            "name": "利用者 \"山田 花子\" が登録されている",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:62"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 498749
+            },
+            "arguments": [],
+            "keyword": "前提",
+            "line": 63,
+            "name": "書籍 \"吾輩は猫である\" が登録され、在庫ありである",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:68"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 589750
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 64,
+            "name": "利用者番号 \"P-99999999\" の利用者は登録されていない",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:101"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 15526208
+            },
+            "arguments": [],
+            "keyword": "もし",
+            "line": 65,
+            "name": "司書が \"吾輩は猫である\" を利用者番号 \"P-99999999\" に貸し出そうとする",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:120"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 477709
+            },
+            "arguments": [],
+            "keyword": "ならば",
+            "line": 66,
+            "name": "貸出できない旨が表示され貸出は記録されない",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:170"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 322083
+            },
+            "arguments": [],
+            "keyword": "かつ",
+            "line": 67,
+            "name": "書籍 \"吾輩は猫である\" の状態は在庫ありである",
+            "match": {
+              "location": "features/step_definitions/register-loan.steps.ts:202"
+            }
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 857415
+            },
+            "keyword": "After",
+            "hidden": true
+          },
+          {
+            "result": {
+              "status": "passed",
+              "duration": 39250
+            },
+            "keyword": "After",
+            "hidden": true
+          }
+        ],
+        "tags": [
+          {
+            "name": "@uc:register-loan",
+            "line": 6
           }
         ],
         "type": "scenario"
       }
     ],
     "id": "貸出を登録する",
-    "line": 4,
+    "line": 7,
     "keyword": "機能",
     "name": "貸出を登録する",
     "tags": [
       {
         "name": "@uc:register-loan",
-        "line": 3
+        "line": 6
       }
     ],
     "uri": "features/貸出業務/register-loan.feature"

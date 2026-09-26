@@ -3,74 +3,65 @@ uc: "register-loan"
 tier: "frontend"
 attempt: 2
 extraction:
-  candidate_count: 12
-  excluded_as_explicit: 6
-  recorded_count: 6
+  candidate_count: 7
+  excluded_as_explicit: 2
+  recorded_count: 5
 assumptions:
   - id: A-001
+    category: persistence
+    title: "再送判定キーは結果が確定したら替える"
+    assumption: "Idempotency-Key は UUID v4 (crypto.randomUUID) とする。貸出受付画面では、結果が不確かな失敗 (通信できない・契約外の応答) の後は同じキーで再送し、結果が確定した応答 (201 登録済み、400 / 409 貸し出せない) の後は新しいキーに替える。入口関数 submitLoanCheckout はキー省略時に呼び出しごとに新しいキーを作る"
+    target: "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.ts:54"
+    reason: "契約は Idempotency-Key を必須とし 1〜128 文字、同じキーの再送では初回と同じ応答を返すと定めるが、キーの形式と、どの操作の範囲で同じキーを使うかを定めていない。409 の後も同じキーを使うと、状況が変わっても初回と同じ 409 が返り再判定されないため、確定した応答の後はキーを替える"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-loan/contract-slice.json#components.parameters.IdempotencyKey"
+      - "docs/rules/common.md#ADR 0005"
+      - "docs/rules/tier-frontend.md"
+      - "features/貸出業務/register-loan.feature"
+  - id: A-002
     category: error_handling
-    title: "通信失敗と非 Problem 応答は固定文言"
-    assumption: "fetch が例外を投げた場合と、応答が Problem (title を持つ JSON) で読めない場合は、title「貸出を登録できませんでした」detail「時間をおいてもう一度お試しください。」のエラー表示状態にする"
-    target: "apps/frontend/src/state/loan-checkout.ts:61"
-    reason: "契約の createLoan は 201/400/404/409 だけを定義し、通信失敗・5xx・非 JSON 応答の画面表示が要求・シナリオ・画面 story のどこにも無い"
+    title: "契約外の応答は再試行を促す失敗表示"
+    assumption: "registerLoan の応答が 201 以外で、本文が Problem 形式 (code と title を持つ) なら 400 / 409 と同じく貸出できない旨と title を表示し、Problem 形式でなければ status を保持した failed として固定の再試行を促す文言を表示する"
+    target: "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.ts:90"
+    reason: "契約の registerLoan は 201 / 400 / 409 だけを定義し、401 / 403 / 5xx やゲートウェイ由来の非 Problem 応答を画面がどう扱うかの定めが無い"
     confidence: medium
     spec_refs:
       - "contracts/generated/slices/register-loan/contract-slice.json#paths./loans.post.responses"
-      - "features/貸出業務/register-loan.feature"
-      - "packages/ui/stories/LoanCheckout.stories.tsx#Error"
+      - "features/貸出業務/register-loan.feature#貸出できない旨が表示され貸出は記録されない"
+      - "docs/rules/common.md#推奨"
   - id: A-003
-    category: input_validation
-    title: "入力の必須チェックはサーバーに任せる"
-    assumption: "画面側では利用者番号・蔵書 ID の必須・形式チェックをせず、packages/ui の LoanCheckoutForm が前後の空白を除いた値をそのまま送り、backend-api の 400 (errors[]) を項目エラーとして表示する"
-    target: "apps/frontend/src/state/loan-checkout.ts:77"
-    reason: "Input は required 表示だが、画面側の検証の有無と文言は要求・シナリオ・契約に無い。前後空白の除去と noValidate は packages/ui/components/domain/LoanCheckoutForm.tsx が行い、frontend は追加の検証を足さない。契約の 400 validation example が必須エラーの文言を持つため、その文言を正とした"
+    category: error_handling
+    title: "通信失敗は登録できない旨を表示"
+    assumption: "fetch 自体が例外を投げた (通信できない) 場合、画面は status 0 の failed として通信状態の確認と再試行を促す文言を表示し、同じ Idempotency-Key で再送できる状態に戻す"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:179"
+    reason: "シナリオ・契約・ルールに通信失敗時の画面の振る舞いが無い (story の Error variant は文言の例だけ)"
     confidence: medium
     spec_refs:
-      - "docs/design/screens.yaml#LoanCheckout"
-      - "contracts/generated/slices/register-loan/contract-slice.json#paths./loans.post.responses.400"
       - "features/貸出業務/register-loan.feature"
-      - "packages/ui/components/domain/LoanCheckoutForm.tsx"
+      - "docs/design/screens.yaml#LoanRegister"
+      - "packages/ui/stories/LoanRegister.stories.tsx#Error"
+      - "docs/rules/tier-frontend.md"
   - id: A-004
-    category: security
-    title: "認可トークンは上位から注入し保持しない"
-    assumption: "frontend の貸出受付はアクセストークンを自分で取得・保存せず、呼び出し側が ApiOptions.headers (Authorization: Bearer) で注入する。未注入なら認可ヘッダ無しで呼ぶ"
-    target: "apps/frontend/src/api-client/loan-api.ts:38"
-    reason: "契約は security bearerAuth、ADR 0006 は OIDC 委任を定めるが、SPA がトークンをどこで取得・保持し API に付けるかは要求・ルール・契約に無い (認証基盤の結線は未実装)"
-    confidence: low
+    category: input_validation
+    title: "画面では入力検証せず API に委ねる"
+    assumption: "貸出受付画面は利用者番号・書籍IDを加工 (trim 等) も事前検証もせずにそのまま送り、形式違反の判定は backend の 400 (validation_error) に委ねる"
+    target: "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.ts:68"
+    reason: "契約は RegisterLoanRequest のスキーマ (PatronNumber 1〜32 文字、BookId uuid) を定めるが、画面側で事前に検証するかどうかは要求・ルールに無い。利用者番号と書籍は前段の UC で確定済みの値を受け取る想定"
+    confidence: medium
     spec_refs:
-      - "contracts/generated/slices/register-loan/contract-slice.json#components.securitySchemes.bearerAuth"
-      - "docs/rules/tier-frontend.md#ADR 0006"
-      - "docs/rules/common.md#ADR 0006"
-  - id: A-005
-    category: data_format
-    title: "400 の errors[] をフォーム項目名へ写像"
-    assumption: "Problem の errors[].field を patron_number→patronNo、copy_id→copyId に写像し、同じ項目に複数あれば最初の message だけを出す。未知の field は捨てる"
-    target: "apps/frontend/src/state/loan-checkout.ts:42"
-    reason: "契約の FieldError.field と packages/ui の LoanCheckoutForm の項目名 (patronNo/copyId) が異なり、対応づけと複数エラーの扱いがどこにも定義されていない"
-    confidence: high
-    spec_refs:
-      - "contracts/generated/slices/register-loan/contract-slice.json#components.schemas.FieldError"
-      - "packages/ui/components/domain/LoanCheckoutForm.tsx"
+      - "contracts/generated/slices/register-loan/contract-slice.json#components.schemas.RegisterLoanRequest"
+      - "docs/rules/tier-frontend.md"
+      - "features/貸出業務/register-loan.feature"
   - id: A-006
     category: data_format
-    title: "貸出完了の蔵書表示は copy_id をそのまま"
-    assumption: "貸出完了のお知らせでは蔵書を「書籍タイトル (copy_id)」と表示し、copy_id は契約の uuid をそのまま出す"
-    target: "apps/frontend/src/view/LoanCheckoutPage.tsx:54"
-    reason: "story の Completed は C-000101 形式の蔵書コードを出すが、契約の Loan には uuid の copy_id しか無く、人が読む蔵書コードの定義が無い (issues/contract-auth-responses-not-in-createLoan.md の補足と同じ論点)"
-    confidence: low
-    spec_refs:
-      - "packages/ui/stories/LoanCheckout.stories.tsx#Completed"
-      - "contracts/generated/slices/register-loan/contract-slice.json#components.schemas.Loan"
-      - "docs/requirements/rdra/情報.tsv#蔵書"
-  - id: A-007
-    category: error_handling
-    title: "成功で入力を空に、失敗で入力を保持"
-    assumption: "貸出成功時は loan_id をキーにフォームを作り直して入力を空に戻し、エラー時 (400/404/409・通信失敗) は直前に送信した入力値をフォームに残す"
-    target: "apps/frontend/src/view/LoanCheckoutPage.tsx:69"
-    reason: "送信後のフォーム値の扱いは要求・シナリオ・契約・tier-frontend.md に無い。story の Error 状態は入力値を残した見本 (defaultValues あり) だが、Completed 状態の入力欄の扱いは見本に無い。連続して次の貸出を受け付けやすいよう成功時は空に戻した"
+    title: "登録前の貸出日と返却期限は空欄"
+    assumption: "貸出受付画面の「貸出の内容」は story どおり 利用者 / 書籍 / 貸出日 / 返却期限 の行を出す。登録前は貸出日と返却期限の値を空欄にし (返却期限の注記は出す)、登録後は応答の loan.loanedOn と loan.dueDate を表示する。端末の日付で貸出日を仮表示しない"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:120"
+    reason: "story の Default は登録前に貸出日 (TODAY) と返却期限 (2026-10-10) を表示するが、契約では両方ともサーバーが決める値で、登録前に得る operation が無い。story との乖離そのものは issues/20260926T1100_register-loan-story-prefilled-dates.md で変更要求し、ここでは還流までの暫定の表示方法だけを決めた"
     confidence: medium
     spec_refs:
+      - "packages/ui/stories/LoanRegister.stories.tsx#Default"
+      - "contracts/generated/slices/register-loan/contract-slice.json#paths./loans.post"
+      - "docs/design/screens.yaml#LoanRegister"
       - "features/貸出業務/register-loan.feature"
-      - "packages/ui/stories/LoanCheckout.stories.tsx#Completed"
-      - "packages/ui/stories/LoanCheckout.stories.tsx#Error"
-      - "docs/rules/tier-frontend.md"

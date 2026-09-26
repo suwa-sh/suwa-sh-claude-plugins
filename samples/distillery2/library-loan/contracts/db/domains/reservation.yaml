@@ -1,0 +1,130 @@
+# basis: requirements@d1987660054f32fca4d1af3a7f36b312eb6e6518 adr@481506aca70dae9b5b64cefa6ea032e220651c7d
+# 予約コンテキスト。予約は event_snapshot (ADR 0004): reservation_events へ追記し、reservations を同じトランザクションで更新する。
+subdomain_id: reservation
+tables:
+  - name: reservations
+    description: "予約のスナップショット。貸出中の書籍の予約を受付順の予約順位と予約状態で持つ"
+    columns:
+      - name: reservation_id
+        type: uuid
+        nullable: false
+        description: "予約ID"
+      - name: patron_number
+        type: string
+        nullable: false
+        description: "予約した利用者の利用者番号"
+      - name: book_id
+        type: uuid
+        nullable: false
+        description: "予約した書籍ID"
+      - name: received_at
+        type: datetime
+        nullable: false
+        description: "受付日時"
+      - name: queue_position
+        type: integer
+        nullable: true
+        description: "予約順位 (1 始まり)。完了・取消で予約順位の管理対象から外れたら null"
+      - name: status
+        type: string
+        nullable: false
+        enum:
+          - waiting
+          - notified
+          - completed
+          - cancelled
+        description: "予約状態。waiting=予約中、notified=通知済、completed=完了、cancelled=取消"
+      - name: notified_at
+        type: datetime
+        nullable: true
+        description: "通知日時"
+      - name: completed_at
+        type: datetime
+        nullable: true
+        description: "完了日時"
+      - name: cancelled_at
+        type: datetime
+        nullable: true
+        description: "取消日時"
+      - name: version
+        type: integer
+        nullable: false
+        description: "スナップショットの版。reservation_events の最新 sequence と一致する (楽観ロック)"
+      - name: updated_at
+        type: datetime
+        nullable: false
+        description: "スナップショットの最終更新日時"
+    primary_key:
+      - reservation_id
+    indexes:
+      - name: reservations_book_status_idx
+        unique: false
+        columns:
+          - book_id
+          - status
+      - name: reservations_patron_idx
+        unique: false
+        columns:
+          - patron_number
+    foreign_keys:
+      - columns:
+          - patron_number
+        references:
+          table: patrons
+          columns:
+            - patron_number
+        on_delete: RESTRICT
+      - columns:
+          - book_id
+        references:
+          table: books
+          columns:
+            - book_id
+        on_delete: RESTRICT
+  - name: reservation_events
+    description: "予約の追記型イベント。物理更新・物理削除しない"
+    columns:
+      - name: event_id
+        type: uuid
+        nullable: false
+        description: "イベントID"
+      - name: reservation_id
+        type: uuid
+        nullable: false
+        description: "対象の予約ID"
+      - name: sequence
+        type: integer
+        nullable: false
+        description: "予約ごとの連番 (1 始まり)"
+      - name: event_type
+        type: string
+        nullable: false
+        description: "イベント種別 (受付・通知・完了・取消・順位繰上げなど。値は UC で定める)"
+      - name: payload
+        type: text
+        nullable: false
+        description: "イベント内容 (JSON 文字列)"
+      - name: actor_subject
+        type: string
+        nullable: true
+        description: "操作した主体 (IdP の subject)。ジョブ起因なら null"
+      - name: occurred_at
+        type: datetime
+        nullable: false
+        description: "発生日時"
+    primary_key:
+      - event_id
+    indexes:
+      - name: reservation_events_reservation_sequence_uq
+        unique: true
+        columns:
+          - reservation_id
+          - sequence
+    foreign_keys:
+      - columns:
+          - reservation_id
+        references:
+          table: reservations
+          columns:
+            - reservation_id
+        on_delete: RESTRICT

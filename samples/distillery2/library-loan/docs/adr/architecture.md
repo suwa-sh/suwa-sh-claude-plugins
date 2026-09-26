@@ -1,5 +1,5 @@
 ---
-basis: requirements@4422a431dd381e737d643e7055432ad4b2330c9d
+basis: requirements@d1987660054f32fca4d1af3a7f36b312eb6e6518
 ---
 
 # アーキテクチャ (決めたもの)
@@ -13,7 +13,7 @@ graph LR
   actor_1(["利用者<br/>(社外)"]):::actor
   actor_2(["司書"]):::actor
   sys["図書館蔵書管理システム"]:::system
-  ext_1["メール配信サービス"]:::external
+  ext_1["メール配信システム"]:::external
   actor_1 -->|利用する| sys
   actor_2 -->|利用する| sys
   sys -->|連携する| ext_1
@@ -34,7 +34,7 @@ graph LR
     worker["worker<br/>worker / typescript"]:::tier
     datastore[("データストア<br/>RDB 等")]:::store
   end
-  ext_1["メール配信サービス"]:::external
+  ext_1["メール配信システム"]:::external
   backend_api -->|所有・migration| datastore
   classDef actor fill:#2563EB,color:#fff,stroke:none
   classDef system fill:#1E3A8A,color:#fff,stroke:none
@@ -49,15 +49,20 @@ graph LR
 
 ```mermaid
 flowchart LR
-  analytics["蔵書分析<br/>(backend-api)"]
-  catalog["蔵書<br/>(backend-api)"]
-  circulation["貸出予約<br/>(backend-api)"]
-  notification["通知<br/>(backend-api)"]
-  patron["利用者<br/>(backend-api)"]
+  analytics["蔵書分析コンテキスト<br/>(backend-api)"]
+  catalog["蔵書コンテキスト<br/>(backend-api)"]
+  loan["貸出コンテキスト<br/>(backend-api)"]
+  notification["通知コンテキスト<br/>(backend-api)"]
+  patron["利用者コンテキスト<br/>(backend-api)"]
+  reservation["予約コンテキスト<br/>(backend-api)"]
   analytics --> |Conformist| catalog
-  analytics --> |Conformist| circulation
-  circulation --> |OHS| catalog
-  circulation --> |OHS| patron
-  notification --> |Conformist| circulation
-  notification --> |OHS| patron
+  analytics --> |Conformist| loan
+  loan --> |Customer-Supplier| catalog
+  loan --> |Customer-Supplier| patron
+  loan --> |Partnership| reservation
+  notification --> |Customer-Supplier| loan
+  notification --> |Customer-Supplier| patron
+  notification --> |Customer-Supplier| reservation
+  reservation --> |Customer-Supplier| catalog
+  reservation --> |Customer-Supplier| patron
 ```

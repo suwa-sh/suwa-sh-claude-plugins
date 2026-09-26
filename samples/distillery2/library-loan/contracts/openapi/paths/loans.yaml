@@ -1,137 +1,135 @@
-# UC register-loan (貸出を登録する)。SPEC-004-01 / SPEC-006-01、条件「貸出可否」「返却期限算出」「操作権限」。
+# basis: requirements@d1987660054f32fca4d1af3a7f36b312eb6e6518 adr@481506aca70dae9b5b64cefa6ea032e220651c7d
+# UC register-loan (貸出を登録する)。出典: SPEC-003-01 / SPEC-005-01、RDRA 条件 (貸出可否条件・返却期限算出条件)。
+# シナリオ: features/貸出業務/register-loan.feature
 post:
-  operationId: createLoan
-  summary: 貸出を登録する
-  description: "司書が利用者番号と蔵書 ID を指定して貸出を登録する。在庫ありの蔵書、またはその利用者向けに取り置き中の蔵書だけ貸し出せる (条件「貸出可否」)。返却期限は貸出日に、貸出日時点で有効な貸出ルールの貸出期間を加えて設定する (条件「返却期限算出」)。本人向けの取り置き中の蔵書を貸し出すと、その予約は受取済みになる。司書だけが操作できる (条件「操作権限」。認証なしは 401、利用者区分が利用者なら 403 を Problem で返す)。"
   tags:
-    - circulation
+    - loan
+  operationId: registerLoan
+  summary: "貸出を登録する"
+  description: |
+    司書が利用者番号と書籍IDを指定して貸出を登録する。librarian ロールだけが呼べる。
+    貸出日はサーバーの当日の日付とし、返却期限は貸出日に貸出期間を加えた日を自動で設定する (返却期限算出条件)。
+    貸出期間の日数は要求に値が無く、この契約では固定しない。example の dueDate は形を示すための値である。
+    貸出可否条件:
+    - 書籍状態が在庫あり (available) なら、登録済みの利用者に貸し出せる。
+    - 書籍状態が予約待ち (awaiting_pickup) なら、予約順 1 位 (通知済) の利用者にだけ貸し出せる。このとき その予約を完了 (completed) にする。
+    - 書籍状態が貸出中 (on_loan) の書籍は貸し出せない。
+    - 登録されていない (論理削除済みを含む) 利用者には貸し出せない。
+    貸し出せないときは 409 を返し、貸出を記録せず、書籍状態と予約状態を変えない。
+    成功すると書籍状態を貸出中 (on_loan) にする。
+  parameters:
+    - $ref: "../openapi.yaml#/components/parameters/IdempotencyKey"
   requestBody:
     required: true
     content:
       application/json:
         schema:
-          $ref: "../openapi.yaml#/components/schemas/CreateLoanRequest"
+          $ref: "../openapi.yaml#/components/schemas/RegisterLoanRequest"
         examples:
           success:
-            summary: 在庫ありの蔵書を貸し出す
+            summary: "在庫ありの書籍を登録済みの利用者に貸し出す"
             value:
-              patron_number: P-2026-00001
-              copy_id: 11111111-1111-4111-8111-111111111111
-          heldForSelf:
-            summary: 本人向けに取り置き中の蔵書を貸し出す
+              patronNumber: "P-00000001"
+              bookId: "0b6f3c1e-2a4d-4e8f-9b1a-3c5d7e9f1a2b"
+          successFromReservation:
+            summary: "予約待ちの書籍を予約順 1 位 (通知済) の利用者に貸し出す"
             value:
-              patron_number: P-2026-00001
-              copy_id: 33333333-3333-4333-8333-333333333333
-          validation:
-            summary: 利用者番号が空
+              patronNumber: "P-00000001"
+              bookId: "5d2e8a41-7c3b-4f60-8e1d-9a2b4c6d8e0f"
+          badRequest:
+            summary: "書籍IDが無い"
             value:
-              patron_number: ""
-              copy_id: 11111111-1111-4111-8111-111111111111
-          patronNotFound:
-            summary: 登録されていない利用者番号
+              patronNumber: "P-00000001"
+          bookOnLoan:
+            summary: "貸出中の書籍を貸し出そうとする"
             value:
-              patron_number: P-2026-99999
-              copy_id: 11111111-1111-4111-8111-111111111111
-          copyNotFound:
-            summary: 存在しない蔵書 ID
+              patronNumber: "P-00000001"
+              bookId: "9e4a1c7b-3d5f-4a2e-8b6c-1f3e5a7c9b0d"
+          notFirstInReservationQueue:
+            summary: "予約待ちの書籍を予約順 1 位以外の利用者に貸し出そうとする"
             value:
-              patron_number: P-2026-00001
-              copy_id: 99999999-9999-4999-8999-999999999999
-          onLoan:
-            summary: 他の利用者に貸出中の蔵書を貸し出そうとする
+              patronNumber: "P-00000001"
+              bookId: "2c7f9b3e-6a1d-4c8e-9f2b-7d4a1e6c3b5f"
+          patronNotRegistered:
+            summary: "登録されていない利用者に貸し出そうとする"
             value:
-              patron_number: P-2026-00002
-              copy_id: 22222222-2222-4222-8222-222222222222
-          heldForOther:
-            summary: 他の利用者向けに取り置き中の蔵書を貸し出そうとする
-            value:
-              patron_number: P-2026-00002
-              copy_id: 33333333-3333-4333-8333-333333333333
+              patronNumber: "P-99999999"
+              bookId: "0b6f3c1e-2a4d-4e8f-9b1a-3c5d7e9f1a2b"
   responses:
     "201":
-      description: 貸出を登録した
+      description: "貸出を記録し、返却期限を設定し、書籍を貸出中にした"
       content:
         application/json:
           schema:
-            $ref: "../openapi.yaml#/components/schemas/Loan"
+            $ref: "../openapi.yaml#/components/schemas/LoanRegistration"
           examples:
             success:
+              summary: "在庫ありの書籍の貸出"
               value:
-                loan_id: aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
-                patron_number: P-2026-00001
-                copy_id: 11111111-1111-4111-8111-111111111111
-                book_title: 吾輩は猫である
-                loaned_on: "2026-09-01"
-                due_on: "2026-09-15"
-                returned_on: null
-                status: on_loan
-                copy_status: on_loan
-                fulfilled_reservation_id: null
-            heldForSelf:
+                loan:
+                  loanId: "3f8a2d6c-1b4e-4a7f-9c2d-5e8b1a4d7c0e"
+                  patronNumber: "P-00000001"
+                  bookId: "0b6f3c1e-2a4d-4e8f-9b1a-3c5d7e9f1a2b"
+                  reservationId: null
+                  loanedOn: "2026-10-01"
+                  dueDate: "2026-10-15"
+                  returnedOn: null
+                  status: on_loan
+                bookStatus: on_loan
+            successFromReservation:
+              summary: "予約順 1 位の利用者への貸出。予約は完了になる"
               value:
-                loan_id: bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb
-                patron_number: P-2026-00001
-                copy_id: 33333333-3333-4333-8333-333333333333
-                book_title: こころ
-                loaned_on: "2026-09-20"
-                due_on: "2026-10-04"
-                returned_on: null
-                status: on_loan
-                copy_status: on_loan
-                fulfilled_reservation_id: cccccccc-cccc-4ccc-8ccc-cccccccccccc
+                loan:
+                  loanId: "6a1c4e8b-2d5f-4b9a-8e3c-7f1a3d5b9c2e"
+                  patronNumber: "P-00000001"
+                  bookId: "5d2e8a41-7c3b-4f60-8e1d-9a2b4c6d8e0f"
+                  reservationId: "8b3d5f7a-4c2e-4d1b-9a6f-2e8c4a6b1d3f"
+                  loanedOn: "2026-10-01"
+                  dueDate: "2026-10-15"
+                  returnedOn: null
+                  status: on_loan
+                bookStatus: on_loan
     "400":
-      description: "入力が不正 (必須項目の欠落・形式エラー)"
+      description: "入力が不正 (必須項目の欠落・形式違反)"
       content:
         application/problem+json:
           schema:
             $ref: "../openapi.yaml#/components/schemas/Problem"
           examples:
-            validation:
+            badRequest:
               value:
                 type: "https://library.example/problems/validation-error"
-                title: 入力内容に誤りがあります
+                title: "入力内容に誤りがあります"
                 status: 400
+                code: validation_error
                 errors:
-                  - field: patron_number
-                    code: required
-                    message: 利用者番号は必須です
-    "404":
-      description: 利用者または蔵書が存在しない
-      content:
-        application/problem+json:
-          schema:
-            $ref: "../openapi.yaml#/components/schemas/Problem"
-          examples:
-            patronNotFound:
-              value:
-                type: "https://library.example/problems/not-found"
-                title: 利用者が見つかりません
-                status: 404
-                code: patron_not_found
-            copyNotFound:
-              value:
-                type: "https://library.example/problems/not-found"
-                title: 蔵書が見つかりません
-                status: 404
-                code: copy_not_found
+                  - field: bookId
+                    message: "書籍IDは必須です"
     "409":
-      description: "貸出可否により貸し出せない (貸出中・他の利用者向けに取り置き中・除籍済み)"
+      description: "貸出可否条件を満たさないため貸し出せない。貸出は記録されず、書籍状態と予約状態は変わらない"
       content:
         application/problem+json:
           schema:
             $ref: "../openapi.yaml#/components/schemas/Problem"
           examples:
-            onLoan:
+            bookOnLoan:
               value:
-                type: "https://library.example/problems/business-rule-violation"
-                title: 貸し出せません
+                type: "https://library.example/problems/book-on-loan"
+                title: "この書籍は貸出中のため貸し出せません"
                 status: 409
-                code: loan_not_allowed
-                detail: この蔵書は貸出中です。
-            heldForOther:
+                code: book_on_loan
+                detail: "書籍 9e4a1c7b-3d5f-4a2e-8b6c-1f3e5a7c9b0d は貸出中です"
+            notFirstInReservationQueue:
               value:
-                type: "https://library.example/problems/business-rule-violation"
-                title: 貸し出せません
+                type: "https://library.example/problems/not-first-in-reservation-queue"
+                title: "この書籍は予約順 1 位の利用者にだけ貸し出せます"
                 status: 409
-                code: loan_not_allowed
-                detail: この蔵書は他の利用者向けに取り置き中です。
+                code: not_first_in_reservation_queue
+                detail: "書籍 2c7f9b3e-6a1d-4c8e-9f2b-7d4a1e6c3b5f は予約待ちで、利用者 P-00000001 は予約順 1 位ではありません"
+            patronNotRegistered:
+              value:
+                type: "https://library.example/problems/patron-not-registered"
+                title: "登録されていない利用者には貸し出せません"
+                status: 409
+                code: patron_not_registered
+                detail: "利用者番号 P-99999999 の利用者は登録されていません"

@@ -17,7 +17,7 @@ function ucSlug(pickle: ITestCaseHookParameter['pickle']): string {
   const tag = pickle.tags.map((t) => t.name).find((n) => n.startsWith('@uc:'));
   if (tag) return tag.slice('@uc:'.length);
   const uri = pickle.uri || 'unknown.feature';
-  return uri.split('/').pop()!.replace(/\.feature$/, '');
+  return (uri.split('/').pop() ?? uri).replace(/\.feature$/, '');
 }
 
 /** この実行で初めて書くトレースファイル。前回の実行分に追記すると図に経路が二重に載るため、初回だけ作り直す */

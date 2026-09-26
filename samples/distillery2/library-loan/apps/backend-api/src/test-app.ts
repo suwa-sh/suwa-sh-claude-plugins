@@ -1,114 +1,78 @@
 /**
- * テスト用 composition root。契約テスト (test/contract/) と UC BDD の API ドライバが同じ入口を使う。
+ * テスト用の composition root。契約テスト (test/contract/) と UC BDD の api ドライバが同じ入口 createTestApp() を使う。
  *
- * - DB を渡さなければ、使い捨ての pglite を起動して migration と契約 examples の前提データを入れる
- * - 認証基盤は in-memory の偽物に差し替える (ADR 0007)。既定は司書 lib1 としてログイン済み
- * - Clock は固定する (既定 2026-09-01)
- * - usecase / repository は decorate で包める (integrate 段階が traced() を渡す)
- *
- * 同期で request listener を返す (API ドライバが `createTestApp()` をそのまま supertest に渡すため)。
- * DB の準備は最初の要求で待つ。
+ * - DB: 引数で渡さなければ pglite を起動し、migrations/ を当て、契約 examples の前提データを入れる
+ * - 時計: 既定で 2026-10-01 09:00 (Asia/Tokyo) に固定する (契約 example の loanedOn とシナリオの「今日」)
+ * - IdP: in-memory のトークン表 (TEST_TOKENS) に差し替える
+ * - 既定ヘッダ: 契約テストは Authorization / Idempotency-Key を送らないため、無いときだけ司書のトークンと
+ *   新しい Idempotency-Key を補う (`defaultHeaders: false` で無効化できる)。本番の入口 (createApp) は補わない
+ * - 計装: integrate 段階が `decorate` と `middlewares` を渡して結線する
  */
-import { readdirSync, readFileSync } from 'node:fs';
-import type { IncomingHttpHeaders } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { PGlite } from '@electric-sql/pglite';
-import { createApp, type Decorate } from './app';
-import type { Clock, IdGenerator } from './domain/shared/clock';
-import { FixedClock, RandomUuidGenerator } from './gateway/clock';
-import type { Database, QueryResult, SqlClient } from './gateway/database';
-import type { Authenticator, Middleware, RequestListener } from './presentation/http/server';
-import { fixtureIds, seedContractFixtures } from './testing/contractFixtures';
-import type { Principal } from './usecase/shared/principal';
+import { PgHarness } from '@repo/test-support/pglite-harness';
+import { type AppDeps, createApp } from './app';
+import { createInMemoryTokenVerifier } from './gateway/in-memory-token-verifier';
+import { fixedClock } from './gateway/system';
+import type { RequestListener } from './presentation/http-app';
+import type { SqlDatabase } from './repository/db-context';
+import { seedContractExamples } from './test-fixtures/contract-examples';
 
-export { fixtureIds, fixturePatronNumbers } from './testing/contractFixtures';
+export const TEST_NOW = new Date('2026-10-01T09:00:00+09:00');
 
-export const DEFAULT_TEST_DATE = '2026-09-01';
-export const DEFAULT_LIBRARIAN: Principal = {
-  role: 'librarian',
-  librarianId: fixtureIds.librarian,
+export const TEST_TOKENS = {
+  librarian: 'test-librarian-token',
+  patron: 'test-patron-token',
+} as const;
+
+export const TEST_PRINCIPALS = {
+  [TEST_TOKENS.librarian]: { subject: 'test-librarian', role: 'librarian' as const },
+  [TEST_TOKENS.patron]: {
+    subject: 'test-patron',
+    role: 'patron' as const,
+    patronNumber: 'P-00000001',
+  },
 };
 
-export interface TestAppOptions {
-  /** 既存の DB (例: PgHarness.pg)。省略時は新しい pglite に migration と前提データを入れる */
-  db?: Database | Promise<Database>;
-  /** db を省略したとき、契約 examples の前提データを入れるか (既定 true) */
-  seed?: boolean;
-  clock?: Clock;
-  ids?: IdGenerator;
-  /** Bearer トークン → 操作主体 の対応表 (偽の認証基盤) */
-  tokens?: Record<string, Principal>;
-  /** Authorization ヘッダが無い要求の主体。null なら 401 (既定は司書 lib1) */
-  defaultPrincipal?: Principal | null;
-  /** 認証基盤そのものを差し替える場合 */
-  authenticate?: Authenticator;
-  decorate?: Decorate;
-  middlewares?: Middleware[];
+export type TestAppOptions = Partial<AppDeps> & {
+  /** 契約 examples の前提データを入れるか (既定: database を渡さないとき true) */
+  seedContractExamples?: boolean;
+  /** Authorization / Idempotency-Key が無い要求に既定値を補うか (既定 true) */
+  defaultHeaders?: boolean;
+};
+
+const MIGRATIONS_DIR = fileURLToPath(new URL('../migrations', import.meta.url));
+
+/** migrations/ を当てた使い捨ての pglite を起動する */
+export async function startTestDatabase(): Promise<SqlDatabase> {
+  const harness = new PgHarness({ migrationsDir: MIGRATIONS_DIR });
+  await harness.start();
+  return harness.pg;
 }
 
-const MIGRATIONS_DIR = fileURLToPath(new URL('../migrations/', import.meta.url));
+function withDefaultHeaders(listener: RequestListener): RequestListener {
+  return (req, res) => {
+    if (req.headers.authorization === undefined) {
+      req.headers.authorization = `Bearer ${TEST_TOKENS.librarian}`;
+    }
+    if (req.headers['idempotency-key'] === undefined) {
+      req.headers['idempotency-key'] = randomUUID();
+    }
+    listener(req, res);
+  };
+}
 
-export async function applyMigrations(
-  db: SqlClient & { exec?: (sql: string) => Promise<unknown> },
-) {
-  const files = readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .sort();
-  for (const file of files) {
-    const sql = readFileSync(`${MIGRATIONS_DIR}${file}`, 'utf8');
-    if (db.exec) await db.exec(sql);
-    else await db.query(sql);
+export async function createTestApp(options: TestAppOptions = {}): Promise<RequestListener> {
+  const { seedContractExamples: seedOption, defaultHeaders = true, ...deps } = options;
+  const database = deps.database ?? (await startTestDatabase());
+  if (seedOption ?? deps.database === undefined) {
+    await seedContractExamples(database);
   }
-}
-
-async function startEmbeddedDatabase(seed: boolean): Promise<Database> {
-  const pg = new PGlite();
-  await pg.waitReady;
-  await applyMigrations(pg);
-  if (seed) await seedContractFixtures(pg);
-  return pg as unknown as Database;
-}
-
-/** DB の準備が終わるまで各呼び出しを待たせる Database */
-function deferredDatabase(ready: Promise<Database>): Database {
-  return {
-    async query<T>(sql: string, params?: unknown[]): Promise<QueryResult<T>> {
-      return (await ready).query<T>(sql, params);
-    },
-    async transaction<T>(fn: (tx: SqlClient) => Promise<T>): Promise<T> {
-      return (await ready).transaction(fn);
-    },
-  };
-}
-
-export function fakeAuthenticator(
-  tokens: Record<string, Principal>,
-  defaultPrincipal: Principal | null,
-): Authenticator {
-  return async (headers: IncomingHttpHeaders) => {
-    const header = headers.authorization;
-    if (header === undefined) return defaultPrincipal;
-    const match = /^Bearer\s+(.+)$/i.exec(header);
-    if (!match?.[1]) return null;
-    return tokens[match[1]] ?? null;
-  };
-}
-
-export function createTestApp(options: TestAppOptions = {}): RequestListener {
-  const ready = options.db
-    ? Promise.resolve(options.db)
-    : startEmbeddedDatabase(options.seed ?? true);
-  // 未処理の reject を避ける (失敗は最初の要求で 500 として表に出る)
-  ready.catch(() => undefined);
-
-  const defaultPrincipal =
-    options.defaultPrincipal === undefined ? DEFAULT_LIBRARIAN : options.defaultPrincipal;
-  return createApp({
-    db: deferredDatabase(ready),
-    clock: options.clock ?? FixedClock.onDate(DEFAULT_TEST_DATE),
-    ids: options.ids ?? new RandomUuidGenerator(),
-    authenticate: options.authenticate ?? fakeAuthenticator(options.tokens ?? {}, defaultPrincipal),
-    decorate: options.decorate,
-    middlewares: options.middlewares,
+  const app = createApp({
+    ...deps,
+    database,
+    tokenVerifier: deps.tokenVerifier ?? createInMemoryTokenVerifier(TEST_PRINCIPALS),
+    clock: deps.clock ?? fixedClock(TEST_NOW),
   });
+  return defaultHeaders ? withDefaultHeaders(app) : app;
 }

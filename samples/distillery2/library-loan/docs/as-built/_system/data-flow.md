@@ -4,11 +4,10 @@ UC がどのテーブルを読み書きするか。R = Read、W = Write、RW = �
 
 | テーブル | 貸出を登録する |
 |---|---|
-| books | R |
-| copies | RW |
-| copy_events | W |
+| book_events | W |
+| books | RW |
+| idempotency_keys | RW |
 | loan_events | W |
-| loan_rules | R |
 | loans | W |
 | patrons | R |
 | reservation_events | W |
@@ -16,23 +15,21 @@ UC がどのテーブルを読み書きするか。R = Read、W = Write、RW = �
 
 ```mermaid
 flowchart LR
-    n9[貸出を登録する]
-    n0[(books)]
-    n1[(copies)]
-    n2[(copy_events)]
+    n8[貸出を登録する]
+    n0[(book_events)]
+    n1[(books)]
+    n2[(idempotency_keys)]
     n3[(loan_events)]
-    n4[(loan_rules)]
-    n5[(loans)]
-    n6[(patrons)]
-    n7[(reservation_events)]
-    n8[(reservations)]
-    n9 -. Read .-> n0
-    n9 == Read/Write ==> n1
-    n9 == Write ==> n2
-    n9 == Write ==> n3
-    n9 -. Read .-> n4
-    n9 == Write ==> n5
-    n9 -. Read .-> n6
-    n9 == Write ==> n7
-    n9 == Read/Write ==> n8
+    n4[(loans)]
+    n5[(patrons)]
+    n6[(reservation_events)]
+    n7[(reservations)]
+    n8 == Write ==> n0
+    n8 == Read/Write ==> n1
+    n8 == Read/Write ==> n2
+    n8 == Write ==> n3
+    n8 == Write ==> n4
+    n8 -. Read .-> n5
+    n8 == Write ==> n6
+    n8 == Read/Write ==> n7
 ```

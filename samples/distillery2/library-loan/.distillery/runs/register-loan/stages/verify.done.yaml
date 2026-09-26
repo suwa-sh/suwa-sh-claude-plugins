@@ -1,14 +1,15 @@
 stage: verify
-completed_at: "2026-09-25T02:21:45.409Z"
+completed_at: "2026-09-26T02:12:31.927Z"
 attempt: 2
 findings:
   backend-api:
     blocker: 0
-    major: 7
-    minor: 11
-    verdicts_sha256: e5dc6591b955b09a3daaa2f7ff4e7c944dd46d798a6e589c31d8b925a2998ed4
+    major: 6
+    minor: 7
+    verdicts_sha256: 29b957990ff1dd88b56c48ceee50d9fc1d0f6af22b5773bdb538d9b25d68493f
   frontend:
     blocker: 0
     major: 1
-    minor: 5
-    verdicts_sha256: 5e63e06359abd27cbbb7e84035c12333ace9e336c413486d746d88d0c7752b7a
+    minor: 7
+    verdicts_sha256: d0be3d7360d79814f409cbbfabcbb0d893383858f38c05e06ef6d8c9a07992b0
+verifier_model: claude-opus-5-5

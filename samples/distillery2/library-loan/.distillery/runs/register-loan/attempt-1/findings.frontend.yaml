@@ -2,7 +2,7 @@ schema_version: "2.1"
 uc: "register-loan"
 tier: "frontend"
 attempt: 1
-verified_at: "2026-09-25T11:30:00+09:00"
+verified_at: "2026-09-26T11:10:00+09:00"
 gates_read:
   static: pass
   unit: pass
@@ -12,152 +12,150 @@ gates_read:
 viewpoints_checked:
   uc_intent:
     status: done
-    note: "uc-bdd 6/6・受入 4/4 pass (gates.json)。@acceptance タグは SPEC-004-01-1/2/3 と SPEC-006-01-1 を全部覆う。全トレースで 貸出受付画面.submit (frontend/screen) → http.out (frontend/api-client) → http.in createLoan (backend-api) の入れ子を確認。API 呼び出しは packages/contracts/api/client の createLoan 経由で fetch 直書きは無い。unit.frontend.json は 15/15 pass。contract.frontend.json は 0 件 (--passWithNoTests) だが、frontend は consumer で、testing.md の契約テストは provider 側に生成されるため指摘しない"
+    note: "uc-bdd 6/6 pass、acceptance 3/3 pass (SPEC-003-01-1 / SPEC-003-01-2 / SPEC-005-01-1 を網羅)、unit.frontend 9/9 pass。全 6 トレースで 貸出受付画面.submit (frontend/screen) → http.out POST /loans (frontend/api-client) → http.in registerLoan を確認。成功系 201、拒否系 409。API 呼び出しは生成クライアント registerLoan 経由で fetch 直書きなし。Storybook story との構造比較で 貸出日 行の欠落を検出"
   assumption_conformance:
     status: done
-assumptions_sha256: "c8c263aac4b1db93a254c006fcca8a3e20e048dfb59de298043048e7282492ee"
+assumptions_sha256: "9b27d481463c6ec4b6f2189b15b5cfd2d15f6756dbd07e139ab7d38d9bbfe7ed"
 assumption_verdicts:
   - id: A-001
     tier: frontend
-    assumption: "fetch が例外を投げた場合と、応答が Problem (title を持つ JSON) で読めない場合は、title「貸出を登録できませんでした」detail「時間をおいてもう一度お試しください。」のエラー表示状態にする"
-    target: "apps/frontend/src/state/loan-checkout.ts:61"
+    assumption: "Idempotency-Key は UUID v4 (crypto.randomUUID) とし、貸出受付画面 1 回分の登録操作で同じキーを使い回し (二度押し・再試行)、「続けて貸出を受け付ける」で新しいキーに替える。入口関数 submitLoanCheckout はキー省略時に呼び出しごとに新しいキーを作る"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:161"
+    category: persistence
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-001
+    evidence: "contract-slice.json#components.parameters.IdempotencyKey は required・1〜128 文字・同じキーの再送で初回と同じ応答を返す、までを定め、キーの形式と使い回す範囲を定めていない。docs/rules/common.md ADR 0005 も受け取り側の規則のみ"
+  - id: A-002
+    tier: frontend
+    assumption: "registerLoan の応答が 201 以外で、本文が Problem 形式 (code と title を持つ) なら 400 / 409 と同じく貸出できない旨と title を表示し、Problem 形式でなければ status を保持した failed として固定の再試行を促す文言を表示する"
+    target: "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.ts:70"
     category: error_handling
     verified_category: error_handling
     verdict: spec_absent
-    finding_id: F-001
-    evidence: "contract-slice.json の createLoan.responses は 201/400/404/409 だけで、通信失敗・非 Problem 応答の定義が無い。feature にも該当シナリオが無い"
-  - id: A-002
-    tier: frontend
-    assumption: "貸出可否で貸し出せない (409) 場合は Problem の title/detail をお知らせ (Alert) に出すだけで、蔵書ID欄の項目エラーは出さない。項目エラーは 400 の errors[] があるときだけ出す"
-    target: "apps/frontend/src/view/LoanCheckoutPage.tsx:71"
-    category: error_handling
-    verified_category: error_handling
-    verdict: contradicts
     finding_id: F-002
-    evidence: "packages/ui/stories/LoanCheckout.stories.tsx:37 の Error 状態は errors={ copyId: '在庫ありか、この利用者向けに取り置き中の本だけ貸し出せます' } を出す。docs/rules/tier-frontend.md:11 は story を構造の正とし、乖離は issues → 還流で変更要求すると定める。.distillery/runs/register-loan/issues/ にこの乖離の起票は無い"
+    evidence: "contract-slice.json#paths./loans.post.responses は 201 / 400 / 409 のみ。Problem.title は『利用者に表示できる文言』と契約にあるため 400 / 409 で title を出す部分は契約どおりだが、契約外ステータスの扱いは要求・契約・ルールに無い"
   - id: A-003
     tier: frontend
-    assumption: "画面側では利用者番号・蔵書 ID の必須・形式チェックをせず、前後の空白を除いた値をそのまま送り、backend-api の 400 (errors[]) を項目エラーとして表示する"
-    target: "apps/frontend/src/state/loan-checkout.ts:77"
+    assumption: "fetch 自体が例外を投げた (通信できない) 場合、画面は status 0 の failed として通信状態の確認と再試行を促す文言を表示し、同じ Idempotency-Key で再送できる状態に戻す"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:174"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-003
+    evidence: "register-loan.feature に通信失敗のシナリオは無い。packages/ui/stories/LoanRegister.stories.tsx の Error は 409 相当の文言例のみ。契約・ルールにも記述なし"
+  - id: A-004
+    tier: frontend
+    assumption: "貸出受付画面は利用者番号・書籍IDを加工 (trim 等) も事前検証もせずにそのまま送り、形式違反の判定は backend の 400 (validation_error) に委ねる"
+    target: "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.ts:55"
     category: input_validation
     verified_category: input_validation
     verdict: spec_absent
-    finding_id: F-003
-    evidence: "要求・feature・契約に画面側検証の定義は無い。前後空白の除去は loan-checkout.ts:77 ではなく packages/ui/components/domain/LoanCheckoutForm.tsx:25 の trim() で行われ、form は noValidate (同:28)"
-  - id: A-004
-    tier: frontend
-    assumption: "frontend の貸出受付はアクセストークンを自分で取得・保存せず、呼び出し側が ApiOptions.headers (Authorization: Bearer) で注入する。未注入なら認可ヘッダ無しで呼ぶ"
-    target: "apps/frontend/src/api-client/loan-api.ts:38"
-    category: security
-    verified_category: security
-    verdict: spec_absent
     finding_id: F-004
-    evidence: "contract-slice.json の securitySchemes.bearerAuth と common.md ADR 0006 (OIDC 委任) はトークン検証を定めるが、SPA がトークンをどこで取得・保持し付与するかの記述は無い"
+    evidence: "contract-slice.json#components.schemas.RegisterLoanRequest はスキーマのみで、画面側の事前検証の要否は docs/rules/tier-frontend.md・要求 SPEC-003-01 に無い"
   - id: A-005
     tier: frontend
-    assumption: "400 Problem の errors[].field を patron_number→patronNo、copy_id→copyId に写像し、同じ項目に複数あれば最初の message だけを出す。未知の field は捨てる"
-    target: "apps/frontend/src/state/loan-checkout.ts:42"
+    assumption: "返却期限は応答の loan.dueDate (YYYY-MM-DD) を加工・和暦化・算出せずにそのまま表示する。貸出期間の日数は画面に持たない"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:75"
     category: data_format
     verified_category: data_format
-    verdict: spec_absent
+    verdict: consistent
     finding_id: F-005
-    evidence: "契約 FieldError.field は項目名 (string) とだけ定義。LoanCheckoutForm の項目名は patronNo/copyId (LoanCheckoutForm.tsx:29-30)。対応づけと複数エラーの扱いの定義は無い"
-  - id: A-006
-    tier: frontend
-    assumption: "貸出完了のお知らせでは蔵書を「書籍タイトル (copy_id)」と表示し、copy_id は契約の uuid をそのまま出す"
-    target: "apps/frontend/src/view/LoanCheckoutPage.tsx:54"
-    category: data_format
-    verified_category: data_format
-    verdict: spec_absent
-    finding_id: F-006
-    evidence: "story Completed (LoanCheckout.stories.tsx:22) は 'C-000101' 形式だが、契約 Loan.copy_id は Id (uuid) のみ。構造 (タイトル + 蔵書識別子) は story と同じで、値の形式だけの差。issues/contract-auth-responses-not-in-createLoan.md の補足が同じ論点を還流済み"
+    evidence: "contract-slice.json POST /loans の description『返却期限は貸出日に貸出期間を加えた日を自動で設定する』『貸出期間の日数は…この契約では固定しない』で算出は backend 側。表示形式は packages/ui/stories/LoanRegister.stories.tsx:21,44 が『返却期限は 2026-10-10 です』と YYYY-MM-DD のまま表示しており、tier-frontend.md『画面は Storybook の story を構造の正として組む』により明示がある"
   - id: V-001
     tier: frontend
-    assumption: "貸出成功時は loan_id をキーにフォームを作り直して入力を空に戻し、エラー時は直前の入力値をフォームに戻す"
-    target: "apps/frontend/src/view/LoanCheckoutPage.tsx:69"
+    assumption: "貸出受付画面の『貸出の内容』に story にある 貸出日 行を出さず、登録前は返却期限欄を空欄にする"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:107"
     category: null
-    verified_category: error_handling
+    verified_category: data_format
     verdict: unlisted
-    finding_id: F-007
-    evidence: "LoanCheckoutPage.tsx:69-70 (key=loan_id / defaultValues=lastValues)。feature・契約・tier-frontend.md に送信後のフォーム値の扱いは無い。前提ファイルに記録が無い"
+    finding_id: F-006
+    evidence: "packages/ui/stories/LoanRegister.stories.tsx:41-44 は 貸出日 (TODAY) 行と、Default でも返却期限 2026-10-10 を表示する。実装 LoanRegisterScreen.tsx:107-125 には 貸出日 行が無く、返却期限は completed のときだけ表示。assumptions.frontend.yaml に記録なし"
 assumption_verdicts_summary:
-  consistent: 0
-  spec_absent: 5
-  contradicts: 1
+  consistent: 1
+  spec_absent: 4
+  contradicts: 0
   unlisted: 1
 findings:
   - id: F-001
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-001
-    severity: minor
-    title: "通信失敗時の文言は仕様に無い"
-    target: "apps/frontend/src/state/loan-checkout.ts:61"
-    claim: "通信失敗・非 Problem 応答の表示文言は実装者が決めた。人レビューで文言を確認する"
-    evidence: "contract-slice.json paths./loans.post.responses は 201/400/404/409 のみ。unit.frontend.json の '通信に失敗した場合_再試行を促すエラーを返すこと' と 'Problemでない応答の場合_再試行を促すエラーを返すこと' が pass"
+    severity: major
+    title: "再送判定キーの範囲は仕様に無い"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:161"
+    claim: "Idempotency-Key の形式と使い回す範囲 (画面 1 回分) は実装者の判断で、persistence のため人の回答が必須。同じ画面で 409 の後に再試行すると、契約上は初回と同じ 409 が返り状況が変わっても再判定されない点も判断材料になる"
+    evidence: "contract-slice.json#components.parameters.IdempotencyKey『同じキーの再送では副作用を重複させず、初回と同じ応答を返す』; LoanRegisterScreen.tsx:164 は rejected / failed 後の再送を許し、キーは handleContinue (179) でのみ更新"
   - id: F-002
     viewpoint: assumption_conformance
-    kind: contradicts
+    kind: spec_absent
     assumption_id: A-002
-    severity: blocker
-    title: "409 表示が story と乖離し未起票"
-    target: "apps/frontend/src/view/LoanCheckoutPage.tsx:71"
-    claim: "story の Error 状態は蔵書ID欄に項目エラーを出すが、実装は 409 で項目エラーを出さない。ルールは乖離を issues 経由の変更要求にするよう求めるのに、起票が無く前提として記録しただけ"
-    evidence: "docs/rules/tier-frontend.md:11 '画面は Storybook の story を構造の正として組む。乖離が必要なら実装で曲げず issues → 還流で変更要求する'。packages/ui/stories/LoanCheckout.stories.tsx:37。d2-implement/references/assumption-record.md 抽出規則 4 '仕様と両立しない事実は前提ではなく issues/ に起票する'。issues/ には 20260925T020000Z_register-loan.md と contract-auth-responses-not-in-createLoan.md しか無く、どちらもこの乖離に触れない。仕様側の対立 (契約 409 に errors[] が無い、scaffold テスト register-loan.test.ts:77-81 が title/detail だけを期待) は正しい指摘なので、frontend に戻して issues/ に起票させる (kind: rule または contract)"
+    severity: minor
+    title: "契約外応答の表示は仕様に無い"
+    target: "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.ts:70"
+    claim: "401 / 403 / 5xx 等の契約外応答の画面表示は実装者の判断"
+    evidence: "contract-slice.json#paths./loans.post.responses は 201 / 400 / 409 のみ定義; unit.frontend.json『契約に無い応答が返った場合、再試行を促す失敗を表示すること』pass"
   - id: F-003
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-003
     severity: minor
-    title: "画面側の入力検証なしは仕様に無い"
-    target: "apps/frontend/src/state/loan-checkout.ts:77"
-    claim: "必須・形式チェックをサーバーに任せる判断は仕様に根拠が無い。trim の実施箇所は target ではなく packages/ui 側"
-    evidence: "packages/ui/components/domain/LoanCheckoutForm.tsx:25 (trim) と :28 (noValidate)。契約 400 validation example '利用者番号は必須です'"
+    title: "通信失敗時の表示は仕様に無い"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:174"
+    claim: "fetch 例外時の文言と再送可能状態への復帰は実装者の判断"
+    evidence: "register-loan.feature・contract-slice.json・docs/rules/tier-frontend.md に通信失敗の記述なし"
   - id: F-004
     viewpoint: assumption_conformance
     kind: spec_absent
     assumption_id: A-004
-    severity: major
-    title: "トークンの取得と保持は仕様に無い"
-    target: "apps/frontend/src/api-client/loan-api.ts:38"
-    claim: "SPA のアクセストークン取得・保持・付与の方式が未定で、未注入なら認可ヘッダ無しで呼ぶ。security の前提なので人の回答が要る"
-    evidence: "contract-slice.json components.securitySchemes.bearerAuth、docs/rules/common.md ADR 0006。UC BDD は step (register-loan.steps.ts:40-43, 90) で Bearer を注入して通しており、本番の結線は未実装"
+    severity: minor
+    title: "画面で事前検証しない判断"
+    target: "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.ts:55"
+    claim: "入力の事前検証を行わず backend の 400 に委ねる判断は仕様に根拠が無い"
+    evidence: "contract-slice.json#components.schemas.RegisterLoanRequest; docs/rules/tier-frontend.md に画面側検証の規定なし"
   - id: F-005
     viewpoint: assumption_conformance
-    kind: spec_absent
+    kind: restatement
     assumption_id: A-005
     severity: minor
-    title: "errors[] の項目名写像は仕様に無い"
-    target: "apps/frontend/src/state/loan-checkout.ts:42"
-    claim: "契約の field 名からフォーム項目名への写像と、複数エラー時に先頭だけ出す扱いは実装者の判断"
-    evidence: "loan-checkout.ts:29-32 FIELD_OF、:48 最初の message のみ採用。unit.frontend.json '入力が不正な場合_項目ごとのエラーをフォームの項目名で返すこと' pass"
+    title: "返却期限の表示は story と契約の復唱"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:75"
+    claim: "返却期限を backend の値のまま YYYY-MM-DD で表示することは契約と story に明示があり、前提ではなく復唱"
+    evidence: "contract-slice.json POST /loans description; packages/ui/stories/LoanRegister.stories.tsx:21,44; docs/rules/tier-frontend.md 11 行目"
   - id: F-006
-    viewpoint: assumption_conformance
-    kind: spec_absent
-    assumption_id: A-006
-    severity: minor
-    title: "完了表示の蔵書IDが uuid のまま"
-    target: "apps/frontend/src/view/LoanCheckoutPage.tsx:54"
-    claim: "人が読む蔵書コードの定義が無く、uuid をそのまま表示している。論点は既存 issue の補足で還流済み"
-    evidence: "LoanCheckout.stories.tsx:22 '吾輩は猫である (C-000101)'。契約 Loan.copy_id は Id (format uuid)。issues/contract-auth-responses-not-in-createLoan.md 補足"
-  - id: F-007
     viewpoint: assumption_conformance
     kind: unlisted
     assumption_id: V-001
     severity: minor
-    title: "送信後のフォーム値の扱いが未記録"
-    target: "apps/frontend/src/view/LoanCheckoutPage.tsx:69"
-    claim: "成功時に入力を空に戻し、エラー時に直前の入力を戻す判断が前提ファイルに無い"
-    evidence: "LoanCheckoutPage.tsx:69-70。feature・契約・tier-frontend.md に該当記述なし。LoanCheckoutPage.test.tsx の '貸し出せない場合_エラーのお知らせにタイトルと詳細を表示すること' が patronNo の復元を確認している"
+    title: "貸出日行の省略が前提に無い"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:107"
+    claim: "story との構造の乖離 (貸出日 行なし、登録前の返却期限空欄) が AssumptionRecord にも記録されていない。ルール違反としての扱いは F-007"
+    evidence: "packages/ui/stories/LoanRegister.stories.tsx:41-44; LoanRegisterScreen.tsx:107-125; assumptions.frontend.yaml に該当なし"
+  - id: F-007
+    viewpoint: uc_intent
+    kind: rule_violation
+    severity: blocker
+    title: "story の貸出日行を実装が欠落"
+    target: "apps/frontend/src/view/loan-register/LoanRegisterScreen.tsx:107"
+    claim: "構造の正である story の『貸出の内容』には 貸出日 行があるが、実装は黙って削っている。乖離が必要なら issues で変更要求するというルールに反する"
+    evidence: "docs/rules/tier-frontend.md 11 行目『画面は Storybook の story を構造の正として組む。乖離が必要なら実装で曲げず issues → 還流で変更要求する』; docs/rules/common.md 必須 3『仕様を実装側で曲げない』; packages/ui/stories/LoanRegister.stories.tsx:41-42 に dt 貸出日 / dd TODAY; LoanRegisterScreen.tsx:107-125 に 貸出日 行なし。応答 loan.loanedOn (contract-slice.json#components.schemas.Loan) で登録後は表示可能。登録前の返却期限 (story Default は 2026-10-10 を表示) は backend が決める値で画面から出せないため、仕様と両立しない事実として issues 起票が必要 (assumption-record.md 抽出規則 4)"
   - id: F-008
     viewpoint: uc_intent
-    kind: test_gap
+    kind: weak_assertion
     severity: minor
-    title: "二重送信ガードの単体テストが無い"
-    target: "apps/frontend/src/view/LoanCheckoutPage.tsx:94"
-    claim: "ADR 0005 の二重送信抑止のうち、LoanCheckoutPage の送信中ガードはテストされていない。ガードは描画時の submitting を閉包で参照するため、再描画前の連続送信は防げない。現状はボタンの disabled だけが担保している"
-    evidence: "docs/rules/common.md ADR 0005 'frontend は送信中の二重送信を抑止する'。unit.frontend.json の LoanCheckoutPage.test.tsx は LoanCheckoutScreen の '送信中の場合_貸し出すボタンを押せないこと' だけで、LoanCheckoutPage (handleSubmit, :94-105) のテストは無い"
+    title: "拒否の理由を step が確かめない"
+    target: "features/step_definitions/register-loan.steps.ts:170"
+    claim: "『貸出できない旨が表示され』の step は kind=rejected と文言が空でないことだけを確かめ、code (book_on_loan / not_first_in_reservation_queue / patron_not_registered) を見ないため、別理由での拒否 (例 validation_error) でも pass する"
+    evidence: "register-loan.steps.ts:170-176; contract-slice.json 409 examples の code 3 種; traces の拒否系 3 シナリオはいずれも http.in status 409 (register-loan#-3d4395be など) で現状の経路は正しい"
+  - id: F-009
+    viewpoint: uc_intent
+    kind: naming
+    severity: minor
+    title: "checkout は要求の用語でない"
+    target: "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.ts:49"
+    claim: "入口関数・ディレクトリ名に要求に無い別名 checkout を使っている。要求・story・UC slug の用語は 貸出登録 (register-loan / LoanRegister)"
+    evidence: "docs/rules/common.md 推奨『関数・クラスは要求の用語をそのまま使う。訳語・別名を発明しない』; use-cases.yaml slug register-loan; packages/ui/stories/LoanRegister.stories.tsx の画面名 LoanRegister; 契約 operationId registerLoan"
 summary:
   blocker: 1
   major: 1
-  minor: 6
+  minor: 7
