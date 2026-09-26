@@ -147,6 +147,10 @@ async function main(argv) {
     const unknown = o.tiers.filter(t => !known.has(t));
     if (unknown.length) { console.error(`unknown tier(s) in --tiers: ${unknown.join(', ')}`); return 2; }
   }
+  // 契約の provider が tiers に無い (改名・設定ミス) と contract ゲートが「提供側なし」で緑になる。設定エラーとして止める
+  const tierIds = new Set((config.tiers || []).map(t => t.id));
+  const orphan = (config.contracts || []).filter(c => c.provider && !tierIds.has(c.provider));
+  if (orphan.length) { console.error(`contract provider not in tiers: ${orphan.map(c => `${c.id}→${c.provider}`).join(', ')} (config.yaml の contracts[].provider / tiers[].id を確認)`); return 2; }
   const ctx = { cwd: o.cwd, slug: o.uc, reportsDir, tiers: o.tiers || null };
   const selected = selectGates(o);
   // 部分実行 (--from / --upto / --only) では既存の gates.json を読み、今回実行した段だけ置き換える (他段の証跡を消さない)

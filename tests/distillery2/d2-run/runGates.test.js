@@ -82,6 +82,13 @@ test('契約の提供側が 1 つも無い config では contract ゲートは p
   assert.ok(contract.jobs.every(j => j.status === 'skipped' && j.reason === 'not a provider'));
 });
 
+test('contracts[].provider が tiers に無ければ設定エラー (contract ゲートが緑にならない) (Codex 0.1.13 ラウンド 2 指摘 3)', () => {
+  const repo = makeRepo(CONFIG.replace('    provides: [api]\n', '') + '\ncontracts:\n  - id: api-spec\n    provider: missing-api\n');
+  const r = run(repo, ['--uc', 'loan', '--only', 'contract']);
+  assert.equal(r.code, 2, r.out);
+  assert.match(r.out, /contract provider not in tiers: api-spec→missing-api/);
+});
+
 test('planGate substitutes slug and report paths and skips undefined commands', () => {
   const config = { tiers: [{ id: 'api', commands: { unit: 'x {report}' } }], commands: { uc_bdd: 'cuke {slug} {report}' }, capabilities: { browser: true } };
   const ctx = { slug: 'loan', reportsDir: '/r' };

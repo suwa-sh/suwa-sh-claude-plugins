@@ -22,8 +22,9 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 ## 生成される依存とスクリプト (genSkeleton)
 
 - **root `package.json` devDependencies** (常時): `@biomejs/biome` / `@cucumber/cucumber` / `@electric-sql/pglite` / `@redocly/cli` / `@apidevtools/json-schema-ref-parser` / `dependency-cruiser` / `vitest` / `supertest` / `@types/supertest` / `@playwright/test` / `ajv` / `ajv-formats` / `tsx` / `typescript`。frontend ティアがあれば `react` / `react-dom` / `@types/react` / `@types/react-dom` を追加。
-- **各 app `package.json` scripts** (実コマンド。echo プレースホルダは廃止): `test` = `vitest run` / `typecheck` = `tsc --noEmit -p .` / `lint` = `biome lint .` / `format:check` = `biome format .` / `test:contract` = `vitest run test/contract`。
-- **各 app に生成**: `tsconfig.json` (base 継承、frontend は jsx 有効) と最小 `vitest.config.ts` (frontend は `environment: jsdom` + 自動 JSX)。
+- **各 app `package.json` scripts** (実コマンド。echo プレースホルダは廃止): `test` = `vitest run` / `typecheck` = `tsc --noEmit -p .` / `lint` = `biome lint .` / `format:check` = `biome format .` / `test:contract` = `vitest run -c vitest.contract.config.ts`。
+- **各 app に生成**: `tsconfig.json` (base 継承、frontend は jsx 有効)、`vitest.config.ts` (単体: src/) と `vitest.contract.config.ts` (契約テスト: test/contract/) (frontend は `environment: jsdom` + 自動 JSX)、
+  空の `src/index.ts`、提供側 (kind≠frontend) には仮の `src/test-app.ts` (`createTestApp(): never`。契約テストと api ドライバの import 先。実装で置き換える)。
 - **root に生成**: `biome.json` (formatter / linter 有効)。
 
 ## 決めたこと

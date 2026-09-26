@@ -200,7 +200,8 @@ function appTsconfig(kind) {
  */
 const STUB_TEST_APP_TS = `// distillery2 genSkeleton.js が置いた仮の composition root。実装 (d2-implement mode=tier / integrate) で置き換える。
 // 契約テストと features/support/drivers/api.ts はここの createTestApp() を入口にする。
-export function createTestApp(): unknown {
+// 戻り値は never (常に投げる)。契約テストの request(app) と api ドライバのどちらにも型として渡せる。実装では実際の app 型に置き換える
+export function createTestApp(): never {
   throw new Error('test-app は未結線 (d2-implement で createTestApp を実装する)');
 }
 `;
@@ -277,14 +278,39 @@ function warnBiomeSchema(cwd, biomeVersion) {
  * 不足ファイル (app tsconfig / vitest.config / biome.json 等) を作り、その後でこの関数が
  * 既存ファイル (writeIfAbsent が skip するもの) を書き換える。
  */
-function migrate(cwd, biomeVersion) {
+/** 0.1.12 以前の app vitest.config.ts (単体と契約テストを同じ include で回す)。これと完全一致するときだけ差し替える。 */
+function legacyVitestConfig(kind) {
+  const isFrontend = kind === 'frontend';
+  const env = isFrontend ? 'jsdom' : 'node';
+  const esbuild = isFrontend ? "\n  esbuild: { jsx: 'automatic' }," : '';
+  return `import { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    environment: '${env}',\n    include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/**/*.{test,spec}.{ts,tsx}'],\n  },${esbuild}\n});\n`;
+}
+
+/** 旧 vitest.config.ts を単体専用に差し替える (Codex 0.1.13 ラウンド 2 指摘 2)。手編集されていれば触らず報告する。 */
+function migrateVitestConfig(cwd, rel, kind, changes) {
+  const p = path.resolve(cwd, rel);
+  if (!fs.existsSync(p)) return;
+  const cur = fs.readFileSync(p, 'utf8');
+  if (cur === appVitestConfig(kind)) return;
+  if (cur === legacyVitestConfig(kind)) {
+    fs.writeFileSync(p, appVitestConfig(kind));
+    changes.push(`${rel}: 単体専用 (src/ だけ) に差し替え。契約テストは vitest.contract.config.ts`);
+  } else if (cur.includes("'test/**/*.{test,spec}.{ts,tsx}'")) {
+    changes.push(`${rel}: 手編集済みのため据え置き (include に test/** が残っている。契約テストが unit ゲートにも出る。vitest.contract.config.ts に寄せて test/** を外すこと)`);
+  }
+}
+
+function migrate(cwd, biomeVersion, tiers = []) {
   const changes = [];
   migrateGitignore(cwd, changes);
   migrateBiomeSchema(cwd, biomeVersion, changes);
   const appsDir = path.resolve(cwd, 'apps');
   const entries = fs.existsSync(appsDir) ? fs.readdirSync(appsDir, { withFileTypes: true }) : [];
+  const kindOf = new Map(tiers.map(t => [t.dir ? String(t.dir).replace(/^apps\//, '') : t.id, t.kind]));
   for (const entry of entries) {
-    if (entry.isDirectory()) migrateAppScripts(cwd, `apps/${entry.name}/package.json`, changes);
+    if (!entry.isDirectory()) continue;
+    migrateAppScripts(cwd, `apps/${entry.name}/package.json`, changes);
+    migrateVitestConfig(cwd, `apps/${entry.name}/vitest.config.ts`, kindOf.get(entry.name) || 'backend', changes);
   }
   return changes;
 }
@@ -316,7 +342,7 @@ function run(o) {
   const biomeVersion = (created.includes('package.json') ? null : existingBiomeVersion(cwd)) ?? BIOME_VERSION;
   writeIfAbsent(cwd, 'biome.json', biomeJson(biomeVersion), created, skipped);
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
-  const migrated = o.migrate ? migrate(cwd, biomeVersion) : [];
+  const migrated = o.migrate ? migrate(cwd, biomeVersion, tiers) : [];
   if (!o.migrate) warnBiomeSchema(cwd, biomeVersion);
   return { code: 0, created, skipped, tierDirs, migrated };
 }

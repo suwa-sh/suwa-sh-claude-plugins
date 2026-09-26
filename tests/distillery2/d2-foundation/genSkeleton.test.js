@@ -79,7 +79,13 @@ test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り
   run('genSkeleton.js', c, ['--adr', adrDir]);
   // 契約テストを置く。app tsconfig に rootDir が付いていれば TS6059 で失敗する。
   // 契約テストは実装前でも src/test-app を import する (③ の static チェックポイントで typecheck が通る必要がある。Codex 0.1.13 指摘 1)
-  fs.writeFileSync(path.join(c, 'apps/backend-api/test/contract/x.test.ts'), "import { createTestApp } from '../../src/test-app';\nexport const x: number = 1;\nexport const app = createTestApp();\n");
+  // 生成される契約テストと同じ使い方 (supertest の request(app) 相当の厳しい引数型に渡す) で型検査する (Codex 0.1.13 ラウンド 2 指摘 1)
+  fs.writeFileSync(path.join(c, 'apps/backend-api/test/contract/x.test.ts'), [
+    "import { createTestApp } from '../../src/test-app';",
+    "import type { Server } from 'node:http';",
+    'function request(_app: Server | ((req: unknown, res: unknown) => void)): { get(p: string): void } { return { get() {} }; }',
+    'export async function probe() { const app = await createTestApp(); request(app).get("/x"); }',
+  ].join('\n') + '\n');
   const tsc = path.resolve(__dirname, '../../../node_modules/.bin/tsc');
   assert.ok(fs.existsSync(tsc), 'node_modules/.bin/tsc が無い (npm install 済みか)');
   // app tsconfig は types: ['node'] を持つ (対象リポでは devDependencies の @types/node)。ここではリポの node_modules を見せる
@@ -178,9 +184,18 @@ test('genSkeleton --migrate: 0.1.12 以前の test:contract (単体と重なる)
   const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
   pkg.scripts['test:contract'] = 'vitest run test/contract';
   fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+  // 旧 vitest.config.ts (単体 + 契約) も置く。生成物と一致すれば単体専用に差し替える
+  const legacy = "import { defineConfig } from 'vitest/config';\n\nexport default defineConfig({\n  test: {\n    environment: 'node',\n    include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/**/*.{test,spec}.{ts,tsx}'],\n  },\n});\n";
+  fs.writeFileSync(path.join(c, 'apps/backend-api/vitest.config.ts'), legacy);
+  // 手編集された設定 (frontend) は触らず報告だけ
+  fs.writeFileSync(path.join(c, 'apps/frontend/vitest.config.ts'), legacy.replace("'node'", "'jsdom'") + '// edited\n');
   const r = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
   assert.ok(r.out.includes('test:contract'), r.out);
   assert.equal(JSON.parse(fs.readFileSync(p, 'utf8')).scripts['test:contract'], 'vitest run -c vitest.contract.config.ts');
+  assert.ok(r.out.includes('apps/backend-api/vitest.config.ts: 単体専用'), r.out);
+  assert.ok(!fs.readFileSync(path.join(c, 'apps/backend-api/vitest.config.ts'), 'utf8').includes("'test/**"), '旧設定は単体専用に差し替わる');
+  assert.ok(r.out.includes('apps/frontend/vitest.config.ts: 手編集済みのため据え置き'), r.out);
+  assert.ok(fs.readFileSync(path.join(c, 'apps/frontend/vitest.config.ts'), 'utf8').endsWith('// edited\n'), '手編集は保持');
 });
 
 test('genSkeleton --migrate: 手編集済み script は触らない (echo でなければ据え置き)', () => {

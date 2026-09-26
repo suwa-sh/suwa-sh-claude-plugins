@@ -35,7 +35,8 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
    `git merge-base --is-ancestor <base_head> HEAD`、`git log <base_head>..HEAD` に merge commit が無いことを確認
 2. 復旧用 ref `refs/distillery2/pre-squash/<slug>/<timestamp>` を `git update-ref` で現在 HEAD に作る。作れなければ squash しない
 3. `git reset --soft <base_head>`。staged が当該 UC の変更だけであることを確認する
-4. `scripts/prTrailers.js --run .distillery/runs/<slug> --strict --commit-message "feat: <UC 名>" --co-author "<ハーネスの attribution 行>"` で本文を作り (必須 trailer が
+4. `scripts/prTrailers.js --run .distillery/runs/<slug> --strict --base <base_head> --commit-message "feat: <UC 名>" --co-author "<ハーネスの attribution 行>"` で本文を作り
+   (`--base` には 3 で使った `<base_head>` をそのまま渡す。省略時の自動選択 (origin/HEAD → main → master) は UC の開始ブランチと違うことがある。必須 trailer が
    欠けていれば exit 1 で止まる)、`git commit -F <本文ファイル>` で
    exactly 1 commit を作る。件名は `feat: <UC 名 (日本語)>`。`git rev-list --count <base_head>..HEAD` が 1 でなければ push しない。
    失敗したら `git reset --soft <復旧用 ref>` で戻す
