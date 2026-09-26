@@ -53,11 +53,13 @@ models:
   implementer: null                  # null = セッション既定モデル。d2-run が実際のモデル名に解決する
   verifier: opus                     # Agent/Task の model パラメータに渡せる有効値 (opus / sonnet / haiku 等)。
                                      # `claude-opus-5` のようなフル ID は model パラメータとして無効なので使わない。
-                                     # implementer と同じにしてはいけない (独立検証の条件)
+                                     # implementer と同じモデルに解決されてもよい (独立検証の条件は別サブエージェント + 同等以上のモデル)
 ```
 
 - `verifier` は `Agent` / `Task` ツールの `model` パラメータへそのまま渡せる短い別名 (`opus` / `sonnet` / `haiku` など) を書く。フルのモデル ID は `model` パラメータとして無効になる。
-- `implementer: null` はセッション既定モデルを指す。d2-run は起動時に implementer を実際のモデル名へ解決し、`verifier` と一致していないことを確認する。一致するときは独立検証が成立しないため停止して確認する。
+- `implementer: null` はセッション既定モデルを指す。d2-run は起動時に implementer を実際のモデル名へ解決し、verifier と並べて `models_resolved` に記録する。
+  独立検証の条件は「別のサブエージェント (文脈が新しい) で、実装役と同等以上のモデル」。同じモデル ID に解決されても止めない (別名の解決先は Claude Code 側で変わる。0.1.13 の実走では両方 claude-opus-5-5)。
+  verifier を実装役より弱いモデルにしない (例: 実装役 opus に対して haiku)。
 
 ## ゲートとコマンドの対応
 

@@ -20,9 +20,9 @@
 | 1 | `genSkeleton.js` が作る tsconfig の配列の書き方が biome の整形と合わず、3 ティアの format_check が落ちる | 対応済み 0.1.13、再確認済み |
 | 2 | `genSkeleton.js` の `src/` が空で、tsc が対象ファイルを見つけられず typecheck が落ちる。空の `src/index.ts` (`export {};`) を置いて回避 | 対応済み 0.1.13、再確認済み |
 | 3 | 基盤 (F1〜F5) が契約の骨格より先に走るため、config と CI を契約の後で再生成する必要があった (d2-run ③ の順序) | 対応済み 0.1.13 (d2-run ③ の順序)、再確認済み |
-| 4 | `captureStories.js` が Storybook の静的 build を `file://` で開くため画像が真っ白になる。ローカル HTTP で撮り直すスクリプトで回避 | 未対応 |
+| 4 | `captureStories.js` が Storybook の静的 build を `file://` で開くため画像が真っ白になる。ローカル HTTP で撮り直すスクリプトで回避 | 対応済み 0.1.16 (ローカル http 配信) |
 | 5 | 契約の初回 `compileContracts --check` は `@redocly/cli` 未導入 (npm install 前) で exit 1 | 対応済み 0.1.13 (npm install を契約の前に)、再確認済み |
-| 6 | **モデルの割り当て**: `implementer: null` (セッション = Opus) と `verifier: opus` を「同じ」と判断して④が止まりかける。実際は Agent ツールの `opus` は claude-opus-4-7 に解決され別モデル (tokenReport で確認) | プロンプトで明示して回避。genConfig の既定と d2-run の解決規則を明文化する必要 |
+| 6 | **モデルの割り当て**: `implementer: null` (セッション = Opus) と `verifier: opus` を「同じ」と判断して④が止まりかける。実際は Agent ツールの `opus` は claude-opus-4-7 に解決され別モデル (tokenReport で確認) | 対応済み 0.1.16 (同じモデルでも止めない。条件は別サブエージェント + 同等以上のモデル) |
 | 7 | design: 利用者一覧画面が要求に無いのに screens.yaml に出た | 未対応 (確認材料には載る) |
 
 ## 段階④ 貸出を登録する (51 分)
@@ -31,7 +31,7 @@
 |---|---|---|
 | 1 | `runGates.js` が消費側 (frontend) にも contract ゲートを走らせる。契約テストは生成されないので vitest がテスト 0 件で exit 1。`--passWithNoTests` を手で足して回避 | 対応済み 0.1.13 (提供側だけ)、再確認済み (frontend は skipped) |
 | 2 | `genContractTests.js` の生成物が biome format を通らない。backend-api 実装者が `apps/backend-api/biome.json` で `test/contract/**` を整形対象外にして回避 (ゲートを緩める変更) | 対応済み 0.1.13 (biome-ignore-all) → **biome 2.2.5 では効かず再発**。0.1.15 でルート biome.json の除外を追加 |
-| 3 | `genContractTests.js` は認証ヘッダで決まる 401 / 403 を契約の例として書けない | 未対応 |
+| 3 | `genContractTests.js` は認証ヘッダで決まる 401 / 403 を契約の例として書けない | 対応済み 0.1.16 (`x-test-headers` / example の `x-headers`) |
 | 4 | `scaffold.md` の dry-run 手順に `-p dryrun` プロファイルが書かれていない (既定プロファイルは存在しない test-app を import して落ちる) | 対応済み 0.1.13、再確認済み |
 | 5 | unit コマンドの vitest が `test/**` も対象にするため、契約テストの失敗が unit ゲートにも出る | 対応済み 0.1.13 (設定を分離)、再確認済み |
 | 6 | `prTrailers.js` の `Basis-Requirements` / `Basis-Contracts` が squash 前のコミットを指す (squash 後の履歴に残らない) | 対応済み 0.1.13 (merge-base から)、再確認済み (Basis-Base / Basis-Changed が付いた) |

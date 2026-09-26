@@ -83,7 +83,8 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
    - AsyncAPI: channel・operation・message・payload schema。
    - RDB: 該当 `db/domains/<id>.yaml` にテーブル・列・FK を足す。
 3. **examples を書く**: [`references/uc-index.md`](references/uc-index.md) の examples 必須ルールに従い、
-   requestBody と各 2xx/4xx response に example を付ける。
+   requestBody と各 2xx/4xx response に example を付ける。認証や冪等キーで決まる応答 (401 / 403 / 409) は、文書直下の `x-test-headers` (既定値) と
+   request example の `x-headers` (上書き。`null` で送らない) で入力を表す ([`references/contract-tests.md`](references/contract-tests.md) の「要求ヘッダ」)。
    **シナリオから example を作れないときは、契約を推測で埋めず**、
    `.distillery/runs/<slug>/issues/<ts>_<slug>.md` に課題ドラフトを残して停止する。書式は実装の課題と同じ:
    front matter に `kind: contract` と `title` (40 字以内)。front matter が無いと as-built の課題の表で「未分類」になる (0.1.10 実走 ④-11)。

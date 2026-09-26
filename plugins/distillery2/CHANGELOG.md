@@ -2,6 +2,30 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.16] - 2026-09-26
+
+0.1.13 の再実走の持ち越し (ユーザー判断: 小さな修正 5 件 + 品質に効く 3 件。検証役は同じモデルでも進める。npm の件はトラブルシューティングにためる)。
+
+### Added
+
+- **契約テストの要求ヘッダ**: 文書直下 / operation の `x-test-headers` (既定) と request example の `x-headers` (上書き。`null` で送らない) を `.set()` で送る。
+  `'{uuid}'` は毎回新しい UUID (Idempotency-Key 用)。生成される契約テストが認証情報を送れず、提供側にテスト専用のヘッダ補完が要った (0.1.10 ④-3 / 0.1.13 ④-3)
+- `extractAsBuilt.js --dry-run`: 何も書かずに計装の集計だけ返す (integrate 担当が docs/as-built を書いて write-set の外に出ていた。0.1.13 ④-5)
+- `TROUBLESHOOTING.md`: 実走で踏んだ環境依存の問題と回避策 (npm 10 の `edgesOut`、qlty init の拒否、osv-scanner の欠落、biome の版差、headless の `$VAR`、index.lock)
+
+### Changed
+
+- **検証役 (Verifier) のモデル**: 独立検証の条件は「別のサブエージェント (文脈が新しい) で、実装役と同等以上のモデル」。同じモデル ID に解決されても止めない (記録だけ残す)。
+  別名 `opus` の解決先は Claude Code 側で変わる (0.1.10 は claude-opus-4-7、0.1.13 は claude-opus-5-5)
+- `captureStories.js`: 静的ビルドをローカル http で配信して撮る (file:// では ES modules が読めず全 Story が白紙だった。0.1.10 ③-4)
+- d2-run ③: 契約の後に `genArchitectureDoc.js` も再生成する (C4 図に契約の矢印が無かった。0.1.13 ③-4)
+
+### Fixed
+
+- `genApiClient.js --check` を単体で流すと所有タグの有無が genContractTests の出力と食い違い stale になった (0.1.13 ④-4)。同じヘッダにする
+- `genUseCases.js` が既存の `no_spec_reason` (blocked の理由) を引き継がず、再生成で validateUseCases が落ちた (0.1.13 ①)
+- genSkeleton の `.gitignore` に qlty の作業ディレクトリ (`.qlty/logs` `out` `results` `plugin_cachedir` `sources`) を足す。`--migrate` も更新する (0.1.13 ③-5)
+
 ## [0.1.15] - 2026-09-26
 
 0.1.13 のフル再実走 (`samples/distillery2/findings-0.1.13.md`) で分かったこと。

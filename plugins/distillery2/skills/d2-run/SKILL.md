@@ -35,10 +35,14 @@ description: >-
   内部 ID (uc_id、SPEC-xxx、段階名) を本文に出さず名前で呼ぶ。回答は選択肢からコピーできる形にする
 - 上流 (要求・ADR・契約) の再生成はしない。ズレは `basis.js check` で見つけ、差分 PR か issue にする
 
+詰まったら [`../../TROUBLESHOOTING.md`](../../TROUBLESHOOTING.md) (環境依存の症状と回避策) を見る。手順に無い回避策を使ったら報告に書く。
+
 ## 起動シーケンス
 
 1. 引数を解釈し、段階を決める (上の自動選択)
-2. `.distillery/config.yaml` があれば読み、`models.implementer` と `models.verifier` を解決する。`implementer: null` はセッション既定モデルなので、**実際のモデル名に解決してから** verifier と比較する。`verifier` は `opus` などの短い別名で書く (フル ID は `model` パラメータとして無効)。**解決後に両者が同じなら停止して確認** (独立検証の条件)
+2. `.distillery/config.yaml` があれば読み、`models.implementer` と `models.verifier` を解決する。`implementer: null` はセッション既定モデルなので、**実際のモデル名に解決してから** verifier と並べて記録する。`verifier` は `opus` などの短い別名で書く (フル ID は `model` パラメータとして無効)。
+   **独立検証の条件は「別のサブエージェント (文脈が新しい) で、実装役と同等以上のモデル」**。同じモデル ID に解決されても止めない (記録だけ残す。2026-09-26 のユーザー方針)。
+   止めるのは verifier が実装役より明らかに弱い別名 (例: 実装役が opus で verifier が haiku) のときだけ
 3. ④ なら UC を解決する: 引数が slug なら `use-cases.yaml` と照合、UC 名なら NFC 正規化して一意に一致する行を探す (複数なら候補を示して選ばせる)
 4. 作業ツリーの clean 判定 (④ の開始時。再開時は branch 一致を確認): `git status --porcelain` のうち、**追跡済みの変更**と、**未追跡でも `docs/` `apps/` `packages/` `contracts/` `features/` `.distillery/` 配下のファイル**だけを対象にする。これらがあれば勝手に stash / commit せず整理を依頼して停止する。それ以外のルート直下の未追跡ファイル (ハーネスの `run-stage.sh` などの実行スクリプト) は clean 判定に含めず、**報告に一覧として載せて無視**する (実走でハーネスのファイルが clean 条件を満たせなかったため)。`.git/info/exclude` への書き込みは前提にしない (権限で拒否されうる)
 
@@ -64,9 +68,10 @@ config / CI は契約 (`contracts/contracts.json`) を読むので、契約の�
 2. 依存を入れる (`npm install`。オーケストレータが単一 writer として行う)。続けて
    `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --refresh --cwd .` (lockfile ができたので osv-scanner 等の提案が増える。増えた分だけ足す)
 3. sub `d2-contract mode=skeleton` (compile に redocly を使う)
-4. config と CI を契約込みで再生成する (どちらも自分の生成物なら上書きする):
+4. config・CI・C4 図を契約込みで再生成する (いずれも自分の生成物なら上書きする。C4 図は契約の矢印がこの時点で初めて描ける。0.1.13 実走 ③-4):
    `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd .`
    → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd .`
+   → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements --cwd .`
 5. (frontend ティアがあれば) sub `d2-design` → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from docs/design/storybook-app --cwd .` (F6)
    → `packages/ui` が workspace に加わるので `npm install` をもう一度 (lockfile を更新)
 6. `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root .` (骨格分)

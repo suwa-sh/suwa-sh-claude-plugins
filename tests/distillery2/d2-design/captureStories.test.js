@@ -101,3 +101,40 @@ test('prunePngs は現行 Story ID に無い PNG だけ消す (管理外は触�
   assert.equal(fs.existsSync(path.join(dir, 'old--y.png')), false);
   assert.equal(fs.existsSync(path.join(dir, 'index.md')), true);
 });
+
+test('撮影はローカル http 配信の URL で行う (file:// では ES modules が読めず白紙になる。0.1.16)', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2cap-'));
+  const buildDir = path.join(dir, 'static');
+  fs.mkdirSync(buildDir, { recursive: true });
+  fs.writeFileSync(path.join(buildDir, 'index.json'), JSON.stringify({
+    v: 5, entries: { 'ui-button--primary': { id: 'ui-button--primary', name: 'Primary', title: 'UI/Button', type: 'story' } },
+  }));
+  fs.writeFileSync(path.join(buildDir, 'iframe.html'), '<html><body>ok</body></html>');
+  // 偽の playwright: goto の URL を記録し、http で本当に取りに行けることも確かめる
+  const log = path.join(dir, 'goto.log');
+  const fake = path.join(dir, 'fake-playwright.js');
+  fs.writeFileSync(fake, `
+    const fs = require('node:fs'); const http = require('node:http');
+    module.exports = { chromium: { launch: async () => ({
+      newPage: async () => ({
+        goto: async (url) => new Promise((resolve, reject) => {
+          fs.appendFileSync(${JSON.stringify(log)}, url + '\\n');
+          http.get(url, (res) => { let b = ''; res.on('data', (d) => { b += d; }); res.on('end', () => { fs.appendFileSync(${JSON.stringify(log)}, 'status=' + res.statusCode + ' body=' + b + '\\n'); resolve(); }); }).on('error', reject);
+        }),
+        screenshot: async ({ path: p }) => fs.writeFileSync(p, ''),
+      }),
+      close: async () => {},
+    }) } };`);
+  const prev = process.env.PLAYWRIGHT;
+  process.env.PLAYWRIGHT = fake;
+  try {
+    const r = await run({ cwd: dir, buildDir, outDir: path.join(dir, 'shots') });
+    assert.equal(r.code, 0, JSON.stringify(r));
+    const lines = fs.readFileSync(log, 'utf8').trim().split('\n');
+    assert.match(lines[0], /^http:\/\/127\.0\.0\.1:\d+\/iframe\.html\?id=ui-button--primary&viewMode=story$/, lines[0]);
+    assert.equal(lines[1], 'status=200 body=<html><body>ok</body></html>', '配信サーバから静的ビルドが取れる');
+    assert.ok(fs.existsSync(path.join(dir, 'shots/ui-button--primary.png')));
+  } finally {
+    if (prev === undefined) delete process.env.PLAYWRIGHT; else process.env.PLAYWRIGHT = prev;
+  }
+});

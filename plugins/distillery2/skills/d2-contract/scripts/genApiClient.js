@@ -345,7 +345,8 @@ function run(contractsDir, { configPath, outRoot, check = false }) {
   const dir = fs.realpathSync(contractsDir);
   const catalog = C.readCatalog(dir);
   const config = U.readConfig(configPath);
-  const head = U.header(dir, config.docs_root || 'docs');
+  // genContractTests が付けるのと同じヘッダ (所有タグ込み)。違うと単体の --check が stale と誤判定する (0.1.13 実走 ④-4)
+  const head = `${U.header(dir, config.docs_root || 'docs')}\n${U.OWNER_TAG}`;
   // bundle の鮮度を確かめる
   compileContracts.run(dir, true);
   const openapiContract = C.contractsOfType(catalog, 'openapi')[0];

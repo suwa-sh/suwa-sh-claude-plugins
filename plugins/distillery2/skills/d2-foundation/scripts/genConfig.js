@@ -11,7 +11,7 @@
  * - contracts.json が無ければ contracts: [] にして警告する。
  * - models.verifier 既定は `opus` (Agent/Task の model パラメータに渡せる有効値。`claude-opus-5` のような
  *   フル ID は model パラメータとして無効なので使わない)。implementer は null = セッション既定モデル。
- *   d2-run は verifier を implementer と別モデルに解決する (config-schema.md 参照)。
+ *   d2-run は verifier を「別サブエージェント + 同等以上のモデル」で走らせる (同じ ID に解決されてもよい。config-schema.md 参照)。
  * - capabilities.browser は testing ADR から (既定 false)。
  */
 const fs = require('node:fs');

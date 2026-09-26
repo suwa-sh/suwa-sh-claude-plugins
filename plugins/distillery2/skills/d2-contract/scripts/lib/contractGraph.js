@@ -214,7 +214,8 @@ function mediaExamples(holder, doc) {
     if (object(media.examples)) {
       for (const [name, exRaw] of Object.entries(media.examples)) {
         const ex = derefMaybe(doc, exRaw);
-        if (object(ex) && own(ex, 'value')) out.push({ mediaType, name, value: ex.value });
+        // x-headers: この example を送るときの要求ヘッダ (値 null はそのヘッダを送らない)。401 / 403 のように認証で決まる応答の入力に使う
+        if (object(ex) && own(ex, 'value')) out.push({ mediaType, name, value: ex.value, ...(object(ex['x-headers']) ? { headers: ex['x-headers'] } : {}) });
       }
     }
   }
