@@ -55,4 +55,6 @@ function writeFileDet(target, text, check, stale, written, rel) {
 
 function jsonDet(value) { return JSON.stringify(sortKeys(value), null, 2) + '\n'; }
 
-module.exports = { DO_NOT_EDIT, readConfig, tierDir, basisComment, header, writeFileDet, jsonDet };
+// genContractTests が書く生成物の所有タグ (genApiClient の単体実行でも同じヘッダにする。違うと --check が stale になる)
+const OWNER_TAG = '// distillery2-owner: d2-contract/genContractTests';
+module.exports = { DO_NOT_EDIT, OWNER_TAG, readConfig, tierDir, basisComment, header, writeFileDet, jsonDet };

@@ -1120,9 +1120,12 @@ function run(opts) {
   const indexPath = path.join(asBuiltDir, 'index.md');
   const preserved = extractPreserved(readTextIfExists(indexPath));
   const indexMd = buildIndexMd(ctx, preserved);
-  ensureWrite(indexPath, indexMd);
   // 引き継いだ要約 (旧形式の文章を含む) が書式規則を満たすか。違反は d2-asbuilt が書き直す (checkAsBuilt.js がゲート)
   const summaryViolations = checkSummaries(indexMd).violations.filter((v) => !/R1/.test(v.rule));
+  const summary = () => ({ asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length, instrumentation_gaps: ctx.instrumentation.gaps, instrumentation_happy_gaps: ctx.instrumentation.happy_gaps, summary_violations: summaryViolations.length });
+  // --dry-run: 何も書かずに集計だけ返す (integrate 担当が計装を確かめる用。docs/as-built を書くのは asbuilt 段だけ。0.1.13 実走 ④-5)
+  if (opts.dryRun) return { ...summary(), dry_run: true };
+  ensureWrite(indexPath, indexMd);
   ensureWrite(path.join(asBuiltDir, 'sequence.md'), buildSequenceMd(ctx));
   // 0.1.4 以前の coverage.md は index.md の「証跡」に統合した
   const legacyCoverage = path.join(asBuiltDir, 'coverage.md');
@@ -1147,7 +1150,7 @@ function run(opts) {
   ensureWrite(path.join(systemDir, 'data-flow.md'), renderSystemDataFlow(ordered));
   ensureWrite(path.join(systemDir, 'index.md'), buildSystemIndex({ ...index, __docsRoot: ctx.docsRoot }));
 
-  return { asBuiltDir, systemDir, slug: ctx.slug, scenarios: ctx.scenarios.length, operations: ctx.derived.operations.length, instrumentation_gaps: ctx.instrumentation.gaps, instrumentation_happy_gaps: ctx.instrumentation.happy_gaps, summary_violations: summaryViolations.length };
+  return summary();
 }
 
 function parseArgs(argv) {
@@ -1160,6 +1163,7 @@ function parseArgs(argv) {
     else if (a === '--docs-root') o.docsRoot = argv[++i];
     else if (a === '--depcruise') o.depcruise = argv[++i];
     else if (a === '--changed') o.changed = argv[++i];
+    else if (a === '--dry-run') o.dryRun = true;
     else throw new Error(`Unknown arg: ${a}`);
   }
   if (!o.run) throw new Error('--run <runDir> is required');
@@ -1174,7 +1178,7 @@ function main(argv) {
   const gap = (r.instrumentation_gaps.length ? ` 計装なしのティア: ${r.instrumentation_gaps.join(', ')}` : '')
     + (r.instrumentation_happy_gaps.length ? ` 正常系に部品 (call) が無いティア: ${r.instrumentation_happy_gaps.join(', ')}` : '');
   const sv = r.summary_violations ? ` 要約ブロックに書式違反 ${r.summary_violations} 件 (引き継いだ旧形式を含む。checkAsBuilt.js で確認し d2-asbuilt が書き直す)` : '';
-  console.log(`as-built: ${path.relative(o.cwd, r.asBuiltDir)} (scenarios=${r.scenarios}, operations=${r.operations})${gap}${sv}`);
+  console.log(`as-built${r.dry_run ? ' (dry-run: 書き込みなし)' : ''}: ${path.relative(o.cwd, r.asBuiltDir)} (scenarios=${r.scenarios}, operations=${r.operations})${gap}${sv}`);
   return 0;
 }
 

@@ -562,3 +562,17 @@ function sortDeep(v) {
   if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v).sort()) o[k] = sortDeep(v[k]); return o; }
   return v;
 }
+
+test('--dry-run は何も書かずに計装の集計だけ返す (integrate 担当が docs/as-built を書かないため。0.1.16)', () => {
+  const repo = buildRepo();
+  const before = fs.existsSync(path.join(repo.dir, 'docs/as-built'));
+  const r = run({ ...opts(repo), dryRun: true });
+  assert.equal(r.dry_run, true);
+  assert.equal(typeof r.scenarios, 'number');
+  assert.ok(Array.isArray(r.instrumentation_gaps));
+  assert.equal(fs.existsSync(path.join(repo.dir, 'docs/as-built')), before, 'dry-run で docs/as-built を作らない');
+  assert.ok(!fs.existsSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md')));
+  // 本番実行は書く
+  run(opts(repo));
+  assert.ok(fs.existsSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md')));
+});

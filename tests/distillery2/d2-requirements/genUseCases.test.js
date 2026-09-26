@@ -63,6 +63,21 @@ test('既存 use-cases の slug/status/tiers_hint を uc_id で引き継ぐ', ()
   assert.ok(!('spec_ids_added' in byUc['貸出を登録する']));
 });
 
+test('既存 use-cases の no_spec_reason (blocked の理由) を引き継ぐ (再生成で消えて validate が落ちていた。0.1.16)', () => {
+  const existing = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: [], status: 'blocked', no_spec_reason: '要求に無い (テスト)' }]]);
+  const byUc = Object.fromEntries(generate(reqData, bucText, existing).use_cases.map(u => [u.uc, u]));
+  assert.equal(byUc['貸出を登録する'].no_spec_reason, '要求に無い (テスト)');
+  assert.equal(byUc['貸出を登録する'].status, 'blocked');
+  // 既存に無ければキーごと出さない
+  const other = Object.values(byUc).find(u => u.uc !== '貸出を登録する');
+  assert.ok(other && !('no_spec_reason' in other), '既存に無ければキーごと出さない');
+  // blocked の UC に新しい候補が付いても spec_ids には入れない (理由と両立しない)。候補は spec_ids_added にだけ出て validate を通る (Codex 0.1.16 指摘 2)
+  const loan = byUc['貸出を登録する'];
+  assert.deepEqual(loan.spec_ids, [], 'spec_ids は空のまま');
+  assert.ok(Array.isArray(loan.spec_ids_added) && loan.spec_ids_added.length > 0, '候補は spec_ids_added に出る');
+  assert.equal(loan.status, 'blocked'); assert.equal(loan.no_spec_reason, '要求に無い (テスト)');
+});
+
 test('spec_ids は既存値と新推定候補の和集合になり、追加分を spec_ids_added に記録する', () => {
   // LLM が SPEC-001-01 だけに絞った後、フローに SPEC-001-02 が新たに紐づいた状況を再現
   const existing = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: ['SPEC-001-01'], status: 'planned' }]]);

@@ -24,6 +24,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
+const http = require('node:http');
 const { resolveDep } = require('../../../scripts/lib/resolveDep');
 
 /**
@@ -51,6 +52,35 @@ function readStoryIndex(buildDir) {
     if (fs.existsSync(p)) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } }
   }
   return null;
+}
+
+/**
+ * 静的ビルドをローカル http で配信する (file:// だと ES modules が読めず全 Story が白紙になる。0.1.10 実走 ③-4)。
+ * ポートは OS 任せ (0)。呼び出し側が close する。
+ */
+function serveStatic(root) {
+  const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff': 'font/woff', '.woff2': 'font/woff2', '.map': 'application/json' };
+  const realRoot = fs.realpathSync(root);
+  // 配信ルートの外は返さない: 文字列の前方一致ではなく path.relative で境界を見る (root=/a/static に対する /a/static2 を弾く)。
+  // シンボリックリンクで外に出るものも realpath で弾く (Codex 0.1.16 指摘 1)
+  const inside = (p) => { const rel = path.relative(realRoot, p); return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel); };
+  const server = http.createServer((req, res) => {
+    let p;
+    // realRoot 基準で解決する (macOS の /var → /private/var のように root 自体がシンボリックリンク配下でも境界判定が合う)
+    try { p = path.resolve(realRoot, '.' + decodeURIComponent(new URL(req.url, 'http://x').pathname)); } catch { res.writeHead(400); res.end(); return; }
+    if (!inside(p) || !fs.existsSync(p)) { res.writeHead(404); res.end(); return; }
+    if (fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');
+    let real;
+    try { real = fs.realpathSync(p); } catch { res.writeHead(404); res.end(); return; }
+    if (!inside(real) || !fs.statSync(real).isFile()) { res.writeHead(404); res.end(); return; }
+    p = real;
+    res.writeHead(200, { 'content-type': types[path.extname(p)] || 'application/octet-stream' });
+    fs.createReadStream(p).pipe(res);
+  });
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => resolve({ server, origin: `http://127.0.0.1:${server.address().port}` }));
+  });
 }
 
 function buildStorybook(storybookDir) {
@@ -119,13 +149,14 @@ async function run(opts) {
   const { chromium } = require(pwPath);
   fs.mkdirSync(outDir, { recursive: true });
   const captured = [];
-  let browser;
+  let browser, served;
   // chromium の起動・撮影は try で囲む。ブラウザ実体が未導入等で失敗したら「目視未実施 (exit 2)」にする。
   try {
+    served = await serveStatic(path.resolve(buildDir));
     browser = await chromium.launch();
-    const page = await browser.newPage();
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     for (const s of stories) {
-      const url = `file://${buildDir}/iframe.html?id=${encodeURIComponent(s.id)}&viewMode=story`;
+      const url = `${served.origin}/iframe.html?id=${encodeURIComponent(s.id)}&viewMode=story`;
       await page.goto(url, { waitUntil: 'networkidle' });
       await page.screenshot({ path: path.join(outDir, `${s.id}.png`), fullPage: true });
       captured.push(s);
@@ -134,7 +165,8 @@ async function run(opts) {
     console.error(`目視未実施: chromium の起動または撮影に失敗した (${e && e.message ? e.message : e})`);
     return { code: 2, reason: 'capture_failed', stories };
   } finally {
-    if (browser) await browser.close();
+    try { if (browser) await browser.close(); } catch { /* 閉じられなくても配信サーバは止める */ }
+    if (served) served.server.close();
   }
   // 撮影成功後、現行の Story ID に対応しない古い PNG を除く (証跡を実行履歴に依存させない)。
   const removed = prunePngs(outDir, stories.map((s) => s.id));
@@ -168,4 +200,4 @@ if (require.main === module) {
     .catch((e) => { console.error(`目視未実施: ${e && e.message ? e.message : e}`); process.exit(2); });
 }
 
-module.exports = { parseStories, readStoryIndex, run, writeIndexMd, prunePngs };
+module.exports = { parseStories, readStoryIndex, run, writeIndexMd, prunePngs, serveStatic };

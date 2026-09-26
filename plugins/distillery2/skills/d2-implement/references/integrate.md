@@ -45,7 +45,8 @@ pending だった step を実装し、テスト用の composition root に計装
   各ティアで少なくとも 1 つの部品 (`call`) が現れる。確認コマンド:
 
   ```bash
-  node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js --run .distillery/runs/<slug>
+  node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js --run .distillery/runs/<slug> --dry-run
+  # --dry-run は何も書かない (docs/as-built を書くのは asbuilt 段だけ。ここで書くと write-set の外に出る)。
   # 標準出力に「計装なしのティア」(全トレースに現れない) も「正常系に部品 (call) が無いティア」も出なければよい (出たら結線を足す)
   ```
 

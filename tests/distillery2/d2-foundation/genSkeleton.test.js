@@ -72,6 +72,7 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(gitignore.includes('.distillery/runs/*/reports/') && gitignore.includes('traces/'));
   // attempt-*/ は commit 対象なので除外しない (run-state.md と整合)
   assert.ok(!gitignore.includes('attempt-'), 'attempt-*/ は gitignore しない');
+  for (const q of ['.qlty/logs/', '.qlty/out/', '.qlty/results/', '.qlty/plugin_cachedir/']) assert.ok(gitignore.includes(q), `qlty の作業ディレクトリ ${q} を gitignore`);
 });
 
 test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り、frontend は jsdom を依存に持つ (Finding 8)', () => {

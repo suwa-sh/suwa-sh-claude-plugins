@@ -130,6 +130,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/genUseCases.js
 SPEC を取りこぼさない。**外した SPEC は削除せず `spec_ids_rejected` へ移す**と、再生成で候補へ戻らない。
 今回新規に増えた候補だけが各 UC の `spec_ids_added` に記録されるので（無ければキーごと出ない）、
 **LLM は `spec_ids_added` を見て採否を判断し、採用は `spec_ids` に残し、不採用は `spec_ids_rejected` へ移して `spec_ids_added` を削除する**。
+`no_spec_reason` を持つ (blocked の) UC に新しい候補が付いたときは、候補は `spec_ids_added` にだけ出て `spec_ids` は空のまま。採用するなら `spec_ids` に移し、`no_spec_reason` を消して `status: planned` に戻す。
 編集後にバリデートする:
 
 ```bash

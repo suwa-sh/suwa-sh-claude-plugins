@@ -282,3 +282,54 @@ test('--uc 生成は stub マニフェストへ union で追記する (Finding 4
   assert.ok(names.includes('returnLoan.200.json'), '前回マニフェストを残す');
   assert.ok(names.includes('createLoan.201.json') && names.includes('getBook.200.json'), '今回 UC の stub を追記');
 });
+
+test('x-test-headers (文書 / operation) と request example の x-headers で要求ヘッダを送る。"{uuid}" は毎回新しい UUID (0.1.16)', () => {
+  const { contractsDir } = freshContracts();
+  const oa = path.join(contractsDir, 'openapi/openapi.yaml');
+  let y = fs.readFileSync(oa, 'utf8');
+  // 文書直下の既定ヘッダ (paths: の前に挿す)
+  y = y.replace('paths:\n', "x-test-headers:\n  Authorization: Bearer test-librarian\n  Idempotency-Key: '{uuid}'\npaths:\n");
+  // conflict の request example だけ Authorization を patron に、Idempotency-Key は送らない
+  y = y.replace('              conflict:\n                value:\n', "              conflict:\n                x-headers:\n                  Authorization: Bearer test-patron\n                  Idempotency-Key: null\n                value:\n");
+  fs.writeFileSync(oa, y);
+  compileContracts.run(contractsDir);
+  const out = outRoot();
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out });
+  const t = read(out, 'apps/backend-api/test/contract/createLoan.test.ts');
+  const block201 = /responds 201 \(example: success\)[\s\S]*?\.send\(/.exec(t)[0];
+  assert.ok(block201.includes(`.set("Authorization", "Bearer test-librarian")`), block201);
+  assert.ok(block201.includes(`.set("Idempotency-Key", randomUUID())`), block201);
+  const block409 = /responds 409 \(example: conflict\)[\s\S]*?\.send\(/.exec(t)[0];
+  assert.ok(block409.includes(`.set("Authorization", "Bearer test-patron")`), block409);
+  assert.ok(!block409.includes('Idempotency-Key'), 'null のヘッダは送らない');
+  assert.equal((block409.match(/\.set\("[Aa]uthorization"/g) || []).length, 1, 'Authorization は 1 回だけ (上書き)');
+  assert.ok(t.includes("import { randomUUID } from 'node:crypto';"), '{uuid} を使うときだけ import する');
+  // ヘッダ名は大文字小文字を区別しない: example の `authorization: null` で既定の `Authorization` を取り消せる (Codex 0.1.16 ラウンド 2 指摘 1)
+  const { contractsDir: c2 } = freshContracts();
+  const oa2 = path.join(c2, 'openapi/openapi.yaml');
+  let y2 = fs.readFileSync(oa2, 'utf8');
+  y2 = y2.replace('paths:\n', "x-test-headers:\n  Authorization: Bearer test-librarian\npaths:\n");
+  y2 = y2.replace('              conflict:\n                value:\n', "              conflict:\n                x-headers:\n                  authorization: null\n                value:\n");
+  fs.writeFileSync(oa2, y2);
+  compileContracts.run(c2);
+  const out2 = outRoot();
+  genContractTests.run(c2, { configPath: CONFIG, outRoot: out2 });
+  const t2 = read(out2, 'apps/backend-api/test/contract/createLoan.test.ts');
+  const b409 = /responds 409 \(example: conflict\)[\s\S]*?\.send\(/.exec(t2)[0];
+  assert.ok(!/\.set\("[Aa]uthorization"/.test(b409), `小文字の null で既定を取り消す: ${b409}`);
+  const b201 = /responds 201 \(example: success\)[\s\S]*?\.send\(/.exec(t2)[0];
+  assert.ok(b201.includes('.set("Authorization", "Bearer test-librarian")'), '他の example には既定が付く');
+  // 既定ヘッダの無い fixture では .set も import も出ない
+  const plain = read(generated(), 'apps/backend-api/test/contract/createLoan.test.ts');
+  assert.ok(!plain.includes('.set(') && !plain.includes('randomUUID'));
+});
+
+test('genApiClient を単体で --check しても、genContractTests の生成物と同じヘッダなので stale にならない (0.1.13 実走 ④-4)', () => {
+  const { contractsDir } = freshContracts();
+  compileContracts.run(contractsDir);
+  const out = outRoot();
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out });
+  const genApiClient = require(path.join(SCRIPTS, 'genApiClient.js'));
+  const r = genApiClient.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true });
+  assert.equal(r.status, 'current');
+});
