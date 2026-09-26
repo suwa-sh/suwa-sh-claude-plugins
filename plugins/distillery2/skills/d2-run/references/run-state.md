@@ -43,7 +43,12 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
 | stage_completed / stage_invalidated | done の作成 / 退避 |
 | scenario_approved / review_approved | 人の承認。承認した内容の要点と評価対象のハッシュを持つ |
 | assumption_decided | 前提の承認・却下 (id と処遇) |
-| feedback_filed | 還流 (kind と PR / issue の URL) |
+| feedback_filed | 還流の起票。`{kind, url, issue_path}` (issue_path は `issues/<file>.md`)。url は必須 |
+| feedback_deferred | PR / issue を作れない実行 (push 禁止・`gh` 未認証・リモート無し) での還流の保留。`{kind, issue_path, reason}`。feedback はこれで done にできるが、deliver の前に同じ issue_path の `feedback_filed` で解消する |
+| blocked_on_requirement | 人レビューで「要求を直す」を選び、要求の反映待ちで停止した |
+
+未解消の保留は `runState.js status` の `pending_feedback` (JSON) / 「pending feedback」行 (テキスト) に出る。
+0.1.18 以前の記録にある「url が空の `feedback_filed` (`issue` にパス)」も保留として数える。
 | (delivered) | events には書かない。squash 後の追記は tree を汚すため、`reports/delivered.json` (gitignore) と GitHub の PR を正にする |
 
 status ファイルは持たない。必要なら events と done から都度計算する。

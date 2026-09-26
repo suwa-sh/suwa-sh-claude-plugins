@@ -33,11 +33,11 @@
 | ③ 画面部品 | デザインシステムの生成役 | `distillery2:d2-design` | 既定 | `docs/design/**`、`packages/ui/**` | なし |
 | ④ scenario | UC シナリオの執筆役 | `distillery2:d2-implement` `mode=scenario uc=<slug>` | 既定 | `features/<業務>/<slug>.feature`、`features/acceptance/**`、`<run>/issues/**` | 固定指示: `skills/d2-implement/references/scenario.md` |
 | ④ contract | 契約の差分役 | `distillery2:d2-contract` `mode=uc uc=<slug>` | 既定 | `contracts/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**`、`<run>/issues/**` | なし |
-| ④ scaffold | テスト足場の生成役 | `distillery2:d2-implement` `mode=scaffold uc=<slug>` | 既定 | `features/step_definitions/**`、各 `apps/<tier>/src/**/*.test.ts` | 固定指示: `skills/d2-implement/references/scaffold.md` |
-| ④ tier (ティアごと並列) | `<tier>` の実装者 | `distillery2:d2-implement` `mode=tier uc=<slug> tier=<tier> attempt=<n>` | `models.implementer` | `apps/<tier>/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**` | 固定指示: `skills/d2-implement/references/tier-impl.md`。blocker 由来の再実行時のみ `findings: <run>/attempt-<n-1>/findings.<tier>.yaml` を追記 |
-| ④ integrate | 結合の実装者 | `distillery2:d2-implement` `mode=integrate uc=<slug>` | 既定 | `features/step_definitions/**`、`features/support/**` | 固定指示: `skills/d2-implement/references/integrate.md` |
-| ④ verify (ティアごと並列) | `<tier>` の Verifier | agent_type **`distillery2:d2-verifier`** / `distillery2:d2-verify` `uc=<slug> tier=<tier> attempt=<n> run=<run> assumptions=<path>` | **`models.verifier`** (implementer と同じモデルに解決されてもよい。条件は別サブエージェント + 同等以上のモデル。SKILL.md 起動シーケンス 2) | `<run>/attempt-<n>/findings.<tier>.yaml` | `変更ファイル一覧: <git diff --name-only base_head..HEAD の結果を 1 行ずつ>` |
-| ④ asbuilt | 文書抽出の要約役 | `distillery2:d2-asbuilt` `uc=<slug> run=<run>` | 既定 | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/_system/**` | 抽出スクリプトは d2-run が先に実行済み。要約節だけ書く |
+| ④ scaffold | テスト足場の生成役 | `distillery2:d2-implement` `mode=scaffold uc=<slug>` | 既定 | `features/step_definitions/**`、各 `apps/<tier>/src/**/*.test.ts`、テストが import する入口の最小スタブ (`apps/<tier>/src/**` の**新規ファイルだけ**。既存ファイルの変更・削除は不可)、`<run>/reports/**` (完了条件の `--expect-red unit` が書く。単独の段なので競合しない) | 固定指示: `skills/d2-implement/references/scaffold.md` |
+| ④ tier (ティアごと並列) | `<tier>` の実装者 | `distillery2:d2-implement` `mode=tier uc=<slug> tier=<tier> attempt=<n>` | `models.implementer` | `apps/<tier>/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` の結果。リポの外。使い終えたら削除) | 固定指示: `skills/d2-implement/references/tier-impl.md`。`runGates.js は使わない (記録付きのゲートは全ティアの受理後にオーケストレータが回す)` を追記。blocker 由来の再実行時のみ `findings: <run>/attempt-<n-1>/findings.<tier>.yaml` を追記 |
+| ④ integrate | 結合の実装者 | `distillery2:d2-implement` `mode=integrate uc=<slug>` | 既定 | `features/step_definitions/**`、`features/support/**`、`<run>/reports/**`、`<run>/traces/**` (完了条件の runGates が書く。integrate は単独の段なので競合しない) | 固定指示: `skills/d2-implement/references/integrate.md`。attempt ≥ 2 のときは `差し戻しの再実行。結線の変更が不要なら、変えずに完了条件だけ確かめて「結線変更なし」と報告してよい` を追記 |
+| ④ verify (ティアごと並列) | `<tier>` の Verifier | agent_type **`distillery2:d2-verifier`** / `distillery2:d2-verify` `uc=<slug> tier=<tier> attempt=<n> run=<run> assumptions=<path>` | **`models.verifier`** (implementer と同じモデルに解決されてもよい。条件は別サブエージェント + 同等以上のモデル。SKILL.md 起動シーケンス 2) | `<run>/attempt-<n>/findings.<tier>.yaml` | `変更ファイル一覧: <git diff --name-only base_head..HEAD の結果を 1 行ずつ>` と `他 UC と共有する変更ファイル (初期候補): <ファイル — 他 UC の slug を 1 行ずつ。無ければ「なし」>` (SKILL.md verify 行) |
+| ④ asbuilt | 文書抽出の要約役 | `distillery2:d2-asbuilt` `uc=<slug> run=<run>` | 既定 | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/_system/**` | 抽出スクリプトは d2-run が先に実行済み。要約節だけ書く。`extractAsBuilt の標準出力: <1 行をそのまま>` を追記 (計装の有無と書式違反を要約役が自分で確かめられるように。0.1.10 実走 ④-10) |
 
 `<run>` = `.distillery/runs/<slug>`。固定指示のパスは `${CLAUDE_PLUGIN_ROOT}/skills/...` を絶対パスに展開して
 `まず次のファイルを読み、記載の指示すべてに従ってください: <絶対パス>` の 1 行で渡す。
@@ -51,5 +51,7 @@
 ## 受理時の検査 (d2-run が行う)
 
 - write-set の逸脱: `git status --porcelain` で write-set 外の変更があれば退避して段階を failed にする
+  (reports / traces は gitignore なので `git status` に出ない。write-set に含めない段で書かれていても検出できないため、派遣文の write-set で縛る)
+- scaffold では加えて、既存の非テストファイルを変更・削除していないこと: `git diff --name-only --diff-filter=MD` に `*.test.ts` 以外の `apps/**/src/**` が無い
 - 必須成果物の存在と parse (assumptions / findings は `validateAssumptions.js`)
 - 完了報告が来なくても成果物 (done + ファイル) が正。存在と parse で完了判定してよい (検証の省略ではない)。逆に、報告だけあって done / 成果物が無ければ未完了として扱う

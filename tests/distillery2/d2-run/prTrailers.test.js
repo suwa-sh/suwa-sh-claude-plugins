@@ -27,6 +27,8 @@ test('trailers are built from use-cases, gates.json, basis and events', () => {
   // 未起票の還流 (url なし / 空) は trailer に出さない
   rs.appendEvent(run, 'feedback_filed', { kind: 'rule', url: null });
   rs.appendEvent(run, 'feedback_filed', { kind: 'contract', url: '' });
+  // 保留 (feedback_deferred) も trailer に出さない。deliver 前に起票されて filed になったものだけが出る (0.1.19)
+  rs.appendEvent(run, 'feedback_deferred', { kind: 'requirement', issue_path: 'issues/x.md', reason: 'headless' });
 
   const t = buildTrailers({ cwd: repo, runDir: run });
   const text = render(t);

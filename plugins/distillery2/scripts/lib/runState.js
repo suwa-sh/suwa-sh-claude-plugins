@@ -15,7 +15,7 @@
  *   node runState.js open <root> <slug>
  *   node runState.js event <runDir> <type> [json]
  *   node runState.js done <runDir> <stage> [json]
- *   node runState.js status <runDir> [--json]
+ *   node runState.js status <runDir> [--json]     (pending_feedback = 起票されていない還流)
  *   node runState.js invalidate <runDir> <stage> <reason>
  */
 'use strict';
@@ -89,13 +89,41 @@ function currentAttempt(runDir) {
   return nums.length ? Math.max(...nums) : 1;
 }
 
+/** issue のパスを run ディレクトリ相対 (`issues/<file>.md`) にそろえる。記録ごとの書き方の差 (絶対パス・.distillery/runs/... 始まり) を吸収する */
+function issueKey(p) {
+  if (p == null || String(p).trim() === '') return null;
+  const s = String(p).trim().replace(/\\/g, '/');
+  const i = s.lastIndexOf('issues/');
+  return i >= 0 ? s.slice(i) : s;
+}
+
+/**
+ * 起票されていない還流 (保留) の一覧。deliver の前にこれが空であることを確かめる。
+ * - 保留: `feedback_deferred {kind, issue_path, reason}`。0.1.18 以前の記録の `feedback_filed` で url が空のもの (`issue` をパスとみなす) も保留として数える
+ * - 解消: 同じ issue パスの url 付き `feedback_filed`
+ * issue パスが無い保留は照合できないので、解消されないまま残す (人が見て判断する)。
+ */
+function pendingFeedback(runDir) {
+  const pending = new Map();
+  for (const e of readEvents(runDir)) {
+    const hasUrl = e.url != null && String(e.url).trim() !== '';
+    const key = issueKey(e.issue_path != null ? e.issue_path : e.issue);
+    if (e.type === 'feedback_deferred' || (e.type === 'feedback_filed' && !hasUrl)) {
+      pending.set(key || `(no issue path)#${e.seq}`, { seq: e.seq, kind: e.kind || null, issue_path: key, reason: e.reason || null });
+    } else if (e.type === 'feedback_filed' && hasUrl && key) {
+      pending.delete(key);
+    }
+  }
+  return [...pending.values()];
+}
+
 function status(runDir) {
   const events = readEvents(runDir);
   const stages = {};
   for (const s of STAGES) stages[s] = isDone(runDir, s) ? 'done' : 'pending';
   const next = STAGES.find(s => stages[s] === 'pending') || null;
   const last = events[events.length - 1] || null;
-  return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, events: events.length, last_event: last };
+  return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, events: events.length, last_event: last, pending_feedback: pendingFeedback(runDir) };
 }
 
 function main(argv) {
@@ -110,7 +138,14 @@ function main(argv) {
     case 'status': {
       const s = status(path.resolve(args[0]));
       if (json) console.log(JSON.stringify(s, null, 2));
-      else { console.log(`run: ${s.slug} attempt=${s.attempt} next=${s.next_stage || '(all done)'}`); for (const [k, v] of Object.entries(s.stages)) console.log(`  ${v === 'done' ? '[x]' : '[ ]'} ${k}`); }
+      else {
+        console.log(`run: ${s.slug} attempt=${s.attempt} next=${s.next_stage || '(all done)'}`);
+        for (const [k, v] of Object.entries(s.stages)) console.log(`  ${v === 'done' ? '[x]' : '[ ]'} ${k}`);
+        if (s.pending_feedback.length) {
+          console.log(`pending feedback (起票されていない還流): ${s.pending_feedback.length}`);
+          for (const p of s.pending_feedback) console.log(`  - ${p.kind || '?'} ${p.issue_path || '(issue パスなし)'}${p.reason ? ` — ${p.reason}` : ''}`);
+        }
+      }
       return 0;
     }
     default: console.error('Usage: runState.js open|event|done|invalidate|status ...'); return 2;
@@ -119,4 +154,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, attemptDir, currentAttempt, status };
+module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, attemptDir, currentAttempt, pendingFeedback, status };

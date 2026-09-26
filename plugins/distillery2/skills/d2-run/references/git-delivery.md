@@ -8,7 +8,9 @@ lease と review HTML の追跡除外を廃止 (`.distillery/runs/*/reports|trac
 ## UC branch の開始と再開
 
 1. 開始条件: `git status --porcelain=v1 --untracked-files=all` が空、detached HEAD でない、`feature/*` 上でない、
-   upstream と HEAD が一致。満たさなければ勝手に stash / commit せず、整理を依頼して停止する
+   upstream と HEAD が一致。満たさなければ勝手に stash / commit せず、整理を依頼して停止する。
+   upstream が設定されていなければ (リモート無し・base を未 push。`git rev-parse --abbrev-ref @{upstream}` が失敗する)
+   upstream 一致の条件は飛ばし、報告に「upstream なし」と書く (0.1.16 実走)。clean 判定の対象は d2-run SKILL.md の起動シーケンス 4 に従う
 2. `use-cases.yaml` の `slug` で `git switch -c feature/<slug>`。作成直後に `events.jsonl` へ
    `branch_started {base_branch, base_head, feature_branch}` を追記する
 3. 再開時は `branch_started` の `feature_branch` と現在 branch が一致することを確認する。違う branch なら
@@ -26,7 +28,10 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 
 - 最新のレビュー証跡に対する人の承認 (`review_approved`) が有効で、要回答の前提がすべて回答済み
 - `reports/gates.json` の `result: pass`、findings の open blocker が 0
-- 還流の要否が分類済み (rule / contract は別 branch の PR、requirement は issue を作成済み)
+- 還流の要否が分類済み (rule / contract は別 branch の PR、requirement は issue を作成済み)。
+  保留 (`feedback_deferred`) が残っていないこと: `runState.js status <run> --json` の `pending_feedback` が空。
+  残っていれば先に起票して `feedback_filed` を記録し、`impl(<slug>): feedback filed` で commit してから下の手順に入る
+  (イベントの追記は追跡ファイルを変えるので、commit しないと次の clean 条件で止まる)。起票できなければ配送しない
 - 現在 branch が `feature_branch`、working tree と index が clean、`base_head` が HEAD の祖先
 
 ## 手順
