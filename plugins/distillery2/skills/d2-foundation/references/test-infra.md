@@ -52,4 +52,6 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
   適用され、修正候補の位置ずれで識別子が壊れる実績)。整形は `qlty fmt --all`。ルール単位の無視は `[[ignore]]` / `[[triage]]` で書き、
   `[[exclude]]` に `rules` は書かない (そのパスでプラグイン全体が外れる)。qlty CLI は対象マシンに要インストール (公式の install script。CI は `qltysh/qlty-action/install`)。
   仕様の正本は https://docs.qlty.sh/cli/qlty-toml (要約に頼らず使い捨てコピーで実測する)。
+  提案はその時点のファイル種別で決まるので、`genQlty.js --refresh` を npm install の後 (lockfile → osv-scanner) と各 UC の実装後 (python 等が増えたら ruff 等) に回し、
+  増えた plugins だけ足す (0.1.14〜。0.1.13 の実走で osv-scanner が抜けた)。
 - **DOM snapshot / capture_review / ui_review capability**: 受入の `@browser` シナリオに集約。

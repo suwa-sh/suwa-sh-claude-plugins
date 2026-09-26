@@ -175,6 +175,65 @@ test('genQlty (suggest, 偽 qlty): git add -N が失敗 (index.lock) したら�
   assert.ok(pluginBlocks(fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8')).some((p) => p.name === 'radarlint-js'), '固定リストが土台');
 });
 
+test('genQlty --refresh: 提案で増えた plugins だけ足し、既存の内容と手編集は保持する (0.1.14)', () => {
+  // 最初の提案 (fixture) で生成 → 後の提案に ruff / radarlint-python / osv-scanner が増えた
+  const c = tmp();
+  spawnSync('git', ['init', '-q'], { cwd: c });
+  fs.writeFileSync(path.join(c, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '2.2.5' } }));
+  const r1 = run(c, [], { PATH: `${fakeQltyBin()}:${NO_QLTY_PATH}` });
+  assert.ok(r1.stdout.includes('土台: suggest'), r1.stdout);
+  assert.equal(r1.status, 0, r1.stdout + r1.stderr);
+  const p = path.join(c, '.qlty/qlty.toml');
+  // 手編集: 自前の ignore を足す
+  fs.appendFileSync(p, '\n[[ignore]]\nrules = ["biome:lint/suspicious/noExplicitAny"]\nfile_patterns = ["**/legacy/**"]\n');
+  const before = fs.readFileSync(p, 'utf8');
+  const later = tmp();
+  fs.writeFileSync(path.join(later, 'qlty'), `#!/bin/sh\nif [ "$1" = "--version" ]; then echo qlty 0.0.0; exit 0; fi\ncat "${path.join(__dirname, 'fixtures/qlty-init.toml')}"\nprintf '\\n[[plugin]]\\nname = "ruff"\\ndrivers = [\\n  "lint",\\n]\\n\\n[[plugin]]\\nname = "radarlint-python"\\nmode = "comment"\\n'\n`);
+  fs.chmodSync(path.join(later, 'qlty'), 0o755);
+  const r2 = run(c, ['--refresh'], { PATH: `${later}:${NO_QLTY_PATH}` });
+  assert.equal(r2.status, 0, r2.stdout + r2.stderr);
+  assert.ok(r2.stdout.includes('追加: ruff, radarlint-python'), r2.stdout);
+  const after = fs.readFileSync(p, 'utf8');
+  const names = pluginBlocks(after).map((x) => x.name);
+  for (const n of ['actionlint', 'biome', 'osv-scanner', 'ripgrep', 'trufflehog', 'zizmor', 'ruff', 'radarlint-python']) assert.ok(names.includes(n), `plugin ${n}`);
+  assert.match(after, /\[\[plugin\]\]\nname = "ruff"\ndrivers = \[\n  "lint",\n\]/, 'ブロックの追加行 (drivers) も写す');
+  assert.match(after, /\[\[plugin\]\]\nname = "radarlint-python"\nmode = "comment"/);
+  assert.match(after, /\[\[triage\]\]\nmatch\.plugins = \["radarlint-python"\]\nset\.level = "low"/, '増えた radarlint は low に');
+  assert.match(after, /\[\[ignore\]\]\nrules = \["biome:lint\/suspicious\/noExplicitAny"\]/, '手編集の ignore を保持');
+  assert.equal(pluginBlocks(after).find((x) => x.name === 'biome').version, '2.2.5', 'biome の版固定を保持');
+  // 2 回目は追加なし、内容も変わらない (冪等)
+  const r3 = run(c, ['--refresh'], { PATH: `${later}:${NO_QLTY_PATH}` });
+  assert.ok(r3.stdout.includes('追加なし'), r3.stdout);
+  assert.equal(fs.readFileSync(p, 'utf8'), after);
+  // 提案から消えたプラグインは減らさない (最初の fixture だけを返す qlty で refresh)
+  const r4 = run(c, ['--refresh'], { PATH: `${fakeQltyBin()}:${NO_QLTY_PATH}` });
+  assert.ok(r4.stdout.includes('追加なし'), r4.stdout);
+  assert.ok(pluginBlocks(fs.readFileSync(p, 'utf8')).some((x) => x.name === 'ruff'), '減らさない');
+  // qlty が無ければ何もしない (exit 0)
+  const r5 = run(c, ['--refresh'], { PATH: NO_QLTY_PATH });
+  assert.equal(r5.status, 0);
+  assert.ok(r5.stdout.includes('追加なし (qlty CLI が無い)'), r5.stdout);
+  assert.equal(fs.readFileSync(p, 'utf8'), after);
+  void before;
+});
+
+test('genQlty --refresh (実 qlty): lockfile が増えると osv-scanner が足される (既存 toml を退避して提案を取る)', { skip: !qltyOnPath && 'qlty CLI が無い' }, () => {
+  const c = tmp();
+  const git = (...a) => spawnSync('git', a, { cwd: c, encoding: 'utf8' });
+  git('init', '-q');
+  fs.writeFileSync(path.join(c, 'package.json'), JSON.stringify({ devDependencies: { '@biomejs/biome': '2.2.5' } }));
+  const r1 = run(c);
+  assert.ok(r1.stdout.includes('土台: suggest'), r1.stdout);
+  const before = pluginBlocks(fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8')).map((x) => x.name);
+  assert.ok(!before.includes('osv-scanner'), `lockfile 無しでは osv-scanner は提案されない: ${before}`);
+  fs.writeFileSync(path.join(c, 'package-lock.json'), JSON.stringify({ name: 'x', lockfileVersion: 3, packages: {} }));
+  const r2 = run(c, ['--refresh']);
+  assert.equal(r2.status, 0, r2.stdout + r2.stderr);
+  assert.ok(r2.stdout.includes('osv-scanner'), r2.stdout);
+  assert.ok(pluginBlocks(fs.readFileSync(path.join(c, '.qlty/qlty.toml'), 'utf8')).some((x) => x.name === 'osv-scanner'));
+  assert.ok(!fs.existsSync(path.join(c, '.qlty/qlty.toml.refresh-bak')), '退避ファイルを残さない');
+});
+
 test('genQlty: --fallback は qlty があっても固定リスト', () => {
   const c = tmp();
   fs.writeFileSync(path.join(c, 'package.json'), '{}');
