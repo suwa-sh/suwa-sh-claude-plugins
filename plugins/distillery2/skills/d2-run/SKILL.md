@@ -92,16 +92,16 @@ Agent ツールの別名 (`opus` 等) しか分からないときは別名のま
 | 段階 | すること | done の条件 |
 |---|---|---|
 | **scenario** | branch `feature/<slug>` を切る (git-delivery.md)。sub `d2-implement mode=scenario`。`checkScenario.js` が ok。human-html-review でシナリオを確認 (問い: この振る舞いで合っているか)。承認を `scenario_approved` に記録し、`node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` で README のシナリオ列を更新して `git add docs features && git commit -m "req(<slug>): scenarios"` | 承認済み |
-| **contract** | sub `d2-contract mode=uc uc=<slug>`。`compileContracts.js contracts --check`、`compileRdbSchema.js contracts --check`、`validateUcIndex.js contracts` が exit 0。examples 不足で止まったら issue を確認ページで見せ、契約を補うか要求に戻すかを選ばせる | slice と契約テストが生成済み |
-| **scaffold** | sub `d2-implement mode=scaffold`。`runGates.js --uc <slug> --tiers <関与ティア> --only unit --expect-red unit` が exit 0、dry-run で undefined step 0 | red baseline |
-| **tier** | attempt = `currentAttempt`。関与ティア (下記「関与ティアの決め方」) ごとに sub `d2-implement mode=tier` を**同じメッセージで並列派遣** (model = implementer)。受理時に `validateAssumptions.js record` を全ティアで実行 | 全ティアの assumptions が ok、各ティアの static / unit が pass |
+| **contract** | sub `d2-contract mode=uc uc=<slug>`。`compileContracts.js contracts --check`、`compileRdbSchema.js contracts --check`、`validateUcIndex.js contracts` が exit 0。examples 不足で止まったら issue を確認ページで見せ、契約を補うか要求に戻すかを選ばせる。受理時に `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/classifyContractChanges.js --uc <slug> --json` で変わった契約の生成物を own / other_uc / shared に分け、結果を done の `contract_changes` に書く (契約は UC 間で共有するので、enum の追加などで他 UC のテストや共有の型も書き換わる。0.1.16 実走) | slice と契約テストが生成済み、`contract_changes` 記録済み |
+| **scaffold** | sub `d2-implement mode=scaffold`。受理時に既存の非テストファイルを変えていないことを確かめる (subagent-template.md「受理時の検査」)。`runGates.js --uc <slug> --tiers <関与ティア> --only unit --expect-red unit` が exit 0、dry-run で undefined step 0 | red baseline |
+| **tier** | attempt = `currentAttempt`。関与ティア (下記「関与ティアの決め方」) ごとに sub `d2-implement mode=tier` を**同じメッセージで並列派遣** (model = implementer)。実装者は runGates を使わず commands を直接回す (記録なし)。受理時に `validateAssumptions.js record` を全ティアで実行し、全ティアの受理後に**自分が 1 回だけ** `runGates.js --uc <slug> --tiers <関与ティア> --upto unit` を回す (記録の単一 writer。runGates は gates.json をゲート名単位で置き換えるので、並列の実装者に回させると互いの記録を消す)。落ちたティアは同じ attempt のまま再派遣する | 全ティアの assumptions が ok、上の runGates で static / unit が pass |
 | **contract-gate** | `runGates.js --uc <slug> --tiers <関与ティア> --upto contract`。落ちたら提供側ティアだけ attempt++ で tier に戻る (他ティアはそのまま) | contract まで pass |
-| **integrate** | sub `d2-implement mode=integrate`。続けて `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --refresh --cwd .` (実装で増えたファイル種別に対する qlty の提案を足す。追加した plugins を報告に書く)。`runGates.js --uc <slug> --tiers <関与ティア> --from static` (増えた plugins の指摘は static に出る。落ちたら報告の分析に従い該当ティアを attempt++ で tier に戻る。verify / review / as-built はこの後なので、直した実装も検証と記録の対象になる) | static から acceptance まで pass |
-| **verify** | ティアごとに sub `d2-verify` を**同じメッセージで並列派遣** (agent_type `distillery2:d2-verifier`、model = verifier、変更ファイル一覧を渡す)。受理時に `validateAssumptions.js verdicts`。報告 1 行目の `model: <ID>` が models_resolved.verifier と違えば models_resolved を記録し直す。blocker があれば該当ティアを attempt++ で tier に戻る (最大 3 回。超えたら人に報告して停止) | 全ティアの findings が ok で blocker 0 |
+| **integrate** | sub `d2-implement mode=integrate`。続けて `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --refresh --cwd .` (実装で増えたファイル種別に対する qlty の提案を足す。追加した plugins を報告に書く)。`runGates.js --uc <slug> --tiers <関与ティア> --from static` (増えた plugins の指摘は static に出る。落ちたら報告の分析に従い該当ティアを attempt++ で tier に戻る。verify / review / as-built はこの後なので、直した実装も検証と記録の対象になる)。attempt ≥ 2 (差し戻しの後) も sub は**必ず派遣**する (ティアの入口や注入対象が変わっていれば結線の更新が要る)。sub が「結線の変更は不要」と判断し、integrate.md の完了条件 (runGates `--from uc-bdd`、受入の網羅、計装範囲の `extractAsBuilt --dry-run`) を満たしたと報告すれば、`features/` に差分が無くても done にしてよい。done に `wiring_changed: false` を書く | static から acceptance まで pass |
+| **verify** | ティアごとに sub `d2-verify` を**同じメッセージで並列派遣** (agent_type `distillery2:d2-verifier`、model = verifier、変更ファイル一覧を渡す)。あわせて「他 UC と共有する変更ファイル」の初期候補を渡す: 変更ファイル一覧と `docs/as-built/_system/traceability-index.json` の `ucs[<他の slug>].files` の共通部分 (他 UC の slug つき。追跡表が無ければ「なし」)。追跡表の files は各 UC が**変更した**ファイルなので、基盤から在る共通コードは拾えない。Verifier が import 元を辿って足す (viewpoints.md「他 UC への波及」)。受理時に `validateAssumptions.js verdicts`。報告 1 行目の `model: <ID>` が models_resolved.verifier と違えば models_resolved を記録し直す。blocker があれば該当ティアを attempt++ で tier に戻る (最大 3 回。超えたら人に報告して停止) | 全ティアの findings が ok で blocker 0 |
 | **review** | 下記「人レビュー」 | `review_approved` 記録済み |
-| **asbuilt** | 依存グラフの実態を取る: `npx depcruise --config .dependency-cruiser.cjs --output-type json apps packages > <run>/reports/depcruise.json` (`.dependency-cruiser.cjs` は F2 生成)。続けて `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js --run <run> --depcruise <run>/reports/depcruise.json` → sub `d2-asbuilt` (要約ブロック 3 つ) → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/checkAsBuilt.js docs/as-built/<業務>/<UC>/index.md` が exit 0 (違反があれば d2-asbuilt に差し戻す) → `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` (docs/README.md の UC 一覧に実装の記録を載せる。リンク切れなら exit 1)。commit。depcruise が失敗/未実行でも extractAsBuilt は config から「決定からの図」を描く (空にならない)。標準出力に「計装なしのティア」か「正常系に部品 (call) が無いティア」が出たら integrate の結線漏れ: integrate へ戻して結線を足す (図に出ないティア・部品は as-built の価値を落とす) | as-built が生成済み、計装なし / 正常系に部品なしのティアが無い |
-| **feedback** | 下記「還流」 | issues が全部 PR か issue になっている |
-| **deliver** | git-delivery.md の手順で squash → push → PR。配送の記録は commit に入れず `reports/delivered.json` に書く。`use-cases.yaml` の `status: done` は PR merge 後の次 run で更新する | `gh pr list --head feature/<slug>` に PR がある (done ファイルは作らない) |
+| **asbuilt** | 依存グラフの実態を取る: `npx depcruise --config .dependency-cruiser.cjs --output-type json apps packages > <run>/reports/depcruise.json` (`.dependency-cruiser.cjs` は F2 生成)。続けて `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js --run <run> --depcruise <run>/reports/depcruise.json` → sub `d2-asbuilt` (要約ブロック 3 つ。extractAsBuilt の標準出力 1 行を派遣文に添える) → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/checkAsBuilt.js docs/as-built/<業務>/<UC>/index.md` が exit 0 (違反があれば d2-asbuilt に差し戻す) → `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` (docs/README.md の UC 一覧に実装の記録を載せる。リンク切れなら exit 1)。commit。depcruise が失敗/未実行でも extractAsBuilt は config から「決定からの図」を描く (空にならない)。標準出力に「計装なしのティア」か「正常系に部品 (call) が無いティア」が出たら integrate の結線漏れ: integrate へ戻して結線を足す (図に出ないティア・部品は as-built の価値を落とす) | as-built が生成済み、計装なし / 正常系に部品なしのティアが無い |
+| **feedback** | 下記「還流」 | 全 issue が起票済み (`feedback_filed`) か保留 (`feedback_deferred`) |
+| **deliver** | 先に `node runState.js status <run> --json` の `pending_feedback` (起票されていない還流) を見る。空でなければ、push と `gh auth status` が通ることを確かめて還流節の手順で起票し、`feedback_filed {kind, url, issue_path}` を記録して `impl(<slug>): feedback filed` で commit する。通らなければ deliver せず、保留の一覧を報告して停止する (feedback の done は戻さない。push できる環境で再開すれば、ここから続く)。`pending_feedback` が空になってから git-delivery.md の手順で squash → push → PR。配送の記録は commit に入れず `reports/delivered.json` に書く。`use-cases.yaml` の `status: done` は PR merge 後の次 run で更新する | `gh pr list --head feature/<slug>` に PR がある (done ファイルは作らない) |
 
 verify と review の前提: `reports/gates.json` が `all_recorded: true` で全段 pass。部分実行の後は
 `runGates.js --uc <slug> --tiers <関与ティア>` で 1 回通し、全段の証跡を揃えてから verify に進む
@@ -120,7 +120,8 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 
 ## 人レビュー (review 段階)
 
-1. 材料: `reports/gates.json`、全ティアの findings (major / minor)、AssumptionRecord と verdict、`issues/`
+1. 材料: `reports/gates.json`、全ティアの findings (major / minor。「他 UC への波及」の `cross_uc_change` を含む)、AssumptionRecord と verdict、`issues/`、
+   contract の done の `contract_changes` のうち「他の UC にも効く変更」(`also_used_by` の付いた own、`other_uc`、`shared`)
 2. `validateAssumptions.js evidence <tier>:<assumptions_sha256>:<verdicts_sha256> ...` で `assumption_evidence_sha256` を算出する
 3. human-html-review で確認ページを作る。問いの順:
    - 何を作ったか (シナリオの結果、ゲートの結果)
@@ -128,10 +129,13 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
      1 件ずつ「承認 / 実装を直す / 要求を直す」を選ばせる
    - 回答任意の前提 (未回答は auto_confirmed)
    - Verifier の major / minor と issues (還流の分類案 rule / contract / requirement を添える)
+   - 他の UC にも効く変更 (共有の契約の生成物と、前の UC の振る舞いが変わる箇所)
    - 判断: 「この実装で進めてよいか」
 4. 回答を受けたら:
    - 「実装を直す」が 1 件でもあれば `review_rejected {rejected_assumptions}` を記録し、該当ティアを attempt++ で tier に戻る
-   - 「要求を直す」があれば issue (`kind: requirement`) を起票して feedback 段階に渡す。UC は要求反映待ちで止まる (PR は作らない)
+   - 「要求を直す」があれば `issues/` に下書き (`kind: requirement`) を書き、**その場で**還流節の requirement の手順で起票する (`feedback_filed`)。
+     起票できない実行 (push 禁止・`gh` 未認証・リモート無し) では `feedback_deferred` を記録する。どちらも `blocked_on_requirement` を記録して停止する
+     (review は done にしない。要求の反映後は scenario からやり直す。PR は作らない)
    - 承認なら、全ティアの `record` / `verdicts` を再実行して hash が一致することを確認してから
      `review_approved {assumption_decisions[], assumption_evidence_sha256, gates_result}` を記録する。不一致なら承認を記録せず verify から再実行
 5. 回答は `events.jsonl` にだけ記録する (review-notes ファイルは持たない)
@@ -146,7 +150,12 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 | contract | 自分 | 同上で契約の分割ファイルを直し `compileContracts.js` → PR (`Feedback-Kind: contract`)。UC 側は merge 後に contract 段階から再実行 |
 | requirement | 人 | `gh issue create`。本文は issue の Markdown。UC は反映待ち (`blocked_on_requirement` イベント) で停止 |
 
-各 PR / issue の URL を `feedback_filed {kind, url}` に記録する。上流の再生成はしない。
+各 PR / issue の URL を `feedback_filed {kind, url, issue_path}` に記録する (`issue_path` は `issues/<file>.md`)。上流の再生成はしない。
+
+**PR / issue を作れない実行** (push 禁止の headless・`gh` 未認証・リモート無し) では、各 issue を
+`feedback_deferred {kind, issue_path, reason}` に記録して feedback を done にする (URL の無い `feedback_filed` は書かない)。
+保留は deliver の前に必ず解消する (deliver 行)。未解消の保留は `runState.js status` の `pending_feedback` に出る
+(0.1.18 以前の記録の「url が空の `feedback_filed`」も保留として数える)。
 
 ## 完了報告
 

@@ -26,8 +26,9 @@ description: >-
 | 契約 | `contracts/generated/slices/<slug>/contract-slice.json` (と rdb-slice.yaml) |
 | 実装 | `git diff --name-only <base_head>..HEAD` の変更ファイル (呼び出し側が一覧を渡す)。自ティアの `apps/<dir>/` |
 | 固定指示 | `${CLAUDE_PLUGIN_ROOT}/skills/d2-implement/references/tier-impl.md` (前提の照合先として) |
+| 他 UC への波及 (例外) | 呼び出し側が渡す「他 UC と共有する変更ファイル」、自ティアの変更ファイルの import 元 (`rg` で辿る)、`contracts/uc-index.yaml`、`docs/as-built/_system/traceability-index.json`、候補に紐づく他 UC のシナリオ (`features/<業務>/<他 slug>.feature`) |
 
-設計書や個別仕様書は存在しない。他 UC・関与しない契約・契約 source の全量は読まない。
+設計書や個別仕様書は存在しない。上の「他 UC への波及」の例外を除き、他 UC・関与しない契約・契約 source の全量は読まない。
 
 ## 手順
 

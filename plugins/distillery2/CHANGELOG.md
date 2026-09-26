@@ -2,6 +2,30 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.19] - 2026-09-26
+
+実走 (0.1.10 / 0.1.13 / 0.1.16) で手順が止まった箇所と、記録・報告が見えなかった箇所を直す。
+
+### Fixed
+
+- ティアの実装者が記録付きのゲートを回せなかった (オーケストレータが代行していた)。runGates は `gates.json` をゲート名単位で置き換えるため、
+  並列の実装者に回させると互いの記録を消す。実装者は runGates を使わず commands を直接回し (`{report}` は OS の一時ファイル)、
+  記録付きの `runGates --upto unit` は全ティアの受理後に d2-run が 1 回だけ回す。単独の段 (scaffold / integrate) の write-set に reports / traces を追加
+- scaffold がテストの import する入口ファイルを置けず、動的 import で回避されていた。新規ファイルに限り最小の入口スタブ (型に合う中立の値を返す) を許可し、
+  既存の非テストファイルの変更・削除を受理時に検査する
+- push / PR ができない実行で feedback 段を終えられなかった (3 回連続)。`feedback_deferred {kind, issue_path, reason}` を追加し、feedback は「全 issue が起票済みか保留」で done。
+  保留は deliver の前に起票して commit してから squash する。`runState.js` に `pendingFeedback` を追加し、`status` に `pending_feedback` を出す
+  (0.1.18 以前の「url が空の `feedback_filed`」も保留として数える)。人レビューの「要求を直す」もその場で起票か保留にして停止する
+- リモートが無いリポで branch の開始条件 (upstream と HEAD が一致) を判定できなかった。upstream が無ければ飛ばして報告に書く
+
+### Added
+
+- `skills/d2-contract/scripts/classifyContractChanges.js`: 変わった契約の生成物を own / other_uc / shared に分ける (同じ operation を使う他 UC を併記)。
+  d2-run が contract 段の done (`contract_changes`) に記録し、他の UC にも効く変更を人レビューに載せる
+- d2-verify の観点 1 に「他 UC への波及」(`kind: cross_uc_change`、major)。d2-run が追跡表から初期候補を渡し、Verifier が import 元を辿って候補を足す。read-set に例外を追加
+- asbuilt の要約役に extractAsBuilt の標準出力 1 行を渡す
+- 差し戻し後の integrate も必ず派遣し、結線の変更が不要なら完了条件を満たした報告で done (`wiring_changed: false`)
+
 ## [0.1.18] - 2026-09-26
 
 ### Changed

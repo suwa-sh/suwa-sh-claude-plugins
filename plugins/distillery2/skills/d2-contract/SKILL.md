@@ -42,6 +42,7 @@ contracts/
 | `genContractTests.js <contracts-dir> --config <config.yaml> [--uc <slug>] --out-root <repo>` | provider 契約テスト・consumer stub・validators、および消費側 API クライアント (下記 genApiClient を内部で呼ぶ) を生成 |
 | `genApiClient.js <contracts-dir> --config <config.yaml> --out-root <repo> [--check]` | OpenAPI bundle から消費側の型付き API クライアントを生成: `packages/contracts/<id>/types.ts` (スキーマ→TS 型)・`client.ts` (operationId ごとの型付き fetch)・`server.ts` (operationId ↔ method/path 表)。外部依存なし・決定論的 |
 | `genRdbDdl.js <contracts-dir> --config <config.yaml> --out-root <repo>` | Postgres migration・DB 契約テスト・row 型を生成 |
+| `classifyContractChanges.js --uc <slug> [--json]` | 変わった契約の生成物 (`git status` から) を own (この UC の operation。同じ operation を使う他 UC を併記) / other_uc (他 UC の operation) / shared (`messages.test.ts`・`db-schema.test.ts`・DDL・`packages/contracts/**`・bundle) に分ける。d2-run が contract 段の受理時に使い、他の UC にも効く変更を人レビューに載せる |
 
 `--check` は書き込まずに、生成物が古いと exit 1。CI と d2-run のチェックポイントで使う。
 

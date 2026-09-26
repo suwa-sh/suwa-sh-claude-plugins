@@ -35,7 +35,11 @@
 3. frontend なら、画面の操作を **ブラウザ無しで呼べる入口関数** (例: `submitLoanCheckout(api, input)`) として export し、
    API 呼び出しは生成クライアントの `options.fetch` で差し替えられる形にする (UC BDD が in-process で画面 → API を通すため)
 4. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `typecheck` / `unit` (`.distillery/config.yaml` の commands)。
-   書き換えを伴う formatter は使わない (並列ティアの write-set を侵すため)
+   書き換えを伴う formatter は使わない (並列ティアの write-set を侵すため)。
+   **`runGates.js` は使わない**。runGates は `<run>/reports/gates.json` をゲート名単位で置き換えるため、並列で走る他ティアの記録を消す。
+   記録付きのゲートは全ティアの受理後にオーケストレータが 1 回だけ回す。
+   commands 中の `{slug}` は UC の slug に、`{report}` は OS の一時ファイル (`mktemp` の結果。リポの外) に置き換えて直接実行し、使い終えたら消す
+   (`<run>/reports/` に書かない。write-set の外で、並列ティアと競合する)
 5. 自分で決めた判断を AssumptionRecord に書く (`references/assumption-record.md`)。書いたら
    `validateAssumptions.js record` を実行し ok を確認する
 6. 契約テスト (`test/contract/`) は生成物。落ちるなら実装を直す。契約の側が間違っていると思うなら `issues/` に `kind: contract` で起票し、
