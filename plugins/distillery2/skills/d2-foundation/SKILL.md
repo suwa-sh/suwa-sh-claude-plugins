@@ -39,6 +39,8 @@ adr=docs/adr            # ADR ディレクトリ
 
 F1 → F2 → F3 → F5 (genConfig → genSkeleton → genCi → genQlty)。F5 の genCi は config.yaml を読むので genConfig の後に走らせる。
 genQlty は qlty init の自動検出に package.json / biome.json / workflow を見せるため **最後** に走らせる (未追跡ファイルは一時的に `git add -N` して戻す)。
+提案はその時点でリポにあるファイル種別で決まる (lockfile が無いと osv-scanner が入らない、python が増えると ruff が入る) ので、
+d2-run が npm install の後と各 UC の integrate (全ゲート実行の前) に `genQlty.js --refresh` で増えた分を足す (減らさない)。
 F4・F6 は all に含めない (F4 は d2-contract、F6 は d2-design の後に d2-run が呼ぶ)。
 
 ## 実行 (例)
@@ -51,6 +53,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genConfig.js --adr docs/
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genSkeleton.js --adr docs/adr --cwd <repo>
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --cwd <repo>   # qlty init の提案 + 上乗せ。--fallback で固定リスト、--force で作り直し
+node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --refresh --cwd <repo>   # 提案で増えた plugins だけ足す (npm install の後と、UC の integrate で全ゲートを回す前に d2-run が回す)
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from <d2-design 出力> --cwd <repo>   # F6
 ```
 
