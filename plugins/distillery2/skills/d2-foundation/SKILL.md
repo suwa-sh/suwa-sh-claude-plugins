@@ -34,7 +34,7 @@ adr=docs/adr            # ADR ディレクトリ
 | F2 | `genArchTests.js` | `docs/adr/*.md` (`rules[].arch_test`) | `.dependency-cruiser.cjs` |
 | F3 | `genTestSupport.js` | `templates/test-support/`、`templates/features-support/`、`templates/cucumber.js` | `packages/test-support/**`、`features/support/**`、`cucumber.js` |
 | F4 | (d2-contract に委譲) | — | — |
-| F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` / `genQlty.js` | `docs/adr/*.md` (`tiers[]`・`datastore_owner`・testing `capabilities`)、`contracts/contracts.json` | `.distillery/config.yaml`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`apps/*/`、`packages/*/`、`.github/workflows/ci.yml`、`.qlty/qlty.toml` |
+| F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` / `genQlty.js` | `docs/adr/*.md` (`tiers[]`・`datastore_owner`・testing `capabilities`)、`contracts/contracts.json`、`.distillery/config.yaml` (genConfig が書いたものを genCi が読む) | `.distillery/config.yaml`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`apps/*/`、`packages/*/`、`.github/workflows/ci.yml`、`.qlty/qlty.toml` |
 | F6 | `importUi.js` | `docs/design/storybook-app/src/` (d2-design の出力) | `packages/ui/**`、`packages/ui/.imported.yaml` |
 
 - F4: 契約テスト・DB migration は **d2-contract が持つ** (下記)

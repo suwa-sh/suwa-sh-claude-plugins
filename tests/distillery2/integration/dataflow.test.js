@@ -52,6 +52,8 @@ test('パス照合の規則: ディレクトリ全体の表記だけ両向きの
   assert.equal(D.pathsMatch('<run>/issues/<ts>_<tier>_<slug>.md', '.distillery/runs/<slug>/issues/<ts>_<slug>.md'), false, 'ティアの無いファイル名はティアごとのファイルに合わない');
   assert.equal(D.pathsMatch('apps/<tier>/src/**', 'apps/<tier>/**'), true, '粗いディレクトリ表記は細かい正本を含む');
   assert.equal(D.pathsMatch('packages/ui/**', 'docs/design/**'), false);
+  assert.equal(D.pathsMatch('<run>/attempt-<n>/findings.<tier>.yaml', '<run>/attempt-<n>/findings.<slug>.yaml'), false, '置換変数は名前で区別する (ティアが消えたら不一致)');
+  assert.equal(D.pathsMatch('apps/*/', 'apps/<tier>/'), true, '`*` は置換変数にも合う');
   assert.equal(D.looksLikePath('.npmrc'), true, 'ドットファイルはパス');
   assert.equal(D.looksLikePath('rules[]'), false, 'front matter のキーはパスでない');
 });

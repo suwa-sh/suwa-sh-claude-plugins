@@ -26,7 +26,7 @@ description: >-
 | 要求 | `docs/requirements/requirements.yaml` の該当 spec_ids、`docs/requirements/rdra/条件.tsv` / `状態.tsv` の該当行 |
 | ルール | `docs/rules/common.md`、`docs/rules/tier-<kind>.md`、`docs/rules/testing.md` |
 | 契約 | `contracts/generated/slices/<slug>/contract-slice.json` (と rdb-slice.yaml) |
-| 実装 | `git diff --name-only <base_head>..HEAD` の変更ファイル (呼び出し側が一覧を渡す)。自ティアの `apps/<dir>/` |
+| 実装 | `git diff --name-only <base_head>..HEAD` の変更ファイル (呼び出し側が一覧を渡す)。自ティアの `apps/<tier>/` |
 | 固定指示 | `${CLAUDE_PLUGIN_ROOT}/skills/d2-implement/references/tier-impl.md` (前提の照合先として) |
 | 他 UC への波及 (例外) | 呼び出し側が渡す「他 UC と共有する変更ファイル」、自ティアの変更ファイルの import 元 (`rg` で辿る)、`contracts/uc-index.yaml`、`docs/as-built/_system/traceability-index.json`、候補に紐づく他 UC のシナリオ (`features/<業務>/<他 slug>.feature`) |
 

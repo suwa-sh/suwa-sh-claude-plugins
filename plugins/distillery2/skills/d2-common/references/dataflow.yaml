@@ -217,10 +217,11 @@ stores:
     path: "apps/*/test/contract/**"
     origin: produced
   - id: migrations
-    name: DB migration
-    path: "apps/<datastore_owner>/migrations/**"
+    name: DB migration (datastore_owner のティア)
+    path: "apps/<tier>/migrations/**"
     origin: produced
     aliases:
+      - "apps/<datastore_owner>/migrations/**"
       - "apps/<tier>/migrations/"
   - id: contracts-code
     name: 契約からの codegen
@@ -367,7 +368,7 @@ processes:
     stage: foundation
     kind: subagent
     template_row: "③ 基盤 (機械)"
-    reads: [adr, rule-templates, support-templates, contracts-catalog]
+    reads: [adr, rule-templates, support-templates, contracts-catalog, config]
     writes: [rules, depcruise-config, test-support, features-support, cucumber-config, config, skeleton, ci, qlty-config]
     allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, config, skeleton, ci, qlty-config]
   - id: foundation.F1
@@ -409,7 +410,7 @@ processes:
     stage: foundation
     kind: script
     phase: F5
-    reads: [adr, contracts-catalog]
+    reads: [adr, contracts-catalog, config]
     writes: [config, skeleton, ci, qlty-config]
   - id: contract.skeleton
     name: 契約の骨格
@@ -619,7 +620,7 @@ processes:
     actor: d2-run
     scripts: [runGates.js]
     run_table_row: "③ の runGates.js --uc bootstrap"
-    reads: [config, skeleton, qlty-config, contract-tests]
+    reads: [config, skeleton, qlty-config, contract-tests, depcruise-config, reports]
     writes: [reports]
   - id: run.foundation.docs-readme
     name: 文書の入口の更新 (③)
@@ -697,7 +698,7 @@ processes:
     actor: d2-run
     scripts: [runGates.js]
     run_table_row: "④ の runGates.js"
-    reads: [config, skeleton, lockfile, cucumber-config, qlty-config, tier-src, contract-tests, migrations, feature, acceptance, steps, features-support]
+    reads: [config, skeleton, lockfile, cucumber-config, qlty-config, tier-src, contract-tests, migrations, feature, acceptance, steps, features-support, depcruise-config, reports]
     writes: [reports, traces]
   - id: run.uc.qlty
     name: qlty の提案を足す (④)

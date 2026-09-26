@@ -54,15 +54,15 @@ description: >-
 | ③ の genArchitectureDoc.js | `docs/adr/*.md`、`contracts/contracts.json`、`docs/requirements/rdra/**` | `docs/adr/architecture.md` |
 | ③ の importUi.js (F6) | `docs/design/**` | `packages/ui/**` |
 | ③ の genContractTests.js | `contracts/**`、`.distillery/config.yaml` | `apps/*/test/contract/**`、`packages/contracts/**` |
-| ③ の runGates.js --uc bootstrap | `.distillery/config.yaml`、`package.json`、`.qlty/qlty.toml`、`apps/*/test/contract/**` | `<run>/reports/**` |
+| ③ の runGates.js --uc bootstrap | `.distillery/config.yaml`、`package.json`、`.qlty/qlty.toml`、`apps/*/test/contract/**`、`.dependency-cruiser.cjs`、`<run>/reports/**` | `<run>/reports/**` |
 | ③ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
 | ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**` | `<run>/events.jsonl`、`docs/requirements/use-cases.yaml`、GitHub の PR と issue |
 | ④ の checkScenario.js | `features/<業務>/<slug>.feature`、`features/acceptance/**`、`docs/requirements/use-cases.yaml`、`docs/requirements/requirements.yaml` | — |
 | ④ の compileContracts.js --check | `contracts/**` | — |
 | ④ の compileRdbSchema.js --check | `contracts/**` | — |
 | ④ の validateUcIndex.js | `contracts/uc-index.yaml`、`contracts/**` | — |
-| ④ の classifyContractChanges.js | `contracts/uc-index.yaml`、`apps/*/test/contract/**`、`packages/contracts/**`、`apps/<datastore_owner>/migrations/**`、`contracts/generated/slices/<slug>/**` | — |
-| ④ の runGates.js | `.distillery/config.yaml`、`package.json`、`package-lock.json`、`cucumber.js`、`.qlty/qlty.toml`、`apps/<tier>/src/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`features/step_definitions/**`、`features/support/**` | `<run>/reports/**`、`<run>/traces/**` |
+| ④ の classifyContractChanges.js | `contracts/uc-index.yaml`、`apps/*/test/contract/**`、`packages/contracts/**`、`apps/<tier>/migrations/**`、`contracts/generated/slices/<slug>/**` | — |
+| ④ の runGates.js | `.distillery/config.yaml`、`package.json`、`package-lock.json`、`cucumber.js`、`.qlty/qlty.toml`、`apps/<tier>/src/**`、`apps/*/test/contract/**`、`apps/<tier>/migrations/**`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`features/step_definitions/**`、`features/support/**`、`.dependency-cruiser.cjs`、`<run>/reports/**` | `<run>/reports/**`、`<run>/traces/**` |
 | ④ の genQlty.js --refresh | `package.json`、`package-lock.json`、`.qlty/qlty.toml`、`apps/<tier>/src/**` | `.qlty/qlty.toml` |
 | ④ の depcruise | `.dependency-cruiser.cjs`、`apps/<tier>/src/**` | `<run>/reports/**` |
 | ④ の extractAsBuilt.js | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`docs/requirements/requirements.yaml`、`docs/adr/*.md`、`<run>/reports/**`、`<run>/traces/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/events.jsonl`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/generated/slices/<slug>/**`、`contracts/**`、`docs/design/**`、`features/<業務>/<slug>.feature`、`docs/as-built/<業務>/<UC>/**`、`docs/as-built/<業務>/<UC>/index.md`、`docs/as-built/_system/**` | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/<業務>/<UC>/index.md`、`docs/as-built/_system/**` |

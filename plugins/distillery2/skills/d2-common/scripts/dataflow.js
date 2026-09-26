@@ -6,7 +6,8 @@
  *
  * パス照合の規則 (手順書の書き方に合わせた近似):
  *  - `<run>` は `.distillery/runs/<slug>` に展開する
- *  - `<...>` の置換変数は 1 階層、`**` は任意階層、`*` は 1 階層内の任意文字列、末尾 `/` は配下すべて
+ *  - `<...>` の置換変数は名前ごとに区別する (`<tier>` は `<tier>` にだけ合う)。`*` (1 階層内の任意文字列) は置換変数にも合う
+ *  - `**` は任意階層、末尾 `/` は配下すべて
  *  - 2 つのパス A・B は、A の具体例が B のパターンに合うか、B の具体例が A に合えば「一致」とみなす
  *    (手順書は正本より粗くも細かくも書くため、包含のどちら向きも一致とする)
  */
@@ -35,7 +36,8 @@ function toRegex(p) {
     const c = s[i];
     if (c === '*' && s[i + 1] === '*') { re += '.*'; i++; if (s[i + 1] === '/') i++; continue; }
     if (c === '*') { re += '[^/]*'; continue; }
-    if (c === '<') { const j = s.indexOf('>', i); if (j > i) { re += '[^/]+'; i = j; continue; } }
+    // 置換変数は名前ごとに区別する (`<tier>` と `<slug>` を同じとみなすと、並列の書き込み先からティアが消えても一致してしまう)
+    if (c === '<') { const j = s.indexOf('>', i); if (j > i) { re += '@' + s.slice(i + 1, j).replace(/[.+?^$()|[\]\\]/g, '\\$&') + '@'; i = j; continue; } }
     if (c === '{') { const j = s.indexOf('}', i); if (j > i) { re += '(?:' + s.slice(i + 1, j).split(',').map(x => x.trim().replace(/[.+?^$()|[\]\\]/g, '\\$&')).join('|') + ')'; i = j; continue; } }
     re += c.replace(/[.+?^$()|[\]\\]/g, '\\$&');
   }
@@ -47,7 +49,7 @@ function sample(p) {
   return normalize(p)
     .replace(/\*\*\/?/g, 'x/y/')
     .replace(/\*/g, 'x')
-    .replace(/<[^>]+>/g, 'x')
+    .replace(/<([^>]+)>/g, '@$1@')
     .replace(/\{([^,}]+)[^}]*\}/g, '$1')
     .replace(/\/$/, '/z');
 }
