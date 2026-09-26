@@ -29,6 +29,7 @@ export type LoanRow = {
   reservation_id: string | null;
   loaned_on: string;
   due_date: string;
+  returned_on: string | null;
   status: string;
   version: number;
 };
@@ -45,6 +46,8 @@ export class LibraryScenario {
   accessToken: string | undefined;
   /** 操作の直前の貸出件数 (「貸出は記録されない」の確認に使う) */
   loanCountBefore: number | undefined;
+  /** 操作の直前の返却済の貸出件数 (「返却は記録されない」の確認に使う) */
+  returnedLoanCountBefore: number | undefined;
   /** 画面の入口関数の戻り値 */
   view: unknown;
   private wired = false;
@@ -111,6 +114,22 @@ export class LibraryScenario {
     );
   }
 
+  /** 既存の貸出を延滞にする (前提データ。未返却の貸出が 1 件だけあることを確かめる) */
+  async markLoanOverdue(patronName: string, title: string): Promise<void> {
+    const db = await this.database();
+    const { rows } = await db.query<{ loan_id: string }>(
+      "UPDATE loans SET status = 'overdue' WHERE patron_number = $1 AND book_id = $2 AND status = 'on_loan' RETURNING loan_id::text AS loan_id",
+      [this.patronNumber(patronName), this.bookId(title)],
+    );
+    if (rows.length !== 1) throw new Error(`延滞にする貸出が 1 件ではありません: ${rows.length} 件`);
+  }
+
+  async returnedLoanCount(): Promise<number> {
+    const db = await this.database();
+    const { rows } = await db.query<{ n: number }>("SELECT count(*)::int AS n FROM loans WHERE status = 'returned'");
+    return rows[0].n;
+  }
+
   async registerReservation(
     title: string,
     rank: number,
@@ -141,7 +160,7 @@ export class LibraryScenario {
     const db = await this.database();
     const params: unknown[] = [this.patronNumber(patronName)];
     let sql =
-      'SELECT loan_id::text AS loan_id, patron_number, book_id::text AS book_id, reservation_id::text AS reservation_id, loaned_on::text AS loaned_on, due_date::text AS due_date, status::text AS status, version FROM loans WHERE patron_number = $1';
+      'SELECT loan_id::text AS loan_id, patron_number, book_id::text AS book_id, reservation_id::text AS reservation_id, loaned_on::text AS loaned_on, due_date::text AS due_date, returned_on::text AS returned_on, status::text AS status, version FROM loans WHERE patron_number = $1';
     if (title !== undefined) {
       params.push(this.bookId(title));
       sql += ' AND book_id = $2';
@@ -153,7 +172,7 @@ export class LibraryScenario {
   async loanById(loanId: string): Promise<LoanRow | undefined> {
     const db = await this.database();
     const { rows } = await db.query<LoanRow>(
-      'SELECT loan_id::text AS loan_id, patron_number, book_id::text AS book_id, reservation_id::text AS reservation_id, loaned_on::text AS loaned_on, due_date::text AS due_date, status::text AS status, version FROM loans WHERE loan_id = $1',
+      'SELECT loan_id::text AS loan_id, patron_number, book_id::text AS book_id, reservation_id::text AS reservation_id, loaned_on::text AS loaned_on, due_date::text AS due_date, returned_on::text AS returned_on, status::text AS status, version FROM loans WHERE loan_id = $1',
       [loanId],
     );
     return rows[0];

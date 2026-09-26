@@ -16,6 +16,22 @@
         "register-loan"
       ]
     },
+    "SPEC-003-02-1": {
+      "scenarios": [
+        "予約のない貸出中の書籍の返却を登録する"
+      ],
+      "ucs": [
+        "register-return"
+      ]
+    },
+    "SPEC-003-02-2": {
+      "scenarios": [
+        "予約のある貸出中の書籍の返却を登録する"
+      ],
+      "ucs": [
+        "register-return"
+      ]
+    },
     "SPEC-005-01-1": {
       "scenarios": [
         "貸出を登録すると返却期限が自動で設定される"
@@ -31,32 +47,43 @@
       "ucs": [
         "register-loan"
       ]
+    },
+    "registerReturn": {
+      "provider_tier": "backend-api",
+      "ucs": [
+        "register-return"
+      ]
     }
   },
   "tables": {
     "book_events": {
       "ucs": [
-        "register-loan"
+        "register-loan",
+        "register-return"
       ]
     },
     "books": {
       "ucs": [
-        "register-loan"
+        "register-loan",
+        "register-return"
       ]
     },
     "idempotency_keys": {
       "ucs": [
-        "register-loan"
+        "register-loan",
+        "register-return"
       ]
     },
     "loan_events": {
       "ucs": [
-        "register-loan"
+        "register-loan",
+        "register-return"
       ]
     },
     "loans": {
       "ucs": [
-        "register-loan"
+        "register-loan",
+        "register-return"
       ]
     },
     "patrons": {
@@ -71,7 +98,8 @@
     },
     "reservations": {
       "ucs": [
-        "register-loan"
+        "register-loan",
+        "register-return"
       ]
     }
   },
@@ -266,6 +294,168 @@
         ]
       },
       "uc": "貸出を登録する"
+    },
+    "register-return": {
+      "as_built": "docs/as-built/貸出業務/返却を登録する/",
+      "business": "貸出業務",
+      "files": [
+        "\"features/\\350\\262\\270\\345\\207\\272\\346\\245\\255\\345\\213\\231/register-return.feature\"",
+        ".distillery/runs/register-return/attempt-1/assumptions.backend-api.yaml",
+        ".distillery/runs/register-return/attempt-1/assumptions.frontend.yaml",
+        ".distillery/runs/register-return/attempt-1/findings.backend-api.yaml",
+        ".distillery/runs/register-return/attempt-1/findings.frontend.yaml",
+        ".distillery/runs/register-return/events.jsonl",
+        ".distillery/runs/register-return/invalidated/20260926_042625_review.done.yaml",
+        ".distillery/runs/register-return/issues/20260926T1300_register-return-not-on-loan.md",
+        ".distillery/runs/register-return/issues/20260926T1400_register-return-error-responses.md",
+        ".distillery/runs/register-return/issues/20260926T1500_register-return-story-loan-table.md",
+        ".distillery/runs/register-return/stages/contract-gate.done.yaml",
+        ".distillery/runs/register-return/stages/contract.done.yaml",
+        ".distillery/runs/register-return/stages/integrate.done.yaml",
+        ".distillery/runs/register-return/stages/review.done.yaml",
+        ".distillery/runs/register-return/stages/scaffold.done.yaml",
+        ".distillery/runs/register-return/stages/scenario.done.yaml",
+        ".distillery/runs/register-return/stages/tier.done.yaml",
+        ".distillery/runs/register-return/stages/verify.done.yaml",
+        ".qlty/qlty.toml",
+        "apps/backend-api/src/app.ts",
+        "apps/backend-api/src/domain/loan/return-book.test.ts",
+        "apps/backend-api/src/domain/loan/return-book.ts",
+        "apps/backend-api/src/presentation/http-app.test.ts",
+        "apps/backend-api/src/presentation/http-app.ts",
+        "apps/backend-api/src/presentation/problem.ts",
+        "apps/backend-api/src/presentation/register-loan-request.ts",
+        "apps/backend-api/src/presentation/register-return-http.test.ts",
+        "apps/backend-api/src/presentation/register-return-request.ts",
+        "apps/backend-api/src/presentation/register-return-response.ts",
+        "apps/backend-api/src/presentation/request-validation.ts",
+        "apps/backend-api/src/repository/pg-loan-repositories.ts",
+        "apps/backend-api/src/repository/pg-return-repositories.test.ts",
+        "apps/backend-api/src/test-app.register-return.test.ts",
+        "apps/backend-api/src/test-app.test.ts",
+        "apps/backend-api/src/test-app.ts",
+        "apps/backend-api/src/test-fixtures/contract-examples.ts",
+        "apps/backend-api/src/usecase/authorization.ts",
+        "apps/backend-api/src/usecase/idempotent-command.ts",
+        "apps/backend-api/src/usecase/ports.ts",
+        "apps/backend-api/src/usecase/register-loan.ts",
+        "apps/backend-api/src/usecase/register-return.test.ts",
+        "apps/backend-api/src/usecase/register-return.ts",
+        "apps/backend-api/test/contract/db-schema.test.ts",
+        "apps/backend-api/test/contract/registerLoan.test.ts",
+        "apps/backend-api/test/contract/registerReturn.test.ts",
+        "apps/frontend/src/api-client/register-return.ts",
+        "apps/frontend/src/index.ts",
+        "apps/frontend/src/screens/loan-checkout/submit-loan-checkout.ts",
+        "apps/frontend/src/screens/return-checkout/submit-return-checkout.test.ts",
+        "apps/frontend/src/screens/return-checkout/submit-return-checkout.ts",
+        "apps/frontend/src/screens/shared/idempotency-key.ts",
+        "apps/frontend/src/screens/shared/problem.ts",
+        "apps/frontend/src/view/return-register/ReturnRegisterScreen.test.tsx",
+        "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx",
+        "contracts/generated/openapi.bundle.yaml",
+        "contracts/generated/slices/register-loan/contract-slice.json",
+        "contracts/generated/slices/register-return/contract-slice.json",
+        "contracts/generated/slices/register-return/rdb-slice.yaml",
+        "contracts/openapi/openapi.yaml",
+        "contracts/openapi/paths/loans.yaml",
+        "contracts/openapi/paths/returns.yaml",
+        "contracts/uc-index.yaml",
+        "docs/README.md",
+        "docs/requirements/use-cases.yaml",
+        "features/step_definitions/register-return.steps.ts",
+        "features/support/composition.ts",
+        "features/support/library-scenario.ts",
+        "packages/contracts/library-api/client.ts",
+        "packages/contracts/library-api/server.ts",
+        "packages/contracts/library-api/stubs/.distillery2-generated.json",
+        "packages/contracts/library-api/stubs/registerReturn.201.json",
+        "packages/contracts/library-api/stubs/registerReturn.400.json",
+        "packages/contracts/library-api/stubs/registerReturn.401.json",
+        "packages/contracts/library-api/stubs/registerReturn.403.json",
+        "packages/contracts/library-api/stubs/registerReturn.404.json",
+        "packages/contracts/library-api/stubs/registerReturn.409.json",
+        "packages/contracts/library-api/types.ts",
+        "packages/contracts/library-db/tables.ts"
+      ],
+      "gates": "pass",
+      "gates_complete": true,
+      "generated_at": "2026-09-26T04:26:30.681Z",
+      "instrumentation_gaps": [],
+      "instrumentation_happy_gaps": [],
+      "messages": [],
+      "operations": [
+        "registerReturn"
+      ],
+      "scenarios": [
+        {
+          "name": "予約のある貸出中の書籍の返却を登録する",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-003-02-2",
+            "@uc:register-return"
+          ]
+        },
+        {
+          "name": "予約のない貸出中の書籍の返却を登録する",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-003-02-1",
+            "@uc:register-return"
+          ]
+        },
+        {
+          "name": "延滞している書籍の返却を登録する",
+          "status": "passed",
+          "tags": [
+            "@uc:register-return"
+          ]
+        },
+        {
+          "name": "未返却の貸出が無い書籍は返却を登録できない",
+          "status": "passed",
+          "tags": [
+            "@uc:register-return"
+          ]
+        }
+      ],
+      "spec_ids": [
+        "SPEC-003-02"
+      ],
+      "tables": [
+        "book_events",
+        "books",
+        "idempotency_keys",
+        "loan_events",
+        "loans",
+        "reservations"
+      ],
+      "tables_rw": {
+        "book_events": [
+          "write"
+        ],
+        "books": [
+          "read",
+          "write"
+        ],
+        "idempotency_keys": [
+          "read",
+          "write"
+        ],
+        "loan_events": [
+          "write"
+        ],
+        "loans": [
+          "read",
+          "write"
+        ],
+        "reservations": [
+          "read"
+        ]
+      },
+      "uc": "返却を登録する"
     }
   }
 }

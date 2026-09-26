@@ -1,0 +1,210 @@
+schema_version: "2.1"
+uc: "register-return"
+tier: "backend-api"
+attempt: 1
+verified_at: "2026-09-26T14:00:00+09:00"
+gates_read:
+  static: pass
+  unit: pass
+  contract: pass
+  uc-bdd: pass
+  acceptance: pass
+viewpoints_checked:
+  uc_intent:
+    status: done
+    note: "uc-bdd 4/4 passed (46 steps)、acceptance-api 2/2 passed。@acceptance:SPEC-003-02-1 / -2 が SPEC-003-02 の受入基準 2 件を覆う。unit.backend-api 86/86、contract.backend-api 25/25 (registerReturn 8 example 全 pass)、pending/skip 0。トレース 4 本で books/loans の FOR UPDATE → reservations(waiting) 参照 → loans 更新 + loan_events 追記 → books 更新 + book_events 追記 → idempotency_keys 保存を確認。拒否シナリオ (bb0e4cb3) は loans/books への書き込み無し。状態遷移は 状態.tsv (書籍 貸出中→在庫あり/予約待ち、貸出 貸出中/延滞→返却済) と domain/loan/return-book.ts が一致。認可は usecase (isLibrarian)、判定順序 401→403→400→404/409 は契約 description どおり。blocker 候補なし"
+  assumption_conformance:
+    status: done
+assumptions_sha256: "8214de00d98f4a0555560974c721199a3602e5fe853a03e6ea5c9ff5642b21d9"
+assumption_verdicts:
+  - id: A-101
+    tier: backend-api
+    assumption: "返却日 (サーバーの当日の日付) を、貸出日と同じ Asia/Tokyo タイムゾーンの暦日で決める"
+    target: "apps/backend-api/src/usecase/register-return.ts:94"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-001
+    evidence: "contract-slice.json#/paths/~1returns/post/description は「返却日はサーバーの当日の日付」とだけ書き、タイムゾーンの定義なし。定数は domain/loan/loan-policy.ts:10 LIBRARY_TIME_ZONE の 1 箇所に集約 (common.md 推奨の「1 箇所に集約し AssumptionRecord に記録」に沿う)"
+  - id: A-102
+    tier: backend-api
+    assumption: "返却できるかを書籍状態ではなく、書籍に貸出状態が on_loan または overdue の貸出があるかで判定する。書籍状態が貸出中でも未返却の貸出が無ければ 409 no_active_loan、未返却の貸出が複数あれば貸出日が最も新しいものを返却済にする"
+    target: "apps/backend-api/src/usecase/register-return.ts:88"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-002
+    evidence: "契約 description「対象はその書籍の未返却の貸出 (on_loan / overdue)」「未返却の貸出が無い書籍は 409」までは明示。書籍状態と貸出状態の食い違い時・未返却の貸出が複数ある場合の選択 (pg-loan-repositories.ts:287 ORDER BY loaned_on DESC LIMIT 1) は契約・状態.tsv・条件.tsv に無い"
+  - id: A-103
+    tier: backend-api
+    assumption: "返却で追記するイベント種別を 書籍=returned、貸出=returned とし、payload は JSON 文字列 (書籍は loanId と状態の遷移 from/to、貸出は returnedOn と状態の遷移 from/to) にする"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:35"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-003
+    evidence: "rdb-slice.yaml book_events.event_type / loan_events.event_type の description は「値は UC で定める」で、値と payload 形の定義なし"
+  - id: A-104
+    tier: backend-api
+    assumption: "Idempotency-Key には、書籍を引いた後の業務判定の応答 (201 返却・409 no_active_loan・404 書籍不在) を返却と同じトランザクションで保存し、同じキー・同じ本文の再送には保存した応答をそのまま返す。401・403・400 は保存しない。本文ハッシュは bookId だけの JSON の SHA-256、キーの範囲は operationId registerReturn で貸出と分ける。本文が違う再送は 409 idempotency_key_conflict"
+    target: "apps/backend-api/src/usecase/register-return.ts:124"
+    category: persistence
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-004
+    evidence: "contract-slice.json#/components/parameters/IdempotencyKey は「同じキーの再送では副作用を重複させず、初回と同じ応答を返す」まで。保存対象の応答範囲・ハッシュ算出・不一致時応答は契約・common.md ADR 0005 に無い。契約と矛盾はしない (409/404 の保存は「初回と同じ応答」に沿う)。トレース bb0e4cb3 で拒否時も idempotency_keys に INSERT していることを確認"
+  - id: A-105
+    tier: backend-api
+    assumption: "1 トランザクションの中で書籍と未返却の貸出を SELECT ... FOR UPDATE でロックしてから判定し、スナップショット更新は version 一致を条件にする。予約中の予約の有無はロックせずに読む。版が合わなければ例外で全体を巻き戻し 500 を返す"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:287"
+    category: persistence
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-005
+    evidence: "tier-backend.md ADR 0004 は events 追記と snapshot 更新を同一トランザクションで行うことだけを定める。同時返却の直列化・予約との同時発生・競合時応答は契約 responses (201/400/401/403/404/409) にも無い。競合時は http-app.ts:223 で internal_error 500"
+  - id: A-106
+    tier: backend-api
+    assumption: "presentation は認証 (401) の直後に usecase の isAllowed (司書ロールか) を問い合わせ、司書以外なら本文と Idempotency-Key の検証 (400) より先に 403 を返す。usecase の execute も同じ判定を持つ。この順序を registerLoan にも当て、司書以外が不正な本文で貸出を呼んだときも 400 でなく 403 を返す"
+    target: "apps/backend-api/src/presentation/http-app.ts:128"
+    category: security
+    verified_category: security
+    verdict: spec_absent
+    finding_id: F-006
+    evidence: "registerReturn の順序 401→403→400 は契約 description に明示 (この部分は復唱)。判定そのものは usecase の isLibrarian にあり tier-backend.md ADR 0006「認可は usecase 層で判定」と矛盾しない。registerLoan への同順序の適用は contracts/openapi/paths/loans.yaml に 401/403 と判定順序が無く、仕様に照合先が無い"
+  - id: A-107
+    tier: backend-api
+    assumption: "テスト用 composition root (createTestApp) は Authorization と Idempotency-Key を補わない (register-loan の A-009 を撤回)。features/support/composition.ts が defaultHeaders false を渡しているため、TestAppOptions に defaultHeaders?: false の型だけ非推奨として残し、値は無視する"
+    target: "apps/backend-api/src/test-app.ts:42"
+    category: security
+    verified_category: security
+    verdict: spec_absent
+    finding_id: F-007
+    evidence: "契約の x-test-headers と生成テスト registerReturn.test.ts (unauthorized example) はヘッダ補完が無いことを前提にするが、非推奨の型を残して値を無視する扱いは契約・testing.md に無い。本番経路には影響しないテスト用 composition root の判断"
+  - id: A-108
+    tier: backend-api
+    assumption: "契約テスト用の前提データに、registerReturn の examples の書籍・貸出 (loanId・patronNumber・loanedOn・dueDate と返却前の status) を入れる。successWithReservation の予約は契約に予約IDが無いため仮の UUID e3a9c5b1-6d2f-4b8a-9c4e-7f1a3d5b9e2c で、別の利用者 P-00000002 の予約順 1 位・予約中として置く。時計は 2026-10-01 のままにし、返却日は example の 2026-10-15 ではなく 2026-10-01 になる"
+    target: "apps/backend-api/src/test-fixtures/contract-examples.ts:37"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-008
+    evidence: "contract-slice.json の successWithReservation request example は bookId のみで予約IDを持たない。201 example の returnedOn 2026-10-15 と時計の一致は契約テストの要件に無い (contract.backend-api.json で registerReturn 201 x3 は passed)"
+  - id: A-109
+    tier: backend-api
+    assumption: "Problem の title を契約 example の文言にそろえ、401 を「認証が必要です」、404 を「対象が見つかりません」に変える。registerLoan の 401 / 404 の title も同じ文言に変わる (registerLoan の 404 の detail は従来の「は登録されていません」のまま)"
+    target: "apps/backend-api/src/presentation/problem.ts:19"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-009
+    evidence: "文言自体は contract-slice.json#/components/responses/Unauthorized と #/paths/~1returns/post/responses/404 の example と一致 (復唱部分)。title を ProblemCode ごとに 1 つに固定し registerLoan にも波及させる判断は契約に無い。loans.yaml には 401/404 の example が無く矛盾先なし"
+  - id: V-001
+    tier: backend-api
+    assumption: "registerReturn の 403 の detail を「返却の登録は司書だけが行えます」、401 の detail を「有効なアクセストークンを指定してください」とする"
+    target: "apps/backend-api/src/presentation/http-app.ts:196"
+    category: null
+    verified_category: error_handling
+    verdict: unlisted
+    finding_id: F-010
+    evidence: "contract-slice.json#/components/responses/Forbidden と Unauthorized の example は detail を持たない。detail 文言は契約・要求・ルールに無く、AssumptionRecord にも記載が無い (A-109 は title のみ)"
+assumption_verdicts_summary: {consistent: 0, spec_absent: 9, contradicts: 0, unlisted: 1}
+findings:
+  - id: F-001
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-101
+    severity: minor
+    title: "返却日のタイムゾーンは仕様に無い"
+    target: "apps/backend-api/src/usecase/register-return.ts:94"
+    claim: "返却日を Asia/Tokyo の暦日で決めているが、契約はタイムゾーンを定めていない"
+    evidence: "contract-slice.json#/paths/~1returns/post/description「返却日はサーバーの当日の日付とする」; domain/loan/loan-policy.ts:10"
+  - id: F-002
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-102
+    severity: minor
+    title: "複数の未返却貸出の選び方は仕様に無い"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:287"
+    claim: "未返却の貸出が複数ある場合に貸出日が最新のものを選ぶ規則と、書籍状態との食い違い時の扱いは仕様に無い"
+    evidence: "contract-slice.json#/paths/~1returns/post/description; docs/requirements/rdra/状態.tsv 行 4,5,10,12; 条件.tsv に返却可否の条件なし"
+  - id: F-003
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-103
+    severity: minor
+    title: "返却イベントの種別と payload は仕様に無い"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:35"
+    claim: "book_events / loan_events の event_type=returned と payload 形は実装者の決定"
+    evidence: "rdb-slice.yaml book_events.event_type / loan_events.event_type「値は UC で定める」"
+  - id: F-004
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-104
+    severity: major
+    title: "冪等キーの保存範囲とハッシュは仕様に無い"
+    target: "apps/backend-api/src/usecase/idempotent-command.ts:59"
+    claim: "201/404/409 を保存し 401/403/400 を保存しない範囲、bookId のみの SHA-256、不一致時 409 は仕様に無い persistence の前提で、人の回答が要る"
+    evidence: "contract-slice.json#/components/parameters/IdempotencyKey; rdb-slice.yaml idempotency_keys; common.md ADR 0005; traces/register-return#-bb0e4cb3.jsonl で拒否時も idempotency_keys INSERT"
+  - id: F-005
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-105
+    severity: major
+    title: "同時返却の制御と競合時 500 は仕様に無い"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:287"
+    claim: "books/loans の FOR UPDATE、予約は非ロック読み、版不一致時 500 は仕様に無い persistence の前提で、人の回答が要る"
+    evidence: "tier-backend.md ADR 0004; contract-slice.json#/paths/~1returns/post/responses に 500 なし; traces 4 本で books → loans の FOR UPDATE、reservations は FOR UPDATE なし"
+  - id: F-006
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-106
+    severity: major
+    title: "403 先行判定の registerLoan 適用は仕様外"
+    target: "apps/backend-api/src/presentation/http-app.ts:128"
+    claim: "registerReturn の順序は契約どおりだが、同じ順序を registerLoan にも当てる判断は registerLoan の契約に照合先が無い security の前提"
+    evidence: "contract-slice.json#/paths/~1returns/post/description (判定順序); contracts/openapi/paths/loans.yaml に 401/403 と判定順序なし; tier-backend.md ADR 0006"
+  - id: F-007
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-107
+    severity: major
+    title: "テスト入口のヘッダ補完廃止の扱い"
+    target: "apps/backend-api/src/test-app.ts:42"
+    claim: "createTestApp のヘッダ補完を廃止し、defaultHeaders 型を非推奨で残して値を無視する扱いは仕様に無い security 分類の前提 (テスト用 composition root に限る)"
+    evidence: "contract-slice.json#/paths/~1returns/post/x-test-headers; apps/backend-api/test/contract/registerReturn.test.ts; issues/20260926T1400_register-return-error-responses.md 追記"
+  - id: F-008
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-108
+    severity: minor
+    title: "契約テスト前提データの補い方"
+    target: "apps/backend-api/src/test-fixtures/contract-examples.ts:37"
+    claim: "予約ID・予約者の仮値と、時計を example の返却日に合わせない判断は契約に無い"
+    evidence: "contract-slice.json requestBody examples successWithReservation; responses/201 examples returnedOn 2026-10-15"
+  - id: F-009
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-109
+    severity: minor
+    title: "Problem の title を code ごとに固定"
+    target: "apps/backend-api/src/presentation/problem.ts:19"
+    claim: "文言は契約 example どおりだが、code ごとに 1 文言へ固定し registerLoan にも波及させる判断は契約に無い"
+    evidence: "contract-slice.json#/components/responses/Unauthorized; #/paths/~1returns/post/responses/404 notFound example"
+  - id: F-010
+    viewpoint: assumption_conformance
+    kind: unlisted
+    assumption_id: V-001
+    severity: minor
+    title: "401/403 の detail 文言が前提に無い"
+    target: "apps/backend-api/src/presentation/http-app.ts:196"
+    claim: "registerReturn の 403 detail と 401 detail の文言は契約に無く、AssumptionRecord にも書かれていない"
+    evidence: "contract-slice.json#/components/responses/Forbidden, Unauthorized の example に detail なし; http-app.ts:140, 196"
+  - id: F-011
+    viewpoint: uc_intent
+    kind: deferred_rule
+    severity: minor
+    title: "返却通知 outbox の書き込みは別 UC へ先送り"
+    target: "apps/backend-api/src/usecase/register-return.ts:7"
+    claim: "ADR 0005 は返却登録と同じトランザクションで通知の送信待ち記録を書くと定めるが、この UC では書いていない。契約で notify-reserved-book-returned へ先送りと明示されており違反ではないが、後続 UC で返却トランザクションへの追加が必要"
+    evidence: "tier-backend.md ADR 0005「メール送信の依頼は業務の更新 (返却登録・延滞への状態変更) と同じトランザクションで通知の送信待ち記録として書き」; contract-slice.json#/paths/~1returns/post/description「返却通知の送信依頼 (通知の outbox) は UC notify-reserved-book-returned の契約で扱う」; issues/20260926T1400_register-return-error-responses.md「別件」; traces 4 本に notifications への INSERT なし"
+summary: {blocker: 0, major: 4, minor: 7}

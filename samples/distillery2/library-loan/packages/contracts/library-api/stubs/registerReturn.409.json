@@ -1,0 +1,7 @@
+{
+  "code": "no_active_loan",
+  "detail": "書籍 6e9b2d5a-1f4c-4a8e-9b3d-7a2e5c8f1b4d には未返却の貸出がありません",
+  "status": 409,
+  "title": "この書籍には返却できる貸出がありません",
+  "type": "https://library.example/problems/no-active-loan"
+}

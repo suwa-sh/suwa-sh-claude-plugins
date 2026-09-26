@@ -5,12 +5,10 @@
  * 出典: features/貸出業務/register-loan.feature、contract-slice の POST /loans (registerLoan)。
  * 返却期限は backend が決めた値 (応答の loan.dueDate) をそのまま表示に使い、画面では算出しない。
  */
-import type {
-  BookStatus,
-  Problem,
-  ProblemCode,
-} from '../../../../../packages/contracts/library-api/types';
+import type { BookStatus, ProblemCode } from '../../../../../packages/contracts/library-api/types';
 import { callRegisterLoan } from '../../api-client/register-loan';
+import { newIdempotencyKey, nextIdempotencyKey } from '../shared/idempotency-key';
+import { isProblem } from '../shared/problem';
 
 export interface LoanCheckoutInput {
   /** 利用者番号 */
@@ -43,22 +41,8 @@ export interface SubmitLoanCheckoutOptions {
 export const UNEXPECTED_FAILURE_MESSAGE =
   '貸出を登録できませんでした。時間をおいてもう一度お試しください。続く場合は管理者にお問い合わせください。';
 
-/** 再送判定キーを作る (Idempotency-Key。契約の制約は 1〜128 文字) */
-export const newIdempotencyKey = (): string => globalThis.crypto.randomUUID();
-
-/**
- * 登録操作の結果から、次の送信で使う再送判定キーを決める。
- * 結果が確定した応答 (登録済み・貸し出せない) の後は新しいキーにし、状況が変わった後の再試行を初回と同じ応答にしない。
- * 結果が不確かな失敗 (通信できない・契約外の応答) の後は同じキーのままにし、再送で登録が重複しないようにする。
- */
-export const nextIdempotencyKey = (view: LoanCheckoutView, currentKey: string): string =>
-  view.kind === 'failed' ? currentKey : newIdempotencyKey();
-
-const isProblem = (data: unknown): data is Problem =>
-  typeof data === 'object' &&
-  data !== null &&
-  typeof (data as { code?: unknown }).code === 'string' &&
-  typeof (data as { title?: unknown }).title === 'string';
+// 再送判定キーの規則は返却受付画面と共有する
+export { newIdempotencyKey, nextIdempotencyKey };
 
 export async function submitLoanCheckout(
   input: LoanCheckoutInput,

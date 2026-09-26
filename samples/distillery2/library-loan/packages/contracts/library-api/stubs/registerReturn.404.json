@@ -1,0 +1,7 @@
+{
+  "code": "not_found",
+  "detail": "書籍 0e5c8b1f-4a7d-4f2c-8e9b-3d6a1c4f7b2e は見つかりません",
+  "status": 404,
+  "title": "対象が見つかりません",
+  "type": "https://library.example/problems/not-found"
+}

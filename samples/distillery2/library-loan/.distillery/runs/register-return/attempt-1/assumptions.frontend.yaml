@@ -1,0 +1,90 @@
+schema_version: "2.1"
+uc: "register-return"
+tier: "frontend"
+attempt: 1
+extraction:
+  candidate_count: 10
+  excluded_as_explicit: 3
+  recorded_count: 7
+assumptions:
+  - id: A-001
+    category: persistence
+    title: "再送判定キーは結果確定か書籍ID変更で替える"
+    assumption: "Idempotency-Key は UUID v4 (crypto.randomUUID) とする。返却受付画面では、結果が不確かな失敗 (通信できない・契約外の応答) の後は同じキーで再送し、結果が確定した応答 (201 返却済み、Problem で返却できない) の後と、書籍IDの入力が変わったときは新しいキーに替える。入口関数 submitReturnCheckout はキー省略時に呼び出しごとに新しいキーを作る"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:128"
+    reason: "契約は Idempotency-Key を必須とし 1〜128 文字、同じキーの再送では初回と同じ応答を返すと定めるが、キーの形式と、どの操作の範囲で同じキーを使うかを定めていない。書籍IDが変わった後に同じキーを使うと別の要求を同じキーで送ることになるため替える"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-return/contract-slice.json#components.parameters.IdempotencyKey"
+      - "docs/rules/common.md#ADR 0005"
+      - "docs/rules/tier-frontend.md"
+      - "features/貸出業務/register-return.feature"
+  - id: A-002
+    category: error_handling
+    title: "Problem 以外の応答は再試行を促す失敗表示"
+    assumption: "registerReturn の応答が 201 以外で、本文が Problem 形式 (code と title を持つ) なら返却できない旨と title を表示し、Problem 形式でなければ status を保持した failed として固定の再試行を促す文言を表示する"
+    target: "apps/frontend/src/screens/return-checkout/submit-return-checkout.ts:66"
+    reason: "契約は 400 / 401 / 403 / 404 / 409 を Problem で返すと定めるが、5xx やゲートウェイ由来の非 Problem 応答を画面がどう扱うかの定めが無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-return/contract-slice.json#paths./returns.post.responses"
+      - "features/貸出業務/register-return.feature#返却できない旨が表示され返却は記録されない"
+      - "docs/rules/common.md#推奨"
+  - id: A-003
+    category: error_handling
+    title: "201 で返却日が null なら契約外の失敗扱い"
+    assumption: "registerReturn の 201 応答で loan.returnedOn が null の場合は、返却済みと表示せず、契約外の応答として再試行を促す failed を返す"
+    target: "apps/frontend/src/screens/return-checkout/submit-return-checkout.ts:59"
+    reason: "Loan.returnedOn の型は string | null で、201 のとき必ず日付が入るとは schema 上で保証されていない (description と examples は返却日を入れている)。返却日を表示できない応答の扱いは契約・シナリオに無い"
+    confidence: low
+    spec_refs:
+      - "contracts/generated/slices/register-return/contract-slice.json#components.schemas.Loan"
+      - "contracts/generated/slices/register-return/contract-slice.json#paths./returns.post.responses.201"
+      - "features/貸出業務/register-return.feature"
+  - id: A-004
+    category: error_handling
+    title: "通信失敗は返却できない旨を表示"
+    assumption: "fetch 自体が例外を投げた (通信できない) 場合、画面は status 0 の failed として通信状態の確認と再試行を促す文言を表示し、同じ Idempotency-Key で再送できる状態に戻す"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:142"
+    reason: "シナリオ・契約・ルールに通信失敗時の画面の振る舞いが無い (story の Error variant は文言の例だけ)"
+    confidence: medium
+    spec_refs:
+      - "features/貸出業務/register-return.feature"
+      - "docs/design/screens.yaml#ReturnRegister"
+      - "packages/ui/stories/ReturnRegister.stories.tsx#Error"
+      - "docs/rules/tier-frontend.md"
+  - id: A-005
+    category: data_format
+    title: "返却前の表は出さず結果は書籍IDで示す"
+    assumption: "返却受付画面の Default は書籍IDの入力欄と登録ボタンだけを出し、story の「この書籍の貸出」(LoanTable) は出さない。返却後の Alert は書籍名の代わりに「書籍ID {bookId} の書籍は」と書籍IDで示す"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:81"
+    reason: "story は Default に貸出の表を、結果の Alert に書籍名を出すが、この UC の契約には返却前に貸出を得る operation が無く、registerReturn の応答にも書籍名が無い。乖離そのものは issues/20260926T1500_register-return-story-loan-table.md で変更要求し、ここでは還流までの暫定の表示方法だけを決めた"
+    confidence: medium
+    spec_refs:
+      - "packages/ui/stories/ReturnRegister.stories.tsx#Default"
+      - "contracts/generated/slices/register-return/contract-slice.json#components.schemas.ReturnRegistration"
+      - "docs/design/screens.yaml#ReturnRegister"
+      - "features/貸出業務/register-return.feature"
+  - id: A-006
+    category: data_format
+    title: "返却できない理由は応答の title を表示"
+    assumption: "返却できなかったときの Alert 本文は、story の固定文言 (この書籍IDの貸出が見つかりません…) ではなく応答 Problem の title をそのまま表示する"
+    target: "apps/frontend/src/view/return-register/ReturnRegisterScreen.tsx:96"
+    reason: "シナリオは「返却できない旨が表示され」とだけ書き、文言を定めていない。story の Error の文言は 409 (no_active_loan) と 404 (not_found) を区別しない例であり、契約の Problem.title は「利用者に表示できる文言」と定められている"
+    confidence: medium
+    spec_refs:
+      - "features/貸出業務/register-return.feature#返却できない旨が表示され返却は記録されない"
+      - "packages/ui/stories/ReturnRegister.stories.tsx#Error"
+      - "contracts/generated/slices/register-return/contract-slice.json#components.schemas.Problem"
+  - id: A-007
+    category: input_validation
+    title: "書籍IDは画面で検証せず API に委ねる"
+    assumption: "返却受付画面は入力された書籍IDを加工 (trim 等) も事前検証もせずにそのまま送り、形式違反・空欄の判定は backend の 400 (validation_error) に委ねる"
+    target: "apps/frontend/src/screens/return-checkout/submit-return-checkout.ts:47"
+    reason: "契約は RegisterReturnRequest.bookId を必須の uuid と定めるが、画面側で事前に検証するかどうかは要求・ルール・story に無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-return/contract-slice.json#components.schemas.RegisterReturnRequest"
+      - "docs/rules/tier-frontend.md"
+      - "packages/ui/stories/ReturnRegister.stories.tsx"
+      - "features/貸出業務/register-return.feature"

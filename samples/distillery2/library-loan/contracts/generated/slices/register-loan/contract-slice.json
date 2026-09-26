@@ -195,7 +195,8 @@
             "internal_error",
             "book_on_loan",
             "not_first_in_reservation_queue",
-            "patron_not_registered"
+            "patron_not_registered",
+            "no_active_loan"
           ],
           "type": "string"
         },
@@ -409,7 +410,11 @@
           "summary": "貸出を登録する",
           "tags": [
             "loan"
-          ]
+          ],
+          "x-test-headers": {
+            "Authorization": "Bearer test-librarian-token",
+            "Idempotency-Key": "{uuid}"
+          }
         }
       }
     },

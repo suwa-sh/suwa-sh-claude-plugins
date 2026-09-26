@@ -1,14 +1,14 @@
 # distillery2 サンプル
 
-`distillery2` 0.1.13 を、図書館蔵書管理システムの要望 (`samples/distillery/pipeline/input/初期要望.txt` と同じ) に対して
-headless (`claude -p`) で実走した結果。要求 → 決定 → 基盤 → UC 1 つ (貸出を登録する) の縦切りまで。
+`distillery2` を、図書館蔵書管理システムの要望 (`samples/distillery/pipeline/input/初期要望.txt` と同じ) に対して
+headless (`claude -p`) で実走した結果。要求 → 決定 → 基盤 → UC の縦切りまでは 0.1.13、2 つ目の UC (返却を登録する) の縦切りは 0.1.16。
 入口は [`library-loan/docs/README.md`](library-loan/docs/README.md) (上流から下流まで辿れる)。
 
 | ディレクトリ | 内容 |
 |---|---|
 | `library-loan/docs/` | README、要求 (USDM / RDRA / UC 一覧)、非機能グレード表、ADR 8 件と C4 図、開発ルール、画面一覧、as-built |
 | `library-loan/contracts/` | 契約の正本 (OpenAPI / DB) と生成物 (bundle、UC slice) |
-| `library-loan/features/` | 貸出 UC のシナリオ (6 件)、step 定義、Cucumber の support (API ドライバ、tracer 結線) |
+| `library-loan/features/` | 貸出 UC (6 件) と返却 UC (4 件) のシナリオ、step 定義、Cucumber の support (API ドライバ、tracer 結線) |
 | `library-loan/apps/`, `packages/` | 実装 (backend-api、frontend) とテスト基盤。`packages/ui`、Storybook アプリ、スクリーンショット (156 枚) は容量の都合で除外 |
 | `library-loan/.distillery/` | 実行設定と、UC の実行状態 (events、done、AssumptionRecord、findings、ゲート結果、トレース、課題)。`logs/` (ハーネス) は含めない |
 | `library-loan/.qlty/qlty.toml` | qlty の設定 (qlty の提案 + distillery2 の上乗せ)。qlty の作業ディレクトリ (logs / out / results) は含めない |
@@ -37,12 +37,13 @@ as-built の付録「生成情報」に「モデル: 実装 … / 検証 … / �
 | ① 要求 | 14 分 | 6 | 1.3M | UC 27 件 (blocked 4 は要求に無い UC)。検証すべて exit 0 |
 | ② 決定 | 10 分 | 1 | 0.8M | NFR (モデルシステム 1、97 項目)、ADR 8 件 (ティア 3: frontend / backend-api / worker)、C4 図 |
 | ③ 基盤 | 40 分 | 3 | 1.9M | rules 6 / 依存規則 17 / test-support / 契約骨格 (API + DB) / config / CI / qlty / 画面 24 と部品。static ゲート exit 0 (1 回目) |
-| ④ 縦切り | 53 分 | 13 + Verifier 4 | 5.0M + 1.4M | シナリオ 6 → 契約 `POST /loans` → 足場 → 2 ティア並列実装 → 5 ゲート pass → 検証 blocker 2 で差し戻し → attempt 2 で blocker 0 → as-built → squash |
+| ④ 縦切り (貸出を登録する) | 53 分 | 13 + Verifier 4 | 5.0M + 1.4M | シナリオ 6 → 契約 `POST /loans` → 足場 → 2 ティア並列実装 → 5 ゲート pass → 検証 blocker 2 で差し戻し → attempt 2 で blocker 0 → as-built → squash |
+| ④ 縦切り (返却を登録する、0.1.16) | 42 分 | 7 + Verifier 2 | 4.5M (Verifier 込み) | シナリオ 4 → 契約 `POST /returns` (+ `x-test-headers`、401/403) → 足場 → 2 ティア並列実装 → 5 ゲート pass → 検証 blocker 0 (差し戻しなし) → as-built → squash |
 
-合計 1 時間 57 分、重み付き 10.3M トークン (raw 72M、重み: input 1 / cache_creation 1.25 / cache_read 0.1 / output 0)。
+貸出 UC までで 1 時間 57 分、重み付き 10.3M トークン (raw 72M、重み: input 1 / cache_creation 1.25 / cache_read 0.1 / output 0)。返却 UC は 42 分・4.5M (raw 33M)。
 前回 (0.1.10、2026-09-25) は 1 時間 49 分・11.8M。時間は 7% 増 (検証の差し戻しで attempt 2)、トークンは 13% 減。
 
-## 段階④の結果
+## 段階④の結果 (貸出を登録する)
 
 | 項目 | 値 |
 |---|---|
@@ -54,9 +55,21 @@ as-built の付録「生成情報」に「モデル: 実装 … / 検証 … / �
 | as-built | `docs/as-built/貸出業務/貸出を登録する/{index,sequence}.md` と `_system/`。`checkAsBuilt.js` ok。計装なしのティア / 正常系に部品なしのティアは無し |
 | squash | `feat: 貸出を登録する` 1 commit。trailer に UC / Basis-* (base 側の sha) / Basis-Base / Basis-Changed / Gates / Assumptions / As-Built / Co-Authored-By |
 
+## 段階④の結果 (返却を登録する、0.1.16)
+
+| 項目 | 値 |
+|---|---|
+| ゲート | 5 段すべて pass。contract は backend-api だけ (frontend は skipped) |
+| シナリオ | 4 件 |
+| 契約 | `POST /returns` に `x-test-headers` (Authorization / Idempotency-Key `{uuid}`) と 401 / 403 の `x-headers`。生成テストがヘッダを送り、提供側のテスト用ヘッダ補完は削除 |
+| findings (attempt 1) | blocker 0 / major 5 / minor 16。差し戻しなし |
+| AssumptionRecord | 16 件 (backend-api 9 / frontend 7)。confirmed 5 / auto 11 |
+| as-built | 2 UC 分が `_system/` にまとまる (追跡表・API 一覧・データフロー)。checkAsBuilt ok |
+| qlty | integrate の `genQlty --refresh` で osv-scanner が追加 |
+
 ## 実走で見つかった課題
 
-[`findings-0.1.13.md`](findings-0.1.13.md) に、0.1.10 の課題の再確認結果と新しい気づきを列挙した。主なもの:
+[`findings-0.1.13.md`](findings-0.1.13.md) に、0.1.10 の課題の再確認結果と新しい気づきを列挙した (0.1.16 の再実走での再確認と新しい気づきは [`findings-0.1.16.md`](findings-0.1.16.md))。主なもの:
 
 - Verifier が実装者と同じ claude-opus-5-5 に解決された (`opus` 別名の解決先が変わった)
 - 生成した契約テストの `biome-ignore-all format` が biome 2.2.5 では効かない (0.1.15 でルート biome.json の除外を追加)

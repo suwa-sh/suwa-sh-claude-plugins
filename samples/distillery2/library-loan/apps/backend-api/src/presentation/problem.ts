@@ -9,12 +9,16 @@ const PROBLEM_TYPE_BASE = 'https://library.example/problems/';
 
 type ProblemDefinition = { status: number; title: string };
 
-/** 利用者に表示できる文言。409 の 3 種と 400 は契約の example と同じ文言 */
+/**
+ * 利用者に表示できる文言。400・401・403・404 と業務ルールの 409 (book_on_loan など 4 種) は契約の example と同じ文言
+ * (401 / 403 は components/responses、404 は registerReturn の notFound。registerLoan の 401 / 404 も同じ文言にする:
+ * AssumptionRecord A-109)
+ */
 const DEFINITIONS: Record<ProblemCode, ProblemDefinition> = {
   validation_error: { status: 400, title: '入力内容に誤りがあります' },
-  unauthorized: { status: 401, title: 'ログインが必要です' },
+  unauthorized: { status: 401, title: '認証が必要です' },
   forbidden: { status: 403, title: 'この操作を行う権限がありません' },
-  not_found: { status: 404, title: '指定したものが見つかりません' },
+  not_found: { status: 404, title: '対象が見つかりません' },
   business_rule_violation: { status: 409, title: '業務ルールにより処理できません' },
   idempotency_key_conflict: {
     status: 409,
@@ -27,6 +31,7 @@ const DEFINITIONS: Record<ProblemCode, ProblemDefinition> = {
     title: 'この書籍は予約順 1 位の利用者にだけ貸し出せます',
   },
   patron_not_registered: { status: 409, title: '登録されていない利用者には貸し出せません' },
+  no_active_loan: { status: 409, title: 'この書籍には返却できる貸出がありません' },
 };
 
 export function problem(

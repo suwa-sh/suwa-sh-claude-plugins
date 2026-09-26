@@ -17,6 +17,9 @@ post:
     - 登録されていない (論理削除済みを含む) 利用者には貸し出せない。
     貸し出せないときは 409 を返し、貸出を記録せず、書籍状態と予約状態を変えない。
     成功すると書籍状態を貸出中 (on_loan) にする。
+  x-test-headers:
+    Authorization: "Bearer test-librarian-token"
+    Idempotency-Key: "{uuid}"
   parameters:
     - $ref: "../openapi.yaml#/components/parameters/IdempotencyKey"
   requestBody:

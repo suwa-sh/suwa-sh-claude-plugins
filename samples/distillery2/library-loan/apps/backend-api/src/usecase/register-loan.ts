@@ -5,7 +5,6 @@
  * 貸し出せないときは貸出・書籍・予約に何も書き込まない (初回の応答だけを Idempotency-Key に保存する)。
  * 更新は 1 トランザクションで行う。
  */
-import { createHash } from 'node:crypto';
 import type {
   Loan,
   LoanRegistration,
@@ -13,6 +12,13 @@ import type {
 } from '../../../../packages/contracts/library-api/types';
 import { toCalendarDate } from '../domain/loan/calendar-date';
 import { completesReservation, type LendBookRejection, lendBook } from '../domain/loan/lend-book';
+import { isLibrarian } from './authorization';
+import {
+  hashRequest,
+  type IdempotentOutcome,
+  type RecordedResponse,
+  runIdempotently,
+} from './idempotent-command';
 import type {
   BookRepository,
   Clock,
@@ -53,19 +59,14 @@ export type RegisterLoanDecision =
       queueStanding: QueueStanding;
     };
 
-/** 利用者に返す応答 (契約 idempotency_keys の response_status / response_body と同じ形) */
-export type RecordedResponse = { status: number; body: string | null };
+export type { RecordedResponse };
 
 /** 判定結果を応答に変換する (presentation が実装する)。usecase は保存と再送時の再生だけを行う */
 export interface RegisterLoanResponder {
   render(decision: RegisterLoanDecision): RecordedResponse;
 }
 
-export type RegisterLoanOutcome =
-  | { kind: 'decided'; decision: RegisterLoanDecision; response: RecordedResponse }
-  | { kind: 'replayed'; response: RecordedResponse }
-  | { kind: 'forbidden' }
-  | { kind: 'idempotency_key_conflict'; idempotencyKey: string };
+export type RegisterLoanOutcome = IdempotentOutcome<RegisterLoanDecision> | { kind: 'forbidden' };
 
 export type RegisterLoanDeps = {
   responder: RegisterLoanResponder;
@@ -82,13 +83,14 @@ export type RegisterLoanDeps = {
 };
 
 export interface RegisterLoan {
+  /** 主体がこの操作を呼べるか (入力検証より先に判定するため presentation が先に問い合わせる。AssumptionRecord A-106) */
+  isAllowed(principal: Principal): boolean;
   execute(command: RegisterLoanCommand): Promise<RegisterLoanOutcome>;
 }
 
 /** 同じキーで本文が異なる再送を見分けるための要求本文のハッシュ (AssumptionRecord A-005) */
 export function hashRegisterLoanRequest(request: RegisterLoanRequest): string {
-  const canonical = JSON.stringify({ bookId: request.bookId, patronNumber: request.patronNumber });
-  return createHash('sha256').update(canonical).digest('hex');
+  return hashRequest({ bookId: request.bookId, patronNumber: request.patronNumber });
 }
 
 function queueStanding(
@@ -152,9 +154,10 @@ async function decide(
 
 export function createRegisterLoan(deps: RegisterLoanDeps): RegisterLoan {
   return {
+    isAllowed: isLibrarian,
     async execute(command) {
       // 司書専用の操作はロールで判定する (ADR 0006)
-      if (command.principal.role !== 'librarian') {
+      if (!isLibrarian(command.principal)) {
         return { kind: 'forbidden' };
       }
       const { request } = command;
@@ -163,35 +166,11 @@ export function createRegisterLoan(deps: RegisterLoanDeps): RegisterLoan {
         principalSubject: command.principal.subject,
         operationId: REGISTER_LOAN_OPERATION_ID,
       };
-      const requestHash = hashRegisterLoanRequest(request);
-
-      return deps.unitOfWork.run<RegisterLoanOutcome>(async () => {
-        const stored = await deps.idempotency.find(scope);
-        if (stored) {
-          if (stored.requestHash !== requestHash) {
-            return { kind: 'idempotency_key_conflict', idempotencyKey: command.idempotencyKey };
-          }
-          // 同じキーの再送には、成功・拒否を問わず初回の応答をそのまま返す (契約 parameters/IdempotencyKey)
-          return {
-            kind: 'replayed',
-            response: { status: stored.responseStatus, body: stored.responseBody },
-          };
-        }
-
-        const now = deps.clock.now();
-        const decision = await decide(deps, {
-          request,
-          actorSubject: command.principal.subject,
-          now,
-        });
-        // 拒否 (409) や書籍不在の応答も、貸出と同じトランザクションで保存する (AssumptionRecord A-005)
-        const response = deps.responder.render(decision);
-        await deps.idempotency.save(
-          scope,
-          { requestHash, responseStatus: response.status, responseBody: response.body },
-          now,
-        );
-        return { kind: 'decided', decision, response };
+      return runIdempotently(deps, {
+        scope,
+        requestHash: hashRegisterLoanRequest(request),
+        decide: (now) => decide(deps, { request, actorSubject: command.principal.subject, now }),
+        render: (decision) => deps.responder.render(decision),
       });
     },
   };

@@ -1,0 +1,110 @@
+schema_version: "2.1"
+uc: "register-return"
+tier: "backend-api"
+attempt: 1
+extraction:
+  candidate_count: 14
+  excluded_as_explicit: 5
+  recorded_count: 9
+  # 除外した 5 件 (契約 registerReturn の description / responses に明示):
+  #   判定順序 401 → 403 → 400 → 404 / 409、書籍不在 (論理削除済みを含む) は 404、未返却の貸出が無ければ 409 no_active_loan、
+  #   延滞の貸出も返却済にし予約状態は変えない、返却通知の outbox は UC notify-reserved-book-returned で扱う
+assumptions:
+  - id: A-101
+    category: data_format
+    title: "返却日の当日は Asia/Tokyo で決める"
+    assumption: "返却日 (サーバーの当日の日付) を、貸出日と同じ Asia/Tokyo タイムゾーンの暦日で決める"
+    target: "apps/backend-api/src/usecase/register-return.ts:94"
+    reason: "契約は「返却日はサーバーの当日の日付とする」とだけ書き、どのタイムゾーンの当日かが無い。貸出日 (register-loan の A-002) と同じ規則にそろえた"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-return/contract-slice.json#/paths/~1returns/post/description"
+      - "contracts/generated/slices/register-return/contract-slice.json#/components/schemas/RegisterReturnRequest"
+      - "docs/rules/common.md#推奨 (時刻精度は契約に定義されるまで確定しない)"
+  - id: A-102
+    category: error_handling
+    title: "返却可否は未返却の貸出の有無で判定"
+    assumption: "返却できるかを書籍状態ではなく、書籍に貸出状態が on_loan または overdue の貸出があるかで判定する。書籍状態が貸出中でも未返却の貸出が無ければ 409 no_active_loan、未返却の貸出が複数あれば貸出日が最も新しいものを返却済にする"
+    target: "apps/backend-api/src/usecase/register-return.ts:88"
+    reason: "契約は「対象はその書籍の未返却の貸出」「未返却の貸出が無い書籍 (在庫あり・予約待ち) は返却できない」と書くが、書籍状態と貸出状態が食い違う場合の扱いと、未返却の貸出が複数ある場合の選び方が無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-return/contract-slice.json#/paths/~1returns/post/description"
+      - "docs/requirements/rdra/状態.tsv#書籍状態 貸出中 → 在庫あり / 予約待ち"
+      - "features/貸出業務/register-return.feature#未返却の貸出が無い書籍は返却を登録できない"
+  - id: A-103
+    category: data_format
+    title: "返却時のイベント種別の値"
+    assumption: "返却で追記するイベント種別を 書籍=returned、貸出=returned とし、payload は JSON 文字列 (書籍は loanId と状態の遷移 from/to、貸出は returnedOn と状態の遷移 from/to) にする"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:35"
+    reason: "rdb-slice の event_type は「値は UC で定める」とあり、この UC の値と payload の形が契約・要求に無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-return/rdb-slice.yaml#book_events"
+      - "contracts/generated/slices/register-return/rdb-slice.yaml#loan_events"
+  - id: A-104
+    category: persistence
+    title: "返却も業務判定後の応答を冪等キーに保存"
+    assumption: "Idempotency-Key には、書籍を引いた後の業務判定の応答 (201 返却・409 no_active_loan・404 書籍不在) を返却と同じトランザクションで保存し、同じキー・同じ本文の再送には保存した応答をそのまま返す。401・403・400 は保存しない。本文ハッシュは bookId だけの JSON の SHA-256、キーの範囲は operationId registerReturn で貸出と分ける。本文が違う再送は 409 idempotency_key_conflict"
+    target: "apps/backend-api/src/usecase/register-return.ts:124"
+    reason: "契約 parameters/IdempotencyKey と idempotency_keys は「同じキーの再送に初回と同じ応答を返す」と定めるが、どの応答を保存するか・本文ハッシュの算出方法・本文不一致時の応答は無い。register-loan の A-005 と同じ規則を共通部品 (usecase/idempotent-command.ts) にまとめて当てた"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-return/contract-slice.json#/components/parameters/IdempotencyKey"
+      - "contracts/generated/slices/register-return/rdb-slice.yaml#idempotency_keys"
+      - "docs/rules/common.md#ADR 0005"
+  - id: A-105
+    category: persistence
+    title: "書籍と未返却の貸出を行ロックして返却"
+    assumption: "1 トランザクションの中で書籍と未返却の貸出を SELECT ... FOR UPDATE でロックしてから判定し、スナップショット更新は version 一致を条件にする。予約中の予約の有無はロックせずに読む。版が合わなければ例外で全体を巻き戻し 500 を返す"
+    target: "apps/backend-api/src/repository/pg-loan-repositories.ts:287"
+    reason: "ADR 0004 は snapshot を events と同じトランザクションで更新することと version (楽観ロック) を定めるが、同じ書籍の同時返却の防ぎ方、返却と予約の同時発生の扱い、競合時の応答が無い"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0004"
+      - "contracts/generated/slices/register-return/rdb-slice.yaml#loans.version"
+      - "contracts/generated/slices/register-return/contract-slice.json#/paths/~1returns/post/responses"
+  - id: A-106
+    category: security
+    title: "403 を入力検証より先に判定する"
+    assumption: "presentation は認証 (401) の直後に usecase の isAllowed (司書ロールか) を問い合わせ、司書以外なら本文と Idempotency-Key の検証 (400) より先に 403 を返す。usecase の execute も同じ判定を持つ。この順序を registerLoan にも当て、司書以外が不正な本文で貸出を呼んだときも 400 でなく 403 を返す"
+    target: "apps/backend-api/src/presentation/http-app.ts:128"
+    reason: "registerReturn の判定順序 401 → 403 → 400 は契約に明示されているが、ADR 0006 は認可を usecase で判定すると定めるため、入力検証より先に認可を判定する結線の方法 (usecase への問い合わせ) は契約・ルールに無い。registerLoan の契約には 403 と判定順序が無く、共通の入口にそろえたのは実装者の判断"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-return/contract-slice.json#/paths/~1returns/post/description"
+      - "docs/rules/tier-backend.md#ADR 0006"
+      - "contracts/generated/slices/register-loan/contract-slice.json#/paths/~1loans/post/responses"
+  - id: A-107
+    category: security
+    title: "テスト入口のヘッダ補完を廃止"
+    assumption: "テスト用 composition root (createTestApp) は Authorization と Idempotency-Key を補わない (register-loan の A-009 を撤回)。features/support/composition.ts が defaultHeaders false を渡しているため、TestAppOptions に defaultHeaders?: false の型だけ非推奨として残し、値は無視する"
+    target: "apps/backend-api/src/test-app.ts:42"
+    reason: "契約の x-test-headers により生成テストがヘッダを自分で送るようになり、補完が残ると 401 の契約テストが通らない (issues/20260926T1400_register-return-error-responses.md)。features/ は backend-api の write-set 外なので、呼び出し側の引数は残して型の互換だけを保った"
+    confidence: high
+    spec_refs:
+      - "apps/backend-api/test/contract/registerReturn.test.ts"
+      - "contracts/generated/slices/register-return/contract-slice.json#/paths/~1returns/post/x-test-headers"
+      - "docs/rules/testing.md#契約テスト (③) は契約から生成する"
+  - id: A-108
+    category: data_format
+    title: "返却の example 前提データの補い方"
+    assumption: "契約テスト用の前提データに、registerReturn の examples の書籍・貸出 (loanId・patronNumber・loanedOn・dueDate と返却前の status) を入れる。successWithReservation の予約は契約に予約IDが無いため仮の UUID e3a9c5b1-6d2f-4b8a-9c4e-7f1a3d5b9e2c で、別の利用者 P-00000002 の予約順 1 位・予約中として置く。時計は 2026-10-01 のままにし、返却日は example の 2026-10-15 ではなく 2026-10-01 になる"
+    target: "apps/backend-api/src/test-fixtures/contract-examples.ts:37"
+    reason: "契約テストはスキーマ適合だけを確かめ、example の値との一致は求めない。予約の予約ID・予約者と、時計を example の returnedOn に合わせるかは契約に無い。時計を 2026-10-15 に変えると registerLoan の example (loanedOn 2026-10-01) と両立しないため据え置いた"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-return/contract-slice.json#/paths/~1returns/post/requestBody/content/application~1json/examples"
+      - "contracts/generated/slices/register-return/contract-slice.json#/paths/~1returns/post/responses/201"
+      - "docs/rules/testing.md#ADR 0007"
+  - id: A-109
+    category: error_handling
+    title: "401・404 の見出しを契約の文言にそろえる"
+    assumption: "Problem の title を契約 example の文言にそろえ、401 を「認証が必要です」、404 を「対象が見つかりません」に変える。registerLoan の 401 / 404 の title も同じ文言に変わる (registerLoan の 404 の detail は従来の「は登録されていません」のまま)"
+    target: "apps/backend-api/src/presentation/problem.ts:19"
+    reason: "契約の components/responses/Unauthorized と registerReturn の notFound の example が文言を持つが、ProblemCode ごとに title を 1 つに固定するか、operation ごとに変えるかは契約に無い。code ごとに 1 つの文言にした"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/register-return/contract-slice.json#/components/responses/Unauthorized"
+      - "contracts/generated/slices/register-return/contract-slice.json#/paths/~1returns/post/responses/404"
+      - "docs/rules/common.md#推奨 (エラーは利用者が直せる言葉で返す)"

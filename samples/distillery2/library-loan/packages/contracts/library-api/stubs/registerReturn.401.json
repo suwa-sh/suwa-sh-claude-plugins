@@ -1,0 +1,6 @@
+{
+  "code": "unauthorized",
+  "status": 401,
+  "title": "認証が必要です",
+  "type": "https://library.example/problems/unauthorized"
+}
