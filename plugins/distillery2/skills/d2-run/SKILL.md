@@ -99,7 +99,8 @@ Agent ツールの別名 (`opus` 等) しか分からないときは別名のま
 | **deliver** | git-delivery.md の手順で squash → push → PR。配送の記録は commit に入れず `reports/delivered.json` に書く。`use-cases.yaml` の `status: done` は PR merge 後の次 run で更新する | `gh pr list --head feature/<slug>` に PR がある (done ファイルは作らない) |
 
 verify と review の前提: `reports/gates.json` が `all_recorded: true` で全段 pass。部分実行の後は
-`runGates.js --uc <slug>` を引数なしで 1 回通し、全段の証跡を揃えてから verify に進む。
+`runGates.js --uc <slug> --tiers <関与ティア>` で 1 回通し、全段の証跡を揃えてから verify に進む
+(`--tiers` を省くと config の全ティアに unit が走り、UC に関与しないティア (テスト 0 件) で落ちる。0.1.13 の実走で worker が落ちた)。
 
 attempt++ のとき: 戻すティアの `tier` 以降の done を `runState.js invalidate` で退避し、`attemptDir(n+1)` を作り、
 前 attempt の findings パスを tier の派遣に渡す。戻さないティアの assumptions は新 attempt に複製し (carry-forward)、

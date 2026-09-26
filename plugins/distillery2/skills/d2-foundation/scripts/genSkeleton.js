@@ -124,7 +124,9 @@ function existingBiomeVersion(cwd) {
 }
 
 // 生成物 (契約の codegen / bundle / Storybook 出力) はルートの整形・lint から外す (`!!` = フォルダごと無視)
-const BIOME_FILES_INCLUDES = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app'];
+// 契約テスト (生成物) はここでも外す: 生成 .ts 先頭の `biome-ignore-all format` は biome 2.2.5 では効かない (0.1.13 実走で実測。2.5.14 では効く)。
+// `!!` (フォルダごと無視) は 2.2.5 では `**` 入りを受け付けないので、こちらは `!` + `/**` で書く
+const BIOME_FILES_INCLUDES = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract/**'];
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
 const biomeJson = (biomeVersion) => JSON.stringify({
   $schema: `https://biomejs.dev/schemas/${biomeVersion}/schema.json`,
@@ -341,10 +343,13 @@ function migrateRootTypesNode(cwd, changes) {
 function migrateBiomeIncludes(cwd, changes) {
   const p = path.resolve(cwd, 'biome.json');
   const cfg = readJsonSafe(p);
-  if (!cfg || cfg.files?.includes) return;
-  cfg.files = { ...(cfg.files || {}), includes: BIOME_FILES_INCLUDES };
+  if (!cfg) return;
+  const cur = Array.isArray(cfg.files?.includes) ? cfg.files.includes : null;
+  const missing = BIOME_FILES_INCLUDES.filter((x) => !cur || !cur.includes(x));
+  if (!missing.length) return;
+  cfg.files = { ...(cfg.files || {}), includes: cur ? [...cur, ...missing] : BIOME_FILES_INCLUDES };
   fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\n');
-  changes.push('biome.json: files.includes に生成物ディレクトリの除外を追加');
+  changes.push(`biome.json: files.includes に生成物の除外を追加 (${missing.join(', ')})`);
 }
 
 function migrate(cwd, biomeVersion, tiers = []) {
