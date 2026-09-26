@@ -71,6 +71,11 @@ test('既存 use-cases の no_spec_reason (blocked の理由) を引き継ぐ (�
   // 既存に無ければキーごと出さない
   const other = Object.values(byUc).find(u => u.uc !== '貸出を登録する');
   assert.ok(other && !('no_spec_reason' in other), '既存に無ければキーごと出さない');
+  // blocked の UC に新しい候補が付いても spec_ids には入れない (理由と両立しない)。候補は spec_ids_added にだけ出て validate を通る (Codex 0.1.16 指摘 2)
+  const loan = byUc['貸出を登録する'];
+  assert.deepEqual(loan.spec_ids, [], 'spec_ids は空のまま');
+  assert.ok(Array.isArray(loan.spec_ids_added) && loan.spec_ids_added.length > 0, '候補は spec_ids_added に出る');
+  assert.equal(loan.status, 'blocked'); assert.equal(loan.no_spec_reason, '要求に無い (テスト)');
 });
 
 test('spec_ids は既存値と新推定候補の和集合になり、追加分を spec_ids_added に記録する', () => {

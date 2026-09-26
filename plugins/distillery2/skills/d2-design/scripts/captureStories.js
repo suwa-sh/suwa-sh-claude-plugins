@@ -60,11 +60,20 @@ function readStoryIndex(buildDir) {
  */
 function serveStatic(root) {
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff': 'font/woff', '.woff2': 'font/woff2', '.map': 'application/json' };
+  const realRoot = fs.realpathSync(root);
+  // 配信ルートの外は返さない: 文字列の前方一致ではなく path.relative で境界を見る (root=/a/static に対する /a/static2 を弾く)。
+  // シンボリックリンクで外に出るものも realpath で弾く (Codex 0.1.16 指摘 1)
+  const inside = (p) => { const rel = path.relative(realRoot, p); return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel); };
   const server = http.createServer((req, res) => {
     let p;
-    try { p = path.join(root, decodeURIComponent(new URL(req.url, 'http://x').pathname)); } catch { res.writeHead(400); res.end(); return; }
-    if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');
-    if (!p.startsWith(root) || !fs.existsSync(p)) { res.writeHead(404); res.end(); return; }
+    // realRoot 基準で解決する (macOS の /var → /private/var のように root 自体がシンボリックリンク配下でも境界判定が合う)
+    try { p = path.resolve(realRoot, '.' + decodeURIComponent(new URL(req.url, 'http://x').pathname)); } catch { res.writeHead(400); res.end(); return; }
+    if (!inside(p) || !fs.existsSync(p)) { res.writeHead(404); res.end(); return; }
+    if (fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');
+    let real;
+    try { real = fs.realpathSync(p); } catch { res.writeHead(404); res.end(); return; }
+    if (!inside(real) || !fs.statSync(real).isFile()) { res.writeHead(404); res.end(); return; }
+    p = real;
     res.writeHead(200, { 'content-type': types[path.extname(p)] || 'application/octet-stream' });
     fs.createReadStream(p).pipe(res);
   });
@@ -156,7 +165,7 @@ async function run(opts) {
     console.error(`目視未実施: chromium の起動または撮影に失敗した (${e && e.message ? e.message : e})`);
     return { code: 2, reason: 'capture_failed', stories };
   } finally {
-    if (browser) await browser.close();
+    try { if (browser) await browser.close(); } catch { /* 閉じられなくても配信サーバは止める */ }
     if (served) served.server.close();
   }
   // 撮影成功後、現行の Story ID に対応しない古い PNG を除く (証跡を実行履歴に依存させない)。

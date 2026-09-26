@@ -163,7 +163,10 @@ function generate(reqData, bucText, existingById) {
     const prevSpecs = Array.isArray(prev.spec_ids) ? prev.spec_ids : [];
     const prevRejected = Array.isArray(prev.spec_ids_rejected) ? prev.spec_ids_rejected : [];
     const candidates = inferredSpecs.filter((s) => !prevSpecs.includes(s) && !prevRejected.includes(s));
-    const specIds = Array.from(new Set([...prevSpecs, ...candidates])).sort();
+    // blocked (no_spec_reason あり) の UC は、新しい候補を spec_ids に入れない (理由と SPEC が両立せず validate が落ちる。Codex 0.1.16 指摘 2)。
+    // 候補は spec_ids_added にだけ出し、採用するなら LLM が spec_ids へ移して no_spec_reason を消す
+    const blockedWithReason = typeof prev.no_spec_reason === 'string' && prev.no_spec_reason !== '';
+    const specIds = Array.from(new Set(blockedWithReason ? prevSpecs : [...prevSpecs, ...candidates])).sort();
     const uc = {
       uc_id: id,
       business: g.business,

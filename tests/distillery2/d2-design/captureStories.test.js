@@ -138,3 +138,29 @@ test('撮影はローカル http 配信の URL で行う (file:// では ES modu
     if (prev === undefined) delete process.env.PLAYWRIGHT; else process.env.PLAYWRIGHT = prev;
   }
 });
+
+test('serveStatic は配信ルートの外 (隣のディレクトリ、シンボリックリンクの先) を返さない (Codex 0.1.16 指摘 1)', async () => {
+  const http = require('node:http');
+  const { serveStatic } = require('../../../plugins/distillery2/skills/d2-design/scripts/captureStories');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2cap-'));
+  const root = path.join(dir, 'static');
+  fs.mkdirSync(path.join(root, 'sub'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'static2'));
+  fs.writeFileSync(path.join(root, 'iframe.html'), 'ok');
+  fs.writeFileSync(path.join(root, 'sub/index.html'), 'sub');
+  fs.writeFileSync(path.join(dir, 'static2/secret.txt'), 'secret');
+  fs.writeFileSync(path.join(dir, 'outside.txt'), 'outside');
+  fs.symlinkSync(path.join(dir, 'outside.txt'), path.join(root, 'link.txt'));
+  const { server, origin } = await serveStatic(root);
+  const get = (p) => new Promise((resolve, reject) => http.get(origin + p, (res) => { let b = ''; res.on('data', (d) => { b += d; }); res.on('end', () => resolve({ status: res.statusCode, body: b })); }).on('error', reject));
+  try {
+    assert.deepEqual(await get('/iframe.html'), { status: 200, body: 'ok' });
+    assert.deepEqual(await get('/sub/'), { status: 200, body: 'sub' }, 'ディレクトリは index.html');
+    assert.equal((await get('/%2e%2e%2fstatic2/secret.txt')).status, 404, '前方一致で通っていた隣のディレクトリ');
+    assert.equal((await get('/../static2/secret.txt')).status, 404);
+    assert.equal((await get('/link.txt')).status, 404, 'ルート外へのシンボリックリンク');
+    assert.equal((await get('/nope.html')).status, 404);
+  } finally {
+    server.close();
+  }
+});
