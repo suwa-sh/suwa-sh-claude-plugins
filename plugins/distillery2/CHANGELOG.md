@@ -2,6 +2,14 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.18] - 2026-09-26
+
+### Changed
+
+- トラブルシューティングを agent skills の形式に合わせ、スキルごとの `references/troubleshooting.md` に分割
+  (`d2-run`: npm 10 / headless の許可 / 補助スクリプト、`d2-foundation`: qlty / biome、`d2-contract`: 契約テスト)。プラグイン直下の `TROUBLESHOOTING.md` は削除
+- 実走の課題一覧 (`samples/distillery2/findings-*.md`) を git 管理から外す (作業メモは git 管理外の `tmp/` に置く)
+
 ## [0.1.17] - 2026-09-26
 
 ### Changed

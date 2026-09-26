@@ -101,3 +101,4 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
   node_modules に無ければ env で解決先を渡す。実行中の無断インストールはしない。
 - 生成テストが依存するライブラリ (ajv 8 / ajv-formats 3 / supertest / vitest / @electric-sql/pglite) は
   対象リポの devDependencies に入れる。バージョンは [`references/contract-tests.md`](references/contract-tests.md)。
+- 契約テストで踏んだ問題と回避策は [`references/troubleshooting.md`](references/troubleshooting.md)。
