@@ -1,0 +1,761 @@
+# distillery2 の処理と入出力の正本 (DFD)。
+# 手順書 (派遣表の write-set、各スキルの read-set / 読むもの・書くもの、基盤の phase 表、d2-run の直接の読み書き) と
+# tests/distillery2/integration/dataflow.test.js で照合する。図は scripts/genDataflow.js が dataflow.md に生成する。
+#
+# 置換変数: <slug> UC の slug / <tier> ティア ID / <n> attempt 番号 / <業務> <UC> 業務名・UC 名 /
+#           <run> = .distillery/runs/<slug> (手順書の <run> と同じ)
+# stores[].origin: external = 外部入力 / packaged = プラグイン同梱 (書き手を要求しない) / produced = 処理が生成
+# stores[].terminal: true = 最終成果物 (読み手を要求しない)
+# stores[].aliases: 手順書での略記 (照合に使う)
+# stores[].scope_only: true = 許可範囲を表すためだけの store (allowed_writes 専用。書き手・読み手を要求しない)
+# stores[].outside_repo: true = リポの外 (GitHub)。手順書のパス照合から外す
+# processes[].stage: stages の id。d2-run の ④ の直接作業は段階をまたぐので `uc`
+# processes[].parent: 内訳の処理 (phase ごとのスクリプト、d2-run が回すスクリプト) の親。subagent の親は子の和を含む (派遣表の write-set と照合するため)
+# processes[].scripts: 手順書の読む / 書くの節に出てくるスクリプト名 (パスとして照合しない)
+# processes[].writes: 実際に書くもの / allowed_writes: 派遣文で許す範囲 (subagent のみ。writes を含む)
+# processes[].notes: 派遣文の write-set にあるパスでない制約・例外の文言 (手順書と同じ文字列)
+schema_version: distillery2.dataflow/v1
+
+stages:
+  - id: requirements
+    name: ① 要求
+  - id: decide
+    name: ② 決定
+  - id: foundation
+    name: ③ 基盤
+  - id: scenario
+    name: ④ scenario
+  - id: contract
+    name: ④ contract
+  - id: scaffold
+    name: ④ scaffold
+  - id: tier
+    name: ④ tier
+  - id: contract-gate
+    name: ④ contract-gate
+  - id: integrate
+    name: ④ integrate
+  - id: verify
+    name: ④ verify
+  - id: review
+    name: ④ review
+  - id: asbuilt
+    name: ④ asbuilt
+  - id: feedback
+    name: ④ feedback
+  - id: deliver
+    name: ④ deliver
+
+stores:
+  # ---- 外部入力・同梱 ----
+  - id: request-text
+    name: 要望テキスト
+    path: "<要望テキスト>"
+    origin: external
+  - id: rule-templates
+    name: ルールのひな形 (同梱)
+    path: "skills/d2-foundation/references/rule-templates/**"
+    origin: packaged
+    aliases:
+      - "references/rule-templates/"
+  - id: support-templates
+    name: テスト基盤のひな形 (同梱)
+    path: "skills/d2-foundation/templates/**"
+    origin: packaged
+    aliases:
+      - "templates/test-support/"
+      - "templates/features-support/"
+      - "templates/cucumber.js"
+  - id: skill-docs
+    name: スキルの手順書 (同梱)
+    path: "${CLAUDE_PLUGIN_ROOT}/skills/**"
+    origin: packaged
+  # ---- ① 要求 ----
+  - id: req-usdm
+    name: 要求 (USDM)
+    path: "docs/requirements/requirements.yaml"
+    origin: produced
+    aliases:
+      - "requirements.yaml"
+      - "docs/requirements/requirements.md"
+      - "requirements.md"
+  - id: req-rdra
+    name: RDRA モデル
+    path: "docs/requirements/rdra/**"
+    origin: produced
+    aliases:
+      - "rdra/*.tsv"
+      - "docs/requirements/rdra/*.tsv"
+      - "docs/requirements/rdra/"
+      - "条件.tsv"
+      - "状態.tsv"
+      - "情報.tsv"
+      - "BUC.tsv"
+  - id: use-cases
+    name: UC 一覧
+    path: "docs/requirements/use-cases.yaml"
+    origin: produced
+    aliases:
+      - "use-cases.yaml"
+  - id: req-review
+    name: 要求の確認材料
+    path: "docs/requirements/_review-summary.md"
+    origin: produced
+  - id: requirements-dir
+    name: 要求のディレクトリ全体 (許可範囲)
+    path: "docs/requirements/**"
+    origin: produced
+    scope_only: true
+  # ---- ② 決定 ----
+  - id: nfr
+    name: 非機能要求グレード表
+    path: "docs/nfr/**"
+    origin: produced
+    aliases:
+      - "docs/nfr/nfr-grade.yaml"
+      - "nfr-grade.md"
+  - id: adr
+    name: ADR
+    path: "docs/adr/*.md"
+    origin: produced
+    aliases:
+      - "docs/adr/"
+      - "docs/adr/NNNN-<slug>.md"
+      - "docs/adr/index.md"
+  - id: adr-architecture
+    name: C4 図 (決定から)
+    path: "docs/adr/architecture.md"
+    origin: produced
+    terminal: true
+  - id: adr-review
+    name: 決定の確認材料
+    path: "docs/adr/_review-summary.md"
+    origin: produced
+  - id: adr-dir
+    name: ADR のディレクトリ全体 (許可範囲)
+    path: "docs/adr/**"
+    origin: produced
+    scope_only: true
+  # ---- ③ 基盤 ----
+  - id: rules
+    name: 開発ルール
+    path: "docs/rules/**"
+    origin: produced
+    aliases:
+      - "docs/rules/common.md"
+      - "docs/rules/tier-<kind>.md"
+      - "docs/rules/testing.md"
+      - "docs/rules/index.md"
+  - id: depcruise-config
+    name: 依存方向の検査設定
+    path: ".dependency-cruiser.cjs"
+    origin: produced
+  - id: test-support
+    name: テスト基盤 (tracer・World)
+    path: "packages/test-support/**"
+    origin: produced
+    aliases:
+      - "packages/test-support/README.md"
+  - id: features-support
+    name: Cucumber の support
+    path: "features/support/**"
+    origin: produced
+  - id: cucumber-config
+    name: Cucumber 設定
+    path: "cucumber.js"
+    origin: produced
+  - id: config
+    name: 実行設定
+    path: ".distillery/config.yaml"
+    origin: produced
+  - id: skeleton
+    name: リポの骨格 (package.json・apps/*・packages/*)
+    path: "package.json"
+    origin: produced
+    aliases:
+      - "apps/*/"
+      - "packages/*/"
+      - "tsconfig.base.json"
+      - ".gitignore"
+      - "biome.json"
+  - id: lockfile
+    name: 依存の lockfile
+    path: "package-lock.json"
+    origin: produced
+  - id: ci
+    name: CI
+    path: ".github/workflows/**"
+    origin: produced
+    terminal: true
+    aliases:
+      - ".github/workflows/ci.yml"
+  - id: qlty-config
+    name: qlty 設定
+    path: ".qlty/qlty.toml"
+    origin: produced
+  - id: contracts-catalog
+    name: 契約カタログ
+    path: "contracts/contracts.json"
+    origin: produced
+  - id: contracts-src
+    name: 契約の分割ファイル
+    path: "contracts/**"
+    origin: produced
+  - id: uc-index
+    name: UC ごとの契約の索引
+    path: "contracts/uc-index.yaml"
+    origin: produced
+  - id: contract-slice
+    name: UC の契約 slice
+    path: "contracts/generated/slices/<slug>/**"
+    origin: produced
+    aliases:
+      - "contracts/generated/slices/<slug>/contract-slice.json"
+      - "rdb-slice.yaml"
+  - id: contract-tests
+    name: 契約テスト (生成物)
+    path: "apps/*/test/contract/**"
+    origin: produced
+  - id: migrations
+    name: DB migration (datastore_owner のティア)
+    path: "apps/<tier>/migrations/**"
+    origin: produced
+    aliases:
+      - "apps/<datastore_owner>/migrations/**"
+      - "apps/<tier>/migrations/"
+  - id: contracts-code
+    name: 契約からの codegen
+    path: "packages/contracts/**"
+    origin: produced
+    aliases:
+      - "packages/contracts/<id>/"
+      - "packages/contracts/<id>/client.ts"
+      - "packages/contracts/<id>/types.ts"
+      - "packages/contracts/<id>/server.ts"
+      - "server.ts"
+  - id: design
+    name: デザインシステム (Storybook アプリ)
+    path: "docs/design/**"
+    origin: produced
+    aliases:
+      - "docs/design/screens.yaml"
+  - id: ui
+    name: 画面部品
+    path: "packages/ui/**"
+    origin: produced
+    aliases:
+      - "packages/ui/"
+  # ---- ④ UC ----
+  - id: feature
+    name: UC シナリオ
+    path: "features/<業務>/<slug>.feature"
+    origin: produced
+    aliases:
+      - "features/**/*.feature"
+  - id: acceptance
+    name: 受入シナリオ
+    path: "features/acceptance/**"
+    origin: produced
+  - id: steps
+    name: step 定義
+    path: "features/step_definitions/**"
+    origin: produced
+    aliases:
+      - "features/step_definitions/<slug>.steps.ts"
+  - id: tier-src
+    name: ティアの実装と単体テスト
+    path: "apps/<tier>/src/**"
+    origin: produced
+    aliases:
+      - "apps/<tier>/src/**/*.test.ts"
+      - "src/test-app.ts"
+  - id: tier-dir
+    name: ティアのディレクトリ全体 (許可範囲)
+    path: "apps/<tier>/**"
+    origin: produced
+    scope_only: true
+  - id: run-events
+    name: 実行の記録 (events / done)
+    path: "<run>/events.jsonl"
+    origin: produced
+    aliases:
+      - "<run>/stages/**"
+  - id: assumptions
+    name: 実装者が補った前提
+    path: "<run>/attempt-<n>/assumptions.<tier>.yaml"
+    origin: produced
+  - id: findings
+    name: Verifier の指摘
+    path: "<run>/attempt-<n>/findings.<tier>.yaml"
+    origin: produced
+    aliases:
+      - "findings.<tier>.yaml"
+  - id: issues
+    name: 仕様起因の課題
+    path: "<run>/issues/**"
+    origin: produced
+  - id: issues-tier
+    name: ティア実装者の課題
+    path: "<run>/issues/<ts>_<tier>_<slug>.md"
+    origin: produced
+    aliases:
+      - ".distillery/runs/<slug>/issues/<ts>_<tier>_<slug>.md"
+  - id: reports
+    name: ゲートの記録
+    path: "<run>/reports/**"
+    origin: produced
+    aliases:
+      - "<run>/reports/gates.json"
+      - "unit.<tier>.json"
+      - "contract.<tier>.json"
+      - "uc-bdd.json"
+      - "acceptance-api.json"
+  - id: traces
+    name: 計装トレース
+    path: "<run>/traces/**"
+    origin: produced
+  - id: asbuilt-uc
+    name: UC の as-built
+    path: "docs/as-built/<業務>/<UC>/**"
+    origin: produced
+  - id: asbuilt-index
+    name: UC の as-built の index.md (要約ブロックを含む)
+    path: "docs/as-built/<業務>/<UC>/index.md"
+    origin: produced
+  - id: asbuilt-system
+    name: システム横断の as-built
+    path: "docs/as-built/_system/**"
+    origin: produced
+    aliases:
+      - "docs/as-built/_system/traceability-index.json"
+  - id: docs-readme
+    name: 文書の入口
+    path: "docs/README.md"
+    origin: produced
+    terminal: true
+  - id: github
+    name: GitHub (PR / issue)
+    path: "(GitHub)"
+    origin: produced
+    terminal: true
+    outside_repo: true
+
+processes:
+  # ================= ① 要求 =================
+  - id: requirements
+    name: 要求の整理
+    skill: d2-requirements
+    stage: requirements
+    kind: subagent
+    template_row: "① 要求"
+    reads: [request-text]
+    writes: [req-usdm, req-rdra, use-cases, req-review]
+    allowed_writes: [requirements-dir]
+  # ================= ② 決定 =================
+  - id: decide
+    name: 品質特性と設計の決定
+    skill: d2-decide
+    stage: decide
+    kind: subagent
+    template_row: "② 決定"
+    reads: [req-usdm, req-rdra, use-cases]
+    writes: [nfr, adr, adr-review]
+    allowed_writes: [nfr, adr-dir]
+  # ================= ③ 基盤 =================
+  - id: foundation
+    name: 基盤の生成 (F1〜F5)
+    skill: d2-foundation
+    stage: foundation
+    kind: subagent
+    template_row: "③ 基盤 (機械)"
+    reads: [adr, rule-templates, support-templates, contracts-catalog, config]
+    writes: [rules, depcruise-config, test-support, features-support, cucumber-config, config, skeleton, ci, qlty-config]
+    allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, config, skeleton, ci, qlty-config]
+  - id: foundation.F1
+    name: F1 ルール
+    parent: foundation
+    stage: foundation
+    kind: script
+    phase: F1
+    reads: [adr, rule-templates]
+    writes: [rules]
+  - id: foundation.F2
+    name: F2 依存方向の検査
+    parent: foundation
+    stage: foundation
+    kind: script
+    phase: F2
+    reads: [adr]
+    writes: [depcruise-config]
+  - id: foundation.F3
+    name: F3 テスト基盤
+    parent: foundation
+    stage: foundation
+    kind: script
+    phase: F3
+    reads: [support-templates]
+    writes: [test-support, features-support, cucumber-config]
+  - id: foundation.F4
+    name: F4 契約テスト (d2-contract に委譲)
+    parent: foundation
+    stage: foundation
+    kind: script
+    phase: F4
+    delegated_to: contract.uc
+    reads: []
+    writes: []
+  - id: foundation.F5
+    name: F5 設定・骨格・CI・qlty
+    parent: foundation
+    stage: foundation
+    kind: script
+    phase: F5
+    reads: [adr, contracts-catalog, config]
+    writes: [config, skeleton, ci, qlty-config]
+  - id: contract.skeleton
+    name: 契約の骨格
+    skill: d2-contract
+    mode: skeleton
+    stage: foundation
+    kind: subagent
+    template_row: "③ 契約骨格"
+    reads: [adr]
+    writes: [contracts-catalog, contracts-src, uc-index]
+    allowed_writes: [contracts-src]
+  - id: design
+    name: デザインシステムの生成
+    skill: d2-design
+    stage: foundation
+    kind: subagent
+    template_row: "③ 画面部品"
+    reads: [req-rdra, use-cases, adr, nfr]
+    writes: [design]
+    allowed_writes: [design]
+  # ================= ④ UC =================
+  - id: implement.scenario
+    name: UC シナリオの執筆
+    skill: d2-implement
+    mode: scenario
+    stage: scenario
+    kind: subagent
+    template_row: "④ scenario"
+    reads: [use-cases, req-usdm, req-rdra, rules, feature]
+    writes: [feature, acceptance]
+    allowed_writes: [feature, acceptance, issues]
+  - id: contract.uc
+    name: 契約の差分
+    skill: d2-contract
+    mode: uc
+    stage: contract
+    kind: subagent
+    template_row: "④ contract"
+    reads: [use-cases, feature, req-rdra, contracts-src]
+    writes: [contracts-src, uc-index, contract-slice, contract-tests, migrations, contracts-code, issues]
+    allowed_writes: [contracts-src, contract-tests, migrations, contracts-code, issues]
+  - id: implement.scaffold
+    name: テスト足場の生成
+    skill: d2-implement
+    mode: scaffold
+    stage: scaffold
+    kind: subagent
+    template_row: "④ scaffold"
+    reads: [feature, acceptance, steps, features-support, test-support, contract-slice, rules, config]
+    writes: [steps, tier-src, reports]
+    allowed_writes: [steps, tier-src, reports]
+    scripts: [runGates.js]
+    notes:
+      - "テストが import する入口の最小スタブ。**新規ファイルだけ**。既存ファイルの変更・削除は不可"
+      - "完了条件の `--expect-red unit` が書く。単独の段なので競合しない"
+  - id: implement.tier
+    name: ティアの実装
+    skill: d2-implement
+    mode: tier
+    stage: tier
+    kind: subagent
+    parallel: true
+    template_row: "④ tier"
+    reads: [rules, feature, contract-slice, contracts-code, use-cases, req-usdm, req-rdra, design, ui, tier-src, test-support, findings]
+    writes: [tier-src, assumptions, issues-tier, migrations]
+    allowed_writes: [tier-dir, assumptions, issues-tier]
+    notes:
+      - "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` の結果。リポの外。使い終えたら削除)"
+  - id: implement.integrate
+    name: 結合
+    skill: d2-implement
+    mode: integrate
+    stage: integrate
+    kind: subagent
+    template_row: "④ integrate"
+    reads: [feature, steps, features-support, test-support, contract-slice, tier-src, contracts-code, use-cases, config]
+    writes: [steps, features-support, reports, traces]
+    allowed_writes: [steps, features-support, reports, traces]
+    scripts: [runGates.js]
+    notes:
+      - "完了条件の runGates が書く。integrate は単独の段なので競合しない"
+  - id: verify
+    name: 独立検証
+    skill: d2-verify
+    stage: verify
+    kind: subagent
+    parallel: true
+    template_row: "④ verify"
+    reads: [reports, traces, assumptions, feature, use-cases, req-usdm, req-rdra, rules, contract-slice, tier-src, uc-index, asbuilt-system, skill-docs]
+    writes: [findings]
+    allowed_writes: [findings]
+  - id: asbuilt
+    name: as-built の要約
+    skill: d2-asbuilt
+    stage: asbuilt
+    kind: subagent
+    template_row: "④ asbuilt"
+    reads: [asbuilt-index, assumptions, tier-src]
+    writes: [asbuilt-index]
+    allowed_writes: [asbuilt-index]
+    notes:
+      - "要約ブロックの中だけ。sequence.md と _system はスクリプトの生成物"
+  # ================= d2-run の直接作業 =================
+  # run_table_row = d2-run SKILL「d2-run が直接読み書きするもの」の表の「処理」列 (その行の読む / 書くと照合する)
+  # 親 (run.early / run.foundation / run.uc) は d2-run 自身が直接読み書きするものだけ。図では子 (スクリプト) を親に畳む
+  - id: run.early
+    name: d2-run (① ②)
+    stage: decide
+    kind: orchestrator
+    actor: d2-run
+    run_table_row: "① ② の確認ページ"
+    reads: [req-review, adr-review]
+    writes: []
+  - id: run.early.docs-readme
+    name: 文書の入口の更新 (① ②)
+    parent: run.early
+    stage: decide
+    kind: script
+    actor: d2-run
+    scripts: [genDocsReadme.js]
+    run_table_row: "① ② の genDocsReadme.js"
+    reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules]
+    writes: [docs-readme]
+  - id: run.foundation
+    name: d2-run (③)
+    stage: foundation
+    kind: orchestrator
+    actor: d2-run
+    run_table_row: "③ の確認ページ"
+    reads: [config]
+    writes: []
+  - id: run.foundation.npm-install
+    name: 依存を入れる
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    run_table_row: "③ の npm install"
+    reads: [skeleton]
+    writes: [lockfile]
+  - id: run.foundation.qlty
+    name: qlty の提案を足す (③)
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    scripts: [genQlty.js]
+    run_table_row: "③ の genQlty.js --refresh"
+    reads: [skeleton, lockfile, qlty-config]
+    writes: [qlty-config]
+  - id: run.foundation.gen-config
+    name: 実行設定を契約込みで作り直す
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    scripts: [genConfig.js]
+    run_table_row: "③ の genConfig.js"
+    reads: [adr, contracts-catalog]
+    writes: [config]
+  - id: run.foundation.gen-ci
+    name: CI を作り直す
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    scripts: [genCi.js]
+    run_table_row: "③ の genCi.js"
+    reads: [config]
+    writes: [ci]
+  - id: run.foundation.gen-architecture
+    name: C4 図を契約込みで作り直す
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    scripts: [genArchitectureDoc.js]
+    run_table_row: "③ の genArchitectureDoc.js"
+    reads: [adr, contracts-catalog, req-rdra]
+    writes: [adr-architecture]
+  - id: foundation.F6
+    name: F6 画面部品の取り込み
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    phase: F6
+    scripts: [importUi.js]
+    run_table_row: "③ の importUi.js (F6)"
+    reads: [design]
+    writes: [ui]
+  - id: run.foundation.contract-tests
+    name: 契約テストの生成 (骨格分)
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    scripts: [genContractTests.js]
+    run_table_row: "③ の genContractTests.js"
+    reads: [contracts-src, config]
+    writes: [contract-tests, contracts-code]
+  - id: run.foundation.gates
+    name: 基盤のチェックポイント (runGates --uc bootstrap)
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    scripts: [runGates.js]
+    run_table_row: "③ の runGates.js --uc bootstrap"
+    reads: [config, skeleton, qlty-config, contract-tests, depcruise-config, reports]
+    writes: [reports]
+  - id: run.foundation.docs-readme
+    name: 文書の入口の更新 (③)
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    scripts: [genDocsReadme.js]
+    run_table_row: "③ の genDocsReadme.js"
+    reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules]
+    writes: [docs-readme]
+  - id: run.uc
+    name: d2-run (④)
+    stage: uc
+    kind: orchestrator
+    actor: d2-run
+    run_table_row: "④ の段階の進行・確認ページ・還流"
+    reads: [config, use-cases, run-events, reports, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system]
+    writes: [run-events, use-cases, github]
+  - id: run.uc.check-scenario
+    name: シナリオの静的確認
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [checkScenario.js]
+    run_table_row: "④ の checkScenario.js"
+    reads: [feature, acceptance, use-cases, req-usdm]
+    writes: []
+  - id: run.uc.compile-contracts
+    name: 契約の bundle の鮮度 (--check)
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [compileContracts.js]
+    run_table_row: "④ の compileContracts.js --check"
+    reads: [contracts-src]
+    writes: []
+  - id: run.uc.compile-rdb
+    name: RDB スキーマの鮮度 (--check)
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [compileRdbSchema.js]
+    run_table_row: "④ の compileRdbSchema.js --check"
+    reads: [contracts-src]
+    writes: []
+  - id: run.uc.validate-uc-index
+    name: UC の契約の索引の検査
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [validateUcIndex.js]
+    run_table_row: "④ の validateUcIndex.js"
+    reads: [uc-index, contracts-src]
+    writes: []
+  - id: run.uc.classify
+    name: 契約の変更の分類
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [classifyContractChanges.js]
+    run_table_row: "④ の classifyContractChanges.js"
+    reads: [uc-index, contract-tests, contracts-code, migrations, contract-slice]
+    writes: []
+  - id: run.uc.gates
+    name: ゲートの実行
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [runGates.js]
+    run_table_row: "④ の runGates.js"
+    reads: [config, skeleton, lockfile, cucumber-config, qlty-config, tier-src, contract-tests, migrations, feature, acceptance, steps, features-support, depcruise-config, reports]
+    writes: [reports, traces]
+  - id: run.uc.qlty
+    name: qlty の提案を足す (④)
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [genQlty.js]
+    run_table_row: "④ の genQlty.js --refresh"
+    reads: [skeleton, lockfile, qlty-config, tier-src]
+    writes: [qlty-config]
+  - id: run.uc.depcruise
+    name: 依存グラフの実態
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    run_table_row: "④ の depcruise"
+    reads: [depcruise-config, tier-src]
+    writes: [reports]
+  - id: run.uc.extract-asbuilt
+    name: as-built の抽出
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [extractAsBuilt.js]
+    run_table_row: "④ の extractAsBuilt.js"
+    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system]
+    writes: [asbuilt-uc, asbuilt-index, asbuilt-system]
+  - id: run.uc.check-asbuilt
+    name: as-built の書式の検査
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [checkAsBuilt.js]
+    run_table_row: "④ の checkAsBuilt.js"
+    reads: [asbuilt-index]
+    writes: []
+  - id: run.uc.docs-readme
+    name: 文書の入口の更新 (④)
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [genDocsReadme.js]
+    run_table_row: "④ の genDocsReadme.js"
+    reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules]
+    writes: [docs-readme]
+  - id: run.uc.deliver
+    name: 配送 (squash・PR)
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [prTrailers.js]
+    run_table_row: "④ の prTrailers.js と配送"
+    reads: [use-cases, reports, run-events]
+    writes: [github, reports]

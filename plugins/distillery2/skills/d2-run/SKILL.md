@@ -1,5 +1,5 @@
 ---
-name: distillery2:d2-run
+name: d2-run
 description: >-
   distillery2 のオーケストレータ。要求→決定→基盤→UC 縦切りの段階を振り分け、サブエージェントを派遣し、
   ゲートを安い順に実行し、人の判断が要る場面だけ確認ページ (toolbox:human-html-review) を出す。
@@ -36,6 +36,39 @@ description: >-
 - 上流 (要求・ADR・契約) の再生成はしない。ズレは `basis.js check` で見つけ、差分 PR か issue にする
 
 詰まったら各スキルの `references/troubleshooting.md` (環境依存の症状と回避策) を見る: [d2-run](references/troubleshooting.md) / [d2-foundation](../d2-foundation/references/troubleshooting.md) / [d2-contract](../d2-contract/references/troubleshooting.md)。手順に無い回避策を使ったら報告に書く。
+
+## d2-run が直接読み書きするもの
+
+サブエージェントに任せず、d2-run 自身と d2-run が回すスクリプトが読み書きするもの (処理ごとに 1 行)。`<run>` = `.distillery/runs/<slug>` (③ のチェックポイントは slug `bootstrap`)。入出力の正本は
+[../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図は [dataflow.md](../d2-common/references/dataflow.md))。
+
+| 処理 | 読む | 書く |
+|---|---|---|
+| ① ② の確認ページ | `docs/requirements/_review-summary.md`、`docs/adr/_review-summary.md` | — |
+| ① ② の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
+| ③ の確認ページ | `.distillery/config.yaml` | — |
+| ③ の npm install | `package.json` | `package-lock.json` |
+| ③ の genQlty.js --refresh | `package.json`、`package-lock.json`、`.qlty/qlty.toml` | `.qlty/qlty.toml` |
+| ③ の genConfig.js | `docs/adr/*.md`、`contracts/contracts.json` | `.distillery/config.yaml` |
+| ③ の genCi.js | `.distillery/config.yaml` | `.github/workflows/**` |
+| ③ の genArchitectureDoc.js | `docs/adr/*.md`、`contracts/contracts.json`、`docs/requirements/rdra/**` | `docs/adr/architecture.md` |
+| ③ の importUi.js (F6) | `docs/design/**` | `packages/ui/**` |
+| ③ の genContractTests.js | `contracts/**`、`.distillery/config.yaml` | `apps/*/test/contract/**`、`packages/contracts/**` |
+| ③ の runGates.js --uc bootstrap | `.distillery/config.yaml`、`package.json`、`.qlty/qlty.toml`、`apps/*/test/contract/**`、`.dependency-cruiser.cjs`、`<run>/reports/**` | `<run>/reports/**` |
+| ③ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
+| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**` | `<run>/events.jsonl`、`docs/requirements/use-cases.yaml`、GitHub の PR と issue |
+| ④ の checkScenario.js | `features/<業務>/<slug>.feature`、`features/acceptance/**`、`docs/requirements/use-cases.yaml`、`docs/requirements/requirements.yaml` | — |
+| ④ の compileContracts.js --check | `contracts/**` | — |
+| ④ の compileRdbSchema.js --check | `contracts/**` | — |
+| ④ の validateUcIndex.js | `contracts/uc-index.yaml`、`contracts/**` | — |
+| ④ の classifyContractChanges.js | `contracts/uc-index.yaml`、`apps/*/test/contract/**`、`packages/contracts/**`、`apps/<tier>/migrations/**`、`contracts/generated/slices/<slug>/**` | — |
+| ④ の runGates.js | `.distillery/config.yaml`、`package.json`、`package-lock.json`、`cucumber.js`、`.qlty/qlty.toml`、`apps/<tier>/src/**`、`apps/*/test/contract/**`、`apps/<tier>/migrations/**`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`features/step_definitions/**`、`features/support/**`、`.dependency-cruiser.cjs`、`<run>/reports/**` | `<run>/reports/**`、`<run>/traces/**` |
+| ④ の genQlty.js --refresh | `package.json`、`package-lock.json`、`.qlty/qlty.toml`、`apps/<tier>/src/**` | `.qlty/qlty.toml` |
+| ④ の depcruise | `.dependency-cruiser.cjs`、`apps/<tier>/src/**` | `<run>/reports/**` |
+| ④ の extractAsBuilt.js | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`docs/requirements/requirements.yaml`、`docs/adr/*.md`、`<run>/reports/**`、`<run>/traces/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/events.jsonl`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/generated/slices/<slug>/**`、`contracts/**`、`docs/design/**`、`features/<業務>/<slug>.feature`、`docs/as-built/<業務>/<UC>/**`、`docs/as-built/<業務>/<UC>/index.md`、`docs/as-built/_system/**` | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/<業務>/<UC>/index.md`、`docs/as-built/_system/**` |
+| ④ の checkAsBuilt.js | `docs/as-built/<業務>/<UC>/index.md` | — |
+| ④ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
+| ④ の prTrailers.js と配送 | `docs/requirements/use-cases.yaml`、`<run>/reports/**`、`<run>/events.jsonl` | GitHub の PR と issue、`<run>/reports/**` |
 
 ## 起動シーケンス
 

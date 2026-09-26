@@ -1,5 +1,5 @@
 ---
-name: distillery2:d2-foundation
+name: d2-foundation
 description: >-
   段階③「基盤」の機械部分。ADR から開発ルール (docs/rules/) とアーキテスト (.dependency-cruiser.cjs) を生成し、
   テスト基盤 (packages/test-support: 計装 tracer・pglite ハーネス・Cucumber support)、.distillery/config.yaml、
@@ -7,6 +7,8 @@ description: >-
 ---
 
 # d2-foundation
+
+入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 段階③の「機械が検証する土台」を作る。人が決めた ADR (docs/adr) と契約 (contracts/contracts.json) を入力に、
 開発ルール・アーキテスト・テスト基盤・実行設定・CI・骨格を生成する。すべて冪等で、決定論的な生成物には
@@ -28,12 +30,16 @@ adr=docs/adr            # ADR ディレクトリ
 
 | phase | スクリプト | 読む | 書く |
 |---|---|---|---|
-| F1 | `genRules.js` | ADR の `rules[]`、`tiers[].kind`、`references/rule-templates/` | `docs/rules/{index,common,testing,tier-<kind>}.md` |
-| F2 | `genArchTests.js` | ADR の `rules[].arch_test` | `.dependency-cruiser.cjs` |
+| F1 | `genRules.js` | `docs/adr/*.md` (`rules[]`・`tiers[].kind`)、`references/rule-templates/` | `docs/rules/{index,common,testing,tier-<kind>}.md` |
+| F2 | `genArchTests.js` | `docs/adr/*.md` (`rules[].arch_test`) | `.dependency-cruiser.cjs` |
 | F3 | `genTestSupport.js` | `templates/test-support/`、`templates/features-support/`、`templates/cucumber.js` | `packages/test-support/**`、`features/support/**`、`cucumber.js` |
-| F4 | (d2-contract) | — | 契約テスト・DB migration は **d2-contract が持つ** (下記) |
-| F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` / `genQlty.js` | ADR の `tiers[]`・`datastore_owner`・testing `capabilities`、`contracts/contracts.json` | `.distillery/config.yaml` (`commands.quality` = qlty ゲート)、`package.json`・`tsconfig.base.json`・`.gitignore`・`biome.json`・`.qlty/qlty.toml`・`apps/`・`packages/`、`.github/workflows/ci.yml` (permissions 最小 + qlty)。`.qlty/qlty.toml` は **qlty 自身の提案 (`qlty init --dry-run`) を土台**に distillery2 の上乗せ (biome 版固定・生成物の除外・radarlint を low)。qlty CLI が無ければ固定リスト |
-| F6 | `importUi.js` | `--from <d2-design 出力>` の `src/` | `packages/ui/**`、`packages/ui/.imported.yaml` |
+| F4 | (d2-contract に委譲) | — | — |
+| F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` / `genQlty.js` | `docs/adr/*.md` (`tiers[]`・`datastore_owner`・testing `capabilities`)、`contracts/contracts.json`、`.distillery/config.yaml` (genConfig が書いたものを genCi が読む) | `.distillery/config.yaml`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`apps/*/`、`packages/*/`、`.github/workflows/ci.yml`、`.qlty/qlty.toml` |
+| F6 | `importUi.js` | `docs/design/storybook-app/src/` (d2-design の出力) | `packages/ui/**`、`packages/ui/.imported.yaml` |
+
+- F4: 契約テスト・DB migration は **d2-contract が持つ** (下記)
+- F5: `.distillery/config.yaml` の `commands.quality` が qlty ゲート。`.github/workflows/ci.yml` は permissions 最小 + qlty。
+  `.qlty/qlty.toml` は **qlty 自身の提案 (`qlty init --dry-run`) を土台**に distillery2 の上乗せ (biome 版固定・生成物の除外・radarlint を low)。qlty CLI が無ければ固定リスト
 
 ### phase=all の順
 

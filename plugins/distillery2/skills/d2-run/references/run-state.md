@@ -14,7 +14,8 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
       findings.yaml                 # Verifier の指摘
     reports/                        # gates.json と各ゲートの JSON レポート
     traces/<scenario_id>.jsonl      # UC BDD 実行時の計装トレース
-    issues/<ts>_<slug>.md           # 仕様起因の課題 (front matter kind: rule | contract | requirement)
+    issues/<ts>_<slug>.md           # 仕様起因の課題 (front matter kind: rule | contract | requirement)。scenario / contract 段が書く
+    issues/<ts>_<tier>_<slug>.md    # ティア実装者の課題 (並列の他ティアと衝突しないようにティアを入れる)
     learnings/<ts>_<slug>.md
     invalidated/<ts>_<stage>.done.yaml   # 無効化した done の退避
 ```

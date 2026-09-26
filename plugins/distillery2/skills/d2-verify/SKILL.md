@@ -1,5 +1,5 @@
 ---
-name: distillery2:d2-verify
+name: d2-verify
 description: >-
   段階④の独立検証。実装者とは別モデルの Verifier が、ゲート結果・テストレポート・実行トレース・AssumptionRecord を読み、
   「UC の意図どおりか」「実装者が補った前提が要求・契約・ルールと矛盾しないか」の 2 観点だけで findings を書く。
@@ -7,6 +7,8 @@ description: >-
 ---
 
 # d2-verify
+
+入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 引数: `uc=<slug> tier=<tier_id> attempt=<n> run=<.distillery/runs/<slug> へのパス> assumptions=<attempt-<n>/assumptions.<tier>.yaml へのパス>`
 
@@ -19,12 +21,12 @@ description: >-
 |---|---|
 | ゲート結果 | `<run>/reports/gates.json` と各ゲートの JSON レポート (`unit.<tier>.json`、`contract.<tier>.json`、`uc-bdd.json`、`acceptance-api.json`) |
 | トレース | `<run>/traces/*.jsonl` |
-| 前提 | 引数の assumptions ファイル (**観点 1 を終えてから開く**) |
+| 前提 | 引数の assumptions ファイル `<run>/attempt-<n>/assumptions.<tier>.yaml` (**観点 1 を終えてから開く**) |
 | シナリオ | `features/<業務>/<slug>.feature` (`docs/requirements/use-cases.yaml` の該当行で業務名を引く) |
 | 要求 | `docs/requirements/requirements.yaml` の該当 spec_ids、`docs/requirements/rdra/条件.tsv` / `状態.tsv` の該当行 |
 | ルール | `docs/rules/common.md`、`docs/rules/tier-<kind>.md`、`docs/rules/testing.md` |
 | 契約 | `contracts/generated/slices/<slug>/contract-slice.json` (と rdb-slice.yaml) |
-| 実装 | `git diff --name-only <base_head>..HEAD` の変更ファイル (呼び出し側が一覧を渡す)。自ティアの `apps/<dir>/` |
+| 実装 | `git diff --name-only <base_head>..HEAD` の変更ファイル (呼び出し側が一覧を渡す)。自ティアの `apps/<tier>/` |
 | 固定指示 | `${CLAUDE_PLUGIN_ROOT}/skills/d2-implement/references/tier-impl.md` (前提の照合先として) |
 | 他 UC への波及 (例外) | 呼び出し側が渡す「他 UC と共有する変更ファイル」、自ティアの変更ファイルの import 元 (`rg` で辿る)、`contracts/uc-index.yaml`、`docs/as-built/_system/traceability-index.json`、候補に紐づく他 UC のシナリオ (`features/<業務>/<他 slug>.feature`) |
 

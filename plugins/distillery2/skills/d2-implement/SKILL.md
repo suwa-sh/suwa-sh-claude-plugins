@@ -1,5 +1,5 @@
 ---
-name: distillery2:d2-implement
+name: d2-implement
 description: >-
   段階④の実装者。mode=scenario (UC のシナリオを features/ に書き、人が承認) / mode=scaffold (step 骨格と最初の red 単体テスト) /
   mode=tier (ティアごとの単体 TDD。静的・単体ゲートを通し、仕様に無くて自分で決めた前提を AssumptionRecord に書く) /
@@ -7,6 +7,8 @@ description: >-
 ---
 
 # d2-implement
+
+入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 引数: `mode=scenario|scaffold|tier|integrate uc=<slug> [tier=<tier_id>] [attempt=<n>] [findings=<path>]`
 

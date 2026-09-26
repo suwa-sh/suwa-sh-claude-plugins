@@ -1,5 +1,5 @@
 ---
-name: distillery2:d2-design
+name: d2-design
 description: >-
   段階③「基盤」の画面部品。RDRA の UC と情報、ADR の UI 決定から、デザイントークンと Storybook 部品を作る。
   画面と UC の対応 (docs/design/screens.yaml) を出し、d2-foundation phase=F6 が packages/ui に取り込む。
@@ -7,6 +7,8 @@ description: >-
 ---
 
 # d2-design
+
+入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 RDRA モデルと ADR の UI 決定から、デザイントークンと Storybook 部品を生成する。
 LLM 主体のステージ。d2-run が段階③で、F3 (test-support) と F6 (取り込み) の間に呼ぶ。

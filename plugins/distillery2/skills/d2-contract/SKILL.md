@@ -1,5 +1,5 @@
 ---
-name: distillery2:d2-contract
+name: d2-contract
 description: >-
   契約 (OpenAPI / AsyncAPI / RDB スキーマ) を分割 YAML で管理し、bundle・UC ごとの slice・契約テストを生成する。
   mode=skeleton (段階③: カタログ・共通コンポーネント・エラー型・空の uc-index) と
@@ -8,6 +8,8 @@ description: >-
 ---
 
 # d2-contract
+
+入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 契約の正本は `contracts/` の分割 YAML。bundle・slice・契約テストは機械が決定論的に生成する。
 UC が契約のどの要素を使うかは [`references/uc-index.md`](references/uc-index.md) の `uc-index.yaml` が持つ。
