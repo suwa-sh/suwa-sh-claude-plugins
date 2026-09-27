@@ -43,7 +43,7 @@ d2-run は段階③で 2 回呼ぶ。
 |---|---|---|---|
 | F1 | `genRules.js` | `docs/adr/*.md` (`rules[]`・`tiers[].kind`)、`references/rule-templates/` | `docs/rules/{index,common,testing,tier-<kind>}.md` |
 | F2 | `genArchTests.js` | `docs/adr/*.md` (`rules[].arch_test`) | `.dependency-cruiser.cjs` |
-| F3 | `genTestSupport.js` | `templates/test-support/`、`templates/features-support/`、`templates/cucumber.js` | `packages/test-support/**`、`features/support/**`、`cucumber.js` |
+| F3 | `genTestSupport.js` | `templates/test-support/`、`templates/features-support/`、`templates/cucumber.js`、`templates/tsx-register.js` | `packages/test-support/**`、`features/support/**`、`cucumber.js`、`tsx-register.js` (cucumber.js が読む ESM ローダ) |
 | F4 | `genContractTests.js` (d2-contract のスクリプト。骨格分) | `contracts/**`、`.distillery/config.yaml` | `apps/*/test/contract/**`、`packages/contracts/**` |
 | F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` / `genQlty.js` | `docs/adr/*.md` (`tiers[]`・`datastore_owner`・testing `capabilities`)、`contracts/contracts.json`、`.distillery/config.yaml` (genConfig が書いたものを genCi が読む) | `.distillery/config.yaml`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`apps/*/`、`packages/*/`、`.github/workflows/ci.yml`、`.qlty/qlty.toml` |
 | F6 | `importUi.js` | `docs/design/storybook-app/src/` (d2-design の出力) | `packages/ui/**`、`packages/ui/.imported.yaml` |
@@ -92,7 +92,7 @@ npm install                                                                     
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --refresh --cwd <repo>   # F7。提案で増えた plugins だけ足す
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd <repo>   # F8
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>   # F8
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements --cwd <repo>   # F8
+node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements contracts=contracts --cwd <repo>   # F8 (basis に契約も記録する)
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from docs/design/storybook-app --cwd <repo>   # F6
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root <repo>   # F4 (骨格分)
 node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc bootstrap --upto static   # F9 (<repo> で)

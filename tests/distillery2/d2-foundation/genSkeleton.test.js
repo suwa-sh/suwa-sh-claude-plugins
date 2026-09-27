@@ -58,7 +58,9 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(contractCfg.includes("['test/contract/**/*.{test,spec}.{ts,tsx}']"), '契約テストは test/contract/ だけ');
   assert.equal(appPkg.scripts['test:contract'], 'vitest run -c vitest.contract.config.ts');
   const biomeCfg = JSON.parse(fs.readFileSync(path.join(c, 'biome.json'), 'utf8'));
-  assert.deepEqual(biomeCfg.files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract/**'], '生成物はルートの整形から外す');
+  assert.deepEqual(biomeCfg.files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract'], '生成物はルートの整形から外す');
+  // biome 2.2.0 以降の useBiomeIgnoreFolder はフォルダ除外の末尾 `/**` を違反にする (0.1.22 の試し運転で ③ が落ちた)
+  assert.ok(!biomeCfg.files.includes.some((x) => /^!.*\/\*\*$/.test(x)), 'フォルダの除外に末尾 /** を付けない');
   // frontend tier の tsconfig は jsx を有効化する
   const feTs = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/tsconfig.json'), 'utf8'));
   assert.equal(feTs.compilerOptions.jsx, 'react-jsx');
@@ -219,11 +221,16 @@ test('genSkeleton --migrate: 旧 tsconfig (複数行配列・types 無し) / roo
   assert.ok(fs.readFileSync(path.join(c, 'apps/worker/tsconfig.json'), 'utf8').includes('"strict": false'), '手編集は保持');
   assert.ok(JSON.parse(fs.readFileSync(rootP, 'utf8')).devDependencies['@types/node'], '@types/node を足す');
   assert.ok(r.out.includes('package.json: devDependencies に @types/node'), r.out);
-  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!custom/**', '!**/test/contract/**'], '手編集の項目を残して足りない分を足す');
-  assert.ok(r.out.includes('biome.json: files.includes に生成物の除外を追加 (!**/test/contract/**)'), r.out);
+  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!custom/**', '!**/test/contract'], '手編集の項目を残して足りない分を足す');
+  assert.ok(r.out.includes('biome.json: files.includes に生成物の除外を追加 (!**/test/contract)'), r.out);
   // もう一度 migrate しても変更なし (冪等)
   const r2 = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
   assert.match(r2.out, /migrate: 1 change\(s\)/, r2.out);  // 残るのは手編集の worker tsconfig の報告だけ
+  // 0.1.15〜0.1.22 の形 (末尾 /**) は同じ位置で置き換える
+  const b3 = JSON.parse(fs.readFileSync(biomeP, 'utf8')); b3.files.includes = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract/**', '!custom/**']; fs.writeFileSync(biomeP, JSON.stringify(b3, null, 2) + '\n');
+  const r3 = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract', '!custom/**'], '旧い除外を置き換え、手編集は残す');
+  assert.ok(r3.out.includes('biome.json: files.includes の旧い除外を置き換え (!**/test/contract/** → !**/test/contract)'), r3.out);
 });
 
 test('genSkeleton --migrate: 手編集済み script は触らない (echo でなければ据え置き)', () => {

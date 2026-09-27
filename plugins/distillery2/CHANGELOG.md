@@ -2,6 +2,26 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.23] - 2026-09-27
+
+0.1.22 の試し運転で見つかった課題 (いずれも 0.1.22 以前から) を直した。
+
+### Fixed
+
+- 新規の ③ でチェックポイント (F9) の quality が必ず落ちる: genSkeleton が biome.json に書くフォルダ除外を `!**/test/contract/**` から `!**/test/contract` にした
+  (biome 2.2.0 以降の既定の規則 `useBiomeIgnoreFolder` が末尾 `/**` を違反にする。0.1.15 から)。`genSkeleton.js --migrate` は旧い形を同じ位置で置き換える
+- as-built から integrate へ戻すときの記録と退避が手順に無かった: `runState.js return-to-integrate` の 1 操作で、同じ attempt の findings を
+  `invalidated/<ts>_attempt-<n>_findings.<tier>.yaml` へ移し (先に移すので途中で止まっても古い findings が残らない。何度戻っても上書きしない)、
+  integrate 以降の done をまとめて退避し、イベント `returned_to_integrate` を記録する。attempt は上げない (計装の結線は integrate の担当)。verify と review もやり直す。
+  退避先 `<run>/invalidated/**` を正本と d2-run の書き込み先に載せた
+- genDocsReadme が gitignore のパス (`docs/design/storybook-app/node_modules/**` など) の README を載せ、commit ではリンク切れになっていた。git が無視するパスと `node_modules` を飛ばす (入口の選び方、中身がすべて無視されたディレクトリ、既知の文書へのリンクも含む。必須のリンクが無視されたファイルを指したらリンク切れとして exit 1)
+- F3 が作る `tsx-register.js` (cucumber.js が読む ESM ローダ) が正本・phase 表・派遣表の write-set に無かった
+- ③ で仕上げが作る config・C4 図・画面部品の取り込み記録の basis が空 (契約と画面部品が未 commit): 仕上げの派遣の前に d2-run が契約の骨格と画面部品を commit する。F8 の C4 図は `contracts=contracts` で契約も basis に記録する
+
+### Added
+
+- `runState.js` の `invalidateFrom` (CLI `invalidate ... --from`) と `returnToIntegrate` (CLI `return-to-integrate`)
+
 ## [0.1.22] - 2026-09-27
 
 d2-run が直接回していた作業を、段階の持ち主のスキルに移した。d2-run に残すのは派遣・受理時の検査・確認ページ・genDocsReadme・git だけ。

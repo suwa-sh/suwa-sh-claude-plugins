@@ -23,6 +23,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { parseYaml } = require('./lib/yaml');
 const { parseFeature } = require('./lib/gherkin');
 
@@ -37,7 +38,30 @@ function readText(p) { return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : nu
 function readYaml(p) { const t = readText(p); return t == null ? null : parseYaml(t); }
 function readJson(p) { const t = readText(p); if (t == null) return null; try { return JSON.parse(t); } catch { return null; } }
 function mdEscape(s) { return String(s == null ? '' : s).replace(/\|/g, '\\|').replace(/[\r\n]+/g, ' '); }
-function listDir(p) { return fs.existsSync(p) ? fs.readdirSync(p, { withFileTypes: true }).sort((a, b) => cmpStr(a.name, b.name)) : []; }
+function listDir(p) {
+  if (!fs.existsSync(p)) return [];
+  return fs.readdirSync(p, { withFileTypes: true }).filter((e) => !isIgnored(path.join(p, e.name))).sort((a, b) => cmpStr(a.name, b.name));
+}
+
+// git が無視するパス (gitignore) は README に載せない。commit された README ではリンク切れになるため
+// (0.1.22 の試し運転: docs/design/storybook-app/node_modules/** の README が 220 件載った)。
+// collect() の最初に docs ディレクトリについて 1 回だけ問い合わせる。git が使えなければ node_modules だけ飛ばす
+let ignoredPaths = [];
+function isIgnored(abs) {
+  if (abs.split(path.sep).includes('node_modules')) return true;
+  return ignoredPaths.some((p) => abs === p || abs.startsWith(p + path.sep));
+}
+/** リンクしてよいか: 実在し、git に無視されていない (commit された README から辿れる) */
+function present(abs) { return fs.existsSync(abs) && !isIgnored(abs); }
+
+function loadIgnored(docsDir) {
+  ignoredPaths = [];
+  if (!fs.existsSync(docsDir)) return;
+  try {
+    const out = execFileSync('git', ['ls-files', '-z', '--others', '--ignored', '--exclude-standard', '--directory', '--', '.'], { cwd: docsDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    ignoredPaths = out.split('\0').filter(Boolean).map((rel) => path.resolve(docsDir, rel.replace(/\/$/, '')));
+  } catch { /* git リポでない・git が無い: node_modules だけ飛ばす */ }
+}
 
 /** YAML front matter → {data, body}。 */
 function frontMatter(text) {
@@ -73,6 +97,7 @@ function collect(opts) {
   const config = readYaml(path.resolve(cwd, opts.config)) || {};
   const docsRoot = opts.docsRoot || config.docs_root || 'docs';
   const docsDir = path.resolve(cwd, docsRoot);
+  loadIgnored(docsDir);
   const D = (...p) => path.join(docsDir, ...p);
 
   const overview = readJson(D('requirements', 'rdra', 'システム概要.json')) || {};
@@ -141,7 +166,7 @@ function build(ctx) {
   const referenced = new Set(); // 参照した docs 配下の絶対パス (「その他」に載せない)
   const L0 = makeLinker(readmeDir);
   const L = { links: L0.links, to(abs, label) { referenced.add(abs); return L0.to(abs, label); } };
-  const link = (abs, label) => (fs.existsSync(abs) ? L.to(abs, label) : null); // 任意 (無ければ載せない)
+  const link = (abs, label) => (present(abs) ? L.to(abs, label) : null); // 任意 (無い・git に無視されているなら載せない)
   const must = (abs, label) => L.to(abs, label); // 正本が指す文書 (無ければリンク切れとして exit 1)
   const ref = link;
   const out = [];
@@ -187,7 +212,7 @@ function build(ctx) {
     const done = rows.filter((u) => statusOf(u) === '実装済み').length;
     const blocked = rows.filter((u) => u.status === 'blocked').length;
     out.push(`UC ${rows.length} 件 (実装済み ${done}、要求待ち ${blocked})。1 行で要求 → シナリオ → 契約 → 画面 → 実装の記録まで辿れる。`);
-    if (fs.existsSync(reqMd)) out.push(`要求の列の SPEC は ${ref(reqMd, '要求仕様書')} の行。`);
+    if (present(reqMd)) out.push(`要求の列の SPEC は ${ref(reqMd, '要求仕様書')} の行。`);
     out.push('');
     out.push('| 業務 | UC | 状態 | 要求 | シナリオ | 契約 | 画面 | 実装の記録 |');
     out.push('|---|---|---|---|---|---|---|---|');
@@ -236,8 +261,8 @@ function build(ctx) {
   } else out.push('ADR は未着手 (決定の段階で作られる)。\n');
   const decided = [];
   if (ctx.nfr) decided.push(`- 非機能: ${ref(D('nfr', 'nfr-grade.md'), '非機能グレード表') || ref(D('nfr', 'nfr-grade.yaml'), 'nfr-grade.yaml')} (モデルシステム ${mdEscape(ctx.nfrModel || '-')}、重要項目 ${ctx.nfrImportant} / ${ctx.nfrCount})。性能テストの閾値の出典`);
-  if (fs.existsSync(D('adr', 'architecture.md'))) decided.push(`- 構成: ${ref(D('adr', 'architecture.md'), 'C4 図')} (決めたもの)。実態は ${ref(D('as-built', '_system', 'dependency-graph.md'), '依存グラフ') || 'as-built の依存グラフ'}`);
-  if (fs.existsSync(D('rules', 'index.md'))) decided.push(`- 開発ルール: ${ref(D('rules', 'index.md'), '目次')}。実装時は common + 自ティア + testing だけ読む (生成物。直したい変更は ADR へ)`);
+  if (present(D('adr', 'architecture.md'))) decided.push(`- 構成: ${ref(D('adr', 'architecture.md'), 'C4 図')} (決めたもの)。実態は ${ref(D('as-built', '_system', 'dependency-graph.md'), '依存グラフ') || 'as-built の依存グラフ'}`);
+  if (present(D('rules', 'index.md'))) decided.push(`- 開発ルール: ${ref(D('rules', 'index.md'), '目次')}。実装時は common + 自ティア + testing だけ読む (生成物。直したい変更は ADR へ)`);
   for (const l of decided) out.push(l);
   if (decided.length) out.push('');
 
@@ -307,7 +332,8 @@ function build(ctx) {
       const all = [];
       const walkAll = (d) => { for (const x of listDir(d)) { const q = path.join(d, x.name); if (x.isDirectory()) walkAll(q); else all.push(q); } };
       walkAll(abs);
-      const entry = ['README.md', 'index.md'].map((n) => path.join(abs, n)).find((q) => fs.existsSync(q))
+      if (!all.length) continue; // 中身がすべて git に無視されている (commit すると消える) ディレクトリは載せない
+      const entry = ['README.md', 'index.md'].map((n) => path.join(abs, n)).find((q) => fs.existsSync(q) && !isIgnored(q))
         || all.filter((q) => q.endsWith('.md')).sort(cmpStr)[0];
       const entryLabel = entry ? path.relative(abs, entry).split(path.sep).join('/') : null;
       unknown.push(`| ${mdEscape(e.name)}/ | ${entry ? L.to(entry, entryLabel) : L.to(abs, 'ディレクトリ')} | ${all.length} |`);
@@ -356,7 +382,7 @@ function merge(existing, block) {
 function run(opts) {
   const ctx = collect(opts);
   const { block, links, readmePath } = build(ctx);
-  const broken = links.filter((l) => !fs.existsSync(l.abs)).map((l) => l.rel);
+  const broken = links.filter((l) => !fs.existsSync(l.abs) || isIgnored(l.abs)).map((l) => l.rel);
   if (broken.length) return { code: 1, readmePath, broken, changed: false };
   const existing = readText(readmePath);
   let next;

@@ -126,8 +126,12 @@ function existingBiomeVersion(cwd) {
 
 // 生成物 (契約の codegen / bundle / Storybook 出力) はルートの整形・lint から外す (`!!` = フォルダごと無視)
 // 契約テスト (生成物) はここでも外す: 生成 .ts 先頭の `biome-ignore-all format` は biome 2.2.5 では効かない (0.1.13 実走で実測。2.5.14 では効く)。
-// `!!` (フォルダごと無視) は 2.2.5 では `**` 入りを受け付けないので、こちらは `!` + `/**` で書く
-const BIOME_FILES_INCLUDES = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract/**'];
+// `!!` (フォルダごと無視) は 2.2.5 では `**` 入りを受け付けないので、こちらは `!` で書く。
+// 末尾に `/**` を付けない: biome 2.2.0 以降の既定の規則 useBiomeIgnoreFolder が `!**/test/contract/**` を違反にし、
+// qlty の quality ゲートで ③ のチェックポイントが落ちる (0.1.22 の試し運転で実測。https://biomejs.dev/linter/rules/use-biome-ignore-folder/)
+const BIOME_FILES_INCLUDES = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract'];
+// 0.1.15〜0.1.22 が書いた除外。migrate で上の形に置き換える
+const LEGACY_BIOME_INCLUDES = { '!**/test/contract/**': '!**/test/contract' };
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
 const biomeJson = (biomeVersion) => JSON.stringify({
   $schema: `https://biomejs.dev/schemas/${biomeVersion}/schema.json`,
@@ -346,12 +350,16 @@ function migrateBiomeIncludes(cwd, changes) {
   const p = path.resolve(cwd, 'biome.json');
   const cfg = readJsonSafe(p);
   if (!cfg) return;
-  const cur = Array.isArray(cfg.files?.includes) ? cfg.files.includes : null;
+  const orig = Array.isArray(cfg.files?.includes) ? cfg.files.includes : null;
+  // 旧版の除外 (末尾 `/**`) は同じ位置で新しい形に置き換える (useBiomeIgnoreFolder の違反を消す)
+  const replaced = orig ? orig.filter((x) => LEGACY_BIOME_INCLUDES[x]) : [];
+  const cur = orig ? [...new Set(orig.map((x) => LEGACY_BIOME_INCLUDES[x] || x))] : null;
   const missing = BIOME_FILES_INCLUDES.filter((x) => !cur || !cur.includes(x));
-  if (!missing.length) return;
+  if (!missing.length && !replaced.length) return;
   cfg.files = { ...(cfg.files || {}), includes: cur ? [...cur, ...missing] : BIOME_FILES_INCLUDES };
   fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\n');
-  changes.push(`biome.json: files.includes に生成物の除外を追加 (${missing.join(', ')})`);
+  if (replaced.length) changes.push(`biome.json: files.includes の旧い除外を置き換え (${replaced.map((x) => `${x} → ${LEGACY_BIOME_INCLUDES[x]}`).join(', ')})`);
+  if (missing.length) changes.push(`biome.json: files.includes に生成物の除外を追加 (${missing.join(', ')})`);
 }
 
 function migrate(cwd, biomeVersion, tiers = []) {

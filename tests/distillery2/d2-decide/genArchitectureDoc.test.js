@@ -197,6 +197,26 @@ test('決定論: 同じ入力なら 2 回の生成がバイト一致する', () 
   assert.equal(a, b);
 });
 
+test('契約を commit してから contracts= を渡すと basis に契約が入り、契約の変更で古さを検出できる (③ の仕上げ F8。0.1.23)', () => {
+  const { execFileSync } = require('node:child_process');
+  const basisLib = require('../../../plugins/distillery2/scripts/lib/basis');
+  const dir = buildRepo();
+  const git = (...a) => execFileSync('git', a, { cwd: dir, encoding: 'utf8' });
+  git('init', '-q');
+  git('-c', 'user.email=t@example.com', '-c', 'user.name=t', 'add', '-A');
+  git('-c', 'user.email=t@example.com', '-c', 'user.name=t', 'commit', '-q', '-m', 'init');
+  const md = build({ ...opts(dir), dirs: { requirements: 'docs/requirements', contracts: 'contracts' } });
+  const head = git('rev-parse', 'HEAD').trim();
+  assert.match(md, new RegExp(`contracts@${head}`), 'C4 図の basis に契約の commit が入る');
+  const out = path.join(dir, 'docs/adr/architecture.md');
+  fs.writeFileSync(out, md);
+  assert.ok(basisLib.check(out, { contracts: 'contracts' }, dir).entries.every((e) => !e.stale));
+  // 契約を変えて commit すると、C4 図は古いと判定される
+  fs.appendFileSync(path.join(dir, 'contracts/contracts.json'), '\n');
+  git('-c', 'user.email=t@example.com', '-c', 'user.name=t', 'commit', '-q', '-am', 'change contracts');
+  assert.ok(basisLib.check(out, { contracts: 'contracts' }, dir).entries.some((e) => e.name === 'contracts' && e.stale));
+});
+
 test('実サンプル (library-loan) の ADR・RDRA・contracts から C4 図を決定論的に生成する', () => {
   // 読み取り専用の実サンプルを入力にし、build は純粋関数なのでファイルは書かない
   const sample = path.resolve(__dirname, '../../../samples/distillery2/library-loan');

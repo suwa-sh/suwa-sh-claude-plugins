@@ -26,7 +26,13 @@
 
 - 症状: 生成した `apps/<tier>/test/contract/*.ts` の埋め込み JSON を biome が展開して format_check が落ちる
 - 原因: 生成物先頭の `// biome-ignore-all format:` は biome 2.2.5 では効かない (2.5.14 では効く)
-- 回避: ルート `biome.json` の `files.includes` に `!**/test/contract/**` を入れる (0.1.15 の genSkeleton は入れる。旧リポは `genSkeleton.js --migrate`)
+- 回避: ルート `biome.json` の `files.includes` に `!**/test/contract` を入れる (0.1.23 の genSkeleton は入れる。旧リポは `genSkeleton.js --migrate`)
+
+## qlty の quality ゲートが biome.json の `useBiomeIgnoreFolder` で落ちる
+
+- 症状: ③ のチェックポイント (F9) の quality が `lint/suspicious/useBiomeIgnoreFolder` (biome.json の `!**/test/contract/**`) で落ちる (0.1.22 の試し運転)
+- 原因: biome 2.2.0 以降の既定の規則が、フォルダの除外に末尾 `/**` を付けた書き方を違反にする (https://biomejs.dev/linter/rules/use-biome-ignore-folder/)。0.1.15〜0.1.22 の genSkeleton がこの形で書いていた
+- 回避: `genSkeleton.js --migrate` で `!**/test/contract` に置き換える (0.1.23)。biome 単体の `biome lint` は警告で exit 0 になるので、qlty を通して確かめる
 
 ## `git add -N` が `index.lock` で失敗し、`genQlty.js` が固定リストに落ちる
 

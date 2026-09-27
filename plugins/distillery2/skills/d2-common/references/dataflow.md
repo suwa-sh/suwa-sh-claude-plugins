@@ -39,7 +39,7 @@ flowchart LR
 | ① 要求 | ④ UC の縦切り | 要求 | 要求 (USDM)、RDRA モデル、UC 一覧 |
 | ② 決定 | ③ 基盤 | 決定 (NFR・ADR) | 非機能要求グレード表、ADR |
 | ② 決定 | ④ UC の縦切り | 決定 (NFR・ADR) | ADR |
-| ③ 基盤 | ④ UC の縦切り | 基盤の設定、テスト基盤、契約、画面、実行の記録 | 開発ルール、依存方向の検査設定、Cucumber 設定、実行設定、リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 / テスト基盤 (tracer・World)、Cucumber の support / 契約の分割ファイル、UC ごとの契約の索引、契約テスト (生成物)、契約からの codegen / デザインシステム (Storybook アプリ)、画面部品 / ゲートの記録 |
+| ③ 基盤 | ④ UC の縦切り | 基盤の設定、テスト基盤、契約、画面、実行の記録 | 開発ルール、依存方向の検査設定、Cucumber 設定、Cucumber の ESM ローダ (cucumber.js が読む)、実行設定、リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 / テスト基盤 (tracer・World)、Cucumber の support / 契約の分割ファイル、UC ごとの契約の索引、契約テスト (生成物)、契約からの codegen / デザインシステム (Storybook アプリ)、画面部品 / ゲートの記録 |
 
 後ろ向きの受け渡し (後の段階が書き戻し、次の UC や再実行で前の段階が読む。図には描かない):
 
@@ -236,7 +236,7 @@ flowchart LR
   g_decisions[("決定 (NFR・ADR)<br/>ADR")]
   g_packaged[("同梱のひな形と手順書<br/>ルールのひな形 (同梱)・テスト基盤のひな形 (同梱)")]
   g_contracts[("契約<br/>契約カタログ")]
-  g_settings[("基盤の設定<br/>実行設定・リポの骨格 (package.json・apps/*・packages/*)・依存の lockfile・qlty 設定・開発ルール・依存方向の検査設定・Cucumber 設定・CI")]
+  g_settings[("基盤の設定<br/>実行設定・リポの骨格 (package.json・apps/*・packages/*)・依存の lockfile・qlty 設定・開発ルール・依存方向の検査設定・Cucumber 設定・Cucumber の ESM ローダ (cucumber.js が読む)・CI")]
   g_test_infra[("テスト基盤<br/>テスト基盤 (tracer・World)・Cucumber の support")]
   g_decisions --> p_foundation
   g_packaged --> p_foundation
@@ -248,13 +248,13 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `docs/adr/*.md`<br>`skills/d2-foundation/references/rule-templates/**`<br>`skills/d2-foundation/templates/**`<br>`contracts/contracts.json`<br>`.distillery/config.yaml`<br>`package.json`<br>`package-lock.json`<br>`.qlty/qlty.toml` | `docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`packages/test-support/**`<br>`features/support/**`<br>`cucumber.js`<br>`.distillery/config.yaml`<br>`package.json`<br>`.github/workflows/**`<br>`.qlty/qlty.toml`<br>`package-lock.json` |
+| `docs/adr/*.md`<br>`skills/d2-foundation/references/rule-templates/**`<br>`skills/d2-foundation/templates/**`<br>`contracts/contracts.json`<br>`.distillery/config.yaml`<br>`package.json`<br>`package-lock.json`<br>`.qlty/qlty.toml` | `docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`packages/test-support/**`<br>`features/support/**`<br>`cucumber.js`<br>`tsx-register.js`<br>`.distillery/config.yaml`<br>`package.json`<br>`.github/workflows/**`<br>`.qlty/qlty.toml`<br>`package-lock.json` |
 
 | 内訳 | 読む | 書く |
 |---|---|---|
 | F1 ルール | ADR、ルールのひな形 (同梱) | 開発ルール |
 | F2 依存方向の検査 | ADR | 依存方向の検査設定 |
-| F3 テスト基盤 | テスト基盤のひな形 (同梱) | テスト基盤 (tracer・World)、Cucumber の support、Cucumber 設定 |
+| F3 テスト基盤 | テスト基盤のひな形 (同梱) | テスト基盤 (tracer・World)、Cucumber の support、Cucumber 設定、Cucumber の ESM ローダ (cucumber.js が読む) |
 | F5 設定・骨格・CI・qlty | ADR、契約カタログ、実行設定 | 実行設定、リポの骨格 (package.json・apps/*・packages/*)、CI、qlty 設定 |
 | F7 依存の導入 (npm install・qlty の提案) | リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 | 依存の lockfile、qlty 設定 |
 
@@ -592,7 +592,7 @@ flowchart LR
   g_settings[("基盤の設定<br/>実行設定")]
   g_requirements[("要求<br/>UC 一覧・要求 (USDM)")]
   g_decisions[("決定 (NFR・ADR)<br/>ADR")]
-  g_run[("実行の記録<br/>ゲートの記録・計装トレース・実装者が補った前提・Verifier の指摘・実行の記録 (events / done)・仕様起因の課題・ティア実装者の課題・as-built の抽出の集計 (計装の有無)")]
+  g_run[("実行の記録<br/>ゲートの記録・計装トレース・実装者が補った前提・Verifier の指摘・実行の記録 (events / done / 退避した done)・仕様起因の課題・ティア実装者の課題・as-built の抽出の集計 (計装の有無)")]
   g_contracts[("契約<br/>UC の契約 slice・契約の分割ファイル")]
   g_design[("画面<br/>デザインシステム (Storybook アプリ)")]
   g_scenarios[("シナリオと step<br/>UC シナリオ")]
@@ -653,7 +653,7 @@ flowchart LR
   p_run_uc["d2-run (④)<br/>d2-run"]
   g_settings[("基盤の設定<br/>実行設定")]
   g_requirements[("要求<br/>UC 一覧")]
-  g_run[("実行の記録<br/>実行の記録 (events / done)・ゲートの記録・as-built の抽出の集計 (計装の有無)・Verifier の指摘・実装者が補った前提・仕様起因の課題・ティア実装者の課題")]
+  g_run[("実行の記録<br/>実行の記録 (events / done / 退避した done)・ゲートの記録・as-built の抽出の集計 (計装の有無)・Verifier の指摘・実装者が補った前提・仕様起因の課題・ティア実装者の課題")]
   g_contracts[("契約<br/>UC ごとの契約の索引")]
   g_asbuilt[("as-built<br/>システム横断の as-built")]
   g_github[("GitHub<br/>GitHub (PR / issue)")]
@@ -757,7 +757,7 @@ flowchart LR
 ```mermaid
 flowchart LR
   p_run_uc_gates["ゲートの実行<br/>runGates.js"]
-  g_settings[("基盤の設定<br/>実行設定・リポの骨格 (package.json・apps/*・packages/*)・依存の lockfile・Cucumber 設定・qlty 設定・依存方向の検査設定")]
+  g_settings[("基盤の設定<br/>実行設定・リポの骨格 (package.json・apps/*・packages/*)・依存の lockfile・Cucumber 設定・Cucumber の ESM ローダ (cucumber.js が読む)・qlty 設定・依存方向の検査設定")]
   g_code[("ティアの実装<br/>ティアの実装と単体テスト")]
   g_contracts[("契約<br/>契約テスト (生成物)・DB migration (datastore_owner のティア)")]
   g_scenarios[("シナリオと step<br/>UC シナリオ・受入シナリオ・step 定義")]
@@ -774,7 +774,7 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `.distillery/config.yaml`<br>`package.json`<br>`package-lock.json`<br>`cucumber.js`<br>`.qlty/qlty.toml`<br>`apps/<tier>/src/**`<br>`apps/*/test/contract/**`<br>`apps/<tier>/migrations/**`<br>`features/<業務>/<slug>.feature`<br>`features/acceptance/**`<br>`features/step_definitions/**`<br>`features/support/**`<br>`.dependency-cruiser.cjs`<br>`<run>/reports/**` | `<run>/reports/**`<br>`<run>/traces/**` |
+| `.distillery/config.yaml`<br>`package.json`<br>`package-lock.json`<br>`cucumber.js`<br>`tsx-register.js`<br>`.qlty/qlty.toml`<br>`apps/<tier>/src/**`<br>`apps/*/test/contract/**`<br>`apps/<tier>/migrations/**`<br>`features/<業務>/<slug>.feature`<br>`features/acceptance/**`<br>`features/step_definitions/**`<br>`features/support/**`<br>`.dependency-cruiser.cjs`<br>`<run>/reports/**` | `<run>/reports/**`<br>`<run>/traces/**` |
 
 #### qlty の提案を足す (④)
 
@@ -843,7 +843,7 @@ flowchart LR
   p_run_uc_deliver["配送 (squash・PR)<br/>prTrailers.js"]
   s_use_cases[("UC 一覧<br/>docs/requirements/use-cases.yaml")]
   s_reports[("ゲートの記録<br/>#lt;run#gt;/reports/**")]
-  s_run_events[("実行の記録 (events / done)<br/>#lt;run#gt;/events.jsonl")]
+  s_run_events[("実行の記録 (events / done / 退避した done)<br/>#lt;run#gt;/events.jsonl")]
   s_github[("GitHub (PR / issue)<br/>(GitHub)")]
   s_use_cases --> p_run_uc_deliver
   s_reports --> p_run_uc_deliver
@@ -877,6 +877,7 @@ flowchart LR
 | テスト基盤 (tracer・World) | テスト基盤 | `packages/test-support/**` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F3 テスト基盤 | テスト足場の生成、ティアの実装、結合 |
 | Cucumber の support | テスト基盤 | `features/support/**` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F3 テスト基盤、結合 | テスト足場の生成、結合、ゲートの実行 |
 | Cucumber 設定 | 基盤の設定 | `cucumber.js` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F3 テスト基盤 | ゲートの実行 |
+| Cucumber の ESM ローダ (cucumber.js が読む) | 基盤の設定 | `tsx-register.js` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F3 テスト基盤 | ゲートの実行 |
 | 実行設定 | 基盤の設定 | `.distillery/config.yaml` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図) | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、F4 契約テストの生成 (骨格分)、F9 基盤のチェックポイント、テスト足場の生成、結合、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、d2-run (③)、骨格分の契約テストの鮮度 (受理時の検査)、文書の入口の更新 (③)、d2-run (④)、ゲートの実行、文書の入口の更新 (④) |
 | リポの骨格 (package.json・apps/*・packages/*) | 基盤の設定 | `package.json` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後)、F9 基盤のチェックポイント、ゲートの実行、qlty の提案を足す (④) |
 | 依存の lockfile | 基盤の設定 | `package-lock.json` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後) | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後)、ゲートの実行、qlty の提案を足す (④) |
@@ -895,7 +896,7 @@ flowchart LR
 | 受入シナリオ | シナリオと step | `features/acceptance/**` | 生成 | UC シナリオの執筆 | テスト足場の生成、文書の入口の更新 (① ②)、文書の入口の更新 (③)、シナリオの静的確認、ゲートの実行、文書の入口の更新 (④) |
 | step 定義 | シナリオと step | `features/step_definitions/**` | 生成 | テスト足場の生成、結合 | テスト足場の生成、結合、ゲートの実行 |
 | ティアの実装と単体テスト | ティアの実装 | `apps/<tier>/src/**` | 生成 | テスト足場の生成、ティアの実装 | ティアの実装、結合、独立検証、as-built の抽出と要約、依存グラフの実態、要約ブロックを埋める (LLM)、ゲートの実行、qlty の提案を足す (④) |
-| 実行の記録 (events / done) | 実行の記録 | `<run>/events.jsonl` | 生成 | d2-run (④) | as-built の抽出と要約、as-built の抽出、d2-run (④)、配送 (squash・PR) |
+| 実行の記録 (events / done / 退避した done) | 実行の記録 | `<run>/events.jsonl` | 生成 | d2-run (④) | as-built の抽出と要約、as-built の抽出、d2-run (④)、配送 (squash・PR) |
 | 実装者が補った前提 | 実行の記録 | `<run>/attempt-<n>/assumptions.<tier>.yaml` | 生成 | ティアの実装 | 独立検証、as-built の抽出と要約、as-built の抽出、要約ブロックを埋める (LLM)、d2-run (④) |
 | Verifier の指摘 | 実行の記録 | `<run>/attempt-<n>/findings.<tier>.yaml` | 生成 | 独立検証 | ティアの実装、as-built の抽出と要約、as-built の抽出、d2-run (④) |
 | 仕様起因の課題 | 実行の記録 | `<run>/issues/**` | 生成 | 契約の差分 | as-built の抽出と要約、as-built の抽出、d2-run (④) |
