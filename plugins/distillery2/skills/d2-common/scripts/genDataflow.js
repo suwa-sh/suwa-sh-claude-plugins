@@ -60,16 +60,15 @@ function render(df) {
   const feeds = x => x.kind === 'subagent' || (x.writes || []).some(id => !stores.get(id).terminal);
   // 全体図での読み: 親と子のうち、後段に渡すファイルを書くものの読みだけ
   const ovReads = p => [...new Set([p, ...children(p)].filter(feeds).flatMap(x => x.reads || []))];
-  // readerOk: 読む側の段階を絞る (図を分けるとき)。省略時はすべて
   // 全体図: 段階を箱、受け渡しを矢印にする。矢印のラベルは受け渡すファイル群の名前。
   // 段階 w が書いたファイルを別の段階 r が読むとき w → r を 1 本引く (ファイル群を箱にすると矢印が倍になるため)
-  // readerOk: 読む側の段階を絞る (図を分けるとき)。省略時はすべて
-  function overview(title, note, stageKey, nodes, include, readerOk = () => true) {
+  // readerOk: 図 (前向き) に描く読む側の段階を絞る (図を分けるとき)。backwardOk: 後ろ向きの表に載せる読む側の段階。省略時はどちらもすべて
+  function overview(title, note, stageKey, nodes, include, readerOk = () => true, backwardOk = () => true) {
     const ps = top.filter(include);
     const edges = new Map(); // 'w>r' -> Set(store id)
     for (const s of df.stores.filter(x => !x.scope_only)) {
       const ws = [...new Set(ps.filter(p => io(p, 'writes').includes(s.id)).map(stageKey))];
-      const rs = [...new Set(ps.filter(p => ovReads(p).includes(s.id)).map(stageKey))].filter(readerOk);
+      const rs = [...new Set(ps.filter(p => ovReads(p).includes(s.id)).map(stageKey))];
       for (const w of ws) for (const r of rs) {
         if (w === r) continue;
         const key = `${w}>${r}`;
@@ -86,8 +85,8 @@ function render(df) {
       .sort((a, b) => order(a.w) - order(b.w) || order(a.r) - order(b.r));
     // 図には前向き (前の段階 → 後の段階) だけを描く。後の段階が同じファイルを書き戻す後ろ向きの受け渡し
     // (UC 一覧の tiers の書き戻しなど。次の UC や再実行で前の段階が読む) は表に分ける
-    const forward = list.filter(e => order(e.w) < order(e.r));
-    const backward = list.filter(e => order(e.w) > order(e.r));
+    const forward = list.filter(e => order(e.w) < order(e.r) && readerOk(e.r));
+    const backward = list.filter(e => order(e.w) > order(e.r) && backwardOk(e.r));
     L.push(`## ${title}`, '', note, '');
     const linked = new Set(forward.flatMap(e => [e.w, e.r]));
     const lines = nodes.filter(n => linked.has(n.id)).map(n => `  ${nid('st_' + n.id)}["${esc(n.name)}"]`);
@@ -116,10 +115,11 @@ function render(df) {
   const inUc = p => !UPSTREAM.includes(p.stage) && p.stage !== 'uc';
   const CHECK = ['verify', 'asbuilt'];
   const ucNote = '① 〜 ③ から来るものは前の図。段階をまたぐ d2-run の作業 (ゲートの実行・as-built の抽出・配送など) はほぼ全部のファイル群に触れるので、この図から外して処理ごとの図に回した。';
-  overview('全体図: ④ 実装まで (scenario 〜 integrate)', `④ の実装の段階どうしで受け渡すファイル群。${ucNote}`,
-    p => p.stage, UC_STAGES, p => inUc(p) && !CHECK.includes(p.stage));
-  overview('全体図: ④ 検証と as-built', `実装までの段階が書き、検証 (verify) と as-built の要約 (asbuilt) が読むファイル群。${ucNote}`,
-    p => p.stage, UC_STAGES, inUc, r => CHECK.includes(r));
+  // ④ の後ろ向きの受け渡し (integrate → scaffold、verify の指摘 → tier の差し戻しなど) は、④ の段階すべてを集計して検証の図の表にまとめる
+  overview('全体図: ④ 実装まで (scenario 〜 integrate)', `④ の実装の段階どうしで受け渡すファイル群。後ろ向きの受け渡しは次の図の表にまとめた。${ucNote}`,
+    p => p.stage, UC_STAGES, p => inUc(p) && !CHECK.includes(p.stage), () => true, () => false);
+  overview('全体図: ④ 検証と as-built', `実装までの段階が書き、検証 (verify) と as-built の要約 (asbuilt) が読むファイル群。表の後ろ向きの受け渡しは ④ の段階すべてが対象。${ucNote}`,
+    p => p.stage, UC_STAGES, inUc, r => CHECK.includes(r), () => true);
 
   // ---- 処理ごとの図 ----
   L.push('## 処理ごとの図', '');
@@ -195,18 +195,25 @@ function render(df) {
   return L.join('\n');
 }
 
-/** 生成した Markdown の各 Mermaid 図の箱と矢印の数 (図の大きさのテスト用) */
+/**
+ * 生成した Markdown の各 Mermaid 図の箱と矢印の数 (図の大きさのテスト用)。
+ * Mermaid ブロックごとに数える。箱は明示の定義 (`id[...]`) と矢印の両端の ID の和 (矢印だけで暗黙に作られる箱も数える)
+ */
 function diagramSizes(md) {
   const out = [];
   let head = null;
-  for (const line of md.split('\n')) if (/^#{2,4} /.test(line)) { head = line; out.push({ head, nodes: 0, edges: 0, inDiagram: false }); } else if (out.length) {
-    const cur = out[out.length - 1];
-    if (line === '```mermaid') cur.inDiagram = true;
-    else if (line === '```') cur.inDiagram = false;
-    else if (cur.inDiagram && /-->/.test(line)) cur.edges++;
-    else if (cur.inDiagram && /^\s+\w+\[/.test(line)) cur.nodes++;
+  let cur = null;
+  for (const line of md.split('\n')) {
+    if (!cur && /^#{2,4} /.test(line)) { head = line; continue; }
+    if (!cur && line === '```mermaid') { cur = { head, ids: new Set(), edges: 0 }; continue; }
+    if (cur && line === '```') { out.push({ head: cur.head, nodes: cur.ids.size, edges: cur.edges }); cur = null; continue; }
+    if (!cur) continue;
+    const edge = line.match(/^\s*([A-Za-z0-9_]+)\s*-->(?:\|[^|]*\|)?\s*([A-Za-z0-9_]+)/);
+    if (edge) { cur.edges++; cur.ids.add(edge[1]); cur.ids.add(edge[2]); continue; }
+    const def = line.match(/^\s*([A-Za-z0-9_]+)\s*[[(]/);
+    if (def) cur.ids.add(def[1]);
   }
-  return out.filter(x => x.nodes).map(({ head: h, nodes, edges }) => ({ head: h, nodes, edges }));
+  return out;
 }
 
 function main(argv) {

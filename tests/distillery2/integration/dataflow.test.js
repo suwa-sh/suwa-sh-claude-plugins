@@ -183,8 +183,13 @@ test('(f) dataflow.md が最新 (genDataflow.js --check)', () => {
 
 test('(f2) DFD の各図が読める大きさ (箱 9 以下・矢印 12 以下) で、全ファイル群に所属がある', () => {
   const G = require(path.join(PLUGIN, 'skills/d2-common/scripts/genDataflow.js'));
-  const sizes = G.diagramSizes(G.render(df));
+  const md = G.render(df);
+  const sizes = G.diagramSizes(md);
   assert.ok(sizes.length >= 3, '図が生成されている');
+  assert.equal(sizes.length, (md.match(/^```mermaid$/gm) || []).length, 'すべての Mermaid ブロックを数えている');
+  // 数え方の確認: 矢印だけで暗黙に作られる箱も数える
+  const implicit = G.diagramSizes('## x\n```mermaid\nflowchart LR\n' + Array.from({ length: 13 }, (_, i) => `  A${i} --> A${i + 1}`).join('\n') + '\n```\n');
+  assert.deepEqual(implicit, [{ head: '## x', nodes: 14, edges: 13 }]);
   const big = sizes.filter(d => d.nodes > 9 || d.edges > 12).map(d => `${d.head} (箱 ${d.nodes}・矢印 ${d.edges})`);
   assert.deepEqual(big, []);
   const groupIds = new Set((df.store_groups || []).map(g => g.id));
