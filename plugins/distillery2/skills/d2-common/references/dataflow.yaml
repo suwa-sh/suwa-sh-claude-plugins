@@ -721,6 +721,16 @@ processes:
     run_table_row: "③ の確認ページ"
     reads: [config, reports]
     writes: [reports]
+  - id: run.foundation.check-contract-tests
+    name: 骨格分の契約テストの鮮度 (受理時の検査)
+    parent: run.foundation
+    stage: foundation
+    kind: script
+    actor: d2-run
+    scripts: [genContractTests.js]
+    run_table_row: "③ の genContractTests.js --check"
+    reads: [contracts-src, config, contract-tests, contracts-code]
+    writes: []
   - id: run.foundation.docs-readme
     name: 文書の入口の更新 (③)
     parent: run.foundation
