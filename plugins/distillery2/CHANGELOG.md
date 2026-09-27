@@ -2,6 +2,31 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.24] - 2026-09-28
+
+還流 (実装で見つかった上流の穴を PR / issue にする) で、d2-run が ADR・開発ルール・契約を自分で書き換えていた手順をやめ、
+持ち主のスキルに派遣するようにした (配送と還流を別スキルに分けるかの判断の結果。分けずに、書き換えだけを寄せた)。
+
+### Changed
+
+- 還流の rule は d2-decide `mode=feedback` (ADR を 1 本足す) → d2-run が ADR を commit → d2-foundation `phase=rules` (開発ルールとアーキテストの作り直し)、
+  contract は d2-contract `mode=feedback` (分割ファイルを直し、生成物を全部作り直す)。d2-run は還流 branch・派遣・受理・commit・PR だけを行う
+- 還流 branch を `feedback/<slug>/<issue>` (課題ごとに決まる名前) にし、中断からの再開を PR → リモート branch → ローカル branch の順に判定する
+- 課題は `.distillery/logs/feedback/<slug>/` に写してから branch を切り替え、`feedback_filed` は feature branch に戻ってから記録する
+  (還流 branch には `issues/` も run ディレクトリも無い)
+- 受理はファイルで行う: 結果ファイル (`applied` / `absent` / `blocked`) で分岐し、生成物の `--check` 群を commit の前に回す
+- 止まったとき (ADR で表せない・検査で落ちた) は差分を残して還流 branch を捨て、`feedback_deferred {kind, issue_path, reason}` にする。
+  いま実装中の UC 自身の契約の穴 (開始点の契約に対象が無い) は、`git grep` で確かめてから contract の issue にする
+
+### Added
+
+- genRules.js・genArchTests.js の `--check` (書かずに、生成物が無いか古ければ exit 1)
+- 入出力の正本に還流の処理 (派遣 3・受理の検査 5) と、課題の写し・結果ファイル・止まったときの差分を足した。整合性テストが d2-run の還流節と d2-decide / d2-contract の還流の読む / 書くを照合する
+
+### Known issues
+
+- 契約の生成物 (契約テスト等) の basis は、生成物を契約と一緒に commit した直後から古いと判定される (④ contract 段にもある既存の挙動。還流も同じ順にそろえた)
+
 ## [0.1.23] - 2026-09-27
 
 0.1.22 の試し運転で見つかった課題 (いずれも 0.1.22 以前から) を直した。

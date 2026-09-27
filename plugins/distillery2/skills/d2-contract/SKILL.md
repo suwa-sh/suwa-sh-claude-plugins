@@ -3,7 +3,8 @@ name: d2-contract
 description: >-
   契約 (OpenAPI / AsyncAPI / RDB スキーマ) を分割 YAML で管理し、bundle・UC ごとの slice・契約テストを生成する。
   mode=skeleton (段階③: カタログ・共通コンポーネント・エラー型・空の uc-index) と
-  mode=uc (段階④: 1 UC 分の分割ファイル編集・examples 追加・slice/テスト再生成) の 2 モード。
+  mode=uc (段階④: 1 UC 分の分割ファイル編集・examples 追加・slice/テスト再生成) と
+  mode=feedback (段階④の還流: 実装で見つかった契約の穴を直し、生成物を全部作り直す) の 3 モード。
   UC が使う operation には examples を必須にし、書けなければ止めて課題にする。
 ---
 
@@ -96,6 +97,37 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
    examples 不足や参照ずれは validate が exit 1 で止める。
 6. **契約テスト生成**: `genContractTests.js --uc <slug>` と `genRdbDdl.js` を対象リポに対して実行する。
    契約テストはこの時点では todo か red (実装前だから)。生成物に `basis:` を付ける。
+
+## mode=feedback issue=&lt;課題の写し&gt; result=&lt;結果ファイル&gt; (段階④の還流)
+
+d2-run が還流用の branch (UC の開始点から切ったもの) の上で派遣する。実装で見つかった「契約の穴」(課題の front matter `kind: contract`) を直す。
+還流の branch には、いま実装中の UC が足した契約はまだ無い。
+
+1. 課題の写しを読み、直す対象 (operationId・channel / message 名・テーブル名) を挙げる
+2. **対象が今の branch の契約にあるか確かめる** (`contracts/openapi/` の operationId、`contracts/asyncapi/` の message、`contracts/db/domains/` のテーブル)。
+   1 つでも無ければ**何も書かずに**、結果ファイルへ `status: absent`、無かった対象名を `targets` に書いて止まる
+   (いま実装中の UC 自身の契約の穴。d2-run が開始点の契約と照合してから issue に切り替える)
+3. 契約を推測で埋めないと直せない (課題に応答の形が無い、要求が決まっていない) なら、何も書かずに `status: blocked` と理由を書いて止まる
+4. 分割ファイル (`openapi/` `asyncapi/` `db/domains/`) を直す。examples 必須のルールと `x-test-headers` の書き方は mode=uc と同じ。
+   uc-index は変えない (UC が使う範囲は mode=uc の担当)
+5. 生成物を全部作り直す (この順): `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js` → `genContractTests.js` (`--uc` なし) → `genRdbDdl.js`
+6. 結果ファイルへ `status: applied`、`targets` (直した対象)、`reason` (1 行) を書く。完了報告には「他の UC への影響」として、
+   直した operation を使う UC (`uc-index.yaml` から) と、提供側の契約テストが red になりうる変更を operation 名で書く (d2-run が PR 本文に載せる)
+
+結果ファイルは JSON 1 つ: `{"status": "applied" | "absent" | "blocked", "targets": [...], "reason": "..."}`。d2-run はこのファイルで分岐し、
+受理は各スクリプトの `--check` で行う (報告文では判断しない)。
+
+## mode=feedback: 読むもの
+
+- 課題の写し `.distillery/logs/feedback/<slug>/<issue>.md` (派遣文で渡す)
+- `contracts/**` (分割ファイル・`contracts/uc-index.yaml`)、`.distillery/config.yaml` (genContractTests / genRdbDdl が読む)
+
+## mode=feedback: 書くもの
+
+- `contracts/**` (分割ファイルと `contracts/generated/`。uc-index は変えない)
+- `apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**` (生成物)
+- 結果ファイル `.distillery/logs/feedback/<slug>/<issue>.result.json`
+- git は使わない (commit は d2-run が行う)
 
 ## 注意
 

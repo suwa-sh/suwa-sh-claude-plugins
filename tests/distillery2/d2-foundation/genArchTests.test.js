@@ -48,3 +48,29 @@ test('globToRe converts ** and escapes dots', () => {
   assert.equal(globToRe('a.b/**'), '^a\\.b/.*');
   assert.equal(globToRe('a/*/b'), '^a/[^/]*/b');
 });
+
+// --check は還流の受理 (d2-run) が使う。書かずに古さだけ見る (0.1.24)
+test('genArchTests --check: 生成直後は exit 0、arch_test を変えると exit 1、書き込みは起きない', () => {
+  const c = tmp();
+  const adr = path.join(c, 'adr');
+  fs.cpSync(adrDir, adr, { recursive: true });
+  run(c, ['--adr', adr, '--out', '.dependency-cruiser.cjs']);
+  const out = path.join(c, '.dependency-cruiser.cjs');
+  const ok = run(c, ['--adr', adr, '--out', '.dependency-cruiser.cjs', '--check']);
+  assert.equal(ok.code, 0, ok.out);
+  assert.match(ok.out, /up to date/);
+  const before = fs.readFileSync(out, 'utf8');
+  const f = path.join(adr, '0002-layers.md');
+  fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('domain は infrastructure に依存しない。', 'domain は infrastructure に依存しない (変更)。'));
+  const ng = run(c, ['--adr', adr, '--out', '.dependency-cruiser.cjs', '--check']);
+  assert.equal(ng.code, 1, ng.out);
+  assert.match(ng.out, /STALE/);
+  assert.equal(fs.readFileSync(out, 'utf8'), before);
+});
+
+test('genArchTests --check: 生成物が無ければ exit 1 で、作らない', () => {
+  const c = tmp();
+  const r = run(c, ['--adr', adrDir, '--out', '.dependency-cruiser.cjs', '--check']);
+  assert.equal(r.code, 1, r.out);
+  assert.ok(!fs.existsSync(path.join(c, '.dependency-cruiser.cjs')));
+});

@@ -49,7 +49,7 @@ description: >-
 | ③ の確認ページ | `.distillery/config.yaml`、`<run>/reports/**` (受理時の検査で bootstrap の gates.json を読む) | `<run>/reports/**` (仕上げの派遣前に bootstrap の gates.json を消す) |
 | ③ の genContractTests.js --check | `contracts/**`、`.distillery/config.yaml`、`apps/*/test/contract/**`、`packages/contracts/**` | — |
 | ③ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
-| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**` | `<run>/events.jsonl`、`<run>/invalidated/**` (差し戻しで退避した done と findings)、`docs/requirements/use-cases.yaml`、GitHub の PR と issue、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す) |
+| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` (還流の派遣の結果)、`.distillery/logs/feedback/<slug>/<issue>.untracked.txt` | `<run>/events.jsonl`、`<run>/invalidated/**` (差し戻しで退避した done と findings)、`docs/requirements/use-cases.yaml`、GitHub の PR と issue、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す)、`.distillery/logs/feedback/<slug>/<issue>.md` (還流の課題の写し)、`.distillery/logs/feedback/<slug>/<issue>.failed.diff` (止まった還流の差分)、`.distillery/logs/feedback/<slug>/<issue>.untracked.txt` (派遣の直前の未追跡ファイル) |
 | ④ の checkScenario.js | `features/<業務>/<slug>.feature`、`features/acceptance/**`、`docs/requirements/use-cases.yaml`、`docs/requirements/requirements.yaml` | — |
 | ④ の compileContracts.js --check | `contracts/**` | — |
 | ④ の compileRdbSchema.js --check | `contracts/**` | — |
@@ -59,6 +59,11 @@ description: >-
 | ④ の genQlty.js --refresh | `package.json`、`package-lock.json`、`.qlty/qlty.toml`、`apps/<tier>/src/**` | `.qlty/qlty.toml` |
 | ④ の checkAsBuilt.js | `docs/as-built/<業務>/<UC>/index.md` (asbuilt の受理時の検査) | — |
 | ④ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
+| ④ の validateAdr.js (還流の受理) | `docs/adr/*.md` | — |
+| ④ の genRules.js --check (還流の受理) | `docs/adr/*.md`、`references/rule-templates/`、`docs/rules/**` | — |
+| ④ の genArchTests.js --check (還流の受理) | `docs/adr/*.md`、`.dependency-cruiser.cjs` | — |
+| ④ の genContractTests.js --check (還流の受理) | `contracts/**`、`.distillery/config.yaml`、`apps/*/test/contract/**`、`packages/contracts/**` | — |
+| ④ の genRdbDdl.js --check (還流の受理) | `contracts/**`、`.distillery/config.yaml`、`apps/<tier>/migrations/**`、`apps/*/test/contract/**`、`packages/contracts/**` | — |
 | ④ の prTrailers.js と配送 | `docs/requirements/use-cases.yaml`、`<run>/reports/**`、`<run>/events.jsonl` | GitHub の PR と issue、`<run>/reports/**` |
 
 ## 起動シーケンス
@@ -68,7 +73,11 @@ description: >-
    **独立検証の条件は「別のサブエージェント (文脈が新しい) で、実装役と同等以上のモデル」**。同じモデル ID に解決されても止めない (記録だけ残す。2026-09-26 のユーザー方針)。
    止めるのは verifier が実装役より明らかに弱い別名 (例: 実装役が opus で verifier が haiku) のときだけ
 3. ④ なら UC を解決する: 引数が slug なら `use-cases.yaml` と照合、UC 名なら NFC 正規化して一意に一致する行を探す (複数なら候補を示して選ばせる)
-4. 作業ツリーの clean 判定 (④ の開始時。再開時は branch 一致を確認): `git status --porcelain` のうち、**追跡済みの変更**と、**未追跡でも `docs/` `apps/` `packages/` `contracts/` `features/` `.distillery/` 配下のファイル**だけを対象にする。これらがあれば勝手に stash / commit せず整理を依頼して停止する。それ以外のルート直下の未追跡ファイル (ハーネスの `run-stage.sh` などの実行スクリプト) は clean 判定に含めず、**報告に一覧として載せて無視**する (実走でハーネスのファイルが clean 条件を満たせなかったため)。`.git/info/exclude` への書き込みは前提にしない (権限で拒否されうる)
+4. (④ の再開時) 現在の branch が還流 branch (`feedback/<slug>/<issue>`。還流節) なら、clean 判定より先に還流節の「止まったとき」の a〜c を行って feature branch に戻る
+   (リモートに同じ branch があれば c は branch を消さない。push 済みの commit は捨てない)
+   (還流の派遣の途中で止まると、サブの書きかけが残った還流 branch の上で再開することになる。そのまま clean 判定をすると後始末の前に止まる)。
+   その課題は還流節の 1 からやり直す
+5. 作業ツリーの clean 判定 (④ の開始時。再開時は branch 一致を確認): `git status --porcelain` のうち、**追跡済みの変更**と、**未追跡でも `docs/` `apps/` `packages/` `contracts/` `features/` `.distillery/` 配下のファイル**だけを対象にする。これらがあれば勝手に stash / commit せず整理を依頼して停止する。それ以外のルート直下の未追跡ファイル (ハーネスの `run-stage.sh` などの実行スクリプト) は clean 判定に含めず、**報告に一覧として載せて無視**する (実走でハーネスのファイルが clean 条件を満たせなかったため)。`.git/info/exclude` への書き込みは前提にしない (権限で拒否されうる)
 
 ## ① 要求
 
@@ -167,19 +176,72 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 
 ## 還流 (feedback 段階)
 
-`issues/*.md` の front matter `kind` で分類する。
+`issues/*.md` の front matter `kind` で分ける。**上流の文書 (ADR・開発ルール・契約) は自分で書き換えない**。持ち主のスキルを派遣し、自分は branch・受理・commit・PR だけを行う。
 
-| kind | 誰が | 経路 |
+| kind | 誰が書き換えるか | 経路 |
 |---|---|---|
-| rule | 自分 (d2-run) | `feedback/<slug>-<n>` branch を base から切り、ADR を追記 (`docs/adr/`) → `genRules.js` で rules 再生成 → PR (`Feedback-Kind: rule` trailer)。UC branch に戻る |
-| contract | 自分 | 同上で契約の分割ファイルを直し `compileContracts.js` → PR (`Feedback-Kind: contract`)。UC 側は merge 後に contract 段階から再実行 |
+| rule | d2-decide `mode=feedback` (ADR を 1 本足す) → d2-foundation `phase=rules` (開発ルールとアーキテストを作り直す) | 還流 branch → PR (`Feedback-Kind: rule` trailer) |
+| contract | d2-contract `mode=feedback` (分割ファイルを直し、生成物を作り直す) | 還流 branch → PR (`Feedback-Kind: contract`)。UC 側は merge 後に contract 段階から再実行 |
 | requirement | 人 | `gh issue create`。本文は issue の Markdown。UC は反映待ち (`blocked_on_requirement` イベント) で停止 |
 
 各 PR / issue の URL を `feedback_filed {kind, url, issue_path}` に記録する (`issue_path` は `issues/<file>.md`)。上流の再生成はしない。
 
-**PR / issue を作れない実行** (push 禁止の headless・`gh` 未認証・リモート無し) では、各 issue を
+### rule / contract の手順 (課題 1 件ごと)
+
+`<issue>` = 課題のファイル名 (拡張子なし)。還流 branch = `feedback/<slug>/<issue>`。`<fb>` = `.distillery/logs/feedback/<slug>` (gitignore。branch を切り替えても残る)。
+受理のスクリプトは持ち主のスキルのもの: `${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/validateAdr.js`、`${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/{genRules,genArchTests}.js`、
+`${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/{compileContracts,compileRdbSchema,validateUcIndex,genContractTests,genRdbDdl}.js`。
+
+1. feature branch の上 (clean) で、課題を `<fb>/<issue>.md` に写す。還流 branch には `issues/` も run ディレクトリも無い (UC の開始点から切るため)
+2. 再開の判定 (上から順に):
+   - `gh pr list --state all --head <還流 branch>` に PR がある → 8 へ
+   - リモートに還流 branch があり、ローカルの還流 branch と同じ commit か、ローカルに無い (push の後に中断) → 7 の PR 作成だけへ (push は飛ばす)
+   - リモートに還流 branch があり、ローカルの commit が違う → 止まって報告する (force push はしない)
+   - ローカルにだけ還流 branch がある (push の前に中断) → 下の「止まったとき」の a〜c で捨ててから 3 へ
+   - どれも無い → 3 へ
+3. 未追跡ファイルの一覧を `<fb>/<issue>.untracked.txt` に書いてから (branch を切った直後に中断しても後始末できるように)、
+   `git switch -c <還流 branch> <base_head>` (`base_head` は `branch_started` のもの)。以後も**各派遣の直前**に
+   `git status --porcelain --untracked-files=all` の未追跡ファイルの一覧を `<fb>/<issue>.untracked.txt` に書く (中断して別のセッションで再開しても後始末に使える)。
+   d2-decide と d2-contract の派遣の直前には、`<fb>/<issue>.result.json` も消す (結果ファイルを書くのはこの 2 つだけ)
+4. 派遣と受理 (受理の `--check` は**生成物を commit する前に**回す。生成物の basis の行まで比べるので、commit の後では古いと判定される):
+   - rule:
+     1. sub d2-decide `mode=feedback` (派遣表「④ 還流 (ADR)」)。結果ファイルが `applied` で、`validateAdr.js docs/adr` が exit 0 なら受理し、
+        `git add docs/adr && git commit -m "feedback(<slug>): adr"`
+     2. sub d2-foundation `phase=rules` (派遣表「④ 還流 (ルールの再生成)」)。ADR の commit の後に回すので、ルールの basis が新しい ADR を指す。
+        結果ファイルは使わない (このサブは書かない)。`genRules.js --adr docs/adr --out docs/rules --check` と `genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --check` が exit 0 で、
+        write-set の外が変わっていなければ受理
+   - contract: sub d2-contract `mode=feedback` (派遣表「④ 還流 (契約)」)。結果ファイルが `applied` で、`compileContracts.js contracts --check`、
+     `compileRdbSchema.js contracts --check`、`validateUcIndex.js contracts`、`genContractTests.js contracts --config .distillery/config.yaml --out-root . --check`、
+     `genRdbDdl.js contracts --config .distillery/config.yaml --out-root . --check` がすべて exit 0 なら受理
+   - d2-decide / d2-contract の結果ファイルが `applied` 以外 (無いときも)、どれかの検査が落ちた、write-set の外が変わった (`git status --porcelain`) → 下の「止まったとき」
+5. `genDocsReadme.js` で `docs/README.md` を更新する
+6. commit: rule は `git add docs/rules .dependency-cruiser.cjs docs/README.md && git commit -m "feedback(<slug>): rules"`、
+   contract は `git add contracts apps packages docs/README.md && git commit -m "feedback(<slug>): contracts"`
+7. `git push -u origin <還流 branch>` → `gh pr create --base <base_branch> --head <還流 branch>`。本文に課題の要点と、contract なら d2-contract の報告の「他の UC への影響」を書く。
+   trailer は `Feedback-Kind:`、`Feedback-From-UC:`、`Feedback-Issue:` (issues/ のパス)。PR の URL を控える
+8. `git switch feature/<slug>` (還流 branch が clean なことを確かめてから)。**記録は feature に戻ってから書く** (run ディレクトリは還流 branch に無い)
+9. `feedback_filed {kind, url, issue_path}` を記録し、`impl(<slug>): feedback filed` で commit する
+
+### 止まったとき
+
+a. 差分を `<fb>/<issue>.failed.diff` に保存する (`git diff <base_head>` (commit 済みの ADR も含む) と、`<fb>/<issue>.untracked.txt` に無い未追跡ファイルの一覧)。
+   一覧のファイルが無い (控える前に止まった) なら、未追跡ファイルは消さずに一覧を報告して止まる
+b. 還流 branch の変更を捨てる: `git restore --staged --worktree .` と、**派遣の直前に控えた一覧 (`<fb>/<issue>.untracked.txt`) に無かった未追跡ファイルだけ**を消す
+   (write-set の外に作られたものも含む。ignore 済みは対象外)。消せないものがあれば feature に戻らず、止まって報告する
+c. `git switch feature/<slug>` → リモートに同じ名前の branch が**無いときだけ** `git branch -D <還流 branch>` (push の前なので失うものは無い。ADR だけ commit 済みでも branch ごと捨てる)。
+   リモートにあれば push 済みなので消さない (再開の判定 2 が PR 作成から続ける)
+d. 行き先:
+   - contract で結果ファイルが `absent`: `targets` の名前ごとに `git grep -q <名前> <base_head> -- contracts/` で、開始点の契約に無いことを確かめる。
+     すべて無ければ、いま実装中の UC 自身の契約の穴なので、contract の課題として `gh issue create` (本文は課題。UC の PR 本文からリンクする) し、
+     `feedback_filed {kind, url, issue_path}` を記録する。1 つでも開始点にあれば `absent` を受理せず、次の行へ
+   - それ以外 (`blocked`、検査で落ちた、結果ファイルが無い、`absent` を受理しなかった): `feedback_deferred {kind, issue_path, reason}` を記録し
+     (`issue_path` は元の `issues/<file>.md`。同じパスの `feedback_filed` で解消する)、人の確認ページに載せる
+
+### PR / issue を作れない実行
+
+**PR / issue を作れない実行** (push 禁止の headless・`gh` 未認証・リモート無し) では、還流 branch も派遣も作らず、各 issue を
 `feedback_deferred {kind, issue_path, reason}` に記録して feedback を done にする (URL の無い `feedback_filed` は書かない)。
-保留は deliver の前に必ず解消する (deliver 行)。未解消の保留は `runState.js status` の `pending_feedback` に出る
+保留は deliver の前に必ず解消する (deliver 行。解消は上の手順を 1 から行う)。未解消の保留は `runState.js status` の `pending_feedback` に出る
 (0.1.18 以前の記録の「url が空の `feedback_filed`」も保留として数える)。
 
 ## 完了報告
