@@ -74,6 +74,7 @@ description: >-
    止めるのは verifier が実装役より明らかに弱い別名 (例: 実装役が opus で verifier が haiku) のときだけ
 3. ④ なら UC を解決する: 引数が slug なら `use-cases.yaml` と照合、UC 名なら NFC 正規化して一意に一致する行を探す (複数なら候補を示して選ばせる)
 4. (④ の再開時) 現在の branch が還流 branch (`feedback/<slug>/<issue>`。還流節) なら、clean 判定より先に還流節の「止まったとき」の a〜c を行って feature branch に戻る
+   (リモートに同じ branch があれば c は branch を消さない。push 済みの commit は捨てない)
    (還流の派遣の途中で止まると、サブの書きかけが残った還流 branch の上で再開することになる。そのまま clean 判定をすると後始末の前に止まる)。
    その課題は還流節の 1 からやり直す
 5. 作業ツリーの clean 判定 (④ の開始時。再開時は branch 一致を確認): `git status --porcelain` のうち、**追跡済みの変更**と、**未追跡でも `docs/` `apps/` `packages/` `contracts/` `features/` `.distillery/` 配下のファイル**だけを対象にする。これらがあれば勝手に stash / commit せず整理を依頼して停止する。それ以外のルート直下の未追跡ファイル (ハーネスの `run-stage.sh` などの実行スクリプト) は clean 判定に含めず、**報告に一覧として載せて無視**する (実走でハーネスのファイルが clean 条件を満たせなかったため)。`.git/info/exclude` への書き込みは前提にしない (権限で拒否されうる)
@@ -194,8 +195,8 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 1. feature branch の上 (clean) で、課題を `<fb>/<issue>.md` に写す。還流 branch には `issues/` も run ディレクトリも無い (UC の開始点から切るため)
 2. 再開の判定 (上から順に):
    - `gh pr list --state all --head <還流 branch>` に PR がある → 8 へ
-   - リモートに還流 branch があり、ローカルの還流 branch と同じ commit → 7 の PR 作成だけへ
-   - リモートに還流 branch があり、commit が違う → 止まって報告する (force push はしない)
+   - リモートに還流 branch があり、ローカルの還流 branch と同じ commit か、ローカルに無い (push の後に中断) → 7 の PR 作成だけへ (push は飛ばす)
+   - リモートに還流 branch があり、ローカルの commit が違う → 止まって報告する (force push はしない)
    - ローカルにだけ還流 branch がある (push の前に中断) → 下の「止まったとき」の a〜c で捨ててから 3 へ
    - どれも無い → 3 へ
 3. `git switch -c <還流 branch> <base_head>` (`base_head` は `branch_started` のもの)。以後、**各派遣の直前**に
@@ -226,7 +227,8 @@ a. 差分を `<fb>/<issue>.failed.diff` に保存する (`git diff <base_head>` 
    一覧のファイルが無い (控える前に止まった) なら、未追跡ファイルは消さずに一覧を報告して止まる
 b. 還流 branch の変更を捨てる: `git restore --staged --worktree .` と、**派遣の直前に控えた一覧 (`<fb>/<issue>.untracked.txt`) に無かった未追跡ファイルだけ**を消す
    (write-set の外に作られたものも含む。ignore 済みは対象外)。消せないものがあれば feature に戻らず、止まって報告する
-c. `git switch feature/<slug>` → `git branch -D <還流 branch>` (push の前なので失うものは無い。ADR だけ commit 済みでも branch ごと捨てる)
+c. `git switch feature/<slug>` → リモートに同じ名前の branch が**無いときだけ** `git branch -D <還流 branch>` (push の前なので失うものは無い。ADR だけ commit 済みでも branch ごと捨てる)。
+   リモートにあれば push 済みなので消さない (再開の判定 2 が PR 作成から続ける)
 d. 行き先:
    - contract で結果ファイルが `absent`: `targets` の名前ごとに `git grep -q <名前> <base_head> -- contracts/` で、開始点の契約に無いことを確かめる。
      すべて無ければ、いま実装中の UC 自身の契約の穴なので、contract の課題として `gh issue create` (本文は課題。UC の PR 本文からリンクする) し、

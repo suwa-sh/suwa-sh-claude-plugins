@@ -250,3 +250,22 @@ test('還流: 還流 branch の上で再開したら clean 判定より先に後
   assert.match(fb, /派遣の直前に控えた一覧 \(`<fb>\/<issue>\.untracked\.txt`\) に無かった未追跡ファイルだけ/);
   assert.match(fb, /一覧のファイルが無い \(控える前に止まった\) なら、未追跡ファイルは消さずに/);
 });
+
+test('還流: 派遣表の受理の説明も、結果ファイルを使うのは ADR と契約の 2 行だけ (差分レビュー 2 ラウンド目)', () => {
+  const t = read(TEMPLATE);
+  const line = t.split('\n').find(l => l.startsWith('- 還流の 3 行'));
+  assert.ok(line, '派遣表に還流の受理の説明がある');
+  const rest = t.slice(t.indexOf(line)).split('\n').slice(0, 2).join('\n');
+  assert.match(rest, /結果ファイルはこの 2 つの派遣の前にだけ消す/);
+  assert.match(rest, /「④ 還流 \(ルールの再生成\)」は結果ファイルを書かないので使わず/);
+  assert.doesNotMatch(t, /還流の 3 行も同じ: 分岐は結果ファイル/);
+});
+
+test('還流: push の後に中断しても branch を消さず、PR 作成から続ける (差分レビュー 2 ラウンド目)', () => {
+  const fb = feedbackSection();
+  assert.match(fb, /ローカルに無い \(push の後に中断\) → 7 の PR 作成だけへ/);
+  assert.match(fb, /リモートに同じ名前の branch が\*\*無いときだけ\*\* `git branch -D/);
+  const t = read(SKILL);
+  const startup = t.slice(t.indexOf('## 起動シーケンス'), t.indexOf('## ① 要求'));
+  assert.match(startup, /リモートに同じ branch があれば c は branch を消さない/);
+});

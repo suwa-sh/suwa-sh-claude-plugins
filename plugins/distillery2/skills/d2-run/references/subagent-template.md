@@ -60,7 +60,8 @@
 - scaffold では加えて、既存の非テストファイルを変更・削除していないこと: `git diff --name-only --diff-filter=MD` に `*.test.ts` 以外の `apps/**/src/**` が無い
 - 必須成果物の存在と parse (assumptions / findings は `validateAssumptions.js`)
 - 基盤の仕上げと as-built は、サブの報告文ではなくファイルで受理する (SKILL.md の ③ 5 と asbuilt 行): `.distillery/runs/bootstrap/reports/gates.json` / `<run>/reports/asbuilt.json` と `checkAsBuilt.js`。どちらのファイルも派遣の前に消しておき、前回の結果で受理しない
-- 還流の 3 行も同じ: 分岐は結果ファイル (`applied` / `absent` / `blocked`)、受理は `--check` 群 (SKILL.md の還流節)。結果ファイルは派遣の前に消す。write-set の逸脱は還流 branch の `git status --porcelain` で見る
+- 還流の 3 行もファイルで受理する (SKILL.md の還流節)。「④ 還流 (ADR)」と「④ 還流 (契約)」は結果ファイル (`applied` / `absent` / `blocked`) で分岐し、結果ファイルはこの 2 つの派遣の前にだけ消す。
+  「④ 還流 (ルールの再生成)」は結果ファイルを書かないので使わず、`genRules.js --check` と `genArchTests.js --check` で受理する。どの行も write-set の逸脱は還流 branch の `git status --porcelain` で見る
 - 完了報告が来なくても成果物 (done + ファイル) が正。存在と parse で完了判定してよい (検証の省略ではない)。逆に、報告だけあって done / 成果物が無ければ未完了として扱う
 - 例外: ③ の画面部品 (d2-design) は完了報告 (部品を生成したか、画面を持たないため skip したか) が要る。前の実行の `docs/design/` が残っていると、成果物だけでは今回の生成と skip を区別できず、仕上げに渡す `ui=` を決められない。報告が無ければ未完了として再派遣する
 - 例外: asbuilt は要約役の完了報告 (要約した 3 ブロックと、引用したコード位置の一覧) も要る。抽出は前回の要約ブロックを残すので、要約の前に止まっても集計ファイルと書式の検査は通ってしまい、成果物だけでは今回の要約を区別できない。報告が無ければ未完了として再派遣する
