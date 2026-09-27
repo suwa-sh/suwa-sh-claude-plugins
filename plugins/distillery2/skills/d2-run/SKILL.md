@@ -91,9 +91,9 @@ design は config も契約も読まないので、契約の骨格の直後に�
 
 1. sub `d2-foundation phase=all` (F1→F2→F3→F5→F7。骨格・設定・依存を入れる・qlty の提案を足す。この時点の genConfig は `contracts: []` の警告付きでよい)
 2. sub `d2-contract mode=skeleton` (compile に redocly を使う)
-3. (frontend ティアがあれば) sub `d2-design`
-4. `.distillery/runs/bootstrap/reports/gates.json` があれば消してから、sub `d2-foundation phase=finish` (F8→F6→F7→F4→F9)。
-   受理時の検査: `.distillery/runs/bootstrap/reports/gates.json` があり、`uc` が `bootstrap`、`result` が `pass`、`gates` の `static` が `pass` (読むだけ。runGates を回し直さない)。
+3. (frontend ティアがあれば) sub `d2-design`。このときだけ次の仕上げに `ui=true` を渡す (無ければ `ui=false`。design を派遣しない)
+4. `.distillery/runs/bootstrap/reports/gates.json` があれば消してから、sub `d2-foundation phase=finish ui=<true|false>` (F8→F6→F7→F4→F9)。
+   受理時の検査: `.distillery/runs/bootstrap/reports/gates.json` があり、`uc` が `bootstrap`、`result` が `pass`、`gates` (`{name, status}` の配列) のうち `name` が `static` の要素の `status` が `pass` (読むだけ。runGates を回し直さない)。
    満たさなければ報告を添えて人に見せ、先へ進まない
 5. `.distillery/config.yaml` の tiers / contracts / commands / capabilities を確認ページで人に見せ、承認後に `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add -A && git commit -m "foundation: rules, tests, contracts, config"`
 

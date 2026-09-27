@@ -39,8 +39,8 @@ git: 自分で git コマンドを打たない (commit は d2-run が行う)。�
    - 書くもの: `docs/as-built/<業務>/<UC>/{index.md, sequence.md}`、
      `docs/as-built/_system/{traceability-index.json, api-inventory.md, data-flow.md, dependency-graph.md, index.md}`、
      集計 `.distillery/runs/<slug>/reports/asbuilt.json` (slug・attempt・計装なしのティア。d2-run が受理時に読む)
-   - 標準出力 1 行をそのまま報告に転記する。`計装なしのティア: …` か `正常系に部品 (call) が無いティア: …` が出たら、
-     UC のティアがトレースに現れていない (integrate の結線漏れ)。要約はそのまま進めてよい (integrate へ戻す判断は d2-run が集計ファイルで行う)
+   - 標準出力 1 行をそのまま報告に転記する。`計装なしのティア: …` (トレースに現れないティア) か `正常系に部品 (call) が無いティア: …` (正常系のトレースに部品が無いティア) が出たら、
+     integrate の結線漏れ。要約はそのまま進めてよい (integrate へ戻す判断は d2-run が集計ファイルで行う)
    - 決定論。同じ入力なら同じ出力。`generated_at` だけ最新イベント ts を使う
    - 再実行しても、既存の `<!-- 要約:begin <名前> -->…<!-- 要約:end -->` の中身は名前で保存する
 

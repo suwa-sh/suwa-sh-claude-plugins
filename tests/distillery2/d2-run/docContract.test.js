@@ -104,14 +104,21 @@ test('③ の後始末は d2-foundation phase=finish。d2-run は gates.json を
   const skill = read(SKILL);
   const s3 = skill.slice(skill.indexOf('## ③ 基盤'), skill.indexOf('## ④'));
   assert.match(s3, /sub `d2-foundation phase=all`/);
-  assert.match(s3, /sub `d2-foundation phase=finish`/);
-  assert.ok(s3.indexOf('sub `d2-design`') < s3.indexOf('sub `d2-foundation phase=finish`'), 'design は仕上げの前');
+  assert.match(s3, /sub `d2-foundation phase=finish ui=/);
+  assert.ok(s3.indexOf('sub `d2-design`') < s3.indexOf('sub `d2-foundation phase=finish ui='), 'design は仕上げの前');
   // 手順 (番号付きの行と、その続きの字下げ行) に、移したスクリプトを直接回す記述が無い
   const steps = s3.split('\n').filter(l => /^(\d+\.|   )/.test(l)).join('\n');
   for (const s of ['npm install', 'genConfig.js', 'genCi.js', 'genArchitectureDoc.js', 'importUi.js', 'genContractTests.js', 'runGates.js']) {
     assert.ok(!steps.includes(s), `d2-run の ③ の手順が ${s} を直接回していない`);
   }
   assert.match(s3, /`\.distillery\/runs\/bootstrap\/reports\/gates\.json` があれば消してから/);
+  // gates.json の gates は {name, status} の配列 (runGates.js が書く形)。キー参照で書かない
+  assert.match(s3, /`gates` \(`\{name, status\}` の配列\) のうち `name` が `static` の要素の `status` が `pass`/);
+  // F6 は d2-run が design を派遣したかで決める (古い docs/design の有無で決めない)
+  assert.match(s3, /sub `d2-foundation phase=finish ui=<true\|false>`/);
+  const fnd = read('skills/d2-foundation/SKILL.md');
+  assert.match(fnd, /`ui=false` なら F6 と次の F7 を飛ばす/);
+  assert.match(fnd, /前の実行の `docs\/design\/` が残っていても取り込まない/);
   assert.match(row(read(TEMPLATE), /^\| ③ 基盤 \(仕上げ\) /), /`node_modules\/\*\*`/);
   assert.match(read(TEMPLATE), /例外: 手順書が回すスクリプトの内部の git/);
 });

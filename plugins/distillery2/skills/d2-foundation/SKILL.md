@@ -21,6 +21,7 @@ description: >-
 
 ```
 phase=all | finish | F1..F9   # 既定 all
+ui=true | false               # phase=finish だけ。d2-run が design を派遣したか (F6 を回すか)
 adr=docs/adr                  # ADR ディレクトリ
 ```
 
@@ -29,7 +30,7 @@ d2-run は段階③で 2 回呼ぶ。
 | 呼ぶとき | phase | 順 |
 |---|---|---|
 | ③ の最初 | `all` | F1 → F2 → F3 → F5 → F7 |
-| 契約の骨格 (d2-contract mode=skeleton) と画面部品 (d2-design) の後 | `finish` | F8 → F6 (画面部品があるときだけ) → F7 (F6 を回したときだけ) → F4 → F9 |
+| 契約の骨格 (d2-contract mode=skeleton) と画面部品 (d2-design) の後 | `finish` | F8 → F6 (`ui=true` のときだけ) → F7 (F6 を回したときだけ) → F4 → F9 |
 
 - スクリプトは `${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/` にある。`--cwd <repo>` で対象リポを指す。
 - どの phase も再実行して安全。
@@ -70,7 +71,9 @@ F7 で npm install の後に `genQlty.js --refresh` で増えた分を足す (�
 契約の骨格と画面部品が揃ってから回す。config / CI は契約 (`contracts/contracts.json`) を読み、C4 図は契約の矢印をこの時点で初めて描ける (0.1.10 実走 ③-3 / ③-5、0.1.13 実走 ③-4)。
 
 1. F8: config・CI・C4 図を契約込みで作り直す (いずれも自分の生成物なら上書きする)
-2. F6: `docs/design/storybook-app/` があれば `packages/ui` に取り込む。無ければ F6 と次の F7 を飛ばす
+2. F6: `ui=true` なら `docs/design/storybook-app/` を `packages/ui` に取り込む。`ui=false` なら F6 と次の F7 を飛ばす
+   (前の実行の `docs/design/` が残っていても取り込まない。画面の有無は d2-run の判断に従う)。`ui=true` なのに出力が無ければ
+   (d2-design が「画面を持たない」と判断して skip した) F6 と F7 を飛ばし、その旨を報告する
 3. F7: `packages/ui` が workspace に加わったので `npm install` をもう一度 (lockfile を更新) → `genQlty.js --refresh`
 4. F4: 骨格分の契約テストを生成する
 5. F9: チェックポイント。`runGates.js --uc bootstrap --upto static` が exit 0

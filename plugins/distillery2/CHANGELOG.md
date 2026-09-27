@@ -10,9 +10,9 @@ d2-run が直接回していた作業を、段階の持ち主のスキルに移�
 
 - ③ 基盤: npm install・genQlty --refresh・config / CI / C4 図の再生成・画面部品の取り込み・骨格分の契約テスト・チェックポイントを d2-foundation に移した
   - d2-foundation の phase を追加: F7 依存の導入、F8 契約込みの再生成、F9 チェックポイント。F4 は「骨格分の契約テストの生成」になった
-  - `phase=all` = F1→F2→F3→F5→F7、新しい `phase=finish` = F8→F6→F7→F4→F9
+  - `phase=all` = F1→F2→F3→F5→F7、新しい `phase=finish` = F8→F6→F7→F4→F9。F6 は d2-run が渡す `ui=true|false` (design を派遣したか) で決め、前の実行の `docs/design/` が残っていても取り込まない
   - d2-run の ③ は「基盤 → 契約の骨格 → design → 基盤の仕上げ → 確認ページ」。design は config も契約も読まないので、仕上げの前に動かした (仕上げを 1 回の派遣にまとめるため)
-  - d2-run は仕上げを `.distillery/runs/bootstrap/reports/gates.json` で受理する (派遣前に消し、前回の結果で受理しない)
+  - d2-run は仕上げを `.distillery/runs/bootstrap/reports/gates.json` で受理する (派遣前に消し、前回の結果で受理しない。`gates` 配列の static が pass)
   - lockfile の書き手は ③ では d2-foundation だけ (単一 writer は変わらない)
 - ④ asbuilt: depcruise・extractAsBuilt・checkAsBuilt を d2-asbuilt が通しで回す。d2-run は受理時の検査 (checkAsBuilt と集計ファイル) だけ
   - extractAsBuilt が集計 `<run>/reports/asbuilt.json` (slug・attempt・generated_at・計装なしのティア) を書く (一時ファイルから rename)
