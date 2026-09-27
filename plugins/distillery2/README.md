@@ -35,12 +35,12 @@ v2 は成果物を 3 つに分ける。
 | `distillery2:d2-run` | オーケストレータ。通常はこれだけ呼ぶ |
 | `distillery2:d2-requirements` | ① 要求。USDM / RDRA / UC 一覧 |
 | `distillery2:d2-decide` | ② 決定。非機能要求グレード表 + ADR (機械可読 rules 付き) + C4 図 (architecture.md) |
-| `distillery2:d2-foundation` | ③ 基盤。rules / arch test / テスト基盤 / 契約テスト / 設定 / CI |
+| `distillery2:d2-foundation` | ③ 基盤。rules / arch test / テスト基盤 / 設定 / CI / 依存の導入。契約の骨格と画面部品の後の仕上げ (契約込みの再生成・画面部品の取り込み・骨格分の契約テスト・チェックポイント) |
 | `distillery2:d2-design` | ③ 画面部品。tokens (ブランド起点) + Storybook + アセット + 目視証跡 |
 | `distillery2:d2-contract` | 契約カタログ (skeleton / uc の 2 モード) |
 | `distillery2:d2-implement` | ④ 実装者 (scenario / scaffold / tier / integrate) |
 | `distillery2:d2-verify` | ④ 別モデルの検証 (UC の意図・前提の整合) |
-| `distillery2:d2-asbuilt` | ④ 実装からの文書抽出 |
+| `distillery2:d2-asbuilt` | ④ 実装からの文書抽出 (依存グラフの実態・抽出・要約・書式の検査まで) |
 | `distillery2:d2-common` | 他のスキルが参照する共通定義。直接は起動しない。**処理と入出力の正本** ([dataflow.yaml](skills/d2-common/references/dataflow.yaml)) と、そこから生成した DFD ([dataflow.md](skills/d2-common/references/dataflow.md)) |
 
 呼び出し名は `/distillery2:<skill>`。SKILL.md の `name` は Agent Skills 仕様どおりディレクトリ名 (`d2-run` など) で、Claude Code がプラグイン名を前置する。
@@ -76,5 +76,5 @@ docs/                  requirements/ nfr/ adr/ rules/ design/ as-built/
 ## 状態
 
 0.1.x は UC 1 つの縦切りが通る範囲を対象にする。リリース後の変更入口・ドリフト検知・既存プロダクトの取り込みは未対応。変更履歴は [CHANGELOG.md](CHANGELOG.md)。
-実走で踏んだ環境依存の問題と回避策は、スキルごとの `references/troubleshooting.md` にためる: [d2-run](skills/d2-run/references/troubleshooting.md) (npm 10 の失敗、headless の許可) / [d2-foundation](skills/d2-foundation/references/troubleshooting.md) (qlty / biome) / [d2-contract](skills/d2-contract/references/troubleshooting.md) (契約テスト)。
+実走で踏んだ環境依存の問題と回避策は、スキルごとの `references/troubleshooting.md` にためる: [d2-run](skills/d2-run/references/troubleshooting.md) (headless の許可) / [d2-foundation](skills/d2-foundation/references/troubleshooting.md) (npm 10 の失敗、qlty / biome) / [d2-contract](skills/d2-contract/references/troubleshooting.md) (契約テスト)。
 旧版 (`distillery` / `distillery-impl`) はそのまま残る。

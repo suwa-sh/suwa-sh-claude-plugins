@@ -46,17 +46,10 @@ description: >-
 |---|---|---|
 | ① ② の確認ページ | `docs/requirements/_review-summary.md`、`docs/adr/_review-summary.md` | — |
 | ① ② の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
-| ③ の確認ページ | `.distillery/config.yaml` | — |
-| ③ の npm install | `package.json` | `package-lock.json` |
-| ③ の genQlty.js --refresh | `package.json`、`package-lock.json`、`.qlty/qlty.toml` | `.qlty/qlty.toml` |
-| ③ の genConfig.js | `docs/adr/*.md`、`contracts/contracts.json` | `.distillery/config.yaml` |
-| ③ の genCi.js | `.distillery/config.yaml` | `.github/workflows/**` |
-| ③ の genArchitectureDoc.js | `docs/adr/*.md`、`contracts/contracts.json`、`docs/requirements/rdra/**` | `docs/adr/architecture.md` |
-| ③ の importUi.js (F6) | `docs/design/**` | `packages/ui/**` |
-| ③ の genContractTests.js | `contracts/**`、`.distillery/config.yaml` | `apps/*/test/contract/**`、`packages/contracts/**` |
-| ③ の runGates.js --uc bootstrap | `.distillery/config.yaml`、`package.json`、`.qlty/qlty.toml`、`apps/*/test/contract/**`、`.dependency-cruiser.cjs`、`<run>/reports/**` | `<run>/reports/**` |
+| ③ の確認ページ | `.distillery/config.yaml`、`<run>/reports/**` (受理時の検査で bootstrap の gates.json を読む) | `<run>/reports/**` (仕上げの派遣前に bootstrap の gates.json を消す) |
+| ③ の genContractTests.js --check | `contracts/**`、`.distillery/config.yaml`、`apps/*/test/contract/**`、`packages/contracts/**` | — |
 | ③ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
-| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**` | `<run>/events.jsonl`、`docs/requirements/use-cases.yaml`、GitHub の PR と issue |
+| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**` | `<run>/events.jsonl`、`docs/requirements/use-cases.yaml`、GitHub の PR と issue、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す) |
 | ④ の checkScenario.js | `features/<業務>/<slug>.feature`、`features/acceptance/**`、`docs/requirements/use-cases.yaml`、`docs/requirements/requirements.yaml` | — |
 | ④ の compileContracts.js --check | `contracts/**` | — |
 | ④ の compileRdbSchema.js --check | `contracts/**` | — |
@@ -64,9 +57,7 @@ description: >-
 | ④ の classifyContractChanges.js | `contracts/uc-index.yaml`、`apps/*/test/contract/**`、`packages/contracts/**`、`apps/<tier>/migrations/**`、`contracts/generated/slices/<slug>/**` | — |
 | ④ の runGates.js | `.distillery/config.yaml`、`package.json`、`package-lock.json`、`cucumber.js`、`.qlty/qlty.toml`、`apps/<tier>/src/**`、`apps/*/test/contract/**`、`apps/<tier>/migrations/**`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`features/step_definitions/**`、`features/support/**`、`.dependency-cruiser.cjs`、`<run>/reports/**` | `<run>/reports/**`、`<run>/traces/**` |
 | ④ の genQlty.js --refresh | `package.json`、`package-lock.json`、`.qlty/qlty.toml`、`apps/<tier>/src/**` | `.qlty/qlty.toml` |
-| ④ の depcruise | `.dependency-cruiser.cjs`、`apps/<tier>/src/**` | `<run>/reports/**` |
-| ④ の extractAsBuilt.js | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`docs/requirements/requirements.yaml`、`docs/adr/*.md`、`<run>/reports/**`、`<run>/traces/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/events.jsonl`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/generated/slices/<slug>/**`、`contracts/**`、`docs/design/**`、`features/<業務>/<slug>.feature`、`docs/as-built/<業務>/<UC>/**`、`docs/as-built/<業務>/<UC>/index.md`、`docs/as-built/_system/**` | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/<業務>/<UC>/index.md`、`docs/as-built/_system/**` |
-| ④ の checkAsBuilt.js | `docs/as-built/<業務>/<UC>/index.md` | — |
+| ④ の checkAsBuilt.js | `docs/as-built/<業務>/<UC>/index.md` (asbuilt の受理時の検査) | — |
 | ④ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
 | ④ の prTrailers.js と配送 | `docs/requirements/use-cases.yaml`、`<run>/reports/**`、`<run>/events.jsonl` | GitHub の PR と issue、`<run>/reports/**` |
 
@@ -94,23 +85,20 @@ description: >-
 
 ## ③ 基盤
 
-順序は「骨格 → 依存 → 契約 → 契約込みの config / CI → design → 契約テスト」。契約の骨格は redocly (npm install 後) が要り、
-config / CI は契約 (`contracts/contracts.json`) を読むので、契約の後にもう一度生成する (0.1.10 実走 ③-3 / ③-5)。
+順序は「骨格・依存 → 契約の骨格 → design → 仕上げ (契約込みの config / CI / C4 図・画面部品の取り込み・契約テスト・チェックポイント)」。
+契約の骨格は redocly (npm install 後) が要り、config / CI は契約 (`contracts/contracts.json`) を読むので、契約の後にもう一度生成する (0.1.10 実走 ③-3 / ③-5)。
+design は config も契約も読まないので、契約の骨格の直後に回し、仕上げを 1 回の派遣にまとめる (0.1.22)。
+スクリプトは d2-foundation が回す (phase の中身は d2-foundation の SKILL.md)。d2-run は派遣と受理だけを行う。どの派遣も再実行して安全 (中断したら同じ手順から再開する)。
 
-1. sub `d2-foundation phase=all` (F1→F5。この時点の genConfig は `contracts: []` の警告付きでよい)
-2. 依存を入れる (`npm install`。オーケストレータが単一 writer として行う)。続けて
-   `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --refresh --cwd .` (lockfile ができたので osv-scanner 等の提案が増える。増えた分だけ足す)
-3. sub `d2-contract mode=skeleton` (compile に redocly を使う)
-4. config・CI・C4 図を契約込みで再生成する (いずれも自分の生成物なら上書きする。C4 図は契約の矢印がこの時点で初めて描ける。0.1.13 実走 ③-4):
-   `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd .`
-   → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd .`
-   → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements --cwd .`
-5. (frontend ティアがあれば) sub `d2-design` → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from docs/design/storybook-app --cwd .` (F6)
-   → `packages/ui` が workspace に加わるので `npm install` をもう一度 (lockfile を更新)
-6. `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root .` (骨格分)
-7. チェックポイント: `node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc bootstrap --upto static` が exit 0
-   (`bootstrap` は仮の slug。reports は捨ててよい)
-8. `.distillery/config.yaml` の tiers / contracts / commands / capabilities を確認ページで人に見せ、承認後に `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add -A && git commit -m "foundation: rules, tests, contracts, config"`
+1. sub `d2-foundation phase=all` (F1→F2→F3→F5→F7。骨格・設定・依存を入れる・qlty の提案を足す。この時点の genConfig は `contracts: []` の警告付きでよい)
+2. sub `d2-contract mode=skeleton` (compile に redocly を使う)
+3. (frontend ティアがあれば) sub `d2-design`。design が部品を生成したときだけ次の仕上げに `ui=true` を渡す。
+   frontend ティアが無い (design を派遣しない) か、design が「画面を持たないプロダクトのため skip」と報告したら `ui=false`
+   (前の実行の `docs/design/` が残っていても取り込ませない)。design の完了報告が届くまで仕上げに進まない (subagent-template.md の例外)
+4. `.distillery/runs/bootstrap/reports/gates.json` があれば消してから、sub `d2-foundation phase=finish ui=<true|false>` (F8→F6→F7→F4→F9)。
+   受理時の検査: `.distillery/runs/bootstrap/reports/gates.json` があり、`uc` が `bootstrap`、`result` が `pass`、`gates` (`{name, status}` の配列) のうち `name` が `static` の要素の `status` が `pass` (読むだけ。runGates を回し直さない)。加えて `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root . --check` が exit 0 (骨格分の契約テストが今の契約から生成済み。static のゲートは契約テストの生成を見ないため)。
+   満たさなければ報告を添えて人に見せ、先へ進まない
+5. `.distillery/config.yaml` の tiers / contracts / commands / capabilities を確認ページで人に見せ、承認後に `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add -A && git commit -m "foundation: rules, tests, contracts, config"`
 
 ## ④ UC の縦切り
 
@@ -132,7 +120,7 @@ Agent ツールの別名 (`opus` 等) しか分からないときは別名のま
 | **integrate** | sub `d2-implement mode=integrate`。続けて `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --refresh --cwd .` (実装で増えたファイル種別に対する qlty の提案を足す。追加した plugins を報告に書く)。`runGates.js --uc <slug> --tiers <関与ティア> --from static` (増えた plugins の指摘は static に出る。落ちたら報告の分析に従い該当ティアを attempt++ で tier に戻る。verify / review / as-built はこの後なので、直した実装も検証と記録の対象になる)。attempt ≥ 2 (差し戻しの後) も sub は**必ず派遣**する (ティアの入口や注入対象が変わっていれば結線の更新が要る)。sub が「結線の変更は不要」と判断し、integrate.md の完了条件 (runGates `--from uc-bdd`、受入の網羅、計装範囲の `extractAsBuilt --dry-run`) を満たしたと報告すれば、`features/` に差分が無くても done にしてよい。done に `wiring_changed: false` を書く | static から acceptance まで pass |
 | **verify** | ティアごとに sub `d2-verify` を**同じメッセージで並列派遣** (agent_type `distillery2:d2-verifier`、model = verifier、変更ファイル一覧を渡す)。あわせて「他 UC と共有する変更ファイル」の初期候補を渡す: 変更ファイル一覧と `docs/as-built/_system/traceability-index.json` の `ucs[<他の slug>].files` の共通部分 (他 UC の slug つき。追跡表が無ければ「なし」)。追跡表の files は各 UC が**変更した**ファイルなので、基盤から在る共通コードは拾えない。Verifier が import 元を辿って足す (viewpoints.md「他 UC への波及」)。受理時に `validateAssumptions.js verdicts`。報告 1 行目の `model: <ID>` が models_resolved.verifier と違えば models_resolved を記録し直す。blocker があれば該当ティアを attempt++ で tier に戻る (最大 3 回。超えたら人に報告して停止) | 全ティアの findings が ok で blocker 0 |
 | **review** | 下記「人レビュー」 | `review_approved` 記録済み |
-| **asbuilt** | 依存グラフの実態を取る: `npx depcruise --config .dependency-cruiser.cjs --output-type json apps packages > <run>/reports/depcruise.json` (`.dependency-cruiser.cjs` は F2 生成)。続けて `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js --run <run> --depcruise <run>/reports/depcruise.json` → sub `d2-asbuilt` (要約ブロック 3 つ。extractAsBuilt の標準出力 1 行を派遣文に添える) → `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/checkAsBuilt.js docs/as-built/<業務>/<UC>/index.md` が exit 0 (違反があれば d2-asbuilt に差し戻す) → `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` (docs/README.md の UC 一覧に実装の記録を載せる。リンク切れなら exit 1)。commit。depcruise が失敗/未実行でも extractAsBuilt は config から「決定からの図」を描く (空にならない)。標準出力に「計装なしのティア」か「正常系に部品 (call) が無いティア」が出たら integrate の結線漏れ: integrate へ戻して結線を足す (図に出ないティア・部品は as-built の価値を落とす) | as-built が生成済み、計装なし / 正常系に部品なしのティアが無い |
+| **asbuilt** | `<run>/reports/asbuilt.json` があれば消してから (再開・差し戻しの後に前回の集計で受理しないため)、sub `d2-asbuilt` を派遣する (依存グラフの実態 → `extractAsBuilt.js` の抽出 → 要約 → `checkAsBuilt.js` の検査まで、要約役が通しで行う)。受理時の検査 (読むだけ): `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/checkAsBuilt.js docs/as-built/<業務>/<UC>/index.md` が exit 0、かつ `<run>/reports/asbuilt.json` があり、`slug` が今回の UC、`attempt` が `runState.js status` の attempt と一致する。さらに要約役の完了報告 (要約した 3 ブロックと引用したコード位置) が届いている (抽出は前回の要約を残すので、成果物だけでは今回の要約を区別できない。subagent-template.md の例外)。どれかを満たさなければ d2-asbuilt に差し戻す。集計の `instrumentation_gaps` (計装なしのティア) か `instrumentation_happy_gaps` (正常系に部品 (call) が無いティア) が空でなければ integrate の結線漏れ: asbuilt を done にせず integrate へ戻して結線を足す (図に出ないティア・部品は as-built の価値を落とす。要約役の報告文ではなく集計ファイルで判断する)。受理したら `node ${CLAUDE_PLUGIN_ROOT}/scripts/genDocsReadme.js` (docs/README.md の UC 一覧に実装の記録を載せる。リンク切れなら exit 1)。commit。depcruise が失敗/未実行でも extractAsBuilt は config から「決定からの図」を描く (空にならない) | as-built が生成済み、集計の計装なし / 正常系に部品なしのティアが空 |
 | **feedback** | 下記「還流」 | 全 issue が起票済み (`feedback_filed`) か保留 (`feedback_deferred`) |
 | **deliver** | 先に `node runState.js status <run> --json` の `pending_feedback` (起票されていない還流) を見る。空でなければ、push と `gh auth status` が通ることを確かめて還流節の手順で起票し、`feedback_filed {kind, url, issue_path}` を記録して `impl(<slug>): feedback filed` で commit する。通らなければ deliver せず、保留の一覧を報告して停止する (feedback の done は戻さない。push できる環境で再開すれば、ここから続く)。`pending_feedback` が空になってから git-delivery.md の手順で squash → push → PR。配送の記録は commit に入れず `reports/delivered.json` に書く。`use-cases.yaml` の `status: done` は PR merge 後の次 run で更新する | `gh pr list --head feature/<slug>` に PR がある (done ファイルは作らない) |
 

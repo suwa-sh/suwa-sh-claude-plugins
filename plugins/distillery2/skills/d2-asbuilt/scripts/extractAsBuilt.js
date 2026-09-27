@@ -21,6 +21,8 @@
  * 出力:
  *   docs/as-built/<業務>/<UC>/{index.md, sequence.md}
  *   docs/as-built/_system/{traceability-index.json, api-inventory.md, dependency-graph.md, data-flow.md, index.md}
+ *   <run>/reports/asbuilt.json                    抽出の集計 (slug・attempt・計装なしのティア)。d2-run が受理時に読む
+ *   (--dry-run では何も書かない)
  *
  * index.md は読者の問いの順 (何をする → 結果 → 入口 → どう動く → 何を守る → 決めたこと → 課題 → 証跡 → 付録)。
  * 決定論: 同じ入力なら同じ出力。generated_at のみ最新イベント ts (壁時計ではない)。
@@ -38,7 +40,7 @@ const { execFileSync } = require('node:child_process');
 const { parseYaml } = require('../../../scripts/lib/yaml');
 const { stamp, headerLine } = require('../../../scripts/lib/basis');
 const { writeCanonicalJson, readCanonicalJson } = require('../../../scripts/lib/canonicalJson');
-const { readEvents } = require('../../../scripts/lib/runState');
+const { readEvents, currentAttempt } = require('../../../scripts/lib/runState');
 const { renderScenario, pickHappyPath, summarizeScenario } = require('./renderSequence');
 const { buildFlows, renderFlowchart, renderSystemDataFlow } = require('./renderDataFlow');
 const { buildTree, observedPlacements, cmpStr } = require('./traceTree');
@@ -1150,7 +1152,26 @@ function run(opts) {
   ensureWrite(path.join(systemDir, 'data-flow.md'), renderSystemDataFlow(ordered));
   ensureWrite(path.join(systemDir, 'index.md'), buildSystemIndex({ ...index, __docsRoot: ctx.docsRoot }));
 
-  return summary();
+  // 抽出の集計: d2-run が受理時に読み、計装なし / 正常系に部品なしなら integrate へ戻す (要約役の報告文に頼らない)。
+  // どの実行の結果かを slug・attempt・generated_at で示す。d2-run は派遣前に消し、受理時に slug と attempt を照合する。
+  // 書き込みの途中で止まっても半端なファイルを残さないよう、一時ファイルに書いてから rename する
+  const r = summary();
+  const report = {
+    slug: ctx.slug,
+    attempt: currentAttempt(ctx.runDir),
+    generated_at: ctx.generatedAt,
+    scenarios: r.scenarios,
+    operations: r.operations,
+    instrumentation_gaps: r.instrumentation_gaps,
+    instrumentation_happy_gaps: r.instrumentation_happy_gaps,
+    summary_violations: r.summary_violations,
+  };
+  const reportPath = path.join(ctx.runDir, 'reports', 'asbuilt.json');
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+  const tmp = `${reportPath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify(report, null, 2) + '\n');
+  fs.renameSync(tmp, reportPath);
+  return { ...r, report: reportPath };
 }
 
 function parseArgs(argv) {

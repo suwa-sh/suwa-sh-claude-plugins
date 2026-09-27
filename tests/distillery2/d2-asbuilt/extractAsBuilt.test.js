@@ -572,7 +572,23 @@ test('--dry-run は何も書かずに計装の集計だけ返す (integrate 担�
   assert.ok(Array.isArray(r.instrumentation_gaps));
   assert.equal(fs.existsSync(path.join(repo.dir, 'docs/as-built')), before, 'dry-run で docs/as-built を作らない');
   assert.ok(!fs.existsSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md')));
+  assert.ok(!fs.existsSync(path.join(repo.runDir, 'reports/asbuilt.json')), 'dry-run で集計ファイルを書かない');
   // 本番実行は書く
   run(opts(repo));
   assert.ok(fs.existsSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md')));
+});
+
+test('集計ファイル reports/asbuilt.json に、どの実行の結果かと計装の集計を書く (d2-run が受理時に読む。0.1.22)', () => {
+  const repo = buildRepo();
+  const r = run(opts(repo));
+  const file = path.join(repo.runDir, 'reports/asbuilt.json');
+  assert.equal(r.report, file);
+  const rep = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.equal(rep.slug, path.basename(repo.runDir));
+  assert.equal(rep.attempt, require(path.join(LIB, 'runState')).currentAttempt(repo.runDir), 'attempt は runState と同じ数え方');
+  assert.equal(typeof rep.generated_at, 'string');
+  assert.deepEqual(rep.instrumentation_gaps, r.instrumentation_gaps);
+  assert.deepEqual(rep.instrumentation_happy_gaps, r.instrumentation_happy_gaps);
+  assert.equal(rep.summary_violations, r.summary_violations);
+  assert.deepEqual(fs.readdirSync(path.dirname(file)).filter(n => n.includes('.tmp-')), [], '一時ファイルを残さない');
 });

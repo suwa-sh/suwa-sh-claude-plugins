@@ -3,12 +3,7 @@
 オーケストレータ (d2-run) の実行環境 (headless の許可、npm、補助スクリプト) で踏んだ問題。実走で踏んだ環境依存の問題と回避策をためる (手順そのものには書かない)。項目は「症状 → 原因 → 回避」の順。
 他のスキルの項目: [`d2-foundation`](../../d2-foundation/references/troubleshooting.md) / [`d2-contract`](../../d2-contract/references/troubleshooting.md)
 
-## npm 10 の `npm install` が `Cannot read properties of null (reading 'edgesOut')` で落ちる
-
-- 症状: ③ 基盤の `npm install` が npm 10 の内部エラーで止まる (2026-09-26 の実走)
-- 原因: 任意の peer 依存の解決 (vitest → browser-playwright → jsdom → canvas) で npm 10 が落ちる
-- 回避: `npx npm@11 install` で `package-lock.json` を作る。その lockfile があれば npm 10 の `npm ci` (CI と同じ) は通る。
-  npm 11 は esbuild の postinstall を走らせないが、その後の `npm ci` を含めゲートは通った
+③ の `npm install` は 0.1.22 から d2-foundation (F7) が回す。npm 10 で落ちる件は [d2-foundation の項目](../../d2-foundation/references/troubleshooting.md) に移した。
 
 ## headless (`claude -p`) で `$VAR` を含む Bash が承認待ちで止まる
 

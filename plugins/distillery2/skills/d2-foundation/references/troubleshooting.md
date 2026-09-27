@@ -3,6 +3,13 @@
 基盤 (genSkeleton / genQlty / biome / qlty) で踏んだ問題。実走で踏んだ環境依存の問題と回避策をためる (手順そのものには書かない)。項目は「症状 → 原因 → 回避」の順。
 他のスキルの項目: [`d2-run`](../../d2-run/references/troubleshooting.md) / [`d2-contract`](../../d2-contract/references/troubleshooting.md)
 
+## npm 10 の `npm install` が `Cannot read properties of null (reading 'edgesOut')` で落ちる
+
+- 症状: F7 の `npm install` が npm 10 の内部エラーで止まる (2026-09-26 の実走。当時は d2-run が回していた)
+- 原因: 任意の peer 依存の解決 (vitest → browser-playwright → jsdom → canvas) で npm 10 が落ちる
+- 回避: `npx npm@11 install` で `package-lock.json` を作る。その lockfile があれば npm 10 の `npm ci` (CI と同じ) は通る。
+  npm 11 は esbuild の postinstall を走らせないが、その後の `npm ci` を含めゲートは通った
+
 ## `qlty init` が「already initialized」で何も出さない
 
 - 症状: `.qlty/qlty.toml` がある状態で `qlty init --dry-run` を回すと拒否される
@@ -13,7 +20,7 @@
 
 - 症状: `qlty.toml` の plugins に osv-scanner が無い
 - 原因: 提案はその時点でリポにあるファイル種別で決まる。lockfile が無い時点で提案を取ると入らない
-- 回避: `npm install` の後に `genQlty.js --refresh` を回す (d2-run ③ の手順に入っている)
+- 回避: `npm install` の後に `genQlty.js --refresh` を回す (F7 の手順に入っている)
 
 ## 契約テストが `biome format` で落ちる
 

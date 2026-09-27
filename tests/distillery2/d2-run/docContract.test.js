@@ -84,8 +84,53 @@ test('他 UC への波及: 初期候補を渡し、Verifier が import 元を辿
   assert.match(read('skills/d2-verify/SKILL.md'), /^\| 他 UC への波及 \(例外\) \|/m);
 });
 
-test('asbuilt の要約役に extractAsBuilt の標準出力を渡す', () => {
-  assert.match(row(read(TEMPLATE), /^\| ④ asbuilt /), /extractAsBuilt の標準出力/);
+test('asbuilt: 抽出から検査まで要約役が通しで行い、d2-run は集計ファイルで受理と差し戻しを判断する (0.1.22)', () => {
+  const tmpl = row(read(TEMPLATE), /^\| ④ asbuilt /);
+  assert.match(tmpl, /依存グラフの実態 → 抽出 → 要約 → 検査までこのスキルが行う/);
+  assert.match(tmpl, /抽出の標準出力 1 行を報告に転記する/);
+  const asbuilt = row(read(SKILL), /^\| \*\*asbuilt\*\* \|/);
+  assert.match(asbuilt, /`<run>\/reports\/asbuilt\.json` があれば消してから/, '前回の集計で受理しない');
+  assert.match(asbuilt, /`slug` が今回の UC、`attempt` が `runState\.js status` の attempt と一致/);
+  assert.match(asbuilt, /instrumentation_gaps/);
+  assert.match(asbuilt, /asbuilt を done にせず integrate へ戻して/, '差し戻しの判断は d2-run に残す');
+  assert.doesNotMatch(asbuilt, /npx depcruise/, 'depcruise は d2-asbuilt が回す');
+  // 抽出は前回の要約を残すので、成果物だけでは今回の要約を区別できない。as-built は完了報告も要る
+  assert.match(asbuilt, /要約役の完了報告/);
+  assert.match(read(TEMPLATE), /例外: asbuilt は要約役の完了報告/);
+  const skill = read('skills/d2-asbuilt/SKILL.md');
+  assert.match(skill, /npx depcruise/);
+  assert.match(skill, /extractAsBuilt\.js/);
+  assert.match(skill, /checkAsBuilt\.js/);
+});
+
+test('③ の後始末は d2-foundation phase=finish。d2-run は gates.json を読んで受理する (0.1.22)', () => {
+  const skill = read(SKILL);
+  const s3 = skill.slice(skill.indexOf('## ③ 基盤'), skill.indexOf('## ④'));
+  assert.match(s3, /sub `d2-foundation phase=all`/);
+  assert.match(s3, /sub `d2-foundation phase=finish ui=/);
+  assert.ok(s3.indexOf('sub `d2-design`') < s3.indexOf('sub `d2-foundation phase=finish ui='), 'design は仕上げの前');
+  // 手順 (番号付きの行と、その続きの字下げ行) に、移したスクリプトを直接回す記述が無い
+  const steps = s3.split('\n').filter(l => /^(\d+\.|   )/.test(l)).join('\n');
+  for (const s of ['npm install', 'genConfig.js', 'genCi.js', 'genArchitectureDoc.js', 'importUi.js', 'runGates.js']) {
+    assert.ok(!steps.includes(s), `d2-run の ③ の手順が ${s} を直接回していない`);
+  }
+  // genContractTests.js は受理時の読むだけの検査 (--check) としてだけ出てよい
+  for (const m of steps.matchAll(/genContractTests\.js[^\n]*/g)) assert.match(m[0], /--check/, 'd2-run は契約テストを生成しない');
+  assert.match(s3, /`\.distillery\/runs\/bootstrap\/reports\/gates\.json` があれば消してから/);
+  // gates.json の gates は {name, status} の配列 (runGates.js が書く形)。キー参照で書かない
+  assert.match(s3, /`gates` \(`\{name, status\}` の配列\) のうち `name` が `static` の要素の `status` が `pass`/);
+  // F6 は d2-run が design を派遣したかで決める (古い docs/design の有無で決めない)
+  assert.match(s3, /sub `d2-foundation phase=finish ui=<true\|false>`/);
+  assert.match(s3, /design が「画面を持たないプロダクトのため skip」と報告したら `ui=false`/);
+  assert.match(s3, /design の完了報告が届くまで仕上げに進まない/);
+  assert.match(read(TEMPLATE), /例外: ③ の画面部品 \(d2-design\) は完了報告/);
+  // static のゲートは契約テストの生成を見ないので、F4 の生成物の鮮度を受理時に確かめる
+  assert.match(s3, /genContractTests\.js contracts --config \.distillery\/config\.yaml --out-root \. --check` が exit 0/);
+  const fnd = read('skills/d2-foundation/SKILL.md');
+  assert.match(fnd, /`ui=false` なら F6 と次の F7 を飛ばす/);
+  assert.match(fnd, /前の実行の `docs\/design\/` が残っていても取り込まない/);
+  assert.match(row(read(TEMPLATE), /^\| ③ 基盤 \(仕上げ\) /), /`node_modules\/\*\*`/);
+  assert.match(read(TEMPLATE), /例外: 手順書が回すスクリプトの内部の git/);
 });
 
 test('差し戻し後の integrate: 必ず派遣し、結線変更なしなら wiring_changed: false', () => {
