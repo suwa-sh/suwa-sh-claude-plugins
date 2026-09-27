@@ -20,6 +20,9 @@ const D = require('./dataflow');
 const OUT = path.join(__dirname, '..', 'references', 'dataflow.md');
 /** 処理ごとの図で、ファイルを 1 つずつ描く上限。超えたらファイル群にまとめる */
 const MAX_STORE_NODES = 8;
+/** 図 1 枚の上限 (dataflow.test.js の (f2) と同じ値)。サブエージェントの図がこれを超えたら内訳ごとに描く */
+const MAX_DIAGRAM_NODES = 9;
+const MAX_DIAGRAM_EDGES = 12;
 
 const esc = s => String(s).replace(/"/g, '#quot;').replace(/</g, '#lt;').replace(/>/g, '#gt;');
 const nid = s => s.replace(/[^A-Za-z0-9]/g, '_');
@@ -124,6 +127,16 @@ function render(df) {
   // ---- 処理ごとの図 ----
   L.push('## 処理ごとの図', '');
   L.push(`ファイルが ${MAX_STORE_NODES} を超える処理は、図ではファイル群にまとめた。正確なパスは図の下の表にある。`, '');
+  // 図 1 枚の箱と矢印の数 (processDiagram と同じ数え方)。派遣単位の図を子ごとに分けるかの判断に使う
+  function processSize(p) {
+    const reads = p.reads || [];
+    const writes = p.writes || [];
+    const used = [...new Set([...reads, ...writes])];
+    const grouped = used.length > MAX_STORE_NODES;
+    const node = id => (grouped ? 'g_' + stores.get(id).group : 's_' + id);
+    const edges = new Set([...reads.map(id => `${node(id)}>`), ...writes.map(id => `>${node(id)}`)]);
+    return { nodes: 1 + new Set(used.map(node)).size, edges: edges.size };
+  }
   function processDiagram(p, heading) {
     const reads = p.reads || [];
     const writes = p.writes || [];
@@ -161,9 +174,19 @@ function render(df) {
     L.push(`### ${st.name}`, '');
     for (const p of ps) {
       const subs = children(p);
-      if (p.kind === 'subagent' || !subs.length) {
+      const whole = { ...p, reads: io(p, 'reads'), writes: io(p, 'writes') };
+      const size = processSize(whole);
+      if (p.kind === 'subagent' && subs.length && (size.nodes > MAX_DIAGRAM_NODES || size.edges > MAX_DIAGRAM_EDGES)) {
+        // 派遣の単位で 1 枚に描くと読めない大きさになるサブエージェントは、内訳 (子) ごとに 1 枚ずつ描く (入出力は削らない)
+        L.push(`#### ${p.name}`, '');
+        L.push(`${p.skill}${p.mode ? ' mode=' + p.mode : ''} の派遣 1 回分。1 枚では大きすぎるので、内訳ごとに描く。派遣の単位の読み書きは内訳の和。`, '');
+        // 親の読み書きは内訳の和を含む (正本の規則)。内訳に無い分だけを親の図に描く
+        const own = key => (p[key] || []).filter(id => !subs.some(c => (c[key] || []).includes(id)));
+        if (own('reads').length || own('writes').length) processDiagram({ ...p, name: `${p.name} (内訳以外の直接の読み書き)`, reads: own('reads'), writes: own('writes') }, '#####');
+        for (const c of subs) processDiagram(c, '#####');
+      } else if (p.kind === 'subagent' || !subs.length) {
         // サブエージェントは派遣の単位 (write-set) で 1 枚。内訳は表で示す
-        processDiagram({ ...p, reads: io(p, 'reads'), writes: io(p, 'writes') }, '####');
+        processDiagram(whole, '####');
         if (subs.length) {
           L.push('| 内訳 | 読む | 書く |', '|---|---|---|');
           for (const c of subs) {

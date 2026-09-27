@@ -10,6 +10,8 @@
 # stores[].aliases: 手順書での略記 (照合に使う)
 # stores[].scope_only: true = 許可範囲を表すためだけの store (allowed_writes 専用。書き手・読み手を要求しない)
 # stores[].outside_repo: true = リポの外 (GitHub)。手順書のパス照合から外す
+# processes[].kind: subagent (派遣の単位) / orchestrator (d2-run 自身) / script (スクリプト) / llm (サブエージェントの中の LLM の作業。内訳として持つ)
+# processes[].phase: d2-foundation の phase。同じ phase を 2 回の派遣で回すとき (F7) は処理を 2 つ持ち、読み書きを同じにする (phase 表の 1 行と照合する)
 # processes[].stage: stages の id。d2-run の ④ の直接作業は段階をまたぐので `uc`
 # processes[].parent: 内訳の処理 (phase ごとのスクリプト、d2-run が回すスクリプト) の親。subagent の親は子の和を含む (派遣表の write-set と照合するため)
 # processes[].scripts: 手順書の読む / 書くの節に出てくるスクリプト名 (パスとして照合しない)
@@ -385,6 +387,11 @@ stores:
       - "contract.<tier>.json"
       - "uc-bdd.json"
       - "acceptance-api.json"
+  - id: asbuilt-report
+    name: as-built の抽出の集計 (計装の有無)
+    group: run
+    path: "<run>/reports/asbuilt.json"
+    origin: produced
   - id: traces
     name: 計装トレース
     group: run
@@ -444,14 +451,16 @@ processes:
     allowed_writes: [nfr, adr-dir]
   # ================= ③ 基盤 =================
   - id: foundation
-    name: 基盤の生成 (F1〜F5)
+    name: 基盤の生成 (F1→F2→F3→F5→F7)
     skill: d2-foundation
     stage: foundation
     kind: subagent
     template_row: "③ 基盤 (機械)"
-    reads: [adr, rule-templates, support-templates, contracts-catalog, config]
-    writes: [rules, depcruise-config, test-support, features-support, cucumber-config, config, skeleton, ci, qlty-config]
-    allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, config, skeleton, ci, qlty-config]
+    reads: [adr, rule-templates, support-templates, contracts-catalog, config, skeleton, lockfile, qlty-config]
+    writes: [rules, depcruise-config, test-support, features-support, cucumber-config, config, skeleton, ci, qlty-config, lockfile]
+    allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, config, skeleton, ci, qlty-config, lockfile]
+    notes:
+      - "例外: `npm install` が作る `node_modules/**` (gitignore)"
   - id: foundation.F1
     name: F1 ルール
     parent: foundation
@@ -476,15 +485,6 @@ processes:
     phase: F3
     reads: [support-templates]
     writes: [test-support, features-support, cucumber-config]
-  - id: foundation.F4
-    name: F4 契約テスト (d2-contract に委譲)
-    parent: foundation
-    stage: foundation
-    kind: script
-    phase: F4
-    delegated_to: contract.uc
-    reads: []
-    writes: []
   - id: foundation.F5
     name: F5 設定・骨格・CI・qlty
     parent: foundation
@@ -493,6 +493,15 @@ processes:
     phase: F5
     reads: [adr, contracts-catalog, config]
     writes: [config, skeleton, ci, qlty-config]
+  - id: foundation.F7
+    name: F7 依存の導入 (npm install・qlty の提案)
+    parent: foundation
+    stage: foundation
+    kind: script
+    phase: F7
+    scripts: [genQlty.js]
+    reads: [skeleton, lockfile, qlty-config]
+    writes: [lockfile, qlty-config]
   - id: contract.skeleton
     name: 契約の骨格
     skill: d2-contract
@@ -512,6 +521,63 @@ processes:
     reads: [req-rdra, use-cases, adr, nfr]
     writes: [design]
     allowed_writes: [design]
+  - id: foundation.finish
+    name: 基盤の仕上げ (F8→F6→F7→F4→F9)
+    skill: d2-foundation
+    stage: foundation
+    kind: subagent
+    template_row: "③ 基盤 (仕上げ)"
+    reads: [adr, contracts-catalog, req-rdra, config, design, skeleton, lockfile, qlty-config, contracts-src, contract-tests, depcruise-config, reports]
+    writes: [config, ci, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
+    allowed_writes: [config, ci, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
+    notes:
+      - "例外: `npm install` が作る `node_modules/**` (gitignore)"
+      - "チェックポイントが書く。slug は bootstrap"
+  - id: foundation.F8
+    name: F8 契約込みの再生成 (設定・CI・C4 図)
+    parent: foundation.finish
+    stage: foundation
+    kind: script
+    phase: F8
+    scripts: [genConfig.js, genCi.js, genArchitectureDoc.js]
+    reads: [adr, contracts-catalog, req-rdra, config]
+    writes: [config, ci, adr-architecture]
+  - id: foundation.F6
+    name: F6 画面部品の取り込み
+    parent: foundation.finish
+    stage: foundation
+    kind: script
+    phase: F6
+    scripts: [importUi.js]
+    reads: [design]
+    writes: [ui]
+  - id: foundation.F7-after-ui
+    name: F7 依存の導入 (F6 の後)
+    parent: foundation.finish
+    stage: foundation
+    kind: script
+    phase: F7
+    scripts: [genQlty.js]
+    reads: [skeleton, lockfile, qlty-config]
+    writes: [lockfile, qlty-config]
+  - id: foundation.F4
+    name: F4 契約テストの生成 (骨格分)
+    parent: foundation.finish
+    stage: foundation
+    kind: script
+    phase: F4
+    scripts: [genContractTests.js]
+    reads: [contracts-src, config]
+    writes: [contract-tests, contracts-code]
+  - id: foundation.F9
+    name: F9 基盤のチェックポイント
+    parent: foundation.finish
+    stage: foundation
+    kind: script
+    phase: F9
+    scripts: [runGates.js]
+    reads: [config, skeleton, qlty-config, contract-tests, depcruise-config, reports]
+    writes: [reports]
   # ================= ④ UC =================
   - id: implement.scenario
     name: UC シナリオの執筆
@@ -584,16 +650,48 @@ processes:
     writes: [findings]
     allowed_writes: [findings]
   - id: asbuilt
-    name: as-built の要約
+    name: as-built の抽出と要約
     skill: d2-asbuilt
     stage: asbuilt
     kind: subagent
     template_row: "④ asbuilt"
+    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system, depcruise-config, tier-src]
+    writes: [reports, asbuilt-uc, asbuilt-index, asbuilt-system, asbuilt-report]
+    allowed_writes: [asbuilt-uc, asbuilt-system, reports]
+    notes:
+      - "スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ"
+      - "depcruise の結果と抽出の集計"
+  - id: asbuilt.depcruise
+    name: 依存グラフの実態
+    parent: asbuilt
+    stage: asbuilt
+    kind: script
+    reads: [depcruise-config, tier-src]
+    writes: [reports]
+  - id: asbuilt.extract
+    name: as-built の抽出
+    parent: asbuilt
+    stage: asbuilt
+    kind: script
+    scripts: [extractAsBuilt.js]
+    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system]
+    writes: [asbuilt-uc, asbuilt-index, asbuilt-system, asbuilt-report]
+  - id: asbuilt.summarize
+    name: 要約ブロックを埋める (LLM)
+    parent: asbuilt
+    stage: asbuilt
+    kind: llm
+    actor: d2-asbuilt
     reads: [asbuilt-index, assumptions, tier-src]
     writes: [asbuilt-index]
-    allowed_writes: [asbuilt-index]
-    notes:
-      - "要約ブロックの中だけ。sequence.md と _system はスクリプトの生成物"
+  - id: asbuilt.check
+    name: 要約の書式の検査
+    parent: asbuilt
+    stage: asbuilt
+    kind: script
+    scripts: [checkAsBuilt.js]
+    reads: [asbuilt-index]
+    writes: []
   # ================= d2-run の直接作業 =================
   # run_table_row = d2-run SKILL「d2-run が直接読み書きするもの」の表の「処理」列 (その行の読む / 書くと照合する)
   # 親 (run.early / run.foundation / run.uc) は d2-run 自身が直接読み書きするものだけ。図では子 (スクリプト) を親に畳む
@@ -621,87 +719,7 @@ processes:
     kind: orchestrator
     actor: d2-run
     run_table_row: "③ の確認ページ"
-    reads: [config]
-    writes: []
-  - id: run.foundation.npm-install
-    name: 依存を入れる
-    parent: run.foundation
-    stage: foundation
-    kind: script
-    actor: d2-run
-    run_table_row: "③ の npm install"
-    reads: [skeleton]
-    writes: [lockfile]
-  - id: run.foundation.qlty
-    name: qlty の提案を足す (③)
-    parent: run.foundation
-    stage: foundation
-    kind: script
-    actor: d2-run
-    scripts: [genQlty.js]
-    run_table_row: "③ の genQlty.js --refresh"
-    reads: [skeleton, lockfile, qlty-config]
-    writes: [qlty-config]
-  - id: run.foundation.gen-config
-    name: 実行設定を契約込みで作り直す
-    parent: run.foundation
-    stage: foundation
-    kind: script
-    actor: d2-run
-    scripts: [genConfig.js]
-    run_table_row: "③ の genConfig.js"
-    reads: [adr, contracts-catalog]
-    writes: [config]
-  - id: run.foundation.gen-ci
-    name: CI を作り直す
-    parent: run.foundation
-    stage: foundation
-    kind: script
-    actor: d2-run
-    scripts: [genCi.js]
-    run_table_row: "③ の genCi.js"
-    reads: [config]
-    writes: [ci]
-  - id: run.foundation.gen-architecture
-    name: C4 図を契約込みで作り直す
-    parent: run.foundation
-    stage: foundation
-    kind: script
-    actor: d2-run
-    scripts: [genArchitectureDoc.js]
-    run_table_row: "③ の genArchitectureDoc.js"
-    reads: [adr, contracts-catalog, req-rdra]
-    writes: [adr-architecture]
-  - id: foundation.F6
-    name: F6 画面部品の取り込み
-    parent: run.foundation
-    stage: foundation
-    kind: script
-    actor: d2-run
-    phase: F6
-    scripts: [importUi.js]
-    run_table_row: "③ の importUi.js (F6)"
-    reads: [design]
-    writes: [ui]
-  - id: run.foundation.contract-tests
-    name: 契約テストの生成 (骨格分)
-    parent: run.foundation
-    stage: foundation
-    kind: script
-    actor: d2-run
-    scripts: [genContractTests.js]
-    run_table_row: "③ の genContractTests.js"
-    reads: [contracts-src, config]
-    writes: [contract-tests, contracts-code]
-  - id: run.foundation.gates
-    name: 基盤のチェックポイント (runGates --uc bootstrap)
-    parent: run.foundation
-    stage: foundation
-    kind: script
-    actor: d2-run
-    scripts: [runGates.js]
-    run_table_row: "③ の runGates.js --uc bootstrap"
-    reads: [config, skeleton, qlty-config, contract-tests, depcruise-config, reports]
+    reads: [config, reports]
     writes: [reports]
   - id: run.foundation.docs-readme
     name: 文書の入口の更新 (③)
@@ -719,8 +737,8 @@ processes:
     kind: orchestrator
     actor: d2-run
     run_table_row: "④ の段階の進行・確認ページ・還流"
-    reads: [config, use-cases, run-events, reports, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system]
-    writes: [run-events, use-cases, github]
+    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system]
+    writes: [run-events, use-cases, github, asbuilt-report]
   - id: run.uc.check-scenario
     name: シナリオの静的確認
     parent: run.uc
@@ -791,25 +809,6 @@ processes:
     run_table_row: "④ の genQlty.js --refresh"
     reads: [skeleton, lockfile, qlty-config, tier-src]
     writes: [qlty-config]
-  - id: run.uc.depcruise
-    name: 依存グラフの実態
-    parent: run.uc
-    stage: uc
-    kind: script
-    actor: d2-run
-    run_table_row: "④ の depcruise"
-    reads: [depcruise-config, tier-src]
-    writes: [reports]
-  - id: run.uc.extract-asbuilt
-    name: as-built の抽出
-    parent: run.uc
-    stage: uc
-    kind: script
-    actor: d2-run
-    scripts: [extractAsBuilt.js]
-    run_table_row: "④ の extractAsBuilt.js"
-    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system]
-    writes: [asbuilt-uc, asbuilt-index, asbuilt-system]
   - id: run.uc.check-asbuilt
     name: as-built の書式の検査
     parent: run.uc

@@ -145,7 +145,8 @@ test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run �
     ['implement.integrate', 'reads', 'skills/d2-implement/references/integrate.md', /^## 読むもの/],
     ['implement.integrate', 'writes', 'skills/d2-implement/references/integrate.md', /^## 書くもの/],
     ['verify', 'reads', 'skills/d2-verify/SKILL.md', /^## 読んでよいもの/],
-    ['asbuilt', 'reads', 'skills/d2-asbuilt/SKILL.md', /^## 読んでよいもの/],
+    // 読んでよいもの = 要約役 (LLM) の read-set。スクリプトの読みは内訳の asbuilt.extract などが持つ
+    ['asbuilt.summarize', 'reads', 'skills/d2-asbuilt/SKILL.md', /^## 読んでよいもの/],
     ['asbuilt', 'writes', 'skills/d2-asbuilt/SKILL.md', /^## 書いてよいもの/],
   ];
   for (const [id, key, rel, re] of sections) {
@@ -228,6 +229,7 @@ test('(h) d2-run が回す主なスクリプトは、正本の出力先をソー
     ['scripts/lib/runState.js', 'run-events', 'events.jsonl'],
     ['scripts/prTrailers.js', 'reports', 'gates.json'],
     ['skills/d2-asbuilt/scripts/extractAsBuilt.js', 'asbuilt-system', 'traceability-index.json'],
+    ['skills/d2-asbuilt/scripts/extractAsBuilt.js', 'asbuilt-report', 'asbuilt.json'],
     ['skills/d2-contract/scripts/classifyContractChanges.js', 'contract-tests', 'test\\/contract'],
   ];
   const problems = [];

@@ -84,8 +84,36 @@ test('他 UC への波及: 初期候補を渡し、Verifier が import 元を辿
   assert.match(read('skills/d2-verify/SKILL.md'), /^\| 他 UC への波及 \(例外\) \|/m);
 });
 
-test('asbuilt の要約役に extractAsBuilt の標準出力を渡す', () => {
-  assert.match(row(read(TEMPLATE), /^\| ④ asbuilt /), /extractAsBuilt の標準出力/);
+test('asbuilt: 抽出から検査まで要約役が通しで行い、d2-run は集計ファイルで受理と差し戻しを判断する (0.1.22)', () => {
+  const tmpl = row(read(TEMPLATE), /^\| ④ asbuilt /);
+  assert.match(tmpl, /依存グラフの実態 → 抽出 → 要約 → 検査までこのスキルが行う/);
+  assert.match(tmpl, /抽出の標準出力 1 行を報告に転記する/);
+  const asbuilt = row(read(SKILL), /^\| \*\*asbuilt\*\* \|/);
+  assert.match(asbuilt, /`<run>\/reports\/asbuilt\.json` があれば消してから/, '前回の集計で受理しない');
+  assert.match(asbuilt, /`slug` が今回の UC、`attempt` が `runState\.js status` の attempt と一致/);
+  assert.match(asbuilt, /instrumentation_gaps/);
+  assert.match(asbuilt, /asbuilt を done にせず integrate へ戻して/, '差し戻しの判断は d2-run に残す');
+  assert.doesNotMatch(asbuilt, /npx depcruise/, 'depcruise は d2-asbuilt が回す');
+  const skill = read('skills/d2-asbuilt/SKILL.md');
+  assert.match(skill, /npx depcruise/);
+  assert.match(skill, /extractAsBuilt\.js/);
+  assert.match(skill, /checkAsBuilt\.js/);
+});
+
+test('③ の後始末は d2-foundation phase=finish。d2-run は gates.json を読んで受理する (0.1.22)', () => {
+  const skill = read(SKILL);
+  const s3 = skill.slice(skill.indexOf('## ③ 基盤'), skill.indexOf('## ④'));
+  assert.match(s3, /sub `d2-foundation phase=all`/);
+  assert.match(s3, /sub `d2-foundation phase=finish`/);
+  assert.ok(s3.indexOf('sub `d2-design`') < s3.indexOf('sub `d2-foundation phase=finish`'), 'design は仕上げの前');
+  // 手順 (番号付きの行と、その続きの字下げ行) に、移したスクリプトを直接回す記述が無い
+  const steps = s3.split('\n').filter(l => /^(\d+\.|   )/.test(l)).join('\n');
+  for (const s of ['npm install', 'genConfig.js', 'genCi.js', 'genArchitectureDoc.js', 'importUi.js', 'genContractTests.js', 'runGates.js']) {
+    assert.ok(!steps.includes(s), `d2-run の ③ の手順が ${s} を直接回していない`);
+  }
+  assert.match(s3, /`\.distillery\/runs\/bootstrap\/reports\/gates\.json` があれば消してから/);
+  assert.match(row(read(TEMPLATE), /^\| ③ 基盤 \(仕上げ\) /), /`node_modules\/\*\*`/);
+  assert.match(read(TEMPLATE), /例外: 手順書が回すスクリプトの内部の git/);
 });
 
 test('差し戻し後の integrate: 必ず派遣し、結線変更なしなら wiring_changed: false', () => {

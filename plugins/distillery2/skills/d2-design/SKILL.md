@@ -2,7 +2,7 @@
 name: d2-design
 description: >-
   段階③「基盤」の画面部品。RDRA の UC と情報、ADR の UI 決定から、デザイントークンと Storybook 部品を作る。
-  画面と UC の対応 (docs/design/screens.yaml) を出し、d2-foundation phase=F6 が packages/ui に取り込む。
+  画面と UC の対応 (docs/design/screens.yaml) を出し、d2-foundation phase=finish (F6) が packages/ui に取り込む。
   画面を持たないプロダクトでは呼ばれない。「デザインシステム」「Storybook を生成」「画面設計」「デザイントークン」で発動。
 ---
 
@@ -11,7 +11,7 @@ description: >-
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 RDRA モデルと ADR の UI 決定から、デザイントークンと Storybook 部品を生成する。
-LLM 主体のステージ。d2-run が段階③で、F3 (test-support) と F6 (取り込み) の間に呼ぶ。
+LLM 主体のステージ。d2-run が段階③で、契約の骨格 (d2-contract mode=skeleton) の後、基盤の仕上げ (d2-foundation phase=finish。F6 で取り込む) の前に呼ぶ。
 
 - 唯一残す doc は `docs/design/screens.yaml` (画面 ↔ Story ↔ UC ↔ コンポーネント)。
 - 部品一式は `docs/design/storybook-app/` に置き、F6 が `packages/ui/` に取り込む。
