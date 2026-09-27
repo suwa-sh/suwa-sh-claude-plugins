@@ -198,11 +198,11 @@ test('還流: 課題は logs に写し、記録は feature に戻ってから書
 
 test('還流: 分岐は結果ファイル、absent は開始点の契約と照合してから issue、止まったら元の issue_path で保留', () => {
   const fb = feedbackSection();
-  assert.match(fb, /`<fb>\/<issue>\.result\.json` を消す/);
+  assert.match(fb, /`<fb>\/<issue>\.result\.json` も消す/);
   assert.match(fb, /git grep -q <名前> <base_head> -- contracts\//);
   assert.match(fb, /contract の課題として `gh issue create`/);
   assert.match(fb, /`feedback_deferred \{kind, issue_path, reason\}` を記録し\s*\n?\s*\(`issue_path` は元の `issues\/<file>\.md`/);
-  assert.match(fb, /派遣の直前に控えた一覧に無かった未追跡ファイルだけ/);
+  assert.match(fb, /派遣の直前に控えた一覧 \(`<fb>\/<issue>\.untracked\.txt`\) に無かった未追跡ファイルだけ/);
   assert.match(fb, /force push はしない/);
   assert.match(fb, /還流 branch = `feedback\/<slug>\/<issue>`/);
 });
@@ -219,4 +219,34 @@ test('還流: 派遣表に 3 行あり、結果ファイルを write-set に持�
   assert.ok(adr.split('|')[5].includes(RESULT));
   assert.ok(contract.split('|')[5].includes(RESULT));
   assert.ok(!rules.split('|')[5].includes(RESULT));
+});
+
+test('還流: 結果ファイルを消す・見るのは d2-decide / d2-contract の派遣だけ。ルールの再生成は --check と write-set で受理する (差分レビュー 1 ラウンド目)', () => {
+  const fb = feedbackSection();
+  // 消すのは 2 つの派遣の直前だけ (「各派遣の直前に結果ファイルを消す」と書くと、基盤の派遣の後に結果ファイルが無くて止まる)
+  assert.match(fb, /d2-decide と d2-contract の派遣の直前には、`<fb>\/<issue>\.result\.json` も消す/);
+  assert.doesNotMatch(fb, /各派遣の直前[^。]*結果ファイル[^。]*を消す/);
+  // 止まる条件の結果ファイルは 2 つの派遣に限る
+  assert.match(fb, /d2-decide \/ d2-contract の結果ファイルが `applied` 以外/);
+  // ルールの再生成の受理
+  const i = fb.indexOf('sub d2-foundation `phase=rules`');
+  const j = fb.indexOf('   - contract:', i);
+  const rulesStep = fb.slice(i, j);
+  assert.match(rulesStep, /結果ファイルは使わない/);
+  assert.match(rulesStep, /genRules\.js [^`]*--check/);
+  assert.match(rulesStep, /genArchTests\.js [^`]*--check/);
+  assert.match(rulesStep, /write-set の外が変わっていなければ受理/);
+});
+
+test('還流: 還流 branch の上で再開したら clean 判定より先に後始末する。派遣前の未追跡ファイルの一覧はファイルに残す (差分レビュー 1 ラウンド目)', () => {
+  const t = read(SKILL);
+  const startup = t.slice(t.indexOf('## 起動シーケンス'), t.indexOf('## ① 要求'));
+  const resume = startup.indexOf('現在の branch が還流 branch');
+  const clean = startup.indexOf('作業ツリーの clean 判定');
+  assert.ok(resume > 0 && clean > resume, '還流 branch の後始末は clean 判定より前');
+  assert.match(read(DELIVERY), /現在 branch が還流 branch \(`feedback\/<slug>\/<issue>`\) なら、clean でなくても/);
+  const fb = feedbackSection();
+  assert.match(fb, /`<fb>\/<issue>\.untracked\.txt` に書く/);
+  assert.match(fb, /派遣の直前に控えた一覧 \(`<fb>\/<issue>\.untracked\.txt`\) に無かった未追跡ファイルだけ/);
+  assert.match(fb, /一覧のファイルが無い \(控える前に止まった\) なら、未追跡ファイルは消さずに/);
 });

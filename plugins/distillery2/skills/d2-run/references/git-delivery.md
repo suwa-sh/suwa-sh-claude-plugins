@@ -10,11 +10,12 @@ lease と review HTML の追跡除外を廃止 (`.distillery/runs/*/reports|trac
 1. 開始条件: `git status --porcelain=v1 --untracked-files=all` が空、detached HEAD でない、`feature/*` 上でない、
    upstream と HEAD が一致。満たさなければ勝手に stash / commit せず、整理を依頼して停止する。
    upstream が設定されていなければ (リモート無し・base を未 push。`git rev-parse --abbrev-ref @{upstream}` が失敗する)
-   upstream 一致の条件は飛ばし、報告に「upstream なし」と書く (0.1.16 実走)。clean 判定の対象は d2-run SKILL.md の起動シーケンス 4 に従う
+   upstream 一致の条件は飛ばし、報告に「upstream なし」と書く (0.1.16 実走)。clean 判定の対象は d2-run SKILL.md の起動シーケンス 5 に従う
 2. `use-cases.yaml` の `slug` で `git switch -c feature/<slug>`。作成直後に `events.jsonl` へ
    `branch_started {base_branch, base_head, feature_branch}` を追記する
 3. 再開時は `branch_started` の `feature_branch` と現在 branch が一致することを確認する。違う branch なら
-   clean のときだけ switch。`base_head` が HEAD の祖先でなければ停止する
+   clean のときだけ switch。`base_head` が HEAD の祖先でなければ停止する。
+   例外: 現在 branch が還流 branch (`feedback/<slug>/<issue>`) なら、clean でなくても SKILL.md の還流節「止まったとき」の a〜c で後始末してから feature に戻る
 
 ## 段階ごとの commit
 

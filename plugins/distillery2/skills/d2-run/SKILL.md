@@ -49,7 +49,7 @@ description: >-
 | ③ の確認ページ | `.distillery/config.yaml`、`<run>/reports/**` (受理時の検査で bootstrap の gates.json を読む) | `<run>/reports/**` (仕上げの派遣前に bootstrap の gates.json を消す) |
 | ③ の genContractTests.js --check | `contracts/**`、`.distillery/config.yaml`、`apps/*/test/contract/**`、`packages/contracts/**` | — |
 | ③ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
-| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` (還流の派遣の結果) | `<run>/events.jsonl`、`<run>/invalidated/**` (差し戻しで退避した done と findings)、`docs/requirements/use-cases.yaml`、GitHub の PR と issue、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す)、`.distillery/logs/feedback/<slug>/<issue>.md` (還流の課題の写し)、`.distillery/logs/feedback/<slug>/<issue>.failed.diff` (止まった還流の差分) |
+| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` (還流の派遣の結果)、`.distillery/logs/feedback/<slug>/<issue>.untracked.txt` | `<run>/events.jsonl`、`<run>/invalidated/**` (差し戻しで退避した done と findings)、`docs/requirements/use-cases.yaml`、GitHub の PR と issue、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す)、`.distillery/logs/feedback/<slug>/<issue>.md` (還流の課題の写し)、`.distillery/logs/feedback/<slug>/<issue>.failed.diff` (止まった還流の差分)、`.distillery/logs/feedback/<slug>/<issue>.untracked.txt` (派遣の直前の未追跡ファイル) |
 | ④ の checkScenario.js | `features/<業務>/<slug>.feature`、`features/acceptance/**`、`docs/requirements/use-cases.yaml`、`docs/requirements/requirements.yaml` | — |
 | ④ の compileContracts.js --check | `contracts/**` | — |
 | ④ の compileRdbSchema.js --check | `contracts/**` | — |
@@ -73,7 +73,10 @@ description: >-
    **独立検証の条件は「別のサブエージェント (文脈が新しい) で、実装役と同等以上のモデル」**。同じモデル ID に解決されても止めない (記録だけ残す。2026-09-26 のユーザー方針)。
    止めるのは verifier が実装役より明らかに弱い別名 (例: 実装役が opus で verifier が haiku) のときだけ
 3. ④ なら UC を解決する: 引数が slug なら `use-cases.yaml` と照合、UC 名なら NFC 正規化して一意に一致する行を探す (複数なら候補を示して選ばせる)
-4. 作業ツリーの clean 判定 (④ の開始時。再開時は branch 一致を確認): `git status --porcelain` のうち、**追跡済みの変更**と、**未追跡でも `docs/` `apps/` `packages/` `contracts/` `features/` `.distillery/` 配下のファイル**だけを対象にする。これらがあれば勝手に stash / commit せず整理を依頼して停止する。それ以外のルート直下の未追跡ファイル (ハーネスの `run-stage.sh` などの実行スクリプト) は clean 判定に含めず、**報告に一覧として載せて無視**する (実走でハーネスのファイルが clean 条件を満たせなかったため)。`.git/info/exclude` への書き込みは前提にしない (権限で拒否されうる)
+4. (④ の再開時) 現在の branch が還流 branch (`feedback/<slug>/<issue>`。還流節) なら、clean 判定より先に還流節の「止まったとき」の a〜c を行って feature branch に戻る
+   (還流の派遣の途中で止まると、サブの書きかけが残った還流 branch の上で再開することになる。そのまま clean 判定をすると後始末の前に止まる)。
+   その課題は還流節の 1 からやり直す
+5. 作業ツリーの clean 判定 (④ の開始時。再開時は branch 一致を確認): `git status --porcelain` のうち、**追跡済みの変更**と、**未追跡でも `docs/` `apps/` `packages/` `contracts/` `features/` `.distillery/` 配下のファイル**だけを対象にする。これらがあれば勝手に stash / commit せず整理を依頼して停止する。それ以外のルート直下の未追跡ファイル (ハーネスの `run-stage.sh` などの実行スクリプト) は clean 判定に含めず、**報告に一覧として載せて無視**する (実走でハーネスのファイルが clean 条件を満たせなかったため)。`.git/info/exclude` への書き込みは前提にしない (権限で拒否されうる)
 
 ## ① 要求
 
@@ -196,17 +199,19 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
    - ローカルにだけ還流 branch がある (push の前に中断) → 下の「止まったとき」の a〜c で捨ててから 3 へ
    - どれも無い → 3 へ
 3. `git switch -c <還流 branch> <base_head>` (`base_head` は `branch_started` のもの)。以後、**各派遣の直前**に
-   `git status --porcelain --untracked-files=all` の未追跡ファイルの一覧を控え、`<fb>/<issue>.result.json` を消す
+   `git status --porcelain --untracked-files=all` の未追跡ファイルの一覧を `<fb>/<issue>.untracked.txt` に書く (中断して別のセッションで再開しても後始末に使える)。
+   d2-decide と d2-contract の派遣の直前には、`<fb>/<issue>.result.json` も消す (結果ファイルを書くのはこの 2 つだけ)
 4. 派遣と受理 (受理の `--check` は**生成物を commit する前に**回す。生成物の basis の行まで比べるので、commit の後では古いと判定される):
    - rule:
      1. sub d2-decide `mode=feedback` (派遣表「④ 還流 (ADR)」)。結果ファイルが `applied` で、`validateAdr.js docs/adr` が exit 0 なら受理し、
         `git add docs/adr && git commit -m "feedback(<slug>): adr"`
      2. sub d2-foundation `phase=rules` (派遣表「④ 還流 (ルールの再生成)」)。ADR の commit の後に回すので、ルールの basis が新しい ADR を指す。
-        `genRules.js --adr docs/adr --out docs/rules --check` と `genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --check` が exit 0 なら受理
+        結果ファイルは使わない (このサブは書かない)。`genRules.js --adr docs/adr --out docs/rules --check` と `genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --check` が exit 0 で、
+        write-set の外が変わっていなければ受理
    - contract: sub d2-contract `mode=feedback` (派遣表「④ 還流 (契約)」)。結果ファイルが `applied` で、`compileContracts.js contracts --check`、
      `compileRdbSchema.js contracts --check`、`validateUcIndex.js contracts`、`genContractTests.js contracts --config .distillery/config.yaml --out-root . --check`、
      `genRdbDdl.js contracts --config .distillery/config.yaml --out-root . --check` がすべて exit 0 なら受理
-   - 結果ファイルが `applied` 以外、どれかの検査が落ちた、write-set の外が変わった (`git status --porcelain`) → 下の「止まったとき」
+   - d2-decide / d2-contract の結果ファイルが `applied` 以外 (無いときも)、どれかの検査が落ちた、write-set の外が変わった (`git status --porcelain`) → 下の「止まったとき」
 5. `genDocsReadme.js` で `docs/README.md` を更新する
 6. commit: rule は `git add docs/rules .dependency-cruiser.cjs docs/README.md && git commit -m "feedback(<slug>): rules"`、
    contract は `git add contracts apps packages docs/README.md && git commit -m "feedback(<slug>): contracts"`
@@ -217,8 +222,9 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 
 ### 止まったとき
 
-a. 差分を `<fb>/<issue>.failed.diff` に保存する (`git diff <base_head>` (commit 済みの ADR も含む) と、控えた一覧に無い未追跡ファイルの一覧)
-b. 還流 branch の変更を捨てる: `git restore --staged --worktree .` と、**派遣の直前に控えた一覧に無かった未追跡ファイルだけ**を消す
+a. 差分を `<fb>/<issue>.failed.diff` に保存する (`git diff <base_head>` (commit 済みの ADR も含む) と、`<fb>/<issue>.untracked.txt` に無い未追跡ファイルの一覧)。
+   一覧のファイルが無い (控える前に止まった) なら、未追跡ファイルは消さずに一覧を報告して止まる
+b. 還流 branch の変更を捨てる: `git restore --staged --worktree .` と、**派遣の直前に控えた一覧 (`<fb>/<issue>.untracked.txt`) に無かった未追跡ファイルだけ**を消す
    (write-set の外に作られたものも含む。ignore 済みは対象外)。消せないものがあれば feature に戻らず、止まって報告する
 c. `git switch feature/<slug>` → `git branch -D <還流 branch>` (push の前なので失うものは無い。ADR だけ commit 済みでも branch ごと捨てる)
 d. 行き先:

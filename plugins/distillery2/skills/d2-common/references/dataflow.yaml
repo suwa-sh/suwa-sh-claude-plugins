@@ -393,6 +393,11 @@ stores:
     group: run
     path: ".distillery/logs/feedback/<slug>/<issue>.result.json"
     origin: produced
+  - id: feedback-untracked
+    name: 還流の派遣の直前の未追跡ファイル (後始末に使う。gitignore)
+    group: run
+    path: ".distillery/logs/feedback/<slug>/<issue>.untracked.txt"
+    origin: produced
   - id: feedback-failed
     name: 止まった還流の差分 (gitignore)
     group: run
@@ -770,8 +775,8 @@ processes:
     kind: orchestrator
     actor: d2-run
     run_table_row: "④ の段階の進行・確認ページ・還流"
-    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feedback-result]
-    writes: [run-events, use-cases, github, asbuilt-report, feedback-issue-copy, feedback-failed]
+    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feedback-result, feedback-untracked]
+    writes: [run-events, use-cases, github, asbuilt-report, feedback-issue-copy, feedback-failed, feedback-untracked]
   - id: run.uc.check-scenario
     name: シナリオの静的確認
     parent: run.uc

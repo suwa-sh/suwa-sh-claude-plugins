@@ -158,6 +158,8 @@ d2-run が還流用の branch (UC の開始点から切ったもの) の上で�
 
 ## 完了報告
 
+mode=feedback では: 結果ファイルの `status`、足した ADR と置き換えた旧 ADR のパス、`validateAdr.js` の結果 (blocked なら理由) だけを報告する。以下は段階②の報告。
+
 - 生成した `docs/nfr/nfr-grade.yaml` と ADR 群のパス、ADR 件数。
 - 覆った 8 決定領域の一覧 (「不要」とした領域も明記)。
 - `confidence: low` の決定と、確認推奨項目 (上位数件)。

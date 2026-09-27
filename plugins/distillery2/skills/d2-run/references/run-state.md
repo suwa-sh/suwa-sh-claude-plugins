@@ -18,7 +18,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
     issues/<ts>_<tier>_<slug>.md    # ティア実装者の課題 (並列の他ティアと衝突しないようにティアを入れる)
     learnings/<ts>_<slug>.md
     invalidated/<ts>_<stage>.done.yaml   # 無効化した done の退避
-  logs/feedback/<uc_slug>/          # 還流の作業場所 (gitignore): 課題の写し <issue>.md・派遣の結果 <issue>.result.json・止まったときの差分 <issue>.failed.diff
+  logs/feedback/<uc_slug>/          # 還流の作業場所 (gitignore): 課題の写し <issue>.md・派遣の結果 <issue>.result.json・派遣の直前の未追跡ファイル <issue>.untracked.txt・止まったときの差分 <issue>.failed.diff
 ```
 
 ## Git 追跡の方針 (`.gitignore` と整合)
