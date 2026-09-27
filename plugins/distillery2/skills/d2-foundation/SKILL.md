@@ -21,7 +21,7 @@ description: >-
 
 ```
 phase=all | finish | F1..F9   # 既定 all
-ui=true | false               # phase=finish だけ。d2-run が design を派遣したか (F6 を回すか)
+ui=true | false               # phase=finish だけ。今回の d2-design が部品を生成したか (F6 を回すか)。d2-run が決める
 adr=docs/adr                  # ADR ディレクトリ
 ```
 

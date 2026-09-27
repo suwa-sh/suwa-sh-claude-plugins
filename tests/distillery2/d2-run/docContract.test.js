@@ -94,6 +94,9 @@ test('asbuilt: 抽出から検査まで要約役が通しで行い、d2-run は�
   assert.match(asbuilt, /instrumentation_gaps/);
   assert.match(asbuilt, /asbuilt を done にせず integrate へ戻して/, '差し戻しの判断は d2-run に残す');
   assert.doesNotMatch(asbuilt, /npx depcruise/, 'depcruise は d2-asbuilt が回す');
+  // 抽出は前回の要約を残すので、成果物だけでは今回の要約を区別できない。as-built は完了報告も要る
+  assert.match(asbuilt, /要約役の完了報告/);
+  assert.match(read(TEMPLATE), /例外: asbuilt は要約役の完了報告/);
   const skill = read('skills/d2-asbuilt/SKILL.md');
   assert.match(skill, /npx depcruise/);
   assert.match(skill, /extractAsBuilt\.js/);
@@ -116,6 +119,7 @@ test('③ の後始末は d2-foundation phase=finish。d2-run は gates.json を
   assert.match(s3, /`gates` \(`\{name, status\}` の配列\) のうち `name` が `static` の要素の `status` が `pass`/);
   // F6 は d2-run が design を派遣したかで決める (古い docs/design の有無で決めない)
   assert.match(s3, /sub `d2-foundation phase=finish ui=<true\|false>`/);
+  assert.match(s3, /design が「画面を持たないプロダクトのため skip」と報告したら `ui=false`/);
   const fnd = read('skills/d2-foundation/SKILL.md');
   assert.match(fnd, /`ui=false` なら F6 と次の F7 を飛ばす/);
   assert.match(fnd, /前の実行の `docs\/design\/` が残っていても取り込まない/);
