@@ -352,12 +352,13 @@ stores:
     origin: produced
     scope_only: true
   - id: run-events
-    name: 実行の記録 (events / done)
+    name: 実行の記録 (events / done / 退避した done)
     group: run
     path: "<run>/events.jsonl"
     origin: produced
     aliases:
       - "<run>/stages/**"
+      - "<run>/invalidated/**"
   - id: assumptions
     name: 実装者が補った前提
     group: run

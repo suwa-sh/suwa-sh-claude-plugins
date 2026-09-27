@@ -156,7 +156,10 @@ test('git が無視するパス (gitignore・node_modules) の文書は README �
   const dir = repo();
   const { execFileSync } = require('node:child_process');
   execFileSync('git', ['init', '-q'], { cwd: dir });
-  W(dir, '.gitignore', 'docs/design/storybook-app/dist/\n');
+  W(dir, '.gitignore', 'docs/design/storybook-app/dist/\ndocs/manual/README.md\n');
+  // 入口 (README.md) が無視されていれば、無視されていない文書を入口にする
+  W(dir, 'docs/manual/README.md', '# 生成された入口\n');
+  W(dir, 'docs/manual/guide.md', '# 手引き\n');
   W(dir, 'docs/design/storybook-app/node_modules/pkg/README.md', '# pkg\n');
   W(dir, 'docs/design/storybook-app/dist/README.md', '# build\n');
   W(dir, 'docs/design/storybook-app/README.md', '# storybook\n');
@@ -168,6 +171,7 @@ test('git が無視するパス (gitignore・node_modules) の文書は README �
   assert.doesNotMatch(md, /storybook-app\/dist/);
   assert.match(md, /storybook-app\/README\.md/, '無視されていない文書は載る');
   assert.match(md, /\| ops\/ \| \[README\.md\]\(ops\/README\.md\) \| 1 \|/, 'ファイル数も無視されたものを数えない');
+  assert.match(md, /\| manual\/ \| \[guide\.md\]\(manual\/guide\.md\) \| 1 \|/, '無視された README を入口に選ばない');
 });
 
 test('段階が未着手なら「未着手」と書き、空の節を出さない。リンク切れは exit 1 で書き換えない', () => {

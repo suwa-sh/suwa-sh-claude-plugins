@@ -92,7 +92,7 @@ npm install                                                                     
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --refresh --cwd <repo>   # F7。提案で増えた plugins だけ足す
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd <repo>   # F8
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>   # F8
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements --cwd <repo>   # F8
+node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements contracts=contracts --cwd <repo>   # F8 (basis に契約も記録する)
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from docs/design/storybook-app --cwd <repo>   # F6
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root <repo>   # F4 (骨格分)
 node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc bootstrap --upto static   # F9 (<repo> で)

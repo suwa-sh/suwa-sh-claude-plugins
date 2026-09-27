@@ -592,7 +592,7 @@ flowchart LR
   g_settings[("基盤の設定<br/>実行設定")]
   g_requirements[("要求<br/>UC 一覧・要求 (USDM)")]
   g_decisions[("決定 (NFR・ADR)<br/>ADR")]
-  g_run[("実行の記録<br/>ゲートの記録・計装トレース・実装者が補った前提・Verifier の指摘・実行の記録 (events / done)・仕様起因の課題・ティア実装者の課題・as-built の抽出の集計 (計装の有無)")]
+  g_run[("実行の記録<br/>ゲートの記録・計装トレース・実装者が補った前提・Verifier の指摘・実行の記録 (events / done / 退避した done)・仕様起因の課題・ティア実装者の課題・as-built の抽出の集計 (計装の有無)")]
   g_contracts[("契約<br/>UC の契約 slice・契約の分割ファイル")]
   g_design[("画面<br/>デザインシステム (Storybook アプリ)")]
   g_scenarios[("シナリオと step<br/>UC シナリオ")]
@@ -653,7 +653,7 @@ flowchart LR
   p_run_uc["d2-run (④)<br/>d2-run"]
   g_settings[("基盤の設定<br/>実行設定")]
   g_requirements[("要求<br/>UC 一覧")]
-  g_run[("実行の記録<br/>実行の記録 (events / done)・ゲートの記録・as-built の抽出の集計 (計装の有無)・Verifier の指摘・実装者が補った前提・仕様起因の課題・ティア実装者の課題")]
+  g_run[("実行の記録<br/>実行の記録 (events / done / 退避した done)・ゲートの記録・as-built の抽出の集計 (計装の有無)・Verifier の指摘・実装者が補った前提・仕様起因の課題・ティア実装者の課題")]
   g_contracts[("契約<br/>UC ごとの契約の索引")]
   g_asbuilt[("as-built<br/>システム横断の as-built")]
   g_github[("GitHub<br/>GitHub (PR / issue)")]
@@ -843,7 +843,7 @@ flowchart LR
   p_run_uc_deliver["配送 (squash・PR)<br/>prTrailers.js"]
   s_use_cases[("UC 一覧<br/>docs/requirements/use-cases.yaml")]
   s_reports[("ゲートの記録<br/>#lt;run#gt;/reports/**")]
-  s_run_events[("実行の記録 (events / done)<br/>#lt;run#gt;/events.jsonl")]
+  s_run_events[("実行の記録 (events / done / 退避した done)<br/>#lt;run#gt;/events.jsonl")]
   s_github[("GitHub (PR / issue)<br/>(GitHub)")]
   s_use_cases --> p_run_uc_deliver
   s_reports --> p_run_uc_deliver
@@ -896,7 +896,7 @@ flowchart LR
 | 受入シナリオ | シナリオと step | `features/acceptance/**` | 生成 | UC シナリオの執筆 | テスト足場の生成、文書の入口の更新 (① ②)、文書の入口の更新 (③)、シナリオの静的確認、ゲートの実行、文書の入口の更新 (④) |
 | step 定義 | シナリオと step | `features/step_definitions/**` | 生成 | テスト足場の生成、結合 | テスト足場の生成、結合、ゲートの実行 |
 | ティアの実装と単体テスト | ティアの実装 | `apps/<tier>/src/**` | 生成 | テスト足場の生成、ティアの実装 | ティアの実装、結合、独立検証、as-built の抽出と要約、依存グラフの実態、要約ブロックを埋める (LLM)、ゲートの実行、qlty の提案を足す (④) |
-| 実行の記録 (events / done) | 実行の記録 | `<run>/events.jsonl` | 生成 | d2-run (④) | as-built の抽出と要約、as-built の抽出、d2-run (④)、配送 (squash・PR) |
+| 実行の記録 (events / done / 退避した done) | 実行の記録 | `<run>/events.jsonl` | 生成 | d2-run (④) | as-built の抽出と要約、as-built の抽出、d2-run (④)、配送 (squash・PR) |
 | 実装者が補った前提 | 実行の記録 | `<run>/attempt-<n>/assumptions.<tier>.yaml` | 生成 | ティアの実装 | 独立検証、as-built の抽出と要約、as-built の抽出、要約ブロックを埋める (LLM)、d2-run (④) |
 | Verifier の指摘 | 実行の記録 | `<run>/attempt-<n>/findings.<tier>.yaml` | 生成 | 独立検証 | ティアの実装、as-built の抽出と要約、as-built の抽出、d2-run (④) |
 | 仕様起因の課題 | 実行の記録 | `<run>/issues/**` | 生成 | 契約の差分 | as-built の抽出と要約、as-built の抽出、d2-run (④) |

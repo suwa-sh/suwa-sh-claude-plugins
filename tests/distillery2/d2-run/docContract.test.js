@@ -98,6 +98,7 @@ test('asbuilt: 抽出から検査まで要約役が通しで行い、d2-run は�
   assert.match(asbuilt, /`returned_to_integrate \{from: "asbuilt", instrumentation_gaps, instrumentation_happy_gaps\}` を記録/);
   assert.match(asbuilt, /`node runState\.js invalidate <run> integrate "<理由>" --from`/);
   assert.match(asbuilt, /attempt は上げない/);
+  assert.match(asbuilt, /`<run>\/attempt-<n>\/findings\.<tier>\.yaml` も `<run>\/invalidated\/` へ移して/, '再検証の前の findings で受理しない');
   assert.match(read(RUN_STATE), /^\| returned_to_integrate \|/m);
   assert.match(row(read(TEMPLATE), /^\| ④ integrate /), /returned_to_integrate/);
   // 抽出は前回の要約を残すので、成果物だけでは今回の要約を区別できない。as-built は完了報告も要る
@@ -132,6 +133,8 @@ test('③ の後始末は d2-foundation phase=finish。d2-run は gates.json を
   // 仕上げの前に契約と画面部品を commit する (未 commit だと仕上げの生成物の basis が空になる。0.1.23)
   assert.match(s3, /`git add contracts docs\/design && git commit -m "foundation: contracts and design"`/);
   assert.ok(s3.indexOf('foundation: contracts and design') < s3.indexOf('sub `d2-foundation phase=finish ui='), 'commit は仕上げの派遣の前');
+  // 先に commit した契約を、仕上げの C4 図が basis に記録する (config と画面部品の取り込み記録は生成器が自分で契約・design を記録する)
+  assert.match(read('skills/d2-foundation/SKILL.md'), /genArchitectureDoc\.js .*requirements=docs\/requirements contracts=contracts .*# F8/);
   assert.match(read(TEMPLATE), /例外: ③ の画面部品 \(d2-design\) は完了報告/);
   // static のゲートは契約テストの生成を見ないので、F4 の生成物の鮮度を受理時に確かめる
   assert.match(s3, /genContractTests\.js contracts --config \.distillery\/config\.yaml --out-root \. --check` が exit 0/);

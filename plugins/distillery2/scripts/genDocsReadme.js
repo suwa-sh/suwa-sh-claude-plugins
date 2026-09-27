@@ -329,7 +329,7 @@ function build(ctx) {
       const all = [];
       const walkAll = (d) => { for (const x of listDir(d)) { const q = path.join(d, x.name); if (x.isDirectory()) walkAll(q); else all.push(q); } };
       walkAll(abs);
-      const entry = ['README.md', 'index.md'].map((n) => path.join(abs, n)).find((q) => fs.existsSync(q))
+      const entry = ['README.md', 'index.md'].map((n) => path.join(abs, n)).find((q) => fs.existsSync(q) && !isIgnored(q))
         || all.filter((q) => q.endsWith('.md')).sort(cmpStr)[0];
       const entryLabel = entry ? path.relative(abs, entry).split(path.sep).join('/') : null;
       unknown.push(`| ${mdEscape(e.name)}/ | ${entry ? L.to(entry, entryLabel) : L.to(abs, 'ディレクトリ')} | ${all.length} |`);
