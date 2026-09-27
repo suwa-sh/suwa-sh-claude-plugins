@@ -102,6 +102,7 @@ stores:
       - "templates/test-support/"
       - "templates/features-support/"
       - "templates/cucumber.js"
+      - "templates/tsx-register.js"
   - id: skill-docs
     name: スキルの手順書 (同梱)
     group: packaged
@@ -215,6 +216,11 @@ stores:
     name: Cucumber 設定
     group: settings
     path: "cucumber.js"
+    origin: produced
+  - id: cucumber-loader
+    name: Cucumber の ESM ローダ (cucumber.js が読む)
+    group: settings
+    path: "tsx-register.js"
     origin: produced
   - id: config
     name: 実行設定
@@ -457,8 +463,8 @@ processes:
     kind: subagent
     template_row: "③ 基盤 (機械)"
     reads: [adr, rule-templates, support-templates, contracts-catalog, config, skeleton, lockfile, qlty-config]
-    writes: [rules, depcruise-config, test-support, features-support, cucumber-config, config, skeleton, ci, qlty-config, lockfile]
-    allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, config, skeleton, ci, qlty-config, lockfile]
+    writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, qlty-config, lockfile]
+    allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, qlty-config, lockfile]
     notes:
       - "例外: `npm install` が作る `node_modules/**` (gitignore)"
   - id: foundation.F1
@@ -484,7 +490,7 @@ processes:
     kind: script
     phase: F3
     reads: [support-templates]
-    writes: [test-support, features-support, cucumber-config]
+    writes: [test-support, features-support, cucumber-config, cucumber-loader]
   - id: foundation.F5
     name: F5 設定・骨格・CI・qlty
     parent: foundation
@@ -807,7 +813,7 @@ processes:
     actor: d2-run
     scripts: [runGates.js]
     run_table_row: "④ の runGates.js"
-    reads: [config, skeleton, lockfile, cucumber-config, qlty-config, tier-src, contract-tests, migrations, feature, acceptance, steps, features-support, depcruise-config, reports]
+    reads: [config, skeleton, lockfile, cucumber-config, cucumber-loader, qlty-config, tier-src, contract-tests, migrations, feature, acceptance, steps, features-support, depcruise-config, reports]
     writes: [reports, traces]
   - id: run.uc.qlty
     name: qlty の提案を足す (④)

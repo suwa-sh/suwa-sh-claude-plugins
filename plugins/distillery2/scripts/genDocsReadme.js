@@ -23,6 +23,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { parseYaml } = require('./lib/yaml');
 const { parseFeature } = require('./lib/gherkin');
 
@@ -37,7 +38,27 @@ function readText(p) { return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : nu
 function readYaml(p) { const t = readText(p); return t == null ? null : parseYaml(t); }
 function readJson(p) { const t = readText(p); if (t == null) return null; try { return JSON.parse(t); } catch { return null; } }
 function mdEscape(s) { return String(s == null ? '' : s).replace(/\|/g, '\\|').replace(/[\r\n]+/g, ' '); }
-function listDir(p) { return fs.existsSync(p) ? fs.readdirSync(p, { withFileTypes: true }).sort((a, b) => cmpStr(a.name, b.name)) : []; }
+function listDir(p) {
+  if (!fs.existsSync(p)) return [];
+  return fs.readdirSync(p, { withFileTypes: true }).filter((e) => !isIgnored(path.join(p, e.name))).sort((a, b) => cmpStr(a.name, b.name));
+}
+
+// git が無視するパス (gitignore) は README に載せない。commit された README ではリンク切れになるため
+// (0.1.22 の試し運転: docs/design/storybook-app/node_modules/** の README が 220 件載った)。
+// collect() の最初に docs ディレクトリについて 1 回だけ問い合わせる。git が使えなければ node_modules だけ飛ばす
+let ignoredPaths = [];
+function isIgnored(abs) {
+  if (abs.split(path.sep).includes('node_modules')) return true;
+  return ignoredPaths.some((p) => abs === p || abs.startsWith(p + path.sep));
+}
+function loadIgnored(docsDir) {
+  ignoredPaths = [];
+  if (!fs.existsSync(docsDir)) return;
+  try {
+    const out = execFileSync('git', ['ls-files', '-z', '--others', '--ignored', '--exclude-standard', '--directory', '--', '.'], { cwd: docsDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    ignoredPaths = out.split('\0').filter(Boolean).map((rel) => path.resolve(docsDir, rel.replace(/\/$/, '')));
+  } catch { /* git リポでない・git が無い: node_modules だけ飛ばす */ }
+}
 
 /** YAML front matter → {data, body}。 */
 function frontMatter(text) {
@@ -73,6 +94,7 @@ function collect(opts) {
   const config = readYaml(path.resolve(cwd, opts.config)) || {};
   const docsRoot = opts.docsRoot || config.docs_root || 'docs';
   const docsDir = path.resolve(cwd, docsRoot);
+  loadIgnored(docsDir);
   const D = (...p) => path.join(docsDir, ...p);
 
   const overview = readJson(D('requirements', 'rdra', 'システム概要.json')) || {};

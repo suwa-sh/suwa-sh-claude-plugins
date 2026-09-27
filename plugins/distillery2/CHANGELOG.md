@@ -2,6 +2,24 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.23] - 2026-09-27
+
+0.1.22 の試し運転で見つかった課題 (いずれも 0.1.22 以前から) を直した。
+
+### Fixed
+
+- 新規の ③ でチェックポイント (F9) の quality が必ず落ちる: genSkeleton が biome.json に書くフォルダ除外を `!**/test/contract/**` から `!**/test/contract` にした
+  (biome 2.2.0 以降の既定の規則 `useBiomeIgnoreFolder` が末尾 `/**` を違反にする。0.1.15 から)。`genSkeleton.js --migrate` は旧い形を同じ位置で置き換える
+- as-built から integrate へ戻すときの記録と退避が手順に無かった: イベント `returned_to_integrate` を定義し、`runState.js invalidate <run> integrate <reason> --from`
+  (その段階と後ろの done をまとめて退避) で戻す。attempt は上げない (計装の結線は integrate の担当)。verify と review もやり直す
+- genDocsReadme が gitignore のパス (`docs/design/storybook-app/node_modules/**` など) の README を載せ、commit ではリンク切れになっていた。git が無視するパスと `node_modules` を飛ばす
+- F3 が作る `tsx-register.js` (cucumber.js が読む ESM ローダ) が正本・phase 表・派遣表の write-set に無かった
+- ③ で仕上げが作る config・C4 図・画面部品の取り込み記録の basis が空 (契約と画面部品が未 commit): 仕上げの派遣の前に d2-run が契約の骨格と画面部品を commit する
+
+### Added
+
+- `runState.js` の `invalidateFrom` と CLI `invalidate ... --from`
+
 ## [0.1.22] - 2026-09-27
 
 d2-run が直接回していた作業を、段階の持ち主のスキルに移した。d2-run に残すのは派遣・受理時の検査・確認ページ・genDocsReadme・git だけ。

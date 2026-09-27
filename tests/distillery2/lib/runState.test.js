@@ -37,6 +37,24 @@ test('open, events, done, status, invalidate, attempts', () => {
   assert.equal(rs.invalidate(dir, 'scenario', 'again'), null);
 });
 
+test('invalidateFrom: その段階と後ろの段階の done をまとめて退避する (as-built から integrate へ戻すとき。0.1.23)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'register-return');
+  for (const s of ['scenario', 'contract', 'scaffold', 'tier', 'contract-gate', 'integrate', 'verify', 'review', 'feedback']) rs.markDone(dir, s, {});
+  const moved = rs.invalidateFrom(dir, 'integrate', 'as-built に計装なしのティア');
+  assert.deepEqual(moved.map(p => path.basename(p).replace(/^\d+_\d+_/, '')), ['integrate.done.yaml', 'verify.done.yaml', 'review.done.yaml', 'feedback.done.yaml'], 'done の無い asbuilt は飛ばす');
+  const s = rs.status(dir);
+  assert.equal(s.next_stage, 'integrate');
+  assert.equal(s.stages.tier, 'done', '前の段階は残す');
+  assert.throws(() => rs.invalidateFrom(dir, 'nope', 'x'), /unknown stage/);
+  // CLI
+  rs.markDone(dir, 'integrate', {});
+  rs.markDone(dir, 'verify', {});
+  const cli = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib/runState.js'), 'invalidate', dir, 'integrate', 'again', '--from'], { encoding: 'utf8' });
+  assert.equal(cli.trim().split('\n').length, 2);
+  assert.equal(rs.status(dir).next_stage, 'integrate');
+});
+
 test('pendingFeedback: 保留と解消 (新形式・旧形式)', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
   const dir = rs.openRun(root, 'register-return');

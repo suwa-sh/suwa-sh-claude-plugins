@@ -17,6 +17,7 @@
  *   node runState.js done <runDir> <stage> [json]
  *   node runState.js status <runDir> [--json]     (pending_feedback = 起票されていない還流)
  *   node runState.js invalidate <runDir> <stage> <reason>
+ *   node runState.js invalidate <runDir> <stage> <reason> --from   (その段階と後ろの段階をまとめて退避)
  */
 'use strict';
 
@@ -77,6 +78,13 @@ function invalidate(runDir, stage, reason) {
   return dest;
 }
 
+/** stage とそれより後ろの段階の done をすべて退避する (差し戻しで段階をまとめて戻すとき。1 つずつ呼んで漏らさないため)。退避したパスの配列を返す */
+function invalidateFrom(runDir, stage, reason) {
+  const i = STAGES.indexOf(stage);
+  if (i < 0) throw new Error(`unknown stage: ${stage}`);
+  return STAGES.slice(i).map(s => invalidate(runDir, s, reason)).filter(Boolean);
+}
+
 function attemptDir(runDir, n) {
   const dir = path.join(runDir, `attempt-${n}`);
   fs.mkdirSync(dir, { recursive: true });
@@ -134,7 +142,16 @@ function main(argv) {
     case 'open': console.log(openRun(path.resolve(args[0]), args[1])); return 0;
     case 'event': console.log(JSON.stringify(appendEvent(path.resolve(args[0]), args[1], args[2] ? JSON.parse(args[2]) : {}))); return 0;
     case 'done': console.log(JSON.stringify(markDone(path.resolve(args[0]), args[1], args[2] ? JSON.parse(args[2]) : {}))); return 0;
-    case 'invalidate': console.log(invalidate(path.resolve(args[0]), args[1], args.slice(2).join(' ')) || 'not done'); return 0;
+    case 'invalidate': {
+      // --from: その段階と後ろの段階の done をまとめて退避する
+      if (a.includes('--from')) {
+        const rest = args.filter(x => x !== '--from');
+        const moved = invalidateFrom(path.resolve(rest[0]), rest[1], rest.slice(2).join(' '));
+        console.log(moved.length ? moved.join('\n') : 'not done');
+        return 0;
+      }
+      console.log(invalidate(path.resolve(args[0]), args[1], args.slice(2).join(' ')) || 'not done'); return 0;
+    }
     case 'status': {
       const s = status(path.resolve(args[0]));
       if (json) console.log(JSON.stringify(s, null, 2));
@@ -154,4 +171,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, attemptDir, currentAttempt, pendingFeedback, status };
+module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, attemptDir, currentAttempt, pendingFeedback, status };

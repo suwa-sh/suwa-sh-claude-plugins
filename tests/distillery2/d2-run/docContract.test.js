@@ -94,6 +94,12 @@ test('asbuilt: 抽出から検査まで要約役が通しで行い、d2-run は�
   assert.match(asbuilt, /instrumentation_gaps/);
   assert.match(asbuilt, /asbuilt を done にせず integrate へ戻して/, '差し戻しの判断は d2-run に残す');
   assert.doesNotMatch(asbuilt, /npx depcruise/, 'depcruise は d2-asbuilt が回す');
+  // integrate への戻し方 (0.1.22 の試し運転で手順に無いイベントを自作した。0.1.23)
+  assert.match(asbuilt, /`returned_to_integrate \{from: "asbuilt", instrumentation_gaps, instrumentation_happy_gaps\}` を記録/);
+  assert.match(asbuilt, /`node runState\.js invalidate <run> integrate "<理由>" --from`/);
+  assert.match(asbuilt, /attempt は上げない/);
+  assert.match(read(RUN_STATE), /^\| returned_to_integrate \|/m);
+  assert.match(row(read(TEMPLATE), /^\| ④ integrate /), /returned_to_integrate/);
   // 抽出は前回の要約を残すので、成果物だけでは今回の要約を区別できない。as-built は完了報告も要る
   assert.match(asbuilt, /要約役の完了報告/);
   assert.match(read(TEMPLATE), /例外: asbuilt は要約役の完了報告/);
@@ -123,6 +129,9 @@ test('③ の後始末は d2-foundation phase=finish。d2-run は gates.json を
   assert.match(s3, /sub `d2-foundation phase=finish ui=<true\|false>`/);
   assert.match(s3, /design が「画面を持たないプロダクトのため skip」と報告したら `ui=false`/);
   assert.match(s3, /design の完了報告が届くまで仕上げに進まない/);
+  // 仕上げの前に契約と画面部品を commit する (未 commit だと仕上げの生成物の basis が空になる。0.1.23)
+  assert.match(s3, /`git add contracts docs\/design && git commit -m "foundation: contracts and design"`/);
+  assert.ok(s3.indexOf('foundation: contracts and design') < s3.indexOf('sub `d2-foundation phase=finish ui='), 'commit は仕上げの派遣の前');
   assert.match(read(TEMPLATE), /例外: ③ の画面部品 \(d2-design\) は完了報告/);
   // static のゲートは契約テストの生成を見ないので、F4 の生成物の鮮度を受理時に確かめる
   assert.match(s3, /genContractTests\.js contracts --config \.distillery\/config\.yaml --out-root \. --check` が exit 0/);

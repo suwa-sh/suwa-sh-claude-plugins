@@ -33,6 +33,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
 
 - 再開は done が無い最初の段階から。`node runState.js status <runDir>` で確認する
 - `tier` と `verify` は attempt ごとに繰り返す。blocker で戻るときは `invalidate` で `tier` 以降の done を退避してから attempt を進める
+- 後ろの段階をまとめて退避するときは `invalidate <run> <stage> <reason> --from` を使う (その段階と後ろの done をすべて退避する。1 つずつ呼ぶと漏らしやすい)
 - 上流 (要求・ADR・契約) が変わったら、`basis.js check` で古くなった成果物を見つけ、対応する段階を `invalidate` する
 
 ## イベントの種類 (最小)
@@ -47,6 +48,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
 | feedback_filed | 還流の起票。`{kind, url, issue_path}` (issue_path は `issues/<file>.md`)。url は必須 |
 | feedback_deferred | PR / issue を作れない実行 (push 禁止・`gh` 未認証・リモート無し) での還流の保留。`{kind, issue_path, reason}`。feedback はこれで done にできるが、deliver の前に同じ issue_path の `feedback_filed` で解消する |
 | blocked_on_requirement | 人レビューで「要求を直す」を選び、要求の反映待ちで停止した |
+| returned_to_integrate | asbuilt の受理時に集計 (`reports/asbuilt.json`) の計装なし / 正常系に部品なしのティアが空でなく、integrate へ戻した。`{from: "asbuilt", instrumentation_gaps, instrumentation_happy_gaps}`。続けて `invalidate <run> integrate <reason> --from` で integrate 以降の done を退避する (attempt は上げない) |
 
 未解消の保留は `runState.js status` の `pending_feedback` (JSON) / 「pending feedback」行 (テキスト) に出る。
 0.1.18 以前の記録にある「url が空の `feedback_filed` (`issue` にパス)」も保留として数える。

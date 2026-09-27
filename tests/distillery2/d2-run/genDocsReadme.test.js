@@ -152,6 +152,24 @@ test('distillery2 以外の文書は名前と入口だけ列挙し、知って�
   assert.doesNotMatch(md, /ops\/runbook/); // 中身は要約しない (入口だけ)
 });
 
+test('git が無視するパス (gitignore・node_modules) の文書は README に載せない (commit するとリンク切れになる。0.1.23)', () => {
+  const dir = repo();
+  const { execFileSync } = require('node:child_process');
+  execFileSync('git', ['init', '-q'], { cwd: dir });
+  W(dir, '.gitignore', 'docs/design/storybook-app/dist/\n');
+  W(dir, 'docs/design/storybook-app/node_modules/pkg/README.md', '# pkg\n');
+  W(dir, 'docs/design/storybook-app/dist/README.md', '# build\n');
+  W(dir, 'docs/design/storybook-app/README.md', '# storybook\n');
+  W(dir, 'docs/ops/node_modules/x/README.md', '# x\n');
+  W(dir, 'docs/ops/README.md', '# 運用\n');
+  run(opts(dir));
+  const md = fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8');
+  assert.doesNotMatch(md, /node_modules/);
+  assert.doesNotMatch(md, /storybook-app\/dist/);
+  assert.match(md, /storybook-app\/README\.md/, '無視されていない文書は載る');
+  assert.match(md, /\| ops\/ \| \[README\.md\]\(ops\/README\.md\) \| 1 \|/, 'ファイル数も無視されたものを数えない');
+});
+
 test('段階が未着手なら「未着手」と書き、空の節を出さない。リンク切れは exit 1 で書き換えない', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2readme-min-'));
   W(dir, 'docs/input/初期要望.txt', 'x');
