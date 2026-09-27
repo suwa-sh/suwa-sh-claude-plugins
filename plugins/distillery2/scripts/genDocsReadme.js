@@ -329,6 +329,7 @@ function build(ctx) {
       const all = [];
       const walkAll = (d) => { for (const x of listDir(d)) { const q = path.join(d, x.name); if (x.isDirectory()) walkAll(q); else all.push(q); } };
       walkAll(abs);
+      if (!all.length) continue; // 中身がすべて git に無視されている (commit すると消える) ディレクトリは載せない
       const entry = ['README.md', 'index.md'].map((n) => path.join(abs, n)).find((q) => fs.existsSync(q) && !isIgnored(q))
         || all.filter((q) => q.endsWith('.md')).sort(cmpStr)[0];
       const entryLabel = entry ? path.relative(abs, entry).split(path.sep).join('/') : null;

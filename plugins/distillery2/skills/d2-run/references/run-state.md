@@ -11,7 +11,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
     stages/<stage>.done.yaml        # 完了の正。存在 = 完了。中身は完了時刻と要点 (commit, attempt など)
     attempt-<n>/
       assumptions.<tier>.yaml       # 実装者が補った前提 (AssumptionRecord)
-      findings.yaml                 # Verifier の指摘
+      findings.<tier>.yaml          # Verifier の指摘 (ティアごと)
     reports/                        # gates.json と各ゲートの JSON レポート
     traces/<scenario_id>.jsonl      # UC BDD 実行時の計装トレース
     issues/<ts>_<slug>.md           # 仕様起因の課題 (front matter kind: rule | contract | requirement)。scenario / contract 段が書く
@@ -48,7 +48,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
 | feedback_filed | 還流の起票。`{kind, url, issue_path}` (issue_path は `issues/<file>.md`)。url は必須 |
 | feedback_deferred | PR / issue を作れない実行 (push 禁止・`gh` 未認証・リモート無し) での還流の保留。`{kind, issue_path, reason}`。feedback はこれで done にできるが、deliver の前に同じ issue_path の `feedback_filed` で解消する |
 | blocked_on_requirement | 人レビューで「要求を直す」を選び、要求の反映待ちで停止した |
-| returned_to_integrate | asbuilt の受理時に集計 (`reports/asbuilt.json`) の計装なし / 正常系に部品なしのティアが空でなく、integrate へ戻した。`{from: "asbuilt", instrumentation_gaps, instrumentation_happy_gaps}`。続けて `invalidate <run> integrate <reason> --from` で integrate 以降の done を退避し、同じ attempt の `findings.<tier>.yaml` も `invalidated/` へ移す (attempt は上げない) |
+| returned_to_integrate | asbuilt の受理時に集計 (`reports/asbuilt.json`) の計装なし / 正常系に部品なしのティアが空でなく、integrate へ戻した。`{from: "asbuilt", instrumentation_gaps, instrumentation_happy_gaps, moved_findings}`。`invalidate <run> integrate <reason> --from` で integrate 以降の done を退避し、同じ attempt の `findings.<tier>.yaml` も `invalidated/<ts>_attempt-<n>_findings.<tier>.yaml` へ移す (attempt は上げない。移した先を `moved_findings` に) |
 
 未解消の保留は `runState.js status` の `pending_feedback` (JSON) / 「pending feedback」行 (テキスト) に出る。
 0.1.18 以前の記録にある「url が空の `feedback_filed` (`issue` にパス)」も保留として数える。
