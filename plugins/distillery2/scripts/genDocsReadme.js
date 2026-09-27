@@ -51,6 +51,9 @@ function isIgnored(abs) {
   if (abs.split(path.sep).includes('node_modules')) return true;
   return ignoredPaths.some((p) => abs === p || abs.startsWith(p + path.sep));
 }
+/** リンクしてよいか: 実在し、git に無視されていない (commit された README から辿れる) */
+function present(abs) { return fs.existsSync(abs) && !isIgnored(abs); }
+
 function loadIgnored(docsDir) {
   ignoredPaths = [];
   if (!fs.existsSync(docsDir)) return;
@@ -163,7 +166,7 @@ function build(ctx) {
   const referenced = new Set(); // 参照した docs 配下の絶対パス (「その他」に載せない)
   const L0 = makeLinker(readmeDir);
   const L = { links: L0.links, to(abs, label) { referenced.add(abs); return L0.to(abs, label); } };
-  const link = (abs, label) => (fs.existsSync(abs) ? L.to(abs, label) : null); // 任意 (無ければ載せない)
+  const link = (abs, label) => (present(abs) ? L.to(abs, label) : null); // 任意 (無い・git に無視されているなら載せない)
   const must = (abs, label) => L.to(abs, label); // 正本が指す文書 (無ければリンク切れとして exit 1)
   const ref = link;
   const out = [];
@@ -209,7 +212,7 @@ function build(ctx) {
     const done = rows.filter((u) => statusOf(u) === '実装済み').length;
     const blocked = rows.filter((u) => u.status === 'blocked').length;
     out.push(`UC ${rows.length} 件 (実装済み ${done}、要求待ち ${blocked})。1 行で要求 → シナリオ → 契約 → 画面 → 実装の記録まで辿れる。`);
-    if (fs.existsSync(reqMd)) out.push(`要求の列の SPEC は ${ref(reqMd, '要求仕様書')} の行。`);
+    if (present(reqMd)) out.push(`要求の列の SPEC は ${ref(reqMd, '要求仕様書')} の行。`);
     out.push('');
     out.push('| 業務 | UC | 状態 | 要求 | シナリオ | 契約 | 画面 | 実装の記録 |');
     out.push('|---|---|---|---|---|---|---|---|');
@@ -258,8 +261,8 @@ function build(ctx) {
   } else out.push('ADR は未着手 (決定の段階で作られる)。\n');
   const decided = [];
   if (ctx.nfr) decided.push(`- 非機能: ${ref(D('nfr', 'nfr-grade.md'), '非機能グレード表') || ref(D('nfr', 'nfr-grade.yaml'), 'nfr-grade.yaml')} (モデルシステム ${mdEscape(ctx.nfrModel || '-')}、重要項目 ${ctx.nfrImportant} / ${ctx.nfrCount})。性能テストの閾値の出典`);
-  if (fs.existsSync(D('adr', 'architecture.md'))) decided.push(`- 構成: ${ref(D('adr', 'architecture.md'), 'C4 図')} (決めたもの)。実態は ${ref(D('as-built', '_system', 'dependency-graph.md'), '依存グラフ') || 'as-built の依存グラフ'}`);
-  if (fs.existsSync(D('rules', 'index.md'))) decided.push(`- 開発ルール: ${ref(D('rules', 'index.md'), '目次')}。実装時は common + 自ティア + testing だけ読む (生成物。直したい変更は ADR へ)`);
+  if (present(D('adr', 'architecture.md'))) decided.push(`- 構成: ${ref(D('adr', 'architecture.md'), 'C4 図')} (決めたもの)。実態は ${ref(D('as-built', '_system', 'dependency-graph.md'), '依存グラフ') || 'as-built の依存グラフ'}`);
+  if (present(D('rules', 'index.md'))) decided.push(`- 開発ルール: ${ref(D('rules', 'index.md'), '目次')}。実装時は common + 自ティア + testing だけ読む (生成物。直したい変更は ADR へ)`);
   for (const l of decided) out.push(l);
   if (decided.length) out.push('');
 
@@ -379,7 +382,7 @@ function merge(existing, block) {
 function run(opts) {
   const ctx = collect(opts);
   const { block, links, readmePath } = build(ctx);
-  const broken = links.filter((l) => !fs.existsSync(l.abs)).map((l) => l.rel);
+  const broken = links.filter((l) => !fs.existsSync(l.abs) || isIgnored(l.abs)).map((l) => l.rel);
   if (broken.length) return { code: 1, readmePath, broken, changed: false };
   const existing = readText(readmePath);
   let next;

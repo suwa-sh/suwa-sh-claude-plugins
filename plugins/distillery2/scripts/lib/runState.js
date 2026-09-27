@@ -18,6 +18,7 @@
  *   node runState.js status <runDir> [--json]     (pending_feedback = 起票されていない還流)
  *   node runState.js invalidate <runDir> <stage> <reason>
  *   node runState.js invalidate <runDir> <stage> <reason> --from   (その段階と後ろの段階をまとめて退避)
+ *   node runState.js return-to-integrate <runDir> '{"instrumentation_gaps":[...],"instrumentation_happy_gaps":[...]}'   (as-built から integrate へ戻す)
  */
 'use strict';
 
@@ -83,6 +84,44 @@ function invalidateFrom(runDir, stage, reason) {
   const i = STAGES.indexOf(stage);
   if (i < 0) throw new Error(`unknown stage: ${stage}`);
   return STAGES.slice(i).map(s => invalidate(runDir, s, reason)).filter(Boolean);
+}
+
+/** 退避先が既にあれば `_2`, `_3` … を付ける (同じ秒に 2 回退避しても上書きしない) */
+function uniqueDest(dest) {
+  if (!fs.existsSync(dest)) return dest;
+  const ext = path.extname(dest);
+  const base = dest.slice(0, -ext.length);
+  for (let i = 2; ; i++) { const d = `${base}_${i}${ext}`; if (!fs.existsSync(d)) return d; }
+}
+
+/**
+ * as-built の受理で計装が足りないとき、integrate へ戻す (1 操作。途中で止まっても再開できる順に行う)。
+ *  1. 今の attempt の Verifier の結果 (findings.<tier>.yaml) を invalidated/<ts>_attempt-<n>_findings.<tier>.yaml へ移す
+ *     (先に移すので、どこで止まっても再検証の前の結果が残らない。attempt は上げない)
+ *  2. integrate 以降の done をまとめて退避する (invalidateFrom)
+ *  3. returned_to_integrate {from, instrumentation_gaps, instrumentation_happy_gaps, moved_findings} を記録する
+ */
+function returnToIntegrate(runDir, detail = {}) {
+  const n = currentAttempt(runDir);
+  const dir = path.join(runDir, `attempt-${n}`);
+  const moved = [];
+  if (fs.existsSync(dir)) {
+    for (const f of fs.readdirSync(dir).filter(x => /^findings\..+\.yaml$/.test(x)).sort()) {
+      const dest = uniqueDest(path.join(runDir, 'invalidated', `${ts()}_attempt-${n}_${f}`));
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.renameSync(path.join(dir, f), dest);
+      moved.push(path.relative(runDir, dest));
+    }
+  }
+  const reason = `as-built に計装の足りないティア: ${[...(detail.instrumentation_gaps || []), ...(detail.instrumentation_happy_gaps || [])].join(', ') || '(なし)'}`;
+  const invalidated = invalidateFrom(runDir, 'integrate', reason).map(p => path.relative(runDir, p));
+  appendEvent(runDir, 'returned_to_integrate', {
+    from: detail.from || 'asbuilt',
+    instrumentation_gaps: detail.instrumentation_gaps || [],
+    instrumentation_happy_gaps: detail.instrumentation_happy_gaps || [],
+    moved_findings: moved,
+  });
+  return { moved_findings: moved, invalidated };
 }
 
 function attemptDir(runDir, n) {
@@ -152,6 +191,7 @@ function main(argv) {
       }
       console.log(invalidate(path.resolve(args[0]), args[1], args.slice(2).join(' ')) || 'not done'); return 0;
     }
+    case 'return-to-integrate': console.log(JSON.stringify(returnToIntegrate(path.resolve(args[0]), args[1] ? JSON.parse(args[1]) : {}))); return 0;
     case 'status': {
       const s = status(path.resolve(args[0]));
       if (json) console.log(JSON.stringify(s, null, 2));
@@ -165,10 +205,10 @@ function main(argv) {
       }
       return 0;
     }
-    default: console.error('Usage: runState.js open|event|done|invalidate|status ...'); return 2;
+    default: console.error('Usage: runState.js open|event|done|invalidate|return-to-integrate|status ...'); return 2;
   }
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, attemptDir, currentAttempt, pendingFeedback, status };
+module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, status };

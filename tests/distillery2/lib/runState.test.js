@@ -55,6 +55,38 @@ test('invalidateFrom: その段階と後ろの段階の done をまとめて退�
   assert.equal(rs.status(dir).next_stage, 'integrate');
 });
 
+test('returnToIntegrate: findings の退避 → integrate 以降の done の退避 → イベントを 1 操作で行い、何度戻っても上書きしない (0.1.23)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'register-return');
+  for (const s of ['scenario', 'contract', 'scaffold', 'tier', 'contract-gate', 'integrate', 'verify', 'review']) rs.markDone(dir, s, {});
+  const a1 = rs.attemptDir(dir, 1);
+  fs.writeFileSync(path.join(a1, 'findings.backend-api.yaml'), 'v: 1\n');
+  fs.writeFileSync(path.join(a1, 'findings.frontend.yaml'), 'v: 1\n');
+  fs.writeFileSync(path.join(a1, 'assumptions.backend-api.yaml'), 'keep: true\n');
+  const r = rs.returnToIntegrate(dir, { instrumentation_gaps: ['backend-api'], instrumentation_happy_gaps: [] });
+  assert.equal(r.moved_findings.length, 2);
+  assert.ok(r.moved_findings.every(p => /^invalidated\/\d{8}_\d{6}_attempt-1_findings\.[a-z-]+\.yaml$/.test(p)), r.moved_findings.join(','));
+  assert.deepEqual(fs.readdirSync(a1), ['assumptions.backend-api.yaml'], 'findings だけ移し、assumptions は残す');
+  assert.equal(r.invalidated.length, 3, 'integrate・verify・review の done');
+  const s = rs.status(dir);
+  assert.equal(s.next_stage, 'integrate');
+  assert.equal(s.attempt, 1, 'attempt は上げない');
+  const ev = rs.readEvents(dir).filter(e => e.type === 'returned_to_integrate');
+  assert.equal(ev.length, 1);
+  assert.deepEqual(ev[0].instrumentation_gaps, ['backend-api']);
+  assert.deepEqual(ev[0].moved_findings, r.moved_findings);
+  // 同じ attempt でもう一度戻る (同じ秒でも上書きしない)
+  rs.markDone(dir, 'integrate', {}); rs.markDone(dir, 'verify', {});
+  fs.writeFileSync(path.join(a1, 'findings.backend-api.yaml'), 'v: 2\n');
+  const r2 = rs.returnToIntegrate(dir, { instrumentation_gaps: ['backend-api'] });
+  assert.equal(r2.moved_findings.length, 1);
+  const all = fs.readdirSync(path.join(dir, 'invalidated')).filter(n => n.includes('findings.backend-api'));
+  assert.equal(all.length, 2, '1 回目の退避を上書きしない');
+  // CLI
+  const out = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib/runState.js'), 'return-to-integrate', dir, '{"instrumentation_gaps":[]}'], { encoding: 'utf8' });
+  assert.deepEqual(JSON.parse(out).moved_findings, []);
+});
+
 test('pendingFeedback: 保留と解消 (新形式・旧形式)', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
   const dir = rs.openRun(root, 'register-return');

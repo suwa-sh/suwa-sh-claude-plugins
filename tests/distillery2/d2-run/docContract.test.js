@@ -95,10 +95,10 @@ test('asbuilt: 抽出から検査まで要約役が通しで行い、d2-run は�
   assert.match(asbuilt, /asbuilt を done にせず integrate へ戻して/, '差し戻しの判断は d2-run に残す');
   assert.doesNotMatch(asbuilt, /npx depcruise/, 'depcruise は d2-asbuilt が回す');
   // integrate への戻し方 (0.1.22 の試し運転で手順に無いイベントを自作した。0.1.23)
-  assert.match(asbuilt, /`returned_to_integrate \{from: "asbuilt", instrumentation_gaps, instrumentation_happy_gaps, moved_findings\}` を記録/);
-  assert.match(asbuilt, /`node runState\.js invalidate <run> integrate "<理由>" --from`/);
+  assert.match(asbuilt, /`node runState\.js return-to-integrate <run> /, 'findings の退避・done の退避・記録を 1 操作で (途中で止まっても古い findings を残さない)');
+  assert.match(asbuilt, /`returned_to_integrate \{from, instrumentation_gaps, instrumentation_happy_gaps, moved_findings\}`/);
   assert.match(asbuilt, /attempt は上げない/);
-  assert.match(asbuilt, /`<run>\/attempt-<n>\/findings\.<tier>\.yaml` も `<run>\/invalidated\/<ts>_attempt-<n>_findings\.<tier>\.yaml` へ移して/, '再検証の前の findings で受理しない。何度戻っても名前がぶつからない');
+  assert.match(asbuilt, /`<run>\/invalidated\/<ts>_attempt-<n>_findings\.<tier>\.yaml` へ移し/, '再検証の前の findings で受理しない');
   assert.match(asbuilt, /moved_findings/);
   assert.match(read(RUN_STATE), /^\| returned_to_integrate \|/m);
   assert.match(row(read(TEMPLATE), /^\| ④ integrate /), /returned_to_integrate/);
