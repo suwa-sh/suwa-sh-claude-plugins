@@ -4,6 +4,7 @@
 #
 # 置換変数: <slug> UC の slug / <tier> ティア ID / <n> attempt 番号 / <業務> <UC> 業務名・UC 名 /
 #           <run> = .distillery/runs/<slug> (手順書の <run> と同じ)
+# store_groups: 図でファイルをまとめる単位 (全体図と、ファイルの多い処理の図で使う)。stores[].group で所属を示す
 # stores[].origin: external = 外部入力 / packaged = プラグイン同梱 (書き手を要求しない) / produced = 処理が生成
 # stores[].terminal: true = 最終成果物 (読み手を要求しない)
 # stores[].aliases: 手順書での略記 (照合に使う)
@@ -46,20 +47,53 @@ stages:
   - id: deliver
     name: ④ deliver
 
+store_groups:
+  - id: input
+    name: 要望 (外部入力)
+  - id: packaged
+    name: 同梱のひな形と手順書
+  - id: requirements
+    name: 要求
+  - id: decisions
+    name: 決定 (NFR・ADR)
+  - id: settings
+    name: 基盤の設定
+  - id: test-infra
+    name: テスト基盤
+  - id: contracts
+    name: 契約
+  - id: design
+    name: 画面
+  - id: scenarios
+    name: シナリオと step
+  - id: code
+    name: ティアの実装
+  - id: run
+    name: 実行の記録
+  - id: asbuilt
+    name: as-built
+  - id: docs
+    name: 文書の入口
+  - id: github
+    name: GitHub
+
 stores:
   # ---- 外部入力・同梱 ----
   - id: request-text
     name: 要望テキスト
+    group: input
     path: "<要望テキスト>"
     origin: external
   - id: rule-templates
     name: ルールのひな形 (同梱)
+    group: packaged
     path: "skills/d2-foundation/references/rule-templates/**"
     origin: packaged
     aliases:
       - "references/rule-templates/"
   - id: support-templates
     name: テスト基盤のひな形 (同梱)
+    group: packaged
     path: "skills/d2-foundation/templates/**"
     origin: packaged
     aliases:
@@ -68,11 +102,13 @@ stores:
       - "templates/cucumber.js"
   - id: skill-docs
     name: スキルの手順書 (同梱)
+    group: packaged
     path: "${CLAUDE_PLUGIN_ROOT}/skills/**"
     origin: packaged
   # ---- ① 要求 ----
   - id: req-usdm
     name: 要求 (USDM)
+    group: requirements
     path: "docs/requirements/requirements.yaml"
     origin: produced
     aliases:
@@ -81,6 +117,7 @@ stores:
       - "requirements.md"
   - id: req-rdra
     name: RDRA モデル
+    group: requirements
     path: "docs/requirements/rdra/**"
     origin: produced
     aliases:
@@ -93,22 +130,26 @@ stores:
       - "BUC.tsv"
   - id: use-cases
     name: UC 一覧
+    group: requirements
     path: "docs/requirements/use-cases.yaml"
     origin: produced
     aliases:
       - "use-cases.yaml"
   - id: req-review
     name: 要求の確認材料
+    group: requirements
     path: "docs/requirements/_review-summary.md"
     origin: produced
   - id: requirements-dir
     name: 要求のディレクトリ全体 (許可範囲)
+    group: requirements
     path: "docs/requirements/**"
     origin: produced
     scope_only: true
   # ---- ② 決定 ----
   - id: nfr
     name: 非機能要求グレード表
+    group: decisions
     path: "docs/nfr/**"
     origin: produced
     aliases:
@@ -116,6 +157,7 @@ stores:
       - "nfr-grade.md"
   - id: adr
     name: ADR
+    group: decisions
     path: "docs/adr/*.md"
     origin: produced
     aliases:
@@ -124,21 +166,25 @@ stores:
       - "docs/adr/index.md"
   - id: adr-architecture
     name: C4 図 (決定から)
+    group: decisions
     path: "docs/adr/architecture.md"
     origin: produced
     terminal: true
   - id: adr-review
     name: 決定の確認材料
+    group: decisions
     path: "docs/adr/_review-summary.md"
     origin: produced
   - id: adr-dir
     name: ADR のディレクトリ全体 (許可範囲)
+    group: decisions
     path: "docs/adr/**"
     origin: produced
     scope_only: true
   # ---- ③ 基盤 ----
   - id: rules
     name: 開発ルール
+    group: settings
     path: "docs/rules/**"
     origin: produced
     aliases:
@@ -148,28 +194,34 @@ stores:
       - "docs/rules/index.md"
   - id: depcruise-config
     name: 依存方向の検査設定
+    group: settings
     path: ".dependency-cruiser.cjs"
     origin: produced
   - id: test-support
     name: テスト基盤 (tracer・World)
+    group: test-infra
     path: "packages/test-support/**"
     origin: produced
     aliases:
       - "packages/test-support/README.md"
   - id: features-support
     name: Cucumber の support
+    group: test-infra
     path: "features/support/**"
     origin: produced
   - id: cucumber-config
     name: Cucumber 設定
+    group: settings
     path: "cucumber.js"
     origin: produced
   - id: config
     name: 実行設定
+    group: settings
     path: ".distillery/config.yaml"
     origin: produced
   - id: skeleton
     name: リポの骨格 (package.json・apps/*・packages/*)
+    group: settings
     path: "package.json"
     origin: produced
     aliases:
@@ -180,10 +232,12 @@ stores:
       - "biome.json"
   - id: lockfile
     name: 依存の lockfile
+    group: settings
     path: "package-lock.json"
     origin: produced
   - id: ci
     name: CI
+    group: settings
     path: ".github/workflows/**"
     origin: produced
     terminal: true
@@ -191,22 +245,27 @@ stores:
       - ".github/workflows/ci.yml"
   - id: qlty-config
     name: qlty 設定
+    group: settings
     path: ".qlty/qlty.toml"
     origin: produced
   - id: contracts-catalog
     name: 契約カタログ
+    group: contracts
     path: "contracts/contracts.json"
     origin: produced
   - id: contracts-src
     name: 契約の分割ファイル
+    group: contracts
     path: "contracts/**"
     origin: produced
   - id: uc-index
     name: UC ごとの契約の索引
+    group: contracts
     path: "contracts/uc-index.yaml"
     origin: produced
   - id: contract-slice
     name: UC の契約 slice
+    group: contracts
     path: "contracts/generated/slices/<slug>/**"
     origin: produced
     aliases:
@@ -214,10 +273,12 @@ stores:
       - "rdb-slice.yaml"
   - id: contract-tests
     name: 契約テスト (生成物)
+    group: contracts
     path: "apps/*/test/contract/**"
     origin: produced
   - id: migrations
     name: DB migration (datastore_owner のティア)
+    group: contracts
     path: "apps/<tier>/migrations/**"
     origin: produced
     aliases:
@@ -225,6 +286,7 @@ stores:
       - "apps/<tier>/migrations/"
   - id: contracts-code
     name: 契約からの codegen
+    group: contracts
     path: "packages/contracts/**"
     origin: produced
     aliases:
@@ -235,12 +297,14 @@ stores:
       - "server.ts"
   - id: design
     name: デザインシステム (Storybook アプリ)
+    group: design
     path: "docs/design/**"
     origin: produced
     aliases:
       - "docs/design/screens.yaml"
   - id: ui
     name: 画面部品
+    group: design
     path: "packages/ui/**"
     origin: produced
     aliases:
@@ -248,22 +312,26 @@ stores:
   # ---- ④ UC ----
   - id: feature
     name: UC シナリオ
+    group: scenarios
     path: "features/<業務>/<slug>.feature"
     origin: produced
     aliases:
       - "features/**/*.feature"
   - id: acceptance
     name: 受入シナリオ
+    group: scenarios
     path: "features/acceptance/**"
     origin: produced
   - id: steps
     name: step 定義
+    group: scenarios
     path: "features/step_definitions/**"
     origin: produced
     aliases:
       - "features/step_definitions/<slug>.steps.ts"
   - id: tier-src
     name: ティアの実装と単体テスト
+    group: code
     path: "apps/<tier>/src/**"
     origin: produced
     aliases:
@@ -271,37 +339,44 @@ stores:
       - "src/test-app.ts"
   - id: tier-dir
     name: ティアのディレクトリ全体 (許可範囲)
+    group: code
     path: "apps/<tier>/**"
     origin: produced
     scope_only: true
   - id: run-events
     name: 実行の記録 (events / done)
+    group: run
     path: "<run>/events.jsonl"
     origin: produced
     aliases:
       - "<run>/stages/**"
   - id: assumptions
     name: 実装者が補った前提
+    group: run
     path: "<run>/attempt-<n>/assumptions.<tier>.yaml"
     origin: produced
   - id: findings
     name: Verifier の指摘
+    group: run
     path: "<run>/attempt-<n>/findings.<tier>.yaml"
     origin: produced
     aliases:
       - "findings.<tier>.yaml"
   - id: issues
     name: 仕様起因の課題
+    group: run
     path: "<run>/issues/**"
     origin: produced
   - id: issues-tier
     name: ティア実装者の課題
+    group: run
     path: "<run>/issues/<ts>_<tier>_<slug>.md"
     origin: produced
     aliases:
       - ".distillery/runs/<slug>/issues/<ts>_<tier>_<slug>.md"
   - id: reports
     name: ゲートの記録
+    group: run
     path: "<run>/reports/**"
     origin: produced
     aliases:
@@ -312,29 +387,35 @@ stores:
       - "acceptance-api.json"
   - id: traces
     name: 計装トレース
+    group: run
     path: "<run>/traces/**"
     origin: produced
   - id: asbuilt-uc
     name: UC の as-built
+    group: asbuilt
     path: "docs/as-built/<業務>/<UC>/**"
     origin: produced
   - id: asbuilt-index
     name: UC の as-built の index.md (要約ブロックを含む)
+    group: asbuilt
     path: "docs/as-built/<業務>/<UC>/index.md"
     origin: produced
   - id: asbuilt-system
     name: システム横断の as-built
+    group: asbuilt
     path: "docs/as-built/_system/**"
     origin: produced
     aliases:
       - "docs/as-built/_system/traceability-index.json"
   - id: docs-readme
     name: 文書の入口
+    group: docs
     path: "docs/README.md"
     origin: produced
     terminal: true
   - id: github
     name: GitHub (PR / issue)
+    group: github
     path: "(GitHub)"
     origin: produced
     terminal: true
