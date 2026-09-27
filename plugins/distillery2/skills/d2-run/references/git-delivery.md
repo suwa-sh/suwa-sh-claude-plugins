@@ -86,7 +86,8 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 - 課題は `.distillery/logs/feedback/<slug>/` に写してから branch を切り替える (還流 branch には `issues/` も run ディレクトリも無い)。
   `feedback_filed` は feature branch に戻ってから記録・commit する
 - 止まったら差分を `.distillery/logs/feedback/<slug>/<issue>.failed.diff` に残し、還流 branch の変更と派遣中に増えた未追跡ファイルを捨て、
-  feature に戻って還流 branch を消す (push の前なので失うものは無い)。force push はしない
+  feature に戻る。還流 branch は**リモートに同じ名前の branch が無いときだけ**消す (push の前なので失うものは無い)。
+  リモートにあれば push 済みなので残す (再開は PR 作成から続ける)。force push はしない
 - この UC 自身の契約の穴 (対象が `base_head` の契約に無い) は、還流 branch では直せないので contract の issue にする
 - requirement 起因: `gh issue create` で要求の穴を起票する。本文は issues/ の Markdown。UC の PR 本文からリンクする
 - UC の feature branch には還流の変更を混ぜない

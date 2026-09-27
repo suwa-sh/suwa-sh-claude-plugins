@@ -199,7 +199,8 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
    - リモートに還流 branch があり、ローカルの commit が違う → 止まって報告する (force push はしない)
    - ローカルにだけ還流 branch がある (push の前に中断) → 下の「止まったとき」の a〜c で捨ててから 3 へ
    - どれも無い → 3 へ
-3. `git switch -c <還流 branch> <base_head>` (`base_head` は `branch_started` のもの)。以後、**各派遣の直前**に
+3. 未追跡ファイルの一覧を `<fb>/<issue>.untracked.txt` に書いてから (branch を切った直後に中断しても後始末できるように)、
+   `git switch -c <還流 branch> <base_head>` (`base_head` は `branch_started` のもの)。以後も**各派遣の直前**に
    `git status --porcelain --untracked-files=all` の未追跡ファイルの一覧を `<fb>/<issue>.untracked.txt` に書く (中断して別のセッションで再開しても後始末に使える)。
    d2-decide と d2-contract の派遣の直前には、`<fb>/<issue>.result.json` も消す (結果ファイルを書くのはこの 2 つだけ)
 4. 派遣と受理 (受理の `--check` は**生成物を commit する前に**回す。生成物の basis の行まで比べるので、commit の後では古いと判定される):

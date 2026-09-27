@@ -269,3 +269,13 @@ test('還流: push の後に中断しても branch を消さず、PR 作成か�
   const startup = t.slice(t.indexOf('## 起動シーケンス'), t.indexOf('## ① 要求'));
   assert.match(startup, /リモートに同じ branch があれば c は branch を消さない/);
 });
+
+test("還流: 還流 branch を切る前に最初の一覧を書き、git-delivery も push 済みの branch を消さない (差分レビュー 3 ラウンド目)", () => {
+  const fb = feedbackSection();
+  const list = fb.indexOf("未追跡ファイルの一覧を `<fb>/<issue>.untracked.txt` に書いてから");
+  const sw = fb.indexOf("`git switch -c <還流 branch> <base_head>`");
+  assert.ok(list > 0 && sw > list, "最初の一覧は branch を切る前");
+  const d = read(DELIVERY);
+  assert.match(d, /還流 branch は\*\*リモートに同じ名前の branch が無いときだけ\*\*消す/);
+  assert.doesNotMatch(d, /feature に戻って還流 branch を消す/);
+});

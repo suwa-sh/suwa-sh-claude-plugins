@@ -4,7 +4,8 @@ description: >-
   段階③「基盤」の機械部分。ADR から開発ルール (docs/rules/) とアーキテスト (.dependency-cruiser.cjs) を生成し、
   テスト基盤 (packages/test-support: 計装 tracer・pglite ハーネス・Cucumber support)、.distillery/config.yaml、
   CI、モノレポ骨格を冪等に作り、依存を入れる。契約の骨格と画面部品の後に、仕上げ (契約込みの再生成・画面部品の取り込み・
-  契約テストの生成・チェックポイント) も行う。phase=all | finish | F1..F9 で部分実行する。
+  契約テストの生成・チェックポイント) も行う。段階④の還流では phase=rules で開発ルールとアーキテストだけを作り直す。
+  phase=all | finish | rules | F1..F9 で部分実行する。
 ---
 
 # d2-foundation
