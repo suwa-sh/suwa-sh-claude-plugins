@@ -4,6 +4,7 @@ description: >-
   段階②「決定」。RDRA と USDM から非機能要求グレード表 (docs/nfr/) を推論し、アーキテクチャ決定記録 (docs/adr/) を書く。
   設計書 (arch design の yaml) は書かない。ADR の front matter に機械可読の rules を持たせ、段階③がルール文書とアーキテストを生成する。
   非機能グレード表は決定の根拠として ADR とは別に残す。
+  mode=feedback (段階④の還流) では、実装で見つかったルールの穴を新しい ADR 1 本にする。
   「NFR グレードを作成」「アーキテクチャの決定を記録」「ADR を書く」「ティア構成を決める」「認可モデルを選ぶ」などで発動。
 ---
 
@@ -17,6 +18,13 @@ RDRA モデル・USDM・UC 一覧から、人が決めるべき 2 種類の成�
 2. **アーキテクチャ決定記録 (ADR)** (`docs/adr/NNNN-<slug>.md` + `index.md`): ティア・レイヤ・データ・テスト等の決定。front matter に機械可読の `rules[]` を持つ。
 
 設計書 (レイヤ構成図・データモデルの詳細 yaml 等) は書かない。それらはコードから導く (段階④) か、ルール / 契約 (段階③) で機械検証する。
+
+## 引数
+
+```
+(なし)                                   # 段階② (下の「入出力」「手順」)
+mode=feedback issue=<課題の写し> result=<結果ファイル>   # 段階④の還流 (下の「mode=feedback」)
+```
 
 ## 入出力
 
@@ -116,6 +124,38 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs
 - **ブランド方針の由来** (`ui.brand.source`) を書く。`inferred` (RDRA から推論・低確信) のときは色とフォントを
   「確認してほしいこと」に含める。`brand skill` のときはその旨を記す。
 
+## mode=feedback (段階④の還流)
+
+d2-run が還流用の branch (UC の開始点から切ったもの) の上で派遣する。実装で見つかった「ルールの穴」(課題の front matter `kind: rule`) を、
+新しい ADR 1 本の `rules[]` にする。開発ルールとアーキテストの作り直しは、d2-run が ADR を commit してから d2-foundation `phase=rules` に派遣する
+(ここで作り直すと、ルールに記録する「どの ADR から作ったか」が commit 前の古い ADR を指すため)。
+
+1. 課題の写しを読む。既存の ADR をすべて読み、課題がどの決定に関わるかを決める
+2. 次のどれかに当たるなら、**ADR を書かずに**結果ファイルへ `status: blocked` と理由を書いて止まる:
+   - ADR の `rules[]` で表せない (生成器の直し、設定ファイル (`biome.json` など) の直し、手順書の直し)
+   - ティア構成・データストア・testing の capabilities を変える必要がある (config・骨格の作り直しが要り、還流の範囲を超える)
+3. 新しい ADR を 1 本書く ([references/adr-format.md](references/adr-format.md))。連番は既存の最大 + 1、`status: accepted`、
+   `basis` は既存の ADR と同じ書き方、`rules[]` を 1 つ以上。本文の背景に課題の要点 (課題のファイル名と UC) を書く
+4. 既存の決定を置き換えるときだけ、新しい ADR に `supersedes` を書き、旧 ADR は front matter の `status: superseded` と
+   `superseded_by` の 2 項目だけを変える (本文と旧 `rules[]` は変えない。決定の履歴を残す)。既存の ADR をそれ以外で変えない
+5. `validateAdr.js` → `genAdrIndex.js` (段階②と同じコマンド)。PASS するまで直す。`genArchitectureDoc.js` は回さない (ティアを変えないので図は変わらない)。
+   `_review-summary.md` は書かない (人の確認は還流の PR で行う)
+6. 結果ファイルへ `status: applied`、`targets` (足した ADR のファイル名と、置き換えた旧 ADR)、`reason` (1 行) を書く
+
+結果ファイルは JSON 1 つ: `{"status": "applied" | "blocked", "targets": [...], "reason": "..."}`。d2-run はこのファイルで分岐し、
+受理は `validateAdr.js` で行う (報告文では判断しない)。
+
+## mode=feedback: 読むもの
+
+- 課題の写し `.distillery/logs/feedback/<slug>/<issue>.md` (派遣文で渡す)
+- `docs/adr/*.md` (既存の ADR と索引)
+
+## mode=feedback: 書くもの
+
+- `docs/adr/NNNN-<slug>.md` (新しい ADR 1 本。置き換えなら旧 ADR の front matter 2 項目も)、`docs/adr/index.md` (genAdrIndex)
+- 結果ファイル `.distillery/logs/feedback/<slug>/<issue>.result.json`
+- git は使わない (commit は d2-run が行う)
+
 ## 完了報告
 
 - 生成した `docs/nfr/nfr-grade.yaml` と ADR 群のパス、ADR 件数。
@@ -128,3 +168,4 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs
 - 設計 yaml (レイヤ図・データモデルの詳細) は書かない。
 - インフラ / ベンダー選定はしない (ベンダーニュートラルに保つ)。
 - 差分モード・スナップショットマージは扱わない (履歴は Git)。
+- mode=feedback で開発ルール・アーキテスト・config を作り直さない (d2-foundation `phase=rules` の担当)。

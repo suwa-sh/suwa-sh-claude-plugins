@@ -3,13 +3,14 @@
 /**
  * genArchTests.js (F2) — ADR の arch_test から .dependency-cruiser.cjs を生成する
  *
- *   node genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs [--cwd <repo>]
+ *   node genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs [--cwd <repo>] [--check]
  *
  * - 採用済み ADR の rules[].arch_test を forbidden ルールにする。名前は adr-<id>-<n>。
  *   effect: forbid → forbidden、effect: allow → allowed[] (許可リスト)。
  * - 既定ルール: no-circular (error)、no-orphans (warn)。
  * - 出力は決定論。生成ファイルは有効な JS (node -e "require(...)" が通る)。
  * - パスは dependency-cruiser の正規表現。glob (`**`, `*`) を正規表現へ変換する。
+ * - --check: 書かずに、生成物が無いか古ければ exit 1 (basis の行も比べる。生成物を commit する前に回す)。
  *
  * 参照 (Context7 /sverweij/dependency-cruiser v18.4.0): module.exports = {forbidden, options}、
  * forbidden[].{name, severity, from:{path}, to:{path|circular|orphan}}。
@@ -20,12 +21,13 @@ const { loadAdrs, isAccepted } = require('./adr');
 const { stamp, headerLine } = require('../../../scripts/lib/basis');
 
 function parseArgs(argv) {
-  const o = { adr: 'docs/adr', out: '.dependency-cruiser.cjs', cwd: process.cwd() };
+  const o = { adr: 'docs/adr', out: '.dependency-cruiser.cjs', cwd: process.cwd(), check: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], next = () => argv[++i];
     if (a === '--adr') o.adr = next();
     else if (a === '--out') o.out = next();
     else if (a === '--cwd') o.cwd = path.resolve(next());
+    else if (a === '--check') o.check = true;
     else throw new Error(`Unknown arg: ${a}`);
   }
   return o;
@@ -106,14 +108,23 @@ function run(o) {
   const rules = collectArchTests(adrs);
   const basisLine = headerLine(stamp({ adr: o.adr }, o.cwd));
   const outPath = path.resolve(o.cwd, o.out);
+  const content = render(rules, basisLine);
+  if (o.check) {
+    const stale = !fs.existsSync(outPath) || fs.readFileSync(outPath, 'utf8') !== content;
+    return { code: stale ? 1 : 0, stale, forbidden: rules.forbidden.length, allowed: rules.allowed.length, out: outPath };
+  }
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.writeFileSync(outPath, render(rules, basisLine));
+  fs.writeFileSync(outPath, content);
   return { code: 0, forbidden: rules.forbidden.length, allowed: rules.allowed.length, out: outPath };
 }
 
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
+  if (o.check) {
+    console.log(`genArchTests --check: ${r.stale ? `STALE ${o.out}` : 'up to date'}`);
+    return r.code;
+  }
   console.log(`genArchTests: ${r.forbidden} forbidden + ${r.allowed} allowed → ${o.out}`);
   return r.code;
 }

@@ -151,3 +151,72 @@ test('差し戻し後の integrate: 必ず派遣し、結線変更なしなら w
   assert.match(integrate, /必ず派遣/);
   assert.match(integrate, /wiring_changed: false/);
 });
+
+// 0.1.24: 還流の書き換えを持ち主のスキルへ寄せた (todo ⓪ 0-3)。外部レビュー (計画 3 ラウンド) で決めた順序を固定する
+function feedbackSection() {
+  const t = read(SKILL);
+  const i = t.indexOf('## 還流 (feedback 段階)');
+  const j = t.indexOf('\n## ', i + 1);
+  assert.ok(i >= 0 && j > i, '還流節がある');
+  return t.slice(i, j);
+}
+
+test('還流: d2-run は ADR・契約を自分で書き換えず、持ち主のスキルを派遣する', () => {
+  const fb = feedbackSection();
+  assert.match(fb, /上流の文書 \(ADR・開発ルール・契約\) は自分で書き換えない/);
+  assert.doesNotMatch(fb, /\| rule \| 自分/);
+  assert.doesNotMatch(fb, /\| contract \| 自分/);
+  assert.doesNotMatch(fb, /ADR を追記 \(`docs\/adr\/`\) → `genRules\.js`/, '旧手順 (d2-run が ADR を追記して genRules) が残っていない');
+  assert.match(fb, /d2-decide `mode=feedback`/);
+  assert.match(fb, /d2-foundation `phase=rules`/);
+  assert.match(fb, /d2-contract `mode=feedback`/);
+});
+
+test('還流: ADR の commit が rules の再生成より前、--check は生成物の commit より前', () => {
+  const fb = feedbackSection();
+  const adrCommit = fb.indexOf('commit -m "feedback(<slug>): adr"');
+  const rulesDispatch = fb.indexOf('sub d2-foundation `phase=rules`');
+  const rulesCheck = fb.indexOf('genRules.js --adr docs/adr --out docs/rules --check');
+  const rulesCommit = fb.indexOf('commit -m "feedback(<slug>): rules"');
+  assert.ok(adrCommit > 0 && rulesDispatch > adrCommit, 'ADR を commit してからルールを作り直す (basis が新しい ADR を指す)');
+  assert.ok(rulesCheck > rulesDispatch && rulesCommit > rulesCheck, 'ルールの --check は commit の前');
+  assert.match(fb, /受理の `--check` は\*\*生成物を commit する前に\*\*回す/);
+  const contractCheck = fb.indexOf('genRdbDdl.js contracts --config .distillery/config.yaml --out-root . --check');
+  const contractCommit = fb.indexOf('commit -m "feedback(<slug>): contracts"');
+  assert.ok(contractCheck > 0 && contractCommit > contractCheck, '契約の --check (genRdbDdl を含む) は commit の前');
+});
+
+test('還流: 課題は logs に写し、記録は feature に戻ってから書く', () => {
+  const fb = feedbackSection();
+  assert.match(fb, /`\.distillery\/logs\/feedback\/<slug>`/);
+  assert.match(fb, /課題を `<fb>\/<issue>\.md` に写す/);
+  const back = fb.indexOf('`git switch feature/<slug>` (還流 branch が clean');
+  const filed = fb.indexOf('`feedback_filed {kind, url, issue_path}` を記録し、`impl(<slug>): feedback filed` で commit');
+  assert.ok(back > 0 && filed > back, 'feedback_filed は feature に戻った後');
+  assert.match(fb, /記録は feature に戻ってから書く/);
+});
+
+test('還流: 分岐は結果ファイル、absent は開始点の契約と照合してから issue、止まったら元の issue_path で保留', () => {
+  const fb = feedbackSection();
+  assert.match(fb, /`<fb>\/<issue>\.result\.json` を消す/);
+  assert.match(fb, /git grep -q <名前> <base_head> -- contracts\//);
+  assert.match(fb, /contract の課題として `gh issue create`/);
+  assert.match(fb, /`feedback_deferred \{kind, issue_path, reason\}` を記録し\s*\n?\s*\(`issue_path` は元の `issues\/<file>\.md`/);
+  assert.match(fb, /派遣の直前に控えた一覧に無かった未追跡ファイルだけ/);
+  assert.match(fb, /force push はしない/);
+  assert.match(fb, /還流 branch = `feedback\/<slug>\/<issue>`/);
+});
+
+test('還流: 派遣表に 3 行あり、結果ファイルを write-set に持つのは ADR と契約の行だけ', () => {
+  const t = read(TEMPLATE);
+  const adr = row(t, /^\| ④ 還流 \(ADR\) /);
+  const rules = row(t, /^\| ④ 還流 \(ルールの再生成\) /);
+  const contract = row(t, /^\| ④ 還流 \(契約\) /);
+  assert.match(adr, /mode=feedback/);
+  assert.match(contract, /mode=feedback/);
+  assert.match(rules, /phase=rules/);
+  const RESULT = '`.distillery/logs/feedback/<slug>/<issue>.result.json`';
+  assert.ok(adr.split('|')[5].includes(RESULT));
+  assert.ok(contract.split('|')[5].includes(RESULT));
+  assert.ok(!rules.split('|')[5].includes(RESULT));
+});

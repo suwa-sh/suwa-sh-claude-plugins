@@ -91,3 +91,42 @@ test('genRules: unknown scope exits 1', () => {
   assert.equal(r.code, 1, r.out);
   assert.ok(r.out.includes('unknown rule scope'), r.out);
 });
+
+// --check は還流の受理 (d2-run) が使う。書かずに古さだけ見る (0.1.24)
+function copyAdr(c) {
+  const dst = path.join(c, 'adr');
+  fs.cpSync(adrDir, dst, { recursive: true });
+  return dst;
+}
+
+test('genRules --check: 生成直後は exit 0、書き込みは起きない', () => {
+  const c = tmp();
+  const adr = copyAdr(c);
+  run(c, ['--adr', adr, '--out', 'docs/rules']);
+  const before = fs.readdirSync(path.join(c, 'docs/rules')).map(f => [f, fs.statSync(path.join(c, 'docs/rules', f)).mtimeMs]);
+  const r = run(c, ['--adr', adr, '--out', 'docs/rules', '--check']);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /up to date/);
+  const after = fs.readdirSync(path.join(c, 'docs/rules')).map(f => [f, fs.statSync(path.join(c, 'docs/rules', f)).mtimeMs]);
+  assert.deepEqual(after, before);
+});
+
+test('genRules --check: ADR の rules を変えると exit 1 で、ファイルは古いまま', () => {
+  const c = tmp();
+  const adr = copyAdr(c);
+  run(c, ['--adr', adr, '--out', 'docs/rules']);
+  const f = path.join(adr, '0002-layers.md');
+  fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('エラーは利用者が直せる言葉で返す。', 'エラーは利用者が直せる言葉で返す (変更)。'));
+  const snapshot = fs.readFileSync(path.join(c, 'docs/rules/common.md'), 'utf8') + fs.readFileSync(path.join(c, 'docs/rules/tier-backend.md'), 'utf8');
+  const r = run(c, ['--adr', adr, '--out', 'docs/rules', '--check']);
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /STALE /);
+  assert.equal(fs.readFileSync(path.join(c, 'docs/rules/common.md'), 'utf8') + fs.readFileSync(path.join(c, 'docs/rules/tier-backend.md'), 'utf8'), snapshot);
+});
+
+test('genRules --check: 生成物が無ければ exit 1 で、出力先を作らない', () => {
+  const c = tmp();
+  const r = run(c, ['--adr', adrDir, '--out', 'docs/rules', '--check']);
+  assert.equal(r.code, 1, r.out);
+  assert.ok(!fs.existsSync(path.join(c, 'docs/rules')));
+});

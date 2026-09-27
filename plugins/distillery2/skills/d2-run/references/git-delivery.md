@@ -74,7 +74,18 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 
 ## 還流の PR / issue
 
-- rule / contract 起因: `feedback/<slug>-<n>` branch を `base_branch` から切り、ADR の追記 (→ rules 再生成) または
-  契約の分割ファイル修正だけを commit し、PR を作る。trailer は `Feedback-Kind:`, `Feedback-From-UC:`, `Feedback-Issue:` (issues/ のパス)
+手順の正本は SKILL.md の「還流」節。ここには git の約束だけを書く。
+
+- rule / contract 起因: 還流 branch `feedback/<slug>/<issue>` を UC の `base_head` から切る。書き換えは持ち主のスキル
+  (d2-decide mode=feedback → d2-foundation phase=rules、d2-contract mode=feedback) が行い、d2-run は受理して commit し、PR を作る。
+  trailer は `Feedback-Kind:`, `Feedback-From-UC:`, `Feedback-Issue:` (issues/ のパス)
+- rule は ADR と開発ルールを 2 commit に分ける (`feedback(<slug>): adr` → `feedback(<slug>): rules`)。ルールの basis は docs/adr の最終 commit を記録するので、
+  ADR を commit してから作り直さないと古い ADR を指す
+- 受理の `--check` は生成物を commit する前に回す (basis の行まで比べるので、commit の後では古いと判定される)
+- 課題は `.distillery/logs/feedback/<slug>/` に写してから branch を切り替える (還流 branch には `issues/` も run ディレクトリも無い)。
+  `feedback_filed` は feature branch に戻ってから記録・commit する
+- 止まったら差分を `.distillery/logs/feedback/<slug>/<issue>.failed.diff` に残し、還流 branch の変更と派遣中に増えた未追跡ファイルを捨て、
+  feature に戻って還流 branch を消す (push の前なので失うものは無い)。force push はしない
+- この UC 自身の契約の穴 (対象が `base_head` の契約に無い) は、還流 branch では直せないので contract の issue にする
 - requirement 起因: `gh issue create` で要求の穴を起票する。本文は issues/ の Markdown。UC の PR 本文からリンクする
 - UC の feature branch には還流の変更を混ぜない

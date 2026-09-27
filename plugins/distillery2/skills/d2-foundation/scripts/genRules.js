@@ -3,7 +3,7 @@
 /**
  * genRules.js (F1) — ADR の rules[] とテンプレートから docs/rules/*.md を生成する
  *
- *   node genRules.js --adr docs/adr --out docs/rules [--templates <dir>] [--cwd <repo>]
+ *   node genRules.js --adr docs/adr --out docs/rules [--templates <dir>] [--cwd <repo>] [--check]
  *
  * - テンプレート (references/rule-templates/) を土台に、採用済み ADR の rules[] を
  *   scope ごとに差し込む: 依存の向き (arch_test) は「## 依存の向き」の表、それ以外は「## 決定ごとのルール」の
@@ -12,6 +12,7 @@
  * - tier ファイルは ADR tiers[] に現れた kind だけ生成する (宣言が無ければ全 kind)。
  * - 出力は決定論 (2 回実行して同一)。先頭に basis ヘッダを付ける。
  * - 未知の scope は exit 1 で停止する (推測で振り分けない)。
+ * - --check: 書かずに、生成物が無いか古ければ exit 1 (basis の行も比べる。生成物を commit する前に回す)。
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -21,7 +22,7 @@ const { stamp, headerLine } = require('../../../scripts/lib/basis');
 const DEFAULT_TEMPLATES = path.join(__dirname, '..', 'references', 'rule-templates');
 
 function parseArgs(argv) {
-  const o = { adr: 'docs/adr', out: 'docs/rules', templates: DEFAULT_TEMPLATES, cwd: process.cwd(), force: false };
+  const o = { adr: 'docs/adr', out: 'docs/rules', templates: DEFAULT_TEMPLATES, cwd: process.cwd(), force: false, check: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], next = () => argv[++i];
     if (a === '--adr') o.adr = next();
@@ -29,6 +30,7 @@ function parseArgs(argv) {
     else if (a === '--templates') o.templates = next();
     else if (a === '--cwd') o.cwd = path.resolve(next());
     else if (a === '--force') o.force = true;
+    else if (a === '--check') o.check = true;
     else throw new Error(`Unknown arg: ${a}`);
   }
   return o;
@@ -144,8 +146,8 @@ function run(o) {
   const basisLine = headerLine(stamp({ adr: o.adr }, o.cwd));
   const kinds = presentKinds(adrs);
   const targets = ['index.md', 'common.md', 'testing.md', ...kinds.map(k => `tier-${k}.md`)];
-  fs.mkdirSync(outDir, { recursive: true });
-  const written = [], skipped = [];
+  if (!o.check) fs.mkdirSync(outDir, { recursive: true });
+  const written = [], skipped = [], stale = [];
   for (const name of targets) {
     const tplPath = path.join(o.templates, name);
     if (!fs.existsSync(tplPath)) { console.error(`ERROR template not found: ${tplPath}`); return { code: 1, written, skipped }; }
@@ -158,15 +160,24 @@ function run(o) {
     }
     const tpl = fs.readFileSync(tplPath, 'utf8');
     const content = renderFile(tpl, byScope[name], basisLine, targets);
+    if (o.check) {
+      if (!fs.existsSync(outFile) || fs.readFileSync(outFile, 'utf8') !== content) stale.push(name);
+      continue;
+    }
     fs.writeFileSync(outFile, content);
     written.push(name);
   }
-  return { code: skipped.length ? 1 : 0, written, skipped, adrs: adrs.length, kinds };
+  return { code: skipped.length || stale.length ? 1 : 0, written, skipped, stale, adrs: adrs.length, kinds };
 }
 
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
+  if (o.check) {
+    for (const n of r.stale || []) console.log(`STALE ${path.join(o.out, n)}`);
+    console.log(`genRules --check: ${(r.stale || []).length ? `${r.stale.length} stale` : 'up to date'}`);
+    return r.code;
+  }
   console.log(`genRules: ${r.written.length} files (kinds: ${(r.kinds || []).join(', ')}) from ${r.adrs || 0} ADRs${r.skipped && r.skipped.length ? `, skipped ${r.skipped.length} (hand-written; use --force)` : ''}`);
   return r.code;
 }

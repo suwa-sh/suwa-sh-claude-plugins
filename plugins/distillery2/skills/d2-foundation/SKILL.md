@@ -20,17 +20,18 @@ description: >-
 ## 引数
 
 ```
-phase=all | finish | F1..F9   # 既定 all
+phase=all | finish | rules | F1..F9   # 既定 all
 ui=true | false               # phase=finish だけ。今回の d2-design が部品を生成したか (F6 を回すか)。d2-run が決める
 adr=docs/adr                  # ADR ディレクトリ
 ```
 
-d2-run は段階③で 2 回呼ぶ。
+d2-run は段階③で 2 回、段階④の還流 (ルールの穴) で 1 回呼ぶ。
 
 | 呼ぶとき | phase | 順 |
 |---|---|---|
 | ③ の最初 | `all` | F1 → F2 → F3 → F5 → F7 |
 | 契約の骨格 (d2-contract mode=skeleton) と画面部品 (d2-design) の後 | `finish` | F8 → F6 (`ui=true` のときだけ) → F7 (F6 を回したときだけ) → F4 → F9 |
+| ④ の還流で d2-decide mode=feedback が足した ADR を d2-run が commit した後 | `rules` | F1 → F2 (開発ルールとアーキテストだけを作り直す。ADR の commit 後に回すので、生成物の `basis: adr@<sha>` が新しい ADR を指す) |
 
 - スクリプトは `${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/` にある。`--cwd <repo>` で対象リポを指す。
 - どの phase も再実行して安全。
@@ -97,6 +98,8 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from docs/
 node ${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root <repo>   # F4 (骨格分)
 node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc bootstrap --upto static   # F9 (<repo> で)
 ```
+
+F1・F2 のスクリプトは `--check` (書かずに、生成物が古ければ exit 1) を持つ。phase=rules の後に d2-run が受理の検査として、生成物を commit する前に回す。
 
 ## 冪等性のルール
 
