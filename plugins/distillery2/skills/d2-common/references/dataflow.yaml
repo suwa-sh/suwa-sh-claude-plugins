@@ -403,7 +403,6 @@ stores:
     group: run
     path: ".distillery/logs/feedback/<slug>/<issue>.issue.md"
     origin: produced
-    terminal: true
   - id: feedback-failed
     name: 止まった還流の差分 (gitignore)
     group: run
@@ -781,7 +780,7 @@ processes:
     kind: orchestrator
     actor: d2-run
     run_table_row: "④ の段階の進行・確認ページ・還流"
-    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feedback-result, feedback-untracked]
+    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feedback-result, feedback-untracked, feedback-issue-body]
     writes: [run-events, use-cases, github, asbuilt-report, feedback-issue-copy, feedback-failed, feedback-untracked, feedback-issue-body]
   - id: run.uc.check-scenario
     name: シナリオの静的確認
