@@ -196,12 +196,12 @@ test('還流: 課題は logs に写し、記録は feature に戻ってから書
   assert.match(fb, /記録は feature に戻ってから書く/);
 });
 
-test('還流: 分岐は結果ファイル、absent は開始点の契約と照合してから issue、止まったら元の issue_path で保留', () => {
+test('還流: 分岐は結果ファイル、absent は開始点の契約と照合して理由を書き分ける', () => {
   const fb = feedbackSection();
   assert.match(fb, /`<fb>\/<issue>\.result\.json` も消す/);
   assert.match(fb, /git grep -q <名前> <base_head> -- contracts\//);
-  assert.match(fb, /contract の課題として `gh issue create`/);
-  assert.match(fb, /`feedback_deferred \{kind, issue_path, reason\}` を記録し\s*\n?\s*\(`issue_path` は元の `issues\/<file>\.md`/);
+  assert.match(fb, /いま実装中の UC 自身の契約の穴/);
+  assert.match(fb, /対象は開始点の契約にあるが、派遣の結果は absent だった/);
   assert.match(fb, /派遣の直前に控えた一覧 \(`<fb>\/<issue>\.untracked\.txt`\) に無かった未追跡ファイルだけ/);
   assert.match(fb, /force push はしない/);
   assert.match(fb, /還流 branch = `feedback\/<slug>\/<issue>`/);
@@ -278,4 +278,50 @@ test("還流: 還流 branch を切る前に最初の一覧を書き、git-delive
   const d = read(DELIVERY);
   assert.match(d, /還流 branch は\*\*リモートに同じ名前の branch が無いときだけ\*\*消す/);
   assert.doesNotMatch(d, /feature に戻って還流 branch を消す/);
+});
+
+// 0.1.25: 止まった還流を理由つきで issue にする (0.1.24 の試し運転の G1。保留が配送を止め続けた)
+function stoppedSection() {
+  const fb = feedbackSection();
+  const i = fb.indexOf('### 止まったとき');
+  const j = fb.indexOf('### PR / issue を作れない実行');
+  assert.ok(i >= 0 && j > i);
+  return fb.slice(i, j);
+}
+
+test('還流 (0.1.25): 止まった課題は種類を問わず理由つきの issue にして feedback_filed。保留は照合・起票の失敗だけ', () => {
+  const st = stoppedSection();
+  assert.match(st, /止まった課題は、種類を問わず\*\*理由を添えて issue にする\*\*/);
+  assert.match(st, /`feedback_filed \{kind, url, issue_path\}` を記録する \(`kind` は元の課題のまま/);
+  assert.match(st, /2 の照合か 3 の起票が失敗したら、issue を作らず `feedback_deferred \{kind, issue_path, reason\}`/);
+  // 保留が出てくるのは失敗時の 1 か所だけ
+  assert.equal((st.match(/feedback_deferred/g) || []).length, 1, '止まったときの保留は照合・起票の失敗だけ');
+  // 理由の表: 6 つの止まり方と、併発はすべて並べる
+  for (const re of [/結果ファイルが `blocked`/, /`absent` で、`targets` の名前がどれも開始点の契約に無い/, /`absent` だが、開始点の契約に名前が 1 つでもある/, /受理の検査で落ちた/, /write-set の外が変わった/, /結果ファイルが無い/]) assert.match(st, re);
+  assert.match(st, /成り立った理由は\*\*すべて\*\*並べ/);
+  // 還流節の冒頭の表にも行き先が出ている
+  const fb = feedbackSection();
+  assert.equal((fb.match(/派遣が止まったら理由つきの issue/g) || []).length, 2, 'rule と contract の行');
+});
+
+test('還流 (0.1.25): 重複を防ぐ印と照合、issue にしない 2 場面', () => {
+  const st = stoppedSection();
+  const search = st.indexOf('gh issue list --state all --search "distillery2-feedback: <slug>/<issue>"');
+  const create = st.indexOf('無ければ `gh issue create`');
+  assert.ok(search > 0 && create > search, '起票の前に印で照合する');
+  assert.match(st, /印の行 `distillery2-feedback: <slug>\/<issue>`/);
+  assert.match(st, /issue にしない場面は 2 つ/);
+  assert.match(st, /リモートの還流 branch とローカルの commit が違う/);
+  assert.match(st, /「一覧が無い \/ 消せないものがある」/);
+});
+
+test('還流 (0.1.25): run-state と git-delivery も同じ条件', () => {
+  const rs = read(RUN_STATE);
+  assert.match(rs, /還流の派遣が止まった課題を理由つきの issue にしたときも同じイベント/);
+  assert.match(rs, /issue の照合 \(`gh issue list`\) か起票 \(`gh issue create`\) が失敗した/);
+  assert.doesNotMatch(rs, /還流の派遣が止まった \(ADR で表せない・検査で落ちた/);
+  const d = read(DELIVERY);
+  assert.match(d, /rule \/ contract は別 branch の PR か、派遣が止まったなら理由つきの issue/);
+  assert.match(d, /還流の派遣が止まった rule \/ contract は `rule:<issue_url>` \/ `contract:<issue_url>`/);
+  assert.match(d, /^- 派遣が止まった課題 .*は、止まった理由を添えて issue にする/m);
 });

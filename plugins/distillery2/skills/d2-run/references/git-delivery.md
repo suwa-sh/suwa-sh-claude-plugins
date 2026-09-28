@@ -29,7 +29,7 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 
 - 最新のレビュー証跡に対する人の承認 (`review_approved`) が有効で、要回答の前提がすべて回答済み
 - `reports/gates.json` の `result: pass`、findings の open blocker が 0
-- 還流の要否が分類済み (rule / contract は別 branch の PR、requirement は issue を作成済み)。
+- 還流の要否が分類済み (rule / contract は別 branch の PR か、派遣が止まったなら理由つきの issue、requirement は issue を作成済み)。
   保留 (`feedback_deferred`) が残っていないこと: `runState.js status <run> --json` の `pending_feedback` が空。
   残っていれば先に起票して `feedback_filed` を記録し、`impl(<slug>): feedback filed` で commit してから下の手順に入る
   (イベントの追記は追跡ファイルを変えるので、commit しないと次の clean 条件で止まる)。起票できなければ配送しない
@@ -71,7 +71,7 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 | Gates | `static=pass unit=pass contract=pass uc-bdd=pass acceptance=pass` (gates.json から) |
 | Assumptions | `confirmed=<n> auto=<n> rejected=<n>` (review_approved の decisions から) |
 | As-Built | `docs/as-built/<業務>/<UC>/index.md` |
-| Feedback | 還流ごとに `rule:<pr_url>` / `contract:<pr_url>` / `requirement:<issue_url>` (無ければ省略) |
+| Feedback | 還流ごとに `rule:<pr_url>` / `contract:<pr_url>` / `requirement:<issue_url>`。還流の派遣が止まった rule / contract は `rule:<issue_url>` / `contract:<issue_url>` (`feedback_filed` の kind と url をそのまま出す。無ければ省略) |
 
 ## 還流の PR / issue
 
@@ -88,6 +88,7 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 - 止まったら差分を `.distillery/logs/feedback/<slug>/<issue>.failed.diff` に残し、還流 branch の変更と派遣中に増えた未追跡ファイルを捨て、
   feature に戻る。還流 branch は**リモートに同じ名前の branch が無いときだけ**消す (push の前なので失うものは無い)。
   リモートにあれば push 済みなので残す (再開は PR 作成から続ける)。force push はしない
-- この UC 自身の契約の穴 (対象が `base_head` の契約に無い) は、還流 branch では直せないので contract の issue にする
+- 派遣が止まった課題 (ADR で表せない、この UC 自身の契約の穴 (対象が `base_head` の契約に無い)、検査で落ちた など) は、止まった理由を添えて issue にする。
+  本文に印の行 `distillery2-feedback: <slug>/<issue>` を入れ、作る前に同じ印の issue を検索して重複を防ぐ
 - requirement 起因: `gh issue create` で要求の穴を起票する。本文は issues/ の Markdown。UC の PR 本文からリンクする
 - UC の feature branch には還流の変更を混ぜない

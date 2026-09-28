@@ -2,6 +2,18 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.25] - 2026-09-28
+
+0.1.24 の試し運転で見つかった穴 (還流の派遣が止まった課題が保留のまま残り、配送を止め続ける) を直した。
+
+### Changed
+
+- 還流 (rule / contract) の派遣が止まった課題は、種類を問わず止まった理由を添えて `gh issue create` し、`feedback_filed` で記録する (保留にしない)。
+  理由は止まり方ごとに書き分け (ADR で表せない・この UC 自身の契約の穴・absent だが開始点にあった・検査で落ちた・書き込み範囲の外を変えた・結果ファイルが無い)、重なればすべて並べる
+- issue の本文に印の行 `distillery2-feedback: <slug>/<issue>` を入れ、作る前に同じ印の issue を検索する (issue を作った直後・記録の前に中断しても重複しない)
+- `feedback_deferred` は、PR / issue を作れない実行と、止まった課題の issue の照合・起票が失敗したときだけにした
+- git-delivery の配送の条件と Feedback trailer に、止まった rule / contract の issue を明記した
+
 ## [0.1.24] - 2026-09-28
 
 還流 (実装で見つかった上流の穴を PR / issue にする) で、d2-run が ADR・開発ルール・契約を自分で書き換えていた手順をやめ、
