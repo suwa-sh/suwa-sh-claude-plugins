@@ -49,7 +49,7 @@ description: >-
 | ③ の確認ページ | `.distillery/config.yaml`、`<run>/reports/**` (受理時の検査で bootstrap の gates.json を読む) | `<run>/reports/**` (仕上げの派遣前に bootstrap の gates.json を消す) |
 | ③ の genContractTests.js --check | `contracts/**`、`.distillery/config.yaml`、`apps/*/test/contract/**`、`packages/contracts/**` | — |
 | ③ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
-| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` (還流の派遣の結果)、`.distillery/logs/feedback/<slug>/<issue>.untracked.txt` | `<run>/events.jsonl`、`<run>/invalidated/**` (差し戻しで退避した done と findings)、`docs/requirements/use-cases.yaml`、GitHub の PR と issue、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す)、`.distillery/logs/feedback/<slug>/<issue>.md` (還流の課題の写し)、`.distillery/logs/feedback/<slug>/<issue>.failed.diff` (止まった還流の差分)、`.distillery/logs/feedback/<slug>/<issue>.untracked.txt` (派遣の直前の未追跡ファイル) |
+| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` (還流の派遣の結果)、`.distillery/logs/feedback/<slug>/<issue>.untracked.txt` | `<run>/events.jsonl`、`<run>/invalidated/**` (差し戻しで退避した done と findings)、`docs/requirements/use-cases.yaml`、GitHub の PR と issue、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す)、`.distillery/logs/feedback/<slug>/<issue>.md` (還流の課題の写し)、`.distillery/logs/feedback/<slug>/<issue>.failed.diff` (止まった還流の差分)、`.distillery/logs/feedback/<slug>/<issue>.untracked.txt` (派遣の直前の未追跡ファイル)、`.distillery/logs/feedback/<slug>/<issue>.issue.md` (止まった課題の issue の本文) |
 | ④ の checkScenario.js | `features/<業務>/<slug>.feature`、`features/acceptance/**`、`docs/requirements/use-cases.yaml`、`docs/requirements/requirements.yaml` | — |
 | ④ の compileContracts.js --check | `contracts/**` | — |
 | ④ の compileRdbSchema.js --check | `contracts/**` | — |
@@ -180,8 +180,8 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 
 | kind | 誰が書き換えるか | 経路 |
 |---|---|---|
-| rule | d2-decide `mode=feedback` (ADR を 1 本足す) → d2-foundation `phase=rules` (開発ルールとアーキテストを作り直す) | 還流 branch → PR (`Feedback-Kind: rule` trailer) |
-| contract | d2-contract `mode=feedback` (分割ファイルを直し、生成物を作り直す) | 還流 branch → PR (`Feedback-Kind: contract`)。UC 側は merge 後に contract 段階から再実行 |
+| rule | d2-decide `mode=feedback` (ADR を 1 本足す) → d2-foundation `phase=rules` (開発ルールとアーキテストを作り直す) | 還流 branch → PR (`Feedback-Kind: rule` trailer)。派遣が止まったら理由つきの issue (下の「止まったとき」) |
+| contract | d2-contract `mode=feedback` (分割ファイルを直し、生成物を作り直す) | 還流 branch → PR (`Feedback-Kind: contract`)。UC 側は merge 後に contract 段階から再実行。派遣が止まったら理由つきの issue (下の「止まったとき」) |
 | requirement | 人 | `gh issue create`。本文は issue の Markdown。UC は反映待ち (`blocked_on_requirement` イベント) で停止 |
 
 各 PR / issue の URL を `feedback_filed {kind, url, issue_path}` に記録する (`issue_path` は `issues/<file>.md`)。上流の再生成はしない。
@@ -230,12 +230,29 @@ b. 還流 branch の変更を捨てる: `git restore --staged --worktree .` と�
    (write-set の外に作られたものも含む。ignore 済みは対象外)。消せないものがあれば feature に戻らず、止まって報告する
 c. `git switch feature/<slug>` → リモートに同じ名前の branch が**無いときだけ** `git branch -D <還流 branch>` (push の前なので失うものは無い。ADR だけ commit 済みでも branch ごと捨てる)。
    リモートにあれば push 済みなので消さない (再開の判定 2 が PR 作成から続ける)
-d. 行き先:
-   - contract で結果ファイルが `absent`: `targets` の名前ごとに `git grep -q <名前> <base_head> -- contracts/` で、開始点の契約に無いことを確かめる。
-     すべて無ければ、いま実装中の UC 自身の契約の穴なので、contract の課題として `gh issue create` (本文は課題。UC の PR 本文からリンクする) し、
-     `feedback_filed {kind, url, issue_path}` を記録する。1 つでも開始点にあれば `absent` を受理せず、次の行へ
-   - それ以外 (`blocked`、検査で落ちた、結果ファイルが無い、`absent` を受理しなかった): `feedback_deferred {kind, issue_path, reason}` を記録し
-     (`issue_path` は元の `issues/<file>.md`。同じパスの `feedback_filed` で解消する)、人の確認ページに載せる
+d. 止まった課題は、種類を問わず**理由を添えて issue にする** (保留にしない。保留は配送を止め続けるため。0.1.24 の試し運転):
+   1. 止まった理由を決める。成り立った理由は**すべて**並べ、それぞれの証拠を書く:
+
+      | 止まり方 | issue に書く理由 |
+      |---|---|
+      | 結果ファイルが `blocked` | 結果ファイルの `reason` |
+      | contract の結果ファイルが `absent` で、`targets` の名前がどれも開始点の契約に無い (`git grep -q <名前> <base_head> -- contracts/` がすべて exit 1) | 「いま実装中の UC 自身の契約の穴 (対象: `targets`)。UC の merge 後に契約を直す」 |
+      | `absent` だが、開始点の契約に名前が 1 つでもある | 「対象は開始点の契約にあるが、派遣の結果は absent だった」+ 対象と見つかった場所 (`git grep` の出力) |
+      | 受理の検査で落ちた | 落ちた検査の名前と、出力の末尾 20 行 |
+      | write-set の外が変わった | 「派遣が書き込み範囲の外を変えた」+ はみ出したパス |
+      | 結果ファイルが無い (d2-decide / d2-contract の派遣) | 「派遣の結果ファイルが無い」 |
+
+   2. 重複の照合: `gh issue list --state all --search "distillery2-feedback: <slug>/<issue>" --json url,body` で、本文に印の行 `distillery2-feedback: <slug>/<issue>` がある issue を探す。
+      あれば作らずにその URL を使う (issue を作った直後・記録の前に中断した再開)
+   3. 無ければ `gh issue create`。題は課題の `title` の後ろに「(還流で止まった)」。本文は、印の行 → 「## 止まった理由」(1 の理由と、差分の置き場所 `<fb>/<issue>.failed.diff`) → 課題の本文。
+      本文は `<fb>/<issue>.issue.md` に書いて `--body-file` で渡す
+   4. `feedback_filed {kind, url, issue_path}` を記録する (`kind` は元の課題のまま。`issue_path` は元の `issues/<file>.md`)。
+      UC の PR 本文の「還流」に並び、trailer では `rule:<issue_url>` / `contract:<issue_url>` になる
+   5. 2 の照合か 3 の起票が失敗したら、issue を作らず `feedback_deferred {kind, issue_path, reason}` を記録する
+      (reason に止まった理由と、照合・起票できなかった理由。同じ `issue_path` の `feedback_filed` で解消する)。照合できないまま作ると、再開で重複しうる
+
+issue にしない場面は 2 つ: 再開の判定 2 の「リモートの還流 branch とローカルの commit が違う」と、上の a・b の「一覧が無い / 消せないものがある」。
+どちらも課題ではなく作業ツリーや branch の状態の問題なので、止まって報告する (課題は次の再開で 1 からやり直す)。
 
 ### PR / issue を作れない実行
 

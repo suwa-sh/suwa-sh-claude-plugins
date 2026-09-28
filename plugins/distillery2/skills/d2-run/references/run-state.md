@@ -46,8 +46,8 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
 | stage_completed / stage_invalidated | done の作成 / 退避 |
 | scenario_approved / review_approved | 人の承認。承認した内容の要点と評価対象のハッシュを持つ |
 | assumption_decided | 前提の承認・却下 (id と処遇) |
-| feedback_filed | 還流の起票。`{kind, url, issue_path}` (issue_path は `issues/<file>.md`)。url は必須 |
-| feedback_deferred | 還流の保留。`{kind, issue_path, reason}` (`issue_path` は元の `issues/<file>.md`)。PR / issue を作れない実行 (push 禁止・`gh` 未認証・リモート無し) か、還流の派遣が止まった (ADR で表せない・検査で落ちた。SKILL.md の還流節「止まったとき」) ときに書く。feedback はこれで done にできるが、deliver の前に同じ issue_path の `feedback_filed` で解消する |
+| feedback_filed | 還流の起票。`{kind, url, issue_path}` (issue_path は `issues/<file>.md`)。url は必須。還流の派遣が止まった課題を理由つきの issue にしたときも同じイベント (kind は元の課題のまま) |
+| feedback_deferred | 還流の保留。`{kind, issue_path, reason}` (`issue_path` は元の `issues/<file>.md`)。PR / issue を作れない実行 (push 禁止・`gh` 未認証・リモート無し) か、還流の派遣が止まった課題の issue の照合 (`gh issue list`) か起票 (`gh issue create`) が失敗した (SKILL.md の還流節「止まったとき」の d) ときに書く。feedback はこれで done にできるが、deliver の前に同じ issue_path の `feedback_filed` で解消する |
 | blocked_on_requirement | 人レビューで「要求を直す」を選び、要求の反映待ちで停止した |
 | returned_to_integrate | asbuilt の受理時に集計 (`reports/asbuilt.json`) の計装なし / 正常系に部品なしのティアが空でなく、integrate へ戻した。`{from: "asbuilt", instrumentation_gaps, instrumentation_happy_gaps, moved_findings}`。`runState.js return-to-integrate` が 同じ attempt の `findings.<tier>.yaml` を `invalidated/<ts>_attempt-<n>_findings.<tier>.yaml` へ移し、integrate 以降の done を退避してから記録する (attempt は上げない) |
 
