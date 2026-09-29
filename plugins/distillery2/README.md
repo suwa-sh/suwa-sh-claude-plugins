@@ -23,7 +23,9 @@ v2 は成果物を 3 つに分ける。
         ┌────────────────────────────────────────┘
         ▼  UC ごとに繰り返す
   シナリオ (人が承認) → 契約差分 → 足場 → ティア実装 (並列) → ゲート (安い順) → 別モデル検証 (2 観点)
-  → 人レビュー → as-built 抽出 → 還流を分類 (rule / contract / requirement) → 1 commit に squash → PR
+  → 人レビュー → as-built 抽出 → 1 commit に squash して main へ取り込む
+  → 還流 (rule / contract は worktree で直して承認後に main へ、requirement と止まったものは課題ファイル docs/feedback/)
+  (PR / issue は作らない。git とファイルだけで完結し、GitHub 以外のホストや remote の無いリポでも動く)
 ```
 
 ゲートは 静的 → 単体 → 契約 → UC BDD (API 面) → 受入 (タグ絞り込み、`@browser` はブラウザドライバ) の順。落ちたゲートで止まる。
@@ -64,7 +66,7 @@ docs/                  requirements/ nfr/ adr/ rules/ design/ as-built/
 .distillery/           ツールの実行状態 (config.yaml、runs/<uc>/)
 ```
 
-履歴は Git。生成物は先頭に `basis: requirements@<sha> adr@<sha> contracts@<sha>` を持ち、PR は trailer (`UC:`, `Basis-*:`, `Gates:`, `Assumptions:`) を持つ。
+履歴は Git。生成物は先頭に `basis: requirements@<sha> adr@<sha> contracts@<sha>` を持ち、UC の squash commit は trailer (`UC:`, `Basis-*:`, `Gates:`, `Assumptions:`) を持つ。
 
 ## Installation
 

@@ -113,3 +113,44 @@ test('pendingFeedback: 保留と解消 (新形式・旧形式)', () => {
   p = rs.pendingFeedback(dir);
   assert.deepEqual(p.map(x => x.issue_path), ['issues/c.md', null]);
 });
+
+test('段階の順 (0.1.26): 配送 (deliver) が還流 (feedback) の前', () => {
+  assert.deepEqual(rs.STAGES.slice(-3), ['asbuilt', 'deliver', 'feedback']);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'uc');
+  for (const s of rs.STAGES.slice(0, rs.STAGES.indexOf('asbuilt') + 1)) rs.markDone(dir, s);
+  assert.equal(rs.status(dir).next_stage, 'deliver');
+  rs.markDone(dir, 'deliver', { squash: 'abc' });
+  assert.equal(rs.status(dir).next_stage, 'feedback');
+  assert.equal(rs.status(dir).legacy_order, false);
+});
+
+test('feedback_filed の ref (0.1.26) でも起票済み。filedIssues は ref / url 付きだけ', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'uc');
+  rs.appendEvent(dir, 'feedback_deferred', { kind: 'rule', issue_path: 'issues/a.md', reason: 'old' });
+  rs.appendEvent(dir, 'feedback_filed', { kind: 'rule', ref: '0123abc', issue_path: 'issues/a.md' });
+  rs.appendEvent(dir, 'feedback_filed', { kind: 'requirement', ref: 'docs/feedback/b.md', issue_path: 'issues/b.md' });
+  rs.appendEvent(dir, 'feedback_filed', { kind: 'contract', url: 'https://example/pr/1', issue_path: 'issues/c.md' });
+  rs.appendEvent(dir, 'feedback_filed', { kind: 'contract', ref: '', issue_path: 'issues/d.md' });
+  assert.deepEqual(rs.pendingFeedback(dir).map(x => x.issue_path), ['issues/d.md']);
+  assert.deepEqual(rs.filedIssues(dir), ['issues/a.md', 'issues/b.md', 'issues/c.md']);
+});
+
+test('旧形式の順 (還流 done・配送 done 無し) は次の段階を出さず、mark-legacy-delivered で配送済みにする', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'uc');
+  for (const s of rs.STAGES) if (s !== 'deliver') rs.markDone(dir, s);
+  let st = rs.status(dir);
+  assert.equal(st.legacy_order, true);
+  assert.equal(st.next_stage, null);
+  const out = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib/runState.js'), 'mark-legacy-delivered', dir], { encoding: 'utf8' });
+  assert.equal(JSON.parse(out).legacy, true);
+  st = rs.status(dir);
+  assert.equal(st.legacy_order, false);
+  assert.equal(st.next_stage, null, '全段 done');
+  assert.equal(rs.readDone(dir, 'deliver').legacy, true);
+  // 旧形式でない run には使えない
+  const dir2 = rs.openRun(root, 'uc2');
+  assert.throws(() => rs.markLegacyDelivered(dir2), /旧形式/);
+});

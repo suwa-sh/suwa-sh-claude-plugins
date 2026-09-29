@@ -75,6 +75,9 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   // attempt-*/ は commit 対象なので除外しない (run-state.md と整合)
   assert.ok(!gitignore.includes('attempt-'), 'attempt-*/ は gitignore しない');
   for (const q of ['.qlty/logs/', '.qlty/out/', '.qlty/results/', '.qlty/plugin_cachedir/']) assert.ok(gitignore.includes(q), `qlty の作業ディレクトリ ${q} を gitignore`);
+  // 0.1.26: 還流の worktree と、symlink の node_modules (スラッシュ無し) も無視する
+  assert.match(gitignore, /^\.distillery\/worktrees\/$/m);
+  assert.match(gitignore, /^node_modules$/m);
 });
 
 test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り、frontend は jsdom を依存に持つ (Finding 8)', () => {
@@ -161,6 +164,11 @@ test('genSkeleton --migrate: 0.1.0 生成物を移行する (Finding 5)', () => 
   const gi = fs.readFileSync(path.join(c, '.gitignore'), 'utf8');
   assert.ok(!gi.includes('attempt-'), 'attempt-*/ を除去する');
   assert.ok(gi.includes('.distillery/runs/*/reports/') && gi.includes('traces/'), 'reports/traces は残す');
+  // 0.1.26: 還流の worktree と symlink の node_modules の行が足され、もう一度 migrate しても変わらない
+  assert.match(gi, /^\.distillery\/worktrees\/$/m);
+  assert.match(gi, /^node_modules$/m);
+  run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  assert.equal(fs.readFileSync(path.join(c, '.gitignore'), 'utf8'), gi, 'migrate は冪等');
 
   // 既存の app package.json: echo プレースホルダが実コマンドへ差し替わる
   const appPkg = JSON.parse(fs.readFileSync(path.join(c, 'apps/backend-api/package.json'), 'utf8'));
@@ -286,6 +294,21 @@ test('genCi: renders 5-gate workflow with needs chain', () => {
   // contract job は提供側 (backend-api) だけ。消費側 (frontend / worker) の test:contract は入れない (Codex 0.1.13 指摘 5)
   assert.ok(ci.includes('npm run test:contract -w apps/backend-api'));
   assert.ok(!ci.includes('test:contract -w apps/frontend') && !ci.includes('test:contract -w apps/worker'));
+  // 0.1.26: PR を作らないので main と feature への push で回す。単体テストは 0 件のティアでも落とさない
+  assert.match(ci, /^on:\n  push:\n    branches: \[main, 'feature\/\*\*'\]$/m);
+  assert.ok(!ci.includes('pull_request'));
+  const unitLines = ci.split('\n').filter(l => /- run: npm run test -w /.test(l));
+  assert.ok(unitLines.length > 0);
+  for (const l of unitLines) assert.match(l, /--passWithNoTests$/, l);
+});
+
+test('genCi: passWithNoTests は vitest / npm run test にだけ付け、二重に付けない (0.1.26)', () => {
+  const { passWithNoTests } = require(path.join(SKILL, 'scripts/genCi.js'));
+  assert.equal(passWithNoTests('npm run test -w apps/worker -- --run'), 'npm run test -w apps/worker -- --run --passWithNoTests');
+  assert.equal(passWithNoTests('npm run test -w apps/worker'), 'npm run test -w apps/worker -- --passWithNoTests');
+  assert.equal(passWithNoTests('npx vitest run'), 'npx vitest run --passWithNoTests');
+  assert.equal(passWithNoTests('npx vitest run --passWithNoTests'), 'npx vitest run --passWithNoTests');
+  assert.equal(passWithNoTests('pytest -q'), 'pytest -q');
 });
 
 test('genCi: config のコマンドから job を組み、browser 有効時はブラウザ step を足す (Finding 6)', () => {

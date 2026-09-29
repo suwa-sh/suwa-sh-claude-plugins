@@ -2,6 +2,36 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.26] - 2026-09-30
+
+PR / issue (GitHub の `gh`) をやめ、配送と還流を git とファイルだけで完結させた。GitHub 以外のホスト (GitLab など) や remote の無いリポでも同じ手順で最後まで進む。
+
+### Changed
+
+- 段階の順を `asbuilt → deliver → feedback` にした (配送を還流の前へ)。還流は main から切るので、この UC の契約・課題・run ディレクトリがそろっている
+  (0.1.24〜0.1.25 の課題の写し・未追跡ファイルの一覧・還流 branch 上の再開の後始末・「開始点に無い契約」の扱いが要らなくなった)
+- 配送: squash した commit を main へ `git merge --ff-only` し、main の上で配送の done (`stages/deliver.done.yaml`) を `impl(<slug>): delivered` として commit する。
+  remote `origin` があれば main を push (拒否されたら止まる。force push はしない)。PR を作らない。配送済みの正は done ファイル
+- 還流: rule / contract は `.distillery/worktrees/<slug>/<issue>` に main から worktree を切り、持ち主のスキルが直す。受理の後に **main を壊さないことのゲート**
+  (rule は static、contract は static と変えた契約を使う UC ごとの全段) を回し、確認ページ 1 回で取り込むものを決めて main へ ff merge する。
+  ff できなければ rebase せず、最新の main から作り直す (上流の本文が同じなら再確認なし)
+- 課題 (要求の穴・止まった還流) は GitHub の issue ではなく、main の `docs/feedback/<issue>.md` にする。止まった還流は理由を並べて書く
+- `feedback_filed` は `{kind, ref, issue_path}` (`ref` = main に入った commit の sha か課題ファイル)。`feedback_deferred` は新しくは書かない
+- d2-run の引数 `merge=hold`: 配送と還流を main へ取り込む手前で止める (headless 用。引数なしで再開すると取り込みから続く)
+- 生成する CI は main と `feature/**` への push で回す (pull_request をやめた)。unit の手順に `--passWithNoTests` を付ける
+  (テストの無いティアで main の CI が必ず赤になっていた。ローカルのゲートは変えない)
+- `.gitignore` の管理ブロックに `.distillery/worktrees/` と `node_modules` (末尾スラッシュ無し。worktree に張る symlink も無視する) を足した。`genSkeleton.js --migrate` で既存のリポも直る
+- UC の squash commit に Feedback trailer を付けない (還流は配送の後)
+
+### Added
+
+- `runState.js`: `mark-legacy-delivered` (0.1.25 までに PR で配送済みの run に配送の done を作る。人が確認ページで答えたときだけ)、status の `legacy_order` と `filed_issues`
+
+### Migration
+
+- 0.1.25 までの run (還流の done があり配送の done が無い) は、再開すると d2-run が「配送済みか」を確認ページで聞く。配送済みなら印を付け、まだなら還流の done を退避して新しい順で配送から続ける
+- 既存のリポは `genSkeleton.js --migrate` で `.gitignore` を更新し、CI を作り直す (genCi)
+
 ## [0.1.25] - 2026-09-28
 
 0.1.24 の試し運転で見つかった穴 (還流の派遣が止まった課題が保留のまま残り、配送を止め続ける) を直した。

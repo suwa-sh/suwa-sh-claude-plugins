@@ -32,7 +32,7 @@ d2-run は段階③で 2 回、段階④の還流 (ルールの穴) で 1 回呼
 |---|---|---|
 | ③ の最初 | `all` | F1 → F2 → F3 → F5 → F7 |
 | 契約の骨格 (d2-contract mode=skeleton) と画面部品 (d2-design) の後 | `finish` | F8 → F6 (`ui=true` のときだけ) → F7 (F6 を回したときだけ) → F4 → F9 |
-| ④ の還流で d2-decide mode=feedback が足した ADR を d2-run が commit した後 | `rules` | F1 → F2 (開発ルールとアーキテストだけを作り直す。ADR の commit 後に回すので、生成物の `basis: adr@<sha>` が新しい ADR を指す) |
+| ④ の還流で d2-decide mode=feedback が足した ADR を d2-run が commit した後 | `rules` | F1 → F2 (開発ルールとアーキテストだけを作り直す。ADR の commit 後に回すので、生成物の `basis: adr@<sha>` が新しい ADR を指す。還流の worktree で派遣されるので、`--cwd` に派遣文の作業ディレクトリを渡す) |
 
 - スクリプトは `${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/` にある。`--cwd <repo>` で対象リポを指す。
 - どの phase も再実行して安全。

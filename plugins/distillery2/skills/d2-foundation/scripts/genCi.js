@@ -55,6 +55,18 @@ function ciCucumber(cmd, fallbackTags) {
   });
 }
 
+/**
+ * CI の単体テストはテストが 0 件のティアでも落とさない (vitest の --passWithNoTests)。
+ * 手元のゲート (runGates) は 0 件で落ちることを red baseline に使うので、CI の手順だけに付ける。
+ * main と feature への push で CI を回すと、テストの無いティア (worker など) で main が必ず赤になるため (0.1.26)。
+ */
+function passWithNoTests(cmd) {
+  if (/--passWithNoTests\b/.test(cmd)) return cmd;
+  if (/\bvitest\b/.test(cmd)) return `${cmd} --passWithNoTests`;
+  if (/\bnpm run test\b/.test(cmd)) return / -- /.test(` ${cmd} `) ? `${cmd} --passWithNoTests` : `${cmd} -- --passWithNoTests`;
+  return cmd;
+}
+
 function render(config) {
   const tiers = config.tiers || [];
   const cmds = config.commands || {};
@@ -77,7 +89,7 @@ function render(config) {
     staticSteps.push(step(stripReport(cmds.quality)));
   }
   // unit / contract は config の各ティアコマンドから組む (runGates と同じソース)。
-  const unitSteps = tiers.filter(t => t.commands && t.commands.unit).map(t => step(stripReport(t.commands.unit)));
+  const unitSteps = tiers.filter(t => t.commands && t.commands.unit).map(t => step(passWithNoTests(stripReport(t.commands.unit))));
   // contract は提供側 (contracts[].provider / tiers[].provides) だけ (runGates と同じ判定。消費側はテスト 0 件で vitest が exit 1)
   const providers = new Set((config.contracts || []).map(c => c.provider).filter(Boolean));
   const isProvider = t => providers.has(t.id) || (t.provides || []).length > 0;
@@ -88,10 +100,10 @@ function render(config) {
   if (caps.browser) acceptanceSteps.push(step(cmds.acceptance_browser ? ciCucumber(cmds.acceptance_browser, '@acceptance and @browser') : 'npx cucumber-js --tags "@acceptance and @browser"'));
   return [
     'name: ci',
+    // PR を作らない (0.1.26)。main と feature への push で回す
     'on:',
     '  push:',
-    '    branches: [main]',
-    '  pull_request:',
+    "    branches: [main, 'feature/**']",
     '',
     'permissions:',
     '  contents: read',
@@ -124,4 +136,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { parseArgs, render, run };
+module.exports = { passWithNoTests, parseArgs, render, run };

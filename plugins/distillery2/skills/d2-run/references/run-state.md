@@ -18,19 +18,25 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
     issues/<ts>_<tier>_<slug>.md    # ティア実装者の課題 (並列の他ティアと衝突しないようにティアを入れる)
     learnings/<ts>_<slug>.md
     invalidated/<ts>_<stage>.done.yaml   # 無効化した done の退避
-  logs/feedback/<uc_slug>/          # 還流の作業場所 (gitignore): 課題の写し <issue>.md・派遣の結果 <issue>.result.json・派遣の直前の未追跡ファイル <issue>.untracked.txt・止まったときの差分 <issue>.failed.diff・止まった課題の issue の本文 <issue>.issue.md
+  logs/feedback/<uc_slug>/          # 還流の記録 (gitignore): 派遣の結果 <issue>.result.json・受理済みの印 <issue>.ready・止まったときの差分 <issue>.failed.diff
+  worktrees/<uc_slug>/<issue>/      # 還流の worktree (gitignore。0.1.26)。main から切り、取り込むか止まったら消す
+docs/feedback/<issue>.md            # 課題ファイル (追跡。0.1.26 から issue の代わり)。0.1.27 で取り込む段階が消費して削除する
 ```
 
 ## Git 追跡の方針 (`.gitignore` と整合)
 
 - **commit する (追跡)**: `events.jsonl` / `stages/*.done.yaml` / `attempt-<n>/**` (assumptions・findings) / `issues/**` / `learnings/**` / `invalidated/**`。これらは実行の記録なので履歴に残す。
-- **commit しない (gitignore)**: `reports/`(gates.json と各ゲートの JSON レポート) と `traces/`(計装トレース JSONL) のみ。いずれもテスト実行のたびに再生成できる生成物。`reports/delivered.json` も同様。
-- genSkeleton が書く `.gitignore` は `.distillery/runs/*/reports/`、`.distillery/runs/*/traces/`、`.distillery/logs/` だけを無視する。`attempt-*/` は無視しない。
+- **commit しない (gitignore)**: `reports/`(gates.json と各ゲートの JSON レポート) と `traces/`(計装トレース JSONL) のみ。いずれもテスト実行のたびに再生成できる生成物。
+- genSkeleton が書く `.gitignore` は `.distillery/runs/*/reports/`、`.distillery/runs/*/traces/`、`.distillery/logs/`、`.distillery/worktrees/` と、symlink の `node_modules` を無視する。`attempt-*/` は無視しない。
 - **`.distillery/logs/`**: headless 実行のプロンプト・起動スクリプト・完了報告ログなど、セッション単位の実行記録の置き場。UC に紐づかない記録はここに置き、リポ直下に独自ディレクトリ (`_run/` など) を作らない。git 管理外
 
 ## 段階 (stage) の順
 
-`scenario → contract → scaffold → tier → contract-gate → integrate → verify → review → asbuilt → feedback → deliver`
+`scenario → contract → scaffold → tier → contract-gate → integrate → verify → review → asbuilt → deliver → feedback`
+
+- 0.1.26 で配送 (main への取り込み) を還流の前にした。還流は main から切るので、この UC の契約・課題・run がそろっている
+- 0.1.25 までの run (還流の done があり配送の done が無い) は `status` の `legacy_order: true` で次の段階を出さない。d2-run が人に配送済みかを聞き、
+  配送済みなら `node runState.js mark-legacy-delivered <runDir>` で配送の done (`legacy: true`) を作る。まだなら `invalidate <runDir> feedback` で新しい順に戻す
 
 - 再開は done が無い最初の段階から。`node runState.js status <runDir>` で確認する
 - `tier` と `verify` は attempt ごとに繰り返す。blocker で戻るときは `invalidate` で `tier` 以降の done を退避してから attempt を進める
@@ -46,13 +52,13 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
 | stage_completed / stage_invalidated | done の作成 / 退避 |
 | scenario_approved / review_approved | 人の承認。承認した内容の要点と評価対象のハッシュを持つ |
 | assumption_decided | 前提の承認・却下 (id と処遇) |
-| feedback_filed | 還流の起票。`{kind, url, issue_path}` (issue_path は `issues/<file>.md`)。url は必須。還流の派遣が止まった課題を理由つきの issue にしたときも同じイベント (kind は元の課題のまま) |
-| feedback_deferred | 還流の保留。`{kind, issue_path, reason}` (`issue_path` は元の `issues/<file>.md`)。PR / issue を作れない実行 (push 禁止・`gh` 未認証・リモート無し) か、還流の派遣が止まった課題の issue の照合 (`gh issue list`) か起票 (`gh issue create`) が失敗した (SKILL.md の還流節「止まったとき」の d) ときに書く。feedback はこれで done にできるが、deliver の前に同じ issue_path の `feedback_filed` で解消する |
+| feedback_filed | 還流の記録。`{kind, ref, issue_path}` (issue_path は `issues/<file>.md`)。`ref` は必須: main に入った還流の commit の sha か、課題ファイル `docs/feedback/<issue>.md`。kind は元の課題のまま (止まって課題ファイルにしたときも)。0.1.25 までの記録は `url` (PR / issue) で、起票済みとして数える |
+| feedback_deferred | (0.1.25 までの記録だけ。0.1.26 からは書かない) 還流の保留。`{kind, issue_path, reason}`。同じ issue_path の `feedback_filed` で解消する |
 | blocked_on_requirement | 人レビューで「要求を直す」を選び、要求の反映待ちで停止した |
 | returned_to_integrate | asbuilt の受理時に集計 (`reports/asbuilt.json`) の計装なし / 正常系に部品なしのティアが空でなく、integrate へ戻した。`{from: "asbuilt", instrumentation_gaps, instrumentation_happy_gaps, moved_findings}`。`runState.js return-to-integrate` が 同じ attempt の `findings.<tier>.yaml` を `invalidated/<ts>_attempt-<n>_findings.<tier>.yaml` へ移し、integrate 以降の done を退避してから記録する (attempt は上げない) |
 
-未解消の保留は `runState.js status` の `pending_feedback` (JSON) / 「pending feedback」行 (テキスト) に出る。
-0.1.18 以前の記録にある「url が空の `feedback_filed` (`issue` にパス)」も保留として数える。
-| (delivered) | events には書かない。squash 後の追記は tree を汚すため、`reports/delivered.json` (gitignore) と GitHub の PR を正にする |
+`runState.js status` は、起票済みの課題を `filed_issues`、0.1.25 までの記録の未解消の保留を `pending_feedback` に出す
+(0.1.18 以前の記録にある「url が空の `feedback_filed` (`issue` にパス)」も保留として数える)。還流の段階は `filed_issues` に無い `issues/*.md` を処理する。
+配送済みの正は `stages/deliver.done.yaml` (main の上で `impl(<slug>): delivered` として commit する。0.1.25 までは GitHub の PR が正で、done ファイルを作らなかった)。
 
 status ファイルは持たない。必要なら events と done から都度計算する。

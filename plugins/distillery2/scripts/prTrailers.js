@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * prTrailers.js — UC の squash commit / PR 本文に付ける trailer を run state から作る
+ * prTrailers.js — UC の squash commit に付ける trailer を run state から作る
  *
  * Usage:
  *   node prTrailers.js --run .distillery/runs/<slug> [--cwd <repo>] [--strict]        # trailer 行を stdout に出す
@@ -10,7 +10,7 @@
  *
  * --strict (配送時に使う): UC / Basis-Requirements / Gates (全段 pass) / Assumptions / As-Built が揃わなければ exit 1
  *
- * 入力: use-cases.yaml (docs/requirements)、reports/gates.json、events.jsonl (review_approved / feedback_filed)、
+ * 入力: use-cases.yaml (docs/requirements)、reports/gates.json、events.jsonl (review_approved)、
  *       basis.js stamp (requirements / adr / contracts)
  */
 'use strict';
@@ -100,11 +100,8 @@ function buildTrailers({ cwd, runDir, docsRoot = 'docs', base = null, coAuthors 
     trailers.push(['Assumptions', `confirmed=${count('confirmed')} auto=${count('auto_confirmed')} rejected=${count('rejected')}`]);
   }
   if (uc) trailers.push(['As-Built', `${docsRoot}/as-built/${uc.business}/${uc.uc}/index.md`]);
-  // 未起票 (url が null / 空) の還流は trailer に出さない (`Feedback: rule:null` を防ぐ)。
-  for (const e of events.filter(e => e.type === 'feedback_filed')) {
-    if (e.url == null || String(e.url).trim() === '') continue;
-    trailers.push(['Feedback', `${e.kind}:${e.url}`]);
-  }
+  // Feedback trailer は出さない (0.1.26): 還流は配送 (squash) の後に main の上で行うので、squash commit の時点では還流の記録が無い。
+  // 還流の commit は自分の trailer (Feedback-Kind / Feedback-From-UC / Feedback-Issue) を持つ
   // 共著 (ハーネスの attribution 行をそのまま渡す。0.1.10 実走 ④-7: オーケストレータが手で足していた)
   for (const c of coAuthors) trailers.push(['Co-Authored-By', c]);
   return trailers;

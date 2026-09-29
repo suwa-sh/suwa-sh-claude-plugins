@@ -2,6 +2,8 @@
 
 F5 の genCi が `.distillery/config.yaml` から生成する。ローカルの `runGates.js` と同じ 5 ゲートを同じ順で回す。
 
+走るのは main と `feature/**` への push (`on: push: branches: [main, 'feature/**']`)。PR は作らないので pull_request では回さない (0.1.26)。d2-run が push するのは main だけ (remote があるとき)。
+
 ## job と依存
 
 ```
@@ -19,7 +21,7 @@ static → unit → contract → uc-bdd → acceptance
 | job | 実行 | コマンド源 |
 |---|---|---|
 | static | 各ティアの format_check / lint / typecheck と arch_test | config の tiers[].commands / commands.arch_test |
-| unit | 各ティアの unit | tiers[].commands.unit |
+| unit | 各ティアの unit。テストが 0 件のティアで落ちないよう `--passWithNoTests` を付ける (ローカルの runGates には付けない。red baseline は 0 件で落ちることを使う) | tiers[].commands.unit |
 | contract | 各ティアの contract | tiers[].commands.contract |
 | uc-bdd | `commands.uc_bdd` の `@uc:{slug}` を `not @browser` に置換 (全 feature が UC シナリオ。CI は全 UC) | commands.uc_bdd |
 | acceptance | `commands.acceptance_api` の `@uc:{slug} and` を外し `@acceptance and not @browser` | commands.acceptance_api |
