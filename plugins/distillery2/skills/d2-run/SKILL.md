@@ -238,7 +238,10 @@ PR の merge を取り込む)、main 上の run に `node runState.js mark-legac
      - approved の sha が ready の sha と違う (作り直した後) → 7 の本文の比較 (`git diff <approved の sha> <還流 branch> -- <その本文>`) をやり直す。空なら 7 の取り込みから、
        違えば `<fb>/<issue>.approved` を消して 6 (確認ページ) から (比較をせずに取り込まない)
    - それ以外で `<wt>` か還流 branch がある → `git worktree remove --force <wt>`・`git branch -D <還流 branch>` で捨てて 2 から
-2. `git worktree add <wt> -b <還流 branch> main`。本体の `node_modules` (ルートと、各ワークスペースと `docs/design/storybook-app/` にあるもの) を、`<wt>` の同じ相対パスに symlink する
+2. worktree を作る前に、`.gitignore` が worktree と symlink を無視することを確かめる: `git check-ignore -q --no-index .distillery/worktrees/x` と
+   `git check-ignore -q --no-index apps/d2-check-symlink/node_modules` (存在しないパスで確かめる。本体の node_modules は実在のディレクトリなので、古い `node_modules/` の行にも一致してしまう。末尾スラッシュ無しの行があれば symlink にも効く) がどちらも exit 0。そうでなければ (0.1.25 までに作ったリポ)
+   止まって報告する (`genSkeleton.js --migrate` を回して commit してから再開するよう伝える。無視されないと worktree と symlink が未追跡に見え、write-set と clean の検査で止まる)。
+   `git worktree add <wt> -b <還流 branch> main`。本体の `node_modules` (ルートと、各ワークスペースと `docs/design/storybook-app/` にあるもの) を、`<wt>` の同じ相対パスに symlink する
    (worktree には依存が入っていない。`.gitignore` の `node_modules` が symlink も無視する)
 3. 派遣 (作業ディレクトリは `<wt>`。派遣文に `<wt>` の絶対パスを渡す。課題は `<wt>/.distillery/runs/<slug>/issues/<file>.md` をそのまま読む)。
    受理の `--check` は**生成物を commit する前に** `<wt>` で回す (生成物の basis の行まで比べるので、commit の後では古いと判定される):
@@ -299,7 +302,8 @@ PR の merge を取り込む)、main 上の run に `node runState.js mark-legac
 - 還流の段階 (main の上) では、main に直接書いて commit する
 - review で「要求を直す」になったとき (UC は配送しない。作業 branch は feature) は、feature に混ぜない。一時の worktree を main から作り
   (`git worktree add .distillery/worktrees/<slug>/<issue> -b feedback/<slug>/<issue> main`)、課題ファイルだけを commit して、feature のまま
-  `git fetch . feedback/<slug>/<issue>:main` で main を ff する (main を checkout しない)。worktree と branch を消す
+  `git fetch . feedback/<slug>/<issue>:main` で main を ff する (main を checkout しない)。worktree と branch を消す。
+  remote `origin` があれば `git push origin main` (拒否されたら止まって報告する。force push はしない。課題の正本は main なので、共有先にも届ける)
 - 課題ファイルを消費して削除するのは次の版 (0.1.27)
 
 ## 完了報告

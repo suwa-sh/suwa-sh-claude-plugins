@@ -187,7 +187,13 @@ function filedIssues(runDir) {
  * PR で配送した UC は git だけでは配送済みか判定できない (GitHub の squash merge は feature の commit を main の祖先にしない) ので、
  * status は次の段階を出さず、d2-run が人に聞く。
  */
-function isLegacyOrder(runDir) { return isDone(runDir, 'feedback') && !isDone(runDir, 'deliver'); }
+function isLegacyOrder(runDir) {
+  if (!isDone(runDir, 'feedback')) return false;
+  if (!isDone(runDir, 'deliver')) return true;
+  // mark-legacy-delivered が配送の done を作った後、還流の done の退避の前に止まった中間状態も旧形式として扱う (もう一度 mark すれば完了する)
+  const d = readDone(runDir, 'deliver');
+  return Boolean(d && d.legacy) && unfiledIssues(runDir).length > 0;
+}
 
 /** issues/*.md のうち起票済み (filedIssues) でないもの。run ディレクトリ相対 (`issues/<file>.md`) */
 function unfiledIssues(runDir) {
@@ -203,8 +209,8 @@ function unfiledIssues(runDir) {
  * 新しい還流段階で処理し直せるようにする (起票済みの旧記録 url はそのまま数える)
  */
 function markLegacyDelivered(runDir) {
-  if (!isLegacyOrder(runDir)) throw new Error('旧形式の順の run ではない (feedback の done があり deliver の done が無い run だけ)');
-  const deliver = markDone(runDir, 'deliver', { legacy: true });
+  if (!isLegacyOrder(runDir)) throw new Error('旧形式の順の run ではない (feedback の done があり deliver の done が無い run と、その印付けの途中で止まった run だけ)');
+  const deliver = isDone(runDir, 'deliver') ? readDone(runDir, 'deliver') : markDone(runDir, 'deliver', { legacy: true });
   const unfiled = unfiledIssues(runDir);
   const reopened = unfiled.length ? invalidate(runDir, 'feedback', `旧形式の run で起票されていない課題が ${unfiled.length} 件ある: ${unfiled.join(', ')}`) : null;
   return { ...deliver, feedback_reopened: Boolean(reopened), unfiled_issues: unfiled };

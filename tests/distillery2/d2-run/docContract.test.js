@@ -234,6 +234,10 @@ test('0.1.26: 還流は main から worktree を切り、node_modules を symlin
   const fb = feedbackSection();
   assert.match(fb, /配送の後、\*\*main の上で\*\*行う/);
   assert.match(fb, /`git worktree add <wt> -b <還流 branch> main`/);
+  // 0.1.25 までのリポは .gitignore が worktree と symlink を無視しないので、作る前に確かめて止まる (差分レビュー 3 ラウンド目)
+  const check = fb.indexOf('git check-ignore -q --no-index .distillery/worktrees/x');
+  assert.ok(check > 0 && check < fb.indexOf('`git worktree add <wt> -b <還流 branch> main`'), 'worktree を作る前に ignore を確かめる');
+  assert.match(fb, /`genSkeleton\.js --migrate` を回して commit してから再開/);
   assert.match(fb, /`node_modules`[^。]*symlink する/);
   assert.match(fb, /課題は `<wt>\/\.distillery\/runs\/<slug>\/issues\/<file>\.md` をそのまま読む/);
   assert.doesNotMatch(fb, /課題を `<fb>\/<issue>\.md` に写す/);
@@ -292,6 +296,7 @@ test('0.1.26: 要求を直すときは課題ファイルを main に入れて停
   assert.match(rev, /`blocked_on_requirement`/);
   const put = section(SKILL, '### 課題ファイルを main に入れる', '## 完了報告');
   assert.match(put, /`git fetch \. feedback\/<slug>\/<issue>:main`/);
+  assert.match(put, /remote `origin` があれば `git push origin main`/);
   assert.match(put, /`docs\/feedback\/<issue>\.md`/);
 });
 

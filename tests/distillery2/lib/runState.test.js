@@ -173,3 +173,24 @@ test('旧形式の run に配送済みの印を付けるとき、起票されて
   assert.equal(st.next_stage, 'feedback', '新しい還流段階で処理し直す');
   assert.deepEqual(st.filed_issues, ['issues/a.md'], '起票済みの旧記録はそのまま数える');
 });
+
+test('旧形式の印付けが途中で止まっても (配送の done だけ作って還流の done を退避していない)、旧形式と判定され、もう一度 mark すれば完了する (差分レビュー 3 ラウンド目)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'uc');
+  fs.writeFileSync(path.join(dir, 'issues', 'x.md'), '---\nkind: contract\n---\n');
+  for (const s of rs.STAGES) if (s !== 'deliver') rs.markDone(dir, s);
+  // 途中で止まった状態: 配送の done (legacy) だけあり、還流の done は残っている
+  rs.markDone(dir, 'deliver', { legacy: true });
+  let st = rs.status(dir);
+  assert.equal(st.legacy_order, true, '中間状態も旧形式');
+  assert.equal(st.next_stage, null);
+  const r = rs.markLegacyDelivered(dir);
+  assert.equal(r.feedback_reopened, true);
+  st = rs.status(dir);
+  assert.equal(st.legacy_order, false);
+  assert.equal(st.next_stage, 'feedback');
+  // 新しい順で還流まで済んだ run (課題がすべて起票済み) は旧形式ではない
+  rs.appendEvent(dir, 'feedback_filed', { kind: 'contract', ref: 'docs/feedback/x.md', issue_path: 'issues/x.md' });
+  rs.markDone(dir, 'feedback');
+  assert.equal(rs.status(dir).legacy_order, false);
+});

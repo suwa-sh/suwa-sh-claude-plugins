@@ -18,7 +18,7 @@ PR / issue (GitHub の `gh`) をやめ、配送と還流を git とファイル�
 - 課題 (要求の穴・止まった還流) は GitHub の issue ではなく、main の `docs/feedback/<issue>.md` にする。止まった還流は理由を並べて書く
 - `feedback_filed` は `{kind, ref, issue_path}` (`ref` = main に入った commit の sha か課題ファイル)。`feedback_deferred` は新しくは書かない
 - d2-run の引数 `merge=hold`: 配送と還流を main へ取り込む手前で止める (headless 用。引数なしで再開すると取り込みから続く)
-- 生成する CI は main と `feature/**` への push で回す (pull_request をやめた)。unit の手順に `--passWithNoTests` を付ける
+- 生成する CI は main と `feature/**` への push で回す (pull_request をやめた)。unit と contract の手順に `--passWithNoTests` を付ける
   (テストの無いティアで main の CI が必ず赤になっていた。ローカルのゲートは変えない)
 - `.gitignore` の管理ブロックに `.distillery/worktrees/` と `node_modules` (末尾スラッシュ無し。worktree に張る symlink も無視する) を足した。`genSkeleton.js --migrate` で既存のリポも直る
 - UC の squash commit に Feedback trailer を付けない (還流は配送の後)
@@ -30,7 +30,7 @@ PR / issue (GitHub の `gh`) をやめ、配送と還流を git とファイル�
 ### Migration
 
 - 0.1.25 までの run (還流の done があり配送の done が無い) は、再開すると d2-run が「配送済みか」を確認ページで聞く。配送済みなら印を付け、まだなら還流の done を退避して新しい順で配送から続ける
-- 既存のリポは `genSkeleton.js --migrate` で `.gitignore` を更新し、CI を作り直す (genCi)
+- 既存のリポは `genSkeleton.js --migrate` で `.gitignore` を更新し、CI を作り直す (genCi)。還流は worktree を作る前に `.gitignore` を確かめ、足りなければ止まってこれを求める
 
 ## [0.1.25] - 2026-09-28
 
