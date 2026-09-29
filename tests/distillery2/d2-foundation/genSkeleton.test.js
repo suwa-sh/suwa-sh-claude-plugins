@@ -300,6 +300,9 @@ test('genCi: renders 5-gate workflow with needs chain', () => {
   const unitLines = ci.split('\n').filter(l => /- run: npm run test -w /.test(l));
   assert.ok(unitLines.length > 0);
   for (const l of unitLines) assert.match(l, /--passWithNoTests$/, l);
+  const contractLines = ci.split('\n').filter(l => /- run: npm run test:contract -w /.test(l));
+  assert.ok(contractLines.length > 0);
+  for (const l of contractLines) assert.match(l, /--passWithNoTests$/, l);
 });
 
 test('genCi: passWithNoTests は vitest / npm run test にだけ付け、二重に付けない (0.1.26)', () => {
@@ -309,6 +312,7 @@ test('genCi: passWithNoTests は vitest / npm run test にだけ付け、二重�
   assert.equal(passWithNoTests('npx vitest run'), 'npx vitest run --passWithNoTests');
   assert.equal(passWithNoTests('npx vitest run --passWithNoTests'), 'npx vitest run --passWithNoTests');
   assert.equal(passWithNoTests('pytest -q'), 'pytest -q');
+  assert.equal(passWithNoTests('npm run test:contract -w apps/api -- --run'), 'npm run test:contract -w apps/api -- --run --passWithNoTests');
 });
 
 test('genCi: config のコマンドから job を組み、browser 有効時はブラウザ step を足す (Finding 6)', () => {

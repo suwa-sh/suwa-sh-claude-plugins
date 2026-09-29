@@ -52,7 +52,7 @@ description: >-
 | ③ の確認ページ | `.distillery/config.yaml`、`<run>/reports/**` (受理時の検査で bootstrap の gates.json を読む) | `<run>/reports/**` (仕上げの派遣前に bootstrap の gates.json を消す) |
 | ③ の genContractTests.js --check | `contracts/**`、`.distillery/config.yaml`、`apps/*/test/contract/**`、`packages/contracts/**` | — |
 | ③ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**` | `docs/README.md` |
-| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` (還流の派遣の結果)、`.distillery/logs/feedback/<slug>/<issue>.ready` (受理済みの印) | `<run>/events.jsonl`、`<run>/invalidated/**` (差し戻しで退避した done と findings)、`docs/requirements/use-cases.yaml`、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す)、`docs/feedback/<issue>.md` (課題ファイル)、`.distillery/worktrees/<slug>/<issue>/` (還流の worktree)、`.distillery/logs/feedback/<slug>/<issue>.ready` (受理済みの印)、`.distillery/logs/feedback/<slug>/<issue>.failed.diff` (止まった還流の差分) |
+| ④ の段階の進行・確認ページ・還流 | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` (還流の派遣の結果)、`.distillery/logs/feedback/<slug>/<issue>.ready` (受理済みの印)、`.distillery/logs/feedback/<slug>/<issue>.approved` (承認した sha) | `<run>/events.jsonl`、`<run>/invalidated/**` (差し戻しで退避した done と findings)、`docs/requirements/use-cases.yaml`、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す)、`docs/feedback/<issue>.md` (課題ファイル)、`.distillery/worktrees/<slug>/<issue>/` (還流の worktree)、`.distillery/logs/feedback/<slug>/<issue>.ready` (受理済みの印)、`.distillery/logs/feedback/<slug>/<issue>.approved` (承認した sha)、`.distillery/logs/feedback/<slug>/<issue>.failed.diff` (止まった還流の差分) |
 | ④ の checkScenario.js | `features/<業務>/<slug>.feature`、`features/acceptance/**`、`docs/requirements/use-cases.yaml`、`docs/requirements/requirements.yaml` | — |
 | ④ の compileContracts.js --check | `contracts/**` | — |
 | ④ の compileRdbSchema.js --check | `contracts/**` | — |
@@ -199,8 +199,9 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 再開 (配送の done が無いとき): feature が `base_head` から 1 commit で、その commit が main に含まれていなければ 4 から (squash 済み)。含まれていれば 6 から。
 
 **旧形式の run** (0.1.25 まで。還流の done があり配送の done が無い。`runState.js status` の `legacy_order: true`): 次の段階は出ない。
-確認ページで人に聞く (問い: この UC は配送済み (PR が merge 済み) か)。「配送済み」なら `node runState.js mark-legacy-delivered <run>` で配送の done (`legacy: true`) を作り、
-`impl(<slug>): legacy delivered` で commit してから還流へ進む。「まだ」なら `node runState.js invalidate <run> feedback <理由>` で還流の done を退避し、`impl(<slug>): reorder stages` で commit して、新しい順で配送から続ける (旧形式で起票済みでない課題は還流で処理し直す)。
+確認ページで人に聞く (問い: この UC は配送済み (PR が merge 済み) か)。「配送済み」なら **main に切り替えて** (`git switch main`。remote `origin` があれば `git pull --ff-only origin main` で
+PR の merge を取り込む)、main 上の run に `node runState.js mark-legacy-delivered <run>` で配送の done (`legacy: true`) を作り、`impl(<slug>): legacy delivered` で main に commit してから還流へ進む
+(PR は squash merge されていて feature とは別の履歴なので、feature に commit しても main に載らない)。main 上の run が旧形式でなければ (PR の merge がまだ取り込めていない) 止まって報告する。「まだ」なら `node runState.js invalidate <run> feedback <理由>` で還流の done を退避し、`impl(<slug>): reorder stages` で commit して、新しい順で配送から続ける (旧形式で起票済みでない課題は還流で処理し直す)。
 旧形式の還流の記録 (`feedback_filed` の `url`) は起票済みとして数える。
 
 ## 還流 (feedback 段階)
@@ -229,8 +230,8 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 課題ごとに 1〜5 まで進め、全部そろったら 6 の確認ページを 1 回出す。
 
 1. 再開の判定 (上から順に):
-   - 還流 branch が main に含まれている (`git merge-base --is-ancestor <還流 branch> main`) → 9 の記録だけ
-   - `<wt>` があり、受理済みの印 `<fb>/<issue>.ready` の sha が還流 branch の先頭と同じで、`<wt>` が clean → 6 (確認ページ) から (`merge=hold` で止めた後の再開)
+   - 還流 branch が main に含まれている (`git merge-base --is-ancestor <還流 branch> main`) → 8 の記録から
+   - `<wt>` があり、受理済みの印 `<fb>/<issue>.ready` の sha が還流 branch の先頭と同じで、`<wt>` が clean → `<fb>/<issue>.approved` があれば 7 (取り込み) から、無ければ 6 (確認ページ) から (`merge=hold` で止めた後の再開)
    - それ以外で `<wt>` か還流 branch がある → `git worktree remove --force <wt>`・`git branch -D <還流 branch>` で捨てて 2 から
 2. `git worktree add <wt> -b <還流 branch> main`。本体の `node_modules` (ルートと、各ワークスペースと `docs/design/storybook-app/` にあるもの) を、`<wt>` の同じ相対パスに symlink する
    (worktree には依存が入っていない。`.gitignore` の `node_modules` が symlink も無視する)
@@ -255,14 +256,18 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
    contract は `git add contracts apps packages docs/README.md && git commit -m "feedback(<slug>): contracts"`。
    commit の trailer は `Feedback-Kind:`、`Feedback-From-UC:`、`Feedback-Issue:` (issues/ のパス)。還流 branch の先頭の sha を `<fb>/<issue>.ready` に書く (受理済みの印)
 6. **確認ページを 1 回**出す (human-html-review): 課題ごとに、直した内容の要点 (足した ADR・変えた契約)、受理とゲートの結果、contract なら他の UC への影響、止まったものの理由。
-   問い: 「どれを main へ取り込むか」(課題ごとに 取り込む / 取り込まない)。取り込まないものは下の「止まったとき」扱い (理由: 確認ページで取り込まないと答えた)
+   問い: 「どれを main へ取り込むか」(課題ごとに 取り込む / 取り込まない)。取り込むと答えた課題は、その時点の還流 branch の先頭の sha を `<fb>/<issue>.approved` に書く (承認した本文の比較と再開に使う)。
+   取り込まないものは下の「止まったとき」扱い (理由: 確認ページで取り込まないと答えた)
 7. 引数が `merge=hold` なら止めて報告する (worktree・還流 branch・受理済みの印は残す。引数なしで再開すると 6 から)。
    そうでなければ、取り込むと答えた課題を 1 件ずつ main の上で `git merge --ff-only <還流 branch>`。
    ff できない (先に取り込んだ還流で main が進んだ) ときは **rebase しない** (rule のルールは ADR の commit を basis に持つので、rebase で basis が古くなる)。
-   還流 branch と `<wt>` を捨てて、最新の main から 2〜5 をやり直す。やり直した branch の上流の本文 (rule は `docs/adr/` の足した ADR と置き換えた旧 ADR の front matter、
-   contract は `contracts/` の分割ファイル) が確認ページで答えた branch と同じ (`git diff <答えた branch の先頭> <やり直した branch> -- <その本文>` が空) なら確認なしで取り込む。違えば次の確認ページに回す
-8. remote `origin` があれば `git push origin main` (拒否されたら止まって報告。再開すると起動シーケンス 4 でやり直す)。`git worktree remove <wt>` → `git branch -d <還流 branch>`
-9. main の上で `feedback_filed {kind, ref: "<main に入った還流 branch の先頭の sha>", issue_path}` を記録し、`impl(<slug>): feedback filed` で commit する (remote があれば push)
+   還流 branch と `<wt>` を捨てて、最新の main から 2〜5 をやり直す (`<fb>/<issue>.approved` は消さない。捨てた branch の commit は sha で引ける)。
+   やり直した branch の上流の本文 (rule は `docs/adr/` の足した ADR と置き換えた旧 ADR の front matter、contract は `contracts/` の分割ファイル) が承認した本文と同じ
+   (`git diff <approved の sha> <やり直した branch> -- <その本文>` が空) なら確認なしで取り込む。違えば `<fb>/<issue>.approved` を消して次の確認ページに回す
+8. main の上で `feedback_filed {kind, ref: "<main に入った還流 branch の先頭の sha>", issue_path}` を記録し、`impl(<slug>): feedback filed` で commit する
+   (worktree と branch を消す前に記録する。消した後で止まると、取り込み済みかを branch から判定できなくなる)
+9. remote `origin` があれば `git push origin main` (拒否されたら止まって報告。再開すると起動シーケンス 4 でやり直す)。`git worktree remove <wt>` → `git branch -d <還流 branch>`、
+   `<fb>/<issue>.ready` と `<fb>/<issue>.approved` を消す
 
 ### 止まったとき
 

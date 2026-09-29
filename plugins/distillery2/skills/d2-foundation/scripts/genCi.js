@@ -56,14 +56,14 @@ function ciCucumber(cmd, fallbackTags) {
 }
 
 /**
- * CI の単体テストはテストが 0 件のティアでも落とさない (vitest の --passWithNoTests)。
+ * CI の単体テストと契約テストはテストが 0 件のティアでも落とさない (vitest の --passWithNoTests)。
  * 手元のゲート (runGates) は 0 件で落ちることを red baseline に使うので、CI の手順だけに付ける。
  * main と feature への push で CI を回すと、テストの無いティア (worker など) で main が必ず赤になるため (0.1.26)。
  */
 function passWithNoTests(cmd) {
   if (/--passWithNoTests\b/.test(cmd)) return cmd;
   if (/\bvitest\b/.test(cmd)) return `${cmd} --passWithNoTests`;
-  if (/\bnpm run test\b/.test(cmd)) return / -- /.test(` ${cmd} `) ? `${cmd} --passWithNoTests` : `${cmd} -- --passWithNoTests`;
+  if (/\bnpm run test(:[\w-]+)?\b/.test(cmd)) return / -- /.test(` ${cmd} `) ? `${cmd} --passWithNoTests` : `${cmd} -- --passWithNoTests`;
   return cmd;
 }
 
@@ -93,7 +93,7 @@ function render(config) {
   // contract は提供側 (contracts[].provider / tiers[].provides) だけ (runGates と同じ判定。消費側はテスト 0 件で vitest が exit 1)
   const providers = new Set((config.contracts || []).map(c => c.provider).filter(Boolean));
   const isProvider = t => providers.has(t.id) || (t.provides || []).length > 0;
-  const contractSteps = tiers.filter(t => isProvider(t) && t.commands && t.commands.contract).map(t => step(stripReport(t.commands.contract)));
+  const contractSteps = tiers.filter(t => isProvider(t) && t.commands && t.commands.contract).map(t => step(passWithNoTests(stripReport(t.commands.contract))));
   const ucBddSteps = [step(cmds.uc_bdd ? ciCucumber(cmds.uc_bdd, 'not @browser') : 'npx cucumber-js --tags "not @browser"')];
   const acceptanceSteps = [step(cmds.acceptance_api ? ciCucumber(cmds.acceptance_api, '@acceptance and not @browser') : 'npx cucumber-js --tags "@acceptance and not @browser"')];
   // capabilities.browser: true のときだけブラウザ受入を CI にも足す (runGates と対応)。

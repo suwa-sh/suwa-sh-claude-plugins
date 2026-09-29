@@ -225,7 +225,8 @@ test('0.1.26: 旧形式の run は確認ページで聞き、d2-run が mark-leg
   assert.match(d, /`legacy_order: true`/);
   assert.match(d, /確認ページで人に聞く/);
   assert.match(d, /`node runState\.js mark-legacy-delivered <run>`/);
-  assert.match(d, /`impl\(<slug>\): legacy delivered` で commit/);
+  assert.match(d, /`impl\(<slug>\): legacy delivered` で main に commit/);
+  assert.match(d, /\*\*main に切り替えて\*\* \(`git switch main`/);
   assert.match(d, /`node runState\.js invalidate <run> feedback <理由>`/);
 });
 
@@ -261,7 +262,12 @@ test('0.1.26: 確認ページを 1 回、merge=hold と受理済みの印、ff �
   assert.match(fb, /受理済みの印 `<fb>\/<issue>\.ready`/);
   assert.match(fb, /引数が `merge=hold` なら止めて報告する \(worktree・還流 branch・受理済みの印は残す/);
   assert.match(fb, /\*\*rebase しない\*\*/);
-  assert.match(fb, /git diff <答えた branch の先頭> <やり直した branch> -- <その本文>/);
+  assert.match(fb, /git diff <approved の sha> <やり直した branch> -- <その本文>/);
+  assert.match(fb, /`<fb>\/<issue>\.approved` に書く/);
+  // 記録 (feedback_filed の commit) は worktree と branch を消す前 (差分レビュー 1 ラウンド目)
+  const rec = fb.indexOf('8. main の上で `feedback_filed');
+  const del = fb.indexOf('`git worktree remove <wt>` → `git branch -d <還流 branch>`');
+  assert.ok(rec > 0 && del > rec, '記録してから worktree と branch を消す');
   assert.match(read(DELIVERY), /ff できなければ \*\*rebase しない\*\*/);
 });
 

@@ -393,6 +393,11 @@ stores:
     group: run
     path: ".distillery/logs/feedback/<slug>/<issue>.ready"
     origin: produced
+  - id: feedback-approved
+    name: 還流の承認した sha (確認ページで取り込むと答えたときの還流 branch の先頭。作り直したときの比較と再開に使う。gitignore)
+    group: run
+    path: ".distillery/logs/feedback/<slug>/<issue>.approved"
+    origin: produced
   - id: worktrees
     name: 還流の worktree (main から切る。取り込むか止まったら消す。gitignore)
     group: run
@@ -779,8 +784,8 @@ processes:
     kind: orchestrator
     actor: d2-run
     run_table_row: "④ の段階の進行・確認ページ・還流"
-    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feedback-result, feedback-ready]
-    writes: [run-events, use-cases, asbuilt-report, feedback-docs, worktrees, feedback-ready, feedback-failed]
+    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feedback-result, feedback-ready, feedback-approved]
+    writes: [run-events, use-cases, asbuilt-report, feedback-docs, worktrees, feedback-ready, feedback-approved, feedback-failed]
   - id: run.uc.check-scenario
     name: シナリオの静的確認
     parent: run.uc

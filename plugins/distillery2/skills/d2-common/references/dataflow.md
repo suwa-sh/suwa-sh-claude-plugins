@@ -735,7 +735,7 @@ flowchart LR
   p_run_uc["d2-run (④)<br/>d2-run"]
   g_settings[("基盤の設定<br/>実行設定")]
   g_requirements[("要求<br/>UC 一覧")]
-  g_run[("実行の記録<br/>実行の記録 (events / done / 退避した done)・ゲートの記録・as-built の抽出の集計 (計装の有無)・Verifier の指摘・実装者が補った前提・仕様起因の課題・ティア実装者の課題・還流の派遣の結果 (applied / absent / blocked。gitignore)・還流の受理済みの印 (受理に通った還流 branch の sha。merge=hold の後の再開に使う。gitignore)・還流の worktree (main から切る。取り込むか止まったら消す。gitignore)・止まった還流の差分 (gitignore)")]
+  g_run[("実行の記録<br/>実行の記録 (events / done / 退避した done)・ゲートの記録・as-built の抽出の集計 (計装の有無)・Verifier の指摘・実装者が補った前提・仕様起因の課題・ティア実装者の課題・還流の派遣の結果 (applied / absent / blocked。gitignore)・還流の受理済みの印 (受理に通った還流 branch の sha。merge=hold の後の再開に使う。gitignore)・還流の承認した sha (確認ページで取り込むと答えたときの還流 branch の先頭。作り直したときの比較と再開に使う。gitignore)・還流の worktree (main から切る。取り込むか止まったら消す。gitignore)・止まった還流の差分 (gitignore)")]
   g_contracts[("契約<br/>UC ごとの契約の索引")]
   g_asbuilt[("as-built<br/>システム横断の as-built")]
   g_feedback_docs[("課題ファイル<br/>課題ファイル (issue の代わり。0.1.27 で取り込む段階が消費して削除する)")]
@@ -751,7 +751,7 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `.distillery/config.yaml`<br>`docs/requirements/use-cases.yaml`<br>`<run>/events.jsonl`<br>`<run>/reports/**`<br>`<run>/reports/asbuilt.json`<br>`<run>/attempt-<n>/findings.<tier>.yaml`<br>`<run>/attempt-<n>/assumptions.<tier>.yaml`<br>`<run>/issues/**`<br>`<run>/issues/<ts>_<tier>_<slug>.md`<br>`contracts/uc-index.yaml`<br>`docs/as-built/_system/**`<br>`.distillery/logs/feedback/<slug>/<issue>.result.json`<br>`.distillery/logs/feedback/<slug>/<issue>.ready` | `<run>/events.jsonl`<br>`docs/requirements/use-cases.yaml`<br>`<run>/reports/asbuilt.json`<br>`docs/feedback/**`<br>`.distillery/worktrees/**`<br>`.distillery/logs/feedback/<slug>/<issue>.ready`<br>`.distillery/logs/feedback/<slug>/<issue>.failed.diff` |
+| `.distillery/config.yaml`<br>`docs/requirements/use-cases.yaml`<br>`<run>/events.jsonl`<br>`<run>/reports/**`<br>`<run>/reports/asbuilt.json`<br>`<run>/attempt-<n>/findings.<tier>.yaml`<br>`<run>/attempt-<n>/assumptions.<tier>.yaml`<br>`<run>/issues/**`<br>`<run>/issues/<ts>_<tier>_<slug>.md`<br>`contracts/uc-index.yaml`<br>`docs/as-built/_system/**`<br>`.distillery/logs/feedback/<slug>/<issue>.result.json`<br>`.distillery/logs/feedback/<slug>/<issue>.ready`<br>`.distillery/logs/feedback/<slug>/<issue>.approved` | `<run>/events.jsonl`<br>`docs/requirements/use-cases.yaml`<br>`<run>/reports/asbuilt.json`<br>`docs/feedback/**`<br>`.distillery/worktrees/**`<br>`.distillery/logs/feedback/<slug>/<issue>.ready`<br>`.distillery/logs/feedback/<slug>/<issue>.approved`<br>`.distillery/logs/feedback/<slug>/<issue>.failed.diff` |
 
 #### シナリオの静的確認
 
@@ -1068,6 +1068,7 @@ flowchart LR
 | ティア実装者の課題 | 実行の記録 | `<run>/issues/<ts>_<tier>_<slug>.md` | 生成 | ティアの実装 | as-built の抽出と要約、as-built の抽出、d2-run (④) |
 | 還流の派遣の結果 (applied / absent / blocked。gitignore) | 実行の記録 | `.distillery/logs/feedback/<slug>/<issue>.result.json` | 生成 | 還流の ADR、還流の契約 | d2-run (④) |
 | 還流の受理済みの印 (受理に通った還流 branch の sha。merge=hold の後の再開に使う。gitignore) | 実行の記録 | `.distillery/logs/feedback/<slug>/<issue>.ready` | 生成 | d2-run (④) | d2-run (④) |
+| 還流の承認した sha (確認ページで取り込むと答えたときの還流 branch の先頭。作り直したときの比較と再開に使う。gitignore) | 実行の記録 | `.distillery/logs/feedback/<slug>/<issue>.approved` | 生成 | d2-run (④) | d2-run (④) |
 | 還流の worktree (main から切る。取り込むか止まったら消す。gitignore) | 実行の記録 | `.distillery/worktrees/**` | 生成 (最終成果物) | d2-run (④) | — |
 | 止まった還流の差分 (gitignore) | 実行の記録 | `.distillery/logs/feedback/<slug>/<issue>.failed.diff` | 生成 (最終成果物) | d2-run (④) | — |
 | ゲートの記録 | 実行の記録 | `<run>/reports/**` | 生成 | 基盤の仕上げ (F8→F6→F7→F4→F9)、F9 基盤のチェックポイント、テスト足場の生成、結合、as-built の抽出と要約、依存グラフの実態、d2-run (③)、ゲートの実行、配送 (squash・main への取り込み) | 基盤の仕上げ (F8→F6→F7→F4→F9)、F9 基盤のチェックポイント、独立検証、as-built の抽出と要約、as-built の抽出、d2-run (③)、d2-run (④)、ゲートの実行、配送 (squash・main への取り込み) |

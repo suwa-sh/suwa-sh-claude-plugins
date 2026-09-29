@@ -18,7 +18,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
     issues/<ts>_<tier>_<slug>.md    # ティア実装者の課題 (並列の他ティアと衝突しないようにティアを入れる)
     learnings/<ts>_<slug>.md
     invalidated/<ts>_<stage>.done.yaml   # 無効化した done の退避
-  logs/feedback/<uc_slug>/          # 還流の記録 (gitignore): 派遣の結果 <issue>.result.json・受理済みの印 <issue>.ready・止まったときの差分 <issue>.failed.diff
+  logs/feedback/<uc_slug>/          # 還流の記録 (gitignore): 派遣の結果 <issue>.result.json・受理済みの印 <issue>.ready・承認した sha <issue>.approved・止まったときの差分 <issue>.failed.diff
   worktrees/<uc_slug>/<issue>/      # 還流の worktree (gitignore。0.1.26)。main から切り、取り込むか止まったら消す
 docs/feedback/<issue>.md            # 課題ファイル (追跡。0.1.26 から issue の代わり)。0.1.27 で取り込む段階が消費して削除する
 ```
@@ -26,7 +26,7 @@ docs/feedback/<issue>.md            # 課題ファイル (追跡。0.1.26 から
 ## Git 追跡の方針 (`.gitignore` と整合)
 
 - **commit する (追跡)**: `events.jsonl` / `stages/*.done.yaml` / `attempt-<n>/**` (assumptions・findings) / `issues/**` / `learnings/**` / `invalidated/**`。これらは実行の記録なので履歴に残す。
-- **commit しない (gitignore)**: `reports/`(gates.json と各ゲートの JSON レポート) と `traces/`(計装トレース JSONL) のみ。いずれもテスト実行のたびに再生成できる生成物。
+- **commit しない (gitignore)**: run の中では `reports/`(gates.json と各ゲートの JSON レポート) と `traces/`(計装トレース JSONL) のみ。いずれもテスト実行のたびに再生成できる生成物。run の外の `.distillery/logs/` (還流の記録を含む) と `.distillery/worktrees/` も追跡しない。
 - genSkeleton が書く `.gitignore` は `.distillery/runs/*/reports/`、`.distillery/runs/*/traces/`、`.distillery/logs/`、`.distillery/worktrees/` と、symlink の `node_modules` を無視する。`attempt-*/` は無視しない。
 - **`.distillery/logs/`**: headless 実行のプロンプト・起動スクリプト・完了報告ログなど、セッション単位の実行記録の置き場。UC に紐づかない記録はここに置き、リポ直下に独自ディレクトリ (`_run/` など) を作らない。git 管理外
 

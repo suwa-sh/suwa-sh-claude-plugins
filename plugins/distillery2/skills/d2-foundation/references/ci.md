@@ -22,7 +22,7 @@ static → unit → contract → uc-bdd → acceptance
 |---|---|---|
 | static | 各ティアの format_check / lint / typecheck と arch_test | config の tiers[].commands / commands.arch_test |
 | unit | 各ティアの unit。テストが 0 件のティアで落ちないよう `--passWithNoTests` を付ける (ローカルの runGates には付けない。red baseline は 0 件で落ちることを使う) | tiers[].commands.unit |
-| contract | 各ティアの contract | tiers[].commands.contract |
+| contract | 提供側ティアの contract。unit と同じく `--passWithNoTests` を付ける | tiers[].commands.contract |
 | uc-bdd | `commands.uc_bdd` の `@uc:{slug}` を `not @browser` に置換 (全 feature が UC シナリオ。CI は全 UC) | commands.uc_bdd |
 | acceptance | `commands.acceptance_api` の `@uc:{slug} and` を外し `@acceptance and not @browser` | commands.acceptance_api |
 | acceptance (browser step) | `capabilities.browser: true` のときだけ `commands.acceptance_browser` を `@acceptance and @browser` で追加 | commands.acceptance_browser |
