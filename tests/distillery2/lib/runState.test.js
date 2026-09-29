@@ -146,6 +146,7 @@ test('旧形式の順 (還流 done・配送 done 無し) は次の段階を出�
   assert.equal(st.next_stage, null);
   const out = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib/runState.js'), 'mark-legacy-delivered', dir], { encoding: 'utf8' });
   assert.equal(JSON.parse(out).legacy, true);
+  assert.equal(JSON.parse(out).feedback_reopened, false, '課題が無ければ還流の done はそのまま');
   st = rs.status(dir);
   assert.equal(st.legacy_order, false);
   assert.equal(st.next_stage, null, '全段 done');
@@ -153,4 +154,22 @@ test('旧形式の順 (還流 done・配送 done 無し) は次の段階を出�
   // 旧形式でない run には使えない
   const dir2 = rs.openRun(root, 'uc2');
   assert.throws(() => rs.markLegacyDelivered(dir2), /旧形式/);
+});
+
+test('旧形式の run に配送済みの印を付けるとき、起票されていない課題があれば還流の done を退避する (差分レビュー 2 ラウンド目)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'uc');
+  for (const f of ['a.md', 'b.md', 'c.md']) fs.writeFileSync(path.join(dir, 'issues', f), '---\nkind: rule\n---\n');
+  // a は旧形式で起票済み (url)、b は旧形式の url 空 (保留)、c は記録なし
+  rs.appendEvent(dir, 'feedback_filed', { kind: 'rule', url: 'https://example/pr/1', issue_path: 'issues/a.md' });
+  rs.appendEvent(dir, 'feedback_filed', { kind: 'rule', url: null, issue: 'issues/b.md' });
+  for (const s of rs.STAGES) if (s !== 'deliver') rs.markDone(dir, s);
+  assert.deepEqual(rs.unfiledIssues(dir), ['issues/b.md', 'issues/c.md']);
+  const r = rs.markLegacyDelivered(dir);
+  assert.equal(r.feedback_reopened, true);
+  assert.deepEqual(r.unfiled_issues, ['issues/b.md', 'issues/c.md']);
+  const st = rs.status(dir);
+  assert.equal(st.stages.deliver, 'done');
+  assert.equal(st.next_stage, 'feedback', '新しい還流段階で処理し直す');
+  assert.deepEqual(st.filed_issues, ['issues/a.md'], '起票済みの旧記録はそのまま数える');
 });

@@ -200,7 +200,8 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 
 **旧形式の run** (0.1.25 まで。還流の done があり配送の done が無い。`runState.js status` の `legacy_order: true`): 次の段階は出ない。
 確認ページで人に聞く (問い: この UC は配送済み (PR が merge 済み) か)。「配送済み」なら **main に切り替えて** (`git switch main`。remote `origin` があれば `git pull --ff-only origin main` で
-PR の merge を取り込む)、main 上の run に `node runState.js mark-legacy-delivered <run>` で配送の done (`legacy: true`) を作り、`impl(<slug>): legacy delivered` で main に commit してから還流へ進む
+PR の merge を取り込む)、main 上の run に `node runState.js mark-legacy-delivered <run>` で配送の done (`legacy: true`) を作り (起票されていない課題があれば、旧形式の還流の done も退避される。結果の `feedback_reopened`)、
+`impl(<slug>): legacy delivered` で main に commit してから還流へ進む
 (PR は squash merge されていて feature とは別の履歴なので、feature に commit しても main に載らない)。main 上の run が旧形式でなければ (PR の merge がまだ取り込めていない) 止まって報告する。「まだ」なら `node runState.js invalidate <run> feedback <理由>` で還流の done を退避し、`impl(<slug>): reorder stages` で commit して、新しい順で配送から続ける (旧形式で起票済みでない課題は還流で処理し直す)。
 旧形式の還流の記録 (`feedback_filed` の `url`) は起票済みとして数える。
 
@@ -231,7 +232,11 @@ PR の merge を取り込む)、main 上の run に `node runState.js mark-legac
 
 1. 再開の判定 (上から順に):
    - 還流 branch が main に含まれている (`git merge-base --is-ancestor <還流 branch> main`) → 8 の記録から
-   - `<wt>` があり、受理済みの印 `<fb>/<issue>.ready` の sha が還流 branch の先頭と同じで、`<wt>` が clean → `<fb>/<issue>.approved` があれば 7 (取り込み) から、無ければ 6 (確認ページ) から (`merge=hold` で止めた後の再開)
+   - `<wt>` があり、受理済みの印 `<fb>/<issue>.ready` の sha が還流 branch の先頭と同じで、`<wt>` が clean (`merge=hold` で止めた後や、作り直しの途中の再開):
+     - `<fb>/<issue>.approved` が無い → 6 (確認ページ) から
+     - approved の sha が ready の sha と同じ → 7 (取り込み) から
+     - approved の sha が ready の sha と違う (作り直した後) → 7 の本文の比較 (`git diff <approved の sha> <還流 branch> -- <その本文>`) をやり直す。空なら 7 の取り込みから、
+       違えば `<fb>/<issue>.approved` を消して 6 (確認ページ) から (比較をせずに取り込まない)
    - それ以外で `<wt>` か還流 branch がある → `git worktree remove --force <wt>`・`git branch -D <還流 branch>` で捨てて 2 から
 2. `git worktree add <wt> -b <還流 branch> main`。本体の `node_modules` (ルートと、各ワークスペースと `docs/design/storybook-app/` にあるもの) を、`<wt>` の同じ相対パスに symlink する
    (worktree には依存が入っていない。`.gitignore` の `node_modules` が symlink も無視する)
@@ -258,7 +263,7 @@ PR の merge を取り込む)、main 上の run に `node runState.js mark-legac
 6. **確認ページを 1 回**出す (human-html-review): 課題ごとに、直した内容の要点 (足した ADR・変えた契約)、受理とゲートの結果、contract なら他の UC への影響、止まったものの理由。
    問い: 「どれを main へ取り込むか」(課題ごとに 取り込む / 取り込まない)。取り込むと答えた課題は、その時点の還流 branch の先頭の sha を `<fb>/<issue>.approved` に書く (承認した本文の比較と再開に使う)。
    取り込まないものは下の「止まったとき」扱い (理由: 確認ページで取り込まないと答えた)
-7. 引数が `merge=hold` なら止めて報告する (worktree・還流 branch・受理済みの印は残す。引数なしで再開すると 6 から)。
+7. 引数が `merge=hold` なら止めて報告する (worktree・還流 branch・受理済みの印と承認した sha は残す。引数なしで再開すると、1 の再開の判定で 6 か 7 から)。
    そうでなければ、取り込むと答えた課題を 1 件ずつ main の上で `git merge --ff-only <還流 branch>`。
    ff できない (先に取り込んだ還流で main が進んだ) ときは **rebase しない** (rule のルールは ADR の commit を basis に持つので、rebase で basis が古くなる)。
    還流 branch と `<wt>` を捨てて、最新の main から 2〜5 をやり直す (`<fb>/<issue>.approved` は消さない。捨てた branch の commit は sha で引ける)。

@@ -189,10 +189,25 @@ function filedIssues(runDir) {
  */
 function isLegacyOrder(runDir) { return isDone(runDir, 'feedback') && !isDone(runDir, 'deliver'); }
 
-/** 人が確認ページで「配送済み」と答えた旧形式の run に、deliver の done (legacy: true) を作る */
+/** issues/*.md のうち起票済み (filedIssues) でないもの。run ディレクトリ相対 (`issues/<file>.md`) */
+function unfiledIssues(runDir) {
+  const dir = path.join(runDir, 'issues');
+  if (!fs.existsSync(dir)) return [];
+  const filed = new Set(filedIssues(runDir));
+  return fs.readdirSync(dir).filter(f => f.endsWith('.md')).map(f => `issues/${f}`).filter(k => !filed.has(k)).sort();
+}
+
+/**
+ * 人が確認ページで「配送済み」と答えた旧形式の run に、deliver の done (legacy: true) を作る。
+ * 起票済みでない課題が残っていれば (0.1.25 までの headless 実行は還流を保留にしていた)、旧形式の feedback の done を退避して、
+ * 新しい還流段階で処理し直せるようにする (起票済みの旧記録 url はそのまま数える)
+ */
 function markLegacyDelivered(runDir) {
   if (!isLegacyOrder(runDir)) throw new Error('旧形式の順の run ではない (feedback の done があり deliver の done が無い run だけ)');
-  return markDone(runDir, 'deliver', { legacy: true });
+  const deliver = markDone(runDir, 'deliver', { legacy: true });
+  const unfiled = unfiledIssues(runDir);
+  const reopened = unfiled.length ? invalidate(runDir, 'feedback', `旧形式の run で起票されていない課題が ${unfiled.length} 件ある: ${unfiled.join(', ')}`) : null;
+  return { ...deliver, feedback_reopened: Boolean(reopened), unfiled_issues: unfiled };
 }
 
 function status(runDir) {
@@ -244,4 +259,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, isLegacyOrder, markLegacyDelivered, status };
+module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status };

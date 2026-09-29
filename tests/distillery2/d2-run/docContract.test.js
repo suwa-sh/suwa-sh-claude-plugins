@@ -260,10 +260,13 @@ test('0.1.26: 確認ページを 1 回、merge=hold と受理済みの印、ff �
   const fb = feedbackSection();
   assert.match(fb, /\*\*確認ページを 1 回\*\*出す/);
   assert.match(fb, /受理済みの印 `<fb>\/<issue>\.ready`/);
-  assert.match(fb, /引数が `merge=hold` なら止めて報告する \(worktree・還流 branch・受理済みの印は残す/);
+  assert.match(fb, /引数が `merge=hold` なら止めて報告する \(worktree・還流 branch・受理済みの印と承認した sha は残す/);
   assert.match(fb, /\*\*rebase しない\*\*/);
   assert.match(fb, /git diff <approved の sha> <やり直した branch> -- <その本文>/);
   assert.match(fb, /`<fb>\/<issue>\.approved` に書く/);
+  // 作り直しの途中の再開: approved と ready が違えば本文の比較をやり直す (差分レビュー 2 ラウンド目)
+  assert.match(fb, /approved の sha が ready の sha と違う \(作り直した後\) → 7 の本文の比較/);
+  assert.match(fb, /比較をせずに取り込まない/);
   // 記録 (feedback_filed の commit) は worktree と branch を消す前 (差分レビュー 1 ラウンド目)
   const rec = fb.indexOf('8. main の上で `feedback_filed');
   const del = fb.indexOf('`git worktree remove <wt>` → `git branch -d <還流 branch>`');
