@@ -40,9 +40,9 @@
 | ④ integrate | 結合の実装者 | `distillery2:d2-implement` `mode=integrate uc=<slug>` | 既定 | `features/step_definitions/**`、`features/support/**`、`<run>/reports/**`、`<run>/traces/**` (完了条件の runGates が書く。integrate は単独の段なので競合しない) | 固定指示: `skills/d2-implement/references/integrate.md`。attempt ≥ 2 のときは `差し戻しの再実行。結線の変更が不要なら、変えずに完了条件だけ確かめて「結線変更なし」と報告してよい` を追記。as-built から戻ったとき (`returned_to_integrate`) は `as-built の集計で計装が足りない: 計装なし <ティア> / 正常系に部品なし <ティア>。結線を足す` を追記 |
 | ④ verify (ティアごと並列) | `<tier>` の Verifier | agent_type **`distillery2:d2-verifier`** / `distillery2:d2-verify` `uc=<slug> tier=<tier> attempt=<n> run=<run> assumptions=<path>` | **`models.verifier`** (implementer と同じモデルに解決されてもよい。条件は別サブエージェント + 同等以上のモデル。SKILL.md 起動シーケンス 2) | `<run>/attempt-<n>/findings.<tier>.yaml` | `変更ファイル一覧: <git diff --name-only base_head..HEAD の結果を 1 行ずつ>` と `他 UC と共有する変更ファイル (初期候補): <ファイル — 他 UC の slug を 1 行ずつ。無ければ「なし」>` (SKILL.md verify 行) |
 | ④ asbuilt | as-built の抽出と要約役 | `distillery2:d2-asbuilt` `uc=<slug> run=<run>` | 既定 | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)、`<run>/reports/**` (depcruise の結果と抽出の集計) | 依存グラフの実態 → 抽出 → 要約 → 検査までこのスキルが行う。抽出の標準出力 1 行を報告に転記する |
-| ④ 還流 (ADR) | ルールの穴の記録役 | `distillery2:d2-decide` `mode=feedback issue=<課題の写し> result=<結果ファイル>` | 既定 | `docs/adr/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` | 還流 branch の上で派遣する (SKILL.md の還流節)。`課題の写し: <絶対パス>` と `結果ファイル: <絶対パス>` を追記 |
-| ④ 還流 (ルールの再生成) | 基盤の生成役 | `distillery2:d2-foundation` `phase=rules` | 既定 | `docs/rules/**`、`.dependency-cruiser.cjs` | ADR を commit した後に派遣する |
-| ④ 還流 (契約) | 契約の修正役 | `distillery2:d2-contract` `mode=feedback issue=<課題の写し> result=<結果ファイル>` | 既定 | `contracts/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` | 還流 branch の上で派遣する。`課題の写し: <絶対パス>` と `結果ファイル: <絶対パス>` を追記 |
+| ④ 還流 (ADR) | ルールの穴の記録役 | `distillery2:d2-decide` `mode=feedback issue=<課題> result=<結果ファイル>` | 既定 | `docs/adr/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` | 還流の worktree で派遣する (SKILL.md の還流節)。`作業ディレクトリ: <worktree の絶対パス> (write-set はここからの相対。結果ファイルだけは本体のリポの絶対パス)`、`課題: <worktree の中の issues/<file>.md の絶対パス>`、`結果ファイル: <本体の .distillery/logs/feedback/<slug>/<issue>.result.json の絶対パス>` を追記 |
+| ④ 還流 (ルールの再生成) | 基盤の生成役 | `distillery2:d2-foundation` `phase=rules` | 既定 | `docs/rules/**`、`.dependency-cruiser.cjs` | 還流の worktree で、ADR を commit した後に派遣する。`作業ディレクトリ: <worktree の絶対パス> (write-set はここからの相対。スクリプトの --cwd に渡す)` を追記 |
+| ④ 還流 (契約) | 契約の修正役 | `distillery2:d2-contract` `mode=feedback issue=<課題> result=<結果ファイル>` | 既定 | `contracts/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**`、`.distillery/logs/feedback/<slug>/<issue>.result.json` | 還流の worktree で派遣する。`作業ディレクトリ: <worktree の絶対パス> (write-set はここからの相対。結果ファイルだけは本体のリポの絶対パス)`、`課題: <worktree の中の issues/<file>.md の絶対パス>`、`結果ファイル: <本体の .distillery/logs/feedback/<slug>/<issue>.result.json の絶対パス>` を追記 |
 
 `<run>` = `.distillery/runs/<slug>`。固定指示のパスは `${CLAUDE_PLUGIN_ROOT}/skills/...` を絶対パスに展開して
 `まず次のファイルを読み、記載の指示すべてに従ってください: <絶対パス>` の 1 行で渡す。
@@ -61,7 +61,8 @@
 - 必須成果物の存在と parse (assumptions / findings は `validateAssumptions.js`)
 - 基盤の仕上げと as-built は、サブの報告文ではなくファイルで受理する (SKILL.md の ③ 5 と asbuilt 行): `.distillery/runs/bootstrap/reports/gates.json` / `<run>/reports/asbuilt.json` と `checkAsBuilt.js`。どちらのファイルも派遣の前に消しておき、前回の結果で受理しない
 - 還流の 3 行もファイルで受理する (SKILL.md の還流節)。「④ 還流 (ADR)」と「④ 還流 (契約)」は結果ファイル (`applied` / `absent` / `blocked`) で分岐し、結果ファイルはこの 2 つの派遣の前にだけ消す。
-  「④ 還流 (ルールの再生成)」は結果ファイルを書かないので使わず、`genRules.js --check` と `genArchTests.js --check` で受理する。どの行も write-set の逸脱は還流 branch の `git status --porcelain` で見る
+  「④ 還流 (ルールの再生成)」は結果ファイルを書かないので使わず、`genRules.js --check` と `genArchTests.js --check` で受理する。どの行も write-set の逸脱は worktree の `git -C <worktree> status --porcelain` で見る
+  (本体の作業ツリーは main のまま変わらない)
 - 完了報告が来なくても成果物 (done + ファイル) が正。存在と parse で完了判定してよい (検証の省略ではない)。逆に、報告だけあって done / 成果物が無ければ未完了として扱う
 - 例外: ③ の画面部品 (d2-design) は完了報告 (部品を生成したか、画面を持たないため skip したか) が要る。前の実行の `docs/design/` が残っていると、成果物だけでは今回の生成と skip を区別できず、仕上げに渡す `ui=` を決められない。報告が無ければ未完了として再派遣する
 - 例外: asbuilt は要約役の完了報告 (要約した 3 ブロックと、引用したコード位置の一覧) も要る。抽出は前回の要約ブロックを残すので、要約の前に止まっても集計ファイルと書式の検査は通ってしまい、成果物だけでは今回の要約を区別できない。報告が無ければ未完了として再派遣する

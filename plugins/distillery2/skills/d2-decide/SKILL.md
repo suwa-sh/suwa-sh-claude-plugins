@@ -23,7 +23,7 @@ RDRA モデル・USDM・UC 一覧から、人が決めるべき 2 種類の成�
 
 ```
 (なし)                                   # 段階② (下の「入出力」「手順」)
-mode=feedback issue=<課題の写し> result=<結果ファイル>   # 段階④の還流 (下の「mode=feedback」)
+mode=feedback issue=<課題> result=<結果ファイル>   # 段階④の還流 (下の「mode=feedback」)
 ```
 
 ## 入出力
@@ -126,11 +126,13 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs
 
 ## mode=feedback (段階④の還流)
 
-d2-run が還流用の branch (UC の開始点から切ったもの) の上で派遣する。実装で見つかった「ルールの穴」(課題の front matter `kind: rule`) を、
+作業ディレクトリは派遣文の worktree (`.distillery/worktrees/<slug>/<issue>`。main から切った還流 branch)。パスはすべてここからの相対で扱い、
+スクリプトもここで回す (結果ファイルだけは派遣文の本体のリポの絶対パスに書く)。
+d2-run が派遣する。実装で見つかった「ルールの穴」(課題の front matter `kind: rule`) を、
 新しい ADR 1 本の `rules[]` にする。開発ルールとアーキテストの作り直しは、d2-run が ADR を commit してから d2-foundation `phase=rules` に派遣する
 (ここで作り直すと、ルールに記録する「どの ADR から作ったか」が commit 前の古い ADR を指すため)。
 
-1. 課題の写しを読む。既存の ADR をすべて読み、課題がどの決定に関わるかを決める
+1. 課題を読む。既存の ADR をすべて読み、課題がどの決定に関わるかを決める
 2. 次のどれかに当たるなら、**ADR を書かずに**結果ファイルへ `status: blocked` と理由を書いて止まる:
    - ADR の `rules[]` で表せない (生成器の直し、設定ファイル (`biome.json` など) の直し、手順書の直し)
    - ティア構成・データストア・testing の capabilities を変える必要がある (config・骨格の作り直しが要り、還流の範囲を超える)
@@ -139,7 +141,7 @@ d2-run が還流用の branch (UC の開始点から切ったもの) の上で�
 4. 既存の決定を置き換えるときだけ、新しい ADR に `supersedes` を書き、旧 ADR は front matter の `status: superseded` と
    `superseded_by` の 2 項目だけを変える (本文と旧 `rules[]` は変えない。決定の履歴を残す)。既存の ADR をそれ以外で変えない
 5. `validateAdr.js` → `genAdrIndex.js` (段階②と同じコマンド)。PASS するまで直す。`genArchitectureDoc.js` は回さない (ティアを変えないので図は変わらない)。
-   `_review-summary.md` は書かない (人の確認は還流の PR で行う)
+   `_review-summary.md` は書かない (人の確認は d2-run の還流の確認ページで行う)
 6. 結果ファイルへ `status: applied`、`targets` (足した ADR のファイル名と、置き換えた旧 ADR)、`reason` (1 行) を書く
 
 結果ファイルは JSON 1 つ: `{"status": "applied" | "blocked", "targets": [...], "reason": "..."}`。d2-run はこのファイルで分岐し、
@@ -147,7 +149,7 @@ d2-run が還流用の branch (UC の開始点から切ったもの) の上で�
 
 ## mode=feedback: 読むもの
 
-- 課題の写し `.distillery/logs/feedback/<slug>/<issue>.md` (派遣文で渡す)
+- 課題 `<run>/issues/<file>.md` (worktree の中。派遣文で渡す)
 - `docs/adr/*.md` (既存の ADR と索引)
 
 ## mode=feedback: 書くもの

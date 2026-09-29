@@ -46,24 +46,6 @@ test('scaffold の入口スタブは新規ファイルだけ・中立の値を�
   assert.match(read(TEMPLATE), /--diff-filter=MD/);
 });
 
-test('還流の保留: feedback_deferred → deliver 前に起票して commit', () => {
-  const skill = read(SKILL);
-  assert.match(row(skill, /^\| \*\*feedback\*\* \|/), /feedback_deferred/);
-  const deliver = row(skill, /^\| \*\*deliver\*\* \|/);
-  assert.match(deliver, /pending_feedback/);
-  assert.match(deliver, /impl\(<slug>\): feedback filed/);
-  assert.match(skill, /feedback_deferred \{kind, issue_path, reason\}/);
-  assert.match(read(RUN_STATE), /^\| feedback_deferred \|/m);
-  assert.match(read(RUN_STATE), /^\| blocked_on_requirement \|/m);
-  assert.match(read(DELIVERY), /pending_feedback` が空/);
-});
-
-test('人レビューの「要求を直す」は下書き → その場で起票か保留 → 停止', () => {
-  const skill = read(SKILL);
-  assert.match(skill, /「要求を直す」があれば `issues\/` に下書き/);
-  assert.match(skill, /起票できない実行 \(push 禁止・`gh` 未認証・リモート無し\) では `feedback_deferred` を記録する/);
-});
-
 test('upstream が無いリポでは upstream 一致の条件を飛ばす', () => {
   assert.match(read(DELIVERY), /upstream が設定されていなければ/);
 });
@@ -172,41 +154,6 @@ test('還流: d2-run は ADR・契約を自分で書き換えず、持ち主の�
   assert.match(fb, /d2-contract `mode=feedback`/);
 });
 
-test('還流: ADR の commit が rules の再生成より前、--check は生成物の commit より前', () => {
-  const fb = feedbackSection();
-  const adrCommit = fb.indexOf('commit -m "feedback(<slug>): adr"');
-  const rulesDispatch = fb.indexOf('sub d2-foundation `phase=rules`');
-  const rulesCheck = fb.indexOf('genRules.js --adr docs/adr --out docs/rules --check');
-  const rulesCommit = fb.indexOf('commit -m "feedback(<slug>): rules"');
-  assert.ok(adrCommit > 0 && rulesDispatch > adrCommit, 'ADR を commit してからルールを作り直す (basis が新しい ADR を指す)');
-  assert.ok(rulesCheck > rulesDispatch && rulesCommit > rulesCheck, 'ルールの --check は commit の前');
-  assert.match(fb, /受理の `--check` は\*\*生成物を commit する前に\*\*回す/);
-  const contractCheck = fb.indexOf('genRdbDdl.js contracts --config .distillery/config.yaml --out-root . --check');
-  const contractCommit = fb.indexOf('commit -m "feedback(<slug>): contracts"');
-  assert.ok(contractCheck > 0 && contractCommit > contractCheck, '契約の --check (genRdbDdl を含む) は commit の前');
-});
-
-test('還流: 課題は logs に写し、記録は feature に戻ってから書く', () => {
-  const fb = feedbackSection();
-  assert.match(fb, /`\.distillery\/logs\/feedback\/<slug>`/);
-  assert.match(fb, /課題を `<fb>\/<issue>\.md` に写す/);
-  const back = fb.indexOf('`git switch feature/<slug>` (還流 branch が clean');
-  const filed = fb.indexOf('`feedback_filed {kind, url, issue_path}` を記録し、`impl(<slug>): feedback filed` で commit');
-  assert.ok(back > 0 && filed > back, 'feedback_filed は feature に戻った後');
-  assert.match(fb, /記録は feature に戻ってから書く/);
-});
-
-test('還流: 分岐は結果ファイル、absent は開始点の契約と照合して理由を書き分ける', () => {
-  const fb = feedbackSection();
-  assert.match(fb, /`<fb>\/<issue>\.result\.json` も消す/);
-  assert.match(fb, /git grep -q <名前> <base_head> -- contracts\//);
-  assert.match(fb, /いま実装中の UC 自身の契約の穴/);
-  assert.match(fb, /対象は開始点の契約にあるが、派遣の結果は absent だった/);
-  assert.match(fb, /派遣の直前に控えた一覧 \(`<fb>\/<issue>\.untracked\.txt`\) に無かった未追跡ファイルだけ/);
-  assert.match(fb, /force push はしない/);
-  assert.match(fb, /還流 branch = `feedback\/<slug>\/<issue>`/);
-});
-
 test('還流: 派遣表に 3 行あり、結果ファイルを write-set に持つのは ADR と契約の行だけ', () => {
   const t = read(TEMPLATE);
   const adr = row(t, /^\| ④ 還流 \(ADR\) /);
@@ -221,36 +168,6 @@ test('還流: 派遣表に 3 行あり、結果ファイルを write-set に持�
   assert.ok(!rules.split('|')[5].includes(RESULT));
 });
 
-test('還流: 結果ファイルを消す・見るのは d2-decide / d2-contract の派遣だけ。ルールの再生成は --check と write-set で受理する (差分レビュー 1 ラウンド目)', () => {
-  const fb = feedbackSection();
-  // 消すのは 2 つの派遣の直前だけ (「各派遣の直前に結果ファイルを消す」と書くと、基盤の派遣の後に結果ファイルが無くて止まる)
-  assert.match(fb, /d2-decide と d2-contract の派遣の直前には、`<fb>\/<issue>\.result\.json` も消す/);
-  assert.doesNotMatch(fb, /各派遣の直前[^。]*結果ファイル[^。]*を消す/);
-  // 止まる条件の結果ファイルは 2 つの派遣に限る
-  assert.match(fb, /d2-decide \/ d2-contract の結果ファイルが `applied` 以外/);
-  // ルールの再生成の受理
-  const i = fb.indexOf('sub d2-foundation `phase=rules`');
-  const j = fb.indexOf('   - contract:', i);
-  const rulesStep = fb.slice(i, j);
-  assert.match(rulesStep, /結果ファイルは使わない/);
-  assert.match(rulesStep, /genRules\.js [^`]*--check/);
-  assert.match(rulesStep, /genArchTests\.js [^`]*--check/);
-  assert.match(rulesStep, /write-set の外が変わっていなければ受理/);
-});
-
-test('還流: 還流 branch の上で再開したら clean 判定より先に後始末する。派遣前の未追跡ファイルの一覧はファイルに残す (差分レビュー 1 ラウンド目)', () => {
-  const t = read(SKILL);
-  const startup = t.slice(t.indexOf('## 起動シーケンス'), t.indexOf('## ① 要求'));
-  const resume = startup.indexOf('現在の branch が還流 branch');
-  const clean = startup.indexOf('作業ツリーの clean 判定');
-  assert.ok(resume > 0 && clean > resume, '還流 branch の後始末は clean 判定より前');
-  assert.match(read(DELIVERY), /現在 branch が還流 branch \(`feedback\/<slug>\/<issue>`\) なら、clean でなくても/);
-  const fb = feedbackSection();
-  assert.match(fb, /`<fb>\/<issue>\.untracked\.txt` に書く/);
-  assert.match(fb, /派遣の直前に控えた一覧 \(`<fb>\/<issue>\.untracked\.txt`\) に無かった未追跡ファイルだけ/);
-  assert.match(fb, /一覧のファイルが無い \(控える前に止まった\) なら、未追跡ファイルは消さずに/);
-});
-
 test('還流: 派遣表の受理の説明も、結果ファイルを使うのは ADR と契約の 2 行だけ (差分レビュー 2 ラウンド目)', () => {
   const t = read(TEMPLATE);
   const line = t.split('\n').find(l => l.startsWith('- 還流の 3 行'));
@@ -261,67 +178,131 @@ test('還流: 派遣表の受理の説明も、結果ファイルを使うのは
   assert.doesNotMatch(t, /還流の 3 行も同じ: 分岐は結果ファイル/);
 });
 
-test('還流: push の後に中断しても branch を消さず、PR 作成から続ける (差分レビュー 2 ラウンド目)', () => {
-  const fb = feedbackSection();
-  assert.match(fb, /ローカルに無い \(push の後に中断\) → 7 の PR 作成だけへ/);
-  assert.match(fb, /リモートに同じ名前の branch が\*\*無いときだけ\*\* `git branch -D/);
+
+// 0.1.26: PR / issue をやめ、配送 (main への取り込み) を還流の前にし、還流は worktree で作って確認ページの後に main へ取り込む
+function section(rel, start, end) {
+  const t = read(rel);
+  const i = t.indexOf(start);
+  assert.ok(i >= 0, `${rel}: ${start}`);
+  const j = end ? t.indexOf(end, i + 1) : -1;
+  return t.slice(i, j < 0 ? undefined : j);
+}
+const deliverSection = () => section(SKILL, '## 配送 (deliver 段階)', '## 還流 (feedback 段階)');
+const stoppedSection = () => section(SKILL, '### 止まったとき', '### 課題ファイルを main に入れる');
+
+test('0.1.26: 手順書に gh (PR / issue) が出てこない', () => {
+  for (const rel of [SKILL, DELIVERY, RUN_STATE, TEMPLATE, 'skills/d2-decide/SKILL.md', 'skills/d2-contract/SKILL.md', 'skills/d2-foundation/SKILL.md']) {
+    assert.doesNotMatch(read(rel), /\bgh (pr|issue|auth)\b/, `${rel} に gh のコマンドがある`);
+  }
+  assert.match(read(SKILL), /PR \/ issue は作らない/);
+});
+
+test('0.1.26: 段階の順は配送 → 還流。配送は squash → merge=hold → ff merge → main の上で done を commit → push', () => {
+  assert.match(read(RUN_STATE), /`scenario → contract → scaffold → tier → contract-gate → integrate → verify → review → asbuilt → deliver → feedback`/);
+  const t = read(SKILL);
+  assert.ok(t.indexOf('| **deliver** |') < t.indexOf('| **feedback** |'), '段階の表で deliver が feedback の前');
+  const d = deliverSection();
+  const order = ['git reset --soft <base_head>', '引数が `merge=hold` なら、ここで止めて報告する', '`git merge --ff-only feature/<slug>`', '`impl(<slug>): delivered` で commit', '`git push origin main`', '`git branch -d feature/<slug>`'];
+  let last = -1;
+  for (const o of order) { const i = d.indexOf(o); assert.ok(i > last, `配送の順: ${o}`); last = i; }
+  assert.match(d, /force push はしない/);
+  assert.match(d, /origin\/main` が `main` の祖先か同じ/);
+});
+
+test('0.1.26: 再開で配送の done があれば main で作業し、何より先に未 push の main を push する。squash 済みの再開はイベント記録を遅らせる', () => {
   const t = read(SKILL);
   const startup = t.slice(t.indexOf('## 起動シーケンス'), t.indexOf('## ① 要求'));
-  assert.match(startup, /リモートに同じ branch があれば c は branch を消さない/);
+  const s4 = startup.indexOf('配送 (deliver) の done がある UC は、作業 branch が main');
+  const s5 = startup.indexOf('作業ツリーの clean 判定');
+  assert.ok(s4 > 0 && s5 > s4);
+  assert.match(startup, /`git rev-list --count origin\/main\.\.main` が 0 でなければ\*\*何より先に\*\* `git push origin main`/);
+  assert.match(t, /squash 済みで配送の done が無い再開 \(`merge=hold` で止めた後など\) では、記録を配送の 6 まで遅らせ、配送の done と同じ commit に含める/);
+  assert.match(read(DELIVERY), /再開時 \(配送の done がある\) は作業 branch が main/);
 });
 
-test("還流: 還流 branch を切る前に最初の一覧を書き、git-delivery も push 済みの branch を消さない (差分レビュー 3 ラウンド目)", () => {
-  const fb = feedbackSection();
-  const list = fb.indexOf("未追跡ファイルの一覧を `<fb>/<issue>.untracked.txt` に書いてから");
-  const sw = fb.indexOf("`git switch -c <還流 branch> <base_head>`");
-  assert.ok(list > 0 && sw > list, "最初の一覧は branch を切る前");
-  const d = read(DELIVERY);
-  assert.match(d, /還流 branch は\*\*リモートに同じ名前の branch が無いときだけ\*\*消す/);
-  assert.doesNotMatch(d, /feature に戻って還流 branch を消す/);
+test('0.1.26: 旧形式の run は確認ページで聞き、d2-run が mark-legacy-delivered で印を付けて commit する', () => {
+  const d = deliverSection();
+  assert.match(d, /`legacy_order: true`/);
+  assert.match(d, /確認ページで人に聞く/);
+  assert.match(d, /`node runState\.js mark-legacy-delivered <run>`/);
+  assert.match(d, /`impl\(<slug>\): legacy delivered` で main に commit/);
+  assert.match(d, /\*\*main に切り替えて\*\* \(`git switch main`/);
+  assert.match(d, /`node runState\.js invalidate <run> feedback <理由>`/);
 });
 
-// 0.1.25: 止まった還流を理由つきで issue にする (0.1.24 の試し運転の G1。保留が配送を止め続けた)
-function stoppedSection() {
+test('0.1.26: 還流は main から worktree を切り、node_modules を symlink し、課題はそのまま読む (写さない)', () => {
   const fb = feedbackSection();
-  const i = fb.indexOf('### 止まったとき');
-  const j = fb.indexOf('### PR / issue を作れない実行');
-  assert.ok(i >= 0 && j > i);
-  return fb.slice(i, j);
-}
+  assert.match(fb, /配送の後、\*\*main の上で\*\*行う/);
+  assert.match(fb, /`git worktree add <wt> -b <還流 branch> main`/);
+  // 0.1.25 までのリポは .gitignore が worktree と symlink を無視しないので、作る前に確かめて止まる (差分レビュー 3 ラウンド目)
+  const check = fb.indexOf('git check-ignore -q --no-index .distillery/worktrees/x');
+  assert.ok(check > 0 && check < fb.indexOf('`git worktree add <wt> -b <還流 branch> main`'), 'worktree を作る前に ignore を確かめる');
+  assert.match(fb, /`genSkeleton\.js --migrate` を回して commit してから再開/);
+  assert.match(fb, /`node_modules`[^。]*symlink する/);
+  assert.match(fb, /課題は `<wt>\/\.distillery\/runs\/<slug>\/issues\/<file>\.md` をそのまま読む/);
+  assert.doesNotMatch(fb, /課題を `<fb>\/<issue>\.md` に写す/);
+  assert.doesNotMatch(fb, /untracked\.txt/);
+});
 
-test('還流 (0.1.25): 止まった課題は種類を問わず理由つきの issue にして feedback_filed。保留は照合・起票の失敗だけ', () => {
+test('0.1.26: ADR の commit が rules の再生成より前、--check は commit より前、main を壊さないことのゲート', () => {
+  const fb = feedbackSection();
+  const adrCommit = fb.indexOf('git commit -m "feedback(<slug>): adr"');
+  const rulesDispatch = fb.indexOf('sub d2-foundation `phase=rules`');
+  const rulesCheck = fb.indexOf('genRules.js --adr docs/adr --out docs/rules --check');
+  const rulesCommit = fb.indexOf('git commit -m "feedback(<slug>): rules"');
+  assert.ok(adrCommit > 0 && rulesDispatch > adrCommit && rulesCheck > rulesDispatch && rulesCommit > rulesCheck);
+  assert.match(fb, /受理の `--check` は\*\*生成物を commit する前に\*\*/);
+  // ゲート: rule は static だけ、contract は static と変えた契約を使う UC ごとの全段
+  assert.match(fb, /rule: `runGates\.js --uc <slug> --only static`/);
+  assert.match(fb, /\*\*変えた契約を使う UC ごとに\*\* `runGates\.js --uc <その UC> --tiers <その UC の use-cases\.yaml の tiers>` \(全段/);
+  const gate = fb.indexOf('**main を壊さないことのゲート**');
+  const merge = fb.indexOf('`git merge --ff-only <還流 branch>`');
+  assert.ok(gate > 0 && merge > gate, 'ゲートは main へ入れる前');
+});
+
+test('0.1.26: 確認ページを 1 回、merge=hold と受理済みの印、ff できなければ rebase せず作り直す', () => {
+  const fb = feedbackSection();
+  assert.match(fb, /\*\*確認ページを 1 回\*\*出す/);
+  assert.match(fb, /受理済みの印 `<fb>\/<issue>\.ready`/);
+  assert.match(fb, /引数が `merge=hold` なら止めて報告する \(worktree・還流 branch・受理済みの印と承認した sha は残す/);
+  assert.match(fb, /\*\*rebase しない\*\*/);
+  assert.match(fb, /git diff <approved の sha> <やり直した branch> -- <その本文>/);
+  assert.match(fb, /`<fb>\/<issue>\.approved` に書く/);
+  // 作り直しの途中の再開: approved と ready が違えば本文の比較をやり直す (差分レビュー 2 ラウンド目)
+  assert.match(fb, /approved の sha が ready の sha と違う \(作り直した後\) → 7 の本文の比較/);
+  assert.match(fb, /比較をせずに取り込まない/);
+  // 記録 (feedback_filed の commit) は worktree と branch を消す前 (差分レビュー 1 ラウンド目)
+  const rec = fb.indexOf('8. main の上で `feedback_filed');
+  const del = fb.indexOf('`git worktree remove <wt>` → `git branch -d <還流 branch>`');
+  assert.ok(rec > 0 && del > rec, '記録してから worktree と branch を消す');
+  assert.match(read(DELIVERY), /ff できなければ \*\*rebase しない\*\*/);
+});
+
+test('0.1.26: 止まったら worktree ごと捨て、理由つきの課題ファイルを main に入れて feedback_filed (保留にしない)', () => {
   const st = stoppedSection();
-  assert.match(st, /止まった課題は、種類を問わず\*\*理由を添えて issue にする\*\*/);
-  assert.match(st, /`feedback_filed \{kind, url, issue_path\}` を記録する \(`kind` は元の課題のまま/);
-  assert.match(st, /2 の照合か 3 の起票が失敗したら、issue を作らず `feedback_deferred \{kind, issue_path, reason\}`/);
-  // 保留が出てくるのは失敗時の 1 か所だけ
-  assert.equal((st.match(/feedback_deferred/g) || []).length, 1, '止まったときの保留は照合・起票の失敗だけ');
-  // 理由の表: 6 つの止まり方と、併発はすべて並べる
-  for (const re of [/結果ファイルが `blocked`/, /`absent` で、`targets` の名前がどれも開始点の契約に無い/, /`absent` だが、開始点の契約に名前が 1 つでもある/, /受理の検査で落ちた/, /write-set の外が変わった/, /結果ファイルが無い/]) assert.match(st, re);
+  assert.match(st, /`git worktree remove --force <wt>`/);
   assert.match(st, /成り立った理由は\*\*すべて\*\*並べ/);
-  // 還流節の冒頭の表にも行き先が出ている
+  for (const re of [/結果ファイルが `blocked`/, /受理の検査かゲートで落ちた/, /write-set の外が変わった/, /結果ファイルが無い/, /確認ページで取り込まないと答えた/]) assert.match(st, re);
+  assert.match(st, /`feedback_filed \{kind, ref: "docs\/feedback\/<issue>\.md", issue_path\}`/);
+  assert.doesNotMatch(st, /feedback_deferred/);
   const fb = feedbackSection();
-  assert.equal((fb.match(/派遣が止まったら理由つきの issue/g) || []).length, 2, 'rule と contract の行');
+  assert.match(fb, /`feedback_filed \{kind, ref, issue_path\}`/);
 });
 
-test('還流 (0.1.25): 重複を防ぐ印と照合、issue にしない 2 場面', () => {
-  const st = stoppedSection();
-  const search = st.indexOf('gh issue list --state all --search "distillery2-feedback: <slug>/<issue>"');
-  const create = st.indexOf('無ければ `gh issue create`');
-  assert.ok(search > 0 && create > search, '起票の前に印で照合する');
-  assert.match(st, /印の行 `distillery2-feedback: <slug>\/<issue>`/);
-  assert.match(st, /issue にしない場面は 2 つ/);
-  assert.match(st, /リモートの還流 branch とローカルの commit が違う/);
-  assert.match(st, /「一覧が無い \/ 消せないものがある」/);
+test('0.1.26: 要求を直すときは課題ファイルを main に入れて停止する (feature に混ぜない)', () => {
+  const t = read(SKILL);
+  const rev = t.slice(t.indexOf('## 人レビュー'), t.indexOf('## 配送 (deliver 段階)'));
+  assert.match(rev, /課題ファイルにして main に入れる/);
+  assert.match(rev, /`blocked_on_requirement`/);
+  const put = section(SKILL, '### 課題ファイルを main に入れる', '## 完了報告');
+  assert.match(put, /`git fetch \. feedback\/<slug>\/<issue>:main`/);
+  assert.match(put, /remote `origin` があれば `git push origin main`/);
+  assert.match(put, /`docs\/feedback\/<issue>\.md`/);
 });
 
-test('還流 (0.1.25): run-state と git-delivery も同じ条件', () => {
+test('0.1.26: run-state の feedback_filed は ref。feedback_deferred は旧記録だけ', () => {
   const rs = read(RUN_STATE);
-  assert.match(rs, /還流の派遣が止まった課題を理由つきの issue にしたときも同じイベント/);
-  assert.match(rs, /issue の照合 \(`gh issue list`\) か起票 \(`gh issue create`\) が失敗した/);
-  assert.doesNotMatch(rs, /還流の派遣が止まった \(ADR で表せない・検査で落ちた/);
-  const d = read(DELIVERY);
-  assert.match(d, /rule \/ contract は別 branch の PR か、派遣が止まったなら理由つきの issue/);
-  assert.match(d, /還流の派遣が止まった rule \/ contract は `rule:<issue_url>` \/ `contract:<issue_url>`/);
-  assert.match(d, /^- 派遣が止まった課題 .*は、止まった理由を添えて issue にする/m);
+  assert.match(rs, /\| feedback_filed \| 還流の記録。`\{kind, ref, issue_path\}`/);
+  assert.match(rs, /\| feedback_deferred \| \(0\.1\.25 までの記録だけ。0\.1\.26 からは書かない\)/);
+  assert.match(rs, /配送済みの正は `stages\/deliver\.done\.yaml`/);
 });

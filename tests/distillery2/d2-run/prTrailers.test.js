@@ -23,18 +23,14 @@ test('trailers are built from use-cases, gates.json, basis and events', () => {
   const run = rs.openRun(repo, 'register-loan');
   fs.writeFileSync(path.join(run, 'reports/gates.json'), JSON.stringify({ gates: [{ name: 'static', status: 'pass' }, { name: 'unit', status: 'pass' }] }));
   rs.appendEvent(run, 'review_approved', { assumption_decisions: [{ id: 'A-001', decision: 'confirmed' }, { id: 'A-002', decision: 'auto_confirmed' }] });
+  // 還流の記録は trailer に出さない (0.1.26: 還流は配送の後なので、squash commit の時点で記録が無い。旧記録が残っていても出さない)
   rs.appendEvent(run, 'feedback_filed', { kind: 'rule', url: 'https://example/pr/1' });
-  // 未起票の還流 (url なし / 空) は trailer に出さない
-  rs.appendEvent(run, 'feedback_filed', { kind: 'rule', url: null });
-  rs.appendEvent(run, 'feedback_filed', { kind: 'contract', url: '' });
-  // 保留 (feedback_deferred) も trailer に出さない。deliver 前に起票されて filed になったものだけが出る (0.1.19)
+  rs.appendEvent(run, 'feedback_filed', { kind: 'contract', ref: '0123abc', issue_path: 'issues/y.md' });
   rs.appendEvent(run, 'feedback_deferred', { kind: 'requirement', issue_path: 'issues/x.md', reason: 'headless' });
 
   const t = buildTrailers({ cwd: repo, runDir: run });
   const text = render(t);
-  assert.doesNotMatch(text, /Feedback: rule:null/);
-  assert.doesNotMatch(text, /Feedback: contract:$/m);
-  assert.equal((text.match(/^Feedback:/gm) || []).length, 1, 'url ありの 1 件だけ出す');
+  assert.doesNotMatch(text, /^Feedback/m, 'Feedback trailer は出さない');
   assert.match(text, /^UC: 貸出業務\/書籍を貸し出すフロー\/貸出を登録する$/m);
   assert.match(text, /^UC-Slug: register-loan$/m);
   assert.match(text, new RegExp(`^Basis-Requirements: ${sha}$`, 'm'));
@@ -45,7 +41,6 @@ test('trailers are built from use-cases, gates.json, basis and events', () => {
   assert.match(text, /^Gates: static=pass unit=pass$/m);
   assert.match(text, /^Assumptions: confirmed=1 auto=1 rejected=0$/m);
   assert.match(text, /^As-Built: docs\/as-built\/貸出業務\/貸出を登録する\/index.md$/m);
-  assert.match(text, /^Feedback: rule:https:\/\/example\/pr\/1$/m);
 
   // strict: gates.json covers only 2 gates → not deliverable
   const problems = strictProblems(t, repo);

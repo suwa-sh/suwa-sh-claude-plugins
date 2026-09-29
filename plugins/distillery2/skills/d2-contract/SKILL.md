@@ -98,12 +98,14 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
 6. **契約テスト生成**: `genContractTests.js --uc <slug>` と `genRdbDdl.js` を対象リポに対して実行する。
    契約テストはこの時点では todo か red (実装前だから)。生成物に `basis:` を付ける。
 
-## mode=feedback issue=&lt;課題の写し&gt; result=&lt;結果ファイル&gt; (段階④の還流)
+## mode=feedback issue=&lt;課題&gt; result=&lt;結果ファイル&gt; (段階④の還流)
 
-d2-run が還流用の branch (UC の開始点から切ったもの) の上で派遣する。実装で見つかった「契約の穴」(課題の front matter `kind: contract`) を直す。
-還流の branch には、いま実装中の UC が足した契約はまだ無い。
+作業ディレクトリは派遣文の worktree (`.distillery/worktrees/<slug>/<issue>`。main から切った還流 branch)。パスはすべてここからの相対で扱い、
+スクリプトもここで回す (結果ファイルだけは派遣文の本体のリポの絶対パスに書く)。
+d2-run が派遣する。実装で見つかった「契約の穴」(課題の front matter `kind: contract`) を直す。
+配送 (main への取り込み) の後に派遣されるので、この UC が足した契約も worktree にある。
 
-1. 課題の写しを読み、直す対象 (operationId・channel / message 名・テーブル名) を挙げる
+1. 課題を読み、直す対象 (operationId・channel / message 名・テーブル名) を挙げる
 2. **対象が今の branch の契約にあるか確かめる** (`contracts/openapi/` の operationId、`contracts/asyncapi/` の message、`contracts/db/domains/` のテーブル)。
    1 つでも無ければ**何も書かずに**、結果ファイルへ `status: absent`、無かった対象名を `targets` に書いて止まる
    (いま実装中の UC 自身の契約の穴。d2-run が開始点の契約と照合してから issue に切り替える)
@@ -112,14 +114,14 @@ d2-run が還流用の branch (UC の開始点から切ったもの) の上で�
    uc-index は変えない (UC が使う範囲は mode=uc の担当)
 5. 生成物を全部作り直す (この順): `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js` → `genContractTests.js` (`--uc` なし) → `genRdbDdl.js`
 6. 結果ファイルへ `status: applied`、`targets` (直した対象)、`reason` (1 行) を書く。完了報告には「他の UC への影響」として、
-   直した operation を使う UC (`uc-index.yaml` から) と、提供側の契約テストが red になりうる変更を operation 名で書く (d2-run が PR 本文に載せる)
+   直した operation を使う UC (`uc-index.yaml` から) と、提供側の契約テストが red になりうる変更を operation 名で書く (d2-run が確認ページと還流の commit の本文に載せる)
 
 結果ファイルは JSON 1 つ: `{"status": "applied" | "absent" | "blocked", "targets": [...], "reason": "..."}`。d2-run はこのファイルで分岐し、
 受理は各スクリプトの `--check` で行う (報告文では判断しない)。
 
 ## mode=feedback: 読むもの
 
-- 課題の写し `.distillery/logs/feedback/<slug>/<issue>.md` (派遣文で渡す)
+- 課題 `<run>/issues/<file>.md` (worktree の中。派遣文で渡す)
 - `contracts/**` (分割ファイル・`contracts/uc-index.yaml`)、`.distillery/config.yaml` (genContractTests / genRdbDdl が読む)
 
 ## mode=feedback: 書くもの

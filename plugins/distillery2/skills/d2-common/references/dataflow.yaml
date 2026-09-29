@@ -9,7 +9,7 @@
 # stores[].terminal: true = 最終成果物 (読み手を要求しない)
 # stores[].aliases: 手順書での略記 (照合に使う)
 # stores[].scope_only: true = 許可範囲を表すためだけの store (allowed_writes 専用。書き手・読み手を要求しない)
-# stores[].outside_repo: true = リポの外 (GitHub)。手順書のパス照合から外す
+# stores[].outside_repo: true = リポの外。手順書のパス照合から外す (0.1.26 で GitHub の PR / issue をやめ、いまは使っていない)
 # processes[].kind: subagent (派遣の単位) / orchestrator (d2-run 自身) / script (スクリプト) / llm (サブエージェントの中の LLM の作業。内訳として持つ)
 # processes[].phase: d2-foundation の phase。同じ phase を 2 回の派遣で回すとき (F7) は処理を 2 つ持ち、読み書きを同じにする (phase 表の 1 行と照合する)
 # processes[].stage: stages の id。d2-run の ④ の直接作業は段階をまたぐので `uc`
@@ -44,10 +44,10 @@ stages:
     name: ④ review
   - id: asbuilt
     name: ④ asbuilt
-  - id: feedback
-    name: ④ feedback
   - id: deliver
     name: ④ deliver
+  - id: feedback
+    name: ④ feedback
 
 store_groups:
   - id: input
@@ -76,8 +76,8 @@ store_groups:
     name: as-built
   - id: docs
     name: 文書の入口
-  - id: github
-    name: GitHub
+  - id: feedback-docs
+    name: 課題ファイル
 
 stores:
   # ---- 外部入力・同梱 ----
@@ -383,26 +383,29 @@ stores:
     origin: produced
     aliases:
       - ".distillery/runs/<slug>/issues/<ts>_<tier>_<slug>.md"
-  - id: feedback-issue-copy
-    name: 還流の課題の写し (branch を切り替えても読める。gitignore)
-    group: run
-    path: ".distillery/logs/feedback/<slug>/<issue>.md"
-    origin: produced
   - id: feedback-result
     name: 還流の派遣の結果 (applied / absent / blocked。gitignore)
     group: run
     path: ".distillery/logs/feedback/<slug>/<issue>.result.json"
     origin: produced
-  - id: feedback-untracked
-    name: 還流の派遣の直前の未追跡ファイル (後始末に使う。gitignore)
+  - id: feedback-ready
+    name: 還流の受理済みの印 (受理に通った還流 branch の sha。merge=hold の後の再開に使う。gitignore)
     group: run
-    path: ".distillery/logs/feedback/<slug>/<issue>.untracked.txt"
+    path: ".distillery/logs/feedback/<slug>/<issue>.ready"
     origin: produced
-  - id: feedback-issue-body
-    name: 止まった還流の issue の本文 (gitignore。gh issue create --body-file に渡す)
+  - id: feedback-approved
+    name: 還流の承認した sha (確認ページで取り込むと答えたときの還流 branch の先頭。作り直したときの比較と再開に使う。gitignore)
     group: run
-    path: ".distillery/logs/feedback/<slug>/<issue>.issue.md"
+    path: ".distillery/logs/feedback/<slug>/<issue>.approved"
     origin: produced
+  - id: worktrees
+    name: 還流の worktree (main から切る。取り込むか止まったら消す。gitignore)
+    group: run
+    path: ".distillery/worktrees/**"
+    origin: produced
+    terminal: true
+    aliases:
+      - ".distillery/worktrees/<slug>/<issue>/"
   - id: feedback-failed
     name: 止まった還流の差分 (gitignore)
     group: run
@@ -453,13 +456,14 @@ stores:
     path: "docs/README.md"
     origin: produced
     terminal: true
-  - id: github
-    name: GitHub (PR / issue)
-    group: github
-    path: "(GitHub)"
+  - id: feedback-docs
+    name: 課題ファイル (issue の代わり。0.1.27 で取り込む段階が消費して削除する)
+    group: feedback-docs
+    path: "docs/feedback/**"
     origin: produced
     terminal: true
-    outside_repo: true
+    aliases:
+      - "docs/feedback/<issue>.md"
 
 processes:
   # ================= ① 要求 =================
@@ -780,8 +784,8 @@ processes:
     kind: orchestrator
     actor: d2-run
     run_table_row: "④ の段階の進行・確認ページ・還流"
-    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feedback-result, feedback-untracked, feedback-issue-body]
-    writes: [run-events, use-cases, github, asbuilt-report, feedback-issue-copy, feedback-failed, feedback-untracked, feedback-issue-body]
+    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feedback-result, feedback-ready, feedback-approved]
+    writes: [run-events, use-cases, asbuilt-report, feedback-docs, worktrees, feedback-ready, feedback-approved, feedback-failed]
   - id: run.uc.check-scenario
     name: シナリオの静的確認
     parent: run.uc
@@ -873,7 +877,7 @@ processes:
     reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules]
     writes: [docs-readme]
   - id: run.uc.deliver
-    name: 配送 (squash・PR)
+    name: 配送 (squash・main への取り込み)
     parent: run.uc
     stage: uc
     kind: script
@@ -881,8 +885,8 @@ processes:
     scripts: [prTrailers.js]
     run_table_row: "④ の prTrailers.js と配送"
     reads: [use-cases, reports, run-events]
-    writes: [github, reports]
-  # ---- ④ 還流の受理 (d2-run が還流 branch の上で、生成物を commit する前に回す。読むだけ) ----
+    writes: [reports]
+  # ---- ④ 還流の受理 (d2-run が還流の worktree で、生成物を commit する前に回す。読むだけ) ----
   - id: run.uc.validate-adr
     name: 還流の ADR の検証
     parent: run.uc
@@ -933,7 +937,7 @@ processes:
     run_table_row: "④ の genRdbDdl.js --check (還流の受理)"
     reads: [contracts-src, config, migrations, contract-tests, contracts-code]
     writes: []
-  # ================= ④ 還流 (d2-run が還流 branch の上で派遣する) =================
+  # ================= ④ 還流 (d2-run が main から切った worktree で派遣する。作業ディレクトリは worktree、パスはそこからの相対) =================
   - id: decide.feedback
     name: 還流の ADR
     skill: d2-decide
@@ -941,7 +945,7 @@ processes:
     stage: feedback
     kind: subagent
     template_row: "④ 還流 (ADR)"
-    reads: [feedback-issue-copy, adr]
+    reads: [issues, adr]
     writes: [adr, feedback-result]
     allowed_writes: [adr-dir, feedback-result]
     scripts: [validateAdr.js, genAdrIndex.js]
@@ -977,7 +981,7 @@ processes:
     stage: feedback
     kind: subagent
     template_row: "④ 還流 (契約)"
-    reads: [feedback-issue-copy, contracts-src, uc-index, config]
+    reads: [issues, contracts-src, uc-index, config]
     writes: [contracts-src, contract-tests, migrations, contracts-code, feedback-result]
     allowed_writes: [contracts-src, contract-tests, migrations, contracts-code, feedback-result]
     scripts: [compileContracts.js, compileRdbSchema.js, validateUcIndex.js, genContractTests.js, genRdbDdl.js]

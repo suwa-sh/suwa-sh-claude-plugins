@@ -15,7 +15,8 @@
  *   node runState.js open <root> <slug>
  *   node runState.js event <runDir> <type> [json]
  *   node runState.js done <runDir> <stage> [json]
- *   node runState.js status <runDir> [--json]     (pending_feedback = 起票されていない還流)
+ *   node runState.js status <runDir> [--json]     (pending_feedback = 起票されていない還流、legacy_order = 0.1.25 までの順の run)
+ *   node runState.js mark-legacy-delivered <runDir>   (0.1.25 までに PR で配送済みの run に deliver の done を作る。人が確認ページで配送済みと答えたときだけ)
  *   node runState.js invalidate <runDir> <stage> <reason>
  *   node runState.js invalidate <runDir> <stage> <reason> --from   (その段階と後ろの段階をまとめて退避)
  *   node runState.js return-to-integrate <runDir> '{"instrumentation_gaps":[...],"instrumentation_happy_gaps":[...]}'   (as-built から integrate へ戻す)
@@ -26,7 +27,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { parseYaml, stringifyYaml } = require('./yaml');
 
-const STAGES = ['scenario', 'contract', 'scaffold', 'tier', 'contract-gate', 'integrate', 'verify', 'review', 'asbuilt', 'feedback', 'deliver'];
+// 0.1.26: 配送 (main への取り込み) を還流の前にした。還流は main から切るので、この UC の契約・課題・run がそろっている
+const STAGES = ['scenario', 'contract', 'scaffold', 'tier', 'contract-gate', 'integrate', 'verify', 'review', 'asbuilt', 'deliver', 'feedback'];
 
 function nowIso() { return new Date().toISOString(); }
 function ts() { return nowIso().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '_'); }
@@ -144,33 +146,84 @@ function issueKey(p) {
   return i >= 0 ? s.slice(i) : s;
 }
 
+/** feedback_filed の行き先。0.1.26 からは `ref` (main に入った commit の sha か `docs/feedback/<file>.md`)、0.1.25 までは `url` (PR / issue) */
+function filedTarget(e) {
+  for (const k of ['ref', 'url']) if (e[k] != null && String(e[k]).trim() !== '') return String(e[k]).trim();
+  return null;
+}
+
 /**
- * 起票されていない還流 (保留) の一覧。deliver の前にこれが空であることを確かめる。
+ * 起票されていない還流 (保留) の一覧 (0.1.25 までの記録を読むため。0.1.26 からは保留を新しく書かない)。
  * - 保留: `feedback_deferred {kind, issue_path, reason}`。0.1.18 以前の記録の `feedback_filed` で url が空のもの (`issue` をパスとみなす) も保留として数える
- * - 解消: 同じ issue パスの url 付き `feedback_filed`
+ * - 解消: 同じ issue パスの、行き先 (ref か url) 付き `feedback_filed`
  * issue パスが無い保留は照合できないので、解消されないまま残す (人が見て判断する)。
  */
 function pendingFeedback(runDir) {
   const pending = new Map();
   for (const e of readEvents(runDir)) {
-    const hasUrl = e.url != null && String(e.url).trim() !== '';
+    const filed = filedTarget(e) != null;
     const key = issueKey(e.issue_path != null ? e.issue_path : e.issue);
-    if (e.type === 'feedback_deferred' || (e.type === 'feedback_filed' && !hasUrl)) {
+    if (e.type === 'feedback_deferred' || (e.type === 'feedback_filed' && !filed)) {
       pending.set(key || `(no issue path)#${e.seq}`, { seq: e.seq, kind: e.kind || null, issue_path: key, reason: e.reason || null });
-    } else if (e.type === 'feedback_filed' && hasUrl && key) {
+    } else if (e.type === 'feedback_filed' && filed && key) {
       pending.delete(key);
     }
   }
   return [...pending.values()];
 }
 
+/** 起票済みの issue パス (行き先付きの feedback_filed)。還流の段階で、課題ごとに済みかを見る */
+function filedIssues(runDir) {
+  const filed = new Set();
+  for (const e of readEvents(runDir)) {
+    const key = issueKey(e.issue_path != null ? e.issue_path : e.issue);
+    if (e.type === 'feedback_filed' && key && filedTarget(e) != null) filed.add(key);
+  }
+  return [...filed].sort();
+}
+
+/**
+ * 0.1.25 までの順 (還流 → 配送) の run か。還流の done があり配送の done が無い。
+ * PR で配送した UC は git だけでは配送済みか判定できない (GitHub の squash merge は feature の commit を main の祖先にしない) ので、
+ * status は次の段階を出さず、d2-run が人に聞く。
+ */
+function isLegacyOrder(runDir) {
+  if (!isDone(runDir, 'feedback')) return false;
+  if (!isDone(runDir, 'deliver')) return true;
+  // mark-legacy-delivered が配送の done を作った後、還流の done の退避の前に止まった中間状態も旧形式として扱う (もう一度 mark すれば完了する)
+  const d = readDone(runDir, 'deliver');
+  return Boolean(d && d.legacy) && unfiledIssues(runDir).length > 0;
+}
+
+/** issues/*.md のうち起票済み (filedIssues) でないもの。run ディレクトリ相対 (`issues/<file>.md`) */
+function unfiledIssues(runDir) {
+  const dir = path.join(runDir, 'issues');
+  if (!fs.existsSync(dir)) return [];
+  const filed = new Set(filedIssues(runDir));
+  return fs.readdirSync(dir).filter(f => f.endsWith('.md')).map(f => `issues/${f}`).filter(k => !filed.has(k)).sort();
+}
+
+/**
+ * 人が確認ページで「配送済み」と答えた旧形式の run に、deliver の done (legacy: true) を作る。
+ * 起票済みでない課題が残っていれば (0.1.25 までの headless 実行は還流を保留にしていた)、旧形式の feedback の done を退避して、
+ * 新しい還流段階で処理し直せるようにする (起票済みの旧記録 url はそのまま数える)
+ */
+function markLegacyDelivered(runDir) {
+  if (!isLegacyOrder(runDir)) throw new Error('旧形式の順の run ではない (feedback の done があり deliver の done が無い run と、その印付けの途中で止まった run だけ)');
+  const deliver = isDone(runDir, 'deliver') ? readDone(runDir, 'deliver') : markDone(runDir, 'deliver', { legacy: true });
+  const unfiled = unfiledIssues(runDir);
+  const reopened = unfiled.length ? invalidate(runDir, 'feedback', `旧形式の run で起票されていない課題が ${unfiled.length} 件ある: ${unfiled.join(', ')}`) : null;
+  return { ...deliver, feedback_reopened: Boolean(reopened), unfiled_issues: unfiled };
+}
+
 function status(runDir) {
   const events = readEvents(runDir);
   const stages = {};
   for (const s of STAGES) stages[s] = isDone(runDir, s) ? 'done' : 'pending';
-  const next = STAGES.find(s => stages[s] === 'pending') || null;
+  const legacy = isLegacyOrder(runDir);
+  const next = legacy ? null : (STAGES.find(s => stages[s] === 'pending') || null);
   const last = events[events.length - 1] || null;
-  return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, events: events.length, last_event: last, pending_feedback: pendingFeedback(runDir) };
+  return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, legacy_order: legacy, events: events.length, last_event: last, pending_feedback: pendingFeedback(runDir), filed_issues: filedIssues(runDir) };
 }
 
 function main(argv) {
@@ -191,12 +244,13 @@ function main(argv) {
       }
       console.log(invalidate(path.resolve(args[0]), args[1], args.slice(2).join(' ')) || 'not done'); return 0;
     }
+    case 'mark-legacy-delivered': console.log(JSON.stringify(markLegacyDelivered(path.resolve(args[0])))); return 0;
     case 'return-to-integrate': console.log(JSON.stringify(returnToIntegrate(path.resolve(args[0]), args[1] ? JSON.parse(args[1]) : {}))); return 0;
     case 'status': {
       const s = status(path.resolve(args[0]));
       if (json) console.log(JSON.stringify(s, null, 2));
       else {
-        console.log(`run: ${s.slug} attempt=${s.attempt} next=${s.next_stage || '(all done)'}`);
+        console.log(`run: ${s.slug} attempt=${s.attempt} next=${s.legacy_order ? '(旧形式の順: 配送済みか人に確かめる)' : (s.next_stage || '(all done)')}`);
         for (const [k, v] of Object.entries(s.stages)) console.log(`  ${v === 'done' ? '[x]' : '[ ]'} ${k}`);
         if (s.pending_feedback.length) {
           console.log(`pending feedback (起票されていない還流): ${s.pending_feedback.length}`);
@@ -205,10 +259,10 @@ function main(argv) {
       }
       return 0;
     }
-    default: console.error('Usage: runState.js open|event|done|invalidate|return-to-integrate|status ...'); return 2;
+    default: console.error('Usage: runState.js open|event|done|invalidate|return-to-integrate|mark-legacy-delivered|status ...'); return 2;
   }
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, status };
+module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status };
