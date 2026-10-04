@@ -280,7 +280,7 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `docs/adr/*.md`<br>`skills/d2-foundation/references/rule-templates/**`<br>`skills/d2-foundation/templates/**`<br>`contracts/contracts.json`<br>`.distillery/config.yaml`<br>`package.json`<br>`package-lock.json`<br>`.qlty/qlty.toml` | `docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`packages/test-support/**`<br>`features/support/**`<br>`cucumber.js`<br>`tsx-register.js`<br>`.distillery/config.yaml`<br>`package.json`<br>`.github/workflows/**`<br>`.qlty/qlty.toml`<br>`package-lock.json` |
+| `docs/adr/*.md`<br>`<skills>/d2-foundation/references/rule-templates/**`<br>`<skills>/d2-foundation/templates/**`<br>`contracts/contracts.json`<br>`.distillery/config.yaml`<br>`package.json`<br>`package-lock.json`<br>`.qlty/qlty.toml` | `docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`packages/test-support/**`<br>`features/support/**`<br>`cucumber.js`<br>`tsx-register.js`<br>`.distillery/config.yaml`<br>`package.json`<br>`.github/workflows/**`<br>`.qlty/qlty.toml`<br>`package-lock.json` |
 
 | 内訳 | 読む | 書く |
 |---|---|---|
@@ -777,7 +777,7 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `docs/feedback/**`<br>`docs/adr/*.md`<br>`skills/d2-foundation/references/rule-templates/**`<br>`contracts/**`<br>`.distillery/config.yaml`<br>`.distillery/logs/feedback/<b>/**` | `.distillery/worktrees/**`<br>`.distillery/logs/feedback/<b>/**`<br>`.distillery/logs/feedback/<b>/<issue>.failed.diff`<br>`docs/feedback/**`<br>`docs/adr/*.md`<br>`docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`contracts/contracts.json`<br>`contracts/generated/slices/<slug>/**`<br>`apps/*/test/contract/**`<br>`packages/contracts/**`<br>`apps/<tier>/migrations/**`<br>`docs/README.md`<br>`docs/feedback/README.md` |
+| `docs/feedback/**`<br>`docs/adr/*.md`<br>`<skills>/d2-foundation/references/rule-templates/**`<br>`contracts/**`<br>`.distillery/config.yaml`<br>`.distillery/logs/feedback/<b>/**` | `.distillery/worktrees/**`<br>`.distillery/logs/feedback/<b>/**`<br>`.distillery/logs/feedback/<b>/<issue>.failed.diff`<br>`docs/feedback/**`<br>`docs/adr/*.md`<br>`docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`contracts/contracts.json`<br>`contracts/generated/slices/<slug>/**`<br>`apps/*/test/contract/**`<br>`packages/contracts/**`<br>`apps/<tier>/migrations/**`<br>`docs/README.md`<br>`docs/feedback/README.md` |
 
 #### 還流のゲート (課題ごとの static と最後のゲート)
 
@@ -1138,8 +1138,8 @@ flowchart LR
 | ファイル | ファイル群 | パス | 由来 | 書く処理 | 読む処理 |
 |---|---|---|---|---|---|
 | 要望テキスト | 要望 (外部入力) | `<要望テキスト>` | 外部入力 | — | 要求の整理 |
-| ルールのひな形 (同梱) | 同梱のひな形と手順書 | `skills/d2-foundation/references/rule-templates/**` | プラグイン同梱 | — | 基盤の生成 (F1→F2→F3→F5→F7)、F1 ルール、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) |
-| テスト基盤のひな形 (同梱) | 同梱のひな形と手順書 | `skills/d2-foundation/templates/**` | プラグイン同梱 | — | 基盤の生成 (F1→F2→F3→F5→F7)、F3 テスト基盤 |
+| ルールのひな形 (同梱) | 同梱のひな形と手順書 | `<skills>/d2-foundation/references/rule-templates/**` | プラグイン同梱 | — | 基盤の生成 (F1→F2→F3→F5→F7)、F1 ルール、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) |
+| テスト基盤のひな形 (同梱) | 同梱のひな形と手順書 | `<skills>/d2-foundation/templates/**` | プラグイン同梱 | — | 基盤の生成 (F1→F2→F3→F5→F7)、F3 テスト基盤 |
 | スキルの手順書 (同梱) | 同梱のひな形と手順書 | `<skills>/**` | プラグイン同梱 | — | 独立検証 |
 | 要求 (USDM) | 要求 | `docs/requirements/requirements.yaml` | 生成 | 要求の整理 | 品質特性と設計の決定、UC シナリオの執筆、ティアの実装、独立検証、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、シナリオの静的確認、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
 | RDRA モデル | 要求 | `docs/requirements/rdra/**` | 生成 | 要求の整理 | 品質特性と設計の決定、デザインシステムの生成、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、UC シナリオの執筆、契約の差分、ティアの実装、独立検証、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |

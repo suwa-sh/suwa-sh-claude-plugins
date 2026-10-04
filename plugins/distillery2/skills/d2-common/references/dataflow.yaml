@@ -87,14 +87,14 @@ stores:
   - id: rule-templates
     name: ルールのひな形 (同梱)
     group: packaged
-    path: "skills/d2-foundation/references/rule-templates/**"
+    path: "<skills>/d2-foundation/references/rule-templates/**"
     origin: packaged
     aliases:
       - "references/rule-templates/"
   - id: support-templates
     name: テスト基盤のひな形 (同梱)
     group: packaged
-    path: "skills/d2-foundation/templates/**"
+    path: "<skills>/d2-foundation/templates/**"
     origin: packaged
     aliases:
       - "templates/test-support/"

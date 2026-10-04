@@ -82,6 +82,12 @@ test('0.1.29: 手順書に CLAUDE_PLUGIN_ROOT は d2-common の「パスの書�
         const n = (text.match(/CLAUDE_PLUGIN_ROOT/g) || []).length;
         if (n) hits.push(`${path.relative(plugin, p)}:${n}`);
         for (const m of text.matchAll(/<skills>\/([a-z0-9-]+)\//g)) if (!skills.includes(m[1])) unknown.add(`${path.relative(plugin, p)}: ${m[1]}`);
+        // 置き換え変数や glob を含まない具体のパスは、skills の下に実在する (派遣文の固定指示など。差分レビュー 2 ラウンド目)
+        for (const m of text.matchAll(/<skills>\/([A-Za-z0-9_./-]+)/g)) {
+          const rel = m[1].replace(/[.,:)]+$/, '');
+          if (/[<>*{}]|\.\.\./.test(rel) || rel.endsWith('/')) continue;
+          if (!fs.existsSync(path.join(plugin, 'skills', rel))) unknown.add(`${path.relative(plugin, p)}: <skills>/${rel} が無い`);
+        }
       }
     }
   })(path.join(plugin, 'skills'));
