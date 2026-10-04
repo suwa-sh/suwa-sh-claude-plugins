@@ -387,6 +387,8 @@ test('0.1.29: 文言の穴 (モデル ID の流用・フル sha・旧形式は�
   const d = deliverSection();
   assert.match(d, /常に退避してから `-D`/);
   assert.doesNotMatch(d, /祖先でないので `-d` は拒まれる/);
+  assert.match(read(DELIVERY), /祖先でないことがあり `-d` では消せないので、常に退避してから `-D`/, 'git-delivery も同じ説明 (差分レビュー 3 ラウンド目)');
+  assert.doesNotMatch(read(DELIVERY), /祖先でなく、`-d` は拒まれる/);
   const r = section(SKILL, '### 要求の差分', '## ② 決定');
   assert.match(r, /`node <skills>\/d2-common\/scripts\/lib\/basis\.js check <対象ファイル…> requirements=docs\/requirements adr=docs\/adr contracts=contracts`/);
   assert.match(r, /as-built がまだ無ければ省く/);

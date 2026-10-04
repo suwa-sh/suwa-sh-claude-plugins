@@ -69,7 +69,7 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 手順の正本は SKILL.md の配送節「旧形式の run」。git の約束だけを書く。
 
 - 人が「配送済み」と答えたら main の上で `runState.js mark-legacy-delivered` → `impl(<slug>): legacy delivered` で commit する
-- 残っている `feature/<slug>` は `git update-ref refs/distillery2/legacy/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。PR は squash merge なので feature は main の祖先でなく、`-d` は拒まれる。
+- 残っている `feature/<slug>` は `git update-ref refs/distillery2/legacy/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。squash merge で入れた feature は main の祖先でないことがあり `-d` では消せないので、常に退避してから `-D` (0.1.28 の試し運転では祖先だった)。
   退避先を要求の差分の `abandoned/` と分けるのは、捨てた理由が違うため (配送済み vs 要求が変わった)
 
 ## commit trailer
