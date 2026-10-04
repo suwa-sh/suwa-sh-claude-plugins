@@ -9,7 +9,7 @@
  *   input-yaml : requirements.yaml のパス (既定 docs/requirements/requirements.yaml)
  *   output-md  : 省略時は入力と同じディレクトリの requirements.md
  *
- * npm 依存なし。共有ライブラリ (../../../scripts/lib) の parseYaml を使う。
+ * npm 依存なし。共有ライブラリ (../../d2-common/scripts/lib) の parseYaml を使う。
  */
 'use strict';
 

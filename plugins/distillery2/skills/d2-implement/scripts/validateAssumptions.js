@@ -13,7 +13,7 @@
  * 正本: skills/d2-implement/references/assumption-record.md
  *       skills/d2-verify/references/viewpoints.md (assumption_conformance)
  * 出力: stdout に JSON 1 行。ok=false なら exit 1。
- * 依存: Node 18+ 標準モジュールのみ(YAML は scripts/lib/yaml.js)。
+ * 依存: Node 18+ 標準モジュールのみ(YAML は d2-common/scripts/lib/yaml.js)。
  */
 
 const crypto = require('node:crypto');

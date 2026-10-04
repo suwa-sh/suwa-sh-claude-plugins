@@ -13,7 +13,7 @@
  *   requirements.yaml は spec_ids 実在チェックの正本。無い/読めない場合は省略せず exit 2。
  *
  * 終了コード: 0 = PASS / 1 = エラー / 2 = 読み込み失敗 (use-cases/requirements の不在・解析不能)
- * npm 依存なし。共有ライブラリ (../../../scripts/lib) のみ使用。
+ * npm 依存なし。共有ライブラリ (../../d2-common/scripts/lib) のみ使用。
  */
 'use strict';
 

@@ -10,7 +10,7 @@
  *   node validateRequirements.js docs/requirements/requirements.yaml
  *
  * 終了コード: 0 = PASS / 1 = バリデーションエラー / 2 = 読み込み失敗
- * npm 依存なし。共有ライブラリ (../../../scripts/lib) のみ使用。
+ * npm 依存なし。共有ライブラリ (../../d2-common/scripts/lib) のみ使用。
  */
 'use strict';
 

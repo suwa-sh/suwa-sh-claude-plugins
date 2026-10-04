@@ -21,7 +21,7 @@
  *   node genUseCases.js [requirements.yaml] [BUC.tsv] [out.yaml]
  *   既定: docs/requirements/requirements.yaml  docs/requirements/rdra/BUC.tsv  docs/requirements/use-cases.yaml
  *
- * npm 依存なし。共有ライブラリ (../../../scripts/lib) のみ使用。
+ * npm 依存なし。共有ライブラリ (../../d2-common/scripts/lib) のみ使用。
  */
 'use strict';
 

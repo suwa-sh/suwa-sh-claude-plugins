@@ -2,7 +2,7 @@
 /**
  * validateNfrGrade.js (distillery2)
  *
- * docs/nfr/nfr-grade.yaml を検証する。共有ライブラリ (scripts/lib) を使う。
+ * docs/nfr/nfr-grade.yaml を検証する。共有ライブラリ (d2-common/scripts/lib) を使う。
  *
  * Usage:
  *   node validateNfrGrade.js <path-to-nfr-grade.yaml> [--json]

@@ -30,7 +30,7 @@
  *
  * Usage:
  *   node extractAsBuilt.js --run <runDir> [--cwd <repo>] [--config <path>] [--docs-root <dir>] [--depcruise <path>] [--changed <file>]
- * npm 依存なし。共有ライブラリ (../../../scripts/lib) のみ。
+ * npm 依存なし。共有ライブラリ (../../d2-common/scripts/lib) のみ。
  */
 'use strict';
 

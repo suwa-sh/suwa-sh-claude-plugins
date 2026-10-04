@@ -103,6 +103,10 @@ function checkLayout(skillsDir, label) {
   for (const p of walkJs(skillsDir)) {
     const r = spawnSync(process.execPath, ['--check', p], { encoding: 'utf8' });
     if (r.status !== 0) problems.push(`${label}: ${path.relative(skillsDir, p)}: ${r.stderr.split('\n')[0]}`);
+    // 実際に読み込む (子プロセス。CLI の main は require.main の判定で走らない)。相対 require の解決失敗・構文・参照エラーだけを失敗とし、
+    // 外部モジュール (redocly など対象リポの依存) が無い失敗は許す
+    const load = spawnSync(process.execPath, ['-e', "try { require(process.argv[1]); } catch (e) { const m = String(e && e.stack || e); if (/Cannot find module '(\\.|\\/)/.test(m) || /SyntaxError|ReferenceError|TypeError/.test(m)) { console.error('LAYOUT-LOAD-FAIL: ' + m.split('\\n')[0]); process.exit(1); } }", p], { encoding: 'utf8', cwd: os.tmpdir(), timeout: 20000 });
+    if (load.status === 1 && /LAYOUT-LOAD-FAIL/.test(load.stderr)) problems.push(`${label}: ${path.relative(skillsDir, p)}: ${load.stderr.trim().split('\n')[0]}`);
     const text = fs.readFileSync(p, 'utf8');
     for (const m of text.matchAll(/require\((['"])(\.[^'"]+)\1\)/g)) {
       const target = path.resolve(path.dirname(p), m[2]);

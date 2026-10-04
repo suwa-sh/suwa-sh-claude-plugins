@@ -367,7 +367,7 @@ test('0.1.27: run-state の feedback_filed は課題ファイルにした記録�
 
 test('0.1.29: 手順書のパスは <skills>/ 記法。各 SKILL.md が d2-common の「パスの書き方」を参照し、CLAUDE_PLUGIN_ROOT は d2-common の 1 か所だけ', () => {
   const common = read('skills/d2-common/SKILL.md');
-  assert.match(common, /## パスの書き方/);
+  assert.match(common, /^## パスの書き方$/m, '節名は固定 (各スキルがこの名前で参照する)');
   assert.match(common, /`<skills>` = スキル群のディレクトリ \(このスキルの `SKILL\.md` がある場所の 1 つ上\)/);
   assert.match(common, /`<skills>` = `\$\{CLAUDE_PLUGIN_ROOT\}\/skills`/);
   assert.match(common, /`<skills>` = `~\/\.agents\/skills`/);
@@ -394,6 +394,7 @@ test('0.1.29: 文言の穴 (モデル ID の流用・フル sha・旧形式は�
   const fb = feedbackSection();
   assert.match(fb, /`FB record-gate --result pass` \(通ったとき。`--detail` は付けない\) か `FB record-gate --result fail --detail <落ちたゲートの出力のファイル>`/);
   assert.match(fb, /検査は 1 コマンドずつ回す \(1 つの sh にまとめない/);
+  assert.match(t, /\*\*関与ティアの決め方\*\*[^\n]*`--tiers` にはカンマ区切りで渡す。例 `--tiers frontend,backend-api`/, '④ の正本にも区切り文字 (差分レビュー 1 ラウンド目)');
   assert.match(read(DELIVERY), /"squash":"<フル sha>"[^|]*sha は短縮しない/);
   assert.match(read('skills/d2-run/references/troubleshooting.md'), /0\.1\.28 の試し運転でも `genDocsReadme\.js; echo exit=\$\?`/);
 });
