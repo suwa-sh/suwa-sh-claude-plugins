@@ -2,6 +2,43 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.27] - 2026-10-04
+
+課題ファイル (`docs/feedback/`) の循環を閉じた。UC は配送で終わり、溜まった課題は次の UC の前に、要求の差分と還流がまとめて片付けて消す (todo ④ の 2 版目)。
+
+### Changed
+
+- 還流を UC の外の独立した段階にした (`/distillery2:d2-run stage=feedback`、または自動選択)。ルール・契約の課題を worktree 1 つ (`.distillery/worktrees/feedback`) と branch 1 本 (`feedback/<b>`) でまとめて直し、
+  ゲート・確認ページ・main への取り込みを 1 回ずつにした。0.1.26 の「2 件目以降の還流が必ず作り直しになる」問題 (試し運転の J1) と、`merge=hold` だと還流に届かない問題 (J8) が消えた
+- 還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み・再開の判定) を新しいスクリプト `scripts/feedbackBatch.js` にした。d2-run はサブコマンドを呼び、JSON と終了コードで判断する
+- 課題の commit には原本 (番号付きの ADR・契約の分割ファイル) だけを入れ、生成物は最後に「ADR の索引」→「ルールと契約の生成物」の 2 commit で作り直す (索引を同じ commit にするとルールの basis が commit 直後から古くなるため)。
+  課題を外す・取り下げる・main が進んだときは、main の先端から原本の commit を cherry-pick して組み直す (0.1.26 の「rebase しない」を置き換えた)
+- ゲート: 課題ごとの commit の直後に static (run 名 `d2-feedback`)。最後に 1 回 (ルールは static、契約は static と変えた契約を使う UC ごとの全段)。合否は branch の先頭の sha と一緒に記録し、一致しなければ取り込まない。落ちても原因を推測で外さず、確認ページで人に見せる
+- 止まった課題は課題ファイルに書き足して残す (`stopped: true`・`stopped_count`・題名の頭に「止まった: 」(J10)・止まった理由と差分の中身)。次の還流で再挑戦し、2 回目以上は確認ページで「取り下げる / 残す」を聞く。止まった課題だけでは還流も要求の差分も始めない
+- 要求の課題は、次の UC の前に要求の段階が差分で反映する (一括承認。外す課題は変更を捨ててやり直す)。要求で止まった UC の feature は `refs/distillery2/abandoned/` に退避し、UC は main から新しい run でやり直す
+- 取り込んだ記録は commit の trailer (`Feedback-Consumed:` / `Feedback-Dismissed:` / `Feedback-Result:` / `Feedback-Stopped:`)。UC の run のイベントには書かない
+- 契約の分割ファイルに差分が無い契約の課題は「取り込み済み」として確認なしで消す (J6)
+- 起動時の段階の選び方: 進行中の UC → (main に切り替えて) 未 push の push → 途中の還流 → 要求の差分 → 還流 → 次の UC。要求の差分と還流は進行中の UC があれば止まる (main を進めると UC の配送が ff できなくなるため)
+- UC の段階から `feedback` を外した (`runState.js` の `STAGES` の末尾は `deliver`)。配送の squash の前に `feedbackBatch.js file-issues` が UC の課題を課題ファイルにし、`unfiled_issues` が空でないと配送しない
+- review で「要求を直す」ときの一時 branch を `feedback-req/<slug>/<issue>` にした (`feedback/` は還流のバッチ専用)
+- d2-foundation の `phase=rules` をやめた (還流のルールの作り直しは feedbackBatch が F1・F2 のスクリプトを直接回す)
+- genDocsReadme: `docs/README.md` に「未処理の課題」の節 (件数と種類ごとの内訳と一覧へのリンクだけ) を出し、一覧 `docs/feedback/README.md` を生成する (0 件なら消す)。`docs/feedback/` を「distillery2 以外の文書」に並べなくした (J11)
+- 手順書のコマンド例を `git -C <dir>` にそろえ、headless の許可で止まる書き方 (`$VAR`・`$?`・`cd <dir> && git`) を troubleshooting に書いた (J9)
+
+### Added
+
+- `scripts/feedbackBatch.js` (サブコマンド: `file-issues` / `scan` / `hold` / `start` / `status` / `commit-issue` / `regen` / `discard` / `record-static` / `stop-issue` / `finalize` / `record-gate` / `decide` / `rebuild` / `merge`) と、使い捨ての git リポジトリでの統合テスト
+- `runState.js status` の `unfiled_issues` (課題ファイルにしていない課題。表示にも出す。J5)
+
+### Removed
+
+- 課題ごとの worktree・還流 branch・受理済みの印 (`.ready`)・承認した sha (`.approved`) (J3)。還流の done の書き方の手順 (J4。還流は UC の段階ではなくなった)
+
+### Migration
+
+- 0.1.26 で配送して還流を終えていない run (`merge=hold` で止めた run など) の課題は、還流の最初に `feedbackBatch.js file-issues` で課題ファイルにする (自動)。0.1.26 の run が持つ `feedback.done.yaml` は読まない
+- 0.1.26 の手順で作った `docs/feedback/` の課題ファイルはそのまま使える (止まった課題の `stopped: true` も読む)
+
 ## [0.1.26] - 2026-09-30
 
 PR / issue (GitHub の `gh`) をやめ、配送と還流を git とファイルだけで完結させた。GitHub 以外のホスト (GitLab など) や remote の無いリポでも同じ手順で最後まで進む。

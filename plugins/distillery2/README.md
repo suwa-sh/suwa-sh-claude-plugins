@@ -23,9 +23,12 @@ v2 は成果物を 3 つに分ける。
         ┌────────────────────────────────────────┘
         ▼  UC ごとに繰り返す
   シナリオ (人が承認) → 契約差分 → 足場 → ティア実装 (並列) → ゲート (安い順) → 別モデル検証 (2 観点)
-  → 人レビュー → as-built 抽出 → 1 commit に squash して main へ取り込む
-  → 還流 (rule / contract は worktree で直して承認後に main へ、requirement と止まったものは課題ファイル docs/feedback/)
-  (PR / issue は作らない。git とファイルだけで完結し、GitHub 以外のホストや remote の無いリポでも動く)
+  → 人レビュー → as-built 抽出 → 課題を課題ファイル docs/feedback/ にして、1 commit に squash して main へ取り込む
+        │
+        ▼  次の UC の前に、溜まった課題を片付ける
+  要求の差分 (要求の課題を要求に反映) → 還流 (ルール・契約の課題を worktree 1 つでまとめて直し、確認ページの後に main へ)
+  (PR / issue は作らない。git とファイルだけで完結し、GitHub 以外のホストや remote の無いリポでも動く。
+   片付いていない課題は docs/README.md の件数 → docs/feedback/README.md の一覧 → 課題ファイルの順に辿れる)
 ```
 
 ゲートは 静的 → 単体 → 契約 → UC BDD (API 面) → 受入 (タグ絞り込み、`@browser` はブラウザドライバ) の順。落ちたゲートで止まる。
@@ -36,10 +39,10 @@ v2 は成果物を 3 つに分ける。
 |---|---|
 | `distillery2:d2-run` | オーケストレータ。通常はこれだけ呼ぶ |
 | `distillery2:d2-requirements` | ① 要求。USDM / RDRA / UC 一覧 |
-| `distillery2:d2-decide` | ② 決定。非機能要求グレード表 + ADR (機械可読 rules 付き) + C4 図 (architecture.md)。④ の還流では mode=feedback でルールの穴を ADR 1 本にする |
-| `distillery2:d2-foundation` | ③ 基盤。rules / arch test / テスト基盤 / 設定 / CI / 依存の導入。契約の骨格と画面部品の後の仕上げ (契約込みの再生成・画面部品の取り込み・骨格分の契約テスト・チェックポイント)。④ の還流では phase=rules で開発ルールとアーキテストを作り直す |
+| `distillery2:d2-decide` | ② 決定。非機能要求グレード表 + ADR (機械可読 rules 付き) + C4 図 (architecture.md)。還流では mode=feedback でルールの穴を ADR 1 本にする |
+| `distillery2:d2-foundation` | ③ 基盤。rules / arch test / テスト基盤 / 設定 / CI / 依存の導入。契約の骨格と画面部品の後の仕上げ (契約込みの再生成・画面部品の取り込み・骨格分の契約テスト・チェックポイント) |
 | `distillery2:d2-design` | ③ 画面部品。tokens (ブランド起点) + Storybook + アセット + 目視証跡 |
-| `distillery2:d2-contract` | 契約カタログ (skeleton / uc / feedback の 3 モード。feedback は ④ の還流で契約の穴を直す) |
+| `distillery2:d2-contract` | 契約カタログ (skeleton / uc / feedback の 3 モード。feedback は還流で契約の穴を直す) |
 | `distillery2:d2-implement` | ④ 実装者 (scenario / scaffold / tier / integrate) |
 | `distillery2:d2-verify` | ④ 別モデルの検証 (UC の意図・前提の整合) |
 | `distillery2:d2-asbuilt` | ④ 実装からの文書抽出 (依存グラフの実態・抽出・要約・書式の検査まで) |

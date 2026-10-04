@@ -4,8 +4,8 @@ description: >-
   段階③「基盤」の機械部分。ADR から開発ルール (docs/rules/) とアーキテスト (.dependency-cruiser.cjs) を生成し、
   テスト基盤 (packages/test-support: 計装 tracer・pglite ハーネス・Cucumber support)、.distillery/config.yaml、
   CI、モノレポ骨格を冪等に作り、依存を入れる。契約の骨格と画面部品の後に、仕上げ (契約込みの再生成・画面部品の取り込み・
-  契約テストの生成・チェックポイント) も行う。段階④の還流では phase=rules で開発ルールとアーキテストだけを作り直す。
-  phase=all | finish | rules | F1..F9 で部分実行する。
+  契約テストの生成・チェックポイント) も行う。
+  phase=all | finish | F1..F9 で部分実行する。
 ---
 
 # d2-foundation
@@ -21,18 +21,17 @@ description: >-
 ## 引数
 
 ```
-phase=all | finish | rules | F1..F9   # 既定 all
+phase=all | finish | F1..F9   # 既定 all
 ui=true | false               # phase=finish だけ。今回の d2-design が部品を生成したか (F6 を回すか)。d2-run が決める
 adr=docs/adr                  # ADR ディレクトリ
 ```
 
-d2-run は段階③で 2 回、段階④の還流 (ルールの穴) で 1 回呼ぶ。
+d2-run は段階③で 2 回呼ぶ (還流の開発ルールとアーキテストの作り直しは、d2-run が回す `feedbackBatch.js` が F1・F2 のスクリプトを直接回す)。
 
 | 呼ぶとき | phase | 順 |
 |---|---|---|
 | ③ の最初 | `all` | F1 → F2 → F3 → F5 → F7 |
 | 契約の骨格 (d2-contract mode=skeleton) と画面部品 (d2-design) の後 | `finish` | F8 → F6 (`ui=true` のときだけ) → F7 (F6 を回したときだけ) → F4 → F9 |
-| ④ の還流で d2-decide mode=feedback が足した ADR を d2-run が commit した後 | `rules` | F1 → F2 (開発ルールとアーキテストだけを作り直す。ADR の commit 後に回すので、生成物の `basis: adr@<sha>` が新しい ADR を指す。還流の worktree で派遣されるので、`--cwd` に派遣文の作業ディレクトリを渡す) |
 
 - スクリプトは `${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/` にある。`--cwd <repo>` で対象リポを指す。
 - どの phase も再実行して安全。
@@ -100,7 +99,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/genContractTests.js contra
 node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc bootstrap --upto static   # F9 (<repo> で)
 ```
 
-F1・F2 のスクリプトは `--check` (書かずに、生成物が古ければ exit 1) を持つ。phase=rules の後に d2-run が受理の検査として、生成物を commit する前に回す。
+F1・F2 のスクリプトは `--check` (書かずに、生成物が古ければ exit 1) を持つ。
 
 ## 冪等性のルール
 

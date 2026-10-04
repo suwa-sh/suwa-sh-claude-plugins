@@ -148,7 +148,7 @@ test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run �
     // 読んでよいもの = 要約役 (LLM) の read-set。スクリプトの読みは内訳の asbuilt.extract などが持つ
     ['asbuilt.summarize', 'reads', 'skills/d2-asbuilt/SKILL.md', /^## 読んでよいもの/],
     ['asbuilt', 'writes', 'skills/d2-asbuilt/SKILL.md', /^## 書いてよいもの/],
-    // 還流 (0.1.24)
+    // 還流 (0.1.24。0.1.27 から UC の外の独立した段階)
     ['decide.feedback', 'reads', 'skills/d2-decide/SKILL.md', /^## mode=feedback: 読むもの/],
     ['decide.feedback', 'writes', 'skills/d2-decide/SKILL.md', /^## mode=feedback: 書くもの/],
     ['contract.feedback', 'reads', 'skills/d2-contract/SKILL.md', /^## mode=feedback: 読むもの/],
@@ -184,7 +184,7 @@ test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run �
 });
 
 test('(e2) d2-run の還流節で上流を書き換えるスキルが、正本の還流の処理 (stage feedback のサブエージェント) と一致する', () => {
-  const fb = section('skills/d2-run/SKILL.md', /^## 還流 \(feedback 段階\)/).split('\n');
+  const fb = section('skills/d2-run/SKILL.md', /^## 還流 \(独立した段階\)/).split('\n');
   const rows = fb.filter(l => /^\| (rule|contract) \|/.test(l));
   assert.equal(rows.length, 2, '還流節の表に rule と contract の行がある');
   const inDoc = new Set(rows.flatMap(l => [...cells(l)[1].matchAll(/d2-[a-z]+/g)].map(m => m[0])));
@@ -250,6 +250,9 @@ test('(h) d2-run が回す主なスクリプトは、正本の出力先をソー
     ['skills/d2-asbuilt/scripts/extractAsBuilt.js', 'asbuilt-system', 'traceability-index.json'],
     ['skills/d2-asbuilt/scripts/extractAsBuilt.js', 'asbuilt-report', 'asbuilt.json'],
     ['skills/d2-contract/scripts/classifyContractChanges.js', 'contract-tests', 'test\\/contract'],
+    ['scripts/feedbackBatch.js', 'worktrees', 'worktrees'],
+    ['scripts/feedbackBatch.js', 'feedback-batch', 'logs'],
+    ['scripts/feedbackBatch.js', 'feedback-docs', 'docs.*feedback'],
   ];
   const problems = [];
   for (const [rel, storeId, literal] of table) {

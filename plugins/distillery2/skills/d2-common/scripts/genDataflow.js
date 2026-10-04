@@ -6,7 +6,7 @@
  *
  * 入出力の正本 (../references/dataflow.yaml) から DFD を Mermaid で描き、../references/dataflow.md に書く。
  * 1 枚の図が大きくならないように分ける:
- *  - 全体図 1: ① 〜 ④ の段階と、段階をまたいで受け渡すファイル群 (store_groups)。④ は 1 つの箱に畳む
+ *  - 全体図 1: ① 〜 ④ と還流の段階と、段階をまたいで受け渡すファイル群 (store_groups)。④ は 1 つの箱に畳む。還流は UC の外の段階 (0.1.27)
  *  - 全体図 2・3: ④ の中の段階と、④ の中で受け渡すファイル群 (実装まで / 検証と as-built に分ける)
  *  - 処理ごとの図: 処理 (スキル・d2-run・スクリプト) 1 つにつき 1 枚。ファイルが多い処理はファイル群にまとめ、正確なパスは図の下の表に出す
  *  - ファイルの一覧: パス、由来、書く処理、読む処理
@@ -30,6 +30,8 @@ const cell = s => String(s).replace(/\|/g, '\\|');
 
 const UC_STAGE = { id: 'uc', name: '④ 段階をまたぐ d2-run の作業' };
 const UPSTREAM = ['requirements', 'decide', 'foundation'];
+// UC の外の段階 (0.1.27: 還流は溜まった課題をまとめて直す独立した段階)。全体図 1 では ④ と並ぶ箱、④ の中の図には入れない
+const OUTSIDE_UC = ['feedback'];
 
 function render(df) {
   const stores = new Map(df.stores.map(s => [s.id, s]));
@@ -50,7 +52,7 @@ function render(df) {
   L.push('凡例: 全体図は 箱 = 段階、矢印 = 受け渡し (ラベルはファイル群)。処理ごとの図は 箱 = 処理、円筒 = ファイル (またはファイル群)、矢印 = 読み (ファイル → 処理) / 書き (処理 → ファイル)。');
   L.push('`<run>` = `.distillery/runs/<slug>`。', '');
   L.push('## 目次', '');
-  L.push('1. 全体図: ① 〜 ④');
+  L.push('1. 全体図: ① 〜 ④ と還流');
   L.push('2. 全体図: ④ 実装まで (scenario 〜 integrate)');
   L.push('3. 全体図: ④ 検証と as-built');
   L.push('4. 処理ごとの図 (段階ごと。処理 1 つにつき 1 枚)');
@@ -111,11 +113,11 @@ function render(df) {
     }
   }
   const UC_ALL = { id: 'uc-all', name: '④ UC の縦切り' };
-  overview('全体図: ① 〜 ④', '④ の中の段階は 1 つの箱にまとめた (中は次の図)。',
-    p => (UPSTREAM.includes(p.stage) ? p.stage : 'uc-all'),
-    [...df.stages.filter(s => UPSTREAM.includes(s.id)), UC_ALL], () => true);
-  const UC_STAGES = df.stages.filter(s => !UPSTREAM.includes(s.id));
-  const inUc = p => !UPSTREAM.includes(p.stage) && p.stage !== 'uc';
+  overview('全体図: ① 〜 ④ と還流', '④ の中の段階は 1 つの箱にまとめた (中は次の図)。還流は UC の外の段階で、次の UC の前に溜まった課題ファイルをまとめて直す。',
+    p => (UPSTREAM.includes(p.stage) || OUTSIDE_UC.includes(p.stage) ? p.stage : 'uc-all'),
+    [...df.stages.filter(s => UPSTREAM.includes(s.id)), UC_ALL, ...df.stages.filter(s => OUTSIDE_UC.includes(s.id))], () => true);
+  const UC_STAGES = df.stages.filter(s => !UPSTREAM.includes(s.id) && !OUTSIDE_UC.includes(s.id));
+  const inUc = p => !UPSTREAM.includes(p.stage) && !OUTSIDE_UC.includes(p.stage) && p.stage !== 'uc';
   const CHECK = ['verify', 'asbuilt'];
   const ucNote = '① 〜 ③ から来るものは前の図。段階をまたぐ d2-run の作業 (ゲートの実行・as-built の抽出・配送など) はほぼ全部のファイル群に触れるので、この図から外して処理ごとの図に回した。';
   // ④ の後ろ向きの受け渡し (integrate → scaffold、verify の指摘 → tier の差し戻しなど) は、④ の段階すべてを集計して検証の図の表にまとめる

@@ -1,9 +1,9 @@
-# Git 配送 (UC ごとの branch / squash / main への取り込み / 還流の worktree)
+# Git 配送 (UC ごとの branch / squash / main への取り込み / 要求の差分 / 還流)
 
 v1 (dist-impl-run「UCのsquash・push・PR作成」) を次の点で簡素化した:
 lease と review HTML の追跡除外を廃止 (`.distillery/runs/*/reports|traces` は .gitignore)、trailer で系譜を残す。
 0.1.26 から **PR / issue を作らない** (git とファイルだけで完結する。GitHub 以外のホストや remote の無いリポでも同じ手順):
-UC は squash して main へ ff merge し、還流は worktree で作って確認ページの承認の後に main へ ff merge し、課題は `docs/feedback/` のファイルにする。
+UC は squash して main へ ff merge し、課題は `docs/feedback/` のファイルにする。課題は次の UC の前に、要求の差分 (要求の課題) と還流 (ルール・契約の課題。worktree 1 つでまとめて直し、確認ページの承認の後に main へ ff merge) が取り込んで消す (0.1.27)。
 **git 操作はオーケストレータ (d2-run) だけが行う** (単一コミッタ)。サブエージェントには git 禁止を必ず伝える。
 
 ## UC branch の開始と再開
@@ -16,15 +16,16 @@ UC は squash して main へ ff merge し、還流は worktree で作って確�
    `branch_started {base_branch, base_head, feature_branch}` を追記する
 3. 再開時 (配送の done が無い) は `branch_started` の `feature_branch` と現在 branch が一致することを確認する。違う branch なら
    clean のときだけ switch。`base_head` が HEAD の祖先でなければ停止する
-4. 再開時 (配送の done がある) は作業 branch が main (feature は配送で消えている)。remote `origin` があり `origin/main..main` に commit があれば、
-   何より先に `git push origin main` をやり直す (d2-run SKILL.md の起動シーケンス 4)
+4. 配送の done がある UC は終わっている (feature は配送で消えている)。remote `origin` があり `origin/main..main` に commit があれば、
+   何より先に `git push origin main` をやり直す (d2-run SKILL.md の自動選択の 3。配送・要求の差分・還流のどれの後でも同じ)
 
 ## 段階ごとの commit
 
 段階の done を書いたら、その段階の write-set を `impl(<slug>): <stage>` で commit する
 (例 `impl(register-loan): scaffold`)。`.distillery/runs/<slug>/` の events / done / attempt は含める。
 reports / traces は .gitignore 済みで含めない。シナリオ承認は `req(<slug>): scenarios` で commit する。
-配送の done と還流の記録は main の上で commit する (`impl(<slug>): delivered` / `impl(<slug>): feedback filed`)。
+配送の done は main の上で commit する (`impl(<slug>): delivered`)。UC の課題は配送の squash の前に feature の上で課題ファイルにして commit する (`impl(<slug>): issues to feedback`)。
+還流の commit は還流 branch の上で `feedbackBatch.js` が作る (下の「還流」)。
 
 ## squash と main への取り込みの条件
 
@@ -35,7 +36,9 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 - 現在 branch が `feature_branch`、working tree と index が clean、`base_head` が HEAD の祖先
 - remote `origin` があれば、`git fetch origin` の後に `origin/main` が `main` の祖先か同じ
 
-還流の記録は条件に入れない (0.1.26 から還流は配送の後。保留 `feedback_deferred` は新しくは書かない)。
+- UC の課題がすべて課題ファイルになっている (`runState.js status` の `unfiled_issues` が空。`feedbackBatch.js file-issues <run>` が作る)
+
+還流は条件に入れない (0.1.27 から還流は UC の外の独立した段階。保留 `feedback_deferred` は新しくは書かない)。
 
 ## 手順 (squash)
 
@@ -75,21 +78,37 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 | Assumptions | `confirmed=<n> auto=<n> rejected=<n>` (review_approved の decisions から) |
 | As-Built | `docs/as-built/<業務>/<UC>/index.md` |
 
-還流は配送の後なので、UC の squash commit に還流の trailer は付けない。還流の commit は `Feedback-Kind:`、`Feedback-From-UC:`、`Feedback-Issue:` (issues/ のパス) を持つ。
+UC の squash commit に還流の trailer は付けない (還流は UC の外)。課題ファイルを消す commit の trailer は次のとおり (取り込んだ記録はこの trailer だけ。UC の run のイベントには書かない):
 
-## 還流の worktree と課題ファイル
+| trailer | どの commit | 値 |
+|---|---|---|
+| Feedback-Consumed | 還流の課題の commit、要求の差分の commit | `docs/feedback/<issue>.md` (反映して消した課題ファイル。1 件 1 行) |
+| Feedback-Kind / Feedback-From-UC | 還流の課題の commit | 課題の `kind` / `from_uc` |
+| Feedback-Result | 還流の課題の commit | `already-applied` (契約の分割ファイルに差分が無く、課題ファイルだけを消した) |
+| Feedback-Dismissed | 還流の取り下げの commit、要求の差分の commit | `docs/feedback/<issue>.md` (確認ページで取り下げて消した課題ファイル) |
+| Feedback-Stopped | 還流の止まった課題の commit | `docs/feedback/<issue>.md` (止まった印を書き足した課題ファイル) |
 
-手順の正本は SKILL.md の「還流」節。ここには git の約束だけを書く。
+## 要求の差分
 
-- rule / contract: 還流 branch `feedback/<slug>/<issue>` を **main から** `git worktree add .distillery/worktrees/<slug>/<issue> -b <還流 branch> main` で切る
-  (配送の後なので、この UC の契約・課題・run ディレクトリがそろっている)。本体の作業ツリーは main のまま動かさない
-- worktree には依存が無いので、本体の `node_modules` (ルートと各ワークスペース) を同じ相対パスに symlink する。`.gitignore` の `node_modules` (末尾スラッシュ無し) が symlink も無視する
-- rule は ADR と開発ルールを 2 commit に分ける (`feedback(<slug>): adr` → `feedback(<slug>): rules`)。ルールの basis は docs/adr の最終 commit を記録するので、
-  ADR を commit してから作り直さないと古い ADR を指す
-- 受理の `--check` は生成物を commit する前に回す (basis の行まで比べるので、commit の後では古いと判定される)
-- main へ入れる前に、main を壊さないことのゲートを worktree で回す (rule は static、contract は static と変えた契約を使う UC ごとの全段)
-- 取り込みは `git merge --ff-only`。ff できなければ **rebase しない** (rule の basis が古くなる)。worktree を捨てて最新の main から作り直す
-- 止まったら差分を `.distillery/logs/feedback/<slug>/<issue>.failed.diff` に残し、`git worktree remove --force` と `git branch -D` で捨てる (main は変わらない)
-- 課題ファイル `docs/feedback/<issue>.md` は main に commit する。feature の上にいるとき (review で「要求を直す」) は一時の worktree で commit し、
-  `git fetch . feedback/<slug>/<issue>:main` で main を ff する (main を checkout しない)
+手順の正本は SKILL.md の ① の「要求の差分」。ここには git の約束だけを書く。
+
+- main の上で行う (進行中の UC が無いときだけ。要求で止まった UC の feature にいたら、clean なら main に切り替える)
+- 反映した課題ファイルと取り下げた課題ファイルを `git rm` し、要求の変更と同じ commit (`req: feedback`) にする。trailer は `Feedback-Consumed:` / `Feedback-Dismissed:`
+- 要求で止まった UC の feature は `git update-ref refs/distillery2/abandoned/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。消さずに退避するのは、捨てた実装を後から引けるようにするため
+
+## 還流
+
+手順の正本は SKILL.md の「還流」節。git の操作はすべて `scripts/feedbackBatch.js` が行う (d2-run はサブコマンドを呼ぶだけ)。ここには約束だけを書く。
+
+- 還流 branch `feedback/<b>` を **main から** `.distillery/worktrees/feedback` に切る (1 バッチ 1 つ)。本体の作業ツリーは main のまま動かさない。`feedback/` で始まる branch は還流のバッチ専用 (ほかの用途に使わない)
+- worktree には依存が無いので、本体の `node_modules` を同じ相対パスに symlink する。`.gitignore` の `node_modules` (末尾スラッシュ無し) が symlink も無視する
+- branch の commit の並び (main から): 課題ごとの原本の commit (`feedback(<b>): <rule|contract> <issue>`) → 取り下げ (`feedback(<b>): dismiss`) → 止まった課題の書き足し (`feedback(<b>): stopped`) → ADR の索引 (`feedback(<b>): adr index`) → 生成物 (`feedback(<b>): regenerate`。必ず最後)
+- 原本の commit には生成物を入れない。生成物は最後にまとめて作り直す (課題を外したり main の上に載せ替えたりしても、生成物の commit を作り直すだけで済む)
+- ADR の索引は生成物の先頭に別の commit にする。ルールの生成物は `docs/adr` の最終 commit を basis に記録するので、索引を同じ commit に入れると commit した直後から古いと判定される
+- 課題を外す・取り下げる・main が進んだときは、main の先端から組み直す (原本の commit を cherry-pick し、生成物を作り直す)。組み直しの前の先頭は `refs/distillery2/feedback-prev/<b>` に残す。cherry-pick が衝突したら組み直しの前に戻して止まる
+- main へは `git merge --ff-only` だけ。ゲートの通った記録 (`<fb>/gate.json` の sha) が branch の先頭と一致しなければ取り込まない
+- push が拒否されたら止まる (main は取り込み済み。force push はしない)。再開すると push と後始末から
+- 課題が止まったら、課題の commit を落として worktree を clean にする (`reset --hard` と `clean -fd`)。差分は `<fb>/<issue>.failed.diff` に残し、中身を課題ファイルにも書く (`<fb>` は取り込みの後に消える)
+- 課題ファイル `docs/feedback/<issue>.md` は main に commit する。feature の上にいるとき (review で「要求を直す」) は一時の worktree (`.distillery/worktrees/<slug>/<issue>`、branch `feedback-req/<slug>/<issue>`) で commit し、
+  `git fetch . feedback-req/<slug>/<issue>:main` で main を ff する (main を checkout しない)
 - UC の feature branch には還流の変更を混ぜない
