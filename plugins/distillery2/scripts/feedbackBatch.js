@@ -135,9 +135,9 @@ function writeJson(p, v) { fs.mkdirSync(path.dirname(p), { recursive: true }); f
 function stateFile(ctx, id) { return path.join(ctx.fb, `${id}.state`); }
 function readState(ctx, id) { return readJson(stateFile(ctx, id)); }
 
-function requireBatch(ctx) {
+function requireBatch(ctx, { needWorktree = true } = {}) {
   if (!ctx.branch) throw new Fail('途中のバッチが無い (feedback/* branch が無い)');
-  if (!fs.existsSync(ctx.wt)) throw new Fail(`worktree が無い: ${WT_REL}`);
+  if (needWorktree && !fs.existsSync(ctx.wt)) throw new Fail(`worktree が無い: ${WT_REL}`);
   const batch = readJson(path.join(ctx.fb, 'batch.json'));
   if (!batch) throw new Fail(`batch.json が無い: ${path.relative(ctx.root, ctx.fb)}`);
   return batch;
@@ -252,6 +252,8 @@ function batchStatus(root) {
   const base = { batch: ctx.batch, branch: ctx.branch, worktree: WT_REL, head };
   if (!batch) return { ...base, point: 'broken', error: `batch.json が無い: ${path.relative(root, ctx.fb)}` };
   const generated = subjectOf(root, ctx.branch) === `feedback(${ctx.batch}): regenerate`;
+  // 取り込み済み (生成物の commit が main に入った) なら worktree が無くても後始末へ進める。それ以外で worktree が無いのは壊れた状態
+  if (!fs.existsSync(ctx.wt) && !(generated && isAncestor(root, ctx.branch, 'main'))) return { ...base, point: 'broken', error: `branch だけがあり worktree が無い: ${WT_REL}` };
   const gate = readJson(path.join(ctx.fb, 'gate.json'));
   const decision = readJson(path.join(ctx.fb, 'decision.json'));
   if (generated) {
@@ -513,21 +515,36 @@ function cmdRecordGate(root, opts) {
 
 function csv(v) { return v ? String(v).split(',').map((s) => s.trim()).filter(Boolean) : []; }
 
+/** 確認ページで「取り込む / 外す」を聞く課題 (原本を commit した課題。取り込み済みは聞かずに残す) */
+function candidatesOf(ctx) {
+  return issueCommits(ctx).map((c) => c.id).filter((id) => (readState(ctx, id) || {}).status !== 'already-applied');
+}
+
 function cmdDecide(root, opts) {
   const ctx = ctxOf(root);
   const batch = requireBatch(ctx);
   const gate = readJson(path.join(ctx.fb, 'gate.json'));
   const head = revParse(root, ctx.branch);
-  const taken = issueCommits(ctx).map((c) => c.id);
+  const candidates = candidatesOf(ctx);
+  const stoppedIds = batch.issues.map((x) => x.id).filter((id) => (readState(ctx, id) || {}).status === 'stopped');
   let d;
   if (opts.auto) {
-    d = { auto: true, take: taken, drop: [], dismiss: [] };
+    d = { auto: true, take: candidates, drop: [], dismiss: [] };
   } else if (opts.abandon) {
-    d = { auto: false, take: [], drop: taken, dismiss: csv(opts.dismiss) };
+    d = { auto: false, take: [], drop: candidates, dismiss: csv(opts.dismiss) };
   } else {
     d = { auto: false, take: csv(opts.take), drop: csv(opts.drop), dismiss: csv(opts.dismiss) };
   }
   for (const id of [...d.take, ...d.drop, ...d.dismiss]) issueOf(batch, id);
+  // 回答の転記漏れで、人が選んでいない課題を取り込まない (取り込む候補は take と drop で漏れなく、重ならずに覆う)
+  const both = d.take.filter((id) => d.drop.includes(id));
+  if (both.length) throw new Fail(`取り込むと外すの両方にある課題: ${both.join(', ')}`);
+  const missing = candidates.filter((id) => !d.take.includes(id) && !d.drop.includes(id));
+  if (missing.length) throw new Fail(`取り込むか外すかが決まっていない課題: ${missing.join(', ')}`);
+  const extra = [...d.take, ...d.drop].filter((id) => !candidates.includes(id));
+  if (extra.length) throw new Fail(`取り込む候補でない課題 (止まった・取り込み済み): ${extra.join(', ')}`);
+  const notStopped = d.dismiss.filter((id) => !stoppedIds.includes(id));
+  if (notStopped.length) throw new Fail(`取り下げられるのは止まった課題だけ: ${notStopped.join(', ')}`);
   const gateFailed = !gate || gate.sha !== head || gate.result !== 'pass';
   if (gateFailed && !d.drop.length && !d.dismiss.length) throw new Fail('ゲートが通っていない (記録が無い・落ちた・先頭と違う)。外す課題を選ぶか、バッチ全体を止める (--abandon)');
   if (d.auto && gateFailed) throw new Fail('ゲートが通っていないときは --auto にできない');
@@ -546,8 +563,10 @@ function cmdRebuild(root, opts) {
   const drop = decision.drop || [];
   const dismiss = decision.dismiss || [];
   const oldHead = revParse(root, ctx.branch);
-  // main..branch は main が進んでいても branch 側の commit だけを返す
-  const keep = issueCommits(ctx).filter((c) => !drop.includes(c.id) && !dismiss.includes(c.id));
+  // main..branch は main が進んでいても branch 側の commit だけを返す。取り込むのは take (確認ページで選んだもの) と取り込み済み
+  const take = decision.take || null;
+  const keep = issueCommits(ctx).filter((c) => !drop.includes(c.id) && !dismiss.includes(c.id)
+    && (take === null || take.includes(c.id) || (readState(ctx, c.id) || {}).status === 'already-applied'));
   git(root, ['update-ref', `refs/distillery2/feedback-prev/${ctx.batch}`, oldHead]);
   git(ctx.wt, ['reset', '-q', '--hard', 'main']);
   const picked = [];
@@ -581,7 +600,8 @@ function cmdRebuild(root, opts) {
 }
 
 function cleanupBatch(ctx) {
-  git(ctx.root, ['worktree', 'remove', '--force', ctx.wt]);
+  if (fs.existsSync(ctx.wt)) git(ctx.root, ['worktree', 'remove', '--force', ctx.wt]);
+  else git(ctx.root, ['worktree', 'prune']);
   git(ctx.root, ['branch', '-q', '-d', ctx.branch]);
   git(ctx.root, ['update-ref', '-d', `refs/distillery2/feedback-prev/${ctx.batch}`], { allowFail: true });
   fs.rmSync(ctx.fb, { recursive: true, force: true });
@@ -596,7 +616,8 @@ function pushMain(root) {
 
 function cmdMerge(root) {
   const ctx = ctxOf(root);
-  requireBatch(ctx);
+  // 取り込んだ後の後始末の途中で止まったとき (worktree だけ消えた) も進められるように、worktree の有無は取り込みの前にだけ見る
+  requireBatch(ctx, { needWorktree: false });
   if (currentBranch(root) !== 'main') throw new Fail('作業 branch が main でない');
   requireCleanTracked(root, '作業ツリー');
   const head = revParse(root, ctx.branch);
@@ -606,6 +627,7 @@ function cmdMerge(root) {
     cleanupBatch(ctx);
     return { merged: true, already: true, head, ...push };
   }
+  if (!fs.existsSync(ctx.wt)) throw new Fail(`worktree が無い: ${WT_REL}`);
   const gate = readJson(path.join(ctx.fb, 'gate.json'));
   if (!gate || gate.result !== 'pass' || gate.sha !== head) throw new Fail('ゲートが通った記録が branch の先頭と一致しない。取り込まない');
   const decision = readJson(path.join(ctx.fb, 'decision.json'));
@@ -636,8 +658,10 @@ function parseArgs(argv) {
 }
 
 function main(argv) {
-  const [cmd, ...rest] = argv;
-  const opts = parseArgs(rest);
+  // `--cwd <repo> status` と `status --cwd <repo>` のどちらも受け付ける (最初の非オプションがサブコマンド)
+  const all = parseArgs(argv);
+  const cmd = all._[0];
+  const opts = { ...all, _: all._.slice(1) };
   const root = path.resolve(opts.cwd || process.cwd());
   const table = {
     'file-issues': () => cmdFileIssues(root, opts._[0]),

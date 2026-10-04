@@ -437,7 +437,10 @@ function run(opts) {
   }
   const existing = readText(readmePath);
   let next;
-  try { next = merge(existing, block); } catch (e) { return { code: 1, readmePath, broken: [], changed: false, error: e.message }; }
+  try { next = merge(existing, block); } catch (e) {
+    if (!opts.check && fbChanged) { if (fbExisting != null) fs.writeFileSync(fbPath, fbExisting); else fs.rmSync(fbPath, { force: true }); }
+    return { code: 1, readmePath, broken: [], changed: false, error: e.message };
+  }
   const changed = existing !== next || fbChanged;
   if (opts.check) return { code: changed ? 1 : 0, readmePath, broken: [], changed };
   if (existing !== next) { fs.mkdirSync(path.dirname(readmePath), { recursive: true }); fs.writeFileSync(readmePath, next); }

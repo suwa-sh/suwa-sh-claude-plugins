@@ -357,6 +357,49 @@ test('(p) scan: 止まった課題だけでは還流のきっかけにならな�
   assert.deepEqual(s.unfiled_runs, [{ run: '.distillery/runs/register-return', unfiled: ['issues/20260930T1000_x.md'] }]);
 });
 
+test('decide: 取り込む候補を take と drop で漏れなく覆う。転記漏れ・重なり・候補でない課題・止まっていない課題の取り下げは拒む。組み直しは take を正にする (差分レビュー 1 ラウンド目)', () => {
+  const r = makeRepo({ issues: { 'c1': { kind: 'contract' }, 'c2': { kind: 'contract', created: '2026-09-30T00:00:01Z' }, 'c3': { kind: 'contract', created: '2026-09-30T00:00:02Z' }, 's1': { kind: 'contract', created: '2026-09-30T00:00:03Z' } } });
+  r.fb('start', '--batch', 'bd');
+  passIssue(r, 'c1', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
+  passIssue(r, 'c2', () => r.ww('contracts/openapi/b.yaml', 'b: 1\n'));
+  passIssue(r, 'c3', () => {});
+  stopIssue(r, 's1', '直せない');
+  r.fb('finalize');
+  r.fb('record-gate', '--result', 'pass');
+  assert.match(r.fb('decide', '--take', 'c1').json.error, /取り込むか外すかが決まっていない課題: c2/, 'c2 の転記漏れ');
+  assert.match(r.fb('decide', '--take', 'c1,c2', '--drop', 'c2').json.error, /両方にある/);
+  assert.match(r.fb('decide', '--take', 'c1,c2,c3').json.error, /取り込む候補でない課題/, '取り込み済みの c3 は聞かない');
+  assert.match(r.fb('decide', '--take', 'c1', '--drop', 'c2', '--dismiss', 'c1').json.error, /取り下げられるのは止まった課題だけ/);
+  assert.equal(r.fb('decide', '--take', 'c1', '--drop', 'c2').code, 0);
+  assert.equal(r.fb('rebuild').code, 0);
+  r.fb('record-gate', '--result', 'pass');
+  assert.equal(r.fb('merge').code, 0);
+  assert.deepEqual(trailers(r.root, 'main', 'Feedback-Consumed'), ['docs/feedback/c1.md', 'docs/feedback/c3.md'], 'c2 は入らず、取り込み済みの c3 は入る');
+  assert.equal(fs.existsSync(path.join(r.root, 'contracts/openapi/b.yaml')), false);
+});
+
+test('CLI: --cwd はサブコマンドの前でも後でもよい。branch だけ残り worktree が無ければ broken (差分レビュー 1 ラウンド目)', () => {
+  const r = makeRepo({ issues: { 'c1': { kind: 'contract' } } });
+  const before = spawnSync(process.execPath, [SCRIPT, '--cwd', r.root, 'status'], { encoding: 'utf8' });
+  assert.equal(before.status, 0, before.stdout + before.stderr);
+  assert.deepEqual(JSON.parse(before.stdout), { point: 'none' });
+  r.fb('start', '--batch', 'bc');
+  fs.rmSync(r.wt, { recursive: true, force: true });
+  git(r.root, 'worktree', 'prune');
+  assert.equal(r.fb('status').json.point, 'broken');
+  // 取り込んだ後、worktree だけ消えて止まった: cleanup から後始末が済む
+  const r2 = makeRepo({ issues: { 'c1': { kind: 'contract' } } });
+  r2.fb('start', '--batch', 'bc2');
+  passIssue(r2, 'c1', () => r2.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
+  r2.fb('finalize');
+  git(r2.root, 'merge', '-q', '--ff-only', 'feedback/bc2');
+  fs.rmSync(r2.wt, { recursive: true, force: true });
+  assert.equal(r2.fb('status').json.point, 'cleanup');
+  const m = r2.fb('merge');
+  assert.equal(m.code, 0, JSON.stringify(m.json));
+  assert.equal(r2.fb('status').json.point, 'none');
+});
+
 test('file-issues: UC の課題を課題ファイルにして feedback_filed を記録する (2 回目は何もしない)', () => {
   const r = makeRepo();
   const run = runState.openRun(r.root, 'register-loan');
