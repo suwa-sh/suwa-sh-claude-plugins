@@ -411,6 +411,7 @@ test('0.1.30 L1/M4/M2/M3: 名指し起動でも配送済みの feature を片付
   assert.match(feedbackSection(), /事前回答がこの問いで選べない回答[^\n]*`FB decide` を記録せず止まって報告する/);
   const d = deliverSection();
   assert.match(d, /6\. main の上で、④ の冒頭で遅らせた場合だけ `models_resolved` を記録し \(冒頭で記録済みなら記録しない/);
+  assert.match(read(DELIVERY), /④ の冒頭で遅らせた場合だけの `models_resolved` \(冒頭で記録済みなら記録しない/, 'git-delivery も同じ条件 (差分レビュー 1 ラウンド目の指摘 2)');
   assert.match(d, /3\. commit の件名の検査 \(`git log <base_head>\.\.HEAD --format=%s` がすべて `impl\(<slug>\): ` か `req\(<slug>\): ` で始まる。そうでなければ UC 外の commit が混ざっているので squash せず止まって報告する/);
   const sq = section(DELIVERY, '## 手順 (squash)', '## 手順 (main への取り込み)');
   assert.match(sq, /件名がすべて `impl\(<slug>\): ` か `req\(<slug>\): ` で始まることを確認する/);

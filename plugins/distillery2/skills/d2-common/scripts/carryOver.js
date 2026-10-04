@@ -42,7 +42,10 @@ function readItems(v, root) {
   if (s.trim().startsWith('[')) {
     const arr = JSON.parse(s);
     if (!Array.isArray(arr)) throw new Error('--items の JSON は配列');
-    return arr.map((x) => String(x).trim()).filter(Boolean);
+    // 要素は空でない文字列だけ (確認ページの回答の転記でオブジェクトなどが混ざっても、意味を失った項目を次の UC へ流さない。差分レビュー 1 ラウンド目の指摘 1)
+    const bad = arr.filter((x) => typeof x !== 'string' || !x.trim());
+    if (bad.length) throw new Error(`--items の要素は空でない文字列: ${JSON.stringify(bad)}`);
+    return arr.map((x) => x.trim());
   }
   const p = path.resolve(root, s);
   if (!fs.existsSync(p)) throw new Error(`--items のファイルが無い: ${p}`);

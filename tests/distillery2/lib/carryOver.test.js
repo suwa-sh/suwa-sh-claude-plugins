@@ -64,6 +64,10 @@ test('add: 宛先の行に追記し、重複は足さない。JSON 配列とフ�
   assert.deepEqual(r.row('register-book').carry_over, ['画面の見本 stories を直す', '受入タグを足す', 'DDL を見直す']);
   assert.ok(!('carry_over' in r.row('edit-book')), '他の行には足さない');
   assert.equal(r.run('add', '--items', '[]').code, 2, '空は引数エラー');
+  const bad = r.run('add', '--items', '["ok", {"bad": 1}, ""]');
+  assert.equal(bad.code, 2, '文字列以外・空文字の要素は引数エラー (差分レビュー 1 ラウンド目の指摘 1)');
+  assert.match(bad.json.error, /要素は空でない文字列/);
+  assert.deepEqual(r.row('register-book').carry_over, ['画面の見本 stories を直す', '受入タグを足す', 'DDL を見直す'], 'エラーのときは書き換えない');
 });
 
 test('add --skip: 要求で止まった UC (feature が残る) を飛ばして次へ。宛先が無ければ no_target で書き換えない', () => {

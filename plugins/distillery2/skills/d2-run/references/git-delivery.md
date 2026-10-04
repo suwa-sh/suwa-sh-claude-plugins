@@ -76,7 +76,7 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 ## 手順 (main への取り込み)
 
 1. `git switch main` → `git merge --ff-only feature/<slug>`。ff できなければ (main が `base_head` から進んでいる) 止まって報告する (rebase は人が判断)
-2. main の上で配送の done (`runState.js done <run> deliver '{"squash":"<フル sha>","base_head":"<base_head>"}'`。sha は短縮しない) と、遅らせていた `models_resolved` と README を
+2. main の上で配送の done (`runState.js done <run> deliver '{"squash":"<フル sha>","base_head":"<base_head>"}'`。sha は短縮しない) と、④ の冒頭で遅らせた場合だけの `models_resolved` (冒頭で記録済みなら記録しない。0.1.29 実走 M2) と README を
    `impl(<slug>): delivered` で commit する。**配送済みの正は `stages/deliver.done.yaml`** (GitHub の PR ではない)
 3. remote `origin` があれば `git push origin main`。拒否されたら止まって報告する (保護された main など。force push はしない)
 4. `git branch -d feature/<slug>`
