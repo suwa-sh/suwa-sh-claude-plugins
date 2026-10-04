@@ -527,9 +527,13 @@ function cmdDecide(root, opts) {
   const head = revParse(root, ctx.branch);
   const candidates = candidatesOf(ctx);
   const stoppedIds = batch.issues.map((x) => x.id).filter((id) => (readState(ctx, id) || {}).status === 'stopped');
+  // 2 回目以上止まった課題 (切り出した時点で既に止まっていて、今回も止まった) は「取り下げる / 残す」を人に聞く
+  const restopped = stoppedIds.filter((id) => Number((batch.issues.find((x) => x.id === id) || {}).stopped_count || 0) >= 1);
   let d;
   if (opts.auto) {
-    d = { auto: true, take: candidates, drop: [], dismiss: [] };
+    // 確認ページを出さないとき (取り込み済みと 1 回目の停止だけ) に限る。人の回答なしで原本を取り込まない
+    if (candidates.length || restopped.length) throw new Fail(`--auto は確認ページを出さないときだけ。取り込む候補 (${candidates.join(', ') || 'なし'}) か 2 回目以上止まった課題 (${restopped.join(', ') || 'なし'}) がある`);
+    d = { auto: true, take: [], drop: [], dismiss: [] };
   } else if (opts.abandon) {
     d = { auto: false, take: [], drop: candidates, dismiss: csv(opts.dismiss) };
   } else {

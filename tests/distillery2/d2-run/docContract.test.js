@@ -187,6 +187,8 @@ test('0.1.27: 自動選択: 進行中の UC が先。無ければ main に切り
   for (const o of order) { const i = a.indexOf(o); assert.ok(i > last, `自動選択の順: ${o}`); last = i; }
   assert.match(a, /止まった課題 \(課題ファイルの `stopped: true`\) は 3・4 のきっかけにしない/);
   assert.match(a, /進行中の UC があれば止まって報告する/);
+  assert.match(a, /要求で止まった UC \(`feature\/<slug>` が残っているもの\) は飛ばす/, '保留中の要求の課題で起動が行き詰まらない (差分レビュー 3 ラウンド目)');
+  assert.match(a, /`uc=<slug>` で要求で止まった UC を直接指定したら、保留中のその UC の要求の課題を示して止まって報告する/);
   assert.match(a, /force push はしない/);
 });
 
@@ -241,6 +243,7 @@ test('0.1.27: 還流の確認ページ: 出す条件 (取り込む課題・2 回
   const fb = feedbackSection();
   assert.match(fb, /取り込む課題 \(`commit-issue` の `result` が `committed`\)、2 回目以上止まった課題/);
   assert.match(fb, /出さずに `FB decide --auto`/);
+  assert.match(fb, /取り込む候補か 2 回目以上止まった課題があれば `--auto` は拒まれる/);
   assert.match(fb, /ゲートが落ちていれば「すべて取り込む」は選べない/);
   assert.match(fb, /`FB decide --abandon`/);
   assert.match(fb, /「取り下げる \/ 残す」/);

@@ -125,7 +125,8 @@ test('(a)(i)(j)(s) 2 件とも取り込み: 原本の commit → 索引 → 生�
   assert.equal(r.fb('status').json.point, 'gate');
   assert.equal(r.fb('record-gate', '--result', 'pass').code, 0);
   assert.equal(r.fb('status').json.point, 'gate', '回答の前は gate (確認ページへ)');
-  assert.equal(r.fb('decide', '--auto').code, 0);
+  assert.match(r.fb('decide', '--auto').json.error, /--auto は確認ページを出さないときだけ/, '取り込む候補があれば人の回答が要る (差分レビュー 3 ラウンド目)');
+  assert.equal(r.fb('decide', '--take', 'r1,c1').code, 0);
   assert.equal(r.fb('status').json.point, 'merge', 'hold で止めた後の再開は merge から (ゲートを回し直さない)');
 
   const m = r.fb('merge');
@@ -182,7 +183,7 @@ test('(c)(t) static が落ちた課題: commit と生成された未追跡ファ
   passIssue(r, 'c2', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c2\n'));
   r.fb('finalize');
   r.fb('record-gate', '--result', 'pass');
-  r.fb('decide', '--auto');
+  r.fb('decide', '--take', 'c2');
   assert.equal(r.fb('merge').code, 0);
   const c1 = fs.readFileSync(path.join(r.root, 'docs/feedback/c1.md'), 'utf8');
   assert.match(c1, /## 止まった理由/);
@@ -217,7 +218,7 @@ test('(e) main が進んでいたら exit 3 → 組み直し → ゲート → �
   passIssue(r, 'c1', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
   r.fb('finalize');
   r.fb('record-gate', '--result', 'pass');
-  r.fb('decide', '--auto');
+  r.fb('decide', '--take', 'c1');
   r.w('docs/other.md', 'other\n');
   git(r.root, 'add', '-A');
   git(r.root, 'commit', '-q', '-m', 'other work');
@@ -238,7 +239,7 @@ test('(f) origin/main だけが進んでいても拾って組み直しへ', () =
   passIssue(r, 'c1', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
   r.fb('finalize');
   r.fb('record-gate', '--result', 'pass');
-  r.fb('decide', '--auto');
+  r.fb('decide', '--take', 'c1');
   const other = path.join(r.base, 'other');
   git(r.base, 'clone', '-q', r.bare, other);
   git(other, 'config', 'user.email', 'o@example.com');
@@ -300,6 +301,25 @@ test('(k) ゲートが落ちたら全部の取り込みは選べず、merge も�
   assert.doesNotMatch(fs.readFileSync(path.join(r.root, 'contracts/openapi/openapi.yaml'), 'utf8'), /# c1/);
 });
 
+test('(s2) --auto は確認ページを出さないとき (取り込み済みと 1 回目の停止だけ) に限る。2 回目以上の停止があれば拒む (差分レビュー 3 ラウンド目)', () => {
+  const r = makeRepo({ issues: { 'c1': { kind: 'contract' }, 's1': { kind: 'contract', created: '2026-09-30T00:00:01Z' } } });
+  r.fb('start', '--batch', 'bs2');
+  passIssue(r, 'c1', () => {});
+  stopIssue(r, 's1', '1 回目の停止');
+  r.fb('finalize');
+  r.fb('record-gate', '--result', 'pass');
+  assert.equal(r.fb('decide', '--auto').code, 0, '取り込み済みと 1 回目の停止だけ');
+  assert.equal(r.fb('status').json.point, 'merge');
+  assert.equal(r.fb('merge').code, 0);
+  const r2 = makeRepo({ issues: { 's2': { kind: 'contract', stopped: true, stopped_count: 1 } } });
+  r2.fb('start', '--batch', 'bs3');
+  stopIssue(r2, 's2', '2 回目の停止');
+  r2.fb('finalize');
+  r2.fb('record-gate', '--result', 'pass');
+  assert.match(r2.fb('decide', '--auto').json.error, /2 回目以上止まった課題 \(s2\)/);
+  assert.equal(r2.fb('decide', '--dismiss', 's2').code, 0);
+});
+
 test('(k2) ゲートが落ちたとき: 止まった課題の取り下げを添えても全部の取り込みは拒む。取り込む候補が 0 件なら回答を記録せず止まる (差分レビュー 2 ラウンド目)', () => {
   const r = makeRepo({ issues: { 'c1': { kind: 'contract' }, 's1': { kind: 'contract', created: '2026-09-30T00:00:01Z', stopped: true, stopped_count: 1 } } });
   r.fb('start', '--batch', 'bk2');
@@ -338,7 +358,7 @@ test('(n)(o) push の拒否は exit 4 で main はそのまま。再開すると
   passIssue(r, 'c1', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
   r.fb('finalize');
   r.fb('record-gate', '--result', 'pass');
-  r.fb('decide', '--auto');
+  r.fb('decide', '--take', 'c1');
   const hook = path.join(r.bare, 'hooks', 'pre-receive');
   fs.writeFileSync(hook, '#!/bin/sh\necho rejected >&2\nexit 1\n');
   fs.chmodSync(hook, 0o755);
