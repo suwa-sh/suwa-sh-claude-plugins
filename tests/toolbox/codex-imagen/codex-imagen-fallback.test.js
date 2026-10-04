@@ -12,6 +12,16 @@ const scriptsDir = path.join(root, 'plugins/toolbox/skills/codex-imagen/scripts'
 const codexImagen = path.join(scriptsDir, 'codex-imagen.sh');
 const grokImagen = path.join(scriptsDir, 'grok-imagen.sh');
 
+// codex-imagen.sh は生成前に `codex ... mcp list --json` で MCP サーバーを列挙する。
+// 偽 codex はこの呼び出しに FAKE_MCP_LIST (既定は空配列) を返し、生成側のログには残さない。
+const MCP_LIST_HANDLER = [
+  'case " $* " in',
+  '  *" mcp list "*)',
+  '    if [ -n "${FAKE_MCP_SLEEP:-}" ]; then sleep "$FAKE_MCP_SLEEP"; fi',
+  '    printf "%s\\n" "${FAKE_MCP_LIST:-[]}"; exit 0 ;;',
+  'esac',
+].join('\n');
+
 function writeExecutable(file, body) {
   fs.writeFileSync(file, `#!/bin/sh\nset -eu\n${body}\n`, { mode: 0o755 });
 }
@@ -30,6 +40,7 @@ function fixture() {
   const fakeAgy = path.join(dir, 'fake-agy');
 
   writeExecutable(fakeCodex, [
+    MCP_LIST_HANDLER,
     'printf "codex\\n" >> "$ORDER_LOG"',
     'printf "%s\\n" "You have hit your usage limit" >&2',
     'exit 1',
@@ -166,4 +177,115 @@ test('Grok editing exposes only image_edit and passes the input image path', t =
   assert.match(args[singleIndex + 1], /image_edit/);
   assert.match(args[singleIndex + 1], /image_gen.*使わない/);
   assert.match(args[singleIndex + 1], new RegExp(input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+});
+
+function useSucceedingCodex(f) {
+  const codexArgsLog = path.join(f.dir, 'codex-args.log');
+  const fakeCodex = path.join(f.dir, 'fake-codex-ok');
+  writeExecutable(fakeCodex, [
+    MCP_LIST_HANDLER,
+    ': > "$CODEX_ARGS_LOG"',
+    'for arg in "$@"; do printf "%s\\n" "$arg" >> "$CODEX_ARGS_LOG"; done',
+    'image_dir="$HOME/.codex/generated_images/thread-fake"',
+    'mkdir -p "$image_dir"',
+    'printf "codex image" > "$image_dir/exec-fake.png"',
+    'printf "%s\\n" \'{"type":"thread.started","thread_id":"thread-fake"}\'',
+  ].join('\n'));
+  f.env.CODEX_IMAGEN_CODEX_WRAPPER = fakeCodex;
+  f.env.CODEX_ARGS_LOG = codexArgsLog;
+  return codexArgsLog;
+}
+
+// 2026-10-04: 旧文言「imagenスキルで」を Codex が Google Imagen と読み違え、gemini-image スキルで
+// Chrome を画面操作した。スキル名の固定と、プラグイン (画面操作・ブラウザの道具) の無効化を回帰で守る。
+for (const mode of ['generate', 'edit']) {
+  test(`Codex ${mode} pins the built-in imagegen skill and disables plugins`, t => {
+    const f = fixture();
+    t.after(() => fs.rmSync(f.dir, { recursive: true, force: true }));
+    const codexArgsLog = useSucceedingCodex(f);
+    const args = [f.output, '青い円を描く'];
+    if (mode === 'edit') {
+      const input = path.join(f.dir, 'input.png');
+      fs.writeFileSync(input, 'fake input');
+      args.push(input);
+    }
+
+    const result = run(codexImagen, args, f.env);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(fs.readFileSync(f.output, 'utf8'), 'codex image');
+    const codexArgs = argsFromLog(codexArgsLog);
+    const configIndex = codexArgs.indexOf('-c');
+    assert.notEqual(configIndex, -1, codexArgs.join(' '));
+    assert.equal(codexArgs[configIndex + 1], 'features.plugins=false');
+    const prompt = codexArgs[codexArgs.length - 1];
+    assert.match(prompt, /組み込みの imagegen スキル/);
+    assert.match(prompt, /gemini-image など他の画像スキル、ブラウザ操作、画面操作は使わない/);
+    assert.doesNotMatch(prompt, /imagenスキル/);
+  });
+}
+
+test('Codex disables every enabled config-defined MCP server', t => {
+  const f = fixture();
+  t.after(() => fs.rmSync(f.dir, { recursive: true, force: true }));
+  const codexArgsLog = useSucceedingCodex(f);
+  f.env.FAKE_MCP_LIST = JSON.stringify([
+    { name: 'node_repl', enabled: true },
+    { name: 'Context7', enabled: true },
+    { name: 'computer-use', enabled: false },
+    // 無効なサーバーは名前が -c で指定できなくても問題にしない
+    { name: 'off.server', enabled: false },
+  ]);
+
+  const result = run(codexImagen, [f.output, '青い円を描く'], f.env);
+
+  assert.equal(result.status, 0, result.stderr);
+  const codexArgs = argsFromLog(codexArgsLog);
+  const configs = codexArgs.filter((_, i) => codexArgs[i - 1] === '-c');
+  assert.deepEqual(configs, [
+    'features.plugins=false',
+    'mcp_servers.node_repl.enabled=false',
+    'mcp_servers.Context7.enabled=false',
+  ]);
+});
+
+// 止める MCP を確定できないときは Codex を動かさず (fail-closed)、フォールバックへ回す
+for (const [label, mcpList, extraEnv = {}] of [
+  ['the MCP server list is not JSON', 'not json'],
+  ['an enabled MCP server name cannot be disabled via -c', JSON.stringify([{ name: 'bad.name', enabled: true }])],
+  ['listing the MCP servers times out', '[]', { FAKE_MCP_SLEEP: '5', CODEX_IMAGEN_MCP_LIST_TIMEOUT: '1' }],
+]) {
+  test(`Codex path is skipped when ${label}`, t => {
+    const f = fixture();
+    t.after(() => fs.rmSync(f.dir, { recursive: true, force: true }));
+    const codexArgsLog = useSucceedingCodex(f);
+    f.env.FAKE_MCP_LIST = mcpList;
+    Object.assign(f.env, extraEnv);
+
+    const result = run(codexImagen, [f.output, '青い円を描く'], f.env);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /skipping codex path/);
+    assert.equal(fs.existsSync(codexArgsLog), false, 'codex exec must not run');
+    assert.deepEqual(fs.readFileSync(f.orderLog, 'utf8').trim().split('\n'), ['grok']);
+    const summary = imagenResult(result.stderr);
+    assert.equal(summary.status, 'ok');
+    assert.deepEqual(summary.providers.map(p => [p.name, p.status, p.reason]).slice(0, 1), [['codex', 'skipped', 'mcp_unverified']]);
+    assert.equal(summary.providers[1].name, 'grok');
+  });
+}
+
+test('Codex edit prompt keeps the edit verb and the input image path', t => {
+  const f = fixture();
+  t.after(() => fs.rmSync(f.dir, { recursive: true, force: true }));
+  const codexArgsLog = useSucceedingCodex(f);
+  const input = path.join(f.dir, 'input.png');
+  fs.writeFileSync(input, 'fake input');
+
+  const result = run(codexImagen, [f.output, '円を赤くする', input], f.env);
+
+  assert.equal(result.status, 0, result.stderr);
+  const prompt = argsFromLog(codexArgsLog).at(-1);
+  assert.match(prompt, /画像を編集します/);
+  assert.ok(prompt.includes(`入力画像: ${input}`), prompt);
 });
