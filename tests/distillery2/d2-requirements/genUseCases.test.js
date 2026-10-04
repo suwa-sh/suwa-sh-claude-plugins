@@ -63,6 +63,14 @@ test('既存 use-cases の slug/status/tiers_hint を uc_id で引き継ぐ', ()
   assert.ok(!('spec_ids_added' in byUc['貸出を登録する']));
 });
 
+test('既存 use-cases の tiers (contract 段階で書き戻した関与ティア) を引き継ぐ。無い UC には足さない (0.1.27 実走 K8)', () => {
+  const existing = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: ['SPEC-001-01', 'SPEC-001-02'], status: 'done', tiers: ['frontend', 'backend-api'] }]]);
+  const byUc = Object.fromEntries(generate(reqData, bucText, existing).use_cases.map(u => [u.uc, u]));
+  assert.deepEqual(byUc['貸出を登録する'].tiers, ['frontend', 'backend-api']);
+  const other = Object.values(byUc).find(u => u.uc !== '貸出を登録する');
+  assert.ok(other && !('tiers' in other), '既存に無ければキーごと出さない');
+});
+
 test('既存 use-cases の no_spec_reason (blocked の理由) を引き継ぐ (再生成で消えて validate が落ちていた。0.1.16)', () => {
   const existing = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: [], status: 'blocked', no_spec_reason: '要求に無い (テスト)' }]]);
   const byUc = Object.fromEntries(generate(reqData, bucText, existing).use_cases.map(u => [u.uc, u]));

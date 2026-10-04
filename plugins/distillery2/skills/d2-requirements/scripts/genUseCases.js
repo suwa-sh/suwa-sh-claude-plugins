@@ -8,8 +8,8 @@
  * 導出できない項目: slug (英語 kebab-case)。暫定で `uc-<uc_id>` を置き、LLM が意味のある英名へ差し替える。
  * spec_ids はフロー (BUC) 単位で当てた候補。LLM が UC が実現する SPEC へ絞り込む。
  *
- * 既存 use-cases.yaml があれば uc_id をキーに slug / status / tiers_hint / spec_ids_rejected / no_spec_reason を引き継ぐ
- * (LLM が編集した値を再生成で上書きしない)。
+ * 既存 use-cases.yaml があれば uc_id をキーに slug / status / tiers_hint / tiers / spec_ids_rejected / no_spec_reason を引き継ぐ
+ * (LLM が編集した値を再生成で上書きしない。tiers は contract 段階で d2-run が書き戻す関与ティアで、以後のゲートが読む。0.1.28)。
  * spec_ids の再生成は却下済みを尊重する:
  *   candidates   = 今回の推定 − 既存 spec_ids − 既存 spec_ids_rejected (今回はじめて出た候補だけ)
  *   spec_ids     = 既存 spec_ids ∪ candidates (sorted / unique。既に絞った SPEC は保持)
@@ -181,6 +181,8 @@ function generate(reqData, bucText, existingById) {
     };
     // blocked の理由 (LLM が書いた値) を引き継ぐ (無いと再生成で validateUseCases が落ちる。0.1.13 実走 ①)
     if (typeof prev.no_spec_reason === 'string' && prev.no_spec_reason) uc.no_spec_reason = prev.no_spec_reason;
+    // 関与ティア (contract 段階で d2-run が書き戻す) を引き継ぐ。要求の差分のたびに消えると、配送済み UC のゲートが関与ティアを失う (0.1.27 実走 K8)
+    if (Array.isArray(prev.tiers) && prev.tiers.length) uc.tiers = prev.tiers.slice();
     // spec_ids_added は「新規候補があるときだけ」出す (無ければキーごと省く)。
     if (candidates.length) uc.spec_ids_added = candidates.slice().sort();
     return uc;

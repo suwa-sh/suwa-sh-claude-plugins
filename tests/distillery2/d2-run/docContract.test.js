@@ -182,10 +182,10 @@ test('0.1.27: 自動選択: 進行中の UC が先。無ければ main に切り
   assert.match(a, /\*\*進行中の UC\*\* があれば、その UC の ④ を続ける/);
   assert.match(a, /`blocked_on_requirement` でない UC/);
   assert.match(a, /\*\*clean な main に切り替えてから\*\*/);
-  const order = ['`git rev-list --count origin/main..main` が 0 でなければ', '`batch.point` が `none` 以外', '`requirement` が空でない', '`feedback_due` が true', '`status` が `done` でない最初の UC'];
+  const order = ['`git rev-list --count origin/main..main` が 0 でなければ', '**移行**: `unfiled_runs`', '`batch.point` が `none` 以外', '`requirement` が空でない', '`feedback_due` が true', '`status` が `done` でない最初の UC'];
   let last = -1;
   for (const o of order) { const i = a.indexOf(o); assert.ok(i > last, `自動選択の順: ${o}`); last = i; }
-  assert.match(a, /止まった課題 \(課題ファイルの `stopped: true`\) は 3・4 のきっかけにしない/);
+  assert.match(a, /止まった課題 \(課題ファイルの `stopped: true`\) は 3 の 4・5 のきっかけにしない/);
   assert.match(a, /進行中の UC があれば止まって報告する/);
   assert.match(a, /要求で止まった UC \(`feature\/<slug>` が残っているもの\) は飛ばす/, '保留中の要求の課題で起動が行き詰まらない (差分レビュー 3 ラウンド目)');
   assert.match(a, /`uc=<slug>` で要求で止まった UC を直接指定したら、保留中のその UC の要求の課題を示して止まって報告する/);
@@ -225,9 +225,78 @@ test('0.1.27: 還流: 上流は持ち主のスキルが直し、git の状態遷
 
 test('0.1.27: 還流の順: 再開の判定 → 切り出し → 課題ごと (派遣 → 受理 → commit-issue → regen → static → record-static → discard) → finalize → ゲート → 確認ページ → hold → merge', () => {
   const fb = feedbackSection();
-  const order = ['`FB status`', '`FB start`', '`git -C <wt> status --porcelain` が空', '派遣表「還流 (ADR)」', '派遣表「還流 (契約)」', '`FB commit-issue <issue>`', '`FB regen` → `runGates.js --uc d2-feedback --only static`', '`FB record-static <issue>`', '5. `FB discard` (成功でも失敗でも', '`FB stop-issue <issue> --reason-file', '`FB finalize`', '`FB record-gate --result', '**確認ページ 1 回**', '`FB decide --take', '`FB rebuild`', '引数が `merge=hold` なら止めて報告する', '**取り込み**: `FB merge`'];
+  const order = ['`FB status`', '`FB start`', '`git -C <wt> status --porcelain` が空', '派遣表「還流 (ADR)」', '派遣表「還流 (契約)」', '`FB commit-issue <issue>`', '`FB regen` → `runGates.js --uc d2-feedback --only static`', '`FB record-static <issue>`', '5. `FB discard` (成功でも失敗でも', '`FB stop-issue <issue> --reason-file', '`FB finalize`', '`FB record-gate --result', '**確認ページ 1 回**', '`FB decide --take', '`FB rebuild`', '引数が `merge=hold` なら止めて報告する', '**取り込み**: まず `FB status`', '次に `FB merge`'];
   let last = -1;
   for (const o of order) { const i = fb.indexOf(o); assert.ok(i > last, `還流の順: ${o}`); last = i; }
+});
+
+test('0.1.28: 起動時: 移行は課題を数える前 (stage= 直接指定でも)。配送済みの feature は進行中とみなさず片付ける (旧形式は退避して -D)。要求の差分の後は還流まで続け、次の UC には進まない', () => {
+  const a = autoSelect();
+  assert.match(a, /\*\*移行\*\*: `unfiled_runs`[\s\S]*`FB file-issues <run>` → `genDocsReadme\.js` → `git add -A -- docs \.distillery\/runs\/<slug>` → `impl\(<slug>\): issues to feedback`/);
+  assert.match(a, /終わったら `FB scan` をやり直す/);
+  assert.match(a, /直接指定でも 3 の 1〜2 \(push のやり直しと移行\) は行う/);
+  assert.match(a, /\*\*main 上のその UC の run に配送の done があれば配送済み\*\*/);
+  assert.match(a, /その feature を checkout していれば先に clean を確かめて `git switch main` する/, 'checkout 中の branch は消せない (差分レビュー 1 ラウンド目)');
+  assert.match(a, /done が `legacy: true` なら `git update-ref refs\/distillery2\/legacy\/<slug>\/<ts> feature\/<slug>` で退避してから `git branch -D feature\/<slug>`、そうでなければ ff 済みなので `git branch -d feature\/<slug>`/);
+  assert.match(a, /プラグインへ持ち帰る課題 \(`kind: plugin`。還流節\) もきっかけにしない/);
+  const fb = feedbackSection();
+  assert.match(fb, /`FB scan` の `unfiled_runs` が空 \(移行は自動選択の 3 の 2 で済ませる\)/);
+  assert.doesNotMatch(fb, /\*\*移行\*\*: `FB scan` の `unfiled_runs`/, '還流節から移行の手順が消えた');
+  const d = deliverSection();
+  assert.match(d, /`feature\/<slug>` が残っていれば `git update-ref refs\/distillery2\/legacy\/<slug>\/<ts> feature\/<slug>` で退避してから `git branch -D feature\/<slug>`/);
+  assert.match(d, /その後は自動選択の 3 からやり直す/);
+  assert.doesNotMatch(d, /commit してから還流へ進む/);
+  const r = section(SKILL, '### 要求の差分', '## ② 決定');
+  assert.match(r, /自動選択の 3 の 2〜5 をやり直す/);
+  assert.match(r, /\*\*同じ起動で次の UC \(3 の 6\) には進まない\*\*/);
+  assert.match(r, /`git commit -F <本文ファイル>`/);
+  const done = section(SKILL, '## 完了報告', '## 参照');
+  assert.match(done, /要求の差分の後は、自動選択の 3 の 2〜5 をやり直す/);
+  assert.match(done, /還流が要らなければ報告して終了する。同じ起動で次の UC には進まない/);
+  const del = read(DELIVERY);
+  assert.match(del, /## 旧形式の片付け/);
+  assert.match(del, /`git update-ref refs\/distillery2\/legacy\/<slug>\/<ts> feature\/<slug>` で退避してから `git branch -D feature\/<slug>`/);
+  assert.match(read(RUN_STATE), /起動時の移行 \(`feedbackBatch\.js scan` の `unfiled_runs`。自動選択の 3 の 2\)/);
+});
+
+test('0.1.28: 配送: gates.json が無ければ全段を 1 回通す。課題 0 件なら issues to feedback の commit を作らない。stage は docs と <run> を指定 (docs/feedback は名指ししない)', () => {
+  const d = deliverSection();
+  assert.match(d, /`reports\/gates\.json` が無ければ[\s\S]*`runGates\.js --uc <slug> --tiers <use-cases\.yaml の tiers>` で全段を 1 回通して/);
+  assert.match(d, /結果の `filed` が空でなければ `genDocsReadme\.js` を回し、`git add -A -- docs \.distillery\/runs\/<slug>` して `impl\(<slug>\): issues to feedback` で commit/);
+  assert.match(d, /`filed` が空 \(課題 0 件\) なら commit を作らない/);
+  assert.match(d, /`git add -A -- docs \.distillery\/runs\/<slug>` \(配送の done・events・README・課題一覧の README/);
+  assert.doesNotMatch(d, /git add -A -- docs\/feedback/, 'docs/feedback は無いことがあるので名指ししない');
+});
+
+test('0.1.28: 還流: reason_kind plugin は reclassify で kind: plugin に (止めない・聞かない)。問いは 3 択で --dismiss は候補にも。already-applied の後片付けはスクリプト。取り込みの前に status を控える', () => {
+  const fb = feedbackSection();
+  assert.match(row(fb, /^\| plugin \|/), /還流では扱わない。還流で「直す場所がプラグイン側」と分かった課題を `FB reclassify` がこの種類にする/);
+  const st = section(SKILL, '### 止まったとき', '### 課題ファイル');
+  assert.match(st, /\| 結果ファイルが `blocked` で `reason_kind` が `plugin` \| \*\*止めない\*\*/);
+  assert.match(st, /`FB reclassify <issue> --reason-file <fb>\/<issue>\.reason\.txt`/);
+  assert.match(st, /\| 結果ファイルが `blocked` \(`reason_kind` が `scope` か無い\) \| 結果ファイルの `reason` \|/);
+  assert.match(fb, /「取り込む \/ 今回は外す \/ 取り下げる」/);
+  assert.match(fb, /すべて `--take`・`--drop`・`--dismiss` のどれか一方に入れる/);
+  assert.match(fb, /`--dismiss` は止まった課題と取り込む候補だけ/);
+  assert.match(fb, /プラグインへ持ち帰る課題 \(`reclassify` した課題。載せるだけで聞かない\)/);
+  assert.match(fb, /`result` が `already-applied`[\s\S]*次の課題へ \(5 の 4・5 は飛ばす。static は回さず、派遣が作り直した生成物はスクリプトが捨てる \(`discarded: true`\)/);
+  assert.match(fb, /まず `FB status` を回し、その結果 \(ゲートの記録 `gate`・回答 `decision`\) と止まった課題の理由を完了報告用に控える/);
+  assert.match(fb, /取り込みの前は還流 branch の課題ファイル `<wt>\/docs\/feedback\/\*\.md` に、取り込み済みの再開 \(`cleanup`\) なら main の課題ファイルにある/);
+  const put = section(SKILL, '### 課題ファイル', '## 完了報告');
+  assert.match(put, /`kind: plugin` \(プラグインへ持ち帰る課題。`kind_original` に元の種類\): 還流の対象ではなく、自動選択のきっかけにもしない/);
+  assert.match(put, /distillery2 を直した後に人が `git rm` して commit する/);
+  const done = section(SKILL, '## 完了報告', '## 参照');
+  assert.match(done, /プラグインへ持ち帰る課題 \(`scan` の `plugin`\)/);
+  const del = read(DELIVERY);
+  assert.match(del, /\| Feedback-Reclassified \/ Feedback-Kind-Original \|/);
+  assert.match(del, /`feedback\(<b>\): plugin <issue>`/);
+  for (const rel of ['skills/d2-decide/SKILL.md', 'skills/d2-contract/SKILL.md']) {
+    const t = read(rel);
+    assert.match(t, /`reason_kind: plugin`/, rel);
+    assert.match(t, /`reason_kind: scope`/, rel);
+    assert.match(t, /"reason_kind": "plugin" \| "scope"\}` \(`reason_kind` は `blocked` のとき必須\)/, rel);
+  }
+  assert.match(read('skills/d2-run/references/troubleshooting.md'), /受理の検査[\s\S]*1 つの sh にまとめたものが同じ症状で止まった/);
 });
 
 test('0.1.27: 還流のゲート: 課題ごとに static、最後に 1 回 (rule は static、contract は変えた契約を使う UC ごとの全段)。落ちても推測で外さない', () => {

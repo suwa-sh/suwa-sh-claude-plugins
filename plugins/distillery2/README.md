@@ -28,7 +28,8 @@ v2 は成果物を 3 つに分ける。
         ▼  次の UC の前に、溜まった課題を片付ける
   要求の差分 (要求の課題を要求に反映) → 還流 (ルール・契約の課題を worktree 1 つでまとめて直し、確認ページの後に main へ)
   (PR / issue は作らない。git とファイルだけで完結し、GitHub 以外のホストや remote の無いリポでも動く。
-   片付いていない課題は docs/README.md の件数 → docs/feedback/README.md の一覧 → 課題ファイルの順に辿れる)
+   片付いていない課題は docs/README.md の件数 → docs/feedback/README.md の一覧 → 課題ファイルの順に辿れる。
+   還流で「直す場所が distillery2 側」と分かった課題は kind: plugin にして還流の対象から外し、一覧の別の表に出す)
 ```
 
 ゲートは 静的 → 単体 → 契約 → UC BDD (API 面) → 受入 (タグ絞り込み、`@browser` はブラウザドライバ) の順。落ちたゲートで止まる。

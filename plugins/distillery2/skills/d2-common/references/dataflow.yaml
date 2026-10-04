@@ -910,6 +910,25 @@ processes:
     run_table_row: "④ の feedbackBatch.js file-issues"
     reads: [issues, issues-tier, run-events]
     writes: [feedback-docs, run-events]
+  # ---- 起動時の移行 (0.1.28。配送済みなのに課題ファイルにしていない run の課題を、課題を数える前に課題ファイルにする) ----
+  - id: run.migrate-issues
+    name: 旧形式の run の課題を課題ファイルにする (起動時の移行)
+    stage: feedback
+    kind: script
+    actor: d2-run
+    scripts: [feedbackBatch.js]
+    run_table_row: "起動時の feedbackBatch.js file-issues (移行)"
+    reads: [issues, issues-tier, run-events]
+    writes: [feedback-docs, run-events]
+  - id: run.migrate-readme
+    name: 文書の入口の更新 (起動時の移行)
+    stage: feedback
+    kind: script
+    actor: d2-run
+    scripts: [genDocsReadme.js]
+    run_table_row: "起動時の genDocsReadme.js (移行)"
+    reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules, feedback-docs]
+    writes: [docs-readme, feedback-index]
   # ================= 還流 (d2-run。UC の外。main から切った worktree 1 つで溜まった課題をまとめて直す) =================
   - id: run.feedback
     name: d2-run (還流)
@@ -927,8 +946,8 @@ processes:
     actor: d2-run
     scripts: [feedbackBatch.js, genAdrIndex.js, genRules.js, genArchTests.js, compileContracts.js, compileRdbSchema.js, validateUcIndex.js, genContractTests.js, genRdbDdl.js, genDocsReadme.js, validateAdr.js]
     run_table_row: "還流の feedbackBatch.js"
-    reads: [feedback-docs, issues, run-events, adr, rule-templates, contracts-src, config, feedback-batch]
-    writes: [worktrees, feedback-batch, feedback-failed, feedback-docs, adr, rules, depcruise-config, contracts-catalog, contract-slice, contract-tests, contracts-code, migrations, docs-readme, feedback-index, run-events]
+    reads: [feedback-docs, adr, rule-templates, contracts-src, config, feedback-batch]
+    writes: [worktrees, feedback-batch, feedback-failed, feedback-docs, adr, rules, depcruise-config, contracts-catalog, contract-slice, contract-tests, contracts-code, migrations, docs-readme, feedback-index]
   - id: run.feedback.gates
     name: 還流のゲート (課題ごとの static と最後のゲート)
     parent: run.feedback

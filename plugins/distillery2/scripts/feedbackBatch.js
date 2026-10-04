@@ -8,6 +8,7 @@
  *
  * branch の commit の並び (main から):
  *   feedback(<b>): <rule|contract> <issue>   課題ごと。原本と課題ファイルの削除 (trailer Feedback-Consumed)
+ *   feedback(<b>): plugin <issue>            課題ごと。直す場所がプラグイン側の課題を kind: plugin に書き換える (trailer Feedback-Reclassified。0.1.28)
  *   feedback(<b>): dismiss                   確認ページで取り下げた課題ファイルの削除 (trailer Feedback-Dismissed)
  *   feedback(<b>): stopped                   止まった課題ファイルの書き足し
  *   feedback(<b>): adr index                 ADR の索引 (ルールの basis の対象の docs/adr を変えるので、ルールより先に別の commit)
@@ -15,18 +16,19 @@
  *
  * CLI (すべて --cwd <repo> を取る。既定はカレント。結果は JSON 1 行):
  *   file-issues <runDir>        UC の課題 (issues/*.md) のうち課題ファイルにしていないものを docs/feedback/ に書き、feedback_filed を記録
- *   scan                        自動選択の材料: 要求の差分のきっかけ (止まっていない要求の課題)・還流のきっかけ (止まっていないルール・契約)・止まった課題・課題ファイルにしていない配送済みの run・途中のバッチ
+ *   scan                        自動選択の材料: 要求の差分のきっかけ (止まっていない要求の課題)・還流のきっかけ (止まっていないルール・契約)・止まった課題・プラグインへ持ち帰る課題・課題ファイルにしていない配送済みの run・途中のバッチ
  *   hold <issue> --reason-file <f>   要求の差分の確認ページで外して残す課題に止まった印を付ける (main の作業ツリーで書き換えるだけ。commit は d2-run)
  *   start [--batch <b>]         worktree と branch を main から作り、batch.json に対象の課題を書く
  *   status                      再開地点 (none | issues | gate | rebuild | merge | cleanup)
- *   commit-issue <issue>        原本と課題ファイルの削除を 1 commit に。契約で原本に差分が無ければ取り込み済み
+ *   commit-issue <issue>        原本と課題ファイルの削除を 1 commit に。契約で原本に差分が無ければ取り込み済み (worktree の残りはこのスクリプトが捨てる)
+ *   reclassify <issue> --reason-file <f>   直す場所がプラグイン側の課題を kind: plugin に書き換えて commit (還流の対象から外れる。止まった印は外す)
  *   regen [--only adr-index|derived] [--regen-cmds <json>]   生成物を作り直す (commit しない)
  *   discard                     worktree の未 commit の変化をすべて捨てる (reset --hard と clean -fd)
  *   record-static <issue>       課題ごとの static が通った記録 (sha = 課題の commit)
  *   stop-issue <issue> --reason-file <f>   差分を残し、課題の commit を落として、止まった記録
  *   finalize [--regen-cmds <json>]         原本全体の検査 → stopped → adr index → regenerate
  *   record-gate --result pass|fail [--detail <f>]   最後のゲートの結果 (sha = branch の先頭)
- *   decide (--take a,b --drop c --dismiss d | --abandon | --auto)   確認ページの回答
+ *   decide (--take a,b --drop c --dismiss d | --abandon | --auto)   確認ページの回答 (--dismiss は止まった課題と取り込む候補)
  *   rebuild [--regen-cmds <json>]          main の先端から組み直す (外す課題・取り下げ・main の進行)
  *   merge                       main へ ff merge → push → 後始末 (取り込み済みなら push と後始末だけ)
  *
@@ -152,7 +154,7 @@ function issueOf(batch, id) {
 /** branch の中の課題の commit (main から先端まで、subject が `feedback(<b>): rule|contract <id>`) */
 function issueCommits(ctx, base = 'main') {
   const out = git(ctx.root, ['log', '--reverse', '--format=%H%x09%s', `${base}..${ctx.branch}`]);
-  const re = new RegExp(`^feedback\\(${ctx.batch}\\): (rule|contract) (.+)$`);
+  const re = new RegExp(`^feedback\\(${ctx.batch}\\): (rule|contract|plugin) (.+)$`);
   return out.split('\n').filter(Boolean).map((l) => { const [sha, s] = l.split('\t'); const m = s.match(re); return m ? { sha, kind: m[1], id: m[2] } : null; }).filter(Boolean);
 }
 
@@ -257,7 +259,8 @@ function batchStatus(root) {
   const gate = readJson(path.join(ctx.fb, 'gate.json'));
   const decision = readJson(path.join(ctx.fb, 'decision.json'));
   if (generated) {
-    if (isAncestor(root, ctx.branch, 'main')) return { ...base, point: 'cleanup' };
+    // 取り込み済み (push の拒否の後の再開など) でも、報告に使えるようにゲートの記録と回答を返す (0.1.27 実走 K19)
+    if (isAncestor(root, ctx.branch, 'main')) return { ...base, point: 'cleanup', gate, decision };
     const gateOk = Boolean(gate && gate.result === 'pass' && gate.sha === head);
     const changes = Boolean(decision && ((decision.drop || []).length || (decision.dismiss || []).length));
     if (decision && changes && !decision.applied) return { ...base, point: 'rebuild', decision };
@@ -269,9 +272,11 @@ function batchStatus(root) {
   const pending = [];
   const needsStatic = [];
   for (const it of batch.issues) {
-    const st = readState(ctx, it.id);
+    let st = readState(ctx, it.id);
     const c = commits.find((x) => x.id === it.id);
-    if (st && (st.status === 'stopped' || st.status === 'already-applied')) done.push(it.id);
+    // reclassify の commit と state の間で止まっても、commit があれば済み (state を復元する。外部レビュー 0.1.28 計画 2 ラウンド目)
+    if (c && c.kind === 'plugin' && !(st && st.status === 'reclassified')) { st = { status: 'reclassified', sha: c.sha }; writeJson(stateFile(ctx, it.id), st); }
+    if (st && (st.status === 'stopped' || st.status === 'already-applied' || st.status === 'reclassified')) done.push(it.id);
     else if (st && st.status === 'passed' && c && st.sha === c.sha) done.push(it.id);
     else if (c) needsStatic.push(it.id);
     else pending.push(it.id);
@@ -287,6 +292,8 @@ function cmdScan(root) {
   const requirementAll = all.filter((x) => x.kind === 'requirement').map((x) => x.id);
   const triggers = all.filter((x) => (x.kind === 'rule' || x.kind === 'contract') && !x.stopped).map((x) => x.id);
   const stopped = all.filter((x) => (x.kind === 'rule' || x.kind === 'contract') && x.stopped).map((x) => ({ id: x.id, stopped_count: x.stopped_count }));
+  // プラグインへ持ち帰る課題は還流の対象でない (報告用に返すだけ。きっかけにしない)
+  const plugin = all.filter((x) => x.kind === 'plugin').map((x) => x.id);
   const runsDir = path.join(root, '.distillery', 'runs');
   const unfiledRuns = [];
   if (fs.existsSync(runsDir)) {
@@ -299,7 +306,7 @@ function cmdScan(root) {
   }
   const batch = batchStatus(root);
   const feedbackDue = batch.point !== 'none' || triggers.length > 0 || unfiledRuns.length > 0;
-  return { requirement, requirement_all: requirementAll, triggers, stopped, unfiled_runs: unfiledRuns, batch, feedback_due: feedbackDue };
+  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, batch, feedback_due: feedbackDue };
 }
 
 function symlinkNodeModules(root, wt) {
@@ -364,8 +371,40 @@ function cmdCommitIssue(root, id) {
   const lines = [`feedback(${ctx.batch}): ${it.kind} ${id}`, '', `Feedback-Consumed: docs/feedback/${id}.md`, `Feedback-Kind: ${it.kind}`, `Feedback-From-UC: ${fm.from_uc || 'unknown'}`];
   if (alreadyApplied) lines.push('Feedback-Result: already-applied');
   const sha = commitWithMessage(ctx.wt, lines.join('\n'));
-  if (alreadyApplied) writeJson(stateFile(ctx, id), { status: 'already-applied', sha });
-  return { result: alreadyApplied ? 'already-applied' : 'committed', sha, sources };
+  if (alreadyApplied) {
+    writeJson(stateFile(ctx, id), { status: 'already-applied', sha });
+    // 派遣が作り直した生成物が worktree に残る。static は回さないので、ここで捨てて次の課題を clean で始める (0.1.27 実走 K14)
+    discardWt(ctx.wt);
+    return { result: 'already-applied', sha, sources, discarded: true };
+  }
+  return { result: 'committed', sha, sources };
+}
+
+/** 直す場所がプラグイン側 (生成器・テンプレート・手順書) の課題を kind: plugin に書き換えて commit する。還流の対象から外れ、main に残る (0.1.28) */
+function cmdReclassify(root, id, opts) {
+  if (!id || !opts['reason-file']) throw new Fail('reclassify <issue> --reason-file <f>', 2);
+  const ctx = ctxOf(root);
+  const batch = requireBatch(ctx);
+  const it = issueOf(batch, id);
+  const reason = fs.readFileSync(path.resolve(root, opts['reason-file']), 'utf8').trim();
+  // 派遣が書き込み範囲の中に残したものを commit に混ぜない
+  discardWt(ctx.wt);
+  const fp = feedbackPath(ctx.wt, id);
+  if (!fs.existsSync(fp)) throw new Fail(`課題ファイルが worktree に無い: ${path.relative(ctx.wt, fp)}`);
+  const { fm, body } = splitFrontMatter(fs.readFileSync(fp, 'utf8'));
+  const original = fm.kind || it.kind;
+  const nfm = { ...fm, kind: 'plugin', kind_original: original };
+  // もう止まった課題ではない (止まった理由の本文は残す)
+  delete nfm.stopped;
+  delete nfm.stopped_count;
+  nfm.title = String(nfm.title || id).replace(/^止まった: /, '');
+  const section = ['## プラグインへ持ち帰る理由', '', reason, ''].join('\n');
+  fs.writeFileSync(fp, joinFrontMatter(nfm, `\n${section}\n${body.replace(/^\n+/, '')}`));
+  git(ctx.wt, ['add', '-A', '--', path.join(FEEDBACK_REL, `${id}.md`)]);
+  const lines = [`feedback(${ctx.batch}): plugin ${id}`, '', `Feedback-Reclassified: docs/feedback/${id}.md`, 'Feedback-Kind: plugin', `Feedback-Kind-Original: ${original}`, `Feedback-From-UC: ${fm.from_uc || 'unknown'}`];
+  const sha = commitWithMessage(ctx.wt, lines.join('\n'));
+  writeJson(stateFile(ctx, id), { status: 'reclassified', sha, reason });
+  return { reclassified: id, kind_original: original, sha };
 }
 
 function cmdRegen(root, opts) {
@@ -515,9 +554,10 @@ function cmdRecordGate(root, opts) {
 
 function csv(v) { return v ? String(v).split(',').map((s) => s.trim()).filter(Boolean) : []; }
 
-/** 確認ページで「取り込む / 外す」を聞く課題 (原本を commit した課題。取り込み済みは聞かずに残す) */
+/** 確認ページで「取り込む / 今回は外す / 取り下げる」を聞く課題 (原本を commit した課題。取り込み済みとプラグインへ持ち帰る課題は聞かずに残す) */
+function keptWithoutAsking(st) { return Boolean(st && (st.status === 'already-applied' || st.status === 'reclassified')); }
 function candidatesOf(ctx) {
-  return issueCommits(ctx).map((c) => c.id).filter((id) => (readState(ctx, id) || {}).status !== 'already-applied');
+  return issueCommits(ctx).filter((c) => c.kind !== 'plugin').map((c) => c.id).filter((id) => !keptWithoutAsking(readState(ctx, id)));
 }
 
 function cmdDecide(root, opts) {
@@ -540,22 +580,24 @@ function cmdDecide(root, opts) {
     d = { auto: false, take: csv(opts.take), drop: csv(opts.drop), dismiss: csv(opts.dismiss) };
   }
   for (const id of [...d.take, ...d.drop, ...d.dismiss]) issueOf(batch, id);
-  // 回答の転記漏れで、人が選んでいない課題を取り込まない (取り込む候補は take と drop で漏れなく、重ならずに覆う)
-  const both = d.take.filter((id) => d.drop.includes(id));
-  if (both.length) throw new Fail(`取り込むと外すの両方にある課題: ${both.join(', ')}`);
-  const missing = candidates.filter((id) => !d.take.includes(id) && !d.drop.includes(id));
-  if (missing.length) throw new Fail(`取り込むか外すかが決まっていない課題: ${missing.join(', ')}`);
+  // 回答の転記漏れで、人が選んでいない課題を取り込まない (取り込む候補は take・drop・dismiss で漏れなく、重ならずに覆う)
+  const both = d.take.filter((id) => d.drop.includes(id) || d.dismiss.includes(id)).concat(d.drop.filter((id) => d.dismiss.includes(id)));
+  if (both.length) throw new Fail(`取り込む・外す・取り下げるの複数にある課題: ${[...new Set(both)].join(', ')}`);
+  const missing = candidates.filter((id) => !d.take.includes(id) && !d.drop.includes(id) && !d.dismiss.includes(id));
+  if (missing.length) throw new Fail(`取り込むか外すか取り下げるかが決まっていない課題: ${missing.join(', ')}`);
   const extra = [...d.take, ...d.drop].filter((id) => !candidates.includes(id));
-  if (extra.length) throw new Fail(`取り込む候補でない課題 (止まった・取り込み済み): ${extra.join(', ')}`);
-  const notStopped = d.dismiss.filter((id) => !stoppedIds.includes(id));
-  if (notStopped.length) throw new Fail(`取り下げられるのは止まった課題だけ: ${notStopped.join(', ')}`);
+  if (extra.length) throw new Fail(`取り込む候補でない課題 (止まった・取り込み済み・プラグインへ持ち帰る): ${extra.join(', ')}`);
+  // 取り下げは止まった課題 (2 回目以上の停止) と取り込む候補 (直し方が要らない課題。0.1.27 実走 K17)
+  const notDismissable = d.dismiss.filter((id) => !stoppedIds.includes(id) && !candidates.includes(id));
+  if (notDismissable.length) throw new Fail(`取り下げられるのは止まった課題と取り込む候補だけ: ${notDismissable.join(', ')}`);
   const gateFailed = !gate || gate.sha !== head || gate.result !== 'pass';
   if (gateFailed) {
     // 取り込む候補が無いのに落ちたなら、原因は課題ではない (main か生成物の作り直し)。回答を記録せず人が調べる
     if (!candidates.length) throw new Fail('取り込む候補が無いのにゲートが通っていない (記録が無い・落ちた・先頭と違う)。原因は課題ではなく main か生成物の作り直し。止まって人が調べる');
     if (d.auto) throw new Fail('ゲートが通っていないときは --auto にできない');
-    // 取り下げは止まった課題だけなので、取り込む候補を外したことにならない
-    if (!d.drop.length) throw new Fail('ゲートが通っていない (記録が無い・落ちた・先頭と違う)。取り込む候補をすべて取り込む回答はできない。外す課題を選ぶか、バッチ全体を止める (--abandon)');
+    // 候補を外す (drop) か候補を取り下げる (dismiss) が無ければ、候補をすべて取り込む回答になる
+    const removed = d.drop.length + d.dismiss.filter((id) => candidates.includes(id)).length;
+    if (!removed) throw new Fail('ゲートが通っていない (記録が無い・落ちた・先頭と違う)。取り込む候補をすべて取り込む回答はできない。外すか取り下げる課題を選ぶか、バッチ全体を止める (--abandon)');
   }
   const rec = { ...d, applied: false, decided_at: new Date().toISOString(), head };
   writeJson(path.join(ctx.fb, 'decision.json'), rec);
@@ -572,10 +614,10 @@ function cmdRebuild(root, opts) {
   const drop = decision.drop || [];
   const dismiss = decision.dismiss || [];
   const oldHead = revParse(root, ctx.branch);
-  // main..branch は main が進んでいても branch 側の commit だけを返す。取り込むのは take (確認ページで選んだもの) と取り込み済み
+  // main..branch は main が進んでいても branch 側の commit だけを返す。取り込むのは take (確認ページで選んだもの) と、聞かずに残すもの (取り込み済み・プラグインへ持ち帰る)
   const take = decision.take || null;
   const keep = issueCommits(ctx).filter((c) => !drop.includes(c.id) && !dismiss.includes(c.id)
-    && (take === null || take.includes(c.id) || (readState(ctx, c.id) || {}).status === 'already-applied'));
+    && (take === null || take.includes(c.id) || c.kind === 'plugin' || keptWithoutAsking(readState(ctx, c.id))));
   git(root, ['update-ref', `refs/distillery2/feedback-prev/${ctx.batch}`, oldHead]);
   git(ctx.wt, ['reset', '-q', '--hard', 'main']);
   const picked = [];
@@ -588,7 +630,7 @@ function cmdRebuild(root, opts) {
     }
     const sha = revParse(ctx.wt, 'HEAD');
     const st = readState(ctx, c.id);
-    if (st && (st.status === 'passed' || st.status === 'already-applied')) writeJson(stateFile(ctx, c.id), { ...st, sha });
+    if (st && (st.status === 'passed' || st.status === 'already-applied' || st.status === 'reclassified')) writeJson(stateFile(ctx, c.id), { ...st, sha });
     picked.push({ id: c.id, sha });
   }
   const dismissed = dismiss.filter((id) => fs.existsSync(feedbackPath(ctx.wt, id)));
@@ -679,6 +721,7 @@ function main(argv) {
     start: () => cmdStart(root, opts),
     status: () => batchStatus(root),
     'commit-issue': () => cmdCommitIssue(root, opts._[0]),
+    reclassify: () => cmdReclassify(root, opts._[0], opts),
     regen: () => cmdRegen(root, opts),
     discard: () => cmdDiscard(root),
     'record-static': () => cmdRecordStatic(root, opts._[0]),

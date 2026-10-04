@@ -259,6 +259,19 @@ test('未処理の課題は段階的に開く: README は件数と内訳と一�
     '| 契約 | [認証の応答 \\| 401](20260930T1000_auth.md) | register-loan | - |',
   ]);
   assert.equal(run(opts(dir, { check: true })).code, 0, '生成後は最新');
+  assert.doesNotMatch(idx, /## プラグインへ持ち帰る課題/, 'plugin の課題が無ければ表を出さない');
+
+  // プラグインへ持ち帰る課題 (kind: plugin) は内訳に数え、一覧では別の表に分ける (0.1.28)
+  W(dir, 'docs/feedback/20260930T1200_biome.md', '---\nkind: plugin\nkind_original: rule\ntitle: "整形ツールの設定"\nfrom_uc: register-loan\nstatus: open\n---\n\n本文\n');
+  r = run(opts(dir));
+  assert.equal(r.code, 0, JSON.stringify(r));
+  md = fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8');
+  assert.match(md, /4 件 \(要求 1 \/ ルール 1 \/ 契約 1 \/ プラグイン 1。うち止まった課題 1\)/);
+  const idx2 = fs.readFileSync(path.join(dir, 'docs/feedback/README.md'), 'utf8');
+  assert.match(idx2, /## プラグインへ持ち帰る課題\n\n還流で/);
+  assert.match(idx2, /\| プラグイン \| \[整形ツールの設定\]\(20260930T1200_biome\.md\) \| register-loan \| ルール \|/);
+  assert.doesNotMatch(idx2.split('## プラグインへ持ち帰る課題')[0], /整形ツールの設定/, '未処理の表には並べない');
+  fs.rmSync(path.join(dir, 'docs/feedback/20260930T1200_biome.md'));
 
   for (const f of fs.readdirSync(path.join(dir, 'docs/feedback'))) if (f !== 'README.md') fs.rmSync(path.join(dir, 'docs/feedback', f));
   r = run(opts(dir));

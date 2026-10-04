@@ -33,7 +33,9 @@ const END = '<!-- distillery2:end -->';
 const NOTE = '<!-- この間は distillery2 (genDocsReadme.js) が生成する。手で書くものはこのブロックの外に置く -->';
 /** distillery2 が作るディレクトリ (docs/ 直下)。これ以外は「distillery2 以外の文書」 */
 const KNOWN_DIRS = ['input', 'requirements', 'nfr', 'adr', 'rules', 'design', 'as-built', 'feedback'];
-const FEEDBACK_KINDS = [['requirement', '要求'], ['rule', 'ルール'], ['contract', '契約']];
+const FEEDBACK_KINDS = [['requirement', '要求'], ['rule', 'ルール'], ['contract', '契約'], ['plugin', 'プラグイン']];
+// プラグインへ持ち帰る課題 (還流で「直す場所がプラグイン側」と分かった課題。0.1.28)。還流の対象でなく、プラグインを直した人が消す
+const PLUGIN_KIND = 'plugin';
 const FEEDBACK_NOTE = '<!-- この一覧は distillery2 (genDocsReadme.js) が課題ファイルから生成する。手で書かない -->';
 
 function cmpStr(a, b) { a = String(a); b = String(b); return a < b ? -1 : a > b ? 1 : 0; }
@@ -161,7 +163,7 @@ function collect(opts) {
   for (const e of listDir(D('feedback'))) {
     if (!e.isFile() || !e.name.endsWith('.md') || e.name === 'README.md') continue;
     const { data } = frontMatter(fs.readFileSync(D('feedback', e.name), 'utf8'));
-    feedback.push({ file: e.name, kind: data.kind || '-', title: data.title || e.name, from_uc: data.from_uc || '-', stopped_count: Number(data.stopped_count || 0) });
+    feedback.push({ file: e.name, kind: data.kind || '-', kind_original: data.kind_original || null, title: data.title || e.name, from_uc: data.from_uc || '-', stopped_count: Number(data.stopped_count || 0) });
   }
   const order = Object.fromEntries(FEEDBACK_KINDS.map(([k], i) => [k, i]));
   feedback.sort((a, b) => ((order[a.kind] ?? 9) - (order[b.kind] ?? 9)) || cmpStr(a.file, b.file));
@@ -410,10 +412,21 @@ function merge(existing, block) {
 function buildFeedbackIndex(ctx) {
   if (!ctx.feedback.length) return null;
   const label = Object.fromEntries(FEEDBACK_KINDS);
+  const row = (f) => `| ${label[f.kind] || mdEscape(f.kind)} | [${mdEscape(f.title)}](${encodeRel(f.file)}) | ${mdEscape(f.from_uc)} | ${f.stopped_count || '-'} |`;
+  const open = ctx.feedback.filter((f) => f.kind !== PLUGIN_KIND);
+  const plugin = ctx.feedback.filter((f) => f.kind === PLUGIN_KIND);
   const out = [FEEDBACK_NOTE, '', '# 未処理の課題', '',
-    '実装で見つかった上流 (要求・決定・契約) の穴。要求の課題は要求の段階が、ルール・契約の課題は還流が反映し、反映したら課題ファイルを削除する (中身は git の履歴に残る)。', '',
-    '| 種類 | 題名 | 出どころの UC | 止まった回数 |', '|---|---|---|---|'];
-  for (const f of ctx.feedback) out.push(`| ${label[f.kind] || mdEscape(f.kind)} | [${mdEscape(f.title)}](${encodeRel(f.file)}) | ${mdEscape(f.from_uc)} | ${f.stopped_count || '-'} |`);
+    '実装で見つかった上流 (要求・決定・契約) の穴。要求の課題は要求の段階が、ルール・契約の課題は還流が反映し、反映したら課題ファイルを削除する (中身は git の履歴に残る)。', ''];
+  if (open.length) {
+    out.push('| 種類 | 題名 | 出どころの UC | 止まった回数 |', '|---|---|---|---|');
+    for (const f of open) out.push(row(f));
+  } else out.push('要求・ルール・契約の課題なし。');
+  if (plugin.length) {
+    out.push('', '## プラグインへ持ち帰る課題', '',
+      '還流で「直す場所は distillery2 (生成器・テンプレート・手順書) 側」と分かった課題。還流の対象ではなく、このリポジトリでは何もしない。プラグインを直したら人が課題ファイルを削除する。', '',
+      '| 種類 | 題名 | 出どころの UC | 元の種類 |', '|---|---|---|---|');
+    for (const f of plugin) out.push(`| ${label[f.kind]} | [${mdEscape(f.title)}](${encodeRel(f.file)}) | ${mdEscape(f.from_uc)} | ${label[f.kind_original] || mdEscape(f.kind_original || '-')} |`);
+  }
   return `${out.join('\n')}\n`;
 }
 

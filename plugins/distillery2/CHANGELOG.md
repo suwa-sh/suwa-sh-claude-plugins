@@ -2,6 +2,34 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.28] - 2026-10-04
+
+0.1.27 の試し運転で見つかった課題 19 件のうち 13 件を直した (K1・K3〜K10・K14・K16・K17・K19)。還流・配送・要求の差分の流れは変えていない。
+
+### Changed
+
+- 起動時の自動選択: 旧形式の run の課題の移行 (`feedbackBatch.js scan` の `unfiled_runs` → `file-issues`) を、還流の中から「main に切り替えて課題を数える前」(3 の 2) へ移した。
+  旧形式の要求の課題が同じ回の要求の差分に乗る (K6)。移行の後に `scan` をやり直す (K15)。`stage=` の直接指定でも行う
+- 起動時の自動選択 2: `feature/<slug>` があっても main 上の run に配送の done があれば配送済みとみなし、feature を片付けてから進む (配送の 7〜8 や旧形式の片付けの途中で止まった後の再開。計画の外部レビューの指摘)
+- 旧形式の片付け: `impl(<slug>): legacy delivered` の後に feature を `refs/distillery2/legacy/<slug>/<ts>` へ退避してから `git branch -D` (squash merge 済みの feature は `-d` で消せず、残すと自動選択が進行中とみなして毎回戻る。K5)。その後は自動選択の 3 からやり直す
+- 要求の差分の後は自動選択の 3 の 2〜5 をやり直し (還流が要れば続ける)、還流が要らなければ報告して終了する。同じ起動で次の UC には進まない (K9)
+- 還流で「直す場所がプラグイン側 (生成器・テンプレート・設定ファイルの生成・手順書)」と分かった課題は、止めずに `kind: plugin` (プラグインへ持ち帰る課題) に書き換えて還流の対象から外す (K16)。
+  d2-decide / d2-contract の mode=feedback は `blocked` の結果ファイルに `reason_kind` (`plugin` / `scope`) を書く。`FB reclassify <issue> --reason-file <f>` が課題ファイルを書き換えて `feedback(<b>): plugin <issue>` で commit する (trailer `Feedback-Reclassified` / `Feedback-Kind-Original`。止まった印は外す)。
+  確認ページには載せるだけで聞かない。課題ファイルは main に残り、プラグインを直した人が消す。`scan` は `plugin` を返し、きっかけにはしない。genDocsReadme の一覧は「プラグインへ持ち帰る課題」の表を分けて出す
+- 還流の確認ページの問いを「取り込む / 今回は外す / 取り下げる」の 3 択にした (K17)。`decide --dismiss` を取り込む候補にも許し (原本の commit を cherry-pick せず課題ファイルだけ消す)、候補は `--take`・`--drop`・`--dismiss` で漏れなく覆う。ゲートが落ちたときは外すか取り下げるが 1 件以上なければ拒む
+- 配送: `reports/gates.json` が無ければ全段のゲートを 1 回通して記録を作り直してから条件を見る (K1)。課題ファイルにした後に genDocsReadme を回し、`git add -A -- docs .distillery/runs/<slug>` して commit する。課題 0 件なら commit を作らない (K4。`docs/feedback/` が無いときに名指しの `git add` が落ちる)。
+  配送の done の commit の stage 対象を明記 (K3)
+- 要求の差分の commit は本文ファイルから `git commit -F` で作る (K7)
+- `commit-issue` が `already-applied` のとき、派遣が作り直した生成物をスクリプト自身が捨てる (`discarded: true`。K14)
+- 取り込みの前に `FB status` を回して記録 (ゲート・回答) を控える。`status` は `cleanup` (取り込み済み。push の拒否の後の再開) でも `gate`・`decision` を返す (K19)
+- genUseCases が既存 UC の `tiers` (contract 段階で書き戻した関与ティア) を引き継ぐ。要求の差分のたびに消えていた (K8)
+- troubleshooting: 受理の検査を 1 つの sh にまとめても headless の許可で止まる (K10)
+- 正本 (dataflow.yaml): 起動時の移行を `run.migrate-issues` と `run.migrate-readme` の 2 処理にし、`run.feedback.batch` から `issues`・`run-events` を外した
+
+### Added
+
+- `feedbackBatch.js reclassify`。統合テスト (u)(u2)(v)(w)(x)(y)(z)
+
 ## [0.1.27] - 2026-10-04
 
 課題ファイル (`docs/feedback/`) の循環を閉じた。UC は配送で終わり、溜まった課題は次の UC の前に、要求の差分と還流がまとめて片付けて消す (todo ④ の 2 版目)。
