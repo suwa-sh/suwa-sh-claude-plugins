@@ -15,7 +15,7 @@
  *   node runState.js open <root> <slug>
  *   node runState.js event <runDir> <type> [json]
  *   node runState.js done <runDir> <stage> [json]
- *   node runState.js status <runDir> [--json]     (pending_feedback = 起票されていない還流、legacy_order = 0.1.25 までの順の run)
+ *   node runState.js status <runDir> [--json]     (unfiled_issues = 課題ファイルにしていない課題、pending_feedback = 0.1.25 までの保留、legacy_order = 0.1.25 までの順の run)
  *   node runState.js mark-legacy-delivered <runDir>   (0.1.25 までに PR で配送済みの run に deliver の done を作る。人が確認ページで配送済みと答えたときだけ)
  *   node runState.js invalidate <runDir> <stage> <reason>
  *   node runState.js invalidate <runDir> <stage> <reason> --from   (その段階と後ろの段階をまとめて退避)
@@ -27,8 +27,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { parseYaml, stringifyYaml } = require('./yaml');
 
-// 0.1.26: 配送 (main への取り込み) を還流の前にした。還流は main から切るので、この UC の契約・課題・run がそろっている
-const STAGES = ['scenario', 'contract', 'scaffold', 'tier', 'contract-gate', 'integrate', 'verify', 'review', 'asbuilt', 'deliver', 'feedback'];
+// 0.1.27: UC は配送で終わる。還流は UC の外の独立した段階 (scripts/feedbackBatch.js) で、溜まった課題ファイルをまとめて直す。
+// 0.1.25 までの run (還流 → 配送の順) と 0.1.26 の run が持つ feedback の done は、旧形式の判定 (isLegacyOrder) でだけ読む
+const STAGES = ['scenario', 'contract', 'scaffold', 'tier', 'contract-gate', 'integrate', 'verify', 'review', 'asbuilt', 'deliver'];
 
 function nowIso() { return new Date().toISOString(); }
 function ts() { return nowIso().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '_'); }
@@ -223,7 +224,7 @@ function status(runDir) {
   const legacy = isLegacyOrder(runDir);
   const next = legacy ? null : (STAGES.find(s => stages[s] === 'pending') || null);
   const last = events[events.length - 1] || null;
-  return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, legacy_order: legacy, events: events.length, last_event: last, pending_feedback: pendingFeedback(runDir), filed_issues: filedIssues(runDir) };
+  return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, legacy_order: legacy, events: events.length, last_event: last, pending_feedback: pendingFeedback(runDir), filed_issues: filedIssues(runDir), unfiled_issues: unfiledIssues(runDir) };
 }
 
 function main(argv) {
@@ -252,6 +253,10 @@ function main(argv) {
       else {
         console.log(`run: ${s.slug} attempt=${s.attempt} next=${s.legacy_order ? '(旧形式の順: 配送済みか人に確かめる)' : (s.next_stage || '(all done)')}`);
         for (const [k, v] of Object.entries(s.stages)) console.log(`  ${v === 'done' ? '[x]' : '[ ]'} ${k}`);
+        if (s.unfiled_issues.length) {
+          console.log(`unfiled issues (課題ファイルにしていない課題): ${s.unfiled_issues.length}`);
+          for (const k of s.unfiled_issues) console.log(`  - ${k}`);
+        }
         if (s.pending_feedback.length) {
           console.log(`pending feedback (起票されていない還流): ${s.pending_feedback.length}`);
           for (const p of s.pending_feedback) console.log(`  - ${p.kind || '?'} ${p.issue_path || '(issue パスなし)'}${p.reason ? ` — ${p.reason}` : ''}`);

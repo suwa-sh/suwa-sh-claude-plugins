@@ -6,6 +6,7 @@
  *   1. どこに何があるか        → 段階 (要求 → 決定 → 基盤 → UC) の表
  *   2. この UC は上流のどれから来て、どこまでできたか → UC 一覧 (背骨): 要求 → シナリオ → 契約 → 画面 → as-built
  *   3. 決めたことは何か        → ADR 一覧、非機能、ルール、契約、C4 図
+ *   4. 片付いていない課題は    → 件数と種類ごとの内訳だけ。一覧 docs/feedback/README.md (このスクリプトが丸ごと生成) → 課題ファイル、の段階で開く
  *
  * 振る舞い (distillery2 由来でない文書との共存):
  *   - 書くのは `<!-- distillery2:begin -->` 〜 `<!-- distillery2:end -->` の管理ブロックだけ。外は 1 文字も触らない。
@@ -31,7 +32,9 @@ const BEGIN = '<!-- distillery2:begin -->';
 const END = '<!-- distillery2:end -->';
 const NOTE = '<!-- この間は distillery2 (genDocsReadme.js) が生成する。手で書くものはこのブロックの外に置く -->';
 /** distillery2 が作るディレクトリ (docs/ 直下)。これ以外は「distillery2 以外の文書」 */
-const KNOWN_DIRS = ['input', 'requirements', 'nfr', 'adr', 'rules', 'design', 'as-built'];
+const KNOWN_DIRS = ['input', 'requirements', 'nfr', 'adr', 'rules', 'design', 'as-built', 'feedback'];
+const FEEDBACK_KINDS = [['requirement', '要求'], ['rule', 'ルール'], ['contract', '契約']];
+const FEEDBACK_NOTE = '<!-- この一覧は distillery2 (genDocsReadme.js) が課題ファイルから生成する。手で書かない -->';
 
 function cmpStr(a, b) { a = String(a); b = String(b); return a < b ? -1 : a > b ? 1 : 0; }
 function readText(p) { return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null; }
@@ -153,7 +156,17 @@ function collect(opts) {
   for (const c of (nfr && nfr.categories) || []) for (const sc of c.subcategories || []) for (const it of sc.items || []) for (const m of it.metrics || []) { nfrCount += 1; if (m.important) nfrImportant += 1; }
   const nfrModel = nfr && nfr.model_system ? (typeof nfr.model_system === 'object' ? nfr.model_system.type : nfr.model_system) : null;
 
-  return { cwd, config, docsRoot, docsDir, D, systemName, overview, reqDoc, specs, ucs, features, contractsDoc, ucIndexBySlug, screensBySlug, screensDoc, trace, adrs, nfr, nfrCount, nfrImportant, nfrModel };
+  // 課題ファイル (docs/feedback/*.md。一覧の README.md は除く)
+  const feedback = [];
+  for (const e of listDir(D('feedback'))) {
+    if (!e.isFile() || !e.name.endsWith('.md') || e.name === 'README.md') continue;
+    const { data } = frontMatter(fs.readFileSync(D('feedback', e.name), 'utf8'));
+    feedback.push({ file: e.name, kind: data.kind || '-', title: data.title || e.name, from_uc: data.from_uc || '-', stopped_count: Number(data.stopped_count || 0) });
+  }
+  const order = Object.fromEntries(FEEDBACK_KINDS.map(([k], i) => [k, i]));
+  feedback.sort((a, b) => ((order[a.kind] ?? 9) - (order[b.kind] ?? 9)) || cmpStr(a.file, b.file));
+
+  return { cwd, config, docsRoot, docsDir, D, systemName, overview, reqDoc, specs, ucs, features, contractsDoc, ucIndexBySlug, screensBySlug, screensDoc, trace, adrs, nfr, nfrCount, nfrImportant, nfrModel, feedback };
 }
 
 // ---------------------------------------------------------------------------
@@ -248,6 +261,20 @@ function build(ctx) {
       out.push('</details>');
       out.push('');
     }
+  }
+
+  // 2.5 未処理の課題 (件数と内訳だけ。中身は一覧 → 課題ファイルの段階で開く)
+  out.push('## 未処理の課題');
+  out.push('');
+  if (!ctx.feedback.length) out.push('未処理の課題なし。\n');
+  else {
+    const label = Object.fromEntries(FEEDBACK_KINDS);
+    const counts = FEEDBACK_KINDS.map(([k, l]) => [l, ctx.feedback.filter((f) => f.kind === k).length]).filter(([, n]) => n);
+    const other = ctx.feedback.filter((f) => !label[f.kind]).length;
+    if (other) counts.push(['その他', other]);
+    const stopped = ctx.feedback.filter((f) => f.stopped_count > 0).length;
+    out.push(`${ctx.feedback.length} 件 (${counts.map(([l, n]) => `${l} ${n}`).join(' / ')}${stopped ? `。うち止まった課題 ${stopped}` : ''})。一覧: ${L.to(D('feedback', 'README.md'), 'feedback/README.md')}`);
+    out.push('');
   }
 
   // 3. 決めたこと
@@ -379,17 +406,44 @@ function merge(existing, block) {
   return existing.slice(0, begins[0]) + block + existing.slice(ends[0] + END.length);
 }
 
+/** 課題の一覧 docs/feedback/README.md の本文 (課題が 0 件なら null = 一覧を消す) */
+function buildFeedbackIndex(ctx) {
+  if (!ctx.feedback.length) return null;
+  const label = Object.fromEntries(FEEDBACK_KINDS);
+  const out = [FEEDBACK_NOTE, '', '# 未処理の課題', '',
+    '実装で見つかった上流 (要求・決定・契約) の穴。要求の課題は要求の段階が、ルール・契約の課題は還流が反映し、反映したら課題ファイルを削除する (中身は git の履歴に残る)。', '',
+    '| 種類 | 題名 | 出どころの UC | 止まった回数 |', '|---|---|---|---|'];
+  for (const f of ctx.feedback) out.push(`| ${label[f.kind] || mdEscape(f.kind)} | [${mdEscape(f.title)}](${encodeRel(f.file)}) | ${mdEscape(f.from_uc)} | ${f.stopped_count || '-'} |`);
+  return `${out.join('\n')}\n`;
+}
+
 function run(opts) {
   const ctx = collect(opts);
+  // 一覧を先に作る (docs/README.md がリンクし、「その他」の判定が一覧のリンクを参照済みとして読むため)
+  const fbPath = ctx.D('feedback', 'README.md');
+  const fbNext = buildFeedbackIndex(ctx);
+  const fbExisting = readText(fbPath);
+  const fbChanged = (fbNext || null) !== (fbExisting || null);
+  if (!opts.check && fbChanged) {
+    if (fbNext) { fs.mkdirSync(path.dirname(fbPath), { recursive: true }); fs.writeFileSync(fbPath, fbNext); } else fs.rmSync(fbPath, { force: true });
+  }
   const { block, links, readmePath } = build(ctx);
-  const broken = links.filter((l) => !fs.existsSync(l.abs) || isIgnored(l.abs)).map((l) => l.rel);
-  if (broken.length) return { code: 1, readmePath, broken, changed: false };
+  // --check で一覧がまだ無いときは、一覧へのリンクを壊れたリンクと数えない (ドリフトとして報告する)
+  const broken = links.filter((l) => !(opts.check && fbNext && l.abs === fbPath) && (!fs.existsSync(l.abs) || isIgnored(l.abs))).map((l) => l.rel);
+  if (broken.length) {
+    // README を書かずに止まるので、先に書いた一覧も元に戻す (中途半端な状態を残さない)
+    if (!opts.check && fbChanged) { if (fbExisting != null) fs.writeFileSync(fbPath, fbExisting); else fs.rmSync(fbPath, { force: true }); }
+    return { code: 1, readmePath, broken, changed: false };
+  }
   const existing = readText(readmePath);
   let next;
-  try { next = merge(existing, block); } catch (e) { return { code: 1, readmePath, broken: [], changed: false, error: e.message }; }
-  const changed = existing !== next;
+  try { next = merge(existing, block); } catch (e) {
+    if (!opts.check && fbChanged) { if (fbExisting != null) fs.writeFileSync(fbPath, fbExisting); else fs.rmSync(fbPath, { force: true }); }
+    return { code: 1, readmePath, broken: [], changed: false, error: e.message };
+  }
+  const changed = existing !== next || fbChanged;
   if (opts.check) return { code: changed ? 1 : 0, readmePath, broken: [], changed };
-  if (changed) { fs.mkdirSync(path.dirname(readmePath), { recursive: true }); fs.writeFileSync(readmePath, next); }
+  if (existing !== next) { fs.mkdirSync(path.dirname(readmePath), { recursive: true }); fs.writeFileSync(readmePath, next); }
   return { code: 0, readmePath, broken: [], changed };
 }
 
@@ -420,4 +474,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { run, build, collect, merge, BEGIN, END, KNOWN_DIRS, main };
+module.exports = { run, build, buildFeedbackIndex, collect, merge, BEGIN, END, KNOWN_DIRS, main };

@@ -5,11 +5,12 @@
 
 ③ の `npm install` は 0.1.22 から d2-foundation (F7) が回す。npm 10 で落ちる件は [d2-foundation の項目](../../d2-foundation/references/troubleshooting.md) に移した。
 
-## headless (`claude -p`) で `$VAR` を含む Bash が承認待ちで止まる
+## headless (`claude -p`) で `$VAR`・`$?`・`cd <dir> && git ...` を含む Bash が承認待ちで止まる
 
-- 症状: `Contains simple_expansion` と出て一部のコマンドが拒否される
-- 原因: allowedTools の照合が変数展開を含むコマンドを通さない
-- 回避: コマンドを分割し、変数展開を使わずに書く (パスは直書き)。`cd` を含む複合コマンドも同様に分ける
+- 症状: `Contains simple_expansion` などと出て一部のコマンドが拒否される (0.1.26 の試し運転では還流の worktree での `cd <wt> && git ...` と、終了コードを見る `echo $?` で止まった)
+- 原因: allowedTools の照合が、変数展開・`cd` を含む複合コマンドを通さない
+- 回避: コマンドを分割し、変数展開を使わずに書く (パスは直書き)。別のディレクトリの git は `cd` せずに `git -C <dir> ...` で打つ。
+  終了コードは `$?` を表示せず、コマンドを単独で回してツールの結果 (exit code) で見る。還流の git の操作は `feedbackBatch.js` のサブコマンドを 1 つずつ回す (JSON と終了コードで判断する)
 
 ## `"type": "module"` のリポで補助スクリプトを `.js` で書くと ESM として読まれて失敗する
 

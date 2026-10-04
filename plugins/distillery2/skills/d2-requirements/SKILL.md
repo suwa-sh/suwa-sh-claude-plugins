@@ -18,7 +18,7 @@ description: >-
 
 | 入力 | 出力（すべて `docs/requirements/` 配下） |
 |---|---|
-| 要望テキスト（例: `docs/input/初期要望.txt`） | `requirements.yaml` / `requirements.md`（USDM）|
+| 要望テキスト（例: `docs/input/初期要望.txt`）、または要求の課題ファイル `docs/feedback/<issue>.md`（要求の差分。d2-run が未処理の要求の課題をすべて渡す） | `requirements.yaml` / `requirements.md`（USDM）|
 | | `rdra/*.tsv`、`rdra/関連データ.txt`、`rdra/ZeroOne.txt`、`rdra/システム概要.json`、`rdra/views/*.md`（RDRA）|
 | | `use-cases.yaml`（UC 一覧）|
 | | `_review-summary.md`（人が承認する材料。毎回作り直す）|
@@ -81,7 +81,8 @@ description: >-
 ## Step1: 差分更新（インプレース編集）
 
 既存の `docs/requirements/` がある場合、変更要望テキストを USDM で解釈し、既存ファイルを**編集**する
-（作り直さない）。
+（作り直さない）。入力が課題ファイル (`docs/feedback/<issue>.md`。実装で見つかった要求の穴) のときは、課題ごとに本文の事実・選択肢・決定を変更要望として読む。
+課題ファイルは読むだけで、消さない (反映を人が承認した後に d2-run が消す)。最終報告には、課題ごとに反映した要求・仕様の ID を書く。
 
 1. `docs/requirements/requirements.yaml` に要求・仕様・受入基準を追記／修正する。ID は既存と重複させない。
 2. 影響する `docs/requirements/rdra/*.tsv` を編集する。

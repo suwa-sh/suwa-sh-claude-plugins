@@ -232,3 +232,43 @@ test('共有 feature はシナリオごとの @uc タグで数え、# を含む�
   assert.match(md, /UC 2 件 \(実装済み 0、要求待ち 1\)/);
   assert.match(md, /貸出を登録する \| 実装中 \(ゲート fail\)/);
 });
+
+test('未処理の課題は段階的に開く: README は件数と内訳と一覧へのリンクだけ → 一覧 (生成) → 課題ファイル。0 件なら一覧を消す (0.1.27)', () => {
+  const dir = repo();
+  let r = run(opts(dir));
+  assert.equal(r.code, 0);
+  let md = fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8');
+  assert.match(md, /## 未処理の課題\n\n未処理の課題なし。/);
+  assert.ok(!fs.existsSync(path.join(dir, 'docs/feedback/README.md')));
+
+  W(dir, 'docs/feedback/20260930T1000_auth.md', '---\nkind: contract\ntitle: "認証の応答 | 401"\nfrom_uc: register-loan\nstatus: open\n---\n\n本文\n');
+  W(dir, 'docs/feedback/20260930T1100_rule.md', '---\nkind: rule\ntitle: "止まった: 層の向き"\nfrom_uc: register-loan\nstatus: open\nstopped: true\nstopped_count: 2\n---\n\n本文\n');
+  W(dir, 'docs/feedback/20260930T0900_req.md', '---\nkind: requirement\ntitle: 返却の扱い\nfrom_uc: return-loan\nstatus: open\n---\n\n本文\n');
+  assert.equal(run(opts(dir, { check: true })).code, 1, '一覧が無い・古いのは --check でドリフト (壊れたリンクではない)');
+  r = run(opts(dir));
+  assert.equal(r.code, 0, JSON.stringify(r));
+  md = fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8');
+  assert.match(md, /3 件 \(要求 1 \/ ルール 1 \/ 契約 1。うち止まった課題 1\)。一覧: \[feedback\/README\.md\]\(feedback\/README\.md\)/);
+  assert.doesNotMatch(md, /20260930T1000_auth/, 'README には課題ファイルを並べない');
+  assert.doesNotMatch(md, /## distillery2 以外の文書/, 'feedback は distillery2 のディレクトリ');
+  const idx = fs.readFileSync(path.join(dir, 'docs/feedback/README.md'), 'utf8');
+  const rows = idx.split('\n').filter((l) => /^\| (要求|ルール|契約) \|/.test(l));
+  assert.deepEqual(rows, [
+    '| 要求 | [返却の扱い](20260930T0900_req.md) | return-loan | - |',
+    '| ルール | [止まった: 層の向き](20260930T1100_rule.md) | register-loan | 2 |',
+    '| 契約 | [認証の応答 \\| 401](20260930T1000_auth.md) | register-loan | - |',
+  ]);
+  assert.equal(run(opts(dir, { check: true })).code, 0, '生成後は最新');
+
+  for (const f of fs.readdirSync(path.join(dir, 'docs/feedback'))) if (f !== 'README.md') fs.rmSync(path.join(dir, 'docs/feedback', f));
+  r = run(opts(dir));
+  assert.equal(r.code, 0);
+  assert.ok(!fs.existsSync(path.join(dir, 'docs/feedback/README.md')), '0 件なら一覧を消す');
+  assert.match(fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8'), /未処理の課題なし。/);
+
+  // リンク切れで README を書かないときは、一覧も書き換えない
+  W(dir, 'docs/feedback/a.md', '---\nkind: rule\ntitle: a\n---\n');
+  fs.rmSync(path.join(dir, 'docs/as-built/貸出業務'), { recursive: true });
+  assert.equal(run(opts(dir)).code, 1);
+  assert.ok(!fs.existsSync(path.join(dir, 'docs/feedback/README.md')));
+});
