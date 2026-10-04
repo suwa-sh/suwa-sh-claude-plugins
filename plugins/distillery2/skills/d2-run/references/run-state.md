@@ -8,7 +8,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
   config.yaml                       # 実行設定 (config-schema.md)
   runs/<uc_slug>/
     events.jsonl                    # 追記のみ。1 行 1 イベント {seq, ts, type, ...}
-    stages/<stage>.done.yaml        # 完了の正。存在 = 完了。中身は完了時刻と要点 (commit, attempt など)
+    stages/<stage>.done.yaml        # 完了の正。存在 = 完了。中身は完了時刻と要点 (commit, attempt など。scenario / contract / tier / integrate は carry_over_status (要求の差分で残った作業の項目ごとの対応状況 {item, status: done|cannot, detail}) も。0.1.30)
     attempt-<n>/
       assumptions.<tier>.yaml       # 実装者が補った前提 (AssumptionRecord)
       findings.<tier>.yaml          # Verifier の指摘 (ティアごと)
@@ -53,7 +53,7 @@ docs/feedback/README.md             # 課題の一覧 (genDocsReadme が生成�
 | run_opened | 初回 open |
 | models_resolved | open 直後。`{session, implementer, verifier}` (解決済みのモデル ID だけ。注記を混ぜない)。verify 段で Verifier の自己申告 (報告 1 行目 `model:`) と違えば記録し直す (最後が有効)。as-built の生成情報に転記される |
 | stage_completed / stage_invalidated | done の作成 / 退避 |
-| scenario_approved / review_approved | 人の承認。承認した内容の要点と評価対象のハッシュを持つ |
+| scenario_approved / review_approved | 人の承認。承認した内容の要点と評価対象のハッシュを持つ。review_approved は残った作業の処遇 `carry_over: {done, carry, ignore}` も持つ (配送の squash で `carryOver.js move` が読む。0.1.30) |
 | assumption_decided | 前提の承認・却下 (id と処遇) |
 | feedback_filed | UC の課題を課題ファイルにした記録。`{kind, ref, issue_path}` (issue_path は `issues/<file>.md`、`ref` は `docs/feedback/<issue>.md`)。`feedbackBatch.js file-issues` が書く。0.1.26 の記録の `ref` (main に入った還流の commit の sha) と 0.1.25 までの `url` (PR / issue) も起票済みとして数える。取り込んだ記録は commit の trailer (`Feedback-Consumed:`) で、イベントには書かない |
 | feedback_deferred | (0.1.25 までの記録だけ。0.1.26 からは書かない) 還流の保留。`{kind, issue_path, reason}`。同じ issue_path の `feedback_filed` で解消する |

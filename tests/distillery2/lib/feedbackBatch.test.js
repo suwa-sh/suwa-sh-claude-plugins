@@ -596,3 +596,110 @@ test('hold: 要求の差分で外して残す課題に止まった印を付け�
   assert.deepEqual(s.requirement_all, ['q1', 'q2'], '要求の差分を回すときは一緒に渡す');
   assert.equal(r.fb('hold', 'nope', '--reason-file', rf).code, 1);
 });
+
+test('0.1.30 L14: start --co-author の値を batch.json に残し、全部の commit (課題・索引・生成物・取り下げ・止まった印・plugin) に Co-Authored-By の trailer を 1 つ付ける。値にキーが付いていても二重にしない', () => {
+  const r = makeRepo({ issues: { 'r1': { kind: 'rule' }, 'c1': { kind: 'contract' }, 'c2': { kind: 'contract' }, 'r2': { kind: 'rule' }, 'r3': { kind: 'rule', stopped: true, stopped_count: 1 } } });
+  const st = r.fb('start', '--batch', 'b30', '--co-author', 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>');
+  assert.equal(st.code, 0, JSON.stringify(st.json));
+  assert.equal(st.json.co_author, 'Claude Opus 5.5 <noreply@anthropic.com>', 'キーは剥がして値だけ残す');
+  passIssue(r, 'r1', () => r.ww('docs/adr/0002-r1.md', '# r1\n'));
+  passIssue(r, 'c1', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
+  passIssue(r, 'c2', () => {});  // already-applied
+  const rf = path.join(r.base, 'r2.reason.txt');
+  fs.writeFileSync(rf, '生成器の問題');
+  assert.equal(r.fb('reclassify', 'r2', '--reason-file', rf).code, 0);
+  stopIssue(r, 'r3', '止まった', () => r.ww('docs/adr/0003-r3.md', '# r3\n'));
+  assert.equal(r.fb('finalize').code, 0);
+  r.fb('record-gate', '--result', 'pass');
+  assert.equal(r.fb('decide', '--take', 'r1', '--dismiss', 'c1').code, 0);
+  assert.equal(r.fb('rebuild').code, 0);
+  for (const sha of git(r.root, 'log', '--format=%H', 'main..feedback/b30').split('\n')) {
+    const body = git(r.root, 'log', '-1', '--format=%B', sha);
+    const subject = git(r.root, 'log', '-1', '--format=%s', sha);
+    const lines = body.split('\n').filter((l) => l.startsWith('Co-Authored-By:'));
+    assert.deepEqual(lines, ['Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'], `${subject}: ${body}`);
+    const parsed = execFileSync('git', ['interpret-trailers', '--parse'], { cwd: r.root, input: body, encoding: 'utf8' });
+    assert.match(parsed, /Co-Authored-By: Claude Opus 5\.5/, `${subject}: trailer として読める`);
+  }
+  const subjects = git(r.root, 'log', '--format=%s', 'main..feedback/b30').split('\n');
+  assert.ok(subjects.includes('feedback(b30): dismiss') && subjects.includes('feedback(b30): stopped') && subjects.includes('feedback(b30): plugin r2') && subjects.includes('feedback(b30): adr index'), subjects.join(','));
+  // co_author 無しの batch はそのまま (0.1.29 以前に始めたもの)
+  const r0 = makeRepo({ issues: { 'r1': { kind: 'rule' } } });
+  r0.fb('start', '--batch', 'b31');
+  passIssue(r0, 'r1', () => r0.ww('docs/adr/0002-r1.md', '# r1\n'));
+  assert.doesNotMatch(git(r0.root, 'log', '-1', '--format=%B', 'feedback/b31'), /Co-Authored-By/);
+});
+
+test('0.1.30 L7: finalize と status (gate 以降) が slices_changed (main との差分で slice が作り直された UC) を返す。契約を変えなければ空', () => {
+  const r = makeRepo({ issues: { 'c1': { kind: 'contract' }, 'r1': { kind: 'rule' } } });
+  // 契約の slice は本物の生成器ではなくスタブの代わりに、派遣が作り直した体で worktree に置き、finalize の derived で作り直されたものとして commit に入れる
+  const regen = JSON.parse(r.regen);
+  const slices = path.join(r.base, 'slices.js');
+  fs.writeFileSync(slices, `'use strict';\nconst fs = require('node:fs');\nfor (const s of ['register-loan', 'register-return']) { fs.mkdirSync('contracts/generated/slices/' + s, { recursive: true }); fs.writeFileSync('contracts/generated/slices/' + s + '/openapi.yaml', fs.readFileSync('contracts/openapi/openapi.yaml', 'utf8')); }\n`);
+  regen.derived.push([process.execPath, slices]);
+  // main 側にも slice がある状態から始める (差分が無ければ空になることを見る)
+  r.w('contracts/generated/slices/register-loan/openapi.yaml', 'openapi: 3.1.0\n');
+  r.w('contracts/generated/slices/register-return/openapi.yaml', 'openapi: 3.1.0\n');
+  git(r.root, 'add', '-A'); git(r.root, 'commit', '-q', '-m', 'slices');
+  r.fb('start', '--batch', 'b32');
+  passIssue(r, 'r1', () => r.ww('docs/adr/0002-r1.md', '# r1\n'));
+  // 契約を変えずに仕上げる → slice は変わらない
+  const f0 = spawnSync(process.execPath, [SCRIPT, 'finalize', '--cwd', r.root, '--regen-cmds', JSON.stringify(regen)], { encoding: 'utf8' });
+  const j0 = JSON.parse(f0.stdout.trim());
+  assert.deepEqual(j0.slices_changed, [], JSON.stringify(j0));
+  assert.deepEqual(r.fb('status').json.slices_changed, []);
+  // 共通部分を変える (全 UC の slice が変わる)
+  const r2 = makeRepo({ issues: { 'c1': { kind: 'contract' } } });
+  r2.w('contracts/generated/slices/register-loan/openapi.yaml', 'openapi: 3.1.0\n');
+  r2.w('contracts/generated/slices/register-return/openapi.yaml', 'openapi: 3.1.0\n');
+  git(r2.root, 'add', '-A'); git(r2.root, 'commit', '-q', '-m', 'slices');
+  r2.fb('start', '--batch', 'b33');
+  passIssue(r2, 'c1', () => r2.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\ninfo: {description: 共通の説明}\n'));
+  const regen2 = JSON.parse(r2.regen); regen2.derived.push([process.execPath, slices]);
+  const f2 = spawnSync(process.execPath, [SCRIPT, 'finalize', '--cwd', r2.root, '--regen-cmds', JSON.stringify(regen2)], { encoding: 'utf8' });
+  const j2 = JSON.parse(f2.stdout.trim());
+  assert.deepEqual(j2.slices_changed, ['register-loan', 'register-return'], JSON.stringify(j2));
+  assert.deepEqual(r2.fb('status').json.slices_changed, ['register-loan', 'register-return'], 'status (gate) でも同じ一覧');
+  // 仕上げ済みで finalize を再び呼んでも一覧は返る (再開)
+  const f3 = spawnSync(process.execPath, [SCRIPT, 'finalize', '--cwd', r2.root, '--regen-cmds', JSON.stringify(regen2)], { encoding: 'utf8' });
+  assert.deepEqual(JSON.parse(f3.stdout.trim()).slices_changed, ['register-loan', 'register-return']);
+});
+
+test('0.1.30 M5/M6: record-gate --detail は runGates の gates.json (複数) を要約し、--retried を記録する。pass でも detail を読む', () => {
+  const r = makeRepo({ issues: { 'c1': { kind: 'contract' } } });
+  r.fb('start', '--batch', 'b34');
+  passIssue(r, 'c1', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
+  r.fb('finalize');
+  const g1 = path.join(r.base, 'gates-loan.json');
+  const g2 = path.join(r.base, 'gates-return.json');
+  fs.writeFileSync(g1, JSON.stringify({ uc: 'register-loan', result: 'fail', gates: [
+    { name: 'static', status: 'pass', jobs: [] },
+    { name: 'unit', status: 'fail', jobs: [{ name: 'unit', tier: 'backend-api', status: 'fail', exit: 1, failed_tests: ['returns 409 when already returned'], output_tail: 'a\nb\nc' }, { name: 'unit', tier: 'frontend', status: 'pass', exit: 0 }] },
+    { name: 'contract', status: 'missing' },
+  ] }));
+  fs.writeFileSync(g2, JSON.stringify({ uc: 'register-return', result: 'fail', gates: [{ name: 'unit', status: 'fail', note: 'required job(s) skipped (no command in config): worker:unit', jobs: [{ name: 'unit', tier: 'worker', status: 'skipped', required: true }] }] }));
+  const rec = r.fb('record-gate', '--result', 'fail', '--detail', `${g1},${g2}`);
+  assert.equal(rec.code, 0, JSON.stringify(rec.json));
+  assert.match(rec.json.detail, /\[register-loan\] result=fail/);
+  assert.match(rec.json.detail, /unit backend-api:unit exit=1\n  failed_tests: returns 409 when already returned\n  a\n  b\n  c/);
+  assert.doesNotMatch(rec.json.detail, /frontend/, '通った job は載せない');
+  assert.match(rec.json.detail, /\[register-return\] result=fail \(gates-return\.json\)\nunit: required job\(s\) skipped/);
+  assert.ok(!('retried' in rec.json));
+  assert.equal(r.fb('status').json.confirm, true);
+  // 回し直して通った: pass + retried + 1 回目の写し
+  const rec2 = r.fb('record-gate', '--result', 'pass', '--retried', '--detail', g1);
+  assert.equal(rec2.code, 0, JSON.stringify(rec2.json));
+  assert.equal(rec2.json.retried, true);
+  assert.match(rec2.json.detail, /failed_tests: returns 409/);
+  const st = r.fb('status').json;
+  assert.equal(st.point, 'gate');
+  assert.equal(st.gate.retried, true, 'status の gate に回し直しの印が出る (取り込みの前に控える報告に載る)');
+  assert.equal(r.fb('decide', '--take', 'c1').code, 0, '通った記録なので取り込める');
+  // JSON でないファイルは末尾 40 行のまま。無いファイルは exit 2
+  const txt = path.join(r.base, 'out.txt');
+  fs.writeFileSync(txt, Array.from({ length: 50 }, (_, i) => `line ${i}`).join('\n'));
+  const rec3 = r.fb('record-gate', '--result', 'fail', '--detail', txt);
+  assert.equal(rec3.json.detail.split('\n').length, 40);
+  assert.equal(rec3.json.detail.split('\n')[0], 'line 10');
+  assert.equal(r.fb('record-gate', '--result', 'fail', '--detail', path.join(r.base, 'nope.json')).code, 2);
+});

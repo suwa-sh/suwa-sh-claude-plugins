@@ -16,6 +16,8 @@
  * - 判定は終了コードだけ。定義の無いコマンドは skipped
  * - --expect-red <gate>: そのゲートは「落ちること」が成功 (scaffold の red baseline 確認用)
  * - 結果を reports/gates.json に書く。終了コードは 0 = 全ゲート期待どおり / 1 = 落ちた / 2 = 設定エラー
+ * - 落ちた job にはレポート JSON (vitest / cucumber) から読んだ failed_tests (落ちたテスト名。最大 50 件) を付ける (0.1.30 M6。
+ *   headless では出力をファイルに保存できないので、落ちた内容は gates.json の output_tail と failed_tests で読む。M1)
  */
 'use strict';
 
@@ -122,7 +124,12 @@ async function runGate(gate, config, ctx) {
     // 前回のレポートが残っていると、今回書かれなかったときに古い結果を読んでしまう。実行前に消す
     if (job.report && fs.existsSync(job.report)) fs.unlinkSync(job.report);
     const r = await runCommand(job.cmd, ctx.cwd);
-    return { ...job, ...r, status: r.exit === 0 ? 'pass' : 'fail' };
+    const out = { ...job, ...r, status: r.exit === 0 ? 'pass' : 'fail' };
+    if (out.status === 'fail' && job.report && fs.existsSync(job.report)) {
+      const names = failedTestNames(safeJson(fs.readFileSync(job.report, 'utf8')));
+      if (names.length) { out.failed_tests = names.slice(0, MAX_FAILED_TESTS); if (names.length > MAX_FAILED_TESTS) out.failed_tests_truncated = names.length; }
+    }
+    return out;
   };
   if (plan.parallel) results.push(...await Promise.all(plan.jobs.map(exec)));
   else for (const job of plan.jobs) { const r = await exec(job); results.push(r); if (r.status === 'fail') break; }
@@ -174,7 +181,7 @@ async function main(argv) {
     if (!o.json) console.log(`${r.status === 'pass' ? 'PASS' : r.status === 'skipped' ? 'SKIP' : 'FAIL'} ${gate} (${r.duration_ms} ms)${r.note ? ' — ' + r.note : ''}`);
     if (r.status === 'fail') {
       ok = false;
-      if (!o.json) for (const j of r.jobs.filter(j => j.status === 'fail')) console.log(`  - ${j.tier ? j.tier + ':' : ''}${j.name} exit=${j.exit}\n${indent(j.output_tail)}`);
+      if (!o.json) for (const j of r.jobs.filter(j => j.status === 'fail')) console.log(`  - ${j.tier ? j.tier + ':' : ''}${j.name} exit=${j.exit}${j.failed_tests ? `\n    failed: ${j.failed_tests.join(', ')}${j.failed_tests_truncated ? ` (他 ${j.failed_tests_truncated - j.failed_tests.length} 件)` : ''}` : ''}\n${indent(j.output_tail)}`);
       break;
     }
   }
@@ -235,8 +242,30 @@ function countFailures(rep) {
   return null;
 }
 
+const MAX_FAILED_TESTS = 50;
+
+/**
+ * 落ちたテスト名 (0.1.30 M6)。vitest JSON は testResults[].assertionResults[] の status 'failed' の fullName、
+ * cucumber JSON はルートが feature オブジェクトの配列で、各 feature の elements[] のうち失敗 step を持つものの `<feature> > <scenario>`。
+ * 読めない形なら空配列
+ */
+function failedTestNames(rep) {
+  const names = [];
+  if (rep && Array.isArray(rep.testResults)) {
+    for (const f of rep.testResults) for (const a of f.assertionResults || []) {
+      if (a.status !== 'failed') continue;
+      names.push(a.fullName || [...(a.ancestorTitles || []), a.title].filter(Boolean).join(' > '));
+    }
+  } else if (Array.isArray(rep)) {
+    for (const f of rep) for (const el of f.elements || []) {
+      if ((el.steps || []).some(s => s.result && s.result.status === 'failed')) names.push(`${f.name || '(feature)'} > ${el.name || '(scenario)'}`);
+    }
+  }
+  return names.filter(Boolean);
+}
+
 function indent(s) { return String(s || '').split('\n').slice(-30).map(l => '      ' + l).join('\n'); }
 
 if (require.main === module) main(process.argv.slice(2)).then(code => process.exit(code));
 
-module.exports = { GATES, parseArgs, selectGates, planGate, runGate, applyExpectRed, countFailures, main };
+module.exports = { GATES, parseArgs, selectGates, planGate, runGate, applyExpectRed, countFailures, failedTestNames, main };

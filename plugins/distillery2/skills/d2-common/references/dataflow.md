@@ -54,7 +54,7 @@ flowchart LR
 
 | 書く段階 | 読む段階 | 受け渡すファイル群 | 受け渡すファイル |
 |---|---|---|---|
-| ④ UC の縦切り | ① 要求 | 実行の記録、文書の入口と課題ファイル | 実行の記録 (events / done / 退避した done) / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
+| ④ UC の縦切り | ① 要求 | 要求、実行の記録、文書の入口と課題ファイル | UC 一覧 / 実行の記録 (events / done / 退避した done) / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 | ④ UC の縦切り | ② 決定 | 要求 | UC 一覧 |
 | ④ UC の縦切り | ③ 基盤 | 要求、基盤の設定、契約、実行の記録 | UC 一覧 / qlty 設定 / 契約の分割ファイル、契約テスト (生成物) / ゲートの記録 |
 | 還流 (UC の外の独立した段階) | ① 要求 | 実行の記録、文書の入口と課題ファイル | 実行の記録 (events / done / 退避した done) / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
@@ -174,21 +174,24 @@ flowchart LR
 |---|---|
 | `<要望テキスト>`<br>`docs/feedback/**` | `docs/requirements/requirements.yaml`<br>`docs/requirements/rdra/**`<br>`docs/requirements/use-cases.yaml`<br>`docs/requirements/_review-summary.md` |
 
-#### 要求の差分の取り込み (課題ファイルの削除と feature の退避)
+#### 要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業を次の UC の carry_over に)
 
 ```mermaid
 flowchart LR
-  p_run_req_diff["要求の差分の取り込み (課題ファイルの削除と feature の退避)<br/>d2-run"]
+  p_run_req_diff["要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業を次の UC の carry_over に)<br/>carryOver.js"]
   s_feedback_docs[("課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成)<br/>docs/feedback/**")]
   s_run_events[("実行の記録 (events / done / 退避した done)<br/>#lt;run#gt;/events.jsonl")]
+  s_use_cases[("UC 一覧<br/>docs/requirements/use-cases.yaml")]
   s_feedback_docs --> p_run_req_diff
   s_run_events --> p_run_req_diff
+  s_use_cases --> p_run_req_diff
   p_run_req_diff --> s_feedback_docs
+  p_run_req_diff --> s_use_cases
 ```
 
 | 読む | 書く |
 |---|---|
-| `docs/feedback/**`<br>`<run>/events.jsonl` | `docs/feedback/**` |
+| `docs/feedback/**`<br>`<run>/events.jsonl`<br>`docs/requirements/use-cases.yaml` | `docs/feedback/**`<br>`docs/requirements/use-cases.yaml` |
 
 ### ② 決定
 
@@ -1095,11 +1098,11 @@ flowchart LR
 |---|---|
 | `.distillery/config.yaml`<br>`docs/requirements/rdra/**`<br>`docs/requirements/requirements.yaml`<br>`docs/requirements/use-cases.yaml`<br>`features/<業務>/<slug>.feature`<br>`features/acceptance/**`<br>`contracts/contracts.json`<br>`contracts/uc-index.yaml`<br>`docs/design/**`<br>`docs/as-built/_system/**`<br>`docs/as-built/<業務>/<UC>/**`<br>`docs/adr/*.md`<br>`docs/nfr/**`<br>`docs/rules/**`<br>`docs/feedback/**` | `docs/README.md`<br>`docs/feedback/README.md` |
 
-#### 配送 (squash・main への取り込み)
+#### 配送 (squash・main への取り込み。carry_over を次の UC へ)
 
 ```mermaid
 flowchart LR
-  p_run_uc_deliver["配送 (squash・main への取り込み)<br/>prTrailers.js"]
+  p_run_uc_deliver["配送 (squash・main への取り込み。carry_over を次の UC へ)<br/>prTrailers.js / carryOver.js"]
   s_use_cases[("UC 一覧<br/>docs/requirements/use-cases.yaml")]
   s_reports[("ゲートの記録<br/>#lt;run#gt;/reports/**")]
   s_run_events[("実行の記録 (events / done / 退避した done)<br/>#lt;run#gt;/events.jsonl")]
@@ -1107,11 +1110,12 @@ flowchart LR
   s_reports --> p_run_uc_deliver
   s_run_events --> p_run_uc_deliver
   p_run_uc_deliver --> s_reports
+  p_run_uc_deliver --> s_use_cases
 ```
 
 | 読む | 書く |
 |---|---|
-| `docs/requirements/use-cases.yaml`<br>`<run>/reports/**`<br>`<run>/events.jsonl` | `<run>/reports/**` |
+| `docs/requirements/use-cases.yaml`<br>`<run>/reports/**`<br>`<run>/events.jsonl` | `<run>/reports/**`<br>`docs/requirements/use-cases.yaml` |
 
 #### UC の課題を課題ファイルにする (配送の squash の前)
 
@@ -1143,7 +1147,7 @@ flowchart LR
 | スキルの手順書 (同梱) | 同梱のひな形と手順書 | `<skills>/**` | プラグイン同梱 | — | 独立検証 |
 | 要求 (USDM) | 要求 | `docs/requirements/requirements.yaml` | 生成 | 要求の整理 | 品質特性と設計の決定、UC シナリオの執筆、ティアの実装、独立検証、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、シナリオの静的確認、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
 | RDRA モデル | 要求 | `docs/requirements/rdra/**` | 生成 | 要求の整理 | 品質特性と設計の決定、デザインシステムの生成、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、UC シナリオの執筆、契約の差分、ティアの実装、独立検証、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
-| UC 一覧 | 要求 | `docs/requirements/use-cases.yaml` | 生成 | 要求の整理、d2-run (④) | 品質特性と設計の決定、デザインシステムの生成、UC シナリオの執筆、契約の差分、ティアの実装、結合、独立検証、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、d2-run (④)、シナリオの静的確認、文書の入口の更新 (④)、配送 (squash・main への取り込み)、文書の入口の更新 (起動時の移行)、d2-run (還流) |
+| UC 一覧 | 要求 | `docs/requirements/use-cases.yaml` | 生成 | 要求の整理、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業を次の UC の carry_over に)、d2-run (④)、配送 (squash・main への取り込み。carry_over を次の UC へ) | 品質特性と設計の決定、デザインシステムの生成、UC シナリオの執筆、契約の差分、ティアの実装、結合、独立検証、as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業を次の UC の carry_over に)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、d2-run (④)、シナリオの静的確認、文書の入口の更新 (④)、配送 (squash・main への取り込み。carry_over を次の UC へ)、文書の入口の更新 (起動時の移行)、d2-run (還流) |
 | 要求の確認材料 | 要求 | `docs/requirements/_review-summary.md` | 生成 | 要求の整理 | d2-run (① ②) |
 | 非機能要求グレード表 | 決定 (NFR・ADR) | `docs/nfr/**` | 生成 | 品質特性と設計の決定 | デザインシステムの生成、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
 | ADR | 決定 (NFR・ADR) | `docs/adr/*.md` | 生成 | 品質特性と設計の決定、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み)、還流の ADR | 基盤の生成 (F1→F2→F3→F5→F7)、F1 ルール、F2 依存方向の検査、F5 設定・骨格・CI・qlty、契約の骨格、デザインシステムの生成、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み)、還流の ADR の検証、還流の ADR |
@@ -1173,7 +1177,7 @@ flowchart LR
 | 受入シナリオ | シナリオと step | `features/acceptance/**` | 生成 | UC シナリオの執筆 | テスト足場の生成、文書の入口の更新 (① ②)、文書の入口の更新 (③)、シナリオの静的確認、ゲートの実行、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、還流のゲート (課題ごとの static と最後のゲート) |
 | step 定義 | シナリオと step | `features/step_definitions/**` | 生成 | テスト足場の生成、結合 | テスト足場の生成、結合、ゲートの実行、還流のゲート (課題ごとの static と最後のゲート) |
 | ティアの実装と単体テスト | ティアの実装 | `apps/<tier>/src/**` | 生成 | テスト足場の生成、ティアの実装 | ティアの実装、結合、独立検証、as-built の抽出と要約、依存グラフの実態、要約ブロックを埋める (LLM)、ゲートの実行、qlty の提案を足す (④)、還流のゲート (課題ごとの static と最後のゲート) |
-| 実行の記録 (events / done / 退避した done) | 実行の記録 | `<run>/events.jsonl` | 生成 | d2-run (④)、UC の課題を課題ファイルにする (配送の squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) | as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避)、d2-run (④)、配送 (squash・main への取り込み)、UC の課題を課題ファイルにする (配送の squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) |
+| 実行の記録 (events / done / 退避した done) | 実行の記録 | `<run>/events.jsonl` | 生成 | d2-run (④)、UC の課題を課題ファイルにする (配送の squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) | as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業を次の UC の carry_over に)、d2-run (④)、配送 (squash・main への取り込み。carry_over を次の UC へ)、UC の課題を課題ファイルにする (配送の squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) |
 | 実装者が補った前提 | 実行の記録 | `<run>/attempt-<n>/assumptions.<tier>.yaml` | 生成 | ティアの実装 | 独立検証、as-built の抽出と要約、as-built の抽出、要約ブロックを埋める (LLM)、d2-run (④) |
 | Verifier の指摘 | 実行の記録 | `<run>/attempt-<n>/findings.<tier>.yaml` | 生成 | 独立検証 | ティアの実装、as-built の抽出と要約、as-built の抽出、d2-run (④) |
 | 仕様起因の課題 | 実行の記録 | `<run>/issues/**` | 生成 | 契約の差分 | as-built の抽出と要約、as-built の抽出、d2-run (④)、UC の課題を課題ファイルにする (配送の squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) |
@@ -1182,12 +1186,12 @@ flowchart LR
 | 還流のバッチの状態 (対象の課題・課題ごとの static の合否と止まった理由・最後のゲートの合否・確認ページの回答。gitignore) | 実行の記録 | `.distillery/logs/feedback/<b>/**` | 生成 | d2-run (還流)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) | d2-run (還流)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) |
 | 作業用の worktree (還流は 1 つ。review で要求を直すときは一時のもの。gitignore) | 実行の記録 | `.distillery/worktrees/**` | 生成 (最終成果物) | d2-run (④)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) | — |
 | 止まった課題の差分 (中身は課題ファイルにも書く。gitignore) | 実行の記録 | `.distillery/logs/feedback/<b>/<issue>.failed.diff` | 生成 (最終成果物) | 還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) | — |
-| ゲートの記録 | 実行の記録 | `<run>/reports/**` | 生成 | 基盤の仕上げ (F8→F6→F7→F4→F9)、F9 基盤のチェックポイント、テスト足場の生成、結合、as-built の抽出と要約、依存グラフの実態、d2-run (③)、ゲートの実行、配送 (squash・main への取り込み)、還流のゲート (課題ごとの static と最後のゲート) | 基盤の仕上げ (F8→F6→F7→F4→F9)、F9 基盤のチェックポイント、独立検証、as-built の抽出と要約、as-built の抽出、d2-run (③)、d2-run (④)、ゲートの実行、配送 (squash・main への取り込み)、還流のゲート (課題ごとの static と最後のゲート) |
+| ゲートの記録 | 実行の記録 | `<run>/reports/**` | 生成 | 基盤の仕上げ (F8→F6→F7→F4→F9)、F9 基盤のチェックポイント、テスト足場の生成、結合、as-built の抽出と要約、依存グラフの実態、d2-run (③)、ゲートの実行、配送 (squash・main への取り込み。carry_over を次の UC へ)、還流のゲート (課題ごとの static と最後のゲート) | 基盤の仕上げ (F8→F6→F7→F4→F9)、F9 基盤のチェックポイント、独立検証、as-built の抽出と要約、as-built の抽出、d2-run (③)、d2-run (④)、ゲートの実行、配送 (squash・main への取り込み。carry_over を次の UC へ)、還流のゲート (課題ごとの static と最後のゲート) |
 | as-built の抽出の集計 (計装の有無) | 実行の記録 | `<run>/reports/asbuilt.json` | 生成 | as-built の抽出と要約、as-built の抽出、d2-run (④) | d2-run (④) |
 | 計装トレース | 実行の記録 | `<run>/traces/**` | 生成 | 結合、ゲートの実行、還流のゲート (課題ごとの static と最後のゲート) | 独立検証、as-built の抽出と要約、as-built の抽出 |
 | UC の as-built | as-built | `docs/as-built/<業務>/<UC>/**` | 生成 | as-built の抽出と要約、as-built の抽出 | as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
 | UC の as-built の index.md (要約ブロックを含む) | as-built | `docs/as-built/<業務>/<UC>/index.md` | 生成 | as-built の抽出と要約、as-built の抽出、要約ブロックを埋める (LLM) | as-built の抽出と要約、as-built の抽出、要約ブロックを埋める (LLM)、要約の書式の検査、as-built の書式の検査 |
 | システム横断の as-built | as-built | `docs/as-built/_system/**` | 生成 | as-built の抽出と要約、as-built の抽出 | 独立検証、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、d2-run (④)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
 | 文書の入口 | 文書の入口と課題ファイル | `docs/README.md` | 生成 (最終成果物) | 文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) | — |
-| 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) | 文書の入口と課題ファイル | `docs/feedback/**` | 生成 | 要求の差分の取り込み (課題ファイルの削除と feature の退避)、d2-run (④)、UC の課題を課題ファイルにする (配送の squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) | 要求の整理、要求の差分の取り込み (課題ファイルの削除と feature の退避)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、d2-run (還流)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み)、還流の ADR、還流の契約 |
+| 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) | 文書の入口と課題ファイル | `docs/feedback/**` | 生成 | 要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業を次の UC の carry_over に)、d2-run (④)、UC の課題を課題ファイルにする (配送の squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) | 要求の整理、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業を次の UC の carry_over に)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、d2-run (還流)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み)、還流の ADR、還流の契約 |
 | 課題の一覧 (genDocsReadme が課題ファイルから生成。0 件なら消す) | 文書の入口と課題ファイル | `docs/feedback/README.md` | 生成 (最終成果物) | 文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) | — |

@@ -27,7 +27,8 @@
  *   record-static <issue>       課題ごとの static が通った記録 (sha = 課題の commit)
  *   stop-issue <issue> --reason-file <f>   差分を残し、課題の commit を落として、止まった記録
  *   finalize [--regen-cmds <json>]         原本全体の検査 → stopped → adr index → regenerate
- *   record-gate --result pass|fail [--detail <f>]   最後のゲートの結果 (sha = branch の先頭)
+ *   record-gate --result pass|fail [--detail <f>[,<f>…]] [--retried]   最後のゲートの結果 (sha = branch の先頭)。--detail は runGates の gates.json を複数渡せる (落ちた段だけ要約)。
+ *                                          --retried は 1 回だけ回し直して通った印 (0.1.30 M5。そのときの --detail は 1 回目の写し)
  *   decide (--take a,b --drop c --dismiss d | --abandon | --auto)   確認ページの回答 (--dismiss は止まった課題と取り込む候補)
  *   rebuild [--regen-cmds <json>]          main の先端から組み直す (外す課題・取り下げ・main の進行)
  *   merge                       main へ ff merge → push → 後始末 (取り込み済みなら push と後始末だけ)
@@ -88,9 +89,22 @@ function statusEntries(cwd) {
   return entries;
 }
 
-function commitWithMessage(cwd, message, { allowEmpty = false } = {}) {
+/** batch.json の co_author (start --co-author の値) を Co-Authored-By の trailer として本文の末尾に足す (0.1.30 L14) */
+function withCoAuthor(message, coAuthor) {
+  if (!coAuthor) return message;
+  const body = message.replace(/\s+$/, '');
+  return `${body}${body.includes('\n\n') ? '\n' : '\n\n'}Co-Authored-By: ${coAuthor}`;
+}
+
+function coAuthorOf(ctx) {
+  const batch = ctx && ctx.fb ? readJson(path.join(ctx.fb, 'batch.json')) : null;
+  return batch && batch.co_author ? String(batch.co_author) : null;
+}
+
+function commitWithMessage(cwd, message, { allowEmpty = false, coAuthor = null } = {}) {
   const tmp = path.join(fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'd2-fb-msg-')), 'msg.txt');
-  fs.writeFileSync(tmp, message.endsWith('\n') ? message : `${message}\n`);
+  const msg = withCoAuthor(message, coAuthor);
+  fs.writeFileSync(tmp, msg.endsWith('\n') ? msg : `${msg}\n`);
   try {
     git(cwd, ['commit', '-q', ...(allowEmpty ? ['--allow-empty'] : []), '-F', tmp]);
   } finally { fs.rmSync(path.dirname(tmp), { recursive: true, force: true }); }
@@ -157,6 +171,14 @@ function issueCommits(ctx, base = 'main') {
   const out = git(ctx.root, ['log', '--reverse', '--format=%H%x09%s', `${base}..${ctx.branch}`]);
   const re = new RegExp(`^feedback\\(${ctx.batch}\\): (rule|contract|plugin) (.+)$`);
   return out.split('\n').filter(Boolean).map((l) => { const [sha, s] = l.split('\t'); const m = s.match(re); return m ? { sha, kind: m[1], id: m[2] } : null; }).filter(Boolean);
+}
+
+/** main との merge-base から branch の先端までで contracts/generated/slices/<slug>/** が変わった UC (0.1.30 L7。最後のゲートで回す UC の一覧) */
+function slicesChanged(ctx, base = 'main') {
+  const mb = git(ctx.root, ['merge-base', base, ctx.branch], { allowFail: true });
+  if (!mb.ok) return [];
+  const files = git(ctx.root, ['diff', '--name-only', mb.out, ctx.branch, '--', 'contracts/generated/slices']).split('\n').filter(Boolean);
+  return [...new Set(files.map((f) => f.split('/')[3]).filter(Boolean))].sort();
 }
 
 function branchSubjects(ctx, base = 'main') {
@@ -260,6 +282,7 @@ function batchStatus(root) {
   const gate = readJson(path.join(ctx.fb, 'gate.json'));
   const decision = readJson(path.join(ctx.fb, 'decision.json'));
   if (generated) {
+    base.slices_changed = slicesChanged(ctx);
     // 取り込み済み (push の拒否の後の再開など) でも、報告に使えるようにゲートの記録と回答を返す (0.1.27 実走 K19)
     if (isAncestor(root, ctx.branch, 'main')) return { ...base, point: 'cleanup', gate, decision };
     const gateOk = Boolean(gate && gate.result === 'pass' && gate.sha === head);
@@ -349,8 +372,9 @@ function cmdStart(root, opts) {
   git(root, ['worktree', 'add', '-q', '-b', branch, WT_REL, 'main']);
   const linked = symlinkNodeModules(root, path.join(root, WT_REL));
   const fb = path.join(root, LOG_REL, b);
-  writeJson(path.join(fb, 'batch.json'), { batch: b, base: revParse(root, 'main'), issues });
-  return { started: true, batch: b, branch, worktree: WT_REL, issues, node_modules: linked, sync };
+  const coAuthor = opts['co-author'] ? String(opts['co-author']).replace(/^Co-Authored-By:\s*/i, '').trim() : null;
+  writeJson(path.join(fb, 'batch.json'), { batch: b, base: revParse(root, 'main'), issues, ...(coAuthor ? { co_author: coAuthor } : {}) });
+  return { started: true, batch: b, branch, worktree: WT_REL, issues, node_modules: linked, sync, co_author: coAuthor };
 }
 
 function cmdCommitIssue(root, id) {
@@ -371,7 +395,7 @@ function cmdCommitIssue(root, id) {
   git(ctx.wt, ['rm', '-q', '--', path.join(FEEDBACK_REL, `${id}.md`)]);
   const lines = [`feedback(${ctx.batch}): ${it.kind} ${id}`, '', `Feedback-Consumed: docs/feedback/${id}.md`, `Feedback-Kind: ${it.kind}`, `Feedback-From-UC: ${fm.from_uc || 'unknown'}`];
   if (alreadyApplied) lines.push('Feedback-Result: already-applied');
-  const sha = commitWithMessage(ctx.wt, lines.join('\n'));
+  const sha = commitWithMessage(ctx.wt, lines.join('\n'), { coAuthor: coAuthorOf(ctx) });
   if (alreadyApplied) {
     writeJson(stateFile(ctx, id), { status: 'already-applied', sha });
     // 派遣が作り直した生成物が worktree に残る。static は回さないので、ここで捨てて次の課題を clean で始める (0.1.27 実走 K14)
@@ -403,7 +427,7 @@ function cmdReclassify(root, id, opts) {
   fs.writeFileSync(fp, joinFrontMatter(nfm, `\n${section}\n${body.replace(/^\n+/, '')}`));
   git(ctx.wt, ['add', '-A', '--', path.join(FEEDBACK_REL, `${id}.md`)]);
   const lines = [`feedback(${ctx.batch}): plugin ${id}`, '', `Feedback-Reclassified: docs/feedback/${id}.md`, 'Feedback-Kind: plugin', `Feedback-Kind-Original: ${original}`, `Feedback-From-UC: ${fm.from_uc || 'unknown'}`];
-  const sha = commitWithMessage(ctx.wt, lines.join('\n'));
+  const sha = commitWithMessage(ctx.wt, lines.join('\n'), { coAuthor: coAuthorOf(ctx) });
   writeJson(stateFile(ctx, id), { status: 'reclassified', sha, reason });
   return { reclassified: id, kind_original: original, sha };
 }
@@ -521,24 +545,24 @@ function finalizeOn(ctx, batch, opts, { dismiss = [], dropReasons = {} } = {}) {
     const marked = markStopped(ctx, stoppedIds, dropReasons);
     if (marked.length) {
       git(ctx.wt, ['add', '-A', '--', FEEDBACK_REL]);
-      commits.stopped = commitWithMessage(ctx.wt, [`feedback(${ctx.batch}): stopped`, '', ...marked.map((id) => `Feedback-Stopped: docs/feedback/${id}.md`)].join('\n'));
+      commits.stopped = commitWithMessage(ctx.wt, [`feedback(${ctx.batch}): stopped`, '', ...marked.map((id) => `Feedback-Stopped: docs/feedback/${id}.md`)].join('\n'), { coAuthor: coAuthorOf(ctx) });
     }
   }
   runCmds(ctx.wt, cmds['adr-index'], '生成物の作り直し (adr-index)');
   git(ctx.wt, ['add', '-A']);
-  if (hasStaged(ctx.wt)) commits.adr_index = commitWithMessage(ctx.wt, `feedback(${ctx.batch}): adr index`);
+  if (hasStaged(ctx.wt)) commits.adr_index = commitWithMessage(ctx.wt, `feedback(${ctx.batch}): adr index`, { coAuthor: coAuthorOf(ctx) });
   runCmds(ctx.wt, cmds.derived, '生成物の作り直し (derived)');
   git(ctx.wt, ['add', '-A']);
-  commits.regenerate = commitWithMessage(ctx.wt, `feedback(${ctx.batch}): regenerate`, { allowEmpty: true });
+  commits.regenerate = commitWithMessage(ctx.wt, `feedback(${ctx.batch}): regenerate`, { allowEmpty: true, coAuthor: coAuthorOf(ctx) });
   return commits;
 }
 
 function cmdFinalize(root, opts) {
   const ctx = ctxOf(root);
   const batch = requireBatch(ctx);
-  if (subjectOf(root, ctx.branch) === `feedback(${ctx.batch}): regenerate`) return { finalized: false, reason: '仕上げ済み', head: revParse(root, ctx.branch) };
+  if (subjectOf(root, ctx.branch) === `feedback(${ctx.batch}): regenerate`) return { finalized: false, reason: '仕上げ済み', head: revParse(root, ctx.branch), slices_changed: slicesChanged(ctx) };
   const commits = finalizeOn(ctx, batch, opts);
-  return { finalized: true, commits, head: revParse(root, ctx.branch) };
+  return { finalized: true, commits, head: revParse(root, ctx.branch), slices_changed: slicesChanged(ctx) };
 }
 
 function cmdRecordGate(root, opts) {
@@ -548,12 +572,43 @@ function cmdRecordGate(root, opts) {
   const head = revParse(root, ctx.branch);
   if (subjectOf(root, ctx.branch) !== `feedback(${ctx.batch}): regenerate`) throw new Fail('仕上げ (finalize) の前にゲートの結果は記録できない');
   const rec = { sha: head, result: opts.result, at: new Date().toISOString() };
-  if (opts.detail) rec.detail = fs.readFileSync(path.resolve(root, opts.detail), 'utf8').split('\n').slice(-40).join('\n');
+  if (opts.retried) rec.retried = true;
+  if (opts.detail) rec.detail = gateDetail(csv(opts.detail).map((f) => path.resolve(root, f)));
   writeJson(path.join(ctx.fb, 'gate.json'), rec);
   return rec;
 }
 
 function csv(v) { return v ? String(v).split(',').map((s) => s.trim()).filter(Boolean) : []; }
+
+/**
+ * record-gate --detail の中身 (0.1.30 M6)。runGates の gates.json なら uc と落ちた段の落ちた job (exit・failed_tests・output_tail の末尾 20 行) を要約し、
+ * それ以外のファイルは末尾 40 行。複数ファイルはファイルごとの要約を連結する (最後のゲートで複数 UC が落ちたとき)
+ */
+function gateDetail(files) {
+  const parts = [];
+  for (const f of files) {
+    if (!fs.existsSync(f)) throw new Fail(`--detail のファイルが無い: ${f}`, 2);
+    const text = fs.readFileSync(f, 'utf8');
+    const j = readJsonText(text);
+    if (j && Array.isArray(j.gates)) {
+      const lines = [`[${j.uc || path.basename(path.dirname(path.dirname(f)))}] result=${j.result || '?'} (${path.basename(f)})`];
+      for (const g of j.gates.filter((x) => x.status === 'fail')) {
+        if (g.note && !(g.jobs || []).some((x) => x.status === 'fail')) lines.push(`${g.name}: ${g.note}`);
+        for (const job of (g.jobs || []).filter((x) => x.status === 'fail')) {
+          lines.push(`${g.name} ${job.tier ? `${job.tier}:` : ''}${job.name} exit=${job.exit}`);
+          if (job.failed_tests) lines.push(`  failed_tests: ${job.failed_tests.join(', ')}${job.failed_tests_truncated ? ` (他 ${job.failed_tests_truncated - job.failed_tests.length} 件)` : ''}`);
+          lines.push(...String(job.output_tail || '').split('\n').slice(-20).map((l) => `  ${l}`));
+        }
+      }
+      parts.push(lines.join('\n'));
+    } else {
+      parts.push(text.split('\n').slice(-40).join('\n'));
+    }
+  }
+  return parts.join('\n\n');
+}
+
+function readJsonText(text) { try { return JSON.parse(text); } catch { return null; } }
 
 /** 確認ページで「取り込む / 今回は外す / 取り下げる」を聞く課題 (原本を commit した課題。取り込み済みとプラグインへ持ち帰る課題は聞かずに残す) */
 function keptWithoutAsking(st) { return Boolean(st && (st.status === 'already-applied' || st.status === 'reclassified')); }
@@ -637,7 +692,7 @@ function cmdRebuild(root, opts) {
   const dismissed = dismiss.filter((id) => fs.existsSync(feedbackPath(ctx.wt, id)));
   if (dismissed.length) {
     git(ctx.wt, ['rm', '-q', '--', ...dismissed.map((id) => path.join(FEEDBACK_REL, `${id}.md`))]);
-    commitWithMessage(ctx.wt, [`feedback(${ctx.batch}): dismiss`, '', ...dismissed.map((id) => `Feedback-Dismissed: docs/feedback/${id}.md`)].join('\n'));
+    commitWithMessage(ctx.wt, [`feedback(${ctx.batch}): dismiss`, '', ...dismissed.map((id) => `Feedback-Dismissed: docs/feedback/${id}.md`)].join('\n'), { coAuthor: coAuthorOf(ctx) });
   }
   const dropReasons = {};
   for (const id of drop) {
@@ -697,7 +752,7 @@ function cmdMerge(root) {
 
 function parseArgs(argv) {
   const opts = { _: [] };
-  const flags = new Set(['auto', 'abandon']);
+  const flags = new Set(['auto', 'abandon', 'retried']);
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a.startsWith('--')) {

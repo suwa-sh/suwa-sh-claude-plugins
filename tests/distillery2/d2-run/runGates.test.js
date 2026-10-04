@@ -203,3 +203,62 @@ test('acceptance runs browser command only when capabilities.browser is true', (
   const summary = JSON.parse(fs.readFileSync(path.join(repo, '.distillery/runs/loan/reports/gates.json'), 'utf8'));
   assert.deepEqual(summary.gates.find(g => g.name === 'acceptance').jobs.map(j => [j.name, j.status]), [['acceptance_api', 'pass'], ['acceptance_browser', 'fail']]);
 });
+
+test('0.1.30 M6: 落ちた job に failed_tests (vitest のレポート) が付き、標準出力にも出る。通った job には付かない', () => {
+  const { failedTestNames } = require('../../../plugins/distillery2/skills/d2-common/scripts/runGates');
+  const vitest = { numFailedTests: 2, testResults: [{ assertionResults: [
+    { status: 'failed', fullName: 'register-return > 409 when already returned' },
+    { status: 'passed', fullName: 'register-return > 200' },
+    { status: 'failed', ancestorTitles: ['loan', 'limit'], title: 'rejects 6th book' },
+  ] }] };
+  assert.deepEqual(failedTestNames(vitest), ['register-return > 409 when already returned', 'loan > limit > rejects 6th book']);
+  const cmd = `unit: node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify(${JSON.stringify(vitest).replace(/"/g, '\\"')})); process.exit(1)" {report}`;
+  const repo = makeRepo(CONFIG.replace("unit: node -e \"require('fs').writeFileSync(process.argv[1], '{}'); process.exit(0)\" {report}", cmd));
+  const r = run(repo, ['--uc', 'loan', '--only', 'unit', '--tiers', 'api']);
+  assert.equal(r.code, 1);
+  assert.match(r.out, /failed: register-return > 409 when already returned, loan > limit > rejects 6th book/);
+  const summary = JSON.parse(fs.readFileSync(path.join(repo, '.distillery/runs/loan/reports/gates.json'), 'utf8'));
+  const job = summary.gates[1].jobs.find(j => j.tier === 'api');
+  assert.deepEqual(job.failed_tests, ['register-return > 409 when already returned', 'loan > limit > rejects 6th book']);
+  assert.ok(!('failed_tests_truncated' in job));
+  // 通った job には付かない
+  const okRepo = makeRepo(CONFIG);
+  const ok = run(okRepo, ['--uc', 'loan', '--upto', 'unit']);
+  assert.equal(ok.code, 0);
+  const s2 = JSON.parse(fs.readFileSync(path.join(okRepo, '.distillery/runs/loan/reports/gates.json'), 'utf8'));
+  assert.ok(s2.gates.slice(0, 2).every(g => g.jobs.every(j => !('failed_tests' in j))));
+});
+
+test('0.1.30 M6: cucumber のレポート (ルートが feature の配列) からは "<feature> > <scenario>"。レポートが無い・読めない job には failed_tests を付けない', () => {
+  const { failedTestNames } = require('../../../plugins/distillery2/skills/d2-common/scripts/runGates');
+  // 試し運転の register-return/reports/uc-bdd.json と同じ形を縮めたもの
+  const cucumber = [{ name: '返却を登録する', elements: [
+    { name: '延滞なしの返却', steps: [{ result: { status: 'passed' } }] },
+    { name: '返却済みの本を再び返却する', steps: [{ result: { status: 'passed' } }, { result: { status: 'failed' } }] },
+  ] }, { name: '受入', elements: [{ name: 'API で返却', steps: [{ result: { status: 'failed' } }] }] }];
+  assert.deepEqual(failedTestNames(cucumber), ['返却を登録する > 返却済みの本を再び返却する', '受入 > API で返却']);
+  assert.deepEqual(failedTestNames({ unknown: true }), []);
+  assert.deepEqual(failedTestNames(null), []);
+  // {report} の無い contract (exit 3) は failed_tests を持たない
+  const repo = makeRepo(CONFIG);
+  const r = run(repo, ['--uc', 'loan']);
+  assert.equal(r.code, 1);
+  const summary = JSON.parse(fs.readFileSync(path.join(repo, '.distillery/runs/loan/reports/gates.json'), 'utf8'));
+  const contract = summary.gates[2].jobs.find(j => j.tier === 'api');
+  assert.equal(contract.status, 'fail');
+  assert.ok(!('failed_tests' in contract));
+  assert.doesNotMatch(r.out, /failed:/);
+});
+
+test('0.1.30 M6: failed_tests は 50 件で切り、総数を failed_tests_truncated に残す', () => {
+  const { failedTestNames } = require('../../../plugins/distillery2/skills/d2-common/scripts/runGates');
+  const many = { testResults: [{ assertionResults: Array.from({ length: 60 }, (_, i) => ({ status: 'failed', fullName: `t${i}` })) }] };
+  assert.equal(failedTestNames(many).length, 60, '関数は全件返し、切るのは runGate 側');
+  const cmd = `unit: node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify(${JSON.stringify(many).replace(/"/g, '\\"')})); process.exit(1)" {report}`;
+  const repo = makeRepo(CONFIG.replace("unit: node -e \"require('fs').writeFileSync(process.argv[1], '{}'); process.exit(0)\" {report}", cmd));
+  const r = run(repo, ['--uc', 'loan', '--only', 'unit', '--tiers', 'api']);
+  assert.match(r.out, /\(他 10 件\)/);
+  const job = JSON.parse(fs.readFileSync(path.join(repo, '.distillery/runs/loan/reports/gates.json'), 'utf8')).gates[1].jobs[0];
+  assert.equal(job.failed_tests.length, 50);
+  assert.equal(job.failed_tests_truncated, 60);
+});
