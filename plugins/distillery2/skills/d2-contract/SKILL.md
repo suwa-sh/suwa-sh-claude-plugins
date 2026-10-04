@@ -109,7 +109,8 @@ d2-run が派遣する。実装で見つかった「契約の穴」(課題ファ
 2. **対象が今の branch の契約にあるか確かめる** (`contracts/openapi/` の operationId、`contracts/asyncapi/` の message、`contracts/db/domains/` のテーブル)。
    1 つでも無ければ**何も書かずに**、結果ファイルへ `status: absent`、無かった対象名を `targets` に書いて止まる
    (d2-run はその課題を止まった課題にする)
-3. 契約を推測で埋めないと直せない (課題に応答の形が無い、要求が決まっていない) なら、何も書かずに `status: blocked` と理由を書いて止まる
+3. 契約を推測で埋めないと直せない (課題に応答の形が無い、要求が決まっていない) なら、何も書かずに `status: blocked` と理由、`reason_kind: scope` を書いて止まる (止まった課題として次の還流で再挑戦)。
+   直す場所が契約ではなく distillery2 側 (契約テストや DDL の生成器、テンプレート、手順書) なら `status: blocked` と理由、`reason_kind: plugin` を書いて止まる (d2-run が課題を `kind: plugin` に書き換えて還流の対象から外す)
 4. 分割ファイル (`openapi/` `asyncapi/` `db/domains/`) を直す。examples 必須のルールと `x-test-headers` の書き方は mode=uc と同じ。
    uc-index は変えない (UC が使う範囲は mode=uc の担当)
 5. 生成物を全部作り直す (この順): `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js` → `genContractTests.js` (`--uc` なし) → `genRdbDdl.js`。
@@ -118,7 +119,7 @@ d2-run が派遣する。実装で見つかった「契約の穴」(課題ファ
 6. 結果ファイルへ `status: applied`、`targets` (直した対象)、`reason` (1 行) を書く。完了報告には「他の UC への影響」として、
    直した operation を使う UC (`uc-index.yaml` から) と、提供側の契約テストが red になりうる変更を operation 名で書く (d2-run が確認ページと還流の commit の本文に載せる)
 
-結果ファイルは JSON 1 つ: `{"status": "applied" | "absent" | "blocked", "targets": [...], "reason": "..."}`。d2-run はこのファイルで分岐し、
+結果ファイルは JSON 1 つ: `{"status": "applied" | "absent" | "blocked", "targets": [...], "reason": "...", "reason_kind": "plugin" | "scope"}` (`reason_kind` は `blocked` のとき必須)。d2-run はこのファイルで分岐し、
 受理は各スクリプトの `--check` で行う (報告文では判断しない)。
 
 ## mode=feedback: 読むもの

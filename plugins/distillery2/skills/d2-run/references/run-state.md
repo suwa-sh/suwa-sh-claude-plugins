@@ -21,7 +21,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
   logs/feedback/<b>/                # 還流のバッチの状態 (gitignore。feedbackBatch.js が書く): batch.json・<issue>.state・<issue>.result.json (派遣の結果)・<issue>.reason.txt・<issue>.failed.diff・gate.json・decision.json。取り込んだら消す
   worktrees/feedback/               # 還流の worktree (gitignore。0.1.27)。main から切り、取り込んだら消す
   worktrees/<uc_slug>/<issue>/      # review で「要求を直す」ときの一時の worktree (gitignore)
-docs/feedback/<issue>.md            # 課題ファイル (追跡)。要求の差分 (要求の課題) と還流 (ルール・契約の課題) が反映したら消す
+docs/feedback/<issue>.md            # 課題ファイル (追跡)。要求の差分 (要求の課題) と還流 (ルール・契約の課題) が反映したら消す。kind: plugin (プラグインへ持ち帰る課題) は人が消す
 docs/feedback/README.md             # 課題の一覧 (genDocsReadme が生成。0 件なら消す)
 ```
 
@@ -37,7 +37,7 @@ docs/feedback/README.md             # 課題の一覧 (genDocsReadme が生成�
 `scenario → contract → scaffold → tier → contract-gate → integrate → verify → review → asbuilt → deliver`
 
 - 0.1.27 で UC は配送で終わるようにした。UC の課題は配送のときに課題ファイルにし、次の UC の前の要求の差分と還流 (UC の外の独立した段階。`scripts/feedbackBatch.js`) が取り込む
-- 0.1.26 の run が持つ `stages/feedback.done.yaml` は読まない (配送の done があれば旧形式と判定しない)。0.1.26 で配送して還流を終えていない run の課題は、還流の移行 (`feedbackBatch.js scan` の `unfiled_runs`) が課題ファイルにする
+- 0.1.26 の run が持つ `stages/feedback.done.yaml` は読まない (配送の done があれば旧形式と判定しない)。0.1.26 で配送して還流を終えていない run の課題は、起動時の移行 (`feedbackBatch.js scan` の `unfiled_runs`。自動選択の 3 の 2) が課題ファイルにする
 - 0.1.25 までの run (還流の done があり配送の done が無い) は `status` の `legacy_order: true` で次の段階を出さない。d2-run が人に配送済みかを聞き、
   配送済みなら `node runState.js mark-legacy-delivered <runDir>` で配送の done (`legacy: true`) を作る。まだなら `invalidate <runDir> feedback` で新しい順に戻す
 

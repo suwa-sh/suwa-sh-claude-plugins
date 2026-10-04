@@ -133,9 +133,10 @@ d2-run が派遣する。実装で見つかった「ルールの穴」(課題フ
 最後に `feedbackBatch.js` がまとめて作り直す (ここで作り直すと、ルールに記録する「どの ADR から作ったか」が commit 前の古い ADR を指すため)。
 
 1. 課題を読む。既存の ADR をすべて読み、課題がどの決定に関わるかを決める
-2. 次のどれかに当たるなら、**ADR を書かずに**結果ファイルへ `status: blocked` と理由を書いて止まる:
-   - ADR の `rules[]` で表せない (生成器の直し、設定ファイル (`biome.json` など) の直し、手順書の直し)
-   - ティア構成・データストア・testing の capabilities を変える必要がある (config・骨格の作り直しが要り、還流の範囲を超える)
+2. 次のどれかに当たるなら、**ADR を書かずに**結果ファイルへ `status: blocked` と理由、理由の種類 `reason_kind` を書いて止まる:
+   - ADR の `rules[]` で表せない (生成器の直し、設定ファイル (`biome.json` など。生成器が作り直すので対象リポジトリで直しても戻る) の直し、手順書の直し) → `reason_kind: plugin`
+     (直す場所は distillery2 側。d2-run は課題を `kind: plugin` に書き換えて還流の対象から外す)
+   - ティア構成・データストア・testing の capabilities を変える必要がある (config・骨格の作り直しが要り、還流の範囲を超える) → `reason_kind: scope` (止まった課題として次の還流で再挑戦)
 3. 新しい ADR を 1 本書く ([references/adr-format.md](references/adr-format.md))。連番は既存の最大 + 1、`status: accepted`、
    `basis` は既存の ADR と同じ書き方、`rules[]` を 1 つ以上。本文の背景に課題の要点 (課題のファイル名と、front matter の `from_uc`) を書く
 4. 既存の決定を置き換えるときだけ、新しい ADR に `supersedes` を書き、旧 ADR は front matter の `status: superseded` と
@@ -145,7 +146,7 @@ d2-run が派遣する。実装で見つかった「ルールの穴」(課題フ
    `_review-summary.md` は書かない (人の確認は d2-run の還流の確認ページで行う)
 6. 結果ファイルへ `status: applied`、`targets` (足した ADR のファイル名と、置き換えた旧 ADR)、`reason` (1 行) を書く
 
-結果ファイルは JSON 1 つ: `{"status": "applied" | "blocked", "targets": [...], "reason": "..."}`。d2-run はこのファイルで分岐し、
+結果ファイルは JSON 1 つ: `{"status": "applied" | "blocked", "targets": [...], "reason": "...", "reason_kind": "plugin" | "scope"}` (`reason_kind` は `blocked` のとき必須)。d2-run はこのファイルで分岐し、
 受理は `validateAdr.js` で行う (報告文では判断しない)。
 
 ## mode=feedback: 読むもの

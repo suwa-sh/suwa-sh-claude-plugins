@@ -62,6 +62,16 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 4. `git branch -d feature/<slug>`
 5. 次の UC は main から新しい run で始める (自動では続けない)
 
+配送の done の commit と 4 の間で止まると、feature が残る。次の起動の自動選択 2 が「main の run に配送の done がある feature」を配送済みとみなして片付ける (SKILL.md の自動選択)。
+
+## 旧形式の片付け (0.1.25 までに PR で配送した run)
+
+手順の正本は SKILL.md の配送節「旧形式の run」。git の約束だけを書く。
+
+- 人が「配送済み」と答えたら main の上で `runState.js mark-legacy-delivered` → `impl(<slug>): legacy delivered` で commit する
+- 残っている `feature/<slug>` は `git update-ref refs/distillery2/legacy/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。PR は squash merge なので feature は main の祖先でなく、`-d` は拒まれる。
+  退避先を要求の差分の `abandoned/` と分けるのは、捨てた理由が違うため (配送済み vs 要求が変わった)
+
 ## commit trailer
 
 `scripts/prTrailers.js` が run state から作る。`git interpret-trailers` 互換の `Key: value` 行。
@@ -87,13 +97,16 @@ UC の squash commit に還流の trailer は付けない (還流は UC の外)�
 | Feedback-Result | 還流の課題の commit | `already-applied` (契約の分割ファイルに差分が無く、課題ファイルだけを消した) |
 | Feedback-Dismissed | 還流の取り下げの commit、要求の差分の commit | `docs/feedback/<issue>.md` (確認ページで取り下げて消した課題ファイル) |
 | Feedback-Stopped | 還流の止まった課題の commit | `docs/feedback/<issue>.md` (止まった印を書き足した課題ファイル) |
+| Feedback-Reclassified / Feedback-Kind-Original | 還流のプラグインへ持ち帰る課題の commit (`feedback(<b>): plugin <issue>`) | `docs/feedback/<issue>.md` (`kind: plugin` に書き換えた課題ファイル) / 元の `kind` (`rule` か `contract`) |
 
 ## 要求の差分
 
 手順の正本は SKILL.md の ① の「要求の差分」。ここには git の約束だけを書く。
 
 - main の上で行う (進行中の UC が無いときだけ。要求で止まった UC の feature にいたら、clean なら main に切り替える)
-- 反映した課題ファイルと取り下げた課題ファイルを `git rm` し、要求の変更と同じ commit (`req: feedback`) にする。trailer は `Feedback-Consumed:` / `Feedback-Dismissed:`
+- 反映した課題ファイルと取り下げた課題ファイルを `git rm` し、要求の変更と同じ commit (`req: feedback`) にする。trailer は `Feedback-Consumed:` / `Feedback-Dismissed:`。
+  本文は `.distillery/logs/` の本文ファイルに書いて `git commit -F` で作る (配送の squash と同じ書き方)
+- 配送済みなのに課題ファイルにしていない run の課題 (移行) は、起動時の自動選択 (3 の 2) で `feedbackBatch.js file-issues` が課題ファイルにし、`impl(<slug>): issues to feedback` で main に commit する (要求の差分より前)
 - 要求で止まった UC の feature は `git update-ref refs/distillery2/abandoned/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。消さずに退避するのは、捨てた実装を後から引けるようにするため
 
 ## 還流
@@ -102,7 +115,8 @@ UC の squash commit に還流の trailer は付けない (還流は UC の外)�
 
 - 還流 branch `feedback/<b>` を **main から** `.distillery/worktrees/feedback` に切る (1 バッチ 1 つ)。本体の作業ツリーは main のまま動かさない。`feedback/` で始まる branch は還流のバッチ専用 (ほかの用途に使わない)
 - worktree には依存が無いので、本体の `node_modules` を同じ相対パスに symlink する。`.gitignore` の `node_modules` (末尾スラッシュ無し) が symlink も無視する
-- branch の commit の並び (main から): 課題ごとの原本の commit (`feedback(<b>): <rule|contract> <issue>`) → 取り下げ (`feedback(<b>): dismiss`) → 止まった課題の書き足し (`feedback(<b>): stopped`) → ADR の索引 (`feedback(<b>): adr index`) → 生成物 (`feedback(<b>): regenerate`。必ず最後)
+- branch の commit の並び (main から): 課題ごとの原本の commit (`feedback(<b>): <rule|contract> <issue>`) かプラグインへ持ち帰る書き換え (`feedback(<b>): plugin <issue>`) → 取り下げ (`feedback(<b>): dismiss`) → 止まった課題の書き足し (`feedback(<b>): stopped`) → ADR の索引 (`feedback(<b>): adr index`) → 生成物 (`feedback(<b>): regenerate`。必ず最後)
+- 取り下げは止まった課題 (2 回目以上の停止) と取り込む候補 (直し方が要らない課題) に効く。候補を取り下げると原本の commit は cherry-pick されず、課題ファイルだけが消える
 - 原本の commit には生成物を入れない。生成物は最後にまとめて作り直す (課題を外したり main の上に載せ替えたりしても、生成物の commit を作り直すだけで済む)
 - ADR の索引は生成物の先頭に別の commit にする。ルールの生成物は `docs/adr` の最終 commit を basis に記録するので、索引を同じ commit に入れると commit した直後から古いと判定される
 - 課題を外す・取り下げる・main が進んだときは、main の先端から組み直す (原本の commit を cherry-pick し、生成物を作り直す)。組み直しの前の先頭は `refs/distillery2/feedback-prev/<b>` に残す。cherry-pick が衝突したら組み直しの前に戻して止まる

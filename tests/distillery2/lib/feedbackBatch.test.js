@@ -404,16 +404,127 @@ test('decide: 取り込む候補を take と drop で漏れなく覆う。転記
   stopIssue(r, 's1', '直せない');
   r.fb('finalize');
   r.fb('record-gate', '--result', 'pass');
-  assert.match(r.fb('decide', '--take', 'c1').json.error, /取り込むか外すかが決まっていない課題: c2/, 'c2 の転記漏れ');
-  assert.match(r.fb('decide', '--take', 'c1,c2', '--drop', 'c2').json.error, /両方にある/);
+  assert.match(r.fb('decide', '--take', 'c1').json.error, /取り込むか外すか取り下げるかが決まっていない課題: c2/, 'c2 の転記漏れ');
+  assert.match(r.fb('decide', '--take', 'c1,c2', '--drop', 'c2').json.error, /複数にある課題: c2/);
+  assert.match(r.fb('decide', '--take', 'c1', '--drop', 'c2', '--dismiss', 'c2').json.error, /複数にある課題: c2/, '(y) 外すと取り下げるの両方');
   assert.match(r.fb('decide', '--take', 'c1,c2,c3').json.error, /取り込む候補でない課題/, '取り込み済みの c3 は聞かない');
-  assert.match(r.fb('decide', '--take', 'c1', '--drop', 'c2', '--dismiss', 'c1').json.error, /取り下げられるのは止まった課題だけ/);
+  assert.match(r.fb('decide', '--take', 'c1', '--drop', 'c2', '--dismiss', 'c3').json.error, /取り下げられるのは止まった課題と取り込む候補だけ: c3/, '(y) 取り込み済みは取り下げられない');
   assert.equal(r.fb('decide', '--take', 'c1', '--drop', 'c2').code, 0);
   assert.equal(r.fb('rebuild').code, 0);
   r.fb('record-gate', '--result', 'pass');
   assert.equal(r.fb('merge').code, 0);
   assert.deepEqual(trailers(r.root, 'main', 'Feedback-Consumed'), ['docs/feedback/c1.md', 'docs/feedback/c3.md'], 'c2 は入らず、取り込み済みの c3 は入る');
   assert.equal(fs.existsSync(path.join(r.root, 'contracts/openapi/b.yaml')), false);
+});
+
+test('(u)(u2) reclassify: 直す場所がプラグイン側の課題は kind: plugin になり、候補にも止まった課題にもならず、組み直しで残り、取り込み後の main に残る (0.1.28)', () => {
+  const body = '## 止まった理由\n\n1 回目: ADR で表せない\n\n## 事実\n\n- biome の設定を変えたい\n';
+  const r = makeRepo({ issues: { 'c1': { kind: 'contract' } } });
+  r.w('docs/feedback/p1.md', issueFile({ kind: 'rule', title: '止まった: p1 の課題', from_uc: 'u', status: 'open', created: '2026-09-30T00:00:01Z', stopped: true, stopped_count: 1 }, body));
+  git(r.root, 'add', '-A');
+  git(r.root, 'commit', '-q', '-m', 'p1');
+  r.fb('start', '--batch', 'bu');
+  assert.deepEqual(r.fb('status').json.pending, ['p1', 'c1'], 'rule が先');
+  // 派遣が書き込み範囲の中に残したもの (ADR の下書き) は commit に混ぜない
+  r.ww('docs/adr/0002-draft.md', '# 書きかけ\n');
+  const rf = path.join(r.base, 'p1.reason.txt');
+  fs.writeFileSync(rf, 'ADR の rules では表せない (biome.json は生成器が作り直す)');
+  const rc = r.fb('reclassify', 'p1', '--reason-file', rf);
+  assert.equal(rc.code, 0, JSON.stringify(rc.json));
+  assert.equal(rc.json.kind_original, 'rule');
+  assert.equal(git(r.wt, 'status', '--porcelain'), '', 'worktree は clean');
+  assert.equal(fs.existsSync(path.join(r.wt, 'docs/adr/0002-draft.md')), false, '下書きは捨てた');
+  assert.equal(git(r.wt, 'log', '-1', '--format=%s'), 'feedback(bu): plugin p1');
+  assert.deepEqual(trailers(r.wt, 'HEAD', 'Feedback-Reclassified'), ['docs/feedback/p1.md']);
+  assert.deepEqual(trailers(r.wt, 'HEAD', 'Feedback-Kind-Original'), ['rule']);
+  const t = fs.readFileSync(path.join(r.wt, 'docs/feedback/p1.md'), 'utf8');
+  assert.match(t, /kind: plugin/);
+  assert.match(t, /kind_original: rule/);
+  assert.match(t, /title: p1 の課題/, '題名の「止まった: 」を外す');
+  assert.doesNotMatch(t, /stopped/, '止まった印を外す');
+  assert.match(t, /## プラグインへ持ち帰る理由\n\nADR の rules では表せない/);
+  assert.match(t, /## 止まった理由\n\n1 回目/, '止まった理由の本文は残す');
+  let s = r.fb('status').json;
+  assert.deepEqual(s.done, ['p1']);
+  assert.deepEqual(s.pending, ['c1']);
+  // (u2) commit と state の間で止まっても、commit があれば済み (state を復元)
+  fs.rmSync(path.join(r.root, '.distillery/logs/feedback/bu/p1.state'));
+  s = r.fb('status').json;
+  assert.deepEqual(s.done, ['p1'], 'state が無くても plugin の commit で done');
+  assert.deepEqual(s.needs_static, []);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(r.root, '.distillery/logs/feedback/bu/p1.state'), 'utf8')).status, 'reclassified', 'state を復元した');
+  passIssue(r, 'c1', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
+  r.fb('finalize');
+  r.fb('record-gate', '--result', 'pass');
+  assert.match(r.fb('decide', '--take', 'c1,p1').json.error, /取り込む候補でない課題/, 'プラグインへ持ち帰る課題は聞かない');
+  // 組み直し (c1 を外す) でも plugin の commit は残る
+  assert.equal(r.fb('decide', '--drop', 'c1').code, 0);
+  assert.equal(r.fb('rebuild').code, 0);
+  assert.deepEqual(git(r.root, 'log', '--format=%s', 'main..feedback/bu').split('\n').filter((l) => l.includes(' plugin ')), ['feedback(bu): plugin p1']);
+  r.fb('record-gate', '--result', 'pass');
+  assert.equal(r.fb('merge').code, 0);
+  const m = fs.readFileSync(path.join(r.root, 'docs/feedback/p1.md'), 'utf8');
+  assert.match(m, /kind: plugin/);
+  assert.doesNotMatch(fs.readFileSync(path.join(r.root, 'docs/feedback/p1.md'), 'utf8'), /stopped: true/);
+  const sc = r.fb('scan').json;
+  assert.deepEqual(sc.plugin, ['p1']);
+  assert.deepEqual(sc.triggers, [], 'きっかけにしない');
+  assert.deepEqual(sc.stopped, [{ id: 'c1', stopped_count: 1 }], '止まった課題にも数えない (外した c1 だけ)');
+  assert.equal(sc.feedback_due, false, JSON.stringify(sc));
+  // plugin は切り出しの対象外 (外して止まった c1 だけが対象になる)
+  assert.deepEqual(r.fb('start', '--batch', 'bu2').json.issues.map((x) => x.id), ['c1']);
+});
+
+test('(v)(w) 取り込む候補の取り下げ: 原本の commit が branch に無く、課題ファイルが消え、trailer Feedback-Dismissed。ゲートが落ちても候補の取り下げだけで回答できる (0.1.28)', () => {
+  const r = makeRepo({ issues: { 'r1': { kind: 'rule' }, 'c1': { kind: 'contract' } } });
+  r.fb('start', '--batch', 'bv');
+  passIssue(r, 'r1', () => r.ww('docs/adr/0002-r1.md', '# r1\n'));
+  passIssue(r, 'c1', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
+  r.fb('finalize');
+  r.fb('record-gate', '--result', 'fail');
+  assert.match(r.fb('decide', '--take', 'r1,c1').json.error, /すべて取り込む回答はできない/);
+  assert.equal(r.fb('decide', '--take', 'c1', '--dismiss', 'r1').code, 0, '(w) 候補の取り下げだけでも外したことになる');
+  assert.equal(r.fb('status').json.point, 'rebuild');
+  const rb = r.fb('rebuild');
+  assert.equal(rb.code, 0, JSON.stringify(rb.json));
+  assert.deepEqual(rb.json.picked.map((p) => p.id), ['c1']);
+  assert.deepEqual(rb.json.dismissed, ['r1']);
+  r.fb('record-gate', '--result', 'pass');
+  assert.equal(r.fb('merge').code, 0);
+  assert.equal(fs.existsSync(path.join(r.root, 'docs/adr/0002-r1.md')), false, '原本は入らない');
+  assert.equal(fs.existsSync(path.join(r.root, 'docs/feedback/r1.md')), false, '課題ファイルは消える (止まった課題にならない)');
+  assert.deepEqual(trailers(r.root, 'main', 'Feedback-Dismissed'), ['docs/feedback/r1.md']);
+  assert.deepEqual(trailers(r.root, 'main', 'Feedback-Consumed'), ['docs/feedback/c1.md']);
+});
+
+test('(x) 取り込み済みの契約の課題: commit-issue が worktree の残り (生成物) を捨て、次の課題が clean で始まる (0.1.27 実走 K14)', () => {
+  const r = makeRepo({ issues: { 'c1': { kind: 'contract' }, 'c2': { kind: 'contract', created: '2026-09-30T00:00:01Z' } } });
+  r.fb('start', '--batch', 'bx');
+  r.ww('contracts/generated/bundle.txt', 'sub が作り直した生成物\n');
+  const c = r.fb('commit-issue', 'c1');
+  assert.equal(c.json.result, 'already-applied');
+  assert.equal(c.json.discarded, true);
+  assert.equal(fs.existsSync(path.join(r.wt, 'contracts/generated/bundle.txt')), false);
+  assert.equal(git(r.wt, 'status', '--porcelain'), '');
+  assert.equal(r.fb('status').json.worktree_dirty, false);
+  passIssue(r, 'c2', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c2\n'));
+});
+
+test('(z) push の拒否の後の status (cleanup) にもゲートの記録と回答が入る (0.1.27 実走 K19)', () => {
+  const r = makeRepo({ issues: { 'c1': { kind: 'contract' } }, origin: true });
+  r.fb('start', '--batch', 'bz');
+  passIssue(r, 'c1', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
+  r.fb('finalize');
+  r.fb('record-gate', '--result', 'pass');
+  r.fb('decide', '--take', 'c1');
+  const hook = path.join(r.bare, 'hooks', 'pre-receive');
+  fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n');
+  fs.chmodSync(hook, 0o755);
+  assert.equal(r.fb('merge').code, 4);
+  const s = r.fb('status').json;
+  assert.equal(s.point, 'cleanup');
+  assert.equal(s.gate.result, 'pass');
+  assert.deepEqual(s.decision.take, ['c1']);
 });
 
 test('CLI: --cwd はサブコマンドの前でも後でもよい。branch だけ残り worktree が無ければ broken (差分レビュー 1 ラウンド目)', () => {
