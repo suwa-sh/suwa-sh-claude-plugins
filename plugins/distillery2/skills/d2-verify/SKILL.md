@@ -8,6 +8,8 @@ description: >-
 
 # d2-verify
 
+パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 引数: `uc=<slug> tier=<tier_id> attempt=<n> run=<.distillery/runs/<slug> へのパス> assumptions=<attempt-<n>/assumptions.<tier>.yaml へのパス>`
@@ -27,7 +29,7 @@ description: >-
 | ルール | `docs/rules/common.md`、`docs/rules/tier-<kind>.md`、`docs/rules/testing.md` |
 | 契約 | `contracts/generated/slices/<slug>/contract-slice.json` (と rdb-slice.yaml) |
 | 実装 | `git diff --name-only <base_head>..HEAD` の変更ファイル (呼び出し側が一覧を渡す)。自ティアの `apps/<tier>/` |
-| 固定指示 | `${CLAUDE_PLUGIN_ROOT}/skills/d2-implement/references/tier-impl.md` (前提の照合先として) |
+| 固定指示 | `<skills>/d2-implement/references/tier-impl.md` (前提の照合先として) |
 | 他 UC への波及 (例外) | 呼び出し側が渡す「他 UC と共有する変更ファイル」、自ティアの変更ファイルの import 元 (`rg` で辿る)、`contracts/uc-index.yaml`、`docs/as-built/_system/traceability-index.json`、候補に紐づく他 UC のシナリオ (`features/<業務>/<他 slug>.feature`) |
 
 設計書や個別仕様書は存在しない。上の「他 UC への波及」の例外を除き、他 UC・関与しない契約・契約 source の全量は読まない。
@@ -40,7 +42,7 @@ description: >-
    findings の `evidence` に書く。この間、前提ファイルは開かない。候補 (仕様に根拠の無い判断) を控える
 3. 観点 2 (assumption_conformance) を blind join の手順どおりに行う
 4. `findings.yaml` を `<run>/attempt-<n>/findings.<tier>.yaml` に書く (形は viewpoints.md)。書き終えたら
-   `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-implement/scripts/validateAssumptions.js verdicts <findings> --assumptions <assumptions> --uc <slug> --tier <tier> --attempt <n>`
+   `node <skills>/d2-implement/scripts/validateAssumptions.js verdicts <findings> --assumptions <assumptions> --uc <slug> --tier <tier> --attempt <n>`
    を実行し ok を確認する。ok でなければ直す
 5. 結果を報告する: blocker / major / minor の件数、`requires_answer` の件数、blocker があれば戻すべきティアと理由
 

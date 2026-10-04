@@ -19,8 +19,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const C = require('./lib/contractsDir');
 const G = require('./lib/contractGraph');
-const { validateWithSchema } = require('../../../scripts/lib/schemaValidate');
-const { parseYaml } = require('../../../scripts/lib/yaml');
+const { validateWithSchema } = require('../../d2-common/scripts/lib/schemaValidate');
+const { parseYaml } = require('../../d2-common/scripts/lib/yaml');
 
 function validate(contractsDir) {
   const errors = [];

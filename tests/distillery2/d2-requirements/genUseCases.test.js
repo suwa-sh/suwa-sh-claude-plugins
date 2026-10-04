@@ -9,7 +9,7 @@ const { spawnSync } = require('node:child_process');
 const SCRIPTS = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-requirements/scripts');
 const FIX = path.join(__dirname, 'fixtures');
 const { ucId, generate } = require(path.join(SCRIPTS, 'genUseCases'));
-const { parseYaml } = require(path.resolve(SCRIPTS, '../../../scripts/lib/yaml'));
+const { parseYaml } = require(path.resolve(SCRIPTS, '../../d2-common/scripts/lib/yaml'));
 
 const reqData = parseYaml(fs.readFileSync(path.join(FIX, 'requirements-pass.yaml'), 'utf8'));
 const bucText = fs.readFileSync(path.join(FIX, 'BUC.tsv'), 'utf8');
@@ -110,7 +110,7 @@ test('新規 UC は空の spec_ids_rejected を持つ (LLM が却下 id を移�
   assert.deepEqual(byUc['貸出を登録する'].spec_ids_rejected, []);
 });
 
-const { stringifyYaml } = require(path.resolve(SCRIPTS, '../../../scripts/lib/yaml'));
+const { stringifyYaml } = require(path.resolve(SCRIPTS, '../../d2-common/scripts/lib/yaml'));
 
 /** spec_ids が空の UC は no_spec_reason + status: blocked にして validate を通す (指摘2 の逃げ道)。 */
 function fillEmpties(doc) {

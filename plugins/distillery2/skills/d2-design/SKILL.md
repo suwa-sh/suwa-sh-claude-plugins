@@ -8,6 +8,8 @@ description: >-
 
 # d2-design
 
+パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 RDRA モデルと ADR の UI 決定から、デザイントークンと Storybook 部品を生成する。
@@ -87,7 +89,7 @@ LLM 主体のステージ。d2-run が段階③で、契約の骨格 (d2-contrac
   **はみ出し・文字切れ・コントラスト**を確認する。崩れがあれば部品を直して再ビルドする。
 
   ```bash
-  node ${CLAUDE_PLUGIN_ROOT}/skills/d2-design/scripts/captureStories.js --cwd .
+  node <skills>/d2-design/scripts/captureStories.js --cwd .
   ```
 
   - Storybook を静的ビルドし、`playwright` が対象リポで解決できれば headless chromium で各 Story を撮って
@@ -102,7 +104,7 @@ LLM 主体のステージ。d2-run が段階③で、契約の骨格 (d2-contrac
 先頭に basis 行を刻む:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/lib/basis.js stamp requirements=docs/requirements adr=docs/adr
+node <skills>/d2-common/scripts/lib/basis.js stamp requirements=docs/requirements adr=docs/adr
 ```
 
 出力の `basis: requirements@<sha> adr@<sha>` を `docs/design/screens.yaml` の先頭キー `basis:` に入れ、
@@ -110,7 +112,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/lib/basis.js stamp requirements=docs/requirem
 (`tokens.file` は `--app` = `src/` からの相対。実体は `src/tokens/tokens.json`。`--app` 指定時は実在も検査する)。検証:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-design/scripts/validateScreens.js \
+node <skills>/d2-design/scripts/validateScreens.js \
   docs/design/screens.yaml \
   --app docs/design/storybook-app/src \
   --use-cases docs/requirements/use-cases.yaml
@@ -140,7 +142,7 @@ d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せ�
 | [`scripts/validateScreens.js`](scripts/validateScreens.js) | screens.yaml 検証 (exit 0/1/2)。`--app` / `--use-cases` で実在検査 |
 | [`scripts/captureStories.js`](scripts/captureStories.js) | 手順 4 目視: Storybook をビルドし playwright で各 Story を撮る (exit 0)。playwright 無し / ビルド失敗は exit 2 (目視未実施) |
 
-共有ライブラリは `${CLAUDE_PLUGIN_ROOT}/scripts/lib/` (basis.js, yaml.js, schemaValidate.js) を使う。
+共有ライブラリは `<skills>/d2-common/scripts/lib/` (basis.js, yaml.js, schemaValidate.js) を使う。
 スキル内スクリプトは他プラグインを require しない。
 
 ## References

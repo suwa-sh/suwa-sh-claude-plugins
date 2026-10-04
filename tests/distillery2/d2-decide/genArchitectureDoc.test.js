@@ -199,7 +199,7 @@ test('決定論: 同じ入力なら 2 回の生成がバイト一致する', () 
 
 test('契約を commit してから contracts= を渡すと basis に契約が入り、契約の変更で古さを検出できる (③ の仕上げ F8。0.1.23)', () => {
   const { execFileSync } = require('node:child_process');
-  const basisLib = require('../../../plugins/distillery2/scripts/lib/basis');
+  const basisLib = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/basis');
   const dir = buildRepo();
   const git = (...a) => execFileSync('git', a, { cwd: dir, encoding: 'utf8' });
   git('init', '-q');

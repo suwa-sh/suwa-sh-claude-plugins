@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const rs = require('../../../plugins/distillery2/scripts/lib/runState');
+const rs = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/runState');
 
 test('open, events, done, status, invalidate, attempts', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
@@ -50,7 +50,7 @@ test('invalidateFrom: その段階と後ろの段階の done をまとめて退�
   // CLI
   rs.markDone(dir, 'integrate', {});
   rs.markDone(dir, 'verify', {});
-  const cli = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib/runState.js'), 'invalidate', dir, 'integrate', 'again', '--from'], { encoding: 'utf8' });
+  const cli = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/lib/runState.js'), 'invalidate', dir, 'integrate', 'again', '--from'], { encoding: 'utf8' });
   assert.equal(cli.trim().split('\n').length, 2);
   assert.equal(rs.status(dir).next_stage, 'integrate');
 });
@@ -83,7 +83,7 @@ test('returnToIntegrate: findings の退避 → integrate 以降の done の退�
   const all = fs.readdirSync(path.join(dir, 'invalidated')).filter(n => n.includes('findings.backend-api'));
   assert.equal(all.length, 2, '1 回目の退避を上書きしない');
   // CLI
-  const out = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib/runState.js'), 'return-to-integrate', dir, '{"instrumentation_gaps":[]}'], { encoding: 'utf8' });
+  const out = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/lib/runState.js'), 'return-to-integrate', dir, '{"instrumentation_gaps":[]}'], { encoding: 'utf8' });
   assert.deepEqual(JSON.parse(out).moved_findings, []);
 });
 
@@ -123,7 +123,7 @@ test('段階の順 (0.1.27): UC は配送 (deliver) で終わる。還流は UC 
   assert.equal(rs.status(dir).next_stage, 'deliver');
   fs.writeFileSync(path.join(dir, 'issues', 'a.md'), '---\nkind: contract\n---\n');
   assert.deepEqual(rs.status(dir).unfiled_issues, ['issues/a.md']);
-  const text = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib/runState.js'), 'status', dir], { encoding: 'utf8' });
+  const text = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/lib/runState.js'), 'status', dir], { encoding: 'utf8' });
   assert.match(text, /unfiled issues \(課題ファイルにしていない課題\): 1\n {2}- issues\/a\.md/);
   rs.appendEvent(dir, 'feedback_filed', { kind: 'contract', ref: 'docs/feedback/a.md', issue_path: 'issues/a.md' });
   rs.markDone(dir, 'deliver', { squash: 'abc' });
@@ -155,7 +155,7 @@ test('旧形式の順 (還流 done・配送 done 無し) は次の段階を出�
   let st = rs.status(dir);
   assert.equal(st.legacy_order, true);
   assert.equal(st.next_stage, null);
-  const out = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib/runState.js'), 'mark-legacy-delivered', dir], { encoding: 'utf8' });
+  const out = require('node:child_process').execFileSync('node', [path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/lib/runState.js'), 'mark-legacy-delivered', dir], { encoding: 'utf8' });
   assert.equal(JSON.parse(out).legacy, true);
   assert.equal(JSON.parse(out).feedback_reopened, false, '課題が無ければ還流の done はそのまま');
   st = rs.status(dir);

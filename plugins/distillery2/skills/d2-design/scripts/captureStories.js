@@ -25,7 +25,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const http = require('node:http');
-const { resolveDep } = require('../../../scripts/lib/resolveDep');
+const { resolveDep } = require('../../d2-common/scripts/lib/resolveDep');
 
 /**
  * Storybook static build の index を Story 配列に変換する (id 昇順)。

@@ -59,6 +59,6 @@ UC 着手の最初に、その UC の Gherkin を `features/<業務>/<slug>.feat
 
 ## 完了条件
 
-- `node ${CLAUDE_PLUGIN_ROOT}/skills/d2-implement/scripts/checkScenario.js <feature> --use-cases docs/requirements/use-cases.yaml --requirements docs/requirements/requirements.yaml --acceptance-dir features/acceptance`
+- `node <skills>/d2-implement/scripts/checkScenario.js <feature> --use-cases docs/requirements/use-cases.yaml --requirements docs/requirements/requirements.yaml --acceptance-dir features/acceptance`
   が ok (parse できる、`@uc:` タグがある、spec_ids の受入基準がすべてタグで対応済み、未対応があれば列挙)
 - 報告に「シナリオ数 / 受入基準の対応 / @browser の数 / 起票した issue」を書く。人の承認は d2-run が取る (このモードでは聞かない)

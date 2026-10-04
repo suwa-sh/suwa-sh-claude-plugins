@@ -23,8 +23,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadAdrDir } = require('./validateAdr');
-const { parseYaml } = require('../../../scripts/lib/yaml');
-const basisLib = require('../../../scripts/lib/basis');
+const { parseYaml } = require('../../d2-common/scripts/lib/yaml');
+const basisLib = require('../../d2-common/scripts/lib/basis');
 
 // --- 小道具 -----------------------------------------------------------------
 

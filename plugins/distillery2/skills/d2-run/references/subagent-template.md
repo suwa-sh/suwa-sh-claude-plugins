@@ -43,7 +43,7 @@
 | 還流 (ADR) | ルールの穴の記録役 | `distillery2:d2-decide` `mode=feedback issue=<課題> result=<結果ファイル>` | 既定 | `docs/adr/**`、`.distillery/logs/feedback/<b>/<issue>.result.json` | 還流の worktree で派遣する (SKILL.md の還流節)。`作業ディレクトリ: <本体の .distillery/worktrees/feedback の絶対パス> (write-set はここからの相対。結果ファイルだけは本体のリポの絶対パス)`、`課題: <worktree の中の docs/feedback/<issue>.md の絶対パス>`、`結果ファイル: <本体の .distillery/logs/feedback/<b>/<issue>.result.json の絶対パス>` を追記 |
 | 還流 (契約) | 契約の修正役 | `distillery2:d2-contract` `mode=feedback issue=<課題> result=<結果ファイル>` | 既定 | `contracts/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**`、`.distillery/logs/feedback/<b>/<issue>.result.json` | 還流の worktree で派遣する。`作業ディレクトリ: <本体の .distillery/worktrees/feedback の絶対パス> (write-set はここからの相対。結果ファイルだけは本体のリポの絶対パス)`、`課題: <worktree の中の docs/feedback/<issue>.md の絶対パス>`、`結果ファイル: <本体の .distillery/logs/feedback/<b>/<issue>.result.json の絶対パス>` を追記 |
 
-`<run>` = `.distillery/runs/<slug>`。`<b>` = 還流のバッチ (`feedbackBatch.js start` が返す。branch `feedback/<b>`)。固定指示のパスは `${CLAUDE_PLUGIN_ROOT}/skills/...` を絶対パスに展開して
+`<run>` = `.distillery/runs/<slug>`。`<b>` = 還流のバッチ (`feedbackBatch.js start` が返す。branch `feedback/<b>`)。固定指示のパスは `<skills>/...` を絶対パスに展開して
 `まず次のファイルを読み、記載の指示すべてに従ってください: <絶対パス>` の 1 行で渡す。
 
 ## サブエージェントの報告の扱い (捏造禁止)

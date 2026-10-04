@@ -104,7 +104,7 @@ stores:
   - id: skill-docs
     name: スキルの手順書 (同梱)
     group: packaged
-    path: "${CLAUDE_PLUGIN_ROOT}/skills/**"
+    path: "<skills>/**"
     origin: packaged
   # ---- ① 要求 ----
   - id: req-usdm

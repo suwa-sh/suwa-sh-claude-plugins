@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { loadDataFile } = require('../../../plugins/distillery2/scripts/lib/schemaValidate');
+const { loadDataFile } = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/schemaValidate');
 const { validateNfrGrade, catalogMetricIds } = require('../../../plugins/distillery2/skills/d2-decide/scripts/validateNfrGrade');
 
 const V1_SAMPLE = path.resolve(__dirname, '../../../samples/distillery/pipeline/nfr/latest/nfr-grade.yaml');

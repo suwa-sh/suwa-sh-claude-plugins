@@ -17,7 +17,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadAdrs, isAccepted, TIER_KINDS } = require('./adr');
-const { stamp, headerLine } = require('../../../scripts/lib/basis');
+const { stamp, headerLine } = require('../../d2-common/scripts/lib/basis');
 
 const DEFAULT_TEMPLATES = path.join(__dirname, '..', 'references', 'rule-templates');
 

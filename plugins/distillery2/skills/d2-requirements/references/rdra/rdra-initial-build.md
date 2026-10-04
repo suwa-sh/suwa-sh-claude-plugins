@@ -64,7 +64,7 @@ RDRA統合ステップでは、関連データ生成スクリプトを実行す�
 **makeZeroOneData.js** も cwd 基準（または第1引数）で動作する:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/makeZeroOneData.js 1_RDRA
+node <skills>/d2-requirements/scripts/makeZeroOneData.js 1_RDRA
 ```
 
 ### 3. docs ディレクトリへの配置

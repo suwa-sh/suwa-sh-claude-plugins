@@ -5,8 +5,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const rs = require('../../../plugins/distillery2/scripts/lib/runState');
-const { buildTrailers, render, strictProblems } = require('../../../plugins/distillery2/scripts/prTrailers');
+const rs = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/runState');
+const { buildTrailers, render, strictProblems } = require('../../../plugins/distillery2/skills/d2-common/scripts/prTrailers');
 
 function git(cwd, ...args) { return execFileSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@x', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@x' } }).trim(); }
 

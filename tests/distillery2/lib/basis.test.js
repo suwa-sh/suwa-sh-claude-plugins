@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const basis = require('../../../plugins/distillery2/scripts/lib/basis');
+const basis = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/basis');
 
 function git(cwd, ...args) { return execFileSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@x', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@x' } }).trim(); }
 
@@ -24,6 +24,8 @@ test('stamp / headerLine / parseHeader / check', () => {
   assert.equal(line, `basis: requirements@${sha1}`);
   assert.deepEqual(basis.parseHeader(`# generated\n# ${line}\nbody`), { requirements: sha1 });
   assert.equal(basis.parseHeader('no header'), null);
+  assert.deepEqual(basis.parseHeader(`---\nbasis: "${line.slice(7)}"\n---\n`), { requirements: sha1 }, '引用符付き (ADR の front matter の形) も読む (0.1.29)');
+  assert.deepEqual(basis.parseHeader(`basis: '${line.slice(7)} adr@${sha1}'`), { requirements: sha1, adr: sha1 });
 
   const artifact = path.join(repo, 'out.md');
   fs.writeFileSync(artifact, `---\n${line}\n---\n`);

@@ -9,7 +9,7 @@ const { spawnSync } = require('node:child_process');
 const SCRIPTS = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-requirements/scripts');
 const FIX = path.join(__dirname, 'fixtures');
 const { generate } = require(path.join(SCRIPTS, 'genUseCases'));
-const { parseYaml, stringifyYaml } = require(path.resolve(SCRIPTS, '../../../scripts/lib/yaml'));
+const { parseYaml, stringifyYaml } = require(path.resolve(SCRIPTS, '../../d2-common/scripts/lib/yaml'));
 
 const reqData = parseYaml(fs.readFileSync(path.join(FIX, 'requirements-pass.yaml'), 'utf8'));
 const bucText = fs.readFileSync(path.join(FIX, 'BUC.tsv'), 'utf8');

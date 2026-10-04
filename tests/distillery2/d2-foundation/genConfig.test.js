@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { parseYaml } = require('../../../plugins/distillery2/scripts/lib/yaml');
+const { parseYaml } = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/yaml');
 
 const SKILL = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-foundation');
 const script = path.join(SKILL, 'scripts/genConfig.js');

@@ -2,6 +2,28 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.29] - 2026-10-04
+
+② 共通化の前半 (todo 2-1〜2-3): distillery2 を Claude Code 専用にしない。スキルだけを別の場所 (`~/.agents/skills/` の平置きなど) に置いても、共通のスクリプトと手順書の参照が届くようにした。
+あわせて 0.1.28 の試し運転で見つかった手順書の文言の穴 8 件 (L2・L3・L5・L6・L8・L9・L12・L13) を直した。
+
+### Changed
+
+- プラグイン直下の `scripts/` (`feedbackBatch.js`・`genDocsReadme.js`・`prTrailers.js`・`runGates.js`・`tokenReport.js` と `lib/` 7 本) を `skills/d2-common/scripts/` に移した (git mv)。
+  `feedbackBatch.js` は兄弟スキルのスクリプトを `skills/` からの相対で指す。`resolveDep.js` の探索パスも skills のルートからの相対にした (プラグインのルートが無い配置でも動く)
+- スキルのスクリプトの共通ライブラリの require を `../../d2-common/scripts/lib/<x>` に統一した (38 か所。d2-contract の `scripts/lib/` は `../../../d2-common/...`)
+- 手順書のパスの書き方を `${CLAUDE_PLUGIN_ROOT}/...` から `<skills>/<skill>/...` (スキル群のディレクトリからの相対) に変えた (18 ファイル 77 か所 + 正本 + 変数無しの言及 11 か所)。
+  定義は `d2-common/SKILL.md` の「パスの書き方」に 1 か所 (Claude Code のプラグインでは `<skills>` = `${CLAUDE_PLUGIN_ROOT}/skills`)。各スキルの SKILL.md は冒頭でそこを参照する
+- 文言の穴: ④ の冒頭の `models_resolved` は解決済みの ID を流用する (L2) / 配送の done の `squash` はフル sha (L3) / 旧形式の片付けは常に退避してから `-D` (L5) /
+  要求の差分の `basis.js check` を具体のコマンドにし、存在するファイルだけ渡す (L6) / `record-gate` は pass のとき `--detail` を付けない (L8) / `--tiers` はカンマ区切り (L9) /
+  還流の受理の検査は 1 コマンドずつ (L12) / troubleshooting に `echo $?` と sh の再発 (L13)
+- `basis.js` が引用符付きの `basis: "requirements@..."` (ADR・nfr-grade.yaml の front matter の形) も読めるようにした (読めずに `MISSING` と判定していた)
+
+### Added
+
+- `plugin-layout.test.js`: 直下に `scripts/` が無い、skills の外へ上る require が無い、`CLAUDE_PLUGIN_ROOT` は d2-common の 1 か所だけ、`<skills>/<skill>` の名前が実在する、
+  プラグイン配置と `skills/*` を平置きした配置の両方で全スクリプトの構文と相対 require・還流の既定コマンドの実在・依存の解決が通る
+
 ## [0.1.28] - 2026-10-04
 
 0.1.27 の試し運転で見つかった課題 19 件のうち 13 件を直した (K1・K3〜K10・K14・K16・K17・K19)。還流・配送・要求の差分の流れは変えていない。

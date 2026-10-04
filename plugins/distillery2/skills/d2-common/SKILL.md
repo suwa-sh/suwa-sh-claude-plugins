@@ -11,6 +11,16 @@ description: >-
 distillery2 の各スキルが共通に参照する定義の置き場。単独では何も実行しない。
 各スキルからは `../d2-common/...` の相対パスで参照する (スキルが兄弟ディレクトリとして並んでいる前提。プラグインでも `~/.agents/skills/` でも同じ)。
 
+## パスの書き方
+
+手順書のスクリプトと手順書の参照は `<skills>/<skill>/...` と書く (例 `node <skills>/d2-common/scripts/runGates.js`、`<skills>/d2-implement/references/tier-impl.md`)。
+
+- `<skills>` = スキル群のディレクトリ (このスキルの `SKILL.md` がある場所の 1 つ上)。スキルを読み込んだときに表示されるこのスキルの場所 (Base directory) から決める
+- コマンドに渡すときと、サブエージェントの派遣文に書くときは、絶対パスに展開する
+- Claude Code のプラグインとして入れたときは `<skills>` = `${CLAUDE_PLUGIN_ROOT}/skills`。`~/.agents/skills/` に平置きしたときは `<skills>` = `~/.agents/skills`
+- 共通のスクリプト (下の表) はすべて `<skills>/d2-common/scripts/` にある。プラグインの直下には置かない (スキルだけを別の場所に置いても届くように。0.1.29)
+- 他のスキルの `SKILL.md` は、冒頭でこの節を参照する (単独で読み込まれても定義にたどり着く)
+
 ## 中身
 
 | ファイル | 内容 |
@@ -19,6 +29,12 @@ distillery2 の各スキルが共通に参照する定義の置き場。単独�
 | [references/dataflow.md](references/dataflow.md) | 正本から生成した DFD (Mermaid)。全体図 3 枚 (① 〜 ④ / ④ 実装まで / ④ 検証と as-built)・処理ごとの図・ファイルの一覧。手で直さない |
 | `scripts/dataflow.js` | 正本の読み込みとパス照合 (図の生成と整合性テストが使う) |
 | `scripts/genDataflow.js` | `dataflow.md` の生成。`--check` で古ければ exit 1 |
+| `scripts/runGates.js` | ゲートの実行と記録 (`<run>/reports/gates.json`)。d2-run が回す |
+| `scripts/feedbackBatch.js` | 還流の git の状態遷移。d2-run が回す |
+| `scripts/genDocsReadme.js` | `docs/README.md` と課題の一覧の生成。d2-run が各段階の commit 前に回す |
+| `scripts/prTrailers.js` | 配送の squash commit の本文 (trailer) |
+| `scripts/tokenReport.js` | headless 実行のトークン集計 (開発時の計測) |
+| `scripts/lib/` | 共通ライブラリ (`basis`・`canonicalJson`・`gherkin`・`resolveDep`・`runState`・`schemaValidate`・`yaml`)。各スキルのスクリプトは `../../d2-common/scripts/lib/<x>` で require する |
 
 ## 正本を直すとき
 

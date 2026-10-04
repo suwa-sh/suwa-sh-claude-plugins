@@ -18,7 +18,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
-const HEADER_RE = /basis:\s*((?:[A-Za-z0-9_-]+@[0-9a-f]{7,40}\s*)+)/;
+// YAML front matter の `basis: "requirements@..."` (引用符付き) も読む (ADR・nfr-grade.yaml はこの形。0.1.28 実走 L6)
+const HEADER_RE = /basis:\s*["']?((?:[A-Za-z0-9_-]+@[0-9a-f]{7,40}\s*)+)["']?/;
 const SCAN_LINES = 10;
 
 function lastCommit(dir, cwd = process.cwd(), ref = null) {

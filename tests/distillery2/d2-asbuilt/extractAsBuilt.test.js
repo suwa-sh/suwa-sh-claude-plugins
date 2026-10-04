@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const SCRIPTS = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-asbuilt/scripts');
-const LIB = path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib');
+const LIB = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/lib');
 const { run, buildIndexMd, collect, extractPreserved, latestDecisions, decisionFor, buildDependencyGraph } = require(path.join(SCRIPTS, 'extractAsBuilt'));
 const { writeCanonicalJson, readCanonicalJson } = require(path.join(LIB, 'canonicalJson'));
 

@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { SCRIPTS, freshContracts } = require('./support');
-const { parseYaml } = require('../../../plugins/distillery2/scripts/lib/yaml');
+const { parseYaml } = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/yaml');
 
 const compileRdbSchema = require(path.join(SCRIPTS, 'compileRdbSchema.js'));
 

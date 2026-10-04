@@ -1,7 +1,8 @@
 /**
  * resolveDep.js — プラグインが同梱しない外部モジュール (redocly / ref-parser 等) の所在を解決する
  *
- * 優先順: 環境変数 → 対象リポ (cwd と git root) の node_modules → このリポ (plugin 開発時) → プラグイン自身。
+ * 優先順: 環境変数 → 対象リポ (cwd と git root) の node_modules → このリポ (plugin 開発時) → プラグインのルート → d2-common。
+ * 起点はスキル群のルート (skills/) からの相対 (0.1.29。プラグイン直下の scripts/ は無い)。
  * v1 (dist-spec/compileContracts.js) の REDOCLY_CLI / ASYNCAPI_REF_PARSER と同じ約束。
  */
 'use strict';
@@ -14,7 +15,9 @@ function gitRoot(cwd = process.cwd()) {
   catch { return null; }
 }
 
-const PLUGIN_ROOT = path.resolve(__dirname, '..', '..');
+const SKILL_ROOT = path.resolve(__dirname, '..', '..');            // skills/d2-common
+const SKILLS_ROOT = path.resolve(SKILL_ROOT, '..');                 // skills/
+const PLUGIN_ROOT = path.resolve(SKILLS_ROOT, '..');                // プラグインのルート (平置きでは意味を持たないが、探索しても害は無い)
 
 /**
  * @param {string} spec  require.resolve に渡す指定 (例: '@redocly/cli/bin/cli.js')
@@ -24,7 +27,7 @@ const PLUGIN_ROOT = path.resolve(__dirname, '..', '..');
 function resolveDep(spec, opts = {}) {
   if (opts.env && process.env[opts.env]) return path.resolve(process.env[opts.env]);
   const cwd = opts.cwd || process.cwd();
-  const paths = [cwd, gitRoot(cwd), path.resolve(PLUGIN_ROOT, '..', '..'), PLUGIN_ROOT, ...(opts.extraPaths || [])].filter(Boolean);
+  const paths = [cwd, gitRoot(cwd), path.resolve(PLUGIN_ROOT, '..', '..'), PLUGIN_ROOT, SKILL_ROOT, ...(opts.extraPaths || [])].filter(Boolean);
   try { return require.resolve(spec, { paths }); } catch { return null; }
 }
 
@@ -34,4 +37,4 @@ function requireDep(spec, opts = {}) {
   return require(resolved);
 }
 
-module.exports = { resolveDep, requireDep, gitRoot, PLUGIN_ROOT };
+module.exports = { resolveDep, requireDep, gitRoot, SKILLS_ROOT, PLUGIN_ROOT };

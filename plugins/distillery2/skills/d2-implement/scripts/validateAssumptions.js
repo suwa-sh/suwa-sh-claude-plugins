@@ -19,7 +19,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseYaml } = require('../../../scripts/lib/yaml');
+const { parseYaml } = require('../../d2-common/scripts/lib/yaml');
 
 const CATEGORIES = ['input_validation', 'data_format', 'error_handling', 'persistence', 'performance', 'security'];
 const CONFIDENCES = ['high', 'medium', 'low'];

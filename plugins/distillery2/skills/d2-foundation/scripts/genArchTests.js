@@ -18,7 +18,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadAdrs, isAccepted } = require('./adr');
-const { stamp, headerLine } = require('../../../scripts/lib/basis');
+const { stamp, headerLine } = require('../../d2-common/scripts/lib/basis');
 
 function parseArgs(argv) {
   const o = { adr: 'docs/adr', out: '.dependency-cruiser.cjs', cwd: process.cwd(), check: false };

@@ -37,10 +37,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { parseYaml } = require('../../../scripts/lib/yaml');
-const { stamp, headerLine } = require('../../../scripts/lib/basis');
-const { writeCanonicalJson, readCanonicalJson } = require('../../../scripts/lib/canonicalJson');
-const { readEvents, currentAttempt } = require('../../../scripts/lib/runState');
+const { parseYaml } = require('../../d2-common/scripts/lib/yaml');
+const { stamp, headerLine } = require('../../d2-common/scripts/lib/basis');
+const { writeCanonicalJson, readCanonicalJson } = require('../../d2-common/scripts/lib/canonicalJson');
+const { readEvents, currentAttempt } = require('../../d2-common/scripts/lib/runState');
 const { renderScenario, pickHappyPath, summarizeScenario } = require('./renderSequence');
 const { buildFlows, renderFlowchart, renderSystemDataFlow } = require('./renderDataFlow');
 const { buildTree, observedPlacements, cmpStr } = require('./traceTree');

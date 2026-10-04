@@ -243,16 +243,16 @@ test('(g2) d2-common 以外の全スキルが入出力の正本を相対パス�
 
 test('(h) d2-run が回す主なスクリプトは、正本の出力先をソースに持つ (出力先の変更に気づくための網。完全な照合ではない)', () => {
   const table = [
-    ['scripts/runGates.js', 'reports', 'gates.json'],
-    ['scripts/genDocsReadme.js', 'docs-readme', 'README.md'],
-    ['scripts/lib/runState.js', 'run-events', 'events.jsonl'],
-    ['scripts/prTrailers.js', 'reports', 'gates.json'],
+    ['skills/d2-common/scripts/runGates.js', 'reports', 'gates.json'],
+    ['skills/d2-common/scripts/genDocsReadme.js', 'docs-readme', 'README.md'],
+    ['skills/d2-common/scripts/lib/runState.js', 'run-events', 'events.jsonl'],
+    ['skills/d2-common/scripts/prTrailers.js', 'reports', 'gates.json'],
     ['skills/d2-asbuilt/scripts/extractAsBuilt.js', 'asbuilt-system', 'traceability-index.json'],
     ['skills/d2-asbuilt/scripts/extractAsBuilt.js', 'asbuilt-report', 'asbuilt.json'],
     ['skills/d2-contract/scripts/classifyContractChanges.js', 'contract-tests', 'test\\/contract'],
-    ['scripts/feedbackBatch.js', 'worktrees', 'worktrees'],
-    ['scripts/feedbackBatch.js', 'feedback-batch', 'logs'],
-    ['scripts/feedbackBatch.js', 'feedback-docs', 'docs.*feedback'],
+    ['skills/d2-common/scripts/feedbackBatch.js', 'worktrees', 'worktrees'],
+    ['skills/d2-common/scripts/feedbackBatch.js', 'feedback-batch', 'logs'],
+    ['skills/d2-common/scripts/feedbackBatch.js', 'feedback-docs', 'docs.*feedback'],
   ];
   const problems = [];
   for (const [rel, storeId, literal] of table) {

@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const SCRIPT = path.resolve(__dirname, '../../../plugins/distillery2/scripts/genDocsReadme.js');
+const SCRIPT = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/genDocsReadme.js');
 const { run, merge, BEGIN, END } = require(SCRIPT);
 
 function W(dir, rel, content) {

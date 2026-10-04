@@ -10,6 +10,8 @@ description: >-
 
 # d2-decide (段階② 決定)
 
+パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 RDRA モデル・USDM・UC 一覧から、人が決めるべき 2 種類の成果物を作る。
@@ -38,7 +40,7 @@ mode=feedback issue=<課題> result=<結果ファイル>   # 還流 (下の「mo
 すべての出力の先頭に `basis: requirements@<sha>` を付ける。`.md` は YAML front matter、`nfr-grade.yaml` はトップレベルの `basis:` 文字列フィールド。basis は共有ライブラリで作る:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/lib/basis.js stamp requirements=docs/requirements
+node <skills>/d2-common/scripts/lib/basis.js stamp requirements=docs/requirements
 ```
 
 ## 手順
@@ -61,8 +63,8 @@ NFR の推論は v1 手順を移植している。順に参照する:
 出力後、検証と Markdown 生成を実行する:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/validateNfrGrade.js docs/nfr/nfr-grade.yaml
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
+node <skills>/d2-decide/scripts/validateNfrGrade.js docs/nfr/nfr-grade.yaml
+node <skills>/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
 ```
 
 - 終了コード 0 (PASS) で次へ。1 (FAIL) はエラーを直して再検証する。
@@ -104,10 +106,10 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/generateNfrGradeMd.js docs/n
 ADR を書き終えたら検証・C4 図・索引を生成する (この順):
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/validateAdr.js docs/adr
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md \
+node <skills>/d2-decide/scripts/validateAdr.js docs/adr
+node <skills>/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md \
   --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements
+node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements
 ```
 
 - `validateAdr.js` はスキーマ・id 一意性・参照整合性 (supersedes / superseded_by の双方向)・status 遷移・`rules[].scope` 書式に加え、ティア構成 ADR がちょうど 1 本 (system scope・tiers キーは他 ADR に持たせない) あること・accepted な testing ADR の `capabilities.browser` (宣言は 1 本まで)・`rules[]` のカバレッジ (該当 scope の rules 必須、ティア間 `level: tier`・レイヤ `level: layer` の `arch_test`) を検査する。PASS するまで直す。

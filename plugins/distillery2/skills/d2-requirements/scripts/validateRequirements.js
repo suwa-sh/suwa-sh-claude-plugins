@@ -15,7 +15,7 @@
 'use strict';
 
 const path = require('node:path');
-const { runValidatorCli } = require('../../../scripts/lib/schemaValidate');
+const { runValidatorCli } = require('../../d2-common/scripts/lib/schemaValidate');
 
 /** 意味検証: ID 重複、SPEC が属する REQ の一致。 */
 function validateSemantics(data) {

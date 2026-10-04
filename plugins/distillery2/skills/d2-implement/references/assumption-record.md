@@ -66,7 +66,7 @@ Verifier が独立に `verified_category` を判定し、不一致は minor find
 
 ## 検証器
 
-`${CLAUDE_PLUGIN_ROOT}/skills/d2-implement/scripts/validateAssumptions.js`
+`<skills>/d2-implement/scripts/validateAssumptions.js`
 
 ```bash
 # 実装者: 書いた直後に自分でも実行して ok を確認する

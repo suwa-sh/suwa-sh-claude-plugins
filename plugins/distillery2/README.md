@@ -53,7 +53,7 @@ v2 は成果物を 3 つに分ける。
 スキル間の入出力 (派遣表の write-set、各スキルの読む / 書く、基盤の phase 表、d2-run の直接の読み書き) は正本と
 `tests/distillery2/integration/dataflow.test.js` で照合する。入出力を変えたら正本も直して `node skills/d2-common/scripts/genDataflow.js` で図を作り直す。
 
-`docs/README.md` は `scripts/genDocsReadme.js` が各段階の commit 前に生成する (上流から下流まで辿る入口。管理ブロックの外と distillery2 以外の文書は触らない)。
+`docs/README.md` は `skills/d2-common/scripts/genDocsReadme.js` が各段階の commit 前に生成する (共通のスクリプトはすべて `skills/d2-common/scripts/`。手順書は `<skills>/d2-common/scripts/...` と書く。0.1.29) (上流から下流まで辿る入口。管理ブロックの外と distillery2 以外の文書は触らない)。
 
 ## 対象プロジェクトの構成
 

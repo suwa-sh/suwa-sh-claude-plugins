@@ -19,7 +19,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { validateWithSchema, loadDataFile } = require('../../../scripts/lib/schemaValidate');
+const { validateWithSchema, loadDataFile } = require('../../d2-common/scripts/lib/schemaValidate');
 
 function collectSpecIds(reqData) {
   const ids = new Set();

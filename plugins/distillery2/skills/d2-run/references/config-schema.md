@@ -1,7 +1,7 @@
 # `.distillery/config.yaml` の形
 
 対象プロジェクトの実行設定。段階③ (d2-foundation phase=F5) が ADR と契約カタログから生成し、人が確認する。
-`d2-run` と `scripts/runGates.js` が読む。v1 の `impl-config.yaml` を次の点で簡素化した:
+`d2-run` と `<skills>/d2-common/scripts/runGates.js` が読む。v1 の `impl-config.yaml` を次の点で簡素化した:
 `specs_root` / `repo_root` の分離を廃止 (同一リポ)、ティアごとの BDD コマンドを廃止 (ティア BDD は契約テストに置換)、
 `capabilities.ui_review` を `capabilities.browser` に統合。
 

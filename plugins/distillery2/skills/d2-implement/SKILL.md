@@ -8,6 +8,8 @@ description: >-
 
 # d2-implement
 
+パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 引数: `mode=scenario|scaffold|tier|integrate uc=<slug> [tier=<tier_id>] [attempt=<n>] [findings=<path>]`
@@ -51,4 +53,4 @@ v1 (distillery-impl:dist-impl-implement) からの変更点:
 |---|---|
 | `scripts/validateAssumptions.js` | AssumptionRecord と Verifier 判定の検証 (record / verdicts / evidence) |
 | `scripts/checkScenario.js` | feature の静的確認 (`@uc:` タグ、受入基準の `@acceptance:` 対応、parse) |
-| `${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js` | ゲート実行 (`--only unit --expect-red unit`、`--from uc-bdd` など) |
+| `<skills>/d2-common/scripts/runGates.js` | ゲート実行 (`--only unit --expect-red unit`、`--from uc-bdd` など) |

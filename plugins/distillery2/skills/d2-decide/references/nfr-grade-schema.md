@@ -49,7 +49,7 @@ categories:
 
 | フィールド | 型 | 必須 | 説明 |
 |-----------|---|------|------|
-| basis | string | Yes | この評価が基にした上流コミット。`requirements@<sha>` 形式。`scripts/lib/basis.js` で生成し、ファイル先頭に置く |
+| basis | string | Yes | この評価が基にした上流コミット。`requirements@<sha>` 形式。`<skills>/d2-common/scripts/lib/basis.js` で生成し、ファイル先頭に置く |
 | version | string | Yes | スキーマバージョン（`"2.0"`。v1 互換のため `"1.0"` も許容） |
 | event_id | string | No | 旧イベントID。v2 では不要（履歴は Git）。バリデータは互換のため許容 |
 | created_at | string | No | 旧作成日時。v2 では不要。バリデータは互換のため許容 |
