@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# codex-imagen.sh — Codex CLI の imagen スキルで画像を生成する (既定のプロバイダ)。
+# codex-imagen.sh — Codex CLI の組み込み imagegen スキルで画像を生成する (既定のプロバイダ)。
 #
 #   codex-imagen.sh <output_path> <prompt> [<input_image>] [--size=<WxH>]
 #
@@ -30,10 +30,14 @@ if [ -d "$_gi_dir" ] && [ "${_gi_keep:-0}" -gt 0 ] 2>/dev/null; then
   find "$_gi_dir" -mindepth 1 -maxdepth 1 -type d -mtime +"$_gi_keep" -exec rm -rf {} + 2>/dev/null || true
 fi
 
+# 使うスキルを名前で固定する。旧文言「imagenスキルで」は組み込みスキル名 imagegen と 1 文字違いで、
+# Codex が「imagen = Google Imagen」と読み違えて gemini-image スキルを選び、Chrome を画面操作して
+# Gemini で生成した実例がある (2026-10-04)。道具側の遮断は run_codex の features.plugins=false。
+_imagen_guard="gemini-image など他の画像スキル、ブラウザ操作、画面操作は使わないこと。"
 if [ -n "$in_path" ]; then
-  codex_prompt="imagenスキルで画像を編集します。入力画像: $in_path  出力ファイルパス: $out_path  $prompt$size_hint"
+  codex_prompt="Codex 組み込みの imagegen スキル (built-in の image_gen ツール) で画像を編集します。${_imagen_guard}入力画像: $in_path  出力ファイルパス: $out_path  $prompt$size_hint"
 else
-  codex_prompt="imagenスキルで画像を生成します。出力ファイルパス: $out_path  $prompt$size_hint"
+  codex_prompt="Codex 組み込みの imagegen スキル (built-in の image_gen ツール) で画像を生成します。${_imagen_guard}出力ファイルパス: $out_path  $prompt$size_hint"
 fi
 
 # --- 並列実行セーフ (thread_id で自分の出力を一意特定) ---
@@ -57,13 +61,54 @@ imagen_tmp_register "$_codex_last_log"
 CODEX_IMAGEN_TIMEOUT="${CODEX_IMAGEN_TIMEOUT:-300}"   # codex exec 1回の上限 (秒)
 _timeout_bin="$(imagen_timeout_bin)"
 
+# CODEX_IMAGEN_CODEX_WRAPPER: codex の代わりに実行するラッパー (例: OTel トレーシングラッパー)。
+# 呼び出し側 (launcher 等) が環境変数で注入する。未設定・実行不可なら codex を直接呼ぶ。
+_codex_cmd=(codex)
+if [ -n "${CODEX_IMAGEN_CODEX_WRAPPER:-}" ] && [ -x "${CODEX_IMAGEN_CODEX_WRAPPER}" ]; then
+  _codex_cmd=("$CODEX_IMAGEN_CODEX_WRAPPER")
+fi
+
+# config.toml に直接書かれた MCP サーバーは features.plugins=false では止まらない。
+# 実例: node_repl は画面操作サービス (SKY_CUA_SERVICE_PATH) とブラウザ操作の設定を持つ。
+# 画像生成に MCP は不要なので、有効なものを列挙して 1 つずつ enabled=false を渡す。
+# 未定義の名前を -c で渡すと "invalid transport" で起動自体が落ちるため、実在するものだけを止める。
+# 列挙は codex を 1 回起動するだけで課金は無い。CODEX_IMAGEN_MCP_LIST_TIMEOUT 秒 (default 30) で打ち切る。
+# 止める対象を確定できないとき (列挙の失敗・時間切れ・JSON 不正・-c で指定できない名前の有効サーバー) は
+# 画面操作の道具が残り得るので Codex 経路を実行せず、フォールバック (grok → agy) へ回す (fail-closed)。
+CODEX_IMAGEN_MCP_LIST_TIMEOUT="${CODEX_IMAGEN_MCP_LIST_TIMEOUT:-30}"
+_codex_mcp_off=()
+_codex_mcp_ok=1
+_mcp_list_cmd=("${_codex_cmd[@]}" -c features.plugins=false mcp list --json)
+if [ -n "$_timeout_bin" ]; then
+  _mcp_list_cmd=("$_timeout_bin" -k 5 "${CODEX_IMAGEN_MCP_LIST_TIMEOUT}s" "${_mcp_list_cmd[@]}")
+fi
+_mcp_names="$("${_mcp_list_cmd[@]}" 2>/dev/null </dev/null | python3 -c '
+import json, re, sys
+try:
+    servers = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+if not isinstance(servers, list):
+    sys.exit(1)
+for s in servers:
+    name = s.get("name") or ""
+    if not s.get("enabled"):
+        continue
+    # -c のキーは「.」で単純分割されるので、安全な文字だけの名前しか止められない
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+        sys.exit(2)
+    print(name)
+' 2>/dev/null)" || {
+  imagen_log "WARN: could not list codex MCP servers (or an enabled server name cannot be disabled via -c); skipping codex path"
+  _codex_mcp_ok=0
+  _mcp_names=""
+}
+for _mcp_name in $_mcp_names; do
+  _codex_mcp_off+=(-c "mcp_servers.${_mcp_name}.enabled=false")
+done
+
 run_codex() {
-  # CODEX_IMAGEN_CODEX_WRAPPER: codex の代わりに実行するラッパー (例: OTel トレーシングラッパー)。
-  # 呼び出し側 (launcher 等) が環境変数で注入する。未設定・実行不可なら codex を直接呼ぶ。
-  local codex_cmd=(codex)
-  if [ -n "${CODEX_IMAGEN_CODEX_WRAPPER:-}" ] && [ -x "${CODEX_IMAGEN_CODEX_WRAPPER}" ]; then
-    codex_cmd=("$CODEX_IMAGEN_CODEX_WRAPPER")
-  fi
+  local codex_cmd=("${_codex_cmd[@]}")
   # --json: stdout に JSONL イベントを出す。先頭の thread.started から thread_id を取り、
   # 自分の生成画像 dir (~/.codex/generated_images/<thread_id>/) を一意に特定する。
   local json_out err_out rc=0
@@ -75,7 +120,13 @@ run_codex() {
   #   これを付けないと自動実行から呼んだ画像生成が必ず失敗する (2026-07-28 実測)。
   # </dev/null: 付けないと codex が "Reading additional input from stdin..." で
   #   呼び出し元の stdin を読みに行く (非対話実行では停止要因になる)。
-  local codex_flags=(exec --json --skip-git-repo-check)
+  # -c features.plugins=false: プラグイン由来の MCP サーバー (画面操作の cua_repl、ブラウザ等) を
+  #   読み込ませない。画像生成は組み込み image_gen だけで足りる (2026-10-04 実測: 画面操作の道具 0 件、
+  #   生成は成功)。注意: `-c 'plugins."<名前>".enabled=false'` は効かない。Codex の -c は
+  #   キーを「.」で単純分割し引用符を外さないため、別の無効なキーとして書き込まれる。
+  # _codex_mcp_off: config.toml 直書きの MCP サーバーを止める (上の列挙参照)。bash 3.2 の
+  #   set -u は空配列の展開を unbound にするので ${a[@]+"${a[@]}"} で展開する。
+  local codex_flags=(exec --json --skip-git-repo-check -c features.plugins=false ${_codex_mcp_off[@]+"${_codex_mcp_off[@]}"})
   if [ -n "$_timeout_bin" ]; then
     # -k 10: SIGTERM 後 10 秒で SIGKILL (codex が TERM を無視しても確実に殺す)
     "$_timeout_bin" -k 10 "${CODEX_IMAGEN_TIMEOUT}s" "${codex_cmd[@]}" "${codex_flags[@]}" "$codex_prompt" \
@@ -215,13 +266,17 @@ run_fallbacks() {
   return 1
 }
 
-if run_codex_attempts; then
+if [ "$_codex_mcp_ok" -ne 1 ]; then
+  # MCP の遮断を確認できないまま Codex を動かさない (冒頭の列挙を参照)
+  imagen_verdict_raw codex skipped mcp_unverified
+elif run_codex_attempts; then
   imagen_verdict codex ok
   imagen_verdict_finish ok
   imagen_print_result
   exit 0
+else
+  imagen_verdict codex failed "$_codex_last_log"
 fi
-imagen_verdict codex failed "$_codex_last_log"
 
 # フォールバック側は同じ $IMAGEN_VERDICT_FILE に自分の verdict を試行順で積む
 if run_fallbacks "$@"; then
