@@ -300,6 +300,24 @@ test('(k) ゲートが落ちたら全部の取り込みは選べず、merge も�
   assert.doesNotMatch(fs.readFileSync(path.join(r.root, 'contracts/openapi/openapi.yaml'), 'utf8'), /# c1/);
 });
 
+test('(k2) ゲートが落ちたとき: 止まった課題の取り下げを添えても全部の取り込みは拒む。取り込む候補が 0 件なら回答を記録せず止まる (差分レビュー 2 ラウンド目)', () => {
+  const r = makeRepo({ issues: { 'c1': { kind: 'contract' }, 's1': { kind: 'contract', created: '2026-09-30T00:00:01Z', stopped: true, stopped_count: 1 } } });
+  r.fb('start', '--batch', 'bk2');
+  passIssue(r, 'c1', () => r.ww('contracts/openapi/openapi.yaml', 'openapi: 3.1.0\n# c1\n'));
+  stopIssue(r, 's1', 'また直せない');
+  r.fb('finalize');
+  r.fb('record-gate', '--result', 'fail');
+  assert.match(r.fb('decide', '--take', 'c1', '--dismiss', 's1').json.error, /すべて取り込む回答はできない/);
+  assert.equal(r.fb('decide', '--drop', 'c1', '--dismiss', 's1').code, 0);
+  // 取り込む候補が 0 件 (全部止まった) なのにゲートが落ちた
+  const r2 = makeRepo({ issues: { 's2': { kind: 'contract' } } });
+  r2.fb('start', '--batch', 'bk3');
+  stopIssue(r2, 's2', '直せない');
+  r2.fb('finalize');
+  r2.fb('record-gate', '--result', 'fail');
+  for (const args of [['--abandon'], ['--auto'], ['--dismiss', 's2']]) assert.match(r2.fb('decide', ...args).json.error, /原因は課題ではなく main か生成物の作り直し/, args.join(' '));
+});
+
 test('(m) 課題を外した組み直しで残った ADR が検査に落ちると止まる', () => {
   const r = makeRepo({ issues: { 'r1': { kind: 'rule' }, 'r2': { kind: 'rule', created: '2026-09-30T00:00:01Z' } } });
   r.fb('start', '--batch', 'b9');

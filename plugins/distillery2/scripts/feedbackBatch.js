@@ -546,8 +546,13 @@ function cmdDecide(root, opts) {
   const notStopped = d.dismiss.filter((id) => !stoppedIds.includes(id));
   if (notStopped.length) throw new Fail(`取り下げられるのは止まった課題だけ: ${notStopped.join(', ')}`);
   const gateFailed = !gate || gate.sha !== head || gate.result !== 'pass';
-  if (gateFailed && !d.drop.length && !d.dismiss.length) throw new Fail('ゲートが通っていない (記録が無い・落ちた・先頭と違う)。外す課題を選ぶか、バッチ全体を止める (--abandon)');
-  if (d.auto && gateFailed) throw new Fail('ゲートが通っていないときは --auto にできない');
+  if (gateFailed) {
+    // 取り込む候補が無いのに落ちたなら、原因は課題ではない (main か生成物の作り直し)。回答を記録せず人が調べる
+    if (!candidates.length) throw new Fail('取り込む候補が無いのにゲートが通っていない (記録が無い・落ちた・先頭と違う)。原因は課題ではなく main か生成物の作り直し。止まって人が調べる');
+    if (d.auto) throw new Fail('ゲートが通っていないときは --auto にできない');
+    // 取り下げは止まった課題だけなので、取り込む候補を外したことにならない
+    if (!d.drop.length) throw new Fail('ゲートが通っていない (記録が無い・落ちた・先頭と違う)。取り込む候補をすべて取り込む回答はできない。外す課題を選ぶか、バッチ全体を止める (--abandon)');
+  }
   const rec = { ...d, applied: false, decided_at: new Date().toISOString(), head };
   writeJson(path.join(ctx.fb, 'decision.json'), rec);
   return rec;
