@@ -18,8 +18,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { validateWithSchema } = require('../../../scripts/lib/schemaValidate');
-const { parseYaml } = require('../../../scripts/lib/yaml');
+const { validateWithSchema } = require('../../d2-common/scripts/lib/schemaValidate');
+const { parseYaml } = require('../../d2-common/scripts/lib/yaml');
 
 const STORY_EXT = ['.tsx', '.ts', '.jsx', '.js'];
 const COMPONENT_EXT = ['.tsx', '.ts', '.jsx', '.js'];

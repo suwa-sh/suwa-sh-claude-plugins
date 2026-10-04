@@ -10,6 +10,8 @@ description: >-
 
 # d2-contract
 
+パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 契約の正本は `contracts/` の分割 YAML。bundle・slice・契約テストは機械が決定論的に生成する。
@@ -35,7 +37,7 @@ contracts/
 
 ## スクリプト
 
-`S=${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts` として、対象リポの `contracts/` に対して実行する。
+`S=<skills>/d2-contract/scripts` として、対象リポの `contracts/` に対して実行する。
 
 | スクリプト | 役割 |
 |---|---|

@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { validateWithSchema } = require('../../../plugins/distillery2/scripts/lib/schemaValidate');
+const { validateWithSchema } = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/schemaValidate');
 
 const schema = {
   type: 'object', required: ['id', 'kind'], additionalProperties: false,

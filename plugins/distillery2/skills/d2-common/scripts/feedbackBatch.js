@@ -42,7 +42,8 @@ const { execFileSync, spawnSync } = require('node:child_process');
 const { parseYaml, stringifyYaml } = require('./lib/yaml');
 const runState = require('./lib/runState');
 
-const PLUGIN_ROOT = path.resolve(__dirname, '..');
+// スキル群のルート (skills/)。兄弟スキルのスクリプトを相対で指す (プラグインでも ~/.agents/skills/ の平置きでも同じ関係。0.1.29)
+const SKILLS_ROOT = path.resolve(__dirname, '..', '..');
 const WT_REL = path.join('.distillery', 'worktrees', 'feedback');
 const LOG_REL = path.join('.distillery', 'logs', 'feedback');
 const FEEDBACK_REL = path.join('docs', 'feedback');
@@ -184,20 +185,20 @@ function requireCleanTracked(dir, what) {
 // ---- 作り直しのコマンド列 (正本はここ 1 か所) ----
 
 function defaultRegenCmds() {
-  const s = (rel) => path.join(PLUGIN_ROOT, rel);
+  const s = (rel) => path.join(SKILLS_ROOT, rel);
   const n = process.execPath;
   return {
-    validate: [[n, s('skills/d2-decide/scripts/validateAdr.js'), 'docs/adr']],
-    'adr-index': [[n, s('skills/d2-decide/scripts/genAdrIndex.js'), 'docs/adr', 'docs/adr/index.md', 'requirements=docs/requirements']],
+    validate: [[n, s('d2-decide/scripts/validateAdr.js'), 'docs/adr']],
+    'adr-index': [[n, s('d2-decide/scripts/genAdrIndex.js'), 'docs/adr', 'docs/adr/index.md', 'requirements=docs/requirements']],
     derived: [
-      [n, s('skills/d2-foundation/scripts/genRules.js'), '--adr', 'docs/adr', '--out', 'docs/rules', '--cwd', '.'],
-      [n, s('skills/d2-foundation/scripts/genArchTests.js'), '--adr', 'docs/adr', '--out', '.dependency-cruiser.cjs', '--cwd', '.'],
-      [n, s('skills/d2-contract/scripts/compileContracts.js'), 'contracts'],
-      [n, s('skills/d2-contract/scripts/compileRdbSchema.js'), 'contracts'],
-      [n, s('skills/d2-contract/scripts/validateUcIndex.js'), 'contracts'],
-      [n, s('skills/d2-contract/scripts/genContractTests.js'), 'contracts', '--config', '.distillery/config.yaml', '--out-root', '.'],
-      [n, s('skills/d2-contract/scripts/genRdbDdl.js'), 'contracts', '--config', '.distillery/config.yaml', '--out-root', '.'],
-      [n, s('scripts/genDocsReadme.js'), '--cwd', '.'],
+      [n, s('d2-foundation/scripts/genRules.js'), '--adr', 'docs/adr', '--out', 'docs/rules', '--cwd', '.'],
+      [n, s('d2-foundation/scripts/genArchTests.js'), '--adr', 'docs/adr', '--out', '.dependency-cruiser.cjs', '--cwd', '.'],
+      [n, s('d2-contract/scripts/compileContracts.js'), 'contracts'],
+      [n, s('d2-contract/scripts/compileRdbSchema.js'), 'contracts'],
+      [n, s('d2-contract/scripts/validateUcIndex.js'), 'contracts'],
+      [n, s('d2-contract/scripts/genContractTests.js'), 'contracts', '--config', '.distillery/config.yaml', '--out-root', '.'],
+      [n, s('d2-contract/scripts/genRdbDdl.js'), 'contracts', '--config', '.distillery/config.yaml', '--out-root', '.'],
+      [n, s('d2-common/scripts/genDocsReadme.js'), '--cwd', '.'],
     ],
   };
 }

@@ -11,7 +11,7 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseYaml } = require('../../../scripts/lib/yaml');
+const { parseYaml } = require('../../d2-common/scripts/lib/yaml');
 
 function parseArgs(argv) {
   const o = { config: '.distillery/config.yaml', out: '.github/workflows/ci.yml', cwd: process.cwd() };

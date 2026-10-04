@@ -14,7 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseYaml } = require('../../../scripts/lib/yaml');
+const { parseYaml } = require('../../d2-common/scripts/lib/yaml');
 
 const MODEL_SYSTEM_LABELS = {
   model1: 'モデルシステム1（社会的影響がほとんど無い）',

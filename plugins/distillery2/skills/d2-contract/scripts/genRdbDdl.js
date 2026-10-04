@@ -13,7 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const C = require('./lib/contractsDir');
 const U = require('./lib/genUtil');
-const { parseYaml } = require('../../../scripts/lib/yaml');
+const { parseYaml } = require('../../d2-common/scripts/lib/yaml');
 
 const PG_TYPE = { string: 'text', text: 'text', integer: 'integer', bigint: 'bigint', decimal: 'numeric', boolean: 'boolean', date: 'date', datetime: 'timestamptz', uuid: 'uuid' };
 const TS_TYPE = { string: 'string', text: 'string', uuid: 'string', integer: 'number', bigint: 'number', decimal: 'number', boolean: 'boolean', date: 'string', datetime: 'string' };

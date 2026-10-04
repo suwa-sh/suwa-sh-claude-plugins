@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const { run } = require('../../../plugins/distillery2/skills/d2-foundation/scripts/importUi');
-const { parseYaml } = require('../../../plugins/distillery2/scripts/lib/yaml');
+const { parseYaml } = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/yaml');
 
 function writeFile(p, content) {
   fs.mkdirSync(path.dirname(p), { recursive: true });

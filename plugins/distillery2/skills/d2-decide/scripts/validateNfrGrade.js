@@ -2,7 +2,7 @@
 /**
  * validateNfrGrade.js (distillery2)
  *
- * docs/nfr/nfr-grade.yaml を検証する。共有ライブラリ (scripts/lib) を使う。
+ * docs/nfr/nfr-grade.yaml を検証する。共有ライブラリ (d2-common/scripts/lib) を使う。
  *
  * Usage:
  *   node validateNfrGrade.js <path-to-nfr-grade.yaml> [--json]
@@ -19,7 +19,7 @@
 'use strict';
 
 const path = require('node:path');
-const { validateWithSchema, loadDataFile } = require('../../../scripts/lib/schemaValidate');
+const { validateWithSchema, loadDataFile } = require('../../d2-common/scripts/lib/schemaValidate');
 const fs = require('node:fs');
 
 const EXPECTED_CATEGORY_IDS = ['A', 'B', 'C', 'D', 'E', 'F'];

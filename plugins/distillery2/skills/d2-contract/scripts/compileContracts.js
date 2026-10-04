@@ -20,7 +20,7 @@ const os = require('node:os');
 const { execFileSync } = require('node:child_process');
 const G = require('./lib/contractGraph');
 const C = require('./lib/contractsDir');
-const { resolveDep } = require('../../../scripts/lib/resolveDep');
+const { resolveDep } = require('../../d2-common/scripts/lib/resolveDep');
 
 const REDOCLY_TIMEOUT = 120000;
 

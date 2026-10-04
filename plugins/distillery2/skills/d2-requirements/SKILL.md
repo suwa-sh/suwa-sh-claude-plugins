@@ -9,6 +9,8 @@ description: >-
 
 # d2-requirements（段階① 要求）
 
+パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 要望テキストを USDM と RDRA に分解し、UC 一覧を作る。履歴は git が持つ（イベントソーシングは使わない）。
@@ -46,29 +48,29 @@ description: >-
    UC 単位のシナリオはここでは書かない。
 2. **USDM 検証** — 構造をバリデートする:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/validateRequirements.js docs/requirements/requirements.yaml
+   node <skills>/d2-requirements/scripts/validateRequirements.js docs/requirements/requirements.yaml
    ```
    FAIL なら requirements.yaml を直して再実行する（必須フィールド / ID 形式 `REQ-001`・`SPEC-001-01` / `priority` / `affected_models`）。
 3. **USDM Markdown 生成**（決定論・LLM 非依存）:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/generateRequirementsMd.js docs/requirements/requirements.yaml
+   node <skills>/d2-requirements/scripts/generateRequirementsMd.js docs/requirements/requirements.yaml
    ```
 4. **RDRA フルビルド** — `docs/requirements/requirements.yaml` を入力に Phase1–5 + RDRA 統合を実行し、
    TSV を一時ディレクトリ `1_RDRA/` に作る（`references/rdra-phases/` の各タスク）。
 5. **整合性 lint（確定前ゲート）**:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/generateRdraMd.js 1_RDRA --lint
+   node <skills>/d2-requirements/scripts/generateRdraMd.js 1_RDRA --lint
    ```
    エラー（未定義参照）が 0 件になるまで `1_RDRA/` の TSV を直す。警告（未接続）は報告のみ。
 6. **関連データ・ZeroOne 生成**:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/makeGraphData.js 1_RDRA
-   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/makeZeroOneData.js 1_RDRA
+   node <skills>/d2-requirements/scripts/makeGraphData.js 1_RDRA
+   node <skills>/d2-requirements/scripts/makeZeroOneData.js 1_RDRA
    ```
 7. **配置** — `1_RDRA/*.tsv`・`関連データ.txt`・`ZeroOne.txt`・`システム概要.json` を `docs/requirements/rdra/` へ移す。
 8. **RDRA ビュー生成 + 不整合チェック**:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/generateRdraMd.js docs/requirements/rdra
+   node <skills>/d2-requirements/scripts/generateRdraMd.js docs/requirements/rdra
    ```
    `docs/requirements/rdra/views/*.md`（Mermaid 図解つき）と `views/00_不整合チェック.md` が生成される。
    検出件数を確認し、残る不整合を報告する。
@@ -90,9 +92,9 @@ description: >-
    **差分更新では入力ディレクトリを `docs/requirements/rdra` にする**（一時ディレクトリ `1_RDRA/` は
    Step0 の手順 9 で削除済みのため）。手順 5・6 のコマンドは次に読み替える:
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/generateRdraMd.js docs/requirements/rdra --lint
-   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/makeGraphData.js docs/requirements/rdra
-   node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/makeZeroOneData.js docs/requirements/rdra
+   node <skills>/d2-requirements/scripts/generateRdraMd.js docs/requirements/rdra --lint
+   node <skills>/d2-requirements/scripts/makeGraphData.js docs/requirements/rdra
+   node <skills>/d2-requirements/scripts/makeZeroOneData.js docs/requirements/rdra
    ```
    （関連データ・ZeroOne は TSV を変えたときだけ再生成する）。
 4. **UC 一覧**を再生成する（既存の `slug`・`status`・`tiers_hint`・`spec_ids_rejected` は uc_id で引き継がれ、`spec_ids` は却下済みを除いた推定候補との和集合になる）。
@@ -106,7 +108,7 @@ description: >-
 `genUseCases.js` が requirements.yaml と `rdra/BUC.tsv` から UC 一覧を**決定論的に**導出する。
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/genUseCases.js
+node <skills>/d2-requirements/scripts/genUseCases.js
 # 既定: docs/requirements/requirements.yaml  docs/requirements/rdra/BUC.tsv  docs/requirements/use-cases.yaml
 ```
 
@@ -137,7 +139,7 @@ SPEC を取りこぼさない。**外した SPEC は削除せず `spec_ids_rejec
 編集後にバリデートする:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/validateUseCases.js docs/requirements/use-cases.yaml
+node <skills>/d2-requirements/scripts/validateUseCases.js docs/requirements/use-cases.yaml
 ```
 
 チェック内容: 構造（schema-use-cases.json）、uc_id 一意、slug 一意・パターン、spec_ids が requirements.yaml に実在、
@@ -162,8 +164,8 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/validateUseCases.js do
 
 ## スクリプト一覧
 
-すべて `${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/` にあり、npm 依存なし・共有ライブラリ
-（`../../../scripts/lib`）のみ使う。
+すべて `<skills>/d2-requirements/scripts/` にあり、npm 依存なし・共有ライブラリ
+（`../d2-common/scripts/lib`）のみ使う。
 
 | スクリプト | 役割 |
 |---|---|
@@ -180,7 +182,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/scripts/validateUseCases.js do
 ## サブエージェントへの指示（RDRA フェーズ）
 
 各フェーズタスクをサブエージェントに委譲する。`references/...` はスキルルート相対で、委譲時は
-`${CLAUDE_PLUGIN_ROOT}/skills/d2-requirements/references/...` の絶対パスへ展開する。成果物パスはプロジェクトルート相対。
+`<skills>/d2-requirements/references/...` の絶対パスへ展開する。成果物パスはプロジェクトルート相対。
 
 ```
 以下のファイルを読み込んで理解してください:

@@ -14,8 +14,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { stamp, headerLine } = require('../../../scripts/lib/basis');
-const { stringifyYaml, parseYaml } = require('../../../scripts/lib/yaml');
+const { stamp, headerLine } = require('../../d2-common/scripts/lib/basis');
+const { stringifyYaml, parseYaml } = require('../../d2-common/scripts/lib/yaml');
 
 function parseArgs(argv) {
   const o = { cwd: process.cwd() };

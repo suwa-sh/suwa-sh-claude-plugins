@@ -1,6 +1,6 @@
 # ゲート (5 段)
 
-コマンドの正本は `.distillery/config.yaml` (`skills/d2-run/references/config-schema.md`)。実行は `scripts/runGates.js`。
+コマンドの正本は `.distillery/config.yaml` (`<skills>/d2-run/references/config-schema.md`)。実行は `<skills>/d2-common/scripts/runGates.js`。
 「通過しなければ次に進めない」実行可能な検査で、安い順に並ぶ。落ちたゲートで止まる。
 
 | # | ゲート | 実行するもの | 誰が回すか |

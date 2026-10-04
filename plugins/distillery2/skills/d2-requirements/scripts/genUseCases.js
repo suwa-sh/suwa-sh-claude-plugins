@@ -21,14 +21,14 @@
  *   node genUseCases.js [requirements.yaml] [BUC.tsv] [out.yaml]
  *   既定: docs/requirements/requirements.yaml  docs/requirements/rdra/BUC.tsv  docs/requirements/use-cases.yaml
  *
- * npm 依存なし。共有ライブラリ (../../../scripts/lib) のみ使用。
+ * npm 依存なし。共有ライブラリ (../../d2-common/scripts/lib) のみ使用。
  */
 'use strict';
 
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { parseYaml, stringifyYaml } = require('../../../scripts/lib/yaml');
+const { parseYaml, stringifyYaml } = require('../../d2-common/scripts/lib/yaml');
 
 /** state-schema.md の uc_id 生成式を JS で再現 (NFC 正規化 + Python json.dumps(ensure_ascii=False) 相当)。 */
 function ucId(parts, digits = 8) {

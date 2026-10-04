@@ -11,7 +11,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseYaml, stringifyYaml } = require('../../../../scripts/lib/yaml');
+const { parseYaml, stringifyYaml } = require('../../../d2-common/scripts/lib/yaml');
 
 const CATALOG_VERSION = 'distillery2.contracts/v1';
 const UC_INDEX_VERSION = 'distillery2.uc-index/v1';

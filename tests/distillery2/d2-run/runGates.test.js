@@ -5,9 +5,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { planGate, selectGates, GATES } = require('../../../plugins/distillery2/scripts/runGates');
+const { planGate, selectGates, GATES } = require('../../../plugins/distillery2/skills/d2-common/scripts/runGates');
 
-const script = path.resolve(__dirname, '../../../plugins/distillery2/scripts/runGates.js');
+const script = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/runGates.js');
 
 function makeRepo(config) {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-gates-'));

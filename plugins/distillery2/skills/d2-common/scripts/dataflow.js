@@ -14,7 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseYaml } = require('../../../scripts/lib/yaml');
+const { parseYaml } = require('./lib/yaml');
 
 const DATAFLOW_PATH = path.join(__dirname, '..', 'references', 'dataflow.yaml');
 

@@ -34,8 +34,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseYaml } = require('../../../scripts/lib/yaml');
-const { validateWithSchema } = require('../../../scripts/lib/schemaValidate');
+const { parseYaml } = require('../../d2-common/scripts/lib/yaml');
+const { validateWithSchema } = require('../../d2-common/scripts/lib/schemaValidate');
 
 const ADR_FILE_RE = /^([0-9]{4})-.+\.md$/;
 

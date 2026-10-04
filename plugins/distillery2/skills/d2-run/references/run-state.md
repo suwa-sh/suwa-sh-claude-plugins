@@ -1,7 +1,7 @@
 # 実行状態 (`.distillery/runs/<uc_slug>/`)
 
 v1 の実行状態ディレクトリ (events ディレクトリ + latest + status + lease + NEXT) を次に簡素化した。
-操作はすべて `scripts/lib/runState.js` を通す (CLI と require の両方)。
+操作はすべて `<skills>/d2-common/scripts/lib/runState.js` を通す (CLI と require の両方)。
 
 ```
 .distillery/
@@ -36,7 +36,7 @@ docs/feedback/README.md             # 課題の一覧 (genDocsReadme が生成�
 
 `scenario → contract → scaffold → tier → contract-gate → integrate → verify → review → asbuilt → deliver`
 
-- 0.1.27 で UC は配送で終わるようにした。UC の課題は配送のときに課題ファイルにし、次の UC の前の要求の差分と還流 (UC の外の独立した段階。`scripts/feedbackBatch.js`) が取り込む
+- 0.1.27 で UC は配送で終わるようにした。UC の課題は配送のときに課題ファイルにし、次の UC の前の要求の差分と還流 (UC の外の独立した段階。`<skills>/d2-common/scripts/feedbackBatch.js`) が取り込む
 - 0.1.26 の run が持つ `stages/feedback.done.yaml` は読まない (配送の done があれば旧形式と判定しない)。0.1.26 で配送して還流を終えていない run の課題は、起動時の移行 (`feedbackBatch.js scan` の `unfiled_runs`。自動選択の 3 の 2) が課題ファイルにする
 - 0.1.25 までの run (還流の done があり配送の done が無い) は `status` の `legacy_order: true` で次の段階を出さない。d2-run が人に配送済みかを聞き、
   配送済みなら `node runState.js mark-legacy-delivered <runDir>` で配送の done (`legacy: true`) を作る。まだなら `invalidate <runDir> feedback` で新しい順に戻す

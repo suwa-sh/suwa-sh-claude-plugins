@@ -40,13 +40,13 @@ pending だった step を実装し、テスト用の composition root に計装
 
 ## 完了条件
 
-- `node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc <slug> --from uc-bdd` が exit 0 (uc-bdd → acceptance)
+- `node <skills>/d2-common/scripts/runGates.js --uc <slug> --from uc-bdd` が exit 0 (uc-bdd → acceptance)
 - 受入 (`@acceptance:`) のシナリオが UC の spec_ids の受入基準を全部覆っている (`checkScenario.js <feature> --use-cases ... --requirements ... --acceptance-dir features/acceptance` で再確認)
 - **計装の範囲**: 正常系のトレース 1 本に、`use-cases.yaml` の `tiers` の全ティアが `meta.tier` として現れ、
   各ティアで少なくとも 1 つの部品 (`call`) が現れる。確認コマンド:
 
   ```bash
-  node ${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js --run .distillery/runs/<slug> --dry-run
+  node <skills>/d2-asbuilt/scripts/extractAsBuilt.js --run .distillery/runs/<slug> --dry-run
   # --dry-run は何も書かない (docs/as-built を書くのは asbuilt 段だけ。ここで書くと write-set の外に出る)。
   # 標準出力に「計装なしのティア」(全トレースに現れない) も「正常系に部品 (call) が無いティア」も出なければよい (出たら結線を足す)
   ```

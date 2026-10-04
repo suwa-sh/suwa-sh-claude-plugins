@@ -10,12 +10,12 @@
  *   node validateRequirements.js docs/requirements/requirements.yaml
  *
  * 終了コード: 0 = PASS / 1 = バリデーションエラー / 2 = 読み込み失敗
- * npm 依存なし。共有ライブラリ (../../../scripts/lib) のみ使用。
+ * npm 依存なし。共有ライブラリ (../../d2-common/scripts/lib) のみ使用。
  */
 'use strict';
 
 const path = require('node:path');
-const { runValidatorCli } = require('../../../scripts/lib/schemaValidate');
+const { runValidatorCli } = require('../../d2-common/scripts/lib/schemaValidate');
 
 /** 意味検証: ID 重複、SPEC が属する REQ の一致。 */
 function validateSemantics(data) {

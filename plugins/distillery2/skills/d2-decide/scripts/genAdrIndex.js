@@ -15,7 +15,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadAdrDir } = require('./validateAdr');
-const basisLib = require('../../../scripts/lib/basis');
+const basisLib = require('../../d2-common/scripts/lib/basis');
 
 /** コードポイント比較。localeCompare は実行環境のロケールで順序が変わり非決定的なため使わない。 */
 function cmpStr(a, b) { a = String(a); b = String(b); return a < b ? -1 : a > b ? 1 : 0; }

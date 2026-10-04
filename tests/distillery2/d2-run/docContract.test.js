@@ -302,7 +302,7 @@ test('0.1.28: 還流: reason_kind plugin は reclassify で kind: plugin に (�
 test('0.1.27: 還流のゲート: 課題ごとに static、最後に 1 回 (rule は static、contract は変えた契約を使う UC ごとの全段)。落ちても推測で外さない', () => {
   const fb = feedbackSection();
   assert.match(fb, /`runGates\.js --uc d2-feedback --only static`/, 'run 名は kebab-case (runGates が _ 始まりを拒む)');
-  assert.match(fb, /\*\*変えた契約を使う UC ごとに\*\* `runGates\.js --uc <その UC> --tiers <その UC の use-cases\.yaml の tiers>` \(全段/);
+  assert.match(fb, /\*\*変えた契約を使う UC ごとに\*\* `runGates\.js --uc <その UC> --tiers <その UC の use-cases\.yaml の tiers をカンマ区切りで。例 frontend,backend-api>` \(全段/);
   assert.match(fb, /ルールの課題だけなら static だけ/);
   assert.match(fb, /落ちても原因を推測で課題を外さない/);
   assert.match(fb, /branch の先頭の sha と一緒に残る/);
@@ -363,4 +363,40 @@ test('0.1.27: run-state の feedback_filed は課題ファイルにした記録�
   assert.match(rs, /`unfiled_issues`/);
   const del = read(DELIVERY);
   for (const k of ['Feedback-Consumed', 'Feedback-Dismissed', 'Feedback-Result', 'Feedback-Stopped']) assert.match(del, new RegExp(`\\| ${k} `));
+});
+
+test('0.1.29: 手順書のパスは <skills>/ 記法。各 SKILL.md が d2-common の「パスの書き方」を参照し、CLAUDE_PLUGIN_ROOT は d2-common の 1 か所だけ', () => {
+  const common = read('skills/d2-common/SKILL.md');
+  assert.match(common, /^## パスの書き方$/m, '節名は固定 (各スキルがこの名前で参照する)');
+  assert.match(common, /`<skills>` = スキル群のディレクトリ \(このスキルの `SKILL\.md` がある場所の 1 つ上\)/);
+  assert.match(common, /`<skills>` = `\$\{CLAUDE_PLUGIN_ROOT\}\/skills`/);
+  assert.match(common, /`<skills>` = `~\/\.agents\/skills`/);
+  for (const d of fs.readdirSync(path.join(PLUGIN, 'skills'))) {
+    if (d === 'd2-common') continue;
+    assert.match(read(`skills/${d}/SKILL.md`), /\[\.\.\/d2-common\/SKILL\.md\]\(\.\.\/d2-common\/SKILL\.md\) の「パスの書き方」/, `${d} が d2-common の定義を参照する`);
+  }
+  assert.match(read(SKILL), /`FB` = `node <skills>\/d2-common\/scripts\/feedbackBatch\.js --cwd <リポのルート>`/);
+  assert.match(read(TEMPLATE), /固定指示のパスは `<skills>\/\.\.\.` を絶対パスに展開して/);
+  assert.match(read('skills/d2-verify/SKILL.md'), /`<skills>\/d2-implement\/references\/tier-impl\.md`/);
+});
+
+test('0.1.29: 文言の穴 (モデル ID の流用・フル sha・旧形式は常に -D・鮮度検査のコマンド・record-gate の detail・tiers のカンマ区切り・受理の検査は 1 コマンドずつ)', () => {
+  const t = read(SKILL);
+  assert.match(t, /run の `models_resolved` に解決済みの ID があればそれを流用し、別名で記録し直さない/);
+  assert.match(t, /"squash":"<squash commit のフル sha \(git rev-parse HEAD\)>"/);
+  const d = deliverSection();
+  assert.match(d, /常に退避してから `-D`/);
+  assert.doesNotMatch(d, /祖先でないので `-d` は拒まれる/);
+  assert.match(read(DELIVERY), /祖先でないことがあり `-d` では消せないので、常に退避してから `-D`/, 'git-delivery も同じ説明 (差分レビュー 3 ラウンド目)');
+  assert.doesNotMatch(read(DELIVERY), /祖先でなく、`-d` は拒まれる/);
+  const r = section(SKILL, '### 要求の差分', '## ② 決定');
+  assert.match(r, /`node <skills>\/d2-common\/scripts\/lib\/basis\.js check <対象ファイル…> requirements=docs\/requirements adr=docs\/adr contracts=contracts`/);
+  assert.match(r, /as-built がまだ無ければ省く/);
+  assert.match(r, /STALE は完了報告に載せるだけで、自動では追随しない/);
+  const fb = feedbackSection();
+  assert.match(fb, /`FB record-gate --result pass` \(通ったとき。`--detail` は付けない\) か `FB record-gate --result fail --detail <落ちたゲートの出力のファイル>`/);
+  assert.match(fb, /検査は 1 コマンドずつ回す \(1 つの sh にまとめない/);
+  assert.match(t, /\*\*関与ティアの決め方\*\*[^\n]*`--tiers` にはカンマ区切りで渡す。例 `--tiers frontend,backend-api`/, '④ の正本にも区切り文字 (差分レビュー 1 ラウンド目)');
+  assert.match(read(DELIVERY), /"squash":"<フル sha>"[^|]*sha は短縮しない/);
+  assert.match(read('skills/d2-run/references/troubleshooting.md'), /0\.1\.28 の試し運転でも `genDocsReadme\.js; echo exit=\$\?`/);
 });

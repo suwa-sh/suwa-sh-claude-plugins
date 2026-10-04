@@ -17,7 +17,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const C = require('./lib/contractsDir');
-const { parseYaml } = require('../../../scripts/lib/yaml');
+const { parseYaml } = require('../../d2-common/scripts/lib/yaml');
 
 const ENTRY_VERSION = 'distillery2.rdb-split/v1';
 const ALLOWED_TYPES = new Set(['string', 'integer', 'bigint', 'decimal', 'boolean', 'date', 'datetime', 'text', 'uuid']);

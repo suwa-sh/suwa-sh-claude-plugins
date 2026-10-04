@@ -8,9 +8,9 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync, execFileSync } = require('node:child_process');
 
-const SCRIPT = path.resolve(__dirname, '../../../plugins/distillery2/scripts/feedbackBatch.js');
-const BASIS = path.resolve(__dirname, '../../../plugins/distillery2/scripts/lib/basis.js');
-const runState = require('../../../plugins/distillery2/scripts/lib/runState');
+const SCRIPT = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/feedbackBatch.js');
+const BASIS = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/lib/basis.js');
+const runState = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/runState');
 const basis = require(BASIS);
 
 const STUB = `'use strict';

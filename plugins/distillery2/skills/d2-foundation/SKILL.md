@@ -10,6 +10,8 @@ description: >-
 
 # d2-foundation
 
+パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 段階③の「機械が検証する土台」を作る。人が決めた ADR (docs/adr) と契約 (contracts/contracts.json) を入力に、
@@ -33,7 +35,7 @@ d2-run は段階③で 2 回呼ぶ (還流の開発ルールとアーキテス�
 | ③ の最初 | `all` | F1 → F2 → F3 → F5 → F7 |
 | 契約の骨格 (d2-contract mode=skeleton) と画面部品 (d2-design) の後 | `finish` | F8 → F6 (`ui=true` のときだけ) → F7 (F6 を回したときだけ) → F4 → F9 |
 
-- スクリプトは `${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/` にある。`--cwd <repo>` で対象リポを指す。
+- スクリプトは `<skills>/d2-foundation/scripts/` にある。`--cwd <repo>` で対象リポを指す。
 - どの phase も再実行して安全。
 - F4 と F8 は他のスキルのスクリプト (d2-contract の genContractTests、d2-decide の genArchitectureDoc) を呼ぶ。
 - git について: 自分で git コマンドを打たない (commit は d2-run が行う)。genQlty.js の内部の git (読み取りと、qlty init に未追跡ファイルを見せるための一時的な `git add -N`。終わったら index を書き戻す) は例外。
@@ -82,21 +84,21 @@ F7 で npm install の後に `genQlty.js --refresh` で増えた分を足す (�
 ## 実行 (例)
 
 ```
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd <repo>
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd <repo>
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genTestSupport.js --cwd <repo>
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd <repo>
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genSkeleton.js --adr docs/adr --cwd <repo>
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --cwd <repo>   # qlty init の提案 + 上乗せ。--fallback で固定リスト、--force で作り直し
+node <skills>/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd <repo>
+node <skills>/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd <repo>
+node <skills>/d2-foundation/scripts/genTestSupport.js --cwd <repo>
+node <skills>/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd <repo>
+node <skills>/d2-foundation/scripts/genSkeleton.js --adr docs/adr --cwd <repo>
+node <skills>/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>
+node <skills>/d2-foundation/scripts/genQlty.js --cwd <repo>   # qlty init の提案 + 上乗せ。--fallback で固定リスト、--force で作り直し
 npm install                                                                               # F7 (<repo> で)
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genQlty.js --refresh --cwd <repo>   # F7。提案で増えた plugins だけ足す
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd <repo>   # F8
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>   # F8
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements contracts=contracts --cwd <repo>   # F8 (basis に契約も記録する)
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-foundation/scripts/importUi.js --from docs/design/storybook-app --cwd <repo>   # F6
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root <repo>   # F4 (骨格分)
-node ${CLAUDE_PLUGIN_ROOT}/scripts/runGates.js --uc bootstrap --upto static   # F9 (<repo> で)
+node <skills>/d2-foundation/scripts/genQlty.js --refresh --cwd <repo>   # F7。提案で増えた plugins だけ足す
+node <skills>/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd <repo>   # F8
+node <skills>/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>   # F8
+node <skills>/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements contracts=contracts --cwd <repo>   # F8 (basis に契約も記録する)
+node <skills>/d2-foundation/scripts/importUi.js --from docs/design/storybook-app --cwd <repo>   # F6
+node <skills>/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root <repo>   # F4 (骨格分)
+node <skills>/d2-common/scripts/runGates.js --uc bootstrap --upto static   # F9 (<repo> で)
 ```
 
 F1・F2 のスクリプトは `--check` (書かずに、生成物が古ければ exit 1) を持つ。
@@ -122,7 +124,7 @@ F1・F2 のスクリプトは `--check` (書かずに、生成物が古ければ
 ## F4 と d2-design への受け渡し
 
 - **F4 (契約テスト)**: d2-foundation が回すのは骨格分だけ (phase=finish)。スクリプトは d2-contract のもの:
-  `${CLAUDE_PLUGIN_ROOT}/skills/d2-contract/scripts/genContractTests.js` が `apps/<provider>/test/contract/` を生成する。
+  `<skills>/d2-contract/scripts/genContractTests.js` が `apps/<provider>/test/contract/` を生成する。
   UC ごとの契約テストと、`genRdbDdl.js` による `apps/<datastore_owner>/migrations/*.sql` と DB 契約テストは d2-contract mode=uc が持つ。
 - **F6** は d2-design が Storybook 出力を出した後に phase=finish の中で回す。`packages/test-support/README.md` が、
   実装者 (d2-implement mode=integrate) が結線する composition root (`apps/<backend>/src/test-app.ts`) の契約を書く。

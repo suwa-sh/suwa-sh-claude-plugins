@@ -9,6 +9,8 @@ description: >-
 
 # d2-asbuilt
 
+パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
 引数: `uc=<slug> run=<.distillery/runs/<slug> へのパス>`
@@ -32,7 +34,7 @@ git: 自分で git コマンドを打たない (commit は d2-run が行う)。�
 2. **抽出 (スクリプト)**:
 
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/extractAsBuilt.js" \
+   node "<skills>/d2-asbuilt/scripts/extractAsBuilt.js" \
      --run .distillery/runs/<slug> --depcruise .distillery/runs/<slug>/reports/depcruise.json
    ```
 
@@ -56,7 +58,7 @@ git: 自分で git コマンドを打たない (commit は d2-run が行う)。�
 4. **検査 (スクリプト)**: 書いたら必ず実行し、ok になるまで要約を直す。
 
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/skills/d2-asbuilt/scripts/checkAsBuilt.js" docs/as-built/<業務>/<UC>/index.md
+   node "<skills>/d2-asbuilt/scripts/checkAsBuilt.js" docs/as-built/<業務>/<UC>/index.md
    ```
 
    検査する規則: ブロックが空でない / 表がある / セル 1 行 40 字以内 / 表の外に文を書かない / 見出しを使わない。

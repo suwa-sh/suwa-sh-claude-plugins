@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseFeature, allTags, scenariosWithTag, parseAcceptanceTag } = require('../../../plugins/distillery2/scripts/lib/gherkin');
+const { parseFeature, allTags, scenariosWithTag, parseAcceptanceTag } = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/gherkin');
 
 const en = `# basis: requirements@abc1234
 @uc:register-loan

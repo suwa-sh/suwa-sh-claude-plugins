@@ -15,7 +15,7 @@ status: accepted            # proposed | accepted | superseded | deprecated
 date: 2026-09-23
 supersedes: []              # 置き換えた ADR の id 配列
 superseded_by: null         # この ADR を置き換えた ADR の id (無ければ null)
-basis: requirements@<sha>    # scripts/lib/basis.js で付ける
+basis: requirements@<sha>    # <skills>/d2-common/scripts/lib/basis.js で付ける
 nfr_refs: ["B.1.1"]         # 動機になった nfr-grade のメトリクス id (任意)
 scope: [system, app]        # system | app | data | infra | ui | testing のうち 1 つ以上
 confidence: low             # high | medium | low (任意。low は人の確認対象)
@@ -174,8 +174,8 @@ front matter に `contexts: [{id, name, owner_tier?, relations: [{to, kind}]}]` 
 ## 検証と索引生成
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/validateAdr.js docs/adr
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements
+node <skills>/d2-decide/scripts/validateAdr.js docs/adr
+node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements
 ```
 
 `genAdrIndex` は id 昇順で `docs/adr/index.md` を決定論的に生成する。

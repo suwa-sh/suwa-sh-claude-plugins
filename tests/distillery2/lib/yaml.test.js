@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseYaml, stringifyYaml } = require('../../../plugins/distillery2/scripts/lib/yaml');
+const { parseYaml, stringifyYaml } = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/yaml');
 
 test('scalars, nested maps, arrays', () => {
   const doc = parseYaml(['name: loan', 'count: 3', 'ratio: 0.5', 'ok: true', 'none: ~', 'tags: [a, "b c", 1]', 'flow: {x: 1, y: pass}', 'nested:', '  deep:', '    key: v', 'list:', '  - one', '  - 2'].join('\n'));

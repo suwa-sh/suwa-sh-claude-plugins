@@ -46,7 +46,7 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
    `git merge-base --is-ancestor <base_head> HEAD`、`git log <base_head>..HEAD` に merge commit が無いことを確認
 2. 復旧用 ref `refs/distillery2/pre-squash/<slug>/<timestamp>` を `git update-ref` で現在 HEAD に作る。作れなければ squash しない
 3. `git reset --soft <base_head>`。staged が当該 UC の変更だけであることを確認する。`use-cases.yaml` の該当行を `status: done` にして stage する
-4. `scripts/prTrailers.js --run .distillery/runs/<slug> --strict --base <base_head> --commit-message "feat: <UC 名>" --co-author "<ハーネスの attribution 行>"` で本文を作り
+4. `<skills>/d2-common/scripts/prTrailers.js --run .distillery/runs/<slug> --strict --base <base_head> --commit-message "feat: <UC 名>" --co-author "<ハーネスの attribution 行>"` で本文を作り
    (`--base` には 3 で使った `<base_head>` をそのまま渡す。省略時の自動選択 (origin/HEAD → main → master) は UC の開始ブランチと違うことがある。必須 trailer が
    欠けていれば exit 1 で止まる)、`git commit -F <本文ファイル>` で
    exactly 1 commit を作る。件名は `feat: <UC 名 (日本語)>`。`git rev-list --count <base_head>..HEAD` が 1 でなければ取り込まない。
@@ -56,7 +56,7 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 ## 手順 (main への取り込み)
 
 1. `git switch main` → `git merge --ff-only feature/<slug>`。ff できなければ (main が `base_head` から進んでいる) 止まって報告する (rebase は人が判断)
-2. main の上で配送の done (`runState.js done <run> deliver '{"squash":"<sha>","base_head":"<base_head>"}'`) と、遅らせていた `models_resolved` と README を
+2. main の上で配送の done (`runState.js done <run> deliver '{"squash":"<フル sha>","base_head":"<base_head>"}'`。sha は短縮しない) と、遅らせていた `models_resolved` と README を
    `impl(<slug>): delivered` で commit する。**配送済みの正は `stages/deliver.done.yaml`** (GitHub の PR ではない)
 3. remote `origin` があれば `git push origin main`。拒否されたら止まって報告する (保護された main など。force push はしない)
 4. `git branch -d feature/<slug>`
@@ -69,12 +69,12 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 手順の正本は SKILL.md の配送節「旧形式の run」。git の約束だけを書く。
 
 - 人が「配送済み」と答えたら main の上で `runState.js mark-legacy-delivered` → `impl(<slug>): legacy delivered` で commit する
-- 残っている `feature/<slug>` は `git update-ref refs/distillery2/legacy/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。PR は squash merge なので feature は main の祖先でなく、`-d` は拒まれる。
+- 残っている `feature/<slug>` は `git update-ref refs/distillery2/legacy/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。squash merge で入れた feature は main の祖先でないことがあり `-d` では消せないので、常に退避してから `-D` (0.1.28 の試し運転では祖先だった)。
   退避先を要求の差分の `abandoned/` と分けるのは、捨てた理由が違うため (配送済み vs 要求が変わった)
 
 ## commit trailer
 
-`scripts/prTrailers.js` が run state から作る。`git interpret-trailers` 互換の `Key: value` 行。
+`<skills>/d2-common/scripts/prTrailers.js` が run state から作る。`git interpret-trailers` 互換の `Key: value` 行。
 
 | trailer | 値 |
 |---|---|
@@ -111,7 +111,7 @@ UC の squash commit に還流の trailer は付けない (還流は UC の外)�
 
 ## 還流
 
-手順の正本は SKILL.md の「還流」節。git の操作はすべて `scripts/feedbackBatch.js` が行う (d2-run はサブコマンドを呼ぶだけ)。ここには約束だけを書く。
+手順の正本は SKILL.md の「還流」節。git の操作はすべて `<skills>/d2-common/scripts/feedbackBatch.js` が行う (d2-run はサブコマンドを呼ぶだけ)。ここには約束だけを書く。
 
 - 還流 branch `feedback/<b>` を **main から** `.distillery/worktrees/feedback` に切る (1 バッチ 1 つ)。本体の作業ツリーは main のまま動かさない。`feedback/` で始まる branch は還流のバッチ専用 (ほかの用途に使わない)
 - worktree には依存が無いので、本体の `node_modules` を同じ相対パスに symlink する。`.gitignore` の `node_modules` (末尾スラッシュ無し) が symlink も無視する

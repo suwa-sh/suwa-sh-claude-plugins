@@ -12,10 +12,10 @@ Step2 が auto-adopt モードなら推奨値を自動採用した結果（仮�
 
 ### 1. basis のスタンプ
 
-`scripts/lib/basis.js` で、この評価が基にした上流コミットを 1 行の文字列として取得する:
+`<skills>/d2-common/scripts/lib/basis.js` で、この評価が基にした上流コミットを 1 行の文字列として取得する:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/lib/basis.js stamp requirements=docs/requirements
+node <skills>/d2-common/scripts/lib/basis.js stamp requirements=docs/requirements
 ```
 
 出力（例: `basis: requirements@<sha>`）を nfr-grade.yaml の先頭フィールド `basis` に転記する。
@@ -47,7 +47,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/lib/basis.js stamp requirements=docs/requirem
 出力後、スキーマバリデータを実行して nfr-grade.yaml の構造を検証する:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/validateNfrGrade.js docs/nfr/nfr-grade.yaml
+node <skills>/d2-decide/scripts/validateNfrGrade.js docs/nfr/nfr-grade.yaml
 ```
 
 - 終了コード 0（PASS）: Markdown 生成へ進む
@@ -58,7 +58,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/validateNfrGrade.js docs/nfr
 バリデーション通過後、nfr-grade.yaml を IPA 非機能要求グレード活用シート形式の Markdown 表に変換する:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/skills/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
+node <skills>/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
 ```
 
 これにより `docs/nfr/nfr-grade.md` が生成される。このスクリプトは決定論的（同一入力 → 同一出力）なため、LLM に依存せずバンドルスクリプトで実行する。

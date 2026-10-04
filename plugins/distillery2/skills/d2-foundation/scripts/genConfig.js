@@ -17,8 +17,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadAdrs, collectTiers, collectCapabilities } = require('./adr');
-const { stamp, headerLine } = require('../../../scripts/lib/basis');
-const { stringifyYaml, parseYaml } = require('../../../scripts/lib/yaml');
+const { stamp, headerLine } = require('../../d2-common/scripts/lib/basis');
+const { stringifyYaml, parseYaml } = require('../../d2-common/scripts/lib/yaml');
 
 function parseArgs(argv) {
   const o = { adr: 'docs/adr', contracts: 'contracts/contracts.json', out: '.distillery/config.yaml', cwd: process.cwd(), force: false };
