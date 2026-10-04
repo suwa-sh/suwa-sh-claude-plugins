@@ -46,6 +46,11 @@
 `<run>` = `.distillery/runs/<slug>`。`<b>` = 還流のバッチ (`feedbackBatch.js start` が返す。branch `feedback/<b>`)。固定指示のパスは `<skills>/...` を絶対パスに展開して
 `まず次のファイルを読み、記載の指示すべてに従ってください: <絶対パス>` の 1 行で渡す。
 
+**残った作業の追記** (0.1.30 L10): `use-cases.yaml` の UC 行に `carry_over` (要求の差分で残った作業) があれば、④ の scenario・contract・tier・integrate の派遣文に
+`要求の差分で残った作業: <項目を 1 行ずつ>。自分の write-set の中で済むものだけ行い、報告に項目ごとに「対応した (変えたファイル)」か「対応できない (理由。write-set の外など)」を書く` を追記する
+(課題の起票は求めない。scaffold と integrate の write-set に `<run>/issues/` が無く、起票の指示と write-set の縛りを同時に守れないため。scaffold はテストの足場だけなので追記しない)。
+d2-run は受理のとき、報告の項目ごとの対応状況を done の data の `carry_over_status` に保存する (SKILL.md ④ の冒頭)。
+
 ## サブエージェントの報告の扱い (捏造禁止)
 
 - **サブエージェントの完了報告を自分で書かない。** 派遣した sub の実際の結果 (SendMessage / タスク通知) が返るまで待つ。「届いた体」で報告を代筆すると、実際には未完了の段階を完了扱いにして先へ進む逸脱になる (実走で発生)。

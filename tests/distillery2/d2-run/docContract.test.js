@@ -114,7 +114,7 @@ test('③ の後始末は d2-foundation phase=finish。d2-run は gates.json を
   assert.match(s3, /design が「画面を持たないプロダクトのため skip」と報告したら `ui=false`/);
   assert.match(s3, /design の完了報告が届くまで仕上げに進まない/);
   // 仕上げの前に契約と画面部品を commit する (未 commit だと仕上げの生成物の basis が空になる。0.1.23)
-  assert.match(s3, /`git add contracts docs\/design && git commit -m "foundation: contracts and design"`/);
+  assert.match(s3, /`git add contracts docs\/design && git commit -m "foundation: contracts and design" -m "<attribution 行>"`/);
   assert.ok(s3.indexOf('foundation: contracts and design') < s3.indexOf('sub `d2-foundation phase=finish ui='), 'commit は仕上げの派遣の前');
   // 先に commit した契約を、仕上げの C4 図が basis に記録する (config と画面部品の取り込み記録は生成器が自分で契約・design を記録する)
   assert.match(read('skills/d2-foundation/SKILL.md'), /genArchitectureDoc\.js .*requirements=docs\/requirements contracts=contracts .*# F8/);
@@ -225,7 +225,7 @@ test('0.1.27: 還流: 上流は持ち主のスキルが直し、git の状態遷
 
 test('0.1.27: 還流の順: 再開の判定 → 切り出し → 課題ごと (派遣 → 受理 → commit-issue → regen → static → record-static → discard) → finalize → ゲート → 確認ページ → hold → merge', () => {
   const fb = feedbackSection();
-  const order = ['`FB status`', '`FB start`', '`git -C <wt> status --porcelain` が空', '派遣表「還流 (ADR)」', '派遣表「還流 (契約)」', '`FB commit-issue <issue>`', '`FB regen` → `runGates.js --uc d2-feedback --only static`', '`FB record-static <issue>`', '5. `FB discard` (成功でも失敗でも', '`FB stop-issue <issue> --reason-file', '`FB finalize`', '`FB record-gate --result', '**確認ページ 1 回**', '`FB decide --take', '`FB rebuild`', '引数が `merge=hold` なら止めて報告する', '**取り込み**: まず `FB status`', '次に `FB merge`'];
+  const order = ['`FB status`', '`FB start --co-author', '`git -C <wt> status --porcelain` が空', '派遣表「還流 (ADR)」', '派遣表「還流 (契約)」', '`FB commit-issue <issue>`', '`FB regen` → `runGates.js --uc d2-feedback --only static`', '`FB record-static <issue>`', '5. `FB discard` (成功でも失敗でも', '`FB stop-issue <issue> --reason-file', '`FB finalize`', '`FB record-gate --result', '**確認ページ 1 回**', '`FB decide --take', '`FB rebuild`', '引数が `merge=hold` なら止めて報告する', '**取り込み**: まず `FB status`', '次に `FB merge`'];
   let last = -1;
   for (const o of order) { const i = fb.indexOf(o); assert.ok(i > last, `還流の順: ${o}`); last = i; }
 });
@@ -394,9 +394,113 @@ test('0.1.29: 文言の穴 (モデル ID の流用・フル sha・旧形式は�
   assert.match(r, /as-built がまだ無ければ省く/);
   assert.match(r, /STALE は完了報告に載せるだけで、自動では追随しない/);
   const fb = feedbackSection();
-  assert.match(fb, /`FB record-gate --result pass` \(通ったとき。`--detail` は付けない\) か `FB record-gate --result fail --detail <落ちたゲートの出力のファイル>`/);
+  assert.match(fb, /1 回目で全部通れば `FB record-gate --result pass` \(`--detail` は付けない\)/);
   assert.match(fb, /検査は 1 コマンドずつ回す \(1 つの sh にまとめない/);
   assert.match(t, /\*\*関与ティアの決め方\*\*[^\n]*`--tiers` にはカンマ区切りで渡す。例 `--tiers frontend,backend-api`/, '④ の正本にも区切り文字 (差分レビュー 1 ラウンド目)');
   assert.match(read(DELIVERY), /"squash":"<フル sha>"[^|]*sha は短縮しない/);
   assert.match(read('skills/d2-run/references/troubleshooting.md'), /0\.1\.28 の試し運転でも `genDocsReadme\.js; echo exit=\$\?`/);
+});
+
+test('0.1.30 L1/M4/M2/M3: 名指し起動でも配送済みの feature を片付ける。事前回答が選べなければ止まる。models_resolved は遅らせた場合だけ。squash の前に件名の検査', () => {
+  const a = autoSelect();
+  assert.match(a, /\*\*`uc=<slug>` の名指し起動でも、この 2 の片付け \(main 上の run に配送の done がある feature の退避・削除\) をすべての `feature\/\*` について先に行う\*\*/);
+  assert.match(a, /名指しの UC 自身が配送済み[^\n]*「配送済み」と報告して終わる/);
+  assert.match(read(SKILL), /1\. 引数を解釈し、段階を決める \([^\n]*`uc=` の名指しでも自動選択 2 の片付けを先に行う\)/);
+  const principles = section(SKILL, '## 原則', '## d2-run が直接読み書きするもの');
+  assert.match(principles, /事前に与えられた回答が、その確認ページの問いで選べない[^\n]*推測で別の回答にせず止まって報告する/);
+  assert.match(feedbackSection(), /事前回答がこの問いで選べない回答[^\n]*`FB decide` を記録せず止まって報告する/);
+  const d = deliverSection();
+  assert.match(d, /6\. main の上で、④ の冒頭で遅らせた場合だけ `models_resolved` を記録し \(冒頭で記録済みなら記録しない/);
+  assert.match(d, /3\. commit の件名の検査 \(`git log <base_head>\.\.HEAD --format=%s` がすべて `impl\(<slug>\): ` か `req\(<slug>\): ` で始まる。そうでなければ UC 外の commit が混ざっているので squash せず止まって報告する/);
+  const sq = section(DELIVERY, '## 手順 (squash)', '## 手順 (main への取り込み)');
+  assert.match(sq, /件名がすべて `impl\(<slug>\): ` か `req\(<slug>\): ` で始まることを確認する/);
+  assert.match(sq, /squash せず止まって報告する \(混ざった commit の一覧を添える/);
+  assert.doesNotMatch(sq, /staged が当該 UC の変更だけであることを確認する/, '件名の検査に置き換えた');
+});
+
+test('0.1.30 L7: 変えた契約を使う UC は finalize / status の slices_changed × status: done。uc-index で数えない', () => {
+  const fb = feedbackSection();
+  assert.match(fb, /変えた契約を使う UC = `FB finalize` \(再開なら `FB status`\) の `slices_changed` \(main との差分で `contracts\/generated\/slices\/<slug>\/\*\*` が変わった UC\) のうち、`use-cases\.yaml` で `status` が `done` の UC すべて/);
+  assert.match(fb, /共通部分を変えると全 UC の slice が変わり、全 UC を回す/);
+  assert.match(fb, /「他の UC への影響」は照合の補助にだけ使い、`slices_changed` を狭めない/);
+  assert.doesNotMatch(fb, /`contracts\/uc-index\.yaml` で、変えた operation/);
+  assert.match(fb, /回した UC \(`slices_changed`\) ごとのゲートの結果/);
+});
+
+test('0.1.30 L10: 残った作業 → 確認ページ (見込みの宛先) → carryOver.js add → 派遣文に追記 → done の carry_over_status → 人レビューで持ち越す / 無視 → 配送で carryOver.js move', () => {
+  const r = section(SKILL, '### 要求の差分', '## ② 決定');
+  assert.match(r, /報告の「残った作業」[^\n]*と「決定と違う反映」[^\n]*を 3 の材料に控える/);
+  assert.match(r, /\*\*「残った作業」\*\*[^\n]*1 件ずつ「\*\*次の UC で拾う \/ 無視\*\*」で聞く/);
+  assert.match(r, /宛先の UC はこの時点では確定しない/);
+  assert.match(r, /見込みの宛先: <`node <skills>\/d2-common\/scripts\/carryOver\.js next --skip <feature\/ が残る UC をカンマ区切り> --cwd <リポのルート>` の `target` の UC 名>。承認の後に確定する/);
+  assert.match(r, /4\. 承認されたら、まず「次の UC で拾う」残った作業を `node <skills>\/d2-common\/scripts\/carryOver\.js add --items '<JSON 配列>' --skip <退避されずに残る feature の UC \(= feature\/\* のうち、今回反映・取り下げる課題の from_uc 以外\) をカンマ区切り> --cwd <リポのルート>`/);
+  assert.match(r, /`added: false` \(宛先なし\) なら完了報告に「持ち越せなかった作業」として載せる/);
+  assert.match(r, /次に、反映した課題ファイルと取り下げた課題ファイルを `git rm`/, '課題ファイルの削除は carryOver の後');
+  const t = read(SKILL);
+  assert.match(t, /\*\*残った作業 \(`carry_over`\)\*\*: `use-cases\.yaml` のこの UC の行に `carry_over`[^\n]*scenario・contract・tier・integrate の派遣文に追記する \(subagent-template\.md「残った作業の追記」\)/);
+  assert.match(t, /"carry_over_status": \[\{"item": "<項目>", "status": "done\|cannot", "detail": "<変えたファイル か 理由>"\}\]/);
+  assert.match(t, /review の前に中断しても、再開時に done から集められる/);
+  const tmpl = read(TEMPLATE);
+  assert.match(tmpl, /\*\*残った作業の追記\*\*[^\n]*scenario・contract・tier・integrate の派遣文に/);
+  assert.match(tmpl, /報告に項目ごとに「対応した \(変えたファイル\)」か「対応できない \(理由。write-set の外など\)」を書く/);
+  assert.match(tmpl, /課題の起票は求めない。scaffold と integrate の write-set に `<run>\/issues\/` が無く/);
+  const review = section(SKILL, '## 人レビュー (review 段階)', '## 配送 (deliver 段階)');
+  assert.match(review, /残った作業の対応状況 \(`use-cases\.yaml` の `carry_over` の項目ごとに、各段階の done の `carry_over_status`。どの段階も `done` にしていない項目が「対応できなかった項目」\)/);
+  assert.match(review, /対応できなかった項目ごとに「\*\*次の UC に持ち越す \/ 無視\*\*」を選ばせる/);
+  assert.match(review, /review_approved \{assumption_decisions\[\], assumption_evidence_sha256, gates_result, carry_over: \{done: \[\.\.\.\], carry: \[\.\.\.\], ignore: \[\.\.\.\]\}\}/);
+  const d = deliverSection();
+  assert.match(d, /`node <skills>\/d2-common\/scripts\/carryOver\.js move --from <slug> --items '<review_approved の carry_over\.carry の JSON 配列>' --skip <feature\/ が残っている UC をカンマ区切り> --cwd <リポのルート>` で `carry_over` を次の UC へ持ち越す/);
+  assert.match(d, /`carry` が空なら `carryOver\.js clear --from <slug>`。`moved: false` なら完了報告に「持ち越せなかった作業」として載せる。黙って消さない/);
+  const sq = section(DELIVERY, '## 手順 (squash)', '## 手順 (main への取り込み)');
+  assert.match(sq, /carryOver\.js move --from <slug> --items '<review_approved の carry_over\.carry>' --skip <feature\/ が残っている UC>/);
+  assert.match(read(RUN_STATE), /carry_over_status \(要求の差分で残った作業の項目ごとの対応状況 \{item, status: done\|cannot, detail\}\)/);
+  assert.match(read(RUN_STATE), /review_approved は残った作業の処遇 `carry_over: \{done, carry, ignore\}` も持つ/);
+  // d2-run の表と正本
+  assert.match(row(read(SKILL), /^\| ① の要求の差分の取り込み \|/), /`docs\/requirements\/use-cases\.yaml` \(`carryOver\.js add`/);
+  assert.match(row(read(SKILL), /^\| ④ の prTrailers\.js と配送 \|/), /`docs\/requirements\/use-cases\.yaml` \(`status: done` と `carryOver\.js move` の持ち越し\)/);
+});
+
+test('0.1.30 L11: 要求担当は課題の決定に従い、違えば「決定と違う反映」を報告する。確認ページに載せる', () => {
+  const req = read('skills/d2-requirements/SKILL.md');
+  assert.match(req, /\*\*課題ファイルの「決定」に従って反映する\*\*。決定と違う反映にするなら、最終報告の「\*\*決定と違う反映\*\*」に課題・決定・実際の反映・理由を書く/);
+  assert.match(req, /7\. 最終報告に「\*\*残った作業\*\*」を書く: 課題を反映するために write-set \(`docs\/requirements\/\*\*`\) の外で必要になった作業/);
+  assert.match(req, /自分では触らない \(write-set の外\)。無ければ「なし」/);
+  const r = section(SKILL, '### 要求の差分', '## ② 決定');
+  assert.match(r, /\*\*「決定と違う反映」\*\* \(課題ごとに決定・反映・理由。無ければ「なし」。違いを戻すなら「直す点」で 2 から/);
+});
+
+test('0.1.30 L14: すべての commit に attribution 行。-m の commit は 2 つ目の -m、-F は trailer の末尾、squash と還流は値 (キー無し) を渡す', () => {
+  const t = read(SKILL);
+  const cmds = t.match(/git commit -m "[^"]+"[^`\n]*/g);
+  assert.ok(cmds.length >= 5, `git commit -m が ${cmds.length} か所`);
+  for (const c of cmds) assert.match(c, / -m "<attribution 行>"$/, c);
+  assert.match(t, /自分が作るすべての commit に attribution 行を trailer で付ける \(git-delivery\.md「commit の attribution」/);
+  assert.match(t, /各段階の done を書いたら `impl\(<slug>\): <stage>` で commit する \(attribution 行を付ける/);
+  const r = section(SKILL, '### 要求の差分', '## ② 決定');
+  assert.match(r, /最後に attribution 行 \(git-delivery\.md「commit の attribution」\)/);
+  assert.match(feedbackSection(), /`FB start --co-author "<attribution の値>"`/);
+  const g = section(DELIVERY, '## commit の attribution (0.1.30)', '## UC branch の開始と再開');
+  assert.match(g, /\*\*attribution 行\*\* = ハーネスが指定する trailer 1 行/);
+  assert.match(g, /\*\*attribution の値\*\* = その行のキー `Co-Authored-By: ` を除いた部分/);
+  assert.match(g, /`git commit -m "<件名>" -m "<attribution 行>"` \(2 つ目の `-m` が最後の段落になり、git が trailer として扱う\)/);
+  assert.match(g, /`FB start --co-author "<attribution の値>"` で batch に記録し、スクリプトが全 commit に付ける/);
+  assert.match(read(DELIVERY), /--co-author "<attribution の値>"` で本文を作り/);
+  assert.doesNotMatch(read(DELIVERY), /--co-author "<ハーネスの attribution 行>"/, '行を渡すとキーが二重になる');
+});
+
+test('0.1.30 M5/M6/M1: ゲートの回し直しは 1 回だけ・写しを取る。record-gate は gates.json (複数) と --retried。troubleshooting に保存先', () => {
+  const t = read(SKILL);
+  const rule = section(SKILL, '**ゲートの回し直し**', 'attempt++ のとき');
+  assert.match(rule, /コードも commit も変えずに同じコマンドを \*\*1 回だけ\*\*回し直してよい/);
+  assert.match(rule, /回し直す前に 1 回目の `<run>\/reports\/gates\.json` を `<run>\/reports\/gates\.failed-1\.json` に写す/);
+  assert.match(rule, /2 回目も落ちたら落ちた扱い \(推測で直さない・課題を外さない\)。3 回目は回さない/);
+  assert.match(rule, /gates\.json の job の `output_tail` と `failed_tests` で読む/);
+  const fb = feedbackSection();
+  assert.match(fb, /落ちたら ④ の「ゲートの回し直し」のとおり、同じ branch の先頭で 1 回だけ回し直す \(写しは `<wt>\/\.distillery\/runs\/<その UC か d2-feedback>\/reports\/gates\.failed-1\.json`。落ちた UC ごと\)/);
+  assert.match(fb, /回し直して全部通れば `FB record-gate --result pass --retried --detail <1 回目の写しをカンマ区切りで>`/);
+  assert.match(fb, /1 つでも 2 回目も落ちたら `FB record-gate --result fail --detail <落ちた runGates の gates\.json をカンマ区切りで/);
+  assert.match(fb, /`FB status` の `gate\.detail` から落ちたゲート・落ちたテスト名・出力の末尾を UC ごとに。回し直して通ったなら 1 回目に落ちたテスト名/);
+  assert.match(read('skills/d2-run/references/troubleshooting.md'), /## headless で runGates の出力を `> <ファイル>` に保存できない/);
+  assert.match(read('skills/d2-run/references/troubleshooting.md'), /`FB record-gate --detail` にはその gates\.json をそのまま渡す/);
+  assert.ok(t.length > 0);
 });

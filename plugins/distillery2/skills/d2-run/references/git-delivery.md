@@ -6,6 +6,22 @@ lease と review HTML の追跡除外を廃止 (`.distillery/runs/*/reports|trac
 UC は squash して main へ ff merge し、課題は `docs/feedback/` のファイルにする。課題は次の UC の前に、要求の差分 (要求の課題) と還流 (ルール・契約の課題。worktree 1 つでまとめて直し、確認ページの承認の後に main へ ff merge) が取り込んで消す (0.1.27)。
 **git 操作はオーケストレータ (d2-run) だけが行う** (単一コミッタ)。サブエージェントには git 禁止を必ず伝える。
 
+## commit の attribution (0.1.30)
+
+用語を 2 つ分ける:
+
+- **attribution 行** = ハーネスが指定する trailer 1 行 (例 `Co-Authored-By: <モデル名> <noreply@anthropic.com>`)
+- **attribution の値** = その行のキー `Co-Authored-By: ` を除いた部分 (例 `<モデル名> <noreply@anthropic.com>`)。`prTrailers.js --co-author` と `feedbackBatch.js start --co-author` はこちらを受け取り、スクリプトがキーを付ける (行を渡すとキーが二重になる)
+
+d2-run が作る**すべての commit** (簿記の commit `impl(<slug>): <stage>`・`legacy delivered`・`issues to feedback`・`delivered`・`reorder stages`、`req: initial requirements`・`decide: ...`・`foundation: ...`・`req(<slug>): scenarios` を含む) に attribution 行を trailer で付ける (0.1.28 実走 L14):
+
+| commit の作り方 | 付け方 |
+|---|---|
+| `git commit -m "<件名>"` | `git commit -m "<件名>" -m "<attribution 行>"` (2 つ目の `-m` が最後の段落になり、git が trailer として扱う) |
+| 本文ファイル (`git commit -F`。`req: feedback`) | trailer の末尾に attribution 行を書く |
+| squash (`prTrailers.js`) | `--co-author "<attribution の値>"` (今のまま) |
+| 還流 (`feedbackBatch.js`) | `FB start --co-author "<attribution の値>"` で batch に記録し、スクリプトが全 commit に付ける |
+
 ## UC branch の開始と再開
 
 1. 開始条件: `git status --porcelain=v1 --untracked-files=all` が空、detached HEAD でない、`feature/*` 上でない、
@@ -43,10 +59,14 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 ## 手順 (squash)
 
 1. `git status --porcelain=v1 --untracked-files=all` が空、`git diff --quiet`、`git diff --cached --quiet`、
-   `git merge-base --is-ancestor <base_head> HEAD`、`git log <base_head>..HEAD` に merge commit が無いことを確認
+   `git merge-base --is-ancestor <base_head> HEAD`、`git log <base_head>..HEAD` に merge commit が無いことを確認。
+   加えて `git log <base_head>..HEAD --format=%s` の件名がすべて `impl(<slug>): ` か `req(<slug>): ` で始まることを確認する (段階ごとの commit の規則。d2-run 以外が足した commit はこの形にならない)。
+   そうでなければ (UC 外の commit が混ざっている) squash せず止まって報告する (混ざった commit の一覧を添える。整理は人が決める。0.1.29 実走 M3)。
+   変更の中身が UC の範囲に収まることは各段階の受理 (write-set の逸脱検査) が commit の前に止めているので、ここでは件名だけを見る
 2. 復旧用 ref `refs/distillery2/pre-squash/<slug>/<timestamp>` を `git update-ref` で現在 HEAD に作る。作れなければ squash しない
-3. `git reset --soft <base_head>`。staged が当該 UC の変更だけであることを確認する。`use-cases.yaml` の該当行を `status: done` にして stage する
-4. `<skills>/d2-common/scripts/prTrailers.js --run .distillery/runs/<slug> --strict --base <base_head> --commit-message "feat: <UC 名>" --co-author "<ハーネスの attribution 行>"` で本文を作り
+3. `git reset --soft <base_head>`。`use-cases.yaml` の該当行を `status: done` にし、`<skills>/d2-common/scripts/carryOver.js move --from <slug> --items '<review_approved の carry_over.carry>' --skip <feature/ が残っている UC>` で
+   残った作業 (`carry_over`) を次の UC の行へ持ち越してから (`carry` が空なら `carryOver.js clear --from <slug>`) stage する (0.1.30 L10)
+4. `<skills>/d2-common/scripts/prTrailers.js --run .distillery/runs/<slug> --strict --base <base_head> --commit-message "feat: <UC 名>" --co-author "<attribution の値>"` で本文を作り
    (`--base` には 3 で使った `<base_head>` をそのまま渡す。省略時の自動選択 (origin/HEAD → main → master) は UC の開始ブランチと違うことがある。必須 trailer が
    欠けていれば exit 1 で止まる)、`git commit -F <本文ファイル>` で
    exactly 1 commit を作る。件名は `feat: <UC 名 (日本語)>`。`git rev-list --count <base_head>..HEAD` が 1 でなければ取り込まない。
@@ -83,7 +103,7 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 | Basis-Requirements / Basis-Adr / Basis-Contracts | 各上流ディレクトリの最終 commit sha (basis.js stamp)。**base branch との merge-base から遡る** (UC branch 上の commit は squash で消えるため。`--base` で起点を指定できる) |
 | Basis-Base | Basis-* の起点 (base branch との merge-base の sha)。`--strict` では必須 (解決できなければ `--base` を渡す) |
 | Basis-Changed | base 以降に UC branch で変えた上流 (`requirements adr contracts` のうち該当)。この squash commit 自身が差分を含む印 (無ければ省略) |
-| Co-Authored-By | `--co-author` で渡した行 (ハーネスが指定する attribution をそのまま。複数可) |
+| Co-Authored-By | `--co-author` で渡した attribution の値 (キー無し。複数可) |
 | Gates | `static=pass unit=pass contract=pass uc-bdd=pass acceptance=pass` (gates.json から) |
 | Assumptions | `confirmed=<n> auto=<n> rejected=<n>` (review_approved の decisions から) |
 | As-Built | `docs/as-built/<業務>/<UC>/index.md` |

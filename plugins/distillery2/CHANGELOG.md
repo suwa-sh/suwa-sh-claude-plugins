@@ -2,6 +2,38 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.30] - 2026-10-05
+
+0.1.28 の試し運転で見つかった振る舞いの変わる課題 5 件 (L1・L7・L10・L11・L14。方針は 2026-10-04 のユーザー決定) と、0.1.29 の試し運転の課題 6 件 (M1〜M6) を直した。
+M7・M9・M10 は L7・L10・L1 と同じ根で一緒に消える。M8 は据え置き。
+
+### Changed
+
+- 起動時の自動選択 2 (配送済みの feature の片付け) を `uc=<slug>` の名指し起動でも行う。名指しの UC 自身が配送済みなら「配送済み」と報告して終わる (L1・M10)
+- 還流 7 の「変えた契約を使う UC」を `FB finalize` / `FB status` の `slices_changed` (main との差分で `contracts/generated/slices/<slug>/**` が変わった UC) のうち `status: done` の UC すべてにした。
+  契約の共通部分 (`info` など) を変えると全 UC の slice が変わるので全 UC を回す (L7・M7)。uc-index で operation を照合する文は消した
+- 要求の差分で要求担当が write-set の外に残した作業 (「残った作業」) の流れを作った (L10・M9): 要求担当が報告 → 確認ページで 1 件ずつ「次の UC で拾う / 無視」(宛先は見込みだけ示す) →
+  承認後に `carryOver.js add` が宛先の UC の行の `carry_over` に書く → ④ の scenario・contract・tier・integrate の派遣文に追記し、担当は項目ごとに「対応した / 対応できない」を報告 → d2-run が done の `carry_over_status` に保存 →
+  人レビューで対応できなかった項目ごとに「次の UC に持ち越す / 無視」(`review_approved.carry_over`) → 配送の squash で `carryOver.js move` が次の UC の行へ持ち越す (黙って消さない)。
+  宛先は常に「先頭から `status` が `done` でなく、feature が残らない最初の UC」(自動選択 3 の 6 と同じ)。課題ファイルの新しい種類は作らない
+- 要求担当は課題ファイルの「決定」に従う。違う反映にするなら報告の「決定と違う反映」に書き、要求の差分の確認ページに載せる (L11)
+- d2-run が作るすべての commit に attribution 行 (Co-Authored-By) を trailer で付ける (L14)。`-m` の commit は `-m "<件名>" -m "<attribution 行>"`、本文ファイルは trailer の末尾、squash は `prTrailers --co-author <値>`、還流は `FB start --co-author <値>` (batch に残り全 commit に付く)。
+  git-delivery.md「commit の attribution」に「attribution 行」と「attribution の値」(キー無し) を定義した
+- 配送 6 の `models_resolved` は「④ の冒頭で遅らせた場合だけ」記録する (M2)
+- squash の前に `git log <base_head>..HEAD` の件名がすべて `impl(<slug>): ` か `req(<slug>): ` で始まることを確認し、UC 外の commit が混ざっていれば止まって報告する (M3)。3 の「staged が当該 UC の変更だけ」はこの検査に置き換えた
+- 事前に与えられた回答が確認ページの問いで選べないときは、推測で別の回答にせず止まって報告する (原則と還流 8。M4)
+- ゲートの回し直し (M5): 記録付きのゲートが落ちたら、コードも commit も変えずに同じコマンドを 1 回だけ回し直してよい。回し直す前に gates.json を `gates.failed-1.json` に写す。2 回目も落ちたら落ちた扱い。
+  還流 7 は回し直して通れば `FB record-gate --result pass --retried --detail <1 回目の写し>`、落ちたら `--result fail --detail <gates.json をカンマ区切りで>`
+- runGates.js: 落ちた job にレポート JSON (vitest / cucumber) から読んだ `failed_tests` (最大 50 件。超えた分は `failed_tests_truncated`) を付け、標準出力にも出す (M6)。
+  `FB record-gate --detail` は gates.json を複数受け取り、落ちた段の落ちた job (exit・failed_tests・output_tail の末尾 20 行) を UC ごとに要約する。headless で出力を保存できない件は troubleshooting に (M1)
+- `genUseCases.js` が `carry_over` を uc_id で引き継ぐ。スキーマに `carry_over` と `tiers` を足した
+
+### Added
+
+- `skills/d2-common/scripts/carryOver.js` (`next` / `add` / `move` / `clear`): `use-cases.yaml` の `carry_over` の書き換え。宛先の規則をスクリプトに固定 (`tests/distillery2/lib/carryOver.test.js`)
+- `feedbackBatch.js`: `start --co-author <値>`、`finalize` / `status` の `slices_changed`、`record-gate --retried` と複数ファイルの `--detail`
+- d2-run SKILL.md ④ の「ゲートの回し直し」、run-state.md の `carry_over_status` と `review_approved.carry_over`、subagent-template.md の「残った作業の追記」
+
 ## [0.1.29] - 2026-10-04
 
 ② 共通化の前半 (todo 2-1〜2-3): distillery2 を Claude Code 専用にしない。スキルだけを別の場所 (`~/.agents/skills/` の平置きなど) に置いても、共通のスクリプトと手順書の参照が届くようにした。

@@ -15,6 +15,13 @@
   受理の検査も `git -C <wt>` と同様に worktree のパスを直書きして 1 コマンドずつ回す (手順書の例のとおり)
 - 0.1.28 の試し運転でも `genDocsReadme.js; echo exit=$?` と、受理の検査をまとめた sh で再発した。手順書の例には `$?` も sh も無い。コマンドを単独で回し、ツールの結果の exit code で見る
 
+## headless で runGates の出力を `> <ファイル>` に保存できない
+
+- 症状: `runGates.js ... > /tmp/gates.txt` が「作業ディレクトリの外への書き込み」で拒否され、`; echo $?` も拒否される (0.1.29 の試し運転では `| tail -30` で代えた)
+- 原因: allowedTools の照合がリダイレクトと複合コマンドを通さない
+- 回避: 出力を保存しない。runGates は `<run>/reports/gates.json` に job ごとの `output_tail` (末尾 4000 文字) と `failed_tests` (落ちたテスト名。0.1.30) を書くので、落ちた内容はそこを読む。
+  還流の `FB record-gate --detail` にはその gates.json をそのまま渡す (落ちた段だけ要約される。複数の UC はカンマ区切り)。回し直す前の写しは `cp` で `<run>/reports/gates.failed-1.json` に (作業ディレクトリの中なので通る)
+
 ## `"type": "module"` のリポで補助スクリプトを `.js` で書くと ESM として読まれて失敗する
 
 - 症状: `require is not defined` / `module is not defined` で、オーケストレータが書いた補助スクリプトが落ちる
