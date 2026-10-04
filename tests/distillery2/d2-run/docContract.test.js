@@ -236,6 +236,7 @@ test('0.1.28: 起動時: 移行は課題を数える前 (stage= 直接指定で�
   assert.match(a, /終わったら `FB scan` をやり直す/);
   assert.match(a, /直接指定でも 3 の 1〜2 \(push のやり直しと移行\) は行う/);
   assert.match(a, /\*\*main 上のその UC の run に配送の done があれば配送済み\*\*/);
+  assert.match(a, /その feature を checkout していれば先に clean を確かめて `git switch main` する/, 'checkout 中の branch は消せない (差分レビュー 1 ラウンド目)');
   assert.match(a, /done が `legacy: true` なら `git update-ref refs\/distillery2\/legacy\/<slug>\/<ts> feature\/<slug>` で退避してから `git branch -D feature\/<slug>`、そうでなければ ff 済みなので `git branch -d feature\/<slug>`/);
   assert.match(a, /プラグインへ持ち帰る課題 \(`kind: plugin`。還流節\) もきっかけにしない/);
   const fb = feedbackSection();

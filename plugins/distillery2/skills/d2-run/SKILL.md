@@ -28,6 +28,7 @@ description: >-
 2. **進行中の UC** があれば、その UC の ④ を続ける。進行中 = ローカルに `feature/<slug>` branch があり、その branch の run の最後の止まりが `blocked_on_requirement` でない UC
    (`git show feature/<slug>:.distillery/runs/<slug>/events.jsonl` で読む。checkout しない)。
    ただし **main 上のその UC の run に配送の done があれば配送済み** (配送の 7〜8 か旧形式の片付けの途中で止まった) なので進行中とみなさず、feature を片付けて 3 へ:
+   その feature を checkout していれば先に clean を確かめて `git switch main` する (checkout 中の branch は消せない)。
    done が `legacy: true` なら `git update-ref refs/distillery2/legacy/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`、そうでなければ ff 済みなので `git branch -d feature/<slug>`
 3. それ以外は **clean な main に切り替えてから** (要求で止まった UC の feature にいても。clean でなければ整理を依頼して止まる)、`node ${CLAUDE_PLUGIN_ROOT}/scripts/feedbackBatch.js scan --cwd <リポのルート>` の結果で決める:
    1. remote `origin` があり `git rev-list --count origin/main..main` が 0 でなければ、何より先に `git push origin main` をやり直す (配送・要求の差分・還流の push が拒否されて止まった後の再開。拒否されたら止まって報告する。force push はしない)

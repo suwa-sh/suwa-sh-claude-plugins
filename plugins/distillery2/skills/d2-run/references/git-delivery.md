@@ -16,7 +16,7 @@ UC は squash して main へ ff merge し、課題は `docs/feedback/` のフ�
    `branch_started {base_branch, base_head, feature_branch}` を追記する
 3. 再開時 (配送の done が無い) は `branch_started` の `feature_branch` と現在 branch が一致することを確認する。違う branch なら
    clean のときだけ switch。`base_head` が HEAD の祖先でなければ停止する
-4. 配送の done がある UC は終わっている (feature は配送で消えている)。remote `origin` があり `origin/main..main` に commit があれば、
+4. 配送の done がある UC は終わっている (feature は配送の最後に消す。残っていれば起動時の自動選択 2 が片付ける)。remote `origin` があり `origin/main..main` に commit があれば、
    何より先に `git push origin main` をやり直す (d2-run SKILL.md の自動選択の 3。配送・要求の差分・還流のどれの後でも同じ)
 
 ## 段階ごとの commit
