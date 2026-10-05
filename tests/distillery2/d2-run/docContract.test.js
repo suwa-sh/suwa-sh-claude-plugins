@@ -533,7 +533,7 @@ test('0.1.31 2-5: 定義 3 ファイルは d2-common にあり、参照は移動
   const vp = read('skills/d2-verify/references/viewpoints.md');
   assert.match(vp, /固定指示 \(派遣文で渡された「実装者の固定指示」のパス\)/);
   assert.doesNotMatch(vp, /d2-implement\/references/);
-  assert.match(row(read(TEMPLATE), /^\| ④ verify /), /`実装者の固定指示: <<skills>\/d2-implement\/references\/tier-impl\.md の絶対パス>`/);
+  assert.match(row(read(TEMPLATE), /^\| ④ verify /), /`実装者の固定指示: <パス>` \(`<skills>\/d2-implement\/references\/tier-impl\.md` を絶対パスに展開して渡す/);
   assert.match(row(read(SKILL), /^\| \*\*verify\*\* \|/), /実装者の固定指示のパス/);
   for (const rel of ['skills/d2-run/references/troubleshooting.md', 'skills/d2-foundation/references/troubleshooting.md', 'skills/d2-contract/references/troubleshooting.md']) {
     assert.match(read(rel), /他のスキルの項目: \[索引\]\(\.\.\/\.\.\/d2-common\/references\/troubleshooting\.md\)/, rel);

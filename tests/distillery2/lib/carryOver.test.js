@@ -76,7 +76,7 @@ test('add --skip: 要求で止まった UC (feature が残る) を飛ばして�
   assert.equal(a.json.target, 'edit-book');
   const before = fs.readFileSync(path.join(r.root, 'docs/requirements/use-cases.yaml'), 'utf8');
   const n = r.run('add', '--items', '["y"]', '--skip', 'register-book,edit-book');
-  assert.deepEqual(n.json, { added: false, reason: 'no_target', target: null, items: ['y'] });
+  assert.deepEqual(n.json, { added: false, reason: 'no_target', target: null, items: ['y'], changed: false });
   assert.equal(fs.readFileSync(path.join(r.root, 'docs/requirements/use-cases.yaml'), 'utf8'), before, '宛先が無ければファイルを変えない');
 });
 

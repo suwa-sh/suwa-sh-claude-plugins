@@ -101,7 +101,7 @@ function cmdAdd(root, opts) {
   if (!items.length) throw new Error('add --items <JSON 配列 | ファイル> (1 件以上)');
   const { path: file, doc, before } = loadUseCases(root);
   const target = pickTarget(doc.use_cases, { skip: csv(opts.skip) });
-  if (!target) return { added: false, reason: 'no_target', target: null, items };
+  if (!target) return { added: false, reason: 'no_target', target: null, items, changed: false };
   const added = appendItems(rowOf(doc.use_cases, target), items);
   const changed = saveUseCases(file, doc, before);
   return { added: true, target, items: added, skipped_duplicates: items.filter((x) => !added.includes(x)), changed };

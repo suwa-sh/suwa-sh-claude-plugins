@@ -145,6 +145,15 @@ test('(d) 派遣ごとの write-set は正本の write_set から生成 (--check
   assert.deepEqual(snapshot, golden, 'write_set / notes / allowed_writes / store の path が golden (tests/distillery2/integration/fixtures/allowed-writes.golden.json) と違う。意図した変更なら golden を更新する');
 });
 
+test('(d3) genDataflow.js --check は派遣表 (d2-run) が無い配置では exit 1 (黙って通さない。差分レビュー 1 ラウンド目)', () => {
+  const os = require('node:os');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-gen-'));
+  fs.cpSync(path.join(PLUGIN, 'skills/d2-common'), path.join(tmp, 'skills/d2-common'), { recursive: true });
+  const r = spawnSync('node', [path.join(tmp, 'skills/d2-common/scripts/genDataflow.js'), '--check'], { encoding: 'utf8' });
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /missing: .*subagent-template\.md/);
+});
+
 test('(d2) 正本の各 alias は手順書 (派遣表の生成ブロックを除く) のどこかで使われている (使われない略記を増やさない。0.1.31)', () => {
   const G = require(path.join(PLUGIN, 'skills/d2-common/scripts/genDataflow.js'));
   const docs = [];

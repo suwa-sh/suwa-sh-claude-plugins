@@ -272,7 +272,9 @@ function main(argv) {
   if (argv.includes('--check')) {
     const cur = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
     if (cur !== text) { console.error(`stale: ${path.relative(process.cwd(), OUT)} (node genDataflow.js で再生成する)`); return 1; }
-    if (tplCur !== null && tplCur !== tplNew) { console.error(`stale: ${path.relative(process.cwd(), TEMPLATE)} の派遣ごとの write-set (node genDataflow.js で再生成する)`); return 1; }
+    // 派遣表が無ければ検査できない (スキル群は兄弟として並ぶ前提。d2-run が欠けた配置は壊れている)。黙って通さない (差分レビュー 1 ラウンド目)
+    if (tplCur === null) { console.error(`missing: ${path.relative(process.cwd(), TEMPLATE)} (派遣表が無いので派遣ごとの write-set を検査できない)`); return 1; }
+    if (tplCur !== tplNew) { console.error(`stale: ${path.relative(process.cwd(), TEMPLATE)} の派遣ごとの write-set (node genDataflow.js で再生成する)`); return 1; }
     console.log('dataflow.md and dispatch write-sets: up to date');
     return 0;
   }
