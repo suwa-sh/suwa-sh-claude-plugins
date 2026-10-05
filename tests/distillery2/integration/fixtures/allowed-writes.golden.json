@@ -1,0 +1,413 @@
+{
+  "requirements": {
+    "template_row": "① 要求",
+    "write_set": [
+      "`docs/requirements/**`"
+    ],
+    "notes": [],
+    "allowed_writes": [
+      {
+        "id": "requirements-dir",
+        "path": "docs/requirements/**"
+      }
+    ]
+  },
+  "decide": {
+    "template_row": "② 決定",
+    "write_set": [
+      "`docs/nfr/**`",
+      "`docs/adr/**`"
+    ],
+    "notes": [],
+    "allowed_writes": [
+      {
+        "id": "nfr",
+        "path": "docs/nfr/**"
+      },
+      {
+        "id": "adr-dir",
+        "path": "docs/adr/**"
+      }
+    ]
+  },
+  "foundation": {
+    "template_row": "③ 基盤 (機械)",
+    "write_set": [
+      "`docs/rules/**`",
+      "`.dependency-cruiser.cjs`",
+      "`packages/test-support/**`",
+      "`features/support/**`",
+      "`cucumber.js`",
+      "`tsx-register.js`",
+      "`.distillery/config.yaml`",
+      "`.github/workflows/**`",
+      "`.qlty/qlty.toml`",
+      "`apps/*/`",
+      "`packages/*/`",
+      "`package.json`",
+      "`tsconfig.base.json`",
+      "`.gitignore`",
+      "`biome.json`",
+      "`package-lock.json`。例外: `npm install` が作る `node_modules/**` (gitignore)"
+    ],
+    "notes": [
+      "例外: `npm install` が作る `node_modules/**` (gitignore)"
+    ],
+    "allowed_writes": [
+      {
+        "id": "rules",
+        "path": "docs/rules/**"
+      },
+      {
+        "id": "depcruise-config",
+        "path": ".dependency-cruiser.cjs"
+      },
+      {
+        "id": "test-support",
+        "path": "packages/test-support/**"
+      },
+      {
+        "id": "features-support",
+        "path": "features/support/**"
+      },
+      {
+        "id": "cucumber-config",
+        "path": "cucumber.js"
+      },
+      {
+        "id": "cucumber-loader",
+        "path": "tsx-register.js"
+      },
+      {
+        "id": "config",
+        "path": ".distillery/config.yaml"
+      },
+      {
+        "id": "skeleton",
+        "path": "package.json"
+      },
+      {
+        "id": "ci",
+        "path": ".github/workflows/**"
+      },
+      {
+        "id": "qlty-config",
+        "path": ".qlty/qlty.toml"
+      },
+      {
+        "id": "lockfile",
+        "path": "package-lock.json"
+      }
+    ]
+  },
+  "contract.skeleton": {
+    "template_row": "③ 契約骨格",
+    "write_set": [
+      "`contracts/**`"
+    ],
+    "notes": [],
+    "allowed_writes": [
+      {
+        "id": "contracts-src",
+        "path": "contracts/**"
+      }
+    ]
+  },
+  "design": {
+    "template_row": "③ 画面部品",
+    "write_set": [
+      "`docs/design/**`"
+    ],
+    "notes": [],
+    "allowed_writes": [
+      {
+        "id": "design",
+        "path": "docs/design/**"
+      }
+    ]
+  },
+  "foundation.finish": {
+    "template_row": "③ 基盤 (仕上げ)",
+    "write_set": [
+      "`.distillery/config.yaml`",
+      "`.github/workflows/**`",
+      "`docs/adr/architecture.md`",
+      "`packages/ui/**`",
+      "`package-lock.json`",
+      "`.qlty/qlty.toml`",
+      "`apps/*/test/contract/**`",
+      "`packages/contracts/**`",
+      "`<run>/reports/**` (チェックポイントが書く。slug は bootstrap)。例外: `npm install` が作る `node_modules/**` (gitignore)"
+    ],
+    "notes": [
+      "例外: `npm install` が作る `node_modules/**` (gitignore)",
+      "チェックポイントが書く。slug は bootstrap"
+    ],
+    "allowed_writes": [
+      {
+        "id": "config",
+        "path": ".distillery/config.yaml"
+      },
+      {
+        "id": "ci",
+        "path": ".github/workflows/**"
+      },
+      {
+        "id": "adr-architecture",
+        "path": "docs/adr/architecture.md"
+      },
+      {
+        "id": "ui",
+        "path": "packages/ui/**"
+      },
+      {
+        "id": "lockfile",
+        "path": "package-lock.json"
+      },
+      {
+        "id": "qlty-config",
+        "path": ".qlty/qlty.toml"
+      },
+      {
+        "id": "contract-tests",
+        "path": "apps/*/test/contract/**"
+      },
+      {
+        "id": "contracts-code",
+        "path": "packages/contracts/**"
+      },
+      {
+        "id": "reports",
+        "path": "<run>/reports/**"
+      }
+    ]
+  },
+  "implement.scenario": {
+    "template_row": "④ scenario",
+    "write_set": [
+      "`features/<業務>/<slug>.feature`",
+      "`features/acceptance/**`",
+      "`<run>/issues/**`"
+    ],
+    "notes": [],
+    "allowed_writes": [
+      {
+        "id": "feature",
+        "path": "features/<業務>/<slug>.feature"
+      },
+      {
+        "id": "acceptance",
+        "path": "features/acceptance/**"
+      },
+      {
+        "id": "issues",
+        "path": "<run>/issues/**"
+      }
+    ]
+  },
+  "contract.uc": {
+    "template_row": "④ contract",
+    "write_set": [
+      "`contracts/**`",
+      "`apps/*/test/contract/**`",
+      "`apps/<datastore_owner>/migrations/**`",
+      "`packages/contracts/**`",
+      "`<run>/issues/**`"
+    ],
+    "notes": [],
+    "allowed_writes": [
+      {
+        "id": "contracts-src",
+        "path": "contracts/**"
+      },
+      {
+        "id": "contract-tests",
+        "path": "apps/*/test/contract/**"
+      },
+      {
+        "id": "migrations",
+        "path": "apps/<tier>/migrations/**"
+      },
+      {
+        "id": "contracts-code",
+        "path": "packages/contracts/**"
+      },
+      {
+        "id": "issues",
+        "path": "<run>/issues/**"
+      }
+    ]
+  },
+  "implement.scaffold": {
+    "template_row": "④ scaffold",
+    "write_set": [
+      "`features/step_definitions/**`",
+      "`apps/<tier>/src/**/*.test.ts`",
+      "`apps/<tier>/src/**` (テストが import する入口の最小スタブ。**新規ファイルだけ**。既存ファイルの変更・削除は不可)",
+      "`<run>/reports/**` (完了条件の `--expect-red unit` が書く。単独の段なので競合しない)"
+    ],
+    "notes": [
+      "テストが import する入口の最小スタブ。**新規ファイルだけ**。既存ファイルの変更・削除は不可",
+      "完了条件の `--expect-red unit` が書く。単独の段なので競合しない"
+    ],
+    "allowed_writes": [
+      {
+        "id": "steps",
+        "path": "features/step_definitions/**"
+      },
+      {
+        "id": "tier-src",
+        "path": "apps/<tier>/src/**"
+      },
+      {
+        "id": "reports",
+        "path": "<run>/reports/**"
+      }
+    ]
+  },
+  "implement.tier": {
+    "template_row": "④ tier",
+    "write_set": [
+      "`apps/<tier>/**`",
+      "`<run>/attempt-<n>/assumptions.<tier>.yaml`",
+      "`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` の結果。リポの外。使い終えたら削除)"
+    ],
+    "notes": [
+      "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` の結果。リポの外。使い終えたら削除)"
+    ],
+    "allowed_writes": [
+      {
+        "id": "tier-dir",
+        "path": "apps/<tier>/**"
+      },
+      {
+        "id": "assumptions",
+        "path": "<run>/attempt-<n>/assumptions.<tier>.yaml"
+      },
+      {
+        "id": "issues-tier",
+        "path": "<run>/issues/<ts>_<tier>_<slug>.md"
+      }
+    ]
+  },
+  "implement.integrate": {
+    "template_row": "④ integrate",
+    "write_set": [
+      "`features/step_definitions/**`",
+      "`features/support/**`",
+      "`<run>/reports/**`",
+      "`<run>/traces/**` (完了条件の runGates が書く。integrate は単独の段なので競合しない)"
+    ],
+    "notes": [
+      "完了条件の runGates が書く。integrate は単独の段なので競合しない"
+    ],
+    "allowed_writes": [
+      {
+        "id": "steps",
+        "path": "features/step_definitions/**"
+      },
+      {
+        "id": "features-support",
+        "path": "features/support/**"
+      },
+      {
+        "id": "reports",
+        "path": "<run>/reports/**"
+      },
+      {
+        "id": "traces",
+        "path": "<run>/traces/**"
+      }
+    ]
+  },
+  "verify": {
+    "template_row": "④ verify",
+    "write_set": [
+      "`<run>/attempt-<n>/findings.<tier>.yaml`"
+    ],
+    "notes": [],
+    "allowed_writes": [
+      {
+        "id": "findings",
+        "path": "<run>/attempt-<n>/findings.<tier>.yaml"
+      }
+    ]
+  },
+  "asbuilt": {
+    "template_row": "④ asbuilt",
+    "write_set": [
+      "`docs/as-built/<業務>/<UC>/**`",
+      "`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)",
+      "`<run>/reports/**` (depcruise の結果と抽出の集計)"
+    ],
+    "notes": [
+      "スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ",
+      "depcruise の結果と抽出の集計"
+    ],
+    "allowed_writes": [
+      {
+        "id": "asbuilt-uc",
+        "path": "docs/as-built/<業務>/<UC>/**"
+      },
+      {
+        "id": "asbuilt-system",
+        "path": "docs/as-built/_system/**"
+      },
+      {
+        "id": "reports",
+        "path": "<run>/reports/**"
+      }
+    ]
+  },
+  "decide.feedback": {
+    "template_row": "還流 (ADR)",
+    "write_set": [
+      "`docs/adr/**`",
+      "`.distillery/logs/feedback/<b>/<issue>.result.json`"
+    ],
+    "notes": [],
+    "allowed_writes": [
+      {
+        "id": "adr-dir",
+        "path": "docs/adr/**"
+      },
+      {
+        "id": "feedback-result",
+        "path": ".distillery/logs/feedback/<b>/<issue>.result.json"
+      }
+    ]
+  },
+  "contract.feedback": {
+    "template_row": "還流 (契約)",
+    "write_set": [
+      "`contracts/**`",
+      "`apps/*/test/contract/**`",
+      "`apps/<datastore_owner>/migrations/**`",
+      "`packages/contracts/**`",
+      "`.distillery/logs/feedback/<b>/<issue>.result.json`"
+    ],
+    "notes": [],
+    "allowed_writes": [
+      {
+        "id": "contracts-src",
+        "path": "contracts/**"
+      },
+      {
+        "id": "contract-tests",
+        "path": "apps/*/test/contract/**"
+      },
+      {
+        "id": "migrations",
+        "path": "apps/<tier>/migrations/**"
+      },
+      {
+        "id": "contracts-code",
+        "path": "packages/contracts/**"
+      },
+      {
+        "id": "feedback-result",
+        "path": ".distillery/logs/feedback/<b>/<issue>.result.json"
+      }
+    ]
+  }
+}

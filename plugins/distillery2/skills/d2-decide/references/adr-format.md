@@ -77,7 +77,7 @@ rules:                      # 機械可読。段階③ (d2-foundation) の rules
 ## 段階③が読む追加の front matter (ティア構成 / テスト方針の ADR)
 
 `rules[]` のほかに、次のキーを特定の ADR が持つ。d2-foundation の `genConfig` / `genSkeleton` / `genRules` が読む
-(正本: `../../d2-foundation/references/adr-inputs.md`)。`status: accepted` の ADR だけが寄与する。
+(正本: `../../d2-common/references/adr-inputs.md`)。`status: accepted` の ADR だけが寄与する。
 
 ```yaml
 # ティア構成の ADR (tiers[] を宣言する 1 本だけ。通常 scope に system を含む) — 必須

@@ -50,7 +50,7 @@ v2 は成果物を 3 つに分ける。
 | `distillery2:d2-common` | 他のスキルが参照する共通定義。直接は起動しない。**処理と入出力の正本** ([dataflow.yaml](skills/d2-common/references/dataflow.yaml)) と、そこから生成した DFD ([dataflow.md](skills/d2-common/references/dataflow.md)) |
 
 呼び出し名は `/distillery2:<skill>`。SKILL.md の `name` は Agent Skills 仕様どおりディレクトリ名 (`d2-run` など) で、Claude Code がプラグイン名を前置する。
-スキル間の入出力 (派遣表の write-set、各スキルの読む / 書く、基盤の phase 表、d2-run の直接の読み書き) は正本と
+スキル間の入出力 (各スキルの読む / 書く、基盤の phase 表、d2-run の直接の読み書き。派遣表の write-set は正本から生成する。0.1.31) は正本と
 `tests/distillery2/integration/dataflow.test.js` で照合する。入出力を変えたら正本も直して `node skills/d2-common/scripts/genDataflow.js` で図を作り直す。
 
 `docs/README.md` は `skills/d2-common/scripts/genDocsReadme.js` が各段階の commit 前に生成する (共通のスクリプトはすべて `skills/d2-common/scripts/`。手順書は `<skills>/d2-common/scripts/...` と書く。0.1.29) (上流から下流まで辿る入口。管理ブロックの外と distillery2 以外の文書は触らない)。

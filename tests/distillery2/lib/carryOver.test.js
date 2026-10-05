@@ -85,7 +85,7 @@ test('move: 元の行の carry_over を消し、持ち越す項目を先頭の�
   // register-book を配送する: a は対応済みで消え、b を持ち越す
   const m = r.run('move', '--from', 'register-book', '--items', '["b"]');
   assert.equal(m.code, 0, JSON.stringify(m.json));
-  assert.deepEqual(m.json, { moved: true, target: 'edit-book', items: ['b'], cleared: ['a', 'b'], skipped_duplicates: [] });
+  assert.deepEqual(m.json, { moved: true, target: 'edit-book', items: ['b'], cleared: ['a', 'b'], skipped_duplicates: [], changed: true });
   assert.ok(!('carry_over' in r.row('register-book')));
   assert.deepEqual(r.row('edit-book').carry_over, ['b']);
 });
@@ -101,17 +101,17 @@ test('move: 配送の順が入れ替わっても (後方の UC から) 宛先は
 test('move: 宛先が無ければ no_target (元の行は消す。完了報告に載せる)。items が空なら clear と同じ', () => {
   const r = makeRepo([{ slug: 'register-loan', status: 'planned', carry_over: ['x'] }, { slug: 'register-return', status: 'done' }]);
   const m = r.run('move', '--from', 'register-loan', '--items', '["x"]');
-  assert.deepEqual(m.json, { moved: false, reason: 'no_target', target: null, items: ['x'], cleared: ['x'] });
+  assert.deepEqual(m.json, { moved: false, reason: 'no_target', target: null, items: ['x'], cleared: ['x'], changed: true });
   assert.ok(!('carry_over' in r.row('register-loan')));
   const r2 = makeRepo([{ slug: 'register-loan', status: 'planned', carry_over: ['x'] }, { slug: 'edit-book', status: 'planned' }]);
   const e = r2.run('move', '--from', 'register-loan', '--items', '[]');
-  assert.deepEqual(e.json, { moved: false, reason: 'no_items', target: null, cleared: ['x'] });
+  assert.deepEqual(e.json, { moved: false, reason: 'no_items', target: null, cleared: ['x'], changed: true });
   assert.ok(!('carry_over' in r2.row('edit-book')));
 });
 
 test('clear: 行の carry_over を消す。知らない slug は exit 2', () => {
   const r = makeRepo([{ slug: 'register-book', status: 'planned', carry_over: ['x'] }]);
-  assert.deepEqual(r.run('clear', '--from', 'register-book').json, { cleared: ['x'] });
+  assert.deepEqual(r.run('clear', '--from', 'register-book').json, { cleared: ['x'], changed: true });
   assert.ok(!('carry_over' in r.row('register-book')));
   assert.equal(r.run('clear', '--from', 'nope').code, 2);
 });
@@ -123,4 +123,27 @@ test('書き戻した use-cases.yaml は他の欄 (slug・spec_ids・tiers) を�
   assert.deepEqual(u.tiers, ['frontend', 'backend-api']);
   assert.deepEqual(u.spec_ids, ['SPEC-001-01']);
   assert.equal(r.read().system_name, 'lib');
+});
+
+test('0.1.31 N4: 内容が変わらないときはファイルを書かない (changed: false)。clear で消すものが無い・add で全部重複・move で元に無いとき', () => {
+  const r = makeRepo([{ slug: 'register-book', status: 'planned', carry_over: ['x'] }, { slug: 'edit-book', status: 'planned' }]);
+  const file = path.join(r.root, 'docs/requirements/use-cases.yaml');
+  // 手書きの形 (全値に引用符) にしておき、変化が無いときは触らないことを見る
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('slug: register-book', 'slug: "register-book"'));
+  const before = fs.readFileSync(file, 'utf8');
+  const c = r.run('clear', '--from', 'edit-book');
+  assert.deepEqual(c.json, { cleared: [], changed: false });
+  assert.equal(fs.readFileSync(file, 'utf8'), before, '書かない');
+  const a = r.run('add', '--items', '["x"]');
+  assert.equal(a.json.changed, false);
+  assert.deepEqual(a.json.skipped_duplicates, ['x']);
+  assert.equal(fs.readFileSync(file, 'utf8'), before, '全部重複なら書かない');
+  const m = r.run('move', '--from', 'edit-book', '--items', '[]');
+  assert.deepEqual(m.json, { moved: false, reason: 'no_items', target: null, cleared: [], changed: false });
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+  // 変わるときは書く (引用符の形は stringifyYaml の規則に揃う)
+  const m2 = r.run('move', '--from', 'register-book', '--items', '["x"]');
+  assert.equal(m2.json.changed, true);
+  assert.notEqual(fs.readFileSync(file, 'utf8'), before);
+  assert.deepEqual(r.row('edit-book').carry_over, ['x']);
 });

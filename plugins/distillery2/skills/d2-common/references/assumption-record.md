@@ -1,3 +1,4 @@
+<!-- 0.1.31: d2-implement/references から d2-common へ移した (書き手は d2-implement の tier、読み手は d2-verify と validateAssumptions.js) -->
 # AssumptionRecord (実装者が補った前提の記録)
 
 実装者 (d2-implement mode=tier) は、要求・シナリオ・契約・ルールに書かれていないため**自分で決めた設計判断**を、

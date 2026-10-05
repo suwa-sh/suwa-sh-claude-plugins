@@ -28,7 +28,7 @@
     requirements/  nfr/  adr/  rules/  design/  as-built/
   contracts/
     openapi/ asyncapi/ db/  contracts.json  generated/
-  .distillery/config.yaml          # 実行設定 (config-schema.md)
+  .distillery/config.yaml          # 実行設定 (d2-common/references/config-schema.md)
   .dependency-cruiser.cjs          # F2
   .github/workflows/ci.yml         # F5 (genCi)
   cucumber.js  package.json  tsconfig.base.json  .gitignore

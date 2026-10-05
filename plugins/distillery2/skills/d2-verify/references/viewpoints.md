@@ -30,7 +30,7 @@ v1 の 8 観点のうち、機械のゲート (静的検査・単体・契約・
 
 ## 2. assumption_conformance (実装者が補った前提の照合)
 
-対象: `attempt-<n>/assumptions.<tier>.yaml` (正本は `d2-implement/references/assumption-record.md`)。
+対象: `attempt-<n>/assumptions.<tier>.yaml` (正本は `<skills>/d2-common/references/assumption-record.md`)。
 仕様に照合先が無い判断は観点 1 から原理的に落ちるため、実装者に書かせた一覧を反証対象にする。
 
 ### 手順 (blind join。順序を守る)
@@ -38,7 +38,7 @@ v1 の 8 観点のうち、機械のゲート (静的検査・単体・契約・
 1. 観点 1 の完走中に、実装から読み取れる「要求・契約・ルールに根拠が無い設計判断」を候補リストとして控える。
    この時点で前提ファイルは開かない
 2. 前提ファイルを開き、各要素の `id / assumption / target` だけを読む。候補リストと突合する
-3. 各前提を要求・シナリオ・契約・ルール・mode=tier の固定指示 (`d2-implement/references/tier-impl.md`) と照合し、verdict を付ける
+3. 各前提を要求・シナリオ・契約・ルール・mode=tier の固定指示 (派遣文で渡された「実装者の固定指示」のパス) と照合し、verdict を付ける
 4. `reason / confidence / spec_refs` は verdict 確定後に補助証拠として読む
 5. 各前提の `verified_category` を実装者の `category` と独立に判定する。不一致なら `kind: category_mismatch` の minor finding
 6. 候補リストに残った「前提ファイルに無い黙った判断」を `V-nnn` (unlisted) として追記する (`category: null`)

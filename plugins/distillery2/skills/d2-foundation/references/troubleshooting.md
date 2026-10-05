@@ -1,7 +1,7 @@
 # d2-foundation トラブルシューティング
 
 基盤 (genSkeleton / genQlty / biome / qlty) で踏んだ問題。実走で踏んだ環境依存の問題と回避策をためる (手順そのものには書かない)。項目は「症状 → 原因 → 回避」の順。
-他のスキルの項目: [`d2-run`](../../d2-run/references/troubleshooting.md) / [`d2-contract`](../../d2-contract/references/troubleshooting.md)
+他のスキルの項目: [索引](../../d2-common/references/troubleshooting.md) (d2-common)
 
 ## npm 10 の `npm install` が `Cannot read properties of null (reading 'edgesOut')` で落ちる
 

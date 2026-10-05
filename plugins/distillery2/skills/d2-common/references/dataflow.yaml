@@ -17,6 +17,9 @@
 # processes[].scripts: 手順書の読む / 書くの節に出てくるスクリプト名 (パスとして照合しない)
 # processes[].writes: 実際に書くもの / allowed_writes: 派遣文で許す範囲 (subagent のみ。writes を含む)
 # processes[].notes: 派遣文の write-set にあるパスでない制約・例外の文言 (手順書と同じ文字列)
+# processes[].write_set: 派遣文の write-set の文面そのもの (派遣表の「派遣ごとの write-set」の行を genDataflow.js が生成する。0.1.31)。
+#   `、` で区切った断片の配列で、パスに付く注記はそのパスと同じ断片に書く。各パス表記は allowed_writes のどれかの store の表記 (path か aliases) に合い、
+#   allowed_writes の各 store はどれかの表記に覆われ、notes の各文字列は文面に含まれる (dataflow.test.js (d))。写し (golden) との一致も見る
 schema_version: distillery2.dataflow/v1
 
 stages:
@@ -299,7 +302,6 @@ stores:
       - "packages/contracts/<id>/"
       - "packages/contracts/<id>/client.ts"
       - "packages/contracts/<id>/types.ts"
-      - "packages/contracts/<id>/server.ts"
       - "server.ts"
   - id: design
     name: デザインシステム (Storybook アプリ)
@@ -355,7 +357,6 @@ stores:
     path: "<run>/events.jsonl"
     origin: produced
     aliases:
-      - "<run>/stages/**"
       - "<run>/invalidated/**"
   - id: assumptions
     name: 実装者が補った前提
@@ -392,11 +393,7 @@ stores:
     path: ".distillery/logs/feedback/<b>/**"
     origin: produced
     aliases:
-      - ".distillery/logs/feedback/<b>/batch.json"
-      - ".distillery/logs/feedback/<b>/<issue>.state"
       - ".distillery/logs/feedback/<b>/<issue>.reason.txt"
-      - ".distillery/logs/feedback/<b>/gate.json"
-      - ".distillery/logs/feedback/<b>/decision.json"
   - id: worktrees
     name: 作業用の worktree (還流は 1 つ。review で要求を直すときは一時のもの。gitignore)
     group: run
@@ -479,6 +476,8 @@ processes:
     stage: requirements
     kind: subagent
     template_row: "① 要求"
+    write_set:
+      - "`docs/requirements/**`"
     reads: [request-text, feedback-docs]
     writes: [req-usdm, req-rdra, use-cases, req-review]
     allowed_writes: [requirements-dir]
@@ -489,6 +488,9 @@ processes:
     stage: decide
     kind: subagent
     template_row: "② 決定"
+    write_set:
+      - "`docs/nfr/**`"
+      - "`docs/adr/**`"
     reads: [req-usdm, req-rdra, use-cases]
     writes: [nfr, adr, adr-review]
     allowed_writes: [nfr, adr-dir]
@@ -499,6 +501,23 @@ processes:
     stage: foundation
     kind: subagent
     template_row: "③ 基盤 (機械)"
+    write_set:
+      - "`docs/rules/**`"
+      - "`.dependency-cruiser.cjs`"
+      - "`packages/test-support/**`"
+      - "`features/support/**`"
+      - "`cucumber.js`"
+      - "`tsx-register.js`"
+      - "`.distillery/config.yaml`"
+      - "`.github/workflows/**`"
+      - "`.qlty/qlty.toml`"
+      - "`apps/*/`"
+      - "`packages/*/`"
+      - "`package.json`"
+      - "`tsconfig.base.json`"
+      - "`.gitignore`"
+      - "`biome.json`"
+      - "`package-lock.json`。例外: `npm install` が作る `node_modules/**` (gitignore)"
     reads: [adr, rule-templates, support-templates, contracts-catalog, config, skeleton, lockfile, qlty-config]
     writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, qlty-config, lockfile]
     allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, qlty-config, lockfile]
@@ -552,6 +571,8 @@ processes:
     stage: foundation
     kind: subagent
     template_row: "③ 契約骨格"
+    write_set:
+      - "`contracts/**`"
     reads: [adr]
     writes: [contracts-catalog, contracts-src, uc-index]
     allowed_writes: [contracts-src]
@@ -561,6 +582,8 @@ processes:
     stage: foundation
     kind: subagent
     template_row: "③ 画面部品"
+    write_set:
+      - "`docs/design/**`"
     reads: [req-rdra, use-cases, adr, nfr]
     writes: [design]
     allowed_writes: [design]
@@ -570,6 +593,16 @@ processes:
     stage: foundation
     kind: subagent
     template_row: "③ 基盤 (仕上げ)"
+    write_set:
+      - "`.distillery/config.yaml`"
+      - "`.github/workflows/**`"
+      - "`docs/adr/architecture.md`"
+      - "`packages/ui/**`"
+      - "`package-lock.json`"
+      - "`.qlty/qlty.toml`"
+      - "`apps/*/test/contract/**`"
+      - "`packages/contracts/**`"
+      - "`<run>/reports/**` (チェックポイントが書く。slug は bootstrap)。例外: `npm install` が作る `node_modules/**` (gitignore)"
     reads: [adr, contracts-catalog, req-rdra, config, design, skeleton, lockfile, qlty-config, contracts-src, contract-tests, depcruise-config, reports]
     writes: [config, ci, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
     allowed_writes: [config, ci, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
@@ -629,6 +662,10 @@ processes:
     stage: scenario
     kind: subagent
     template_row: "④ scenario"
+    write_set:
+      - "`features/<業務>/<slug>.feature`"
+      - "`features/acceptance/**`"
+      - "`<run>/issues/**`"
     reads: [use-cases, req-usdm, req-rdra, rules, feature]
     writes: [feature, acceptance]
     allowed_writes: [feature, acceptance, issues]
@@ -639,6 +676,12 @@ processes:
     stage: contract
     kind: subagent
     template_row: "④ contract"
+    write_set:
+      - "`contracts/**`"
+      - "`apps/*/test/contract/**`"
+      - "`apps/<datastore_owner>/migrations/**`"
+      - "`packages/contracts/**`"
+      - "`<run>/issues/**`"
     reads: [use-cases, feature, req-rdra, contracts-src]
     writes: [contracts-src, uc-index, contract-slice, contract-tests, migrations, contracts-code, issues]
     allowed_writes: [contracts-src, contract-tests, migrations, contracts-code, issues]
@@ -649,6 +692,11 @@ processes:
     stage: scaffold
     kind: subagent
     template_row: "④ scaffold"
+    write_set:
+      - "`features/step_definitions/**`"
+      - "`apps/<tier>/src/**/*.test.ts`"
+      - "`apps/<tier>/src/**` (テストが import する入口の最小スタブ。**新規ファイルだけ**。既存ファイルの変更・削除は不可)"
+      - "`<run>/reports/**` (完了条件の `--expect-red unit` が書く。単独の段なので競合しない)"
     reads: [feature, acceptance, steps, features-support, test-support, contract-slice, rules, config]
     writes: [steps, tier-src, reports]
     allowed_writes: [steps, tier-src, reports]
@@ -664,6 +712,10 @@ processes:
     kind: subagent
     parallel: true
     template_row: "④ tier"
+    write_set:
+      - "`apps/<tier>/**`"
+      - "`<run>/attempt-<n>/assumptions.<tier>.yaml`"
+      - "`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` の結果。リポの外。使い終えたら削除)"
     reads: [rules, feature, contract-slice, contracts-code, use-cases, req-usdm, req-rdra, design, ui, tier-src, test-support, findings]
     writes: [tier-src, assumptions, issues-tier, migrations]
     allowed_writes: [tier-dir, assumptions, issues-tier]
@@ -676,6 +728,11 @@ processes:
     stage: integrate
     kind: subagent
     template_row: "④ integrate"
+    write_set:
+      - "`features/step_definitions/**`"
+      - "`features/support/**`"
+      - "`<run>/reports/**`"
+      - "`<run>/traces/**` (完了条件の runGates が書く。integrate は単独の段なので競合しない)"
     reads: [feature, steps, features-support, test-support, contract-slice, tier-src, contracts-code, use-cases, config]
     writes: [steps, features-support, reports, traces]
     allowed_writes: [steps, features-support, reports, traces]
@@ -689,6 +746,8 @@ processes:
     kind: subagent
     parallel: true
     template_row: "④ verify"
+    write_set:
+      - "`<run>/attempt-<n>/findings.<tier>.yaml`"
     reads: [reports, traces, assumptions, feature, use-cases, req-usdm, req-rdra, rules, contract-slice, tier-src, uc-index, asbuilt-system, skill-docs]
     writes: [findings]
     allowed_writes: [findings]
@@ -698,6 +757,10 @@ processes:
     stage: asbuilt
     kind: subagent
     template_row: "④ asbuilt"
+    write_set:
+      - "`docs/as-built/<業務>/<UC>/**`"
+      - "`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)"
+      - "`<run>/reports/**` (depcruise の結果と抽出の集計)"
     reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system, depcruise-config, tier-src]
     writes: [reports, asbuilt-uc, asbuilt-index, asbuilt-system, asbuilt-report]
     allowed_writes: [asbuilt-uc, asbuilt-system, reports]
@@ -998,6 +1061,9 @@ processes:
     stage: feedback
     kind: subagent
     template_row: "還流 (ADR)"
+    write_set:
+      - "`docs/adr/**`"
+      - "`.distillery/logs/feedback/<b>/<issue>.result.json`"
     reads: [feedback-docs, adr]
     writes: [adr, feedback-result]
     allowed_writes: [adr-dir, feedback-result]
@@ -1009,6 +1075,12 @@ processes:
     stage: feedback
     kind: subagent
     template_row: "還流 (契約)"
+    write_set:
+      - "`contracts/**`"
+      - "`apps/*/test/contract/**`"
+      - "`apps/<datastore_owner>/migrations/**`"
+      - "`packages/contracts/**`"
+      - "`.distillery/logs/feedback/<b>/<issue>.result.json`"
     reads: [feedback-docs, contracts-src, uc-index, config]
     writes: [contracts-src, contract-tests, migrations, contracts-code, feedback-result]
     allowed_writes: [contracts-src, contract-tests, migrations, contracts-code, feedback-result]

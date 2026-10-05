@@ -40,7 +40,7 @@
    記録付きのゲートは全ティアの受理後にオーケストレータが 1 回だけ回す。
    commands 中の `{slug}` は UC の slug に、`{report}` は OS の一時ファイル (`mktemp` の結果。リポの外) に置き換えて直接実行し、使い終えたら消す
    (`<run>/reports/` に書かない。write-set の外で、並列ティアと競合する)
-5. 自分で決めた判断を AssumptionRecord に書く (`references/assumption-record.md`)。書いたら
+5. 自分で決めた判断を AssumptionRecord に書く (`<skills>/d2-common/references/assumption-record.md`)。書いたら
    `validateAssumptions.js record` を実行し ok を確認する
 6. 契約テスト (`test/contract/`) は生成物。落ちるなら実装を直す。契約の側が間違っていると思うなら `issues/` に `kind: contract` で起票し、
    実装は契約どおりにする (「動くように契約と違うことをする」を禁止)

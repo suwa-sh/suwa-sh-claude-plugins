@@ -5,7 +5,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
 
 ```
 .distillery/
-  config.yaml                       # 実行設定 (config-schema.md)
+  config.yaml                       # 実行設定 (d2-common/references/config-schema.md)
   runs/<uc_slug>/
     events.jsonl                    # 追記のみ。1 行 1 イベント {seq, ts, type, ...}
     stages/<stage>.done.yaml        # 完了の正。存在 = 完了。中身は完了時刻と要点 (commit, attempt など。scenario / contract / tier / integrate は carry_over_status (要求の差分で残った作業の項目ごとの対応状況 {item, status: done|cannot, detail}) も。0.1.30)

@@ -67,7 +67,7 @@ description: >-
   headless などで事前に与えられた回答が、その確認ページの問いで選べない (例: ゲートが落ちたときの「すべて取り込む」) ときは、推測で別の回答にせず止まって報告する (0.1.29 実走 M4)
 - 上流 (要求・ADR・契約) の再生成はしない。ズレは `basis.js check` で見つけ、課題ファイル `docs/feedback/` にする (要求の課題は要求の差分が、ルール・契約の課題は還流が、持ち主のスキルで直して main へ取り込む)
 
-詰まったら各スキルの `references/troubleshooting.md` (環境依存の症状と回避策) を見る: [d2-run](references/troubleshooting.md) / [d2-foundation](../d2-foundation/references/troubleshooting.md) / [d2-contract](../d2-contract/references/troubleshooting.md)。手順に無い回避策を使ったら報告に書く。
+詰まったら各スキルの `references/troubleshooting.md` (環境依存の症状と回避策) を見る: 索引は [../d2-common/references/troubleshooting.md](../d2-common/references/troubleshooting.md) (d2-run / d2-foundation / d2-contract)。手順に無い回避策を使ったら報告に書く。
 
 ## d2-run が直接読み書きするもの
 
@@ -175,7 +175,7 @@ design は config も契約も読まないので、契約の骨格の直後に�
 ## ④ UC の縦切り
 
 `<run>` = `.distillery/runs/<slug>`。`node runState.js open . <slug>` で開き、`node runState.js status <run>` で次の段階を決める。
-開いた直後 (再開時も) に、起動シーケンス 2 で解決したモデル名を記録する (as-built の生成情報とトークン集計で「どのモデルで実行したか」を示すため)。
+開いた直後に、起動シーケンス 2 で解決したモデル名を記録する (as-built の生成情報とトークン集計で「どのモデルで実行したか」を示すため)。再開時は、run の `models_resolved` に同じ ID が記録済みなら記録しない (別名しか無いときだけ解決済みの ID で記録し直す。0.1.30 実走 N2)。
 ただし squash 済みで配送の done が無い再開 (`merge=hold` で止めた後など) では、記録を配送の 6 まで遅らせ、配送の done と同じ commit に含める
 (追跡ファイルの `events.jsonl` が変わると feature が clean でなくなり、main へ取り込めない):
 `node runState.js event <run> models_resolved '{"session":"<このセッションのモデル名>","implementer":"<実装者の解決名>","verifier":"<Verifier の解決名>"}'`
@@ -184,7 +184,7 @@ Agent ツールの別名 (`opus` 等) しか分からないときは別名のま
 同じイベントを解決済みの ID で記録し直す (最後の models_resolved が有効)。
 再開時や配送 6 で記録するときは、run の `models_resolved` に解決済みの ID があればそれを流用し、別名で記録し直さない (0.1.28 実走 L2)。
 各段階の done を書いたら `impl(<slug>): <stage>` で commit する (attribution 行を付ける。git-delivery.md「commit の attribution」)。
-**残った作業 (`carry_over`)**: `use-cases.yaml` のこの UC の行に `carry_over` (要求の差分で残った作業。0.1.30) があれば、scenario・contract・tier・integrate の派遣文に追記する (subagent-template.md「残った作業の追記」)。
+**残った作業 (`carry_over`)**: `use-cases.yaml` のこの UC の行に `carry_over` (要求の差分で残った作業。0.1.30) があれば、contract・tier・integrate の派遣文に追記する (subagent-template.md「残った作業の追記」。scenario は write-set が `features/` と issues だけで残った作業に対応できないので追記しない。0.1.30 実走 N12)。
 受理のとき、報告の項目ごとの対応状況を done の data に保存する: `runState.js done <run> <stage> '{..., "carry_over_status": [{"item": "<項目>", "status": "done|cannot", "detail": "<変えたファイル か 理由>"}]}'` (tier はティアごと。`carry_over` が無ければ書かない)。
 review の前に中断しても、再開時に done から集められる。
 
@@ -196,7 +196,7 @@ review の前に中断しても、再開時に done から集められる。
 | **tier** | attempt = `currentAttempt`。関与ティア (下記「関与ティアの決め方」) ごとに sub `d2-implement mode=tier` を**同じメッセージで並列派遣** (model = implementer)。実装者は runGates を使わず commands を直接回す (記録なし)。受理時に `validateAssumptions.js record` を全ティアで実行し、全ティアの受理後に**自分が 1 回だけ** `runGates.js --uc <slug> --tiers <関与ティア> --upto unit` を回す (記録の単一 writer。runGates は gates.json をゲート名単位で置き換えるので、並列の実装者に回させると互いの記録を消す)。落ちたティアは同じ attempt のまま再派遣する | 全ティアの assumptions が ok、上の runGates で static / unit が pass |
 | **contract-gate** | `runGates.js --uc <slug> --tiers <関与ティア> --upto contract`。落ちたら提供側ティアだけ attempt++ で tier に戻る (他ティアはそのまま) | contract まで pass |
 | **integrate** | sub `d2-implement mode=integrate`。続けて `node <skills>/d2-foundation/scripts/genQlty.js --refresh --cwd .` (実装で増えたファイル種別に対する qlty の提案を足す。追加した plugins を報告に書く)。`runGates.js --uc <slug> --tiers <関与ティア> --from static` (増えた plugins の指摘は static に出る。落ちたら報告の分析に従い該当ティアを attempt++ で tier に戻る。verify / review / as-built はこの後なので、直した実装も検証と記録の対象になる)。attempt ≥ 2 (差し戻しの後) も sub は**必ず派遣**する (ティアの入口や注入対象が変わっていれば結線の更新が要る)。sub が「結線の変更は不要」と判断し、integrate.md の完了条件 (runGates `--from uc-bdd`、受入の網羅、計装範囲の `extractAsBuilt --dry-run`) を満たしたと報告すれば、`features/` に差分が無くても done にしてよい。done に `wiring_changed: false` を書く | static から acceptance まで pass |
-| **verify** | ティアごとに sub `d2-verify` を**同じメッセージで並列派遣** (agent_type `distillery2:d2-verifier`、model = verifier、変更ファイル一覧を渡す)。あわせて「他 UC と共有する変更ファイル」の初期候補を渡す: 変更ファイル一覧と `docs/as-built/_system/traceability-index.json` の `ucs[<他の slug>].files` の共通部分 (他 UC の slug つき。追跡表が無ければ「なし」)。追跡表の files は各 UC が**変更した**ファイルなので、基盤から在る共通コードは拾えない。Verifier が import 元を辿って足す (viewpoints.md「他 UC への波及」)。受理時に `validateAssumptions.js verdicts`。報告 1 行目の `model: <ID>` が models_resolved.verifier と違えば models_resolved を記録し直す。blocker があれば該当ティアを attempt++ で tier に戻る (最大 3 回。超えたら人に報告して停止) | 全ティアの findings が ok で blocker 0 |
+| **verify** | ティアごとに sub `d2-verify` を**同じメッセージで並列派遣** (agent_type `distillery2:d2-verifier`、model = verifier、変更ファイル一覧と実装者の固定指示のパス (`<skills>/d2-implement/references/tier-impl.md` の絶対パス。前提の照合先) を渡す)。あわせて「他 UC と共有する変更ファイル」の初期候補を渡す: 変更ファイル一覧と `docs/as-built/_system/traceability-index.json` の `ucs[<他の slug>].files` の共通部分 (他 UC の slug つき。追跡表が無ければ「なし」)。追跡表の files は各 UC が**変更した**ファイルなので、基盤から在る共通コードは拾えない。Verifier が import 元を辿って足す (viewpoints.md「他 UC への波及」)。受理時に `validateAssumptions.js verdicts`。報告 1 行目の `model: <ID>` が models_resolved.verifier と違えば models_resolved を記録し直す。blocker があれば該当ティアを attempt++ で tier に戻る (最大 3 回。超えたら人に報告して停止) | 全ティアの findings が ok で blocker 0 |
 | **review** | 下記「人レビュー」 | `review_approved` 記録済み |
 | **asbuilt** | `<run>/reports/asbuilt.json` があれば消してから (再開・差し戻しの後に前回の集計で受理しないため)、sub `d2-asbuilt` を派遣する (依存グラフの実態 → `extractAsBuilt.js` の抽出 → 要約 → `checkAsBuilt.js` の検査まで、要約役が通しで行う)。受理時の検査 (読むだけ): `node <skills>/d2-asbuilt/scripts/checkAsBuilt.js docs/as-built/<業務>/<UC>/index.md` が exit 0、かつ `<run>/reports/asbuilt.json` があり、`slug` が今回の UC、`attempt` が `runState.js status` の attempt と一致する。さらに要約役の完了報告 (要約した 3 ブロックと引用したコード位置) が届いている (抽出は前回の要約を残すので、成果物だけでは今回の要約を区別できない。subagent-template.md の例外)。どれかを満たさなければ d2-asbuilt に差し戻す。集計の `instrumentation_gaps` (計装なしのティア) か `instrumentation_happy_gaps` (正常系に部品 (call) が無いティア) が空でなければ integrate の結線漏れ: asbuilt を done にせず integrate へ戻して結線を足す (図に出ないティア・部品は as-built の価値を落とす。要約役の報告文ではなく集計ファイルで判断する)。戻し方: `node runState.js return-to-integrate <run> '{"instrumentation_gaps":[...],"instrumentation_happy_gaps":[...]}'` を 1 回だけ実行し、commit する (同じ attempt の Verifier の結果 `findings.<tier>.yaml` を `<run>/invalidated/<ts>_attempt-<n>_findings.<tier>.yaml` へ移し、integrate 以降の done (verify・review を含む) をまとめて退避し、`returned_to_integrate {from, instrumentation_gaps, instrumentation_happy_gaps, moved_findings}` を記録する。findings を先に移すので、途中で止まっても再検証の前の結果は残らない。再開したら同じ判断からもう一度実行してよい)。attempt は上げない (計装の結線は integrate の担当で、ティアのコードは変えない)。integrate の派遣文に集計の 2 つの一覧を添える。verify と review もやり直す (結線を変えるとゲートの結果と承認の根拠が変わる)。受理したら `node <skills>/d2-common/scripts/genDocsReadme.js` (docs/README.md の UC 一覧に実装の記録を載せる。リンク切れなら exit 1)。commit。depcruise が失敗/未実行でも extractAsBuilt は config から「決定からの図」を描く (空にならない) | as-built が生成済み、集計の計装なし / 正常系に部品なしのティアが空 |
 | **deliver** | 下記「配送」。UC の課題を課題ファイルにし、squash して main へ ff merge し、main の上で配送の done を commit する (PR を作らない)。UC はここで終わる (課題は次の UC の前の還流がまとめて直す) | `stages/deliver.done.yaml` が main にあり、`runState.js status` の `unfiled_issues` が空 |
@@ -315,7 +315,8 @@ UC の外の段階。溜まった課題ファイル (`docs/feedback/`) のうち
    1. `git -C <wt> status --porcelain` が空であることを確かめる。`<fb>/<issue>.result.json` を消してから派遣する: rule は sub d2-decide `mode=feedback` (派遣表「還流 (ADR)」)、contract は sub d2-contract `mode=feedback` (派遣表「還流 (契約)」)。課題は `<wt>/docs/feedback/<issue>.md`
    2. 受理 (`<wt>` で): 結果ファイルが `applied` で、rule は `validateAdr.js docs/adr`、contract は `compileContracts.js contracts --check`、`compileRdbSchema.js contracts --check`、`validateUcIndex.js contracts`、
       `genContractTests.js contracts --config .distillery/config.yaml --out-root . --check`、`genRdbDdl.js contracts --config .distillery/config.yaml --out-root . --check` がすべて exit 0。write-set の外が変わっていない (`git -C <wt> status --porcelain`)。
-      検査は 1 コマンドずつ回す (1 つの sh にまとめない。headless の許可で止まる。0.1.27・0.1.28 実走)
+      検査は 1 コマンドずつ回す (1 つの sh にまとめない。headless の許可で止まる。0.1.27・0.1.28 実走)。
+      契約のスクリプトに `--cwd` は無いので、コマンドの実行ディレクトリを `<wt>` にして回す (`cd <wt> && node <skills>/d2-contract/scripts/compileContracts.js contracts --check` の形。リポのルートから回すと main の契約を検査してしまう。0.1.30 実走 N8)
    3. `FB commit-issue <issue>`: 原本 (rule は番号付きの ADR。索引は含めない。contract は分割ファイル) と課題ファイルの削除を 1 commit にする (trailer `Feedback-Consumed:`・`Feedback-Kind:`・`Feedback-From-UC:`)。
       `result` が `already-applied` (契約の分割ファイルに差分が無い。課題の指摘が既に main にある) なら次の課題へ (5 の 4・5 は飛ばす。static は回さず、派遣が作り直した生成物はスクリプトが捨てる (`discarded: true`)。確認ページにも載せるだけで聞かない)
    4. `FB regen` → `runGates.js --uc d2-feedback --only static` (`<wt>` で。全ティア)。通れば `FB record-static <issue>`
@@ -384,7 +385,7 @@ UC の外の段階。溜まった課題ファイル (`docs/feedback/`) のうち
 
 ## 参照
 
-- [references/config-schema.md](references/config-schema.md) — `.distillery/config.yaml`
+- [../d2-common/references/config-schema.md](../d2-common/references/config-schema.md) — `.distillery/config.yaml` (0.1.31 で d2-common へ)
 - [references/run-state.md](references/run-state.md) — events / done / attempt
 - [references/subagent-template.md](references/subagent-template.md) — 派遣の変数と write-set
 - [references/git-delivery.md](references/git-delivery.md) — branch / squash / main への取り込み / worktree / trailer
