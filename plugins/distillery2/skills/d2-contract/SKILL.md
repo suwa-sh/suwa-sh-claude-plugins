@@ -57,7 +57,7 @@ contracts/
   - consumer stub (`.json`) は各 `stubs/` の `.distillery2-generated.json` (生成一覧) に載るファイルだけを削除対象にする。手書き stub は消さない。
 - `--uc <slug>` 指定時は、`generated/slices/<slug>/contract-slice.json` の実在 (無ければ exit 2) と、
   source からの bundle 鮮度 (`compileContracts --check` 相当、古ければ exit 1) を先に検証する。古い契約からテストを作らない。
-- **消費側 API クライアント** (`types.ts` / `client.ts` / `server.ts`) は全生成でも `--uc` でも**全 operation から生成する** (型・経路・クライアントは UC 横断。UC で縮めると先に作った UC 分が消えるため)。consumer は `client.ts` を、provider は `types.ts` / `server.ts` を使う ([tier-impl.md](../d2-implement/references/tier-impl.md) の read-set)。
+- **消費側 API クライアント** (`types.ts` / `client.ts` / `server.ts`) は全生成でも `--uc` でも**全 operation から生成する** (型・経路・クライアントは UC 横断。UC で縮めると先に作った UC 分が消えるため)。consumer は `client.ts` を、provider は `types.ts` / `server.ts` を使う (ティア実装者の手順書 (d2-implement の mode=tier) の read-set)。
 
 ## mode=skeleton (段階③)
 

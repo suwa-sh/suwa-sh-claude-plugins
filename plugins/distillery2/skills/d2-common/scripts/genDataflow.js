@@ -241,19 +241,49 @@ function diagramSizes(md) {
   return out;
 }
 
+/** 派遣表の「派遣ごとの write-set」(d2-run の subagent-template.md の管理ブロック。0.1.31) */
+const TEMPLATE = path.join(__dirname, '..', '..', 'd2-run', 'references', 'subagent-template.md');
+const WS_BEGIN = '<!-- distillery2:dispatch-write-sets:begin -->';
+const WS_END = '<!-- distillery2:dispatch-write-sets:end -->';
+
+/** 派遣 1 つ分の write-set の文面: write_set の断片を `、` で結ぶ (注記はパスと同じ断片に書いてあるので、そのまま並べる) */
+function writeSetText(p) { return (p.write_set || []).join('、'); }
+
+function renderDispatchWriteSets(df) {
+  const rows = df.processes.filter(p => p.kind === 'subagent' && p.template_row);
+  const L = ['| 段階 | write-set |', '|---|---|'];
+  for (const p of rows) L.push(`| ${p.template_row} | ${cell(writeSetText(p))} |`);
+  return L.join('\n');
+}
+
+/** 管理ブロックの中だけを差し替える。外は 1 文字も触らない (genDocsReadme と同じ約束) */
+function spliceBlock(text, body) {
+  const i = text.indexOf(WS_BEGIN);
+  const j = text.indexOf(WS_END);
+  if (i < 0 || j < 0 || j < i) throw new Error(`管理ブロックの印が無い: ${TEMPLATE} (${WS_BEGIN} 〜 ${WS_END})`);
+  return `${text.slice(0, i + WS_BEGIN.length)}\n${body}\n${text.slice(j)}`;
+}
+
 function main(argv) {
-  const text = render(D.load());
+  const df = D.load();
+  const text = render(df);
+  const tplCur = fs.existsSync(TEMPLATE) ? fs.readFileSync(TEMPLATE, 'utf8') : null;
+  const tplNew = tplCur === null ? null : spliceBlock(tplCur, renderDispatchWriteSets(df));
   if (argv.includes('--check')) {
     const cur = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
     if (cur !== text) { console.error(`stale: ${path.relative(process.cwd(), OUT)} (node genDataflow.js で再生成する)`); return 1; }
-    console.log('dataflow.md: up to date');
+    // 派遣表が無ければ検査できない (スキル群は兄弟として並ぶ前提。d2-run が欠けた配置は壊れている)。黙って通さない (差分レビュー 1 ラウンド目)
+    if (tplCur === null) { console.error(`missing: ${path.relative(process.cwd(), TEMPLATE)} (派遣表が無いので派遣ごとの write-set を検査できない)`); return 1; }
+    if (tplCur !== tplNew) { console.error(`stale: ${path.relative(process.cwd(), TEMPLATE)} の派遣ごとの write-set (node genDataflow.js で再生成する)`); return 1; }
+    console.log('dataflow.md and dispatch write-sets: up to date');
     return 0;
   }
   fs.writeFileSync(OUT, text);
   console.log(`wrote ${path.relative(process.cwd(), OUT)}`);
+  if (tplCur !== null && tplCur !== tplNew) { fs.writeFileSync(TEMPLATE, tplNew); console.log(`wrote ${path.relative(process.cwd(), TEMPLATE)} (dispatch write-sets)`); }
   return 0;
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { render, diagramSizes, MAX_STORE_NODES };
+module.exports = { render, diagramSizes, MAX_STORE_NODES, renderDispatchWriteSets, writeSetText, spliceBlock, main, TEMPLATE, WS_BEGIN, WS_END };

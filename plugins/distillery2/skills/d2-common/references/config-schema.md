@@ -1,3 +1,4 @@
+<!-- 0.1.31: d2-run/references から d2-common へ移した (書き手は d2-foundation の genConfig.js、読み手は d2-run・runGates.js・d2-implement・d2-foundation) -->
 # `.distillery/config.yaml` の形
 
 対象プロジェクトの実行設定。段階③ (d2-foundation phase=F5) が ADR と契約カタログから生成し、人が確認する。

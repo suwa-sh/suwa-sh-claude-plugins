@@ -15,7 +15,7 @@ description: >-
 引数: `uc=<slug> tier=<tier_id> attempt=<n> run=<.distillery/runs/<slug> へのパス> assumptions=<attempt-<n>/assumptions.<tier>.yaml へのパス>`
 
 観点の正本は [references/viewpoints.md](references/viewpoints.md)。前提の正本は
-`../d2-implement/references/assumption-record.md`。
+[../d2-common/references/assumption-record.md](../d2-common/references/assumption-record.md)。
 
 ## 読んでよいもの (read-set)
 
@@ -29,7 +29,7 @@ description: >-
 | ルール | `docs/rules/common.md`、`docs/rules/tier-<kind>.md`、`docs/rules/testing.md` |
 | 契約 | `contracts/generated/slices/<slug>/contract-slice.json` (と rdb-slice.yaml) |
 | 実装 | `git diff --name-only <base_head>..HEAD` の変更ファイル (呼び出し側が一覧を渡す)。自ティアの `apps/<tier>/` |
-| 固定指示 | `<skills>/d2-implement/references/tier-impl.md` (前提の照合先として) |
+| 固定指示 | 派遣文で渡された「実装者の固定指示」のパス (`<skills>/<実装者のスキル>/references/<固定指示>.md` の形。前提の照合先として。d2-run が渡す。このスキルから他スキルの手順書を直接参照しない。0.1.31) |
 | 他 UC への波及 (例外) | 呼び出し側が渡す「他 UC と共有する変更ファイル」、自ティアの変更ファイルの import 元 (`rg` で辿る)、`contracts/uc-index.yaml`、`docs/as-built/_system/traceability-index.json`、候補に紐づく他 UC のシナリオ (`features/<業務>/<他 slug>.feature`) |
 
 設計書や個別仕様書は存在しない。上の「他 UC への波及」の例外を除き、他 UC・関与しない契約・契約 source の全量は読まない。

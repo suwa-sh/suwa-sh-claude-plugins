@@ -2,6 +2,24 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.31] - 2026-10-06
+
+② 共通化の後半 (todo 2-5〜2-7): 定義の置き場所を 1 つにし、手順書の重複を消し、照合の限界を詰めた。あわせて 0.1.30 の試し運転の小さい課題 4 件 (N2・N4・N8・N12) を直した。
+
+### Changed
+
+- 2-5 定義の集約: `config-schema.md` (d2-run)・`assumption-record.md` (d2-implement)・`adr-inputs.md` (d2-foundation) を `d2-common/references/` へ移した (git mv)。参照 12 か所とスクリプトのコメント 4 か所を付け替えた。
+  トラブルシューティングは `d2-common/references/troubleshooting.md` (索引) を置き、各スキルは索引だけを指す。
+  d2-common SKILL.md に「参照の向き」: d2-run と d2-common 以外のスキルは他スキルの手順書 (SKILL.md・references/・templates/) を参照しない (他スキルのスクリプトの呼び出しと、派遣文で渡されたパスはよい)。
+  d2-verify は「実装者の固定指示」(`tier-impl.md`) のパスを派遣文で受ける (d2-run が渡す。派遣表 ④ verify の追記)。`plugin-layout.test.js` が規則を検査する (相対パス・`<skills>/` 記法・裸の `d2-<他>/references/`)
+- 2-6 派遣表の write-set を正本から生成: 正本 (`dataflow.yaml`) の subagent 15 処理に `write_set` (派遣文の文面の断片の配列。注記はパスと同じ断片) を持たせ、派遣表の write-set 列を外して
+  「派遣ごとの write-set」の管理ブロック (`<!-- distillery2:dispatch-write-sets:begin/end -->`) を `genDataflow.js` が生成する (`--check` で派遣表も見る)。
+  `dataflow.test.js` (d) は `write_set` と `allowed_writes` の両向きの整合・`notes` の包含・生成ブロックの鮮度と、テストの写し `fixtures/allowed-writes.golden.json` (文面・notes・allowed_writes の ID と実パス) との一致を見る (正本の 1 か所だけ変えても止まる)
+- 2-7 照合の限界: 使われていない alias 6 件を正本から落とし、「各 alias は手順書のどこかで使われている」テスト (d2) を足した。照合の限界 (バッククォートのパス表記だけ。文章は見ない) を d2-common SKILL.md と正本の冒頭に明記
+- 2-4 (version の読み先) はスキルが version を読んでいないので todo から外した
+- N2: ④ の冒頭の `models_resolved` は再開時に同じ ID が記録済みなら記録しない / N8: 還流の受理の検査は実行ディレクトリを `<wt>` にして回す (契約のスクリプトに `--cwd` は無い) / N12: 残った作業の追記から scenario を外す (write-set が `features/` と issues だけ)
+- N4: `carryOver.js` は内容が変わらないときはファイルを書かない (`changed` を返す)
+
 ## [0.1.30] - 2026-10-05
 
 0.1.28 の試し運転で見つかった振る舞いの変わる課題 5 件 (L1・L7・L10・L11・L14。方針は 2026-10-04 のユーザー決定) と、0.1.29 の試し運転の課題 6 件 (M1〜M6) を直した。

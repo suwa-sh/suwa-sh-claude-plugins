@@ -1,7 +1,7 @@
 # d2-run トラブルシューティング
 
 オーケストレータ (d2-run) の実行環境 (headless の許可、npm、補助スクリプト) で踏んだ問題。実走で踏んだ環境依存の問題と回避策をためる (手順そのものには書かない)。項目は「症状 → 原因 → 回避」の順。
-他のスキルの項目: [`d2-foundation`](../../d2-foundation/references/troubleshooting.md) / [`d2-contract`](../../d2-contract/references/troubleshooting.md)
+他のスキルの項目: [索引](../../d2-common/references/troubleshooting.md) (d2-common)
 
 ③ の `npm install` は 0.1.22 から d2-foundation (F7) が回す。npm 10 で落ちる件は [d2-foundation の項目](../../d2-foundation/references/troubleshooting.md) に移した。
 
@@ -14,6 +14,7 @@
 - 0.1.27 の試し運転でも、還流の worktree での `cd <wt> && git status` と、受理の検査 (validateAdr・compileContracts など) を 1 つの sh にまとめたものが同じ症状で止まった。
   受理の検査も `git -C <wt>` と同様に worktree のパスを直書きして 1 コマンドずつ回す (手順書の例のとおり)
 - 0.1.28 の試し運転でも `genDocsReadme.js; echo exit=$?` と、受理の検査をまとめた sh で再発した。手順書の例には `$?` も sh も無い。コマンドを単独で回し、ツールの結果の exit code で見る
+- 0.1.30 の試し運転では `cd <wt> && git status` は止まったが、`cd <wt> && node <スクリプト>` は通った (止まるのは git を含む複合コマンド)。還流の受理の検査 (契約のスクリプトに `--cwd` は無い) は `cd <wt> && node ...` の形でよい
 
 ## headless で runGates の出力を `> <ファイル>` に保存できない
 

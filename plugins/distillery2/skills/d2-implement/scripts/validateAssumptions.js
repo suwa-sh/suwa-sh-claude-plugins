@@ -10,7 +10,7 @@
  *
  * option はすべて必須(identity 照合を省略できない)。未知 option / 値欠落 / 重複 / 余剰引数は拒否する。
  *
- * 正本: skills/d2-implement/references/assumption-record.md
+ * 正本: skills/d2-common/references/assumption-record.md (0.1.31 で d2-common へ)
  *       skills/d2-verify/references/viewpoints.md (assumption_conformance)
  * 出力: stdout に JSON 1 行。ok=false なら exit 1。
  * 依存: Node 18+ 標準モジュールのみ(YAML は d2-common/scripts/lib/yaml.js)。

@@ -11,7 +11,7 @@
  * - --tiers: ティア単位のジョブ (static / unit / contract) を UC に関与するティアだけに絞る
  * - --expect-red は、実行した全ティアが「テストの assertion で落ちた」ときだけ成功 (通ったティアがあれば失敗)
  *
- * - コマンドは .distillery/config.yaml から取る (skills/d2-run/references/config-schema.md)
+ * - コマンドは .distillery/config.yaml から取る (skills/d2-common/references/config-schema.md)
  * - {slug} と {report} を置換する。レポートは .distillery/runs/<slug>/reports/<gate>[.<tier>].json
  * - 判定は終了コードだけ。定義の無いコマンドは skipped
  * - --expect-red <gate>: そのゲートは「落ちること」が成功 (scaffold の red baseline 確認用)

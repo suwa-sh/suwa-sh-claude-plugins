@@ -1,7 +1,7 @@
 # d2-contract トラブルシューティング
 
 契約と契約テスト (genContractTests / 提供側の test-app) で踏んだ問題。実走で踏んだ環境依存の問題と回避策をためる (手順そのものには書かない)。項目は「症状 → 原因 → 回避」の順。
-他のスキルの項目: [`d2-run`](../../d2-run/references/troubleshooting.md) / [`d2-foundation`](../../d2-foundation/references/troubleshooting.md)
+他のスキルの項目: [索引](../../d2-common/references/troubleshooting.md) (d2-common)
 
 ## 契約テストの 401 が、提供側のテスト用ヘッダ補完のせいで落ちる (0.1.16 より前の実装)
 

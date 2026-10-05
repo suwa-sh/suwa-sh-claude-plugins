@@ -131,10 +131,10 @@ F1・F2 のスクリプトは `--check` (書かずに、生成物が古ければ
 
 ## 参照
 
-- [references/adr-inputs.md](references/adr-inputs.md) — F1/F5 が読む ADR キー
+- [../d2-common/references/adr-inputs.md](../d2-common/references/adr-inputs.md) — F1/F5 が読む ADR キー (0.1.31 で d2-common へ。書き手の d2-decide と読み手の d2-foundation が共に参照する)
 - [references/rule-templates/](references/rule-templates/) — 開発ルールの土台
 - [references/test-infra.md](references/test-infra.md) — 検証済みライブラリ版と API、v1 から落としたもの
 - [references/repo-layout.md](references/repo-layout.md) — 対象リポのレイアウト
 - [references/ci.md](references/ci.md) — CI の job 構成
 - [references/troubleshooting.md](references/troubleshooting.md) — qlty / biome で踏んだ問題と回避策
-- 実行設定の形: [../d2-run/references/config-schema.md](../d2-run/references/config-schema.md)
+- 実行設定の形: [../d2-common/references/config-schema.md](../d2-common/references/config-schema.md)

@@ -2,7 +2,7 @@
 /**
  * adr.js — docs/adr/*.md の front matter を読む (d2-foundation 内の共有ヘルパ)
  *
- * 読む front matter キー (adr-inputs.md が正本):
+ * 読む front matter キー (skills/d2-common/references/adr-inputs.md が正本。0.1.31 で d2-common へ):
  *   id, title, status, scope[], nfr_refs[]
  *   rules[]: { scope, text, arch_test?: {from, to, effect, level} }  ※ level は d2-decide の検証専用。ここでは読まない
  *   ティア構成 ADR (accepted かつ非空の tiers[] を持つ 1 本): tiers[]{id,dir,kind,lang,provides[],consumes[]}, datastore_owner

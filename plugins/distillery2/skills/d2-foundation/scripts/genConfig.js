@@ -6,7 +6,7 @@
  *   node genConfig.js --adr docs/adr --contracts contracts/contracts.json \
  *                     --out .distillery/config.yaml [--cwd <repo>]
  *
- * - 形は skills/d2-run/references/config-schema.md が正本。
+ * - 形は skills/d2-common/references/config-schema.md が正本 (0.1.31 で d2-common へ)。
  * - TypeScript の npm workspaces を既定のコマンド構成にする (`npm run <script> -w apps/<dir>`)。
  * - contracts.json が無ければ contracts: [] にして警告する。
  * - models.verifier 既定は `opus` (Agent/Task の model パラメータに渡せる有効値。`claude-opus-5` のような

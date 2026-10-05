@@ -82,6 +82,7 @@ test('0.1.29: 手順書に CLAUDE_PLUGIN_ROOT は d2-common の「パスの書�
         const n = (text.match(/CLAUDE_PLUGIN_ROOT/g) || []).length;
         if (n) hits.push(`${path.relative(plugin, p)}:${n}`);
         for (const m of text.matchAll(/<skills>\/([a-z0-9-]+)\//g)) if (!skills.includes(m[1])) unknown.add(`${path.relative(plugin, p)}: ${m[1]}`);
+        // `<skills>/<実装者のスキル>/...` のような置き換え変数は skill 名の検査の対象外 (正規表現が [a-z0-9-] なので元々当たらない)
         // 置き換え変数や glob を含まない具体のパスは、skills の下に実在する (派遣文の固定指示など。差分レビュー 2 ラウンド目)
         for (const m of text.matchAll(/<skills>\/([A-Za-z0-9_./-]+)/g)) {
           const rel = m[1].replace(/[.,:)]+$/, '');
@@ -144,4 +145,24 @@ test('0.1.29: プラグイン配置で、全スクリプトの構文と相対 re
 
 test('0.1.29: skills/* を平置きした配置 (プラグインのルート無し) でも同じ検査が通る', () => {
   checkLayout(flatCopy(), 'flat');
+});
+
+test('0.1.31 2-5: 参照の向き: d2-run と d2-common 以外のスキルは、他スキルの手順書 (SKILL.md・references/・templates/) を参照しない (scripts/ はよい。裸の d2-<他>/references/ も検出)', () => {
+  const skills = fs.readdirSync(path.join(plugin, 'skills')).filter(d => fs.statSync(path.join(plugin, 'skills', d)).isDirectory());
+  const offenders = [];
+  for (const skill of skills) {
+    if (skill === 'd2-run' || skill === 'd2-common') continue;
+    const files = [];
+    (function walk(dir) { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) walk(p); else if (e.name.endsWith('.md')) files.push(p); } })(path.join(plugin, 'skills', skill));
+    for (const f of files) {
+      const text = fs.readFileSync(f, 'utf8');
+      // 相対パス (../d2-x/、../../d2-x/)、<skills>/d2-x/、接頭辞の無い裸の d2-x/ のうち、SKILL.md・references/・templates/ を指すもの
+      for (const m of text.matchAll(/(?:\.\.\/)+(d2-[a-z]+)\/(SKILL\.md|references\/|templates\/)|<skills>\/(d2-[a-z]+)\/(SKILL\.md|references\/|templates\/)|(?<![A-Za-z0-9_./-])(d2-[a-z]+)\/(SKILL\.md|references\/|templates\/)/g)) {
+        const other = m[1] || m[3] || m[5];
+        if (other === skill || other === 'd2-common') continue;
+        offenders.push(`${path.relative(plugin, f)}: ${m[0]}`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, []);
 });

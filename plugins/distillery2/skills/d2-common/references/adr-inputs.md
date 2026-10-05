@@ -1,3 +1,4 @@
+<!-- 0.1.31: d2-foundation/references から d2-common へ移した (書き手は d2-decide の ADR、読み手は d2-foundation の生成器 adr.js) -->
 # ADR が持つ機械可読キー (d2-foundation が読む範囲)
 
 F1 (genRules) と F5 (genConfig / genSkeleton) が `docs/adr/NNNN-<slug>.md` の front matter から読むキーだけを定める。

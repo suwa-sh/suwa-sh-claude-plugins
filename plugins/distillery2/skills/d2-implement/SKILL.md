@@ -30,7 +30,7 @@ v1 (distillery-impl:dist-impl-implement) からの変更点:
 | tier | [references/tier-impl.md](references/tier-impl.md) | rules + slice + 生成型 + feature → `apps/<tier>/src`、AssumptionRecord。自ティアの static / unit を check-only で通す |
 | integrate | [references/integrate.md](references/integrate.md) | 骨格 + test-support → step 実装、計装の結線。`runGates.js --from uc-bdd` が通る |
 
-共通の規約: [references/gates.md](references/gates.md) (5 ゲート)、[references/assumption-record.md](references/assumption-record.md) (前提の記録)。
+共通の規約: [references/gates.md](references/gates.md) (5 ゲート)、[../d2-common/references/assumption-record.md](../d2-common/references/assumption-record.md) (0.1.31 で d2-common へ。d2-verify も読む) (前提の記録)。
 
 ## 手順 (全 mode 共通)
 

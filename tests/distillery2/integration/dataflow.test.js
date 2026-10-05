@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 
 const PLUGIN = path.resolve(__dirname, '../../../plugins/distillery2');
 const D = require(path.join(PLUGIN, 'skills/d2-common/scripts/dataflow.js'));
@@ -105,32 +105,76 @@ test('サブエージェントの親の writes / reads は子 (phase ごとの�
   assert.deepEqual(problems, []);
 });
 
-test('(d) 派遣表の write-set = allowed_writes、writes ⊆ allowed_writes、パスでも notes でもない文言が無い', () => {
-  const tmpl = read('skills/d2-run/references/subagent-template.md').split('\n');
+test('(d) 派遣ごとの write-set は正本の write_set から生成 (--check)。write_set は allowed_writes と両向きに整合し、notes を含み、パスでも notes でもない文言が無い。golden と一致する (0.1.31)', () => {
+  const G = require(path.join(PLUGIN, 'skills/d2-common/scripts/genDataflow.js'));
+  const tmplText = read('skills/d2-run/references/subagent-template.md');
+  const tmpl = tmplText.split('\n');
   const problems = [];
   const subagents = df.processes.filter(p => p.kind === 'subagent');
+  // 派遣表の表 (手書き) に write-set の列が無く、全行が正本に載っている
+  const header = tmpl.find(l => l.startsWith('| 段階 | role |'));
+  assert.ok(header && !header.includes('write-set'), '派遣表の表に write-set の列は置かない (正本から生成する)');
+  const rows = tmpl.filter(l => /^\| [①②③④還]/.test(l) && !tmplText.slice(tmplText.indexOf(G.WS_BEGIN), tmplText.indexOf(G.WS_END)).includes(l)).map(l => cells(l)[0]);
+  for (const r of rows) if (!subagents.some(p => r === p.template_row || r.startsWith(p.template_row + ' '))) problems.push(`派遣表の行 ${r} が正本に無い`);
+  // 逆向き: 正本の各派遣に手書きの行がちょうど 1 つある (行を落とすと d2-run が role・skill・指示を得られない。差分レビュー 3 ラウンド目)
+  for (const p of subagents) {
+    const n = rows.filter(r => r === p.template_row || r.startsWith(p.template_row + ' ')).length;
+    if (n !== 1) problems.push(`${p.id}: 派遣表の手書きの行 (${p.template_row}) が ${n} 行 (1 行であること)`);
+  }
+  // 生成ブロックが最新 (dataflow.md と一緒に --check)
+  const chk = spawnSync('node', [path.join(PLUGIN, 'skills/d2-common/scripts/genDataflow.js'), '--check'], { encoding: 'utf8' });
+  assert.equal(chk.status, 0, `genDataflow.js --check: ${chk.stderr}`);
+  const golden = JSON.parse(read('../../tests/distillery2/integration/fixtures/allowed-writes.golden.json'));
+  const snapshot = {};
   for (const p of subagents) {
     assert.ok(p.template_row, `${p.id}: subagent には template_row が要る`);
-    const line = tmpl.find(l => l.startsWith(`| ${p.template_row} `));
-    if (!line) { problems.push(`${p.id}: 派遣表に行が無い (${p.template_row})`); continue; }
-    let cell = cells(line)[4];
+    assert.ok(Array.isArray(p.write_set) && p.write_set.length, `${p.id}: subagent には write_set (派遣文の文面の断片) が要る`);
+    // 正本の中の整合: 文面のパス表記 ⇔ allowed_writes (両向き・strict)、notes は文面に含まれる、残りの文言が無い
+    let text = G.writeSetText(p);
     for (const n of p.notes || []) {
-      if (!cell.includes(n)) problems.push(`${p.id}: notes の文言が派遣表に無い: ${n}`);
-      cell = cell.split(n).join(' ');
+      if (!text.includes(n)) problems.push(`${p.id}: notes の文言が write_set に無い: ${n}`);
+      text = text.split(n).join(' ');
     }
-    problems.push(...compare(`${p.id} write-set`, D.backticks(cell), p.allowed_writes || [], { strict: true }));
-    const residual = cell.replace(/`[^`]+`/g, '').replace(/[\s、,()（）・/+=.:：。*]/g, '');
+    problems.push(...compare(`${p.id} write_set`, D.backticks(text), p.allowed_writes || [], { strict: true }));
+    const residual = text.replace(/`[^`]+`/g, '').replace(/[\s、,()（）・/+=.:：。*]/g, '');
     if (residual) problems.push(`${p.id}: パスでも notes でもない文言: ${residual}`);
     const allowed = (p.allowed_writes || []).map(id => stores.get(id));
     for (const w of p.writes || []) {
       const s = stores.get(w);
       if (!allowed.some(a => D.toRegex(a.path).test(D.sample(s.path)))) problems.push(`${p.id}: writes の ${w} が allowed_writes の外`);
     }
+    // golden: 文面の断片・notes・allowed_writes の ID と実パス (正本の 1 か所だけ変えても止まる。変えるときは golden も意図して更新する)
+    snapshot[p.id] = { template_row: p.template_row, write_set: p.write_set, notes: p.notes || [], allowed_writes: (p.allowed_writes || []).map(id => ({ id, path: stores.get(id).path })) };
   }
-  // 派遣表の全行が正本に載っている
-  const rows = tmpl.filter(l => /^\| [①②③④]/.test(l)).map(l => cells(l)[0]);
-  for (const r of rows) if (!subagents.some(p => r === p.template_row || r.startsWith(p.template_row + ' '))) problems.push(`派遣表の行 ${r} が正本に無い`);
   assert.deepEqual(problems, []);
+  assert.deepEqual(snapshot, golden, 'write_set / notes / allowed_writes / store の path が golden (tests/distillery2/integration/fixtures/allowed-writes.golden.json) と違う。意図した変更なら golden を更新する');
+});
+
+test('(d3) genDataflow.js --check は派遣表 (d2-run) が無い配置では exit 1 (黙って通さない。差分レビュー 1 ラウンド目)', () => {
+  const os = require('node:os');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-gen-'));
+  fs.cpSync(path.join(PLUGIN, 'skills/d2-common'), path.join(tmp, 'skills/d2-common'), { recursive: true });
+  const r = spawnSync('node', [path.join(tmp, 'skills/d2-common/scripts/genDataflow.js'), '--check'], { encoding: 'utf8' });
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stderr, /missing: .*subagent-template\.md/);
+});
+
+test('(d2) 正本の各 alias は手順書 (派遣表の生成ブロックを除く) のどこかで使われている (使われない略記を増やさない。0.1.31)', () => {
+  const G = require(path.join(PLUGIN, 'skills/d2-common/scripts/genDataflow.js'));
+  const docs = [];
+  const walk = dir => { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, e.name); if (e.isDirectory()) walk(p); else if (e.name.endsWith('.md') && e.name !== 'dataflow.md') docs.push(p); } };
+  walk(path.join(PLUGIN, 'skills'));
+  const tokens = new Set();
+  for (const f of docs) {
+    // コードフェンス (```) の中は手順書の本文でないので外す。派遣表の生成ブロックは正本の写しなので数えない
+    let text = fs.readFileSync(f, 'utf8').replace(/```[\s\S]*?```/g, ' ');
+    const i = text.indexOf(G.WS_BEGIN); const j = text.indexOf(G.WS_END);
+    if (i >= 0 && j > i) text = text.slice(0, i) + text.slice(j);
+    for (const t of D.backticks(text)) tokens.add(t);
+  }
+  const unused = [];
+  for (const s of df.stores) for (const a of s.aliases || []) if (!tokens.has(a)) unused.push(`${s.id}: ${a}`);
+  assert.deepEqual(unused, []);
 });
 
 test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run の表と一致する', () => {

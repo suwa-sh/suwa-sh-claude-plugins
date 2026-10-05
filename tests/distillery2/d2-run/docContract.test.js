@@ -14,6 +14,15 @@ const TEMPLATE = 'skills/d2-run/references/subagent-template.md';
 const RUN_STATE = 'skills/d2-run/references/run-state.md';
 const DELIVERY = 'skills/d2-run/references/git-delivery.md';
 
+/** 派遣表の「派遣ごとの write-set」(正本から生成した管理ブロック。0.1.31) の行を返す */
+function wsRow(name) {
+  const t = read(TEMPLATE);
+  const block = t.slice(t.indexOf('<!-- distillery2:dispatch-write-sets:begin -->'), t.indexOf('<!-- distillery2:dispatch-write-sets:end -->'));
+  const line = block.split('\n').find(l => l.startsWith(`| ${name} |`));
+  assert.ok(line, `write-set row not found: ${name}`);
+  return line;
+}
+
 /** 表の行 (`| **<stage>** |` や `| ④ <stage>`) を 1 行で返す */
 function row(text, re) {
   const line = text.split('\n').find(l => re.test(l));
@@ -27,18 +36,18 @@ test('記録付きのゲートはオーケストレータが 1 回だけ回す (
   const impl = read('skills/d2-implement/references/tier-impl.md');
   assert.match(impl, /`runGates\.js` は使わない/);
   assert.match(impl, /`\{report\}` は OS の一時ファイル/);
-  const tmplTier = row(read(TEMPLATE), /^\| ④ tier /);
+  const tmplTier = wsRow('④ tier');
   assert.match(tmplTier, /OS の一時ファイル/);
-  assert.doesNotMatch(tmplTier.split('|')[5], /reports/, 'tier の write-set に reports を入れない (並列で記録を消し合う)');
+  assert.doesNotMatch(tmplTier, /reports/, 'tier の write-set に reports を入れない (並列で記録を消し合う)');
 });
 
 test('単独の段 (scaffold / integrate) は runGates の出力先を write-set に持つ', () => {
-  assert.match(row(read(TEMPLATE), /^\| ④ integrate /), /`<run>\/reports\/\*\*`、`<run>\/traces\/\*\*`/);
-  assert.match(row(read(TEMPLATE), /^\| ④ scaffold /), /`<run>\/reports\/\*\*`/);
+  assert.match(wsRow('④ integrate'), /`<run>\/reports\/\*\*`、`<run>\/traces\/\*\*`/);
+  assert.match(wsRow('④ scaffold'), /`<run>\/reports\/\*\*`/);
 });
 
 test('scaffold の入口スタブは新規ファイルだけ・中立の値を返す・動的 import で回避しない', () => {
-  assert.match(row(read(TEMPLATE), /^\| ④ scaffold /), /新規ファイルだけ/);
+  assert.match(wsRow('④ scaffold'), /新規ファイルだけ/);
   const scaffold = read('skills/d2-implement/references/scaffold.md');
   assert.match(scaffold, /型に合う中立の値/);
   assert.match(scaffold, /throw で落とさない/);
@@ -124,7 +133,7 @@ test('③ の後始末は d2-foundation phase=finish。d2-run は gates.json を
   const fnd = read('skills/d2-foundation/SKILL.md');
   assert.match(fnd, /`ui=false` なら F6 と次の F7 を飛ばす/);
   assert.match(fnd, /前の実行の `docs\/design\/` が残っていても取り込まない/);
-  assert.match(row(read(TEMPLATE), /^\| ③ 基盤 \(仕上げ\) /), /`node_modules\/\*\*`/);
+  assert.match(wsRow('③ 基盤 (仕上げ)'), /`node_modules\/\*\*`/);
   assert.match(read(TEMPLATE), /例外: 手順書が回すスクリプトの内部の git/);
 });
 
@@ -377,7 +386,7 @@ test('0.1.29: 手順書のパスは <skills>/ 記法。各 SKILL.md が d2-commo
   }
   assert.match(read(SKILL), /`FB` = `node <skills>\/d2-common\/scripts\/feedbackBatch\.js --cwd <リポのルート>`/);
   assert.match(read(TEMPLATE), /固定指示のパスは `<skills>\/\.\.\.` を絶対パスに展開して/);
-  assert.match(read('skills/d2-verify/SKILL.md'), /`<skills>\/d2-implement\/references\/tier-impl\.md`/);
+  assert.match(row(read(TEMPLATE), /^\| ④ verify /), /<skills>\/d2-implement\/references\/tier-impl\.md/, '0.1.31: 固定指示のパスは d2-verify ではなく派遣表 (d2-run) が持つ');
 });
 
 test('0.1.29: 文言の穴 (モデル ID の流用・フル sha・旧形式は常に -D・鮮度検査のコマンド・record-gate の detail・tiers のカンマ区切り・受理の検査は 1 コマンドずつ)', () => {
@@ -438,11 +447,11 @@ test('0.1.30 L10: 残った作業 → 確認ページ (見込みの宛先) → c
   assert.match(r, /`added: false` \(宛先なし\) なら完了報告に「持ち越せなかった作業」として載せる/);
   assert.match(r, /次に、反映した課題ファイルと取り下げた課題ファイルを `git rm`/, '課題ファイルの削除は carryOver の後');
   const t = read(SKILL);
-  assert.match(t, /\*\*残った作業 \(`carry_over`\)\*\*: `use-cases\.yaml` のこの UC の行に `carry_over`[^\n]*scenario・contract・tier・integrate の派遣文に追記する \(subagent-template\.md「残った作業の追記」\)/);
+  assert.match(t, /\*\*残った作業 \(`carry_over`\)\*\*: `use-cases\.yaml` のこの UC の行に `carry_over`[^\n]*contract・tier・integrate の派遣文に追記する \(subagent-template\.md「残った作業の追記」/);
   assert.match(t, /"carry_over_status": \[\{"item": "<項目>", "status": "done\|cannot", "detail": "<変えたファイル か 理由>"\}\]/);
   assert.match(t, /review の前に中断しても、再開時に done から集められる/);
   const tmpl = read(TEMPLATE);
-  assert.match(tmpl, /\*\*残った作業の追記\*\*[^\n]*scenario・contract・tier・integrate の派遣文に/);
+  assert.match(tmpl, /\*\*残った作業の追記\*\*[^\n]*④ の contract・tier・integrate の派遣文に/);
   assert.match(tmpl, /報告に項目ごとに「対応した \(変えたファイル\)」か「対応できない \(理由。write-set の外など\)」を書く/);
   assert.match(tmpl, /課題の起票は求めない。scaffold と integrate の write-set に `<run>\/issues\/` が無く/);
   const review = section(SKILL, '## 人レビュー (review 段階)', '## 配送 (deliver 段階)');
@@ -504,4 +513,48 @@ test('0.1.30 M5/M6/M1: ゲートの回し直しは 1 回だけ・写しを取る
   assert.match(read('skills/d2-run/references/troubleshooting.md'), /## headless で runGates の出力を `> <ファイル>` に保存できない/);
   assert.match(read('skills/d2-run/references/troubleshooting.md'), /`FB record-gate --detail` にはその gates\.json をそのまま渡す/);
   assert.ok(t.length > 0);
+});
+
+test('0.1.31 2-5: 定義 3 ファイルは d2-common にあり、参照は移動先を指す。d2-verify は固定指示を派遣文から受け、他スキルの手順書を直接参照しない。troubleshooting は d2-common の索引から辿る', () => {
+  for (const f of ['config-schema.md', 'assumption-record.md', 'adr-inputs.md', 'troubleshooting.md']) assert.ok(fs.existsSync(path.join(PLUGIN, 'skills/d2-common/references', f)), f);
+  for (const f of ['skills/d2-run/references/config-schema.md', 'skills/d2-implement/references/assumption-record.md', 'skills/d2-foundation/references/adr-inputs.md']) assert.ok(!fs.existsSync(path.join(PLUGIN, f)), `${f} は移動済み`);
+  assert.match(read(SKILL), /\[\.\.\/d2-common\/references\/config-schema\.md\]/);
+  assert.match(read(SKILL), /索引は \[\.\.\/d2-common\/references\/troubleshooting\.md\]/);
+  assert.match(read('skills/d2-foundation/SKILL.md'), /\.\.\/d2-common\/references\/config-schema\.md/);
+  assert.match(read('skills/d2-foundation/SKILL.md'), /\.\.\/d2-common\/references\/adr-inputs\.md/);
+  assert.match(read('skills/d2-implement/SKILL.md'), /\.\.\/d2-common\/references\/assumption-record\.md/);
+  assert.match(read('skills/d2-implement/references/tier-impl.md'), /<skills>\/d2-common\/references\/assumption-record\.md/);
+  assert.match(read('skills/d2-implement/references/gates.md'), /<skills>\/d2-common\/references\/config-schema\.md/);
+  assert.match(read('skills/d2-decide/references/adr-format.md'), /\.\.\/\.\.\/d2-common\/references\/adr-inputs\.md/);
+  const v = read('skills/d2-verify/SKILL.md');
+  assert.match(v, /\.\.\/d2-common\/references\/assumption-record\.md/);
+  assert.match(v, /\| 固定指示 \| 派遣文で渡された「実装者の固定指示」のパス/);
+  assert.doesNotMatch(v, /d2-implement\/references/);
+  const vp = read('skills/d2-verify/references/viewpoints.md');
+  assert.match(vp, /固定指示 \(派遣文で渡された「実装者の固定指示」のパス\)/);
+  assert.doesNotMatch(vp, /d2-implement\/references/);
+  assert.match(row(read(TEMPLATE), /^\| ④ verify /), /`実装者の固定指示: <パス>` \(`<skills>\/d2-implement\/references\/tier-impl\.md` を絶対パスに展開して渡す/);
+  assert.match(row(read(SKILL), /^\| \*\*verify\*\* \|/), /実装者の固定指示のパス/);
+  for (const rel of ['skills/d2-run/references/troubleshooting.md', 'skills/d2-foundation/references/troubleshooting.md', 'skills/d2-contract/references/troubleshooting.md']) {
+    assert.match(read(rel), /他のスキルの項目: \[索引\]\(\.\.\/\.\.\/d2-common\/references\/troubleshooting\.md\)/, rel);
+  }
+  assert.match(read('skills/d2-common/SKILL.md'), /## 参照の向き \(0\.1\.31\)/);
+});
+
+test('0.1.31 2-6: 派遣表の表に write-set の列が無く、「派遣ごとの write-set」は正本から生成した管理ブロック。{write_set} はその行を指す', () => {
+  const t = read(TEMPLATE);
+  assert.match(t, /\| 段階 \| role \| skill_name \/ skill_args \| model \| additional_instructions \|/);
+  assert.match(t, /## 派遣ごとの write-set \(正本から生成。手で書かない\)/);
+  assert.match(t, /<!-- distillery2:dispatch-write-sets:begin -->\n\| 段階 \| write-set \|/);
+  assert.match(t, /\{write_set\}   ← 下の「派遣ごとの write-set」のその段階の行 \(正本から生成\)/);
+  assert.match(wsRow('③ 基盤 (機械)'), /`apps\/\*\/`、`packages\/\*\/`、`package\.json`、`tsconfig\.base\.json`、`\.gitignore`、`biome\.json`、`package-lock\.json`。例外: `npm install` が作る `node_modules\/\*\*` \(gitignore\)/, '別名が表す書き込み先と注記の位置が保たれる');
+  assert.match(wsRow('④ contract'), /`apps\/<datastore_owner>\/migrations\/\*\*`/);
+});
+
+test('0.1.31 小さい修正: models_resolved は再開時に同じ ID なら記録しない (N2)、還流の受理の検査は <wt> を実行ディレクトリに (N8)、残った作業の追記から scenario を外す (N12)', () => {
+  const t = read(SKILL);
+  assert.match(t, /再開時は、run の `models_resolved` に同じ ID が記録済みなら記録しない/);
+  assert.match(feedbackSection(), /契約のスクリプトに `--cwd` は無いので、コマンドの実行ディレクトリを `<wt>` にして回す/);
+  assert.match(t, /scenario は write-set が `features\/` と issues だけで残った作業に対応できないので追記しない/);
+  assert.match(read('skills/d2-run/references/troubleshooting.md'), /`cd <wt> && node <スクリプト>` は通った/);
 });

@@ -12,7 +12,7 @@
  * 宛先の規則 (全サブコマンド共通): use-cases.yaml の先頭から、status が done でなく、--from でも --skip でもない最初の UC
  * (d2-run の自動選択 3 の 6 と同じ「先頭から」の規則。配送の順が名指しで入れ替わっても宛先は同じ)。
  * --skip には feature/<slug> が残る UC (要求で止まった UC) を渡す。宛先が無ければ target: null (move は moved: false, reason: no_target)。
- * どのサブコマンドも JSON 1 行を返す。終了コードは 0 = 成功 / 2 = 引数・ファイルの誤り。
+ * どのサブコマンドも JSON 1 行を返す (書き換えたかは changed)。終了コードは 0 = 成功 / 2 = 引数・ファイルの誤り。内容が変わらないときはファイルを書かない (0.1.30 実走 N4)。
  * LLM が YAML を手で直さないために置く (宛先の選び方と重複の扱いをテストで固定する)。
  */
 'use strict';
@@ -57,10 +57,19 @@ function loadUseCases(root) {
   if (!fs.existsSync(p)) throw new Error(`use-cases.yaml が無い: ${p}`);
   const doc = parseYaml(fs.readFileSync(p, 'utf8'));
   if (!doc || !Array.isArray(doc.use_cases)) throw new Error('use-cases.yaml に use_cases の配列が無い');
-  return { path: p, doc };
+  // 書き換えたかは意味 (parse 後の内容) で比べる。手書きの引用符の形が違うだけなら書かない
+  return { path: p, doc, before: JSON.stringify(doc) };
 }
 
-function saveUseCases(file, doc) { fs.writeFileSync(file, `${stringifyYaml(doc)}\n`, 'utf8'); }
+/**
+ * 書く前の内容と同じなら書かない (0.1.30 実走 N4: 変化が無いときも書き直すと引用符の形が変わって全行が差分になる)。
+ * 書くときは stringifyYaml の規則 (必要なときだけ引用符) になり、genUseCases.js の再生成と同じ形に揃う。戻り値は実際に書いたか
+ */
+function saveUseCases(file, doc, before) {
+  if (before !== undefined && JSON.stringify(doc) === before) return false;
+  fs.writeFileSync(file, `${stringifyYaml(doc)}\n`, 'utf8');
+  return true;
+}
 
 /** 宛先: 先頭から status が done でなく、from でも skip でもない最初の UC */
 function pickTarget(useCases, { from = null, skip = [] } = {}) {
@@ -90,37 +99,37 @@ function cmdNext(root, opts) {
 function cmdAdd(root, opts) {
   const items = readItems(opts.items, root);
   if (!items.length) throw new Error('add --items <JSON 配列 | ファイル> (1 件以上)');
-  const { path: file, doc } = loadUseCases(root);
+  const { path: file, doc, before } = loadUseCases(root);
   const target = pickTarget(doc.use_cases, { skip: csv(opts.skip) });
-  if (!target) return { added: false, reason: 'no_target', target: null, items };
+  if (!target) return { added: false, reason: 'no_target', target: null, items, changed: false };
   const added = appendItems(rowOf(doc.use_cases, target), items);
-  saveUseCases(file, doc);
-  return { added: true, target, items: added, skipped_duplicates: items.filter((x) => !added.includes(x)) };
+  const changed = saveUseCases(file, doc, before);
+  return { added: true, target, items: added, skipped_duplicates: items.filter((x) => !added.includes(x)), changed };
 }
 
 function cmdMove(root, opts) {
   if (!opts.from) throw new Error('move --from <slug> --items <...>');
   const items = readItems(opts.items, root);
-  const { path: file, doc } = loadUseCases(root);
+  const { path: file, doc, before } = loadUseCases(root);
   const from = rowOf(doc.use_cases, opts.from);
   const cleared = Array.isArray(from.carry_over) ? from.carry_over.slice() : [];
   delete from.carry_over;
-  if (!items.length) { saveUseCases(file, doc); return { moved: false, reason: 'no_items', target: null, cleared }; }
+  if (!items.length) { const changed = saveUseCases(file, doc, before); return { moved: false, reason: 'no_items', target: null, cleared, changed }; }
   const target = pickTarget(doc.use_cases, { from: opts.from, skip: csv(opts.skip) });
-  if (!target) { saveUseCases(file, doc); return { moved: false, reason: 'no_target', target: null, items, cleared }; }
+  if (!target) { const changed = saveUseCases(file, doc, before); return { moved: false, reason: 'no_target', target: null, items, cleared, changed }; }
   const added = appendItems(rowOf(doc.use_cases, target), items);
-  saveUseCases(file, doc);
-  return { moved: true, target, items: added, cleared, skipped_duplicates: items.filter((x) => !added.includes(x)) };
+  const changed = saveUseCases(file, doc, before);
+  return { moved: true, target, items: added, cleared, skipped_duplicates: items.filter((x) => !added.includes(x)), changed };
 }
 
 function cmdClear(root, opts) {
   if (!opts.from) throw new Error('clear --from <slug>');
-  const { path: file, doc } = loadUseCases(root);
+  const { path: file, doc, before } = loadUseCases(root);
   const from = rowOf(doc.use_cases, opts.from);
   const cleared = Array.isArray(from.carry_over) ? from.carry_over.slice() : [];
   delete from.carry_over;
-  saveUseCases(file, doc);
-  return { cleared };
+  const changed = saveUseCases(file, doc, before);
+  return { cleared, changed };
 }
 
 function main(argv) {
