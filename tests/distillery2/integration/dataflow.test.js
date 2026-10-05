@@ -116,6 +116,11 @@ test('(d) 派遣ごとの write-set は正本の write_set から生成 (--check
   assert.ok(header && !header.includes('write-set'), '派遣表の表に write-set の列は置かない (正本から生成する)');
   const rows = tmpl.filter(l => /^\| [①②③④還]/.test(l) && !tmplText.slice(tmplText.indexOf(G.WS_BEGIN), tmplText.indexOf(G.WS_END)).includes(l)).map(l => cells(l)[0]);
   for (const r of rows) if (!subagents.some(p => r === p.template_row || r.startsWith(p.template_row + ' '))) problems.push(`派遣表の行 ${r} が正本に無い`);
+  // 逆向き: 正本の各派遣に手書きの行がちょうど 1 つある (行を落とすと d2-run が role・skill・指示を得られない。差分レビュー 3 ラウンド目)
+  for (const p of subagents) {
+    const n = rows.filter(r => r === p.template_row || r.startsWith(p.template_row + ' ')).length;
+    if (n !== 1) problems.push(`${p.id}: 派遣表の手書きの行 (${p.template_row}) が ${n} 行 (1 行であること)`);
+  }
   // 生成ブロックが最新 (dataflow.md と一緒に --check)
   const chk = spawnSync('node', [path.join(PLUGIN, 'skills/d2-common/scripts/genDataflow.js'), '--check'], { encoding: 'utf8' });
   assert.equal(chk.status, 0, `genDataflow.js --check: ${chk.stderr}`);

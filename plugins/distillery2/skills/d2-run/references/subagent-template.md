@@ -45,8 +45,8 @@
 
 ## 派遣ごとの write-set (正本から生成。手で書かない)
 
-`{write_set}` に入れる文面。正本 (`<skills>/d2-common/references/dataflow.yaml`) の各派遣の `write_set` (断片の並び。パスに付く注記はそのパスと同じ断片) と `notes` から
-`node <skills>/d2-common/scripts/genDataflow.js` が生成する (0.1.31)。許可範囲 (`allowed_writes`) との整合と、テストの写し (golden) との一致は `dataflow.test.js` が見る。
+`{write_set}` に入れる文面。正本 (`<skills>/d2-common/references/dataflow.yaml`) の各派遣の `write_set` (断片の並び。パスに付く注記はそのパスと同じ断片) から
+`node <skills>/d2-common/scripts/genDataflow.js` が生成する (0.1.31)。許可範囲 (`allowed_writes`) との整合・`notes` の包含・テストの写し (golden) との一致は `dataflow.test.js` が見る。
 
 <!-- distillery2:dispatch-write-sets:begin -->
 | 段階 | write-set |
