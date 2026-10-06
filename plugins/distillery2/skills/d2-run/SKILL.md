@@ -42,7 +42,7 @@ description: >-
       `FB file-issues <run>` → `genDocsReadme.js` → `git add -A -- docs .distillery/runs/<slug>` → `impl(<slug>): issues to feedback` で main に commit する (remote `origin` があれば push)。終わったら `FB scan` をやり直す
       (`FB` は還流節の定義。課題を数える前に課題ファイルにするので、旧形式の要求の課題も同じ回の要求の差分に乗る)
    3. `batch.point` が `none` 以外 (途中の還流。main へ取り込んだ後の後始末の前に止まった場合を含む) → 還流の続き
-   4. `requirement` が空でないか、**既存の持ち越しが残っている** (`use-cases.yaml` に `carry_over` の行があるか、`carry_over_pending` が空でない。0.1.30〜0.1.31 形式の残った作業。要求の課題が 0 件でも) → ① の「要求の差分」
+   4. `requirement` が空でないか、**既存の持ち越しが残っている** (`carry_over_rows` (`use-cases.yaml` の `carry_over` の行) か `carry_over_pending` が空でない。0.1.30〜0.1.31 形式の残った作業。要求の課題が 0 件でも) → ① の「要求の差分」
    5. `feedback_due` が true (止まっていないルール・契約の課題がある) → 還流
    6. それ以外 → `use-cases.yaml` の先頭から `status` が `done` でない最初の UC の ④。要求で止まった UC (`feature/<slug>` が残っているもの) は飛ばす
       (その UC の要求の課題は保留中 (`hold`)。後の要求の差分で課題を反映・取り下げたときに feature が退避され、次の起動で main から新しい run で始まる)
@@ -125,9 +125,10 @@ description: >-
 ### 要求の差分 (未処理の要求の課題があるとき)
 
 UC の実装で見つかった要求の穴 (課題ファイルの `kind: requirement`) を要求に反映する。自動選択の 3 か `stage=requirements` で入る。
-既存の持ち越し (0.1.30〜0.1.31 形式の残った作業: `use-cases.yaml` の `carry_over` の行、`FB scan` の `carry_over_pending`) が残っているときは、要求の課題が 0 件でも入る (3 で宛先へ流す)。
+既存の持ち越し (0.1.30〜0.1.31 形式の残った作業: `FB scan` の `carry_over_rows` (`use-cases.yaml` の `carry_over` の行) と `carry_over_pending`) が残っているときは、要求の課題が 0 件でも入る (3 で宛先へ流す)。
 
-1. 前提: 進行中の UC が無い、作業 branch が clean な main。remote `origin` があれば `git fetch origin` して `git merge --ff-only origin/main` (分岐していたら止まって報告する)
+1. 前提: 進行中の UC が無い、作業 branch が clean な main。remote `origin` があれば `git fetch origin` して `git merge --ff-only origin/main` (分岐していたら止まって報告する)。
+   **既存の持ち越しを先に控える**: `FB scan` の `carry_over_rows` (slug と items) と `carry_over_pending` (slug と items) を 3 の材料として書き留める (2 の再生成 (要求担当の差分更新も `genUseCases.js` も) は `carry_over` の行を引き継がず消すので、2 の後には読めない。差分レビュー 2 ラウンド目)
 2. sub `d2-requirements` (`input=<feedbackBatch.js scan の requirement_all の課題ファイルのパス (すべて)>`。差分更新)。課題の本文は自分では読まない。
    報告の「残った作業」(要求担当の write-set の外で必要になった作業。種類 `design` / `assumption` と対象付き)、「決定と違う反映」(課題の決定と違う反映にした課題・決定・実際の反映・理由)、
    「仮に決めた反映」(課題に決定が無く要求担当が案を選んだもの: 課題・選んだ案・理由。0.1.32 N10・O8) を 3 の材料に控える。
@@ -139,7 +140,7 @@ UC の実装で見つかった要求の穴 (課題ファイルの `kind: require
    - `design` (画面の見本): 要求担当の報告の項目。項目のファイルは `docs/design/storybook-app/src/<相対パス>` で指す。報告が `packages/ui/<相対パス>` (取り込み先) で書いていたら `docs/design/storybook-app/src/<相対パス>` に読み替え、実在を確かめる。無ければ「対応づけられない」と出して派遣しない (人は無視を選ぶ)
    - `assumption` (前提の記録を閉じる): UC の slug・ティア・attempt・`A-xxx` の id と、閉じる決定の要点。項目に slug か attempt が無ければ (既存の持ち越しは「frontend の A-004」のようにしか書いていない)、d2-run が候補を列挙して載せる:
      `grep -l "id: A-xxx" .distillery/runs/*/attempt-*/assumptions.<tier>.yaml` で id を持つ (slug, attempt) の組をすべて出し、1 件なら確定、複数なら確認ページで人に選ばせる (同じ id が別の UC・別の attempt にあるので推測しない)。候補が 0 件か人が選ばなければ「無視」(報告に「特定できなかった項目」として残す)
-   - 既存の持ち越し (`use-cases.yaml` の `carry_over` の行と、`carry_over_pending` の `items`) も同じ一覧に載せる (種類は人が `design` / `assumption` / 無視 を選ぶ。`assumption` の候補は上と同じに列挙する。黙って失わない)
+   - 既存の持ち越し (1 で控えた `carry_over_rows` と `carry_over_pending` の `items`) も同じ一覧に載せる (種類は人が `design` / `assumption` / 無視 を選ぶ。`assumption` の候補は上と同じに列挙する。黙って失わない)
    問い: 「この差分で進めてよいか / 直す点 / 外す課題 / 残った作業ごとに対応するか無視か」。直す点は指摘を input に足して 2 から。
    外す課題があれば、変更を捨てて (`git checkout -- docs/requirements` と `git clean -fd -- docs/requirements`) その課題を除いて 2 から。外した課題は「取り下げる / 残す」を聞く。
    残す課題は理由をファイルに書いて `feedbackBatch.js hold <issue> --reason-file <ファイル>` (止まった印を付ける。止まった課題だけでは要求の差分を始めない)

@@ -735,4 +735,8 @@ test('0.1.32 J2: scan の carry_over_pending は最後の review_approved の ca
   const s = r.fb('scan').json;
   assert.deepEqual(s.carry_over_pending, [{ run: '.distillery/runs/pending-uc', slug: 'pending-uc', items: ['画面の見本 stories を直す', '前提 A-004 を閉じる'] }]);
   assert.equal(s.feedback_due, false, '持ち越しの移行は還流のきっかけではない (要求の差分)');
+  // use-cases.yaml の carry_over の行 (0.1.30〜0.1.31 形式) は carry_over_rows に出る (再生成で消える前に控える材料)
+  assert.deepEqual(s.carry_over_rows, []);
+  r.w('docs/requirements/use-cases.yaml', ['use_cases:', '  - uc: 書籍を登録する', '    slug: register-book', '    spec_ids: [SPEC-001-01]', '    status: planned', '    carry_over:', '      - "packages/ui/stories/LoanRegister.stories.tsx: 文言を直す"', '      - "frontend の AssumptionRecord A-004 を閉じる"', '  - uc: 書籍を編集する', '    slug: edit-book', '    spec_ids: [SPEC-001-02]', '    status: planned', ''].join('\n'));
+  assert.deepEqual(r.fb('scan').json.carry_over_rows, [{ slug: 'register-book', items: ['packages/ui/stories/LoanRegister.stories.tsx: 文言を直す', 'frontend の AssumptionRecord A-004 を閉じる'] }]);
 });

@@ -440,7 +440,8 @@ test('0.1.30 L7: 変えた契約を使う UC は finalize / status の slices_ch
 
 test('0.1.32 J2: 残った作業は種類ごとの宛先へ (design → d2-design mode=feedback → importUi → frontend の unit の回帰 / assumption → assumption_resolved)。UC への持ち越し (carry_over) は無い。既存の持ち越しは要求の差分で流す', () => {
   const r = section(SKILL, '### 要求の差分', '## ② 決定');
-  assert.match(r, /既存の持ち越し \(0\.1\.30〜0\.1\.31 形式の残った作業: `use-cases\.yaml` の `carry_over` の行、`FB scan` の `carry_over_pending`\) が残っているときは、要求の課題が 0 件でも入る/);
+  assert.match(r, /既存の持ち越し \(0\.1\.30〜0\.1\.31 形式の残った作業: `FB scan` の `carry_over_rows` \(`use-cases\.yaml` の `carry_over` の行\) と `carry_over_pending`\) が残っているときは、要求の課題が 0 件でも入る/);
+  assert.match(r, /\*\*既存の持ち越しを先に控える\*\*: `FB scan` の `carry_over_rows` \(slug と items\) と `carry_over_pending` \(slug と items\) を 3 の材料として書き留める \(2 の再生成/);
   assert.match(r, /報告の「残った作業」\(要求担当の write-set の外で必要になった作業。種類 `design` \/ `assumption` と対象付き\)、「決定と違う反映」[\s\S]{0,200}「仮に決めた反映」[^\n]*を 3 の材料に控える/);
   assert.match(r, /要求の課題が 0 件 \(既存の持ち越しだけ\) なら要求担当は派遣せず、`node <skills>\/d2-requirements\/scripts\/genUseCases\.js` を回して/);
   assert.match(r, /\*\*「仮に決めた反映」\*\* \(課題ごとに選んだ案・理由。無ければ「なし」。「決定と違う反映」と並べて載せる/);
@@ -448,7 +449,7 @@ test('0.1.32 J2: 残った作業は種類ごとの宛先へ (design → d2-desig
   assert.doesNotMatch(r, /次の UC で拾う \/ 無視/);
   assert.doesNotMatch(r, /見込みの宛先/);
   assert.match(r, /報告が `packages\/ui\/<相対パス>` \(取り込み先\) で書いていたら `docs\/design\/storybook-app\/src\/<相対パス>` に読み替え、実在を確かめる。無ければ「対応づけられない」と出して派遣しない/);
-  assert.match(r, /既存の持ち越し \(`use-cases\.yaml` の `carry_over` の行と、`carry_over_pending` の `items`\) も同じ一覧に載せる/);
+  assert.match(r, /既存の持ち越し \(1 で控えた `carry_over_rows` と `carry_over_pending` の `items`\) も同じ一覧に載せる/);
   assert.match(r, /4\. 承認されたら、まず「対応する」残った作業を種類ごとの宛先に流す/);
   assert.match(r, /sub `d2-design mode=feedback items=<項目のファイルと直す内容を 1 行ずつ>` \(派遣表「① 要求の差分 \(画面部品\)」\)/);
   assert.match(r, /`node <skills>\/d2-design\/scripts\/validateScreens\.js docs\/design\/screens\.yaml --app docs\/design\/storybook-app\/src --use-cases docs\/requirements\/use-cases\.yaml` が exit 0/);
@@ -462,7 +463,7 @@ test('0.1.32 J2: 残った作業は種類ごとの宛先へ (design → d2-desig
   assert.match(r, /閉じた前提 \(`assumption_resolved`\) も同じ: 完了報告に「閉じた前提[^\n]*as-built は次にその UC を回したときに反映/);
   // 自動選択
   const a = autoSelect();
-  assert.match(a, /\*\*既存の持ち越しが残っている\*\* \(`use-cases\.yaml` に `carry_over` の行があるか、`carry_over_pending` が空でない[^\n]*→ ① の「要求の差分」/);
+  assert.match(a, /\*\*既存の持ち越しが残っている\*\* \(`carry_over_rows` \(`use-cases\.yaml` の `carry_over` の行\) か `carry_over_pending` が空でない[^\n]*→ ① の「要求の差分」/);
   // ④・人レビュー・配送から持ち越しが消えている
   const t = read(SKILL);
   assert.doesNotMatch(t, /carryOver\.js/);
