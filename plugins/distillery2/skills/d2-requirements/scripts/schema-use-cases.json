@@ -68,11 +68,6 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "description": "関与ティア。contract 段階の完了時に d2-run が契約 slice の provider / consumers から確定して書き戻す。再生成では uc_id で引き継ぐ"
-        },
-        "carry_over": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 },
-          "description": "要求の差分で残った作業 (要求担当の write-set の外で必要になった作業)。d2-run が carryOver.js で書き、④ の派遣文に追記し、配送で次の UC へ持ち越すか消す。再生成では uc_id で引き継ぐ (0.1.30)"
         }
       }
     }

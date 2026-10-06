@@ -163,18 +163,12 @@ test('壊れた既存 use-cases.yaml があると genUseCases は上書きせず
   assert.notEqual(fs.readFileSync(out, 'utf8'), broken, '--force-rebuild で作り直す');
 });
 
-test('0.1.30 L10: 既存 use-cases の carry_over (要求の差分で残った作業) を引き継ぐ。無い UC には足さない', () => {
-  const existing = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: ['SPEC-001-01', 'SPEC-001-02'], status: 'planned', carry_over: ['画面の見本 stories を直す'] }]]);
+test('0.1.32 J2: 0.1.30〜0.1.31 の carry_over (UC への持ち越し) は引き継がない (要求の差分が宛先へ流した後の再生成で消える)。tiers は引き継ぐ', () => {
+  const existing = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: ['SPEC-001-01', 'SPEC-001-02'], status: 'planned', tiers: ['frontend'], carry_over: ['画面の見本 stories を直す'] }]]);
   const byUc = Object.fromEntries(generate(reqData, bucText, existing).use_cases.map(u => [u.uc, u]));
-  assert.deepEqual(byUc['貸出を登録する'].carry_over, ['画面の見本 stories を直す']);
-  const other = Object.values(byUc).find(u => u.uc !== '貸出を登録する');
-  assert.ok(other && !('carry_over' in other), '既存に無ければキーごと出さない');
-  // 空配列は引き継がない (キーごと消える)
-  const empty = new Map([[LOAN, { uc_id: LOAN, slug: 'register-a-loan', spec_ids: ['SPEC-001-01'], status: 'planned', carry_over: [] }]]);
-  const byUc2 = Object.fromEntries(generate(reqData, bucText, empty).use_cases.map(u => [u.uc, u]));
-  assert.ok(!('carry_over' in byUc2['貸出を登録する']));
-  // スキーマに carry_over と tiers がある
+  assert.ok(!('carry_over' in byUc['貸出を登録する']), 'carry_over は引き継がない');
+  assert.deepEqual(byUc['貸出を登録する'].tiers, ['frontend']);
   const schema = JSON.parse(fs.readFileSync(path.join(SCRIPTS, 'schema-use-cases.json'), 'utf8'));
-  assert.ok(schema.$defs.use_case.properties.carry_over);
+  assert.ok(!schema.$defs.use_case.properties.carry_over, 'スキーマから carry_over を外した');
   assert.ok(schema.$defs.use_case.properties.tiers);
 });

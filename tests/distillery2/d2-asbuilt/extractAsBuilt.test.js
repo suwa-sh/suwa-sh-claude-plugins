@@ -592,3 +592,19 @@ test('集計ファイル reports/asbuilt.json に、どの実行の結果かと�
   assert.equal(rep.summary_violations, r.summary_violations);
   assert.deepEqual(fs.readdirSync(path.dirname(file)).filter(n => n.includes('.tmp-')), [], '一時ファイルを残さない');
 });
+
+test('0.1.32 J2: 要求の差分で閉じた前提 (assumption_resolved) は処遇 resolved になり、最新の attempt の target だけ読む。review_approved の決定より勝つ', () => {
+  const { resolvedDecisions } = require(path.join(SCRIPTS, 'extractAsBuilt'));
+  const events = [
+    { type: 'review_approved', assumption_decisions: [{ tier: 'frontend', id: 'A-004', decision: 'auto_confirmed' }, { tier: 'frontend', id: 'A-006', decision: 'confirmed' }] },
+    { type: 'assumption_resolved', targets: [{ tier: 'frontend', attempt: 1, id: 'A-005' }, { tier: 'frontend', attempt: 2, id: 'A-004' }, { tier: 'backend-api', attempt: 2, id: 'A-004' }], decision: '貸出日は登録時に決まる', by: 'req: feedback' },
+  ];
+  const resolved = resolvedDecisions(events, 2);
+  assert.equal(decisionFor(resolved, 'frontend', 'A-004').decision, 'resolved');
+  assert.equal(decisionFor(resolved, 'frontend', 'A-004').note, '貸出日は登録時に決まる');
+  assert.equal(decisionFor(resolved, 'backend-api', 'A-004').decision, 'resolved');
+  assert.equal(decisionFor(resolved, 'frontend', 'A-005'), undefined, '最新でない attempt の target は as-built に出ないので読まない');
+  const merged = { ...latestDecisions(events), ...resolved };
+  assert.equal(decisionFor(merged, 'frontend', 'A-004').decision, 'resolved', '閉じた印が review の決定より勝つ');
+  assert.equal(decisionFor(merged, 'frontend', 'A-006').decision, 'confirmed');
+});

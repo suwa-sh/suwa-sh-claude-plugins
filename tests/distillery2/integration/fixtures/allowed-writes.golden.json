@@ -270,10 +270,10 @@
     "write_set": [
       "`apps/<tier>/**`",
       "`<run>/attempt-<n>/assumptions.<tier>.yaml`",
-      "`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` の結果。リポの外。使い終えたら削除)"
+      "`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
     ],
     "notes": [
-      "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` の結果。リポの外。使い終えたら削除)"
+      "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
     ],
     "allowed_writes": [
       {
@@ -356,6 +356,19 @@
       {
         "id": "reports",
         "path": "<run>/reports/**"
+      }
+    ]
+  },
+  "design.feedback": {
+    "template_row": "① 要求の差分 (画面部品)",
+    "write_set": [
+      "`docs/design/**`"
+    ],
+    "notes": [],
+    "allowed_writes": [
+      {
+        "id": "design",
+        "path": "docs/design/**"
       }
     ]
   },

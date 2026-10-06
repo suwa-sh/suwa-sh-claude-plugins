@@ -67,6 +67,7 @@ test('0.1.29: 共通のスクリプトは skills/d2-common/scripts にあり、�
   }
   const bad = walkJs(path.join(plugin, 'skills')).filter(p => /require\(['"](\.\.\/)+scripts\//.test(fs.readFileSync(p, 'utf8'))).map(p => path.relative(plugin, p));
   assert.deepEqual(bad, [], 'skills の外の scripts/ を指す require');
+  assert.ok(!fs.existsSync(path.join(plugin, 'skills/d2-common/scripts/carryOver.js')), 'carryOver.js (UC への持ち越し) は 0.1.32 で削除した');
 });
 
 test('0.1.29: 手順書に CLAUDE_PLUGIN_ROOT は d2-common の「パスの書き方」の 1 か所だけ。<skills>/<skill> の skill 名は実在する', () => {

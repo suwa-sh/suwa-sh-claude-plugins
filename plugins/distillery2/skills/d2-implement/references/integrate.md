@@ -52,3 +52,4 @@ pending だった step を実装し、テスト用の composition root に計装
   ```
 
 - 報告に「シナリオ数と結果 / トレース出力の有無と計装の範囲 (ティアとレイヤ) / 失敗時の分析 (ティアと食い違い)」を書く
+- 共有の補助 (`features/support/**`・`features/step_definitions/**` の共通部分) を変えたら報告に書く。他 UC のシナリオは自分では回さない (他 UC の `<run>/traces/**` は write-set の外。回帰は d2-run が integrate の受理後に回す。0.1.32 O15)

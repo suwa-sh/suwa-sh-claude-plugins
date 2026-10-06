@@ -60,12 +60,13 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 
 1. `git status --porcelain=v1 --untracked-files=all` が空、`git diff --quiet`、`git diff --cached --quiet`、
    `git merge-base --is-ancestor <base_head> HEAD`、`git log <base_head>..HEAD` に merge commit が無いことを確認。
-   加えて `git log <base_head>..HEAD --format=%s` の件名がすべて `impl(<slug>): ` か `req(<slug>): ` で始まることを確認する (段階ごとの commit の規則。d2-run 以外が足した commit はこの形にならない)。
+   件名の検査 (`git log <base_head>..HEAD --format=%s` の件名がすべて `impl(<slug>): ` か `req(<slug>): ` で始まる。段階ごとの commit の規則。d2-run 以外が足した commit はこの形にならない) は
+   **配送 1 の冒頭で検査済み** (SKILL.md 配送 1。gates.json の作り直しや課題ファイルの commit より前に見る。0.1.32 N1)。
    そうでなければ (UC 外の commit が混ざっている) squash せず止まって報告する (混ざった commit の一覧を添える。整理は人が決める。0.1.29 実走 M3)。
-   変更の中身が UC の範囲に収まることは各段階の受理 (write-set の逸脱検査) が commit の前に止めているので、ここでは件名だけを見る
-2. 復旧用 ref `refs/distillery2/pre-squash/<slug>/<timestamp>` を `git update-ref` で現在 HEAD に作る。作れなければ squash しない
-3. `git reset --soft <base_head>`。`use-cases.yaml` の該当行を `status: done` にし、`<skills>/d2-common/scripts/carryOver.js move --from <slug> --items '<review_approved の carry_over.carry>' --skip <feature/ が残っている UC>` で
-   残った作業 (`carry_over`) を次の UC の行へ持ち越してから (`carry` が空なら `carryOver.js clear --from <slug>`) stage する (0.1.30 L10)
+   変更の中身が UC の範囲に収まることは各段階の受理 (write-set の逸脱検査) が commit の前に止めているので、ここでは件名だけを見る。
+   止まった後の再開 (0.1.32 N3): 人が混入した commit を落とす (rebase)。残りは段階の commit なので、再開は配送 1 から (gates.json が無ければ作り直す)。`base_head` が HEAD の祖先であることは再開の判定 (上の「UC branch の開始と再開」3) で確かめる
+2. 復旧用 ref `refs/distillery2/pre-squash/<slug>/<timestamp>` を `git update-ref` で現在 HEAD に作る。作れなければ squash しない。`<timestamp>` は `date -u +%Y%m%dT%H%M%SZ` (UTC。固定値を書かない。0.1.32 O3。要求の差分の `abandoned/`・旧形式の `legacy/` の `<ts>` も同じ)
+3. `git reset --soft <base_head>`。`use-cases.yaml` の該当行を `status: done` にして stage する (0.1.30〜0.1.31 の `carry_over` の持ち越しは 0.1.32 でやめた。`review_approved` に残る `carry_over.carry` は読まず、配送後の起動の自動選択 3 が要求の差分に載せる)
 4. `<skills>/d2-common/scripts/prTrailers.js --run .distillery/runs/<slug> --strict --base <base_head> --commit-message "feat: <UC 名>" --co-author "<attribution の値>"` で本文を作り
    (`--base` には 3 で使った `<base_head>` をそのまま渡す。省略時の自動選択 (origin/HEAD → main → master) は UC の開始ブランチと違うことがある。必須 trailer が
    欠けていれば exit 1 で止まる)、`git commit -F <本文ファイル>` で
@@ -76,7 +77,7 @@ reports / traces は .gitignore 済みで含めない。シナリオ承認は `r
 ## 手順 (main への取り込み)
 
 1. `git switch main` → `git merge --ff-only feature/<slug>`。ff できなければ (main が `base_head` から進んでいる) 止まって報告する (rebase は人が判断)
-2. main の上で配送の done (`runState.js done <run> deliver '{"squash":"<フル sha>","base_head":"<base_head>"}'`。sha は短縮しない) と、④ の冒頭で遅らせた場合だけの `models_resolved` (冒頭で記録済みなら記録しない。0.1.29 実走 M2) と README を
+2. main の上で配送の done (`runState.js done <run> deliver '{"squash":"<フル sha>","base_head":"<base_head>"}'`。sha は短縮しない) と、④ の冒頭で遅らせた場合だけの `models_resolved` (遅らせた = run の events に解決済み ID の `models_resolved` が無い。冒頭で記録済みなら無いことはないので記録しない。0.1.29 実走 M2・0.1.32 O1) と README を
    `impl(<slug>): delivered` で commit する。**配送済みの正は `stages/deliver.done.yaml`** (GitHub の PR ではない)
 3. remote `origin` があれば `git push origin main`。拒否されたら止まって報告する (保護された main など。force push はしない)
 4. `git branch -d feature/<slug>`

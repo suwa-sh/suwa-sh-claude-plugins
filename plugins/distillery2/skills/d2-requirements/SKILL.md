@@ -45,7 +45,7 @@ description: >-
 1. **USDM 分解** — 要望テキストを `references/usdm-schema.md` の形式へ構造化し、
    `references/usdm/usdm-decompose.md` に従って `docs/requirements/requirements.yaml` を書く。
    受入基準（`acceptance_criteria`）は **1 行 Gherkin**（`Given … When … Then …`）で人が確認できる粒度にする。
-   UC 単位のシナリオはここでは書かない。
+   UC 単位のシナリオはここでは書かない。仕様は 1 つの UC で確かめられる単位に分ける (複数の UC の振る舞いを 1 つの仕様に混ぜない。`usdm-decompose.md` 5 節。0.1.32 J1)。
 2. **USDM 検証** — 構造をバリデートする:
    ```bash
    node <skills>/d2-requirements/scripts/validateRequirements.js docs/requirements/requirements.yaml
@@ -88,6 +88,7 @@ description: >-
 **課題ファイルの「決定」に従って反映する**。決定と違う反映にするなら、最終報告の「**決定と違う反映**」に課題・決定・実際の反映・理由を書く (無ければ「なし」。d2-run が確認ページに載せ、人が差し戻せるようにする。0.1.28 実走 L11)。
 
 1. `docs/requirements/requirements.yaml` に要求・仕様・受入基準を追記／修正する。ID は既存と重複させない。
+   仕様は 1 つの UC で確かめられる単位に分ける (課題が「他の UC の振る舞いが受入基準に混ざっている」なら、仕様自体を UC ごとに分け、手順 4 で `spec_ids` / `spec_ids_rejected` を整える。`usdm-decompose.md` 5 節。0.1.32 J1)。
 2. 影響する `docs/requirements/rdra/*.tsv` を編集する。
 3. Step0 の手順 2・3・5・8 を再実行して検証・Markdown・ビュー・不整合チェックを更新する。
    **差分更新では入力ディレクトリを `docs/requirements/rdra` にする**（一時ディレクトリ `1_RDRA/` は
@@ -101,8 +102,13 @@ description: >-
 4. **UC 一覧**を再生成する（既存の `slug`・`status`・`tiers_hint`・`spec_ids_rejected` は uc_id で引き継がれ、`spec_ids` は却下済みを除いた推定候補との和集合になる）。
 5. **確認材料**を作り直す。
 6. 最終報告に「変更したファイル」と「追加／変更／削除した要求・UC」を列挙する。
-7. 最終報告に「**残った作業**」を書く: 課題を反映するために write-set (`docs/requirements/**`) の外で必要になった作業 (対象ファイルと内容。例: 画面の見本 stories の修正、既存の feature の受入タグ)。
-   自分では触らない (write-set の外)。無ければ「なし」。d2-run が確認ページに載せ、人が「次の UC で拾う / 無視」を選ぶ (0.1.28 実走 L10)。
+7. 最終報告に「**残った作業**」を書く: 課題を反映するために write-set (`docs/requirements/**`) の外で必要になった作業。種類は 2 つに限る (0.1.32 J2):
+   - `design` (画面の見本): 対象 = `docs/design/storybook-app/src/stories/<Name>.stories.tsx` (取り込み先 `packages/ui/` ではなく見本側のパス) と直す内容
+   - `assumption` (前提の記録を閉じる): 対象 = UC の slug・ティア・attempt・`A-xxx` の id (`.distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml`) と、今回の決定で閉じる理由
+
+   自分では触らない (write-set の外)。無ければ「なし」。どちらでもない作業 (既存の feature の受入タグなど) は作業に入れず、「仮に決めた反映」か「決定と違う反映」に書く。
+   d2-run が確認ページに種類ごとに載せ、人が「対応する / 無視」を選ぶ (対応する = `design` は画面部品の担当 (d2-design mode=feedback) に再派遣して取り込み直し、`assumption` は要求の差分で閉じる)。
+8. 最終報告に「**仮に決めた反映**」を書く: 課題に決定が無く (選択肢だけで人が決めていない) 自分が案を選んで反映したもの (課題・選んだ案・理由)。無ければ「なし」。d2-run が確認ページに「決定と違う反映」と並べて載せ、人が差し戻せるようにする (0.1.32 N10・O8)。
    「決定と違う反映」(上) も同じ報告に書く。
 
 ---

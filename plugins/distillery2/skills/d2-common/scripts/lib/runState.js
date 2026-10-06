@@ -13,8 +13,9 @@
  *
  * CLI:
  *   node runState.js open <root> <slug>
- *   node runState.js event <runDir> <type> [json]
- *   node runState.js done <runDir> <stage> [json]
+ *   node runState.js event <runDir> <type> [json | --data-file <jsonファイル>]   (長い JSON はファイルで渡す。0.1.32 O18)
+ *   node runState.js done <runDir> <stage> [json | --data-file <jsonファイル>]
+ *     type が assumption_resolved なら data は {targets: [{tier, attempt, id}], decision, by}。各 target は attempt-<n>/assumptions.<tier>.yaml にある id に限る (無い組は拒む。0.1.32 J2)
  *   node runState.js status <runDir> [--json]     (unfiled_issues = 課題ファイルにしていない課題、pending_feedback = 0.1.25 までの保留、legacy_order = 0.1.25 までの順の run)
  *   node runState.js mark-legacy-delivered <runDir>   (0.1.25 までに PR で配送済みの run に deliver の done を作る。人が確認ページで配送済みと答えたときだけ)
  *   node runState.js invalidate <runDir> <stage> <reason>
@@ -49,7 +50,29 @@ function readEvents(runDir) {
   return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l));
 }
 
+/**
+ * 前提の記録を閉じるイベント (要求の差分で進行役が閉じる。0.1.32 J2) の data を検査する。
+ * targets の各 {tier, attempt, id} が <run>/attempt-<attempt>/assumptions.<tier>.yaml の assumptions[].id にあること (最新でない attempt も可)。
+ * AssumptionRecord の yaml は書き換えない (review の hash と Verifier の照合の対象)。閉じた印はイベントだけが持つ
+ */
+function validateAssumptionResolved(runDir, data) {
+  const targets = Array.isArray(data.targets) ? data.targets : null;
+  if (!targets || !targets.length) throw new Error('assumption_resolved には targets ([{tier, attempt, id}]) が 1 件以上要る');
+  if (typeof data.decision !== 'string' || !data.decision.trim()) throw new Error('assumption_resolved には decision (要求の差分の決定の要点) が要る');
+  const missing = [];
+  for (const t of targets) {
+    const n = Number(t && t.attempt);
+    if (!t || typeof t.tier !== 'string' || !t.tier || typeof t.id !== 'string' || !t.id || !Number.isInteger(n) || n < 1) throw new Error(`assumption_resolved の target は {tier, attempt, id} (attempt は 1 以上の整数): ${JSON.stringify(t)}`);
+    const file = path.join(runDir, `attempt-${n}`, `assumptions.${t.tier}.yaml`);
+    const doc = fs.existsSync(file) ? parseYaml(fs.readFileSync(file, 'utf8')) : null;
+    const ids = new Set(((doc && doc.assumptions) || []).map(a => a && a.id).filter(Boolean));
+    if (!ids.has(t.id)) missing.push(`${t.tier}/attempt-${n}/${t.id}`);
+  }
+  if (missing.length) throw new Error(`assumption_resolved の target が記録に無い: ${missing.join(', ')}`);
+}
+
 function appendEvent(runDir, type, data = {}) {
+  if (type === 'assumption_resolved') validateAssumptionResolved(runDir, data);
   const events = readEvents(runDir);
   const ev = { seq: events.length + 1, ts: nowIso(), type, ...data };
   fs.mkdirSync(runDir, { recursive: true });
@@ -227,14 +250,28 @@ function status(runDir) {
   return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, legacy_order: legacy, events: events.length, last_event: last, pending_feedback: pendingFeedback(runDir), filed_issues: filedIssues(runDir), unfiled_issues: unfiledIssues(runDir) };
 }
 
+/** event / done の data。argv の JSON か `--data-file <f>` (排他。長い日本語の JSON を argv で渡すとハーネスの検査で止まる。0.1.32 O18) */
+function dataArg(args, dataFile) {
+  if (dataFile != null && args[2] != null) throw new Error('data は argv の JSON か --data-file のどちらか一方');
+  if (dataFile != null) return JSON.parse(fs.readFileSync(path.resolve(dataFile), 'utf8'));
+  return args[2] ? JSON.parse(args[2]) : {};
+}
+
 function main(argv) {
-  const [cmd, ...a] = argv;
-  const json = a.includes('--json');
-  const args = a.filter(x => x !== '--json');
+  const [cmd, ...a0] = argv;
+  const json = a0.includes('--json');
+  let dataFile = null;
+  const a = [];
+  for (let i = 0; i < a0.length; i++) {
+    if (a0[i] === '--json') continue;
+    if (a0[i] === '--data-file') { dataFile = a0[++i]; if (dataFile == null) throw new Error('--data-file <jsonファイル>'); continue; }
+    a.push(a0[i]);
+  }
+  const args = a;
   switch (cmd) {
     case 'open': console.log(openRun(path.resolve(args[0]), args[1])); return 0;
-    case 'event': console.log(JSON.stringify(appendEvent(path.resolve(args[0]), args[1], args[2] ? JSON.parse(args[2]) : {}))); return 0;
-    case 'done': console.log(JSON.stringify(markDone(path.resolve(args[0]), args[1], args[2] ? JSON.parse(args[2]) : {}))); return 0;
+    case 'event': console.log(JSON.stringify(appendEvent(path.resolve(args[0]), args[1], dataArg(args, dataFile)))); return 0;
+    case 'done': console.log(JSON.stringify(markDone(path.resolve(args[0]), args[1], dataArg(args, dataFile)))); return 0;
     case 'invalidate': {
       // --from: その段階と後ろの段階の done をまとめて退避する
       if (a.includes('--from')) {
@@ -270,4 +307,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status };
+module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status, validateAssumptionResolved };

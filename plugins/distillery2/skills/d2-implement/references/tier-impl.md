@@ -38,7 +38,7 @@
    書き換えを伴う formatter は使わない (並列ティアの write-set を侵すため)。
    **`runGates.js` は使わない**。runGates は `<run>/reports/gates.json` をゲート名単位で置き換えるため、並列で走る他ティアの記録を消す。
    記録付きのゲートは全ティアの受理後にオーケストレータが 1 回だけ回す。
-   commands 中の `{slug}` は UC の slug に、`{report}` は OS の一時ファイル (`mktemp` の結果。リポの外) に置き換えて直接実行し、使い終えたら消す
+   commands 中の `{slug}` は UC の slug に、`{report}` は OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。headless で `mktemp` が拒まれたら `node -e "console.log(require('os').tmpdir()+'/d2-'+Date.now()+'.json')"` で名前を作る。0.1.32 O17) に置き換えて直接実行し、使い終えたら消す
    (`<run>/reports/` に書かない。write-set の外で、並列ティアと競合する)
 5. 自分で決めた判断を AssumptionRecord に書く (`<skills>/d2-common/references/assumption-record.md`)。書いたら
    `validateAssumptions.js record` を実行し ok を確認する

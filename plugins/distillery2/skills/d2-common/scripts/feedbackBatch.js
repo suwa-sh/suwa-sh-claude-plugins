@@ -16,7 +16,8 @@
  *
  * CLI (すべて --cwd <repo> を取る。既定はカレント。結果は JSON 1 行):
  *   file-issues <runDir>        UC の課題 (issues/*.md) のうち課題ファイルにしていないものを docs/feedback/ に書き、feedback_filed を記録
- *   scan                        自動選択の材料: 要求の差分のきっかけ (止まっていない要求の課題)・還流のきっかけ (止まっていないルール・契約)・止まった課題・プラグインへ持ち帰る課題・課題ファイルにしていない配送済みの run・途中のバッチ
+ *   scan                        自動選択の材料: 要求の差分のきっかけ (止まっていない要求の課題)・還流のきっかけ (止まっていないルール・契約)・止まった課題・プラグインへ持ち帰る課題・課題ファイルにしていない配送済みの run・途中のバッチ・
+ *                               旧形式の run (legacy_runs。runState の legacy_order。0.1.32 N7/O7)・0.1.30〜0.1.31 形式の持ち越し (carry_over_rows = use-cases.yaml の carry_over の行、carry_over_pending = review_approved の carry_over.carry が非空で carry_over_migrated が無い run。0.1.32 J2)
  *   hold <issue> --reason-file <f>   要求の差分の確認ページで外して残す課題に止まった印を付ける (main の作業ツリーで書き換えるだけ。commit は d2-run)
  *   start [--batch <b>]         worktree と branch を main から作り、batch.json に対象の課題を書く
  *   status                      再開地点 (none | issues | gate | rebuild | merge | cleanup)
@@ -320,17 +321,55 @@ function cmdScan(root) {
   const plugin = all.filter((x) => x.kind === 'plugin').map((x) => x.id);
   const runsDir = path.join(root, '.distillery', 'runs');
   const unfiledRuns = [];
+  const legacyRuns = [];
+  const carryOverPending = [];
   if (fs.existsSync(runsDir)) {
     for (const slug of fs.readdirSync(runsDir).sort()) {
       const rd = path.join(runsDir, slug);
-      if (!fs.statSync(rd).isDirectory() || !runState.isDone(rd, 'deliver')) continue;
+      if (!fs.statSync(rd).isDirectory()) continue;
+      const run = path.relative(root, rd).split(path.sep).join('/');
+      // 旧形式 (0.1.25 までの順) の run。配送の done の有無で除外しない (片付けの途中で止まった run も拾う。0.1.32 N7/O7)
+      if (runState.isLegacyOrder(rd)) legacyRuns.push({ run, slug });
+      const carry = carryOverPendingOf(rd);
+      if (carry) carryOverPending.push({ run, slug, items: carry });
+      if (!runState.isDone(rd, 'deliver')) continue;
       const unfiled = runState.unfiledIssues(rd);
-      if (unfiled.length) unfiledRuns.push({ run: path.relative(root, rd).split(path.sep).join('/'), unfiled });
+      if (unfiled.length) unfiledRuns.push({ run, unfiled });
     }
   }
   const batch = batchStatus(root);
   const feedbackDue = batch.point !== 'none' || triggers.length > 0 || unfiledRuns.length > 0;
-  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, batch, feedback_due: feedbackDue };
+  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, batch, feedback_due: feedbackDue };
+}
+
+/**
+ * 0.1.30〜0.1.31 形式の use-cases.yaml に残った carry_over の行 ({slug, items})。要求の差分が確認ページに載せて宛先へ流す材料
+ * (再生成 (genUseCases.js) は carry_over を引き継がないので、要求担当の派遣や再生成の前に scan で控える。差分レビュー 2 ラウンド目)
+ */
+function carryOverRows(root) {
+  const f = path.join(root, 'docs', 'requirements', 'use-cases.yaml');
+  if (!fs.existsSync(f)) return [];
+  let doc;
+  try { doc = parseYaml(fs.readFileSync(f, 'utf8')); } catch { return []; }
+  const out = [];
+  for (const uc of (doc && Array.isArray(doc.use_cases)) ? doc.use_cases : []) {
+    if (uc && Array.isArray(uc.carry_over) && uc.carry_over.length) out.push({ slug: String(uc.slug || ''), items: uc.carry_over.map(String) });
+  }
+  return out;
+}
+
+/**
+ * 0.1.30 形式の人レビューが残した持ち越し (最後の review_approved の carry_over.carry) のうち、要求の差分でまだ宛先へ流していないもの
+ * (carry_over_migrated が review_approved より後に無い)。無ければ null (0.1.32 J2。持ち越しの仕組みを外した後の移行用)
+ */
+function carryOverPendingOf(runDir) {
+  const events = runState.readEvents(runDir);
+  let carry = null;
+  for (const e of events) {
+    if (e.type === 'review_approved') carry = (e.carry_over && Array.isArray(e.carry_over.carry) && e.carry_over.carry.length) ? e.carry_over.carry.map(String) : null;
+    else if (e.type === 'carry_over_migrated') carry = null;
+  }
+  return carry;
 }
 
 function symlinkNodeModules(root, wt) {

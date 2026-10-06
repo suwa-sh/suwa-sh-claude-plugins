@@ -207,3 +207,38 @@ test('旧形式の印付けが途中で止まっても (配送の done だけ作
   rs.markDone(dir, 'feedback');
   assert.equal(rs.status(dir).legacy_order, false);
 });
+
+test('0.1.32 O18: event / done は --data-file で JSON を受ける (argv の JSON と排他)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'uc');
+  const cli = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/lib/runState.js');
+  const f = path.join(root, 'data.json');
+  fs.writeFileSync(f, JSON.stringify({ note: '長い日本語の JSON をファイルで渡す', items: ['画面の見本 stories の文言'] }));
+  const { execFileSync, spawnSync } = require('node:child_process');
+  const ev = JSON.parse(execFileSync('node', [cli, 'event', dir, 'carry_over_migrated', '--data-file', f], { encoding: 'utf8' }));
+  assert.equal(ev.type, 'carry_over_migrated');
+  assert.deepEqual(ev.items, ['画面の見本 stories の文言']);
+  const done = JSON.parse(execFileSync('node', [cli, 'done', dir, 'scenario', '--data-file', f], { encoding: 'utf8' }));
+  assert.equal(done.note, '長い日本語の JSON をファイルで渡す');
+  assert.equal(rs.readDone(dir, 'scenario').note, '長い日本語の JSON をファイルで渡す');
+  const both = spawnSync('node', [cli, 'event', dir, 'x', '{"a":1}', '--data-file', f], { encoding: 'utf8' });
+  assert.notEqual(both.status, 0, 'argv の JSON と --data-file の両方は拒む');
+});
+
+test('0.1.32 J2: assumption_resolved は targets の {tier, attempt, id} を attempt-<n>/assumptions.<tier>.yaml で確かめる (最新でない attempt も可。同じ id が 2 ティアにあっても tier で区別。無い組は拒む)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'register-loan');
+  const w = (n, tier, ids) => { fs.mkdirSync(path.join(dir, `attempt-${n}`), { recursive: true }); fs.writeFileSync(path.join(dir, `attempt-${n}`, `assumptions.${tier}.yaml`), ['tier: ' + tier, 'assumptions:', ...ids.map(id => `  - id: ${id}\n    assumption: x`)].join('\n') + '\n'); };
+  w(1, 'frontend', ['A-004', 'A-005']);
+  w(2, 'frontend', ['A-004', 'A-006']);
+  w(2, 'backend-api', ['A-004']);
+  const ok = rs.appendEvent(dir, 'assumption_resolved', { targets: [{ tier: 'frontend', attempt: 1, id: 'A-005' }, { tier: 'frontend', attempt: 2, id: 'A-006' }, { tier: 'backend-api', attempt: 2, id: 'A-004' }], decision: '貸出日は登録時に決まる', by: 'req: feedback' });
+  assert.equal(ok.type, 'assumption_resolved');
+  assert.equal(ok.targets.length, 3);
+  assert.throws(() => rs.appendEvent(dir, 'assumption_resolved', { targets: [{ tier: 'frontend', attempt: 2, id: 'A-005' }], decision: 'x' }), /frontend\/attempt-2\/A-005/, '最新の attempt に無い id は拒む');
+  assert.throws(() => rs.appendEvent(dir, 'assumption_resolved', { targets: [{ tier: 'backend-api', attempt: 2, id: 'A-006' }], decision: 'x' }), /backend-api\/attempt-2\/A-006/, '別ティアの id では閉じられない');
+  assert.throws(() => rs.appendEvent(dir, 'assumption_resolved', { targets: [], decision: 'x' }), /targets/);
+  assert.throws(() => rs.appendEvent(dir, 'assumption_resolved', { targets: [{ tier: 'frontend', attempt: 1, id: 'A-004' }] }), /decision/);
+  assert.throws(() => rs.appendEvent(dir, 'assumption_resolved', { targets: [{ tier: 'frontend', id: 'A-004' }], decision: 'x' }), /attempt/);
+  assert.equal(rs.readEvents(dir).filter(e => e.type === 'assumption_resolved').length, 1, '拒んだものは記録されない');
+});

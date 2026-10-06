@@ -715,12 +715,12 @@ processes:
     write_set:
       - "`apps/<tier>/**`"
       - "`<run>/attempt-<n>/assumptions.<tier>.yaml`"
-      - "`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` の結果。リポの外。使い終えたら削除)"
+      - "`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
     reads: [rules, feature, contract-slice, contracts-code, use-cases, req-usdm, req-rdra, design, ui, tier-src, test-support, findings]
     writes: [tier-src, assumptions, issues-tier, migrations]
     allowed_writes: [tier-dir, assumptions, issues-tier]
     notes:
-      - "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` の結果。リポの外。使い終えたら削除)"
+      - "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
   - id: implement.integrate
     name: 結合
     skill: d2-implement
@@ -810,14 +810,26 @@ processes:
     reads: [req-review, adr-review]
     writes: []
   - id: run.req-diff
-    name: 要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業を次の UC の carry_over に)
+    name: 要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる)
     stage: requirements
     kind: orchestrator
     actor: d2-run
-    scripts: [carryOver.js]
+    scripts: [importUi.js, validateScreens.js, runGates.js, genUseCases.js, runState.js]
     run_table_row: "① の要求の差分の取り込み"
-    reads: [feedback-docs, run-events, use-cases]
-    writes: [feedback-docs, use-cases]
+    reads: [feedback-docs, run-events, use-cases, design]
+    writes: [feedback-docs, use-cases, run-events, ui, reports]
+  - id: design.feedback
+    name: 要求の差分の画面の見本 (項目の stories だけを直す)
+    skill: d2-design
+    mode: feedback
+    stage: requirements
+    kind: subagent
+    template_row: "① 要求の差分 (画面部品)"
+    write_set:
+      - "`docs/design/**`"
+    reads: [design, use-cases]
+    writes: [design]
+    allowed_writes: [design]
   - id: run.early.docs-readme
     name: 文書の入口の更新 (① ②)
     parent: run.early
@@ -955,12 +967,12 @@ processes:
     reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules, feedback-docs]
     writes: [docs-readme, feedback-index]
   - id: run.uc.deliver
-    name: 配送 (squash・main への取り込み。carry_over を次の UC へ)
+    name: 配送 (squash・main への取り込み)
     parent: run.uc
     stage: uc
     kind: script
     actor: d2-run
-    scripts: [prTrailers.js, carryOver.js]
+    scripts: [prTrailers.js]
     run_table_row: "④ の prTrailers.js と配送"
     reads: [use-cases, reports, run-events]
     writes: [reports, use-cases]

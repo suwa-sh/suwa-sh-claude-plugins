@@ -35,6 +35,16 @@
 - 原因: パイプの終了コードは最後のコマンド (`cut`) のもので、前の失敗が隠れる
 - 回避: 1 コマンド = 1 目的で分けて実行し、終了コードを見てから次へ進む。パイプで整形しない
 
+## headless で `mktemp` が拒否される (tier の実装者がゲートの `{report}` の置き換え先を作れない)
+
+- 症状: `mktemp` を含むコマンドが allowedTools に無く止まる (0.1.31 の試し運転 O17)
+- 回避: `node -e "console.log(require('os').tmpdir()+'/d2-'+Date.now()+'.json')"` で OS の一時ディレクトリのファイル名を作り、それを `{report}` に使う (node は許可済み)。使い終えたら消す (tier-impl.md 4)
+
+## `runState.js event` / `done` に長い日本語の JSON を argv で渡すとハーネスの検査で止まる
+
+- 症状: 項目の一覧 (残った作業・閉じた前提の決定など) を含む JSON を引数にした `node runState.js event ...` が承認待ちで止まる、か引用符の扱いで壊れる (0.1.31 の試し運転 O18)
+- 回避: JSON をファイル (`.distillery/logs/<name>.json`。gitignore) に書き、`--data-file <ファイル>` で渡す (argv の JSON と排他)
+
 ## headless で `shasum` が承認待ちで止まる
 
 - 症状: `shasum -a 256` を含むコマンドが allowedTools に無く止まる
