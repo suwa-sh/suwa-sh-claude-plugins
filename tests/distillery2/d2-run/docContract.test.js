@@ -454,6 +454,8 @@ test('0.1.32 J2: 残った作業は種類ごとの宛先へ (design → d2-desig
   assert.match(r, /sub `d2-design mode=feedback items=<項目のファイルと直す内容を 1 行ずつ>` \(派遣表「① 要求の差分 \(画面部品\)」\)/);
   assert.match(r, /`node <skills>\/d2-design\/scripts\/validateScreens\.js docs\/design\/screens\.yaml --app docs\/design\/storybook-app\/src --use-cases docs\/requirements\/use-cases\.yaml` が exit 0/);
   assert.match(r, /`node <skills>\/d2-foundation\/scripts\/importUi\.js --from docs\/design\/storybook-app --cwd \.` で `packages\/ui\/\*\*` に取り込み直す \(前回の一覧にあって消えたファイルは消える\)/);
+  assert.match(r, /\*\*項目がすべて「直した」\*\* \(報告に「直せない \(理由\)」が 1 件でもあれば受理せず、変更を捨てて/);
+  assert.match(r, /1 つの項目に複数の id \(例「A-004 \/ A-005 \/ A-006」\) があれば \*\*id ごとに分けて\*\*候補を列挙し、id ごとの選択から `targets` の要素を 1 つずつ組む/);
   assert.match(r, /`tiers` に frontend を含むものごとに `runGates\.js --uc <slug> --tiers frontend --only unit` を回す[^\n]*落ちたら止まって報告する/);
   assert.match(r, /`node runState\.js event \.distillery\/runs\/<slug> assumption_resolved --data-file <json>`/);
   assert.match(r, /\{"targets": \[\{"tier": "<tier>", "attempt": <n>, "id": "A-xxx"\}\], "decision": "<要求の差分の決定の要点>", "by": "req: feedback"\}/);

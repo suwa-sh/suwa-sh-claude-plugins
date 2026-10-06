@@ -139,14 +139,16 @@ UC の実装で見つかった要求の穴 (課題ファイルの `kind: require
    **「残った作業」** を種類ごとに載せ、1 件ずつ「**対応する / 無視**」で聞く (0.1.32 J2。「次の UC で拾う」は無い。UC への持ち越しはやめた):
    - `design` (画面の見本): 要求担当の報告の項目。項目のファイルは `docs/design/storybook-app/src/<相対パス>` で指す。報告が `packages/ui/<相対パス>` (取り込み先) で書いていたら `docs/design/storybook-app/src/<相対パス>` に読み替え、実在を確かめる。無ければ「対応づけられない」と出して派遣しない (人は無視を選ぶ)
    - `assumption` (前提の記録を閉じる): UC の slug・ティア・attempt・`A-xxx` の id と、閉じる決定の要点。項目に slug か attempt が無ければ (既存の持ち越しは「frontend の A-004」のようにしか書いていない)、d2-run が候補を列挙して載せる:
-     `grep -l "id: A-xxx" .distillery/runs/*/attempt-*/assumptions.<tier>.yaml` で id を持つ (slug, attempt) の組をすべて出し、1 件なら確定、複数なら確認ページで人に選ばせる (同じ id が別の UC・別の attempt にあるので推測しない)。候補が 0 件か人が選ばなければ「無視」(報告に「特定できなかった項目」として残す)
+     `grep -l "id: A-xxx" .distillery/runs/*/attempt-*/assumptions.<tier>.yaml` で id を持つ (slug, attempt) の組をすべて出し、1 件なら確定、複数なら確認ページで人に選ばせる (同じ id が別の UC・別の attempt にあるので推測しない)。候補が 0 件か人が選ばなければ「無視」(報告に「特定できなかった項目」として残す)。
+     1 つの項目に複数の id (例「A-004 / A-005 / A-006」) があれば **id ごとに分けて**候補を列挙し、id ごとの選択から `targets` の要素を 1 つずつ組む (id ごとに attempt が違ってよい)
    - 既存の持ち越し (1 で控えた `carry_over_rows` と `carry_over_pending` の `items`) も同じ一覧に載せる (種類は人が `design` / `assumption` / 無視 を選ぶ。`assumption` の候補は上と同じに列挙する。黙って失わない)
    問い: 「この差分で進めてよいか / 直す点 / 外す課題 / 残った作業ごとに対応するか無視か」。直す点は指摘を input に足して 2 から。
    外す課題があれば、変更を捨てて (`git checkout -- docs/requirements` と `git clean -fd -- docs/requirements`) その課題を除いて 2 から。外した課題は「取り下げる / 残す」を聞く。
    残す課題は理由をファイルに書いて `feedbackBatch.js hold <issue> --reason-file <ファイル>` (止まった印を付ける。止まった課題だけでは要求の差分を始めない)
 4. 承認されたら、まず「対応する」残った作業を種類ごとの宛先に流す (0.1.32 J2):
    - `design`: sub `d2-design mode=feedback items=<項目のファイルと直す内容を 1 行ずつ>` (派遣表「① 要求の差分 (画面部品)」)。受理の条件: 報告に `npx storybook build` が通ったこと、
-     d2-run が回す `node <skills>/d2-design/scripts/validateScreens.js docs/design/screens.yaml --app docs/design/storybook-app/src --use-cases docs/requirements/use-cases.yaml` が exit 0 (Story を消したときの `screens.yaml` の参照漏れを拾う)、write-set (`docs/design/**`) の外が変わっていない。
+     d2-run が回す `node <skills>/d2-design/scripts/validateScreens.js docs/design/screens.yaml --app docs/design/storybook-app/src --use-cases docs/requirements/use-cases.yaml` が exit 0 (Story を消したときの `screens.yaml` の参照漏れを拾う)、write-set (`docs/design/**`) の外が変わっていない、
+     **項目がすべて「直した」** (報告に「直せない (理由)」が 1 件でもあれば受理せず、変更を捨てて (`git checkout -- docs/design` と `git clean -fd -- docs/design`) 止まって報告する。人が項目を直すか「無視」に変えて 3 からやり直す。既存の持ち越しは再生成で消えるので、黙って先へ進まない。差分レビュー 3 ラウンド目)。
      受理後に `node <skills>/d2-foundation/scripts/importUi.js --from docs/design/storybook-app --cwd .` で `packages/ui/**` に取り込み直す (前回の一覧にあって消えたファイルは消える)。
      続けて、配送済み UC (`status: done`) のうち `tiers` に frontend を含むものごとに `runGates.js --uc <slug> --tiers frontend --only unit` を回す (取り込んだ部品を使う既存 UC の回帰)。落ちたら止まって報告する (design の差し戻し。commit しない)
    - `assumption`: 対象の UC の run (main) に `node runState.js event .distillery/runs/<slug> assumption_resolved --data-file <json>` を追記する。JSON は `{"targets": [{"tier": "<tier>", "attempt": <n>, "id": "A-xxx"}], "decision": "<要求の差分の決定の要点>", "by": "req: feedback"}`
