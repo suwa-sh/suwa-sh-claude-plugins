@@ -544,7 +544,9 @@ test('0.1.32 手順の追記 16 件: 旧形式の自動選択 (legacy_runs)・�
   assert.match(fb, /\| `broken` \| `\.distillery\/worktrees\/feedback` だけがあり branch が無いとき[^\n]*`git -C <wt> status --porcelain` に出力が無く `git -C <wt> log main\.\.HEAD --oneline` も空 \(中身の無い残骸[^\n]*そのディレクトリを消して `git worktree prune` し、`FB status` が `none` になれば 4 から。差分か commit があれば消さずに止まって報告する。それ以外の `broken` も止まって報告 \|/);
   assert.match(fb, /\| 結果ファイルが `applied` で分割ファイル \(contract\) に差分が無い \| \*\*止めない\*\*[^\n]*`FB commit-issue` が `already-applied` と判定する/);
   const integ = row(t, /^\| \*\*integrate\*\* \|/);
-  assert.match(integ, /\*\*他 UC への回帰は d2-run が回す\*\* \(0\.1\.32 O15\): 受理の後、`git diff --name-only <base_head>\.\.HEAD -- features\/support features\/step_definitions` に変更があれば、配送済み UC \(`status: done`\) ごとに `runGates\.js --uc <他 slug> --only uc-bdd` を回し/);
+  assert.match(integ, /\*\*他 UC への回帰は d2-run が回す\*\* \(0\.1\.32 O15\): 受理して done を書き `impl\(<slug>\): integrate` で commit した後、`git diff --name-only <base_head>\.\.HEAD -- features\/support features\/step_definitions` \(commit 済みの変更だけを見るので、commit の前に回さない\) に変更があれば、配送済み UC \(`status: done`\) ごとに `runGates\.js --uc <他 slug> --only uc-bdd` を回し/);
+  assert.match(section(SKILL, '### 要求の差分', '## ② 決定'), /`grep -l "id: A-xxx" \.distillery\/runs\/\*\/attempt-\*\/assumptions\.<tier>\.yaml` で id を持つ \(slug, attempt\) の組をすべて出し、1 件なら確定、複数なら確認ページで人に選ばせる/);
+  assert.match(read('skills/d2-design/SKILL.md'), /リポジトリのルートからの相対パス `docs\/design\/storybook-app\/src\/stories\/<Name>\.stories\.tsx`/);
   assert.match(read('skills/d2-implement/references/integrate.md'), /共有の補助[^\n]*を変えたら報告に書く。他 UC のシナリオは自分では回さない/);
   const verify = row(t, /^\| \*\*verify\*\* \|/);
   assert.match(verify, /\*\*常に\*\* `\.distillery\/logs\/verify-<slug>-attempt-<n>\.txt` \(gitignore\) に書いてパスで渡す \(件数で渡し方を変えない/);

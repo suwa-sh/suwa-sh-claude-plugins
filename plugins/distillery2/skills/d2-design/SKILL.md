@@ -137,7 +137,7 @@ d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せ�
 ## mode=feedback (要求の差分の残った作業: 項目の stories だけを直す。0.1.32)
 
 要求の差分で、要求担当が「画面の見本の修正」を残った作業として報告し、人が「対応する」と選んだとき、d2-run が
-`mode=feedback items=<直す見本のファイル (docs/design/storybook-app/src/ からの相対パスか絶対パス) と直す内容を 1 行ずつ>` で派遣する。
+`mode=feedback items=<直す見本のファイル (リポジトリのルートからの相対パス `docs/design/storybook-app/src/stories/<Name>.stories.tsx`) と直す内容を 1 行ずつ>` で派遣する (パスの形は派遣表と d2-run の要求の差分 3 と同じ)。
 ③ の全生成 (手順 1〜6) は**しない**。既存の部品・トークン・他の Story を作り直さない。
 
 ### mode=feedback: 読むもの
