@@ -134,6 +134,29 @@ component 不在 / tokens.file 不在) を直す。2 = 読み込み失敗。
 
 d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せる。
 
+## mode=feedback (要求の差分の残った作業: 項目の stories だけを直す。0.1.32)
+
+要求の差分で、要求担当が「画面の見本の修正」を残った作業として報告し、人が「対応する」と選んだとき、d2-run が
+`mode=feedback items=<直す見本のファイル (docs/design/storybook-app/src/ からの相対パスか絶対パス) と直す内容を 1 行ずつ>` で派遣する。
+③ の全生成 (手順 1〜6) は**しない**。既存の部品・トークン・他の Story を作り直さない。
+
+### mode=feedback: 読むもの
+
+- `items` に書かれた `docs/design/storybook-app/src/stories/<Name>.stories.tsx` (直す見本) と、その見本が使う部品 (`docs/design/storybook-app/src/components/**`)
+- `docs/design/screens.yaml` (画面 ↔ Story の対応。Story を消す項目があるときだけ直す)
+- `docs/requirements/use-cases.yaml` (`validateScreens.js --use-cases` の実在検査)
+
+### mode=feedback: 書くもの
+
+- `docs/design/storybook-app/src/stories/<Name>.stories.tsx` のうち項目に書かれたものと、その見本だけが使う依存 (`docs/design/storybook-app/src/**`)。項目に無い Story は変えない
+- `docs/design/screens.yaml` (画面や Story を消す項目があるときだけ。画面が増減しなければ変えない)
+
+### mode=feedback: 完了条件と報告
+
+- `npx storybook build` が通る (`docs/design/storybook-app/` で)
+- 手順 5 の `validateScreens.js docs/design/screens.yaml --app docs/design/storybook-app/src --use-cases docs/requirements/use-cases.yaml` が exit 0
+- 報告に、変えたファイルと消したファイルの一覧、項目ごとに「直した (変えたファイル)」か「直せない (理由)」を書く。`packages/ui/**` への取り込み直しは d2-run が `importUi.js` で行う (ここでは触らない)
+
 ## Scripts
 
 | スクリプト | 用途 |

@@ -47,7 +47,6 @@ d2-run (全スキルを派遣する入口) と d2-common 以外のスキルは�
 | `scripts/feedbackBatch.js` | 還流の git の状態遷移。d2-run が回す |
 | `scripts/genDocsReadme.js` | `docs/README.md` と課題の一覧の生成。d2-run が各段階の commit 前に回す |
 | `scripts/prTrailers.js` | 配送の squash commit の本文 (trailer) |
-| `scripts/carryOver.js` | 要求の差分で残った作業 (`use-cases.yaml` の `carry_over`) の書き換え (0.1.30) |
 | `scripts/tokenReport.js` | headless 実行のトークン集計 (開発時の計測) |
 | `scripts/lib/` | 共通ライブラリ (`basis`・`canonicalJson`・`gherkin`・`resolveDep`・`runState`・`schemaValidate`・`yaml`)。各スキルのスクリプトは `../../d2-common/scripts/lib/<x>` で require する |
 

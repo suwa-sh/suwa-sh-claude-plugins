@@ -703,3 +703,36 @@ test('0.1.30 M5/M6: record-gate --detail は runGates の gates.json (複数) �
   assert.equal(rec3.json.detail.split('\n')[0], 'line 10');
   assert.equal(r.fb('record-gate', '--result', 'fail', '--detail', path.join(r.base, 'nope.json')).code, 2);
 });
+
+test('0.1.32 N7/O7: scan の legacy_runs は旧形式 (還流 done・配送 done 無し) と片付けの途中 (配送 done が legacy で未起票あり) の run を拾い、通常の run は拾わない', () => {
+  const r = makeRepo();
+  const legacy = runState.openRun(r.root, 'legacy-uc');
+  for (const st of [...runState.STAGES, 'feedback']) if (st !== 'deliver') runState.markDone(legacy, st);
+  const half = runState.openRun(r.root, 'half-uc');
+  for (const st of [...runState.STAGES, 'feedback']) if (st !== 'deliver') runState.markDone(half, st);
+  runState.markDone(half, 'deliver', { legacy: true });
+  fs.writeFileSync(path.join(half, 'issues', '20260930T1000_x.md'), issueFile({ kind: 'contract', title: 'x' }));
+  const normal = runState.openRun(r.root, 'normal-uc');
+  for (const st of runState.STAGES) runState.markDone(normal, st);
+  const s = r.fb('scan').json;
+  assert.deepEqual(s.legacy_runs.map(x => x.slug), ['half-uc', 'legacy-uc']);
+  assert.deepEqual(s.legacy_runs[1], { run: '.distillery/runs/legacy-uc', slug: 'legacy-uc' });
+  assert.deepEqual(s.carry_over_pending, []);
+});
+
+test('0.1.32 J2: scan の carry_over_pending は最後の review_approved の carry_over.carry が非空で carry_over_migrated が無い run (配送の done の有無を問わない)。carry 無し・移行済みは拾わない', () => {
+  const r = makeRepo();
+  const pending = runState.openRun(r.root, 'pending-uc');
+  runState.appendEvent(pending, 'review_approved', { carry_over: { done: ['a'], carry: ['画面の見本 stories を直す', '前提 A-004 を閉じる'], ignore: [] } });
+  const migrated = runState.openRun(r.root, 'migrated-uc');
+  runState.appendEvent(migrated, 'review_approved', { carry_over: { done: [], carry: ['x'], ignore: [] } });
+  runState.appendEvent(migrated, 'carry_over_migrated', { items: ['x'], to: 'req: feedback' });
+  runState.markDone(migrated, 'deliver', { squash: 'x' });
+  const none = runState.openRun(r.root, 'none-uc');
+  runState.appendEvent(none, 'review_approved', { carry_over: { done: ['a'], carry: [], ignore: ['b'] } });
+  const old = runState.openRun(r.root, 'old-uc');
+  runState.appendEvent(old, 'review_approved', { assumption_decisions: [] });
+  const s = r.fb('scan').json;
+  assert.deepEqual(s.carry_over_pending, [{ run: '.distillery/runs/pending-uc', slug: 'pending-uc', items: ['画面の見本 stories を直す', '前提 A-004 を閉じる'] }]);
+  assert.equal(s.feedback_due, false, '持ち越しの移行は還流のきっかけではない (要求の差分)');
+});

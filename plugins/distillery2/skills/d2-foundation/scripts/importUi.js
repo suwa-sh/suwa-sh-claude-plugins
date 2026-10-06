@@ -8,6 +8,7 @@
  * - `--from` の src/ (components / tokens / stories と依存モジュール) を packages/ui/ へ実ファイル複製する。
  * - `packages/ui/.imported.yaml` に取り込み元とファイル一覧 (path + sha256) と basis を書く。
  * - 冪等: 再実行は取り込み直し。取り込み元が正なので packages/ui は上書きする (手編集は design 側に戻す)。
+ * - 前回の `.imported.yaml` の一覧にあって取り込み元から消えたファイルは packages/ui からも消す (要求の差分の再取り込みで Story を消したとき。0.1.32 J2)。
  *
  * v1 dist-impl-bootstrap P5 の実ファイル列挙方式を踏襲する (design-event.yaml には依存しない)。
  */
@@ -45,6 +46,11 @@ function run(o) {
   if (!fs.existsSync(srcDir)) { console.error(`source not found: ${srcDir}`); return { code: 1 }; }
   const uiDir = path.resolve(o.cwd, 'packages/ui');
   fs.mkdirSync(uiDir, { recursive: true });
+  const manifestPath = path.join(uiDir, '.imported.yaml');
+  let prev = null;
+  if (fs.existsSync(manifestPath)) {
+    try { prev = parseYaml(fs.readFileSync(manifestPath, 'utf8').split('\n').filter(l => !l.startsWith('#')).join('\n')); } catch { prev = null; /* 壊れた manifest は無視して作り直す */ }
+  }
 
   // 取り込む (絶対パス, packages/ui 内の相対パス) の一覧を作る。src/ を基本に取り込む。
   const tasks = walk(srcDir, srcDir, []).sort().map((rel) => ({ abs: path.join(srcDir, rel), rel }));
@@ -71,6 +77,23 @@ function run(o) {
     fs.writeFileSync(dst, buf);
     files.push({ path: rel, sha256: crypto.createHash('sha256').update(buf).digest('hex') });
   }
+  // 前回取り込んだのに今回の取り込み元に無いファイルを消す (空になったディレクトリも)。一覧に無いファイル (手で置いたもの) は触らない
+  const now = new Set(files.map(f => f.path));
+  const removed = [];
+  // 一覧は追跡ファイルなので、消すのは packages/ui の中の実ファイルに限る (`..`・絶対パス・symlink で外に出る項目は消さない)
+  const base = fs.realpathSync(uiDir);
+  for (const f of (prev && Array.isArray(prev.files)) ? prev.files : []) {
+    const rel = f && typeof f.path === 'string' ? f.path : null;
+    if (!rel || now.has(rel) || path.isAbsolute(rel) || rel.split(/[\\/]/).includes('..')) continue;
+    const dst = path.resolve(uiDir, rel);
+    let real;
+    try { real = fs.realpathSync(dst); } catch { continue; }
+    if (!real.startsWith(base + path.sep) || !fs.lstatSync(dst).isFile()) continue;
+    fs.rmSync(real, { force: true });
+    removed.push(rel);
+    let d = path.dirname(real);
+    while (d.startsWith(base + path.sep) && fs.existsSync(d) && fs.readdirSync(d).length === 0) { fs.rmdirSync(d); d = path.dirname(d); }
+  }
   // npm workspace として解決できるよう packages/ui/package.json を書く (@repo/ui)。
   // main はエントリを推定する (index.ts(x) があればそれ、無ければ最初の components 実体)。
   const relPaths = files.map(f => f.path);
@@ -96,24 +119,18 @@ function run(o) {
   // 同じ入力での再実行が .imported.yaml をバイト一致させる (指摘 7)。
   const contentSha256 = crypto.createHash('sha256')
     .update(files.map(f => `${f.path}:${f.sha256}`).join('\n')).digest('hex');
-  const manifestPath = path.join(uiDir, '.imported.yaml');
   let importedAt = new Date().toISOString();
-  if (fs.existsSync(manifestPath)) {
-    try {
-      const prev = parseYaml(fs.readFileSync(manifestPath, 'utf8').split('\n').filter(l => !l.startsWith('#')).join('\n'));
-      if (prev && prev.content_sha256 === contentSha256 && typeof prev.imported_at === 'string') importedAt = prev.imported_at;
-    } catch { /* 壊れた manifest は無視して作り直す */ }
-  }
+  if (prev && prev.content_sha256 === contentSha256 && typeof prev.imported_at === 'string') importedAt = prev.imported_at;
   const basisLine = headerLine(stamp({ design: o.from }, o.cwd));
   const manifest = { basis: basisLine.replace(/^basis:\s*/, ''), from: o.from, imported_at: importedAt, entry, content_sha256: contentSha256, files };
   fs.writeFileSync(manifestPath, `# ${basisLine}\n` + stringifyYaml(manifest));
-  return { code: 0, count: files.length, entry };
+  return { code: 0, count: files.length, entry, removed };
 }
 
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
-  if (r.code === 0) console.log(`importUi: ${r.count} files → packages/ui`);
+  if (r.code === 0) console.log(`importUi: ${r.count} files → packages/ui${r.removed.length ? ` (removed ${r.removed.length}: ${r.removed.join(', ')})` : ''}`);
   return r.code;
 }
 

@@ -95,3 +95,29 @@ test('同じ入力での再実行は .imported.yaml / package.json をバイト�
   const after = parseYaml(fs.readFileSync(manifestPath, 'utf8').split('\n').filter(l => !l.startsWith('#')).join('\n'));
   assert.notEqual(after.content_sha256, before.content_sha256, 'ファイルが増えたら content_sha256 が変わる');
 });
+
+test('0.1.32 J2: 前回の一覧にあって取り込み元から消えたファイルは packages/ui からも消え、.imported.yaml の一覧が更新される。一覧に無いファイルは触らない', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  writeFile(path.join(cwd, 'design/src/components/ui/Button.tsx'), 'export const Button = () => null;');
+  writeFile(path.join(cwd, 'design/src/stories/Old.stories.tsx'), 'export default {};');
+  writeFile(path.join(cwd, 'design/src/tokens/tokens.json'), '{"primitive":{}}');
+  assert.equal(run({ from: 'design', cwd }).code, 0);
+  assert.ok(fs.existsSync(path.join(cwd, 'packages/ui/stories/Old.stories.tsx')));
+  writeFile(path.join(cwd, 'packages/ui/handmade.ts'), 'export const x = 1;');
+  fs.rmSync(path.join(cwd, 'design/src/stories/Old.stories.tsx'));
+  const r = run({ from: 'design', cwd });
+  assert.equal(r.code, 0);
+  assert.deepEqual(r.removed, ['stories/Old.stories.tsx']);
+  assert.ok(!fs.existsSync(path.join(cwd, 'packages/ui/stories/Old.stories.tsx')), '消えたファイルは取り込み先からも消える');
+  assert.ok(!fs.existsSync(path.join(cwd, 'packages/ui/stories')), '空になったディレクトリも消える');
+  assert.ok(fs.existsSync(path.join(cwd, 'packages/ui/handmade.ts')), '一覧に無いファイルは触らない');
+  assert.deepEqual(manifest(cwd).files.map(f => f.path), ['components/ui/Button.tsx', 'tokens/tokens.json']);
+  // もう一度回しても何も消えない
+  assert.deepEqual(run({ from: 'design', cwd }).removed, []);
+  // 一覧に packages/ui の外を指す項目があっても消さない (一覧は追跡ファイルで人が書き換えうる)
+  writeFile(path.join(cwd, 'outside.txt'), 'keep');
+  const manifestPath = path.join(cwd, 'packages/ui/.imported.yaml');
+  fs.writeFileSync(manifestPath, fs.readFileSync(manifestPath, 'utf8').replace('files:', 'files:\n  - path: ../../outside.txt\n    sha256: x\n  - path: /etc/hosts\n    sha256: x'));
+  assert.deepEqual(run({ from: 'design', cwd }).removed, []);
+  assert.ok(fs.existsSync(path.join(cwd, 'outside.txt')), '外のファイルは消えない');
+});

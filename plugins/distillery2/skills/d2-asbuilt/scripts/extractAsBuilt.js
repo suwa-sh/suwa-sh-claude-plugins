@@ -202,10 +202,11 @@ function collect(opts) {
 
   const events = readEvents(runDir);
   const generatedAt = events.length ? events[events.length - 1].ts : '';
-  const decisions = latestDecisions(events);
   const models = latestModels(events, config);
 
   const attempt = latestAttempt(runDir);
+  // 前提の処遇: 最新の review_approved の決定に、要求の差分で閉じた印 (assumption_resolved。0.1.32 J2) を重ねる (閉じた印が勝つ)
+  const decisions = { ...latestDecisions(events), ...resolvedDecisions(events, attempt) };
   const assumptions = loadAssumptions(runDir, attempt);
   const findings = loadFindings(runDir, attempt);
 
@@ -321,6 +322,23 @@ function latestDecisions(events) {
   else if (raw && typeof raw === 'object') for (const [k, v] of Object.entries(raw)) {
     const val = (v && typeof v === 'object') ? v : { decision: v };
     put(val.tier, k, val);
+  }
+  return map;
+}
+
+/**
+ * 要求の差分で閉じた前提 (run の assumption_resolved {targets: [{tier, attempt, id}], decision, by}。0.1.32 J2) を tier + id のキーにする。
+ * 読むのは as-built が描く attempt (最新) の記録を指す target だけ (最新でない attempt の前提は as-built に出ないので、閉じた印も載せない)。
+ * 処遇は `resolved`、`note` に要求の差分の決定の要点。後のイベントが勝つ
+ */
+function resolvedDecisions(events, attempt) {
+  const map = {};
+  for (const e of events) {
+    if (e.type !== 'assumption_resolved' || !Array.isArray(e.targets)) continue;
+    for (const t of e.targets) {
+      if (!t || !t.tier || !t.id || Number(t.attempt) !== Number(attempt)) continue;
+      map[`${t.tier}\u0000${t.id}`] = { tier: t.tier, id: t.id, decision: 'resolved', note: e.decision || '', by: e.by || 'req: feedback' };
+    }
   }
   return map;
 }
@@ -513,7 +531,7 @@ function buildIndexMd(ctx, preserved) {
   const isAcc = (s) => (s.tags || []).some((t) => t === '@acceptance' || t.startsWith('@acceptance:'));
   const scenarioAcc = ctx.scenarios.filter(isAcc).length;
   const scenarioBrowser = ctx.scenarios.filter((s) => (s.tags || []).includes('@browser'));
-  const decCount = { confirmed: 0, auto_confirmed: 0, rejected: 0, other: 0 };
+  const decCount = { confirmed: 0, auto_confirmed: 0, rejected: 0, resolved: 0, other: 0 };
   for (const a of ctx.assumptions) {
     const d = decisionText(decisionFor(ctx.decisions, a.tier, a.id));
     if (d in decCount) decCount[d] += 1; else decCount.other += 1;
@@ -534,6 +552,7 @@ function buildIndexMd(ctx, preserved) {
   if (decCount.confirmed) decParts.push(`人が承認 ${decCount.confirmed}`);
   if (decCount.auto_confirmed) decParts.push(`自動承認 ${decCount.auto_confirmed}`);
   if (decCount.rejected) decParts.push(`却下 ${decCount.rejected}`);
+  if (decCount.resolved) decParts.push(`要求の差分で閉じた ${decCount.resolved}`);
   if (decCount.other) decParts.push(`未確認 ${decCount.other}`);
   L.push(`| 実装者が決めた前提 | ${ctx.assumptions.length ? `${ctx.assumptions.length} 件 (${decParts.join('、')})` : 'なし'} |`);
   const issueParts = Object.keys(issueKinds).sort(cmpStr).map((k) => `${ja(KIND_JA, k, k)} ${issueKinds[k]}`);
@@ -626,12 +645,12 @@ function buildIndexMd(ctx, preserved) {
   const sevById = findingSeverityById(ctx);
   const verdictById = {};
   for (const v of ctx.findings.verdicts) verdictById[`${v.tier}\u0000${v.id}`] = v;
-  const groups = { confirmed: [], auto_confirmed: [], rejected: [], other: [] };
+  const groups = { confirmed: [], auto_confirmed: [], rejected: [], resolved: [], other: [] };
   for (const a of ctx.assumptions) {
     const d = decisionText(decisionFor(ctx.decisions, a.tier, a.id));
     (groups[d] || groups.other).push(a);
   }
-  const groupTitles = [['confirmed', '人が承認した前提'], ['auto_confirmed', '自動承認した前提'], ['rejected', '却下した前提'], ['other', '未確認の前提']];
+  const groupTitles = [['confirmed', '人が承認した前提'], ['auto_confirmed', '自動承認した前提'], ['rejected', '却下した前提'], ['resolved', '要求の差分で閉じた前提'], ['other', '未確認の前提']];
   let any = false;
   for (const [key, title] of groupTitles) {
     const list = groups[key];
@@ -639,14 +658,16 @@ function buildIndexMd(ctx, preserved) {
     any = true;
     L.push(`### ${title} (${list.length})`);
     L.push('');
-    L.push('| ティア | 分類 | 何を決めたか | 検証 | 場所 |');
-    L.push('|---|---|---|---|---|');
+    const resolved = key === 'resolved';
+    L.push(resolved ? '| ティア | 分類 | 何を決めたか | 検証 | 場所 | 要求の差分の決定 |' : '| ティア | 分類 | 何を決めたか | 検証 | 場所 |');
+    L.push(resolved ? '|---|---|---|---|---|---|' : '|---|---|---|---|---|');
     for (const a of list) {
       const v = verdictById[`${a.tier}\u0000${a.id}`];
       const f = v && v.finding_id ? sevById[`${a.tier}\u0000${v.finding_id}`] : null;
       let verdict = v ? ja(VERDICT_JA, v.verdict, '-') : '-';
       if (f && f.severity && f.severity !== 'info') verdict = ['blocker', 'major'].includes(f.severity) ? `**${verdict} (${f.severity})**` : `${verdict} (${f.severity})`;
-      L.push(`| ${a.tier} | ${ja(CATEGORY_JA, a.category, '-')} | ${mdEscape(a.title || a.assumption)} | ${verdict} | ${mdEscape(shortTarget(a.target))} |`);
+      const note = resolved ? ` ${mdEscape((decisionFor(ctx.decisions, a.tier, a.id) || {}).note || '-')} |` : '';
+      L.push(`| ${a.tier} | ${ja(CATEGORY_JA, a.category, '-')} | ${mdEscape(a.title || a.assumption)} | ${verdict} | ${mdEscape(shortTarget(a.target))} |${note}`);
     }
     L.push('');
     L.push('<details>');
@@ -1208,6 +1229,6 @@ if (require.main === module) process.exit(main(process.argv.slice(2)));
 module.exports = {
   run, collect, buildIndexMd, buildSequenceMd, buildApiInventory, buildDependencyGraph,
   buildSystemIndex, rebuildIndex, ucEntry, extractPreserved, parseCucumberReport, parseVitestReport,
-  scenarioStatus, parseFrontMatter, latestDecisions, decisionFor, loadAssumptions, layersFromAdr,
+  scenarioStatus, parseFrontMatter, latestDecisions, resolvedDecisions, decisionFor, loadAssumptions, layersFromAdr,
   instrumentationCoverage, coverageRows, main, SUMMARY_NAMES,
 };

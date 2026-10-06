@@ -2,6 +2,27 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.32] - 2026-10-06
+
+0.1.30・0.1.31 の試し運転で残った課題を直した: 手順の追記 16 件、受入基準の持ち主 (J1)、残った作業の宛先 (J2。UC への持ち越しをやめた)。
+
+### Changed
+
+- J1 受入基準の持ち主: 要求の規則に「仕様 (SPEC) は 1 つの UC で確かめられる単位に分ける」(`usdm-decompose.md` 5 節。受入基準だけ分けても `checkScenario.js` は通らない)。
+  ④ scenario で `missing` が他 UC の振る舞いなら、要求の課題にして止まる (課題ファイルを main に入れ、`feedback_filed` と `blocked_on_requirement {stage: scenario}` を記録してから `impl(<slug>): scenario (blocked)` で 1 回の commit)。次の起動の要求の差分が仕様を分け、feature を退避する。
+  `scenario_approved` の形 `{feature, feature_sha256, acceptance: {<path>: <sha256>}}` (O14)
+- J2 残った作業の宛先: 要求担当の「残った作業」は `design` (画面の見本) と `assumption` (前提の記録を閉じる) の 2 種類に限り、要求の差分で 1 件ずつ「対応する / 無視」を聞く。
+  `design` は d2-design `mode=feedback items=<見本>` (派遣表「① 要求の差分 (画面部品)」。③ の全生成はしない) → `validateScreens.js` と storybook build で受理 → `importUi.js` で取り込み直し (前回の一覧にあって消えたファイルは消す) → 配送済み UC の frontend の unit の回帰。
+  `assumption` は run に `assumption_resolved {targets: [{tier, attempt, id}], decision, by}` を追記 (`runState.js` が `attempt-<n>/assumptions.<tier>.yaml` で検査。最新でない attempt も可。yaml は変えない)。`extractAsBuilt.js` が最新 attempt の target を読んで処遇「要求の差分で閉じた」にする (as-built 文書の作り直しは次にその UC を回したとき)。
+  「仮に決めた反映」(課題に決定が無く要求担当が案を選んだもの) を報告と確認ページに足した (N10・O8)
+- UC への持ち越し (0.1.30 L10 の `carry_over`) をやめた: `carryOver.js` とテストを削除、`use-cases.yaml` の `carry_over` (schema・genUseCases の引き継ぎ)、派遣文への追記、done の `carry_over_status`、人レビューの「持ち越す / 無視」、配送の `carryOver.js move` を消した。
+  既存の持ち越し (`use-cases.yaml` の `carry_over` の行、0.1.30 形式の `review_approved.carry_over.carry`) は `feedbackBatch.js scan` の `carry_over_pending` と自動選択 3 の 4 で要求の差分に載せ、宛先へ流した後に `carry_over_migrated` を追記し、再生成で行が消える (黙って失わない)
+- 手順の追記 16 件: 旧形式の run の自動選択 (`scan` の `legacy_runs`。N7・O7) / 仮に決めた反映の欄 (N10・O8) / scenario で止めた run は再開しない (N13・N14・O6) / 件名の検査を配送 1 の冒頭に (N1) / 止まった後の再開 (N3) / gates.json の新しさは committer 日時で (N5) /
+  `broken` は中身が無いときだけ消す (N6) / `applied` で差分なしは止めない (N11) / 遅らせた `models_resolved` の判定 (O1) / `<timestamp>` は `date -u +%Y%m%dT%H%M%SZ` (O3) / 配送 1 を 3 行に (O4) / `scenario_approved` の形 (O14) / 共有の補助を変えたら他 UC の uc-bdd は d2-run が回す (O15) /
+  verify の変更ファイル一覧は常にファイルで渡し、簿記のファイルを除く (O16) / `mktemp` が拒まれたら `node -e` (O17) / `runState.js event` / `done` の `--data-file` (O18)
+- 正本: `design.feedback` の処理、`run.req-diff` の reads (design) / writes (run-events・ui・reports)、`run.uc.deliver` から carryOver を外した。tier の一時ファイルの文言。派遣表の生成ブロックと golden を更新
+- テスト: runState (`--data-file`・`assumption_resolved` の検査)、feedbackBatch (`legacy_runs`・`carry_over_pending`)、importUi (消えたファイル)、extractAsBuilt (`resolvedDecisions`)、checkScenario (SPEC を分けた後)、docContract (J1・J2・追記 16 件)、genUseCases (carry_over を引き継がない)、plugin-layout (carryOver.js が無い)。変異テスト 49 件
+
 ## [0.1.31] - 2026-10-06
 
 ② 共通化の後半 (todo 2-5〜2-7): 定義の置き場所を 1 つにし、手順書の重複を消し、照合の限界を詰めた。あわせて 0.1.30 の試し運転の小さい課題 4 件 (N2・N4・N8・N12) を直した。
