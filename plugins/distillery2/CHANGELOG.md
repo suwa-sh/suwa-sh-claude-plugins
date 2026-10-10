@@ -17,7 +17,7 @@ version の正本は `.claude-plugin/plugin.json`。
   執筆役は他 UC の振る舞いを含む受入基準を要求の課題 (仕様を UC 単位に分ける) として下書きし、仕組みの変更を提案しない (P9) / `carry_over` は廃止で再生成で消えてよい (d2-requirements SKILL・派遣表「① 要求」の追記欄。P10) /
   design の items は `docs/design/storybook-app/src/<相対パス>` (stories も部品も)。部品は直してよく、import を Story まで辿った「影響する Story」を報告 (d2-design・派遣表・d2-run・d2-requirements。P11) / `basis.js check` の対象は `docs/adr/[0-9]*.md` (P13) /
   troubleshooting に「控えは `.distillery/logs/` に」(P14) / scenario 行に `checkScenario.js` のコマンド例 (P15) / 別名の解決先が分かれば ID で `models_resolved` (P17) / 要求担当が再生成せず `carry_over` が残っていれば確認ページの前に `genUseCases.js` (P18。承認後には再生成しない)
-- テスト: runState (scenario-approve: 範囲・bytes・path 昇順・dir 無し・異常系)、genDocsReadme (配送済み / 実装済み (配送待ち) / 実装中)、docContract (0.1.33 の 3 件)、dataflow (正本の reads)。変異テスト 51 件
+- テスト: runState (scenario-approve: 範囲・bytes・path 昇順・dir 無し・異常系)、genDocsReadme (配送済み / 実装済み (配送待ち) / 実装中)、docContract (0.1.33 の 3 件)、dataflow (正本の reads)。変異テスト 52 件
 
 ## [0.1.32] - 2026-10-06
 
