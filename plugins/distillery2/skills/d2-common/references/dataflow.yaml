@@ -819,7 +819,7 @@ processes:
     reads: [feedback-docs, run-events, use-cases, design]
     writes: [feedback-docs, use-cases, run-events, ui, reports]
   - id: design.feedback
-    name: 要求の差分の画面の見本 (項目の stories だけを直す)
+    name: 要求の差分の画面の見本 (項目のファイル (stories と部品) だけを直す)
     skill: d2-design
     mode: feedback
     stage: requirements
@@ -874,7 +874,7 @@ processes:
     kind: orchestrator
     actor: d2-run
     run_table_row: "④ の段階の進行・確認ページ"
-    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system]
+    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feature, acceptance]
     writes: [run-events, use-cases, asbuilt-report, feedback-docs, worktrees]
   - id: run.uc.check-scenario
     name: シナリオの静的確認

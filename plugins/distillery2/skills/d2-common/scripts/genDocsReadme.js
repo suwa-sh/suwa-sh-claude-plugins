@@ -218,15 +218,18 @@ function build(ctx) {
     const specText = Object.fromEntries(ctx.specs.map((s) => [s.id, s]));
     const reqMd = D('requirements', 'requirements.md');
     const rows = ctx.ucs.slice().sort((a, b) => cmpStr(`${a.business}\u0000${a.buc}\u0000${a.uc}`, `${b.business}\u0000${b.buc}\u0000${b.uc}`));
-    // 状態は 1 か所で決める (件数と状態列で同じ判定)
+    // 状態は 1 か所で決める (件数と状態列で同じ判定)。配送済み (use-cases.yaml の status: done。配送 3 で d2-run だけが書く) を追跡表より先に見る
+    // (追跡表は as-built 段で配送の前に作られ、配送済みの UC は必ず持つ。追跡表を先に見ると配送しても表示が変わらない。0.1.32 実走 P6)
     const statusOf = (u) => {
+      if (u.status === 'done') return '配送済み';
       const t = ctx.trace.ucs && ctx.trace.ucs[u.slug];
-      if (t) return t.gates_complete && t.gates === 'pass' ? '実装済み' : `実装中 (ゲート ${t.gates || '-'})`;
-      return { planned: '未着手', in_progress: '実装中', done: '実装済み', blocked: '要求待ち' }[u.status] || (u.status || '-');
+      if (t) return t.gates_complete && t.gates === 'pass' ? '実装済み (配送待ち)' : `実装中 (ゲート ${t.gates || '-'})`;
+      return { planned: '未着手', in_progress: '実装中', blocked: '要求待ち' }[u.status] || (u.status || '-');
     };
-    const done = rows.filter((u) => statusOf(u) === '実装済み').length;
-    const blocked = rows.filter((u) => u.status === 'blocked').length;
-    out.push(`UC ${rows.length} 件 (実装済み ${done}、要求待ち ${blocked})。1 行で要求 → シナリオ → 契約 → 画面 → 実装の記録まで辿れる。`);
+    const delivered = rows.filter((u) => statusOf(u) === '配送済み').length;
+    const waitingDelivery = rows.filter((u) => statusOf(u) === '実装済み (配送待ち)').length;
+    const blocked = rows.filter((u) => statusOf(u) === '要求待ち').length; // 状態列と同じ判定で数える (blocked でも追跡表があれば状態列は追跡表。差分レビュー 1 ラウンド目)
+    out.push(`UC ${rows.length} 件 (配送済み ${delivered}、配送待ち ${waitingDelivery}、要求待ち ${blocked})。1 行で要求 → シナリオ → 契約 → 画面 → 実装の記録まで辿れる。`);
     if (present(reqMd)) out.push(`要求の列の SPEC は ${ref(reqMd, '要求仕様書')} の行。`);
     out.push('');
     out.push('| 業務 | UC | 状態 | 要求 | シナリオ | 契約 | 画面 | 実装の記録 |');
@@ -253,7 +256,7 @@ function build(ctx) {
       out.push(`| ${biz} | ${mdEscape(u.uc)} | ${status} | ${specCell} | ${feats.join('<br>') || '-'} | ${contractParts.join('<br>') || '-'} | ${screens.map(mdEscape).join('<br>') || '-'} | ${asBuilt || '-'} |`);
     }
     out.push('');
-    const waiting = rows.filter((u) => u.status === 'blocked' && u.no_spec_reason);
+    const waiting = rows.filter((u) => statusOf(u) === '要求待ち' && u.no_spec_reason); // 件数・状態列と同じ判定 (差分レビュー 2 ラウンド目)
     if (waiting.length) {
       out.push('<details>');
       out.push(`<summary>要求待ちの理由 (${waiting.length})</summary>`);

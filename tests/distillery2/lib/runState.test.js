@@ -242,3 +242,38 @@ test('0.1.32 J2: assumption_resolved は targets の {tier, attempt, id} を att
   assert.throws(() => rs.appendEvent(dir, 'assumption_resolved', { targets: [{ tier: 'frontend', id: 'A-004' }], decision: 'x' }), /attempt/);
   assert.equal(rs.readEvents(dir).filter(e => e.type === 'assumption_resolved').length, 1, '拒んだものは記録されない');
 });
+
+test('0.1.33 P16: scenario-approve は feature の bytes の sha256 と、@uc:<slug> を持つシナリオがある受入 feature の sha256 を scenario_approved に書く (他 UC だけの受入 feature は入れない。dir 無しは {}。feature 無し・@uc 無しは拒む)', () => {
+  const crypto = require('node:crypto');
+  const { execFileSync, spawnSync } = require('node:child_process');
+  const cli = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-common/scripts/lib/runState.js');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'register-book');
+  const W = (rel, text) => { const p = path.join(root, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, text); return p; };
+  const sha = (rel) => crypto.createHash('sha256').update(fs.readFileSync(path.join(root, rel))).digest('hex');
+  W('features/書籍/register-book.feature', '# language: ja\n@uc:register-book\n機能: 書籍を登録する\n  @acceptance @acceptance:SPEC-001-01-1\n  シナリオ: 登録\n    前提 x\r\n');
+  W('features/acceptance/SPEC-001-01.feature', '機能: 共有\n  @uc:register-book @acceptance @acceptance:SPEC-001-01-2\n  シナリオ: A\n  @uc:edit-book\n  シナリオ: B\n');
+  W('features/acceptance/SPEC-009-01.feature', '@uc:delete-book\n機能: 他 UC だけ\n  シナリオ: C\n');
+  W('features/acceptance/README.md', 'not a feature');
+  const ev = JSON.parse(execFileSync('node', [cli, 'scenario-approve', dir, '--feature', 'features/書籍/register-book.feature', '--acceptance-dir', 'features/acceptance'], { cwd: root, encoding: 'utf8' }));
+  assert.equal(ev.type, 'scenario_approved');
+  assert.equal(ev.feature, 'features/書籍/register-book.feature');
+  assert.equal(ev.feature_sha256, sha('features/書籍/register-book.feature'), 'bytes そのまま (CRLF を正規化しない)');
+  assert.deepEqual(ev.acceptance, { 'features/acceptance/SPEC-001-01.feature': sha('features/acceptance/SPEC-001-01.feature') }, 'この UC のタグを持つシナリオがあるファイルだけ');
+  const last = rs.readEvents(dir).at(-1);
+  assert.equal(last.type, 'scenario_approved');
+  assert.deepEqual(Object.keys(last.acceptance), ['features/acceptance/SPEC-001-01.feature']);
+  // 受入 dir が無ければ {}。Feature タグで @uc を持つファイルも対象
+  const ev2 = rs.scenarioApprove(dir, path.join(root, 'features/書籍/register-book.feature'), path.join(root, 'no-such-dir'));
+  assert.deepEqual(ev2.acceptance, {});
+  W('features/acceptance/SPEC-001-09.feature', '@uc:register-book\n機能: Feature タグ\n  @acceptance @acceptance:SPEC-001-01-1\n  シナリオ: D\n');
+  const ev3 = rs.scenarioApprove(dir, path.join(root, 'features/書籍/register-book.feature'), path.join(root, 'features/acceptance'));
+  assert.deepEqual(Object.keys(ev3.acceptance).map(p => path.basename(p)), ['SPEC-001-01.feature', 'SPEC-001-09.feature'], 'path 昇順');
+  // 異常系
+  assert.throws(() => rs.scenarioApprove(dir, path.join(root, 'features/none.feature'), null), /feature が無い/);
+  W('features/書籍/no-tag.feature', '機能: タグ無し\n  シナリオ: E\n');
+  assert.throws(() => rs.scenarioApprove(dir, path.join(root, 'features/書籍/no-tag.feature'), null), /@uc:<slug> タグが無い/);
+  const r = spawnSync('node', [cli, 'scenario-approve', dir], { cwd: root, encoding: 'utf8' });
+  assert.notEqual(r.status, 0, '--feature は必須');
+  assert.equal(rs.readEvents(dir).filter(e => e.type === 'scenario_approved').length, 3, '拒んだものは記録されない');
+});

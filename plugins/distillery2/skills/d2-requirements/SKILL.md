@@ -103,7 +103,7 @@ description: >-
 5. **確認材料**を作り直す。
 6. 最終報告に「変更したファイル」と「追加／変更／削除した要求・UC」を列挙する。
 7. 最終報告に「**残った作業**」を書く: 課題を反映するために write-set (`docs/requirements/**`) の外で必要になった作業。種類は 2 つに限る (0.1.32 J2):
-   - `design` (画面の見本): 対象 = `docs/design/storybook-app/src/stories/<Name>.stories.tsx` (取り込み先 `packages/ui/` ではなく見本側のパス) と直す内容
+   - `design` (画面の見本): 対象 = `docs/design/storybook-app/src/<相対パス>` (見本 `stories/<Name>.stories.tsx` でも部品 `components/**` でもよい。取り込み先 `packages/ui/` ではなく見本側のパス。0.1.32 実走 P11) と直す内容
    - `assumption` (前提の記録を閉じる): 対象 = UC の slug・ティア・attempt・`A-xxx` の id (`.distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml`) と、今回の決定で閉じる理由
 
    自分では触らない (write-set の外)。無ければ「なし」。どちらでもない作業 (既存の feature の受入タグなど) は作業に入れず、「仮に決めた反映」か「決定と違う反映」に書く。
@@ -143,6 +143,7 @@ node <skills>/d2-requirements/scripts/genUseCases.js
 既存 use-cases.yaml があれば `slug`・`status`・`tiers_hint`・`spec_ids_rejected` は uc_id で引き継がれるので、
 再生成しても LLM の編集は消えない。`spec_ids` は**既存値（LLM が絞った SPEC）と今回はじめて出た推定候補の和集合**になり、
 SPEC を取りこぼさない。**外した SPEC は削除せず `spec_ids_rejected` へ移す**と、再生成で候補へ戻らない。
+`carry_over` (0.1.30〜0.1.31 の UC への持ち越し) は 0.1.32 で廃止した。再生成で消えるのは想定どおりで、**手で戻さない** (残った作業は d2-run の要求の差分が種類ごとの宛先に流す。0.1.32 実走 P10)。
 今回新規に増えた候補だけが各 UC の `spec_ids_added` に記録されるので（無ければキーごと出ない）、
 **LLM は `spec_ids_added` を見て採否を判断し、採用は `spec_ids` に残し、不採用は `spec_ids_rejected` へ移して `spec_ids_added` を削除する**。
 `no_spec_reason` を持つ (blocked の) UC に新しい候補が付いたときは、候補は `spec_ids_added` にだけ出て `spec_ids` は空のまま。採用するなら `spec_ids` に移し、`no_spec_reason` を消して `status: planned` に戻す。

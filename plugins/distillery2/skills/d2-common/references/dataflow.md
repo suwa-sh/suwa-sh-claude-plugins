@@ -201,11 +201,11 @@ flowchart LR
 |---|---|
 | `docs/feedback/**`<br>`<run>/events.jsonl`<br>`docs/requirements/use-cases.yaml`<br>`docs/design/**` | `docs/feedback/**`<br>`docs/requirements/use-cases.yaml`<br>`<run>/events.jsonl`<br>`packages/ui/**`<br>`<run>/reports/**` |
 
-#### 要求の差分の画面の見本 (項目の stories だけを直す)
+#### 要求の差分の画面の見本 (項目のファイル (stories と部品) だけを直す)
 
 ```mermaid
 flowchart LR
-  p_design_feedback["要求の差分の画面の見本 (項目の stories だけを直す)<br/>d2-design mode=feedback"]
+  p_design_feedback["要求の差分の画面の見本 (項目のファイル (stories と部品) だけを直す)<br/>d2-design mode=feedback"]
   s_design[("デザインシステム (Storybook アプリ)<br/>docs/design/**")]
   s_use_cases[("UC 一覧<br/>docs/requirements/use-cases.yaml")]
   s_design --> p_design_feedback
@@ -941,12 +941,14 @@ flowchart LR
   g_run[("実行の記録<br/>実行の記録 (events / done / 退避した done)・ゲートの記録・as-built の抽出の集計 (計装の有無)・Verifier の指摘・実装者が補った前提・仕様起因の課題・ティア実装者の課題・作業用の worktree (還流は 1 つ。review で要求を直すときは一時のもの。gitignore)")]
   g_contracts[("契約<br/>UC ごとの契約の索引")]
   g_asbuilt[("as-built<br/>システム横断の as-built")]
+  g_scenarios[("シナリオと step<br/>UC シナリオ・受入シナリオ")]
   g_docs[("文書の入口と課題ファイル<br/>課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成)")]
   g_settings --> p_run_uc
   g_requirements --> p_run_uc
   g_run --> p_run_uc
   g_contracts --> p_run_uc
   g_asbuilt --> p_run_uc
+  g_scenarios --> p_run_uc
   p_run_uc --> g_run
   p_run_uc --> g_requirements
   p_run_uc --> g_docs
@@ -954,7 +956,7 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `.distillery/config.yaml`<br>`docs/requirements/use-cases.yaml`<br>`<run>/events.jsonl`<br>`<run>/reports/**`<br>`<run>/reports/asbuilt.json`<br>`<run>/attempt-<n>/findings.<tier>.yaml`<br>`<run>/attempt-<n>/assumptions.<tier>.yaml`<br>`<run>/issues/**`<br>`<run>/issues/<ts>_<tier>_<slug>.md`<br>`contracts/uc-index.yaml`<br>`docs/as-built/_system/**` | `<run>/events.jsonl`<br>`docs/requirements/use-cases.yaml`<br>`<run>/reports/asbuilt.json`<br>`docs/feedback/**`<br>`.distillery/worktrees/**` |
+| `.distillery/config.yaml`<br>`docs/requirements/use-cases.yaml`<br>`<run>/events.jsonl`<br>`<run>/reports/**`<br>`<run>/reports/asbuilt.json`<br>`<run>/attempt-<n>/findings.<tier>.yaml`<br>`<run>/attempt-<n>/assumptions.<tier>.yaml`<br>`<run>/issues/**`<br>`<run>/issues/<ts>_<tier>_<slug>.md`<br>`contracts/uc-index.yaml`<br>`docs/as-built/_system/**`<br>`features/<業務>/<slug>.feature`<br>`features/acceptance/**` | `<run>/events.jsonl`<br>`docs/requirements/use-cases.yaml`<br>`<run>/reports/asbuilt.json`<br>`docs/feedback/**`<br>`.distillery/worktrees/**` |
 
 #### シナリオの静的確認
 
@@ -1171,7 +1173,7 @@ flowchart LR
 | スキルの手順書 (同梱) | 同梱のひな形と手順書 | `<skills>/**` | プラグイン同梱 | — | 独立検証 |
 | 要求 (USDM) | 要求 | `docs/requirements/requirements.yaml` | 生成 | 要求の整理 | 品質特性と設計の決定、UC シナリオの執筆、ティアの実装、独立検証、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、シナリオの静的確認、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
 | RDRA モデル | 要求 | `docs/requirements/rdra/**` | 生成 | 要求の整理 | 品質特性と設計の決定、デザインシステムの生成、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、UC シナリオの執筆、契約の差分、ティアの実装、独立検証、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
-| UC 一覧 | 要求 | `docs/requirements/use-cases.yaml` | 生成 | 要求の整理、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる)、d2-run (④)、配送 (squash・main への取り込み) | 品質特性と設計の決定、デザインシステムの生成、UC シナリオの執筆、契約の差分、ティアの実装、結合、独立検証、as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる)、要求の差分の画面の見本 (項目の stories だけを直す)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、d2-run (④)、シナリオの静的確認、文書の入口の更新 (④)、配送 (squash・main への取り込み)、文書の入口の更新 (起動時の移行)、d2-run (還流) |
+| UC 一覧 | 要求 | `docs/requirements/use-cases.yaml` | 生成 | 要求の整理、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる)、d2-run (④)、配送 (squash・main への取り込み) | 品質特性と設計の決定、デザインシステムの生成、UC シナリオの執筆、契約の差分、ティアの実装、結合、独立検証、as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる)、要求の差分の画面の見本 (項目のファイル (stories と部品) だけを直す)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、d2-run (④)、シナリオの静的確認、文書の入口の更新 (④)、配送 (squash・main への取り込み)、文書の入口の更新 (起動時の移行)、d2-run (還流) |
 | 要求の確認材料 | 要求 | `docs/requirements/_review-summary.md` | 生成 | 要求の整理 | d2-run (① ②) |
 | 非機能要求グレード表 | 決定 (NFR・ADR) | `docs/nfr/**` | 生成 | 品質特性と設計の決定 | デザインシステムの生成、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
 | ADR | 決定 (NFR・ADR) | `docs/adr/*.md` | 生成 | 品質特性と設計の決定、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み)、還流の ADR | 基盤の生成 (F1→F2→F3→F5→F7)、F1 ルール、F2 依存方向の検査、F5 設定・骨格・CI・qlty、契約の骨格、デザインシステムの生成、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み)、還流の ADR の検証、還流の ADR |
@@ -1195,10 +1197,10 @@ flowchart LR
 | 契約テスト (生成物) | 契約 | `apps/*/test/contract/**` | 生成 | 基盤の仕上げ (F8→F6→F7→F4→F9)、F4 契約テストの生成 (骨格分)、契約の差分、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み)、還流の契約 | 基盤の仕上げ (F8→F6→F7→F4→F9)、F9 基盤のチェックポイント、骨格分の契約テストの鮮度 (受理時の検査)、契約の変更の分類、ゲートの実行、還流のゲート (課題ごとの static と最後のゲート)、契約テストの鮮度 (--check)、DB の生成物の鮮度 (--check) |
 | DB migration (datastore_owner のティア) | 契約 | `apps/<tier>/migrations/**` | 生成 | 契約の差分、ティアの実装、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み)、還流の契約 | 契約の変更の分類、ゲートの実行、還流のゲート (課題ごとの static と最後のゲート)、DB の生成物の鮮度 (--check) |
 | 契約からの codegen | 契約 | `packages/contracts/**` | 生成 | 基盤の仕上げ (F8→F6→F7→F4→F9)、F4 契約テストの生成 (骨格分)、契約の差分、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み)、還流の契約 | ティアの実装、結合、骨格分の契約テストの鮮度 (受理時の検査)、契約の変更の分類、契約テストの鮮度 (--check)、DB の生成物の鮮度 (--check) |
-| デザインシステム (Storybook アプリ) | 画面 | `docs/design/**` | 生成 | デザインシステムの生成、要求の差分の画面の見本 (項目の stories だけを直す) | 基盤の仕上げ (F8→F6→F7→F4→F9)、F6 画面部品の取り込み、ティアの実装、as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる)、要求の差分の画面の見本 (項目の stories だけを直す)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
+| デザインシステム (Storybook アプリ) | 画面 | `docs/design/**` | 生成 | デザインシステムの生成、要求の差分の画面の見本 (項目のファイル (stories と部品) だけを直す) | 基盤の仕上げ (F8→F6→F7→F4→F9)、F6 画面部品の取り込み、ティアの実装、as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる)、要求の差分の画面の見本 (項目のファイル (stories と部品) だけを直す)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
 | 画面部品 | 画面 | `packages/ui/**` | 生成 | 基盤の仕上げ (F8→F6→F7→F4→F9)、F6 画面部品の取り込み、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる) | ティアの実装 |
-| UC シナリオ | シナリオと step | `features/<業務>/<slug>.feature` | 生成 | UC シナリオの執筆 | UC シナリオの執筆、契約の差分、テスト足場の生成、ティアの実装、結合、独立検証、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、シナリオの静的確認、ゲートの実行、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、還流のゲート (課題ごとの static と最後のゲート) |
-| 受入シナリオ | シナリオと step | `features/acceptance/**` | 生成 | UC シナリオの執筆 | テスト足場の生成、文書の入口の更新 (① ②)、文書の入口の更新 (③)、シナリオの静的確認、ゲートの実行、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、還流のゲート (課題ごとの static と最後のゲート) |
+| UC シナリオ | シナリオと step | `features/<業務>/<slug>.feature` | 生成 | UC シナリオの執筆 | UC シナリオの執筆、契約の差分、テスト足場の生成、ティアの実装、結合、独立検証、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、d2-run (④)、シナリオの静的確認、ゲートの実行、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、還流のゲート (課題ごとの static と最後のゲート) |
+| 受入シナリオ | シナリオと step | `features/acceptance/**` | 生成 | UC シナリオの執筆 | テスト足場の生成、文書の入口の更新 (① ②)、文書の入口の更新 (③)、d2-run (④)、シナリオの静的確認、ゲートの実行、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、還流のゲート (課題ごとの static と最後のゲート) |
 | step 定義 | シナリオと step | `features/step_definitions/**` | 生成 | テスト足場の生成、結合 | テスト足場の生成、結合、ゲートの実行、還流のゲート (課題ごとの static と最後のゲート) |
 | ティアの実装と単体テスト | ティアの実装 | `apps/<tier>/src/**` | 生成 | テスト足場の生成、ティアの実装 | ティアの実装、結合、独立検証、as-built の抽出と要約、依存グラフの実態、要約ブロックを埋める (LLM)、ゲートの実行、qlty の提案を足す (④)、還流のゲート (課題ごとの static と最後のゲート) |
 | 実行の記録 (events / done / 退避した done) | 実行の記録 | `<run>/events.jsonl` | 生成 | 要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる)、d2-run (④)、UC の課題を課題ファイルにする (配送の squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) | as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる)、d2-run (④)、配送 (squash・main への取り込み)、UC の課題を課題ファイルにする (配送の squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) |

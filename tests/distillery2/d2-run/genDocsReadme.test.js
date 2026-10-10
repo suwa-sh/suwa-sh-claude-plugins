@@ -79,9 +79,9 @@ test('段階の表・UC 一覧 (背骨)・決めたこと・契約を、実在�
   assert.match(md, /> 蔵書を管理する。/);
   assert.match(md, /\| ① 要求 \| .* \| \[要求仕様書 \(USDM\)\]\(requirements\/requirements\.md\)<br>\[RDRA の図解\]/);
   // 背骨: 要求 → シナリオ → 契約 → 画面 → as-built
-  assert.match(md, /UC 2 件 \(実装済み 1、要求待ち 1\)/);
+  assert.match(md, /UC 2 件 \(配送済み 0、配送待ち 1、要求待ち 1\)/);
   assert.match(md, /要求の列の SPEC は \[要求仕様書\]\(requirements\/requirements\.md\) の行/);
-  assert.match(md, /\| 貸出業務 \| 貸出を登録する \| 実装済み \| SPEC-001-01 \| \[register-loan\.feature\]\(\.\.\/features\/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99\/register-loan\.feature\) \(2 本\) \| \[createLoan \/ テーブル 2\]\(\.\.\/contracts\/generated\/slices\/register-loan\/contract-slice\.json\) \| LoanCheckout \| \[index\.md\]\(as-built\/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99\/%E8%B2%B8%E5%87%BA%E3%82%92%E7%99%BB%E9%8C%B2%E3%81%99%E3%82%8B\/index\.md\) \|/);
+  assert.match(md, /\| 貸出業務 \| 貸出を登録する \| 実装済み \(配送待ち\) \| SPEC-001-01 \| \[register-loan\.feature\]\(\.\.\/features\/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99\/register-loan\.feature\) \(2 本\) \| \[createLoan \/ テーブル 2\]\(\.\.\/contracts\/generated\/slices\/register-loan\/contract-slice\.json\) \| LoanCheckout \| \[index\.md\]\(as-built\/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99\/%E8%B2%B8%E5%87%BA%E3%82%92%E7%99%BB%E9%8C%B2%E3%81%99%E3%82%8B\/index\.md\) \|/);
   assert.match(md, /\| {2}\| 返却を登録する \| 要求待ち \| なし \| - \| - \| - \| - \|/);
   assert.match(md, /<summary>要求待ちの理由 \(1\)<\/summary>\n\n- 返却を登録する: 対応する仕様が無い/);
   assert.match(md, /\| \[0001\]\(adr\/0001-tiers\.md\) \| ティアは 2 つ \| accepted \|/);
@@ -202,7 +202,7 @@ test('段階が未着手なら「未着手」と書き、空の節を出さな�
   assert.ok(run(opts(dir3)).broken.some((b) => /contract-slice\.json$/.test(b)));
 });
 
-test('空の README と末尾改行の無い README にも壊さず足す。追跡表の無い done は状態と件数が一致する', () => {
+test('空の README と末尾改行の無い README にも壊さず足す。done は追跡表の有無に関わらず「配送済み」で件数と一致する (0.1.33 P6)', () => {
   const dir = repo();
   const p = path.join(dir, 'docs/README.md');
   fs.writeFileSync(p, '');
@@ -215,11 +215,18 @@ test('空の README と末尾改行の無い README にも壊さず足す。追�
   fs.writeFileSync(path.join(dir, 'docs/requirements/use-cases.yaml'), fs.readFileSync(path.join(dir, 'docs/requirements/use-cases.yaml'), 'utf8').replace('status: planned', 'status: done'));
   assert.equal(run(opts(dir)).code, 0);
   const md = fs.readFileSync(p, 'utf8');
-  assert.match(md, /UC 2 件 \(実装済み 1、要求待ち 1\)/);
-  assert.match(md, /貸出を登録する \| 実装済み \|/);
+  assert.match(md, /UC 2 件 \(配送済み 1、配送待ち 0、要求待ち 1\)/);
+  assert.match(md, /貸出を登録する \| 配送済み \|/);
+  // 追跡表 (全段 pass) があっても status: done が勝つ (配送しても表示が変わらない 0.1.32 P6 の原因を直した)
+  W(dir, 'docs/as-built/_system/traceability-index.json', { ucs: { 'register-loan': { as_built: 'docs/as-built/貸出業務/貸出を登録する/', gates: 'pass', gates_complete: true } } });
+  assert.equal(run(opts(dir)).code, 0);
+  const md2 = fs.readFileSync(p, 'utf8');
+  assert.match(md2, /UC 2 件 \(配送済み 1、配送待ち 0、要求待ち 1\)/);
+  assert.match(md2, /貸出を登録する \| 配送済み \|/);
+  assert.doesNotMatch(md2, /実装済み \(配送待ち\)/);
 });
 
-test('共有 feature はシナリオごとの @uc タグで数え、# を含むファイル名もリンクできる、実装済みの件数は状態と同じ条件', () => {
+test('共有 feature はシナリオごとの @uc タグで数え、# を含むファイル名もリンクできる、配送待ちの件数は状態と同じ条件', () => {
   const dir = repo();
   W(dir, 'features/shared.feature', '機能: 共有\n  @uc:register-loan\n  シナリオ: A\n  @uc:return-loan\n  シナリオ: B\n  @uc:register-loan @uc:return-loan\n  シナリオ: C\n');
   W(dir, 'docs/input/proposal#1.md', 'x');
@@ -229,8 +236,20 @@ test('共有 feature はシナリオごとの @uc タグで数え、# を含む�
   assert.match(md, /\[shared\.feature\]\(\.\.\/features\/shared\.feature\) \(2 本\)<br>\[register-loan\.feature\]\([^)]*\) \(2 本\)/);
   assert.match(md, /返却を登録する \| 要求待ち \| なし \| \[shared\.feature\]\(\.\.\/features\/shared\.feature\) \(2 本\)/);
   assert.match(md, /\[proposal#1\.md\]\(input\/proposal%231\.md\)/);
-  assert.match(md, /UC 2 件 \(実装済み 0、要求待ち 1\)/);
+  assert.match(md, /UC 2 件 \(配送済み 0、配送待ち 0、要求待ち 1\)/);
   assert.match(md, /貸出を登録する \| 実装中 \(ゲート fail\)/);
+  assert.doesNotMatch(md, /\| 実装済み \|/, '追跡表に無い done 以外に「実装済み」だけの状態は出ない');
+});
+
+test('要求待ちの件数は状態列と同じ判定で数える: blocked の UC に追跡表 (pass) が残っていれば状態列は「実装済み (配送待ち)」で、要求待ちには数えない (差分レビュー 1 ラウンド目。0.1.33)', () => {
+  const dir = repo();
+  W(dir, 'docs/as-built/_system/traceability-index.json', { ucs: { 'return-loan': { as_built: 'docs/as-built/貸出業務/貸出を登録する/', gates: 'pass', gates_complete: true } } });
+  assert.equal(run(opts(dir)).code, 0);
+  const md = fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8');
+  assert.match(md, /UC 2 件 \(配送済み 0、配送待ち 1、要求待ち 0\)/);
+  assert.match(md, /返却を登録する \| 実装済み \(配送待ち\) \|/);
+  assert.doesNotMatch(md, /返却を登録する \| 要求待ち/);
+  assert.doesNotMatch(md, /要求待ちの理由/, '理由欄も状態列と同じ判定 (追跡表があれば要求待ちに出さない。差分レビュー 2 ラウンド目)');
 });
 
 test('未処理の課題は段階的に開く: README は件数と内訳と一覧へのリンクだけ → 一覧 (生成) → 課題ファイル。0 件なら一覧を消す (0.1.27)', () => {
