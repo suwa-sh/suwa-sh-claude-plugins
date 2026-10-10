@@ -241,6 +241,16 @@ test('共有 feature はシナリオごとの @uc タグで数え、# を含む�
   assert.doesNotMatch(md, /\| 実装済み \|/, '追跡表に無い done 以外に「実装済み」だけの状態は出ない');
 });
 
+test('要求待ちの件数は状態列と同じ判定で数える: blocked の UC に追跡表 (pass) が残っていれば状態列は「実装済み (配送待ち)」で、要求待ちには数えない (差分レビュー 1 ラウンド目。0.1.33)', () => {
+  const dir = repo();
+  W(dir, 'docs/as-built/_system/traceability-index.json', { ucs: { 'return-loan': { as_built: 'docs/as-built/貸出業務/貸出を登録する/', gates: 'pass', gates_complete: true } } });
+  assert.equal(run(opts(dir)).code, 0);
+  const md = fs.readFileSync(path.join(dir, 'docs/README.md'), 'utf8');
+  assert.match(md, /UC 2 件 \(配送済み 0、配送待ち 1、要求待ち 0\)/);
+  assert.match(md, /返却を登録する \| 実装済み \(配送待ち\) \|/);
+  assert.doesNotMatch(md, /返却を登録する \| 要求待ち/);
+});
+
 test('未処理の課題は段階的に開く: README は件数と内訳と一覧へのリンクだけ → 一覧 (生成) → 課題ファイル。0 件なら一覧を消す (0.1.27)', () => {
   const dir = repo();
   let r = run(opts(dir));

@@ -228,7 +228,7 @@ function build(ctx) {
     };
     const delivered = rows.filter((u) => statusOf(u) === '配送済み').length;
     const waitingDelivery = rows.filter((u) => statusOf(u) === '実装済み (配送待ち)').length;
-    const blocked = rows.filter((u) => u.status === 'blocked').length;
+    const blocked = rows.filter((u) => statusOf(u) === '要求待ち').length; // 状態列と同じ判定で数える (blocked でも追跡表があれば状態列は追跡表。差分レビュー 1 ラウンド目)
     out.push(`UC ${rows.length} 件 (配送済み ${delivered}、配送待ち ${waitingDelivery}、要求待ち ${blocked})。1 行で要求 → シナリオ → 契約 → 画面 → 実装の記録まで辿れる。`);
     if (present(reqMd)) out.push(`要求の列の SPEC は ${ref(reqMd, '要求仕様書')} の行。`);
     out.push('');

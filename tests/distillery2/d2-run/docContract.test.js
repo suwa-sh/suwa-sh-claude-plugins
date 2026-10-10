@@ -486,7 +486,7 @@ test('0.1.32 J2: 残った作業は種類ごとの宛先へ (design → d2-desig
   assert.doesNotMatch(rs, /carryOver\.js/);
   // d2-design / d2-requirements
   const design = read('skills/d2-design/SKILL.md');
-  assert.match(design, /## mode=feedback \(要求の差分の残った作業: 項目の stories だけを直す。0\.1\.32\)/);
+  assert.match(design, /## mode=feedback \(要求の差分の残った作業: 項目のファイル \(stories と部品\) だけを直す。0\.1\.32、0\.1\.33 で部品も\)/);
   assert.match(design, /③ の全生成 \(手順 1〜6\) は\*\*しない\*\*/);
   assert.match(design, /## mode=feedback: 読むもの/);
   assert.match(design, /## mode=feedback: 書くもの/);

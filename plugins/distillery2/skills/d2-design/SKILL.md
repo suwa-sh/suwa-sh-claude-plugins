@@ -134,7 +134,7 @@ component 不在 / tokens.file 不在) を直す。2 = 読み込み失敗。
 
 d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せる。
 
-## mode=feedback (要求の差分の残った作業: 項目の stories だけを直す。0.1.32)
+## mode=feedback (要求の差分の残った作業: 項目のファイル (stories と部品) だけを直す。0.1.32、0.1.33 で部品も)
 
 要求の差分で、要求担当が「画面の見本の修正」を残った作業として報告し、人が「対応する」と選んだとき、d2-run が
 `mode=feedback items=<直すファイル (リポジトリのルートからの相対パス `docs/design/storybook-app/src/<相対パス>`。見本 `stories/<Name>.stories.tsx` も部品 `components/**` も) と直す内容を 1 行ずつ>` で派遣する (パスの形は派遣表と d2-run の要求の差分 3 と同じ。0.1.32 実走 P11 で項目が部品にまたがった)。
