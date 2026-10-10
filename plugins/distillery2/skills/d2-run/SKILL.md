@@ -84,7 +84,7 @@ description: >-
 | ③ の確認ページ | `.distillery/config.yaml`、`<run>/reports/**` (受理時の検査で bootstrap の gates.json を読む) | `<run>/reports/**` (仕上げの派遣前に bootstrap の gates.json を消す) |
 | ③ の genContractTests.js --check | `contracts/**`、`.distillery/config.yaml`、`apps/*/test/contract/**`、`packages/contracts/**` | — |
 | ③ の genDocsReadme.js | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**`、`docs/feedback/*.md` | `docs/README.md`、`docs/feedback/README.md` (課題の一覧。0 件なら消す) |
-| ④ の段階の進行・確認ページ | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**` | `<run>/events.jsonl`、`<run>/invalidated/**` (差し戻しで退避した done と findings)、`docs/requirements/use-cases.yaml`、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す)、`docs/feedback/<issue>.md` (review で要求を直すときの課題ファイル)、`.distillery/worktrees/<slug>/<issue>` (そのときの一時の worktree) |
+| ④ の段階の進行・確認ページ | `.distillery/config.yaml`、`docs/requirements/use-cases.yaml`、`<run>/events.jsonl`、`<run>/reports/**`、`<run>/reports/asbuilt.json`、`<run>/attempt-<n>/findings.<tier>.yaml`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`contracts/uc-index.yaml`、`docs/as-built/_system/**`、`features/<業務>/<slug>.feature`、`features/acceptance/**` (scenario の承認の `runState.js scenario-approve` がハッシュを計算する) | `<run>/events.jsonl`、`<run>/invalidated/**` (差し戻しで退避した done と findings)、`docs/requirements/use-cases.yaml`、`<run>/reports/asbuilt.json` (asbuilt の派遣前に消す)、`docs/feedback/<issue>.md` (review で要求を直すときの課題ファイル)、`.distillery/worktrees/<slug>/<issue>` (そのときの一時の worktree) |
 | ④ の feedbackBatch.js file-issues | `<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`<run>/events.jsonl` | `docs/feedback/<issue>.md` (UC の課題を課題ファイルにする)、`<run>/events.jsonl` (`feedback_filed`) |
 | 起動時の feedbackBatch.js file-issues (移行) | `<run>/issues/**`、`<run>/issues/<ts>_<tier>_<slug>.md`、`<run>/events.jsonl` | `docs/feedback/<issue>.md` (配送済みなのに課題ファイルにしていない run の課題。自動選択の 3 の 2)、`<run>/events.jsonl` (`feedback_filed`) |
 | 起動時の genDocsReadme.js (移行) | `.distillery/config.yaml`、`docs/requirements/rdra/**`、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml`、`features/<業務>/<slug>.feature`、`features/acceptance/**`、`contracts/contracts.json`、`contracts/uc-index.yaml`、`docs/design/**`、`docs/as-built/_system/**`、`docs/as-built/<業務>/<UC>/**`、`docs/adr/*.md`、`docs/nfr/**`、`docs/rules/**`、`docs/feedback/*.md` | `docs/README.md`、`docs/feedback/README.md` (課題の一覧。0 件なら消す) |
@@ -146,7 +146,7 @@ UC の実装で見つかった要求の穴 (課題ファイルの `kind: require
    外す課題があれば、変更を捨てて (`git checkout -- docs/requirements` と `git clean -fd -- docs/requirements`) その課題を除いて 2 から。外した課題は「取り下げる / 残す」を聞く。
    残す課題は理由をファイルに書いて `feedbackBatch.js hold <issue> --reason-file <ファイル>` (止まった印を付ける。止まった課題だけでは要求の差分を始めない)
 4. 承認されたら、まず「対応する」残った作業を種類ごとの宛先に流す (0.1.32 J2):
-   - `design`: sub `d2-design mode=feedback items=<項目のファイルと直す内容を 1 行ずつ>` (派遣表「① 要求の差分 (画面部品)」)。受理の条件: 報告に `npx storybook build` が通ったこと、
+   - `design`: sub `d2-design mode=feedback items=<項目のファイル (docs/design/storybook-app/src/<相対パス>。stories も部品も) と直す内容を 1 行ずつ>` (派遣表「① 要求の差分 (画面部品)」。項目が部品なら、報告の「影響する Story」(その部品から import を Story まで辿った一覧) を完了報告に転記する。0.1.32 実走 P11)。受理の条件: 報告に `npx storybook build` が通ったこと、
      d2-run が回す `node <skills>/d2-design/scripts/validateScreens.js docs/design/screens.yaml --app docs/design/storybook-app/src --use-cases docs/requirements/use-cases.yaml` が exit 0 (Story を消したときの `screens.yaml` の参照漏れを拾う)、write-set (`docs/design/**`) の外が変わっていない、
      **項目がすべて「直した」** (報告に「直せない (理由)」が 1 件でもあれば受理せず、変更を捨てて (`git checkout -- docs/design` と `git clean -fd -- docs/design`) 止まって報告する。人が項目を直すか「無視」に変えて 3 からやり直す。既存の持ち越しは再生成で消えるので、黙って先へ進まない。差分レビュー 3 ラウンド目)。
      受理後に `node <skills>/d2-foundation/scripts/importUi.js --from docs/design/storybook-app --cwd .` で `packages/ui/**` に取り込み直す (前回の一覧にあって消えたファイルは消える)。
@@ -154,12 +154,13 @@ UC の実装で見つかった要求の穴 (課題ファイルの `kind: require
    - `assumption`: 対象の UC の run (main) に `node runState.js event .distillery/runs/<slug> assumption_resolved --data-file <json>` を追記する。JSON は `{"targets": [{"tier": "<tier>", "attempt": <n>, "id": "A-xxx"}], "decision": "<要求の差分の決定の要点>", "by": "req: feedback"}`
      (`runState.js` が各 target を `attempt-<n>/assumptions.<tier>.yaml` で確かめ、無い組は拒む。最新でない attempt の前提も閉じられる。AssumptionRecord の yaml は変えない)
    - 既存の持ち越しを流したら、`carry_over_pending` の run には `node runState.js event .distillery/runs/<slug> carry_over_migrated --data-file <json>` (`{"items": [...], "to": "req: feedback"}`) を追記する (再び移行の対象にしない)。`use-cases.yaml` の `carry_over` の行は 2 の再生成 (要求担当の差分更新か `genUseCases.js`) で消える
-   次に、反映した課題ファイルと取り下げた課題ファイルを `git rm` し、genDocsReadme → `git add -A -- docs packages/ui .distillery/runs` (`packages/ui` は design の作業があったときだけ。無いパスを名指ししない) → 本文ファイル (`.distillery/logs/req-feedback-<ts>.txt`。1 行目 `req: feedback`、空行、trailer) を書いて `git commit -F <本文ファイル>` (配送 3 と同じ書き方)。
+   次に、1 で控えた `carry_over_rows` が空でなく `use-cases.yaml` に `carry_over` の行が残っていれば (要求担当を派遣したが再生成しなかった) `node <skills>/d2-requirements/scripts/genUseCases.js` を回す (決定論の再生成。`carry_over` の行が消える。他の変更は無い。0.1.32 実走 P18)。
+   反映した課題ファイルと取り下げた課題ファイルを `git rm` し、genDocsReadme → `git add -A -- docs packages/ui .distillery/runs` (`packages/ui` は design の作業があったときだけ。無いパスを名指ししない) → 本文ファイル (`.distillery/logs/req-feedback-<ts>.txt`。1 行目 `req: feedback`、空行、trailer) を書いて `git commit -F <本文ファイル>` (配送 3 と同じ書き方)。
    trailer は反映した課題ごとに `Feedback-Consumed: docs/feedback/<issue>.md`、取り下げた課題ごとに `Feedback-Dismissed: docs/feedback/<issue>.md`、最後に attribution 行 (git-delivery.md「commit の attribution」)。remote があれば push
 5. 反映・取り下げた課題の `from_uc` が要求で止まった UC (自動選択の 2 の判定) なら、その feature を `git update-ref refs/distillery2/abandoned/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。
    次にその UC を回すと main から新しい run で始まる (feature の上の run は main に無い。要求が変わったのでシナリオからやり直す)
 6. 決定・契約への波及は `node <skills>/d2-common/scripts/lib/basis.js check <対象ファイル…> requirements=docs/requirements adr=docs/adr contracts=contracts` で見つける。
-   対象ファイルは存在するものだけ: `docs/adr/*.md`、`docs/adr/architecture.md`、`docs/as-built/*/*/index.md` (as-built がまだ無ければ省く。無いパスを渡すと読み込みで落ちる)。
+   対象ファイルは存在するものだけ: `docs/adr/[0-9]*.md` (決定の本文。`_review-summary.md` と `index.md` は生成物なので渡さない。渡すと STALE に出る。0.1.32 実走 P13)、`docs/adr/architecture.md`、`docs/as-built/*/*/index.md` (as-built がまだ無ければ省く。無いパスを渡すと読み込みで落ちる)。
    STALE は完了報告に載せるだけで、自動では追随しない (as-built はその UC を次に回したときに作り直す)。
    閉じた前提 (`assumption_resolved`) も同じ: 完了報告に「閉じた前提 (UC・ティア・attempt・id) と、as-built は次にその UC を回したときに反映 (最新でない attempt の前提は as-built に出ない)」を書く
 7. 自動選択の 3 の 2〜5 をやり直す (移行 → 途中の還流 → 要求の差分 → 還流)。還流が要らなければ完了報告して終了する。**同じ起動で次の UC (3 の 6) には進まない**
@@ -199,7 +200,7 @@ design は config も契約も読まないので、契約の骨格の直後に�
 (追跡ファイルの `events.jsonl` が変わると feature が clean でなくなり、main へ取り込めない):
 `node runState.js event <run> models_resolved '{"session":"<このセッションのモデル名>","implementer":"<実装者の解決名>","verifier":"<Verifier の解決名>"}'`
 値は **モデル ID だけ** (例 `claude-opus-4-7`)。別名の説明や注記を混ぜない (as-built の生成情報にそのまま出る。0.1.10 実走 ④-12)。
-Agent ツールの別名 (`opus` 等) しか分からないときは別名のまま書き、verify 段で Verifier の報告 1 行目 `model: <ID>` を得たら
+Agent ツールの別名 (`opus` 等) の解決先が分かっていれば (ハーネスの指示、過去の run の `models_resolved`、Verifier の報告) 最初から ID で書く (0.1.32 実走 P17)。分からないときだけ別名のまま書き、verify 段で Verifier の報告 1 行目 `model: <ID>` を得たら
 同じイベントを解決済みの ID で記録し直す (最後の models_resolved が有効)。
 再開時や配送 6 で記録するときは、run の `models_resolved` に解決済みの ID があればそれを流用し、別名で記録し直さない (0.1.28 実走 L2)。
 各段階の done を書いたら `impl(<slug>): <stage>` で commit する (attribution 行を付ける。git-delivery.md「commit の attribution」)。
@@ -208,7 +209,7 @@ Agent ツールの別名 (`opus` 等) しか分からないときは別名のま
 
 | 段階 | すること | done の条件 |
 |---|---|---|
-| **scenario** | branch `feature/<slug>` を切る (git-delivery.md)。sub `d2-implement mode=scenario`。`checkScenario.js` の結果 (JSON) を読む。**`missing` (対応づかない受入基準) があれば ok の前に分岐する** (`missing` があると `ok: false` で exit 1): 執筆役の報告がそれを**他 UC の振る舞い**と判断していれば、**要求の課題にして止まる** (0.1.32 J1): 執筆役が `<run>/issues/` に書いた下書き (`kind: requirement`。無ければ d2-run が書く: 対応づかない受入基準と、どの UC の振る舞いか、「仕様を UC 単位に分ける」) を人レビュー 4 の「要求を直す」と同じ手順で課題ファイルにして main に入れ (還流節「課題ファイル」の一時の worktree)、`feedback_filed {kind, ref, issue_path}` と `blocked_on_requirement {stage: scenario}` を記録してから、feature の上で下書きと `<run>` (イベントを含む) を `git add -A -- features .distillery/runs/<slug>` して `impl(<slug>): scenario (blocked)` で 1 回の commit に入れて停止する (記録 → commit の順。次の起動は `git show feature/<slug>:.distillery/runs/<slug>/events.jsonl` で止まった状態を読む。scenario は done にしない。次の起動で要求の差分が仕様を UC 単位に分け、この feature を退避する。UC は main から新しい run でやり直す)。執筆役が「この UC の振る舞い」と判断していれば (書き漏れ) 執筆役に差し戻す。`missing` が無く ok なら human-html-review でシナリオを確認 (問い: この振る舞いで合っているか)。承認を `scenario_approved {feature, feature_sha256, acceptance: {<path>: <sha256>}}` (受入の feature が無ければ `acceptance: {}`。0.1.32 O14) に記録し、`node runState.js done <run> scenario '{"feature": "<path>"}'`、`node <skills>/d2-common/scripts/genDocsReadme.js` で README のシナリオ列を更新して `git add docs features .distillery/runs/<slug> && git commit -m "req(<slug>): scenarios" -m "<attribution 行>"` | 承認済み |
+| **scenario** | branch `feature/<slug>` を切る (git-delivery.md)。sub `d2-implement mode=scenario`。`node <skills>/d2-implement/scripts/checkScenario.js features/<業務>/<slug>.feature --use-cases docs/requirements/use-cases.yaml --requirements docs/requirements/requirements.yaml --uc <slug> --acceptance-dir features/acceptance` を回し、結果 (JSON 1 行。`ok` / `missing` / `covered` / `unknown_tags` / `errors`。0.1.32 実走 P15) を読む。**`missing` (対応づかない受入基準) があれば ok の前に分岐する** (`missing` があると `ok: false` で exit 1): 執筆役の報告がそれを**他 UC の振る舞い**と判断していれば、**要求の課題にして止まる** (0.1.32 J1): 執筆役が `<run>/issues/` に書いた下書き (`kind: requirement`。無ければ d2-run が書く: 対応づかない受入基準と、どの UC の振る舞いか、「仕様を UC 単位に分ける」) を還流節「課題ファイル」の「要求を直す」のコマンド列どおりに課題ファイルにして main に入れ (一時の worktree。人レビュー 4 と同じ手順)、`feedback_filed {kind, ref, issue_path}` (file-issues が記録する) と `blocked_on_requirement {stage: scenario}` を記録してから、feature の上で下書きと `<run>` (イベントを含む) を `git add -A -- features .distillery/runs/<slug>` して `impl(<slug>): scenario (blocked)` で 1 回の commit に入れて停止する (記録 → commit の順。次の起動は `git show feature/<slug>:.distillery/runs/<slug>/events.jsonl` で止まった状態を読む。scenario は done にしない。次の起動で要求の差分が仕様を UC 単位に分け、この feature を退避する。UC は main から新しい run でやり直す)。執筆役が「この UC の振る舞い」と判断していれば (書き漏れ) 執筆役に差し戻す。`missing` が無く ok なら human-html-review でシナリオを確認 (問い: この振る舞いで合っているか)。承認を `node runState.js scenario-approve <run> --feature features/<業務>/<slug>.feature --acceptance-dir features/acceptance` で記録する (feature の bytes の sha256 と、`@uc:<slug>` を持つ受入 feature の sha256 を計算して `scenario_approved {feature, feature_sha256, acceptance: {<path>: <sha256>}}` を書く。受入の feature が無ければ `acceptance: {}`。進行役が自分で計算しない。0.1.32 O14・実走 P16)。次に `node runState.js done <run> scenario '{"feature": "<path>"}'`、`node <skills>/d2-common/scripts/genDocsReadme.js` で README のシナリオ列を更新して `git add docs features .distillery/runs/<slug> && git commit -m "req(<slug>): scenarios" -m "<attribution 行>"` | 承認済み |
 | **contract** | sub `d2-contract mode=uc uc=<slug>`。`compileContracts.js contracts --check`、`compileRdbSchema.js contracts --check`、`validateUcIndex.js contracts` が exit 0。examples 不足で止まったら issue を確認ページで見せ、契約を補うか要求に戻すかを選ばせる。受理時に `node <skills>/d2-contract/scripts/classifyContractChanges.js --uc <slug> --json` で変わった契約の生成物を own / other_uc / shared に分け、結果を done の `contract_changes` に書く (契約は UC 間で共有するので、enum の追加などで他 UC のテストや共有の型も書き換わる。0.1.16 実走) | slice と契約テストが生成済み、`contract_changes` 記録済み |
 | **scaffold** | sub `d2-implement mode=scaffold`。受理時に既存の非テストファイルを変えていないことを確かめる (subagent-template.md「受理時の検査」)。`runGates.js --uc <slug> --tiers <関与ティア> --only unit --expect-red unit` が exit 0、dry-run で undefined step 0 | red baseline |
 | **tier** | attempt = `currentAttempt`。関与ティア (下記「関与ティアの決め方」) ごとに sub `d2-implement mode=tier` を**同じメッセージで並列派遣** (model = implementer)。実装者は runGates を使わず commands を直接回す (記録なし)。受理時に `validateAssumptions.js record` を全ティアで実行し、全ティアの受理後に**自分が 1 回だけ** `runGates.js --uc <slug> --tiers <関与ティア> --upto unit` を回す (記録の単一 writer。runGates は gates.json をゲート名単位で置き換えるので、並列の実装者に回させると互いの記録を消す)。落ちたティアは同じ attempt のまま再派遣する | 全ティアの assumptions が ok、上の runGates で static / unit が pass |
@@ -254,7 +255,7 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
    - 判断: 「この実装で進めてよいか」
 4. 回答を受けたら:
    - 「実装を直す」が 1 件でもあれば `review_rejected {rejected_assumptions}` を記録し、該当ティアを attempt++ で tier に戻る
-   - 「要求を直す」があれば `issues/` に下書き (`kind: requirement`) を書き、**その場で**課題ファイルにして main に入れる (還流節「課題ファイル」。
+   - 「要求を直す」があれば `issues/` に下書き (`kind: requirement`) を書き、**その場で**課題ファイルにして main に入れる (還流節「課題ファイル」の「要求を直す」のコマンド列。
      UC は配送しないので、feature ではなく一時の worktree から main へ入れる)。`feedback_filed {kind, ref, issue_path}` と `blocked_on_requirement {stage: review}` を記録し、commit して停止する
      (review は done にしない。次の起動で要求の差分が課題を反映し、この feature を退避する。UC は main から新しい run でやり直す)
    - 承認なら、全ティアの `record` / `verdicts` を再実行して hash が一致することを確認してから
@@ -268,8 +269,10 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 1. 配送 1 は 3 つの作業をこの順で行う (0.1.32 N1・O4):
    1. **件名の検査** (最初に): `git log <base_head>..HEAD --format=%s` がすべて `impl(<slug>): ` か `req(<slug>): ` で始まる。そうでなければ UC 外の commit が混ざっているので、gates.json の作り直しも課題ファイルの commit もせず止まって報告する (混ざった commit の一覧を添える。0.1.29 実走 M3)。
       止まった後は人が混入した commit を落とし (rebase)、再開は配送 1 から (git-delivery.md「squash」1)
-   2. **gates.json の作り直し**: `reports/gates.json` が無い (gitignore なので再開で消えていることがある) か、**古い** (feature の先頭の commit の committer 日時 `git log -1 --format=%cI` (rebase や cherry-pick で更新される) が gates.json の `finished_at` より後) なら、`runGates.js --uc <slug> --tiers <use-cases.yaml の tiers>` で全段を 1 回通して記録を作り直す (0.1.32 N5)
-   3. **条件の確認**: `review_approved` が有効、`reports/gates.json` が `all_recorded: true` で全段 pass、findings の open blocker 0。
+   2. **gates.json の作り直し**: `reports/gates.json` が**無ければ作り直す** (gitignore なので再開で消えていることがある。比較はしない)。あれば **古い**かを**時刻として**比べる: feature の先頭の commit の committer 日時 `git log -1 --format=%cI` (rebase や cherry-pick で更新される) が gates.json の `finished_at` より後なら古い (文字列で比べない。`%cI` は時差付き、`finished_at` は UTC `Z` なので `node -e "console.log(new Date('<%cI>') > new Date('<finished_at>'))"` で比べる。0.1.32 実走 P2)。無いか古ければ `runGates.js --uc <slug> --tiers <use-cases.yaml の tiers>` で全段を 1 回通して記録を作り直す (0.1.32 N5)。
+      作り直しの runGates が落ちたら、**推測で直さず止まって報告する** (0.1.32 実走 P1)。報告に添えるもの: 落ちたゲート名と job (`gates.json` の `output_tail` / `failed_tests`)、指摘の対象ファイルが UC の変更 (`git diff --name-only <base_head>..HEAD`) に含まれるか。含まれなければ「UC と無関係の可能性 (依存の脆弱性情報の更新など。コードを変えていなくても落ちる)」と書く。
+      人が直すときは **feature の上で** (依存の更新、または `.qlty/qlty.toml` の `[[ignore]] rules = ["<plugin>:<id>"]`) 件名 `impl(<slug>): <内容>` で commit し、配送 1 から再開する (gates.json はこの 2 の「古い」判定で作り直される)。main で直して feature を rebase しない (`base_head` は開始時の記録のまま更新されないので、main 側の修正 commit が `<base_head>..HEAD` に入り、1 の件名の検査で止まる。通っても squash がその修正を UC の 1 commit に畳む)
+   3. **条件の確認**: `review_approved` が有効 (= `runState.js status` で review が done、かつ events で最後の `review_approved` より後に `stage_invalidated {stage: review}` も `review_rejected` も無い。0.1.32 実走 P5)、`reports/gates.json` が `all_recorded: true` で全段 pass、findings の open blocker 0。
       次に feature の上で `node <skills>/d2-common/scripts/feedbackBatch.js file-issues <run> --cwd <リポのルート>` を回し、UC の課題 (`issues/*.md`) を課題ファイル `docs/feedback/<issue>.md` にする (`feedback_filed` も記録する)。
       `runState.js status` の `unfiled_issues` が空であることを確かめる。結果の `filed` が空でなければ `genDocsReadme.js` を回し、`git add -A -- docs .distillery/runs/<slug>` して `impl(<slug>): issues to feedback` で commit する (squash で UC の 1 commit に入る。main に別の commit を足さない)。
       `filed` が空 (課題 0 件) なら commit を作らない (`docs/feedback/` が無いことがあり、パスを名指しすると `git add` が落ちる)
@@ -280,7 +283,7 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
    手順の詳細は git-delivery.md「squash」
 4. 引数が `merge=hold` なら、ここで止めて報告する (引数なしで再開すれば 5 から)
 5. `git switch main` → `git merge --ff-only feature/<slug>`。ff できなければ (main が `base_head` から進んでいる) 止まって報告する
-6. main の上で、④ の冒頭で遅らせた場合だけ `models_resolved` を記録し (遅らせた = run の events に解決済み ID の `models_resolved` が無い。冒頭で記録済みなら記録しない。0.1.29 実走 M2・0.1.32 O1)、`genDocsReadme.js` で `docs/README.md` を更新し、
+6. main の上で、④ の冒頭で遅らせた場合だけ `models_resolved` を記録し (遅らせた = run の events に解決済み ID の `models_resolved` が無い。冒頭で記録済みなら記録しない。0.1.29 実走 M2・0.1.32 O1)、`genDocsReadme.js` で `docs/README.md` を更新し (UC 一覧の状態列が `status: done` を見て「配送済み」になる。0.1.32 実走 P6)、
    `node runState.js done <run> deliver '{"squash":"<squash commit のフル sha (git rev-parse HEAD)>","base_head":"<base_head>"}'` を実行して、`git add -A -- docs .distillery/runs/<slug>` (配送の done・events・README・課題一覧の README。新規と削除を含む。`docs/feedback/` は無いことがあるので名指ししない) してから
    まとめて `impl(<slug>): delivered` で commit する (配送済みの正は `stages/deliver.done.yaml`)
 7. remote `origin` があれば `git push origin main`。拒否されたら止まって報告する (force push はしない。再開すると起動シーケンス 4 でやり直す)
@@ -388,10 +391,14 @@ UC の外の段階。溜まった課題ファイル (`docs/feedback/`) のうち
 - 置き場所: `docs/feedback/<issue>.md`。front matter は `kind`・`title`・`from_uc` (slug)・`status: open`・`created` (日時)、止まったら `stopped: true` と `stopped_count`。本文は課題の本文
 - `kind: plugin` (プラグインへ持ち帰る課題。`kind_original` に元の種類): 還流の対象ではなく、自動選択のきっかけにもしない。対象リポジトリでは何もしない。distillery2 を直した後に人が `git rm` して commit する。完了報告に一覧を載せる (`scan` の `plugin`)
 - UC の課題は配送のときに `feedbackBatch.js file-issues` が課題ファイルにする (squash の 1 commit に入る)
-- review で「要求を直す」になったとき (UC は配送しない。作業 branch は feature) は、feature に混ぜない。一時の worktree を main から作り
-  (`git worktree add .distillery/worktrees/<slug>/<issue> -b feedback-req/<slug>/<issue> main`。`feedback/` は還流のバッチの名前なので使わない)、課題ファイルだけを commit して、feature のまま
-  `git fetch . feedback-req/<slug>/<issue>:main` で main を ff する (main を checkout しない)。worktree と branch を消す。
-  remote `origin` があれば `git push origin main` (拒否されたら止まって報告する。force push はしない)
+- **「要求を直す」のコマンド列** (review の人レビュー 4 と ④ scenario の「他 UC の振る舞い」で止まるとき。UC は配送しない。作業 branch は feature なので feature に混ぜない。0.1.32 実走 P7・P8)。`<root>` = リポのルートの絶対パス、`<wt>` = `<root>/.distillery/worktrees/<slug>/<issue>`:
+  1. `git worktree add .distillery/worktrees/<slug>/<issue> -b feedback-req/<slug>/<issue> main` (一時の worktree を main から作る。`feedback/` は還流のバッチの名前なので使わない)
+  2. `node <skills>/d2-common/scripts/feedbackBatch.js file-issues <root>/.distillery/runs/<slug> --cwd <wt>` (**run は feature の作業ツリー上の絶対パスで渡す**。相対パスだと `--cwd` の worktree の中を見て `filed: []` で空振りする。課題ファイルは `<wt>/docs/feedback/` に書かれ、`feedback_filed` は feature の run に記録される)
+  3. `node <skills>/d2-common/scripts/genDocsReadme.js --cwd <wt>` (課題の一覧 `docs/feedback/README.md` を同じ commit に入れる)
+  4. `git -C <wt> add -A -- docs` → `git -C <wt> commit -m "impl(<slug>): issues to feedback" -m "<attribution 行>"`
+  5. feature のまま `git fetch . feedback-req/<slug>/<issue>:main` で main を ff する (main を checkout しない)
+  6. `git worktree remove <wt>` → `git merge-base --is-ancestor feedback-req/<slug>/<issue> main` が exit 0 であることを確かめて `git branch -D feedback-req/<slug>/<issue>` (feature にいる間は `-d` が通らない)
+  7. remote `origin` があれば `git push origin main` (拒否されたら止まって報告する。force push はしない)
 - 一覧 `docs/feedback/README.md` は genDocsReadme が生成する (`docs/README.md` には件数と種類ごとの内訳と一覧へのリンクだけ)
 - 消すのは取り込む段階: ルール・契約は還流 (課題の commit で消す。trailer `Feedback-Consumed:`)、要求は要求の差分、取り下げは確認ページ (trailer `Feedback-Dismissed:`)。中身は git の履歴に残る
 

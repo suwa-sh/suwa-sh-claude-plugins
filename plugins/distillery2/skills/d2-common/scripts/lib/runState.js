@@ -17,6 +17,9 @@
  *   node runState.js done <runDir> <stage> [json | --data-file <jsonファイル>]
  *     type が assumption_resolved なら data は {targets: [{tier, attempt, id}], decision, by}。各 target は attempt-<n>/assumptions.<tier>.yaml にある id に限る (無い組は拒む。0.1.32 J2)
  *   node runState.js status <runDir> [--json]     (unfiled_issues = 課題ファイルにしていない課題、pending_feedback = 0.1.25 までの保留、legacy_order = 0.1.25 までの順の run)
+ *   node runState.js scenario-approve <runDir> --feature <feature> [--acceptance-dir <dir>]
+ *     scenario の承認を scenario_approved {feature, feature_sha256, acceptance: {<path>: <sha256>}} で記録する。feature_sha256 は feature の bytes の sha256。
+ *     acceptance は <dir> の *.feature のうち Feature か Scenario に @uc:<slug> を持つシナリオがあるファイル (人が承認した対象。checkScenario.js の collectTags と同じ範囲。0.1.33 P16)
  *   node runState.js mark-legacy-delivered <runDir>   (0.1.25 までに PR で配送済みの run に deliver の done を作る。人が確認ページで配送済みと答えたときだけ)
  *   node runState.js invalidate <runDir> <stage> <reason>
  *   node runState.js invalidate <runDir> <stage> <reason> --from   (その段階と後ろの段階をまとめて退避)
@@ -26,7 +29,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { parseYaml, stringifyYaml } = require('./yaml');
+const { parseFeature } = require('./gherkin');
 
 // 0.1.27: UC は配送で終わる。還流は UC の外の独立した段階 (scripts/feedbackBatch.js) で、溜まった課題ファイルをまとめて直す。
 // 0.1.25 までの run (還流 → 配送の順) と 0.1.26 の run が持つ feedback の done は、旧形式の判定 (isLegacyOrder) でだけ読む
@@ -69,6 +74,33 @@ function validateAssumptionResolved(runDir, data) {
     if (!ids.has(t.id)) missing.push(`${t.tier}/attempt-${n}/${t.id}`);
   }
   if (missing.length) throw new Error(`assumption_resolved の target が記録に無い: ${missing.join(', ')}`);
+}
+
+function sha256File(file) { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'); }
+
+/**
+ * scenario の承認を記録する (0.1.33 P16)。計算と範囲をコードで固定し、進行役に計算させない。
+ * - feature_sha256: feature ファイルの bytes の sha256 (改行の正規化はしない。git の内容と 1 対 1)
+ * - acceptance: acceptanceDir の *.feature のうち、Feature か Scenario に @uc:<slug> を持つシナリオが 1 つ以上あるファイル (slug は feature の @uc: タグ)。
+ *   checkScenario.js の collectTags と同じ範囲 = 人が承認した対象。他 UC だけのファイルは入れない。path 昇順。dir が無ければ {}
+ * パスは渡された形 (リポ相対) のまま記録する
+ */
+function scenarioApprove(runDir, featurePath, acceptanceDir) {
+  if (!featurePath) throw new Error('scenario-approve には --feature <feature のパス> が要る');
+  if (!fs.existsSync(featurePath)) throw new Error(`feature が無い: ${featurePath}`);
+  const main = parseFeature(fs.readFileSync(featurePath, 'utf8'));
+  const ucTag = main.tags.find(t => t.startsWith('@uc:'));
+  if (!ucTag) throw new Error(`feature に @uc:<slug> タグが無い: ${featurePath}`);
+  const acceptance = {};
+  if (acceptanceDir && fs.existsSync(acceptanceDir)) {
+    for (const name of fs.readdirSync(acceptanceDir).filter(n => n.endsWith('.feature')).sort()) {
+      const p = path.join(acceptanceDir, name);
+      const f = parseFeature(fs.readFileSync(p, 'utf8'));
+      const hit = f.scenarios.some(s => [...f.tags, ...s.tags].includes(ucTag));
+      if (hit) acceptance[p] = sha256File(p);
+    }
+  }
+  return appendEvent(runDir, 'scenario_approved', { feature: featurePath, feature_sha256: sha256File(featurePath), acceptance });
 }
 
 function appendEvent(runDir, type, data = {}) {
@@ -261,14 +293,19 @@ function main(argv) {
   const [cmd, ...a0] = argv;
   const json = a0.includes('--json');
   let dataFile = null;
+  let feature = null;
+  let acceptanceDir = null;
   const a = [];
   for (let i = 0; i < a0.length; i++) {
     if (a0[i] === '--json') continue;
     if (a0[i] === '--data-file') { dataFile = a0[++i]; if (dataFile == null) throw new Error('--data-file <jsonファイル>'); continue; }
+    if (a0[i] === '--feature') { feature = a0[++i]; if (feature == null) throw new Error('--feature <feature のパス>'); continue; }
+    if (a0[i] === '--acceptance-dir') { acceptanceDir = a0[++i]; if (acceptanceDir == null) throw new Error('--acceptance-dir <dir>'); continue; }
     a.push(a0[i]);
   }
   const args = a;
   switch (cmd) {
+    case 'scenario-approve': console.log(JSON.stringify(scenarioApprove(path.resolve(args[0]), feature, acceptanceDir))); return 0;
     case 'open': console.log(openRun(path.resolve(args[0]), args[1])); return 0;
     case 'event': console.log(JSON.stringify(appendEvent(path.resolve(args[0]), args[1], dataArg(args, dataFile)))); return 0;
     case 'done': console.log(JSON.stringify(markDone(path.resolve(args[0]), args[1], dataArg(args, dataFile)))); return 0;
@@ -301,10 +338,10 @@ function main(argv) {
       }
       return 0;
     }
-    default: console.error('Usage: runState.js open|event|done|invalidate|return-to-integrate|mark-legacy-delivered|status ...'); return 2;
+    default: console.error('Usage: runState.js open|event|done|invalidate|return-to-integrate|mark-legacy-delivered|scenario-approve|status ...'); return 2;
   }
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status, validateAssumptionResolved };
+module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status, validateAssumptionResolved, scenarioApprove };

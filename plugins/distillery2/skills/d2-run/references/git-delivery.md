@@ -31,7 +31,8 @@ d2-run が作る**すべての commit** (簿記の commit `impl(<slug>): <stage>
 2. `use-cases.yaml` の `slug` で `git switch -c feature/<slug>`。作成直後に `events.jsonl` へ
    `branch_started {base_branch, base_head, feature_branch}` を追記する
 3. 再開時 (配送の done が無い) は `branch_started` の `feature_branch` と現在 branch が一致することを確認する。違う branch なら
-   clean のときだけ switch。`base_head` が HEAD の祖先でなければ停止する
+   clean のときだけ switch。`base_head` が HEAD の祖先でなければ停止する。
+   配送 1 の 2 で止まった後に人が feature に足した commit (UC と無関係な static の落ちの修正。d2-run SKILL.md 配送 1) も件名は `impl(<slug>): ` なので件名の検査を通り、squash で UC の 1 commit に入る (0.1.32 実走 P1)
 4. 配送の done がある UC は終わっている (feature は配送の最後に消す。残っていれば起動時の自動選択 2 が片付ける)。remote `origin` があり `origin/main..main` に commit があれば、
    何より先に `git push origin main` をやり直す (d2-run SKILL.md の自動選択の 3。配送・要求の差分・還流のどれの後でも同じ)
 

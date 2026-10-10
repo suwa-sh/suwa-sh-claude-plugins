@@ -48,4 +48,9 @@
 ## headless で `shasum` が承認待ちで止まる
 
 - 症状: `shasum -a 256` を含むコマンドが allowedTools に無く止まる
-- 回避: `node -e` の `crypto.createHash('sha256')` で計算する (node は許可済み)
+- 回避: `node -e` の `crypto.createHash('sha256')` で計算する (node は許可済み)。scenario の承認のハッシュは `runState.js scenario-approve` が計算するので、進行役が計算する場面は無い (0.1.33)
+
+## headless で `/tmp` などリポの外への控えの保存が拒否される
+
+- 症状: 作業の控え (diff や一覧) を `/tmp/<file>` に書こうとして「作業ディレクトリの外への書き込み」で止まる (0.1.32 の試し運転 P14)
+- 回避: 控えは `.distillery/logs/` (gitignore) に置く。`git show <ref>:<path>` で読めるものは保存しない

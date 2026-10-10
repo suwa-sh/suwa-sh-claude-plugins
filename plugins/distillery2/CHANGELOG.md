@@ -2,6 +2,23 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.33] - 2026-10-10
+
+0.1.32 の試し運転で残った課題 P1〜P21 のうち、手順の追記 12 件と判断 4 件 (P1・P4・P6・P16。すべて案 A) を直した。据え置き: P3・P12・P19・P20・P21。
+
+### Changed
+
+- P1 UC と無関係な static の落ち (配送 1 の 2): 作り直しの runGates が落ちたら推測で直さず止まり、報告に落ちたゲート名・job と「指摘の対象ファイルが UC の変更 (`git diff --name-only <base_head>..HEAD`) に含まれるか」を添える (含まれなければ「UC と無関係の可能性」)。
+  人は feature の上で直し (依存の更新か `.qlty/qlty.toml` の `[[ignore]]`) `impl(<slug>): <内容>` で commit して配送 1 から再開する。main で直して rebase しない (`base_head` は更新されず、main 側の commit が件名の検査で止まる。通っても squash が畳む)。git-delivery.md に人の修正 commit が件名の検査を通る 1 句
+- P4 件名の検査: 変更なし (前置きだけ。P1 の人の修正 commit を弾かない)
+- P6 目次の状態列 (`genDocsReadme.js`): `use-cases.yaml` の `status: done` を追跡表より先に見て「配送済み」。追跡表が全段 pass でも done でなければ「実装済み (配送待ち)」。件数行は「配送済み X、配送待ち Y、要求待ち Z」。配送 6 の README 更新に目的 (状態列が配送済みになる) を書いた。サンプルの目次を再生成 (0.1.27 以降の「未処理の課題」の節も入った)
+- P16 `runState.js scenario-approve <run> --feature <path> [--acceptance-dir <dir>]`: scenario の承認を `scenario_approved {feature, feature_sha256, acceptance}` で記録する。feature_sha256 は bytes の sha256、acceptance は `@uc:<slug>` を持つシナリオがある `features/acceptance/*.feature` (人が承認した対象。`checkScenario.js` の `collectTags` と同じ範囲。他 UC だけのファイルは入れない)。進行役は計算しない。正本の「④ の段階の進行・確認ページ」の読むものに feature と acceptance
+- 手順の追記 12 件: gates.json は無ければ作り直し・あれば時刻として比べる (P2) / `review_approved` が有効の定義 (P5) / 「要求を直す」のコマンド列 (worktree → `file-issues <run の絶対パス> --cwd <wt>` → `genDocsReadme --cwd <wt>` → commit → fetch → remove → `-D` → push。P7・P8) /
+  執筆役は他 UC の振る舞いを含む受入基準を要求の課題 (仕様を UC 単位に分ける) として下書きし、仕組みの変更を提案しない (P9) / `carry_over` は廃止で再生成で消えてよい (d2-requirements SKILL・派遣表「① 要求」の追記欄。P10) /
+  design の items は `docs/design/storybook-app/src/<相対パス>` (stories も部品も)。部品は直してよく、import を Story まで辿った「影響する Story」を報告 (d2-design・派遣表・d2-run・d2-requirements。P11) / `basis.js check` の対象は `docs/adr/[0-9]*.md` (P13) /
+  troubleshooting に「控えは `.distillery/logs/` に」(P14) / scenario 行に `checkScenario.js` のコマンド例 (P15) / 別名の解決先が分かれば ID で `models_resolved` (P17) / 要求の差分 4 で `carry_over` が残っていれば `genUseCases.js` (P18)
+- テスト: runState (scenario-approve: 範囲・bytes・path 昇順・dir 無し・異常系)、genDocsReadme (配送済み / 実装済み (配送待ち) / 実装中)、docContract (0.1.33 の 3 件)、dataflow (正本の reads)。変異テスト 51 件
+
 ## [0.1.32] - 2026-10-06
 
 0.1.30・0.1.31 の試し運転で残った課題を直した: 手順の追記 16 件、受入基準の持ち主 (J1)、残った作業の宛先 (J2。UC への持ち越しをやめた)。
