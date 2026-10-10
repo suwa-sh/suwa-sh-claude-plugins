@@ -704,7 +704,10 @@ test('0.1.33 P10/P11/P13/P17/P18: carry_over は廃止で戻さない (要求担
   assert.match(design, /項目が部品のとき、その部品を使う他の Story の表示も変わる。直してよい \(「直せない」にしない\)。報告の「影響する Story」に、その部品から import を \*\*Story のファイルまで辿った\*\*一覧 \(部品を使う部品を介する間接の利用も含む\) を書く/);
   const r = section(SKILL, '### 要求の差分', '## ② 決定');
   assert.match(r, /項目が部品なら、報告の「影響する Story」\(その部品から import を Story まで辿った一覧\) を完了報告に転記する/);
-  assert.match(r, /1 で控えた `carry_over_rows` が空でなく `use-cases\.yaml` に `carry_over` の行が残っていれば \(要求担当を派遣したが再生成しなかった\) `node <skills>\/d2-requirements\/scripts\/genUseCases\.js` を回す/);
+  assert.match(r, /要求担当を派遣した後も、1 で控えた `carry_over_rows` が空でなく `use-cases\.yaml` に `carry_over` の行が残っていれば \(要求担当が再生成しなかった\)、3 の確認ページの前に `node <skills>\/d2-requirements\/scripts\/genUseCases\.js` を回す/);
+  assert.match(r, /確認ページはこの再生成の後の差分で作る/);
+  const step4 = r.slice(r.indexOf('4. 承認されたら'), r.indexOf('5. 反映・取り下げた課題'));
+  assert.doesNotMatch(step4, /`node <skills>\/d2-requirements\/scripts\/genUseCases\.js`/, '承認の後に再生成を回さない (人が確認した UC 対応と違う内容を commit しない。2 の再生成への言及は可)');
   assert.match(r, /`docs\/adr\/\[0-9\]\*\.md` \(決定の本文。`_review-summary\.md` と `index\.md` は生成物なので渡さない。渡すと STALE に出る/);
   assert.match(read(SKILL), /別名 \(`opus` 等\) の解決先が分かっていれば \(ハーネスの指示、過去の run の `models_resolved`、Verifier の報告\) 最初から ID で書く/);
 });

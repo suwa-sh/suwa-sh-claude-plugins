@@ -133,6 +133,7 @@ UC の実装で見つかった要求の穴 (課題ファイルの `kind: require
    報告の「残った作業」(要求担当の write-set の外で必要になった作業。種類 `design` / `assumption` と対象付き)、「決定と違う反映」(課題の決定と違う反映にした課題・決定・実際の反映・理由)、
    「仮に決めた反映」(課題に決定が無く要求担当が案を選んだもの: 課題・選んだ案・理由。0.1.32 N10・O8) を 3 の材料に控える。
    要求の課題が 0 件 (既存の持ち越しだけ) なら要求担当は派遣せず、`node <skills>/d2-requirements/scripts/genUseCases.js` を回して `use-cases.yaml` を再生成する (決定論。`carry_over` の行が消える。他の変更は無い)
+   要求担当を派遣した後も、1 で控えた `carry_over_rows` が空でなく `use-cases.yaml` に `carry_over` の行が残っていれば (要求担当が再生成しなかった)、3 の確認ページの前に `node <skills>/d2-requirements/scripts/genUseCases.js` を回す (`carry_over` の行が消える。要求が変わっていれば `spec_ids` も変わり得るので、確認ページはこの再生成の後の差分で作る。0.1.32 実走 P18・差分レビュー 2 ラウンド目)
 3. ① と同じ材料で確認ページを作る (課題ごとに反映した要求・仕様を添える)。**承認は一括** (差分更新はインプレースなので、課題ごとに切り分けられない)。
    加えて載せる: **「決定と違う反映」** (課題ごとに決定・反映・理由。無ければ「なし」。違いを戻すなら「直す点」で 2 から。0.1.28 実走 L11)、
    **「仮に決めた反映」** (課題ごとに選んだ案・理由。無ければ「なし」。「決定と違う反映」と並べて載せる。違う案にするなら「直す点」で 2 から)、
@@ -154,8 +155,7 @@ UC の実装で見つかった要求の穴 (課題ファイルの `kind: require
    - `assumption`: 対象の UC の run (main) に `node runState.js event .distillery/runs/<slug> assumption_resolved --data-file <json>` を追記する。JSON は `{"targets": [{"tier": "<tier>", "attempt": <n>, "id": "A-xxx"}], "decision": "<要求の差分の決定の要点>", "by": "req: feedback"}`
      (`runState.js` が各 target を `attempt-<n>/assumptions.<tier>.yaml` で確かめ、無い組は拒む。最新でない attempt の前提も閉じられる。AssumptionRecord の yaml は変えない)
    - 既存の持ち越しを流したら、`carry_over_pending` の run には `node runState.js event .distillery/runs/<slug> carry_over_migrated --data-file <json>` (`{"items": [...], "to": "req: feedback"}`) を追記する (再び移行の対象にしない)。`use-cases.yaml` の `carry_over` の行は 2 の再生成 (要求担当の差分更新か `genUseCases.js`) で消える
-   次に、1 で控えた `carry_over_rows` が空でなく `use-cases.yaml` に `carry_over` の行が残っていれば (要求担当を派遣したが再生成しなかった) `node <skills>/d2-requirements/scripts/genUseCases.js` を回す (決定論の再生成。`carry_over` の行が消える。他の変更は無い。0.1.32 実走 P18)。
-   反映した課題ファイルと取り下げた課題ファイルを `git rm` し、genDocsReadme → `git add -A -- docs packages/ui .distillery/runs` (`packages/ui` は design の作業があったときだけ。無いパスを名指ししない) → 本文ファイル (`.distillery/logs/req-feedback-<ts>.txt`。1 行目 `req: feedback`、空行、trailer) を書いて `git commit -F <本文ファイル>` (配送 3 と同じ書き方)。
+   次に、反映した課題ファイルと取り下げた課題ファイルを `git rm` し、genDocsReadme → `git add -A -- docs packages/ui .distillery/runs` (`packages/ui` は design の作業があったときだけ。無いパスを名指ししない) → 本文ファイル (`.distillery/logs/req-feedback-<ts>.txt`。1 行目 `req: feedback`、空行、trailer) を書いて `git commit -F <本文ファイル>` (配送 3 と同じ書き方)。
    trailer は反映した課題ごとに `Feedback-Consumed: docs/feedback/<issue>.md`、取り下げた課題ごとに `Feedback-Dismissed: docs/feedback/<issue>.md`、最後に attribution 行 (git-delivery.md「commit の attribution」)。remote があれば push
 5. 反映・取り下げた課題の `from_uc` が要求で止まった UC (自動選択の 2 の判定) なら、その feature を `git update-ref refs/distillery2/abandoned/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。
    次にその UC を回すと main から新しい run で始まる (feature の上の run は main に無い。要求が変わったのでシナリオからやり直す)

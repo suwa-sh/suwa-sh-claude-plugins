@@ -256,7 +256,7 @@ function build(ctx) {
       out.push(`| ${biz} | ${mdEscape(u.uc)} | ${status} | ${specCell} | ${feats.join('<br>') || '-'} | ${contractParts.join('<br>') || '-'} | ${screens.map(mdEscape).join('<br>') || '-'} | ${asBuilt || '-'} |`);
     }
     out.push('');
-    const waiting = rows.filter((u) => u.status === 'blocked' && u.no_spec_reason);
+    const waiting = rows.filter((u) => statusOf(u) === '要求待ち' && u.no_spec_reason); // 件数・状態列と同じ判定 (差分レビュー 2 ラウンド目)
     if (waiting.length) {
       out.push('<details>');
       out.push(`<summary>要求待ちの理由 (${waiting.length})</summary>`);
