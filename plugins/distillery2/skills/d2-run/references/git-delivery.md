@@ -28,8 +28,8 @@ d2-run が作る**すべての commit** (簿記の commit `impl(<slug>): <stage>
    upstream と HEAD が一致。満たさなければ勝手に stash / commit せず、整理を依頼して停止する。
    upstream が設定されていなければ (リモート無し・base を未 push。`git rev-parse --abbrev-ref @{upstream}` が失敗する)
    upstream 一致の条件は飛ばし、報告に「upstream なし」と書く (0.1.16 実走)。clean 判定の対象は d2-run SKILL.md の起動シーケンス 5 に従う
-2. `use-cases.yaml` の `slug` で `git switch -c feature/<slug>`。作成直後に `events.jsonl` へ
-   `branch_started {base_branch, base_head, feature_branch}` を追記する
+2. `use-cases.yaml` の `slug` で `git switch -c feature/<slug>`。作成直後に `runState.js open` で run を開き、その直後に `events.jsonl` へ
+   `branch_started {base_branch, base_head, feature_branch}` を追記する (`models_resolved` はその後。d2-run SKILL.md ④ 冒頭。0.1.34 Q11)
 3. 再開時 (main マージの done が無い) は `branch_started` の `feature_branch` と現在 branch が一致することを確認する。違う branch なら
    clean のときだけ switch。`base_head` が HEAD の祖先でなければ停止する。
    main マージ 1 の 2 で止まった後に人が feature に足した commit (UC と無関係な static の落ちの修正。d2-run SKILL.md main マージ 1) も件名は `impl(<slug>): ` なので件名の検査を通り、squash で UC の 1 commit に入る (0.1.32 実走 P1)

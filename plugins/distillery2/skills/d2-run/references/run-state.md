@@ -12,7 +12,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
     attempt-<n>/
       assumptions.<tier>.yaml       # 実装者が補った前提 (AssumptionRecord)
       findings.<tier>.yaml          # Verifier の指摘 (ティアごと)
-    reports/                        # gates.json と各ゲートの JSON レポート
+    reports/                        # gates.json と各ゲートの JSON レポート。gates.prev.json (main マージ 1 の 2 で作り直す前の控え)・gates.failed-1.json (回し直す前の控え)
     traces/<scenario_id>.jsonl      # UC BDD 実行時の計装トレース
     issues/<ts>_<slug>.md           # 仕様起因の課題 (front matter kind: rule | contract | requirement)。scenario / contract 段が書く
     issues/<ts>_<tier>_<slug>.md    # ティア実装者の課題 (並列の他ティアと衝突しないようにティアを入れる)

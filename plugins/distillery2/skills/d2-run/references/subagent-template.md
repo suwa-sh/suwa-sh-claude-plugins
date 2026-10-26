@@ -16,7 +16,7 @@
 - AskUserQuestion を使わないでください。人の判断が必要なら、質問と選択肢を結果として返してください
 - git コマンド (add / commit / push / switch 等) を実行しないでください。コミットはオーケストレータが行います。
   例外: 手順書が回すスクリプトの内部の git (読み取りの rev-parse / diff / ls-files と、genQlty.js が qlty init に未追跡ファイルを見せるための一時的な `git add -N`。終わったら index を書き戻す) はそのまま回してよい
-- 書き込みは次の write-set 内に限定してください: {write_set}   ← 下の「派遣ごとの write-set」のその段階の行 (正本から生成)
+- 書き込みは次の write-set 内に限定してください: {write_set}   ← 下の「派遣ごとの write-set」のその段階の行 (正本から生成)。行はそのまま貼り (置き換えない。受理の検査は行の形で見る)、直後に置換部分の値を 1 行で添える (例 `<業務> = 蔵書管理業務、<slug> = register-book、<run> = .distillery/runs/register-book`。0.1.34 Q12)
   それ以外への書き込みが必要になったら、作業を止めて理由を結果として返してください
 - YAML を書くときは、値に `: ` や括弧を含む文字列を必ずクォートし、書き終えたら parse 確認してください
 {additional_instructions}
@@ -27,7 +27,7 @@
 
 | 段階 | role | skill_name / skill_args | model | additional_instructions |
 |---|---|---|---|---|
-| ① 要求 | 要求の整理役 | `distillery2:d2-requirements` `input=<要望テキスト>` (要求の差分のときは `input=<未処理の要求の課題ファイルのパス (すべて)>`) | 既定 | 要求の差分のときだけ: `use-cases.yaml の carry_over (0.1.30〜0.1.31 の持ち越し) は廃止済み。再生成で消えてよい (手で戻さない)` (0.1.32 実走 P10) |
+| ① 要求 | 要求の整理役 | `distillery2:d2-requirements` `input=<要望テキスト>` (要求の差分のときは `input=<未処理の要求の課題ファイルのパス (すべて)>`) | 既定 | 要求の差分のときだけ: `use-cases.yaml の carry_over (0.1.30〜0.1.31 の持ち越し) は廃止済み。再生成で消えてよい (手で戻さない)` (0.1.32 実走 P10)、`課題の外の論点も決めずに返さない。推奨の案で反映し「仮に決めた反映」に書く` (0.1.34 Q8) |
 | ② 決定 | 品質特性と設計の決定役 | `distillery2:d2-decide` | 既定 | なし |
 | ③ 基盤 (機械) | 基盤の生成役 | `distillery2:d2-foundation` `phase=all` | 既定 | なし |
 | ③ 契約骨格 | 契約の設計役 | `distillery2:d2-contract` `mode=skeleton` | 既定 | なし |
@@ -40,7 +40,7 @@
 | ④ integrate | 結合の実装者 | `distillery2:d2-implement` `mode=integrate uc=<slug>` | 既定 | 固定指示: `<skills>/d2-implement/references/integrate.md`。attempt ≥ 2 のときは `差し戻しの再実行。結線の変更が不要なら、変えずに完了条件だけ確かめて「結線変更なし」と報告してよい` を追記。as-built から戻ったとき (`returned_to_integrate`) は `as-built の集計で計装が足りない: 計装なし <ティア> / 正常系に部品なし <ティア>。結線を足す` を追記 |
 | ④ verify (ティアごと並列) | `<tier>` の Verifier | agent_type **`distillery2:d2-verifier`** / `distillery2:d2-verify` `uc=<slug> tier=<tier> attempt=<n> run=<run> assumptions=<path>` | **`models.verifier`** (implementer と同じモデルに解決されてもよい。条件は別サブエージェント + 同等以上のモデル。SKILL.md 起動シーケンス 2) | `変更ファイル一覧と他 UC と共有する変更ファイル (初期候補): <.distillery/logs/verify-<slug>-attempt-<n>.txt の絶対パス>` (d2-run が書く。1 行目から変更ファイル (`git diff --name-only base_head..HEAD` から `docs/README.md`・`docs/requirements/use-cases.yaml`・`docs/feedback/**` を除いたもの) を 1 行ずつ、空行、`共有の候補:` の後に `<ファイル> — <他 UC の slug>` を 1 行ずつ (無ければ「なし」)。件数に関わらず**常に**ファイルで渡す。SKILL.md verify 行。0.1.32 O16) と `実装者の固定指示: <パス>` (`<skills>/d2-implement/references/tier-impl.md` を絶対パスに展開して渡す。前提の照合先。d2-verify は他スキルの手順書を直接参照しないので d2-run が渡す。0.1.31) |
 | ④ asbuilt | as-built の抽出と要約役 | `distillery2:d2-asbuilt` `uc=<slug> run=<run>` | 既定 | 依存グラフの実態 → 抽出 → 要約 → 検査までこのスキルが行う。抽出の標準出力 1 行を報告に転記する |
-| ① 要求の差分 (画面部品) | 画面の見本の修正役 | `distillery2:d2-design` `mode=feedback items=<直すファイル (docs/design/storybook-app/src/<相対パス>。stories も部品も) と直す内容を 1 行ずつ>` | 既定 | 要求の差分の「残った作業」で人が「対応する」と選んだ `design` の項目だけ (SKILL.md 要求の差分 4)。③ の全生成はしない。報告に変えた / 消したファイルと項目ごとの「直した / 直せない (理由)」、項目が部品なら「影響する Story」(その部品から import を Story まで辿った一覧。0.1.32 実走 P11)。取り込み直し (`importUi.js`) は d2-run が行う (0.1.32 J2) |
+| ① 要求の差分 (画面部品) | 画面の見本の修正役 | `distillery2:d2-design` `mode=feedback items=<直すファイル (docs/design/storybook-app/src/<相対パス>。stories も部品も) と直す内容を 1 行ずつ>` | 既定 | 要求の差分の「残った作業」で人が「対応する」と選んだ `design` の項目だけ (SKILL.md 要求の差分 4)。③ の全生成はしない。報告に変えた / 消したファイルと項目ごとの「直した / 直せない (理由)」、項目が部品なら「影響する Story」(その部品から import を Story まで辿った一覧。0.1.32 実走 P11)、項目の外のファイルを変えたか消したら「項目の外の変更」(ファイルごとに、どの項目のための依存か。消したならどの項目で使われなくなったか。0.1.34 Q17)。取り込み直し (`importUi.js`) は d2-run が行う (0.1.32 J2) |
 | 還流 (ADR) | ルールの穴の記録役 | `distillery2:d2-decide` `mode=feedback issue=<課題> result=<結果ファイル>` | 既定 | 還流の worktree で派遣する (SKILL.md の還流節)。`作業ディレクトリ: <本体の .distillery/worktrees/feedback の絶対パス> (write-set はここからの相対。結果ファイルだけは本体のリポの絶対パス)`、`課題: <worktree の中の docs/feedback/<issue>.md の絶対パス>`、`結果ファイル: <本体の .distillery/logs/feedback/<b>/<issue>.result.json の絶対パス>` を追記 |
 | 還流 (契約) | 契約の修正役 | `distillery2:d2-contract` `mode=feedback issue=<課題> result=<結果ファイル>` | 既定 | 還流の worktree で派遣する。`作業ディレクトリ: <本体の .distillery/worktrees/feedback の絶対パス> (write-set はここからの相対。結果ファイルだけは本体のリポの絶対パス)`、`課題: <worktree の中の docs/feedback/<issue>.md の絶対パス>`、`結果ファイル: <本体の .distillery/logs/feedback/<b>/<issue>.result.json の絶対パス>` を追記 |
 

@@ -2,6 +2,25 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.34] - 2026-10-27
+
+0.1.33 の試し運転で残った課題 Q1〜Q19 のうち、手順の追記 8 件と判断 5 件 (Q1・Q6・Q8・Q9・Q18。すべて案 A) を直した。据え置き: Q3・Q5・Q10・Q13・Q15。対応不要: Q19。
+
+### Changed
+
+- 用語: 「配送」を「main マージ」に変えた (手順書・スクリプトの出力・目次の状態列「main マージ済み」「実装済み (main マージ待ち)」)。段階の ID (`deliver`)・イベント名・ファイル名は変えない
+- Q1 static の落ちと検査の追加 (main マージ 1 の 2): 作り直しの runGates が static で落ちて止まったとき、報告に「落ちた job の検査 (qlty の plugin 名) が UC の変更で `.qlty/qlty.toml` に足されたか」(`git diff <base_head>..HEAD -- .qlty/qlty.toml`) を添える。plugin 名が特定できなければ「判定できない」と書く
+- Q6 作り直す前の控え: 古いと判定したら `reports/gates.prev.json` に写してから作り直す (gates.json が無いときは控えを消す)。main マージの完了報告に、控えで落ちていたゲート・job が今回 pass かを書く
+- Q8 要求担当は課題の外の論点も決めずに返さない (推奨の案で反映し「仮に決めた反映」に書く。d2-requirements 手順 8・派遣表「① 要求」)。決めずに返した論点があれば d2-run が確認ページの前に差し戻す
+- Q9 要求の差分の確認ページ: `design` の項目の推奨 (初期選択) は「対応する」。「無視」の横に影響を書く
+- Q18: 変更なし (画面部品の担当の指摘は完了報告に載せる)
+- 手順の追記 8 件: 作り直しの runGates が落ちたら unit 以降は 1 回だけ回し直し、static は回し直さない (Q2) / 「要求を直す」のコマンド列で run の下書きはすべて課題ファイルになり、`<issue>` は 1 件目の名前 (Q4) /
+  `unfiled_issues` で取りこぼしを確かめ、再開した main マージでは `filed` が空でよい (Q7) / ④ 冒頭の順序 switch → open → `branch_started` → `models_resolved` (git-delivery にも。Q11) /
+  派遣文の write-set の行はそのまま貼り、置換部分の値を 1 行で添える (Q12) / checkScenario は受入 dir が無ければ UC の feature だけで判定 (Q14) /
+  同じ (slug, tier, attempt, id) の前提は 1 回だけ。決定が違えば並べて人に選ばせる (Q16) / d2-design mode=feedback の報告に「項目の外の変更」、d2-run の受理は変わったファイルが項目・その欄・`screens.yaml` のどれかに入ることを確かめる (Q17)
+- run-state.md の `reports/` の注記に `gates.prev.json` と `gates.failed-1.json`
+- テスト: docContract (0.1.34 の 3 件と d2-requirements・d2-design の文言)。変異テスト 58 件 (0.1.34 の 6 件を足した)
+
 ## [0.1.33] - 2026-10-10
 
 0.1.32 の試し運転で残った課題 P1〜P21 のうち、手順の追記 12 件と判断 4 件 (P1・P4・P6・P16。すべて案 A) を直した。据え置き: P3・P12・P19・P20・P21。
