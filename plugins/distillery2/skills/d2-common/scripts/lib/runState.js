@@ -20,7 +20,7 @@
  *   node runState.js scenario-approve <runDir> --feature <feature> [--acceptance-dir <dir>]
  *     scenario の承認を scenario_approved {feature, feature_sha256, acceptance: {<path>: <sha256>}} で記録する。feature_sha256 は feature の bytes の sha256。
  *     acceptance は <dir> の *.feature のうち Feature か Scenario に @uc:<slug> を持つシナリオがあるファイル (人が承認した対象。checkScenario.js の collectTags と同じ範囲。0.1.33 P16)
- *   node runState.js mark-legacy-delivered <runDir>   (0.1.25 までに PR で配送済みの run に deliver の done を作る。人が確認ページで配送済みと答えたときだけ)
+ *   node runState.js mark-legacy-delivered <runDir>   (0.1.25 までに PR で main マージ済みの run に deliver の done を作る。人が確認ページで main マージ済みと答えたときだけ)
  *   node runState.js invalidate <runDir> <stage> <reason>
  *   node runState.js invalidate <runDir> <stage> <reason> --from   (その段階と後ろの段階をまとめて退避)
  *   node runState.js return-to-integrate <runDir> '{"instrumentation_gaps":[...],"instrumentation_happy_gaps":[...]}'   (as-built から integrate へ戻す)
@@ -33,8 +33,8 @@ const crypto = require('node:crypto');
 const { parseYaml, stringifyYaml } = require('./yaml');
 const { parseFeature } = require('./gherkin');
 
-// 0.1.27: UC は配送で終わる。還流は UC の外の独立した段階 (scripts/feedbackBatch.js) で、溜まった課題ファイルをまとめて直す。
-// 0.1.25 までの run (還流 → 配送の順) と 0.1.26 の run が持つ feedback の done は、旧形式の判定 (isLegacyOrder) でだけ読む
+// 0.1.27: UC は main マージで終わる。還流は UC の外の独立した段階 (scripts/feedbackBatch.js) で、溜まった課題ファイルをまとめて直す。
+// 0.1.25 までの run (還流 → main マージの順) と 0.1.26 の run が持つ feedback の done は、旧形式の判定 (isLegacyOrder) でだけ読む
 const STAGES = ['scenario', 'contract', 'scaffold', 'tier', 'contract-gate', 'integrate', 'verify', 'review', 'asbuilt', 'deliver'];
 
 function nowIso() { return new Date().toISOString(); }
@@ -239,14 +239,14 @@ function filedIssues(runDir) {
 }
 
 /**
- * 0.1.25 までの順 (還流 → 配送) の run か。還流の done があり配送の done が無い。
- * PR で配送した UC は git だけでは配送済みか判定できない (GitHub の squash merge は feature の commit を main の祖先にしない) ので、
+ * 0.1.25 までの順 (還流 → main マージ) の run か。還流の done があり main マージの done が無い。
+ * PR で main マージした UC は git だけでは main マージ済みか判定できない (GitHub の squash merge は feature の commit を main の祖先にしない) ので、
  * status は次の段階を出さず、d2-run が人に聞く。
  */
 function isLegacyOrder(runDir) {
   if (!isDone(runDir, 'feedback')) return false;
   if (!isDone(runDir, 'deliver')) return true;
-  // mark-legacy-delivered が配送の done を作った後、還流の done の退避の前に止まった中間状態も旧形式として扱う (もう一度 mark すれば完了する)
+  // mark-legacy-delivered が main マージの done を作った後、還流の done の退避の前に止まった中間状態も旧形式として扱う (もう一度 mark すれば完了する)
   const d = readDone(runDir, 'deliver');
   return Boolean(d && d.legacy) && unfiledIssues(runDir).length > 0;
 }
@@ -260,7 +260,7 @@ function unfiledIssues(runDir) {
 }
 
 /**
- * 人が確認ページで「配送済み」と答えた旧形式の run に、deliver の done (legacy: true) を作る。
+ * 人が確認ページで「main マージ済み」と答えた旧形式の run に、deliver の done (legacy: true) を作る。
  * 起票済みでない課題が残っていれば (0.1.25 までの headless 実行は還流を保留にしていた)、旧形式の feedback の done を退避して、
  * 新しい還流段階で処理し直せるようにする (起票済みの旧記録 url はそのまま数える)
  */
@@ -325,7 +325,7 @@ function main(argv) {
       const s = status(path.resolve(args[0]));
       if (json) console.log(JSON.stringify(s, null, 2));
       else {
-        console.log(`run: ${s.slug} attempt=${s.attempt} next=${s.legacy_order ? '(旧形式の順: 配送済みか人に確かめる)' : (s.next_stage || '(all done)')}`);
+        console.log(`run: ${s.slug} attempt=${s.attempt} next=${s.legacy_order ? '(旧形式の順: main マージ済みか人に確かめる)' : (s.next_stage || '(all done)')}`);
         for (const [k, v] of Object.entries(s.stages)) console.log(`  ${v === 'done' ? '[x]' : '[ ]'} ${k}`);
         if (s.unfiled_issues.length) {
           console.log(`unfiled issues (課題ファイルにしていない課題): ${s.unfiled_issues.length}`);

@@ -23,7 +23,7 @@ test('trailers are built from use-cases, gates.json, basis and events', () => {
   const run = rs.openRun(repo, 'register-loan');
   fs.writeFileSync(path.join(run, 'reports/gates.json'), JSON.stringify({ gates: [{ name: 'static', status: 'pass' }, { name: 'unit', status: 'pass' }] }));
   rs.appendEvent(run, 'review_approved', { assumption_decisions: [{ id: 'A-001', decision: 'confirmed' }, { id: 'A-002', decision: 'auto_confirmed' }] });
-  // 還流の記録は trailer に出さない (0.1.26: 還流は配送の後なので、squash commit の時点で記録が無い。旧記録が残っていても出さない)
+  // 還流の記録は trailer に出さない (0.1.26: 還流は main マージの後なので、squash commit の時点で記録が無い。旧記録が残っていても出さない)
   rs.appendEvent(run, 'feedback_filed', { kind: 'rule', url: 'https://example/pr/1' });
   rs.appendEvent(run, 'feedback_filed', { kind: 'contract', ref: '0123abc', issue_path: 'issues/y.md' });
   rs.appendEvent(run, 'feedback_deferred', { kind: 'requirement', issue_path: 'issues/x.md', reason: 'headless' });

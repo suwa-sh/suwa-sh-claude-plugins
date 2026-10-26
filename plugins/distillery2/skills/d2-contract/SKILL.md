@@ -105,7 +105,7 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
 作業ディレクトリは派遣文の worktree (`.distillery/worktrees/feedback`。main から切った還流 branch。溜まった課題を 1 件ずつ同じ worktree で直す)。パスはすべてここからの相対で扱い、
 スクリプトもここで回す (結果ファイルだけは派遣文の本体のリポの絶対パスに書く)。
 d2-run が派遣する。実装で見つかった「契約の穴」(課題ファイル `docs/feedback/<issue>.md` の front matter `kind: contract`) を直す。
-還流は UC の配送 (main への取り込み) の後なので、課題を出した UC が足した契約も worktree にある。
+還流は UC の main マージの後なので、課題を出した UC が足した契約も worktree にある。
 
 1. 課題を読み、直す対象 (operationId・channel / message 名・テーブル名) を挙げる
 2. **対象が今の branch の契約にあるか確かめる** (`contracts/openapi/` の operationId、`contracts/asyncapi/` の message、`contracts/db/domains/` のテーブル)。

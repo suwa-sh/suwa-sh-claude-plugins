@@ -8,7 +8,7 @@
  *   --base <ref>            Basis-* の起点 (既定: origin/HEAD → main → master との merge-base。squash で消える branch 上の commit を指さない)
  *   --co-author "<Name <email>>"  Co-Authored-By trailer (複数可。ハーネスの attribution 行をそのまま渡す)
  *
- * --strict (配送時に使う): UC / Basis-Requirements / Gates (全段 pass) / Assumptions / As-Built が揃わなければ exit 1
+ * --strict (main マージ時に使う): UC / Basis-Requirements / Gates (全段 pass) / Assumptions / As-Built が揃わなければ exit 1
  *
  * 入力: use-cases.yaml (docs/requirements)、reports/gates.json、events.jsonl (review_approved)、
  *       basis.js stamp (requirements / adr / contracts)
@@ -100,7 +100,7 @@ function buildTrailers({ cwd, runDir, docsRoot = 'docs', base = null, coAuthors 
     trailers.push(['Assumptions', `confirmed=${count('confirmed')} auto=${count('auto_confirmed')} rejected=${count('rejected')}`]);
   }
   if (uc) trailers.push(['As-Built', `${docsRoot}/as-built/${uc.business}/${uc.uc}/index.md`]);
-  // Feedback trailer は出さない (0.1.26): 還流は配送 (squash) の後に main の上で行うので、squash commit の時点では還流の記録が無い。
+  // Feedback trailer は出さない (0.1.26): 還流は main マージ (squash) の後に main の上で行うので、squash commit の時点では還流の記録が無い。
   // 還流の commit は自分の trailer (Feedback-Kind / Feedback-From-UC / Feedback-Issue) を持つ
   // 共著 (ハーネスの attribution 行をそのまま渡す。0.1.10 実走 ④-7: オーケストレータが手で足していた)
   for (const c of coAuthors) trailers.push(['Co-Authored-By', c]);
@@ -109,14 +109,14 @@ function buildTrailers({ cwd, runDir, docsRoot = 'docs', base = null, coAuthors 
 
 function render(trailers) { return trailers.map(([k, v]) => `${k}: ${v}`).join('\n'); }
 
-/** 配送に必要な trailer が揃っているか。欠落と、Gates に pass 以外の段があるものを返す */
+/** main マージに必要な trailer が揃っているか。欠落と、Gates に pass 以外の段があるものを返す */
 const GATE_NAMES = ['static', 'unit', 'contract', 'uc-bdd', 'acceptance'];
 
 function strictProblems(trailers, cwd = process.cwd()) {
   const map = new Map(trailers);
   const problems = [];
   for (const k of ['UC', 'UC-Slug', 'Basis-Requirements', 'Gates', 'Assumptions', 'As-Built']) if (!map.has(k)) problems.push(`missing ${k}`);
-  // 配送では Basis-* が base 側の sha であること (base が解決できたこと) を要求する
+  // main マージでは Basis-* が base 側の sha であること (base が解決できたこと) を要求する
   if (!map.has('Basis-Base')) problems.push('missing Basis-Base (base branch を解決できない。--base <ref> を渡す)');
   const gates = map.get('Gates');
   if (gates) {

@@ -967,17 +967,17 @@ processes:
     reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules, feedback-docs]
     writes: [docs-readme, feedback-index]
   - id: run.uc.deliver
-    name: 配送 (squash・main への取り込み)
+    name: main マージ (squash して main へ取り込む)
     parent: run.uc
     stage: uc
     kind: script
     actor: d2-run
     scripts: [prTrailers.js]
-    run_table_row: "④ の prTrailers.js と配送"
+    run_table_row: "④ の prTrailers.js と main マージ"
     reads: [use-cases, reports, run-events]
     writes: [reports, use-cases]
   - id: run.uc.file-issues
-    name: UC の課題を課題ファイルにする (配送の squash の前)
+    name: UC の課題を課題ファイルにする (main マージの squash の前)
     parent: run.uc
     stage: uc
     kind: script
@@ -986,7 +986,7 @@ processes:
     run_table_row: "④ の feedbackBatch.js file-issues"
     reads: [issues, issues-tier, run-events]
     writes: [feedback-docs, run-events]
-  # ---- 起動時の移行 (0.1.28。配送済みなのに課題ファイルにしていない run の課題を、課題を数える前に課題ファイルにする) ----
+  # ---- 起動時の移行 (0.1.28。main マージ済みなのに課題ファイルにしていない run の課題を、課題を数える前に課題ファイルにする) ----
   - id: run.migrate-issues
     name: 旧形式の run の課題を課題ファイルにする (起動時の移行)
     stage: feedback

@@ -114,7 +114,7 @@ test('pendingFeedback: 保留と解消 (新形式・旧形式)', () => {
   assert.deepEqual(p.map(x => x.issue_path), ['issues/c.md', null]);
 });
 
-test('段階の順 (0.1.27): UC は配送 (deliver) で終わる。還流は UC の段階に無い。課題ファイルにしていない課題を status に出す', () => {
+test('段階の順 (0.1.27): UC は main マージ (deliver) で終わる。還流は UC の段階に無い。課題ファイルにしていない課題を status に出す', () => {
   assert.deepEqual(rs.STAGES.slice(-2), ['asbuilt', 'deliver']);
   assert.equal(rs.STAGES.includes('feedback'), false);
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
@@ -128,10 +128,10 @@ test('段階の順 (0.1.27): UC は配送 (deliver) で終わる。還流は UC 
   rs.appendEvent(dir, 'feedback_filed', { kind: 'contract', ref: 'docs/feedback/a.md', issue_path: 'issues/a.md' });
   rs.markDone(dir, 'deliver', { squash: 'abc' });
   const st = rs.status(dir);
-  assert.equal(st.next_stage, null, '配送で全段 done');
+  assert.equal(st.next_stage, null, 'main マージで全段 done');
   assert.deepEqual(st.unfiled_issues, []);
   assert.equal(st.legacy_order, false);
-  // 0.1.26 の run が持つ feedback の done は旧形式と判定しない (配送の done がある)
+  // 0.1.26 の run が持つ feedback の done は旧形式と判定しない (main マージの done がある)
   rs.markDone(dir, 'feedback');
   assert.equal(rs.status(dir).legacy_order, false);
 });
@@ -148,7 +148,7 @@ test('feedback_filed の ref (0.1.26) でも起票済み。filedIssues は ref /
   assert.deepEqual(rs.filedIssues(dir), ['issues/a.md', 'issues/b.md', 'issues/c.md']);
 });
 
-test('旧形式の順 (還流 done・配送 done 無し) は次の段階を出さず、mark-legacy-delivered で配送済みにする', () => {
+test('旧形式の順 (還流 done・ main マージ done 無し) は次の段階を出さず、mark-legacy-delivered で main マージ済みにする', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
   const dir = rs.openRun(root, 'uc');
   for (const s of [...rs.STAGES, 'feedback']) if (s !== 'deliver') rs.markDone(dir, s);
@@ -167,7 +167,7 @@ test('旧形式の順 (還流 done・配送 done 無し) は次の段階を出�
   assert.throws(() => rs.markLegacyDelivered(dir2), /旧形式/);
 });
 
-test('旧形式の run に配送済みの印を付けるとき、起票されていない課題があれば還流の done を退避する (差分レビュー 2 ラウンド目)', () => {
+test('旧形式の run に main マージ済みの印を付けるとき、起票されていない課題があれば還流の done を退避する (差分レビュー 2 ラウンド目)', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
   const dir = rs.openRun(root, 'uc');
   for (const f of ['a.md', 'b.md', 'c.md']) fs.writeFileSync(path.join(dir, 'issues', f), '---\nkind: rule\n---\n');
@@ -181,17 +181,17 @@ test('旧形式の run に配送済みの印を付けるとき、起票されて
   assert.deepEqual(r.unfiled_issues, ['issues/b.md', 'issues/c.md']);
   const st = rs.status(dir);
   assert.equal(st.stages.deliver, 'done');
-  assert.equal(st.next_stage, null, 'UC の段階は配送で終わり');
+  assert.equal(st.next_stage, null, 'UC の段階は main マージで終わり');
   assert.deepEqual(st.unfiled_issues, ['issues/b.md', 'issues/c.md'], '起票されていない課題は還流の段階 (feedbackBatch の移行) が課題ファイルにする');
   assert.deepEqual(st.filed_issues, ['issues/a.md'], '起票済みの旧記録はそのまま数える');
 });
 
-test('旧形式の印付けが途中で止まっても (配送の done だけ作って還流の done を退避していない)、旧形式と判定され、もう一度 mark すれば完了する (差分レビュー 3 ラウンド目)', () => {
+test('旧形式の印付けが途中で止まっても (main マージの done だけ作って還流の done を退避していない)、旧形式と判定され、もう一度 mark すれば完了する (差分レビュー 3 ラウンド目)', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
   const dir = rs.openRun(root, 'uc');
   fs.writeFileSync(path.join(dir, 'issues', 'x.md'), '---\nkind: contract\n---\n');
   for (const s of [...rs.STAGES, 'feedback']) if (s !== 'deliver') rs.markDone(dir, s);
-  // 途中で止まった状態: 配送の done (legacy) だけあり、還流の done は残っている
+  // 途中で止まった状態: main マージの done (legacy) だけあり、還流の done は残っている
   rs.markDone(dir, 'deliver', { legacy: true });
   let st = rs.status(dir);
   assert.equal(st.legacy_order, true, '中間状態も旧形式');

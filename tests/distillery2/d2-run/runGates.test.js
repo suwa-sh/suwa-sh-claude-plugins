@@ -71,7 +71,7 @@ test('a tier without a unit command fails the unit gate instead of passing silen
   assert.equal(c.code, 0, c.out);
 });
 
-test('契約の提供側が 1 つも無い config では contract ゲートは pass (検査対象なし) で、配送の strict を止めない (Codex 0.1.13 指摘 2)', () => {
+test('契約の提供側が 1 つも無い config では contract ゲートは pass (検査対象なし) で、main マージの strict を止めない (Codex 0.1.13 指摘 2)', () => {
   const repo = makeRepo(CONFIG.replace('    provides: [api]\n', ''));
   const r = run(repo, ['--uc', 'loan', '--only', 'contract']);
   assert.equal(r.code, 0, r.out);

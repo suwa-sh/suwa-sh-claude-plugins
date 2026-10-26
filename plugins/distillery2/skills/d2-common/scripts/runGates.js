@@ -100,7 +100,7 @@ function planGate(gate, config, ctx) {
         const provider = providers.has(t.id) || (t.provides || []).length > 0;
         jobs.push(provider ? tierJob(t, 'contract', null, true) : { name: 'contract', tier: t.id, required: false, skipped: true, reason: 'not a provider' });
       }
-      // config 全体に提供側が 1 つも無い (契約を持たない構成) なら検査対象が無いので pass (skipped だと配送の --strict が止まる)。
+      // config 全体に提供側が 1 つも無い (契約を持たない構成) なら検査対象が無いので pass (skipped だと main マージの --strict が止まる)。
       // --tiers で消費側だけに絞ったときは skipped のまま (提供側の検査が済んだことにはならない)
       const noProviderAtAll = (config.tiers || []).every(t => !(providers.has(t.id) || (t.provides || []).length > 0));
       return { parallel: true, jobs, passIfNothingRan: noProviderAtAll && jobs.every(j => j.skipped), note: noProviderAtAll ? 'no provider tiers (nothing to check)' : undefined };
