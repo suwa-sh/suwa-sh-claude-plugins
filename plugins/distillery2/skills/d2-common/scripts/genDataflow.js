@@ -119,7 +119,7 @@ function render(df) {
   const UC_STAGES = df.stages.filter(s => !UPSTREAM.includes(s.id) && !OUTSIDE_UC.includes(s.id));
   const inUc = p => !UPSTREAM.includes(p.stage) && !OUTSIDE_UC.includes(p.stage) && p.stage !== 'uc';
   const CHECK = ['verify', 'asbuilt'];
-  const ucNote = '① 〜 ③ から来るものは前の図。段階をまたぐ d2-run の作業 (ゲートの実行・as-built の抽出・配送など) はほぼ全部のファイル群に触れるので、この図から外して処理ごとの図に回した。';
+  const ucNote = '① 〜 ③ から来るものは前の図。段階をまたぐ d2-run の作業 (ゲートの実行・as-built の抽出・main マージなど) はほぼ全部のファイル群に触れるので、この図から外して処理ごとの図に回した。';
   // ④ の後ろ向きの受け渡し (integrate → scaffold、verify の指摘 → tier の差し戻しなど) は、④ の段階すべてを集計して検証の図の表にまとめる
   overview('全体図: ④ 実装まで (scenario 〜 integrate)', `④ の実装の段階どうしで受け渡すファイル群。後ろ向きの受け渡しは次の図の表にまとめた。${ucNote}`,
     p => p.stage, UC_STAGES, p => inUc(p) && !CHECK.includes(p.stage), () => true, () => false);

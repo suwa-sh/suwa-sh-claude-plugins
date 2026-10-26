@@ -149,14 +149,14 @@ d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せ�
 ### mode=feedback: 書くもの
 
 - `docs/design/storybook-app/src/**` のうち項目に書かれたファイルと、その項目を直すために要る依存。項目に無い Story は書き換えない
-- 項目が部品のとき、その部品を使う他の Story の表示も変わる。直してよい (「直せない」にしない)。報告の「影響する Story」に、その部品から import を **Story のファイルまで辿った**一覧 (部品を使う部品を介する間接の利用も含む) を書く。表示の確認は受理の storybook build と、取り込み直し後の配送済み UC の frontend の unit の回帰が担う
+- 項目が部品のとき、その部品を使う他の Story の表示も変わる。直してよい (「直せない」にしない)。報告の「影響する Story」に、その部品から import を **Story のファイルまで辿った**一覧 (部品を使う部品を介する間接の利用も含む) を書く。表示の確認は受理の storybook build と、取り込み直し後の main マージ済み UC の frontend の unit の回帰が担う
 - `docs/design/screens.yaml` (画面や Story を消す項目があるときだけ。画面が増減しなければ変えない)
 
 ### mode=feedback: 完了条件と報告
 
 - `npx storybook build` が通る (`docs/design/storybook-app/` で)
 - 手順 5 の `validateScreens.js docs/design/screens.yaml --app docs/design/storybook-app/src --use-cases docs/requirements/use-cases.yaml` が exit 0
-- 報告に、変えたファイルと消したファイルの一覧、項目ごとに「直した (変えたファイル)」か「直せない (理由)」、項目が部品なら「影響する Story」の一覧を書く。`packages/ui/**` への取り込み直しは d2-run が `importUi.js` で行う (ここでは触らない)
+- 報告に、変えたファイルと消したファイルの一覧、項目ごとに「直した (変えたファイル)」か「直せない (理由)」、項目が部品なら「影響する Story」の一覧を書く。項目のファイルの外を変えたか消したら「**項目の外の変更**」に、ファイルごとにどの項目のための依存か (消したなら、どの項目で使われなくなったか) を書く (d2-run の受理は、変わったファイルが項目・この欄・`screens.yaml` のどれかに入ることを確かめる。0.1.34 Q17)。`packages/ui/**` への取り込み直しは d2-run が `importUi.js` で行う (ここでは触らない)
 
 ## Scripts
 

@@ -181,7 +181,7 @@ function generate(reqData, bucText, existingById) {
     };
     // blocked の理由 (LLM が書いた値) を引き継ぐ (無いと再生成で validateUseCases が落ちる。0.1.13 実走 ①)
     if (typeof prev.no_spec_reason === 'string' && prev.no_spec_reason) uc.no_spec_reason = prev.no_spec_reason;
-    // 関与ティア (contract 段階で d2-run が書き戻す) を引き継ぐ。要求の差分のたびに消えると、配送済み UC のゲートが関与ティアを失う (0.1.27 実走 K8)
+    // 関与ティア (contract 段階で d2-run が書き戻す) を引き継ぐ。要求の差分のたびに消えると、main マージ済み UC のゲートが関与ティアを失う (0.1.27 実走 K8)
     if (Array.isArray(prev.tiers) && prev.tiers.length) uc.tiers = prev.tiers.slice();
     // 0.1.30〜0.1.31 の carry_over (UC への持ち越し) は引き継がない (0.1.32 で仕組みを外した。残った行は要求の差分が宛先へ流した後、この再生成で消える)
     // spec_ids_added は「新規候補があるときだけ」出す (無ければキーごと省く)。

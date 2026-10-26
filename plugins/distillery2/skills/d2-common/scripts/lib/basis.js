@@ -30,7 +30,7 @@ function lastCommit(dir, cwd = process.cwd(), ref = null) {
 }
 
 /** @param {Record<string,string>} dirs  name → directory */
-/** ref を渡すとその commit から遡る (配送 trailer は squash で消える branch 上の commit を指さないよう base 側で取る) */
+/** ref を渡すとその commit から遡る (main マージ trailer は squash で消える branch 上の commit を指さないよう base 側で取る) */
 function stamp(dirs, cwd = process.cwd(), ref = null) {
   const basis = {};
   for (const [name, dir] of Object.entries(dirs)) basis[name] = lastCommit(dir, cwd, ref);

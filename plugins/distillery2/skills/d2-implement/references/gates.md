@@ -21,7 +21,7 @@
 - scaffold の red baseline は `--only unit --expect-red unit` で確認する。red と認めるのは「ジョブが実行され、`{report}` の JSON に
   失敗テストが 1 以上ある」ときだけ。skipped・レポート無し (起動失敗や設定ミス)・失敗 0 は fail
 - 部分実行 (`--from` / `--upto` / `--only`) は `reports/gates.json` の実行した段だけを置き換え、他段の結果を残す。
-  未実行の段は `missing`。Verifier と配送は `all_recorded: true` かつ全段 pass を前提にする
+  未実行の段は `missing`。Verifier と main マージは `all_recorded: true` かつ全段 pass を前提にする
 
 ## check-only 規約 (ティア並列中)
 
