@@ -1,4 +1,4 @@
-# Git main マージ (UC ごとの branch / squash / main への取り込み / 要求の差分 / 還流)
+# Git の手順 (UC ごとの branch / squash / main への取り込み / 要求の差分 / 還流)
 
 v1 (dist-impl-run「UCのsquash・push・PR作成」) を次の点で簡素化した:
 lease と review HTML の追跡除外を廃止 (`.distillery/runs/*/reports|traces` は .gitignore)、trailer で系譜を残す。

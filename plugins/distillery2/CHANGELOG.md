@@ -19,7 +19,7 @@ version の正本は `.claude-plugin/plugin.json`。
   派遣文の write-set の行はそのまま貼り、置換部分の値を 1 行で添える (Q12) / checkScenario は受入 dir が無ければ UC の feature だけで判定 (Q14) /
   同じ (slug, tier, attempt, id) の前提は 1 回だけ。決定が違えば並べて人に選ばせる (Q16) / d2-design mode=feedback の報告に「項目の外の変更」、d2-run の受理は変わったファイルが項目・その欄・`screens.yaml` のどれかに入ることを確かめる (Q17)
 - run-state.md の `reports/` の注記に `gates.prev.json` と `gates.failed-1.json`
-- テスト: docContract (0.1.34 の 3 件と d2-requirements・d2-design の文言)。変異テスト 58 件 (0.1.34 の 6 件を足した)
+- テスト: docContract (0.1.34 の 3 件と d2-requirements・d2-design の文言)。変異テスト 59 件 (0.1.34 の 7 件を足した)
 
 ## [0.1.33] - 2026-10-10
 

@@ -704,7 +704,7 @@ test('0.1.30 M5/M6: record-gate --detail は runGates の gates.json (複数) �
   assert.equal(r.fb('record-gate', '--result', 'fail', '--detail', path.join(r.base, 'nope.json')).code, 2);
 });
 
-test('0.1.32 N7/O7: scan の legacy_runs は旧形式 (還流 done・ main マージ done 無し) と片付けの途中 (main マージ done が legacy で未起票あり) の run を拾い、通常の run は拾わない', () => {
+test('0.1.32 N7/O7: scan の legacy_runs は旧形式 (還流 done・main マージ done 無し) と片付けの途中 (main マージ done が legacy で未起票あり) の run を拾い、通常の run は拾わない', () => {
   const r = makeRepo();
   const legacy = runState.openRun(r.root, 'legacy-uc');
   for (const st of [...runState.STAGES, 'feedback']) if (st !== 'deliver') runState.markDone(legacy, st);

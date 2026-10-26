@@ -148,7 +148,7 @@ test('feedback_filed の ref (0.1.26) でも起票済み。filedIssues は ref /
   assert.deepEqual(rs.filedIssues(dir), ['issues/a.md', 'issues/b.md', 'issues/c.md']);
 });
 
-test('旧形式の順 (還流 done・ main マージ done 無し) は次の段階を出さず、mark-legacy-delivered で main マージ済みにする', () => {
+test('旧形式の順 (還流 done・main マージ done 無し) は次の段階を出さず、mark-legacy-delivered で main マージ済みにする', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
   const dir = rs.openRun(root, 'uc');
   for (const s of [...rs.STAGES, 'feedback']) if (s !== 'deliver') rs.markDone(dir, s);
