@@ -2,6 +2,30 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.1.35] - 2026-11-01
+
+方針を変えた: 試し運転の課題をすべて直すのをやめ、「使える」条件 (新しい題材で要求から 3 UC の main マージまで通る / 止まるのは人の判断が要る場面だけ / 黙って何かが失われない) を破る課題だけを直す。
+0.1.34 の試し運転の課題と、これまでの版で据え置いた課題 (あわせて 59 件) を仕分け、直す 12 件をこの版に入れた。進行役が自分で処理できていた 32 件は手順書の本文に足さず、`d2-run/references/troubleshooting.md` に事象と扱いを書いた。残り 15 件は閉じた。
+
+### Added
+
+- やり直し (R3): main マージ済みの UC に要求の差分で新しい受入基準が付いても、やり直す経路が無く、仕様が実装されないまま残っていた。
+  `feedbackBatch.js scan` の `uncovered_done` (main マージ済みで、シナリオが受入基準を網羅しない UC。`checkScenario.js` の `missing`。受入基準の文面が main マージの時点から変わった UC も `acceptance_changed`) で見つけ、
+  要求の差分の確認ページ (名指しの起動でも) で「やり直す / 後で」を聞く。やり直すなら `runState.js reopen` が run を `.distillery/archive/runs/<slug>/<ts>/` へ移し (`reports/`・`traces/` は消す)、`status` を `planned` にする。
+  自動選択はやり直し中の UC (`scan` の `reopened`) を先に選ぶ。段ごとの扱い (既存の feature に足す・既存の operation も直してよい・既存の step 定義は残す・red は新しい受入基準のティアだけ) を d2-run と各担当の手順書に書いた。目次の状態列は「やり直し中」
+- main マージの done に受入基準の指紋 (`acceptance_sha256`) を残す (`runState.js` が計算する)
+- `runState.js uc-status <root> <slug> <status>` (R21): `use-cases.yaml` の status の 1 行だけを書き換える。main マージ 3 の `status: done` はこれで書く (手で編集しない)
+- `d2-run/references/troubleshooting.md` に「手順書に書いていない扱い (迷ったら)」(18 行。試し運転で進行役が迷ったが自分で処理できた事象) と「既知の不具合 (未確認)」(5 件)
+
+### Changed
+
+- static の落ち (R1・R2・R12・R13): 「static は回し直さない」を ④ 全体の規則にした。tier・integrate で static が落ちたら、指摘の対象ファイルの書き込み範囲で戻り先を決める (ティア / integrate の担当 / どの派遣の範囲でもなければ main マージ 1 の 2 と同じく止まる)。integrate の完了条件に `runGates.js --only static`
+- 再開 (R11): ④ の再開で、未 commit の変更がすべて止まった段の書き込み範囲の中なら、整理を依頼せずその段の受理の検査からやり直す
+- 人の修正の後 (R18): `review_approved` に `head` を残す。main マージ 1 の 2 で、承認の後に実装のフォルダの変更があれば (依存の一覧を除く)、全段のゲートを作り直してから verify からやり直す
+- テスト記録 (R19): main マージ 1 の 2 は古さを時刻で比べず、常に全段を作り直す (比べても必ず古かった)
+- 契約の生成物 (R10・C5): `writeFileDet` は先頭 10 行の `// basis:` 行を除いて比べる。commit した直後から全部が「古い」と出る誤判定と、生成のたびに basis 行だけが書き換わる差分が消える
+- 他 UC の回帰: contract の done の `contract_changes` に他の UC にも効く変更があれば、その UC の uc-bdd も回す
+
 ## [0.1.34] - 2026-10-27
 
 0.1.33 の試し運転で残った課題 Q1〜Q19 のうち、手順の追記 8 件と判断 5 件 (Q1・Q6・Q8・Q9・Q18。すべて案 A) を直した。据え置き: Q3・Q5・Q10・Q13・Q15。対応不要: Q19。

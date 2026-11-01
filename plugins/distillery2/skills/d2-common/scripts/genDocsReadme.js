@@ -27,6 +27,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { parseYaml } = require('./lib/yaml');
 const { parseFeature } = require('./lib/gherkin');
+const runState = require('./lib/runState');
 
 const BEGIN = '<!-- distillery2:begin -->';
 const END = '<!-- distillery2:end -->';
@@ -220,8 +221,11 @@ function build(ctx) {
     const rows = ctx.ucs.slice().sort((a, b) => cmpStr(`${a.business}\u0000${a.buc}\u0000${a.uc}`, `${b.business}\u0000${b.buc}\u0000${b.uc}`));
     // 状態は 1 か所で決める (件数と状態列で同じ判定)。main マージ済み (use-cases.yaml の status: done。main マージ 3 で d2-run だけが書く) を追跡表より先に見る
     // (追跡表は as-built 段で main マージの前に作られ、main マージ済みの UC は必ず持つ。追跡表を先に見ると main マージしても表示が変わらない。0.1.32 実走 P6)
+    // やり直し中 (runState.js reopen で run を退避し status を戻した UC) は、旧 run の追跡表より先に見る (追跡表は前の実装の記録のまま。0.1.35 R3)
+    const reopened = new Set(runState.reopenedSlugs(ctx.cwd));
     const statusOf = (u) => {
       if (u.status === 'done') return 'main マージ済み';
+      if (reopened.has(u.slug)) return 'やり直し中';
       const t = ctx.trace.ucs && ctx.trace.ucs[u.slug];
       if (t) return t.gates_complete && t.gates === 'pass' ? '実装済み (main マージ待ち)' : `実装中 (ゲート ${t.gates || '-'})`;
       return { planned: '未着手', in_progress: '実装中', blocked: '要求待ち' }[u.status] || (u.status || '-');

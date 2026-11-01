@@ -13,7 +13,8 @@ UC 着手の最初に、その UC の Gherkin を `features/<業務>/<slug>.feat
 
 ## 書くもの
 
-- `features/<業務>/<slug>.feature` 1 ファイル (この UC のシナリオ)。先頭にコメントで basis を書く (`# basis: requirements@<sha>`)
+- `features/<業務>/<slug>.feature` 1 ファイル (この UC のシナリオ)。先頭にコメントで basis を書く (`# basis: requirements@<sha>`)。
+  やり直し (派遣文に網羅されていない受入基準が添えてある。0.1.35) では既存の feature を残し、その受入基準のシナリオを足す (文面が変わった受入基準は既存のシナリオを直す)
 - UC をまたぐ受入基準があるときだけ、`features/acceptance/<SPEC-ID>.feature` を作るか既存に追記する
   (そのシナリオにも `@uc:<slug>` を付ける。付いていないシナリオはこの UC の充足に数えない)。それ以外のファイルは書かない
 
