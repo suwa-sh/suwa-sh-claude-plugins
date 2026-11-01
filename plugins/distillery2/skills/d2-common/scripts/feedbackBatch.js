@@ -339,7 +339,57 @@ function cmdScan(root) {
   }
   const batch = batchStatus(root);
   const feedbackDue = batch.point !== 'none' || triggers.length > 0 || unfiledRuns.length > 0;
-  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, batch, feedback_due: feedbackDue };
+  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, uncovered_done: uncoveredDone(root), reopened: runState.reopenedSlugs(root), batch, feedback_due: feedbackDue };
+}
+
+/** features/ 配下 (features/acceptance/ を除く) の <slug>.feature を探す。無ければ null、複数なら配列のまま返す */
+function findFeature(root, slug) {
+  const base = path.join(root, 'features');
+  const hits = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { if (path.relative(base, p) !== 'acceptance' && e.name !== 'node_modules') walk(p); }
+      else if (e.name === `${slug}.feature`) hits.push(path.relative(root, p).split(path.sep).join('/'));
+    }
+  };
+  if (fs.existsSync(base)) walk(base);
+  return hits;
+}
+
+/**
+ * main マージ済み (status: done) の UC のうち、シナリオが UC の仕様の受入基準を網羅しないもの (0.1.35 R3)。
+ * 要求の差分で main マージ済みの UC に新しい仕様が付いたときに出る。checkScenario.js (d2-implement) の missing をそのまま使う。
+ * 網羅していれば入れない。feature が見つからない・checkScenario が missing 以外の理由で落ちた UC は error 付きで入れる (黙って落とさない)。
+ * 受入基準の文面だけが変わった UC は、main マージの done の acceptance_sha256 (0.1.35 から記録) と今の指紋が違えば acceptance_changed: true で入れる。
+ * 0.1.34 までに main マージした UC は指紋が無いので、番号が増えたときだけ出る
+ */
+function uncoveredDone(root) {
+  const ucFile = path.join(root, 'docs', 'requirements', 'use-cases.yaml');
+  const reqFile = path.join(root, 'docs', 'requirements', 'requirements.yaml');
+  if (!fs.existsSync(ucFile) || !fs.existsSync(reqFile)) return [];
+  let doc;
+  try { doc = parseYaml(fs.readFileSync(ucFile, 'utf8')); } catch { return []; }
+  const script = path.join(SKILLS_ROOT, 'd2-implement', 'scripts', 'checkScenario.js');
+  const out = [];
+  for (const uc of (doc && Array.isArray(doc.use_cases)) ? doc.use_cases : []) {
+    if (!uc || uc.status !== 'done' || !uc.slug) continue;
+    const slug = String(uc.slug);
+    const features = findFeature(root, slug);
+    if (features.length !== 1) { out.push({ slug, feature: features.length ? features : null, missing: null, error: features.length ? 'feature が複数ある' : 'feature が無い' }); continue; }
+    const r = spawnSync(process.execPath, [script, features[0], '--use-cases', ucFile, '--requirements', reqFile, '--uc', slug, '--acceptance-dir', path.join(root, 'features', 'acceptance')], { cwd: root, encoding: 'utf8' });
+    let res = null;
+    try { res = JSON.parse(String(r.stdout || '').trim().split('\n').pop()); } catch { res = null; }
+    // 受入基準の文面だけが変わった UC は、main マージの done の指紋 (0.1.35 から) と今の指紋の違いで見つける (番号は網羅していても入れる)
+    const deliver = runState.readDone(path.join(root, '.distillery', 'runs', slug), 'deliver');
+    const recorded = deliver && deliver.acceptance_sha256;
+    const changed = Boolean(recorded) && recorded !== runState.acceptanceSha256(root, slug);
+    if (res && res.ok && !changed) continue;
+    const missing = res && Array.isArray(res.missing) ? res.missing.map((m) => ({ spec: m.spec, n: m.n, tag: m.tag })) : [];
+    const otherErrors = !res || (res.errors && res.errors.length) || (res.unknown_tags && res.unknown_tags.length) || (!res.ok && !missing.length);
+    out.push({ slug, feature: features[0], missing, acceptance_changed: changed, ...(otherErrors ? { error: res ? JSON.stringify({ errors: res.errors || [], unknown_tags: res.unknown_tags || [] }) : String(r.stderr || '').trim().slice(0, 400) } : {}) });
+  }
+  return out;
 }
 
 /**

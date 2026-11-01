@@ -270,7 +270,7 @@ test('0.1.28: 起動時: 移行は課題を数える前 (stage= 直接指定で�
 
 test('0.1.28: main マージ: gates.json が無ければ全段を 1 回通す。課題 0 件なら issues to feedback の commit を作らない。stage は docs と <run> を指定 (docs/feedback は名指ししない)', () => {
   const d = deliverSection();
-  assert.match(d, /`reports\/gates\.json` が\*\*無ければ作り直す\*\*[\s\S]*`runGates\.js --uc <slug> --tiers <use-cases\.yaml の tiers>` で全段を 1 回通して/);
+  assert.match(d, /古さは比べず、\*\*常に\*\* `runGates\.js --uc <slug> --tiers <use-cases\.yaml の tiers>` で全段を 1 回通して/);
   assert.match(d, /結果の `filed` が空でなければ `genDocsReadme\.js` を回し、`git add -A -- docs \.distillery\/runs\/<slug>` して `impl\(<slug>\): issues to feedback` で commit/);
   assert.match(d, /`filed` が空 \(課題 0 件\) なら commit を作らない/);
   assert.match(d, /`git add -A -- docs \.distillery\/runs\/<slug>` \(main マージの done・events・README・課題一覧の README/);
@@ -461,7 +461,7 @@ test('0.1.32 J2: 残った作業は種類ごとの宛先へ (design → d2-desig
   assert.match(r, /\{"targets": \[\{"tier": "<tier>", "attempt": <n>, "id": "A-xxx"\}\], "decision": "<要求の差分の決定の要点>", "by": "req: feedback"\}/);
   assert.match(r, /無い組は拒む。最新でない attempt の前提も閉じられる。AssumptionRecord の yaml は変えない/);
   assert.match(r, /`node runState\.js event \.distillery\/runs\/<slug> carry_over_migrated --data-file <json>`/);
-  assert.match(r, /`git add -A -- docs packages\/ui \.distillery\/runs`/);
+  assert.match(r, /`git add -A -- docs packages\/ui \.distillery\/runs \.distillery\/archive`/);
   assert.match(r, /閉じた前提 \(`assumption_resolved`\) も同じ: 完了報告に「閉じた前提[^\n]*as-built は次にその UC を回したときに反映/);
   // 自動選択
   const a = autoSelect();
@@ -472,7 +472,7 @@ test('0.1.32 J2: 残った作業は種類ごとの宛先へ (design → d2-desig
   assert.doesNotMatch(t, /carry_over_status/);
   const review = section(SKILL, '## 人レビュー (review 段階)', '## main マージ (deliver 段階)');
   assert.doesNotMatch(review, /残った作業/);
-  assert.match(review, /`review_approved \{assumption_decisions\[\], assumption_evidence_sha256, gates_result\}` を記録する/);
+  assert.match(review, /`review_approved \{assumption_decisions\[\], assumption_evidence_sha256, gates_result, head\}` を記録する/);
   const d = deliverSection();
   assert.match(d, /`review_approved` に `carry_over\.carry` が残る run \(0\.1\.30 形式\) でも読まずに main マージし、完了報告に「持ち越し N 件は次の起動で要求の差分に載る」と書く/);
   assert.doesNotMatch(section(DELIVERY, '## 手順 (squash)', '## 手順 (main への取り込み)'), /carryOver/);
@@ -536,18 +536,18 @@ test('0.1.32 手順の追記 16 件: 旧形式の自動選択 (legacy_runs)・ma
   assert.match(a, /run ごとに main マージの節「旧形式の run」の確認ページ \(main マージ済みか\) から片付ける。片付けてから `FB scan` をやり直す/);
   const d = deliverSection();
   assert.match(d, /1\. main マージ 1 は 3 つの作業をこの順で行う/);
-  assert.match(d, /2\. \*\*gates\.json の作り直し\*\*: `reports\/gates\.json` が\*\*無ければ作り直す\*\*[^\n]*あれば \*\*古い\*\*かを\*\*時刻として\*\*比べる: feature の先頭の commit の committer 日時 `git log -1 --format=%cI` \(rebase や cherry-pick で更新される\) が gates\.json の `finished_at` より後なら古い/);
+  assert.match(d, /2\. \*\*gates\.json の作り直し\*\*: 先に\*\*人の修正\*\*を判定する/);
   assert.match(d, /3\. \*\*条件の確認\*\*: `review_approved` が有効/);
   assert.match(d, /3\. 件名は 1 で検査済み → 復旧用 ref \(`refs\/distillery2\/pre-squash\/<slug>\/<timestamp>`。`<timestamp>` は `date -u \+%Y%m%dT%H%M%SZ`/);
   assert.match(d, /`git branch -D feature\/<slug>` \(`<ts>` は `date -u \+%Y%m%dT%H%M%SZ`。0\.1\.32 O3\)/);
   const sq = section(DELIVERY, '## 手順 (squash)', '## 手順 (main への取り込み)');
-  assert.match(sq, /止まった後の再開 \(0\.1\.32 N3\): 人が混入した commit を落とす \(rebase\)。残りは段階の commit なので、再開は main マージ 1 から \(gates\.json が無ければ作り直す\)/);
+  assert.match(sq, /止まった後の再開 \(0\.1\.32 N3\): 人が混入した commit を落とす \(rebase\)。残りは段階の commit なので、再開は main マージ 1 から \(gates\.json は常に作り直す\)/);
   assert.match(sq, /`<timestamp>` は `date -u \+%Y%m%dT%H%M%SZ` \(UTC。固定値を書かない/);
   const fb = feedbackSection();
   assert.match(fb, /\| `broken` \| `\.distillery\/worktrees\/feedback` だけがあり branch が無いとき[^\n]*`git -C <wt> status --porcelain` に出力が無く `git -C <wt> log main\.\.HEAD --oneline` も空 \(中身の無い残骸[^\n]*そのディレクトリを消して `git worktree prune` し、`FB status` が `none` になれば 4 から。差分か commit があれば消さずに止まって報告する。それ以外の `broken` も止まって報告 \|/);
   assert.match(fb, /\| 結果ファイルが `applied` で分割ファイル \(contract\) に差分が無い \| \*\*止めない\*\*[^\n]*`FB commit-issue` が `already-applied` と判定する/);
   const integ = row(t, /^\| \*\*integrate\*\* \|/);
-  assert.match(integ, /\*\*他 UC への回帰は d2-run が回す\*\* \(0\.1\.32 O15\): 受理して done を書き `impl\(<slug>\): integrate` で commit した後、`git diff --name-only <base_head>\.\.HEAD -- features\/support features\/step_definitions` \(commit 済みの変更だけを見るので、commit の前に回さない\) に変更があれば、main マージ済み UC \(`status: done`\) ごとに `runGates\.js --uc <他 slug> --only uc-bdd` を回し/);
+  assert.match(integ, /\*\*他 UC への回帰は d2-run が回す\*\* \(0\.1\.32 O15\): 受理して done を書き `impl\(<slug>\): integrate` で commit した後、`git diff --name-only <base_head>\.\.HEAD -- features\/support features\/step_definitions` \(commit 済みの変更だけを見るので、commit の前に回さない\) に変更があれば、main マージ済み UC \(`status: done`\) ごとに、[^\n]*`runGates\.js --uc <他 slug> --only uc-bdd` を回し/);
   assert.match(section(SKILL, '### 要求の差分', '## ② 決定'), /`grep -l "id: A-xxx" \.distillery\/runs\/\*\/attempt-\*\/assumptions\.<tier>\.yaml` で id を持つ \(slug, attempt\) の組をすべて出し、1 件なら確定、複数なら確認ページで人に選ばせる/);
   assert.match(read('skills/d2-design/SKILL.md'), /リポジトリのルートからの相対パス `docs\/design\/storybook-app\/src\/<相対パス>`/);
   assert.match(read('skills/d2-implement/references/integrate.md'), /共有の補助[^\n]*を変えたら報告に書く。他 UC のシナリオは自分では回さない/);
@@ -658,8 +658,7 @@ test('0.1.31 小さい修正: models_resolved は再開時に同じ ID なら記
 
 test('0.1.33 P1/P2/P5/P6: main マージ 1 の 2 は無ければ作り直し・あれば時刻で比べる・落ちたら推測で直さず止まり UC 外かの材料を添える・人は feature 上で直して main マージ 1 から。3 の review_approved の有効の定義。main マージ 6 の README は main マージ済みの状態列', () => {
   const d = deliverSection();
-  assert.match(d, /`reports\/gates\.json` が\*\*無ければ作り直す\*\* \(gitignore なので再開で消えていることがある。比較はしない\)/);
-  assert.match(d, /文字列で比べない。`%cI` は時差付き、`finished_at` は UTC `Z` なので `node -e "console\.log\(new Date\('<%cI>'\) > new Date\('<finished_at>'\)\)"` で比べる/);
+  assert.doesNotMatch(d, /%cI|finished_at/); // 0.1.35 R19: 古さは時刻で比べず常に作り直す
   assert.match(d, /それでも落ちたら、\*\*推測で直さず止まって報告する\*\* \(0\.1\.32 実走 P1\)。報告に添えるもの: 落ちたゲート名と job \(`gates\.json` の `output_tail` \/ `failed_tests`\)、指摘の対象ファイルが UC の変更 \(`git diff --name-only <base_head>\.\.HEAD`\) に含まれるか。含まれなければ「UC と無関係の可能性/);
   assert.match(d, /人が直すときは \*\*feature の上で\*\* \(依存の更新、または `\.qlty\/qlty\.toml` の `\[\[ignore\]\] rules = \["<plugin>:<id>"\]`\) 件名 `impl\(<slug>\): <内容>` で commit し、main マージ 1 から再開する/);
   assert.match(d, /main で直して feature を rebase しない \(`base_head` は開始時の記録のまま更新されないので、main 側の修正 commit が `<base_head>\.\.HEAD` に入り、1 の件名の検査で止まる。通っても squash がその修正を UC の 1 commit に畳む\)/);
@@ -714,9 +713,9 @@ test('0.1.33 P10/P11/P13/P17/P18: carry_over は廃止で戻さない (要求担
 
 test('0.1.34 Q1/Q2/Q6/Q7: main マージ 1 の 2 は作り直す前に gates.prev.json に控え、static は回し直さず、qlty.toml に検査が足されたかを報告に添える。完了報告で前回と比べる。filed は空でよい', () => {
   const d = deliverSection();
-  assert.match(d, /古いと判定したら、runGates の前に `reports\/gates\.json` を `reports\/gates\.prev\.json` に写す \(前の控えは上書きする\)/);
-  assert.match(d, /gates\.json が無くて作り直すときは、残っている控えを `node -e "require\('fs'\)\.rmSync\('<run>\/reports\/gates\.prev\.json',\{force:true\}\)"` で消す/);
-  assert.match(d, /作り直しの runGates が落ちたら、まず ④ の「ゲートの回し直し」のとおり 1 回だけ回し直す。ただし \*\*static は回し直さない\*\*/);
+  assert.match(d, /`reports\/gates\.json` があれば runGates の前に `reports\/gates\.prev\.json` に写す \(前の控えは上書きする\)/);
+  assert.match(d, /無ければ \(gitignore なので再開で消えていることがある\)、残っている控えを `node -e "require\('fs'\)\.rmSync\('<run>\/reports\/gates\.prev\.json',\{force:true\}\)"` で消す/);
+  assert.match(d, /作り直しの runGates が落ちたら、まず ④ の「ゲートの回し直し」のとおり 1 回だけ回し直す \(static は回し直さない\)/);
   assert.match(d, /それでも落ちたら、\*\*推測で直さず止まって報告する\*\*/);
   assert.match(d, /static で落ちたときは、落ちた job の検査 \(qlty の plugin 名。`output_tail` に出る\) が UC の変更で `\.qlty\/qlty\.toml` に足されたかも添える \(`git diff <base_head>\.\.HEAD -- \.qlty\/qlty\.toml` に `name = "<plugin>"` の追加があるか/);
   assert.match(d, /plugin 名が `output_tail` から特定できない \(出力が末尾で切れた、qlty 以外の job で落ちた\) ときは「判定できない」と書き、足されたか \/ いないかを推測で断定しない/);
@@ -754,4 +753,60 @@ test('0.1.34 Q8/Q9/Q16/Q17: 要求の差分は決めずに返した論点を差�
   assert.match(row(read(TEMPLATE), /^\| ① 要求の差分 \(画面部品\) \|/), /「項目の外の変更」/);
   assert.match(read('skills/d2-requirements/SKILL.md'), /課題が想定していない論点 \(課題の決定の外で、反映するのに人の判断が要るもの\) も決めずに返さない。推奨の案で反映し、「仮に決めた反映」に論点・選んだ案・理由を書く/);
   assert.match(read('skills/d2-design/SKILL.md'), /項目のファイルの外を変えたか消したら「\*\*項目の外の変更\*\*」に、ファイルごとにどの項目のための依存か/);
+});
+
+test('0.1.35 R3/R21: やり直しの節 (検出・聞く・退避・回す・段ごとの扱い) と、4 か所からの参照。main マージ 3 の status は uc-status で書く', () => {
+  const redo = section(SKILL, '### やり直し (main マージ済みの UC に新しい受入基準が付いたとき', '## ② 決定');
+  assert.match(redo, /`FB scan` の `uncovered_done` は、`status: done` の UC のうち、シナリオ[^\n]*`checkScenario\.js` の `missing`/);
+  assert.match(redo, /受入基準の文面が main マージの時点から変わったもの \(`acceptance_changed: true`/);
+  assert.match(redo, /1\. \*\*聞く\*\*: 確認ページで UC ごとに「やり直す \/ 後で」。推奨は「やり直す」/);
+  assert.match(redo, /2\. \*\*退避\*\*: 「やり直す」なら clean な main で `node runState\.js reopen <リポのルート> <slug> --data-file <scan の uncovered_done のその UC の記録 \(missing と acceptance_changed\) の json>`/);
+  assert.match(redo, /派遣文に `reopened\.json` の `missing` と `acceptance_changed` を添える/);
+  assert.match(redo, /3\. \*\*回す\*\*: 次の起動の自動選択 3 の 6 がやり直し中の UC を先に選ぶ/);
+  assert.match(redo, /scaffold: 既存の `<slug>\.steps\.ts` は残し、足りない step だけ pending で足す。red は新しい受入基準を実装するティアだけに求め/);
+  const a = autoSelect();
+  assert.match(a, /ただし `FB scan` の `uncovered_done` に入っていれば、「やり直し」の節の確認ページから進める/);
+  assert.match(a, /`FB scan` の `reopened` \(やり直し中の UC\) があれば、その先頭を先に選ぶ/);
+  assert.match(a, /`uncovered_done` \([^\n]*\) が空でなければ完了報告に載せる \(自動ではやり直さない/);
+  const r = section(SKILL, '### 要求の差分', '### やり直し');
+  assert.match(r, /\*\*やり直す UC\*\*: 要求担当の反映の後の作業ツリーで `FB scan` を回し、`uncovered_done` の UC ごとに/);
+  assert.match(r, /- やり直す UC: 「やり直し」の節の `reopen` を UC ごとに回す/);
+  assert.match(deliverSection(), /`node runState\.js uc-status <リポのルート> <slug> done` で `use-cases\.yaml` の該当行を `status: done` にする \(手で編集しない/);
+  assert.match(read(RUN_STATE), /archive\/runs\/<uc_slug>\/<ts>\/ {6}# やり直した UC の前の run/);
+  assert.match(read('skills/d2-implement/references/scaffold.md'), /やり直し \(派遣文に網羅されていない受入基準が添えてある。0\.1\.35\): 既存の `<slug>\.steps\.ts` の定義は残し/);
+  assert.match(read('skills/d2-implement/references/scenario.md'), /やり直し \(派遣文に網羅されていない受入基準が添えてある。0\.1\.35\) では既存の feature を残し/);
+  assert.match(read('skills/d2-contract/SKILL.md'), /やり直しで新しい受入基準が添えてあれば、既存の operation の応答・スキーマも直してよい/);
+});
+
+test('0.1.35 R1/R2/R11/R12/R13: static は ④ のどこでも回し直さない。static の落ちの戻り先は対象ファイルの書き込み範囲で決める。再開で止まった段の成果物は受理の検査から。integrate の完了条件に static', () => {
+  const s = read(SKILL);
+  assert.match(s, /\*\*ゲートの回し直し\*\*:[^\n]*\*\*static は回し直さない\*\* \(検査器の決定論的な指摘で、順番や並列に左右されない。④ のどこでも同じ/);
+  assert.match(s, /\*\*static の落ちの戻り先\*\* \(tier・integrate の runGates。0\.1\.35 R1・R12\): 指摘の対象ファイル \(`output_tail`\) の書き込み範囲 \(派遣表\) で決める/);
+  assert.match(s, /integrate の範囲 \(`features\/step_definitions\/\*\*`・`features\/support\/\*\*` など\) → integrate の担当に差し戻す \(attempt は上げない\)/);
+  assert.match(s, /どの派遣の範囲でもない \(依存の一覧・検査の設定・ワークフローなど\) → main マージ 1 の 2 と同じく、推測で直さず材料を添えて止まる/);
+  assert.match(s, /④ の再開では、対象の変更がすべて `runState\.js status` の `next_stage` の派遣の書き込み範囲 \(派遣表\) の中なら、止まった段の成果物なので整理を依頼せず、その段の受理の検査からやり直す \(範囲の外が 1 つでもあれば止まる/);
+  assert.match(read('skills/d2-implement/references/integrate.md'), /`node <skills>\/d2-common\/scripts\/runGates\.js --uc <slug> --only static` が exit 0/);
+});
+
+test('0.1.35 R18/R19: 承認に head を残し、main マージ 1 の 2 で人がコードを直していれば verify から (全段を作り直してから)。gates.json は常に作り直す。共有の契約の変更でも他 UC の回帰', () => {
+  const s = read(SKILL);
+  assert.match(s, /`review_approved \{assumption_decisions\[\], assumption_evidence_sha256, gates_result, head\}` を記録する \(`head` は承認した時点の `git rev-parse HEAD`/);
+  const d = deliverSection();
+  assert.match(d, /最後の `review_approved` の `head` から HEAD までに、実装のフォルダの変更があれば \(`git diff --name-only <head>\.\.HEAD -- apps packages contracts features ':!\*\*\/package\.json' ':!\*\*\/package-lock\.json'` が空でない\)/);
+  assert.match(d, /`node runState\.js invalidate <run> verify "<理由>" --from` で verify 以降を退避し、`runGates\.js --uc <slug> --tiers <tiers>` で全段 \(トレースも\) を作り直してから verify からやり直す/);
+  assert.match(d, /`head` が無い承認 \(0\.1\.34 まで\) は判定せず、完了報告に「判定できない」と書く/);
+  assert.match(d, /古さは比べず、\*\*常に\*\*/);
+  assert.match(row(s, /^\| \*\*integrate\*\* \|/), /そうでなくても contract の done の `contract_changes` に他の UC にも効く変更 \(`also_used_by` の付いた own、`other_uc`、`shared`\) があれば、その UC ごとに/);
+});
+
+test('0.1.35: 記録だけの課題は troubleshooting の 2 節に (迷ったときの扱いと既知の不具合)。本文から 1 行で参照', () => {
+  const t = read('skills/d2-run/references/troubleshooting.md');
+  const how = section('skills/d2-run/references/troubleshooting.md', '## 手順書に書いていない扱い (迷ったら)', '## 既知の不具合 (未確認)');
+  assert.equal(how.split('\n').filter((l) => /^\| [^-|]/.test(l) && !l.startsWith('| 場面 |')).length, 18);
+  assert.match(how, /\| 人レビュー \| 全体の承認だけで、個別に答えていない回答任意の前提 \| 未回答として `auto_confirmed`/);
+  assert.match(how, /\| main マージ \| squash の本文 \(`prTrailers\.js` の出力\) をファイルにする方法 \| 標準出力を `\.distillery\/logs\/` の下のファイルへリダイレクトし/);
+  const bugs = t.slice(t.indexOf('## 既知の不具合 (未確認)'));
+  assert.equal(bugs.split('\n').filter((l) => /^\| [^-|]/.test(l) && !l.startsWith('| 事象 |')).length, 5);
+  assert.match(bugs, /出たら課題 \(`kind: plugin`\) にする/);
+  assert.match(read(SKILL), /手順書に書いていない場面で迷ったら、d2-run の troubleshooting の「手順書に書いていない扱い」を見る/);
 });

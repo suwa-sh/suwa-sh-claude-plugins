@@ -358,6 +358,11 @@ stores:
     origin: produced
     aliases:
       - "<run>/invalidated/**"
+  - id: run-archive
+    name: やり直した UC の前の run (runState.js reopen が移す。0.1.35)
+    group: run
+    path: ".distillery/archive/runs/<slug>/**"
+    origin: produced
   - id: assumptions
     name: 実装者が補った前提
     group: run
@@ -810,14 +815,14 @@ processes:
     reads: [req-review, adr-review]
     writes: []
   - id: run.req-diff
-    name: 要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる)
+    name: 要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)
     stage: requirements
     kind: orchestrator
     actor: d2-run
     scripts: [importUi.js, validateScreens.js, runGates.js, genUseCases.js, runState.js]
     run_table_row: "① の要求の差分の取り込み"
     reads: [feedback-docs, run-events, use-cases, design]
-    writes: [feedback-docs, use-cases, run-events, ui, reports]
+    writes: [feedback-docs, use-cases, run-events, ui, reports, run-archive]
   - id: design.feedback
     name: 要求の差分の画面の見本 (項目のファイル (stories と部品) だけを直す)
     skill: d2-design
@@ -874,7 +879,7 @@ processes:
     kind: orchestrator
     actor: d2-run
     run_table_row: "④ の段階の進行・確認ページ"
-    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feature, acceptance]
+    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, uc-index, asbuilt-system, feature, acceptance, run-archive]
     writes: [run-events, use-cases, asbuilt-report, feedback-docs, worktrees]
   - id: run.uc.check-scenario
     name: シナリオの静的確認

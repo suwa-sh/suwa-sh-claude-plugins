@@ -40,6 +40,7 @@ pending だった step を実装し、テスト用の composition root に計装
 
 ## 完了条件
 
+- `node <skills>/d2-common/scripts/runGates.js --uc <slug> --only static` が exit 0 (書いた step 定義と support も静的検査に掛かる。0.1.35 R13)
 - `node <skills>/d2-common/scripts/runGates.js --uc <slug> --from uc-bdd` が exit 0 (uc-bdd → acceptance)
 - 受入 (`@acceptance:`) のシナリオが UC の spec_ids の受入基準を全部覆っている (`checkScenario.js <feature> --use-cases ... --requirements ... --acceptance-dir features/acceptance` で再確認)
 - **計装の範囲**: 正常系のトレース 1 本に、`use-cases.yaml` の `tiers` の全ティアが `meta.tier` として現れ、

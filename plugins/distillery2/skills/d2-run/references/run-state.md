@@ -18,6 +18,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
     issues/<ts>_<tier>_<slug>.md    # ティア実装者の課題 (並列の他ティアと衝突しないようにティアを入れる)
     learnings/<ts>_<slug>.md
     invalidated/<ts>_<stage>.done.yaml   # 無効化した done の退避
+  archive/runs/<uc_slug>/<ts>/      # やり直した UC の前の run (追跡。runState.js reopen が移す。reports/・traces/ は消してから移す。reopened.json に網羅されていなかった受入基準。0.1.35)
   logs/feedback/<b>/                # 還流のバッチの状態 (gitignore。feedbackBatch.js が書く): batch.json・<issue>.state・<issue>.result.json (派遣の結果)・<issue>.reason.txt・<issue>.failed.diff・gate.json・decision.json。取り込んだら消す
   worktrees/feedback/               # 還流の worktree (gitignore。0.1.27)。main から切り、取り込んだら消す
   worktrees/<uc_slug>/<issue>/      # review で「要求を直す」ときの一時の worktree (gitignore)

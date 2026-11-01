@@ -65,7 +65,7 @@ main マージの done は main の上で commit する (`impl(<slug>): delivere
    **main マージ 1 の冒頭で検査済み** (SKILL.md main マージ 1。gates.json の作り直しや課題ファイルの commit より前に見る。0.1.32 N1)。
    そうでなければ (UC 外の commit が混ざっている) squash せず止まって報告する (混ざった commit の一覧を添える。整理は人が決める。0.1.29 実走 M3)。
    変更の中身が UC の範囲に収まることは各段階の受理 (write-set の逸脱検査) が commit の前に止めているので、ここでは件名だけを見る。
-   止まった後の再開 (0.1.32 N3): 人が混入した commit を落とす (rebase)。残りは段階の commit なので、再開は main マージ 1 から (gates.json が無ければ作り直す)。`base_head` が HEAD の祖先であることは再開の判定 (上の「UC branch の開始と再開」3) で確かめる
+   止まった後の再開 (0.1.32 N3): 人が混入した commit を落とす (rebase)。残りは段階の commit なので、再開は main マージ 1 から (gates.json は常に作り直す)。`base_head` が HEAD の祖先であることは再開の判定 (上の「UC branch の開始と再開」3) で確かめる
 2. 復旧用 ref `refs/distillery2/pre-squash/<slug>/<timestamp>` を `git update-ref` で現在 HEAD に作る。作れなければ squash しない。`<timestamp>` は `date -u +%Y%m%dT%H%M%SZ` (UTC。固定値を書かない。0.1.32 O3。要求の差分の `abandoned/`・旧形式の `legacy/` の `<ts>` も同じ)
 3. `git reset --soft <base_head>`。`use-cases.yaml` の該当行を `status: done` にして stage する (0.1.30〜0.1.31 の `carry_over` の持ち越しは 0.1.32 でやめた。`review_approved` に残る `carry_over.carry` は読まず、main マージ後の起動の自動選択 3 が要求の差分に載せる)
 4. `<skills>/d2-common/scripts/prTrailers.js --run .distillery/runs/<slug> --strict --base <base_head> --commit-message "feat: <UC 名>" --co-author "<attribution の値>"` で本文を作り

@@ -84,7 +84,7 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
 
 1. **読む**: `docs/requirements/use-cases.yaml` の該当行、`features/<業務>/<slug>.feature`、
    RDRA の関連する条件/状態行。触るのは分割ファイル (`openapi/` `asyncapi/` `db/domains/`) だけ。
-2. **契約を編集**: この UC が提供/利用する operation・message・table を分割ファイルに足す。
+2. **契約を編集**: この UC が提供/利用する operation・message・table を分割ファイルに足す (やり直しで新しい受入基準が添えてあれば、既存の operation の応答・スキーマも直してよい。0.1.35)。
    - OpenAPI: path item と operationId、request/response スキーマ (共通型は `$ref` で再利用)。
    - AsyncAPI: channel・operation・message・payload schema。
    - RDB: 該当 `db/domains/<id>.yaml` にテーブル・列・FK を足す。

@@ -45,8 +45,17 @@ function header(contractsDir, docsRoot) {
   return `${DO_NOT_EDIT}\n${BIOME_IGNORE_ALL}\n${basisComment(contractsDir, docsRoot)}`;
 }
 
+// basis 行は生成した時点の「契約を最後に変えた commit」を指す。生成は commit の前なので、commit した直後から値がずれる (0.1.35 R10・C5)。
+// 中身の比較では先頭 10 行の basis 行を外す。中身が同じなら書かない (生成のたびに basis 行だけ書き換わる差分も出さない)
+const BASIS_LINE_RE = /^\/\/ basis:.*$/;
+function withoutBasis(text) {
+  const lines = text.split('\n');
+  for (let i = 0; i < Math.min(10, lines.length); i++) if (BASIS_LINE_RE.test(lines[i])) lines[i] = '// basis:';
+  return lines.join('\n');
+}
+
 function writeFileDet(target, text, check, stale, written, rel) {
-  if (fs.existsSync(target) && fs.readFileSync(target, 'utf8') === text) return;
+  if (fs.existsSync(target) && withoutBasis(fs.readFileSync(target, 'utf8')) === withoutBasis(text)) return;
   if (check) { stale.push(rel); return; }
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, text);
