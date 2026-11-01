@@ -168,3 +168,22 @@ test('0.1.35 R10: writeFileDet は basis 行だけの違いを同じとみなす
   assert.deepEqual(written, ['a.test.ts']);
   assert.match(fs.readFileSync(f, 'utf8'), /contracts@2222222[\s\S]*body2/);
 });
+
+test('0.1.35 R3 (差分レビュー 1 ラウンド目): 文面だけが変わった UC は scan の記録を reopen に渡すと acceptance_changed が reopened.json に残る。git でない・status 行が無いときは run を移す前に拒む', () => {
+  const root = makeRepo();
+  fs.writeFileSync(path.join(root, 'docs/requirements/requirements.yaml'), requirements().replace('返却できる', '返却日を記録して返却できる'));
+  const rec = scan(root).uncovered_done.find((u) => u.slug === 'register-return');
+  const r = rs.reopen(root, 'register-return', rec);
+  const saved = JSON.parse(fs.readFileSync(path.join(root, r.archived_to, 'reopened.json'), 'utf8'));
+  assert.equal(saved.acceptance_changed, true);
+  assert.deepEqual(saved.missing, []);
+  // status 行の無い UC は run を移す前に拒む
+  const f = path.join(root, 'docs/requirements/use-cases.yaml');
+  fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('    status: done\n', ''));
+  assert.throws(() => rs.reopen(root, 'register-loan'), /status の行が 0 件/);
+  assert.ok(fs.existsSync(path.join(rs.runDirOf(root, 'register-loan'), 'events.jsonl')), 'run は移していない');
+  // git でないリポは拒む
+  const plain = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-nogit-'));
+  rs.openRun(plain, 'x');
+  assert.throws(() => rs.reopen(plain, 'x'), /git のリポジトリでない/);
+});

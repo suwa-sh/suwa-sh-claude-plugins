@@ -760,7 +760,8 @@ test('0.1.35 R3/R21: やり直しの節 (検出・聞く・退避・回す・段
   assert.match(redo, /`FB scan` の `uncovered_done` は、`status: done` の UC のうち、シナリオ[^\n]*`checkScenario\.js` の `missing`/);
   assert.match(redo, /受入基準の文面が main マージの時点から変わったもの \(`acceptance_changed: true`/);
   assert.match(redo, /1\. \*\*聞く\*\*: 確認ページで UC ごとに「やり直す \/ 後で」。推奨は「やり直す」/);
-  assert.match(redo, /2\. \*\*退避\*\*: 「やり直す」なら clean な main で `node runState\.js reopen <リポのルート> <slug> --data-file <その UC の missing の json>`/);
+  assert.match(redo, /2\. \*\*退避\*\*: 「やり直す」なら clean な main で `node runState\.js reopen <リポのルート> <slug> --data-file <scan の uncovered_done のその UC の記録 \(missing と acceptance_changed\) の json>`/);
+  assert.match(redo, /派遣文に `reopened\.json` の `missing` と `acceptance_changed` を添える/);
   assert.match(redo, /3\. \*\*回す\*\*: 次の起動の自動選択 3 の 6 がやり直し中の UC を先に選ぶ/);
   assert.match(redo, /scaffold: 既存の `<slug>\.steps\.ts` は残し、足りない step だけ pending で足す。red は新しい受入基準を実装するティアだけに求め/);
   const a = autoSelect();

@@ -180,11 +180,11 @@ UC の実装で見つかった要求の穴 (課題ファイルの `kind: require
 受入基準の文面が main マージの時点から変わったもの (`acceptance_changed: true`。main マージの done の受入基準の指紋と比べる。0.1.34 までに main マージした UC は指紋が無いので、番号が増えたときだけ出る)。`error` 付きの UC は feature が無いか検査が落ちた UC で、やり直さずに報告する。
 
 1. **聞く**: 確認ページで UC ごとに「やり直す / 後で」。推奨は「やり直す」。「後で」の影響: 付いた仕様は実装されないまま残り、起動のたびに完了報告に載る (`uc=<slug>` の名指しでやり直せる)
-2. **退避**: 「やり直す」なら clean な main で `node runState.js reopen <リポのルート> <slug> --data-file <その UC の missing の json>` を回す
+2. **退避**: 「やり直す」なら clean な main で `node runState.js reopen <リポのルート> <slug> --data-file <scan の uncovered_done のその UC の記録 (missing と acceptance_changed) の json>` を回す
    (run を `.distillery/archive/runs/<slug>/<ts>/` へ移し、`reports/`・`traces/` は消し、`use-cases.yaml` の `status` を `planned` にする。進行中の UC は拒む)。
    要求の差分の中なら同じ `req: feedback` の commit に入れる。名指しの起動なら `genDocsReadme.js` → `git add -A -- docs .distillery/runs .distillery/archive` → `req(<slug>): reopen` で commit する
-3. **回す**: 次の起動の自動選択 3 の 6 がやり直し中の UC を先に選ぶ (名指しの起動ならそのまま続ける)。④ は main から新しい run で始まり、段ごとに次が変わる。派遣文に `reopened.json` の `missing` を添える:
-   - scenario: 既存の feature に、網羅されていない受入基準のシナリオを足す (`acceptance_changed` なら、変わった受入基準に合わせて既存のシナリオを直す)
+3. **回す**: 次の起動の自動選択 3 の 6 がやり直し中の UC を先に選ぶ (名指しの起動ならそのまま続ける)。④ は main から新しい run で始まり、段ごとに次が変わる。派遣文に `reopened.json` の `missing` と `acceptance_changed` を添える (文面だけが変わった UC は `missing` が空で `acceptance_changed: true`):
+   - scenario: 既存の feature に、網羅されていない受入基準のシナリオを足す (`acceptance_changed` なら、UC の受入基準をすべて既存のシナリオと照らし合わせ、文面が変わった受入基準のシナリオを直す。網羅の検査は番号しか見ないので、照らし合わせた結果を報告に書く)
    - contract: 既存の operation も直してよい (d2-contract の UC モード)
    - scaffold: 既存の `<slug>.steps.ts` は残し、足りない step だけ pending で足す。red は新しい受入基準を実装するティアだけに求め、`runGates.js --uc <slug> --only unit --expect-red unit --tiers <そのティア>` で確かめる (scaffold の報告のティア)
    - tier 以降: 新しい UC と同じ

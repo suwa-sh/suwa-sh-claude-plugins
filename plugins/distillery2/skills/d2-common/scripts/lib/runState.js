@@ -25,7 +25,7 @@
  *   node runState.js invalidate <runDir> <stage> <reason> --from   (その段階と後ろの段階をまとめて退避)
  *   node runState.js return-to-integrate <runDir> '{"instrumentation_gaps":[...],"instrumentation_happy_gaps":[...]}'   (as-built から integrate へ戻す)
  *   node runState.js uc-status <root> <slug> <status>   (use-cases.yaml の status の 1 行だけ書き換える。main マージの done など。0.1.35 R21)
- *   node runState.js reopen <root> <slug> [--data-file <missing の json>]   (main マージ済みの UC をやり直す: run を .distillery/archive/runs/<slug>/<ts>/ へ移し、status を planned に。0.1.35 R3)
+ *   node runState.js reopen <root> <slug> [--data-file <scan の uncovered_done のその UC の記録の json>]   (main マージ済みの UC をやり直す: run を .distillery/archive/runs/<slug>/<ts>/ へ移し、status を planned に。0.1.35 R3)
  *   node runState.js reopened <root>   (やり直し中の UC の slug の一覧)
  */
 'use strict';
@@ -303,7 +303,7 @@ function markLegacyDelivered(runDir) {
  * use-cases.yaml の slug の行の status を書き換える (0.1.35 R21)。全体を stringify し直さず、その UC の塊の `status:` の 1 行だけを置き換える
  * (引用符などの見た目を変えない)。塊は `  - ` で始まる行から、次の `  - ` の行かトップレベルの行の手前まで
  */
-function setUcStatus(root, slug, value) {
+function setUcStatus(root, slug, value, { dryRun = false } = {}) {
   if (!/^[a-z][a-z0-9-]*$/.test(String(value))) throw new Error(`status の値が不正: ${value}`);
   const file = path.join(root, 'docs', 'requirements', 'use-cases.yaml');
   if (!fs.existsSync(file)) throw new Error(`use-cases.yaml が無い: ${file}`);
@@ -322,7 +322,7 @@ function setUcStatus(root, slug, value) {
   if (st.length !== 1) throw new Error(`slug: ${slug} の塊に status の行が ${st.length} 件ある`);
   const m = lines[st[0]].match(/^(\s+(?:- )?status:\s*)(.*)$/);
   lines[st[0]] = m[1] + value;
-  fs.writeFileSync(file, lines.join('\n'));
+  if (!dryRun) fs.writeFileSync(file, lines.join('\n'));
   return { slug, previous: m[2].trim(), status: value };
 }
 
@@ -332,18 +332,24 @@ function setUcStatus(root, slug, value) {
  *  2. run の reports/ と traces/ を消す (.gitignore の `.distillery/runs/<slug>/reports/` の形は退避先に効かず、git add -A で main に入るため。作り直せる生成物)
  *  3. run を .distillery/archive/runs/<slug>/<ts>/ へ移し (runs/ の外。run の列挙に乗せない)、reopened.json を書く
  *  4. use-cases.yaml の status を planned にする
+ * detail は scan の uncovered_done のその UC の記録 ({missing, acceptance_changed})。配列なら missing とみなす。
+ * reopened.json の missing と acceptance_changed は、やり直しの scenario の派遣文に添える (文面だけが変わった UC は missing が空。差分レビュー 1 ラウンド目)
  */
-function reopen(root, slug, missing = []) {
+function reopen(root, slug, detail = {}) {
+  const d = Array.isArray(detail) ? { missing: detail } : (detail || {});
   const runDir = runDirOf(root, slug);
   if (!fs.existsSync(path.join(runDir, 'events.jsonl'))) throw new Error(`run が無い: ${runDir}`);
+  const inGit = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: root, encoding: 'utf8' });
+  if (inGit.status !== 0) throw new Error(`git のリポジトリでない: ${root}`);
   const branch = spawnSync('git', ['rev-parse', '--verify', '--quiet', `refs/heads/feature/${slug}`], { cwd: root, encoding: 'utf8' });
   if (branch.status === 0) throw new Error(`feature/${slug} がある (進行中の UC はやり直さない)`);
+  setUcStatus(root, slug, 'planned', { dryRun: true }); // 書き換えられることを run を移す前に確かめる (移した後に落ちると手で戻すことになる)
   const dest = path.join(root, '.distillery', 'archive', 'runs', slug, ts());
   if (fs.existsSync(dest)) throw new Error(`退避先が既にある: ${dest}`);
   for (const sub of ['reports', 'traces']) fs.rmSync(path.join(runDir, sub), { recursive: true, force: true });
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.renameSync(runDir, dest);
-  fs.writeFileSync(path.join(dest, 'reopened.json'), JSON.stringify({ slug, reopened_at: nowIso(), missing }, null, 2) + '\n');
+  fs.writeFileSync(path.join(dest, 'reopened.json'), JSON.stringify({ slug, reopened_at: nowIso(), missing: Array.isArray(d.missing) ? d.missing : [], acceptance_changed: Boolean(d.acceptance_changed) }, null, 2) + '\n');
   const uc = setUcStatus(root, slug, 'planned');
   return { slug, archived_to: path.relative(root, dest).split(path.sep).join('/'), previous_status: uc.previous, status: uc.status };
 }
