@@ -112,7 +112,7 @@ function check(md, opts = {}) {
 }
 
 /**
- * 要約ブロック `課題` の表のデータ行の数 (見出し行と区切り行を除く)。ブロックが無ければ null。
+ * 要約ブロック `課題` の表のデータ行の数 (見出し行と区切り行を除く。課題が無いときに置く、課題の列が `なし` の行も数えない)。ブロックが無ければ null。
  * d2-run が、要約役の報告の「下書きにした課題」と「下書きにしなかった行」の合計と照合する (課題の取りこぼしを受理で止める)
  */
 function issueRows(md) {
@@ -120,7 +120,8 @@ function issueRows(md) {
   if (!b) return null;
   const rows = b.body.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('|'));
   const seps = rows.filter((l) => /^\|[\s:|-]+\|$/.test(l)).length;
-  return rows.length - 2 * seps;
+  const none = rows.filter((l) => /^\|\s*なし\s*\|/.test(l)).length;
+  return rows.length - 2 * seps - none;
 }
 
 function main(argv) {

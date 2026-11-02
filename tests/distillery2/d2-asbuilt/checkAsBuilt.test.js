@@ -90,4 +90,10 @@ test('0.1.36 S2: issueRows は要約ブロック「課題」の表のデータ�
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'd2-check-')), 'index.md');
   fs.writeFileSync(f, md + '\n');
   assert.match(execFileSync(process.execPath, [path.join(SCRIPTS, 'checkAsBuilt.js'), f], { encoding: 'utf8' }), /^ok: 要約ブロック 2 個、違反なし、課題の行 2$/m);
+  // 課題が無い UC: 課題の列が なし の 1 行は書式の検査を通り、課題の行は 0 (要約役の報告の 0 件と合う)
+  const none = [wrap('概要', table(['| 誰が | 職員 | x.ts:1 |'])), wrap('課題', ['| 課題 | 背景 | 今の実装 | 対処 | 根拠 |', '|---|---|---|---|---|', '| なし | — | — | — | — |'].join('\n'))].join('\n\n');
+  assert.deepEqual(check(none).violations, []);
+  assert.equal(issueRows(none), 0);
+  fs.writeFileSync(f, none + '\n');
+  assert.match(execFileSync(process.execPath, [path.join(SCRIPTS, 'checkAsBuilt.js'), f], { encoding: 'utf8' }), /^ok: 要約ブロック 2 個、違反なし、課題の行 0$/m);
 });

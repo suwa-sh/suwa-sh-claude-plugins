@@ -13,7 +13,7 @@ version の正本は `.claude-plugin/plugin.json`。
   検査器そのものの失敗 (exit 3) と他の検査器の指摘は今までどおり止まる。CI は `commands.quality` をそのまま回すので、main の CI では落ちる。`advisory` は人レビューの材料と完了報告に載せる
 - as-built の要約役が見つけた課題 (S2): as-built は人レビューの後に作るので、要約役が見つけた課題 (例: 同じ冪等キーの同時要求で 500) が誰にも見せられず、課題ファイルにもならなかった。
   要約ブロック「課題」の行のうち、抽出節「決めたこと」と課題の表に無いものを `<run>/issues/<ts>_asbuilt_<slug>.md` (`kind: requirement`、印 `source: asbuilt`) の下書きにし、main マージ 1 の 3 で課題ファイルにする (要求の差分で人が決める)。
-  `checkAsBuilt.js` は ok の行に「課題の行」の数を出し、d2-run は要約役の報告 (下書きにした課題と、下書きにしなかった行) の件数の合計と照合して受理する。
+  `checkAsBuilt.js` は ok の行に「課題の行」の数を出し、d2-run は要約役の報告 (下書きにした課題と、下書きにしなかった行) の件数の合計と照合して受理する。課題が無ければ、課題の列を `なし` にした 1 行だけを書く (数えない)。
   `runState.js set-aside-asbuilt-drafts` で、課題ファイルにしていない古い下書きを as-built の派遣の前に `invalidated/` へ移す。asbuilt を含む差し戻し (`invalidate --from`・`return-to-integrate`) も同じく移す
 - d2-run の手順書を短くした (振る舞いは変えない): 本文の版・試し運転の注記 (`0.1.xx 実走 X`・`差分レビュー n ラウンド目` など。経緯はこの CHANGELOG と git の履歴にある) を消した。
   「d2-run が直接読み書きするもの」の表を `d2-run/references/direct-io.md` へ移した。旧形式を見分けるための版の番号 (`0.1.25 までの順の run` など) は振る舞いなので残した。
