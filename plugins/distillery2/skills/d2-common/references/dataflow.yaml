@@ -811,7 +811,7 @@ processes:
     reads: [asbuilt-index]
     writes: []
   # ================= d2-run の直接作業 =================
-  # run_table_row = d2-run SKILL「d2-run が直接読み書きするもの」の表の「処理」列 (その行の読む / 書くと照合する)
+  # run_table_row = d2-run/references/direct-io.md「d2-run が直接読み書きするもの」の表の「処理」列 (その行の読む / 書くと照合する)
   # 親 (run.early / run.foundation / run.uc) は d2-run 自身が直接読み書きするものだけ。図では子 (スクリプト) を親に畳む
   - id: run.early
     name: d2-run (① ②)
