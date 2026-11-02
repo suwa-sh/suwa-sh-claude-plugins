@@ -48,7 +48,7 @@ flowchart LR
 | ② 決定 | 還流 (UC の外の独立した段階) | 決定 (NFR・ADR) | ADR |
 | ③ 基盤 | ④ UC の縦切り | 基盤の設定、テスト基盤、契約、画面、実行の記録 | 開発ルール、依存方向の検査設定、Cucumber 設定、Cucumber の ESM ローダ (cucumber.js が読む)、実行設定、リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 / テスト基盤 (tracer・World)、Cucumber の support / 契約の分割ファイル、UC ごとの契約の索引、契約テスト (生成物)、契約からの codegen / デザインシステム (Storybook アプリ)、画面部品 / ゲートの記録 |
 | ③ 基盤 | 還流 (UC の外の独立した段階) | 基盤の設定、テスト基盤、契約、実行の記録 | 依存方向の検査設定、Cucumber 設定、Cucumber の ESM ローダ (cucumber.js が読む)、実行設定、リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 / Cucumber の support / 契約の分割ファイル、UC ごとの契約の索引、契約テスト (生成物) / ゲートの記録 |
-| ④ UC の縦切り | 還流 (UC の外の独立した段階) | 要求、基盤の設定、テスト基盤、契約、シナリオと step、ティアの実装、実行の記録、文書の入口と課題ファイル | UC 一覧 / qlty 設定 / Cucumber の support / 契約の分割ファイル、UC ごとの契約の索引、契約テスト (生成物)、DB migration (datastore_owner のティア) / UC シナリオ、受入シナリオ、step 定義 / ティアの実装と単体テスト / 実行の記録 (events / done / 退避した done)、仕様起因の課題、ティア実装者の課題、ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
+| ④ UC の縦切り | 還流 (UC の外の独立した段階) | 要求、基盤の設定、テスト基盤、契約、シナリオと step、ティアの実装、実行の記録、文書の入口と課題ファイル | UC 一覧 / qlty 設定 / Cucumber の support / 契約の分割ファイル、UC ごとの契約の索引、契約テスト (生成物)、DB migration (datastore_owner のティア) / UC シナリオ、受入シナリオ、step 定義 / ティアの実装と単体テスト / 実行の記録 (events / done / 退避した done)、仕様起因の課題、ティア実装者の課題、as-built の要約役の課題、ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 
 後ろ向きの受け渡し (後の段階が書き戻し、次の UC や再実行で前の段階が読む。図には描かない):
 
@@ -683,15 +683,17 @@ flowchart LR
   s_asbuilt_index[("UC の as-built の index.md (要約ブロックを含む)<br/>docs/as-built/#lt;業務#gt;/#lt;UC#gt;/index.md")]
   s_assumptions[("実装者が補った前提<br/>#lt;run#gt;/attempt-#lt;n#gt;/assumptions.#lt;tier#gt;.yaml")]
   s_tier_src[("ティアの実装と単体テスト<br/>apps/#lt;tier#gt;/src/**")]
+  s_issues_asbuilt[("as-built の要約役の課題<br/>#lt;run#gt;/issues/#lt;ts#gt;_asbuilt_#lt;slug#gt;.md")]
   s_asbuilt_index --> p_asbuilt_summarize
   s_assumptions --> p_asbuilt_summarize
   s_tier_src --> p_asbuilt_summarize
   p_asbuilt_summarize --> s_asbuilt_index
+  p_asbuilt_summarize --> s_issues_asbuilt
 ```
 
 | 読む | 書く |
 |---|---|
-| `docs/as-built/<業務>/<UC>/index.md`<br>`<run>/attempt-<n>/assumptions.<tier>.yaml`<br>`apps/<tier>/src/**` | `docs/as-built/<業務>/<UC>/index.md` |
+| `docs/as-built/<業務>/<UC>/index.md`<br>`<run>/attempt-<n>/assumptions.<tier>.yaml`<br>`apps/<tier>/src/**` | `docs/as-built/<業務>/<UC>/index.md`<br>`<run>/issues/<ts>_asbuilt_<slug>.md` |
 
 ##### 要約の書式の検査
 
@@ -715,10 +717,12 @@ flowchart LR
   p_run_migrate_issues["旧形式の run の課題を課題ファイルにする (起動時の移行)<br/>feedbackBatch.js"]
   s_issues[("仕様起因の課題<br/>#lt;run#gt;/issues/**")]
   s_issues_tier[("ティア実装者の課題<br/>#lt;run#gt;/issues/#lt;ts#gt;_#lt;tier#gt;_#lt;slug#gt;.md")]
+  s_issues_asbuilt[("as-built の要約役の課題<br/>#lt;run#gt;/issues/#lt;ts#gt;_asbuilt_#lt;slug#gt;.md")]
   s_run_events[("実行の記録 (events / done / 退避した done)<br/>#lt;run#gt;/events.jsonl")]
   s_feedback_docs[("課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成)<br/>docs/feedback/**")]
   s_issues --> p_run_migrate_issues
   s_issues_tier --> p_run_migrate_issues
+  s_issues_asbuilt --> p_run_migrate_issues
   s_run_events --> p_run_migrate_issues
   p_run_migrate_issues --> s_feedback_docs
   p_run_migrate_issues --> s_run_events
@@ -726,7 +730,7 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `<run>/issues/**`<br>`<run>/issues/<ts>_<tier>_<slug>.md`<br>`<run>/events.jsonl` | `docs/feedback/**`<br>`<run>/events.jsonl` |
+| `<run>/issues/**`<br>`<run>/issues/<ts>_<tier>_<slug>.md`<br>`<run>/issues/<ts>_asbuilt_<slug>.md`<br>`<run>/events.jsonl` | `docs/feedback/**`<br>`<run>/events.jsonl` |
 
 #### 文書の入口の更新 (起動時の移行)
 
@@ -940,7 +944,7 @@ flowchart LR
   p_run_uc["d2-run (④)<br/>d2-run"]
   g_settings[("基盤の設定<br/>実行設定")]
   g_requirements[("要求<br/>UC 一覧")]
-  g_run[("実行の記録<br/>実行の記録 (events / done / 退避した done)・ゲートの記録・as-built の抽出の集計 (計装の有無)・Verifier の指摘・実装者が補った前提・仕様起因の課題・ティア実装者の課題・やり直した UC の前の run (runState.js reopen が移す。0.1.35)・作業用の worktree (還流は 1 つ。review で要求を直すときは一時のもの。gitignore)")]
+  g_run[("実行の記録<br/>実行の記録 (events / done / 退避した done)・ゲートの記録・as-built の抽出の集計 (計装の有無)・Verifier の指摘・実装者が補った前提・仕様起因の課題・ティア実装者の課題・as-built の要約役の課題・やり直した UC の前の run (runState.js reopen が移す。0.1.35)・作業用の worktree (還流は 1 つ。review で要求を直すときは一時のもの。gitignore)")]
   g_contracts[("契約<br/>UC ごとの契約の索引")]
   g_asbuilt[("as-built<br/>システム横断の as-built")]
   g_scenarios[("シナリオと step<br/>UC シナリオ・受入シナリオ")]
@@ -958,7 +962,7 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `.distillery/config.yaml`<br>`docs/requirements/use-cases.yaml`<br>`<run>/events.jsonl`<br>`<run>/reports/**`<br>`<run>/reports/asbuilt.json`<br>`<run>/attempt-<n>/findings.<tier>.yaml`<br>`<run>/attempt-<n>/assumptions.<tier>.yaml`<br>`<run>/issues/**`<br>`<run>/issues/<ts>_<tier>_<slug>.md`<br>`contracts/uc-index.yaml`<br>`docs/as-built/_system/**`<br>`features/<業務>/<slug>.feature`<br>`features/acceptance/**`<br>`.distillery/archive/runs/<slug>/**` | `<run>/events.jsonl`<br>`docs/requirements/use-cases.yaml`<br>`<run>/reports/asbuilt.json`<br>`docs/feedback/**`<br>`.distillery/worktrees/**` |
+| `.distillery/config.yaml`<br>`docs/requirements/use-cases.yaml`<br>`<run>/events.jsonl`<br>`<run>/reports/**`<br>`<run>/reports/asbuilt.json`<br>`<run>/attempt-<n>/findings.<tier>.yaml`<br>`<run>/attempt-<n>/assumptions.<tier>.yaml`<br>`<run>/issues/**`<br>`<run>/issues/<ts>_<tier>_<slug>.md`<br>`<run>/issues/<ts>_asbuilt_<slug>.md`<br>`contracts/uc-index.yaml`<br>`docs/as-built/_system/**`<br>`features/<業務>/<slug>.feature`<br>`features/acceptance/**`<br>`.distillery/archive/runs/<slug>/**` | `<run>/events.jsonl`<br>`docs/requirements/use-cases.yaml`<br>`<run>/reports/asbuilt.json`<br>`<run>/issues/<ts>_asbuilt_<slug>.md`<br>`docs/feedback/**`<br>`.distillery/worktrees/**` |
 
 #### シナリオの静的確認
 
@@ -1152,10 +1156,12 @@ flowchart LR
   p_run_uc_file_issues["UC の課題を課題ファイルにする (main マージの squash の前)<br/>feedbackBatch.js"]
   s_issues[("仕様起因の課題<br/>#lt;run#gt;/issues/**")]
   s_issues_tier[("ティア実装者の課題<br/>#lt;run#gt;/issues/#lt;ts#gt;_#lt;tier#gt;_#lt;slug#gt;.md")]
+  s_issues_asbuilt[("as-built の要約役の課題<br/>#lt;run#gt;/issues/#lt;ts#gt;_asbuilt_#lt;slug#gt;.md")]
   s_run_events[("実行の記録 (events / done / 退避した done)<br/>#lt;run#gt;/events.jsonl")]
   s_feedback_docs[("課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成)<br/>docs/feedback/**")]
   s_issues --> p_run_uc_file_issues
   s_issues_tier --> p_run_uc_file_issues
+  s_issues_asbuilt --> p_run_uc_file_issues
   s_run_events --> p_run_uc_file_issues
   p_run_uc_file_issues --> s_feedback_docs
   p_run_uc_file_issues --> s_run_events
@@ -1163,7 +1169,7 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `<run>/issues/**`<br>`<run>/issues/<ts>_<tier>_<slug>.md`<br>`<run>/events.jsonl` | `docs/feedback/**`<br>`<run>/events.jsonl` |
+| `<run>/issues/**`<br>`<run>/issues/<ts>_<tier>_<slug>.md`<br>`<run>/issues/<ts>_asbuilt_<slug>.md`<br>`<run>/events.jsonl` | `docs/feedback/**`<br>`<run>/events.jsonl` |
 
 ## ファイルの一覧
 
@@ -1211,6 +1217,7 @@ flowchart LR
 | Verifier の指摘 | 実行の記録 | `<run>/attempt-<n>/findings.<tier>.yaml` | 生成 | 独立検証 | ティアの実装、as-built の抽出と要約、as-built の抽出、d2-run (④) |
 | 仕様起因の課題 | 実行の記録 | `<run>/issues/**` | 生成 | 契約の差分 | as-built の抽出と要約、as-built の抽出、d2-run (④)、UC の課題を課題ファイルにする (main マージの squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) |
 | ティア実装者の課題 | 実行の記録 | `<run>/issues/<ts>_<tier>_<slug>.md` | 生成 | ティアの実装 | as-built の抽出と要約、as-built の抽出、d2-run (④)、UC の課題を課題ファイルにする (main マージの squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) |
+| as-built の要約役の課題 | 実行の記録 | `<run>/issues/<ts>_asbuilt_<slug>.md` | 生成 | as-built の抽出と要約、要約ブロックを埋める (LLM)、d2-run (④) | d2-run (④)、UC の課題を課題ファイルにする (main マージの squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) |
 | 還流の派遣の結果 (applied / absent / blocked。gitignore) | 実行の記録 | `.distillery/logs/feedback/<b>/<issue>.result.json` | 生成 | 還流の ADR、還流の契約 | d2-run (還流) |
 | 還流のバッチの状態 (対象の課題・課題ごとの static の合否と止まった理由・最後のゲートの合否・確認ページの回答。gitignore) | 実行の記録 | `.distillery/logs/feedback/<b>/**` | 生成 | d2-run (還流)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) | d2-run (還流)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) |
 | 作業用の worktree (還流は 1 つ。review で要求を直すときは一時のもの。gitignore) | 実行の記録 | `.distillery/worktrees/**` | 生成 (最終成果物) | d2-run (④)、還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み) | — |

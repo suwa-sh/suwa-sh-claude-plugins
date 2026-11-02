@@ -55,4 +55,5 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
   仕様の正本は https://docs.qlty.sh/cli/qlty-toml (要約に頼らず使い捨てコピーで実測する)。
   提案はその時点のファイル種別で決まるので、`genQlty.js --refresh` を npm install の後 (lockfile → osv-scanner) と各 UC の integrate で全ゲートを回す前 (python 等が増えたら ruff 等。指摘は static に出て、verify / as-built の前に直す) に回し、
   増えた plugins だけ足す (0.1.14〜。0.1.13 の実走で osv-scanner が抜けた)。
+  osv-scanner (依存の脆弱性) の指摘だけで quality が落ちたときは、runGates が通して gates.json の job に `advisory` を残す (CI はそのまま落ちる)。
 - **DOM snapshot / capture_review / ui_review capability**: 受入の `@browser` シナリオに集約。

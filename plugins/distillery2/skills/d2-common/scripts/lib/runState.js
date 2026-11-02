@@ -164,11 +164,34 @@ function invalidate(runDir, stage, reason) {
   return dest;
 }
 
-/** stage とそれより後ろの段階の done をすべて退避する (差し戻しで段階をまとめて戻すとき。1 つずつ呼んで漏らさないため)。退避したパスの配列を返す */
+/**
+ * stage とそれより後ろの段階の done をすべて退避する (差し戻しで段階をまとめて戻すとき。1 つずつ呼んで漏らさないため)。退避したパスの配列を返す。
+ * 戻す範囲に asbuilt が入るなら、as-built の要約役の下書き (課題ファイルにしていないもの) も退避する (やり直した後の人レビューに古い下書きを見せない)
+ */
 function invalidateFrom(runDir, stage, reason) {
   const i = STAGES.indexOf(stage);
   if (i < 0) throw new Error(`unknown stage: ${stage}`);
-  return STAGES.slice(i).map(s => invalidate(runDir, s, reason)).filter(Boolean);
+  const moved = STAGES.slice(i).map(s => invalidate(runDir, s, reason)).filter(Boolean);
+  if (i <= STAGES.indexOf('asbuilt')) setAsideAsbuiltDrafts(runDir);
+  return moved;
+}
+
+const ASBUILT_DRAFT = /^[^/]+_asbuilt_[^/]+\.md$/;
+
+/**
+ * as-built の要約役の下書き (`issues/<ts>_asbuilt_<slug>.md`) のうち課題ファイルにしていないものを invalidated/ へ移す。
+ * as-built をやり直す前に呼ぶ (派遣し直し・差し戻し)。移したものがあれば asbuilt_drafts_set_aside を記録する。移した run 相対パスの配列を返す
+ */
+function setAsideAsbuiltDrafts(runDir) {
+  const moved = [];
+  for (const key of unfiledIssues(runDir).filter(k => ASBUILT_DRAFT.test(path.basename(k)))) {
+    const dest = uniqueDest(path.join(runDir, 'invalidated', `${ts()}_${path.basename(key)}`));
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.renameSync(path.join(runDir, key), dest);
+    moved.push(path.relative(runDir, dest));
+  }
+  if (moved.length) appendEvent(runDir, 'asbuilt_drafts_set_aside', { moved });
+  return moved;
 }
 
 /** 退避先が既にあれば `_2`, `_3` … を付ける (同じ秒に 2 回退避しても上書きしない) */
@@ -415,6 +438,7 @@ function main(argv) {
       console.log(JSON.stringify(reopen(path.resolve(args[0]), args[1], missing))); return 0;
     }
     case 'reopened': console.log(JSON.stringify(reopenedSlugs(path.resolve(args[0])))); return 0;
+    case 'set-aside-asbuilt-drafts': console.log(JSON.stringify({ moved: setAsideAsbuiltDrafts(path.resolve(args[0])) })); return 0;
     case 'return-to-integrate': console.log(JSON.stringify(returnToIntegrate(path.resolve(args[0]), args[1] ? JSON.parse(args[1]) : {}))); return 0;
     case 'status': {
       const s = status(path.resolve(args[0]));
@@ -433,10 +457,10 @@ function main(argv) {
       }
       return 0;
     }
-    default: console.error('Usage: runState.js open|event|done|invalidate|return-to-integrate|mark-legacy-delivered|scenario-approve|status|uc-status|reopen|reopened ...'); return 2;
+    default: console.error('Usage: runState.js open|event|done|invalidate|return-to-integrate|set-aside-asbuilt-drafts|mark-legacy-delivered|scenario-approve|status|uc-status|reopen|reopened ...'); return 2;
   }
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status, validateAssumptionResolved, scenarioApprove, setUcStatus, reopen, reopenedSlugs, acceptanceSha256 };
+module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, setAsideAsbuiltDrafts, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status, validateAssumptionResolved, scenarioApprove, setUcStatus, reopen, reopenedSlugs, acceptanceSha256 };

@@ -338,11 +338,13 @@
     "write_set": [
       "`docs/as-built/<業務>/<UC>/**`",
       "`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)",
-      "`<run>/reports/**` (depcruise の結果と抽出の集計)"
+      "`<run>/reports/**` (depcruise の結果と抽出の集計)",
+      "`<run>/issues/<ts>_asbuilt_<slug>.md` (要約の課題のうち、人レビューに載っていないものの下書き)"
     ],
     "notes": [
       "スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ",
-      "depcruise の結果と抽出の集計"
+      "depcruise の結果と抽出の集計",
+      "要約の課題のうち、人レビューに載っていないものの下書き"
     ],
     "allowed_writes": [
       {
@@ -356,6 +358,10 @@
       {
         "id": "reports",
         "path": "<run>/reports/**"
+      },
+      {
+        "id": "issues-asbuilt",
+        "path": "<run>/issues/<ts>_asbuilt_<slug>.md"
       }
     ]
   },

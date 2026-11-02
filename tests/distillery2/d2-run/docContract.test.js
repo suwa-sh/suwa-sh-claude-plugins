@@ -80,7 +80,7 @@ test('asbuilt: 抽出から検査まで要約役が通しで行い、d2-run は�
   assert.match(tmpl, /依存グラフの実態 → 抽出 → 要約 → 検査までこのスキルが行う/);
   assert.match(tmpl, /抽出の標準出力 1 行を報告に転記する/);
   const asbuilt = row(read(SKILL), /^\| \*\*asbuilt\*\* \|/);
-  assert.match(asbuilt, /`<run>\/reports\/asbuilt\.json` があれば消してから/, '前回の集計で受理しない');
+  assert.match(asbuilt, /`<run>\/reports\/asbuilt\.json` があれば消し、/, '前回の集計で受理しない');
   assert.match(asbuilt, /`slug` が今回の UC、`attempt` が `runState\.js status` の attempt と一致/);
   assert.match(asbuilt, /instrumentation_gaps/);
   assert.match(asbuilt, /asbuilt を done にせず integrate へ戻して/, '差し戻しの判断は d2-run に残す');
@@ -802,11 +802,34 @@ test('0.1.35 R18/R19: 承認に head を残し、main マージ 1 の 2 で人�
 test('0.1.35: 記録だけの課題は troubleshooting の 2 節に (迷ったときの扱いと既知の不具合)。本文から 1 行で参照', () => {
   const t = read('skills/d2-run/references/troubleshooting.md');
   const how = section('skills/d2-run/references/troubleshooting.md', '## 手順書に書いていない扱い (迷ったら)', '## 既知の不具合 (未確認)');
-  assert.equal(how.split('\n').filter((l) => /^\| [^-|]/.test(l) && !l.startsWith('| 場面 |')).length, 18);
+  assert.equal(how.split('\n').filter((l) => /^\| [^-|]/.test(l) && !l.startsWith('| 場面 |')).length, 25);
+  // 0.1.36 で足した記録 (試し運転 0.1.35 の S2 の一部・S3〜S5・S7〜S9)
+  assert.match(how, /\| 人レビュー \| 検証役の指摘 \(major \/ minor\) が課題ファイルにならない \| 指摘は前提の記録に結びつき、人レビューで「承認 \/ 実装を直す \/ 要求を直す」を選ぶ/);
+  assert.match(how, /\| 要求の差分 \| 6 の `docs\/adr\/\[0-9\]\*\.md` をそのまま渡すか、展開して列挙するか \| シェルの展開で列挙して渡す/);
   assert.match(how, /\| 人レビュー \| 全体の承認だけで、個別に答えていない回答任意の前提 \| 未回答として `auto_confirmed`/);
   assert.match(how, /\| main マージ \| squash の本文 \(`prTrailers\.js` の出力\) をファイルにする方法 \| 標準出力を `\.distillery\/logs\/` の下のファイルへリダイレクトし/);
   const bugs = t.slice(t.indexOf('## 既知の不具合 (未確認)'));
   assert.equal(bugs.split('\n').filter((l) => /^\| [^-|]/.test(l) && !l.startsWith('| 事象 |')).length, 5);
   assert.match(bugs, /出たら課題 \(`kind: plugin`\) にする/);
   assert.match(read(SKILL), /手順書に書いていない場面で迷ったら、d2-run の troubleshooting の「手順書に書いていない扱い」を見る/);
+});
+
+test('0.1.36 S1: 依存の脆弱性 (osv-scanner) だけの quality の落ちは runGates が通し、advisory を人レビューと完了報告に載せる。CI はそのまま落ちる', () => {
+  const t = read(SKILL);
+  assert.match(t, /\*\*依存の脆弱性\*\* \(どの段階の runGates でも\): static の quality が依存の脆弱性の指摘 \(osv-scanner\) だけで落ちたときは、runGates が通して job に `advisory` を残す/);
+  assert.match(t, /CI は `commands\.quality` をそのまま回すので、main の CI では落ちる/);
+  assert.match(t, /1\. 材料: `reports\/gates\.json` \(static の `advisory` があれば依存の脆弱性として載せる\)/);
+  assert.match(t, /④ の main マージの後は、[^\n]*依存の脆弱性 \(gates\.json の `advisory`。あれば\)/);
+  assert.match(t, /還流の後は、[^\n]*依存の脆弱性 \(最後のゲートの gates\.json の `advisory`。あれば\)/);
+});
+
+test('0.1.36 S2: as-built の要約役が見つけた課題は下書きにし、asbuilt の派遣の前と差し戻しで古い下書きを退避する', () => {
+  const asbuilt = row(read(SKILL), /^\| \*\*asbuilt\*\* \|/);
+  assert.match(asbuilt, /`node runState\.js set-aside-asbuilt-drafts <run>` で課題ファイルにしていない要約役の下書き/);
+  assert.match(asbuilt, /一覧の下書きのファイルが `<run>\/issues\/` にある/, '報告だけで受理しない');
+  const d = read('skills/d2-asbuilt/SKILL.md');
+  assert.match(d, /「決めたこと」\(人レビューに載った前提と Verifier の指摘\) と「課題」の issues の表のどちらにも載っていない事柄だけを、\n\s+下書き `<run>\/issues\/<ts>_asbuilt_<slug>\.md` にする/);
+  assert.match(d, /front matter: `kind: requirement`/, '人が要求の差分で先に決める');
+  assert.match(d, /下書きを 1 つでも書いたら、2 の抽出をもう一度回し/, '抽出節の課題の表を下書きと揃える');
+  assert.match(d, /\| LLM \(このスキル\) \| [^\n]*`<run>\/issues\/<ts>_asbuilt_<slug>\.md`/);
 });

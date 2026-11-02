@@ -18,6 +18,8 @@
  * - 結果を reports/gates.json に書く。終了コードは 0 = 全ゲート期待どおり / 1 = 落ちた / 2 = 設定エラー
  * - 落ちた job にはレポート JSON (vitest / cucumber) から読んだ failed_tests (落ちたテスト名。最大 50 件) を付ける (0.1.30 M6。
  *   headless では出力をファイルに保存できないので、落ちた内容は gates.json の output_tail と failed_tests で読む。M1)
+ * - static の quality (qlty) が依存の脆弱性の指摘 (osv-scanner) だけで落ちたときは通し、job に advisory を残す。
+ *   脆弱性情報の更新は UC と無関係に毎回起きるので、止めずに報告する。CI は commands.quality をそのまま回すので、main の CI では今までどおり落ちる
  */
 'use strict';
 
@@ -73,6 +75,46 @@ function runCommand(cmd, cwd) {
   });
 }
 
+/** 標準出力だけを集める (SARIF を読むため。標準エラーの「✖ N issues」を混ぜない) */
+function runStdout(cmd, cwd) {
+  return new Promise(resolve => {
+    const child = spawn(cmd, { cwd, shell: true, env: { ...process.env, CI: 'true' } });
+    let out = '';
+    child.stdout.on('data', d => { out += d; });
+    child.stderr.on('data', () => {});
+    child.on('close', code => resolve({ exit: code, stdout: out }));
+    child.on('error', () => resolve({ exit: -1, stdout: '' }));
+  });
+}
+
+const ADVISORY_PLUGIN = 'osv-scanner';
+
+/**
+ * SARIF の結果がすべて依存の脆弱性 (osv-scanner) なら advisory を返す。他の検査器の結果が 1 件でもある・結果が無い・読めないなら null
+ */
+function advisoryFromSarif(sarif) {
+  if (!sarif || !Array.isArray(sarif.runs)) return null;
+  const results = sarif.runs.flatMap(r => (r && Array.isArray(r.results)) ? r.results : []);
+  if (!results.length) return null;
+  if (!results.every(x => typeof x.ruleId === 'string' && x.ruleId.startsWith(`${ADVISORY_PLUGIN}:`))) return null;
+  const uris = results.flatMap(x => (x.locations || []).map(l => l && l.physicalLocation && l.physicalLocation.artifactLocation && l.physicalLocation.artifactLocation.uri)).filter(Boolean);
+  return { plugin: ADVISORY_PLUGIN, count: results.length, rules: [...new Set(results.map(x => x.ruleId))].sort(), files: [...new Set(uris)].sort() };
+}
+
+/**
+ * quality が exit 1 (指摘で落ちた) のとき、同じコマンドに `--level <fail-level> --sarif` を足して回し直し、
+ * 落ちた指摘がすべて依存の脆弱性かを確かめる。exit 1 以外 (qlty の検査器の失敗は exit 3。SARIF には印が出ない) と、
+ * `--fail-level` が無いコマンドは対象外 (null)
+ */
+async function dependencyAdvisoryOnly(cmd, cwd) {
+  // シェルで同じ引数になる書き方 (--fail-level medium / "medium" / 'medium' / =medium) を読む
+  const m = /--fail-level(?:\s+|=)(["']?)([a-z]+)\1(?=\s|$)/.exec(cmd);
+  if (!m) return null;
+  const r = await runStdout(`${cmd} --level ${m[2]} --sarif`, cwd);
+  if (r.exit !== 1) return null;
+  return advisoryFromSarif(safeJson(r.stdout));
+}
+
 function planGate(gate, config, ctx) {
   const jobs = [];
   // --tiers で UC に関与するティアだけに絞る (指定が無ければ全ティア)
@@ -125,6 +167,10 @@ async function runGate(gate, config, ctx) {
     if (job.report && fs.existsSync(job.report)) fs.unlinkSync(job.report);
     const r = await runCommand(job.cmd, ctx.cwd);
     const out = { ...job, ...r, status: r.exit === 0 ? 'pass' : 'fail' };
+    if (job.name === 'quality' && !job.tier && r.exit === 1) {
+      const advisory = await dependencyAdvisoryOnly(job.cmd, ctx.cwd);
+      if (advisory) { out.status = 'pass'; out.advisory = advisory; }
+    }
     if (out.status === 'fail' && job.report && fs.existsSync(job.report)) {
       const names = failedTestNames(safeJson(fs.readFileSync(job.report, 'utf8')));
       if (names.length) { out.failed_tests = names.slice(0, MAX_FAILED_TESTS); if (names.length > MAX_FAILED_TESTS) out.failed_tests_truncated = names.length; }
@@ -179,6 +225,7 @@ async function main(argv) {
     if (o.expectRed === gate) applyExpectRed(r);
     summary.gates.push(r);
     if (!o.json) console.log(`${r.status === 'pass' ? 'PASS' : r.status === 'skipped' ? 'SKIP' : 'FAIL'} ${gate} (${r.duration_ms} ms)${r.note ? ' — ' + r.note : ''}`);
+    if (!o.json) for (const j of r.jobs.filter(j => j.advisory)) console.log(`  ! ${j.name}: 依存の脆弱性の指摘 ${j.advisory.count} 件 (${j.advisory.plugin}。止めずに報告): ${j.advisory.rules.join(', ')}`);
     if (r.status === 'fail') {
       ok = false;
       if (!o.json) for (const j of r.jobs.filter(j => j.status === 'fail')) console.log(`  - ${j.tier ? j.tier + ':' : ''}${j.name} exit=${j.exit}${j.failed_tests ? `\n    failed: ${j.failed_tests.join(', ')}${j.failed_tests_truncated ? ` (他 ${j.failed_tests_truncated - j.failed_tests.length} 件)` : ''}` : ''}\n${indent(j.output_tail)}`);
@@ -268,4 +315,4 @@ function indent(s) { return String(s || '').split('\n').slice(-30).map(l => '   
 
 if (require.main === module) main(process.argv.slice(2)).then(code => process.exit(code));
 
-module.exports = { GATES, parseArgs, selectGates, planGate, runGate, applyExpectRed, countFailures, failedTestNames, main };
+module.exports = { GATES, parseArgs, selectGates, planGate, runGate, applyExpectRed, countFailures, failedTestNames, advisoryFromSarif, main };
