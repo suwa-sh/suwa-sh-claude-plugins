@@ -740,3 +740,14 @@ test('0.1.32 J2: scan の carry_over_pending は最後の review_approved の ca
   r.w('docs/requirements/use-cases.yaml', ['use_cases:', '  - uc: 書籍を登録する', '    slug: register-book', '    spec_ids: [SPEC-001-01]', '    status: planned', '    carry_over:', '      - "packages/ui/stories/LoanRegister.stories.tsx: 文言を直す"', '      - "frontend の AssumptionRecord A-004 を閉じる"', '  - uc: 書籍を編集する', '    slug: edit-book', '    spec_ids: [SPEC-001-02]', '    status: planned', ''].join('\n'));
   assert.deepEqual(r.fb('scan').json.carry_over_rows, [{ slug: 'register-book', items: ['packages/ui/stories/LoanRegister.stories.tsx: 文言を直す', 'frontend の AssumptionRecord A-004 を閉じる'] }]);
 });
+
+test('0.1.36 S2: as-built の要約役の下書き (_asbuilt_) も file-issues で要求の課題ファイルになり、scan の requirement に出る (要求の差分で人が決める)', () => {
+  const r = makeRepo();
+  const run = runState.openRun(r.root, 'register-loan');
+  fs.writeFileSync(path.join(run, 'issues', '20261103T010000Z_asbuilt_same-key-race.md'), issueFile({ kind: 'requirement', title: '同じキーの同時要求で 500', uc: 'register-loan' }, '## 背景\n\n- 冪等キーの検索は行ロックしない\n'));
+  const a = r.fb('file-issues', '.distillery/runs/register-loan');
+  assert.equal(a.code, 0, JSON.stringify(a.json));
+  assert.deepEqual(a.json.filed, ['docs/feedback/20261103T010000Z_asbuilt_same-key-race.md']);
+  assert.match(fs.readFileSync(path.join(r.root, 'docs/feedback/20261103T010000Z_asbuilt_same-key-race.md'), 'utf8'), /kind: requirement/);
+  assert.ok(r.fb('scan').json.requirement.includes('20261103T010000Z_asbuilt_same-key-race'));
+});

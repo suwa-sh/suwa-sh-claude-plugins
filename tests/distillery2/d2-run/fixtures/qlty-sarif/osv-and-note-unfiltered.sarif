@@ -1,0 +1,238 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "qlty",
+          "informationUri": "https://github.com/qlty/qlty",
+          "semanticVersion": "0.618.0",
+          "version": "0.618.0 macos-arm64 (663aded 2026-03-18)",
+          "releaseDateUtc": "2026-03-18",
+          "rules": [
+            {
+              "id": "ripgrep:TODO"
+            },
+            {
+              "id": "osv-scanner:CVE-2026-112949",
+              "helpUri": "https://osv.dev/CVE-2026-112949"
+            },
+            {
+              "id": "osv-scanner:CVE-2026-112950",
+              "helpUri": "https://osv.dev/CVE-2026-112950"
+            }
+          ],
+          "notifications": [
+            {
+              "level": "note",
+              "message": {
+                "text": "Successfully ran biome in 0.34s [OnJ74d]"
+              },
+              "descriptor": {
+                "id": "qlty:message:invocation.concluded.success",
+                "name": "qlty_check::executor",
+                "shortDescription": {
+                  "text": "Successfully ran biome in 0.34s [OnJ74d]"
+                }
+              }
+            },
+            {
+              "level": "note",
+              "message": {
+                "text": "Successfully ran zizmor in 0.15s [ys00p2]"
+              },
+              "descriptor": {
+                "id": "qlty:message:invocation.concluded.success",
+                "name": "qlty_check::executor",
+                "shortDescription": {
+                  "text": "Successfully ran zizmor in 0.15s [ys00p2]"
+                }
+              }
+            },
+            {
+              "level": "note",
+              "message": {
+                "text": "Successfully ran trufflehog in 1.47s [TlpdhG]"
+              },
+              "descriptor": {
+                "id": "qlty:message:invocation.concluded.success",
+                "name": "qlty_check::executor",
+                "shortDescription": {
+                  "text": "Successfully ran trufflehog in 1.47s [TlpdhG]"
+                }
+              }
+            },
+            {
+              "level": "note",
+              "message": {
+                "text": "Successfully ran ripgrep in 0.05s [n195eT]"
+              },
+              "descriptor": {
+                "id": "qlty:message:invocation.concluded.success",
+                "name": "qlty_check::executor",
+                "shortDescription": {
+                  "text": "Successfully ran ripgrep in 0.05s [n195eT]"
+                }
+              }
+            },
+            {
+              "level": "note",
+              "message": {
+                "text": "Successfully ran biome in 0.33s [EGydb1]"
+              },
+              "descriptor": {
+                "id": "qlty:message:invocation.concluded.success",
+                "name": "qlty_check::executor",
+                "shortDescription": {
+                  "text": "Successfully ran biome in 0.33s [EGydb1]"
+                }
+              }
+            },
+            {
+              "level": "note",
+              "message": {
+                "text": "Successfully ran trufflehog in 1.48s [zyGKhY]"
+              },
+              "descriptor": {
+                "id": "qlty:message:invocation.concluded.success",
+                "name": "qlty_check::executor",
+                "shortDescription": {
+                  "text": "Successfully ran trufflehog in 1.48s [zyGKhY]"
+                }
+              }
+            },
+            {
+              "level": "note",
+              "message": {
+                "text": "Successfully ran trufflehog in 1.47s [cNOLVb]"
+              },
+              "descriptor": {
+                "id": "qlty:message:invocation.concluded.success",
+                "name": "qlty_check::executor",
+                "shortDescription": {
+                  "text": "Successfully ran trufflehog in 1.47s [cNOLVb]"
+                }
+              }
+            },
+            {
+              "level": "note",
+              "message": {
+                "text": "Successfully ran osv-scanner in 2.81s [bdd1Jv]"
+              },
+              "descriptor": {
+                "id": "qlty:message:invocation.concluded.success",
+                "name": "qlty_check::executor",
+                "shortDescription": {
+                  "text": "Successfully ran osv-scanner in 2.81s [bdd1Jv]"
+                }
+              }
+            },
+            {
+              "level": "note",
+              "message": {
+                "text": "Successfully ran actionlint in 0.06s [NUT25y]"
+              },
+              "descriptor": {
+                "id": "qlty:message:invocation.concluded.success",
+                "name": "qlty_check::executor",
+                "shortDescription": {
+                  "text": "Successfully ran actionlint in 0.06s [NUT25y]"
+                }
+              }
+            },
+            {
+              "level": "note",
+              "message": {
+                "text": "Successfully ran ripgrep in 0.04s [0jY8Il]"
+              },
+              "descriptor": {
+                "id": "qlty:message:invocation.concluded.success",
+                "name": "qlty_check::executor",
+                "shortDescription": {
+                  "text": "Successfully ran ripgrep in 0.04s [0jY8Il]"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "osv-scanner:CVE-2026-112949",
+          "level": "warning",
+          "message": {
+            "text": "Package '@vitest/mocker@4.1.11' is vulnerable to 'CVE-2026-112949' (also known as 'GHSA-qxg6-89mg-rqv8')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "package-lock.json"
+                },
+                "region": {}
+              }
+            }
+          ],
+          "taxa": [
+            {
+              "id": "dependencyalert",
+              "name": "dependencyalert"
+            }
+          ]
+        },
+        {
+          "ruleId": "osv-scanner:CVE-2026-112950",
+          "level": "warning",
+          "message": {
+            "text": "Package '@vitest/mocker@4.1.11' is vulnerable to 'CVE-2026-112950' (also known as 'GHSA-xp26-3454-mjgp')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "package-lock.json"
+                },
+                "region": {}
+              }
+            }
+          ],
+          "taxa": [
+            {
+              "id": "dependencyalert",
+              "name": "dependencyalert"
+            }
+          ]
+        },
+        {
+          "ruleId": "ripgrep:TODO",
+          "level": "note",
+          "message": {
+            "text": "* 有効化するときは下記 TODO を実装する。"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "features/support/drivers/browser.ts"
+                },
+                "region": {
+                  "startLine": 6,
+                  "startColumn": 35,
+                  "endLine": 6,
+                  "endColumn": 39
+                }
+              }
+            }
+          ],
+          "taxa": [
+            {
+              "id": "lint",
+              "name": "lint"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

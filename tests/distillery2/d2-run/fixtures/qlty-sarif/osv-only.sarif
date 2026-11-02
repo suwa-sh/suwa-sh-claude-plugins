@@ -1,0 +1,75 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "qlty",
+          "informationUri": "https://github.com/qlty/qlty",
+          "semanticVersion": "0.618.0",
+          "version": "0.618.0 macos-arm64 (663aded 2026-03-18)",
+          "releaseDateUtc": "2026-03-18",
+          "rules": [
+            {
+              "id": "osv-scanner:CVE-2026-112949",
+              "helpUri": "https://osv.dev/CVE-2026-112949"
+            },
+            {
+              "id": "osv-scanner:CVE-2026-112950",
+              "helpUri": "https://osv.dev/CVE-2026-112950"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "osv-scanner:CVE-2026-112949",
+          "level": "warning",
+          "message": {
+            "text": "Package '@vitest/mocker@4.1.11' is vulnerable to 'CVE-2026-112949' (also known as 'GHSA-qxg6-89mg-rqv8')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "package-lock.json"
+                },
+                "region": {}
+              }
+            }
+          ],
+          "taxa": [
+            {
+              "id": "dependencyalert",
+              "name": "dependencyalert"
+            }
+          ]
+        },
+        {
+          "ruleId": "osv-scanner:CVE-2026-112950",
+          "level": "warning",
+          "message": {
+            "text": "Package '@vitest/mocker@4.1.11' is vulnerable to 'CVE-2026-112950' (also known as 'GHSA-xp26-3454-mjgp')."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "package-lock.json"
+                },
+                "region": {}
+              }
+            }
+          ],
+          "taxa": [
+            {
+              "id": "dependencyalert",
+              "name": "dependencyalert"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

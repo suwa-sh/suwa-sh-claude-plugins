@@ -277,3 +277,34 @@ test('0.1.33 P16: scenario-approve は feature の bytes の sha256 と、@uc:<s
   assert.notEqual(r.status, 0, '--feature は必須');
   assert.equal(rs.readEvents(dir).filter(e => e.type === 'scenario_approved').length, 3, '拒んだものは記録されない');
 });
+
+test('0.1.36: as-built の下書き (課題ファイルにしていない _asbuilt_) は、派遣し直しの前と asbuilt を含む差し戻しで invalidated/ へ退避する。課題ファイルにした下書きと他の課題は残す', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-run-'));
+  const dir = rs.openRun(root, 'register-loan');
+  const issues = path.join(dir, 'issues');
+  fs.mkdirSync(issues, { recursive: true });
+  const put = (f, mark = /_asbuilt_/.test(f)) => fs.writeFileSync(path.join(issues, f), `---\nkind: requirement\ntitle: t\n${mark ? 'source: asbuilt\n' : ''}---\nbody\n`);
+  put('20261103T010000Z_asbuilt_same-key-race.md');
+  put('20261103T010000Z_asbuilt_filed-one.md');
+  put('20261103T010000Z_backend-api_contract-gap.md');
+  put('20261103T010000Z_asbuilt_tier-named-asbuilt.md', false);  // ID が asbuilt のティアの課題 (印が無い) は退避しない
+  rs.appendEvent(dir, 'feedback_filed', { kind: 'requirement', ref: 'docs/feedback/20261103T010000Z_asbuilt_filed-one.md', issue_path: 'issues/20261103T010000Z_asbuilt_filed-one.md' });
+  // 派遣し直しの前 (CLI と同じ関数)
+  const moved = rs.setAsideAsbuiltDrafts(dir);
+  assert.equal(moved.length, 1);
+  assert.match(moved[0], /^invalidated\/\d{8}_\d{6}_20261103T010000Z_asbuilt_same-key-race\.md$/);
+  assert.deepEqual(fs.readdirSync(issues).sort(), ['20261103T010000Z_asbuilt_filed-one.md', '20261103T010000Z_asbuilt_tier-named-asbuilt.md', '20261103T010000Z_backend-api_contract-gap.md']);
+  assert.deepEqual(rs.readEvents(dir).filter(e => e.type === 'asbuilt_drafts_set_aside').map(e => e.moved), [moved]);
+  assert.deepEqual(rs.setAsideAsbuiltDrafts(dir), [], '2 回目は何もしない (イベントも足さない)');
+  assert.equal(rs.readEvents(dir).filter(e => e.type === 'asbuilt_drafts_set_aside').length, 1);
+  // 差し戻し (integrate へ戻す・main マージ 1 の 2 の verify --from) でも退避する。asbuilt より後 (deliver) からの退避では動かない
+  put('20261103T020000Z_asbuilt_second.md');
+  rs.invalidateFrom(dir, 'deliver', 'x');
+  assert.ok(fs.existsSync(path.join(issues, '20261103T020000Z_asbuilt_second.md')));
+  rs.invalidateFrom(dir, 'verify', '人の修正');
+  assert.ok(!fs.existsSync(path.join(issues, '20261103T020000Z_asbuilt_second.md')));
+  put('20261103T030000Z_asbuilt_third.md');
+  rs.returnToIntegrate(dir, { instrumentation_gaps: ['backend-api'] });
+  assert.ok(!fs.existsSync(path.join(issues, '20261103T030000Z_asbuilt_third.md')));
+  assert.deepEqual(rs.unfiledIssues(dir), ['issues/20261103T010000Z_asbuilt_tier-named-asbuilt.md', 'issues/20261103T010000Z_backend-api_contract-gap.md'], 'ティアの課題は残る');
+});

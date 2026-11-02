@@ -262,3 +262,66 @@ test('0.1.30 M6: failed_tests は 50 件で切り、総数を failed_tests_trunc
   assert.equal(job.failed_tests.length, 50);
   assert.equal(job.failed_tests_truncated, 60);
 });
+
+// ---- 0.1.36: 依存の脆弱性の指摘 (osv-scanner) だけで落ちた quality は通し、advisory を残す ----
+const SARIF_DIR = path.join(__dirname, 'fixtures/qlty-sarif');
+const FAKE_QLTY = path.join(SARIF_DIR, 'fake-qlty.js');
+
+function qualityRepo(args) {
+  const cmd = `node ${JSON.stringify(FAKE_QLTY)} --sarif-unfiltered ${JSON.stringify(path.join(SARIF_DIR, 'osv-and-note-unfiltered.sarif'))} ${args}`;
+  return makeRepo(CONFIG.replace('  arch_test: node -e "process.exit(0)"', `  arch_test: node -e "process.exit(0)"\n  quality: '${cmd.replace(/'/g, "''")}'`));
+}
+
+function qualityJob(repo) {
+  const s = JSON.parse(fs.readFileSync(path.join(repo, '.distillery/runs/loan/reports/gates.json'), 'utf8'));
+  return { gate: s.gates[0], job: s.gates[0].jobs.find(j => j.name === 'quality') };
+}
+
+test('0.1.36: advisoryFromSarif は結果がすべて osv-scanner のときだけ advisory を返す', () => {
+  const { advisoryFromSarif } = require('../../../plugins/distillery2/skills/d2-common/scripts/runGates');
+  const only = JSON.parse(fs.readFileSync(path.join(SARIF_DIR, 'osv-only.sarif'), 'utf8'));
+  assert.deepEqual(advisoryFromSarif(only), { plugin: 'osv-scanner', count: 2, rules: ['osv-scanner:CVE-2026-112949', 'osv-scanner:CVE-2026-112950'], files: ['package-lock.json'] });
+  assert.equal(advisoryFromSarif(JSON.parse(fs.readFileSync(path.join(SARIF_DIR, 'osv-and-lint.sarif'), 'utf8'))), null, '他の検査器の指摘が 1 件でもあれば通さない');
+  assert.equal(advisoryFromSarif({ runs: [{ results: [] }] }), null, '結果が無い (落ちた理由が SARIF に無い) なら通さない');
+  assert.equal(advisoryFromSarif(JSON.parse(fs.readFileSync(path.join(SARIF_DIR, 'osv-and-note-unfiltered.sarif'), 'utf8'))), null, '--level で絞らないと note (ripgrep) も入るので通さない (回し直しに --level が要る)');
+  assert.equal(advisoryFromSarif(null), null);
+  assert.equal(advisoryFromSarif({ runs: [{ results: [{ level: 'warning' }] }] }), null, 'ruleId の無い結果は通さない');
+});
+
+test('0.1.36: quality が osv-scanner の指摘だけで exit 1 なら static は pass で advisory を残す', () => {
+  const repo = qualityRepo(`--first 1 --second 1 --sarif-file ${JSON.stringify(path.join(SARIF_DIR, 'osv-only.sarif'))} --fail-level medium`);
+  const r = run(repo, ['--uc', 'loan', '--only', 'static']);
+  assert.equal(r.code, 0, r.out);
+  const { gate, job } = qualityJob(repo);
+  assert.equal(gate.status, 'pass');
+  assert.equal(job.status, 'pass');
+  assert.equal(job.exit, 1, '元の終了コードは残す');
+  assert.equal(job.advisory.count, 2);
+  assert.match(r.out, /依存の脆弱性の指摘 2 件 \(osv-scanner。止めずに報告\)/);
+  // 引用符付きの --fail-level も読む (シェルでは同じ引数)
+  for (const q of ['--fail-level "medium"', "--fail-level='medium'", '--fail-level=medium']) {
+    const repoQ = qualityRepo(`--first 1 --second 1 --sarif-file ${JSON.stringify(path.join(SARIF_DIR, 'osv-only.sarif'))} ${q}`);
+    const rq = run(repoQ, ['--uc', 'loan', '--only', 'static']);
+    assert.equal(rq.code, 0, `${q}: ${rq.out}`);
+    assert.equal(qualityJob(repoQ).job.advisory.count, 2, q);
+  }
+});
+
+test('0.1.36: osv 以外の指摘が混ざる・検査器の失敗 (exit 3)・SARIF が読めない・--fail-level が無いときは今までどおり fail', () => {
+  const cases = [
+    ['osv 以外の指摘がある', `--first 1 --second 1 --sarif-file ${JSON.stringify(path.join(SARIF_DIR, 'osv-and-lint.sarif'))} --fail-level medium`],
+    ['最初が検査器の失敗 (exit 3)', `--first 3 --second 1 --sarif-file ${JSON.stringify(path.join(SARIF_DIR, 'osv-only.sarif'))} --fail-level medium`],
+    ['回し直しが検査器の失敗 (exit 3)', `--first 1 --second 3 --sarif-file ${JSON.stringify(path.join(SARIF_DIR, 'osv-only.sarif'))} --fail-level medium`],
+    ['SARIF が読めない', '--first 1 --second 1 --sarif-file broken --fail-level medium'],
+    ['--fail-level が無い', `--first 1 --second 1 --sarif-file ${JSON.stringify(path.join(SARIF_DIR, 'osv-only.sarif'))}`],
+  ];
+  for (const [name, args] of cases) {
+    const repo = qualityRepo(args);
+    const r = run(repo, ['--uc', 'loan', '--only', 'static']);
+    assert.equal(r.code, 1, name);
+    const { gate, job } = qualityJob(repo);
+    assert.equal(gate.status, 'fail', name);
+    assert.equal(job.status, 'fail', name);
+    assert.ok(!('advisory' in job), name);
+  }
+});

@@ -64,7 +64,7 @@
 | ④ tier | `apps/<tier>/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除) |
 | ④ integrate | `features/step_definitions/**`、`features/support/**`、`<run>/reports/**`、`<run>/traces/**` (完了条件の runGates が書く。integrate は単独の段なので競合しない) |
 | ④ verify | `<run>/attempt-<n>/findings.<tier>.yaml` |
-| ④ asbuilt | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)、`<run>/reports/**` (depcruise の結果と抽出の集計) |
+| ④ asbuilt | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)、`<run>/reports/**` (depcruise の結果と抽出の集計)、`<run>/issues/<ts>_asbuilt_<slug>.md` (要約の課題のうち、人レビューに載っていないものの下書き) |
 | ① 要求の差分 (画面部品) | `docs/design/**` |
 | 還流 (ADR) | `docs/adr/**`、`.distillery/logs/feedback/<b>/<issue>.result.json` |
 | 還流 (契約) | `contracts/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**`、`.distillery/logs/feedback/<b>/<issue>.result.json` |
