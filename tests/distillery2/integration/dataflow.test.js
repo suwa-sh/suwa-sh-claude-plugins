@@ -211,7 +211,7 @@ test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run �
     problems.push(...compare(`${p.id} 書く`, D.backticks(c[3]).filter(D.looksLikePath), p.writes));
   }
   // d2-run の表: 処理ごとに 1 行。行の「処理」列 = run_table_row
-  const run = section('skills/d2-run/SKILL.md', /^## d2-run が直接読み書きするもの/).split('\n');
+  const run = section('skills/d2-run/references/direct-io.md', /^# d2-run が直接読み書きするもの/).split('\n');
   const runProcs = df.processes.filter(p => p.run_table_row);
   for (const p of runProcs) {
     const line = run.find(l => l.startsWith(`| ${p.run_table_row} |`));
