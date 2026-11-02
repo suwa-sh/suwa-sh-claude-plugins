@@ -827,10 +827,11 @@ test('0.1.36 S1: 依存の脆弱性 (osv-scanner) だけの quality の落ちは
 test('0.1.36 S2: as-built の要約役が見つけた課題は下書きにし、asbuilt の派遣の前と差し戻しで古い下書きを退避する', () => {
   const asbuilt = row(read(SKILL), /^\| \*\*asbuilt\*\* \|/);
   assert.match(asbuilt, /`node runState\.js set-aside-asbuilt-drafts <run>` で課題ファイルにしていない要約役の下書き/);
-  assert.match(asbuilt, /一覧の下書きのファイルが `<run>\/issues\/` にある/, '報告だけで受理しない');
+  assert.match(asbuilt, /一覧の下書きのファイルが `<run>\/issues\/` にあり、「下書きにした課題」と「下書きにしなかった行」の件数の合計が `checkAsBuilt\.js` の出力の「課題の行」と同じ/, '報告だけで受理しない。課題の行の取りこぼしを件数で止める');
   const d = read('skills/d2-asbuilt/SKILL.md');
   assert.match(d, /「決めたこと」\(人レビューに載った前提と Verifier の指摘\) と「課題」の issues の表のどちらにも載っていない事柄だけを、\n\s+下書き `<run>\/issues\/<ts>_asbuilt_<slug>\.md` にする/);
   assert.match(d, /front matter: `kind: requirement`/, '人が要求の差分で先に決める');
+  assert.match(d, /`source: asbuilt` \(要約役の下書きの印。/, 'ティアの課題と区別して退避する');
   assert.match(d, /下書きを 1 つでも書いたら、2 の抽出をもう一度回し/, '抽出節の課題の表を下書きと揃える');
   assert.match(d, /\| LLM \(このスキル\) \| [^\n]*`<run>\/issues\/<ts>_asbuilt_<slug>\.md`/);
 });

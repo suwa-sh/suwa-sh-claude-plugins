@@ -77,3 +77,17 @@ test('旧形式の名前無しブロック (文章) も検査して違反にす�
   assert.equal(r.blocks, 1);
   assert.ok(r.violations.some((v) => v.rule.startsWith('R4')) && r.violations.some((v) => v.rule.startsWith('R2')));
 });
+
+test('0.1.36 S2: issueRows は要約ブロック「課題」の表のデータ行を数え (見出しと区切りを除く)、CLI の ok に出す。ブロックが無ければ null', () => {
+  const { issueRows } = require(path.join(SCRIPTS, 'checkAsBuilt'));
+  const issues = ['| 課題 | 背景 | 今の実装 | 対処 | 根拠 |', '|---|---|---|---|---|', '| 同時要求で 500 | 行ロックしない | 500 を返す | 直列にするか決める | a.ts:1 |', '| 文言の食い違い | 契約と違う | 登録されていません | 揃える | b.ts:2 |'].join('\n');
+  const md = [wrap('概要', table(['| 誰が | 職員 | x.ts:1 |'])), wrap('課題', issues)].join('\n\n');
+  assert.equal(issueRows(md), 2);
+  assert.equal(issueRows(wrap('概要', table(['| 誰が | 職員 | x.ts:1 |']))), null);
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const { execFileSync } = require('node:child_process');
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'd2-check-')), 'index.md');
+  fs.writeFileSync(f, md + '\n');
+  assert.match(execFileSync(process.execPath, [path.join(SCRIPTS, 'checkAsBuilt.js'), f], { encoding: 'utf8' }), /^ok: 要約ブロック 2 個、違反なし、課題の行 2$/m);
+});

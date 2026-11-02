@@ -111,6 +111,18 @@ function check(md, opts = {}) {
   return { violations, blocks: blocks.length };
 }
 
+/**
+ * 要約ブロック `課題` の表のデータ行の数 (見出し行と区切り行を除く)。ブロックが無ければ null。
+ * d2-run が、要約役の報告の「下書きにした課題」と「下書きにしなかった行」の合計と照合する (課題の取りこぼしを受理で止める)
+ */
+function issueRows(md) {
+  const b = extractBlocks(md).find((x) => x.name === '課題');
+  if (!b) return null;
+  const rows = b.body.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('|'));
+  const seps = rows.filter((l) => /^\|[\s:|-]+\|$/.test(l)).length;
+  return rows.length - 2 * seps;
+}
+
 function main(argv) {
   const file = argv[0];
   if (!file || file.startsWith('--')) { console.error('Usage: checkAsBuilt.js <index.md> [--max-cell N]'); return 2; }
@@ -119,7 +131,7 @@ function main(argv) {
   const md = fs.readFileSync(file, 'utf8');
   const r = check(md, opts);
   if (!r.blocks) { console.error('要約ブロックが見つからない (extractAsBuilt.js を先に実行する)'); return 2; }
-  if (!r.violations.length) { console.log(`ok: 要約ブロック ${r.blocks} 個、違反なし`); return 0; }
+  if (!r.violations.length) { const n = issueRows(md); console.log(`ok: 要約ブロック ${r.blocks} 個、違反なし${n === null ? '' : `、課題の行 ${n}`}`); return 0; }
   for (const v of r.violations) console.log(`${file}:${v.line} [${v.block}] ${v.rule}: ${v.text}`);
   console.log(`違反 ${r.violations.length} 件。表だけで書き、1 セルを短くする (references/asbuilt-format.md)`);
   return 1;
@@ -127,4 +139,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { check, visibleLength, extractBlocks, DEFAULTS };
+module.exports = { check, visibleLength, extractBlocks, issueRows, DEFAULTS };

@@ -177,14 +177,20 @@ function invalidateFrom(runDir, stage, reason) {
 }
 
 const ASBUILT_DRAFT = /^[^/]+_asbuilt_[^/]+\.md$/;
+/** 要約役の下書きか: 名前が `<ts>_asbuilt_<slug>.md` で、front matter に `source: asbuilt` がある (asbuilt という名前のティアの課題と区別する) */
+function isAsbuiltDraft(runDir, key) {
+  if (!ASBUILT_DRAFT.test(path.basename(key))) return false;
+  const fm = /^---\n([\s\S]*?)\n---/.exec(fs.readFileSync(path.join(runDir, key), 'utf8'));
+  return Boolean(fm && /^source:\s*['"]?asbuilt['"]?\s*$/m.test(fm[1]));
+}
 
 /**
- * as-built の要約役の下書き (`issues/<ts>_asbuilt_<slug>.md`) のうち課題ファイルにしていないものを invalidated/ へ移す。
+ * as-built の要約役の下書き (`issues/<ts>_asbuilt_<slug>.md` で front matter が `source: asbuilt`) のうち課題ファイルにしていないものを invalidated/ へ移す。
  * as-built をやり直す前に呼ぶ (派遣し直し・差し戻し)。移したものがあれば asbuilt_drafts_set_aside を記録する。移した run 相対パスの配列を返す
  */
 function setAsideAsbuiltDrafts(runDir) {
   const moved = [];
-  for (const key of unfiledIssues(runDir).filter(k => ASBUILT_DRAFT.test(path.basename(k)))) {
+  for (const key of unfiledIssues(runDir).filter(k => isAsbuiltDraft(runDir, k))) {
     const dest = uniqueDest(path.join(runDir, 'invalidated', `${ts()}_${path.basename(key)}`));
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.renameSync(path.join(runDir, key), dest);
