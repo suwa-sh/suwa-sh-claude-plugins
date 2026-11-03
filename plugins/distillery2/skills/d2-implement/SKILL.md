@@ -54,3 +54,7 @@ v1 (distillery-impl:dist-impl-implement) からの変更点:
 | `scripts/validateAssumptions.js` | AssumptionRecord と Verifier 判定の検証 (record / verdicts / evidence) |
 | `scripts/checkScenario.js` | feature の静的確認 (`@uc:` タグ、受入基準の `@acceptance:` 対応、parse) |
 | `<skills>/d2-common/scripts/runGates.js` | ゲート実行 (`--only unit --expect-red unit`、`--from uc-bdd` など) |
+
+## 引き継ぎファイル
+
+作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題を書く (書き方は [handoff.md](../d2-common/references/handoff.md))。報告の本文にだけ書いたことは扱われない。推奨は条件を付けずに 1 つ書く。

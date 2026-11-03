@@ -1,0 +1,64 @@
+# 引き継ぎファイル
+
+担当 (サブエージェント) は、作業の終わりに **引き継ぎファイル** を書く。人に聞きたいことと、前のステップの問題を、報告の本文ではなくこのファイルで返す。
+進行役は報告の本文を読まず、このファイルを `handoff.js` で検査して振り分ける。**本文にだけ書いたことは扱われない** (経費精算の試し運転で、要求の抜けの指摘が報告に書かれただけで消えた)。
+
+置き場は進行役が派遣文で渡す (`{handoff}`)。中身が無くても、空の配列で書く。
+
+```yaml
+schema_version: distillery2.handoff/v1
+step: foundation                 # 派遣した段 (requirements / decide / foundation / design / contract-skeleton / scenario / contract / scaffold / tier / integrate / asbuilt / refute など)
+asks:                            # 人に聞きたいこと
+  - id: audit-store              # 英数字・_・-
+    kind: choice                 # choice = 選び方の問題 / unknown_fact = 人しか知らない事実が要る (社員数・会社の色・契約済みのクラウドなど)
+    question: 監査ログをどこに残すか
+    options:                     # 2 つ以上。label は返信にそのまま使う
+      - {label: DB の表, impact: 申請と同じ取引で書ける}
+      - {label: ファイル, impact: 別に回収の仕組みが要る}
+    recommended: DB の表          # 条件の付かない 1 つ (options の label)。決められなければ null
+    reason: 申請と一緒に残せば抜けない
+  - id: seed
+    kind: choice
+    question: 社員の初期データをどう入れるか
+    options: [{label: 移行スクリプト, impact: 一度だけ}, {label: 管理画面, impact: UC が増える}]
+    recommended: null
+    no_recommendation_reason: 要望に手掛かりが無い   # recommended が null なら必須
+upstream_issues:                 # 前のステップの問題 (自分の書き込み範囲では直せないもの)
+  - id: list-entry
+    target_step: requirements    # 戻し先: requirements / decide / foundation / scenario / contract / implementation
+    title: 差し戻された申請を開く入口が無い   # 40 字以内
+    detail: 社員が自分の申請の一覧を見る UC が無く、差し戻しの申請を開けない
+    evidence: 画面の担当の確認 (申請の一覧の画面が要求に無い)
+    recommended_fix: 自分の申請一覧の UC を足す
+refutations: []                  # レビューの指摘への反証 (反証して直す派遣のときだけ。下記)
+```
+
+## 書き方の決まり
+
+- **推奨は条件を付けない**。「指定があれば B、無ければ A」と書きたくなったら、条件を手元の事実で決められるなら決めた側を `recommended` にする。決められなければ `kind: unknown_fact` にする
+- `unknown_fact` にも推奨 (仮置きの値) を書く。推奨案で進めるモードでは仮置きで進め、自律モードでは人に返る
+- 推奨を決められないときは `recommended: null` と理由を書く (受理される。人に返る)
+- `upstream_issues` は、自分の書き込み範囲の外を直さないと解けない問題だけを書く。範囲の中で直せるものは直す
+- `target_step` の選び方: 何を作り直せば解けるか (要求 = USDM・RDRA・UC 一覧 / 決定 = 非機能グレード・ADR / 基盤 = 開発ルール・テスト基盤・画面部品・設定 / シナリオ / 契約 / 実装)
+
+## 反証して直す派遣のとき
+
+レビューの指摘 (`<reviews>/<point>/roundN.md`) を 1 件ずつ吟味し、`refutations` に全件を書く。
+
+```yaml
+refutations:
+  - {finding: 指摘 1, result: accepted, reason: 要望の「出し直し」が UC に無い, change: 出し直しの UC を足した}
+  - {finding: 指摘 2, result: refuted, reason: 申請の状態は状態モデルの「承認待ち」に書いてある}
+  - {finding: 指摘 3, result: needs_info, reason: 上長が不在のときの扱いが要望に無い}
+```
+
+- `accepted` は直してから書く (`change` に何を変えたか)。`refuted` は根拠 (ファイルと箇所) を `reason` に書く
+- `needs_info` は人の判断が要るもの。進行役が人に返す
+
+## 検証役
+
+検証役は findings 以外を書けないので、findings (schema 2.2) に `asks` と `upstream_issues` を同じ形で持つ。
+
+## 検査
+
+`node <skills>/d2-common/scripts/handoff.js validate <file>` が exit 0 になること (進行役の受理の検査)。形は `<skills>/d2-common/scripts/schema-handoff.json`。

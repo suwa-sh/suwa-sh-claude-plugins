@@ -13,15 +13,25 @@
 
 スキルの指示に従い、全ステップを完了してください。
 制約:
-- AskUserQuestion を使わないでください。人の判断が必要なら、質問と選択肢を結果として返してください
+- AskUserQuestion を使わないでください。人に聞きたいことと前のステップの問題は、引き継ぎファイル {handoff} に書いてください (書き方は <skills>/d2-common/references/handoff.md の絶対パス)。推奨は条件を付けずに 1 つ書いてください。報告の本文に書いただけでは扱われません
 - git コマンド (add / commit / push / switch 等) を実行しないでください。コミットはオーケストレータが行います。
   例外: 手順書が回すスクリプトの内部の git (読み取りの rev-parse / diff / ls-files と、genQlty.js が qlty init に未追跡ファイルを見せるための一時的な `git add -N`。終わったら index を書き戻す) はそのまま回してよい
 - 書き込みは次の write-set 内に限定してください: {write_set}   ← 下の「派遣ごとの write-set」のその段階の行 (正本から生成)。行はそのまま貼り (置き換えない。受理の検査は行の形で見る)、直後に置換部分の値を 1 行で添える (例 `<業務> = 蔵書管理業務、<slug> = register-book、<run> = .distillery/runs/register-book`。0.1.34 Q12)
-  それ以外への書き込みが必要になったら、作業を止めて理由を結果として返してください
+  それ以外への書き込みが必要になったら、作業を止めて理由を結果として返してください。引き継ぎファイル {handoff} は write-set に関わらず書いてよい
 - YAML を書くときは、値に `: ` や括弧を含む文字列を必ずクォートし、書き終えたら parse 確認してください
 {additional_instructions}
 完了後、生成・更新したファイル一覧と結果の要点を報告してください。
 ```
+
+## 引き継ぎファイルの置き場 (`{handoff}`)
+
+| 派遣 | 置き場 |
+|---|---|
+| run の無い段 (①②③・要求の差分) | `.distillery/handoff/<段>-<ts>.yaml` |
+| 機能の各段 (④) | `<run>/handoff/<段>[-<tier>]-<ts>.yaml` |
+| 検証役 (④ verify) | 渡さない (findings の `asks` と `upstream_issues` が代わり。schema 2.2) |
+
+`<ts>` は派遣の時刻 (`date -u +%Y%m%dT%H%M%SZ`)。受理では `node <skills>/d2-common/scripts/handoff.js validate <file>` が exit 0 であること (無ければ不合格)。
 
 ## 段階ごとの変数
 

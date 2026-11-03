@@ -144,3 +144,7 @@ d2-run が派遣する。実装で見つかった「契約の穴」(課題ファ
 - 生成テストが依存するライブラリ (ajv 8 / ajv-formats 3 / supertest / vitest / @electric-sql/pglite) は
   対象リポの devDependencies に入れる。バージョンは [`references/contract-tests.md`](references/contract-tests.md)。
 - 契約テストで踏んだ問題と回避策は [`references/troubleshooting.md`](references/troubleshooting.md)。
+
+## 引き継ぎファイル
+
+作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題を書く (書き方は [handoff.md](../d2-common/references/handoff.md))。報告の本文にだけ書いたことは扱われない。推奨は条件を付けずに 1 つ書く。
