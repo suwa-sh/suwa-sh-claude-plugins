@@ -10,6 +10,7 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
     events.jsonl                    # 追記のみ。1 行 1 イベント {seq, ts, type, ...}
     stages/<stage>.done.yaml        # 完了の正。存在 = 完了。中身は完了時刻と要点 (commit, attempt など。0.1.30〜0.1.31 の run にある carry_over_status は読まない。0.1.32 で UC への持ち越しをやめた)
     attempt-<n>/
+      attempt.json                  # attempt を開いた印 (rewind が書く。中身の無い attempt-<n> は数えない)
       assumptions.<tier>.yaml       # 実装者が補った前提 (AssumptionRecord)
       findings.<tier>.yaml          # Verifier の指摘 (ティアごと)
     reports/                        # gates.json と各ゲートの JSON レポート。gates.prev.json (main マージ 1 の 2 で作り直す前の控え)・gates.failed-1.json (回し直す前の控え)
@@ -21,13 +22,15 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
     reviews/<場所>[-<tier>]/        # 縦・横レビューの依頼文と結果 (reviewStep.js。0.2.0)
     issues/<ts>_<tier>_<slug>.md    # ティア実装者の課題 (並列の他ティアと衝突しないようにティアを入れる)
     learnings/<ts>_<slug>.md
-    invalidated/<ts>_<stage>.done.yaml   # 無効化した done の退避
+    invalidated/<ts>_<stage>.done.yaml   # 無効化した done の退避 (写し直しで退避したレビューの置き場は invalidated/<ts>_reviews_<場所>/)
+    resume/<n>/<path>.diff          # n 回目の写し直しで統合できなかった機能側の差分 (resumeAfterUpstream.js。担当が反映するか取り下げる)
   archive/runs/<uc_slug>/<ts>/      # 開き直した UC の前の run (追跡。runState.js reopen が移す。reports/・traces/ は消してから移す。reopened.json に開き直した段・引き継いだ段・きっかけの課題。0.1.35・0.2.0)
   handoff/<段>-<ts>.yaml            # 上流の段 (①②③・上流の差分) の引き継ぎファイル (追跡。0.2.0)
   decisions.jsonl                   # 上流の段の決めたことの記録 (追跡。0.2.0)
   reviews/<場所>/                   # 上流の段の縦・横レビュー (追跡。0.2.0)
   logs/feedback/<b>/                # 0.1.x の還流のバッチの状態 (gitignore)。0.2.0 では途中で止まったものを片付けるだけ (routing.md)
   worktrees/<uc_slug>/<issue>/      # 上流で止めるときの一時の worktree (gitignore)
+  logs/resume-<uc_slug>.json        # 写し直しの処理の記録 (gitignore。途中で止まったら続きから行う。終わったら消える)
 docs/feedback/<issue>.md            # 課題ファイル (追跡)。戻し先 (target_step) で振り分け、反映したら消す (routing.md「課題の消し方」)。kind: plugin (プラグインへ持ち帰る課題) は人が消す
 docs/feedback/README.md             # 課題の一覧 (genDocsReadme が生成。0 件なら消す)
 ```
@@ -44,11 +47,12 @@ docs/feedback/README.md             # 課題の一覧 (genDocsReadme が生成�
 `scenario → contract → scaffold → tier → contract-gate → integrate → verify → review → asbuilt → deliver`
 
 - 0.1.27 で UC は main マージで終わるようにした。UC の課題は main マージのときに課題ファイルにし、0.2.0 からは戻し先 (`target_step`) で振り分ける (上流の差分か開き直し。routing.md)
-- 0.1.26 の run が持つ `stages/feedback.done.yaml` は読まない (main マージの done があれば旧形式と判定しない)。0.1.26 で main マージして還流を終えていない run の課題は、起動時の移行 (`feedbackBatch.js scan` の `unfiled_runs`。自動選択の 3 の 2) が課題ファイルにする
+- 0.1.26 の run が持つ `stages/feedback.done.yaml` は読まない (main マージの done があれば旧形式と判定しない)。0.1.26 で main マージして還流を終えていない run の課題は、起動時の移行 (`feedbackBatch.js scan` の `unfiled_runs`。自動選択の `migrate`) が課題ファイルにする
 - 0.1.25 までの run (還流の done があり main マージの done が無い) は `status` の `legacy_order: true` で次の段階を出さない。d2-run が人に main マージ済みかを聞き、
   main マージ済みなら `node runState.js mark-legacy-delivered <runDir>` で main マージの done (`legacy: true`) を作る。まだなら `invalidate <runDir> feedback` で新しい順に戻す
 
-- 再開は done が無い最初の段階から。`node runState.js status <runDir>` で確認する
+- 再開は done が無い最初の段階から。`node runState.js status <runDir>` で確認する。`status` は有効な分岐元 `base_head` (最後の `resumed_after_upstream` の `base_head`、無ければ `branch_started` の `base_head`)、上流で止まっているか (`paused`・`paused_issues`)、写し直しの回数 (`resumes`・`resume_limit`) も返す
+- 上流で止めた機能は、止めた課題がすべて main から消えたら `resumeAfterUpstream.js run` が新しい main の上に写し直し、続きの段以降の done とレビューの置き場を退避する (写し直しは 3 回まで)
 - `tier` と `verify` は attempt ごとに繰り返す。tier へ戻るときは `rewind <run> implementation` (tier 以降の done を退避して attempt を進める)。契約・シナリオへ戻るときは `rewind <run> contract | scenario`。巻き戻しと as-built からの差し戻しは合わせて 3 回まで (超えると exit 3。人に返す)
 - 後ろの段階をまとめて退避するときは `invalidate <run> <stage> <reason> --from` を使う (その段階と後ろの done をすべて退避する。1 つずつ呼ぶと漏らしやすい)
 - 上流 (要求・ADR・契約) が変わったら、`basis.js check` で古くなった成果物を見つけ、対応する段階を `invalidate` する
@@ -71,8 +75,10 @@ docs/feedback/README.md             # 課題の一覧 (genDocsReadme が生成�
 | rewound | 機能の中で前のステップへ巻き戻した。`{to, stage, attempt, issue, reason, over_limit?}` (`runState.js rewind` が書く。0.2.0) |
 | inherited | 開き直しで前の run から done と scenario の承認を引き継いだ。`{from, stages, archive}` (`runState.js reopen --from` が書く。0.2.0) |
 | review_rejected | 人レビューで「実装を直す」。`{rejected_assumptions}` |
-| blocked_on_upstream | 上流 (要求・決定・基盤) の反映待ちで停止した。`{target, issues}`。課題ファイルを main に入れ、feature の run に記録して commit する (次の起動の自動選択 2 が進行中とみなさない。0.2.0) |
-| blocked_on_requirement | (0.1.x の記録。0.2.0 からは blocked_on_upstream) 要求の反映待ちで停止した。`{stage: scenario \| review}`: `review` は人レビューで「要求を直す」を選んだとき、`scenario` はシナリオの検査で他 UC の振る舞いを含む受入基準が残り、要求の課題にしたとき (0.1.32 J1)。どちらも課題ファイルを main に入れ、feature の run に記録して commit する (次の起動の自動選択 2 が `git show` で読み、進行中とみなさない) |
+| blocked_on_upstream | 上流 (要求・決定・基盤) の反映待ちで停止した。`{issues: [{id, target, resume_from?}]}` (課題ファイルの名前・戻し先・写し直した後に続ける段)。0.2.0 の `{target, issues: [<パス>]}` も読む。課題ファイルを main に入れ、feature の run に記録して commit する (自動選択が進行中とみなさない) |
+| resumed_after_upstream | 上流を直した後の main の上に写し直した。`{base_head, from_head, from_stage, paused_ref, issues, conflicts, diffs, regenerated, stale}` (`resumeAfterUpstream.js` が書く。これより後の `blocked_on_upstream` が無ければ止まっていない。0.3.0) |
+| reviews_set_aside | 写し直しで続きの段以降のレビューの置き場を `invalidated/` へ移した。`{reason, moved}` (0.3.0) |
+| blocked_on_requirement | (0.1.x の記録。0.2.0 からは blocked_on_upstream) 要求の反映待ちで停止した。`{stage: scenario \| review}`: `review` は人レビューで「要求を直す」を選んだとき、`scenario` はシナリオの検査で他 UC の振る舞いを含む受入基準が残り、要求の課題にしたとき (0.1.32 J1)。どちらも課題ファイルを main に入れ、feature の run に記録して commit する (自動選択が `git show` で読み、進行中とみなさない) |
 | returned_to_integrate | asbuilt の受理時に集計 (`reports/asbuilt.json`) の計装なし / 正常系に部品なしのティアが空でなく、integrate へ戻した。`{from: "asbuilt", instrumentation_gaps, instrumentation_happy_gaps, moved_findings}`。`runState.js return-to-integrate` が 同じ attempt の `findings.<tier>.yaml` を `invalidated/<ts>_attempt-<n>_findings.<tier>.yaml` へ移し、integrate 以降の done を退避してから記録する (attempt は上げない) |
 
 `runState.js status` は、起票済みの課題を `filed_issues`、課題ファイルにしていない `issues/*.md` を `unfiled_issues` (表示にも出す)、0.1.25 までの記録の未解消の保留を `pending_feedback` に出す

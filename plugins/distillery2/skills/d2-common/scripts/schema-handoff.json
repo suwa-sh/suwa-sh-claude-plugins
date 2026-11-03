@@ -8,7 +8,8 @@
     "step": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "asks": { "type": "array", "items": { "$ref": "#/$defs/ask" } },
     "upstream_issues": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
-    "refutations": { "type": "array", "items": { "$ref": "#/$defs/refutation" } }
+    "refutations": { "type": "array", "items": { "$ref": "#/$defs/refutation" } },
+    "resume_diffs": { "type": "array", "items": { "$ref": "#/$defs/resume_diff" } }
   },
   "$defs": {
     "ask": {
@@ -48,7 +49,19 @@
         "detail": { "type": "string", "minLength": 1 },
         "evidence": { "type": "string", "minLength": 1 },
         "recommended_fix": { "type": "string", "minLength": 1 },
-        "uc": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+        "uc": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "resume_from": { "enum": ["scenario", "contract", "implementation"] }
+      }
+    },
+    "resume_diff": {
+      "type": "object",
+      "required": ["diff", "result", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "diff": { "type": "string", "minLength": 1 },
+        "result": { "enum": ["applied", "dropped"] },
+        "where": { "type": "string" },
+        "reason": { "type": "string" }
       }
     },
     "refutation": {

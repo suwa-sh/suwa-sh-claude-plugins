@@ -514,6 +514,17 @@ stores:
     path: ".distillery/reviews/**"
     origin: produced
     terminal: true
+  # ---- 写し直し (0.3.0。上流で止めた機能を、上流を直した後の main の上で続ける) ----
+  - id: resume-diffs
+    name: 写し直しで統合できなかった機能側の差分 (担当が反映するか取り下げる)
+    group: run
+    path: "<run>/resume/**"
+    origin: produced
+  - id: resume-journal
+    name: 写し直しの処理の記録 (gitignore。途中で止まったら続きから行う)
+    group: run
+    path: ".distillery/logs/resume-<slug>.json"
+    origin: produced
 
 processes:
   # ================= ① 要求 =================
@@ -1069,6 +1080,26 @@ processes:
     run_table_row: "③ の基盤の差分の取り込み"
     reads: [feedback-docs, config, reports, use-cases]
     writes: [feedback-docs, reports, use-cases, run-archive]
+  # ================= 起動時の自動選択と写し直し (0.3.0) =================
+  - id: run.next-action
+    name: 次に何をするかを決める (起動時の自動選択。読むだけ)
+    stage: startup
+    kind: script
+    actor: d2-run
+    scripts: [nextAction.js]
+    run_table_row: "起動時の nextAction.js"
+    reads: [use-cases, adr, config, run-events, feedback-docs, decisions-upstream, resume-journal, run-archive]
+    writes: []
+  - id: run.resume
+    name: 上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から)
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [resumeAfterUpstream.js]
+    run_table_row: "④ の resumeAfterUpstream.js (写し直し)"
+    reads: [run-events, feedback-docs, resume-journal, resume-diffs, handoff-run]
+    writes: [run-events, resume-diffs, resume-journal, reviews-run, contracts-src, contract-tests, rules, depcruise-config, adr, docs-readme, feedback-index]
   # ================= 起動時の移行 (UC の外。課題を数える前に、0.1.x の残りを片付ける) =================
   # main マージ済みなのに課題ファイルにしていない run の課題を課題ファイルにする (0.1.28)
   - id: run.migrate-issues

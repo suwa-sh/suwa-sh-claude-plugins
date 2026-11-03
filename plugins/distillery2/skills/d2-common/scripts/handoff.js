@@ -120,7 +120,7 @@ function fileDrafts(file, data, { run, root }) {
   const skipped = [];
   for (const u of data.upstream_issues || []) {
     const name = `${base}_${u.id}.md`.replace(/[^A-Za-z0-9_.-]/g, '-');
-    const fm = { kind: KIND_OF[u.target_step], title: u.title, target_step: u.target_step, source: `handoff:${step}` };
+    const fm = { kind: KIND_OF[u.target_step], title: u.title, target_step: u.target_step, source: `handoff:${step}`, ...(u.resume_from ? { resume_from: u.resume_from } : {}) };
     let dest;
     if (run) {
       dest = path.join(path.resolve(run), 'issues', `${stamp()}_${step}_${name}`);

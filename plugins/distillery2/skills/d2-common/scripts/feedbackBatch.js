@@ -91,8 +91,27 @@ function listFeedback(dir) {
   if (!fs.existsSync(d)) return [];
   return fs.readdirSync(d).filter((f) => f.endsWith('.md') && f !== 'README.md').sort().map((f) => {
     const { fm } = splitFrontMatter(fs.readFileSync(path.join(d, f), 'utf8'));
-    return { id: f.replace(/\.md$/, ''), kind: fm.kind || null, target_step: targetOf(fm), title: fm.title || '', from_uc: fm.from_uc || null, created: fm.created || '', stopped: Boolean(fm.stopped), stopped_count: Number(fm.stopped_count || 0) };
+    const id = f.replace(/\.md$/, '');
+    return { id, kind: fm.kind || null, target_step: targetOf(fm), title: fm.title || '', from_uc: fm.from_uc || null, created: fm.created || '', stopped: Boolean(fm.stopped), stopped_count: Number(fm.stopped_count || 0),
+      resume_from: fm.resume_from || null, chain: fm.chain || id, chain_depth: Number(fm.chain_depth || 0) };
   });
+}
+
+/** 上流の直しの連鎖の上限 (0.3.0)。課題の chain_depth (きっかけの課題から何段目の直しで出た課題か) がこれを超えたら人に返す */
+const MAX_CHAIN_DEPTH = 3;
+
+/** 人が「続ける」と答えた連鎖 (.distillery/decisions.jsonl の page:limit:chain:<chain> の答えが「続ける」で始まる) */
+function chainOverrides(root) {
+  const f = path.join(root, '.distillery', 'decisions.jsonl');
+  if (!fs.existsSync(f)) return new Set();
+  const out = new Set();
+  for (const l of fs.readFileSync(f, 'utf8').split('\n').filter(Boolean)) {
+    let e;
+    try { e = JSON.parse(l); } catch { continue; }
+    const m = /^page:limit:chain:(.+)$/.exec(String(e.id || ''));
+    if (m && String(e.answer || '').startsWith('続ける')) out.add(m[1]);
+  }
+  return out;
 }
 
 function feedbackPath(dir, id) { return path.join(dir, FEEDBACK_REL, `${id}.md`); }
@@ -155,6 +174,8 @@ function cmdFileIssues(root, runDirArg) {
       const out = { kind: fm.kind || null, title: fm.title || id, from_uc: slug, status: 'open', created: new Date().toISOString().replace(/\.\d+Z$/, 'Z') };
       if (target) out.target_step = target;
       if (fm.tier) out.tier = fm.tier;
+      // 写し直しの続きの段と、上流の直しの連鎖 (0.3.0) を下書きから運ぶ
+      for (const k of ['resume_from', 'chain', 'chain_depth']) if (fm[k] != null) out[k] = fm[k];
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, joinFrontMatter(out, body));
     }
@@ -238,8 +259,20 @@ function cmdScan(root) {
   const reopenBy = new Map();
   const carriedBy = new Map();
   const order = ['scenario', 'contract', 'implementation'];
+  // 連鎖の上限を超えた課題は upstream に入れず limit_reached に出す (人が「続ける」と答えた連鎖は除く)
+  const overrides = chainOverrides(root);
+  const limitBy = new Map();
   for (const x of all) {
-    if (upstream[x.target_step]) { upstream[x.target_step].push(x.id); continue; }
+    if (upstream[x.target_step] && x.chain_depth > MAX_CHAIN_DEPTH && !overrides.has(x.chain)) {
+      const c = limitBy.get(x.chain) || { chain: x.chain, depth: 0, issues: [] };
+      c.depth = Math.max(c.depth, x.chain_depth);
+      c.issues.push(x.id);
+      limitBy.set(x.chain, c);
+    }
+  }
+  const limited = new Set([...limitBy.keys()]);
+  for (const x of all) {
+    if (upstream[x.target_step]) { if (!limited.has(x.chain)) upstream[x.target_step].push(x.id); continue; }
     if (!order.includes(x.target_step) || !x.from_uc) continue;
     if (!runState.isDone(runState.runDirOf(root, x.from_uc), 'deliver')) {
       const c = carriedBy.get(x.from_uc) || { uc: x.from_uc, from: x.target_step, issues: [] };
@@ -256,7 +289,7 @@ function cmdScan(root) {
   const batch = batchStatus(root);
   // 0.2.0: 還流は無い。feedback_due は 0.1.x の途中で止まったバッチがあること (片付けが要る) だけを表す。triggers・stopped は互換のため残す
   const feedbackDue = batch.point !== 'none';
-  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, uncovered_done: uncoveredDone(root), reopened: runState.reopenedSlugs(root), batch, feedback_due: feedbackDue, upstream, reopen_targets: [...reopenBy.values()], carried: [...carriedBy.values()] };
+  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, uncovered_done: uncoveredDone(root), reopened: runState.reopenedSlugs(root), batch, feedback_due: feedbackDue, upstream, reopen_targets: [...reopenBy.values()], carried: [...carriedBy.values()], limit_reached: [...limitBy.values()], chain_limit: MAX_CHAIN_DEPTH, resume_from: Object.fromEntries(all.filter((x) => x.resume_from).map((x) => [x.id, x.resume_from])) };
 }
 
 /** features/ 配下 (features/acceptance/ を除く) の <slug>.feature を探す。無ければ null、複数なら配列のまま返す */

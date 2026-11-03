@@ -62,10 +62,10 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 | 戻し先 | 機能の作業中 | main マージ済みの機能について |
 |---|---|---|
 | scenario / contract / implementation | **その場で巻き戻す**: `<RS> rewind <run> <戻し先> --issue <下書き> --reason "<題名>"`。implementation は attempt を上げて tier から。次の段からやり直す | 課題ファイルのまま残す。次の起動の自動選択が `reopen_targets` で開き直す |
-| requirements / decide / foundation | **機能を止める**: 下書きを「上流で止めるとき」の手順で課題ファイルにして main に入れ、`blocked_on_upstream {target, issues}` を記録して feature に commit して停止 | 課題ファイルのまま。次の起動の自動選択が上流の差分を選ぶ |
+| requirements / decide / foundation | **機能を止める**: 下書きを「上流で止めるとき」の手順で課題ファイルにして main に入れ、`blocked_on_upstream {issues}` を記録して feature に commit する (feature は消さない。上流の差分の後に写し直す) | 課題ファイルのまま。自動選択が上流の差分を選ぶ |
 
 - 契約ゲート・結合・検証・人レビューの「実装を直す」も、同じ `rewind <run> implementation` で戻す (回数を数えるため)。as-built からの差し戻しは `return-to-integrate` (同じく数える)
-- 巻き戻しも開き直しも 3 回まで。超えたら `runState.js` が exit 3 を返すので、人に返す (`page:limit:<slug>`)。人が続けると答えたら `--override-limit` を付けて回し直す
+- 巻き戻しも開き直しも写し直しも 3 回まで。超えたら `runState.js` / `resumeAfterUpstream.js` が exit 3 を返すので、人に返す (`page:limit:<slug>`)。人が続けると答えたら `--override-limit` を付けて回し直す
 
 ### 上流で止めるとき (要求・決定・基盤への課題)
 
@@ -78,9 +78,11 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 5. feature のまま `git fetch . feedback-req/<slug>/<issue>:main` で main を ff する
 6. `git worktree remove <wt>` → `git merge-base --is-ancestor feedback-req/<slug>/<issue> main` が exit 0 なら `git branch -D feedback-req/<slug>/<issue>`
 7. remote `origin` があれば `git push origin main` (拒否されたら止まって報告する。force push はしない)
-8. `<RS> event <run> blocked_on_upstream '{"target":"<戻し先>","issues":["docs/feedback/<id>.md"]}'` → feature で `git add -A -- .distillery/runs/<slug>` → `impl(<slug>): <段> (blocked)` で commit して停止
+8. `<RS> event <run> blocked_on_upstream --data-file <json>` (`{"issues": [{"id": "<課題ファイルの名前 (.md を除く)>", "target": "<戻し先>", "resume_from": "<課題の resume_from。無ければ書かない>"}]}`。2 で課題ファイルにした上流の課題ごとに 1 件)
+9. feature の**変更をすべて** commit する: `git add -A -- apps packages contracts features docs .distillery/runs/<slug>` (無いパスは名指ししない) → `impl(<slug>): <段> (blocked)`。commit の後に起動シーケンス 5 の clean 判定の対象が空であることを確かめる (実装の途中のコードも残す。写し直しで新しい main の上へ運ぶ)
+10. 自動選択をもう一度呼んで続ける (上流の差分が選ばれ、直した後に写し直して同じ機能へ戻る)
 
-上流で止めると、同じ run の機能の中の課題 (戻し先が scenario / contract / implementation の下書き) も課題ファイルになる (失わないため)。これは `FB scan` の `carried` に出る: その UC を次に始めるとき (上流の差分の後の新しい run)、`carried_issues {issues}` を記録し、戻し先の段の派遣文に課題ファイルの絶対パスを添える。その UC の main マージで消す (下の「課題の消し方」)。
+上流で止めると、同じ run の機能の中の課題 (戻し先が scenario / contract / implementation の下書き) も課題ファイルになる (失わないため)。これは `FB scan` の `carried` に出る: その UC を写し直した後 (と、課題だけが残った UC を新しく始めるとき)、`carried_issues {issues}` を記録し、戻し先の段の派遣文に課題ファイルの絶対パスを添える。その UC の main マージで消す (下の「課題の消し方」)。
 
 ### 課題の消し方
 
@@ -101,14 +103,27 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 3. 索引・開発ルール・アーキテストを作り直す (1 コマンドずつ): `node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements`、`node <skills>/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd .`、`node <skills>/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd .`。続けて `runGates.js --uc d2-feedback --only static` が通る (落ちたら人に返す)
 4. 決定のレビュー (下の「縦・横レビュー」の `decide`) → 確認ページ (`page:decide:approve`。足した ADR と、`basis.js check` の STALE の UC を「やり直す / 後で」で載せる)
 5. 反映した課題を `git rm` → genDocsReadme → `git add -A -- docs .distillery` → `decide: feedback` で commit (trailer `Feedback-Consumed:`)。「やり直す」UC は `<RS> reopen <root> <slug> --from scenario` (同じ commit に入れる)
-6. `blocked_on_upstream` で止めた feature を退避する (`git update-ref refs/distillery2/abandoned/<slug>/<ts> feature/<slug>` → `git branch -D feature/<slug>`)。その UC は main から新しい run で始まる
+6. 上流で止めた機能の feature は消さない。自動選択をもう一度呼ぶと、止めた課題がすべて main から消えた機能を `resume` で選ぶ (下の「写し直し」)
 
 ### 基盤の差分 (`upstream.foundation`)
 
 1. 前提は決定の差分と同じ
 2. 課題の推奨の直し方に合う派遣を選ぶ: 骨組み・設定・テスト基盤は sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton`、画面部品は sub `d2-design`。どの派遣も再実行して安全。続けて sub `d2-foundation phase=finish ui=<true|false>`
 3. 受理は ③ の 5 と同じ。基盤のレビュー → 確認ページ (`page:foundation:approve`。STALE の UC を「やり直す / 後で」で載せる)
-4. 消費・commit (`foundation: feedback`)・退避は決定の差分の 5〜6 と同じ
+4. 消費・commit (`foundation: feedback`) と、その後に自動選択を呼ぶことは決定の差分の 5〜6 と同じ
+
+## 写し直し (上流で止めた機能を、上流を直した後の main の上で続ける)
+
+自動選択が `resume` (止めた課題がすべて main から消えた) か `finish-resume` (途中で止まった写し直し) を返したとき。機能の作業は捨てない。
+
+1. clean な main の上で `node <skills>/d2-common/scripts/resumeAfterUpstream.js run <root> <slug> --co-author "<attribution の値>"` (JSON 1 行。途中で止まっても同じコマンドで続きから終わる)。
+   止めたときの feature の変更を新しい main の上へ 3 方向で統合して 1 commit にし、feature をその commit に付け替えて切り替え、続きの段 (`from_stage`) 以降の done とレビューの置き場を退避し、`resumed_after_upstream` を記録して commit する。
+   統合できなかったファイル (`conflicts`) は main の側を採り、機能側の差分を `diffs` (`<run>/resume/<n>/*.diff`) に残す。作り直せる生成物 (契約の bundle・slice・契約テスト・開発ルール・アーキテスト・README) は作り直す (`regenerated`)
+2. exit 3 (写し直しが 3 回) は人に返す (`page:limit:<slug>`)。exit 1 は `error` を添えて止まって報告する (処理の記録 `.distillery/logs/resume-<slug>.json` は残す。人が直したら同じコマンドで続く)
+3. `runState.js status <run>` の `next_stage` (= `from_stage`) から ④ を続ける。`<base_head>` は写し直した先の main になる (`status` の `base_head`)
+4. `diffs` があれば、差分のファイルを書く段の派遣文に差分ファイルの絶対パスを添える (`features/**/*.feature` は scenario、`contracts/**` と `use-cases.yaml` は contract、ほかは tier の担当。ティアはパスの `apps/<tier>/`)。
+   担当は引き継ぎファイルの `resume_diffs` に差分ごとの扱い (`applied` は反映したファイルを `where` に、`dropped` は理由) を書く。受理の検査に `node <skills>/d2-common/scripts/resumeAfterUpstream.js check-diffs <run> --handoff <引き継ぎファイル>` が exit 0 を足す (足りない行があれば差し戻す)。
+   `dropped` の差分は、人レビューの確認ページと最後のまとめに「写し直しで取り下げた変更」として載せる
 
 ## 縦・横レビュー
 
