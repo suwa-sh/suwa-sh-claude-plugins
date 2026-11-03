@@ -102,9 +102,9 @@ const TSCONFIG_BASE = JSON.stringify({
 const GITIGNORE_ANCHOR = 'distillery2 実行状態';
 const GITIGNORE_MANAGED = ['# distillery2 実行状態 (reports / traces / logs は生成物なので追跡しない)', '.distillery/runs/*/reports/', '.distillery/runs/*/traces/', '.distillery/logs/',
   '# qlty の作業ディレクトリ (qlty init --dry-run は .qlty/.gitignore を書かない)', '.qlty/logs/', '.qlty/out/', '.qlty/results/', '.qlty/plugin_cachedir/', '.qlty/sources/',
-  // 0.1.26: 還流は .distillery/worktrees/ の worktree で作り、本体の node_modules を symlink する。
+  // 上流で止めるときの一時の worktree は .distillery/worktrees/ に作る (0.1.26〜0.1.36 は還流の worktree も)。worktree には本体の node_modules を symlink する。
   // `node_modules/` (末尾スラッシュ) はディレクトリにしか一致せず symlink が未追跡に見えるので、スラッシュ無しも足す
-  '# 還流の worktree と、worktree に張る node_modules の symlink', '.distillery/worktrees/', 'node_modules'];
+  '# distillery2 の一時の worktree と、worktree に張る node_modules の symlink', '.distillery/worktrees/', 'node_modules'];
 const GITIGNORE = ['node_modules/', 'dist/', '*.log', '', ...GITIGNORE_MANAGED, ''].join('\n');
 
 // biome の版は 1 か所で決める。npm の devDependency (exact)、biome.json の $schema、qlty の biome プラグイン (genQlty.js) を同じ版にする
@@ -244,7 +244,7 @@ function migrateGitignore(cwd, changes) {
   if (start < 0) return;
   let end = start + 1;
   // 管理ブロックの続き: .distillery/ と .qlty/ の行と、その区切りコメント (取りこぼすと毎回書き換わる)
-  while (end < lines.length && (lines[end].startsWith('.distillery/') || lines[end].startsWith('.qlty/') || lines[end].startsWith('# qlty の作業ディレクトリ') || lines[end].startsWith('# 還流の worktree') || lines[end] === 'node_modules')) end++;
+  while (end < lines.length && (lines[end].startsWith('.distillery/') || lines[end].startsWith('.qlty/') || lines[end].startsWith('# qlty の作業ディレクトリ') || lines[end].startsWith('# 還流の worktree') || lines[end].startsWith('# distillery2 の一時の worktree') || lines[end] === 'node_modules')) end++;
   const next = [...lines.slice(0, start), ...GITIGNORE_MANAGED, ...lines.slice(end)].join('\n');
   if (next === orig) return;
   fs.writeFileSync(p, next);

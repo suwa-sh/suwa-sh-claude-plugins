@@ -171,6 +171,10 @@ test('genSkeleton --migrate: 0.1.0 生成物を移行する (Finding 5)', () => 
   assert.match(gi, /^node_modules$/m);
   run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
   assert.equal(fs.readFileSync(path.join(c, '.gitignore'), 'utf8'), gi, 'migrate は冪等');
+  // 0.2.0: 0.1.26〜0.1.36 の「還流の worktree」の見出しも管理ブロックとして読み、新しい見出しに置き換える (重ならない)
+  fs.writeFileSync(path.join(c, '.gitignore'), gi.replace('# distillery2 の一時の worktree と、worktree に張る node_modules の symlink', '# 還流の worktree と、worktree に張る node_modules の symlink'));
+  run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
+  assert.equal(fs.readFileSync(path.join(c, '.gitignore'), 'utf8'), gi, '古い見出しの .gitignore も同じ形に移る');
 
   // 既存の app package.json: echo プレースホルダが実コマンドへ差し替わる
   const appPkg = JSON.parse(fs.readFileSync(path.join(c, 'apps/backend-api/package.json'), 'utf8'));
