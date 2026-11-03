@@ -84,3 +84,14 @@ test('genConfig: missing contracts file → contracts [] and warn', () => {
   assert.deepEqual(cfg.contracts, []);
   assert.equal(cfg.capabilities.has_asyncapi, false);
 });
+
+test('0.3.0: 契約を提供しないティア (画面) には contract のコマンドを書かない (テストファイルが無く落ちる)。契約がまだ無いときは全ティアに書く', () => {
+  const { buildConfig } = require(script);
+  const contracts = [{ id: 'api', type: 'openapi', source: 'openapi/openapi.yaml', provider: 'backend-api', consumers: ['frontend'] }];
+  const cfg = buildConfig({ tiers: [{ id: 'backend-api', kind: 'backend' }, { id: 'frontend', kind: 'frontend' }] }, contracts, {}, []);
+  assert.ok(cfg.tiers[0].commands.contract);
+  assert.equal(cfg.tiers[1].commands.contract, undefined);
+  assert.ok(cfg.tiers[1].commands.unit);
+  const early = buildConfig({ tiers: [{ id: 'frontend', kind: 'frontend' }] }, [], {}, []);
+  assert.ok(early.tiers[0].commands.contract);
+});

@@ -147,6 +147,7 @@ main マージの done の commit と 4 の間で止まると、feature が残�
   feature には merge commit が入らず、`<新しい base_head>..HEAD` の件名はすべて `impl(<slug>): ` のままなので、main マージ 1 の件名の検査と squash がそのまま通る
 - 有効な base_head は `runState.js status` の `base_head`: 最後の `resumed_after_upstream` の `base_head` (写し直した先の main)、無ければ `branch_started` の `base_head`。件名の検査・squash の `reset --soft`・`prTrailers.js --base`・verify の変更ファイル・契約のレビューの対象はすべてこれを使う
 - 付け替える前の feature は `refs/distillery2/paused/<slug>/<ts>` に控える (消さない)
+- remote `origin` があれば、main を push するたびに続けて `git push origin 'refs/distillery2/*:refs/distillery2/*'` で控えの ref (`paused/`・`pre-squash/`・`legacy/`) も push する (既定の push に乗らず、手元にしか残らないため)
 - 統合できなかったファイルは main の側を採り、機能側の差分を `<run>/resume/<n>/` に残す (担当が反映するか、理由を付けて取り下げる)。機能の run の記録 (`.distillery/runs/<slug>/`) が衝突したら写し直さずに止まる
 - 写し直しの途中で main が進んだら、付け替えの前なら新しい main で作り直し、付け替えの後なら止まる (人が main に commit したときだけ起きる)
 - 処理の記録は `.distillery/logs/resume-<slug>.json` (git 管理外)。途中で止まったら同じコマンドで続きから終わる。写し直しは 1 つの機能で 3 回まで (超えたら exit 3。人に返す)

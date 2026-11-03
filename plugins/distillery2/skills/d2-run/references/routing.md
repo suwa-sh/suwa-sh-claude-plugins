@@ -139,7 +139,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 ### 基盤の差分 (`upstream.foundation`)
 
 1. 前提は決定の差分と同じ
-2. 課題の推奨の直し方に合う派遣を選ぶ: 骨組み・設定・テスト基盤は sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton`、画面部品は sub `d2-design`。どの派遣も再実行して安全。
+2. 課題の推奨の直し方に合う派遣を選ぶ: 骨組み・設定・テスト基盤は sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton` (UC がある契約は `<skills>/d2-common/references/review-points.md`「反証して直す派遣の引数」の基盤・契約の行)、画面部品は sub `d2-design mode=feedback items=<直すファイルと直す内容を 1 行ずつ>` (派遣表「① 要求の差分 (画面部品)」と同じ。画面部品が 1 つも無いときだけ ③ と同じ全生成)。どの派遣も再実行して安全。
    契約の骨格か画面部品を直したら、仕上げの前に ③ の 4 と同じく `git add contracts docs/design` → `foundation: feedback (contracts and design)` で commit する (仕上げが basis に記録する入力の commit)。続けて sub `d2-foundation phase=finish ui=<true|false>`
 3. 受理は ③ の 5 と同じで、`validateUcIndex.js contracts` が exit 0 も足す。基盤のレビュー → 確認ページ (`page:foundation:approve`。STALE の UC を「やり直す / 後で」で載せる)
 4. 反映した課題を `git rm` → genDocsReadme → `git add -A` (起動シーケンス 5 の clean 判定の対象外のルート直下の未追跡ファイルは入れない) → `foundation: feedback` で commit → 「上流の差分の branch」の 3 で main へ確定し、自動選択をもう一度呼ぶ (決定の差分の 6 と同じ)
@@ -177,7 +177,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 3. 2 ラウンド目: `has_fail` か、`high_or_critical` の指摘が `refutations` で `accepted` なら、`--round 2 --previous <round1.md>` で 1 回だけ回す。指摘が残れば 2 と同じく直させ、もう回さない。
    1 ラウンド目で決め済み (`decide` で記録した・人が答えた) と振り替え済み (課題にした・`plugin`) の指摘は、2 ラウンド目の反証に回さない (派遣文にそれ以外の指摘だけを書く)。回さなかったら `<D> add ... --page page:review-round2:<場所> --question "2 ラウンド目を回すか" --answer "回さない" --by rule` で残す
 4. exit 4 (未レビュー) → 人に返すとき の表。recommend なら `reviewStep.js prompt` の依頼文を新しいサブエージェント (Agent ツール、同じモデル) に渡して `round1.md` を書かせ、`<D> add ... --page page:review-unavailable:<場所> --answer "同じモデルで代わりにレビューする" --by rule`
-5. 結果の置き場 (`reviews/`) は追跡する。上流は `.distillery/reviews/<場所>/`、機能の中は `<run>/reviews/<場所>[-<tier>]/`
+5. 結果の置き場 (`reviews/`) は追跡する。上流は `.distillery/reviews/<場所>/<n>/`、機能の中は `<run>/reviews/<場所>[-<tier>]/<n>/` (`<n>` は reviewStep.js が決める。結果の `dir`)。2 ラウンド目の `--previous` は 1 ラウンド目の結果の `result`
 
 ## 途中で止まった還流 (0.1.x の repo)
 

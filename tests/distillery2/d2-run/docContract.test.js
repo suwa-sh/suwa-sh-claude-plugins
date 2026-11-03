@@ -307,7 +307,7 @@ test('0.2.0: 決定の差分・基盤の差分: clean な main で回し、決�
   assert.match(dd, /落ちたら人に返す/);
   assert.doesNotMatch(dd, /worktree/, '決定の差分は本体の作業ツリーで回す (還流の worktree は使わない)');
   const fd = routingSection('### 基盤の差分');
-  assert.match(fd, /sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton`、画面部品は sub `d2-design`。どの派遣も再実行して安全。/);
+  assert.match(fd, /sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton` \(UC がある契約は[^\n]*「反証して直す派遣の引数」[^\n]*\)、画面部品は sub `d2-design mode=feedback items=<直すファイルと直す内容を 1 行ずつ>`[^\n]*どの派遣も再実行して安全。/);
   assert.match(fd, /仕上げの前に ③ の 4 と同じく `git add contracts docs\/design` → `foundation: feedback \(contracts and design\)` で commit する[^\n]*続けて sub `d2-foundation phase=finish ui=<true\|false>`/);
   assert.match(fd, /`validateUcIndex\.js contracts` が exit 0 も足す/);
   assert.match(fd, /受理は ③ の 5 と同じ/);
@@ -959,4 +959,18 @@ test('0.3.0: recommend で人に返すのは戻り道の上限とプラグイン
   assert.match(plugin, /`\{"id": "<課題>", "target": "plugin"\}`/);
   assert.match(routingSection('## 縦・横レビュー'), /1 ラウンド目で決め済み[^\n]*と振り替え済み[^\n]*の指摘は、2 ラウンド目の反証に回さない/);
   assert.match(read(TEMPLATE), /報告の「決めたこと」の見出しの下に 1 行ずつ `D<n> <要点>` で書き、引き継ぎファイルの `decisions` にも同じ `D<n>` で書いてください/);
+});
+
+test('0.3.0: レビューの置き場は <場所>/<n>/、実装のレビューはティアごとに順に、反証して直す派遣の引数は場所ごと (UC がある契約に skeleton を使わない)。小さい直し (前提の記録の引数・層を固定しない雛形・控えの ref の push・戻し先の選び方)', () => {
+  const rp = read('skills/d2-common/references/review-points.md');
+  assert.match(rp, /`<場所の置き場>\/<n>\/round<k>\.md` に書く \(1 ラウンド目は新しい `<n>`、2 ラウンド目は同じ `<n>`/);
+  assert.match(rp, /ティアごとに 1 依頼を\*\*順に\*\*回す/);
+  assert.match(rp, /\| 基盤 \| 契約 \(`contracts\/uc-index\.yaml` に UC がある\) \| \*\*`d2-contract mode=uc uc=<その operation を持つ UC>`\*\* \(skeleton は使わない\)/);
+  assert.match(rp, /\[--known <課題ファイル> \.\.\.\]/);
+  assert.match(read('skills/d2-contract/SKILL.md'), /`contracts\/uc-index\.yaml` に UC が既にある[^\n]*既存の UC の operation と、その分割ファイル[^\n]*を変えない・消さない/);
+  const t = read(SKILL);
+  assert.match(t, /`node <skills>\/d2-implement\/scripts\/validateAssumptions\.js record <run>\/attempt-<n>\/assumptions\.<tier>\.yaml --uc <slug> --tier <tier> --attempt <n>`/);
+  assert.match(t, /\| `push` \| `git push origin main` → `git push origin 'refs\/distillery2\/\*:refs\/distillery2\/\*'`/);
+  assert.doesNotMatch(read('skills/d2-foundation/references/rule-templates/tier-backend.md'), /5 層/, '層は ADR が決める');
+  assert.match(read('skills/d2-implement/SKILL.md'), /\| 技術の方針 [^\n]*\| `decide` \|\n\| 決定はあるが[^\n]*\| `foundation` \|/);
 });

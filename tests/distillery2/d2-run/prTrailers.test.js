@@ -14,6 +14,7 @@ test('trailers are built from use-cases, gates.json, basis and events', () => {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-trailers-'));
   git(repo, 'init', '-q');
   fs.mkdirSync(path.join(repo, 'docs/requirements'), { recursive: true });
+  fs.writeFileSync(path.join(repo, 'docs/requirements/requirements.yaml'), 'requirements: []\n');
   fs.mkdirSync(path.join(repo, 'docs/adr'), { recursive: true });
   fs.writeFileSync(path.join(repo, 'docs/requirements/use-cases.yaml'), ['use_cases:', '  - business: 貸出業務', '    buc: 書籍を貸し出すフロー', '    uc: 貸出を登録する', '    slug: register-loan', '    spec_ids: [SPEC-002]'].join('\n'));
   fs.writeFileSync(path.join(repo, 'docs/adr/0001-x.md'), '# x');
@@ -70,6 +71,7 @@ test('Basis-* は base branch との merge-base から遡り、UC branch で変�
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-trailers-'));
   git(repo, 'init', '-q', '-b', 'main');
   fs.mkdirSync(path.join(repo, 'docs/requirements'), { recursive: true });
+  fs.writeFileSync(path.join(repo, 'docs/requirements/requirements.yaml'), 'requirements: []\n');
   fs.mkdirSync(path.join(repo, 'docs/adr'), { recursive: true });
   fs.mkdirSync(path.join(repo, '.distillery/runs/loan'), { recursive: true });
   fs.writeFileSync(path.join(repo, 'docs/requirements/use-cases.yaml'), 'use_cases:\n  - slug: loan\n    business: b\n    buc: f\n    uc: u\n');
@@ -96,6 +98,7 @@ test('squash 手順どおり reset --soft の後でも Basis-Changed が出る�
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-trailers-'));
   git(repo, 'init', '-q', '-b', 'main');
   fs.mkdirSync(path.join(repo, 'docs/requirements'), { recursive: true });
+  fs.writeFileSync(path.join(repo, 'docs/requirements/requirements.yaml'), 'requirements: []\n');
   fs.mkdirSync(path.join(repo, '.distillery/runs/loan'), { recursive: true });
   fs.writeFileSync(path.join(repo, 'docs/requirements/use-cases.yaml'), 'use_cases: []\n');
   fs.writeFileSync(path.join(repo, '.distillery/runs/loan/events.jsonl'), JSON.stringify({ type: 'opened', slug: 'loan' }) + '\n');

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // reviewStep.js のテスト用の代役 (codex-review-job.sh と同じ start / status / result / cancel の口)。
-// FAKE_MODE: done (2 回目の status で done) / stuck / nostart / badresult / emptyresult (形の崩れた結果)。FAKE_LOG に呼ばれた口を 1 行ずつ追記する
+// FAKE_MODE: done (2 回目の status で done) / stuck / nostart / badresult / emptyresult (形の崩れた結果) / locked (1 回目の start を別のジョブのロックで断る)。FAKE_LOG に呼ばれた口を 1 行ずつ追記する
 'use strict';
 const fs = require('node:fs');
 const [cmd, a1, a2] = process.argv.slice(2);
@@ -29,6 +29,8 @@ const RESULT = `| # | 観点 | 判定 | 該当指摘 | 一言根拠 |
 `;
 if (cmd === 'start') {
   if (mode === 'nostart') { console.error('codex companion not installed'); process.exit(2); }
+  const starts = log ? fs.readFileSync(log, 'utf8').split('\n').filter((l) => l.startsWith('start')).length : 1;
+  if (mode === 'locked' && starts <= 1) { console.error('another Codex review job is active in this workspace: task-other'); process.exit(1); }
   console.log('task-fake-1');
 } else if (cmd === 'status') {
   const n = log ? fs.readFileSync(log, 'utf8').split('\n').filter((l) => l.startsWith('status')).length : 2;

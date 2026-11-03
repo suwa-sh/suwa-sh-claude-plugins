@@ -38,14 +38,16 @@ const HEADER_SCAN_LINES = 10;
 /** 生成物か? 先頭数行に basis ヘッダ (basis.js が書く `basis:`) があれば生成物とみなす。手書きは持たない。 */
 function isGenerated(text) { return /basis:/.test(text.split('\n').slice(0, HEADER_SCAN_LINES).join('\n')); }
 
-function tierCommands(dir) {
-  return {
+/** ティアのコマンド。契約テスト (contract) は契約を提供するティアだけ (提供しないティアは契約テストが無く、コマンドが「テストファイル無し」で落ちる) */
+function tierCommands(dir, provides = true) {
+  const c = {
     format_check: `npm run format:check -w apps/${dir}`,
     lint: `npm run lint -w apps/${dir}`,
     typecheck: `npm run typecheck -w apps/${dir}`,
     unit: `npm run test -w apps/${dir} -- --run --reporter=json --outputFile={report}`,
-    contract: `npm run test:contract -w apps/${dir} -- --run --reporter=json --outputFile={report}`,
   };
+  if (provides) c.contract = `npm run test:contract -w apps/${dir} -- --run --reporter=json --outputFile={report}`;
+  return c;
 }
 
 function buildConfig({ tiers, datastore_owner }, contracts, caps, warnings) {
@@ -53,11 +55,12 @@ function buildConfig({ tiers, datastore_owner }, contracts, caps, warnings) {
   const consumesOf = id => contracts.filter(c => Array.isArray(c.consumers) && c.consumers.includes(id)).map(c => c.id);
   const tierList = tiers.map(t => {
     const dir = t.dir ? String(t.dir).replace(/^apps\//, '') : t.id;
+    const provides = t.provides && t.provides.length ? t.provides : providesOf(t.id);
     return {
       id: t.id, dir: `apps/${dir}`, kind: t.kind || 'backend', lang: t.lang || 'typescript',
-      provides: t.provides && t.provides.length ? t.provides : providesOf(t.id),
+      provides,
       consumes: t.consumes && t.consumes.length ? t.consumes : consumesOf(t.id),
-      commands: tierCommands(dir),
+      commands: tierCommands(dir, provides.length > 0 || !contracts.length),
     };
   });
   const hasFrontend = tiers.some(t => t.kind === 'frontend');

@@ -38,3 +38,20 @@ test('stamp / headerLine / parseHeader / check', () => {
   assert.equal(r.entries[0].stale, true);
   assert.equal(basis.check(path.join(repo, 'docs/requirements/r.md'), {}, repo).missing, true);
 });
+
+test('0.3.0: 要求の basis は use-cases.yaml の書き換え (main マージの status) だけでは進まない。ほかの要求の変更では進む', () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-basis-'));
+  git(repo, 'init', '-q');
+  fs.mkdirSync(path.join(repo, 'docs/requirements'), { recursive: true });
+  fs.writeFileSync(path.join(repo, 'docs/requirements/requirements.yaml'), 'a');
+  fs.writeFileSync(path.join(repo, 'docs/requirements/use-cases.yaml'), 'status: planned\n');
+  git(repo, 'add', '.'); git(repo, 'commit', '-q', '-m', 'req');
+  const sha1 = git(repo, 'rev-parse', 'HEAD');
+  fs.writeFileSync(path.join(repo, 'docs/requirements/use-cases.yaml'), 'status: done\n');
+  git(repo, 'add', '.'); git(repo, 'commit', '-q', '-m', 'delivered');
+  assert.equal(basis.stamp({ requirements: 'docs/requirements' }, repo).requirements, sha1);
+  fs.writeFileSync(path.join(repo, 'docs/requirements/requirements.yaml'), 'b');
+  git(repo, 'add', '.'); git(repo, 'commit', '-q', '-m', 'req2');
+  assert.equal(basis.stamp({ requirements: 'docs/requirements' }, repo).requirements, git(repo, 'rev-parse', 'HEAD'));
+  assert.equal(basis.stamp({ adr: 'docs/requirements' }, repo).adr, git(repo, 'rev-parse', 'HEAD'), '外すのは要求の basis だけ');
+});

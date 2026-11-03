@@ -62,6 +62,7 @@ contracts/
 ## mode=skeleton (段階③)
 
 ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用意する。UC 個別の operation はまだ書かない。
+`contracts/uc-index.yaml` に UC が既にある (基盤の差分や基盤のレビューの反証で回し直す) ときは、既存の UC の operation と、その分割ファイル (`paths`・`components` の UC 固有の部分・`db/domains/*.yaml` の UC が使う表) を変えない・消さない。変える必要があれば、その UC の契約の課題 (戻し先 `contract`、`uc` 付き) として引き継ぎファイルに書く。
 
 1. **カタログ**: ADR が決めたティアと契約面から `contracts/contracts.json` を書く
    (id / type / source / provider / consumers)。source は `contracts/` 相対。
