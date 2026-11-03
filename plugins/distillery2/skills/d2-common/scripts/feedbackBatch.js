@@ -124,12 +124,21 @@ function splitFrontMatter(text) {
 
 function joinFrontMatter(fm, body) { return `---\n${stringifyYaml(fm).trimEnd()}\n---\n${body.startsWith('\n') ? body : `\n${body}`}`; }
 
+// 戻し先のステップ (0.2.0)。target_step が無い古い課題は kind から読む (plugin は戻し先なし)
+const TARGET_STEPS = ['requirements', 'decide', 'foundation', 'scenario', 'contract', 'implementation'];
+const TARGET_OF_KIND = { requirement: 'requirements', rule: 'decide', contract: 'contract', foundation: 'foundation', scenario: 'scenario', implementation: 'implementation' };
+function targetOf(fm) {
+  if (fm.kind === 'plugin') return null;
+  if (fm.target_step != null) return String(fm.target_step);
+  return TARGET_OF_KIND[fm.kind] || null;
+}
+
 function listFeedback(dir) {
   const d = path.join(dir, FEEDBACK_REL);
   if (!fs.existsSync(d)) return [];
   return fs.readdirSync(d).filter((f) => f.endsWith('.md') && f !== 'README.md').sort().map((f) => {
     const { fm } = splitFrontMatter(fs.readFileSync(path.join(d, f), 'utf8'));
-    return { id: f.replace(/\.md$/, ''), kind: fm.kind || null, title: fm.title || '', from_uc: fm.from_uc || null, created: fm.created || '', stopped: Boolean(fm.stopped), stopped_count: Number(fm.stopped_count || 0) };
+    return { id: f.replace(/\.md$/, ''), kind: fm.kind || null, target_step: targetOf(fm), title: fm.title || '', from_uc: fm.from_uc || null, created: fm.created || '', stopped: Boolean(fm.stopped), stopped_count: Number(fm.stopped_count || 0) };
   });
 }
 
@@ -258,7 +267,10 @@ function cmdFileIssues(root, runDirArg) {
       const cur = splitFrontMatter(fs.readFileSync(dest, 'utf8')).fm;
       if ((cur.from_uc || null) !== slug) throw new Fail(`課題ファイルの名前が別の UC の課題と重なる: ${path.relative(root, dest)}`);
     } else {
+      const target = targetOf(fm);
+      if (fm.target_step != null && !TARGET_STEPS.includes(String(fm.target_step))) throw new Fail(`課題の target_step が不正: ${key} (${fm.target_step})`);
       const out = { kind: fm.kind || null, title: fm.title || id, from_uc: slug, status: 'open', created: new Date().toISOString().replace(/\.\d+Z$/, 'Z') };
+      if (target) out.target_step = target;
       if (fm.tier) out.tier = fm.tier;
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, joinFrontMatter(out, body));
@@ -337,9 +349,22 @@ function cmdScan(root) {
       if (unfiled.length) unfiledRuns.push({ run, unfiled });
     }
   }
+  // 0.2.0 の振り分け: 上流の課題は戻し先ごと、main マージ済みの UC への課題は開き直す段ごと (止まった課題も含む)
+  const upstream = { requirements: [], decide: [], foundation: [] };
+  const reopenBy = new Map();
+  const order = ['scenario', 'contract', 'implementation'];
+  for (const x of all) {
+    if (upstream[x.target_step]) { upstream[x.target_step].push(x.id); continue; }
+    if (!order.includes(x.target_step) || !x.from_uc) continue;
+    if (!runState.isDone(runState.runDirOf(root, x.from_uc), 'deliver')) continue;
+    const cur = reopenBy.get(x.from_uc) || { uc: x.from_uc, from: x.target_step, issues: [] };
+    if (order.indexOf(x.target_step) < order.indexOf(cur.from)) cur.from = x.target_step;
+    cur.issues.push(x.id);
+    reopenBy.set(x.from_uc, cur);
+  }
   const batch = batchStatus(root);
   const feedbackDue = batch.point !== 'none' || triggers.length > 0 || unfiledRuns.length > 0;
-  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, uncovered_done: uncoveredDone(root), reopened: runState.reopenedSlugs(root), batch, feedback_due: feedbackDue };
+  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, uncovered_done: uncoveredDone(root), reopened: runState.reopenedSlugs(root), batch, feedback_due: feedbackDue, upstream, reopen_targets: [...reopenBy.values()] };
 }
 
 /** features/ 配下 (features/acceptance/ を除く) の <slug>.feature を探す。無ければ null、複数なら配列のまま返す */

@@ -27,6 +27,10 @@
  *   node runState.js uc-status <root> <slug> <status>   (use-cases.yaml の status の 1 行だけ書き換える。main マージの done など。0.1.35 R21)
  *   node runState.js reopen <root> <slug> [--data-file <scan の uncovered_done のその UC の記録の json>]   (main マージ済みの UC をやり直す: run を .distillery/archive/runs/<slug>/<ts>/ へ移し、status を planned に。0.1.35 R3)
  *   node runState.js reopened <root>   (やり直し中の UC の slug の一覧)
+ *   node runState.js rewind <runDir> scenario|contract|implementation [--issue <issues/...md>] [--reason <text>] [--override-limit]
+ *     機能の中で前のステップへ巻き戻す (0.2.0)。implementation は attempt を 1 つ上げて tier から。巻き戻しは 1 つの run で 3 回まで (超えたら exit 3。人が続けると答えたときだけ --override-limit)
+ *   node runState.js reopen <root> <slug> --from scenario|contract|implementation [--issue <docs/feedback/...md> ...] [--override-limit]
+ *     main マージ済みの UC を、その段から開き直す (0.2.0)。前の段の done と scenario の承認を引き継ぐ (承認した feature の sha256 が今と違えば scenario から)。同じ UC の開き直しは 3 回まで
  */
 'use strict';
 
@@ -216,6 +220,8 @@ function uniqueDest(dest) {
  *  3. returned_to_integrate {from, instrumentation_gaps, instrumentation_happy_gaps, moved_findings} を記録する
  */
 function returnToIntegrate(runDir, detail = {}) {
+  const count = rewindCount(runDir);
+  if (count >= MAX_REWINDS && !detail.override_limit) throw new LimitError(`巻き戻しが上限 (${MAX_REWINDS} 回) に達した (${count} 回)。人に返す`);
   const n = currentAttempt(runDir);
   const dir = path.join(runDir, `attempt-${n}`);
   const moved = [];
@@ -236,6 +242,43 @@ function returnToIntegrate(runDir, detail = {}) {
     moved_findings: moved,
   });
   return { moved_findings: moved, invalidated };
+}
+
+/** 戻り道の回数の上限 (0.2.0)。巻き戻し (rewound) と as-built からの差し戻し (returned_to_integrate) を数える。開き直しは UC ごとの退避の数 */
+const MAX_REWINDS = 3;
+const MAX_REOPENS = 3;
+const REWIND_TO = { scenario: 'scenario', contract: 'contract', implementation: 'tier' };
+
+class LimitError extends Error { constructor(msg) { super(msg); this.code = 3; } }
+
+function rewindCount(runDir) { return readEvents(runDir).filter(e => e.type === 'rewound' || e.type === 'returned_to_integrate').length; }
+
+/**
+ * 機能の中で前のステップへ巻き戻す (0.2.0)。前のステップの課題 (target_step) が scenario / contract / implementation のとき、進行中の run で行う。
+ *  - implementation は attempt を 1 つ上げて tier から (今の attempt++ と同じ。契約ゲート・結合・検証・人レビューの差し戻しもこれで行う)
+ *  - 課題の下書き (issues/*.md) を渡すと issues/consumed/ へ移す (その場で直すので課題ファイルにしない。main マージの file-issues は consumed/ を読まない)
+ *  - 回数が上限なら巻き戻さずに LimitError (人に返す)
+ */
+function rewind(runDir, target, { issue = null, reason = '', overrideLimit = false } = {}) {
+  const stage = REWIND_TO[target];
+  if (!stage) throw new Error(`巻き戻し先は scenario / contract / implementation: ${target}`);
+  const count = rewindCount(runDir);
+  if (count >= MAX_REWINDS && !overrideLimit) throw new LimitError(`巻き戻しが上限 (${MAX_REWINDS} 回) に達した (${count} 回)。人に返す`);
+  let attempt = currentAttempt(runDir);
+  if (target === 'implementation') { attempt += 1; attemptDir(runDir, attempt); }
+  const invalidated = invalidateFrom(runDir, stage, reason || `前のステップへ巻き戻す: ${target}`).map(x => path.relative(runDir, x));
+  let consumed = null;
+  if (issue) {
+    const key = issueKey(issue);
+    const src = path.join(runDir, key);
+    if (!fs.existsSync(src)) throw new Error(`課題の下書きが無い: ${key}`);
+    const dest = uniqueDest(path.join(runDir, 'issues', 'consumed', path.basename(key)));
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.renameSync(src, dest);
+    consumed = path.relative(runDir, dest);
+  }
+  appendEvent(runDir, 'rewound', { to: target, stage, attempt, issue: consumed, reason, ...(overrideLimit && count >= MAX_REWINDS ? { over_limit: true } : {}) });
+  return { rewound: target, stage, attempt, invalidated, consumed, rewinds: count + 1, limit: MAX_REWINDS };
 }
 
 function attemptDir(runDir, n) {
@@ -364,8 +407,12 @@ function setUcStatus(root, slug, value, { dryRun = false } = {}) {
  * detail は scan の uncovered_done のその UC の記録 ({missing, acceptance_changed})。配列なら missing とみなす。
  * reopened.json の missing と acceptance_changed は、やり直しの scenario の派遣文に添える (文面だけが変わった UC は missing が空。差分レビュー 1 ラウンド目)
  */
-function reopen(root, slug, detail = {}) {
+function reopen(root, slug, detail = {}, { from = 'scenario', issues = [], overrideLimit = false } = {}) {
   const d = Array.isArray(detail) ? { missing: detail } : (detail || {});
+  if (!REWIND_TO[from]) throw new Error(`開き直す段は scenario / contract / implementation: ${from}`);
+  const archiveDir = path.join(root, '.distillery', 'archive', 'runs', slug);
+  const reopens = fs.existsSync(archiveDir) ? fs.readdirSync(archiveDir).filter(s => fs.statSync(path.join(archiveDir, s)).isDirectory()).length : 0;
+  if (reopens >= MAX_REOPENS && !overrideLimit) throw new LimitError(`同じ UC の開き直しが上限 (${MAX_REOPENS} 回) に達した (${reopens} 回)。人に返す`);
   const runDir = runDirOf(root, slug);
   if (!fs.existsSync(path.join(runDir, 'events.jsonl'))) throw new Error(`run が無い: ${runDir}`);
   const inGit = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: root, encoding: 'utf8' });
@@ -378,9 +425,31 @@ function reopen(root, slug, detail = {}) {
   for (const sub of ['reports', 'traces']) fs.rmSync(path.join(runDir, sub), { recursive: true, force: true });
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.renameSync(runDir, dest);
-  fs.writeFileSync(path.join(dest, 'reopened.json'), JSON.stringify({ slug, reopened_at: nowIso(), missing: Array.isArray(d.missing) ? d.missing : [], acceptance_changed: Boolean(d.acceptance_changed) }, null, 2) + '\n');
+  const inherited = from === 'scenario' ? { stages: [], reason: null } : inherit(root, slug, dest, from);
+  fs.writeFileSync(path.join(dest, 'reopened.json'), JSON.stringify({ slug, reopened_at: nowIso(), from, inherited: inherited.stages, issues: issues.map(String), missing: Array.isArray(d.missing) ? d.missing : [], acceptance_changed: Boolean(d.acceptance_changed) }, null, 2) + '\n');
   const uc = setUcStatus(root, slug, 'planned');
-  return { slug, archived_to: path.relative(root, dest).split(path.sep).join('/'), previous_status: uc.previous, status: uc.status };
+  return { slug, archived_to: path.relative(root, dest).split(path.sep).join('/'), previous_status: uc.previous, status: uc.status, from, inherited: inherited.stages, not_inherited_reason: inherited.reason, reopens: reopens + 1, limit: MAX_REOPENS };
+}
+
+/**
+ * 開き直しの継承 (0.2.0): 退避した run から、開き直す段より前の done と scenario の承認を新しい run に写す。
+ * scenario の承認は、承認したときの feature の sha256 が今の feature と一致するときだけ写す。違えば何も写さず scenario から始める
+ */
+function inherit(root, slug, archived, from) {
+  const before = STAGES.slice(0, STAGES.indexOf(REWIND_TO[from]));
+  const events = readEvents(archived);
+  const approved = [...events].reverse().find(e => e.type === 'scenario_approved');
+  if (!approved) return { stages: [], reason: 'scenario の承認の記録が無い' };
+  const feature = path.isAbsolute(approved.feature) ? approved.feature : path.join(root, approved.feature);
+  if (!fs.existsSync(feature) || sha256File(feature) !== approved.feature_sha256) return { stages: [], reason: '承認した後に feature が変わった' };
+  const missing = before.filter(s => !fs.existsSync(path.join(archived, 'stages', `${s}.done.yaml`)));
+  if (missing.length) return { stages: [], reason: `退避した run に done が無い: ${missing.join(', ')}` };
+  const runDir = openRun(root, slug, { reopened_from: path.relative(root, archived).split(path.sep).join('/') });
+  const { seq, ts: _t, type: _y, ...rest } = approved;
+  appendEvent(runDir, 'scenario_approved', { ...rest, inherited_from_seq: seq });
+  for (const s of before) fs.copyFileSync(path.join(archived, 'stages', `${s}.done.yaml`), doneFile(runDir, s));
+  appendEvent(runDir, 'inherited', { from, stages: before, archive: path.relative(root, archived).split(path.sep).join('/') });
+  return { stages: before, reason: null };
 }
 
 /** やり直し中の UC の slug (.distillery/archive/runs/<slug>/ があり、runs/<slug> の deliver が done でない)。自動選択 3 の 6 が先に選ぶ */
@@ -397,7 +466,8 @@ function status(runDir) {
   const legacy = isLegacyOrder(runDir);
   const next = legacy ? null : (STAGES.find(s => stages[s] === 'pending') || null);
   const last = events[events.length - 1] || null;
-  return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, legacy_order: legacy, events: events.length, last_event: last, pending_feedback: pendingFeedback(runDir), filed_issues: filedIssues(runDir), unfiled_issues: unfiledIssues(runDir) };
+  const rewinds = events.filter(e => e.type === 'rewound' || e.type === 'returned_to_integrate').length;
+  return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, legacy_order: legacy, events: events.length, last_event: last, pending_feedback: pendingFeedback(runDir), filed_issues: filedIssues(runDir), unfiled_issues: unfiledIssues(runDir), rewinds, rewind_limit: MAX_REWINDS };
 }
 
 /** event / done の data。argv の JSON か `--data-file <f>` (排他。長い日本語の JSON を argv で渡すとハーネスの検査で止まる。0.1.32 O18) */
@@ -413,11 +483,19 @@ function main(argv) {
   let dataFile = null;
   let feature = null;
   let acceptanceDir = null;
+  let from = null;
+  const issues = [];
+  let reasonArg = null;
+  let overrideLimit = false;
   const a = [];
   for (let i = 0; i < a0.length; i++) {
     if (a0[i] === '--json') continue;
     if (a0[i] === '--data-file') { dataFile = a0[++i]; if (dataFile == null) throw new Error('--data-file <jsonファイル>'); continue; }
     if (a0[i] === '--feature') { feature = a0[++i]; if (feature == null) throw new Error('--feature <feature のパス>'); continue; }
+    if (a0[i] === '--from' && cmd !== 'invalidate') { from = a0[++i]; continue; }
+    if (a0[i] === '--issue') { issues.push(a0[++i]); continue; }
+    if (a0[i] === '--reason') { reasonArg = a0[++i]; continue; }
+    if (a0[i] === '--override-limit') { overrideLimit = true; continue; }
     if (a0[i] === '--acceptance-dir') { acceptanceDir = a0[++i]; if (acceptanceDir == null) throw new Error('--acceptance-dir <dir>'); continue; }
     a.push(a0[i]);
   }
@@ -441,8 +519,9 @@ function main(argv) {
     case 'uc-status': console.log(JSON.stringify(setUcStatus(path.resolve(args[0]), args[1], args[2]))); return 0;
     case 'reopen': {
       const missing = dataFile != null ? JSON.parse(fs.readFileSync(path.resolve(dataFile), 'utf8')) : [];
-      console.log(JSON.stringify(reopen(path.resolve(args[0]), args[1], missing))); return 0;
+      console.log(JSON.stringify(reopen(path.resolve(args[0]), args[1], missing, { from: from || 'scenario', issues, overrideLimit }))); return 0;
     }
+    case 'rewind': console.log(JSON.stringify(rewind(path.resolve(args[0]), args[1], { issue: issues[0] || null, reason: reasonArg || '', overrideLimit }))); return 0;
     case 'reopened': console.log(JSON.stringify(reopenedSlugs(path.resolve(args[0])))); return 0;
     case 'set-aside-asbuilt-drafts': console.log(JSON.stringify({ moved: setAsideAsbuiltDrafts(path.resolve(args[0])) })); return 0;
     case 'return-to-integrate': console.log(JSON.stringify(returnToIntegrate(path.resolve(args[0]), args[1] ? JSON.parse(args[1]) : {}))); return 0;
@@ -463,10 +542,13 @@ function main(argv) {
       }
       return 0;
     }
-    default: console.error('Usage: runState.js open|event|done|invalidate|return-to-integrate|set-aside-asbuilt-drafts|mark-legacy-delivered|scenario-approve|status|uc-status|reopen|reopened ...'); return 2;
+    default: console.error('Usage: runState.js open|event|done|invalidate|rewind|return-to-integrate|set-aside-asbuilt-drafts|mark-legacy-delivered|scenario-approve|status|uc-status|reopen|reopened ...'); return 2;
   }
 }
 
-if (require.main === module) process.exit(main(process.argv.slice(2)));
+if (require.main === module) {
+  try { process.exit(main(process.argv.slice(2))); }
+  catch (e) { if (e instanceof LimitError) { console.log(JSON.stringify({ limit_reached: true, error: e.message })); process.exit(3); } throw e; }
+}
 
-module.exports = { STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, setAsideAsbuiltDrafts, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status, validateAssumptionResolved, scenarioApprove, setUcStatus, reopen, reopenedSlugs, acceptanceSha256 };
+module.exports = { MAX_REWINDS, MAX_REOPENS, LimitError, rewind, rewindCount, inherit, STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, setAsideAsbuiltDrafts, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status, validateAssumptionResolved, scenarioApprove, setUcStatus, reopen, reopenedSlugs, acceptanceSha256 };
