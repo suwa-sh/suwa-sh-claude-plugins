@@ -275,9 +275,11 @@ function cmdScan(root) {
     if (upstream[x.target_step]) { if (!limited.has(x.chain)) upstream[x.target_step].push(x.id); continue; }
     if (!order.includes(x.target_step) || !x.from_uc) continue;
     if (!runState.isDone(runState.runDirOf(root, x.from_uc), 'deliver')) {
-      const c = carriedBy.get(x.from_uc) || { uc: x.from_uc, from: x.target_step, issues: [] };
+      const c = carriedBy.get(x.from_uc) || { uc: x.from_uc, from: x.target_step, issues: [], items: [] };
       if (order.indexOf(x.target_step) < order.indexOf(c.from)) c.from = x.target_step;
       c.issues.push(x.id);
+      // 課題ごとの戻し先 (0.3.0): 戻し先が違う課題をまとめて最も早い段に渡さない。派遣文には課題ごとの戻し先の段で添える
+      c.items.push({ issue: x.id, target_step: x.target_step, resume_from: x.resume_from });
       carriedBy.set(x.from_uc, c);
       continue;
     }

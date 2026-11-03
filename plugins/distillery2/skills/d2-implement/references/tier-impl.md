@@ -22,7 +22,6 @@
 
 - `apps/<tier>/src/**` (実装とテスト)。frontend の画面は、読むものの画面部品だけで組む (自作しない)
 - `.distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml` (0 件でも必ず)
-- `.distillery/runs/<slug>/issues/<ts>_<tier>_<slug>.md` (ファイル名に自ティアを入れる。並列の他ティアと同じ時刻に書いても衝突しない。仕様と両立しない事実。front matter `kind: rule | contract | requirement`、`title` は 40 字以内 (as-built の課題の表に載る)。詳細は本文)
 - backend の datastore_owner ティアは `apps/<tier>/migrations/` の追加 migration (契約の DB 変更に追随するときだけ。DDL 生成物は書き換えない)
 
 ## 進め方
@@ -44,7 +43,7 @@
    (`<run>/reports/` に書かない。write-set の外で、並列ティアと競合する)
 5. 自分で決めた判断を AssumptionRecord に書く (`<skills>/d2-common/references/assumption-record.md`)。書いたら
    `validateAssumptions.js record` を実行し ok を確認する
-6. 契約テスト (`test/contract/`) は生成物。落ちるなら実装を直す。契約の側が間違っていると思うなら `issues/` に `kind: contract` で起票し、
+6. 契約テスト (`test/contract/`) は生成物。落ちるなら実装を直す。契約の側が間違っていると思うなら引き継ぎファイルの `upstream_issues` に戻し先 `contract` で書き、
    実装は契約どおりにする (「動くように契約と違うことをする」を禁止)
 
 ## 禁止

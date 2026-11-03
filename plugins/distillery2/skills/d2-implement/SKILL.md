@@ -12,7 +12,7 @@ description: >-
 
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
-引数: `mode=scenario|scaffold|tier|integrate uc=<slug> [tier=<tier_id>] [attempt=<n>] [findings=<path>]`
+引数: `mode=precheck|scenario|scaffold|tier|integrate uc=<slug> [tier=<tier_id>] [attempt=<n>] [findings=<path>]`
 
 v1 (distillery-impl:dist-impl-implement) からの変更点:
 
@@ -25,6 +25,7 @@ v1 (distillery-impl:dist-impl-implement) からの変更点:
 
 | mode | 固定指示 | 読むもの / 書くもの の要点 |
 |---|---|---|
+| precheck | [references/precheck.md](references/precheck.md) | 機能の作業の前に、UC の受入基準・ADR・開発ルール・契約の骨格・画面部品を読むだけ → この UC に要る上流の決めごとの不足を引き継ぎファイルに洗い出す (ティアごと) |
 | scenario | [references/scenario.md](references/scenario.md) | use-cases.yaml の行 + 要求 + RDRA → `features/<業務>/<slug>.feature`。人の承認は d2-run が取る |
 | scaffold | [references/scaffold.md](references/scaffold.md) | feature + slice → step 骨格 (pending) + ティアごとの red 単体テスト。完了条件は dry-run で undefined 0 と `--expect-red unit` |
 | tier | [references/tier-impl.md](references/tier-impl.md) | rules + slice + 生成型 + feature → `apps/<tier>/src`、AssumptionRecord。自ティアの static / unit を check-only で通す |
@@ -37,8 +38,8 @@ v1 (distillery-impl:dist-impl-implement) からの変更点:
 1. `.distillery/config.yaml` を読み、UC の slug から `docs/requirements/use-cases.yaml` の行を引く (業務名・spec_ids・tiers)
 2. 該当 mode の固定指示ファイルを**最初に全部読む**。read-set に無いものは読まない
 3. 固定指示どおりに作業し、完了条件を自分で確かめる (スクリプトの exit code で判定する。出力の目視で pass にしない)
-4. 仕様に無いことを決めたら AssumptionRecord に (tier)、仕様と両立しない事実は `issues/` に (`kind: rule | contract | requirement`)
-5. 報告: 生成・更新したファイル一覧、完了条件の結果、AssumptionRecord の件数と sha256 (tier)、起票した issue
+4. 仕様に無いことを決めたら AssumptionRecord に (tier)、仕様と両立しない事実は引き継ぎファイルの `upstream_issues` に (課題のファイルは直接書かない。進行役が引き継ぎファイルから下書きにする)
+5. 報告: 生成・更新したファイル一覧、完了条件の結果、AssumptionRecord の件数と sha256 (tier)、引き継ぎファイルに書いた課題
 
 ## 禁止
 

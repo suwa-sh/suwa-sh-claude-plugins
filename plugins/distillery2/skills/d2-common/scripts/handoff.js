@@ -8,6 +8,8 @@
  *   node handoff.js file-drafts <handoff.yaml> --run <runDir>       # 前のステップの課題を <run>/issues/ の下書きにする (機能の中)
  *   node handoff.js file-drafts <handoff.yaml> --root <repo>        # 上流の段 (run が無い): docs/feedback/ に課題ファイルを直接書く
  *   --findings                                                     # 入力が検証役の findings (asks と upstream_issues を読む)
+ *   --chain-from <docs/feedback/<id>.md>                           # 上流の差分のレビュー・反証から課題を作るとき、直している課題。chain と chain_depth + 1 を書く (0.3.0)
+ *   file-drafts は、戻し先と題名が同じ既存の下書き・その場で直した下書き・課題ファイルがあれば書かない (duplicates に返す。0.3.0)
  *
  * 終了コード: 0 = 成功 / 1 = 検査で不合格 / 2 = 引数・読み込みの失敗
  */
@@ -42,6 +44,10 @@ function validate(data) {
     if (!a || typeof a !== 'object') continue;
     if (seen.has(`ask:${a.id}`)) errors.push(`$.asks[${i}].id: 重複 ${a.id}`);
     seen.add(`ask:${a.id}`);
+    // 同じ問いを 2 つに分けて書かない (推奨で決める問いと人に返す問いの両方に同じ論点が出る。0.3.0)
+    const q = String(a.question || '').replace(/\s+/g, '');
+    if (q && seen.has(`question:${q}`)) errors.push(`$.asks[${i}].question: 同じ問いが既にある (${a.question})`);
+    seen.add(`question:${q}`);
     const labels = (Array.isArray(a.options) ? a.options : []).map((o) => o && o.label);
     if (new Set(labels).size !== labels.length) errors.push(`$.asks[${i}].options: label が重複`);
     if (a.recommended === null || a.recommended === undefined) {
@@ -102,11 +108,45 @@ function issueBody(u) {
   return `\n${parts.join('\n\n')}\n`;
 }
 
-/** 前のステップの課題を下書き (機能の中) か課題ファイル (上流) にする。同じ課題を二度書かない (handoff と id で名前を決める) */
-function fileDrafts(file, data, { run, root }) {
+const squashTitle = (t) => String(t || '').replace(/\s+/g, '');
+
+/** 既にある課題 (下書き・その場で直した下書き・課題ファイル) の 戻し先 + 題名 の組。同じ組の課題を重ねて書かない (0.3.0) */
+function existingKeys(dirs) {
+  const keys = new Set();
+  for (const d of dirs) {
+    if (!fs.existsSync(d)) continue;
+    for (const f of fs.readdirSync(d).filter((x) => x.endsWith('.md') && x !== 'README.md')) {
+      const m = /^---\n([\s\S]*?)\n---/.exec(fs.readFileSync(path.join(d, f), 'utf8'));
+      if (!m) continue;
+      const fm = parseYaml(m[1]) || {};
+      if (fm.title) keys.add(`${fm.target_step || KIND_TO_STEP[fm.kind] || ''}\n${squashTitle(fm.title)}`);
+    }
+  }
+  return keys;
+}
+const KIND_TO_STEP = Object.fromEntries(Object.entries(KIND_OF).map(([k, v]) => [v, k]));
+
+/** 連鎖の元の課題ファイル (上流の差分で直している課題) から chain と chain_depth + 1 を決める */
+function chainOf(chainFrom) {
+  if (!chainFrom) return null;
+  if (!fs.existsSync(chainFrom)) throw new Fail(`--chain-from の課題ファイルが無い: ${chainFrom}`, 2);
+  const m = /^---\n([\s\S]*?)\n---/.exec(fs.readFileSync(chainFrom, 'utf8'));
+  const fm = (m && parseYaml(m[1])) || {};
+  return { chain: fm.chain || path.basename(chainFrom, '.md'), chain_depth: Number(fm.chain_depth || 0) + 1 };
+}
+
+/**
+ * 前のステップの課題を下書き (機能の中) か課題ファイル (上流) にする。同じ課題を二度書かない
+ * (handoff と id で名前を決める。加えて、戻し先と題名が同じ既存の下書き・課題ファイルがあれば書かない。0.3.0)。
+ * chainFrom (上流の差分のレビュー・反証から課題を作るとき、直している課題ファイル) を渡すと chain と chain_depth を書く
+ */
+function fileDrafts(file, data, { run, root, chainFrom = null }) {
   if (!run && !root) throw new Fail('--run か --root が要る', 2);
   const step = data.step || 'verify';
   const base = path.basename(file).replace(/\.(ya?ml|json)$/, '');
+  const repo = root ? path.resolve(root) : path.resolve(run, '..', '..', '..');
+  const known = existingKeys([path.join(repo, 'docs', 'feedback'), ...(run ? [path.join(path.resolve(run), 'issues'), path.join(path.resolve(run), 'issues', 'consumed')] : [])]);
+  const chain = chainOf(chainFrom);
   // 書く前に全件を確かめる (途中で落ちて一部の課題だけが残らないように)
   if (!run) {
     const slugs = ucSlugs(root);
@@ -118,25 +158,30 @@ function fileDrafts(file, data, { run, root }) {
   }
   const written = [];
   const skipped = [];
+  const duplicates = [];
   for (const u of data.upstream_issues || []) {
     const name = `${base}_${u.id}.md`.replace(/[^A-Za-z0-9_.-]/g, '-');
-    const fm = { kind: KIND_OF[u.target_step], title: u.title, target_step: u.target_step, source: `handoff:${step}`, ...(u.resume_from ? { resume_from: u.resume_from } : {}) };
+    const key = `${u.target_step}\n${squashTitle(u.title)}`;
+    const fm = { kind: KIND_OF[u.target_step], title: u.title, target_step: u.target_step, source: `handoff:${step}`, ...(u.resume_from ? { resume_from: u.resume_from } : {}), ...(chain || {}) };
     let dest;
     if (run) {
       dest = path.join(path.resolve(run), 'issues', `${stamp()}_${step}_${name}`);
       const dir = path.dirname(dest);
       if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(`_${step}_${name}`))) { skipped.push(name); continue; }
+      if (known.has(key)) { duplicates.push({ id: u.id, title: u.title }); continue; }
     } else {
       dest = path.join(path.resolve(root), 'docs', 'feedback', `${stamp()}_${step}_${name}`);
       const dir = path.dirname(dest);
       if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(`_${step}_${name}`))) { skipped.push(name); continue; }
+      if (known.has(key)) { duplicates.push({ id: u.id, title: u.title }); continue; }
       Object.assign(fm, { from_uc: u.uc || null, status: 'open', created: new Date().toISOString().replace(/\.\d+Z$/, 'Z') });
     }
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, `---\n${stringifyYaml(fm).trimEnd()}\n---\n${issueBody(u)}`);
+    known.add(key);
     written.push(dest);
   }
-  return { written, skipped };
+  return { written, skipped, duplicates };
 }
 
 function main(argv) {
@@ -147,6 +192,7 @@ function main(argv) {
     else if (rest[i] === '--run') opt.run = rest[++i];
     else if (rest[i] === '--root') opt.root = rest[++i];
     else if (rest[i] === '--findings') opt.findings = true;
+    else if (rest[i] === '--chain-from') opt.chainFrom = rest[++i];
     else throw new Fail(`不明な引数: ${rest[i]}`, 2);
   }
   if (!['validate', 'route', 'file-drafts'].includes(cmd)) throw new Fail('handoff.js validate|route|file-drafts <file> ...', 2);

@@ -182,12 +182,21 @@
       }
     ]
   },
+  "implement.precheck": {
+    "template_row": "④ precheck (ティアごと並列)",
+    "write_set": [
+      "なし (読むだけ。書くのは引き継ぎファイルだけ)"
+    ],
+    "notes": [
+      "なし (読むだけ。書くのは引き継ぎファイルだけ)"
+    ],
+    "allowed_writes": []
+  },
   "implement.scenario": {
     "template_row": "④ scenario",
     "write_set": [
       "`features/<業務>/<slug>.feature`",
-      "`features/acceptance/**`",
-      "`<run>/issues/**`"
+      "`features/acceptance/**`"
     ],
     "notes": [],
     "allowed_writes": [
@@ -198,10 +207,6 @@
       {
         "id": "acceptance",
         "path": "features/acceptance/**"
-      },
-      {
-        "id": "issues",
-        "path": "<run>/issues/**"
       }
     ]
   },
@@ -211,8 +216,7 @@
       "`contracts/**`",
       "`apps/*/test/contract/**`",
       "`apps/<datastore_owner>/migrations/**`",
-      "`packages/contracts/**`",
-      "`<run>/issues/**`"
+      "`packages/contracts/**`"
     ],
     "notes": [],
     "allowed_writes": [
@@ -231,10 +235,6 @@
       {
         "id": "contracts-code",
         "path": "packages/contracts/**"
-      },
-      {
-        "id": "issues",
-        "path": "<run>/issues/**"
       }
     ]
   },
@@ -269,8 +269,7 @@
     "template_row": "④ tier",
     "write_set": [
       "`apps/<tier>/**`",
-      "`<run>/attempt-<n>/assumptions.<tier>.yaml`",
-      "`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
+      "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
     ],
     "notes": [
       "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
@@ -283,10 +282,6 @@
       {
         "id": "assumptions",
         "path": "<run>/attempt-<n>/assumptions.<tier>.yaml"
-      },
-      {
-        "id": "issues-tier",
-        "path": "<run>/issues/<ts>_<tier>_<slug>.md"
       }
     ]
   },

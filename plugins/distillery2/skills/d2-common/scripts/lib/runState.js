@@ -283,27 +283,34 @@ function rewindCount(runDir) { return readEvents(runDir).filter(e => e.type === 
  *  - 課題の下書き (issues/*.md) を渡すと issues/consumed/ へ移す (その場で直すので課題ファイルにしない。main マージの file-issues は consumed/ を読まない)
  *  - 回数が上限なら巻き戻さずに LimitError (人に返す)
  */
-function rewind(runDir, target, { issue = null, reason = '', overrideLimit = false } = {}) {
+function rewind(runDir, target, { issue = null, issues = null, reason = '', overrideLimit = false } = {}) {
   const stage = REWIND_TO[target];
   if (!stage) throw new Error(`巻き戻し先は scenario / contract / implementation: ${target}`);
-  const count = rewindCount(runDir);
-  if (count >= MAX_REWINDS && !overrideLimit) throw new LimitError(`巻き戻しが上限 (${MAX_REWINDS} 回) に達した (${count} 回)。人に返す`);
+  const list = (issues || (issue ? [issue] : [])).filter(Boolean);
   // 課題の下書きは状態を変える前に確かめる (指定の誤りで、巻き戻しだけが済んで記録が残らない状態を作らない)
-  const issueSrc = issue ? path.join(runDir, issueKey(issue)) : null;
-  if (issueSrc && !fs.existsSync(issueSrc)) throw new Error(`課題の下書きが無い: ${issueKey(issue)}`);
-  let attempt = currentAttempt(runDir);
-  if (target === 'implementation') { attempt += 1; attemptDir(runDir, attempt); }
-  const invalidated = invalidateFrom(runDir, stage, reason || `前のステップへ巻き戻す: ${target}`).map(x => path.relative(runDir, x));
-  let consumed = null;
-  if (issueSrc) {
-    const src = issueSrc;
+  const srcs = list.map(i => path.join(runDir, issueKey(i)));
+  const missing = list.filter((i, k) => !fs.existsSync(srcs[k]));
+  if (missing.length) throw new Error(`課題の下書きが無い: ${missing.map(issueKey).join(', ')}`);
+  const consume = () => srcs.map(src => {
     const dest = uniqueDest(path.join(runDir, 'issues', 'consumed', path.basename(src)));
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.renameSync(src, dest);
-    consumed = path.relative(runDir, dest);
+    return path.relative(runDir, dest);
+  });
+  const count = rewindCount(runDir);
+  // まだ通っていない段への課題は巻き戻さない (回数に数えない)。その段の派遣文に課題を添える (0.3.0)
+  if (!isDone(runDir, stage)) {
+    const consumed = consume();
+    appendEvent(runDir, 'rewind_deferred', { to: target, stage, issues: consumed, reason });
+    return { deferred: true, rewound: null, stage, attempt: currentAttempt(runDir), invalidated: [], consumed: consumed[0] || null, consumed_all: consumed, rewinds: count, limit: MAX_REWINDS };
   }
-  appendEvent(runDir, 'rewound', { to: target, stage, attempt, issue: consumed, reason, ...(overrideLimit && count >= MAX_REWINDS ? { over_limit: true } : {}) });
-  return { rewound: target, stage, attempt, invalidated, consumed, rewinds: count + 1, limit: MAX_REWINDS };
+  if (count >= MAX_REWINDS && !overrideLimit) throw new LimitError(`巻き戻しが上限 (${MAX_REWINDS} 回) に達した (${count} 回)。人に返す`);
+  let attempt = currentAttempt(runDir);
+  if (target === 'implementation') { attempt += 1; attemptDir(runDir, attempt); }
+  const invalidated = invalidateFrom(runDir, stage, reason || `前のステップへ巻き戻す: ${target}`).map(x => path.relative(runDir, x));
+  const consumed = consume();
+  appendEvent(runDir, 'rewound', { to: target, stage, attempt, issue: consumed[0] || null, ...(consumed.length > 1 ? { issues: consumed } : {}), reason, ...(overrideLimit && count >= MAX_REWINDS ? { over_limit: true } : {}) });
+  return { rewound: target, stage, attempt, invalidated, consumed: consumed[0] || null, consumed_all: consumed, rewinds: count + 1, limit: MAX_REWINDS };
 }
 
 /** attempt を開く。印のファイル attempt.json を置く (git は空のディレクトリを追跡しないので、印が無いと次の commit に残らない) */
@@ -578,7 +585,7 @@ function main(argv) {
       const missing = dataFile != null ? JSON.parse(fs.readFileSync(path.resolve(dataFile), 'utf8')) : [];
       console.log(JSON.stringify(reopen(path.resolve(args[0]), args[1], missing, { from: from || 'scenario', issues, overrideLimit }))); return 0;
     }
-    case 'rewind': console.log(JSON.stringify(rewind(path.resolve(args[0]), args[1], { issue: issues[0] || null, reason: reasonArg || '', overrideLimit }))); return 0;
+    case 'rewind': console.log(JSON.stringify(rewind(path.resolve(args[0]), args[1], { issues, reason: reasonArg || '', overrideLimit }))); return 0;
     case 'reopened': console.log(JSON.stringify(reopenedSlugs(path.resolve(args[0])))); return 0;
     case 'set-aside-asbuilt-drafts': console.log(JSON.stringify({ moved: setAsideAsbuiltDrafts(path.resolve(args[0])) })); return 0;
     case 'return-to-integrate': console.log(JSON.stringify(returnToIntegrate(path.resolve(args[0]), args[1] ? JSON.parse(args[1]) : {}))); return 0;

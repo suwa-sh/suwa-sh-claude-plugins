@@ -29,6 +29,8 @@ stages:
     name: ② 決定
   - id: foundation
     name: ③ 基盤
+  - id: precheck
+    name: ④ precheck (機能の最初の点検)
   - id: scenario
     name: ④ scenario
   - id: contract
@@ -384,13 +386,6 @@ stores:
     group: run
     path: "<run>/issues/**"
     origin: produced
-  - id: issues-tier
-    name: ティア実装者の課題
-    group: run
-    path: "<run>/issues/<ts>_<tier>_<slug>.md"
-    origin: produced
-    aliases:
-      - ".distillery/runs/<slug>/issues/<ts>_<tier>_<slug>.md"
   - id: issues-asbuilt
     name: as-built の要約役の課題
     group: run
@@ -713,6 +708,20 @@ processes:
     reads: [config, skeleton, qlty-config, contract-tests, depcruise-config, reports]
     writes: [reports]
   # ================= ④ UC =================
+  - id: implement.precheck
+    name: 機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)
+    skill: d2-implement
+    mode: precheck
+    stage: precheck
+    kind: subagent
+    template_row: "④ precheck (ティアごと並列)"
+    notes:
+      - "なし (読むだけ。書くのは引き継ぎファイルだけ)"
+    write_set:
+      - "なし (読むだけ。書くのは引き継ぎファイルだけ)"
+    reads: [config, use-cases, req-usdm, req-rdra, adr, rules, contracts-src, design, ui]
+    writes: []
+    allowed_writes: []
   - id: implement.scenario
     name: UC シナリオの執筆
     skill: d2-implement
@@ -723,10 +732,9 @@ processes:
     write_set:
       - "`features/<業務>/<slug>.feature`"
       - "`features/acceptance/**`"
-      - "`<run>/issues/**`"
     reads: [use-cases, req-usdm, req-rdra, rules, feature]
     writes: [feature, acceptance]
-    allowed_writes: [feature, acceptance, issues]
+    allowed_writes: [feature, acceptance]
   - id: contract.uc
     name: 契約の差分
     skill: d2-contract
@@ -739,10 +747,9 @@ processes:
       - "`apps/*/test/contract/**`"
       - "`apps/<datastore_owner>/migrations/**`"
       - "`packages/contracts/**`"
-      - "`<run>/issues/**`"
     reads: [use-cases, feature, req-rdra, contracts-src]
-    writes: [contracts-src, uc-index, contract-slice, contract-tests, migrations, contracts-code, issues]
-    allowed_writes: [contracts-src, contract-tests, migrations, contracts-code, issues]
+    writes: [contracts-src, uc-index, contract-slice, contract-tests, migrations, contracts-code]
+    allowed_writes: [contracts-src, contract-tests, migrations, contracts-code]
   - id: implement.scaffold
     name: テスト足場の生成
     skill: d2-implement
@@ -772,11 +779,10 @@ processes:
     template_row: "④ tier"
     write_set:
       - "`apps/<tier>/**`"
-      - "`<run>/attempt-<n>/assumptions.<tier>.yaml`"
-      - "`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
+      - "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
     reads: [rules, feature, contract-slice, contracts-code, use-cases, req-usdm, req-rdra, design, ui, tier-src, test-support, findings]
-    writes: [tier-src, assumptions, issues-tier, migrations]
-    allowed_writes: [tier-dir, assumptions, issues-tier]
+    writes: [tier-src, assumptions, migrations]
+    allowed_writes: [tier-dir, assumptions]
     notes:
       - "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
   - id: implement.integrate
@@ -820,7 +826,7 @@ processes:
       - "`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)"
       - "`<run>/reports/**` (depcruise の結果と抽出の集計)"
       - "`<run>/issues/<ts>_asbuilt_<slug>.md` (要約の課題のうち、人レビューに載っていないものの下書き)"
-    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system, depcruise-config, tier-src]
+    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system, depcruise-config, tier-src]
     writes: [reports, asbuilt-uc, asbuilt-index, asbuilt-system, asbuilt-report, issues-asbuilt]
     allowed_writes: [asbuilt-uc, asbuilt-system, reports, issues-asbuilt]
     notes:
@@ -840,7 +846,7 @@ processes:
     stage: asbuilt
     kind: script
     scripts: [extractAsBuilt.js]
-    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system]
+    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system]
     writes: [asbuilt-uc, asbuilt-index, asbuilt-system, asbuilt-report]
   - id: asbuilt.summarize
     name: 要約ブロックを埋める (LLM)
@@ -934,7 +940,7 @@ processes:
     kind: orchestrator
     actor: d2-run
     run_table_row: "④ の段階の進行・確認ページ"
-    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, issues-asbuilt, uc-index, asbuilt-system, feature, acceptance, run-archive]
+    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-asbuilt, uc-index, asbuilt-system, feature, acceptance, run-archive]
     writes: [run-events, use-cases, asbuilt-report, issues-asbuilt, feedback-docs, worktrees, issues-consumed, run-archive]
   - id: run.uc.check-scenario
     name: シナリオの静的確認
@@ -1044,7 +1050,7 @@ processes:
     actor: d2-run
     scripts: [feedbackBatch.js]
     run_table_row: "④ の feedbackBatch.js file-issues"
-    reads: [issues, issues-tier, issues-asbuilt, run-events]
+    reads: [issues, issues-asbuilt, run-events]
     writes: [feedback-docs, run-events]
   # ================= ② 決定の差分 (0.2.0。戻し先が decide の課題を、clean な main の作業ツリーで新しい ADR にする) =================
   - id: decide.feedback
@@ -1109,7 +1115,7 @@ processes:
     actor: d2-run
     scripts: [feedbackBatch.js]
     run_table_row: "起動時の feedbackBatch.js file-issues (移行)"
-    reads: [issues, issues-tier, issues-asbuilt, run-events]
+    reads: [issues, issues-asbuilt, run-events]
     writes: [feedback-docs, run-events]
   - id: run.migrate-readme
     name: 文書の入口の更新 (起動時の移行)

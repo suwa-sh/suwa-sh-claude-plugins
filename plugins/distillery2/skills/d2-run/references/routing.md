@@ -56,12 +56,14 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 
 ## 前のステップの課題
 
-1. 起票: `<H> file-drafts <handoff> --run <run>` (機能の中。`<run>/issues/` の下書き)、検証役は `<H> file-drafts <findings> --findings --run <run>`、上流の段は `<H> file-drafts <handoff> --root .` (`docs/feedback/` に直接。機能の中を戻し先にする課題には担当が `uc` を書く。無ければ exit 1 で、担当に差し戻す)
+1. 起票は引き継ぎファイルからだけ (担当は課題のファイルを直接書かない): `<H> file-drafts <handoff> --run <run>` (機能の中。`<run>/issues/` の下書き)、検証役は `<H> file-drafts <findings> --findings --run <run>`、上流の段は `<H> file-drafts <handoff> --root .` (`docs/feedback/` に直接。機能の中を戻し先にする課題には担当が `uc` を書く。無ければ exit 1 で、担当に差し戻す)。
+   戻し先と題名が同じ既存の下書き・その場で直した下書き・課題ファイルがあれば書かない (結果の `duplicates`)。
+   上流の差分のレビュー・反証から課題を作るときは `--chain-from <直している課題ファイル>` を付ける (連鎖の深さ `chain_depth` を数える。3 を超えた連鎖は自動選択が `limit-chain` で人に返す)
 2. 戻し先で振り分ける:
 
 | 戻し先 | 機能の作業中 | main マージ済みの機能について |
 |---|---|---|
-| scenario / contract / implementation | **その場で巻き戻す**: `<RS> rewind <run> <戻し先> --issue <下書き> --reason "<題名>"`。implementation は attempt を上げて tier から。次の段からやり直す | 課題ファイルのまま残す。次の起動の自動選択が `reopen_targets` で開き直す |
+| scenario / contract / implementation | **その場で巻き戻す**: `<RS> rewind <run> <戻し先> --issue <下書き> [--issue <下書き> ...] --reason "<題名>"` (同じ戻し先の下書きはまとめて渡す)。implementation は attempt を上げて tier から。次の段からやり直す。戻し先がまだ done でない段なら巻き戻さずに `deferred: true` を返す (回数に数えない): その段の派遣文に下書き (`consumed_all`) の絶対パスを添える | 課題ファイルのまま残す。次の起動の自動選択が `reopen_targets` で開き直す |
 | requirements / decide / foundation | **機能を止める**: 下書きを「上流で止めるとき」の手順で課題ファイルにして main に入れ、`blocked_on_upstream {issues}` を記録して feature に commit する (feature は消さない。上流の差分の後に写し直す) | 課題ファイルのまま。自動選択が上流の差分を選ぶ |
 
 - 契約ゲート・結合・検証・人レビューの「実装を直す」も、同じ `rewind <run> implementation` で戻す (回数を数えるため)。as-built からの差し戻しは `return-to-integrate` (同じく数える)
@@ -82,7 +84,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 9. feature の**変更をすべて** commit する: `git add -A -- apps packages contracts features docs .distillery/runs/<slug>` (無いパスは名指ししない) → `impl(<slug>): <段> (blocked)`。commit の後に起動シーケンス 5 の clean 判定の対象が空であることを確かめる (実装の途中のコードも残す。写し直しで新しい main の上へ運ぶ)
 10. 自動選択をもう一度呼んで続ける (上流の差分が選ばれ、直した後に写し直して同じ機能へ戻る)
 
-上流で止めると、同じ run の機能の中の課題 (戻し先が scenario / contract / implementation の下書き) も課題ファイルになる (失わないため)。これは `FB scan` の `carried` に出る: その UC を写し直した後 (と、課題だけが残った UC を新しく始めるとき)、`carried_issues {issues}` を記録し、戻し先の段の派遣文に課題ファイルの絶対パスを添える。その UC の main マージで消す (下の「課題の消し方」)。
+上流で止めると、同じ run の機能の中の課題 (戻し先が scenario / contract / implementation の下書き) も課題ファイルになる (失わないため)。これは `FB scan` の `carried` に出る: その UC を写し直した後 (と、課題だけが残った UC を新しく始めるとき)、`carried_issues {issues}` を記録し、`items` の課題ごとの戻し先 (`target_step`) の段の派遣文に課題ファイルの絶対パスを添える (戻し先が違う課題を 1 つの段にまとめて渡さない)。その UC の main マージで消す (下の「課題の消し方」)。
 
 ### 課題の消し方
 
@@ -112,7 +114,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 2. 課題ごとに sub `d2-decide mode=feedback issue=<docs/feedback/<issue>.md> result=<.distillery/logs/decide-<issue>.result.json>` (派遣表「② 決定の差分 (ADR)」。ADR を 1 本足す。結果ファイルは派遣の前に消す)。受理: 結果が `applied`、`validateAdr.js docs/adr` が exit 0、write-set の外が変わっていない。
    結果が `blocked` なら: `reason_kind: plugin` は理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` (プラグインへ持ち帰る課題にする)。`reason_kind: scope` は人に返す (推奨: 戻し先を基盤にする)
 3. 索引・開発ルール・アーキテストを作り直す (1 コマンドずつ): `node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements`、`node <skills>/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd .`、`node <skills>/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd .`。続けて `runGates.js --uc d2-feedback --only static` が通り、`contracts/` があれば `node <skills>/d2-contract/scripts/validateUcIndex.js contracts` が exit 0 (落ちたら人に返す)
-4. 決定のレビュー (下の「縦・横レビュー」の `decide`) → 確認ページ (`page:decide:approve`。足した ADR と、`basis.js check` の STALE の UC を「やり直す / 後で」で載せる)
+4. 決定のレビュー (下の「縦・横レビュー」の `decide`。指摘のうち戻し先が decide のものは、次の決定の差分にせず、この差分の「反証して直す」で扱う) → 確認ページ (`page:decide:approve`。足した ADR と、`basis.js check` の STALE の UC を「やり直す / 後で」で載せる)
 5. 2 回に分けて commit する (生成物の basis が、入力の ADR を入れた commit を指すように):
    1. `git add -A -- docs/adr` → `decide: feedback (adr)` (足した ADR と索引)
    2. 開発ルールとアーキテストを 3 と同じコマンドで作り直す (basis が 1 の commit になる) → 反映した課題を `git rm` → genDocsReadme → `git add -A -- docs .distillery .dependency-cruiser.cjs` → `decide: feedback` で commit (trailer `Feedback-Consumed:`)。「やり直す」UC は `<RS> reopen <root> <slug> --from scenario` (同じ commit に入れる)
@@ -126,6 +128,17 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
    契約の骨格か画面部品を直したら、仕上げの前に ③ の 4 と同じく `git add contracts docs/design` → `foundation: feedback (contracts and design)` で commit する (仕上げが basis に記録する入力の commit)。続けて sub `d2-foundation phase=finish ui=<true|false>`
 3. 受理は ③ の 5 と同じで、`validateUcIndex.js contracts` が exit 0 も足す。基盤のレビュー → 確認ページ (`page:foundation:approve`。STALE の UC を「やり直す / 後で」で載せる)
 4. 反映した課題を `git rm` → genDocsReadme → `git add -A` (起動シーケンス 5 の clean 判定の対象外のルート直下の未追跡ファイルは入れない) → `foundation: feedback` で commit → 「上流の差分の branch」の 3 で main へ確定し、自動選択をもう一度呼ぶ (決定の差分の 6 と同じ)
+
+## 機能の最初の点検 (新しい UC の branch を切る前)
+
+機能の途中で上流の不足が 1 件ずつ見つかって往復するのを減らす。自動選択が `uc` を返したとき、clean な main の上で行う。
+
+1. `.distillery/logs/precheck-<slug>/` を消してから、UC の `tiers_hint` のティアごとに sub `d2-implement mode=precheck` を**同じメッセージで並列派遣**する (派遣表「④ precheck」。`{handoff}` は `.distillery/logs/precheck-<slug>/<tier>.handoff.json`)
+2. 受理: 各引き継ぎファイルが `<H> validate` で exit 0、`git status --porcelain` が派遣の前と同じ (追跡ファイルを書いていない)。問いは「引き継ぎファイルの処理」と同じに振り分け、`.distillery/decisions.jsonl` に記録する
+3. 上流の課題が 0 件なら `.distillery/logs/precheck-<slug>/` を消して、④ の branch を切る
+4. 上流の課題があれば: 「上流の差分の branch」の 1 で `upstream/<1 件目の課題の id>` を切り、引き継ぎファイルを `.distillery/handoff/precheck-<slug>-<tier>.json` に写して `<H> file-drafts <写し> --root .` で課題ファイルにする (`uc` は無くてよい: 戻し先は上流だけ) →
+   `git add -A -- docs/feedback .distillery/handoff .distillery/decisions.jsonl` → `precheck(<slug>): issues` で commit → `.distillery/logs/precheck-<slug>/` を消す → 自動選択をもう一度呼ぶ (その branch の上流の差分が `continue-upstream` で続き、直した後に同じ UC が選ばれて点検からやり直す)。
+   機能の作業はまだ無いので写し直しは要らない
 
 ## 写し直し (上流で止めた機能を、上流を直した後の main の上で続ける)
 

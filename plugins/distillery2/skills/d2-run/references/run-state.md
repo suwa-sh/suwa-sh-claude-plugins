@@ -20,7 +20,6 @@ v1 の実行状態ディレクトリ (events ディレクトリ + latest + statu
     handoff/<段>[-<tier>]-<ts>.yaml # 担当の引き継ぎファイル (人に聞くこと・前のステップの課題・反証。0.2.0)
     decisions.jsonl                 # 決めたことの記録 (decisionLog.js。0.2.0)
     reviews/<場所>[-<tier>]/        # 縦・横レビューの依頼文と結果 (reviewStep.js。0.2.0)
-    issues/<ts>_<tier>_<slug>.md    # ティア実装者の課題 (並列の他ティアと衝突しないようにティアを入れる)
     learnings/<ts>_<slug>.md
     invalidated/<ts>_<stage>.done.yaml   # 無効化した done の退避 (写し直しで退避したレビューの置き場は invalidated/<ts>_reviews_<場所>/)
     resume/<n>/<path>.diff          # n 回目の写し直しで統合できなかった機能側の差分 (resumeAfterUpstream.js。担当が反映するか取り下げる)
