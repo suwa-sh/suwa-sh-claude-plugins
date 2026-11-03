@@ -30,12 +30,14 @@ upstream_issues:                 # 前のステップの問題 (自分の書き�
     detail: 社員が自分の申請の一覧を見る UC が無く、差し戻しの申請を開けない
     evidence: 画面の担当の確認 (申請の一覧の画面が要求に無い)
     recommended_fix: 自分の申請一覧の UC を足す
+    # uc: submit-expense        # 上流の段 (要求・決定・基盤) の担当が、機能の中 (scenario / contract / implementation) を戻し先にするときだけ。対象の UC の slug
 refutations: []                  # レビューの指摘への反証 (反証して直す派遣のときだけ。下記)
 ```
 
 ## 書き方の決まり
 
 - **推奨は条件を付けない**。「指定があれば B、無ければ A」と書きたくなったら、条件を手元の事実で決められるなら決めた側を `recommended` にする。決められなければ `kind: unknown_fact` にする
+- 推奨を書いたら `reason` (なぜその案か) も書く。前のステップの課題には `evidence` と `recommended_fix` が要る
 - `unknown_fact` にも推奨 (仮置きの値) を書く。推奨案で進めるモードでは仮置きで進め、自律モードでは人に返る
 - 推奨を決められないときは `recommended: null` と理由を書く (受理される。人に返る)
 - `upstream_issues` は、自分の書き込み範囲の外を直さないと解けない問題だけを書く。範囲の中で直せるものは直す

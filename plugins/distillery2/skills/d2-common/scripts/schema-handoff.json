@@ -47,7 +47,8 @@
         "title": { "type": "string", "minLength": 1, "maxLength": 40 },
         "detail": { "type": "string", "minLength": 1 },
         "evidence": { "type": "string", "minLength": 1 },
-        "recommended_fix": { "type": "string", "minLength": 1 }
+        "recommended_fix": { "type": "string", "minLength": 1 },
+        "uc": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
       }
     },
     "refutation": {

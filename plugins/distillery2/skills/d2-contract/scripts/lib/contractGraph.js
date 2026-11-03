@@ -370,6 +370,20 @@ function unknownTestRequestKeys(entry, doc) {
   return Object.keys(all).filter(k => !known.has(k)).sort();
 }
 
+/** `x-test-requests` の各値の形の誤り (知らない項目名・型の誤り)。書き間違いで条件が黙って使われなくなるのを止める */
+function invalidTestRequests(entry) {
+  const all = object(entry.operation['x-test-requests']) ? entry.operation['x-test-requests'] : {};
+  const out = [];
+  for (const [k, v] of Object.entries(all)) {
+    if (!object(v)) { out.push(`${k}: 値は path / headers / fixture を持つ mapping`); continue; }
+    for (const p of Object.keys(v)) if (!['path', 'headers', 'fixture'].includes(p)) out.push(`${k}.${p}: 知らない項目 (path / headers / fixture のどれか)`);
+    if (own(v, 'path') && !object(v.path)) out.push(`${k}.path: 引数名 → 値の mapping`);
+    if (own(v, 'headers') && !object(v.headers)) out.push(`${k}.headers: ヘッダ名 → 値の mapping`);
+    if (own(v, 'fixture') && (typeof v.fixture !== 'string' || !v.fixture)) out.push(`${k}.fixture: テスト用データの名前 (文字列)`);
+  }
+  return out;
+}
+
 /** operation の `x-test-requests` が参照する fixture のうち、`x-test-fixtures` (文書 / operation) に無いものの名前。 */
 function undeclaredFixtures(entry, doc) {
   const declared = testFixtures(doc, entry.operation);
@@ -433,6 +447,6 @@ module.exports = {
   operationsForMessages, resolveMessageName,
   operationExamples, mediaExamples, exampleGaps, messageExamples, assertResolvable,
   is2xx, is4xx, is5xx,
-  requestExampleFor, testRequestFor, testFixtures, testHeaders, testUrl, unknownTestRequestKeys,
+  requestExampleFor, testRequestFor, testFixtures, testHeaders, testUrl, unknownTestRequestKeys, invalidTestRequests,
   contractTestCases, requestKey, indistinguishableExamples, undeclaredFixtures, usedFixtures,
 };

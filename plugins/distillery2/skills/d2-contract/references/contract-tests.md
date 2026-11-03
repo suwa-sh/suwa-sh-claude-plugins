@@ -63,8 +63,10 @@
 - **5xx**: response example を持つ 5xx は、`x-test-requests` の `fixture` があるときだけテストにする。
   無ければ `it.todo('<status> (example: <name>): fixture missing — 失敗を起こすテスト用データを x-test-requests に指定する')`。
   本文の無い 5xx は `fixture` が無ければ扱わない。
-- **区別できない例**: 1 つの operation で status の違う 2 つの例が、同じ要求 (URL・ヘッダ・fixture・本文) を送ると
-  `validateUcIndex.js` が両方の例を名指しして止める (同じ要求で違う status は返せないので、片方のテストが必ず落ちる)。
+- **区別できない例**: 1 つの operation で、期待する結果が違う 2 つの例 (status が違うか、status が同じで応答の例の中身が違う) が同じ要求 (URL・ヘッダ・fixture・本文) を送ると
+  `validateUcIndex.js` が両方の例を名指しして止める (同じ要求に違う結果は返せないので、片方のテストが必ず落ちるか、違いを確かめられない)。
+  `x-test-requests` のキーがどの応答の例にも当たらないときと、値に知らない項目 (`path` / `headers` / `fixture` 以外) や型の誤りがあるときも止める。
+- **エラー応答の code**: 4xx / 5xx の例の中身に `code` (文字列) があれば、生成するテストが `res.body.code` も確かめる (同じ status の返し分けを確かめるため)。
   生成と検査は同じ計算 (`contractGraph.js` の `contractTestCases`) を使う。
 - consumer stub は `packages/contracts/<id>/stubs/<operationId>.<status>.json` (response example の中身)。
 - AsyncAPI は `packages/contracts/<id>/validators.ts` の `validateMessage(name, payload)` を

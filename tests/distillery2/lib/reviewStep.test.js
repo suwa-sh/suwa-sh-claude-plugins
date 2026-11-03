@@ -34,7 +34,7 @@ test('run: 起動 → 待ち → 回収を 1 回で行い、観点の判定・�
   const r = run(['run', '--point', 'requirements', '--target', 'docs/requirements/', '--out', 'reviews/requirements', '--cwd', cwd, '--runner', FAKE, '--poll', '0.01'], { FAKE_LOG: log });
   assert.equal(r.code, 0, r.err);
   assert.equal(r.out.status, 'reviewed');
-  assert.deepEqual(r.out.perspectives, { P1: 'FAIL', P2: 'CONCERN', P3: 'PASS' });
+  assert.deepEqual(r.out.perspectives, { P1: 'FAIL', P2: 'CONCERN', P3: 'PASS', P4: 'PASS' });
   assert.equal(r.out.findings, 2);
   assert.deepEqual(r.out.high_or_critical, ['指摘 1']);
   assert.equal(r.out.has_fail, true);
@@ -73,4 +73,12 @@ test('2 ラウンド目は前回の結果を添えた依頼文になり、--prev
   const unknown = run(['prompt', '--point', 'feedback', '--target', 'x', '--out', 'r', '--cwd', cwd]);
   assert.equal(unknown.code, 2);
   assert.match(unknown.out.error, /場所の定義が無い/);
+});
+
+test('run: 回収した結果に観点の判定か指摘の節が無ければ failed (形の崩れた結果を指摘なしとして先へ進めない。差分レビュー)', () => {
+  const cwd = repo();
+  const r = run(['run', '--point', 'requirements', '--target', 'docs/', '--out', 'r', '--cwd', cwd, '--runner', FAKE, '--poll', '0.01'], { FAKE_MODE: 'emptyresult', FAKE_LOG: path.join(cwd, 'e.log') });
+  assert.equal(r.code, 4);
+  assert.equal(r.out.status, 'failed');
+  assert.match(r.out.reason, /判定の無い観点: P1, P2, P3, P4/);
 });

@@ -185,7 +185,14 @@ function run(o) {
   const resultFile = path.join(out, `round${o.round}.md`);
   const r = call(runner, ['result', job, resultFile, o.cwd], env);
   if (r.status !== 0 || !fs.existsSync(resultFile)) return { ...base, status: 'failed', job, reason: `回収できない: ${(r.stderr || r.stdout || '').trim().split('\n').pop()}` };
-  return { ...base, status: 'reviewed', job, result: path.relative(o.cwd, resultFile), ...summarize(fs.readFileSync(resultFile, 'utf8')) };
+  const md = fs.readFileSync(resultFile, 'utf8');
+  const sum = summarize(md);
+  const want = (loadPoints()[o.point] || []).map((p) => p.id);
+  const missing = want.filter((id) => !sum.perspectives[id]);
+  if (missing.length || !(/^### 指摘 \d+/m.test(md) || /No findings\./.test(md))) {
+    return { ...base, status: 'failed', job, result: path.relative(o.cwd, resultFile), reason: `結果の形が足りない (判定の無い観点: ${missing.join(', ') || 'なし'}、指摘の節: ${/^### 指摘 \d+/m.test(md) || /No findings\./.test(md) ? 'あり' : 'なし'})` };
+  }
+  return { ...base, status: 'reviewed', job, result: path.relative(o.cwd, resultFile), ...sum };
 }
 
 function main(argv) {

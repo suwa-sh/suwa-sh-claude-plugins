@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // reviewStep.js のテスト用の代役 (codex-review-job.sh と同じ start / status / result / cancel の口)。
-// FAKE_MODE: done (2 回目の status で done) / stuck / nostart / badresult。FAKE_LOG に呼ばれた口を 1 行ずつ追記する
+// FAKE_MODE: done (2 回目の status で done) / stuck / nostart / badresult / emptyresult (形の崩れた結果)。FAKE_LOG に呼ばれた口を 1 行ずつ追記する
 'use strict';
 const fs = require('node:fs');
 const [cmd, a1, a2] = process.argv.slice(2);
@@ -12,6 +12,7 @@ const RESULT = `| # | 観点 | 判定 | 該当指摘 | 一言根拠 |
 | P1 | 要望との縦の整合 | FAIL | 指摘 1 | 出し直しが無い |
 | P2 | UC の抜け | CONCERN | 指摘 2 | 一覧が無い |
 | P3 | USDM と RDRA の横の整合 | PASS | — | 照合した |
+| P4 | 受入基準の確かめやすさ | PASS | — | 照合した |
 
 ### 指摘 1
 - **perspective**: P1
@@ -35,7 +36,7 @@ if (cmd === 'start') {
   console.log(JSON.stringify({ job_id: a1, verdict }));
 } else if (cmd === 'result') {
   if (mode === 'badresult') { console.error('output contract mismatch'); process.exit(1); }
-  fs.writeFileSync(a2, RESULT);
+  fs.writeFileSync(a2, mode === 'emptyresult' ? 'レビューできませんでした\n' : RESULT);
   console.log(a2);
 } else if (cmd === 'cancel') {
   console.log('cancelled');

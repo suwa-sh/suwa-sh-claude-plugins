@@ -48,6 +48,8 @@ function validate(data) {
       if (!a.no_recommendation_reason) errors.push(`$.asks[${i}]: recommended が null なら no_recommendation_reason が要る`);
     } else if (!labels.includes(a.recommended)) {
       errors.push(`$.asks[${i}].recommended: 選択肢の label のどれでもない (${a.recommended})`);
+    } else if (!a.reason || !String(a.reason).trim()) {
+      errors.push(`$.asks[${i}].reason: 推奨があるなら理由が要る`);
     }
   }
   for (const [i, u] of (Array.isArray(data.upstream_issues) ? data.upstream_issues : []).entries()) {
@@ -108,10 +110,12 @@ function fileDrafts(file, data, { run, root }) {
       const dir = path.dirname(dest);
       if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(`_${step}_${name}`))) { skipped.push(name); continue; }
     } else {
+      // 上流の段 (run が無い) から機能の中 (scenario / contract / implementation) へ戻す課題は、どの UC かが要る (無いと scan の振り分けに乗らない)
+      if (IN_FEATURE.has(u.target_step) && !u.uc) throw new Fail(`課題 ${u.id}: 戻し先が ${u.target_step} なら uc (対象の UC の slug) が要る`, 1);
       dest = path.join(path.resolve(root), 'docs', 'feedback', `${stamp()}_${step}_${name}`);
       const dir = path.dirname(dest);
       if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(`_${step}_${name}`))) { skipped.push(name); continue; }
-      Object.assign(fm, { from_uc: null, status: 'open', created: new Date().toISOString().replace(/\.\d+Z$/, 'Z') });
+      Object.assign(fm, { from_uc: u.uc || null, status: 'open', created: new Date().toISOString().replace(/\.\d+Z$/, 'Z') });
     }
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, `---\n${stringifyYaml(fm).trimEnd()}\n---\n${issueBody(u)}`);

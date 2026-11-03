@@ -52,6 +52,7 @@ function validate(contractsDir) {
       for (const f of G.undeclaredFixtures(openapiIndex.get(op), openapi)) {
         errors.push(`${uc.slug}: operation ${op} の x-test-requests が参照する fixture "${f}" が x-test-fixtures (文書直下か operation) に宣言されていない`);
       }
+      for (const m of G.invalidTestRequests(openapiIndex.get(op))) errors.push(`${uc.slug}: operation ${op} の x-test-requests の ${m}`);
       for (const k of G.unknownTestRequestKeys(openapiIndex.get(op), openapi)) {
         errors.push(`${uc.slug}: operation ${op} の x-test-requests のキー "${k}" がどの応答の例にも当たらない (応答の例の名前か、ボディ無しの応答の status にする)`);
       }

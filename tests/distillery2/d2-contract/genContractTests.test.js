@@ -381,6 +381,9 @@ test('x-test-requests: ボディ無しの GET でも例ごとに URL の値・�
   assert.ok(broken.includes('const app = await createTestApp({ fixture: "db-down" });'), broken);
   assert.ok(broken.includes('expect(res.status).toBe(500);'));
   assert.doesNotMatch(t, /it\.todo/);
+  // エラー応答の例の code を確かめる (同じ status の返し分けのため。差分レビュー)。2xx は確かめない
+  assert.ok(unauth.includes('expect(res.body.code).toBe("CONFLICT");'), unauth);
+  assert.ok(!ok.includes('res.body.code'), ok);
 });
 
 test('5xx の例は fixture が無ければ it.todo、ボディ無しの 5xx は従来どおり扱わない (0.2.0)', () => {

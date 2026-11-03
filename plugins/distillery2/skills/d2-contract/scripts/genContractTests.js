@@ -85,10 +85,13 @@ function openapiTest(op, entry, doc, testRel, componentsVar) {
     const validateExpr = schema
       ? `\n    const validate = ajv.compile(${json(ajvSchema(schema, componentsVar))});\n    expect(validate(res.body) || ajv.errorsText(validate.errors)).toBe(true);`
       : '';
+    // エラー応答 (4xx / 5xx) の例に code があれば、返し分け (同じ status の 409 が 2 つ など) を code で確かめる
+    const code = Number(status) >= 400 && c.response && typeof c.response === 'object' && typeof c.response.code === 'string' ? c.response.code : null;
+    const codeExpr = code ? `\n    expect(res.body.code).toBe(${json(code)});` : '';
     blocks.push(`  it('responds ${status} (example: ${c.name})', async () => {
     const app = await ${appClause(request.fixture)};
     ${call}
-    expect(res.status).toBe(${Number(status)});${validateExpr}
+    expect(res.status).toBe(${Number(status)});${validateExpr}${codeExpr}
   });`);
   }
   return `describe('${title}', () => {\n${blocks.join('\n')}\n});`;

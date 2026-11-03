@@ -104,3 +104,10 @@ test('x-test-requests のキーがどの応答の例にも当たらないと FAI
   const { errors } = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra })));
   assert.ok(errors.some(e => /キー "not_fuond"/.test(e)), errors.join('\n'));
 });
+
+test('x-test-requests の値に知らない項目や型の誤りがあると FAIL (差分レビュー)', () => {
+  const opExtra = yamlLines(['x-test-requests:', '  unauthorized:', '    header:', '      Authorization: Bearer invalid', '  not_found:', '    path: missing']);
+  const { errors } = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra })));
+  assert.ok(errors.some(e => /unauthorized\.header: 知らない項目/.test(e)), errors.join('\n'));
+  assert.ok(errors.some(e => /not_found\.path: 引数名/.test(e)), errors.join('\n'));
+});

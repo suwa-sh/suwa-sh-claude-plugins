@@ -46,7 +46,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 
 ## 引き継ぎファイルの処理 (担当を受理するたびに)
 
-1. `<H> validate <handoff>` が exit 0 (無い・不合格なら受理しない。再派遣)。検証役は `<H> route <findings> --findings`
+1. `<H> validate <handoff>` が exit 0 (無い・不合格なら受理しない。再派遣)。検証役は `<H> route <findings> --findings --mode <mode>`
 2. `<H> route <handoff> --mode <mode>`:
    - `decide[]`: 問いごとに `<D> add --handoff <handoff> --ask <id> --answer "<answer>" --by recommended [--provisional]`
    - `to_human[]`: 人に返す問いとして、この段の確認ページに載せる (確認ページの無い段なら、この問いだけの確認ページを出して止まる)
@@ -56,7 +56,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 
 ## 前のステップの課題
 
-1. 起票: `<H> file-drafts <handoff> --run <run>` (機能の中。`<run>/issues/` の下書き) か `<H> file-drafts <handoff> --root .` (上流の段。`docs/feedback/` に直接)
+1. 起票: `<H> file-drafts <handoff> --run <run>` (機能の中。`<run>/issues/` の下書き)、検証役は `<H> file-drafts <findings> --findings --run <run>`、上流の段は `<H> file-drafts <handoff> --root .` (`docs/feedback/` に直接。機能の中を戻し先にする課題には担当が `uc` を書く。無ければ exit 1 で、担当に差し戻す)
 2. 戻し先で振り分ける:
 
 | 戻し先 | 機能の作業中 | main マージ済みの機能について |

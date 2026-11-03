@@ -92,15 +92,18 @@ test('file-drafts --run: 前のステップの課題を <run>/issues/ の下書�
   assert.equal(r2.skipped.length, 2);
 });
 
-test('file-drafts --root: 上流の段は docs/feedback/ に課題ファイルを直接書く (from_uc なし)', () => {
+test('file-drafts --root: 上流の段は docs/feedback/ に課題ファイルを直接書く (上流への課題は from_uc なし、機能の中への課題は uc を from_uc に写す)', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
-  const f = write(dir, 'foundation-1.json', base());
+  const d0 = base();
+  d0.upstream_issues[1].uc = 'submit-expense';
+  const f = write(dir, 'foundation-1.json', d0);
   const out = JSON.parse(execFileSync(process.execPath, [path.join(SCRIPTS, 'handoff.js'), 'file-drafts', f, '--root', dir], { encoding: 'utf8' }));
   assert.equal(out.ok, true);
   assert.equal(out.written.length, 2);
-  const fm = parseYaml(fs.readFileSync(out.written[0], 'utf8').match(/^---\n([\s\S]*?)\n---/)[1]);
-  assert.equal(fm.status, 'open');
-  assert.equal(fm.from_uc, null);
+  const fms = out.written.map((p) => parseYaml(fs.readFileSync(p, 'utf8').match(/^---\n([\s\S]*?)\n---/)[1]));
+  assert.ok(fms.every((fm) => fm.status === 'open'));
+  assert.equal(fms.find((fm) => fm.target_step === 'requirements').from_uc, null);
+  assert.equal(fms.find((fm) => fm.target_step === 'contract').from_uc, 'submit-expense');
   assert.ok(out.written.every((p) => p.startsWith(path.join(dir, 'docs', 'feedback'))));
 });
 
@@ -132,4 +135,28 @@ test('前のステップの課題は根拠と推奨の直し方が要る (推奨
   const errors = H.validate(d).join('\n');
   assert.match(errors, /recommended_fix/);
   assert.match(errors, /evidence/);
+});
+
+test('file-drafts --root: 機能の中を戻し先にする課題に uc が無ければ書かずに exit 1 (scan の振り分けに乗らない課題を作らない。差分レビュー)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
+  const f = write(dir, 'foundation-2.json', base());
+  let code = 0;
+  try { execFileSync(process.execPath, [path.join(SCRIPTS, 'handoff.js'), 'file-drafts', f, '--root', dir], { encoding: 'utf8' }); } catch (e) { code = e.status; }
+  assert.equal(code, 1);
+});
+
+test('file-drafts --findings --run: 検証役の前のステップの課題を下書きにする (差分レビュー)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
+  const run = path.join(dir, '.distillery', 'runs', 'submit-expense');
+  fs.mkdirSync(run, { recursive: true });
+  const findings = write(dir, 'findings.backend-api.json', { findings: [], asks: [], upstream_issues: [base().upstream_issues[1]] });
+  const out = JSON.parse(execFileSync(process.execPath, [path.join(SCRIPTS, 'handoff.js'), 'file-drafts', findings, '--findings', '--run', run], { encoding: 'utf8' }));
+  assert.equal(out.written.length, 1);
+  assert.match(path.basename(out.written[0]), /_verify_/);
+});
+
+test('validate: 推奨を書いた問いは理由が要る (差分レビュー)', () => {
+  const d = base();
+  delete d.asks[0].reason;
+  assert.match(H.validate(d).join('\n'), /reason: 推奨があるなら理由が要る/);
 });
