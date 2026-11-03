@@ -93,24 +93,39 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 
 ## 上流の差分
 
-自動選択が `FB scan` の `upstream` で選ぶ (要求 → 決定 → 基盤の順に 1 つ)。要求は SKILL.md の「要求の差分」。決定と基盤:
+自動選択が `FB scan` の `upstream` で選ぶ (要求 → 決定 → 基盤の順に 1 つ)。要求は SKILL.md の「要求の差分」。決定と基盤は下。どれも次の「上流の差分の branch」で行う。
+
+### 上流の差分の branch (要求・決定・基盤で共通)
+
+main を途中の状態にしない。差分は一時の branch で行い、確定してから main を進める。
+
+1. **始め**: clean な main で、remote `origin` があれば `git fetch origin` して `git merge --ff-only origin/main` (分岐していたら止まって報告する)。`git switch -c upstream/<1 件目の課題の名前> main` (課題が 0 件で既存の持ち越しだけなら `upstream/carry-over`)
+2. **段ごとの commit**: この branch に入れる (段ごとの commit は squash しない。basis が commit の ID を使う)。
+   commit のたびに `git status --porcelain --untracked-files=all` を見る。起動シーケンス 5 の clean 判定の対象が残っていれば、その差分の write-set の中なら追加の commit に入れ (`--amend` はしない)、外なら止まって報告する
+3. **確定**: `git switch main` → `git merge --ff-only upstream/<名前>` → `git branch -d upstream/<名前>` → remote `origin` があれば `git push origin main`。ff できなければ (人が main に commit した) 止まって報告する
+4. **途中で止まったとき** (人に返した・落ちた・起動が切れた): 自動選択が `continue-upstream` を返す。その branch に切り替え、同じ差分を最初の手順から回し直す (どの派遣も再実行して安全で、済んだ commit は残る。確認ページの答えが `.distillery/decisions.jsonl` にあれば、その答えで進める)
+5. 確定の後は自動選択をもう一度呼ぶ (写し直し待ちの機能が先に選ばれる)
 
 ### 決定の差分 (`upstream.decide`)
 
-1. 前提: 進行中の UC が無い、clean な main
+1. 前提: 進行中の UC が無い。「上流の差分の branch」の 1 で branch を切る
 2. 課題ごとに sub `d2-decide mode=feedback issue=<docs/feedback/<issue>.md> result=<.distillery/logs/decide-<issue>.result.json>` (派遣表「② 決定の差分 (ADR)」。ADR を 1 本足す。結果ファイルは派遣の前に消す)。受理: 結果が `applied`、`validateAdr.js docs/adr` が exit 0、write-set の外が変わっていない。
    結果が `blocked` なら: `reason_kind: plugin` は理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` (プラグインへ持ち帰る課題にする)。`reason_kind: scope` は人に返す (推奨: 戻し先を基盤にする)
-3. 索引・開発ルール・アーキテストを作り直す (1 コマンドずつ): `node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements`、`node <skills>/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd .`、`node <skills>/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd .`。続けて `runGates.js --uc d2-feedback --only static` が通る (落ちたら人に返す)
+3. 索引・開発ルール・アーキテストを作り直す (1 コマンドずつ): `node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements`、`node <skills>/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd .`、`node <skills>/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd .`。続けて `runGates.js --uc d2-feedback --only static` が通り、`contracts/` があれば `node <skills>/d2-contract/scripts/validateUcIndex.js contracts` が exit 0 (落ちたら人に返す)
 4. 決定のレビュー (下の「縦・横レビュー」の `decide`) → 確認ページ (`page:decide:approve`。足した ADR と、`basis.js check` の STALE の UC を「やり直す / 後で」で載せる)
-5. 反映した課題を `git rm` → genDocsReadme → `git add -A -- docs .distillery` → `decide: feedback` で commit (trailer `Feedback-Consumed:`)。「やり直す」UC は `<RS> reopen <root> <slug> --from scenario` (同じ commit に入れる)
+5. 2 回に分けて commit する (生成物の basis が、入力の ADR を入れた commit を指すように):
+   1. `git add -A -- docs/adr` → `decide: feedback (adr)` (足した ADR と索引)
+   2. 開発ルールとアーキテストを 3 と同じコマンドで作り直す (basis が 1 の commit になる) → 反映した課題を `git rm` → genDocsReadme → `git add -A -- docs .distillery .dependency-cruiser.cjs` → `decide: feedback` で commit (trailer `Feedback-Consumed:`)。「やり直す」UC は `<RS> reopen <root> <slug> --from scenario` (同じ commit に入れる)
+   3. 「上流の差分の branch」の 3 で main へ確定する
 6. 上流で止めた機能の feature は消さない。自動選択をもう一度呼ぶと、止めた課題がすべて main から消えた機能を `resume` で選ぶ (下の「写し直し」)
 
 ### 基盤の差分 (`upstream.foundation`)
 
 1. 前提は決定の差分と同じ
-2. 課題の推奨の直し方に合う派遣を選ぶ: 骨組み・設定・テスト基盤は sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton`、画面部品は sub `d2-design`。どの派遣も再実行して安全。続けて sub `d2-foundation phase=finish ui=<true|false>`
-3. 受理は ③ の 5 と同じ。基盤のレビュー → 確認ページ (`page:foundation:approve`。STALE の UC を「やり直す / 後で」で載せる)
-4. 消費・commit (`foundation: feedback`) と、その後に自動選択を呼ぶことは決定の差分の 5〜6 と同じ
+2. 課題の推奨の直し方に合う派遣を選ぶ: 骨組み・設定・テスト基盤は sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton`、画面部品は sub `d2-design`。どの派遣も再実行して安全。
+   契約の骨格か画面部品を直したら、仕上げの前に ③ の 4 と同じく `git add contracts docs/design` → `foundation: feedback (contracts and design)` で commit する (仕上げが basis に記録する入力の commit)。続けて sub `d2-foundation phase=finish ui=<true|false>`
+3. 受理は ③ の 5 と同じで、`validateUcIndex.js contracts` が exit 0 も足す。基盤のレビュー → 確認ページ (`page:foundation:approve`。STALE の UC を「やり直す / 後で」で載せる)
+4. 反映した課題を `git rm` → genDocsReadme → `git add -A` (起動シーケンス 5 の clean 判定の対象外のルート直下の未追跡ファイルは入れない) → `foundation: feedback` で commit → 「上流の差分の branch」の 3 で main へ確定し、自動選択をもう一度呼ぶ (決定の差分の 6 と同じ)
 
 ## 写し直し (上流で止めた機能を、上流を直した後の main の上で続ける)
 

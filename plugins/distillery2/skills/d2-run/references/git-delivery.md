@@ -42,7 +42,7 @@ d2-run が作る**すべての commit** (簿記の commit `impl(<slug>): <stage>
 (例 `impl(register-loan): scaffold`)。`.distillery/runs/<slug>/` の events / done / attempt は含める。
 reports / traces は .gitignore 済みで含めない。シナリオ承認は `req(<slug>): scenarios` で commit する。
 main マージの done は main の上で commit する (`impl(<slug>): delivered`)。UC の課題は main マージの squash の前に feature の上で課題ファイルにして commit する (`impl(<slug>): issues to feedback`)。
-上流の差分の commit (`req: feedback`・`decide: feedback`・`foundation: feedback`) と開き直しの commit (`impl(<slug>): reopen`) は main の上で作る (下の「開き直しと上流で止めるとき」)。
+上流の差分の commit (`req: feedback`・`decide: feedback`・`foundation: feedback`) は一時の branch `upstream/<課題の名前>` で作って main へ ff する (下の「要求の差分」)。開き直しの commit (`impl(<slug>): reopen`) は main の上で作る (下の「開き直しと上流で止めるとき」)。
 
 ## squash と main への取り込みの条件
 
@@ -123,7 +123,7 @@ main マージの done の commit と 4 の間で止まると、feature が残�
 
 手順の正本は SKILL.md の ① の「要求の差分」。ここには git の約束だけを書く。
 
-- main の上で行う (進行中の UC が無いときだけ。上流で止まった UC の feature にいたら、clean なら main に切り替える)。決定の差分・基盤の差分も同じ
+- 一時の branch `upstream/<課題の名前>` で行い、確定してから `git merge --ff-only` で main を進める (進行中の UC が無いときだけ。決定の差分・基盤の差分も同じ。routing.md「上流の差分の branch」)。段ごとの commit は squash しない (basis が commit の ID を使う)。途中で止まっても main は汚れず、自動選択の `continue-upstream` が同じ branch で続ける
 - 反映した課題ファイルと取り下げた課題ファイルを `git rm` し、要求の変更と同じ commit (`req: feedback`) にする。trailer は `Feedback-Consumed:` / `Feedback-Dismissed:`。
   本文は `.distillery/logs/` の本文ファイルに書いて `git commit -F` で作る (main マージの squash と同じ書き方)
 - main マージ済みなのに課題ファイルにしていない run の課題 (移行) は、起動時の自動選択 (`migrate`) で `feedbackBatch.js file-issues` が課題ファイルにし、`impl(<slug>): issues to feedback` で main に commit する (要求の差分より前)

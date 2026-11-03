@@ -300,14 +300,16 @@ test('0.1.28 / 0.2.0: 決定の差分: 結果ファイルで分岐し、reason_k
 
 test('0.2.0: 決定の差分・基盤の差分: clean な main で回し、決定は ADR → 索引・ルール・アーキテストの作り直し → static (run 名は d2-feedback) → レビュー → 確認ページ → 課題の消費と commit → 止めた feature の退避', () => {
   const dd = routingSection('### 決定の差分');
-  const order = ['clean な main', 'sub `d2-decide mode=feedback issue=<docs/feedback/<issue>.md> result=<.distillery/logs/decide-<issue>.result.json>`', '`node <skills>/d2-decide/scripts/genAdrIndex.js', '`node <skills>/d2-foundation/scripts/genRules.js', '`node <skills>/d2-foundation/scripts/genArchTests.js', '`runGates.js --uc d2-feedback --only static`', '決定のレビュー', '`page:decide:approve`', '`git rm`', '`decide: feedback` で commit (trailer `Feedback-Consumed:`)', '上流で止めた機能の feature は消さない'];
+  const order = ['「上流の差分の branch」の 1 で branch を切る', 'sub `d2-decide mode=feedback issue=<docs/feedback/<issue>.md> result=<.distillery/logs/decide-<issue>.result.json>`', '`node <skills>/d2-decide/scripts/genAdrIndex.js', '`node <skills>/d2-foundation/scripts/genRules.js', '`node <skills>/d2-foundation/scripts/genArchTests.js', '`runGates.js --uc d2-feedback --only static`', '決定のレビュー', '`page:decide:approve`', '`decide: feedback (adr)`', '`git rm`', '`decide: feedback` で commit (trailer `Feedback-Consumed:`)', '「上流の差分の branch」の 3 で main へ確定する', '上流で止めた機能の feature は消さない'];
   let last = -1;
   for (const o of order) { const i = dd.indexOf(o); assert.ok(i > last, `決定の差分の順: ${o}`); last = i; }
   assert.match(dd, /派遣表「② 決定の差分 \(ADR\)」/);
   assert.match(dd, /落ちたら人に返す/);
   assert.doesNotMatch(dd, /worktree/, '決定の差分は本体の作業ツリーで回す (還流の worktree は使わない)');
   const fd = routingSection('### 基盤の差分');
-  assert.match(fd, /sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton`、画面部品は sub `d2-design`。どの派遣も再実行して安全。続けて sub `d2-foundation phase=finish ui=<true\|false>`/);
+  assert.match(fd, /sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton`、画面部品は sub `d2-design`。どの派遣も再実行して安全。/);
+  assert.match(fd, /仕上げの前に ③ の 4 と同じく `git add contracts docs\/design` → `foundation: feedback \(contracts and design\)` で commit する[^\n]*続けて sub `d2-foundation phase=finish ui=<true\|false>`/);
+  assert.match(fd, /`validateUcIndex\.js contracts` が exit 0 も足す/);
   assert.match(fd, /受理は ③ の 5 と同じ/);
   assert.match(fd, /`foundation: feedback`/);
   assert.match(row(read(TEMPLATE), /^\| ② 決定の差分 \(ADR\) \|/), /本体の作業ツリー \(clean な main\) で派遣する \(worktree は使わない/);
@@ -750,7 +752,7 @@ test('0.1.35 R18/R19: 承認に head を残し、main マージ 1 の 2 で人�
 test('0.1.35: 記録だけの課題は troubleshooting の 2 節に (迷ったときの扱いと既知の不具合)。本文から 1 行で参照', () => {
   const t = read('skills/d2-run/references/troubleshooting.md');
   const how = section('skills/d2-run/references/troubleshooting.md', '## 手順書に書いていない扱い (迷ったら)', '## 既知の不具合 (未確認)');
-  assert.equal(how.split('\n').filter((l) => /^\| [^-|]/.test(l) && !l.startsWith('| 場面 |')).length, 25);
+  assert.equal(how.split('\n').filter((l) => /^\| [^-|]/.test(l) && !l.startsWith('| 場面 |')).length, 26);
   // 0.1.36 で足した記録 (試し運転 0.1.35 の S2 の一部・S3〜S5・S7〜S9)
   assert.match(how, /\| 人レビュー \| 検証役の指摘 \(major \/ minor\) が課題ファイルにならない \| 指摘は前提の記録に結びつき、人レビューで「承認 \/ 実装を直す \/ 要求を直す」を選ぶ/);
   assert.match(how, /\| 要求の差分 \| 6 の `docs\/adr\/\[0-9\]\*\.md` をそのまま渡すか、展開して列挙するか \| シェルの展開で列挙して渡す/);
@@ -900,4 +902,14 @@ test('0.2.0 / 0.3.0: 自動選択は上流の課題 (要求 → 決定 → 基�
   const del = section(DELIVERY, '## 写し直し', null);
   assert.match(del, /merge commit も rebase も使わない/);
   assert.match(del, /`refs\/distillery2\/paused\/<slug>\/<ts>`/);
+});
+
+test('0.3.0: 上流の差分は一時の branch upstream/<課題> で行い、段ごとの commit の後に作業ツリーが空かを確かめ、確定してから main を ff で進める。途中で止まったら同じ branch で最初から回し直す', () => {
+  const b = routingSection('### 上流の差分の branch');
+  assert.match(b, /`git switch -c upstream\/<1 件目の課題の名前> main`/);
+  assert.match(b, /`git status --porcelain --untracked-files=all` を見る。[^\n]*write-set の中なら追加の commit に入れ \(`--amend` はしない\)、外なら止まって報告する/);
+  assert.match(b, /`git switch main` → `git merge --ff-only upstream\/<名前>` → `git branch -d upstream\/<名前>` → remote `origin` があれば `git push origin main`。ff できなければ[^\n]*止まって報告する/);
+  assert.match(b, /自動選択が `continue-upstream` を返す。その branch に切り替え、同じ差分を最初の手順から回し直す/);
+  assert.match(section(SKILL, '### 要求の差分', '## ② 決定'), /routing\.md「上流の差分の branch」の 1 で一時の branch を切る/);
+  assert.match(routingSection('### 決定の差分'), /`git add -A -- docs \.distillery \.dependency-cruiser\.cjs` → `decide: feedback` で commit/, 'アーキテストも commit に入れる (main が汚れない)');
 });

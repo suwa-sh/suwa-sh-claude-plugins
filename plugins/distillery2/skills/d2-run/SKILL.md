@@ -99,7 +99,7 @@ description: >-
 UC の実装で見つかった要求の穴 (戻し先が requirements の課題ファイル) を要求に反映する。自動選択の `requirements-diff` で入る (`stage=requirements` の直接指定も同じ)。
 既存の持ち越し (0.1.30〜0.1.31 形式の残った作業: `FB scan` の `carry_over_rows` (`use-cases.yaml` の `carry_over` の行) と `carry_over_pending`) が残っているときは、要求の課題が 0 件でも入る (3 で宛先へ流す)。
 
-1. 前提: 進行中の UC が無い、作業 branch が clean な main。remote `origin` があれば `git fetch origin` して `git merge --ff-only origin/main` (分岐していたら止まって報告する)。
+1. 前提: 進行中の UC が無い。routing.md「上流の差分の branch」の 1 で一時の branch を切る (以降の commit はこの branch に入れ、4 の後に main へ確定する)。
    **既存の持ち越しを先に控える**: `FB scan` の `carry_over_rows` (slug と items) と `carry_over_pending` (slug と items) を 3 の材料として書き留める (2 の再生成 (要求担当の差分更新も `genUseCases.js` も) は `carry_over` の行を引き継がず消すので、2 の後には読めない)
 2. sub `d2-requirements` (`input=<feedbackBatch.js scan の upstream.requirements と requirement_all の課題ファイルのパス (すべて)>`。差分更新)。課題の本文は自分では読まない。
    報告の「残った作業」(要求担当の write-set の外で必要になった作業。種類 `design` / `assumption` と対象付き)、「決定と違う反映」(課題の決定と違う反映にした課題・決定・実際の反映・理由)、
@@ -134,7 +134,7 @@ UC の実装で見つかった要求の穴 (戻し先が requirements の課題�
    - 既存の持ち越しを流したら、`carry_over_pending` の run には `node runState.js event .distillery/runs/<slug> carry_over_migrated --data-file <json>` (`{"items": [...], "to": "req: feedback"}`) を追記する (再び移行の対象にしない)。`use-cases.yaml` の `carry_over` の行は 2 の再生成 (要求担当の差分更新か `genUseCases.js`) で消える
    - やり直す UC: 「やり直し」の節の `reopen` を UC ごとに回す
    次に、反映した課題ファイルと取り下げた課題ファイルを `git rm` し、genDocsReadme → `git add -A -- docs packages/ui .distillery` (`packages/ui` は design の作業があったときだけ。無いパスを名指ししない) → 本文ファイル (`.distillery/logs/req-feedback-<ts>.txt`。1 行目 `req: feedback`、空行、trailer) を書いて `git commit -F <本文ファイル>` (main マージ 3 と同じ書き方)。
-   trailer は反映した課題ごとに `Feedback-Consumed: docs/feedback/<issue>.md`、取り下げた課題ごとに `Feedback-Dismissed: docs/feedback/<issue>.md`、最後に attribution 行 (git-delivery.md「commit の attribution」)。remote があれば push
+   trailer は反映した課題ごとに `Feedback-Consumed: docs/feedback/<issue>.md`、取り下げた課題ごとに `Feedback-Dismissed: docs/feedback/<issue>.md`、最後に attribution 行 (git-delivery.md「commit の attribution」)。続けて routing.md「上流の差分の branch」の 3 で main へ確定する (push を含む)
 5. 上流で止めた UC の feature は消さない (止めた課題がすべて main から消えると、次の自動選択が `resume` を返して写し直す。要求の課題は scenario から続く)
 6. 決定・契約への波及は `node <skills>/d2-common/scripts/lib/basis.js check <対象ファイル…> requirements=docs/requirements adr=docs/adr contracts=contracts` で見つける。
    対象ファイルは存在するものだけ: `docs/adr/[0-9]*.md` (決定の本文。`_review-summary.md` と `index.md` は生成物なので渡さない。渡すと STALE に出る)、`docs/adr/architecture.md`、`docs/as-built/*/*/index.md` (as-built がまだ無ければ省く。無いパスを渡すと読み込みで落ちる)。
