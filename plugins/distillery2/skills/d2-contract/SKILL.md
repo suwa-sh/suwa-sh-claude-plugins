@@ -3,8 +3,8 @@ name: d2-contract
 description: >-
   契約 (OpenAPI / AsyncAPI / RDB スキーマ) を分割 YAML で管理し、bundle・UC ごとの slice・契約テストを生成する。
   mode=skeleton (段階③: カタログ・共通コンポーネント・エラー型・空の uc-index) と
-  mode=uc (段階④: 1 UC 分の分割ファイル編集・examples 追加・slice/テスト再生成) と
-  mode=feedback (還流: 実装で見つかった契約の穴を直し、生成物を全部作り直す) の 3 モード。
+  mode=uc (段階④: 1 UC 分の分割ファイル編集・examples 追加・slice/テスト再生成) の 2 モード。
+  実装で見つかった契約の穴は、その UC を契約の段から巻き戻すか開き直して mode=uc で直す。
   UC が使う operation には examples を必須にし、書けなければ止めて課題にする。
 ---
 
@@ -94,50 +94,13 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
    本文だけでは区別できない応答 (無い ID の 404、本文の無い GET の 401 / 403、前提のデータで決まる 409 / 5xx) は、operation の `x-test-requests` で
    例ごとに URL の値・ヘッダ・テスト用データ (`fixture`) を指定し、テスト用データの意味を `x-test-fixtures` に書く (同「例ごとの要求」)。
    status の違う例が同じ要求になると validate が止める。
-   **シナリオから example を作れないときは、契約を推測で埋めず**、
-   `.distillery/runs/<slug>/issues/<ts>_<slug>.md` に課題ドラフトを残して停止する。書式は実装の課題と同じ:
-   front matter に `kind: contract` と `title` (40 字以内)。front matter が無いと as-built の課題の表で「未分類」になる (0.1.10 実走 ④-11)。
+   **シナリオから example を作れないときは、契約を推測で埋めず**、引き継ぎファイルの `upstream_issues` に書いて停止する
+   (戻し先は、シナリオか要求が決めていない振る舞いなら `scenario` か `requirements`、契約の書き方で解けるなら書いて進む)。
 4. **uc-index を更新**: `uc-index.yaml` の該当 `slug` に `operations` / `messages` / `tables` を書く。
 5. **compile + validate**: `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js`。
    examples 不足や参照ずれは validate が exit 1 で止める。
 6. **契約テスト生成**: `genContractTests.js --uc <slug>` と `genRdbDdl.js` を対象リポに対して実行する。
    契約テストはこの時点では todo か red (実装前だから)。生成物に `basis:` を付ける。
-
-## mode=feedback issue=&lt;課題&gt; result=&lt;結果ファイル&gt; (還流)
-
-作業ディレクトリは派遣文の worktree (`.distillery/worktrees/feedback`。main から切った還流 branch。溜まった課題を 1 件ずつ同じ worktree で直す)。パスはすべてここからの相対で扱い、
-スクリプトもここで回す (結果ファイルだけは派遣文の本体のリポの絶対パスに書く)。
-d2-run が派遣する。実装で見つかった「契約の穴」(課題ファイル `docs/feedback/<issue>.md` の front matter `kind: contract`) を直す。
-還流は UC の main マージの後なので、課題を出した UC が足した契約も worktree にある。
-
-1. 課題を読み、直す対象 (operationId・channel / message 名・テーブル名) を挙げる
-2. **対象が今の branch の契約にあるか確かめる** (`contracts/openapi/` の operationId、`contracts/asyncapi/` の message、`contracts/db/domains/` のテーブル)。
-   1 つでも無ければ**何も書かずに**、結果ファイルへ `status: absent`、無かった対象名を `targets` に書いて止まる
-   (d2-run はその課題を止まった課題にする)
-3. 契約を推測で埋めないと直せない (課題に応答の形が無い、要求が決まっていない) なら、何も書かずに `status: blocked` と理由、`reason_kind: scope` を書いて止まる (止まった課題として次の還流で再挑戦)。
-   直す場所が契約ではなく distillery2 側 (契約テストや DDL の生成器、テンプレート、手順書) なら `status: blocked` と理由、`reason_kind: plugin` を書いて止まる (d2-run が課題を `kind: plugin` に書き換えて還流の対象から外す)
-4. 分割ファイル (`openapi/` `asyncapi/` `db/domains/`) を直す。examples 必須のルールと `x-test-headers` / `x-test-requests` / `x-test-fixtures` の書き方は mode=uc と同じ。
-   uc-index は変えない (UC が使う範囲は mode=uc の担当)
-5. 生成物を全部作り直す (この順): `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js` → `genContractTests.js` (`--uc` なし) → `genRdbDdl.js`。
-   作り直すのは検査のため。d2-run は課題の commit に分割ファイルだけを入れ、生成物は最後に `feedbackBatch.js` がまとめて作り直す。
-   直すまでもなく課題の指摘が既に契約にあれば、分割ファイルを変えずに `applied` とし、`reason` にそう書く (d2-run が分割ファイルの差分の有無で取り込み済みと判定する)
-6. 結果ファイルへ `status: applied`、`targets` (直した対象)、`reason` (1 行) を書く。完了報告には「他の UC への影響」として、
-   直した operation を使う UC (`uc-index.yaml` から) と、提供側の契約テストが red になりうる変更を operation 名で書く (d2-run が確認ページと還流の commit の本文に載せる)
-
-結果ファイルは JSON 1 つ: `{"status": "applied" | "absent" | "blocked", "targets": [...], "reason": "...", "reason_kind": "plugin" | "scope"}` (`reason_kind` は `blocked` のとき必須)。d2-run はこのファイルで分岐し、
-受理は各スクリプトの `--check` で行う (報告文では判断しない)。
-
-## mode=feedback: 読むもの
-
-- 課題ファイル `docs/feedback/<issue>.md` (worktree の中。派遣文で渡す)
-- `contracts/**` (分割ファイル・`contracts/uc-index.yaml`)、`.distillery/config.yaml` (genContractTests / genRdbDdl が読む)
-
-## mode=feedback: 書くもの
-
-- `contracts/**` (分割ファイルと `contracts/generated/`。uc-index は変えない)
-- `apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**` (生成物)
-- 結果ファイル `.distillery/logs/feedback/<b>/<issue>.result.json`
-- git は使わない (commit は d2-run が行う)
 
 ## 注意
 

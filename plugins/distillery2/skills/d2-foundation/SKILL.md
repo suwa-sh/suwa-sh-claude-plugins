@@ -28,7 +28,7 @@ ui=true | false               # phase=finish だけ。今回の d2-design が部
 adr=docs/adr                  # ADR ディレクトリ
 ```
 
-d2-run は段階③で 2 回呼ぶ (還流の開発ルールとアーキテストの作り直しは、d2-run が回す `feedbackBatch.js` が F1・F2 のスクリプトを直接回す)。
+d2-run は段階③で 2 回呼ぶ (決定の差分の開発ルールとアーキテストの作り直しは、d2-run が F1・F2 のスクリプトを直接回す)。
 
 | 呼ぶとき | phase | 順 |
 |---|---|---|

@@ -4,7 +4,7 @@ description: >-
   段階②「決定」。RDRA と USDM から非機能要求グレード表 (docs/nfr/) を推論し、アーキテクチャ決定記録 (docs/adr/) を書く。
   設計書 (arch design の yaml) は書かない。ADR の front matter に機械可読の rules を持たせ、段階③がルール文書とアーキテストを生成する。
   非機能グレード表は決定の根拠として ADR とは別に残す。
-  mode=feedback (還流) では、実装で見つかったルールの穴を新しい ADR 1 本にする。
+  mode=feedback (決定の差分) では、実装で見つかったルールの穴を新しい ADR 1 本にする。
   「NFR グレードを作成」「アーキテクチャの決定を記録」「ADR を書く」「ティア構成を決める」「認可モデルを選ぶ」などで発動。
 ---
 
@@ -25,7 +25,7 @@ RDRA モデル・USDM・UC 一覧から、人が決めるべき 2 種類の成�
 
 ```
 (なし)                                   # 段階② (下の「入出力」「手順」)
-mode=feedback issue=<課題> result=<結果ファイル>   # 還流 (下の「mode=feedback」)
+mode=feedback issue=<課題> result=<結果ファイル>   # 決定の差分 (下の「mode=feedback」)
 ```
 
 ## 入出力
@@ -126,26 +126,22 @@ node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requir
 - **ブランド方針の由来** (`ui.brand.source`) を書く。`inferred` (RDRA から推論・低確信) のときは色とフォントを
   「確認してほしいこと」に含める。`brand skill` のときはその旨を記す。
 
-## mode=feedback (還流)
+## mode=feedback (決定の差分)
 
-作業ディレクトリは派遣文の worktree (`.distillery/worktrees/feedback`。main から切った還流 branch。溜まった課題を 1 件ずつ同じ worktree で直す)。パスはすべてここからの相対で扱い、
-スクリプトもここで回す (結果ファイルだけは派遣文の本体のリポの絶対パスに書く)。
-d2-run が派遣する。実装で見つかった「ルールの穴」(課題ファイル `docs/feedback/<issue>.md` の front matter `kind: rule`) を、
-新しい ADR 1 本の `rules[]` にする。開発ルールとアーキテストは作り直さない。d2-run が課題ごとに番号付きの ADR だけを commit し、
-最後に `feedbackBatch.js` がまとめて作り直す (ここで作り直すと、ルールに記録する「どの ADR から作ったか」が commit 前の古い ADR を指すため)。
+d2-run が決定の差分で派遣する (作業ディレクトリはリポのルート。clean な main)。実装で見つかった「ルールの穴」(課題ファイル `docs/feedback/<issue>.md` で戻し先が `decide`。古い課題は `kind: rule`) を、
+新しい ADR 1 本の `rules[]` にする。開発ルールとアーキテストは作り直さない (課題をすべて ADR にした後に d2-run が作り直す)。
 
 1. 課題を読む。既存の ADR をすべて読み、課題がどの決定に関わるかを決める
 2. 次のどれかに当たるなら、**ADR を書かずに**結果ファイルへ `status: blocked` と理由、理由の種類 `reason_kind` を書いて止まる:
    - ADR の `rules[]` で表せない (生成器の直し、設定ファイル (`biome.json` など。生成器が作り直すので対象リポジトリで直しても戻る) の直し、手順書の直し) → `reason_kind: plugin`
-     (直す場所は distillery2 側。d2-run は課題を `kind: plugin` に書き換えて還流の対象から外す)
-   - ティア構成・データストア・testing の capabilities を変える必要がある (config・骨格の作り直しが要り、還流の範囲を超える) → `reason_kind: scope` (止まった課題として次の還流で再挑戦)
+     (直す場所は distillery2 側。d2-run は課題を `kind: plugin` に書き換える)
+   - ティア構成・データストア・testing の capabilities を変える必要がある (config・骨格の作り直しが要る) → `reason_kind: scope` (d2-run が戻し先を基盤 (`foundation`) にするか人に返す)
 3. 新しい ADR を 1 本書く ([references/adr-format.md](references/adr-format.md))。連番は既存の最大 + 1、`status: accepted`、
    `basis` は既存の ADR と同じ書き方、`rules[]` を 1 つ以上。本文の背景に課題の要点 (課題のファイル名と、front matter の `from_uc`) を書く
 4. 既存の決定を置き換えるときだけ、新しい ADR に `supersedes` を書き、旧 ADR は front matter の `status: superseded` と
    `superseded_by` の 2 項目だけを変える (本文と旧 `rules[]` は変えない。決定の履歴を残す)。既存の ADR をそれ以外で変えない
 5. `validateAdr.js` → `genAdrIndex.js` (段階②と同じコマンド)。PASS するまで直す。`genArchitectureDoc.js` は回さない (ティアを変えないので図は変わらない)。
-   索引 `index.md` は d2-run が課題の commit に入れない (最後に `feedbackBatch.js` が作り直す)
-   `_review-summary.md` は書かない (人の確認は d2-run の還流の確認ページで行う)
+   `_review-summary.md` は書かない (人の確認は d2-run の決定の差分の確認ページで行う)
 6. 結果ファイルへ `status: applied`、`targets` (足した ADR のファイル名と、置き換えた旧 ADR)、`reason` (1 行) を書く
 
 結果ファイルは JSON 1 つ: `{"status": "applied" | "blocked", "targets": [...], "reason": "...", "reason_kind": "plugin" | "scope"}` (`reason_kind` は `blocked` のとき必須)。d2-run はこのファイルで分岐し、
@@ -153,13 +149,13 @@ d2-run が派遣する。実装で見つかった「ルールの穴」(課題フ
 
 ## mode=feedback: 読むもの
 
-- 課題ファイル `docs/feedback/<issue>.md` (worktree の中。派遣文で渡す)
+- 課題ファイル `docs/feedback/<issue>.md` (派遣文で渡す)
 - `docs/adr/*.md` (既存の ADR と索引)
 
 ## mode=feedback: 書くもの
 
 - `docs/adr/NNNN-<slug>.md` (新しい ADR 1 本。置き換えなら旧 ADR の front matter 2 項目も)、`docs/adr/index.md` (genAdrIndex)
-- 結果ファイル `.distillery/logs/feedback/<b>/<issue>.result.json`
+- 結果ファイル `.distillery/logs/decide-<issue>.result.json` (派遣文で渡す)
 - git は使わない (commit は d2-run が行う)
 
 ## 完了報告
@@ -176,7 +172,7 @@ mode=feedback では: 結果ファイルの `status`、足した ADR と置き�
 - 設計 yaml (レイヤ図・データモデルの詳細) は書かない。
 - インフラ / ベンダー選定はしない (ベンダーニュートラルに保つ)。
 - 差分モード・スナップショットマージは扱わない (履歴は Git)。
-- mode=feedback で開発ルール・アーキテスト・config を作り直さない (還流の最後に `feedbackBatch.js` がまとめて作り直す)。
+- mode=feedback で開発ルール・アーキテスト・config を作り直さない (課題をすべて ADR にした後に d2-run が作り直す)。
 
 ## 引き継ぎファイル
 
