@@ -88,10 +88,14 @@ function openapiTest(op, entry, doc, testRel, componentsVar) {
     // エラー応答 (4xx / 5xx) の例に code があれば、返し分け (同じ status の 409 が 2 つ など) を code で確かめる
     const code = Number(status) >= 400 && c.response && typeof c.response === 'object' && typeof c.response.code === 'string' ? c.response.code : null;
     const codeExpr = code ? `\n    expect(res.body.code).toBe(${json(code)});` : '';
+    // x-test-requests[名前].expect の項目を例の値で確かめる (同じ status の返し分け。code は上で確かめるので重ねない)
+    const tr = G.testRequestFor(entry.operation, c.name);
+    const fields = tr && Array.isArray(tr.expect) ? tr.expect.filter((f) => !(code && f === 'code')) : [];
+    const expectExpr = fields.map((f) => `\n    expect(res.body[${json(f)}]).toEqual(${json(c.response && typeof c.response === 'object' ? c.response[f] : undefined)});`).join('');
     blocks.push(`  it('responds ${status} (example: ${c.name})', async () => {
     const app = await ${appClause(request.fixture)};
     ${call}
-    expect(res.status).toBe(${Number(status)});${validateExpr}${codeExpr}
+    expect(res.status).toBe(${Number(status)});${validateExpr}${codeExpr}${expectExpr}
   });`);
   }
   return `describe('${title}', () => {\n${blocks.join('\n')}\n});`;

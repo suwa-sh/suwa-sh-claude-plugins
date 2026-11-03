@@ -71,3 +71,15 @@ test('CLI: list --format md と、引数の誤りは exit 2', () => {
   try { execFileSync(process.execPath, [path.join(SCRIPTS, 'decisionLog.js'), 'add', '--root', root], { encoding: 'utf8' }); } catch (e) { code = e.status; }
   assert.equal(code, 2);
 });
+
+test('add --handoff <findings>: 検証役の findings の問いも記録できる (3 ラウンド目)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-dlog-'));
+  const run = path.join(root, '.distillery', 'runs', 'submit-expense');
+  fs.mkdirSync(run, { recursive: true });
+  const f = path.join(root, 'findings.frontend.json');
+  fs.writeFileSync(f, JSON.stringify({ findings: [], upstream_issues: [], asks: [{ id: 'tz', kind: 'unknown_fact', question: '時刻の基準', options: [{ label: 'JST', impact: 'a' }, { label: 'UTC', impact: 'b' }], recommended: 'JST', reason: '利用者は国内' }] }));
+  D.add({ run, handoff: f, ask: 'tz', answer: 'JST', by: 'recommended' });
+  const e = JSON.parse(fs.readFileSync(path.join(run, 'decisions.jsonl'), 'utf8').trim());
+  assert.equal(e.id, 'handoff:verify:tz');
+  assert.equal(e.provisional, true);
+});

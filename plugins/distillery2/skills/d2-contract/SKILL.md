@@ -93,7 +93,7 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
    request example の `x-headers` (上書き。`null` で送らない) で入力を表す ([`references/contract-tests.md`](references/contract-tests.md) の「要求ヘッダ」)。
    本文だけでは区別できない応答 (無い ID の 404、本文の無い GET の 401 / 403、前提のデータで決まる 409 / 5xx) は、operation の `x-test-requests` で
    例ごとに URL の値・ヘッダ・テスト用データ (`fixture`) を指定し、テスト用データの意味を `x-test-fixtures` に書く (同「例ごとの要求」)。
-   status の違う例が同じ要求になると validate が止める。
+   期待する結果が違う例 (status が違うか、同じ status で中身が違う) が同じ要求になると validate が止める。同じ status で中身の違う例は `expect` で確かめる項目を書く。
    **シナリオから example を作れないときは、契約を推測で埋めず**、引き継ぎファイルの `upstream_issues` に書いて停止する
    (戻し先は、シナリオか要求が決めていない振る舞いなら `scenario` か `requirements`、契約の書き方で解けるなら書いて進む)。
 4. **uc-index を更新**: `uc-index.yaml` の該当 `slug` に `operations` / `messages` / `tables` を書く。

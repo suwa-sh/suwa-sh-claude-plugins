@@ -189,6 +189,9 @@ function run(o) {
   const sum = summarize(md);
   const want = (loadPoints()[o.point] || []).map((p) => p.id);
   const missing = want.filter((id) => !sum.perspectives[id]);
+  // 指摘ごとに perspective・severity・claim が要る (途中で切れた結果を、読めない指摘のまま受理しない)
+  const broken = md.split(/^### 指摘 /m).slice(1).filter((b) => !/\*\*perspective\*\*:/.test(b) || !/\*\*severity\*\*:\s*(critical|high|medium|low|nit)/.test(b) || !/\*\*claim\*\*:\s*\S/.test(b)).map((b) => `指摘 ${(b.match(/^(\d+)/) || [, '?'])[1]}`);
+  if (broken.length) return { ...base, status: 'failed', job, result: path.relative(o.cwd, resultFile), reason: `指摘の欄が足りない: ${broken.join(', ')}` };
   if (missing.length || !(/^### 指摘 \d+/m.test(md) || /No findings\./.test(md))) {
     return { ...base, status: 'failed', job, result: path.relative(o.cwd, resultFile), reason: `結果の形が足りない (判定の無い観点: ${missing.join(', ') || 'なし'}、指摘の節: ${/^### 指摘 \d+/m.test(md) || /No findings\./.test(md) ? 'あり' : 'なし'})` };
   }

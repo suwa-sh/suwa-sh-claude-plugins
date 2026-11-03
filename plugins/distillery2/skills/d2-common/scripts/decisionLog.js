@@ -48,7 +48,9 @@ function entryOf(o) {
   const at = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
   if (o.handoff) {
     if (!o.ask) throw new Fail('--handoff には --ask が要る');
-    const data = parseYaml(fs.readFileSync(o.handoff, 'utf8')) || {};
+    const text = fs.readFileSync(o.handoff, 'utf8');
+    const data = (o.handoff.endsWith('.json') ? JSON.parse(text) : parseYaml(text)) || {};
+    if (!data.step && Array.isArray(data.findings)) data.step = 'verify'; // 検証役の findings (引き継ぎファイルの代わり)
     const ask = (data.asks || []).find((a) => a && a.id === o.ask);
     if (!ask) throw new Fail(`引き継ぎファイルに問いが無い: ${o.ask}`);
     const labels = (ask.options || []).map((x) => x.label);

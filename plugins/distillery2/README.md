@@ -85,6 +85,6 @@ docs/                  requirements/ nfr/ adr/ rules/ design/ as-built/
 
 ## 状態
 
-0.1.x は UC 1 つの縦切りが通る範囲を対象にする。リリース後の変更入口・ドリフト検知・既存プロダクトの取り込みは未対応。変更履歴は [CHANGELOG.md](CHANGELOG.md)。
+0.2.x は、要望から複数の UC を main マージまで通し、後のステップで見つけた問題を前のステップへ戻して直す範囲を対象にする。リリース後の変更入口・ドリフト検知・既存プロダクトの取り込みは未対応。変更履歴は [CHANGELOG.md](CHANGELOG.md)。
 実走で踏んだ環境依存の問題と回避策は、スキルごとの `references/troubleshooting.md` にためる: [d2-run](skills/d2-run/references/troubleshooting.md) (headless の許可) / [d2-foundation](skills/d2-foundation/references/troubleshooting.md) (npm 10 の失敗、qlty / biome) / [d2-contract](skills/d2-contract/references/troubleshooting.md) (契約テスト)。
 旧版 (`distillery` / `distillery-impl`) はそのまま残る。

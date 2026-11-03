@@ -67,6 +67,7 @@
   `validateUcIndex.js` が両方の例を名指しして止める (同じ要求に違う結果は返せないので、片方のテストが必ず落ちるか、違いを確かめられない)。
   `x-test-requests` のキーがどの応答の例にも当たらないときと、値に知らない項目 (`path` / `headers` / `fixture` 以外) や型の誤りがあるときも止める。
 - **エラー応答の code**: 4xx / 5xx の例の中身に `code` (文字列) があれば、生成するテストが `res.body.code` も確かめる (同じ status の返し分けを確かめるため)。
+- **同じ status の返し分け**: 同じ status で中身の違う例が 2 つ以上あるときは、`x-test-requests.<例>.expect` に確かめる応答の項目名を書く (例 `expect: [status]`)。生成するテストが `res.body[<項目>]` を例の値で確かめる。エラー応答で例ごとに `code` が違えば要らない。書かなければ `validateUcIndex.js` が止める。
   生成と検査は同じ計算 (`contractGraph.js` の `contractTestCases`) を使う。
 - consumer stub は `packages/contracts/<id>/stubs/<operationId>.<status>.json` (response example の中身)。
 - AsyncAPI は `packages/contracts/<id>/validators.ts` の `validateMessage(name, payload)` を

@@ -160,3 +160,16 @@ test('validate: 推奨を書いた問いは理由が要る (差分レビュー)'
   delete d.asks[0].reason;
   assert.match(H.validate(d).join('\n'), /reason: 推奨があるなら理由が要る/);
 });
+
+test('file-drafts --root: uc が UC 一覧に無ければ、どの課題も書かずに exit 1 (3 ラウンド目)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
+  fs.mkdirSync(path.join(dir, 'docs', 'requirements'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'docs', 'requirements', 'use-cases.yaml'), 'use_cases:\n  - slug: submit-expense\n');
+  const d = base();
+  d.upstream_issues[1].uc = 'submit-expens';
+  const f = write(dir, 'foundation-3.json', d);
+  let code = 0;
+  try { execFileSync(process.execPath, [path.join(SCRIPTS, 'handoff.js'), 'file-drafts', f, '--root', dir], { encoding: 'utf8' }); } catch (e) { code = e.status; }
+  assert.equal(code, 1);
+  assert.equal(fs.existsSync(path.join(dir, 'docs', 'feedback')), false, '前の課題 (要求への課題) も書かない');
+});

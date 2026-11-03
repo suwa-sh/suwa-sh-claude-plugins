@@ -53,6 +53,9 @@ function validate(contractsDir) {
         errors.push(`${uc.slug}: operation ${op} の x-test-requests が参照する fixture "${f}" が x-test-fixtures (文書直下か operation) に宣言されていない`);
       }
       for (const m of G.invalidTestRequests(openapiIndex.get(op))) errors.push(`${uc.slug}: operation ${op} の x-test-requests の ${m}`);
+      for (const v of G.unverifiedVariants(openapiIndex.get(op), openapi)) {
+        errors.push(`${uc.slug}: operation ${op} の例 "${v.name}" (${v.status}) は同じ status の別の例と中身が違うのに、違いを確かめる項目が無い — x-test-requests.${v.name}.expect に確かめる応答の項目名を書く`);
+      }
       for (const k of G.unknownTestRequestKeys(openapiIndex.get(op), openapi)) {
         errors.push(`${uc.slug}: operation ${op} の x-test-requests のキー "${k}" がどの応答の例にも当たらない (応答の例の名前か、ボディ無しの応答の status にする)`);
       }

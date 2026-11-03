@@ -111,3 +111,27 @@ test('x-test-requests の値に知らない項目や型の誤りがあると FAI
   assert.ok(errors.some(e => /unauthorized\.header: 知らない項目/.test(e)), errors.join('\n'));
   assert.ok(errors.some(e => /not_found\.path: 引数名/.test(e)), errors.join('\n'));
 });
+
+test('x-test-requests 全体が mapping でない・path の引数名が経路に無いと FAIL (3 ラウンド目)', () => {
+  const notMap = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra: yamlLines(['x-test-requests: oops']) }))).errors;
+  assert.ok(notMap.some(e => /x-test-requests の 全体/.test(e)), notMap.join('\n'));
+  const opExtra = yamlLines(['x-test-requests:', '  unauthorized:', '    headers:', '      Authorization: Bearer invalid', '  not_found:', '    path:', '      ID: missing']);
+  const { errors } = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra })));
+  assert.ok(errors.some(e => /not_found\.path\.ID: 経路 \/books\/\{id\} に無い引数/.test(e)), errors.join('\n'));
+});
+
+test('同じ status で中身の違う例は expect か違う code が要り、expect の項目を生成テストで確かめる (3 ラウンド目)', () => {
+  const two = (code) => withTwo409(contractsWithGetBookErrors({ opExtra: yamlLines(['x-test-fixtures:', '  s: 状態違い', '  v: 版違い', 'x-test-requests:', '  unauthorized:', '    headers:', '      Authorization: Bearer invalid', '  not_found:', '    path:', '      id: missing', '  invalid_state:', '    fixture: s', '  version_conflict:', '    fixture: v']) }), code);
+  // code が違えば expect は要らない
+  assert.deepEqual(validateUcIndex.validate(compiledFrom(two('VERSION_CONFLICT'))).errors.filter(e => /確かめる項目が無い/.test(e)), []);
+});
+
+test('unverifiedVariants: 同じ status で中身の違う例のうち expect の無い例を返す (3 ラウンド目)', () => {
+  const G = require(path.join(SCRIPTS, 'lib', 'contractGraph.js'));
+  const examples = { a: { value: { s: 'A' } }, b: { value: { s: 'B' } } };
+  const entry = { path: '/x/{id}', method: 'GET', operation: { operationId: 'o', responses: { '200': { description: 'ok', content: { 'application/json': { examples } } } },
+    'x-test-requests': { a: { path: { id: '1' } }, b: { path: { id: '2' }, expect: ['s'] } } } };
+  assert.deepEqual(G.unverifiedVariants(entry, {}), [{ status: '200', name: 'a' }]);
+  entry.operation['x-test-requests'].a.expect = ['s'];
+  assert.deepEqual(G.unverifiedVariants(entry, {}), []);
+});

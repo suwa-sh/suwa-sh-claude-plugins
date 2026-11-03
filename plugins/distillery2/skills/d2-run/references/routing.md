@@ -48,7 +48,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 
 1. `<H> validate <handoff>` が exit 0 (無い・不合格なら受理しない。再派遣)。検証役は `<H> route <findings> --findings --mode <mode>`
 2. `<H> route <handoff> --mode <mode>`:
-   - `decide[]`: 問いごとに `<D> add --handoff <handoff> --ask <id> --answer "<answer>" --by recommended [--provisional]`
+   - `decide[]`: 問いごとに `<D> add (--run <run> | --root .) --handoff <handoff> --ask <id> --answer "<answer>" --by recommended` (機能の中は `--run`、上流の段は `--root .`。検証役は `--handoff <findings>`。`unknown_fact` は自動で仮置きになる)
    - `to_human[]`: 人に返す問いとして、この段の確認ページに載せる (確認ページの無い段なら、この問いだけの確認ページを出して止まる)
    - `issues`: 下の「前のステップの課題」
    - `needs_info[]`: 人に返す

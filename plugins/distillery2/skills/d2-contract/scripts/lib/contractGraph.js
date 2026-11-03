@@ -372,14 +372,46 @@ function unknownTestRequestKeys(entry, doc) {
 
 /** `x-test-requests` の各値の形の誤り (知らない項目名・型の誤り)。書き間違いで条件が黙って使われなくなるのを止める */
 function invalidTestRequests(entry) {
-  const all = object(entry.operation['x-test-requests']) ? entry.operation['x-test-requests'] : {};
+  const raw = entry.operation['x-test-requests'];
+  if (raw !== undefined && !object(raw)) return ['全体: 応答の例の名前 → 条件の mapping'];
+  const all = raw || {};
+  const params = new Set([...entry.path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]));
   const out = [];
   for (const [k, v] of Object.entries(all)) {
     if (!object(v)) { out.push(`${k}: 値は path / headers / fixture を持つ mapping`); continue; }
-    for (const p of Object.keys(v)) if (!['path', 'headers', 'fixture'].includes(p)) out.push(`${k}.${p}: 知らない項目 (path / headers / fixture のどれか)`);
+    for (const p of Object.keys(v)) if (!['path', 'headers', 'fixture', 'expect'].includes(p)) out.push(`${k}.${p}: 知らない項目 (path / headers / fixture / expect のどれか)`);
     if (own(v, 'path') && !object(v.path)) out.push(`${k}.path: 引数名 → 値の mapping`);
+    if (object(v.path)) for (const p of Object.keys(v.path)) if (!params.has(p)) out.push(`${k}.path.${p}: 経路 ${entry.path} に無い引数`);
+    if (own(v, 'expect') && (!Array.isArray(v.expect) || !v.expect.length || !v.expect.every((f) => typeof f === 'string' && f))) out.push(`${k}.expect: 確かめる応答の項目名の配列`);
     if (own(v, 'headers') && !object(v.headers)) out.push(`${k}.headers: ヘッダ名 → 値の mapping`);
     if (own(v, 'fixture') && (typeof v.fixture !== 'string' || !v.fixture)) out.push(`${k}.fixture: テスト用データの名前 (文字列)`);
+  }
+  return out;
+}
+
+/**
+ * 同じ status で応答の例の中身が違うのに、違いを確かめる手段が無い例 (返し分けがテストで確かめられない)。
+ * 手段 = `x-test-requests[名前].expect` (確かめる項目名) か、エラー応答 (4xx / 5xx) で例ごとに違う `code`
+ */
+function unverifiedVariants(entry, doc) {
+  const byStatus = new Map();
+  for (const c of contractTestCases(entry, doc)) {
+    if (!c.request || c.name === null) continue;
+    const list = byStatus.get(c.status) || [];
+    list.push(c);
+    byStatus.set(c.status, list);
+  }
+  const out = [];
+  for (const [status, list] of byStatus) {
+    const values = new Set(list.map((c) => JSON.stringify(c.response)));
+    if (values.size < 2) continue;
+    const codes = list.map((c) => (c.response && typeof c.response === 'object' ? c.response.code : undefined));
+    const codesDiffer = Number(status) >= 400 && codes.every((x) => typeof x === 'string') && new Set(codes).size === codes.length;
+    if (codesDiffer) continue;
+    for (const c of list) {
+      const tr = testRequestFor(entry.operation, c.name);
+      if (!(tr && Array.isArray(tr.expect) && tr.expect.length)) out.push({ status, name: c.name });
+    }
   }
   return out;
 }
@@ -447,6 +479,6 @@ module.exports = {
   operationsForMessages, resolveMessageName,
   operationExamples, mediaExamples, exampleGaps, messageExamples, assertResolvable,
   is2xx, is4xx, is5xx,
-  requestExampleFor, testRequestFor, testFixtures, testHeaders, testUrl, unknownTestRequestKeys, invalidTestRequests,
+  requestExampleFor, testRequestFor, testFixtures, testHeaders, testUrl, unknownTestRequestKeys, invalidTestRequests, unverifiedVariants,
   contractTestCases, requestKey, indistinguishableExamples, undeclaredFixtures, usedFixtures,
 };

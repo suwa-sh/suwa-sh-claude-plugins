@@ -81,6 +81,14 @@ function route(data, mode) {
   return { decide, to_human: toHuman, issues, needs_info: needsInfo };
 }
 
+/** UC 一覧の slug (無ければ null = 照らさない。要求の段の前など) */
+function ucSlugs(root) {
+  const f = path.join(path.resolve(root), 'docs', 'requirements', 'use-cases.yaml');
+  if (!fs.existsSync(f)) return null;
+  const doc = parseYaml(fs.readFileSync(f, 'utf8')) || {};
+  return new Set((doc.use_cases || []).map((u) => u && u.slug).filter(Boolean));
+}
+
 function stamp() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');
@@ -99,6 +107,15 @@ function fileDrafts(file, data, { run, root }) {
   if (!run && !root) throw new Fail('--run か --root が要る', 2);
   const step = data.step || 'verify';
   const base = path.basename(file).replace(/\.(ya?ml|json)$/, '');
+  // 書く前に全件を確かめる (途中で落ちて一部の課題だけが残らないように)
+  if (!run) {
+    const slugs = ucSlugs(root);
+    for (const u of data.upstream_issues || []) {
+      if (!IN_FEATURE.has(u.target_step)) continue;
+      if (!u.uc) throw new Fail(`課題 ${u.id}: 戻し先が ${u.target_step} なら uc (対象の UC の slug) が要る`, 1);
+      if (slugs && !slugs.has(u.uc)) throw new Fail(`課題 ${u.id}: uc ${u.uc} が UC 一覧 (docs/requirements/use-cases.yaml) に無い`, 1);
+    }
+  }
   const written = [];
   const skipped = [];
   for (const u of data.upstream_issues || []) {
@@ -110,8 +127,6 @@ function fileDrafts(file, data, { run, root }) {
       const dir = path.dirname(dest);
       if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(`_${step}_${name}`))) { skipped.push(name); continue; }
     } else {
-      // 上流の段 (run が無い) から機能の中 (scenario / contract / implementation) へ戻す課題は、どの UC かが要る (無いと scan の振り分けに乗らない)
-      if (IN_FEATURE.has(u.target_step) && !u.uc) throw new Fail(`課題 ${u.id}: 戻し先が ${u.target_step} なら uc (対象の UC の slug) が要る`, 1);
       dest = path.join(path.resolve(root), 'docs', 'feedback', `${stamp()}_${step}_${name}`);
       const dir = path.dirname(dest);
       if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(`_${step}_${name}`))) { skipped.push(name); continue; }

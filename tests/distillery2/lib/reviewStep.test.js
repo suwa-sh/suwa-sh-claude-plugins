@@ -82,3 +82,13 @@ test('run: 回収した結果に観点の判定か指摘の節が無ければ fa
   assert.equal(r.out.status, 'failed');
   assert.match(r.out.reason, /判定の無い観点: P1, P2, P3, P4/);
 });
+
+test('run: 指摘の見出しだけで perspective・severity・claim が欠けた結果は failed (3 ラウンド目)', () => {
+  const cwd = repo();
+  const fake = path.join(cwd, 'cut-runner.js');
+  fs.writeFileSync(fake, fs.readFileSync(FAKE, 'utf8').replace("mode === 'emptyresult' ? 'レビューできませんでした\\n' : RESULT", "RESULT.replace('- **severity**: high\\n', '')"));
+  fs.chmodSync(fake, 0o755);
+  const r = run(['run', '--point', 'requirements', '--target', 'docs/', '--out', 'r', '--cwd', cwd, '--runner', fake, '--poll', '0.01'], { FAKE_LOG: path.join(cwd, 'c.log') });
+  assert.equal(r.out.status, 'failed', JSON.stringify(r.out));
+  assert.match(r.out.reason, /指摘の欄が足りない: 指摘 1/);
+});
