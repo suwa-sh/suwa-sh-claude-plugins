@@ -1,0 +1,66 @@
+{
+  "$comment": "担当の引き継ぎファイル (distillery2.handoff/v1)。人に聞くこと・前のステップの課題・レビューの指摘への反証を、報告の本文ではなくファイルで返す",
+  "type": "object",
+  "required": ["schema_version", "step", "asks", "upstream_issues"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "distillery2.handoff/v1" },
+    "step": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "asks": { "type": "array", "items": { "$ref": "#/$defs/ask" } },
+    "upstream_issues": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+    "refutations": { "type": "array", "items": { "$ref": "#/$defs/refutation" } }
+  },
+  "$defs": {
+    "ask": {
+      "type": "object",
+      "required": ["id", "kind", "question", "options", "recommended"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+        "kind": { "enum": ["unknown_fact", "choice"] },
+        "question": { "type": "string", "minLength": 1 },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["label", "impact"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "impact": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "recommended": { "type": ["string", "null"] },
+        "no_recommendation_reason": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "required": ["id", "target_step", "title", "detail", "evidence", "recommended_fix"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+        "target_step": { "enum": ["requirements", "decide", "foundation", "scenario", "contract", "implementation"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "detail": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "string", "minLength": 1 },
+        "recommended_fix": { "type": "string", "minLength": 1 },
+        "uc": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+      }
+    },
+    "refutation": {
+      "type": "object",
+      "required": ["finding", "result", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "finding": { "type": "string", "minLength": 1 },
+        "result": { "enum": ["refuted", "accepted", "needs_info"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "change": { "type": "string" }
+      }
+    }
+  }
+}

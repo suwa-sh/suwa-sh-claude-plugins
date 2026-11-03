@@ -30,6 +30,7 @@ ucs:
 | 入力 | 出力 | 中身 |
 |---|---|---|
 | `operations` | `generated/slices/<slug>/contract-slice.json` の `openapi` | operation の path item と、$ref で到達する component を閉包した最小 OpenAPI |
+| `operations` | 同 `fixtures` | operation の `x-test-requests` が参照するテスト用データの名前 → 意味 (`x-test-fixtures` から。無ければ `{}`) |
 | `messages` | 同 `asyncapi` | message を扱う operation に解決し、channel・message・payload schema を閉包した最小 AsyncAPI |
 | `tables` | `generated/slices/<slug>/rdb-slice.yaml` | UC のテーブル全文 + FK 参照先を read-only な external_tables (キー列だけ) として付す |
 
@@ -56,6 +57,16 @@ example を **同じ名前** で対応づける:
 - 同名の request example が無い status は、生成テストで `it.todo('<status>: request example "<name>" missing')` になる
   (誤って共通の入力を送って必ず落ちる契約テストを作らない)。
 
-example を書けないシナリオに行き当たったら、契約を推測で埋めず、`.distillery/runs/<slug>/issues/` に
-課題ドラフトを残して止まる (mode=uc の停止条件)。AsyncAPI の message example は必須ではなく、
+### 区別できない例とテスト用データ
+
+`validateUcIndex.js` は次も止める:
+
+- 期待する結果が違う 2 つの例 (status が違うか、status が同じで応答の例の中身が違う) が同じ要求 (URL・ヘッダ・テスト用データ・本文) を送る。本文の無い GET の 200 / 401 / 404 や、
+  本文が同じ 200 と 404、同じ要求で中身の違う 409 が 2 つ (状態が違う・版が違う) がこれにあたる。operation の `x-test-requests` で例ごとに URL の値・ヘッダ・`fixture` を変えて区別する
+  (書き方は [`contract-tests.md`](contract-tests.md) の「例ごとの要求」)
+- `x-test-requests` が参照する `fixture` が `x-test-fixtures` (文書直下か operation) に宣言されていない
+- `x-test-requests` のキーがどの応答の例にも当たらない (応答の例の名前か、ボディ無しの応答の status。書き間違いで条件が黙って使われなくなるのを止める)
+
+example を書けないシナリオに行き当たったら、契約を推測で埋めず、引き継ぎファイルの `upstream_issues` に
+戻し先付きで書いて止まる (mode=uc の停止条件)。AsyncAPI の message example は必須ではなく、
 無ければ生成テストが `it.todo` になる。

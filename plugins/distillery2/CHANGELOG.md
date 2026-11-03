@@ -2,6 +2,30 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.2.0] - 2026-11-03
+
+ワークフローを作り直した。経費精算の題材で実際に使い、2 つ目の機能で先へ進めなくなったことから、各ステップの整合の確かめ方と、後のステップで見つけた問題を前のステップへ戻す道を作り直した。
+0.1.35 からの方針 (「使える」条件を破る課題だけを直す) と、次の作業の順 (実際の題材で使う → 移植性) は、この版で置き換えた。
+
+### Added
+
+- 引き継ぎファイル: 担当は作業の終わりに、人に聞くこと (`asks`。選び方の問い `choice` / 人しか知らない事実の問い `unknown_fact`、条件の付かない推奨) と前のステップの課題 (`upstream_issues`。戻し先のステップ付き) をファイルで返す。
+  進行役は `d2-common/scripts/handoff.js` で検査・振り分け・課題の下書きにする。報告の本文に書かれただけの問いは扱わない (経費精算で、要求の抜けの指摘が報告に書かれただけで消えた)。検証役は findings (schema 2.2) に同じ欄を持つ
+- 決めたことの記録 (`d2-common/scripts/decisionLog.js`): 推奨で決めた答えも人が答えたものも、問いと選択肢ごと残す (機能の中は `<run>/decisions.jsonl`、上流は `.distillery/decisions.jsonl`)
+- 2 つのモード: 起動の引数 `mode=auto` (既定。推奨で進み、事実が分からない問い・推奨の無い問い・上流への課題・戻り道の上限は人に返す。要求の承認と人レビューは必ず止まる) と `mode=recommend` (推奨で進めて記録し、最後に推奨で決めたものの一覧を 1 枚見せる)。人に返す条件と、確認ページごとの推奨の決め方は `d2-run/references/routing.md` にまとめた
+- 縦・横レビュー (`d2-common/scripts/reviewStep.js`、場所と観点は `d2-common/references/review-points.md`): 要求・決定・基盤・シナリオ・契約・実装・as-built の 7 か所で、別系統のモデル (Codex。toolbox の review-refute-loop の runner) に前のステップとの整合 (縦) と同じ成果物の中の整合 (横) を見させ、担当が反証して直す。
+  1 ラウンドを基本とし、FAIL の観点か受け入れた high / critical の指摘があるときだけ 2 ラウンド目。Codex が使えないときは、auto は人に返し、recommend は同じモデルで代わりにレビューして記録する
+- 前のステップへ戻す道: 課題に戻し先のステップ (`target_step`: requirements / decide / foundation / scenario / contract / implementation) を書く。
+  機能の中はその場で巻き戻し (`runState.js rewind`)、main マージ済みの UC はその段から開き直し (`runState.js reopen --from`。承認したシナリオが変わっていなければ前の段の done と承認を引き継ぐ)、上流は機能を止めて上流の差分 (要求・決定・基盤) を回す。
+  巻き戻しと開き直しはそれぞれ 3 回まで (超えたら人に返す)。`feedbackBatch.js scan` が `upstream` と `reopen_targets` を返す
+- 契約テストの例ごとの条件: operation の `x-test-requests` で、応答の例ごとに URL の値・ヘッダ (本文の無い要求も)・名前付きのテスト用データ (`fixture`。意味は `x-test-fixtures`) を指定できる。
+  5xx の例はテスト用データがあるときだけテストにする。status の違う例が同じ要求になると `validateUcIndex.js` が止める (経費精算で、404 と 200、本文の無い GET の 401 / 403 / 404 が区別できず、どう実装しても契約ゲートが通らなかった)
+
+### Removed
+
+- 還流 (課題を直す段): ルールの課題は決定の差分へ、契約・実装の課題は UC の巻き戻しか開き直しへ行き先ができたので廃止した (契約を直すと実装の変更が要る課題を扱えなかった)。
+  `d2-contract` の mode=feedback を消した。`feedbackBatch.js` は `file-issues`・`scan`・`hold`・`reclassify`・`status` と、0.1.x の途中で止まったバッチの片付け (`merge` の後始末・`abandon`) だけを残した
+
 ## [0.1.36] - 2026-11-03
 
 方針は 0.1.35 と同じ (「使える」条件を破る課題だけを直す)。試し運転 0.1.35 で条件に当たった 2 件を直し、進行役の手順書 (d2-run) を短くした。

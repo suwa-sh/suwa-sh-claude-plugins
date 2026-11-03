@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { SCRIPTS, CONFIG, freshContracts, outRoot } = require('./support');
+const { SCRIPTS, CONFIG, freshContracts, outRoot, contractsWithGetBookErrors } = require('./support');
 
 const compileContracts = require(path.join(SCRIPTS, 'compileContracts.js'));
 const genContractTests = require(path.join(SCRIPTS, 'genContractTests.js'));
@@ -332,4 +332,112 @@ test('genApiClient を単体で --check しても、genContractTests の生成�
   const genApiClient = require(path.join(SCRIPTS, 'genApiClient.js'));
   const r = genApiClient.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true });
   assert.equal(r.status, 'current');
+});
+
+// --- 0.2.0: x-test-requests (URL の値・ヘッダ・テスト用データ) と x-test-fixtures ---
+const GETBOOK_REQUESTS = [
+  '      x-test-fixtures:',
+  '        db-down: 書籍の保存先が落ちている',
+  '      x-test-requests:',
+  '        one:',
+  '          path:',
+  '            id: book 1/x',
+  '        unauthorized:',
+  '          headers:',
+  '            Authorization: null',
+  '        not_found:',
+  '          path:',
+  '            id: missing',
+  '        broken:',
+  '          fixture: db-down',
+  '',
+].join('\n');
+const DOC_AUTH = 'x-test-headers:\n  Authorization: Bearer test-librarian\n';
+
+function generatedFrom({ contractsDir }, uc) {
+  compileContracts.run(contractsDir);
+  const out = outRoot();
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, uc });
+  return out;
+}
+const block = (t, title) => {
+  const m = new RegExp(`it\\('${title.replace(/[()]/g, '\\$&')}'[\\s\\S]*?\\n  \\}\\);`).exec(t);
+  assert.ok(m, `block not found: ${title}\n${t}`);
+  return m[0];
+};
+
+test('x-test-requests: ボディ無しの GET でも例ごとに URL の値・ヘッダ・テスト用データを変えて送る (0.2.0)', () => {
+  const out = generatedFrom(contractsWithGetBookErrors({ opExtra: GETBOOK_REQUESTS, docExtra: DOC_AUTH }));
+  const t = read(out, 'apps/backend-api/test/contract/getBook.test.ts');
+  const ok = block(t, 'responds 200 (example: one)');
+  assert.ok(ok.includes('.get("/books/book%201%2Fx")'), `path の値は URL エンコードする: ${ok}`);
+  assert.ok(ok.includes('.set("Authorization", "Bearer test-librarian")'), ok);
+  assert.ok(ok.includes('createTestApp()'), ok);
+  const unauth = block(t, 'responds 401 (example: unauthorized)');
+  assert.ok(unauth.includes('.get("/books/test-id")'), '指定の無い引数は test-<param> のまま');
+  assert.ok(!/\.set\("Authorization"/.test(unauth), `401 は Authorization を送らない: ${unauth}`);
+  assert.ok(block(t, 'responds 404 (example: not_found)').includes('.get("/books/missing")'));
+  const broken = block(t, 'responds 500 (example: broken)');
+  assert.ok(broken.includes('const app = await createTestApp({ fixture: "db-down" });'), broken);
+  assert.ok(broken.includes('expect(res.status).toBe(500);'));
+  assert.doesNotMatch(t, /it\.todo/);
+  // エラー応答の例の code を確かめる (同じ status の返し分けのため。差分レビュー)。2xx は確かめない
+  assert.ok(unauth.includes('expect(res.body.code).toBe("CONFLICT");'), unauth);
+  assert.ok(!ok.includes('res.body.code'), ok);
+});
+
+test('5xx の例は fixture が無ければ it.todo、ボディ無しの 5xx は従来どおり扱わない (0.2.0)', () => {
+  const out = generatedFrom(contractsWithGetBookErrors());
+  const t = read(out, 'apps/backend-api/test/contract/getBook.test.ts');
+  assert.match(t, /it\.todo\('500 \(example: broken\): fixture missing — 失敗を起こすテスト用データを x-test-requests に指定する'\);/);
+  assert.doesNotMatch(t, /it\('responds 500/);
+  // x-test-requests が無ければ、ボディ無しの GET の各例は同じ要求 (引数なしの createTestApp・test-id) のまま
+  for (const title of ['responds 200 (example: one)', 'responds 401 (example: unauthorized)', 'responds 404 (example: not_found)']) {
+    const b = block(t, title);
+    assert.ok(b.includes('createTestApp()') && b.includes('.get("/books/test-id")'), b);
+  }
+  // ボディ無しの 5xx は x-test-requests['503'].fixture があるときだけテストにする
+  const { contractsDir } = freshContracts();
+  const oa = path.join(contractsDir, 'openapi/openapi.yaml');
+  let y = fs.readFileSync(oa, 'utf8').replace('                    title: Refactoring\n', "                    title: Refactoring\n        '503':\n          description: down\n");
+  fs.writeFileSync(oa, y);
+  assert.doesNotMatch(read(generatedFrom({ contractsDir }), 'apps/backend-api/test/contract/getBook.test.ts'), /503/);
+  y = y.replace('      summary: 書籍を照会する\n', "      summary: 書籍を照会する\n      x-test-fixtures:\n        down: 止まっている\n      x-test-requests:\n        '503':\n          fixture: down\n");
+  fs.writeFileSync(oa, y);
+  const b503 = block(read(generatedFrom({ contractsDir }), 'apps/backend-api/test/contract/getBook.test.ts'), 'responds 503 (no body)');
+  assert.ok(b503.includes('createTestApp({ fixture: "down" })'), b503);
+});
+
+test('x-test-requests の headers は request example の x-headers より後に重ねる (0.2.0)', () => {
+  const { contractsDir } = freshContracts();
+  const oa = path.join(contractsDir, 'openapi/openapi.yaml');
+  let y = fs.readFileSync(oa, 'utf8');
+  y = y.replace('paths:\n', DOC_AUTH + 'paths:\n');
+  y = y.replace('              conflict:\n                value:\n', '              conflict:\n                x-headers:\n                  Authorization: Bearer test-patron\n                value:\n');
+  y = y.replace('      summary: 貸出を登録する\n', "      summary: 貸出を登録する\n      x-test-requests:\n        conflict:\n          headers:\n            authorization: Bearer test-other\n            X-Trace: '{uuid}'\n");
+  fs.writeFileSync(oa, y);
+  const t = read(generatedFrom({ contractsDir }), 'apps/backend-api/test/contract/createLoan.test.ts');
+  const b409 = block(t, 'responds 409 (example: conflict)');
+  assert.ok(b409.includes('.set("authorization", "Bearer test-other")') && b409.includes('.set("X-Trace", randomUUID())'), b409);
+  assert.equal((b409.match(/\.set\("[Aa]uthorization"/g) || []).length, 1);
+  assert.ok(block(t, 'responds 201 (example: success)').includes('.set("Authorization", "Bearer test-librarian")'));
+});
+
+test('slice の fixtures は UC の operation が参照するテスト用データの名前と説明 (無ければ空) (0.2.0)', () => {
+  const plain = freshContracts();
+  compileContracts.run(plain.contractsDir);
+  const slicePath = c => path.join(c, 'generated/slices/loan-register/contract-slice.json');
+  assert.deepEqual(JSON.parse(fs.readFileSync(slicePath(plain.contractsDir), 'utf8')).fixtures, {});
+  // 文書直下の宣言でもよい。参照していない宣言は slice に入れない
+  const opExtra = GETBOOK_REQUESTS.replace('      x-test-fixtures:\n        db-down: 書籍の保存先が落ちている\n', '');
+  const withFx = contractsWithGetBookErrors({ opExtra, docExtra: 'x-test-fixtures:\n  db-down: 保存先が落ちている\n  unused: 使わない\n' });
+  compileContracts.run(withFx.contractsDir);
+  assert.deepEqual(JSON.parse(fs.readFileSync(slicePath(withFx.contractsDir), 'utf8')).fixtures, { 'db-down': '保存先が落ちている' });
+});
+
+test('新しいキーを使わない契約の生成物は変わらない (0.2.0 の後方互換)', () => {
+  const out = generated();
+  const getBook = read(out, 'apps/backend-api/test/contract/getBook.test.ts');
+  assert.ok(getBook.includes(`  it('responds 200 (example: one)', async () => {\n    const app = await createTestApp();\n    const res = await request(app).get("/books/test-id");\n    expect(res.status).toBe(200);`), getBook);
+  assert.doesNotMatch(read(out, 'apps/backend-api/test/contract/createLoan.test.ts'), /fixture/);
 });

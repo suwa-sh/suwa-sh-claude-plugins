@@ -44,7 +44,10 @@ d2-run (全スキルを派遣する入口) と d2-common 以外のスキルは�
 | `scripts/dataflow.js` | 正本の読み込みとパス照合 (図の生成と整合性テストが使う) |
 | `scripts/genDataflow.js` | `dataflow.md` と、d2-run の派遣表の「派遣ごとの write-set」(管理ブロック) の生成。`--check` で古ければ exit 1 (0.1.31) |
 | `scripts/runGates.js` | ゲートの実行と記録 (`<run>/reports/gates.json`)。d2-run が回す |
-| `scripts/feedbackBatch.js` | 還流の git の状態遷移。d2-run が回す |
+| `scripts/feedbackBatch.js` | 課題ファイルの作成 (`file-issues`)・振り分けの材料 (`scan`)・0.1.x の途中の還流の片付け。d2-run が回す |
+| `scripts/handoff.js` | 担当の引き継ぎファイルの検査・振り分け・課題の下書き ([references/handoff.md](references/handoff.md)) |
+| `scripts/decisionLog.js` | 決めたことの記録 (推奨で決めたものも人が答えたものも) |
+| `scripts/reviewStep.js` | 成果物の縦・横レビュー (別系統のモデル。[references/review-points.md](references/review-points.md)) |
 | `scripts/genDocsReadme.js` | `docs/README.md` と課題の一覧の生成。d2-run が各段階の commit 前に回す |
 | `scripts/prTrailers.js` | main マージの squash commit の本文 (trailer) |
 | `scripts/tokenReport.js` | headless 実行のトークン集計 (開発時の計測) |

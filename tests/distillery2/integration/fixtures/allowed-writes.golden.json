@@ -379,10 +379,10 @@
     ]
   },
   "decide.feedback": {
-    "template_row": "還流 (ADR)",
+    "template_row": "② 決定の差分 (ADR)",
     "write_set": [
       "`docs/adr/**`",
-      "`.distillery/logs/feedback/<b>/<issue>.result.json`"
+      "`.distillery/logs/decide-<issue>.result.json`"
     ],
     "notes": [],
     "allowed_writes": [
@@ -391,42 +391,19 @@
         "path": "docs/adr/**"
       },
       {
-        "id": "feedback-result",
-        "path": ".distillery/logs/feedback/<b>/<issue>.result.json"
+        "id": "decide-result",
+        "path": ".distillery/logs/decide-<issue>.result.json"
       }
     ]
   },
-  "contract.feedback": {
-    "template_row": "還流 (契約)",
+  "refute": {
+    "template_row": "反証して直す",
     "write_set": [
-      "`contracts/**`",
-      "`apps/*/test/contract/**`",
-      "`apps/<datastore_owner>/migrations/**`",
-      "`packages/contracts/**`",
-      "`.distillery/logs/feedback/<b>/<issue>.result.json`"
+      "レビューした場所の派遣の行と同じ (その行をそのまま貼る)"
     ],
-    "notes": [],
-    "allowed_writes": [
-      {
-        "id": "contracts-src",
-        "path": "contracts/**"
-      },
-      {
-        "id": "contract-tests",
-        "path": "apps/*/test/contract/**"
-      },
-      {
-        "id": "migrations",
-        "path": "apps/<tier>/migrations/**"
-      },
-      {
-        "id": "contracts-code",
-        "path": "packages/contracts/**"
-      },
-      {
-        "id": "feedback-result",
-        "path": ".distillery/logs/feedback/<b>/<issue>.result.json"
-      }
-    ]
+    "notes": [
+      "レビューした場所の派遣の行と同じ (その行をそのまま貼る)"
+    ],
+    "allowed_writes": []
   }
 }

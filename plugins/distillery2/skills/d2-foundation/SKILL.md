@@ -28,7 +28,7 @@ ui=true | false               # phase=finish だけ。今回の d2-design が部
 adr=docs/adr                  # ADR ディレクトリ
 ```
 
-d2-run は段階③で 2 回呼ぶ (還流の開発ルールとアーキテストの作り直しは、d2-run が回す `feedbackBatch.js` が F1・F2 のスクリプトを直接回す)。
+d2-run は段階③で 2 回呼ぶ (決定の差分の開発ルールとアーキテストの作り直しは、d2-run が F1・F2 のスクリプトを直接回す)。
 
 | 呼ぶとき | phase | 順 |
 |---|---|---|
@@ -138,3 +138,7 @@ F1・F2 のスクリプトは `--check` (書かずに、生成物が古ければ
 - [references/ci.md](references/ci.md) — CI の job 構成
 - [references/troubleshooting.md](references/troubleshooting.md) — qlty / biome で踏んだ問題と回避策
 - 実行設定の形: [../d2-common/references/config-schema.md](../d2-common/references/config-schema.md)
+
+## 引き継ぎファイル
+
+作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題を書く (書き方は [handoff.md](../d2-common/references/handoff.md))。報告の本文にだけ書いたことは扱われない。推奨は条件を付けずに 1 つ書く。

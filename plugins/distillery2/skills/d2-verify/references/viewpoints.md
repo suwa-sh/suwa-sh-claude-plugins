@@ -58,7 +58,7 @@ v1 の 8 観点のうち、機械のゲート (静的検査・単体・契約・
 ## findings.yaml の形
 
 ```yaml
-schema_version: "2.1"          # 2.1 = title 必須 (0.1.6〜)。2.0 は 0.1.5 以前の記録で title 任意
+schema_version: "2.2"          # 2.2 = asks と upstream_issues が必須 (0.2.0〜)。2.1 = title 必須。2.0 は title 任意
 uc: "register-loan"
 tier: "backend-api"
 attempt: 1
@@ -112,7 +112,12 @@ findings:
     claim: "条件『貸出上限 5 冊』を担保する箇所が無い"
     evidence: "docs/requirements/rdra/条件.tsv#貸出上限; traces/register-loan#上限超過.jsonl に判定の呼び出し無し"
 summary: {blocker: 1, major: 0, minor: 2}
+asks: []                         # 人に聞きたいこと。形は d2-common の引き継ぎファイルと同じ (無ければ [])
+upstream_issues:                 # 前のステップの問題 (要求・決定・基盤・シナリオ・契約の穴)。無ければ []
+  - {id: rule-limit, target_step: requirements, title: "貸出上限の数が要求に無い", detail: "条件に上限 5 冊とあるが要求の受入基準に無い", evidence: "docs/requirements/rdra/条件.tsv#貸出上限", recommended_fix: "上限 5 冊の受入基準を足す"}
 ```
+
+`asks` と `upstream_issues` の書き方は `<skills>/d2-common/references/handoff.md` (検証役は findings 以外を書けないので、引き継ぎファイルの代わりに findings に持つ)。
 
 ## severity の目安
 

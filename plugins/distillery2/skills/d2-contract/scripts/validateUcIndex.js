@@ -10,6 +10,9 @@
  *     tables は rdb-schema.bundle に存在すること
  *  3. examples 必須ルール: UC が使う各 operation に request example (requestBody があるとき) と、
  *     ドキュメント化された各 2xx/4xx status の response example があること
+ *  4. x-test-requests が参照する fixture が x-test-fixtures (文書直下か operation) に宣言されていること
+ *  5. 区別できない例が無いこと: 1 つの operation で status の違う 2 つの例が、同じ要求
+ *     (URL・ヘッダ・fixture・本文。contractGraph.contractTestCases で生成側と同じ計算) を送らないこと
  *
  * bundle が未生成なら compileContracts/compileRdbSchema を先に実行するよう促す。
  * 終了コード: 0 = PASS / 1 = 違反あり / 2 = 読み込み失敗。
@@ -46,6 +49,20 @@ function validate(contractsDir) {
       if (!openapiIndex.has(op)) { errors.push(`${uc.slug}: operation ${op} は openapi.bundle に存在しない`); continue; }
       const gaps = G.exampleGaps(openapiIndex.get(op), openapi);
       for (const gap of gaps) errors.push(`${uc.slug}: operation ${op} に example がない (${gap}) — examples 必須`);
+      for (const f of G.undeclaredFixtures(openapiIndex.get(op), openapi)) {
+        errors.push(`${uc.slug}: operation ${op} の x-test-requests が参照する fixture "${f}" が x-test-fixtures (文書直下か operation) に宣言されていない`);
+      }
+      for (const m of G.invalidTestRequests(openapiIndex.get(op))) errors.push(`${uc.slug}: operation ${op} の x-test-requests の ${m}`);
+      for (const v of G.unverifiedVariants(openapiIndex.get(op), openapi)) {
+        errors.push(`${uc.slug}: operation ${op} の例 "${v.name}" (${v.status}) は同じ status の別の例と中身が違うのに、違いを確かめる項目が無い — x-test-requests.${v.name}.expect に確かめる応答の項目名を書く`);
+      }
+      for (const k of G.unknownTestRequestKeys(openapiIndex.get(op), openapi)) {
+        errors.push(`${uc.slug}: operation ${op} の x-test-requests のキー "${k}" がどの応答の例にも当たらない (応答の例の名前か、ボディ無しの応答の status にする)`);
+      }
+      for (const { a, b } of G.indistinguishableExamples(openapiIndex.get(op), openapi)) {
+        const label = x => (x.name === null ? `${x.status} (ボディ無し)` : `"${x.name}" (${x.status})`);
+        errors.push(`${uc.slug}: operation ${op} の例 ${label(a)} と ${label(b)} は同じ要求を送るのに期待する結果が違うので区別できない — x-test-requests で URL の値・ヘッダ・テスト用データ (fixture) を変える`);
+      }
     }
     for (const m of uc.messages) if (!messageNames.has(m)) errors.push(`${uc.slug}: message ${m} は asyncapi.bundle の components.messages に存在しない`);
     for (const t of uc.tables) if (!tableNames.has(t)) errors.push(`${uc.slug}: table ${t} は rdb-schema.bundle に存在しない`);

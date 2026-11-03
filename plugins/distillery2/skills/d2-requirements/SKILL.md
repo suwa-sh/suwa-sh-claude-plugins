@@ -219,3 +219,9 @@ node <skills>/d2-requirements/scripts/validateUseCases.js docs/requirements/use-
 - `gui` 以外では RDRA の「画面」を **コマンド出力 / API レスポンス** として扱い、`{コマンド名} 出力` のように
   GUI と誤読されない名前にする（`references/rdra-phases/spec/23_画面一覧生成.md`）。
 - 目的: 後段の d2-design が CLI 出力を GUI 画面としてデザインするのを防ぐ。
+
+## 引き継ぎファイル
+
+作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題を書く (書き方は [handoff.md](../d2-common/references/handoff.md))。報告の本文にだけ書いたことは扱われない。推奨は条件を付けずに 1 つ書く。
+
+決めずに返す論点は `_review-summary.md` に「未決」として書かず、引き継ぎファイルの `asks` に書く (答えは進行役が決めたことの記録に残す)。確認材料には「確認したい点は引き継ぎファイルの問いにある」とだけ書く。

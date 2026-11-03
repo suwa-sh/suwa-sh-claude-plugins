@@ -103,5 +103,5 @@ node "$V" evidence backend-api:<assumptions_sha256>:<verdicts_sha256> worker:<sh
 | auto_confirmed | 回答任意の前提で未回答のまま承認 | 同上 |
 | (再生成) | attempt++ で mode=tier が再実行されたティア | 新 attempt のファイル |
 
-却下が `implementation_change` なら attempt++ で該当ティアを再実装する。`spec_change` なら還流 (requirement) の issue になり、
+却下が `implementation_change` なら attempt++ で該当ティアを再実装する。`spec_change` なら戻し先 requirements の課題になり、
 UC は反映待ちで止まる。

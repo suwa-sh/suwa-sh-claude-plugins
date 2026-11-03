@@ -22,15 +22,19 @@ v2 は成果物を 3 つに分ける。
                                                  │
         ┌────────────────────────────────────────┘
         ▼  UC ごとに繰り返す
-  シナリオ (人が承認) → 契約差分 → 足場 → ティア実装 (並列) → ゲート (安い順) → 別モデル検証 (2 観点)
+  シナリオ → 契約差分 → 足場 → ティア実装 (並列) → ゲート (安い順) → 別モデル検証 (2 観点)
   → 人レビュー → as-built 抽出 → 課題を課題ファイル docs/feedback/ にして、1 commit に squash して main へ取り込む
         │
-        ▼  次の UC の前に、溜まった課題を片付ける
-  要求の差分 (要求の課題を要求に反映) → 還流 (ルール・契約の課題を worktree 1 つでまとめて直し、確認ページの後に main へ)
-  (PR / issue は作らない。git とファイルだけで完結し、GitHub 以外のホストや remote の無いリポでも動く。
-   片付いていない課題は docs/README.md の件数 → docs/feedback/README.md の一覧 → 課題ファイルの順に辿れる。
-   還流で「直す場所が distillery2 側」と分かった課題は kind: plugin にして還流の対象から外し、一覧の別の表に出す)
+        ▼  前のステップの課題は、戻し先のステップへ戻す
+  機能の中 (シナリオ・契約・実装) はその場で巻き戻す / main マージ済みの UC はその段から開き直す /
+  上流 (要求・決定・基盤) は機能を止めて上流の差分を回し、影響する UC を開き直す (戻り道は 3 回まで)
 ```
+
+どのステップも同じ型で進む: 担当が作る → 形式の検査 → 成果物ごとの縦・横レビュー (別系統のモデル。要求・決定・基盤・シナリオ・契約・実装・as-built の 7 か所) → 担当が反証して直す → 進行役が振り分け。
+担当は引き継ぎファイルで「人に聞くこと」と「前のステップの課題」を返し、進行役がモードの規則で人に返すか推奨で決めて記録する。
+起動の引数 `mode=auto` (既定。不明点・課題は人に返す。要求の承認と人レビューは必ず止まる) / `mode=recommend` (推奨で進めて最後にまとめて見せる)。
+PR / issue は作らない。git とファイルだけで完結し、GitHub 以外のホストや remote の無いリポでも動く。
+直す場所が distillery2 側と分かった課題は `kind: plugin` にして、一覧の別の表に出す。
 
 ゲートは 静的 → 単体 → 契約 → UC BDD (API 面) → 受入 (タグ絞り込み、`@browser` はブラウザドライバ) の順。落ちたゲートで止まる。
 
@@ -40,10 +44,10 @@ v2 は成果物を 3 つに分ける。
 |---|---|
 | `distillery2:d2-run` | オーケストレータ。通常はこれだけ呼ぶ |
 | `distillery2:d2-requirements` | ① 要求。USDM / RDRA / UC 一覧 |
-| `distillery2:d2-decide` | ② 決定。非機能要求グレード表 + ADR (機械可読 rules 付き) + C4 図 (architecture.md)。還流では mode=feedback でルールの穴を ADR 1 本にする |
+| `distillery2:d2-decide` | ② 決定。非機能要求グレード表 + ADR (機械可読 rules 付き) + C4 図 (architecture.md)。決定の差分では mode=feedback でルールの穴を ADR 1 本にする |
 | `distillery2:d2-foundation` | ③ 基盤。rules / arch test / テスト基盤 / 設定 / CI / 依存の導入。契約の骨格と画面部品の後の仕上げ (契約込みの再生成・画面部品の取り込み・骨格分の契約テスト・チェックポイント) |
 | `distillery2:d2-design` | ③ 画面部品。tokens (ブランド起点) + Storybook + アセット + 目視証跡 |
-| `distillery2:d2-contract` | 契約カタログ (skeleton / uc / feedback の 3 モード。feedback は還流で契約の穴を直す) |
+| `distillery2:d2-contract` | 契約カタログ (skeleton / uc の 2 モード。例ごとに URL の値・ヘッダ・テスト用データを指定して契約テストを作る) |
 | `distillery2:d2-implement` | ④ 実装者 (scenario / scaffold / tier / integrate) |
 | `distillery2:d2-verify` | ④ 別モデルの検証 (UC の意図・前提の整合) |
 | `distillery2:d2-asbuilt` | ④ 実装からの文書抽出 (依存グラフの実態・抽出・要約・書式の検査まで) |
@@ -81,6 +85,6 @@ docs/                  requirements/ nfr/ adr/ rules/ design/ as-built/
 
 ## 状態
 
-0.1.x は UC 1 つの縦切りが通る範囲を対象にする。リリース後の変更入口・ドリフト検知・既存プロダクトの取り込みは未対応。変更履歴は [CHANGELOG.md](CHANGELOG.md)。
+0.2.x は、要望から複数の UC を main マージまで通し、後のステップで見つけた問題を前のステップへ戻して直す範囲を対象にする。リリース後の変更入口・ドリフト検知・既存プロダクトの取り込みは未対応。変更履歴は [CHANGELOG.md](CHANGELOG.md)。
 実走で踏んだ環境依存の問題と回避策は、スキルごとの `references/troubleshooting.md` にためる: [d2-run](skills/d2-run/references/troubleshooting.md) (headless の許可) / [d2-foundation](skills/d2-foundation/references/troubleshooting.md) (npm 10 の失敗、qlty / biome) / [d2-contract](skills/d2-contract/references/troubleshooting.md) (契約テスト)。
 旧版 (`distillery` / `distillery-impl`) はそのまま残る。

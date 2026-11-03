@@ -114,7 +114,7 @@ test('(d) 派遣ごとの write-set は正本の write_set から生成 (--check
   // 派遣表の表 (手書き) に write-set の列が無く、全行が正本に載っている
   const header = tmpl.find(l => l.startsWith('| 段階 | role |'));
   assert.ok(header && !header.includes('write-set'), '派遣表の表に write-set の列は置かない (正本から生成する)');
-  const rows = tmpl.filter(l => /^\| [①②③④還]/.test(l) && !tmplText.slice(tmplText.indexOf(G.WS_BEGIN), tmplText.indexOf(G.WS_END)).includes(l)).map(l => cells(l)[0]);
+  const rows = tmpl.filter(l => /^\| (?:[①②③④]|反証して直す)/.test(l) && !tmplText.slice(tmplText.indexOf(G.WS_BEGIN), tmplText.indexOf(G.WS_END)).includes(l)).map(l => cells(l)[0]);
   for (const r of rows) if (!subagents.some(p => r === p.template_row || r.startsWith(p.template_row + ' '))) problems.push(`派遣表の行 ${r} が正本に無い`);
   // 逆向き: 正本の各派遣に手書きの行がちょうど 1 つある (行を落とすと d2-run が role・skill・指示を得られない。差分レビュー 3 ラウンド目)
   for (const p of subagents) {
@@ -192,11 +192,9 @@ test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run �
     // 読んでよいもの = 要約役 (LLM) の read-set。スクリプトの読みは内訳の asbuilt.extract などが持つ
     ['asbuilt.summarize', 'reads', 'skills/d2-asbuilt/SKILL.md', /^## 読んでよいもの/],
     ['asbuilt', 'writes', 'skills/d2-asbuilt/SKILL.md', /^## 書いてよいもの/],
-    // 還流 (0.1.24。0.1.27 から UC の外の独立した段階)
+    // 決定の差分 (0.2.0。還流の ADR の担当を引き継いだ。契約の課題は機能を巻き戻すか開き直して mode=uc で直す)
     ['decide.feedback', 'reads', 'skills/d2-decide/SKILL.md', /^## mode=feedback: 読むもの/],
     ['decide.feedback', 'writes', 'skills/d2-decide/SKILL.md', /^## mode=feedback: 書くもの/],
-    ['contract.feedback', 'reads', 'skills/d2-contract/SKILL.md', /^## mode=feedback: 読むもの/],
-    ['contract.feedback', 'writes', 'skills/d2-contract/SKILL.md', /^## mode=feedback: 書くもの/],
   ];
   for (const [id, key, rel, re] of sections) {
     const p = procs.get(id);
@@ -227,18 +225,37 @@ test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run �
   assert.deepEqual(problems, []);
 });
 
-test('(e2) d2-run の還流節で上流を書き換えるスキルが、正本の還流の処理 (stage feedback のサブエージェント) と一致する', () => {
-  const fb = section('skills/d2-run/SKILL.md', /^## 還流 \(独立した段階\)/).split('\n');
-  const rows = fb.filter(l => /^\| (rule|contract) \|/.test(l));
-  assert.equal(rows.length, 2, '還流節の表に rule と contract の行がある');
-  const inDoc = new Set(rows.flatMap(l => [...cells(l)[1].matchAll(/d2-[a-z]+/g)].map(m => m[0])));
-  const inDf = new Set(df.processes.filter(p => p.stage === 'feedback' && p.kind === 'subagent').map(p => p.skill));
-  assert.deepEqual([...inDoc].sort(), [...inDf].sort());
-  // 派遣表の還流の行と、手順が名指しする派遣表の行が揃っている
-  const text = fb.join('\n');
-  for (const p of df.processes.filter(x => x.stage === 'feedback' && x.kind === 'subagent')) {
-    assert.ok(text.includes(`派遣表「${p.template_row}」`), `還流節が派遣表の行「${p.template_row}」を名指ししていない`);
+test('(e2) 上流の差分の手順 (routing.md) が派遣するスキル・派遣表の行・結果ファイルが、正本の決定の差分と一致する。還流の段階と派遣は正本に無い (0.2.0)', () => {
+  const up = section('skills/d2-run/references/routing.md', /^## 上流の差分/);
+  const p = procs.get('decide.feedback');
+  assert.equal(p.stage, 'decide', '決定の差分は ② の段階 (UC の外の還流の段階ではない)');
+  assert.ok(up.includes(`sub \`${p.skill} mode=${p.mode}`), `決定の差分が ${p.skill} mode=${p.mode} を派遣する`);
+  assert.ok(up.includes(`派遣表「${p.template_row}」`), `決定の差分が派遣表の行「${p.template_row}」を名指しする`);
+  const result = stores.get('decide-result');
+  assert.ok(p.writes.includes('decide-result') && up.includes(result.path), `決定の差分の結果ファイル ${result.path} が手順と正本で同じ`);
+  // 基盤の差分は ③ の派遣を回し直す (新しい派遣を足さない)
+  assert.match(up, /sub `d2-foundation phase=finish ui=<true\|false>`/);
+  // 還流の段階・処理・派遣が残っていない
+  assert.deepEqual(df.stages.filter(s => s.id === 'feedback'), []);
+  assert.deepEqual(df.processes.filter(x => /^run\.feedback|^contract\.feedback$/.test(x.id)).map(x => x.id), []);
+  assert.deepEqual(df.processes.filter(x => /還流/.test(x.template_row || '')).map(x => x.id), []);
+});
+
+test('(e3) 反証して直す派遣は 1 つの行で、write-set は元の派遣の行と同じ (正本の write_set は注記だけ)。引き継ぎファイルは派遣の write-set に入れず、1 つの書き手が持つ (0.2.0)', () => {
+  const r = procs.get('refute');
+  assert.equal(r.kind, 'subagent');
+  assert.deepEqual(r.allowed_writes, []);
+  assert.deepEqual(r.write_set, r.notes, 'write_set は注記だけ (パスを持たない)');
+  assert.ok(r.reads.includes('reviews-run') && r.reads.includes('reviews-upstream'), 'レビューの結果を読む');
+  const handoffStores = ['handoff-run', 'handoff-upstream'];
+  const writers = df.processes.filter(p => (p.writes || []).some(id => handoffStores.includes(id))).map(p => p.id);
+  assert.deepEqual(writers, ['handoff.write']);
+  for (const p of df.processes.filter(x => x.kind === 'subagent')) {
+    assert.ok(!(p.allowed_writes || []).some(id => handoffStores.includes(id)), `${p.id}: 引き継ぎファイルは write-set に入れない`);
   }
+  const tmpl = read('skills/d2-run/references/subagent-template.md');
+  assert.match(tmpl, /引き継ぎファイル \{handoff\} は write-set に関わらず書いてよい/);
+  assert.match(tmpl, /write-set の逸脱[^\n]*引き継ぎファイル/, '受理の write-set の検査は引き継ぎファイルを除く');
 });
 
 test('(f) dataflow.md が最新 (genDataflow.js --check)', () => {

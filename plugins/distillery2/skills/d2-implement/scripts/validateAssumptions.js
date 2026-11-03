@@ -27,8 +27,8 @@ const VERDICTS = ['consistent', 'spec_absent', 'contradicts', 'unlisted'];
 const HIGH_RISK = ['security', 'persistence'];
 /** title (見出し) の上限。as-built の表にはこれだけを載せるので、1 行で読める長さに縛る (コードポイント数) */
 const TITLE_MAX = 30;
-/** 受け付ける schema_version。2.1 は title 必須 (0.1.6)、2.0 は 0.1.5 以前の記録 (title 任意) */
-const SCHEMA_VERSIONS = ['2.0', '2.1'];
+/** 受け付ける schema_version。2.2 は findings に人に聞くこと (asks) と前のステップの課題 (upstream_issues) が要る (0.2.0)、2.1 は title 必須 (0.1.6)、2.0 は 0.1.5 以前の記録 (title 任意) */
+const SCHEMA_VERSIONS = ['2.0', '2.1', '2.2'];
 function checkTitle(value, max, label, errors) {
   if (!isNonEmptyString(value)) return; // 必須検査は呼び出し側
   if (/[\r\n]/.test(value)) errors.push(`${label} must be a single line`);
@@ -106,7 +106,7 @@ function loadYaml(file, errors) {
 function validateRecord(doc, expect, errors) {
   // 2.1 = title (見出し) 必須。2.0 (0.1.5 以前の記録) は title 任意 (as-built は assumption の全文で代用する)
   if (!SCHEMA_VERSIONS.includes(doc.schema_version)) errors.push(`schema_version must be one of ${SCHEMA_VERSIONS.map((v) => `"${v}"`).join('|')} (got ${JSON.stringify(doc.schema_version)})`);
-  const titleRequired = doc.schema_version === '2.1';
+  const titleRequired = doc.schema_version === '2.1' || doc.schema_version === '2.2';
   for (const key of ['uc', 'tier']) {
     if (!isNonEmptyString(doc[key])) errors.push(`${key} is required`);
     else if (expect[key] !== undefined && doc[key] !== expect[key]) errors.push(`${key} mismatch: file=${doc[key]} expected=${expect[key]}`);
@@ -159,7 +159,16 @@ function validateVerdicts(findingsDoc, assumptionsDoc, expect, errors) {
   const recordErrors = [];
   const record = validateRecord(assumptionsDoc, expect, recordErrors);
   if (!SCHEMA_VERSIONS.includes(findingsDoc.schema_version)) errors.push(`findings schema_version must be one of ${SCHEMA_VERSIONS.map((v) => `"${v}"`).join('|')} (got ${JSON.stringify(findingsDoc.schema_version)})`);
-  const findingTitleRequired = findingsDoc.schema_version === '2.1';
+  const findingTitleRequired = findingsDoc.schema_version === '2.1' || findingsDoc.schema_version === '2.2';
+  if (findingsDoc.schema_version === '2.2') {
+    // 検証役は findings 以外を書けないので、引き継ぎファイルの代わりに findings に同じ欄を持つ (形は handoff.js と同じ)
+    if (!Array.isArray(findingsDoc.asks)) errors.push('asks must be an explicit array (use [] when there is nothing to ask)');
+    if (!Array.isArray(findingsDoc.upstream_issues)) errors.push('upstream_issues must be an explicit array (use [] when there are none)');
+    if (Array.isArray(findingsDoc.asks) && Array.isArray(findingsDoc.upstream_issues)) {
+      const sub = { schema_version: 'distillery2.handoff/v1', step: 'verify', asks: findingsDoc.asks, upstream_issues: findingsDoc.upstream_issues };
+      for (const e of require('../../d2-common/scripts/handoff').validate(sub)) errors.push(`findings ${e}`);
+    }
+  }
   for (const key of ['uc', 'tier']) {
     if (findingsDoc[key] !== assumptionsDoc[key]) errors.push(`findings ${key} (${findingsDoc[key]}) != assumptions ${key} (${assumptionsDoc[key]})`);
     if (expect[key] !== undefined && findingsDoc[key] !== expect[key]) errors.push(`findings ${key} mismatch: file=${findingsDoc[key]} expected=${expect[key]}`);
