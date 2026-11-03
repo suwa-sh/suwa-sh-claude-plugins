@@ -80,10 +80,13 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 7. remote `origin` があれば `git push origin main` (拒否されたら止まって報告する。force push はしない)
 8. `<RS> event <run> blocked_on_upstream '{"target":"<戻し先>","issues":["docs/feedback/<id>.md"]}'` → feature で `git add -A -- .distillery/runs/<slug>` → `impl(<slug>): <段> (blocked)` で commit して停止
 
+上流で止めると、同じ run の機能の中の課題 (戻し先が scenario / contract / implementation の下書き) も課題ファイルになる (失わないため)。これは `FB scan` の `carried` に出る: その UC を次に始めるとき (上流の差分の後の新しい run)、`carried_issues {issues}` を記録し、戻し先の段の派遣文に課題ファイルの絶対パスを添える。その UC の main マージで消す (下の「課題の消し方」)。
+
 ### 課題の消し方
 
 - 機能の中の巻き戻し: 下書きは `issues/consumed/` へ移る (課題ファイルにならない)
 - 開き直し: きっかけの課題は `reopened.json` の `issues` に残る。その機能の main マージ 1 の 3 で `git rm` し、squash の 1 commit に入れる (trailer `Feedback-Consumed:`)
+- 持ち越した課題 (`carried_issues`): その機能の main マージ 1 の 3 で同じく `git rm` する
 - 上流の差分: 反映した課題と取り下げた課題を `git rm` して、その差分の commit に入れる (`Feedback-Consumed:` / `Feedback-Dismissed:`)
 
 ## 上流の差分

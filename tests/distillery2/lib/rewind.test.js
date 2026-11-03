@@ -164,4 +164,31 @@ test('scan: 上流の課題を戻し先ごとに、main マージ済みの UC �
   assert.deepEqual(s.upstream, { requirements: ['a'], decide: ['b'], foundation: [] });
   assert.deepEqual(s.reopen_targets, [{ uc: 'submit-expense', from: 'contract', issues: ['c', 'd'] }]);
   assert.deepEqual(s.plugin, ['e']);
+  // まだ main に入っていない UC への機能の中の課題は carried (上流で止めたときに一緒に課題ファイルになったもの)
+  w(root, 'docs/feedback/f.md', '---\nkind: contract\ntitle: 例が区別できない\ntarget_step: contract\nfrom_uc: resubmit\nstatus: open\n---\n');
+  const s2 = JSON.parse(run([FB, 'scan', '--cwd', root]).out);
+  assert.deepEqual(s2.carried, [{ uc: 'resubmit', from: 'contract', issues: ['f'] }]);
+  assert.deepEqual(s2.reopen_targets.map((x) => x.uc), ['submit-expense']);
+});
+
+test('rewind: 無い課題の下書きを指定すると、状態を何も変えずに失敗する (差分レビュー)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-rewind-'));
+  const dir = rs.openRun(root, 'resubmit');
+  for (const s of ['scenario', 'contract', 'scaffold', 'tier']) rs.markDone(dir, s, {});
+  const events = rs.readEvents(dir).length;
+  assert.throws(() => rs.rewind(dir, 'implementation', { issue: 'issues/missing.md' }), /課題の下書きが無い/);
+  assert.equal(rs.currentAttempt(dir), 1, 'attempt を上げない');
+  assert.equal(rs.isDone(dir, 'tier'), true, 'done を退避しない');
+  assert.equal(rs.readEvents(dir).length, events);
+});
+
+test('invalidate: 同じ段の done を同じ秒に二度退避しても、前の退避を上書きしない (差分レビュー)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-rewind-'));
+  const dir = rs.openRun(root, 'resubmit');
+  rs.markDone(dir, 'contract', { n: 1 });
+  const a = rs.invalidate(dir, 'contract', 'first');
+  rs.markDone(dir, 'contract', { n: 2 });
+  const b = rs.invalidate(dir, 'contract', 'second');
+  assert.notEqual(a, b);
+  assert.ok(fs.existsSync(a) && fs.existsSync(b));
 });

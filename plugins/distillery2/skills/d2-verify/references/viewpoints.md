@@ -114,7 +114,7 @@ findings:
 summary: {blocker: 1, major: 0, minor: 2}
 asks: []                         # 人に聞きたいこと。形は d2-common の引き継ぎファイルと同じ (無ければ [])
 upstream_issues:                 # 前のステップの問題 (要求・決定・基盤・シナリオ・契約の穴)。無ければ []
-  - {id: rule-limit, target_step: requirements, title: "貸出上限の数が要求に無い", detail: "条件に上限 5 冊とあるが要求の受入基準に無い"}
+  - {id: rule-limit, target_step: requirements, title: "貸出上限の数が要求に無い", detail: "条件に上限 5 冊とあるが要求の受入基準に無い", evidence: "docs/requirements/rdra/条件.tsv#貸出上限", recommended_fix: "上限 5 冊の受入基準を足す"}
 ```
 
 `asks` と `upstream_issues` の書き方は `<skills>/d2-common/references/handoff.md` (検証役は findings 以外を書けないので、引き継ぎファイルの代わりに findings に持つ)。

@@ -52,9 +52,12 @@ function validate(contractsDir) {
       for (const f of G.undeclaredFixtures(openapiIndex.get(op), openapi)) {
         errors.push(`${uc.slug}: operation ${op} の x-test-requests が参照する fixture "${f}" が x-test-fixtures (文書直下か operation) に宣言されていない`);
       }
+      for (const k of G.unknownTestRequestKeys(openapiIndex.get(op), openapi)) {
+        errors.push(`${uc.slug}: operation ${op} の x-test-requests のキー "${k}" がどの応答の例にも当たらない (応答の例の名前か、ボディ無しの応答の status にする)`);
+      }
       for (const { a, b } of G.indistinguishableExamples(openapiIndex.get(op), openapi)) {
         const label = x => (x.name === null ? `${x.status} (ボディ無し)` : `"${x.name}" (${x.status})`);
-        errors.push(`${uc.slug}: operation ${op} の例 ${label(a)} と ${label(b)} は同じ要求を送るので区別できない — x-test-requests で URL の値・ヘッダ・テスト用データ (fixture) を変える`);
+        errors.push(`${uc.slug}: operation ${op} の例 ${label(a)} と ${label(b)} は同じ要求を送るのに期待する結果が違うので区別できない — x-test-requests で URL の値・ヘッダ・テスト用データ (fixture) を変える`);
       }
     }
     for (const m of uc.messages) if (!messageNames.has(m)) errors.push(`${uc.slug}: message ${m} は asyncapi.bundle の components.messages に存在しない`);

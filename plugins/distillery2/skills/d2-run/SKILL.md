@@ -203,7 +203,7 @@ Agent ツールの別名 (`opus` 等) の解決先が分かっていれば (ハ�
 各段階の done を書いたら `impl(<slug>): <stage>` で commit する (attribution 行を付ける。git-delivery.md「commit の attribution」)。
 `runState.js done` / `event` の data は argv の JSON で渡す。長い JSON (日本語の一覧など) は `.distillery/logs/<name>.json` に書いて `--data-file <ファイル>` で渡す (argv と排他)。
 要求の差分で残った作業は ④ に持ち込まない (要求の差分が種類ごとの宛先に流す)。
-run を開いたら `mode_resolved {mode}` を記録する。各段の担当を受理するたびに引き継ぎファイルを処理する (routing.md)。前のステップの課題で巻き戻したら、`runState.js status` の `next_stage` から続ける。
+run を開いたら `mode_resolved {mode}` を記録し、`FB scan` の `carried` にこの UC があれば routing.md のとおり `carried_issues` を記録して戻し先の段の派遣文に添える。各段の担当を受理するたびに引き継ぎファイルを処理する (routing.md)。前のステップの課題で巻き戻したら、`runState.js status` の `next_stage` から続ける。
 
 | 段階 | すること | done の条件 |
 |---|---|---|
@@ -285,7 +285,7 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
       次に feature の上で `node <skills>/d2-common/scripts/feedbackBatch.js file-issues <run> --cwd <リポのルート>` を回し、UC の課題 (`issues/*.md`) を課題ファイル `docs/feedback/<issue>.md` にする (`feedback_filed` も記録する)。
       `runState.js status` の `unfiled_issues` が空であることを確かめる (課題の取りこぼしはこれで確かめる。前の main マージ 1 で課題ファイルにした課題は `filed` に出ないので、止まって再開した main マージでは `filed` が空でよい)。結果の `filed` が空でなければ `genDocsReadme.js` を回し、`git add -A -- docs .distillery/runs/<slug>` して `impl(<slug>): issues to feedback` で commit する (squash で UC の 1 commit に入る。main に別の commit を足さない)。
       `filed` が空 (課題 0 件) なら commit を作らない (`docs/feedback/` が無いことがあり、パスを名指しすると `git add` が落ちる)。
-      開き直した UC (`.distillery/archive/runs/<slug>/` の最新の `reopened.json` に `issues` がある) なら、その課題ファイルを `git rm` して同じく commit に入れ、squash の本文に `Feedback-Consumed: <課題>` を足す
+      開き直した UC (`.distillery/archive/runs/<slug>/` の最新の `reopened.json` に `issues` がある) と、run に `carried_issues` がある UC なら、その課題ファイルを `git rm` して同じく commit に入れ、squash の本文に `Feedback-Consumed: <課題>` を足す
 2. remote `origin` があれば `git fetch origin` し、`origin/main` が `main` の祖先か同じ (`git merge-base --is-ancestor origin/main main`) であることを確かめる。
    そうでなければ止まって報告する (他の人が main を進めた。rebase は人が判断)
 3. 件名は 1 で検査済み → 復旧用 ref (`refs/distillery2/pre-squash/<slug>/<timestamp>`。`<timestamp>` は `date -u +%Y%m%dT%H%M%SZ`) → `git reset --soft <base_head>` →

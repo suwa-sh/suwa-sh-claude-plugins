@@ -39,15 +39,15 @@
     },
     "issue": {
       "type": "object",
-      "required": ["id", "target_step", "title", "detail"],
+      "required": ["id", "target_step", "title", "detail", "evidence", "recommended_fix"],
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
         "target_step": { "enum": ["requirements", "decide", "foundation", "scenario", "contract", "implementation"] },
         "title": { "type": "string", "minLength": 1, "maxLength": 40 },
         "detail": { "type": "string", "minLength": 1 },
-        "evidence": { "type": "string" },
-        "recommended_fix": { "type": "string" }
+        "evidence": { "type": "string", "minLength": 1 },
+        "recommended_fix": { "type": "string", "minLength": 1 }
       }
     },
     "refutation": {

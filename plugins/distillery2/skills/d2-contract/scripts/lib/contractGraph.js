@@ -322,7 +322,8 @@ function contractTestCases(entry, doc) {
       }
       const request = { url: testUrl(entry.path, testReq), headers: testHeaders(doc, operation, reqExample, testReq), fixture };
       if (reqExample) request.body = reqExample.value;
-      cases.push({ status, name, hasContent: r.hasContent, reqExample, request });
+      const resEx = name === null ? null : r.examples.find(e => e.name === name);
+      cases.push({ status, name, hasContent: r.hasContent, reqExample, request, response: resEx ? resEx.value : undefined });
     }
   }
   return cases;
@@ -336,7 +337,10 @@ function requestKey(request) {
   return JSON.stringify([request.url, headers, request.fixture, own(request, 'body') ? ['body', sorted(request.body)] : ['none']]);
 }
 
-/** status の違う 2 つの例が同じ要求を送る組 (区別できない例) を返す: [{ a: {status, name}, b: {status, name} }]。 */
+/**
+ * 同じ要求を送るのに、期待する結果が違う 2 つの例の組 (区別できない例) を返す: [{ a: {status, name}, b: {status, name} }]。
+ * 結果が違う = status が違うか、status が同じで応答の例の中身が違う (経費精算の 409 の「状態が違う」と「版が違う」)。中身まで同じ例の重なりは区別の要らない重複なので返さない
+ */
 function indistinguishableExamples(entry, doc) {
   const seen = new Map();
   const pairs = [];
@@ -344,11 +348,26 @@ function indistinguishableExamples(entry, doc) {
     if (!c.request) continue;
     const key = requestKey(c.request);
     const prev = seen.get(key) || [];
-    for (const p of prev) if (p.status !== c.status) pairs.push({ a: { status: p.status, name: p.name }, b: { status: c.status, name: c.name } });
+    const sameResult = (x, y) => x.status === y.status && JSON.stringify(x.response) === JSON.stringify(y.response);
+    for (const p of prev) if (!sameResult(p, c)) pairs.push({ a: { status: p.status, name: p.name }, b: { status: c.status, name: c.name } });
     prev.push(c);
     seen.set(key, prev);
   }
   return pairs;
+}
+
+/**
+ * `x-test-requests` のキーのうち、どの応答の例にも当たらないもの (書き間違い。指定した URL の値・ヘッダ・fixture が黙って使われなくなる)。
+ * キーは応答の例の名前か、ボディ無しの応答の status ('204' など)
+ */
+function unknownTestRequestKeys(entry, doc) {
+  const all = object(entry.operation['x-test-requests']) ? entry.operation['x-test-requests'] : {};
+  const known = new Set();
+  for (const [status, r] of Object.entries(operationExamples(entry, doc).responses)) {
+    if (!r.hasContent) known.add(String(status));
+    for (const e of r.examples) known.add(e.name);
+  }
+  return Object.keys(all).filter(k => !known.has(k)).sort();
 }
 
 /** operation の `x-test-requests` が参照する fixture のうち、`x-test-fixtures` (文書 / operation) に無いものの名前。 */
@@ -414,6 +433,6 @@ module.exports = {
   operationsForMessages, resolveMessageName,
   operationExamples, mediaExamples, exampleGaps, messageExamples, assertResolvable,
   is2xx, is4xx, is5xx,
-  requestExampleFor, testRequestFor, testFixtures, testHeaders, testUrl,
+  requestExampleFor, testRequestFor, testFixtures, testHeaders, testUrl, unknownTestRequestKeys,
   contractTestCases, requestKey, indistinguishableExamples, undeclaredFixtures, usedFixtures,
 };

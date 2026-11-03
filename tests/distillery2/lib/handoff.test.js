@@ -21,7 +21,7 @@ function base() {
     ],
     upstream_issues: [
       { id: 'list-entry', target_step: 'requirements', title: '差し戻された申請を開く入口が無い', detail: '自分の申請の一覧が要求に無い。', evidence: '画面の担当の確認', recommended_fix: '自分の申請一覧の UC を足す' },
-      { id: 'resp-409', target_step: 'contract', title: '409 が契約に無い', detail: '同じキーの再利用の応答が無い。' },
+      { id: 'resp-409', target_step: 'contract', title: '409 が契約に無い', detail: '同じキーの再利用の応答が無い。', evidence: '実装は 409 を返す', recommended_fix: '409 の応答と例を足す' },
     ],
   };
 }
@@ -104,7 +104,7 @@ test('file-drafts --root: 上流の段は docs/feedback/ に課題ファイル�
   assert.ok(out.written.every((p) => p.startsWith(path.join(dir, 'docs', 'feedback'))));
 });
 
-test('CLI: validate は不合格で exit 1、--findings は検証役の upstream_issues だけを読む', () => {
+test('CLI: validate は不合格で exit 1、--findings は検証役の asks と upstream_issues を読む', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
   const bad = write(dir, 'bad.json', { schema_version: 'distillery2.handoff/v1', step: 'tier', asks: [{ id: 'x' }], upstream_issues: [] });
   let code = 0;
@@ -113,4 +113,23 @@ test('CLI: validate は不合格で exit 1、--findings は検証役の upstream
   const findings = write(dir, 'findings.backend-api.json', { findings: [{ id: 'F-1' }], upstream_issues: [base().upstream_issues[1]] });
   const out = JSON.parse(execFileSync(process.execPath, [path.join(SCRIPTS, 'handoff.js'), 'route', findings, '--findings'], { encoding: 'utf8' }));
   assert.deepEqual(out.issues.in_feature.map((x) => x.id), ['resp-409']);
+});
+
+test('--findings: 検証役の問いも振り分け、auto では事実の問いを人へ、recommend では仮置きで決める (差分レビュー)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
+  const findings = write(dir, 'findings.frontend.json', { findings: [], asks: [base().asks[1], base().asks[2]], upstream_issues: [] });
+  const auto = JSON.parse(execFileSync(process.execPath, [path.join(SCRIPTS, 'handoff.js'), 'route', findings, '--findings', '--mode', 'auto'], { encoding: 'utf8' }));
+  assert.deepEqual(auto.to_human.map((x) => x.id), ['headcount', 'seed']);
+  const rec = JSON.parse(execFileSync(process.execPath, [path.join(SCRIPTS, 'handoff.js'), 'route', findings, '--findings', '--mode', 'recommend'], { encoding: 'utf8' }));
+  assert.deepEqual(rec.decide.map((x) => x.id), ['headcount']);
+  assert.deepEqual(rec.to_human.map((x) => x.id), ['seed']);
+});
+
+test('前のステップの課題は根拠と推奨の直し方が要る (推奨案で進めるモードが直し方を選べるように)', () => {
+  const d = base();
+  delete d.upstream_issues[0].recommended_fix;
+  d.upstream_issues[1].evidence = '';
+  const errors = H.validate(d).join('\n');
+  assert.match(errors, /recommended_fix/);
+  assert.match(errors, /evidence/);
 });

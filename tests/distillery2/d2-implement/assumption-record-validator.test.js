@@ -396,9 +396,9 @@ test('verdicts: schema 2.2 は人に聞くこと (asks) と前のステップの
   const missing = validator.run(verdictsArgs(write(v22), write(RECORD)));
   assert.match(missing.errors.join('\n'), /asks must be an explicit array/);
   assert.match(missing.errors.join('\n'), /upstream_issues must be an explicit array/);
-  const ok = `${v22}asks: []\nupstream_issues:\n  - {id: resp-409, target_step: contract, title: "409 が契約に無い", detail: "同じキーの再利用の応答が無い"}\n`;
+  const ok = `${v22}asks: []\nupstream_issues:\n  - {id: resp-409, target_step: contract, title: "409 が契約に無い", detail: "同じキーの再利用の応答が無い", evidence: "実装は 409 を返す", recommended_fix: "409 を契約に足す"}\n`;
   const r = validator.run(verdictsArgs(write(ok), write(RECORD)));
   assert.equal(r.ok, true, JSON.stringify(r));
-  const bad = `${v22}asks: []\nupstream_issues:\n  - {id: x, target_step: feedback, title: "t", detail: "d"}\n`;
+  const bad = `${v22}asks: []\nupstream_issues:\n  - {id: x, target_step: feedback, title: "t", detail: "d", evidence: "e", recommended_fix: "f"}\n`;
   assert.match(validator.run(verdictsArgs(write(bad), write(RECORD))).errors.join('\n'), /findings \$\.upstream_issues\[0\]\.target_step/);
 });

@@ -7,7 +7,7 @@
  *   node handoff.js route <handoff.yaml> --mode auto|recommend      # 問いの振り分け。JSON 1 行 {decide[], to_human[], issues{in_feature[], upstream[]}, needs_info[]}
  *   node handoff.js file-drafts <handoff.yaml> --run <runDir>       # 前のステップの課題を <run>/issues/ の下書きにする (機能の中)
  *   node handoff.js file-drafts <handoff.yaml> --root <repo>        # 上流の段 (run が無い): docs/feedback/ に課題ファイルを直接書く
- *   --findings                                                     # 入力が検証役の findings (upstream_issues だけ読む)
+ *   --findings                                                     # 入力が検証役の findings (asks と upstream_issues を読む)
  *
  * 終了コード: 0 = 成功 / 1 = 検査で不合格 / 2 = 引数・読み込みの失敗
  */
@@ -133,8 +133,8 @@ function main(argv) {
   if (!['validate', 'route', 'file-drafts'].includes(cmd)) throw new Fail('handoff.js validate|route|file-drafts <file> ...', 2);
   const data = load(file);
   if (opt.findings) {
-    // 検証役の findings は schema が別 (validateAssumptions.js verdicts が見る)。ここでは upstream_issues だけを使う
-    const sub = { schema_version: 'distillery2.handoff/v1', step: 'verify', asks: [], upstream_issues: data.upstream_issues || [] };
+    // 検証役の findings は schema が別 (validateAssumptions.js verdicts が見る)。ここでは引き継ぎの欄 (asks と upstream_issues) だけを使う
+    const sub = { schema_version: 'distillery2.handoff/v1', step: 'verify', asks: data.asks || [], upstream_issues: data.upstream_issues || [] };
     const errs = validate(sub);
     if (errs.length) return { out: { ok: false, errors: errs }, code: 1 };
     if (cmd !== 'file-drafts') return { out: { ok: true, ...route(sub, opt.mode || 'auto') }, code: 0 };

@@ -161,7 +161,7 @@ function markDone(runDir, stage, data = {}) {
 
 function invalidate(runDir, stage, reason) {
   if (!isDone(runDir, stage)) return null;
-  const dest = path.join(runDir, 'invalidated', `${ts()}_${stage}.done.yaml`);
+  const dest = uniqueDest(path.join(runDir, 'invalidated', `${ts()}_${stage}.done.yaml`));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.renameSync(doneFile(runDir, stage), dest);
   appendEvent(runDir, 'stage_invalidated', { stage, reason, moved_to: path.relative(runDir, dest) });
@@ -264,15 +264,16 @@ function rewind(runDir, target, { issue = null, reason = '', overrideLimit = fal
   if (!stage) throw new Error(`巻き戻し先は scenario / contract / implementation: ${target}`);
   const count = rewindCount(runDir);
   if (count >= MAX_REWINDS && !overrideLimit) throw new LimitError(`巻き戻しが上限 (${MAX_REWINDS} 回) に達した (${count} 回)。人に返す`);
+  // 課題の下書きは状態を変える前に確かめる (指定の誤りで、巻き戻しだけが済んで記録が残らない状態を作らない)
+  const issueSrc = issue ? path.join(runDir, issueKey(issue)) : null;
+  if (issueSrc && !fs.existsSync(issueSrc)) throw new Error(`課題の下書きが無い: ${issueKey(issue)}`);
   let attempt = currentAttempt(runDir);
   if (target === 'implementation') { attempt += 1; attemptDir(runDir, attempt); }
   const invalidated = invalidateFrom(runDir, stage, reason || `前のステップへ巻き戻す: ${target}`).map(x => path.relative(runDir, x));
   let consumed = null;
-  if (issue) {
-    const key = issueKey(issue);
-    const src = path.join(runDir, key);
-    if (!fs.existsSync(src)) throw new Error(`課題の下書きが無い: ${key}`);
-    const dest = uniqueDest(path.join(runDir, 'issues', 'consumed', path.basename(key)));
+  if (issueSrc) {
+    const src = issueSrc;
+    const dest = uniqueDest(path.join(runDir, 'issues', 'consumed', path.basename(src)));
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.renameSync(src, dest);
     consumed = path.relative(runDir, dest);

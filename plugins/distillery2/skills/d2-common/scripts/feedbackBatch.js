@@ -232,14 +232,22 @@ function cmdScan(root) {
       if (unfiled.length) unfiledRuns.push({ run, unfiled });
     }
   }
-  // 0.2.0 の振り分け: 上流の課題は戻し先ごと、main マージ済みの UC への課題は開き直す段ごと (止まった課題も含む)
+  // 0.2.0 の振り分け: 上流の課題は戻し先ごと、main マージ済みの UC への課題は開き直す段ごと (止まった課題も含む)。
+  // まだ main に入っていない UC への機能の中の課題 (上流で止めたときに一緒に課題ファイルになったもの) は carried: その UC を次に始めるときの派遣文に添え、その UC の main マージで消す
   const upstream = { requirements: [], decide: [], foundation: [] };
   const reopenBy = new Map();
+  const carriedBy = new Map();
   const order = ['scenario', 'contract', 'implementation'];
   for (const x of all) {
     if (upstream[x.target_step]) { upstream[x.target_step].push(x.id); continue; }
     if (!order.includes(x.target_step) || !x.from_uc) continue;
-    if (!runState.isDone(runState.runDirOf(root, x.from_uc), 'deliver')) continue;
+    if (!runState.isDone(runState.runDirOf(root, x.from_uc), 'deliver')) {
+      const c = carriedBy.get(x.from_uc) || { uc: x.from_uc, from: x.target_step, issues: [] };
+      if (order.indexOf(x.target_step) < order.indexOf(c.from)) c.from = x.target_step;
+      c.issues.push(x.id);
+      carriedBy.set(x.from_uc, c);
+      continue;
+    }
     const cur = reopenBy.get(x.from_uc) || { uc: x.from_uc, from: x.target_step, issues: [] };
     if (order.indexOf(x.target_step) < order.indexOf(cur.from)) cur.from = x.target_step;
     cur.issues.push(x.id);
@@ -248,7 +256,7 @@ function cmdScan(root) {
   const batch = batchStatus(root);
   // 0.2.0: 還流は無い。feedback_due は 0.1.x の途中で止まったバッチがあること (片付けが要る) だけを表す。triggers・stopped は互換のため残す
   const feedbackDue = batch.point !== 'none';
-  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, uncovered_done: uncoveredDone(root), reopened: runState.reopenedSlugs(root), batch, feedback_due: feedbackDue, upstream, reopen_targets: [...reopenBy.values()] };
+  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, uncovered_done: uncoveredDone(root), reopened: runState.reopenedSlugs(root), batch, feedback_due: feedbackDue, upstream, reopen_targets: [...reopenBy.values()], carried: [...carriedBy.values()] };
 }
 
 /** features/ 配下 (features/acceptance/ を除く) の <slug>.feature を探す。無ければ null、複数なら配列のまま返す */
