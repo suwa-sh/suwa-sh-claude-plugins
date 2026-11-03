@@ -122,16 +122,7 @@ function checkLayout(skillsDir, label) {
     }
   }
   assert.deepEqual(problems, []);
-  // (b) 還流の既定コマンドが指すスクリプトが実在する
-  const fbPath = path.join(skillsDir, 'd2-common/scripts/feedbackBatch.js');
-  const { defaultRegenCmds } = require(fbPath);
-  const cmds = defaultRegenCmds();
-  const scripts = [...cmds.validate, ...cmds['adr-index'], ...cmds.derived].map(c => c[1]);
-  assert.ok(scripts.length >= 9, label);
-  assert.deepEqual(scripts.filter(s => !fs.existsSync(s)), [], `${label}: 既定コマンドのスクリプト`);
-  const realSkills = fs.realpathSync(skillsDir);
-  for (const s of scripts) assert.ok(fs.realpathSync(s).startsWith(realSkills + path.sep), `${label}: ${s} は skills の中`);
-  // (c) 依存の解決: 対象リポの node_modules から見つけ、無ければ null
+  // (b) 依存の解決 (還流の既定コマンドの検査は 0.2.0 で還流と一緒に外した): 対象リポの node_modules から見つけ、無ければ null
   const { resolveDep } = require(path.join(skillsDir, 'd2-common/scripts/lib/resolveDep.js'));
   const target = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'd2-target-')));
   fs.mkdirSync(path.join(target, 'node_modules/d2-probe-dep'), { recursive: true });
@@ -140,7 +131,7 @@ function checkLayout(skillsDir, label) {
   assert.equal(resolveDep('d2-probe-dep-missing', { cwd: target }), null, label);
 }
 
-test('0.1.29: プラグイン配置で、全スクリプトの構文と相対 require・還流の既定コマンド・依存の解決が通る', () => {
+test('0.1.29: プラグイン配置で、全スクリプトの構文と相対 require・依存の解決が通る', () => {
   checkLayout(path.join(plugin, 'skills'), 'plugin');
 });
 
