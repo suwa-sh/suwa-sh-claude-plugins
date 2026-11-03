@@ -77,7 +77,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 4. `git -C <wt> add -A -- docs` → `git -C <wt> commit -m "impl(<slug>): issues to feedback" -m "<attribution 行>"`
 5. feature のまま `git fetch . feedback-req/<slug>/<issue>:main` で main を ff する
 6. `git worktree remove <wt>` → `git merge-base --is-ancestor feedback-req/<slug>/<issue> main` が exit 0 なら `git branch -D feedback-req/<slug>/<issue>`
-7. remote `origin` があれば `git push origin main`
+7. remote `origin` があれば `git push origin main` (拒否されたら止まって報告する。force push はしない)
 8. `<RS> event <run> blocked_on_upstream '{"target":"<戻し先>","issues":["docs/feedback/<id>.md"]}'` → feature で `git add -A -- .distillery/runs/<slug>` → `impl(<slug>): <段> (blocked)` で commit して停止
 
 ### 課題の消し方
@@ -93,8 +93,8 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 ### 決定の差分 (`upstream.decide`)
 
 1. 前提: 進行中の UC が無い、clean な main
-2. 課題ごとに sub `d2-decide mode=feedback issue=<docs/feedback/<id>.md> result=<.distillery/logs/decide-<id>.result.json>` (ADR を 1 本足す)。受理: 結果が `applied`、`validateAdr.js docs/adr` が exit 0、write-set の外が変わっていない。
-   結果が `blocked` なら: `reason_kind: plugin` は理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル>` (プラグインへ持ち帰る課題にする)。`reason_kind: scope` は人に返す (推奨: 戻し先を基盤にする)
+2. 課題ごとに sub `d2-decide mode=feedback issue=<docs/feedback/<issue>.md> result=<.distillery/logs/decide-<issue>.result.json>` (派遣表「② 決定の差分 (ADR)」。ADR を 1 本足す。結果ファイルは派遣の前に消す)。受理: 結果が `applied`、`validateAdr.js docs/adr` が exit 0、write-set の外が変わっていない。
+   結果が `blocked` なら: `reason_kind: plugin` は理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` (プラグインへ持ち帰る課題にする)。`reason_kind: scope` は人に返す (推奨: 戻し先を基盤にする)
 3. 索引・開発ルール・アーキテストを作り直す (1 コマンドずつ): `node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements`、`node <skills>/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd .`、`node <skills>/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd .`。続けて `runGates.js --uc d2-feedback --only static` が通る (落ちたら人に返す)
 4. 決定のレビュー (下の「縦・横レビュー」の `decide`) → 確認ページ (`page:decide:approve`。足した ADR と、`basis.js check` の STALE の UC を「やり直す / 後で」で載せる)
 5. 反映した課題を `git rm` → genDocsReadme → `git add -A -- docs .distillery` → `decide: feedback` で commit (trailer `Feedback-Consumed:`)。「やり直す」UC は `<RS> reopen <root> <slug> --from scenario` (同じ commit に入れる)

@@ -101,6 +101,7 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
    examples 不足や参照ずれは validate が exit 1 で止める。
 6. **契約テスト生成**: `genContractTests.js --uc <slug>` と `genRdbDdl.js` を対象リポに対して実行する。
    契約テストはこの時点では todo か red (実装前だから)。生成物に `basis:` を付ける。
+   生成先は `apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**` (どれも生成物。手で直さない)
 
 ## 注意
 

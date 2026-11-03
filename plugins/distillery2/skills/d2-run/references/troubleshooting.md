@@ -10,11 +10,11 @@
 - 症状: `Contains simple_expansion` などと出て一部のコマンドが拒否される (0.1.26 の試し運転では還流の worktree での `cd <wt> && git ...` と、終了コードを見る `echo $?` で止まった)
 - 原因: allowedTools の照合が、変数展開・`cd` を含む複合コマンドを通さない
 - 回避: コマンドを分割し、変数展開を使わずに書く (パスは直書き)。別のディレクトリの git は `cd` せずに `git -C <dir> ...` で打つ。
-  終了コードは `$?` を表示せず、コマンドを単独で回してツールの結果 (exit code) で見る。還流の git の操作は `feedbackBatch.js` のサブコマンドを 1 つずつ回す (JSON と終了コードで判断する)
+  終了コードは `$?` を表示せず、コマンドを単独で回してツールの結果 (exit code) で見る。`feedbackBatch.js` (課題ファイル・途中の還流の片付け) はサブコマンドを 1 つずつ回す (JSON と終了コードで判断する)
 - 0.1.27 の試し運転でも、還流の worktree での `cd <wt> && git status` と、受理の検査 (validateAdr・compileContracts など) を 1 つの sh にまとめたものが同じ症状で止まった。
   受理の検査も `git -C <wt>` と同様に worktree のパスを直書きして 1 コマンドずつ回す (手順書の例のとおり)
 - 0.1.28 の試し運転でも `genDocsReadme.js; echo exit=$?` と、受理の検査をまとめた sh で再発した。手順書の例には `$?` も sh も無い。コマンドを単独で回し、ツールの結果の exit code で見る
-- 0.1.30 の試し運転では `cd <wt> && git status` は止まったが、`cd <wt> && node <スクリプト>` は通った (止まるのは git を含む複合コマンド)。還流の受理の検査 (契約のスクリプトに `--cwd` は無い) は `cd <wt> && node ...` の形でよい
+- 0.1.30 の試し運転では `cd <wt> && git status` は止まったが、`cd <wt> && node <スクリプト>` は通った (止まるのは git を含む複合コマンド)。0.2.0 では worktree で回すのは「上流で止めるとき」の `--cwd <wt>` を取るスクリプトと `git -C <wt>` だけ
 - 0.1.32〜0.1.34 の試し運転でも `; echo exit=$?` 付きのコマンドで再発した (「A variable in this command can't be checked before it runs」)。どれも分けて回して進めた
 
 ## headless で runGates の出力を `> <ファイル>` に保存できない
@@ -22,7 +22,7 @@
 - 症状: `runGates.js ... > /tmp/gates.txt` が「作業ディレクトリの外への書き込み」で拒否され、`; echo $?` も拒否される (0.1.29 の試し運転では `| tail -30` で代えた)
 - 原因: allowedTools の照合がリダイレクトと複合コマンドを通さない
 - 回避: 出力を保存しない。runGates は `<run>/reports/gates.json` に job ごとの `output_tail` (末尾 4000 文字) と `failed_tests` (落ちたテスト名。0.1.30) を書くので、落ちた内容はそこを読む。
-  還流の `FB record-gate --detail` にはその gates.json をそのまま渡す (落ちた段だけ要約される。複数の UC はカンマ区切り)。回し直す前の写しは `cp` で `<run>/reports/gates.failed-1.json` に (作業ディレクトリの中なので通る)
+  落ちたゲートを報告するときも、その gates.json の該当の job を読む (0.1.x の還流でゲートの記録に gates.json を渡していたのと同じ。0.2.0 で還流は廃止)。回し直す前の写しは `cp` で `<run>/reports/gates.failed-1.json` に (作業ディレクトリの中なので通る)
 
 ## `"type": "module"` のリポで補助スクリプトを `.js` で書くと ESM として読まれて失敗する
 
@@ -75,7 +75,7 @@
 | main マージ | static で落ちると、単体テスト以降の段が回っていない | 報告に「単体テスト以降は回っていない」と添える |
 | main マージ | squash の本文 (`prTrailers.js` の出力) をファイルにする方法 | 標準出力を `.distillery/logs/` の下のファイルへリダイレクトし、`git commit -F` で渡す (作業ディレクトリの中なら通る。`/tmp` は上の節のとおり拒まれる) |
 | 名指しの起動 | 既存の持ち越しや旧形式の run が片付かない | 設計どおり (名指しは ④ だけ)。完了報告に「引数なしの起動で片付く」と添える |
-| 還流・移行 | 契約の課題が既に契約に入っていた (`already-applied`) | 手順どおり次の課題へ (派遣が空回りするだけ) |
+| 還流 (0.1.x) | 契約の課題が既に契約に入っていた (`already-applied`) | 0.2.0 で還流は廃止。途中で止まったバッチは `FB abandon` で捨て、残った課題は戻し先で扱い直す (routing.md「途中で止まった還流」) |
 | 要求の差分 | 決定記録 (ADR) がすべて STALE と出る | basis が要求全体の最後の commit 1 つのため。完了報告に載せるだけでよい |
 | 要求の差分 | `use-cases.yaml` を作り直すと、引用符の付け方だけが変わる | 中身は同じ。一度作り直せば揃う |
 | 全体 | 空のディレクトリ (`.distillery/logs/feedback/`、退避した feature の run の `learnings/` など) が残る | git は追跡しない。消してよい |

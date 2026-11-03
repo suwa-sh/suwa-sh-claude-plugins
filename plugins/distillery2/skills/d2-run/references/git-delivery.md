@@ -20,6 +20,7 @@ d2-run が作る**すべての commit** (簿記の commit `impl(<slug>): <stage>
 | `git commit -m "<件名>"` | `git commit -m "<件名>" -m "<attribution 行>"` (2 つ目の `-m` が最後の段落になり、git が trailer として扱う) |
 | 本文ファイル (`git commit -F`。`req: feedback`) | trailer の末尾に attribution 行を書く |
 | squash (`prTrailers.js`) | `--co-author "<attribution の値>"` (今のまま) |
+| プラグインへ持ち帰る書き換え (`FB reclassify`。スクリプトが commit する) | `--co-author "<attribution の値>"` |
 
 ## UC branch の開始と再開
 

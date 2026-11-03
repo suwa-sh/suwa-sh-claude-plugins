@@ -6,13 +6,13 @@
 #           <run> = .distillery/runs/<slug> (手順書の <run> と同じ)
 # store_groups: 図でファイルをまとめる単位 (全体図と、ファイルの多い処理の図で使う)。stores[].group で所属を示す
 # stores[].origin: external = 外部入力 / packaged = プラグイン同梱 (書き手を要求しない) / produced = 処理が生成
-# stores[].terminal: true = 最終成果物 (読み手を要求しない)
+# stores[].terminal: true = 最終成果物 (読み手を要求しない)。進行の記録 (決めたことの記録・レビューの結果) も terminal にする (全体図の受け渡しに描かない)
 # stores[].aliases: 手順書での略記 (照合に使う)
 # stores[].scope_only: true = 許可範囲を表すためだけの store (allowed_writes 専用。書き手・読み手を要求しない)
 # stores[].outside_repo: true = リポの外。手順書のパス照合から外す (0.1.26 で GitHub の PR / issue をやめ、いまは使っていない)
 # processes[].kind: subagent (派遣の単位) / orchestrator (d2-run 自身) / script (スクリプト) / llm (サブエージェントの中の LLM の作業。内訳として持つ)
 # processes[].phase: d2-foundation の phase。同じ phase を 2 回の派遣で回すとき (F7) は処理を 2 つ持ち、読み書きを同じにする (phase 表の 1 行と照合する)
-# processes[].stage: stages の id。d2-run の ④ の直接作業は段階をまたぐので `uc`
+# processes[].stage: stages の id。d2-run の ④ の直接作業は段階をまたぐので `uc`。どの段でも行う作業 (引き継ぎファイル・決めたことの記録・縦横レビュー・反証して直す) は `records` (全体図に描かず、処理ごとの図だけに描く)
 # processes[].parent: 内訳の処理 (phase ごとのスクリプト、d2-run が回すスクリプト) の親。subagent の親は子の和を含む (派遣表の write-set と照合するため)
 # processes[].scripts: 手順書の読む / 書くの節に出てくるスクリプト名 (パスとして照合しない)
 # processes[].writes: 実際に書くもの / allowed_writes: 派遣文で許す範囲 (subagent のみ。writes を含む)
@@ -49,8 +49,10 @@ stages:
     name: ④ asbuilt
   - id: deliver
     name: ④ deliver
-  - id: feedback
-    name: 還流 (UC の外の独立した段階)
+  - id: startup
+    name: 起動時の移行 (UC の外。0.1.x の残りを片付ける)
+  - id: records
+    name: どの段でも (引き継ぎファイル・決めたことの記録・縦横レビュー)
 
 store_groups:
   - id: input
@@ -79,6 +81,8 @@ store_groups:
     name: as-built
   - id: docs
     name: 文書の入口と課題ファイル
+  - id: records
+    name: 進行の記録 (引き継ぎ・決めたこと・レビュー)
 
 stores:
   # ---- 外部入力・同梱 ----
@@ -392,20 +396,24 @@ stores:
     group: run
     path: "<run>/issues/<ts>_asbuilt_<slug>.md"
     origin: produced
-  - id: feedback-result
-    name: 還流の派遣の結果 (applied / absent / blocked。gitignore)
+  - id: issues-consumed
+    name: その場で巻き戻して直した課題の下書き (runState.js rewind が移す。課題ファイルにしない)
     group: run
-    path: ".distillery/logs/feedback/<b>/<issue>.result.json"
+    path: "<run>/issues/consumed/**"
+    origin: produced
+    terminal: true
+  - id: decide-result
+    name: 決定の差分の派遣の結果 (applied / blocked。gitignore)
+    group: run
+    path: ".distillery/logs/decide-<issue>.result.json"
     origin: produced
   - id: feedback-batch
-    name: 還流のバッチの状態 (対象の課題・課題ごとの static の合否と止まった理由・最後のゲートの合否・確認ページの回答。gitignore)
+    name: 0.1.x の還流のバッチの状態 (途中で止まったものを起動時に片付けるだけ。gitignore)
     group: run
     path: ".distillery/logs/feedback/<b>/**"
     origin: produced
-    aliases:
-      - ".distillery/logs/feedback/<b>/<issue>.reason.txt"
   - id: worktrees
-    name: 作業用の worktree (還流は 1 つ。review で要求を直すときは一時のもの。gitignore)
+    name: 作業用の worktree (上流で止めるときの一時のもの。0.1.x の還流の worktree は片付けるだけ。gitignore)
     group: run
     path: ".distillery/worktrees/**"
     origin: produced
@@ -413,12 +421,6 @@ stores:
     aliases:
       - ".distillery/worktrees/feedback"
       - ".distillery/worktrees/<slug>/<issue>"
-  - id: feedback-failed
-    name: 止まった課題の差分 (中身は課題ファイルにも書く。gitignore)
-    group: run
-    path: ".distillery/logs/feedback/<b>/<issue>.failed.diff"
-    origin: produced
-    terminal: true
   - id: reports
     name: ゲートの記録
     group: run
@@ -475,6 +477,41 @@ stores:
     name: 課題の一覧 (genDocsReadme が課題ファイルから生成。0 件なら消す)
     group: docs
     path: "docs/feedback/README.md"
+    origin: produced
+    terminal: true
+  # ---- 進行の記録 (0.2.0。機能の中は <run> の下で feature の commit に、上流の段は .distillery/ の下でその段の commit に入る。どれも追跡する) ----
+  - id: handoff-run
+    name: 引き継ぎファイル (機能の中。人に聞くこと・前のステップの課題・反証)
+    group: records
+    path: "<run>/handoff/**"
+    origin: produced
+  - id: handoff-upstream
+    name: 引き継ぎファイル (上流の段: ①②③・上流の差分)
+    group: records
+    path: ".distillery/handoff/**"
+    origin: produced
+  - id: decisions-run
+    name: 決めたことの記録 (機能の中)
+    group: records
+    path: "<run>/decisions.jsonl"
+    origin: produced
+    terminal: true
+  - id: decisions-upstream
+    name: 決めたことの記録 (上流の段)
+    group: records
+    path: ".distillery/decisions.jsonl"
+    origin: produced
+    terminal: true
+  - id: reviews-run
+    name: 縦・横レビューの依頼文と結果 (機能の中)
+    group: records
+    path: "<run>/reviews/**"
+    origin: produced
+    terminal: true
+  - id: reviews-upstream
+    name: 縦・横レビューの依頼文と結果 (上流の段)
+    group: records
+    path: ".distillery/reviews/**"
     origin: produced
     terminal: true
 
@@ -887,7 +924,7 @@ processes:
     actor: d2-run
     run_table_row: "④ の段階の進行・確認ページ"
     reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, issues-asbuilt, uc-index, asbuilt-system, feature, acceptance, run-archive]
-    writes: [run-events, use-cases, asbuilt-report, issues-asbuilt, feedback-docs, worktrees]
+    writes: [run-events, use-cases, asbuilt-report, issues-asbuilt, feedback-docs, worktrees, issues-consumed, run-archive]
   - id: run.uc.check-scenario
     name: シナリオの静的確認
     parent: run.uc
@@ -998,10 +1035,45 @@ processes:
     run_table_row: "④ の feedbackBatch.js file-issues"
     reads: [issues, issues-tier, issues-asbuilt, run-events]
     writes: [feedback-docs, run-events]
-  # ---- 起動時の移行 (0.1.28。main マージ済みなのに課題ファイルにしていない run の課題を、課題を数える前に課題ファイルにする) ----
+  # ================= ② 決定の差分 (0.2.0。戻し先が decide の課題を、clean な main の作業ツリーで新しい ADR にする) =================
+  - id: decide.feedback
+    name: 決定の差分の ADR
+    skill: d2-decide
+    mode: feedback
+    stage: decide
+    kind: subagent
+    template_row: "② 決定の差分 (ADR)"
+    write_set:
+      - "`docs/adr/**`"
+      - "`.distillery/logs/decide-<issue>.result.json`"
+    reads: [feedback-docs, adr]
+    writes: [adr, decide-result]
+    allowed_writes: [adr-dir, decide-result]
+    scripts: [validateAdr.js, genAdrIndex.js]
+  - id: run.decide-diff
+    name: 決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)
+    stage: decide
+    kind: orchestrator
+    actor: d2-run
+    scripts: [validateAdr.js, genAdrIndex.js, genRules.js, genArchTests.js, runGates.js, feedbackBatch.js, runState.js]
+    run_table_row: "② の決定の差分の取り込み"
+    reads: [decide-result, adr, rule-templates, feedback-docs, config, skeleton, lockfile, qlty-config, tier-src, depcruise-config, use-cases]
+    writes: [adr, rules, depcruise-config, reports, feedback-docs, use-cases, run-archive]
+  # ================= ③ 基盤の差分 (0.2.0。派遣は ③ の行 (骨格・契約の骨格・画面部品・仕上げ) を回し直す。ここは d2-run の直接作業だけ) =================
+  - id: run.foundation-diff
+    name: 基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除・やり直す UC の run の退避)
+    stage: foundation
+    kind: orchestrator
+    actor: d2-run
+    scripts: [runState.js]
+    run_table_row: "③ の基盤の差分の取り込み"
+    reads: [feedback-docs, config, reports, use-cases]
+    writes: [feedback-docs, reports, use-cases, run-archive]
+  # ================= 起動時の移行 (UC の外。課題を数える前に、0.1.x の残りを片付ける) =================
+  # main マージ済みなのに課題ファイルにしていない run の課題を課題ファイルにする (0.1.28)
   - id: run.migrate-issues
     name: 旧形式の run の課題を課題ファイルにする (起動時の移行)
-    stage: feedback
+    stage: startup
     kind: script
     actor: d2-run
     scripts: [feedbackBatch.js]
@@ -1010,102 +1082,78 @@ processes:
     writes: [feedback-docs, run-events]
   - id: run.migrate-readme
     name: 文書の入口の更新 (起動時の移行)
-    stage: feedback
+    stage: startup
     kind: script
     actor: d2-run
     scripts: [genDocsReadme.js]
     run_table_row: "起動時の genDocsReadme.js (移行)"
     reads: [config, req-rdra, req-usdm, use-cases, feature, acceptance, contracts-catalog, uc-index, design, asbuilt-system, asbuilt-uc, adr, nfr, rules, feedback-docs]
     writes: [docs-readme, feedback-index]
-  # ================= 還流 (d2-run。UC の外。main から切った worktree 1 つで溜まった課題をまとめて直す) =================
-  - id: run.feedback
-    name: d2-run (還流)
-    stage: feedback
-    kind: orchestrator
-    actor: d2-run
-    run_table_row: "還流の進行・確認ページ"
-    reads: [config, use-cases, uc-index, feedback-docs, feedback-batch, feedback-result]
-    writes: [feedback-batch]
-  - id: run.feedback.batch
-    name: 還流の git の状態遷移 (切り出し・課題の commit・止める・仕上げ・組み直し・取り込み)
-    parent: run.feedback
-    stage: feedback
+  # 0.1.x の途中で止まった還流のバッチ (0.2.0 で還流は廃止)。取り込み済みなら merge で後始末、それより前なら abandon で捨てる (課題ファイルは main に残る)
+  - id: run.migrate-batch
+    name: 途中で止まった還流のバッチの片付け (起動時の移行)
+    stage: startup
     kind: script
     actor: d2-run
-    scripts: [feedbackBatch.js, genAdrIndex.js, genRules.js, genArchTests.js, compileContracts.js, compileRdbSchema.js, validateUcIndex.js, genContractTests.js, genRdbDdl.js, genDocsReadme.js, validateAdr.js]
-    run_table_row: "還流の feedbackBatch.js"
-    reads: [feedback-docs, adr, rule-templates, contracts-src, config, feedback-batch]
-    writes: [worktrees, feedback-batch, feedback-failed, feedback-docs, adr, rules, depcruise-config, contracts-catalog, contract-slice, contract-tests, contracts-code, migrations, docs-readme, feedback-index]
-  - id: run.feedback.gates
-    name: 還流のゲート (課題ごとの static と最後のゲート)
-    parent: run.feedback
-    stage: feedback
-    kind: script
-    actor: d2-run
-    scripts: [runGates.js]
-    run_table_row: "還流の runGates.js"
-    reads: [config, skeleton, lockfile, cucumber-config, cucumber-loader, qlty-config, tier-src, contract-tests, migrations, feature, acceptance, steps, features-support, depcruise-config, reports]
-    writes: [reports, traces]
-  # ---- 還流の受理 (d2-run が worktree で、課題の commit の前に回す。読むだけ) ----
-  - id: run.feedback.validate-adr
-    name: 還流の ADR の検証
-    parent: run.feedback
-    stage: feedback
-    kind: script
-    actor: d2-run
-    scripts: [validateAdr.js]
-    run_table_row: "還流の validateAdr.js (受理)"
-    reads: [adr]
-    writes: []
-  - id: run.feedback.check-contract-tests
-    name: 契約テストの鮮度 (--check)
-    parent: run.feedback
-    stage: feedback
-    kind: script
-    actor: d2-run
-    scripts: [genContractTests.js]
-    run_table_row: "還流の genContractTests.js --check (受理)"
-    reads: [contracts-src, config, contract-tests, contracts-code]
-    writes: []
-  - id: run.feedback.check-rdb-ddl
-    name: DB の生成物の鮮度 (--check)
-    parent: run.feedback
-    stage: feedback
-    kind: script
-    actor: d2-run
-    scripts: [genRdbDdl.js]
-    run_table_row: "還流の genRdbDdl.js --check (受理)"
-    reads: [contracts-src, config, migrations, contract-tests, contracts-code]
-    writes: []
-  # ================= 還流の派遣 (d2-run が main から切った worktree .distillery/worktrees/feedback で派遣する。パスはそこからの相対) =================
-  - id: decide.feedback
-    name: 還流の ADR
-    skill: d2-decide
-    mode: feedback
-    stage: feedback
+    scripts: [feedbackBatch.js]
+    run_table_row: "起動時の feedbackBatch.js status・merge・abandon (移行)"
+    reads: [feedback-batch, worktrees, feedback-docs]
+    writes: [feedback-batch, worktrees]
+  # ================= どの段でも (0.2.0。担当を受理するたびの引き継ぎファイルの処理・決めたことの記録・7 か所の縦横レビュー) =================
+  # 引き継ぎファイルは派遣文の制約で「write-set に関わらず書いてよい」ので、各派遣の write_set / allowed_writes には入れず、ここで 1 つの書き手として持つ
+  - id: handoff.write
+    name: 引き継ぎファイルを書く (派遣したすべての担当。検証役は findings が代わり)
+    stage: records
+    kind: llm
+    actor: 派遣した担当
+    reads: [skill-docs]
+    writes: [handoff-run, handoff-upstream]
+  # 反証して直す: レビューした場所の担当を同じ write-set で派遣し直す。書くものはその担当の処理と同じなので、ここには読むものだけを持つ
+  - id: refute
+    name: レビューの指摘を反証して直す (レビューした場所の担当を派遣し直す)
+    stage: records
     kind: subagent
-    template_row: "還流 (ADR)"
+    template_row: "反証して直す"
     write_set:
-      - "`docs/adr/**`"
-      - "`.distillery/logs/feedback/<b>/<issue>.result.json`"
-    reads: [feedback-docs, adr]
-    writes: [adr, feedback-result]
-    allowed_writes: [adr-dir, feedback-result]
-    scripts: [validateAdr.js, genAdrIndex.js]
-  - id: contract.feedback
-    name: 還流の契約
-    skill: d2-contract
-    mode: feedback
-    stage: feedback
-    kind: subagent
-    template_row: "還流 (契約)"
-    write_set:
-      - "`contracts/**`"
-      - "`apps/*/test/contract/**`"
-      - "`apps/<datastore_owner>/migrations/**`"
-      - "`packages/contracts/**`"
-      - "`.distillery/logs/feedback/<b>/<issue>.result.json`"
-    reads: [feedback-docs, contracts-src, uc-index, config]
-    writes: [contracts-src, contract-tests, migrations, contracts-code, feedback-result]
-    allowed_writes: [contracts-src, contract-tests, migrations, contracts-code, feedback-result]
-    scripts: [compileContracts.js, compileRdbSchema.js, validateUcIndex.js, genContractTests.js, genRdbDdl.js]
+      - "レビューした場所の派遣の行と同じ (その行をそのまま貼る)"
+    notes:
+      - "レビューした場所の派遣の行と同じ (その行をそのまま貼る)"
+    reads: [reviews-run, reviews-upstream]
+    writes: []
+    allowed_writes: []
+  - id: run.handoff
+    name: 引き継ぎファイルの検査・振り分け・課題の下書き
+    stage: records
+    kind: script
+    actor: d2-run
+    scripts: [handoff.js]
+    run_table_row: "どの段でも handoff.js"
+    reads: [handoff-run, handoff-upstream, findings]
+    writes: [issues, feedback-docs]
+  - id: run.decisions
+    name: 決めたことの記録 (推奨で決めた答え・人の答え・規則で決めたこと)
+    stage: records
+    kind: script
+    actor: d2-run
+    scripts: [decisionLog.js]
+    run_table_row: "どの段でも decisionLog.js"
+    reads: [handoff-run, handoff-upstream, decisions-run, decisions-upstream, run-archive]
+    writes: [decisions-run, decisions-upstream]
+  - id: run.review-upstream
+    name: 縦・横レビュー (上流の段: 要求・決定・基盤)
+    stage: records
+    kind: script
+    actor: d2-run
+    scripts: [reviewStep.js]
+    run_table_row: "①②③ の reviewStep.js"
+    reads: [skill-docs, req-usdm, req-rdra, use-cases, nfr, adr, rules, contracts-src, design, config, reviews-upstream]
+    writes: [reviews-upstream]
+  - id: run.review-run
+    name: 縦・横レビュー (機能の中: シナリオ・契約・実装・as-built)
+    stage: records
+    kind: script
+    actor: d2-run
+    scripts: [reviewStep.js]
+    run_table_row: "④ の reviewStep.js"
+    reads: [skill-docs, feature, acceptance, contracts-src, tier-src, asbuilt-uc, asbuilt-system, reviews-run]
+    writes: [reviews-run]
