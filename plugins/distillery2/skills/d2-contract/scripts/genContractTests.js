@@ -52,90 +52,44 @@ function ajvSchema(schema, componentsRef) {
   return Object.assign({}, schema, { components: { __ref: componentsRef } });
 }
 
-/**
- * status に対応する request example を名前で引く。
- *  - 同名の request example があればそれ (409 の response example `conflict` ↔ request example `conflict`)。
- *  - request が単数形 `example` のみのときは 2xx にだけ対応づける。
- *  - どちらも無ければ null (呼び出し側で it.todo にする)。
- */
-function requestExampleFor(reqExamples, responseName, status) {
-  const named = reqExamples.find(r => r.name === responseName);
-  if (named) return named;
-  const singular = reqExamples.find(r => r.name === 'example');
-  if (singular && G.is2xx(status)) return singular;
-  return null;
-}
-
 function sendClause(reqExample) { return reqExample ? `\n      .send(${json(reqExample.value)})` : ''; }
 
 /**
- * 要求ヘッダ。既定は文書直下 → operation の `x-test-headers` を重ね、request example の `x-headers` で上書きする
- * (値 null はそのヘッダを送らない)。値 "{uuid}" は毎回新しい UUID (Idempotency-Key 用)。
+ * 要求ヘッダの重ね方 (文書 / operation の `x-test-headers` → request example の `x-headers` → `x-test-requests[名前].headers`) は
+ * contractGraph.testHeaders に置く (validateUcIndex の「区別できない例」の検査と同じ結果にするため)。
  * 生成される契約テストは認証情報を送れなかった (0.1.10 ④-3 / 0.1.13 ④-3) ので、契約側でテスト用の値を宣言できるようにする。
  */
-function testHeaders(doc, operation, reqExample) {
-  // HTTP ヘッダ名は大文字小文字を区別しない。小文字化したキーで重ね、最後に指定された表記と値を使う (Codex 0.1.16 ラウンド 2 指摘 1:
-  // example の `authorization: null` で既定の `Authorization` を取り消せなかった)
-  const merged = new Map();
-  for (const src of [doc['x-test-headers'], operation['x-test-headers'], reqExample && reqExample.headers]) {
-    if (!object(src)) continue;
-    for (const [k, v] of Object.entries(src)) merged.set(k.toLowerCase(), [k, v]);
-  }
-  return [...merged.values()].filter(([, v]) => v !== null && v !== undefined);
-}
-function object(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
 function setClause(headers) {
   return headers.map(([k, v]) => `\n      .set(${json(k)}, ${v === '{uuid}' ? 'randomUUID()' : json(String(v))})`).join('');
 }
+/** `x-test-requests[名前].fixture` があればテスト用データ名を createTestApp に渡す。無ければ従来どおり引数なし。 */
+function appClause(fixture) { return fixture ? `createTestApp({ fixture: ${json(fixture)} })` : 'createTestApp()'; }
 
 function openapiTest(op, entry, doc, testRel, componentsVar) {
   const method = entry.method.toLowerCase();
-  const url = entry.path.replace(/\{([^}]+)\}/g, (_, p) => `test-${p}`);
-  const ex = G.operationExamples(entry, doc);
   const title = `${op} (${entry.method} ${entry.path})`;
   const blocks = [];
-
-  if (ex.hasRequestBody && ex.requestExamples.length === 0) {
-    blocks.push(`  it.todo('${op} — requestBody に example を追加する');`);
-  } else {
-    for (const [status, r] of Object.entries(ex.responses)) {
-      if (!(G.is2xx(status) || G.is4xx(status))) continue;
-      const schema = responseSchema(doc, entry.operation.responses[status]);
-      if (r.hasContent && r.examples.length === 0) {
-        blocks.push(`  it.todo('responds ${status} — response example を追加する');`);
-        continue;
-      }
-      if (!r.hasContent) {
-        // ボディ無しの応答。requestBody があるなら status に対応づく request を送る (無ければ todo)。
-        const reqExample = ex.hasRequestBody ? requestExampleFor(ex.requestExamples, null, status) : null;
-        if (ex.hasRequestBody && !reqExample) {
-          blocks.push(`  it.todo('${status}: request example missing — 同名の request example を追加する');`);
-          continue;
-        }
-        blocks.push(`  it('responds ${status} (no body)', async () => {
-    const app = await createTestApp();
-    const res = await request(app).${method}(${JSON.stringify(url)})${setClause(testHeaders(doc, entry.operation, reqExample))}${sendClause(reqExample)};
+  for (const c of G.contractTestCases(entry, doc)) {
+    if (c.todo) { blocks.push(`  it.todo('${c.todo}');`); continue; }
+    const { status, request, reqExample } = c;
+    const call = `const res = await request(app).${method}(${JSON.stringify(request.url)})${setClause(request.headers)}${sendClause(reqExample)};`;
+    if (!c.hasContent) {
+      blocks.push(`  it('responds ${status} (no body)', async () => {
+    const app = await ${appClause(request.fixture)};
+    ${call}
     expect(res.status).toBe(${Number(status)});
   });`);
-        continue;
-      }
-      for (const example of r.examples) {
-        const reqExample = ex.hasRequestBody ? requestExampleFor(ex.requestExamples, example.name, status) : null;
-        if (ex.hasRequestBody && !reqExample) {
-          // この status を起こす入力が契約に無い。同じ request を使い回すと必ず落ちるので todo にする。
-          blocks.push(`  it.todo('${status}: request example "${example.name}" missing — 同名の request example を追加する');`);
-          continue;
-        }
-        const validateExpr = schema
-          ? `\n    const validate = ajv.compile(${json(ajvSchema(schema, componentsVar))});\n    expect(validate(res.body) || ajv.errorsText(validate.errors)).toBe(true);`
-          : '';
-        blocks.push(`  it('responds ${status} (example: ${example.name})', async () => {
-    const app = await createTestApp();
-    const res = await request(app).${method}(${JSON.stringify(url)})${setClause(testHeaders(doc, entry.operation, reqExample))}${sendClause(reqExample)};
+      continue;
+    }
+    const schema = responseSchema(doc, entry.operation.responses[status]);
+    const validateExpr = schema
+      ? `\n    const validate = ajv.compile(${json(ajvSchema(schema, componentsVar))});\n    expect(validate(res.body) || ajv.errorsText(validate.errors)).toBe(true);`
+      : '';
+    blocks.push(`  it('responds ${status} (example: ${c.name})', async () => {
+    const app = await ${appClause(request.fixture)};
+    ${call}
     expect(res.status).toBe(${Number(status)});${validateExpr}
   });`);
-      }
-    }
   }
   return `describe('${title}', () => {\n${blocks.join('\n')}\n});`;
 }

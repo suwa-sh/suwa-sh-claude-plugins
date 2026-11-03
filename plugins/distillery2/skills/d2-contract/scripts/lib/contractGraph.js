@@ -224,6 +224,150 @@ function mediaExamples(holder, doc) {
 
 const is2xx = s => /^2\d\d$/.test(s);
 const is4xx = s => /^4\d\d$/.test(s);
+const is5xx = s => /^5\d\d$/.test(s);
+
+/**
+ * status に対応する request example を名前で引く。
+ *  - 同名の request example があればそれ (409 の response example `conflict` ↔ request example `conflict`)。
+ *  - request が単数形 `example` のみのときは 2xx にだけ対応づける。
+ *  - どちらも無ければ null (呼び出し側で it.todo にする)。
+ */
+function requestExampleFor(reqExamples, responseName, status) {
+  const named = reqExamples.find(r => r.name === responseName);
+  if (named) return named;
+  const singular = reqExamples.find(r => r.name === 'example');
+  if (singular && is2xx(status)) return singular;
+  return null;
+}
+
+/**
+ * operation の `x-test-requests` (response example 名 → { path, headers, fixture })。
+ * ボディ無しの応答は example 名が無いので status の文字列 ('204' 等) をキーにする。
+ */
+function testRequestFor(operation, key) {
+  const all = object(operation['x-test-requests']) ? operation['x-test-requests'] : {};
+  return object(all[key]) ? all[key] : null;
+}
+
+const fixtureOf = testReq => (testReq && typeof testReq.fixture === 'string' && testReq.fixture ? testReq.fixture : null);
+
+/** テスト用データ (fixture) の宣言。文書直下の `x-test-fixtures` に operation の `x-test-fixtures` を重ねる (名前 → 説明)。 */
+function testFixtures(doc, operation) {
+  const out = {};
+  for (const src of [doc && doc['x-test-fixtures'], operation && operation['x-test-fixtures']]) {
+    if (object(src)) for (const [k, v] of Object.entries(src)) out[k] = v;
+  }
+  return out;
+}
+
+/**
+ * 要求ヘッダ。文書直下 → operation の `x-test-headers` → request example の `x-headers` → `x-test-requests[名前].headers` の順に重ねる
+ * (値 null はそのヘッダを送らない)。値 "{uuid}" はここでは文字列のまま返す (毎回新しい UUID にするのは生成側)。
+ * HTTP ヘッダ名は大文字小文字を区別しないので、小文字化したキーで重ね、最後に指定された表記と値を使う。
+ */
+function testHeaders(doc, operation, reqExample, testReq) {
+  const merged = new Map();
+  for (const src of [doc && doc['x-test-headers'], operation['x-test-headers'], reqExample && reqExample.headers, testReq && testReq.headers]) {
+    if (!object(src)) continue;
+    for (const [k, v] of Object.entries(src)) merged.set(k.toLowerCase(), [k, v]);
+  }
+  return [...merged.values()].filter(([, v]) => v !== null && v !== undefined);
+}
+
+/** 経路の `{param}` を埋める。`x-test-requests[名前].path` の値は URL エンコードし、指定の無い引数は `test-<param>` のまま。 */
+function testUrl(pathTemplate, testReq) {
+  const values = testReq && object(testReq.path) ? testReq.path : {};
+  return pathTemplate.replace(/\{([^}]+)\}/g, (_, p) => (own(values, p) && values[p] !== null && values[p] !== undefined
+    ? encodeURIComponent(String(values[p])) : `test-${p}`));
+}
+
+/**
+ * 契約テストの 1 件ごとの計画。生成 (genContractTests) と検査 (validateUcIndex の区別できない例) が同じ結果を使う。
+ * 返す要素は { todo } か { status, name, hasContent, reqExample, request: { url, headers, fixture, body? } }。
+ *  - 2xx / 4xx は従来どおり。5xx は `x-test-requests[名前].fixture` があるときだけテストにし、無ければ todo。
+ *  - それ以外の status (1xx / 3xx) は扱わない。
+ */
+function contractTestCases(entry, doc) {
+  const operation = entry.operation;
+  const ex = operationExamples(entry, doc);
+  const cases = [];
+  if (ex.hasRequestBody && ex.requestExamples.length === 0) {
+    cases.push({ todo: `${operation.operationId} — requestBody に example を追加する` });
+    return cases;
+  }
+  for (const [status, r] of Object.entries(ex.responses)) {
+    const server = is5xx(status);
+    if (!(is2xx(status) || is4xx(status) || server)) continue;
+    if (r.hasContent && r.examples.length === 0) {
+      // 5xx の example は必須ではないので todo にしない
+      if (!server) cases.push({ todo: `responds ${status} — response example を追加する` });
+      continue;
+    }
+    // ボディ無しの 5xx は x-test-requests['<status>'].fixture があるときだけテストにする (無ければ従来どおり扱わない)
+    if (server && !r.hasContent && !fixtureOf(testRequestFor(operation, status))) continue;
+    const names = r.hasContent ? r.examples.map(e => e.name) : [null];
+    for (const name of names) {
+      const reqExample = ex.hasRequestBody ? requestExampleFor(ex.requestExamples, name, status) : null;
+      if (ex.hasRequestBody && !reqExample) {
+        cases.push({ todo: name === null
+          ? `${status}: request example missing — 同名の request example を追加する`
+          : `${status}: request example "${name}" missing — 同名の request example を追加する` });
+        continue;
+      }
+      const testReq = testRequestFor(operation, name === null ? status : name);
+      const fixture = fixtureOf(testReq);
+      if (server && !fixture) {
+        cases.push({ todo: `${status}${name === null ? '' : ` (example: ${name})`}: fixture missing — 失敗を起こすテスト用データを x-test-requests に指定する` });
+        continue;
+      }
+      const request = { url: testUrl(entry.path, testReq), headers: testHeaders(doc, operation, reqExample, testReq), fixture };
+      if (reqExample) request.body = reqExample.value;
+      cases.push({ status, name, hasContent: r.hasContent, reqExample, request });
+    }
+  }
+  return cases;
+}
+
+/** 要求の比較用の正規形 (ヘッダ名は小文字・並び替え、本文はキーを並べた JSON)。"{uuid}" は同じ値として扱う。 */
+function requestKey(request) {
+  const sorted = v => Array.isArray(v) ? v.map(sorted)
+    : object(v) ? Object.fromEntries(Object.keys(v).sort().map(k => [k, sorted(v[k])])) : v;
+  const headers = request.headers.map(([k, v]) => [k.toLowerCase(), String(v)]).sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  return JSON.stringify([request.url, headers, request.fixture, own(request, 'body') ? ['body', sorted(request.body)] : ['none']]);
+}
+
+/** status の違う 2 つの例が同じ要求を送る組 (区別できない例) を返す: [{ a: {status, name}, b: {status, name} }]。 */
+function indistinguishableExamples(entry, doc) {
+  const seen = new Map();
+  const pairs = [];
+  for (const c of contractTestCases(entry, doc)) {
+    if (!c.request) continue;
+    const key = requestKey(c.request);
+    const prev = seen.get(key) || [];
+    for (const p of prev) if (p.status !== c.status) pairs.push({ a: { status: p.status, name: p.name }, b: { status: c.status, name: c.name } });
+    prev.push(c);
+    seen.set(key, prev);
+  }
+  return pairs;
+}
+
+/** operation の `x-test-requests` が参照する fixture のうち、`x-test-fixtures` (文書 / operation) に無いものの名前。 */
+function undeclaredFixtures(entry, doc) {
+  const declared = testFixtures(doc, entry.operation);
+  const all = object(entry.operation['x-test-requests']) ? entry.operation['x-test-requests'] : {};
+  const out = new Set();
+  for (const v of Object.values(all)) if (object(v) && typeof v.fixture === 'string' && !own(declared, v.fixture)) out.add(v.fixture);
+  return [...out].sort();
+}
+
+/** operation の `x-test-requests` が参照し、宣言されている fixture (名前 → 説明)。 */
+function usedFixtures(entry, doc) {
+  const declared = testFixtures(doc, entry.operation);
+  const all = object(entry.operation['x-test-requests']) ? entry.operation['x-test-requests'] : {};
+  const out = {};
+  for (const v of Object.values(all)) if (object(v) && typeof v.fixture === 'string' && own(declared, v.fixture)) out[v.fixture] = declared[v.fixture];
+  return out;
+}
 
 /**
  * examples 必須ルール (名前対応):
@@ -269,5 +413,7 @@ module.exports = {
   pointer, resolve, put, walk, operations, references, slice,
   operationsForMessages, resolveMessageName,
   operationExamples, mediaExamples, exampleGaps, messageExamples, assertResolvable,
-  is2xx, is4xx,
+  is2xx, is4xx, is5xx,
+  requestExampleFor, testRequestFor, testFixtures, testHeaders, testUrl,
+  contractTestCases, requestKey, indistinguishableExamples, undeclaredFixtures, usedFixtures,
 };

@@ -12,6 +12,7 @@
  *
  * 出力: generated/openapi.bundle.yaml, generated/asyncapi.bundle.yaml,
  *       generated/slices/<slug>/contract-slice.json
+ *       (slice の fixtures は、その UC の operation が x-test-requests で参照するテスト用データの名前 → 説明)
  */
 
 const fs = require('node:fs');
@@ -92,7 +93,14 @@ function compile(contractsDir) {
       const { ids } = G.operationsForMessages(asyncapiBundle, asyncapiIndex, uc.messages);
       asyncapiSlice = G.slice(asyncapiBundle, asyncapiIndex, ids.sort(), 'asyncapi');
     }
-    const slice = { schema_version: C.SLICE_VERSION, uc: uc.slug, openapi: openapiSlice, asyncapi: asyncapiSlice };
+    // fixtures: この UC の operation が x-test-requests で参照するテスト用データ (名前 → 説明)。実装側の createTestApp が用意する一覧
+    const fixtures = {};
+    for (const op of [...uc.operations].sort()) {
+      const entry = openapiIndex.get(op);
+      if (entry) Object.assign(fixtures, G.usedFixtures(entry, openapiBundle));
+    }
+    const sortedFixtures = Object.fromEntries(Object.keys(fixtures).sort().map(k => [k, fixtures[k]]));
+    const slice = { schema_version: C.SLICE_VERSION, uc: uc.slug, openapi: openapiSlice, asyncapi: asyncapiSlice, fixtures: sortedFixtures };
     files.set(`slices/${uc.slug}/contract-slice.json`, C.encodeJson(slice));
   }
   return { files, ucIndex };

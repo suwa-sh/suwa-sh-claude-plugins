@@ -48,7 +48,7 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(tsRaw.includes('"types": ["node"]'));
   assert.equal(fs.readFileSync(path.join(c, 'apps/backend-api/src/index.ts'), 'utf8').includes('export {};'), true, '空の src/index.ts');
   // 提供側の仮 test-app (契約テストと api ドライバの import 先)。frontend には置かない
-  assert.match(fs.readFileSync(path.join(c, 'apps/backend-api/src/test-app.ts'), 'utf8'), /export function createTestApp\(\)/);
+  assert.match(fs.readFileSync(path.join(c, 'apps/backend-api/src/test-app.ts'), 'utf8'), /export function createTestApp\(_options\?: \{ fixture\?: string \}\)/);
   assert.ok(fs.existsSync(path.join(c, 'apps/worker/src/test-app.ts')));
   assert.ok(!fs.existsSync(path.join(c, 'apps/frontend/src/test-app.ts')));
   assert.ok(pkg.devDependencies['@types/node'], 'types: node のための @types/node');
@@ -91,6 +91,8 @@ test('genSkeleton: 契約テストがあっても app tsconfig で tsc が通り
     "import type { Server } from 'node:http';",
     'function request(_app: Server | ((req: unknown, res: unknown) => void)): { get(p: string): void } { return { get() {} }; }',
     'export async function probe() { const app = await createTestApp(); request(app).get("/x"); }',
+    // 契約テストは x-test-requests の fixture を createTestApp({ fixture }) で渡す (0.2.0)
+    'export async function probeFixture() { const app = await createTestApp({ fixture: "db-down" }); request(app).get("/x"); }',
   ].join('\n') + '\n');
   const tsc = path.resolve(__dirname, '../../../node_modules/.bin/tsc');
   assert.ok(fs.existsSync(tsc), 'node_modules/.bin/tsc が無い (npm install 済みか)');

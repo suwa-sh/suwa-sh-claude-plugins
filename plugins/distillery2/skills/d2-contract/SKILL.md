@@ -91,6 +91,9 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
 3. **examples を書く**: [`references/uc-index.md`](references/uc-index.md) の examples 必須ルールに従い、
    requestBody と各 2xx/4xx response に example を付ける。認証や冪等キーで決まる応答 (401 / 403 / 409) は、文書直下の `x-test-headers` (既定値) と
    request example の `x-headers` (上書き。`null` で送らない) で入力を表す ([`references/contract-tests.md`](references/contract-tests.md) の「要求ヘッダ」)。
+   本文だけでは区別できない応答 (無い ID の 404、本文の無い GET の 401 / 403、前提のデータで決まる 409 / 5xx) は、operation の `x-test-requests` で
+   例ごとに URL の値・ヘッダ・テスト用データ (`fixture`) を指定し、テスト用データの意味を `x-test-fixtures` に書く (同「例ごとの要求」)。
+   status の違う例が同じ要求になると validate が止める。
    **シナリオから example を作れないときは、契約を推測で埋めず**、
    `.distillery/runs/<slug>/issues/<ts>_<slug>.md` に課題ドラフトを残して停止する。書式は実装の課題と同じ:
    front matter に `kind: contract` と `title` (40 字以内)。front matter が無いと as-built の課題の表で「未分類」になる (0.1.10 実走 ④-11)。
@@ -113,7 +116,7 @@ d2-run が派遣する。実装で見つかった「契約の穴」(課題ファ
    (d2-run はその課題を止まった課題にする)
 3. 契約を推測で埋めないと直せない (課題に応答の形が無い、要求が決まっていない) なら、何も書かずに `status: blocked` と理由、`reason_kind: scope` を書いて止まる (止まった課題として次の還流で再挑戦)。
    直す場所が契約ではなく distillery2 側 (契約テストや DDL の生成器、テンプレート、手順書) なら `status: blocked` と理由、`reason_kind: plugin` を書いて止まる (d2-run が課題を `kind: plugin` に書き換えて還流の対象から外す)
-4. 分割ファイル (`openapi/` `asyncapi/` `db/domains/`) を直す。examples 必須のルールと `x-test-headers` の書き方は mode=uc と同じ。
+4. 分割ファイル (`openapi/` `asyncapi/` `db/domains/`) を直す。examples 必須のルールと `x-test-headers` / `x-test-requests` / `x-test-fixtures` の書き方は mode=uc と同じ。
    uc-index は変えない (UC が使う範囲は mode=uc の担当)
 5. 生成物を全部作り直す (この順): `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js` → `genContractTests.js` (`--uc` なし) → `genRdbDdl.js`。
    作り直すのは検査のため。d2-run は課題の commit に分割ファイルだけを入れ、生成物は最後に `feedbackBatch.js` がまとめて作り直す。
