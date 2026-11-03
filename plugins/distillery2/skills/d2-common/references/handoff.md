@@ -32,6 +32,8 @@ upstream_issues:                 # 前のステップの問題 (自分の書き�
     recommended_fix: 自分の申請一覧の UC を足す
     # uc: submit-expense        # 上流の段 (要求・決定・基盤) の担当が、機能の中 (scenario / contract / implementation) を戻し先にするときだけ。対象の UC の slug
 refutations: []                  # レビューの指摘への反証 (反証して直す派遣のときだけ。下記)
+decisions:                       # 自分で決めたこと (報告の「決めたこと」と同じ D<n>。無ければ [])
+  - {id: D1, topic: 予約の重なりの判定, choice: 開始と終了の半開区間で比べる, reason: 連続した予約を許す}
 ```
 
 ## 書き方の決まり
@@ -45,7 +47,8 @@ refutations: []                  # レビューの指摘への反証 (反証し�
 - 課題のファイル (`<run>/issues/`・`docs/feedback/`) を直接書かない。進行役がこのファイルから下書きにする (同じ課題が二重に起票されない)
 - 写し直した後の派遣で、統合できなかった機能側の差分 (`<run>/resume/<n>/*.diff`) を渡されたら、差分ごとに `resume_diffs` に扱いを書く: `{diff: <差分ファイルのリポ相対パス>, result: applied, where: <反映したファイル (複数ならカンマ区切り)>, reason: <要点>}` か `{diff, result: dropped, reason: <取り下げる理由>}`。applied は差分の追加行がそのファイルにあることを進行役が機械で確かめる
 - 課題に `resume_from` (scenario / contract / implementation) を書くと、上流を直した後に機能をその段から続ける (書かなければ、要求の課題は scenario、決定・基盤の課題は implementation から)
-- `target_step` の選び方: 何を作り直せば解けるか (要求 = USDM・RDRA・UC 一覧 / 決定 = 非機能グレード・ADR / 基盤 = 開発ルール・テスト基盤・画面部品・設定 / シナリオ / 契約 / 実装)
+- `target_step` の選び方: 何を作り直せば解けるか (要求 = USDM・RDRA・UC 一覧 / 決定 = 非機能グレード・ADR / 基盤 = 開発ルール・テスト基盤・画面部品・設定 / シナリオ / 契約 / 実装 / `plugin` = リポの中では直せない distillery2 の不具合)
+- 自分で決めたことは `decisions` に `D<n>` で書き、報告の本文の「決めたこと」の見出しの下にも同じ `D<n>` で 1 行ずつ書く (進行役が 1 対 1 を確かめ、決めたことの一覧に同じ ID で残す)
 
 ## 反証して直す派遣のとき
 
@@ -56,6 +59,7 @@ refutations:
   - {finding: 指摘 1, result: accepted, reason: 要望の「出し直し」が UC に無い, change: 出し直しの UC を足した}
   - {finding: 指摘 2, result: refuted, reason: 申請の状態は状態モデルの「承認待ち」に書いてある}
   - {finding: 指摘 3, result: needs_info, reason: 上長が不在のときの扱いが要望に無い}
+  - {finding: 指摘 4, result: plugin, reason: 検査のスクリプトの誤り (リポの中では直せない)}
 ```
 
 - `accepted` は直してから書く (`change` に何を変えたか)。`refuted` は根拠 (ファイルと箇所) を `reason` に書く

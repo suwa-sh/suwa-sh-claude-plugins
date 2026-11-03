@@ -53,13 +53,15 @@ test('validate: 推奨が選択肢に無い・推奨なしで理由が無い・i
   assert.match(errors, /title/);
 });
 
-test('route: 選び方の問いは推奨で決め、事実が分からない問いは auto で人へ・recommend で仮置き、推奨なしは両モードとも人へ', () => {
+test('route: 選び方の問いは推奨で決め、事実が分からない問いは auto で人へ・recommend で仮置き、推奨なしは auto で人へ・recommend で進行役が推奨を作る (0.3.0)', () => {
   const auto = H.route(base(), 'auto');
   assert.deepEqual(auto.decide, [{ id: 'audit-store', answer: 'DB の表', provisional: false }]);
   assert.deepEqual(auto.to_human, [{ id: 'headcount', reason: 'unknown_fact' }, { id: 'seed', reason: 'no_recommendation' }]);
   const rec = H.route(base(), 'recommend');
   assert.deepEqual(rec.decide.map((x) => [x.id, x.provisional]), [['audit-store', false], ['headcount', true]]);
-  assert.deepEqual(rec.to_human, [{ id: 'seed', reason: 'no_recommendation' }]);
+  assert.deepEqual(rec.to_human, []);
+  assert.deepEqual(rec.make_recommendation, [{ id: 'seed', reason: 'no_recommendation' }]);
+  assert.deepEqual(auto.make_recommendation, []);
   assert.deepEqual(auto.issues.upstream.map((x) => x.id), ['list-entry']);
   assert.deepEqual(auto.issues.in_feature.map((x) => x.id), ['resp-409']);
   assert.throws(() => H.route(base(), 'manual'), /auto か recommend/);
@@ -125,7 +127,8 @@ test('--findings: 検証役の問いも振り分け、auto では事実の問い
   assert.deepEqual(auto.to_human.map((x) => x.id), ['headcount', 'seed']);
   const rec = JSON.parse(execFileSync(process.execPath, [path.join(SCRIPTS, 'handoff.js'), 'route', findings, '--findings', '--mode', 'recommend'], { encoding: 'utf8' }));
   assert.deepEqual(rec.decide.map((x) => x.id), ['headcount']);
-  assert.deepEqual(rec.to_human.map((x) => x.id), ['seed']);
+  assert.deepEqual(rec.to_human.map((x) => x.id), []);
+  assert.deepEqual(rec.make_recommendation.map((x) => x.id), ['seed']);
 });
 
 test('前のステップの課題は根拠と推奨の直し方が要る (推奨案で進めるモードが直し方を選べるように)', () => {

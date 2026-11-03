@@ -282,7 +282,7 @@ test('0.1.28: main マージ: gates.json が無ければ全段を 1 回通す。
 
 test('0.1.28 / 0.2.0: 決定の差分: 結果ファイルで分岐し、reason_kind plugin は reclassify で kind: plugin に (止めない)、scope は人に返す。plugin の課題は自動選択のきっかけにしない', () => {
   const dd = routingSection('### 決定の差分');
-  assert.match(dd, /`reason_kind: plugin` は理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` \(プラグインへ持ち帰る課題にする\)/);
+  assert.match(dd, /`reason_kind: plugin` は「プラグインの不具合」\(理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` でプラグインへ持ち帰る課題にする\)/);
   assert.match(dd, /`reason_kind: scope` は人に返す \(推奨: 戻し先を基盤にする\)/);
   const put = section(SKILL, '## 課題ファイル', '## 完了報告');
   assert.match(put, /`kind: plugin` \(プラグインへ持ち帰る課題\): 自動選択のきっかけにしない。distillery2 を直した後に人が `git rm` して commit する/);
@@ -818,7 +818,7 @@ test('0.2.0: 2 つのモード。auto でも要求の承認と人レビューは
   const back = routingSection('## 人に返すとき');
   assert.match(back, /\| 要求の承認 \(①・要求の差分\)・人レビュー \| \*\*必ず人に返す\*\* \| 推奨で承認して記録 \|/);
   assert.match(back, /\| 事実が分からない問い \(`unknown_fact`\) \| 人に返す \| 推奨で仮置きして記録/);
-  assert.match(back, /\| 推奨が無い問い \(`recommended: null`\) \| 人に返す \| 人に返す \|/);
+  assert.match(back, /\| 推奨が無い問い \(`recommended: null`\) \| 人に返す \| 進行役が推奨を作って仮置きし記録する/);
   assert.match(back, /\| 戻り道の回数の上限 \(`runState\.js` が exit 3\) \| 人に返す \| 人に返す \|/);
   assert.match(back, /\| 上流への課題 \(`target_step` が requirements \/ decide \/ foundation\) \| 人に返す/);
   // 段の手順の側も同じ規則を書いている
@@ -940,4 +940,23 @@ test('0.3.0: 担当は課題のファイルを直接書かず、上流の課題�
   assert.match(issues, /`--chain-from <直している課題ファイル>`/);
   assert.match(issues, /戻し先がまだ done でない段なら巻き戻さずに `deferred: true` を返す \(回数に数えない\)/);
   assert.match(issues, /`items` の課題ごとの戻し先 \(`target_step`\) の段の派遣文に課題ファイルの絶対パスを添える/);
+});
+
+test('0.3.0: recommend で人に返すのは戻り道の上限とプラグインの不具合だけ。推奨の無い問い・needs_info は進行役が推奨を作って仮置き、ゲートの再失敗は巻き戻し。止める前のレビューの指摘と決めたこと (D<n>) が消えない', () => {
+  const back = routingSection('## 人に返すとき');
+  assert.match(back, /`mode=recommend` で人に返すのは、戻り道の上限とプラグインの不具合だけ/);
+  assert.match(back, /\| レビューの反証で `needs_info` が残った \| 人に返す \| 進行役が推奨を作って仮置きし記録する/);
+  assert.match(back, /\| ゲートが 2 回落ちた・受理の検査に落ちた \(再派遣で直らない\) \| 人に返す \| 機能の中なら `<RS> rewind <run> implementation` \(回数に数える。上限で人へ\)/);
+  assert.match(back, /\| プラグインの不具合 [^\n]*\| 人に返す \| \*\*人に返す\*\*/);
+  const h = routingSection('## 引き継ぎファイルの処理');
+  assert.match(h, /`<H> validate <handoff> --report <そのファイル>` が exit 0/);
+  assert.match(h, /`make_recommendation\[\]` \(recommend だけ\)[^\n]*--by recommended --provisional/);
+  assert.match(h, /`<D> add \(--run <run> \| --root \.\) --handoff <handoff> --decision D<n> --by recommended`/);
+  const up = routingSection('### 上流で止めるとき');
+  assert.match(up, /0\. 止める前に、反証して直すを派遣していないレビューの結果[^\n]*`<H> file-drafts <round<k>\.md> --review --target <場所の段> --run <run>`/);
+  const plugin = routingSection('### プラグインの不具合');
+  assert.match(plugin, /`FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"`/);
+  assert.match(plugin, /`\{"id": "<課題>", "target": "plugin"\}`/);
+  assert.match(routingSection('## 縦・横レビュー'), /1 ラウンド目で決め済み[^\n]*と振り替え済み[^\n]*の指摘は、2 ラウンド目の反証に回さない/);
+  assert.match(read(TEMPLATE), /報告の「決めたこと」の見出しの下に 1 行ずつ `D<n> <要点>` で書き、引き継ぎファイルの `decisions` にも同じ `D<n>` で書いてください/);
 });
