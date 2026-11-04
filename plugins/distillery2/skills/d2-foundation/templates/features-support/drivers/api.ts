@@ -58,10 +58,10 @@ function loadTestHeaders(root = process.cwd()): TestHeaders[] {
 
 /** OpenAPI の path の雛形 (/rooms/{roomId}) が実際の path に合うか (問い合わせの文字列は除いて比べる) */
 function matchesPath(template: string, actual: string): boolean {
-  const escape = (seg: string) => seg.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
+  const escapeRegExp = (seg: string) => seg.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
   const re = template
     .split(/\{[^}]+\}/)
-    .map(escape)
+    .map(escapeRegExp)
     .join('[^/]+');
   return new RegExp(`^${re}$`).test(actual.split('?')[0]);
 }

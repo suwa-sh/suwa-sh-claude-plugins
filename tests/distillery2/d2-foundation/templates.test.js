@@ -41,3 +41,14 @@ test('DB のハーネス: 所有ティアは D2_DATASTORE_OWNER → .distillery/
   const pkg = JSON.parse(read('test-support/package.json'));
   assert.equal(pkg.exports['./clock'], './src/clock.ts');
 });
+
+test('雛形は組み込みの名前 (escape など) を変数名に使わない (biome の noShadowRestrictedNames は high で品質ゲートを落とす。0.3.0 の実地確認 3 起動目)', () => {
+  const restricted = ['escape', 'unescape', 'eval', 'arguments', 'undefined', 'NaN', 'Infinity', 'Object', 'Array', 'String', 'Number', 'Boolean', 'Symbol', 'Error', 'JSON', 'Math', 'Map', 'Set', 'Promise', 'Date', 'RegExp', 'hasOwnProperty', 'toString'];
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
+  const bad = [];
+  for (const f of walk(T).filter((f) => /\.(ts|tsx|js|mjs|cjs)$/.test(f))) {
+    const src = fs.readFileSync(f, 'utf8');
+    for (const m of src.matchAll(/\b(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/g)) if (restricted.includes(m[1])) bad.push(`${path.relative(T, f)}: ${m[1]}`);
+  }
+  assert.deepEqual(bad, []);
+});
