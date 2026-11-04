@@ -87,7 +87,7 @@ function writeJournal(p, j) {
  */
 function stageOfPath(p) {
   if (/^features\//.test(p) && p.endsWith('.feature')) return 'scenario';
-  if (/^contracts\//.test(p) || p === 'docs/requirements/use-cases.yaml' || /^apps\/[^/]+\/migrations\//.test(p)) return 'contract';
+  if (/^contracts\//.test(p) || p === 'docs/requirements/use-cases.yaml' || /^apps\/[^/]+\/(migrations|test\/contract)\//.test(p) || /^packages\/contracts\//.test(p)) return 'contract';
   if (/^features\/(step_definitions|support)\//.test(p)) return 'integrate';
   return 'tier';
 }
@@ -299,6 +299,13 @@ function resume(rootArg, slug, { overrideLimit = false, coAuthor = null, table =
   if (j) {
     const done = reconcile(ctx, j, journal);
     if (done) return done;
+    // 付け替えの後から続けるとき、止まっている間に足された変更を写し直しの commit に混ぜない。
+    // 残ってよいのは、写し直しの段が作るもの (機能の run の記録と、作り直す生成物) だけ
+    if (j.done_steps.includes(5)) {
+      const runPrefix = `.distillery/runs/${slug}/`;
+      const extra = trackedDirty(root).map((l) => l.slice(3).replace(/^.* -> /, '')).filter((f) => !f.startsWith(runPrefix) && !isRegenerable(f, table));
+      if (extra.length) throw new Fail(`写し直しの途中で、写し直しが作らない変更が作業ツリーに足されている (commit に混ぜない。人が退避するか戻す): ${extra.join(', ')}`);
+    }
   } else {
     const tip = revParse(root, `refs/heads/feature/${slug}`);
     if (!tip) throw new Fail(`feature/${slug} が無い`);

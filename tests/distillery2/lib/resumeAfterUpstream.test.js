@@ -109,6 +109,8 @@ test('作り直せる生成物の表: 契約の分割ファイルは入らず、
   assert.equal(R.stageOfPath('apps/backend/migrations/001.sql'), 'contract', 'migration は契約の段が書く');
   assert.equal(R.stageOfPath('features/step_definitions/book-room.steps.ts'), 'integrate', 'step 定義は結合に渡す (scaffold は red が前提)');
   assert.equal(R.stageOfPath('features/support/world.ts'), 'integrate');
+  assert.equal(R.stageOfPath('packages/contracts/api/client.ts'), 'contract', '契約の codegen は契約の段');
+  assert.equal(R.stageOfPath('apps/backend/test/contract/createBooking.test.ts'), 'contract');
 });
 
 test('両方が別のファイルを変えた: 両方残る。衝突 0、続きは決定の課題なので tier。契約のレビューは残り、tier 以降の done が退避される', () => {
@@ -385,6 +387,16 @@ test('9 の commit の後に追跡済みの変更が残って止まった写し�
   assert.throws(() => R.resume(root, SLUG, { table: t }), /追跡済みの変更が残った/);
   assert.throws(() => R.resume(root, SLUG, { table: t }), /追跡済みの変更が残っている/, '再開でも止まる');
   assert.ok(fs.existsSync(R.journalPath(root, SLUG)), '処理の記録を消さない');
+});
+
+test('付け替えの後で止まっている間に、写し直しが作らない追跡済みの変更が足されたら、commit に混ぜずに止まる', () => {
+  const { root, tmp } = makeRepo();
+  assert.throws(() => R.resume(root, SLUG, { table: table(tmp), stopAfter: 6 }), /で止めた/);
+  w(root, 'apps/backend/src/b.ts', 'human edit\n');
+  assert.throws(() => R.resume(root, SLUG, { table: table(tmp) }), /写し直しが作らない変更[^\n]*apps\/backend\/src\/b\.ts/);
+  g(root, 'checkout', '--', 'apps/backend/src/b.ts');
+  const out = R.resume(root, SLUG, { table: table(tmp) });
+  assert.equal(out.resumes, 1, '戻せば続きから終わる');
 });
 
 test('処理の記録が読めない (書く途中で壊れた) ときは、新しい写し直しとして始めずに止まる', () => {

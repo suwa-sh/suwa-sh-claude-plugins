@@ -164,7 +164,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
    統合できなかったファイル (`conflicts`) は main の側を採り、機能側の差分を `diffs` (`<run>/resume/<n>/*.diff`) に残す。作り直せる生成物 (契約の bundle・slice・契約テスト・開発ルール・アーキテスト・README) は作り直す (`regenerated`)
 2. exit 3 (写し直しが 3 回) は人に返す (`page:limit:<slug>`)。exit 1 は `error` を添えて止まって報告する (処理の記録 `.distillery/logs/resume-<slug>.json` は残す。人が直したら同じコマンドで続く)
 3. `runState.js status <run>` の `next_stage` (= `from_stage`) から ④ を続ける。`<base_head>` は写し直した先の main になる (`status` の `base_head`)
-4. `diffs` があれば、差分のファイルを書く段の派遣文に差分ファイルの絶対パスを添える (`features/**/*.feature` は scenario、`contracts/**`・`use-cases.yaml`・`apps/<tier>/migrations/**` は contract、`features/step_definitions/**`・`features/support/**` は integrate、ほかは tier の担当。ティアはパスの `apps/<tier>/`)。
+4. `diffs` があれば、差分のファイルを書く段の派遣文に差分ファイルの絶対パスを添える (`features/**/*.feature` は scenario、`contracts/**`・`use-cases.yaml`・`apps/<tier>/migrations/**`・`apps/<tier>/test/contract/**`・`packages/contracts/**` は contract、`features/step_definitions/**`・`features/support/**` は integrate、ほかは tier の担当。ティアはパスの `apps/<tier>/`)。
    担当は引き継ぎファイルの `resume_diffs` に差分ごとの扱い (`applied` は反映したファイルを `where` に、`dropped` は理由) を書く。受理の検査に `node <skills>/d2-common/scripts/resumeAfterUpstream.js check-diffs <run> --handoff <その担当の引き継ぎファイル> --stage <scenario|contract|tier|integrate> [--tier <tier>]` が exit 0 を足す (その段とティアが受け持つ差分だけを見る。足りない行があれば差し戻す)。verify の派遣の前に、差分を渡したすべての担当の引き継ぎファイルを `--handoff` で並べて `--stage` なしで回し、全件が扱われたことを確かめる。
    `dropped` の差分は、人レビューの確認ページと最後のまとめに「写し直しで取り下げた変更」として載せる
 
