@@ -151,7 +151,9 @@ d2-run が決定の差分で派遣する (作業ディレクトリはリポの�
 5. 既存の決定を置き換えるときだけ、新しい ADR に `supersedes` を書き、旧 ADR は front matter の `status: superseded` と
    `superseded_by` の 2 項目だけを変える (本文と旧 `rules[]` は変えない。決定の履歴を残す)。既存の ADR をそれ以外で変えない
 6. `validateAdr.js` → `genAdrIndex.js` (段階②と同じコマンド)。PASS するまで直す。`genArchitectureDoc.js` は回さない (ティアを変えないので図は変わらない)。
-   `_review-summary.md` は書かない (人の確認は d2-run の決定の差分の確認ページで行う)
+   `_review-summary.md` は作り直さず、**追記する**: 「作り方の決定」に足した ADR (置き換えなら旧 ADR を置き換えた旨) を、
+   「確認してほしいこと」に足した ADR の `confidence: low` の前提と、直した非機能グレード表の根拠を 1 行ずつ。既存の行は、置き換えた ADR の行だけ直す
+   (書かないと要約を読む人に見えず、決定のレビューが毎回「要約が古い」を課題にする。0.3.0 の実地確認 3 起動目)
 7. 結果ファイルへ `status: applied`、`targets` (足した ADR のファイル名と、置き換えた旧 ADR。表を直したら `docs/nfr/nfr-grade.yaml`)、`reason` (1 行) を書く
 
 結果ファイルは JSON 1 つ: `{"status": "applied" | "blocked", "targets": [...], "reason": "...", "reason_kind": "plugin" | "scope"}` (`reason_kind` は `blocked` のとき必須)。d2-run はこのファイルで分岐し、
