@@ -131,7 +131,8 @@ test('commit-msg の hook: 人の red の commit は止め、d2-run の commit (
 test('checks.js: 機械チェックの ADR の checks から、ティアの build・security とリポの format・lint・秘密情報のコマンドを作る。知らない道具は誤り', () => {
   const c = checks.tierCheckCommands(null, 'backend-api', 'backend-api');
   assert.equal(c.build, 'npm run build -w apps/backend-api');
-  assert.match(c.security, /^npm audit -w apps\/backend-api --audit-level=high --omit=dev && qlty check [^&]* apps\/backend-api$/);
+  assert.match(c.security, /^\(r=0; npm audit -w apps\/backend-api --audit-level=high --omit=dev \|\| r=1; qlty check [^;]* apps\/backend-api \|\| r=1; exit \$r\)$/, '依存の検査が落ちても SAST を回す');
+  assert.equal(checks.validateChecks({ tiers: { '*': { security: [] } } }).length, 1, 'security を空にしない');
   const custom = { tiers: { '*': { security: ['dependency-audit'] }, frontend: { build: { cmd: 'npm run build:web -w apps/{dir}' } } } };
   assert.equal(checks.tierCheckCommands(custom, 'frontend', 'web').build, 'npm run build:web -w apps/web');
   assert.equal(checks.tierCheckCommands(custom, 'backend-api', 'api').security, 'npm audit -w apps/api --audit-level=high --omit=dev');
@@ -172,5 +173,28 @@ test('hook モード: 独自の format のコマンドは {files} にコミッ�
   GC.run({ cwd: root, config: '.distillery/config.yaml' });
   g(root, 'add', 'docs/notes.md');
   assert.match(check(root, ['--mode', 'hook', '--only', 'format']).stdout, /\[format\] repo: skip \(format のコマンドにファイルを渡せない/);
+});
+
+test('hook モード: 実行設定 (.distillery/config.yaml) の変更は全ティア。config が無いと generate は一括チェックの鮮度を確かめられず落ちる', () => {
+  const root = repo();
+  fs.appendFileSync(path.join(root, '.distillery/config.yaml'), '\n# x\n');
+  g(root, 'add', '.distillery/config.yaml');
+  check(root, ['--mode', 'hook', '--only', 'build']);
+  assert.deepEqual(log(root), ['build-backend-api', 'build-frontend']);
+  fs.rmSync(path.join(root, '.distillery/config.yaml'));
+  const r = check(root, ['--mode', 'ci', '--only', 'generate'], { D2_SKILLS: SKILLS });
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /\[generate\] check-script: FAIL \(\.distillery\/config\.yaml が無い\)/);
+});
+
+test('commit-msg の hook: 本文の途中に UC-Slug: と Gates: の行があるだけの人の feat: commit は通さない (trailer として解析する)', () => {
+  const root = repo();
+  w(root, 'fail-unit-backend-api', '');
+  w(root, 'apps/backend-api/src/c.ts', 'x\n');
+  g(root, 'add', 'apps/backend-api/src/c.ts');
+  const msg = path.join(root, '.git', 'MSG');
+  fs.writeFileSync(msg, 'feat: human\n\nUC-Slug: book-room\nGates: static=pass\n\n本文の続き\n');
+  const r = spawnSync('git', ['commit', '-q', '-F', msg], { cwd: root, encoding: 'utf8', env: { ...process.env, D2_SKILLS: '/nonexistent', HOME: root } });
+  assert.notEqual(r.status, 0, r.stdout + r.stderr);
 });
 

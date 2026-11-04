@@ -67,8 +67,8 @@ function buildPlan(config) {
     repo: { format: cmds.format || null, lint: cmds.quality || null, arch_test: cmds.arch_test ? stripReport(cmds.arch_test) : null, secrets: cmds.secrets || null },
     scenarios: { uc_bdd: cmds.uc_bdd ? ciCucumber(cmds.uc_bdd, 'not @browser') : 'npx cucumber-js --tags "not @browser"', acceptance },
     // ルートの設定と共有パッケージを変えたら全ティア
-    all_tiers_on: ['^packages/', '^package(-lock)?\\.json$', '^tsconfig\\.base\\.json$', '^biome\\.json$'],
-    generators: GENERATORS.map((g) => ({ id: g.id, inputs: g.inputs.map((r) => r.source), outputs: g.outputs.map((r) => r.source), needs: g.needs || null, check: g.check })),
+    all_tiers_on: ['^packages/', '^package(-lock)?\\.json$', '^tsconfig\\.base\\.json$', '^biome\\.json$', '^\\.distillery/config\\.yaml$'],
+    generators: GENERATORS.map((g) => ({ id: g.id, inputs: g.inputs.map((r) => r.source), outputs: g.outputs.map((r) => r.source), needs: g.needs || null, required: Boolean(g.required), check: g.check })),
     plugin: { repo: PLUGIN_REPO, path: PLUGIN_PATH },
   };
 }
@@ -152,6 +152,8 @@ function findSkills() {
 }
 if (!only || only === 'generate') {
   const touched = PLAN.generators.filter((g) => !staged || staged.some((f) => [...g.inputs, ...g.outputs].some((re) => new RegExp(re).test(f))));
+  // 要る入力が無い項目は飛ばす。ただし必須の項目 (一括チェック自身。config が無いと鮮度を確かめられない) は落とす
+  for (const g of touched.filter((x) => x.required && x.needs && !fs.existsSync(x.needs))) { results.push({ aspect: 'generate', name: g.id, status: 'fail', note: \`\${g.needs} が無い\` }); console.log(\`[generate] \${g.id}: FAIL (\${g.needs} が無い)\`); }
   const runnable = touched.filter((g) => !g.needs || fs.existsSync(g.needs));
   const skills = runnable.length ? findSkills() : null;
   for (const g of runnable) {
@@ -202,7 +204,10 @@ case "$subject" in
   ${cases}) exit 0 ;;
 esac
 case "$subject" in
-  "feat: "*) if grep -q '^UC-Slug: ' "$1" && grep -q '^Gates: ' "$1"; then exit 0; fi ;;
+  "feat: "*)
+    # trailer として解析した結果で見る (本文の途中の行では通さない)
+    trailers=$(git interpret-trailers --parse "$1")
+    if printf '%s\n' "$trailers" | grep -q '^UC-Slug: ' && printf '%s\n' "$trailers" | grep -q '^Gates: '; then exit 0; fi ;;
 esac
 exec node scripts/check.mjs --mode hook
 `;

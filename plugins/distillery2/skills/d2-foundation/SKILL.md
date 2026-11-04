@@ -63,7 +63,7 @@ d2-run は段階③で 2 回呼ぶ (決定の差分の開発ルールとアー�
 
 ### phase=all の順
 
-F1 → F2 → F3 → F5 (genConfig → genSkeleton → genCi → genQlty) → F7 (npm install → genQlty --refresh)。F5 の genCi は config.yaml を読むので genConfig の後に走らせる。
+F1 → F2 → F3 → F5 (genConfig → genSkeleton → genCi → genCheck → genQlty) → F7 (npm install → genQlty --refresh)。F5 の genCi は config.yaml を読むので genConfig の後に走らせる。
 genQlty は qlty init の自動検出に package.json / biome.json / workflow を見せるため F5 の **最後** に走らせる (未追跡ファイルは一時的に `git add -N` して戻す)。
 提案はその時点でリポにあるファイル種別で決まる (lockfile が無いと osv-scanner が入らない、python が増えると ruff が入る) ので、
 F7 で npm install の後に `genQlty.js --refresh` で増えた分を足す (減らさない)。各 UC の integrate の後は d2-run が同じ `--refresh` を回す。

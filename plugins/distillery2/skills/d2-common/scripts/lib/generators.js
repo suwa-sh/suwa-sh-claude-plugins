@@ -53,6 +53,7 @@ const GENERATORS = [
   },
   {
     id: 'check-script',
+    required: true, // config が無ければ一括チェックの鮮度を確かめられない (飛ばさずに落とす)
     outputs: [/^scripts\/check\.mjs$/, /^\.githooks\/commit-msg$/],
     inputs: [/^\.distillery\/config\.yaml$/],
     needs: '.distillery/config.yaml',

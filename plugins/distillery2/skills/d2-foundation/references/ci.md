@@ -21,7 +21,7 @@ F5 と F8 の genCi が生成する。機械チェックの一括実行 `node sc
 `.githooks/commit-msg` (genCheck.js が生成。`git config core.hooksPath .githooks` は genCheck.js とルートの package.json の `prepare` が入れる) が `node scripts/check.mjs --mode hook` を回す。
 コミットするファイルに関わるものだけ: 変えたティアの format・lint・build・単体テスト、文書類の format・lint (コミットするファイルだけ)、生成物の鮮度、秘密情報 (コミットするファイルだけ)。
 検査は作業ツリーの内容を読むので、ステージした内容と作業ツリーの内容が違うファイル (部分ステージ) があれば止まる (コミットする内容と検査した内容を揃える)。
-d2-run の commit (件名が `impl(` `req(` `req: ` `decide: ` `foundation: ` `precheck(` `feedback` で始まるか、trailer に `UC-Slug:`) は回さない。
+d2-run の commit (件名が `impl(` `req(` `req: ` `decide: ` `foundation: ` `precheck(` `feedback` で始まるか、件名が `feat: ` で trailer (`git interpret-trailers --parse`) に `UC-Slug:` と `Gates:` がある main マージの squash) は回さない。
 
 ## ローカル green = CI green
 

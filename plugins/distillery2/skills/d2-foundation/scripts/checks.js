@@ -48,6 +48,8 @@ function toolCmd(table, aspect, v, where) {
 }
 
 const list = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
+/** 複数の道具をすべて回して、1 つでも落ちたら落ちる (&& でつなぐと前の道具が落ちたとき後ろが回らない) */
+const allOf = (cmds) => (cmds.length === 1 ? cmds[0] : `(r=0; ${cmds.map((c) => `${c} || r=1`).join('; ')}; exit $r)`);
 
 /** 機械チェックの ADR の checks (無ければ null) */
 function collectChecks(adrs) {
@@ -67,7 +69,7 @@ function tierCheckCommands(checks, tierId, dir) {
     unit: sub(toolCmd(TIER_TOOLS, 'test', base.test, `tiers.${tierId}`)),
   };
   const sec = list(base.security).map((v) => sub(toolCmd(TIER_TOOLS, 'security', v, `tiers.${tierId}`)));
-  if (sec.length) out.security = sec.join(' && ');
+  if (sec.length) out.security = allOf(sec);
   return out;
 }
 
@@ -79,7 +81,7 @@ function repoCheckCommands(checks) {
   if (r.format) out.format = toolCmd(REPO_TOOLS, 'format', r.format, 'repo');
   if (r.lint) out.quality = toolCmd(REPO_TOOLS, 'lint', r.lint, 'repo');
   const sec = list(r.security).map((v) => toolCmd(REPO_TOOLS, 'security', v, 'repo'));
-  if (sec.length) out.secrets = sec.join(' && ');
+  if (sec.length) out.secrets = allOf(sec);
   return out;
 }
 
@@ -88,6 +90,9 @@ function validateChecks(checks, tierIds = null) {
   const errors = [];
   if (!checks || typeof checks !== 'object') return ['checks はオブジェクト ({repo, tiers})'];
   for (const k of Object.keys(checks)) if (!['repo', 'tiers'].includes(k)) errors.push(`checks.${k}: repo と tiers だけ`);
+  // security を空にして検査を消さない (適用しないなら理由を ADR の本文に書き、{cmd} で代わりの検査を書く)
+  if (checks.repo && checks.repo.security !== undefined && !list(checks.repo.security).length) errors.push('checks.repo.security: 空にしない (秘密情報の検出を外すなら代わりの検査を {cmd} で書く)');
+  for (const [id, t] of Object.entries(checks.tiers || {})) if (t && t.security !== undefined && !list(t.security).length) errors.push(`checks.tiers.${id}.security: 空にしない (依存の脆弱性と SAST を外すなら代わりの検査を {cmd} で書く)`);
   // 観点名の書き間違い (黙って既定に置き換わる) を誤りにする
   for (const k of Object.keys(checks.repo || {})) if (!['format', 'lint', 'security'].includes(k)) errors.push(`checks.repo.${k}: 観点は format / lint / security (generate は distillery2 が決める)`);
   for (const [id, t] of Object.entries(checks.tiers || {})) for (const k of Object.keys(t || {})) if (!['format', 'lint', 'build', 'test', 'security'].includes(k)) errors.push(`checks.tiers.${id}.${k}: 観点は format / lint / build / test / security`);

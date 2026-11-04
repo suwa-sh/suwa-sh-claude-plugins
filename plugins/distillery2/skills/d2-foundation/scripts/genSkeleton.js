@@ -357,7 +357,8 @@ function ensureRootCheckScripts(cwd, created) {
   if (!scripts.check) { scripts.check = 'node scripts/check.mjs --mode ci'; changed = true; }
   if (!scripts.prepare) { scripts.prepare = HOOKS_PATH_CMD; changed = true; }
   // 既存の prepare の後に置く (既存の処理が hooksPath を変えても、最後に .githooks に戻す)
-  else if (!scripts.prepare.includes('core.hooksPath .githooks')) { scripts.prepare = `${scripts.prepare}; ${HOOKS_PATH_CMD}`; changed = true; }
+  // 既存の prepare の後に置き、既存の処理の失敗は失敗のまま返す (成功したときだけ hook を .githooks にする)
+  else if (!scripts.prepare.includes('core.hooksPath .githooks')) { scripts.prepare = `${scripts.prepare} && (${HOOKS_PATH_CMD})`; changed = true; }
   if (changed) { pkg.scripts = scripts; fs.writeFileSync(f, JSON.stringify(pkg, null, 2) + '\n'); created.push('package.json (scripts.check / scripts.prepare)'); }
 }
 
