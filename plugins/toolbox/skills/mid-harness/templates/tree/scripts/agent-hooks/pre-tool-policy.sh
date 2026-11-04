@@ -138,8 +138,8 @@ WRAP = {"sudo": "ugUhpCDRTrt", "doas": "uC", "env": "uCSP", "xargs": "nLsIEPdaRS
 CMD_SEP = {";", "&&", "||", "&"}                                 # コマンドの区切り
 PIPE = {"|", "|&"}                                              # 段の区切り
 REDIR = re.compile(r"^[<>&]*[<>][<>&]*$")                        # > >> >& &> < などのリダイレクト演算子
-OPS = re.compile(r"\|\||&&|\|&|;;|&>|[<>]+&?|[;&|]")           # 記号の並びをシェルの演算子単位に切る (|> は | と >)
-NAIVE = re.compile(r"\|\||&&|\|&|;;|&>|[<>]+&?|[;&|]|[^\s;&|<>]+")
+OPS = re.compile(r"\|\||&&|\|&|;;|&>>|&>|[<>]+&?|[;&|]")       # 記号の並びをシェルの演算子単位に切る (|> は | と >、&>> は 1 つ)
+NAIVE = re.compile(r"\|\||&&|\|&|;;|&>>|&>|[<>]+&?|[;&|]|[^\s;&|<>]+")
 def tokenize(c):
     # 引用符を解釈して区切りを切る (引用符の中の ; や | を区切りにしない)。閉じていない引用符は bash でも構文エラーなので素朴に切る。
     # # をコメントとして捨てない (URL の #fragment や a=b#c の後ろの | sh が消える)
@@ -161,10 +161,11 @@ def starts_with_interp(toks):
         t = toks[i]
         if t in ("(", "{"):
             i += 1
-        elif REDIR.match(t):                                    # > f / >& 1
-            i += 2
-        elif t.isdigit() and i + 1 < len(toks) and REDIR.match(toks[i + 1]):   # 2 >& 1 / 2 > f
-            i += 3
+        elif REDIR.match(t) or (t.isdigit() and i + 1 < len(toks) and REDIR.match(toks[i + 1])):
+            # > f / >& 1 / 2 >& 1 / 2 > f。記号が複数に割れても (&> >) まとめて読み飛ばし、その後の 1 語を対象ファイルとして飛ばす
+            if t.isdigit(): i += 1
+            while i < len(toks) and REDIR.match(toks[i]): i += 1
+            i += 1
         else:
             break
     wrap = None; value_ok = False; positional = 0
