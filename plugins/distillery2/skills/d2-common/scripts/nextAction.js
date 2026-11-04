@@ -7,7 +7,7 @@
  *   出力: JSON 1 行 {action, ...}。進行役は action ごとの手順 (d2-run SKILL.md の「自動選択」の表) を行い、終わったらもう一度呼ぶ
  *
  * 順 (上から最初に当たるもの):
- *   1  最初の段          use-cases.yaml が無ければ requirements、docs/adr/ が無ければ decide、.distillery/config.yaml が無ければ foundation
+ *   1  最初の段          use-cases.yaml が無ければ requirements、docs/adr/ が無ければ decide、.distillery/config.yaml が無いか main に無ければ foundation (基盤の途中)
  *   2  片付け            main の run に main マージの done がある feature/* (legacy なら退避して -D)、先端が main に入った upstream/*  → cleanup
  *   3  進行中の機能      run の最後の止まりが上流の止め (blocked_on_upstream) でない feature/* (写し直しの記録が残るものは 4)  → continue-feature
  *   4  途中の写し直し・上流の直し   .distillery/logs/resume-<slug>.json → finish-resume / main に入っていない upstream/* → continue-upstream
@@ -69,7 +69,8 @@ function decide(rootArg, { uc = null, stage = null } = {}) {
   // 1 最初の段
   if (!fs.existsSync(path.join(root, 'docs', 'requirements', 'use-cases.yaml'))) return { action: 'requirements' };
   if (!fs.existsSync(path.join(root, 'docs', 'adr'))) return { action: 'decide' };
-  if (!fs.existsSync(path.join(root, '.distillery', 'config.yaml'))) return { action: 'foundation' };
+  // 基盤は最後に config を main へ commit する。作業ツリーにあっても main に無ければ基盤の途中で止まっている (0.3.0 の実地確認 3 起動目)
+  if (!fs.existsSync(path.join(root, '.distillery', 'config.yaml')) || !existsAt(root, 'main', '.distillery/config.yaml')) return { action: 'foundation' };
   // 2 片付け
   const fs_ = features(root);
   const upstreams = refs(root, 'refs/heads/upstream/');

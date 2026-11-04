@@ -53,6 +53,11 @@ test('1 最初の段: 要求 → 決定 → 基盤', () => {
   assert.equal(NA.decide(root).action, 'decide');
   w(root, 'docs/adr/0001-x.md', '# x\n');
   assert.equal(NA.decide(root).action, 'foundation');
+  // 基盤が config を書いたが commit の前に止まった: まだ基盤
+  w(root, '.distillery/config.yaml', 'tiers: []\n');
+  assert.equal(NA.decide(root).action, 'foundation', 'config が main に無ければ基盤の途中');
+  commitAll(root, 'foundation');
+  assert.notEqual(NA.decide(root).action, 'foundation');
 });
 
 test('2 片付け: main の run に main マージの done がある feature と、main に入った upstream/*', () => {
