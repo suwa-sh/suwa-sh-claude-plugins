@@ -144,7 +144,7 @@ d2-run が決定の差分で派遣する (作業ディレクトリはリポの�
    - ティア構成・データストア・testing の capabilities を変える必要がある (config・骨格の作り直しが要る) → `reason_kind: scope` (d2-run が戻し先を基盤 (`foundation`) にするか人に返す)
 3. 課題が非機能グレード表 (`docs/nfr/nfr-grade.yaml`) の誤り (根拠の書き違い・レベルの見直し) なら、表を直して
    `validateNfrGrade.js docs/nfr/nfr-grade.yaml` → `generateNfrGradeMd.js docs/nfr/nfr-grade.yaml` (段階②と同じ。md は手で書かない)。
-   レベルを変えずに済むなら ADR は書かず 5 へ進む。レベルを変えたら、そのレベルに依る決定を次の 4 の新しい ADR で直す (0.3.0 の実地確認 3 起動目:
+   レベルを変えずに済むなら ADR は書かず 6 へ進む。レベルを変えたら、そのレベルに依る決定を次の 4 の新しい ADR で直す (0.3.0 の実地確認 3 起動目:
    表を直す道が無く、同じ根の課題が 2 回プラグインの課題になって止まった)
 4. 新しい ADR を 1 本書く ([references/adr-format.md](references/adr-format.md))。連番は既存の最大 + 1、`status: accepted`、
    `basis` は既存の ADR と同じ書き方、`rules[]` を 1 つ以上。本文の背景に課題の要点 (課題のファイル名と、front matter の `from_uc`) を書く

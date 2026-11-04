@@ -160,9 +160,10 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 4. 上流の課題があれば: 「上流の差分の branch」の 1 で `upstream/<1 件目の課題の id>` を切り、引き継ぎファイルを `.distillery/handoff/precheck-<slug>-<tier>.json` に写して `<H> file-drafts <写し> --root .` で課題ファイルにし (`uc` は無くてよい: 戻し先は上流だけ)、2 の問いを `--root .` で記録する →
    `git add -A -- docs/feedback .distillery/handoff .distillery/decisions.jsonl` → `precheck(<slug>): issues` で commit → `.distillery/logs/precheck-<slug>/` を消す → 自動選択をもう一度呼ぶ (その branch の上流の差分が `continue-upstream` で続き、直した後に同じ UC が選ばれて点検からやり直す)。
    機能の作業はまだ無いので写し直しは要らない
-5. 上流の課題が**すべて**プラグインの課題 (戻し先が `plugin`) なら、upstream の branch を切らない。すべて回避できる (`route` の `issues.plugin_noted` だけ) なら止めない: ④ の branch を切って run を開き、2 の問いを記録し、**`.distillery/logs/precheck-<slug>/` を消す前に**各ティアの引き継ぎファイルを `<H> file-drafts .distillery/logs/precheck-<slug>/<tier>.handoff.json --run <run>` で下書きにしてから消して続ける (回避は機能の中でする: 下書きの絶対パスを、回避の仕方に合う段の派遣文に添える。シナリオの前ならシナリオ、実装の手当てならティアの実装)。
-   回避できないもの (`issues.plugin`) があれば、main の上で 4 と同じく課題ファイルにして (`kind: plugin`) `precheck(<slug>): issues` で commit し、
-   `.distillery/logs/precheck-<slug>/` を消して「プラグインの不具合」の 3 で人に返して止まる (この UC はまだ始めない。プラグインを直して課題ファイルを `git rm` した後の起動で、同じ UC が点検からやり直す)。
+5. 上流の課題が**すべて**プラグインの課題 (戻し先が `plugin`) なら、upstream の branch を切らない。すべて回避できる (`route` の `issues.plugin_noted` だけ) なら止めない: ④ の branch を切って run を開き、2 の問いを記録し、**`.distillery/logs/precheck-<slug>/` を消す前に**各ティアの引き継ぎファイルを `<H> file-drafts .distillery/logs/precheck-<slug>/<tier>.handoff.json --run <run>` で下書きにしてから消して続ける (回避は機能の中でする: 下書きの絶対パスを、回避の仕方に合う段の派遣文に添える。シナリオの前ならシナリオ、実装の手当てならティアの実装。その段で回避できなかったら、担当が「回避できない: 」で始まる題名の課題を `workaround` 無しで返すので、「プラグインの不具合」の 3 で機能を止める)。
+   回避できないもの (`issues.plugin`) があれば、**main の上で** (upstream の branch を切らずに) 次の順で課題ファイルにして止まる:
+   各ティアの引き継ぎファイルを `.distillery/handoff/precheck-<slug>-<tier>.json` に写す → `<H> file-drafts <写し> --root .` (`kind: plugin`) → 2 の問いを `--root .` で記録 →
+   `git add -A -- docs/feedback .distillery/handoff .distillery/decisions.jsonl` → `precheck(<slug>): issues` で commit → `.distillery/logs/precheck-<slug>/` を消す → 「プラグインの不具合」の 3 で人に返して止まる (この UC はまだ始めない。プラグインを直して課題ファイルを `git rm` した後の起動で、同じ UC が点検からやり直す)。
    プラグインの課題とほかの上流の課題が混ざるときは 4 のとおり (プラグインの課題も同じ commit で課題ファイルにする)。上流の差分が終わった後、回避していないプラグインの課題 (`FB scan` の `plugin_blocking`) が main に残っていれば同じく人に返して止まる
 
 ## 写し直し (上流で止めた機能を、上流を直した後の main の上で続ける)

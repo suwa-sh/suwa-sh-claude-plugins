@@ -962,6 +962,13 @@ test('0.3.0: recommend で人に返すのは戻り道の上限とプラグイン
   const pre = routingSection('## 機能の最初の点検');
   assert.match(pre, /回避していないプラグインの課題 \(`FB scan` の `plugin_blocking`\)/);
   // 回避した課題だけの点検: 点検の記録を消す前に run の下書きにする (消してから写すと入力が無い)
+  // 点検は読むだけなので、回避は機能の中の段がする。回避できなければその段が workaround 無しで返して止まる
+  assert.match(pre, /回避は機能の中でする: 下書きの絶対パスを、回避の仕方に合う段の派遣文に添える[^\n]*「回避できない: 」で始まる題名の課題を `workaround` 無しで返す/);
+  // 回避できない課題だけ: upstream の branch を切らず main の上で課題ファイルにする (4 を参照しない)
+  assert.match(pre, /回避できないもの \(`issues\.plugin`\) があれば、\*\*main の上で\*\* \(upstream の branch を切らずに\)/);
+  const doc = (p) => require('node:fs').readFileSync(require('node:path').join(__dirname, '../../../plugins/distillery2/skills', p), 'utf8');
+  assert.match(doc('d2-implement/references/precheck.md'), /点検は読むだけなので回避はしない。機能の中で、その下書きを渡された段の担当が回避する/);
+  assert.match(doc('d2-common/references/handoff.md'), /読むだけの点検 \(mode=precheck\) では回避をまだしないので、機能の中ですることになる回避の仕方を `workaround` に書く/);
   assert.match(pre, /\*\*`\.distillery\/logs\/precheck-<slug>\/` を消す前に\*\*各ティアの引き継ぎファイルを `<H> file-drafts \.distillery\/logs\/precheck-<slug>\/<tier>\.handoff\.json --run <run>` で下書きにしてから消して続ける/);
   const h = routingSection('## 引き継ぎファイルの処理');
   assert.match(h, /`<H> validate <handoff> --report <そのファイル>` が exit 0/);
