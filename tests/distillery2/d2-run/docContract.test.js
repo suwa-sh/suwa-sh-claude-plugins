@@ -623,7 +623,7 @@ test('0.1.33 P7/P8/P9/P15/P16: 「要求を直す」のコマンド列 (run は�
   assert.match(fb, /3\. `node <skills>\/d2-common\/scripts\/genDocsReadme\.js --cwd <wt>`/);
   assert.match(fb, /4\. `git -C <wt> add -A -- docs` → `git -C <wt> commit -m "impl\(<slug>\): issues to feedback" -m "<attribution 行>"`/);
   assert.match(fb, /6\. `git worktree remove <wt>` → `git merge-base --is-ancestor feedback-req\/<slug>\/<issue> main` が exit 0 なら `git branch -D feedback-req\/<slug>\/<issue>`/);
-  assert.match(fb, /7\. remote `origin` があれば `git push origin main` \(拒否されたら止まって報告する。force push はしない\)/);
+  assert.match(fb, /7\. remote `origin` があれば `git push origin main` → `git push origin \'refs\/distillery2\/\*:refs\/distillery2\/\*\'` \(拒否されたら止まって報告する。force push はしない\)/);
   const t = read(SKILL);
   const sc = row(t, /^\| \*\*scenario\*\* \|/);
   assert.match(sc, /`node <skills>\/d2-implement\/scripts\/checkScenario\.js features\/<業務>\/<slug>\.feature --use-cases docs\/requirements\/use-cases\.yaml --requirements docs\/requirements\/requirements\.yaml --uc <slug> --acceptance-dir features\/acceptance` を回し、結果 \(JSON 1 行。`ok` \/ `missing` \/ `covered` \/ `unknown_tags` \/ `errors`/);
