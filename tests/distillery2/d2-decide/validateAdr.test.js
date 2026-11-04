@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { validateAdrDir, parseFrontMatter, tierStructureErrors, testingCapabilityErrors, ruleCoverageErrors } = require('../../../plugins/distillery2/skills/d2-decide/scripts/validateAdr');
+const { validateAdrDir, parseFrontMatter, tierStructureErrors, testingCapabilityErrors, ruleCoverageErrors, checksErrors } = require('../../../plugins/distillery2/skills/d2-decide/scripts/validateAdr');
 
 // tierStructureErrors / testingCapabilityErrors / ruleCoverageErrors はメモリ上の adrs
 // ([{file, fm}]) を受ける。fixture を増やさず個別ルールを直接検証する。
@@ -152,3 +152,17 @@ test('testing 以外の scope が capabilities を宣言するとエラー (指�
   ]);
   assert.ok(errors.some(e => /capabilities は scope に testing を含む ADR だけ/.test(e.message)), JSON.stringify(errors));
 });
+
+test('0.3.0: 機械チェックの ADR: checks を宣言する accepted ADR は 1 つまで・scope に system・道具は既知か {cmd}・tiers のキーは * かティア構成のティア', () => {
+  const tiersAdr = adr('0001-tiers.md', tiersFm());
+  const ok = adr('0010-checks.md', { status: 'accepted', scope: ['system'], checks: { repo: { lint: 'qlty' }, tiers: { '*': { build: 'tsc' } } } });
+  assert.deepEqual(checksErrors([tiersAdr, ok]), []);
+  const bad = adr('0011-checks.md', { status: 'accepted', scope: ['app'], checks: { tiers: { ghost: { build: 'make' } } } });
+  const msgs = checksErrors([tiersAdr, ok, bad]).map((e) => e.message).join('\n');
+  assert.match(msgs, /1 つだけにする/);
+  assert.match(msgs, /scope に system/);
+  assert.match(msgs, /ティア構成の ADR に無いティア/);
+  assert.match(msgs, /知らない道具/);
+  assert.deepEqual(checksErrors([tiersAdr, { ...bad, fm: { ...bad.fm, status: 'proposed' } }]), [], 'accepted でなければ見ない');
+});
+

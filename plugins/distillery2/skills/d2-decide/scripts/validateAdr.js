@@ -23,6 +23,8 @@
  *   8. テスト方針の front matter (指摘4):
  *      - scope に testing を含む accepted ADR は capabilities: { browser: <bool> } を宣言する
  *      - capabilities を宣言する accepted ADR はちょうど 1 つまで、かつ scope に testing を含む
+ *  10. 機械チェックの ADR (0.3.0): checks を宣言する accepted ADR は 1 つまで、scope に system を含み、
+ *      checks の道具が既知か {cmd} で、tiers のキーは * かティア構成の ADR の tiers[].id (d2-foundation/scripts/checks.js)
  *   9. rules[] のカバレッジ (下流の rules 文書 / アーキテスト生成の入力):
  *      - scope に system/app/data/testing/ui を含む accepted ADR は rules[] を最低 1 つ持つ (infra 専用は不要)
  *      - ティア構成 ADR は arch_test.level: tier を持つ rule を最低 1 つ持つ (ティア間依存方向)
@@ -205,12 +207,29 @@ function ruleCoverageErrors(adrs) {
   return errors;
 }
 
+/** 機械チェックの ADR の検査 (0.3.0) */
+function checksErrors(adrs) {
+  const { validateChecks } = require('../../d2-foundation/scripts/checks');
+  const errors = [];
+  const accepted = adrs.filter(a => a.fm && a.fm.status === 'accepted');
+  const declaring = accepted.filter(a => a.fm.checks);
+  if (declaring.length > 1) errors.push({ file: declaring.map(d => d.file).join(', '), message: `checks を宣言する accepted ADR は 1 つだけにする (${declaring.length} 件が宣言している)` });
+  const tierAdr = accepted.find(a => Array.isArray(a.fm.tiers) && a.fm.tiers.length);
+  const tierIds = tierAdr ? tierAdr.fm.tiers.map(t => t && t.id).filter(Boolean) : null;
+  for (const { file, fm } of declaring) {
+    if (!hasScope(fm, 'system')) errors.push({ file, message: '機械チェックの ADR (checks を宣言する) は scope に system を含む必要がある' });
+    for (const m of validateChecks(fm.checks, tierIds)) errors.push({ file, message: m });
+  }
+  return errors;
+}
+
 function validateAdrDir(dir) {
   const { adrs, errors } = loadAdrDir(dir);
   errors.push(...crossAdrErrors(adrs));
   errors.push(...tierStructureErrors(adrs));
   errors.push(...testingCapabilityErrors(adrs));
   errors.push(...ruleCoverageErrors(adrs));
+  errors.push(...checksErrors(adrs));
   return { adrs, errors };
 }
 
@@ -236,4 +255,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { parseFrontMatter, loadAdrDir, crossAdrErrors, tierStructureErrors, testingCapabilityErrors, ruleCoverageErrors, validateAdrDir };
+module.exports = { parseFrontMatter, loadAdrDir, crossAdrErrors, tierStructureErrors, testingCapabilityErrors, ruleCoverageErrors, checksErrors, validateAdrDir };

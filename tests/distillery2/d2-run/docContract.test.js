@@ -766,7 +766,7 @@ test('0.1.35: 記録だけの課題は troubleshooting の 2 節に (迷った�
 
 test('0.1.36 S1: 依存の脆弱性 (osv-scanner) だけの quality の落ちは runGates が通し、advisory を人レビューと完了報告に載せる。CI はそのまま落ちる', () => {
   const t = read(SKILL);
-  assert.match(t, /\*\*依存の脆弱性\*\* \(どの段階の runGates でも\): static の quality が依存の脆弱性の指摘 \(osv-scanner\) だけで落ちたときは、runGates が通して job に `advisory` を残す/);
+  assert.match(t, /\*\*依存の脆弱性\*\* \(どの段階の runGates でも[^\n]*\): static の quality が依存の脆弱性の指摘 \(osv-scanner\) だけで落ちたときは、runGates が通して job に `advisory` を残す/);
   assert.match(t, /CI は `commands\.quality` をそのまま回すので、main の CI では落ちる/);
   assert.match(t, /1\. 材料: `reports\/gates\.json` \(static の `advisory` があれば依存の脆弱性として載せる\)/);
   assert.match(t, /④ の main マージの後は、[^\n]*依存の脆弱性 \(gates\.json の `advisory`。あれば\)/);
@@ -973,4 +973,18 @@ test('0.3.0: レビューの置き場は <場所>/<n>/、実装のレビュー�
   assert.match(t, /\| `push` \| `git push origin main` → `git push origin 'refs\/distillery2\/\*:refs\/distillery2\/\*'`/);
   assert.doesNotMatch(read('skills/d2-foundation/references/rule-templates/tier-backend.md'), /5 層/, '層は ADR が決める');
   assert.match(read('skills/d2-implement/SKILL.md'), /\| 技術の方針 [^\n]*\| `decide` \|\n\| 決定はあるが[^\n]*\| `foundation` \|/);
+});
+
+test('0.3.0: ADR の決定の領域に DDD の戦術設計・イミュータブルデータモデル・エラーハンドリング・ログのルール・機械チェックを足し、機械チェックの ADR から一括チェックと hook を生成する (6 観点)', () => {
+  const req = read('skills/d2-decide/references/required-decisions.md');
+  for (const [n, name, file] of [[10, 'DDD の戦術設計', 'ddd-tactical.md'], [11, 'イミュータブルデータモデル', 'immutable-data.md'], [12, 'エラーハンドリング', 'error-handling.md'], [13, 'ログのルール', 'logging.md'], [14, '機械チェック', 'machine-checks.md']]) {
+    assert.match(req, new RegExp(`\\| ${n} \\| ${name} \\| [a-z]+ \\| \\[${file.replace('.', '\\.')}\\]`));
+    assert.ok(fs.existsSync(path.join(PLUGIN, 'skills/d2-decide/references/decision-candidates', file)), file);
+    assert.ok(read('skills/d2-decide/SKILL.md').includes(`decision-candidates/${file}`), `SKILL の表に ${file}`);
+  }
+  const mc = read('skills/d2-decide/references/decision-candidates/machine-checks.md');
+  for (const a of ['generate', 'format', 'lint', 'build', 'test', 'security']) assert.match(mc, new RegExp(`\\| ${a} `), a);
+  assert.match(read('skills/d2-foundation/SKILL.md'), /\| F5 \| [^\n]*`genCheck\.js`[^\n]*`scripts\/check\.mjs`、`\.githooks\/\*\*`/);
+  assert.match(read('skills/d2-foundation/references/ci.md'), /`node scripts\/check\.mjs --mode ci` を回す 1 本の job/);
+  assert.match(read(SKILL), /`node <skills>\/d2-foundation\/scripts\/genCheck\.js --cwd \. --check` が exit 0 で、`git config core\.hooksPath` が `\.githooks`/);
 });

@@ -282,33 +282,17 @@ test('genTestSupport: copies templates without overwriting', () => {
   assert.ok(r.out.includes('skipped'), r.out);
 });
 
-test('genCi: renders 5-gate workflow with needs chain', () => {
+test('genCi: 機械チェックの一括実行 (scripts/check.mjs --mode ci) を回す 1 本の job。permissions は最小・checkout は credential を残さない・qlty は SHA ピンの install (0.3.0)', () => {
   const c = tmp();
-  // config を先に作る
   run('genConfig.js', c, ['--adr', adrDir, '--contracts', path.join(__dirname, 'fixtures/contracts.json'), '--out', '.distillery/config.yaml']);
   run('genCi.js', c, ['--config', '.distillery/config.yaml']);
   const ci = fs.readFileSync(path.join(c, '.github/workflows/ci.yml'), 'utf8');
-  for (const j of ['static:', 'unit:', 'contract:', 'uc-bdd:', 'acceptance:']) assert.ok(ci.includes(j), `missing job ${j}`);
-  assert.ok(ci.includes('needs: static') && ci.includes('needs: uc-bdd'));
-  // zizmor: permissions は最小、checkout は credential を残さない。qlty は install action (SHA ピン) の後にゲート
+  assert.match(ci, /^jobs:\n  check:\n    runs-on: ubuntu-latest$/m);
   assert.match(ci, /^permissions:\n  contents: read$/m);
   assert.match(ci, /actions\/checkout@v4\n\s+with:\n\s+persist-credentials: false/);
-  assert.match(ci, /uses: qltysh\/qlty-action\/install@[0-9a-f]{40} # v2\.3\.0\n\s+- run: qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium/);
-  // Cucumber のタグ式にワイルドカードは無い。uc-bdd は全 feature (not @browser)、acceptance は素の @acceptance で選ぶ。
-  assert.ok(!ci.includes('@uc:*') && !ci.includes('@acceptance:*'), 'ワイルドカードタグは使わない');
-  assert.ok(ci.includes('--tags "not @browser"') && ci.includes('@acceptance and not @browser'));
-  // contract job は提供側 (backend-api) だけ。消費側 (frontend / worker) の test:contract は入れない (Codex 0.1.13 指摘 5)
-  assert.ok(ci.includes('npm run test:contract -w apps/backend-api'));
-  assert.ok(!ci.includes('test:contract -w apps/frontend') && !ci.includes('test:contract -w apps/worker'));
-  // 0.1.26: PR を作らないので main と feature への push で回す。単体テストは 0 件のティアでも落とさない
+  assert.match(ci, /- run: npm ci\n\s+- uses: qltysh\/qlty-action\/install@[0-9a-f]{40} # v2\.3\.0\n\s+- run: node scripts\/check\.mjs --mode ci\n/);
   assert.match(ci, /^on:\n  push:\n    branches: \[main, 'feature\/\*\*'\]$/m);
   assert.ok(!ci.includes('pull_request'));
-  const unitLines = ci.split('\n').filter(l => /- run: npm run test -w /.test(l));
-  assert.ok(unitLines.length > 0);
-  for (const l of unitLines) assert.match(l, /--passWithNoTests$/, l);
-  const contractLines = ci.split('\n').filter(l => /- run: npm run test:contract -w /.test(l));
-  assert.ok(contractLines.length > 0);
-  for (const l of contractLines) assert.match(l, /--passWithNoTests$/, l);
 });
 
 test('genCi: passWithNoTests は vitest / npm run test にだけ付け、二重に付けない (0.1.26)', () => {
@@ -321,16 +305,14 @@ test('genCi: passWithNoTests は vitest / npm run test にだけ付け、二重�
   assert.equal(passWithNoTests('npm run test:contract -w apps/api -- --run'), 'npm run test:contract -w apps/api -- --run --passWithNoTests');
 });
 
-test('genCi: config のコマンドから job を組み、browser 有効時はブラウザ step を足す (Finding 6)', () => {
-  const genCi = require(path.join(SKILL, 'scripts/genCi.js'));
+test('genCheck: 一括チェックの計画は config のコマンドから組む。{report} と {slug} を残さず、契約テストは提供側だけ、単体と契約は 0 件で落とさず、browser 有効のときだけブラウザ受入 (Finding 6・0.1.26 を genCi から移した)', () => {
+  const { buildPlan } = require(path.join(SKILL, 'scripts/genCheck.js'));
   const config = {
     tiers: [{ id: 'api', dir: 'apps/api', provides: ['api'], commands: {
-      format_check: 'npm run format:check -w apps/api',
-      lint: 'npm run lint -w apps/api',
-      typecheck: 'npm run typecheck -w apps/api',
+      format_check: 'npm run format:check -w apps/api', lint: 'npm run lint -w apps/api', build: 'npm run build -w apps/api',
       unit: 'npm run test -w apps/api -- --run --reporter=json --outputFile={report}',
       contract: 'npm run test:contract -w apps/api -- --run --reporter=json --outputFile={report}',
-    } }],
+    } }, { id: 'web', dir: 'apps/web', commands: { unit: 'npm run test -w apps/web', contract: 'npm run test:contract -w apps/web' } }],
     commands: {
       arch_test: 'npx depcruise apps packages',
       uc_bdd: 'npx cucumber-js --tags "@uc:{slug}" --format json:{report}',
@@ -339,29 +321,13 @@ test('genCi: config のコマンドから job を組み、browser 有効時は�
     },
     capabilities: { browser: true },
   };
-  const yml = genCi.render(config);
-  // unit / contract は config の各ティアコマンドから (固定コマンドではない)
-  assert.ok(yml.includes('npm run test -w apps/api -- --run'), 'custom unit command');
-  assert.ok(yml.includes('npm run test:contract -w apps/api -- --run'), 'custom contract command');
-  // CI では {report} / {slug} プレースホルダは残さない
-  assert.ok(!yml.includes('{report}'), '{report} を残さない');
-  assert.ok(!yml.includes('@uc:{slug}'), '{slug} を残さない');
-  // browser 有効なのでブラウザ受入 step が入る
-  assert.ok(yml.includes('--tags "@acceptance and @browser"'), 'browser acceptance step');
-  assert.ok(yml.includes('--tags "not @browser"') && yml.includes('--tags "@acceptance and not @browser"'));
-});
-
-test('genCi: browser 無効ならブラウザ step を入れない (Finding 6)', () => {
-  const genCi = require(path.join(SKILL, 'scripts/genCi.js'));
-  const config = {
-    tiers: [{ id: 'api', dir: 'apps/api', commands: { unit: 'npm run test -w apps/api', contract: 'npm run test:contract -w apps/api' } }],
-    commands: {
-      uc_bdd: 'npx cucumber-js --tags "@uc:{slug}" --format json:{report}',
-      acceptance_api: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and not @browser" --format json:{report}',
-      acceptance_browser: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and @browser" --format json:{report}',
-    },
-    capabilities: { browser: false },
-  };
-  const yml = genCi.render(config);
-  assert.ok(!yml.includes('@acceptance and @browser'), 'browser off ならブラウザ step 無し');
+  const plan = buildPlan(config);
+  const text = JSON.stringify(plan);
+  assert.ok(!text.includes('{report}') && !text.includes('{slug}'));
+  assert.equal(plan.tiers[0].unit, 'npm run test -w apps/api -- --run --passWithNoTests');
+  assert.equal(plan.tiers[0].contract, 'npm run test:contract -w apps/api -- --run --passWithNoTests');
+  assert.equal(plan.tiers[1].contract, null, '消費側には契約テストが無い');
+  assert.equal(plan.scenarios.uc_bdd, 'npx cucumber-js --tags "not @browser"');
+  assert.deepEqual(plan.scenarios.acceptance, ['npx cucumber-js --tags "@acceptance and not @browser"', 'npx cucumber-js --tags "@acceptance and @browser"']);
+  assert.equal(buildPlan({ ...config, capabilities: { browser: false } }).scenarios.acceptance.length, 1);
 });

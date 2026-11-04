@@ -35,7 +35,7 @@
    (integrate が `traced()` で包んで図の参加者にする)
 3. frontend なら、画面の操作を **ブラウザ無しで呼べる入口関数** (例: `submitLoanCheckout(api, input)`) として export し、
    API 呼び出しは生成クライアントの `options.fetch` で差し替えられる形にする (UC BDD が in-process で画面 → API を通すため)
-4. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `typecheck` / `unit` (`.distillery/config.yaml` の commands)。
+4. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `build` / `unit` (`.distillery/config.yaml` の commands。`build` が無い古い config は `typecheck`)。
    書き換えを伴う formatter は使わない (並列ティアの write-set を侵すため)。
    **`runGates.js` は使わない**。runGates は `<run>/reports/gates.json` をゲート名単位で置き換えるため、並列で走る他ティアの記録を消す。
    記録付きのゲートは全ティアの受理後にオーケストレータが 1 回だけ回す。

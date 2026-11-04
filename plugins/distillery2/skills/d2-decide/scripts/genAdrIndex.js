@@ -5,7 +5,8 @@
  * docs/adr/ の ADR 群から index.md を決定論的に生成する (id 昇順)。
  *
  * Usage:
- *   node genAdrIndex.js <adr-dir> [output-md] [requirements=<dir>]
+ *   node genAdrIndex.js <adr-dir> [output-md] [requirements=<dir>] [--check]
+ *   --check: 書かずに、今の ADR から作った索引と違えば exit 1 (生成物の鮮度。一括チェックの generate と写し直しが使う。0.3.0)
  *
  * requirements=<dir> を渡すと basis: requirements@<sha> を front matter に付ける。
  * 省略時は basis を付けない (テストのスナップショット比較用に決定論を保つ)。
@@ -46,7 +47,8 @@ function renderIndex(adrs, basisLine = null, opts = {}) {
 function main(argv) {
   const dirs = {};
   const rest = [];
-  for (const a of argv) { const m = a.match(/^([A-Za-z0-9_-]+)=(.+)$/); if (m) dirs[m[1]] = m[2]; else rest.push(a); }
+  const check = argv.includes('--check');
+  for (const a of argv.filter((x) => x !== '--check')) { const m = a.match(/^([A-Za-z0-9_-]+)=(.+)$/); if (m) dirs[m[1]] = m[2]; else rest.push(a); }
   if (!rest.length) { console.error('Usage: node genAdrIndex.js <adr-dir> [output-md] [requirements=<dir>]'); return 2; }
   const dir = path.resolve(rest[0]);
   if (!fs.existsSync(dir)) { console.error(`Directory not found: ${dir}`); return 2; }
@@ -56,7 +58,13 @@ function main(argv) {
   if (Object.keys(dirs).length) basisLine = basisLib.headerLine(basisLib.stamp(dirs));
   // architecture.md が同ディレクトリにあるときだけリンクを載せる (dangling を避ける)。
   const opts = fs.existsSync(path.join(dir, 'architecture.md')) ? { architecture: 'architecture.md' } : {};
-  fs.writeFileSync(output, renderIndex(adrs, basisLine, opts), 'utf8');
+  const text = renderIndex(adrs, basisLine, opts);
+  if (check) {
+    const same = fs.existsSync(output) && fs.readFileSync(output, 'utf8') === text;
+    console.log(`genAdrIndex --check: ${same ? 'up to date' : `STALE ${output}`}`);
+    return same ? 0 : 1;
+  }
+  fs.writeFileSync(output, text, 'utf8');
   console.log(`Generated: ${output} (${adrs.length} ADRs)`);
   return 0;
 }

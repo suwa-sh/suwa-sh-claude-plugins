@@ -130,7 +130,15 @@ function planGate(gate, config, ctx) {
   };
   switch (gate) {
     case 'static':
-      for (const t of tiers) for (const k of ['format_check', 'lint', 'typecheck']) jobs.push(tierJob(t, k));
+      // 機械チェックの format / lint / build はティアごと (build が無い古い config は typecheck)。security はティアごとで、落ちても advisory (依存の脆弱性は UC と無関係に脆弱性情報の更新で落ちる。CI は止める。0.3.0)
+      for (const t of tiers) {
+        for (const k of ['format_check', 'lint', (t.commands && t.commands.build) ? 'build' : 'typecheck']) jobs.push(tierJob(t, k));
+        if (t.commands && t.commands.security) jobs.push({ ...tierJob(t, 'security'), advisory_on_fail: 'security' });
+      }
+      // リポ全体の format と秘密情報の検出。generate (生成物の鮮度) は一括チェック scripts/check.mjs があるときだけ。d2-run は段ごとに作り直してから commit するので advisory
+      if (cmds.format) jobs.push({ name: 'format', cmd: sub(cmds.format, null, 'format') });
+      if (cmds.secrets) jobs.push({ name: 'secrets', cmd: sub(cmds.secrets, null, 'secrets') });
+      if (ctx.cwd && fs.existsSync(path.join(ctx.cwd, 'scripts', 'check.mjs'))) jobs.push({ name: 'generate', cmd: `D2_SKILLS=${JSON.stringify(path.resolve(__dirname, '..', '..'))} node scripts/check.mjs --mode ci --only generate`, advisory_on_fail: 'generate' });
       jobs.push(cmds.arch_test ? { name: 'arch_test', cmd: sub(cmds.arch_test, null, 'arch_test') } : { name: 'arch_test', skipped: true });
       // quality (qlty: lint + SAST) はリポ全体で 1 回。config に無ければ skipped
       jobs.push(cmds.quality ? { name: 'quality', cmd: sub(cmds.quality, null, 'quality') } : { name: 'quality', skipped: true });
@@ -167,6 +175,7 @@ async function runGate(gate, config, ctx) {
     if (job.report && fs.existsSync(job.report)) fs.unlinkSync(job.report);
     const r = await runCommand(job.cmd, ctx.cwd);
     const out = { ...job, ...r, status: r.exit === 0 ? 'pass' : 'fail' };
+    if (out.status === 'fail' && job.advisory_on_fail) { out.status = 'pass'; out.advisory = { kind: job.advisory_on_fail, exit: r.exit }; }
     if (job.name === 'quality' && !job.tier && r.exit === 1) {
       const advisory = await dependencyAdvisoryOnly(job.cmd, ctx.cwd);
       if (advisory) { out.status = 'pass'; out.advisory = advisory; }

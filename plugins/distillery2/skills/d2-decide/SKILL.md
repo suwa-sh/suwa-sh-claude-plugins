@@ -72,7 +72,7 @@ node <skills>/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
 
 ### 3. 決定を導いて ADR を書く
 
-[references/required-decisions.md](references/required-decisions.md) の 8 領域を最低限すべて覆う。該当しない領域は「不要」と 1 本の ADR で明記する (黙って省かない)。9 番目「コンテキストの境界」は任意 (業務ドメインが複数に分かれるときだけ `contexts[]` を書く)。
+[references/required-decisions.md](references/required-decisions.md) の 13 領域 (1〜8・10〜14) を最低限すべて覆う。該当しない領域は「不要」と 1 本の ADR で明記する (黙って省かない)。9 番目「コンテキストの境界」は任意 (業務ドメインが複数に分かれるときだけ `contexts[]` を書く)。
 
 各領域の判断材料は決定候補カタログにある:
 
@@ -85,12 +85,18 @@ node <skills>/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
 | 認証 / 認可 | [decision-candidates/auth.md](references/decision-candidates/auth.md) |
 | テスト方針 | [decision-candidates/testing-stack.md](references/decision-candidates/testing-stack.md) |
 | UI 部品の方針 | [decision-candidates/ui.md](references/decision-candidates/ui.md) |
+| DDD の戦術設計 | [decision-candidates/ddd-tactical.md](references/decision-candidates/ddd-tactical.md) |
+| イミュータブルデータモデル | [decision-candidates/immutable-data.md](references/decision-candidates/immutable-data.md) |
+| エラーハンドリング | [decision-candidates/error-handling.md](references/decision-candidates/error-handling.md) |
+| ログのルール | [decision-candidates/logging.md](references/decision-candidates/logging.md) |
+| 機械チェック | [decision-candidates/machine-checks.md](references/decision-candidates/machine-checks.md) |
 
 各 ADR は [references/adr-format.md](references/adr-format.md) の形で 1 ファイルずつ書く (`docs/adr/0001-<slug>.md` から連番)。要点:
 
 - front matter の必須フィールド: `id` (クォート必須) / `title` / `status` / `date` / `basis` / `scope`。
 - 本文は日本語で 背景 / 決定 / 却下した案 / 影響 の 4 節。
 - 該当する ADR は `rules[]` を最低 1 つ持つ。**ティア構成の ADR は `arch_test.level: tier` を、レイヤ構成の ADR は `arch_test.level: layer` を持つ**。
+- **機械チェックの ADR (scope に system) は front matter に `checks` を持つ** (1 本だけ。形は [decision-candidates/machine-checks.md](references/decision-candidates/machine-checks.md)。段階③が一括チェックとコマンドを生成する入力)
 - **ティア構成の ADR は front matter に `tiers[]` と `datastore_owner` を (scope に system を含む 1 本だけ)、accepted なテスト方針の ADR (scope に testing を含む) は `capabilities.browser` を持つ**
   (段階③の config / 骨格 / rules の入力。形は adr-format.md「段階③が読む追加の front matter」)。
 - `rules[]` は段階③ の入力になる。カタログの「派生するルール例」を土台にする。

@@ -179,7 +179,7 @@ design は config も契約も読まないので、契約の骨格の直後に�
    (`docs/design` が無ければ `contracts` だけ。変更が無ければ飛ばす)。仕上げが作る config・C4 図・画面部品の取り込み記録は、
    入力を最後に commit した commit を basis に記録する。未 commit のままだと basis が空になり、契約や画面が変わっても古さを検出できない
 5. `.distillery/runs/bootstrap/reports/gates.json` があれば消してから、sub `d2-foundation phase=finish ui=<true|false>` (F8→F6→F7→F4→F9)。
-   受理時の検査: `.distillery/runs/bootstrap/reports/gates.json` があり、`uc` が `bootstrap`、`result` が `pass`、`gates` (`{name, status}` の配列) のうち `name` が `static` の要素の `status` が `pass` (読むだけ。runGates を回し直さない)。加えて `node <skills>/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root . --check` が exit 0 (骨格分の契約テストが今の契約から生成済み。static のゲートは契約テストの生成を見ないため)。
+   受理時の検査: `.distillery/runs/bootstrap/reports/gates.json` があり、`uc` が `bootstrap`、`result` が `pass`、`gates` (`{name, status}` の配列) のうち `name` が `static` の要素の `status` が `pass` (読むだけ。runGates を回し直さない)。加えて `node <skills>/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root . --check` が exit 0 (骨格分の契約テストが今の契約から生成済み。static のゲートは契約テストの生成を見ないため)。さらに `node <skills>/d2-foundation/scripts/genCheck.js --cwd . --check` が exit 0 で、`git config core.hooksPath` が `.githooks` (機械チェックの一括実行とコミットのときの hook が入っている)。
    満たさなければ報告を添えて人に見せ、先へ進まない
 6. 3 つの派遣 (骨格・契約の骨格・画面部品・仕上げ) の引き継ぎファイルを処理し、基盤のレビュー (`--point foundation`) を回す。`.distillery/config.yaml` の tiers / contracts / commands / capabilities を確認ページに載せ (モードの規則で人に返す問いがあるときだけ止まり、無ければ推奨で承認して記録)、承認後に `node <skills>/d2-common/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add -A && git commit -m "foundation: rules, tests, config" -m "<attribution 行>"`
    (差し戻しで契約の骨格や design をやり直したら、4 から繰り返す)
@@ -222,7 +222,7 @@ verify と review の前提: `reports/gates.json` が `all_recorded: true` で�
 回し直して通ったら、完了報告に 1 回目に落ちたゲートとテスト名 (写しの `failed_tests`) を書く。2 回目も落ちたら落ちた扱い (推測で直さない・課題を外さない)。3 回目は回さない。
 落ちた内容は出力をファイルに保存せず (headless では保存が拒まれる) gates.json の job の `output_tail` と `failed_tests` で読む。
 
-**依存の脆弱性** (どの段階の runGates でも): static の quality が依存の脆弱性の指摘 (osv-scanner) だけで落ちたときは、runGates が通して job に `advisory` を残す (脆弱性情報の更新で UC と無関係に毎回落ちるため。CI は `commands.quality` をそのまま回すので、main の CI では落ちる)。`advisory` は止めずに、人レビューの材料と完了報告 (④ の main マージ) に載せる
+**依存の脆弱性** (どの段階の runGates でも。ティアごとの `security` と生成物の鮮度の `generate` も、落ちたら job に `advisory` を残して通す。CI と hook は止める): static の quality が依存の脆弱性の指摘 (osv-scanner) だけで落ちたときは、runGates が通して job に `advisory` を残す (脆弱性情報の更新で UC と無関係に毎回落ちるため。CI は `commands.quality` をそのまま回すので、main の CI では落ちる)。`advisory` は止めずに、人レビューの材料と完了報告 (④ の main マージ) に載せる
 
 **static の落ちの戻り先** (tier・integrate の runGates): 指摘の対象ファイル (`output_tail`) の書き込み範囲 (派遣表) で決める。
 あるティアの範囲 → tier の行・integrate の行の手順のとおり (ティアの再派遣か attempt++)。integrate の範囲 (`features/step_definitions/**`・`features/support/**` など) → integrate の担当に差し戻す (attempt は上げない)。

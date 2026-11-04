@@ -65,10 +65,10 @@
 |---|---|
 | ① 要求 | `docs/requirements/**` |
 | ② 決定 | `docs/nfr/**`、`docs/adr/**` |
-| ③ 基盤 (機械) | `docs/rules/**`、`.dependency-cruiser.cjs`、`packages/test-support/**`、`features/support/**`、`cucumber.js`、`tsx-register.js`、`.distillery/config.yaml`、`.github/workflows/**`、`.qlty/qlty.toml`、`apps/*/`、`packages/*/`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`package-lock.json`。例外: `npm install` が作る `node_modules/**` (gitignore) |
+| ③ 基盤 (機械) | `docs/rules/**`、`.dependency-cruiser.cjs`、`packages/test-support/**`、`features/support/**`、`cucumber.js`、`tsx-register.js`、`.distillery/config.yaml`、`.github/workflows/**`、`scripts/check.mjs`、`.githooks/**`、`.distillery/distillery2.lock.json`、`.qlty/qlty.toml`、`apps/*/`、`packages/*/`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`package-lock.json`。例外: `npm install` が作る `node_modules/**` (gitignore) |
 | ③ 契約骨格 | `contracts/**` |
 | ③ 画面部品 | `docs/design/**` |
-| ③ 基盤 (仕上げ) | `.distillery/config.yaml`、`.github/workflows/**`、`docs/adr/architecture.md`、`packages/ui/**`、`package-lock.json`、`.qlty/qlty.toml`、`apps/*/test/contract/**`、`packages/contracts/**`、`<run>/reports/**` (チェックポイントが書く。slug は bootstrap)。例外: `npm install` が作る `node_modules/**` (gitignore) |
+| ③ 基盤 (仕上げ) | `.distillery/config.yaml`、`.github/workflows/**`、`scripts/check.mjs`、`.githooks/**`、`.distillery/distillery2.lock.json`、`docs/adr/architecture.md`、`packages/ui/**`、`package-lock.json`、`.qlty/qlty.toml`、`apps/*/test/contract/**`、`packages/contracts/**`、`<run>/reports/**` (チェックポイントが書く。slug は bootstrap)。例外: `npm install` が作る `node_modules/**` (gitignore) |
 | ④ precheck (ティアごと並列) | なし (読むだけ。書くのは引き継ぎファイルだけ) |
 | ④ scenario | `features/<業務>/<slug>.feature`、`features/acceptance/**` |
 | ④ contract | `contracts/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**` |

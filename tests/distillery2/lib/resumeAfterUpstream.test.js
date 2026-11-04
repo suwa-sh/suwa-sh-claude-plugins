@@ -26,7 +26,7 @@ function table(tmp, { fail = false } = {}) {
   fs.writeFileSync(gen, fail
     ? "process.stderr.write('boom'); process.exit(1);\n"
     : "const fs=require('fs');const n=fs.readdirSync('apps/backend/src').length;fs.writeFileSync('docs/README.md','README regenerated from '+n+'\\n');\n");
-  return [{ id: 'docs-readme', paths: [/^docs\/README\.md$/], needs: 'docs', cmds: [[gen]] }];
+  return [{ id: 'docs-readme', outputs: [/^docs\/README\.md$/], inputs: [], needs: 'docs', gen: [[gen]] }];
 }
 
 /**

@@ -41,6 +41,9 @@
       "`tsx-register.js`",
       "`.distillery/config.yaml`",
       "`.github/workflows/**`",
+      "`scripts/check.mjs`",
+      "`.githooks/**`",
+      "`.distillery/distillery2.lock.json`",
       "`.qlty/qlty.toml`",
       "`apps/*/`",
       "`packages/*/`",
@@ -91,6 +94,18 @@
         "path": ".github/workflows/**"
       },
       {
+        "id": "check-script",
+        "path": "scripts/check.mjs"
+      },
+      {
+        "id": "githooks",
+        "path": ".githooks/**"
+      },
+      {
+        "id": "plugin-lock",
+        "path": ".distillery/distillery2.lock.json"
+      },
+      {
         "id": "qlty-config",
         "path": ".qlty/qlty.toml"
       },
@@ -131,6 +146,9 @@
     "write_set": [
       "`.distillery/config.yaml`",
       "`.github/workflows/**`",
+      "`scripts/check.mjs`",
+      "`.githooks/**`",
+      "`.distillery/distillery2.lock.json`",
       "`docs/adr/architecture.md`",
       "`packages/ui/**`",
       "`package-lock.json`",
@@ -151,6 +169,18 @@
       {
         "id": "ci",
         "path": ".github/workflows/**"
+      },
+      {
+        "id": "check-script",
+        "path": "scripts/check.mjs"
+      },
+      {
+        "id": "githooks",
+        "path": ".githooks/**"
+      },
+      {
+        "id": "plugin-lock",
+        "path": ".distillery/distillery2.lock.json"
       },
       {
         "id": "adr-architecture",

@@ -1,31 +1,25 @@
 # CI (.github/workflows/ci.yml)
 
-F5 の genCi が `.distillery/config.yaml` から生成する。ローカルの `runGates.js` と同じ 5 ゲートを同じ順で回す。
+F5 と F8 の genCi が生成する。機械チェックの一括実行 `node scripts/check.mjs --mode ci` を回す 1 本の job (0.3.0)。一括チェックは genCheck.js が `.distillery/config.yaml` から作る (コマンドの正はローカルの `runGates.js` と同じ config)。
 
-走るのは main と `feature/**` への push (`on: push: branches: [main, 'feature/**']`)。PR は作らないので pull_request では回さない (0.1.26)。d2-run が push するのは main だけ (remote があるとき)。
+走るのは main と `feature/**` への push (`on: push: branches: [main, ## job
 
-## job と依存
+- `check` の 1 本: checkout (credential を残さない) → setup-node → `npm ci` → qlty の install (SHA ピン) → `node scripts/check.mjs --mode ci`
+- 一括チェックは 6 観点を順に回し、落ちたものを最後にまとめて exit 1: generate (生成物の鮮度) → format → lint (アーキテストを含む) → build → test (単体・提供側の契約・UC のシナリオ・受入) → security (秘密情報・ティアごとの依存の脆弱性と SAST)
+- generate は distillery2 のスクリプトが要る。CI では `.distillery/distillery2.lock.json` の repo と commit を取る (genCheck.js がプラグインの commit を書く)
 
-```
-static → unit → contract → uc-bdd → acceptance
-```
+一括チェックのコマンドは config から組む。CI 変種にするため次を変換する (genCheck.js)。
 
-- `needs` で直列にする。安い順に落として早く止める。
-- 各 job は checkout → setup-node → `npm ci` の後にゲートのコマンドを実行する。
+- `{report}` を書き出すフラグ (`--reporter=json --outputFile={report}` / `--format json:{report}`) は落とす。判定は exit code だけ。
+- 単体と契約は、テストが 0 件のティアで落ちないよう `--passWithNoTests` を付ける (ローカルの runGates には付けない。red baseline は 0 件で落ちることを使う)。契約は提供側だけ。
+- cucumber の `--tags` から `@uc:{slug}` を外し、全 UC を回す (uc-bdd は `not @browser`、受入は `@acceptance and not @browser`。`capabilities.browser: true` のときだけ `@acceptance and @browser` も)。
 
-全 job のコマンドは `runGates.js` と同じく config から組む。CI 変種にするため次を変換する。
+## コミットのとき (hook)
 
-- `{report}` を書き出すフラグ (`--reporter=json --outputFile={report}` / `--format json:{report}`) は落とす。CI の判定は exit code だけ。
-- cucumber の `--tags` から `@uc:{slug}` を外し、CI は全 UC を回す (下表のタグ式に置き換える)。
+`.githooks/commit-msg` (genCheck.js が生成。`git config core.hooksPath .githooks` は genCheck.js とルートの package.json の `prepare` が入れる) が `node scripts/check.mjs --mode hook` を回す。
+コミットするファイルに関わるものだけ: 変えたティアの format・lint・build・単体テスト、文書類の format・lint、生成物の鮮度、秘密情報。d2-run の commit (件名が `impl(` `req(` `req: ` `decide: ` `foundation: ` `precheck(` `feedback` で始まるか、trailer に `UC-Slug:`) は回さない。
 
-| job | 実行 | コマンド源 |
-|---|---|---|
-| static | 各ティアの format_check / lint / typecheck と arch_test | config の tiers[].commands / commands.arch_test |
-| unit | 各ティアの unit。テストが 0 件のティアで落ちないよう `--passWithNoTests` を付ける (ローカルの runGates には付けない。red baseline は 0 件で落ちることを使う) | tiers[].commands.unit |
-| contract | 提供側ティアの contract。unit と同じく `--passWithNoTests` を付ける | tiers[].commands.contract |
-| uc-bdd | `commands.uc_bdd` の `@uc:{slug}` を `not @browser` に置換 (全 feature が UC シナリオ。CI は全 UC) | commands.uc_bdd |
-| acceptance | `commands.acceptance_api` の `@uc:{slug} and` を外し `@acceptance and not @browser` | commands.acceptance_api |
-| acceptance (browser step) | `capabilities.browser: true` のときだけ `commands.acceptance_browser` を `@acceptance and @browser` で追加 | commands.acceptance_browser |
+きだけ `commands.acceptance_browser` を `@acceptance and @browser` で追加 | commands.acceptance_browser |
 
 ## ローカル green = CI green
 

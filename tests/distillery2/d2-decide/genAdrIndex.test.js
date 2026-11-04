@@ -42,3 +42,20 @@ test('architecture を渡すと C4 図へのリンクを一覧の前に載せる
   // リンクは表より前
   assert.ok(out.indexOf('architecture.md') < out.indexOf('| 番号 |'));
 });
+
+test('0.3.0: --check は書かずに、今の ADR から作った索引と違えば exit 1', () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const { spawnSync } = require('node:child_process');
+  const S = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-decide/scripts/genAdrIndex.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-adrindex-'));
+  for (const f of fs.readdirSync(FIX)) fs.copyFileSync(path.join(FIX, f), path.join(dir, f));
+  const out = path.join(dir, 'index.md');
+  assert.equal(spawnSync(process.execPath, [S, dir, out, '--check']).status, 1, '無ければ古い');
+  assert.equal(fs.existsSync(out), false, '--check は書かない');
+  assert.equal(spawnSync(process.execPath, [S, dir, out]).status, 0);
+  assert.equal(spawnSync(process.execPath, [S, dir, out, '--check']).status, 0);
+  fs.appendFileSync(out, 'x');
+  assert.equal(spawnSync(process.execPath, [S, dir, out, '--check']).status, 1);
+});
+

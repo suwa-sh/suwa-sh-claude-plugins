@@ -47,6 +47,9 @@ function rootPackageJson(tierDirs, hasFrontend) {
     format: 'biome format --write .',
     'format:check': 'biome format .',
     bdd: 'cucumber-js',
+    // 機械チェックの一括実行 (scripts/check.mjs は genCheck.js が生成)。prepare は clone した人の npm install でコミットのときの hook を入れる (0.3.0)
+    check: 'node scripts/check.mjs --mode ci',
+    prepare: 'git config core.hooksPath .githooks || true',
   };
   for (const dir of tierDirs) {
     scripts[`test:${dir}`] = `npm run test -w apps/${dir}`;
@@ -154,6 +157,8 @@ function appScripts() {
     'format:check': 'biome format .',
     lint: 'biome lint .',
     typecheck: 'tsc --noEmit -p .',
+    // 機械チェックの build (0.3.0)。dist/ に出す (gitignore)。型の検査も含む
+    build: 'tsc -p .',
     test: 'vitest run',
     'test:contract': 'vitest run -c vitest.contract.config.ts',
   };

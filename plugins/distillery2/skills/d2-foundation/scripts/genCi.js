@@ -5,9 +5,8 @@
  *
  *   node genCi.js --config .distillery/config.yaml [--out .github/workflows/ci.yml] [--cwd <repo>]
  *
- * 5 ゲートを順に job にし、needs で依存を表す:
- *   static → unit → contract → uc-bdd (全 UC シナリオ) → acceptance (api)
- * コマンドは runGates.js と等価にする (config の commands をそのまま使う)。
+ * 機械チェックの一括実行 (scripts/check.mjs --mode ci) を回す 1 本の job (0.3.0。以前は 5 ゲートを job に並べていた)。
+ * 一括チェックのコマンドは config の commands から genCheck.js が作る (runGates.js と同じ正)。
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -67,37 +66,22 @@ function passWithNoTests(cmd) {
   return cmd;
 }
 
+/**
+ * CI は機械チェックの一括実行 (scripts/check.mjs --mode ci。genCheck.js が config から生成) を回す 1 本の job (0.3.0)。
+ * コマンドの正を一括チェックに 1 つにする (ティアのコマンドの組み立ては genCheck.js が stripReport / ciCucumber / passWithNoTests で行う)
+ */
 function render(config) {
-  const tiers = config.tiers || [];
-  const cmds = config.commands || {};
-  const caps = config.capabilities || {};
-  // zizmor の指摘に従い、checkout の credential 保持を切り、permissions は最小 (contents: read) にする
-  const setup = ['      - uses: actions/checkout@v4', '        with:', '          persist-credentials: false', '      - uses: actions/setup-node@v4', '        with:', '          node-version: 20', '      - run: npm ci'];
-  const step = cmd => `      - run: ${cmd}`;
-  const job = (id, needs, steps) => {
-    const lines = [`  ${id}:`, '    runs-on: ubuntu-latest'];
-    if (needs) lines.push(`    needs: ${needs}`);
-    lines.push('    steps:', ...setup, ...steps);
-    return lines.join('\n');
-  };
-  const staticSteps = [];
-  for (const t of tiers) for (const k of ['format_check', 'lint', 'typecheck']) if (t.commands && t.commands[k]) staticSteps.push(step(stripReport(t.commands[k])));
-  if (cmds.arch_test) staticSteps.push(step(stripReport(cmds.arch_test)));
-  if (cmds.quality) {
-    // qlty CLI を入れてから quality ゲート (lint + SAST) を回す。action は SHA でピン留め
-    staticSteps.push('      - uses: qltysh/qlty-action/install@08a0a862c159eae9b9003081da6663d96efef637 # v2.3.0');
-    staticSteps.push(step(stripReport(cmds.quality)));
-  }
-  // unit / contract は config の各ティアコマンドから組む (runGates と同じソース)。
-  const unitSteps = tiers.filter(t => t.commands && t.commands.unit).map(t => step(passWithNoTests(stripReport(t.commands.unit))));
-  // contract は提供側 (contracts[].provider / tiers[].provides) だけ (runGates と同じ判定。消費側はテスト 0 件で vitest が exit 1)
-  const providers = new Set((config.contracts || []).map(c => c.provider).filter(Boolean));
-  const isProvider = t => providers.has(t.id) || (t.provides || []).length > 0;
-  const contractSteps = tiers.filter(t => isProvider(t) && t.commands && t.commands.contract).map(t => step(passWithNoTests(stripReport(t.commands.contract))));
-  const ucBddSteps = [step(cmds.uc_bdd ? ciCucumber(cmds.uc_bdd, 'not @browser') : 'npx cucumber-js --tags "not @browser"')];
-  const acceptanceSteps = [step(cmds.acceptance_api ? ciCucumber(cmds.acceptance_api, '@acceptance and not @browser') : 'npx cucumber-js --tags "@acceptance and not @browser"')];
-  // capabilities.browser: true のときだけブラウザ受入を CI にも足す (runGates と対応)。
-  if (caps.browser) acceptanceSteps.push(step(cmds.acceptance_browser ? ciCucumber(cmds.acceptance_browser, '@acceptance and @browser') : 'npx cucumber-js --tags "@acceptance and @browser"'));
+  const usesQlty = Object.values(config.commands || {}).some((c) => /\bqlty\b/.test(String(c)))
+    || (config.tiers || []).some((t) => Object.values(t.commands || {}).some((c) => /\bqlty\b/.test(String(c))));
+  const steps = [
+    // zizmor の指摘に従い、checkout の credential 保持を切り、permissions は最小 (contents: read) にする
+    '      - uses: actions/checkout@v4', '        with:', '          persist-credentials: false',
+    '      - uses: actions/setup-node@v4', '        with:', '          node-version: 20',
+    '      - run: npm ci',
+  ];
+  // qlty CLI (リポ全体の lint・秘密情報、ティアの SAST) は install action を SHA でピン留めして入れる
+  if (usesQlty) steps.push('      - uses: qltysh/qlty-action/install@08a0a862c159eae9b9003081da6663d96efef637 # v2.3.0');
+  steps.push('      - run: node scripts/check.mjs --mode ci');
   return [
     'name: ci',
     // PR を作らない (0.1.26)。main と feature への push で回す
@@ -109,11 +93,10 @@ function render(config) {
     '  contents: read',
     '',
     'jobs:',
-    job('static', null, staticSteps.length ? staticSteps : ['      - run: echo "no static commands"']),
-    job('unit', 'static', unitSteps.length ? unitSteps : ['      - run: echo "no unit commands"']),
-    job('contract', 'unit', contractSteps.length ? contractSteps : ['      - run: echo "no contract commands"']),
-    job('uc-bdd', 'contract', ucBddSteps),
-    job('acceptance', 'uc-bdd', acceptanceSteps),
+    '  check:',
+    '    runs-on: ubuntu-latest',
+    '    steps:',
+    ...steps,
     '',
   ].join('\n');
 }
@@ -136,4 +119,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { passWithNoTests, parseArgs, render, run };
+module.exports = { passWithNoTests, stripReport, ciCucumber, parseArgs, render, run };

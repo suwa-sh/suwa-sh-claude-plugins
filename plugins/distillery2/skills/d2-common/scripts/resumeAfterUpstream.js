@@ -39,23 +39,8 @@ const STEPS = [2, 3, 4, 5, 6, 7, 8, 9];
 const SUBJECT_COMMIT = (slug) => `impl(${slug}): resume after upstream`;
 const SUBJECT_RECORDS = (slug) => `impl(${slug}): resume records`;
 
-/**
- * 作り直せる生成物 (今の各段の受理で使う生成のコマンドで、正本から決定論で作り直せるもの)。
- * 契約の分割ファイル (contracts/openapi/** など) は正本なので入れない。順に回す (README は最後)
- */
-const REGENERABLE = [
-  { id: 'contracts', paths: [/^contracts\/generated\//, /^apps\/[^/]+\/test\/contract\//, /^packages\/contracts\/[^/]+\/stubs\//, /^packages\/contracts\/[^/]+\/validators\.ts$/],
-    needs: 'contracts/contracts.json',
-    cmds: [
-      ['<skills>/d2-contract/scripts/compileContracts.js', 'contracts'],
-      ['<skills>/d2-contract/scripts/compileRdbSchema.js', 'contracts'],
-      ['<skills>/d2-contract/scripts/genContractTests.js', 'contracts', '--config', '.distillery/config.yaml', '--out-root', '.'],
-    ] },
-  { id: 'rules', paths: [/^docs\/rules\//], needs: 'docs/adr', cmds: [['<skills>/d2-foundation/scripts/genRules.js', '--adr', 'docs/adr', '--out', 'docs/rules', '--cwd', '.']] },
-  { id: 'arch-tests', paths: [/^\.dependency-cruiser\.cjs$/], needs: 'docs/adr', cmds: [['<skills>/d2-foundation/scripts/genArchTests.js', '--adr', 'docs/adr', '--out', '.dependency-cruiser.cjs', '--cwd', '.']] },
-  { id: 'adr-index', paths: [/^docs\/adr\/index\.md$/], needs: 'docs/adr', cmds: [['<skills>/d2-decide/scripts/genAdrIndex.js', 'docs/adr', 'docs/adr/index.md', 'requirements=docs/requirements']] },
-  { id: 'docs-readme', paths: [/^docs\/README\.md$/, /^docs\/feedback\/README\.md$/], needs: 'docs', cmds: [['<skills>/d2-common/scripts/genDocsReadme.js', '--cwd', '.']] },
-];
+// 作り直せる生成物の表は lib/generators.js が正本 (一括チェックの generate と同じ表)
+const { GENERATORS: REGENERABLE } = require('./lib/generators');
 
 class Fail extends Error { constructor(msg, code = 1, extra = {}) { super(msg); this.code = code; this.extra = extra; } }
 
@@ -92,7 +77,7 @@ function earliest(stages) {
   const idx = stages.filter(Boolean).map((s) => runState.STAGES.indexOf(s)).filter((i) => i >= 0);
   return idx.length ? runState.STAGES[Math.min(...idx)] : null;
 }
-const isRegenerable = (p, table) => table.some((e) => e.paths.some((re) => re.test(p)));
+const isRegenerable = (p, table) => table.some((e) => e.outputs.some((re) => re.test(p)));
 
 /**
  * merge-tree の -z の出力を読む: <tree>\0<衝突したパス>\0...\0\0 の後に、情報の記録 <N>\0<パス×N>\0<種類>\0<文>\0 が続く。
@@ -173,7 +158,9 @@ function step4(ctx, j) {
   const marks = git(ctx.root, ['grep', '-I', '-l', '-E', '^(<<<<<<<|>>>>>>>) ', j.tree], { allowFail: true });
   if (marks.ok && marks.out) throw new Fail(`写し直した tree に衝突の印が残っている: ${marks.out.split('\n').map((l) => l.replace(/^[^:]+:/, '')).join(', ')}`);
   const featureChanged = git(ctx.root, ['diff', '--name-only', '-z', j.base_head, j.old_head]).out.split('\0').filter(Boolean);
-  j.regenerate = ctx.table.filter((e) => featureChanged.some((p) => e.paths.some((re) => re.test(p))) || j.regenerable_conflicts.some((p) => e.paths.some((re) => re.test(p)))).map((e) => e.id);
+  // 機能が生成物か、その入力を変えていた項目を作り直す (main の側を採った生成物に、機能側の入力の変更を反映する)
+  const hit = (e, p) => e.outputs.some((re) => re.test(p)) || (e.inputs || []).some((re) => re.test(p));
+  j.regenerate = ctx.table.filter((e) => featureChanged.some((p) => hit(e, p)) || j.regenerable_conflicts.some((p) => hit(e, p))).map((e) => e.id);
 }
 
 function step5(ctx, j, journal) {
@@ -213,7 +200,7 @@ function step7(ctx, j) {
   j.regenerated = [];
   for (const e of ctx.table.filter((x) => j.regenerate.includes(x.id))) {
     if (e.needs && !fs.existsSync(path.join(ctx.root, e.needs))) continue;
-    for (const c of e.cmds) {
+    for (const c of e.gen) {
       const args = c.map((a) => a.replace('<skills>', SKILLS_ROOT));
       const r = spawnSync(process.execPath, args, { cwd: ctx.root, encoding: 'utf8' });
       if (r.status !== 0) throw new Fail(`生成物の作り直しが失敗 (${e.id}): node ${args.join(' ')}: ${String(r.stderr || r.stdout || '').trim().slice(-600)}`);

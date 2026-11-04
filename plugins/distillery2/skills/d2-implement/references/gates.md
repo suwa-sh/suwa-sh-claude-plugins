@@ -5,7 +5,7 @@
 
 | # | ゲート | 実行するもの | 誰が回すか |
 |---|---|---|---|
-| 1 | static | format_check / lint / typecheck (ティア並列) + arch_test (依存方向) | tier 実装者 (自ティア限定・check-only)、d2-run |
+| 1 | static | format_check / lint / build (ティア並列) + arch_test (依存方向)。security と生成物の鮮度は advisory | tier 実装者 (自ティア限定・check-only)、d2-run |
 | 2 | unit | 各ティアの単体テスト (ティア並列) | tier 実装者、d2-run |
 | 3 | contract | 各ティアの契約テスト (契約から生成。提供側は応答をスキーマ検証、消費側は stub) | d2-run |
 | 4 | uc-bdd | `@uc:<slug>` のシナリオを API ドライバで実行 (実 DB は pglite) | integrate、d2-run |

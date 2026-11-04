@@ -128,6 +128,12 @@ ui:
     confidence: low            # inferred のときは low を付ける (UI ADR が人の確認箇所)
 ```
 
+## 機械チェック `checks` (機械チェックの ADR。0.3.0)
+
+`scope` に `system` を含む accepted ADR 1 本だけが持つ。6 観点 (generate / format / lint / build / test / security) のうち、generate 以外の道具を
+リポ全体 (`repo`: 文書類・設定) とティアごと (`tiers`: `*` が全ティアの既定、ティア id で上書き) に書く。値は既知の道具の名前か `{cmd: "<コマンド>"}`。
+形と既知の道具は [decision-candidates/machine-checks.md](decision-candidates/machine-checks.md)。validateAdr が道具の名前とティア id を検査する。
+
 ## コンテキストの境界 `contexts[]` (任意)
 
 業務ドメインを複数の境界づけられたコンテキストに分けるとき、いずれかの accepted ADR (通常はティア構成 ADR) の

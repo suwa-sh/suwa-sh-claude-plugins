@@ -48,10 +48,10 @@ d2-run は段階③で 2 回呼ぶ (決定の差分の開発ルールとアー�
 | F2 | `genArchTests.js` | `docs/adr/*.md` (`rules[].arch_test`) | `.dependency-cruiser.cjs` |
 | F3 | `genTestSupport.js` | `templates/test-support/`、`templates/features-support/`、`templates/cucumber.js`、`templates/tsx-register.js` | `packages/test-support/**`、`features/support/**`、`cucumber.js`、`tsx-register.js` (cucumber.js が読む ESM ローダ) |
 | F4 | `genContractTests.js` (d2-contract のスクリプト。骨格分) | `contracts/**`、`.distillery/config.yaml` | `apps/*/test/contract/**`、`packages/contracts/**` |
-| F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` / `genQlty.js` | `docs/adr/*.md` (`tiers[]`・`datastore_owner`・testing `capabilities`)、`contracts/contracts.json`、`.distillery/config.yaml` (genConfig が書いたものを genCi が読む) | `.distillery/config.yaml`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`apps/*/`、`packages/*/`、`.github/workflows/ci.yml`、`.qlty/qlty.toml` |
+| F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` / `genCheck.js` / `genQlty.js` | `docs/adr/*.md` (`tiers[]`・`datastore_owner`・testing `capabilities`・機械チェックの `checks`)、`contracts/contracts.json`、`.distillery/config.yaml` (genConfig が書いたものを genCi と genCheck が読む) | `.distillery/config.yaml`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`apps/*/`、`packages/*/`、`.github/workflows/ci.yml`、`scripts/check.mjs`、`.githooks/**`、`.distillery/distillery2.lock.json`、`.qlty/qlty.toml` |
 | F6 | `importUi.js` | `docs/design/storybook-app/src/` (d2-design の出力) | `packages/ui/**`、`packages/ui/.imported.yaml` |
 | F7 | `npm install` → `genQlty.js --refresh` | `package.json`、`package-lock.json`、`.qlty/qlty.toml` | `package-lock.json`、`.qlty/qlty.toml` |
-| F8 | `genConfig.js` → `genCi.js` → `genArchitectureDoc.js` (d2-decide のスクリプト) | `docs/adr/*.md`、`contracts/contracts.json`、`docs/requirements/rdra/**`、`.distillery/config.yaml` | `.distillery/config.yaml`、`.github/workflows/**`、`docs/adr/architecture.md` |
+| F8 | `genConfig.js` → `genCi.js` → `genCheck.js` → `genArchitectureDoc.js` (d2-decide のスクリプト) | `docs/adr/*.md`、`contracts/contracts.json`、`docs/requirements/rdra/**`、`.distillery/config.yaml` | `.distillery/config.yaml`、`.github/workflows/**`、`scripts/check.mjs`、`.githooks/**`、`.distillery/distillery2.lock.json`、`docs/adr/architecture.md` |
 | F9 | `runGates.js --uc bootstrap --upto static` | `.distillery/config.yaml`、`package.json`、`.qlty/qlty.toml`、`apps/*/test/contract/**`、`.dependency-cruiser.cjs`、`<run>/reports/**` | `<run>/reports/**` |
 
 - F4: 骨格分の契約テストだけ。UC ごとの契約テストと DB migration は **d2-contract mode=uc が持つ** (下記)
@@ -90,11 +90,13 @@ node <skills>/d2-foundation/scripts/genTestSupport.js --cwd <repo>
 node <skills>/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd <repo>
 node <skills>/d2-foundation/scripts/genSkeleton.js --adr docs/adr --cwd <repo>
 node <skills>/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>
+node <skills>/d2-foundation/scripts/genCheck.js --cwd <repo>   # 機械チェックの一括実行 scripts/check.mjs と hook。core.hooksPath を .githooks にする (必須)
 node <skills>/d2-foundation/scripts/genQlty.js --cwd <repo>   # qlty init の提案 + 上乗せ。--fallback で固定リスト、--force で作り直し
 npm install                                                                               # F7 (<repo> で)
 node <skills>/d2-foundation/scripts/genQlty.js --refresh --cwd <repo>   # F7。提案で増えた plugins だけ足す
 node <skills>/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd <repo>   # F8
 node <skills>/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>   # F8
+node <skills>/d2-foundation/scripts/genCheck.js --cwd <repo>   # F8 (契約込みの config から作り直す)
 node <skills>/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architecture.md --contracts contracts/contracts.json --rdra docs/requirements/rdra requirements=docs/requirements contracts=contracts --cwd <repo>   # F8 (basis に契約も記録する)
 node <skills>/d2-foundation/scripts/importUi.js --from docs/design/storybook-app --cwd <repo>   # F6
 node <skills>/d2-contract/scripts/genContractTests.js contracts --config .distillery/config.yaml --out-root <repo>   # F4 (骨格分)

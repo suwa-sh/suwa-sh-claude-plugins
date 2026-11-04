@@ -349,7 +349,7 @@ flowchart LR
   g_decisions[("決定 (NFR・ADR)<br/>ADR")]
   g_packaged[("同梱のひな形と手順書<br/>ルールのひな形 (同梱)・テスト基盤のひな形 (同梱)")]
   g_contracts[("契約<br/>契約カタログ")]
-  g_settings[("基盤の設定<br/>実行設定・リポの骨格 (package.json・apps/*・packages/*)・依存の lockfile・qlty 設定・開発ルール・依存方向の検査設定・Cucumber 設定・Cucumber の ESM ローダ (cucumber.js が読む)・CI")]
+  g_settings[("基盤の設定<br/>実行設定・リポの骨格 (package.json・apps/*・packages/*)・依存の lockfile・qlty 設定・開発ルール・依存方向の検査設定・Cucumber 設定・Cucumber の ESM ローダ (cucumber.js が読む)・CI・機械チェックの一括実行 (genCheck.js が config から生成。CI と hook が回す。0.3.0)・コミットのときの hook (commit-msg。genCheck.js が生成し core.hooksPath で入れる)・CI が生成物の鮮度を確かめるために取る distillery2 の commit (genCheck.js が書く)")]
   g_test_infra[("テスト基盤<br/>テスト基盤 (tracer・World)・Cucumber の support")]
   g_decisions --> p_foundation
   g_packaged --> p_foundation
@@ -361,14 +361,14 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `docs/adr/*.md`<br>`<skills>/d2-foundation/references/rule-templates/**`<br>`<skills>/d2-foundation/templates/**`<br>`contracts/contracts.json`<br>`.distillery/config.yaml`<br>`package.json`<br>`package-lock.json`<br>`.qlty/qlty.toml` | `docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`packages/test-support/**`<br>`features/support/**`<br>`cucumber.js`<br>`tsx-register.js`<br>`.distillery/config.yaml`<br>`package.json`<br>`.github/workflows/**`<br>`.qlty/qlty.toml`<br>`package-lock.json` |
+| `docs/adr/*.md`<br>`<skills>/d2-foundation/references/rule-templates/**`<br>`<skills>/d2-foundation/templates/**`<br>`contracts/contracts.json`<br>`.distillery/config.yaml`<br>`package.json`<br>`package-lock.json`<br>`.qlty/qlty.toml` | `docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`packages/test-support/**`<br>`features/support/**`<br>`cucumber.js`<br>`tsx-register.js`<br>`.distillery/config.yaml`<br>`package.json`<br>`.github/workflows/**`<br>`scripts/check.mjs`<br>`.githooks/**`<br>`.distillery/distillery2.lock.json`<br>`.qlty/qlty.toml`<br>`package-lock.json` |
 
 | 内訳 | 読む | 書く |
 |---|---|---|
 | F1 ルール | ADR、ルールのひな形 (同梱) | 開発ルール |
 | F2 依存方向の検査 | ADR | 依存方向の検査設定 |
 | F3 テスト基盤 | テスト基盤のひな形 (同梱) | テスト基盤 (tracer・World)、Cucumber の support、Cucumber 設定、Cucumber の ESM ローダ (cucumber.js が読む) |
-| F5 設定・骨格・CI・qlty | ADR、契約カタログ、実行設定 | 実行設定、リポの骨格 (package.json・apps/*・packages/*)、CI、qlty 設定 |
+| F5 設定・骨格・CI・qlty | ADR、契約カタログ、実行設定 | 実行設定、リポの骨格 (package.json・apps/*・packages/*)、CI、機械チェックの一括実行 (genCheck.js が config から生成。CI と hook が回す。0.3.0)、コミットのときの hook (commit-msg。genCheck.js が生成し core.hooksPath で入れる)、CI が生成物の鮮度を確かめるために取る distillery2 の commit (genCheck.js が書く)、qlty 設定 |
 | F7 依存の導入 (npm install・qlty の提案) | リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 | 依存の lockfile、qlty 設定 |
 
 #### 契約の骨格
@@ -419,7 +419,7 @@ flowchart LR
   g_decisions[("決定 (NFR・ADR)<br/>ADR・C4 図 (決定から)")]
   g_contracts[("契約<br/>契約カタログ・契約の分割ファイル・契約テスト (生成物)・契約からの codegen")]
   g_requirements[("要求<br/>RDRA モデル")]
-  g_settings[("基盤の設定<br/>実行設定・リポの骨格 (package.json・apps/*・packages/*)・依存の lockfile・qlty 設定・依存方向の検査設定・CI")]
+  g_settings[("基盤の設定<br/>実行設定・リポの骨格 (package.json・apps/*・packages/*)・依存の lockfile・qlty 設定・依存方向の検査設定・CI・機械チェックの一括実行 (genCheck.js が config から生成。CI と hook が回す。0.3.0)・コミットのときの hook (commit-msg。genCheck.js が生成し core.hooksPath で入れる)・CI が生成物の鮮度を確かめるために取る distillery2 の commit (genCheck.js が書く)")]
   g_design[("画面<br/>デザインシステム (Storybook アプリ)・画面部品")]
   g_run[("実行の記録<br/>ゲートの記録")]
   g_decisions --> p_foundation_finish
@@ -437,11 +437,11 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `docs/adr/*.md`<br>`contracts/contracts.json`<br>`docs/requirements/rdra/**`<br>`.distillery/config.yaml`<br>`docs/design/**`<br>`package.json`<br>`package-lock.json`<br>`.qlty/qlty.toml`<br>`contracts/**`<br>`apps/*/test/contract/**`<br>`.dependency-cruiser.cjs`<br>`<run>/reports/**` | `.distillery/config.yaml`<br>`.github/workflows/**`<br>`docs/adr/architecture.md`<br>`packages/ui/**`<br>`package-lock.json`<br>`.qlty/qlty.toml`<br>`apps/*/test/contract/**`<br>`packages/contracts/**`<br>`<run>/reports/**` |
+| `docs/adr/*.md`<br>`contracts/contracts.json`<br>`docs/requirements/rdra/**`<br>`.distillery/config.yaml`<br>`docs/design/**`<br>`package.json`<br>`package-lock.json`<br>`.qlty/qlty.toml`<br>`contracts/**`<br>`apps/*/test/contract/**`<br>`.dependency-cruiser.cjs`<br>`<run>/reports/**` | `.distillery/config.yaml`<br>`.github/workflows/**`<br>`scripts/check.mjs`<br>`.githooks/**`<br>`.distillery/distillery2.lock.json`<br>`docs/adr/architecture.md`<br>`packages/ui/**`<br>`package-lock.json`<br>`.qlty/qlty.toml`<br>`apps/*/test/contract/**`<br>`packages/contracts/**`<br>`<run>/reports/**` |
 
 | 内訳 | 読む | 書く |
 |---|---|---|
-| F8 契約込みの再生成 (設定・CI・C4 図) | ADR、契約カタログ、RDRA モデル、実行設定 | 実行設定、CI、C4 図 (決定から) |
+| F8 契約込みの再生成 (設定・CI・C4 図) | ADR、契約カタログ、RDRA モデル、実行設定 | 実行設定、CI、機械チェックの一括実行 (genCheck.js が config から生成。CI と hook が回す。0.3.0)、コミットのときの hook (commit-msg。genCheck.js が生成し core.hooksPath で入れる)、CI が生成物の鮮度を確かめるために取る distillery2 の commit (genCheck.js が書く)、C4 図 (決定から) |
 | F6 画面部品の取り込み | デザインシステム (Storybook アプリ) | 画面部品 |
 | F7 依存の導入 (F6 の後) | リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 | 依存の lockfile、qlty 設定 |
 | F4 契約テストの生成 (骨格分) | 契約の分割ファイル、実行設定 | 契約テスト (生成物)、契約からの codegen |
@@ -1276,7 +1276,7 @@ flowchart LR
   g_docs[("文書の入口と課題ファイル<br/>課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成)・文書の入口・課題の一覧 (genDocsReadme が課題ファイルから生成。0 件なら消す)")]
   g_records[("進行の記録 (引き継ぎ・決めたこと・レビュー)<br/>引き継ぎファイル (機能の中。人に聞くこと・前のステップの課題・反証)・縦・横レビューの依頼文と結果 (機能の中)")]
   g_contracts[("契約<br/>契約の分割ファイル・契約テスト (生成物)")]
-  g_settings[("基盤の設定<br/>開発ルール・依存方向の検査設定")]
+  g_settings[("基盤の設定<br/>開発ルール・依存方向の検査設定・機械チェックの一括実行 (genCheck.js が config から生成。CI と hook が回す。0.3.0)・コミットのときの hook (commit-msg。genCheck.js が生成し core.hooksPath で入れる)・CI が生成物の鮮度を確かめるために取る distillery2 の commit (genCheck.js が書く)")]
   g_decisions[("決定 (NFR・ADR)<br/>ADR")]
   g_run --> p_run_resume
   g_docs --> p_run_resume
@@ -1291,7 +1291,7 @@ flowchart LR
 
 | 読む | 書く |
 |---|---|
-| `<run>/events.jsonl`<br>`docs/feedback/**`<br>`.distillery/logs/resume-<slug>.json`<br>`<run>/resume/**`<br>`<run>/handoff/**` | `<run>/events.jsonl`<br>`<run>/resume/**`<br>`.distillery/logs/resume-<slug>.json`<br>`<run>/reviews/**`<br>`contracts/**`<br>`apps/*/test/contract/**`<br>`docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`docs/adr/*.md`<br>`docs/README.md`<br>`docs/feedback/README.md` |
+| `<run>/events.jsonl`<br>`docs/feedback/**`<br>`.distillery/logs/resume-<slug>.json`<br>`<run>/resume/**`<br>`<run>/handoff/**` | `<run>/events.jsonl`<br>`<run>/resume/**`<br>`.distillery/logs/resume-<slug>.json`<br>`<run>/reviews/**`<br>`contracts/**`<br>`apps/*/test/contract/**`<br>`docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`docs/adr/*.md`<br>`docs/README.md`<br>`docs/feedback/README.md`<br>`scripts/check.mjs`<br>`.githooks/**`<br>`.distillery/distillery2.lock.json` |
 
 ## ファイルの一覧
 
@@ -1319,6 +1319,9 @@ flowchart LR
 | リポの骨格 (package.json・apps/*・packages/*) | 基盤の設定 | `package.json` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後)、F9 基盤のチェックポイント、ゲートの実行、qlty の提案を足す (④)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避) |
 | 依存の lockfile | 基盤の設定 | `package-lock.json` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後) | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後)、ゲートの実行、qlty の提案を足す (④)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避) |
 | CI | 基盤の設定 | `.github/workflows/**` | 生成 (最終成果物) | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図) | — |
+| 機械チェックの一括実行 (genCheck.js が config から生成。CI と hook が回す。0.3.0) | 基盤の設定 | `scripts/check.mjs` | 生成 (最終成果物) | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から) | — |
+| コミットのときの hook (commit-msg。genCheck.js が生成し core.hooksPath で入れる) | 基盤の設定 | `.githooks/**` | 生成 (最終成果物) | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から) | — |
+| CI が生成物の鮮度を確かめるために取る distillery2 の commit (genCheck.js が書く) | 基盤の設定 | `.distillery/distillery2.lock.json` | 生成 (最終成果物) | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から) | — |
 | qlty 設定 | 基盤の設定 | `.qlty/qlty.toml` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後)、qlty の提案を足す (④) | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後)、F9 基盤のチェックポイント、ゲートの実行、qlty の提案を足す (④)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避) |
 | 契約カタログ | 契約 | `contracts/contracts.json` | 生成 | 契約の骨格 | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行) |
 | 契約の分割ファイル | 契約 | `contracts/**` | 生成 | 契約の骨格、契約の差分、上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から) | 基盤の仕上げ (F8→F6→F7→F4→F9)、F4 契約テストの生成 (骨格分)、機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)、契約の差分、as-built の抽出と要約、as-built の抽出、骨格分の契約テストの鮮度 (受理時の検査)、契約の bundle の鮮度 (--check)、RDB スキーマの鮮度 (--check)、UC の契約の索引の検査、縦・横レビュー (上流の段: 要求・決定・基盤)、縦・横レビュー (機能の中: シナリオ・契約・実装・as-built) |

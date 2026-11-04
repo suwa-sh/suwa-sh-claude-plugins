@@ -23,6 +23,12 @@
     "tiers": { "type": "array", "items": { "$ref": "#/$defs/Tier" } },
     "datastore_owner": { "type": "string", "minLength": 1 },
     "contexts": { "type": "array", "items": { "$ref": "#/$defs/Context" } },
+    "checks": {
+      "type": "object",
+      "description": "機械チェックの ADR (0.3.0)。repo (文書類・設定) と tiers (ティア id か * ごとのソース) の 6 観点の道具。中身は d2-foundation/scripts/checks.js が検査する",
+      "properties": { "repo": { "type": "object" }, "tiers": { "type": "object" } },
+      "additionalProperties": false
+    },
     "capabilities": {
       "type": "object",
       "required": ["browser"],

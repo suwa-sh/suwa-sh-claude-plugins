@@ -258,6 +258,24 @@ stores:
     terminal: true
     aliases:
       - ".github/workflows/ci.yml"
+  - id: check-script
+    name: 機械チェックの一括実行 (genCheck.js が config から生成。CI と hook が回す。0.3.0)
+    group: settings
+    path: "scripts/check.mjs"
+    origin: produced
+    terminal: true
+  - id: githooks
+    name: コミットのときの hook (commit-msg。genCheck.js が生成し core.hooksPath で入れる)
+    group: settings
+    path: ".githooks/**"
+    origin: produced
+    terminal: true
+  - id: plugin-lock
+    name: CI が生成物の鮮度を確かめるために取る distillery2 の commit (genCheck.js が書く)
+    group: settings
+    path: ".distillery/distillery2.lock.json"
+    origin: produced
+    terminal: true
   - id: qlty-config
     name: qlty 設定
     group: settings
@@ -563,6 +581,9 @@ processes:
       - "`tsx-register.js`"
       - "`.distillery/config.yaml`"
       - "`.github/workflows/**`"
+      - "`scripts/check.mjs`"
+      - "`.githooks/**`"
+      - "`.distillery/distillery2.lock.json`"
       - "`.qlty/qlty.toml`"
       - "`apps/*/`"
       - "`packages/*/`"
@@ -572,8 +593,8 @@ processes:
       - "`biome.json`"
       - "`package-lock.json`。例外: `npm install` が作る `node_modules/**` (gitignore)"
     reads: [adr, rule-templates, support-templates, contracts-catalog, config, skeleton, lockfile, qlty-config]
-    writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, qlty-config, lockfile]
-    allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, qlty-config, lockfile]
+    writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, check-script, githooks, plugin-lock, qlty-config, lockfile]
+    allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, check-script, githooks, plugin-lock, qlty-config, lockfile]
     notes:
       - "例外: `npm install` が作る `node_modules/**` (gitignore)"
   - id: foundation.F1
@@ -607,7 +628,7 @@ processes:
     kind: script
     phase: F5
     reads: [adr, contracts-catalog, config]
-    writes: [config, skeleton, ci, qlty-config]
+    writes: [config, skeleton, ci, check-script, githooks, plugin-lock, qlty-config]
   - id: foundation.F7
     name: F7 依存の導入 (npm install・qlty の提案)
     parent: foundation
@@ -649,6 +670,9 @@ processes:
     write_set:
       - "`.distillery/config.yaml`"
       - "`.github/workflows/**`"
+      - "`scripts/check.mjs`"
+      - "`.githooks/**`"
+      - "`.distillery/distillery2.lock.json`"
       - "`docs/adr/architecture.md`"
       - "`packages/ui/**`"
       - "`package-lock.json`"
@@ -657,8 +681,8 @@ processes:
       - "`packages/contracts/**`"
       - "`<run>/reports/**` (チェックポイントが書く。slug は bootstrap)。例外: `npm install` が作る `node_modules/**` (gitignore)"
     reads: [adr, contracts-catalog, req-rdra, config, design, skeleton, lockfile, qlty-config, contracts-src, contract-tests, depcruise-config, reports]
-    writes: [config, ci, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
-    allowed_writes: [config, ci, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
+    writes: [config, ci, check-script, githooks, plugin-lock, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
+    allowed_writes: [config, ci, check-script, githooks, plugin-lock, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
     notes:
       - "例外: `npm install` が作る `node_modules/**` (gitignore)"
       - "チェックポイントが書く。slug は bootstrap"
@@ -668,9 +692,9 @@ processes:
     stage: foundation
     kind: script
     phase: F8
-    scripts: [genConfig.js, genCi.js, genArchitectureDoc.js]
+    scripts: [genConfig.js, genCi.js, genCheck.js, genArchitectureDoc.js]
     reads: [adr, contracts-catalog, req-rdra, config]
-    writes: [config, ci, adr-architecture]
+    writes: [config, ci, check-script, githooks, plugin-lock, adr-architecture]
   - id: foundation.F6
     name: F6 画面部品の取り込み
     parent: foundation.finish
@@ -1105,7 +1129,7 @@ processes:
     scripts: [resumeAfterUpstream.js]
     run_table_row: "④ の resumeAfterUpstream.js (写し直し)"
     reads: [run-events, feedback-docs, resume-journal, resume-diffs, handoff-run]
-    writes: [run-events, resume-diffs, resume-journal, reviews-run, contracts-src, contract-tests, rules, depcruise-config, adr, docs-readme, feedback-index]
+    writes: [run-events, resume-diffs, resume-journal, reviews-run, contracts-src, contract-tests, rules, depcruise-config, adr, docs-readme, feedback-index, check-script, githooks, plugin-lock]
   # ================= 起動時の移行 (UC の外。課題を数える前に、0.1.x の残りを片付ける) =================
   # main マージ済みなのに課題ファイルにしていない run の課題を課題ファイルにする (0.1.28)
   - id: run.migrate-issues

@@ -16,12 +16,13 @@ tiers:
     lang: typescript
     provides: [api, events]          # 提供する契約 id
     consumes: [db]                   # 消費する契約 id
-    commands:                        # ゲートが実行するコマンド。{report} はレポート出力先に置換される
+    commands:                        # ゲートと一括チェック (scripts/check.mjs) が実行するコマンド。{report} はレポート出力先に置換される。機械チェックの ADR の checks から作る (0.3.0)
       format_check: npm run format:check -w apps/backend-api
       lint: npm run lint -w apps/backend-api
-      typecheck: npm run typecheck -w apps/backend-api
-      unit: npm run test -w apps/backend-api -- --reporter=json --outputFile={report}
-      contract: npm run test:contract -w apps/backend-api -- --reporter=json --outputFile={report}
+      build: npm run build -w apps/backend-api          # tsc -p . (dist/ に出す。型の検査を含む)
+      unit: npm run test -w apps/backend-api -- --run --reporter=json --outputFile={report}
+      contract: npm run test:contract -w apps/backend-api -- --run --reporter=json --outputFile={report}   # 契約を提供するティアだけ
+      security: npm audit -w apps/backend-api --audit-level=high --omit=dev && qlty check ... apps/backend-api   # 依存の脆弱性と SAST。ゲートでは落ちても advisory
 datastore_owner: backend-api         # migration を持つティア
 contracts:
   - id: api
@@ -66,7 +67,7 @@ models:
 
 | ゲート | 実行するもの | 並列 |
 |---|---|---|
-| static | 各ティアの `format_check` / `lint` / `typecheck` と `commands.arch_test`、`commands.quality` (qlty。リポ全体で 1 回) | ティア並列 |
+| static | 各ティアの `format_check` / `lint` / `build` (無い古い config は `typecheck`) / `security` (落ちても advisory) と `commands.arch_test`、リポ全体の `commands.format`・`commands.quality` (qlty)・`commands.secrets`、生成物の鮮度 (`scripts/check.mjs --only generate`。あるときだけ。落ちても advisory) | ティア並列 |
 | unit | 各ティアの `unit` | ティア並列 |
 | contract | 契約の提供側ティア (`contracts[].provider` / `tiers[].provides`) の `contract` だけ。消費側は skipped (not a provider)。提供側が無ければ pass (検査対象なし) | ティア並列 |
 | uc-bdd | `commands.uc_bdd` | 単発 |
