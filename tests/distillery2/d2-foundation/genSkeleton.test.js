@@ -344,3 +344,68 @@ test('0.3.0: 既存の root package.json にも check と prepare (hook を入�
   assert.equal(JSON.parse(fs.readFileSync(path.join(c, 'package.json'), 'utf8')).scripts.prepare, 'husky && (git config core.hooksPath .githooks || true)', '2 回回しても重ねない');
 });
 
+// ---- 画面の土台 (0.3.0) ----
+function adrWithUi(ui) {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-skel-adr-'));
+  for (const f of fs.readdirSync(adrDir)) fs.copyFileSync(path.join(adrDir, f), path.join(d, f));
+  if (ui) fs.writeFileSync(path.join(d, '0009-ui.md'), `---\nid: "0009"\ntitle: ui\nstatus: accepted\nscope: [ui]\nui:\n${ui}\n---\n\n# 決定\n`);
+  return d;
+}
+const SPA_FILES = ['index.html', 'vite.config.ts', 'src/main.tsx', 'src/App.tsx', 'src/routes.tsx', 'src/styles.css', 'src/vite-env.d.ts'];
+
+test('genSkeleton: ADR の ui が React の SPA・Tailwind なら frontend に画面の土台を置き、vite でビルドする', () => {
+  const c = tmp();
+  const adr = adrWithUi('  framework: react\n  rendering: spa\n  styling: tailwind\n  design_system: true\n  brand:\n    name: "会議室 <予約>"');
+  const r = run('genSkeleton.js', c, ['--adr', adr]);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /画面の土台: frontend \(画面部品 packages\/ui を読む\)/);
+  for (const f of SPA_FILES) assert.ok(fs.existsSync(path.join(c, 'apps/frontend', f)), `missing ${f}`);
+  assert.ok(!fs.existsSync(path.join(c, 'apps/frontend/src/index.ts')), '入口は main.tsx なので空のエントリは置かない');
+  assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/src/index.ts')), 'frontend 以外は今までどおり');
+  assert.ok(!fs.existsSync(path.join(c, 'apps/backend-api/index.html')));
+  const pkg = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/package.json'), 'utf8'));
+  assert.equal(pkg.scripts.build, 'tsc --noEmit -p . && vite build', 'tsc の出力と vite の dist/ をぶつけない');
+  for (const d of ['vite', '@vitejs/plugin-react', 'tailwindcss', '@tailwindcss/vite']) assert.ok(pkg.devDependencies[d], `devDependency ${d}`);
+  assert.match(fs.readFileSync(path.join(c, 'apps/frontend/index.html'), 'utf8'), /<title>会議室 &lt;予約&gt;<\/title>/);
+  const css = fs.readFileSync(path.join(c, 'apps/frontend/src/styles.css'), 'utf8');
+  assert.match(css, /@import "\.\.\/\.\.\/\.\.\/packages\/ui\/entry\.css";/);
+  assert.doesNotMatch(css, /@source|@theme/, 'biome 2.2.5 の lint が落とす Tailwind 固有の at-rule を書かない');
+  assert.match(fs.readFileSync(path.join(c, 'apps/frontend/src/routes.tsx'), 'utf8'), /export const routes: Route\[\] = \[\];/);
+  // 再実行は何も変えない
+  const again = run('genSkeleton.js', c, ['--adr', adr]);
+  assert.match(again.out, /genSkeleton: created 0,/);
+});
+
+test('genSkeleton: 画面部品を持たない ui は Tailwind を直接読む。SSR・ui が無いときは土台を置かない', () => {
+  const plain = tmp();
+  run('genSkeleton.js', plain, ['--adr', adrWithUi('  framework: react\n  rendering: spa\n  styling: tailwind\n  design_system: false\n  component_lib: false')]);
+  assert.match(fs.readFileSync(path.join(plain, 'apps/frontend/src/styles.css'), 'utf8'), /^@import "tailwindcss";$/m);
+  assert.match(fs.readFileSync(path.join(plain, 'apps/frontend/index.html'), 'utf8'), /<title>frontend<\/title>/, 'ブランド名が無ければティアの名前');
+  for (const [ui, why] of [['  framework: react\n  rendering: ssr\n  styling: tailwind', /React の SPA・Tailwind だけ \(ADR: react \/ ssr \/ tailwind\)/], [null, /ADR に ui が無い/]]) {
+    const c = tmp();
+    const r = run('genSkeleton.js', c, ['--adr', adrWithUi(ui)]);
+    assert.match(r.out, why);
+    for (const f of SPA_FILES) assert.ok(!fs.existsSync(path.join(c, 'apps/frontend', f)), `作らない: ${f}`);
+    assert.ok(fs.existsSync(path.join(c, 'apps/frontend/src/index.ts')));
+    assert.equal(JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/package.json'), 'utf8')).scripts.build, 'tsc -p .');
+  }
+});
+
+test('genSkeleton: 既にある frontend の package.json には足りない依存とスクリプトだけ足す (手で変えた build は触らない)', () => {
+  const adr = adrWithUi('  framework: react\n  rendering: spa\n  styling: tailwind');
+  const c = tmp();
+  const p = path.join(c, 'apps/frontend/package.json');
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, JSON.stringify({ name: '@app/frontend', scripts: { build: 'tsc -p .' }, dependencies: { vite: '^8.0.0' } }));
+  run('genSkeleton.js', c, ['--adr', adr]);
+  let pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+  assert.equal(pkg.scripts.build, 'tsc --noEmit -p . && vite build', '既定の build は置き換える');
+  assert.equal(pkg.scripts.dev, 'vite');
+  assert.equal(pkg.dependencies.vite, '^8.0.0');
+  assert.ok(!pkg.devDependencies.vite, 'どこかの区分に既にあれば足さない');
+  assert.ok(pkg.devDependencies['@tailwindcss/vite']);
+  fs.writeFileSync(p, JSON.stringify({ ...pkg, scripts: { ...pkg.scripts, build: 'my-build' } }));
+  run('genSkeleton.js', c, ['--adr', adr]);
+  pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+  assert.equal(pkg.scripts.build, 'my-build');
+});

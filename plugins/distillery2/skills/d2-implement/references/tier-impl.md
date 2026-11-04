@@ -34,7 +34,9 @@
    (契約テストが例ごとに渡す。UC BDD の API ドライバは `{ db, clock }` を渡す。`packages/test-support/README.md` の結線の契約)。usecase / repository / gateway は **注入で差し替えられるオブジェクト**にする
    (integrate が `traced()` で包んで図の参加者にする)
 3. frontend なら、画面の操作を **ブラウザ無しで呼べる入口関数** (例: `submitLoanCheckout(api, input)`) として export し、
-   API 呼び出しは生成クライアントの `options.fetch` で差し替えられる形にする (UC BDD が in-process で画面 → API を通すため)
+   API 呼び出しは生成クライアントの `options.fetch` で差し替えられる形にする (UC BDD が in-process で画面 → API を通すため)。
+   画面は基盤が置いた土台 (`src/App.tsx`・`src/routes.tsx`) に載せる: 自分の画面を `src/routes.tsx` の表に 1 行足す (path は `screens.yaml` の route)。
+   ビルドの設定・入口・スタイルの入口を作り直さない (土台が無い構成なら、自分で作らず課題にする)
 4. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `build` / `unit` (`.distillery/config.yaml` の commands。`build` が無い古い config は `typecheck`)。
    書き換えを伴う formatter は使わない (並列ティアの write-set を侵すため)。
    **`runGates.js` は使わない**。runGates は `<run>/reports/gates.json` をゲート名単位で置き換えるため、並列で走る他ティアの記録を消す。

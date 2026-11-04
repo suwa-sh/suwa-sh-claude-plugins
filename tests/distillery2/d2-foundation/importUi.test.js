@@ -135,3 +135,19 @@ test('取り込みの後に packages/ui を biome で整形する (biome が無�
   writeFile(bin, '#!/bin/sh\necho broken >&2\nexit 1\n');
   assert.match(run({ from: 'design', cwd }).format, /^failed \(exit 1\): broken/, '整形できなくても取り込みは成功し、報告だけする');
 });
+
+test('画面の CSS の入口 (packages/ui/entry.css): Tailwind の CSS が 1 本ならそれを指す。0 本・2 本なら書かない (0.3.0)', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  const design = path.join(cwd, 'design');
+  writeFile(path.join(design, 'src/components/ui/Button.tsx'), 'export const Button = () => null;');
+  writeFile(path.join(design, 'src/styles/design-tokens.css'), ':root { --x: 1px; }');
+  const entry = path.join(cwd, 'packages/ui/entry.css');
+  assert.equal(run({ from: 'design', cwd }).css, 'none (Tailwind の CSS が無い)');
+  assert.ok(!fs.existsSync(entry));
+  writeFile(path.join(design, 'src/app/globals.css'), "@import 'tailwindcss';\n@import '../styles/design-tokens.css';\n");
+  assert.equal(run({ from: 'design', cwd }).css, 'entry.css → app/globals.css');
+  assert.match(fs.readFileSync(entry, 'utf8'), /^@import "\.\/app\/globals\.css";$/m);
+  writeFile(path.join(design, 'src/styles/globals.css'), '@import "tailwindcss";\n');
+  assert.match(run({ from: 'design', cwd }).css, /^none \(Tailwind の CSS が 2 本/);
+  assert.ok(!fs.existsSync(entry), '前に書いた入口は消す (どちらを指すか決められない)');
+});

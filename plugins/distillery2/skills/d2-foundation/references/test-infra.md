@@ -24,7 +24,11 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 - **root `package.json` devDependencies** (常時): `@biomejs/biome` / `@cucumber/cucumber` / `@electric-sql/pglite` / `@redocly/cli` / `@apidevtools/json-schema-ref-parser` / `dependency-cruiser` / `vitest` / `supertest` / `@types/supertest` / `@playwright/test` / `ajv` / `ajv-formats` / `tsx` / `typescript`。frontend ティアがあれば `react` / `react-dom` / `@types/react` / `@types/react-dom` を追加。
 - **各 app `package.json` scripts** (実コマンド。echo プレースホルダは廃止): `test` = `vitest run` / `typecheck` = `tsc --noEmit -p .` / `lint` = `biome lint .` / `format:check` = `biome format .` / `test:contract` = `vitest run -c vitest.contract.config.ts`。
 - **各 app に生成**: `tsconfig.json` (base 継承、frontend は jsx 有効)、`vitest.config.ts` (単体: src/) と `vitest.contract.config.ts` (契約テスト: test/contract/) (frontend は `environment: jsdom` + 自動 JSX)、
-  空の `src/index.ts`、提供側 (kind≠frontend) には仮の `src/test-app.ts` (`createTestApp(_options?: { fixture?: string }): never`。契約テストと api ドライバの import 先。実装で置き換える)。
+  空の `src/index.ts` (画面の土台を置く frontend は除く)、提供側 (kind≠frontend) には仮の `src/test-app.ts` (`createTestApp(_options?: { fixture?: string }): never`。契約テストと api ドライバの import 先。実装で置き換える)。
+- **画面の土台** (ADR の `ui` が React の SPA・Tailwind のとき、frontend ティアだけ。0.3.0): `index.html`・`vite.config.ts`・`src/{main.tsx, App.tsx, routes.tsx, styles.css, vite-env.d.ts}`。
+  scripts に `dev` / `preview` を足し、`build` を `tsc --noEmit -p . && vite build` にする。devDependencies に `vite` / `@vitejs/plugin-react` / `tailwindcss` / `@tailwindcss/vite`。
+  `styles.css` は画面部品があれば `packages/ui/entry.css` (F6 の importUi が書く) を、無ければ `tailwindcss` を直接 `@import` する。
+  Tailwind 固有の at-rule (`@source` / `@theme`) は書かない (biome 2.2.5 の lint が未知の at-rule として落とす)。画面のソースは vite の root として Tailwind が自動で走査する
 - **root に生成**: `biome.json` (formatter / linter 有効)。
 
 ## 決めたこと

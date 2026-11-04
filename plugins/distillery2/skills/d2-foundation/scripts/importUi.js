@@ -124,7 +124,27 @@ function run(o) {
   const basisLine = headerLine(stamp({ design: o.from }, o.cwd));
   const manifest = { basis: basisLine.replace(/^basis:\s*/, ''), from: o.from, imported_at: importedAt, entry, content_sha256: contentSha256, files };
   fs.writeFileSync(manifestPath, `# ${basisLine}\n` + stringifyYaml(manifest));
-  return { code: 0, count: files.length, entry, removed, format: formatUi(o.cwd) };
+  const css = writeEntryCss(uiDir, relPaths);
+  return { code: 0, count: files.length, entry, removed, css, format: formatUi(o.cwd) };
+}
+
+/**
+ * 画面の土台 (genSkeleton が置く apps/<frontend>/src/styles.css) が読む CSS の入口を packages/ui/entry.css に書く (0.3.0)。
+ * d2-design の Tailwind の CSS の置き場は版や構成で変わる (src/app/globals.css・src/styles/globals.css) ので、
+ * 取り込んだ CSS のうち `@import "tailwindcss"` を持つ 1 本を探して指す。0 本・2 本以上なら書かずに報告する
+ */
+const ENTRY_CSS = 'entry.css';
+function writeEntryCss(uiDir, relPaths) {
+  if (relPaths.includes(ENTRY_CSS)) return `skipped (取り込み元に ${ENTRY_CSS} がある)`;
+  const found = relPaths.filter((p) => p.endsWith('.css') && /@import\s+["']tailwindcss["']/.test(fs.readFileSync(path.join(uiDir, p), 'utf8')));
+  const dst = path.join(uiDir, ENTRY_CSS);
+  if (found.length !== 1) {
+    if (fs.existsSync(dst)) fs.rmSync(dst);
+    return found.length ? `none (Tailwind の CSS が ${found.length} 本: ${found.join(', ')})` : 'none (Tailwind の CSS が無い)';
+  }
+  const rel = found[0].split(path.sep).join('/');
+  fs.writeFileSync(dst, `/* distillery2 importUi.js が書いた画面部品の CSS の入口 (取り込みのたびに書き直す)。画面 (apps/<frontend>/src/styles.css) はここを読む */\n@import "./${rel}";\n`);
+  return `entry.css → ${rel}`;
 }
 
 /**
@@ -143,9 +163,9 @@ function formatUi(cwd) {
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
-  if (r.code === 0) console.log(`importUi: ${r.count} files → packages/ui${r.removed.length ? ` (removed ${r.removed.length}: ${r.removed.join(', ')})` : ''} format: ${r.format}`);
+  if (r.code === 0) console.log(`importUi: ${r.count} files → packages/ui${r.removed.length ? ` (removed ${r.removed.length}: ${r.removed.join(', ')})` : ''} css: ${r.css} format: ${r.format}`);
   return r.code;
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { parseArgs, run };
+module.exports = { parseArgs, run, ENTRY_CSS };

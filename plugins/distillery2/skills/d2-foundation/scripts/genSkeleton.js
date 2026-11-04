@@ -16,7 +16,7 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
-const { loadAdrs, collectTiers } = require('./adr');
+const { loadAdrs, collectTiers, collectUi } = require('./adr');
 
 function parseArgs(argv) {
   const o = { adr: 'docs/adr', cwd: process.cwd(), migrate: false };
@@ -183,11 +183,11 @@ const LEGACY_APP_SCRIPTS = {
 };
 
 /** 各 app の最小 package.json。scripts は実コマンド (vitest / tsc / biome)。実装で必要なら上書きされない。 */
-function appPackageJson(dir) {
-  return JSON.stringify({
-    name: `@app/${dir}`, version: '0.0.0', private: true, type: 'module',
-    scripts: appScripts(),
-  }, null, 2) + '\n';
+function appPackageJson(dir, spa = false) {
+  const pkg = { name: `@app/${dir}`, version: '0.0.0', private: true, type: 'module', scripts: appScripts() };
+  // 画面の土台を置く frontend は vite でビルドする (0.3.0)
+  if (spa) { Object.assign(pkg.scripts, SPA_SCRIPTS); pkg.devDependencies = { ...SPA_DEV_DEPENDENCIES }; }
+  return JSON.stringify(pkg, null, 2) + '\n';
 }
 
 /**
@@ -229,7 +229,162 @@ export function createTestApp(_options?: { fixture?: string }): never {
   throw new Error('test-app は未結線 (d2-implement で createTestApp を実装する)');
 }
 `;
-const EMPTY_INDEX_TS = '// distillery2 genSkeleton.js が置いた空のエントリ。実装で置き換える (typecheck が対象ファイル 0 で落ちないため)\nexport {};\n';
+// ---- 画面の土台 (0.3.0) ----------------------------------------------------
+// ADR の ui が React の SPA・Tailwind のとき、frontend ティアに「ブラウザで開ける画面」の土台を置く。
+// 置かないと最初の画面の機能の担当がそれぞれ土台を作り、作り方が食い違う (会議室の予約の実地確認 2 起動目)。
+// 各画面の機能は src/routes.tsx の表に 1 行足すだけにする。ルータのライブラリは ADR が決めていないので使わない。
+// 版は 2026-11-04 に npm view で確かめた最新 (d2-design の Storybook と同じ組)。
+const SPA_DEV_DEPENDENCIES = {
+  '@tailwindcss/vite': '^4.3.4',
+  '@vitejs/plugin-react': '^6.2.1',
+  tailwindcss: '^4.3.4',
+  vite: '^8.3.5',
+};
+const SPA_SCRIPTS = {
+  dev: 'vite',
+  // tsc は型の検査だけ (dist/ は vite が書く)
+  build: 'tsc --noEmit -p . && vite build',
+  preview: 'vite preview',
+};
+// 画面部品 (packages/ui) の入口の CSS。importUi.js (F6) が取り込んだ Tailwind の CSS を指して書く。
+// 画面の styles.css には Tailwind 固有の書き方 (@source・@theme) を書かない: biome 2.2.5 の lint が未知の at-rule として落とす (0.3.0 の確認で実測)
+const UI_ENTRY_CSS = 'entry.css';
+
+/** ADR の ui から画面の土台を作るか決める。作らないときは理由を返す */
+function spaPlan(ui, tiers) {
+  const fronts = tiers.filter((t) => t.kind === 'frontend');
+  if (!fronts.length) return { make: false, reason: 'frontend ティアが無い' };
+  if (!ui) return { make: false, reason: 'ADR に ui が無い' };
+  const framework = ui.framework ?? 'react';
+  const rendering = ui.rendering ?? 'spa';
+  const styling = ui.styling ?? 'tailwind';
+  if (framework !== 'react' || rendering !== 'spa' || styling !== 'tailwind') {
+    return { make: false, reason: `土台を作るのは React の SPA・Tailwind だけ (ADR: ${framework} / ${rendering} / ${styling})。画面の機能が作る` };
+  }
+  return { make: true, fronts, useUi: ui.design_system === true || ui.component_lib === true, title: ui.brand?.name ? String(ui.brand.name) : null };
+}
+
+const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const SPA_HEAD = (what) => `distillery2 genSkeleton.js が置いた${what}。手で変えてよい (再実行で上書きしない)`;
+
+function spaFiles(dir, plan) {
+  const title = escapeHtml(plan.title ?? dir);
+  const styles = plan.useUi
+    ? `/* ${SPA_HEAD('画面のスタイルの入口')}。
+ * 画面部品 (packages/ui) の Tailwind とデザイントークンを読む。この画面のソースは vite の root として Tailwind が自動で走査する */
+@import "../../../packages/ui/${UI_ENTRY_CSS}";
+`
+    : `/* ${SPA_HEAD('画面のスタイルの入口')} */
+@import "tailwindcss";
+`;
+  return {
+    'index.html': `<!doctype html>
+<!-- ${SPA_HEAD('画面の HTML の入口')} -->
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${title}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+`,
+    'vite.config.ts': `// ${SPA_HEAD('画面のビルドの設定 (React と Tailwind)')}
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+});
+`,
+    'src/vite-env.d.ts': '/// <reference types="vite/client" />\n',
+    'src/styles.css': styles,
+    'src/main.tsx': `// ${SPA_HEAD('画面の描画の入口')}
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import './styles.css';
+
+const root = document.getElementById('root');
+if (!root) throw new Error('#root が無い (index.html を確かめる)');
+createRoot(root).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+`,
+    'src/App.tsx': `// ${SPA_HEAD('画面の切り替え')}
+import { useEffect, useState } from 'react';
+import { routes } from './routes';
+
+/** 画面を切り替える (ブラウザの履歴に積む)。リンクやボタンから呼ぶ */
+export function navigate(path: string): void {
+  window.history.pushState(null, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+/** routes.tsx の表から、今の URL の画面を選ぶ。/ は表の先頭の画面 */
+export function App() {
+  const [pathname, setPathname] = useState(() => window.location.pathname);
+  useEffect(() => {
+    const onPop = () => setPathname(window.location.pathname);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const route =
+    routes.find((r) => r.path === pathname) ?? (pathname === '/' ? routes[0] : undefined);
+  if (route) return <>{route.element}</>;
+  return (
+    <main>
+      <h1>画面が見つかりません</h1>
+      <p>{pathname}</p>
+    </main>
+  );
+}
+`,
+    'src/routes.tsx': `// ${SPA_HEAD('画面の表')}
+import type { ReactNode } from 'react';
+
+export interface Route {
+  /** docs/design/screens.yaml の route と同じ値 */
+  path: string;
+  element: ReactNode;
+}
+
+/** 画面の機能は、自分の画面をここに 1 行足す */
+export const routes: Route[] = [];
+`,
+  };
+}
+
+/** 既にある frontend の package.json に、画面の土台のスクリプトと依存を足す (既定の build だけ置き換える。手で変えたものは触らない) */
+function ensureSpaPackage(cwd, rel, created) {
+  const p = path.resolve(cwd, rel);
+  const pkg = readJsonSafe(p);
+  if (!pkg) return;
+  const scripts = pkg.scripts || {};
+  const dev = pkg.devDependencies || {};
+  const deps = pkg.dependencies || {};
+  const added = [];
+  for (const [k, v] of Object.entries(SPA_SCRIPTS)) {
+    if (scripts[k] === v) continue;
+    if (scripts[k] === undefined || (k === 'build' && scripts[k] === appScripts().build)) { scripts[k] = v; added.push(`scripts.${k}`); }
+  }
+  for (const [k, v] of Object.entries(SPA_DEV_DEPENDENCIES)) {
+    if (!dev[k] && !deps[k]) { dev[k] = v; added.push(k); }
+  }
+  if (!added.length) return;
+  pkg.scripts = scripts;
+  pkg.devDependencies = dev;
+  fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+  created.push(`${rel} (画面の土台: ${added.join(', ')})`);
+}
+
+const EMPTY_INDEX_TS ='// distillery2 genSkeleton.js が置いた空のエントリ。実装で置き換える (typecheck が対象ファイル 0 で落ちないため)\nexport {};\n';
 
 /**
  * 各 app の vitest 設定。単体 (vitest.config.ts) は src/ だけ、契約テスト (vitest.contract.config.ts) は test/contract/ だけを対象にする
@@ -420,16 +575,24 @@ function run(o) {
   const { tiers } = collectTiers(adrs);
   const tierDirs = tiers.map(t => (t.dir ? String(t.dir).replace(/^apps\//, '') : t.id));
   const hasFrontend = tiers.some(t => t.kind === 'frontend');
+  const spa = spaPlan(collectUi(adrs), tiers);
   const created = [], skipped = [];
   for (const t of tiers) {
     const dir = t.dir ? String(t.dir).replace(/^apps\//, '') : t.id;
+    const shell = spa.make && t.kind === 'frontend';
     ensureDir(cwd, `apps/${dir}/src`, created);
     ensureDir(cwd, `apps/${dir}/test/contract`, created);
-    writeIfAbsent(cwd, `apps/${dir}/package.json`, appPackageJson(dir), created, skipped);
+    writeIfAbsent(cwd, `apps/${dir}/package.json`, appPackageJson(dir, shell), created, skipped);
     writeIfAbsent(cwd, `apps/${dir}/tsconfig.json`, appTsconfig(t.kind), created, skipped);
     writeIfAbsent(cwd, `apps/${dir}/vitest.config.ts`, appVitestConfig(t.kind), created, skipped);
     writeIfAbsent(cwd, `apps/${dir}/vitest.contract.config.ts`, appVitestConfig(t.kind, 'contract'), created, skipped);
-    writeIfAbsent(cwd, `apps/${dir}/src/index.ts`, EMPTY_INDEX_TS, created, skipped);
+    if (shell) {
+      // 画面の土台 (0.3.0)。入口は src/main.tsx なので空のエントリ (src/index.ts) は置かない
+      ensureSpaPackage(cwd, `apps/${dir}/package.json`, created);
+      for (const [rel, content] of Object.entries(spaFiles(dir, spa))) writeIfAbsent(cwd, `apps/${dir}/${rel}`, content, created, skipped);
+    } else {
+      writeIfAbsent(cwd, `apps/${dir}/src/index.ts`, EMPTY_INDEX_TS, created, skipped);
+    }
     if (t.kind !== 'frontend') writeIfAbsent(cwd, `apps/${dir}/src/test-app.ts`, STUB_TEST_APP_TS, created, skipped);
   }
   for (const pkg of ['contracts', 'ui', 'test-support']) ensureDir(cwd, `packages/${pkg}`, created);
@@ -444,13 +607,14 @@ function run(o) {
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
   const migrated = o.migrate ? migrate(cwd, biomeVersion, tiers) : [];
   if (!o.migrate) warnBiomeSchema(cwd, biomeVersion);
-  return { code: 0, created, skipped, tierDirs, migrated };
+  return { code: 0, created, skipped, tierDirs, migrated, spa: spa.make ? { status: 'made', tiers: spa.fronts.map((t) => t.id), ui: spa.useUi } : { status: 'skipped', reason: spa.reason } };
 }
 
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
   console.log(`genSkeleton: created ${r.created.length}, skipped ${r.skipped.length}`);
+  console.log(r.spa.status === 'made' ? `  画面の土台: ${r.spa.tiers.join(', ')} (画面部品 ${r.spa.ui ? 'packages/ui を読む' : 'なし'})` : `  画面の土台: 作らない (${r.spa.reason})`);
   for (const s of r.skipped) console.log(`  skip (exists): ${s}`);
   if (o.migrate) {
     console.log(`migrate: ${r.migrated.length} change(s)`);
@@ -460,4 +624,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { parseArgs, rootPackageJson, run, BIOME_VERSION, existingBiomeVersion };
+module.exports = { parseArgs, rootPackageJson, run, BIOME_VERSION, existingBiomeVersion, spaPlan, UI_ENTRY_CSS };

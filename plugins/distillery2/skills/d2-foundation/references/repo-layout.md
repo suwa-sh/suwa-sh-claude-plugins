@@ -10,9 +10,11 @@
       src/                         # 実装本体。単体テストは *.test.ts を同居
       test/contract/               # 契約テスト (契約から生成。F4 / d2-contract)
       migrations/                  # datastore_owner だけ。DB 契約から生成
+      index.html  vite.config.ts   # frontend の画面の土台 (ADR の ui が React の SPA・Tailwind のとき F5 が置く)
+      src/{main.tsx, App.tsx, routes.tsx, styles.css}   # 画面の機能は routes.tsx に 1 行足す
   packages/
     contracts/                     # 契約からの codegen 出力 (型・クライアント・stub)
-    ui/                            # design tokens + 部品 + stories (F6 が取り込む)
+    ui/                            # design tokens + 部品 + stories (F6 が取り込む)。entry.css は画面の土台が読む CSS の入口
     test-support/                  # tracer + pglite harness (F3)
       src/{tracer.ts, pglite-harness.ts, index.ts}
       README.md                    # 実装者が結線するもの (d2-implement mode=integrate が読む)

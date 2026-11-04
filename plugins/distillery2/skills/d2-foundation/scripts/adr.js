@@ -62,4 +62,12 @@ function collectCapabilities(adrs) {
   return {};
 }
 
-module.exports = { TIER_KINDS, parseFrontMatter, loadAdrs, isAccepted, hasScope, declaresTiers, collectTiers, collectCapabilities };
+/** 採用済みの ADR の `ui` (画面の方式とブランド。d2-decide の adr-format.md) を集める。最初の 1 本。無ければ null */
+function collectUi(adrs) {
+  for (const adr of adrs) {
+    if (isAccepted(adr) && adr.ui && typeof adr.ui === 'object' && !Array.isArray(adr.ui)) return adr.ui;
+  }
+  return null;
+}
+
+module.exports = { TIER_KINDS, parseFrontMatter, loadAdrs, isAccepted, hasScope, declaresTiers, collectTiers, collectCapabilities, collectUi };
