@@ -94,4 +94,6 @@ test('0.3.0: 契約を提供しないティア (画面) には contract のコ�
   assert.ok(cfg.tiers[1].commands.unit);
   const early = buildConfig({ tiers: [{ id: 'frontend', kind: 'frontend' }] }, [], {}, []);
   assert.equal(early.tiers[0].commands.contract, undefined);
+  const declared = buildConfig({ tiers: [{ id: 'backend-api', kind: 'backend', provides: ['api'] }] }, [], {}, []);
+  assert.equal(declared.tiers[0].commands.contract, undefined, 'ADR が provides を宣言していても、カタログに契約が無ければ出さない');
 });

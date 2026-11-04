@@ -7,7 +7,7 @@
  *                       [--known <課題ファイル> ...] [--runner <codex-review-job.sh>] [--deadline <秒。既定 540>] [--poll <秒。既定 30>]
  *   node reviewStep.js prompt --point <場所> --target <パス> ... --out <場所の置き場> [--round ...]   # 依頼文だけを書く (同じモデルで代わりにレビューするとき)
  *
- * 置き場は <場所の置き場>/<n>/ (0.3.0)。1 ラウンド目は新しい <n> (今ある最大 + 1)、2 ラウンド目からは最後の <n> に書く (同じ起動の 2 回目のレビューが前の結果を上書きしない)。
+ * 置き場は <場所の置き場>/<n>/ (0.3.0)。1 ラウンド目は新しい <n> (今ある最大 + 1 を排他的に作る)、2 ラウンド目からは --previous (前のラウンドの結果) の <n> に書く (前の結果を上書きしない)。
  * --known: 課題にした指摘 (課題ファイル) を依頼文の「既知 (報告不要)」に載せる (課題にした既存の欠陥が次のラウンドで出直さない)。
  * runner のロック (同じ workspace の別のジョブ) で起動できないときは、unavailable にせず締め切りまで待って起動し直す (ティアごとのレビューを順に回す)。
  *
@@ -54,6 +54,8 @@ function parseArgs(argv) {
     else throw new Fail(`不明な引数: ${a}`);
   }
   if (!o.point || !o.out || !o.targets.length) throw new Fail('--point と --target と --out が要る');
+  if (!(Number.isFinite(o.deadline) && o.deadline > 0) || !(Number.isFinite(o.poll) && o.poll > 0)) throw new Fail(`--deadline と --poll は正の数 (秒): ${o.deadline} / ${o.poll}`);
+  if (!(Number.isInteger(o.round) && o.round >= 1)) throw new Fail(`--round は 1 以上の整数: ${o.round}`);
   if (o.round > 1 && !o.previous) throw new Fail('2 ラウンド目には --previous が要る');
   return o;
 }
@@ -178,7 +180,12 @@ function roundDir(o) {
     if (fs.existsSync(path.join(prevDir, `round${o.round}.md`))) throw new Fail(`${o.round} ラウンド目の結果が既にある (上書きしない): ${path.join(path.relative(o.cwd, prevDir), `round${o.round}.md`)}`);
     return prevDir;
   }
-  return path.join(base, String(last + 1));
+  // 同時に起動した 2 つが同じ <n> を取らないよう、ディレクトリを排他的に作って番号を確保する
+  fs.mkdirSync(base, { recursive: true });
+  for (let n = last + 1; ; n++) {
+    const d = path.join(base, String(n));
+    try { fs.mkdirSync(d); return d; } catch (e) { if (e.code !== 'EEXIST') throw e; }
+  }
 }
 
 function writePrompt(o) {
@@ -188,7 +195,9 @@ function writePrompt(o) {
   const out = roundDir(o);
   fs.mkdirSync(out, { recursive: true });
   const prompt = path.join(out, `prompt-round${o.round}.md`);
-  fs.writeFileSync(prompt, buildPrompt(o, perspectives));
+  // 既にある依頼文は上書きしない (同じラウンドを 2 度書かない)
+  try { fs.writeFileSync(prompt, buildPrompt(o, perspectives), { flag: 'wx' }); }
+  catch (e) { if (e.code === 'EEXIST') throw new Fail(`依頼文が既にある (上書きしない): ${path.relative(o.cwd, prompt)}`); throw e; }
   return { out, prompt };
 }
 
@@ -208,7 +217,7 @@ function run(o) {
     env = { CODEX_REVIEW_TIMEOUT_SECONDS: String(Math.max(1, Math.floor(left()))) };
     st = call(runner, ['start', prompt, o.cwd], env);
     const err = String(st.stderr || '');
-    if (st.status === 0 || !LOCK_RE.test(err) || left() - o.poll < 60) break;
+    if (st.status === 0 || !LOCK_RE.test(err) || left() <= o.poll) break;
     waited++;
     sleep(o.poll);
   }

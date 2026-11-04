@@ -146,3 +146,19 @@ test('0.3.0: --previous は前のラウンドの結果 (round<k-1>.md) だけ。
   assert.notEqual(late.out.status, 'reviewed', '締め切りの後の完了は受理しない');
 });
 
+test('0.3.0: 置き場の <n> は排他的に取る (既にある <n> のディレクトリを使わない)。--deadline と --poll は正の数', () => {
+  const cwd = repo();
+  fs.mkdirSync(path.join(cwd, 'r', '1'), { recursive: true });
+  fs.mkdirSync(path.join(cwd, 'r', '2'));
+  const r = run(['prompt', '--point', 'contract', '--target', 'c', '--out', 'r', '--cwd', cwd]);
+  assert.equal(r.out.prompt, 'r/3/prompt-round1.md');
+  assert.equal(run(['run', '--point', 'contract', '--target', 'c', '--out', 'r', '--cwd', cwd, '--deadline', 'NaN']).code, 2);
+  assert.equal(run(['run', '--point', 'contract', '--target', 'c', '--out', 'r', '--cwd', cwd, '--poll', '0']).code, 2);
+});
+
+test('0.3.0: ロックで断られても、残り時間があるうちは再試行する (最低時間で早く諦めない)', () => {
+  const cwd = repo();
+  const r = run(['run', '--point', 'contract', '--target', 'c', '--out', 'r', '--cwd', cwd, '--runner', FAKE, '--poll', '0.01', '--deadline', '30'], { FAKE_MODE: 'locked', FAKE_LOG: path.join(cwd, 'l.log') });
+  assert.equal(r.out.status, 'reviewed', JSON.stringify(r.out));
+});
+
