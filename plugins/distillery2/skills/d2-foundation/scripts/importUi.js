@@ -124,13 +124,26 @@ function run(o) {
   const basisLine = headerLine(stamp({ design: o.from }, o.cwd));
   const manifest = { basis: basisLine.replace(/^basis:\s*/, ''), from: o.from, imported_at: importedAt, entry, content_sha256: contentSha256, files };
   fs.writeFileSync(manifestPath, `# ${basisLine}\n` + stringifyYaml(manifest));
-  return { code: 0, count: files.length, entry, removed };
+  return { code: 0, count: files.length, entry, removed, format: formatUi(o.cwd) };
+}
+
+/**
+ * 取り込んだ部品をリポの biome で整形する (0.3.0)。d2-design の出力は biome の書式にそろっておらず、
+ * リポ全体の format (`npx biome format .`) で落ちる (会議室の予約の実地確認で実測)。
+ * 取り込み元が正なので、取り込みのたびに整形し直す (.imported.yaml の sha256 は取り込み元の値のまま)。
+ * biome が入っていなければ (npm install の前) 飛ばす。整形できない (構文の誤り) ときは報告だけしてゲートに任せる
+ */
+function formatUi(cwd) {
+  const bin = path.join(cwd, 'node_modules', '.bin', process.platform === 'win32' ? 'biome.cmd' : 'biome');
+  if (!fs.existsSync(bin)) return 'skipped (biome が無い)';
+  const r = require('node:child_process').spawnSync(bin, ['format', '--write', '--no-errors-on-unmatched', 'packages/ui'], { cwd, encoding: 'utf8' });
+  return r.status === 0 ? 'formatted' : `failed (exit ${r.status}): ${String(r.stderr || r.stdout).trim().split('\n').slice(-3).join(' / ')}`;
 }
 
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
-  if (r.code === 0) console.log(`importUi: ${r.count} files → packages/ui${r.removed.length ? ` (removed ${r.removed.length}: ${r.removed.join(', ')})` : ''}`);
+  if (r.code === 0) console.log(`importUi: ${r.count} files → packages/ui${r.removed.length ? ` (removed ${r.removed.length}: ${r.removed.join(', ')})` : ''} format: ${r.format}`);
   return r.code;
 }
 

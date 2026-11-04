@@ -89,10 +89,10 @@ description: >-
 
 ## ① 要求
 
-1. sub `d2-requirements` (input=<要望テキスト>) を派遣する
+1. 要望テキストを `docs/input/要望-<YYYYMMDD>.md` に写す (本文で渡されたときも、リポの外のファイルで渡されたときも。要求の入力の正本として 3 の commit に入る。要求のレビューが縦の整合を見る相手)。sub `d2-requirements` (input=<写したファイルのパス>) を派遣する
 2. 引き継ぎファイルを処理し、要求のレビュー (routing.md。`--point requirements`) を回す。その後 `docs/requirements/_review-summary.md` を材料に human-html-review で確認ページを作る
    (UC 一覧、業務ルール、状態遷移、受入基準、人に返す問い、レビューの結果。判断は「この要求で進めてよいか / 直す点」。auto でも必ず人に返す。recommend は推奨で承認して記録)
-3. 承認されたら `node <skills>/d2-common/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add -A -- docs .distillery && git commit -m "req: initial requirements" -m "<attribution 行>"` (引き継ぎファイル・決めたことの記録・レビューの結果も入れる)。差し戻しなら指摘を input に足して 1 に戻る
+3. 承認されたら `node <skills>/d2-common/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add -A -- docs .distillery ':(exclude).distillery/logs' && git commit -m "req: initial requirements" -m "<attribution 行>"` (引き継ぎファイル・決めたことの記録・レビューの結果も入れる。`.distillery/logs/` は入れない: `.gitignore` は基盤の段で初めて作られるので、それまでは pathspec で外す)。差し戻しなら指摘を input に足して 1 に戻る
 
 ### 要求の差分 (未処理の要求の課題があるとき)
 
@@ -161,7 +161,7 @@ UC の実装で見つかった要求の穴 (戻し先が requirements の課題�
 
 1. sub `d2-decide` を派遣する
 2. 引き継ぎファイルを処理し、決定のレビュー (`--point decide`) を回してから、`docs/adr/_review-summary.md` を材料に確認ページ (非機能グレード表の要点、各決定と却下した案、confidence: low の決定は選択肢として提示。モードの規則で人に返す問いがあるときだけ止まり、無ければ推奨で承認して記録)
-3. 承認されたら `node <skills>/d2-common/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add -A -- docs .distillery && git commit -m "decide: nfr and adr" -m "<attribution 行>"`。選択が変わった決定は ADR を直して (sub に戻す) 再提示
+3. 承認されたら `node <skills>/d2-common/scripts/genDocsReadme.js` で `docs/README.md` を更新し、`git add -A -- docs .distillery ':(exclude).distillery/logs' && git commit -m "decide: nfr and adr" -m "<attribution 行>"`。選択が変わった決定は ADR を直して (sub に戻す) 再提示
 
 ## ③ 基盤
 

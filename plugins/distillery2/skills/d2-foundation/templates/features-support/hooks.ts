@@ -27,8 +27,12 @@ Before(function (this: D2World, hook: ITestCaseHookParameter) {
   const tags = hook.pickle.tags.map((t) => t.name);
   const slug = ucSlug(hook.pickle);
   this.scenarioId = `${slug}#${hook.pickle.name}`;
-  if (!process.env.D2_TRACE_DIR) process.env.D2_TRACE_DIR = path.join('.distillery', 'runs', slug, 'traces');
-  const traceFile = path.join(process.env.D2_TRACE_DIR, `${sanitizeScenarioId(this.scenarioId)}.jsonl`);
+  if (!process.env.D2_TRACE_DIR)
+    process.env.D2_TRACE_DIR = path.join('.distillery', 'runs', slug, 'traces');
+  const traceFile = path.join(
+    process.env.D2_TRACE_DIR,
+    `${sanitizeScenarioId(this.scenarioId)}.jsonl`,
+  );
   if (!resetTraceFiles.has(traceFile)) {
     rmSync(traceFile, { force: true });
     resetTraceFiles.add(traceFile);

@@ -31,7 +31,10 @@ export function migrationsDirFor(owner: string, repoRoot = process.cwd()): strin
 
 function loadMigrations(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
     .map((f) => fs.readFileSync(path.join(dir, f), 'utf8'));
 }
 

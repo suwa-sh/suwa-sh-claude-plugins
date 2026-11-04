@@ -24,8 +24,15 @@ import { createTestApp } from '../../../apps/backend-api/src/test-app';
 export class ApiDriver implements Driver {
   private app = createTestApp();
 
-  async request(method: string, path: string, body?: unknown, headers: Record<string, string> = {}) {
-    let req = (request(this.app) as unknown as Record<string, (p: string) => SuperTestRequest>)[method.toLowerCase()](path);
+  async request(
+    method: string,
+    path: string,
+    body?: unknown,
+    headers: Record<string, string> = {},
+  ) {
+    let req = (request(this.app) as unknown as Record<string, (p: string) => SuperTestRequest>)[
+      method.toLowerCase()
+    ](path);
     for (const [k, v] of Object.entries({ ...scenarioHeaders(), ...headers })) req = req.set(k, v);
     if (body !== undefined) req = req.send(body as object);
     const res = await req;
@@ -37,7 +44,10 @@ export class ApiDriver implements Driver {
    * URL のパス部分を supertest に流し、http.out (placement のティア) → http.in (backend) の入れ子を作る。
    */
   asFetch(placement: Placement): typeof fetch {
-    return inProcessFetch((req) => this.request(req.method, req.path, req.body, req.headers), placement);
+    return inProcessFetch(
+      (req) => this.request(req.method, req.path, req.body, req.headers),
+      placement,
+    );
   }
 
   async teardown() {

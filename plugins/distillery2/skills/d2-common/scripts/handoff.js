@@ -128,8 +128,8 @@ function checkReport(data, reportText) {
     if (!m) { errors.push(`「決めたこと」に D<n> で始まらない行がある: ${l.trim().slice(0, 60)}`); continue; }
     listed.push(m[1]);
   }
-  const mentioned = [...new Set((reportText.match(/\bD\d+\b/g) || []))];
-  for (const d of mentioned) if (!ids.includes(d)) errors.push(`本文の ${d} が引き継ぎファイルの decisions に無い`);
+  // 「決めたこと」の外の D<n> は照らさない: 前の段の決定 (decisions.jsonl の ID) を引くことがある (会議室の予約の実地確認で、要求の決定を引いた報告が 2 回落ちた)
+  for (const d of new Set(listed)) if (!ids.includes(d)) errors.push(`「決めたこと」の ${d} が引き継ぎファイルの decisions に無い`);
   if (listed.length !== ids.length) errors.push(`「決めたこと」の件数 (${listed.length}) と decisions の件数 (${ids.length}) が違う`);
   for (const d of ids) if (!listed.includes(d)) errors.push(`decisions の ${d} が本文の「決めたこと」に無い`);
   return errors;

@@ -59,7 +59,8 @@ d2-run は段階③で 2 回呼ぶ (決定の差分の開発ルールとアー�
   `.qlty/qlty.toml` は **qlty 自身の提案 (`qlty init --dry-run`) を土台**に distillery2 の上乗せ (biome 版固定・生成物の除外・radarlint を low)。qlty CLI が無ければ固定リスト
 - F7: lockfile (`package-lock.json`) の書き手は ③ ではこの phase だけ (単一 writer)。`npm install` は `node_modules/**` (gitignore) も作る。
   npm 10 で落ちたら [references/troubleshooting.md](references/troubleshooting.md) の回避策を使い、報告に書く
-- F9: `<run>` = `.distillery/runs/bootstrap` (仮の slug)。exit 0 でなければ直さずに報告して止まる (d2-run が受理時に `reports/gates.json` を読む)
+- F9: `<run>` = `.distillery/runs/bootstrap` (仮の slug)。exit 0 でなければ直さずに報告して止まる (d2-run が受理時に `reports/gates.json` を読む)。
+  止めない扱い (advisory) のジョブ (生成物の鮮度・security) だけが落ちたときは exit 0 なので止まらず、課題にもしない。`docs/README.md` の古さは d2-run が commit の前に genDocsReadme で作り直す
 
 ### phase=all の順
 

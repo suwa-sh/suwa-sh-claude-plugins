@@ -76,14 +76,17 @@ const HO = {
   decisions: [{ id: 'D1', topic: '予約の重なりの判定', choice: '開始と終了の半開区間で比べる', reason: '連続した予約を許す' }, { id: 'D2', topic: '取り消しの期限', choice: '開始の 1 時間前まで', reason: '要求の受入基準' }],
 };
 
-test('validate --report: 報告の「決めたこと」が D<n> で引き継ぎファイルの decisions と 1 対 1。ID の無い判断の行・欄に無い D<n>・件数の違いを拒む', () => {
+test('validate --report: 報告の「決めたこと」が D<n> で引き継ぎファイルの decisions と 1 対 1。ID の無い判断の行・decisions に無い D<n>・件数の違いを拒む (欄の外の D<n> は前の段の決定を引くので照らさない)', () => {
   assert.deepEqual(H.validate(HO), []);
   const ok = '## 作ったもの\n- x\n\n## 決めたこと\n- D1 重なりは半開区間\n- D2 取り消しは 1 時間前まで\n\n## ゲート\n- pass\n';
   assert.deepEqual(H.checkReport(HO, ok), []);
   const noId = '## 決めたこと\n- D1 重なりは半開区間\n- D2 取り消しは 1 時間前まで\n- 画面の並び順は開始時刻\n';
   assert.ok(H.checkReport(HO, noId).some((e) => /D<n> で始まらない行/.test(e)));
-  const extra = '## 決めたこと\n- D1 x\n- D2 y\n\n## メモ\nD3 も考えた\n';
-  assert.ok(H.checkReport(HO, extra).some((e) => /D3 が引き継ぎファイルの decisions に無い/.test(e)));
+  // 欄の外の D<n> (前の段の決定を引く) は照らさない
+  const earlier = '## 作ったもの\n- 要求の段の D3 に合わせた\n\n## 決めたこと\n- D1 x\n- D2 y\n';
+  assert.deepEqual(H.checkReport(HO, earlier), []);
+  const extra = '## 決めたこと\n- D1 x\n- D3 y\n';
+  assert.ok(H.checkReport(HO, extra).some((e) => /「決めたこと」の D3 が引き継ぎファイルの decisions に無い/.test(e)));
   const missing = '## 決めたこと\n- D1 x\n';
   assert.ok(H.checkReport(HO, missing).some((e) => /件数/.test(e)));
   assert.ok(H.validate({ ...HO, decisions: [{ id: 'X1', topic: 't', choice: 'c', reason: 'r' }] }).length > 0, 'id は D<n>');

@@ -179,7 +179,7 @@ for (const t of tiers) if (t.unit) step('test', \`\${t.id} unit\`, t.unit);
 if (mode === 'ci') {
   for (const t of tiers) if (t.contract) step('test', \`\${t.id} contract\`, t.contract);
   step('test', 'uc-bdd', PLAN.scenarios.uc_bdd);
-  PLAN.scenarios.acceptance.forEach((c, i) => step('test', \`acceptance\${i ? \` \${i + 1}\` : ''}\`, c));
+  for (const [i, c] of PLAN.scenarios.acceptance.entries()) step('test', \`acceptance\${i ? \` \${i + 1}\` : ''}\`, c);
 }
 // security: 秘密情報はリポ全体 (hook はコミットするファイル)、依存の脆弱性と SAST はティアごと (ci だけ)
 if (PLAN.repo.secrets) step('security', 'secrets', present ? forFiles(PLAN.repo.secrets, present) : PLAN.repo.secrets, { skip: present && !present.length ? 'ファイルの追加・変更なし' : null });

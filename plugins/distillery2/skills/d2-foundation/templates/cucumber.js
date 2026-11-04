@@ -18,11 +18,7 @@
  */
 export default {
   paths: ['features/**/*.feature'],
-  import: [
-    './tsx-register.js',
-    'features/support/**/*.ts',
-    'features/step_definitions/**/*.ts',
-  ],
+  import: ['./tsx-register.js', 'features/support/**/*.ts', 'features/step_definitions/**/*.ts'],
   format: ['summary'],
   formatOptions: { snippetInterface: 'async-await' },
 };
@@ -37,11 +33,7 @@ export default {
  */
 export const dryrun = {
   paths: ['features/**/*.feature'],
-  import: [
-    './tsx-register.js',
-    'features/support/hooks.ts',
-    'features/step_definitions/**/*.ts',
-  ],
+  import: ['./tsx-register.js', 'features/support/hooks.ts', 'features/step_definitions/**/*.ts'],
   format: ['summary'],
   formatOptions: { snippetInterface: 'async-await' },
 };

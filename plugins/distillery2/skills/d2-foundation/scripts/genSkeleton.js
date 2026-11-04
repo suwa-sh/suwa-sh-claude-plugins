@@ -130,14 +130,21 @@ function existingBiomeVersion(cwd) {
   return s ? s[1] : null;
 }
 
-// 生成物 (契約の codegen / bundle / Storybook 出力) はルートの整形・lint から外す (`!!` = フォルダごと無視)
-// 契約テスト (生成物) はここでも外す: 生成 .ts 先頭の `biome-ignore-all format` は biome 2.2.5 では効かない (0.1.13 実走で実測。2.5.14 では効く)。
-// `!!` (フォルダごと無視) は 2.2.5 では `**` 入りを受け付けないので、こちらは `!` で書く。
+// 生成物と文書類はルートの整形・lint から外す。リポ全体の format (`npx biome format .`。0.3.0) が対象にするのはルートの設定・features・packages のコード。
+// - 契約の codegen / bundle、契約テスト: 生成 .ts 先頭の `biome-ignore-all format` は biome 2.2.5 では効かない (0.1.13 実走で実測。2.5.14 では効く)
+// - scripts/check.mjs と .dependency-cruiser.cjs: 作り直して `--check` で鮮度を見る生成物なので、整形すると鮮度の検査で差分になる
+// - docs: 文書類 (要求の JSON、d2-design の Storybook の元。packages/ui へは取り込むときに整形する)。md と yaml は qlty が見る
+// フォルダは `!` で書く: `!!packages/contracts` は biome 2.2.5 でフォルダを外さない (0.3.0 の実地確認で実測。`!packages/contracts` は外し、明示したパスも無視する)。
 // 末尾に `/**` を付けない: biome 2.2.0 以降の既定の規則 useBiomeIgnoreFolder が `!**/test/contract/**` を違反にし、
 // qlty の quality ゲートで ③ のチェックポイントが落ちる (0.1.22 の試し運転で実測。https://biomejs.dev/linter/rules/use-biome-ignore-folder/)
-const BIOME_FILES_INCLUDES = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract'];
-// 0.1.15〜0.1.22 が書いた除外。migrate で上の形に置き換える
-const LEGACY_BIOME_INCLUDES = { '!**/test/contract/**': '!**/test/contract' };
+const BIOME_FILES_INCLUDES = ['**', '!packages/contracts', '!contracts/generated', '!docs', '!**/test/contract', '!scripts/check.mjs', '!.dependency-cruiser.cjs'];
+// 前の版が書いた除外。migrate で上の形に置き換える (0.1.15〜0.1.22 の `/**` 付き、0.1.23〜0.2.0 の `!!`)
+const LEGACY_BIOME_INCLUDES = {
+  '!**/test/contract/**': '!**/test/contract',
+  '!!packages/contracts': '!packages/contracts',
+  '!!contracts/generated': '!contracts/generated',
+  '!!docs/design/storybook-app': '!docs',
+};
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
 const biomeJson = (biomeVersion) => JSON.stringify({
   $schema: `https://biomejs.dev/schemas/${biomeVersion}/schema.json`,

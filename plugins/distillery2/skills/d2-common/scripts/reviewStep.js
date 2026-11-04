@@ -78,7 +78,7 @@ function buildPrompt(o, perspectives) {
 【対象】
 リポジトリ ${o.cwd} の次のパス (distillery2 が作った「${o.point}」の成果物):
 ${o.targets.map((t) => `- ${t}`).join('\n')}
-縦 = この成果物の入力 (前のステップの成果物) との整合、横 = 同じ成果物の中の整合を見る。入力はリポジトリの docs/ (要求・決定) と contracts/・features/ にある。
+縦 = この成果物の入力 (前のステップの成果物) との整合、横 = 同じ成果物の中の整合を見る。入力はリポジトリの docs/ (要望の原文は docs/input/、要求・決定) と contracts/・features/ にある。
 ${prev}${knownBlock}
 【レビュー観点と閾値 (この表以外の軸で探さない)】
 ${table}
