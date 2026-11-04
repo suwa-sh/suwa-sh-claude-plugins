@@ -240,6 +240,32 @@ test('(u) reclassify: バッチ無しで main の作業ツリーの課題を kin
   assert.equal(r.fb('reclassify', 'p1').code, 2);
 });
 
+test('(u) reclassify --workaround-file: リポの中で回避した課題は workaround: true を付け、scan の plugin には出るが plugin_blocking には出ない (0.3.0)', () => {
+  const r = makeRepo();
+  r.w('docs/feedback/w1.md', issueFile({ kind: 'foundation', target_step: 'foundation', title: '土台の課題', status: 'open', created: '2026-11-05T00:00:01Z' }));
+  r.w('docs/feedback/b1.md', issueFile({ kind: 'foundation', target_step: 'foundation', title: '回避できない課題', status: 'open', created: '2026-11-05T00:00:02Z' }));
+  git(r.root, 'add', '-A');
+  git(r.root, 'commit', '-q', '-m', 'issues');
+  const rf = path.join(r.base, 'reason.txt');
+  fs.writeFileSync(rf, '雛形の誤り');
+  const wf = path.join(r.base, 'workaround.txt');
+  fs.writeFileSync(wf, 'リポの写しを直した');
+  assert.equal(r.fb('reclassify', 'w1', '--reason-file', rf, '--workaround-file', wf).code, 0);
+  assert.equal(r.fb('reclassify', 'b1', '--reason-file', rf).code, 0);
+  const t = fs.readFileSync(path.join(r.root, 'docs/feedback/w1.md'), 'utf8');
+  assert.match(t, /^workaround: true$/m);
+  assert.match(t, /## リポの中での回避\n\nリポの写しを直した/);
+  const sc = r.fb('scan').json;
+  assert.deepEqual(sc.plugin, ['b1', 'w1']);
+  assert.deepEqual(sc.plugin_blocking, ['b1']);
+  const empty = path.join(r.base, 'empty.txt');
+  fs.writeFileSync(empty, '  \n');
+  r.w('docs/feedback/e1.md', issueFile({ kind: 'rule', target_step: 'decide', title: 'e1', status: 'open', created: '2026-11-05T00:00:03Z' }));
+  git(r.root, 'add', '-A');
+  git(r.root, 'commit', '-q', '-m', 'e1');
+  assert.equal(r.fb('reclassify', 'e1', '--reason-file', rf, '--workaround-file', empty).code, 1, '空の回避は拒む');
+});
+
 test('file-issues: UC の課題を課題ファイルにして feedback_filed を記録する (2 回目は何もしない)', () => {
   const r = makeRepo();
   const run = runState.openRun(r.root, 'register-loan');

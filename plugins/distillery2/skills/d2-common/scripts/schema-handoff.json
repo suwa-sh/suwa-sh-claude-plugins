@@ -51,7 +51,8 @@
         "evidence": { "type": "string", "minLength": 1 },
         "recommended_fix": { "type": "string", "minLength": 1 },
         "uc": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
-        "resume_from": { "enum": ["scenario", "contract", "implementation"] }
+        "resume_from": { "enum": ["scenario", "contract", "implementation"] },
+        "workaround": { "type": "string", "minLength": 1, "description": "戻し先が plugin で、リポの中で回避したときの回避の仕方 (0.3.0)。書いた課題では機能を止めない" }
       }
     },
     "decision": {

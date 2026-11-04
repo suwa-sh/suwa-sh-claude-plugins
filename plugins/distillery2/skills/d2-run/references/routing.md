@@ -20,10 +20,10 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 | 戻り道の回数の上限 (`runState.js` が exit 3) | 人に返す | 人に返す |
 | レビューを回せない (`reviewStep.js` が exit 4) | 人に返す (同じモデルで代わりにレビューする / このまま進む / 止める) | 同じモデルで代わりにレビューし、`fallback: same-model` を記録する |
 | ゲートが 2 回落ちた・受理の検査に落ちた (再派遣で直らない) | 人に返す | 機能の中なら `<RS> rewind <run> implementation` (回数に数える。上限で人へ)。上流の段なら落ちた出力を添えて担当を 2 回まで派遣し直す (`<D> add --root . --page page:upstream-retry:<段> --question "落ちたゲートを担当に直させるか" --answer "差し戻す (<n> 回目)" --by rule` で回数を残す)。3 回目も落ちたら戻り道の上限として人に返す |
-| プラグインの不具合 (反証の結果・課題の戻し先が `plugin`。決定の差分の `reason_kind: plugin`) | 人に返す | **人に返す**: 下の「プラグインの不具合」で課題を `kind: plugin` にし、機能の中ならその機能を止める (ほかの機能は続く) |
+| プラグインの不具合 (反証の結果・課題の戻し先が `plugin`。決定・基盤の差分の担当が返した `plugin`) | リポの中で回避した (`workaround` がある) なら止めずに報告。回避できないなら人に返す | 同じ: 回避したものは下の「プラグインの不具合」で `kind: plugin`・`workaround: true` の課題にして続ける。回避できないものだけ課題にして人に返す (機能の中ならその機能を止める。ほかの機能は続く) |
 | 終わったとき | 完了報告 | 完了報告と、推奨で決めたものの一覧の確認ページ 1 枚 (`<D> list --root . --since <起動の時刻> --format md`) |
 
-`mode=recommend` で人に返すのは、戻り道の上限とプラグインの不具合だけ (要求の承認と人レビューも推奨で承認する)。それ以外の止まりは不具合として報告する。
+`mode=recommend` で人に返すのは、戻り道の上限とリポの中で回避できないプラグインの不具合だけ (要求の承認と人レビューも推奨で承認する)。それ以外の止まりは不具合として報告する。
 人に返すときは human-html-review の確認ページを出して止まる。確認ページには、人に返す問いをすべて載せ、選択肢ごとに影響を、問いごとに推奨 (初期選択) を書く。
 **推奨の無い確認ページを作らない** (推奨が決まらない問いだけは「推奨なし (理由)」と書く)。人が答えたら `--by human` で記録する。
 
@@ -53,7 +53,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
    - `decide[]`: 問いごとに `<D> add (--run <run> | --root .) --handoff <handoff> --ask <id> --answer "<answer>" --by recommended` (機能の中は `--run`、上流の段は `--root .`。検証役は `--handoff <findings>`。`unknown_fact` は自動で仮置きになる)
    - `to_human[]`: 人に返す問いとして、この段の確認ページに載せる (確認ページの無い段なら、この問いだけの確認ページを出して止まる)。recommend では出ない (推奨の無い問いは `make_recommendation[]` に、事実の問いは仮置きで `decide[]` に入る)
    - `make_recommendation[]` (recommend だけ): 問いの選択肢から推奨を 1 つ選び、理由を添えて `<D> add ... --handoff <handoff> --ask <id> --answer "<選んだ案>" --by recommended --provisional`
-   - `issues`: 下の「前のステップの課題」(`issues.plugin` は「プラグインの不具合」)
+   - `issues`: 下の「前のステップの課題」(`issues.plugin` (回避できない) と `issues.plugin_noted` (担当がリポの中で回避した) は「プラグインの不具合」)
    - `needs_info[]`: auto は人に返す。recommend は進行役が推奨を作って仮置きする (上の表)
    - `plugin_findings[]`: 「プラグインの不具合」
    - 引き継ぎファイルの `decisions[]` (担当が自分で決めたこと): `D<n>` ごとに `<D> add (--run <run> | --root .) --handoff <handoff> --decision D<n> --by recommended` (記録の ID は `<run>:<引き継ぎファイルの名前>:D<n>`。同じ `D<n>` が一覧まで残る)
@@ -97,9 +97,14 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 
 直す場所がリポの中ではなく distillery2 の側だと分かったとき (反証の結果・担当の課題の戻し先が `plugin`、決定の差分の `reason_kind: plugin`):
 
-1. 課題ファイルが既にあれば、理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` (`kind: plugin` に書き換えて今の branch に commit)。下書きなら `file-drafts` が `kind: plugin` で書く
-2. 機能の中なら、その機能を「上流で止めるとき」の手順で止める (`blocked_on_upstream` の課題は `{"id": "<課題>", "target": "plugin"}`)。課題ファイルが main に残る間は写し直さない。ほかの機能は自動選択が続ける
-3. 人に返す (`page:plugin:<課題>`。推奨: プラグインを直してから課題ファイルを `git rm` する)。`kind: plugin` の課題は自動選択のきっかけにしない
+先に、リポの中で回避できるかを見る (0.3.0。止めずに先へ進め、課題はプラグインへの報告として残す)。回避は、その課題を見つけた段の書き込み範囲の中で、担当がする
+(例: 生成された雛形の書き直し・設定の追加。プラグインの生成器や手順書は直さない)。担当が回避したら引き継ぎファイルの課題に `workaround` (回避の仕方) を書く (`route` の `issues.plugin_noted`)。
+
+1. 課題ファイルが既にあれば、理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> [--workaround-file <回避の仕方のファイル>] --co-author "<attribution の値>"` (`kind: plugin` に書き換えて今の branch に commit。回避したら `workaround: true` が付く)。下書きなら `file-drafts` が `kind: plugin` (回避したら `workaround: true`) で書く
+2. **回避した (`workaround` がある)**: 止めない。機能の中なら下書きのまま続け、main マージで課題ファイルにする (squash に入る)。上流の段なら課題ファイルをその段の commit に入れて続ける。終わったときの完了報告に「回避して続けたプラグインの不具合」として載せる
+3. **回避できない**: 機能の中なら、その機能を「上流で止めるとき」の手順で止める (`blocked_on_upstream` の課題は `{"id": "<課題>", "target": "plugin"}`)。課題ファイルが main に残る間は写し直さない。ほかの機能は自動選択が続ける。
+   人に返す (`page:plugin:<課題>`。推奨: プラグインを直してから課題ファイルを `git rm` する)
+4. `kind: plugin` の課題は自動選択のきっかけにしない。止まるかどうかは `FB scan` の `plugin_blocking` (回避していないもの) だけで決める (`plugin` は回避したものも含む一覧)
 
 ### 課題の消し方
 
@@ -129,7 +134,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 2. 課題ごとに sub `d2-decide mode=feedback issue=<docs/feedback/<issue>.md> result=<.distillery/logs/decide-<issue>.result.json>` (派遣表「② 決定の差分 (ADR)」。ADR を 1 本足す。結果ファイルは派遣の前に消す)。受理: 結果が `applied`、`validateAdr.js docs/adr` が exit 0 (非機能グレード表を直したら `validateNfrGrade.js docs/nfr/nfr-grade.yaml` も exit 0)、write-set の外が変わっていない。
    結果が `blocked` なら: `reason_kind: plugin` は「プラグインの不具合」(理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` でプラグインへ持ち帰る課題にする)。`reason_kind: scope` は auto なら人に返し (推奨: 戻し先を基盤にする)、recommend なら推奨どおり課題の `target_step` を `foundation` に書き換え (`kind` も合わせる) て `<D> add --root . --page page:upstream:<課題> --question "決定では直せない課題の戻し先をどうするか" --answer "戻し先を基盤にする" --by recommended` で記録し、基盤の差分で直す
 3. 索引・開発ルール・アーキテストを作り直す (1 コマンドずつ): `node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements`、`node <skills>/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd .`、`node <skills>/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd .`。続けて `runGates.js --uc d2-feedback --only static` が通り、`contracts/` があれば `node <skills>/d2-contract/scripts/validateUcIndex.js contracts` が exit 0 (落ちたら「人に返すとき」の表のゲートの再失敗の行に従う: auto は人に返し、recommend は担当を 2 回まで派遣し直して 3 回目で人に返す)
-4. 決定のレビュー (下の「縦・横レビュー」の `decide`。指摘のうち戻し先が decide のものは、次の決定の差分にせず、この差分の「反証して直す」で扱う) → 確認ページ (`page:decide:approve`。足した ADR と、`basis.js check` の STALE の UC を「やり直す / 後で」で載せる)
+4. 決定のレビュー (下の「縦・横レビュー」の `decide`。指摘のうち戻し先が decide のものは、次の決定の差分にせず、この差分の「反証して直す」で扱う。戻し先が foundation の指摘は、課題ファイルにして main に戻さず、5 の commit の後に**同じ branch のまま**下の「基盤の差分」の 2〜4 で直してから確定する (課題ファイルは `--chain-from` を付けてこの branch に書き、基盤の差分の 4 で消す。連鎖の上限は同じ。0.3.0: 指摘が次の上流の差分を生み続けて往復が長くなった) → 確認ページ (`page:decide:approve`。足した ADR と、`basis.js check` の STALE の UC を「やり直す / 後で」で載せる)
 5. 2 回に分けて commit する (生成物の basis が、入力の ADR を入れた commit を指すように):
    1. `git add -A -- docs/adr docs/nfr` → `decide: feedback (adr)` (足した ADR と索引、直した非機能グレード表)
    2. 開発ルールとアーキテストを 3 と同じコマンドで作り直す (basis が 1 の commit になる) → 反映した課題を `git rm` → genDocsReadme → `git add -A -- docs .distillery .dependency-cruiser.cjs` → `decide: feedback` で commit (trailer `Feedback-Consumed:`)。「やり直す」UC は `<RS> reopen <root> <slug> --from scenario` (同じ commit に入れる)
@@ -141,6 +146,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 1. 前提は決定の差分と同じ
 2. 課題の推奨の直し方に合う派遣を選ぶ: 骨組み・設定・テスト基盤は sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton` (UC がある契約は `<skills>/d2-common/references/review-points.md`「反証して直す派遣の引数」の基盤・契約の行)、画面部品は sub `d2-design mode=feedback items=<直すファイルと直す内容を 1 行ずつ>` (派遣表「① 要求の差分 (画面部品)」と同じ。画面部品が 1 つも無いときだけ ③ と同じ全生成)。どの派遣も再実行して安全。
    契約の骨格か画面部品を直したら、仕上げの前に ③ の 4 と同じく `git add contracts docs/design` → `foundation: feedback (contracts and design)` で commit する (仕上げが basis に記録する入力の commit)。続けて sub `d2-foundation phase=finish ui=<true|false>`
+   担当が課題を直す場所をプラグインの側だと返したら「プラグインの不具合」: リポの中で回避した (担当の引き継ぎファイルの課題に `workaround` がある) なら `FB reclassify <issue> --reason-file <ファイル> --workaround-file <ファイル>` で止めない課題にして続け、回避できないなら `--workaround-file` 無しで reclassify して人に返す
 3. 受理は ③ の 5 と同じで、`validateUcIndex.js contracts --keep-from <派遣の前の HEAD>` が exit 0 も足す (骨格を回し直しても既存の UC の契約を消さない・変えない)。基盤のレビュー → 確認ページ (`page:foundation:approve`。STALE の UC を「やり直す / 後で」で載せる)
 4. 反映した課題を `git rm` → genDocsReadme → `git add -A` (起動シーケンス 5 の clean 判定の対象外のルート直下の未追跡ファイルは入れない) → `foundation: feedback` で commit → 「上流の差分の branch」の 3 で main へ確定し、自動選択をもう一度呼ぶ (決定の差分の 6 と同じ)
 
@@ -154,9 +160,10 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 4. 上流の課題があれば: 「上流の差分の branch」の 1 で `upstream/<1 件目の課題の id>` を切り、引き継ぎファイルを `.distillery/handoff/precheck-<slug>-<tier>.json` に写して `<H> file-drafts <写し> --root .` で課題ファイルにし (`uc` は無くてよい: 戻し先は上流だけ)、2 の問いを `--root .` で記録する →
    `git add -A -- docs/feedback .distillery/handoff .distillery/decisions.jsonl` → `precheck(<slug>): issues` で commit → `.distillery/logs/precheck-<slug>/` を消す → 自動選択をもう一度呼ぶ (その branch の上流の差分が `continue-upstream` で続き、直した後に同じ UC が選ばれて点検からやり直す)。
    機能の作業はまだ無いので写し直しは要らない
-5. 上流の課題が**すべて**プラグインの課題 (戻し先が `plugin`) なら、upstream の branch を切らない: main の上で 4 と同じく課題ファイルにして (`kind: plugin`) `precheck(<slug>): issues` で commit し、
+5. 上流の課題が**すべて**プラグインの課題 (戻し先が `plugin`) なら、upstream の branch を切らない。すべて回避できる (`route` の `issues.plugin_noted` だけ) なら止めない: 3 のとおり ④ の branch を切り、run を開いてから `<H> file-drafts <写し> --run <run>` で下書きにして続ける (回避は機能の中でする: 下書きの絶対パスを、回避の仕方に合う段の派遣文に添える。シナリオの前ならシナリオ、実装の手当てならティアの実装)。
+   回避できないもの (`issues.plugin`) があれば、main の上で 4 と同じく課題ファイルにして (`kind: plugin`) `precheck(<slug>): issues` で commit し、
    `.distillery/logs/precheck-<slug>/` を消して「プラグインの不具合」の 3 で人に返して止まる (この UC はまだ始めない。プラグインを直して課題ファイルを `git rm` した後の起動で、同じ UC が点検からやり直す)。
-   プラグインの課題とほかの上流の課題が混ざるときは 4 のとおり (プラグインの課題も同じ commit で課題ファイルにする)。上流の差分が終わった後、プラグインの課題が main に残っていれば同じく人に返して止まる
+   プラグインの課題とほかの上流の課題が混ざるときは 4 のとおり (プラグインの課題も同じ commit で課題ファイルにする)。上流の差分が終わった後、回避していないプラグインの課題 (`FB scan` の `plugin_blocking`) が main に残っていれば同じく人に返して止まる
 
 ## 写し直し (上流で止めた機能を、上流を直した後の main の上で続ける)
 

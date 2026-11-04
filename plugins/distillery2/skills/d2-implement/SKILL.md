@@ -66,6 +66,6 @@ v1 (distillery-impl:dist-impl-implement) からの変更点:
 | 技術の方針 (層・認可・データの持ち方・同時の更新・エラーの返し方・外部とのやり取り) が ADR に無い・矛盾する | `decide` |
 | 決定はあるが、開発ルール・テスト基盤・画面部品・設定が追いついていない | `foundation` |
 | この UC のシナリオ / 契約 / 他ティアの実装 | `scenario` / `contract` / `implementation` |
-| distillery2 のスクリプト・手順の不具合 (リポの中では直せない) | `plugin` |
+| distillery2 のスクリプト・手順の不具合 (リポの中では直せない) | `plugin` (自分の書き込み範囲で回避したら `workaround` に回避の仕方を書く。機能は止まらない) |
 
 作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題を書く (書き方は [handoff.md](../d2-common/references/handoff.md))。報告の本文にだけ書いたことは扱われない。推奨は条件を付けずに 1 つ書く。

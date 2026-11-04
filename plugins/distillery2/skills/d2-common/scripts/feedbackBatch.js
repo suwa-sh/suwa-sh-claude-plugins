@@ -11,7 +11,8 @@
  *   file-issues <runDir>        UC の課題 (issues/*.md) のうち課題ファイルにしていないものを docs/feedback/ に書き、feedback_filed を記録
  *   scan                        自動選択の材料: 要求の課題・戻し先ごとの課題 (upstream・reopen_targets)・止まった課題・未起票の run・途中のバッチ (batch。feedback_due は途中のバッチがあること) ほか
  *   hold <issue> --reason-file <f>   要求の差分の確認ページで外して残す課題に止まった印を付ける (main の作業ツリーで書き換えるだけ。commit は d2-run)
- *   reclassify <issue> --reason-file <f> [--co-author <値>]   直す場所がプラグイン側の課題を kind: plugin に書き換え、今の branch に commit (決定の差分で使う)
+ *   reclassify <issue> --reason-file <f> [--workaround-file <f>] [--co-author <値>]   直す場所がプラグイン側の課題を kind: plugin に書き換え、今の branch に commit (決定・基盤の差分で使う)。
+ *                               --workaround-file: リポの中で回避したときの回避の仕方。workaround: true を付け、止めない課題にする (0.3.0)
  *   status                      途中のバッチの地点 (none | issues | gate | rebuild | merge | cleanup | broken)
  *   merge                       main へ取り込み済み (cleanup) のバッチの push と後始末。それ以外の地点は拒む (abandon を使う)
  *   abandon                     main へ取り込む前のバッチを捨てる。対象の課題ファイルがすべて main に残っていることを確かめてから worktree・branch・状態を消す
@@ -93,7 +94,7 @@ function listFeedback(dir) {
     const { fm } = splitFrontMatter(fs.readFileSync(path.join(d, f), 'utf8'));
     const id = f.replace(/\.md$/, '');
     return { id, kind: fm.kind || null, target_step: targetOf(fm), title: fm.title || '', from_uc: fm.from_uc || null, created: fm.created || '', stopped: Boolean(fm.stopped), stopped_count: Number(fm.stopped_count || 0),
-      resume_from: fm.resume_from || null, chain: fm.chain || id, chain_depth: Number(fm.chain_depth || 0) };
+      resume_from: fm.resume_from || null, chain: fm.chain || id, chain_depth: Number(fm.chain_depth || 0), workaround: Boolean(fm.workaround) };
   });
 }
 
@@ -175,7 +176,7 @@ function cmdFileIssues(root, runDirArg) {
       if (target) out.target_step = target;
       if (fm.tier) out.tier = fm.tier;
       // 写し直しの続きの段と、上流の直しの連鎖 (0.3.0) を下書きから運ぶ
-      for (const k of ['resume_from', 'chain', 'chain_depth']) if (fm[k] != null) out[k] = fm[k];
+      for (const k of ['resume_from', 'chain', 'chain_depth', 'workaround']) if (fm[k] != null) out[k] = fm[k];
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, joinFrontMatter(out, body));
     }
@@ -235,6 +236,8 @@ function cmdScan(root) {
   const stopped = all.filter((x) => (x.kind === 'rule' || x.kind === 'contract') && x.stopped).map((x) => ({ id: x.id, stopped_count: x.stopped_count }));
   // プラグインへ持ち帰る課題は還流の対象でない (報告用に返すだけ。きっかけにしない)
   const plugin = all.filter((x) => x.kind === 'plugin').map((x) => x.id);
+  // リポの中で回避していないプラグインの課題 (0.3.0)。止まるのはこれが残るときだけ (回避した課題は報告用に残すだけ)
+  const pluginBlocking = all.filter((x) => x.kind === 'plugin' && !x.workaround).map((x) => x.id);
   const runsDir = path.join(root, '.distillery', 'runs');
   const unfiledRuns = [];
   const legacyRuns = [];
@@ -291,7 +294,7 @@ function cmdScan(root) {
   const batch = batchStatus(root);
   // 0.2.0: 還流は無い。feedback_due は 0.1.x の途中で止まったバッチがあること (片付けが要る) だけを表す。triggers・stopped は互換のため残す
   const feedbackDue = batch.point !== 'none';
-  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, uncovered_done: uncoveredDone(root), reopened: runState.reopenedSlugs(root), batch, feedback_due: feedbackDue, upstream, reopen_targets: [...reopenBy.values()], carried: [...carriedBy.values()], limit_reached: [...limitBy.values()], chain_limit: MAX_CHAIN_DEPTH, resume_from: Object.fromEntries(all.filter((x) => x.resume_from).map((x) => [x.id, x.resume_from])) };
+  return { requirement, requirement_all: requirementAll, triggers, stopped, plugin, plugin_blocking: pluginBlocking, unfiled_runs: unfiledRuns, legacy_runs: legacyRuns, carry_over_rows: carryOverRows(root), carry_over_pending: carryOverPending, uncovered_done: uncoveredDone(root), reopened: runState.reopenedSlugs(root), batch, feedback_due: feedbackDue, upstream, reopen_targets: [...reopenBy.values()], carried: [...carriedBy.values()], limit_reached: [...limitBy.values()], chain_limit: MAX_CHAIN_DEPTH, resume_from: Object.fromEntries(all.filter((x) => x.resume_from).map((x) => [x.id, x.resume_from])) };
 }
 
 /** features/ 配下 (features/acceptance/ を除く) の <slug>.feature を探す。無ければ null、複数なら配列のまま返す */
@@ -422,7 +425,11 @@ function cmdReclassify(root, id, opts) {
   delete nfm.stopped;
   delete nfm.stopped_count;
   nfm.title = String(nfm.title || id).replace(/^止まった: /, '');
-  const section = ['## プラグインへ持ち帰る理由', '', reason, ''].join('\n');
+  // --workaround-file: リポの中で回避した (0.3.0)。workaround: true の課題では機能を止めない (scan の plugin_blocking に入らない)
+  const workaround = opts['workaround-file'] ? fs.readFileSync(path.resolve(root, opts['workaround-file']), 'utf8').trim() : null;
+  if (opts['workaround-file'] && !workaround) throw new Fail(`回避の内容が空: ${opts['workaround-file']}`);
+  if (workaround) nfm.workaround = true;
+  const section = ['## プラグインへ持ち帰る理由', '', reason, '', ...(workaround ? ['## リポの中での回避', '', workaround, ''] : [])].join('\n');
   fs.writeFileSync(fp, joinFrontMatter(nfm, `\n${section}\n${body.replace(/^\n+/, '')}`));
   const rel = path.relative(root, fp).split(path.sep).join('/');
   git(root, ['add', '--', rel]);

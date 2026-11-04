@@ -5,7 +5,7 @@
  * Usage:
  *   node handoff.js validate <handoff.yaml> [--report <報告のファイル>]   # 形の検査。JSON 1 行 {ok, errors[], asks, upstream_issues, refutations, decisions}
  *     --report: 報告の本文の「決めたこと」の D<n> と引き継ぎファイルの decisions が 1 対 1 で、見出しの下に D<n> で始まらない行が無いこと (0.3.0)
- *   node handoff.js route <handoff.yaml> --mode auto|recommend      # 問いの振り分け。JSON 1 行 {decide[], to_human[], issues{in_feature[], upstream[]}, needs_info[]}
+ *   node handoff.js route <handoff.yaml> --mode auto|recommend      # 問いの振り分け。JSON 1 行 {decide[], to_human[], issues{in_feature[], upstream[], plugin[], plugin_noted[]}, needs_info[]}。plugin_noted は workaround (リポの中で回避した) のある plugin の課題で、止めない
  *   node handoff.js file-drafts <handoff.yaml> --run <runDir>       # 前のステップの課題を <run>/issues/ の下書きにする (機能の中)
  *   node handoff.js file-drafts <handoff.yaml> --root <repo>        # 上流の段 (run が無い): docs/feedback/ に課題ファイルを直接書く
  *   node handoff.js file-drafts <round<n>.md> --review --target <戻し先> --run <runDir>   # 処理していないレビューの指摘を下書きにする (上流で止める前。0.3.0)
@@ -69,6 +69,7 @@ function validate(data) {
     if (!u || typeof u !== 'object') continue;
     if (seen.has(`issue:${u.id}`)) errors.push(`$.upstream_issues[${i}].id: 重複 ${u.id}`);
     seen.add(`issue:${u.id}`);
+    if (u.workaround && u.target_step !== 'plugin') errors.push(`$.upstream_issues[${i}].workaround: 戻し先が plugin の課題だけに書く (${u.target_step})`);
   }
   return errors;
 }
@@ -88,9 +89,10 @@ function route(data, mode) {
     else if (a.kind === 'unknown_fact' && mode === 'auto') toHuman.push({ id: a.id, reason: 'unknown_fact' });
     else decide.push({ id: a.id, answer: a.recommended, provisional: a.kind === 'unknown_fact' });
   }
-  const issues = { in_feature: [], upstream: [], plugin: [] };
+  // plugin: 止める (リポの中で回避できない)。plugin_noted: リポの中で回避したので止めずに報告する (0.3.0)
+  const issues = { in_feature: [], upstream: [], plugin: [], plugin_noted: [] };
   for (const u of data.upstream_issues || []) {
-    const to = u.target_step === 'plugin' ? issues.plugin : (IN_FEATURE.has(u.target_step) ? issues.in_feature : issues.upstream);
+    const to = u.target_step === 'plugin' ? (u.workaround ? issues.plugin_noted : issues.plugin) : (IN_FEATURE.has(u.target_step) ? issues.in_feature : issues.upstream);
     to.push({ id: u.id, target_step: u.target_step, title: u.title });
   }
   const needsInfo = (data.refutations || []).filter((r) => r.result === 'needs_info').map((r) => r.finding);
@@ -153,6 +155,7 @@ function issueBody(u) {
   const parts = [u.detail.trim()];
   if (u.evidence) parts.push(`## 根拠\n\n${u.evidence.trim()}`);
   if (u.recommended_fix) parts.push(`## 推奨の直し方\n\n${u.recommended_fix.trim()}`);
+  if (u.workaround) parts.push(`## リポの中での回避\n\n${u.workaround.trim()}`);
   return `\n${parts.join('\n\n')}\n`;
 }
 
@@ -211,7 +214,7 @@ function fileDrafts(file, data, { run, root, chainFrom = null, byTitle = true, b
   for (const u of data.upstream_issues || []) {
     const name = `${base}_${u.id}.md`.replace(/[^A-Za-z0-9_.-]/g, '-');
     const key = `${u.target_step}\n${squashTitle(u.title)}`;
-    const fm = { kind: KIND_OF[u.target_step], title: u.title, ...(u.target_step === 'plugin' ? {} : { target_step: u.target_step }), source: `handoff:${step}`, ...(u.resume_from ? { resume_from: u.resume_from } : {}), ...(chain || {}) };
+    const fm = { kind: KIND_OF[u.target_step], title: u.title, ...(u.target_step === 'plugin' ? {} : { target_step: u.target_step }), source: `handoff:${step}`, ...(u.resume_from ? { resume_from: u.resume_from } : {}), ...(u.workaround ? { workaround: true } : {}), ...(chain || {}) };
     let dest;
     if (run) {
       dest = path.join(path.resolve(run), 'issues', `${stamp()}_${step}_${name}`);

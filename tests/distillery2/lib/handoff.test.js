@@ -176,3 +176,31 @@ test('file-drafts --root: uc が UC 一覧に無ければ、どの課題も書�
   assert.equal(code, 1);
   assert.equal(fs.existsSync(path.join(dir, 'docs', 'feedback')), false, '前の課題 (要求への課題) も書かない');
 });
+
+test('route: リポの中で回避したプラグインの課題 (workaround) は止めない側 (plugin_noted) に、回避できないものは plugin に振り分ける。workaround は plugin にだけ書ける (0.3.0)', () => {
+  const d = base();
+  d.upstream_issues.push(
+    { id: 'tmpl-lint', target_step: 'plugin', title: '雛形が lint に落ちる', detail: '雛形の関数名が組み込みと重なる。', evidence: 'qlty の high', recommended_fix: '雛形の関数名を変える', workaround: 'リポの写しの関数名を変えた' },
+    { id: 'gen-broken', target_step: 'plugin', title: '生成器が落ちる', detail: '生成器が例外で止まる。', evidence: 'exit 1', recommended_fix: '生成器を直す' },
+  );
+  assert.deepEqual(H.validate(d), []);
+  const r = H.route(d, 'recommend');
+  assert.deepEqual(r.issues.plugin.map((x) => x.id), ['gen-broken']);
+  assert.deepEqual(r.issues.plugin_noted.map((x) => x.id), ['tmpl-lint']);
+  const bad = base();
+  bad.upstream_issues[0].workaround = '回避した';
+  assert.match(H.validate(bad).join('\n'), /workaround: 戻し先が plugin の課題だけ/);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
+  const run = path.join(dir, '.distillery', 'runs', 'submit-expense');
+  fs.mkdirSync(run, { recursive: true });
+  const only = { ...d, upstream_issues: d.upstream_issues.slice(2) };
+  const w = H.fileDrafts(write(dir, 'tier.json', only), only, { run });
+  assert.equal(w.written.length, 2);
+  const names = fs.readdirSync(path.join(run, 'issues'));
+  const noted = fs.readFileSync(path.join(run, 'issues', names.find((n) => n.includes('tmpl-lint'))), 'utf8');
+  assert.match(noted, /^workaround: true$/m);
+  assert.match(noted, /## リポの中での回避\n\nリポの写しの関数名を変えた/);
+  const blocking = fs.readFileSync(path.join(run, 'issues', names.find((n) => n.includes('gen-broken'))), 'utf8');
+  assert.doesNotMatch(blocking, /workaround/);
+});
+

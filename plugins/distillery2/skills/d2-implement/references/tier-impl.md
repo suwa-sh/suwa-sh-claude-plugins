@@ -21,6 +21,7 @@
 ## 書くもの (write-set)
 
 - `apps/<tier>/src/**` (実装とテスト)。frontend の画面は、読むものの画面部品だけで組む (自作しない)
+- frontend が土台に横断の結線を足すときだけ、`apps/<tier>/**` のうち src の外の土台のファイル (vite.config.ts・index.html。進め方 3)
 - `.distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml` (0 件でも必ず)
 - backend の datastore_owner ティアは `apps/<tier>/migrations/` の追加 migration (契約の DB 変更に追随するときだけ。DDL 生成物は書き換えない)
 
@@ -36,7 +37,9 @@
 3. frontend なら、画面の操作を **ブラウザ無しで呼べる入口関数** (例: `submitLoanCheckout(api, input)`) として export し、
    API 呼び出しは生成クライアントの `options.fetch` で差し替えられる形にする (UC BDD が in-process で画面 → API を通すため)。
    画面は基盤が置いた土台 (`src/App.tsx`・`src/routes.tsx`) に載せる: 自分の画面を `src/routes.tsx` の表に 1 行足す (path は `screens.yaml` の route)。
-   ビルドの設定・入口・スタイルの入口を作り直さない。
+   ビルドの設定・入口・スタイルの入口を作り直さない (置き換えない)。
+   ADR で決めた横断の結線 (サインインとトークンの受け渡し・サインイン後の戻り先の画面・API の宛先・開発時の中継) が土台に無ければ、この機能が土台に足す
+   (`src/App.tsx` への差し込み・`vite.config.ts` の中継の設定など。前のステップの課題にしない)。足した結線は AssumptionRecord に書く。後の画面の機能はそれに載せる。
    土台が無い構成 (ADR の ui が React の SPA・Tailwind 以外。基盤の報告に「最初の画面の機能が ADR に従って作る」と出る) では、最初の画面の機能が ADR に従って土台を作り、
    その作り方を AssumptionRecord に書く。後の画面の機能はそれに載せる
 4. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `build` / `unit` (`.distillery/config.yaml` の commands。`build` が無い古い config は `typecheck`)。

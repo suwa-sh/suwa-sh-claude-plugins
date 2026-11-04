@@ -306,6 +306,8 @@ test('0.2.0: 決定の差分・基盤の差分: clean な main で回し、決�
   assert.match(dd, /派遣表「② 決定の差分 \(ADR\)」/);
   assert.match(dd, /落ちたら「人に返すとき」の表のゲートの再失敗の行に従う: auto は人に返し、recommend は担当を 2 回まで派遣し直して 3 回目で人に返す/);
   assert.doesNotMatch(dd, /worktree/, '決定の差分は本体の作業ツリーで回す (還流の worktree は使わない)');
+  // 0.3.0: 決定のレビューの基盤向けの指摘は main に戻さず、同じ branch で基盤の差分まで回して確定する (指摘の連鎖を断つ)
+  assert.match(dd, /戻し先が foundation の指摘は、課題ファイルにして main に戻さず、5 の commit の後に\*\*同じ branch のまま\*\*下の「基盤の差分」の 2〜4 で直してから確定する/);
   const fd = routingSection('### 基盤の差分');
   assert.match(fd, /sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton` \(UC がある契約は[^\n]*「反証して直す派遣の引数」[^\n]*\)、画面部品は sub `d2-design mode=feedback items=<直すファイルと直す内容を 1 行ずつ>`[^\n]*どの派遣も再実行して安全。/);
   assert.match(fd, /仕上げの前に ③ の 4 と同じく `git add contracts docs\/design` → `foundation: feedback \(contracts and design\)` で commit する[^\n]*続けて sub `d2-foundation phase=finish ui=<true\|false>`/);
@@ -945,10 +947,15 @@ test('0.3.0: 担当は課題のファイルを直接書かず、上流の課題�
 
 test('0.3.0: recommend で人に返すのは戻り道の上限とプラグインの不具合だけ。推奨の無い問い・needs_info は進行役が推奨を作って仮置き、ゲートの再失敗は巻き戻し。止める前のレビューの指摘と決めたこと (D<n>) が消えない', () => {
   const back = routingSection('## 人に返すとき');
-  assert.match(back, /`mode=recommend` で人に返すのは、戻り道の上限とプラグインの不具合だけ/);
+  assert.match(back, /`mode=recommend` で人に返すのは、戻り道の上限とリポの中で回避できないプラグインの不具合だけ/);
   assert.match(back, /\| レビューの反証で `needs_info` が残った \| 人に返す \| 進行役が推奨を作って仮置きし記録する/);
   assert.match(back, /\| ゲートが 2 回落ちた・受理の検査に落ちた \(再派遣で直らない\) \| 人に返す \| 機能の中なら `<RS> rewind <run> implementation` \(回数に数える。上限で人へ\)/);
-  assert.match(back, /\| プラグインの不具合 [^\n]*\| 人に返す \| \*\*人に返す\*\*/);
+  assert.match(back, /\| プラグインの不具合 [^\n]*\| リポの中で回避した \(`workaround` がある\) なら止めずに報告。回避できないなら人に返す \|/);
+  // 0.3.0: 回避したプラグインの課題では止めない。止まるのは scan の plugin_blocking が残るときだけ
+  const pl = routingSection('### プラグインの不具合');
+  assert.match(pl, /\*\*回避した \(`workaround` がある\)\*\*: 止めない/);
+  assert.match(pl, /`plugin_blocking`/);
+  assert.match(routingSection('## 機能の最初の点検'), /回避していないプラグインの課題 \(`FB scan` の `plugin_blocking`\)/);
   const h = routingSection('## 引き継ぎファイルの処理');
   assert.match(h, /`<H> validate <handoff> --report <そのファイル>` が exit 0/);
   assert.match(h, /`make_recommendation\[\]` \(recommend だけ\)[^\n]*--by recommended --provisional/);
@@ -956,7 +963,7 @@ test('0.3.0: recommend で人に返すのは戻り道の上限とプラグイン
   const up = routingSection('### 上流で止めるとき');
   assert.match(up, /0\. 止める前に、反証して直すを派遣していないレビューの結果[^\n]*`<H> file-drafts <round<k>\.md> --review --target <場所の段> --run <run>`/);
   const plugin = routingSection('### プラグインの不具合');
-  assert.match(plugin, /`FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"`/);
+  assert.match(plugin, /`FB reclassify <issue> --reason-file <ファイル> \[--workaround-file <回避の仕方のファイル>\] --co-author "<attribution の値>"`/);
   assert.match(plugin, /`\{"id": "<課題>", "target": "plugin"\}`/);
   assert.match(routingSection('## 縦・横レビュー'), /1 ラウンド目で決め済み[^\n]*と振り替え済み[^\n]*の指摘は、2 ラウンド目の反証に回さない/);
   assert.match(read(TEMPLATE), /報告の「決めたこと」の見出しの下に 1 行ずつ `D<n> <要点>` で書き、引き継ぎファイルの `decisions` にも同じ `D<n>` で書いてください/);
