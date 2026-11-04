@@ -147,6 +147,7 @@ test('画面の CSS の入口 (packages/ui/entry.css): Tailwind の CSS が 1 �
   writeFile(path.join(design, 'src/app/globals.css'), "@import 'tailwindcss';\n@import '../styles/design-tokens.css';\n");
   assert.equal(run({ from: 'design', cwd }).css, 'entry.css → app/globals.css');
   assert.match(fs.readFileSync(entry, 'utf8'), /^@import "\.\/app\/globals\.css";$/m);
+  assert.match(fs.readFileSync(entry, 'utf8'), /^@source "\.\/";$/m, '部品にだけ書いたクラスも画面の build に出す (packages/ui を走査させる)');
   writeFile(path.join(design, 'src/styles/globals.css'), '@import "tailwindcss";\n');
   assert.match(run({ from: 'design', cwd }).css, /^none \(Tailwind の CSS が 2 本/);
   assert.ok(!fs.existsSync(entry), '前に書いた入口は消す (どちらを指すか決められない)');
@@ -179,5 +180,14 @@ test('画面の土台の styles.css: 入口が書けたら packages/ui を読む
   assert.match(own.css, /^kept/);
   assert.match(fs.readFileSync(path.join(cwd, 'packages/ui/entry.css'), 'utf8'), /design の入口/);
   assert.equal(fs.readFileSync(app, 'utf8'), STYLES_UI);
+});
+
+test('Tailwind の CSS の検出はコメントの中の @import を数えない (0.3.0)', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  const design = path.join(cwd, 'design');
+  writeFile(path.join(design, 'src/components/ui/Button.tsx'), 'export const Button = () => null;');
+  writeFile(path.join(design, 'src/styles/globals.css'), '@import "tailwindcss";\n');
+  writeFile(path.join(design, 'src/styles/old.css'), '/* 前は @import "tailwindcss"; をここに書いていた */\n.x { color: red; }\n');
+  assert.equal(run({ from: 'design', cwd }).css, 'entry.css → styles/globals.css');
 });
 

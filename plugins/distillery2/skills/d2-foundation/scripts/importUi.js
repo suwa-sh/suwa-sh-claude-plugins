@@ -137,14 +137,18 @@ function run(o) {
 const { UI_ENTRY_CSS: ENTRY_CSS, STYLES_PLAIN, STYLES_UI } = require('./spaStyles');
 function writeEntryCss(uiDir, relPaths) {
   if (relPaths.includes(ENTRY_CSS)) return { ok: true, msg: `kept (取り込み元に ${ENTRY_CSS} がある)` };
-  const found = relPaths.filter((p) => p.endsWith('.css') && /@import\s+["']tailwindcss["']/.test(fs.readFileSync(path.join(uiDir, p), 'utf8')));
+  // コメントの中の @import は数えない
+  const found = relPaths.filter((p) => p.endsWith('.css') && /@import\s+["']tailwindcss["']/.test(fs.readFileSync(path.join(uiDir, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')));
   const dst = path.join(uiDir, ENTRY_CSS);
   if (found.length !== 1) {
     if (fs.existsSync(dst)) fs.rmSync(dst);
     return { ok: false, msg: found.length ? `none (Tailwind の CSS が ${found.length} 本: ${found.join(', ')})` : 'none (Tailwind の CSS が無い)' };
   }
   const rel = found[0].split(path.sep).join('/');
-  fs.writeFileSync(dst, `/* distillery2 importUi.js が書いた画面部品の CSS の入口 (取り込みのたびに書き直す)。画面 (apps/<frontend>/src/styles.css) はここを読む */\n@import "./${rel}";\n`);
+  // @source で packages/ui を Tailwind に走査させる。画面の build は apps/<frontend> で回り、Tailwind が自動で見るのはその中だけなので、
+  // 部品にだけ書いたクラスが出ない (d2-design の CSS が @source を持たないとき。0.3.0 の確認で実測)。
+  // Tailwind 固有の at-rule だが、ここ (packages/ui) はティアの biome lint の外で、リポ全体のゲート (biome format・qlty) は通る (実測)
+  fs.writeFileSync(dst, `/* distillery2 importUi.js が書いた画面部品の CSS の入口 (取り込みのたびに書き直す)。画面 (apps/<frontend>/src/styles.css) はここを読む */\n@import "./${rel}";\n@source "./";\n`);
   return { ok: true, msg: `entry.css → ${rel}` };
 }
 
