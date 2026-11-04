@@ -19,7 +19,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 | 上流への課題 (`target_step` が requirements / decide / foundation) | 人に返す (機能を止めて、上流を直すか取り下げるか聞く) | 推奨の直し方で上流の差分へ進み、記録する |
 | 戻り道の回数の上限 (`runState.js` が exit 3) | 人に返す | 人に返す |
 | レビューを回せない (`reviewStep.js` が exit 4) | 人に返す (同じモデルで代わりにレビューする / このまま進む / 止める) | 同じモデルで代わりにレビューし、`fallback: same-model` を記録する |
-| ゲートが 2 回落ちた・受理の検査に落ちた (再派遣で直らない) | 人に返す | 機能の中なら `<RS> rewind <run> implementation` (回数に数える。上限で人へ)。上流の段なら落ちた出力を添えて担当を 2 回まで派遣し直す (`<D> add --root . --page page:upstream-retry:<段> ...` で回数を残す)。3 回目も落ちたら戻り道の上限として人に返す |
+| ゲートが 2 回落ちた・受理の検査に落ちた (再派遣で直らない) | 人に返す | 機能の中なら `<RS> rewind <run> implementation` (回数に数える。上限で人へ)。上流の段なら落ちた出力を添えて担当を 2 回まで派遣し直す (`<D> add --root . --page page:upstream-retry:<段> --question "落ちたゲートを担当に直させるか" --answer "差し戻す (<n> 回目)" --by rule` で回数を残す)。3 回目も落ちたら戻り道の上限として人に返す |
 | プラグインの不具合 (反証の結果・課題の戻し先が `plugin`。決定の差分の `reason_kind: plugin`) | 人に返す | **人に返す**: 下の「プラグインの不具合」で課題を `kind: plugin` にし、機能の中ならその機能を止める (ほかの機能は続く) |
 | 終わったとき | 完了報告 | 完了報告と、推奨で決めたものの一覧の確認ページ 1 枚 (`<D> list --root . --since <起動の時刻> --format md`) |
 
@@ -56,7 +56,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
    - `issues`: 下の「前のステップの課題」(`issues.plugin` は「プラグインの不具合」)
    - `needs_info[]`: auto は人に返す。recommend は進行役が推奨を作って仮置きする (上の表)
    - `plugin_findings[]`: 「プラグインの不具合」
-   - 引き継ぎファイルの `decisions[]` (担当が自分で決めたこと): `D<n>` ごとに `<D> add (--run <run> | --root .) --handoff <handoff> --decision D<n> --by recommended` (同じ `D<n>` が一覧まで残る)
+   - 引き継ぎファイルの `decisions[]` (担当が自分で決めたこと): `D<n>` ごとに `<D> add (--run <run> | --root .) --handoff <handoff> --decision D<n> --by recommended` (記録の ID は `<run>:<引き継ぎファイルの名前>:D<n>`。同じ `D<n>` が一覧まで残る)
 3. 記録の置き場: 機能の中は `<run>/handoff/`・`<run>/decisions.jsonl` (feature の commit に入る)。上流の段は `.distillery/handoff/`・`.distillery/decisions.jsonl` (その段の commit に `git add` で入れる)
 
 ## 前のステップの課題
@@ -127,7 +127,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 
 1. 前提: 進行中の UC が無い。「上流の差分の branch」の 1 で branch を切る
 2. 課題ごとに sub `d2-decide mode=feedback issue=<docs/feedback/<issue>.md> result=<.distillery/logs/decide-<issue>.result.json>` (派遣表「② 決定の差分 (ADR)」。ADR を 1 本足す。結果ファイルは派遣の前に消す)。受理: 結果が `applied`、`validateAdr.js docs/adr` が exit 0、write-set の外が変わっていない。
-   結果が `blocked` なら: `reason_kind: plugin` は「プラグインの不具合」(理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` でプラグインへ持ち帰る課題にする)。`reason_kind: scope` は auto なら人に返し (推奨: 戻し先を基盤にする)、recommend なら推奨どおり課題の `target_step` を `foundation` に書き換え (`kind` も合わせる) て `<D> add --root . --page page:upstream:<課題> --answer "戻し先を基盤にする" --by recommended` で記録し、基盤の差分で直す
+   結果が `blocked` なら: `reason_kind: plugin` は「プラグインの不具合」(理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` でプラグインへ持ち帰る課題にする)。`reason_kind: scope` は auto なら人に返し (推奨: 戻し先を基盤にする)、recommend なら推奨どおり課題の `target_step` を `foundation` に書き換え (`kind` も合わせる) て `<D> add --root . --page page:upstream:<課題> --question "決定では直せない課題の戻し先をどうするか" --answer "戻し先を基盤にする" --by recommended` で記録し、基盤の差分で直す
 3. 索引・開発ルール・アーキテストを作り直す (1 コマンドずつ): `node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements`、`node <skills>/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd .`、`node <skills>/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd .`。続けて `runGates.js --uc d2-feedback --only static` が通り、`contracts/` があれば `node <skills>/d2-contract/scripts/validateUcIndex.js contracts` が exit 0 (落ちたら人に返す)
 4. 決定のレビュー (下の「縦・横レビュー」の `decide`。指摘のうち戻し先が decide のものは、次の決定の差分にせず、この差分の「反証して直す」で扱う) → 確認ページ (`page:decide:approve`。足した ADR と、`basis.js check` の STALE の UC を「やり直す / 後で」で載せる)
 5. 2 回に分けて commit する (生成物の basis が、入力の ADR を入れた commit を指すように):

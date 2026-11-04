@@ -56,8 +56,10 @@ function entryOf(o) {
     const d = (data.decisions || []).find((x) => x && x.id === o.decision);
     if (!d) throw new Fail(`引き継ぎファイルに決めたことが無い: ${o.decision}`);
     const where = o.run ? path.basename(path.resolve(o.run)) : 'upstream';
+    // 担当 = 引き継ぎファイルの名前 (<段>[-<tier>]-<ts>)。同じ段の別のティアの D1 と区別する
+    const owner = path.basename(o.handoff).replace(/\.(ya?ml|json)$/, '');
     return {
-      at, id: `${where}:${data.step || '?'}:${d.id}`, source: o.handoff, step: data.step || null, kind: 'decision', question: d.topic,
+      at, id: `${where}:${owner}:${d.id}`, source: o.handoff, step: data.step || null, kind: 'decision', question: d.topic,
       options: null, recommended: d.choice, answer: d.choice, reason: d.reason, by: o.by, provisional: Boolean(o.provisional),
     };
   }

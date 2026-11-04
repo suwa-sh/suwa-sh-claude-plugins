@@ -49,15 +49,17 @@ test('file-drafts は戻し先と題名が同じ既存の下書き・その場�
   const run = rs.openRun(root, 'book-room');
   fs.mkdirSync(path.join(root, 'docs/feedback'), { recursive: true });
   fs.writeFileSync(path.join(root, 'docs/feedback/old.md'), '---\ntarget_step: decide\ntitle: 予約の重なり の扱い\n---\n');
+  fs.writeFileSync(path.join(root, 'docs/feedback/held.md'), '---\ntarget_step: decide\ntitle: "止まった: 期限の扱い"\n---\n');
   const h = { ...handoff, upstream_issues: [
     { ...handoff.upstream_issues[0], id: 'D1', title: '予約の重なりの扱い' },
     { ...handoff.upstream_issues[0], id: 'D2', title: '取り消しの期限' },
     { ...handoff.upstream_issues[0], id: 'D3', title: '取り消しの期限' },
     { ...handoff.upstream_issues[0], id: 'D4', title: '取り消しの期限', target_step: 'contract' },
+    { ...handoff.upstream_issues[0], id: 'D5', title: '期限の扱い' },
   ] };
   const hf = path.join(run, 'handoff', 'tier-1.json');
   const r = H.fileDrafts(hf, h, { run });
-  assert.deepEqual(r.duplicates.map((d) => d.id), ['D1', 'D3']);
+  assert.deepEqual(r.duplicates.map((d) => d.id), ['D1', 'D3', 'D5'], '止めた課題 (止まった: ) とも重ねない');
   assert.equal(r.written.length, 2, '戻し先が違えば別の課題');
   const again = H.fileDrafts(path.join(run, 'handoff', 'tier-2.json'), { ...h, upstream_issues: [h.upstream_issues[1]] }, { run });
   assert.deepEqual(again.duplicates.map((d) => d.id), ['D2'], '同じ run の既存の下書きとも重ねない');

@@ -96,9 +96,13 @@ test('decisionLog add --decision: 決めたことを同じ D<n> で記録し、l
   w(hf, JSON.stringify(HO));
   for (const d of ['D1', 'D2']) DL.add({ run, handoff: hf, decision: d, by: 'recommended' });
   const ids = DL.list({ root }).map((e) => e.id);
-  assert.deepEqual(ids, ['book-room:tier:D1', 'book-room:tier:D2']);
+  assert.deepEqual(ids, ['book-room:tier-backend-1:D1', 'book-room:tier-backend-1:D2']);
+  const hf2 = path.join(run, 'handoff', 'tier-frontend-1.json');
+  w(hf2, JSON.stringify(HO));
+  DL.add({ run, handoff: hf2, decision: 'D1', by: 'recommended' });
+  assert.ok(DL.list({ root }).map((e) => e.id).includes('book-room:tier-frontend-1:D1'), '別のティアの D1 と区別する');
   const md = DL.toMarkdown(DL.list({ root }));
-  assert.match(md, /\| book-room:tier:D1 \| 予約の重なりの判定 \| 開始と終了の半開区間で比べる \| 担当が決めた/, '一覧に D<n> の ID が残る');
+  assert.match(md, /\| book-room:tier-backend-1:D1 \| 予約の重なりの判定 \| 開始と終了の半開区間で比べる \| 担当が決めた/, '一覧に D<n> の ID が残る');
   assert.throws(() => DL.add({ run, handoff: hf, decision: 'D9', answer: 'x', by: 'recommended' }), /決めたことが無い/);
 });
 

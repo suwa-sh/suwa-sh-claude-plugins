@@ -156,7 +156,8 @@ function issueBody(u) {
   return `\n${parts.join('\n\n')}\n`;
 }
 
-const squashTitle = (t) => String(t || '').replace(/\s+/g, '');
+// 重ねの比較は空白と、止めた課題の印 (feedbackBatch.js hold が題名に付ける「止まった: 」) を除いて行う
+const squashTitle = (t) => String(t || '').replace(/^止まった:\s*/, '').replace(/\s+/g, '');
 
 /** 既にある課題 (下書き・その場で直した下書き・課題ファイル) の 戻し先 + 題名 の組。同じ組の課題を重ねて書かない (0.3.0) */
 function existingKeys(dirs) {
