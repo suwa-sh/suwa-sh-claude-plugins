@@ -37,3 +37,15 @@ test('--keep-from: 既存の UC のエントリと operation が同じなら空�
   w(root, 'contracts/uc-index.yaml', 'schema_version: distillery2.uc-index/v1\nucs: []\n');
   assert.match(V.keepFrom(dir, 'HEAD').join('\n'), /view-rooms: HEAD の uc-index にあった UC が消えた/, '骨格が空の uc-index を書き直したら止める');
 });
+
+test('--keep-from: operation の本体が同じでも、参照先まで展開した UC の slice が変われば誤り', () => {
+  const root = repo();
+  w(root, 'contracts/generated/slices/view-rooms/contract-slice.json', JSON.stringify({ uc: 'view-rooms', openapi: { components: { schemas: { Room: { type: 'string' } } } } }));
+  g(root, 'add', '-A');
+  g(root, 'commit', '-q', '-m', 'slice');
+  const dir = path.join(root, 'contracts');
+  assert.deepEqual(V.keepFrom(dir, 'HEAD'), []);
+  w(root, 'contracts/generated/slices/view-rooms/contract-slice.json', JSON.stringify({ uc: 'view-rooms', openapi: { components: { schemas: { Room: { type: 'integer' } } } } }));
+  assert.match(V.keepFrom(dir, 'HEAD').join('\n'), /contract-slice\.json \(参照先まで展開した UC の契約\) が HEAD から変わった/);
+});
+

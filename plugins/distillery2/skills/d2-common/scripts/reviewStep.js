@@ -174,6 +174,8 @@ function roundDir(o) {
     const prevDir = path.dirname(path.resolve(o.cwd, o.previous));
     if (path.dirname(prevDir) !== base || !/^\d+$/.test(path.basename(prevDir))) throw new Fail(`--previous は ${o.out}/<n>/round<k>.md (同じ場所の前のラウンドの結果): ${o.previous}`);
     if (!fs.existsSync(path.resolve(o.cwd, o.previous))) throw new Fail(`--previous が無い: ${o.previous}`);
+    if (path.basename(o.previous) !== `round${o.round - 1}.md`) throw new Fail(`--previous は前のラウンドの結果 round${o.round - 1}.md: ${o.previous}`);
+    if (fs.existsSync(path.join(prevDir, `round${o.round}.md`))) throw new Fail(`${o.round} ラウンド目の結果が既にある (上書きしない): ${path.join(path.relative(o.cwd, prevDir), `round${o.round}.md`)}`);
     return prevDir;
   }
   return path.join(base, String(last + 1));
@@ -214,10 +216,11 @@ function run(o) {
   if (st.status !== 0 || !job) return { ...base, status: 'unavailable', ...(waited ? { waited_for_lock: waited } : {}), reason: `起動できない: ${(st.stderr || '').trim().split('\n').pop() || `exit ${st.status}`}` };
   let verdict = 'unknown';
   for (;;) {
-    sleep(o.poll);
+    sleep(Math.max(0, Math.min(o.poll, left())));
     const s = call(runner, ['status', job, o.cwd], env);
     try { verdict = JSON.parse(s.stdout).verdict; } catch { verdict = 'unknown'; }
-    if (verdict === 'done') break;
+    // 締め切りを過ぎた完了は受理しない (進行役の Bash の timeout より先に切り上げる約束)
+    if (verdict === 'done' && left() >= 0) break;
     const elapsed = (Date.now() - started) / 1000;
     if (['stuck', 'failed', 'timed_out', 'cancelled'].includes(verdict) || elapsed > o.deadline) {
       call(runner, ['cancel', job, o.cwd], env);

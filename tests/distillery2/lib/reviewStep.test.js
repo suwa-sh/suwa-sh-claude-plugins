@@ -135,3 +135,14 @@ test('0.3.0: 2 ラウンド目の置き場は --previous の置き場 (後から
   assert.equal(bad.code, 2);
 });
 
+test('0.3.0: --previous は前のラウンドの結果 (round<k-1>.md) だけ。同じラウンドの結果が既にあれば上書きしない。締め切りを過ぎた完了は受理しない', () => {
+  const cwd = repo();
+  run(['prompt', '--point', 'contract', '--target', 'contracts/', '--out', 'r', '--cwd', cwd]);
+  fs.writeFileSync(path.join(cwd, 'r/1/round1.md'), 'r1');
+  assert.equal(run(['prompt', '--point', 'contract', '--target', 'c', '--out', 'r', '--cwd', cwd, '--round', '2', '--previous', 'r/1/prompt-round1.md']).code, 2, '依頼文は前回の結果ではない');
+  fs.writeFileSync(path.join(cwd, 'r/1/round2.md'), 'r2');
+  assert.equal(run(['prompt', '--point', 'contract', '--target', 'c', '--out', 'r', '--cwd', cwd, '--round', '2', '--previous', 'r/1/round1.md']).code, 2, '2 ラウンド目の結果を上書きしない');
+  const late = run(['run', '--point', 'contract', '--target', 'contracts/', '--out', 'late', '--cwd', cwd, '--runner', FAKE, '--poll', '0.05', '--deadline', '0.01'], { FAKE_LOG: path.join(cwd, 'late.log') });
+  assert.notEqual(late.out.status, 'reviewed', '締め切りの後の完了は受理しない');
+});
+

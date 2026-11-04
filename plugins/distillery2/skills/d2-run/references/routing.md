@@ -86,7 +86,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 4. `git -C <wt> add -A -- docs` → `git -C <wt> commit -m "impl(<slug>): issues to feedback" -m "<attribution 行>"`
 5. feature のまま `git fetch . feedback-req/<slug>/<issue>:main` で main を ff する
 6. `git worktree remove <wt>` → `git merge-base --is-ancestor feedback-req/<slug>/<issue> main` が exit 0 なら `git branch -D feedback-req/<slug>/<issue>`
-7. remote `origin` があれば `git push origin main` (拒否されたら止まって報告する。force push はしない)
+7. remote `origin` があれば `git push origin main` → `git push origin 'refs/distillery2/*:refs/distillery2/*'` (拒否されたら止まって報告する。force push はしない)
 8. `<RS> event <run> blocked_on_upstream --data-file <json>` (`{"issues": [{"id": "<課題ファイルの名前 (.md を除く)>", "target": "<戻し先>", "resume_from": "<課題の resume_from。無ければ書かない>"}]}`。2 で課題ファイルにした上流の課題ごとに 1 件)
 9. feature の**変更をすべて** commit する: `git add -A -- apps packages contracts features docs .distillery/runs/<slug>` (無いパスは名指ししない) → `impl(<slug>): <段> (blocked)`。commit の後に起動シーケンス 5 の clean 判定の対象が空であることを確かめる (実装の途中のコードも残す。写し直しで新しい main の上へ運ぶ)
 10. 自動選択をもう一度呼んで続ける (上流の差分が選ばれ、直した後に写し直して同じ機能へ戻る)

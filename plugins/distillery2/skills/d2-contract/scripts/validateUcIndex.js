@@ -14,7 +14,8 @@
  *  5. 区別できない例が無いこと: 1 つの operation で status の違う 2 つの例が、同じ要求
  *     (URL・ヘッダ・fixture・本文。contractGraph.contractTestCases で生成側と同じ計算) を送らないこと
  *
- *  6. --keep-from <ref> (0.3.0): <ref> の uc-index にあった UC がすべて残り、エントリが同じで、UC が使う OpenAPI の operation の定義も同じこと
+ *  6. --keep-from <ref> (0.3.0): <ref> の uc-index にあった UC がすべて残り、エントリが同じで、UC が使う OpenAPI の operation の定義と、
+ *     参照先まで展開した UC の slice (contract-slice.json・rdb-slice.yaml) も同じこと
  *     (骨格の回し直し (基盤の差分・基盤のレビューの反証) で既存の UC の契約を黙って消さない・変えない)
  * bundle が未生成なら compileContracts/compileRdbSchema を先に実行するよう促す。
  * 終了コード: 0 = PASS / 1 = 違反あり / 2 = 読み込み失敗。
@@ -99,6 +100,15 @@ function keepFrom(contractsDir, ref) {
       if (!oldOps.has(op)) continue;
       if (!newOps.has(op)) errors.push(`${u.slug}: operation ${op} が消えた`);
       else if (canonicalJson(newOps.get(op).operation) !== canonicalJson(oldOps.get(op).operation)) errors.push(`${u.slug}: operation ${op} の定義が ${ref} から変わった`);
+    }
+    // 参照先 (共通の schema・message・表) まで展開した UC の slice も比べる (operation の本体が同じでも、参照先の変更は UC の契約の変更)
+    for (const f of ['contract-slice.json', 'rdb-slice.yaml']) {
+      const before = show(`generated/slices/${u.slug}/${f}`);
+      if (before == null) continue;
+      const file = path.join(C.generatedDir(contractsDir), 'slices', u.slug, f);
+      const after = fs.existsSync(file) ? parseYaml(fs.readFileSync(file, 'utf8')) : null;
+      if (after == null) errors.push(`${u.slug}: generated/slices/${u.slug}/${f} が消えた (compileContracts・compileRdbSchema で作り直してから回す)`);
+      else if (canonicalJson(after) !== canonicalJson(before)) errors.push(`${u.slug}: ${f} (参照先まで展開した UC の契約) が ${ref} から変わった`);
     }
   }
   return errors;
