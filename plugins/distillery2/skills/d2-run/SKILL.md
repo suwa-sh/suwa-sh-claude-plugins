@@ -290,7 +290,7 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
 6. main の上で、④ の冒頭で遅らせた場合だけ `models_resolved` を記録し (遅らせた = run の events に解決済み ID の `models_resolved` が無い。冒頭で記録済みなら記録しない)、`genDocsReadme.js` で `docs/README.md` を更新し (UC 一覧の状態列が `status: done` を見て「main マージ済み」になる)、
    `node runState.js done <run> deliver '{"squash":"<squash commit のフル sha (git rev-parse HEAD)>","base_head":"<base_head>"}'` を実行して、`git add -A -- docs .distillery/runs/<slug>` (main マージの done・events・README・課題一覧の README。新規と削除を含む。`docs/feedback/` は無いことがあるので名指ししない) してから
    まとめて `impl(<slug>): delivered` で commit する (main マージ済みの正は `stages/deliver.done.yaml`)
-7. remote `origin` があれば `git push origin main`。拒否されたら止まって報告する (force push はしない。再開すると起動シーケンス 4 でやり直す)
+7. remote `origin` があれば `git push origin main` と `git push origin 'refs/distillery2/*:refs/distillery2/*'` (控えの ref)。拒否されたら止まって報告する (force push はしない。再開すると起動シーケンス 4 でやり直す)
 8. `git branch -d feature/<slug>`
 
 再開 (main マージの done が無いとき): feature が `base_head` から 1 commit で、その commit が main に含まれていなければ 4 から (squash 済み)。含まれていれば 6 から。

@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * validateUcIndex.js <contracts-dir> [--json]
+ * validateUcIndex.js <contracts-dir> [--json] [--keep-from <git-ref>]
  *
  * uc-index.yaml を検査する:
  *  1. スキーマ (schema-uc-index.json)
@@ -14,6 +14,8 @@
  *  5. 区別できない例が無いこと: 1 つの operation で status の違う 2 つの例が、同じ要求
  *     (URL・ヘッダ・fixture・本文。contractGraph.contractTestCases で生成側と同じ計算) を送らないこと
  *
+ *  6. --keep-from <ref> (0.3.0): <ref> の uc-index にあった UC がすべて残り、エントリが同じで、UC が使う OpenAPI の operation の定義も同じこと
+ *     (骨格の回し直し (基盤の差分・基盤のレビューの反証) で既存の UC の契約を黙って消さない・変えない)
  * bundle が未生成なら compileContracts/compileRdbSchema を先に実行するよう促す。
  * 終了コード: 0 = PASS / 1 = 違反あり / 2 = 読み込み失敗。
  */
@@ -70,14 +72,48 @@ function validate(contractsDir) {
   return { errors, ucs: ucIndex.ucs.length };
 }
 
-module.exports = { validate };
+/** <ref> の契約から、既存の UC のエントリと operation の定義が変わっていないかを見る (git のリポの中で回す) */
+function keepFrom(contractsDir, ref) {
+  const { spawnSync } = require('node:child_process');
+  // キーの順に左右されない比較 (bundle の並びは生成で変わりうる)
+  const canonicalJson = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((key) => [key, x[key]])) : x));
+  const abs = fs.realpathSync(path.resolve(contractsDir)); // git の toplevel は実パス (macOS の /var と /private/var)
+  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: abs, encoding: 'utf8' });
+  if (top.status !== 0) throw new Error(`git のリポでない: ${abs}`);
+  const rel = path.relative(fs.realpathSync(top.stdout.trim()), abs).split(path.sep).join('/');
+  const show = (p) => { const r = spawnSync('git', ['show', `${ref}:${rel}/${p}`], { cwd: abs, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }); return r.status === 0 ? parseYaml(r.stdout) : null; };
+  const errors = [];
+  const old = show('uc-index.yaml');
+  if (!old || !Array.isArray(old.ucs) || !old.ucs.length) return errors;
+  const cur = C.readUcIndex(contractsDir);
+  const curBy = new Map((cur.ucs || []).map((u) => [u.slug, u]));
+  const oldApi = show('generated/openapi.bundle.yaml');
+  const newApi = C.readBundle(contractsDir, 'openapi.bundle.yaml');
+  const oldOps = oldApi ? G.operations(oldApi, 'openapi') : new Map();
+  const newOps = newApi ? G.operations(newApi, 'openapi') : new Map();
+  for (const u of old.ucs) {
+    const now = curBy.get(u.slug);
+    if (!now) { errors.push(`${u.slug}: ${ref} の uc-index にあった UC が消えた`); continue; }
+    if (canonicalJson(now) !== canonicalJson(u)) errors.push(`${u.slug}: uc-index のエントリが ${ref} から変わった`);
+    for (const op of u.operations || []) {
+      if (!oldOps.has(op)) continue;
+      if (!newOps.has(op)) errors.push(`${u.slug}: operation ${op} が消えた`);
+      else if (canonicalJson(newOps.get(op).operation) !== canonicalJson(oldOps.get(op).operation)) errors.push(`${u.slug}: operation ${op} の定義が ${ref} から変わった`);
+    }
+  }
+  return errors;
+}
+
+module.exports = { validate, keepFrom };
 
 if (require.main === module) {
   try {
     const args = process.argv.slice(2);
-    const contractsDir = args.find(a => !a.startsWith('--'));
-    if (!contractsDir) { console.error('Usage: validateUcIndex.js <contracts-dir> [--json]'); process.exit(2); }
+    const contractsDir = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--keep-from');
+    if (!contractsDir) { console.error('Usage: validateUcIndex.js <contracts-dir> [--json] [--keep-from <git-ref>]'); process.exit(2); }
     const { errors, ucs } = validate(contractsDir);
+    const k = args.indexOf('--keep-from');
+    if (k >= 0) errors.push(...keepFrom(contractsDir, args[k + 1]));
     if (args.includes('--json')) console.log(JSON.stringify({ status: errors.length ? 'fail' : 'pass', errors }, null, 2));
     else if (!errors.length) console.log(`PASS: uc-index (${ucs} UC)`);
     else { console.log(`FAIL: uc-index (${errors.length} error)`); for (const e of errors) console.log(`  - ${e}`); }

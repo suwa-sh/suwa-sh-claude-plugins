@@ -309,7 +309,7 @@ test('0.2.0: 決定の差分・基盤の差分: clean な main で回し、決�
   const fd = routingSection('### 基盤の差分');
   assert.match(fd, /sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton` \(UC がある契約は[^\n]*「反証して直す派遣の引数」[^\n]*\)、画面部品は sub `d2-design mode=feedback items=<直すファイルと直す内容を 1 行ずつ>`[^\n]*どの派遣も再実行して安全。/);
   assert.match(fd, /仕上げの前に ③ の 4 と同じく `git add contracts docs\/design` → `foundation: feedback \(contracts and design\)` で commit する[^\n]*続けて sub `d2-foundation phase=finish ui=<true\|false>`/);
-  assert.match(fd, /`validateUcIndex\.js contracts` が exit 0 も足す/);
+  assert.match(fd, /`validateUcIndex\.js contracts --keep-from <派遣の前の HEAD>` が exit 0 も足す/);
   assert.match(fd, /受理は ③ の 5 と同じ/);
   assert.match(fd, /`foundation: feedback`/);
   assert.match(row(read(TEMPLATE), /^\| ② 決定の差分 \(ADR\) \|/), /本体の作業ツリー \(clean な main\) で派遣する \(worktree は使わない/);
@@ -872,7 +872,7 @@ test('0.2.0: 縦・横レビューは 7 か所。指摘があれば同じ担当�
   const t = read(SKILL);
   for (const p of POINTS) assert.ok(t.includes('`--point ' + p), `SKILL.md が ${p} のレビューを回す`);
   const rev = routingSection('## 縦・横レビュー');
-  assert.match(rev, /`node <skills>\/d2-common\/scripts\/reviewStep\.js run --point <場所> --target <対象> \.\.\. --out <置き場>` \(Bash の timeout 600000 ms\)/);
+  assert.match(rev, /`node <skills>\/d2-common\/scripts\/reviewStep\.js run --point <場所> --target <対象> \.\.\. --out <置き場> \[--known <課題ファイル> \.\.\.\]` \(Bash の timeout 600000 ms/);
   assert.match(rev, /その場所の担当を \*\*反証して直す\*\* で派遣し直す \(派遣表の「反証して直す」の行。write-set はその場所と同じ/);
   assert.match(rev, /引き継ぎファイルの `refutations` が全件あることを受理で確かめる/);
   assert.match(rev, /2 ラウンド目: `has_fail` か、`high_or_critical` の指摘が `refutations` で `accepted` なら、`--round 2 --previous <round1\.md>` で 1 回だけ回す。指摘が残れば 2 と同じく直させ、もう回さない/);
@@ -909,7 +909,7 @@ test('0.3.0: 上流の差分は一時の branch upstream/<課題> で行い、�
   const b = routingSection('### 上流の差分の branch');
   assert.match(b, /`git switch -c upstream\/<1 件目の課題の名前> main`/);
   assert.match(b, /`git status --porcelain --untracked-files=all` を見る。[^\n]*write-set の中なら追加の commit に入れ \(`--amend` はしない\)、外なら止まって報告する/);
-  assert.match(b, /`git switch main` → `git merge --ff-only upstream\/<名前>` → `git branch -d upstream\/<名前>` → remote `origin` があれば `git push origin main`。ff できなければ[^\n]*止まって報告する/);
+  assert.match(b, /`git switch main` → `git merge --ff-only upstream\/<名前>` → `git branch -d upstream\/<名前>` → remote `origin` があれば `git push origin main` と `git push origin \'refs\/distillery2\/\*:refs\/distillery2\/\*\'`。ff できなければ[^\n]*止まって報告する/);
   assert.match(b, /自動選択が `continue-upstream` を返す。その branch に切り替え、同じ差分を最初の手順から回し直す/);
   assert.match(section(SKILL, '### 要求の差分', '## ② 決定'), /routing\.md「上流の差分の branch」の 1 で一時の branch を切る/);
   assert.match(routingSection('### 決定の差分'), /`git add -A -- docs \.distillery \.dependency-cruiser\.cjs` → `decide: feedback` で commit/, 'アーキテストも commit に入れる (main が汚れない)');

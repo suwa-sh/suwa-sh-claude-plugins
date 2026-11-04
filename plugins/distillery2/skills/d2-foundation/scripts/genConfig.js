@@ -59,7 +59,7 @@ function buildConfig({ tiers, datastore_owner }, contracts, caps, warnings, chec
       id: t.id, dir: `apps/${dir}`, kind: t.kind || 'backend', lang: t.lang || 'typescript',
       provides,
       consumes: t.consumes && t.consumes.length ? t.consumes : consumesOf(t.id),
-      commands: tierCommands(dir, provides.length > 0 || !contracts.length, checks, t.id),
+      commands: tierCommands(dir, provides.length > 0, checks, t.id),
     };
   });
   const hasFrontend = tiers.some(t => t.kind === 'frontend');

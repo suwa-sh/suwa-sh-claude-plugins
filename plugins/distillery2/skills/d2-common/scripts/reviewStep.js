@@ -170,8 +170,11 @@ function roundDir(o) {
   const nums = fs.existsSync(base) ? fs.readdirSync(base).filter((x) => /^\d+$/.test(x) && fs.statSync(path.join(base, x)).isDirectory()).map(Number) : [];
   const last = nums.length ? Math.max(...nums) : 0;
   if (o.round > 1) {
-    if (!last) throw new Fail(`2 ラウンド目なのに 1 ラウンド目の置き場が無い: ${o.out}`);
-    return path.join(base, String(last));
+    // 2 ラウンド目からは --previous の置き場 (別の 1 ラウンド目が後から入っても取り違えない)
+    const prevDir = path.dirname(path.resolve(o.cwd, o.previous));
+    if (path.dirname(prevDir) !== base || !/^\d+$/.test(path.basename(prevDir))) throw new Fail(`--previous は ${o.out}/<n>/round<k>.md (同じ場所の前のラウンドの結果): ${o.previous}`);
+    if (!fs.existsSync(path.resolve(o.cwd, o.previous))) throw new Fail(`--previous が無い: ${o.previous}`);
+    return prevDir;
   }
   return path.join(base, String(last + 1));
 }
@@ -192,20 +195,21 @@ function run(o) {
   const base = { point: o.point, round: o.round, dir: path.relative(o.cwd, out), prompt: path.relative(o.cwd, prompt) };
   const runner = findRunner(o);
   if (!runner) return { ...base, status: 'unavailable', reason: 'review-refute-loop の runner (toolbox プラグイン) が見つからない' };
-  const env = { CODEX_REVIEW_TIMEOUT_SECONDS: String(o.deadline) };
-  let started = Date.now();
-  const waitStart = Date.now();
+  // 締め切りは待ちとレビューを合わせて 1 つ (進行役の Bash の timeout より先に切り上げて cancel する)
+  const started = Date.now();
+  const left = () => o.deadline - (Date.now() - started) / 1000;
   let st;
   let waited = 0;
+  let env = { CODEX_REVIEW_TIMEOUT_SECONDS: String(o.deadline) };
   // 同じ workspace の別のジョブのロックで起動できないときは、締め切りまで待って起動し直す (unavailable にしない)
   for (;;) {
+    env = { CODEX_REVIEW_TIMEOUT_SECONDS: String(Math.max(1, Math.floor(left()))) };
     st = call(runner, ['start', prompt, o.cwd], env);
     const err = String(st.stderr || '');
-    if (st.status === 0 || !LOCK_RE.test(err) || (Date.now() - waitStart) / 1000 + o.poll > o.deadline) break;
+    if (st.status === 0 || !LOCK_RE.test(err) || left() - o.poll < 60) break;
     waited++;
     sleep(o.poll);
   }
-  if (waited) started = Date.now();
   const job = (st.stdout || '').trim().split('\n').pop();
   if (st.status !== 0 || !job) return { ...base, status: 'unavailable', ...(waited ? { waited_for_lock: waited } : {}), reason: `起動できない: ${(st.stderr || '').trim().split('\n').pop() || `exit ${st.status}`}` };
   let verdict = 'unknown';

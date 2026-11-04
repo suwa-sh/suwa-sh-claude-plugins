@@ -119,7 +119,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 1. **始め**: clean な main で、remote `origin` があれば `git fetch origin` して `git merge --ff-only origin/main` (分岐していたら止まって報告する)。`git switch -c upstream/<1 件目の課題の名前> main` (課題が 0 件で既存の持ち越しだけなら `upstream/carry-over`)
 2. **段ごとの commit**: この branch に入れる (段ごとの commit は squash しない。basis が commit の ID を使う)。
    commit のたびに `git status --porcelain --untracked-files=all` を見る。起動シーケンス 5 の clean 判定の対象が残っていれば、その差分の write-set の中なら追加の commit に入れ (`--amend` はしない)、外なら止まって報告する
-3. **確定**: `git switch main` → `git merge --ff-only upstream/<名前>` → `git branch -d upstream/<名前>` → remote `origin` があれば `git push origin main`。ff できなければ (人が main に commit した) 止まって報告する
+3. **確定**: `git switch main` → `git merge --ff-only upstream/<名前>` → `git branch -d upstream/<名前>` → remote `origin` があれば `git push origin main` と `git push origin 'refs/distillery2/*:refs/distillery2/*'`。ff できなければ (人が main に commit した) 止まって報告する
 4. **途中で止まったとき** (人に返した・落ちた・起動が切れた): 自動選択が `continue-upstream` を返す。その branch に切り替え、同じ差分を最初の手順から回し直す (どの派遣も再実行して安全で、済んだ commit は残る。確認ページの答えが `.distillery/decisions.jsonl` にあれば、その答えで進める)
 5. 確定の後は自動選択をもう一度呼ぶ (写し直し待ちの機能が先に選ばれる)
 
@@ -141,7 +141,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 1. 前提は決定の差分と同じ
 2. 課題の推奨の直し方に合う派遣を選ぶ: 骨組み・設定・テスト基盤は sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton` (UC がある契約は `<skills>/d2-common/references/review-points.md`「反証して直す派遣の引数」の基盤・契約の行)、画面部品は sub `d2-design mode=feedback items=<直すファイルと直す内容を 1 行ずつ>` (派遣表「① 要求の差分 (画面部品)」と同じ。画面部品が 1 つも無いときだけ ③ と同じ全生成)。どの派遣も再実行して安全。
    契約の骨格か画面部品を直したら、仕上げの前に ③ の 4 と同じく `git add contracts docs/design` → `foundation: feedback (contracts and design)` で commit する (仕上げが basis に記録する入力の commit)。続けて sub `d2-foundation phase=finish ui=<true|false>`
-3. 受理は ③ の 5 と同じで、`validateUcIndex.js contracts` が exit 0 も足す。基盤のレビュー → 確認ページ (`page:foundation:approve`。STALE の UC を「やり直す / 後で」で載せる)
+3. 受理は ③ の 5 と同じで、`validateUcIndex.js contracts --keep-from <派遣の前の HEAD>` が exit 0 も足す (骨格を回し直しても既存の UC の契約を消さない・変えない)。基盤のレビュー → 確認ページ (`page:foundation:approve`。STALE の UC を「やり直す / 後で」で載せる)
 4. 反映した課題を `git rm` → genDocsReadme → `git add -A` (起動シーケンス 5 の clean 判定の対象外のルート直下の未追跡ファイルは入れない) → `foundation: feedback` で commit → 「上流の差分の branch」の 3 で main へ確定し、自動選択をもう一度呼ぶ (決定の差分の 6 と同じ)
 
 ## 機能の最初の点検 (新しい UC の branch を切る前)
@@ -172,7 +172,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 
 場所・観点・回し方は [`<skills>/d2-common/references/review-points.md`](../../d2-common/references/review-points.md)。進行役が行う (サブエージェントに待ちを任せない)。
 
-1. 担当の受理と引き継ぎファイルの処理の後に `node <skills>/d2-common/scripts/reviewStep.js run --point <場所> --target <対象> ... --out <置き場>` (Bash の timeout 600000 ms)
+1. 担当の受理と引き継ぎファイルの処理の後に `node <skills>/d2-common/scripts/reviewStep.js run --point <場所> --target <対象> ... --out <置き場> [--known <課題ファイル> ...]` (Bash の timeout 600000 ms。`--known` は、この場所の成果物について既に課題ファイル (`docs/feedback/*.md`・`<run>/issues/*.md`) にした指摘。前のレビューで課題にしたものが出直さない)
 2. `status: reviewed` で `findings` が 1 以上 → その場所の担当を **反証して直す** で派遣し直す (派遣表の「反証して直す」の行。write-set はその場所と同じ。派遣文に `round1.md` の絶対パスを添える)。引き継ぎファイルの `refutations` が全件あることを受理で確かめる
 3. 2 ラウンド目: `has_fail` か、`high_or_critical` の指摘が `refutations` で `accepted` なら、`--round 2 --previous <round1.md>` で 1 回だけ回す。指摘が残れば 2 と同じく直させ、もう回さない。
    1 ラウンド目で決め済み (`decide` で記録した・人が答えた) と振り替え済み (課題にした・`plugin`) の指摘は、2 ラウンド目の反証に回さない (派遣文にそれ以外の指摘だけを書く)。回さなかったら `<D> add ... --page page:review-round2:<場所> --question "2 ラウンド目を回すか" --answer "回さない" --by rule` で残す

@@ -75,7 +75,7 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
      RDRA の情報モデルのサブドメインごとに `db/domains/<id>.yaml` を起こす。
 3. **共通コンポーネント / エラー型**: 全 UC が参照するエラースキーマ・ページング・共通ヘッダを
    `components` に置く。RDRA の状態モデルは enum 列や status プロパティに落とす。
-4. **空の uc-index**: `uc-index.yaml` を `schema_version` + 空の `ucs: []` で作る。
+4. **空の uc-index**: (初回だけ。`uc-index.yaml` が無いとき) `uc-index.yaml` を `schema_version` + 空の `ucs: []` で作る。既にあれば UC のエントリを残す。
 5. **compile**: `compileContracts.js` と `compileRdbSchema.js` を実行して bundle を作る
    (この時点では slice は空)。生成物の先頭に `basis: requirements@<sha> adr@<sha>` を付ける。
 

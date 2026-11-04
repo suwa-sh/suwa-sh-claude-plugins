@@ -33,7 +33,7 @@
 | 要求 / 決定 / シナリオ / as-built | — | 元の派遣と同じ (`d2-requirements` / `d2-decide` / `d2-implement mode=scenario uc=<slug>` / `d2-asbuilt uc=<slug>`) |
 | 基盤 | 開発ルール・設定・テスト基盤 | `d2-foundation phase=<該当 phase>` |
 | 基盤 | 契約 (UC がまだ無い) | `d2-contract mode=skeleton` |
-| 基盤 | 契約 (`contracts/uc-index.yaml` に UC がある) | **`d2-contract mode=uc uc=<その operation を持つ UC>`** (skeleton は使わない)。UC に属さない共通の部分 (共通コンポーネント・エラー型) だけなら `mode=skeleton` に「既存の UC の operation と分割ファイルは変えない・消さない」を添え、受理で `validateUcIndex.js contracts` が exit 0 |
+| 基盤 | 契約 (`contracts/uc-index.yaml` に UC がある) | **`d2-contract mode=uc uc=<その operation を持つ UC>`** (skeleton は使わない)。UC に属さない共通の部分 (共通コンポーネント・エラー型) だけなら `mode=skeleton` に「既存の UC の operation と分割ファイルは変えない・消さない」を添え、受理で `validateUcIndex.js contracts --keep-from HEAD` が exit 0 (派遣の前の commit から、UC のエントリと operation の定義が変わっていない) |
 | 基盤 | 画面部品 | `d2-design mode=feedback items=<直すファイルと内容>` |
 | 契約 | — | `d2-contract mode=uc uc=<slug>` |
 | 実装 | — | `d2-implement mode=tier uc=<slug> tier=<tier> attempt=<今の n>` |

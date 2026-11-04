@@ -67,6 +67,7 @@ test('2 ラウンド目は前回の結果を添えた依頼文になり、--prev
   const cwd = repo();
   const first = run(['prompt', '--point', 'scenario', '--target', 'features/x.feature', '--out', 'r', '--cwd', cwd]);
   assert.equal(first.out.prompt, 'r/1/prompt-round1.md');
+  fs.writeFileSync(path.join(cwd, 'r/1/round1.md'), 'x');
   const r = run(['prompt', '--point', 'scenario', '--target', 'features/x.feature', '--out', 'r', '--cwd', cwd, '--round', '2', '--previous', 'r/1/round1.md']);
   assert.equal(r.code, 0, r.err);
   const text = fs.readFileSync(path.join(cwd, 'r', '1', 'prompt-round2.md'), 'utf8');
@@ -122,3 +123,15 @@ test('0.3.0: --known で課題にした指摘を依頼文の「既知 (報告不
   const text = fs.readFileSync(path.join(cwd, r.out.prompt), 'utf8');
   assert.match(text, /【既知 \(報告不要\)】[\s\S]*- ログアウトの入口が無い \(docs\/feedback\/a\.md\)/);
 });
+
+test('0.3.0: 2 ラウンド目の置き場は --previous の置き場 (後から別の 1 ラウンド目が入っても取り違えない)。別の場所の結果は拒む', () => {
+  const cwd = repo();
+  run(['prompt', '--point', 'contract', '--target', 'contracts/', '--out', 'reviews/contract', '--cwd', cwd]);
+  fs.writeFileSync(path.join(cwd, 'reviews/contract/1/round1.md'), 'r1');
+  run(['prompt', '--point', 'contract', '--target', 'contracts/', '--out', 'reviews/contract', '--cwd', cwd]);
+  const r2 = run(['prompt', '--point', 'contract', '--target', 'contracts/', '--out', 'reviews/contract', '--cwd', cwd, '--round', '2', '--previous', 'reviews/contract/1/round1.md']);
+  assert.equal(r2.out.prompt, 'reviews/contract/1/prompt-round2.md');
+  const bad = run(['prompt', '--point', 'contract', '--target', 'contracts/', '--out', 'reviews/contract', '--cwd', cwd, '--round', '2', '--previous', 'reviews/scenario/1/round1.md']);
+  assert.equal(bad.code, 2);
+});
+
