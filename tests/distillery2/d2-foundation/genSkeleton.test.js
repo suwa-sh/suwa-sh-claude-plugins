@@ -338,8 +338,8 @@ test('0.3.0: 既存の root package.json にも check と prepare (hook を入�
   run('genSkeleton.js', c, ['--adr', adrDir]);
   const pkg = JSON.parse(fs.readFileSync(path.join(c, 'package.json'), 'utf8'));
   assert.equal(pkg.scripts.check, 'node scripts/check.mjs --mode ci');
-  assert.equal(pkg.scripts.prepare, 'git config core.hooksPath .githooks || true; husky');
+  assert.equal(pkg.scripts.prepare, 'husky; git config core.hooksPath .githooks || true', '既存の prepare の後に置く');
   run('genSkeleton.js', c, ['--adr', adrDir]);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(c, 'package.json'), 'utf8')).scripts.prepare, 'git config core.hooksPath .githooks || true; husky', '2 回回しても重ねない');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(c, 'package.json'), 'utf8')).scripts.prepare, 'husky; git config core.hooksPath .githooks || true', '2 回回しても重ねない');
 });
 

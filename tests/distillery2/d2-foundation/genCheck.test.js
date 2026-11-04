@@ -121,7 +121,9 @@ test('commit-msg の hook: 人の red の commit は止め、d2-run の commit (
   assert.equal(d2.status, 0, d2.stderr);
   w(root, 'apps/backend-api/src/a.ts', 'export const a = 3;\n');
   g(root, 'add', '-A');
-  const squash = spawnSync('git', ['commit', '-q', '-m', 'feat: 会議室を予約する', '-m', 'UC-Slug: book-room'], { cwd: root, encoding: 'utf8' });
+  const human2 = spawnSync('git', ['commit', '-q', '-m', 'docs: update', '-m', 'UC-Slug: book-room'], { cwd: root, encoding: 'utf8', env: { ...process.env, D2_SKILLS: '/nonexistent', HOME: root } });
+  assert.notEqual(human2.status, 0, 'trailer の UC-Slug: だけでは通さない (人の commit)');
+  const squash = spawnSync('git', ['commit', '-q', '-m', 'feat: 会議室を予約する', '-m', 'UC-Slug: book-room\nGates: static=pass'], { cwd: root, encoding: 'utf8' });
   assert.equal(squash.status, 0, squash.stderr);
   for (const s of GC.D2_SUBJECTS) assert.match(GC.renderHook(), new RegExp(`"${s.replace(/[()]/g, '\\$&')}"\\*`));
 });
@@ -155,5 +157,20 @@ test('hook モード: ステージした内容と作業ツリーが違うファ�
   g(root, 'add', 'docs/notes.md');
   const r2 = check(root, ['--mode', 'hook', '--only', 'format']);
   assert.match(r2.stdout, /\[format\] repo: echo FORMAT --no-errors-on-unmatched --files-ignore-unknown=true [^\n]*'docs\/notes\.md'/);
+});
+
+test('hook モード: 独自の format のコマンドは {files} にコミットするファイルが入る。{files} が無ければ飛ばす。ci は {files} に . が入る', () => {
+  const root = repo();
+  const cfg = fs.readFileSync(path.join(root, '.distillery/config.yaml'), 'utf8');
+  w(root, '.distillery/config.yaml', cfg.replace(/format: [^\n]*format-repo[^\n]*/, 'format: echo CUSTOM {files}'));
+  GC.run({ cwd: root, config: '.distillery/config.yaml' });
+  w(root, 'docs/notes.md', '# x\n');
+  g(root, 'add', 'docs/notes.md');
+  assert.match(check(root, ['--mode', 'hook', '--only', 'format']).stdout, /\[format\] repo: echo CUSTOM 'docs\/notes\.md'/);
+  assert.match(check(root, ['--mode', 'ci', '--only', 'format']).stdout, /\[format\] repo: echo CUSTOM \./);
+  w(root, '.distillery/config.yaml', cfg.replace(/format: [^\n]*format-repo[^\n]*/, 'format: echo CUSTOM'));
+  GC.run({ cwd: root, config: '.distillery/config.yaml' });
+  g(root, 'add', 'docs/notes.md');
+  assert.match(check(root, ['--mode', 'hook', '--only', 'format']).stdout, /\[format\] repo: skip \(format のコマンドにファイルを渡せない/);
 });
 

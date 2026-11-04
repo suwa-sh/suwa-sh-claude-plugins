@@ -25,10 +25,10 @@
 
 - **選択肢 (TypeScript のティア)**: format・lint は `biome` / build は `tsc` / test は `vitest` / security は `dependency-audit` (npm audit。ワークスペースごと) と `sast` (qlty の有効な検査をティアのパスに当てる)
 - **選択肢 (リポ全体)**: format は `biome` / lint は `qlty` / security は `secrets` (qlty の trufflehog)
-- ほかの道具は `{cmd: "<コマンド>"}` で書く (ティアは `{dir}` が `apps/` の下の名前になる)
+- ほかの道具は `{cmd: "<コマンド>"}` で書く (ティアは `{dir}` が `apps/` の下の名前になる)。リポ全体の format は `{files}` を書くと、hook ではコミットするファイル、ci では `.` が入る (`{files}` の無い独自のコマンドは hook で回さない)
 - **向く条件 (既定のまま)**: TypeScript のモノレポ (段階③ の骨格のまま)
 - **向く条件 (ティアで上書き)**: ティアの言語が違う (Python なら `{cmd: "ruff format --check apps/{dir}"}` など)・SAST の道具をティアの性質で変える (外部入力を受けるティアだけ強い検査)
-- 依存の脆弱性は、UC と無関係に脆弱性情報の更新で落ちる。d2-run のゲートでは止めずに報告し (advisory)、CI と hook の ci モードで止める
+- 依存の脆弱性は、UC と無関係に脆弱性情報の更新で落ちる。d2-run のゲートでは止めずに報告し (advisory)、CI (ci モード) で止める
 
 ## front matter の例
 
