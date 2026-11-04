@@ -138,15 +138,22 @@ WRAP = {"sudo": "ugUhpCDRTrt", "doas": "uC", "env": "uCSP", "xargs": "nLsIEPdaRS
 CMD_SEP = {";", "&&", "||", "&"}                                 # コマンドの区切り
 PIPE = {"|", "|&"}                                              # 段の区切り
 REDIR = re.compile(r"^[<>&]*[<>][<>&]*$")                        # > >> >& &> < などのリダイレクト演算子
-NAIVE = re.compile(r"\|\||&&|\|&|>&|&>|>>|<<|[;&|<>]|[^\s;&|<>]+")
+OPS = re.compile(r"\|\||&&|\|&|;;|&>|[<>]+&?|[;&|]")           # 記号の並びをシェルの演算子単位に切る (|> は | と >)
+NAIVE = re.compile(r"\|\||&&|\|&|;;|&>|[<>]+&?|[;&|]|[^\s;&|<>]+")
 def tokenize(c):
-    # 引用符を解釈して区切りを切る (引用符の中の ; や | を区切りにしない)。閉じていない引用符は bash でも構文エラーなので素朴に切る
+    # 引用符を解釈して区切りを切る (引用符の中の ; や | を区切りにしない)。閉じていない引用符は bash でも構文エラーなので素朴に切る。
+    # # をコメントとして捨てない (URL の #fragment や a=b#c の後ろの | sh が消える)
     try:
         lex = shlex.shlex(c, posix=True, punctuation_chars=";&|<>")
         lex.whitespace_split = False
-        return list(lex)
+        lex.commenters = ""
+        toks = list(lex)
     except ValueError:
-        return NAIVE.findall(c)
+        toks = NAIVE.findall(c)
+    out = []
+    for t in toks:
+        out.extend(OPS.findall(t) if re.fullmatch(r"[;&|<>]+", t) else [t])
+    return out
 def starts_with_interp(toks):
     # 段の先頭から、( { / リダイレクト / 前置コマンド / そのオプション / 値を取るオプションの値 / VAR=val を読み飛ばし、最初の実コマンドがインタプリタか見る
     i = 0
