@@ -27,7 +27,7 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
   空の `src/index.ts` (画面の土台を置く frontend は除く)、提供側 (kind≠frontend) には仮の `src/test-app.ts` (`createTestApp(_options?: { fixture?: string }): never`。契約テストと api ドライバの import 先。実装で置き換える)。
 - **画面の土台** (ADR の `ui` が React の SPA・Tailwind のとき、frontend ティアだけ。0.3.0): `index.html`・`vite.config.ts`・`src/{main.tsx, App.tsx, routes.tsx, styles.css, vite-env.d.ts}`。
   scripts に `dev` / `preview` を足し、`build` を `tsc --noEmit -p . && vite build` にする。devDependencies に `vite` / `@vitejs/plugin-react` / `tailwindcss` / `@tailwindcss/vite`。
-  `styles.css` は画面部品があれば `packages/ui/entry.css` (F6 の importUi が書く) を、無ければ `tailwindcss` を直接 `@import` する。
+  `styles.css` は F5 では `tailwindcss` を直接 `@import` し、F6 の importUi が `packages/ui/entry.css` を書けたら、それを読む形に替える (書けなければ戻す。手で変えたものは触らない)。
   Tailwind 固有の at-rule (`@source` / `@theme`) は書かない (biome 2.2.5 の lint が未知の at-rule として落とす)。画面のソースは vite の root として Tailwind が自動で走査する
 - **root に生成**: `biome.json` (formatter / linter 有効)。
 

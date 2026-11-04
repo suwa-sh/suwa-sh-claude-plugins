@@ -125,7 +125,8 @@ function run(o) {
   const manifest = { basis: basisLine.replace(/^basis:\s*/, ''), from: o.from, imported_at: importedAt, entry, content_sha256: contentSha256, files };
   fs.writeFileSync(manifestPath, `# ${basisLine}\n` + stringifyYaml(manifest));
   const css = writeEntryCss(uiDir, relPaths);
-  return { code: 0, count: files.length, entry, removed, css, format: formatUi(o.cwd) };
+  const styles = switchAppStyles(o.cwd, css.ok);
+  return { code: 0, count: files.length, entry, removed, css: css.msg, styles, format: formatUi(o.cwd) };
 }
 
 /**
@@ -133,18 +134,38 @@ function run(o) {
  * d2-design の Tailwind の CSS の置き場は版や構成で変わる (src/app/globals.css・src/styles/globals.css) ので、
  * 取り込んだ CSS のうち `@import "tailwindcss"` を持つ 1 本を探して指す。0 本・2 本以上なら書かずに報告する
  */
-const ENTRY_CSS = 'entry.css';
+const { UI_ENTRY_CSS: ENTRY_CSS, STYLES_PLAIN, STYLES_UI } = require('./spaStyles');
 function writeEntryCss(uiDir, relPaths) {
-  if (relPaths.includes(ENTRY_CSS)) return `skipped (取り込み元に ${ENTRY_CSS} がある)`;
+  if (relPaths.includes(ENTRY_CSS)) return { ok: true, msg: `kept (取り込み元に ${ENTRY_CSS} がある)` };
   const found = relPaths.filter((p) => p.endsWith('.css') && /@import\s+["']tailwindcss["']/.test(fs.readFileSync(path.join(uiDir, p), 'utf8')));
   const dst = path.join(uiDir, ENTRY_CSS);
   if (found.length !== 1) {
     if (fs.existsSync(dst)) fs.rmSync(dst);
-    return found.length ? `none (Tailwind の CSS が ${found.length} 本: ${found.join(', ')})` : 'none (Tailwind の CSS が無い)';
+    return { ok: false, msg: found.length ? `none (Tailwind の CSS が ${found.length} 本: ${found.join(', ')})` : 'none (Tailwind の CSS が無い)' };
   }
   const rel = found[0].split(path.sep).join('/');
   fs.writeFileSync(dst, `/* distillery2 importUi.js が書いた画面部品の CSS の入口 (取り込みのたびに書き直す)。画面 (apps/<frontend>/src/styles.css) はここを読む */\n@import "./${rel}";\n`);
-  return `entry.css → ${rel}`;
+  return { ok: true, msg: `entry.css → ${rel}` };
+}
+
+/**
+ * 画面の土台の styles.css (apps の各ティアの src/styles.css) を、入口が書けたら packages/ui を読む形に、書けなければ Tailwind を直接読む形にする。
+ * genSkeleton が置いた 2 つの形のどちらかと完全に一致するものだけ替える (手で変えたものは触らない)
+ */
+function switchAppStyles(cwd, useUi) {
+  const apps = path.join(cwd, 'apps');
+  if (!fs.existsSync(apps)) return [];
+  const want = useUi ? STYLES_UI : STYLES_PLAIN;
+  const changed = [];
+  for (const d of fs.readdirSync(apps, { withFileTypes: true })) {
+    const p = path.join(apps, d.name, 'src', 'styles.css');
+    if (!d.isDirectory() || !fs.existsSync(p)) continue;
+    const cur = fs.readFileSync(p, 'utf8');
+    if (cur === want || (cur !== STYLES_PLAIN && cur !== STYLES_UI)) continue;
+    fs.writeFileSync(p, want);
+    changed.push(`apps/${d.name}/src/styles.css`);
+  }
+  return changed;
 }
 
 /**
@@ -163,7 +184,7 @@ function formatUi(cwd) {
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
-  if (r.code === 0) console.log(`importUi: ${r.count} files → packages/ui${r.removed.length ? ` (removed ${r.removed.length}: ${r.removed.join(', ')})` : ''} css: ${r.css} format: ${r.format}`);
+  if (r.code === 0) console.log(`importUi: ${r.count} files → packages/ui${r.removed.length ? ` (removed ${r.removed.length}: ${r.removed.join(', ')})` : ''} css: ${r.css}${r.styles.length ? ` (styles: ${r.styles.join(', ')})` : ''} format: ${r.format}`);
   return r.code;
 }
 

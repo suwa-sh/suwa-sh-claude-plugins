@@ -151,3 +151,33 @@ test('画面の CSS の入口 (packages/ui/entry.css): Tailwind の CSS が 1 �
   assert.match(run({ from: 'design', cwd }).css, /^none \(Tailwind の CSS が 2 本/);
   assert.ok(!fs.existsSync(entry), '前に書いた入口は消す (どちらを指すか決められない)');
 });
+
+test('画面の土台の styles.css: 入口が書けたら packages/ui を読む形に替え、書けなければ戻す。手で変えたものと取り込み元の entry.css は触らない (0.3.0)', () => {
+  const { STYLES_PLAIN, STYLES_UI } = require('../../../plugins/distillery2/skills/d2-foundation/scripts/spaStyles');
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  const design = path.join(cwd, 'design');
+  const app = path.join(cwd, 'apps/frontend/src/styles.css');
+  const hand = path.join(cwd, 'apps/admin/src/styles.css');
+  writeFile(app, STYLES_PLAIN);
+  writeFile(hand, '@import "tailwindcss";\n/* 手で変えた */\n');
+  writeFile(path.join(design, 'src/components/ui/Button.tsx'), 'export const Button = () => null;');
+  writeFile(path.join(design, 'src/styles/globals.css'), '@import "tailwindcss";\n');
+  const r = run({ from: 'design', cwd });
+  assert.deepEqual(r.styles, ['apps/frontend/src/styles.css']);
+  assert.equal(fs.readFileSync(app, 'utf8'), STYLES_UI);
+  assert.match(STYLES_UI, /@import "\.\.\/\.\.\/\.\.\/packages\/ui\/entry\.css";/);
+  assert.match(fs.readFileSync(hand, 'utf8'), /手で変えた/);
+  assert.deepEqual(run({ from: 'design', cwd }).styles, [], '再実行は何も替えない');
+  // 前の取り込みの entry.css が残っていても、Tailwind の CSS が無くなれば消して PLAIN に戻す
+  fs.rmSync(path.join(design, 'src/styles/globals.css'));
+  run({ from: 'design', cwd });
+  assert.ok(!fs.existsSync(path.join(cwd, 'packages/ui/entry.css')));
+  assert.equal(fs.readFileSync(app, 'utf8'), STYLES_PLAIN);
+  // 取り込み元が entry.css を持つならそれを使う (上書きしない)
+  writeFile(path.join(design, 'src/entry.css'), '@import "tailwindcss";\n/* design の入口 */\n');
+  const own = run({ from: 'design', cwd });
+  assert.match(own.css, /^kept/);
+  assert.match(fs.readFileSync(path.join(cwd, 'packages/ui/entry.css'), 'utf8'), /design の入口/);
+  assert.equal(fs.readFileSync(app, 'utf8'), STYLES_UI);
+});
+

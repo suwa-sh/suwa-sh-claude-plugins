@@ -246,22 +246,21 @@ const SPA_SCRIPTS = {
   build: 'tsc --noEmit -p . && vite build',
   preview: 'vite preview',
 };
-// 画面部品 (packages/ui) の入口の CSS。importUi.js (F6) が取り込んだ Tailwind の CSS を指して書く。
-// 画面の styles.css には Tailwind 固有の書き方 (@source・@theme) を書かない: biome 2.2.5 の lint が未知の at-rule として落とす (0.3.0 の確認で実測)
-const UI_ENTRY_CSS = 'entry.css';
+// 画面の styles.css は spaStyles.js の PLAIN を置く (画面部品を取り込んだら importUi.js が入口を読む形に替える)
+const { STYLES_PLAIN } = require('./spaStyles');
 
-/** ADR の ui から画面の土台を作るか決める。作らないときは理由を返す */
+/** ADR の ui から画面の土台を作るか決める。作らないときは理由を返す。ui が無ければ d2-design と同じ既定 (React の SPA・Tailwind) */
 function spaPlan(ui, tiers) {
   const fronts = tiers.filter((t) => t.kind === 'frontend');
   if (!fronts.length) return { make: false, reason: 'frontend ティアが無い' };
-  if (!ui) return { make: false, reason: 'ADR に ui が無い' };
+  ui = ui || {};
   const framework = ui.framework ?? 'react';
   const rendering = ui.rendering ?? 'spa';
   const styling = ui.styling ?? 'tailwind';
   if (framework !== 'react' || rendering !== 'spa' || styling !== 'tailwind') {
-    return { make: false, reason: `土台を作るのは React の SPA・Tailwind だけ (ADR: ${framework} / ${rendering} / ${styling})。画面の機能が作る` };
+    return { make: false, reason: `土台を作るのは React の SPA・Tailwind だけ (ADR: ${framework} / ${rendering} / ${styling})。最初の画面の機能が ADR に従って作る` };
   }
-  return { make: true, fronts, useUi: ui.design_system === true || ui.component_lib === true, title: ui.brand?.name ? String(ui.brand.name) : null };
+  return { make: true, fronts, title: ui.brand?.name ? String(ui.brand.name) : null };
 }
 
 const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -269,14 +268,6 @@ const SPA_HEAD = (what) => `distillery2 genSkeleton.js が置いた${what}。手
 
 function spaFiles(dir, plan) {
   const title = escapeHtml(plan.title ?? dir);
-  const styles = plan.useUi
-    ? `/* ${SPA_HEAD('画面のスタイルの入口')}。
- * 画面部品 (packages/ui) の Tailwind とデザイントークンを読む。この画面のソースは vite の root として Tailwind が自動で走査する */
-@import "../../../packages/ui/${UI_ENTRY_CSS}";
-`
-    : `/* ${SPA_HEAD('画面のスタイルの入口')} */
-@import "tailwindcss";
-`;
   return {
     'index.html': `<!doctype html>
 <!-- ${SPA_HEAD('画面の HTML の入口')} -->
@@ -302,7 +293,7 @@ export default defineConfig({
 });
 `,
     'src/vite-env.d.ts': '/// <reference types="vite/client" />\n',
-    'src/styles.css': styles,
+    'src/styles.css': STYLES_PLAIN,
     'src/main.tsx': `// ${SPA_HEAD('画面の描画の入口')}
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -607,14 +598,14 @@ function run(o) {
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
   const migrated = o.migrate ? migrate(cwd, biomeVersion, tiers) : [];
   if (!o.migrate) warnBiomeSchema(cwd, biomeVersion);
-  return { code: 0, created, skipped, tierDirs, migrated, spa: spa.make ? { status: 'made', tiers: spa.fronts.map((t) => t.id), ui: spa.useUi } : { status: 'skipped', reason: spa.reason } };
+  return { code: 0, created, skipped, tierDirs, migrated, spa: spa.make ? { status: 'made', tiers: spa.fronts.map((t) => t.id) } : { status: 'skipped', reason: spa.reason } };
 }
 
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
   console.log(`genSkeleton: created ${r.created.length}, skipped ${r.skipped.length}`);
-  console.log(r.spa.status === 'made' ? `  画面の土台: ${r.spa.tiers.join(', ')} (画面部品 ${r.spa.ui ? 'packages/ui を読む' : 'なし'})` : `  画面の土台: 作らない (${r.spa.reason})`);
+  console.log(r.spa.status === 'made' ? `  画面の土台: ${r.spa.tiers.join(', ')}` : `  画面の土台: 作らない (${r.spa.reason})`);
   for (const s of r.skipped) console.log(`  skip (exists): ${s}`);
   if (o.migrate) {
     console.log(`migrate: ${r.migrated.length} change(s)`);
@@ -624,4 +615,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { parseArgs, rootPackageJson, run, BIOME_VERSION, existingBiomeVersion, spaPlan, UI_ENTRY_CSS };
+module.exports = { parseArgs, rootPackageJson, run, BIOME_VERSION, existingBiomeVersion, spaPlan };

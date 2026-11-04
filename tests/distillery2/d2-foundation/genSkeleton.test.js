@@ -358,7 +358,7 @@ test('genSkeleton: ADR の ui が React の SPA・Tailwind なら frontend に�
   const adr = adrWithUi('  framework: react\n  rendering: spa\n  styling: tailwind\n  design_system: true\n  brand:\n    name: "会議室 <予約>"');
   const r = run('genSkeleton.js', c, ['--adr', adr]);
   assert.equal(r.code, 0, r.out);
-  assert.match(r.out, /画面の土台: frontend \(画面部品 packages\/ui を読む\)/);
+  assert.match(r.out, /画面の土台: frontend/);
   for (const f of SPA_FILES) assert.ok(fs.existsSync(path.join(c, 'apps/frontend', f)), `missing ${f}`);
   assert.ok(!fs.existsSync(path.join(c, 'apps/frontend/src/index.ts')), '入口は main.tsx なので空のエントリは置かない');
   assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/src/index.ts')), 'frontend 以外は今までどおり');
@@ -368,7 +368,7 @@ test('genSkeleton: ADR の ui が React の SPA・Tailwind なら frontend に�
   for (const d of ['vite', '@vitejs/plugin-react', 'tailwindcss', '@tailwindcss/vite']) assert.ok(pkg.devDependencies[d], `devDependency ${d}`);
   assert.match(fs.readFileSync(path.join(c, 'apps/frontend/index.html'), 'utf8'), /<title>会議室 &lt;予約&gt;<\/title>/);
   const css = fs.readFileSync(path.join(c, 'apps/frontend/src/styles.css'), 'utf8');
-  assert.match(css, /@import "\.\.\/\.\.\/\.\.\/packages\/ui\/entry\.css";/);
+  assert.match(css, /^@import "tailwindcss";$/m, 'F5 では Tailwind を直接読む (画面部品の段が飛ばされても build が通る)');
   assert.doesNotMatch(css, /@source|@theme/, 'biome 2.2.5 の lint が落とす Tailwind 固有の at-rule を書かない');
   assert.match(fs.readFileSync(path.join(c, 'apps/frontend/src/routes.tsx'), 'utf8'), /export const routes: Route\[\] = \[\];/);
   // 再実行は何も変えない
@@ -376,12 +376,12 @@ test('genSkeleton: ADR の ui が React の SPA・Tailwind なら frontend に�
   assert.match(again.out, /genSkeleton: created 0,/);
 });
 
-test('genSkeleton: 画面部品を持たない ui は Tailwind を直接読む。SSR・ui が無いときは土台を置かない', () => {
+test('genSkeleton: ui が無ければ d2-design と同じ既定 (React の SPA・Tailwind) で土台を置く。SSR・他の styling は置かない', () => {
   const plain = tmp();
-  run('genSkeleton.js', plain, ['--adr', adrWithUi('  framework: react\n  rendering: spa\n  styling: tailwind\n  design_system: false\n  component_lib: false')]);
+  run('genSkeleton.js', plain, ['--adr', adrWithUi(null)]);
   assert.match(fs.readFileSync(path.join(plain, 'apps/frontend/src/styles.css'), 'utf8'), /^@import "tailwindcss";$/m);
   assert.match(fs.readFileSync(path.join(plain, 'apps/frontend/index.html'), 'utf8'), /<title>frontend<\/title>/, 'ブランド名が無ければティアの名前');
-  for (const [ui, why] of [['  framework: react\n  rendering: ssr\n  styling: tailwind', /React の SPA・Tailwind だけ \(ADR: react \/ ssr \/ tailwind\)/], [null, /ADR に ui が無い/]]) {
+  for (const [ui, why] of [['  framework: react\n  rendering: ssr\n  styling: tailwind', /React の SPA・Tailwind だけ \(ADR: react \/ ssr \/ tailwind\)。最初の画面の機能が ADR に従って作る/], ['  styling: css-modules', /\(ADR: react \/ spa \/ css-modules\)/]]) {
     const c = tmp();
     const r = run('genSkeleton.js', c, ['--adr', adrWithUi(ui)]);
     assert.match(r.out, why);
@@ -409,3 +409,13 @@ test('genSkeleton: 既にある frontend の package.json には足りない依�
   pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
   assert.equal(pkg.scripts.build, 'my-build');
 });
+
+test('collectUi: scope に ui を含む ADR を優先する (d2-design と同じ)', () => {
+  const { collectUi } = require(path.join(SKILL, 'scripts/adr.js'));
+  const sys = { status: 'accepted', scope: ['system'], ui: { framework: 'vue' } };
+  const ui = { status: 'accepted', scope: ['ui'], ui: { framework: 'react' } };
+  assert.equal(collectUi([sys, ui]).framework, 'react');
+  assert.equal(collectUi([sys]).framework, 'vue', 'scope ui が無ければ ui を持つ最初の 1 本');
+  assert.equal(collectUi([{ ...ui, status: 'proposed' }]), null);
+});
+

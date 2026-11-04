@@ -49,7 +49,7 @@ d2-run は段階③で 2 回呼ぶ (決定の差分の開発ルールとアー�
 | F3 | `genTestSupport.js` | `templates/test-support/`、`templates/features-support/`、`templates/cucumber.js`、`templates/tsx-register.js` | `packages/test-support/**`、`features/support/**`、`cucumber.js`、`tsx-register.js` (cucumber.js が読む ESM ローダ) |
 | F4 | `genContractTests.js` (d2-contract のスクリプト。骨格分) | `contracts/**`、`.distillery/config.yaml` | `apps/*/test/contract/**`、`packages/contracts/**` |
 | F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` / `genCheck.js` / `genQlty.js` | `docs/adr/*.md` (`tiers[]`・`datastore_owner`・testing `capabilities`・機械チェックの `checks`)、`contracts/contracts.json`、`.distillery/config.yaml` (genConfig が書いたものを genCi と genCheck が読む) | `.distillery/config.yaml`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`apps/*/` (ADR の `ui` が React の SPA・Tailwind なら frontend に画面の土台)、`packages/*/`、`.github/workflows/ci.yml`、`scripts/check.mjs`、`.githooks/**`、`.distillery/distillery2.lock.json`、`.qlty/qlty.toml` |
-| F6 | `importUi.js` | `docs/design/storybook-app/src/` (d2-design の出力) | `packages/ui/**`、`packages/ui/.imported.yaml`、`packages/ui/entry.css` (画面の土台が読む CSS の入口) |
+| F6 | `importUi.js` | `docs/design/storybook-app/src/` (d2-design の出力) | `packages/ui/**`、`packages/ui/.imported.yaml`、`packages/ui/entry.css` (画面の土台が読む CSS の入口)、`apps/*/src/styles.css` (genSkeleton が置いた形のままなら入口を読む形に替える) |
 | F7 | `npm install` → `installTierPackages.js` → `genQlty.js --refresh` | `package.json`、`package-lock.json`、`.qlty/qlty.toml`、`docs/adr/*.md` (`tiers[].packages`・`dev_packages`) | `package-lock.json`、`apps/*/package.json` (依存)、`.qlty/qlty.toml` |
 | F8 | `genConfig.js` → `genCi.js` → `genCheck.js` → `genArchitectureDoc.js` (d2-decide のスクリプト) | `docs/adr/*.md`、`contracts/contracts.json`、`docs/requirements/rdra/**`、`.distillery/config.yaml` | `.distillery/config.yaml`、`.github/workflows/**`、`scripts/check.mjs`、`.githooks/**`、`.distillery/distillery2.lock.json`、`docs/adr/architecture.md` |
 | F9 | `runGates.js --uc bootstrap --upto static` | `.distillery/config.yaml`、`package.json`、`.qlty/qlty.toml`、`apps/*/test/contract/**`、`.dependency-cruiser.cjs`、`<run>/reports/**` | `<run>/reports/**` |
@@ -78,8 +78,9 @@ F7 で npm install の後に `genQlty.js --refresh` で増えた分を足す (�
 2. F6: `ui=true` なら `docs/design/storybook-app/` を `packages/ui` に取り込む。`ui=false` なら F6 と次の F7 を飛ばす
    (前の実行の `docs/design/` が残っていても取り込まない。画面の有無は d2-run の判断に従う)。`ui=true` なのに出力が無ければ
    (d2-design が「画面を持たない」と判断して skip した) F6 と F7 を飛ばし、その旨を報告する
-   importUi の出力の `css:` が `none` (Tailwind の CSS が 0 本か 2 本以上) なら、画面の土台の `src/styles.css` が読む `packages/ui/entry.css` ができず
-   frontend の build が落ちる。F9 で直そうとせず、d2-design の出力 (Tailwind を `@import` する CSS がちょうど 1 本) を課題にする
+   画面の土台の `src/styles.css` は、F5 では Tailwind を直接読む形で置かれ、importUi が `packages/ui/entry.css` を書けたときだけ画面部品を読む形に替わる
+   (F6 を飛ばしても build は通る)。importUi の出力の `css:` が `none` (Tailwind の CSS が 0 本か 2 本以上) なら画面部品の色や書体が画面に効かないので、
+   d2-design の出力 (Tailwind を `@import` する CSS がちょうど 1 本) を課題にする
 3. F7: `packages/ui` が workspace に加わったので `npm install` をもう一度 (lockfile を更新) → `installTierPackages.js` (足りない分だけ) → `genQlty.js --refresh`
 4. F4: 骨格分の契約テストを生成する
 5. F9: チェックポイント。`runGates.js --uc bootstrap --upto static` が exit 0
