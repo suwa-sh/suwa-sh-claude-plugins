@@ -95,6 +95,14 @@ test('非 accepted の ADR が tiers キーを持つとエラー (指摘1)', () 
   assert.ok(errors.some(e => /tiers\[\] はティア構成 ADR/.test(e.message)), JSON.stringify(errors));
 });
 
+test('置き換えられた (superseded) ティア構成 ADR は tiers を残してよい (d2-decide mode=feedback は status と superseded_by だけを変える。0.3.0)', () => {
+  const errors = tierStructureErrors([
+    adr('0001.md', tiersFm({ status: 'superseded', superseded_by: '0014' })),
+    adr('0014.md', tiersFm({ id: '0014', supersedes: ['0001'] })),
+  ]);
+  assert.deepEqual(errors, [], JSON.stringify(errors));
+});
+
 test('adr-two-accepted-system の正当な 2 本目 (tiers キー無し) はティア構成エラー 0 (指摘1)', () => {
   const errors = tierStructureErrors([
     adr('0001.md', tiersFm()),

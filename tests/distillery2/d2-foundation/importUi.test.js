@@ -192,3 +192,17 @@ test('Tailwind の CSS の検出はコメントの中の @import を数えない
   assert.equal(run({ from: 'design', cwd }).css, 'entry.css → styles/globals.css');
 });
 
+
+test('入口: index が無ければ story・テストを除いた部品を main にし、module・types も既存の package.json ごとそろえる (0.3.0)', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  const design = path.join(cwd, 'design');
+  writeFile(path.join(design, 'src/components/domain/AvailabilityBadge.stories.tsx'), 'export default {};');
+  writeFile(path.join(design, 'src/components/domain/AvailabilityBadge.tsx'), 'export const B = () => null;');
+  writeFile(path.join(cwd, 'packages/ui/package.json'), JSON.stringify({ name: '@repo/ui', main: 'old.tsx', module: 'old.tsx', types: 'old.tsx', exports: { '.': './x' } }));
+  assert.equal(run({ from: 'design', cwd }).entry, 'components/domain/AvailabilityBadge.tsx');
+  writeFile(path.join(design, 'src/index.ts'), "export * from './components/domain/AvailabilityBadge';");
+  assert.equal(run({ from: 'design', cwd }).entry, 'index.ts');
+  const pkg = JSON.parse(fs.readFileSync(path.join(cwd, 'packages/ui/package.json'), 'utf8'));
+  assert.deepEqual([pkg.main, pkg.module, pkg.types], ['index.ts', 'index.ts', 'index.ts']);
+  assert.deepEqual(pkg.exports, { '.': './x' }, '手で足した設定は残す');
+});

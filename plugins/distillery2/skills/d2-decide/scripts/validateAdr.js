@@ -132,6 +132,9 @@ function tierStructureErrors(adrs) {
   // ティア構成 ADR 以外が tiers キーを持つのは禁止 (非 accepted / 空 tiers[] / 2 本目 いずれも)。
   for (const a of adrs) {
     if (declaringSet.has(a)) continue;
+    // 置き換えられたティア構成 ADR は tiers を履歴として残してよい (d2-decide mode=feedback は旧 ADR の status と superseded_by だけを変える。0.3.0 の実地確認 3 起動目)。
+    // 基盤 (collectTiers) は accepted だけを読むので取り違えない
+    if (String(a.fm.status).toLowerCase() === 'superseded') continue;
     if (hasTiersKey(a.fm)) {
       errors.push({ file: a.file, message: 'tiers[] はティア構成 ADR (accepted かつ非空の tiers[] を持つ 1 本) だけが持てる (この ADR の tiers キーは許されない)' });
     }

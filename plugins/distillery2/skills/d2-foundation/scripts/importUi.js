@@ -97,13 +97,16 @@ function run(o) {
   // npm workspace として解決できるよう packages/ui/package.json を書く (@repo/ui)。
   // main はエントリを推定する (index.ts(x) があればそれ、無ければ最初の components 実体)。
   const relPaths = files.map(f => f.path);
+  // story・テストは入口にしない (名前順の先頭の *.stories.tsx が main になった。0.3.0 の実地確認 3 起動目)
+  const source = (p) => /\.(t|j)sx?$/.test(p) && !/\.(stories|test|spec)\.(t|j)sx?$/.test(p) && !p.endsWith('.d.ts');
   const entry = ['index.ts', 'index.tsx', 'index.js'].find(e => relPaths.includes(e))
-    || relPaths.find(p => /^components\/.*\.(t|j)sx?$/.test(p))
-    || relPaths.find(p => /\.(t|j)sx?$/.test(p))
+    || relPaths.find(p => p.startsWith('components/') && source(p))
+    || relPaths.find(source)
     || 'index.ts';
   // 既存の package.json は管理キー (name/type/main) だけ更新し、手編集した設定 (exports 等) を保持する (指摘 6)。
   const uiPkgPath = path.join(uiDir, 'package.json');
-  const managed = { name: '@repo/ui', type: 'module', main: entry };
+  // module・types も入口にそろえる (main だけ直すと前回の入口が残る。0.3.0 の実地確認 3 起動目)
+  const managed = { name: '@repo/ui', type: 'module', main: entry, module: entry, types: entry };
   let uiPkg = null;
   if (fs.existsSync(uiPkgPath)) {
     try { uiPkg = JSON.parse(fs.readFileSync(uiPkgPath, 'utf8')); } catch { uiPkg = null; }

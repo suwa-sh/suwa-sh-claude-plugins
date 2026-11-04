@@ -82,6 +82,7 @@ LLM 主体のステージ。d2-run が段階③で、契約の骨格 (d2-contrac
   - ADR の方針と食い違う技術 (SPA 指定なのに Next.js 等) を選ばない。
 - 選んだ構成で `docs/design/storybook-app/` を生成する。
 - トークン CSS、UI 部品、ドメイン部品、画面 Story (`stories/<Name>.stories.tsx`)、MDX を作る。
+- **`src/index.ts` (部品の公開口) を必ず作る**: UI 部品とドメイン部品 (と部品が使う型) を再輸出する。story は再輸出しない。F6 の `importUi.js` がこれを `packages/ui` の入口 (package.json の main) にし、画面 (`apps/<frontend>`) は `@repo/ui` から部品を取る
 - 部品群の生成は独立性が高いので、**サブエージェント分割 / 並列 Write** で時間を短縮する
   (派遣時はパスだけ渡す)。
 - ビルド検証: `npx storybook build` が通ること。
