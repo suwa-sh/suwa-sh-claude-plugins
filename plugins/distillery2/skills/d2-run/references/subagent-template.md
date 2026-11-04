@@ -78,7 +78,7 @@
 | ④ verify | `<run>/attempt-<n>/findings.<tier>.yaml` |
 | ④ asbuilt | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)、`<run>/reports/**` (depcruise の結果と抽出の集計)、`<run>/issues/<ts>_asbuilt_<slug>.md` (要約の課題のうち、人レビューに載っていないものの下書き) |
 | ① 要求の差分 (画面部品) | `docs/design/**` |
-| ② 決定の差分 (ADR) | `docs/adr/**`、`.distillery/logs/decide-<issue>.result.json` |
+| ② 決定の差分 (ADR) | `docs/adr/**`、`docs/nfr/**`、`.distillery/logs/decide-<issue>.result.json` |
 | 反証して直す | レビューした場所の派遣の行と同じ (その行をそのまま貼る) |
 <!-- distillery2:dispatch-write-sets:end -->
 

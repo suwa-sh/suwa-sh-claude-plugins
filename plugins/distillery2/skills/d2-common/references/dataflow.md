@@ -298,16 +298,19 @@ flowchart LR
   p_decide_feedback["決定の差分の ADR<br/>d2-decide mode=feedback"]
   s_feedback_docs[("課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成)<br/>docs/feedback/**")]
   s_adr[("ADR<br/>docs/adr/*.md")]
+  s_nfr[("非機能要求グレード表<br/>docs/nfr/**")]
   s_decide_result[("決定の差分の派遣の結果 (applied / blocked。gitignore)<br/>.distillery/logs/decide-#lt;issue#gt;.result.json")]
   s_feedback_docs --> p_decide_feedback
   s_adr --> p_decide_feedback
+  s_nfr --> p_decide_feedback
   p_decide_feedback --> s_adr
+  p_decide_feedback --> s_nfr
   p_decide_feedback --> s_decide_result
 ```
 
 | 読む | 書く |
 |---|---|
-| `docs/feedback/**`<br>`docs/adr/*.md` | `docs/adr/*.md`<br>`.distillery/logs/decide-<issue>.result.json` |
+| `docs/feedback/**`<br>`docs/adr/*.md`<br>`docs/nfr/**` | `docs/adr/*.md`<br>`docs/nfr/**`<br>`.distillery/logs/decide-<issue>.result.json` |
 
 #### 決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)
 
@@ -1305,7 +1308,7 @@ flowchart LR
 | RDRA モデル | 要求 | `docs/requirements/rdra/**` | 生成 | 要求の整理 | 品質特性と設計の決定、デザインシステムの生成、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)、UC シナリオの執筆、契約の差分、ティアの実装、独立検証、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
 | UC 一覧 | 要求 | `docs/requirements/use-cases.yaml` | 生成 | 要求の整理、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)、d2-run (④)、main マージ (squash して main へ取り込む)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)、基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除・やり直す UC の run の退避) | 品質特性と設計の決定、デザインシステムの生成、機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)、UC シナリオの執筆、契約の差分、ティアの実装、結合、独立検証、as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)、要求の差分の画面の見本 (項目のファイル (stories と部品) だけを直す)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、d2-run (④)、シナリオの静的確認、文書の入口の更新 (④)、main マージ (squash して main へ取り込む)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)、基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除・やり直す UC の run の退避)、次に何をするかを決める (起動時の自動選択。読むだけ)、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
 | 要求の確認材料 | 要求 | `docs/requirements/_review-summary.md` | 生成 | 要求の整理 | d2-run (① ②) |
-| 非機能要求グレード表 | 決定 (NFR・ADR) | `docs/nfr/**` | 生成 | 品質特性と設計の決定 | デザインシステムの生成、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
+| 非機能要求グレード表 | 決定 (NFR・ADR) | `docs/nfr/**` | 生成 | 品質特性と設計の決定、決定の差分の ADR | デザインシステムの生成、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、決定の差分の ADR、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
 | ADR | 決定 (NFR・ADR) | `docs/adr/*.md` | 生成 | 品質特性と設計の決定、決定の差分の ADR、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)、上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から) | 基盤の生成 (F1→F2→F3→F5→F7)、F1 ルール、F2 依存方向の検査、F5 設定・骨格・CI・qlty、F7 依存の導入 (npm install・qlty の提案)、契約の骨格、デザインシステムの生成、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、F7 依存の導入 (F6 の後)、機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、決定の差分の ADR、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)、次に何をするかを決める (起動時の自動選択。読むだけ)、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
 | C4 図 (決定から) | 決定 (NFR・ADR) | `docs/adr/architecture.md` | 生成 (最終成果物) | 基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図) | — |
 | 決定の確認材料 | 決定 (NFR・ADR) | `docs/adr/_review-summary.md` | 生成 | 品質特性と設計の決定 | d2-run (① ②) |

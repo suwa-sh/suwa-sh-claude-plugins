@@ -1090,11 +1090,12 @@ processes:
     template_row: "② 決定の差分 (ADR)"
     write_set:
       - "`docs/adr/**`"
+      - "`docs/nfr/**`"
       - "`.distillery/logs/decide-<issue>.result.json`"
-    reads: [feedback-docs, adr]
-    writes: [adr, decide-result]
-    allowed_writes: [adr-dir, decide-result]
-    scripts: [validateAdr.js, genAdrIndex.js]
+    reads: [feedback-docs, adr, nfr]
+    writes: [adr, nfr, decide-result]
+    allowed_writes: [adr-dir, nfr, decide-result]
+    scripts: [validateAdr.js, genAdrIndex.js, validateNfrGrade.js, generateNfrGradeMd.js]
   - id: run.decide-diff
     name: 決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)
     stage: decide

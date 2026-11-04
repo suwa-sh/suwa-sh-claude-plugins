@@ -413,6 +413,7 @@
     "template_row": "② 決定の差分 (ADR)",
     "write_set": [
       "`docs/adr/**`",
+      "`docs/nfr/**`",
       "`.distillery/logs/decide-<issue>.result.json`"
     ],
     "notes": [],
@@ -420,6 +421,10 @@
       {
         "id": "adr-dir",
         "path": "docs/adr/**"
+      },
+      {
+        "id": "nfr",
+        "path": "docs/nfr/**"
       },
       {
         "id": "decide-result",

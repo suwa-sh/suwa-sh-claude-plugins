@@ -313,7 +313,7 @@ test('0.2.0: 決定の差分・基盤の差分: clean な main で回し、決�
   assert.match(fd, /受理は ③ の 5 と同じ/);
   assert.match(fd, /`foundation: feedback`/);
   assert.match(row(read(TEMPLATE), /^\| ② 決定の差分 \(ADR\) \|/), /本体の作業ツリー \(clean な main\) で派遣する \(worktree は使わない/);
-  assert.match(wsRow('② 決定の差分 (ADR)'), /`docs\/adr\/\*\*`、`\.distillery\/logs\/decide-<issue>\.result\.json`/);
+  assert.match(wsRow('② 決定の差分 (ADR)'), /`docs\/adr\/\*\*`、`docs\/nfr\/\*\*`、`\.distillery\/logs\/decide-<issue>\.result\.json`/);
 });
 
 test('0.1.27 / 0.2.0: 上流で止めるときは課題ファイルを一時の worktree から main に入れ、blocked_on_upstream を記録して停止する。一時の branch は feedback-req/', () => {
