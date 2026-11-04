@@ -9,7 +9,8 @@
  *
  * - ティア構成 ADR が決めた枠組み・DB のクライアント・認証のライブラリ (例 express / pg / jose) を、
  *   `npm install -w <tier の dir> <名前...>` (dev は `--save-dev`) で入れる。版は npm が解決する (推測で書かない)。
- * - 既に dependencies / devDependencies にある名前は入れない (冪等。手で固定した版を変えない)。
+ * - packages は dependencies に、dev_packages は devDependencies (か dependencies) に既にある名前を入れない (冪等。手で固定した版を変えない)。
+ *   packages が devDependencies にだけあるときは入れ直す (npm install --save が dependencies へ移す)。
  * - lockfile の書き手は F7 だけなので、`npm install` の後 (F7 の中) に回す。
  * - 骨格がティアの依存を入れず、実装の段で毎回止まって基盤に戻っていた (会議室の予約の実地確認で実測)。
  *
@@ -48,9 +49,11 @@ function plan(cwd, tiers) {
       continue;
     }
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-    const have = new Set([...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.devDependencies || {})]);
-    const packages = names(t.packages).filter((n) => !have.has(n));
-    const dev = names(t.dev_packages).filter((n) => !have.has(n) && !packages.includes(n));
+    // 区分ごとに照合する (devDependencies にある実行時の依存は npm install --save が dependencies へ移す)
+    const deps = new Set(Object.keys(pkg.dependencies || {}));
+    const devDeps = new Set(Object.keys(pkg.devDependencies || {}));
+    const packages = names(t.packages).filter((n) => !deps.has(n));
+    const dev = names(t.dev_packages).filter((n) => !devDeps.has(n) && !deps.has(n) && !names(t.packages).includes(n));
     out.push({ tier: t.id, dir, packages, dev_packages: dev });
   }
   return out;

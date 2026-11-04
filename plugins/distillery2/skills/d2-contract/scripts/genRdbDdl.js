@@ -180,8 +180,6 @@ function run(contractsDir, { configPath, outRoot, check = false, skipIfUnused = 
   const bundle = parseYaml(fs.readFileSync(bundlePath, 'utf8'));
   const tables = bundle.tables || [];
   if (skipIfUnused && !tables.length) return { status: 'skipped', reason: '表が 0 件', written: [], files: [] };
-  // どの UC もまだ表を使っていない (基盤の直後の main。DDL は契約の段 (d2-contract mode=uc) が初めて書く)
-  if (skipIfUnused && !ucUsesTables(dir)) return { status: 'skipped', reason: '表を使う UC が無い', written: [], files: [] };
   if (!rdbContract) throw new Error('config.yaml: rdb-schema 契約が無い');
   const owner = config.datastore_owner;
   if (!owner) throw new Error('config.yaml: datastore_owner が無い');
@@ -192,6 +190,11 @@ function run(contractsDir, { configPath, outRoot, check = false, skipIfUnused = 
   files.set(path.join(ownerDir, 'migrations', '0001_schema.sql'), buildSql(tables));
   files.set(path.join(ownerDir, 'test', 'contract', 'db-schema.test.ts'), dbSchemaTest(tables, ownerDir, head));
   files.set(path.join('packages', 'contracts', rdbContract.id, 'tables.ts'), rowTypes(tables, head));
+  // どの UC もまだ表を使っておらず、生成物もまだ無い (基盤の直後の main。DDL は契約の段 (d2-contract mode=uc) が初めて書く)。
+  // 生成物が 1 つでもあれば飛ばさない (表を使う UC が無くなった後も、残った生成物の鮮度を見る)
+  if (skipIfUnused && !ucUsesTables(dir) && ![...files.keys()].some(rel => fs.existsSync(path.join(outRoot, rel)))) {
+    return { status: 'skipped', reason: '表を使う UC が無い', written: [], files: [] };
+  }
 
   const stale = [], written = [];
   for (const [rel, text] of files) U.writeFileDet(path.join(outRoot, rel), text, check, stale, written, rel);

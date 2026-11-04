@@ -121,3 +121,17 @@ test('0.1.32 J2: 前回の一覧にあって取り込み元から消えたファ
   assert.deepEqual(run({ from: 'design', cwd }).removed, []);
   assert.ok(fs.existsSync(path.join(cwd, 'outside.txt')), '外のファイルは消えない');
 });
+
+test('取り込みの後に packages/ui を biome で整形する (biome が無ければ飛ばす。0.3.0)', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  writeFile(path.join(cwd, 'design/src/components/ui/Button.tsx'), 'export const Button = () => null;');
+  assert.equal(run({ from: 'design', cwd }).format, 'skipped (biome が無い)');
+  // 偽の biome: 受け取った引数を書き残す
+  const bin = path.join(cwd, 'node_modules/.bin/biome');
+  writeFile(bin, '#!/bin/sh\necho "$@" > "$(dirname "$0")/../../biome-args.txt"\n');
+  fs.chmodSync(bin, 0o755);
+  assert.equal(run({ from: 'design', cwd }).format, 'formatted');
+  assert.equal(fs.readFileSync(path.join(cwd, 'biome-args.txt'), 'utf8').trim(), 'format --write --no-errors-on-unmatched packages/ui');
+  writeFile(bin, '#!/bin/sh\necho broken >&2\nexit 1\n');
+  assert.match(run({ from: 'design', cwd }).format, /^failed \(exit 1\): broken/, '整形できなくても取り込みは成功し、報告だけする');
+});

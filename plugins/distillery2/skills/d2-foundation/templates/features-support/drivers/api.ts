@@ -34,9 +34,11 @@ import { inProcessFetch, scenarioHeaders, type Placement } from '@repo/test-supp
 import { createTestApp } from '../../../apps/backend-api/src/test-app';
 
 type HeaderMap = Record<string, string>;
+/** test-headers.json の値。null は前に重ねたヘッダの取り消し (契約テストと同じ) */
+type ContractHeaderMap = Record<string, string | null>;
 interface TestHeaders {
-  default: HeaderMap;
-  operations: { method: string; path: string; headers: HeaderMap }[];
+  default: ContractHeaderMap;
+  operations: { method: string; path: string; headers: ContractHeaderMap }[];
 }
 
 /** contracts/contracts.json の openapi 契約ごとの test-headers.json を読む (cucumber はリポのルートで回る) */
@@ -73,17 +75,19 @@ function mergeHeaders(...maps: HeaderMap[]): HeaderMap {
 
 /** その要求に付ける契約のテスト用ヘッダ: 文書直下 → operation (契約テストと同じ順)。`{uuid}` は送るたびに新しい UUID */
 function contractTestHeaders(all: TestHeaders[], method: string, reqPath: string): HeaderMap {
-  const maps: HeaderMap[] = [];
+  const maps: ContractHeaderMap[] = [];
   for (const t of all) {
     maps.push(t.default ?? {});
     for (const op of t.operations ?? [])
       if (op.method === method.toUpperCase() && matchesPath(op.path, reqPath))
         maps.push(op.headers);
   }
-  const merged = mergeHeaders(...maps);
-  for (const k of Object.keys(merged))
-    merged[k] = merged[k].replace(/\{uuid\}/g, () => randomUUID());
-  return merged;
+  const merged: ContractHeaderMap = {};
+  for (const m of maps) for (const [k, v] of Object.entries(m)) merged[k.toLowerCase()] = v;
+  const out: HeaderMap = {};
+  for (const [k, v] of Object.entries(merged))
+    if (v !== null) out[k] = v.replace(/\{uuid\}/g, () => randomUUID());
+  return out;
 }
 
 /** テスト用の composition root に渡すもの (README の結線契約) */

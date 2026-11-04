@@ -171,3 +171,11 @@ test('test-headers.json: 文書直下と operation ごとの x-test-headers を�
     operations: [{ method: 'POST', path: '/rooms/{roomId}', headers: { 'Idempotency-Key': '{uuid}' } }],
   }, '文書直下と operation ごと (operation のヘッダが無いものは載せない)');
 });
+
+test('test-headers.json: operation の x-test-headers の null (既定のヘッダの取り消し) を残す (契約テストと同じ)', () => {
+  const { buildFiles } = require(path.join(SCRIPTS, 'genApiClient.js'));
+  const bundle = { openapi: '3.1.0', info: { title: 't', version: '1' }, 'x-test-headers': { Authorization: 'Bearer x' },
+    paths: { '/public': { get: { operationId: 'pub', responses: { 200: { description: 'ok' } }, 'x-test-headers': { authorization: null } } } } };
+  const json = JSON.parse(buildFiles({ bundle, contract: { id: 'api' }, head: '// h' }).get('packages/contracts/api/test-headers.json'));
+  assert.deepEqual(json.operations, [{ method: 'GET', path: '/public', headers: { authorization: null } }]);
+});

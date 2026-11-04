@@ -327,10 +327,10 @@ async function parseBody(res: Response): Promise<unknown> {
 // 識別子として使える名前は `args.name`、そうでなければ `args["name"]` を組み立てる (指摘 4)。
 const argAccess = (name) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? `args.${name}` : `args[${JSON.stringify(name)}]`);
 
-/** x-test-headers を文字列の値だけの object にする (無ければ空) */
+/** x-test-headers を値が文字列か null の object にする (null は前に重ねたヘッダの取り消し。契約テストと同じ。無ければ空) */
 function headerMap(h) {
   if (!h || typeof h !== 'object' || Array.isArray(h)) return {};
-  return Object.fromEntries(Object.keys(h).sort().map((k) => [k, String(h[k])]));
+  return Object.fromEntries(Object.keys(h).sort().map((k) => [k, h[k] === null ? null : String(h[k])]));
 }
 
 /**

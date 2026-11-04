@@ -19,6 +19,7 @@ test('API ドライバ: createTestApp({ db, clock }) の戻り (app か Promise<
   assert.match(api, /replace\(\/\\\{uuid\\\}\/g, \(\) => randomUUID\(\)\)/, '{uuid} は送るたびに新しい UUID');
   assert.match(api, /op\.method === method\.toUpperCase\(\) && matchesPath\(op\.path, reqPath\)/, 'operation ごとのヘッダ');
   assert.match(api, /if \(v !== ''\) req = req\.set\(k, v\)/, '空文字のヘッダは送らない');
+  assert.match(api, /if \(v !== null\) out\[k\] = v\.replace/, '契約の null は前に重ねたヘッダの取り消し');
 });
 
 test('World と hooks: シナリオごとの DB (migration があるときだけ) と固定の時計を api ドライバに渡す', () => {

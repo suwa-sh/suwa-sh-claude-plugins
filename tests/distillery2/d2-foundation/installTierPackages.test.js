@@ -46,3 +46,35 @@ test('installTierPackages: dir は骨格と同じく apps/ を外して apps/<di
   assert.throws(() => plan(root, [{ id: 'x', dir: 'apps/none', packages: ['a'] }]), /apps\/none\/package\.json が無い/);
   assert.deepEqual(plan(root, [{ id: 'x', dir: 'apps/none', packages: [] }]), [], '入れるものが無ければ飛ばす');
 });
+
+test('installTierPackages: npm を区分ごとに回し、再実行では何もしない。devDependencies にある実行時の依存は入れ直す (偽の npm)', () => {
+  const root = repo();
+  // apps/backend-api: pg は dependencies、jose を devDependencies に置いておく
+  const pkgPath = path.join(root, 'apps/backend-api/package.json');
+  fs.writeFileSync(pkgPath, JSON.stringify({ name: 'b', dependencies: { pg: '^8.0.0' }, devDependencies: { jose: '^5.0.0' } }));
+  // 偽の npm: 引数を書き残し、--save は dependencies、--save-dev は devDependencies に足す
+  const fake = path.join(root, 'fake-npm.js');
+  fs.writeFileSync(fake, [
+    "const fs = require('node:fs'); const path = require('node:path');",
+    "const a = process.argv.slice(2); fs.appendFileSync(path.join(process.cwd(), 'npm-calls.txt'), a.join(' ') + '\\n');",
+    "const dir = a[a.indexOf('-w') + 1]; const p = path.join(process.cwd(), dir, 'package.json'); const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));",
+    "const dev = a.includes('--save-dev'); const key = dev ? 'devDependencies' : 'dependencies';",
+    "for (const n of a.filter((x, i) => i > a.indexOf(dev ? '--save-dev' : '--save'))) { pkg[key] = { ...(pkg[key] || {}), [n]: '^1.0.0' }; if (!dev && pkg.devDependencies) delete pkg.devDependencies[n]; }",
+    "fs.writeFileSync(p, JSON.stringify(pkg));",
+  ].join('\n'));
+  const npm = `${process.execPath} ${fake}`;
+  const r = run({ cwd: root, adr: 'docs/adr', dryRun: false, npm });
+  assert.deepEqual(r.installed.map((s) => [s.tier, s.packages, s.dev_packages]), [['backend-api', ['express', 'jose'], ['@types/express']]], 'devDependencies にだけある jose も入れ直す');
+  assert.deepEqual(fs.readFileSync(path.join(root, 'npm-calls.txt'), 'utf8').trim().split('\n'), [
+    'install -w apps/backend-api --save express jose',
+    'install -w apps/backend-api --save-dev @types/express',
+  ]);
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  assert.ok(pkg.dependencies.jose && !pkg.devDependencies.jose);
+  const again = run({ cwd: root, adr: 'docs/adr', dryRun: false, npm });
+  assert.deepEqual(again.installed, [], '2 回目は何もしない');
+  assert.equal(fs.readFileSync(path.join(root, 'npm-calls.txt'), 'utf8').trim().split('\n').length, 2);
+  fs.writeFileSync(fake, 'process.exit(3);');
+  fs.writeFileSync(pkgPath, JSON.stringify({ name: 'b' }));
+  assert.throws(() => run({ cwd: root, adr: 'docs/adr', dryRun: false, npm }), /が失敗 \(exit 3\)/, 'npm が落ちたら失敗');
+});
