@@ -190,6 +190,10 @@ test('route: リポの中で回避したプラグインの課題 (workaround) �
   const bad = base();
   bad.upstream_issues[0].workaround = '回避した';
   assert.match(H.validate(bad).join('\n'), /workaround: 戻し先が plugin の課題だけ/);
+  const blank = base();
+  blank.upstream_issues = [{ id: 'p', target_step: 'plugin', title: 'x', detail: 'x', evidence: 'x', recommended_fix: 'x', workaround: '   ' }];
+  assert.match(H.validate(blank).join('\n'), /空白だけの回避/);
+  assert.deepEqual(H.route(blank, 'recommend').issues.plugin.map((x) => x.id), ['p'], '空白だけの回避は止める側');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
   const run = path.join(dir, '.distillery', 'runs', 'submit-expense');
   fs.mkdirSync(run, { recursive: true });

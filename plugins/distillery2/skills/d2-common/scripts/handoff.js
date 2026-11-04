@@ -28,6 +28,9 @@ const UPSTREAM = new Set(['requirements', 'decide', 'foundation']);
 // target_step → 課題ファイルの kind (古い版が kind で読むための互換。0.2.0 の振り分けは target_step を見る)
 const KIND_OF = { requirements: 'requirement', decide: 'rule', foundation: 'foundation', scenario: 'scenario', contract: 'contract', implementation: 'implementation', plugin: 'plugin' };
 
+/** リポの中で回避した plugin の課題か (空白だけの回避は回避していない扱い。止める側に残す) */
+const hasWorkaround = (u) => Boolean(u && u.target_step === 'plugin' && typeof u.workaround === 'string' && u.workaround.trim());
+
 class Fail extends Error { constructor(msg, code = 1) { super(msg); this.code = code; } }
 
 function load(file) {
@@ -69,6 +72,7 @@ function validate(data) {
     if (!u || typeof u !== 'object') continue;
     if (seen.has(`issue:${u.id}`)) errors.push(`$.upstream_issues[${i}].id: 重複 ${u.id}`);
     seen.add(`issue:${u.id}`);
+    if (u.workaround !== undefined && !String(u.workaround).trim()) errors.push(`$.upstream_issues[${i}].workaround: 空白だけの回避は書かない (回避できないなら workaround を書かない)`);
     if (u.workaround && u.target_step !== 'plugin') errors.push(`$.upstream_issues[${i}].workaround: 戻し先が plugin の課題だけに書く (${u.target_step})`);
   }
   return errors;
@@ -92,7 +96,7 @@ function route(data, mode) {
   // plugin: 止める (リポの中で回避できない)。plugin_noted: リポの中で回避したので止めずに報告する (0.3.0)
   const issues = { in_feature: [], upstream: [], plugin: [], plugin_noted: [] };
   for (const u of data.upstream_issues || []) {
-    const to = u.target_step === 'plugin' ? (u.workaround ? issues.plugin_noted : issues.plugin) : (IN_FEATURE.has(u.target_step) ? issues.in_feature : issues.upstream);
+    const to = u.target_step === 'plugin' ? (hasWorkaround(u) ? issues.plugin_noted : issues.plugin) : (IN_FEATURE.has(u.target_step) ? issues.in_feature : issues.upstream);
     to.push({ id: u.id, target_step: u.target_step, title: u.title });
   }
   const needsInfo = (data.refutations || []).filter((r) => r.result === 'needs_info').map((r) => r.finding);
@@ -155,7 +159,7 @@ function issueBody(u) {
   const parts = [u.detail.trim()];
   if (u.evidence) parts.push(`## 根拠\n\n${u.evidence.trim()}`);
   if (u.recommended_fix) parts.push(`## 推奨の直し方\n\n${u.recommended_fix.trim()}`);
-  if (u.workaround) parts.push(`## リポの中での回避\n\n${u.workaround.trim()}`);
+  if (hasWorkaround(u)) parts.push(`## リポの中での回避\n\n${u.workaround.trim()}`);
   return `\n${parts.join('\n\n')}\n`;
 }
 
@@ -214,7 +218,7 @@ function fileDrafts(file, data, { run, root, chainFrom = null, byTitle = true, b
   for (const u of data.upstream_issues || []) {
     const name = `${base}_${u.id}.md`.replace(/[^A-Za-z0-9_.-]/g, '-');
     const key = `${u.target_step}\n${squashTitle(u.title)}`;
-    const fm = { kind: KIND_OF[u.target_step], title: u.title, ...(u.target_step === 'plugin' ? {} : { target_step: u.target_step }), source: `handoff:${step}`, ...(u.resume_from ? { resume_from: u.resume_from } : {}), ...(u.workaround ? { workaround: true } : {}), ...(chain || {}) };
+    const fm = { kind: KIND_OF[u.target_step], title: u.title, ...(u.target_step === 'plugin' ? {} : { target_step: u.target_step }), source: `handoff:${step}`, ...(u.resume_from ? { resume_from: u.resume_from } : {}), ...(hasWorkaround(u) ? { workaround: true } : {}), ...(chain || {}) };
     let dest;
     if (run) {
       dest = path.join(path.resolve(run), 'issues', `${stamp()}_${step}_${name}`);
