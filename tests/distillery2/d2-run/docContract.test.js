@@ -896,7 +896,7 @@ test('0.2.0 / 0.3.0: 自動選択は上流の課題 (要求 → 決定 → 基�
   assert.match(issues, /\| scenario \/ contract \/ implementation \| \*\*その場で巻き戻す\*\*[^\n]*\| 課題ファイルのまま残す。次の起動の自動選択が `reopen_targets` で開き直す \|/);
   const resume = routingSection('## 写し直し');
   assert.match(resume, /`node <skills>\/d2-common\/scripts\/resumeAfterUpstream\.js run <root> <slug> --co-author "<attribution の値>"`/);
-  assert.match(resume, /`node <skills>\/d2-common\/scripts\/resumeAfterUpstream\.js check-diffs <run> --handoff <その担当の引き継ぎファイル> --stage <scenario\|contract\|tier> \[--tier <tier>\]` が exit 0/);
+  assert.match(resume, /`node <skills>\/d2-common\/scripts\/resumeAfterUpstream\.js check-diffs <run> --handoff <その担当の引き継ぎファイル> --stage <scenario\|contract\|tier\|integrate> \[--tier <tier>\]` が exit 0/);
   assert.match(resume, /verify の派遣の前に、差分を渡したすべての担当の引き継ぎファイルを `--handoff` で並べて `--stage` なしで回し/);
   assert.match(resume, /「写し直しで取り下げた変更」/);
   for (const rel of [SKILL, ROUTING, DELIVERY]) assert.doesNotMatch(read(rel), /`git update-ref refs\/distillery2\/abandoned/, `${rel} が上流で止めた feature を捨てていない`);

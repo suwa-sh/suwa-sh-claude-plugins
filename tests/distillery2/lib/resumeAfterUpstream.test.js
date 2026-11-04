@@ -106,6 +106,9 @@ test('作り直せる生成物の表: 契約の分割ファイルは入らず、
   assert.equal(R.stageOfPath('features/rooms/book-room.feature'), 'scenario');
   assert.equal(R.stageOfPath('contracts/openapi/paths/rooms.yaml'), 'contract');
   assert.equal(R.stageOfPath('apps/backend/src/a.ts'), 'tier');
+  assert.equal(R.stageOfPath('apps/backend/migrations/001.sql'), 'contract', 'migration は契約の段が書く');
+  assert.equal(R.stageOfPath('features/step_definitions/book-room.steps.ts'), 'integrate', 'step 定義は結合に渡す (scaffold は red が前提)');
+  assert.equal(R.stageOfPath('features/support/world.ts'), 'integrate');
 });
 
 test('両方が別のファイルを変えた: 両方残る。衝突 0、続きは決定の課題なので tier。契約のレビューは残り、tier 以降の done が退避される', () => {
@@ -360,6 +363,28 @@ test('作り直しが commit の対象の外の追跡済みファイルを変え
   fs.writeFileSync(gen, "require('fs').writeFileSync('other/x.txt','changed by generator\\n');\n");
   const t = [{ id: 'other', outputs: [/^other\//], inputs: [/^apps\//], needs: 'other', gen: [[gen]] }];
   assert.throws(() => R.resume(root, SLUG, { table: t }), /追跡済みの変更が残った[^\n]*other\/x\.txt/);
+});
+
+test('step 定義の衝突は integrate の受け持ち。課題の戻し先 (implementation) の方が早ければ tier から', () => {
+  const { root, tmp } = makeRepo({
+    stopStage: 'integrate',
+    featureEdit: (r) => w(r, 'features/step_definitions/book-room.steps.ts', 'feature\n'),
+    mainEdit: (r) => w(r, 'features/step_definitions/book-room.steps.ts', 'main\n'),
+    target: 'decide', resumeFrom: 'implementation',
+  });
+  const out = R.resume(root, SLUG, { table: table(tmp) });
+  assert.equal(out.from_stage, 'tier', '課題の戻し先 (implementation) が早ければそちら');
+  assert.deepEqual(out.conflicts, ['features/step_definitions/book-room.steps.ts']);
+});
+
+test('9 の commit の後に追跡済みの変更が残って止まった写し直しは、再開しても検査を飛ばさずに止まる', () => {
+  const { root, tmp } = makeRepo({ featureEdit: (r) => w(r, 'apps/backend/src/feat.ts', 'x\n'), mainEdit: (r) => w(r, 'other/x.txt', 'main\n') });
+  const gen = path.join(tmp, 'gen-other.js');
+  fs.writeFileSync(gen, "require('fs').writeFileSync('other/x.txt','changed by generator\\n');\n");
+  const t = [{ id: 'other', outputs: [/^other\//], inputs: [/^apps\//], needs: 'other', gen: [[gen]] }];
+  assert.throws(() => R.resume(root, SLUG, { table: t }), /追跡済みの変更が残った/);
+  assert.throws(() => R.resume(root, SLUG, { table: t }), /追跡済みの変更が残っている/, '再開でも止まる');
+  assert.ok(fs.existsSync(R.journalPath(root, SLUG)), '処理の記録を消さない');
 });
 
 test('処理の記録が読めない (書く途中で壊れた) ときは、新しい写し直しとして始めずに止まる', () => {

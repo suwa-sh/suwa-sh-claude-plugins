@@ -9,7 +9,7 @@
  *   node resumeAfterUpstream.js run <root> <slug> [--override-limit] [--co-author "<attribution の値>"]
  *     前提: 作業ツリーが clean、今の branch が main、feature/<slug> の run の最後の止まりが blocked_on_upstream で、その課題ファイルがすべて main から消えている (反映か取り下げ)
  *     出力: {slug, from_stage, conflicts, diffs, regenerated, resumes, limit, base_head, from_head, commit}
- *   node resumeAfterUpstream.js check-diffs <runDir> --handoff <引き継ぎファイル> [--handoff ...] [--stage scenario|contract|tier] [--tier <id>]
+ *   node resumeAfterUpstream.js check-diffs <runDir> --handoff <引き継ぎファイル> [--handoff ...] [--stage scenario|contract|tier|integrate] [--tier <id>]
  *     最後の写し直しの差分ファイル (統合できなかった機能側の変更) を担当が扱ったかを確かめる。--stage (と --tier) はその段 (とティア) が受け持つ差分だけを見る
  *     (段ごとの受理。受け持ちは差分のパスの最も早い段)。全件は全担当の引き継ぎファイルを渡して確かめる: 引き継ぎファイルの resume_diffs に全件あり、
  *     applied は差分の追加行 (空白を詰めて比べる) がすべて where のファイルにあり、dropped は理由がある。出力 {ok, errors[], applied, dropped}
@@ -81,10 +81,14 @@ function writeJournal(p, j) {
   fs.renameSync(tmp, p);
 }
 
-/** パス → 続きの段 (機能の中の段のうち、そのパスを書く最も早い段。scenario / contract / tier) */
+/**
+ * パス → 続きの段 (機能の中でそのパスを書く担当の段。dataflow.yaml の write-set に揃える)。
+ * step 定義と Cucumber の support は scaffold も骨格を書くが、写し直しでは結合 (integrate) に渡す (scaffold は red を前提にするので、実装の済んだ機能では回し直せない)
+ */
 function stageOfPath(p) {
   if (/^features\//.test(p) && p.endsWith('.feature')) return 'scenario';
-  if (/^contracts\//.test(p) || p === 'docs/requirements/use-cases.yaml') return 'contract';
+  if (/^contracts\//.test(p) || p === 'docs/requirements/use-cases.yaml' || /^apps\/[^/]+\/migrations\//.test(p)) return 'contract';
+  if (/^features\/(step_definitions|support)\//.test(p)) return 'integrate';
   return 'tier';
 }
 function earliest(stages) {
@@ -271,7 +275,12 @@ function reconcile(ctx, j, journal) {
   if (j.new_commit && tip === j.new_commit) return null;
   const parent = tip ? revParse(ctx.root, `${tip}^`) : null;
   const done9 = parent && j.new_commit && parent === j.new_commit && eventsAt(ctx.root, tip, ctx.slug).some((e) => e.type === 'resumed_after_upstream' && e.from_head === j.old_head);
-  if (done9) { j.final_commit = tip; j.done_steps = STEPS.slice(); writeJournal(journal, j); return finish(ctx, j, journal); }
+  if (done9) {
+    // 9 の commit の後に止まった。commit の後に追跡済みの変更が残って止まった場合も、ここで同じ検査をしてから終える
+    const left = trackedDirty(ctx.root);
+    if (left.length) throw new Fail(`写し直しの commit の後に追跡済みの変更が残っている (作り直した生成物の置き場が commit の対象に無い): ${left.join(', ')}`);
+    j.final_commit = tip; j.done_steps = STEPS.slice(); writeJournal(journal, j); return finish(ctx, j, journal);
+  }
   throw new Fail(`写し直しの記録と git の状態が食い違う (feature の先端 ${tip} が old_head ${j.old_head}・new_commit ${j.new_commit}・その次の commit のどれでもない)。人が確かめる: ${path.relative(ctx.root, journal)}`);
 }
 
@@ -418,8 +427,8 @@ function main(argv) {
     return { out: resume(pos[0], pos[1], o), code: 0 };
   }
   if (cmd === 'check-diffs') {
-    if (pos.length !== 1) throw new Fail('check-diffs <runDir> --handoff <引き継ぎファイル> [--handoff ...] [--stage scenario|contract|tier] [--tier <id>]', 2);
-    if (o.stage && !['scenario', 'contract', 'tier'].includes(o.stage)) throw new Fail(`--stage は scenario / contract / tier: ${o.stage}`, 2);
+    if (pos.length !== 1) throw new Fail('check-diffs <runDir> --handoff <引き継ぎファイル> [--handoff ...] [--stage scenario|contract|tier|integrate] [--tier <id>]', 2);
+    if (o.stage && !['scenario', 'contract', 'tier', 'integrate'].includes(o.stage)) throw new Fail(`--stage は scenario / contract / tier / integrate: ${o.stage}`, 2);
     const r = checkDiffs(pos[0], o.handoff, { stage: o.stage || null, tier: o.tier || null });
     return { out: r, code: r.ok ? 0 : 1 };
   }
