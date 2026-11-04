@@ -74,7 +74,7 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(gitignore.includes('.distillery/runs/*/reports/') && gitignore.includes('traces/'));
   // attempt-*/ は commit 対象なので除外しない (run-state.md と整合)
   assert.ok(!gitignore.includes('attempt-'), 'attempt-*/ は gitignore しない');
-  for (const q of ['.qlty/logs/', '.qlty/out/', '.qlty/results/', '.qlty/plugin_cachedir/']) assert.ok(gitignore.includes(q), `qlty の作業ディレクトリ ${q} を gitignore`);
+  for (const q of ['.qlty/logs', '.qlty/out', '.qlty/results', '.qlty/plugin_cachedir']) assert.ok(gitignore.split('\n').includes(q), `qlty の作業ディレクトリ ${q} を gitignore`);
   // 0.1.26: 還流の worktree と、symlink の node_modules (スラッシュ無し) も無視する
   assert.match(gitignore, /^\.distillery\/worktrees\/$/m);
   assert.match(gitignore, /^node_modules$/m);

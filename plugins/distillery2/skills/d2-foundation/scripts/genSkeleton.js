@@ -104,7 +104,8 @@ const TSCONFIG_BASE = JSON.stringify({
 // migrate で置き換える (指摘 5)。
 const GITIGNORE_ANCHOR = 'distillery2 実行状態';
 const GITIGNORE_MANAGED = ['# distillery2 実行状態 (reports / traces / logs は生成物なので追跡しない)', '.distillery/runs/*/reports/', '.distillery/runs/*/traces/', '.distillery/logs/',
-  '# qlty の作業ディレクトリ (qlty init --dry-run は .qlty/.gitignore を書かない)', '.qlty/logs/', '.qlty/out/', '.qlty/results/', '.qlty/plugin_cachedir/', '.qlty/sources/',
+  // qlty はこれらを ~/.qlty/cache への symlink で作る。末尾スラッシュの形はディレクトリにしか一致せず symlink が commit に入る (0.3.0 の実地確認 3 起動目) ので付けない
+  '# qlty の作業ディレクトリ (qlty init --dry-run は .qlty/.gitignore を書かない)', '.qlty/logs', '.qlty/out', '.qlty/results', '.qlty/plugin_cachedir', '.qlty/sources',
   // 上流で止めるときの一時の worktree は .distillery/worktrees/ に作る (0.1.26〜0.1.36 は還流の worktree も)。worktree には本体の node_modules を symlink する。
   // `node_modules/` (末尾スラッシュ) はディレクトリにしか一致せず symlink が未追跡に見えるので、スラッシュ無しも足す
   '# distillery2 の一時の worktree と、worktree に張る node_modules の symlink', '.distillery/worktrees/', 'node_modules'];
