@@ -105,14 +105,70 @@ if [ -n "${MID_HARNESS_HOOK_LOG:-}" ] && printf '%s' "$CMD" | grep -q 'MID_HARNE
 fi
 
 # 取得即実行の明白形を止める:
-#   fetch | [sudo] [env] [/path/]sh|bash|zsh|dash|python*|perl|ruby|node
+#   fetch | ... | [sudo [-flags]] [env] [/path/]sh|bash|zsh|dash|python*|perl|ruby|node   (中間パイプを挟んでも止める)
 #   sh|bash|python* <(fetch)
 #   eval "$(fetch)" / eval $(fetch) / eval `fetch`
+# 照合の前に、バックスラッシュ改行・改行・連続空白を正規化する (grep は行単位なので、改行を挟む迂回を防ぐ)。
+# パイプ形は、コマンドを ; && || & 改行 で分け、各コマンドを | で段に分け、
+# fetch を含む段より後ろの段がインタプリタで始まるときだけ拒否する。別コマンドに curl と python3 -c が
+# 共存するだけ (curl -o f URL; python3 -c ...) は拒否しない。
+# 限界 (位置づけどおり、境界ではない): 引用符の中の | や ; は解釈しない。保存してから実行する 2 段階
+# (curl -o f; sh f) や変数経由の eval は捕まえない。
 FETCH='(curl|wget|fetch)'
 INTERP='(/[[:alnum:]/._-]*/)?(sh|bash|zsh|dash|ksh|python[0-9.]*|perl|ruby|node)'
-if printf '%s' "$CMD" | grep -Eq "${FETCH}[^|]*\|[[:space:]]*(sudo[[:space:]]+)?(env[[:space:]]+)?${INTERP}([[:space:]]|$)" \
-   || printf '%s' "$CMD" | grep -Eq "${INTERP}[[:space:]]+(-[[:alnum:]]+[[:space:]]+)*<\(${FETCH}" \
-   || printf '%s' "$CMD" | grep -Eq "eval[[:space:]]+\"?(\\$\(|\`)[[:space:]]*${FETCH}"; then
+ONE="$(printf '%s' "$CMD" | python3 -c 'import re,sys; s=sys.stdin.read(); s=re.sub(r"\\\r?\n"," ",s); print(re.sub(r"\s+"," ",s).strip())')"
+PIPE_HIT="$(printf '%s' "$CMD" | python3 -c '
+import re, sys
+s = sys.stdin.read().replace("\r", "")
+s = re.sub(r"\\\n", " ", s)                                   # バックスラッシュ改行は行の継続
+s = s.replace("|&", "|")                                        # |& (stderr 込み) は | と同じ扱い。行結合の前に潰す
+lines = [l.strip() for l in s.split("\n") if l.strip()]
+cmds = []                                                       # 改行は区切り。ただし | で終わる行 / | で始まる行は前の行に続ける
+for l in lines:
+    if cmds and (cmds[-1].endswith("|") or (l.startswith("|") and not l.startswith("||"))):
+        cmds[-1] += " " + l
+    else:
+        cmds.append(l)
+FETCH = re.compile(r"\b(curl|wget|fetch)\b")
+INTERP = re.compile(r"^(/[\w/.-]*/)?(sh|bash|zsh|dash|ksh|python[0-9.]*|perl|ruby|node)$")
+# インタプリタの前に置ける前置コマンドと、その「値を取る 1 文字オプション」(例: sudo -u root / xargs -n 1 / env -u VAR)
+WRAP = {"sudo": "ugUhpCDRTrt", "doas": "uC", "env": "uCSP", "xargs": "nLsIEPdaRSJ", "nice": "n", "timeout": "sk",
+        "nohup": "", "command": "", "exec": ""}
+LEAD = re.compile(r"^(?:[({\s]+|\d*[<>]{1,2}&?\s*\S+\s+)*")     # 段頭の ( { と、コマンド前のリダイレクト (2>&1 sh / 2> f sh) は読み飛ばす
+SEP = re.compile(r"\s*(?:;|&&|\|\||(?<![>|<])&(?![&>]))\s*")   # ; && || と背景実行の & (2>&1 の & は区切らない)
+def starts_with_interp(stage):
+    # 段の先頭から、前置コマンド / そのオプション / 値を取るオプションの値 / VAR=val を読み飛ばし、最初の実コマンドがインタプリタか見る
+    wrap = None; value_ok = False; positional = 0
+    for tok in stage.split():
+        tok = tok.rstrip(")}")
+        if value_ok:                                            # 直前のオプションの値 (sudo -u sh でも sh を実コマンドと見ない)
+            value_ok = False; continue
+        if INTERP.match(tok):
+            return True
+        base = tok.rsplit("/", 1)[-1]                           # /usr/bin/env のような絶対パスの前置も名前で判定
+        if base in WRAP:
+            wrap = base; positional = 1 if base == "timeout" else 0   # timeout は秒数の位置引数を 1 つ取る
+        elif wrap is not None and tok.startswith("-"):
+            value_ok = len(tok) == 2 and tok[1] in WRAP[wrap]   # -u root のように値が別トークンのときだけ 1 つ読み飛ばす
+        elif wrap is not None and re.match(r"^\w+=", tok):
+            pass                                                # env VAR=val
+        elif wrap is not None and positional:
+            positional -= 1                                     # timeout [opts] 5 bash の 5
+        else:
+            return False                                        # 実コマンドがインタプリタ以外 (grep, jq など)
+    return False
+for c in cmds:
+    for simple in SEP.split(c):
+        seen = False
+        for stage in (LEAD.sub("", t.strip()) for t in simple.split("|")):
+            if seen and starts_with_interp(stage):
+                print("hit"); sys.exit(0)
+            if FETCH.search(stage):
+                seen = True
+')"
+if [ "$PIPE_HIT" = "hit" ] \
+   || printf '%s' "$ONE" | grep -Eq "${INTERP}[[:space:]]+(-[[:alnum:]]+[[:space:]]+)*<\([[:space:]]*${FETCH}" \
+   || printf '%s' "$ONE" | grep -Eq "eval[[:space:]]+\"?(\\$\(|\`)[[:space:]]*${FETCH}"; then
   deny "fetch-and-execute" "リモート取得をそのままシェル実行するコマンドは許可しません。ファイルに保存してから内容を確認してください。"
 fi
 
