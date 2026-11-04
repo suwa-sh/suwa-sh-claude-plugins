@@ -24,7 +24,8 @@ export class D2World extends World {
 
   /** 前提のデータを入れる DB (migration 済み)。RDB が無いプロダクトで呼ぶと失敗する */
   get db() {
-    if (!this.harness) throw new Error('このプロダクトには DB のハーネスが無い (migration のディレクトリが無い)');
+    if (!this.harness)
+      throw new Error('このプロダクトには DB のハーネスが無い (migration のディレクトリが無い)');
     return this.harness.pg;
   }
 

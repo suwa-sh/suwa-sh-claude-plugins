@@ -88,3 +88,14 @@ test('--skip-if-unused: 表が 0 件・RDB の契約が無いときは何も書�
   assert.equal(genRdbDdl.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true, skipIfUnused: true }).status, 'skipped', '--check でも落ちない');
   assert.throws(() => genRdbDdl.run(path.join(contractsDir), { configPath: CONFIG, outRoot: out, check: true }), /Stale/, '付けなければ従来どおり');
 });
+
+test('--skip-if-unused: 表があっても、表を使う UC が uc-index に無ければ (基盤の直後の main) 書かず、--check も落ちない', () => {
+  const { contractsDir } = freshContracts();
+  compileRdbSchema.run(contractsDir);
+  fs.writeFileSync(path.join(contractsDir, 'uc-index.yaml'), 'schema_version: distillery2.uc-index/v1\nucs: []\n');
+  const out = outRoot();
+  assert.equal(genRdbDdl.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true, skipIfUnused: true }).reason, '表を使う UC が無い');
+  assert.equal(fs.existsSync(path.join(out, 'apps/backend-api/migrations/0001_schema.sql')), false);
+  fs.writeFileSync(path.join(contractsDir, 'uc-index.yaml'), 'schema_version: distillery2.uc-index/v1\nucs:\n  - slug: loan-register\n    operations: []\n    messages: []\n    tables: [loans]\n');
+  assert.throws(() => genRdbDdl.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true, skipIfUnused: true }), /Stale/, '表を使う UC ができたら鮮度を見る');
+});

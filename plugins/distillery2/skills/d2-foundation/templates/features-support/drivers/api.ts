@@ -4,6 +4,7 @@
  * 実装者 (d2-implement mode=integrate) は `apps/<backend>/src/test-app.ts` に
  * `export function createTestApp(deps: TestAppDeps): Express` を用意する (README の結線契約)。
  * deps は World が渡す: `db` (シナリオごとの pglite。RDB が無ければ undefined) と `clock` (固定の時計)。
+ * createTestApp は app を返しても Promise<app> を返してもよい (契約テストは await して使う)。
  * ここでは supertest でそれを叩く。x-scenario-id / x-scenario-span はトレース結線のため付与する
  * (受け側の expressScenarioMiddleware が読み、画面 → API の入れ子を復元する)。
  *
@@ -41,7 +42,8 @@ function contractTestHeaders(root = process.cwd()): Record<string, string> {
   };
   for (const c of catalog.contracts ?? []) {
     const f = path.join(root, 'packages', 'contracts', c.id, 'test-headers.json');
-    if (c.type === 'openapi' && fs.existsSync(f)) Object.assign(out, JSON.parse(fs.readFileSync(f, 'utf8')));
+    if (c.type === 'openapi' && fs.existsSync(f))
+      Object.assign(out, JSON.parse(fs.readFileSync(f, 'utf8')));
   }
   return out;
 }
@@ -54,10 +56,10 @@ export interface TestAppDeps {
 
 export class ApiDriver implements Driver {
   private testHeaders = contractTestHeaders();
-  private app: ReturnType<typeof createTestApp>;
+  private app: Promise<Awaited<ReturnType<typeof createTestApp>>>;
 
   constructor(deps: TestAppDeps) {
-    this.app = createTestApp(deps);
+    this.app = Promise.resolve(createTestApp(deps));
   }
 
   async request(
@@ -66,9 +68,9 @@ export class ApiDriver implements Driver {
     body?: unknown,
     headers: Record<string, string> = {},
   ) {
-    let req = (request(this.app) as unknown as Record<string, (p: string) => SuperTestRequest>)[
-      method.toLowerCase()
-    ](path);
+    let req = (
+      request(await this.app) as unknown as Record<string, (p: string) => SuperTestRequest>
+    )[method.toLowerCase()](path);
     const all = { ...this.testHeaders, ...scenarioHeaders(), ...headers };
     for (const [k, v] of Object.entries(all)) if (v !== '') req = req.set(k, v);
     if (body !== undefined) req = req.send(body as object);

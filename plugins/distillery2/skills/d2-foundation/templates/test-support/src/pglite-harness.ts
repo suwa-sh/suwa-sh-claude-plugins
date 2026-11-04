@@ -7,11 +7,7 @@
  *   (マスタなど) は残り、前のシナリオの書込は残らない。アプリが自分で開くトランザクション (FOR UPDATE など) と入れ子にならない。
  * - 単体・リポジトリのテストで速さが要るときだけ `withRollback` を使う (アプリが自分でトランザクションを開くコードには使わない)。
  *
- * 隔離方式の選択 (rollback を採用した理由):
- *   スキーマ再作成より、各シナリオを 1 トランザクションで包んで最後に rollback する方が速く、
- *   migration の再適用が要らない。pglite は単一プロセス内の埋め込み DB なので、
- *   テストは直列に走らせ、rollback で前シナリオの書込を確実に消す。
- *   (並列が必要になったらシナリオごとに別 PGlite インスタンス + schema 隔離へ切り替える。)
+ * migration の所有ティアは D2_DATASTORE_OWNER、無ければ .distillery/config.yaml の datastore_owner、どちらも無ければ backend-api。
  *
  * 参照 (Context7 /electric-sql/pglite v0.5.8): new PGlite(); await pg.waitReady;
  *   pg.exec(multiStatementSql); pg.query(text, params); pg.transaction(fn); pg.close().
@@ -25,6 +21,16 @@ export interface HarnessOptions {
   migrationsDir?: string;
   datastoreOwner?: string;
   repoRoot?: string;
+}
+
+/** migration の所有ティア: D2_DATASTORE_OWNER → .distillery/config.yaml の datastore_owner → backend-api */
+export function datastoreOwner(repoRoot = process.cwd()): string {
+  if (process.env.D2_DATASTORE_OWNER) return process.env.D2_DATASTORE_OWNER;
+  const config = path.join(repoRoot, '.distillery', 'config.yaml');
+  const m = fs.existsSync(config)
+    ? /^datastore_owner:\s*["']?([A-Za-z0-9_-]+)/m.exec(fs.readFileSync(config, 'utf8'))
+    : null;
+  return m ? m[1] : 'backend-api';
 }
 
 export function migrationsDirFor(owner: string, repoRoot = process.cwd()): string {
@@ -47,13 +53,13 @@ export class PgHarness {
 
   constructor(opts: HarnessOptions = {}) {
     this.pg = new PGlite();
-    const owner = opts.datastoreOwner || process.env.D2_DATASTORE_OWNER || 'backend-api';
+    const owner = opts.datastoreOwner || datastoreOwner(opts.repoRoot);
     this.migrationsDir = opts.migrationsDir || migrationsDirFor(owner, opts.repoRoot);
   }
 
   /** migration のディレクトリがあるか (RDB を持たないプロダクトでは無い) */
   static hasMigrations(opts: HarnessOptions = {}): boolean {
-    const owner = opts.datastoreOwner || process.env.D2_DATASTORE_OWNER || 'backend-api';
+    const owner = opts.datastoreOwner || datastoreOwner(opts.repoRoot);
     return fs.existsSync(opts.migrationsDir || migrationsDirFor(owner, opts.repoRoot));
   }
 

@@ -57,4 +57,4 @@ as-built は現れないティアを「計装なし」と明示する。
 |---|---|
 | `D2_TRACE_DIR` | トレース JSONL の出力先。未設定ならトレースは無効 |
 | `D2_TIER` | プロセス既定のティア (`setTier` と同じ)。部品ごとの placement が優先 |
-| `D2_DATASTORE_OWNER` | migration を持つティア (既定 backend-api) |
+| `D2_DATASTORE_OWNER` | migration を持つティア。未設定なら `.distillery/config.yaml` の `datastore_owner`、それも無ければ backend-api |

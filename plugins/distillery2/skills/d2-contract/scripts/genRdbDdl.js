@@ -4,7 +4,7 @@
 /**
  * genRdbDdl.js <contracts-dir> --config <config.yaml> --out-root <dir> [--check] [--skip-if-unused]
  *
- * --skip-if-unused: RDB の契約が無い・表が 0 件 (UC がまだ表を使っていない) なら何も書かずに終わる (exit 0)。
+ * --skip-if-unused: RDB の契約が無い・表が 0 件・表を使う UC が uc-index に無い (基盤の直後) なら何も書かずに終わる (exit 0)。
  *   作り直せる生成物の表 (d2-common/scripts/lib/generators.js) から回すときに付ける (基盤の直後の main で鮮度の検査を落とさない。0.3.0)
  *
  * generated/rdb-schema.bundle.yaml から、datastore_owner ティアの Postgres migration・
@@ -164,6 +164,12 @@ function normalize(t: string): string {
 function pascal(s) { return s.split(/[_-]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(''); }
 function constName(s) { return s.replace(/-/g, '_').toUpperCase(); }
 
+/** uc-index のどれかの UC が表を使うか (uc-index が無ければ false) */
+function ucUsesTables(dir) {
+  if (!fs.existsSync(path.join(dir, 'uc-index.yaml'))) return false;
+  return C.readUcIndex(dir).ucs.some(u => Array.isArray(u.tables) && u.tables.length > 0);
+}
+
 function run(contractsDir, { configPath, outRoot, check = false, skipIfUnused = false }) {
   const dir = fs.realpathSync(contractsDir);
   const bundlePath = path.join(C.generatedDir(dir), 'rdb-schema.bundle.yaml');
@@ -174,6 +180,8 @@ function run(contractsDir, { configPath, outRoot, check = false, skipIfUnused = 
   const bundle = parseYaml(fs.readFileSync(bundlePath, 'utf8'));
   const tables = bundle.tables || [];
   if (skipIfUnused && !tables.length) return { status: 'skipped', reason: '表が 0 件', written: [], files: [] };
+  // どの UC もまだ表を使っていない (基盤の直後の main。DDL は契約の段 (d2-contract mode=uc) が初めて書く)
+  if (skipIfUnused && !ucUsesTables(dir)) return { status: 'skipped', reason: '表を使う UC が無い', written: [], files: [] };
   if (!rdbContract) throw new Error('config.yaml: rdb-schema 契約が無い');
   const owner = config.datastore_owner;
   if (!owner) throw new Error('config.yaml: datastore_owner が無い');
