@@ -112,13 +112,14 @@ fi
 # パイプ形は、コマンドを ; && || & 改行 で分け、各コマンドを | で段に分け、
 # fetch を含む段より後ろの段がインタプリタで始まるときだけ拒否する。別コマンドに curl と python3 -c が
 # 共存するだけ (curl -o f URL; python3 -c ...) は拒否しない。
-# 限界 (位置づけどおり、境界ではない): 引用符の中の | や ; は解釈しない。保存してから実行する 2 段階
-# (curl -o f; sh f) や変数経由の eval は捕まえない。
+# 区切りは shlex で引用符を解釈して切る (curl -H 'a;b' URL | sh の ; で割れない)。
+# 限界 (位置づけどおり、境界ではない): 保存してから実行する 2 段階 (curl -o f; sh f)、変数経由の eval、
+# 変数展開や関数越しの実行は捕まえない。
 FETCH='(curl|wget|fetch)'
 INTERP='(/[[:alnum:]/._-]*/)?(sh|bash|zsh|dash|ksh|python[0-9.]*|perl|ruby|node)'
 ONE="$(printf '%s' "$CMD" | python3 -c 'import re,sys; s=sys.stdin.read(); s=re.sub(r"\\\r?\n"," ",s); print(re.sub(r"\s+"," ",s).strip())')"
 PIPE_HIT="$(printf '%s' "$CMD" | python3 -c '
-import re, sys
+import re, shlex, sys
 s = sys.stdin.read().replace("\r", "")
 s = re.sub(r"\\\n", " ", s)                                   # バックスラッシュ改行は行の継続
 s = s.replace("|&", "|")                                        # |& (stderr 込み) は | と同じ扱い。行結合の前に潰す
@@ -134,13 +135,33 @@ INTERP = re.compile(r"^(/[\w/.-]*/)?(sh|bash|zsh|dash|ksh|python[0-9.]*|perl|rub
 # インタプリタの前に置ける前置コマンドと、その「値を取る 1 文字オプション」(例: sudo -u root / xargs -n 1 / env -u VAR)
 WRAP = {"sudo": "ugUhpCDRTrt", "doas": "uC", "env": "uCSP", "xargs": "nLsIEPdaRSJ", "nice": "n", "timeout": "sk",
         "nohup": "", "command": "", "exec": ""}
-LEAD = re.compile(r"^(?:[({\s]+|\d*[<>]{1,2}&?\s*\S+\s+)*")     # 段頭の ( { と、コマンド前のリダイレクト (2>&1 sh / 2> f sh) は読み飛ばす
-SEP = re.compile(r"\s*(?:;|&&|\|\||(?<![>|<])&(?![&>]))\s*")   # ; && || と背景実行の & (2>&1 の & は区切らない)
-def starts_with_interp(stage):
-    # 段の先頭から、前置コマンド / そのオプション / 値を取るオプションの値 / VAR=val を読み飛ばし、最初の実コマンドがインタプリタか見る
+CMD_SEP = {";", "&&", "||", "&"}                                 # コマンドの区切り
+PIPE = {"|", "|&"}                                              # 段の区切り
+REDIR = re.compile(r"^[<>&]*[<>][<>&]*$")                        # > >> >& &> < などのリダイレクト演算子
+NAIVE = re.compile(r"\|\||&&|\|&|>&|&>|>>|<<|[;&|<>]|[^\s;&|<>]+")
+def tokenize(c):
+    # 引用符を解釈して区切りを切る (引用符の中の ; や | を区切りにしない)。閉じていない引用符は bash でも構文エラーなので素朴に切る
+    try:
+        lex = shlex.shlex(c, posix=True, punctuation_chars=";&|<>")
+        lex.whitespace_split = False
+        return list(lex)
+    except ValueError:
+        return NAIVE.findall(c)
+def starts_with_interp(toks):
+    # 段の先頭から、( { / リダイレクト / 前置コマンド / そのオプション / 値を取るオプションの値 / VAR=val を読み飛ばし、最初の実コマンドがインタプリタか見る
+    i = 0
+    while i < len(toks):
+        t = toks[i]
+        if t in ("(", "{"):
+            i += 1
+        elif REDIR.match(t):                                    # > f / >& 1
+            i += 2
+        elif t.isdigit() and i + 1 < len(toks) and REDIR.match(toks[i + 1]):   # 2 >& 1 / 2 > f
+            i += 3
+        else:
+            break
     wrap = None; value_ok = False; positional = 0
-    for tok in stage.split():
-        tok = tok.rstrip(")}")
+    for tok in toks[i:]:
         if value_ok:                                            # 直前のオプションの値 (sudo -u sh でも sh を実コマンドと見ない)
             value_ok = False; continue
         if INTERP.match(tok):
@@ -158,12 +179,24 @@ def starts_with_interp(stage):
             return False                                        # 実コマンドがインタプリタ以外 (grep, jq など)
     return False
 for c in cmds:
-    for simple in SEP.split(c):
+    simples = [[]]                                              # トークン列を ; && || & でコマンドに、| で段に分ける
+    for tok in tokenize(c):
+        if tok in CMD_SEP:
+            simples.append([])
+        elif tok in PIPE:
+            simples[-1].append(None)                            # None = 段の境界
+        else:
+            simples[-1].append(tok)
+    for simple in simples:
+        stages = [[]]
+        for tok in simple:
+            if tok is None: stages.append([])
+            else: stages[-1].append(tok)
         seen = False
-        for stage in (LEAD.sub("", t.strip()) for t in simple.split("|")):
+        for stage in stages:
             if seen and starts_with_interp(stage):
                 print("hit"); sys.exit(0)
-            if FETCH.search(stage):
+            if any(FETCH.search(t) for t in stage):
                 seen = True
 ')"
 if [ "$PIPE_HIT" = "hit" ] \
