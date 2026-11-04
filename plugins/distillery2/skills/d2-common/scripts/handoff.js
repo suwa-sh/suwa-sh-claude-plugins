@@ -189,10 +189,10 @@ function chainOf(chainFrom) {
  * (handoff と id で名前を決める。加えて、戻し先と題名が同じ既存の下書き・課題ファイルがあれば書かない。0.3.0)。
  * chainFrom (上流の差分のレビュー・反証から課題を作るとき、直している課題ファイル) を渡すと chain と chain_depth を書く
  */
-function fileDrafts(file, data, { run, root, chainFrom = null, byTitle = true }) {
+function fileDrafts(file, data, { run, root, chainFrom = null, byTitle = true, baseName = null }) {
   if (!run && !root) throw new Fail('--run か --root が要る', 2);
   const step = data.step || 'verify';
-  const base = path.basename(file).replace(/\.(ya?ml|json)$/, '');
+  const base = baseName || path.basename(file).replace(/\.(ya?ml|json)$/, '');
   const repo = root ? path.resolve(root) : path.resolve(run, '..', '..', '..');
   const known = existingKeys([path.join(repo, 'docs', 'feedback'), ...(run ? [path.join(path.resolve(run), 'issues'), path.join(path.resolve(run), 'issues', 'consumed')] : [])]);
   const chain = chainOf(chainFrom);
@@ -255,7 +255,10 @@ function main(argv) {
     const point = path.basename(path.dirname(path.dirname(path.resolve(file)))) || 'review';
     const sub = reviewToHandoff(fs.readFileSync(file, 'utf8'), opt.target, point);
     // レビューの指摘は 1 件ずつ別の課題 (切り詰めた題名が同じでも重ねない。同じ回の 2 度目は名前で重ねない)
-    return { out: { ok: true, ...fileDrafts(file, sub, { ...opt, byTitle: false }) }, code: 0 };
+    // 名前に場所・回・ラウンドを入れる (同じ場所の 2 回目のレビューの「指摘 1」を 1 回目のものと取り違えない)
+    const abs = path.resolve(file);
+    const baseName = `${path.basename(path.dirname(path.dirname(abs)))}-${path.basename(path.dirname(abs))}-${path.basename(abs, '.md')}`;
+    return { out: { ok: true, ...fileDrafts(file, sub, { ...opt, byTitle: false, baseName }) }, code: 0 };
   }
   const data = load(file);
   if (opt.findings) {

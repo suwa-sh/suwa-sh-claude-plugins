@@ -304,7 +304,7 @@ test('0.2.0: 決定の差分・基盤の差分: clean な main で回し、決�
   let last = -1;
   for (const o of order) { const i = dd.indexOf(o); assert.ok(i > last, `決定の差分の順: ${o}`); last = i; }
   assert.match(dd, /派遣表「② 決定の差分 \(ADR\)」/);
-  assert.match(dd, /落ちたら人に返す/);
+  assert.match(dd, /落ちたら「人に返すとき」の表のゲートの再失敗の行に従う: auto は人に返し、recommend は担当を 2 回まで派遣し直して 3 回目で人に返す/);
   assert.doesNotMatch(dd, /worktree/, '決定の差分は本体の作業ツリーで回す (還流の worktree は使わない)');
   const fd = routingSection('### 基盤の差分');
   assert.match(fd, /sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton` \(UC がある契約は[^\n]*「反証して直す派遣の引数」[^\n]*\)、画面部品は sub `d2-design mode=feedback items=<直すファイルと直す内容を 1 行ずつ>`[^\n]*どの派遣も再実行して安全。/);

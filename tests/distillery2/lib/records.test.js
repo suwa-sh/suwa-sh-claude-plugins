@@ -169,3 +169,18 @@ test('巻き戻さずに先送りした課題は、その段が done になる�
   assert.deepEqual(rs.status(run).deferred_issues, []);
 });
 
+test('同じ場所の 2 回目のレビュー (別の <n>) の「指摘 1」も、1 回目の下書きと取り違えずに下書きにする', () => {
+  const root = repo();
+  const run = rs.openRun(root, 'book-room');
+  const m1 = path.join(run, 'reviews', 'implementation-backend', '1', 'round1.md');
+  const m2 = path.join(run, 'reviews', 'implementation-backend', '2', 'round1.md');
+  w(m1, ROUND);
+  w(m2, ROUND.replace('同じ時間帯の予約を二重に受け付ける', '会議室の定員を超える予約を受け付ける'));
+  const run1 = spawnSync(process.execPath, [HANDOFF, 'file-drafts', m1, '--review', '--target', 'implementation', '--run', run], { encoding: 'utf8' });
+  const run2 = spawnSync(process.execPath, [HANDOFF, 'file-drafts', m2, '--review', '--target', 'implementation', '--run', run], { encoding: 'utf8' });
+  assert.equal(JSON.parse(run1.stdout).written.length, 2);
+  assert.equal(JSON.parse(run2.stdout).written.length, 2, run2.stdout);
+  const again = spawnSync(process.execPath, [HANDOFF, 'file-drafts', m2, '--review', '--target', 'implementation', '--run', run], { encoding: 'utf8' });
+  assert.equal(JSON.parse(again.stdout).written.length, 0, '同じ結果を 2 回回したときだけ重ねる');
+});
+
