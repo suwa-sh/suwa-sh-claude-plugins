@@ -137,4 +137,23 @@ test('checks.js: 機械チェックの ADR の checks から、ティアの buil
   assert.deepEqual(checks.validateChecks({ tiers: { '*': { build: 'make' } } }).length, 1);
   assert.deepEqual(checks.validateChecks({ tiers: { ghost: {} } }, ['backend-api']).length, 1);
   assert.deepEqual(checks.validateChecks(checks.DEFAULTS), []);
+  assert.equal(checks.validateChecks({ repo: { securty: [] }, tiers: { '*': { buid: 'tsc' } } }).length, 2, '観点名の書き間違いは誤り');
 });
+
+test('hook モード: ステージした内容と作業ツリーが違うファイル (部分ステージ) があれば止める。文書類の format はコミットするファイルだけ', () => {
+  const root = repo();
+  w(root, 'docs/notes.md', '# staged\n');
+  g(root, 'add', 'docs/notes.md');
+  w(root, 'docs/notes.md', '# worktree\n');
+  const r = check(root, ['--mode', 'hook']);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /ステージした内容と作業ツリーの内容が違うファイルがある[^\n]*docs\/notes\.md/);
+  g(root, 'add', 'docs/notes.md');
+  const cfg = fs.readFileSync(path.join(root, '.distillery/config.yaml'), 'utf8');
+  w(root, '.distillery/config.yaml', cfg.replace(/format: [^\n]*format-repo[^\n]*/, 'format: echo FORMAT .'));
+  GC.run({ cwd: root, config: '.distillery/config.yaml' });
+  g(root, 'add', 'docs/notes.md');
+  const r2 = check(root, ['--mode', 'hook', '--only', 'format']);
+  assert.match(r2.stdout, /\[format\] repo: echo FORMAT --no-errors-on-unmatched --files-ignore-unknown=true [^\n]*'docs\/notes\.md'/);
+});
+

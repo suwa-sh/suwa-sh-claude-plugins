@@ -2,7 +2,9 @@
 
 F5 と F8 の genCi が生成する。機械チェックの一括実行 `node scripts/check.mjs --mode ci` を回す 1 本の job (0.3.0)。一括チェックは genCheck.js が `.distillery/config.yaml` から作る (コマンドの正はローカルの `runGates.js` と同じ config)。
 
-走るのは main と `feature/**` への push (`on: push: branches: [main, ## job
+走るのは main と `feature/**` への push (`on: push: branches: [main, 'feature/**']`)。PR は作らないので pull_request では回さない (0.1.26)。d2-run が push するのは main だけ (remote があるとき)。
+
+## job
 
 - `check` の 1 本: checkout (credential を残さない) → setup-node → `npm ci` → qlty の install (SHA ピン) → `node scripts/check.mjs --mode ci`
 - 一括チェックは 6 観点を順に回し、落ちたものを最後にまとめて exit 1: generate (生成物の鮮度) → format → lint (アーキテストを含む) → build → test (単体・提供側の契約・UC のシナリオ・受入) → security (秘密情報・ティアごとの依存の脆弱性と SAST)
@@ -17,9 +19,9 @@ F5 と F8 の genCi が生成する。機械チェックの一括実行 `node sc
 ## コミットのとき (hook)
 
 `.githooks/commit-msg` (genCheck.js が生成。`git config core.hooksPath .githooks` は genCheck.js とルートの package.json の `prepare` が入れる) が `node scripts/check.mjs --mode hook` を回す。
-コミットするファイルに関わるものだけ: 変えたティアの format・lint・build・単体テスト、文書類の format・lint、生成物の鮮度、秘密情報。d2-run の commit (件名が `impl(` `req(` `req: ` `decide: ` `foundation: ` `precheck(` `feedback` で始まるか、trailer に `UC-Slug:`) は回さない。
-
-きだけ `commands.acceptance_browser` を `@acceptance and @browser` で追加 | commands.acceptance_browser |
+コミットするファイルに関わるものだけ: 変えたティアの format・lint・build・単体テスト、文書類の format・lint (コミットするファイルだけ)、生成物の鮮度、秘密情報 (コミットするファイルだけ)。
+検査は作業ツリーの内容を読むので、ステージした内容と作業ツリーの内容が違うファイル (部分ステージ) があれば止まる (コミットする内容と検査した内容を揃える)。
+d2-run の commit (件名が `impl(` `req(` `req: ` `decide: ` `foundation: ` `precheck(` `feedback` で始まるか、trailer に `UC-Slug:`) は回さない。
 
 ## ローカル green = CI green
 

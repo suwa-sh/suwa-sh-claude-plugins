@@ -234,7 +234,12 @@ async function main(argv) {
     if (o.expectRed === gate) applyExpectRed(r);
     summary.gates.push(r);
     if (!o.json) console.log(`${r.status === 'pass' ? 'PASS' : r.status === 'skipped' ? 'SKIP' : 'FAIL'} ${gate} (${r.duration_ms} ms)${r.note ? ' — ' + r.note : ''}`);
-    if (!o.json) for (const j of r.jobs.filter(j => j.advisory)) console.log(`  ! ${j.name}: 依存の脆弱性の指摘 ${j.advisory.count} 件 (${j.advisory.plugin}。止めずに報告): ${j.advisory.rules.join(', ')}`);
+    if (!o.json) for (const j of r.jobs.filter(j => j.advisory)) {
+      const a = j.advisory;
+      console.log(Array.isArray(a.rules)
+        ? `  ! ${j.name}: 依存の脆弱性の指摘 ${a.count} 件 (${a.plugin}。止めずに報告): ${a.rules.join(', ')}`
+        : `  ! ${j.tier ? j.tier + ':' : ''}${j.name}: 落ちた (exit ${a.exit}。${a.kind === 'generate' ? '生成物の鮮度' : 'ティアの security'}。止めずに報告。CI と hook は止める)`);
+    }
     if (r.status === 'fail') {
       ok = false;
       if (!o.json) for (const j of r.jobs.filter(j => j.status === 'fail')) console.log(`  - ${j.tier ? j.tier + ':' : ''}${j.name} exit=${j.exit}${j.failed_tests ? `\n    failed: ${j.failed_tests.join(', ')}${j.failed_tests_truncated ? ` (他 ${j.failed_tests_truncated - j.failed_tests.length} 件)` : ''}` : ''}\n${indent(j.output_tail)}`);

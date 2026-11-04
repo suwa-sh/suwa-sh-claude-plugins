@@ -331,3 +331,15 @@ test('genCheck: 一括チェックの計画は config のコマンドから組�
   assert.deepEqual(plan.scenarios.acceptance, ['npx cucumber-js --tags "@acceptance and not @browser"', 'npx cucumber-js --tags "@acceptance and @browser"']);
   assert.equal(buildPlan({ ...config, capabilities: { browser: false } }).scenarios.acceptance.length, 1);
 });
+
+test('0.3.0: 既存の root package.json にも check と prepare (hook を入れる) を足す。既存の prepare は残す', () => {
+  const c = tmp();
+  fs.writeFileSync(path.join(c, 'package.json'), JSON.stringify({ name: 'x', scripts: { prepare: 'husky' } }));
+  run('genSkeleton.js', c, ['--adr', adrDir]);
+  const pkg = JSON.parse(fs.readFileSync(path.join(c, 'package.json'), 'utf8'));
+  assert.equal(pkg.scripts.check, 'node scripts/check.mjs --mode ci');
+  assert.equal(pkg.scripts.prepare, 'git config core.hooksPath .githooks || true; husky');
+  run('genSkeleton.js', c, ['--adr', adrDir]);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(c, 'package.json'), 'utf8')).scripts.prepare, 'git config core.hooksPath .githooks || true; husky', '2 回回しても重ねない');
+});
+

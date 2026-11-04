@@ -49,7 +49,7 @@ function rootPackageJson(tierDirs, hasFrontend) {
     bdd: 'cucumber-js',
     // 機械チェックの一括実行 (scripts/check.mjs は genCheck.js が生成)。prepare は clone した人の npm install でコミットのときの hook を入れる (0.3.0)
     check: 'node scripts/check.mjs --mode ci',
-    prepare: 'git config core.hooksPath .githooks || true',
+    prepare: HOOKS_PATH_CMD,
   };
   for (const dir of tierDirs) {
     scripts[`test:${dir}`] = `npm run test -w apps/${dir}`;
@@ -343,6 +343,23 @@ function migrateAppTsconfig(cwd, rel, kind, changes) {
   if (notes.length) changes.push(`${rel}: 手編集済みのため据え置き (${notes.join('、')}。手で直すこと)`);
 }
 
+/**
+ * 既存の root package.json にも、機械チェックの一括実行 (check) と、clone した人の npm install で hook を入れる prepare を足す (0.3.0)。
+ * 既存の prepare は残して、先頭に hook の設定を足す (同じものが既にあれば何もしない)
+ */
+const HOOKS_PATH_CMD = 'git config core.hooksPath .githooks || true';
+function ensureRootCheckScripts(cwd, created) {
+  const f = path.resolve(cwd, 'package.json');
+  if (created.includes('package.json') || !fs.existsSync(f)) return;
+  const pkg = JSON.parse(fs.readFileSync(f, 'utf8'));
+  const scripts = pkg.scripts || {};
+  let changed = false;
+  if (!scripts.check) { scripts.check = 'node scripts/check.mjs --mode ci'; changed = true; }
+  if (!scripts.prepare) { scripts.prepare = HOOKS_PATH_CMD; changed = true; }
+  else if (!scripts.prepare.includes('core.hooksPath')) { scripts.prepare = `${HOOKS_PATH_CMD}; ${scripts.prepare}`; changed = true; }
+  if (changed) { pkg.scripts = scripts; fs.writeFileSync(f, JSON.stringify(pkg, null, 2) + '\n'); created.push('package.json (scripts.check / scripts.prepare)'); }
+}
+
 /** root package.json に @types/node が無ければ足す (app tsconfig の types: node のため)。 */
 function migrateRootTypesNode(cwd, changes) {
   const p = path.resolve(cwd, 'package.json');
@@ -409,6 +426,7 @@ function run(o) {
   for (const pkg of ['contracts', 'ui', 'test-support']) ensureDir(cwd, `packages/${pkg}`, created);
   ensureDir(cwd, 'features', created);
   writeIfAbsent(cwd, 'package.json', rootPackageJson(tierDirs, hasFrontend), created, skipped);
+  ensureRootCheckScripts(cwd, created);
   writeIfAbsent(cwd, 'tsconfig.base.json', TSCONFIG_BASE, created, skipped);
   // package.json を今回作ったなら BIOME_VERSION、既存なら既存の版 (lockfile → package.json → biome.json)。
   // biome.json の $schema と qlty のプラグイン (genQlty.js が同じ関数で版を引く) を同じ版にする

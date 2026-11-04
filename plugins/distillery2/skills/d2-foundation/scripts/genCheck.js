@@ -115,6 +115,12 @@ const staged = mode === 'hook'
   : null;
 const present = staged ? staged.filter((f) => fs.existsSync(f)) : null;
 if (mode === 'hook' && !staged.length) { console.log('コミットするファイルが無い'); process.exit(0); }
+// 検査は作業ツリーの内容を読む。ステージした内容と作業ツリーが違うファイルがあると、検査した内容とコミットする内容が食い違うので止める
+if (mode === 'hook') {
+  const unstaged = new Set(spawnSync('git', ['diff', '--name-only', '-z'], { encoding: 'utf8' }).stdout.split('\\0').filter(Boolean));
+  const partial = staged.filter((f) => unstaged.has(f));
+  if (partial.length) { console.log(\`ステージした内容と作業ツリーの内容が違うファイルがある (検査した内容とコミットする内容を揃える。すべてステージするか、変更を退避してからコミットする): \${partial.join(', ')}\`); process.exit(1); }
+}
 const allTiers = !staged || staged.some((f) => PLAN.all_tiers_on.some((re) => new RegExp(re).test(f)));
 const tiers = PLAN.tiers.filter((t) => allTiers || staged.some((f) => f === t.dir || f.startsWith(\`\${t.dir}/\`)));
 const inTier = (f) => PLAN.tiers.some((t) => f.startsWith(\`\${t.dir}/\`));
@@ -155,7 +161,9 @@ if (!only || only === 'generate') {
 }
 
 // format / lint: リポ全体 (文書類・設定) とティアごと (ソース)
-if (PLAN.repo.format) step('format', 'repo', PLAN.repo.format, { skip: repoFiles && !repoFiles.length ? 'リポ全体のファイルの変更なし' : null });
+// 文書類の format: hook はコミットするファイルだけ (biome は . の代わりにファイルを受ける。知らない種類と対象外は飛ばす)
+const formatFiles = (cmd, files) => (/\\s\\.$/.test(cmd) ? \`\${cmd.replace(/\\s\\.$/, '')} --no-errors-on-unmatched --files-ignore-unknown=true \${files.map(q).join(' ')}\` : cmd);
+if (PLAN.repo.format) step('format', 'repo', repoFiles ? formatFiles(PLAN.repo.format, repoFiles) : PLAN.repo.format, { skip: repoFiles && !repoFiles.length ? 'リポ全体のファイルの変更なし' : null });
 for (const t of tiers) if (t.format) step('format', t.id, t.format);
 if (PLAN.repo.lint) step('lint', 'repo', repoFiles ? forFiles(PLAN.repo.lint, repoFiles) : PLAN.repo.lint, { skip: repoFiles && !repoFiles.length ? 'リポ全体のファイルの変更なし' : null });
 if (PLAN.repo.arch_test) step('lint', 'arch', PLAN.repo.arch_test, { skip: staged && !tiers.length ? 'ティアの変更なし' : null });

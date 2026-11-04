@@ -88,6 +88,9 @@ function validateChecks(checks, tierIds = null) {
   const errors = [];
   if (!checks || typeof checks !== 'object') return ['checks はオブジェクト ({repo, tiers})'];
   for (const k of Object.keys(checks)) if (!['repo', 'tiers'].includes(k)) errors.push(`checks.${k}: repo と tiers だけ`);
+  // 観点名の書き間違い (黙って既定に置き換わる) を誤りにする
+  for (const k of Object.keys(checks.repo || {})) if (!['format', 'lint', 'security'].includes(k)) errors.push(`checks.repo.${k}: 観点は format / lint / security (generate は distillery2 が決める)`);
+  for (const [id, t] of Object.entries(checks.tiers || {})) for (const k of Object.keys(t || {})) if (!['format', 'lint', 'build', 'test', 'security'].includes(k)) errors.push(`checks.tiers.${id}.${k}: 観点は format / lint / build / test / security`);
   try { repoCheckCommands(checks); } catch (e) { errors.push(e.message); }
   for (const id of Object.keys(checks.tiers || {})) {
     if (id !== '*' && tierIds && !tierIds.includes(id)) errors.push(`checks.tiers.${id}: ティア構成の ADR に無いティア`);
