@@ -961,6 +961,7 @@ test('0.3.0: recommend で人に返すのは戻り道の上限とプラグイン
   assert.match(pl, /`plugin_blocking`/);
   const pre = routingSection('## 機能の最初の点検');
   assert.match(pre, /回避していないプラグインの課題 \(`FB scan` の `plugin_blocking`\)/);
+  assert.match(pre, /4 の `file-drafts` に `--skip-noted` を付け、機能の中でする回避 \(`workaround`\) の課題は課題ファイルにしない/);
   // 回避した課題だけの点検: 点検の記録を消す前に run の下書きにする (消してから写すと入力が無い)
   // 点検は読むだけなので、回避は機能の中の段がする。回避できなければその段が workaround 無しで返して止まる
   assert.match(pre, /回避は機能の中でする: 下書きの絶対パスを、回避の仕方に合う段の派遣文に添える[^\n]*「回避できない: 」で始まる題名の課題を `workaround` 無しで返す/);

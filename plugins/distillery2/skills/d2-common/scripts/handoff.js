@@ -10,6 +10,7 @@
  *   node handoff.js file-drafts <handoff.yaml> --root <repo>        # 上流の段 (run が無い): docs/feedback/ に課題ファイルを直接書く
  *   node handoff.js file-drafts <round<n>.md> --review --target <戻し先> --run <runDir>   # 処理していないレビューの指摘を下書きにする (上流で止める前。0.3.0)
  *   --findings                                                     # 入力が検証役の findings (asks と upstream_issues を読む)
+ *   --skip-noted                                                   # workaround のある plugin の課題 (機能の中でする回避) を書かない (結果の noted に返す。点検で上流の課題と混ざるとき。0.3.0)
  *   --chain-from <docs/feedback/<id>.md>                           # 上流の差分のレビュー・反証から課題を作るとき、直している課題。chain と chain_depth + 1 を書く (0.3.0)
  *   file-drafts は、戻し先と題名が同じ既存の下書き・その場で直した下書き・課題ファイルがあれば書かない (duplicates に返す。0.3.0)
  *
@@ -196,7 +197,7 @@ function chainOf(chainFrom) {
  * (handoff と id で名前を決める。加えて、戻し先と題名が同じ既存の下書き・課題ファイルがあれば書かない。0.3.0)。
  * chainFrom (上流の差分のレビュー・反証から課題を作るとき、直している課題ファイル) を渡すと chain と chain_depth を書く
  */
-function fileDrafts(file, data, { run, root, chainFrom = null, byTitle = true, baseName = null }) {
+function fileDrafts(file, data, { run, root, chainFrom = null, byTitle = true, baseName = null, skipNoted = false }) {
   if (!run && !root) throw new Fail('--run か --root が要る', 2);
   const step = data.step || 'verify';
   const base = baseName || path.basename(file).replace(/\.(ya?ml|json)$/, '');
@@ -215,7 +216,10 @@ function fileDrafts(file, data, { run, root, chainFrom = null, byTitle = true, b
   const written = [];
   const skipped = [];
   const duplicates = [];
+  const noted = [];
   for (const u of data.upstream_issues || []) {
+    // --skip-noted: 機能の中でする回避 (workaround) の課題は書かない (点検で上流の課題と混ざるとき。上流を直した後の点検でもう一度出て、機能の中へ運ばれる。0.3.0)
+    if (skipNoted && hasWorkaround(u)) { noted.push(u.id); continue; }
     const name = `${base}_${u.id}.md`.replace(/[^A-Za-z0-9_.-]/g, '-');
     const key = `${u.target_step}\n${squashTitle(u.title)}`;
     const fm = { kind: KIND_OF[u.target_step], title: u.title, ...(u.target_step === 'plugin' ? {} : { target_step: u.target_step }), source: `handoff:${step}`, ...(u.resume_from ? { resume_from: u.resume_from } : {}), ...(hasWorkaround(u) ? { workaround: true } : {}), ...(chain || {}) };
@@ -237,7 +241,7 @@ function fileDrafts(file, data, { run, root, chainFrom = null, byTitle = true, b
     known.add(key);
     written.push(dest);
   }
-  return { written, skipped, duplicates };
+  return { written, skipped, duplicates, noted };
 }
 
 function main(argv) {
@@ -249,6 +253,7 @@ function main(argv) {
     else if (rest[i] === '--root') opt.root = rest[++i];
     else if (rest[i] === '--findings') opt.findings = true;
     else if (rest[i] === '--chain-from') opt.chainFrom = rest[++i];
+    else if (rest[i] === '--skip-noted') opt.skipNoted = true;
     else if (rest[i] === '--review') opt.review = true;
     else if (rest[i] === '--target') opt.target = rest[++i];
     else if (rest[i] === '--report') opt.report = rest[++i];

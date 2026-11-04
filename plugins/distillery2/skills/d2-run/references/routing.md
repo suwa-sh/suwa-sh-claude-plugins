@@ -164,7 +164,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
    回避できないもの (`issues.plugin`) があれば、**main の上で** (upstream の branch を切らずに) 次の順で課題ファイルにして止まる:
    各ティアの引き継ぎファイルを `.distillery/handoff/precheck-<slug>-<tier>.json` に写す → `<H> file-drafts <写し> --root .` (`kind: plugin`) → 2 の問いを `--root .` で記録 →
    `git add -A -- docs/feedback .distillery/handoff .distillery/decisions.jsonl` → `precheck(<slug>): issues` で commit → `.distillery/logs/precheck-<slug>/` を消す → 「プラグインの不具合」の 3 で人に返して止まる (この UC はまだ始めない。プラグインを直して課題ファイルを `git rm` した後の起動で、同じ UC が点検からやり直す)。
-   プラグインの課題とほかの上流の課題が混ざるときは 4 のとおり (プラグインの課題も同じ commit で課題ファイルにする)。上流の差分が終わった後、回避していないプラグインの課題 (`FB scan` の `plugin_blocking`) が main に残っていれば同じく人に返して止まる
+   プラグインの課題とほかの上流の課題が混ざるときは 4 のとおり (回避できないプラグインの課題も同じ commit で課題ファイルにする)。ただし 4 の `file-drafts` に `--skip-noted` を付け、機能の中でする回避 (`workaround`) の課題は課題ファイルにしない (まだ回避していないので「回避済み」の記録を残さない。上流を直した後の点検でもう一度出て、この 5 の道で機能の中へ運ばれる)。上流の差分が終わった後、回避していないプラグインの課題 (`FB scan` の `plugin_blocking`) が main に残っていれば同じく人に返して止まる
 
 ## 写し直し (上流で止めた機能を、上流を直した後の main の上で続ける)
 

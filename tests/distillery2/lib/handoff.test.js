@@ -208,3 +208,21 @@ test('route: リポの中で回避したプラグインの課題 (workaround) �
   assert.doesNotMatch(blocking, /workaround/);
 });
 
+test('file-drafts --root --skip-noted: 点検で上流の課題と混ざるとき、機能の中でする回避 (workaround) の課題は課題ファイルにせず noted に返す。回避できない課題と上流の課題は書く (0.3.0)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
+  const d = { schema_version: 'distillery2.handoff/v1', step: 'precheck', asks: [], upstream_issues: [
+    { id: 'adr-gap', target_step: 'decide', title: '時間帯の検証が ADR に無い', detail: 'x', evidence: 'x', recommended_fix: 'x' },
+    { id: 'tmpl', target_step: 'plugin', title: '雛形が古い', detail: 'x', evidence: 'x', recommended_fix: 'x', workaround: '機能の中で雛形を直す' },
+    { id: 'gen', target_step: 'plugin', title: '生成器が落ちる', detail: 'x', evidence: 'x', recommended_fix: 'x' },
+  ] };
+  const f = write(dir, 'precheck.json', d);
+  const r = H.fileDrafts(f, d, { root: dir, skipNoted: true });
+  assert.deepEqual(r.noted, ['tmpl']);
+  const files = fs.readdirSync(path.join(dir, 'docs', 'feedback'));
+  assert.equal(files.length, 2);
+  assert.ok(files.some((n) => n.includes('adr-gap')) && files.some((n) => n.includes('gen')));
+  assert.ok(files.every((n) => !fs.readFileSync(path.join(dir, 'docs', 'feedback', n), 'utf8').includes('workaround')), '回避済みの印を残さない');
+  const out = JSON.parse(execFileSync('node', [path.join(SCRIPTS, 'handoff.js'), 'file-drafts', f, '--root', fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-')), '--skip-noted'], { encoding: 'utf8' }));
+  assert.deepEqual(out.noted, ['tmpl'], 'CLI の --skip-noted');
+});
+
