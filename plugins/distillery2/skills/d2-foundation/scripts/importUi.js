@@ -136,7 +136,8 @@ function run(o) {
  */
 const { UI_ENTRY_CSS: ENTRY_CSS, STYLES_PLAIN, STYLES_UI } = require('./spaStyles');
 function writeEntryCss(uiDir, relPaths) {
-  if (relPaths.includes(ENTRY_CSS)) return { ok: true, msg: `kept (取り込み元に ${ENTRY_CSS} がある)` };
+  // 取り込み元が同じ名前のファイルを持つと入口を書けない (中身が Tailwind の入口になっている保証も無い)。使わずに報告し、画面は Tailwind を直接読む形にする
+  if (relPaths.includes(ENTRY_CSS)) return { ok: false, msg: `none (取り込み元に ${ENTRY_CSS} がある。名前がぶつかるので d2-design 側で名前を変える)` };
   // コメントの中の @import は数えない
   const found = relPaths.filter((p) => p.endsWith('.css') && /@import\s+["']tailwindcss["']/.test(fs.readFileSync(path.join(uiDir, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')));
   const dst = path.join(uiDir, ENTRY_CSS);

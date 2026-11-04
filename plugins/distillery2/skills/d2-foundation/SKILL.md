@@ -79,7 +79,7 @@ F7 で npm install の後に `genQlty.js --refresh` で増えた分を足す (�
    (前の実行の `docs/design/` が残っていても取り込まない。画面の有無は d2-run の判断に従う)。`ui=true` なのに出力が無ければ
    (d2-design が「画面を持たない」と判断して skip した) F6 と F7 を飛ばし、その旨を報告する
    画面の土台の `src/styles.css` は、F5 では Tailwind を直接読む形で置かれ、importUi が `packages/ui/entry.css` を書けたときだけ画面部品を読む形に替わる
-   (F6 を飛ばしても build は通る)。importUi の出力の `css:` が `none` (Tailwind の CSS が 0 本か 2 本以上) なら画面部品の色や書体が画面に効かないので、
+   (F6 を飛ばしても build は通る)。importUi の出力の `css:` が `none` (Tailwind の CSS が 0 本か 2 本以上、または取り込み元に同じ名前の `entry.css` がある) なら画面部品の色や書体が画面に効かないので、
    d2-design の出力 (Tailwind を `@import` する CSS がちょうど 1 本) を課題にする
 3. F7: `packages/ui` が workspace に加わったので `npm install` をもう一度 (lockfile を更新) → `installTierPackages.js` (足りない分だけ) → `genQlty.js --refresh`
 4. F4: 骨格分の契約テストを生成する

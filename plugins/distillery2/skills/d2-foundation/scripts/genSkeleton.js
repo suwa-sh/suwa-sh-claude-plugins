@@ -240,6 +240,9 @@ const SPA_DEV_DEPENDENCIES = {
   tailwindcss: '^4.3.4',
   vite: '^8.3.5',
 };
+// rootPackageJson の frontend 用と同じ版
+const SPA_REACT_DEPENDENCIES = { react: '^19.2.0', 'react-dom': '^19.2.0' };
+const SPA_REACT_TYPES = { '@types/react': '^19.2.0', '@types/react-dom': '^19.2.0' };
 const SPA_SCRIPTS = {
   dev: 'vite',
   // tsc は型の検査だけ (dist/ は vite が書く)
@@ -368,9 +371,17 @@ function ensureSpaPackage(cwd, rel, created) {
   for (const [k, v] of Object.entries(SPA_DEV_DEPENDENCIES)) {
     if (!dev[k] && !deps[k]) { dev[k] = v; added.push(k); }
   }
+  // React は新しい root の package.json が持つ (rootPackageJson)。既にある root に無ければ画面のティアに足す (無いと型検査と build が落ちる)
+  const rootPkg = readJsonSafe(path.resolve(cwd, 'package.json'));
+  if (rootPkg) {
+    const has = (k) => [rootPkg.dependencies, rootPkg.devDependencies, deps, dev].some((m) => m && m[k]);
+    for (const [k, v] of Object.entries(SPA_REACT_DEPENDENCIES)) if (!has(k)) { deps[k] = v; added.push(k); }
+    for (const [k, v] of Object.entries(SPA_REACT_TYPES)) if (!has(k)) { dev[k] = v; added.push(k); }
+  }
   if (!added.length) return;
   pkg.scripts = scripts;
   pkg.devDependencies = dev;
+  if (Object.keys(deps).length) pkg.dependencies = deps;
   fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
   created.push(`${rel} (画面の土台: ${added.join(', ')})`);
 }

@@ -174,12 +174,13 @@ test('画面の土台の styles.css: 入口が書けたら packages/ui を読む
   run({ from: 'design', cwd });
   assert.ok(!fs.existsSync(path.join(cwd, 'packages/ui/entry.css')));
   assert.equal(fs.readFileSync(app, 'utf8'), STYLES_PLAIN);
-  // 取り込み元が entry.css を持つならそれを使う (上書きしない)
-  writeFile(path.join(design, 'src/entry.css'), '@import "tailwindcss";\n/* design の入口 */\n');
+  // 取り込み元が同じ名前の entry.css を持つなら入口に使わず、画面は Tailwind を直接読む形のまま (名前を変えるよう報告)
+  writeFile(path.join(design, 'src/styles/globals.css'), '@import "tailwindcss";\n');
+  writeFile(path.join(design, 'src/entry.css'), '/* design の入口 */\n');
   const own = run({ from: 'design', cwd });
-  assert.match(own.css, /^kept/);
-  assert.match(fs.readFileSync(path.join(cwd, 'packages/ui/entry.css'), 'utf8'), /design の入口/);
-  assert.equal(fs.readFileSync(app, 'utf8'), STYLES_UI);
+  assert.match(own.css, /^none \(取り込み元に entry\.css がある/);
+  assert.match(fs.readFileSync(path.join(cwd, 'packages/ui/entry.css'), 'utf8'), /design の入口/, '取り込んだファイルは上書きしない');
+  assert.equal(fs.readFileSync(app, 'utf8'), STYLES_PLAIN);
 });
 
 test('Tailwind の CSS の検出はコメントの中の @import を数えない (0.3.0)', () => {

@@ -419,3 +419,20 @@ test('collectUi: scope に ui を含む ADR を優先する (d2-design と同じ
   assert.equal(collectUi([{ ...ui, status: 'proposed' }]), null);
 });
 
+test('genSkeleton: 既にある root の package.json に React が無ければ、画面のティアに足す。新しいリポでは root が持つので足さない', () => {
+  const adr = adrWithUi('  framework: react');
+  const fresh = tmp();
+  run('genSkeleton.js', fresh, ['--adr', adr]);
+  const fe = JSON.parse(fs.readFileSync(path.join(fresh, 'apps/frontend/package.json'), 'utf8'));
+  assert.equal(fe.dependencies, undefined, 'root が react を持つ');
+  assert.ok(JSON.parse(fs.readFileSync(path.join(fresh, 'package.json'), 'utf8')).devDependencies.react);
+  const c = tmp();
+  fs.writeFileSync(path.join(c, 'package.json'), JSON.stringify({ name: 'x', private: true, workspaces: ['apps/*', 'packages/*'], devDependencies: { 'react-dom': '^19.0.0' } }));
+  run('genSkeleton.js', c, ['--adr', adr]);
+  const pkg = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/package.json'), 'utf8'));
+  assert.equal(pkg.dependencies.react, '^19.2.0');
+  assert.ok(!pkg.dependencies['react-dom'], 'root にあるものは足さない');
+  assert.equal(pkg.devDependencies['@types/react'], '^19.2.0');
+  assert.equal(pkg.devDependencies['@types/react-dom'], '^19.2.0');
+});
+
