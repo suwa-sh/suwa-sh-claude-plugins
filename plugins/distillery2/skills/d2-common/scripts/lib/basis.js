@@ -24,7 +24,9 @@ const SCAN_LINES = 10;
 
 // 上流のディレクトリのうち、basis の比較から外すファイル (0.3.0)。use-cases.yaml は要求から生成し、main マージのたびに status だけが書き換わる。
 // 含めると、UC の状態が変わるだけで要求を基にした生成物 (ADR など) がすべて古く見える
-const EXCLUDE = { requirements: ['use-cases.yaml'] };
+// docs/adr の architecture.md (genArchitectureDoc) と index.md (genAdrIndex) は ADR から作る生成物で、基盤の仕上げを回すたびに書き換わる。
+// 含めると、決定が変わっていないのに ADR を基にした成果物 (契約など) がすべて古く見え、写し直しが契約の段まで戻る (0.3.0 の実地確認で実測)
+const EXCLUDE = { requirements: ['use-cases.yaml'], adr: ['architecture.md', 'index.md'] };
 
 function lastCommit(dir, cwd = process.cwd(), ref = null, name = null) {
   const ex = (EXCLUDE[name] || []).map((f) => `:(exclude)${path.posix.join(String(dir).replace(/\\/g, '/').replace(/\/$/, ''), f)}`);

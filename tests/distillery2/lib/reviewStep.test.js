@@ -43,7 +43,10 @@ test('run: 起動 → 待ち → 回収を 1 回で行い、観点の判定・�
   const prompt = fs.readFileSync(path.join(cwd, 'reviews/requirements/1/prompt-round1.md'), 'utf8');
   assert.match(prompt, /\| P2 \| UC の抜け \|/);
   assert.match(prompt, /- docs\/requirements\//);
-  assert.deepEqual(fs.readFileSync(log, 'utf8').trim().split('\n'), ['start 540', 'status 540', 'status 540', 'result 540']);
+  // 締め切りまでの残り秒数を渡す。全件を並べて回すと起動に 1 秒かかることがあるので 539 も許す
+  const calls = fs.readFileSync(log, 'utf8').trim().split('\n');
+  assert.deepEqual(calls.map((l) => l.split(' ')[0]), ['start', 'status', 'status', 'result']);
+  for (const l of calls) assert.ok(['539', '540'].includes(l.split(' ')[1]), l);
 });
 
 test('run: runner が無い・起動できない・時間切れ・回収できないときは未レビュー (exit 4)。時間切れは cancel する', () => {

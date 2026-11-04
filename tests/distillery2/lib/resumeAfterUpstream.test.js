@@ -111,6 +111,12 @@ test('作り直せる生成物の表: 契約の分割ファイルは入らず、
   assert.equal(R.stageOfPath('features/support/world.ts'), 'integrate');
   assert.equal(R.stageOfPath('packages/contracts/api/client.ts'), 'contract', '契約の codegen は契約の段');
   assert.equal(R.stageOfPath('apps/backend/test/contract/createBooking.test.ts'), 'contract');
+  // genContractTests が書く API の型・クライアントと、genRdbDdl が書く migration・row 型も生成物 (欠けると写し直しで消える。0.3.0 の実地確認)
+  for (const p of ['packages/contracts/api/client.ts', 'packages/contracts/api/server.ts', 'packages/contracts/api/types.ts', 'packages/contracts/db/tables.ts', 'apps/backend/migrations/0001_schema.sql', 'apps/backend/test/contract/db-schema.test.ts']) assert.equal(R.isRegenerable(p, t), true, p);
+  assert.equal(R.isRegenerable('apps/backend/migrations/0002_seed_rooms.sql', t), false, '手で書いた migration は生成物でない');
+  const gen = require('../../../plugins/distillery2/skills/d2-common/scripts/lib/generators').GENERATORS.find((e) => e.id === 'contracts');
+  assert.ok(gen.gen.some((c) => c[0].endsWith('genRdbDdl.js') && c.includes('--skip-if-unused')));
+  assert.ok(gen.check.some((c) => c[0].endsWith('genRdbDdl.js') && c.includes('--check') && c.includes('--skip-if-unused')));
 });
 
 test('両方が別のファイルを変えた: 両方残る。衝突 0、続きは決定の課題なので tier。契約のレビューは残り、tier 以降の done が退避される', () => {

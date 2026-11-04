@@ -64,7 +64,7 @@ test('upstream が無いリポでは upstream 一致の条件を飛ばす', () =
 
 test('契約の変更の分類 (own / other_uc / shared) を contract 段で記録し、人レビューに載せる', () => {
   const skill = read(SKILL);
-  assert.match(row(skill, /^\| \*\*contract\*\* \|/), /classifyContractChanges\.js --uc <slug> --json/);
+  assert.match(row(skill, /^\| \*\*contract\*\* \|/), /classifyContractChanges\.js --uc <slug> --base <base_head> --json/);
   assert.match(skill, /contract_changes/);
   assert.ok(fs.existsSync(path.join(PLUGIN, 'skills/d2-contract/scripts/classifyContractChanges.js')));
 });

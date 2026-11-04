@@ -154,6 +154,9 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 4. 上流の課題があれば: 「上流の差分の branch」の 1 で `upstream/<1 件目の課題の id>` を切り、引き継ぎファイルを `.distillery/handoff/precheck-<slug>-<tier>.json` に写して `<H> file-drafts <写し> --root .` で課題ファイルにし (`uc` は無くてよい: 戻し先は上流だけ)、2 の問いを `--root .` で記録する →
    `git add -A -- docs/feedback .distillery/handoff .distillery/decisions.jsonl` → `precheck(<slug>): issues` で commit → `.distillery/logs/precheck-<slug>/` を消す → 自動選択をもう一度呼ぶ (その branch の上流の差分が `continue-upstream` で続き、直した後に同じ UC が選ばれて点検からやり直す)。
    機能の作業はまだ無いので写し直しは要らない
+5. 上流の課題が**すべて**プラグインの課題 (戻し先が `plugin`) なら、upstream の branch を切らない: main の上で 4 と同じく課題ファイルにして (`kind: plugin`) `precheck(<slug>): issues` で commit し、
+   `.distillery/logs/precheck-<slug>/` を消して「プラグインの不具合」の 3 で人に返して止まる (この UC はまだ始めない。プラグインを直して課題ファイルを `git rm` した後の起動で、同じ UC が点検からやり直す)。
+   プラグインの課題とほかの上流の課題が混ざるときは 4 のとおり (プラグインの課題も同じ commit で課題ファイルにする)。上流の差分が終わった後、プラグインの課題が main に残っていれば同じく人に返して止まる
 
 ## 写し直し (上流で止めた機能を、上流を直した後の main の上で続ける)
 

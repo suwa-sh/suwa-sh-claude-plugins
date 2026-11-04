@@ -3,7 +3,9 @@
  *
  * - テスト実行ごとに 1 つの埋め込み Postgres を起動する (docker 不要)。
  * - migration は `apps/<DATASTORE_OWNER>/migrations/*.sql` を名前昇順で当てる。
- * - シナリオ単位の隔離は **トランザクション rollback** を使う (理由は下記)。
+ * - UC BDD と受入のシナリオは `PgHarness.fresh()` で **シナリオごとに新しい DB** を使う (hooks.ts)。migration の初期データ
+ *   (マスタなど) は残り、前のシナリオの書込は残らない。アプリが自分で開くトランザクション (FOR UPDATE など) と入れ子にならない。
+ * - 単体・リポジトリのテストで速さが要るときだけ `withRollback` を使う (アプリが自分でトランザクションを開くコードには使わない)。
  *
  * 隔離方式の選択 (rollback を採用した理由):
  *   スキーマ再作成より、各シナリオを 1 トランザクションで包んで最後に rollback する方が速く、
@@ -47,6 +49,19 @@ export class PgHarness {
     this.pg = new PGlite();
     const owner = opts.datastoreOwner || process.env.D2_DATASTORE_OWNER || 'backend-api';
     this.migrationsDir = opts.migrationsDir || migrationsDirFor(owner, opts.repoRoot);
+  }
+
+  /** migration のディレクトリがあるか (RDB を持たないプロダクトでは無い) */
+  static hasMigrations(opts: HarnessOptions = {}): boolean {
+    const owner = opts.datastoreOwner || process.env.D2_DATASTORE_OWNER || 'backend-api';
+    return fs.existsSync(opts.migrationsDir || migrationsDirFor(owner, opts.repoRoot));
+  }
+
+  /** 新しい DB を起動して migration を当てたハーネスを返す (シナリオごとに 1 つ。終わったら stop する) */
+  static async fresh(opts: HarnessOptions = {}): Promise<PgHarness> {
+    const h = new PgHarness(opts);
+    await h.start();
+    return h;
   }
 
   /** 起動を待ち、migration を 1 回だけ当てる。 */

@@ -74,3 +74,17 @@ test('生成は決定論的', () => {
   const rel = 'apps/backend-api/migrations/0001_schema.sql';
   assert.equal(read(a, rel), read(b, rel));
 });
+
+test('--skip-if-unused: 表が 0 件・RDB の契約が無いときは何も書かない (作り直せる生成物の表から回す。0.3.0)', () => {
+  const { contractsDir } = freshContracts();
+  compileRdbSchema.run(contractsDir);
+  const bundle = path.join(contractsDir, 'generated', 'rdb-schema.bundle.yaml');
+  const text = fs.readFileSync(bundle, 'utf8');
+  fs.writeFileSync(bundle, text.replace(/^tables:[\s\S]*$/m, 'tables: []\n'));
+  const out = outRoot();
+  const r = genRdbDdl.run(contractsDir, { configPath: CONFIG, outRoot: out, skipIfUnused: true });
+  assert.equal(r.status, 'skipped');
+  assert.equal(fs.existsSync(path.join(out, 'apps/backend-api/migrations/0001_schema.sql')), false);
+  assert.equal(genRdbDdl.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true, skipIfUnused: true }).status, 'skipped', '--check でも落ちない');
+  assert.throws(() => genRdbDdl.run(path.join(contractsDir), { configPath: CONFIG, outRoot: out, check: true }), /Stale/, '付けなければ従来どおり');
+});

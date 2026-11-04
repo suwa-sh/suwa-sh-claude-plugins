@@ -241,6 +241,7 @@ stores:
     origin: produced
     aliases:
       - "apps/*/"
+      - "apps/*/package.json"
       - "packages/*/"
       - "tsconfig.base.json"
       - ".gitignore"
@@ -635,9 +636,9 @@ processes:
     stage: foundation
     kind: script
     phase: F7
-    scripts: [genQlty.js]
-    reads: [skeleton, lockfile, qlty-config]
-    writes: [lockfile, qlty-config]
+    scripts: [installTierPackages.js, genQlty.js]
+    reads: [skeleton, lockfile, qlty-config, adr]
+    writes: [lockfile, qlty-config, skeleton]
   - id: contract.skeleton
     name: 契約の骨格
     skill: d2-contract
@@ -676,13 +677,14 @@ processes:
       - "`docs/adr/architecture.md`"
       - "`packages/ui/**`"
       - "`package-lock.json`"
+      - "`apps/*/package.json`"
       - "`.qlty/qlty.toml`"
       - "`apps/*/test/contract/**`"
       - "`packages/contracts/**`"
       - "`<run>/reports/**` (チェックポイントが書く。slug は bootstrap)。例外: `npm install` が作る `node_modules/**` (gitignore)"
     reads: [adr, contracts-catalog, req-rdra, config, design, skeleton, lockfile, qlty-config, contracts-src, contract-tests, depcruise-config, reports]
-    writes: [config, ci, check-script, githooks, plugin-lock, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
-    allowed_writes: [config, ci, check-script, githooks, plugin-lock, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
+    writes: [config, ci, check-script, githooks, plugin-lock, adr-architecture, ui, lockfile, skeleton, qlty-config, contract-tests, contracts-code, reports]
+    allowed_writes: [config, ci, check-script, githooks, plugin-lock, adr-architecture, ui, lockfile, skeleton, qlty-config, contract-tests, contracts-code, reports]
     notes:
       - "例外: `npm install` が作る `node_modules/**` (gitignore)"
       - "チェックポイントが書く。slug は bootstrap"
@@ -710,9 +712,9 @@ processes:
     stage: foundation
     kind: script
     phase: F7
-    scripts: [genQlty.js]
-    reads: [skeleton, lockfile, qlty-config]
-    writes: [lockfile, qlty-config]
+    scripts: [installTierPackages.js, genQlty.js]
+    reads: [skeleton, lockfile, qlty-config, adr]
+    writes: [lockfile, qlty-config, skeleton]
   - id: foundation.F4
     name: F4 契約テストの生成 (骨格分)
     parent: foundation.finish

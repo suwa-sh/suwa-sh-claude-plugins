@@ -13,18 +13,22 @@
 const GENERATORS = [
   {
     id: 'contracts',
-    outputs: [/^contracts\/generated\//, /^apps\/[^/]+\/test\/contract\//, /^packages\/contracts\/[^/]+\/stubs\//, /^packages\/contracts\/[^/]+\/validators\.ts$/],
+    // genContractTests は API の型・クライアント (genApiClient) も書く。genRdbDdl は DB の migration (0001_schema.sql)・DB 契約テスト・row 型を書く
+    // (どちらかが欠けると、写し直しが機能の作った生成物を main の側 (無い) で消して作り直さない。0.3.0 の実地確認で実測)
+    outputs: [/^contracts\/generated\//, /^apps\/[^/]+\/test\/contract\//, /^packages\/contracts\/[^/]+\/stubs\//, /^packages\/contracts\/[^/]+\/(validators|client|server|types|tables)\.ts$/, /^packages\/contracts\/[^/]+\/test-headers\.json$/, /^apps\/[^/]+\/migrations\/0001_schema\.sql$/],
     inputs: [/^contracts\/(?!generated\/)/, /^\.distillery\/config\.yaml$/],
     needs: 'contracts/contracts.json',
     gen: [
       ['<skills>/d2-contract/scripts/compileContracts.js', 'contracts'],
       ['<skills>/d2-contract/scripts/compileRdbSchema.js', 'contracts'],
       ['<skills>/d2-contract/scripts/genContractTests.js', 'contracts', '--config', '.distillery/config.yaml', '--out-root', '.'],
+      ['<skills>/d2-contract/scripts/genRdbDdl.js', 'contracts', '--config', '.distillery/config.yaml', '--out-root', '.', '--skip-if-unused'],
     ],
     check: [
       ['<skills>/d2-contract/scripts/compileContracts.js', 'contracts', '--check'],
       ['<skills>/d2-contract/scripts/compileRdbSchema.js', 'contracts', '--check'],
       ['<skills>/d2-contract/scripts/genContractTests.js', 'contracts', '--config', '.distillery/config.yaml', '--out-root', '.', '--check'],
+      ['<skills>/d2-contract/scripts/genRdbDdl.js', 'contracts', '--config', '.distillery/config.yaml', '--out-root', '.', '--check', '--skip-if-unused'],
     ],
   },
   {

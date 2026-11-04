@@ -122,6 +122,9 @@ const SCOPES_REQUIRING_RULES = ['system', 'app', 'data', 'testing', 'ui'];
  *   検証を通った空 tiers[] が下流で先に読まれてティアが消える取り違えを防ぐ。
  * scope に system を含む一般の ADR には tiers[] を要求しない (決定領域ごとに ADR を分けられる)。
  */
+// npm のパッケージ名 (scope 付き可、版の指定 @x.y は不可)
+const NPM_NAME = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
+
 function tierStructureErrors(adrs) {
   const errors = [];
   const declaring = adrs.filter(a => isAccepted(a.fm) && declaresTiers(a.fm));
@@ -145,6 +148,14 @@ function tierStructureErrors(adrs) {
       errors.push({ file, message: 'ティア構成 ADR (tiers[] を宣言する) は scope に system を含む必要がある (下流はティア構成を system ADR から読む)' });
     }
     const ids = new Set(fm.tiers.map(t => t && t.id).filter(Boolean));
+    // tiers[].packages / dev_packages: ティアが使う npm のパッケージ名 (版を付けない)。基盤の F7 が npm install で入れる (0.3.0)
+    for (const t of fm.tiers) {
+      for (const key of ['packages', 'dev_packages']) {
+        if (!t || t[key] === undefined) continue;
+        const bad = !Array.isArray(t[key]) ? [String(t[key])] : t[key].filter(n => typeof n !== 'string' || !NPM_NAME.test(n));
+        if (bad.length) errors.push({ file, message: `tiers[${t.id}].${key} は npm のパッケージ名の配列にする (版は付けない。基盤が npm install で解決する): ${bad.join(', ')}` });
+      }
+    }
     if (!fm.datastore_owner) {
       errors.push({ file, message: 'ティア構成 ADR (tiers[] を宣言する) は datastore_owner を持つ必要がある' });
     } else if (!ids.has(fm.datastore_owner)) {

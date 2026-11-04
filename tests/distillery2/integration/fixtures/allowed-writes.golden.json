@@ -152,6 +152,7 @@
       "`docs/adr/architecture.md`",
       "`packages/ui/**`",
       "`package-lock.json`",
+      "`apps/*/package.json`",
       "`.qlty/qlty.toml`",
       "`apps/*/test/contract/**`",
       "`packages/contracts/**`",
@@ -193,6 +194,10 @@
       {
         "id": "lockfile",
         "path": "package-lock.json"
+      },
+      {
+        "id": "skeleton",
+        "path": "package.json"
       },
       {
         "id": "qlty-config",

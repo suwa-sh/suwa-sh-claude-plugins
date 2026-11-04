@@ -96,6 +96,8 @@ ${forbiddenSrc}
   ],${allowedBlock}
   options: {
     doNotFollow: { path: 'node_modules' },
+    // ビルドの出力 (tsc -p . の dist/) を検査しない。ソースの違反と二重に数えない (0.3.0 の実地確認)
+    exclude: { path: '(^|/)dist/' },
     tsConfig: { fileName: './tsconfig.base.json' },
     tsPreCompilationDeps: true,
   },

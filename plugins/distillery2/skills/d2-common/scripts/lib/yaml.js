@@ -244,7 +244,11 @@ function scalarText(v) {
   if (v === null || v === undefined) return 'null';
   if (typeof v === 'boolean' || typeof v === 'number') return String(v);
   const s = String(v);
-  const needsQuote = s === '' || /^(true|false|null|~|\[\]|\{\})$/.test(s) || /^-?[0-9]+(\.[0-9]+)?$/.test(s)
+  // YAML 1.1 の読み手 (PyYAML の safe_load、js-yaml の既定) が文字列以外に読む形も囲う: 日付・時刻、yes/no/on/off、大文字の真偽値と null、
+  // 16 進・8 進・指数・符号付き・区切り付きの数、.inf/.nan (bundle の日付が無引用で出た。0.3.0 の実地確認)
+  const needsQuote = s === '' || /^(true|false|null|~|\[\]|\{\})$/i.test(s) || /^-?[0-9]+(\.[0-9]+)?$/.test(s)
+    || /^(y|n|yes|no|on|off)$/i.test(s) || /^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}/.test(s)
+    || /^[-+]?(0x[0-9a-f_]+|0o?[0-7_]+|0b[01_]+|[0-9][0-9_]*(\.[0-9_]*)?(e[-+]?[0-9]+)?|\.[0-9]+(e[-+]?[0-9]+)?|\.(inf|nan))$/i.test(s)
     || /[:#\[\]{}]|^[-|>'"&*!%@`?]|^\s|\s$/.test(s) || s.includes('\n') || s.startsWith('- ');
   return needsQuote ? JSON.stringify(s) : s;
 }

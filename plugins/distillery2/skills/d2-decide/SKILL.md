@@ -97,7 +97,7 @@ node <skills>/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
 - 本文は日本語で 背景 / 決定 / 却下した案 / 影響 の 4 節。
 - 該当する ADR は `rules[]` を最低 1 つ持つ。**ティア構成の ADR は `arch_test.level: tier` を、レイヤ構成の ADR は `arch_test.level: layer` を持つ**。
 - **機械チェックの ADR (scope に system) は front matter に `checks` を持つ** (1 本だけ。形は [decision-candidates/machine-checks.md](references/decision-candidates/machine-checks.md)。段階③が一括チェックとコマンドを生成する入力)
-- **ティア構成の ADR は front matter に `tiers[]` と `datastore_owner` を (scope に system を含む 1 本だけ)、accepted なテスト方針の ADR (scope に testing を含む) は `capabilities.browser` を持つ**
+- **ティア構成の ADR は front matter に `tiers[]` (ティアごとに `packages`: そのティアの決定 (枠組み・DB のクライアント・認証) で使う npm のパッケージ名。無ければ `[]`。型定義は `dev_packages`) と `datastore_owner` を (scope に system を含む 1 本だけ)、accepted なテスト方針の ADR (scope に testing を含む) は `capabilities.browser` を持つ**
   (段階③の config / 骨格 / rules の入力。形は adr-format.md「段階③が読む追加の front matter」)。
 - `rules[]` は段階③ の入力になる。カタログの「派生するルール例」を土台にする。
 - 言語 / FW が未定なら「未定」と明記した ADR を書く (ベンダーニュートラル。特定サービス名を使わない)。

@@ -50,7 +50,7 @@ d2-run は段階③で 2 回呼ぶ (決定の差分の開発ルールとアー�
 | F4 | `genContractTests.js` (d2-contract のスクリプト。骨格分) | `contracts/**`、`.distillery/config.yaml` | `apps/*/test/contract/**`、`packages/contracts/**` |
 | F5 | `genConfig.js` / `genSkeleton.js` / `genCi.js` / `genCheck.js` / `genQlty.js` | `docs/adr/*.md` (`tiers[]`・`datastore_owner`・testing `capabilities`・機械チェックの `checks`)、`contracts/contracts.json`、`.distillery/config.yaml` (genConfig が書いたものを genCi と genCheck が読む) | `.distillery/config.yaml`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`apps/*/`、`packages/*/`、`.github/workflows/ci.yml`、`scripts/check.mjs`、`.githooks/**`、`.distillery/distillery2.lock.json`、`.qlty/qlty.toml` |
 | F6 | `importUi.js` | `docs/design/storybook-app/src/` (d2-design の出力) | `packages/ui/**`、`packages/ui/.imported.yaml` |
-| F7 | `npm install` → `genQlty.js --refresh` | `package.json`、`package-lock.json`、`.qlty/qlty.toml` | `package-lock.json`、`.qlty/qlty.toml` |
+| F7 | `npm install` → `installTierPackages.js` → `genQlty.js --refresh` | `package.json`、`package-lock.json`、`.qlty/qlty.toml`、`docs/adr/*.md` (`tiers[].packages`・`dev_packages`) | `package-lock.json`、`apps/*/package.json` (依存)、`.qlty/qlty.toml` |
 | F8 | `genConfig.js` → `genCi.js` → `genCheck.js` → `genArchitectureDoc.js` (d2-decide のスクリプト) | `docs/adr/*.md`、`contracts/contracts.json`、`docs/requirements/rdra/**`、`.distillery/config.yaml` | `.distillery/config.yaml`、`.github/workflows/**`、`scripts/check.mjs`、`.githooks/**`、`.distillery/distillery2.lock.json`、`docs/adr/architecture.md` |
 | F9 | `runGates.js --uc bootstrap --upto static` | `.distillery/config.yaml`、`package.json`、`.qlty/qlty.toml`、`apps/*/test/contract/**`、`.dependency-cruiser.cjs`、`<run>/reports/**` | `<run>/reports/**` |
 
@@ -64,7 +64,7 @@ d2-run は段階③で 2 回呼ぶ (決定の差分の開発ルールとアー�
 
 ### phase=all の順
 
-F1 → F2 → F3 → F5 (genConfig → genSkeleton → genCi → genCheck → genQlty) → F7 (npm install → genQlty --refresh)。F5 の genCi は config.yaml を読むので genConfig の後に走らせる。
+F1 → F2 → F3 → F5 (genConfig → genSkeleton → genCi → genCheck → genQlty) → F7 (npm install → installTierPackages → genQlty --refresh)。F5 の genCi は config.yaml を読むので genConfig の後に走らせる。
 genQlty は qlty init の自動検出に package.json / biome.json / workflow を見せるため F5 の **最後** に走らせる (未追跡ファイルは一時的に `git add -N` して戻す)。
 提案はその時点でリポにあるファイル種別で決まる (lockfile が無いと osv-scanner が入らない、python が増えると ruff が入る) ので、
 F7 で npm install の後に `genQlty.js --refresh` で増えた分を足す (減らさない)。各 UC の integrate の後は d2-run が同じ `--refresh` を回す。
@@ -78,7 +78,7 @@ F7 で npm install の後に `genQlty.js --refresh` で増えた分を足す (�
 2. F6: `ui=true` なら `docs/design/storybook-app/` を `packages/ui` に取り込む。`ui=false` なら F6 と次の F7 を飛ばす
    (前の実行の `docs/design/` が残っていても取り込まない。画面の有無は d2-run の判断に従う)。`ui=true` なのに出力が無ければ
    (d2-design が「画面を持たない」と判断して skip した) F6 と F7 を飛ばし、その旨を報告する
-3. F7: `packages/ui` が workspace に加わったので `npm install` をもう一度 (lockfile を更新) → `genQlty.js --refresh`
+3. F7: `packages/ui` が workspace に加わったので `npm install` をもう一度 (lockfile を更新) → `installTierPackages.js` (足りない分だけ) → `genQlty.js --refresh`
 4. F4: 骨格分の契約テストを生成する
 5. F9: チェックポイント。`runGates.js --uc bootstrap --upto static` が exit 0
 
@@ -94,6 +94,7 @@ node <skills>/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --
 node <skills>/d2-foundation/scripts/genCheck.js --cwd <repo>   # 機械チェックの一括実行 scripts/check.mjs と hook。core.hooksPath を .githooks にする (必須)
 node <skills>/d2-foundation/scripts/genQlty.js --cwd <repo>   # qlty init の提案 + 上乗せ。--fallback で固定リスト、--force で作り直し
 npm install                                                                               # F7 (<repo> で)
+node <skills>/d2-foundation/scripts/installTierPackages.js --adr docs/adr --cwd <repo>   # F7。ADR の tiers[].packages を各ティアに入れる (npm 10 の回避策を使ったら --npm "npx npm@11")
 node <skills>/d2-foundation/scripts/genQlty.js --refresh --cwd <repo>   # F7。提案で増えた plugins だけ足す
 node <skills>/d2-foundation/scripts/genConfig.js --adr docs/adr --contracts contracts/contracts.json --out .distillery/config.yaml --cwd <repo>   # F8
 node <skills>/d2-foundation/scripts/genCi.js --config .distillery/config.yaml --cwd <repo>   # F8

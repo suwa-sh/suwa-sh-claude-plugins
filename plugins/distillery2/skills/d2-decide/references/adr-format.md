@@ -88,6 +88,8 @@ tiers:
     lang: typescript
     provides: [api, events]    # 提供する契約 id (contracts.json と一致させる。骨格前は空でよい)
     consumes: [db]
+    packages: [express, pg, jose]                 # 必須 (無ければ [])。決めた枠組み・DB のクライアント・認証などの npm の名前 (版は付けない)
+    dev_packages: ['@types/express', '@types/pg'] # 任意。型定義など。基盤の F7 が npm install で入れる (版は npm が解決する)
 datastore_owner: backend-api   # migration を持つティア
 
 # コンテキストの境界 (任意。通常はティア構成 ADR に書く) — genArchitectureDoc がコンテキストマップ図を描く

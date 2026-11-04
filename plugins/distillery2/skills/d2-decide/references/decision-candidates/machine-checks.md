@@ -52,5 +52,5 @@ rules:
   - scope: common
     text: "コミットの前に node scripts/check.mjs --mode hook が通る状態にする (hook が自動で回す)"
   - scope: common
-    text: "CI は node scripts/check.mjs --mode ci を回し、6 観点 (generate / format / lint / build / test / security) がすべて通ったものだけを main に入れる"
+    text: "main に入れる前は d2-run の全段のゲートで止める (生成物の鮮度と security は報告にとどめる)。main への push の後に CI が node scripts/check.mjs --mode ci で 6 観点 (generate / format / lint / build / test / security) を回し、落ちたらすぐ直す"
 ```

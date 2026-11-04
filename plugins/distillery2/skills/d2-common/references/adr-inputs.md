@@ -58,6 +58,7 @@ datastore_owner: backend-api
   基盤が取り違える入力は検証段階で弾かれる前提。
 - F1: `tiers[].kind` の集合で tier ルールファイルを絞る。
 - F5: `tiers[]` から config の `tiers[]` と apps 骨格、`datastore_owner` を作る。
+- F7: `tiers[].packages` / `dev_packages` (npm のパッケージ名の配列。版は付けない) を `installTierPackages.js` が各ティアの package.json に `npm install -w` で入れる (0.3.0)。
 
 ## testing ADR (scope に `testing` を含む)
 
