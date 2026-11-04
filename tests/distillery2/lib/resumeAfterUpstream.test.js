@@ -340,6 +340,65 @@ test('check-diffs: applied は追加行がファイルにあれば通り、無�
   assert.match(R.checkDiffs(run, h).errors[0], /resume_diffs に無い/);
 });
 
+test('作り直した一括チェック (scripts/check.mjs) も写し直しの commit に入り、作業ツリーに追跡済みの変更が残らない', () => {
+  const { root, tmp } = makeRepo({
+    featureEdit: (r) => w(r, '.distillery/config.yaml', 'tiers: [feature]\n'),
+    mainEdit: (r) => w(r, 'docs/adr/0003-x.md', '# x\n'),
+  });
+  const gen = path.join(tmp, 'gen-check.js');
+  fs.writeFileSync(gen, "const fs=require('fs');fs.mkdirSync('scripts',{recursive:true});fs.writeFileSync('scripts/check.mjs','// from '+fs.readFileSync('.distillery/config.yaml','utf8'));\n");
+  const t = [...table(tmp), { id: 'check-script', outputs: [/^scripts\/check\.mjs$/], inputs: [/^\.distillery\/config\.yaml$/], needs: '.distillery/config.yaml', gen: [[gen]] }];
+  const out = R.resume(root, SLUG, { table: t });
+  assert.ok(out.regenerated.includes('check-script'));
+  assert.equal(g(root, 'status', '--porcelain', '--untracked-files=all'), '');
+  assert.equal(g(root, 'show', `${out.commit}:scripts/check.mjs`), '// from tiers: [feature]');
+});
+
+test('作り直しが commit の対象の外の追跡済みファイルを変えたら、黙って残さずに止まる', () => {
+  const { root, tmp } = makeRepo({ featureEdit: (r) => w(r, 'apps/backend/src/feat.ts', 'x\n'), mainEdit: (r) => w(r, 'other/x.txt', 'main\n') });
+  const gen = path.join(tmp, 'gen-other.js');
+  fs.writeFileSync(gen, "require('fs').writeFileSync('other/x.txt','changed by generator\\n');\n");
+  const t = [{ id: 'other', outputs: [/^other\//], inputs: [/^apps\//], needs: 'other', gen: [[gen]] }];
+  assert.throws(() => R.resume(root, SLUG, { table: t }), /追跡済みの変更が残った[^\n]*other\/x\.txt/);
+});
+
+test('処理の記録が読めない (書く途中で壊れた) ときは、新しい写し直しとして始めずに止まる', () => {
+  const { root, tmp } = makeRepo();
+  assert.throws(() => R.resume(root, SLUG, { table: table(tmp), stopAfter: 3 }), /で止めた/);
+  fs.writeFileSync(R.journalPath(root, SLUG), '{"slug": "book-ro');
+  const tip = featureTip(root);
+  assert.throws(() => R.resume(root, SLUG, { table: table(tmp) }), /処理の記録が読めない/);
+  assert.equal(featureTip(root), tip);
+});
+
+test('check-diffs --stage / --tier: 段ごとの受理はその段 (とティア) の差分だけを見る。全件は全担当の引き継ぎファイルを渡して確かめる', () => {
+  const { root, run, tmp } = makeRepo({
+    featureEdit: (r) => {
+      w(r, 'apps/backend/src/a.ts', rd(r, 'apps/backend/src/a.ts').replace('line 5\n', 'line 5 FEATURE\n'));
+      w(r, 'features/rooms/book-room.feature', '@uc:book-room\nFeature: 予約する (機能側)\n');
+    },
+    mainEdit: (r) => {
+      w(r, 'apps/backend/src/a.ts', rd(r, 'apps/backend/src/a.ts').replace('line 5\n', 'line 5 MAIN\n'));
+      w(r, 'features/rooms/book-room.feature', '@uc:book-room\nFeature: 予約する (main 側)\n');
+    },
+  });
+  const out = R.resume(root, SLUG, { table: table(tmp) });
+  assert.equal(out.diffs.length, 2);
+  const scenarioDiff = out.diffs.find((d) => d.includes('features'));
+  const tierDiff = out.diffs.find((d) => d.includes('apps'));
+  const hs = path.join(run, 'handoff', 'scenario-1.json');
+  w(root, path.relative(root, hs), JSON.stringify({ resume_diffs: [{ diff: scenarioDiff, result: 'dropped', reason: 'main 側の文面で足りる' }] }));
+  assert.equal(R.checkDiffs(run, [hs], { stage: 'scenario' }).ok, true, 'scenario の受理は tier の差分を求めない');
+  assert.equal(R.checkDiffs(run, [hs], { stage: 'tier', tier: 'backend' }).ok, false);
+  const ht = path.join(run, 'handoff', 'tier-backend-1.json');
+  w(root, path.relative(root, ht), JSON.stringify({ resume_diffs: [{ diff: tierDiff, result: 'dropped', reason: '要らなくなった' }] }));
+  assert.equal(R.checkDiffs(run, [ht], { stage: 'tier', tier: 'backend' }).ok, true);
+  assert.equal(R.checkDiffs(run, [hs]).ok, false, '全件の確認は 1 つの引き継ぎファイルでは足りない');
+  const all = R.checkDiffs(run, [hs, ht]);
+  assert.equal(all.ok, true, all.errors.join('\n'));
+  assert.equal(all.of_all, 2);
+});
+
 test('中身の無い attempt-<n> (branch を切り替えた後に残る空のディレクトリ) は currentAttempt が数えない。rewind が開いた attempt は数える', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-attempt-'));
   g(root, 'init', '-q', '-b', 'main');

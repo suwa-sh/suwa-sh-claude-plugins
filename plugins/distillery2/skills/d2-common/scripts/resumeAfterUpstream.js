@@ -9,8 +9,9 @@
  *   node resumeAfterUpstream.js run <root> <slug> [--override-limit] [--co-author "<attribution の値>"]
  *     前提: 作業ツリーが clean、今の branch が main、feature/<slug> の run の最後の止まりが blocked_on_upstream で、その課題ファイルがすべて main から消えている (反映か取り下げ)
  *     出力: {slug, from_stage, conflicts, diffs, regenerated, resumes, limit, base_head, from_head, commit}
- *   node resumeAfterUpstream.js check-diffs <runDir> --handoff <引き継ぎファイル>
- *     最後の写し直しの差分ファイル (統合できなかった機能側の変更) を担当が扱ったかを確かめる: 引き継ぎファイルの resume_diffs に全件あり、
+ *   node resumeAfterUpstream.js check-diffs <runDir> --handoff <引き継ぎファイル> [--handoff ...] [--stage scenario|contract|tier] [--tier <id>]
+ *     最後の写し直しの差分ファイル (統合できなかった機能側の変更) を担当が扱ったかを確かめる。--stage (と --tier) はその段 (とティア) が受け持つ差分だけを見る
+ *     (段ごとの受理。受け持ちは差分のパスの最も早い段)。全件は全担当の引き継ぎファイルを渡して確かめる: 引き継ぎファイルの resume_diffs に全件あり、
  *     applied は差分の追加行 (空白を詰めて比べる) がすべて where のファイルにあり、dropped は理由がある。出力 {ok, errors[], applied, dropped}
  *
  * 写し直しの段 (処理の記録 .distillery/logs/resume-<slug>.json に段ごとに残し、途中で止まったら最初の終わっていない段から続ける):
@@ -37,6 +38,8 @@ const { parseHeader, check: basisCheck } = require('./lib/basis');
 const SKILLS_ROOT = path.resolve(__dirname, '..', '..');
 const STEPS = [2, 3, 4, 5, 6, 7, 8, 9];
 const SUBJECT_COMMIT = (slug) => `impl(${slug}): resume after upstream`;
+// 9 の commit に入れる置き場 (機能の run のほか、作り直す生成物の置き場すべて。lib/generators.js の outputs と揃える)
+const COMMIT_PATHS = ['docs', 'contracts', 'apps', 'packages', 'features', '.dependency-cruiser.cjs', 'scripts/check.mjs', '.githooks', '.distillery/distillery2.lock.json', '.distillery/config.yaml'];
 const SUBJECT_RECORDS = (slug) => `impl(${slug}): resume records`;
 
 // 作り直せる生成物の表は lib/generators.js が正本 (一括チェックの generate と同じ表)
@@ -64,8 +67,19 @@ function eventsAt(root, rev, slug) {
 }
 
 function journalPath(root, slug) { return path.join(root, '.distillery', 'logs', `resume-${slug}.json`); }
-function readJournal(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } }
-function writeJournal(p, j) { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n'); }
+/** 処理の記録を読む。無ければ null。あるのに読めなければ止まる (新しい写し直しとして始めると、済んだ段をもう一度行う) */
+function readJournal(p) {
+  if (!fs.existsSync(p)) return null;
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')); }
+  catch (e) { throw new Fail(`写し直しの処理の記録が読めない (${e.message})。人が git の状態と照らして直すか消す: ${p}`); }
+}
+/** 処理の記録を書く。一時ファイルに書いてから rename する (書く途中で止まっても、前の記録か新しい記録のどちらかが残る) */
+function writeJournal(p, j) {
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  const tmp = `${p}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify(j, null, 2) + '\n');
+  fs.renameSync(tmp, p);
+}
 
 /** パス → 続きの段 (機能の中の段のうち、そのパスを書く最も早い段。scenario / contract / tier) */
 function stageOfPath(p) {
@@ -236,16 +250,18 @@ function step9(ctx, j) {
     runState.invalidateFrom(ctx.runDir, j.from_stage, `上流の直しの後に写し直した (${j.resume_no} 回目)`, { reviews: true });
     runState.appendEvent(ctx.runDir, 'resumed_after_upstream', {
       base_head: j.main_sha, from_head: j.old_head, from_stage: j.from_stage, paused_ref: j.paused_ref,
-      issues: j.issues, conflicts: j.conflicts, diffs: j.diffs.map((d) => d.diff), regenerated: j.regenerated, stale: j.stale,
+      issues: j.issues, conflicts: j.conflicts, diffs: j.diffs.map((d) => d.diff), diff_paths: Object.fromEntries(j.diffs.map((d) => [d.diff, d.paths])), regenerated: j.regenerated, stale: j.stale,
     });
   }
   if (revParse(ctx.root, 'main') !== j.main_sha) throw new Fail(`写し直しの途中で main が進んだ (${j.main_sha} → ${revParse(ctx.root, 'main')})。feature は付け替え済みなので止める: 人が main の変更を確かめる`);
-  const paths = [`.distillery/runs/${ctx.slug}`, 'docs', 'contracts', 'apps', 'packages', '.dependency-cruiser.cjs'].filter((p) => fs.existsSync(path.join(ctx.root, p)));
+  const paths = [`.distillery/runs/${ctx.slug}`, ...COMMIT_PATHS].filter((p) => fs.existsSync(path.join(ctx.root, p)));
   git(ctx.root, ['add', '-A', '--', ...paths]);
   const msg = [SUBJECT_RECORDS(ctx.slug), '', `続きの段: ${j.from_stage}`];
   if (ctx.coAuthor) msg.push('', `Co-Authored-By: ${ctx.coAuthor}`);
   git(ctx.root, ['commit', '-q', '-F', '-'], { input: msg.join('\n') + '\n' });
   j.final_commit = revParse(ctx.root, 'HEAD');
+  const left = trackedDirty(ctx.root);
+  if (left.length) throw new Fail(`写し直しの commit の後に追跡済みの変更が残った (作り直した生成物の置き場が commit の対象に無い): ${left.join(', ')}`);
 }
 
 /** 処理の記録と git の状態を突き合わせる。9 の commit まで済んでいれば記録を片付けて結果を返す */
@@ -332,16 +348,34 @@ function addedLines(diffText) {
   return diffText.split('\n').filter((l) => l.startsWith('+') && !l.startsWith('+++')).map((l) => squash(l.slice(1))).filter(Boolean);
 }
 
-function checkDiffs(runDirArg, handoffFile) {
+/** 差分を受け持つ段とティア (差分のパスのうち最も早い段。ティアは apps/<tier>/ の下のとき) */
+function ownerOfDiff(paths) {
+  const stage = earliest(paths.map(stageOfPath)) || 'tier';
+  const m = paths.map((p) => /^apps\/([^/]+)\//.exec(p)).find(Boolean);
+  return { stage, tier: stage === 'tier' && m ? m[1] : null };
+}
+
+/**
+ * 最後の写し直しの差分を担当が扱ったかを確かめる。handoffFiles は 1 つ以上 (全件の確認は全担当の引き継ぎファイルを渡す)。
+ * stage / tier を渡すと、その段 (とティア) が受け持つ差分だけを見る (段ごとの受理)
+ */
+function checkDiffs(runDirArg, handoffFiles, { stage = null, tier = null } = {}) {
   const runDir = path.resolve(runDirArg);
   const root = path.resolve(runDir, '..', '..', '..');
   const last = [...runState.readEvents(runDir)].reverse().find((e) => e.type === 'resumed_after_upstream');
-  const expected = last ? (last.diffs || []) : [];
+  const all = last ? (last.diffs || []) : [];
+  const owner = (d) => ownerOfDiff((last.diff_paths || {})[d] || []);
+  const expected = all.filter((d) => (!stage || owner(d).stage === stage) && (!tier || owner(d).tier === tier));
   const { parseYaml } = require('./lib/yaml');
-  if (!handoffFile || !fs.existsSync(handoffFile)) throw new Fail(`引き継ぎファイルが無い: ${handoffFile}`, 2);
-  const text = fs.readFileSync(handoffFile, 'utf8');
-  const data = handoffFile.endsWith('.json') ? JSON.parse(text) : parseYaml(text);
-  const rows = Array.isArray(data && data.resume_diffs) ? data.resume_diffs : [];
+  const files = (Array.isArray(handoffFiles) ? handoffFiles : [handoffFiles]).filter(Boolean);
+  if (!files.length) throw new Fail('--handoff <引き継ぎファイル> が要る', 2);
+  const rows = [];
+  for (const f of files) {
+    if (!fs.existsSync(f)) throw new Fail(`引き継ぎファイルが無い: ${f}`, 2);
+    const text = fs.readFileSync(f, 'utf8');
+    const data = f.endsWith('.json') ? JSON.parse(text) : parseYaml(text);
+    rows.push(...(Array.isArray(data && data.resume_diffs) ? data.resume_diffs : []));
+  }
   const errors = [];
   let applied = 0;
   let dropped = 0;
@@ -362,8 +396,8 @@ function checkDiffs(runDirArg, handoffFile) {
     const missing = fs.existsSync(diffFile) ? addedLines(fs.readFileSync(diffFile, 'utf8')).filter((l) => !body.includes(l)) : [`(差分ファイルが無い: ${d})`];
     if (missing.length) errors.push(`applied なのに差分の追加行が ${where.join(', ')} に無い (${d}): ${missing.slice(0, 5).join(' / ')}${missing.length > 5 ? ` ほか ${missing.length - 5} 行` : ''}`);
   }
-  for (const r of rows) if (r && !expected.includes(r.diff)) errors.push(`最後の写し直しの差分ではない: ${r.diff}`);
-  return { ok: errors.length === 0, errors, applied, dropped, expected: expected.length };
+  for (const r of rows) if (r && !all.includes(r.diff)) errors.push(`最後の写し直しの差分ではない: ${r.diff}`);
+  return { ok: errors.length === 0, errors, applied, dropped, expected: expected.length, of_all: all.length };
 }
 
 function main(argv) {
@@ -373,7 +407,9 @@ function main(argv) {
   for (let i = 0; i < rest.length; i++) {
     if (rest[i] === '--override-limit') o.overrideLimit = true;
     else if (rest[i] === '--co-author') o.coAuthor = rest[++i];
-    else if (rest[i] === '--handoff') o.handoff = rest[++i];
+    else if (rest[i] === '--handoff') (o.handoff = o.handoff || []).push(rest[++i]);
+    else if (rest[i] === '--stage') o.stage = rest[++i];
+    else if (rest[i] === '--tier') o.tier = rest[++i];
     else if (rest[i].startsWith('--')) throw new Fail(`不明な引数: ${rest[i]}`, 2);
     else pos.push(rest[i]);
   }
@@ -382,8 +418,9 @@ function main(argv) {
     return { out: resume(pos[0], pos[1], o), code: 0 };
   }
   if (cmd === 'check-diffs') {
-    if (pos.length !== 1) throw new Fail('check-diffs <runDir> --handoff <引き継ぎファイル>', 2);
-    const r = checkDiffs(pos[0], o.handoff);
+    if (pos.length !== 1) throw new Fail('check-diffs <runDir> --handoff <引き継ぎファイル> [--handoff ...] [--stage scenario|contract|tier] [--tier <id>]', 2);
+    if (o.stage && !['scenario', 'contract', 'tier'].includes(o.stage)) throw new Fail(`--stage は scenario / contract / tier: ${o.stage}`, 2);
+    const r = checkDiffs(pos[0], o.handoff, { stage: o.stage || null, tier: o.tier || null });
     return { out: r, code: r.ok ? 0 : 1 };
   }
   throw new Fail('resumeAfterUpstream.js run|check-diffs ...', 2);
