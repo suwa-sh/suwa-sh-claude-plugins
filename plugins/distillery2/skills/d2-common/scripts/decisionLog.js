@@ -46,7 +46,7 @@ function parseArgs(argv) {
 
 /** 1 件を作る。引き継ぎファイルの問いなら、問い・選択肢・推奨をそこから写す (記録だけで後から読めるように) */
 function entryOf(o) {
-  if (!o.answer) throw new Fail('--answer が要る');
+  if (!o.answer && !(o.handoff && o.decision)) throw new Fail('--answer が要る');
   if (!BY.has(o.by)) throw new Fail(`--by は recommended|human|rule: ${o.by}`);
   const at = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
   if (o.handoff && o.decision) {
@@ -148,10 +148,10 @@ function list({ root, since }) {
 }
 
 function toMarkdown(entries) {
-  const head = '| 時刻 | どこで | 問い | 答え | 決め方 |\n|---|---|---|---|---|';
+  const head = '| 時刻 | どこで | ID | 問い | 答え | 決め方 |\n|---|---|---|---|---|---|';
   const how = (e) => (e.by === 'human' ? '人' : e.by === 'rule' ? '規則' : `${e.recommended_by === 'orchestrator' ? '進行役が作った推奨' : e.kind === 'decision' ? '担当が決めた' : '推奨'}${e.provisional ? ' (仮置き)' : ''}`);
   const cell = (s) => String(s == null ? '' : s).replace(/\|/g, '\\|').replace(/\n/g, ' ');
-  return [head, ...entries.map((e) => `| ${e.at} | ${cell(e.where)} | ${cell(e.question)} | ${cell(e.answer)} | ${how(e)} |`)].join('\n');
+  return [head, ...entries.map((e) => `| ${e.at} | ${cell(e.where)} | ${cell(e.id)} | ${cell(e.question)} | ${cell(e.answer)} | ${how(e)} |`)].join('\n');
 }
 
 function main(argv) {

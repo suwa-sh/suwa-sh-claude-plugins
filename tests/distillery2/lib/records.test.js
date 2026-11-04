@@ -94,11 +94,11 @@ test('decisionLog add --decision: 決めたことを同じ D<n> で記録し、l
   const run = rs.openRun(root, 'book-room');
   const hf = path.join(run, 'handoff', 'tier-backend-1.json');
   w(hf, JSON.stringify(HO));
-  for (const d of ['D1', 'D2']) DL.add({ run, handoff: hf, decision: d, answer: 'x', by: 'recommended' });
+  for (const d of ['D1', 'D2']) DL.add({ run, handoff: hf, decision: d, by: 'recommended' });
   const ids = DL.list({ root }).map((e) => e.id);
   assert.deepEqual(ids, ['book-room:tier:D1', 'book-room:tier:D2']);
   const md = DL.toMarkdown(DL.list({ root }));
-  assert.match(md, /予約の重なりの判定 \| 開始と終了の半開区間で比べる \| 担当が決めた/);
+  assert.match(md, /\| book-room:tier:D1 \| 予約の重なりの判定 \| 開始と終了の半開区間で比べる \| 担当が決めた/, '一覧に D<n> の ID が残る');
   assert.throws(() => DL.add({ run, handoff: hf, decision: 'D9', answer: 'x', by: 'recommended' }), /決めたことが無い/);
 });
 
@@ -143,3 +143,25 @@ test('route: プラグインの不具合 (反証の結果・課題の戻し先 p
   assert.match(text, /^kind: plugin$/m);
   assert.doesNotMatch(text, /^target_step:/m);
 });
+
+test('レビューの指摘は、切り詰めた題名が同じでも別の課題として下書きにする', () => {
+  const root = repo();
+  const run = rs.openRun(root, 'book-room');
+  const long = '予約の重なりの検査が開始時刻と終了時刻の境界で同じ時刻の予約を受け付けてしまうため';
+  const md = path.join(run, 'reviews', 'implementation-backend', '1', 'round1.md');
+  w(md, ROUND.replace('同じ時間帯の予約を二重に受け付ける', long + ' A').replace('取り消しの期限を見ていない', long + ' B'));
+  const r = spawnSync(process.execPath, [HANDOFF, 'file-drafts', md, '--review', '--target', 'implementation', '--run', run], { encoding: 'utf8' });
+  assert.equal(JSON.parse(r.stdout).written.length, 2, r.stdout);
+});
+
+test('巻き戻さずに先送りした課題は、その段が done になるまで status の deferred_issues に出る', () => {
+  const root = repo();
+  const run = rs.openRun(root, 'book-room');
+  for (const st of ['scenario', 'contract', 'scaffold']) rs.markDone(run, st);
+  w(path.join(run, 'issues', 'a.md'), '---\ntarget_step: implementation\n---\n');
+  rs.rewind(run, 'implementation', { issues: ['issues/a.md'] });
+  assert.deepEqual(rs.status(run).deferred_issues, [{ stage: 'tier', to: 'implementation', issues: ['issues/consumed/a.md'] }]);
+  rs.markDone(run, 'tier');
+  assert.deepEqual(rs.status(run).deferred_issues, []);
+});
+

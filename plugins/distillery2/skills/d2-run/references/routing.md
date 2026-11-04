@@ -19,7 +19,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 | 上流への課題 (`target_step` が requirements / decide / foundation) | 人に返す (機能を止めて、上流を直すか取り下げるか聞く) | 推奨の直し方で上流の差分へ進み、記録する |
 | 戻り道の回数の上限 (`runState.js` が exit 3) | 人に返す | 人に返す |
 | レビューを回せない (`reviewStep.js` が exit 4) | 人に返す (同じモデルで代わりにレビューする / このまま進む / 止める) | 同じモデルで代わりにレビューし、`fallback: same-model` を記録する |
-| ゲートが 2 回落ちた・受理の検査に落ちた (再派遣で直らない) | 人に返す | 機能の中なら `<RS> rewind <run> implementation` (回数に数える。上限で人へ)。上流の段なら人に返す |
+| ゲートが 2 回落ちた・受理の検査に落ちた (再派遣で直らない) | 人に返す | 機能の中なら `<RS> rewind <run> implementation` (回数に数える。上限で人へ)。上流の段なら落ちた出力を添えて担当を 2 回まで派遣し直す (`<D> add --root . --page page:upstream-retry:<段> ...` で回数を残す)。3 回目も落ちたら戻り道の上限として人に返す |
 | プラグインの不具合 (反証の結果・課題の戻し先が `plugin`。決定の差分の `reason_kind: plugin`) | 人に返す | **人に返す**: 下の「プラグインの不具合」で課題を `kind: plugin` にし、機能の中ならその機能を止める (ほかの機能は続く) |
 | 終わったとき | 完了報告 | 完了報告と、推奨で決めたものの一覧の確認ページ 1 枚 (`<D> list --root . --since <起動の時刻> --format md`) |
 
@@ -51,7 +51,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 1. 担当の報告の本文を `.distillery/logs/report-<段>[-<tier>]-<ts>.md` に保存し、`<H> validate <handoff> --report <そのファイル>` が exit 0 (無い・不合格なら受理しない。再派遣。報告の「決めたこと」が `D<n>` で引き継ぎファイルの `decisions` と 1 対 1 か、ID の無い判断が無いかも見る)。検証役は `<H> route <findings> --findings --mode <mode>`
 2. `<H> route <handoff> --mode <mode>`:
    - `decide[]`: 問いごとに `<D> add (--run <run> | --root .) --handoff <handoff> --ask <id> --answer "<answer>" --by recommended` (機能の中は `--run`、上流の段は `--root .`。検証役は `--handoff <findings>`。`unknown_fact` は自動で仮置きになる)
-   - `to_human[]`: 人に返す問いとして、この段の確認ページに載せる (確認ページの無い段なら、この問いだけの確認ページを出して止まる)
+   - `to_human[]`: 人に返す問いとして、この段の確認ページに載せる (確認ページの無い段なら、この問いだけの確認ページを出して止まる)。recommend では出ない (推奨の無い問いは `make_recommendation[]` に、事実の問いは仮置きで `decide[]` に入る)
    - `make_recommendation[]` (recommend だけ): 問いの選択肢から推奨を 1 つ選び、理由を添えて `<D> add ... --handoff <handoff> --ask <id> --answer "<選んだ案>" --by recommended --provisional`
    - `issues`: 下の「前のステップの課題」(`issues.plugin` は「プラグインの不具合」)
    - `needs_info[]`: auto は人に返す。recommend は進行役が推奨を作って仮置きする (上の表)
@@ -127,7 +127,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 
 1. 前提: 進行中の UC が無い。「上流の差分の branch」の 1 で branch を切る
 2. 課題ごとに sub `d2-decide mode=feedback issue=<docs/feedback/<issue>.md> result=<.distillery/logs/decide-<issue>.result.json>` (派遣表「② 決定の差分 (ADR)」。ADR を 1 本足す。結果ファイルは派遣の前に消す)。受理: 結果が `applied`、`validateAdr.js docs/adr` が exit 0、write-set の外が変わっていない。
-   結果が `blocked` なら: `reason_kind: plugin` は「プラグインの不具合」(理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` でプラグインへ持ち帰る課題にする)。`reason_kind: scope` は人に返す (推奨: 戻し先を基盤にする)
+   結果が `blocked` なら: `reason_kind: plugin` は「プラグインの不具合」(理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` でプラグインへ持ち帰る課題にする)。`reason_kind: scope` は auto なら人に返し (推奨: 戻し先を基盤にする)、recommend なら推奨どおり課題の `target_step` を `foundation` に書き換え (`kind` も合わせる) て `<D> add --root . --page page:upstream:<課題> --answer "戻し先を基盤にする" --by recommended` で記録し、基盤の差分で直す
 3. 索引・開発ルール・アーキテストを作り直す (1 コマンドずつ): `node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements`、`node <skills>/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd .`、`node <skills>/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd .`。続けて `runGates.js --uc d2-feedback --only static` が通り、`contracts/` があれば `node <skills>/d2-contract/scripts/validateUcIndex.js contracts` が exit 0 (落ちたら人に返す)
 4. 決定のレビュー (下の「縦・横レビュー」の `decide`。指摘のうち戻し先が decide のものは、次の決定の差分にせず、この差分の「反証して直す」で扱う) → 確認ページ (`page:decide:approve`。足した ADR と、`basis.js check` の STALE の UC を「やり直す / 後で」で載せる)
 5. 2 回に分けて commit する (生成物の basis が、入力の ADR を入れた commit を指すように):
@@ -149,9 +149,9 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 機能の途中で上流の不足が 1 件ずつ見つかって往復するのを減らす。自動選択が `uc` を返したとき、clean な main の上で行う。
 
 1. `.distillery/logs/precheck-<slug>/` を消してから、UC の `tiers_hint` のティアごとに sub `d2-implement mode=precheck` を**同じメッセージで並列派遣**する (派遣表「④ precheck」。`{handoff}` は `.distillery/logs/precheck-<slug>/<tier>.handoff.json`)
-2. 受理: 各引き継ぎファイルが `<H> validate` で exit 0、`git status --porcelain` が派遣の前と同じ (追跡ファイルを書いていない)。問いは「引き継ぎファイルの処理」と同じに振り分け、`.distillery/decisions.jsonl` に記録する
-3. 上流の課題が 0 件なら `.distillery/logs/precheck-<slug>/` を消して、④ の branch を切る
-4. 上流の課題があれば: 「上流の差分の branch」の 1 で `upstream/<1 件目の課題の id>` を切り、引き継ぎファイルを `.distillery/handoff/precheck-<slug>-<tier>.json` に写して `<H> file-drafts <写し> --root .` で課題ファイルにする (`uc` は無くてよい: 戻し先は上流だけ) →
+2. 受理: 各引き継ぎファイルが `<H> validate` で exit 0、`git status --porcelain` が派遣の前と同じ (追跡ファイルを書いていない)。問いは「引き継ぎファイルの処理」と同じに振り分けるが、**記録は branch を切った後に書く** (main を汚さない。3 なら run を開いた後に `--run <run>`、4 なら upstream の branch で `--root .`)
+3. 上流の課題が 0 件なら ④ の branch を切って run を開き、2 の問いを記録してから `.distillery/logs/precheck-<slug>/` を消す
+4. 上流の課題があれば: 「上流の差分の branch」の 1 で `upstream/<1 件目の課題の id>` を切り、引き継ぎファイルを `.distillery/handoff/precheck-<slug>-<tier>.json` に写して `<H> file-drafts <写し> --root .` で課題ファイルにし (`uc` は無くてよい: 戻し先は上流だけ)、2 の問いを `--root .` で記録する →
    `git add -A -- docs/feedback .distillery/handoff .distillery/decisions.jsonl` → `precheck(<slug>): issues` で commit → `.distillery/logs/precheck-<slug>/` を消す → 自動選択をもう一度呼ぶ (その branch の上流の差分が `continue-upstream` で続き、直した後に同じ UC が選ばれて点検からやり直す)。
    機能の作業はまだ無いので写し直しは要らない
 

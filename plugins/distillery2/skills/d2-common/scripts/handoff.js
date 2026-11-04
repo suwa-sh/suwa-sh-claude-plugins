@@ -188,7 +188,7 @@ function chainOf(chainFrom) {
  * (handoff と id で名前を決める。加えて、戻し先と題名が同じ既存の下書き・課題ファイルがあれば書かない。0.3.0)。
  * chainFrom (上流の差分のレビュー・反証から課題を作るとき、直している課題ファイル) を渡すと chain と chain_depth を書く
  */
-function fileDrafts(file, data, { run, root, chainFrom = null }) {
+function fileDrafts(file, data, { run, root, chainFrom = null, byTitle = true }) {
   if (!run && !root) throw new Fail('--run か --root が要る', 2);
   const step = data.step || 'verify';
   const base = path.basename(file).replace(/\.(ya?ml|json)$/, '');
@@ -216,12 +216,12 @@ function fileDrafts(file, data, { run, root, chainFrom = null }) {
       dest = path.join(path.resolve(run), 'issues', `${stamp()}_${step}_${name}`);
       const dir = path.dirname(dest);
       if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(`_${step}_${name}`))) { skipped.push(name); continue; }
-      if (known.has(key)) { duplicates.push({ id: u.id, title: u.title }); continue; }
+      if (byTitle && known.has(key)) { duplicates.push({ id: u.id, title: u.title }); continue; }
     } else {
       dest = path.join(path.resolve(root), 'docs', 'feedback', `${stamp()}_${step}_${name}`);
       const dir = path.dirname(dest);
       if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(`_${step}_${name}`))) { skipped.push(name); continue; }
-      if (known.has(key)) { duplicates.push({ id: u.id, title: u.title }); continue; }
+      if (byTitle && known.has(key)) { duplicates.push({ id: u.id, title: u.title }); continue; }
       Object.assign(fm, { from_uc: u.uc || null, status: 'open', created: new Date().toISOString().replace(/\.\d+Z$/, 'Z') });
     }
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -253,7 +253,8 @@ function main(argv) {
     if (!file || !fs.existsSync(file)) throw new Fail(`レビューの結果が無い: ${file}`, 2);
     const point = path.basename(path.dirname(path.dirname(path.resolve(file)))) || 'review';
     const sub = reviewToHandoff(fs.readFileSync(file, 'utf8'), opt.target, point);
-    return { out: { ok: true, ...fileDrafts(file, sub, opt) }, code: 0 };
+    // レビューの指摘は 1 件ずつ別の課題 (切り詰めた題名が同じでも重ねない。同じ回の 2 度目は名前で重ねない)
+    return { out: { ok: true, ...fileDrafts(file, sub, { ...opt, byTitle: false }) }, code: 0 };
   }
   const data = load(file);
   if (opt.findings) {

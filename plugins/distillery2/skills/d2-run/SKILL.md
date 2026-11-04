@@ -186,7 +186,7 @@ design は config も契約も読まないので、契約の骨格の直後に�
 
 ## ④ UC の縦切り
 
-`<run>` = `.distillery/runs/<slug>`。`<base_head>` = `runState.js status <run>` の `base_head` (有効な分岐元。写し直した後は写し直した先の main)。新しい UC は branch を切る前に機能の最初の点検 (routing.md「機能の最初の点検」) を行い、上流の課題が無ければ `git switch -c feature/<slug>` (git-delivery.md「UC branch の開始と再開」2) → `node runState.js open . <slug>` → `branch_started` の追記 → `models_resolved` の記録、の順に行う (run のイベントは open の後に書く)。再開は `node runState.js status <run>` で次の段階を決める。
+`<run>` = `.distillery/runs/<slug>`。`runState.js status` の `deferred_issues` (巻き戻さずに先送りした課題で、その段がまだ done でないもの) は、その段の派遣文に添える。`<base_head>` = `runState.js status <run>` の `base_head` (有効な分岐元。写し直した後は写し直した先の main)。新しい UC は branch を切る前に機能の最初の点検 (routing.md「機能の最初の点検」) を行い、上流の課題が無ければ `git switch -c feature/<slug>` (git-delivery.md「UC branch の開始と再開」2) → `node runState.js open . <slug>` → `branch_started` の追記 → `models_resolved` の記録、の順に行う (run のイベントは open の後に書く)。再開は `node runState.js status <run>` で次の段階を決める。
 開いた直後に、起動シーケンス 2 で解決したモデル名を記録する (as-built の生成情報とトークン集計で「どのモデルで実行したか」を示すため)。再開時は、run の `models_resolved` に同じ ID が記録済みなら記録しない (別名しか無いときだけ解決済みの ID で記録し直す)。
 ただし squash 済みで main マージの done が無い再開 (`merge=hold` で止めた後など) では、記録を main マージの 6 まで遅らせ、main マージの done と同じ commit に含める
 (追跡ファイルの `events.jsonl` が変わると feature が clean でなくなり、main へ取り込めない):

@@ -531,7 +531,9 @@ function status(runDir) {
   const last = events[events.length - 1] || null;
   const rewinds = events.filter(e => e.type === 'rewound' || e.type === 'returned_to_integrate').length;
   const paused = pausedEvent(events);
-  return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, legacy_order: legacy, events: events.length, last_event: last, pending_feedback: pendingFeedback(runDir), filed_issues: filedIssues(runDir), unfiled_issues: unfiledIssues(runDir), rewinds, rewind_limit: MAX_REWINDS, base_head: effectiveBaseHead(events), paused: Boolean(paused), paused_issues: blockedIssues(paused), resumes: events.filter(e => e.type === 'resumed_after_upstream').length, resume_limit: MAX_RESUMES };
+  // 巻き戻さずに先送りした課題 (rewind_deferred) のうち、その段がまだ done でないもの。その段の派遣文に添える
+  const deferred = events.filter(e => e.type === 'rewind_deferred' && !isDone(runDir, e.stage)).map(e => ({ stage: e.stage, to: e.to, issues: e.issues || [] }));
+  return { run_dir: runDir, slug: (events[0] && events[0].slug) || path.basename(runDir), attempt: currentAttempt(runDir), stages, next_stage: next, legacy_order: legacy, events: events.length, last_event: last, pending_feedback: pendingFeedback(runDir), filed_issues: filedIssues(runDir), unfiled_issues: unfiledIssues(runDir), rewinds, rewind_limit: MAX_REWINDS, base_head: effectiveBaseHead(events), paused: Boolean(paused), paused_issues: blockedIssues(paused), resumes: events.filter(e => e.type === 'resumed_after_upstream').length, resume_limit: MAX_RESUMES, deferred_issues: deferred };
 }
 
 /** event / done の data。argv の JSON か `--data-file <f>` (排他。長い日本語の JSON を argv で渡すとハーネスの検査で止まる。0.1.32 O18) */

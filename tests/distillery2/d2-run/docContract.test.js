@@ -283,7 +283,7 @@ test('0.1.28: main マージ: gates.json が無ければ全段を 1 回通す。
 test('0.1.28 / 0.2.0: 決定の差分: 結果ファイルで分岐し、reason_kind plugin は reclassify で kind: plugin に (止めない)、scope は人に返す。plugin の課題は自動選択のきっかけにしない', () => {
   const dd = routingSection('### 決定の差分');
   assert.match(dd, /`reason_kind: plugin` は「プラグインの不具合」\(理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` でプラグインへ持ち帰る課題にする\)/);
-  assert.match(dd, /`reason_kind: scope` は人に返す \(推奨: 戻し先を基盤にする\)/);
+  assert.match(dd, /`reason_kind: scope` は auto なら人に返し \(推奨: 戻し先を基盤にする\)、recommend なら推奨どおり課題の `target_step` を `foundation` に書き換え/);
   const put = section(SKILL, '## 課題ファイル', '## 完了報告');
   assert.match(put, /`kind: plugin` \(プラグインへ持ち帰る課題\): 自動選択のきっかけにしない。distillery2 を直した後に人が `git rm` して commit する/);
   const done = section(SKILL, '## 完了報告', '## 参照');
@@ -919,7 +919,7 @@ test('0.3.0: 機能の最初の点検 (precheck) を branch を切る前に main
   const p = routingSection('## 機能の最初の点検');
   assert.match(p, /sub `d2-implement mode=precheck` を\*\*同じメッセージで並列派遣\*\*する \(派遣表「④ precheck」。`\{handoff\}` は `\.distillery\/logs\/precheck-<slug>\/<tier>\.handoff\.json`\)/);
   assert.match(p, /`git status --porcelain` が派遣の前と同じ \(追跡ファイルを書いていない\)/);
-  assert.match(p, /上流の課題が 0 件なら[^\n]*④ の branch を切る/);
+  assert.match(p, /上流の課題が 0 件なら ④ の branch を切って run を開き、2 の問いを記録してから/);
   assert.match(p, /`upstream\/<1 件目の課題の id>` を切り[^\n]*`<H> file-drafts <写し> --root \.`[\s\S]*`precheck\(<slug>\): issues` で commit/);
   assert.match(read(SKILL), /新しい UC は branch を切る前に機能の最初の点検 \(routing\.md「機能の最初の点検」\) を行い/);
   const pre = read('skills/d2-implement/references/precheck.md');
