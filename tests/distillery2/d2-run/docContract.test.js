@@ -930,7 +930,7 @@ test('0.3.0: 機能の最初の点検 (precheck) を branch を切る前に main
   assert.match(read(SKILL), /新しい UC は branch を切る前に機能の最初の点検 \(routing\.md「機能の最初の点検」\) を行い/);
   const pre = read('skills/d2-implement/references/precheck.md');
   assert.match(pre, /\*\*1 件見つけたら、残りもすべて洗い出して同じファイルに書く\*\*/);
-  assert.match(pre, /戻し先は `requirements` \/ `decide` \/ `foundation` だけ/);
+  assert.match(pre, /戻し先は `requirements` \/ `decide` \/ `foundation` と、distillery2 の側の不具合の `plugin` \(8\) だけ/);
   assert.match(row(read(TEMPLATE), /^\| ④ precheck \(ティアごと並列\) \|/), /`distillery2:d2-implement` `mode=precheck uc=<slug> tier=<tier>`/);
 });
 
