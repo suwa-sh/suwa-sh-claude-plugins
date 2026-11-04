@@ -28,7 +28,7 @@ test('installTierPackages: ADR の tiers[].packages のうち、まだ無いも�
   const r = run({ cwd: root, adr: 'docs/adr', dryRun: true, npm: 'npm' });
   assert.deepEqual(r.installed, [{ tier: 'backend-api', dir: 'apps/backend-api', packages: ['express', 'jose'], dev_packages: ['@types/express'] }], '既にある pg は入れない');
   assert.deepEqual(r.skipped, ['frontend']);
-  assert.deepEqual(plan(root, [{ id: 'x', dir: 'apps/none', packages: ['a'] }]), [], 'package.json の無いティアは飛ばす');
+
 });
 
 test('validateAdr: tiers[].packages / dev_packages は npm のパッケージ名の配列 (版の指定は誤り)', () => {
@@ -37,4 +37,12 @@ test('validateAdr: tiers[].packages / dev_packages は npm のパッケージ名
   assert.deepEqual(tierStructureErrors([{ file: 'a.md', fm: fm(undefined) }]), [], '無いのは検証で落とさない (手順書で必須にする)');
   assert.ok(tierStructureErrors([{ file: 'a.md', fm: fm(['express@5']) }]).some((e) => /express@5/.test(e.message)));
   assert.ok(tierStructureErrors([{ file: 'a.md', fm: fm('express') }]).some((e) => /配列/.test(e.message)));
+});
+
+test('installTierPackages: dir は骨格と同じく apps/ を外して apps/<dir> に解決し、入れるものがあるのに package.json が無ければ失敗する', () => {
+  const root = repo();
+  assert.deepEqual(plan(root, [{ id: 'b', dir: 'backend-api', packages: ['hono'] }]).map((s) => s.dir), ['apps/backend-api']);
+  assert.deepEqual(plan(root, [{ id: 'backend-api', packages: ['hono'] }]).map((s) => s.dir), ['apps/backend-api'], 'dir が無ければ id');
+  assert.throws(() => plan(root, [{ id: 'x', dir: 'apps/none', packages: ['a'] }]), /apps\/none\/package\.json が無い/);
+  assert.deepEqual(plan(root, [{ id: 'x', dir: 'apps/none', packages: [] }]), [], '入れるものが無ければ飛ばす');
 });

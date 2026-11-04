@@ -14,7 +14,10 @@ test('API ドライバ: createTestApp({ db, clock }) の戻り (app か Promise<
   assert.match(api, /this\.app = Promise\.resolve\(createTestApp\(deps\)\)/);
   assert.match(api, /request\(await this\.app\)/);
   assert.match(api, /test-headers\.json/);
-  assert.match(api, /\{ \.\.\.this\.testHeaders, \.\.\.scenarioHeaders\(\), \.\.\.headers \}/, '既定 → トレース → 呼び出し元の順');
+  assert.match(api, /mergeHeaders\(\s*contractTestHeaders\(this\.testHeaders, method, path\),\s*scenarioHeaders\(\),\s*headers,\s*\)/, '契約 → トレース → 呼び出し元の順');
+  assert.match(api, /out\[k\.toLowerCase\(\)\] = v/, 'ヘッダ名の大文字小文字をそろえて重ねる');
+  assert.match(api, /replace\(\/\\\{uuid\\\}\/g, \(\) => randomUUID\(\)\)/, '{uuid} は送るたびに新しい UUID');
+  assert.match(api, /op\.method === method\.toUpperCase\(\) && matchesPath\(op\.path, reqPath\)/, 'operation ごとのヘッダ');
   assert.match(api, /if \(v !== ''\) req = req\.set\(k, v\)/, '空文字のヘッダは送らない');
 });
 

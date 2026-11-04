@@ -161,9 +161,13 @@ test('生成物が tsc --strict でコンパイルできる (allOf / additionalP
   assert.ok(!client.includes('args.["book-id"]'), 'args.["book-id"] は構文エラー');
 });
 
-test('test-headers.json: 文書直下の x-test-headers を値を文字列にして書き出す (API ドライバが既定のヘッダに使う。0.3.0)', () => {
+test('test-headers.json: 文書直下と operation ごとの x-test-headers を値を文字列にして書き出す (API ドライバが既定のヘッダに使う。0.3.0)', () => {
   const { buildFiles } = require(path.join(SCRIPTS, 'genApiClient.js'));
-  const bundle = { openapi: '3.1.0', info: { title: 't', version: '1' }, paths: {}, 'x-test-headers': { 'X-B': 1, Authorization: 'Bearer test-x' } };
+  const bundle = { openapi: '3.1.0', info: { title: 't', version: '1' }, 'x-test-headers': { 'X-B': 1, Authorization: 'Bearer test-x' },
+    paths: { '/rooms/{roomId}': { post: { operationId: 'reserve', responses: { 201: { description: 'ok' } }, 'x-test-headers': { 'Idempotency-Key': '{uuid}' } } }, '/rooms': { get: { operationId: 'list', responses: { 200: { description: 'ok' } } } } } };
   const files = buildFiles({ bundle, contract: { id: 'api' }, head: '// h' });
-  assert.equal(files.get('packages/contracts/api/test-headers.json'), JSON.stringify({ Authorization: 'Bearer test-x', 'X-B': '1' }, null, 2) + '\n');
+  assert.deepEqual(JSON.parse(files.get('packages/contracts/api/test-headers.json')), {
+    default: { Authorization: 'Bearer test-x', 'X-B': '1' },
+    operations: [{ method: 'POST', path: '/rooms/{roomId}', headers: { 'Idempotency-Key': '{uuid}' } }],
+  }, '文書直下と operation ごと (operation のヘッダが無いものは載せない)');
 });

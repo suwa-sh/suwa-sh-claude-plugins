@@ -40,9 +40,13 @@ const names = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' &
 function plan(cwd, tiers) {
   const out = [];
   for (const t of tiers) {
-    const dir = t.dir || `apps/${t.id}`;
+    // 骨格 (genSkeleton) と同じ解決: dir の先頭の apps/ を外して apps/<dir> (dir が無ければ id)
+    const dir = `apps/${String(t.dir || t.id).replace(/^apps\//, '')}`;
     const pkgPath = path.join(cwd, dir, 'package.json');
-    if (!fs.existsSync(pkgPath)) continue;
+    if (!fs.existsSync(pkgPath)) {
+      if (names(t.packages).length || names(t.dev_packages).length) throw new Error(`${dir}/package.json が無い (ティア ${t.id} の packages を入れられない。骨格 F5 を先に回す)`);
+      continue;
+    }
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
     const have = new Set([...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.devDependencies || {})]);
     const packages = names(t.packages).filter((n) => !have.has(n));

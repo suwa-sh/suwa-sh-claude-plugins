@@ -327,11 +327,22 @@ async function parseBody(res: Response): Promise<unknown> {
 // 識別子として使える名前は `args.name`、そうでなければ `args["name"]` を組み立てる (指摘 4)。
 const argAccess = (name) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? `args.${name}` : `args[${JSON.stringify(name)}]`);
 
-/** 文書直下の x-test-headers を文字列の値だけの object にする (無ければ空) */
-function testHeaders(bundle) {
-  const h = bundle && bundle['x-test-headers'];
+/** x-test-headers を文字列の値だけの object にする (無ければ空) */
+function headerMap(h) {
   if (!h || typeof h !== 'object' || Array.isArray(h)) return {};
   return Object.fromEntries(Object.keys(h).sort().map((k) => [k, String(h[k])]));
+}
+
+/**
+ * API ドライバ向けのテスト用ヘッダ: 文書直下 (default) と operation ごと (operations。method と path の雛形)。
+ * 重ねる順は契約テストと同じ (文書直下 → operation)。値の `{uuid}` はドライバが送るたびに新しい UUID にする
+ */
+function testHeaders(bundle, index = G.operations(bundle, 'openapi')) {
+  const operations = [...index.values()]
+    .filter((e) => Object.keys(headerMap(e.operation['x-test-headers'])).length)
+    .map((e) => ({ method: e.method, path: e.path, headers: headerMap(e.operation['x-test-headers']) }))
+    .sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`));
+  return { default: headerMap(bundle && bundle['x-test-headers']), operations };
 }
 
 /**
@@ -346,7 +357,7 @@ function buildFiles({ bundle, contract, head }) {
   files.set(path.posix.join(base, 'server.ts'), `${head}\n${buildServer(index)}`);
   files.set(path.posix.join(base, 'client.ts'), `${head}\n${buildClient(bundle, index)}`);
   // 文書直下の x-test-headers (テスト用の認証ヘッダなど)。UC BDD と受入の API ドライバ (features/support/drivers/api.ts) が既定のヘッダとして付ける (0.3.0)
-  files.set(path.posix.join(base, 'test-headers.json'), `${JSON.stringify(testHeaders(bundle), null, 2)}\n`);
+  files.set(path.posix.join(base, 'test-headers.json'), `${JSON.stringify(testHeaders(bundle, index), null, 2)}\n`);
   return files;
 }
 

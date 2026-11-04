@@ -45,7 +45,10 @@ Before(async function (this: D2World, hook: ITestCaseHookParameter) {
 });
 
 After(async function (this: D2World) {
-  if (this.driver) await this.driver.teardown();
-  if (this.harness) await this.harness.stop();
+  try {
+    if (this.driver) await this.driver.teardown();
+  } finally {
+    if (this.harness) await this.harness.stop();
+  }
   exitScenario();
 });
