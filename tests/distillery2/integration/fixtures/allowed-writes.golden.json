@@ -153,6 +153,7 @@
       "`packages/ui/**`",
       "`package-lock.json`",
       "`apps/*/package.json`",
+      "`apps/*/src/styles.css`",
       "`.qlty/qlty.toml`",
       "`apps/*/test/contract/**`",
       "`packages/contracts/**`",

@@ -442,7 +442,7 @@ flowchart LR
 | 内訳 | 読む | 書く |
 |---|---|---|
 | F8 契約込みの再生成 (設定・CI・C4 図) | ADR、契約カタログ、RDRA モデル、実行設定 | 実行設定、CI、機械チェックの一括実行 (genCheck.js が config から生成。CI と hook が回す。0.3.0)、コミットのときの hook (commit-msg。genCheck.js が生成し core.hooksPath で入れる)、CI が生成物の鮮度を確かめるために取る distillery2 の commit (genCheck.js が書く)、C4 図 (決定から) |
-| F6 画面部品の取り込み | デザインシステム (Storybook アプリ) | 画面部品 |
+| F6 画面部品の取り込み | デザインシステム (Storybook アプリ) | 画面部品、リポの骨格 (package.json・apps/*・packages/*) |
 | F7 依存の導入 (F6 の後) | リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定、ADR | 依存の lockfile、qlty 設定、リポの骨格 (package.json・apps/*・packages/*) |
 | F4 契約テストの生成 (骨格分) | 契約の分割ファイル、実行設定 | 契約テスト (生成物)、契約からの codegen |
 | F9 基盤のチェックポイント | 実行設定、リポの骨格 (package.json・apps/*・packages/*)、qlty 設定、契約テスト (生成物)、依存方向の検査設定、ゲートの記録 | ゲートの記録 |
@@ -1316,7 +1316,7 @@ flowchart LR
 | Cucumber 設定 | 基盤の設定 | `cucumber.js` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F3 テスト基盤 | ゲートの実行 |
 | Cucumber の ESM ローダ (cucumber.js が読む) | 基盤の設定 | `tsx-register.js` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F3 テスト基盤 | ゲートの実行 |
 | 実行設定 | 基盤の設定 | `.distillery/config.yaml` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図) | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、F4 契約テストの生成 (骨格分)、F9 基盤のチェックポイント、機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)、テスト足場の生成、結合、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、d2-run (③)、骨格分の契約テストの鮮度 (受理時の検査)、文書の入口の更新 (③)、d2-run (④)、ゲートの実行、文書の入口の更新 (④)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)、基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除・やり直す UC の run の退避)、次に何をするかを決める (起動時の自動選択。読むだけ)、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
-| リポの骨格 (package.json・apps/*・packages/*) | 基盤の設定 | `package.json` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後) | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後)、F9 基盤のチェックポイント、ゲートの実行、qlty の提案を足す (④)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避) |
+| リポの骨格 (package.json・apps/*・packages/*) | 基盤の設定 | `package.json` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F6 画面部品の取り込み、F7 依存の導入 (F6 の後) | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後)、F9 基盤のチェックポイント、ゲートの実行、qlty の提案を足す (④)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避) |
 | 依存の lockfile | 基盤の設定 | `package-lock.json` | 生成 | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後) | 基盤の生成 (F1→F2→F3→F5→F7)、F7 依存の導入 (npm install・qlty の提案)、基盤の仕上げ (F8→F6→F7→F4→F9)、F7 依存の導入 (F6 の後)、ゲートの実行、qlty の提案を足す (④)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避) |
 | CI | 基盤の設定 | `.github/workflows/**` | 生成 (最終成果物) | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図) | — |
 | 機械チェックの一括実行 (genCheck.js が config から生成。CI と hook が回す。0.3.0) | 基盤の設定 | `scripts/check.mjs` | 生成 (最終成果物) | 基盤の生成 (F1→F2→F3→F5→F7)、F5 設定・骨格・CI・qlty、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から) | — |

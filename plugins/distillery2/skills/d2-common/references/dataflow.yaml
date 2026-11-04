@@ -242,6 +242,7 @@ stores:
     aliases:
       - "apps/*/"
       - "apps/*/package.json"
+      - "apps/*/src/styles.css"
       - "packages/*/"
       - "tsconfig.base.json"
       - ".gitignore"
@@ -678,6 +679,7 @@ processes:
       - "`packages/ui/**`"
       - "`package-lock.json`"
       - "`apps/*/package.json`"
+      - "`apps/*/src/styles.css`"
       - "`.qlty/qlty.toml`"
       - "`apps/*/test/contract/**`"
       - "`packages/contracts/**`"
@@ -705,7 +707,7 @@ processes:
     phase: F6
     scripts: [importUi.js]
     reads: [design]
-    writes: [ui]
+    writes: [ui, skeleton]
   - id: foundation.F7-after-ui
     name: F7 依存の導入 (F6 の後)
     parent: foundation.finish
