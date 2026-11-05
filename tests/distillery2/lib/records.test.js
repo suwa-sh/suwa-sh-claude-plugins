@@ -187,3 +187,49 @@ test('同じ場所の 2 回目のレビュー (別の <n>) の「指摘 1」も�
   assert.equal(JSON.parse(again.stdout).written.length, 0, '同じ結果を 2 回回したときだけ重ねる');
 });
 
+test('写し直しでレビューの置き場を退避して回の番号が 1 に戻っても、新しいレビューの指摘を古い下書きと取り違えずに下書きにする (0.3.0)', () => {
+  const root = repo();
+  const run = rs.openRun(root, 'book-room');
+  const md = path.join(run, 'reviews', 'implementation-backend', '1', 'round1.md');
+  const file = () => JSON.parse(spawnSync(process.execPath, [HANDOFF, 'file-drafts', md, '--review', '--target', 'implementation', '--run', run], { encoding: 'utf8' }).stdout);
+  w(md, ROUND);
+  assert.equal(file().written.length, 2);
+  // 写し直し: 置き場を退避する (古い下書きは issues/ に残る)
+  rs.invalidateFrom(run, 'verify', '写し直し', { reviews: true });
+  assert.ok(!fs.existsSync(md), '置き場は退避された');
+  // 写し直した後のレビューも 1/round1.md に書かれる。指摘 1・2 の番号も同じ
+  w(md, ROUND.replace('同じ時間帯の予約を二重に受け付ける', '会議室の定員を超える予約を受け付ける'));
+  const after = file();
+  assert.equal(after.written.length, 2, `新しいレビューの指摘が捨てられた: ${JSON.stringify(after)}`);
+  assert.equal(after.skipped.length, 0);
+  assert.equal(rs.unfiledIssues(run).length, 4);
+  const again = file();
+  assert.equal(again.written.length, 0, '同じ結果を 2 回回したときだけ重ねる');
+  assert.equal(again.skipped.length, 2);
+});
+
+test('レビューの結果の先頭の BOM と改行の形 (CRLF) は、指摘の読み取りと重ねの判定に効かない', () => {
+  const root = repo();
+  const run = rs.openRun(root, 'book-room');
+  const md = path.join(run, 'reviews', 'implementation-backend', '1', 'round1.md');
+  const file = () => JSON.parse(spawnSync(process.execPath, [HANDOFF, 'file-drafts', md, '--review', '--target', 'implementation', '--run', run], { encoding: 'utf8' }).stdout);
+  // BOM の直後が「### 指摘 1」(BOM を除かないと行頭に見えず 0 件になる形)
+  w(md, `\uFEFF${ROUND.slice(ROUND.indexOf('### 指摘 1'))}`);
+  assert.equal(file().written.length, 2, 'BOM 付きでも指摘を読む');
+  w(md, ROUND.slice(ROUND.indexOf('### 指摘 1')).replace(/\n/g, '\r\n'));
+  assert.equal(file().written.length, 0, '改行の形だけが違う同じ結果は重ねる');
+});
+
+test('同じ秒に同じ名前のレビューの置き場を 2 度退避しても、run の invalidated/ の中に別の名前で移す', () => {
+  const root = repo();
+  const run = rs.openRun(root, 'book-room');
+  const md = path.join(run, 'reviews', 'implementation-backend', '1', 'round1.md');
+  w(md, ROUND);
+  const a = rs.setAsideReviews(run, ['verify'], '1 度目');
+  w(md, ROUND);
+  const b = rs.setAsideReviews(run, ['verify'], '2 度目');
+  const inv = path.join(run, 'invalidated');
+  for (const p of [...a, ...b]) assert.equal(path.dirname(p), inv, `invalidated/ の外へ移した: ${p}`);
+  assert.notEqual(a[0], b[0]);
+});
+

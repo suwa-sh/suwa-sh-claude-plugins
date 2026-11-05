@@ -230,7 +230,8 @@ function setAsideAsbuiltDrafts(runDir) {
 function uniqueDest(dest) {
   if (!fs.existsSync(dest)) return dest;
   const ext = path.extname(dest);
-  const base = dest.slice(0, -ext.length);
+  // 拡張子の無い名前 (レビューの置き場のディレクトリ) では slice(0, -0) が空になり、run の外の `_2` へ移していた
+  const base = ext ? dest.slice(0, -ext.length) : dest;
   for (let i = 2; ; i++) { const d = `${base}_${i}${ext}`; if (!fs.existsSync(d)) return d; }
 }
 

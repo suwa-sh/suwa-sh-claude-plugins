@@ -18,6 +18,7 @@
  */
 'use strict';
 
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { parseYaml, stringifyYaml } = require('./lib/yaml');
@@ -265,11 +266,16 @@ function main(argv) {
     if (!opt.target || !(IN_FEATURE.has(opt.target) || UPSTREAM.has(opt.target))) throw new Fail(`--target は戻し先 (requirements / decide / foundation / scenario / contract / implementation): ${opt.target}`, 2);
     if (!file || !fs.existsSync(file)) throw new Fail(`レビューの結果が無い: ${file}`, 2);
     const point = path.basename(path.dirname(path.dirname(path.resolve(file)))) || 'review';
-    const sub = reviewToHandoff(fs.readFileSync(file, 'utf8'), opt.target, point);
+    // 先頭の BOM を除き改行を LF にそろえてから読む (BOM があると「### 指摘」が行頭に見えず 0 件になる。改行だけ違う同じ結果を別の hash にしない)
+    const text = fs.readFileSync(file, 'utf8').replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+    const sub = reviewToHandoff(text, opt.target, point);
     // レビューの指摘は 1 件ずつ別の課題 (切り詰めた題名が同じでも重ねない。同じ回の 2 度目は名前で重ねない)
-    // 名前に場所・回・ラウンドを入れる (同じ場所の 2 回目のレビューの「指摘 1」を 1 回目のものと取り違えない)
+    // 名前に場所・回・ラウンドと、結果の中身の短い hash を入れる (同じ場所の 2 回目のレビューの「指摘 1」を 1 回目のものと取り違えない)。
+    // 写し直しはレビューの置き場を退避するので回の番号が 1 に戻り、古い下書きは issues/ に残る。中身の hash が無いと、
+    // 新しいレビューの下書きが古い下書きと同じ名前になって黙って捨てられた (会議室の予約の実地確認。0.3.0)
     const abs = path.resolve(file);
-    const baseName = `${path.basename(path.dirname(path.dirname(abs)))}-${path.basename(path.dirname(abs))}-${path.basename(abs, '.md')}`;
+    const digest = crypto.createHash('sha256').update(text).digest('hex').slice(0, 8);
+    const baseName = `${path.basename(path.dirname(path.dirname(abs)))}-${path.basename(path.dirname(abs))}-${path.basename(abs, '.md')}-${digest}`;
     return { out: { ok: true, ...fileDrafts(file, sub, { ...opt, byTitle: false, baseName }) }, code: 0 };
   }
   const data = load(file);
