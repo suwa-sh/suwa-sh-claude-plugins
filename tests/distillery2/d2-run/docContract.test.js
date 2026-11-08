@@ -1017,6 +1017,7 @@ test('前のステップの課題にする線は引き継ぎの約束の 1 か�
   assert.match(h, /^## 前のステップの課題にする線 \(正本/m);
   assert.match(h, /\*\*食い違う\*\*/);
   assert.match(h, /\*\*後の機能と食い違う\*\*/);
+  assert.match(h, /\*\*方式が決まっていない\*\*/);
   assert.match(h, /検証役は前提の判定 \(`spec_absent` \/ `unlisted`。人レビューの入口\) に留める/);
   const ref = /handoff\.md` の「前のステップの課題にする線」/;
   assert.match(read('skills/d2-implement/references/precheck.md'), ref);
@@ -1027,5 +1028,18 @@ test('前のステップの課題にする線は引き継ぎの約束の 1 か�
   assert.doesNotMatch(read('skills/d2-implement/references/precheck.md'), /課題にするのは、決めないと後の UC と食い違うものだけ/);
   // 点検役はすでにある部品と骨格の振る舞いも見る
   assert.match(read('skills/d2-implement/references/precheck.md'), /すでにある画面部品と契約の骨格が、受入基準どおりに振る舞うか/);
+  // 検証役は前提の判定に留めるが、線の 2・3 に当たる前提は課題にも書く (一律に除かない)
+  assert.match(read('skills/d2-verify/references/viewpoints.md'), /線の 2 か 3 \(後の機能と食い違う・方式が決まっていない\) に当たるときだけ `upstream_issues` にも書く/);
+  assert.match(read('skills/d2-verify/SKILL.md'), /線の 2 か 3 \(後の機能と食い違う・方式が決まっていない\) に当たれば書く/);
+  assert.doesNotMatch(read('skills/d2-verify/references/viewpoints.md'), /同じことを `upstream_issues` に重ねない/);
+  // 正本を読む範囲に入れる (read-set に無いものは読まない、と衝突しない)
+  assert.match(read('skills/d2-implement/SKILL.md'), /共通の規約:.*d2-common\/references\/handoff\.md/);
+  assert.match(read('skills/d2-implement/SKILL.md'), /read-set に無いもの \(上の共通の規約を除く\) は読まない/);
+  assert.match(read('skills/d2-implement/references/precheck.md'), /- 手順書: `<skills>\/d2-common\/references\/handoff\.md`/);
+  assert.match(read('skills/d2-verify/SKILL.md'), /前のステップの課題にする線の正本は\n\[\.\.\/d2-common\/references\/handoff\.md\]/);
+  // 線の 3 条件の見出しは正本の 1 か所だけ (写しを置かない)
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.md') ? [path.join(d, e.name)] : []);
+  const copies = walk(path.join(PLUGIN, 'skills')).filter((p) => /\*\*(後の機能と食い違う|方式が決まっていない)\*\*/.test(fs.readFileSync(p, 'utf8')));
+  assert.deepEqual(copies.map((p) => path.relative(PLUGIN, p)), ['skills/d2-common/references/handoff.md']);
 });
 

@@ -15,7 +15,8 @@ description: >-
 引数: `uc=<slug> tier=<tier_id> attempt=<n> run=<.distillery/runs/<slug> へのパス> assumptions=<attempt-<n>/assumptions.<tier>.yaml へのパス>`
 
 観点の正本は [references/viewpoints.md](references/viewpoints.md)。前提の正本は
-[../d2-common/references/assumption-record.md](../d2-common/references/assumption-record.md)。
+[../d2-common/references/assumption-record.md](../d2-common/references/assumption-record.md)。前のステップの課題にする線の正本は
+[../d2-common/references/handoff.md](../d2-common/references/handoff.md) の「前のステップの課題にする線」(read-set の外だが、手順書として読む)。
 
 ## 読んでよいもの (read-set)
 
@@ -57,4 +58,4 @@ description: >-
 - 「動くように仕様と違うことをしている」は `contradicts` で blocker。仕様側が間違っていると思っても Verifier は仕様側に立つ
   (仕様の問題は findings の `upstream_issues` に戻し先付きで書く。進行役が振り分ける)
 - `upstream_issues` に書くのは `<skills>/d2-common/references/handoff.md` の「前のステップの課題にする線」に当たるものだけ。
-  線に当たらない仕様の空白 (実装者が決めた前提・黙った判断) は前提の判定 (`spec_absent` / `unlisted`) に留め、`upstream_issues` に書かない (人レビューの入口で扱う。点検役と同じ線で、写し直しを増やさない。0.3.0)
+  `spec_absent` / `unlisted` の前提でも、線の 2 か 3 (後の機能と食い違う・方式が決まっていない) に当たれば書く。線に当たらない仕様の空白 (実装者が決めた前提・黙った判断) は前提の判定 (`spec_absent` / `unlisted`) に留め、`upstream_issues` に書かない (人レビューの入口で扱う。点検役と同じ線で、写し直しを増やさない。0.3.0)

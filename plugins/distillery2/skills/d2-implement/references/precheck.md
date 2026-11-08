@@ -11,6 +11,7 @@
 - `docs/requirements/use-cases.yaml` の UC の行 (`spec_ids`・`tiers_hint`)、`docs/requirements/requirements.yaml` の該当する仕様と受入基準、`docs/requirements/rdra/**` (情報・状態・条件)
 - `docs/adr/*.md` (決定と front matter の rules)、`docs/rules/**` (開発ルール)
 - `contracts/**` (骨格: 共通のコンポーネント・エラーの型・既にある operation)
+- 手順書: `<skills>/d2-common/references/handoff.md` (引き継ぎファイルの書き方と「前のステップの課題にする線」)
 - 画面を持つティアなら `docs/design/screens.yaml` と `packages/ui/**`
 
 ## 書くもの (write-set)

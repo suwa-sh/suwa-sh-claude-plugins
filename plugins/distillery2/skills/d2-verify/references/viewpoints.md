@@ -118,7 +118,7 @@ upstream_issues:                 # 前のステップの問題 (要求・決定�
 ```
 
 `asks` と `upstream_issues` の書き方は `<skills>/d2-common/references/handoff.md` (検証役は findings 以外を書けないので、引き継ぎファイルの代わりに findings に持つ)。
-`upstream_issues` は handoff.md の「前のステップの課題にする線」に当たるものだけ。`spec_absent` / `unlisted` の前提は verdict と finding に留め、同じことを `upstream_issues` に重ねない。
+`upstream_issues` は handoff.md の「前のステップの課題にする線」に当たるものだけ。`spec_absent` / `unlisted` の前提は、線の 2 か 3 (後の機能と食い違う・方式が決まっていない) に当たるときだけ `upstream_issues` にも書く。当たらなければ verdict と finding に留める。
 
 ## severity の目安
 
