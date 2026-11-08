@@ -38,7 +38,7 @@ v1 (distillery-impl:dist-impl-implement) からの変更点:
 1. `.distillery/config.yaml` を読み、UC の slug から `docs/requirements/use-cases.yaml` の行を引く (業務名・spec_ids・tiers)
 2. 該当 mode の固定指示ファイルを**最初に全部読む**。read-set に無いものは読まない
 3. 固定指示どおりに作業し、完了条件を自分で確かめる (スクリプトの exit code で判定する。出力の目視で pass にしない)
-4. 仕様に無いことを決めたら AssumptionRecord に (tier)、仕様と両立しない事実は引き継ぎファイルの `upstream_issues` に (課題のファイルは直接書かない。進行役が引き継ぎファイルから下書きにする)
+4. 仕様に無いことを決めたら AssumptionRecord に (tier)、仕様と両立しない事実は引き継ぎファイルの `upstream_issues` に (線は `<skills>/d2-common/references/handoff.md` の「前のステップの課題にする線」。課題のファイルは直接書かない。進行役が引き継ぎファイルから下書きにする)
 5. 報告: 生成・更新したファイル一覧、完了条件の結果、AssumptionRecord の件数と sha256 (tier)、引き継ぎファイルに書いた課題
 
 ## 禁止

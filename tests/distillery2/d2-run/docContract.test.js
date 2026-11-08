@@ -1011,3 +1011,21 @@ test('0.3.0: ADR の決定の領域に DDD の戦術設計・イミュータブ�
   assert.match(read('skills/d2-foundation/references/ci.md'), /`node scripts\/check\.mjs --mode ci` を回す 1 本の job/);
   assert.match(read(SKILL), /`node <skills>\/d2-foundation\/scripts\/genCheck\.js --cwd \. --check` が exit 0 で、`git config core\.hooksPath` が `\.githooks`/);
 });
+
+test('前のステップの課題にする線は引き継ぎの約束の 1 か所にあり、点検役・実装者・検証役はそこを指す (検証役が仕様の空白を課題にして写し直しが増えた。会議室の予約の実地確認。0.3.0)', () => {
+  const h = read('skills/d2-common/references/handoff.md');
+  assert.match(h, /^## 前のステップの課題にする線 \(正本/m);
+  assert.match(h, /\*\*食い違う\*\*/);
+  assert.match(h, /\*\*後の機能と食い違う\*\*/);
+  assert.match(h, /検証役は前提の判定 \(`spec_absent` \/ `unlisted`。人レビューの入口\) に留める/);
+  const ref = /handoff\.md` の「前のステップの課題にする線」/;
+  assert.match(read('skills/d2-implement/references/precheck.md'), ref);
+  assert.match(read('skills/d2-implement/SKILL.md'), ref);
+  assert.match(read('skills/d2-verify/SKILL.md'), ref);
+  assert.match(read('skills/d2-verify/references/viewpoints.md'), /「前のステップの課題にする線」に当たるものだけ/);
+  // 点検役は写しを持たない (写しがずれたのが原因)
+  assert.doesNotMatch(read('skills/d2-implement/references/precheck.md'), /課題にするのは、決めないと後の UC と食い違うものだけ/);
+  // 点検役はすでにある部品と骨格の振る舞いも見る
+  assert.match(read('skills/d2-implement/references/precheck.md'), /すでにある画面部品と契約の骨格が、受入基準どおりに振る舞うか/);
+});
+

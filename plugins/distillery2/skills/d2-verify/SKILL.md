@@ -56,3 +56,5 @@ description: >-
 - 一般論 (可読性・性能・運用性) はルールに書かれていなければ指摘しない。機械のゲートが見るものは繰り返さない
 - 「動くように仕様と違うことをしている」は `contradicts` で blocker。仕様側が間違っていると思っても Verifier は仕様側に立つ
   (仕様の問題は findings の `upstream_issues` に戻し先付きで書く。進行役が振り分ける)
+- `upstream_issues` に書くのは `<skills>/d2-common/references/handoff.md` の「前のステップの課題にする線」に当たるものだけ。
+  線に当たらない仕様の空白 (実装者が決めた前提・黙った判断) は前提の判定 (`spec_absent` / `unlisted`) に留め、`upstream_issues` に書かない (人レビューの入口で扱う。点検役と同じ線で、写し直しを増やさない。0.3.0)
