@@ -1028,9 +1028,10 @@ test('前のステップの課題にする線は引き継ぎの約束の 1 か�
   assert.doesNotMatch(read('skills/d2-implement/references/precheck.md'), /課題にするのは、決めないと後の UC と食い違うものだけ/);
   // 点検役はすでにある部品と骨格の振る舞いも見る
   assert.match(read('skills/d2-implement/references/precheck.md'), /すでにある画面部品と契約の骨格が、受入基準どおりに振る舞うか/);
-  // 検証役は前提の判定に留めるが、線の 2・3 に当たる前提は課題にも書く (一律に除かない)
-  assert.match(read('skills/d2-verify/references/viewpoints.md'), /線の 2 か 3 \(後の機能と食い違う・方式が決まっていない\) に当たるときだけ `upstream_issues` にも書く/);
-  assert.match(read('skills/d2-verify/SKILL.md'), /線の 2 か 3 \(後の機能と食い違う・方式が決まっていない\) に当たれば書く/);
+  // 検証役は前提の判定に留めるが、線のどれかに当たる前提は課題にも書く (一律に除かない。2・3 だけに絞らない)
+  assert.doesNotMatch(read('skills/d2-verify/SKILL.md') + read('skills/d2-verify/references/viewpoints.md'), /線の 2 か 3/);
+  assert.match(read('skills/d2-verify/references/viewpoints.md'), /線の 1〜3 のどれか \(業務の値の欠けを含む\) に当たるときだけ `upstream_issues` にも書く/);
+  assert.match(read('skills/d2-verify/SKILL.md'), /線の 1〜3 のどれか \(業務の値の欠けを含む\) に当たれば書く/);
   assert.doesNotMatch(read('skills/d2-verify/references/viewpoints.md'), /同じことを `upstream_issues` に重ねない/);
   // 正本を読む範囲に入れる (read-set に無いものは読まない、と衝突しない)
   assert.match(read('skills/d2-implement/SKILL.md'), /共通の規約:.*d2-common\/references\/handoff\.md/);
