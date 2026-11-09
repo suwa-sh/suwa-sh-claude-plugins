@@ -314,12 +314,15 @@ function rewind(runDir, target, { issue = null, issues = null, reason = '', over
   return { rewound: target, stage, attempt, invalidated, consumed: consumed[0] || null, consumed_all: consumed, rewinds: count + 1, limit: MAX_REWINDS };
 }
 
-/** attempt を開く。印のファイル attempt.json を置く (git は空のディレクトリを追跡しないので、印が無いと次の commit に残らない) */
+/**
+ * attempt を開く。印のファイル attempt.json を置く (git は空のディレクトリを追跡しないので、印が無いと次の commit に残らない)。
+ * 字下げ付きで書く: 1 行の JSON は biome の整形の検査で落ち、巻き戻しのたびに static ゲートが止まった (0.3.0 の実地確認)
+ */
 function attemptDir(runDir, n) {
   const dir = path.join(runDir, `attempt-${n}`);
   fs.mkdirSync(dir, { recursive: true });
   const mark = path.join(dir, 'attempt.json');
-  if (!fs.existsSync(mark)) fs.writeFileSync(mark, JSON.stringify({ attempt: n, opened_at: nowIso() }) + '\n');
+  if (!fs.existsSync(mark)) fs.writeFileSync(mark, JSON.stringify({ attempt: n, opened_at: nowIso() }, null, 2) + '\n');
   return dir;
 }
 

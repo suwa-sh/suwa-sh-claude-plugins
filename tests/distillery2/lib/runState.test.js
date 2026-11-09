@@ -27,6 +27,8 @@ test('open, events, done, status, invalidate, attempts', () => {
 
   rs.attemptDir(dir, 2);
   assert.equal(rs.currentAttempt(dir), 2);
+  const mark = fs.readFileSync(path.join(dir, 'attempt-2', 'attempt.json'), 'utf8');
+  assert.match(mark, /^\{\n {2}"attempt": 2,\n {2}"opened_at": "[^"]+"\n\}\n$/, '印は字下げ付きで書く (1 行の JSON は生成するリポの整形の検査で落ち、巻き戻しのたびに static ゲートが止まる)');
 
   const moved = rs.invalidate(dir, 'scenario', 'requirements changed');
   assert.ok(fs.existsSync(moved));

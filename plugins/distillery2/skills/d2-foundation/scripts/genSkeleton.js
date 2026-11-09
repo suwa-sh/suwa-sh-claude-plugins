@@ -138,7 +138,9 @@ function existingBiomeVersion(cwd) {
 // フォルダは `!` で書く: `!!packages/contracts` は biome 2.2.5 でフォルダを外さない (0.3.0 の実地確認で実測。`!packages/contracts` は外し、明示したパスも無視する)。
 // 末尾に `/**` を付けない: biome 2.2.0 以降の既定の規則 useBiomeIgnoreFolder が `!**/test/contract/**` を違反にし、
 // qlty の quality ゲートで ③ のチェックポイントが落ちる (0.1.22 の試し運転で実測。https://biomejs.dev/linter/rules/use-biome-ignore-folder/)
-const BIOME_FILES_INCLUDES = ['**', '!packages/contracts', '!contracts/generated', '!docs', '!**/test/contract', '!scripts/check.mjs', '!.dependency-cruiser.cjs'];
+// - .distillery: distillery2 のスクリプトと担当が書く記録 (run の印・引き継ぎの写し)。qlty も外している。整形の対象にすると、
+//   スクリプトが書いた 1 行の JSON で static ゲートが止まる (0.3.0 の実地確認で 2 回。`!.distillery` で外れることは biome 2.2.5 で実測)
+const BIOME_FILES_INCLUDES = ['**', '!packages/contracts', '!contracts/generated', '!docs', '!**/test/contract', '!scripts/check.mjs', '!.dependency-cruiser.cjs', '!.distillery'];
 // 前の版が書いた除外。migrate で上の形に置き換える (0.1.15〜0.1.22 の `/**` 付き、0.1.23〜0.2.0 の `!!`)
 const LEGACY_BIOME_INCLUDES = {
   '!**/test/contract/**': '!**/test/contract',
