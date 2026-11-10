@@ -211,6 +211,27 @@ function opts(repo) { return { cwd: repo.dir, run: repo.runDir, config: '.distil
 
 // --- テスト ------------------------------------------------------------------
 
+test('推奨案を採った承認 (by: recommended) は「人が承認」と書かない', () => {
+  const repo = buildRepo();
+  const ev = EVENTS.replace('{"id":"A-001","decision":"confirmed"}', '{"id":"A-001","decision":"confirmed","by":"recommended"}');
+  assert.notEqual(ev, EVENTS);
+  W(repo.dir, '.distillery/runs/register-loan/events.jsonl', ev);
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /推奨案で承認した前提 \(1\)/);
+  assert.match(md, /推奨案で承認 1/);
+  assert.doesNotMatch(md, /人が承認/);
+  // 前提ごとの by が無ければ、イベントの by を使う
+  const ev2 = EVENTS.replace('"type":"review_approved"', '"type":"review_approved","by":"recommended"');
+  assert.notEqual(ev2, EVENTS);
+  W(repo.dir, '.distillery/runs/register-loan/events.jsonl', ev2);
+  run(opts(repo));
+  const md2 = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md2, /推奨案で承認した前提 \(1\)/);
+  assert.match(md2, /自動承認した前提 \(1\)/);
+  assert.doesNotMatch(md2, /人が承認/);
+});
+
 test('index.md は読者の問いの順の節と、名前付きの要約ブロック 3 つを持つ', () => {
   const repo = buildRepo();
   run(opts(repo));

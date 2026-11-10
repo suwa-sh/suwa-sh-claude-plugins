@@ -257,7 +257,7 @@ red baseline は関与する全ティアが落ちなければ成立しない (un
    - 「要求を直す」があれば `issues/` に下書き (`target_step: requirements`) を書き、routing.md「上流で止めるとき」の手順で止める
      (review は done にしない。要求の差分が課題を反映した後、写し直して scenario から続ける)
    - 承認なら、全ティアの `record` / `verdicts` を再実行して hash が一致することを確認してから
-     `review_approved {assumption_decisions[], assumption_evidence_sha256, gates_result, head}` を記録する (`head` は承認した時点の `git rev-parse HEAD`。main マージ 1 の人の修正の判定に使う)。不一致なら承認を記録せず verify から再実行
+     `review_approved {assumption_decisions[], assumption_evidence_sha256, gates_result, head}` を記録する (`head` は承認した時点の `git rev-parse HEAD`。main マージ 1 の人の修正の判定に使う。`assumption_decisions` の承認 (`decision: confirmed`) には `by: human | recommended` を付ける: 人が答えたら `human`、推奨で進めるモードで推奨案を採ったら `recommended`。実装の記録がこの値で「人が承認」と「推奨案で承認」を書き分ける)。不一致なら承認を記録せず verify から再実行
 5. 回答は `events.jsonl` と決めたことの記録 (`decisionLog.js add --run <run> --page page:review:...`) に記録する (review-notes ファイルは持たない)
 
 ## main マージ (deliver 段階)
