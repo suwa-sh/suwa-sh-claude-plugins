@@ -31,10 +31,10 @@ d2-run が作る**すべての commit** (簿記の commit `impl(<slug>): <stage>
 2. `use-cases.yaml` の `slug` で `git switch -c feature/<slug>`。作成直後に `runState.js open` で run を開き、その直後に `events.jsonl` へ
    `branch_started {base_branch, base_head, feature_branch}` を追記する (`models_resolved` はその後。d2-run SKILL.md ④ 冒頭。0.1.34 Q11)
 3. 再開時 (main マージの done が無い) は `branch_started` の `feature_branch` と現在 branch が一致することを確認する。違う branch なら
-   clean のときだけ switch。`base_head` が HEAD の祖先でなければ停止する。
+   clean のときだけ switch。`base_head` (`runState.js status` の `base_head`。写し直した後は写し直した先の main) が HEAD の祖先でなければ停止する。
    main マージ 1 の 2 で止まった後に人が feature に足した commit (UC と無関係な static の落ちの修正。d2-run SKILL.md main マージ 1) も件名は `impl(<slug>): ` なので件名の検査を通り、squash で UC の 1 commit に入る (0.1.32 実走 P1)
-4. main マージの done がある UC は終わっている (feature は main マージの最後に消す。残っていれば起動時の自動選択 2 が片付ける)。remote `origin` があり `origin/main..main` に commit があれば、
-   何より先に `git push origin main` をやり直す (d2-run SKILL.md の自動選択の 3。main マージ・上流の差分のどれの後でも同じ)
+4. main マージの done がある UC は終わっている (feature は main マージの最後に消す。残っていれば起動時の自動選択の `cleanup` が片付ける)。remote `origin` があり `origin/main..main` に commit があれば、
+   自動選択の `push` が `git push origin main` をやり直す (main マージ・上流の差分のどれの後でも同じ)
 
 ## 段階ごとの commit
 
@@ -42,7 +42,7 @@ d2-run が作る**すべての commit** (簿記の commit `impl(<slug>): <stage>
 (例 `impl(register-loan): scaffold`)。`.distillery/runs/<slug>/` の events / done / attempt は含める。
 reports / traces は .gitignore 済みで含めない。シナリオ承認は `req(<slug>): scenarios` で commit する。
 main マージの done は main の上で commit する (`impl(<slug>): delivered`)。UC の課題は main マージの squash の前に feature の上で課題ファイルにして commit する (`impl(<slug>): issues to feedback`)。
-上流の差分の commit (`req: feedback`・`decide: feedback`・`foundation: feedback`) と開き直しの commit (`impl(<slug>): reopen`) は main の上で作る (下の「開き直しと上流で止めるとき」)。
+上流の差分の commit (`req: feedback`・`decide: feedback`・`foundation: feedback`) は一時の branch `upstream/<課題の名前>` で作って main へ ff する (下の「要求の差分」)。開き直しの commit (`impl(<slug>): reopen`) は main の上で作る (下の「開き直しと上流で止めるとき」)。
 
 ## squash と main への取り込みの条件
 
@@ -80,11 +80,11 @@ main マージの done は main の上で commit する (`impl(<slug>): delivere
 1. `git switch main` → `git merge --ff-only feature/<slug>`。ff できなければ (main が `base_head` から進んでいる) 止まって報告する (rebase は人が判断)
 2. main の上で main マージの done (`runState.js done <run> deliver '{"squash":"<フル sha>","base_head":"<base_head>"}'`。sha は短縮しない) と、④ の冒頭で遅らせた場合だけの `models_resolved` (遅らせた = run の events に解決済み ID の `models_resolved` が無い。冒頭で記録済みなら無いことはないので記録しない。0.1.29 実走 M2・0.1.32 O1) と README を
    `impl(<slug>): delivered` で commit する。**main マージ済みの正は `stages/deliver.done.yaml`** (GitHub の PR ではない)
-3. remote `origin` があれば `git push origin main`。拒否されたら止まって報告する (保護された main など。force push はしない)
+3. remote `origin` があれば `git push origin main` → `git push origin 'refs/distillery2/*:refs/distillery2/*'`。拒否されたら止まって報告する (保護された main など。force push はしない)
 4. `git branch -d feature/<slug>`
 5. 次の UC は main から新しい run で始める (自動では続けない)
 
-main マージの done の commit と 4 の間で止まると、feature が残る。次の起動の自動選択 2 が「main の run に main マージの done がある feature」を main マージ済みとみなして片付ける (SKILL.md の自動選択)。
+main マージの done の commit と 4 の間で止まると、feature が残る。次の起動の自動選択 (`cleanup`) が「main の run に main マージの done がある feature」を main マージ済みとみなして片付ける。
 
 ## 旧形式の片付け (0.1.25 までに PR で main マージした run)
 
@@ -92,7 +92,6 @@ main マージの done の commit と 4 の間で止まると、feature が残�
 
 - 人が「main マージ済み」と答えたら main の上で `runState.js mark-legacy-delivered` → `impl(<slug>): legacy delivered` で commit する
 - 残っている `feature/<slug>` は `git update-ref refs/distillery2/legacy/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。squash merge で入れた feature は main の祖先でないことがあり `-d` では消せないので、常に退避してから `-D` (0.1.28 の試し運転では祖先だった)。
-  退避先を要求の差分の `abandoned/` と分けるのは、捨てた理由が違うため (main マージ済み vs 要求が変わった)
 
 ## commit trailer
 
@@ -124,11 +123,11 @@ main マージの done の commit と 4 の間で止まると、feature が残�
 
 手順の正本は SKILL.md の ① の「要求の差分」。ここには git の約束だけを書く。
 
-- main の上で行う (進行中の UC が無いときだけ。上流で止まった UC の feature にいたら、clean なら main に切り替える)。決定の差分・基盤の差分も同じ
+- 一時の branch `upstream/<課題の名前>` で行い、確定してから `git merge --ff-only` で main を進める (進行中の UC が無いときだけ。決定の差分・基盤の差分も同じ。routing.md「上流の差分の branch」)。段ごとの commit は squash しない (basis が commit の ID を使う)。途中で止まっても main は汚れず、自動選択の `continue-upstream` が同じ branch で続ける
 - 反映した課題ファイルと取り下げた課題ファイルを `git rm` し、要求の変更と同じ commit (`req: feedback`) にする。trailer は `Feedback-Consumed:` / `Feedback-Dismissed:`。
   本文は `.distillery/logs/` の本文ファイルに書いて `git commit -F` で作る (main マージの squash と同じ書き方)
-- main マージ済みなのに課題ファイルにしていない run の課題 (移行) は、起動時の自動選択 (3 の 2) で `feedbackBatch.js file-issues` が課題ファイルにし、`impl(<slug>): issues to feedback` で main に commit する (要求の差分より前)
-- 上流で止まった UC の feature は `git update-ref refs/distillery2/abandoned/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。消さずに退避するのは、捨てた実装を後から引けるようにするため
+- main マージ済みなのに課題ファイルにしていない run の課題 (移行) は、起動時の自動選択 (`migrate`) で `feedbackBatch.js file-issues` が課題ファイルにし、`impl(<slug>): issues to feedback` で main に commit する (要求の差分より前)
+- 上流で止めた UC の feature は消さない。止めた課題がすべて main から消えたら、下の「写し直し」で新しい main の上へ運ぶ (0.2.0 までは `refs/distillery2/abandoned/` へ退避して捨てていた)
 
 ## 開き直しと上流で止めるとき
 
@@ -139,3 +138,16 @@ main マージの done の commit と 4 の間で止まると、feature が残�
 - 上流で止めるとき、課題ファイルは main に commit する。feature の上にいるので、一時の worktree (`.distillery/worktrees/<slug>/<issue>`、branch `feedback-req/<slug>/<issue>`) で commit し、
   `git fetch . feedback-req/<slug>/<issue>:main` で main を ff する (main を checkout しない)
 - 0.1.x の途中で止まった還流のバッチは、取り込み済みなら `FB merge` で後始末、そうでなければ `FB abandon` で branch・worktree・状態を消す (課題ファイルは main に残る)
+
+## 写し直し (上流で止めた機能を新しい main の上へ運ぶ)
+
+手順の正本は d2-run の [routing.md](routing.md)「写し直し」。git の操作は `resumeAfterUpstream.js run` がすべて行う (進行役は手で組まない)。ここには git の約束だけを書く。
+
+- merge commit も rebase も使わない。`git merge-tree --write-tree --merge-base <有効な base_head> <main> feature/<slug>` の tree を、main の先端を親とする 1 つの commit (`impl(<slug>): resume after upstream`) にし、`git update-ref` で feature を付け替える。
+  feature には merge commit が入らず、`<新しい base_head>..HEAD` の件名はすべて `impl(<slug>): ` のままなので、main マージ 1 の件名の検査と squash がそのまま通る
+- 有効な base_head は `runState.js status` の `base_head`: 最後の `resumed_after_upstream` の `base_head` (写し直した先の main)、無ければ `branch_started` の `base_head`。件名の検査・squash の `reset --soft`・`prTrailers.js --base`・verify の変更ファイル・契約のレビューの対象はすべてこれを使う
+- 付け替える前の feature は `refs/distillery2/paused/<slug>/<ts>` に控える (消さない)
+- remote `origin` があれば、main を push するたびに続けて `git push origin 'refs/distillery2/*:refs/distillery2/*'` で控えの ref (`paused/`・`pre-squash/`・`legacy/`) も push する (既定の push に乗らず、手元にしか残らないため)
+- 統合できなかったファイルは main の側を採り、機能側の差分を `<run>/resume/<n>/` に残す (担当が反映するか、理由を付けて取り下げる)。機能の run の記録 (`.distillery/runs/<slug>/`) が衝突したら写し直さずに止まる
+- 写し直しの途中で main が進んだら、付け替えの前なら新しい main で作り直し、付け替えの後なら止まる (人が main に commit したときだけ起きる)
+- 処理の記録は `.distillery/logs/resume-<slug>.json` (git 管理外)。途中で止まったら同じコマンドで続きから終わる。写し直しは 1 つの機能で 3 回まで (超えたら exit 3。人に返す)

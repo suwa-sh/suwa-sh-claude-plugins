@@ -17,6 +17,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { loadAdrs, collectTiers, collectCapabilities } = require('./adr');
+const { collectChecks, tierCheckCommands, repoCheckCommands } = require('./checks');
 const { stamp, headerLine } = require('../../d2-common/scripts/lib/basis');
 const { stringifyYaml, parseYaml } = require('../../d2-common/scripts/lib/yaml');
 
@@ -38,26 +39,28 @@ const HEADER_SCAN_LINES = 10;
 /** 生成物か? 先頭数行に basis ヘッダ (basis.js が書く `basis:`) があれば生成物とみなす。手書きは持たない。 */
 function isGenerated(text) { return /basis:/.test(text.split('\n').slice(0, HEADER_SCAN_LINES).join('\n')); }
 
-function tierCommands(dir) {
-  return {
-    format_check: `npm run format:check -w apps/${dir}`,
-    lint: `npm run lint -w apps/${dir}`,
-    typecheck: `npm run typecheck -w apps/${dir}`,
-    unit: `npm run test -w apps/${dir} -- --run --reporter=json --outputFile={report}`,
-    contract: `npm run test:contract -w apps/${dir} -- --run --reporter=json --outputFile={report}`,
-  };
+/**
+ * ティアのコマンド。format_check / lint / build / unit / security は機械チェックの ADR (checks) から作る (無ければ既定。checks.js)。
+ * 契約テスト (contract) は契約を提供するティアだけ (提供しないティアは契約テストが無く、コマンドが「テストファイル無し」で落ちる)
+ */
+function tierCommands(dir, provides = true, checks = null, tierId = '*') {
+  const c = tierCheckCommands(checks, tierId, dir);
+  if (provides) c.contract = `npm run test:contract -w apps/${dir} -- --run --reporter=json --outputFile={report}`;
+  return c;
 }
 
-function buildConfig({ tiers, datastore_owner }, contracts, caps, warnings) {
+function buildConfig({ tiers, datastore_owner }, contracts, caps, warnings, checks = null) {
   const providesOf = id => contracts.filter(c => c.provider === id).map(c => c.id);
   const consumesOf = id => contracts.filter(c => Array.isArray(c.consumers) && c.consumers.includes(id)).map(c => c.id);
   const tierList = tiers.map(t => {
     const dir = t.dir ? String(t.dir).replace(/^apps\//, '') : t.id;
+    const provides = t.provides && t.provides.length ? t.provides : providesOf(t.id);
     return {
       id: t.id, dir: `apps/${dir}`, kind: t.kind || 'backend', lang: t.lang || 'typescript',
-      provides: t.provides && t.provides.length ? t.provides : providesOf(t.id),
+      provides,
       consumes: t.consumes && t.consumes.length ? t.consumes : consumesOf(t.id),
-      commands: tierCommands(dir),
+      // 契約テストはカタログに実際にある契約の提供側だけ (ADR の provides だけでは出さない。契約の骨格の前は契約テストが無い)
+      commands: tierCommands(dir, contracts.some(c => c.provider === t.id), checks, t.id),
     };
   });
   const hasFrontend = tiers.some(t => t.kind === 'frontend');
@@ -69,8 +72,8 @@ function buildConfig({ tiers, datastore_owner }, contracts, caps, warnings) {
     contracts: contracts.map(c => ({ id: c.id, type: c.type, source: c.source, provider: c.provider, consumers: c.consumers || [] })),
     commands: {
       arch_test: 'npx depcruise --config .dependency-cruiser.cjs --output-type err apps packages',
-      // formatter / linter / SAST のゲート (qlty)。--no-fix を外さない (--fix はリポ全体を整形して壊す)
-      quality: 'qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium',
+      // リポ全体 (文書類・設定) の format / lint (qlty) / security (秘密情報)。機械チェックの ADR から (checks.js)。qlty は --no-fix を外さない (--fix はリポ全体を整形して壊す)
+      ...repoCheckCommands(checks),
       uc_bdd: 'npx cucumber-js --tags "@uc:{slug}" --format json:{report}',
       acceptance_api: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and not @browser" --format json:{report}',
       acceptance_browser: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and @browser" --format json:{report}',
@@ -89,6 +92,7 @@ function run(o) {
   const adrs = loadAdrs(path.resolve(o.cwd, o.adr));
   const tierInfo = collectTiers(adrs);
   const caps = collectCapabilities(adrs);
+  const checks = collectChecks(adrs);
   const warnings = [];
   let contracts = [];
   const contractsPath = path.resolve(o.cwd, o.contracts);
@@ -98,7 +102,7 @@ function run(o) {
   } else {
     warnings.push(`contracts file not found: ${o.contracts} — contracts: []`);
   }
-  const config = buildConfig(tierInfo, contracts, caps, warnings);
+  const config = buildConfig(tierInfo, contracts, caps, warnings, checks);
   const outPath = path.resolve(o.cwd, o.out);
   // 手書き設定を握り潰さない: 既存が生成ヘッダを持たなければ --force が無い限り上書きしない。
   if (fs.existsSync(outPath) && !o.force && !isGenerated(fs.readFileSync(outPath, 'utf8'))) {

@@ -97,13 +97,16 @@ function run(o) {
   // npm workspace として解決できるよう packages/ui/package.json を書く (@repo/ui)。
   // main はエントリを推定する (index.ts(x) があればそれ、無ければ最初の components 実体)。
   const relPaths = files.map(f => f.path);
+  // story・テストは入口にしない (名前順の先頭の *.stories.tsx が main になった。0.3.0 の実地確認 3 起動目)
+  const source = (p) => /\.(t|j)sx?$/.test(p) && !/\.(stories|test|spec)\.(t|j)sx?$/.test(p) && !p.endsWith('.d.ts');
   const entry = ['index.ts', 'index.tsx', 'index.js'].find(e => relPaths.includes(e))
-    || relPaths.find(p => /^components\/.*\.(t|j)sx?$/.test(p))
-    || relPaths.find(p => /\.(t|j)sx?$/.test(p))
+    || relPaths.find(p => p.startsWith('components/') && source(p))
+    || relPaths.find(source)
     || 'index.ts';
   // 既存の package.json は管理キー (name/type/main) だけ更新し、手編集した設定 (exports 等) を保持する (指摘 6)。
   const uiPkgPath = path.join(uiDir, 'package.json');
-  const managed = { name: '@repo/ui', type: 'module', main: entry };
+  // module・types も入口にそろえる (main だけ直すと前回の入口が残る。0.3.0 の実地確認 3 起動目)
+  const managed = { name: '@repo/ui', type: 'module', main: entry, module: entry, types: entry };
   let uiPkg = null;
   if (fs.existsSync(uiPkgPath)) {
     try { uiPkg = JSON.parse(fs.readFileSync(uiPkgPath, 'utf8')); } catch { uiPkg = null; }
@@ -124,15 +127,74 @@ function run(o) {
   const basisLine = headerLine(stamp({ design: o.from }, o.cwd));
   const manifest = { basis: basisLine.replace(/^basis:\s*/, ''), from: o.from, imported_at: importedAt, entry, content_sha256: contentSha256, files };
   fs.writeFileSync(manifestPath, `# ${basisLine}\n` + stringifyYaml(manifest));
-  return { code: 0, count: files.length, entry, removed };
+  const css = writeEntryCss(uiDir, relPaths);
+  const styles = switchAppStyles(o.cwd, css.ok);
+  return { code: 0, count: files.length, entry, removed, css: css.msg, styles, format: formatUi(o.cwd) };
+}
+
+/**
+ * 画面の土台 (genSkeleton が置く apps/<frontend>/src/styles.css) が読む CSS の入口を packages/ui/entry.css に書く (0.3.0)。
+ * d2-design の Tailwind の CSS の置き場は版や構成で変わる (src/app/globals.css・src/styles/globals.css) ので、
+ * 取り込んだ CSS のうち `@import "tailwindcss"` を持つ 1 本を探して指す。0 本・2 本以上なら書かずに報告する
+ */
+const { UI_ENTRY_CSS: ENTRY_CSS, STYLES_PLAIN, STYLES_UI } = require('./spaStyles');
+function writeEntryCss(uiDir, relPaths) {
+  // 取り込み元が同じ名前のファイルを持つと入口を書けない (中身が Tailwind の入口になっている保証も無い)。使わずに報告し、画面は Tailwind を直接読む形にする
+  if (relPaths.includes(ENTRY_CSS)) return { ok: false, msg: `none (取り込み元に ${ENTRY_CSS} がある。名前がぶつかるので d2-design 側で名前を変える)` };
+  // コメントの中の @import は数えない
+  const found = relPaths.filter((p) => p.endsWith('.css') && /@import\s+["']tailwindcss["']/.test(fs.readFileSync(path.join(uiDir, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')));
+  const dst = path.join(uiDir, ENTRY_CSS);
+  if (found.length !== 1) {
+    if (fs.existsSync(dst)) fs.rmSync(dst);
+    return { ok: false, msg: found.length ? `none (Tailwind の CSS が ${found.length} 本: ${found.join(', ')})` : 'none (Tailwind の CSS が無い)' };
+  }
+  const rel = found[0].split(path.sep).join('/');
+  // @source で packages/ui を Tailwind に走査させる。画面の build は apps/<frontend> で回り、Tailwind が自動で見るのはその中だけなので、
+  // 部品にだけ書いたクラスが出ない (d2-design の CSS が @source を持たないとき。0.3.0 の確認で実測)。
+  // Tailwind 固有の at-rule だが、ここ (packages/ui) はティアの biome lint の外で、リポ全体のゲート (biome format・qlty) は通る (実測)
+  fs.writeFileSync(dst, `/* distillery2 importUi.js が書いた画面部品の CSS の入口 (取り込みのたびに書き直す)。画面 (apps/<frontend>/src/styles.css) はここを読む */\n@import "./${rel}";\n@source "./";\n`);
+  return { ok: true, msg: `entry.css → ${rel}` };
+}
+
+/**
+ * 画面の土台の styles.css (apps の各ティアの src/styles.css) を、入口が書けたら packages/ui を読む形に、書けなければ Tailwind を直接読む形にする。
+ * genSkeleton が置いた 2 つの形のどちらかと完全に一致するものだけ替える (手で変えたものは触らない)
+ */
+function switchAppStyles(cwd, useUi) {
+  const apps = path.join(cwd, 'apps');
+  if (!fs.existsSync(apps)) return [];
+  const want = useUi ? STYLES_UI : STYLES_PLAIN;
+  const changed = [];
+  for (const d of fs.readdirSync(apps, { withFileTypes: true })) {
+    const p = path.join(apps, d.name, 'src', 'styles.css');
+    if (!d.isDirectory() || !fs.existsSync(p)) continue;
+    const cur = fs.readFileSync(p, 'utf8');
+    if (cur === want || (cur !== STYLES_PLAIN && cur !== STYLES_UI)) continue;
+    fs.writeFileSync(p, want);
+    changed.push(`apps/${d.name}/src/styles.css`);
+  }
+  return changed;
+}
+
+/**
+ * 取り込んだ部品をリポの biome で整形する (0.3.0)。d2-design の出力は biome の書式にそろっておらず、
+ * リポ全体の format (`npx biome format .`) で落ちる (会議室の予約の実地確認で実測)。
+ * 取り込み元が正なので、取り込みのたびに整形し直す (.imported.yaml の sha256 は取り込み元の値のまま)。
+ * biome が入っていなければ (npm install の前) 飛ばす。整形できない (構文の誤り) ときは報告だけしてゲートに任せる
+ */
+function formatUi(cwd) {
+  const bin = path.join(cwd, 'node_modules', '.bin', process.platform === 'win32' ? 'biome.cmd' : 'biome');
+  if (!fs.existsSync(bin)) return 'skipped (biome が無い)';
+  const r = require('node:child_process').spawnSync(bin, ['format', '--write', '--no-errors-on-unmatched', 'packages/ui'], { cwd, encoding: 'utf8' });
+  return r.status === 0 ? 'formatted' : `failed (exit ${r.status}): ${String(r.stderr || r.stdout).trim().split('\n').slice(-3).join(' / ')}`;
 }
 
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
-  if (r.code === 0) console.log(`importUi: ${r.count} files → packages/ui${r.removed.length ? ` (removed ${r.removed.length}: ${r.removed.join(', ')})` : ''}`);
+  if (r.code === 0) console.log(`importUi: ${r.count} files → packages/ui${r.removed.length ? ` (removed ${r.removed.length}: ${r.removed.join(', ')})` : ''} css: ${r.css}${r.styles.length ? ` (styles: ${r.styles.join(', ')})` : ''} format: ${r.format}`);
   return r.code;
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { parseArgs, run };
+module.exports = { parseArgs, run, ENTRY_CSS };

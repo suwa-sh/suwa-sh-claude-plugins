@@ -18,7 +18,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseTraceLines, sqlVerb, cmpStr } = require('./traceTree');
+const { parseTraceLines, sqlVerb, withTableModes, cmpStr } = require('./traceTree');
 
 const READ_VERBS = new Set(['SELECT', 'WITH', 'SHOW', 'EXPLAIN']);
 const WRITE_VERBS = new Set(['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT', 'REPLACE', 'CREATE', 'ALTER', 'DROP', 'TRUNCATE']);
@@ -53,8 +53,10 @@ function deriveFromTraces(scenarios) {
       if (ev.kind === 'http.in') {
         if (meta.operationId) { operations.push(meta.operationId); scOps.push(meta.operationId); }
       } else if (ev.kind === 'db.query') {
-        const mode = classifySql(meta.sql);
-        for (const tbl of Array.isArray(meta.tables) ? meta.tables : []) {
+        const stmtMode = classifySql(meta.sql);
+        const perTable = withTableModes(meta.sql, meta.tables)
+          || (Array.isArray(meta.tables) ? meta.tables : []).map((t) => ({ table: t, mode: stmtMode }));
+        for (const { table: tbl, mode } of perTable) {
           if (!tableModes.has(tbl)) tableModes.set(tbl, new Set());
           tableModes.get(tbl).add(mode);
           if (mode === 'read') scRead.push(tbl);
@@ -111,8 +113,9 @@ function changedFilesFromGit(cwd, baseHead) {
   if (!baseHead) return null;
   const { execFileSync } = require('node:child_process');
   try {
-    const out = execFileSync('git', ['diff', '--name-only', `${baseHead}..HEAD`], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-    return out.split('\n').map((l) => l.trim()).filter(Boolean);
+    // -z で NUL 区切りにする (既定の core.quotePath だと日本語のパスが引用符と八進数の文字列になり、実在しないパスが載る)
+    const out = execFileSync('git', ['diff', '--name-only', '-z', `${baseHead}..HEAD`], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    return out.split('\0').filter(Boolean);
   } catch {
     return null;
   }

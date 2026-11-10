@@ -27,6 +27,8 @@ test('open, events, done, status, invalidate, attempts', () => {
 
   rs.attemptDir(dir, 2);
   assert.equal(rs.currentAttempt(dir), 2);
+  const mark = fs.readFileSync(path.join(dir, 'attempt-2', 'attempt.json'), 'utf8');
+  assert.match(mark, /^\{\n {2}"attempt": 2,\n {2}"opened_at": "[^"]+"\n\}\n$/, '印は字下げ付きで書く (1 行の JSON は生成するリポの整形の検査で落ち、巻き戻しのたびに static ゲートが止まる)');
 
   const moved = rs.invalidate(dir, 'scenario', 'requirements changed');
   assert.ok(fs.existsSync(moved));
@@ -66,7 +68,7 @@ test('returnToIntegrate: findings の退避 → integrate 以降の done の退�
   const r = rs.returnToIntegrate(dir, { instrumentation_gaps: ['backend-api'], instrumentation_happy_gaps: [] });
   assert.equal(r.moved_findings.length, 2);
   assert.ok(r.moved_findings.every(p => /^invalidated\/\d{8}_\d{6}_attempt-1_findings\.[a-z-]+\.yaml$/.test(p)), r.moved_findings.join(','));
-  assert.deepEqual(fs.readdirSync(a1), ['assumptions.backend-api.yaml'], 'findings だけ移し、assumptions は残す');
+  assert.deepEqual(fs.readdirSync(a1).filter(n => n !== 'attempt.json'), ['assumptions.backend-api.yaml'], 'findings だけ移し、assumptions は残す');
   assert.equal(r.invalidated.length, 3, 'integrate・verify・review の done');
   const s = rs.status(dir);
   assert.equal(s.next_stage, 'integrate');

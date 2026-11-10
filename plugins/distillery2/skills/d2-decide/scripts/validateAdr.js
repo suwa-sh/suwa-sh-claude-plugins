@@ -23,6 +23,8 @@
  *   8. テスト方針の front matter (指摘4):
  *      - scope に testing を含む accepted ADR は capabilities: { browser: <bool> } を宣言する
  *      - capabilities を宣言する accepted ADR はちょうど 1 つまで、かつ scope に testing を含む
+ *  10. 機械チェックの ADR (0.3.0): checks を宣言する accepted ADR は 1 つまで、scope に system を含み、
+ *      checks の道具が既知か {cmd} で、tiers のキーは * かティア構成の ADR の tiers[].id (d2-foundation/scripts/checks.js)
  *   9. rules[] のカバレッジ (下流の rules 文書 / アーキテスト生成の入力):
  *      - scope に system/app/data/testing/ui を含む accepted ADR は rules[] を最低 1 つ持つ (infra 専用は不要)
  *      - ティア構成 ADR は arch_test.level: tier を持つ rule を最低 1 つ持つ (ティア間依存方向)
@@ -120,6 +122,9 @@ const SCOPES_REQUIRING_RULES = ['system', 'app', 'data', 'testing', 'ui'];
  *   検証を通った空 tiers[] が下流で先に読まれてティアが消える取り違えを防ぐ。
  * scope に system を含む一般の ADR には tiers[] を要求しない (決定領域ごとに ADR を分けられる)。
  */
+// npm のパッケージ名 (scope 付き可、版の指定 @x.y は不可)
+const NPM_NAME = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
+
 function tierStructureErrors(adrs) {
   const errors = [];
   const declaring = adrs.filter(a => isAccepted(a.fm) && declaresTiers(a.fm));
@@ -127,6 +132,9 @@ function tierStructureErrors(adrs) {
   // ティア構成 ADR 以外が tiers キーを持つのは禁止 (非 accepted / 空 tiers[] / 2 本目 いずれも)。
   for (const a of adrs) {
     if (declaringSet.has(a)) continue;
+    // 置き換えられたティア構成 ADR は tiers を履歴として残してよい (d2-decide mode=feedback は旧 ADR の status と superseded_by だけを変える。0.3.0 の実地確認 3 起動目)。
+    // 基盤 (collectTiers) は accepted だけを読むので取り違えない
+    if (String(a.fm.status).toLowerCase() === 'superseded') continue;
     if (hasTiersKey(a.fm)) {
       errors.push({ file: a.file, message: 'tiers[] はティア構成 ADR (accepted かつ非空の tiers[] を持つ 1 本) だけが持てる (この ADR の tiers キーは許されない)' });
     }
@@ -143,6 +151,14 @@ function tierStructureErrors(adrs) {
       errors.push({ file, message: 'ティア構成 ADR (tiers[] を宣言する) は scope に system を含む必要がある (下流はティア構成を system ADR から読む)' });
     }
     const ids = new Set(fm.tiers.map(t => t && t.id).filter(Boolean));
+    // tiers[].packages / dev_packages: ティアが使う npm のパッケージ名 (版を付けない)。基盤の F7 が npm install で入れる (0.3.0)
+    for (const t of fm.tiers) {
+      for (const key of ['packages', 'dev_packages']) {
+        if (!t || t[key] === undefined) continue;
+        const bad = !Array.isArray(t[key]) ? [String(t[key])] : t[key].filter(n => typeof n !== 'string' || !NPM_NAME.test(n));
+        if (bad.length) errors.push({ file, message: `tiers[${t.id}].${key} は npm のパッケージ名の配列にする (版は付けない。基盤が npm install で解決する): ${bad.join(', ')}` });
+      }
+    }
     if (!fm.datastore_owner) {
       errors.push({ file, message: 'ティア構成 ADR (tiers[] を宣言する) は datastore_owner を持つ必要がある' });
     } else if (!ids.has(fm.datastore_owner)) {
@@ -205,12 +221,29 @@ function ruleCoverageErrors(adrs) {
   return errors;
 }
 
+/** 機械チェックの ADR の検査 (0.3.0) */
+function checksErrors(adrs) {
+  const { validateChecks } = require('../../d2-foundation/scripts/checks');
+  const errors = [];
+  const accepted = adrs.filter(a => a.fm && a.fm.status === 'accepted');
+  const declaring = accepted.filter(a => a.fm.checks);
+  if (declaring.length > 1) errors.push({ file: declaring.map(d => d.file).join(', '), message: `checks を宣言する accepted ADR は 1 つだけにする (${declaring.length} 件が宣言している)` });
+  const tierAdr = accepted.find(a => Array.isArray(a.fm.tiers) && a.fm.tiers.length);
+  const tierIds = tierAdr ? tierAdr.fm.tiers.map(t => t && t.id).filter(Boolean) : null;
+  for (const { file, fm } of declaring) {
+    if (!hasScope(fm, 'system')) errors.push({ file, message: '機械チェックの ADR (checks を宣言する) は scope に system を含む必要がある' });
+    for (const m of validateChecks(fm.checks, tierIds)) errors.push({ file, message: m });
+  }
+  return errors;
+}
+
 function validateAdrDir(dir) {
   const { adrs, errors } = loadAdrDir(dir);
   errors.push(...crossAdrErrors(adrs));
   errors.push(...tierStructureErrors(adrs));
   errors.push(...testingCapabilityErrors(adrs));
   errors.push(...ruleCoverageErrors(adrs));
+  errors.push(...checksErrors(adrs));
   return { adrs, errors };
 }
 
@@ -236,4 +269,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { parseFrontMatter, loadAdrDir, crossAdrErrors, tierStructureErrors, testingCapabilityErrors, ruleCoverageErrors, validateAdrDir };
+module.exports = { parseFrontMatter, loadAdrDir, crossAdrErrors, tierStructureErrors, testingCapabilityErrors, ruleCoverageErrors, checksErrors, validateAdrDir };

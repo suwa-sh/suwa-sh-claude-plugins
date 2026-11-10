@@ -16,7 +16,7 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
-const { loadAdrs, collectTiers } = require('./adr');
+const { loadAdrs, collectTiers, collectUi } = require('./adr');
 
 function parseArgs(argv) {
   const o = { adr: 'docs/adr', cwd: process.cwd(), migrate: false };
@@ -47,6 +47,9 @@ function rootPackageJson(tierDirs, hasFrontend) {
     format: 'biome format --write .',
     'format:check': 'biome format .',
     bdd: 'cucumber-js',
+    // 機械チェックの一括実行 (scripts/check.mjs は genCheck.js が生成)。prepare は clone した人の npm install でコミットのときの hook を入れる (0.3.0)
+    check: 'node scripts/check.mjs --mode ci',
+    prepare: HOOKS_PATH_CMD,
   };
   for (const dir of tierDirs) {
     scripts[`test:${dir}`] = `npm run test -w apps/${dir}`;
@@ -101,7 +104,8 @@ const TSCONFIG_BASE = JSON.stringify({
 // migrate で置き換える (指摘 5)。
 const GITIGNORE_ANCHOR = 'distillery2 実行状態';
 const GITIGNORE_MANAGED = ['# distillery2 実行状態 (reports / traces / logs は生成物なので追跡しない)', '.distillery/runs/*/reports/', '.distillery/runs/*/traces/', '.distillery/logs/',
-  '# qlty の作業ディレクトリ (qlty init --dry-run は .qlty/.gitignore を書かない)', '.qlty/logs/', '.qlty/out/', '.qlty/results/', '.qlty/plugin_cachedir/', '.qlty/sources/',
+  // qlty はこれらを ~/.qlty/cache への symlink で作る。末尾スラッシュの形はディレクトリにしか一致せず symlink が commit に入る (0.3.0 の実地確認 3 起動目) ので付けない
+  '# qlty の作業ディレクトリ (qlty init --dry-run は .qlty/.gitignore を書かない)', '.qlty/logs', '.qlty/out', '.qlty/results', '.qlty/plugin_cachedir', '.qlty/sources',
   // 上流で止めるときの一時の worktree は .distillery/worktrees/ に作る (0.1.26〜0.1.36 は還流の worktree も)。worktree には本体の node_modules を symlink する。
   // `node_modules/` (末尾スラッシュ) はディレクトリにしか一致せず symlink が未追跡に見えるので、スラッシュ無しも足す
   '# distillery2 の一時の worktree と、worktree に張る node_modules の symlink', '.distillery/worktrees/', 'node_modules'];
@@ -127,14 +131,23 @@ function existingBiomeVersion(cwd) {
   return s ? s[1] : null;
 }
 
-// 生成物 (契約の codegen / bundle / Storybook 出力) はルートの整形・lint から外す (`!!` = フォルダごと無視)
-// 契約テスト (生成物) はここでも外す: 生成 .ts 先頭の `biome-ignore-all format` は biome 2.2.5 では効かない (0.1.13 実走で実測。2.5.14 では効く)。
-// `!!` (フォルダごと無視) は 2.2.5 では `**` 入りを受け付けないので、こちらは `!` で書く。
+// 生成物と文書類はルートの整形・lint から外す。リポ全体の format (`npx biome format .`。0.3.0) が対象にするのはルートの設定・features・packages のコード。
+// - 契約の codegen / bundle、契約テスト: 生成 .ts 先頭の `biome-ignore-all format` は biome 2.2.5 では効かない (0.1.13 実走で実測。2.5.14 では効く)
+// - scripts/check.mjs と .dependency-cruiser.cjs: 作り直して `--check` で鮮度を見る生成物なので、整形すると鮮度の検査で差分になる
+// - docs: 文書類 (要求の JSON、d2-design の Storybook の元。packages/ui へは取り込むときに整形する)。md と yaml は qlty が見る
+// フォルダは `!` で書く: `!!packages/contracts` は biome 2.2.5 でフォルダを外さない (0.3.0 の実地確認で実測。`!packages/contracts` は外し、明示したパスも無視する)。
 // 末尾に `/**` を付けない: biome 2.2.0 以降の既定の規則 useBiomeIgnoreFolder が `!**/test/contract/**` を違反にし、
 // qlty の quality ゲートで ③ のチェックポイントが落ちる (0.1.22 の試し運転で実測。https://biomejs.dev/linter/rules/use-biome-ignore-folder/)
-const BIOME_FILES_INCLUDES = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract'];
-// 0.1.15〜0.1.22 が書いた除外。migrate で上の形に置き換える
-const LEGACY_BIOME_INCLUDES = { '!**/test/contract/**': '!**/test/contract' };
+// - .distillery: distillery2 のスクリプトと担当が書く記録 (run の印・引き継ぎの写し)。qlty も外している。整形の対象にすると、
+//   スクリプトが書いた 1 行の JSON で static ゲートが止まる (0.3.0 の実地確認で 2 回。`!.distillery` で外れることは biome 2.2.5 で実測)
+const BIOME_FILES_INCLUDES = ['**', '!packages/contracts', '!contracts/generated', '!docs', '!**/test/contract', '!scripts/check.mjs', '!.dependency-cruiser.cjs', '!.distillery'];
+// 前の版が書いた除外。migrate で上の形に置き換える (0.1.15〜0.1.22 の `/**` 付き、0.1.23〜0.2.0 の `!!`)
+const LEGACY_BIOME_INCLUDES = {
+  '!**/test/contract/**': '!**/test/contract',
+  '!!packages/contracts': '!packages/contracts',
+  '!!contracts/generated': '!contracts/generated',
+  '!!docs/design/storybook-app': '!docs',
+};
 // biome.json (リポルート): formatter / linter を有効化する。format:check = `biome format .`, lint = `biome lint .`。
 const biomeJson = (biomeVersion) => JSON.stringify({
   $schema: `https://biomejs.dev/schemas/${biomeVersion}/schema.json`,
@@ -154,6 +167,8 @@ function appScripts() {
     'format:check': 'biome format .',
     lint: 'biome lint .',
     typecheck: 'tsc --noEmit -p .',
+    // 機械チェックの build (0.3.0)。dist/ に出す (gitignore)。型の検査も含む
+    build: 'tsc -p .',
     test: 'vitest run',
     'test:contract': 'vitest run -c vitest.contract.config.ts',
   };
@@ -171,11 +186,11 @@ const LEGACY_APP_SCRIPTS = {
 };
 
 /** 各 app の最小 package.json。scripts は実コマンド (vitest / tsc / biome)。実装で必要なら上書きされない。 */
-function appPackageJson(dir) {
-  return JSON.stringify({
-    name: `@app/${dir}`, version: '0.0.0', private: true, type: 'module',
-    scripts: appScripts(),
-  }, null, 2) + '\n';
+function appPackageJson(dir, spa = false) {
+  const pkg = { name: `@app/${dir}`, version: '0.0.0', private: true, type: 'module', scripts: appScripts() };
+  // 画面の土台を置く frontend は vite でビルドする (0.3.0)
+  if (spa) { Object.assign(pkg.scripts, SPA_SCRIPTS); pkg.devDependencies = { ...SPA_DEV_DEPENDENCIES }; }
+  return JSON.stringify(pkg, null, 2) + '\n';
 }
 
 /**
@@ -217,7 +232,164 @@ export function createTestApp(_options?: { fixture?: string }): never {
   throw new Error('test-app は未結線 (d2-implement で createTestApp を実装する)');
 }
 `;
-const EMPTY_INDEX_TS = '// distillery2 genSkeleton.js が置いた空のエントリ。実装で置き換える (typecheck が対象ファイル 0 で落ちないため)\nexport {};\n';
+// ---- 画面の土台 (0.3.0) ----------------------------------------------------
+// ADR の ui が React の SPA・Tailwind のとき、frontend ティアに「ブラウザで開ける画面」の土台を置く。
+// 置かないと最初の画面の機能の担当がそれぞれ土台を作り、作り方が食い違う (会議室の予約の実地確認 2 起動目)。
+// 各画面の機能は src/routes.tsx の表に 1 行足すだけにする。ルータのライブラリは ADR が決めていないので使わない。
+// 版は 2026-11-04 に npm view で確かめた最新 (d2-design の Storybook と同じ組)。
+const SPA_DEV_DEPENDENCIES = {
+  '@tailwindcss/vite': '^4.3.4',
+  '@vitejs/plugin-react': '^6.2.1',
+  tailwindcss: '^4.3.4',
+  vite: '^8.3.5',
+};
+// rootPackageJson の frontend 用と同じ版
+const SPA_REACT_DEPENDENCIES = { react: '^19.2.0', 'react-dom': '^19.2.0' };
+const SPA_REACT_TYPES = { '@types/react': '^19.2.0', '@types/react-dom': '^19.2.0' };
+const SPA_SCRIPTS = {
+  dev: 'vite',
+  // tsc は型の検査だけ (dist/ は vite が書く)
+  build: 'tsc --noEmit -p . && vite build',
+  preview: 'vite preview',
+};
+// 画面の styles.css は spaStyles.js の PLAIN を置く (画面部品を取り込んだら importUi.js が入口を読む形に替える)
+const { STYLES_PLAIN } = require('./spaStyles');
+
+/** ADR の ui から画面の土台を作るか決める。作らないときは理由を返す。ui が無ければ d2-design と同じ既定 (React の SPA・Tailwind) */
+function spaPlan(ui, tiers) {
+  const fronts = tiers.filter((t) => t.kind === 'frontend');
+  if (!fronts.length) return { make: false, reason: 'frontend ティアが無い' };
+  ui = ui || {};
+  const framework = ui.framework ?? 'react';
+  const rendering = ui.rendering ?? 'spa';
+  const styling = ui.styling ?? 'tailwind';
+  if (framework !== 'react' || rendering !== 'spa' || styling !== 'tailwind') {
+    return { make: false, reason: `土台を作るのは React の SPA・Tailwind だけ (ADR: ${framework} / ${rendering} / ${styling})。最初の画面の機能が ADR に従って作る` };
+  }
+  return { make: true, fronts, title: ui.brand?.name ? String(ui.brand.name) : null };
+}
+
+const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const SPA_HEAD = (what) => `distillery2 genSkeleton.js が置いた${what}。手で変えてよい (再実行で上書きしない)`;
+
+function spaFiles(dir, plan) {
+  const title = escapeHtml(plan.title ?? dir);
+  return {
+    'index.html': `<!doctype html>
+<!-- ${SPA_HEAD('画面の HTML の入口')} -->
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${title}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+`,
+    'vite.config.ts': `// ${SPA_HEAD('画面のビルドの設定 (React と Tailwind)')}
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+});
+`,
+    'src/vite-env.d.ts': '/// <reference types="vite/client" />\n',
+    'src/styles.css': STYLES_PLAIN,
+    'src/main.tsx': `// ${SPA_HEAD('画面の描画の入口')}
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
+import './styles.css';
+
+const root = document.getElementById('root');
+if (!root) throw new Error('#root が無い (index.html を確かめる)');
+createRoot(root).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+`,
+    'src/App.tsx': `// ${SPA_HEAD('画面の切り替え')}
+import { useEffect, useState } from 'react';
+import { routes } from './routes';
+
+/** 画面を切り替える (ブラウザの履歴に積む)。リンクやボタンから呼ぶ */
+export function navigate(path: string): void {
+  window.history.pushState(null, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+/** routes.tsx の表から、今の URL の画面を選ぶ。/ は表の先頭の画面 */
+export function App() {
+  const [pathname, setPathname] = useState(() => window.location.pathname);
+  useEffect(() => {
+    const onPop = () => setPathname(window.location.pathname);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const route =
+    routes.find((r) => r.path === pathname) ?? (pathname === '/' ? routes[0] : undefined);
+  if (route) return <>{route.element}</>;
+  return (
+    <main>
+      <h1>画面が見つかりません</h1>
+      <p>{pathname}</p>
+    </main>
+  );
+}
+`,
+    'src/routes.tsx': `// ${SPA_HEAD('画面の表')}
+import type { ReactNode } from 'react';
+
+export interface Route {
+  /** docs/design/screens.yaml の route と同じ値 */
+  path: string;
+  element: ReactNode;
+}
+
+/** 画面の機能は、自分の画面をここに 1 行足す */
+export const routes: Route[] = [];
+`,
+  };
+}
+
+/** 既にある frontend の package.json に、画面の土台のスクリプトと依存を足す (既定の build だけ置き換える。手で変えたものは触らない) */
+function ensureSpaPackage(cwd, rel, created) {
+  const p = path.resolve(cwd, rel);
+  const pkg = readJsonSafe(p);
+  if (!pkg) return;
+  const scripts = pkg.scripts || {};
+  const dev = pkg.devDependencies || {};
+  const deps = pkg.dependencies || {};
+  const added = [];
+  for (const [k, v] of Object.entries(SPA_SCRIPTS)) {
+    if (scripts[k] === v) continue;
+    if (scripts[k] === undefined || (k === 'build' && scripts[k] === appScripts().build)) { scripts[k] = v; added.push(`scripts.${k}`); }
+  }
+  for (const [k, v] of Object.entries(SPA_DEV_DEPENDENCIES)) {
+    if (!dev[k] && !deps[k]) { dev[k] = v; added.push(k); }
+  }
+  // React は新しい root の package.json が持つ (rootPackageJson)。既にある root に無ければ画面のティアに足す (無いと型検査と build が落ちる)
+  const rootPkg = readJsonSafe(path.resolve(cwd, 'package.json'));
+  if (rootPkg) {
+    const has = (k) => [rootPkg.dependencies, rootPkg.devDependencies, deps, dev].some((m) => m && m[k]);
+    for (const [k, v] of Object.entries(SPA_REACT_DEPENDENCIES)) if (!has(k)) { deps[k] = v; added.push(k); }
+    for (const [k, v] of Object.entries(SPA_REACT_TYPES)) if (!has(k)) { dev[k] = v; added.push(k); }
+  }
+  if (!added.length) return;
+  pkg.scripts = scripts;
+  pkg.devDependencies = dev;
+  if (Object.keys(deps).length) pkg.dependencies = deps;
+  fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+  created.push(`${rel} (画面の土台: ${added.join(', ')})`);
+}
+
+const EMPTY_INDEX_TS ='// distillery2 genSkeleton.js が置いた空のエントリ。実装で置き換える (typecheck が対象ファイル 0 で落ちないため)\nexport {};\n';
 
 /**
  * 各 app の vitest 設定。単体 (vitest.config.ts) は src/ だけ、契約テスト (vitest.contract.config.ts) は test/contract/ だけを対象にする
@@ -338,6 +510,25 @@ function migrateAppTsconfig(cwd, rel, kind, changes) {
   if (notes.length) changes.push(`${rel}: 手編集済みのため据え置き (${notes.join('、')}。手で直すこと)`);
 }
 
+/**
+ * 既存の root package.json にも、機械チェックの一括実行 (check) と、clone した人の npm install で hook を入れる prepare を足す (0.3.0)。
+ * 既存の prepare は残して、後ろに hook の設定を足す (同じものが既にあれば何もしない)
+ */
+const HOOKS_PATH_CMD = 'git config core.hooksPath .githooks || true';
+function ensureRootCheckScripts(cwd, created) {
+  const f = path.resolve(cwd, 'package.json');
+  if (created.includes('package.json') || !fs.existsSync(f)) return;
+  const pkg = JSON.parse(fs.readFileSync(f, 'utf8'));
+  const scripts = pkg.scripts || {};
+  let changed = false;
+  if (!scripts.check) { scripts.check = 'node scripts/check.mjs --mode ci'; changed = true; }
+  if (!scripts.prepare) { scripts.prepare = HOOKS_PATH_CMD; changed = true; }
+  // 既存の prepare の後に置く (既存の処理が hooksPath を変えても、最後に .githooks に戻す)
+  // 既存の prepare の後に置き、既存の処理の失敗は失敗のまま返す (成功したときだけ hook を .githooks にする)
+  else if (!scripts.prepare.includes('core.hooksPath .githooks')) { scripts.prepare = `${scripts.prepare} && (${HOOKS_PATH_CMD})`; changed = true; }
+  if (changed) { pkg.scripts = scripts; fs.writeFileSync(f, JSON.stringify(pkg, null, 2) + '\n'); created.push('package.json (scripts.check / scripts.prepare)'); }
+}
+
 /** root package.json に @types/node が無ければ足す (app tsconfig の types: node のため)。 */
 function migrateRootTypesNode(cwd, changes) {
   const p = path.resolve(cwd, 'package.json');
@@ -389,21 +580,30 @@ function run(o) {
   const { tiers } = collectTiers(adrs);
   const tierDirs = tiers.map(t => (t.dir ? String(t.dir).replace(/^apps\//, '') : t.id));
   const hasFrontend = tiers.some(t => t.kind === 'frontend');
+  const spa = spaPlan(collectUi(adrs), tiers);
   const created = [], skipped = [];
   for (const t of tiers) {
     const dir = t.dir ? String(t.dir).replace(/^apps\//, '') : t.id;
+    const shell = spa.make && t.kind === 'frontend';
     ensureDir(cwd, `apps/${dir}/src`, created);
     ensureDir(cwd, `apps/${dir}/test/contract`, created);
-    writeIfAbsent(cwd, `apps/${dir}/package.json`, appPackageJson(dir), created, skipped);
+    writeIfAbsent(cwd, `apps/${dir}/package.json`, appPackageJson(dir, shell), created, skipped);
     writeIfAbsent(cwd, `apps/${dir}/tsconfig.json`, appTsconfig(t.kind), created, skipped);
     writeIfAbsent(cwd, `apps/${dir}/vitest.config.ts`, appVitestConfig(t.kind), created, skipped);
     writeIfAbsent(cwd, `apps/${dir}/vitest.contract.config.ts`, appVitestConfig(t.kind, 'contract'), created, skipped);
-    writeIfAbsent(cwd, `apps/${dir}/src/index.ts`, EMPTY_INDEX_TS, created, skipped);
+    if (shell) {
+      // 画面の土台 (0.3.0)。入口は src/main.tsx なので空のエントリ (src/index.ts) は置かない
+      ensureSpaPackage(cwd, `apps/${dir}/package.json`, created);
+      for (const [rel, content] of Object.entries(spaFiles(dir, spa))) writeIfAbsent(cwd, `apps/${dir}/${rel}`, content, created, skipped);
+    } else {
+      writeIfAbsent(cwd, `apps/${dir}/src/index.ts`, EMPTY_INDEX_TS, created, skipped);
+    }
     if (t.kind !== 'frontend') writeIfAbsent(cwd, `apps/${dir}/src/test-app.ts`, STUB_TEST_APP_TS, created, skipped);
   }
   for (const pkg of ['contracts', 'ui', 'test-support']) ensureDir(cwd, `packages/${pkg}`, created);
   ensureDir(cwd, 'features', created);
   writeIfAbsent(cwd, 'package.json', rootPackageJson(tierDirs, hasFrontend), created, skipped);
+  ensureRootCheckScripts(cwd, created);
   writeIfAbsent(cwd, 'tsconfig.base.json', TSCONFIG_BASE, created, skipped);
   // package.json を今回作ったなら BIOME_VERSION、既存なら既存の版 (lockfile → package.json → biome.json)。
   // biome.json の $schema と qlty のプラグイン (genQlty.js が同じ関数で版を引く) を同じ版にする
@@ -412,13 +612,14 @@ function run(o) {
   writeIfAbsent(cwd, '.gitignore', GITIGNORE, created, skipped);
   const migrated = o.migrate ? migrate(cwd, biomeVersion, tiers) : [];
   if (!o.migrate) warnBiomeSchema(cwd, biomeVersion);
-  return { code: 0, created, skipped, tierDirs, migrated };
+  return { code: 0, created, skipped, tierDirs, migrated, spa: spa.make ? { status: 'made', tiers: spa.fronts.map((t) => t.id) } : { status: 'skipped', reason: spa.reason } };
 }
 
 function main(argv) {
   let o; try { o = parseArgs(argv); } catch (e) { console.error(e.message); return 2; }
   const r = run(o);
   console.log(`genSkeleton: created ${r.created.length}, skipped ${r.skipped.length}`);
+  console.log(r.spa.status === 'made' ? `  画面の土台: ${r.spa.tiers.join(', ')}` : `  画面の土台: 作らない (${r.spa.reason})`);
   for (const s of r.skipped) console.log(`  skip (exists): ${s}`);
   if (o.migrate) {
     console.log(`migrate: ${r.migrated.length} change(s)`);
@@ -428,4 +629,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { parseArgs, rootPackageJson, run, BIOME_VERSION, existingBiomeVersion };
+module.exports = { parseArgs, rootPackageJson, run, BIOME_VERSION, existingBiomeVersion, spaPlan };

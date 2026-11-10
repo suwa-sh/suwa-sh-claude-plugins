@@ -1,6 +1,6 @@
 # 必須の決定領域 (ADR カバレッジ)
 
-d2-decide は最低限、次の 8 領域を ADR で覆う。該当しない領域は「不要」と 1 本の ADR で明記する
+d2-decide は最低限、次の 13 領域 (1〜8・10〜14) を ADR で覆う。該当しない領域は「不要」と 1 本の ADR で明記する
 (黙って省かない)。各領域には対応する [決定候補カタログ](decision-candidates/) がある。
 
 | # | 決定領域 | scope | 該当カタログ | 補足 |
@@ -14,6 +14,11 @@ d2-decide は最低限、次の 8 領域を ADR で覆う。該当しない領�
 | 7 | 認証 / 認可 | system, app | [auth.md](decision-candidates/auth.md) | authn 方式と authz モデル |
 | 8 | UI 部品の方針 | ui | [ui.md](decision-candidates/ui.md) | presentation ティアがあるときのみ |
 | 9 | コンテキストの境界 (任意) | system | (カタログなし) | 業務ドメインが複数に分かれるときのみ。決めたら ADR front matter に `contexts[]` を書く |
+| 10 | DDD の戦術設計 | app | [ddd-tactical.md](decision-candidates/ddd-tactical.md) | 集約・値オブジェクト・ドメインイベント。使わないならその旨 |
+| 11 | イミュータブルデータモデル | data | [immutable-data.md](decision-candidates/immutable-data.md) | 事実を足す形か上書きか。リソースとイベントの分け方 |
+| 12 | エラーハンドリング | app | [error-handling.md](decision-candidates/error-handling.md) | エラーの種類・表し方・層ごとの扱い・契約のエラー型との対応 |
+| 13 | ログのルール | app | [logging.md](decision-candidates/logging.md) | 形・必ず持つ項目・レベル・層ごとの出す場所・出さないもの |
+| 14 | 機械チェック | system | [machine-checks.md](decision-candidates/machine-checks.md) | 6 観点 (generate / format / lint / build / test / security) の道具。front matter に `checks` (1 本だけ。validateAdr が検査) |
 
 **9 コンテキストの境界 (任意)**: 業務ドメインを複数の境界づけられたコンテキストに分けるかを決める。分ける
 なら、いずれかの accepted ADR (通常はティア構成 ADR) の front matter に `contexts: [{id, name, owner_tier?,

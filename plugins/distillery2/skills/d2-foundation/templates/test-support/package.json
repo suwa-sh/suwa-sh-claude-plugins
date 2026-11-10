@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./tracer": "./src/tracer.ts",
-    "./pglite-harness": "./src/pglite-harness.ts"
+    "./pglite-harness": "./src/pglite-harness.ts",
+    "./clock": "./src/clock.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8"

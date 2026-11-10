@@ -29,6 +29,8 @@ stages:
     name: ② 決定
   - id: foundation
     name: ③ 基盤
+  - id: precheck
+    name: ④ precheck (機能の最初の点検)
   - id: scenario
     name: ④ scenario
   - id: contract
@@ -239,6 +241,8 @@ stores:
     origin: produced
     aliases:
       - "apps/*/"
+      - "apps/*/package.json"
+      - "apps/*/src/styles.css"
       - "packages/*/"
       - "tsconfig.base.json"
       - ".gitignore"
@@ -256,6 +260,24 @@ stores:
     terminal: true
     aliases:
       - ".github/workflows/ci.yml"
+  - id: check-script
+    name: 機械チェックの一括実行 (genCheck.js が config から生成。CI と hook が回す。0.3.0)
+    group: settings
+    path: "scripts/check.mjs"
+    origin: produced
+    terminal: true
+  - id: githooks
+    name: コミットのときの hook (commit-msg。genCheck.js が生成し core.hooksPath で入れる)
+    group: settings
+    path: ".githooks/**"
+    origin: produced
+    terminal: true
+  - id: plugin-lock
+    name: CI が生成物の鮮度を確かめるために取る distillery2 の commit (genCheck.js が書く)
+    group: settings
+    path: ".distillery/distillery2.lock.json"
+    origin: produced
+    terminal: true
   - id: qlty-config
     name: qlty 設定
     group: settings
@@ -384,13 +406,6 @@ stores:
     group: run
     path: "<run>/issues/**"
     origin: produced
-  - id: issues-tier
-    name: ティア実装者の課題
-    group: run
-    path: "<run>/issues/<ts>_<tier>_<slug>.md"
-    origin: produced
-    aliases:
-      - ".distillery/runs/<slug>/issues/<ts>_<tier>_<slug>.md"
   - id: issues-asbuilt
     name: as-built の要約役の課題
     group: run
@@ -514,6 +529,17 @@ stores:
     path: ".distillery/reviews/**"
     origin: produced
     terminal: true
+  # ---- 写し直し (0.3.0。上流で止めた機能を、上流を直した後の main の上で続ける) ----
+  - id: resume-diffs
+    name: 写し直しで統合できなかった機能側の差分 (担当が反映するか取り下げる)
+    group: run
+    path: "<run>/resume/**"
+    origin: produced
+  - id: resume-journal
+    name: 写し直しの処理の記録 (gitignore。途中で止まったら続きから行う)
+    group: run
+    path: ".distillery/logs/resume-<slug>.json"
+    origin: produced
 
 processes:
   # ================= ① 要求 =================
@@ -557,6 +583,9 @@ processes:
       - "`tsx-register.js`"
       - "`.distillery/config.yaml`"
       - "`.github/workflows/**`"
+      - "`scripts/check.mjs`"
+      - "`.githooks/**`"
+      - "`.distillery/distillery2.lock.json`"
       - "`.qlty/qlty.toml`"
       - "`apps/*/`"
       - "`packages/*/`"
@@ -566,8 +595,8 @@ processes:
       - "`biome.json`"
       - "`package-lock.json`。例外: `npm install` が作る `node_modules/**` (gitignore)"
     reads: [adr, rule-templates, support-templates, contracts-catalog, config, skeleton, lockfile, qlty-config]
-    writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, qlty-config, lockfile]
-    allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, qlty-config, lockfile]
+    writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, check-script, githooks, plugin-lock, qlty-config, lockfile]
+    allowed_writes: [rules, depcruise-config, test-support, features-support, cucumber-config, cucumber-loader, config, skeleton, ci, check-script, githooks, plugin-lock, qlty-config, lockfile]
     notes:
       - "例外: `npm install` が作る `node_modules/**` (gitignore)"
   - id: foundation.F1
@@ -601,16 +630,16 @@ processes:
     kind: script
     phase: F5
     reads: [adr, contracts-catalog, config]
-    writes: [config, skeleton, ci, qlty-config]
+    writes: [config, skeleton, ci, check-script, githooks, plugin-lock, qlty-config]
   - id: foundation.F7
     name: F7 依存の導入 (npm install・qlty の提案)
     parent: foundation
     stage: foundation
     kind: script
     phase: F7
-    scripts: [genQlty.js]
-    reads: [skeleton, lockfile, qlty-config]
-    writes: [lockfile, qlty-config]
+    scripts: [installTierPackages.js, genQlty.js]
+    reads: [skeleton, lockfile, qlty-config, adr]
+    writes: [lockfile, qlty-config, skeleton]
   - id: contract.skeleton
     name: 契約の骨格
     skill: d2-contract
@@ -643,16 +672,21 @@ processes:
     write_set:
       - "`.distillery/config.yaml`"
       - "`.github/workflows/**`"
+      - "`scripts/check.mjs`"
+      - "`.githooks/**`"
+      - "`.distillery/distillery2.lock.json`"
       - "`docs/adr/architecture.md`"
       - "`packages/ui/**`"
       - "`package-lock.json`"
+      - "`apps/*/package.json`"
+      - "`apps/*/src/styles.css`"
       - "`.qlty/qlty.toml`"
       - "`apps/*/test/contract/**`"
       - "`packages/contracts/**`"
       - "`<run>/reports/**` (チェックポイントが書く。slug は bootstrap)。例外: `npm install` が作る `node_modules/**` (gitignore)"
     reads: [adr, contracts-catalog, req-rdra, config, design, skeleton, lockfile, qlty-config, contracts-src, contract-tests, depcruise-config, reports]
-    writes: [config, ci, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
-    allowed_writes: [config, ci, adr-architecture, ui, lockfile, qlty-config, contract-tests, contracts-code, reports]
+    writes: [config, ci, check-script, githooks, plugin-lock, adr-architecture, ui, lockfile, skeleton, qlty-config, contract-tests, contracts-code, reports]
+    allowed_writes: [config, ci, check-script, githooks, plugin-lock, adr-architecture, ui, lockfile, skeleton, qlty-config, contract-tests, contracts-code, reports]
     notes:
       - "例外: `npm install` が作る `node_modules/**` (gitignore)"
       - "チェックポイントが書く。slug は bootstrap"
@@ -662,9 +696,9 @@ processes:
     stage: foundation
     kind: script
     phase: F8
-    scripts: [genConfig.js, genCi.js, genArchitectureDoc.js]
+    scripts: [genConfig.js, genCi.js, genCheck.js, genArchitectureDoc.js]
     reads: [adr, contracts-catalog, req-rdra, config]
-    writes: [config, ci, adr-architecture]
+    writes: [config, ci, check-script, githooks, plugin-lock, adr-architecture]
   - id: foundation.F6
     name: F6 画面部品の取り込み
     parent: foundation.finish
@@ -673,16 +707,16 @@ processes:
     phase: F6
     scripts: [importUi.js]
     reads: [design]
-    writes: [ui]
+    writes: [ui, skeleton]
   - id: foundation.F7-after-ui
     name: F7 依存の導入 (F6 の後)
     parent: foundation.finish
     stage: foundation
     kind: script
     phase: F7
-    scripts: [genQlty.js]
-    reads: [skeleton, lockfile, qlty-config]
-    writes: [lockfile, qlty-config]
+    scripts: [installTierPackages.js, genQlty.js]
+    reads: [skeleton, lockfile, qlty-config, adr]
+    writes: [lockfile, qlty-config, skeleton]
   - id: foundation.F4
     name: F4 契約テストの生成 (骨格分)
     parent: foundation.finish
@@ -702,6 +736,20 @@ processes:
     reads: [config, skeleton, qlty-config, contract-tests, depcruise-config, reports]
     writes: [reports]
   # ================= ④ UC =================
+  - id: implement.precheck
+    name: 機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)
+    skill: d2-implement
+    mode: precheck
+    stage: precheck
+    kind: subagent
+    template_row: "④ precheck (ティアごと並列)"
+    notes:
+      - "なし (読むだけ。書くのは引き継ぎファイルだけ)"
+    write_set:
+      - "なし (読むだけ。書くのは引き継ぎファイルだけ)"
+    reads: [config, use-cases, req-usdm, req-rdra, adr, rules, contracts-src, design, ui]
+    writes: []
+    allowed_writes: []
   - id: implement.scenario
     name: UC シナリオの執筆
     skill: d2-implement
@@ -712,10 +760,9 @@ processes:
     write_set:
       - "`features/<業務>/<slug>.feature`"
       - "`features/acceptance/**`"
-      - "`<run>/issues/**`"
     reads: [use-cases, req-usdm, req-rdra, rules, feature]
     writes: [feature, acceptance]
-    allowed_writes: [feature, acceptance, issues]
+    allowed_writes: [feature, acceptance]
   - id: contract.uc
     name: 契約の差分
     skill: d2-contract
@@ -728,10 +775,9 @@ processes:
       - "`apps/*/test/contract/**`"
       - "`apps/<datastore_owner>/migrations/**`"
       - "`packages/contracts/**`"
-      - "`<run>/issues/**`"
     reads: [use-cases, feature, req-rdra, contracts-src]
-    writes: [contracts-src, uc-index, contract-slice, contract-tests, migrations, contracts-code, issues]
-    allowed_writes: [contracts-src, contract-tests, migrations, contracts-code, issues]
+    writes: [contracts-src, uc-index, contract-slice, contract-tests, migrations, contracts-code]
+    allowed_writes: [contracts-src, contract-tests, migrations, contracts-code]
   - id: implement.scaffold
     name: テスト足場の生成
     skill: d2-implement
@@ -761,11 +807,10 @@ processes:
     template_row: "④ tier"
     write_set:
       - "`apps/<tier>/**`"
-      - "`<run>/attempt-<n>/assumptions.<tier>.yaml`"
-      - "`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
+      - "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
     reads: [rules, feature, contract-slice, contracts-code, use-cases, req-usdm, req-rdra, design, ui, tier-src, test-support, findings]
-    writes: [tier-src, assumptions, issues-tier, migrations]
-    allowed_writes: [tier-dir, assumptions, issues-tier]
+    writes: [tier-src, assumptions, migrations]
+    allowed_writes: [tier-dir, assumptions]
     notes:
       - "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
   - id: implement.integrate
@@ -809,7 +854,7 @@ processes:
       - "`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)"
       - "`<run>/reports/**` (depcruise の結果と抽出の集計)"
       - "`<run>/issues/<ts>_asbuilt_<slug>.md` (要約の課題のうち、人レビューに載っていないものの下書き)"
-    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system, depcruise-config, tier-src]
+    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system, depcruise-config, tier-src]
     writes: [reports, asbuilt-uc, asbuilt-index, asbuilt-system, asbuilt-report, issues-asbuilt]
     allowed_writes: [asbuilt-uc, asbuilt-system, reports, issues-asbuilt]
     notes:
@@ -829,7 +874,7 @@ processes:
     stage: asbuilt
     kind: script
     scripts: [extractAsBuilt.js]
-    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, issues-tier, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system]
+    reads: [config, use-cases, req-usdm, adr, reports, traces, assumptions, findings, run-events, issues, contract-slice, contracts-src, design, feature, asbuilt-uc, asbuilt-index, asbuilt-system]
     writes: [asbuilt-uc, asbuilt-index, asbuilt-system, asbuilt-report]
   - id: asbuilt.summarize
     name: 要約ブロックを埋める (LLM)
@@ -923,7 +968,7 @@ processes:
     kind: orchestrator
     actor: d2-run
     run_table_row: "④ の段階の進行・確認ページ"
-    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-tier, issues-asbuilt, uc-index, asbuilt-system, feature, acceptance, run-archive]
+    reads: [config, use-cases, run-events, reports, asbuilt-report, findings, assumptions, issues, issues-asbuilt, uc-index, asbuilt-system, feature, acceptance, run-archive]
     writes: [run-events, use-cases, asbuilt-report, issues-asbuilt, feedback-docs, worktrees, issues-consumed, run-archive]
   - id: run.uc.check-scenario
     name: シナリオの静的確認
@@ -1033,7 +1078,7 @@ processes:
     actor: d2-run
     scripts: [feedbackBatch.js]
     run_table_row: "④ の feedbackBatch.js file-issues"
-    reads: [issues, issues-tier, issues-asbuilt, run-events]
+    reads: [issues, issues-asbuilt, run-events]
     writes: [feedback-docs, run-events]
   # ================= ② 決定の差分 (0.2.0。戻し先が decide の課題を、clean な main の作業ツリーで新しい ADR にする) =================
   - id: decide.feedback
@@ -1045,11 +1090,12 @@ processes:
     template_row: "② 決定の差分 (ADR)"
     write_set:
       - "`docs/adr/**`"
+      - "`docs/nfr/**`"
       - "`.distillery/logs/decide-<issue>.result.json`"
-    reads: [feedback-docs, adr]
-    writes: [adr, decide-result]
-    allowed_writes: [adr-dir, decide-result]
-    scripts: [validateAdr.js, genAdrIndex.js]
+    reads: [feedback-docs, adr, nfr]
+    writes: [adr, nfr, decide-result]
+    allowed_writes: [adr-dir, nfr, decide-result]
+    scripts: [validateAdr.js, genAdrIndex.js, validateNfrGrade.js, generateNfrGradeMd.js]
   - id: run.decide-diff
     name: 決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)
     stage: decide
@@ -1069,6 +1115,26 @@ processes:
     run_table_row: "③ の基盤の差分の取り込み"
     reads: [feedback-docs, config, reports, use-cases]
     writes: [feedback-docs, reports, use-cases, run-archive]
+  # ================= 起動時の自動選択と写し直し (0.3.0) =================
+  - id: run.next-action
+    name: 次に何をするかを決める (起動時の自動選択。読むだけ)
+    stage: startup
+    kind: script
+    actor: d2-run
+    scripts: [nextAction.js]
+    run_table_row: "起動時の nextAction.js"
+    reads: [use-cases, adr, config, run-events, feedback-docs, decisions-upstream, resume-journal, run-archive]
+    writes: []
+  - id: run.resume
+    name: 上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から)
+    parent: run.uc
+    stage: uc
+    kind: script
+    actor: d2-run
+    scripts: [resumeAfterUpstream.js]
+    run_table_row: "④ の resumeAfterUpstream.js (写し直し)"
+    reads: [run-events, feedback-docs, resume-journal, resume-diffs, handoff-run]
+    writes: [run-events, resume-diffs, resume-journal, reviews-run, contracts-src, contract-tests, rules, depcruise-config, adr, docs-readme, feedback-index, check-script, githooks, plugin-lock]
   # ================= 起動時の移行 (UC の外。課題を数える前に、0.1.x の残りを片付ける) =================
   # main マージ済みなのに課題ファイルにしていない run の課題を課題ファイルにする (0.1.28)
   - id: run.migrate-issues
@@ -1078,7 +1144,7 @@ processes:
     actor: d2-run
     scripts: [feedbackBatch.js]
     run_table_row: "起動時の feedbackBatch.js file-issues (移行)"
-    reads: [issues, issues-tier, issues-asbuilt, run-events]
+    reads: [issues, issues-asbuilt, run-events]
     writes: [feedback-docs, run-events]
   - id: run.migrate-readme
     name: 文書の入口の更新 (起動時の移行)

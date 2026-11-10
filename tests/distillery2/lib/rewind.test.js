@@ -82,9 +82,14 @@ test('rewind implementation: attempt を 1 つ上げて tier から (契約ゲ�
 test('上限: 巻き戻しと as-built からの差し戻しを合わせて 3 回で止まり、--override-limit のときだけ越える (CLI は exit 3)', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-rewind-'));
   const dir = rs.openRun(root, 'resubmit');
+  const doneAll = () => { for (const st of rs.STAGES.slice(0, -1)) if (!rs.isDone(dir, st)) rs.markDone(dir, st); };
+  doneAll();
   rs.rewind(dir, 'implementation');
+  doneAll();
   rs.returnToIntegrate(dir, {});
+  doneAll();
   rs.rewind(dir, 'contract');
+  doneAll();
   assert.throws(() => rs.rewind(dir, 'contract'), (e) => e instanceof rs.LimitError && /上限 \(3 回\)/.test(e.message));
   assert.throws(() => rs.returnToIntegrate(dir, {}), rs.LimitError);
   const r = run([RS, 'rewind', dir, 'scenario']);
@@ -167,7 +172,7 @@ test('scan: 上流の課題を戻し先ごとに、main マージ済みの UC �
   // まだ main に入っていない UC への機能の中の課題は carried (上流で止めたときに一緒に課題ファイルになったもの)
   w(root, 'docs/feedback/f.md', '---\nkind: contract\ntitle: 例が区別できない\ntarget_step: contract\nfrom_uc: resubmit\nstatus: open\n---\n');
   const s2 = JSON.parse(run([FB, 'scan', '--cwd', root]).out);
-  assert.deepEqual(s2.carried, [{ uc: 'resubmit', from: 'contract', issues: ['f'] }]);
+  assert.deepEqual(s2.carried, [{ uc: 'resubmit', from: 'contract', issues: ['f'], items: [{ issue: 'f', target_step: 'contract', resume_from: null }] }]);
   assert.deepEqual(s2.reopen_targets.map((x) => x.uc), ['submit-expense']);
 });
 
@@ -191,4 +196,33 @@ test('invalidate: 同じ段の done を同じ秒に二度退避しても、前�
   const b = rs.invalidate(dir, 'contract', 'second');
   assert.notEqual(a, b);
   assert.ok(fs.existsSync(a) && fs.existsSync(b));
+});
+
+test('0.3.0: まだ通っていない段への課題は巻き戻さず deferred (回数に数えず、done も attempt も変えない)。下書きは consumed へ移り、その段の派遣文に添える', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-rewind-'));
+  const dir = rs.openRun(root, 'book-room');
+  for (const st of ['scenario', 'contract', 'scaffold']) rs.markDone(dir, st);
+  fs.mkdirSync(path.join(dir, 'issues'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'issues', 'a.md'), '---\ntarget_step: implementation\n---\n');
+  const r = rs.rewind(dir, 'implementation', { issues: ['issues/a.md'] });
+  assert.equal(r.deferred, true);
+  assert.equal(r.rewinds, 0);
+  assert.equal(rs.rewindCount(dir), 0);
+  assert.equal(rs.currentAttempt(dir), 1);
+  assert.ok(rs.isDone(dir, 'scaffold'));
+  assert.deepEqual(r.consumed_all, ['issues/consumed/a.md']);
+  assert.equal(rs.readEvents(dir).pop().type, 'rewind_deferred');
+});
+
+test('0.3.0: rewind は --issue を複数受け、すべて consumed へ移す (1 件目だけでなく)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-rewind-'));
+  const dir = rs.openRun(root, 'book-room');
+  for (const st of rs.STAGES.slice(0, -1)) rs.markDone(dir, st);
+  fs.mkdirSync(path.join(dir, 'issues'), { recursive: true });
+  for (const n of ['a', 'b']) fs.writeFileSync(path.join(dir, 'issues', `${n}.md`), '---\ntarget_step: contract\n---\n');
+  const r = spawnSync(process.execPath, [RS, 'rewind', dir, 'contract', '--issue', 'issues/a.md', '--issue', 'issues/b.md'], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(JSON.parse(r.stdout).consumed_all, ['issues/consumed/a.md', 'issues/consumed/b.md']);
+  assert.deepEqual(fs.readdirSync(path.join(dir, 'issues')).filter((f) => f.endsWith('.md')), []);
+  assert.equal(rs.rewindCount(dir), 1);
 });

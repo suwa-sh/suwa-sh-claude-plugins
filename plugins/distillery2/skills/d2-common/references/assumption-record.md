@@ -99,7 +99,7 @@ node "$V" evidence backend-api:<assumptions_sha256>:<verdicts_sha256> worker:<sh
 | 状態 | いつ | 正本 |
 |---|---|---|
 | unconfirmed | mode=tier が書いた時点 | assumptions ファイル |
-| confirmed / rejected | 人レビューで回答 | `review_approved.assumption_decisions` (却下は `resolution: implementation_change | spec_change`) |
+| confirmed / rejected | 人レビューで回答 | `review_approved.assumption_decisions` (却下は `resolution: implementation_change | spec_change`。承認は `by: human | recommended` = 人が答えたか、推奨で進めるモードで推奨案を採ったか。実装の記録が「人が承認」と「推奨案で承認」を書き分ける) |
 | auto_confirmed | 回答任意の前提で未回答のまま承認 | 同上 |
 | (再生成) | attempt++ で mode=tier が再実行されたティア | 新 attempt のファイル |
 

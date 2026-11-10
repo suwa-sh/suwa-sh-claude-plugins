@@ -72,7 +72,7 @@ node <skills>/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
 
 ### 3. 決定を導いて ADR を書く
 
-[references/required-decisions.md](references/required-decisions.md) の 8 領域を最低限すべて覆う。該当しない領域は「不要」と 1 本の ADR で明記する (黙って省かない)。9 番目「コンテキストの境界」は任意 (業務ドメインが複数に分かれるときだけ `contexts[]` を書く)。
+[references/required-decisions.md](references/required-decisions.md) の 13 領域 (1〜8・10〜14) を最低限すべて覆う。該当しない領域は「不要」と 1 本の ADR で明記する (黙って省かない)。9 番目「コンテキストの境界」は任意 (業務ドメインが複数に分かれるときだけ `contexts[]` を書く)。
 
 各領域の判断材料は決定候補カタログにある:
 
@@ -85,13 +85,19 @@ node <skills>/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
 | 認証 / 認可 | [decision-candidates/auth.md](references/decision-candidates/auth.md) |
 | テスト方針 | [decision-candidates/testing-stack.md](references/decision-candidates/testing-stack.md) |
 | UI 部品の方針 | [decision-candidates/ui.md](references/decision-candidates/ui.md) |
+| DDD の戦術設計 | [decision-candidates/ddd-tactical.md](references/decision-candidates/ddd-tactical.md) |
+| イミュータブルデータモデル | [decision-candidates/immutable-data.md](references/decision-candidates/immutable-data.md) |
+| エラーハンドリング | [decision-candidates/error-handling.md](references/decision-candidates/error-handling.md) |
+| ログのルール | [decision-candidates/logging.md](references/decision-candidates/logging.md) |
+| 機械チェック | [decision-candidates/machine-checks.md](references/decision-candidates/machine-checks.md) |
 
 各 ADR は [references/adr-format.md](references/adr-format.md) の形で 1 ファイルずつ書く (`docs/adr/0001-<slug>.md` から連番)。要点:
 
 - front matter の必須フィールド: `id` (クォート必須) / `title` / `status` / `date` / `basis` / `scope`。
 - 本文は日本語で 背景 / 決定 / 却下した案 / 影響 の 4 節。
 - 該当する ADR は `rules[]` を最低 1 つ持つ。**ティア構成の ADR は `arch_test.level: tier` を、レイヤ構成の ADR は `arch_test.level: layer` を持つ**。
-- **ティア構成の ADR は front matter に `tiers[]` と `datastore_owner` を (scope に system を含む 1 本だけ)、accepted なテスト方針の ADR (scope に testing を含む) は `capabilities.browser` を持つ**
+- **機械チェックの ADR (scope に system) は front matter に `checks` を持つ** (1 本だけ。形は [decision-candidates/machine-checks.md](references/decision-candidates/machine-checks.md)。段階③が一括チェックとコマンドを生成する入力)
+- **ティア構成の ADR は front matter に `tiers[]` (ティアごとに `packages`: そのティアの決定 (枠組み・DB のクライアント・認証) で使う npm のパッケージ名。無ければ `[]`。型定義は `dev_packages`) と `datastore_owner` を (scope に system を含む 1 本だけ)、accepted なテスト方針の ADR (scope に testing を含む) は `capabilities.browser` を持つ**
   (段階③の config / 骨格 / rules の入力。形は adr-format.md「段階③が読む追加の front matter」)。
 - `rules[]` は段階③ の入力になる。カタログの「派生するルール例」を土台にする。
 - 言語 / FW が未定なら「未定」と明記した ADR を書く (ベンダーニュートラル。特定サービス名を使わない)。
@@ -129,20 +135,26 @@ node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requir
 ## mode=feedback (決定の差分)
 
 d2-run が決定の差分で派遣する (作業ディレクトリはリポのルート。clean な main)。実装で見つかった「ルールの穴」(課題ファイル `docs/feedback/<issue>.md` で戻し先が `decide`。古い課題は `kind: rule`) を、
-新しい ADR 1 本の `rules[]` にする。開発ルールとアーキテストは作り直さない (課題をすべて ADR にした後に d2-run が作り直す)。
+新しい ADR 1 本の `rules[]` にする (課題が非機能グレード表の誤りなら表を直す)。開発ルールとアーキテストは作り直さない (課題をすべて ADR にした後に d2-run が作り直す)。
 
 1. 課題を読む。既存の ADR をすべて読み、課題がどの決定に関わるかを決める
 2. 次のどれかに当たるなら、**ADR を書かずに**結果ファイルへ `status: blocked` と理由、理由の種類 `reason_kind` を書いて止まる:
    - ADR の `rules[]` で表せない (生成器の直し、設定ファイル (`biome.json` など。生成器が作り直すので対象リポジトリで直しても戻る) の直し、手順書の直し) → `reason_kind: plugin`
      (直す場所は distillery2 側。d2-run は課題を `kind: plugin` に書き換える)
    - ティア構成・データストア・testing の capabilities を変える必要がある (config・骨格の作り直しが要る) → `reason_kind: scope` (d2-run が戻し先を基盤 (`foundation`) にするか人に返す)
-3. 新しい ADR を 1 本書く ([references/adr-format.md](references/adr-format.md))。連番は既存の最大 + 1、`status: accepted`、
+3. 課題が非機能グレード表 (`docs/nfr/nfr-grade.yaml`) の誤り (根拠の書き違い・レベルの見直し) なら、表を直して
+   `validateNfrGrade.js docs/nfr/nfr-grade.yaml` → `generateNfrGradeMd.js docs/nfr/nfr-grade.yaml` (段階②と同じ。md は手で書かない)。
+   レベルを変えずに済むなら ADR は書かず 6 へ進む。レベルを変えたら、そのレベルに依る決定を次の 4 の新しい ADR で直す (0.3.0 の実地確認 3 起動目:
+   表を直す道が無く、同じ根の課題が 2 回プラグインの課題になって止まった)
+4. 新しい ADR を 1 本書く ([references/adr-format.md](references/adr-format.md))。連番は既存の最大 + 1、`status: accepted`、
    `basis` は既存の ADR と同じ書き方、`rules[]` を 1 つ以上。本文の背景に課題の要点 (課題のファイル名と、front matter の `from_uc`) を書く
-4. 既存の決定を置き換えるときだけ、新しい ADR に `supersedes` を書き、旧 ADR は front matter の `status: superseded` と
+5. 既存の決定を置き換えるときだけ、新しい ADR に `supersedes` を書き、旧 ADR は front matter の `status: superseded` と
    `superseded_by` の 2 項目だけを変える (本文と旧 `rules[]` は変えない。決定の履歴を残す)。既存の ADR をそれ以外で変えない
-5. `validateAdr.js` → `genAdrIndex.js` (段階②と同じコマンド)。PASS するまで直す。`genArchitectureDoc.js` は回さない (ティアを変えないので図は変わらない)。
-   `_review-summary.md` は書かない (人の確認は d2-run の決定の差分の確認ページで行う)
-6. 結果ファイルへ `status: applied`、`targets` (足した ADR のファイル名と、置き換えた旧 ADR)、`reason` (1 行) を書く
+6. `validateAdr.js` → `genAdrIndex.js` (段階②と同じコマンド)。PASS するまで直す。`genArchitectureDoc.js` は回さない (ティアを変えないので図は変わらない)。
+   `_review-summary.md` は作り直さず、**追記する**: 「作り方の決定」に足した ADR (置き換えなら旧 ADR を置き換えた旨) を、
+   「確認してほしいこと」に足した ADR の `confidence: low` の前提と、直した非機能グレード表の根拠を 1 行ずつ。既存の行は、置き換えた ADR の行だけ直す
+   (書かないと要約を読む人に見えず、決定のレビューが毎回「要約が古い」を課題にする。0.3.0 の実地確認 3 起動目)
+7. 結果ファイルへ `status: applied`、`targets` (足した ADR のファイル名と、置き換えた旧 ADR。表を直したら `docs/nfr/nfr-grade.yaml`)、`reason` (1 行) を書く
 
 結果ファイルは JSON 1 つ: `{"status": "applied" | "blocked", "targets": [...], "reason": "...", "reason_kind": "plugin" | "scope"}` (`reason_kind` は `blocked` のとき必須)。d2-run はこのファイルで分岐し、
 受理は `validateAdr.js` で行う (報告文では判断しない)。
@@ -150,11 +162,12 @@ d2-run が決定の差分で派遣する (作業ディレクトリはリポの�
 ## mode=feedback: 読むもの
 
 - 課題ファイル `docs/feedback/<issue>.md` (派遣文で渡す)
-- `docs/adr/*.md` (既存の ADR と索引)
+- `docs/adr/*.md` (既存の ADR と索引)、`docs/nfr/nfr-grade.yaml` (決定の根拠)
 
 ## mode=feedback: 書くもの
 
 - `docs/adr/NNNN-<slug>.md` (新しい ADR 1 本。置き換えなら旧 ADR の front matter 2 項目も)、`docs/adr/index.md` (genAdrIndex)
+- `docs/nfr/nfr-grade.yaml` / `nfr-grade.md` (課題が非機能グレード表の誤りのときだけ)
 - 結果ファイル `.distillery/logs/decide-<issue>.result.json` (派遣文で渡す)
 - git は使わない (commit は d2-run が行う)
 

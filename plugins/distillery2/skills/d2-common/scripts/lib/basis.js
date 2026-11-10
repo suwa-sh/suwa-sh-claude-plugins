@@ -22,9 +22,16 @@ const { execFileSync } = require('node:child_process');
 const HEADER_RE = /basis:\s*["']?((?:[A-Za-z0-9_-]+@[0-9a-f]{7,40}\s*)+)["']?/;
 const SCAN_LINES = 10;
 
-function lastCommit(dir, cwd = process.cwd(), ref = null) {
+// 上流のディレクトリのうち、basis の比較から外すファイル (0.3.0)。use-cases.yaml は要求から生成し、main マージのたびに status だけが書き換わる。
+// 含めると、UC の状態が変わるだけで要求を基にした生成物 (ADR など) がすべて古く見える
+// docs/adr の architecture.md (genArchitectureDoc) と index.md (genAdrIndex) は ADR から作る生成物で、基盤の仕上げを回すたびに書き換わる。
+// 含めると、決定が変わっていないのに ADR を基にした成果物 (契約など) がすべて古く見え、写し直しが契約の段まで戻る (0.3.0 の実地確認で実測)
+const EXCLUDE = { requirements: ['use-cases.yaml'], adr: ['architecture.md', 'index.md'] };
+
+function lastCommit(dir, cwd = process.cwd(), ref = null, name = null) {
+  const ex = (EXCLUDE[name] || []).map((f) => `:(exclude)${path.posix.join(String(dir).replace(/\\/g, '/').replace(/\/$/, ''), f)}`);
   try {
-    const out = execFileSync('git', ['log', '-1', '--format=%H', ...(ref ? [ref] : []), '--', dir], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    const out = execFileSync('git', ['log', '-1', '--format=%H', ...(ref ? [ref] : []), '--', dir, ...ex], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
     return out || null;
   } catch { return null; }
 }
@@ -33,7 +40,7 @@ function lastCommit(dir, cwd = process.cwd(), ref = null) {
 /** ref を渡すとその commit から遡る (main マージ trailer は squash で消える branch 上の commit を指さないよう base 側で取る) */
 function stamp(dirs, cwd = process.cwd(), ref = null) {
   const basis = {};
-  for (const [name, dir] of Object.entries(dirs)) basis[name] = lastCommit(dir, cwd, ref);
+  for (const [name, dir] of Object.entries(dirs)) basis[name] = lastCommit(dir, cwd, ref, name);
   return basis;
 }
 
@@ -59,7 +66,7 @@ function check(filePath, dirs, cwd = process.cwd()) {
   const recorded = parseHeader(text);
   if (!recorded) return { file: filePath, missing: true, entries: [] };
   const entries = Object.entries(recorded).map(([name, sha]) => {
-    const current = dirs[name] ? lastCommit(dirs[name], cwd) : null;
+    const current = dirs[name] ? lastCommit(dirs[name], cwd, null, name) : null;
     return { name, recorded: sha, current, stale: Boolean(current) && !current.startsWith(sha) };
   });
   return { file: filePath, missing: false, entries };
@@ -98,4 +105,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { lastCommit, stamp, headerLine, parseHeader, check, HEADER_RE };
+module.exports = { EXCLUDE, lastCommit, stamp, headerLine, parseHeader, check, HEADER_RE };

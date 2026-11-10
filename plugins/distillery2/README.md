@@ -22,13 +22,18 @@ v2 は成果物を 3 つに分ける。
                                                  │
         ┌────────────────────────────────────────┘
         ▼  UC ごとに繰り返す
-  シナリオ → 契約差分 → 足場 → ティア実装 (並列) → ゲート (安い順) → 別モデル検証 (2 観点)
+  最初の点検 → シナリオ → 契約差分 → 足場 → ティア実装 (並列) → ゲート (安い順) → 別モデル検証 (2 観点)
   → 人レビュー → as-built 抽出 → 課題を課題ファイル docs/feedback/ にして、1 commit に squash して main へ取り込む
         │
         ▼  前のステップの課題は、戻し先のステップへ戻す
   機能の中 (シナリオ・契約・実装) はその場で巻き戻す / main マージ済みの UC はその段から開き直す /
-  上流 (要求・決定・基盤) は機能を止めて上流の差分を回し、影響する UC を開き直す (戻り道は 3 回まで)
+  上流 (要求・決定・基盤) は一時のブランチで直して main に入れ、止めた機能の作業ブランチを
+  新しい main の上に写し直して続きの段から再開する (作業は捨てない。戻り道はそれぞれ 3 回まで)
 ```
+
+最初の点検は、シナリオを書く前に、要る決定や部品が上流にそろっているかを見る。足りなければ機能の作業が無いうちに上流を直すので、写し直しが要らない。
+前のステップの課題にするのは、食い違う / 後の機能と食い違う / 方式が決まっていない、のどれかに当たるものだけ ([handoff.md](skills/d2-common/references/handoff.md))。機能の中で足せる結線は止めずに先に直して報告する。
+起動のたびに、次にすること (片付け・進行中の機能・上流の直し・写し直し・次の機能) を `nextAction.js` が決める。
 
 どのステップも同じ型で進む: 担当が作る → 形式の検査 → 成果物ごとの縦・横レビュー (別系統のモデル。要求・決定・基盤・シナリオ・契約・実装・as-built の 7 か所) → 担当が反証して直す → 進行役が振り分け。
 担当は引き継ぎファイルで「人に聞くこと」と「前のステップの課題」を返し、進行役がモードの規則で人に返すか推奨で決めて記録する。
@@ -48,7 +53,7 @@ PR / issue は作らない。git とファイルだけで完結し、GitHub 以�
 | `distillery2:d2-foundation` | ③ 基盤。rules / arch test / テスト基盤 / 設定 / CI / 依存の導入。契約の骨格と画面部品の後の仕上げ (契約込みの再生成・画面部品の取り込み・骨格分の契約テスト・チェックポイント) |
 | `distillery2:d2-design` | ③ 画面部品。tokens (ブランド起点) + Storybook + アセット + 目視証跡 |
 | `distillery2:d2-contract` | 契約カタログ (skeleton / uc の 2 モード。例ごとに URL の値・ヘッダ・テスト用データを指定して契約テストを作る) |
-| `distillery2:d2-implement` | ④ 実装者 (scenario / scaffold / tier / integrate) |
+| `distillery2:d2-implement` | ④ 実装者 (precheck / scenario / scaffold / tier / integrate)。precheck は機能の最初の点検 |
 | `distillery2:d2-verify` | ④ 別モデルの検証 (UC の意図・前提の整合) |
 | `distillery2:d2-asbuilt` | ④ 実装からの文書抽出 (依存グラフの実態・抽出・要約・書式の検査まで) |
 | `distillery2:d2-common` | 他のスキルが参照する共通定義。直接は起動しない。**処理と入出力の正本** ([dataflow.yaml](skills/d2-common/references/dataflow.yaml)) と、そこから生成した DFD ([dataflow.md](skills/d2-common/references/dataflow.md)) |
@@ -85,6 +90,7 @@ docs/                  requirements/ nfr/ adr/ rules/ design/ as-built/
 
 ## 状態
 
-0.2.x は、要望から複数の UC を main マージまで通し、後のステップで見つけた問題を前のステップへ戻して直す範囲を対象にする。リリース後の変更入口・ドリフト検知・既存プロダクトの取り込みは未対応。変更履歴は [CHANGELOG.md](CHANGELOG.md)。
+0.3.x は、要望から複数の UC を main マージまで通し、後のステップで見つけた問題を、機能の作業を捨てずに前のステップへ戻して直す範囲を対象にする。
+会議室の予約の題材で 2 つの UC が main に入るところまで確かめた (`mode=recommend`。`mode=auto` は確かめていない)。リリース後の変更入口・ドリフト検知・既存プロダクトの取り込みは未対応。変更履歴は [CHANGELOG.md](CHANGELOG.md)。
 実走で踏んだ環境依存の問題と回避策は、スキルごとの `references/troubleshooting.md` にためる: [d2-run](skills/d2-run/references/troubleshooting.md) (headless の許可) / [d2-foundation](skills/d2-foundation/references/troubleshooting.md) (npm 10 の失敗、qlty / biome) / [d2-contract](skills/d2-contract/references/troubleshooting.md) (契約テスト)。
 旧版 (`distillery` / `distillery-impl`) はそのまま残る。

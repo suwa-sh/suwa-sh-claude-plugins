@@ -124,3 +124,20 @@ test('CLI: slug の形式違いと uc-index 不在は exit 2', () => {
   assert.equal(run(['--uc', 'Bad_Slug', '--cwd', root]), 2);
   assert.equal(run(['--uc', 'register-return', '--cwd', root]), 2);
 });
+
+test('CLI --base: commit 済みの変更も数える (写し直しの後は機能の契約の変更が commit 済み。0.3.0 の実地確認)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-classify-'));
+  const git = (...a) => execFileSync('git', a, { cwd: root, encoding: 'utf8' });
+  git('init', '-q'); git('config', 'user.email', 't@example.com'); git('config', 'user.name', 't');
+  fs.mkdirSync(path.join(root, 'contracts'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'contracts', 'uc-index.yaml'), 'schema_version: distillery2.uc-index/v1\nucs:\n  - slug: register-return\n    operations: [registerReturn]\n    messages: []\n    tables: []\n');
+  git('add', '.'); git('commit', '-q', '-m', 'base');
+  const base = git('rev-parse', 'HEAD').trim();
+  const dir = path.join(root, 'apps/backend-api/test/contract');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'registerReturn.test.ts'), 'x\n');
+  git('add', '.'); git('commit', '-q', '-m', 'resume');
+  const cli = (extra) => JSON.parse(execFileSync('node', [SCRIPT, '--uc', 'register-return', '--cwd', root, ...extra, '--json'], { encoding: 'utf8' }));
+  assert.deepEqual(cli([]).own, [], 'git status だけでは commit 済みの変更が見えない');
+  assert.deepEqual(cli(['--base', base]).own.map((o) => o.operation), ['registerReturn']);
+});

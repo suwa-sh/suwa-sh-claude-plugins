@@ -58,7 +58,7 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(contractCfg.includes("['test/contract/**/*.{test,spec}.{ts,tsx}']"), '契約テストは test/contract/ だけ');
   assert.equal(appPkg.scripts['test:contract'], 'vitest run -c vitest.contract.config.ts');
   const biomeCfg = JSON.parse(fs.readFileSync(path.join(c, 'biome.json'), 'utf8'));
-  assert.deepEqual(biomeCfg.files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract'], '生成物はルートの整形から外す');
+  assert.deepEqual(biomeCfg.files.includes, ['**', '!packages/contracts', '!contracts/generated', '!docs', '!**/test/contract', '!scripts/check.mjs', '!.dependency-cruiser.cjs', '!.distillery'], '生成物はルートの整形から外す');
   // biome 2.2.0 以降の useBiomeIgnoreFolder はフォルダ除外の末尾 `/**` を違反にする (0.1.22 の試し運転で ③ が落ちた)
   assert.ok(!biomeCfg.files.includes.some((x) => /^!.*\/\*\*$/.test(x)), 'フォルダの除外に末尾 /** を付けない');
   // frontend tier の tsconfig は jsx を有効化する
@@ -74,7 +74,7 @@ test('genSkeleton: creates app/package dirs and root files', () => {
   assert.ok(gitignore.includes('.distillery/runs/*/reports/') && gitignore.includes('traces/'));
   // attempt-*/ は commit 対象なので除外しない (run-state.md と整合)
   assert.ok(!gitignore.includes('attempt-'), 'attempt-*/ は gitignore しない');
-  for (const q of ['.qlty/logs/', '.qlty/out/', '.qlty/results/', '.qlty/plugin_cachedir/']) assert.ok(gitignore.includes(q), `qlty の作業ディレクトリ ${q} を gitignore`);
+  for (const q of ['.qlty/logs', '.qlty/out', '.qlty/results', '.qlty/plugin_cachedir']) assert.ok(gitignore.split('\n').includes(q), `qlty の作業ディレクトリ ${q} を gitignore`);
   // 0.1.26: 還流の worktree と、symlink の node_modules (スラッシュ無し) も無視する
   assert.match(gitignore, /^\.distillery\/worktrees\/$/m);
   assert.match(gitignore, /^node_modules$/m);
@@ -235,16 +235,17 @@ test('genSkeleton --migrate: 旧 tsconfig (複数行配列・types 無し) / roo
   assert.ok(fs.readFileSync(path.join(c, 'apps/worker/tsconfig.json'), 'utf8').includes('"strict": false'), '手編集は保持');
   assert.ok(JSON.parse(fs.readFileSync(rootP, 'utf8')).devDependencies['@types/node'], '@types/node を足す');
   assert.ok(r.out.includes('package.json: devDependencies に @types/node'), r.out);
-  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!custom/**', '!**/test/contract'], '手編集の項目を残して足りない分を足す');
-  assert.ok(r.out.includes('biome.json: files.includes に生成物の除外を追加 (!**/test/contract)'), r.out);
+  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!packages/contracts', '!contracts/generated', '!docs', '!custom/**', '!**/test/contract', '!scripts/check.mjs', '!.dependency-cruiser.cjs', '!.distillery'], '旧い `!!` を同じ位置で置き換え、手編集を残して足りない分を足す');
+  assert.ok(r.out.includes('biome.json: files.includes の旧い除外を置き換え (!!packages/contracts → !packages/contracts, !!contracts/generated → !contracts/generated, !!docs/design/storybook-app → !docs)'), r.out);
+  assert.ok(r.out.includes('biome.json: files.includes に生成物の除外を追加 (!**/test/contract, !scripts/check.mjs, !.dependency-cruiser.cjs, !.distillery)'), r.out);
   // もう一度 migrate しても変更なし (冪等)
   const r2 = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
   assert.match(r2.out, /migrate: 1 change\(s\)/, r2.out);  // 残るのは手編集の worker tsconfig の報告だけ
   // 0.1.15〜0.1.22 の形 (末尾 /**) は同じ位置で置き換える
   const b3 = JSON.parse(fs.readFileSync(biomeP, 'utf8')); b3.files.includes = ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract/**', '!custom/**']; fs.writeFileSync(biomeP, JSON.stringify(b3, null, 2) + '\n');
   const r3 = run('genSkeleton.js', c, ['--adr', adrDir, '--migrate']);
-  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!!packages/contracts', '!!contracts/generated', '!!docs/design/storybook-app', '!**/test/contract', '!custom/**'], '旧い除外を置き換え、手編集は残す');
-  assert.ok(r3.out.includes('biome.json: files.includes の旧い除外を置き換え (!**/test/contract/** → !**/test/contract)'), r3.out);
+  assert.deepEqual(JSON.parse(fs.readFileSync(biomeP, 'utf8')).files.includes, ['**', '!packages/contracts', '!contracts/generated', '!docs', '!**/test/contract', '!custom/**', '!scripts/check.mjs', '!.dependency-cruiser.cjs', '!.distillery'], '旧い除外を置き換え、手編集は残す');
+  assert.ok(r3.out.includes('!**/test/contract/** → !**/test/contract)'), r3.out);
 });
 
 test('genSkeleton --migrate: 手編集済み script は触らない (echo でなければ据え置き)', () => {
@@ -282,33 +283,17 @@ test('genTestSupport: copies templates without overwriting', () => {
   assert.ok(r.out.includes('skipped'), r.out);
 });
 
-test('genCi: renders 5-gate workflow with needs chain', () => {
+test('genCi: 機械チェックの一括実行 (scripts/check.mjs --mode ci) を回す 1 本の job。permissions は最小・checkout は credential を残さない・qlty は SHA ピンの install (0.3.0)', () => {
   const c = tmp();
-  // config を先に作る
   run('genConfig.js', c, ['--adr', adrDir, '--contracts', path.join(__dirname, 'fixtures/contracts.json'), '--out', '.distillery/config.yaml']);
   run('genCi.js', c, ['--config', '.distillery/config.yaml']);
   const ci = fs.readFileSync(path.join(c, '.github/workflows/ci.yml'), 'utf8');
-  for (const j of ['static:', 'unit:', 'contract:', 'uc-bdd:', 'acceptance:']) assert.ok(ci.includes(j), `missing job ${j}`);
-  assert.ok(ci.includes('needs: static') && ci.includes('needs: uc-bdd'));
-  // zizmor: permissions は最小、checkout は credential を残さない。qlty は install action (SHA ピン) の後にゲート
+  assert.match(ci, /^jobs:\n  check:\n    runs-on: ubuntu-latest$/m);
   assert.match(ci, /^permissions:\n  contents: read$/m);
   assert.match(ci, /actions\/checkout@v4\n\s+with:\n\s+persist-credentials: false/);
-  assert.match(ci, /uses: qltysh\/qlty-action\/install@[0-9a-f]{40} # v2\.3\.0\n\s+- run: qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium/);
-  // Cucumber のタグ式にワイルドカードは無い。uc-bdd は全 feature (not @browser)、acceptance は素の @acceptance で選ぶ。
-  assert.ok(!ci.includes('@uc:*') && !ci.includes('@acceptance:*'), 'ワイルドカードタグは使わない');
-  assert.ok(ci.includes('--tags "not @browser"') && ci.includes('@acceptance and not @browser'));
-  // contract job は提供側 (backend-api) だけ。消費側 (frontend / worker) の test:contract は入れない (Codex 0.1.13 指摘 5)
-  assert.ok(ci.includes('npm run test:contract -w apps/backend-api'));
-  assert.ok(!ci.includes('test:contract -w apps/frontend') && !ci.includes('test:contract -w apps/worker'));
-  // 0.1.26: PR を作らないので main と feature への push で回す。単体テストは 0 件のティアでも落とさない
+  assert.match(ci, /- run: npm ci\n\s+- uses: qltysh\/qlty-action\/install@[0-9a-f]{40} # v2\.3\.0\n\s+- run: node scripts\/check\.mjs --mode ci\n/);
   assert.match(ci, /^on:\n  push:\n    branches: \[main, 'feature\/\*\*'\]$/m);
   assert.ok(!ci.includes('pull_request'));
-  const unitLines = ci.split('\n').filter(l => /- run: npm run test -w /.test(l));
-  assert.ok(unitLines.length > 0);
-  for (const l of unitLines) assert.match(l, /--passWithNoTests$/, l);
-  const contractLines = ci.split('\n').filter(l => /- run: npm run test:contract -w /.test(l));
-  assert.ok(contractLines.length > 0);
-  for (const l of contractLines) assert.match(l, /--passWithNoTests$/, l);
 });
 
 test('genCi: passWithNoTests は vitest / npm run test にだけ付け、二重に付けない (0.1.26)', () => {
@@ -321,16 +306,14 @@ test('genCi: passWithNoTests は vitest / npm run test にだけ付け、二重�
   assert.equal(passWithNoTests('npm run test:contract -w apps/api -- --run'), 'npm run test:contract -w apps/api -- --run --passWithNoTests');
 });
 
-test('genCi: config のコマンドから job を組み、browser 有効時はブラウザ step を足す (Finding 6)', () => {
-  const genCi = require(path.join(SKILL, 'scripts/genCi.js'));
+test('genCheck: 一括チェックの計画は config のコマンドから組む。{report} と {slug} を残さず、契約テストは提供側だけ、単体と契約は 0 件で落とさず、browser 有効のときだけブラウザ受入 (Finding 6・0.1.26 を genCi から移した)', () => {
+  const { buildPlan } = require(path.join(SKILL, 'scripts/genCheck.js'));
   const config = {
     tiers: [{ id: 'api', dir: 'apps/api', provides: ['api'], commands: {
-      format_check: 'npm run format:check -w apps/api',
-      lint: 'npm run lint -w apps/api',
-      typecheck: 'npm run typecheck -w apps/api',
+      format_check: 'npm run format:check -w apps/api', lint: 'npm run lint -w apps/api', build: 'npm run build -w apps/api',
       unit: 'npm run test -w apps/api -- --run --reporter=json --outputFile={report}',
       contract: 'npm run test:contract -w apps/api -- --run --reporter=json --outputFile={report}',
-    } }],
+    } }, { id: 'web', dir: 'apps/web', commands: { unit: 'npm run test -w apps/web', contract: 'npm run test:contract -w apps/web' } }],
     commands: {
       arch_test: 'npx depcruise apps packages',
       uc_bdd: 'npx cucumber-js --tags "@uc:{slug}" --format json:{report}',
@@ -339,29 +322,117 @@ test('genCi: config のコマンドから job を組み、browser 有効時は�
     },
     capabilities: { browser: true },
   };
-  const yml = genCi.render(config);
-  // unit / contract は config の各ティアコマンドから (固定コマンドではない)
-  assert.ok(yml.includes('npm run test -w apps/api -- --run'), 'custom unit command');
-  assert.ok(yml.includes('npm run test:contract -w apps/api -- --run'), 'custom contract command');
-  // CI では {report} / {slug} プレースホルダは残さない
-  assert.ok(!yml.includes('{report}'), '{report} を残さない');
-  assert.ok(!yml.includes('@uc:{slug}'), '{slug} を残さない');
-  // browser 有効なのでブラウザ受入 step が入る
-  assert.ok(yml.includes('--tags "@acceptance and @browser"'), 'browser acceptance step');
-  assert.ok(yml.includes('--tags "not @browser"') && yml.includes('--tags "@acceptance and not @browser"'));
+  const plan = buildPlan(config);
+  const text = JSON.stringify(plan);
+  assert.ok(!text.includes('{report}') && !text.includes('{slug}'));
+  assert.equal(plan.tiers[0].unit, 'npm run test -w apps/api -- --run --passWithNoTests');
+  assert.equal(plan.tiers[0].contract, 'npm run test:contract -w apps/api -- --run --passWithNoTests');
+  assert.equal(plan.tiers[1].contract, null, '消費側には契約テストが無い');
+  assert.equal(plan.scenarios.uc_bdd, 'npx cucumber-js --tags "not @browser"');
+  assert.deepEqual(plan.scenarios.acceptance, ['npx cucumber-js --tags "@acceptance and not @browser"', 'npx cucumber-js --tags "@acceptance and @browser"']);
+  assert.equal(buildPlan({ ...config, capabilities: { browser: false } }).scenarios.acceptance.length, 1);
 });
 
-test('genCi: browser 無効ならブラウザ step を入れない (Finding 6)', () => {
-  const genCi = require(path.join(SKILL, 'scripts/genCi.js'));
-  const config = {
-    tiers: [{ id: 'api', dir: 'apps/api', commands: { unit: 'npm run test -w apps/api', contract: 'npm run test:contract -w apps/api' } }],
-    commands: {
-      uc_bdd: 'npx cucumber-js --tags "@uc:{slug}" --format json:{report}',
-      acceptance_api: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and not @browser" --format json:{report}',
-      acceptance_browser: 'npx cucumber-js --tags "@uc:{slug} and @acceptance and @browser" --format json:{report}',
-    },
-    capabilities: { browser: false },
-  };
-  const yml = genCi.render(config);
-  assert.ok(!yml.includes('@acceptance and @browser'), 'browser off ならブラウザ step 無し');
+test('0.3.0: 既存の root package.json にも check と prepare (hook を入れる) を足す。既存の prepare は残す', () => {
+  const c = tmp();
+  fs.writeFileSync(path.join(c, 'package.json'), JSON.stringify({ name: 'x', scripts: { prepare: 'husky' } }));
+  run('genSkeleton.js', c, ['--adr', adrDir]);
+  const pkg = JSON.parse(fs.readFileSync(path.join(c, 'package.json'), 'utf8'));
+  assert.equal(pkg.scripts.check, 'node scripts/check.mjs --mode ci');
+  assert.equal(pkg.scripts.prepare, 'husky && (git config core.hooksPath .githooks || true)', '既存の prepare の後に置き、既存の失敗は残す');
+  run('genSkeleton.js', c, ['--adr', adrDir]);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(c, 'package.json'), 'utf8')).scripts.prepare, 'husky && (git config core.hooksPath .githooks || true)', '2 回回しても重ねない');
 });
+
+// ---- 画面の土台 (0.3.0) ----
+function adrWithUi(ui) {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-skel-adr-'));
+  for (const f of fs.readdirSync(adrDir)) fs.copyFileSync(path.join(adrDir, f), path.join(d, f));
+  if (ui) fs.writeFileSync(path.join(d, '0009-ui.md'), `---\nid: "0009"\ntitle: ui\nstatus: accepted\nscope: [ui]\nui:\n${ui}\n---\n\n# 決定\n`);
+  return d;
+}
+const SPA_FILES = ['index.html', 'vite.config.ts', 'src/main.tsx', 'src/App.tsx', 'src/routes.tsx', 'src/styles.css', 'src/vite-env.d.ts'];
+
+test('genSkeleton: ADR の ui が React の SPA・Tailwind なら frontend に画面の土台を置き、vite でビルドする', () => {
+  const c = tmp();
+  const adr = adrWithUi('  framework: react\n  rendering: spa\n  styling: tailwind\n  design_system: true\n  brand:\n    name: "会議室 <予約>"');
+  const r = run('genSkeleton.js', c, ['--adr', adr]);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /画面の土台: frontend/);
+  for (const f of SPA_FILES) assert.ok(fs.existsSync(path.join(c, 'apps/frontend', f)), `missing ${f}`);
+  assert.ok(!fs.existsSync(path.join(c, 'apps/frontend/src/index.ts')), '入口は main.tsx なので空のエントリは置かない');
+  assert.ok(fs.existsSync(path.join(c, 'apps/backend-api/src/index.ts')), 'frontend 以外は今までどおり');
+  assert.ok(!fs.existsSync(path.join(c, 'apps/backend-api/index.html')));
+  const pkg = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/package.json'), 'utf8'));
+  assert.equal(pkg.scripts.build, 'tsc --noEmit -p . && vite build', 'tsc の出力と vite の dist/ をぶつけない');
+  for (const d of ['vite', '@vitejs/plugin-react', 'tailwindcss', '@tailwindcss/vite']) assert.ok(pkg.devDependencies[d], `devDependency ${d}`);
+  assert.match(fs.readFileSync(path.join(c, 'apps/frontend/index.html'), 'utf8'), /<title>会議室 &lt;予約&gt;<\/title>/);
+  const css = fs.readFileSync(path.join(c, 'apps/frontend/src/styles.css'), 'utf8');
+  assert.match(css, /^@import "tailwindcss";$/m, 'F5 では Tailwind を直接読む (画面部品の段が飛ばされても build が通る)');
+  assert.doesNotMatch(css, /@source|@theme/, 'biome 2.2.5 の lint が落とす Tailwind 固有の at-rule を書かない');
+  assert.match(fs.readFileSync(path.join(c, 'apps/frontend/src/routes.tsx'), 'utf8'), /export const routes: Route\[\] = \[\];/);
+  // 再実行は何も変えない
+  const again = run('genSkeleton.js', c, ['--adr', adr]);
+  assert.match(again.out, /genSkeleton: created 0,/);
+});
+
+test('genSkeleton: ui が無ければ d2-design と同じ既定 (React の SPA・Tailwind) で土台を置く。SSR・他の styling は置かない', () => {
+  const plain = tmp();
+  run('genSkeleton.js', plain, ['--adr', adrWithUi(null)]);
+  assert.match(fs.readFileSync(path.join(plain, 'apps/frontend/src/styles.css'), 'utf8'), /^@import "tailwindcss";$/m);
+  assert.match(fs.readFileSync(path.join(plain, 'apps/frontend/index.html'), 'utf8'), /<title>frontend<\/title>/, 'ブランド名が無ければティアの名前');
+  for (const [ui, why] of [['  framework: react\n  rendering: ssr\n  styling: tailwind', /React の SPA・Tailwind だけ \(ADR: react \/ ssr \/ tailwind\)。最初の画面の機能が ADR に従って作る/], ['  styling: css-modules', /\(ADR: react \/ spa \/ css-modules\)/]]) {
+    const c = tmp();
+    const r = run('genSkeleton.js', c, ['--adr', adrWithUi(ui)]);
+    assert.match(r.out, why);
+    for (const f of SPA_FILES) assert.ok(!fs.existsSync(path.join(c, 'apps/frontend', f)), `作らない: ${f}`);
+    assert.ok(fs.existsSync(path.join(c, 'apps/frontend/src/index.ts')));
+    assert.equal(JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/package.json'), 'utf8')).scripts.build, 'tsc -p .');
+  }
+});
+
+test('genSkeleton: 既にある frontend の package.json には足りない依存とスクリプトだけ足す (手で変えた build は触らない)', () => {
+  const adr = adrWithUi('  framework: react\n  rendering: spa\n  styling: tailwind');
+  const c = tmp();
+  const p = path.join(c, 'apps/frontend/package.json');
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, JSON.stringify({ name: '@app/frontend', scripts: { build: 'tsc -p .' }, dependencies: { vite: '^8.0.0' } }));
+  run('genSkeleton.js', c, ['--adr', adr]);
+  let pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+  assert.equal(pkg.scripts.build, 'tsc --noEmit -p . && vite build', '既定の build は置き換える');
+  assert.equal(pkg.scripts.dev, 'vite');
+  assert.equal(pkg.dependencies.vite, '^8.0.0');
+  assert.ok(!pkg.devDependencies.vite, 'どこかの区分に既にあれば足さない');
+  assert.ok(pkg.devDependencies['@tailwindcss/vite']);
+  fs.writeFileSync(p, JSON.stringify({ ...pkg, scripts: { ...pkg.scripts, build: 'my-build' } }));
+  run('genSkeleton.js', c, ['--adr', adr]);
+  pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+  assert.equal(pkg.scripts.build, 'my-build');
+});
+
+test('collectUi: scope に ui を含む ADR を優先する (d2-design と同じ)', () => {
+  const { collectUi } = require(path.join(SKILL, 'scripts/adr.js'));
+  const sys = { status: 'accepted', scope: ['system'], ui: { framework: 'vue' } };
+  const ui = { status: 'accepted', scope: ['ui'], ui: { framework: 'react' } };
+  assert.equal(collectUi([sys, ui]).framework, 'react');
+  assert.equal(collectUi([sys]).framework, 'vue', 'scope ui が無ければ ui を持つ最初の 1 本');
+  assert.equal(collectUi([{ ...ui, status: 'proposed' }]), null);
+});
+
+test('genSkeleton: 既にある root の package.json に React が無ければ、画面のティアに足す。新しいリポでは root が持つので足さない', () => {
+  const adr = adrWithUi('  framework: react');
+  const fresh = tmp();
+  run('genSkeleton.js', fresh, ['--adr', adr]);
+  const fe = JSON.parse(fs.readFileSync(path.join(fresh, 'apps/frontend/package.json'), 'utf8'));
+  assert.equal(fe.dependencies, undefined, 'root が react を持つ');
+  assert.ok(JSON.parse(fs.readFileSync(path.join(fresh, 'package.json'), 'utf8')).devDependencies.react);
+  const c = tmp();
+  fs.writeFileSync(path.join(c, 'package.json'), JSON.stringify({ name: 'x', private: true, workspaces: ['apps/*', 'packages/*'], devDependencies: { 'react-dom': '^19.0.0' } }));
+  run('genSkeleton.js', c, ['--adr', adr]);
+  const pkg = JSON.parse(fs.readFileSync(path.join(c, 'apps/frontend/package.json'), 'utf8'));
+  assert.equal(pkg.dependencies.react, '^19.2.0');
+  assert.ok(!pkg.dependencies['react-dom'], 'root にあるものは足さない');
+  assert.equal(pkg.devDependencies['@types/react'], '^19.2.0');
+  assert.equal(pkg.devDependencies['@types/react-dom'], '^19.2.0');
+});
+

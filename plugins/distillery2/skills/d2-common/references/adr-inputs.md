@@ -58,6 +58,11 @@ datastore_owner: backend-api
   基盤が取り違える入力は検証段階で弾かれる前提。
 - F1: `tiers[].kind` の集合で tier ルールファイルを絞る。
 - F5: `tiers[]` から config の `tiers[]` と apps 骨格、`datastore_owner` を作る。
+- F5: ADR の `ui` (`framework` / `rendering` / `styling` / `brand.name`。`collectUi` が accepted のうち scope に ui を含む最初の 1 本、無ければ ui を持つ最初の 1 本を読む。d2-design と同じ) が
+  React の SPA・Tailwind (省略時・`ui` が無いときは react / spa / tailwind。d2-design の既定と同じ) なら、genSkeleton が frontend ティアに画面の土台を置く (0.3.0。`index.html`・`vite.config.ts`・`src/main.tsx`・`src/App.tsx`・`src/routes.tsx`・`src/styles.css`、build を vite に)。
+  スタイルの入口は Tailwind を直接読み、画面部品を取り込んだら (F6) importUi が書く `packages/ui/entry.css` を読む形に替わる。それ以外の組み合わせでは置かず、
+  「最初の画面の機能が ADR に従って作る」と報告する
+- F7: `tiers[].packages` / `dev_packages` (npm のパッケージ名の配列。版は付けない) を `installTierPackages.js` が各ティアの package.json に `npm install -w` で入れる (0.3.0)。
 
 ## testing ADR (scope に `testing` を含む)
 

@@ -62,4 +62,14 @@ function collectCapabilities(adrs) {
   return {};
 }
 
-module.exports = { TIER_KINDS, parseFrontMatter, loadAdrs, isAccepted, hasScope, declaresTiers, collectTiers, collectCapabilities };
+/**
+ * 採用済みの ADR の `ui` (画面の方式とブランド。d2-decide の adr-format.md) を集める。無ければ null。
+ * d2-design と同じく scope に ui を含む ADR を優先し (id 昇順の最初)、無ければ ui を持つ最初の ADR
+ */
+function collectUi(adrs) {
+  const withUi = adrs.filter((adr) => isAccepted(adr) && adr.ui && typeof adr.ui === 'object' && !Array.isArray(adr.ui));
+  const pick = withUi.find((adr) => hasScope(adr, 'ui')) ?? withUi[0];
+  return pick ? pick.ui : null;
+}
+
+module.exports = { TIER_KINDS, parseFrontMatter, loadAdrs, isAccepted, hasScope, declaresTiers, collectTiers, collectCapabilities, collectUi };

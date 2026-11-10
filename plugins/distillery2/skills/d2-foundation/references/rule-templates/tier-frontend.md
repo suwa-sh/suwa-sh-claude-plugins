@@ -3,7 +3,11 @@
 - **入力**: 自ティアが consumer の契約 (OpenAPI) の生成物、`packages/ui/` の部品、UC の `.feature`。
 - **UI 部品は `packages/ui/` のみ使用**。不足コンポーネント・不足 variant は自作せず、design への変更要求を経由する。
 - API 呼び出しは `packages/contracts` の生成クライアント経由。`fetch` / `axios` の直書き禁止。
-  生成クライアントの `options.fetch` は上位から注入できるようにする (UC BDD がブラウザ無しで画面 → API を通し、計装する)。
+  生成クライアントの `options.fetch` は上位から注入できるようにする (単体テストで差し替える。UC BDD と受入が画面を通すか、API ドライバで API を直接呼ぶかはテストの ADR に従う)。
 - 画面の操作 (送信・確定など) は、描画と切り離して **ブラウザ無しで呼べる入口関数**として export する。
+- **画面の土台 (ビルドの設定・HTML と描画の入口・スタイルの入口・画面の切り替え) は基盤が置いたものを使う** (ADR の ui が React の SPA・Tailwind のとき。`index.html`・`vite.config.ts`・`src/main.tsx`・`src/App.tsx`・`src/styles.css`)。
+  画面の機能は自分の画面を `src/routes.tsx` の表に 1 行足し (path は `docs/design/screens.yaml` の route)、土台を作り直さない (置き換えない)。画面の移動は `App.tsx` の `navigate()` を使う。
+  ADR で決めた横断の結線 (サインインとトークンの受け渡し・サインイン後の戻り先の画面・API の宛先・開発時の中継) が土台に無ければ、それを最初に要る画面の機能が土台に足す (前のステップの課題にしない)。方式はこの開発ルールと common.md の「決定ごとのルール」の節 (ADR の rules から作る) から読む。方式が書かれていなければ足さずに戻し先 decide の課題にする。
+  足した結線は AssumptionRecord に書き、後の画面の機能はそれに載せる。
 - 画面は Storybook の story を構造の正として組む。乖離が必要なら実装で曲げず、前のステップの課題 (戻し先 foundation) にして変更を求める。
 - 担保するのは構造的整合 (部品在庫・画面状態) まで。ピクセル忠実度は未保証。

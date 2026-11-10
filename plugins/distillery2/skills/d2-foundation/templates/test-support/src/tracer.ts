@@ -51,11 +51,15 @@ const storage = new AsyncLocalStorage<ScenarioContext>();
  * 文脈が取れないときはこの控えを使う。exitScenario() で消す。
  */
 let fallbackStore: ScenarioContext | undefined;
-function store(): ScenarioContext | undefined { return storage.getStore() ?? fallbackStore; }
+function store(): ScenarioContext | undefined {
+  return storage.getStore() ?? fallbackStore;
+}
 
 /** このプロセスの既定ティア。部品ごとの Placement.tier が無いときに使う。テスト起動時に設定する。 */
 let currentTier: string | undefined = process.env.D2_TIER;
-export function setTier(tier: string): void { currentTier = tier; }
+export function setTier(tier: string): void {
+  currentTier = tier;
+}
 
 /**
  * 開始順の通し番号 (プロセス内で単調増加)。プロセスごとに pid 由来の基数を足し、別プロセスの行が
@@ -73,7 +77,10 @@ export function currentSpan(): number | undefined {
 }
 
 type PathsMap = Record<string, Record<string, { operationId?: string }>>;
-interface SliceLike { paths?: PathsMap; openapi?: { paths?: PathsMap } }
+interface SliceLike {
+  paths?: PathsMap;
+  openapi?: { paths?: PathsMap };
+}
 
 /**
  * contract-slice.json (OpenAPI bundle の部分集合) から、method + path → operationId の解決関数を作る。
@@ -81,16 +88,22 @@ interface SliceLike { paths?: PathsMap; openapi?: { paths?: PathsMap } }
  * openapi 部分 (`slice.openapi`) を直接渡された場合の `slice.paths` も受け付ける (どちらの形でも動く)。
  * path template (`/loans/{id}`) は 1 セグメント一致で照合する。as-built の operation 抽出はこの operationId を出所にする。
  */
-export function createOperationIdResolver(slice: SliceLike): (method: string, urlPath: string) => string | undefined {
+export function createOperationIdResolver(
+  slice: SliceLike,
+): (method: string, urlPath: string) => string | undefined {
   const entries: { method: string; re: RegExp; operationId: string }[] = [];
   const paths: PathsMap = slice.openapi?.paths || slice.paths || {};
   for (const [tpl, item] of Object.entries(paths)) {
-    const re = new RegExp(`^${tpl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{[^}]+\\\}/g, '[^/]+')}/?$`);
-    for (const [m, op] of Object.entries(item || {})) if (op?.operationId) entries.push({ method: m.toUpperCase(), re, operationId: op.operationId });
+    const re = new RegExp(
+      `^${tpl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{[^}]+\\\}/g, '[^/]+')}/?$`,
+    );
+    for (const [m, op] of Object.entries(item || {}))
+      if (op?.operationId)
+        entries.push({ method: m.toUpperCase(), re, operationId: op.operationId });
   }
   return (method, urlPath) => {
     const p = urlPath.split('?')[0];
-    const hit = entries.find(e => e.method === method.toUpperCase() && e.re.test(p));
+    const hit = entries.find((e) => e.method === method.toUpperCase() && e.re.test(p));
     return hit?.operationId;
   };
 }
@@ -104,7 +117,10 @@ export function createOperationIdResolver(slice: SliceLike): (method: string, ur
  * トレースの読み手 (buildTraceIndex / extractAsBuilt) は JSONL の `scenario` フィールドを使う。
  */
 export function sanitizeScenarioId(scenarioId: string): string {
-  const ascii = scenarioId.replace(/[^A-Za-z0-9._#-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 100);
+  const ascii = scenarioId
+    .replace(/[^A-Za-z0-9._#-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 100);
   const hash = crypto.createHash('sha256').update(scenarioId, 'utf8').digest('hex').slice(0, 8);
   return `${ascii || 'scenario'}-${hash}`;
 }
@@ -117,9 +133,13 @@ function writeEvent(event: TraceEvent): void {
   fs.appendFileSync(file, `${JSON.stringify(event)}\n`);
 }
 
-function withTier(meta: Record<string, unknown> | undefined, placement?: Placement): Record<string, unknown> {
+function withTier(
+  meta: Record<string, unknown> | undefined,
+  placement?: Placement,
+): Record<string, unknown> {
   const out: Record<string, unknown> = { ...(meta || {}) };
-  if (out.tier == null && (placement?.tier ?? currentTier) != null) out.tier = placement?.tier ?? currentTier;
+  if (out.tier == null && (placement?.tier ?? currentTier) != null)
+    out.tier = placement?.tier ?? currentTier;
   if (out.layer == null && placement?.layer != null) out.layer = placement.layer;
   return out;
 }
@@ -129,28 +149,63 @@ export function emit(kind: TraceKind, name: string, meta?: Record<string, unknow
   const ctx = store();
   if (!ctx?.scenarioId || !process.env.D2_TRACE_DIR) return;
   const seq = nextSeq++;
-  writeEvent({ ts: new Date().toISOString(), seq, parent: ctx.span, scenario: ctx.scenarioId, kind, name, meta: withTier(meta) });
+  writeEvent({
+    ts: new Date().toISOString(),
+    seq,
+    parent: ctx.span,
+    scenario: ctx.scenarioId,
+    kind,
+    name,
+    meta: withTier(meta),
+  });
 }
 
 /** span の中から完了時の meta を積む小道具 (例: HTTP の status)。 */
-export interface SpanHandle { set(extra: Record<string, unknown>): void }
+export interface SpanHandle {
+  set(extra: Record<string, unknown>): void;
+}
 
 /**
  * span (開始〜完了) として fn を実行し、完了時に 1 行書く。fn の中で起きた emit / span は
  * この span を parent に持つ。fn が Promise を返せば完了を待つ。例外・reject は meta.result = 'error' で記録して再送出する。
  * fn は SpanHandle を受け取り、`set({...})` で完了時の meta を足せる。文脈が無ければ計装せずにそのまま fn を実行する。
  */
-export function span<T>(kind: TraceKind, name: string, meta: Record<string, unknown> | undefined, fn: (handle: SpanHandle) => T): T {
+export function span<T>(
+  kind: TraceKind,
+  name: string,
+  meta: Record<string, unknown> | undefined,
+  fn: (handle: SpanHandle) => T,
+): T {
   const ctx = store();
-  const noop: SpanHandle = { set() { /* 文脈なし */ } };
+  const noop: SpanHandle = {
+    set() {
+      /* 文脈なし */
+    },
+  };
   if (!ctx?.scenarioId || !process.env.D2_TRACE_DIR) return fn(noop);
   const seq = nextSeq++;
   const ts = new Date().toISOString();
-  const base: TraceEvent = { ts, seq, parent: ctx.span, scenario: ctx.scenarioId, kind, name, meta: withTier(meta) };
+  const base: TraceEvent = {
+    ts,
+    seq,
+    parent: ctx.span,
+    scenario: ctx.scenarioId,
+    kind,
+    name,
+    meta: withTier(meta),
+  };
   const extra: Record<string, unknown> = {};
-  const handle: SpanHandle = { set(x) { Object.assign(extra, x); } };
+  const handle: SpanHandle = {
+    set(x) {
+      Object.assign(extra, x);
+    },
+  };
   const finish = (result: 'ok' | 'error') => {
-    writeEvent({ ...base, ts_end: new Date().toISOString(), meta: { ...base.meta, ...extra, result } });
+    writeEvent({
+      ...base,
+      ts_end: new Date().toISOString(),
+      meta: { ...base.meta, ...extra, result },
+    });
   };
   let out: T;
   try {
@@ -161,8 +216,14 @@ export function span<T>(kind: TraceKind, name: string, meta: Record<string, unkn
   }
   if (out && typeof (out as { then?: unknown }).then === 'function') {
     return (out as unknown as Promise<unknown>).then(
-      (v) => { finish('ok'); return v; },
-      (e) => { finish('error'); throw e; },
+      (v) => {
+        finish('ok');
+        return v;
+      },
+      (e) => {
+        finish('error');
+        throw e;
+      },
     ) as unknown as T;
   }
   finish('ok');
@@ -199,14 +260,22 @@ export function scenarioHeaders(): Record<string, string> {
 }
 
 /** ヘッダから scenario id と親 span を読む (scenarioHeaders の逆)。 */
-export function readScenarioHeaders(headers: Record<string, unknown>): { scenarioId?: string; parentSpan?: number } {
+export function readScenarioHeaders(headers: Record<string, unknown>): {
+  scenarioId?: string;
+  parentSpan?: number;
+} {
   const rawId = headers['x-scenario-id'];
   const rawSpan = headers['x-scenario-span'];
   let scenarioId: string | undefined;
   if (typeof rawId === 'string' && rawId) {
-    try { scenarioId = decodeURIComponent(rawId); } catch { scenarioId = rawId; }
+    try {
+      scenarioId = decodeURIComponent(rawId);
+    } catch {
+      scenarioId = rawId;
+    }
   }
-  const parentSpan = typeof rawSpan === 'string' && /^\d+$/.test(rawSpan) ? Number(rawSpan) : undefined;
+  const parentSpan =
+    typeof rawSpan === 'string' && /^\d+$/.test(rawSpan) ? Number(rawSpan) : undefined;
   return { scenarioId, parentSpan };
 }
 
@@ -218,19 +287,36 @@ export function tracedFetch(base: typeof fetch, placement?: Placement): typeof f
   return (input, init) => {
     const req = normalizeFetchInput(input, init);
     for (const [k, v] of Object.entries(scenarioHeaders())) req.headers.set(k, v);
-    return span('http.out', req.url, withTier({ method: req.method, url: req.url }, placement), async (h) => {
-      const res = await base(input as Request, { ...init, method: req.method, headers: req.headers });
-      h.set({ status: res.status });
-      return res;
-    });
+    return span(
+      'http.out',
+      req.url,
+      withTier({ method: req.method, url: req.url }, placement),
+      async (h) => {
+        const res = await base(input as Request, {
+          ...init,
+          method: req.method,
+          headers: req.headers,
+        });
+        h.set({ status: res.status });
+        return res;
+      },
+    );
   };
 }
 
 /** fetch の (input, init) から method / url / headers / body を取り出す。Request が渡されたときはその値を既定にする。 */
-export function normalizeFetchInput(input: RequestInfo | URL, init?: RequestInit): { method: string; url: string; headers: Headers; body: BodyInit | null | undefined } {
+export function normalizeFetchInput(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): { method: string; url: string; headers: Headers; body: BodyInit | null | undefined } {
   const isReq = typeof Request !== 'undefined' && input instanceof Request;
-  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-  const method = (init?.method ?? (isReq ? (input as Request).method : undefined) ?? 'GET').toUpperCase();
+  const url =
+    typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+  const method = (
+    init?.method ??
+    (isReq ? (input as Request).method : undefined) ??
+    'GET'
+  ).toUpperCase();
   const headers = new Headers(init?.headers ?? (isReq ? (input as Request).headers : undefined));
   const body = init?.body !== undefined ? init.body : undefined;
   return { method, url, headers, body };
@@ -247,68 +333,126 @@ const NULL_BODY_STATUS = new Set([101, 204, 205, 304]);
  * api ドライバの `asFetch` はこれで作る。
  */
 export function inProcessFetch(
-  send: (req: { method: string; path: string; body?: unknown; headers: Record<string, string> }) => Promise<{ status: number; body: unknown; headers?: Record<string, string> }>,
+  send: (req: {
+    method: string;
+    path: string;
+    body?: unknown;
+    headers: Record<string, string>;
+  }) => Promise<{ status: number; body: unknown; headers?: Record<string, string> }>,
   placement?: Placement,
 ): typeof fetch {
   const base: typeof fetch = async (input, init) => {
     const req = normalizeFetchInput(input, init);
     const u = new URL(req.url, 'http://in-process');
     const headers: Record<string, string> = {};
-    req.headers.forEach((v, k) => { headers[k] = v; });
+    req.headers.forEach((v, k) => {
+      headers[k] = v;
+    });
     let body: unknown;
-    if (init && init.body === null) body = undefined; // 明示的な null は「本文なし」(Request の本文も使わない)
-    else if (req.body != null) body = parseJsonIfPossible(typeof req.body === 'string' ? req.body : await new Response(req.body).text());
-    else if (typeof Request !== 'undefined' && input instanceof Request && input.method !== 'GET' && input.method !== 'HEAD') {
+    if (init && init.body === null)
+      body = undefined; // 明示的な null は「本文なし」(Request の本文も使わない)
+    else if (req.body != null)
+      body = parseJsonIfPossible(
+        typeof req.body === 'string' ? req.body : await new Response(req.body).text(),
+      );
+    else if (
+      typeof Request !== 'undefined' &&
+      input instanceof Request &&
+      input.method !== 'GET' &&
+      input.method !== 'HEAD'
+    ) {
       const text = await input.clone().text();
       if (text) body = parseJsonIfPossible(text);
     }
     const res = await send({ method: req.method, path: u.pathname + u.search, body, headers });
     const resHeaders: Record<string, string> = { ...(res.headers || {}) };
-    if (NULL_BODY_STATUS.has(res.status)) return new Response(null, { status: res.status, headers: resHeaders });
+    if (NULL_BODY_STATUS.has(res.status))
+      return new Response(null, { status: res.status, headers: resHeaders });
     const ctKey = Object.keys(resHeaders).find((k) => k.toLowerCase() === 'content-type');
     const isJson = ctKey ? /json/i.test(resHeaders[ctKey]) : typeof res.body !== 'string';
     if (!ctKey) resHeaders['content-type'] = isJson ? 'application/json' : 'text/plain';
-    const text = res.body === undefined ? null : isJson ? JSON.stringify(res.body) : String(res.body);
+    const text =
+      res.body === undefined ? null : isJson ? JSON.stringify(res.body) : String(res.body);
     return new Response(text, { status: res.status, headers: resHeaders });
   };
   return tracedFetch(base, placement);
 }
 
 function parseJsonIfPossible(text: string): unknown {
-  try { return JSON.parse(text); } catch { return text; }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
 /** グローバル fetch を包む (tracedFetch のグローバル版)。返り値は元の fetch を復元する関数。 */
 export function traceFetch(placement?: Placement): () => void {
   const original = globalThis.fetch;
   globalThis.fetch = tracedFetch(original, placement);
-  return () => { globalThis.fetch = original; };
+  return () => {
+    globalThis.fetch = original;
+  };
 }
 
-interface ReqLike { headers: Record<string, unknown>; method?: string; url?: string; path?: string }
-interface ResLike { statusCode?: number; on?: (ev: string, cb: () => void) => unknown }
+interface ReqLike {
+  headers: Record<string, unknown>;
+  method?: string;
+  url?: string;
+  path?: string;
+}
+interface ResLike {
+  statusCode?: number;
+  on?: (ev: string, cb: () => void) => unknown;
+}
 
 /**
  * express ミドルウェア: 受信ヘッダ x-scenario-id / x-scenario-span で文脈と親 span を張り、
  * **要求受信時**を ts、応答完了時を ts_end として http.in を 1 行記録する。
  * meta = {method, path, status, operationId, tier, layer}。operationId は resolver (createOperationIdResolver) で引く。
  */
-export function expressScenarioMiddleware(opts: { resolveOperationId?: (method: string, path: string) => string | undefined; placement?: Placement } = {}) {
+export function expressScenarioMiddleware(
+  opts: {
+    resolveOperationId?: (method: string, path: string) => string | undefined;
+    placement?: Placement;
+  } = {},
+) {
   return (req: ReqLike, res: ResLike, next: () => void) => {
     const fromHeader = readScenarioHeaders(req.headers);
     const scenario = fromHeader.scenarioId || currentScenarioId();
     const parentSpan = fromHeader.parentSpan ?? currentSpan();
     const method = String(req.method || 'GET');
     const urlPath = String(req.path || (req.url || '').split('?')[0]);
-    if (!scenario || !process.env.D2_TRACE_DIR) { next(); return; }
+    if (!scenario || !process.env.D2_TRACE_DIR) {
+      next();
+      return;
+    }
     const seq = nextSeq++;
     const ts = new Date().toISOString();
-    const meta = withTier({ method, path: urlPath, operationId: opts.resolveOperationId?.(method, urlPath) }, opts.placement);
-    const record = () => writeEvent({
-      ts, ts_end: new Date().toISOString(), seq, parent: parentSpan, scenario, kind: 'http.in', name: urlPath,
-      meta: { ...meta, status: res.statusCode, result: res.statusCode != null && res.statusCode >= 500 ? 'error' : 'ok' },
-    });
-    const run = () => { if (res.on) res.on('finish', record); else record(); next(); };
+    const meta = withTier(
+      { method, path: urlPath, operationId: opts.resolveOperationId?.(method, urlPath) },
+      opts.placement,
+    );
+    const record = () =>
+      writeEvent({
+        ts,
+        ts_end: new Date().toISOString(),
+        seq,
+        parent: parentSpan,
+        scenario,
+        kind: 'http.in',
+        name: urlPath,
+        meta: {
+          ...meta,
+          status: res.statusCode,
+          result: res.statusCode != null && res.statusCode >= 500 ? 'error' : 'ok',
+        },
+      });
+    const run = () => {
+      if (res.on) res.on('finish', record);
+      else record();
+      next();
+    };
     storage.run({ scenarioId: scenario, span: seq }, run);
   };
 }
@@ -321,23 +465,42 @@ export function extractTables(sql: string): string[] {
   return [...tables];
 }
 
-interface QueryClient { query(text: string, params?: unknown[]): Promise<unknown>; }
+interface QueryClient {
+  query(text: string, params?: unknown[]): Promise<unknown>;
+}
 
 /** pg / pglite 互換の client を包み、db.query を span として記録する。component は発行元 (例: 'LoanRepository')。 */
-export function tracePg<T extends QueryClient>(client: T, component = 'db-client', placement?: Placement): T {
+export function tracePg<T extends QueryClient>(
+  client: T,
+  component = 'db-client',
+  placement?: Placement,
+): T {
   const orig = client.query.bind(client);
   (client as QueryClient).query = (text: string, params?: unknown[]) =>
-    span('db.query', 'query', withTier({ sql: text, tables: extractTables(text), component }, placement), () => orig(text, params));
+    span(
+      'db.query',
+      'query',
+      withTier({ sql: text, tables: extractTables(text), component }, placement),
+      () => orig(text, params),
+    );
   return client;
 }
 
-interface Publisher { publish(topic: string, message: unknown): Promise<unknown> | unknown; }
+interface Publisher {
+  publish(topic: string, message: unknown): Promise<unknown> | unknown;
+}
 
 /** publisher port を包み、publish を記録する。message 名は topic (channel) から取る。 */
-export function tracePublisher<T extends Publisher>(port: T, component = 'publisher', placement?: Placement): T {
+export function tracePublisher<T extends Publisher>(
+  port: T,
+  component = 'publisher',
+  placement?: Placement,
+): T {
   const orig = port.publish.bind(port);
   (port as Publisher).publish = (topic: string, message: unknown) =>
-    span('publish', topic, withTier({ message: topic, channel: topic, component }, placement), () => orig(topic, message));
+    span('publish', topic, withTier({ message: topic, channel: topic, component }, placement), () =>
+      orig(topic, message),
+    );
   return port;
 }
 
@@ -352,13 +515,28 @@ export function traced<T extends object>(name: string, obj: T, placement?: Place
       const value = Reflect.get(target, prop, receiver);
       if (typeof value !== 'function' || typeof prop === 'symbol') return value;
       return (...args: unknown[]) =>
-        span('call', `${name}.${String(prop)}`, withTier({ component: name, fn: String(prop), args: args.length }, placement),
-          () => (value as (...a: unknown[]) => unknown).apply(target, args));
+        span(
+          'call',
+          `${name}.${String(prop)}`,
+          withTier({ component: name, fn: String(prop), args: args.length }, placement),
+          () => (value as (...a: unknown[]) => unknown).apply(target, args),
+        );
     },
   });
 }
 
 /** 単独の関数を call の span として記録する版 (画面の submit 関数など、オブジェクトでない入口に使う)。 */
-export function tracedFn<A extends unknown[], R>(component: string, fn: string, impl: (...args: A) => R, placement?: Placement): (...args: A) => R {
-  return (...args: A) => span('call', `${component}.${fn}`, withTier({ component, fn, args: args.length }, placement), () => impl(...args));
+export function tracedFn<A extends unknown[], R>(
+  component: string,
+  fn: string,
+  impl: (...args: A) => R,
+  placement?: Placement,
+): (...args: A) => R {
+  return (...args: A) =>
+    span(
+      'call',
+      `${component}.${fn}`,
+      withTier({ component, fn, args: args.length }, placement),
+      () => impl(...args),
+    );
 }

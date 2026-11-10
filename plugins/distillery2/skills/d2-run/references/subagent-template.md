@@ -20,7 +20,7 @@
   それ以外への書き込みが必要になったら、作業を止めて理由を結果として返してください。引き継ぎファイル {handoff} は write-set に関わらず書いてよい
 - YAML を書くときは、値に `: ` や括弧を含む文字列を必ずクォートし、書き終えたら parse 確認してください
 {additional_instructions}
-完了後、生成・更新したファイル一覧と結果の要点を報告してください。
+完了後、生成・更新したファイル一覧と結果の要点を報告してください。自分で決めたことは、報告の「決めたこと」の見出しの下に 1 行ずつ `D<n> <要点>` で書き、引き継ぎファイルの `decisions` にも同じ `D<n>` で書いてください (ID の無い判断は受理されません)。
 ```
 
 ## 引き継ぎファイルの置き場 (`{handoff}`)
@@ -43,6 +43,7 @@
 | ③ 契約骨格 | 契約の設計役 | `distillery2:d2-contract` `mode=skeleton` | 既定 | なし |
 | ③ 画面部品 | デザインシステムの生成役 | `distillery2:d2-design` | 既定 | なし (`packages/ui/` への取り込みは d2-foundation phase=finish が F6 で行う) |
 | ③ 基盤 (仕上げ) | 基盤の仕上げ役 | `distillery2:d2-foundation` `phase=finish ui=<true/false>` | 既定 | チェックポイント (F9) が exit 0 でなければ直さずに報告して止まる |
+| ④ precheck (ティアごと並列) | `<tier>` の点検役 | `distillery2:d2-implement` `mode=precheck uc=<slug> tier=<tier>` | 既定 | 固定指示: `<skills>/d2-implement/references/precheck.md`。`{handoff}` は `.distillery/logs/precheck-<slug>/<tier>.handoff.json` (git 管理外。main の上で回るので main を汚さない) |
 | ④ scenario | UC シナリオの執筆役 | `distillery2:d2-implement` `mode=scenario uc=<slug>` | 既定 | 固定指示: `<skills>/d2-implement/references/scenario.md` |
 | ④ contract | 契約の差分役 | `distillery2:d2-contract` `mode=uc uc=<slug>` | 既定 | なし |
 | ④ scaffold | テスト足場の生成役 | `distillery2:d2-implement` `mode=scaffold uc=<slug>` | 既定 | 固定指示: `<skills>/d2-implement/references/scaffold.md` |
@@ -64,19 +65,20 @@
 |---|---|
 | ① 要求 | `docs/requirements/**` |
 | ② 決定 | `docs/nfr/**`、`docs/adr/**` |
-| ③ 基盤 (機械) | `docs/rules/**`、`.dependency-cruiser.cjs`、`packages/test-support/**`、`features/support/**`、`cucumber.js`、`tsx-register.js`、`.distillery/config.yaml`、`.github/workflows/**`、`.qlty/qlty.toml`、`apps/*/`、`packages/*/`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`package-lock.json`。例外: `npm install` が作る `node_modules/**` (gitignore) |
+| ③ 基盤 (機械) | `docs/rules/**`、`.dependency-cruiser.cjs`、`packages/test-support/**`、`features/support/**`、`cucumber.js`、`tsx-register.js`、`.distillery/config.yaml`、`.github/workflows/**`、`scripts/check.mjs`、`.githooks/**`、`.distillery/distillery2.lock.json`、`.qlty/qlty.toml`、`apps/*/`、`packages/*/`、`package.json`、`tsconfig.base.json`、`.gitignore`、`biome.json`、`package-lock.json`。例外: `npm install` が作る `node_modules/**` (gitignore) |
 | ③ 契約骨格 | `contracts/**` |
 | ③ 画面部品 | `docs/design/**` |
-| ③ 基盤 (仕上げ) | `.distillery/config.yaml`、`.github/workflows/**`、`docs/adr/architecture.md`、`packages/ui/**`、`package-lock.json`、`.qlty/qlty.toml`、`apps/*/test/contract/**`、`packages/contracts/**`、`<run>/reports/**` (チェックポイントが書く。slug は bootstrap)。例外: `npm install` が作る `node_modules/**` (gitignore) |
-| ④ scenario | `features/<業務>/<slug>.feature`、`features/acceptance/**`、`<run>/issues/**` |
-| ④ contract | `contracts/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**`、`<run>/issues/**` |
+| ③ 基盤 (仕上げ) | `.distillery/config.yaml`、`.github/workflows/**`、`scripts/check.mjs`、`.githooks/**`、`.distillery/distillery2.lock.json`、`docs/adr/architecture.md`、`packages/ui/**`、`package-lock.json`、`apps/*/package.json`、`apps/*/src/styles.css`、`.qlty/qlty.toml`、`apps/*/test/contract/**`、`packages/contracts/**`、`<run>/reports/**` (チェックポイントが書く。slug は bootstrap)。例外: `npm install` が作る `node_modules/**` (gitignore) |
+| ④ precheck (ティアごと並列) | なし (読むだけ。書くのは引き継ぎファイルだけ) |
+| ④ scenario | `features/<業務>/<slug>.feature`、`features/acceptance/**` |
+| ④ contract | `contracts/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**` |
 | ④ scaffold | `features/step_definitions/**`、`apps/<tier>/src/**/*.test.ts`、`apps/<tier>/src/**` (テストが import する入口の最小スタブ。**新規ファイルだけ**。既存ファイルの変更・削除は不可)、`<run>/reports/**` (完了条件の `--expect-red unit` が書く。単独の段なので競合しない) |
-| ④ tier | `apps/<tier>/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`、`<run>/issues/<ts>_<tier>_<slug>.md`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除) |
+| ④ tier | `apps/<tier>/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除) |
 | ④ integrate | `features/step_definitions/**`、`features/support/**`、`<run>/reports/**`、`<run>/traces/**` (完了条件の runGates が書く。integrate は単独の段なので競合しない) |
 | ④ verify | `<run>/attempt-<n>/findings.<tier>.yaml` |
 | ④ asbuilt | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)、`<run>/reports/**` (depcruise の結果と抽出の集計)、`<run>/issues/<ts>_asbuilt_<slug>.md` (要約の課題のうち、人レビューに載っていないものの下書き) |
 | ① 要求の差分 (画面部品) | `docs/design/**` |
-| ② 決定の差分 (ADR) | `docs/adr/**`、`.distillery/logs/decide-<issue>.result.json` |
+| ② 決定の差分 (ADR) | `docs/adr/**`、`docs/nfr/**`、`.distillery/logs/decide-<issue>.result.json` |
 | 反証して直す | レビューした場所の派遣の行と同じ (その行をそのまま貼る) |
 <!-- distillery2:dispatch-write-sets:end -->
 

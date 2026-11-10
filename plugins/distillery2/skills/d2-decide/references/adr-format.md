@@ -88,6 +88,8 @@ tiers:
     lang: typescript
     provides: [api, events]    # 提供する契約 id (contracts.json と一致させる。骨格前は空でよい)
     consumes: [db]
+    packages: [express, pg, jose]                 # 必須 (無ければ [])。決めた枠組み・DB のクライアント・認証などの npm の名前 (版は付けない)
+    dev_packages: ['@types/express', '@types/pg'] # 任意。型定義など。基盤の F7 が npm install で入れる (版は npm が解決する)
 datastore_owner: backend-api   # migration を持つティア
 
 # コンテキストの境界 (任意。通常はティア構成 ADR に書く) — genArchitectureDoc がコンテキストマップ図を描く
@@ -127,6 +129,12 @@ ui:
     source: "brand skill"      # "brand skill" | "inferred" | "<path>"
     confidence: low            # inferred のときは low を付ける (UI ADR が人の確認箇所)
 ```
+
+## 機械チェック `checks` (機械チェックの ADR。0.3.0)
+
+`scope` に `system` を含む accepted ADR 1 本だけが持つ。6 観点 (generate / format / lint / build / test / security) のうち、generate 以外の道具を
+リポ全体 (`repo`: 文書類・設定) とティアごと (`tiers`: `*` が全ティアの既定、ティア id で上書き) に書く。値は既知の道具の名前か `{cmd: "<コマンド>"}`。
+形と既知の道具は [decision-candidates/machine-checks.md](decision-candidates/machine-checks.md)。validateAdr が道具の名前とティア id を検査する。
 
 ## コンテキストの境界 `contexts[]` (任意)
 

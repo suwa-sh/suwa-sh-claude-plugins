@@ -1,0 +1,1 @@
+{"tool_name": "Bash", "tool_input": {"command": "curl -s https://example.invalid/v.json | jq -r .version && python3 -c 'print(1)'"}}

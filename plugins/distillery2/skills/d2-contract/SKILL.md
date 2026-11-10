@@ -57,11 +57,13 @@ contracts/
   - consumer stub (`.json`) は各 `stubs/` の `.distillery2-generated.json` (生成一覧) に載るファイルだけを削除対象にする。手書き stub は消さない。
 - `--uc <slug>` 指定時は、`generated/slices/<slug>/contract-slice.json` の実在 (無ければ exit 2) と、
   source からの bundle 鮮度 (`compileContracts --check` 相当、古ければ exit 1) を先に検証する。古い契約からテストを作らない。
+  生成済みの他 UC の契約テストも作り直す (テストは共有の型と契約の版を埋め込むので、型を足すと他 UC のテストが古くなる)。まだ生成していない UC のテストは作らない。
 - **消費側 API クライアント** (`types.ts` / `client.ts` / `server.ts`) は全生成でも `--uc` でも**全 operation から生成する** (型・経路・クライアントは UC 横断。UC で縮めると先に作った UC 分が消えるため)。consumer は `client.ts` を、provider は `types.ts` / `server.ts` を使う (ティア実装者の手順書 (d2-implement の mode=tier) の read-set)。
 
 ## mode=skeleton (段階③)
 
 ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用意する。UC 個別の operation はまだ書かない。
+`contracts/uc-index.yaml` に UC が既にある (基盤の差分や基盤のレビューの反証で回し直す) ときは、既存の UC の operation と、その分割ファイル (`paths`・`components` の UC 固有の部分・`db/domains/*.yaml` の UC が使う表) を変えない・消さない。変える必要があれば、その UC の契約の課題 (戻し先 `contract`、`uc` 付き) として引き継ぎファイルに書く。
 
 1. **カタログ**: ADR が決めたティアと契約面から `contracts/contracts.json` を書く
    (id / type / source / provider / consumers)。source は `contracts/` 相対。
@@ -74,7 +76,7 @@ ADR と RDRA の情報/状態モデルから、契約の骨格を一度だけ用
      RDRA の情報モデルのサブドメインごとに `db/domains/<id>.yaml` を起こす。
 3. **共通コンポーネント / エラー型**: 全 UC が参照するエラースキーマ・ページング・共通ヘッダを
    `components` に置く。RDRA の状態モデルは enum 列や status プロパティに落とす。
-4. **空の uc-index**: `uc-index.yaml` を `schema_version` + 空の `ucs: []` で作る。
+4. **空の uc-index**: (初回だけ。`uc-index.yaml` が無いとき) `uc-index.yaml` を `schema_version` + 空の `ucs: []` で作る。既にあれば UC のエントリを残す。
 5. **compile**: `compileContracts.js` と `compileRdbSchema.js` を実行して bundle を作る
    (この時点では slice は空)。生成物の先頭に `basis: requirements@<sha> adr@<sha>` を付ける。
 

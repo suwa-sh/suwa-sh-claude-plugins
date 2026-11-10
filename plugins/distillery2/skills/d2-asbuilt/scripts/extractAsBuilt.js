@@ -308,13 +308,17 @@ function loadFindings(runDir, attempt) {
 function latestDecisions(events) {
   const approvals = events.filter((e) => e.type === 'review_approved' && e.assumption_decisions);
   if (!approvals.length) return {};
-  const raw = approvals[approvals.length - 1].assumption_decisions;
+  const approval = approvals[approvals.length - 1];
+  const raw = approval.assumption_decisions;
+  // 承認の方法 (by: human | recommended)。前提ごとの by が無ければイベントの by を使う
+  const withBy = (v) => (v && !v.by && approval.by ? { ...v, by: approval.by } : v);
   const map = {};
   // 前提は tier + id で一意 (別ティアの同 id が上書きし合わないようにする)。
   // tier が付いていれば `${tier}\u0000${id}` を正キーにし、id 単独キーは後方互換のフォールバックとして
   // 「最初に見たものだけ」保持する (ティア付きキーがあればそちらを優先して引く)。
-  const put = (tier, id, v) => {
+  const put = (tier, id, v0) => {
     if (id == null) return;
+    const v = withBy(v0);
     if (tier != null && tier !== '') map[`${tier}\u0000${id}`] = v;
     if (!(id in map)) map[id] = v;
   };
@@ -351,6 +355,12 @@ function decisionFor(decisions, tier, id) {
 function decisionText(d) {
   if (!d) return '未確認';
   return d.decision || d.verdict || d.status || d.resolution || '確認済み';
+}
+
+/** 前提の処遇のグループ。承認 (confirmed) は承認の方法で分ける: 推奨案を採った承認 (by: recommended) は人の承認と書かない */
+function decisionGroup(d) {
+  const t = decisionText(d);
+  return t === 'confirmed' && d && d.by === 'recommended' ? 'confirmed_recommended' : t;
 }
 
 function loadIssues(dir) {
@@ -531,9 +541,9 @@ function buildIndexMd(ctx, preserved) {
   const isAcc = (s) => (s.tags || []).some((t) => t === '@acceptance' || t.startsWith('@acceptance:'));
   const scenarioAcc = ctx.scenarios.filter(isAcc).length;
   const scenarioBrowser = ctx.scenarios.filter((s) => (s.tags || []).includes('@browser'));
-  const decCount = { confirmed: 0, auto_confirmed: 0, rejected: 0, resolved: 0, other: 0 };
+  const decCount = { confirmed: 0, confirmed_recommended: 0, auto_confirmed: 0, rejected: 0, resolved: 0, other: 0 };
   for (const a of ctx.assumptions) {
-    const d = decisionText(decisionFor(ctx.decisions, a.tier, a.id));
+    const d = decisionGroup(decisionFor(ctx.decisions, a.tier, a.id));
     if (d in decCount) decCount[d] += 1; else decCount.other += 1;
   }
   const issueKinds = {};
@@ -550,6 +560,7 @@ function buildIndexMd(ctx, preserved) {
   L.push(`| シナリオ | ${ctx.scenarios.length ? `${ctx.scenarios.length} 本中 ${scenarioPass} 本 pass${scParts.length ? ` (${scParts.join('、')})` : ''}` : 'レポートなし'} |`);
   const decParts = [];
   if (decCount.confirmed) decParts.push(`人が承認 ${decCount.confirmed}`);
+  if (decCount.confirmed_recommended) decParts.push(`推奨案で承認 ${decCount.confirmed_recommended}`);
   if (decCount.auto_confirmed) decParts.push(`自動承認 ${decCount.auto_confirmed}`);
   if (decCount.rejected) decParts.push(`却下 ${decCount.rejected}`);
   if (decCount.resolved) decParts.push(`要求の差分で閉じた ${decCount.resolved}`);
@@ -640,17 +651,17 @@ function buildIndexMd(ctx, preserved) {
   // 決めたこと
   L.push('## 決めたこと (転記)');
   L.push('');
-  L.push('仕様に書かれておらず、実装者が決めた前提。検証は Verifier の判定、処遇は人のレビューの結果。');
+  L.push('仕様に書かれておらず、実装者が決めた前提。検証は Verifier の判定、処遇は人レビューの段の結果。');
   L.push('');
   const sevById = findingSeverityById(ctx);
   const verdictById = {};
   for (const v of ctx.findings.verdicts) verdictById[`${v.tier}\u0000${v.id}`] = v;
-  const groups = { confirmed: [], auto_confirmed: [], rejected: [], resolved: [], other: [] };
+  const groups = { confirmed: [], confirmed_recommended: [], auto_confirmed: [], rejected: [], resolved: [], other: [] };
   for (const a of ctx.assumptions) {
-    const d = decisionText(decisionFor(ctx.decisions, a.tier, a.id));
+    const d = decisionGroup(decisionFor(ctx.decisions, a.tier, a.id));
     (groups[d] || groups.other).push(a);
   }
-  const groupTitles = [['confirmed', '人が承認した前提'], ['auto_confirmed', '自動承認した前提'], ['rejected', '却下した前提'], ['resolved', '要求の差分で閉じた前提'], ['other', '未確認の前提']];
+  const groupTitles = [['confirmed', '人が承認した前提'], ['confirmed_recommended', '推奨案で承認した前提'],['auto_confirmed', '自動承認した前提'], ['rejected', '却下した前提'], ['resolved', '要求の差分で閉じた前提'], ['other', '未確認の前提']];
   let any = false;
   for (const [key, title] of groupTitles) {
     const list = groups[key];

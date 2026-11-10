@@ -121,3 +121,88 @@ test('0.1.32 J2: 前回の一覧にあって取り込み元から消えたファ
   assert.deepEqual(run({ from: 'design', cwd }).removed, []);
   assert.ok(fs.existsSync(path.join(cwd, 'outside.txt')), '外のファイルは消えない');
 });
+
+test('取り込みの後に packages/ui を biome で整形する (biome が無ければ飛ばす。0.3.0)', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  writeFile(path.join(cwd, 'design/src/components/ui/Button.tsx'), 'export const Button = () => null;');
+  assert.equal(run({ from: 'design', cwd }).format, 'skipped (biome が無い)');
+  // 偽の biome: 受け取った引数を書き残す
+  const bin = path.join(cwd, 'node_modules/.bin/biome');
+  writeFile(bin, '#!/bin/sh\necho "$@" > "$(dirname "$0")/../../biome-args.txt"\n');
+  fs.chmodSync(bin, 0o755);
+  assert.equal(run({ from: 'design', cwd }).format, 'formatted');
+  assert.equal(fs.readFileSync(path.join(cwd, 'biome-args.txt'), 'utf8').trim(), 'format --write --no-errors-on-unmatched packages/ui');
+  writeFile(bin, '#!/bin/sh\necho broken >&2\nexit 1\n');
+  assert.match(run({ from: 'design', cwd }).format, /^failed \(exit 1\): broken/, '整形できなくても取り込みは成功し、報告だけする');
+});
+
+test('画面の CSS の入口 (packages/ui/entry.css): Tailwind の CSS が 1 本ならそれを指す。0 本・2 本なら書かない (0.3.0)', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  const design = path.join(cwd, 'design');
+  writeFile(path.join(design, 'src/components/ui/Button.tsx'), 'export const Button = () => null;');
+  writeFile(path.join(design, 'src/styles/design-tokens.css'), ':root { --x: 1px; }');
+  const entry = path.join(cwd, 'packages/ui/entry.css');
+  assert.equal(run({ from: 'design', cwd }).css, 'none (Tailwind の CSS が無い)');
+  assert.ok(!fs.existsSync(entry));
+  writeFile(path.join(design, 'src/app/globals.css'), "@import 'tailwindcss';\n@import '../styles/design-tokens.css';\n");
+  assert.equal(run({ from: 'design', cwd }).css, 'entry.css → app/globals.css');
+  assert.match(fs.readFileSync(entry, 'utf8'), /^@import "\.\/app\/globals\.css";$/m);
+  assert.match(fs.readFileSync(entry, 'utf8'), /^@source "\.\/";$/m, '部品にだけ書いたクラスも画面の build に出す (packages/ui を走査させる)');
+  writeFile(path.join(design, 'src/styles/globals.css'), '@import "tailwindcss";\n');
+  assert.match(run({ from: 'design', cwd }).css, /^none \(Tailwind の CSS が 2 本/);
+  assert.ok(!fs.existsSync(entry), '前に書いた入口は消す (どちらを指すか決められない)');
+});
+
+test('画面の土台の styles.css: 入口が書けたら packages/ui を読む形に替え、書けなければ戻す。手で変えたものと取り込み元の entry.css は触らない (0.3.0)', () => {
+  const { STYLES_PLAIN, STYLES_UI } = require('../../../plugins/distillery2/skills/d2-foundation/scripts/spaStyles');
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  const design = path.join(cwd, 'design');
+  const app = path.join(cwd, 'apps/frontend/src/styles.css');
+  const hand = path.join(cwd, 'apps/admin/src/styles.css');
+  writeFile(app, STYLES_PLAIN);
+  writeFile(hand, '@import "tailwindcss";\n/* 手で変えた */\n');
+  writeFile(path.join(design, 'src/components/ui/Button.tsx'), 'export const Button = () => null;');
+  writeFile(path.join(design, 'src/styles/globals.css'), '@import "tailwindcss";\n');
+  const r = run({ from: 'design', cwd });
+  assert.deepEqual(r.styles, ['apps/frontend/src/styles.css']);
+  assert.equal(fs.readFileSync(app, 'utf8'), STYLES_UI);
+  assert.match(STYLES_UI, /@import "\.\.\/\.\.\/\.\.\/packages\/ui\/entry\.css";/);
+  assert.match(fs.readFileSync(hand, 'utf8'), /手で変えた/);
+  assert.deepEqual(run({ from: 'design', cwd }).styles, [], '再実行は何も替えない');
+  // 前の取り込みの entry.css が残っていても、Tailwind の CSS が無くなれば消して PLAIN に戻す
+  fs.rmSync(path.join(design, 'src/styles/globals.css'));
+  run({ from: 'design', cwd });
+  assert.ok(!fs.existsSync(path.join(cwd, 'packages/ui/entry.css')));
+  assert.equal(fs.readFileSync(app, 'utf8'), STYLES_PLAIN);
+  // 取り込み元が同じ名前の entry.css を持つなら入口に使わず、画面は Tailwind を直接読む形のまま (名前を変えるよう報告)
+  writeFile(path.join(design, 'src/styles/globals.css'), '@import "tailwindcss";\n');
+  writeFile(path.join(design, 'src/entry.css'), '/* design の入口 */\n');
+  const own = run({ from: 'design', cwd });
+  assert.match(own.css, /^none \(取り込み元に entry\.css がある/);
+  assert.match(fs.readFileSync(path.join(cwd, 'packages/ui/entry.css'), 'utf8'), /design の入口/, '取り込んだファイルは上書きしない');
+  assert.equal(fs.readFileSync(app, 'utf8'), STYLES_PLAIN);
+});
+
+test('Tailwind の CSS の検出はコメントの中の @import を数えない (0.3.0)', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  const design = path.join(cwd, 'design');
+  writeFile(path.join(design, 'src/components/ui/Button.tsx'), 'export const Button = () => null;');
+  writeFile(path.join(design, 'src/styles/globals.css'), '@import "tailwindcss";\n');
+  writeFile(path.join(design, 'src/styles/old.css'), '/* 前は @import "tailwindcss"; をここに書いていた */\n.x { color: red; }\n');
+  assert.equal(run({ from: 'design', cwd }).css, 'entry.css → styles/globals.css');
+});
+
+
+test('入口: index が無ければ story・テストを除いた部品を main にし、module・types も既存の package.json ごとそろえる (0.3.0)', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'd2imp-'));
+  const design = path.join(cwd, 'design');
+  writeFile(path.join(design, 'src/components/domain/AvailabilityBadge.stories.tsx'), 'export default {};');
+  writeFile(path.join(design, 'src/components/domain/AvailabilityBadge.tsx'), 'export const B = () => null;');
+  writeFile(path.join(cwd, 'packages/ui/package.json'), JSON.stringify({ name: '@repo/ui', main: 'old.tsx', module: 'old.tsx', types: 'old.tsx', exports: { '.': './x' } }));
+  assert.equal(run({ from: 'design', cwd }).entry, 'components/domain/AvailabilityBadge.tsx');
+  writeFile(path.join(design, 'src/index.ts'), "export * from './components/domain/AvailabilityBadge';");
+  assert.equal(run({ from: 'design', cwd }).entry, 'index.ts');
+  const pkg = JSON.parse(fs.readFileSync(path.join(cwd, 'packages/ui/package.json'), 'utf8'));
+  assert.deepEqual([pkg.main, pkg.module, pkg.types], ['index.ts', 'index.ts', 'index.ts']);
+  assert.deepEqual(pkg.exports, { '.': './x' }, '手で足した設定は残す');
+});

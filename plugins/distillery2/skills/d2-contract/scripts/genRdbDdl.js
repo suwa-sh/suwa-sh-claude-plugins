@@ -2,7 +2,10 @@
 'use strict';
 
 /**
- * genRdbDdl.js <contracts-dir> --config <config.yaml> --out-root <dir> [--check]
+ * genRdbDdl.js <contracts-dir> --config <config.yaml> --out-root <dir> [--check] [--skip-if-unused]
+ *
+ * --skip-if-unused: RDB の契約が無い・表が 0 件・表を使う UC が uc-index に無い (基盤の直後) なら何も書かずに終わる (exit 0)。
+ *   作り直せる生成物の表 (d2-common/scripts/lib/generators.js) から回すときに付ける (基盤の直後の main で鮮度の検査を落とさない。0.3.0)
  *
  * generated/rdb-schema.bundle.yaml から、datastore_owner ティアの Postgres migration・
  * pglite による DB 契約テスト・packages/contracts/<id>/tables.ts (row 型 + 名前定数) を生成する。
@@ -161,14 +164,22 @@ function normalize(t: string): string {
 function pascal(s) { return s.split(/[_-]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(''); }
 function constName(s) { return s.replace(/-/g, '_').toUpperCase(); }
 
-function run(contractsDir, { configPath, outRoot, check = false }) {
+/** uc-index のどれかの UC が表を使うか (uc-index が無ければ false) */
+function ucUsesTables(dir) {
+  if (!fs.existsSync(path.join(dir, 'uc-index.yaml'))) return false;
+  return C.readUcIndex(dir).ucs.some(u => Array.isArray(u.tables) && u.tables.length > 0);
+}
+
+function run(contractsDir, { configPath, outRoot, check = false, skipIfUnused = false }) {
   const dir = fs.realpathSync(contractsDir);
   const bundlePath = path.join(C.generatedDir(dir), 'rdb-schema.bundle.yaml');
+  const config = U.readConfig(configPath);
+  const rdbContract = (config.contracts || []).find(c => c.type === 'rdb-schema');
+  if (skipIfUnused && (!rdbContract || !fs.existsSync(bundlePath))) return { status: 'skipped', reason: 'RDB の契約が無い', written: [], files: [] };
   if (!fs.existsSync(bundlePath)) throw new Error('rdb-schema.bundle.yaml が無い。compileRdbSchema を先に実行');
   const bundle = parseYaml(fs.readFileSync(bundlePath, 'utf8'));
   const tables = bundle.tables || [];
-  const config = U.readConfig(configPath);
-  const rdbContract = (config.contracts || []).find(c => c.type === 'rdb-schema');
+  if (skipIfUnused && !tables.length) return { status: 'skipped', reason: '表が 0 件', written: [], files: [] };
   if (!rdbContract) throw new Error('config.yaml: rdb-schema 契約が無い');
   const owner = config.datastore_owner;
   if (!owner) throw new Error('config.yaml: datastore_owner が無い');
@@ -179,6 +190,11 @@ function run(contractsDir, { configPath, outRoot, check = false }) {
   files.set(path.join(ownerDir, 'migrations', '0001_schema.sql'), buildSql(tables));
   files.set(path.join(ownerDir, 'test', 'contract', 'db-schema.test.ts'), dbSchemaTest(tables, ownerDir, head));
   files.set(path.join('packages', 'contracts', rdbContract.id, 'tables.ts'), rowTypes(tables, head));
+  // どの UC もまだ表を使っておらず、生成物もまだ無い (基盤の直後の main。DDL は契約の段 (d2-contract mode=uc) が初めて書く)。
+  // 生成物が 1 つでもあれば飛ばさない (表を使う UC が無くなった後も、残った生成物の鮮度を見る)
+  if (skipIfUnused && !ucUsesTables(dir) && ![...files.keys()].some(rel => fs.existsSync(path.join(outRoot, rel)))) {
+    return { status: 'skipped', reason: '表を使う UC が無い', written: [], files: [] };
+  }
 
   const stale = [], written = [];
   for (const [rel, text] of files) U.writeFileDet(path.join(outRoot, rel), text, check, stale, written, rel);
@@ -194,8 +210,8 @@ if (require.main === module) {
     const contractsDir = args.find(a => !a.startsWith('--'));
     const configPath = argVal(args, '--config');
     const outRoot = argVal(args, '--out-root') || '.';
-    if (!contractsDir || !configPath) { console.error('Usage: genRdbDdl.js <contracts-dir> --config <config.yaml> --out-root <dir> [--check]'); process.exit(2); }
-    console.log(JSON.stringify(run(contractsDir, { configPath, outRoot, check: args.includes('--check') })));
+    if (!contractsDir || !configPath) { console.error('Usage: genRdbDdl.js <contracts-dir> --config <config.yaml> --out-root <dir> [--check] [--skip-if-unused]'); process.exit(2); }
+    console.log(JSON.stringify(run(contractsDir, { configPath, outRoot, check: args.includes('--check'), skipIfUnused: args.includes('--skip-if-unused') })));
   } catch (e) { console.error(e.message); process.exit(1); }
 }
 function argVal(args, flag) { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; }

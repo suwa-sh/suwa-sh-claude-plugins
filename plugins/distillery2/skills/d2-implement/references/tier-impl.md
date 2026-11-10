@@ -21,22 +21,28 @@
 ## 書くもの (write-set)
 
 - `apps/<tier>/src/**` (実装とテスト)。frontend の画面は、読むものの画面部品だけで組む (自作しない)
+- frontend が土台に横断の結線を足すときだけ、`apps/<tier>/**` のうち src の外の土台のファイル (vite.config.ts・index.html。進め方 3)
 - `.distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml` (0 件でも必ず)
-- `.distillery/runs/<slug>/issues/<ts>_<tier>_<slug>.md` (ファイル名に自ティアを入れる。並列の他ティアと同じ時刻に書いても衝突しない。仕様と両立しない事実。front matter `kind: rule | contract | requirement`、`title` は 40 字以内 (as-built の課題の表に載る)。詳細は本文)
 - backend の datastore_owner ティアは `apps/<tier>/migrations/` の追加 migration (契約の DB 変更に追随するときだけ。DDL 生成物は書き換えない)
 
 ## 進め方
 
 1. 契約の生成型を起点に、ハンドラ / ユースケース / ドメイン / アダプタを `docs/rules/tier-<kind>.md` のレイヤ規約どおりに刻む。
    red → green → refactor。単体テストは振る舞い単位、I/O 実体はアダプタ層のテストだけ (pglite は test-support が起動する)
-2. 提供側なら `apps/<tier>/src/test-app.ts` に `createTestApp()` を用意し、契約テストと UC BDD の API ドライバが同じ入口を使えるようにする
+2. 提供側なら `apps/<tier>/src/test-app.ts` に `createTestApp(deps)` を用意し、契約テストと UC BDD の API ドライバが同じ入口を使えるようにする。`deps` は省略できる `{ db, clock, fixture }` (`packages/test-support/README.md` の結線の契約)。現在時刻はティアが自分で置く時計の口 (`now(): Date` を持つ型。テストの `FixedClock` はこの形に合う。本番のコードから `@repo/test-support` を import しない) から取り、`new Date()` を usecase や domain に直接書かない
    (計装の結線は integrate 段階が行う。ここでは export だけ)。`createTestApp` は省略できる引数 `{ fixture }` を受け取り、
    `contracts/generated/slices/<slug>/contract-slice.json` の `fixtures` に載る各名前のテスト用データ (意味は説明文のとおり) を用意してから app を返す
-   (契約テストが例ごとに渡す。UC BDD の API ドライバは引数なしで呼ぶ)。usecase / repository / gateway は **注入で差し替えられるオブジェクト**にする
+   (契約テストが例ごとに渡す。UC BDD の API ドライバは `{ db, clock }` を渡す。`packages/test-support/README.md` の結線の契約)。usecase / repository / gateway は **注入で差し替えられるオブジェクト**にする
    (integrate が `traced()` で包んで図の参加者にする)
 3. frontend なら、画面の操作を **ブラウザ無しで呼べる入口関数** (例: `submitLoanCheckout(api, input)`) として export し、
-   API 呼び出しは生成クライアントの `options.fetch` で差し替えられる形にする (UC BDD が in-process で画面 → API を通すため)
-4. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `typecheck` / `unit` (`.distillery/config.yaml` の commands)。
+   API 呼び出しは生成クライアントの `options.fetch` で差し替えられる形にする (UC BDD が in-process で画面 → API を通すため)。
+   画面は基盤が置いた土台 (`src/App.tsx`・`src/routes.tsx`) に載せる: 自分の画面を `src/routes.tsx` の表に 1 行足す (path は `screens.yaml` の route)。
+   ビルドの設定・入口・スタイルの入口を作り直さない (置き換えない)。
+   ADR で決めた横断の結線 (サインインとトークンの受け渡し・サインイン後の戻り先の画面・API の宛先・開発時の中継) が土台に無ければ、この機能が土台に足す。結線の方式は開発ルール (ADR の rules から作る `docs/rules/`) から読む (ADR そのものは読まない)。開発ルールに方式が無ければ足さずに戻し先 `decide` の課題にする
+   (`src/App.tsx` への差し込み・`vite.config.ts` の中継の設定など。前のステップの課題にしない)。足した結線は AssumptionRecord に書く。後の画面の機能はそれに載せる。
+   土台が無い構成 (ADR の ui が React の SPA・Tailwind 以外。基盤の報告に「最初の画面の機能が ADR に従って作る」と出る) では、最初の画面の機能が ADR に従って土台を作り、
+   その作り方を AssumptionRecord に書く。後の画面の機能はそれに載せる
+4. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `build` / `unit` (`.distillery/config.yaml` の commands。`build` が無い古い config は `typecheck`)。
    書き換えを伴う formatter は使わない (並列ティアの write-set を侵すため)。
    **`runGates.js` は使わない**。runGates は `<run>/reports/gates.json` をゲート名単位で置き換えるため、並列で走る他ティアの記録を消す。
    記録付きのゲートは全ティアの受理後にオーケストレータが 1 回だけ回す。
@@ -44,7 +50,7 @@
    (`<run>/reports/` に書かない。write-set の外で、並列ティアと競合する)
 5. 自分で決めた判断を AssumptionRecord に書く (`<skills>/d2-common/references/assumption-record.md`)。書いたら
    `validateAssumptions.js record` を実行し ok を確認する
-6. 契約テスト (`test/contract/`) は生成物。落ちるなら実装を直す。契約の側が間違っていると思うなら `issues/` に `kind: contract` で起票し、
+6. 契約テスト (`test/contract/`) は生成物。落ちるなら実装を直す。契約の側が間違っていると思うなら引き継ぎファイルの `upstream_issues` に戻し先 `contract` で書き、
    実装は契約どおりにする (「動くように契約と違うことをする」を禁止)
 
 ## 禁止

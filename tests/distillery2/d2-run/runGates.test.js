@@ -325,3 +325,16 @@ test('0.1.36: osv 以外の指摘が混ざる・検査器の失敗 (exit 3)・SA
     assert.ok(!('advisory' in job), name);
   }
 });
+
+test('0.3.0: ティアの security が落ちても static は advisory で通り、表示で落ちずに gates.json を書く。build があれば typecheck の代わりに回す', () => {
+  const cfg = ['schema_version: "2.0"', 'tiers:', '  - id: api', '    dir: apps/api', '    commands:', '      format_check: "true"', '      lint: "true"', '      build: "true"', '      typecheck: "false"', '      security: "false"', 'commands:', '  arch_test: "true"', ''].join('\n');
+  const repo = makeRepo(cfg);
+  const r = run(repo, ['--uc', 'loan', '--only', 'static']);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /api:security: 落ちた \(exit 1。ティアの security。止めずに報告/);
+  const summary = JSON.parse(fs.readFileSync(path.join(repo, '.distillery/runs/loan/reports/gates.json'), 'utf8'));
+  const jobs = summary.gates[0].jobs;
+  assert.ok(jobs.some((j) => j.name === 'build') && !jobs.some((j) => j.name === 'typecheck'));
+  assert.deepEqual(jobs.find((j) => j.name === 'security').advisory, { kind: 'security', exit: 1 });
+});
+

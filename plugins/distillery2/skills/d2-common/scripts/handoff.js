@@ -3,16 +3,22 @@
  * handoff.js — 担当の引き継ぎファイル (人に聞くこと・前のステップの課題・反証) を検査し、振り分け、課題の下書きにする
  *
  * Usage:
- *   node handoff.js validate <handoff.yaml>                         # 形の検査。JSON 1 行 {ok, errors[], asks, upstream_issues, refutations}
- *   node handoff.js route <handoff.yaml> --mode auto|recommend      # 問いの振り分け。JSON 1 行 {decide[], to_human[], issues{in_feature[], upstream[]}, needs_info[]}
+ *   node handoff.js validate <handoff.yaml> [--report <報告のファイル>]   # 形の検査。JSON 1 行 {ok, errors[], asks, upstream_issues, refutations, decisions}
+ *     --report: 報告の本文の「決めたこと」の D<n> と引き継ぎファイルの decisions が 1 対 1 で、見出しの下に D<n> で始まらない行が無いこと (0.3.0)
+ *   node handoff.js route <handoff.yaml> --mode auto|recommend      # 問いの振り分け。JSON 1 行 {decide[], to_human[], issues{in_feature[], upstream[], plugin[], plugin_noted[]}, needs_info[]}。plugin_noted は workaround (リポの中で回避した) のある plugin の課題で、止めない
  *   node handoff.js file-drafts <handoff.yaml> --run <runDir>       # 前のステップの課題を <run>/issues/ の下書きにする (機能の中)
  *   node handoff.js file-drafts <handoff.yaml> --root <repo>        # 上流の段 (run が無い): docs/feedback/ に課題ファイルを直接書く
+ *   node handoff.js file-drafts <round<n>.md> --review --target <戻し先> --run <runDir>   # 処理していないレビューの指摘を下書きにする (上流で止める前。0.3.0)
  *   --findings                                                     # 入力が検証役の findings (asks と upstream_issues を読む)
+ *   --skip-noted                                                   # workaround のある plugin の課題 (機能の中でする回避) を書かない (結果の noted に返す。点検で上流の課題と混ざるとき。0.3.0)
+ *   --chain-from <docs/feedback/<id>.md>                           # 上流の差分のレビュー・反証から課題を作るとき、直している課題。chain と chain_depth + 1 を書く (0.3.0)
+ *   file-drafts は、戻し先と題名が同じ既存の下書き・その場で直した下書き・課題ファイルがあれば書かない (duplicates に返す。0.3.0)
  *
  * 終了コード: 0 = 成功 / 1 = 検査で不合格 / 2 = 引数・読み込みの失敗
  */
 'use strict';
 
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { parseYaml, stringifyYaml } = require('./lib/yaml');
@@ -22,7 +28,10 @@ const SCHEMA = JSON.parse(fs.readFileSync(path.join(__dirname, 'schema-handoff.j
 const IN_FEATURE = new Set(['scenario', 'contract', 'implementation']);
 const UPSTREAM = new Set(['requirements', 'decide', 'foundation']);
 // target_step → 課題ファイルの kind (古い版が kind で読むための互換。0.2.0 の振り分けは target_step を見る)
-const KIND_OF = { requirements: 'requirement', decide: 'rule', foundation: 'foundation', scenario: 'scenario', contract: 'contract', implementation: 'implementation' };
+const KIND_OF = { requirements: 'requirement', decide: 'rule', foundation: 'foundation', scenario: 'scenario', contract: 'contract', implementation: 'implementation', plugin: 'plugin' };
+
+/** リポの中で回避した plugin の課題か (空白だけの回避は回避していない扱い。止める側に残す) */
+const hasWorkaround = (u) => Boolean(u && u.target_step === 'plugin' && typeof u.workaround === 'string' && u.workaround.trim());
 
 class Fail extends Error { constructor(msg, code = 1) { super(msg); this.code = code; } }
 
@@ -42,6 +51,10 @@ function validate(data) {
     if (!a || typeof a !== 'object') continue;
     if (seen.has(`ask:${a.id}`)) errors.push(`$.asks[${i}].id: 重複 ${a.id}`);
     seen.add(`ask:${a.id}`);
+    // 同じ問いを 2 つに分けて書かない (推奨で決める問いと人に返す問いの両方に同じ論点が出る。0.3.0)
+    const q = String(a.question || '').replace(/\s+/g, '');
+    if (q && seen.has(`question:${q}`)) errors.push(`$.asks[${i}].question: 同じ問いが既にある (${a.question})`);
+    seen.add(`question:${q}`);
     const labels = (Array.isArray(a.options) ? a.options : []).map((o) => o && o.label);
     if (new Set(labels).size !== labels.length) errors.push(`$.asks[${i}].options: label が重複`);
     if (a.recommended === null || a.recommended === undefined) {
@@ -52,10 +65,17 @@ function validate(data) {
       errors.push(`$.asks[${i}].reason: 推奨があるなら理由が要る`);
     }
   }
+  for (const [i, d] of (Array.isArray(data.decisions) ? data.decisions : []).entries()) {
+    if (!d || typeof d !== 'object') continue;
+    if (seen.has(`decision:${d.id}`)) errors.push(`$.decisions[${i}].id: 重複 ${d.id}`);
+    seen.add(`decision:${d.id}`);
+  }
   for (const [i, u] of (Array.isArray(data.upstream_issues) ? data.upstream_issues : []).entries()) {
     if (!u || typeof u !== 'object') continue;
     if (seen.has(`issue:${u.id}`)) errors.push(`$.upstream_issues[${i}].id: 重複 ${u.id}`);
     seen.add(`issue:${u.id}`);
+    if (u.workaround !== undefined && !String(u.workaround).trim()) errors.push(`$.upstream_issues[${i}].workaround: 空白だけの回避は書かない (回避できないなら workaround を書かない)`);
+    if (u.workaround && u.target_step !== 'plugin') errors.push(`$.upstream_issues[${i}].workaround: 戻し先が plugin の課題だけに書く (${u.target_step})`);
   }
   return errors;
 }
@@ -68,17 +88,59 @@ function route(data, mode) {
   if (!['auto', 'recommend'].includes(mode)) throw new Fail(`--mode は auto か recommend: ${mode}`, 2);
   const decide = [];
   const toHuman = [];
+  const makeRecommendation = [];
   for (const a of data.asks || []) {
-    if (a.recommended === null || a.recommended === undefined) toHuman.push({ id: a.id, reason: 'no_recommendation' });
+    // 推奨の無い問い: auto は人へ。recommend は進行役が推奨を作って仮置きする (0.3.0。止まるのは上限超えとプラグインの不具合だけ)
+    if (a.recommended === null || a.recommended === undefined) (mode === 'recommend' ? makeRecommendation : toHuman).push({ id: a.id, reason: 'no_recommendation' });
     else if (a.kind === 'unknown_fact' && mode === 'auto') toHuman.push({ id: a.id, reason: 'unknown_fact' });
     else decide.push({ id: a.id, answer: a.recommended, provisional: a.kind === 'unknown_fact' });
   }
-  const issues = { in_feature: [], upstream: [] };
+  // plugin: 止める (リポの中で回避できない)。plugin_noted: リポの中で回避したので止めずに報告する (0.3.0)
+  const issues = { in_feature: [], upstream: [], plugin: [], plugin_noted: [] };
   for (const u of data.upstream_issues || []) {
-    (IN_FEATURE.has(u.target_step) ? issues.in_feature : issues.upstream).push({ id: u.id, target_step: u.target_step, title: u.title });
+    const to = u.target_step === 'plugin' ? (hasWorkaround(u) ? issues.plugin_noted : issues.plugin) : (IN_FEATURE.has(u.target_step) ? issues.in_feature : issues.upstream);
+    to.push({ id: u.id, target_step: u.target_step, title: u.title });
   }
   const needsInfo = (data.refutations || []).filter((r) => r.result === 'needs_info').map((r) => r.finding);
-  return { decide, to_human: toHuman, issues, needs_info: needsInfo };
+  const plugin = (data.refutations || []).filter((r) => r.result === 'plugin').map((r) => r.finding);
+  return { decide, to_human: toHuman, make_recommendation: makeRecommendation, issues, needs_info: needsInfo, plugin_findings: plugin };
+}
+
+/** レビューの結果 (round<n>.md の「### 指摘 N」) を前のステップの課題にする (上流で止める前に、処理していない指摘を下書きに残す) */
+function reviewToHandoff(md, target, point) {
+  const field = (b, k) => { const m = b.match(new RegExp(`\\*\\*${k}\\*\\*:\\s*([^\\n]*(?:\\n(?!- \\*\\*)[^\\n#]+)*)`)); return m ? m[1].trim() : ''; };
+  const issues = md.split(/^### 指摘 /m).slice(1).map((b) => {
+    const n = (b.match(/^(\d+)/) || [, '?'])[1];
+    const claim = field(b, 'claim') || '(claim なし)';
+    const where = field(b, '対象');
+    return {
+      id: `R${n}`, target_step: target, title: claim.length > 40 ? `${claim.slice(0, 39)}…` : claim,
+      detail: `${claim}${where ? `\n\n対象: ${where}` : ''}\n\n(${point} のレビューの指摘 ${n}。severity: ${field(b, 'severity') || '?'}。反証して直す前に機能を止めたので下書きに残した)`,
+      evidence: field(b, 'evidence') || '(evidence なし)', recommended_fix: field(b, 'suggested_fix') || '(レビューの案なし)',
+    };
+  });
+  return { schema_version: 'distillery2.handoff/v1', step: `review-${point}`.replace(/[^a-z0-9-]/g, '-'), asks: [], upstream_issues: issues };
+}
+
+/** 報告の本文の「決めたこと」を引き継ぎファイルの decisions と突き合わせる (ID の無い判断を拒む。0.3.0) */
+function checkReport(data, reportText) {
+  const errors = [];
+  const ids = (data.decisions || []).map((d) => d.id);
+  const lines = reportText.split('\n');
+  const h = lines.findIndex((l) => /^#{1,6}\s.*決めたこと/.test(l));
+  const body = h < 0 ? [] : lines.slice(h + 1, (() => { const k = lines.slice(h + 1).findIndex((l) => /^#{1,6}\s/.test(l)); return k < 0 ? lines.length : h + 1 + k; })());
+  const listed = [];
+  for (const l of body) {
+    if (!l.trim() || /^\s*(なし|無し|-\s*なし)\s*$/.test(l)) continue;
+    const m = l.match(/^\s*(?:[-*]|\d+\.)?\s*(D\d+)\b/);
+    if (!m) { errors.push(`「決めたこと」に D<n> で始まらない行がある: ${l.trim().slice(0, 60)}`); continue; }
+    listed.push(m[1]);
+  }
+  // 「決めたこと」の外の D<n> は照らさない: 前の段の決定 (decisions.jsonl の ID) を引くことがある (会議室の予約の実地確認で、要求の決定を引いた報告が 2 回落ちた)
+  for (const d of new Set(listed)) if (!ids.includes(d)) errors.push(`「決めたこと」の ${d} が引き継ぎファイルの decisions に無い`);
+  if (listed.length !== ids.length) errors.push(`「決めたこと」の件数 (${listed.length}) と decisions の件数 (${ids.length}) が違う`);
+  for (const d of ids) if (!listed.includes(d)) errors.push(`decisions の ${d} が本文の「決めたこと」に無い`);
+  return errors;
 }
 
 /** UC 一覧の slug (無ければ null = 照らさない。要求の段の前など) */
@@ -99,14 +161,50 @@ function issueBody(u) {
   const parts = [u.detail.trim()];
   if (u.evidence) parts.push(`## 根拠\n\n${u.evidence.trim()}`);
   if (u.recommended_fix) parts.push(`## 推奨の直し方\n\n${u.recommended_fix.trim()}`);
+  if (hasWorkaround(u)) parts.push(`## リポの中での回避\n\n${u.workaround.trim()}`);
   return `\n${parts.join('\n\n')}\n`;
 }
 
-/** 前のステップの課題を下書き (機能の中) か課題ファイル (上流) にする。同じ課題を二度書かない (handoff と id で名前を決める) */
-function fileDrafts(file, data, { run, root }) {
+// 重ねの比較は空白と、止めた課題の印 (feedbackBatch.js hold が題名に付ける「止まった: 」) を除いて行う
+const squashTitle = (t) => String(t || '').replace(/^止まった:\s*/, '').replace(/\s+/g, '');
+
+/** 既にある課題 (下書き・その場で直した下書き・課題ファイル) の 戻し先 + 題名 の組。同じ組の課題を重ねて書かない (0.3.0) */
+function existingKeys(dirs) {
+  const keys = new Set();
+  for (const d of dirs) {
+    if (!fs.existsSync(d)) continue;
+    for (const f of fs.readdirSync(d).filter((x) => x.endsWith('.md') && x !== 'README.md')) {
+      const m = /^---\n([\s\S]*?)\n---/.exec(fs.readFileSync(path.join(d, f), 'utf8'));
+      if (!m) continue;
+      const fm = parseYaml(m[1]) || {};
+      if (fm.title) keys.add(`${fm.target_step || KIND_TO_STEP[fm.kind] || ''}\n${squashTitle(fm.title)}`);
+    }
+  }
+  return keys;
+}
+const KIND_TO_STEP = Object.fromEntries(Object.entries(KIND_OF).map(([k, v]) => [v, k]));
+
+/** 連鎖の元の課題ファイル (上流の差分で直している課題) から chain と chain_depth + 1 を決める */
+function chainOf(chainFrom) {
+  if (!chainFrom) return null;
+  if (!fs.existsSync(chainFrom)) throw new Fail(`--chain-from の課題ファイルが無い: ${chainFrom}`, 2);
+  const m = /^---\n([\s\S]*?)\n---/.exec(fs.readFileSync(chainFrom, 'utf8'));
+  const fm = (m && parseYaml(m[1])) || {};
+  return { chain: fm.chain || path.basename(chainFrom, '.md'), chain_depth: Number(fm.chain_depth || 0) + 1 };
+}
+
+/**
+ * 前のステップの課題を下書き (機能の中) か課題ファイル (上流) にする。同じ課題を二度書かない
+ * (handoff と id で名前を決める。加えて、戻し先と題名が同じ既存の下書き・課題ファイルがあれば書かない。0.3.0)。
+ * chainFrom (上流の差分のレビュー・反証から課題を作るとき、直している課題ファイル) を渡すと chain と chain_depth を書く
+ */
+function fileDrafts(file, data, { run, root, chainFrom = null, byTitle = true, baseName = null, skipNoted = false }) {
   if (!run && !root) throw new Fail('--run か --root が要る', 2);
   const step = data.step || 'verify';
-  const base = path.basename(file).replace(/\.(ya?ml|json)$/, '');
+  const base = baseName || path.basename(file).replace(/\.(ya?ml|json)$/, '');
+  const repo = root ? path.resolve(root) : path.resolve(run, '..', '..', '..');
+  const known = existingKeys([path.join(repo, 'docs', 'feedback'), ...(run ? [path.join(path.resolve(run), 'issues'), path.join(path.resolve(run), 'issues', 'consumed')] : [])]);
+  const chain = chainOf(chainFrom);
   // 書く前に全件を確かめる (途中で落ちて一部の課題だけが残らないように)
   if (!run) {
     const slugs = ucSlugs(root);
@@ -118,25 +216,33 @@ function fileDrafts(file, data, { run, root }) {
   }
   const written = [];
   const skipped = [];
+  const duplicates = [];
+  const noted = [];
   for (const u of data.upstream_issues || []) {
+    // --skip-noted: 機能の中でする回避 (workaround) の課題は書かない (点検で上流の課題と混ざるとき。上流を直した後の点検でもう一度出て、機能の中へ運ばれる。0.3.0)
+    if (skipNoted && hasWorkaround(u)) { noted.push(u.id); continue; }
     const name = `${base}_${u.id}.md`.replace(/[^A-Za-z0-9_.-]/g, '-');
-    const fm = { kind: KIND_OF[u.target_step], title: u.title, target_step: u.target_step, source: `handoff:${step}` };
+    const key = `${u.target_step}\n${squashTitle(u.title)}`;
+    const fm = { kind: KIND_OF[u.target_step], title: u.title, ...(u.target_step === 'plugin' ? {} : { target_step: u.target_step }), source: `handoff:${step}`, ...(u.resume_from ? { resume_from: u.resume_from } : {}), ...(hasWorkaround(u) ? { workaround: true } : {}), ...(chain || {}) };
     let dest;
     if (run) {
       dest = path.join(path.resolve(run), 'issues', `${stamp()}_${step}_${name}`);
       const dir = path.dirname(dest);
       if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(`_${step}_${name}`))) { skipped.push(name); continue; }
+      if (byTitle && known.has(key)) { duplicates.push({ id: u.id, title: u.title }); continue; }
     } else {
       dest = path.join(path.resolve(root), 'docs', 'feedback', `${stamp()}_${step}_${name}`);
       const dir = path.dirname(dest);
       if (fs.existsSync(dir) && fs.readdirSync(dir).some((f) => f.endsWith(`_${step}_${name}`))) { skipped.push(name); continue; }
+      if (byTitle && known.has(key)) { duplicates.push({ id: u.id, title: u.title }); continue; }
       Object.assign(fm, { from_uc: u.uc || null, status: 'open', created: new Date().toISOString().replace(/\.\d+Z$/, 'Z') });
     }
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, `---\n${stringifyYaml(fm).trimEnd()}\n---\n${issueBody(u)}`);
+    known.add(key);
     written.push(dest);
   }
-  return { written, skipped };
+  return { written, skipped, duplicates, noted };
 }
 
 function main(argv) {
@@ -147,9 +253,31 @@ function main(argv) {
     else if (rest[i] === '--run') opt.run = rest[++i];
     else if (rest[i] === '--root') opt.root = rest[++i];
     else if (rest[i] === '--findings') opt.findings = true;
+    else if (rest[i] === '--chain-from') opt.chainFrom = rest[++i];
+    else if (rest[i] === '--skip-noted') opt.skipNoted = true;
+    else if (rest[i] === '--review') opt.review = true;
+    else if (rest[i] === '--target') opt.target = rest[++i];
+    else if (rest[i] === '--report') opt.report = rest[++i];
     else throw new Fail(`不明な引数: ${rest[i]}`, 2);
   }
   if (!['validate', 'route', 'file-drafts'].includes(cmd)) throw new Fail('handoff.js validate|route|file-drafts <file> ...', 2);
+  if (opt.review) {
+    if (cmd !== 'file-drafts' || !opt.run) throw new Fail('--review は file-drafts <round<n>.md> --review --target <戻し先> --run <runDir> で使う', 2);
+    if (!opt.target || !(IN_FEATURE.has(opt.target) || UPSTREAM.has(opt.target))) throw new Fail(`--target は戻し先 (requirements / decide / foundation / scenario / contract / implementation): ${opt.target}`, 2);
+    if (!file || !fs.existsSync(file)) throw new Fail(`レビューの結果が無い: ${file}`, 2);
+    const point = path.basename(path.dirname(path.dirname(path.resolve(file)))) || 'review';
+    // 先頭の BOM を除き改行を LF にそろえてから読む (BOM があると「### 指摘」が行頭に見えず 0 件になる。改行だけ違う同じ結果を別の hash にしない)
+    const text = fs.readFileSync(file, 'utf8').replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+    const sub = reviewToHandoff(text, opt.target, point);
+    // レビューの指摘は 1 件ずつ別の課題 (切り詰めた題名が同じでも重ねない。同じ回の 2 度目は名前で重ねない)
+    // 名前に場所・回・ラウンドと、結果の中身の短い hash を入れる (同じ場所の 2 回目のレビューの「指摘 1」を 1 回目のものと取り違えない)。
+    // 写し直しはレビューの置き場を退避するので回の番号が 1 に戻り、古い下書きは issues/ に残る。中身の hash が無いと、
+    // 新しいレビューの下書きが古い下書きと同じ名前になって黙って捨てられた (会議室の予約の実地確認。0.3.0)
+    const abs = path.resolve(file);
+    const digest = crypto.createHash('sha256').update(text).digest('hex').slice(0, 8);
+    const baseName = `${path.basename(path.dirname(path.dirname(abs)))}-${path.basename(path.dirname(abs))}-${path.basename(abs, '.md')}-${digest}`;
+    return { out: { ok: true, ...fileDrafts(file, sub, { ...opt, byTitle: false, baseName }) }, code: 0 };
+  }
   const data = load(file);
   if (opt.findings) {
     // 検証役の findings は schema が別 (validateAssumptions.js verdicts が見る)。ここでは引き継ぎの欄 (asks と upstream_issues) だけを使う
@@ -160,8 +288,12 @@ function main(argv) {
     return { out: { ok: true, ...fileDrafts(file, sub, opt) }, code: 0 };
   }
   const errors = validate(data);
+  if (cmd === 'validate' && opt.report) {
+    if (!fs.existsSync(opt.report)) throw new Fail(`報告のファイルが無い: ${opt.report}`, 2);
+    errors.push(...checkReport(data, fs.readFileSync(opt.report, 'utf8')));
+  }
   if (cmd === 'validate' || errors.length) {
-    const counts = errors.length ? {} : { asks: data.asks.length, upstream_issues: data.upstream_issues.length, refutations: (data.refutations || []).length };
+    const counts = errors.length ? {} : { asks: data.asks.length, upstream_issues: data.upstream_issues.length, refutations: (data.refutations || []).length, decisions: (data.decisions || []).length };
     return { out: { ok: !errors.length, errors, ...counts }, code: errors.length ? 1 : 0 };
   }
   if (cmd === 'route') return { out: { ok: true, ...route(data, opt.mode || 'auto') }, code: 0 };
@@ -179,4 +311,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { validate, route, fileDrafts, main, KIND_OF, IN_FEATURE, UPSTREAM };
+module.exports = { validate, route, fileDrafts, main, KIND_OF, IN_FEATURE, UPSTREAM, reviewToHandoff, checkReport };

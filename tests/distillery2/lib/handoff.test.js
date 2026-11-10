@@ -53,13 +53,15 @@ test('validate: 推奨が選択肢に無い・推奨なしで理由が無い・i
   assert.match(errors, /title/);
 });
 
-test('route: 選び方の問いは推奨で決め、事実が分からない問いは auto で人へ・recommend で仮置き、推奨なしは両モードとも人へ', () => {
+test('route: 選び方の問いは推奨で決め、事実が分からない問いは auto で人へ・recommend で仮置き、推奨なしは auto で人へ・recommend で進行役が推奨を作る (0.3.0)', () => {
   const auto = H.route(base(), 'auto');
   assert.deepEqual(auto.decide, [{ id: 'audit-store', answer: 'DB の表', provisional: false }]);
   assert.deepEqual(auto.to_human, [{ id: 'headcount', reason: 'unknown_fact' }, { id: 'seed', reason: 'no_recommendation' }]);
   const rec = H.route(base(), 'recommend');
   assert.deepEqual(rec.decide.map((x) => [x.id, x.provisional]), [['audit-store', false], ['headcount', true]]);
-  assert.deepEqual(rec.to_human, [{ id: 'seed', reason: 'no_recommendation' }]);
+  assert.deepEqual(rec.to_human, []);
+  assert.deepEqual(rec.make_recommendation, [{ id: 'seed', reason: 'no_recommendation' }]);
+  assert.deepEqual(auto.make_recommendation, []);
   assert.deepEqual(auto.issues.upstream.map((x) => x.id), ['list-entry']);
   assert.deepEqual(auto.issues.in_feature.map((x) => x.id), ['resp-409']);
   assert.throws(() => H.route(base(), 'manual'), /auto か recommend/);
@@ -125,7 +127,8 @@ test('--findings: 検証役の問いも振り分け、auto では事実の問い
   assert.deepEqual(auto.to_human.map((x) => x.id), ['headcount', 'seed']);
   const rec = JSON.parse(execFileSync(process.execPath, [path.join(SCRIPTS, 'handoff.js'), 'route', findings, '--findings', '--mode', 'recommend'], { encoding: 'utf8' }));
   assert.deepEqual(rec.decide.map((x) => x.id), ['headcount']);
-  assert.deepEqual(rec.to_human.map((x) => x.id), ['seed']);
+  assert.deepEqual(rec.to_human.map((x) => x.id), []);
+  assert.deepEqual(rec.make_recommendation.map((x) => x.id), ['seed']);
 });
 
 test('前のステップの課題は根拠と推奨の直し方が要る (推奨案で進めるモードが直し方を選べるように)', () => {
@@ -173,3 +176,53 @@ test('file-drafts --root: uc が UC 一覧に無ければ、どの課題も書�
   assert.equal(code, 1);
   assert.equal(fs.existsSync(path.join(dir, 'docs', 'feedback')), false, '前の課題 (要求への課題) も書かない');
 });
+
+test('route: リポの中で回避したプラグインの課題 (workaround) は止めない側 (plugin_noted) に、回避できないものは plugin に振り分ける。workaround は plugin にだけ書ける (0.3.0)', () => {
+  const d = base();
+  d.upstream_issues.push(
+    { id: 'tmpl-lint', target_step: 'plugin', title: '雛形が lint に落ちる', detail: '雛形の関数名が組み込みと重なる。', evidence: 'qlty の high', recommended_fix: '雛形の関数名を変える', workaround: 'リポの写しの関数名を変えた' },
+    { id: 'gen-broken', target_step: 'plugin', title: '生成器が落ちる', detail: '生成器が例外で止まる。', evidence: 'exit 1', recommended_fix: '生成器を直す' },
+  );
+  assert.deepEqual(H.validate(d), []);
+  const r = H.route(d, 'recommend');
+  assert.deepEqual(r.issues.plugin.map((x) => x.id), ['gen-broken']);
+  assert.deepEqual(r.issues.plugin_noted.map((x) => x.id), ['tmpl-lint']);
+  const bad = base();
+  bad.upstream_issues[0].workaround = '回避した';
+  assert.match(H.validate(bad).join('\n'), /workaround: 戻し先が plugin の課題だけ/);
+  const blank = base();
+  blank.upstream_issues = [{ id: 'p', target_step: 'plugin', title: 'x', detail: 'x', evidence: 'x', recommended_fix: 'x', workaround: '   ' }];
+  assert.match(H.validate(blank).join('\n'), /空白だけの回避/);
+  assert.deepEqual(H.route(blank, 'recommend').issues.plugin.map((x) => x.id), ['p'], '空白だけの回避は止める側');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
+  const run = path.join(dir, '.distillery', 'runs', 'submit-expense');
+  fs.mkdirSync(run, { recursive: true });
+  const only = { ...d, upstream_issues: d.upstream_issues.slice(2) };
+  const w = H.fileDrafts(write(dir, 'tier.json', only), only, { run });
+  assert.equal(w.written.length, 2);
+  const names = fs.readdirSync(path.join(run, 'issues'));
+  const noted = fs.readFileSync(path.join(run, 'issues', names.find((n) => n.includes('tmpl-lint'))), 'utf8');
+  assert.match(noted, /^workaround: true$/m);
+  assert.match(noted, /## リポの中での回避\n\nリポの写しの関数名を変えた/);
+  const blocking = fs.readFileSync(path.join(run, 'issues', names.find((n) => n.includes('gen-broken'))), 'utf8');
+  assert.doesNotMatch(blocking, /workaround/);
+});
+
+test('file-drafts --root --skip-noted: 点検で上流の課題と混ざるとき、機能の中でする回避 (workaround) の課題は課題ファイルにせず noted に返す。回避できない課題と上流の課題は書く (0.3.0)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-'));
+  const d = { schema_version: 'distillery2.handoff/v1', step: 'precheck', asks: [], upstream_issues: [
+    { id: 'adr-gap', target_step: 'decide', title: '時間帯の検証が ADR に無い', detail: 'x', evidence: 'x', recommended_fix: 'x' },
+    { id: 'tmpl', target_step: 'plugin', title: '雛形が古い', detail: 'x', evidence: 'x', recommended_fix: 'x', workaround: '機能の中で雛形を直す' },
+    { id: 'gen', target_step: 'plugin', title: '生成器が落ちる', detail: 'x', evidence: 'x', recommended_fix: 'x' },
+  ] };
+  const f = write(dir, 'precheck.json', d);
+  const r = H.fileDrafts(f, d, { root: dir, skipNoted: true });
+  assert.deepEqual(r.noted, ['tmpl']);
+  const files = fs.readdirSync(path.join(dir, 'docs', 'feedback'));
+  assert.equal(files.length, 2);
+  assert.ok(files.some((n) => n.includes('adr-gap')) && files.some((n) => n.includes('gen')));
+  assert.ok(files.every((n) => !fs.readFileSync(path.join(dir, 'docs', 'feedback', n), 'utf8').includes('workaround')), '回避済みの印を残さない');
+  const out = JSON.parse(execFileSync('node', [path.join(SCRIPTS, 'handoff.js'), 'file-drafts', f, '--root', fs.mkdtempSync(path.join(os.tmpdir(), 'd2-handoff-')), '--skip-noted'], { encoding: 'utf8' }));
+  assert.deepEqual(out.noted, ['tmpl'], 'CLI の --skip-noted');
+});
+

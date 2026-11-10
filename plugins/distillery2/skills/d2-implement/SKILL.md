@@ -12,7 +12,7 @@ description: >-
 
 入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
 
-引数: `mode=scenario|scaffold|tier|integrate uc=<slug> [tier=<tier_id>] [attempt=<n>] [findings=<path>]`
+引数: `mode=precheck|scenario|scaffold|tier|integrate uc=<slug> [tier=<tier_id>] [attempt=<n>] [findings=<path>]`
 
 v1 (distillery-impl:dist-impl-implement) からの変更点:
 
@@ -25,20 +25,21 @@ v1 (distillery-impl:dist-impl-implement) からの変更点:
 
 | mode | 固定指示 | 読むもの / 書くもの の要点 |
 |---|---|---|
+| precheck | [references/precheck.md](references/precheck.md) | 機能の作業の前に、UC の受入基準・ADR・開発ルール・契約の骨格・画面部品を読むだけ → この UC に要る上流の決めごとの不足を引き継ぎファイルに洗い出す (ティアごと) |
 | scenario | [references/scenario.md](references/scenario.md) | use-cases.yaml の行 + 要求 + RDRA → `features/<業務>/<slug>.feature`。人の承認は d2-run が取る |
 | scaffold | [references/scaffold.md](references/scaffold.md) | feature + slice → step 骨格 (pending) + ティアごとの red 単体テスト。完了条件は dry-run で undefined 0 と `--expect-red unit` |
 | tier | [references/tier-impl.md](references/tier-impl.md) | rules + slice + 生成型 + feature → `apps/<tier>/src`、AssumptionRecord。自ティアの static / unit を check-only で通す |
 | integrate | [references/integrate.md](references/integrate.md) | 骨格 + test-support → step 実装、計装の結線。`runGates.js --from uc-bdd` が通る |
 
-共通の規約: [references/gates.md](references/gates.md) (5 ゲート)、[../d2-common/references/assumption-record.md](../d2-common/references/assumption-record.md) (0.1.31 で d2-common へ。d2-verify も読む) (前提の記録)。
+共通の規約: [references/gates.md](references/gates.md) (5 ゲート)、[../d2-common/references/assumption-record.md](../d2-common/references/assumption-record.md) (0.1.31 で d2-common へ。d2-verify も読む) (前提の記録)、[../d2-common/references/handoff.md](../d2-common/references/handoff.md) (引き継ぎファイルと「前のステップの課題にする線」。d2-verify も読む)。
 
 ## 手順 (全 mode 共通)
 
 1. `.distillery/config.yaml` を読み、UC の slug から `docs/requirements/use-cases.yaml` の行を引く (業務名・spec_ids・tiers)
-2. 該当 mode の固定指示ファイルを**最初に全部読む**。read-set に無いものは読まない
+2. 該当 mode の固定指示ファイルを**最初に全部読む**。read-set に無いもの (上の共通の規約を除く) は読まない
 3. 固定指示どおりに作業し、完了条件を自分で確かめる (スクリプトの exit code で判定する。出力の目視で pass にしない)
-4. 仕様に無いことを決めたら AssumptionRecord に (tier)、仕様と両立しない事実は `issues/` に (`kind: rule | contract | requirement`)
-5. 報告: 生成・更新したファイル一覧、完了条件の結果、AssumptionRecord の件数と sha256 (tier)、起票した issue
+4. 仕様に無いことを決めたら AssumptionRecord に (tier)、仕様と両立しない事実は引き継ぎファイルの `upstream_issues` に (線は `<skills>/d2-common/references/handoff.md` の「前のステップの課題にする線」。課題のファイルは直接書かない。進行役が引き継ぎファイルから下書きにする)
+5. 報告: 生成・更新したファイル一覧、完了条件の結果、AssumptionRecord の件数と sha256 (tier)、引き継ぎファイルに書いた課題
 
 ## 禁止
 
@@ -56,5 +57,15 @@ v1 (distillery-impl:dist-impl-implement) からの変更点:
 | `<skills>/d2-common/scripts/runGates.js` | ゲート実行 (`--only unit --expect-red unit`、`--from uc-bdd` など) |
 
 ## 引き継ぎファイル
+
+戻し先 (`target_step`) の選び方:
+
+| 足りないもの・食い違うもの | 戻し先 |
+|---|---|
+| 業務の決まり・受入基準・UC の抜け (要望に照らして何をするか) | `requirements` |
+| 技術の方針 (層・認可・データの持ち方・同時の更新・エラーの返し方・外部とのやり取り) が ADR に無い・矛盾する | `decide` |
+| 決定はあるが、開発ルール・テスト基盤・画面部品・設定が追いついていない | `foundation` |
+| この UC のシナリオ / 契約 / 他ティアの実装 | `scenario` / `contract` / `implementation` |
+| distillery2 のスクリプト・手順の不具合 (リポの中では直せない) | `plugin` (自分の書き込み範囲で回避したら `workaround` に回避の仕方を書く。機能は止まらない) |
 
 作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題を書く (書き方は [handoff.md](../d2-common/references/handoff.md))。報告の本文にだけ書いたことは扱われない。推奨は条件を付けずに 1 つ書く。

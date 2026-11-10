@@ -269,6 +269,32 @@ test('AsyncAPI 共有ファイルは UC 指定でも全 message から生成す�
   assert.match(read(out, 'packages/contracts/events/validators.ts'), /LoanCreated/);
 });
 
+test('--uc 生成は、生成済みの他 UC の契約テストも作り直す。まだ生成していない UC のテストは作らない (0.3.0 の実地確認: 型を足すと前の UC のテストが古いまま残り、鮮度の検査が落ちた)', () => {
+  const { contractsDir } = freshContracts();
+  fs.appendFileSync(path.join(contractsDir, 'uc-index.yaml'), '  - slug: book-browse\n    operations: [getBook]\n    messages: []\n    tables: []\n');
+  compileContracts.run(contractsDir);
+  const out = outRoot();
+  const createLoan = path.join(out, 'apps/backend-api/test/contract/createLoan.test.ts');
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, uc: 'book-browse' });
+  assert.ok(fs.existsSync(path.join(out, 'apps/backend-api/test/contract/getBook.test.ts')));
+  assert.equal(fs.existsSync(createLoan), false, 'まだ生成していない UC の operation のテストは作らない');
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, uc: 'loan-register' });
+  const fresh = fs.readFileSync(createLoan, 'utf8');
+  // 他 UC が共有の型を足した後を模す: loan-register だけが使う createLoan のテストが古い
+  fs.writeFileSync(createLoan, fresh.replace('const components = ', 'const components = /* stale */ '));
+  assert.throws(() => genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true }), /Stale generated tests: .*createLoan\.test\.ts/);
+  const r = genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, uc: 'book-browse' });
+  assert.ok(r.written.includes('apps/backend-api/test/contract/createLoan.test.ts'), JSON.stringify(r.written));
+  assert.equal(fs.readFileSync(createLoan, 'utf8'), fresh);
+  // 全体の鮮度の検査に残るのは、どの UC もまだ生成していない operation (fixture の returnLoan) だけ
+  assert.throws(() => genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true }), (e) => /returnLoan\.test\.ts/.test(e.message) && !/createLoan|getBook/.test(e.message));
+  // 同じ名前の手書きのテスト (生成器の印が無い) は、他 UC の生成で作り直さない
+  const handwritten = '// 手書きのテスト\n';
+  fs.writeFileSync(createLoan, handwritten);
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, uc: 'book-browse' });
+  assert.equal(fs.readFileSync(createLoan, 'utf8'), handwritten);
+});
+
 test('--uc 生成は stub マニフェストへ union で追記する (Finding 4)', () => {
   const { contractsDir } = freshContracts();
   compileContracts.run(contractsDir);

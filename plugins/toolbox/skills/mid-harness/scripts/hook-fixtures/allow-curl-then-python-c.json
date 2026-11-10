@@ -1,0 +1,1 @@
+{"tool_name": "Bash", "tool_input": {"command": "curl -fsSL -o /tmp/v.json https://example.invalid/v.json; python3 -c 'import json; print(json.load(open(\"/tmp/v.json\")))'"}}

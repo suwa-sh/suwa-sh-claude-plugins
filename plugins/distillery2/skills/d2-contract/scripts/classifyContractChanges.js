@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * classifyContractChanges.js --uc <slug> [--contracts <dir>] [--cwd <dir>] [--files-from <file>] [--json]
+ * classifyContractChanges.js --uc <slug> [--base <ref>] [--contracts <dir>] [--cwd <dir>] [--files-from <file>] [--json]
  *
  * 段階④ contract の受理時に、変わった契約の生成物を「この UC の分 / 他 UC の分 / 共有」に分ける。
  * 契約は UC 間で共有するので、enum の追加などで他 UC のテストや共有の型も書き換わる (0.1.16 実走)。
@@ -16,7 +16,9 @@
  *  - shared:   それ以外の生成物 (`messages.test.ts`、`db-schema.test.ts`、DDL、`packages/contracts/**`、bundle)
  * 生成物でないファイル (分割ファイルの `contracts/openapi/**` など) は数だけ `ignored` に出す。
  *
- * 変更ファイルは既定で `git status --porcelain --untracked-files=all` から取る。`--files-from` は 1 行 1 パス (テスト用)。
+ * 変更ファイルは既定で `git status --porcelain --untracked-files=all` から取る。`--base <ref>` を付けると、その commit から作業ツリーまでの差分
+ * (`git diff --name-only <ref>`。commit 済みの変更も入る) に未追跡を足す。上流の直しの後の写し直しでは機能の契約の変更が commit 済みになり、
+ * git status だけでは自分の分が空になる (0.3.0 の実地確認で実測)。`--files-from` は 1 行 1 パス (テスト用)。
  * 終了コード: 0 = 分類できた / 2 = 引数・読み込みの誤り。
  */
 
@@ -78,23 +80,26 @@ function classify({ slug, ucIndex, files }) {
   return out;
 }
 
-function changedFiles(cwd) {
+function changedFiles(cwd, base) {
   const text = execFileSync('git', ['-c', 'core.quotepath=off', 'status', '--porcelain', '--untracked-files=all'], { cwd, encoding: 'utf8' });
-  return text.split('\n').flatMap(pathsOfPorcelain).filter(Boolean);
+  const status = text.split('\n').flatMap(pathsOfPorcelain).filter(Boolean);
+  if (!base) return status;
+  const diff = execFileSync('git', ['-c', 'core.quotepath=off', 'diff', '--name-only', '-M', base], { cwd, encoding: 'utf8' }).split('\n').filter(Boolean);
+  return [...new Set([...diff, ...status])];
 }
 
 function argVal(args, name) { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; }
 
 function main(argv) {
   const slug = argVal(argv, '--uc');
-  if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) { console.error('Usage: classifyContractChanges.js --uc <slug> [--contracts <dir>] [--cwd <dir>] [--files-from <file>] [--json]'); return 2; }
+  if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) { console.error('Usage: classifyContractChanges.js --uc <slug> [--base <ref>] [--contracts <dir>] [--cwd <dir>] [--files-from <file>] [--json]'); return 2; }
   const cwd = path.resolve(argVal(argv, '--cwd') || '.');
   const contractsDir = path.resolve(cwd, argVal(argv, '--contracts') || 'contracts');
   let ucIndex;
   try { ucIndex = C.readUcIndex(contractsDir); } catch (e) { console.error(e.message); return 2; }
   const from = argVal(argv, '--files-from');
   let files;
-  try { files = from ? fs.readFileSync(path.resolve(cwd, from), 'utf8').split('\n') : changedFiles(cwd); } catch (e) { console.error(e.message); return 2; }
+  try { files = from ? fs.readFileSync(path.resolve(cwd, from), 'utf8').split('\n') : changedFiles(cwd, argVal(argv, '--base')); } catch (e) { console.error(e.message); return 2; }
   const r = classify({ slug, ucIndex, files });
   if (argv.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return 0; }
   const also = r.own.filter(o => o.also_used_by.length);

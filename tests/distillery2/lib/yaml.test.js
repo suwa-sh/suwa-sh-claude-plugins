@@ -36,3 +36,13 @@ test('stringifyYaml round-trips through parseYaml', () => {
   const text = stringifyYaml(value);
   assert.deepEqual(parseYaml(text), value);
 });
+
+test('stringifyYaml: YAML 1.1 の読み手が文字列以外に読む形 (日付・yes/no・16 進・指数など) を囲い、往復で文字列のまま (0.3.0 の実地確認)', () => {
+  const vals = ['2026-12-01', '2026-12-01T10:00:00+09:00', 'yes', 'No', 'on', 'OFF', 'y', 'True', 'NULL', '0x1F', '0o17', '1e3', '+1', '1_000', '.inf', '.NaN', '-.5'];
+  for (const v of vals) {
+    const text = stringifyYaml({ v });
+    assert.equal(text, 'v: ' + JSON.stringify(v), v);
+    assert.deepEqual(parseYaml(text), { v }, v);
+  }
+  for (const v of ['2.2.5', 'room-a', 'yesterday', 'v1']) assert.equal(stringifyYaml({ v }), 'v: ' + v, v);
+});
