@@ -41,7 +41,8 @@ function withTableModes(sql, tables) {
   const lower = (x) => String(x).replace(/"/g, '').toLowerCase();
   const ctes = new Set([...s.matchAll(CTE_NAME_RE)].map((m) => lower(m[1])));
   const written = new Set([...s.matchAll(DML_TARGET_RE)].map((m) => lower(m[1])));
-  return (Array.isArray(tables) ? tables : []).filter((t) => !ctes.has(lower(t)))
+  // 書き込みの宛先は WITH 句の名前と同じでも表として残す (宛先は必ず実表。同名の CTE があっても書き込みを落とさない)
+  return (Array.isArray(tables) ? tables : []).filter((t) => !ctes.has(lower(t)) || written.has(lower(t)))
     .map((t) => ({ table: t, mode: written.has(lower(t)) ? 'write' : 'read' }));
 }
 

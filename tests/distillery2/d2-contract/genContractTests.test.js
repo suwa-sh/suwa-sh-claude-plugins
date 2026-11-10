@@ -288,6 +288,11 @@ test('--uc 生成は、生成済みの他 UC の契約テストも作り直す�
   assert.equal(fs.readFileSync(createLoan, 'utf8'), fresh);
   // 全体の鮮度の検査に残るのは、どの UC もまだ生成していない operation (fixture の returnLoan) だけ
   assert.throws(() => genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true }), (e) => /returnLoan\.test\.ts/.test(e.message) && !/createLoan|getBook/.test(e.message));
+  // 同じ名前の手書きのテスト (生成器の印が無い) は、他 UC の生成で作り直さない
+  const handwritten = '// 手書きのテスト\n';
+  fs.writeFileSync(createLoan, handwritten);
+  genContractTests.run(contractsDir, { configPath: CONFIG, outRoot: out, uc: 'book-browse' });
+  assert.equal(fs.readFileSync(createLoan, 'utf8'), handwritten);
 });
 
 test('--uc 生成は stub マニフェストへ union で追記する (Finding 4)', () => {

@@ -142,7 +142,8 @@ function run(contractsDir, { configPath, outRoot, uc = null, check = false }) {
     // UC 指定でも、すでに生成済みの他 UC の契約テストは作り直す: テストは共有の型 (components) と契約の版 (basis) を埋め込むので、
     // この UC が型を足すと他 UC のテストが古くなり、main の生成物の鮮度の検査 (--check) が落ちる (0.3.0 の実地確認)。
     // まだ生成していない UC のテストは作らない (その UC の契約の段で作る)。
-    const generated = o => fs.existsSync(path.join(outRoot, providerDir, 'test', 'contract', `${o}.test.ts`));
+    // 生成済み = この生成器の印を持つファイル (同じ名前の手書きのテストは作り直さない)
+    const generated = o => ownsText(readSafe(path.join(outRoot, providerDir, 'test', 'contract', `${o}.test.ts`)));
     if (ucRow) ops = ops.filter(o => ucRow.operations.includes(o) || generated(o));
     ops.sort();
     for (const op of ops) {
