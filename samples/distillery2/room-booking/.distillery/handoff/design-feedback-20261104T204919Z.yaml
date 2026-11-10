@@ -1,0 +1,20 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues:
+  - id: timeslotpicker-story-direct-text
+    target_step: foundation
+    title: 時刻入力の部品の見本にも時刻の文が直書きで残る
+    detail: "時間帯の入力の部品の見本 (TimeSlotPicker.stories.tsx の WithError) が errors に「開始時刻より後にしてください」を直書きしたまま。今回の項目の外のため触っていない。ADR 0017 の「時間帯が正しくないことを示す 1 つの文」と、共有の決め方 timeFieldErrors が出す「時刻を選び直してください」と食い違う"
+    evidence: "docs/design/storybook-app/src/components/domain/TimeSlotPicker.stories.tsx の WithError (errors: { endTime: '開始時刻より後にしてください' })"
+    recommended_fix: "WithError の errors を timeFieldErrors('INVALID_TIME_RANGE') の戻り値 (startTime に「時刻を選び直してください」) に置き換える"
+refutations: []
+decisions:
+  - id: D1
+    topic: 見本 WithError の入力値
+    choice: "value (開始 11:00 / 終了 10:00) は残し、errors を消して errorCode: 'INVALID_TIME_RANGE' だけを渡す"
+    reason: 時間帯の誤りの状態を見せる入力値として妥当で、項目は文の出し方だけを直す指示のため
+  - id: D2
+    topic: 時刻入力の部品の見本の直書き
+    choice: 項目の外なので直さず、前のステップの課題として引き継ぐ
+    reason: 項目に無い Story は書き換えない決まりのため

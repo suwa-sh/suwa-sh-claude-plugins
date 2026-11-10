@@ -1,0 +1,10 @@
+stage: tier
+completed_at: "2026-11-10T04:05:31.183Z"
+attempt: 2
+tiers:
+  - frontend
+  - backend-api
+redispatched:
+  - backend-api
+carried_forward:
+  - frontend

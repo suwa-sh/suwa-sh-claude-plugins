@@ -1,0 +1,26 @@
+schema_version: distillery2.handoff/v1
+step: scaffold
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "既存 step の再利用"
+    choice: "会議室の登録数・現在時刻・既存の予約・取り消された予約の 4 つの前提は view-room-availability.steps.ts の定義を使い、再定義しない"
+    reason: "同文の step を再定義すると ambiguous になる。全 feature の dry-run で ambiguous 0 を確認した"
+  - id: D2
+    topic: "backend-api の入口スタブの形"
+    choice: "apps/backend-api/src/usecase/reserveRoom.ts に createReserveRoom({ repository, clock, newReservationId }) を置き、repository の口は findRoom と save ('saved' または 'overlaps') の 2 つにした"
+    reason: "単体テストが会議室の有無・現在時刻・重なりを差し替えられる最小の口。形は mode=tier が決め直してよいとスタブに書いた"
+  - id: D3
+    topic: "backend-api スタブの戻り値"
+    choice: "何も記録せず err ROOM_NOT_FOUND を返す (throw しない)"
+    reason: "Result 型に合う失敗の結果で、成功・PAST_TIME_SLOT・SLOT_OVERLAPS の 3 本の assertion がどれも落ちる。ROOM_NOT_FOUND を期待する単体テストはこの段では書いていない"
+  - id: D4
+    topic: "frontend の入口スタブの形"
+    choice: "apps/frontend/src/screens/ReserveRoom/submitReservation.ts に submitReservation(ReservationFormValue, ApiDeps) を置き、状態は idle / completed (ReservationView) / error (ErrorCode)、スタブは idle を返す"
+    reason: "空き状況の画面の入口関数 showRoomAvailability と同じ形にそろえ、画面部品の ReservationFormValue と ReservationView をそのまま使う"
+  - id: D5
+    topic: "red の単体テストの範囲"
+    choice: "backend-api は成功・過去の時間帯・重なりの 3 本、frontend は成功 (要求と画面の状態)・終了 24:00 の送り方・409 の SLOT_OVERLAPS の 3 本"
+    reason: "UC の中心の振る舞い (予約が成立して予約者が記録される) と、各ティアで固有の判断がある点に絞った"

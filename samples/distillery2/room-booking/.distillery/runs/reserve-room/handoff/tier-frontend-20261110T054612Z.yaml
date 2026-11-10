@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: tier
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "会議室を読めない状態の組み方"
+    choice: "見本 RoomsUnavailable どおり、入力の上に理由の通知と「会議室の一覧を読み直す」のボタンを置き、入力の会議室の選択肢を空にし、入力の中のエラーには予約の結果のエラーだけを出す"
+    reason: "story を構造の正とする開発ルール (tier-frontend.md) に合わせ、前回の blocker F-006 を解く"
+  - id: D2
+    topic: "読めなかった通知のエラーのコード"
+    choice: "見本の INTERNAL_ERROR に固定せず、listRooms の応答のコード (401 なら UNAUTHENTICATED など) の理由を出す"
+    reason: "見本の値は 1 例で、ADR 0023 はコードで理由を出すと決めている"
+  - id: D3
+    topic: "送信中の読めなかった通知"
+    choice: "入力の中のエラーは送信中に消すが、入力の上の読めなかった通知は送信中も出したままにし、読み直しのボタンだけ押せなくする"
+    reason: "送信のときの読み直しで結果が変わるまで、読めていない事実は変わらない"

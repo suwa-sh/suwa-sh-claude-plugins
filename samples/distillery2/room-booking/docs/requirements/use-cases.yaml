@@ -1,0 +1,69 @@
+version: "1.0"
+system_name: 会議室予約システム
+use_cases:
+  - uc_id: f884cf22
+    business: 会議室予約
+    buc: 会議室の空き状況を確認する
+    uc: 会議室の空き状況を照会する
+    slug: view-room-availability
+    spec_ids:
+      - SPEC-001-01
+    spec_ids_rejected: []
+    actors:
+      - 社員
+    tiers_hint:
+      - frontend
+      - backend
+    status: done
+    tiers:
+      - frontend
+      - backend-api
+  - uc_id: 758d2540
+    business: 会議室予約
+    buc: 会議室を予約する
+    uc: 会議室を予約する
+    slug: reserve-room
+    spec_ids:
+      - SPEC-002-01
+      - SPEC-002-02
+      - SPEC-002-03
+    spec_ids_rejected: []
+    actors:
+      - 社員
+    tiers_hint:
+      - frontend
+      - backend
+    tiers:
+      - frontend
+      - backend-api
+    status: done
+  - uc_id: 16bd95b7
+    business: 会議室予約
+    buc: 予約を取り消す
+    uc: 自分の予約一覧を確認する
+    slug: list-my-reservations
+    spec_ids:
+      - SPEC-003-01
+    spec_ids_rejected:
+      - SPEC-003-02
+    actors:
+      - 社員
+    tiers_hint:
+      - frontend
+      - backend
+    status: planned
+  - uc_id: d51ad6b0
+    business: 会議室予約
+    buc: 予約を取り消す
+    uc: 予約を取り消す
+    slug: cancel-reservation
+    spec_ids:
+      - SPEC-003-02
+    spec_ids_rejected:
+      - SPEC-003-01
+    actors:
+      - 社員
+    tiers_hint:
+      - frontend
+      - backend
+    status: planned

@@ -1,0 +1,30 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "会議室を読めない状態の Story の名前"
+    choice: "RoomsUnavailable"
+    reason: "課題ファイルの推奨の例に合わせ、screens.yaml の variants と同じ名前にした"
+  - id: D2
+    topic: "エラーの通知の出し方"
+    choice: "既存の BusinessErrorAlert を INTERNAL_ERROR で出す (新しい文言・部品は作らない)"
+    reason: "課題の推奨が INTERNAL_ERROR の通知で、文言『時間をおいてもう一度操作してください』が読み直しの操作と合う"
+  - id: D3
+    topic: "読み直しのボタンの置き場と見た目"
+    choice: "通知の直下に右寄せで Button (outline)『会議室の一覧を読み直す』を置き、送信のボタン (主ボタン) と競わせない"
+    reason: "主操作は予約の送信のままにし、読み直しは補助の操作として見せる"
+  - id: D4
+    topic: "会議室を読めないときの入力の表示"
+    choice: "入力は出したまま、会議室の選択肢を空にして会議室を未選択にし、引き継いだ日付と時刻は残す"
+    reason: "読み直した後に入力し直さずに続けられる。会議室が未入力なので入力の部品が送信を止める状態をそのまま見せられる"
+  - id: D5
+    topic: "screens.yaml の variants の順"
+    choice: "RoomsUnavailable を Error の直前に入れた"
+    reason: "Story ファイルの export の並びとそろえた"
+  - id: D6
+    topic: "screens.yaml に載っていない既存の MissingRequired"
+    choice: "項目の外なので足さなかった"
+    reason: "派遣の項目は新しい Story の状態を載せることだけで、既存の Story の扱いは変えない (validateScreens は載っていない export を違反にしない)"

@@ -1,0 +1,28 @@
+schema_version: distillery2.handoff/v1
+step: requirements
+asks:
+  - id: room-names
+    kind: unknown_fact
+    question: "社内の会議室 5 部屋の実際の名前と、空き状況の一覧で並べる順は何か"
+    options:
+      - label: "会議室A〜会議室E のまま"
+        impact: "今の要求・契約の例・初期データのまま進められる。実際の名前とは違う表示になる"
+      - label: "実際の名前に差し替える"
+        impact: "要求の仕様と情報の会議室、初期データの migration を差し替える"
+    recommended: "会議室A〜会議室E のまま"
+    reason: "これまでの点検で仮置きとして回答済みで、契約の例と初期データもこの値。実際の名前は人しか知らないので、分かるまで仮置きで進める"
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "会議室の名前と表示順の書き場所"
+    choice: "空き状況の照会の仕様 (SPEC-001-01) と情報の会議室に、会議室A〜E・room-1〜room-5・表示順 1〜5 を仮置きとして書く"
+    reason: "名前と並び順を確かめるのは空き状況の照会の UC だけで、仕様を 1 UC で確かめられる単位に保てる"
+  - id: D2
+    topic: "並び順の受入基準"
+    choice: "会議室名が会議室A・B・C・D・E の順に並ぶことを確かめる受入基準を 1 件足す"
+    reason: "表示順を要求に足すなら、並び順を受入で確かめられるようにする"
+  - id: D3
+    topic: "情報の会議室の属性"
+    choice: "属性に表示順を足す"
+    reason: "契約の rooms 表に display_order があり、要求の情報と合わせる"

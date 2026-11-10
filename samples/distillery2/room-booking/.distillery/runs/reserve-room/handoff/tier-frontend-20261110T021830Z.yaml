@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: tier
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "送り直しの 200 の画面での扱い"
+    choice: "予約の入口関数は 200 と 201 をどちらも予約の成立 (completed) として返し、画面は両者を区別しない"
+    reason: "契約の reserveRoom は 200 と 201 で同じ形の Reservation を返し、シナリオは送り直しでも「予約が成立していることが示される」とする"
+  - id: D2
+    topic: "応答を受け取れなかったときの表示"
+    choice: "これまでどおり INTERNAL_ERROR のエラーにし、文言は変えない (前提 A-007 に追記)"
+    reason: "派遣の指示で伝えられた要求の決定に従った。シナリオ・開発ルールに文言の定めが無いので前提として記録した"

@@ -1,0 +1,10 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "npm 10 の npm install の失敗への対処"
+    choice: "npx npm@11 install で package-lock.json を作り、installTierPackages も --npm \"npx npm@11\" で回した"
+    reason: "npm 10.9.2 が edgesOut の内部エラーで落ちた。troubleshooting.md の既知の回避策で、作った lockfile で npm 10 の npm ci が通ることも確認した"

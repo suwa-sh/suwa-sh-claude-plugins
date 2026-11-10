@@ -1,0 +1,45 @@
+{
+  "schema_version": "distillery2.handoff/v1",
+  "step": "precheck",
+  "asks": [],
+  "upstream_issues": [],
+  "refutations": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "topic": "点検するティア",
+      "choice": "派遣文の tier=backend を config の backend-api ティアとして点検した",
+      "reason": ".distillery/config.yaml で kind=backend のティアは backend-api だけ"
+    },
+    {
+      "id": "D2",
+      "topic": "前回の点検 (課題 0 件) の後の変更",
+      "choice": "backend の判断を変える変更は無いとした",
+      "reason": "前回の点検 (aa02f88) の後のコミット 48c44c5・d8393db は画面部品 (packages/ui・docs/design)・docs/rules/tier-frontend.md・記録だけを変えており、要求・ADR・backend の開発ルール・契約は変わっていない"
+    },
+    {
+      "id": "D3",
+      "topic": "時間帯の検証 (逆転・同じ時刻・30 分刻み・日付に収まる・24:00・過去の照会)",
+      "choice": "課題にしない",
+      "reason": "ADR 0017 と docs/rules/tier-backend.md が検証の順・コード (INVALID_TIME_RANGE / NOT_ON_30_MINUTES)・業務の日付の決め方・24:00 を翌日 0:00 で持つこと・照会で過去を検査しないことを決めており、受入基準 6〜11 と条件「予約時刻の妥当性」に合う"
+    },
+    {
+      "id": "D4",
+      "topic": "契約の INVALID_TIME_RANGE の説明と社員Bのテスト用トークン",
+      "choice": "点検の課題にしない",
+      "reason": "どちらも戻し先が契約の段 (機能の中) で、docs/feedback/ に open の課題として既にある (contract-invalid-time-range-desc・test-token-employee-b)"
+    },
+    {
+      "id": "D5",
+      "topic": "会議室 5 部屋の名前",
+      "choice": "人への質問にしない",
+      "reason": "decisions.jsonl に「会議室A〜E (仮置き、ID room-1〜room-5、並び順 1〜5)」と回答済み"
+    },
+    {
+      "id": "D6",
+      "topic": "受入基準 11 件に対する backend-api の上流の決めごと",
+      "choice": "要求・決定・基盤の不足は無いと判断した (課題 0 件)",
+      "reason": "認証と予約者を返さないこと (ADR 0006・0015)、データの持ち方と照会で読む表 (ADR 0003・0004、DB 契約の rooms・reservations。reservations は照会・一覧で読むと契約に明記)、重なりの判定 (ADR 0009 の半開区間・条件「予約の重なり判定」で取消済みを除く)、エラーの返し方 (ADR 0010・0017)、ログ (ADR 0011)、層 (ADR 0013)、テスト (ADR 0007 の固定の時計・前提データを DB に直接入れる・pglite) で賄える"
+    }
+  ]
+}

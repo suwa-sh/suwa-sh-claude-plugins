@@ -1,0 +1,22 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "期限の分からないトークンの扱い"
+    choice: "期限が近くないものとしてそのまま返し、更新もサインインへの送り出しもしない。API が 401 を返したら ADR 0014 と 0018 のとおりサインインへ戻す"
+    reason: "使う前に毎回更新すると、リフレッシュトークンが無いときサインインへ戻り続け、あるときは呼ぶたびに更新の往復が増える。401 の扱いは既存の決定で決まっている"
+  - id: D2
+    topic: "画面がアクセストークンの中身から期限を読むか"
+    choice: "読まない。期限は OIDC クライアントの expires_in だけで判断する"
+    reason: "アクセストークンは画面にとって中身の分からない値で、検証は ADR 0015 が API に置いている"
+  - id: D3
+    topic: "既存 ADR との関係"
+    choice: "ADR 0019 は置き換えず、新しい ADR 0020 で足す"
+    reason: "ADR 0019 の規則はすべて有効のままで、穴を埋めるだけ。既存の ADR は置き換え以外で変えない決まり"
+  - id: D4
+    topic: "ADR 0020 の確信度"
+    choice: "confidence: medium (人の確認を求めない)"
+    reason: "認証基盤が expires_in を返しても返さなくても動きは既存の決定で決まっており、人しか知らない事実に依らない"

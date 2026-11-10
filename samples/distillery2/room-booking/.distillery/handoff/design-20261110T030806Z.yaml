@@ -1,0 +1,12 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - {id: D1, topic: 未入力の止め方, choice: ReservationForm が送信時に未入力の必須項目を調べ、1 つでもあれば onSubmit を呼ばずに止め、未入力の項目の下に入力を促す文を出す, reason: SPEC-002-01 の「画面で送らずに止め、項目ごとに入力を促す」を部品の中で 1 か所にまとめ、画面ごとに判定が分かれないようにする}
+  - {id: D2, topic: 画面での判定の範囲, choice: 画面で調べるのは未入力 (空文字) だけ。時間帯の正しさ・30 分刻み・過去・重なりは調べない, reason: SPEC-002-01 が先回りの判定を禁じている}
+  - {id: D3, topic: 項目の文言, choice: 会議室を選んでください / 日付を選んでください / 開始時刻を選んでください / 終了時刻を選んでください, reason: 受入基準の「会議室を選ぶこと」「日付・開始時刻・終了時刻をそれぞれ選ぶこと」に合わせ、どれも選ぶ操作の入力のため}
+  - {id: D4, topic: 表示の優先, choice: 同じ項目に未入力の文とエラーのコード由来の文が両方あるときは未入力の文を出す, reason: 未入力なら送られないため、受け付けなかった理由の文より先に直すべきことを示す}
+  - {id: D5, topic: Story で状態を見せる方法, choice: ReservationForm に showMissing (未入力の項目のエラーを最初から出す) を足し、ReserveRoom の Story MissingRequired で全項目を空にして使う, reason: 送信操作なしで「未入力で送ろうとした後」の状態を見本として固定できる。既定は false で既存の使い方は変わらない}
+  - {id: D6, topic: screens.yaml, choice: 変えない (MissingRequired を variants に足さない), reason: mode=feedback の決まりで screens.yaml は画面や Story を消すときだけ直す。validateScreens は PASS}

@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: scaffold
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "補強のシナリオ用の step を足すか"
+    choice: "足さない (features/step_definitions/view-room-availability.steps.ts を変更しない)"
+    reason: "補強のシナリオの 6 文 (現在が…である / 会議室Bの…に予約がある / 社員が…の空き状況を表示する / 照会は受け付けられる / 会議室Bは空きと表示される / 予約の無い会議室は空きと表示される) はすべて既存の定義の正規表現・文字列に合う。dry-run (--strict) で 14 シナリオ 89 step に undefined / ambiguous が 0、exit 0"
+  - id: D2
+    topic: "red の単体テストを足すか"
+    choice: "足さない (red を足したティアは 0。入口スタブも置かない)"
+    reason: "新しい受入基準が無く (missing: []、acceptance_changed: false)、補強のシナリオは既存の受入基準 (重なる有効な予約が無ければ空き・過去の時間帯も照会できる) の範囲の振る舞いで、main マージ済みの実装が満たす前提。red は新しい受入基準を実装するティアだけに求める規則なので作り話で足さない。代わりに runGates --tiers frontend,backend-api --only unit が PASS (exit 0) を確かめた"

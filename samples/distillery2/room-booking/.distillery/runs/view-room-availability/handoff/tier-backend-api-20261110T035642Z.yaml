@@ -1,0 +1,26 @@
+schema_version: distillery2.handoff/v1
+step: tier
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "トークンの不一致に数える jose のエラー"
+    choice: "JWTExpired・JWTClaimValidationFailed・JWTInvalid・JWSInvalid・JWSSignatureVerificationFailed・JOSEAlgNotAllowed・JOSENotSupported・JWKSNoMatchingKey・JWKSMultipleMatchingKeys のコードだけを null (401) にし、それ以外はすべて例外のまま投げる (500)"
+    reason: "知らないエラーや鍵の一覧の取得・内容の失敗を 401 にしないため、不一致の側を列挙する。人レビューの決定 (障害は 500、トークンの不一致は 401) に合う"
+  - id: D2
+    topic: "認証基盤の障害のログ"
+    choice: "gateway は warn (理由のエラー名と相関 ID だけ、トークンは出さない) を出して投げ、スタック付きの error は presentation の共通の処理の 1 か所で出す"
+    reason: "ADR 0011 の gateway の失敗は warn か error、システムのエラーは error の決まりに合わせ、error の二重出力を避ける"
+  - id: D3
+    topic: "検証器の単体テストの外部の境界"
+    choice: "127.0.0.1 の空いた port で実際の HTTP で鍵の一覧を配る試験用の認証基盤 (src/gateway/jwksTestServer.ts) を使い、届かない場合は開いて閉じた port で確かめる"
+    reason: "testing.md の外部との境界はモックでなく実体で確かめる決まりに合わせる"
+  - id: D4
+    topic: "入口での確認"
+    choice: "src/app.test.ts で本番の検証器を組み込んだ buildApp を通し、認証基盤に届かない場合の 500 INTERNAL_ERROR と期限切れの 401 を確かめる"
+    reason: "指摘の箇所は検証器と httpApp の結線であり、両方をつないだ経路で 500 に届くことを確かめる"
+  - id: D5
+    topic: "検証役の V-002 の記録"
+    choice: "契約に無い経路が Express の既定の 404 になる判断を、振る舞いを変えずに前提 A-020 として記録する"
+    reason: "前提の記録に無い判断として指摘されたため。人レビューは V-001 だけを直す対象にした"

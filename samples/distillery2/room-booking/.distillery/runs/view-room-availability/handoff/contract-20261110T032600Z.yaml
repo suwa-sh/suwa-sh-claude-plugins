@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: contract
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "既存の契約 viewRoomAvailability と examples の扱い"
+    choice: "変更しない (契約・uc-index・生成物のどれも書き換えない)"
+    reason: "operation の説明が、重なる (半開区間) 予約済みの予約があれば予約済み・取消済みは数えない・過去の時間帯も照会できる (PAST_TIME_SLOT を返さない) と決めており、補強のシナリオ (過去の時間帯で重なる有効な予約が無い会議室は空き) を含む 14 シナリオすべてと矛盾しない。ADR 0022 (予約の送り直し) と ADR 0023 (一意制約の違反を usecase で SLOT_OVERLAPS に変える) は予約の作成の処理の決定で、照会の operation の応答・スキーマ・エラーのコードを変えない"
+  - id: D2
+    topic: "補強のシナリオ用の example を足すか"
+    choice: "足さない"
+    reason: "期待する応答は既存の example success (全会議室が空き) と同じ形と中身で、違いは前提のデータ (重ならない時間帯の予約) と現在の時刻だけ。重なりの判定は UC BDD のシナリオで確かめる振る舞いで、契約テストの example に足しても応答の形の検証は増えない"
+  - id: D3
+    topic: "生成物の鮮度"
+    choice: "再生成しない"
+    reason: "compileContracts・compileRdbSchema・genContractTests・genApiClient・genRdbDdl の --check がすべて current (exit 0)、validateUcIndex が PASS"

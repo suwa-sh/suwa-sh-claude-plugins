@@ -1,0 +1,46 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: idp-refresh-token
+    kind: unknown_fact
+    question: "社内の認証基盤は、この画面 (ブラウザで動く公開のクライアント) にリフレッシュトークンを出すか"
+    options:
+      - label: "出す (scope に offline_access 等を足す)"
+        impact: "期限前に画面の裏で更新でき、入力中にサインインへ飛ばない"
+      - label: "出さない"
+        impact: "アクセストークンの期限ごとにサインインへ戻り、入力中の値を失う。期限を長くしてもらうか ADR を置き換える"
+    recommended: "出す (scope に offline_access 等を足す)"
+    reason: "主要な OIDC の認証基盤は PKCE の公開クライアントにローテーション付きのリフレッシュトークンを出せる。ADR 0019 は出さない場合も動く (サインインへ戻る) ので仮置きで進められる"
+  - id: token-storage-memory
+    kind: choice
+    question: "画面のトークンの保存先をメモリだけにし、読み込み直すたびに認証基盤へ一度移ることを受け入れるか"
+    options:
+      - label: "メモリだけ"
+        impact: "不正なスクリプトにトークンを読まれにくい。読み込み直しで認証基盤へ一度移る (サインインが残っていれば入力不要)"
+      - label: "sessionStorage"
+        impact: "読み込み直しでも移らないが、画面に入った不正なスクリプトがトークンを読める"
+    recommended: "メモリだけ"
+    reason: "社内の数十人の利用で読み込み直しの往復は入力無しで済み、トークンを保存場所に残さない方が守りやすい"
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "トークンの保存先"
+    choice: "アクセストークン・ID トークン・リフレッシュトークンはメモリだけ (userStore を InMemoryWebStorage と明示)"
+    reason: "既定の sessionStorage は不正なスクリプトに読まれる。読み込み直しは認証基盤のサインインが残っていれば入力無しで戻る"
+  - id: D2
+    topic: "サインインの往復の state と PKCE の値の保存先"
+    choice: "sessionStorage と明示する (既定は localStorage)"
+    reason: "リダイレクトでページが入れ替わるためメモリでは消える。sessionStorage はタブごとで、タブを閉じれば消える"
+  - id: D3
+    topic: "期限前の更新の方式"
+    choice: "automaticSilentRenew を false、silent_redirect_uri を設定せず、トークンの供給元が残り 60 秒以下でリフレッシュトークンがあれば signinSilent() で更新、無いか失敗したらサインインへ戻す"
+    reason: "oidc-client-ts の既定は自動更新が有効で、リフレッシュトークンが無いと iframe で redirect_uri (/auth/callback) を開いてしまう (ライブラリのソースで確認)"
+  - id: D4
+    topic: "既存 ADR との関係"
+    choice: "ADR 0014・0015・0018 は置き換えず、新しい ADR 0019 で足す。依存のパッケージは変えない"
+    reason: "トークンの供給元の本番の実装の中身だけの追加で、既存の決定と食い違わない。ティア構成・データストア・capabilities は変えない"
+  - id: D5
+    topic: "ADR 0019 の確信度"
+    choice: "confidence: low"
+    reason: "リフレッシュトークンが出るかは認証基盤次第で未確認"

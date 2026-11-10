@@ -1,0 +1,26 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Docs/はじめに" />
+
+# 会議室予約システム 画面部品
+
+社員が会議室の空きを調べ、予約し、自分の予約を取り消すための画面部品とデザイントークンです。
+
+<table>
+  <thead>
+    <tr><th>分類</th><th>中身</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>UI</td><td>Button / Badge / Card / Input / Select / Alert / Skeleton / Icon</td></tr>
+    <tr><td>Layout</td><td>AppShell (上部のヘッダーとナビ)</td></tr>
+    <tr><td>Domain</td><td>AvailabilityBadge / ReservationStatusBadge / TimeSlotPicker / AvailabilitySearchForm / RoomAvailabilityList / ReservationForm / ReservationSummary / MyReservationList / CancelConfirmPanel / BusinessErrorAlert</td></tr>
+    <tr><td>Screens</td><td>RoomAvailability / ReserveRoom / MyReservations / CancelReservation</td></tr>
+  </tbody>
+</table>
+
+## 決まりごと
+
+- 色・文字・余白はデザイントークン (CSS 変数) で指定し、色の値を直接書かない。
+- 空き・予約済みは色だけでなく文字 (「空き」「予約済み」) とアイコンでも示す。
+- 業務のエラーは契約のエラーのコードに応じた理由の文を `BusinessErrorAlert` で表示する。
+- 画面の状態 (読み込み中・エラーなど) は、画面の Story の名前付きの見本で示す。

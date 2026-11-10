@@ -1,0 +1,12 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks: []
+upstream_issues:
+  - id: api-driver-shadow-escape
+    target_step: plugin
+    title: "テスト基盤の雛形が品質ゲートで落ちる"
+    detail: "F9 (runGates --uc bootstrap --upto static) が exit 1。static の quality ジョブ (qlty check --all --fail-level medium) が features/support/drivers/api.ts の 61 行目 `const escape = ...` を biome の lint/suspicious/noShadowRestrictedNames (重要度 high) で落とす。このファイルは d2-foundation の templates/features-support/drivers/api.ts と完全に同じ内容 (diff 無し) で、雛形の不具合。features/support/** は今回の書き込み範囲の外なので直していない。"
+    evidence: ".distillery/runs/bootstrap/reports/gates.json の static.jobs[name=quality] (exit 1、output_tail に 'features/support/drivers/api.ts:61:61 high Do not shadow the global \"escape\" property.')。diff templates/features-support/drivers/api.ts features/support/drivers/api.ts は差分なし"
+    recommended_fix: "d2-foundation の templates/features-support/drivers/api.ts の matchesPath 内の局所関数 escape を escapeRegExp に改名し、リポの features/support/drivers/api.ts も同じく改名する (genTestSupport は既存ファイルを上書きしないので、リポ側は手で直すか削除して再生成)。その後 F9 を再実行する"
+refutations: []
+decisions: []

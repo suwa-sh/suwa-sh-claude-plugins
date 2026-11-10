@@ -1,0 +1,30 @@
+schema_version: distillery2.handoff/v1
+step: tier
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "送り直しの判定の置き場所"
+    choice: "usecase が時間帯の検証の直後に repository の findOwnReservedSame を呼び、見つかれば集約の作成・会議室の確認・書き込みをせずに成立済みの予約を返す"
+    reason: "ADR 0022 の判定の順 (時間帯の形 → 送り直しの検索 → 過去の時間帯 → 重なり) を usecase の 1 か所で守る"
+  - id: D2
+    topic: "送り直しの検索の方式"
+    choice: "予約の今の状態の表を、予約者・会議室・開始・終了の完全一致と状態 reserved で 1 件探し、会議室名を結んで返す (A-008)"
+    reason: "今の状態の表が予約済みかどうかの正本で、取消済みの自分の予約を対象から外せる"
+  - id: D3
+    topic: "成立の種類を usecase の結果で返す"
+    choice: "usecase の成功の値を kind (created / resent) と予約の組にし、presentation が created を 201、resent を 200 にする"
+    reason: "本文は同じ Reservation の形のまま status だけを分けられ、HTTP の判断を presentation に置ける (ADR 0010)"
+  - id: D4
+    topic: "同時の同じ内容の二重送信"
+    choice: "書き込みの重なりの後に送り直しの検索をやり直さず、負けた側は 409 SLOT_OVERLAPS のままにする (A-009)"
+    reason: "契約の同時の予約の文と ADR 0022 の判定の順に合わせ、画面は送信中のボタンを押せなくする"
+  - id: D5
+    topic: "送り直しのログ"
+    choice: "usecase が info で「送り直しのため成立済みの予約を返した」を予約した時と同じ項目で出す (A-010)"
+    reason: "新しい予約は成立していないので「予約した」と分け、送り直しを後から追えるようにする"
+  - id: D6
+    topic: "2020 年のテスト用データ"
+    choice: "room-a-reserved-in-2020-by-employee-a を予約 ID …000c・イベント ID …00e3・予約した時刻 2020-01-09 09:00 で 3 表そろえて入れる (A-007)"
+    reason: "契約の fixtures の説明どおりにし、契約が決めていないイベントの ID と時刻は開始より前の値にした"

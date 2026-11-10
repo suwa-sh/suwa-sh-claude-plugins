@@ -1,0 +1,10 @@
+schema_version: distillery2.handoff/v1
+step: integrate
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "差し戻し後の結線の要否"
+    choice: "結線変更なし (step 定義と support を変えない)"
+    reason: "差し戻しの変更は ReserveRoomScreen.tsx の表示だけで、step が呼ぶ入口関数 loadRooms と submitReservation は変わっていない"

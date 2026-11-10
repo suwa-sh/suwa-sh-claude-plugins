@@ -1,0 +1,20 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues:
+  - id: import-entry-fallback
+    target_step: plugin
+    title: "入口が無いとき取り込みが story を入口に選ぶ"
+    detail: "importUi.js は取り込み元の直下に index.ts が無いと名前順の先頭の .tsx を main にし、AvailabilityBadge.stories.tsx が入口になった。今回は index.ts を足して避けたが、d2-design の手順 4 が index.ts の生成を求めておらず、別のリポでも同じことが起きる"
+    evidence: "docs/feedback/20261104_123555_precheck_precheck-view-room-availability-frontend_ui-package-entry.md (packages/ui/package.json の main が components/domain/AvailabilityBadge.stories.tsx)"
+    recommended_fix: "d2-design の手順 4 で src/index.ts (部品と domain の型・値の再輸出) を必ず作らせ、importUi.js は index が無ければ *.stories.* を入口の候補から外して止める"
+refutations: []
+decisions:
+  - id: D1
+    topic: "再輸出の書き方"
+    choice: "ファイルごとに export * from で再輸出する (名前を列挙しない)"
+    reason: "部品の props の型 (ButtonProps 等) も漏れなく公開でき、名前の衝突は tsc で検出できる (衝突なしを確認済み)"
+  - id: D2
+    topic: "入口に含める範囲"
+    choice: "項目どおり components/{ui,layout,domain} の部品と types.ts・errorMessages.ts・timeSlots.ts だけにし、lib/cn.ts・stories/sampleData.ts・トークン CSS は含めない"
+    reason: "項目と課題が挙げた範囲に合わせる。cn は部品の内部の補助、sampleData は見本用のデータ"

@@ -1,0 +1,50 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: same-origin-delivery
+    kind: choice
+    question: "本番で画面と API を同じオリジンにまとめる前段の配信 (リバースプロキシ等) を置くか"
+    options:
+      - label: "同じオリジンにまとめる"
+        impact: "API に CORS が要らない。前段の配信で /api を API へ振り分ける設定が要る"
+      - label: "別のオリジンに置き CORS を許可する"
+        impact: "API に CORS の許可と許可するオリジンの設定が要り、要求ごとに事前の確認が増える。ADR を置き換える"
+    recommended: "同じオリジンにまとめる"
+    reason: "利用者は社内の数十人で、画面と API を分けて配信する理由が無く、開発時の中継と本番で呼び方が揃う"
+  - id: oidc-api-scope
+    kind: unknown_fact
+    question: "社内の認証基盤でこの API 向けのアクセストークンを得る scope の値は何か (リダイレクト先 画面のオリジン + /auth/callback の登録も要る)"
+    options:
+      - label: "環境変数 VITE_OIDC_SCOPE で渡し、認証基盤の登録時に決める"
+        impact: "コードは値に依らず進められる"
+      - label: "今決めて ADR に書く"
+        impact: "認証基盤の情報が要る"
+    recommended: "環境変数 VITE_OIDC_SCOPE で渡し、認証基盤の登録時に決める"
+    reason: "値は認証基盤ごとに違い、手元に手掛かりが無い。テストは供給元を差し替えるので値が無くても進む"
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "API の宛先"
+    choice: "画面と API は同じオリジンで配信し、画面は生成クライアントの baseUrl 既定のまま /api の相対パスで呼ぶ。backend-api は CORS を入れない"
+    reason: "課題の推奨どおり。CORS の設定と事前の確認を持たずに済み、利用者規模から別オリジンにする理由が無い"
+  - id: D2
+    topic: "開発時の中継"
+    choice: "vite.config.ts の server.proxy で /api を backend-api へ中継。既定 http://localhost:3000、環境変数 API_PROXY_TARGET で上書き"
+    reason: "vite.config.ts は生成器が上書きしない (手で変えてよい) ため ADR の rules で表せる。開発と本番で呼び方が揃う"
+  - id: D3
+    topic: "サインインの戻り先"
+    choice: "/auth/callback の 1 画面を routes.tsx に置き (screens.yaml には載せない)、サインインへ送る前の path を OIDC の state に入れて戻す。無効なら routes の先頭へ"
+    reason: "401 で戻されても開いていた画面へ戻れる。state を使えば別の保存場所が要らない"
+  - id: D4
+    topic: "コールバックの処理の置き場"
+    choice: "サインインの完了をトークンの供給元のインターフェイスに足し、コールバックの画面も OIDC クライアントを直接 import しない"
+    reason: "ADR 0014 の「画面で OIDC クライアントを直接 import しない」と揃える"
+  - id: D5
+    topic: "OIDC の設定の渡し方"
+    choice: "VITE_OIDC_AUTHORITY・VITE_OIDC_CLIENT_ID・VITE_OIDC_REDIRECT_URI・VITE_OIDC_SCOPE の環境変数で渡し、src/api/ の供給元の本番の実装だけが読む"
+    reason: "課題の推奨どおり。ADR 0014 の「環境ごとの設定」を具体化した"
+  - id: D6
+    topic: "既存 ADR との関係"
+    choice: "ADR 0014・0015 は置き換えず、新しい ADR 0018 で足す。confidence は medium"
+    reason: "ティア構成と依存のパッケージを変えず、既存の決定と矛盾しない。前段の配信を置けるかは人の確認に回す"

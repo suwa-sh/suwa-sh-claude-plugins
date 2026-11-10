@@ -1,0 +1,9 @@
+schema_version: distillery2.handoff/v1
+step: asbuilt
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - {id: D1, topic: 要約の課題の行, choice: Verifier の未申告の判断 (ハンドラ名が unmatchedRoute になる要求) を課題の 1 行にし下書きにしない, reason: 抽出節の決めたこと (Verifier が見つけた未申告の判断) に載っており人が見ている}
+  - {id: D2, topic: 今回の実装の変化の載せ先, choice: 認証基盤の障害の 500・始まりのログ・unmatchedRoute・送り出しの解除を整合性の障害と副作用の行に足す, reason: どれも失敗時の応答かログやサインインの状態という副作用で、表の決まった 4 行のうちこの行に当たる}
+  - {id: D3, topic: 既存の要約の根拠の行番号, choice: httpApp.ts の編集でずれた行番号を今のコードの行に直す, reason: 根拠は今のコード位置を指す必要がある}

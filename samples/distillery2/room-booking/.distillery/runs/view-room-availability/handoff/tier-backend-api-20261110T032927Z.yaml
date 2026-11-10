@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: tier
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "置き換え済みの ADR 0018 を出典に挙げるコメント"
+    choice: "httpApp.ts の CORS を入れない理由の出典を ADR 0018 から ADR 0021 に直した"
+    reason: "ADR 0018 は superseded で、CORS を入れない rule は今の開発ルールでは ADR 0021 の見出しの下にある。派遣文が許した ADR 0010 から 0023 への直しと同じ扱い"
+  - id: D2
+    topic: "前提の記録の中身"
+    choice: "前の run の 17 件を同じ id で引き継ぎ、出典と理由の ADR 0010 を ADR 0023 に直し、前の run の検証の経緯の言及を外した"
+    reason: "ADR 0022・0023 はこの UC の照会の経路の振る舞いを変えず (0022 は予約の送り直し、0023 の差分は占有の一意制約の違反だけ)、実装の行番号も変わっていない"

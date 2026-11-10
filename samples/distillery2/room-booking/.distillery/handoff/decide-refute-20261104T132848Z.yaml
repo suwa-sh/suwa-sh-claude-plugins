@@ -1,0 +1,42 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: rpo-double-booking
+    kind: choice
+    question: "障害から復旧したとき、その日に成立した予約と取消が消えてよいか (今は前日のバックアップまで戻す方針で、消えた予約の枠を別の社員が予約できてしまう)"
+    options:
+      - label: "障害の直前まで戻す (目標復旧地点を障害直前にする)"
+        impact: "DB の更新の記録を続けて残し、障害の直前の状態まで戻す。成立を知らせた予約は消えず、二重予約の防止が復旧後も保たれる。バックアップの仕組みと保管の容量が少し増える"
+      - label: "前日のバックアップまで戻し、再開前に照合する"
+        impact: "今の水準のまま。再開の前に、障害の日に成立した予約と取消を社員への通知などから集めて入れ直す手順を決める。手作業で抜けが出やすく、照合が終わるまで再開できない"
+    recommended: "障害の直前まで戻す (目標復旧地点を障害直前にする)"
+    reason: "二重予約の防止は要望の中心 (SPEC-002-02)。データは会議室と予約の 2 つだけで小さく、更新の記録を残す負担は小さい。手作業の照合は抜けが出ると同じ枠を 2 人が確保したと思い込む"
+upstream_issues:
+  - id: rpo-restore-double-booking
+    target_step: decide
+    title: "前日まで戻す復旧で成立済みの予約が消える"
+    detail: "非機能グレード表の目標復旧地点 (A.4.1.1) が前日の最終バックアップまで、バックアップ (C.1.2.1) が日次のため、障害の日に成立した予約と取消が復旧で消える。占有の表 (ADR 0003) も戻るので、成立を知らせた枠を別の社員が予約でき、二重予約の防止 (SPEC-002-02) が復旧後に破れる。直す場所は docs/nfr/ で、決定の差分の派遣の書き込み範囲 (docs/adr/**) の外。docs/nfr を直す道が無い件は既存の課題 nfr-external-idp と同じ根 (二重に起票しない)"
+    evidence: "docs/nfr/nfr-grade.md:43,75、docs/adr/0003-datastore-and-migration.md:20、docs/requirements/requirements.yaml:83-84 (SPEC-002-02)、レビュー .distillery/reviews/decide/4/round1.md の指摘 1"
+    recommended_fix: "A.4.1.1 を Lv3 (障害直前まで) に上げ、根拠に二重予約の防止を書く。C.1.2.1 の根拠に更新の記録 (トランザクションログ) を続けて残すことを足し、validateNfrGrade.js と generateNfrGradeMd.js を回す。データストアの ADR には、障害の直前の時点まで戻せるバックアップを取る rules を新しい ADR として足す"
+  - id: feedback-review-summary-stale
+    target_step: plugin
+    title: "決定の差分で確認事項の一覧が古いまま残る"
+    detail: "決定の差分 (d2-decide mode=feedback) の手順は docs/adr/_review-summary.md を書かないと決めている。このため ADR 0014・0015 で足した前提 (認可コード + PKCE への対応、ID トークンの name、API 向けアクセストークンの JWT 発行、sub、aud) が、人に見せる確認事項の一覧に載らない。人への確認は引き継ぎファイルの asks (decide-feedback-20261104T125423Z と decide-feedback-20261104T132404Z) で出ているが、要約を読む人には見えない"
+    evidence: "docs/adr/_review-summary.md:73-82 (確認事項は OIDC のログイン可否だけ)、docs/adr/0014-tier-structure-frontend-oidc.md:96、docs/adr/0015-api-access-token-jwt.md:11,51、d2-decide SKILL.md の mode=feedback 手順 5、レビュー .distillery/reviews/decide/4/round1.md の指摘 2"
+    recommended_fix: "決定の差分の手順で、confidence low の ADR を足したときは _review-summary.md の「確認してほしいこと」に前提を 1 行足す (または d2-run が決定の差分の確認ページを作るときに確認事項の一覧を作り直す) ように手順書を直す"
+refutations:
+  - finding: "指摘 1"
+    result: needs_info
+    reason: "指摘は正しい (前日まで戻すと障害の日の予約が消え、占有の表も戻る)。ただ直す場所は docs/nfr/ (A.4.1.1・C.1.2.1) で、この派遣の書き込み範囲の外。許す損失の量は人の判断なので asks の rpo-double-booking に推奨付きで書き、直し方は upstream_issues の rpo-restore-double-booking に書いた"
+  - finding: "指摘 2"
+    result: plugin
+    reason: "指摘は正しいが、決定の差分の手順は _review-summary.md を書かないと決めている (人の確認は引き継ぎファイルの asks で行う)。前提の確認は既に asks に出ている (PKCE と name は decide-feedback-20261104T125423Z、JWT・sub・aud は decide-feedback-20261104T132404Z の idp-access-token-jwt)。要約が古いまま残るのは手順書の問題なので upstream_issues の feedback-review-summary-stale (target_step plugin) に書いた。ADR 0015 は変えていない"
+decisions:
+  - id: D1
+    topic: "指摘 1 (復旧で予約が消える) の扱い"
+    choice: "直さずに人へ返し、推奨は目標復旧地点を障害直前にする案にした"
+    reason: "非機能グレード表は書き込み範囲の外。二重予約の防止が要望の中心で、データが小さく負担が小さい"
+  - id: D2
+    topic: "指摘 2 (確認事項の一覧の抜け) の扱い"
+    choice: "_review-summary.md は書かず、同じ確認の asks も二重に出さず、手順書の問題としてプラグインへ返した"
+    reason: "決定の差分の手順が要約を書かないと決めており、前提の確認は既に前の引き継ぎの asks に出ている"

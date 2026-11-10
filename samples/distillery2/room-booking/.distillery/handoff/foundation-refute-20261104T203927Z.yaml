@@ -1,0 +1,13 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 2"
+    result: refuted
+    reason: "config の unit / contract に --passWithNoTests を付けないのは生成器の意図した設計。plugins/distillery2/skills/d2-foundation/references/ci.md:16 に「ローカルの runGates には付けない。red baseline は 0 件で落ちることを使う」とあり、CI 用の scripts/check.mjs だけに genCi.js passWithNoTests() で付ける (genCheck.js:58-59)。config の unit は runGates が UC ごとの赤の基準 (テストが無ければ落ちる) に使うため、0 件で通すと赤の確認が効かなくなる。骨組みの段階のチェックポイントは runGates --upto static で unit / contract を回さないので、テスト 0 件で落ちる場面も無い (今回 PASS static)"
+decisions:
+  - id: D1
+    topic: "指摘 2 の扱い"
+    choice: "反証して config を変えない"
+    reason: "ci.md:16 が config (runGates) と CI でテスト 0 件の扱いを意図して分けている"

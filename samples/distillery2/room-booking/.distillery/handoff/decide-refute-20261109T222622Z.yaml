@@ -1,0 +1,40 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "指摘は正しい。切り替えを確かめるかの問いには答え「確かめる」が記録済み (.distillery/decisions.jsonl 190 行の handoff:decide:spreadsheet-cutover-check)。前回の反証 (.distillery/handoff/decide-refute-20261104T152130Z.yaml の D3) で、答えが出たらグレード表の D.5.1.2 を差分で直すとしていたが、表はモデルシステムの既定値のまま残っていた"
+    change: "docs/nfr/nfr-grade.yaml の D.5.1.2 (移行判定基準) に、切り替えの前に表計算ファイルを更新禁止にし、先の予約がすべて予約し直されたことを照合してから使い始めることを書いた (グレードは 0 のまま、確信度は low)。validateNfrGrade.js が PASS し、generateNfrGradeMd.js で nfr-grade.md を作り直した。docs/adr/_review-summary.md の確認してほしいことに 17 を追記した"
+  - finding: "指摘 2"
+    result: refuted
+    reason: "ブラウザで受入を回さない決定は記録済み (.distillery/decisions.jsonl 26 行の handoff:decide:browser-acceptance、38 行の D11 で capabilities.browser を false にした)。同じ指摘は前回の反証で refuted 済み (.distillery/decisions.jsonl 192 行)。画面と API のつなぎ違いが受入では見つからない影響と、変えるなら基盤の段に戻ることは docs/adr/_review-summary.md 89 行の確認事項 5 に書いてある。受入基準はすべて API の応答で判定できる (docs/adr/0007-testing-strategy.md の背景)。変えるにはテストの実行環境 (capabilities.browser) を作り直す必要があり、決定の差分の範囲外 (基盤の段)"
+  - finding: "below-threshold (ログ保管期間と対応ブラウザの承認条件)"
+    result: refuted
+    reason: "閾値未満の指摘。docs/adr/_review-summary.md 91 行の確認事項 7 で目安の値として人に返してあり、社内の決まりがあれば合わせると書いてある"
+decisions:
+  - id: D1
+    topic: "指摘 1 (表計算ファイルからの切り替えの照合) の扱い"
+    choice: "受け入れ、非機能グレード表の D.5.1.2 だけを直した。D.4.1.2 (社員が予約し直す) は変えない"
+    reason: "答え「確かめる」は記録済みで、表に入れ忘れていただけ。予約し直す方式自体は変わらない"
+  - id: D2
+    topic: "D.5.1.2 の確信度"
+    choice: "low にした (グレードは 0 のまま)"
+    reason: "答えは推奨で採ったもので、確認ページの記録は仮置き (provisional)。カタログに D.5.1.2 のレベル定義が無いのでグレードは変えない"
+  - id: D3
+    topic: "新しい ADR を書くか (指摘 1)"
+    choice: "書かない"
+    reason: "グレードを変えずに済み、レベルに依る決定が無い (d2-decide mode=feedback の手順 3)"
+  - id: D4
+    topic: "_review-summary.md の直し方"
+    choice: "確認事項 3 と表の行は変えず、確認事項 17 を追記した"
+    reason: "要約は追記で直す決まりで、既存の行を直してよいのは置き換えた ADR の行だけ (手順 6)"
+  - id: D5
+    topic: "結果ファイルの targets"
+    choice: "status と reason は変えず、targets に docs/nfr/nfr-grade.yaml を足した"
+    reason: "表を直したら targets に入れる決まり (手順 7)。applied の内容は壊さない"
+  - id: D6
+    topic: "指摘 2 (ブラウザで受入を回さない) の扱い"
+    choice: "反証した。要約は直さない"
+    reason: "決定は記録済みで、要約の確認事項 5 に影響と戻し先が既に書いてある。前回の反証と同じ判断"

@@ -1,0 +1,105 @@
+basis: "requirements@f4263122f7f53c061d36818286bf20f7d36c4fb2 adr@90384efa058c326f40a45856bfc9b8e94f339e2d"
+# 画面 <-> Story <-> UC <-> コンポーネントの対応。story / components / tokens.file は docs/design/storybook-app/src/ からの相対
+screens:
+  - name: RoomAvailability
+    route: /availability
+    uc_slugs:
+      - view-room-availability
+      - reserve-room
+    story: stories/RoomAvailability.stories.tsx
+    variants:
+      - Default
+      - Reservable
+      - PastSlot
+      - Loading
+      - InvalidTimeRange
+      - NotOn30Minutes
+      - Error
+    components:
+      - AppShell
+      - AvailabilitySearchForm
+      - TimeSlotPicker
+      - RoomAvailabilityList
+      - AvailabilityBadge
+      - BusinessErrorAlert
+      - Alert
+      - Button
+      - Input
+      - Select
+      - Skeleton
+      - Icon
+  - name: ReserveRoom
+    route: /reservations/new
+    uc_slugs:
+      - reserve-room
+    story: stories/ReserveRoom.stories.tsx
+    variants:
+      - Default
+      - Submitting
+      - Completed
+      - SlotOverlaps
+      - PastTimeSlot
+      - InvalidTimeRange
+      - MissingRequired
+      - NotOn30Minutes
+      - RoomsUnavailable
+      - Error
+    components:
+      - AppShell
+      - ReservationForm
+      - TimeSlotPicker
+      - ReservationSummary
+      - ReservationStatusBadge
+      - Badge
+      - BusinessErrorAlert
+      - Alert
+      - Card
+      - Button
+      - Input
+      - Select
+      - Icon
+  - name: MyReservations
+    route: /my-reservations
+    uc_slugs:
+      - list-my-reservations
+    story: stories/MyReservations.stories.tsx
+    variants:
+      - Default
+      - Empty
+      - Loading
+      - AfterCancel
+      - Error
+    components:
+      - AppShell
+      - MyReservationList
+      - BusinessErrorAlert
+      - Alert
+      - Button
+      - Skeleton
+      - Icon
+  - name: CancelReservation
+    route: /my-reservations/:reservationId/cancel
+    uc_slugs:
+      - cancel-reservation
+    story: stories/CancelReservation.stories.tsx
+    variants:
+      - Default
+      - Submitting
+      - CancelDeadlinePassed
+      - AlreadyCancelled
+      - NotOwner
+      - NotFound
+      - Error
+    components:
+      - AppShell
+      - CancelConfirmPanel
+      - ReservationSummary
+      - ReservationStatusBadge
+      - Badge
+      - BusinessErrorAlert
+      - Alert
+      - Card
+      - Button
+      - Icon
+tokens:
+  file: tokens/tokens.json

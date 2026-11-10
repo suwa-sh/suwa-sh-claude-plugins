@@ -1,0 +1,62 @@
+schema_version: "2.1"
+uc: "view-room-availability"
+tier: "frontend"
+attempt: 1
+extraction:
+  candidate_count: 7
+  excluded_as_explicit: 2
+  recorded_count: 5
+assumptions:
+  - id: A-001
+    category: data_format
+    title: "送る日時の時差は Asia/Tokyo の tz 規則"
+    assumption: "画面が組み立てる日時の時差は固定の +09:00 にせず、Intl.DateTimeFormat (timeZone Asia/Tokyo) の tz データで、その日時の時差を求めて付ける (1948〜1951 年の夏時間の日は +10:00)。今日の日付の初期値も同じ規則で求める"
+    target: "apps/frontend/src/screens/businessTimeZone.ts:68"
+    reason: "契約は日付と 30 分刻みの判定を業務のタイムゾーン (Asia/Tokyo) で行うとだけ書き、画面が時差をどう求めるかは書いていない。固定の +09:00 では夏時間の日に API の判定と 1 時間ずれる"
+    confidence: high
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#openapi.info.description"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#openapi.components.schemas.TimeRange"
+      - "docs/rules/tier-frontend.md#ADR 0017"
+  - id: A-002
+    category: data_format
+    title: "2 回ある時刻は早い方、無い時刻は飛ぶ前の時差"
+    assumption: "夏時間の終わりで 2 回ある日本時間の時刻 (例 1949-09-11 0:00) は早い方 (+10:00) の瞬間にし、夏時間の始まりで飛ばされて無い時刻 (例 1949-04-03 0:00) は飛ぶ前の時差 (+09:00) で読んだ瞬間 (= 1:00 +10:00) にする。どちらも日付の 0:00 と終了の 24:00 がその日付の始まりと終わりの瞬間に合う"
+    target: "apps/frontend/src/screens/businessTimeZone.ts:75"
+    reason: "契約・ADR 0017 の開発ルールに、夏時間の切り替わりで 2 回ある時刻・無い時刻の扱いが無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#openapi.components.schemas.TimeRange"
+      - "docs/rules/tier-frontend.md#ADR 0017"
+      - "features/会議室予約/view-room-availability.feature"
+  - id: A-003
+    category: data_format
+    title: "分で書けない時差の日は UTC (Z) で送る"
+    assumption: "Asia/Tokyo の時差が分の単位で書けない日 (1888 年より前の地方時 +09:18:59) は、日本時間で選んだ時刻と同じ瞬間を UTC (Z) の日時で送る (例 1880-01-01 10:00 は 1880-01-01T00:41:01Z)"
+    target: "apps/frontend/src/screens/businessTimeZone.ts:93"
+    reason: "RFC 3339 の時差は時と分だけで秒を書けない。契約の日時は format date-time で Z を許すが、秒の時差の日の書き方は契約・ルールに無い"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#openapi.components.schemas.DateTime"
+      - "docs/rules/tier-frontend.md#ADR 0017"
+  - id: A-004
+    category: input_validation
+    title: "path の区切りは復号し、壊れた符号化はそのまま"
+    assumption: "path の :name の区切りの値は decodeURIComponent で復号してから params に入れる。復号できない値 (壊れた符号化。例 %E0) は例外で描画を止めず、復号しないそのままの値を params に入れる (値の検証は受け取った画面と API に任せる)"
+    target: "apps/frontend/src/navigation.ts:19"
+    reason: "ADR 0021 の照合の規則は :name の区切りが / を含まない空でない値 1 つに合うとだけ書き、復号の有無と復号できない値の扱いが無い"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-frontend.md#ADR 0021"
+      - "docs/design/screens.yaml"
+  - id: A-005
+    category: error_handling
+    title: "code 無しの応答と通信失敗は内部エラー"
+    assumption: "照会の応答が 200 でなく本文に文字列の code が無いとき (showRoomAvailability.ts:21) と、応答を受け取れなかったとき (通信の失敗で fetch が例外を投げたとき。同 :45) は、画面のエラーの状態を契約のエラーのコード INTERNAL_ERROR にして出す。再試行はしない"
+    target: "apps/frontend/src/screens/RoomAvailability/showRoomAvailability.ts:17"
+    reason: "契約のエラー応答 (Problem) の ErrorCode は INTERNAL_ERROR を 500 のシステムのエラーとだけ書き、code の無い応答と通信の失敗を画面にどう出すかは契約・ルール・シナリオに無い。画面部品の ErrorCode の中で最も近い値を使い、部品に無い値を作らない"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#openapi.components.schemas.ErrorCode"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#openapi.components.schemas.Problem"
+      - "packages/ui/components/domain/types.ts"

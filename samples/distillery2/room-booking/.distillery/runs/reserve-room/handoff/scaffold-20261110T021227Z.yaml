@@ -1,0 +1,22 @@
+schema_version: distillery2.handoff/v1
+step: scaffold
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: backend-api の red テストの置き場所
+    choice: 送り直しの red を usecase の偽の口ではなく、テスト用の composition root (createTestApp) を HTTP で呼び pglite の表の行数で確かめる新規ファイル apps/backend-api/src/reserveRoomResend.test.ts に置いた
+    reason: 送り直しの判定の口 (repository のメソッド名・usecase の結果の形) を足場の段で決めず tier の段に任せる。契約が 200 / 201 と判定の順番 (4a が 5 より先) を決めているので、HTTP と表で確かめれば実装の形に依らず red にできる
+  - id: D2
+    topic: backend-api の red にする場面
+    choice: 自分の有効な予約と同じ内容の送り直しを、開始前・開始時刻の後・終了時刻の後の 3 本 (200 で成立済みの予約、表の行数が変わらない) にし、他の社員のまったく同じ時間帯は 409 のままを確かめる green の 1 本を添えた
+    reason: SPEC-002-03 の受入基準 1・3・5 と ADR 0022 の判定の順番 (過去の時間帯の判定より先) を 1 ファイルで押さえ、送り直しを広げすぎる実装を green の 1 本で防ぐ
+  - id: D3
+    topic: frontend の red テスト
+    choice: 既存の submitReservation.test.ts に、API が 200 で成立済みの予約を返したら予約が成立した状態 (completed) を返す 1 本を足した
+    reason: 画面の状態は入口関数 submitReservation が決め、今は 201 以外をエラーにしている。生成クライアントの ReserveRoomResult は 200 を持つので green にできる
+  - id: D4
+    topic: 足した step の書き方
+    choice: 既存の reserve-room.steps.ts の末尾に、足りない 8 つの step を pending で足した (社員付きの「予約が成立しているが応答が届かなかった」「予約が取り消されている」、「でもう一度予約する」、結果の 5 つ)
+    reason: 「社員Aの会議室Aの…取り消されている」は view-room-availability.steps.ts の「^会議室…取り消されている」に一致しないため新しく要る。既存の step と同じ文は再定義しない

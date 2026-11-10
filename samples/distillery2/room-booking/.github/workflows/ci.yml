@@ -1,0 +1,21 @@
+name: ci
+on:
+  push:
+    branches: [main, 'feature/**']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - uses: qltysh/qlty-action/install@08a0a862c159eae9b9003081da6663d96efef637 # v2.3.0
+      - run: node scripts/check.mjs --mode ci

@@ -1,0 +1,10 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "契約テストの再生成で変わらなかった扱い"
+    choice: "genContractTests の出力が既存と同一 (書き込み 0 件) のまま受け入れ、UC の契約には手を入れない"
+    reason: "既存 UC (会議室の空き状況を照会する・会議室を予約する) の契約を変えない指示に沿う。骨格分の再生成で差分が出なかった"

@@ -1,0 +1,55 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: idp-oidc-name-claim
+    kind: unknown_fact
+    question: "社内の認証基盤は OIDC の認可コード + PKCE に対応し、ID トークンに name クレーム (社員の表示名) を入れるか"
+    options:
+      - label: "対応している (ADR 0014 のまま)"
+        impact: "追加の変更は無い"
+      - label: "対応していない"
+        impact: "認証の方式か表示名の取り方を置き換える ADR が要る"
+    recommended: "対応している (ADR 0014 のまま)"
+    reason: "ADR 0006 で既に OIDC を前提に仮置きしており、name は OIDC の標準クレーム。実環境の確認までは仮置きで進められる"
+upstream_issues:
+  - id: install-oidc-client
+    target_step: foundation
+    title: "frontend に OIDC クライアントの依存を入れる"
+    detail: "ティア構成の ADR を 0014 に置き換え、frontend の packages に oidc-client-ts を足した。依存の入れ直し (F7) は決定の書き込み範囲の外。パッケージ名の実在と型定義の同梱はまだ確かめていない"
+    evidence: "docs/adr/0014-tier-structure-frontend-oidc.md の tiers[frontend].packages: [oidc-client-ts] (置き換えた ADR 0001 では空)"
+    recommended_fix: "基盤の F7 で新しい ADR の packages を入れる (oidc-client-ts が npm に無い・型定義が無い場合は決定へ戻す)"
+  - id: test-token-employee-b
+    target_step: contract
+    uc: view-room-availability
+    title: "社員Bのテスト用トークンが契約に無い"
+    detail: "ADR 0014 はテストで供給元を差し替え test-employee-a / test-employee-b で社員を切り替えると決めたが、契約の x-test-headers は Bearer test-employee-a だけを定める。受入基準 3 (社員Bが照会し社員Aの名前が出ない) には社員Bのトークンが要る。backend-api のテスト用の検証器はまだ実装されていない"
+    evidence: "contracts/openapi/openapi.yaml の x-test-headers (Authorization: Bearer test-employee-a のみ)"
+    recommended_fix: "契約 (mode=uc) で社員Bのテスト用トークン test-employee-b を例に足し、backend-api のテスト用の検証器が test-employee-<社員> を社員の sub に対応させる"
+  - id: superseded-tiers-key
+    target_step: plugin
+    title: "置き換えたティア構成 ADR の tiers が検証で落ちる"
+    detail: "手順書 (d2-decide mode=feedback 手順 4) は旧 ADR の status と superseded_by の 2 項目だけを変えると書くが、validateAdr.js はティア構成 ADR 以外 (superseded を含む) が tiers キーを持つとエラーにする。ティア構成 ADR を置き換えると、手順どおりでは検証を通らない"
+    evidence: "validateAdr.js の出力 0001-tier-structure.md: tiers[] はティア構成 ADR (accepted かつ非空の tiers[] を持つ 1 本) だけが持てる"
+    recommended_fix: "validateAdr.js で superseded の ADR の tiers キーを許すか、手順書にティア構成 ADR を置き換えるときは旧 ADR の tiers を外すと書く"
+refutations: []
+decisions:
+  - id: D1
+    topic: "置き換えた ADR 0001 の tiers キー"
+    choice: "旧 ADR 0001 の front matter から tiers を外した (datastore_owner と rules と本文は残した)"
+    reason: "検証がティア構成 ADR 以外の tiers キーを禁止しており、手順書の 2 項目だけの変更では通らない。中身は ADR 0014 にそのまま写してあり、ティアの記述は本文と git の履歴に残る"
+  - id: D2
+    topic: "トークンの供給元のインターフェイスの中身"
+    choice: "アクセストークンを返す・サインインへ戻す・表示名を返す、の 3 つを最低限とし、生成クライアントの options.fetch を包んで Bearer を付ける"
+    reason: "派遣文の (2)〜(4) の 3 つの責務を 1 か所に集めるのに必要な最小の形"
+  - id: D3
+    topic: "ADR 0014 の確信度"
+    choice: "confidence: low"
+    reason: "パッケージの実在と認証基盤の対応 (PKCE・name クレーム) を確かめていない"
+  - id: D4
+    topic: "frontend の新しいルールにアーキテストを付けるか"
+    choice: "付けない (文のルールだけ)"
+    reason: "画面から OIDC クライアントの import を禁じる規則は npm パッケージを対象にした arch_test の書き方が既存の ADR に無く、生成器が扱えるか確かめていない"
+  - id: D5
+    topic: "テスト用トークンの書き方"
+    choice: "契約の x-test-headers と同じ形 (Bearer test-employee-<社員>) とし、社員Bの test-employee-b は契約の課題に分けた"
+    reason: "契約が今定めるのは test-employee-a だけで、決定の書き込み範囲では契約を直せない"

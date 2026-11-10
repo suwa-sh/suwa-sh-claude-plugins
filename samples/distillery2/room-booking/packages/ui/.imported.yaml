@@ -1,0 +1,143 @@
+# basis: design@0119c0b28d7c2404f3174d471cb29741832358ea
+basis: design@0119c0b28d7c2404f3174d471cb29741832358ea
+from: docs/design/storybook-app
+imported_at: "2026-11-10T05:26:31.040Z"
+entry: index.ts
+content_sha256: b7d945db79465d21059f816a90b95df50fdd8e8fc87a57ac8d2fd195aea5acf4
+files:
+  - path: assets/favicon.svg
+    sha256: 473eb910ba4ab44355d4b02ae34f02e78e120a6d62dc9a657bc79fe0353e6551
+  - path: assets/icons/alert-circle.svg
+    sha256: 36261f61baedff8f89a480d89fead8c97d0668458f8dca14f5c6ceb49d37f21d
+  - path: assets/icons/calendar.svg
+    sha256: 64e93fd2fa4580ecbded0a3e9761020495c206022982a6094fe5d902e464fab4
+  - path: assets/icons/check-circle.svg
+    sha256: 7b25408ae63cfd7575bc265f1913e73da3213593f41c080b1ce59e58574a55b9
+  - path: assets/icons/clock.svg
+    sha256: 1212b84c15117d6a5f37c4b8cd2c46fe0e9a7e88ba4f6463bc082aac2463dfa0
+  - path: assets/icons/door.svg
+    sha256: ab5805bba0cdcab5c379494cc7f98b1a3ceb27ad076d7d897469cebede195ec0
+  - path: assets/icons/index.md
+    sha256: 1ff51009fdb78c5918243e2552a7006ed0a7e671fcee8f3aafa7f2be6075fa5f
+  - path: assets/icons/search.svg
+    sha256: 2325e171acacf085e14d662281cea44c055877f5a24ad7fb2daccd993337acee
+  - path: assets/icons/user.svg
+    sha256: 34e6053df1576fce904ba7531ce1176940607cbce1f84e4ff2e1de6544c9eb72
+  - path: assets/icons/x-circle.svg
+    sha256: aa9af237e790a438eb5a0ca09b649724d651b46755c584bc8e155f9d1fb50621
+  - path: assets/logo-full.svg
+    sha256: 53bffa03bdf70396a1e6ac42ee3a792a3b6e74c465e2856a0b5fa311295b4e53
+  - path: assets/logo-icon.svg
+    sha256: 8a1394440926621af24d75d296291dd3e889d5987477896a0f72b88d5d9ca06e
+  - path: assets/logo-stacked.svg
+    sha256: bec80319f11a3a2999c251b7e63267a2efeee1fb26e7750be06236fcb4df7881
+  - path: components/domain/AvailabilityBadge.stories.tsx
+    sha256: 55c1e2962310804fafbdf93ccad278d673544ad119f25786ed1b976a6a63ca5a
+  - path: components/domain/AvailabilityBadge.tsx
+    sha256: ced2d1072935c0a7fa2a14c56a257bd456fb3c8c54b2bee1e40b404b901df9c3
+  - path: components/domain/AvailabilitySearchForm.stories.tsx
+    sha256: 8ebbea5fa7c0f2df104d6090c65c5b0a6813f09b178eed1fcedf45372abc43e8
+  - path: components/domain/AvailabilitySearchForm.tsx
+    sha256: 1f99049e22d770043c3ba9258cdbf5d27b8918410d3928a499969dc9cd30a890
+  - path: components/domain/BusinessErrorAlert.stories.tsx
+    sha256: 93bd745f67bf6bd6446b25ed26c719cb5fb7928f58b5b2f431102b77f9940a57
+  - path: components/domain/BusinessErrorAlert.tsx
+    sha256: 52b80a6caa68745385459c06fa135cc2ca28ca2f8d339773f96aa19e50c23fa1
+  - path: components/domain/CancelConfirmPanel.stories.tsx
+    sha256: a74f8fdac945c8b8a472d278c8ba5d30af809b728c6bf83fdb95d2710366b125
+  - path: components/domain/CancelConfirmPanel.tsx
+    sha256: c6a3f0b58e8f76c680bb13531b95f4a355384a2d5c23ce54842bae3e044866a6
+  - path: components/domain/MyReservationList.stories.tsx
+    sha256: 97caac3a03a6474e7725e2e27bd9192d8a0037b9c1e9953699cdfb04c2310b0f
+  - path: components/domain/MyReservationList.tsx
+    sha256: ce42a28b1a98fd20d57712f6242d9279d628043c43dec229a8eb0838f56a6408
+  - path: components/domain/ReservationForm.stories.tsx
+    sha256: f98e62e85525fe35eb6913cbc01936c2e8e1c65b603f0425ec33e9e4c771d00a
+  - path: components/domain/ReservationForm.tsx
+    sha256: f718f3aeae07d812462be010045745f971d4be750b04b9be2e7dc5bb4bf51cbd
+  - path: components/domain/ReservationStatusBadge.stories.tsx
+    sha256: ebfcfef92e1cf6af9c023c1a55ac1ef9f87ea8937aa7db45f0718c0b2e7ac96f
+  - path: components/domain/ReservationStatusBadge.tsx
+    sha256: e91c4ca415313931d7f58f4aeec9581516bac0a69ff5c08bf173b92a70fb5654
+  - path: components/domain/ReservationSummary.stories.tsx
+    sha256: b017be688eeeda7ceb19a88c9d50349ad55677ffda2a4df41925a6b61f7bf5e3
+  - path: components/domain/ReservationSummary.tsx
+    sha256: 08544c2b074686cf5fa361bf1fe41cff60f15f09dc740bc097344ed0e646f3a0
+  - path: components/domain/RoomAvailabilityList.stories.tsx
+    sha256: 9a2daf82bbb857e0ef3701e196ce2916b9e9f6bb31b7b4154fa2916b8f4917f0
+  - path: components/domain/RoomAvailabilityList.tsx
+    sha256: 59e0933e105ad2bfaf31a1f7969ba1c6e32c0d913fa4802f845439470c1ac81b
+  - path: components/domain/TimeSlotPicker.stories.tsx
+    sha256: 6211db70c07506116b242d42f5ca130f5c64a9dfefed4f56b0909fca8d4b5709
+  - path: components/domain/TimeSlotPicker.tsx
+    sha256: 604de4957ead2bc094d97a2af6f2ec316ba1a2a49ee4c9ee53362fceba1e7464
+  - path: components/domain/errorMessages.ts
+    sha256: 4b7053fd73c6e7f572d3f6224b576e347b540dca26244954f8c272716956bbad
+  - path: components/domain/timeFieldErrors.ts
+    sha256: 28a62742a6c8e317e85a3f4f62143d49b2493090c00d12f88f4e9ebc7d275b34
+  - path: components/domain/timeSlots.ts
+    sha256: 162137e5846e0ac0afe3802d1f3fcca54e51ffe8ddd6a906533b6597a2128adb
+  - path: components/domain/types.ts
+    sha256: 905e3da62eeb8ddef720b2533387de36235ed606af15ef3137576bcd8fac7ce9
+  - path: components/layout/AppShell.stories.tsx
+    sha256: 50f51ee01769af0c8219e943361c39ee39cd262833e11f67911accebdc0ca5b8
+  - path: components/layout/AppShell.tsx
+    sha256: 704eeb6a89299b167c9ef578c3b2e6edf9ce626ef0b022368f1f1ce8d936f7a9
+  - path: components/ui/Alert.stories.tsx
+    sha256: d9f27812ee186de8e6a90cdd31c56b3eeb69975093fb886f1a9216810a50615e
+  - path: components/ui/Alert.tsx
+    sha256: 98cfdf0ee2b10ea28487da6dd72790496cc8a7309576927f56d98d0abd8fc06b
+  - path: components/ui/Badge.stories.tsx
+    sha256: 7ce14468fbd55fbecc314bd8f9b093e8e53989c5f5bac2224157415a6ef47e6f
+  - path: components/ui/Badge.tsx
+    sha256: 9f605cfb2e9c95c17b255b43365b60f7e0459466130afefe9c216ca78aa8b073
+  - path: components/ui/Button.stories.tsx
+    sha256: 69073c8b95effcdcfc09827eb1c0fa8127fb2d8249d498fb6e882e58954b7f69
+  - path: components/ui/Button.tsx
+    sha256: 6904bdd3b6e805084f2110d8d5bcca5713fd058c3ec737e9dca1a8ebf6b62695
+  - path: components/ui/Card.stories.tsx
+    sha256: 21cdd4c231495882562ecdc25623fa04e5987657bc424bac595babb7e46a6b78
+  - path: components/ui/Card.tsx
+    sha256: b6ed686a02021a97dcda273008befa69ae36a1b13c35a66128e008820b0138af
+  - path: components/ui/Icon.stories.tsx
+    sha256: 272287ff6417524fbe73ab36ebc7f93001e7745a45d203a7d290a99660d35ffa
+  - path: components/ui/Icon.tsx
+    sha256: d52888cc2d89def5e759a5a3838a7ee3ea8366d796a349668476c833a582c1b4
+  - path: components/ui/Input.stories.tsx
+    sha256: 8726a06ebf495c2b333cc530c1ea6d8d4a2012964e4087561d8783ec552bf764
+  - path: components/ui/Input.tsx
+    sha256: eccfb40c2d6957fbbdeb0cef505db16cc445b23210c07d14ac7c87b79b235a09
+  - path: components/ui/Select.stories.tsx
+    sha256: 4cb04e8810df8b0a247c982f539b5cf17bf3e5e2883c565ba2cbe4f95f779949
+  - path: components/ui/Select.tsx
+    sha256: b079ffe9a6b1b27b40147eb865a9e571faa3426a8f9a8f624774e330771bb56d
+  - path: components/ui/Skeleton.stories.tsx
+    sha256: 514dc6e8720c0ac8fde424956f42c01c42837cb221b13e7460af6822728d5004
+  - path: components/ui/Skeleton.tsx
+    sha256: 246b27ed03f7ddcf010395bda43486e7ccdae609069f3157e390e0ad322e05eb
+  - path: docs/DesignTokens.mdx
+    sha256: 5265b7f5524734cd7bdb08a06c200c15ebde33619dea888928b7e6bdebf13ea8
+  - path: docs/Introduction.mdx
+    sha256: 7e45f8230bb741dbdf08b94ddd5ad9e3f747bb6c06cff423b572b95154a0385a
+  - path: docs/ScreenMapping.mdx
+    sha256: 955b743185f8f6b2dbe51ee4783da18ccfe734c00694b6dd507df84cf90a9e91
+  - path: index.ts
+    sha256: 5d56d639e746e2fa09a2d1e8c62cf7fca6f099384e5a4751fe3e471b871c71df
+  - path: lib/cn.ts
+    sha256: f4cd570b45cd1879096c860952f296d9ec80897a0cae4ae63958ac0683c3c752
+  - path: stories/CancelReservation.stories.tsx
+    sha256: 22d7dcb61ea8d26ca08120ba29dd112f2294d050e6121b42b647d65156d97fe6
+  - path: stories/MyReservations.stories.tsx
+    sha256: 153a0f9b5afb33f3939e77b7d75ea78d5dc864fa5d3c85bae2bdbad1e512dbc5
+  - path: stories/ReserveRoom.stories.tsx
+    sha256: c27c3ea934a43fce004c52c053c6be97737748b5c96ff03f9c47787ea4d9fa96
+  - path: stories/RoomAvailability.stories.tsx
+    sha256: 4f44041449366664c897ef81d9794786397c20b42c0cb8a6be9dba65d477a406
+  - path: stories/sampleData.ts
+    sha256: 1a86e7c769d0f2a8c33bb4a74c09b18bdea3e3c1172a414cf09d734dfe0a8dd3
+  - path: styles/design-tokens.css
+    sha256: ad9bb3a1349466ae58e2e778563c90b8bf46b3358dfacf129ecdd6f3baebbe15
+  - path: styles/globals.css
+    sha256: 3e3f30cf8250023e1a26c33d4692106029d2c56e4558e7e00ae4df77ec0ea12a
+  - path: tokens/tokens.json
+    sha256: 8c9436470865d10e974c21c80501868679f60749ba6f0c24b8279141a3ee12ab

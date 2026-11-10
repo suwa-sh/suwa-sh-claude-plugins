@@ -1,0 +1,8 @@
+stage: asbuilt
+completed_at: "2026-11-10T06:20:25.600Z"
+attempt: 2
+review:
+  status: reviewed
+  findings: 0
+issue_rows: 3
+drafts: 0

@@ -1,0 +1,42 @@
+schema_version: distillery2.handoff/v1
+step: contract-skeleton
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "契約のカタログ"
+    choice: "api (openapi、提供 backend-api、利用 frontend) と db (rdb-schema、提供 backend-api、利用なし) の 2 つにした。AsyncAPI は作らない"
+    reason: "ADR 0001 のティアの provides/consumes が api と db。ADR 0005 でメッセージングを使わないと決めている"
+  - id: D2
+    topic: "path の書き方と認証"
+    choice: "path は /api から始めて paths に書く。全 API に bearerAuth (http bearer JWT) を既定で掛け、文書直下の x-test-headers を Authorization: Bearer test-employee-a にした"
+    reason: "生成テストとクライアントは servers を path に足さないため。ADR 0006 で全 API がトークンを検証する"
+  - id: D3
+    topic: "エラーのコード"
+    choice: "ADR 0010 の業務のコード 9 種に、VALIDATION_ERROR (400)・UNAUTHENTICATED (401)・INTERNAL_ERROR (500) を足して ErrorCode の列挙にした"
+    reason: "ADR 0010 は業務のエラーのコードだけを決めており、入力の誤り・認証の失敗・システムのエラーにも Problem の code が要る"
+  - id: D4
+    topic: "共通の応答の examples"
+    choice: "共通の Unauthorized 応答にだけ example (unauthorized、code UNAUTHENTICATED) を付け、他の共通応答は UC ごとに example を書く"
+    reason: "401 の中身は全 UC で同じ。409 や 404 は UC ごとに code が違う"
+  - id: D5
+    topic: "ページング"
+    choice: "共通のページングの型を置かない"
+    reason: "会議室は 5 部屋、自分の予約の一覧も数十人規模で件数が小さい"
+  - id: D6
+    topic: "DB の表の構成"
+    choice: "サブドメインは room_reservation の 1 つにし、rooms・reservations (今の状態)・reservation_events (追記だけ)・room_slot_occupancies (主キー 会議室 ID と枠の開始時刻) の 4 表にした"
+    reason: "ADR 0003 (30 分枠の一意制約) と ADR 0004 (イベントの追記と今の状態の表) をそのまま表にした"
+  - id: D7
+    topic: "状態の列挙"
+    choice: "予約状態は reserved / cancelled、イベントの種類は reserved / cancelled、空き状況は available / reserved の英字の列挙にした"
+    reason: "RDRA の状態モデル「予約状態」とバリエーション「空き状況」の値を、コードで扱える英字にした"
+  - id: D8
+    topic: "契約で表せない DB の既定値と初期データ"
+    choice: "reservation_events.recorded_at の既定値 now() と会議室 5 部屋の初期データは、backend-api の実装が手書きの追加 migration で入れる前提にした (列の説明に書いた)"
+    reason: "RDB 契約と genRdbDdl は列の既定値と初期データの行を表せない。DB 契約テストは列・型・NULL 可否・主キーだけを突き合わせるので、追加の migration と衝突しない"
+  - id: D9
+    topic: "basis の付け方"
+    choice: "basis は分割ファイル (YAML の先頭のコメント、contracts.json の basis キー) に付け、generated/ の bundle には付けない"
+    reason: "bundle はキーを並べ替えた決定論の出力でコメントを持てず、手で足すと compile の --check が古いと判定する"

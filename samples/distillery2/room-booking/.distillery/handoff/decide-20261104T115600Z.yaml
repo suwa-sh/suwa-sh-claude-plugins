@@ -1,0 +1,22 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "ADR 0002 の直し方"
+    choice: "ADR 0002 を新しい ADR 0013 で置き換え (0002 は superseded)、層の規則を 0013 にすべて写した"
+    reason: "許可方向の文 (rules[0]) に presentation → domain を足す必要があり、決定の変更になるため足し算の ADR では文の食い違いが残る"
+  - id: D2
+    topic: "presentation → domain の扱い"
+    choice: "業務のエラーの型とコード・値オブジェクトを読むためだけに許可すると文に明記した"
+    reason: "ADR 0010 で presentation が業務のエラーのコードを契約のエラー型へ変換すると決めている"
+  - id: D3
+    topic: "禁止の網羅"
+    choice: "5 層 20 方向のうち許可 6 方向以外の 14 方向をすべて effect forbid の arch_test にした (新規は usecase → gateway、repository → presentation、gateway → presentation・usecase・repository・domain の 6 本)"
+    reason: "課題の推奨どおり。生成器は arch_test を 1 本ずつ写すため ADR 側で網羅する"
+  - id: D4
+    topic: "gateway と他の層のつなぎ方"
+    choice: "gateway はどの層も import せず、呼ぶ側のインターフェイスを構造的な型で満たし composition root で渡す。外部の応答は素の型で返す"
+    reason: "gateway → domain・presentation・usecase を禁止しても、ADR 0006 のトークン検証器と時計を差し替えられるようにするため"

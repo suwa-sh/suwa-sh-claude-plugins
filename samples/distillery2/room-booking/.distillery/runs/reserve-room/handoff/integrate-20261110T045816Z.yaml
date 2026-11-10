@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: integrate
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "未入力の項目のシナリオで「予約は送られない」の確かめ方"
+    choice: "予約の入口関数に渡す fetch (トレース付き) を数える包みで包み、呼び出し回数が 0 であることを確かめる"
+    reason: "入口関数の戻り値だけでは API を呼ばずに止めたことが分からない。トレースの api-client の span も回数で裏が取れる"
+  - id: D2
+    topic: "未入力の項目のシナリオの画面の入力値"
+    choice: "前提で選んだ項目だけを入れ、選んでいない項目は空文字のまま入口関数 submitReservation に渡す。会議室は loadRooms の選択肢から名前で選ぶ"
+    reason: "画面部品の未入力の判定 (missingReservationFields) は空文字を未入力とみなす。会議室の選択は既存の予約の step と同じ入口を通す"
+  - id: D3
+    topic: "示される未入力の項目の確かめ方"
+    choice: "入口関数が返す { kind: missing, fields } の fields を項目の順 (roomId / date / startTime / endTime) で完全一致で比べる。終了時刻だけのシナリオの「示されない」は roomId / date / startTime が fields に無いことで確かめる"
+    reason: "fields は画面部品の必須項目の順で返る。項目ごとの文言は画面部品の missingFieldText が fields から出すので、step は fields で足りる"

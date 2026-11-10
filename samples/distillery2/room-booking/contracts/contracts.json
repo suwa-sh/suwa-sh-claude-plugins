@@ -1,0 +1,20 @@
+{
+  "schema_version": "distillery2.contracts/v1",
+  "basis": "requirements@fa7a34900db10f9ae7dd5fe2d9026dc4587e7052 adr@695b56620db1861b26c7246ed40f73490e806e81",
+  "contracts": [
+    {
+      "id": "api",
+      "type": "openapi",
+      "source": "openapi/openapi.yaml",
+      "provider": "backend-api",
+      "consumers": ["frontend"]
+    },
+    {
+      "id": "db",
+      "type": "rdb-schema",
+      "source": "db/rdb-schema.yaml",
+      "provider": "backend-api",
+      "consumers": []
+    }
+  ]
+}

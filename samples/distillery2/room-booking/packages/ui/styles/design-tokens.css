@@ -1,0 +1,286 @@
+/*
+ * 会議室予約システム デザイントークン (CSS 変数)
+ * 3 層: primitive (生値) -> semantic (用途) -> component (部品固有)
+ * 正本は src/tokens/tokens.json。値はここと一致させる。
+ * ブランドの起点: ADR 0008 ui.brand (source: inferred)
+ *   primary #1D4ED8 / secondary #0F766E / accent #F59E0B / neutral #64748B / Noto Sans JP
+ */
+
+/* ---------- Primitive ---------- */
+:root {
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* primary (青。600 = brand.colors.primary) */
+  --color-primary-50: #eff4ff;
+  --color-primary-100: #dbe6fe;
+  --color-primary-200: #bfd3fe;
+  --color-primary-300: #93b4fd;
+  --color-primary-400: #6090fa;
+  --color-primary-500: #3b6ef5;
+  --color-primary-600: #1d4ed8;
+  --color-primary-700: #1a40b0;
+  --color-primary-800: #1b368a;
+  --color-primary-900: #1c306e;
+
+  /* secondary (緑寄りの青。600 = brand.colors.secondary。「空き」を示す) */
+  --color-teal-50: #f0fdfa;
+  --color-teal-100: #ccfbf1;
+  --color-teal-200: #99f6e4;
+  --color-teal-300: #5eead4;
+  --color-teal-400: #2dd4bf;
+  --color-teal-500: #14b8a6;
+  --color-teal-600: #0f766e;
+  --color-teal-700: #115e59;
+  --color-teal-800: #134e4a;
+  --color-teal-900: #123f3c;
+
+  /* accent (橙。600 = brand.colors.accent。注意) */
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f8ae14;
+  --color-amber-600: #f59e0b;
+  --color-amber-700: #d97706;
+  --color-amber-800: #b45309;
+  --color-amber-900: #92400e;
+
+  /* neutral (灰。600 = brand.colors.neutral) */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #7a8799;
+  --color-slate-600: #64748b;
+  --color-slate-700: #475569;
+  --color-slate-800: #334155;
+  --color-slate-900: #1e293b;
+  --color-slate-950: #0f172a;
+
+  /* status (エラー) */
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-400: #f87171;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+
+  /* typography */
+  --font-family-heading:
+    "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", Meiryo, system-ui,
+    sans-serif;
+  --font-family-body:
+    "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", Meiryo, system-ui,
+    sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  --line-height-body: 1.7;
+  --line-height-heading: 1.4;
+
+  /* spacing (4px grid) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* radius / shadow / duration / breakpoint */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --breakpoint-lg: 1024px;
+}
+
+/* ---------- Semantic (light) ---------- */
+:root {
+  color-scheme: light;
+  --background: var(--color-slate-50);
+  --foreground: var(--color-slate-950);
+  --muted: var(--color-slate-100);
+  --muted-foreground: var(--color-slate-700);
+  --border: var(--color-slate-200);
+  --input-border: var(--color-slate-400);
+  --ring: var(--color-primary-500);
+  --hover-muted: var(--color-slate-100);
+
+  --primary-foreground: var(--color-white);
+  --primary-hover: var(--color-primary-700);
+  --secondary: var(--color-teal-600);
+  --secondary-foreground: var(--color-white);
+  --secondary-hover: var(--color-teal-700);
+  --accent: var(--color-amber-600);
+  --accent-foreground: var(--color-slate-950);
+
+  --success: var(--color-teal-700);
+  --success-light: var(--color-teal-50);
+  --warning: var(--color-amber-900);
+  --warning-light: var(--color-amber-50);
+  --destructive: var(--color-red-700);
+  --destructive-foreground: var(--color-white);
+  --destructive-hover: var(--color-red-800);
+  --destructive-light: var(--color-red-50);
+  --info: var(--color-primary-700);
+  --info-light: var(--color-primary-50);
+  --neutral: var(--color-slate-700);
+  --neutral-light: var(--color-slate-100);
+
+  /* layout / spacing (design-infer 5 節の推論値) */
+  --sidebar-width: 12rem; /* ナビ項目 2 (空き状況 / 自分の予約) <= 8 */
+  --sidebar-collapsed-width: 4rem; /* アイコン 24px + padding の固定値 */
+  --header-height: 3.5rem; /* 上部ナビ 1 段 */
+  --content-max-width: 80rem; /* 12 カラムグリッド幅 */
+  --page-padding: 1.5rem; /* ポータル 1 つ・PC のみ */
+  --section-gap: 1.5rem; /* 画面ごとの情報が少ない (会議室 5 部屋・入力 3〜4 項目) */
+  --component-gap: 0.75rem; /* 画面要素数が少ない */
+  --card-padding: 1.5rem; /* カードの属性 4 つ (会議室・日付・開始・終了) */
+  --grid-columns: 12;
+}
+
+/* portal: 利用者は社員だけ (ポータル 1 つ) */
+:root,
+[data-portal="user"] {
+  --primary: var(--color-primary-600);
+}
+
+/* ---------- Component (light) ---------- */
+:root {
+  --button-radius: var(--radius-md);
+  --input-bg: var(--color-white);
+  --input-radius: var(--radius-md);
+  --card-bg: var(--color-white);
+  --card-border: var(--color-slate-200);
+  --card-shadow: var(--shadow-sm);
+  --card-radius: var(--radius-lg);
+  --badge-radius: var(--radius-full);
+  --header-bg: var(--color-white);
+  --header-border: var(--color-slate-200);
+  --nav-active-bg: var(--color-primary-50);
+  --nav-active-fg: var(--color-primary-700);
+  --table-header-bg: var(--color-slate-100);
+  --table-row-border: var(--color-slate-200);
+  --skeleton-bg: var(--color-slate-200);
+  --availability-free-fg: var(--success);
+  --availability-free-bg: var(--success-light);
+  --availability-reserved-fg: var(--neutral);
+  --availability-reserved-bg: var(--neutral-light);
+}
+
+/* ---------- Dark ---------- */
+.dark {
+  color-scheme: dark;
+  --background: var(--color-slate-950);
+  --foreground: var(--color-slate-50);
+  --muted: var(--color-slate-900);
+  --muted-foreground: var(--color-slate-300);
+  --border: var(--color-slate-800);
+  --input-border: var(--color-slate-600);
+  --ring: var(--color-primary-400);
+  --hover-muted: rgba(148, 163, 184, 0.16);
+
+  --primary: var(--color-primary-400);
+  --primary-foreground: var(--color-slate-950);
+  --primary-hover: var(--color-primary-300);
+  --secondary: var(--color-teal-400);
+  --secondary-foreground: var(--color-slate-950);
+  --secondary-hover: var(--color-teal-300);
+  --accent: var(--color-amber-400);
+  --accent-foreground: var(--color-slate-950);
+
+  --success: var(--color-teal-300);
+  --success-light: rgba(20, 184, 166, 0.15);
+  --warning: var(--color-amber-300);
+  --warning-light: rgba(249, 115, 22, 0.15);
+  --destructive: var(--color-red-400);
+  --destructive-foreground: var(--color-slate-950);
+  --destructive-hover: var(--color-red-100);
+  --destructive-light: rgba(220, 38, 38, 0.15);
+  --info: var(--color-primary-300);
+  --info-light: rgba(59, 130, 246, 0.15);
+  --neutral: var(--color-slate-300);
+  --neutral-light: rgba(148, 163, 184, 0.15);
+
+  --input-bg: var(--color-slate-900);
+  --card-bg: var(--color-slate-900);
+  --card-border: var(--color-slate-800);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --header-bg: var(--color-slate-900);
+  --header-border: var(--color-slate-800);
+  --nav-active-bg: rgba(59, 130, 246, 0.15);
+  --nav-active-fg: var(--color-primary-300);
+  --table-header-bg: var(--color-slate-800);
+  --table-row-border: var(--color-slate-800);
+  --skeleton-bg: var(--color-slate-800);
+  --availability-free-fg: var(--success);
+  --availability-free-bg: var(--success-light);
+  --availability-reserved-fg: var(--neutral);
+  --availability-reserved-bg: var(--neutral-light);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    --background: var(--color-slate-950);
+    --foreground: var(--color-slate-50);
+    --muted: var(--color-slate-900);
+    --muted-foreground: var(--color-slate-300);
+    --border: var(--color-slate-800);
+    --input-border: var(--color-slate-600);
+    --ring: var(--color-primary-400);
+    --hover-muted: rgba(148, 163, 184, 0.16);
+
+    --primary: var(--color-primary-400);
+    --primary-foreground: var(--color-slate-950);
+    --primary-hover: var(--color-primary-300);
+    --secondary: var(--color-teal-400);
+    --secondary-foreground: var(--color-slate-950);
+    --secondary-hover: var(--color-teal-300);
+    --accent: var(--color-amber-400);
+    --accent-foreground: var(--color-slate-950);
+
+    --success: var(--color-teal-300);
+    --success-light: rgba(20, 184, 166, 0.15);
+    --warning: var(--color-amber-300);
+    --warning-light: rgba(249, 115, 22, 0.15);
+    --destructive: var(--color-red-400);
+    --destructive-foreground: var(--color-slate-950);
+    --destructive-hover: var(--color-red-100);
+    --destructive-light: rgba(220, 38, 38, 0.15);
+    --info: var(--color-primary-300);
+    --info-light: rgba(59, 130, 246, 0.15);
+    --neutral: var(--color-slate-300);
+    --neutral-light: rgba(148, 163, 184, 0.15);
+
+    --input-bg: var(--color-slate-900);
+    --card-bg: var(--color-slate-900);
+    --card-border: var(--color-slate-800);
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --header-bg: var(--color-slate-900);
+    --header-border: var(--color-slate-800);
+    --nav-active-bg: rgba(59, 130, 246, 0.15);
+    --nav-active-fg: var(--color-primary-300);
+    --table-header-bg: var(--color-slate-800);
+    --table-row-border: var(--color-slate-800);
+    --skeleton-bg: var(--color-slate-800);
+    --availability-free-fg: var(--success);
+    --availability-free-bg: var(--success-light);
+    --availability-reserved-fg: var(--neutral);
+    --availability-reserved-bg: var(--neutral-light);
+  }
+}

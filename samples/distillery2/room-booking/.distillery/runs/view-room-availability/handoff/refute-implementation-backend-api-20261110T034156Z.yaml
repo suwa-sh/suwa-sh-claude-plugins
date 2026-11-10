@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "docs/rules/tier-backend.md:72 (ADR 0011) は社員が特定できる要求のログに社員 ID を持たせると決めており、始まりのログがトークンの検証より前に出ていたため社員 ID を持てなかった"
+    change: "apps/backend-api/src/presentation/httpApp.ts で始まりのログをトークンの検証の後に 1 回だけ出すようにし、検証できた要求では社員 ID を持たせた。401 と検証器の例外 (500) の要求も社員 ID 無しで始まりのログを残し、/api の外の要求は検証の段の後で出す。httpApp.test.ts に 4 件のテストを足し、前提 A-018 を記録した"
+decisions:
+  - id: D1
+    topic: "始まりのログの位置"
+    choice: "トークンの検証の直後に成否どちらでも 1 回出し、検証できたときだけ社員 ID を持たせる"
+    reason: "社員 ID は検証で初めて決まり、認証に失敗した要求の始まりのログも残せる"

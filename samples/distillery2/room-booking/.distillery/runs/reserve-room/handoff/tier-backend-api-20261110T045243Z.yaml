@@ -1,0 +1,26 @@
+schema_version: distillery2.handoff/v1
+step: tier
+asks: []
+upstream_issues: []
+refutations: []
+resume_diffs:
+  - diff: ".distillery/runs/reserve-room/resume/3/apps__backend-api__src__domain__businessError.ts.diff"
+    result: applied
+    where: "apps/backend-api/src/domain/businessError.ts"
+    reason: "予約の集約 (domain/reservation.ts) が ReservationErrorCode を import しており、無いとビルドが通らないため要る変更。main 側の見出し (ADR 0023) と TimeRangeErrorCode・TimeRangeErrorReason はそのまま保ち、型の追加と説明の 1 行だけを反映した"
+  - diff: ".distillery/runs/reserve-room/resume/3/docs__as-built___system__index.md.diff"
+    result: dropped
+    reason: "as-built の段が抽出で作り直す生成物のため"
+decisions:
+  - id: D1
+    topic: "写し直しで統合できなかった businessError.ts の差分"
+    choice: "main 側の内容 (ADR 0023 の見出し) を保ったまま ReservationErrorCode の型と説明の 1 行を足した"
+    reason: "予約の集約が import する型で、無いとビルドが落ちる。main 側の空き状況の照会の型は変えない"
+  - id: D2
+    topic: "main から来た空き状況の照会の単体テストがビルドで落ちる"
+    choice: "httpApp.test.ts の 1 つのテスト (トークンの検証器が例外を投げた場合) の入口の組み立てに、同じファイルにある呼ばれない予約・会議室の一覧の usecase を足した"
+    reason: "このテストは予約の機能が HttpAppDeps に reserveRoom・listRooms を足す前に main で書かれ、型が合わない。検査の中身は変えず、ファイル内のほかのテストと同じ組み立てにそろえた"
+  - id: D3
+    topic: "前提の記録の書き直し"
+    choice: "10 件の前提を残し、ADR 0010 の参照を引き継いだ ADR 0023 に直し、行の位置 (A-006・A-007・A-009) を今のコードに合わせ、A-002 は ADR 0023 で決まった部分 (重なりを値で返す) を除いた残りの判断に絞った"
+    reason: "新しい main で ADR 0023 が ADR 0010 を引き継ぎ、開発ルールから ADR 0010 の見出しが消えたため。実装の振る舞いは ADR 0023 と契約の判定の順にすでに合っている"

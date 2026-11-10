@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "INVALID_TIME_RANGE の文の分け方"
+    choice: "title を「時間帯が正しくありません」、detail を「開始は終了より前にし、時間帯はその日の 0:00 から翌日 0:00 までにしてください。開始時刻と終了時刻を選び直してください。」にする"
+    reason: "title は見出し、detail は次にすること (ファイル冒頭の決まり)。逆転・同じ時刻・日をまたぐ時間帯のどれにも当てはまる (ADR 0017 の frontend のルール)"
+  - id: D2
+    topic: "INVALID_TIME_RANGE を使う Story のコメント"
+    choice: "ReserveRoom と RoomAvailability の InvalidTimeRange のコメントは変えない"
+    reason: "コメントはその Story の入力例 (同じ時刻・逆転) の説明で今も正しく、項目に無い Story は書き換えない決まり"

@@ -1,0 +1,50 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: rpo-tolerance
+    kind: unknown_fact
+    question: "システムが壊れてデータを戻すとき、直近の予約と取り消しをどこまで失ってよいか"
+    options:
+      - label: "前日のバックアップまで (今の決定のまま)"
+        impact: "毎日のバックアップだけで足りる。障害の日に入れた予約と取り消しは消えるので、社員に入れ直してもらう告知が要る"
+      - label: "障害の直前まで"
+        impact: "データベースの変更の記録を続けて残し、直前の時点まで戻せる仕組みが要る。非機能グレードの目標復旧地点とバックアップ方式を上げ直す"
+    recommended: "前日のバックアップまで (今の決定のまま)"
+    reason: "利用者は社内の数十人・会議室は 5 部屋で、消えた予約は社員が入れ直せる。金銭を扱わず、毎日のバックアップで 1 日分以内の損失に抑えられる"
+  - id: rto-tolerance
+    kind: unknown_fact
+    question: "システムが止まったとき、使えない状態を何時間まで許せるか"
+    options:
+      - label: "1 営業日以内 (今の決定のまま)"
+        impact: "止まった日は会議室を口頭や表計算で調整する。冗長化や待機系は要らない"
+      - label: "数時間以内"
+        impact: "復旧の手順の自動化や監視の強化が要り、非機能グレードの目標復旧時間を上げ直す"
+    recommended: "1 営業日以内 (今の決定のまま)"
+    reason: "社外への影響が無く、止まっても会議室の確保が一時的に不便になるだけ。小規模な社内の仕組みの標準の水準で足りる"
+upstream_issues:
+  - id: container-idp-edges
+    target_step: plugin
+    title: "コンテナ図に外部システムとティアの線が無い"
+    detail: "構成図の生成器は外部システムをコンテナ図に箱として置くが、frontend・backend-api とどうつながるかの線を引かない。認証の決定 (frontend がトークンを得て backend-api が検証する) がコンテナ図から読めない"
+    evidence: "docs/adr/architecture.md のコンテナ図で ext_1 (社内の認証基盤) に線が無い。docs/adr/0006-authn-authz.md:31 に frontend と backend-api が認証基盤を使うと書いてある"
+    recommended_fix: "genArchitectureDoc.js が、ADR のティア構成か RDRA の関連から外部システムとティアのつながりを読み、コンテナ図に線を引くようにする"
+refutations:
+  - finding: "指摘 1"
+    result: needs_info
+    reason: "目標復旧地点を前日のバックアップまでにした根拠は、状態が 2 種で金銭を含まないこと (docs/nfr/nfr-grade.md:43)。要望 (docs/input/要望-20261104.md) は失ってよい量を書いておらず、どこまで許せるかは人しか知らない事実。非機能グレード (docs/nfr/) はこの派遣の書き込み範囲の外なので、問い rpo-tolerance にした"
+  - finding: "指摘 2"
+    result: accepted
+    reason: "ADR 0001 は認証基盤を社内の既存のものを使いこのシステムに置かないと書いており (docs/adr/0001-tier-structure.md:60)、ADR 0006 と矛盾はしない。52 行目の「外部システムは無く」は書いた時点の RDRA の事実で、その後に要求の段で外部システム.tsv に社内の認証基盤が足された。構成図だけが古いままだった"
+    change: "genArchitectureDoc.js で docs/adr/architecture.md を作り直し、システムコンテキスト図とコンテナ図に社内の認証基盤を出した。ADR 0001 の本文は決定の差分の決まり (既存の ADR を変えない) に従い変えていない。コンテナ図の線が引かれない点は生成器の課題として upstream_issues に書いた"
+  - finding: "指摘 3"
+    result: needs_info
+    reason: "確認事項 (docs/adr/_review-summary.md の「確認してほしいこと」) に目標復旧地点と目標復旧時間の問いが無いのは事実。決定の差分では _review-summary.md を書かず人の確認は引き継ぎファイルで返す決まりのため、問い rpo-tolerance と rto-tolerance にした"
+decisions:
+  - id: D5
+    topic: "構成図の作り直し"
+    choice: "決定の差分では回さない genArchitectureDoc.js を今回は回し、docs/adr/architecture.md に社内の認証基盤を出した"
+    reason: "回さない理由はティアが変わらず図が変わらないことだが、要求の段で外部システムが足されて図が古くなっていた。生成は決定論で ADR の本文は変えない"
+  - id: D6
+    topic: "目標復旧地点と目標復旧時間の扱い"
+    choice: "非機能グレードは直さず、今の値を推奨とする問いを 2 つ立てた"
+    reason: "docs/nfr/ は書き込み範囲の外で、許せる損失と停止は人しか知らない事実。小規模な社内の仕組みなので今の値で足りると見た"

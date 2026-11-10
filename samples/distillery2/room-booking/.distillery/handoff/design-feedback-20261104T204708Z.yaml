@@ -1,0 +1,28 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues:
+  - id: search-form-story-direct-text
+    target_step: foundation
+    title: 部品の見本 WithError に時刻の文が直書きで残る
+    detail: "空き状況の検索の部品の見本 (AvailabilitySearchForm.stories.tsx の WithError) が、今回の項目の外のため手を付けておらず、errors に「開始時刻より後にしてください」を直書きしたまま。ADR 0017 の「時間帯が正しくないことを示す 1 つの文」と合わず、画面の見本と部品の見本で時刻の文の出し方が食い違う"
+    evidence: "docs/design/storybook-app/src/components/domain/AvailabilitySearchForm.stories.tsx の WithError (errors: { endTime: '開始時刻より後にしてください' })"
+    recommended_fix: "WithError を errorCode: 'INVALID_TIME_RANGE' だけを渡す形に直す (部品の中で「時刻を選び直してください」が出る)"
+refutations: []
+decisions:
+  - id: D1
+    topic: 共有の 1 か所の置き場
+    choice: "新しいファイル components/domain/timeFieldErrors.ts に timeFieldErrors(errorCode) を置き、src/index.ts から再輸出する"
+    reason: "src 配下なので packages/ui に取り込まれ、画面 (apps) からも同じ決め方を使える。errorMessages.ts (通知の理由の文) とは役割が違うので分けた"
+  - id: D2
+    topic: AvailabilitySearchForm の errors と errorCode の優先
+    choice: "errorCode が時間帯の誤りなら errorCode から決めた文を使い、そうでなければ従来の errors を使う。errors の口は残す"
+    reason: "既存の利用者 (部品の見本 WithError と画面の実装) を壊さずに、コードからの文を正にするため"
+  - id: D3
+    topic: 項目の文を出す欄
+    choice: "AvailabilitySearchForm でも ReservationForm と同じく開始時刻の欄に「時刻を選び直してください」を出す"
+    reason: "項目の指示が ReservationForm と同じ決め方を求めている。振る舞いを変えない"
+  - id: D4
+    topic: 画面の見本のエラーの通知
+    choice: "RoomAvailability の見本は BusinessErrorAlert を従来どおり画面側に置き、部品には errorCode だけを渡す"
+    reason: "理由の文は通知が errorMessages から出し、部品は項目の文だけを出す。ReservationForm と違い検索の部品は通知を持たないので二重に出さない"

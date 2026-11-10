@@ -1,0 +1,15 @@
+generated: true
+schema_version: distillery2.rdb-table-index/v1
+tables:
+  - source: ../db/domains/room_reservation.yaml
+    subdomain_id: room_reservation
+    table: reservation_events
+  - source: ../db/domains/room_reservation.yaml
+    subdomain_id: room_reservation
+    table: reservations
+  - source: ../db/domains/room_reservation.yaml
+    subdomain_id: room_reservation
+    table: room_slot_occupancies
+  - source: ../db/domains/room_reservation.yaml
+    subdomain_id: room_reservation
+    table: rooms

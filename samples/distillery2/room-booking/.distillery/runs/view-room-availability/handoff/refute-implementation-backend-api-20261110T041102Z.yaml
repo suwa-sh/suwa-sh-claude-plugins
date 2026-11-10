@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "docs/rules/tier-backend.md:72 (ADR 0011) はログにハンドラの名前を必ず持たせると定めるが、apps/backend-api/src/presentation/httpApp.ts の handlerOf は契約に無い経路で undefined を返し、始まり・終わりのログの handler が欠けていた。反証できない"
+    change: "handlerOf が契約に無い経路で固定の名前 unmatchedRoute (export 定数 UNMATCHED_ROUTE_HANDLER) を返すようにし、始まり・終わり・検証器・エラーのログに必ずハンドラの名前が載るようにした。応答 (既定の 404、/api 下で未認証なら 401) は変えていない。httpApp.test.ts に契約に無い経路の 404 と 401 のログのテストを 2 件足し、前提 A-020 の記録を更新した"
+decisions:
+  - id: D1
+    topic: "契約に無い経路のログのハンドラの名前"
+    choice: "固定の値 unmatchedRoute にする"
+    reason: "契約の operationId と重ならず、誤った経路への要求をログで 1 つに分類できる"

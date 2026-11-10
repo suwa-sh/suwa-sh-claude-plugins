@@ -1,0 +1,29 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "入力の値は useState の初期化で初回だけ作られ、App.tsx が同じ path のまま search の変化で描き直しても、予約の画面は新しいクエリを初期値にしなかった。ADR 0021 の「移った先でクエリを入力の初期値として使う」を戻る・進むで満たせず、URL と違う会議室・時間帯で予約を送れた"
+    change: "ReserveRoomScreen.tsx を薄い入口と本体に分け、入口が初期値に効くクエリの項目 (roomId・date・startTime・endTime) だけから作った鍵 (reservationQueryKey) を key にして本体を描く。クエリの項目が変わると画面の状態を作り直し、移った先のクエリを初期値にして会議室の一覧を読み直す。routes.tsx は変えていない。同じ root でクエリを変えて描き直す単体テストを 1 件足し、前提 A-009 を書いた"
+  - finding: "指摘 2"
+    result: accepted
+    reason: "会議室が未入力だと ReservationForm (packages/ui/components/domain/ReservationForm.tsx:76-79) が onSubmit を呼ばないため、予約のボタンで一覧を読み直す前の作り (前回の決めた D1) では、クエリ無しで開いて一覧を読めなかったとき、選択肢が空のまま操作を続けられなかった"
+    change: "会議室の一覧を読めなかった間だけ、入力の上に「会議室の一覧を読み直す」のボタン (@repo/ui の Button。screens.yaml の ReserveRoom の部品にある) を出し、押すと一覧を読み直すようにした (読めたらボタンとエラーを消し、引き継いだ会議室を選択肢と照らす。読み直し中は押せない)。予約のボタンでの読み直しも残した。単体テストを 2 件足し (読み直しで選択肢を読める・読めたときはボタンを出さない)、前提 A-006 を書き換えた"
+  - finding: "指摘 3"
+    result: refuted
+    reason: "予約一覧の画面 (docs/design/screens.yaml:59-63 の MyReservations、route /my-reservations) の uc_slugs は list-my-reservations だけで、reserve-room ではない。list-my-reservations は docs/requirements/use-cases.yaml:44 の別 UC で status planned (同 :54)。一覧に要る operation もこの UC の契約 slice (operationId は reserveRoom と listRooms だけ) に無いため、この UC の中では一覧の画面もルートも作れない (仮のルートを足すと別の UC の画面を作ることになる)。ボタンは見本 packages/ui/stories/ReserveRoom.stories.tsx:43 の Completed が置く部品どおりで、外すと見本と食い違う。一覧の UC が routes.tsx に 1 行足した時点で行き止まりは解ける。この一時的な行き止まりは assumptions.frontend.yaml の A-005 に書いてあり、前の 2 回の反証 (refute-implementation-frontend-20261110T010941Z.yaml・refute-implementation-frontend-20261110T023833Z.yaml) と同じ判断"
+decisions:
+  - id: D1
+    topic: "同じ画面のままクエリだけが変わったとき"
+    choice: "初期値に効くクエリの 4 項目から作った key で画面の本体を作り直し、入力・予約の結果・会議室の選択肢をすべて移った先のクエリから作り直す"
+    reason: "ADR 0021 の移った先の初期値の扱いを保ち、URL と違う会議室・時間帯で送れないようにする。routes.tsx を変えずに画面の中で閉じ、単体テストで確かめられる"
+  - id: D2
+    topic: "会議室の一覧を読めなかったときの読み直しの入口"
+    choice: "読めなかった間だけ「会議室の一覧を読み直す」のボタン (画面部品の Button) を入力の上に出す。予約のボタンでの読み直しも残す。前回の反証の D1 (読み直しのボタンを足さない) を置き換える"
+    reason: "会議室が未入力だと入力の部品が送信を止め、予約のボタンだけでは読み直せない。Button は screens.yaml の ReserveRoom の部品にあり、自作の部品にならない"
+  - id: D3
+    topic: "完了画面の「自分の予約一覧を見る」ボタン"
+    choice: "見本どおり残し、/my-reservations の画面とルートは UC list-my-reservations に任せる"
+    reason: "一覧の画面はその UC の担当で、この UC の契約 slice に一覧の operation が無い。前の 2 回の反証と同じ判断"

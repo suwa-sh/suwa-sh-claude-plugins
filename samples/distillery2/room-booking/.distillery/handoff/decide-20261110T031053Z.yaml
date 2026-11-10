@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "ADR 0010 の直し方"
+    choice: "ADR 0010 に足すのではなく ADR 0023 で置き換え、一意制約の rule 1 本だけを直して残りの rules は文面を変えずに引き継ぐ"
+    reason: "0010 を有効のまま残すと repository で SLOT_OVERLAPS を作る rule が残り、開発ルールに食い違う 2 つの文が並ぶ"
+  - id: D2
+    topic: "SLOT_OVERLAPS を作る場所"
+    choice: "usecase の 1 か所だけとする rule を足し、repository は業務のエラーの型を作らないと明記する"
+    reason: "事前の重なりの判定と一意制約の違反で作る場所が分かれないようにする (課題の推奨と今の実装に合う)"
+  - id: D3
+    topic: "ADR 0003 の扱い"
+    choice: "置き換えない"
+    reason: "0003 の rule は一意制約の違反を重なるの業務のエラーに変えるとだけ書き、変える層を決めていないので 0023 と両立する"

@@ -1,0 +1,107 @@
+schema_version: "2.1"
+uc: "reserve-room"
+tier: "frontend"
+attempt: 1
+extraction:
+  candidate_count: 14
+  excluded_as_explicit: 5
+  recorded_count: 9
+assumptions:
+  - id: A-001
+    category: input_validation
+    title: "過去の照会では予約するを出さない"
+    assumption: "空き状況の画面は、照会した時間帯の開始 (Asia/Tokyo の日時) が現在より前のときだけ「予約する」の列を出さない。開始が現在と同じなら出す。日時に読めない時間帯は過去としない。判定は表示のためだけで、予約できるかは API が決める"
+    target: "apps/frontend/src/screens/RoomAvailability/reserveEntry.ts:12"
+    reason: "見本 PastSlot は「照会した時間帯が現在より前」としか書かず、境界 (開始か終了か・同じ時刻) が無い。予約の受入基準「開始時刻が現在と同じ時間帯は予約できる」と同じ境界にそろえた"
+    confidence: medium
+    spec_refs:
+      - "packages/ui/stories/RoomAvailability.stories.tsx#PastSlot"
+      - "docs/rules/tier-frontend.md#ADR 0021"
+      - "features/会議室予約/reserve-room.feature#開始時刻が現在と同じ時間帯は予約できる"
+  - id: A-002
+    category: input_validation
+    title: "クエリの形は選択肢と暦の日付で判定"
+    assumption: "予約の画面はクエリの date を暦にある YYYY-MM-DD のときだけ、startTime を開始の選択肢 (00:00〜23:30)・endTime を終了の選択肢 (00:30〜24:00) にあるときだけ初期値にし、それ以外は空にする (開始の 24:00 も空)"
+    target: "apps/frontend/src/screens/ReserveRoom/initialReservationValue.ts:24"
+    reason: "ADR 0021 は「入力の形に合わない」値を空にするとだけ決め、形の判定の基準が無い。入力の部品 TimeSlotPicker の選択肢を形の正とした"
+    confidence: high
+    spec_refs:
+      - "docs/rules/tier-frontend.md#ADR 0021"
+      - "packages/ui/components/domain/timeSlots.ts"
+  - id: A-003
+    category: data_format
+    title: "予約の結果は日本時間で表示し24:00"
+    assumption: "予約が成立したときの内容は API の応答 (会議室名・開始と終了の日時・状態) から作り、日付と時刻は Asia/Tokyo の暦で読む。終了が開始の翌日の 0:00 なら終了時刻を 24:00 と表示する"
+    target: "apps/frontend/src/screens/toReservationView.ts:24"
+    reason: "ADR 0017 は終了の 24:00 を翌日 0:00 の日時で持つと決めたが、応答を表示に戻すときの書き方が無い。入力の選択肢 END_OF_DAY と同じ書き方にした"
+    confidence: high
+    spec_refs:
+      - "docs/rules/tier-frontend.md#ADR 0017"
+      - "contracts/generated/slices/reserve-room/contract-slice.json#Reservation"
+      - "packages/ui/stories/ReserveRoom.stories.tsx#Completed"
+  - id: A-004
+    category: data_format
+    title: "空き状況に戻るはクエリ無しで移る"
+    assumption: "予約の画面の「空き状況に戻る」(入力中・完了後とも) は /availability へクエリを付けずに移る。空き状況の画面は今日の 9:00〜10:00 の初期値から始まり、照会し直しは社員が行う"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:195"
+    reason: "見本は「空き状況に戻る」のボタンだけを置き、戻り先に何を引き継ぐかが無い。空き状況の画面はクエリを受け取らない"
+    confidence: medium
+    spec_refs:
+      - "packages/ui/stories/ReserveRoom.stories.tsx#Completed"
+      - "docs/design/screens.yaml#RoomAvailability"
+      - "docs/rules/tier-frontend.md#ADR 0021"
+  - id: A-005
+    category: error_handling
+    title: "予約一覧へのボタンは未実装の画面へ"
+    assumption: "完了後の「自分の予約一覧を見る」は /my-reservations へ移る。この画面は UC list-my-reservations で作るまで routes に無く、移ると「画面が見つかりません」になる"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:169"
+    reason: "見本 Completed がこのボタンを置き、screens.yaml の MyReservations の route が /my-reservations。この UC では一覧の画面を作らない"
+    confidence: medium
+    spec_refs:
+      - "packages/ui/stories/ReserveRoom.stories.tsx#Completed"
+      - "docs/design/screens.yaml#MyReservations"
+  - id: A-006
+    category: error_handling
+    title: "会議室を読めないときはエラー表示"
+    assumption: "予約の画面で会議室の一覧 (listRooms) を読めなかったら、会議室の選択肢を空のまま入力を出し、エラーのコードに応じた理由を入力の中の通知で出す。予約の結果のエラーがあればそちらを優先し、送信中はエラーを出さない。一覧を読めるまでは予約を送らない。読めなかった間は入力の上に「会議室の一覧を読み直す」のボタン (画面部品の Button) を出し、押すと一覧を読み直す (読めたらボタンを消し、エラーを消し、引き継いだ会議室を選択肢と照らす)。会議室が入力済みで「この内容で予約する」を押したときも一覧を読み直し、読めなければ予約を送らずエラーを出し直す。読めたら引き継いだ会議室を選択肢と照らし、選択肢にあればそのまま予約を送り、無ければ会議室を空にして送らない (社員が選ぶ)"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:99"
+    reason: "見本の画面の状態に会議室を読めないときが無く、listRooms の 401・500 の画面での扱いが無い。ADR 0021 は選択肢に無い会議室を引き継がないと決めているので、選択肢と照らせていない会議室 ID を送らない。会議室が未入力だと入力の部品が送信を止めるため、予約のボタンだけでは読み直せない。見本 Error に読み直しのボタンは無いが、screens.yaml の ReserveRoom の部品に Button があり、その部品で読み直しの操作を足した"
+    confidence: medium
+    spec_refs:
+      - "packages/ui/stories/ReserveRoom.stories.tsx"
+      - "docs/design/screens.yaml#ReserveRoom"
+      - "contracts/generated/slices/reserve-room/contract-slice.json#listRooms"
+  - id: A-007
+    category: error_handling
+    title: "応答が無いときはINTERNAL_ERROR"
+    assumption: "予約と会議室の一覧で、応答を受け取れない (fetch が失敗する) か、エラーの応答に code が無いときは、画面の状態を INTERNAL_ERROR のエラーにする (空き状況の照会と同じ共通の関数 errorCodeOf を使う)。送り直しで成立済みの予約が返る (200) ようになった後も、応答を受け取れなかったときの表示の文言は変えない"
+    target: "apps/frontend/src/screens/errorCodeOf.ts:7"
+    reason: "契約は応答の Problem の code を決め、ADR 0023 の rule は code で分岐して理由を出すとだけ書くが、応答が無いときや code が無いときの画面の扱いが無い。応答が届かなかったときの文言を変えないことは前の実行の派遣の指示 (要求の決定として伝えられた) に従ったもので、シナリオ・要求・開発ルールには書かれていない"
+    confidence: high
+    spec_refs:
+      - "contracts/generated/slices/reserve-room/contract-slice.json#Problem"
+      - "docs/rules/tier-frontend.md#ADR 0023"
+      - "docs/rules/tier-frontend.md#ADR 0022"
+      - "features/会議室予約/reserve-room.feature#自分の予約と同じ内容で送り直すと、新しい予約は作られず成立済みの予約が示される"
+  - id: A-008
+    category: input_validation
+    title: "未入力の判定は入口関数でもする"
+    assumption: "予約の入口関数 submitReservation は、入力の部品の送信の止めとは別に自分でも未入力を判定し、会議室・日付・開始時刻・終了時刻のどれかが空 (空白だけを含む。画面部品 missingReservationFields の判定) なら API を呼ばずに { kind: 'missing', fields } を返す。fields は roomId / date / startTime / endTime の項目の順。画面はこの状態のとき入力の部品の showMissing で項目ごとの促しを出す"
+    target: "apps/frontend/src/screens/ReserveRoom/submitReservation.ts:38"
+    reason: "シナリオと要求は「未入力なら送らずに止め、項目ごとに促す」とだけ書き、止める場所 (部品か入口関数か) と入口関数の結果の形が無い。結果の形と fields の並びは scaffold の決めごと (派遣の指示で伝えられた) に従った。空白だけを未入力とするのは画面部品の判定をそのまま使ったため"
+    confidence: high
+    spec_refs:
+      - "features/会議室予約/reserve-room.feature#会議室を選ばずに予約すると、予約は送られず会議室を選ぶことが示される"
+      - "docs/requirements/requirements.yaml#SPEC-002-01"
+      - "docs/rules/tier-frontend.md#ADR 0008"
+      - "packages/ui/components/domain/ReservationForm.tsx#missingReservationFields"
+  - id: A-009
+    category: data_format
+    title: "クエリが変わったら画面を作り直す"
+    assumption: "予約の画面は、同じ path のままクエリの roomId・date・startTime・endTime のどれかが変わったら (ブラウザの戻る・進むなど)、画面の状態 (入力・予約の結果・会議室の選択肢) をすべて作り直し、移った先のクエリを入力の初期値にして会議室の一覧を読み直す。それ以外のクエリの項目の違いでは作り直さない"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:45"
+    reason: "ADR 0021 は移った先でクエリを入力の初期値として使うと決めるが、同じ画面のままクエリだけが変わったときに入力中の値や予約の結果を残すかが無い。URL と違う会議室・時間帯で送れないよう、移った先の初期値を優先した"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-frontend.md#ADR 0021"
+      - "apps/frontend/src/App.tsx"

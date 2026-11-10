@@ -1,0 +1,42 @@
+stage: contract
+completed_at: "2026-11-10T04:48:55.468Z"
+contract_changes:
+  uc: reserve-room
+  own:
+    - file: apps/backend-api/test/contract/listRooms.test.ts
+      operation: listRooms
+      also_used_by: []
+    - file: apps/backend-api/test/contract/reserveRoom.test.ts
+      operation: reserveRoom
+      also_used_by: []
+    - file: contracts/generated/slices/reserve-room/contract-slice.json
+      slice: reserve-room
+      also_used_by: []
+    - file: contracts/generated/slices/reserve-room/rdb-slice.yaml
+      slice: reserve-room
+      also_used_by: []
+  other_uc:
+    - file: apps/backend-api/test/contract/viewRoomAvailability.test.ts
+      operation: viewRoomAvailability
+      used_by:
+        - view-room-availability
+  shared:
+    - apps/backend-api/migrations/0003_reservation_events_recorded_at_default.sql
+    - contracts/generated/openapi.bundle.yaml
+    - packages/contracts/api/client.ts
+    - packages/contracts/api/server.ts
+    - packages/contracts/api/stubs/.distillery2-generated.json
+    - packages/contracts/api/stubs/listRooms.200.json
+    - packages/contracts/api/stubs/listRooms.401.json
+    - packages/contracts/api/stubs/reserveRoom.200.json
+    - packages/contracts/api/stubs/reserveRoom.201.json
+    - packages/contracts/api/stubs/reserveRoom.400.json
+    - packages/contracts/api/stubs/reserveRoom.401.json
+    - packages/contracts/api/stubs/reserveRoom.404.json
+    - packages/contracts/api/stubs/reserveRoom.409.json
+    - packages/contracts/api/stubs/reserveRoom.422.json
+    - packages/contracts/api/types.ts
+  ignored: 131
+tiers:
+  - frontend
+  - backend-api

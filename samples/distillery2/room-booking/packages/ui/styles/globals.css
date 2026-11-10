@@ -1,0 +1,66 @@
+@import "tailwindcss";
+@import "./design-tokens.css";
+
+/* packages/ui に取り込んだ後も部品のクラスを拾えるよう、src 全体を明示する */
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS v4 の指示 */
+@source "../";
+
+/* 暗いテーマは .dark クラスで切り替える */
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS v4 の指示 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* @theme inline: 実行時の CSS 変数を Tailwind のユーティリティに公開する */
+/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind CSS v4 の指示 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input-border: var(--input-border);
+  --color-input-bg: var(--input-bg);
+  --color-ring: var(--ring);
+  --color-hover-muted: var(--hover-muted);
+  --color-card: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-light: var(--success-light);
+  --color-warning: var(--warning);
+  --color-warning-light: var(--warning-light);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-light: var(--destructive-light);
+  --color-info: var(--info);
+  --color-info-light: var(--info-light);
+  --color-neutral: var(--neutral);
+  --color-neutral-light: var(--neutral-light);
+  --color-header-bg: var(--header-bg);
+  --color-header-border: var(--header-border);
+  --color-nav-active-bg: var(--nav-active-bg);
+  --color-nav-active-fg: var(--nav-active-fg);
+  --color-table-header-bg: var(--table-header-bg);
+  --color-table-row-border: var(--table-row-border);
+  --color-skeleton: var(--skeleton-bg);
+  --color-availability-free-fg: var(--availability-free-fg);
+  --color-availability-free-bg: var(--availability-free-bg);
+  --color-availability-reserved-fg: var(--availability-reserved-fg);
+  --color-availability-reserved-bg: var(--availability-reserved-bg);
+  --font-sans: var(--font-family-body);
+  --font-heading: var(--font-family-heading);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-family-body);
+  line-height: var(--line-height-body);
+}

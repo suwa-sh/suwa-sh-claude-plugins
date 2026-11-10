@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues: []
+refutations:
+  - finding: 指摘 1
+    result: accepted
+    reason: "contracts/openapi/openapi.yaml:146-153 の BadRequest は「必須が無い・日時の形式が違う」、Unauthorized は「トークンが無いか検証できない」で、旧文言は必須の未指定とログイン期限切れだけを原因として示していた"
+    change: "docs/design/storybook-app/src/components/domain/errorMessages.ts の VALIDATION_ERROR の detail を「必要な項目が足りないか、日付・時刻の形式が正しくありません。入力した内容を確かめて、もう一度操作してください。」に、UNAUTHENTICATED の title を「ログインが必要です」、detail を「ログインの状態を確認できませんでした。もう一度ログインしてから操作してください。」に変えた"
+decisions:
+  - id: D1
+    topic: VALIDATION_ERROR の文言の範囲
+    choice: 項目の不足と日付・時刻の形式の誤りの両方に当てはまる文にし、title は据え置いた
+    reason: 契約の 400 の説明の 2 つの原因に共通し、どの操作で出ても読める
+  - id: D2
+    topic: UNAUTHENTICATED の文言の範囲
+    choice: "title を「ログインが必要です」にし、detail は「ログインの状態を確認できなかった」と原因を限らない文にした"
+    reason: トークンの欠落・検証失敗・期限切れのどれにも当てはまり、契約の 401 の例の title とも揃う

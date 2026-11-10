@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "SPEC-002-03 の仕様は終了時刻を過ぎた後の送り直しも成立済みとして示すと書くが、受入基準は開始後 (10:30) の例だけで、終了後を過去として断る実装でも基準を満たせてしまう"
+    change: "SPEC-002-03 に、現在を 2026-11-10 11:30 (予約 10:00-11:00 の終了後) に固定して同じ予約を送り直すと、過去の時間帯として断られず、新しい予約は作られず、成立済みの予約が示され、有効な予約は 1 件のままという受入基準を足した。requirements.md と _review-summary.md も更新した"
+decisions:
+  - id: D1
+    topic: "終了後の送り直しの受入基準の時刻"
+    choice: "現在を予約の終了時刻の 30 分後 (11:30) に固定する"
+    reason: "開始後の基準 (10:30) と同じ 30 分の間隔で、終了時刻ちょうどの曖昧さを避けて終了後であることがはっきりする"

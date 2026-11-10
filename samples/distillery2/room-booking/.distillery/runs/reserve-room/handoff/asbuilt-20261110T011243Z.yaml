@@ -1,0 +1,33 @@
+schema_version: distillery2.handoff/v1
+step: asbuilt
+asks: []
+upstream_issues:
+  - id: asbuilt-with-insert-as-read
+    target_step: plugin
+    title: "WITH で始まる INSERT の文を Read と数える"
+    detail: "extractAsBuilt.js が予約の保存の SQL (WITH inserted AS (INSERT ...) INSERT INTO room_slot_occupancies) を読み取りと判定する。データの流れの図は ReservationRepository の線がすべて Read で、CTE の名前 inserted を表として描く。分岐の表の書き込みも 201 のシナリオで「なし」になる"
+    evidence: "d2-asbuilt/scripts/renderDataFlow.js:19 と buildTraceIndex.js:23 が先頭の動詞 WITH を読み取りに分類する。結果は docs/as-built/会議室予約/会議室を予約する/index.md のデータの流れ (n2 -. Read .-> n9 inserted ほか) と分岐の表の書き込みの列。SQL は apps/backend-api/src/repository/reservationRepository.ts:56"
+    recommended_fix: "renderDataFlow.js と buildTraceIndex.js で、INSERT・UPDATE・DELETE を含む WITH の文を Write と数え、CTE の名前を表から外す"
+    workaround: "index.md の要約ブロック 整合性 の原子性の行に、抽出の図の Read は誤りで実際は 3 表への Write であること・inserted は WITH 句の名前であること・分岐の表の書き込みのなしも誤りであることを注記した (根拠 reservationRepository.ts:56 と :57)"
+refutations: []
+decisions:
+  - id: D1
+    topic: "課題の要約ブロックに載せる行"
+    choice: "コードに根拠がある 4 行 (再送の重なり・未実装の予約一覧・画面で検証しない・SLOT_OVERLAPS の作り手) にした"
+    reason: "表示名を読めないときの扱いは影響が小さく、決めたことの転記で人が見られるため行にしなかった"
+  - id: D2
+    topic: "既知の viewRoomAvailability.test.ts の advisory"
+    choice: "課題の要約ブロックにも下書きにも載せない"
+    reason: "人レビューに載せ済みで、変更ファイルに無くこの UC のコード位置を根拠にできない"
+  - id: D3
+    topic: "課題の下書きのファイル名"
+    choice: "20261110T011511Z_asbuilt_reserve-room.md とした"
+    reason: "派遣文の write-set が slug を reserve-room に固定しているため、課題ごとの slug にしなかった"
+  - id: D4
+    topic: "抽出の図の Read と Write の誤り"
+    choice: "要約の課題にせず、引き継ぎファイルの plugin の課題にした"
+    reason: "抽出節は手で直せず、実装の課題ではなくスクリプトの不具合のため"
+  - id: D5
+    topic: "抽出の図の Read と Write の誤りの回避"
+    choice: "整合性の原子性の行に注記を足し、課題の要約ブロックには行を足さない"
+    reason: "誤りは 3 表を 1 つの文で書くことの読み違いで原子性の行に属し、課題の行の件数と下書きの対応を変えずに済む"

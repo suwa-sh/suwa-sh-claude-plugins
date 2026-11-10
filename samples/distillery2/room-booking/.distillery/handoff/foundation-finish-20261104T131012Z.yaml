@@ -1,0 +1,20 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks: []
+upstream_issues:
+  - id: import-ui-module-types
+    target_step: plugin
+    title: 取り込みが main だけ直し module と types を残す
+    detail: "importUi.js は既存の packages/ui/package.json の管理キーを name・type・main に限って更新するため、入口が index.ts に変わっても module と types が前回の入口 (story のファイル) を指したまま残る。新規作成のときだけ 3 つを揃えて書く"
+    evidence: "importUi.js 106 行目 (managed = { name, type, main }) と 114 行目 (新規のときだけ module・types を書く)。今回の実行で main は index.ts になり、module・types は components/domain/AvailabilityBadge.stories.tsx のままだった"
+    recommended_fix: "importUi.js の管理キーに module と types を加え、main と同じ入口に揃える"
+refutations: []
+decisions:
+  - id: D1
+    topic: packages/ui の module と types
+    choice: "手で main と同じ index.ts に揃えた"
+    reason: "importUi.js が main しか更新せず、派遣文の指示どおり書き込み範囲内で直した"
+  - id: D2
+    topic: 生成物の鮮度ジョブの失敗
+    choice: 課題にしない
+    reason: "止めない扱いのジョブで F9 は exit 0。scripts/check.mjs が古いプラグインのキャッシュ (0.2.0) を見に行き、そこに genCheck.js が無いために落ちた。docs/README.md の古さは進行役が commit 前に作り直す"

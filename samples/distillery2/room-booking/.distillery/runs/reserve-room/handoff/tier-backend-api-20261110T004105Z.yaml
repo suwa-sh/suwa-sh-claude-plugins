@@ -1,0 +1,42 @@
+schema_version: distillery2.handoff/v1
+step: tier
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: 予約の 3 表の書き込みの原子性
+    choice: "今の状態・「予約した」イベント・30 分枠の占有を WITH 句でつないだ 1 つの INSERT の文で書く"
+    reason: "SqlClient は query だけの口で、pg.Pool では BEGIN/COMMIT を分けると別の接続に行きうる。1 文なら pg と pglite のどちらでも原子的で、UC BDD のドライバの SqlClient の形も変えずに済む"
+  - id: D2
+    topic: 重なりの判定の場所
+    choice: "事前の重なりの確認はせず、占有の主キー room_slot_occupancies_pkey の違反 (23505) だけを SLOT_OVERLAPS にする"
+    reason: "30 分刻みの枠の主キーの違反が半開区間の重なりと一致し、同時の予約でも 1 件だけが成立する (ADR 0003 の最後の砦)"
+  - id: D3
+    topic: 応答の日時の表記
+    choice: "Asia/Tokyo の時差付きの RFC 3339 (例 +09:00) で返す"
+    reason: "契約の 201 の例の表記に合わせる"
+  - id: D4
+    topic: 予約 ID とイベント ID の採番
+    choice: "composition root が randomUUID で採番し、関数として注入する"
+    reason: "契約は uuid だけを決める。domain と usecase に node:crypto を入れない"
+  - id: D5
+    topic: 時計の置き場所
+    choice: "systemClock を src/app.ts に置き、createTestApp は clock の省略時に systemClock を使う"
+    reason: "契約テストは時計を渡さず 2099 年と 2020 年の日時で現在との前後を確かめるため、実行時の現在時刻が要る"
+  - id: D6
+    topic: 会議室の一覧の API
+    choice: "usecase ListRooms を足し、空き状況の照会の repository の listRooms を共有する"
+    reason: "presentation から repository を直接呼べない (ADR 0013)。同じ表の同じ読み方を 2 つ作らない"
+  - id: D7
+    topic: 会議室 ID の形の誤り
+    choice: "長さが 1〜64 に収まらない・文字列でない roomId は 400 VALIDATION_ERROR にする"
+    reason: "契約のスキーマ RoomId に合わないので形の誤り。会議室を探す前に弾く"
+  - id: D8
+    topic: 業務のエラーの detail の文言
+    choice: "PAST_TIME_SLOT・ROOM_NOT_FOUND・SLOT_OVERLAPS に利用者が直せる言葉の detail を付ける (title は契約の例のとおり)"
+    reason: "契約は title だけを決める。開発ルールの推奨 (利用者が直せる言葉) に従う"
+  - id: D9
+    topic: 契約テスト用の 2099 年の予約のデータ
+    choice: "予約 ID 00000000-0000-4000-8000-00000000000b・イベントの起きた時刻 2026-11-05T09:00:00+09:00・記録した時刻は DB の既定値で、3 表をそろえて入れる"
+    reason: "契約の fixtures の説明はイベントの ID と時刻を決めていない。占有の行も入れないと重なりを検出できない (D2)"

@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: requirements
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "バリエーション「空き状況」の説明が「予約できるかを示す区分」で、過去の時間帯の照会で空きと表示されても予約は受け付けない USDM の仕様と意味が食い違っていた"
+    change: "バリエーション.tsv の空き状況を「時間帯が重なる有効な予約があるかを示す区分。空きは予約できることまでは示さず、予約できるかは予約のときに条件で別に判定する」に改めた。SPEC-001-01 の仕様文と BUC.tsv の照会の UC 説明にも同じ意味を足した。requirements.md・関連データ・ZeroOne・views・_review-summary.md を再生成・更新した"
+decisions:
+  - id: D6
+    topic: "空き状況の区分の意味 (レビューの指摘 1)"
+    choice: "空きは重なる有効な予約が無いことだけを示し、予約できることまでは示さない。予約できるかは予約のときに条件「予約時刻の妥当性」と「予約の重なり判定」で判定する"
+    reason: "過去の時間帯の照会を受け付ける決まりと、過去の時間帯は予約できない決まりを両立させる。区分の値 (空き / 予約済み) は変えずに済む"
+  - id: D7
+    topic: "below-threshold の指摘 (5 部屋すべてを表示する受入基準に日付と時間帯が具体的でない)"
+    choice: "変えない"
+    reason: "報告閾値の下の指摘で、どの日付と時間帯でも 5 部屋が表示されることを確かめる基準として読める"

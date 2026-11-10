@@ -1,0 +1,6 @@
+{
+  "code": "INVALID_TIME_RANGE",
+  "status": 422,
+  "title": "時間帯が正しくありません",
+  "type": "about:blank"
+}

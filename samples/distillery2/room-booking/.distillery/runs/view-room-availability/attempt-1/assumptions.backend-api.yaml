@@ -1,0 +1,208 @@
+schema_version: "2.1"
+uc: "view-room-availability"
+tier: "backend-api"
+attempt: 1
+extraction:
+  candidate_count: 25
+  excluded_as_explicit: 7
+  recorded_count: 18
+assumptions:
+  - id: A-001
+    category: data_format
+    title: "業務のタイムゾーンは実行環境の組み込みの表で求める"
+    assumption: "Asia/Tokyo の日付と 30 分刻みの判定を、実行環境の TZ に依存させず、言語の組み込みの Intl.DateTimeFormat (timeZone Asia/Tokyo) のタイムゾーンの表で行う。業務の日付の 0:00 は日本時間の日付がその日になる最も早い時点 (夏時間の始まりの日は 1:00、終わりの日は 1 回目の 0:00)、翌日 0:00 も同じ決め方で求め、1 日を 24 時間と決めつけない (23 時間・25 時間の日がある)。30 分刻みは日本時間の分が 0 か 30 で秒・ミリ秒が 0 のときとする"
+    target: "apps/backend-api/src/domain/timeRange.ts:19"
+    reason: "ADR 0003・0017 は判定を Asia/Tokyo で行うとだけ決め、計算の仕方を決めていない。Asia/Tokyo には 1948〜1951 年に +10:00 の夏時間があり、ADR 0017 は過去の照会も許すので、固定の +09:00 では夏時間の日の時間帯が日またぎと誤判定される。Intl は言語の組み込みで外部ライブラリではない (ADR 0013)。正しさは Node.js の ICU のタイムゾーンの表 (既定の full-icu) に依存する。0:00 が無い日・2 回ある日の決め方はどの文書にも無い"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0003"
+      - "docs/rules/tier-backend.md#ADR 0017"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#TimeRange"
+  - id: A-002
+    category: persistence
+    title: "予約の候補は業務の日付の 1 日分を読む"
+    assumption: "repository は開始が業務の日付の 0:00 以上・翌日 0:00 未満の予約を取消済みも含めて読み、重なりと取消の判定は domain が行う (SQL に重なりの条件を書かない)"
+    target: "apps/backend-api/src/repository/roomAvailabilityRepository.ts:48"
+    reason: "ADR 0009 が重なりの判定を時間帯の値オブジェクトの 1 か所に置くと決めており、ADR 0017 により予約も照会の時間帯も 1 つの業務の日付に収まるので、その日の予約を読めば重なりうる予約を漏らさない。正しさは予約を書く側が日をまたぐ予約を作らないことに依存する。読む件数の上限は決められていない"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0009"
+      - "docs/rules/tier-backend.md#ADR 0017"
+      - "contracts/generated/slices/view-room-availability/rdb-slice.yaml#reservations"
+  - id: A-003
+    category: security
+    title: "認証を本文の形の検証より先に行う"
+    assumption: "/api の要求はトークンの検証を本文の読み込みと形の検証より先に行い、トークンが無いか検証できなければ本文が不正でも 401 を返す"
+    target: "apps/backend-api/src/presentation/httpApp.ts:107"
+    reason: "ADR 0006 はすべての API でトークンを検証するとだけ決め、ADR 0023 は形の誤りを 400 にすると決めるが、400 と 401 のどちらを先にするかを決めていない。認証されていない要求に本文の形の情報を返さない側に倒した"
+    confidence: high
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0006"
+      - "docs/rules/tier-backend.md#ADR 0023"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#viewRoomAvailability.responses"
+  - id: A-004
+    category: input_validation
+    title: "日時の形は時差必須・24 時と暦に無い日を弾く"
+    assumption: "本文の startAt・endAt は時差付きの RFC 3339 だけを受け、時差の省略・時の 24・暦に無い日付 (2026-02-30 など)・契約に無い項目・文字列でない値を 400 VALIDATION_ERROR にする。小数の秒は桁数の上限なしに形としては受け、1 ミリ秒未満の数字も落とさずに domain の時間帯へ渡す (時間帯の検査の順と 30 分刻みは全精度で判定され、30 分刻みでなければ 422 NOT_ON_30_MINUTES になる)"
+    target: "apps/backend-api/src/presentation/timeRangeRequest.ts:9"
+    reason: "契約は format date-time と additionalProperties false だけを決め、検証の道具と細部を決めていない。backend-api の依存に JSON Schema の検証器が無いため手書きにした。24:00 の表記を受けないことは ADR 0017 に合わせた。10:00:00.0001 は形として正しい date-time だが 30 分刻みではないので、契約どおり 422 NOT_ON_30_MINUTES にする (切り捨てたままでは 10:00:00.000 となり照会が通ってしまう)。1 ミリ秒未満は別に持って渡し、順の比較を切り捨て前の精度で行う (A-017)"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#TimeRange"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#DateTime"
+      - "docs/rules/tier-backend.md#ADR 0023"
+      - "docs/rules/tier-backend.md#ADR 0017"
+  - id: A-005
+    category: error_handling
+    title: "相関 ID は要求ごとに作りヘッダで返す"
+    assumption: "相関 ID は受けたヘッダを使わず要求ごとに UUID で作り、応答のヘッダ x-correlation-id とエラー応答の Problem.correlationId (400・401・422・500 のすべて) に載せる"
+    target: "apps/backend-api/src/presentation/httpApp.ts:82"
+    reason: "ADR 0011 は相関 ID を要求ごとに作り応答のヘッダにも返すと決め、ADR 0023 は 500 の応答を汎用の文と相関 ID だけにすると決めたが、ヘッダの名前と 500 以外の Problem に載せるかを決めていない"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0011"
+      - "docs/rules/tier-backend.md#ADR 0023"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#Problem"
+  - id: A-006
+    category: security
+    title: "本番の設定は 4 つの環境変数から読む"
+    assumption: "本番の入口は DATABASE_URL・OIDC_ISSUER・OIDC_AUDIENCE・OIDC_JWKS_URI を環境変数から読み、1 つでも無ければ起動で失敗させる。待ち受けの port は PORT (既定 3000)"
+    target: "apps/backend-api/src/app.ts:57"
+    reason: "ADR 0015 は発行者・宛先・鍵の一覧の場所を環境ごとの設定にするとだけ決め、設定の名前と渡し方を決めていない"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0015"
+      - "docs/rules/common.md#ADR 0014"
+      - ".distillery/config.yaml#tiers.backend-api"
+  - id: A-007
+    category: persistence
+    title: "テスト用データは予約・イベント・占有をそろえる"
+    assumption: "契約テストのテスト用データ room-a-reserved-by-employee-a は、予約の今の状態の行に加えて同じ予約の「予約した」イベント (固定の ID と時刻 2026-11-05T09:00:00+09:00) と 10:00・10:30 の 30 分枠の占有を入れる"
+    target: "apps/backend-api/src/test-app.ts:31"
+    reason: "slice の fixtures の説明は予約済みの予約が 1 件あることだけを書く。照会が読むのは reservations だけだが、ADR 0003・0004 の表どうしの整合を崩さないように 3 つの表をそろえた"
+    confidence: high
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#fixtures"
+      - "docs/rules/tier-backend.md#ADR 0003"
+      - "docs/rules/tier-backend.md#ADR 0004"
+  - id: A-008
+    category: error_handling
+    title: "契約に合わない会議室 ID はシステムのエラー"
+    assumption: "DB から読んだ会議室 ID が契約 RoomId の長さ (1〜64) に合わなければ例外にし、500 INTERNAL_ERROR で返す"
+    target: "apps/backend-api/src/domain/ids.ts:9"
+    reason: "ADR 0009 は会議室 ID を値オブジェクトにすると決めたが、永続化された値が不正なときの扱いを決めていない。データの不整合は利用者が直せないので、ADR 0023 のシステムのエラー (想定外) とした"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0009"
+      - "docs/rules/tier-backend.md#ADR 0023"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#RoomId"
+  - id: A-009
+    category: data_format
+    title: "表示順が同じ会議室は会議室 ID 順"
+    assumption: "会議室は display_order の昇順に並べ、同じ値のときは room_id の昇順にする"
+    target: "apps/backend-api/src/repository/roomAvailabilityRepository.ts:31"
+    reason: "要求 SPEC-001-01 は会議室A〜E を表示順 1〜5 の昇順に並べると決め (初期データの 5 部屋は表示順が重ならない)、契約は rooms.display_order の表示順で並べるとだけ書くが、どちらも表示順が同じ値になったときの扱いを決めておらず、表には一意制約が無い。結果を毎回同じ順にするため"
+    confidence: high
+    spec_refs:
+      - "docs/requirements/requirements.yaml#SPEC-001-01"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#viewRoomAvailability.description"
+      - "contracts/generated/slices/view-room-availability/rdb-slice.yaml#rooms"
+  - id: A-010
+    category: security
+    title: "Bearer の語は大文字小文字を区別しない"
+    assumption: "Authorization ヘッダは Bearer (大文字小文字を区別しない) と空白に続く 1 語のトークンだけを受け、それ以外の形は 401 UNAUTHENTICATED にする"
+    target: "apps/backend-api/src/presentation/httpApp.ts:48"
+    reason: "契約の bearerAuth と ADR 0006・0015 は Bearer で受けることを決めたが、ヘッダの形の細部を決めていない。HTTP の認証の方式名は大文字小文字を区別しない"
+    confidence: high
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#securitySchemes.bearerAuth"
+      - "docs/rules/tier-backend.md#ADR 0006"
+      - "docs/rules/tier-backend.md#ADR 0015"
+  - id: A-011
+    category: error_handling
+    title: "500 の title の文言"
+    assumption: "システムのエラーの Problem の title は「システムのエラーが発生しました。時間をおいて試してください」とする"
+    target: "apps/backend-api/src/presentation/problem.ts:19"
+    reason: "ADR 0023 は 500 を汎用の文と相関 ID だけにすると決めたが、契約の InternalError に例が無く文言が決まっていない"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#components.responses.InternalError"
+      - "docs/rules/tier-backend.md#ADR 0023"
+      - "docs/rules/common.md#推奨"
+  - id: A-012
+    category: error_handling
+    title: "業務のエラーの detail は理由ごとの直し方"
+    assumption: "業務のエラーの Problem の detail に利用者の直し方を載せる。INVALID_TIME_RANGE は domain が返す理由 (開始が終了より前でない START_NOT_BEFORE_END / 業務の日付に収まらない OUTSIDE_BUSINESS_DAY) で文を分け、NOT_ON_30_MINUTES は「開始と終了の時刻は 0 分か 30 分ちょうどにしてください」とする"
+    target: "apps/backend-api/src/presentation/problem.ts:34"
+    reason: "ADR 0023 は Problem の detail に変えると決めたが、文言と、1 つのコードに 2 つの理由がある INVALID_TIME_RANGE の書き分けを決めていない。契約の Problem.detail は「この発生の詳しい説明」とだけあり例が無い。理由はコードを増やさず業務のエラーの戻り値の任意の項目 reason で持たせた (ADR 0017 は別のコードを作らないと決めている)"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0023"
+      - "docs/rules/tier-backend.md#ADR 0017"
+      - "docs/rules/common.md#推奨"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#Problem"
+  - id: A-013
+    category: error_handling
+    title: "detail は業務のエラーだけに付ける"
+    assumption: "detail を付けるのは業務のエラー (422) だけにし、要求の形の誤り 400 VALIDATION_ERROR・認証の 401 UNAUTHENTICATED・システムのエラー 500 INTERNAL_ERROR の Problem には detail を付けない"
+    target: "apps/backend-api/src/presentation/problem.ts:53"
+    reason: "ADR 0023 が detail に変えると決めたのは業務のエラーのコードであり、500 は汎用の文と相関 ID だけにすると決めている。400・401 の detail は決まっておらず、契約の例 (Unauthorized) にも detail が無いので付けない側にした"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0023"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#components.responses.Unauthorized"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#Problem"
+  - id: A-014
+    category: error_handling
+    title: "本文の読み込みの要求側の失敗は 400 の形の誤り"
+    assumption: "本文の読み込みの失敗のうち要求の側に原因があるもの (express.json が type と 4xx の status を付ける失敗。JSON として読めない・既定の上限 100kb を超えた 413・文字コードや圧縮が扱えない 415・途中で切れた・長さが合わない) を 400 VALIDATION_ERROR にし、エラーのログを出さない。サーバ側の読み込みの失敗 (5xx の stream.*) と想定外の例外だけを 500 INTERNAL_ERROR とシステムのエラーのログにする。本文の大きさの上限は express.json の既定のまま"
+    target: "apps/backend-api/src/presentation/httpApp.ts:190"
+    reason: "契約の viewRoomAvailability の応答は 200・400・401・422・500 だけで 413・415 を持たず、ADR 0023 は要求の形の誤りを 400、DB の失敗・想定外をシステムのエラーにすると決めている。大きすぎる本文や扱えない文字コードは利用者が直せる要求の誤りなので、契約にある 400 に寄せた (500 では入力の誤りが障害として返り error ログに載る)。上限の値と、413・415 を別の status で返すかは契約・ADR が決めておらず、契約に無い status は返さない"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#viewRoomAvailability.responses"
+      - "docs/rules/tier-backend.md#ADR 0023"
+  - id: A-015
+    category: input_validation
+    title: "うるう秒 (秒 60) は形の誤り"
+    assumption: "日時の秒は 00〜59 だけを受け、RFC 3339 が認めるうるう秒の表記 (秒 60) は 400 VALIDATION_ERROR にする"
+    target: "apps/backend-api/src/presentation/timeRangeRequest.ts:10"
+    reason: "契約 DateTime は format date-time (RFC 3339) で、RFC 3339 の time-second は 60 を含むが、契約・ADR はうるう秒の扱いを決めていない。JavaScript の Date は秒 60 を読めず、うるう秒は 30 分刻みの時刻 (分 0 か 30・秒 0) には決して乗らないので、受けても 422 にしかならない。読めない値として ADR 0023 の形の誤りに寄せた"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#DateTime"
+      - "docs/rules/tier-backend.md#ADR 0023"
+      - "docs/rules/tier-backend.md#ADR 0017"
+  - id: A-016
+    category: input_validation
+    title: "JSON 以外の Content-Type は 400"
+    assumption: "Content-Type が application/json でない要求の本文は読まず、本文が無いものとして 400 VALIDATION_ERROR にする (契約に無い 415 を返さない)"
+    target: "apps/backend-api/src/presentation/httpApp.ts:141"
+    reason: "契約の requestBody は application/json だけで required true だが、他の Content-Type の扱いは契約・ADR 0023 に無い。express.json は Content-Type が合わない本文を読み飛ばし、parseTimeRangeBody が本文の無い要求として null を返す。契約の responses に 415 が無いので、契約にある 400 に寄せた (A-014 と同じ考え)"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#viewRoomAvailability.requestBody"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#viewRoomAvailability.responses"
+      - "docs/rules/tier-backend.md#ADR 0023"
+  - id: A-017
+    category: data_format
+    title: "時点は 1 ミリ秒未満まで持って比べる"
+    assumption: "時間帯の生成は Date に加えて、切り捨てたミリ秒 (epochMs) と 1 ミリ秒未満の数字 (subMillisecondDigits) を分けて持つ時点を受け、開始が終了より前かの判定を 1 ミリ秒未満まで含めた全精度で行う (桁数の違う同じ時点は等しい)。30 分刻みは 1 ミリ秒未満の数字がすべて 0 のときだけとする。日付に収まるかの判定は 30 分刻みを満たした後なので epoch ms で行う"
+    target: "apps/backend-api/src/domain/timeRange.ts:79"
+    reason: "契約 viewRoomAvailability の description と ADR 0017 は (1) 開始が終了より前 (2) 30 分刻み (3) 日付に収まる、の順で検証し最初に満たさないもののコードを返すと決めるが、日時をどの精度で比べるかは決めていない。Date は 1 ミリ秒未満を持てず、同じミリ秒の中の開始と終了 (例 10:00:00.0001 と 10:00:00.0005) が等しく見えて (1) で INVALID_TIME_RANGE になる。正しくは (1) を満たして (2) で NOT_ON_30_MINUTES。文字列で受けた精度をそのまま比べることで、契約の順どおりのコードを返す"
+    confidence: high
+    spec_refs:
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#viewRoomAvailability.description"
+      - "contracts/generated/slices/view-room-availability/contract-slice.json#DateTime"
+      - "docs/rules/tier-backend.md#ADR 0017"
+      - "docs/rules/tier-backend.md#ADR 0009"
+  - id: A-018
+    category: security
+    title: "始まりのログはトークンの検証の後に出す"
+    assumption: "/api の要求の始まりのログ (要求を受けた) はトークンの検証の後に 1 回だけ出し、検証できた要求では社員 ID を持たせ、検証できなかった要求 (401) と検証器が例外を投げた要求 (500) では社員 ID 無しで出す。/api の外の要求は検証の段の後で 1 回出す。そのため検証器 (gateway) が検証中に出すログは始まりのログより先に並ぶ"
+    target: "apps/backend-api/src/presentation/httpApp.ts:63"
+    reason: "ADR 0011 は社員が特定できる要求のログに社員 ID を持たせると決めるが、社員 ID はトークンの検証で初めて決まるので、始まりのログを検証より前に出すと社員 ID を持てない。始まりのログを出す位置と、認証に失敗した要求の始まりのログの扱いはルールに無い。どの要求も始まりのログを残すため、成否どちらでも検証の直後に出す側にした"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0011"
+      - "docs/rules/tier-backend.md#ADR 0006"

@@ -1,0 +1,26 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks: []
+upstream_issues:
+  - id: adr-0002-arch-test-gaps
+    target_step: decide
+    title: "ADR 0002 の arch_test が許可方向の外を網羅しない"
+    detail: "ADR 0002 の rules[0] は「依存は presentation → usecase → domain、usecase → repository、repository → domain・gateway の向きだけ」とするが、arch_test (effect: forbid) は 8 本だけで、usecase → gateway、repository → presentation、gateway → presentation・usecase・repository・domain を禁止していない。presentation → domain も許可の列挙に無いのに禁止されていない一方、ADR 0010 では presentation が domain の業務エラーのコードを契約のエラー型へ変換するため、presentation → domain の扱いが文と食い違う。genArchTests.js は ADR の arch_test を忠実に写しているだけ (--check で最新) なので、基盤の側では直せない。"
+    evidence: "docs/adr/0002-app-layers.md の rules (13 行目の文と 15〜68 行目の arch_test 8 本)、.dependency-cruiser.cjs の adr-0002-1..8、レビュー .distillery/reviews/foundation/1/round1.md の指摘 1"
+    recommended_fix: "ADR 0002 に effect: forbid の arch_test を足す (usecase → gateway、repository → presentation、gateway → presentation・usecase・repository・domain)。presentation → domain は業務エラーの型と値オブジェクトを読むために許可すると rules[0] の文に明記する。その後 genRules.js と genArchTests.js を回し直す"
+refutations:
+  - finding: "指摘 1"
+    result: needs_info
+    reason: "指摘は正しい (許可方向の外の依存のうち usecase → gateway、repository → presentation、gateway → 他層が禁止されていない)。ただし生成元は ADR 0002 の arch_test で、.dependency-cruiser.cjs は genArchTests.js --check で最新。直す場所は ADR (書き込み範囲の外) なので、戻し先 decide の課題 adr-0002-arch-test-gaps にした。presentation → domain は ADR 0010 と食い違うため決定が要る"
+  - finding: "指摘 2"
+    result: refuted
+    reason: "(a) 基盤の時点で DB 契約テストが 0 件なのは設計どおり。contracts/uc-index.yaml は ucs: [] で、UC ごとの契約テストと DB migration・DB 契約テストは d2-contract mode=uc が UC 着手時に生成する (d2-foundation SKILL.md の「F4 と d2-design への受け渡し」)。(b) --passWithNoTests は CI と scripts/check.mjs の手順だけに付く意図的な設定 (genCi.js 57〜61 行目: テストの無いティアで main が必ず赤になるのを避ける)。UC の受理で使う手元のゲート .distillery/config.yaml の commands.contract には付いておらず、vitest はテスト 0 件で exit 1 になる (runGates.js 148 行目の注記)。よって後続でテスト生成に失敗してテストが 0 件なら、UC のゲートで落ちる"
+decisions:
+  - id: D1
+    topic: "指摘 1 の扱い"
+    choice: "生成物を手で直さず、ADR 0002 の arch_test の不足を戻し先 decide の課題にする"
+    reason: "genArchTests.js は ADR を忠実に写しており、直す場所は書き込み範囲の外の ADR"
+  - id: D2
+    topic: "指摘 2 の扱い"
+    choice: "反証して、genCi・genCheck・F4 を回し直さない"
+    reason: "テスト 0 件は UC のゲート (runGates) で落ち、CI の --passWithNoTests は意図した設定"

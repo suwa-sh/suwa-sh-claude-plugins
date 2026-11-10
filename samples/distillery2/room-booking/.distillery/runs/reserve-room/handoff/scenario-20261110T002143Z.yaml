@@ -1,0 +1,34 @@
+schema_version: distillery2.handoff/v1
+step: scenario
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: basis の要求の版
+    choice: "requirements@e0386bd5e156703d4c781abc9f94eb7992f0fb17 (requirements.yaml と rdra を最後に変えたコミット)"
+    reason: 照会 UC の feature と同じ版で、それ以降に要求の中身は変わっていない
+  - id: D2
+    topic: 予約が成立しない場合の Then
+    choice: "受入基準の文に加えて「予約は記録されない」を確かめる"
+    reason: 失敗時に変わらない状態を具体的に書く規則に合わせる
+  - id: D3
+    topic: 受入基準以外のシナリオ
+    choice: "条件の文から導ける境界を 5 件足す (終了時刻が 30 分刻みでない / 開始時刻が現在と同じなら成立 / 開始前から一部重なる / 既存を含む / 既存の開始時刻に終わるなら成立)"
+    reason: 予約時刻の妥当性と予約の重なり判定の条件を成立と不成立の両側で網羅する。業務ルールは条件.tsv の文のまま
+  - id: D4
+    topic: 会議室を書いていない受入基準の会議室
+    choice: 会議室Aで予約する
+    reason: 値を具体的に書く規則に合わせる。受入基準の結果に会議室は影響しない
+  - id: D5
+    topic: 予約の失敗も成功も同じ step 文
+    choice: "「社員Aが会議室Aを … で予約する」を成否によらず使う (照会 UC の「表示しようとする」は使わない)"
+    reason: 受入基準の原文が「予約する」で、同じ意味の step を 1 つの文にそろえる
+  - id: D6
+    topic: "@browser"
+    choice: "付けない (0 件)"
+    reason: "ADR 0007 で受入と UC BDD は API ドライバで回し、config の capabilities.browser も false"
+  - id: D7
+    topic: 他 UC の振る舞い
+    choice: 該当なし。12 件すべてこの UC のシナリオで対応づけた
+    reason: "SPEC-002-02-4 の取り消し済みの予約は前提のデータとして DB に入れる (ADR 0007) ので、取り消しの UC には依存しない"

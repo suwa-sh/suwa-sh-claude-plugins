@@ -1,0 +1,49 @@
+schema_version: distillery2.handoff/v1
+step: asbuilt
+asks: []
+upstream_issues:
+  - id: asbuilt-rolled-back-write-as-write
+    target_step: plugin
+    title: "取り消された書き込みを分岐の表で書き込みと数える"
+    detail: "409 のシナリオ (重なり) では予約の保存の文が占有の主キーの違反で文ごと取り消され、何も書かれない。抽出の分岐の表は 409 の行の書き込みの列に reservation_events, reservations, room_slot_occupancies を載せ、データの流れの図も同じ文を Write に数える。失敗した文と書けた文を区別していない"
+    evidence: "docs/as-built/会議室予約/会議室を予約する/index.md の分岐の表 (他の社員の予約とまったく同じ時間帯は… の行ほか 409 の 5 行)。トレースでは DB の呼び出しは result error で記録されている (.distillery/runs/reserve-room/traces/reserve-room#-39d4398e.jsonl の 13 行目 kind db.query)。抽出はその result を見ずに表を書き込みに数える。SQL と取り消しは apps/backend-api/src/repository/reservationRepository.ts:96・:114・:132"
+    recommended_fix: "抽出 (分岐の表・データの流れ・traceability-index の tables_rw) で、result が error の db.query の表を書き込みに数えない (または「試みて取り消し」と区別する)"
+    workaround: "index.md の要約ブロック 整合性 の原子性の行に「分岐の表の 409 の書き込みは取り消された文」と注記した (根拠 reservationRepository.ts:96・:132)。抽出節は直していない"
+refutations: []
+decisions:
+  - id: D1
+    topic: "WITH で始まる INSERT の不具合の回避の注記"
+    choice: "原子性の行の 3 つの注記 (Read は誤り・inserted は WITH 句の名前・書き込みのなしは誤り) を外した。ほかの行に同じ不具合の注記は無かった"
+    reason: "抽出し直した図と分岐の表と _system で 3 表への INSERT が Write と出て、inserted が表に出なくなったことを確かめたため"
+  - id: D2
+    topic: "業務の拒否を ok と描く不具合の回避の注記"
+    choice: "競合の行の注記を残し、根拠の行番号を今のコード (reservationRepository.ts:143・:132、reserveRoom.ts:148、submitReservation.ts:44) に合わせた"
+    reason: "抽出し直した図でも 409 の経路で save・usecase・画面の戻りが ok のままで、症状が同じため"
+  - id: D3
+    topic: "課題の要約の「応答を失った再送が自分の予約と重なる」の行"
+    choice: "要約の課題から外した"
+    reason: "SPEC-002-03 と ADR 0022 で送り直しは 200 で成立済みの予約を返すようになり、実装もそうなった (reserveRoom.ts:115・:131、httpApp.ts:183)"
+  - id: D4
+    topic: "前回の下書き issues/20261110T011511Z_asbuilt_reserve-room.md と WITH の不具合の 2 つの課題ファイル"
+    choice: "触らずに残し、進行役に閉じることを勧める (20261110T011511Z_asbuilt_reserve-room.md・20261110_011843_asbuilt_asbuilt-20261110T011243Z_asbuilt-with-insert-as-read.md・20261110_012536_refute_refute-asbuilt-20261110T012020Z_asbuilt-with-insert-as-read-system.md)。抽出節の課題の表にはまだ載っている"
+    reason: "進行役が feedback_filed・resumed_after_upstream で扱っている課題で、閉じるのは進行役の判断のため。再送は SPEC-002-03 の実装で、WITH の 2 件は抽出し直しで解けている (図・分岐の表・_system/data-flow.md・traceability-index.json の tables と tables_rw に inserted・event・slot が無く、3 表が W)"
+  - id: D8
+    topic: "取り消された書き込みを書き込みと数える不具合の回避"
+    choice: "原子性の行に「分岐の表の 409 の書き込みは取り消された文」を足し、plugin の課題 (workaround 付き) にした"
+    reason: "トレースは DB の呼び出しを error と記録しており、抽出だけの不具合で、リポの中では要約の注記でしか回避できないため"
+  - id: D9
+    topic: "未入力の課題の今の実装の書き方"
+    choice: "「API の VALIDATION_ERROR を出す」を「API のエラーのコードを出す」に弱めた"
+    reason: "submitReservation.ts:44 から言えるのは返ったコードを出すことだけで、空の日時が 400 になることは読んだコードで確かめていないため"
+  - id: D5
+    topic: "下書きにした課題"
+    choice: "SLOT_OVERLAPS を usecase が作る (20261110T024931Z) と未入力でも画面で止めずに送る (20261110T024932Z) を下書きにした"
+    reason: "どちらも決めたことにも issues の表にも載っておらず、前回は下書きにされていなかったため"
+  - id: D6
+    topic: "下書きのファイル名"
+    choice: "slug を reserve-room に固定し、時刻を 1 秒ずらして 2 つのファイルにした"
+    reason: "派遣文の write-set が slug を reserve-room に固定しているため"
+  - id: D7
+    topic: "SPEC-002-03 と ADR 0022 の反映"
+    choice: "概要の完了の条件に 200 の行を足し、整合性の冪等の行を送り直しの判定の順番 (時間帯の検証→送り直しの検索→過去の検査) と 200/201 の返し分けに書き直した"
+    reason: "前回の冪等の行 (再送は主キーの違反で 409) が今の実装と食い違うため"

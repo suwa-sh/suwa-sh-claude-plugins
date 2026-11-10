@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: tier
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "置き換え済みの ADR 0018 を出典に挙げるコメント"
+    choice: "apps/frontend の 9 ファイルのコメントの出典を ADR 0018 から ADR 0021 に直した (コメントだけ。行は増減させていない)"
+    reason: "ADR 0018 は ADR 0021 に置き換え済みで、開発ルールの該当の規則は ADR 0021 の見出しにある。ADR 0010・0005 を出典に挙げるコメントは無かった"
+  - id: D2
+    topic: "ADR 0022・0023 の差分への対応"
+    choice: "空き状況の画面のコードは変えない"
+    reason: "tier-frontend.md の差分は規則の出典が ADR 0010 から 0023 に移っただけで文は同じ。今の実装は契約のエラー型の code を BusinessErrorAlert に渡して理由を表示しており合っている。ADR 0022 の送信中にボタンを押せなくする規則は予約と取り消しの画面が対象で、この UC は照会だけ (照会中も送信を止めている)"
+  - id: D3
+    topic: "前提の記録 (attempt-1)"
+    choice: "前の run の A-001〜A-004 を同じ id で引き継ぎ、target の行と spec_refs を今のファイルに合わせ直した"
+    reason: "判断の中身は変わっていない。A-004 の target を復号の関数の行 (navigation.ts:19) に、spec_refs の行番号の参照を見出しの参照 (#ADR 0021) にし、read-set の外の tier-backend.md の参照を外した"

@@ -1,0 +1,22 @@
+schema_version: distillery2.handoff/v1
+step: contract
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "ADR 0022 と reserveRoom の契約の照合"
+    choice: "判定の順番 (時間帯の形 → 送り直しの検索 → 過去の時間帯・会議室・重なり)・送り直しの 200・取消済みの自分の予約を送り直しにしないことは今の契約のとおりで、振る舞いは変えない"
+    reason: "description の (1)-(4a)-(5)-(7) が ADR 0022 の手順 1-4 と同じ順で、resent と resent_after_start の 200 の例が固定の予約 ID で成立済みの予約を返すことを確かめている"
+  - id: D2
+    topic: "置き換え済みの ADR の参照"
+    choice: "reserveRoom の description の「冪等キーは受けない (ADR 0005)」を ADR 0022 に直し、送り直しの (4a) にも ADR 0022 を添えた"
+    reason: "ADR 0005 は ADR 0022 で置き換え済みで、実装者が古い ADR を根拠に読むのを避ける"
+  - id: D3
+    topic: "取消済みの自分の予約と同じ内容の例"
+    choice: "契約テストの例とテスト用データを足さない"
+    reason: "examples 必須ルールは status ごとで満たしている。取消後の新規成立と開始後の PAST_TIME_SLOT は UC BDD のシナリオ (SPEC-002-03-4 と取消済み・開始後のシナリオ) が時計を固定して確かめる。足すと provider に新しいテスト用データの実装が要る"
+  - id: D4
+    topic: "開始後・終了前 (10:30) の送り直し"
+    choice: "契約テストでは確かめず UC BDD に任せる"
+    reason: "契約テストは時計を固定しないため、開始も終了も過ぎた 2020 年の例 (resent_after_start) で判定の順番を確かめている"

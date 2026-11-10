@@ -1,0 +1,25 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: refuted
+    reason: "予約一覧の画面 (docs/design/screens.yaml:59-63 の MyReservations、route /my-reservations) の uc_slugs は list-my-reservations だけで、reserve-room ではない。list-my-reservations は use-cases.yaml:44 の別 UC で、一覧に要る operation もこの UC の契約 slice (operationId は reserveRoom と listRooms だけ) に無いため、この UC の中では一覧の画面を作れない。ボタンは見本 packages/ui/stories/ReserveRoom.stories.tsx の Completed が置く部品どおりで、外すと見本と食い違う。一覧の UC が routes.tsx に 1 行足した時点で行き止まりは解ける。この前提は assumptions.frontend.yaml の A-005 (予約一覧へのボタンは未実装の画面へ) に書いてあり、前回の反証 (refute-implementation-frontend-20261110T010941Z.yaml の指摘 1) と同じ判断"
+  - finding: "指摘 2"
+    result: accepted
+    reason: "keepKnownRoom は一覧を読めたときだけ呼ばれ、読めないと選択肢と照らしていない roomId のまま予約を送れた。ADR 0021 の「選択肢に無い会議室は引き継がない」をこの条件で満たせない"
+    change: "ReserveRoomScreen.tsx に confirmedValue を足し、一覧を読めるまで予約を送らないようにした。予約のボタンを押すと一覧を読み直し、読めなければ送らずエラーを出す。読めたら会議室を選択肢と照らし、選択肢にあれば送り、無ければ会議室を空にして送らない。単体テストを 3 件足した (読めないまま送信・読み直して送信・読み直して会議室が無い)。A-006 の前提を書き換え、行のずれた A-004・A-005 の target を直した"
+decisions:
+  - id: D1
+    topic: "会議室の一覧を読めなかったときの読み直しの入口"
+    choice: "読み直しのボタンを足さず、「この内容で予約する」を押したときに一覧を読み直してから送る"
+    reason: "見本 ReserveRoom.stories.tsx の Error に読み直しのボタンが無く、画面は見本の部品だけで組む"
+  - id: D2
+    topic: "読み直した結果、引き継いだ会議室が選択肢に無かったとき"
+    choice: "会議室を空にして予約を送らない"
+    reason: "社員が選び直せるようにする。ADR 0021 の、選択肢に無い会議室は空にして社員に入力させる扱いと同じ"
+  - id: D3
+    topic: "完了画面の「自分の予約一覧を見る」ボタン"
+    choice: "見本どおり残し、/my-reservations の画面は UC list-my-reservations に任せる"
+    reason: "一覧の画面はその UC の担当で、この UC の契約 slice に一覧の operation が無い"

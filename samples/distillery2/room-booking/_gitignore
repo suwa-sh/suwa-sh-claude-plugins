@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.log
+
+# distillery2 実行状態 (reports / traces / logs は生成物なので追跡しない)
+.distillery/runs/*/reports/
+.distillery/runs/*/traces/
+.distillery/logs/
+# qlty の作業ディレクトリ (qlty init --dry-run は .qlty/.gitignore を書かない)
+.qlty/logs
+.qlty/out
+.qlty/results
+.qlty/plugin_cachedir
+.qlty/sources
+# distillery2 の一時の worktree と、worktree に張る node_modules の symlink
+.distillery/worktrees/
+node_modules

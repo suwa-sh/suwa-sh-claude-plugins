@@ -1,0 +1,115 @@
+schema_version: distillery2.handoff/v1
+step: requirements
+asks:
+  - id: employee-identity
+    kind: unknown_fact
+    question: "予約した本人を見分けるために、社員をどう識別するか (社内に共通のログインの仕組みがあるか)"
+    options:
+      - label: 社内の既存アカウントでログインする
+        impact: "社員の登録やパスワード管理をこのシステムで持たない。社内の認証の仕組みとの連携が要る"
+      - label: このシステム専用のログインを作る
+        impact: "社員の登録・パスワード管理の UC が増える"
+    recommended: 社内の既存アカウントでログインする
+    reason: "利用者は社員だけで、要望に社員の登録や管理の話が無い。既存のアカウントを使えば UC が増えない"
+  - id: room-master
+    kind: choice
+    question: "5 部屋の会議室の登録・変更を、画面の機能として作るか"
+    options:
+      - label: 初期データとして投入し、画面は作らない
+        impact: "UC は増えない。部屋の増減はデータの投入で行う"
+      - label: 管理者が会議室を登録・変更する UC を足す
+        impact: "管理者のアクターと UC が増える"
+    recommended: 初期データとして投入し、画面は作らない
+    reason: "要望に会議室の管理の話が無く、部屋数は 5 部屋で固定に近い"
+  - id: time-slot-unit
+    kind: choice
+    question: "予約の時間帯をどの刻みで指定するか"
+    options:
+      - label: 15 分刻み
+        impact: "細かく取れるが、選択肢が増える"
+      - label: 30 分刻み
+        impact: "一般的な会議の長さを表せる"
+      - label: 1 時間刻み
+        impact: "短い打ち合わせでも 1 時間ふさがる"
+    recommended: 30 分刻み
+    reason: "社内の会議の長さとして扱いやすく、空き状況の表示も見やすい"
+  - id: booking-range
+    kind: choice
+    question: "過去の日時への予約と、利用できる時間帯 (営業時間) の制限をどうするか"
+    options:
+      - label: "過去の日時は予約できない。時間帯の制限は設けない"
+        impact: "要望に無い制限を足さず、明らかな誤りだけ防ぐ"
+      - label: "過去の日時は予約できない。営業時間内だけ予約できる"
+        impact: "営業時間の値を決める必要がある"
+      - label: 制限を設けない
+        impact: "過去の日時の予約が残る"
+    recommended: "過去の日時は予約できない。時間帯の制限は設けない"
+    reason: "過去の予約は意味が無く、営業時間は要望に手掛かりが無い"
+  - id: cancel-deadline
+    kind: choice
+    question: "予約を取り消せるのはいつまでか"
+    options:
+      - label: 開始時刻より前まで
+        impact: "利用中・利用後の予約は取り消せない (今の受入基準はこの案で書いてある)"
+      - label: 終了時刻より前まで
+        impact: "早く終わった会議の残り時間を空けられる。途中で取り消したときの扱いが要る"
+      - label: いつでも
+        impact: "過去の予約も取り消せ、利用の記録が残らない"
+    recommended: 開始時刻より前まで
+    reason: "取り消しの目的は使わない時間帯を空けることで、開始後の取り消しは要望に無い"
+  - id: show-booker
+    kind: choice
+    question: "空き状況の画面で、予約済みの時間帯に予約者の名前を出すか"
+    options:
+      - label: 予約済みとだけ表示する
+        impact: "要望どおりの最小限の表示"
+      - label: 予約者の名前も表示する
+        impact: "誰が使うか分かり、譲り合いの相談ができる。表示する情報が増える"
+    recommended: 予約済みとだけ表示する
+    reason: "要望は空いているかを分かりやすくすることで、予約者の表示は求められていない"
+upstream_issues: []
+decisions:
+  - id: D1
+    topic: システム名
+    choice: 会議室予約システム
+    reason: "要望の 1 行目「社内の会議室を予約する仕組み」から"
+  - id: D2
+    topic: 時間帯の重なりの判定
+    choice: "開始を含み終了を含まない区間で比べ、10:00-11:00 と 11:00-12:00 は重ならないとする"
+    reason: "連続した予約を許さないと、会議の入れ替わりで予約できなくなる"
+  - id: D3
+    topic: 同時に予約されたときの扱い
+    choice: "同じ会議室・同じ時間帯の同時の予約は 1 件だけ成立させる"
+    reason: "要望の「二重に予約できないこと」は同時の操作でも守る必要がある"
+  - id: D4
+    topic: 時間帯の正しさ
+    choice: "開始時刻が終了時刻より前でない予約は受け付けない"
+    reason: "時間帯として成り立たない入力を防ぐ最小限の検査"
+  - id: D5
+    topic: 取り消す予約を選ぶ入口
+    choice: "UC「自分の予約一覧を確認する」を予約を取り消す業務の中に足した"
+    reason: "要望は取り消しだけを書いているが、自分の予約を見つける手段が無いと取り消せない"
+  - id: D6
+    topic: 取り消せる時期
+    choice: "開始時刻より前の予約だけ取り消せるとして受入基準を仮置きした"
+    reason: "要望に記載が無い。問い cancel-deadline の推奨と同じ。人の回答で変わりうる"
+  - id: D7
+    topic: 要望に無い機能
+    choice: "会議室の登録画面、管理者、通知、承認、外部システムの連携は作らない"
+    reason: "要望に記載が無い。会議室の扱いは問い room-master で確認する"
+  - id: D8
+    topic: 仕様の分け方
+    choice: "予約の仕様を「予約の成立」と「二重予約の防止」に、取り消しの仕様を「自分の予約一覧」と「取り消し」に分け、各 UC の対応する仕様を 1 対 1 に絞った"
+    reason: "1 つの仕様を 1 つの UC で確かめられるようにするため。他の UC の振る舞いを受入基準に入れていない"
+  - id: D9
+    topic: RDRA の一時ディレクトリの置き場
+    choice: "手順書の 0_RDRAZeroOne と 1_RDRA をリポのルートではなく docs/requirements/_build/ の下に作り、配置後に消した"
+    reason: "書き込み範囲を docs/requirements/** に収めるため"
+  - id: D11
+    topic: 時刻の刻みと過去の予約
+    choice: "予約の時刻は 30 分刻み、現在より前の時間帯は予約できないとして、会議室を予約する受入基準に仮置きした"
+    reason: "要望に記載が無い。問い time-slot-unit と booking-range の推奨と同じ。人の回答で変わりうる"
+  - id: D10
+    topic: UC の英名
+    choice: "view-room-availability / reserve-room / list-my-reservations / cancel-reservation"
+    reason: "UC の名前をそのまま英語の kebab-case にした"

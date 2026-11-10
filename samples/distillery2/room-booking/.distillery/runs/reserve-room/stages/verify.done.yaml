@@ -1,0 +1,22 @@
+stage: verify
+completed_at: "2026-11-10T06:10:20.766Z"
+attempt: 2
+blockers: 0
+tiers:
+  frontend:
+    major: 1
+    minor: 10
+  backend-api:
+    major: 3
+    minor: 8
+reviews:
+  implementation-frontend:
+    status: reviewed
+    findings: 2
+    fixed: 1
+    refuted: 1
+  implementation-backend-api:
+    status: reviewed
+    findings: 0
+reverified:
+  - frontend

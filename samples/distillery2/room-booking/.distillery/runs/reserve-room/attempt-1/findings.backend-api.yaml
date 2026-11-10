@@ -1,0 +1,220 @@
+schema_version: "2.2"
+uc: "reserve-room"
+tier: "backend-api"
+attempt: 1
+verified_at: "2026-11-10T14:30:00+09:00"
+gates_read:
+  static: pass
+  unit: pass
+  contract: pass
+  uc-bdd: pass
+  acceptance: pass
+viewpoints_checked:
+  uc_intent:
+    status: done
+    note: "gates.json は all_recorded true・5 段すべて pass (2026-11-10T05:02 の実行)。uc-bdd.json は 28 シナリオ 224 step がすべて passed、acceptance-api.json は 20 シナリオ 160 step がすべて passed で pending / skipped は無い。unit.backend-api.json は 136/136、contract.backend-api.json は 28/28 pass。受入基準タグは SPEC-002-01 の 9 件・SPEC-002-02 の 5 件・SPEC-002-03 の 6 件をすべて覆う (requirements.yaml の acceptance_criteria の件数と一致)。トレースは 28 本で、成立の経路は 送り直しの検索 → 会議室の検索 → 3 表を 1 文で書く INSERT、送り直しの経路は 送り直しの検索だけで 200 (書き込み無し)、過去の時間帯は 送り直しの検索の後に 422、時間帯の形の誤りは DB に触れず 422、重なりは INSERT の主キー違反で 409 になっており、契約 reserveRoom の説明の検証順 (1)〜(7) と ADR 0022 の処理順に一致する。step は 3 表の件数・予約者・イベントの行為者・状態を DB で確かめており、空の step や常に真の assert は見当たらない。repository のテストは pglite の実体 DB を使う。他 UC への波及: 共有の候補 (businessError.ts・httpApp.ts・problem.ts・timeRangeRequest.ts) と import 元を辿ると、空き状況の照会 (viewRoomAvailability) が businessError・timeRange・problem・timeRangeRequest を使う。businessError は resume の差分で型の追加だけ、problem は予約のコードの追加で照会が返す INVALID_TIME_RANGE / NOT_ON_30_MINUTES の status・title・detail の経路は変わらず、httpApp の照会のハンドラ (認証 → 本文の形 400 → usecase → 業務のエラー) と timeRangeRequest の判定も照会のシナリオ (view-room-availability.feature) の期待する振る舞いを保っている。git の差分は読めない制約のため現状のコードとシナリオの突き合わせで判断した。該当なし"
+  assumption_conformance:
+    status: done
+assumptions_sha256: "d63c20a766501d0c4f4d5585b15cb65aecbeb564eb2da8b9a9822c13b7d71327"
+assumption_verdicts:
+  - id: A-001
+    tier: backend-api
+    assumption: "予約の今の状態・「予約した」イベント・30 分枠の占有を、データを変える WITH 句をつないだ 1 つの INSERT の文で書き、文ごとに全部書けるか何も書かないかにする (BEGIN/COMMIT を別の要求で送らない)"
+    target: "apps/backend-api/src/repository/reservationRepository.ts:99"
+    category: persistence
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-001
+    evidence: "docs/rules/tier-backend.md の ADR 0003・0004 と契約 reserveRoom の説明は「同じトランザクションで書く」ことだけを決め、トランザクションの作り方は決めていない"
+  - id: A-002
+    tier: backend-api
+    assumption: "予約の前にアプリで重なる予約を読んで確かめることはせず、30 分枠の占有の主キー (room_slot_occupancies_pkey) の違反 (SQLSTATE 23505) だけを repository が 'overlaps' の値で返す。ほかの一意制約の違反 (予約 ID の重複など) は重なりにせず、システムのエラーのまま投げる"
+    target: "apps/backend-api/src/repository/reservationRepository.ts:140"
+    category: persistence
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-002
+    evidence: "ADR 0003 は事前の確認だけに頼らず最後の砦を DB の一意制約にすること、ADR 0023 は一意制約の違反を repository が値で返すことを決めるが、事前の確認を省くことと、制約の名前で占有の違反を見分けることは決めていない"
+  - id: A-003
+    tier: backend-api
+    assumption: "予約の応答の startAt・endAt を Asia/Tokyo の時差付きの RFC 3339 (例 2099-11-10T10:00:00+09:00) で返す。時差は固定の +09:00 でなく Intl のタイムゾーンの表から求める"
+    target: "apps/backend-api/src/presentation/businessDateTime.ts:22"
+    category: data_format
+    verified_category: data_format
+    verdict: consistent
+    finding_id: F-003
+    evidence: "契約の info に「日時は時差付きの RFC 3339 で受け渡し、日付と 30 分刻みの判定は業務のタイムゾーン (Asia/Tokyo) で行う」、DateTime の例が +09:00、200 の例 resent / resent_after_start は x-test-requests の expect に startAt を持ち +09:00 の表記を契約テストで確かめる。ADR 0003 が業務のタイムゾーンを Asia/Tokyo に決めている"
+  - id: A-004
+    tier: backend-api
+    assumption: "予約 ID とイベント ID を composition root が node:crypto の randomUUID (uuid v4) で採番し、usecase と repository に採番の関数として渡す"
+    target: "apps/backend-api/src/app.ts:58"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-004
+    evidence: "契約 ReservationId は format uuid だけで版を決めていない。rdb-slice の reservations.reservation_id・reservation_events.event_id に既定値の定めが無い。注入できる形にすることは ADR 0013 と固定指示の範囲"
+  - id: A-005
+    tier: backend-api
+    assumption: "PAST_TIME_SLOT・ROOM_NOT_FOUND・SLOT_OVERLAPS の Problem に、利用者が直せる言葉の detail (例 この会議室のこの時間帯は予約済みです。別の時間帯か別の会議室を指定してください) を付ける。title は契約の例のとおり"
+    target: "apps/backend-api/src/presentation/problem.ts:45"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-005
+    evidence: "ADR 0023 は Problem の type・title・detail・code に変えること、common.md の推奨は利用者が直せる言葉で返すことを決めるが、detail の文言は契約の例にも要求にも無い (problem.ts:45-49 の 3 文は実装者の文)"
+  - id: A-006
+    tier: backend-api
+    assumption: "本文の roomId が文字列でない・長さが 1〜64 に収まらないときは、会議室を探さずに 400 VALIDATION_ERROR を返す (404 ROOM_NOT_FOUND にしない)"
+    target: "apps/backend-api/src/presentation/reserveRoomRequest.ts:30"
+    category: input_validation
+    verified_category: input_validation
+    verdict: consistent
+    finding_id: F-006
+    evidence: "契約 RoomId は type string・minLength 1・maxLength 64。契約 reserveRoom の説明は検証を (1) 要求の形 (400 VALIDATION_ERROR) から始め (6) 会議室がある (404) より先に行うと決め、ADR 0023 は要求の形の誤りを契約の検証で 400 にすると決めている"
+  - id: A-007
+    tier: backend-api
+    assumption: "テスト用データの「予約した」イベントは、room-a-reserved-in-2099-by-employee-a (予約 ID …000b) をイベント ID …00e2・起きた時刻 2026-11-05T09:00:00+09:00、room-a-reserved-in-2020-by-employee-a (予約 ID …000c) をイベント ID …00e3・起きた時刻 2020-01-09T09:00:00+09:00 (開始より前) で入れ、記録した時刻はどちらも DB の既定値にする"
+    target: "apps/backend-api/src/test-app.ts:70"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-007
+    evidence: "契約の fixtures の説明は予約 ID・会議室・時間帯・社員・3 表をそろえることを決め、イベントの ID と起きた時刻は決めていない。記録した時刻を DB の既定値にするのは rdb-slice の recorded_at の説明どおり"
+  - id: A-008
+    tier: backend-api
+    assumption: "送り直しの検索は、予約の今の状態の表 (reservations) を、予約者・会議室 ID・開始・終了 (timestamptz の等値) がすべて一致し状態が予約済み (reserved) の行で 1 件探し、会議室の表と結んで会議室名を付けて返す。占有の表やイベントの表は見ない。成立済みの予約の予約 ID・日時は DB の行のまま返す"
+    target: "apps/backend-api/src/repository/reservationRepository.ts:51"
+    category: persistence
+    verified_category: persistence
+    verdict: consistent
+    finding_id: F-008
+    evidence: "ADR 0022 と契約 reserveRoom (4a) は「トークンの sub の社員に会議室・開始・終了がすべて同じ予約済みの予約」を探し成立済みの予約を返すと決め、rdb-slice の reservations の説明は「照会・一覧はこの表を読む」と決めている。Reservation の応答に roomName が必須なので会議室の表と結ぶのも契約から導ける"
+  - id: A-009
+    tier: backend-api
+    assumption: "同じ社員の同じ内容の要求が同時に届き、どちらも送り直しの検索で見つからずに書き込みに進んだ場合、負けた側は占有の主キーの違反で 409 SLOT_OVERLAPS になる。書き込みが重なりで失敗した後に送り直しの検索をやり直して 200 にすることはしない"
+    target: "apps/backend-api/src/usecase/reserveRoom.ts:148"
+    category: error_handling
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-009
+    evidence: "SPEC-002-03 は「応答が届いたかどうかに関わらず」同じ内容の送り直しに成立済みの予約を示すと決め、SPEC-002-02 と契約は同時の予約で負けた側を 409 にすると決めるが、同じ社員の同じ内容が同時に届いた場合はどちらにも書かれていない"
+  - id: A-010
+    tier: backend-api
+    assumption: "送り直しで成立済みの予約を返したときは、usecase が info で「送り直しのため成立済みの予約を返した」を、相関 ID・ハンドラ名・社員 ID・予約 ID・会議室 ID・開始・終了付きで 1 行出す (「予約した」のログは出さない)"
+    target: "apps/backend-api/src/usecase/reserveRoom.ts:129"
+    category: security
+    verified_category: security
+    verdict: spec_absent
+    finding_id: F-011
+    evidence: "ADR 0011 は usecase が出す業務のイベントを予約した・取り消したと業務のエラーに決め、送り直しの扱いは決めていない。ログの項目は ADR 0011 の必須項目 (相関 ID・ハンドラ・社員 ID) と「予約した」のログと同じで、common.md の秘密と本文全体を出さない規則に反する項目は無い"
+assumption_verdicts_summary:
+  consistent: 3
+  spec_absent: 7
+  contradicts: 0
+  unlisted: 0
+findings:
+  - id: F-001
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-001
+    severity: major
+    title: "3 表を 1 つの SQL 文で書く"
+    target: "apps/backend-api/src/repository/reservationRepository.ts:99"
+    claim: "同じトランザクションの作り方 (WITH 句をつないだ 1 文) は仕様に無い実装者の判断。保存の前提なので人の回答が要る"
+    evidence: "docs/rules/tier-backend.md ADR 0003・0004; contract-slice.json reserveRoom.description「同じトランザクションで書き」; トレースの成立の経路は INSERT が 1 回だけ (例 traces/reserve-room#-1eb52b68.jsonl の WITH inserted AS ...)"
+  - id: F-002
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-002
+    severity: major
+    title: "重なりは主キー違反だけで判定"
+    target: "apps/backend-api/src/repository/reservationRepository.ts:140"
+    claim: "アプリでの事前の重なりの確認を置かず、占有の主キーの名前 (PostgreSQL の既定名 room_slot_occupancies_pkey) で重なりを見分ける判断は仕様に無い。保存の前提なので人の回答が要る"
+    evidence: "docs/rules/tier-backend.md ADR 0003「最後の砦は DB の一意制約」・ADR 0023; reservationRepository.ts:32 は DDL の生成物が主キーに名前を付けない前提で既定名を組み立てている; 重なりのトレース (例 既存の予約と時間帯が一部重なる予約はできない) は INSERT が error の後に 409"
+  - id: F-003
+    viewpoint: assumption_conformance
+    kind: restatement
+    assumption_id: A-003
+    severity: minor
+    title: "応答の時差表記は契約に明示"
+    target: "apps/backend-api/src/presentation/businessDateTime.ts:22"
+    claim: "応答の日時を +09:00 の時差付きで返すことは契約の例と契約テストの expect で決まっており、前提ではなく復唱"
+    evidence: "contract-slice.json info.description・components.schemas.DateTime・reserveRoom x-test-requests.resent.expect に startAt"
+  - id: F-004
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-004
+    severity: minor
+    title: "ID は uuid v4 をアプリで採番"
+    target: "apps/backend-api/src/app.ts:58"
+    claim: "uuid の版と採番の場所 (アプリ側) は契約に無い実装者の判断"
+    evidence: "contract-slice.json components.schemas.ReservationId は format uuid のみ; rdb-slice.yaml の reservation_id・event_id に既定値の定め無し"
+  - id: F-005
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-005
+    severity: minor
+    title: "エラーの detail の文言は実装者の文"
+    target: "apps/backend-api/src/presentation/problem.ts:45"
+    claim: "detail の文言は契約・要求に無い。title は契約の例と一致している"
+    evidence: "problem.ts:15-21 の title は contract-slice.json の 404/409/422 の例の title と一致; detail の文 (problem.ts:46-48) の出典は無い; common.md 推奨「利用者が直せる言葉」"
+  - id: F-006
+    viewpoint: assumption_conformance
+    kind: restatement
+    assumption_id: A-006
+    severity: minor
+    title: "会議室 ID の形の誤り 400 は契約に明示"
+    target: "apps/backend-api/src/presentation/reserveRoomRequest.ts:30"
+    claim: "長さの外れた roomId を 400 にするのは契約のスキーマと検証の順から決まり、前提ではなく復唱"
+    evidence: "contract-slice.json components.schemas.RoomId (minLength 1・maxLength 64)・reserveRoom.description の (1) と (6) の順; tier-backend.md ADR 0023「要求の形の誤りは契約の検証で 400」"
+  - id: F-007
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-007
+    severity: minor
+    title: "テスト用イベントの ID と時刻"
+    target: "apps/backend-api/src/test-app.ts:70"
+    claim: "契約テスト用データのイベント ID と起きた時刻は fixtures の説明に無い実装者の決め。業務の振る舞いには効かない"
+    evidence: "contract-slice.json fixtures の 2 件の説明に event_id・occurred_at の定め無し"
+  - id: F-008
+    viewpoint: assumption_conformance
+    kind: restatement
+    assumption_id: A-008
+    severity: minor
+    title: "送り直しの検索は契約と ADR に明示"
+    target: "apps/backend-api/src/repository/reservationRepository.ts:51"
+    claim: "本人・会議室・開始・終了の一致と予約済みの状態で今の状態の表を探すことは ADR 0022・契約 (4a)・rdb-slice で決まっており、前提ではなく復唱"
+    evidence: "tier-backend.md ADR 0022; contract-slice.json reserveRoom.description (4a); rdb-slice.yaml reservations.description「照会・一覧はこの表を読む」; 送り直しのトレース (例 自分の予約と同じ内容で送り直すと...) は SELECT 1 回の後に 200 で書き込み無し"
+  - id: F-009
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-009
+    severity: major
+    title: "同じ社員の同時二重送信は 409"
+    target: "apps/backend-api/src/usecase/reserveRoom.ts:148"
+    claim: "同じ社員が同じ内容を同時に送ると、負けた側は送り直しの扱い (200) でなく 409 になる。SPEC-002-03 の「応答が届いたかどうかに関わらず」との兼ね合いは仕様に無く、送り直しの冪等さの前提なので人の回答が要る"
+    evidence: "requirements.yaml SPEC-002-03 specification; SPEC-002-02 受入基準 5 (社員Aと社員B の同時の予約); contract-slice.json reserveRoom.description「同時に予約されても成立するのは 1 件だけで、負けた側は ... SLOT_OVERLAPS の 409」; reserveRoom.ts:115-148 は送り直しの検索を 1 回だけ行う"
+  - id: F-010
+    viewpoint: assumption_conformance
+    kind: category_mismatch
+    assumption_id: A-009
+    severity: minor
+    title: "A-009 の分類は persistence"
+    target: "apps/backend-api/src/usecase/reserveRoom.ts:148"
+    claim: "実装者は error_handling に分類したが、同じ内容の再送で予約を 1 件に保つ冪等さの扱いなので persistence と判定した"
+    evidence: "assumption-record.md のカテゴリ表で persistence の典型例に「冪等キー」; ADR 0022 は送り直しを冪等キーの代わりの仕組みとして決めている"
+  - id: F-011
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-010
+    severity: major
+    title: "送り直しを業務のログに出す"
+    target: "apps/backend-api/src/usecase/reserveRoom.ts:129"
+    claim: "送り直しの発生を info の業務のログに出すことは ADR 0011 に無い実装者の判断。社員 ID を載せるログなので security の前提として人の回答が要る"
+    evidence: "tier-backend.md ADR 0011 (業務のイベントは予約した・取り消した); reserveRoom.ts:121-130; common.md ADR 0011「秘密と本文全体をログに出さない」に反する項目は無い"
+summary:
+  blocker: 0
+  major: 4
+  minor: 7
+asks: []
+upstream_issues: []

@@ -1,0 +1,32 @@
+schema_version: distillery2.handoff/v1
+step: requirements
+asks: []
+upstream_issues:
+  - id: slot-overlaps-layer
+    target_step: decide
+    title: "重なりの業務エラーを作る層がルールと違う"
+    detail: "ADR 0010 と開発ルール (tier-backend.md:77) は、占有の表の一意制約の違反を repository で SLOT_OVERLAPS の業務のエラーに変えると書く。実装は repository が 'overlaps' の値を返し、usecase が SLOT_OVERLAPS を作る。要求 (受入基準) はどちらの形でも満たされるので、要求では直せない。usecase は事前の重なりの判定でも SLOT_OVERLAPS を作るため、業務のエラーを作る場所を usecase の 1 か所に揃える方が筋がよい"
+    evidence: "docs/rules/tier-backend.md:77 / docs/adr/0010-error-handling.md:23 / apps/backend-api/src/repository/reservationRepository.ts:132 / apps/backend-api/src/usecase/reserveRoom.ts:148 (as-built の課題 docs/feedback/20261110T024931Z_asbuilt_reserve-room.md)"
+    recommended_fix: "ADR 0010 を改める ADR を 1 本足し、ルールを「占有の表の一意制約の違反は repository が重なりとして値で返し、usecase が SLOT_OVERLAPS の業務のエラーに変える。システムのエラーとして扱わない」に直す (実装はそのまま)"
+refutations: []
+decisions:
+  - id: D1
+    topic: "SLOT_OVERLAPS を usecase が作る課題の扱い"
+    choice: "要求を変えず、戻し先を決定 (decide) にした前のステップの問題として返す"
+    reason: "開発ルール (ADR 0010) と実装の食い違いで、受入基準はどちらの実装でも満たされる。層の規則 (ADR 0013) は repository から domain への依存を許すのでどちらも可能だが、業務のエラーを作る場所を usecase に揃えるルール改訂を推奨する"
+  - id: D2
+    topic: "予約の必須の項目が未入力のときの画面の振る舞い"
+    choice: "会議室・日付・開始時刻・終了時刻のどれかが未入力なら、画面で予約を送らずに止め、未入力の項目ごとに入力を促す。SPEC-002-01 に仕様の文と受入基準 2 件を足した"
+    reason: "ADR 0010 では必須の欠けは契約の検証で 400 になり業務のエラーのコードを持たないため、今のまま送ると社員に何を直せばよいかが伝わらない"
+  - id: D3
+    topic: "画面で先回りする検査の範囲"
+    choice: "画面で止めるのは未入力だけにし、時間帯の正しさ・30 分刻み・過去・重なりは予約を受け付ける側の判定に任せたままにする"
+    reason: "業務の判定を 1 か所に保ち、画面と API で判定が食い違うのを防ぐ"
+  - id: D4
+    topic: "空き状況の照会の画面の未入力"
+    choice: "今回は変えない (SPEC-001-01 は触らない)"
+    reason: "課題は予約の画面だけを対象にしており、照会の UC は別の機能として完了している"
+  - id: D5
+    topic: "RDRA の条件への反映"
+    choice: "条件「予約時刻の妥当性」に、未入力の予約は画面で止めてこの判定に進まないことを書き足した"
+    reason: "未入力の扱いを予約の条件の説明から辿れるようにする"

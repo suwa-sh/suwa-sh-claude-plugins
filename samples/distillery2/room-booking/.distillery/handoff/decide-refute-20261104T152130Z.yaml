@@ -1,0 +1,38 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: spreadsheet-cutover-check
+    kind: choice
+    question: "表計算ファイルから新しいシステムへ切り替えるとき、先の予約が新しいシステムにすべて予約し直されたことを確かめてから使い始めるか"
+    options:
+      - label: "確かめる (切り替え前に表計算ファイルを更新禁止にし、先の予約を新しいシステムと照合してから使い始める)"
+        impact: "切り替えの日に照合の手間が要る。移行の道具は作らない。非機能グレード表の移行判定基準 (D.5.1.2) を差分で引き上げる"
+      - label: "確かめない (今の決定のまま、社員の予約し直しに任せる)"
+        impact: "予約し直されていない予約の時間帯が空きと表示され、別の社員が予約して二重予約になりうる"
+    recommended: "確かめる (切り替え前に表計算ファイルを更新禁止にし、先の予約を新しいシステムと照合してから使い始める)"
+    reason: "原要望の目的は二重予約の解消で、切り替えの日に二重予約が起きると目的に反する。会議室 5 部屋・数十人なら照合は手で済み、道具を作るより安い"
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: refuted
+    reason: "ブラウザで受入を回さない決定は人の確認を経て記録済み (.distillery/decisions.jsonl の handoff:decide:browser-acceptance)。受入基準は画面の操作順でなく業務の結果を問い、API と画面の入口関数で判定できる (docs/adr/0007-testing-strategy.md 35・47 行)。つなぎ違いが受入で見つからない影響は ADR 0007 の 54 行に明記し、画面の入口関数と Storybook で補う。変えるにはテストの実行環境 (capabilities.browser) を作り直す必要があり、決定の差分の範囲外 (基盤の段)。今回の課題 (要約の追記漏れ) とも関わらない"
+    change: "要約の確認事項 5 に、つなぎ違いが受入で見つからないことと、変えるなら基盤の段に戻ることを書き足した (人が判断できるように)"
+  - finding: "指摘 2"
+    result: needs_info
+    reason: "予約し直す案は推奨で採った仮置き (decisions.jsonl の handoff:decide:spreadsheet-migration、グレード表 D.4.1.2 の確信度は低)。予約し直しが済んだことを確かめる基準が無く、二重予約が起きうるという指摘は正しい。確かめる手順を足すかは運用の判断なので人に返す (asks の spreadsheet-cutover-check)。今回の課題 (要約の追記漏れ) の範囲ではグレード表のレベルを変えない"
+  - finding: "below-threshold (ADR 0007 の受入基準 19 件)"
+    result: refuted
+    reason: "ADR 0007 の背景は書いた時点の記録で、既存の ADR は status と superseded_by 以外変えない決まり (d2-decide mode=feedback 手順 5)。受入基準の全件をタグで網羅するルールが別にあり、件数の差で決定は変わらない"
+decisions:
+  - id: D1
+    topic: "新しい ADR を書くか"
+    choice: "書かない"
+    reason: "課題は確認用要約の追記漏れで、rules[] で表せる穴ではない。レビューの指摘 2 件も既存の決定への異論で、今回の課題の範囲ではない"
+  - id: D2
+    topic: "指摘 1 (ブラウザで受入を回さない) の扱い"
+    choice: "反証し、要約の確認事項 5 に影響と戻し先を書き足すだけにした"
+    reason: "決定は記録済みで、変えるにはテストの実行環境の作り直し (基盤の段) が要る"
+  - id: D3
+    topic: "指摘 2 (表計算ファイルの予約の切り替え) の扱い"
+    choice: "人に返し (asks)、要約の確認事項 3 に危険と確かめ方を書き足した。グレード表は変えない"
+    reason: "二重予約の危険は事実だが、切り替えの手順を足すかは運用の判断。人の答えが出たら差分でグレード表の D.5.1.2 を直す"

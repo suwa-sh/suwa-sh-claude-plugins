@@ -1,0 +1,49 @@
+{
+  "name": "workspace-root",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "lint": "echo \"run per-workspace lint via -w\"",
+    "typecheck": "echo \"run per-workspace typecheck via -w\"",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "bdd": "cucumber-js",
+    "check": "node scripts/check.mjs --mode ci",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "test:frontend": "npm run test -w apps/frontend",
+    "lint:frontend": "npm run lint -w apps/frontend",
+    "typecheck:frontend": "npm run typecheck -w apps/frontend",
+    "test:contract:frontend": "npm run test:contract -w apps/frontend",
+    "test:backend-api": "npm run test -w apps/backend-api",
+    "lint:backend-api": "npm run lint -w apps/backend-api",
+    "typecheck:backend-api": "npm run typecheck -w apps/backend-api",
+    "test:contract:backend-api": "npm run test:contract -w apps/backend-api"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.2.5",
+    "@cucumber/cucumber": "^13.2.1",
+    "@electric-sql/pglite": "^0.5.8",
+    "@redocly/cli": "^2.4.0",
+    "@apidevtools/json-schema-ref-parser": "^15.1.0",
+    "dependency-cruiser": "^18.4.0",
+    "vitest": "^4.1.11",
+    "supertest": "^7.3.0",
+    "@types/supertest": "^7.2.1",
+    "@playwright/test": "^1.63.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "@types/node": "^26.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "jsdom": "^25.0.0"
+  }
+}

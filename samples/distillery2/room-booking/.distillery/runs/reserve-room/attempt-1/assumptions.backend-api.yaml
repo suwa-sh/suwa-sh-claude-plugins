@@ -1,0 +1,115 @@
+schema_version: "2.1"
+uc: "reserve-room"
+tier: "backend-api"
+attempt: 1
+extraction:
+  candidate_count: 18
+  excluded_as_explicit: 8
+  recorded_count: 10
+assumptions:
+  - id: A-001
+    category: persistence
+    title: "予約の 3 表を 1 つの SQL の文で書く"
+    assumption: "予約の今の状態・「予約した」イベント・30 分枠の占有を、データを変える WITH 句をつないだ 1 つの INSERT の文で書き、文ごとに全部書けるか何も書かないかにする (BEGIN/COMMIT を別の要求で送らない)"
+    target: "apps/backend-api/src/repository/reservationRepository.ts:99"
+    reason: "ADR 0003・0004 は同じトランザクションで書くことだけを決め、方式を決めていない。SqlClient は query だけの口で、本番の pg.Pool は要求ごとに別の接続に行きうるため、BEGIN/COMMIT を分けて送ると同じトランザクションにならない。1 文なら pg と pglite のどちらでも原子的になり、SqlClient の形を変えずに済む"
+    confidence: high
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0003"
+      - "docs/rules/tier-backend.md#ADR 0004"
+      - "contracts/generated/slices/reserve-room/rdb-slice.yaml#room_slot_occupancies"
+  - id: A-002
+    category: persistence
+    title: "重なりは占有の主キーの違反だけで判定"
+    assumption: "予約の前にアプリで重なる予約を読んで確かめることはせず、30 分枠の占有の主キー (room_slot_occupancies_pkey) の違反 (SQLSTATE 23505) だけを repository が 'overlaps' の値で返す。ほかの一意制約の違反 (予約 ID の重複など) は重なりにせず、システムのエラーのまま投げる"
+    target: "apps/backend-api/src/repository/reservationRepository.ts:140"
+    reason: "ADR 0023 は占有の表の一意制約の違反を repository が重なりの値で返し usecase が SLOT_OVERLAPS にすることを決め、ADR 0003 は事前の確認だけに頼らないことを決めるが、事前の確認を足すかと、占有の表以外の一意制約の違反をどう扱うかは決めていない。枠は 30 分刻みで、予約済みの予約は必ず枠を占め、取り消しで枠を消すので、主キーの違反と半開区間の重なりが一致する。事前の確認は結果を変えないので足さない。この判定は予約済みの予約が必ず占有の行を持つことに頼るので、テストの前提のデータ (既存の予約) も今の状態・イベント・占有の 3 表をそろえて入れる必要がある"
+    confidence: high
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0003"
+      - "docs/rules/tier-backend.md#ADR 0023"
+      - "contracts/generated/slices/reserve-room/contract-slice.json#reserveRoom.description"
+  - id: A-003
+    category: data_format
+    title: "応答の日時は日本時間の時差付き"
+    assumption: "予約の応答の startAt・endAt を Asia/Tokyo の時差付きの RFC 3339 (例 2099-11-10T10:00:00+09:00) で返す。時差は固定の +09:00 でなく Intl のタイムゾーンの表から求める"
+    target: "apps/backend-api/src/presentation/businessDateTime.ts:22"
+    reason: "契約 DateTime は format date-time だけで時差の表記を決めていない。契約の 201 と 200 の例が +09:00 の表記なのでそれに合わせた"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/reserve-room/contract-slice.json#components.schemas.DateTime"
+      - "contracts/generated/slices/reserve-room/contract-slice.json#reserveRoom.responses.201"
+      - "contracts/generated/slices/reserve-room/contract-slice.json#reserveRoom.responses.200"
+  - id: A-004
+    category: data_format
+    title: "予約 ID とイベント ID は uuid v4 で採番"
+    assumption: "予約 ID とイベント ID を composition root が node:crypto の randomUUID (uuid v4) で採番し、usecase と repository に採番の関数として渡す"
+    target: "apps/backend-api/src/app.ts:58"
+    reason: "契約 ReservationId は format uuid だけで、採番の方式 (版・DB の既定値かアプリか) の定めが無い"
+    confidence: high
+    spec_refs:
+      - "contracts/generated/slices/reserve-room/contract-slice.json#components.schemas.ReservationId"
+      - "contracts/generated/slices/reserve-room/rdb-slice.yaml#reservations.reservation_id"
+  - id: A-005
+    category: error_handling
+    title: "業務のエラーの detail の文言"
+    assumption: "PAST_TIME_SLOT・ROOM_NOT_FOUND・SLOT_OVERLAPS の Problem に、利用者が直せる言葉の detail (例 この会議室のこの時間帯は予約済みです。別の時間帯か別の会議室を指定してください) を付ける。title は契約の例のとおり"
+    target: "apps/backend-api/src/presentation/problem.ts:45"
+    reason: "契約の例は title だけを決め、detail の文言を決めていない。docs/rules/common.md の推奨 (利用者が直せる言葉) に従った"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/reserve-room/contract-slice.json#reserveRoom.responses.404"
+      - "contracts/generated/slices/reserve-room/contract-slice.json#reserveRoom.responses.409"
+      - "contracts/generated/slices/reserve-room/contract-slice.json#reserveRoom.responses.422"
+      - "docs/rules/common.md#推奨"
+  - id: A-006
+    category: input_validation
+    title: "会議室 ID の形の誤りは 400"
+    assumption: "本文の roomId が文字列でない・長さが 1〜64 に収まらないときは、会議室を探さずに 400 VALIDATION_ERROR を返す (404 ROOM_NOT_FOUND にしない)"
+    target: "apps/backend-api/src/presentation/reserveRoomRequest.ts:30"
+    reason: "契約は RoomId の minLength・maxLength と、形の誤りを 400 にすることを決めるが、長さの外れた会議室 ID を形の誤りと無い会議室のどちらとして扱うかは明記していない。契約のスキーマに合わないので形の誤りとした"
+    confidence: medium
+    spec_refs:
+      - "contracts/generated/slices/reserve-room/contract-slice.json#components.schemas.RoomId"
+      - "docs/rules/tier-backend.md#ADR 0023"
+  - id: A-007
+    category: data_format
+    title: "契約テスト用の予約のイベントの時刻"
+    assumption: "テスト用データの「予約した」イベントは、room-a-reserved-in-2099-by-employee-a (予約 ID …000b) をイベント ID …00e2・起きた時刻 2026-11-05T09:00:00+09:00、room-a-reserved-in-2020-by-employee-a (予約 ID …000c) をイベント ID …00e3・起きた時刻 2020-01-09T09:00:00+09:00 (開始より前) で入れ、記録した時刻はどちらも DB の既定値にする"
+    target: "apps/backend-api/src/test-app.ts:70"
+    reason: "契約の fixtures の説明は予約 ID・会議室・時間帯・社員・3 表をそろえることだけを決め、イベントの ID と時刻を決めていない。2020 年の予約は開始より後に予約したことにならないよう、開始の前日を起きた時刻にした"
+    confidence: high
+    spec_refs:
+      - "contracts/generated/slices/reserve-room/contract-slice.json#fixtures"
+  - id: A-008
+    category: persistence
+    title: "送り直しは今の状態の表を完全一致で探す"
+    assumption: "送り直しの検索は、予約の今の状態の表 (reservations) を、予約者・会議室 ID・開始・終了 (timestamptz の等値) がすべて一致し状態が予約済み (reserved) の行で 1 件探し、会議室の表と結んで会議室名を付けて返す。占有の表やイベントの表は見ない。成立済みの予約の予約 ID・日時は DB の行のまま返す"
+    target: "apps/backend-api/src/repository/reservationRepository.ts:51"
+    reason: "ADR 0022 と契約 (4a) は、送った社員の有効な予約に会議室・開始・終了がすべて同じものを探すことだけを決め、どの表をどう読むかを決めていない。今の状態の表が予約済みかどうかの正本なのでそこを読んだ。時間帯は値オブジェクトで 30 分刻みに検証済みのため、時点の等値で比べてよい"
+    confidence: high
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0022"
+      - "contracts/generated/slices/reserve-room/contract-slice.json#reserveRoom.description"
+      - "contracts/generated/slices/reserve-room/rdb-slice.yaml#reservations"
+  - id: A-009
+    category: error_handling
+    title: "同時の同じ内容の二重送信は片方が 409"
+    assumption: "同じ社員の同じ内容の要求が同時に届き、どちらも送り直しの検索で見つからずに書き込みに進んだ場合、負けた側は占有の主キーの違反で 409 SLOT_OVERLAPS になる。書き込みが重なりで失敗した後に送り直しの検索をやり直して 200 にすることはしない"
+    target: "apps/backend-api/src/usecase/reserveRoom.ts:148"
+    reason: "ADR 0022 は判定の順 (送り直しの検索を集約の作成と重なりの判定より先) を決め、契約と ADR 0023 は同時の予約の負けた側が占有の主キーの違反を SLOT_OVERLAPS の 409 で受けると書くが、同じ社員の同じ内容が同時に来た場合を明記していない。契約の同時の予約の文に合わせ、判定の順を ADR のとおり 1 回だけにした。画面は送信中のボタンを押せなくするので起きにくい"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0022"
+      - "docs/rules/tier-backend.md#ADR 0023"
+      - "contracts/generated/slices/reserve-room/contract-slice.json#reserveRoom.description"
+  - id: A-010
+    category: security
+    title: "送り直しを業務のログに info で出す"
+    assumption: "送り直しで成立済みの予約を返したときは、usecase が info で「送り直しのため成立済みの予約を返した」を、相関 ID・ハンドラ名・社員 ID・予約 ID・会議室 ID・開始・終了付きで 1 行出す (「予約した」のログは出さない)"
+    target: "apps/backend-api/src/usecase/reserveRoom.ts:129"
+    reason: "ADR 0011 は usecase が出す業務のイベントを「予約した・取り消した」と業務のエラーで成立しなかったことに決めるが、送り直しの扱いを決めていない。新しい予約は成立していないので「予約した」とは分け、送り直しの発生を後から追えるようにした。ログに載せるのは「予約した」のログと同じ項目だけにした"
+    confidence: medium
+    spec_refs:
+      - "docs/rules/tier-backend.md#ADR 0011"
+      - "docs/rules/tier-backend.md#ADR 0022"

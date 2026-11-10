@@ -1,0 +1,20 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: frontend-token-approach
+    kind: choice
+    question: "画面がトークンを得て API に付ける方式をどう決めるか (OIDC クライアントの依存を足すかどうか)"
+    options:
+      - label: "依存を足す (ティア構成を差し替えて基盤で入れ直す)"
+        impact: "ティア構成 ADR 0001 を新しい ADR 0014 で置き換え、frontend の packages に oidc-client-ts を足し、frontend のルール (下の reason の 1〜4) を同じ ADR に持たせる。ADR の差し替えと基盤の依存の入れ直し (F7) の両方が要る"
+      - label: "依存を足さない (決定の差分だけで閉じる)"
+        impact: "認可コード + PKCE をブラウザ標準の Web Crypto と fetch で自前で書くと ADR に決める。ルールだけで足り基盤の作り直しは要らないが、認証の実装を自前で持ち保守と安全性の負担が増える"
+    recommended: "依存を足す (ティア構成を差し替えて基盤で入れ直す)"
+    reason: "認証のフローは実績のある部品に任せるほうが安全。決める中身の案は次のとおり。(1) OIDC クライアントは oidc-client-ts、認可コード + PKCE のリダイレクトで認証基盤へ送る (ログイン画面は作らない) (2) トークンの取得と Authorization ヘッダの付与は apps/frontend/src/api/ のトークンの供給元のインターフェイス 1 か所に置き、生成クライアントの options.fetch を包んで付ける。画面の入口関数は供給元を引数で受け取る。単体・UC BDD・受入では供給元を差し替え、契約の x-test-headers と同じ test-employee-a / test-employee-b を返して社員を切り替える (3) 401 (UNAUTHENTICATED) を受けたら供給元のサインインを呼び認証基盤へ戻す (4) 画面に出す社員の表示名は ID トークンの name クレームから取る。ADR 0001 の 4 つの rules (level: tier の 2 本の arch_test を含む) と tiers・datastore_owner は新しい ADR にそのまま写す"
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "課題を決定の差分で閉じられるか"
+    choice: "blocked (reason_kind: scope) とし、ADR を書かない"
+    reason: "推奨の直し方が frontend の packages を変えるティア構成の変更を含み、決定の差分の後に基盤の依存の入れ直しが回らない"

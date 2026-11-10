@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations:
+  - finding: 指摘 1
+    result: accepted
+    reason: SPEC-002-03 は「送り直しの判定は過去の時間帯の判定より先に行う」と明記し受入基準 5 (開始後の送り直し) もあるが、ADR 0022 の決定と rules に順序が無く、ADR 0017 は PAST_TIME_SLOT を集約の作成に置くため、作成の後に送り直しを探す実装が許されていた
+    change: ADR 0022 に backend の rule を 1 本足し (時間帯の値オブジェクトの検証 → 同じ有効予約の検索 → あれば PAST_TIME_SLOT・SLOT_OVERLAPS・新規作成をせず返す → 無ければ集約の作成と重なりの判定)、決定に同じ順序と ADR 0017 との関係、却下した案に「集約を作ってから送り直しを探す」を足した。_review-summary.md の ADR 0022 の行にも追記し、validateAdr PASS・index.md を再生成した
+decisions:
+  - id: D1
+    topic: 送り直しの検索の位置
+    choice: 時間帯の値オブジェクトの検証 (INVALID_TIME_RANGE・NOT_ON_30_MINUTES) の後、予約の集約の作成 (PAST_TIME_SLOT) の前に置く
+    reason: 形の正しくない入力は送り直しでも同じエラーを返せ、ADR 0017 の「PAST_TIME_SLOT は集約の作成だけ」を変えずに SPEC-002-03 の順序を満たせる
+  - id: D2
+    topic: 送り直しで省く判定
+    choice: 同じ有効予約が見つかったら過去の時間帯の判定だけでなく重なりの判定と新規作成も行わない
+    reason: SPEC-002-02 は同じ内容の送り直しを重なりとして断らないと決めており、自分の予約と重なるため判定すると必ず SLOT_OVERLAPS になる

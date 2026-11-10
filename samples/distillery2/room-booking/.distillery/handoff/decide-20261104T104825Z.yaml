@@ -1,0 +1,32 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: target-device
+    kind: choice
+    question: "社員が使う端末は PC のブラウザだけでよいか。スマートフォンからの空きの確認や予約も要るか"
+    options:
+      - label: "PC のブラウザだけ"
+        impact: "決定どおり、PC の画面幅で組む。スマートフォンでは表示が崩れうる"
+      - label: "スマートフォンからも使う"
+        impact: "画面を画面幅に合わせて組む (UI の決定と対応デバイスのグレードを見直す)。画面部品の確認の手間が増える"
+    recommended: "PC のブラウザだけ"
+    reason: "要望は「Web 画面」とだけ書き、スマートフォンの記述が無い。社内の会議室の予約は席の PC から行う使い方が中心と見て、画面の作りを小さく保つ"
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "RPO (A.4.1.1) は前日の最終バックアップまでなのに、バックアップ方式 (C.1.2.1) が週次フルで、週の途中の障害では RPO を満たせない (docs/nfr/nfr-grade.yaml)"
+    change: "C.1.2.1 をグレード 2 (フル+差分バックアップ、日次) に上げ、理由に RPO との対応を書いた。nfr-grade.md を再生成し、_review-summary.md の水準の表にバックアップの頻度を足した"
+  - finding: "指摘 2"
+    result: accepted
+    reason: "対応デバイス (F.1.1.3) を PC のみと低確信で仮置きしたのに、確認事項はブラウザの種類にとどまり、スマートフォンの要否を問うていなかった"
+    change: "引き継ぎの asks に端末の問い (target-device) を足し、_review-summary.md の水準の表と確認してほしいことの 8 に使う端末を足した。F.1.1.3 の理由に人に確認する旨を書いた"
+decisions:
+  - id: D1
+    topic: "バックアップの頻度"
+    choice: "C.1.2.1 をフル+差分バックアップ (日次、グレード 2) にした"
+    reason: "RPO を前日の最終バックアップまでとした決定を保ち、それに頻度を合わせるため。データが小さく日次でも負担が小さい"
+  - id: D2
+    topic: "使う端末の問いの推奨"
+    choice: "PC のブラウザだけを推奨にした"
+    reason: "要望にスマートフォンの記述が無く、既存の UI の決定とも合う"

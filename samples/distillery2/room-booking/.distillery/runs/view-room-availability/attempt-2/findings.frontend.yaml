@@ -1,0 +1,197 @@
+schema_version: "2.2"
+uc: "view-room-availability"
+tier: "frontend"
+attempt: 2
+verified_at: "2026-11-10T13:15:00+09:00"
+gates_read:
+  static: pass
+  unit: pass
+  contract: pass
+  uc-bdd: pass
+  acceptance: pass
+viewpoints_checked:
+  uc_intent:
+    status: done
+    note: >-
+      attempt 2 (backend-api だけ修正。frontend のコードは attempt 1 から変わらない: oidcTokenProvider.ts:85-148・AuthCallbackScreen.tsx・initialSlot.ts・showRoomAvailability.ts を読み、attempt 1 の findings の行番号と一致)。
+      gates.json は 2026-11-10T04:07:56Z 開始で all_recorded: true、5 段 pass (frontend の contract は not a provider で skipped)。
+      シナリオ: SPEC-001-01 の受入基準 12 件に @acceptance:SPEC-001-01-1〜12 が 1 対 1。uc-bdd は 14 scenarios (14 passed) / 89 steps、acceptance_api は 12 scenarios (12 passed) / 73 steps (gates.json の output_tail)。pending/skipped 無し。
+      トレース: 14 本すべてに showRoomAvailability の call と http.out が各 1 つあり、画面の入口関数を通って API を呼んでいる。
+      単体: unit.frontend.json は 63 件全 pass (failed 0・pending 0・todo 0)。
+      認証基盤の障害で API が 500 を返す変更との整合: backend の httpApp.ts:120,179 は検証器の例外を sendProblem(INTERNAL_ERROR) で 500 にし、契約の slice も 500 を components.responses.InternalError (Problem) にしている。
+      frontend は authorizedFetch.ts:16 で 401 のときだけ signIn を呼ぶので、500 ではサインインへ送らない。認証基盤が落ちていても、サインインへ送り続ける繰り返しにはならない。
+      showRoomAvailability.ts:34 は 200 でない応答の本文の code (INTERNAL_ERROR) をそのまま画面のエラーの状態にし、packages/ui の errorMessages.ts:55 に INTERNAL_ERROR の理由の文がある (ADR 0008/0023「契約のエラー型の code に応じた理由の文を表示する」を満たす)。
+      本文が無い 500 と通信の失敗も INTERNAL_ERROR になる (単体テスト「APIがcodeの無いエラーを返した場合_INTERNAL_ERRORを返すこと」「応答を受け取れなかった場合_INTERNAL_ERRORを返すこと」が pass)。frontend の扱いは backend の変更と合う。
+      ルール: ADR 0014/0015/0019/0020/0021 のトークン・サインインの規則は oidcTokenProvider.ts:95-114 と authorizedFetch.ts:10-18 にある (attempt 1 と同じ)。
+      契約: API は roomAvailabilityApi.ts の生成クライアントを通して呼び、fetch を直書きしていない。
+      他 UC への波及: 該当なし (呼び出し側が渡した共有の候補は「なし」。frontend の変更は attempt 1 から無く、contracts/uc-index.yaml に載る UC はこの 1 件だけ)。
+  assumption_conformance: {status: done}
+assumptions_sha256: "d4323baf522e832ce2948ce89ac9385c222e9af53d0ddd1e0f09229db333dc5a"
+assumption_verdicts:
+  - id: A-001
+    tier: frontend
+    assumption: "画面が組み立てる日時の時差は固定の +09:00 にせず、Intl.DateTimeFormat (timeZone Asia/Tokyo) の tz データで、その日時の時差を求めて付ける (1948〜1951 年の夏時間の日は +10:00)。今日の日付の初期値も同じ規則で求める"
+    target: "apps/frontend/src/screens/businessTimeZone.ts:68"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-001
+    evidence: "contract-slice.json の TimeRange と ErrorCode の説明は、業務の日付を Asia/Tokyo で判定するとだけ書き、画面が時差をどう求めるかは書いていない。tier-frontend.md の ADR 0017 の規則も時差の求め方を書いていない"
+  - id: A-002
+    tier: frontend
+    assumption: "夏時間の終わりで 2 回ある日本時間の時刻 (例 1949-09-11 0:00) は早い方 (+10:00) の瞬間にし、夏時間の始まりで飛ばされて無い時刻 (例 1949-04-03 0:00) は飛ぶ前の時差 (+09:00) で読んだ瞬間 (= 1:00 +10:00) にする。どちらも日付の 0:00 と終了の 24:00 がその日付の始まりと終わりの瞬間に合う"
+    target: "apps/frontend/src/screens/businessTimeZone.ts:75"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-002
+    evidence: "要求 SPEC-001-01・シナリオ・契約・ADR 0017 の規則のどれにも、夏時間の切り替わりの時刻の扱いが無い"
+  - id: A-003
+    tier: frontend
+    assumption: "Asia/Tokyo の時差が分の単位で書けない日 (1888 年より前の地方時 +09:18:59) は、日本時間で選んだ時刻と同じ瞬間を UTC (Z) の日時で送る (例 1880-01-01 10:00 は 1880-01-01T00:41:01Z)"
+    target: "apps/frontend/src/screens/businessTimeZone.ts:93"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-003
+    evidence: "契約の DateTime は format date-time だけで、時差が秒を含む日の書き方は契約・ルールに無い。Z で書くこと自体は date-time の範囲内で矛盾しない"
+  - id: A-004
+    tier: frontend
+    assumption: "path の :name の区切りの値は decodeURIComponent で復号してから params に入れる。復号できない値 (壊れた符号化。例 %E0) は例外で描画を止めず、復号しないそのままの値を params に入れる (値の検証は受け取った画面と API に任せる)"
+    target: "apps/frontend/src/navigation.ts:19"
+    category: input_validation
+    verified_category: input_validation
+    verdict: spec_absent
+    finding_id: F-004
+    evidence: "tier-frontend.md の ADR 0021 の照合の規則は「:name の区切りは / を含まない空でない値 1 つに合う」とだけ書き、復号の有無と復号できない値の扱いが無い。値の検証を画面と API に任せるのは、ADR 0021 の「業務の検証は API に任せる」と矛盾しない"
+  - id: A-005
+    tier: frontend
+    assumption: "照会の応答が 200 でなく本文に文字列の code が無いとき (showRoomAvailability.ts:21) と、応答を受け取れなかったとき (通信の失敗で fetch が例外を投げたとき。同 :45) は、画面のエラーの状態を契約のエラーのコード INTERNAL_ERROR にして出す。再試行はしない"
+    target: "apps/frontend/src/screens/RoomAvailability/showRoomAvailability.ts:17"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-005
+    evidence: "showRoomAvailability.ts:17 FALLBACK_ERROR を :21 と :45 で使う。契約の ErrorCode は INTERNAL_ERROR を 500 のシステムのエラーとするだけで、code の無い応答と通信の失敗の表示は契約・ADR 0008/0023 の規則・tier-impl.md に無い。attempt 2 で backend が認証基盤の障害を 500 (code INTERNAL_ERROR の Problem。httpApp.ts:179) にしたが、その応答は :34 で本文の code をそのまま使うので、この前提の範囲 (code が無い場合) は広がっていない"
+  - id: V-001
+    tier: frontend
+    assumption: "サインインへの送り出しは進行中の 1 つにまとめ (重ねて呼ばれたら同じ送り出しを返す)、送り出しが終わったら成功・失敗のどちらでも外して次の呼び出しで送り直す (ブラウザの「戻る」で oidc-client-ts が送り出しを成功で終えた後も送り直せるようにする)"
+    target: "apps/frontend/src/api/oidcTokenProvider.ts:107"
+    category: null
+    verified_category: security
+    verdict: unlisted
+    finding_id: F-006
+    evidence: "oidcTokenProvider.ts:89 redirecting、:107-114 signIn の ??= と finally。tier-frontend.md の ADR 0014/0019/0021 の規則は、サインインへ送ることと state に今の path を入れることだけを書き、重ねた呼び出しのまとめ方と送り出しが終わったときの扱い (戻るで終わった後) は無い。tier-frontend.md「足した結線は AssumptionRecord に書き」と tier-impl.md:42 が結線の記録を求めるが、attempt 2 の assumptions.frontend.yaml (attempt 1 から写したもの) にも対応する A-id が無い"
+  - id: V-002
+    tier: frontend
+    assumption: "トークンが無いとき (メモリに無い・リフレッシュトークンが無い・更新に失敗) の getAccessToken は、サインインへの送り出しを始めてその終わりを待たずに undefined を返し、送り出しの失敗はそこでは握りつぶす (失敗は呼び出し元の続きの signIn で返る)。そのため API 呼び出しは Authorization ヘッダ無しで送られ、401 の signIn が進行中の送り出しに乗る"
+    target: "apps/frontend/src/api/oidcTokenProvider.ts:145"
+    category: null
+    verified_category: security
+    verdict: unlisted
+    finding_id: F-007
+    evidence: "oidcTokenProvider.ts:145-148 signInInstead (void this.signIn(...).catch(() => undefined); return Promise.resolve(undefined))、authorizedFetch.ts:13-16 (トークンが無ければヘッダを付けずに送り、401 で signIn)。ADR 0019 の規則は「サインインへ戻す を呼ぶ」とだけ書き、送り出しを待つか・失敗をどこで返すか・トークン無しの要求を送るかは、要求・ルール・固定指示に無い。ADR 0019 とは矛盾しない (signIn は呼んでいる)。attempt 2 の前提ファイルにも対応する A-id が無い"
+  - id: V-003
+    tier: frontend
+    assumption: "サインインのコールバックで完了の呼び出し (signinRedirectCallback) が失敗したら、戻り先へ移らず UNAUTHENTICATED の理由の文を表示する。完了の呼び出しは StrictMode の再実行でも 1 回だけにする"
+    target: "apps/frontend/src/screens/AuthCallback/AuthCallbackScreen.tsx:28"
+    category: null
+    verified_category: error_handling
+    verdict: unlisted
+    finding_id: F-008
+    evidence: "AuthCallbackScreen.tsx:23-24 started.current、:28 catch で setFailed、:31 BusinessErrorAlert code=UNAUTHENTICATED。tier-frontend.md の ADR 0021 の規則は「完了を待つ間は何も描かない」「返った path へ戻す」だけで、完了の失敗の扱いは無い。attempt 2 の前提ファイルにも対応する A-id が無い"
+  - id: V-004
+    tier: frontend
+    assumption: "空き状況の画面を開いたときの時間帯の初期値は、今日 (Asia/Tokyo の日付) の 9:00〜10:00 とし、照会するまで一覧を出さない"
+    target: "apps/frontend/src/screens/RoomAvailability/initialSlot.ts:5"
+    category: null
+    verified_category: input_validation
+    verdict: unlisted
+    finding_id: F-009
+    evidence: "initialSlot.ts:5-6 INITIAL_START_TIME 09:00 / INITIAL_END_TIME 10:00、RoomAvailabilityScreen.tsx:74 (searching か loaded のときだけ一覧を出す)。要求 SPEC-001-01 は「指定すると表示する」とだけ書き、初期値は要求・シナリオ・docs/design/screens.yaml・ルールに無い。A-001 は初期値の日付の求め方だけで、時刻と照会前の表示を含まない"
+assumption_verdicts_summary: {consistent: 0, spec_absent: 5, contradicts: 0, unlisted: 4}
+findings:
+  - id: F-001
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-001
+    severity: minor
+    title: "時差を tz 規則で求めるのは仕様に無い"
+    target: "apps/frontend/src/screens/businessTimeZone.ts:68"
+    claim: "送る日時の時差を Asia/Tokyo の tz データから求める判断は、要求・契約・ルールに照合先が無い真の前提"
+    evidence: "contract-slice.json#openapi.components.schemas.TimeRange / ErrorCode の説明; docs/rules/tier-frontend.md#ADR 0017"
+  - id: F-002
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-002
+    severity: minor
+    title: "夏時間の切り替わり時刻の扱いは仕様に無い"
+    target: "apps/frontend/src/screens/businessTimeZone.ts:75"
+    claim: "2 回ある時刻は早い方、無い時刻は飛ぶ前の時差で読む判断は、照合先が無い真の前提"
+    evidence: "docs/requirements/requirements.yaml#SPEC-001-01; features/会議室予約/view-room-availability.feature; docs/rules/tier-frontend.md#ADR 0017 に記述無し"
+  - id: F-003
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-003
+    severity: minor
+    title: "秒の時差の日を Z で送るのは仕様に無い"
+    target: "apps/frontend/src/screens/businessTimeZone.ts:93"
+    claim: "1888 年より前の日を UTC (Z) で送る判断は、照合先が無い真の前提。契約の date-time とは矛盾しない"
+    evidence: "contract-slice.json#openapi.components.schemas.DateTime (format date-time のみ)"
+  - id: F-004
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-004
+    severity: minor
+    title: "path 区切りの復号は仕様に無い"
+    target: "apps/frontend/src/navigation.ts:19"
+    claim: "区切りの値を復号し、壊れた符号化はそのまま渡す判断は、ADR 0021 の照合の規則に無い真の前提"
+    evidence: "docs/rules/tier-frontend.md#ADR 0021 (照合は / を含まない空でない値 1 つ、とだけ)"
+  - id: F-005
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-005
+    severity: minor
+    title: "code 無しと通信失敗を内部エラーにする"
+    target: "apps/frontend/src/screens/RoomAvailability/showRoomAvailability.ts:17"
+    claim: "code の無いエラー応答と通信の失敗を INTERNAL_ERROR として表示する判断は、照合先が無い真の前提。認証基盤の障害による 500 は本文に code があるので、この前提ではなく :34 の通常の経路で扱われる"
+    evidence: "showRoomAvailability.ts:17,21,34,45; contract-slice.json#openapi.components.schemas.ErrorCode は INTERNAL_ERROR を 500 とだけ定義; apps/backend-api/src/presentation/httpApp.ts:179 sendProblem(res, 'INTERNAL_ERROR', ...)"
+  - id: F-006
+    viewpoint: assumption_conformance
+    kind: unlisted
+    assumption_id: V-001
+    severity: major
+    title: "送り出しのまとめ方と外し方が未記録"
+    target: "apps/frontend/src/api/oidcTokenProvider.ts:107"
+    claim: "サインインの送り出しを 1 つにまとめ、成否どちらでも終わったら外す判断が、attempt 1 に続き前提ファイルに無い。サインインの結線の細部で認証の判断なので、人の回答が要る"
+    evidence: "oidcTokenProvider.ts:89,107-114; 単体テスト「ブラウザの戻るで送り出しが終わった後に操作した場合_次のサインインで認証基盤へ送り直すこと」pass; docs/rules/tier-frontend.md「足した結線は AssumptionRecord に書き」; tier-impl.md:42; assumption-record.md「security は人レビューで回答が必須」; attempt-1/findings.frontend.yaml#F-006 と同じ指摘 (frontend は未修正)"
+  - id: F-007
+    viewpoint: assumption_conformance
+    kind: unlisted
+    assumption_id: V-002
+    severity: major
+    title: "トークン無しで送り出しを待たない判断が未記録"
+    target: "apps/frontend/src/api/oidcTokenProvider.ts:145"
+    claim: "トークンが無いとき送り出しを待たずに undefined を返し、送り出しの失敗を握りつぶす判断が前提ファイルに無い。このため API 呼び出しは Authorization 無しで送られ、401 を経てサインインに乗る"
+    evidence: "oidcTokenProvider.ts:145-148; authorizedFetch.ts:13-16; docs/rules/tier-frontend.md#ADR 0019 (「サインインへ戻す を呼ぶ」のみ); 単体テスト「ブラウザの戻るで送り出しが終わった場合_待っていた最初の表示のサインインは送り直さないこと」pass; attempt-1/findings.frontend.yaml#F-007 と同じ指摘"
+  - id: F-008
+    viewpoint: assumption_conformance
+    kind: unlisted
+    assumption_id: V-003
+    severity: minor
+    title: "コールバック失敗時の表示が未記録"
+    target: "apps/frontend/src/screens/AuthCallback/AuthCallbackScreen.tsx:28"
+    claim: "サインインの完了が失敗したら UNAUTHENTICATED の理由を出して留まる判断が、前提ファイルに無い。attempt 2 で backend は認証基盤の障害をシステムのエラー (500) としたが、画面のコールバックでは認証基盤の障害による失敗も UNAUTHENTICATED として出る。この差を許すかは人レビューで判断する"
+    evidence: "AuthCallbackScreen.tsx:23-31; docs/rules/tier-frontend.md#ADR 0021 (完了を待つ間は何も描かない、とだけ); apps/backend-api/src/gateway/joseTokenVerifier.ts:4-5 (認証基盤の障害はトークンの誤りではないので 500 にする)"
+  - id: F-009
+    viewpoint: assumption_conformance
+    kind: unlisted
+    assumption_id: V-004
+    severity: minor
+    title: "時間帯の初期値 9:00〜10:00 が未記録"
+    target: "apps/frontend/src/screens/RoomAvailability/initialSlot.ts:5"
+    claim: "画面を開いたときの時間帯を今日の 9:00〜10:00 にし、照会するまで一覧を出さない判断が、前提ファイルに無い"
+    evidence: "initialSlot.ts:5-6; RoomAvailabilityScreen.tsx:74; docs/design/screens.yaml の Availability の variants に照会前の状態が無い; requirements.yaml#SPEC-001-01 に初期値の記述無し"
+summary: {blocker: 0, major: 2, minor: 7}
+asks: []
+upstream_issues: []

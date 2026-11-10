@@ -1,0 +1,6 @@
+{
+  "code": "SLOT_OVERLAPS",
+  "status": 409,
+  "title": "時間帯が既存の予約と重なります",
+  "type": "about:blank"
+}

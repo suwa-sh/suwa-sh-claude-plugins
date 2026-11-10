@@ -1,0 +1,42 @@
+{
+  "schema_version": "distillery2.handoff/v1",
+  "step": "precheck",
+  "asks": [],
+  "upstream_issues": [
+    {
+      "id": "reserve-entry-not-in-story",
+      "target_step": "foundation",
+      "title": "空き状況の見本に予約画面への入口が無い",
+      "detail": "予約画面 (/reservations/new) へ入る道が、構造の正である画面の見本に無い。画面の見本の流れ (docs/design/_review-summary.md) は空き状況画面の「予約する」から予約画面へ移る前提で、予約画面の見本 (ReserveRoom の Default) も「空き状況から会議室と時間帯を引き継いだ入力」としている。しかし空き状況画面の見本 (Screens/RoomAvailability) は RoomAvailabilityList に onReserve を渡しておらず、部品は onReserve が無いと「予約する」の列ごと描かない。上部のメニュー (AppShell) にも予約画面への項目は無い。このままだと、この UC の画面は URL を直接打たないと開けない。入口を作るには空き状況画面に onReserve を渡す必要があるが、それは見本と違う構造になる。開発ルール (docs/rules/tier-frontend.md) は、見本と違う構造が要るときは実装で曲げずに基盤の課題にするよう定めている。あわせて、過去の時間帯を照会したときに「予約する」を出すかどうかも見本で決まっていない (部品の説明は、過去の時間帯の照会では押しても予約できないボタンを出さないとしている)",
+      "evidence": "packages/ui/stories/RoomAvailability.stories.tsx:29-33 (onReserve を渡していない); packages/ui/components/domain/RoomAvailabilityList.tsx:11-16,26 (onReserve が無いと操作の列を描かない); packages/ui/components/layout/AppShell.tsx:14-17 (メニューは空き状況と自分の予約だけ); packages/ui/stories/ReserveRoom.stories.tsx:77; docs/design/_review-summary.md:10; docs/design/screens.yaml:4-7 (RoomAvailability の uc_slugs は view-room-availability だけ); docs/rules/tier-frontend.md:15; apps/frontend/src/screens/RoomAvailability/RoomAvailabilityScreen.tsx:73",
+      "recommended_fix": "画面部品の段で、空き状況画面の見本に「予約できる」状態 (例: Reservable) を足し、空きの会議室の行に「予約する」を出す構造を見本として示す。押したときは選んだ会議室と照会した日付・時間帯を持って予約画面 (/reservations/new) へ移ることを見本の説明に書く。過去の時間帯を照会したときは onReserve を渡さず「予約する」を出さないことも見本の状態 (例: PastSlot) で示す。docs/design/screens.yaml の RoomAvailability の uc_slugs に reserve-room を足し、どの UC の機能が空き状況画面に入口を足すかを分かるようにする。この形にしておけば、後の UC (自分の予約一覧から取消確認画面へ移る など) も「画面の間の移り方は見本に書く」という同じ決まりに載る"
+    }
+  ],
+  "refutations": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "topic": "予約が成立した画面の「自分の予約一覧を見る」の先 (/my-reservations) がまだ無いこと",
+      "choice": "上流の課題にしない",
+      "reason": "画面の見本 (ReserveRoom の Completed) と上部のメニューが既に /my-reservations を指しており、その画面は計画済みの UC (list-my-reservations) が作る。要求・見本と食い違わない"
+    },
+    {
+      "id": "D2",
+      "topic": "予約画面の会議室の選択肢をどこから得るか (URL を直接開いたときを含む)",
+      "choice": "上流の課題にしない。この UC の契約の段で決める",
+      "reason": "契約の operation を足すかどうかは機能の中 (契約の段) の作業で、点検は機能の中の課題を書かない。会議室は初期データの 5 部屋で業務ルールに効かない"
+    },
+    {
+      "id": "D3",
+      "topic": "空き状況画面から予約画面へ会議室と時間帯を渡す方法 (URL のクエリなど)",
+      "choice": "上流の課題にしない。実装の段で決めて前提の記録に残す",
+      "reason": "ADR 0018 の画面の切り替え (path の照合と navigate) の中の細部で、後の UC が同じことを別々に決めて食い違う場面が無い (取消確認画面は path のパラメータで予約 ID を受けると screens.yaml で決まっている)"
+    },
+    {
+      "id": "D4",
+      "topic": "予約の業務のエラー (重なる・過去・時間帯・30 分刻み・会議室が無い) の表示",
+      "choice": "上流の課題にしない",
+      "reason": "契約の ErrorCode と packages/ui の errorMessages・BusinessErrorAlert・timeFieldErrors で文が決まっており、受入基準の示すべき内容 (重なる・過去は予約できない・時間帯が正しくない・30 分刻み) と合う。送信中は Button の loading で押せなくなり ADR 0005 のルールも満たす"
+    }
+  ]
+}

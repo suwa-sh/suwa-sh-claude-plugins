@@ -1,0 +1,15 @@
+[
+  "listRooms.200.json",
+  "listRooms.401.json",
+  "reserveRoom.200.json",
+  "reserveRoom.201.json",
+  "reserveRoom.400.json",
+  "reserveRoom.401.json",
+  "reserveRoom.404.json",
+  "reserveRoom.409.json",
+  "reserveRoom.422.json",
+  "viewRoomAvailability.200.json",
+  "viewRoomAvailability.400.json",
+  "viewRoomAvailability.401.json",
+  "viewRoomAvailability.422.json"
+]

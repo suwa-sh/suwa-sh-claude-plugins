@@ -1,0 +1,6 @@
+{
+  "code": "VALIDATION_ERROR",
+  "status": 400,
+  "title": "要求の形が正しくありません",
+  "type": "about:blank"
+}

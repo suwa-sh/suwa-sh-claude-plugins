@@ -1,0 +1,1188 @@
+{
+  "acceptance": {
+    "SPEC-001-01-1": {
+      "scenarios": [
+        "全会議室が会議室ごとに表示される"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-10": {
+      "scenarios": [
+        "終了が翌日 0:00 の時間帯は照会を受け付ける"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-11": {
+      "scenarios": [
+        "日をまたぐ時間帯は照会を受け付けない"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-12": {
+      "scenarios": [
+        "過去の時間帯の照会は受け付ける"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-2": {
+      "scenarios": [
+        "会議室名が表示順に並んで表示される"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-3": {
+      "scenarios": [
+        "予約のある会議室は予約済み、予約の無い会議室は空きと表示される"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-4": {
+      "scenarios": [
+        "予約済みの会議室に予約者の名前は表示されない"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-5": {
+      "scenarios": [
+        "予約の終了時刻から始まる時間帯は空きと表示される"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-6": {
+      "scenarios": [
+        "取り消された予約は予約済みとして扱わない"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-7": {
+      "scenarios": [
+        "開始時刻が終了時刻より後の時間帯は照会を受け付けない"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-8": {
+      "scenarios": [
+        "開始時刻と終了時刻が同じ時間帯は照会を受け付けない"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-001-01-9": {
+      "scenarios": [
+        "30 分刻みでない時刻は照会を受け付けない"
+      ],
+      "ucs": [
+        "view-room-availability"
+      ]
+    },
+    "SPEC-002-01-1": {
+      "scenarios": [
+        "空いている会議室を予約すると予約が成立し、予約者が記録される"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-01-2": {
+      "scenarios": [
+        "開始時刻が終了時刻より後の時間帯は予約できない"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-01-3": {
+      "scenarios": [
+        "開始時刻と終了時刻が同じ時間帯は予約できない"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-01-4": {
+      "scenarios": [
+        "開始時刻が 30 分刻みでない時間帯は予約できない"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-01-5": {
+      "scenarios": [
+        "終了が翌日 0:00 の時間帯は予約できる"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-01-6": {
+      "scenarios": [
+        "日をまたぐ時間帯は予約できない"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-01-7": {
+      "scenarios": [
+        "過去の時間帯は予約できない"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-01-8": {
+      "scenarios": [
+        "会議室を選ばずに予約すると、予約は送られず会議室を選ぶことが示される"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-01-9": {
+      "scenarios": [
+        "日付・開始時刻・終了時刻を選ばずに予約すると、予約は送られずそれぞれを選ぶことが示される"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-02-1": {
+      "scenarios": [
+        "既存の予約と時間帯が一部重なる予約はできない"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-02-2": {
+      "scenarios": [
+        "既存の予約の終了時刻から始まる予約はできる"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-02-3": {
+      "scenarios": [
+        "別の会議室の同じ時間帯は予約できる"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-02-4": {
+      "scenarios": [
+        "取り消された予約と同じ時間帯は予約できる"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-02-5": {
+      "scenarios": [
+        "同時に予約されても成立するのは 1 件だけである"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-03-1": {
+      "scenarios": [
+        "自分の予約と同じ内容で送り直すと、新しい予約は作られず成立済みの予約が示される"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-03-2": {
+      "scenarios": [
+        "自分の予約と時間帯が一部だけ重なる予約はできない"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-03-3": {
+      "scenarios": [
+        "他の社員の予約とまったく同じ時間帯は送り直しとして扱わず予約できない"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-03-4": {
+      "scenarios": [
+        "取り消した自分の予約と同じ内容で予約すると新しい予約が成立する"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-03-5": {
+      "scenarios": [
+        "開始時刻を過ぎてから送り直しても過去の時間帯として断られず、成立済みの予約が示される"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "SPEC-002-03-6": {
+      "scenarios": [
+        "終了時刻を過ぎてから送り直しても過去の時間帯として断られず、成立済みの予約が示される"
+      ],
+      "ucs": [
+        "reserve-room"
+      ]
+    }
+  },
+  "operations": {
+    "listRooms": {
+      "provider_tier": "backend-api",
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "reserveRoom": {
+      "provider_tier": "backend-api",
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "viewRoomAvailability": {
+      "provider_tier": "backend-api",
+      "ucs": [
+        "view-room-availability"
+      ]
+    }
+  },
+  "tables": {
+    "reservation_events": {
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "reservations": {
+      "ucs": [
+        "reserve-room",
+        "view-room-availability"
+      ]
+    },
+    "room_slot_occupancies": {
+      "ucs": [
+        "reserve-room"
+      ]
+    },
+    "rooms": {
+      "ucs": [
+        "reserve-room",
+        "view-room-availability"
+      ]
+    }
+  },
+  "ucs": {
+    "reserve-room": {
+      "as_built": "docs/as-built/会議室予約/会議室を予約する/",
+      "business": "会議室予約",
+      "files": [
+        ".dependency-cruiser.cjs",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-1/assumptions.backend-api.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-1/assumptions.frontend.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-1/findings.backend-api.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-1/findings.frontend.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-2/assumptions.backend-api.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-2/assumptions.frontend.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-2/attempt.json",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-2/findings.backend-api.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-2/findings.frontend.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-3/assumptions.backend-api.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-3/assumptions.frontend.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-3/attempt.json",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-3/findings.backend-api.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/attempt-3/findings.frontend.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/decisions.jsonl",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/events.jsonl",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/asbuilt-20261109T235739Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/asbuilt-refute-20261110T000412Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/contract-20261109T224127Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/integrate-20261109T225030Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/integrate-20261109T232905Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/integrate-20261109T234657Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/precheck-backend-api.json",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/precheck-frontend.json",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/scaffold-20261109T224304Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/scenario-20261109T223901Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/tier-backend-api-20261109T224554Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/tier-backend-api-20261109T231209Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/tier-backend-api-refute-20261109T225702Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/tier-backend-api-refute-20261109T233711Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/tier-frontend-20261109T224554Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/tier-frontend-20261109T233957Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/handoff/tier-frontend-refute-20261109T225702Z.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/invalidated/20261109_231159_contract-gate.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/invalidated/20261109_231159_integrate.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/invalidated/20261109_231159_tier.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/invalidated/20261109_233931_contract-gate.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/invalidated/20261109_233931_integrate.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/invalidated/20261109_233931_tier.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/issues/20261110_000610_asbuilt_asbuilt-refute-20261110T000412Z_sequence-parallel-calls.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/issues/consumed/20261109_233910_refute_tier-backend-api-refute-20261109T233711Z_frontend-tokyo-dst-offset.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reopened.json",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/asbuilt/1/prompt-round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/asbuilt/1/round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-backend-api/1/prompt-round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-backend-api/1/round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-backend-api/2/prompt-round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-backend-api/2/round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-backend-api/3/prompt-round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-backend-api/3/round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-frontend/1/prompt-round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-frontend/1/round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-frontend/2/prompt-round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-frontend/2/round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-frontend/3/prompt-round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/implementation-frontend/3/round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/scenario/1/prompt-round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/reviews/scenario/1/round1.md",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/stages/asbuilt.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/stages/contract-gate.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/stages/contract.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/stages/deliver.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/stages/integrate.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/stages/review.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/stages/scaffold.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/stages/scenario.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/stages/tier.done.yaml",
+        ".distillery/archive/runs/view-room-availability/20261110_020706/stages/verify.done.yaml",
+        ".distillery/config.yaml",
+        ".distillery/decisions.jsonl",
+        ".distillery/distillery2.lock.json",
+        ".distillery/handoff/decide-20261110T015938Z.yaml",
+        ".distillery/handoff/decide-20261110T031053Z.yaml",
+        ".distillery/handoff/decide-refute-20261110T020351Z.yaml",
+        ".distillery/handoff/decide-refute-20261110T031458Z.yaml",
+        ".distillery/handoff/design-20261110T030806Z.yaml",
+        ".distillery/handoff/design-20261110T052347Z.yaml",
+        ".distillery/handoff/design-refute-20261110T052940Z.yaml",
+        ".distillery/handoff/foundation-finish-20261110T052550Z.yaml",
+        ".distillery/handoff/foundation-finish-20261110T053050Z.yaml",
+        ".distillery/handoff/requirements-20261110T013412Z.yaml",
+        ".distillery/handoff/requirements-20261110T030109Z.yaml",
+        ".distillery/handoff/requirements-refute-20261110T013937Z.yaml",
+        ".distillery/handoff/requirements-refute-20261110T030622Z.yaml",
+        ".distillery/reviews/decide/13/prompt-round1.md",
+        ".distillery/reviews/decide/13/round1.md",
+        ".distillery/reviews/decide/14/prompt-round1.md",
+        ".distillery/reviews/decide/14/round1.md",
+        ".distillery/reviews/foundation/7/prompt-round1.md",
+        ".distillery/reviews/foundation/7/round1.md",
+        ".distillery/reviews/requirements/6/prompt-round1.md",
+        ".distillery/reviews/requirements/6/round1.md",
+        ".distillery/reviews/requirements/7/prompt-round1.md",
+        ".distillery/reviews/requirements/7/round1.md",
+        ".distillery/runs/reserve-room/attempt-1/assumptions.backend-api.yaml",
+        ".distillery/runs/reserve-room/attempt-1/assumptions.frontend.yaml",
+        ".distillery/runs/reserve-room/attempt-1/findings.backend-api.yaml",
+        ".distillery/runs/reserve-room/attempt-1/findings.frontend.yaml",
+        ".distillery/runs/reserve-room/attempt-2/assumptions.backend-api.yaml",
+        ".distillery/runs/reserve-room/attempt-2/assumptions.frontend.yaml",
+        ".distillery/runs/reserve-room/attempt-2/attempt.json",
+        ".distillery/runs/reserve-room/attempt-2/findings.backend-api.yaml",
+        ".distillery/runs/reserve-room/attempt-2/findings.frontend.yaml",
+        ".distillery/runs/reserve-room/decisions.jsonl",
+        ".distillery/runs/reserve-room/events.jsonl",
+        ".distillery/runs/reserve-room/handoff/asbuilt-20261110T011243Z.yaml",
+        ".distillery/runs/reserve-room/handoff/asbuilt-20261110T024639Z.yaml",
+        ".distillery/runs/reserve-room/handoff/contract-20261110T002543Z.yaml",
+        ".distillery/runs/reserve-room/handoff/contract-20261110T015344Z.yaml",
+        ".distillery/runs/reserve-room/handoff/contract-20261110T020746Z.yaml",
+        ".distillery/runs/reserve-room/handoff/contract-20261110T044307Z.yaml",
+        ".distillery/runs/reserve-room/handoff/integrate-20261110T005821Z.yaml",
+        ".distillery/runs/reserve-room/handoff/integrate-20261110T022656Z.yaml",
+        ".distillery/runs/reserve-room/handoff/integrate-20261110T045816Z.yaml",
+        ".distillery/runs/reserve-room/handoff/integrate-20261110T055120Z.yaml",
+        ".distillery/runs/reserve-room/handoff/refute-asbuilt-20261110T012020Z.yaml",
+        ".distillery/runs/reserve-room/handoff/refute-asbuilt-20261110T025549Z.yaml",
+        ".distillery/runs/reserve-room/handoff/refute-implementation-frontend-20261110T010941Z.yaml",
+        ".distillery/runs/reserve-room/handoff/refute-implementation-frontend-20261110T023833Z.yaml",
+        ".distillery/runs/reserve-room/handoff/scaffold-20261110T003622Z.yaml",
+        ".distillery/runs/reserve-room/handoff/scaffold-20261110T021227Z.yaml",
+        ".distillery/runs/reserve-room/handoff/scaffold-20261110T044914Z.yaml",
+        ".distillery/runs/reserve-room/handoff/scenario-20261110T002143Z.yaml",
+        ".distillery/runs/reserve-room/handoff/scenario-20261110T014514Z.yaml",
+        ".distillery/runs/reserve-room/handoff/scenario-20261110T043843Z.yaml",
+        ".distillery/runs/reserve-room/handoff/scenario-refute-20261110T015153Z.yaml",
+        ".distillery/runs/reserve-room/handoff/tier-backend-api-20261110T004105Z.yaml",
+        ".distillery/runs/reserve-room/handoff/tier-backend-api-20261110T021830Z.yaml",
+        ".distillery/runs/reserve-room/handoff/tier-backend-api-20261110T045243Z.yaml",
+        ".distillery/runs/reserve-room/handoff/tier-frontend-20261110T004105Z.yaml",
+        ".distillery/runs/reserve-room/handoff/tier-frontend-20261110T021830Z.yaml",
+        ".distillery/runs/reserve-room/handoff/tier-frontend-20261110T045243Z.yaml",
+        ".distillery/runs/reserve-room/handoff/tier-frontend-20261110T054612Z.yaml",
+        ".distillery/runs/reserve-room/handoff/tier-frontend-refute-20261110T050821Z.yaml",
+        ".distillery/runs/reserve-room/handoff/tier-frontend-refute-20261110T060019Z.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_contract-gate.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_contract.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_integrate.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_review.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_reviews_asbuilt/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_reviews_asbuilt/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_reviews_contract/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_reviews_contract/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_reviews_implementation-backend-api/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_reviews_implementation-backend-api/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_reviews_implementation-frontend/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_reviews_implementation-frontend/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_reviews_scenario/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_reviews_scenario/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_scaffold.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_scenario.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_tier.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_014356_verify.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_contract-gate.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_contract.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_integrate.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_review.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_reviews_asbuilt/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_reviews_asbuilt/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_reviews_contract/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_reviews_contract/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_reviews_implementation-backend-api/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_reviews_implementation-backend-api/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_reviews_implementation-frontend/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_reviews_implementation-frontend/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_reviews_scenario/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_reviews_scenario/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_scaffold.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_scenario.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_tier.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_043701_verify.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_052244_contract-gate.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_052244_integrate.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_052244_tier.done.yaml",
+        ".distillery/runs/reserve-room/invalidated/20261110_054520_reviews_implementation-backend-api/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_054520_reviews_implementation-backend-api/1/round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_054520_reviews_implementation-frontend/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/invalidated/20261110_054520_reviews_implementation-frontend/1/round1.md",
+        ".distillery/runs/reserve-room/issues/20261110T011511Z_asbuilt_reserve-room.md",
+        ".distillery/runs/reserve-room/issues/20261110T024931Z_asbuilt_reserve-room.md",
+        ".distillery/runs/reserve-room/issues/20261110T024932Z_asbuilt_reserve-room.md",
+        ".distillery/runs/reserve-room/issues/20261110_011843_asbuilt_asbuilt-20261110T011243Z_asbuilt-with-insert-as-read.md",
+        ".distillery/runs/reserve-room/issues/20261110_012536_refute_refute-asbuilt-20261110T012020Z_asbuilt-business-reject-as-ok.md",
+        ".distillery/runs/reserve-room/issues/20261110_012536_refute_refute-asbuilt-20261110T012020Z_asbuilt-with-insert-as-read-system.md",
+        ".distillery/runs/reserve-room/issues/20261110_015840_contract_contract-20261110T015344Z_adr-0005-resend-rationale.md",
+        ".distillery/runs/reserve-room/issues/20261110_025303_asbuilt_asbuilt-20261110T024639Z_asbuilt-rolled-back-write-as-write.md",
+        ".distillery/runs/reserve-room/issues/20261110_030006_refute_refute-asbuilt-20261110T025549Z_asbuilt-recommended-approval-as-human.md",
+        ".distillery/runs/reserve-room/issues/20261110_052232_verify_findings.frontend_reserve-room-rooms-unavailable-variant.md",
+        ".distillery/runs/reserve-room/resume/3/apps__backend-api__src__domain__businessError.ts.diff",
+        ".distillery/runs/reserve-room/resume/3/docs__as-built___system__index.md.diff",
+        ".distillery/runs/reserve-room/reviews/contract/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/reviews/contract/1/round1.md",
+        ".distillery/runs/reserve-room/reviews/implementation-backend-api/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/reviews/implementation-backend-api/1/round1.md",
+        ".distillery/runs/reserve-room/reviews/implementation-frontend/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/reviews/implementation-frontend/1/round1.md",
+        ".distillery/runs/reserve-room/reviews/scenario/1/prompt-round1.md",
+        ".distillery/runs/reserve-room/reviews/scenario/1/round1.md",
+        ".distillery/runs/reserve-room/stages/contract-gate.done.yaml",
+        ".distillery/runs/reserve-room/stages/contract.done.yaml",
+        ".distillery/runs/reserve-room/stages/integrate.done.yaml",
+        ".distillery/runs/reserve-room/stages/review.done.yaml",
+        ".distillery/runs/reserve-room/stages/scaffold.done.yaml",
+        ".distillery/runs/reserve-room/stages/scenario.done.yaml",
+        ".distillery/runs/reserve-room/stages/tier.done.yaml",
+        ".distillery/runs/reserve-room/stages/verify.done.yaml",
+        ".distillery/runs/view-room-availability/attempt-1/assumptions.backend-api.yaml",
+        ".distillery/runs/view-room-availability/attempt-1/assumptions.frontend.yaml",
+        ".distillery/runs/view-room-availability/attempt-1/findings.backend-api.yaml",
+        ".distillery/runs/view-room-availability/attempt-1/findings.frontend.yaml",
+        ".distillery/runs/view-room-availability/attempt-2/assumptions.backend-api.yaml",
+        ".distillery/runs/view-room-availability/attempt-2/assumptions.frontend.yaml",
+        ".distillery/runs/view-room-availability/attempt-2/attempt.json",
+        ".distillery/runs/view-room-availability/attempt-2/findings.backend-api.yaml",
+        ".distillery/runs/view-room-availability/attempt-2/findings.frontend.yaml",
+        ".distillery/runs/view-room-availability/decisions.jsonl",
+        ".distillery/runs/view-room-availability/events.jsonl",
+        ".distillery/runs/view-room-availability/handoff/asbuilt-20261110T041800Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/contract-20261110T032600Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/integrate-20261110T033454Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/integrate-20261110T040623Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/refute-asbuilt-20261110T042207Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/refute-implementation-backend-api-20261110T034156Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/refute-implementation-backend-api-20261110T041102Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/refute-implementation-frontend-20261110T034156Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/scaffold-20261110T032748Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/scenario-20261110T032146Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/scenario-refute-20261110T032424Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/tier-backend-api-20261110T032927Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/tier-backend-api-20261110T035642Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/tier-frontend-20261110T032927Z.yaml",
+        ".distillery/runs/view-room-availability/invalidated/20261110_035623_contract-gate.done.yaml",
+        ".distillery/runs/view-room-availability/invalidated/20261110_035623_integrate.done.yaml",
+        ".distillery/runs/view-room-availability/invalidated/20261110_035623_tier.done.yaml",
+        ".distillery/runs/view-room-availability/invalidated/20261110_035623_verify.done.yaml",
+        ".distillery/runs/view-room-availability/issues/20261110_042509_refute_refute-asbuilt-20261110T042207Z_asbuilt-quoted-changed-paths.md",
+        ".distillery/runs/view-room-availability/reviews/asbuilt/1/prompt-round1.md",
+        ".distillery/runs/view-room-availability/reviews/asbuilt/1/round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-backend-api/1/prompt-round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-backend-api/1/round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-backend-api/2/prompt-round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-backend-api/2/round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-frontend/1/prompt-round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-frontend/1/round1.md",
+        ".distillery/runs/view-room-availability/reviews/scenario/1/round1.md",
+        ".distillery/runs/view-room-availability/stages/asbuilt.done.yaml",
+        ".distillery/runs/view-room-availability/stages/contract-gate.done.yaml",
+        ".distillery/runs/view-room-availability/stages/contract.done.yaml",
+        ".distillery/runs/view-room-availability/stages/deliver.done.yaml",
+        ".distillery/runs/view-room-availability/stages/integrate.done.yaml",
+        ".distillery/runs/view-room-availability/stages/review.done.yaml",
+        ".distillery/runs/view-room-availability/stages/scaffold.done.yaml",
+        ".distillery/runs/view-room-availability/stages/scenario.done.yaml",
+        ".distillery/runs/view-room-availability/stages/tier.done.yaml",
+        ".distillery/runs/view-room-availability/stages/verify.done.yaml",
+        "apps/backend-api/migrations/0003_reservation_events_recorded_at_default.sql",
+        "apps/backend-api/src/app.test.ts",
+        "apps/backend-api/src/app.ts",
+        "apps/backend-api/src/domain/businessError.ts",
+        "apps/backend-api/src/domain/ids.ts",
+        "apps/backend-api/src/domain/reservation.test.ts",
+        "apps/backend-api/src/domain/reservation.ts",
+        "apps/backend-api/src/domain/result.ts",
+        "apps/backend-api/src/domain/timeRange.ts",
+        "apps/backend-api/src/gateway/joseTokenVerifier.test.ts",
+        "apps/backend-api/src/gateway/joseTokenVerifier.ts",
+        "apps/backend-api/src/gateway/jwksTestServer.ts",
+        "apps/backend-api/src/presentation/businessDateTime.ts",
+        "apps/backend-api/src/presentation/httpApp.test.ts",
+        "apps/backend-api/src/presentation/httpApp.ts",
+        "apps/backend-api/src/presentation/problem.ts",
+        "apps/backend-api/src/presentation/reserveRoomHttp.test.ts",
+        "apps/backend-api/src/presentation/reserveRoomRequest.ts",
+        "apps/backend-api/src/presentation/timeRangeRequest.ts",
+        "apps/backend-api/src/repository/reservationRepository.test.ts",
+        "apps/backend-api/src/repository/reservationRepository.ts",
+        "apps/backend-api/src/reserveRoomResend.test.ts",
+        "apps/backend-api/src/test-app.ts",
+        "apps/backend-api/src/usecase/listRooms.test.ts",
+        "apps/backend-api/src/usecase/listRooms.ts",
+        "apps/backend-api/src/usecase/reserveRoom.test.ts",
+        "apps/backend-api/src/usecase/reserveRoom.ts",
+        "apps/backend-api/test/contract/listRooms.test.ts",
+        "apps/backend-api/test/contract/reserveRoom.test.ts",
+        "apps/backend-api/test/contract/viewRoomAvailability.test.ts",
+        "apps/frontend/src/App.tsx",
+        "apps/frontend/src/api/authorizedFetch.ts",
+        "apps/frontend/src/api/oidcTokenProvider.test.ts",
+        "apps/frontend/src/api/oidcTokenProvider.ts",
+        "apps/frontend/src/api/reservationApi.ts",
+        "apps/frontend/src/api/roomAvailabilityApi.ts",
+        "apps/frontend/src/api/tokenProvider.ts",
+        "apps/frontend/src/navigation.ts",
+        "apps/frontend/src/routes.tsx",
+        "apps/frontend/src/screens/AuthCallback/AuthCallbackScreen.tsx",
+        "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.test.tsx",
+        "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx",
+        "apps/frontend/src/screens/ReserveRoom/initialReservationValue.test.ts",
+        "apps/frontend/src/screens/ReserveRoom/initialReservationValue.ts",
+        "apps/frontend/src/screens/ReserveRoom/loadRooms.test.ts",
+        "apps/frontend/src/screens/ReserveRoom/loadRooms.ts",
+        "apps/frontend/src/screens/ReserveRoom/submitReservation.test.ts",
+        "apps/frontend/src/screens/ReserveRoom/submitReservation.ts",
+        "apps/frontend/src/screens/ReserveRoom/submitReservationMissing.test.ts",
+        "apps/frontend/src/screens/RoomAvailability/RoomAvailabilityScreen.test.tsx",
+        "apps/frontend/src/screens/RoomAvailability/RoomAvailabilityScreen.tsx",
+        "apps/frontend/src/screens/RoomAvailability/reserveEntry.test.ts",
+        "apps/frontend/src/screens/RoomAvailability/reserveEntry.ts",
+        "apps/frontend/src/screens/RoomAvailability/showRoomAvailability.ts",
+        "apps/frontend/src/screens/errorCodeOf.ts",
+        "apps/frontend/src/screens/toReservationView.test.ts",
+        "apps/frontend/src/screens/toReservationView.ts",
+        "apps/frontend/vite.config.ts",
+        "contracts/db/domains/room_reservation.yaml",
+        "contracts/db/rdb-schema.yaml",
+        "contracts/generated/openapi.bundle.yaml",
+        "contracts/generated/slices/reserve-room/contract-slice.json",
+        "contracts/generated/slices/reserve-room/rdb-slice.yaml",
+        "contracts/openapi/openapi.yaml",
+        "contracts/uc-index.yaml",
+        "docs/README.md",
+        "docs/adr/0005-messaging-not-needed.md",
+        "docs/adr/0010-error-handling.md",
+        "docs/adr/0022-messaging-not-needed-resend-returns-existing.md",
+        "docs/adr/0023-error-handling-overlap-in-usecase.md",
+        "docs/adr/_review-summary.md",
+        "docs/adr/architecture.md",
+        "docs/adr/index.md",
+        "docs/as-built/_system/api-inventory.md",
+        "docs/as-built/_system/data-flow.md",
+        "docs/as-built/_system/dependency-graph.md",
+        "docs/as-built/_system/index.md",
+        "docs/as-built/_system/traceability-index.json",
+        "docs/as-built/会議室予約/会議室の空き状況を照会する/index.md",
+        "docs/as-built/会議室予約/会議室の空き状況を照会する/sequence.md",
+        "docs/as-built/会議室予約/会議室を予約する/index.md",
+        "docs/as-built/会議室予約/会議室を予約する/sequence.md",
+        "docs/design/screens.yaml",
+        "docs/design/storybook-app/src/components/domain/ReservationForm.tsx",
+        "docs/design/storybook-app/src/stories/ReserveRoom.stories.tsx",
+        "docs/feedback/20261110_012536_refute_refute-asbuilt-20261110T012020Z_asbuilt-business-reject-as-ok.md",
+        "docs/feedback/20261110_025303_asbuilt_asbuilt-20261110T024639Z_asbuilt-rolled-back-write-as-write.md",
+        "docs/feedback/README.md",
+        "docs/requirements/_review-summary.md",
+        "docs/requirements/rdra/BUC.tsv",
+        "docs/requirements/rdra/ZeroOne.txt",
+        "docs/requirements/rdra/views/03_業務フロー.md",
+        "docs/requirements/rdra/views/04_UC複合図.md",
+        "docs/requirements/rdra/views/05_情報モデル.md",
+        "docs/requirements/rdra/views/07_条件・バリエーション.md",
+        "docs/requirements/rdra/情報.tsv",
+        "docs/requirements/rdra/条件.tsv",
+        "docs/requirements/rdra/関連データ.txt",
+        "docs/requirements/requirements.md",
+        "docs/requirements/requirements.yaml",
+        "docs/requirements/use-cases.yaml",
+        "docs/rules/common.md",
+        "docs/rules/index.md",
+        "docs/rules/testing.md",
+        "docs/rules/tier-backend.md",
+        "docs/rules/tier-frontend.md",
+        "features/step_definitions/reserve-room.steps.ts",
+        "features/会議室予約/reserve-room.feature",
+        "features/会議室予約/view-room-availability.feature",
+        "packages/contracts/api/client.ts",
+        "packages/contracts/api/server.ts",
+        "packages/contracts/api/stubs/.distillery2-generated.json",
+        "packages/contracts/api/stubs/listRooms.200.json",
+        "packages/contracts/api/stubs/listRooms.401.json",
+        "packages/contracts/api/stubs/reserveRoom.200.json",
+        "packages/contracts/api/stubs/reserveRoom.201.json",
+        "packages/contracts/api/stubs/reserveRoom.400.json",
+        "packages/contracts/api/stubs/reserveRoom.401.json",
+        "packages/contracts/api/stubs/reserveRoom.404.json",
+        "packages/contracts/api/stubs/reserveRoom.409.json",
+        "packages/contracts/api/stubs/reserveRoom.422.json",
+        "packages/contracts/api/types.ts",
+        "packages/ui/.imported.yaml",
+        "packages/ui/components/domain/ReservationForm.tsx",
+        "packages/ui/stories/ReserveRoom.stories.tsx"
+      ],
+      "gates": "pass",
+      "gates_complete": true,
+      "generated_at": "2026-11-10T06:12:49.207Z",
+      "instrumentation_gaps": [],
+      "instrumentation_happy_gaps": [],
+      "messages": [],
+      "operations": [
+        "listRooms",
+        "reserveRoom"
+      ],
+      "scenarios": [
+        {
+          "name": "他の社員の予約とまったく同じ時間帯は送り直しとして扱わず予約できない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-03-3",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "会議室を選ばずに予約すると、予約は送られず会議室を選ぶことが示される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-8",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "別の会議室の同じ時間帯は予約できる",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-02-3",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "取り消された予約と同じ時間帯は予約できる",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-02-4",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "取り消した自分の予約と同じ内容でも、開始時刻を過ぎていれば過去の時間帯として予約できない",
+          "status": "passed",
+          "tags": [
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "取り消した自分の予約と同じ内容で予約すると新しい予約が成立する",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-03-4",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "同時に予約されても成立するのは 1 件だけである",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-02-5",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "応答を受け取った後に自分の予約と同じ内容で送り直しても、重なりとして断られず成立済みの予約が示される",
+          "status": "passed",
+          "tags": [
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "既存の予約と時間帯が一部重なる予約はできない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-02-1",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "既存の予約の時間帯を含む予約はできない",
+          "status": "passed",
+          "tags": [
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "既存の予約の終了時刻から始まる予約はできる",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-02-2",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "既存の予約の開始前から始まり一部重なる予約はできない",
+          "status": "passed",
+          "tags": [
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "既存の予約の開始時刻に終わる予約はできる",
+          "status": "passed",
+          "tags": [
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "日をまたぐ時間帯は予約できない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-6",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "日付・開始時刻・終了時刻を選ばずに予約すると、予約は送られずそれぞれを選ぶことが示される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-9",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "空いている会議室を予約すると予約が成立し、予約者が記録される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-1",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "終了が翌日 0:00 の時間帯は予約できる",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-5",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "終了時刻が 30 分刻みでない時間帯は予約できない",
+          "status": "passed",
+          "tags": [
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "終了時刻だけを選ばずに予約すると、予約は送られず終了時刻を選ぶことだけが示される",
+          "status": "passed",
+          "tags": [
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "終了時刻を過ぎてから送り直しても過去の時間帯として断られず、成立済みの予約が示される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-03-6",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "自分の予約と同じ内容で送り直すと、新しい予約は作られず成立済みの予約が示される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-03-1",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "自分の予約と時間帯が一部だけ重なる予約はできない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-03-2",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "過去の時間帯は予約できない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-7",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "開始時刻が 30 分刻みでない時間帯は予約できない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-4",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "開始時刻が現在と同じ時間帯は予約できる",
+          "status": "passed",
+          "tags": [
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "開始時刻が終了時刻より後の時間帯は予約できない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-2",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "開始時刻と終了時刻が同じ時間帯は予約できない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-01-3",
+            "@uc:reserve-room"
+          ]
+        },
+        {
+          "name": "開始時刻を過ぎてから送り直しても過去の時間帯として断られず、成立済みの予約が示される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-002-03-5",
+            "@uc:reserve-room"
+          ]
+        }
+      ],
+      "spec_ids": [
+        "SPEC-002-01",
+        "SPEC-002-02",
+        "SPEC-002-03"
+      ],
+      "tables": [
+        "reservation_events",
+        "reservations",
+        "room_slot_occupancies",
+        "rooms"
+      ],
+      "tables_rw": {
+        "reservation_events": [
+          "write"
+        ],
+        "reservations": [
+          "read",
+          "write"
+        ],
+        "room_slot_occupancies": [
+          "write"
+        ],
+        "rooms": [
+          "read"
+        ]
+      },
+      "uc": "会議室を予約する"
+    },
+    "view-room-availability": {
+      "as_built": "docs/as-built/会議室予約/会議室の空き状況を照会する/",
+      "business": "会議室予約",
+      "files": [
+        ".distillery/runs/view-room-availability/attempt-1/assumptions.backend-api.yaml",
+        ".distillery/runs/view-room-availability/attempt-1/assumptions.frontend.yaml",
+        ".distillery/runs/view-room-availability/attempt-1/findings.backend-api.yaml",
+        ".distillery/runs/view-room-availability/attempt-1/findings.frontend.yaml",
+        ".distillery/runs/view-room-availability/attempt-2/assumptions.backend-api.yaml",
+        ".distillery/runs/view-room-availability/attempt-2/assumptions.frontend.yaml",
+        ".distillery/runs/view-room-availability/attempt-2/attempt.json",
+        ".distillery/runs/view-room-availability/attempt-2/findings.backend-api.yaml",
+        ".distillery/runs/view-room-availability/attempt-2/findings.frontend.yaml",
+        ".distillery/runs/view-room-availability/decisions.jsonl",
+        ".distillery/runs/view-room-availability/events.jsonl",
+        ".distillery/runs/view-room-availability/handoff/contract-20261110T032600Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/integrate-20261110T033454Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/integrate-20261110T040623Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/refute-implementation-backend-api-20261110T034156Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/refute-implementation-backend-api-20261110T041102Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/refute-implementation-frontend-20261110T034156Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/scaffold-20261110T032748Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/scenario-20261110T032146Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/scenario-refute-20261110T032424Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/tier-backend-api-20261110T032927Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/tier-backend-api-20261110T035642Z.yaml",
+        ".distillery/runs/view-room-availability/handoff/tier-frontend-20261110T032927Z.yaml",
+        ".distillery/runs/view-room-availability/invalidated/20261110_035623_contract-gate.done.yaml",
+        ".distillery/runs/view-room-availability/invalidated/20261110_035623_integrate.done.yaml",
+        ".distillery/runs/view-room-availability/invalidated/20261110_035623_tier.done.yaml",
+        ".distillery/runs/view-room-availability/invalidated/20261110_035623_verify.done.yaml",
+        ".distillery/runs/view-room-availability/reviews/implementation-backend-api/1/prompt-round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-backend-api/1/round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-backend-api/2/prompt-round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-backend-api/2/round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-frontend/1/prompt-round1.md",
+        ".distillery/runs/view-room-availability/reviews/implementation-frontend/1/round1.md",
+        ".distillery/runs/view-room-availability/reviews/scenario/1/prompt-round1.md",
+        ".distillery/runs/view-room-availability/reviews/scenario/1/round1.md",
+        ".distillery/runs/view-room-availability/stages/contract-gate.done.yaml",
+        ".distillery/runs/view-room-availability/stages/contract.done.yaml",
+        ".distillery/runs/view-room-availability/stages/integrate.done.yaml",
+        ".distillery/runs/view-room-availability/stages/review.done.yaml",
+        ".distillery/runs/view-room-availability/stages/scaffold.done.yaml",
+        ".distillery/runs/view-room-availability/stages/scenario.done.yaml",
+        ".distillery/runs/view-room-availability/stages/tier.done.yaml",
+        ".distillery/runs/view-room-availability/stages/verify.done.yaml",
+        "apps/backend-api/src/app.test.ts",
+        "apps/backend-api/src/domain/businessError.ts",
+        "apps/backend-api/src/domain/result.ts",
+        "apps/backend-api/src/gateway/joseTokenVerifier.test.ts",
+        "apps/backend-api/src/gateway/joseTokenVerifier.ts",
+        "apps/backend-api/src/gateway/jwksTestServer.ts",
+        "apps/backend-api/src/presentation/httpApp.test.ts",
+        "apps/backend-api/src/presentation/httpApp.ts",
+        "apps/backend-api/src/presentation/problem.ts",
+        "apps/backend-api/src/presentation/timeRangeRequest.ts",
+        "apps/frontend/src/App.tsx",
+        "apps/frontend/src/api/authorizedFetch.ts",
+        "apps/frontend/src/api/oidcTokenProvider.test.ts",
+        "apps/frontend/src/api/oidcTokenProvider.ts",
+        "apps/frontend/src/api/roomAvailabilityApi.ts",
+        "apps/frontend/src/api/tokenProvider.ts",
+        "apps/frontend/src/navigation.ts",
+        "apps/frontend/src/routes.tsx",
+        "apps/frontend/src/screens/AuthCallback/AuthCallbackScreen.tsx",
+        "apps/frontend/vite.config.ts",
+        "docs/README.md",
+        "features/会議室予約/view-room-availability.feature"
+      ],
+      "gates": "pass",
+      "gates_complete": true,
+      "generated_at": "2026-11-10T04:17:46.482Z",
+      "instrumentation_gaps": [],
+      "instrumentation_happy_gaps": [],
+      "messages": [],
+      "operations": [
+        "viewRoomAvailability"
+      ],
+      "scenarios": [
+        {
+          "name": "30 分刻みでない時刻は照会を受け付けない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-9",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "予約のある会議室は予約済み、予約の無い会議室は空きと表示される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-3",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "予約の時間帯と一部でも重なる時間帯は予約済みと表示される",
+          "status": "passed",
+          "tags": [
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "予約の終了時刻から始まる時間帯は空きと表示される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-5",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "予約済みの会議室に予約者の名前は表示されない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-4",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "会議室名が表示順に並んで表示される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-2",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "全会議室が会議室ごとに表示される",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-1",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "取り消された予約は予約済みとして扱わない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-6",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "日をまたぐ時間帯は照会を受け付けない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-11",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "終了が翌日 0:00 の時間帯は照会を受け付ける",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-10",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "過去の時間帯でも重なる有効な予約が無い会議室は空きと表示される",
+          "status": "passed",
+          "tags": [
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "過去の時間帯の照会は受け付ける",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-12",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "開始時刻が終了時刻より後の時間帯は照会を受け付けない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-7",
+            "@uc:view-room-availability"
+          ]
+        },
+        {
+          "name": "開始時刻と終了時刻が同じ時間帯は照会を受け付けない",
+          "status": "passed",
+          "tags": [
+            "@acceptance",
+            "@acceptance:SPEC-001-01-8",
+            "@uc:view-room-availability"
+          ]
+        }
+      ],
+      "spec_ids": [
+        "SPEC-001-01"
+      ],
+      "tables": [
+        "reservations",
+        "rooms"
+      ],
+      "tables_rw": {
+        "reservations": [
+          "read"
+        ],
+        "rooms": [
+          "read"
+        ]
+      },
+      "uc": "会議室の空き状況を照会する"
+    }
+  }
+}

@@ -1,0 +1,212 @@
+schema_version: "2.2"
+uc: "reserve-room"
+tier: "frontend"
+attempt: 2
+verified_at: "2026-11-10T15:30:00+09:00"
+gates_read:
+  static: pass
+  unit: pass
+  contract: pass
+  uc-bdd: pass
+  acceptance: pass
+viewpoints_checked:
+  uc_intent:
+    status: done
+    note: "gates.json (started_at 2026-11-10T06:05:01Z、修正後の全段の回し直し) は all_recorded true・result pass で 5 段とも pass (contract の frontend は not a provider で skipped、backend-api は pass)。unit.frontend.json は 106 件すべて passed (pending 0・todo 0)。今回の修正の単体テスト 2 件 (ReserveRoomScreen.test.tsx:391『APIが業務のエラーを返した後に入力を変えた場合_変える前の入力に対するエラーを消すこと』、RoomAvailabilityScreen.test.tsx:142『APIが業務のエラーを返した後に時間帯を変えた場合_変える前の時間帯に対するエラーを消すこと』) は、変える前にエラーのコードが出ていたことと変えた後に消えたことと入力の値が変わったことを 1 つの assert で確かめており、常に真になる assert ではない。uc-bdd.json は 28 シナリオ 224 step すべて passed、acceptance-api.json は 20 シナリオ 160 step すべて passed。@acceptance タグは requirements.yaml の SPEC-002-01 の受入基準 9 件・SPEC-002-02 の 5 件・SPEC-002-03 の 6 件の計 20 件を覆う。トレースは 28 シナリオとも frontend の screen 層 (予約画面.loadRooms・予約画面.submitReservation) を通る。未入力の 3 シナリオのトレース (traces/reserve-room#-c58186aa.jsonl ほか) には /api/reservations への http.out が無く、SPEC-002-01 の『送らずに止める』と一致する。時間帯の正しさ・30 分刻み・過去・重なりは submitReservation.ts で判定せず API に任せており SPEC-002-01 の『画面で先回りしない』と一致する。200 と 201 をどちらも成立として示すこと (submitReservation.ts:51) は SPEC-002-03『成立した結果として示す』に明示がある。API 呼び出しは reservationApi.ts が生成クライアント (packages/contracts/api/client の reserveRoom・listRooms) を authorizedFetch で包んで呼び、fetch の直書きは無い。二重送信の止め (inFlight と submitting) は ADR 0022 どおり。他 UC への波及: 共有の候補のうち frontend は routes.tsx と、view-room-availability の画面 RoomAvailabilityScreen.tsx・showRoomAvailability.ts。routes.tsx は /reservations/new の行を足し、/availability に navigate を渡しただけ。showRoomAvailability.ts は errorCodeOf を同じ中身のまま errorCodeOf.ts へ切り出しただけで、照会の応答とエラーのコードの決め方は変わらない。RoomAvailabilityScreen.tsx は今回の修正で、時間帯を変えると照会のエラーを消すようになった (状態の変え方が変わる)。view-room-availability のシナリオは入口関数 showRoomAvailability を通り時間帯を変える操作を含まないので結果は変わらないが、他 UC の画面の振る舞いが変わるため F-011 (major cross_uc_change) にした。"
+  assumption_conformance:
+    status: done
+assumptions_sha256: "f9cf1cce01d80340ef236b2ed522e3da55634c5a655ed52626bffa2dc52e91c4"
+assumption_verdicts:
+  - id: A-001
+    tier: frontend
+    assumption: "空き状況の画面は、照会した時間帯の開始 (Asia/Tokyo の日時) が現在より前のときだけ「予約する」の列を出さない。開始が現在と同じなら出す。日時に読めない時間帯は過去としない。判定は表示のためだけで、予約できるかは API が決める"
+    target: "apps/frontend/src/screens/RoomAvailability/reserveEntry.ts:12"
+    category: input_validation
+    verified_category: input_validation
+    verdict: spec_absent
+    finding_id: F-001
+    evidence: "packages/ui/stories/RoomAvailability.stories.tsx:64,87 (PastSlot) は『照会した時間帯が過去のときは予約するを出さない』としか書かず境界が無い。境界は reserve-room.feature『開始時刻が現在と同じ時間帯は予約できる』とそろう。表示だけで予約の画面からの送信は止めないので SPEC-002-01 の『過去かどうかは画面で先回りしない』とは矛盾しない"
+  - id: A-002
+    tier: frontend
+    assumption: "予約の画面はクエリの date を暦にある YYYY-MM-DD のときだけ、startTime を開始の選択肢 (00:00〜23:30)・endTime を終了の選択肢 (00:30〜24:00) にあるときだけ初期値にし、それ以外は空にする (開始の 24:00 も空)"
+    target: "apps/frontend/src/screens/ReserveRoom/initialReservationValue.ts:24"
+    category: input_validation
+    verified_category: input_validation
+    verdict: spec_absent
+    finding_id: F-002
+    evidence: "docs/rules/tier-frontend.md:87-88 (ADR 0021) は形に合わない値を空のままにしエラーも遷移もしないと決めるが、時刻の形を部品の選択肢で判定する基準は無い"
+  - id: A-003
+    tier: frontend
+    assumption: "予約が成立したときの内容は API の応答 (会議室名・開始と終了の日時・状態) から作り、日付と時刻は Asia/Tokyo の暦で読む。終了が開始の翌日の 0:00 なら終了時刻を 24:00 と表示する"
+    target: "apps/frontend/src/screens/toReservationView.ts:24"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-003
+    evidence: "docs/rules/tier-frontend.md:53-55 (ADR 0017) は終了の 24:00 を翌日 0:00 の日時で持つと決めるが、応答の日時を表示に戻す書き方は無い"
+  - id: A-004
+    tier: frontend
+    assumption: "予約の画面の「空き状況に戻る」(入力中・完了後とも) は /availability へクエリを付けずに移る。空き状況の画面は今日の 9:00〜10:00 の初期値から始まり、照会し直しは社員が行う"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:206"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-004
+    evidence: "packages/ui/stories/ReserveRoom.stories.tsx:52 はボタンを置くだけで戻り先に引き継ぐ値が無い。docs/rules/tier-frontend.md:85 (ADR 0021) は引き継ぐときの方法だけを決め、引き継ぐかどうかは決めていない"
+  - id: A-005
+    tier: frontend
+    assumption: "完了後の「自分の予約一覧を見る」は /my-reservations へ移る。この画面は UC list-my-reservations で作るまで routes に無く、移ると「画面が見つかりません」になる"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:176"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-005
+    evidence: "packages/ui/stories/ReserveRoom.stories.tsx:53 (Completed) がボタンを置き、docs/design/screens.yaml:61-64 の MyReservations の route が /my-reservations (uc_slugs は list-my-reservations)。apps/frontend/src/routes.tsx に無い。未実装の間の扱いはどこにも無い"
+  - id: A-006
+    tier: frontend
+    assumption: "予約の画面で会議室の一覧 (listRooms) を読めなかった間は、見本 RoomsUnavailable の形 (入力の上に理由の通知と「会議室の一覧を読み直す」のボタン、会議室の選択肢は空、引き継いだ日付と時刻は残す) で出し、通知は見本の INTERNAL_ERROR に固定せず応答のエラーのコード (401 なら UNAUTHENTICATED など) の理由にする。この通知は入力の中のエラー (予約の結果のエラー。送信中は出さない) とは別に出し、送信中も消さない (読み直しのボタンは送信中は押せない)。読み直して読めたら通知とボタンを消し、引き継いだ会議室を選択肢と照らす。一覧を読めるまでは予約を送らない。会議室が入力済みで「この内容で予約する」を押したときも一覧を読み直し、読めなければ予約を送らず通知を出し直す。読めたら引き継いだ会議室を選択肢と照らし、選択肢にあればそのまま予約を送り、無ければ会議室を空にして送らない (社員が選ぶ)"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:153"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-006
+    evidence: "docs/design/screens.yaml:45 の ReserveRoom の variants に RoomsUnavailable があり、ReserveRoomScreen.tsx:185-202 は見本と同じ部品・並び (通知とボタンを入力の上、rooms を空) で組んである。通知を応答のコードにすることは docs/rules/tier-frontend.md:35,97 (ADR 0008・0023) と合う。送信のときにも読み直すこと (ReserveRoomScreen.tsx:119-130)・送信中の通知とボタンの扱いは見本・ルールに無い。照らせていない会議室 ID を送らないので ADR 0021 (tier-frontend.md:88) とは矛盾しない"
+  - id: A-007
+    tier: frontend
+    assumption: "予約と会議室の一覧で、応答を受け取れない (fetch が失敗する) か、エラーの応答に code が無いときは、画面の状態を INTERNAL_ERROR のエラーにする (空き状況の照会と同じ共通の関数 errorCodeOf を使う)。送り直しで成立済みの予約が返る (200) ようになった後も、応答を受け取れなかったときの表示の文言は変えない"
+    target: "apps/frontend/src/screens/errorCodeOf.ts:7"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-007
+    evidence: "contract-slice.json の Problem (code は必須) と docs/rules/tier-frontend.md:97 (ADR 0023) は code で分岐するとだけ書き、応答が無いときと code が無いときの扱いが無い。errorCodeOf は showRoomAvailability.ts にあった同じ中身を共通化したもの (git diff main..HEAD で確認)"
+  - id: A-008
+    tier: frontend
+    assumption: "予約の入口関数 submitReservation は、入力の部品の送信の止めとは別に自分でも未入力を判定し、会議室・日付・開始時刻・終了時刻のどれかが空 (空白だけを含む。画面部品 missingReservationFields の判定) なら API を呼ばずに { kind: 'missing', fields } を返す。fields は roomId / date / startTime / endTime の項目の順。画面はこの状態のとき入力の部品の showMissing で項目ごとの促しを出す"
+    target: "apps/frontend/src/screens/ReserveRoom/submitReservation.ts:38"
+    category: input_validation
+    verified_category: input_validation
+    verdict: spec_absent
+    finding_id: F-008
+    evidence: "送らずに止めて項目ごとに促すことは requirements.yaml#SPEC-002-01 と reserve-room.feature の未入力の 3 シナリオに明示がある。止める場所を入口関数にも置くこと・結果の形・空白だけを未入力とすることは要求・ルールに無い"
+  - id: A-009
+    tier: frontend
+    assumption: "予約の画面は、同じ path のままクエリの roomId・date・startTime・endTime のどれかが変わったら (ブラウザの戻る・進むなど)、画面の状態 (入力・予約の結果・会議室の選択肢) をすべて作り直し、移った先のクエリを入力の初期値にして会議室の一覧を読み直す。それ以外のクエリの項目の違いでは作り直さない"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:46"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-009
+    evidence: "docs/rules/tier-frontend.md:86 (App.tsx は search が変われば描き直す) と :88 (クエリは入力の初期値としてだけ使う) は、同じ画面のままクエリだけが変わったときに入力中の値や予約の結果を捨てるかを決めていない。:89 の入力値は保存も復元もしない規則とは矛盾しない"
+  - id: A-010
+    tier: frontend
+    assumption: "予約の画面と空き状況の画面は、API が業務のエラーを返した後に社員が入力 (会議室・日付・時刻) を変えたら、そのエラーの表示を消して入力前の状態に戻す。次に送信・照会するまでエラーは出さない。会議室の一覧を読めなかった通知 (予約の画面の入力の上) は入力とは関係ないので消さない。空き状況の画面で照会できた一覧は、照会した時間帯の見出しのまま残す"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:146"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-010
+    evidence: "docs/rules/tier-frontend.md:35,97 (ADR 0008・0023) はエラーのコードに応じた理由を表示するとだけ決め、入力を変えた後も出し続けるかは決めていない。要求・シナリオ・見本 (ReserveRoom・RoomAvailability の stories) にも無い。実装は ReserveRoomScreen.tsx:146-149 と RoomAvailabilityScreen.tsx:61-64 で、error の状態だけを idle に戻し missing・completed・loaded と roomsError は残す (前提の文どおり)"
+assumption_verdicts_summary: {consistent: 0, spec_absent: 10, contradicts: 0, unlisted: 0}
+findings:
+  - id: F-011
+    viewpoint: uc_intent
+    kind: cross_uc_change
+    severity: major
+    title: "空き状況の画面のエラーの消え方が変わる"
+    target: "apps/frontend/src/screens/RoomAvailability/RoomAvailabilityScreen.tsx:61"
+    claim: "この UC の修正で、view-room-availability の空き状況の画面は時間帯を変えると照会のエラーの表示を消すようになった。他 UC の画面の状態の変え方が変わるので、人レビューでその UC の意図に合うかを判断してほしい"
+    evidence: "git diff main..HEAD の RoomAvailabilityScreen.tsx で onChange={setSlot} が onChange={changeSlot} (state が error なら idle に戻す) に変わった。features/会議室予約/view-room-availability.feature の SPEC-001-01-7〜9・11 は『空き状況は表示されず、時間帯が正しくないことが示される』までで、時間帯を変える操作を含まないので結果は変わらない (入口関数 showRoomAvailability.ts の応答とエラーのコードの決め方も変わらない)。前提 A-010 が両画面にそろえた判断として記録している。UC の意図に反しないので blocker にしない"
+  - id: F-001
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-001
+    severity: minor
+    title: "過去の照会で予約するを隠す境界"
+    target: "apps/frontend/src/screens/RoomAvailability/reserveEntry.ts:12"
+    claim: "過去と判定する境界 (開始が現在より前・読めない時間帯は過去にしない) は仕様に無い。過去の時間帯で入口を隠すことは見本どおり"
+    evidence: "packages/ui/stories/RoomAvailability.stories.tsx:64,87 (PastSlot); features/会議室予約/reserve-room.feature『開始時刻が現在と同じ時間帯は予約できる』; unit.frontend.json の RoomAvailabilityScreen.test.tsx『過去の時間帯を照会した場合』passed"
+  - id: F-002
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-002
+    severity: minor
+    title: "クエリの形を選択肢で判定する"
+    target: "apps/frontend/src/screens/ReserveRoom/initialReservationValue.ts:24"
+    claim: "時刻の『入力の形』を部品の選択肢にあるかで判定する基準は ADR 0021 に無い。空にしてエラーも遷移もしない振る舞いは ADR 0021 どおり"
+    evidence: "docs/rules/tier-frontend.md:87-88; unit.frontend.json の initialReservationValue.test.ts 4 件 passed"
+  - id: F-003
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-003
+    severity: minor
+    title: "結果の日時を日本時間と24:00で表示"
+    target: "apps/frontend/src/screens/toReservationView.ts:24"
+    claim: "応答の日時を日付と時刻に戻す書き方 (Asia/Tokyo・翌日 0:00 は 24:00) は仕様に無い。入力の選択肢と同じ書き方で ADR 0017 と矛盾しない"
+    evidence: "docs/rules/tier-frontend.md:53-55; unit.frontend.json の toReservationView.test.ts passed"
+  - id: F-004
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-004
+    severity: minor
+    title: "空き状況に戻るは値を引き継がない"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:206"
+    claim: "予約の画面から空き状況へ戻るとき、照会していた日付と時間帯を引き継がないことは仕様に無い判断"
+    evidence: "packages/ui/stories/ReserveRoom.stories.tsx:52; docs/rules/tier-frontend.md:85; ReserveRoomScreen.test.tsx『空き状況に戻るを押した場合_空き状況の画面へ移ること』passed"
+  - id: F-005
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-005
+    severity: minor
+    title: "予約一覧ボタンが未実装の画面へ"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:176"
+    claim: "完了後の『自分の予約一覧を見る』は、一覧の UC を作るまで『画面が見つかりません』に移る。見本どおりにボタンを置いた結果で、未実装の間の扱いは仕様に無い"
+    evidence: "packages/ui/stories/ReserveRoom.stories.tsx:53 (Completed); docs/design/screens.yaml:61-64 (MyReservations); apps/frontend/src/routes.tsx に /my-reservations が無い"
+  - id: F-006
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-006
+    severity: minor
+    title: "会議室を読めない間の読み直しの扱い"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:153"
+    claim: "画面の構造は見本 RoomsUnavailable どおり。見本に無いのは、通知を応答のコードにすること・送信のときにも読み直すこと・送信中の通知とボタンの扱い"
+    evidence: "docs/design/screens.yaml:45; ReserveRoomScreen.tsx:119-130,185-202; docs/rules/tier-frontend.md:35,88,97; unit.frontend.json の ReserveRoomScreen.test.tsx の読めなかった場合の 6 件 passed"
+  - id: F-007
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-007
+    severity: minor
+    title: "応答が無いときはINTERNAL_ERROR"
+    target: "apps/frontend/src/screens/errorCodeOf.ts:7"
+    claim: "通信の失敗と code 無しの応答を INTERNAL_ERROR にすることは契約・ルールに無い。空き状況の照会と同じ扱いを共通化したもので、UC の間で揃っている"
+    evidence: "contract-slice.json#Problem; docs/rules/tier-frontend.md:97; unit.frontend.json の submitReservation.test.ts・loadRooms.test.ts『応答を受け取れなかった場合_INTERNAL_ERRORを返すこと』passed"
+  - id: F-008
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-008
+    severity: minor
+    title: "未入力の判定を入口関数でもする"
+    target: "apps/frontend/src/screens/ReserveRoom/submitReservation.ts:38"
+    claim: "送らずに止めて項目ごとに促すことは要求にある。入口関数でも判定すること・結果の形・空白だけを未入力とすることが補った部分"
+    evidence: "docs/requirements/requirements.yaml#SPEC-002-01; traces/reserve-room#-c58186aa.jsonl ほか未入力の 3 シナリオに /api/reservations への http.out が無い; unit.frontend.json の submitReservationMissing.test.ts 3 件 passed"
+  - id: F-009
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-009
+    severity: minor
+    title: "クエリが変わると画面を作り直す"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:46"
+    claim: "同じ画面のままクエリだけが変わったとき、入力中の値と予約の結果を捨てて移った先のクエリを初期値にすることは ADR 0021 に無い判断。ADR 0021 の規則とは矛盾しない"
+    evidence: "docs/rules/tier-frontend.md:86,88,89; ReserveRoomScreen.tsx:36-48; ReserveRoomScreen.test.tsx『同じ画面のままクエリだけが変わった場合』passed"
+  - id: F-010
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-010
+    severity: minor
+    title: "入力を変えたら前のAPIエラーを消す"
+    target: "apps/frontend/src/screens/ReserveRoom/ReserveRoomScreen.tsx:146"
+    claim: "入力を変えた後に前の API のエラーを消すことは要求・ルール・見本に無い判断。ADR 0008・0023 のエラーの理由を出す規則とは矛盾しない (次の送信・照会でまた出る)"
+    evidence: "docs/rules/tier-frontend.md:35,97; ReserveRoomScreen.tsx:146-149; RoomAvailabilityScreen.tsx:61-64; unit.frontend.json の ReserveRoomScreen.test.tsx:391 と RoomAvailabilityScreen.test.tsx:142 passed。空き状況の画面への波及は F-011"
+summary: {blocker: 0, major: 1, minor: 10}
+asks: []
+upstream_issues: []
