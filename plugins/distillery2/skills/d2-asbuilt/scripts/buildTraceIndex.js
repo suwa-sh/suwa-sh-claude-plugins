@@ -18,7 +18,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseTraceLines, sqlVerb, cmpStr } = require('./traceTree');
+const { parseTraceLines, sqlVerb, withTableModes, cmpStr } = require('./traceTree');
 
 const READ_VERBS = new Set(['SELECT', 'WITH', 'SHOW', 'EXPLAIN']);
 const WRITE_VERBS = new Set(['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT', 'REPLACE', 'CREATE', 'ALTER', 'DROP', 'TRUNCATE']);
@@ -53,8 +53,10 @@ function deriveFromTraces(scenarios) {
       if (ev.kind === 'http.in') {
         if (meta.operationId) { operations.push(meta.operationId); scOps.push(meta.operationId); }
       } else if (ev.kind === 'db.query') {
-        const mode = classifySql(meta.sql);
-        for (const tbl of Array.isArray(meta.tables) ? meta.tables : []) {
+        const stmtMode = classifySql(meta.sql);
+        const perTable = withTableModes(meta.sql, meta.tables)
+          || (Array.isArray(meta.tables) ? meta.tables : []).map((t) => ({ table: t, mode: stmtMode }));
+        for (const { table: tbl, mode } of perTable) {
           if (!tableModes.has(tbl)) tableModes.set(tbl, new Set());
           tableModes.get(tbl).add(mode);
           if (mode === 'read') scRead.push(tbl);

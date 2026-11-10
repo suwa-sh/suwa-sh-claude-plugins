@@ -26,6 +26,25 @@ function sqlVerb(sql) {
   return m ? m[1].toUpperCase() : 'QUERY';
 }
 
+const CTE_NAME_RE = /(?:\bwith\s+(?:recursive\s+)?|,\s*)["`]?([A-Za-z_][A-Za-z0-9_]*)["`]?\s*(?:\([^)]*\)\s*)?as\s+(?:(?:not\s+)?materialized\s+)?\(/gi;
+const DML_TARGET_RE = /\b(?:insert\s+into|update|delete\s+from|merge\s+into)\s+(?:only\s+)?["`]?([A-Za-z_][A-Za-z0-9_."]*)/gi;
+
+/**
+ * WITH で始まる文の、表ごとの読み書き。WITH 以外は null (呼び出し側が先頭の動詞で分類する)。
+ * WITH 句の中の INSERT / UPDATE / DELETE / MERGE の宛先は write、ほかは read。WITH 句の名前 (CTE) は表ではないので外す。
+ * 先頭の動詞だけで読み取りと数えると、`WITH x AS (INSERT ...) INSERT ...` の書き込みが図と索引で Read になる (0.3.0 の実地確認)。
+ * @returns {Array<{table:string, mode:'read'|'write'}>|null}
+ */
+function withTableModes(sql, tables) {
+  const s = String(sql || '');
+  if (sqlVerb(s) !== 'WITH') return null;
+  const lower = (x) => String(x).replace(/"/g, '').toLowerCase();
+  const ctes = new Set([...s.matchAll(CTE_NAME_RE)].map((m) => lower(m[1])));
+  const written = new Set([...s.matchAll(DML_TARGET_RE)].map((m) => lower(m[1])));
+  return (Array.isArray(tables) ? tables : []).filter((t) => !ctes.has(lower(t)))
+    .map((t) => ({ table: t, mode: written.has(lower(t)) ? 'write' : 'read' }));
+}
+
 /** JSONL テキスト → トレース行の配列 (空行・不正行は無視)。 */
 function parseTraceLines(text) {
   const out = [];
@@ -151,7 +170,8 @@ function flatten(tree, actorLabel) {
         return;
       }
       case 'db.query': {
-        const tables = Array.isArray(node.meta.tables) ? node.meta.tables : [];
+        const perTable = withTableModes(node.meta.sql, node.meta.tables);
+        const tables = perTable ? perTable.map((x) => x.table) : Array.isArray(node.meta.tables) ? node.meta.tables : [];
         out.push({ type: 'leaf', node, from, to, label: `${sqlVerb(node.meta.sql)}${tables.length ? ' ' + tables.join(', ') : ''}`, db: true, verb: sqlVerb(node.meta.sql), tables });
         for (const c of node.children) visit(c);
         return;
@@ -197,4 +217,4 @@ function observedPlacements(tree) {
   return [...tiers.keys()].sort(cmpStr).map((t) => ({ tier: t, layers: [...tiers.get(t)].sort(cmpStr) }));
 }
 
-module.exports = { buildTree, flatten, callerOf, participantOf, pairedHttpIn, observedPlacements, parseTraceLines, sqlVerb, cmpStr, DEFAULT_ACTOR };
+module.exports = { buildTree, flatten, callerOf, participantOf, pairedHttpIn, observedPlacements, parseTraceLines, sqlVerb, withTableModes, cmpStr, DEFAULT_ACTOR };

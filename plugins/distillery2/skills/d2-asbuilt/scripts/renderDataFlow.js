@@ -14,7 +14,7 @@
  */
 'use strict';
 
-const { buildTree, callerOf, sqlVerb, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
+const { buildTree, callerOf, sqlVerb, withTableModes, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
 
 const READ = new Set(['SELECT', 'WITH', 'SHOW', 'EXPLAIN']);
 const WRITE = new Set(['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT', 'REPLACE', 'TRUNCATE']);
@@ -76,7 +76,9 @@ function buildFlows(traces, opts = {}) {
           const mode = READ.has(v) ? 'read' : WRITE.has(v) ? 'write' : null;
           if (!mode) break;
           const src = sourceKey(n);
-          for (const t of Array.isArray(n.meta.tables) ? n.meta.tables : []) addEdge(src, addNode(`tbl:${t}`, 'store', String(t), null), mode);
+          const perTable = withTableModes(n.meta.sql, n.meta.tables)
+            || (Array.isArray(n.meta.tables) ? n.meta.tables : []).map((t) => ({ table: t, mode }));
+          for (const x of perTable) addEdge(src, addNode(`tbl:${x.table}`, 'store', String(x.table), null), x.mode);
           break;
         }
         case 'publish': {

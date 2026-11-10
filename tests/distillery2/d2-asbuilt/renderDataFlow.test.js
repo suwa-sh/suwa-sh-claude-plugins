@@ -52,6 +52,50 @@ test('buildFlows は全シナリオを合算し、読み書きを辺の種類で
   assert.equal(renderFlowchart(buildFlows(sampleTraces(), { actor: '司書' })), text);
 });
 
+test('WITH で始まる文は表ごとに読み書きを分け、WITH 句の名前を表にしない (0.3.0 の実地確認: 予約の保存が図と索引で Read になった)', () => {
+  const { withTableModes, flatten } = require(path.join(SCRIPTS, 'traceTree'));
+  const { deriveFromTraces } = require(path.join(SCRIPTS, 'buildTraceIndex'));
+  const { summarizeScenario } = require(path.join(SCRIPTS, 'renderSequence'));
+  const sql = `WITH inserted AS (
+      INSERT INTO reservations (id) VALUES ($1) RETURNING id
+    ), event AS (
+      INSERT INTO reservation_events (id, reservation_id) SELECT $2, id FROM inserted
+    )
+    INSERT INTO room_slot_occupancies (room_id, reservation_id)
+    SELECT r.id, inserted.id FROM inserted, rooms r`;
+  // 計装 (extractTables) が拾う形: from / join / into / update の後ろの名前
+  const tables = ['reservations', 'reservation_events', 'inserted', 'room_slot_occupancies'];
+  assert.deepEqual(withTableModes(sql, [...tables, 'rooms']), [
+    { table: 'reservations', mode: 'write' }, { table: 'reservation_events', mode: 'write' },
+    { table: 'room_slot_occupancies', mode: 'write' }, { table: 'rooms', mode: 'read' },
+  ]);
+  assert.deepEqual(withTableModes('WITH RECURSIVE t(n) AS (SELECT 1 FROM seeds) SELECT n FROM t', ['seeds', 't']), [{ table: 'seeds', mode: 'read' }], '書き込みの無い WITH は読み取りだけ');
+  assert.equal(withTableModes('INSERT INTO a SELECT * FROM b', ['a', 'b']), null, 'WITH 以外は先頭の動詞で分類する (今までどおり)');
+
+  seq = 0;
+  const inn = sp('http.in', '/reservations', { method: 'POST', path: '/reservations', status: 201, operationId: 'reserveRoom', tier: 'backend-api', layer: 'presentation' });
+  const uc = sp('call', null, { component: 'ReserveRoom', fn: 'execute', tier: 'backend-api', layer: 'usecase' }, inn.seq);
+  const q = sp('db.query', null, { sql, tables, component: 'ReservationRepository', tier: 'backend-api', layer: 'repository' }, uc.seq);
+  const lines = [q, uc, inn];
+
+  const text = renderFlowchart(buildFlows([{ scenario: 'uc#s1', lines }], { actor: '社員' }));
+  assert.doesNotMatch(text, /inserted/, text);
+  assert.doesNotMatch(text, /Read/, text);
+  for (const t of ['reservations', 'reservation_events', 'room_slot_occupancies']) assert.match(text, new RegExp(`== Write ==> n\\d+\\n|\\[\\(${t}\\)\\]`), text);
+  assert.equal((text.match(/== Write ==>/g) || []).length, 3, text);
+
+  const idx = deriveFromTraces([{ scenario: 'uc#s1', lines }]);
+  assert.deepEqual(idx.tables, ['reservation_events', 'reservations', 'room_slot_occupancies'].map((name) => ({ name, modes: ['write'] })));
+  assert.deepEqual(idx.perScenario[0].tables_read, []);
+
+  const sum = summarizeScenario(lines);
+  assert.deepEqual(sum.reads, []);
+  assert.deepEqual(sum.writes, ['reservation_events', 'reservations', 'room_slot_occupancies']);
+
+  const leaf = flatten(buildTree(lines)).find((e) => e.db);
+  assert.equal(leaf.label, 'WITH reservations, reservation_events, room_slot_occupancies', 'シーケンス図の行にも WITH 句の名前を出さない');
+});
+
 test('アクター起点の辺は、祖先が無いノードから引く', () => {
   const flows = buildFlows(sampleTraces(), { actor: '司書' });
   const text = renderFlowchart(flows);

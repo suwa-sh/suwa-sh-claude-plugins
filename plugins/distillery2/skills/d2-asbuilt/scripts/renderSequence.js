@@ -19,7 +19,7 @@
 'use strict';
 
 const fs = require('node:fs');
-const { buildTree, flatten, parseTraceLines, sqlVerb, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
+const { buildTree, flatten, parseTraceLines, sqlVerb, withTableModes, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
 
 const ACTOR = DEFAULT_ACTOR;
 const DEFAULT_MAX_LINES = 60;
@@ -131,8 +131,10 @@ function summarizeScenario(lines) {
     if (n.kind === 'http.in' && n.meta.status != null) statuses.push(String(n.meta.status));
     if (n.kind === 'db.query') {
       const v = sqlVerb(n.meta.sql);
+      const perTable = withTableModes(n.meta.sql, n.meta.tables);
+      if (perTable) { for (const x of perTable) (x.mode === 'write' ? writes : reads).add(x.table); continue; }
       const tables = Array.isArray(n.meta.tables) ? n.meta.tables : [];
-      for (const t of tables) { if (v === 'SELECT' || v === 'WITH') reads.add(t); else if (['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT'].includes(v)) writes.add(t); }
+      for (const t of tables) { if (v === 'SELECT') reads.add(t); else if (['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT'].includes(v)) writes.add(t); }
     }
     if (n.kind === 'publish' && n.meta.message) messages.add(String(n.meta.message));
   }
