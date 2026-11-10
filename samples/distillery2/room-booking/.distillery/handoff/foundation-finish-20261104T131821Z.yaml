@@ -1,0 +1,10 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: 生成物の鮮度ジョブの失敗
+    choice: 課題にしない
+    reason: "止めない扱いのジョブで F9 は exit 0。scripts/check.mjs が古いプラグインのキャッシュ (0.2.0) のスクリプトを探して見つからず落ちた (前回の仕上げと同じ原因)。docs/README.md の古さは進行役が commit 前に作り直す"

@@ -1,0 +1,32 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks:
+  - id: brand-colors
+    kind: unknown_fact
+    question: "画面の色と文字は、決定記録 0008 で要求から推論した値 (青 #1D4ED8 / 緑寄りの青 #0F766E / 橙 #F59E0B / 灰 #64748B、Noto Sans JP) のままでよいか。会社で決まった色やフォントがあれば教えてほしい"
+    options:
+      - label: 推論の色と文字のまま進める
+        impact: "そのまま実装に進める。後で会社の色が分かれば、決定記録 0008 を置き換えてトークンの元の値を差し替えれば全画面に反映される"
+      - label: 会社の色と文字に差し替える
+        impact: "色とフォントの値をもらい、決定記録 0008 を置き換えてから画面部品のトークンを作り直す"
+    recommended: 推論の色と文字のまま進める
+    reason: "社内向けの 4 画面で、色はトークンに集めてあり後から差し替えても部品の作り直しは要らない。青は白地で十分読める濃さで、空き・予約済みは文字でも示すので色が変わっても使い方は変わらない"
+upstream_issues:
+  - id: playwright-browser-missing
+    target_step: foundation
+    title: Playwright のブラウザが未導入で撮影できない
+    detail: "playwright は依存に入っているが chromium (headless shell) が入っておらず、画面部品の撮影 (captureStories.js) が目視未実施 (exit 2) になる。以後の画面の見本の修正や UI の確認でも同じく止まる"
+    evidence: "captureStories.js --cwd . が exit 2。browserType.launch: Executable doesn't exist at ~/Library/Caches/ms-playwright/chromium_headless_shell-1248 (npx playwright install の案内)"
+    recommended_fix: "基盤の依存の導入の段で npx playwright install chromium を行う"
+decisions:
+  - {id: D1, topic: ポータルの数, choice: "社員向けの 1 つ (data-portal=user) だけにした", reason: "アクターは社内の社員 1 種で管理者が居ない (決定記録 0008 も利用者と管理者の画面を分けない)"}
+  - {id: D2, topic: 端末とブレークポイント, choice: "PC のみ (lg 1024px) でスマートフォン向けの切り替えは作らない", reason: "対応デバイスの grade 0 と決定記録 0008 の背景 (PC のブラウザで使う想定)。対応 OS の grade 3 は OS の種類の話で画面幅の根拠にしない"}
+  - {id: D3, topic: ナビの形, choice: "横のメニュー欄ではなく上部のヘッダーにメニューを置いた (--sidebar-width 12rem はトークンとして定義だけする)", reason: "メニュー項目が「空き状況」「自分の予約」の 2 つだけ"}
+  - {id: D4, topic: 画面のパス, choice: "/availability, /reservations/new, /my-reservations, /my-reservations/:reservationId/cancel", reason: "要求の 4 画面に 1 対 1。取消確認は対象の予約を指す必要があるため予約 ID をパスに持つ"}
+  - {id: D5, topic: 色の割り当て, choice: "空き = 補助色 (緑寄りの青)、予約済み = 中立の灰、エラー = 赤、主な操作 = 主色の青。強調色の橙は注意の表示だけに使い、白い文字を載せない", reason: "決定記録 0008 が補助色を空きの色としている。橙の上の白い文字は読みにくい"}
+  - {id: D6, topic: エラーの文, choice: "契約の ErrorCode 12 種すべてに見出しと次の行動の文を決め、BusinessErrorAlert で出す (src/components/domain/errorMessages.ts)", reason: "決定記録 0008 の決まり (業務のエラーはコードに応じた理由の文を表示する)"}
+  - {id: D7, topic: 時刻の選び方, choice: "開始・終了は 0:00〜23:30 の 30 分刻みの選択肢にした", reason: "条件「予約時刻の妥当性」が 30 分刻みで営業時間の制限なし。選択肢で 30 分刻み以外を入力できなくする"}
+  - {id: D8, topic: フォントの読み込み, choice: "Noto Sans JP を外部から読み込まず、無ければ OS の日本語ゴシックで表示するフォントの並びにした", reason: "部品を packages/ui に取り込んだ後も外部への通信に依存しない"}
+  - {id: D9, topic: Storybook の構成, choice: "Vite + React + TypeScript + Tailwind CSS v4 + Storybook 10 (@storybook/react-vite)。部品の import は相対パスだけ", reason: "決定記録 0008 の ui ヒント (react / spa / tailwind)。packages/ui に src だけを取り込んでも壊れないよう別名の import を使わない"}
+  - {id: D10, topic: 目視の撮影, choice: "撮影スクリプトが Playwright 用のブラウザ未導入で止まったため、同じ配信と画面の大きさで PC に入っている Chrome を使って全 76 件を撮った", reason: "書き込み範囲の外 (ブラウザのキャッシュ) に入れずに目視の証跡を残すため。手順の撮影は目視未実施 (exit 2) として扱う"}
+  - {id: D11, topic: lint の例外, choice: "画面の Story の Error の見本名と Tailwind の @source / @custom-variant / @theme に biome-ignore を理由付きで付け、ルートの biome と同じ設定で警告 0 にした", reason: "packages/ui はルートの biome の対象に入る。見本名 Error は screens.yaml の variants の決まり、@ 指示は Tailwind CSS v4 に必須"}

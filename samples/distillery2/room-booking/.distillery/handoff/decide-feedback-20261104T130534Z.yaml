@@ -1,0 +1,24 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: nfr-grade-external-idp-fix
+    kind: choice
+    question: "非機能グレード表の「外部システムは無い」という誤った根拠を、だれがどこで直すか"
+    options:
+      - label: "非機能グレード表を書ける範囲で決定の担当を派遣し直して直す"
+        impact: "docs/nfr/** を書き込み範囲に入れ、課題の推奨どおり選定根拠と A.2.1.1 の根拠と RDRA 要素を直し、validateNfrGrade.js と generateNfrGradeMd.js を回す。レベルは変わらない"
+      - label: "直さずに残す"
+        impact: "ADR 0014 が正しい前提を書いているので判断は変わらないが、非機能グレード表と ADR の前提が食い違ったまま残る"
+    recommended: "非機能グレード表を書ける範囲で決定の担当を派遣し直して直す"
+    reason: "決定の根拠の表が要求 (docs/requirements/rdra/外部システム.tsv の社内の認証基盤) と食い違ったまま残ると、後の決定の差分で同じ誤った前提が再び使われる。直す中身は根拠の文だけでレベルは変わらない"
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "課題の扱い"
+    choice: "ADR を書かずに blocked (reason_kind: plugin) で止めた"
+    reason: "直す先は docs/nfr/nfr-grade.yaml の根拠の文で ADR の rules[] では表せず、決定の差分の手順と書き込み範囲 (docs/adr/**) に非機能グレード表を直す道が無い"
+  - id: D2
+    topic: "新しい ADR を足すか"
+    choice: "足さない"
+    reason: "ADR 0014 の背景が既に前提 (外部システムは社内の認証基盤 1 つ) を直しており、ADR 0005 のメッセージング不要の結論も変わらない。旧 ADR の本文は手順上変えられない"

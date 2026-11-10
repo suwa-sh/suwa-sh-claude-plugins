@@ -1,0 +1,25 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "非機能グレード表の A.4.1.1 (前日の最終バックアップまで) と C.1.2.1 (日次) が ADR 0016 (障害の直前まで・更新の記録を同期して別の保管場所へ) と食い違っていた。ADR 0016 の影響の節 (56 行目) も表を直すよう書いている"
+    change: "docs/nfr/nfr-grade.yaml の A.4.1.1 を Lv3 (障害直前まで)、C.1.2.1 を Lv4 (リアルタイムレプリケーション。更新の記録の同期) にし、根拠を ADR 0016 と二重予約の防止に直した。validateNfrGrade.js PASS の後に generateNfrGradeMd.js で nfr-grade.md を作り直した"
+  - finding: "指摘 2"
+    result: refuted
+    reason: "JWT のアクセストークン (sub・API 向けの aud・公開鍵での検証) を発行できるかの確認は、ADR 0015 を書いた派遣の引き継ぎ (.distillery/handoff/decide-feedback-20261104T132404Z.yaml の asks の idp-access-token-jwt) で既に人の確認に返し、.distillery/decisions.jsonl:152 に推奨で仮置き (provisional) として記録済み。docs/adr/_review-summary.md は段階② の最初の確認用で、決定の差分 (mode=feedback) では書かない決まり (d2-decide の mode=feedback 手順 6)。人の確認は進行役の確認ページで行われるため、同じ問いを二重に起こさない"
+decisions:
+  - id: D1
+    topic: "A.4.1.1 のレベル"
+    choice: "Lv3 (障害直前まで) にする"
+    reason: "ADR 0016 の決定と規則が「目標復旧地点は障害の直前」と書く。意図して過去の時点へ戻す復旧を保証の外にしているため Lv4 (データ損失なし) ではない"
+  - id: D2
+    topic: "C.1.2.1 のレベル"
+    choice: "Lv4 (リアルタイムレプリケーション) にする"
+    reason: "ADR 0016 は更新の記録を別の保管場所へ同期して書く。カタログの Lv2・Lv3 は日次で、その日の予約が消えるため合わない"
+  - id: D3
+    topic: "新しい ADR の要否"
+    choice: "書かない"
+    reason: "レベルの変更に依る決定 (バックアップと復旧の仕方) は ADR 0016 が既に決めており、表をそれに合わせただけのため"

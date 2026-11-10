@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: integrate
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: 送り直しの成否の確かめ方
+    choice: 画面は 200 と 201 を区別しないため、「新しい予約は作られない」を予約・イベント・30 分枠の占有の 3 つの表の行数が送る前と同じであることで確かめ、「成立済みのその予約」を送る前からあった予約の ID と一致することで確かめる
+    reason: frontend は 200 も予約の成立として示す仕様で、画面の状態に区別が無い。保存の状態で観測するのが要求 (新しい予約を作らない) に直接対応する
+  - id: D2
+    topic: 社員を指定した予約の前提の入れ方
+    choice: reserve-room.steps.ts の中に view-room-availability.steps.ts と同じ入れ方の前提関数 (seedOwnReservation) を置き、共通の support には切り出さない
+    reason: 他 UC の step ファイルを変えると他 UC の回帰を自分で回せない (write-set と手順の制約)。共通化は回帰を回せる段に任せる
+  - id: D3
+    topic: 「応答が届かなかった」前提の表し方
+    choice: 応答の到達は保存の状態に現れないので、成立済みの有効な予約を 1 件入れることで表す
+    reason: 要求は応答が届いたかどうかに関わらず同じ扱いにすると定めており、保存の状態だけが判定に効く

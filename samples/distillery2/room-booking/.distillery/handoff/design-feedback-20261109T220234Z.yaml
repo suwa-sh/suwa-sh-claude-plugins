@@ -1,0 +1,22 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "空き状況画面の見本に予約の入口を足す形"
+    choice: "見本の画面に onReserve を引数で足し、Reservable では fn() を渡す。部品 (RoomAvailabilityList) は変えない"
+    reason: "部品はすでに onReserve の有無で「予約する」の列を出し分けるので、見本の Story だけで構造を示せる"
+  - id: D2
+    topic: "Default の扱い"
+    choice: "Default は照会だけの状態のまま残し、予約への入口は新しい Reservable で示す (説明に明記)"
+    reason: "項目に無い既存の見本の状態を書き換えない決まりに合わせる。実装済みの照会の画面の回帰を起こさない"
+  - id: D3
+    topic: "PastSlot の見本の値"
+    choice: "照会した時間帯を 2026-11-04 10:00〜11:00 (見本の基準日 2026-11-05 より前) にし、onReserve を渡さない。エラーの表示は出さず空き状況は見せる"
+    reason: "過去の時間帯でも照会自体は受け付ける (照会の UC にエラーの決まりが無い)。押しても予約できないボタンを出さないという部品の説明に合わせる"
+  - id: D4
+    topic: "screens.yaml の variants"
+    choice: "RoomAvailability の variants に Reservable と PastSlot を足す (uc_slugs の reserve-room の追加とあわせて)"
+    reason: "画面の状態の一覧を screens.yaml と Story で揃え、validateScreens の検査対象にする"

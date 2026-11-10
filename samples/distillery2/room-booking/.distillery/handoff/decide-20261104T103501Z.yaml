@@ -1,0 +1,142 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: idp-oidc
+    kind: unknown_fact
+    question: "社内の既存アカウントの認証基盤は、OpenID Connect (OIDC) でのログインに対応しているか"
+    options:
+      - label: "OIDC に対応している"
+        impact: "決定どおり、ログインを社内の認証基盤に任せ、API はトークンを検証するだけにする"
+      - label: "OIDC に対応していない"
+        impact: "ログインの方式 (別の連携方式か、このシステム専用のログイン) を決め直す ADR が要る"
+    recommended: "OIDC に対応している"
+    reason: "社内の既存アカウントの仕組みの多くは OIDC に対応しており、パスワードを持たずに本人を見分けられる"
+  - id: operating-hours
+    kind: choice
+    question: "システムの稼働をどの時間帯まで保証するか"
+    options:
+      - label: "平日の定時内 (9 時〜17 時)"
+        impact: "冗長化も時間外の監視も要らない。時間外に止まっても翌朝に直す"
+      - label: "夜だけ止めてよい (9 時〜21 時)"
+        impact: "監視と復旧の対応時間が延びる"
+      - label: "24 時間止めない"
+        impact: "冗長化と 24 時間の監視が要り、費用が上がる"
+    recommended: "平日の定時内 (9 時〜17 時)"
+    reason: "要望は社内の会議室の予約で、夜間・24 時間の利用の記述が無い。止まっても社外への影響が無い"
+  - id: spreadsheet-migration
+    kind: choice
+    question: "切り替えの時点で共有の表計算ファイルに残っている先の予約をどう移すか"
+    options:
+      - label: "社員が新しいシステムで予約し直す"
+        impact: "移行の道具を作らない。切り替えの日に周知が要る"
+      - label: "移行の道具で取り込む"
+        impact: "表計算ファイルの形を読む道具と、二重の予約の整理が要る"
+    recommended: "社員が新しいシステムで予約し直す"
+    reason: "会議室 5 部屋・数十人の規模では、先の予約の件数が少なく、道具を作るより安い"
+  - id: brand
+    kind: unknown_fact
+    question: "画面の色と文字を、要求から推論した値 (主色の青 #1D4ED8・Noto Sans JP) で進めてよいか"
+    options:
+      - label: "推論した色と文字で進める"
+        impact: "画面部品の段がこの値でデザイントークンを作る"
+      - label: "会社のブランドの色と文字を指定する"
+        impact: "指定の値で画面の決定を置き換えてからトークンを作る"
+    recommended: "推論した色と文字で進める"
+    reason: "このリポジトリにブランドの指針が無い。社内向けの道具で、落ち着いた青と読みやすい日本語の書体で足りる"
+  - id: browser-acceptance
+    kind: choice
+    question: "受入のシナリオをブラウザでも回すか"
+    options:
+      - label: "ブラウザでは回さない (API と画面部品で確かめる)"
+        impact: "テストが速く安定する。画面の結線の誤りは受入では見つからない"
+      - label: "ブラウザでも回す"
+        impact: "ブラウザの実行環境が要り、テストが遅く不安定になりやすい"
+    recommended: "ブラウザでは回さない (API と画面部品で確かめる)"
+    reason: "受入基準 19 件はすべて業務の結果 (空き・成否・理由) を問い、API の応答で判定できる"
+  - id: business-timezone
+    kind: unknown_fact
+    question: "予約の日付と時刻を日本時間 (Asia/Tokyo) で扱ってよいか"
+    options:
+      - label: "日本時間で扱う"
+        impact: "日付・30 分刻み・過去かどうかを日本時間で判定する"
+      - label: "拠点ごとのタイムゾーンで扱う"
+        impact: "会議室ごとにタイムゾーンを持つ必要があり、情報と条件が増える"
+    recommended: "日本時間で扱う"
+    reason: "要望は社内の 5 部屋の会議室で、海外の拠点の記述が無い"
+upstream_issues:
+  - id: idp-external-system
+    target_step: requirements
+    title: "社内の認証基盤が外部システムに無い"
+    detail: "要求の段で「社内の既存アカウントでログインする」と決めたが、RDRA の外部システム.tsv が空で、認証基盤が外部システムとして載っていない。そのため決定の段のシステムコンテキスト図に認証基盤が出ない"
+    evidence: "docs/requirements/rdra/外部システム.tsv がヘッダだけ。.distillery/decisions.jsonl の handoff:requirements:employee-identity の回答が「社内の既存アカウントでログインする」。docs/adr/architecture.md のシステムコンテキスト図に認証基盤が無い"
+    recommended_fix: "外部システム.tsv に「社内の認証基盤」(役割: 社員のログインと本人の識別) を足し、BUC.tsv の各 UC に関連を付ける"
+refutations: []
+decisions:
+  - id: D1
+    topic: "モデルシステム"
+    choice: "モデルシステム1 (社会的影響が極めて限定的)"
+    reason: "社内の社員 1 種だけが使い、外部システムが無く、利用者は数十人のため"
+  - id: D2
+    topic: "デプロイ環境"
+    choice: "未定として、クラウドによるグレードの補正をしなかった"
+    reason: "要望にデプロイ先が無く、ベンダーを選ばない方針のため"
+  - id: D3
+    topic: "レベル定義の無い非機能のメトリクス"
+    choice: "グレード 0 とし、内容の欄に本システムの方針 (無ければ「個別の方針は定めない」) を書いた"
+    reason: "スキーマがグレードに整数を要求し、カタログにレベルが無いため。全メトリクスで同じ書き方にそろえた"
+  - id: D4
+    topic: "非機能グレード表の作り方"
+    choice: "docs/nfr/_build/ に一時スクリプトを置いてカタログから全 97 項目を生成し、生成後に _build/ を消した"
+    reason: "手書きの抜けを防ぎ、書き込み範囲 docs/nfr/** に収めるため"
+  - id: D5
+    topic: "ティアと言語・枠組み"
+    choice: "frontend (React の SPA) と backend-api (Express) の 2 ティア、どちらも TypeScript。言語と枠組みの決定はティア構成の ADR にまとめた"
+    reason: "業務 1 つ・利用者数十人・定期処理なし。tiers を持つ ADR を 1 本に保つため"
+  - id: D6
+    topic: "backend-api の層の名前"
+    choice: "presentation / usecase / domain / repository / gateway にし、アーキテストもこの名前のディレクトリに当てた"
+    reason: "テスト基盤の計装が同じ層の名前で記録するため。カタログの例の infrastructure では実在しないディレクトリを検査してしまう"
+  - id: D7
+    topic: "二重予約の防止"
+    choice: "予約が占める 30 分枠を 1 行ずつ占有の表に書き、(会議室 ID, 枠の開始) の一意制約で DB が防ぐ"
+    reason: "時刻が 30 分刻みのため普通の一意制約で守れ、pglite でも確かめられる。範囲の排他制約は拡張が要り pglite での可否を確認していない"
+  - id: D8
+    topic: "データの持ち方"
+    choice: "予約は「予約した」「取り消した」のイベントを追記だけで持ち、今の状態を別の表に同じトランザクションで持つ。会議室は上書きのマスタ"
+    reason: "取り消した人と時刻を残すため。状態は 2 つでイベントソーシングは過剰"
+  - id: D9
+    topic: "メッセージングと冪等キー"
+    choice: "メッセージングは使わない。冪等キーも入れず、画面で送信中のボタンを押せなくする"
+    reason: "通知・定期処理が無い。二重の予約と取り消しは業務のルールで弾かれる"
+  - id: D10
+    topic: "認証と認可"
+    choice: "認証は社内の既存アカウントに OIDC で任せ、認可は予約者本人かどうかを domain で判定する (確信度 低)"
+    reason: "要求の段の仮置き (既存アカウント) に従った。ロールは無い"
+  - id: D11
+    topic: "ブラウザでの受入"
+    choice: "capabilities.browser を false にした"
+    reason: "受入基準はすべて API の応答で判定できる"
+  - id: D12
+    topic: "画面の方針"
+    choice: "単一の React の SPA と Tailwind、共通の画面部品とデザイントークンを packages/ui に持つ"
+    reason: "基盤が画面の土台を置ける組み合わせで、空き・予約済みの表示と時間帯の入力が複数の画面に出るため"
+  - id: D13
+    topic: "ブランド"
+    choice: "要求から推論した (source inferred、確信度 低)。主色 #1D4ED8・補助色 #0F766E・強調色 #F59E0B・中立色 #64748B・Noto Sans JP"
+    reason: "brand スキルを試したが、元になる docs/brand-guidelines.md がリポジトリに無かった。そのファイルは書き込み範囲の外なので作らなかった"
+  - id: D14
+    topic: "日時の扱い"
+    choice: "日時は UTC で保存し、日付と 30 分刻みと過去かどうかは日本時間 (Asia/Tokyo) で判定する"
+    reason: "要求にタイムゾーンの記述が無く、社内の会議室のため"
+  - id: D15
+    topic: "業務のエラーのコードと status"
+    choice: "時刻の誤り 3 種を 422、重なる・取消済み・開始を過ぎたを 409、本人でないを 403、見つからないを 404 にした"
+    reason: "受入基準が示す理由ごとに画面が文を出し分けられるようにするため"
+  - id: D16
+    topic: "コンテキストの境界"
+    choice: "分けない (contexts は書かない)"
+    reason: "業務のドメインが会議室予約 1 つのため"
+  - id: D17
+    topic: "機械チェック"
+    choice: "既定の道具 (biome・qlty・tsc・vitest・依存の監査・SAST・秘密の検出) を全ティアに同じに当てる"
+    reason: "両ティアとも TypeScript の骨格のままで、ティアごとに変える理由が無い"

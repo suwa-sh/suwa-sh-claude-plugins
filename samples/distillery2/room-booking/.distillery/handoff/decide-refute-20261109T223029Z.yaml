@@ -1,0 +1,22 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 2"
+    result: accepted
+    reason: "指摘は正しい。ADR 0018 の rules (docs/adr/0018-frontend-api-origin-dev-proxy-signin-callback.md 24 行) は element を (params) => ReactNode、ADR 0021 は (params, query) => ReactNode とし、両方 accepted で docs/rules/tier-frontend.md の 71 行と 97 行に並ぶ。routes.tsx の型の宣言は 1 つで、1 引数で宣言すると App.tsx が query を渡せず型検査が落ちるため両立しない。ADR は本文と rules を書き換えない決まりなので、0021 の側の読み分けの一文では生成ルールから 0018 の行が消えない (段階③の adr.js は accepted の ADR だけを rules に入れる)"
+    change: "ADR 0021 に supersedes [\"0018\"] を書き、scope を [system, app]、nfr_refs を [E.5.1.1] にして、ADR 0018 の rules 10 本を引き継いだ (画面の照合の規則だけ element の型を (params, query) => ReactNode の 1 つに直してまとめ、他は文面を変えない)。0021 の rules と本文の 0018 への参照を自分の規則への参照に直し、背景・却下した案・影響に置き換えの理由と、ADR 0019・0020 の「ADR 0018 のとおり」が引き継いだ規則を指すことを書いた。ADR 0018 は front matter の status: superseded と superseded_by: \"0021\" だけを変えた。validateAdr.js PASS (21 本)、genAdrIndex.js で index.md を作り直し、_review-summary.md の 0018 と 0021 の行を置き換えの旨に直した。結果ファイルの targets に 0018 を足した。開発ルールとアーキテストは作り直していない"
+decisions:
+  - id: D1
+    topic: "指摘 2 (element の型が 2 つ有効) の直し方"
+    choice: "ADR 0021 が ADR 0018 を置き換え、0018 の rules をすべて引き継いで element の型を 1 つにした (新しい ADR 0022 は作らない)"
+    reason: "旧 ADR の rules は書き換えられず、置き換えなければ生成ルールに 1 引数の型が残る。0014 が 0001 を置き換えて rules を引き継いだ前例に合わせた。0021 はこの課題の未 commit の ADR なので、1 課題 1 ADR を保てる"
+  - id: D2
+    topic: "ADR 0021 の題名"
+    choice: "頭に「ADR 0018 (同じオリジンの配信・開発時の中継・サインインの戻り先・画面の照合) を引き継ぎ」を付けた"
+    reason: "引き継いだ配信・中継・サインインの規則が索引から見つかるようにする (0014 の題名の前例)"
+  - id: D3
+    topic: "ADR 0019・0020 の本文の「ADR 0018 のとおり」"
+    choice: "変えず、ADR 0021 の影響に、引き継いだ同じ規則を指すと書いた"
+    reason: "既存の ADR は置き換え以外で変えない決まり。規則の中身は 0021 に同じ文面で残る"

@@ -1,0 +1,19 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Docs/画面とユースケース" />
+
+# 画面とユースケースの対応
+
+正本は `docs/design/screens.yaml`。
+
+<table>
+  <thead>
+    <tr><th>画面</th><th>パス</th><th>ユースケース</th><th>見本 (状態)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>空き状況画面 (RoomAvailability)</td><td><code>/availability</code></td><td>会議室の空き状況を照会する</td><td>Default / Loading / InvalidTimeRange / NotOn30Minutes / Error</td></tr>
+    <tr><td>予約画面 (ReserveRoom)</td><td><code>/reservations/new</code></td><td>会議室を予約する</td><td>Default / Submitting / Completed / SlotOverlaps / PastTimeSlot / InvalidTimeRange / NotOn30Minutes / Error</td></tr>
+    <tr><td>自分の予約一覧画面 (MyReservations)</td><td><code>/my-reservations</code></td><td>自分の予約一覧を確認する</td><td>Default / Empty / Loading / AfterCancel / Error</td></tr>
+    <tr><td>予約取消確認画面 (CancelReservation)</td><td><code>/my-reservations/:reservationId/cancel</code></td><td>予約を取り消す</td><td>Default / Submitting / CancelDeadlinePassed / AlreadyCancelled / NotOwner / NotFound / Error</td></tr>
+  </tbody>
+</table>

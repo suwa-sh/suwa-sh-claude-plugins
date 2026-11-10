@@ -1,0 +1,22 @@
+schema_version: distillery2.handoff/v1
+step: scaffold
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: 足した step
+    choice: "既存の reserve-room.steps.ts の定義は残し、未入力の 3 シナリオで undefined だった 10 文だけを pending で足した"
+    reason: "dry-run の undefined が 10 件 (3 シナリオ)。SPEC-002-03-6 のシナリオの step はすべて既存の定義に一致していた"
+  - id: D2
+    topic: red を書くティア
+    choice: "frontend だけに red を書き、backend-api には足さない"
+    reason: "未入力で送らずに止めるのは画面側の振る舞い (feature の説明・画面部品の missingReservationFields)。SPEC-002-03-6 は backend-api の既存の単体テスト (reserveRoom.test.ts の終了時刻を過ぎた送り直し、reserveRoomResend.test.ts) で緑のまま満たされている"
+  - id: D3
+    topic: 未入力のときの入口関数の結果の形
+    choice: "submitReservation は fetch を呼ばず { kind: 'missing', fields: [...] } を返す。fields は画面部品の ReservationFormField の名前 (roomId / date / startTime / endTime) を項目の順に並べる"
+    reason: "画面部品の missingReservationFields がこの形の配列を返すので、tier の実装がそれを使えば同じ結果になる。UC BDD は入口関数の結果で項目ごとの促しを確かめる"
+  - id: D4
+    topic: red のテストの置き場
+    choice: "既存の submitReservation.test.ts を変えず、新しいファイル submitReservationMissing.test.ts に 3 本を置いた"
+    reason: "既存のテストを緑のまま残し、差分を新しい受入基準の分だけにする"

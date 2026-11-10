@@ -1,0 +1,6 @@
+{
+  "code": "UNAUTHENTICATED",
+  "status": 401,
+  "title": "認証が必要です",
+  "type": "about:blank"
+}

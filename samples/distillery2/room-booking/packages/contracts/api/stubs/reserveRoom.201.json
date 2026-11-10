@@ -1,0 +1,9 @@
+{
+  "endAt": "2099-11-10T11:00:00+09:00",
+  "reservationId": "3f6c2a1e-8b4d-4c7a-9e21-5d0b7a6f1c42",
+  "reservedBy": "employee-a",
+  "roomId": "room-1",
+  "roomName": "会議室A",
+  "startAt": "2099-11-10T10:00:00+09:00",
+  "status": "reserved"
+}

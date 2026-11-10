@@ -1,0 +1,42 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: oidc-client-and-idp-support
+    kind: unknown_fact
+    question: "社内の認証基盤は「認可コード + PKCE」のサインインに対応し、本人確認のトークンに表示名 (name) を入れるか。画面のサインインの部品 (oidc-client-ts) をそのまま使ってよいか"
+    options:
+      - {label: "対応している (今の決定のまま進める)", impact: "ADR 0014 のまま。部品の実在と型定義は基盤で依存を入れるときに確かめる"}
+      - {label: "対応していない", impact: "サインインの方式とティア構成の ADR を決め直す"}
+    recommended: "対応している (今の決定のまま進める)"
+    reason: "社内の認証基盤の多くは OIDC の標準のサインインに対応しており、ADR 0006・0014 もこの前提で決めた"
+  - id: idp-jwt-access-token
+    kind: unknown_fact
+    question: "社内の認証基盤は、この API 向けのアクセストークンを JWT で発行し、sub に社員の識別子、aud にこの API の値を入れるか"
+    options:
+      - {label: "入れる (手元で JWT を検証する今の決定のまま)", impact: "ADR 0015 のまま"}
+      - {label: "入れない (不透明なトークン)", impact: "毎回認証基盤に問い合わせる方式に ADR 0015 を置き換える"}
+    recommended: "入れる (手元で JWT を検証する今の決定のまま)"
+    reason: "OIDC に対応する認証基盤は API 向けに JWT のアクセストークンを出せることが多く、要求ごとの問い合わせが要らない"
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "新しい ADR を書くか"
+    choice: "書かない"
+    reason: "課題は決定の中身ではなく確認用要約の追記漏れで、rules[] で表せる穴ではない。プラグインの手順 (mode=feedback 手順 6) が要約への追記を求めるよう直ったので、その手順で要約を直した"
+  - id: D2
+    topic: "_review-summary.md の古い行の扱い"
+    choice: "置き換えた ADR の行 (ティア構成・層) と、直した非機能グレード表の行 (冗長化の根拠・戻せる地点・バックアップ) と件数の文を現行に直し、足した ADR 0015・0016 の行と確認事項 9〜12 を追記した"
+    reason: "残すと現行の決定と食い違って読め、決定のレビューが毎回同じ指摘を出す。直さないと二重予約に関わる復旧方針を誤読しうる"
+  - id: D3
+    topic: "要約の冒頭の注記"
+    choice: "「差分のたびに追記する。食い違いがあれば index.md・各 ADR・nfr-grade.md を正とする」と書いた"
+    reason: "課題の推奨の直し方のうちリポの中でできる部分。要約が正本でないことを読む人に示す"
+  - id: D4
+    topic: "_review-summary.md の basis"
+    choice: "今の要求の stamp (requirements@1dc8cd59) に更新した"
+    reason: "要約を今の決定に合わせて直したため。index.md と同じ stamp。ADR の basis は変えていない"
+  - id: D5
+    topic: "ADR 0016 の影響の節 (グレード表と食い違ったままと書く 56 行目)"
+    choice: "直さない"
+    reason: "既存の ADR は status と superseded_by 以外変えない決まり。書いた時点の記録で、グレード表は既に直っており、要約の確認事項 12 に現状を書いた"

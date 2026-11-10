@@ -1,0 +1,27 @@
+schema_version: distillery2.handoff/v1
+step: contract-skeleton
+asks: []
+upstream_issues:
+  - id: adr-access-token-wording
+    target_step: decide
+    title: "ADR に API 用のアクセストークンの前提が無い"
+    detail: "契約は API の Bearer をアクセストークン (JWT、sub を社員 ID) に直した (ADR 0014 の供給元に合わせた)。一方 ADR 0002 の gateway の説明は「ID トークンの検証の鍵の取得」と書いたままで、ADR 0006 / 0014 の前提 (確認してほしいこと) には「認証基盤がアクセストークンを JWT で発行し sub に社員の識別子を入れる」が無い。backend-api は jose で JWT を検証する前提なので、不透明なアクセストークンだと検証できない"
+    evidence: "docs/adr/0002-app-layers.md:96 (ID トークンの検証の鍵の取得)、docs/adr/0014-tier-structure-frontend-oidc.md:80,96 (アクセストークンを返す / 前提に name クレームだけ)、contracts/openapi/openapi.yaml の bearerAuth (bearerFormat: JWT)"
+    recommended_fix: "ADR 0002 の該当の文を「アクセストークンの検証の鍵の取得」に直し、ADR 0014 の影響の前提に「アクセストークンを JWT で発行し sub に社員の識別子を入れる」を足す"
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "ADR 0014 (docs/adr/0014-tier-structure-frontend-oidc.md:80-84) はトークンの供給元がアクセストークンを返し、ID トークンは表示名 (name クレーム) にだけ使うと決めている。ADR 0006 は「トークン」とだけ書き種別を決めていないので、後の ADR 0014 に合わせるのが正しい"
+    change: "contracts/openapi/openapi.yaml の info.description・securitySchemes.bearerAuth.description・EmployeeId.description を ID トークンからアクセストークン (JWT、sub を社員 ID) に直し、ID トークンは API に送らないと明記した。bundle を作り直した (compileContracts --check と validateUcIndex が exit 0)"
+  - finding: "指摘 2"
+    result: refuted
+    reason: "migration (apps/backend-api/migrations/*.sql) と DB 契約テストは UC の契約の段 (d2-contract mode=uc の手順 6 の genRdbDdl.js) が生成する決まりで、基盤は骨格分の契約テストだけを持つ (d2-foundation SKILL.md の F4 の注記と「F4 と d2-design への受け渡し」、d2-contract SKILL.md の mode=uc 手順 6)。いまは UC が 0 件 (contracts/uc-index.yaml の ucs: []、paths: {}) なので、契約テストも migration も 0 件が正しい状態で、scripts/check.mjs の --passWithNoTests はこの段で CI を通すために要る。最初の UC の契約の段で migration・DB 契約テストが生成され、以後はテストが実在する状態で回る"
+decisions:
+  - id: D1
+    topic: "API に送る Bearer トークンの種別"
+    choice: "OIDC のアクセストークン (JWT) とし、社員 ID は sub から取る。ID トークンは API に送らない"
+    reason: "ADR 0014 の供給元がアクセストークンを返すと決めており、ADR 0006 は種別を決めていない"
+  - id: D2
+    topic: "below-threshold の Problem.detail の必須化"
+    choice: "直さない"
+    reason: "報告の閾値未満で指摘ではなく、派遣は指摘の箇所だけを直す指示のため"

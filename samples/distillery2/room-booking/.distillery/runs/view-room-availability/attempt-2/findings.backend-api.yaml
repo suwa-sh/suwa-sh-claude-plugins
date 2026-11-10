@@ -1,0 +1,409 @@
+schema_version: "2.2"
+uc: "view-room-availability"
+tier: "backend-api"
+attempt: 2
+verified_at: "2026-11-10T13:40:00+09:00"
+gates_read:
+  static: pass
+  unit: pass
+  contract: pass
+  uc-bdd: pass
+  acceptance: pass
+viewpoints_checked:
+  uc_intent:
+    status: done
+    note: "直した後に回し直したゲート (gates.json started_at 2026-11-10T04:13:21Z、result pass・all_recorded: true) を読んだ。uc-bdd 14 シナリオ 89 step・acceptance-api 12 シナリオ 73 step がすべて passed で pending・skipped は無い。SPEC-001-01 の受入基準 12 件は feature の @acceptance:SPEC-001-01-1〜12 で 1 対 1 に覆われる。トレース 14 本の経路 (200 系は TokenVerifier.verify → rooms の SELECT → reservations の SELECT → execute → 200、422 系は DB を読まずに 422、書き込み無し) は前回の検証と同じ。今回の変更 (実装のレビュー round1 指摘 1 の修正) は httpApp.ts:53-66 の UNMATCHED_ROUTE_HANDLER と handlerOf の既定値だけで、契約にある経路の応答・検証の順・エラー文言は変わっていない。単体 unit.backend-api.json は 84 件 pass で、追加の 2 件 (httpApp.test.ts:131-147 契約に無い経路で始まりと終わりのログが unmatchedRoute を持ち 404、149-163 契約に無い経路で認証できないとき終わりのログが unmatchedRoute で 401) は実際の HTTP の要求と記録するロガーで確かめ、常に真の assert ではない。これで ADR 0011 (tier-backend.md:72 ログはハンドラの名前を必ず持つ) を契約に無い経路でも満たす。ただし契約の経路と大文字小文字・末尾のスラッシュだけが違う要求は Express が契約のハンドラで処理するのにログのハンドラ名が unmatchedRoute になる (V-001)。要求 ↔ 実装・契約 ↔ 実装・ルール ↔ 実装は前回の根拠 (timeRange.ts・roomAvailability.ts・repository・problem.ts・timeRangeRequest.ts・joseTokenVerifier.ts) から変わっていない。前提ファイルの target の行番号は httpApp.ts の編集でずれている (A-003 :110 → 実体 116-140、A-005 :85 → 93-96、A-014 :193 → 198-202、A-016 :144 → 148-156、A-018 :66 → 74-88)。下の evidence は今の行で書く。他 UC への波及: 該当なし (共有の候補はなし。uc-index に載る UC はこの UC だけ)。手順の注記: 書き直す前の findings ファイル (前回の検証) を読んだため、観点 1 の前に前回時点の前提の一覧を目にしている。前提ファイル自体は観点 1 の後に開き、変わったのが A-020 だけであることを確かめた。"
+  assumption_conformance:
+    status: done
+assumptions_sha256: "6e3dd91d2dbd46149a27b72c395521e0981f29edbf7270bfbb19cc70d748f742"
+assumption_verdicts:
+  - id: A-001
+    tier: backend-api
+    assumption: "Asia/Tokyo の日付と 30 分刻みの判定を、実行環境の TZ に依存させず、言語の組み込みの Intl.DateTimeFormat (timeZone Asia/Tokyo) のタイムゾーンの表で行う。業務の日付の 0:00 は日本時間の日付がその日になる最も早い時点 (夏時間の始まりの日は 1:00、終わりの日は 1 回目の 0:00)、翌日 0:00 も同じ決め方で求め、1 日を 24 時間と決めつけない (23 時間・25 時間の日がある)。30 分刻みは日本時間の分が 0 か 30 で秒・ミリ秒が 0 のときとする"
+    target: "apps/backend-api/src/domain/timeRange.ts:19"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-001
+    evidence: "ADR 0003・ADR 0017 (docs/rules/tier-backend.md) は Asia/Tokyo で判定し開始の日付で業務の日付を決めるとだけ書き、計算の手段と 23/25 時間の日の扱いは無い。要求・契約と食い違わない"
+  - id: A-002
+    tier: backend-api
+    assumption: "repository は開始が業務の日付の 0:00 以上・翌日 0:00 未満の予約を取消済みも含めて読み、重なりと取消の判定は domain が行う (SQL に重なりの条件を書かない)"
+    target: "apps/backend-api/src/repository/roomAvailabilityRepository.ts:48"
+    category: persistence
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-002
+    evidence: "トレース 200 系 10 本の db.query 'SELECT room_id, start_at, end_at, status FROM reservations WHERE start_at >= $1 AND start_at < $2'。ADR 0017 (時間帯は開始の日付に収める)・ADR 0009 (重なりの判定は値オブジェクトの 1 か所) と両立し、読む範囲の決め方は仕様に無い。受入 SPEC-001-01-10 pass"
+  - id: A-003
+    tier: backend-api
+    assumption: "/api の要求はトークンの検証を本文の読み込みと形の検証より先に行い、トークンが無いか検証できなければ本文が不正でも 401 を返す"
+    target: "apps/backend-api/src/presentation/httpApp.ts:110"
+    category: security
+    verified_category: security
+    verdict: spec_absent
+    finding_id: F-003
+    evidence: "httpApp.ts:116-140 の /api の検証が express.json (148 行) と parseTimeRangeBody (152 行) より前。ADR 0006 (検証できなければ 401)・ADR 0023 (形の誤りは 400) に順番の記述は無い"
+  - id: A-004
+    tier: backend-api
+    assumption: "本文の startAt・endAt は時差付きの RFC 3339 だけを受け、時差の省略・時の 24・暦に無い日付 (2026-02-30 など)・契約に無い項目・文字列でない値を 400 VALIDATION_ERROR にする。小数の秒は桁数の上限なしに形としては受け、1 ミリ秒未満の数字も落とさずに domain の時間帯へ渡す (時間帯の検査の順と 30 分刻みは全精度で判定され、30 分刻みでなければ 422 NOT_ON_30_MINUTES になる)"
+    target: "apps/backend-api/src/presentation/timeRangeRequest.ts:9"
+    category: input_validation
+    verified_category: input_validation
+    verdict: spec_absent
+    finding_id: F-004
+    evidence: "24:00 を受けないのは ADR 0017、時差付きは契約 DateTime の description、余分な項目は契約 TimeRange の additionalProperties false に明示。暦に無い日付の弾き方 (timeRangeRequest.ts:37-38,44-54) と小数の秒の桁数 (10 行の (\\.\\d+)?) は仕様に無い"
+  - id: A-005
+    tier: backend-api
+    assumption: "相関 ID は受けたヘッダを使わず要求ごとに UUID で作り、応答のヘッダ x-correlation-id とエラー応答の Problem.correlationId (400・401・422・500 のすべて) に載せる"
+    target: "apps/backend-api/src/presentation/httpApp.ts:85"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-005
+    evidence: "ADR 0011 (相関 ID は要求ごとに作り応答のヘッダにも返す)・ADR 0023 (500 は汎用の文と相関 ID だけ) はヘッダ名と 400・401・422 の Problem に載せることを決めていない。契約 Problem.correlationId は任意。httpApp.ts:40,93-96、problem.ts:62"
+  - id: A-006
+    tier: backend-api
+    assumption: "本番の入口は DATABASE_URL・OIDC_ISSUER・OIDC_AUDIENCE・OIDC_JWKS_URI を環境変数から読み、1 つでも無ければ起動で失敗させる。待ち受けの port は PORT (既定 3000)"
+    target: "apps/backend-api/src/app.ts:57"
+    category: security
+    verified_category: security
+    verdict: spec_absent
+    finding_id: F-006
+    evidence: "ADR 0015 は「発行者・宛先・鍵の一覧の場所は環境ごとの設定にする」とだけ書き、設定の名前と渡し方は無い。app.ts:42-57"
+  - id: A-007
+    tier: backend-api
+    assumption: "契約テストのテスト用データ room-a-reserved-by-employee-a は、予約の今の状態の行に加えて同じ予約の「予約した」イベント (固定の ID と時刻 2026-11-05T09:00:00+09:00) と 10:00・10:30 の 30 分枠の占有を入れる"
+    target: "apps/backend-api/src/test-app.ts:31"
+    category: persistence
+    verified_category: persistence
+    verdict: spec_absent
+    finding_id: F-007
+    evidence: "contract-slice.json の fixtures.room-a-reserved-by-employee-a は予約済みの予約 1 件とだけ書く。3 表に入れるのは ADR 0003・0004 の表どうしの整合と両立し、テストのデータだけで本番の振る舞いには効かない"
+  - id: A-008
+    tier: backend-api
+    assumption: "DB から読んだ会議室 ID が契約 RoomId の長さ (1〜64) に合わなければ例外にし、500 INTERNAL_ERROR で返す"
+    target: "apps/backend-api/src/domain/ids.ts:9"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-008
+    evidence: "永続化された値が不正なときの扱いは仕様に無い。ADR 0023 (想定外は例外のまま共通の処理で受ける) と両立。httpApp.ts:172-188"
+  - id: A-009
+    tier: backend-api
+    assumption: "会議室は display_order の昇順に並べ、同じ値のときは room_id の昇順にする"
+    target: "apps/backend-api/src/repository/roomAvailabilityRepository.ts:31"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-009
+    evidence: "SPEC-001-01 と契約の description は表示順で並べるとだけ書き、rdb-slice.yaml の rooms.display_order に一意制約は無い。トレース 'SELECT room_id, room_name FROM rooms ORDER BY display_order, room_id'"
+  - id: A-010
+    tier: backend-api
+    assumption: "Authorization ヘッダは Bearer (大文字小文字を区別しない) と空白に続く 1 語のトークンだけを受け、それ以外の形は 401 UNAUTHENTICATED にする"
+    target: "apps/backend-api/src/presentation/httpApp.ts:51"
+    category: security
+    verified_category: security
+    verdict: spec_absent
+    finding_id: F-010
+    evidence: "契約 securitySchemes.bearerAuth は scheme bearer・bearerFormat JWT だけで、ADR 0006・0015 にもヘッダの形の細部は無い。httpApp.ts:51,118"
+  - id: A-011
+    tier: backend-api
+    assumption: "システムのエラーの Problem の title は「システムのエラーが発生しました。時間をおいて試してください」とする"
+    target: "apps/backend-api/src/presentation/problem.ts:19"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-011
+    evidence: "契約 components.responses.InternalError に examples が無く文言は決まっていない。problem.ts:19-22"
+  - id: A-012
+    tier: backend-api
+    assumption: "業務のエラーの Problem の detail に利用者の直し方を載せる。INVALID_TIME_RANGE は domain が返す理由 (開始が終了より前でない START_NOT_BEFORE_END / 業務の日付に収まらない OUTSIDE_BUSINESS_DAY) で文を分け、NOT_ON_30_MINUTES は「開始と終了の時刻は 0 分か 30 分ちょうどにしてください」とする"
+    target: "apps/backend-api/src/presentation/problem.ts:34"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-012
+    evidence: "ADR 0023 は Problem の type・title・detail・code に変えるとだけ書き、契約 Problem.detail に例は無い。ADR 0017 の「別のコードを作らない」とは reason を任意の項目で持つ形で両立。problem.ts:34-46"
+  - id: A-013
+    tier: backend-api
+    assumption: "detail を付けるのは業務のエラー (422) だけにし、要求の形の誤り 400 VALIDATION_ERROR・認証の 401 UNAUTHENTICATED・システムのエラー 500 INTERNAL_ERROR の Problem には detail を付けない"
+    target: "apps/backend-api/src/presentation/problem.ts:53"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-013
+    evidence: "契約の 400・401 の examples に detail は無く、付けるかどうかは決まっていない。500 は ADR 0023 に合う。problem.ts:53-63、httpApp.ts:136,154,175,187 は detail を渡さない"
+  - id: A-014
+    tier: backend-api
+    assumption: "本文の読み込みの失敗のうち要求の側に原因があるもの (express.json が type と 4xx の status を付ける失敗。JSON として読めない・既定の上限 100kb を超えた 413・文字コードや圧縮が扱えない 415・途中で切れた・長さが合わない) を 400 VALIDATION_ERROR にし、エラーのログを出さない。サーバ側の読み込みの失敗 (5xx の stream.*) と想定外の例外だけを 500 INTERNAL_ERROR とシステムのエラーのログにする。本文の大きさの上限は express.json の既定のまま"
+    target: "apps/backend-api/src/presentation/httpApp.ts:193"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-014
+    evidence: "契約の responses は 200・400・401・422・500 だけで 413・415 が無い。ADR 0023 (形の誤りは 400)。本文の上限の値は決まっていない。httpApp.ts:172-188,198-202"
+  - id: A-015
+    tier: backend-api
+    assumption: "日時の秒は 00〜59 だけを受け、RFC 3339 が認めるうるう秒の表記 (秒 60) は 400 VALIDATION_ERROR にする"
+    target: "apps/backend-api/src/presentation/timeRangeRequest.ts:10"
+    category: input_validation
+    verified_category: input_validation
+    verdict: spec_absent
+    finding_id: F-015
+    evidence: "契約 DateTime は format date-time とだけ書き、うるう秒の扱いは無い。timeRangeRequest.ts:10 の秒は [0-5]\\d。秒 60 は 30 分刻みに乗らず受けても 422 で、照会を受け付けない結果は変わらない"
+  - id: A-016
+    tier: backend-api
+    assumption: "Content-Type が application/json でない要求の本文は読まず、本文が無いものとして 400 VALIDATION_ERROR にする (契約に無い 415 を返さない)"
+    target: "apps/backend-api/src/presentation/httpApp.ts:144"
+    category: input_validation
+    verified_category: input_validation
+    verdict: spec_absent
+    finding_id: F-016
+    evidence: "契約の requestBody は application/json・required true だけで、ほかの Content-Type の扱いは無い。responses に 415 は無い。httpApp.ts:148,152-156"
+  - id: A-017
+    tier: backend-api
+    assumption: "時間帯の生成は Date に加えて、切り捨てたミリ秒 (epochMs) と 1 ミリ秒未満の数字 (subMillisecondDigits) を分けて持つ時点を受け、開始が終了より前かの判定を 1 ミリ秒未満まで含めた全精度で行う (桁数の違う同じ時点は等しい)。30 分刻みは 1 ミリ秒未満の数字がすべて 0 のときだけとする。日付に収まるかの判定は 30 分刻みを満たした後なので epoch ms で行う"
+    target: "apps/backend-api/src/domain/timeRange.ts:79"
+    category: data_format
+    verified_category: data_format
+    verdict: spec_absent
+    finding_id: F-017
+    evidence: "契約 viewRoomAvailability の description と ADR 0017 は検証の順 (1)(2)(3) を決めるが、日時を比べる精度は決めていない。timeRangeRequest.ts:39-41"
+  - id: A-018
+    tier: backend-api
+    assumption: "/api の要求の始まりのログ (要求を受けた) はトークンの検証の後に 1 回だけ出し、検証できた要求では社員 ID を持たせ、検証できなかった要求 (401) と検証器が例外を投げた要求 (500。本番では認証基盤の障害で起きる。A-019) では社員 ID 無しで出す。/api の外の要求は検証の段の後で 1 回出す。そのため検証器 (gateway) が検証中に出すログは始まりのログより先に並ぶ"
+    target: "apps/backend-api/src/presentation/httpApp.ts:66"
+    category: security
+    verified_category: security
+    verdict: spec_absent
+    finding_id: F-018
+    evidence: "ADR 0011 は始まりと終わりを info で出し、社員が特定できる要求では社員 ID も持つと書くが、始まりのログを出す位置と認証に失敗した要求の扱いは無い。httpApp.ts:74-88,127-134,143-146"
+  - id: A-019
+    tier: backend-api
+    assumption: "本番のトークンの検証器は、jose のエラーのうちトークンそのものが合わないもの (JWTExpired・JWTClaimValidationFailed・JWTInvalid・JWSInvalid・JWSSignatureVerificationFailed・JOSEAlgNotAllowed・JOSENotSupported・JWKSNoMatchingKey・JWKSMultipleMatchingKeys のコード) だけを null (401 UNAUTHENTICATED) にする。それ以外 (認証基盤に届かない通信の失敗・鍵の一覧の時間切れ JWKSTimeout・200 でない応答や JSON でない本文の JOSEError・鍵の一覧が壊れている JWKSInvalid や JWKInvalid・想定外) は warn のログを出して例外のまま投げ、presentation の共通の処理が error のログと 500 INTERNAL_ERROR にする。ログにトークンそのものは出さない"
+    target: "apps/backend-api/src/gateway/joseTokenVerifier.ts:27"
+    category: security
+    verified_category: security
+    verdict: spec_absent
+    finding_id: F-019
+    evidence: "ADR 0015 (署名・発行者・宛先・期限・sub が合わなければ 401)、ADR 0023 (想定外は 500)、ADR 0011 (gateway は warn か error) と矛盾しない。認証基盤の障害を 500 にする方針は attempt 1 の人レビューの判断で、どの jose のエラーをトークンの不一致に数えるかは仕様に無い。joseTokenVerifier.ts:27-41,58-66、httpApp.ts:127-131,172-188。単体 app.test.ts・joseTokenVerifier.test.ts・httpApp.test.ts の該当テスト pass"
+  - id: A-020
+    tier: backend-api
+    assumption: "契約に無い経路の要求は、ハンドラの名前を未定義の経路を示す固定の値 unmatchedRoute にして始まりと終わりのログ (と検証器・エラーのログの文脈) に持たせ、Express の既定の 404 (Problem でない本文) を返す"
+    target: "apps/backend-api/src/presentation/httpApp.ts:57"
+    category: error_handling
+    verified_category: error_handling
+    verdict: spec_absent
+    finding_id: F-020
+    evidence: "ADR 0011 (tier-backend.md:72 ログはハンドラの名前を必ず持つ) を満たす方向の修正で矛盾しない。名前の値 unmatchedRoute と 404 の本文の形は仕様に無い (契約の responses は契約にある経路だけを決める)。httpApp.ts:53-66,95。unit httpApp.test.ts:131-147,149-163 pass"
+  - id: V-001
+    tier: backend-api
+    assumption: "ハンドラの名前は method と path の文字列の完全一致で契約から引くため、契約の経路と大文字小文字・末尾のスラッシュだけが違う要求 (例 POST /api/room-availability/ や /API/room-availability) は Express の既定の経路の照合で viewRoomAvailability のハンドラが処理するのに、始まり・終わり・検証器・usecase のログのハンドラ名は unmatchedRoute になる"
+    target: "apps/backend-api/src/presentation/httpApp.ts:60"
+    category: null
+    verified_category: error_handling
+    verdict: unlisted
+    finding_id: F-021
+    evidence: "httpApp.ts:60-66 は op.path === path の完全一致。httpApp.ts:70 は x-powered-by を外すだけで strict・case sensitive routing を有効にしていない。node_modules/express 5.3.0 / router 2.2.0 の router/index.js:429-430 (sensitive: caseSensitive 既定 undefined、strict: 既定 undefined)、router/lib/layer.js:86-89 (strict でなければ末尾のスラッシュを許す)。usecase への文脈 httpApp.ts:157-161 も locals.handler を渡す"
+assumption_verdicts_summary:
+  consistent: 0
+  spec_absent: 20
+  contradicts: 0
+  unlisted: 1
+findings:
+  - id: F-001
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-001
+    severity: minor
+    title: "Asia/Tokyo の夏時間まで Intl で扱う"
+    target: "apps/backend-api/src/domain/timeRange.ts:19"
+    claim: "業務のタイムゾーンでの日付と 30 分刻みの計算の仕方 (夏時間の日の 0:00 の決め方を含む) は仕様に無い。"
+    evidence: "ADR 0003・ADR 0017 は Asia/Tokyo で判定するとだけ書く"
+  - id: F-002
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-002
+    severity: major
+    title: "予約の候補は開始が業務の日付の中"
+    target: "apps/backend-api/src/repository/roomAvailabilityRepository.ts:48"
+    claim: "重なりうる予約を開始が業務の日付の中のものに絞って読む。予約を書く側が日をまたぐ予約を作らないことに依存する読み方で、仕様に無い。"
+    evidence: "トレース 200 系 10 本の reservations の SELECT。ADR 0017・0009 と両立"
+  - id: F-003
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-003
+    severity: major
+    title: "401 を本文の検証より先に返す"
+    target: "apps/backend-api/src/presentation/httpApp.ts:110"
+    claim: "400 と 401 のどちらを先に判定するかは仕様に無い。認証の失敗を本文の誤りより先に返す側に決めている。"
+    evidence: "httpApp.ts:116-140 が 148・152 行より前。ADR 0006・0023 に順番の記述は無い"
+  - id: F-004
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-004
+    severity: minor
+    title: "日時の形を手書きの正規表現で検証"
+    target: "apps/backend-api/src/presentation/timeRangeRequest.ts:9"
+    claim: "暦に無い日付を 400 にすることと小数の秒の桁数を制限しないことは仕様に無い。"
+    evidence: "ADR 0017、契約 DateTime・TimeRange。timeRangeRequest.ts:9-10,33-54"
+  - id: F-005
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-005
+    severity: minor
+    title: "相関 ID のヘッダ名と載せる先"
+    target: "apps/backend-api/src/presentation/httpApp.ts:85"
+    claim: "ヘッダ名 x-correlation-id と 400・401・422 の Problem に相関 ID を載せることは仕様に無い。"
+    evidence: "ADR 0011・0023、契約 Problem.correlationId (任意)"
+  - id: F-006
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-006
+    severity: major
+    title: "OIDC の設定を 4 つの環境変数で渡す"
+    target: "apps/backend-api/src/app.ts:57"
+    claim: "本番の発行者・宛先・鍵の一覧の場所と DB の接続先を、どの名前でどう渡すかは仕様に無い。"
+    evidence: "ADR 0015 は環境ごとの設定とだけ書く"
+  - id: F-007
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-007
+    severity: major
+    title: "テスト用データは 3 つの表をそろえる"
+    target: "apps/backend-api/src/test-app.ts:31"
+    claim: "契約の fixtures の説明は予約済みの予約 1 件だけで、イベントと 30 分枠の占有まで入れることは仕様に無い。本番の振る舞いには効かない。"
+    evidence: "contract-slice.json fixtures、ADR 0003・0004"
+  - id: F-008
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-008
+    severity: minor
+    title: "DB の会議室 ID の不整合は 500"
+    target: "apps/backend-api/src/domain/ids.ts:9"
+    claim: "永続化された会議室 ID が契約の長さに合わないときの扱いは仕様に無い。"
+    evidence: "ADR 0023、httpApp.ts:172-188"
+  - id: F-009
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-009
+    severity: minor
+    title: "表示順が同じなら会議室 ID 順"
+    target: "apps/backend-api/src/repository/roomAvailabilityRepository.ts:31"
+    claim: "表示順が同じ値になったときの並びは仕様に無い。"
+    evidence: "SPEC-001-01、契約の description、rdb-slice.yaml rooms (display_order に一意制約なし)"
+  - id: F-010
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-010
+    severity: major
+    title: "Bearer の形の細部を決める"
+    target: "apps/backend-api/src/presentation/httpApp.ts:51"
+    claim: "Authorization ヘッダの形の細部 (方式名の大文字小文字・空白・1 語のトークン) は仕様に無い。"
+    evidence: "契約 securitySchemes.bearerAuth、ADR 0006・0015"
+  - id: F-011
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-011
+    severity: minor
+    title: "500 の title の文言"
+    target: "apps/backend-api/src/presentation/problem.ts:19"
+    claim: "500 の Problem の title の文言は契約の例に無い。"
+    evidence: "契約 InternalError に examples なし"
+  - id: F-012
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-012
+    severity: minor
+    title: "422 の detail を理由ごとに書き分け"
+    target: "apps/backend-api/src/presentation/problem.ts:34"
+    claim: "業務のエラーの detail の文言と、INVALID_TIME_RANGE を理由で書き分けることは仕様に無い。"
+    evidence: "ADR 0023・0017、契約 Problem.detail に例なし"
+  - id: F-013
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-013
+    severity: minor
+    title: "400・401・500 に detail を付けない"
+    target: "apps/backend-api/src/presentation/problem.ts:53"
+    claim: "400・401 の Problem に detail を付けるかは仕様に無い。"
+    evidence: "契約の 400・401 の examples に detail なし、ADR 0023"
+  - id: F-014
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-014
+    severity: minor
+    title: "本文の読み込みの失敗は 400 に寄せる"
+    target: "apps/backend-api/src/presentation/httpApp.ts:193"
+    claim: "大きすぎる本文・扱えない文字コードなどを 400 にすることと、本文の上限を express.json の既定のままにすることは仕様に無い。"
+    evidence: "契約の responses に 413・415 なし、ADR 0023。httpApp.ts:198-202"
+  - id: F-015
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-015
+    severity: minor
+    title: "うるう秒の表記は 400"
+    target: "apps/backend-api/src/presentation/timeRangeRequest.ts:10"
+    claim: "RFC 3339 の形に合う秒 60 を 400 にしている。扱いは仕様に無い。受けても 422 になる値で結果は変わらない。"
+    evidence: "契約 DateTime (format date-time)、ADR 0023 の 400 の定義"
+  - id: F-016
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-016
+    severity: minor
+    title: "JSON でない Content-Type は 400"
+    target: "apps/backend-api/src/presentation/httpApp.ts:144"
+    claim: "application/json でない要求の扱いは仕様に無い。"
+    evidence: "契約 requestBody、responses に 415 なし。httpApp.ts:148,152-156"
+  - id: F-017
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-017
+    severity: minor
+    title: "1 ミリ秒未満まで全精度で比べる"
+    target: "apps/backend-api/src/domain/timeRange.ts:79"
+    claim: "日時を比べる精度は仕様に無い。"
+    evidence: "契約の description・ADR 0017 は検証の順だけを決める"
+  - id: F-018
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-018
+    severity: major
+    title: "始まりのログはトークンの検証の後"
+    target: "apps/backend-api/src/presentation/httpApp.ts:66"
+    claim: "要求の始まりのログを出す位置と、認証に失敗した要求・認証基盤の障害の 500 の要求で社員 ID 無しで出すことは仕様に無い。"
+    evidence: "ADR 0011。httpApp.ts:74-88,127-134"
+  - id: F-019
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-019
+    severity: major
+    title: "401 にする jose のエラーを列挙"
+    target: "apps/backend-api/src/gateway/joseTokenVerifier.ts:27"
+    claim: "認証基盤の障害を 500、トークンの不一致を 401 に分ける方針はルールに合うが、401 に数える jose のエラーの中身は仕様に無い。JWKSMultipleMatchingKeys と JOSENotSupported は認証基盤の側の設定の誤りでも出るのに 401 にしている点は人が見てよい。"
+    evidence: "joseTokenVerifier.ts:27-41 の TOKEN_REJECTION_CODES、58-66。ADR 0015・0023・0011"
+  - id: F-020
+    viewpoint: assumption_conformance
+    kind: spec_absent
+    assumption_id: A-020
+    severity: minor
+    title: "契約に無い経路は unmatchedRoute と 404"
+    target: "apps/backend-api/src/presentation/httpApp.ts:57"
+    claim: "契約に無い経路の要求のログのハンドラ名を固定の値 unmatchedRoute にし、応答は Express の既定の 404 にする。ADR 0011 には合うが、名前の値と 404 の本文の形は仕様に無い。"
+    evidence: "httpApp.ts:53-66,95。tier-backend.md:72。httpApp.test.ts:131-147,149-163 pass"
+  - id: F-021
+    viewpoint: assumption_conformance
+    kind: unlisted
+    assumption_id: V-001
+    severity: minor
+    title: "経路の表記揺れでハンドラ名が違う"
+    target: "apps/backend-api/src/presentation/httpApp.ts:60"
+    claim: "契約の経路と大文字小文字・末尾のスラッシュだけが違う要求は viewRoomAvailability のハンドラが処理するのに、ログのハンドラ名が unmatchedRoute になり、実際に動いたハンドラと食い違う。前提の記録に無い。"
+    evidence: "httpApp.ts:60-66 (path の完全一致)・70 (strict・case sensitive routing を設定しない)・150 (app.post の経路)・157-161。express 5.3.0 / router 2.2.0 の router/index.js:429-430、router/lib/layer.js:86-89。今回の修正の前は同じ要求で handler が欠けていた (前回の F-020) ので振る舞いの退行ではない。ハンドラの名前を Express の経路の照合の結果から取るか、strict と case sensitive routing を有効にするかは人の判断"
+summary:
+  blocker: 0
+  major: 7
+  minor: 14
+asks: []
+upstream_issues: []

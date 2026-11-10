@@ -1,0 +1,34 @@
+schema_version: distillery2.handoff/v1
+step: asbuilt
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "前回から引き継いだ要約の根拠の行番号"
+    choice: "画面の作り直しでずれた根拠を今のコードの行に付け替えた (httpApp.ts の 132・142・201・223・243、submitReservation.ts の 41・51・54・56、ReserveRoomScreen.tsx の 133・176)"
+    reason: "前回の行 (httpApp.ts:150・:161・:183・:203、submitReservation.ts:31・:41・:44・:46、ReserveRoomScreen.tsx:91・:128) は、今は別の行やコメントを指していたため"
+  - id: D2
+    topic: "要約の課題の「未入力でも画面で止めずに送る」の行"
+    choice: "要約の課題から外した"
+    reason: "submitReservation.ts:38-39 が未入力なら API を呼ばずに missing を返す。SPEC-002-01-8 と SPEC-002-01-9 も pass しているため"
+  - id: D3
+    topic: "要約の課題の「SLOT_OVERLAPS を usecase が作る」の行"
+    choice: "要約の課題から外した。整合性の競合の行は「usecase が overlaps を SLOT_OVERLAPS にする」と書いた"
+    reason: "ADR 0023 が「repository は重なりを値で返し、SLOT_OVERLAPS は usecase が作る」と決め、実装 (reservationRepository.ts:132、reserveRoom.ts:148) と食い違わなくなったため"
+  - id: D4
+    topic: "要約の課題に残す行"
+    choice: "予約一覧への移動先 (ReserveRoomScreen.tsx:176)、同時の同じ内容の送信の 409 (reserveRoom.ts:148)、空き状況の画面のエラーの消え方 (RoomAvailabilityScreen.tsx:61) の 3 行にした。どれも決めたことに載っているので下書きにしなかった"
+    reason: "1 つめと 2 つめは自動承認した前提、3 つめは Verifier の指摘として人レビューに載っているため"
+  - id: D5
+    topic: "抽出の不具合を避けるための要約の注記"
+    choice: "原子性の行の「409 の書き込みは取り消された文」と、競合の行の「図の 409 の経路の ok は例外が無いことだけを示す」を残した"
+    reason: "抽出し直した分岐の表と図に、まだ同じ症状が出ているため (課題ファイル asbuilt-rolled-back-write-as-write と asbuilt-business-reject-as-ok は未解決)"
+  - id: D6
+    topic: "解決済みに見える課題ファイル (抽出節の課題の表では未決 10 件と数えられている)"
+    choice: "触らずに残す。進行役が確かめて閉じるよう勧める。応答を失った再送 (20261110T011511Z_asbuilt_reserve-room.md) は ADR 0022 で、SLOT_OVERLAPS (20261110T024931Z_asbuilt_reserve-room.md) は ADR 0023 で、未入力 (20261110T024932Z_asbuilt_reserve-room.md) は submitReservation.ts:38 で解けている。ADR 0005 の理由 (20261110_015840_contract_…_adr-0005-resend-rationale.md) は ADR 0005 が superseded になった。会議室を読めない状態 (20261110_052232_verify_…_rooms-unavailable-variant.md) は ReserveRoom.stories.tsx:135 と screens.yaml:45 に入った。推奨案を人の承認と書く件 (20261110_030006_refute_…_recommended-approval-as-human.md) は index.md:28・:202 が「推奨案で承認」と出す。WITH の 2 件 (20261110_011843_… と 20261110_012536_…_with-insert-as-read-system.md) は図で 3 表が Write になった"
+    reason: "課題を閉じるのは進行役の役目で、write-set の外のファイルも含むため。新しい課題ではないので upstream_issues には書かない"
+  - id: D7
+    topic: "課題の下書き"
+    choice: "下書きを書かず、抽出もやり直さなかった"
+    reason: "要約の課題の 3 行はどれも決めたことに載っているため"

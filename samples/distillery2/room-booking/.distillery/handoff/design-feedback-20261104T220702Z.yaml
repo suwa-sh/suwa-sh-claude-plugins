@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "onReserve が無いときの一覧の形"
+    choice: "「予約する」ボタンだけでなく操作の列ごと (見出し・読み込み中の枠・予約済みの「予約できません」) 描かない"
+    reason: "「予約できません」も予約の文脈を示すため、空き状況だけの一覧では列ごと消す方が要求 SPEC-001-01 (予約できることまでは示さない) に合う"
+  - id: D2
+    topic: "部品の見本の出し分け"
+    choice: "既存の Default / Loading / AllReserved はボタン無しの形のままにし、ボタンありの形を WithReserve / WithReserveLoading として足す (onReserve は storybook/test の fn)"
+    reason: "既定 (渡さない) がボタン無しになったので、ボタンありの形を別の見本で残して両方を見せる"
+  - id: D3
+    topic: "画面の見本 stories/RoomAvailability.stories.tsx"
+    choice: "変えない (onReserve を渡していないので、部品の修正だけでボタン無しの表示になる。screens.yaml の variants も変えない)"
+    reason: "空き状況の照会の画面は予約を扱わないため、ボタン無しが正しい形"

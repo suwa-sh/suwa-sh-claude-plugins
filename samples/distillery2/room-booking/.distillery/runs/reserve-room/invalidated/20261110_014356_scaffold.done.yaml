@@ -1,0 +1,6 @@
+stage: scaffold
+completed_at: "2026-11-10T00:40:55.286Z"
+red:
+  frontend: 3
+  backend-api: 3
+undefined_steps: 0

@@ -1,0 +1,818 @@
+# basis: requirements@64517f420b568ea1a4536b71b9dbbb357bd66460 adr@ed9e1fbd3b234cada613ca9357dd6e5ae36271e8
+# 契約の正本 (分割 YAML の入口)。UC ごとの path は d2-contract mode=uc が paths/ に足す。
+openapi: 3.1.0
+info:
+  title: 会議室予約システム API
+  version: 0.1.0
+  description: >-
+    frontend (React の SPA) が呼ぶ backend-api の API。
+    path は /api から始める。すべての API は社内の認証基盤 (OIDC) が発行した
+    アクセストークンを Authorization ヘッダの Bearer で受け取り、社員の識別子はトークンの sub から取る。
+    ID トークンは frontend が表示名の取得にだけ使い、API には送らない (ADR 0014)。
+    日時は時差付きの RFC 3339 で受け渡し、日付と 30 分刻みの判定は業務のタイムゾーン (Asia/Tokyo) で行う。
+    業務のエラーは Problem (application/problem+json) の code で返す。
+servers:
+  - url: http://localhost:3000
+    description: ローカルの backend-api
+security:
+  - bearerAuth: []
+x-test-headers:
+  Authorization: Bearer test-employee-a
+x-test-fixtures:
+  room-a-reserved-by-employee-a: >-
+    会議室A (room-1) の 2026-11-10T10:00:00+09:00 から 2026-11-10T11:00:00+09:00 に、
+    社員A (sub employee-a) の予約済みの予約が 1 件ある (5 部屋の会議室は migration の初期データで入っている)
+paths:
+  /api/room-availability:
+    post:
+      operationId: viewRoomAvailability
+      summary: 会議室の空き状況を照会する
+      description: >-
+        指定した時間帯について、全会議室 (5 部屋) が空きか予約済みかを会議室ごとに返す。
+        会議室は表示順 (rooms.display_order) で並べる。
+        予約済みは、時間帯に重なる (半開区間で一部でも重なる) 予約済みの予約があることを表す。取消済みの予約は数えない。
+        応答に予約者 (社員 ID・名前) を含めない。
+        時間帯は本文の開始と終了の日時だけで受け、日付を別の項目で受けない。業務の日付は開始の日時の Asia/Tokyo の日付で決める。
+        時間帯の検証はこの順で行い、最初に満たさないもののコードを返す:
+        (1) 開始が終了より前 (INVALID_TIME_RANGE)、(2) 開始と終了が 30 分刻み (NOT_ON_30_MINUTES)、
+        (3) 業務の日付の 0:00 から翌日 0:00 までに収まる (INVALID_TIME_RANGE)。
+        過去の時間帯も照会できる (PAST_TIME_SLOT は返さない)。
+        照会は状態を変えない。時間帯を本文で受けるため POST にしている。
+      tags:
+        - availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeRange'
+            examples:
+              success:
+                summary: 2026-11-10 10:00-11:00 (予約が無く全会議室が空き)
+                value:
+                  startAt: '2026-11-10T10:00:00+09:00'
+                  endAt: '2026-11-10T11:00:00+09:00'
+              reserved_without_owner:
+                summary: 社員Bが 2026-11-10 10:00-11:00 を照会する (会議室Aに社員Aの予約がある)
+                value:
+                  startAt: '2026-11-10T10:00:00+09:00'
+                  endAt: '2026-11-10T11:00:00+09:00'
+                x-headers:
+                  Authorization: Bearer test-employee-b
+              validation_error:
+                summary: 終了の日時が無い
+                value:
+                  startAt: '2026-11-10T10:00:00+09:00'
+              unauthorized:
+                summary: Authorization ヘッダが無い
+                value:
+                  startAt: '2026-11-10T10:00:00+09:00'
+                  endAt: '2026-11-10T11:00:00+09:00'
+                x-headers:
+                  Authorization: null
+              invalid_time_range_reversed:
+                summary: 開始 11:00 が終了 10:00 より後
+                value:
+                  startAt: '2026-11-10T11:00:00+09:00'
+                  endAt: '2026-11-10T10:00:00+09:00'
+              invalid_time_range_cross_day:
+                summary: 2026-11-10 23:00 から翌日 1:00 (日をまたぐ)
+                value:
+                  startAt: '2026-11-10T23:00:00+09:00'
+                  endAt: '2026-11-11T01:00:00+09:00'
+              not_on_30_minutes:
+                summary: 開始 10:10 が 30 分刻みでない
+                value:
+                  startAt: '2026-11-10T10:10:00+09:00'
+                  endAt: '2026-11-10T11:00:00+09:00'
+      responses:
+        '200':
+          description: 会議室ごとの空き状況 (表示順)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomAvailabilityList'
+              examples:
+                success:
+                  summary: 全会議室が空き
+                  value:
+                    rooms:
+                      - roomId: room-1
+                        name: 会議室A
+                        availability: available
+                      - roomId: room-2
+                        name: 会議室B
+                        availability: available
+                      - roomId: room-3
+                        name: 会議室C
+                        availability: available
+                      - roomId: room-4
+                        name: 会議室D
+                        availability: available
+                      - roomId: room-5
+                        name: 会議室E
+                        availability: available
+                reserved_without_owner:
+                  summary: 会議室Aは予約済みとだけ返し、予約者を含めない
+                  value:
+                    rooms:
+                      - roomId: room-1
+                        name: 会議室A
+                        availability: reserved
+                      - roomId: room-2
+                        name: 会議室B
+                        availability: available
+                      - roomId: room-3
+                        name: 会議室C
+                        availability: available
+                      - roomId: room-4
+                        name: 会議室D
+                        availability: available
+                      - roomId: room-5
+                        name: 会議室E
+                        availability: available
+        '400':
+          description: 要求の形の誤り (必須が無い・日時の形式が違う)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validation_error:
+                  summary: 終了の日時が無い
+                  value:
+                    type: about:blank
+                    title: 要求の形が正しくありません
+                    status: 400
+                    code: VALIDATION_ERROR
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: 業務の規則に合わない時間帯 (開始が終了より前でない・30 分刻みでない・業務の日付の中に収まらない)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                invalid_time_range_reversed:
+                  summary: 開始が終了より後
+                  value:
+                    type: about:blank
+                    title: 時間帯が正しくありません
+                    status: 422
+                    code: INVALID_TIME_RANGE
+                invalid_time_range_cross_day:
+                  summary: 日をまたぐ時間帯
+                  value:
+                    type: about:blank
+                    title: 時間帯が正しくありません
+                    status: 422
+                    code: INVALID_TIME_RANGE
+                not_on_30_minutes:
+                  summary: 30 分刻みでない
+                  value:
+                    type: about:blank
+                    title: 時刻は 30 分刻みで指定してください
+                    status: 422
+                    code: NOT_ON_30_MINUTES
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-test-requests:
+        success:
+          expect:
+            - rooms
+        reserved_without_owner:
+          fixture: room-a-reserved-by-employee-a
+          expect:
+            - rooms
+        invalid_time_range_reversed:
+          expect:
+            - code
+        invalid_time_range_cross_day:
+          expect:
+            - code
+        not_on_30_minutes:
+          expect:
+            - code
+  /api/rooms:
+    get:
+      operationId: listRooms
+      summary: 会議室を一覧する
+      description: >-
+        全会議室 (5 部屋) を表示順 (rooms.display_order) で返す。予約の画面で会議室を選ぶために使う。
+        会議室は migration の初期データで入れるマスタで、この API は状態を変えない。
+      tags:
+        - rooms
+      responses:
+        '200':
+          description: '全会議室 (表示順)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomList'
+              examples:
+                success:
+                  summary: 初期データの 5 部屋
+                  value:
+                    rooms:
+                      - roomId: room-1
+                        name: 会議室A
+                      - roomId: room-2
+                        name: 会議室B
+                      - roomId: room-3
+                        name: 会議室C
+                      - roomId: room-4
+                        name: 会議室D
+                      - roomId: room-5
+                        name: 会議室E
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-test-requests:
+        success:
+          expect:
+            - rooms
+        unauthorized:
+          headers:
+            Authorization: null
+  /api/reservations:
+    post:
+      operationId: reserveRoom
+      summary: 会議室を予約する
+      description: >-
+        会議室と時間帯 (開始と終了の日時) を指定して予約する。予約者はトークンの sub の社員にする (本文で受けない)。
+        成立すると予約の今の状態 (予約済み)・「予約した」イベント・30 分枠の占有を同じトランザクションで書き、201 で予約を返す。
+        時間帯は本文の開始と終了の日時だけで受け、日付を別の項目で受けない。業務の日付は開始の日時の Asia/Tokyo の日付で決める (ADR 0017)。
+        検証はこの順で行い、最初に満たさないもののコードを返す:
+        (1) 要求の形 (必須が無い・日時の形式が違う。400 VALIDATION_ERROR。
+        会議室・日付・開始時刻・終了時刻の未入力は画面が送る前に止めるが、API も必須の欠けを 400 で断る)、
+        (2) 開始が終了より前 (422 INVALID_TIME_RANGE)、(3) 開始と終了が 30 分刻み (422 NOT_ON_30_MINUTES)、
+        (4) 業務の日付の 0:00 から翌日 0:00 までに収まる (422 INVALID_TIME_RANGE)、
+        (4a) 送り直し: トークンの sub の社員に、会議室・開始・終了がすべて同じ予約済みの予約があれば、
+        新しい予約を作らず (予約の今の状態・イベント・30 分枠の占有を書かない)、その成立済みの予約を 200 で返す (SPEC-002-03・ADR 0022)。
+        応答が届いたかどうかは問わない。この判定は (5) より先に行うので、開始時刻や終了時刻を過ぎた後の送り直しも PAST_TIME_SLOT にしない。
+        取消済みの自分の予約は送り直しの対象にせず、新しい予約として (5) 以降を判定する、
+        (5) 開始が現在より前でない (422 PAST_TIME_SLOT。開始が現在と同じなら予約できる)、
+        (6) 会議室がある (404 ROOM_NOT_FOUND)、
+        (7) 同じ会議室で時間帯が重なる (半開区間で一部でも重なる) 予約済みの予約が無い (409 SLOT_OVERLAPS)。取消済みの予約は数えない。
+        自分の予約とすべて同じ内容の要求は (4a) で返すのでここに来ない。自分の予約と一部だけ重なる場合と、他の社員の予約と重なる場合 (まったく同じ時間帯も) は 409 にする。
+        同時に予約されても成立するのは 1 件だけで、負けた側は 30 分枠の占有の主キーの違反を SLOT_OVERLAPS の 409 で受ける (ADR 0023)。
+        新しく成立したときは 201、送り直しで成立済みの予約を返すときは 200 で、どちらも本文は同じ形の Reservation にする。
+        冪等キーは受けない (ADR 0022)。送り直しは本人・会議室・開始・終了の一致で判定する。
+      tags:
+        - reservations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReserveRoomRequest'
+            examples:
+              success:
+                summary: '社員Aが会議室Aを 2099-11-10 10:00-11:00 で予約する (予約が無い)'
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T10:00:00+09:00'
+                  endAt: '2099-11-10T11:00:00+09:00'
+              validation_error:
+                summary: 終了の日時が無い
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T10:00:00+09:00'
+              unauthorized:
+                summary: Authorization ヘッダが無い
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T10:00:00+09:00'
+                  endAt: '2099-11-10T11:00:00+09:00'
+                x-headers:
+                  Authorization: null
+              invalid_time_range_reversed:
+                summary: 開始 11:00 が終了 10:00 より後
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T11:00:00+09:00'
+                  endAt: '2099-11-10T10:00:00+09:00'
+              invalid_time_range_same:
+                summary: 開始と終了が同じ 10:00
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T10:00:00+09:00'
+                  endAt: '2099-11-10T10:00:00+09:00'
+              invalid_time_range_cross_day:
+                summary: '2099-11-10 23:00 から翌日 1:00 (日をまたぐ)'
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T23:00:00+09:00'
+                  endAt: '2099-11-11T01:00:00+09:00'
+              not_on_30_minutes:
+                summary: 開始 10:10 が 30 分刻みでない
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T10:10:00+09:00'
+                  endAt: '2099-11-10T11:00:00+09:00'
+              past_time_slot:
+                summary: '開始が現在より前 (2020-01-10 10:00-11:00)'
+                value:
+                  roomId: room-1
+                  startAt: '2020-01-10T10:00:00+09:00'
+                  endAt: '2020-01-10T11:00:00+09:00'
+              room_not_found:
+                summary: 無い会議室 ID
+                value:
+                  roomId: no-such-room
+                  startAt: '2099-11-10T10:00:00+09:00'
+                  endAt: '2099-11-10T11:00:00+09:00'
+              slot_overlaps:
+                summary: '社員Bが会議室Aを 2099-11-10 10:30-11:30 で予約する (10:00-11:00 に社員Aの予約がある)'
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T10:30:00+09:00'
+                  endAt: '2099-11-10T11:30:00+09:00'
+                x-headers:
+                  Authorization: Bearer test-employee-b
+              slot_overlaps_own_partial:
+                summary: '社員Aが会議室Aを 2099-11-10 10:30-11:30 で予約する (10:00-11:00 に社員A自身の予約がある)'
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T10:30:00+09:00'
+                  endAt: '2099-11-10T11:30:00+09:00'
+              slot_overlaps_same_by_other:
+                summary: '社員Bが会議室Aを 2099-11-10 10:00-11:00 で予約する (まったく同じ時間帯に社員Aの予約がある)'
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T10:00:00+09:00'
+                  endAt: '2099-11-10T11:00:00+09:00'
+                x-headers:
+                  Authorization: Bearer test-employee-b
+              resent:
+                summary: '社員Aが会議室Aを 2099-11-10 10:00-11:00 でもう一度予約する (同じ内容の社員Aの予約がある)'
+                value:
+                  roomId: room-1
+                  startAt: '2099-11-10T10:00:00+09:00'
+                  endAt: '2099-11-10T11:00:00+09:00'
+              resent_after_start:
+                summary: '社員Aが会議室Aを 2020-01-10 10:00-11:00 でもう一度予約する (開始も終了も過ぎた同じ内容の社員Aの予約がある)'
+                value:
+                  roomId: room-1
+                  startAt: '2020-01-10T10:00:00+09:00'
+                  endAt: '2020-01-10T11:00:00+09:00'
+      responses:
+        '200':
+          description: '送り直し。自分の予約済みの予約と会議室・開始・終了がすべて同じなので、新しい予約を作らず成立済みの予約を返した (SPEC-002-03)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+              examples:
+                resent:
+                  summary: 成立済みの社員Aの予約 (新しい予約 ID を採番しない)
+                  value:
+                    reservationId: 00000000-0000-4000-8000-00000000000b
+                    roomId: room-1
+                    roomName: 会議室A
+                    startAt: '2099-11-10T10:00:00+09:00'
+                    endAt: '2099-11-10T11:00:00+09:00'
+                    reservedBy: employee-a
+                    status: reserved
+                resent_after_start:
+                  summary: 開始も終了も過ぎた成立済みの社員Aの予約 (過去の時間帯として断らない)
+                  value:
+                    reservationId: 00000000-0000-4000-8000-00000000000c
+                    roomId: room-1
+                    roomName: 会議室A
+                    startAt: '2020-01-10T10:00:00+09:00'
+                    endAt: '2020-01-10T11:00:00+09:00'
+                    reservedBy: employee-a
+                    status: reserved
+        '201':
+          description: '新しい予約が成立した (予約済み)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+              examples:
+                success:
+                  summary: 社員Aの予約済みの予約
+                  value:
+                    reservationId: 3f6c2a1e-8b4d-4c7a-9e21-5d0b7a6f1c42
+                    roomId: room-1
+                    roomName: 会議室A
+                    startAt: '2099-11-10T10:00:00+09:00'
+                    endAt: '2099-11-10T11:00:00+09:00'
+                    reservedBy: employee-a
+                    status: reserved
+        '400':
+          description: '要求の形の誤り (必須が無い・日時の形式が違う)'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                validation_error:
+                  summary: 終了の日時が無い
+                  value:
+                    type: about:blank
+                    title: 要求の形が正しくありません
+                    status: 400
+                    code: VALIDATION_ERROR
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: 会議室が無い
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room_not_found:
+                  summary: 無い会議室 ID
+                  value:
+                    type: about:blank
+                    title: 会議室が見つかりません
+                    status: 404
+                    code: ROOM_NOT_FOUND
+        '409':
+          description: '同じ会議室で時間帯が重なる予約済みの予約がある (同時の予約で負けた側も)'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                slot_overlaps:
+                  summary: 既存の予約と時間帯が重なる
+                  value:
+                    type: about:blank
+                    title: 時間帯が既存の予約と重なります
+                    status: 409
+                    code: SLOT_OVERLAPS
+                slot_overlaps_own_partial:
+                  summary: 自分の予約と時間帯が一部だけ重なる (送り直しとして扱わない)
+                  value:
+                    type: about:blank
+                    title: 時間帯が既存の予約と重なります
+                    status: 409
+                    code: SLOT_OVERLAPS
+                slot_overlaps_same_by_other:
+                  summary: 他の社員の予約とまったく同じ時間帯 (送り直しとして扱わない)
+                  value:
+                    type: about:blank
+                    title: 時間帯が既存の予約と重なります
+                    status: 409
+                    code: SLOT_OVERLAPS
+        '422':
+          description: '業務の規則に合わない時間帯 (開始が終了より前でない・30 分刻みでない・業務の日付の中に収まらない・開始が現在より前)'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                invalid_time_range_reversed:
+                  summary: 開始が終了より後
+                  value:
+                    type: about:blank
+                    title: 時間帯が正しくありません
+                    status: 422
+                    code: INVALID_TIME_RANGE
+                invalid_time_range_same:
+                  summary: 開始と終了が同じ
+                  value:
+                    type: about:blank
+                    title: 時間帯が正しくありません
+                    status: 422
+                    code: INVALID_TIME_RANGE
+                invalid_time_range_cross_day:
+                  summary: 日をまたぐ時間帯
+                  value:
+                    type: about:blank
+                    title: 時間帯が正しくありません
+                    status: 422
+                    code: INVALID_TIME_RANGE
+                not_on_30_minutes:
+                  summary: 30 分刻みでない
+                  value:
+                    type: about:blank
+                    title: 時刻は 30 分刻みで指定してください
+                    status: 422
+                    code: NOT_ON_30_MINUTES
+                past_time_slot:
+                  summary: 開始が現在より前
+                  value:
+                    type: about:blank
+                    title: 過去の時間帯は予約できません
+                    status: 422
+                    code: PAST_TIME_SLOT
+        '500':
+          $ref: '#/components/responses/InternalError'
+      x-test-requests:
+        invalid_time_range_reversed:
+          expect:
+            - code
+        invalid_time_range_same:
+          expect:
+            - code
+        invalid_time_range_cross_day:
+          expect:
+            - code
+        not_on_30_minutes:
+          expect:
+            - code
+        past_time_slot:
+          expect:
+            - code
+        slot_overlaps:
+          fixture: room-a-reserved-in-2099-by-employee-a
+        slot_overlaps_own_partial:
+          fixture: room-a-reserved-in-2099-by-employee-a
+        slot_overlaps_same_by_other:
+          fixture: room-a-reserved-in-2099-by-employee-a
+        resent:
+          fixture: room-a-reserved-in-2099-by-employee-a
+          expect:
+            - reservationId
+            - startAt
+            - status
+        resent_after_start:
+          fixture: room-a-reserved-in-2020-by-employee-a
+          expect:
+            - reservationId
+            - startAt
+            - status
+      x-test-fixtures:
+        room-a-reserved-in-2099-by-employee-a: >-
+          会議室A (room-1) の 2099-11-10T10:00:00+09:00 から 2099-11-10T11:00:00+09:00 に、
+          社員A (sub employee-a) の予約済みの予約 (予約 ID 00000000-0000-4000-8000-00000000000b) が 1 件ある
+          (予約の今の状態・「予約した」イベント・30 分枠の占有 2 件をそろえて入れる。
+          時計は固定せず、実行する日より先の日時にしている。5 部屋の会議室は migration の初期データで入っている)
+        room-a-reserved-in-2020-by-employee-a: >-
+          会議室A (room-1) の 2020-01-10T10:00:00+09:00 から 2020-01-10T11:00:00+09:00 に、
+          社員A (sub employee-a) の予約済みの予約 (予約 ID 00000000-0000-4000-8000-00000000000c) が 1 件ある
+          (予約の今の状態・「予約した」イベント・30 分枠の占有 2 件をそろえて入れる。
+          時計は固定せず、実行する日より前の日時にして、開始も終了も過ぎた後の送り直しを表す。5 部屋の会議室は migration の初期データで入っている)
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        社内の認証基盤 (OIDC) が発行したアクセストークン (JWT)。sub を社員 ID として使う。
+        テスト (契約・UC BDD・受入) では provider のテスト用の検証器が Bearer test-employee-<社員> を受け付け、
+        社員の sub employee-<社員> に対応させる (test-employee-a は社員A の employee-a、test-employee-b は社員B の employee-b)。
+        本番の入口はテスト用のトークンを受け付けない
+  parameters:
+    ReservationIdPath:
+      name: reservationId
+      in: path
+      required: true
+      description: 予約 ID
+      schema:
+        $ref: '#/components/schemas/ReservationId'
+  schemas:
+    RoomId:
+      type: string
+      description: 会議室 ID (初期データで入れる 5 部屋の識別子)
+      minLength: 1
+      maxLength: 64
+      examples:
+        - room-1
+    ReservationId:
+      type: string
+      format: uuid
+      description: 予約 ID
+    EmployeeId:
+      type: string
+      description: 社員 ID (認証基盤が発行したアクセストークンの sub)
+      minLength: 1
+    DateTime:
+      type: string
+      format: date-time
+      description: 時差付きの日時 (RFC 3339)。例 2026-11-05T10:00:00+09:00
+    BusinessDate:
+      type: string
+      format: date
+      description: 業務のタイムゾーン (Asia/Tokyo) での日付
+    ReservationStatus:
+      type: string
+      description: 予約状態。reserved = 予約済み / cancelled = 取消済み
+      enum:
+        - reserved
+        - cancelled
+    Availability:
+      type: string
+      description: 空き状況。available = 空き / reserved = 予約済み (重なる有効な予約がある)
+      enum:
+        - available
+        - reserved
+    Room:
+      type: object
+      description: 会議室
+      additionalProperties: false
+      required:
+        - roomId
+        - name
+      properties:
+        roomId:
+          $ref: '#/components/schemas/RoomId'
+        name:
+          type: string
+          description: 会議室名
+    RoomList:
+      type: object
+      description: 全会議室。rooms は会議室の表示順
+      additionalProperties: false
+      required:
+        - rooms
+      properties:
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Room'
+    ReserveRoomRequest:
+      type: object
+      description: >-
+        予約の要求。会議室と時間帯 (開始を含み終了を含まない区間。制約は TimeRange と同じ)。
+        予約者はトークンの sub から取り、本文で受けない。日付を別の項目で持たない (ADR 0017)
+      additionalProperties: false
+      required:
+        - roomId
+        - startAt
+        - endAt
+      properties:
+        roomId:
+          $ref: '#/components/schemas/RoomId'
+        startAt:
+          $ref: '#/components/schemas/DateTime'
+        endAt:
+          $ref: '#/components/schemas/DateTime'
+    Reservation:
+      type: object
+      description: >-
+        予約 (今の状態)。予約者の社員 ID を持つ (予約者本人に返す応答で使う。空き状況の応答では使わない。ADR 0006)
+      additionalProperties: false
+      required:
+        - reservationId
+        - roomId
+        - roomName
+        - startAt
+        - endAt
+        - reservedBy
+        - status
+      properties:
+        reservationId:
+          $ref: '#/components/schemas/ReservationId'
+        roomId:
+          $ref: '#/components/schemas/RoomId'
+        roomName:
+          type: string
+          description: 会議室名
+        startAt:
+          $ref: '#/components/schemas/DateTime'
+        endAt:
+          $ref: '#/components/schemas/DateTime'
+        reservedBy:
+          $ref: '#/components/schemas/EmployeeId'
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
+    RoomAvailability:
+      type: object
+      description: 1 つの会議室の、指定した時間帯の空き状況。予約者 (社員 ID・名前) を持たない
+      additionalProperties: false
+      required:
+        - roomId
+        - name
+        - availability
+      properties:
+        roomId:
+          $ref: '#/components/schemas/RoomId'
+        name:
+          type: string
+          description: 会議室名
+        availability:
+          $ref: '#/components/schemas/Availability'
+    RoomAvailabilityList:
+      type: object
+      description: 全会議室の空き状況。rooms は会議室の表示順
+      additionalProperties: false
+      required:
+        - rooms
+      properties:
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomAvailability'
+    TimeRange:
+      type: object
+      description: >-
+        時間帯。開始を含み終了を含まない区間。開始と終了は 30 分刻み。
+        業務の日付 (開始の日時の Asia/Tokyo での日付) の 0:00 から翌日 0:00 までに収まる (日をまたぐ時間帯は不可)。
+        終了の 24:00 は翌日 0:00 の日時で持つ (例 2026-11-10 23:30-24:00 は startAt 2026-11-10T23:30:00+09:00・endAt 2026-11-11T00:00:00+09:00)。
+        日付を別の項目で持たない (ADR 0017)
+      additionalProperties: false
+      required:
+        - startAt
+        - endAt
+      properties:
+        startAt:
+          $ref: '#/components/schemas/DateTime'
+        endAt:
+          $ref: '#/components/schemas/DateTime'
+    ErrorCode:
+      type: string
+      description: >-
+        エラーのコード。VALIDATION_ERROR (400 要求の形の誤り)・UNAUTHENTICATED (401 トークンが無いか検証できない)・
+        INVALID_TIME_RANGE (422 開始が終了より前でない、または時間帯が業務の日付 (開始の日付・Asia/Tokyo) の 0:00 から翌日 0:00 までに収まらない)・
+        NOT_ON_30_MINUTES (422 30 分刻みでない)・PAST_TIME_SLOT (422 開始が現在より前。予約のときだけ)・
+        SLOT_OVERLAPS / ALREADY_CANCELLED / CANCEL_DEADLINE_PASSED (409)・
+        NOT_RESERVATION_OWNER (403)・RESERVATION_NOT_FOUND / ROOM_NOT_FOUND (404)・INTERNAL_ERROR (500 システムのエラー)
+      enum:
+        - VALIDATION_ERROR
+        - UNAUTHENTICATED
+        - INVALID_TIME_RANGE
+        - NOT_ON_30_MINUTES
+        - PAST_TIME_SLOT
+        - SLOT_OVERLAPS
+        - ALREADY_CANCELLED
+        - CANCEL_DEADLINE_PASSED
+        - NOT_RESERVATION_OWNER
+        - RESERVATION_NOT_FOUND
+        - ROOM_NOT_FOUND
+        - INTERNAL_ERROR
+    Problem:
+      type: object
+      description: エラー応答 (RFC 9457 の Problem Details に業務のエラーのコードを足した形)
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          description: エラーの種別を表す URI 参照
+        title:
+          type: string
+          description: 利用者向けの短い説明
+        status:
+          type: integer
+          description: HTTP の status
+        detail:
+          type: string
+          description: この発生の詳しい説明
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        correlationId:
+          type: string
+          description: ログと突き合わせるための相関 ID
+  responses:
+    BadRequest:
+      description: 要求の形の誤り (必須が無い・日時の形式が違う)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: トークンが無いか検証できない
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            unauthorized:
+              summary: Authorization ヘッダが無い
+              value:
+                type: about:blank
+                title: 認証が必要です
+                status: 401
+                code: UNAUTHENTICATED
+    Forbidden:
+      description: 予約者本人でない
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: 対象が無い
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: 状態と衝突する (時間帯が重なる・取消済み・開始時刻を過ぎた)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableEntity:
+      description: 業務の規則に合わない時間帯 (開始が終了より前でない・30 分刻みでない・業務の日付の中に収まらない・過去)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InternalError:
+      description: システムのエラー。応答は汎用の文と相関 ID だけ
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'

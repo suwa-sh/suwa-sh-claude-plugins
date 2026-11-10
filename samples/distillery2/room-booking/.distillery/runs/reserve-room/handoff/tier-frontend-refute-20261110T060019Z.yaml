@@ -1,0 +1,21 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "両画面の onChange は入力値だけを更新し、API のエラーを持つ state は次の送信・照会まで残っていた。エラーは送った入力に対する判定なので、入力を変えた後も出し続けると今の入力にも同じ問題があるように見える"
+    change: "ReserveRoomScreen.tsx に changeValue、RoomAvailabilityScreen.tsx に changeSlot を足し、入力を変えたら state が error のときだけ idle に戻すようにした (会議室の一覧を読めなかった通知と、照会できた一覧はそのまま)。単体テストを 2 件足し (予約の 409 の後に終了時刻を変える・照会の 422 の後に終了時刻を変える)、前提 A-010 を足し、行のずれた A-004・A-005・A-006 の target を直した"
+  - finding: "指摘 2"
+    result: refuted
+    reason: "予約一覧の画面 (docs/design/screens.yaml の MyReservations、route /my-reservations) の uc_slugs は list-my-reservations だけで、この UC の契約 slice に一覧の operation (reserveRoom と listRooms だけ) も無いため、この UC では画面もルートも作れない。ボタンは見本 packages/ui/stories/ReserveRoom.stories.tsx:53 の Completed が置く部品どおりで、外すと見本と食い違う。さらに画面部品 AppShell (packages/ui/components/layout/AppShell.tsx:16) の案内「自分の予約」がどの画面からも /my-reservations へ移るので、このボタンだけを隠しても行き止まりは消えない。一覧の UC が routes.tsx に 1 行足した時点で解ける。この一時的な行き止まりは assumptions.frontend.yaml の A-005 に書いてあり、前の 3 回の反証と同じ判断"
+decisions:
+  - id: D1
+    topic: "API のエラーの後に入力を変えたとき"
+    choice: "予約と空き状況の両画面で、入力を変えたら前の API のエラーの表示を消す。会議室の一覧を読めなかった通知と照会できた一覧は残す"
+    reason: "エラーは送った入力に対する判定で、今の入力の判定ではない。一覧を読めなかった通知は入力と関係ない"
+  - id: D2
+    topic: "完了画面の「自分の予約一覧を見る」ボタン"
+    choice: "見本どおり残し、/my-reservations の画面とルートは UC list-my-reservations に任せる"
+    reason: "一覧の画面はその UC の担当で、AppShell の案内も同じ所へ移るため、ボタンだけを隠しても行き止まりは消えない"

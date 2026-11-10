@@ -1,0 +1,22 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "oidc-client-ts の RedirectNavigator.navigate は pageshow で Promise を解決する (node_modules/oidc-client-ts/dist/esm/oidc-client-ts.js:2702)。redirecting を外すのが失敗時だけなので、ブラウザの「戻る」で同じページに戻ると解決済みの送り出しが残り、次の signIn が認証基盤へ送られない"
+    change: "apps/frontend/src/api/oidcTokenProvider.ts の signIn で、送り出しが終わったら成功・失敗のどちらでも redirecting を外す (catch を finally に変えた)。あわせて getAccessToken の signInInstead が送り出しの終わりを待たずに返すようにした (待つと、戻るで送り出しが終わった後に ensureSignedIn や 401 の続きが新しく送り出し、社員を認証基盤へ送り返すため)。単体テストに、戻るで終わったとき待っていたサインインは送り直さないことと、その後の操作では送り直すことの 2 件を足した"
+decisions:
+  - id: D1
+    topic: "サインインの送り出しを外す時点"
+    choice: "送り出しが終わったら成功・失敗のどちらでも外す"
+    reason: "戻るで pageshow により成功で終わった後も、次の操作でサインインへ送れるようにする (ADR 0014・0021 の未認証時と 401 時のサインイン)"
+  - id: D2
+    topic: "トークンが無いときの getAccessToken のサインイン"
+    choice: "送り出しを始めて終わりを待たずに undefined を返し、送り出しの失敗はそこで握りつぶす"
+    reason: "呼び出し元の続きの signIn が同じ送り出しに乗り、戻るの後に二重に送り出さない。失敗は続きの signIn が送り直して返す"
+  - id: D3
+    topic: "code の無いエラー応答と通信の失敗の表示"
+    choice: "契約のエラーのコード INTERNAL_ERROR で出す (前提の記録 A-005 に書き足した)"
+    reason: "検証役の V-001。契約・ルールに扱いが無く、画面部品の ErrorCode に無い値を作らない"

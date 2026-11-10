@@ -1,0 +1,22 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues:
+  - id: asbuilt-quoted-changed-paths
+    target_step: plugin
+    title: 抽出が日本語のパスを引用符と八進数で残す
+    detail: "extractAsBuilt の変更ファイルは git diff --name-only の出力をそのまま使う。core.quotePath が既定 (true) のため、日本語を含むパスが引用符と八進数のエスケープ付きの文字列になり、traceability-index.json の files と index.md の付録に実在しないパスとして載る"
+    evidence: "buildTraceIndex.js:116 が git diff --name-only を -z も -c core.quotePath=false も付けずに呼ぶ。直す前の traceability-index.json:125 に \"features/\\344\\274...\" が入っていた (as-built のレビュー 指摘 2)"
+    recommended_fix: "git の呼び出しを git -c core.quotePath=false diff --name-only -z にし、NUL で分割する"
+    workaround: "traceability-index.json の files を UTF-8 に戻した一覧を <run>/reports/changed-files.txt に書き、extractAsBuilt.js を --changed でその一覧を渡して回し直した"
+refutations:
+  - finding: 指摘 1
+    result: accepted
+    reason: "課題の行は Verifier の未申告の判断 F-021 (findings.backend-api.yaml:395) で、決めたことの節に載っており人レビュー (decisions.jsonl:54 attempt 2 を進める) を通った。課題ファイルではないので未決の件数に入らないが、要約の行にその処遇が書かれておらず読み手が判別できなかった"
+    change: "要約ブロック 課題 の対処の列に、決めたことの Verifier の判断に載り人が見たこと・attempt 2 を進めると承認したこと・この指摘だけの決定は無く未決に数えないことを足し、根拠に findings.backend-api.yaml:395 と decisions.jsonl:54 を足した"
+  - finding: 指摘 2
+    result: plugin
+    reason: "抽出スクリプトの git 呼び出し (buildTraceIndex.js:116) の不具合で、traceability-index.json は生成物なので手で直せない。--changed で UTF-8 の一覧を渡して回し直し、traceability-index.json の該当は features/会議室予約/view-room-availability.feature (実在) になった"
+decisions:
+  - {id: D1, topic: 指摘 1 の直し方, choice: 下書きにせず要約の課題の行に処遇 (人レビュー済み・未決に数えない) を書き足す, reason: 決めたことの節に載った事柄は下書きにしない規則で、既存の課題 (閉じた課題を未決に数える) の回避と同じく要約で件数との差を示す}
+  - {id: D2, topic: 指摘 2 の回避の仕方, choice: 抽出済みの files を UTF-8 に戻した一覧を reports/changed-files.txt に書き --changed で渡す, reason: 環境変数で git の設定を変える実行は承認待ちで回せず、自分で git を打たない制約の中で同じ一覧を得られる}

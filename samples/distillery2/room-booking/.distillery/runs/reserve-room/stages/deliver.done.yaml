@@ -1,0 +1,5 @@
+stage: deliver
+completed_at: "2026-11-10T06:22:59.346Z"
+squash: 6967772bdfb2bfe4a0be1b80ea0650d33ab21552
+base_head: 49f9b5dcf6e23216a072a8c289f475c771d22419
+acceptance_sha256: 394972bca1c68af0e854a7705a45e913fbf38338cc53ab37f18ddd304eee0b97

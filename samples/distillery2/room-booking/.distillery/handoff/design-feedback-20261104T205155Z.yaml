@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "UI/Select の見本の汎用の例"
+    choice: "項目名を「会議室」、エラーの文を「選び直してください」にした (課題の推奨の例のとおり)"
+    reason: "時刻に依らず、業務の部品の文を import せずに済む"
+  - id: D2
+    topic: "UI/Select の見本の選択肢と初期値"
+    choice: "選択肢を時刻 (10:00 等) から「会議室 A / B / C」に、初期値を room-a に変えた"
+    reason: "項目名を会議室にしたのに選択肢が時刻のままだと見本として食い違うため。同じファイルの中の変更"

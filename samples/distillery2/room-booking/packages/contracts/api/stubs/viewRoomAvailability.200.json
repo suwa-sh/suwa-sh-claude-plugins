@@ -1,0 +1,29 @@
+{
+  "rooms": [
+    {
+      "availability": "reserved",
+      "name": "会議室A",
+      "roomId": "room-1"
+    },
+    {
+      "availability": "available",
+      "name": "会議室B",
+      "roomId": "room-2"
+    },
+    {
+      "availability": "available",
+      "name": "会議室C",
+      "roomId": "room-3"
+    },
+    {
+      "availability": "available",
+      "name": "会議室D",
+      "roomId": "room-4"
+    },
+    {
+      "availability": "available",
+      "name": "会議室E",
+      "roomId": "room-5"
+    }
+  ]
+}

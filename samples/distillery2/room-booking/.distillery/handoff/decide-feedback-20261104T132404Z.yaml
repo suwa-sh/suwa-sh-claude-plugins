@@ -1,0 +1,36 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: idp-access-token-jwt
+    kind: unknown_fact
+    question: "社内の認証基盤は、このシステムの API 向けのアクセストークンを JWT で発行し、sub に社員の識別子、aud にこの API の宛先の値を入れられるか"
+    options:
+      - label: "できる (JWT のアクセストークンで sub と aud を入れられる)"
+        impact: "ADR 0015 のまま進む。backend-api は jose で手元で検証する"
+      - label: "できない (アクセストークンが不透明な文字列、または aud を指定できない)"
+        impact: "ADR 0015 を置き換え、認証基盤へのトークンの照会に切り替える。要求ごとに認証基盤への呼び出しが増え、ティアの packages の見直しが要る"
+    recommended: "できる (JWT のアクセストークンで sub と aud を入れられる)"
+    reason: "OIDC に対応する一般的な認証基盤は API 向けのアクセストークンを JWT で発行でき、ADR 0006・0014 の前提 (OIDC 対応・jose での検証) とも合う。仮置きで進め、外れたときだけ置き換える"
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "課題の推奨 (ADR 0002・0014 の本文を直す) の扱い"
+    choice: "旧 ADR の本文は変えず、新しい ADR 0015 で API のトークンの種類と検証の仕方を決め、ADR 0002 の文はこの ADR で読み替えると書いた"
+    reason: "決定の差分の手順は、置き換えの 2 項目以外で既存の ADR を変えることを禁じている。ADR 0002 は既に ADR 0013 に置き換わっている"
+  - id: D2
+    topic: "ADR 0015 が既存の ADR を置き換えるか"
+    choice: "置き換えない (supersedes は空)"
+    reason: "ADR 0006・0013・0014 の決定は変わらず、前提と検証の仕方を足すだけ。置き換えるとティア構成の ADR (tiers) を書き直すことになり範囲が広がる"
+  - id: D3
+    topic: "アクセストークンの検証項目"
+    choice: "署名 (認証基盤の公開鍵の一覧)・iss・aud・exp を確かめ、どれかが合わないか sub が無ければ 401"
+    reason: "aud を確かめないと同じ認証基盤が別システム向けに出したトークンで API を呼べてしまう"
+  - id: D4
+    topic: "ID トークンの扱い"
+    choice: "ID トークンは API に送らず、frontend が表示名を読むためだけに使う"
+    reason: "ID トークンの宛先は frontend のクライアント ID で、API 側で宛先を確かめられない。契約の bearerAuth (アクセストークン) と一致させる"
+  - id: D5
+    topic: "確信度"
+    choice: "ADR 0015 は confidence: low とし、認証基盤の JWT 発行を人の確認にした"
+    reason: "社内の認証基盤の仕様は確かめていない (ADR 0006 と同じ)"

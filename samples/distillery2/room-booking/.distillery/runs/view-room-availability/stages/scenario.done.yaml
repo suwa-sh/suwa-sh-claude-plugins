@@ -1,0 +1,3 @@
+stage: scenario
+completed_at: "2026-11-10T03:25:49.196Z"
+feature: features/会議室予約/view-room-availability.feature

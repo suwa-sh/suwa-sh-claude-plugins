@@ -1,0 +1,10 @@
+stage: contract
+completed_at: "2026-11-10T03:27:42.772Z"
+tiers:
+  - frontend
+  - backend-api
+contract_changes:
+  own: []
+  other_uc: []
+  shared: []
+  ignored: 10

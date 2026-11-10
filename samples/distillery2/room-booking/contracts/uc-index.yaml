@@ -1,0 +1,21 @@
+# basis: requirements@64517f420b568ea1a4536b71b9dbbb357bd66460 adr@ed9e1fbd3b234cada613ca9357dd6e5ae36271e8
+# UC ごとに使う operation / message / table。d2-contract mode=uc が UC 着手時に足す。
+schema_version: distillery2.uc-index/v1
+ucs:
+  - slug: view-room-availability
+    operations:
+      - viewRoomAvailability
+    messages: []
+    tables:
+      - rooms
+      - reservations
+  - slug: reserve-room
+    operations:
+      - reserveRoom
+      - listRooms
+    messages: []
+    tables:
+      - rooms
+      - reservations
+      - reservation_events
+      - room_slot_occupancies

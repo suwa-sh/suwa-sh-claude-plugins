@@ -1,0 +1,43 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues:
+  - id: contract-invalid-time-range-desc
+    target_step: contract
+    title: "契約の INVALID_TIME_RANGE の説明に日付外が無い"
+    detail: "ADR 0017 で、業務の日付の中に収まらない時間帯 (日をまたぐ時間帯) を INVALID_TIME_RANGE (422) に含めた。契約の ErrorCode の説明と responses.UnprocessableEntity の説明は「開始が終了より前でない・30 分刻みでない・過去」だけで、日付に収まらない場合が無い。TimeRange の説明にも「開始の日付 (Asia/Tokyo) の 0:00 から翌日 0:00 までに収まる。終了の 24:00 は翌日 0:00 の日時」が無い"
+    evidence: "contracts/openapi/openapi.yaml の components.schemas.ErrorCode・TimeRange の description と components.responses.UnprocessableEntity の description、docs/adr/0017-time-range-within-business-date.md"
+    recommended_fix: "ErrorCode と UnprocessableEntity の説明に「時間帯が業務の日付の中に収まらない」を足し、TimeRange の説明に日付の中に収める決まりと終了 24:00 を翌日 0:00 の日時で持つことを足す。照会の要求は日付を別の項目で持たず、開始と終了の日時 (TimeRange) で受ける。23:00-翌日 1:00 の 422 の examples を足す"
+    uc: view-room-availability
+  - id: ui-invalid-time-range-message
+    target_step: foundation
+    title: "画面の INVALID_TIME_RANGE の文が日付外に合わない"
+    detail: "画面部品のエラーの文は INVALID_TIME_RANGE を「終了時刻は開始時刻より後にしてください」と表示する。ADR 0017 で日をまたぐ時間帯 (23:00-翌日 1:00) も INVALID_TIME_RANGE になり、この文では理由が伝わらない。受入基準は「時間帯が正しくないことが示される」"
+    evidence: "packages/ui/components/domain/errorMessages.ts と docs/design/storybook-app/src/components/domain/errorMessages.ts の INVALID_TIME_RANGE の title、docs/requirements/requirements.yaml SPEC-001-01 受入基準 10 件目"
+    recommended_fix: "INVALID_TIME_RANGE の文を「時間帯が正しくありません (開始は終了より前に、時間帯はその日の 0:00 から翌日 0:00 までにしてください)」のように、逆転・同じ時刻・日をまたぐ時間帯のどれにも当てはまる文に直す"
+refutations: []
+decisions:
+  - id: D1
+    topic: "ADR 0009・0010 を置き換えるか補うか"
+    choice: "置き換えず、新しい ADR 0017 で検証とコードの意味を足す"
+    reason: "既存の規則と矛盾せず検証を 1 つ足すだけで、0009・0010 の他の規則はそのまま有効なため"
+  - id: D2
+    topic: "時間帯が属する業務の日付の決め方"
+    choice: "開始の日時の Asia/Tokyo での日付で決め、要求で日付を別の項目として受けない"
+    reason: "日付を 2 か所に持つと食い違いの扱いがさらに要る。予約の要求は開始と終了の日時だけで足りる"
+  - id: D3
+    topic: "日付に収まらない時間帯のエラーコード"
+    choice: "INVALID_TIME_RANGE (422) に含め、新しいコードを作らない"
+    reason: "受入基準が逆転・同じ時刻と同じ「時間帯が正しくない」で示すため"
+  - id: D4
+    topic: "終了 24:00 の持ち方"
+    choice: "翌日 0:00 の日時 (RFC 3339) で持ち、24:00 の表記を受けも作りもしない"
+    reason: "RFC 3339 と日付の計算で扱える形にし、変換の場所を増やさない"
+  - id: D5
+    topic: "時間帯の検証の順"
+    choice: "開始<終了 → 30 分刻み → 日付の中に収まる の順で、最初に満たさないもののコードを返す"
+    reason: "どの UC でも同じ入力に同じコードを返すため。既存の 2 つの順を保って最後に足す"
+  - id: D6
+    topic: "過去でないことの検査の置き場"
+    choice: "予約の集約の作成のメソッドだけに置き、値オブジェクトと照会では使わない"
+    reason: "過去の時間帯の照会は受け付ける要求のため"

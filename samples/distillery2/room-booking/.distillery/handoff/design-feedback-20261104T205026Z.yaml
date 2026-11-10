@@ -1,0 +1,24 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues:
+  - id: select-story-time-text
+    target_step: foundation
+    title: "共通の選択欄の見本に時刻の欄の文が直書きで残る"
+    detail: "共通部品の選択欄の見本 (UI/Select の WithError) が、項目名に「開始時刻」、エラーの文に「時刻を選び直してください」を直書きしている。文の中身は共有の決め方 timeFieldErrors の文と今は同じだが、共有の決め方を変えると食い違う。docs/design/storybook-app/src の全体を調べ、時刻の欄の文の直書きで残るのはこの 1 か所だけ (今回の項目の外のため触っていない)"
+    evidence: "docs/design/storybook-app/src/components/ui/Select.stories.tsx の 10 行目 (label: '開始時刻') と 25 行目 (WithError の error: '時刻を選び直してください')"
+    recommended_fix: "Select.stories.tsx の見本の項目名とエラーの文を、時刻に依らない汎用の例 (例: 項目名「会議室」、エラー「選び直してください」) に置き換える。共通部品の見本が業務の部品 (components/domain) の文を import すると層の向きが逆になるため、共有の決め方は使わない"
+refutations: []
+decisions:
+  - id: D1
+    topic: "見本 WithError のエラーの渡し方"
+    choice: "timeFieldErrors('INVALID_TIME_RANGE') を同じフォルダから import し、戻り値をそのまま errors に渡す"
+    reason: "課題の推奨の直し方どおり。文を部品の外で 1 か所に保つ"
+  - id: D2
+    topic: "エラーの文が出る欄の変化"
+    choice: "終了時刻の欄から開始時刻の欄に移るのを受け入れる"
+    reason: "共有の決め方が startTime に文を出すため。画面 (AvailabilitySearchForm / ReservationForm) と同じ見え方になる"
+  - id: D3
+    topic: "残りの直書きの扱い"
+    choice: "UI/Select の見本の時刻の文を同じ種類の直書きと判断し、直さずに課題 1 件にまとめた"
+    reason: "派遣の指示どおり項目の外は直さない。部品・画面の見本の中にほかの直書きは無かった"

@@ -1,0 +1,37 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues:
+  - id: asbuilt-business-reject-as-ok
+    target_step: plugin
+    title: "業務の拒否の戻りを図で ok と描く"
+    detail: "計装の tracer は呼び出しが例外を投げたときだけ result を error にし、値で返した業務の拒否も ok と記録する。抽出の図はこの result をそのまま戻りの線に描くため、409 の経路で save・usecase・画面の戻りがすべて ok になる。実装では save は overlaps、usecase は SLOT_OVERLAPS の業務のエラー、画面はエラーの状態を返す"
+    evidence: "packages/test-support/src/tracer.ts:170 と :203-229 (例外のときだけ error)。d2-asbuilt/scripts/traceTree.js:149 と :184 (meta.result を ok / error の線にする)。結果は docs/as-built/会議室予約/会議室を予約する/sequence.md:138-143。実装は apps/backend-api/src/repository/reservationRepository.ts:74、apps/backend-api/src/usecase/reserveRoom.ts:109、apps/frontend/src/screens/ReserveRoom/submitReservation.ts:41"
+    recommended_fix: "tracer の雛形で、戻り値が業務の拒否 (overlaps や kind error など) のときに戻りの要約を meta に残し、traceTree.js がそれを戻りの線の名前に使う"
+    workaround: "index.md の要約ブロック 整合性 の競合の行に、図の 409 の経路の ok は例外が無いことだけを示すこと、save は overlaps・usecase は SLOT_OVERLAPS・画面はエラーの状態を返すことを注記した (根拠 reservationRepository.ts:74、reserveRoom.ts:109、submitReservation.ts:41)"
+  - id: asbuilt-with-insert-as-read-system
+    target_step: plugin
+    title: "回避できない: WITH で始まる INSERT の文を Read と数える"
+    detail: "既存の課題 (WITH で始まる INSERT の文を Read と数える) の回避は UC の index.md の要約ブロックにしか書けない。全体横断の docs/as-built/_system/ (data-flow.md と traceability-index.json) はスクリプトだけが書き、要約ブロックが無いので注記できない。横断の記録は予約の 3 表 (reservation_events・reservations・room_slot_occupancies) を R とし、CTE の名前 inserted を表として載せたまま main に入る"
+    evidence: "docs/as-built/_system/data-flow.md:7-11 (inserted ほか 3 表が R)。docs/as-built/_system/traceability-index.json:502-509 (tables と tables_rw に inserted が read)。_system/index.md と data-flow.md に要約:begin のブロックが無い。SQL は apps/backend-api/src/repository/reservationRepository.ts:56"
+    recommended_fix: "renderDataFlow.js と buildTraceIndex.js で、INSERT・UPDATE・DELETE を含む WITH の文を Write と数え、CTE の名前を表から外してから、抽出を回し直す"
+refutations:
+  - finding: "指摘 1"
+    result: plugin
+    reason: "図の ok は計装の tracer が例外の有無だけを記録した値 (packages/test-support/src/tracer.ts:170) を traceTree.js:184 がそのまま描いたもので、sequence.md は抽出節なので手で直せない。指摘の事実は正しい (reservationRepository.ts:74 は overlaps、reserveRoom.ts:109 は SLOT_OVERLAPS、submitReservation.ts:41 はエラーの状態を返す)。整合性の競合の行に注記して回避し、プラグインの課題 (業務の拒否の戻りを図で ok と描く) にした"
+  - finding: "指摘 2"
+    result: plugin
+    reason: "既存のプラグインの課題 (WITH で始まる INSERT の文を Read と数える) と同じ抽出スクリプトの不具合。_system はスクリプトの生成物で要約ブロックが無く、書き込み範囲の中では直すことも注記することもできない。指摘の事実は正しい (data-flow.md:7-11、traceability-index.json:502、SQL は reservationRepository.ts:56 で 3 表へ INSERT)。回避できないため、題名に「回避できない: 」を付けたプラグインの課題を workaround 無しで書いた"
+decisions:
+  - id: D1
+    topic: "指摘 1 の回避の注記の置き場"
+    choice: "整合性の競合の行に 4 行を足し、課題の要約ブロックには行を足さない"
+    reason: "409 の経路は競合の手段の説明に属し、課題の行の件数と下書きの対応を変えずに済む (前の派遣の D5 と同じ扱い)"
+  - id: D2
+    topic: "指摘 2 の扱い"
+    choice: "既存の課題とは別に「回避できない: 」の題名で workaround 無しのプラグインの課題を書く"
+    reason: "既存の課題の回避は UC の index.md だけを覆い、_system の誤りは注記できないまま main に入るため、人に返す"
+  - id: D3
+    topic: "レビューの below-threshold の項目"
+    choice: "refutations に含めない"
+    reason: "閾値の下で指摘として挙がっておらず、課題の行 4 と未決の課題 1 件の違いは抽出節の定義どおり"

@@ -1,0 +1,48 @@
+{
+  "schema_version": "distillery2.handoff/v1",
+  "step": "precheck",
+  "asks": [],
+  "upstream_issues": [
+    {
+      "id": "screen-handoff-values",
+      "target_step": "decide",
+      "title": "画面の間で選んだ値を引き継ぐ方式が決まっていない",
+      "detail": "空き状況の見本 (Screens/RoomAvailability の Reservable) と予約画面の見本 (Screens/ReserveRoom の Default) は、空き状況で選んだ会議室と照会した日付・開始時刻・終了時刻を予約画面 (/reservations/new) へ引き継ぐと決めている。しかし ADR 0018 の rules は、Route の element が受け取るのを path の :name のパラメータだけとし、画面が window.location からパラメータを読むことを禁じている。/reservations/new には path のパラメータが無く、App.tsx は pathname だけで照合して navigate() は履歴の state も渡さない。クエリ・履歴の state・共有のメモリのどれで渡すかが ADR に無く、どれを選んでも ADR 0018 の element の形か『画面は window.location から読まない』に触れる。ADR 0018 は、サインインへ送るときに path をクエリ付きで state に入れる一方、入力中の値は保存も復元もしないと書いており、引き継いだ値がサインインの往復で残るかも決まっていない。予約画面の機能の中で決めると、後に値を引き継ぐ画面が別の方式を選んで食い違う",
+      "evidence": "packages/ui/stories/RoomAvailability.stories.tsx の冒頭の説明と onReserve の説明 (選んだ会議室と照会した日付・時間帯を予約画面へ引き継ぐ)、packages/ui/stories/ReserveRoom.stories.tsx の Default (空き状況から会議室と時間帯を引き継いだ入力)、docs/adr/0018-frontend-api-origin-dev-proxy-signin-callback.md の rules (Route の element は (params) => ReactNode で :name の値だけ、画面は window.location から読まない、戻すのは path だけで入力値は保存も復元もしない)、apps/frontend/src/App.tsx (window.location.pathname だけで照合)、apps/frontend/src/navigation.ts (navigate は pushState(null, '', path))、docs/design/screens.yaml の ReserveRoom の route は /reservations/new (パラメータ無し)",
+      "recommended_fix": "ADR 0018 を置き換えずに足す ADR を 1 本書く。画面の間で値を引き継ぐときは移る先の URL のクエリ (例 /reservations/new?roomId=room-1&date=2026-11-10&startTime=10:00&endTime=11:00) に入れ、App.tsx が window.location.search を読んで Route の element に 2 つ目の引数 query: Record<string, string> として渡す (画面は今までどおり window.location を読まない。popstate で pathname と search の両方を追う)。受け取った画面はクエリの値を初期値としてだけ使い、欠けた値や正しくない値は空のまま入力させる (検証は API に任せる)。クエリは path と一緒にサインインの state に入るので、サインインの往復の後も引き継いだ値が残る (入力中に変えた値は ADR 0018 のとおり残さない)。この形は後の画面 (一覧から選んだものを別の画面に渡すとき) も同じ方式で使える。受理後に開発ルール (docs/rules/tier-frontend.md) を作り直す"
+    }
+  ],
+  "refutations": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "topic": "予約画面の会議室の選択肢をどの API から得るか (会議室の一覧の operation が契約に無い)",
+      "choice": "上流の課題にしない",
+      "reason": "契約の段 (機能の中) で、この UC の operation を足すときに決める。会議室は初期データの 5 部屋で、後の画面も契約の同じ operation に載るので食い違わない"
+    },
+    {
+      "id": "D2",
+      "topic": "予約の完了の後の「自分の予約一覧を見る」の移る先 (/my-reservations) がまだ無いこと",
+      "choice": "上流の課題にしない",
+      "reason": "移る先は screens.yaml の route で決まっており、自分の予約一覧の UC が後で画面を足す。UC を作る順の問題で、実装の段で前提の記録 (AssumptionRecord) に残す"
+    },
+    {
+      "id": "D3",
+      "topic": "10:10 や 23:00 から翌日 1:00 の受入基準を画面の部品では入力できないこと",
+      "choice": "上流の課題にしない",
+      "reason": "TimeSlotPicker は 30 分刻みと 24:00 までしか選ばせない作りで、見本も「API が受け付けなかった」として理由の文を示す。capabilities.browser が false で、受入は画面の入口関数に値を渡して API を通す (前回の点検と同じ判断)"
+    },
+    {
+      "id": "D4",
+      "topic": "既にある画面部品が受入基準どおりに振る舞うか",
+      "choice": "食い違いは無いと判断した",
+      "reason": "送信中は Button の loading で押せなくなる (ADR 0005)。errorMessages の SLOT_OVERLAPS・INVALID_TIME_RANGE・NOT_ON_30_MINUTES・PAST_TIME_SLOT の文が受入基準の『重なる』『時間帯が正しくない』『30 分刻み』『過去は予約できない』に合い、INVALID_TIME_RANGE は 1 つの文 (ADR 0017)。終了の選択肢は 24:00 まである"
+    },
+    {
+      "id": "D5",
+      "topic": "空き状況の画面に「予約する」を出す結線 (onReserve を渡す・照会した時間帯が過去なら渡さない)",
+      "choice": "上流の課題にしない",
+      "reason": "部品 (RoomAvailabilityList の onReserve) と見本 (Reservable・PastSlot) は揃っており、空き状況の画面に onReserve を渡すのは予約の UC の実装の段の作業。過去の判定は契約の PAST_TIME_SLOT と同じく開始が現在より前で決まる"
+    }
+  ]
+}

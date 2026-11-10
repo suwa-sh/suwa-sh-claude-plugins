@@ -1,0 +1,16 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations:
+  - finding: 指摘 1
+    result: refuted
+    reason: "受入をブラウザで回さない決定は確認済み (.distillery/decisions.jsonl の handoff:decide:browser-acceptance。答えは「ブラウザでは回さない (API と画面部品で確かめる)」で仮置きでない)。画面の結線の誤りが受入で見つからない代償は ADR 0007 の影響の節 (54 行) と docs/adr/_review-summary.md の確認してほしいこと 5 に、戻し先 (基盤の段) と共に既に書いてある。同じ指摘は前の決定の反証 2 回でも同じ判断 (decisions.jsonl の upstream:decide-refute-20261104T152130Z:D2 と upstream:decide-refute-20261109T222622Z:D6)。変えるには capabilities.browser を変えてテストの実行環境を作り直す必要があり、決定の差分の範囲 (scope) の外。今回の課題 (重なるのエラーを作る層) とも関わらない"
+  - finding: 指摘 2
+    result: refuted
+    reason: "目標復旧地点を障害の直前にすることは確認の問いとして聞いて決めた (decisions.jsonl の handoff:decide:rpo-double-booking。選択肢に前日のバックアップまで戻す案があり、答えは「障害の直前まで戻す」で仮置きでない)。同期の書き込みと、別の保管場所が止まる間は予約と取り消しを受け付けない代償は、その後の反証で ADR 0016 に入れ (upstream:decide-refute-20261104T133746Z:D1)、その内容で「この決定で進めてよいか」の承認を通った (page:decide:approve 2026-11-04T13:42:53Z と 14:00:25Z)。代償は ADR 0016 の影響の節 (55 行) と _review-summary.md の確認してほしいこと 12 に書いてある。今回の課題 (重なるのエラーを作る層) とも関わらない。below-threshold の 56 行の古い記述は、置き換えでない既存の ADR の本文を変えない決まりにより直さない"
+decisions:
+  - id: D1
+    topic: "レビューの指摘 2 件の扱い"
+    choice: "どちらも過去の確認と承認の記録で反証し、ADR 0007・0016 と _review-summary.md は変えない"
+    reason: "どちらも確認済みの決定で、代償は ADR の影響の節と要約の確認事項に既に書いてある。決定の差分では置き換えない既存の ADR を変えない"

@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "終了時刻 24:00 の表示"
+    choice: "選択肢の値も表示も 24:00 にする (翌日 0:00 の注記は付けない)"
+    reason: "時刻の欄の幅 (basis-32) に収まり、要求の受入基準も 24:00 を併記している"
+  - id: D2
+    topic: "時刻の選択肢を作る関数"
+    choice: "timeSlots.ts に startTimes (00:00〜23:30) と endTimes (00:30〜24:00) と END_OF_DAY を足し、halfHourTimes は残す"
+    reason: "halfHourTimes は部品の公開口から再輸出されており、消すと取り込み先の利用者を壊しうる"
+  - id: D3
+    topic: "見本 (Story) の追加"
+    choice: "24:00 を選んだ状態の Story は足さない"
+    reason: "項目は部品のファイルだけで、項目に無い Story は書き換えない決まり"

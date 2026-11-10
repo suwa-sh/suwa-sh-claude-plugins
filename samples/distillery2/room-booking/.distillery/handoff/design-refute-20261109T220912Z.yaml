@@ -1,0 +1,22 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues: []
+refutations:
+  - finding: 指摘 2
+    result: accepted
+    reason: "反証できない。docs/requirements/requirements.md の SPEC-001-01 は会議室を 会議室A〜会議室E (room-1〜room-5、表示順 1〜5) と定め、contracts/openapi/openapi.yaml の応答例も同じ名前。RoomAvailability と Room のスキーマに収容人数の項目は無い。見本は「会議室 A (6 名)」「大会議室 (20 名)」で両方と食い違っていた"
+    change: "docs/design/storybook-app/src/stories/sampleData.ts の会議室名を 会議室A〜会議室E (room-1〜room-5 の順) にし、収容人数を名前から外した。同じ見本の名前を直書きしていた MyReservations.stories.tsx (AfterCancel の取り消し済みの表示) と components/domain/ReservationSummary.stories.tsx の名前も 会議室A に揃えた"
+decisions:
+  - id: D1
+    topic: 見本データの外で会議室名を直書きしている Story
+    choice: "MyReservations.stories.tsx と ReservationSummary.stories.tsx の「会議室 A (6 名)」も 会議室A に直した"
+    reason: "前者は sampleData の 1 件目と同じ予約を指す表示で、直さないと見本の中で名前が食い違う。後者は指摘と同じ収容人数の表示で、残すと同じ指摘が再発する"
+  - id: D2
+    topic: 下限未満の指摘 (Reservable の固定日付 2026-11-05 が過去)
+    choice: 直さない
+    reason: "固定の日付はいずれ過去になり、日付を動かしても同じことが繰り返される。見本の表示は日付の新旧に依存しない"
+  - id: D3
+    topic: 汎用の Select 部品の Story の「会議室 A」など
+    choice: 直さない
+    reason: "汎用部品の操作の見本で、画面の Story ではなく収容人数も表示していないため、指摘の対象外"

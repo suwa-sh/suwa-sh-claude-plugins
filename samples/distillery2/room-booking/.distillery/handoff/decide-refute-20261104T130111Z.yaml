@@ -1,0 +1,28 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues:
+  - id: nfr-external-idp
+    target_step: decide
+    title: "非機能グレードの根拠が認証基盤を見落とす"
+    detail: "docs/nfr/nfr-grade.yaml の model_system の選定根拠と A.2.1.1 (サーバ内の冗長化) の根拠・RDRA 要素が「外部システムは無い / 外部システム: なし」としているが、要求には社内の認証基盤が外部システムとして 1 つある。今回の派遣の書き込み範囲 (docs/adr/**) の外なので直していない。ADR 0014 は前提を直し、認証基盤が止まったときの影響と冗長化しない判断の根拠を書いた。同じ誤った前提の記述が docs/adr/_review-summary.md:27 と ADR 0005 の背景にもある (0005 のメッセージング不要の結論は変わらない)"
+    evidence: "docs/requirements/rdra/外部システム.tsv:2 (社内の認証基盤)、docs/nfr/nfr-grade.yaml:5,65,66、レビュー .distillery/reviews/decide/3/round1.md の指摘 1"
+    recommended_fix: "nfr-grade.yaml の選定根拠と A.2.1.1 の根拠を「外部システムは社内の認証基盤 1 つ (サインインとトークン発行だけ)。認証基盤の稼働は社内基盤の責任で、止まればサーバを冗長化しても使えないため冗長化なし」に直し、RDRA 要素を「外部システム: 社内の認証基盤」にして、validateNfrGrade.js と generateNfrGradeMd.js を回す。レベルは変えない"
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "外部システム.tsv:2 に社内の認証基盤があり、ADR 0006 は認証をそこへ任せている。0001 の背景と非機能グレードの「外部システムは無い」は事実と合わない"
+    change: "有効なティア構成 ADR 0014 の背景に前提の訂正 (外部システムは社内の認証基盤 1 つ) を、影響に認証基盤停止時の影響と冗長化しない判断の根拠を足した。置き換え済みの 0001 は履歴として本文を変えない。非機能グレード表は書き込み範囲外のため upstream_issues の nfr-external-idp に回した"
+decisions:
+  - id: D1
+    topic: "前提の訂正の置き場所"
+    choice: "置き換え済みの ADR 0001 ではなく、有効な ADR 0014 の背景と影響に書く"
+    reason: "置き換えた ADR の本文は決定の履歴として変えない決まりがあり、0014 が今のティア構成の決定だから"
+  - id: D2
+    topic: "認証基盤が止まったときの可用性の扱い"
+    choice: "認証基盤の稼働は社内基盤の責任とし、サーバを冗長化しない判断 (A.2.1.1 Lv1) は変えない"
+    reason: "認証基盤が止まればサーバを冗長化しても社員は使えず、冗長化で得るものが無い"
+  - id: D3
+    topic: "below-threshold のコンテナ図の指摘"
+    choice: "genArchitectureDoc.js は回さず扱わない"
+    reason: "決定の差分の手順は図を作り直さないと定め、指摘は報告の閾値未満だから"

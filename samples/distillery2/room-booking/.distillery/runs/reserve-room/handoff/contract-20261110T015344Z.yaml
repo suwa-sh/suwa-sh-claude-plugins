@@ -1,0 +1,40 @@
+schema_version: distillery2.handoff/v1
+step: contract
+asks: []
+upstream_issues:
+  - id: adr-0005-resend-rationale
+    target_step: decide
+    title: "ADR 0005 の二重送信の理由が送り直しの仕様と食い違う"
+    detail: "ADR 0005 の決定と影響は「予約を二重に送っても 2 件目は時間帯が重なるで成立せず、画面では重なるエラーとして表示する」を冪等キーを入れない理由にしている。SPEC-002-03 では自分の有効な予約と同じ内容の送り直しは成立済みの予約を返す (契約では 200) ので、この理由と影響の文が要求と両立しない。冪等キーを入れない決定と rules (同期で完結・送信中のボタンを押せなくする) は変えなくてよい"
+    evidence: "docs/adr/0005-messaging-not-needed.md の「決定」2 つ目の項目と「影響」2 つ目の項目。docs/requirements/requirements.md の SPEC-002-03"
+    recommended_fix: "ADR 0005 を差分の ADR で補い、冪等キーを入れない理由を「同じ本人・会議室・時間帯の送り直しは成立済みの予約を返し、それ以外の重複は重なりで弾く (SPEC-002-03)」に直し、影響の「二重に送った予約は重なるエラーとして返る」を消す"
+refutations: []
+decisions:
+  - id: D1
+    topic: 送り直しの応答の status
+    choice: "200 で成立済みの予約 (Reservation。新しく成立したときの 201 と同じ形) を返す。新しく成立したときは今までどおり 201"
+    reason: "新しい資源を作っていないので 201 (作成) は意味が合わない。本文は同じ形なので画面は予約の成立として同じに示せ、status で新規か送り直しかを区別できる"
+  - id: D2
+    topic: 送り直しの判定の位置
+    choice: "検証の順の (4) 業務の日付に収まる の後、(5) PAST_TIME_SLOT の前に (4a) として置く。他の判定の順は変えない"
+    reason: "SPEC-002-03 は過去の判定より先とだけ決めている。(1)-(4) を満たさない時間帯は成立済みの予約と一致しえないので結果は変わらない。送り直しでない場合の順は要求に無いので既存の契約のまま"
+  - id: D3
+    topic: 送り直しの一致の条件
+    choice: "トークンの sub の社員・会議室・開始・終了がすべて同じ予約済みの予約。取消済みの自分の予約は対象にせず新しい予約として (5) 以降を判定する。冪等キーは受けない"
+    reason: "SPEC-002-03 の文 (日付は ADR 0017 で開始の日時から決まるので開始・終了の一致に含まれる)。応答が届いたかはシステムが知れないので条件にしない (シナリオの反証の結論と同じ)"
+  - id: D4
+    topic: 送り直しの契約テストの例
+    choice: "200 の例を 2 つ足す。resent (2099-11-10 の既存のテスト用データに同じ内容で送る) と resent_after_start (新しいテスト用データ room-a-reserved-in-2020-by-employee-a に同じ内容で送る)。どちらも reservationId・startAt・status を expect で確かめる"
+    reason: "時計を固定しない契約テストで、成立済みの予約が返ることを予約 ID の一致で確かめる。2020 年の予約は開始も終了も過ぎた送り直しを 1 例で表す"
+  - id: D5
+    topic: テスト用データの予約 ID
+    choice: "room-a-reserved-in-2099-by-employee-a の説明に予約 ID 00000000-0000-4000-8000-00000000000b を書き足し (test-app.ts の既存の値)、新しい room-a-reserved-in-2020-by-employee-a は 00000000-0000-4000-8000-00000000000c にした"
+    reason: "例の reservationId の値を契約の側で裏付ける。既存の名前を変えないので既存の 409 のテストはそのまま使える"
+  - id: D6
+    topic: 409 の例の追加
+    choice: "slot_overlaps_own_partial (社員Aが自分の予約と一部だけ重なる時間帯) と slot_overlaps_same_by_other (社員Bがまったく同じ時間帯) を 409 SLOT_OVERLAPS の例に足す"
+    reason: "SPEC-002-03-2・03-3 の送り直しにならない境界を契約テストで確かめる。resent と同じ本文の slot_overlaps_same_by_other はヘッダで区別でき、validate が通る"
+  - id: D7
+    topic: 表の契約と migration
+    choice: "変えない (uc-index の operations・tables も変えない)"
+    reason: "送り直しは既存の予約の今の状態の表を読むだけで、新しい列や制約が要らない"

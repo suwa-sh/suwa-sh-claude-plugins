@@ -1,0 +1,76 @@
+external_tables: []
+schema_version: distillery2.rdb-slice/v1
+tables:
+  - columns:
+      - description: 予約 ID
+        name: reservation_id
+        nullable: false
+        type: uuid
+      - description: 予約した会議室
+        name: room_id
+        nullable: false
+        type: string
+      - description: 開始時刻 (含む)。30 分刻み
+        name: start_at
+        nullable: false
+        type: datetime
+      - description: 終了時刻 (含まない)。30 分刻み。開始より後
+        name: end_at
+        nullable: false
+        type: datetime
+      - description: 予約者の社員 ID (トークンの sub)
+        name: reserved_by
+        nullable: false
+        type: string
+      - description: 予約状態。reserved = 予約済み / cancelled = 取消済み
+        enum:
+          - reserved
+          - cancelled
+        name: status
+        nullable: false
+        type: string
+    description: 予約の今の状態 (予約済み / 取消済み)。イベントの追記と同じトランザクションで更新する。照会・一覧はこの表を読む
+    foreign_keys:
+      - columns:
+          - room_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - room_id
+          table: rooms
+    indexes:
+      - columns:
+          - reserved_by
+          - start_at
+        name: reservations_reserved_by_start_at_idx
+        unique: false
+      - columns:
+          - room_id
+          - start_at
+        name: reservations_room_id_start_at_idx
+        unique: false
+    name: reservations
+    primary_key:
+      - reservation_id
+  - columns:
+      - description: 会議室 ID
+        name: room_id
+        nullable: false
+        type: string
+      - description: 会議室名
+        name: room_name
+        nullable: false
+        type: string
+      - description: 空き状況の一覧で並べる順
+        name: display_order
+        nullable: false
+        type: integer
+    description: 会議室 (上書きのマスタ。5 部屋を migration の初期データで入れる。登録・変更の API は作らない)
+    indexes:
+      - columns:
+          - room_name
+        name: rooms_room_name_key
+        unique: true
+    name: rooms
+    primary_key:
+      - room_id

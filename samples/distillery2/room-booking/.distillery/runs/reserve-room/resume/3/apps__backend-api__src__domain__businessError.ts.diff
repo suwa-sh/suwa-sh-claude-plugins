@@ -1,0 +1,22 @@
+diff --git a/apps/backend-api/src/domain/businessError.ts b/apps/backend-api/src/domain/businessError.ts
+index 024efd7..03aa148 100644
+--- a/apps/backend-api/src/domain/businessError.ts
++++ b/apps/backend-api/src/domain/businessError.ts
+@@ -1,6 +1,6 @@
+ /**
+  * 業務のエラーのコード (ADR 0010)。presentation が契約の Problem (type・title・detail・code) と HTTP の status に変える。
+- * この UC (空き状況の照会) で起きるのは時間帯の検証の 2 つだけ。
++ * 時間帯の検証で起きるのはこの 2 つ (予約の集約の作成のエラーは ReservationErrorCode)。
+  */
+ export type TimeRangeErrorCode = 'INVALID_TIME_RANGE' | 'NOT_ON_30_MINUTES';
+ 
+@@ -12,6 +12,9 @@ export type TimeRangeErrorCode = 'INVALID_TIME_RANGE' | 'NOT_ON_30_MINUTES';
+  */
+ export type TimeRangeErrorReason = 'START_NOT_BEFORE_END' | 'OUTSIDE_BUSINESS_DAY';
+ 
++/** 予約の集約の作成で起きる業務のエラー (ADR 0017: 過去の時間帯の検査は予約の作成のメソッドだけに置く) */
++export type ReservationErrorCode = 'PAST_TIME_SLOT';
++
+ export interface BusinessError<C extends string = string, R extends string = string> {
+   code: C;
+   /** 同じコードの中で発生の理由を分けるときだけ持つ */

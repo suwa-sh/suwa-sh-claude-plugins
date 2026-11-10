@@ -1,0 +1,7 @@
+schema_version: distillery2.handoff/v1
+step: scenario
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - {id: D1, topic: 既存の feature の扱い, choice: 変更しない (basis の sha も e0386bd のまま残す), reason: basis 以降の requirements.yaml の差分は SPEC-002-01・SPEC-002-02・SPEC-002-03 だけで SPEC-001-01 の仕様文と受入基準 12 件は変わっておらず、12 件すべてが既存シナリオに文言どおり対応している。ADR 0022・0023 は予約の送り直しと重なりのエラーの返し方の技術の決定で、この UC の観測できる振る舞いを変えない}

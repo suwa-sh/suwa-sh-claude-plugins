@@ -1,0 +1,10 @@
+schema_version: distillery2.handoff/v1
+step: integrate
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "結線と step 実装を変えるか"
+    choice: "変えない (features/step_definitions/** と features/support/** は無変更)"
+    reason: "補強のシナリオ (過去の時間帯でも重なる有効な予約が無い会議室は空き) の文はすべて既存の step に合い、完了条件 (static / uc-bdd / acceptance / checkScenario / 計装の範囲) がすべて変更なしで通った。新シナリオのトレースにも frontend (screen・api-client) と backend-api (presentation・usecase・repository・gateway) が現れる"

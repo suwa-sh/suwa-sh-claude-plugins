@@ -1,0 +1,57 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Docs/デザイントークン" />
+
+# デザイントークン
+
+正本は `src/tokens/tokens.json`、CSS 変数は `src/styles/design-tokens.css`。ブランドは ADR 0008 の推論値 (確認待ち)。
+
+## 色 (用途)
+
+<table>
+  <thead>
+    <tr><th>見本</th><th>CSS 変数</th><th>用途</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--primary)', borderRadius: 4 }} /></td><td><code>--primary</code></td><td>主色 (青)。主な操作</td></tr>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--secondary)', borderRadius: 4 }} /></td><td><code>--secondary</code></td><td>補助色 (緑寄りの青)</td></tr>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--accent)', borderRadius: 4 }} /></td><td><code>--accent</code></td><td>強調色 (橙)。注意</td></tr>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 4 }} /></td><td><code>--background</code></td><td>画面の背景</td></tr>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--foreground)', borderRadius: 4 }} /></td><td><code>--foreground</code></td><td>文字</td></tr>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--muted-foreground)', borderRadius: 4 }} /></td><td><code>--muted-foreground</code></td><td>補足の文字</td></tr>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--border)', borderRadius: 4 }} /></td><td><code>--border</code></td><td>枠線</td></tr>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--availability-free-bg)', border: '2px solid var(--availability-free-fg)', borderRadius: 4 }} /></td><td><code>--availability-free-fg / -bg</code></td><td>空き</td></tr>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--availability-reserved-bg)', border: '2px solid var(--availability-reserved-fg)', borderRadius: 4 }} /></td><td><code>--availability-reserved-fg / -bg</code></td><td>予約済み</td></tr>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--destructive)', borderRadius: 4 }} /></td><td><code>--destructive</code></td><td>エラー・取り消し</td></tr>
+    <tr><td><span style={{ display: 'inline-block', width: 32, height: 20, background: 'var(--success)', borderRadius: 4 }} /></td><td><code>--success</code></td><td>完了</td></tr>
+  </tbody>
+</table>
+
+## 余白とレイアウト
+
+<table>
+  <thead>
+    <tr><th>CSS 変数</th><th>値</th><th>根拠</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--page-padding</code></td><td>1.5rem</td><td>利用者は社員だけ・PC のみ</td></tr>
+    <tr><td><code>--section-gap</code></td><td>1.5rem</td><td>画面ごとの情報が少ない</td></tr>
+    <tr><td><code>--component-gap</code></td><td>0.75rem</td><td>画面の要素が少ない</td></tr>
+    <tr><td><code>--card-padding</code></td><td>1.5rem</td><td>カードの項目が 4 つ</td></tr>
+    <tr><td><code>--header-height</code></td><td>3.5rem</td><td>上部のナビ 1 段</td></tr>
+    <tr><td><code>--sidebar-width</code></td><td>12rem</td><td>ナビ項目 2 (今は上部ナビを使う)</td></tr>
+    <tr><td><code>--content-max-width</code></td><td>80rem</td><td>12 カラムの幅</td></tr>
+  </tbody>
+</table>
+
+## 文字
+
+<table>
+  <thead>
+    <tr><th>CSS 変数</th><th>値</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>--font-family-heading</code></td><td>Noto Sans JP (無ければ OS の日本語ゴシック)</td></tr>
+    <tr><td><code>--font-family-body</code></td><td>Noto Sans JP (無ければ OS の日本語ゴシック)</td></tr>
+  </tbody>
+</table>

@@ -1,0 +1,48 @@
+{
+  "schema_version": "distillery2.handoff/v1",
+  "step": "precheck",
+  "asks": [],
+  "upstream_issues": [
+    {
+      "id": "frontend-cross-wiring-method",
+      "target_step": "decide",
+      "title": "画面の API の宛先・開発時の中継・サインインの戻り先が未決",
+      "detail": "空き状況の画面は最初の画面の機能なので、ADR で決めた横断の結線を土台 (apps/frontend の vite.config.ts・App.tsx・routes.tsx・src/api/) に足す役になる。サインインとトークンの受け渡しは ADR 0014 で決まっているが、次の 3 つの方式がどの ADR の rules にも無い。(1) API の宛先: 画面と API を同じオリジンに置き相対パス /api で呼ぶか、別オリジンに置き宛先を設定で渡すか (別オリジンなら backend-api に CORS の許可が要り、backend 側の決めごとにもなる)。(2) 開発時の中継: vite の開発サーバから backend-api (契約の servers は http://localhost:3000) へ /api を中継するか。(3) サインイン後の戻り先: 認可コードを受け取るコールバックの画面の path と、サインイン前に開いていた画面 (401 で戻されたときを含む) へ戻すかどうか。あわせて OIDC の設定 (発行者・クライアント ID・リダイレクト先・API 向けアクセストークンを得る scope) を画面にどう渡すか (ADR 0014 は「環境ごとの設定」とだけ書く)。docs/rules/tier-frontend.md は「方式が書かれていなければ足さずに戻し先 decide の課題にする」と定める。決めないと画面の機能ごとに結線が食い違い、backend の CORS の要否も決まらない",
+      "evidence": "docs/rules/tier-frontend.md (画面の土台の節: 横断の結線のうち方式が無いものは decide の課題)、docs/adr/0014-tier-structure-frontend-oidc.md (rules はサインイン方式・トークンの付与・401・表示名だけ。影響の節に「認証基盤の設定は環境ごとの設定」)、docs/adr/*.md と docs/rules/*.md に API の宛先・中継・CORS・コールバックの記述が無い (grep で確認)、apps/frontend/vite.config.ts に server.proxy が無い、apps/frontend/src/routes.tsx は空、packages/contracts/api/client.ts の baseUrl の既定は同一オリジン、contracts/openapi/openapi.yaml の servers は http://localhost:3000 で path は /api から始める",
+      "recommended_fix": "ADR 0014 を補う ADR を 1 本足し、frontend の rules に次を書く。(a) 画面と API は同じオリジンで配信し、画面は生成クライアントの baseUrl を既定 (同一オリジン) のまま相対パス /api で呼ぶ。backend-api に CORS の許可を入れない。(b) 開発時は vite の開発サーバの server.proxy で /api を backend-api (既定 http://localhost:3000、環境変数で上書き可) へ中継する。本番は前段の配信 (リバースプロキシ等) で同じ形にする。(c) サインインのコールバックは /auth/callback の 1 画面とし、routes.tsx に置く。サインインへ送る前に今の path を OIDC の state に入れ、コールバックで signinRedirectCallback を終えたらその path へ navigate() で戻す (state が無ければ routes の先頭の画面)。(d) OIDC の設定は VITE_OIDC_AUTHORITY・VITE_OIDC_CLIENT_ID・VITE_OIDC_REDIRECT_URI・VITE_OIDC_SCOPE の環境変数で渡し、scope に API 向けアクセストークンを得る値を含める。これは全画面の UC で共通に使う"
+    }
+  ],
+  "refutations": [],
+  "decisions": [
+    {
+      "id": "D1",
+      "topic": "時間帯の形の検査を画面側でもするか",
+      "choice": "課題にしない。画面は入力をそのまま API に送り、返ったエラーのコードで理由の文と項目の文を出す (機能の中で AssumptionRecord に残す)",
+      "reason": "ADR 0009/0017 は時間帯の検証を backend の値オブジェクト 1 か所に置き、ADR 0010 と tier-frontend.md はエラーのコードで分岐すると定めているため、後の UC と食い違わない"
+    },
+    {
+      "id": "D2",
+      "topic": "終了 24:00 と日付・時刻から RFC 3339 への変換",
+      "choice": "課題にしない。画面側で日付と HH:mm を Asia/Tokyo (+09:00) の日時に変え、24:00 は翌日 0:00 にする共通の関数を apps/frontend/src/api に 1 つ置く前提で機能の中で決める",
+      "reason": "契約が時差付き RFC 3339 と業務のタイムゾーン Asia/Tokyo を定め、ADR 0017 が 24:00 は翌日 0:00 で持つと定めているので方式は決まっており、残るのは置き場所という実装の細部"
+    },
+    {
+      "id": "D3",
+      "topic": "30 分刻みでない時刻 (10:10) の受入基準と選択式の時刻の入力",
+      "choice": "課題にしない。受入と UC BDD は画面の入口関数を通すので、入口関数は任意の HH:mm を受けて API に送り NOT_ON_30_MINUTES を表示に変える",
+      "reason": "ADR 0007 で受入はブラウザを使わず入口関数を通す。画面部品の NotOn30Minutes の状態 (API が受け付けなかった場合) も用意済み"
+    },
+    {
+      "id": "D4",
+      "topic": "画面部品・エラーの文・テスト基盤の過不足",
+      "choice": "基盤 (foundation) の課題は無しとした",
+      "reason": "screens.yaml の RoomAvailability の部品と状態 (Default/Loading/InvalidTimeRange/NotOn30Minutes/Error) は packages/ui に揃っている。errorMessages の INVALID_TIME_RANGE の文は ADR 0017 どおり日をまたぐ時間帯にも当てはまる。終了の選択肢は 24:00 まである。test-support は入口関数と api ドライバの結線を用意済み"
+    },
+    {
+      "id": "D5",
+      "topic": "既にある未処理の課題との重なり",
+      "choice": "社員Bのテスト用トークンと契約の INVALID_TIME_RANGE の説明は docs/feedback/ に起票済みなので書かない",
+      "reason": "同じ課題を二重に起票しない。どちらも戻し先は契約で、この点検の戻し先の範囲の外"
+    }
+  ]
+}

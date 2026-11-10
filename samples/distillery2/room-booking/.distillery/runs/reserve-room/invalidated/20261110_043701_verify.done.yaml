@@ -1,0 +1,11 @@
+stage: verify
+completed_at: "2026-11-10T02:45:23.674Z"
+attempt: 1
+blockers: 0
+tiers:
+  frontend:
+    major: 0
+    minor: 7
+  backend-api:
+    major: 4
+    minor: 7

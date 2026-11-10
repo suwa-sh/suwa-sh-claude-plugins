@@ -1,0 +1,23 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues:
+  - id: asbuilt-recommended-approval-as-human
+    target_step: plugin
+    title: "推奨案で承認した前提を「人が承認」と書く"
+    detail: "抽出は前提の処遇が confirmed なら、承認の方法 (decisions.jsonl の by) を見ずに「人が承認」と書く。reserve-room の回答必須の前提 4 件 (A-001・A-002・A-009・A-010) は推奨案で承認された (by recommended) のに、結果の表の「人が承認 4」と見出し「人が承認した前提 (4)」になっている。抽出節なので手で直せない。要約ブロックの行は概要・整合性で決まっており、課題の行は要求の下書きになるので、承認の方法を書ける場所が無い。根拠もコードでなく実行記録で、要約の読んでよい範囲の外のため、要約での回避はしていない"
+    evidence: "docs/as-built/会議室予約/会議室を予約する/index.md:28・:199。.distillery/runs/reserve-room/stages/review.done.yaml:3 (approved_by: recommended)、.distillery/runs/reserve-room/decisions.jsonl:114-117 (by recommended)。extractAsBuilt.js:104 (DECISION_JA.confirmed = 人が承認)・:552・:653 が by を区別しない"
+    recommended_fix: "抽出で、confirmed の前提を by ごとに分け、by が recommended のものは「推奨案で承認」(結果の表と見出しの両方) と書く"
+refutations:
+  - finding: 指摘 1
+    result: plugin
+    reason: "指摘は正しい (review.done.yaml:3 と decisions.jsonl:114-117 は by recommended)。対象の index.md:28・:199 は extractAsBuilt.js の生成物で手で直せず、extractAsBuilt.js:104・:552・:653 が by を見ずに confirmed を「人が承認」と書く不具合。要約ブロックでは回避できない (D1)"
+decisions:
+  - id: D1
+    topic: "推奨案の承認を「人が承認」と書く不具合の回避"
+    choice: "要約ブロックで回避せず、workaround 無しの plugin の課題にした"
+    reason: "概要と整合性の行は決まっていて、課題の行は要求の下書きになる。承認の方法はコードに無く、要約の読んでよい範囲の外の実行記録にしかないため"
+  - id: D2
+    topic: "課題の行の数え方"
+    choice: "要約の課題 3 行のうち、前の派遣で下書きにした 2 行 (20261110T024931Z・20261110T024932Z) を「下書きにした課題」、決めたことにある予約一覧のボタンの 1 行を「下書きにしなかった行」とした。新しい下書きは書いていない"
+    reason: "要約ブロックを変えておらず、前の派遣の数え方と揃えるため"

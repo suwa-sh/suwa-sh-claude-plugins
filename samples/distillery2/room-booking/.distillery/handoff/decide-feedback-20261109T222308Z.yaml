@@ -1,0 +1,26 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "画面の間で値を引き継ぐ方式"
+    choice: "移る先の URL のクエリに入れ、URLSearchParams で組み立てて navigate() で移る。履歴の state・ブラウザの保存場所・共有のメモリでは渡さない"
+    reason: "クエリは path の一部として ADR 0018 のサインインの state に入るので往復で消えず、読み込み直しや後の画面でも同じ方式で使える"
+  - id: D2
+    topic: "画面へのクエリの渡し方"
+    choice: "App.tsx が window.location.search を読み、Route の element に 2 つ目の引数 query (Record<string, string>。同じ名前は最初の値) で渡す。照合は pathname だけ。popstate と navigate() で pathname と search の両方を追う"
+    reason: "ADR 0018 の「画面は window.location を読まない」を保ったまま、1 引数の既存の画面を変えずに足せる"
+  - id: D3
+    topic: "クエリの名前と値の形"
+    choice: "移る先の画面の入力項目と同じ値を指す lowerCamelCase の名前 (識別子は契約の項目名 roomId)。値は入力の形 (日付 YYYY-MM-DD、時刻 HH:MM、終了は 24:00 を含む)"
+    reason: "契約の startAt/endAt は日時で、画面の入力 (日付と時刻) と形が違う。受け取る画面がそのまま初期値に入れられる形にする"
+  - id: D4
+    topic: "欠けた値・形の合わない値の扱い"
+    choice: "その項目を空のまま (既定のまま) にして入力させ、エラーも遷移もしない。業務の検証は API に任せる"
+    reason: "引き継ぎは入力の手間を省くためのもので、値が無くても予約の画面で入力できる"
+  - id: D5
+    topic: "既存 ADR との関係と確信度"
+    choice: "ADR 0018 は置き換えず ADR 0021 で element に 2 つ目の引数を足す。confidence は medium (人の確認を求めない)"
+    reason: "1 引数の関数は 2 引数で呼ばれても動くので 0018 の規則と両立する。人しか知らない事実に依らない"

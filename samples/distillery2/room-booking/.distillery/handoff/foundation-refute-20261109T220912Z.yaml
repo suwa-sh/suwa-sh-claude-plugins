@@ -1,0 +1,40 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues:
+  - id: secrets-scan-inherits-excludes
+    target_step: plugin
+    title: "秘密の検出が生成物の除外を受け継ぐ"
+    detail: "checks.js:33 は secrets を「qlty check --all ... --filter trufflehog」にし、genQlty.js の overlay (L248-253) は生成物 (packages/ui・packages/contracts・contracts/generated・docs/design/storybook-app・docs/design/screenshots・**/test/contract・.distillery) を全プラグイン共通の exclude_patterns に入れる。exclude_patterns は trufflehog にも効くので、ADR 0012 の「リポ全体の秘密の検出」が生成物を見ない。qlty の既定の除外 (**/seed/**・**/templates/**・**/assets/** など) も同じく trufflehog から隠れる。genQlty.js --refresh はプラグインを足すと overlay を当て直し、生成物を exclude_patterns に戻す"
+    evidence: "回避の前は trufflehog の検査が 156 ファイル、生成物の除外を [[exclude]] (trufflehog 以外) に移した後は 594 ファイル (qlty 0.618.0、--no-cache で実測)。レビュー foundation/6 round1 の指摘 1"
+    recommended_fix: "genQlty.js は生成物の除外を exclude_patterns ではなく、trufflehog を除くプラグインを並べた [[exclude]] に書く (refresh でプラグインを足したときはその plugins にも足す)。qlty の既定の除外を trufflehog にも効かせてよいかも見直す"
+    workaround: ".qlty/qlty.toml の exclude_patterns から生成物の 7 パターンを外し、ファイル末尾に [[exclude]] (plugins = actionlint・biome・ripgrep・zizmor・osv-scanner、file_patterns = 生成物の 7 パターン) を手で足した。commands.quality は exit 0 で指摘は前と同じ (features の TODO の note 3 件だけ)、生成物には trufflehog だけが走る。genQlty.js --refresh がプラグインを足したときは、生成物が exclude_patterns に戻るので [[exclude]] に移し直し、足したプラグインを plugins に加える"
+  - id: db-contract-unique-not-checked
+    target_step: plugin
+    title: "DB 契約テストが一意制約の弾きを確かめない"
+    detail: "d2-contract が生成する db-schema.test.ts は列・型・NULL 可否・主キーの集合だけを比べ、UNIQUE 制約 (rooms_room_name_key など) も見ず、重複の挿入もしない。開発ルール testing.md (ADR 0007) の「DB の一意制約が 2 件目を弾くことを契約 (DB) のテストで確かめる」を満たさない"
+    evidence: "apps/backend-api/test/contract/db-schema.test.ts:143-165 (比較は information_schema の列と主キーだけ)。docs/rules/testing.md:59。contracts/db/domains/room_reservation.yaml:109 (room_slot_occupancies の主キー = 二重予約の防止)。レビュー foundation/6 round1 の指摘 3"
+    recommended_fix: "genContractTests (DB 契約テスト) が、主キーと UNIQUE 制約ごとに、外部キーを満たす前提の行を入れたうえで同じキーの行を 2 件挿入し、1 件目の成功と 2 件目の 23505 (unique_violation) を確かめるテストを生成する"
+    workaround: "手書きの DB 契約テスト apps/backend-api/test/contract/db-unique-constraints.test.ts を足した (OWNER_TAG を持たないので genContractTests の掃除の対象外)。migration 0001・0002 を当て、予約 2 件を入れ、room_slot_occupancies に同じ (room_id, slot_start_at) を 2 件挿入して 1 件目の成功と 2 件目の code 23505 を確かめる。npm run test:contract -w apps/backend-api は 12 件すべて成功。機能の点検役が挙げた回避 (repository の単体テストと UC のシナリオで代える) は、このテストがあるので予備になる。生成器が対応したらこの手書きのファイルを消す"
+refutations:
+  - finding: 指摘 1
+    result: plugin
+    reason: "指摘は正しい。.distillery/config.yaml:51 の secrets は qlty の trufflehog で、.qlty/qlty.toml の exclude_patterns (packages/ui・packages/contracts・docs/design/storybook-app ほか) は全プラグインに効くので、ADR 0012 (docs/adr/0012-machine-checks.md の checks.repo.security = secrets) のリポ全体の秘密の検出から生成物が漏れていた。原因は生成器 (checks.js:33 と genQlty.js の overlay) で、config.yaml は basis 付きの生成物なのでリポの中では qlty.toml で回避した"
+    change: ".qlty/qlty.toml の生成物の除外を exclude_patterns から末尾の [[exclude]] (trufflehog 以外の 5 プラグイン) に移した。trufflehog の検査は 156 → 594 ファイル、commands.quality と commands.secrets はともに exit 0"
+  - finding: 指摘 3
+    result: plugin
+    reason: "指摘は正しい。apps/backend-api/test/contract/db-schema.test.ts:143-165 は列・型・NULL 可否・主キーの定義を比べるだけで、docs/rules/testing.md:59 の「DB の一意制約が 2 件目を弾くことを契約 (DB) のテストで確かめる」を満たさない。生成器 (d2-contract の DB 契約テストの生成) の不足で、生成物は手で編集しないので、手書きの補いのテストで回避した"
+    change: "apps/backend-api/test/contract/db-unique-constraints.test.ts (手書き) を足した。同じ枠の 2 件目の挿入が 23505 で弾かれることを確かめ、test:contract は 12 件すべて成功、typecheck も通る"
+decisions:
+  - id: D1
+    topic: 秘密の検出の除外の回避の置き場
+    choice: ".qlty/qlty.toml の [[exclude]] (trufflehog 以外のプラグイン) に生成物の除外を移す。.distillery/config.yaml の secrets コマンドは変えない"
+    reason: "config.yaml は basis 付きの生成物で F8 の genConfig が上書きする。qlty.toml は genQlty.js --refresh が手編集を保つ"
+  - id: D2
+    topic: 秘密の検出に含め直す範囲
+    choice: "distillery2 が足した生成物の 7 パターンだけを trufflehog に見せ直し、qlty の既定の除外 (node_modules・dist・seed・templates など) は全プラグイン共通のままにする"
+    reason: "node_modules や dist は依存とビルドの出力で、リポの秘密の混入先ではない。既定の除外の見直しはプラグインの課題に書いた"
+  - id: D3
+    topic: 一意制約の弾きの確かめ方
+    choice: "生成物の契約テストとは別に、手書きの DB 契約テスト apps/backend-api/test/contract/db-unique-constraints.test.ts を置く (生成器が対応したら消す)"
+    reason: "開発ルールの「契約テストは契約から生成し、手で編集しない」に対する一時的な例外。生成器の不足を埋め、同じルールの「DB の一意制約が 2 件目を弾くことを契約 (DB) のテストで確かめる」をいま満たすため。生成物は汚さない"

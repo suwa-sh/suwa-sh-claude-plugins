@@ -1,0 +1,40 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: spa-fallback-delivery
+    kind: unknown_fact
+    question: "本番の前段の配信 (リバースプロキシ等) は、ファイルの無い画面の住所 (/auth/callback や画面の path) に画面の入口 (index.html) を返せるか"
+    options:
+      - label: "返せる"
+        impact: "ADR 0019 のとおり進められる。サインインの戻り先と読み込み直しが動く"
+      - label: "返せない"
+        impact: "サインインから戻った社員が 404 になる。配信の方式 (ADR 0018) を決め直す"
+    recommended: "返せる"
+    reason: "一般的なリバースプロキシや静的配信は、見つからない path を index.html へ返す設定を持つ。開発時の vite は既定で同じ動きをする"
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "ADR 0018 の rules が ADR 0014 の読み分けを書いているが、開発ルールには 0014 由来の「Bearer test-employee-<社員> を返す」の行が残り、その行だけ読むと二重の接頭辞になる。0014 は置き換えずに有効のまま残すため、行そのものは消せない"
+    change: "ADR 0019 の rules に、供給元の「アクセストークンを返す」が返すのは本番もテストも接頭辞の無い値であること、ADR 0014 の表現はヘッダの値の形を指すこと、Bearer は options.fetch を包む 1 か所で 1 回だけ付けることを足した。決定の節にも優先関係 (0019 と 0018 を優先) を書いた"
+  - finding: "指摘 2"
+    result: accepted
+    reason: "ADR 0018 は /api 以外を静的ファイルへ振り分けるとだけ書き、ファイルの無い画面の住所に index.html を返す規則が無い。ADR 0019 は読み込み直しのたびに /auth/callback へ戻るので、この穴の影響が大きくなる"
+    change: "ADR 0019 の rules に scope: common で、本番の前段の配信は /api と実在する静的ファイルを除く path に index.html を返す規則を足した。背景・決定・影響に書き、_review-summary.md の確認してほしいことに 15 番として足した"
+  - finding: "below-threshold (P2 nit 影響欄の開発ルール作り直し)"
+    result: accepted
+    reason: "今の開発ルールには 0019 が反映済みで、「受理後に作り直しが要る」の書き方が今の状態と合わない"
+    change: "影響の節を「開発ルールはこの ADR から生成し直す (ADR を直すたびに d2-run が行う)」に直した"
+decisions:
+  - id: D6
+    topic: "指摘 1 の直し方"
+    choice: "ADR 0014 を置き換えず、ADR 0019 の rules に供給元が返す値の形 (接頭辞なし) と ADR 0014 の表現の読み方を足す"
+    reason: "新しい ADR を足さず既存 ADR を直す指示。0019 は「アクセストークンを返す」の中身を決める ADR なので、返す値の形もここで言い切るのが自然"
+  - id: D7
+    topic: "指摘 2 の直し方"
+    choice: "ADR 0019 の rules に scope: common で、本番の前段の配信は /api と実在する静的ファイル以外の path に index.html を返す規則を足す"
+    reason: "ADR 0019 は読み込み直しのたびに /auth/callback へ戻る流れを作るため、配信の規則と一緒に決める。ADR 0018 は置き換えない"
+  - id: D8
+    topic: "画面の住所の配信の確認"
+    choice: "配信が index.html を返せるかを asks に unknown_fact として書き、推奨は「返せる」で仮置きする"
+    reason: "配信の環境は人しか知らない。主要な配信は対応できる"

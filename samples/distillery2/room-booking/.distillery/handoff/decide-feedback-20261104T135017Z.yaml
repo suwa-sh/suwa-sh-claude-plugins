@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "非機能グレード表の直し方"
+    choice: "model_system の選定根拠と A.2.1.1 の根拠・RDRA 要素だけを、外部システムは社内の認証基盤 1 つ (サインインとトークン発行だけ) に書き直し、グレードは変えない"
+    reason: "課題の推奨どおり。認証基盤が止まればサーバを冗長化しても使えないため、冗長化なしの判断は変わらない"
+  - id: D2
+    topic: "新しい ADR を書くか"
+    choice: "書かない"
+    reason: "グレードを変えていないため、手順ではレベルに依る決定の直しが要らない。前提の直しは ADR 0014 に書いてある"
+  - id: D3
+    topic: "ADR 0005 の背景と _review-summary.md の同じ誤った前提"
+    choice: "直さない"
+    reason: "既存 ADR は置き換え以外で変えない決まりで、0005 の結論 (メッセージング不要) は変わらない。_review-summary.md は決定の差分では書かない"

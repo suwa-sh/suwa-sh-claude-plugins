@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "ADR 0005 の直し方"
+    choice: "差分の ADR 0022 で ADR 0005 を置き換え (superseded)、旧 rules 2 本を文面を変えずに引き継ぐ"
+    reason: "ADR は本文を書き換えない決まりで、補うだけだと影響の「重なるエラーとして返る」が有効な決定として残るため"
+  - id: D2
+    topic: "送り直しの判定方式の rule"
+    choice: "tier:backend の rule を 1 本足し、送り直しは冪等キーや要求の識別子を保存せず、本人の有効な予約と会議室・開始・終了の一致で判定する"
+    reason: "ADR 0005 の「冪等キーを入れない」は本文だけで rules に無く、送り直しの実装でキーの保存を足す余地が残っていたため"
+  - id: D3
+    topic: "basis と confidence"
+    choice: "basis は現在の要求 (requirements@23f65dc...) で付け、confidence は high とする"
+    reason: "SPEC-002-03 を含む今の要求が根拠で、決定の中身は要求から一意に決まるため"

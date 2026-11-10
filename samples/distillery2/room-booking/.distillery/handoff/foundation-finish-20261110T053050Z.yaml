@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "画面部品の取り込み記録の basis"
+    choice: "importUi の出力のまま design@0119c0b (画面部品の置き場 docs/design/storybook-app を最後に変えた commit) とし、手で 9fed5a4 に書き換えない"
+    reason: "importUi の basis は docs/design/storybook-app だけを見る。9fed5a4 は docs/design/screens.yaml だけを変え、packages/ui に取り込む対象を変えていない。MissingRequired の Story は取り込み元と packages/ui の両方に既にある"
+  - id: D2
+    topic: "契約テストの再生成の扱い"
+    choice: "genContractTests の出力が既存と同一 (書き込み 0 件) のまま受け入れ、UC の契約には手を入れない"
+    reason: "既存 UC の契約を消したり変えたりしない指示に沿う。骨格分の再生成で差分が出なかった"

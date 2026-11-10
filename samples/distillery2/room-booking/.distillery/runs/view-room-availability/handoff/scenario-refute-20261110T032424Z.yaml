@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: scenario
+asks: []
+upstream_issues: []
+refutations:
+  - finding: 指摘 1
+    result: accepted
+    reason: 受入基準 12 のシナリオは予約がまったく無い会議室の空きしか確かめておらず、過去の別の時間帯に予約がある会議室を予約済みにする実装を検出できない (requirements.yaml SPEC-001-01「空きは指定した時間帯に重なる有効な予約が無いことを示す」)
+    change: features/会議室予約/view-room-availability.feature に、現在 2026-11-10 12:00 で会議室Bの 08:00-09:00 に予約がある状態で 10:00-11:00 を照会し、会議室Bと予約の無い会議室が空きと表示されるシナリオを足した (受入基準タグは付けない補強のシナリオ)。checkScenario は ok (14 シナリオ、受入基準 12 件すべて対応)
+decisions:
+  - id: D1
+    topic: 指摘 1 の補強の置き場所
+    choice: 受入基準 12 のシナリオは変えず、受入基準タグの無い別シナリオとして足す
+    reason: 受入基準の文言どおりのシナリオを保ち、補強は既存の「一部でも重なる」シナリオと同じ扱いにする

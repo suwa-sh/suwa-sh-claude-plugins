@@ -1,0 +1,10 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "チェックポイントの生成物の鮮度 (止めない扱い) の失敗"
+    choice: "docs/rules/tier-frontend.md と docs/README.md の古さは課題にせず報告だけにした"
+    reason: "手順書が止めない扱いの失敗は課題にしないと定めており、どちらも書き込み範囲の外 (開発ルールの作り直しと docs/README.md の作り直しは進行役が回す)"

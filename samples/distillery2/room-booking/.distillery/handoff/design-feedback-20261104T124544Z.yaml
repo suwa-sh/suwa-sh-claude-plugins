@@ -1,0 +1,14 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "空き状況画面の NotOn30Minutes の見本の入力値"
+    choice: "errorCode NOT_ON_30_MINUTES だけを渡し、時間帯は既定の見本値のままにする"
+    reason: "時刻の選択肢は 30 分刻みだけで 30 分刻みでない値を表示できないため、予約画面の同じ状態 (API が受け付けなかった場合) に揃えた"
+  - id: D2
+    topic: "理由の文言の置き場"
+    choice: "既存の errorMessages.ts の NOT_ON_30_MINUTES の文言をそのまま使い、部品は変えない"
+    reason: "予約画面と同じエラーコードで同じ理由の文が既にあり、項目の外を変えずに済む"

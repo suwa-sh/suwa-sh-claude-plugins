@@ -1,0 +1,3 @@
+/* distillery2 importUi.js が書いた画面部品の CSS の入口 (取り込みのたびに書き直す)。画面 (apps/<frontend>/src/styles.css) はここを読む */
+@import "./styles/globals.css";
+@source "./";

@@ -1,0 +1,17 @@
+stage: verify
+completed_at: "2026-11-10T01:11:07.994Z"
+attempt: 1
+blockers: 0
+findings:
+  frontend:
+    major: 0
+    minor: 9
+  backend-api:
+    major: 2
+    minor: 6
+verdicts_sha256:
+  frontend: 743a2f4943820469d4ad4930ee5d7505b63c3ff8119a4f97728d2995779c45f9
+  backend-api: e4ad9737ad005f6f7f635fa99afc9479f74f4bb8a09c404bf1680b3cd138a91b
+implementation_review:
+  frontend: reviewed (1 指摘、反証)
+  backend-api: reviewed (0 指摘)

@@ -1,0 +1,3 @@
+stage: scenario
+completed_at: "2026-11-10T00:25:31.221Z"
+feature: features/会議室予約/reserve-room.feature

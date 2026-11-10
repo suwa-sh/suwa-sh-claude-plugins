@@ -1,0 +1,27 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues:
+  - id: review-summary-stale-after-feedback
+    target_step: plugin
+    title: "決定の差分の後に確認用要約が古いまま残る"
+    detail: "docs/adr/_review-summary.md は段階② の最初の確認材料だが、決定の差分 (mode=feedback) では書かない決まりのため、差分で ADR や非機能グレード表を直すと古い内容が現行の決定のように読める。今回も復旧地点 (前日まで)・バックアップ (毎日)・外部システム (無い)・決定の件数 (12 件) が古いまま残り、第三者レビューが現行の決定との食い違いとして指摘した"
+    evidence: "docs/adr/_review-summary.md:7,27,28,29 と docs/nfr/nfr-grade.md:43,75・docs/adr/ 配下の ADR 16 本、レビュー .distillery/reviews/decide/6/round2.md の指摘 1"
+    recommended_fix: "段階② で _review-summary.md を書くとき、冒頭に「段階② 時点の確認材料 (スナップショット)。現行の決定は index.md・各 ADR・nfr-grade.md を正とする」と書かせる (d2-decide の手順 4 に足す)。第三者レビューの観点にも、_review-summary.md はスナップショットとして扱い食い違いの根拠にしないことを足す"
+refutations:
+  - finding: "指摘 1"
+    result: refuted
+    reason: "(1) ADR 0016 の 56 行目は、書いた時点で正しかった記録で、グレード表をどう直すか (A.4.1.1 を障害の直前まで、C.1.2.1 を更新の記録の同期) まで書いている。前の派遣でその通りに直し、レビュー自身も nfr-grade.md:43,75 と ADR 0016 の決定・rules の一致を認めている。決定の差分では既存の ADR は status と superseded_by 以外を変えない決まり (d2-decide の mode=feedback 手順 5) で、影響の節の言い換えのためだけに置き換えると rules[] を写して開発ルールの作り直しが起きるだけで振る舞いは変わらない。(2) docs/adr/_review-summary.md は段階② の最初の確認材料のスナップショットで、決定の差分では書かない決まり (同 手順 6)。28〜29 行だけでなく、7 行目の「作り方の決定 12 件」(今の ADR は 16 本) と 27 行目の「外部システムが無く」(この課題で直した前提) も古い。2 行だけ直すと、他が古いままのスナップショットを最新に見せ、レビューが心配する誤読をかえって招く。現行の決定の正は index.md・各 ADR・nfr-grade.md。round2 の P3 が PASS で、同じファイルを手順に基づいて直さなかった round1 の判断とも揃う。スナップショットが現行に見える問題は upstream_issues (review-summary-stale-after-feedback) でプラグインに返す"
+decisions:
+  - id: D1
+    topic: "ADR 0016 の影響の節 (56 行目) を直すか"
+    choice: "直さない (置き換えもしない)"
+    reason: "決定の差分は既存の ADR を status と superseded_by 以外変えない決まり。56 行目は書いた時点の事実と直し方の記録で、その直しは済んでいる。置き換えは rules の写しと開発ルールの作り直しを生むだけで振る舞いが変わらない"
+  - id: D2
+    topic: "_review-summary.md の復旧地点とバックアップの行を直すか"
+    choice: "直さず、スナップショットが現行に見える問題をプラグインの課題として返す"
+    reason: "決定の差分では書かない決まりで、2 行だけ直すと他の古い記述 (決定 12 件・外部システムが無い) が残るスナップショットを最新に見せてしまう"
+  - id: D3
+    topic: "新しい ADR の要否"
+    choice: "書かない"
+    reason: "今回の指摘は決定の中身ではなく記述の食い違いで、決定 (ADR 0016) と非機能グレード表は既に一致している"

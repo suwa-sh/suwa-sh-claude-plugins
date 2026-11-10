@@ -1,0 +1,16 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks: []
+upstream_issues:
+  - id: spa-auth-bootstrap
+    target_step: plugin
+    title: "画面の土台の生成にサインインの結線と /api の中継が無い"
+    detail: "genSkeleton.js の spaFiles() が置く画面の土台 (index.html・vite.config.ts・main.tsx・App.tsx・routes.tsx・styles.css) には、トークンの供給元 (src/api/)・frontend の composition root・サインインの戻り先の route・未サインイン時のサインインへの誘導・VITE_OIDC_* の環境変数と .env.example・vite.config.ts の server.proxy (/api を backend へ) を生成する処理もテンプレートも無い。ADR を読む分岐も ui (framework・rendering・styling・brand) だけで、認証 (ADR 0014 の OIDC 認可コード + PKCE) や backend の宛先を読まない。さらに writeIfAbsent で既存ファイルを上書きしないため、再実行しても既存の App.tsx・vite.config.ts は変わらない (今回の再実行は created 0, skipped 21)。apps/ を手で書き換えると基盤の生成物と食い違うので、手では直さず止めた"
+    evidence: "plugins/distillery2/skills/d2-foundation/scripts/genSkeleton.js の spaPlan() (257 行目付近、ui だけを読む) と spaFiles() (273-357 行目、認証・proxy・env の出力が無い) / genSkeleton.js の再実行結果 (created 0, skipped 21) / 課題 docs/feedback/20261104_152923_precheck_precheck-view-room-availability-frontend_frontend-auth-bootstrap.md / docs/adr/0014-tier-structure-frontend-oidc.md / docs/rules/tier-frontend.md"
+    recommended_fix: "genSkeleton.js の画面の土台の生成を次のように拡張する。(1) ADR の認証の決定 (OIDC 認可コード + PKCE、ブラウザ側のライブラリ oidc-client-ts) を読み、apps/<frontend>/src/api/ にトークンの供給元のインターフェイス (アクセストークンを返す・サインインへ戻す・表示名を返す)、oidc-client-ts を包む本番の実装、テスト用の実装 (Bearer test-employee-<社員> を返す)、生成クライアントの options.fetch を包んで Authorization を付け 401 でサインインへ戻す fetch の包みを置く (2) 本番の供給元を 1 度だけ作る composition root (src/api/runtime.ts) を置き、routes.tsx の各画面が受け取れる形にする (3) App.tsx の土台にサインインの戻り先の route (/auth/callback で signinRedirectCallback を呼ぶ) と未サインイン時に供給元のサインインへ送る入口を持たせる (4) 設定は VITE_OIDC_AUTHORITY・VITE_OIDC_CLIENT_ID・VITE_OIDC_REDIRECT_URI で読み .env.example を置く。API は同一オリジンの /api を呼び、vite.config.ts の server.proxy で /api を backend のティア (契約の servers の宛先、ここでは http://localhost:3000) へ中継する (5) 既存の土台が genSkeleton の置いた形のままなら新しい形へ差し替える移行 (importUi.js の styles.css の差し替えと同じ方式) を入れ、手で変えたファイルは据え置いて報告する。あわせて d2-design の screens.yaml にサインインの戻り先の route を載せる"
+refutations: []
+decisions:
+  - id: D1
+    topic: "課題の反映先"
+    choice: "apps/ を手で書き換えず、distillery2 側 (genSkeleton.js) の課題として戻し先 plugin で返す"
+    reason: "genSkeleton.js とテンプレートに認証・proxy・環境変数を生成する処理が無く、既存ファイルも上書きしないため、リポの中の手順では反映できる部分が無い"

@@ -1,0 +1,102 @@
+/**
+ * pglite-harness.ts — 埋め込み Postgres (pglite) のテストハーネス (d2-foundation テンプレート)
+ *
+ * - テスト実行ごとに 1 つの埋め込み Postgres を起動する (docker 不要)。
+ * - migration は `apps/<DATASTORE_OWNER>/migrations/*.sql` を名前昇順で当てる。
+ * - UC BDD と受入のシナリオは `PgHarness.fresh()` で **シナリオごとに新しい DB** を使う (hooks.ts)。migration の初期データ
+ *   (マスタなど) は残り、前のシナリオの書込は残らない。アプリが自分で開くトランザクション (FOR UPDATE など) と入れ子にならない。
+ * - 単体・リポジトリのテストで速さが要るときだけ `withRollback` を使う (アプリが自分でトランザクションを開くコードには使わない)。
+ *
+ * migration の所有ティアは D2_DATASTORE_OWNER、無ければ .distillery/config.yaml の datastore_owner、どちらも無ければ backend-api。
+ *
+ * 参照 (Context7 /electric-sql/pglite v0.5.8): new PGlite(); await pg.waitReady;
+ *   pg.exec(multiStatementSql); pg.query(text, params); pg.transaction(fn); pg.close().
+ */
+import { PGlite } from '@electric-sql/pglite';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+export interface HarnessOptions {
+  /** migrations ディレクトリ (既定 apps/<owner>/migrations)。省略時は migrationsDirFor を使う。 */
+  migrationsDir?: string;
+  datastoreOwner?: string;
+  repoRoot?: string;
+}
+
+/** migration の所有ティア: D2_DATASTORE_OWNER → .distillery/config.yaml の datastore_owner → backend-api */
+export function datastoreOwner(repoRoot = process.cwd()): string {
+  if (process.env.D2_DATASTORE_OWNER) return process.env.D2_DATASTORE_OWNER;
+  const config = path.join(repoRoot, '.distillery', 'config.yaml');
+  const m = fs.existsSync(config)
+    ? /^datastore_owner:\s*["']?([A-Za-z0-9_-]+)/m.exec(fs.readFileSync(config, 'utf8'))
+    : null;
+  return m ? m[1] : 'backend-api';
+}
+
+export function migrationsDirFor(owner: string, repoRoot = process.cwd()): string {
+  return path.join(repoRoot, 'apps', owner, 'migrations');
+}
+
+function loadMigrations(dir: string): string[] {
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .map((f) => fs.readFileSync(path.join(dir, f), 'utf8'));
+}
+
+export class PgHarness {
+  readonly pg: PGlite;
+  private readonly migrationsDir: string;
+  private migrated = false;
+
+  constructor(opts: HarnessOptions = {}) {
+    this.pg = new PGlite();
+    const owner = opts.datastoreOwner || datastoreOwner(opts.repoRoot);
+    this.migrationsDir = opts.migrationsDir || migrationsDirFor(owner, opts.repoRoot);
+  }
+
+  /** migration のディレクトリがあるか (RDB を持たないプロダクトでは無い) */
+  static hasMigrations(opts: HarnessOptions = {}): boolean {
+    const owner = opts.datastoreOwner || datastoreOwner(opts.repoRoot);
+    return fs.existsSync(opts.migrationsDir || migrationsDirFor(owner, opts.repoRoot));
+  }
+
+  /** 新しい DB を起動して migration を当てたハーネスを返す (シナリオごとに 1 つ。終わったら stop する) */
+  static async fresh(opts: HarnessOptions = {}): Promise<PgHarness> {
+    const h = new PgHarness(opts);
+    await h.start();
+    return h;
+  }
+
+  /** 起動を待ち、migration を 1 回だけ当てる。 */
+  async start(): Promise<void> {
+    await this.pg.waitReady;
+    if (this.migrated) return;
+    for (const sql of loadMigrations(this.migrationsDir)) await this.pg.exec(sql);
+    this.migrated = true;
+  }
+
+  /**
+   * 1 シナリオを rollback 隔離で実行する。fn の中の書込はコミットされない。
+   * pglite の transaction は例外で自動 rollback するので、末尾で必ず throw して巻き戻す。
+   */
+  async withRollback<T>(fn: (pg: PGlite) => Promise<T>): Promise<T> {
+    const sentinel = Symbol('rollback');
+    let result!: T;
+    try {
+      await this.pg.transaction(async () => {
+        result = await fn(this.pg);
+        throw sentinel;
+      });
+    } catch (e) {
+      if (e !== sentinel) throw e;
+    }
+    return result;
+  }
+
+  async stop(): Promise<void> {
+    await this.pg.close();
+  }
+}

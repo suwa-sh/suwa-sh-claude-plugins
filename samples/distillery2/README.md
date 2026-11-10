@@ -1,5 +1,38 @@
 # distillery2 サンプル
 
+サンプルは 2 つある。
+
+| サンプル | 題材 | 版 | 入口 |
+|---|---|---|---|
+| `room-booking/` | 会議室の予約 (UC 2 件が main マージ) | 0.3.0 (開発中の作業ツリー) | [`room-booking/docs/README.md`](room-booking/docs/README.md) |
+| `library-loan/` | 図書館の貸出・返却 (UC 2 件) | 0.1.13 / 0.1.16 | [`library-loan/docs/README.md`](library-loan/docs/README.md) |
+
+## room-booking (会議室の予約、0.3.0)
+
+0.3.0 の開発中に、作業ツリーを `claude -p --plugin-dir` で読んで直しながら実走した結果 (`mode=recommend`、モデルは claude-opus-5-5)。要望は [`room-booking/docs/input/`](room-booking/docs/input/)。
+上流の不足を見つけて直し、止めた機能を写し直して続けた跡 (ADR の追加・決めたことの記録・レビュー・引き継ぎ) がそのまま残っている。
+
+| ディレクトリ | 内容 |
+|---|---|
+| `room-booking/docs/` | README、要求、非機能グレード表、ADR 23 件 (最初の 12 件 + 後から決定の差分で足した 11 件) と C4 図、開発ルール、画面一覧、as-built (2 UC と全体横断)、課題ファイル (`feedback/`) |
+| `room-booking/contracts/` | 契約の正本 (OpenAPI / DB) と生成物 |
+| `room-booking/features/` | 「会議室の空き状況を照会する」(14 シナリオ) と「会議室を予約する」(28 シナリオ)、step 定義、Cucumber の support |
+| `room-booking/apps/`, `packages/` | 実装 (backend-api、frontend)、契約の型、画面部品、テスト基盤 |
+| `room-booking/scripts/check.mjs`, `.githooks/` | 機械チェックの一括実行と commit hook (0.3.0 で追加) |
+| `room-booking/.distillery/` | 実行設定、UC の実行状態 (`runs/`)、決めたことの記録 (`decisions.jsonl`)、レビュー (`reviews/`)、引き継ぎ (`handoff/`) |
+
+| 項目 | 値 |
+|---|---|
+| main に入った UC | 2 件 (空き状況の照会 → 予約)。3 つ目 (予約の取り消し) は未着手 |
+| 1 つ目の UC | 写し直し 3 回。後で決定の追加にともない 2 回開き直して入り直した |
+| 2 つ目の UC | 起動 4 回・写し直し 4 回・巻き戻し 1 回。写し直しの上限 (3 回) で 1 度人に返し、原因が別々だったので続けた |
+| 残っている課題ファイル | `docs/feedback/` の 8 件 (プラグイン側の課題を含む。未対応のまま載せている) |
+
+含めていないもの: スクリーンショットと Storybook アプリ (`docs/design/screenshots/`・`storybook-app/`)、`package-lock.json`、写し直しの前の実行状態の退避 (`.distillery/archive/`)、git 管理外の生成物 (`runs/*/reports`・`traces`、`logs/`)。
+`.gitignore` は `_gitignore` に名前を変え、パスは `<repo>` と `~` に置き換えている。git 履歴を含まないコピーである点は library-loan と同じ (末尾の「注意」)。
+
+## library-loan (図書館の貸出・返却、0.1.13 / 0.1.16)
+
 `distillery2` を、図書館蔵書管理システムの要望 (`samples/distillery/pipeline/input/初期要望.txt` と同じ) に対して
 headless (`claude -p`) で実走した結果。要求 → 決定 → 基盤 → UC の縦切りまでは 0.1.13、2 つ目の UC (返却を登録する) の縦切りは 0.1.16。
 入口は [`library-loan/docs/README.md`](library-loan/docs/README.md) (上流から下流まで辿れる)。

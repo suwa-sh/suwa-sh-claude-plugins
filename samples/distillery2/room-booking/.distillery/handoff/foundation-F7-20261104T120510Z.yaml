@@ -1,0 +1,30 @@
+schema_version: distillery2.handoff/v1
+step: foundation
+asks:
+  - id: playwright-browser-install
+    kind: choice
+    question: "画面部品の撮影に要る Playwright の chromium を、リポの外 (ブラウザのキャッシュ) に入れてよいか"
+    options:
+      - label: 今回は人が手で入れる
+        impact: "リポのルートで npx playwright install chromium を 1 回打てば、d2-design の撮影をすぐ再開できる。手順書の直しは別に進める"
+      - label: 手順書が直るまで撮影を止めたままにする
+        impact: "画面部品の目視確認が未実施 (exit 2) のまま残り、以後の画面の確認も同じく止まる"
+    recommended: 今回は人が手で入れる
+    reason: "書き込み先が利用者のブラウザのキャッシュで担当の書き込み範囲の外だが、人が打てば 1 コマンドで解け、撮影の再開を手順書の直しを待たずにできる"
+upstream_issues:
+  - id: f7-playwright-browser
+    target_step: plugin
+    title: 基盤の依存の導入に Playwright のブラウザ導入が無い
+    detail: "d2-foundation の F7 (npm install → installTierPackages.js → genQlty.js --refresh) は @playwright/test を入れるが chromium (headless shell) の実体を入れない。d2-design の captureStories.js が chromium.launch で失敗して exit 2 (目視未実施) になる。課題の推奨 (F7 で npx playwright install chromium) は手順書の F7 に無い操作で、書き込み先も ~/Library/Caches/ms-playwright (リポの外) なので基盤の担当では直せない"
+    evidence: "d2-foundation の SKILL.md の F7 の行と scripts/ に playwright install が無い (grep で 0 件)。genSkeleton.js が @playwright/test ^1.63.0 を root devDependencies に入れる。課題 docs/feedback/20261104_111856_design_design-20261104T105752Z_playwright-browser-missing.md の根拠 (Executable doesn't exist at ~/Library/Caches/ms-playwright/chromium_headless_shell-1248)"
+    recommended_fix: "d2-foundation の F7 に、npm install の後で npx playwright install chromium を回す段を足し、F7 の書き込み範囲にブラウザのキャッシュを明記する (d2-run の派遣文の write-set にも足す)"
+refutations: []
+decisions:
+  - id: D1
+    topic: 課題の推奨の直し方 (npx playwright install chromium) を実行するか
+    choice: 実行せず、distillery2 の手順書の課題として返す
+    reason: "手順書の F7 に無い操作で、書き込み先がリポの外 (ブラウザのキャッシュ) のため、派遣の制約で禁止されている"
+  - id: D2
+    topic: F7 の npm install などを回し直すか
+    choice: 回さない
+    reason: "依存の定義に変更が無く、回し直しても課題は解けない (ブラウザの実体は npm install では入らない)"

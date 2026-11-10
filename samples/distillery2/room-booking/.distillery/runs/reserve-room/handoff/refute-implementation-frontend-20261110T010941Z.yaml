@@ -1,0 +1,13 @@
+schema_version: distillery2.handoff/v1
+step: refute
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: refuted
+    reason: "予約一覧の画面 (screens.yaml の MyReservations、route /my-reservations) の uc_slugs は list-my-reservations だけで、reserve-room ではない (docs/design/screens.yaml:59-63)。list-my-reservations は use-cases.yaml で status planned の別 UC で、一覧に要る operation もこの UC の契約 slice (contract-slice.json の operationId は reserveRoom と listRooms だけ) に無いので、この UC の中では一覧の画面を作れない。ボタンは見本 packages/ui/stories/ReserveRoom.stories.tsx の Completed が置く部品どおりで、外すと見本と食い違う。一覧の UC が routes.tsx に 1 行足した時点で行き止まりは解ける。この前提は assumptions.frontend.yaml の「予約一覧へのボタンは未実装の画面へ」にすでに書いてある"
+decisions:
+  - id: D1
+    topic: "完了画面の「自分の予約一覧を見る」ボタン"
+    choice: "見本どおり残し、/my-reservations の画面は UC list-my-reservations に任せる"
+    reason: "一覧の画面はその UC の担当で、この UC の契約 slice に一覧の operation が無い"

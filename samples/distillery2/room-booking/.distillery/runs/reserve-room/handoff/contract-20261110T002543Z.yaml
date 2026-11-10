@@ -1,0 +1,42 @@
+schema_version: distillery2.handoff/v1
+step: contract
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: 予約の operation
+    choice: "reserveRoom (POST /api/reservations)。本文は roomId・startAt・endAt だけで、予約者はトークンの sub から取る"
+    reason: "ADR 0017 で日付を別の項目で受けない。予約者を本文で受けると他人の名前で予約できてしまう"
+  - id: D2
+    topic: 予約の画面の会議室一覧の出どころ
+    choice: "listRooms (GET /api/rooms) を足し、全会議室を表示順で返す。reserve-room の uc-index に載せる"
+    reason: "予約の画面は時間帯なしでも開けるので空き状況の照会を流用できない。共通の Room 型が骨格に既にある"
+  - id: D3
+    topic: 予約の応答の形
+    choice: "201 で Reservation (reservationId・roomId・roomName・startAt・endAt・reservedBy・status) を返す。Reservation は共通の型にする"
+    reason: "シナリオの「予約者として社員Aが記録される」を API で確かめられる。予約者を返さない規則 (ADR 0006) は空き状況の応答だけ。自分の予約一覧の UC が同じ型を使える"
+  - id: D4
+    topic: 検証の順
+    choice: "形 (400) → 開始が終了より前 (422 INVALID_TIME_RANGE) → 30 分刻み (422 NOT_ON_30_MINUTES) → 業務の日付に収まる (422 INVALID_TIME_RANGE) → 開始が現在より前でない (422 PAST_TIME_SLOT) → 会議室がある (404 ROOM_NOT_FOUND) → 重なりが無い (409 SLOT_OVERLAPS)"
+    reason: "照会の operation の順に、DB を読まない判定を先に、読む判定を後に足した。operation の description に書いた"
+  - id: D5
+    topic: 無い会議室の応答
+    choice: "404 ROOM_NOT_FOUND の例 (roomId no-such-room) を契約に入れる"
+    reason: "シナリオには無いが、本文で会議室 ID を受けるので応答を決める必要がある。コードと status は骨格のエラーコードと ADR 0010 にある"
+  - id: D6
+    topic: 契約テストの日時と時計
+    choice: "成功・404・409・422 の例は 2099-11-10、過去の例は 2020-01-10 にし、時計は固定しない。409 用のテスト用データ room-a-reserved-in-2099-by-employee-a を operation の x-test-fixtures に足す"
+    reason: "契約テストは createTestApp({ fixture }) で呼ばれ時計はシステムの時計になる (packages/test-support/README.md)。今日の日付の例は数時間で過去になる。operation に置いて照会の UC の slice を変えない"
+  - id: D7
+    topic: "同時の予約 (SPEC-002-02-5)"
+    choice: "契約の例にしない。30 分枠の占有の主キーの違反を SLOT_OVERLAPS の 409 で返すと description に書く"
+    reason: "1 つの要求の例では同時を表せない。ADR 0010 の規則と占有の表の主キーで決まっている。UC BDD で確かめる"
+  - id: D8
+    topic: "reservation_events.recorded_at の既定値"
+    choice: "手書きの migration 0003_reservation_events_recorded_at_default.sql で DEFAULT now() を足す"
+    reason: "契約の表の説明が「既定値は手書きの追加 migration で足す」としており、イベントを初めて書くのがこの UC。migration は契約の段の書き込み範囲"
+  - id: D9
+    topic: Location ヘッダと冪等キー
+    choice: "どちらも付けない"
+    reason: "予約を 1 件取得する operation が無い。冪等キーは ADR 0005 で入れないと決めている"

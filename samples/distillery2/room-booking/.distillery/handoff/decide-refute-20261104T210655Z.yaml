@@ -1,0 +1,41 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "ADR 0014 の 53 行 (供給元が Bearer test-employee-<社員> と同じ形を返す) と 81 行 (要求ごとに Authorization: Bearer <トークン> を付ける) をそのまま組み合わせると Bearer が二重になる。既存の ADR 0014 は mode=feedback の決まりで本文を変えられず、ティア構成の ADR なので置き換えもしない"
+    change: "ADR 0018 に rule を 1 つ足した。0014 の「同じ形」はヘッダの値 (契約の x-test-headers) の形を指し、供給元は接頭辞の無い値 (test-employee-a など) を返し、Bearer は options.fetch を包む 1 か所で 1 回だけ付ける。背景・決定・却下した案と要約の行にも書いた"
+  - finding: "指摘 2"
+    result: accepted
+    reason: "screens.yaml 76 行の取消の画面は /my-reservations/:reservationId/cancel で、apps/frontend/src/App.tsx 20 行は完全一致で照合し、routes.tsx の element は値を受け取れない。サインイン後に限らず直接開いても画面が見つからない"
+    change: "ADR 0018 に rule を 1 つ足した。routes.tsx の path は screens.yaml と同じ書式、App.tsx は / の区切りごとに照合し :name は / を含まない値 1 つに合う、Route の element は (params) => ReactNode で App.tsx が値を渡す、navigate() の移り先 (戻り先を含む) も同じ照合。App.tsx と routes.tsx は土台の生成が再実行で上書きしないファイル (App.tsx 1 行目) なので、基盤を作り直しても直らない。影響の節で最初の画面の機能が手で直すことにし、基盤への課題 (upstream_issues) には書かなかった"
+  - finding: "指摘 3"
+    result: accepted
+    reason: "決定は state に path (クエリを含む) を入れるだけで、却下した案の理由「開いていた画面と入力を失う」と食い違う"
+    change: "入力値は保存も復元もしないと rule と決定に明記し、却下した案の理由を「開いていた画面を失う」に限った。入力も戻す案を却下した案に足し、_review-summary.md の 0018 の行も直した"
+  - finding: "below-threshold (0014 のファイル名)"
+    result: refuted
+    reason: "指定のファイル名の違いはレビューの依頼文の側の話で、docs/adr/index.md は 0014-tier-structure-frontend-oidc.md を正しく指している。ADR の欠陥ではない"
+decisions:
+  - id: D1
+    topic: "テスト用トークンの接頭辞"
+    choice: "トークンの供給元は接頭辞の無い値を返し、Bearer は options.fetch を包む 1 か所で 1 回だけ付ける (ADR 0018 の rule で 0014 の書き方を読み分ける)"
+    reason: "本番の供給元はアクセストークンそのものを返すので、テストも同じ形にすると付ける側に分岐が要らない"
+  - id: D2
+    topic: "パラメータ付きの画面の照合と値の渡し方"
+    choice: "App.tsx は / の区切りごとに照合し :name は / を含まない値 1 つに合う。Route の element は (params: Record<string, string>) => ReactNode とし、画面は window.location から読まない"
+    reason: "値の渡し方まで決めないと、画面の機能が方式の無い結線を足すことになり同じ種類の穴が残る。入口関数に引数で渡す形はテストでも差し替えやすい"
+  - id: D3
+    topic: "App.tsx の照合を直す担い手"
+    choice: "基盤への課題にせず、最初にパラメータ付きの画面を持つ画面の機能が ADR 0018 に従って手で直す"
+    reason: "App.tsx と routes.tsx は土台の生成が再実行で上書きしないため、基盤を作り直しても直らない。vite.config.ts や src/api/ と同じ扱いにそろえた"
+  - id: D4
+    topic: "サインイン後の入力値"
+    choice: "戻すのは画面 (path) だけで、入力中の値は保存も復元もしない"
+    reason: "入力中にトークンの期限が切れる場面は少なく、予約の入力は数項目で入れ直せる。保存すると画面ごとに保存と後始末が要る"
+  - id: D5
+    topic: "直す ADR"
+    choice: "新しい ADR を足さず ADR 0018 に rule を 2 つ足し、既存の ADR 0014 は変えない"
+    reason: "派遣文の指示と mode=feedback の決まり (既存の ADR は置き換えのときの 2 項目しか変えない) に従った"

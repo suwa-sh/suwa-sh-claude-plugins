@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: requirements
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "自分の予約一覧の仕様は取り消す予約を選ぶ入口と書くが、受入基準は件数と除外だけで、複数の予約を見分けられるかを確かめられなかった。ただし「選んだ予約の取り消しへ進める」結果は予約を取り消す UC の振る舞いなので、仕様を 1 UC で確かめられる単位に保つため一覧の受入基準には入れない"
+    change: "requirements.yaml の自分の予約一覧の仕様に「各予約に会議室名・日付・開始時刻・終了時刻を表示し、取り消す予約を見分けられるようにする」を足し、2 件の予約が会議室と日時で見分けられる受入基準を 1 件足した。BUC.tsv の UC 説明、requirements.md・views・関連データ・ZeroOne・_review-summary.md も更新した"
+decisions:
+  - id: D4
+    topic: "自分の予約一覧で予約を見分ける項目"
+    choice: "各予約に会議室名・日付・開始時刻・終了時刻を表示する"
+    reason: "同じ社員の予約は会議室と時間帯で一意に見分けられ、情報の予約が持つ属性で足りる"
+  - id: D5
+    topic: "一覧から取り消しへ進めることの受入基準"
+    choice: "一覧の受入基準には入れず、予約を取り消す UC の側に任せる"
+    reason: "取り消しへの遷移の結果は別の UC の振る舞いで、仕様を 1 UC で確かめられる単位に保つため"

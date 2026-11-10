@@ -1,0 +1,160 @@
+external_tables: []
+schema_version: distillery2.rdb-slice/v1
+tables:
+  - columns:
+      - description: イベント ID
+        name: event_id
+        nullable: false
+        type: uuid
+      - description: 対象の予約
+        name: reservation_id
+        nullable: false
+        type: uuid
+      - description: イベントの種類。reserved = 予約した / cancelled = 取り消した
+        enum:
+          - reserved
+          - cancelled
+        name: event_type
+        nullable: false
+        type: string
+      - description: 起きた時刻 (usecase が Clock から得た業務の時刻)
+        name: occurred_at
+        nullable: false
+        type: datetime
+      - description: 行為者の社員 ID (トークンの sub)
+        name: actor_employee_id
+        nullable: false
+        type: string
+      - description: 記録した時刻 (DB の既定値 now() で付ける。既定値は手書きの追加 migration で足す)
+        name: recorded_at
+        nullable: false
+        type: datetime
+    description: 予約のイベント (予約した・取り消した) の記録。追記だけで UPDATE と DELETE をしない
+    foreign_keys:
+      - columns:
+          - reservation_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - reservation_id
+          table: reservations
+    indexes:
+      - columns:
+          - reservation_id
+          - event_type
+        name: reservation_events_reservation_id_event_type_key
+        unique: true
+    name: reservation_events
+    primary_key:
+      - event_id
+  - columns:
+      - description: 予約 ID
+        name: reservation_id
+        nullable: false
+        type: uuid
+      - description: 予約した会議室
+        name: room_id
+        nullable: false
+        type: string
+      - description: 開始時刻 (含む)。30 分刻み
+        name: start_at
+        nullable: false
+        type: datetime
+      - description: 終了時刻 (含まない)。30 分刻み。開始より後
+        name: end_at
+        nullable: false
+        type: datetime
+      - description: 予約者の社員 ID (トークンの sub)
+        name: reserved_by
+        nullable: false
+        type: string
+      - description: 予約状態。reserved = 予約済み / cancelled = 取消済み
+        enum:
+          - reserved
+          - cancelled
+        name: status
+        nullable: false
+        type: string
+    description: 予約の今の状態 (予約済み / 取消済み)。イベントの追記と同じトランザクションで更新する。照会・一覧はこの表を読む
+    foreign_keys:
+      - columns:
+          - room_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - room_id
+          table: rooms
+    indexes:
+      - columns:
+          - reserved_by
+          - start_at
+        name: reservations_reserved_by_start_at_idx
+        unique: false
+      - columns:
+          - room_id
+          - start_at
+        name: reservations_room_id_start_at_idx
+        unique: false
+    name: reservations
+    primary_key:
+      - reservation_id
+  - columns:
+      - description: 会議室 ID
+        name: room_id
+        nullable: false
+        type: string
+      - description: 30 分枠の開始時刻
+        name: slot_start_at
+        nullable: false
+        type: datetime
+      - description: この枠を占める予約
+        name: reservation_id
+        nullable: false
+        type: uuid
+    description: 会議室の 30 分枠の占有 (有効な予約から導く派生の表)。(会議室 ID, 枠の開始時刻) の主キーが二重予約を防ぐ。予約の成立と同じトランザクションで書き、取り消しで消す
+    foreign_keys:
+      - columns:
+          - room_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - room_id
+          table: rooms
+      - columns:
+          - reservation_id
+        on_delete: RESTRICT
+        references:
+          columns:
+            - reservation_id
+          table: reservations
+    indexes:
+      - columns:
+          - reservation_id
+        name: room_slot_occupancies_reservation_id_idx
+        unique: false
+    name: room_slot_occupancies
+    primary_key:
+      - room_id
+      - slot_start_at
+  - columns:
+      - description: 会議室 ID
+        name: room_id
+        nullable: false
+        type: string
+      - description: 会議室名
+        name: room_name
+        nullable: false
+        type: string
+      - description: 空き状況の一覧で並べる順
+        name: display_order
+        nullable: false
+        type: integer
+    description: 会議室 (上書きのマスタ。5 部屋を migration の初期データで入れる。登録・変更の API は作らない)
+    indexes:
+      - columns:
+          - room_name
+        name: rooms_room_name_key
+        unique: true
+    name: rooms
+    primary_key:
+      - room_id

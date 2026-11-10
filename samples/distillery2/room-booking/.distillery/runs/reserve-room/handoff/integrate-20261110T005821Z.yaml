@@ -1,0 +1,26 @@
+schema_version: distillery2.handoff/v1
+step: integrate
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "会議室の選び方"
+    choice: "予約の前に画面の入口関数 loadRooms (listRooms) で会議室の選択肢を読み、名前の合う会議室の ID を使う"
+    reason: "社員が画面で会議室を選ぶ流れと同じになり、slice にある listRooms もトレースに載る"
+  - id: D2
+    topic: "「予約は記録されない」の確かめ方"
+    choice: "予約を送る直前と後で、予約の今の状態・イベント・30 分枠の占有の 3 表の行数が変わらないことを確かめる"
+    reason: "前提で入れた既存の予約があるシナリオでも、新しい記録が無いことを表ごとに確かめられる"
+  - id: D3
+    topic: "同時の予約の再現"
+    choice: "2 人分の submitReservation を Promise.all で待ち合わせずに送り、成立 1 件と SLOT_OVERLAPS 1 件、表の増分が 1 件分であることを確かめる"
+    reason: "受入基準 SPEC-002-02-5 の観測結果 (成立は 1 件だけ・もう一方は重なり) をそのまま確かめる"
+  - id: D4
+    topic: "既存の予約の前提の step"
+    choice: "view-room-availability.steps.ts の step をそのまま使い、変更しない"
+    reason: "その step は既に予約の今の状態・「予約した」イベント・30 分枠の占有の 3 表をそろえて入れており、重なりのシナリオが通った"
+  - id: D5
+    topic: "共通の補助の扱い"
+    choice: "社員の呼び名・テスト用トークン・業務の日時の小さな補助は reserve-room.steps.ts の中に持ち、共有の support に移さない"
+    reason: "他 UC の step 定義を変えずに済み、view-room-availability の UC BDD を壊さない"

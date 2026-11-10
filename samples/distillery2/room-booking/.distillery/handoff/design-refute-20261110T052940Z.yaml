@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: design
+asks: []
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "ReserveRoom.stories.tsx は MissingRequired を export しているが、docs/design/screens.yaml の ReserveRoom.variants に無かった (指摘どおり)"
+    change: "docs/design/screens.yaml の ReserveRoom.variants の InvalidTimeRange と NotOn30Minutes の間に MissingRequired を足した"
+decisions:
+  - id: D1
+    topic: "MissingRequired を variants のどこに置くか"
+    choice: "InvalidTimeRange の直後 (Story ファイルの export の順に合わせる)"
+    reason: "Story の並びと一覧の並びを揃えると見比べやすい"
+  - id: D2
+    topic: "below-threshold の指摘 (acceptance_browser コマンドが残っている点)"
+    choice: "扱わない"
+    reason: "閾値未満の指摘で、対象の設定ファイルは書き込み範囲 (docs/design/**) の外"

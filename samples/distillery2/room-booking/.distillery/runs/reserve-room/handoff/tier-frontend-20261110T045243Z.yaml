@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: tier
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "未入力の判定の置き場"
+    choice: "submitReservation の先頭で画面部品の missingReservationFields を呼び、未入力があれば fetch せず { kind: 'missing', fields } を返す (前提 A-008)"
+    reason: "scaffold の決めごとどおりの形になり、未入力の判定を画面部品と同じ 1 つの関数にそろえられる (自作しない)"
+  - id: D2
+    topic: "missing の状態の画面での出し方"
+    choice: "ReserveRoomScreen は状態が missing のとき ReservationForm の showMissing を立て、項目ごとの促しを部品に出させる"
+    reason: "部品の送信の止めと入口関数の判定のどちらで止まっても同じ促しが出る。画面の単体テストに会議室を選ばずに送信する 1 件を足した"
+  - id: D3
+    topic: "前提の記録の整え直し"
+    choice: "A-001..A-007 は残し、A-007 の根拠を新しい main の開発ルール (ADR 0010 から ADR 0023 へ) に直し、A-008 を足した。ReserveRoomScreen のコメントの二重送信の根拠も ADR 0005 から ADR 0022 に直した"
+    reason: "写し直した main の docs/rules/tier-frontend.md に ADR 0010 の節が無く、ADR 0023 が引き継いでいる。前回の検証の参考 2 の指摘も同じ"

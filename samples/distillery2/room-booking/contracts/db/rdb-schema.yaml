@@ -1,0 +1,9 @@
+# basis: requirements@64517f420b568ea1a4536b71b9dbbb357bd66460 adr@ed9e1fbd3b234cada613ca9357dd6e5ae36271e8
+# RDB 契約の入口。表の定義はサブドメインごとに domains/<id>.yaml に置く。
+schema_version: distillery2.rdb-split/v1
+datastore: rdb
+version: 1
+domains:
+  - id: room_reservation
+    file: domains/room_reservation.yaml
+    description: "会議室予約管理 (RDRA のコンテキスト「会議室予約管理」。情報「会議室」と「予約」)"

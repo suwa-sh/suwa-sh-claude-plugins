@@ -1,0 +1,38 @@
+schema_version: distillery2.handoff/v1
+step: decide
+asks:
+  - id: token-expires-in
+    kind: unknown_fact
+    question: "社内の認証基盤はトークンの応答で expires_in (期限) を返すか。返さない場合、予約の入力中に期限が切れてサインインへ戻り入力し直しになることを許容するか"
+    options:
+      - label: "返す"
+        impact: "期限の 60 秒前に画面の裏で更新する (ADR 0019 のとおり)"
+      - label: "返さないが許容する"
+        impact: "ADR 0020 のとおり、期限切れの 401 でサインインへ戻り入力し直す"
+      - label: "返さず許容しない"
+        impact: "expires_in を返すよう認証基盤を設定するか、ADR 0020 を見直す"
+    recommended: "返す"
+    reason: "OAuth 2.0 では expires_in を返すことが推奨で、主要な認証基盤は既定で返す。仮置きで進めても ADR 0020 により画面の動きは決まっているため、認証基盤の登録時 (ADR 0019 のリフレッシュトークンの確認と同じ時期) に確かめればよい"
+upstream_issues: []
+refutations:
+  - finding: "指摘 1"
+    result: accepted
+    reason: "docs/rules/tier-frontend.md:53 は ADR 0014 の rules の文言から生成され、供給元が Bearer 付きのトークンを返すと読める。ADR 0018/0019 の読み分けの行 (72, 82) と命令形が食い違っていた"
+    change: "ADR 0014 の rules の該当文を、供給元は接頭辞 (Bearer) の無い test-employee-a / test-employee-b を返し、Bearer は options.fetch を包む 1 か所で付けて送るヘッダの値が x-test-headers と同じ Bearer test-employee-<社員> になる、という文に直した (本文は変えていない。docs/rules/ は d2-run の再生成で反映される)"
+  - finding: "指摘 2"
+    result: accepted
+    reason: "認証基盤が expires_in を返すかは人しか知らない事実で、返さない場合の利用者影響 (期限前の更新が働かず入力値を失う) の許容は判断が要る。ADR 0020 の「人の確認を求めない」は不適切だった"
+    change: "ADR 0020 の confidence を low にし、影響の節に確認事項 2 点 (expires_in を返すか / 返さない場合に再サインインと入力値の消失を許容するか) を書いた。_review-summary.md の確認してほしいことに 16 番として追記し、asks Q1 に書いた"
+decisions:
+  - id: D5
+    topic: "指摘 1 の直し方"
+    choice: "ADR 0014 の rules の文言だけを直し、本文と ADR 0018/0019 の読み分けの rule はそのまま残す"
+    reason: "生成されるルールの命令形を揃えれば二重の Bearer の読み違いは消える。本文は決定の履歴として残す。読み分けの rule は直した文と矛盾しない"
+  - id: D6
+    topic: "ADR 0020 の確信度"
+    choice: "confidence を medium から low に下げ、認証基盤の登録時の確認事項を足す (D4 を改める)"
+    reason: "期限情報の提供可否は認証基盤の設定に依り、返さない場合の利用者影響の許容は人の判断が要る"
+  - id: D7
+    topic: "ADR 0020 の決定の中身"
+    choice: "決定 (期限が分からなければそのまま使い 401 でサインインへ戻す) は変えない"
+    reason: "確認の結果がどちらでも画面は動き、許容しない場合の見直しは確認後に新しい課題で扱える"

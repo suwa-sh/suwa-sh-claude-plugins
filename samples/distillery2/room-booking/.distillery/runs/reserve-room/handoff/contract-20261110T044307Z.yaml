@@ -1,0 +1,18 @@
+schema_version: distillery2.handoff/v1
+step: contract
+asks: []
+upstream_issues: []
+refutations: []
+decisions:
+  - id: D1
+    topic: "未入力の項目のシナリオ (SPEC-002-01-8/9) の契約への反映"
+    choice: "operation・スキーマ・examples は変えず、reserveRoom の説明に「未入力は画面が送る前に止めるが、API も必須の欠けを 400 VALIDATION_ERROR で断る」を足すだけにした"
+    reason: "要求が未入力の判定を画面に置くと決めており、API 側は既存の 400 (required 欠け) と validation_error の例で既に表せている"
+  - id: D2
+    topic: "同時の予約で負けた側の 409 の根拠の ADR"
+    choice: "reserveRoom の説明の参照を置き換え済みの ADR 0010 から ADR 0023 に直した"
+    reason: "ADR 0010 は ADR 0023 に置き換えられた。409 SLOT_OVERLAPS で返す振る舞いは変わらない"
+  - id: D3
+    topic: "basis の更新範囲"
+    choice: "openapi.yaml と uc-index.yaml に加え、db/rdb-schema.yaml と db/domains/room_reservation.yaml の先頭の basis も今の上流 (requirements@64517f4 adr@ed9e1fb) に合わせた。表の定義は変えていない"
+    reason: "RDB の 2 ファイルも basis.js check で STALE だった。今の要求の差分 (送り直し・未入力) は表の定義に影響しない"

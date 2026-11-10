@@ -1,0 +1,51 @@
+{
+  "schema_version": "distillery2.handoff/v1",
+  "step": "precheck",
+  "asks": [],
+  "upstream_issues": [
+    {
+      "id": "contract-test-fixed-clock",
+      "target_step": "plugin",
+      "title": "契約テストの生成が現在時刻を固定できない",
+      "detail": "genContractTests.js は createTestApp() か createTestApp({ fixture }) だけを生成し、x-test-requests は path / headers / fixture / expect しか受けない。予約の作成のように現在時刻で結果が変わる operation (成立の 201 と PAST_TIME_SLOT の 422) では、例ごとに現在時刻を決められず、契約テストの結果が実行する日で変わる (例の日時 2026-11-10 は今日の時点で過去になる)。apps/backend-api/src/test-app.ts の createTestApp は clock を省略すると時計を渡さない",
+      "evidence": "skills/d2-contract/scripts/genContractTests.js の appClause (fixture だけを createTestApp に渡す)、skills/d2-contract/references/contract-tests.md (x-test-requests の項目は path / headers / fixture だけ)、apps/backend-api/test/contract/viewRoomAvailability.test.ts (createTestApp() を時計なしで呼ぶ)",
+      "recommended_fix": "x-test-requests に now (RFC 3339 の日時) を足し、genContractTests.js が createTestApp({ fixture, clock }) に固定の時計を渡す。文書直下に既定の x-test-now を置けるようにし、現在時刻を使う operation の例が実行する日に左右されないようにする",
+      "workaround": "backend-api の実装の段で apps/backend-api/src/test-app.ts の createTestApp を、clock を省略したときに FixedClock('2026-11-09T12:00:00+09:00') (受入基準の「現在が 2026-11-09 12:00」) を使うようにする。契約の段で予約の作成の例は成立を 2026-11-10 の時間帯、PAST_TIME_SLOT を 2026-11-08 の時間帯で書き、x-test-fixtures か operation の説明に契約テストの現在時刻が 2026-11-09 12:00 (日本時間) であることを書く"
+    },
+    {
+      "id": "db-contract-test-unique-rejection",
+      "target_step": "plugin",
+      "title": "DB 契約テストが一意制約の弾きを確かめない",
+      "detail": "ADR 0007 の testing のルールは、同時の予約の受入基準 (SPEC-002-02 の同時に予約する基準) を「同じ枠への 2 件の予約を続けて送り、成立が 1 件だけであることと、DB の一意制約が 2 件目を弾くことを契約 (DB) のテストで確かめる」と定める。生成される DB 契約テスト (apps/backend-api/test/contract/db-schema.test.ts) は表の列・型・null 可否・主キーの列の集合だけを比べ、同じ (room_id, slot_start_at) の 2 行目の追加が拒まれることを確かめない。生成物は手で直せないので、ルールの「契約 (DB) のテストで」を満たす置き場が無い",
+      "evidence": "apps/backend-api/test/contract/db-schema.test.ts (information_schema の列と主キーの比較だけ)、docs/adr/0007-testing-strategy.md の rules の最後の項目",
+      "recommended_fix": "DB 契約の生成テストに、主キーと unique の索引ごとに同じキーの 2 行目の追加が一意制約の違反 (SQLSTATE 23505) で拒まれることを確かめるテストを足す (外部キーの先の行は契約の初期データか生成した行で用意する)。後の UC の一意制約にも同じ形で効く",
+      "workaround": "backend-api の実装の段で、予約の repository の単体テスト (pglite で migration を当てた実体の DB) に、同じ会議室の同じ 30 分枠を占める予約を続けて 2 件保存し、2 件目が SLOT_OVERLAPS の業務のエラーで返り、成立が 1 件だけであることを確かめるテストを書く。UC BDD の同時の予約のシナリオは同じ枠への 2 件の予約を続けて送り、成立 1 件と SLOT_OVERLAPS を確かめる。AssumptionRecord に、ADR 0007 の「契約 (DB) のテスト」をこの単体テストで代えたことを書く"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "topic": "上流 (要求・決定・基盤) の不足",
+      "choice": "requirements / decide / foundation への課題は 0 件とし、課題は plugin の 2 件 (どちらも回避できる) だけにした",
+      "reason": "受入基準 12 件に要る決めごと (時間帯の検証の順とコード・過去の判定・半開区間の重なり・30 分枠の一意制約による二重予約の防止と同時の予約のテストの方針・コミットの後に応答する (ADR 0016)・イベントの追記と同じ取引での状態と占有の更新・予約者は sub・エラーと status の対応) が ADR 0003/0004/0006/0007/0009/0010/0017 と RDB 契約で決まっている"
+    },
+    {
+      "id": "D2",
+      "topic": "現在時刻の固定の扱い",
+      "choice": "契約テストで現在時刻を固定できないことを plugin の課題にし、回避の仕方 (createTestApp の既定の固定の時計と例の日付) を workaround に書いた",
+      "reason": "予約の作成は現在時刻で成否が変わり、生成される契約テストが実行する日で壊れる。回避はリポの中 (test-app.ts と契約の例) でできるので機能は止めない"
+    },
+    {
+      "id": "D4",
+      "topic": "同時の予約のテストの置き場",
+      "choice": "生成の DB 契約テストが一意制約の弾きを確かめないことを plugin の課題にし、repository の実体の DB の単体テストと UC BDD で代える回避を workaround に書いた",
+      "reason": "ADR 0007 のルールは DB 契約のテストで確かめると定めるが、生成物は列と主キーしか比べず手で直せない。決定 (一意制約で防ぐ) は変わらないので decide には戻さない"
+    },
+    {
+      "id": "D3",
+      "topic": "機能の中で決めてよい細部",
+      "choice": "予約 ID の採番の置き場・ROOM_NOT_FOUND と時間帯のエラーの優先・reservation_events.recorded_at の既定値の migration の追加・予約者の記録を応答で返すか DB で確かめるかは課題にしない",
+      "reason": "この UC だけで決まり後の UC と食い違わない (採番と会議室の入力は予約の作成だけ)。recorded_at の既定値は RDB 契約が手書きの追加 migration と定め、migration は backend-api が所有する。応答の形は契約の段が決める"
+    }
+  ]
+}
