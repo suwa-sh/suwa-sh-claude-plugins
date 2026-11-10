@@ -72,6 +72,7 @@ test('WITH で始まる文は表ごとに読み書きを分け、WITH 句の名�
   assert.deepEqual(withTableModes('WITH RECURSIVE t(n) AS (SELECT 1 FROM seeds) SELECT n FROM t', ['seeds', 't']), [{ table: 'seeds', mode: 'read' }], '書き込みの無い WITH は読み取りだけ');
   assert.equal(withTableModes('INSERT INTO a SELECT * FROM b', ['a', 'b']), null, 'WITH 以外は先頭の動詞で分類する (今までどおり)');
   assert.deepEqual(withTableModes('WITH inventory AS (SELECT 1) INSERT INTO inventory(id) VALUES (1)', ['inventory']), [{ table: 'inventory', mode: 'write' }], '書き込みの宛先は WITH 句の名前と同じでも落とさない');
+  assert.deepEqual(withTableModes("WITH c AS (SELECT 'update rooms' AS note FROM rooms /* delete from rooms */) SELECT * FROM c -- insert into rooms", ['rooms', 'c']), [{ table: 'rooms', mode: 'read' }], '文字列とコメントの中の語を書き込みの宛先と読まない');
 
   seq = 0;
   const inn = sp('http.in', '/reservations', { method: 'POST', path: '/reservations', status: 201, operationId: 'reserveRoom', tier: 'backend-api', layer: 'presentation' });

@@ -36,8 +36,9 @@ const DML_TARGET_RE = /\b(?:insert\s+into|update|delete\s+from|merge\s+into)\s+(
  * @returns {Array<{table:string, mode:'read'|'write'}>|null}
  */
 function withTableModes(sql, tables) {
-  const s = String(sql || '');
-  if (sqlVerb(s) !== 'WITH') return null;
+  if (sqlVerb(sql) !== 'WITH') return null;
+  // 文字列とコメントの中の語 (例 'update rooms') を宛先や WITH 句の名前と読まないよう、先に除く
+  const s = String(sql || '').replace(/'(?:[^']|'')*'/g, "''").replace(/--[^\n]*/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
   const lower = (x) => String(x).replace(/"/g, '').toLowerCase();
   const ctes = new Set([...s.matchAll(CTE_NAME_RE)].map((m) => lower(m[1])));
   const written = new Set([...s.matchAll(DML_TARGET_RE)].map((m) => lower(m[1])));
