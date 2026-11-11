@@ -90,8 +90,8 @@ stage名と内部成果物の割当ては`変更してほしいこと`へ書き�
 ## dist-pipelineの実行
 
 ```text
-/distillery:dist-pipeline docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
-/distillery:dist-pipeline docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md --recommended-auto
+/dist-pipeline docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
+/dist-pipeline docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md --recommended-auto
 ```
 
 対話モードでは、dist-pipelineが推奨案、代替案、影響、根拠を提示します。

@@ -1,5 +1,5 @@
 ---
-name: distillery-impl:dist-impl-feedback
+name: dist-impl-feedback
 description: >
   実装で見つかった仕様起因の問題を、1つのfeedback-request Markdownへまとめる。
   S8はdraftを管理し、S9の承認後に同じbytesをimmutableな公開ファイルへ移す。
@@ -181,7 +181,7 @@ initialとrefreshは、要求数、blocker数、learnings数、提案の有無�
 publishは公開path、feedback ID、要求数、SHA-256を報告します。
 
 ```text
-/distillery:dist-pipeline docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
+/dist-pipeline docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
 ```
 
 安全なroutingを自動採用する場合だけ`--recommended-auto`を付けます。

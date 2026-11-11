@@ -1,5 +1,5 @@
 ---
-name: distillery-impl:dist-impl-bootstrap
+name: dist-impl-bootstrap
 description: >
   distillery の仕様書一式(docs/specs, arch, usdm, design)から実装先 mono repo の骨格を生成する
   bootstrap スキル。tier ディレクトリ・4 段テスト配置・qlty/CI・dev-rules 配布・契約 codegen
@@ -53,7 +53,7 @@ lock・入力ハッシュもその契約のエントリのみ更新する(無指
 ## P1: preflight(存在プローブ)
 
 1. `java -version` / `node --version` を確認(java 無し → codegen は縮退モード)
-2. ddd plugin の有無: Skill 一覧に `ddd:ddd-tactical-implementation` があるか。
+2. ddd plugin の有無: Skill 一覧に `ddd-tactical-implementation` があるか。
    無ければ capability `has_ddd_plugin: false`(implement は dev-rules のみで継続)
 3. 条件付き入力の存在プローブ → capability フラグ化:
    - AsyncAPI → `references/contract-registry.md` のsource選択規則で解決したファイルの存在を `has_asyncapi` に記録する。分割形式は `api/generated/asyncapi.bundle.yaml`、legacyは `api/asyncapi.yaml`。パスの基準は `{specs_root}/specs/latest/_cross-cutting/`。

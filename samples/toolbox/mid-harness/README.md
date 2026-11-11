@@ -1,6 +1,6 @@
 # sample: mid-harness `init` の出力 (6 製品 targets)
 
-`toolbox:mid-harness` の `init` を空の git リポに対して実行した結果をそのまま置いたものです。何が生成され、各製品が何を読むかを見るためのサンプルで、正本は `plugins/toolbox/skills/mid-harness/` (templates + scripts) です。
+`mid-harness` の `init` を空の git リポに対して実行した結果をそのまま置いたものです。何が生成され、各製品が何を読むかを見るためのサンプルで、正本は `plugins/toolbox/skills/mid-harness/` (templates + scripts) です。
 
 - 生成日: 2026-09-05 / toolbox 0.7.0
 - targets: `claude-code, codex, cursor, grok, copilot, antigravity`

@@ -1,6 +1,6 @@
 # preflight サンプル(影響範囲の事前調査)
 
-`/distillery:dist-harvest --preflight` の実行例です。preflight は実装内部(コード本文・バイナリ)を
+`/dist-harvest --preflight` の実行例です。preflight は実装内部(コード本文・バイナリ)を
 読まずに、外側から読める資料だけで対象を 3 つの view(システムコンテキスト / 業務フロー /
 成果物チェーン)に整理し、外部影響境界での変更影響を YES / NO / 保留 で判定します。
 
@@ -20,7 +20,7 @@
 各事例の README に、実行したコマンドと入力の所在を記載しています。基本形:
 
 ```
-/distillery:dist-harvest --preflight <対象パス> --change "変更したい内容"
+/dist-harvest --preflight <対象パス> --change "変更したい内容"
 ```
 
 ## output の生成手順(共通)

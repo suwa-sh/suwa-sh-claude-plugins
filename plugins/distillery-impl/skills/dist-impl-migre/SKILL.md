@@ -1,5 +1,5 @@
 ---
-name: distillery-impl:dist-impl-migre
+name: dist-impl-migre
 description: >
   古いdistillery-implで作成した実装出力を、インストール済みの新版へ移行する。
   バージョン間の変更ガイドを選び、LLMが設定・契約生成物・実行状態・既存コードを確認して修正・検証する。
@@ -37,12 +37,12 @@ description: >
 5. `references/state-and-code.md`に従い、入力の鮮度、完了判定、承認証跡を再評価する。必要な検証を実行して、保持・無効化・再実行待ちを記録する。
 6. 適用した変更、検証結果、残課題、次に再開するstageを報告する。移行完了とアプリ実装・レビューの完了を区別する。
 
-両方の出力を新版へ移行する場合は、`distillery:dist-migre` → 本スキルの順に使う。
+両方の出力を新版へ移行する場合は、`dist-migre` → 本スキルの順に使う。
 前段が既に対応済みなら再実行を要求せず現物を検証する。本スキルからspecを黙って書き換えない。
 
 ```text
-/distillery-impl:dist-impl-migre この実装リポジトリを現在のスキルに合わせて移行して
-/distillery-impl:dist-impl-migre この実装出力の移行計画だけ作って
+/dist-impl-migre この実装リポジトリを現在のスキルに合わせて移行して
+/dist-impl-migre この実装出力の移行計画だけ作って
 ```
 
 将来の版を追加するときだけ `references/maintaining-guides.md` を読む。

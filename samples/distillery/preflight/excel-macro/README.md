@@ -1,6 +1,6 @@
 # preflight サンプル(影響範囲の事前調査)
 
-`/distillery:dist-harvest --preflight` の実行例です。
+`/dist-harvest --preflight` の実行例です。
 
 ## シナリオ(架空)
 
@@ -34,7 +34,7 @@ VBA 本文が input に無いのは意図的です(preflight は実装内部を�
 ## 実行方法
 
 ```
-/distillery:dist-harvest --preflight samples/distillery/preflight/excel-macro/input --change "02_登録内容作成.xlsm のマクロを変更し、登録内容の担当区分の割当ルールを見直したい(A 系設備の一部を電気から機械に変更)"
+/dist-harvest --preflight samples/distillery/preflight/excel-macro/input --change "02_登録内容作成.xlsm のマクロを変更し、登録内容の担当区分の割当ルールを見直したい(A 系設備の一部を電気から機械に変更)"
 ```
 
 > ちなみに「祝日を自動で除外したい」のような変更だと、判定は YES になりません。

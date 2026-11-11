@@ -5,8 +5,8 @@ Markdown本文を変更要求の外部正本とします。
 routing JSON、stage別ファイル、レビュー情報は受け取りません。
 
 ```text
-/distillery:dist-pipeline path/to/feedback-requests/{feedback_id}.md
-/distillery:dist-pipeline path/to/feedback-requests/{feedback_id}.md --recommended-auto
+/dist-pipeline path/to/feedback-requests/{feedback_id}.md
+/dist-pipeline path/to/feedback-requests/{feedback_id}.md --recommended-auto
 ```
 
 ## ファイル構造

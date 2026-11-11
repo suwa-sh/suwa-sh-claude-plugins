@@ -1,5 +1,5 @@
 ---
-name: distillery-impl:dist-impl-review
+name: dist-impl-review
 description: >
   distillery-impl の意思決定用レビュー資料生成スキル。UCの目的と対象仕様、実装構成、処理・
   データフロー、動かし方、テストを図解し、ユーザーに必要な承認・選択・回答方法を冒頭へ示す。

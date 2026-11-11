@@ -3,7 +3,7 @@
 /**
  * contractGraph.js — OpenAPI 3.1 / AsyncAPI 3.0 の bundle を歩いて slice を切る中核。
  *
- * v1 (distillery:dist-spec/compileContracts.js) の JSON Pointer 解決・参照追跡・slice を移植した。
+ * v1 (dist-spec/compileContracts.js) の JSON Pointer 解決・参照追跡・slice を移植した。
  * v2 の違い:
  *  - 契約の正本は分割 YAML。bundle は redocly / ref-parser が作る (このモジュールは bundle を受け取る)。
  *  - UC ごとの slice は uc-index.yaml (operations / messages / tables) から作る。

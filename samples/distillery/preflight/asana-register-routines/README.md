@@ -12,7 +12,7 @@
 ## 実行コマンド
 
 ```
-/distillery:dist-harvest --preflight <asana-register-routines のローカルパス> --change "マスターデータ一括同期に、タグ一覧に加えてカスタムフィールド一覧の同期を追加したい"
+/dist-harvest --preflight <asana-register-routines のローカルパス> --change "マスターデータ一括同期に、タグ一覧に加えてカスタムフィールド一覧の同期を追加したい"
 ```
 
 - 実行時の対象 revision: `733394c`(2026-08-13 時点の main)

@@ -8,9 +8,12 @@
   - 例: `skills/dist-pipeline/SKILL.md` に `name: dist-pipeline`
   - Claude Code はプラグイン名を自動で前置する (`/distillery:dist-pipeline`。https://code.claude.com/docs/en/skills 、2026-09-26 確認)。`name` に `プラグイン名:` を書かない
   - frontmatter は仕様の許可項目 (`name` / `description` / `license` / `compatibility` / `metadata` / `allowed-tools`) だけにする。Claude Code 専用の項目 (`user-invocable` 等) は仕様の検証ツールでエラーになる
-  - 移行: distillery2 は 0.1.20 で移行済み。`プラグイン名:スキル名` のままの既存プラグインは、次に触るときに合わせる
-- スキルディレクトリ名に短縮プリフィックスを付けて、ディレクトリ一覧でどのプラグインのスキルか判別できるようにする
-  - 例: `skills/dist-pipeline/`（distillery の pipeline スキル）
+  - 全プラグインが移行済み (2026-11-12。コロンを受け付けないエージェントがあるため)
+- スキルディレクトリ名にプリフィックスを付けて、どのプラグインのスキルか名前で判別できるようにする
+  - 例: `skills/dist-pipeline/`（distillery の pipeline スキル）、`skills/cc-handover/`（cc の handover スキル）
+  - 例外: toolbox は汎用スキル集なのでプリフィックスを付けない (`skills/human-html-review/`)
+- スキル本文・README・指示ファイルで他のスキルを呼ぶときは、コロン無しの名前 (`human-html-review`、`d2-run`) で書く。Claude Code の Skill ツールもコロン無しの名前で解決できる (2026-11-12 実測)
+  - サブエージェント (`agents/*.md`) の呼び名 (`distillery2:d2-verifier` 等) はスキルではないので、名前空間付きのまま書く
 
 ### マーケットプレイス操作
 

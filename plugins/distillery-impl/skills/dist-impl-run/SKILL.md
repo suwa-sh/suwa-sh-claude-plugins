@@ -1,5 +1,5 @@
 ---
-name: distillery-impl:dist-impl-run
+name: dist-impl-run
 description: >
   distillery-impl のオーケストレータ。UC を指定して(または引数なしで uc-map の実施順に
   未完了 UC を自動選択して)実装パイプライン(S0 bootstrap → S1 uc-init →
@@ -8,8 +8,8 @@ description: >
   S8 feedback → S9 review)をファイル駆動の冪等再開つきで運転する。
   「この UC を実装して」「実装パイプラインを回して」「実装を再開して」などで発動。
 metadata:
-  dependencies:
-    - diagram-design # https://github.com/cathrynlavery/diagram-design — install: npx skills add cathrynlavery/diagram-design
+  # 値は文字列だけ (Agent Skills 仕様)。https://github.com/cathrynlavery/diagram-design — install: npx skills add cathrynlavery/diagram-design
+  dependencies: "diagram-design"
 ---
 
 # dist-impl-run
@@ -210,7 +210,7 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
      担保。重複検証を作らない)
   3. dispatch する tier があれば、Verifier と**同一メッセージ内で**並列起動する(agent type は
      `distillery-impl:impl-verifier`、model は verifier_model を流用 — impl-config にキーを
-     増やさない)。skill 名は `distillery-impl:dist-impl-ui-review`、算出した target 集合と
+     増やさない)。skill 名は `dist-impl-ui-review`、算出した target 集合と
      `targets_hash`・`targets_count` を引数で渡す(subagent-template.md の S5 ui-review テンプレート)
   4. **UI Reviewer の done が `environment_failure` の場合の縮退遷移**(dom_snapshot テストの
      実行環境自体が壊れている場合のみ到達する — capture_review はこの状態に到達しない。D10。
@@ -235,7 +235,7 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
      round2)、**(ii) `capture_review_completed` イベントは存在するが canonical が期待 hash に
      未到達(昇格が中断)なら冪等に再遂行**(D8 round3。両方の詳細は state-schema.md
      「orphan 検出」「冪等再遂行」を正本とする)。どちらでもなければ
-     `distillery-impl:dist-impl-ui-review` を `checks=capture_review` を渡して同一 attempt で
+     `dist-impl-ui-review` を `checks=capture_review` を渡して同一 attempt で
      再 dispatch する(dom_snapshot は再実行しない)。UI Reviewer は成果物を
      `attempt-{n}/ui-artifacts/{tier_id}/staging/` にのみ書き、更新後の `checks_checked` 全文
      (`checks_checked_after`)・staged ファイル一覧・各ハッシュを完了報告で返す(canonical
@@ -403,7 +403,7 @@ S0 bootstrap → S1 uc-init → S2 test-scaffold → S3 contracts
    「**コンテキストをクリアして**(`/clear` または新セッション)、次を1回実行してください」
 
    ```text
-   /distillery:dist-pipeline {feedback-request.md}
+   /dist-pipeline {feedback-request.md}
    ```
 
    推奨ルーティングを安全な範囲で自動採用したい場合は`--recommended-auto`を付ける。

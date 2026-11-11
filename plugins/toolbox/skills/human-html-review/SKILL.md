@@ -1,10 +1,10 @@
 ---
-name: toolbox:human-html-review
+name: human-html-review
 description: >-
   ヒトに確認・承認・選択を求めるときに、文脈を忘れている読者でも 1 ページで状況を思い出し、図と表で判断できる自己完結 HTML を作るスキル。固定フォーマットに当てはめず、読者の問いの順にコンテンツを毎回設計する。平易な言葉・名前で書き、内部 ID やジャーゴンを本文に出さない。プランの確認、実装や設計のレビュー依頼、選択肢からの意思決定、調査結果の報告など「ヒトの判断待ち」になる場面すべてで使う。
 metadata:
-  dependencies:
-    - diagram-design # 任意。https://github.com/cathrynlavery/diagram-design — install: npx skills add cathrynlavery/diagram-design
+  # 値は文字列だけ (Agent Skills 仕様)。任意。https://github.com/cathrynlavery/diagram-design — install: npx skills add cathrynlavery/diagram-design
+  dependencies: "diagram-design"
 ---
 
 # Human HTML Review

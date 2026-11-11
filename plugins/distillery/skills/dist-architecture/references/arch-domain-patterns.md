@@ -5,7 +5,7 @@ dist-architecture が `domain_architecture` セクション（Subdomain / Bounde
 ## 位置付け・スコープ宣言
 
 - 本ドキュメントは **distillery 独自の RDRA → DDD アダプタ**。DDD の概念解説・パターン定義は本ドキュメントに含めない。
-- DDD 概念の **正典は `ddd-architecture` スキル**（`ddd:ddd-architecture`）。本スキルは `ddd-architecture` の存在を前提とし（`SKILL.md` 冒頭の依存チェック参照）、概念定義はそちらに委譲する。
+- DDD 概念の **正典は `ddd-architecture` スキル**（`ddd-architecture`）。本スキルは `ddd-architecture` の存在を前提とし（`SKILL.md` 冒頭の依存チェック参照）、概念定義はそちらに委譲する。
 - DDD 完全準拠は主張しない。RDRA から導出可能な戦略設計の **仮説生成** に留め、最終判断は Phase 0 の対話でユーザー確認を必須とする。
 
 ## DDD 概念リファレンス（ddd-architecture スキル）

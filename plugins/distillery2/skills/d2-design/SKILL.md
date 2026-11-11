@@ -133,7 +133,7 @@ component 不在 / tokens.file 不在) を直す。2 = 読み込み失敗。
   `inferred` のときは色・フォントを「確認してほしいこと」に含める
 - 内部 ID・ジャーゴンは本文に出さない
 
-d2-run はこの要約を `toolbox:human-html-review` に渡して人に見せる。
+d2-run はこの要約を `human-html-review` に渡して人に見せる。
 
 ## mode=feedback (要求の差分の残った作業: 項目のファイル (stories と部品) だけを直す。0.1.32、0.1.33 で部品も)
 

@@ -78,16 +78,16 @@ UC本文にはデータフロー、分岐つきシーケンス、受入条件を
 
 | Skill | Role |
 |---|---|
-| `distillery:dist-migre` | バージョン間の変更ガイドを選び、LLMが既存出力を移行・検証する |
-| `distillery:dist-harvest` | 既存プロジェクトから要求を逆生成し USDM + RDRA を初期構築（as-is 分析・任意）。`--preflight` で、実装内部を読まずに変更の影響範囲を判定する軽量調査モード |
-| `distillery:dist-requirements` | USDM 分解 + RDRA モデルの差分/フルビルド |
-| `distillery:dist-quality-attributes` | IPA 非機能要求グレード 2018 による品質特性推論 |
-| `distillery:dist-architecture` | システム/アプリ/データアーキテクチャ設計（ベンダーニュートラル） |
-| `distillery:dist-infrastructure` | MCL product-design 経由のクラウドインフラ設計 + Arch フィードバック |
-| `distillery:dist-design-system` | デザイントークン生成 + Storybook 変換 |
-| `distillery:dist-spec` | UC 単位詳細仕様 + OpenAPI/AsyncAPI + 全体横断 UX/UI 設計 |
-| `distillery:dist-spec-stories` | UC Spec + デザインシステムから Storybook Story 生成 |
-| `distillery:dist-pipeline` | 通常は全スキルを順次実行（デフォルト auto_adopt: ⭐推奨自動採用・完了時一括確認。`--interactive` で逐次対話）。単一feedback-request Markdownは内部でrouteして最小範囲を差分実行 |
+| `dist-migre` | バージョン間の変更ガイドを選び、LLMが既存出力を移行・検証する |
+| `dist-harvest` | 既存プロジェクトから要求を逆生成し USDM + RDRA を初期構築（as-is 分析・任意）。`--preflight` で、実装内部を読まずに変更の影響範囲を判定する軽量調査モード |
+| `dist-requirements` | USDM 分解 + RDRA モデルの差分/フルビルド |
+| `dist-quality-attributes` | IPA 非機能要求グレード 2018 による品質特性推論 |
+| `dist-architecture` | システム/アプリ/データアーキテクチャ設計（ベンダーニュートラル） |
+| `dist-infrastructure` | MCL product-design 経由のクラウドインフラ設計 + Arch フィードバック |
+| `dist-design-system` | デザイントークン生成 + Storybook 変換 |
+| `dist-spec` | UC 単位詳細仕様 + OpenAPI/AsyncAPI + 全体横断 UX/UI 設計 |
+| `dist-spec-stories` | UC Spec + デザインシステムから Storybook Story 生成 |
+| `dist-pipeline` | 通常は全スキルを順次実行（デフォルト auto_adopt: ⭐推奨自動採用・完了時一括確認。`--interactive` で逐次対話）。単一feedback-request Markdownは内部でrouteして最小範囲を差分実行 |
 
 ## Installation
 
@@ -101,7 +101,7 @@ UC本文にはデータフロー、分岐つきシーケンス、受入条件を
 ### 初回ビルド（新規プロジェクト）
 
 ```
-/distillery:dist-pipeline
+/dist-pipeline
 ```
 
 初期要望テキストのパスを聞かれるので指定してください。7スキル（requirements〜spec の6スキル + Step6a の spec-stories）が順次実行され、`docs/` 配下に全成果物が生成されます。
@@ -111,7 +111,7 @@ confidence: low の項目は仮採用 + `docs/todo.md` 登録とし、完了サ�
 必要なら feedback request で差分修正）。従来どおり途中で逐次確認したい場合は `--interactive` を付けます。
 
 ```
-/distillery:dist-pipeline --interactive
+/dist-pipeline --interactive
 ```
 
 **Step 別モデル指定**: `docs/pipeline/pipeline-config.yaml` の `step_models` で Step ごとに
@@ -142,17 +142,17 @@ macOS（osascript）/ Windows（PowerShell バルーン通知）/ Linux（notify
 既存リポジトリから要求・要件を吸い上げて distillery に取り込み、そこから再設計します。
 
 ```
-/distillery:dist-harvest ./repo
-/distillery:dist-harvest ./frontend ./backend      # モノレポ・複数リポジトリも可
+/dist-harvest ./repo
+/dist-harvest ./frontend ./backend      # モノレポ・複数リポジトリも可
 ```
 
 コード・エンドポイント定義・データストア定義・テスト・コミット履歴を RDRA 4レイヤーで as-is 分析し、
 「コードから読み取った事実」と「LLM の推測」を evidence / confidence で区別しながら、
 `docs/harvest/latest/` + `docs/usdm/latest/` + `docs/rdra/latest/` を初期構築します。以降は
-`/distillery:dist-quality-attributes` 以降のスキル（または `/distillery:dist-pipeline`）が無変更で動作します。
+`/dist-quality-attributes` 以降のスキル（または `/dist-pipeline`）が無変更で動作します。
 
 > **初期構築専用**: 既に `docs/rdra/latest/` が存在するプロジェクトには適用しません。既存モデルへの
-> 変更は差分更新モード（`/distillery:dist-requirements 変更要望テキストのパス`）を使用してください。
+> 変更は差分更新モード（`/dist-requirements 変更要望テキストのパス`）を使用してください。
 > なお下記の `--preflight`（影響調査）はこの制約の対象外で、RDRA モデルの有無に関係なく実行できます。
 
 ### 変更の影響範囲を先に調べる（preflight）
@@ -163,7 +163,7 @@ macOS（osascript）/ Windows（PowerShell バルーン通知）/ Linux（notify
 整理し、外部影響境界での影響を YES / NO / 保留で判定します。
 
 ```
-/distillery:dist-harvest --preflight ./調査資料 --change "変更したい内容"
+/dist-harvest --preflight ./調査資料 --change "変更したい内容"
 ```
 
 コードリポジトリが無い資産（Excel/Access マクロ・手順書ベースの業務・現場運用のあるアプリ）から、
@@ -182,8 +182,8 @@ stage名、stage別指示、レビュー情報は含めません。
 実行コマンドと判断材料は`docs/impl/latest/{uc_id}/NEXT.md`に永続化されています。
 
 ```text
-/distillery:dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md
-/distillery:dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md --recommended-auto
+/dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md
+/dist-pipeline docs/impl/latest/19ec0182/feedback-requests/20260729_121600_impl_feedback_19ec0182.md --recommended-auto
 ```
 
 dist-pipelineは次の順に処理します。
@@ -213,13 +213,13 @@ dist-pipelineは次の順に処理します。
 ### 個別実行
 
 ```
-/distillery:dist-requirements   変更要望テキストのパス
-/distillery:dist-quality-attributes
-/distillery:dist-architecture
-/distillery:dist-infrastructure
-/distillery:dist-design-system
-/distillery:dist-spec
-/distillery:dist-spec-stories
+/dist-requirements   変更要望テキストのパス
+/dist-quality-attributes
+/dist-architecture
+/dist-infrastructure
+/dist-design-system
+/dist-spec
+/dist-spec-stories
 ```
 
 既存の `docs/{rdra,nfr,arch,infra,design,specs}/latest/` を読み込み、差分更新モードで動作します。
@@ -267,7 +267,7 @@ MIT
 
 ## 既存出力のバージョン移行
 
-`/distillery:dist-migre docs/ を現在のスキルに合わせて移行して`で、該当版の変更点を基にLLMが計画・修正・検証を行います。
+`/dist-migre docs/ を現在のスキルに合わせて移行して`で、該当版の変更点を基にLLMが計画・修正・検証を行います。
 変更の導入版と判断材料は[移行ガイド](skills/dist-migre/references/migration-catalog.md)に蓄積します。プラグインのインストール更新とは別の処理です。
 [ガイド適用例](../../samples/distillery/migrations/README.md)では、1.13.5からの移行で読む変更点と検証範囲を示します。
-実装出力も移行する場合は、spec移行後に`distillery-impl:dist-impl-migre`を実行します。両スキルは移行先の版をそれぞれインストール済みpluginから読み取ります。
+実装出力も移行する場合は、spec移行後に`dist-impl-migre`を実行します。両スキルは移行先の版をそれぞれインストール済みpluginから読み取ります。

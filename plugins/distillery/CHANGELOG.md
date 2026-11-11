@@ -3,6 +3,14 @@
 distillery プラグインの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョンは semver（正本は `.claude-plugin/plugin.json`）。
 
+## [1.16.0] - 2026-11-12
+
+### Changed
+
+- スキルの `name` からプラグイン名とコロンを外した (`distillery:dist-spec` → `dist-spec`)。Agent Skills 仕様 (`name` は英小文字・数字・ハイフンのみ、ディレクトリ名と一致) に合わせ、コロンを受け付けないエージェントでも読めるようにするため。
+  Claude Code での呼び名はプラグイン名が自動で前置されるので変わらない (`/distillery:dist-spec`)。本文で他のスキルを呼ぶときはコロン無しの名前で書く
+- 1.9.4 から 1.15.1 までの変更はこのファイルに記録していない (git の履歴を参照)
+
 ## [1.9.4] - 2026-09-02
 
 ### Fixed

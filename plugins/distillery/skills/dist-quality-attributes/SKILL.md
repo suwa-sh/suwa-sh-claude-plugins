@@ -1,5 +1,5 @@
 ---
-name: distillery:dist-quality-attributes
+name: dist-quality-attributes
 description: >
   RDRA モデルから IPA 非機能要求グレードを推論・対話・出力するスキル。
   requirements スキルで構築した RDRA モデル（docs/rdra/latest/）を入力とし、

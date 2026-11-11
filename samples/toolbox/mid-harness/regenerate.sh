@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# regenerate.sh — このサンプル (init-output/) を現在の toolbox:mid-harness で作り直し、drift を検査する。
+# regenerate.sh — このサンプル (init-output/) を現在の mid-harness で作り直し、drift を検査する。
 #
 #   bash samples/toolbox/mid-harness/regenerate.sh          # 再生成して init-output/ を上書き
 #   bash samples/toolbox/mid-harness/regenerate.sh --check  # 再生成結果と init-output/ を比較 (差分があれば exit 1)

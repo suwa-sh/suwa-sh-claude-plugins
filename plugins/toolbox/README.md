@@ -4,7 +4,7 @@
 
 ## スキル
 
-### `toolbox:review-refute-loop` — クロスモデル外部レビュー収束ループ
+### `review-refute-loop` — クロスモデル外部レビュー収束ループ
 
 git diff / プラン / 直近の成果物を、実行中とは**別系統**のコーディングエージェント (Claude Code 実行時は Codex、Codex 実行時は Claude Code) に第三者レビューさせる。各指摘をまず自分で吟味 (反証) してから、反証しきれないものだけ修正し、再レビューで収束するまで最大 3 ラウンド繰り返す。
 
@@ -14,7 +14,7 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 
 トリガー例: 「外部レビューして」「セカンドオピニオン」「指摘を反証して」「この diff/プランをレビューに投げて」
 
-### `toolbox:human-html-review` — ヒトの判断待ちページを図と表で作る
+### `human-html-review` — ヒトの判断待ちページを図と表で作る
 
 文脈を忘れている読者でも 1 ページで状況を思い出し、判断できる自己完結 HTML を 1 ファイル生成する。固定フォーマットは無く、読者の問いの順にコンテンツを毎回設計する。
 
@@ -27,7 +27,7 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 
 トリガー例: 「このプランを確認用の HTML にして」「承認に必要な情報をまとめて」「選択肢を比較できる形で見せて」「レビューをお願いする画面を作って」
 
-### `toolbox:codex-imagen` — Codex → Grok → AGY の画像生成/編集
+### `codex-imagen` — Codex → Grok → AGY の画像生成/編集
 
 `codex exec` の imagen スキルをラップし、失敗時は Grok、Antigravity の順に退避する。指定した出力パスに PNG を保存して絶対パスを返し、入力画像を渡せば edit モードになる。
 
@@ -40,7 +40,7 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 
 トリガー例: 「画像を生成して」「codex で画像作って」「イラストを作って」「この画像を編集」
 
-### `toolbox:mid-harness` — 中ハーネス (portable core + 製品別 adapter) の展開・適用・検査
+### `mid-harness` — 中ハーネス (portable core + 製品別 adapter) の展開・適用・検査
 
 コーディングエージェントをまたいで持ち運べる資産 (AGENTS.md / skills / agent-specs / hooks / memory = **中ハーネス**) を、製品非依存の portable core に置き、各製品 (Claude Code / Codex CLI / Cursor / Grok Build / GitHub Copilot CLI / Antigravity CLI) が読む設定は core から生成する薄い adapter にする。
 
@@ -74,26 +74,26 @@ git diff / プラン / 直近の成果物を、実行中とは**別系統**の�
 
 ```
 # 現在の作業ツリー差分を外部レビューして収束させる
-/toolbox:review-refute-loop
+/review-refute-loop
 
 # 対象を指定してレビュー
-/toolbox:review-refute-loop notes/zenn/articles/foo.md
+/review-refute-loop notes/zenn/articles/foo.md
 
 # いま会話で判断待ちになっている事柄を確認ページにする
-/toolbox:human-html-review
+/human-html-review
 
 # 現在の変更の承認ページを生成
-/toolbox:human-html-review current changes
+/human-html-review current changes
 
 # 選択肢比較のページを生成
-/toolbox:human-html-review 認証の移行方式を A と B から選ぶ
+/human-html-review 認証の移行方式を A と B から選ぶ
 
 # 新規リポに中ハーネスを展開 (Claude Code + Codex)
-/toolbox:mid-harness init . --targets claude-code,codex
+/mid-harness init . --targets claude-code,codex
 
 # 既存リポに段階適用 / CI で drift と同等性を検査
-/toolbox:mid-harness apply .
-/toolbox:mid-harness audit .
+/mid-harness apply .
+/mid-harness audit .
 ```
 
 組み合わせパターン: 成果物を `review-refute-loop` で収束させてから、`human-html-review` でヒト承認用の HTML を出す、という 2 段構えが既定の使い方。

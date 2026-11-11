@@ -18,7 +18,7 @@
 
 ## 推奨(Verifier が指摘する品質基準)
 
-- ドメインロジックの実装判断は ddd plugin の `ddd:ddd-tactical-implementation` の基準に従う
+- ドメインロジックの実装判断は ddd plugin の `ddd-tactical-implementation` の基準に従う
   (値オブジェクト化 / 集約境界 / 貧血モデル回避。未インストール環境ではこの節と tier-rules.md を基準にする)
 - 関数・クラスは仕様の用語(RDRA の情報・状態・条件の名前)をそのまま使う。訳語・別名を発明しない
 - エラーは「利用者が直せる言葉」で返す(tier-*.md のエラー表に従う)

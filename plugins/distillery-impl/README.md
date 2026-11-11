@@ -81,14 +81,14 @@ flowchart TD
 
 | skill | 役割 |
 |---|---|
-| `distillery-impl:dist-impl-migre` | 旧版の実装出力をインストール済み版へLLMが移行。設定・契約・状態・コードを比較し、再開範囲を確認 |
-| `distillery-impl:dist-impl-run` | オーケストレータ。UC 指定または引数なし(実施順で自動選択)で実装・人レビュー・1 commit化・PR作成まで運転(通常はこれだけ呼べばよい) |
-| `distillery-impl:dist-impl-bootstrap` | 実装リポの骨格生成・契約 codegen・Storybook 取り込み(冪等) |
-| `distillery-impl:dist-impl-implement` | Implementer(test-scaffold / tier-impl / uc-bdd / atdd の 4 mode) |
-| `distillery-impl:dist-impl-verify` | Verifier(反証専用・8 観点。コード vs 仕様書を読解で突合 + 実装者が補った前提の照合) |
-| `distillery-impl:dist-impl-ui-review` | UI Reviewer(S5 並走レーン。実行された画面 vs story を実行で突合) |
-| `distillery-impl:dist-impl-feedback` | 変更要求・learnings・skill/コンテキスト改善提案 |
-| `distillery-impl:dist-impl-review` | ユーザーの承認・選択、推奨案、UC/仕様、図解、操作、テストをまとめる補助HTML生成 |
+| `dist-impl-migre` | 旧版の実装出力をインストール済み版へLLMが移行。設定・契約・状態・コードを比較し、再開範囲を確認 |
+| `dist-impl-run` | オーケストレータ。UC 指定または引数なし(実施順で自動選択)で実装・人レビュー・1 commit化・PR作成まで運転(通常はこれだけ呼べばよい) |
+| `dist-impl-bootstrap` | 実装リポの骨格生成・契約 codegen・Storybook 取り込み(冪等) |
+| `dist-impl-implement` | Implementer(test-scaffold / tier-impl / uc-bdd / atdd の 4 mode) |
+| `dist-impl-verify` | Verifier(反証専用・8 観点。コード vs 仕様書を読解で突合 + 実装者が補った前提の照合) |
+| `dist-impl-ui-review` | UI Reviewer(S5 並走レーン。実行された画面 vs story を実行で突合) |
+| `dist-impl-feedback` | 変更要求・learnings・skill/コンテキスト改善提案 |
+| `dist-impl-review` | ユーザーの承認・選択、推奨案、UC/仕様、図解、操作、テストをまとめる補助HTML生成 |
 
 ## 前提条件
 
@@ -97,20 +97,20 @@ flowchart TD
   `npx skills add cathrynlavery/diagram-design`を案内して停止）
 - Node.js(契約 codegen は npx で実行)
 - Java(openapi-generator 用。無い場合は `_api-summary.yaml` 起点の縮退モードで動作)
-- ddd plugin(`ddd:ddd-tactical-implementation`)推奨。未導入でも dev-rules のみで動作
+- ddd plugin(`ddd-tactical-implementation`)推奨。未導入でも dev-rules のみで動作
 
 ## 使い方
 
 ```
 # 引数なし: uc-map の実施順(bootstrap P2 が依存関係から計画)で次の未完了 UC を自動選択する。
 # UCごとにfeature branchとPRを作り、PR作成後はmergeを待って終了する
-/distillery-impl:dist-impl-run
+/dist-impl-run
 
 # UC を指定して実装開始
-/distillery-impl:dist-impl-run 貸出管理業務/貸出管理フロー/書籍を貸出する
+/dist-impl-run 貸出管理業務/貸出管理フロー/書籍を貸出する
 
 # 中断からの再開(同じ指定 or 引数なしでよい。完了済み stage は skip される)
-/distillery-impl:dist-impl-run 書籍を貸出する
+/dist-impl-run 書籍を貸出する
 ```
 
 オーケストレータは、利用者の判断が必要なときだけ質問します。
@@ -132,7 +132,7 @@ docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
 実行コマンドと判断材料は`docs/impl/latest/{uc_id}/NEXT.md`にも永続化されます。
 
 ```text
-/distillery:dist-pipeline {feedback-request.md}
+/dist-pipeline {feedback-request.md}
 ```
 
 所有stageが曖昧な場合、dist-pipelineは推奨案、代替案、影響、根拠を提示します。
@@ -152,7 +152,7 @@ Cloudflare Vulnerability Research Harnessの設計原則を、仕様駆動実装
 
 ## 既存出力のバージョン移行
 
-旧版の出力を残したままskillsを新版へ差し替えた後、`/distillery-impl:dist-impl-migre この実装リポジトリを現在のスキルに合わせて移行して`を使います。
+旧版の出力を残したままskillsを新版へ差し替えた後、`/dist-impl-migre この実装リポジトリを現在のスキルに合わせて移行して`を使います。
 移行先の版は実行中pluginから取得し、移行元は生成記録等と現物を照合します。特定できなければ確認します。
 [変更ガイド](skills/dist-impl-migre/references/migration-catalog.md)に沿ってLLMが修正・検証します。spec側も移行する場合はdist-migreを先に実行します。
 移行完了とS0〜S9の完了は別に報告し、未実施のstageや承認を完了扱いにしません。

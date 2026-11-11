@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Check dependencies for launch-claude skill
+# Check dependencies for cc-launch-claude skill
 set -euo pipefail
 
 errors=0

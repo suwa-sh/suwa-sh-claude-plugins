@@ -81,7 +81,7 @@ Agent/Task ツールの `model` パラメータに渡す（`null` なら model �
 |------|-----|
 | role | 既存プロジェクトからの要求逆生成 |
 | trigger_event_line | *(なし)* |
-| skill_name | distillery:dist-harvest |
+| skill_name | dist-harvest |
 | skill_args | ` 引数: "{対象リポジトリのパス（複数可）}"` |
 | model | pipeline-config の step_models.step0h（null なら未指定=セッション既定） |
 | trigger_event_instruction | *(なし)* |
@@ -93,7 +93,7 @@ Agent/Task ツールの `model` パラメータに渡す（`null` なら model �
 |------|-----|
 | role | USDM-RDRA パイプライン |
 | trigger_event_line | *(なし)* |
-| skill_name | distillery:dist-requirements |
+| skill_name | dist-requirements |
 | skill_args | 通常: ` 引数: "{要望テキストのパス}"` / feedback: ` 引数: "feedback_packet={stage_packet_path}"` |
 | model | pipeline-config の step_models.step1（null なら未指定=セッション既定） |
 | trigger_event_instruction | *(なし)* |
@@ -105,7 +105,7 @@ Agent/Task ツールの `model` パラメータに渡す（`null` なら model �
 |------|-----|
 | role | 非機能要求グレード定義 |
 | trigger_event_line | `前段イベント: rdra:{rdra_event_id}` |
-| skill_name | distillery:dist-quality-attributes |
+| skill_name | dist-quality-attributes |
 | skill_args | 通常: *(なし)* / feedback: ` 引数: "feedback_packet={stage_packet_path}"` |
 | model | pipeline-config の step_models.step2（null なら未指定=セッション既定） |
 | trigger_event_instruction | `前段イベント rdra:{rdra_event_id} を trigger_event としてイベントに記録してください。` |
@@ -117,7 +117,7 @@ Agent/Task ツールの `model` パラメータに渡す（`null` なら model �
 |------|-----|
 | role | アーキテクチャ設計 |
 | trigger_event_line | `前段イベント: rdra:{rdra_event_id}, nfr:{nfr_event_id}` |
-| skill_name | distillery:dist-architecture |
+| skill_name | dist-architecture |
 | skill_args | 通常: *(なし)* / feedback: ` 引数: "feedback_packet={stage_packet_path}"` |
 | model | pipeline-config の step_models.step3（null なら未指定=セッション既定） |
 | trigger_event_instruction | `前段イベント rdra:{rdra_event_id}, nfr:{nfr_event_id} を trigger_event としてイベントに記録してください。` |
@@ -129,7 +129,7 @@ Agent/Task ツールの `model` パラメータに渡す（`null` なら model �
 |------|-----|
 | role | インフラ設計（MCL実行） |
 | trigger_event_line | `前段イベント: arch:{arch_event_id}, nfr:{nfr_event_id}` |
-| skill_name | distillery:dist-infrastructure |
+| skill_name | dist-infrastructure |
 | skill_args | 通常: *(なし)* / feedback: ` 引数: "feedback_packet={stage_packet_path}"` |
 | model | pipeline-config の step_models.step4a（null なら未指定=セッション既定） |
 | trigger_event_instruction | `前段イベント arch:{arch_event_id}, nfr:{nfr_event_id} を trigger_event としてイベントに記録してください。` |
@@ -141,7 +141,7 @@ Agent/Task ツールの `model` パラメータに渡す（`null` なら model �
 |------|-----|
 | role | インフラ設計（イベント記録・Arch フィードバック） |
 | trigger_event_line | *(なし — Step4a の結果から取得)* |
-| skill_name | distillery:dist-infrastructure（ただしスキル呼び出しは不要。直接 Phase3〜5 を実行） |
+| skill_name | dist-infrastructure（ただしスキル呼び出しは不要。直接 Phase3〜5 を実行） |
 | skill_args | *(なし。feedback時はStep4aの同じstage packetを直接読む)* |
 | model | pipeline-config の step_models.step4b（既定 "sonnet"。イベント記録中心のため軽量化） |
 | trigger_event_instruction | *(なし)* |
@@ -153,7 +153,7 @@ Agent/Task ツールの `model` パラメータに渡す（`null` なら model �
 |------|-----|
 | role | デザインシステム生成 |
 | trigger_event_line | `前段イベント: rdra:{rdra_event_id}, arch:{arch_event_id}` |
-| skill_name | distillery:dist-design-system |
+| skill_name | dist-design-system |
 | skill_args | 通常: ` 引数: "design_generation=required"` / feedback: ` 引数: "feedback_packet={stage_packet_path} design_generation=required"`（pipeline が Step5 を起動する = config で実行が確定しているため、dist-design-system 側の「UI 無し → skip 推奨で終了」を抑止する） |
 | model | pipeline-config の step_models.step5（null なら未指定=セッション既定） |
 | trigger_event_instruction | `前段イベント rdra:{rdra_event_id}, arch:{arch_event_id} を trigger_event としてイベントに記録してください。` |
@@ -173,7 +173,7 @@ Agent/Task ツールの `model` パラメータに渡す（`null` なら model �
 |------|-----|
 | role | UC 仕様生成 |
 | trigger_event_line | `前段イベント: rdra:{rdra_event_id}, arch:{arch_event_id}, design:{design_event_id}` |
-| skill_name | distillery:dist-spec |
+| skill_name | dist-spec |
 | skill_args | 通常: *(なし)* / feedback: ` 引数: "feedback_packet={stage_packet_path}"` |
 | model | pipeline-config の step_models.step6（null なら未指定=セッション既定） |
 | trigger_event_instruction | `前段イベント rdra:{rdra_event_id}, arch:{arch_event_id}, design:{design_event_id} を trigger_event としてイベントに記録してください。` |

@@ -2,7 +2,7 @@
 name: d2-run
 description: >-
   distillery2 のオーケストレータ。要求→決定→基盤→UC 縦切りの段階を振り分け、サブエージェントを派遣し、
-  ゲートを安い順に実行し、人の判断が要る場面だけ確認ページ (toolbox:human-html-review) を出す。
+  ゲートを安い順に実行し、人の判断が要る場面だけ確認ページ (human-html-review) を出す。
   UC 単位で 1 commit に squash して main へ取り込む (PR / issue は作らない。git とファイルだけで完結する)。通常はこのスキルだけ呼べばよい。
   「要求から実装まで回して」「次の UC を実装して」「<UC 名> を実装して」などで発動。
 ---
@@ -14,12 +14,12 @@ description: >-
 ## 引数
 
 ```
-/distillery2:d2-run                                   # 次に必要な段階を自動で選ぶ
-/distillery2:d2-run stage=requirements input=<要望テキスト>
-/distillery2:d2-run stage=decide | stage=foundation
-/distillery2:d2-run uc=<slug | UC 名>                 # 指定 UC の縦切り (中断からの再開も同じ)
-/distillery2:d2-run uc=<slug | UC 名> merge=hold      # main へ取り込む手前で止める (headless 用。引数なしで再開すると取り込みから続く)
-/distillery2:d2-run ... mode=auto | mode=recommend    # どの起動にも付けられる。既定 auto (推奨で進み、不明点・課題は人に返す)。recommend は推奨で進めて最後にまとめて見せる ([references/routing.md](references/routing.md))
+/d2-run                                   # 次に必要な段階を自動で選ぶ
+/d2-run stage=requirements input=<要望テキスト>
+/d2-run stage=decide | stage=foundation
+/d2-run uc=<slug | UC 名>                 # 指定 UC の縦切り (中断からの再開も同じ)
+/d2-run uc=<slug | UC 名> merge=hold      # main へ取り込む手前で止める (headless 用。引数なしで再開すると取り込みから続く)
+/d2-run ... mode=auto | mode=recommend    # どの起動にも付けられる。既定 auto (推奨で進み、不明点・課題は人に返す)。recommend は推奨で進めて最後にまとめて見せる ([references/routing.md](references/routing.md))
 ```
 
 `merge=hold` を config に置かない理由: config は追跡ファイルで ③ の仕上げで再生成されるため、書き換えると作業ツリーが汚れ、再生成で値が戻る。
@@ -62,7 +62,7 @@ description: >-
   自分が作るすべての commit に attribution 行を trailer で付ける (git-delivery.md「commit の attribution」)
 - 実行状態は `.distillery/runs/<slug>/` の events + done ([references/run-state.md](references/run-state.md))。
   操作は `<skills>/d2-common/scripts/lib/runState.js` を通す。status ファイルは持たない
-- 人に確認するときは **必ず `toolbox:human-html-review`** で確認ページを作り、showme の URL とローカルパスを示す。
+- 人に確認するときは **必ず `human-html-review`** で確認ページを作り、showme の URL とローカルパスを示す。
   内部 ID (uc_id、SPEC-xxx、段階名) を本文に出さず名前で呼ぶ。回答は選択肢からコピーできる形にする。
   人に返すかどうかはモードで決める ([references/routing.md](references/routing.md)「人に返すとき」)。どの確認ページの問いにも推奨 (初期選択) を書き、推奨で決めたものも人が答えたものも `decisionLog.js` で記録する
 - 担当を受理するたびに引き継ぎファイル (人に聞くこと・前のステップの課題) を処理する (routing.md「引き継ぎファイルの処理」)。報告の本文に書かれただけの問いや課題は扱わない

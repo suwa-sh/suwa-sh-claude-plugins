@@ -1006,12 +1006,12 @@ publish events)と更新済み `review/review-notes.md` も含む(いずれも�
 - **次に実行するコマンド**(新セッションまたは `/clear` 後に 1 回):
 
   ```text
-  /distillery:dist-pipeline docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
+  /dist-pipeline docs/impl/latest/{uc_id}/feedback-requests/{feedback_id}.md
   ```
 
 - **`--recommended-auto` の判断材料**: CR の件数と severity 内訳の要旨
   (安全な推奨 routing を自動採用したい場合のみ付ける)
-- **pipeline 完了後の再開コマンド**: `/distillery-impl:dist-impl-run {uc_id}`
+- **pipeline 完了後の再開コマンド**: `/dist-impl-run {uc_id}`
   (distillery 側の仕様更新で input hash が変わった場合、影響を受けた done だけが
   projection 照合で再実行される旨を併記 — tier-scoped staleness)
 - **参照 path**: 公開 Markdown / ignored review/index.html / as-built-summary.md / learnings/

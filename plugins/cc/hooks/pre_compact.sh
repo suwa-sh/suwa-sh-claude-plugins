@@ -15,7 +15,7 @@ if [ -z "$transcript_path" ] || [ ! -f "$transcript_path" ]; then
   exit 0
 fi
 
-SKILL_MD="$PLUGIN_ROOT/skills/handover/SKILL.md"
+SKILL_MD="$PLUGIN_ROOT/skills/cc-handover/SKILL.md"
 if [ ! -f "$SKILL_MD" ]; then
   echo "ERROR: SKILL.md not found: $SKILL_MD" >&2
   exit 1

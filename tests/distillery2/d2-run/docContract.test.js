@@ -439,7 +439,7 @@ test('0.1.32 J2: 残った作業は種類ごとの宛先へ (design → d2-desig
   assert.match(d, /`review_approved` に `carry_over\.carry` が残る run \(0\.1\.30 形式\) でも読まずに main マージし、完了報告に「持ち越し N 件は次の起動で要求の差分に載る」と書く/);
   assert.doesNotMatch(section(DELIVERY, '## 手順 (squash)', '## 手順 (main への取り込み)'), /carryOver/);
   assert.doesNotMatch(read(TEMPLATE), /\*\*残った作業の追記\*\*/);
-  assert.match(read(TEMPLATE), /\| ① 要求の差分 \(画面部品\) \| 画面の見本の修正役 \| `distillery2:d2-design` `mode=feedback items=/);
+  assert.match(read(TEMPLATE), /\| ① 要求の差分 \(画面部品\) \| 画面の見本の修正役 \| `d2-design` `mode=feedback items=/);
   assert.match(wsRow('① 要求の差分 (画面部品)'), /`docs\/design\/\*\*`/);
   // run-state
   const rs = read(RUN_STATE);
@@ -817,7 +817,7 @@ test('0.1.36 C (S6): やり直しの退避は、要求の差分の中なら反�
 
 test('0.2.0: 2 つのモード。auto でも要求の承認と人レビューは必ず人に返し、recommend は推奨で承認して記録する。どの起動にも付けられ、config に置かない', () => {
   const t = read(SKILL);
-  assert.match(t, /\/distillery2:d2-run \.\.\. mode=auto \| mode=recommend {4}# どの起動にも付けられる。既定 auto/);
+  assert.match(t, /\/d2-run \.\.\. mode=auto \| mode=recommend {4}# どの起動にも付けられる。既定 auto/);
   const mode = routingSection('## モード');
   assert.match(mode, /起動の引数 `mode=auto` \(既定\) \/ `mode=recommend`。config には置かない \(③ で作り直されるため\)/);
   assert.match(mode, /`mode_resolved \{mode\}` を記録する/);
@@ -931,7 +931,7 @@ test('0.3.0: 機能の最初の点検 (precheck) を branch を切る前に main
   const pre = read('skills/d2-implement/references/precheck.md');
   assert.match(pre, /\*\*1 件見つけたら、残りもすべて洗い出して同じファイルに書く\*\*/);
   assert.match(pre, /戻し先は `requirements` \/ `decide` \/ `foundation` と、distillery2 の側の不具合の `plugin` \(8\) だけ/);
-  assert.match(row(read(TEMPLATE), /^\| ④ precheck \(ティアごと並列\) \|/), /`distillery2:d2-implement` `mode=precheck uc=<slug> tier=<tier>`/);
+  assert.match(row(read(TEMPLATE), /^\| ④ precheck \(ティアごと並列\) \|/), /`d2-implement` `mode=precheck uc=<slug> tier=<tier>`/);
 });
 
 test('0.3.0: 担当は課題のファイルを直接書かず、上流の課題は残りの段の分まで洗い出して引き継ぎファイルに書く。起票は重ねず、まだ通っていない段への課題は巻き戻さない', () => {

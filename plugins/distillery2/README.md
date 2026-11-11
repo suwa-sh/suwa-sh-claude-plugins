@@ -48,16 +48,16 @@ PR / issue は作らない。git とファイルだけで完結し、GitHub 以�
 
 | skill | 役割 |
 |---|---|
-| `distillery2:d2-run` | オーケストレータ。通常はこれだけ呼ぶ |
-| `distillery2:d2-requirements` | ① 要求。USDM / RDRA / UC 一覧 |
-| `distillery2:d2-decide` | ② 決定。非機能要求グレード表 + ADR (機械可読 rules 付き) + C4 図 (architecture.md)。決定の差分では mode=feedback でルールの穴を ADR 1 本にする |
-| `distillery2:d2-foundation` | ③ 基盤。rules / arch test / テスト基盤 / 設定 / CI / 依存の導入。契約の骨格と画面部品の後の仕上げ (契約込みの再生成・画面部品の取り込み・骨格分の契約テスト・チェックポイント) |
-| `distillery2:d2-design` | ③ 画面部品。tokens (ブランド起点) + Storybook + アセット + 目視証跡 |
-| `distillery2:d2-contract` | 契約カタログ (skeleton / uc の 2 モード。例ごとに URL の値・ヘッダ・テスト用データを指定して契約テストを作る) |
-| `distillery2:d2-implement` | ④ 実装者 (precheck / scenario / scaffold / tier / integrate)。precheck は機能の最初の点検 |
-| `distillery2:d2-verify` | ④ 別モデルの検証 (UC の意図・前提の整合) |
-| `distillery2:d2-asbuilt` | ④ 実装からの文書抽出 (依存グラフの実態・抽出・要約・書式の検査まで) |
-| `distillery2:d2-common` | 他のスキルが参照する共通定義。直接は起動しない。**処理と入出力の正本** ([dataflow.yaml](skills/d2-common/references/dataflow.yaml)) と、そこから生成した DFD ([dataflow.md](skills/d2-common/references/dataflow.md)) |
+| `d2-run` | オーケストレータ。通常はこれだけ呼ぶ |
+| `d2-requirements` | ① 要求。USDM / RDRA / UC 一覧 |
+| `d2-decide` | ② 決定。非機能要求グレード表 + ADR (機械可読 rules 付き) + C4 図 (architecture.md)。決定の差分では mode=feedback でルールの穴を ADR 1 本にする |
+| `d2-foundation` | ③ 基盤。rules / arch test / テスト基盤 / 設定 / CI / 依存の導入。契約の骨格と画面部品の後の仕上げ (契約込みの再生成・画面部品の取り込み・骨格分の契約テスト・チェックポイント) |
+| `d2-design` | ③ 画面部品。tokens (ブランド起点) + Storybook + アセット + 目視証跡 |
+| `d2-contract` | 契約カタログ (skeleton / uc の 2 モード。例ごとに URL の値・ヘッダ・テスト用データを指定して契約テストを作る) |
+| `d2-implement` | ④ 実装者 (precheck / scenario / scaffold / tier / integrate)。precheck は機能の最初の点検 |
+| `d2-verify` | ④ 別モデルの検証 (UC の意図・前提の整合) |
+| `d2-asbuilt` | ④ 実装からの文書抽出 (依存グラフの実態・抽出・要約・書式の検査まで) |
+| `d2-common` | 他のスキルが参照する共通定義。直接は起動しない。**処理と入出力の正本** ([dataflow.yaml](skills/d2-common/references/dataflow.yaml)) と、そこから生成した DFD ([dataflow.md](skills/d2-common/references/dataflow.md)) |
 
 呼び出し名は `/distillery2:<skill>`。SKILL.md の `name` は Agent Skills 仕様どおりディレクトリ名 (`d2-run` など) で、Claude Code がプラグイン名を前置する。
 スキル間の入出力 (各スキルの読む / 書く、基盤の phase 表、d2-run の直接の読み書き。派遣表の write-set は正本から生成する。0.1.31) は正本と

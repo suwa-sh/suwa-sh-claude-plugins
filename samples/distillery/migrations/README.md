@@ -4,8 +4,8 @@
 
 ## 通常の使い方
 
-旧outputを保持してskillsを新版へ差し替えた後、`distillery:dist-migre`を呼び出します。移行先版の指定は不要で、plugin.jsonから取得します。
-実装outputも対象なら、その後に`distillery-impl:dist-impl-migre`へ移行記録と更新済みspecを渡します。
+旧outputを保持してskillsを新版へ差し替えた後、`dist-migre`を呼び出します。移行先版の指定は不要で、plugin.jsonから取得します。
+実装outputも対象なら、その後に`dist-impl-migre`へ移行記録と更新済みspecを渡します。
 
 ## 1.13.5 → 1.14.0
 

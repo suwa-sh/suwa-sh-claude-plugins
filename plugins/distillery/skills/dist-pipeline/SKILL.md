@@ -1,5 +1,5 @@
 ---
-name: distillery:dist-pipeline
+name: dist-pipeline
 description: >
   USDM-RDRA パイプラインの全スキルを順次実行するワークフロースキル。
   初期要望テキストまたは変更要望テキストを入力とし、
@@ -27,7 +27,7 @@ description: >
   - `spec`
 
 > **注**: 本ドキュメントの Step 名（`requirements` 等）は論理名。実際に Skill ツールで呼び出す登録名は
-> `distillery:dist-requirements` のように `distillery:dist-` プリフィックス付き（`references/subagent-template.md` の skill_name 参照）。
+> `dist-requirements` のように `dist-` プリフィックス付き（`references/subagent-template.md` の skill_name 参照）。
 
 ## パイプライン概要
 
@@ -176,8 +176,8 @@ pipelineと並走させない。
 
 `docs/rdra/latest/` が空で、入力が既存プロジェクトの場合のみ実行する。
 
-1. `distillery:dist-harvest` スキルをサブエージェントで実行する（引数: 対象リポジトリのパス）。
-   `references/subagent-template.md` の Step0h 変数（skill_name = `distillery:dist-harvest`）を使う。
+1. `dist-harvest` スキルをサブエージェントで実行する（引数: 対象リポジトリのパス）。
+   `references/subagent-template.md` の Step0h 変数（skill_name = `dist-harvest`）を使う。
    dist-harvest は内部で USDM 逆生成 + RDRA フルビルドを行うため、**Step1（requirements）は
    dist-harvest が内包する。Step1 は別途実行せず、Step0h 完了後は Step2（quality-attributes）へ進む**。
 2. dist-harvest は対話ありの Step。`confidence: low` の項目の扱いは下記「1〜6. 各 Step の実行パターン」の
@@ -209,8 +209,8 @@ pipelineと並走させない。
 呼び出しは次のどちらか。省略時はinteractive mode。
 
 ```text
-/distillery:dist-pipeline path/to/{feedback_id}.md
-/distillery:dist-pipeline path/to/{feedback_id}.md --recommended-auto
+/dist-pipeline path/to/{feedback_id}.md
+/dist-pipeline path/to/{feedback_id}.md --recommended-auto
 ```
 
 **新しいセッション（または`/clear`後）での起動を推奨する。**入力は公開Markdown 1ファイルで完結しており、
@@ -475,7 +475,7 @@ open 件数が 1 以上の場合は「後続スキルから RDRA/NFR 等への�
 2. **仮採用（low・要確認）**: Step / 項目 / 仮採用値 / 他の選択肢 / 推奨理由 の一覧表。
    各項目に「このままでよいか、変更するか」の回答を促す
 3. 変更が必要な項目は **feedback request Markdown を作成して
-   `/distillery:dist-pipeline path/to/{feedback_id}.md` で差分実行**するよう案内する
+   `/dist-pipeline path/to/{feedback_id}.md` で差分実行**するよう案内する
    （`references/feedback-request-format.md` 準拠。回答内容から feedback request の下書きを提示してよい）
 
 ## ダッシュボード停止

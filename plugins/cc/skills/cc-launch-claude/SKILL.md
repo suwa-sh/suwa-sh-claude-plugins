@@ -1,5 +1,5 @@
 ---
-name: cc:launch-claude
+name: cc-launch-claude
 description: >-
   ghq 管理リポジトリを対象に、Ghostty のスプリットで新しい Claude Code セッションを起動し、
   起動済みセッションの操作も行うスキル。「launch claude」「start claude in」「open claude code in」
@@ -7,7 +7,7 @@ description: >-
   始めたいときに必ず使う。開きたいリポジトリ名だけの指示（例:「RDRAAgentで」「pkmを開いて」
   「sandboxで作業したい」「別セッションで開いて」）や、リポジトリのキーワードだけ言って
   新セッション起動を期待している場合でも発動する。起動時に自動実行するスラッシュコマンドの指定
-  （例:「/cc:launch-claude pkm /deep-research テーマ」）、モデルやエージェントペルソナの選択
+  （例:「/cc-launch-claude pkm /deep-research テーマ」）、モデルやエージェントペルソナの選択
   （例:「pkm を fable の marketer で開いて」）に対応。起動済みペインへの操作 —
   実行中セッションの一覧、ペインへのコマンド送信、外からの Remote Control 有効化
   （例:「さっき開いたセッションを remote on にして」「あのペインに /clear を送って」
@@ -34,9 +34,9 @@ Claude Code プラグインとしてインストールされた場合（`~/.clau
 `npx skills` 経由の場合（`~/.claude/skills/` や `./.claude/skills/`）でも同じ探索で見つかる:
 
 ```bash
-CHECK="$(find ~/.claude ./.claude -path '*/launch-claude/scripts/check_deps.sh' 2>/dev/null | head -1)"
+CHECK="$(find ~/.claude ./.claude -path '*/cc-launch-claude/scripts/check_deps.sh' 2>/dev/null | head -1)"
 if [ -z "$CHECK" ] || [ ! -f "$CHECK" ]; then
-  echo "ERROR: check_deps.sh not found. Reinstall the cc plugin or the cc:launch-claude skill." >&2
+  echo "ERROR: check_deps.sh not found. Reinstall the cc plugin or the cc-launch-claude skill." >&2
   exit 1
 fi
 bash "$CHECK"
@@ -85,7 +85,7 @@ Step 1 で抽出したキーワードで `ghq list -p | grep -i <keyword>` を�
 同梱の `scripts/launch_session.sh` を呼ぶ。このスクリプトが `claude` の起動コマンドを組み立てて安全にエスケープし、フロントウィンドウの選択中タブのフォーカス済みターミナルをスプリットする。**AppleScript を手書きしないこと**。scratchpad へのコピーはターン間で消えるうえ、クォート処理を誤りやすい。
 
 ```bash
-LAUNCH="$(find ~/.claude ./.claude -path '*/launch-claude/scripts/launch_session.sh' 2>/dev/null | head -1)"
+LAUNCH="$(find ~/.claude ./.claude -path '*/cc-launch-claude/scripts/launch_session.sh' 2>/dev/null | head -1)"
 bash "$LAUNCH" <target-dir> [--model <alias>] [--agent <name>] [--prompt '<slash-command...>']
 ```
 
@@ -115,7 +115,7 @@ bash "$LAUNCH" /Users/me/src/pkm --prompt '/deep-research ハーネスエンジ�
 ユーザーが**すでに開いている**セッションに言及したら（「さっき立ち上げたやつ」「あのペイン」「起動済みのセッション」）、`scripts/session_ctl.sh` を使う。`check_deps.sh` と同じ方法で探す:
 
 ```bash
-CTL="$(find ~/.claude ./.claude -path '*/launch-claude/scripts/session_ctl.sh' 2>/dev/null | head -1)"
+CTL="$(find ~/.claude ./.claude -path '*/cc-launch-claude/scripts/session_ctl.sh' 2>/dev/null | head -1)"
 ```
 
 | コマンド | 動作 |
