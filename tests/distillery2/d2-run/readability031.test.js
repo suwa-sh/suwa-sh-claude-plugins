@@ -122,12 +122,25 @@ test('genRules: 決定ごとのルールは、要点と ADR へのリンクの�
   W(dir, 'docs/adr/0003-data.md', '---\nid: "0003"\ntitle: "データは RDB 1 つに置く"\nstatus: accepted\nscope: [data]\nrules:\n  - scope: tier:backend\n    text: "migration は追加だけ"\n  - scope: tier:backend\n    text: "日時は UTC で保存する"\n  - scope: tier:backend\n    text: "domain は repository に依存しない"\n    arch_test: { from: "apps/b/src/domain/**", to: "apps/b/src/repository/**", effect: forbid, level: layer }\ntiers:\n  - { id: b, dir: apps/b, kind: backend, lang: ts }\n---\n');
   execFileSync(process.execPath, [path.join(PLUGIN, 'skills/d2-foundation/scripts/genRules.js'), '--cwd', dir, '--adr', 'docs/adr', '--out', 'docs/rules'], { encoding: 'utf8' });
   const md = fs.readFileSync(path.join(dir, 'docs/rules/tier-backend.md'), 'utf8');
-  assert.match(md, /\| 決定 \| 要点 \| 細目 \|\n\|---\|---\|---\|\n\| \[ADR 0003\]\(\.\.\/adr\/0003-data\.md\) \| データは RDB 1 つに置く \| 2 件 \|/);
+  assert.match(md, /\| 決定 \| 要点 \| 細目 \|\n\|---\|---\|---\|\n\| \[ADR 0003\]\(\.\.\/adr\/0003-data\.md\) \| データは RDB 1 つに置く \| 2 件 \+ 依存の向き 1 件 \(上の表\) \|/);
   assert.match(md, /<details>\n<summary><b>ADR 0003<\/b> データは RDB 1 つに置く \(2 件\)<\/summary>\n\n- migration は追加だけ\n- 日時は UTC で保存する\n\n<\/details>/);
   // 依存の向きの表の出典もリンクにする
   assert.match(md, /\| domain は repository に依存しない \| \[ADR 0003\]\(\.\.\/adr\/0003-data\.md\) \|/);
   assert.doesNotMatch(md, /^### ADR /m);
-  assert.ok(fs.existsSync(path.resolve(dir, 'docs/rules', '../adr/0003-data.md')), 'リンク先が実在する');
+  // 依存の向きだけを決めた ADR も要点の表に載る (折りたたみは作らず、細目は依存の向きの表を指す)
+  W(dir, 'docs/adr/0004-layers.md', '---\nid: "0004"\ntitle: "依存は内側へ向ける"\nstatus: accepted\nscope: [app]\nrules:\n  - scope: tier:backend\n    text: "usecase は presentation に依存しない"\n    arch_test: { from: "apps/b/src/usecase/**", to: "apps/b/src/presentation/**", effect: forbid, level: layer }\n---\n');
+  execFileSync(process.execPath, [path.join(PLUGIN, 'skills/d2-foundation/scripts/genRules.js'), '--cwd', dir, '--adr', 'docs/adr', '--out', 'docs/rules'], { encoding: 'utf8' });
+  const md2 = fs.readFileSync(path.join(dir, 'docs/rules/tier-backend.md'), 'utf8');
+  assert.match(md2, /\| \[ADR 0003\]\(\.\.\/adr\/0003-data\.md\) \| データは RDB 1 つに置く \| 2 件 \+ 依存の向き 1 件 \(上の表\) \|\n\| \[ADR 0004\]\(\.\.\/adr\/0004-layers\.md\) \| 依存は内側へ向ける \| 依存の向き 1 件 \(上の表\) \|/);
+  assert.doesNotMatch(md2, /<summary><b>ADR 0004<\/b>/);
+  // 依存の向きだけの ADR しか無いファイルでも、要点の表は出る
+  fs.rmSync(path.join(dir, 'docs/adr/0003-data.md'));
+  W(dir, 'docs/adr/0001-tiers.md', '---\nid: "0001"\ntitle: "ティアは 1 つ"\nstatus: accepted\nscope: [system]\ntiers:\n  - { id: b, dir: apps/b, kind: backend, lang: ts }\n---\n');
+  execFileSync(process.execPath, [path.join(PLUGIN, 'skills/d2-foundation/scripts/genRules.js'), '--cwd', dir, '--adr', 'docs/adr', '--out', 'docs/rules'], { encoding: 'utf8' });
+  const md3 = fs.readFileSync(path.join(dir, 'docs/rules/tier-backend.md'), 'utf8');
+  assert.match(md3, /## 決定ごとのルール[\s\S]*\| \[ADR 0004\]\(\.\.\/adr\/0004-layers\.md\) \| 依存は内側へ向ける \| 依存の向き 1 件 \(上の表\) \|/);
+  assert.doesNotMatch(md3, /<details>/);
+  assert.ok(fs.existsSync(path.resolve(dir, 'docs/rules', '../adr/0004-layers.md')), 'リンク先が実在する');
   assert.match(read('skills/d2-foundation/references/rule-templates/index.md'), /自分が触る領域の折りたたみを必ず開いて細目を読む/);
 });
 
@@ -177,5 +190,6 @@ test('決定の領域: 冪等性と再試行を必ず決める領域 (15) にし
   assert.match(msg, /冪等性は、メッセージングの ADR には書かない。同期の API も非同期の処理も、冪等性と再試行の ADR \(idempotency-retry\.md\) の 1 本に書く/);
   assert.doesNotMatch(msg.split('## 冪等性')[1].split('\n## ')[0], /scope:/, '非同期の冪等性のルール例はメッセージングに置かない (記録先は 1 本)');
   assert.match(c, /scope: tier:worker\n  text: "同じメッセージ ID を 2 回受けても、副作用を重複させない"/);
+  assert.match(msg, /^同期 \/ 非同期、outbox、Saga を決める \(冪等性はここでは決めない。冪等性と再試行の ADR に書く\)。/m);
   assert.doesNotMatch(msg, /Idempotency-Key/, 'API の冪等キーの例をメッセージングに残さない (新しい領域の選択と食い違う)');
 });

@@ -1,6 +1,6 @@
 # 決定候補カタログ: メッセージング
 
-同期 / 非同期、outbox、非同期の処理の冪等性を決める。ADR の `scope: [app]` または `[system]`。
+同期 / 非同期、outbox、Saga を決める (冪等性はここでは決めない。冪等性と再試行の ADR に書く)。ADR の `scope: [app]` または `[system]`。
 AsyncAPI が要るプロダクトのときだけ ADR を書く (required-decisions.md の条件付き必須)。
 
 ---

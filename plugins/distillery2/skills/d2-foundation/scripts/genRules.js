@@ -92,19 +92,23 @@ function renderDecisionRules(rules, adrRel = '../adr') {
     }
     out.push('');
   }
-  if (plainRules.length) {
+  if (rules.length) {
     out.push('## 決定ごとのルール', '');
-    out.push('表は決定ごとの要点。細目は下の折りたたみを開いて読む。**実装のときは、自分が触る領域の細目を必ず開いて読む。** 背景と却下した案は ADR (リンク先)。', '');
+    out.push('表は決定ごとの要点。細目は下の折りたたみを開いて読む (依存の向きだけの決定は、上の「依存の向き」の表が細目)。**実装のときは、自分が触る領域の細目を必ず開いて読む。** 背景と却下した案は ADR (リンク先)。', '');
+    // 要点の表には、依存の向きだけを決めた ADR も載せる (一覧から決定が抜けない)。rules は ADR id 昇順で来る
     const groups = [];
-    for (const r of plainRules) {
-      const g = groups[groups.length - 1];
-      if (g && g.id === r.id) g.rules.push(r);
-      else groups.push({ id: r.id, title: r.title, file: r.file, rules: [r] });
+    for (const r of rules) {
+      let g = groups[groups.length - 1];
+      if (!g || g.id !== r.id) { g = { id: r.id, title: r.title, file: r.file, rules: [], arch: 0 }; groups.push(g); }
+      if (r.arch_test && r.arch_test.from && r.arch_test.to) g.arch++;
+      else g.rules.push(r);
     }
+    const detail = (g) => [g.rules.length ? `${g.rules.length} 件` : '', g.arch ? `依存の向き ${g.arch} 件 (上の表)` : ''].filter(Boolean).join(' + ');
     out.push('| 決定 | 要点 | 細目 |', '|---|---|---|');
-    for (const g of groups) out.push(`| ${link(g)} | ${escapeCell(g.title)} | ${g.rules.length} 件 |`);
+    for (const g of groups) out.push(`| ${link(g)} | ${escapeCell(g.title)} | ${detail(g)} |`);
     out.push('');
     for (const g of groups) {
+      if (!g.rules.length) continue;
       out.push('<details>', `<summary><b>ADR ${g.id}</b>${g.title ? ' ' + escapeHtml(g.title) : ''} (${g.rules.length} 件)</summary>`, '');
       for (const r of g.rules) out.push(`- ${r.text}`);
       out.push('', '</details>', '');
