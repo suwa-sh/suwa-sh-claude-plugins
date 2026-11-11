@@ -1,7 +1,6 @@
 ---
-name: cc:handover
+name: cc-handover
 description: セッション引き継ぎドキュメント(HANDOVER.md)を生成します。コンパクション前や作業の区切りで使用してください。
-argument-hint: [追加の指示やメモ（任意）]
 ---
 
 # セッション引き継ぎドキュメント生成

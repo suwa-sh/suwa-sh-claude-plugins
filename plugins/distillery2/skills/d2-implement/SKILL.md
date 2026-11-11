@@ -14,7 +14,7 @@ description: >-
 
 引数: `mode=precheck|scenario|scaffold|tier|integrate uc=<slug> [tier=<tier_id>] [attempt=<n>] [findings=<path>]`
 
-v1 (distillery-impl:dist-impl-implement) からの変更点:
+v1 (dist-impl-implement) からの変更点:
 
 - 個別仕様書・ティア仕様書を読まない。読むのは シナリオ・要求の該当行・契約 slice・ルール・画面部品 だけ
 - ティア BDD が無い。ティアの契約適合は生成された契約テスト (`apps/<tier>/test/contract/`) が担う

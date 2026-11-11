@@ -1,5 +1,5 @@
 ---
-name: distillery:dist-requirements
+name: dist-requirements
 description: >
   RDRA x USDM x Event Sourcing による差分パイプライン型の要件定義スキル。
   変更要望テキストを USDM 分解し、RDRA モデルを差分更新する。

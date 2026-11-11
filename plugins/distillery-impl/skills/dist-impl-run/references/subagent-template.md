@@ -66,7 +66,7 @@ done の `manifest_sha256` は**オーケストレータが state-schema.md の 
 | 変数 | 値 |
 |------|-----|
 | role | 実装リポ bootstrap |
-| skill_name | distillery-impl:dist-impl-bootstrap |
+| skill_name | dist-impl-bootstrap |
 | skill_args | ` 引数: "specs_root={specs_root} repo_root={repo_root}"` |
 | write_set | 実装リポ全体(初期生成)+ docs/impl/latest/ の config/uc-map/lock |
 | additional_instructions | `冪等に実行してください(既存の生成物は Phase 完了判定ファイルで skip)。preflight の結果(java/node/ddd plugin の有無)と capability フラグを必ず報告してください。` |
@@ -87,7 +87,7 @@ packages/contracts/ 出力 dir と contracts.lock.yaml の該当エントリと
 | 変数 | 値 |
 |------|-----|
 | role | 4 段テスト足場の生成 |
-| skill_name | distillery-impl:dist-impl-implement |
+| skill_name | dist-impl-implement |
 | skill_args | ` 引数: "mode=test-scaffold uc_id={uc_id} config={impl-config へのパス} manifest_sha256={S2 global projection hash} [tiers={scoped 再実行時の対象 tier 集合(カンマ区切り)}]"` |
 | write_set | 各 tier の features/ と test/(**tiers 指定時は指定 tier のみ**)、features/uc/(**tiers 指定の scoped 再実行では spec.md 変更時を除き触れない**)、features/atdd/、stages/S2_test-scaffold.done.yaml、対象 UC の issues/(矛盾 3 条件の起票) |
 | additional_instructions | 固定部: `stage-instructions/S2_test-scaffold.md`(ファイル参照方式)。可変部: なし(tiers 指定の有無は skill_args で伝わる) |
@@ -97,7 +97,7 @@ packages/contracts/ 出力 dir と contracts.lock.yaml の該当エントリと
 | 変数 | 値 |
 |------|-----|
 | role | {tier_id} の Implementer |
-| skill_name | distillery-impl:dist-impl-implement |
+| skill_name | dist-impl-implement |
 | skill_args | ` 引数: "mode=tier-impl uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス} manifest_sha256={当該 tier の tier projection hash}"` |
 | model | impl-config の implementer_model(null なら未指定=セッション既定) |
 | write_set | {tier_dir}/ 配下、attempt-{n}/S4_tier-impl.{tier_id}.done.yaml、attempt-{n}/S4_tier-impl.{tier_id}.assumptions.yaml、issues/ |
@@ -109,7 +109,7 @@ packages/contracts/ 出力 dir と contracts.lock.yaml の該当エントリと
 |------|-----|
 | role | {tier_id} の Verifier(反証専用) |
 | agent_type | **`distillery-impl:impl-verifier`**(plugin 同梱 agent。disallowedTools 制約を効かせる) |
-| skill_name | distillery-impl:dist-impl-verify |
+| skill_name | dist-impl-verify |
 | skill_args | ` 引数: "uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス} manifest_sha256={当該 tier の tier projection hash} assumptions={attempt-{n}/S4_tier-impl.{tier_id}.assumptions.yaml へのパス}"` |
 | model | **impl-config の verifier_model(必須。Agent/Task ツールの model パラメータで渡す)** |
 | write_set | attempt-{n}/S5_verify.{tier_id}.done.yaml と .findings.yaml のみ |
@@ -124,7 +124,7 @@ dispatch 条件(target 集合の算出を含む)は `dist-impl-run/SKILL.md` の
 |------|-----|
 | role | {tier_id} の UI Reviewer(実行ベースの反証専用) |
 | agent_type | **`distillery-impl:impl-verifier`**(plugin 同梱 agent。汎用反証 agent — 呼び出す skill は下記で指定) |
-| skill_name | distillery-impl:dist-impl-ui-review |
+| skill_name | dist-impl-ui-review |
 | skill_args | ` 引数: "uc_id={uc_id} tier={tier_id} attempt={n} config={impl-config へのパス} manifest_sha256={当該 tier の tier projection hash} targets={dist-impl-run が算出した executable target 集合} targets_hash={算出した canonical hash} targets_count={targets 件数} [checks={dom_snapshot,capture_review}]"`(`checks` は省略時 capability の全 check。skipped(runtime_unavailable) 復旧の再 dispatch 時のみ `checks=capture_review` を渡す — D10。`targets_hash`/`targets_count` の計算規則は state-schema.md「dispatch target の canonical hash」) |
 | model | **impl-config の verifier_model(dist-impl-verify と同じ値を流用。impl-config にキーを増やさない)** |
 | write_set | **通常 dispatch**: `attempt-{n}/S5_ui-review.{tier_id}.done.yaml` と `.findings.yaml`、`attempt-{n}/ui-artifacts/{tier_id}/`(capture_review が書く SSR 静的 HTML `render/` サブディレクトリ・キャプチャ画像を含む)のみ。**`checks=capture_review` の再実行時は例外**(D10 round2): `attempt-{n}/ui-artifacts/{tier_id}/staging/` のみ。canonical な done・`.findings.yaml`・`ui-artifacts/{tier_id}/`(`staging/` を除く)への書き込みは禁止 |
@@ -135,7 +135,7 @@ dispatch 条件(target 集合の算出を含む)は `dist-impl-run/SKILL.md` の
 | 変数 | 値 |
 |------|-----|
 | role | UC 統合テスト実行者(integration writer) |
-| skill_name | distillery-impl:dist-impl-implement |
+| skill_name | dist-impl-implement |
 | skill_args | ` 引数: "mode=uc-bdd uc_id={uc_id} config={...} manifest_sha256={global projection hash}"`(S7 は `mode=atdd`) |
 | write_set | features/uc/(S7 は features/atdd/)、その steps/、S6/S7 done |
 | additional_instructions | `tier 実装は変更禁止です。step definition の実装と統合実行のみ行い、fail した場合は「どの tier の何が仕様と食い違うか」を分析して結果を返してください(修正はオーケストレータが S4 差し戻しを判断します)。S7(atdd)では uc-map の atdd_scenarios に列挙された Scenario だけを、一意タグ @atdd_{SPEC-ID}-{連番} の完全一致で選択実行してください(名前の部分一致フィルタ禁止・feature 全体を回さない)。実行された Scenario 件数が atdd_scenarios の件数と一致することを done の条件にしてください。仕様ギャップ起因で統合に必要な前提(認証ヘッダ等)が欠ける場合、steps 内でのハーネス注入を許容します。注入箇所には根拠(起票済み issue のパス、または当該 tier の AssumptionRecord の id と assumptions.yaml のパス)と「暫定注入・契約確定後に削除」コメントを必ず付けてください。前提の新規抽出は行わないでください。` |
@@ -145,7 +145,7 @@ dispatch 条件(target 集合の算出を含む)は `dist-impl-run/SKILL.md` の
 | 変数 | 値 |
 |------|-----|
 | role | 仕様フィードバックと学びの整理 |
-| skill_name | distillery-impl:dist-impl-feedback |
+| skill_name | dist-impl-feedback |
 | skill_args | ` 引数: "uc_id={uc_id} config={...} mode={initial|refresh|publish} manifest_sha256={global projection hash} [supersedes={feedback_id}]"` |
 | write_set | initial/refresh: feedback/、learnings/、stages/S8_feedback.done.yaml / publish: feedback/draft.md、feedback-requests/、stages/S8_feedback.done.yaml、feedback_request_publish_started/published event |
 | additional_instructions | `issues/ と findings を読み、仕様起因のものだけを単一feedback draftへまとめてください。pipeline内部のstage名・振り分け・stage別処理指示は書かないでください。skill・CLAUDE.mdへの学びは提案ファイルに書くだけで、既存ファイルを編集しないでください。` |
@@ -165,7 +165,7 @@ containment・regular/non-symlink・SHA・件数・lineageのexact一致時だ�
 | 変数 | 値 |
 |------|-----|
 | role | レビュー資料の生成 |
-| skill_name | distillery-impl:dist-impl-review |
+| skill_name | dist-impl-review |
 | skill_args | ` 引数: "uc_id={uc_id} config={...} manifest_sha256={global projection hash}"` |
 | write_set | gitignore済みreview/index.html、stages/S9_review_generated.done.yaml |
 | additional_instructions | 固定部: `stage-instructions/S9_review.md`(ファイル参照方式)。可変部: なし |

@@ -59,6 +59,6 @@ RDBのdomain分割は文書の所有境界。物理DB・トランザクション
 
 ## dist-implへの接続
 
-実装出力の移行は`distillery-impl:dist-impl-migre`へ引き継ぐ。本スキルは移行したspec・契約・未解決項目を示し、実装側のconfig・lock・codegen・stage状態を変更しない。
+実装出力の移行は`dist-impl-migre`へ引き継ぐ。本スキルは移行したspec・契約・未解決項目を示し、実装側のconfig・lock・codegen・stage状態を変更しない。
 後段では、実際の最新版規約に従ってbundle・UC slice・RDB・Storybookへの接続を確認する。
 両方の移行を依頼されている場合は本スキル完了後に実行する。前段が未完了の範囲を実装可能な確定仕様として渡さない。

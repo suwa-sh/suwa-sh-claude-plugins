@@ -1,5 +1,5 @@
 ---
-name: distillery:dist-harvest
+name: dist-harvest
 description: >
   既存プロジェクト（リポジトリ）からドキュメント・コード・設定を解析して要求・要件を吸い上げ、
   distillery パイプラインの正規入力（USDM + RDRA）を初期構築するリバースエンジニアリングスキル。
@@ -114,7 +114,7 @@ docs/
 ## preflight パス（`--preflight`）
 
 ```
-/distillery:dist-harvest --preflight <対象パス...> [--change <変更内容テキストまたはファイルパス>]
+/dist-harvest --preflight <対象パス...> [--change <変更内容テキストまたはファイルパス>]
 ```
 
 1. **入力確認**: 対象パスの存在と、**処理・業務の流れまたは構成を説明するテキスト（手順書・README・
@@ -145,7 +145,7 @@ preflight は調査で完結する（USDM / RDRA の生成・更新は行わな�
 1. **対象リポジトリパスの確認**: 引数で渡されたディレクトリパスの存在を確認する。未指定なら質問する。
 2. **既存 RDRA チェック**: `docs/rdra/latest/` に `*.tsv` が存在する場合は**中断**し、次を案内する:
    「既に RDRA モデルが存在します。既存モデルへの変更は差分更新モード
-   （`/distillery:dist-requirements 変更要望テキストのパス`）を使用してください。dist-harvest は
+   （`/dist-requirements 変更要望テキストのパス`）を使用してください。dist-harvest は
    初期構築専用です。」
 3. **--continue 指定時**: `docs/harvest/events/` の最新イベントの `checklist.md` を読み、
    未完了タスクから再開する。
@@ -334,7 +334,7 @@ Phase2〜5 も同様に、`初期要望.txt` を `docs/usdm/latest/requirements.
 - 生成した成果物: `docs/harvest/latest/`, `docs/usdm/latest/`, `docs/rdra/latest/`
 - 逆生成した要求件数 / UC 数 / 情報数などのサマリ
 - **`confidence: low` の項目一覧**（後段で検証・修正が望ましい推測項目）
-- 次の一手の案内: 「`/distillery:dist-quality-attributes` 以降を実行すると、この as-is モデルを起点に
+- 次の一手の案内: 「`/dist-quality-attributes` 以降を実行すると、この as-is モデルを起点に
   非機能要求・アーキテクチャ・仕様を再設計できます。」
 
 ## 確認推奨項目の返却（dialogue-format 準拠）

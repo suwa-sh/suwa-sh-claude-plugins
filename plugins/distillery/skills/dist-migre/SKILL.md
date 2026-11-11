@@ -1,5 +1,5 @@
 ---
-name: distillery:dist-migre
+name: dist-migre
 description: >
   Distilleryの既存出力をバージョン間の変更ガイドに沿って移行する。
   移行元・移行先に該当する変更点だけを読み、LLMが仕様と参照先を比較して修正・検証する。
@@ -43,10 +43,10 @@ description: >
 利用例:
 
 ```text
-/distillery:dist-migre docs/ を現在のスキルに合わせて移行して
-/distillery:dist-migre docs/ の移行計画だけ作って
+/dist-migre docs/ を現在のスキルに合わせて移行して
+/dist-migre docs/ の移行計画だけ作って
 ```
 
-実装出力も対象なら本スキル → `distillery-impl:dist-impl-migre`の順に使う。前段の移行記録・未解決項目・変更したlatestを引き継ぎ、実装コードや実行状態は後段で扱う。
+実装出力も対象なら本スキル → `dist-impl-migre`の順に使う。前段の移行記録・未解決項目・変更したlatestを引き継ぎ、実装コードや実行状態は後段で扱う。
 
 将来の変更点を追加するときだけ `references/maintaining-guides.md` を読む。

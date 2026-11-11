@@ -13,7 +13,7 @@ Agent Skills ドキュメント・シード CSV(実データ)・設定ファイ�
 ## 実行コマンド
 
 ```
-/distillery:dist-harvest --preflight <tbm-template のローカルパス> --change "共通費の配賦ルールを人数比からコスト比に変更したい"
+/dist-harvest --preflight <tbm-template のローカルパス> --change "共通費の配賦ルールを人数比からコスト比に変更したい"
 ```
 
 - 実行時の対象 revision: `d25f982`(2026-08-13 時点の main)

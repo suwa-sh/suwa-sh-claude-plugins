@@ -44,7 +44,7 @@ pipeline側の実行記録は[feedback-runs/](../distillery/pipeline/pipeline/fe
 ## 再現方法
 
 ```text
-/distillery-impl:dist-impl-run 貸出管理業務/貸出管理フロー/書籍を貸出する specs_root={samples/distillery/pipeline の複製} repo_root={空のgit repository}
+/dist-impl-run 貸出管理業務/貸出管理フロー/書籍を貸出する specs_root={samples/distillery/pipeline の複製} repo_root={空のgit repository}
 ```
 
 ## 旧版出力の移行

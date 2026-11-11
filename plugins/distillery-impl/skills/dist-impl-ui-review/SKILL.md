@@ -1,5 +1,5 @@
 ---
-name: distillery-impl:dist-impl-ui-review
+name: dist-impl-ui-review
 description: >
   distillery-impl の UI Reviewer スキル。dist-impl-verify(コード vs 仕様書、手段は読解)とは
   対象も手段も異なる並走レビューレーンとして、実行された画面 vs story のレンダリング結果を

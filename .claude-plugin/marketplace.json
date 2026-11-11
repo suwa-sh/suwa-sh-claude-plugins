@@ -7,7 +7,7 @@
     {
       "name": "cc",
       "source": "./plugins/cc",
-      "description": "Claude Code 運用支援: セッション間コンテキスト自動引き継ぎ(cc:handover)とghq管理リポジトリでGhosttyスプリットにClaude Codeセッションを起動(cc:launch-claude)の2スキル"
+      "description": "Claude Code 運用支援: セッション間コンテキスト自動引き継ぎ(cc-handover)とghq管理リポジトリでGhosttyスプリットにClaude Codeセッションを起動(cc-launch-claude)の2スキル"
     },
     {
       "name": "distillery",
@@ -27,7 +27,7 @@
     {
       "name": "toolbox",
       "source": "./plugins/toolbox",
-      "description": "汎用ワークフロースキル集: クロスモデル外部レビュー収束ループ(toolbox:review-refute-loop)、文脈を忘れた読者でも判断できる図と表の確認ページ生成(toolbox:human-html-review)、Codex→Grok→AGYの画像生成/編集(toolbox:codex-imagen)。今後も汎用スキルを追加予定"
+      "description": "汎用ワークフロースキル集: クロスモデル外部レビュー収束ループ(review-refute-loop)、文脈を忘れた読者でも判断できる図と表の確認ページ生成(human-html-review)、Codex→Grok→AGYの画像生成/編集(codex-imagen)。今後も汎用スキルを追加予定"
     },
     {
       "name": "distillery2",

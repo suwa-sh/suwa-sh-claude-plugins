@@ -1,5 +1,5 @@
 ---
-name: distillery-impl:dist-impl-verify
+name: dist-impl-verify
 description: >
   distillery-impl の Verifier スキル。Implementer とは別モデル・別コンテキストの反証専用エージェントとして、
   単一 UC × tier の成果物を仕様(tier md / 契約 / feature)と突き合わせ、8 観点

@@ -1,5 +1,5 @@
 ---
-name: distillery-impl:dist-impl-implement
+name: dist-impl-implement
 description: >
   distillery-impl の Implementer スキル。mode 引数で 4 役を切り替える:
   test-scaffold(4 段テストの red baseline 生成)/ tier-impl(単一 UC × tier の TDD 実装、
@@ -114,7 +114,7 @@ description: >
      (停止しない。ui_screen_resolution が plain_ui_confirmed / feedback_requested の場合は
      UI 突合そのものをスキップする)
 2. **ddd ガイドの読込**(capabilities.has_ddd_plugin が true の場合):
-   Skill ツールで `ddd:ddd-tactical-implementation` を呼び出し、判断ゲートとワークフローを把握してから
+   Skill ツールで `ddd-tactical-implementation` を呼び出し、判断ゲートとワークフローを把握してから
    実装に入る。呼び出し時に平文で渡す: 対象言語 / 実装対象モデル(_model-summary.yaml の該当エンティティ)/
    不変条件・業務ルール(tier md のビジネスルール欄)/ 成果物パス({tier_dir}/src)。
    false の場合は `docs/dev-rules/coding-rules.md` の基準のみで実装する

@@ -13,8 +13,8 @@
 呼び出しは次のどちらか。省略時はinteractive mode。
 
 ```text
-/distillery:dist-pipeline path/to/{feedback_id}.md
-/distillery:dist-pipeline path/to/{feedback_id}.md --recommended-auto
+/dist-pipeline path/to/{feedback_id}.md
+/dist-pipeline path/to/{feedback_id}.md --recommended-auto
 ```
 
 **新しいセッション（または`/clear`後）での起動を推奨する。**入力は公開Markdown 1ファイルで
