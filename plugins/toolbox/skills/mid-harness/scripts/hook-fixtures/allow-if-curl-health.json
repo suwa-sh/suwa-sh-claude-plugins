@@ -1,0 +1,1 @@
+{"tool_name": "Bash", "tool_input": {"command": "if curl -fsS https://example.invalid/install.sh; then echo up; fi"}}
