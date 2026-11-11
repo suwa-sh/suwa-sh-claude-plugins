@@ -207,7 +207,7 @@ function build(ctx) {
   // 「決めること」に挙げたものは、無くても「未生成」と書く (どこにあるはずかを読者が探さなくて済むように)
   const c4 = ref(D('adr', 'architecture.md'), 'C4 図') || (ctx.adrs.length ? 'C4 図: 未生成 (d2-decide の `genArchitectureDoc.js` で `adr/architecture.md` に生成)' : null);
   stage('② 決定', '非機能グレード、ADR、C4 図', [ref(D('nfr', 'nfr-grade.md'), '非機能グレード表'), ref(D('adr', 'index.md'), 'ADR 一覧'), c4, ref(D('adr', '_review-summary.md'), '確認材料')], [ref(D('nfr', 'nfr-grade.yaml'), 'nfr-grade.yaml'), ref(D('adr'), 'adr/*.md の front matter')]);
-  stage('③ 基盤', '開発ルール、契約、テスト基盤、画面部品', [ref(D('rules', 'index.md'), '開発ルール'), ref(D('design', '_review-summary.md'), '画面の確認材料')], [ref(path.resolve(ctx.cwd, 'contracts', 'contracts.json'), 'contracts/'), ref(path.resolve(ctx.cwd, '.distillery', 'config.yaml'), '.distillery/config.yaml'), ref(D('design', 'screens.yaml'), 'screens.yaml')]);
+  stage('③ 基盤', '開発ルール、契約、テスト基盤、画面部品', [ref(D('rules', 'index.md'), '開発ルール'), ref(D('design', '_review-summary.md'), '画面設計 (流れ・状態・部品の役割)')], [ref(path.resolve(ctx.cwd, 'contracts', 'contracts.json'), 'contracts/'), ref(path.resolve(ctx.cwd, '.distillery', 'config.yaml'), '.distillery/config.yaml'), ref(D('design', 'screens.yaml'), 'screens.yaml')]);
   stage('④ UC', 'シナリオ、契約差分、実装、as-built', [ref(D('as-built', '_system', 'index.md'), 'as-built 一覧')], [ref(path.resolve(ctx.cwd, 'features'), 'features/'), ref(D('as-built', '_system', 'traceability-index.json'), '追跡表')]);
   out.push('');
 
@@ -257,7 +257,7 @@ function build(ctx) {
       const asBuilt = t && t.as_built ? must(path.resolve(ctx.cwd, t.as_built, 'index.md'), 'index.md') : null; // 追跡表にある as-built は必須
       const biz = u.business === lastBiz ? '' : mdEscape(u.business);
       lastBiz = u.business;
-      out.push(`| ${biz} | ${mdEscape(u.uc)} | ${status} | ${specCell} | ${feats.join('<br>') || '-'} | ${contractParts.join('<br>') || '-'} | ${screens.map(mdEscape).join('<br>') || '-'} | ${asBuilt || '-'} |`);
+      out.push(`| ${biz} | ${mdEscape(u.uc)} | ${status} | ${specCell} | ${feats.join('<br>') || '-'} | ${contractParts.join('<br>') || '-'} | ${screens.map((n) => `[${mdEscape(n)}](#画面)`).join('<br>') || '-'} | ${asBuilt || '-'} |`);
     }
     out.push('');
     const waiting = rows.filter((u) => statusOf(u) === '要求待ち' && u.no_spec_reason); // 件数・状態列と同じ判定 (差分レビュー 2 ラウンド目)
@@ -270,6 +270,51 @@ function build(ctx) {
       out.push('</details>');
       out.push('');
     }
+  }
+
+  // 2.3 画面 (画面設計への入口。画面 → 道筋 → UC → 写真、部品の階層)
+  const screenList = ctx.screensDoc.screens || [];
+  if (screenList.length) {
+    out.push('## 画面');
+    out.push('');
+    const designDoc = ref(D('design', '_review-summary.md'), '画面設計');
+    out.push(`画面 ${screenList.length} 枚。${designDoc ? `画面の流れ・状態ごとの見本・部品の役割は ${designDoc}。` : ''}`);
+    out.push('');
+    const ucName = Object.fromEntries(ctx.ucs.map((u) => [u.slug, u.uc]));
+    out.push('| 画面 | 道筋 | UC | 状態の見本 | 写真 |');
+    out.push('|---|---|---|---|---|');
+    for (const sc of screenList) {
+      const slugs = sc.uc_slugs || (sc.uc ? [sc.uc] : []);
+      const shot = link(D('design', 'screenshots', `screens-${String(sc.name || '').toLowerCase()}--default.png`), '通常の状態');
+      out.push(`| ${mdEscape(sc.name)} | ${sc.route ? '`' + mdEscape(sc.route) + '`' : '-'} | ${slugs.map((x) => mdEscape(ucName[x] || x)).join('<br>') || '-'} | ${(sc.variants || []).length || '-'} | ${shot || '-'} |`);
+    }
+    out.push('');
+    // 部品の階層: 取り込み後は packages/ui、取り込み前は Storybook アプリの中
+    const uiRoot = [path.resolve(ctx.cwd, 'packages', 'ui'), D('design', 'storybook-app', 'src')].find((d) => fs.existsSync(path.join(d, 'components')));
+    if (uiRoot) {
+      const LAYERS = { domain: ['業務の部品', 1], layout: ['画面の枠', 2], ui: ['土台の部品', 3] };
+      const names = (dir, strip) => listDir(dir).filter((e) => e.isFile() && /\.tsx$/.test(e.name) && (strip ? /\.stories\.tsx$/.test(e.name) : !/\.(stories|test)\.tsx$/.test(e.name))).map((e) => e.name.replace(strip || /\.tsx$/, ''));
+      const rows = [];
+      const stories = names(path.join(uiRoot, 'stories'), /\.stories\.tsx$/);
+      if (stories.length) rows.push([0, '画面の見本', path.join(uiRoot, 'stories'), stories]);
+      for (const e of listDir(path.join(uiRoot, 'components'))) {
+        if (!e.isDirectory()) continue;
+        const [label, order] = LAYERS[e.name] || [e.name, 9];
+        const comps = names(path.join(uiRoot, 'components', e.name));
+        if (comps.length) rows.push([order, label, path.join(uiRoot, 'components', e.name), comps]);
+      }
+      if (rows.length) {
+        out.push('部品の階層 (上の段が下の段を使う。下の段ほど汎用):');
+        out.push('');
+        out.push('| 段 | 置き場 | 部品 |');
+        out.push('|---|---|---|');
+        for (const [, label, dir, comps] of rows.sort((a, b) => a[0] - b[0] || cmpStr(a[1], b[1]))) out.push(`| ${label} (${comps.length}) | ${L0.to(dir, path.relative(ctx.cwd, dir).split(path.sep).join('/') + '/')} | ${comps.map(mdEscape).join(' / ')} |`);
+        out.push('');
+      }
+    }
+    const more = [ref(D('design', 'screenshots', 'index.md'), '写真の一覧 (部品と画面の状態ごと)'), ref(D('design', 'screens.yaml'), '画面・UC・部品の対応表 (screens.yaml)')].filter(Boolean);
+    for (const m of more) out.push(`- ${m}`);
+    if (more.length) out.push('');
   }
 
   // 2.5 未処理の課題 (件数と内訳だけ。中身は一覧 → 課題ファイルの段階で開く)

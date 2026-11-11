@@ -40,6 +40,7 @@ d2-run (全スキルを派遣する入口) と d2-common 以外のスキルは�
 | [references/config-schema.md](references/config-schema.md) | `.distillery/config.yaml` (実行設定) の形。書き手は d2-foundation (`genConfig.js`)、読み手は d2-run・runGates・d2-implement (0.1.31 で d2-run から移した) |
 | [references/assumption-record.md](references/assumption-record.md) | AssumptionRecord (実装者が仕様に無くて自分で決めた前提の記録) の形。書き手は d2-implement (tier)、読み手は d2-verify と `validateAssumptions.js` (0.1.31 で d2-implement から移した) |
 | [references/adr-inputs.md](references/adr-inputs.md) | ADR の front matter のうち基盤の生成器が読むキー。書き手は d2-decide、読み手は d2-foundation (`adr.js`) (0.1.31 で d2-foundation から移した) |
+| [references/writing.md](references/writing.md) | 人が読む文章の書き方の決まり (結論を先に・一文に 1 つのこと・要点と細目を分ける・題は 60 字まで)。文章を書くすべての担当が読む (派遣文が渡す。0.3.1) |
 | [references/troubleshooting.md](references/troubleshooting.md) | 各スキルのトラブルシューティングの索引 |
 | `scripts/dataflow.js` | 正本の読み込みとパス照合 (図の生成と整合性テストが使う) |
 | `scripts/genDataflow.js` | `dataflow.md` と、d2-run の派遣表の「派遣ごとの write-set」(管理ブロック) の生成。`--check` で古ければ exit 1 (0.1.31) |

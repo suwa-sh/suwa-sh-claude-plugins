@@ -1,6 +1,6 @@
 # 必須の決定領域 (ADR カバレッジ)
 
-d2-decide は最低限、次の 13 領域 (1〜8・10〜14) を ADR で覆う。該当しない領域は「不要」と 1 本の ADR で明記する
+d2-decide は最低限、次の 14 領域 (1〜8・10〜15) を ADR で覆う。該当しない領域は「不要」と 1 本の ADR で明記する
 (黙って省かない)。各領域には対応する [決定候補カタログ](decision-candidates/) がある。
 
 | # | 決定領域 | scope | 該当カタログ | 補足 |
@@ -19,6 +19,7 @@ d2-decide は最低限、次の 13 領域 (1〜8・10〜14) を ADR で覆う。
 | 12 | エラーハンドリング | app | [error-handling.md](decision-candidates/error-handling.md) | エラーの種類・表し方・層ごとの扱い・契約のエラー型との対応 |
 | 13 | ログのルール | app | [logging.md](decision-candidates/logging.md) | 形・必ず持つ項目・レベル・層ごとの出す場所・出さないもの |
 | 14 | 機械チェック | system | [machine-checks.md](decision-candidates/machine-checks.md) | 6 観点 (generate / format / lint / build / test / security) の道具。front matter に `checks` (1 本だけ。validateAdr が検査) |
+| 15 | 冪等性と再試行 | app | [idempotency-retry.md](decision-candidates/idempotency-retry.md) | 同じ要求の送り直しの見分け方と返し方・判定の順番・再試行する範囲・時間切れ。更新する UC があれば必ず決める (エラーハンドリングとメッセージングの ADR に分けて書かない) |
 
 **9 コンテキストの境界 (任意)**: 業務ドメインを複数の境界づけられたコンテキストに分けるかを決める。分ける
 なら、いずれかの accepted ADR (通常はティア構成 ADR) の front matter に `contexts: [{id, name, owner_tier?,

@@ -19,15 +19,15 @@ basis: requirements@64517f420b568ea1a4536b71b9dbbb357bd66460
 | [0009](0009-ddd-tactical.md) | DDD は軽量に使う。予約を集約にし、時間帯を値オブジェクトにする | accepted | - | - |
 | [0010](0010-error-handling.md) | 業務のエラーはコード付きの戻り値で返し、presentation で契約のエラー型と HTTP の status に変える | superseded | - | 0023 |
 | [0011](0011-logging.md) | ログは JSON の 1 行で出し、業務のイベントは usecase が出す。domain はログを出さない | accepted | - | - |
-| [0012](0012-machine-checks.md) | 機械チェックは既定の道具 (biome・qlty・tsc・vitest・依存の監査・SAST・秘密の検出) で 6 観点を回す | accepted | - | - |
+| [0012](0012-machine-checks.md) | 機械チェックは既定の道具で 6 観点 (生成・整形・lint・ビルド・テスト・安全) を回す | accepted | - | - |
 | [0013](0013-app-layers-complete-forbid.md) | backend-api の層の依存は許可する 6 方向だけにし、それ以外の 14 方向をすべてアーキテストで禁止する | accepted | 0002 | - |
-| [0014](0014-tier-structure-frontend-oidc.md) | 2 ティア構成を引き継ぎ、frontend は OIDC クライアントでトークンを得て API 呼び出しの層の 1 か所で付ける | accepted | 0001 | - |
-| [0015](0015-api-access-token-jwt.md) | API に送るトークンは認証基盤が JWT で発行するアクセストークンとし、backend-api は署名と発行者・宛先・期限を検証して sub を社員 ID にする | accepted | - | - |
+| [0014](0014-tier-structure-frontend-oidc.md) | frontend は OIDC でトークンを得て、API 呼び出しの層の 1 か所で付ける | accepted | 0001 | - |
+| [0015](0015-api-access-token-jwt.md) | API のトークンは認証基盤が発行する JWT とし、backend-api が検証して社員 ID を得る | accepted | - | - |
 | [0016](0016-backup-point-in-time-recovery.md) | DB は障害の直前の時点まで戻せるようにバックアップし、復旧で成立済みの予約と占有を失わない | accepted | - | - |
-| [0017](0017-time-range-within-business-date.md) | 時間帯は開始の日付 (日本時間) の中に収める。収まらない時間帯は INVALID_TIME_RANGE にし、終了の 24:00 は翌日 0:00 の日時で持つ | accepted | - | - |
+| [0017](0017-time-range-within-business-date.md) | 時間帯は開始の日付 (日本時間) の中に収め、終了の 24:00 は翌日 0:00 で持つ | accepted | - | - |
 | [0018](0018-frontend-api-origin-dev-proxy-signin-callback.md) | 画面と API は同じオリジンで配信し、画面は相対パス /api で呼ぶ。開発時は vite の中継で /api を backend-api へ送り、サインインの戻り先は /auth/callback の 1 画面で元の画面へ戻す | superseded | - | 0021 |
-| [0019](0019-frontend-token-storage-and-renewal.md) | 画面はトークンをメモリだけに持ち、期限が近づいたらリフレッシュトークンで更新する。iframe での更新はせず、更新できなければサインインへ戻す | accepted | - | - |
+| [0019](0019-frontend-token-storage-and-renewal.md) | 画面はトークンをメモリだけに持ち、期限が近づいたら更新する。更新できなければサインインへ戻す | accepted | - | - |
 | [0020](0020-frontend-token-unknown-expiry.md) | 期限の分からないトークンは期限が近くないものとしてそのまま使い、API が 401 を返したらサインインへ戻す | accepted | - | - |
-| [0021](0021-frontend-screen-handoff-query.md) | ADR 0018 (同じオリジンの配信・開発時の中継・サインインの戻り先・画面の照合) を引き継ぎ、画面の間で選んだ値は移る先の URL のクエリで渡す。App.tsx が読んで Route の element に 2 つ目の引数で渡し、受け取った画面は初期値としてだけ使う | accepted | 0018 | - |
-| [0022](0022-messaging-not-needed-resend-returns-existing.md) | ADR 0005 (メッセージングを使わず同期で完結・冪等キーを入れない) を引き継ぎ、冪等キーを入れない理由を「同じ内容の送り直しは成立済みの予約を返し、それ以外の重複は重なりで弾く」に直す | accepted | 0005 | - |
-| [0023](0023-error-handling-overlap-in-usecase.md) | ADR 0010 (業務のエラーはコード付きの戻り値で返す) を引き継ぎ、占有の表の一意制約の違反は repository が重なりとして値で返し、usecase が SLOT_OVERLAPS の業務のエラーに変える | accepted | 0010 | - |
+| [0021](0021-frontend-screen-handoff-query.md) | 画面の間で選んだ値は、移る先の URL のクエリで渡す | accepted | 0018 | - |
+| [0022](0022-messaging-not-needed-resend-returns-existing.md) | 冪等キーは入れず、同じ内容の送り直しには成立済みの予約を返す | accepted | 0005 | - |
+| [0023](0023-error-handling-overlap-in-usecase.md) | 占有の一意制約の違反は repository が値で返し、usecase が重なりのエラーに変える | accepted | 0010 | - |

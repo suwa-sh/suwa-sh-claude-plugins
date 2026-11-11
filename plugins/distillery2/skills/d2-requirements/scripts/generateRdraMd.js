@@ -105,6 +105,55 @@ function esc(text) {
   return String(text).replace(/\|/g, '\\|').replace(/\n/g, '<br>');
 }
 
+/** 要点 (1 文目) の長さの目安。超えると不整合チェックが警告する (d2-common/references/writing.md) */
+const LEAD_MAX = 60;
+
+/**
+ * 説明を文に分ける。「。」で切るが、括弧 (丸・かぎ) の中の「。」では切らない。
+ * 戻り値の各文は末尾の「。」を含まない。
+ */
+function splitSentences(text) {
+  const out = [];
+  let depth = 0;
+  let cur = '';
+  for (const ch of String(text || '').replace(/\n/g, ' ')) {
+    if ('(（「『'.includes(ch)) depth++;
+    else if (')）」』'.includes(ch)) depth = Math.max(0, depth - 1);
+    if (ch === '。' && depth === 0) {
+      if (cur.trim()) out.push(cur.trim());
+      cur = '';
+    } else cur += ch;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+
+/** 表のマスに出す要点。2 文以上あれば 1 文目だけにし、細目があることを示す */
+function leadCell(text, anchorName) {
+  const ss = splitSentences(text);
+  if (ss.length <= 1) return esc(text);
+  return `${esc(ss[0])}。<br>→ 細目: [${esc(anchorName)}](#${anchorOf(anchorName)})`;
+}
+
+/** GitHub の見出しのアンカー (小文字化・記号を除き・空白をハイフンに) */
+function anchorOf(heading) {
+  return String(heading).trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-');
+}
+
+/** 2 文以上の説明を持つ行の細目を、名前ごとの見出しと箇条書きで出す */
+function detailSections(rows, nameKey, descKey, headingPrefix) {
+  const lines = [];
+  for (const row of rows) {
+    const ss = splitSentences(row[descKey]);
+    if (ss.length <= 1) continue;
+    lines.push(`### ${headingPrefix}${row[nameKey]}`, '');
+    lines.push(`${ss[0]}。`, '');
+    for (const t of ss.slice(1)) lines.push(`- ${t}`);
+    lines.push('');
+  }
+  return lines;
+}
+
 // ノード ID 採番器（種別プレフィックス + 初出順の連番）
 function createIdGen() {
   const map = new Map();
@@ -767,10 +816,11 @@ function viewConditionVariation(model) {
     lines.push('|---|---|---|---|---|');
     for (const row of model.conditions) {
       lines.push(
-        `| ${esc(row['コンテキスト'])} | ${esc(row['条件'])} | ${esc(row['条件の説明'])} | ${esc(row['バリエーション'])} | ${esc(row['状態モデル'])} |`
+        `| ${esc(row['コンテキスト'])} | ${esc(row['条件'])} | ${leadCell(row['条件の説明'], '条件: ' + row['条件'])} | ${esc(row['バリエーション'])} | ${esc(row['状態モデル'])} |`
       );
     }
     lines.push('');
+    lines.push(...detailSections(model.conditions, '条件', '条件の説明', '条件: '));
   }
 
   if (model.variations.length > 0) {
@@ -780,10 +830,11 @@ function viewConditionVariation(model) {
     lines.push('|---|---|---|---|');
     for (const row of model.variations) {
       lines.push(
-        `| ${esc(row['コンテキスト'])} | ${esc(row['バリエーション'])} | ${esc(row['値'])} | ${esc(row['説明'])} |`
+        `| ${esc(row['コンテキスト'])} | ${esc(row['バリエーション'])} | ${esc(row['値'])} | ${leadCell(row['説明'], 'バリエーション: ' + row['バリエーション'])} |`
       );
     }
     lines.push('');
+    lines.push(...detailSections(model.variations, 'バリエーション', '説明', 'バリエーション: '));
   }
 
   return lines.join('\n');
@@ -912,6 +963,18 @@ function validateModel(model) {
     }
   }
 
+  // 説明の要点 (1 文目) が長い (d2-common/references/writing.md の「表のマスに書く説明」)
+  const leadChecks = [
+    [model.conditions, '条件', '条件の説明'],
+    [model.variations, 'バリエーション', '説明'],
+  ];
+  for (const [rows, nameKey, descKey] of leadChecks) {
+    for (const row of rows) {
+      const lead = splitSentences(row[descKey])[0] || '';
+      if (lead.length > LEAD_MAX) add('説明の要点が長い', `${nameKey}「${row[nameKey]}」`, `1 文目が ${lead.length} 字 (目安 ${LEAD_MAX} 字)。要点だけにし、細目は 2 文目以降に 1 文 1 つで書く`);
+    }
+  }
+
   return findings;
 }
 
@@ -933,6 +996,7 @@ const VALIDATION_CHECKS = [
   ['未接続「外部システム」', '定義されているが BUC で参照されていない外部システム', 'warn'],
   ['未接続「情報」', '定義されているが BUC で参照されていない情報', 'warn'],
   ['未接続「条件」', '定義されているが BUC で参照されていない条件', 'warn'],
+  ['説明の要点が長い', '条件.tsv・バリエーション.tsv の説明の 1 文目が目安の字数を超える (要点を先に、細目は 2 文目以降に)', 'warn'],
 ];
 
 const CHECK_SEVERITY = new Map(VALIDATION_CHECKS.map(([check, , severity]) => [check, severity]));

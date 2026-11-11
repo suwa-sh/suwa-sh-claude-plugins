@@ -68,9 +68,23 @@ function loadAdrDir(dir) {
     if (!fm) { errors.push({ file, message: 'front matter (--- で挟む YAML) が見つからない' }); continue; }
     for (const e of validateWithSchema(fm, schema)) errors.push({ file, message: `${e.path}: ${e.message}` });
     if (fm.id && fm.id !== filePrefix) errors.push({ file, message: `ファイル名の番号 ${filePrefix} と front matter の id ${fm.id} が一致しない` });
+    for (const m of titleErrors(fm)) errors.push({ file, message: m });
     adrs.push({ file, fm });
   }
   return { adrs, errors };
+}
+
+/** 題の長さの上限 (d2-common/references/writing.md の「題」)。題は開発ルールの要点の表と docs/README.md にそのまま出る */
+const TITLE_MAX = 60;
+
+/** 題の検査: 有効な ADR (proposed / accepted) の題は TITLE_MAX 字までで、別の ADR の番号から始めない */
+function titleErrors(fm) {
+  const out = [];
+  if (!fm || typeof fm.title !== 'string' || !['proposed', 'accepted'].includes(fm.status)) return out;
+  const len = [...fm.title].length;
+  if (len > TITLE_MAX) out.push(`title が ${len} 字 (上限 ${TITLE_MAX} 字)。決めたこと 1 つを言い切り、細目は本文と rules に書く`);
+  if (/^\s*ADR\s*\d{3,4}/.test(fm.title)) out.push('title を別の ADR の番号から始めない。新しい決定だけを題にし、引き継ぐ相手は supersedes に書く');
+  return out;
 }
 
 /** スキーマでは表現できない ADR 群の整合性チェック */

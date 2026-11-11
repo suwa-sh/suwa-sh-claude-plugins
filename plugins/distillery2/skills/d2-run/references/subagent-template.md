@@ -14,6 +14,7 @@
 スキルの指示に従い、全ステップを完了してください。
 制約:
 - AskUserQuestion を使わないでください。人に聞きたいことと前のステップの問題は、引き継ぎファイル {handoff} に書いてください (書き方は <skills>/d2-common/references/handoff.md の絶対パス)。推奨は条件を付けずに 1 つ書いてください。報告の本文に書いただけでは扱われません
+- 人が読む文章 (説明の欄・題・要約・確認材料・課題) は <skills>/d2-common/references/writing.md の決まりで書いてください (絶対パスで渡す。結論を先に、一文に 1 つのこと、書き足したら全体を整え直す)
 - git コマンド (add / commit / push / switch 等) を実行しないでください。コミットはオーケストレータが行います。
   例外: 手順書が回すスクリプトの内部の git (読み取りの rev-parse / diff / ls-files と、genQlty.js が qlty init に未追跡ファイルを見せるための一時的な `git add -N`。終わったら index を書き戻す) はそのまま回してよい
 - 書き込みは次の write-set 内に限定してください: {write_set}   ← 下の「派遣ごとの write-set」のその段階の行 (正本から生成)。行はそのまま貼り (置き換えない。受理の検査は行の形で見る)、直後に置換部分の値を 1 行で添える (例 `<業務> = 蔵書管理業務、<slug> = register-book、<run> = .distillery/runs/register-book`。0.1.34 Q12)

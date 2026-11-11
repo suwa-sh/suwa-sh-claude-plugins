@@ -15,26 +15,42 @@
 
 | 出所 | 効果 | 先 | 範囲 | 内容 | 出典 |
 |---|---|---|---|---|---|
-| `apps/backend-api/src/domain/**` | 禁止 | `apps/backend-api/src/usecase/**` | layer | domain 層は他の層へ依存してはならない (usecase に依存しない) | ADR 0013 |
-| `apps/backend-api/src/domain/**` | 禁止 | `apps/backend-api/src/repository/**` | layer | domain 層は repository 層へ依存してはならない | ADR 0013 |
-| `apps/backend-api/src/domain/**` | 禁止 | `apps/backend-api/src/gateway/**` | layer | domain 層は gateway 層へ依存してはならない | ADR 0013 |
-| `apps/backend-api/src/domain/**` | 禁止 | `apps/backend-api/src/presentation/**` | layer | domain 層は presentation 層へ依存してはならない | ADR 0013 |
-| `apps/backend-api/src/presentation/**` | 禁止 | `apps/backend-api/src/repository/**` | layer | presentation は usecase を経由し、repository を直接呼ばない | ADR 0013 |
-| `apps/backend-api/src/presentation/**` | 禁止 | `apps/backend-api/src/gateway/**` | layer | presentation は gateway を直接 import しない (トークンの検証器はインターフェイスで受け取る) | ADR 0013 |
-| `apps/backend-api/src/usecase/**` | 禁止 | `apps/backend-api/src/presentation/**` | layer | usecase は presentation へ依存してはならない | ADR 0013 |
-| `apps/backend-api/src/usecase/**` | 禁止 | `apps/backend-api/src/gateway/**` | layer | usecase は gateway を直接 import しない (時計などはインターフェイスで受け取る) | ADR 0013 |
-| `apps/backend-api/src/repository/**` | 禁止 | `apps/backend-api/src/usecase/**` | layer | repository は usecase へ依存してはならない | ADR 0013 |
-| `apps/backend-api/src/repository/**` | 禁止 | `apps/backend-api/src/presentation/**` | layer | repository は presentation へ依存してはならない | ADR 0013 |
-| `apps/backend-api/src/gateway/**` | 禁止 | `apps/backend-api/src/presentation/**` | layer | gateway は presentation へ依存してはならない | ADR 0013 |
-| `apps/backend-api/src/gateway/**` | 禁止 | `apps/backend-api/src/usecase/**` | layer | gateway は usecase へ依存してはならない | ADR 0013 |
-| `apps/backend-api/src/gateway/**` | 禁止 | `apps/backend-api/src/repository/**` | layer | gateway は repository へ依存してはならない | ADR 0013 |
-| `apps/backend-api/src/gateway/**` | 禁止 | `apps/backend-api/src/domain/**` | layer | gateway は domain へ依存してはならない (外部の応答は素の型で返し、業務の値への変換は呼ぶ側で行う) | ADR 0013 |
+| `apps/backend-api/src/domain/**` | 禁止 | `apps/backend-api/src/usecase/**` | layer | domain 層は他の層へ依存してはならない (usecase に依存しない) | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/domain/**` | 禁止 | `apps/backend-api/src/repository/**` | layer | domain 層は repository 層へ依存してはならない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/domain/**` | 禁止 | `apps/backend-api/src/gateway/**` | layer | domain 層は gateway 層へ依存してはならない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/domain/**` | 禁止 | `apps/backend-api/src/presentation/**` | layer | domain 層は presentation 層へ依存してはならない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/presentation/**` | 禁止 | `apps/backend-api/src/repository/**` | layer | presentation は usecase を経由し、repository を直接呼ばない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/presentation/**` | 禁止 | `apps/backend-api/src/gateway/**` | layer | presentation は gateway を直接 import しない (トークンの検証器はインターフェイスで受け取る) | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/usecase/**` | 禁止 | `apps/backend-api/src/presentation/**` | layer | usecase は presentation へ依存してはならない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/usecase/**` | 禁止 | `apps/backend-api/src/gateway/**` | layer | usecase は gateway を直接 import しない (時計などはインターフェイスで受け取る) | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/repository/**` | 禁止 | `apps/backend-api/src/usecase/**` | layer | repository は usecase へ依存してはならない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/repository/**` | 禁止 | `apps/backend-api/src/presentation/**` | layer | repository は presentation へ依存してはならない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/gateway/**` | 禁止 | `apps/backend-api/src/presentation/**` | layer | gateway は presentation へ依存してはならない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/gateway/**` | 禁止 | `apps/backend-api/src/usecase/**` | layer | gateway は usecase へ依存してはならない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/gateway/**` | 禁止 | `apps/backend-api/src/repository/**` | layer | gateway は repository へ依存してはならない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
+| `apps/backend-api/src/gateway/**` | 禁止 | `apps/backend-api/src/domain/**` | layer | gateway は domain へ依存してはならない (外部の応答は素の型で返し、業務の値への変換は呼ぶ側で行う) | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
 
 ## 決定ごとのルール
 
-各見出しは ADR 1 本に対応する。背景と却下した案は `docs/adr/` の該当ファイルを読む。
+表は決定ごとの要点。細目は下の折りたたみを開いて読む。**実装のときは、自分が触る領域の細目を必ず開いて読む。** 背景と却下した案は ADR (リンク先)。
 
-### ADR 0003 データは PostgreSQL 互換の RDB 1 つに置き、二重予約は 30 分枠の一意制約で DB が防ぐ
+| 決定 | 要点 | 細目 |
+|---|---|---|
+| [ADR 0003](../adr/0003-datastore-and-migration.md) | データは PostgreSQL 互換の RDB 1 つに置き、二重予約は 30 分枠の一意制約で DB が防ぐ | 7 件 |
+| [ADR 0004](../adr/0004-immutable-data.md) | 予約は「予約した」「取り消した」の事実を足していく形で持ち、今の状態は別の表に持つ | 3 件 |
+| [ADR 0006](../adr/0006-authn-authz.md) | 社員の認証は社内の既存アカウントに OIDC で任せ、認可は予約者本人かどうかを domain で判定する | 4 件 |
+| [ADR 0009](../adr/0009-ddd-tactical.md) | DDD は軽量に使う。予約を集約にし、時間帯を値オブジェクトにする | 7 件 |
+| [ADR 0011](../adr/0011-logging.md) | ログは JSON の 1 行で出し、業務のイベントは usecase が出す。domain はログを出さない | 5 件 |
+| [ADR 0013](../adr/0013-app-layers-complete-forbid.md) | backend-api の層の依存は許可する 6 方向だけにし、それ以外の 14 方向をすべてアーキテストで禁止する | 4 件 |
+| [ADR 0015](../adr/0015-api-access-token-jwt.md) | API のトークンは認証基盤が発行する JWT とし、backend-api が検証して社員 ID を得る | 2 件 |
+| [ADR 0016](../adr/0016-backup-point-in-time-recovery.md) | DB は障害の直前の時点まで戻せるようにバックアップし、復旧で成立済みの予約と占有を失わない | 5 件 |
+| [ADR 0017](../adr/0017-time-range-within-business-date.md) | 時間帯は開始の日付 (日本時間) の中に収め、終了の 24:00 は翌日 0:00 で持つ | 5 件 |
+| [ADR 0021](../adr/0021-frontend-screen-handoff-query.md) | 画面の間で選んだ値は、移る先の URL のクエリで渡す | 1 件 |
+| [ADR 0022](../adr/0022-messaging-not-needed-resend-returns-existing.md) | 冪等キーは入れず、同じ内容の送り直しには成立済みの予約を返す | 2 件 |
+| [ADR 0023](../adr/0023-error-handling-overlap-in-usecase.md) | 占有の一意制約の違反は repository が値で返し、usecase が重なりのエラーに変える | 7 件 |
+
+<details>
+<summary><b>ADR 0003</b> データは PostgreSQL 互換の RDB 1 つに置き、二重予約は 30 分枠の一意制約で DB が防ぐ (7 件)</summary>
 
 - データストアは PostgreSQL 互換の RDB 1 つとし、backend-api だけが読み書きする。テストは pglite (埋め込みの PostgreSQL) で同じ migration を当てて行う
 - スキーマ変更は migration ファイルの追加で行い、既存の migration を書き換えない
@@ -44,20 +60,29 @@
 - 二重予約の防止を、アプリでの事前の重なりの確認だけに頼らない (同時の予約で 2 件が成立しうるため)。最後の砦は DB の一意制約にする
 - 日時は時差付きの型 (timestamptz) で UTC として保存し、業務の日付と 30 分刻みの判定は業務のタイムゾーン (Asia/Tokyo) で行う
 
-### ADR 0004 予約は「予約した」「取り消した」の事実を足していく形で持ち、今の状態は別の表に持つ
+</details>
+
+<details>
+<summary><b>ADR 0004</b> 予約は「予約した」「取り消した」の事実を足していく形で持ち、今の状態は別の表に持つ (3 件)</summary>
 
 - 予約の今の状態の表 (予約済み / 取消済み) は、イベントの追記と同じトランザクションで更新する。イベントの表への更新・削除のメソッドを repository に持たせない
 - イベントは起きた時刻 (Clock から得た業務の時刻) と、行為者の社員 ID を持つ
 - 会議室は上書きのマスタ (初期データ) とし、イベントを持たせない
 
-### ADR 0006 社員の認証は社内の既存アカウントに OIDC で任せ、認可は予約者本人かどうかを domain で判定する
+</details>
+
+<details>
+<summary><b>ADR 0006</b> 社員の認証は社内の既存アカウントに OIDC で任せ、認可は予約者本人かどうかを domain で判定する (4 件)</summary>
 
 - backend-api はすべての API で Authorization ヘッダのトークンを検証し、検証できなければ 401 を返す。社員の識別子はトークンの sub から取り、要求の本文やクエリの社員 ID を信じない
 - トークンの検証は gateway のインターフェイス (TokenVerifier) の後ろに置き、テストの composition root ではテスト用の検証器に差し替える
 - 予約の取り消しと自分の予約の一覧は、予約者がトークンの社員と一致するかを domain の判定で確かめる。判定を presentation に散らさない
 - 空き状況の応答に予約者を含めない (予約済みかどうかだけを返す)
 
-### ADR 0009 DDD は軽量に使う。予約を集約にし、時間帯を値オブジェクトにする
+</details>
+
+<details>
+<summary><b>ADR 0009</b> DDD は軽量に使う。予約を集約にし、時間帯を値オブジェクトにする (7 件)</summary>
 
 - 予約の業務の不変条件 (時刻の妥当性・取り消しの可否) は集約「予約」のメソッドで守る。usecase やハンドラに条件分岐で書かない
 - 時間帯は値オブジェクトにし、生成のときに検証する (開始が終了より前・開始と終了が 30 分刻み)。不正な時間帯のインスタンスを作れない
@@ -67,7 +92,10 @@
 - 集約のメソッドは結果として起きた事実 (予約した・取り消した) を返し、repository がそれをイベントの表に追記する。購読する仕組み (イベントバス) は作らない
 - 会議室は予約から ID で参照し、1 つのトランザクションで会議室と予約を両方更新しない
 
-### ADR 0011 ログは JSON の 1 行で出し、業務のイベントは usecase が出す。domain はログを出さない
+</details>
+
+<details>
+<summary><b>ADR 0011</b> ログは JSON の 1 行で出し、業務のイベントは usecase が出す。domain はログを出さない (5 件)</summary>
 
 - ログは構造化 (JSON の 1 行) で標準出力に出し、時刻・レベル・メッセージ・相関 ID・ハンドラの名前を必ず持つ。社員が特定できる要求では社員 ID も持つ
 - presentation は要求の始まりと終わり (メソッド・パス・status・所要時間) を info で出す。相関 ID は要求ごとに作り、応答のヘッダにも返す
@@ -75,19 +103,28 @@
 - システムのエラーは error で出す (スタックを含める)。gateway は外部とのやり取りの失敗を warn か error で出す
 - domain 層はログを出さない。結果を戻り値で知らせる
 
-### ADR 0013 backend-api の層の依存は許可する 6 方向だけにし、それ以外の 14 方向をすべてアーキテストで禁止する
+</details>
+
+<details>
+<summary><b>ADR 0013</b> backend-api の層の依存は許可する 6 方向だけにし、それ以外の 14 方向をすべてアーキテストで禁止する (4 件)</summary>
 
 - backend-api の層は presentation / usecase / domain / repository / gateway の 5 つ (apps/backend-api/src/<層>/) とし、依存は presentation → usecase・domain、usecase → domain・repository、repository → domain・gateway の 6 方向だけにする。presentation → domain は業務のエラーの型とコード・値オブジェクトを読むためだけに許可する
 - gateway 層は外部とのやり取りだけを持つ最も外側の部品とし、他の層 (presentation・usecase・domain・repository) を import しない。gateway の実装は呼ぶ側が定めるインターフェイスを型の形で満たし、composition root (src/app.ts と src/test-app.ts) で渡す
 - domain 層は外部ライブラリ (express・pg・pino など) を import しない。純粋な TypeScript で書く
 - usecase は repository と時計 (Clock) をインターフェイスで受け取り、composition root (src/app.ts と src/test-app.ts) で実装を渡す
 
-### ADR 0015 API に送るトークンは認証基盤が JWT で発行するアクセストークンとし、backend-api は署名と発行者・宛先・期限を検証して sub を社員 ID にする
+</details>
+
+<details>
+<summary><b>ADR 0015</b> API のトークンは認証基盤が発行する JWT とし、backend-api が検証して社員 ID を得る (2 件)</summary>
 
 - backend-api のトークンの検証器 (TokenVerifier の本番の実装) は、アクセストークンを JWT として jose で検証する。署名は認証基盤の公開鍵 (発行者が公開する鍵の一覧) で確かめ、発行者 (iss)・宛先 (aud)・期限 (exp) が合わなければ 401 にする。発行者・宛先・鍵の一覧の場所は環境ごとの設定にする
 - 社員 ID はアクセストークンの sub から取る。sub が無いトークンは 401 にする
 
-### ADR 0016 DB は障害の直前の時点まで戻せるようにバックアップし、復旧で成立済みの予約と占有を失わない
+</details>
+
+<details>
+<summary><b>ADR 0016</b> DB は障害の直前の時点まで戻せるようにバックアップし、復旧で成立済みの予約と占有を失わない (5 件)</summary>
 
 - DB のバックアップは、定期のフルバックアップに加えて、更新の記録 (トランザクションログ) を絶えず DB とは別の保管場所へ残し、障害の直前の時点まで戻せるようにする (目標復旧地点は障害の直前。前日のバックアップまでの復旧にしない)
 - 更新の記録は DB 本体とは別の保管場所へ同期して書く。トランザクションの確定 (コミット) は、その更新の記録が別の保管場所に書き終わったことを確かめてから完了とする (別の保管場所へ届く前に確定としない。届かないときは予約の成立と取り消しを受け付けず、失敗を返す)
@@ -95,7 +132,10 @@
 - 復旧では予約の表と「会議室の 30 分枠の占有」の表を同じ DB の同じ時点へ戻す。占有の表だけを別の時点に戻したり、別のバックアップから入れたりしない
 - 復旧の後、利用の再開の前に、占有の行が予約済みの予約の枠とちょうど一致すること (占有の表が有効な予約から導けること) を確かめる
 
-### ADR 0017 時間帯は開始の日付 (日本時間) の中に収める。収まらない時間帯は INVALID_TIME_RANGE にし、終了の 24:00 は翌日 0:00 の日時で持つ
+</details>
+
+<details>
+<summary><b>ADR 0017</b> 時間帯は開始の日付 (日本時間) の中に収め、終了の 24:00 は翌日 0:00 で持つ (5 件)</summary>
 
 - 時間帯の値オブジェクトは生成のときに 3 つを次の順で検証し、最初に満たさないもののエラーを返す: (1) 開始が終了より前 (INVALID_TIME_RANGE)、(2) 開始と終了が 30 分刻み (NOT_ON_30_MINUTES)、(3) 開始と終了が業務の日付の 0:00 から翌日 0:00 までに収まる (INVALID_TIME_RANGE)。3 つを満たさない時間帯のインスタンスを作れない
 - 時間帯が属する業務の日付は、開始の日時の Asia/Tokyo での日付で決める。日付を要求の別の項目から受けて時間帯の検証に使わない (日付と時間帯を二重に持たない)
@@ -103,16 +143,25 @@
 - 日付の中に収まらない時間帯 (日をまたぐ時間帯) は INVALID_TIME_RANGE (422) で返す。日付に収まらないことを表す別のコードを作らない
 - 開始が現在より前でないことの検査 (PAST_TIME_SLOT) は予約の集約の作成のメソッドだけに置く。時間帯の値オブジェクトと空き状況の照会では使わない (過去の時間帯の照会は受け付ける)
 
-### ADR 0021 ADR 0018 (同じオリジンの配信・開発時の中継・サインインの戻り先・画面の照合) を引き継ぎ、画面の間で選んだ値は移る先の URL のクエリで渡す。App.tsx が読んで Route の element に 2 つ目の引数で渡し、受け取った画面は初期値としてだけ使う
+</details>
+
+<details>
+<summary><b>ADR 0021</b> 画面の間で選んだ値は、移る先の URL のクエリで渡す (1 件)</summary>
 
 - backend-api は CORS の許可 (Access-Control-Allow-Origin 等の応答ヘッダや CORS のミドルウェア) を入れない。画面は同じオリジンから呼ぶため要らない
 
-### ADR 0022 ADR 0005 (メッセージングを使わず同期で完結・冪等キーを入れない) を引き継ぎ、冪等キーを入れない理由を「同じ内容の送り直しは成立済みの予約を返し、それ以外の重複は重なりで弾く」に直す
+</details>
+
+<details>
+<summary><b>ADR 0022</b> 冪等キーは入れず、同じ内容の送り直しには成立済みの予約を返す (2 件)</summary>
 
 - 予約の送り直し (SPEC-002-03) は冪等キー (Idempotency-Key) や要求の識別子を保存して判定せず、送った社員の有効な予約に会議室・開始・終了がすべて同じものがあるかで判定し、あればその予約を予約が成立した結果として返す。冪等キーのヘッダや保存の表を足さない
 - 予約の処理は次の順で行う: (1) 入力の時間帯を値オブジェクトで検証する (INVALID_TIME_RANGE・NOT_ON_30_MINUTES)、(2) 送った社員の有効な予約に会議室・開始・終了がすべて同じものを探す、(3) あれば過去の時間帯の判定 (PAST_TIME_SLOT) と重なりの判定 (SLOT_OVERLAPS) と新規作成を行わず、その予約を予約が成立した結果として返す、(4) 無ければ予約の集約の作成 (PAST_TIME_SLOT の検査) と重なりの判定に進む。送り直しの検索を予約の集約の作成より後に置かない (開始・終了を過ぎてからの送り直しで PAST_TIME_SLOT を返さない。SPEC-002-03)
 
-### ADR 0023 ADR 0010 (業務のエラーはコード付きの戻り値で返す) を引き継ぎ、占有の表の一意制約の違反は repository が重なりとして値で返し、usecase が SLOT_OVERLAPS の業務のエラーに変える
+</details>
+
+<details>
+<summary><b>ADR 0023</b> 占有の一意制約の違反は repository が値で返し、usecase が重なりのエラーに変える (7 件)</summary>
 
 - 業務のエラーは domain でコード付きの型として作り、domain と usecase は例外で投げずに戻り値 (成功か業務のエラーか) で返す
 - presentation が業務のエラーのコードを契約のエラー型 (Problem の type・title・detail・code) と HTTP の status に変える。業務のエラーで 500 を返さない
@@ -121,3 +170,5 @@
 - システムのエラー (DB の失敗・想定外) は例外のまま presentation の共通の処理で受け、応答は汎用の文と相関 ID だけにする。スタックや SQL を応答に出さない
 - 占有の表の一意制約の違反は、repository が例外で投げずに「重なり」を表す値として戻り値で返し、usecase がそれを SLOT_OVERLAPS の業務のエラーに変える。システムのエラーとして扱わない
 - SLOT_OVERLAPS の業務のエラーを作る場所は usecase の 1 か所にする (事前の重なりの判定と、一意制約の違反の両方)。repository は業務のエラーの型を作らない
+
+</details>

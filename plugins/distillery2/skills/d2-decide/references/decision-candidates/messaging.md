@@ -1,6 +1,6 @@
 # 決定候補カタログ: メッセージング
 
-同期 / 非同期、outbox、冪等性を決める。ADR の `scope: [app]` または `[system]`。
+同期 / 非同期、outbox、非同期の処理の冪等性を決める。ADR の `scope: [app]` または `[system]`。
 AsyncAPI が要るプロダクトのときだけ ADR を書く (required-decisions.md の条件付き必須)。
 
 ---
@@ -27,6 +27,8 @@ AsyncAPI が要るプロダクトのときだけ ADR を書く (required-decisio
   ```
 
 ## 冪等性
+
+同期の API を含む全体の方針 (送り直しの見分け方・返し方・再試行する範囲) は、冪等性と再試行の ADR (idempotency-retry.md) で決める。ここは非同期の処理の条件と対処だけ。
 
 - **発火条件** (2 つ以上で high、1 つで medium): 金銭取引の状態遷移 / 外部が決済機関 / 社外アクター (リトライ重複リスク) / BUC に予約・申請等の更新系。
 - **層別の対処**:

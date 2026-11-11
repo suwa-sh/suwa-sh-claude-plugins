@@ -1,6 +1,6 @@
 ---
 id: "0023"
-title: "ADR 0010 (業務のエラーはコード付きの戻り値で返す) を引き継ぎ、占有の表の一意制約の違反は repository が重なりとして値で返し、usecase が SLOT_OVERLAPS の業務のエラーに変える"
+title: "占有の一意制約の違反は repository が値で返し、usecase が重なりのエラーに変える"
 status: accepted
 date: "2026-11-10"
 supersedes: ["0010"]
