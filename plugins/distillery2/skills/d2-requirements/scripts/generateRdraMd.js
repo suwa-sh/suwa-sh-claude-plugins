@@ -143,7 +143,8 @@ function anchorOf(heading) {
 /**
  * 行ごとの細目の見出し (表のリンク先と細目の節で同じものを使う)。
  * 名前が 1 つだけなら「<種類>: <名前>」。別のコンテキストに同じ名前があれば「<種類>: <名前> (<コンテキスト>)」、
- * それでも重なれば連番を足して、見出し (= アンカー) を一意にする。
+ * それでもアンカーが重なれば連番を足す。重なりは見出しの文字列でなくアンカー (記号を除いた形) で見る
+ * (「予約/管理」と「予約管理」は見出しは違うがアンカーが同じになる)。
  */
 function detailHeadings(rows, nameKey, headingPrefix) {
   const count = new Map();
@@ -153,9 +154,10 @@ function detailHeadings(rows, nameKey, headingPrefix) {
   for (const row of rows) {
     let h = `${headingPrefix}${row[nameKey]}`;
     if (count.get(row[nameKey]) > 1) h += ` (${row['コンテキスト'] || '-'})`;
-    const n = (used.get(h) || 0) + 1;
-    used.set(h, n);
-    out.set(row, n > 1 ? `${h} ${n}` : h);
+    let unique = h;
+    for (let n = 2; used.has(anchorOf(unique)); n++) unique = `${h} ${n}`;
+    used.set(anchorOf(unique), true);
+    out.set(row, unique);
   }
   return out;
 }

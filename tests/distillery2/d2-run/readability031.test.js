@@ -90,6 +90,11 @@ test('RDRA の図解: 別のコンテキストに同じ名前の条件があっ�
     ['条件: 重なり判定 (備品管理) 2', '条件-重なり判定-備品管理-2'],
   ]);
   for (const [h] of links) assert.equal(md.split(`### ${h}\n`).length, 2, `見出しが 1 つだけある: ${h}`);
+  // 記号だけ違う名前 (見出しは違うがアンカーが同じ) も、アンカーが重ならない
+  const d2 = rdraRepo('一文だけ', { conditions: ['予約管理\t予約/管理\t記号あり。細目\t\t', '予約管理\t予約管理\t記号なし。細目\t\t'] });
+  genRdra(d2);
+  const md2 = fs.readFileSync(path.join(d2, 'rdra/views/07_条件・バリエーション.md'), 'utf8');
+  assert.deepEqual([...md2.matchAll(/→ 細目: \[([^\]]+)\]\(#([^)]+)\)/g)].map((m) => [m[1], m[2]]), [['条件: 予約/管理', '条件-予約管理'], ['条件: 予約管理 2', '条件-予約管理-2']]);
   assert.match(md, /### 条件: 重なり判定 \(備品管理\)\n\n備品の重なり。\n\n- 細目 B\n/);
 });
 
@@ -169,6 +174,8 @@ test('決定の領域: 冪等性と再試行を必ず決める領域 (15) にし
   assert.match(read('skills/d2-decide/SKILL.md'), /14 領域 \(1〜8・10〜15\)/);
   assert.match(read('skills/d2-decide/references/decision-candidates/error-handling.md'), /\*\*再試行と冪等\*\*: ここでは決めない。冪等性と再試行の ADR \(idempotency-retry\.md\)/);
   const msg = read('skills/d2-decide/references/decision-candidates/messaging.md');
-  assert.match(msg, /冪等性と再試行の ADR \(idempotency-retry\.md\) で決める。メッセージングの ADR には書かない/);
+  assert.match(msg, /冪等性は、メッセージングの ADR には書かない。同期の API も非同期の処理も、冪等性と再試行の ADR \(idempotency-retry\.md\) の 1 本に書く/);
+  assert.doesNotMatch(msg.split('## 冪等性')[1].split('\n## ')[0], /scope:/, '非同期の冪等性のルール例はメッセージングに置かない (記録先は 1 本)');
+  assert.match(c, /scope: tier:worker\n  text: "同じメッセージ ID を 2 回受けても、副作用を重複させない"/);
   assert.doesNotMatch(msg, /Idempotency-Key/, 'API の冪等キーの例をメッセージングに残さない (新しい領域の選択と食い違う)');
 });
