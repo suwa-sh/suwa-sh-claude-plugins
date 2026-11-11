@@ -281,11 +281,26 @@ function build(ctx) {
     out.push(`画面 ${screenList.length} 枚。${designDoc ? `画面の流れ・状態ごとの見本・部品の役割は ${designDoc}。` : ''}`);
     out.push('');
     const ucName = Object.fromEntries(ctx.ucs.map((u) => [u.slug, u.uc]));
+    // 写真: 撮影済みの画面の状態 (screens-<画面>--<状態>.png。名前は Storybook の Story ID) から代表を 1 枚選ぶ。
+    // 通常の状態 (default) があればそれ、無ければ screens.yaml の variants の順で最初に撮れているもの、それも無ければ名前順の最初
+    const shotFiles = listDir(D('design', 'screenshots')).filter((e) => e.isFile() && e.name.endsWith('.png')).map((e) => e.name);
+    const kebab = (v) => String(v).replace(/([a-z])([A-Z0-9])/g, '$1-$2').replace(/([0-9])([A-Za-z])/g, '$1-$2').replace(/([A-Z])([A-Z][a-z])/g, '$1-$2').toLowerCase();
+    const screenShot = (sc) => {
+      const prefix = `screens-${String(sc.name || '').toLowerCase()}--`;
+      const mine = shotFiles.filter((f) => f.startsWith(prefix));
+      if (!mine.length) return null;
+      const stateOf = (f) => f.slice(prefix.length, -'.png'.length);
+      const byVariant = (sc.variants || []).map((v) => [v, mine.find((f) => stateOf(f) === kebab(v))]).find(([, f]) => f);
+      const pick = mine.find((f) => stateOf(f) === 'default') ? ['通常の状態', `${prefix}default.png`]
+        : byVariant ? [`状態: ${byVariant[0]}`, byVariant[1]]
+        : [`状態: ${stateOf(mine[0])}`, mine[0]];
+      return link(D('design', 'screenshots', pick[1]), pick[0]);
+    };
     out.push('| 画面 | 道筋 | UC | 状態の見本 | 写真 |');
     out.push('|---|---|---|---|---|');
     for (const sc of screenList) {
       const slugs = sc.uc_slugs || (sc.uc ? [sc.uc] : []);
-      const shot = link(D('design', 'screenshots', `screens-${String(sc.name || '').toLowerCase()}--default.png`), '通常の状態');
+      const shot = screenShot(sc);
       out.push(`| ${mdEscape(sc.name)} | ${sc.route ? '`' + mdEscape(sc.route) + '`' : '-'} | ${slugs.map((x) => mdEscape(ucName[x] || x)).join('<br>') || '-'} | ${(sc.variants || []).length || '-'} | ${shot || '-'} |`);
     }
     out.push('');

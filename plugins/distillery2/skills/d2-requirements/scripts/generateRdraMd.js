@@ -140,13 +140,33 @@ function anchorOf(heading) {
   return String(heading).trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-');
 }
 
-/** 2 文以上の説明を持つ行の細目を、名前ごとの見出しと箇条書きで出す */
-function detailSections(rows, nameKey, descKey, headingPrefix) {
+/**
+ * 行ごとの細目の見出し (表のリンク先と細目の節で同じものを使う)。
+ * 名前が 1 つだけなら「<種類>: <名前>」。別のコンテキストに同じ名前があれば「<種類>: <名前> (<コンテキスト>)」、
+ * それでも重なれば連番を足して、見出し (= アンカー) を一意にする。
+ */
+function detailHeadings(rows, nameKey, headingPrefix) {
+  const count = new Map();
+  for (const row of rows) count.set(row[nameKey], (count.get(row[nameKey]) || 0) + 1);
+  const used = new Map();
+  const out = new Map();
+  for (const row of rows) {
+    let h = `${headingPrefix}${row[nameKey]}`;
+    if (count.get(row[nameKey]) > 1) h += ` (${row['コンテキスト'] || '-'})`;
+    const n = (used.get(h) || 0) + 1;
+    used.set(h, n);
+    out.set(row, n > 1 ? `${h} ${n}` : h);
+  }
+  return out;
+}
+
+/** 2 文以上の説明を持つ行の細目を、行ごとの見出しと箇条書きで出す */
+function detailSections(rows, descKey, headings) {
   const lines = [];
   for (const row of rows) {
     const ss = splitSentences(row[descKey]);
     if (ss.length <= 1) continue;
-    lines.push(`### ${headingPrefix}${row[nameKey]}`, '');
+    lines.push(`### ${headings.get(row)}`, '');
     lines.push(`${ss[0]}。`, '');
     for (const t of ss.slice(1)) lines.push(`- ${t}`);
     lines.push('');
@@ -812,29 +832,31 @@ function viewConditionVariation(model) {
       lines.push('');
     }
 
+    const cdHeadings = detailHeadings(model.conditions, '条件', '条件: ');
     lines.push('| コンテキスト | 条件 | 条件の説明 | バリエーション | 状態モデル |');
     lines.push('|---|---|---|---|---|');
     for (const row of model.conditions) {
       lines.push(
-        `| ${esc(row['コンテキスト'])} | ${esc(row['条件'])} | ${leadCell(row['条件の説明'], '条件: ' + row['条件'])} | ${esc(row['バリエーション'])} | ${esc(row['状態モデル'])} |`
+        `| ${esc(row['コンテキスト'])} | ${esc(row['条件'])} | ${leadCell(row['条件の説明'], cdHeadings.get(row))} | ${esc(row['バリエーション'])} | ${esc(row['状態モデル'])} |`
       );
     }
     lines.push('');
-    lines.push(...detailSections(model.conditions, '条件', '条件の説明', '条件: '));
+    lines.push(...detailSections(model.conditions, '条件の説明', cdHeadings));
   }
 
   if (model.variations.length > 0) {
     lines.push('## バリエーション');
     lines.push('');
+    const vrHeadings = detailHeadings(model.variations, 'バリエーション', 'バリエーション: ');
     lines.push('| コンテキスト | バリエーション | 値 | 説明 |');
     lines.push('|---|---|---|---|');
     for (const row of model.variations) {
       lines.push(
-        `| ${esc(row['コンテキスト'])} | ${esc(row['バリエーション'])} | ${esc(row['値'])} | ${leadCell(row['説明'], 'バリエーション: ' + row['バリエーション'])} |`
+        `| ${esc(row['コンテキスト'])} | ${esc(row['バリエーション'])} | ${esc(row['値'])} | ${leadCell(row['説明'], vrHeadings.get(row))} |`
       );
     }
     lines.push('');
-    lines.push(...detailSections(model.variations, 'バリエーション', '説明', 'バリエーション: '));
+    lines.push(...detailSections(model.variations, '説明', vrHeadings));
   }
 
   return lines.join('\n');
@@ -971,7 +993,7 @@ function validateModel(model) {
   for (const [rows, nameKey, descKey] of leadChecks) {
     for (const row of rows) {
       const lead = splitSentences(row[descKey])[0] || '';
-      if (lead.length > LEAD_MAX) add('説明の要点が長い', `${nameKey}「${row[nameKey]}」`, `1 文目が ${lead.length} 字 (目安 ${LEAD_MAX} 字)。要点だけにし、細目は 2 文目以降に 1 文 1 つで書く`);
+      if ([...lead].length > LEAD_MAX) add('説明の要点が長い', `${nameKey}「${row[nameKey]}」`, `1 文目が ${[...lead].length} 字 (目安 ${LEAD_MAX} 字)。要点だけにし、細目は 2 文目以降に 1 文 1 つで書く`);
     }
   }
 
