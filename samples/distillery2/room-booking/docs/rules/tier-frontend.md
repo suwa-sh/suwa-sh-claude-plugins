@@ -21,24 +21,44 @@
 
 | 出所 | 効果 | 先 | 範囲 | 内容 | 出典 |
 |---|---|---|---|---|---|
-| `apps/frontend/src/api/**` | 禁止 | `apps/frontend/src/screens/**` | layer | API 呼び出しの層は画面の層へ依存してはならない | ADR 0013 |
+| `apps/frontend/src/api/**` | 禁止 | `apps/frontend/src/screens/**` | layer | API 呼び出しの層は画面の層へ依存してはならない | [ADR 0013](../adr/0013-app-layers-complete-forbid.md) |
 
 ## 決定ごとのルール
 
-各見出しは ADR 1 本に対応する。背景と却下した案は `docs/adr/` の該当ファイルを読む。
+表は決定ごとの要点。細目は下の折りたたみを開いて読む (依存の向きだけの決定は、上の「依存の向き」の表が細目)。**実装のときは、自分が触る領域の細目を必ず開いて読む。** 背景と却下した案は ADR (リンク先)。
 
-### ADR 0008 画面は単一の React SPA とし、共通の画面部品を packages/ui に持つ
+| 決定 | 要点 | 細目 |
+|---|---|---|
+| [ADR 0008](../adr/0008-ui-components.md) | 画面は単一の React SPA とし、共通の画面部品を packages/ui に持つ | 4 件 |
+| [ADR 0013](../adr/0013-app-layers-complete-forbid.md) | backend-api の層の依存は許可する 6 方向だけにし、それ以外の 14 方向をすべてアーキテストで禁止する | 1 件 + 依存の向き 1 件 (上の表) |
+| [ADR 0014](../adr/0014-tier-structure-frontend-oidc.md) | frontend は OIDC でトークンを得て、API 呼び出しの層の 1 か所で付ける | 5 件 |
+| [ADR 0015](../adr/0015-api-access-token-jwt.md) | API のトークンは認証基盤が発行する JWT とし、backend-api が検証して社員 ID を得る | 1 件 |
+| [ADR 0017](../adr/0017-time-range-within-business-date.md) | 時間帯は開始の日付 (日本時間) の中に収め、終了の 24:00 は翌日 0:00 で持つ | 1 件 |
+| [ADR 0019](../adr/0019-frontend-token-storage-and-renewal.md) | 画面はトークンをメモリだけに持ち、期限が近づいたら更新する。更新できなければサインインへ戻す | 8 件 |
+| [ADR 0020](../adr/0020-frontend-token-unknown-expiry.md) | 期限の分からないトークンは期限が近くないものとしてそのまま使い、API が 401 を返したらサインインへ戻す | 4 件 |
+| [ADR 0021](../adr/0021-frontend-screen-handoff-query.md) | 画面の間で選んだ値は、移る先の URL のクエリで渡す | 13 件 |
+| [ADR 0022](../adr/0022-messaging-not-needed-resend-returns-existing.md) | 冪等キーは入れず、同じ内容の送り直しには成立済みの予約を返す | 1 件 |
+| [ADR 0023](../adr/0023-error-handling-overlap-in-usecase.md) | 占有の一意制約の違反は repository が値で返し、usecase が重なりのエラーに変える | 1 件 |
+
+<details>
+<summary><b>ADR 0008</b> 画面は単一の React SPA とし、共通の画面部品を packages/ui に持つ (4 件)</summary>
 
 - 共通の画面部品は packages/ui からだけ取り、アプリ側で同じ部品を作り直さない
 - 色・文字・余白はデザイントークンで指定し、画面に色の値を直接書かない
 - 空き・予約済みの区分は色だけでなく文字 (「空き」「予約済み」) でも示す
 - 業務のエラー (重なる・時刻が正しくない・取り消せない など) は、契約のエラー型のコードに応じた理由の文を画面に表示する
 
-### ADR 0013 backend-api の層の依存は許可する 6 方向だけにし、それ以外の 14 方向をすべてアーキテストで禁止する
+</details>
+
+<details>
+<summary><b>ADR 0013</b> backend-api の層の依存は許可する 6 方向だけにし、それ以外の 14 方向をすべてアーキテストで禁止する (1 件)</summary>
 
 - frontend の層は画面 (apps/frontend/src/screens/) と API 呼び出し (apps/frontend/src/api/) の 2 つにし、画面は API 呼び出しの層を通して backend-api を呼ぶ
 
-### ADR 0014 2 ティア構成を引き継ぎ、frontend は OIDC クライアントでトークンを得て API 呼び出しの層の 1 か所で付ける
+</details>
+
+<details>
+<summary><b>ADR 0014</b> frontend は OIDC でトークンを得て、API 呼び出しの層の 1 か所で付ける (5 件)</summary>
 
 - frontend は OIDC クライアント (oidc-client-ts) で、認可コード + PKCE のリダイレクトにより社内の認証基盤へサインインする。ログインの画面は作らず、パスワードを扱わない
 - トークンの取得と Authorization ヘッダ (Bearer) の付与は apps/frontend/src/api/ のトークンの供給元 (インターフェイス) 1 か所にまとめ、生成クライアントの options.fetch を包んで付ける。画面や画面の入口関数でトークンを扱ったり OIDC クライアントを直接 import したりしない
@@ -46,15 +66,24 @@
 - API が 401 (UNAUTHENTICATED) を返したら、トークンの供給元のサインインを呼んで認証基盤のサインインへ戻す。画面ごとに 401 の扱いを書かない
 - 画面に出す社員の表示名は、トークンの供給元が ID トークンの name クレームから返す。表示名のために API を呼ばない
 
-### ADR 0015 API に送るトークンは認証基盤が JWT で発行するアクセストークンとし、backend-api は署名と発行者・宛先・期限を検証して sub を社員 ID にする
+</details>
+
+<details>
+<summary><b>ADR 0015</b> API のトークンは認証基盤が発行する JWT とし、backend-api が検証して社員 ID を得る (1 件)</summary>
 
 - トークンの供給元が Authorization ヘッダに付けるのはアクセストークンとする。ID トークンを Bearer に付けない
 
-### ADR 0017 時間帯は開始の日付 (日本時間) の中に収める。収まらない時間帯は INVALID_TIME_RANGE にし、終了の 24:00 は翌日 0:00 の日時で持つ
+</details>
+
+<details>
+<summary><b>ADR 0017</b> 時間帯は開始の日付 (日本時間) の中に収め、終了の 24:00 は翌日 0:00 で持つ (1 件)</summary>
 
 - INVALID_TIME_RANGE は「時間帯が正しくない」ことを示す 1 つの文で表示する (開始と終了の逆転・同じ時刻・日をまたぐ時間帯のどれにも当てはまる文にする)
 
-### ADR 0019 画面はトークンをメモリだけに持ち、期限が近づいたらリフレッシュトークンで更新する。iframe での更新はせず、更新できなければサインインへ戻す
+</details>
+
+<details>
+<summary><b>ADR 0019</b> 画面はトークンをメモリだけに持ち、期限が近づいたら更新する。更新できなければサインインへ戻す (8 件)</summary>
 
 - トークンの供給元の本番の実装は、OIDC クライアント (oidc-client-ts の UserManager) の userStore を new WebStorageStateStore({ store: new InMemoryWebStorage() }) と明示し、アクセストークン・ID トークン・リフレッシュトークンをメモリだけに持つ。既定 (sessionStorage) に任せない
 - OIDC クライアントの stateStore (サインインの往復の間だけ要る state と PKCE の値) は new WebStorageStateStore({ store: window.sessionStorage }) と明示する。既定 (localStorage) に任せない
@@ -65,14 +94,20 @@
 - 画面を読み込み直してメモリのトークンが無いときも、トークンの供給元はサインインへ戻す (認証基盤のサインインが残っていれば、社員は入力せずに戻る)。トークンを保存して読み込み直しに備えることはしない
 - VITE_OIDC_SCOPE には ADR 0018 の値に加え、認証基盤がこの画面にリフレッシュトークンを出すのに要る値を含める (値は認証基盤の登録のときに決める)
 
-### ADR 0020 期限の分からないトークンは期限が近くないものとしてそのまま使い、API が 401 を返したらサインインへ戻す
+</details>
+
+<details>
+<summary><b>ADR 0020</b> 期限の分からないトークンは期限が近くないものとしてそのまま使い、API が 401 を返したらサインインへ戻す (4 件)</summary>
 
 - トークンの供給元の本番の「アクセストークンを返す」は、保存したトークンに期限が無いとき (認証基盤が expires_in を返さず、OIDC クライアントの expires_at と expires_in が undefined のとき) は、期限が近くないものとして扱い、signinSilent() を呼ばず、サインインへも戻さずにそのまま返す。期限 (expires_in) があるときは ADR 0019 の 60 秒の分岐のとおり
 - 期限の分からないトークンで API が 401 (UNAUTHENTICATED) を返したら、ADR 0014 の 401 の扱い (トークンの供給元のサインインを呼ぶ) と ADR 0018 の戻り先 (今の path を state に入れる) のとおりサインインへ戻す。期限の分からないトークンのための更新や再試行を別に作らない
 - 画面のコードはアクセストークンの中身 (JWT の exp など) を読んで期限を求めない。アクセストークンは画面にとって中身の分からない値として扱い、期限は OIDC クライアントの expires_in だけで判断する
 - トークンの供給元の本番の実装の単体テストは、ADR 0019 の組み合わせ (期限の残りとリフレッシュトークンの有無) に「期限が無い」を足し、そのまま返すこと・signinSilent() を呼ばないこと・サインインを呼ばないことを確かめる
 
-### ADR 0021 ADR 0018 (同じオリジンの配信・開発時の中継・サインインの戻り先・画面の照合) を引き継ぎ、画面の間で選んだ値は移る先の URL のクエリで渡す。App.tsx が読んで Route の element に 2 つ目の引数で渡し、受け取った画面は初期値としてだけ使う
+</details>
+
+<details>
+<summary><b>ADR 0021</b> 画面の間で選んだ値は、移る先の URL のクエリで渡す (13 件)</summary>
 
 - 画面は生成クライアントの baseUrl を指定せず (既定の同一オリジンのまま)、契約の path (/api で始まる相対パス) で API を呼ぶ。API の宛先のオリジンを画面の設定や環境変数で持たない
 - 開発時は apps/frontend/vite.config.ts の server.proxy で /api を backend-api へ中継する。中継先の既定は http://localhost:3000 (契約の servers と同じ) とし、環境変数 API_PROXY_TARGET で上書きできるようにする
@@ -88,10 +123,18 @@
 - 受け取った画面はクエリの値を入力の初期値としてだけ使う。値が欠けているか、入力の形に合わない (日付・時刻の書式でない、選択肢に無い会議室など) ときは、その項目を空のまま (既定のまま) にして社員に入力させ、エラーの表示も画面の遷移もしない。業務の検証 (過去でないか・時間帯の範囲など) は画面で足さず API に任せる
 - 引き継いだクエリは path の一部としてサインインの state (この ADR の、今の画面の path をクエリごと入れる規則) に入るので、サインインの往復の後も初期値として残る。画面で入力中に変えた値はクエリへ書き戻さず、サインインの往復で残さない (入力値は保存も復元もしない規則のとおり)
 
-### ADR 0022 ADR 0005 (メッセージングを使わず同期で完結・冪等キーを入れない) を引き継ぎ、冪等キーを入れない理由を「同じ内容の送り直しは成立済みの予約を返し、それ以外の重複は重なりで弾く」に直す
+</details>
+
+<details>
+<summary><b>ADR 0022</b> 冪等キーは入れず、同じ内容の送り直しには成立済みの予約を返す (1 件)</summary>
 
 - 予約と取り消しの送信中はボタンを押せなくし、二重の送信を防ぐ
 
-### ADR 0023 ADR 0010 (業務のエラーはコード付きの戻り値で返す) を引き継ぎ、占有の表の一意制約の違反は repository が重なりとして値で返し、usecase が SLOT_OVERLAPS の業務のエラーに変える
+</details>
+
+<details>
+<summary><b>ADR 0023</b> 占有の一意制約の違反は repository が値で返し、usecase が重なりのエラーに変える (1 件)</summary>
 
 - 業務のエラーは契約のエラー型の code で分岐し、利用者に理由を表示する
+
+</details>

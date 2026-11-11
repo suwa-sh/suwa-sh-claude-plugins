@@ -1,6 +1,6 @@
 ---
 id: "0014"
-title: "2 ティア構成を引き継ぎ、frontend は OIDC クライアントでトークンを得て API 呼び出しの層の 1 か所で付ける"
+title: "frontend は OIDC でトークンを得て、API 呼び出しの層の 1 か所で付ける"
 status: accepted
 date: "2026-11-04"
 supersedes: ["0001"]

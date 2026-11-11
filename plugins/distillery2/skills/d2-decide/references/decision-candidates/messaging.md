@@ -1,6 +1,6 @@
 # 決定候補カタログ: メッセージング
 
-同期 / 非同期、outbox、冪等性を決める。ADR の `scope: [app]` または `[system]`。
+同期 / 非同期、outbox、Saga を決める (冪等性はここでは決めない。冪等性と再試行の ADR に書く)。ADR の `scope: [app]` または `[system]`。
 AsyncAPI が要るプロダクトのときだけ ADR を書く (required-decisions.md の条件付き必須)。
 
 ---
@@ -28,17 +28,11 @@ AsyncAPI が要るプロダクトのときだけ ADR を書く (required-decisio
 
 ## 冪等性
 
-- **発火条件** (2 つ以上で high、1 つで medium): 金銭取引の状態遷移 / 外部が決済機関 / 社外アクター (リトライ重複リスク) / BUC に予約・申請等の更新系。
-- **層別の対処**:
-  - frontend: X-Idempotency-Key (UUID) + ダブルクリック防止。
-  - backend-api: KVS で重複検知し前回レスポンスを返す。
-  - RDB: UNIQUE 制約 + UPSERT。
-  - worker / MQ: MessageId / ジョブ実行 ID。
-- **派生するルール例**:
-  ```yaml
-  - scope: common
-    text: "更新系 API は Idempotency-Key を受け取り、同一キーの再送で副作用を重複させない"
-  ```
+冪等性は、メッセージングの ADR には書かない。同期の API も非同期の処理も、冪等性と再試行の ADR (idempotency-retry.md) の 1 本に書く (決定とルールの記録先はそこだけ)。
+
+非同期の処理を採るときは、冪等性と再試行の ADR で次を必ず決める (idempotency-retry.md の「非同期の処理」):
+
+- 配信は「少なくとも 1 回」が普通で、同じメッセージやジョブが 2 回届く。2 回目をどう扱うか (メッセージの ID やジョブの実行 ID で捨てる・RDB の一意制約と UPSERT で重複させない)
 
 ## Saga (分散トランザクション)
 

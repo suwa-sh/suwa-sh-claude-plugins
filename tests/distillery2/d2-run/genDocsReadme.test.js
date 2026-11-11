@@ -81,7 +81,7 @@ test('段階の表・UC 一覧 (背骨)・決めたこと・契約を、実在�
   // 背骨: 要求 → シナリオ → 契約 → 画面 → as-built
   assert.match(md, /UC 2 件 \(main マージ済み 0、main マージ待ち 1、要求待ち 1\)/);
   assert.match(md, /要求の列の SPEC は \[要求仕様書\]\(requirements\/requirements\.md\) の行/);
-  assert.match(md, /\| 貸出業務 \| 貸出を登録する \| 実装済み \(main マージ待ち\) \| SPEC-001-01 \| \[register-loan\.feature\]\(\.\.\/features\/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99\/register-loan\.feature\) \(2 本\) \| \[createLoan \/ テーブル 2\]\(\.\.\/contracts\/generated\/slices\/register-loan\/contract-slice\.json\) \| LoanCheckout \| \[index\.md\]\(as-built\/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99\/%E8%B2%B8%E5%87%BA%E3%82%92%E7%99%BB%E9%8C%B2%E3%81%99%E3%82%8B\/index\.md\) \|/);
+  assert.match(md, /\| 貸出業務 \| 貸出を登録する \| 実装済み \(main マージ待ち\) \| SPEC-001-01 \| \[register-loan\.feature\]\(\.\.\/features\/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99\/register-loan\.feature\) \(2 本\) \| \[createLoan \/ テーブル 2\]\(\.\.\/contracts\/generated\/slices\/register-loan\/contract-slice\.json\) \| \[LoanCheckout\]\(#画面\) \| \[index\.md\]\(as-built\/%E8%B2%B8%E5%87%BA%E6%A5%AD%E5%8B%99\/%E8%B2%B8%E5%87%BA%E3%82%92%E7%99%BB%E9%8C%B2%E3%81%99%E3%82%8B\/index\.md\) \|/);
   assert.match(md, /\| {2}\| 返却を登録する \| 要求待ち \| なし \| - \| - \| - \| - \|/);
   assert.match(md, /<summary>要求待ちの理由 \(1\)<\/summary>\n\n- 返却を登録する: 対応する仕様が無い/);
   assert.match(md, /\| \[0001\]\(adr\/0001-tiers\.md\) \| ティアは 2 つ \| accepted \|/);

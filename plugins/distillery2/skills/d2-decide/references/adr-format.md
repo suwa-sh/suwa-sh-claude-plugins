@@ -52,7 +52,7 @@ rules:                      # 機械可読。段階③ (d2-foundation) の rules
 | フィールド | 必須 | 説明 |
 |---|---|---|
 | `id` | ✓ | 4 桁ゼロ埋め。必ずクォートする (`"0003"`。0 始まりが数値化しないため) |
-| `title` | ✓ | 決定の要約 |
+| `title` | ✓ | 決めたこと 1 つを 60 字までで言い切る。開発ルールの要点の表と `docs/README.md` にそのまま出る。前の決定を置き換える ADR も新しい決定だけを書き、別の ADR の番号から始めない (引き継ぐ相手は `supersedes`)。`validateAdr.js` が検査する ([writing.md](../../d2-common/references/writing.md)) |
 | `status` | ✓ | `proposed` / `accepted` / `superseded` / `deprecated` |
 | `date` | ✓ | `YYYY-MM-DD` |
 | `supersedes` | | 置き換えた ADR の id 配列 (既定 `[]`) |

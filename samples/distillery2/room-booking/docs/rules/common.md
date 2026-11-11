@@ -32,48 +32,87 @@
 
 | 出所 | 効果 | 先 | 範囲 | 内容 | 出典 |
 |---|---|---|---|---|---|
-| `apps/frontend/**` | 禁止 | `apps/backend-api/src/**` | tier | frontend は backend-api の内部実装へ直接依存してはならない (契約から生成したクライアント経由で呼ぶ) | ADR 0014 |
-| `apps/backend-api/**` | 禁止 | `apps/frontend/src/**` | tier | backend-api は frontend の実装へ依存してはならない | ADR 0014 |
+| `apps/frontend/**` | 禁止 | `apps/backend-api/src/**` | tier | frontend は backend-api の内部実装へ直接依存してはならない (契約から生成したクライアント経由で呼ぶ) | [ADR 0014](../adr/0014-tier-structure-frontend-oidc.md) |
+| `apps/backend-api/**` | 禁止 | `apps/frontend/src/**` | tier | backend-api は frontend の実装へ依存してはならない | [ADR 0014](../adr/0014-tier-structure-frontend-oidc.md) |
 
 ## 決定ごとのルール
 
-各見出しは ADR 1 本に対応する。背景と却下した案は `docs/adr/` の該当ファイルを読む。
+表は決定ごとの要点。細目は下の折りたたみを開いて読む (依存の向きだけの決定は、上の「依存の向き」の表が細目)。**実装のときは、自分が触る領域の細目を必ず開いて読む。** 背景と却下した案は ADR (リンク先)。
 
-### ADR 0004 予約は「予約した」「取り消した」の事実を足していく形で持ち、今の状態は別の表に持つ
+| 決定 | 要点 | 細目 |
+|---|---|---|
+| [ADR 0004](../adr/0004-immutable-data.md) | 予約は「予約した」「取り消した」の事実を足していく形で持ち、今の状態は別の表に持つ | 2 件 |
+| [ADR 0006](../adr/0006-authn-authz.md) | 社員の認証は社内の既存アカウントに OIDC で任せ、認可は予約者本人かどうかを domain で判定する | 1 件 |
+| [ADR 0011](../adr/0011-logging.md) | ログは JSON の 1 行で出し、業務のイベントは usecase が出す。domain はログを出さない | 1 件 |
+| [ADR 0012](../adr/0012-machine-checks.md) | 機械チェックは既定の道具で 6 観点 (生成・整形・lint・ビルド・テスト・安全) を回す | 2 件 |
+| [ADR 0014](../adr/0014-tier-structure-frontend-oidc.md) | frontend は OIDC でトークンを得て、API 呼び出しの層の 1 か所で付ける | 2 件 + 依存の向き 2 件 (上の表) |
+| [ADR 0015](../adr/0015-api-access-token-jwt.md) | API のトークンは認証基盤が発行する JWT とし、backend-api が検証して社員 ID を得る | 1 件 |
+| [ADR 0019](../adr/0019-frontend-token-storage-and-renewal.md) | 画面はトークンをメモリだけに持ち、期限が近づいたら更新する。更新できなければサインインへ戻す | 1 件 |
+| [ADR 0021](../adr/0021-frontend-screen-handoff-query.md) | 画面の間で選んだ値は、移る先の URL のクエリで渡す | 1 件 |
+| [ADR 0022](../adr/0022-messaging-not-needed-resend-returns-existing.md) | 冪等キーは入れず、同じ内容の送り直しには成立済みの予約を返す | 1 件 |
+
+<details>
+<summary><b>ADR 0004</b> 予約は「予約した」「取り消した」の事実を足していく形で持ち、今の状態は別の表に持つ (2 件)</summary>
 
 - 予約のイベント (予約した・取り消した) の表は追記だけ。UPDATE と DELETE をしない
 - 取り消しは予約の行を消さず、取り消したことのイベントを足し、予約の今の状態を取消済みにする
 
-### ADR 0006 社員の認証は社内の既存アカウントに OIDC で任せ、認可は予約者本人かどうかを domain で判定する
+</details>
+
+<details>
+<summary><b>ADR 0006</b> 社員の認証は社内の既存アカウントに OIDC で任せ、認可は予約者本人かどうかを domain で判定する (1 件)</summary>
 
 - 認証は社内の既存アカウントの認証基盤に OIDC で任せる。このシステムはパスワードを保持せず、ログインの画面も作らない
 
-### ADR 0011 ログは JSON の 1 行で出し、業務のイベントは usecase が出す。domain はログを出さない
+</details>
+
+<details>
+<summary><b>ADR 0011</b> ログは JSON の 1 行で出し、業務のイベントは usecase が出す。domain はログを出さない (1 件)</summary>
 
 - 秘密 (トークン・認証の鍵) と要求と応答の本文の全体をログに出さない
 
-### ADR 0012 機械チェックは既定の道具 (biome・qlty・tsc・vitest・依存の監査・SAST・秘密の検出) で 6 観点を回す
+</details>
+
+<details>
+<summary><b>ADR 0012</b> 機械チェックは既定の道具で 6 観点 (生成・整形・lint・ビルド・テスト・安全) を回す (2 件)</summary>
 
 - コミットの前に node scripts/check.mjs --mode hook が通る状態にする (hook が自動で回す)
 - main に入れる前は d2-run の全段のゲートで止める (生成物の鮮度と security は報告にとどめる)。main への push の後に CI が node scripts/check.mjs --mode ci で 6 観点 (generate / format / lint / build / test / security) を回し、落ちたらすぐ直す
 
-### ADR 0014 2 ティア構成を引き継ぎ、frontend は OIDC クライアントでトークンを得て API 呼び出しの層の 1 か所で付ける
+</details>
+
+<details>
+<summary><b>ADR 0014</b> frontend は OIDC でトークンを得て、API 呼び出しの層の 1 か所で付ける (2 件)</summary>
 
 - backend-api は単一のデプロイ単位 (モジュラモノリス) とし、データストアへの読み書きは backend-api だけが行う
 - ティアの言語は TypeScript とし、frontend は React の SPA、backend-api は Node.js 上の Express で作る
 
-### ADR 0015 API に送るトークンは認証基盤が JWT で発行するアクセストークンとし、backend-api は署名と発行者・宛先・期限を検証して sub を社員 ID にする
+</details>
+
+<details>
+<summary><b>ADR 0015</b> API のトークンは認証基盤が発行する JWT とし、backend-api が検証して社員 ID を得る (1 件)</summary>
 
 - API の Authorization ヘッダ (Bearer) に載せるのは、社内の認証基盤が JWT で発行するアクセストークンとする。ID トークンを API に送らない (ID トークンは frontend が表示名を読むためだけに使う)
 
-### ADR 0019 画面はトークンをメモリだけに持ち、期限が近づいたらリフレッシュトークンで更新する。iframe での更新はせず、更新できなければサインインへ戻す
+</details>
+
+<details>
+<summary><b>ADR 0019</b> 画面はトークンをメモリだけに持ち、期限が近づいたら更新する。更新できなければサインインへ戻す (1 件)</summary>
 
 - 本番の前段の配信は、/api で始まる path と実在する画面の静的ファイル (ビルドの出力) を除く path (/auth/callback と routes.tsx の画面の path) に、画面の入口 (index.html) を返す。ファイル名として解決して 404 にしない。開発時は vite の開発サーバの既定 (appType: spa) のまま使う
 
-### ADR 0021 ADR 0018 (同じオリジンの配信・開発時の中継・サインインの戻り先・画面の照合) を引き継ぎ、画面の間で選んだ値は移る先の URL のクエリで渡す。App.tsx が読んで Route の element に 2 つ目の引数で渡し、受け取った画面は初期値としてだけ使う
+</details>
+
+<details>
+<summary><b>ADR 0021</b> 画面の間で選んだ値は、移る先の URL のクエリで渡す (1 件)</summary>
 
 - 画面 (frontend) と API (backend-api) は利用者から見て同じオリジンで配信する。本番は前段の配信 (リバースプロキシ等) で /api で始まる path を backend-api へ、それ以外を画面の静的ファイルへ振り分ける
 
-### ADR 0022 ADR 0005 (メッセージングを使わず同期で完結・冪等キーを入れない) を引き継ぎ、冪等キーを入れない理由を「同じ内容の送り直しは成立済みの予約を返し、それ以外の重複は重なりで弾く」に直す
+</details>
+
+<details>
+<summary><b>ADR 0022</b> 冪等キーは入れず、同じ内容の送り直しには成立済みの予約を返す (1 件)</summary>
 
 - 業務の処理は同期の要求と応答で完結させ、メッセージ基盤・outbox・非同期のイベント配信を入れない (AsyncAPI の契約を作らない)
+
+</details>

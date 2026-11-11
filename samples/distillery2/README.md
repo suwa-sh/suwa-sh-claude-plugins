@@ -28,7 +28,13 @@
 | 2 つ目の UC | 起動 4 回・写し直し 4 回・巻き戻し 1 回。写し直しの上限 (3 回) で 1 度人に返し、原因が別々だったので続けた |
 | 残っている課題ファイル | `docs/feedback/` の 8 件 (プラグイン側の課題を含む。未対応のまま載せている) |
 
-含めていないもの: スクリーンショットと Storybook アプリ (`docs/design/screenshots/`・`storybook-app/`)、`package-lock.json`、写し直しの前の実行状態の退避 (`.distillery/archive/`)、git 管理外の生成物 (`runs/*/reports`・`traces`、`logs/`)。
+0.3.1 で読みやすさを直した後に、次のものを作り直した (実走はし直していない)。
+
+- 開発ルール (`docs/rules/`)・RDRA の図解 (`docs/requirements/rdra/views/`)・入口の文書 (`docs/README.md`): 0.3.1 の生成器で作り直した
+- ADR 8 本の題と、RDRA の条件 3 件・バリエーション 1 件の説明: 新しい書き方の決まりに合わせて手で書き直した (中身は変えていない)。実装中の記録 (`.distillery/`) には元の題が残る
+- 画面の写真 (`docs/design/screenshots/`、77 枚): 入口の文書の「画面」の節から見られるように足した
+
+含めていないもの: Storybook アプリ (`docs/design/storybook-app/`)、`package-lock.json`、写し直しの前の実行状態の退避 (`.distillery/archive/`)、git 管理外の生成物 (`runs/*/reports`・`traces`、`logs/`)。
 `.gitignore` は `_gitignore` に名前を変え、パスは `<repo>` と `~` に置き換えている。git 履歴を含まないコピーである点は library-loan と同じ (末尾の「注意」)。
 
 ## library-loan (図書館の貸出・返却、0.1.13 / 0.1.16)

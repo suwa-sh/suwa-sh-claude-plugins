@@ -198,7 +198,7 @@ node <skill-path>/scripts/makeZeroOneData.js
 ```
 
 ### 整合性 lint
-`scripts/generateRdraMd.js --lint` で RDRA Sheet「✖不整合」シート相当の参照整合性（15 項目）を検証する:
+`scripts/generateRdraMd.js --lint` で RDRA Sheet「✖不整合」シート相当の参照整合性（15 項目 + 説明の要点の長さ）を検証する:
 ```bash
 node <skill-path>/scripts/generateRdraMd.js 1_RDRA --lint
 ```

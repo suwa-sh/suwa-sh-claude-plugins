@@ -1,6 +1,6 @@
 ---
 id: "0012"
-title: "機械チェックは既定の道具 (biome・qlty・tsc・vitest・依存の監査・SAST・秘密の検出) で 6 観点を回す"
+title: "機械チェックは既定の道具で 6 観点 (生成・整形・lint・ビルド・テスト・安全) を回す"
 status: accepted
 date: "2026-11-04"
 supersedes: []

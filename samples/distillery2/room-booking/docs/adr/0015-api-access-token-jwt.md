@@ -1,6 +1,6 @@
 ---
 id: "0015"
-title: "API に送るトークンは認証基盤が JWT で発行するアクセストークンとし、backend-api は署名と発行者・宛先・期限を検証して sub を社員 ID にする"
+title: "API のトークンは認証基盤が発行する JWT とし、backend-api が検証して社員 ID を得る"
 status: accepted
 date: "2026-11-04"
 supersedes: []

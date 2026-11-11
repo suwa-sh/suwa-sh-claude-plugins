@@ -7,7 +7,7 @@
  *
  * - テンプレート (references/rule-templates/) を土台に、採用済み ADR の rules[] を
  *   scope ごとに差し込む: 依存の向き (arch_test) は「## 依存の向き」の表、それ以外は「## 決定ごとのルール」の
- *   ADR 番号 + 題名の見出しの下に ADR id 昇順で並べる (平坦な箇条書きにしない)。
+ *   先頭に「決定ごとの要点 + ADR へのリンク」の表、その下に ADR ごとの折りたたみ (細目) を ADR id 昇順で並べる。
  * - scope: common → common.md / tier:<kind> → tier-<kind>.md / testing → testing.md
  * - tier ファイルは ADR tiers[] に現れた kind だけ生成する (宣言が無ければ全 kind)。
  * - 出力は決定論 (2 回実行して同一)。先頭に basis ヘッダを付ける。
@@ -59,7 +59,7 @@ function collectRules(adrs) {
       if (!r || !r.scope) continue;
       const file = scopeToFile(r.scope);
       if (!file) { errors.push({ id: adr.id, scope: r.scope, file: adr.file }); continue; }
-      (byScope[file] ||= []).push({ id: adr.id, title: adr.title || '', text: r.text, arch_test: r.arch_test || null });
+      (byScope[file] ||= []).push({ id: adr.id, title: adr.title || '', file: adr.file, text: r.text, arch_test: r.arch_test || null });
     }
   }
   for (const list of Object.values(byScope)) list.sort((a, b) => String(a.id).localeCompare(String(b.id), 'en', { numeric: true }));
@@ -71,9 +71,14 @@ function escapeCell(s) { return String(s == null ? '' : s).replace(/\|/g, '\\|')
 /**
  * 決定由来のルールを、読みやすい構造で描く。
  * - 依存の向き (arch_test 付き) は表にまとめる。アーキテストが機械で強制するので読者が覚える必要はない
- * - それ以外は ADR ごとの見出し (番号 + 題名) の下に置く。なぜそのルールがあるかを ADR で辿れる
+ * - それ以外は、先頭に決定ごとの要点 (ADR の題) と ADR へのリンクの表を置き、細目は ADR ごとの折りたたみに置く
+ *   (段階的開示。人は表で全体をつかみ、実装者は自分が触る領域の折りたたみを開いて読む)
+ * adrRel は、このルール文書から ADR のディレクトリへの相対パス (リンク用)。
  */
-function renderDecisionRules(rules) {
+function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function renderDecisionRules(rules, adrRel = '../adr') {
+  const link = (r) => (r.file ? `[ADR ${r.id}](${adrRel}/${encodeURI(r.file)})` : `ADR ${r.id}`);
   const archRules = rules.filter(r => r.arch_test && r.arch_test.from && r.arch_test.to);
   const plainRules = rules.filter(r => !(r.arch_test && r.arch_test.from && r.arch_test.to));
   const out = [];
@@ -83,23 +88,31 @@ function renderDecisionRules(rules) {
     out.push('| 出所 | 効果 | 先 | 範囲 | 内容 | 出典 |', '|---|---|---|---|---|---|');
     for (const r of archRules) {
       const t = r.arch_test;
-      out.push(`| \`${escapeCell(t.from)}\` | ${t.effect === 'allow' ? '許可' : '禁止'} | \`${escapeCell(t.to)}\` | ${escapeCell(t.level || '')} | ${escapeCell(r.text)} | ADR ${r.id} |`);
+      out.push(`| \`${escapeCell(t.from)}\` | ${t.effect === 'allow' ? '許可' : '禁止'} | \`${escapeCell(t.to)}\` | ${escapeCell(t.level || '')} | ${escapeCell(r.text)} | ${link(r)} |`);
     }
     out.push('');
   }
-  if (plainRules.length) {
+  if (rules.length) {
     out.push('## 決定ごとのルール', '');
-    out.push('各見出しは ADR 1 本に対応する。背景と却下した案は `docs/adr/` の該当ファイルを読む。', '');
-    let current = null;
-    for (const r of plainRules) {
-      if (r.id !== current) {
-        if (current !== null) out.push('');
-        current = r.id;
-        out.push(`### ADR ${r.id}${r.title ? ' ' + r.title : ''}`, '');
-      }
-      out.push(`- ${r.text}`);
+    out.push('表は決定ごとの要点。細目は下の折りたたみを開いて読む (依存の向きだけの決定は、上の「依存の向き」の表が細目)。**実装のときは、自分が触る領域の細目を必ず開いて読む。** 背景と却下した案は ADR (リンク先)。', '');
+    // 要点の表には、依存の向きだけを決めた ADR も載せる (一覧から決定が抜けない)。rules は ADR id 昇順で来る
+    const groups = [];
+    for (const r of rules) {
+      let g = groups[groups.length - 1];
+      if (!g || g.id !== r.id) { g = { id: r.id, title: r.title, file: r.file, rules: [], arch: 0 }; groups.push(g); }
+      if (r.arch_test && r.arch_test.from && r.arch_test.to) g.arch++;
+      else g.rules.push(r);
     }
+    const detail = (g) => [g.rules.length ? `${g.rules.length} 件` : '', g.arch ? `依存の向き ${g.arch} 件 (上の表)` : ''].filter(Boolean).join(' + ');
+    out.push('| 決定 | 要点 | 細目 |', '|---|---|---|');
+    for (const g of groups) out.push(`| ${link(g)} | ${escapeCell(g.title)} | ${detail(g)} |`);
     out.push('');
+    for (const g of groups) {
+      if (!g.rules.length) continue;
+      out.push('<details>', `<summary><b>ADR ${g.id}</b>${g.title ? ' ' + escapeHtml(g.title) : ''} (${g.rules.length} 件)</summary>`, '');
+      for (const r of g.rules) out.push(`- ${r.text}`);
+      out.push('', '</details>', '');
+    }
   }
   return out.join('\n').replace(/\s+$/, '');
 }
@@ -126,10 +139,10 @@ function renderFileTable(targets) {
   return targets.filter((n) => n !== 'index.md').sort((a, b) => order(a) - order(b) || (a < b ? -1 : a > b ? 1 : 0)).map((n) => `| [${n}](${n}) | ${label(n)} |`).join('\n');
 }
 
-function renderFile(templateBody, rules, basisLine, targets = []) {
+function renderFile(templateBody, rules, basisLine, targets = [], adrRel = '../adr') {
   let body = templateBody.replace(/\s+$/, '').replace('<!-- rules:files -->', renderFileTable(targets));
   if (rules && rules.length) {
-    body += '\n\n' + renderDecisionRules(rules);
+    body += '\n\n' + renderDecisionRules(rules, adrRel);
   }
   return `<!-- ${basisLine} -->\n<!-- generated by d2-foundation genRules.js — 手で直さず ADR を変える -->\n\n${body}\n`;
 }
@@ -159,7 +172,8 @@ function run(o) {
       continue;
     }
     const tpl = fs.readFileSync(tplPath, 'utf8');
-    const content = renderFile(tpl, byScope[name], basisLine, targets);
+    const adrRel = (path.relative(outDir, adrDir) || '.').split(path.sep).join('/');
+    const content = renderFile(tpl, byScope[name], basisLine, targets, adrRel);
     if (o.check) {
       if (!fs.existsSync(outFile) || fs.readFileSync(outFile, 'utf8') !== content) stale.push(name);
       continue;
