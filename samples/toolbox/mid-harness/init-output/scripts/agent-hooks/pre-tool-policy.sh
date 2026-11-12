@@ -489,40 +489,35 @@ def stdin_hits(toks):
         done = ends[p]
         return code_from_fetch(toks[p + 1:ends[p]])
     while k < n:
-        if not INTERP.match(toks[k]):
+        is_exec = toks[k].rsplit("/", 1)[-1] == "exec"          # exec < <(curl URL) は以降のコマンドの標準入力を取得物にする
+        if not (INTERP.match(toks[k]) or is_exec):
             k += 1; continue
-        m = k + 1; first_arg = True
+        m = k + 1
         while m < n and not is_end(toks[m]):
             t = toks[m]
-            if t == "<" and m + 1 < n and toks[m + 1] == "(" and first_arg:
-                if check(m + 1): return True                    # bash <(curl URL)
+            if t == "<" and m + 1 < n and toks[m + 1] == "(" and not is_exec:
+                if check(m + 1): return True                    # bash <(curl URL) / bash -o pipefail <(curl URL)。位置引数のどれでも拒否 (安全側)
             if t == "<" and m + 2 < n and toks[m + 1] == "<" and toks[m + 2] == "(":
                 if check(m + 2): return True                    # bash < <(curl URL)
-            if not t.startswith("-") and t not in ("<", "<<", "(", ")"):
-                first_arg = False
             m += 1
         k = m
     return heredoc_hits(toks)
 
 def heredoc_hits(toks):
-    # ヒアドキュメントの本文の $(curl URL) が、同じ行のインタプリタ (bash <<EOF / cat <<EOF | bash) にコードとして渡る形
+    # ヒアドキュメントの本文の $(curl URL) が、同じ行のインタプリタ (bash <<EOF / cat <<EOF | bash) にコードとして渡る形。
+    # 本文の終わりを語の一致で探すと「EOF x」の行や同じ行の複数のヒアドキュメントで読み違えるので、
+    # インタプリタを含む行にヒアドキュメントがあれば、その後ろ全体のコマンド置換を見る (安全側。後ろ全体を見るので 1 回で足りる)
     n = len(toks); line = 0; m = 0
     while m < n:
         t = toks[m]
         if t == "\n":
             line = m + 1
-        elif t == "<<" and m + 1 < n:
-            delim = toks[m + 1].lstrip("-")
-            b = m + 2
+        elif t == "<<":
+            b = m + 1
             while b < n and toks[b] != "\n": b += 1
-            e = b + 1
-            while e < n and not (toks[e] == delim and toks[e - 1] == "\n"): e += 1
-            head = toks[line:b]
-            if any(real_cmd(sc) is not None and INTERP.match(sc[real_cmd(sc)]) for sc in sub_commands(head)) \
-               and subst_fetch(toks[b + 1:e]):
-                return True
-            m = e; line = e
-            continue
+            if any(real_cmd(sc) is not None and INTERP.match(sc[real_cmd(sc)]) for sc in sub_commands(toks[line:b])):
+                return subst_fetch(toks[b + 1:])
+            m = b; continue                                     # 同じ行の残りの << は同じ行の検査になるので飛ばす (線形)
         m += 1
     return False
 
@@ -568,6 +563,8 @@ def hit_tokens(toks, level):
         return any(FETCH.search(t) for t in toks)
     if code_hits(toks) or stdin_hits(toks):
         return True                                             # インタプリタに渡すコード・標準入力・ヒアドキュメントの中で取得している
+    if out_proc_interp(toks) and any(is_fetch(sc) for sc in sub_commands(toks)):
+        return True                                             # 出力側 >(sh) と取得が同じコマンド列にある (curl URL > >(sh) / exec 3> >(sh); curl URL >&3)。安全側
     for cmd in split_top(toks):
         seen = False
         for stage in cmd:
@@ -575,8 +572,6 @@ def hit_tokens(toks, level):
             if seen and any(real_cmd(sc) is not None and INTERP.match(sc[real_cmd(sc)]) for sc in subs):
                 return True                                     # 取得の後ろの段 (グループならその中のどれか) がインタプリタ
             if any(is_fetch(sc) for sc in subs):
-                if out_proc_interp(stage):
-                    return True                                 # curl URL > >(sh)
                 seen = True
             for sc in subs:
                 for inner in inner_scripts(sc):                 # sh -c "..." / eval "..." / ssh host "..." の中身
