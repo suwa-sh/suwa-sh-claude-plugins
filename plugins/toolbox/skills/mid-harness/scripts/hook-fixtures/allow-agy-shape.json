@@ -1,1 +1,0 @@
-{"toolCall":{"name":"run_command","args":{"CommandLine":"echo hello","Cwd":"/tmp/x"}},"stepIdx":2}

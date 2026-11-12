@@ -2,7 +2,7 @@
 
 `mid-harness` の `init` を空の git リポに対して実行した結果をそのまま置いたものです。何が生成され、各製品が何を読むかを見るためのサンプルで、正本は `plugins/toolbox/skills/mid-harness/` (templates + scripts) です。
 
-- 生成日: 2026-11-12 / toolbox 0.11.4
+- 生成日: 2026-11-13 / toolbox 0.12.0
 - targets: `claude-code, codex, cursor, grok, copilot, antigravity`
 - `bash regenerate.sh --check` で現在の templates / scripts との drift を検査できる (`bash regenerate.sh` で作り直し)
 
@@ -32,7 +32,7 @@ init-output/
 │   ├── agent-specs/reviewer/           # custom agent の製品非依存な中間表現 (prompt.md + policy.yaml)
 │   ├── hooks.json                      # ← adapter (antigravity): top-level "mid-harness" キーだけ管理
 │   └── agents/reviewer/agent.md        # ← adapter (antigravity)
-├── scripts/agent-hooks/pre-tool-policy.sh   # hook の本体。6 製品の stdin/stdout 形式を 1 本で吸収
+├── scripts/agent-hooks/pre-tool-policy.sh   # hook の本体 (サンプル。既定は素通り)。6 製品の stdin/stdout 形式を 1 本で吸収
 ├── .claude/settings.json, agents/      # ← adapter (claude-code)
 ├── .codex/hooks.json, config.toml, agents/  # ← adapter (codex)
 ├── .cursor/hooks.json, agents/         # ← adapter (cursor)

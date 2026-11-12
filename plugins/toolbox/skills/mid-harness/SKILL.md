@@ -111,5 +111,6 @@ Claude Code / Codex CLI などのコーディングエージェントは、指�
 | `references/adapters/claude-code.md` / `codex.md` | gen_adapters の変換規則を疑うとき、製品バージョンが進んだとき |
 | `references/knowledge.md` | docs と `.agents/memory` の置き分け、昇格ルール、OKF front matter |
 | `references/acceptance-tests.md` | verify.sh の 3 項目と、手動で行う残り 5 項目 |
+| `references/hook-placement.md` | hook に検査を足す前。コーディングエージェントの hook / commit・push の hook / CI のどこに置くか |
 | `scripts/trust_status.py` | init / apply / audit の最後。製品側 trust の不足と付け方を報告に載せる |
 | `references/recovery.md` | 失敗したとき |

