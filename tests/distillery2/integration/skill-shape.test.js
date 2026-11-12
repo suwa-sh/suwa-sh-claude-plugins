@@ -82,9 +82,16 @@ test('本体が指す文書は実在する。references/ の下の文書は、�
         if (reached.has(f)) continue;
         const hit = [...reached].some(([from, text]) => {
           const rel = path.relative(path.dirname(from), f);
-          // 入れ子のフォルダ (雛形やフェーズごとの文書) は、フォルダを指す記述で中の文書に届くとみなす
-          const dir = path.dirname(f);
-          return text.includes(f) || text.includes(rel) || (dir !== "references" && text.includes(`${dir}/`));
+          if (text.includes(f) || text.includes(rel)) return true;
+          // 入れ子のフォルダ (雛形やフェーズごとの文書) は、フォルダそのものを指す記述 (`<フォルダ>/` で終わるパス) があれば中の文書に届くとみなす。
+          // 同じフォルダの別のファイルへのパスでは届かない (文書ごとの案内が消えたことを見逃さない)
+          for (let dir = path.dirname(f); dir !== 'references' && dir !== '.'; dir = path.dirname(dir)) {
+            const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const tail = '/(?![\\w.{<-]|[^\\x00-\\x7f])';
+            const near = path.relative(path.dirname(from), dir);
+            if (new RegExp(esc(dir) + tail).test(text) || (near && !near.startsWith("..") && new RegExp(esc(near) + tail).test(text))) return true;
+          }
+          return false;
         });
         if (hit) { reached.set(f, fs.readFileSync(path.join(PLUGIN, 'skills', d, f), 'utf8')); grew = true; }
       }
