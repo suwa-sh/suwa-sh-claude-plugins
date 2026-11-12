@@ -83,3 +83,54 @@
   相互参照 (循環 FK) でも参照先が必ず存在する。`ADD CONSTRAINT` に IF NOT EXISTS が無いため、
   `DO $$ ... EXCEPTION WHEN duplicate_object` で冪等化する。制約名は `<table>_<列>_fkey` で決定論的。
 - pglite に対して二重適用しても失敗しないことを実測で確認済み。
+
+## スクリプトの挙動
+
+### genContractTests.js
+
+全生成 (`--uc` なし) では、旧生成物を掃除する。
+生成時は削除し、`--check` 時は報告して exit 1 を返す。
+operation の削除や改名、provider の移設で、旧テストが残らないようにするためである。
+
+| 生成物 | 掃除の対象の決め方 |
+|---|---|
+| 契約テストと validators (`.ts`) | 所有タグで判定する。全 `apps/*/test/contract` を走査する (provider を別ティアへ移した後の旧テストも検出する) |
+| consumer stub (`.json`) | 各 `stubs/` の `.distillery2-generated.json` (生成一覧) に載るファイルだけを削除する。手書きの stub は消さない |
+
+`--uc <slug>` を指定したときは、生成の前に次の 2 つを検証する。
+古い契約からテストを作らないためである。
+
+- `generated/slices/<slug>/contract-slice.json` が実在する (無ければ exit 2)
+- source からの bundle が新しい (`compileContracts --check` 相当。古ければ exit 1)
+
+`--uc <slug>` では、生成済みの他 UC の契約テストも作り直す。
+テストは共有の型と契約の版を埋め込むので、型を足すと他 UC のテストが古くなるためである。
+まだ生成していない UC のテストは作らない。
+
+### 消費側 API クライアント (genApiClient.js)
+
+OpenAPI bundle から、次の 3 つを生成する。
+外部依存は無く、決定論的である。
+
+| ファイル | 中身 | 使う側 |
+|---|---|---|
+| `packages/contracts/<id>/types.ts` | スキーマから作った TS 型 | provider |
+| `packages/contracts/<id>/client.ts` | operationId ごとの型付き fetch | consumer |
+| `packages/contracts/<id>/server.ts` | operationId と method/path の対応表 | provider |
+
+全生成でも `--uc` でも、**全 operation から生成する**。
+型、経路、クライアントは UC 横断である。
+UC で縮めると、先に作った UC の分が消える。
+これらは、ティア実装者の手順書 (d2-implement の mode=tier) の read-set に入っている。
+
+### classifyContractChanges.js
+
+変わった契約の生成物を `git status` から拾い、次の 3 つに分ける。
+
+| 分類 | 中身 |
+|---|---|
+| own | この UC の operation。同じ operation を使う他 UC を併記する |
+| other_uc | 他 UC の operation |
+| shared | `messages.test.ts`、`db-schema.test.ts`、DDL、`packages/contracts/**`、bundle |
+
+d2-run が contract 段の受理時に使い、他の UC にも効く変更を人レビューに載せる。

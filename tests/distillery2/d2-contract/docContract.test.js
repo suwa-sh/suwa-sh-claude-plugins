@@ -19,9 +19,9 @@ test('SKILL.md の name は d2-contract (Agent Skills 仕様: ディレクトリ
   assert.match(text, /^name:\s*d2-contract\s*$/m);
 });
 
-test('SKILL.md は 220 行以下', () => {
+test('SKILL.md は 500 行以下 (Agent Skills 仕様の目安)', () => {
   const lines = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8').split('\n').length;
-  assert.ok(lines <= 220, `SKILL.md は ${lines} 行`);
+  assert.ok(lines <= 500, `SKILL.md は ${lines} 行`);
 });
 
 test('md は廃止概念 (_api-summary / legacy / specs/latest / events/ / arch-design.yaml) を含まない', () => {

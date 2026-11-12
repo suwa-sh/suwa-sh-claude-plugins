@@ -228,7 +228,7 @@ test('0.1.27: 要求の差分: 一括承認、外す課題はやり直し、残�
   assert.doesNotMatch(r, /abandoned/);
   assert.match(r, /requirement_all/);
   assert.match(row(read(TEMPLATE), /^\| ① 要求 /), /未処理の要求の課題ファイルのパス/);
-  assert.match(read('skills/d2-requirements/SKILL.md'), /課題ファイルは読むだけで、消さない/);
+  assert.match(read('skills/d2-requirements/references/diff-update.md'), /課題ファイルは読むだけで、消さない/);
 });
 
 test('0.2.0: 還流の段階は無い。課題は戻し先で直し、途中で止まった 0.1.x の還流は片付けるだけ (FB merge は取り込み済みの後始末、それ以外は FB abandon)', () => {
@@ -447,15 +447,19 @@ test('0.1.32 J2: 残った作業は種類ごとの宛先へ (design → d2-desig
   assert.match(rs, /\| carry_over_migrated \|/);
   assert.doesNotMatch(rs, /carryOver\.js/);
   // d2-design / d2-requirements
-  const design = read('skills/d2-design/SKILL.md');
-  assert.match(design, /## mode=feedback \(要求の差分の残った作業: 項目のファイル \(stories と部品\) だけを直す。0\.1\.32、0\.1\.33 で部品も\)/);
+  // mode=feedback はまれに使うので、細目の文書に分けた (本体は呼ばれ方の表から指す)
+  assert.match(read('skills/d2-design/SKILL.md'), /\| `mode=feedback items=<項目>` \|[^\n]*\[references\/design\/feedback\.md\]\(references\/design\/feedback\.md\)[^\n]*全生成はしない/);
+  const design = read('skills/d2-design/references/design/feedback.md');
+  assert.match(design, /^# mode=feedback: 項目のファイル \(stories と部品\) だけを直す$/m);
   assert.match(design, /③ の全生成 \(手順 1〜6\) は\*\*しない\*\*/);
   assert.match(design, /## mode=feedback: 読むもの/);
   assert.match(design, /## mode=feedback: 書くもの/);
   assert.match(design, /項目ごとに「直した \(変えたファイル\)」か「直せない \(理由\)」、項目が部品なら「影響する Story」の一覧を書く/);
-  const req = read('skills/d2-requirements/SKILL.md');
-  assert.match(req, /種類は 2 つに限る \(0\.1\.32 J2\)/);
-  assert.match(req, /`design` \(画面の見本\): 対象 = `docs\/design\/storybook-app\/src\/<相対パス>` \(見本 `stories\/<Name>\.stories\.tsx` でも部品 `components\/\*\*` でもよい。取り込み先 `packages\/ui\/` ではなく見本側のパス/);
+  // 差分更新の手順は細目の文書に分けた (本体はモードの表から指す)
+  assert.match(read('skills/d2-requirements/SKILL.md'), /\| \*\*差分更新\*\* \|[^\n]*\[references\/diff-update\.md\]\(references\/diff-update\.md\) \|/);
+  const req = read('skills/d2-requirements/references/diff-update.md');
+  assert.match(req, /^種類は 2 つに限る。$/m);
+  assert.match(req, /`design` \(画面の見本\): 対象 = `docs\/design\/storybook-app\/src\/<相対パス>` \(見本 `stories\/<Name>\.stories\.tsx` でも部品 `components\/\*\*` でもよい。取り込み先 `packages\/ui\/` ではなく見本側のパス\)/);
   assert.match(req, /`assumption` \(前提の記録を閉じる\): 対象 = UC の slug・ティア・attempt・`A-xxx` の id/);
   assert.match(req, /8\. 最終報告に「\*\*仮に決めた反映\*\*」を書く/);
   assert.doesNotMatch(req, /次の UC で拾う/);
@@ -488,7 +492,7 @@ test('0.1.32 J1: 仕様は 1 つの UC で確かめられる単位に。scenario
   assert.match(usdm, /元の共有 SPEC は他の UC の `spec_ids_rejected` へ移す/);
   const req = read('skills/d2-requirements/SKILL.md');
   assert.match(req, /仕様は 1 つの UC で確かめられる単位に分ける \(複数の UC の振る舞いを 1 つの仕様に混ぜない/);
-  assert.match(req, /課題が「他の UC の振る舞いが受入基準に混ざっている」なら、仕様自体を UC ごとに分け/);
+  assert.match(read('skills/d2-requirements/references/diff-update.md'), /課題が「他の UC の振る舞いが受入基準に混ざっている」なら、仕様自体を UC ごとに分け/);
 });
 
 test('0.1.32 手順の追記 16 件: 旧形式の自動選択 (legacy_runs)・main マージ 1 の順 (件名 → gates.json の新しさ → 条件)・再開・broken の片付け・applied で差分なし・timestamp の書式・回帰は d2-run・verify の一覧はファイル・mktemp・--data-file', () => {
@@ -508,7 +512,7 @@ test('0.1.32 手順の追記 16 件: 旧形式の自動選択 (legacy_runs)・ma
   const integ = row(t, /^\| \*\*integrate\*\* \|/);
   assert.match(integ, /\*\*他 UC への回帰は d2-run が回す\*\*: 受理して done を書き `impl\(<slug>\): integrate` で commit した後、`git diff --name-only <base_head>\.\.HEAD -- features\/support features\/step_definitions` \(commit 済みの変更だけを見るので、commit の前に回さない\) に変更があれば、main マージ済み UC \(`status: done`\) ごとに、[^\n]*`runGates\.js --uc <他 slug> --only uc-bdd` を回し/);
   assert.match(section(SKILL, '### 要求の差分', '## ② 決定'), /`grep -l "id: A-xxx" \.distillery\/runs\/\*\/attempt-\*\/assumptions\.<tier>\.yaml` で id を持つ \(slug, attempt\) の組をすべて出し、1 件なら確定、複数なら確認ページで人に選ばせる/);
-  assert.match(read('skills/d2-design/SKILL.md'), /リポジトリのルートからの相対パス `docs\/design\/storybook-app\/src\/<相対パス>`/);
+  assert.match(read('skills/d2-design/references/design/feedback.md'), /リポジトリのルートからの相対パス `docs\/design\/storybook-app\/src\/<相対パス>`/);
   assert.match(read('skills/d2-implement/references/integrate.md'), /共有の補助[^\n]*を変えたら報告に書く。他 UC のシナリオは自分では回さない/);
   const verify = row(t, /^\| \*\*verify\*\* \|/);
   assert.match(verify, /\*\*常に\*\* `\.distillery\/logs\/verify-<slug>-attempt-<n>\.txt` \(gitignore\) に書いてパスで渡す \(件数で渡し方を変えない/);
@@ -526,7 +530,7 @@ test('0.1.32 手順の追記 16 件: 旧形式の自動選択 (legacy_runs)・ma
 });
 
 test('0.1.30 L11: 要求担当は課題の決定に従い、違えば「決定と違う反映」を報告する。確認ページに載せる', () => {
-  const req = read('skills/d2-requirements/SKILL.md');
+  const req = read('skills/d2-requirements/references/diff-update.md');
   assert.match(req, /\*\*課題ファイルの「決定」に従って反映する\*\*。決定と違う反映にするなら、最終報告の「\*\*決定と違う反映\*\*」に課題・決定・実際の反映・理由を書く/);
   assert.match(req, /7\. 最終報告に「\*\*残った作業\*\*」を書く: 課題を反映するために write-set \(`docs\/requirements\/\*\*`\) の外で必要になった作業/);
   assert.match(req, /自分では触らない \(write-set の外\)。無ければ「なし」/);
@@ -650,10 +654,10 @@ test('0.1.33 P7/P8/P9/P15/P16: 「要求を直す」のコマンド列 (run は�
 });
 
 test('0.1.33 P10/P11/P13/P17/P18: carry_over は廃止で戻さない (要求担当の手順書と派遣文)。design の items は src/** で部品も、影響する Story を辿る。basis.js の対象は決定の本文。別名の解決先が分かれば ID。carry_over が残れば genUseCases', () => {
-  assert.match(read('skills/d2-requirements/SKILL.md'), /`carry_over` \(0\.1\.30〜0\.1\.31 の UC への持ち越し\) は 0\.1\.32 で廃止した。再生成で消えるのは想定どおりで、\*\*手で戻さない\*\*/);
+  assert.match(read('skills/d2-requirements/references/use-cases.md'), /`carry_over` \(0\.1\.30〜0\.1\.31 の UC への持ち越し\) は 0\.1\.32 で廃止した。再生成で消えるのは想定どおりで、\*\*手で戻さない\*\*/);
   assert.match(row(read(TEMPLATE), /^\| ① 要求 \|/), /要求の差分のときだけ: `use-cases\.yaml の carry_over \(0\.1\.30〜0\.1\.31 の持ち越し\) は廃止済み。再生成で消えてよい \(手で戻さない\)`/);
   assert.match(row(read(TEMPLATE), /^\| ① 要求の差分 \(画面部品\) \|/), /`mode=feedback items=<直すファイル \(docs\/design\/storybook-app\/src\/<相対パス>。stories も部品も\) と直す内容を 1 行ずつ>`[^\n]*項目が部品なら「影響する Story」\(その部品から import を Story まで辿った一覧/);
-  const design = read('skills/d2-design/SKILL.md');
+  const design = read('skills/d2-design/references/design/feedback.md');
   assert.match(design, /見本 `stories\/<Name>\.stories\.tsx` も部品 `components\/\*\*` も/);
   assert.match(design, /項目が部品のとき、その部品を使う他の Story の表示も変わる。直してよい \(「直せない」にしない\)。報告の「影響する Story」に、その部品から import を \*\*Story のファイルまで辿った\*\*一覧 \(部品を使う部品を介する間接の利用も含む\) を書く/);
   const r = section(SKILL, '### 要求の差分', '## ② 決定');
@@ -703,11 +707,11 @@ test('0.1.34 Q8/Q9/Q16/Q17: 要求の差分は決めずに返した論点を差�
   assert.match(r, /`git status --porcelain --untracked-files=all -- docs\/design` の変わったファイル[^\n]*がすべて、項目のファイルか、報告の「項目の外の変更」に項目との対応付きで載っているか、`docs\/design\/screens\.yaml` \(Story か画面を消す項目があるときだけ\) のどれかに入る/);
   assert.match(r, /のどれかに入る \(入らないファイルがあれば、理由の無い削除も含めて受理せず、下と同じく変更を捨てて止まって報告する\)/);
   assert.match(r, /課題の決定の外の論点を要求担当が選んだもの: 課題・論点・選んだ案・理由/);
-  assert.match(read('skills/d2-requirements/SKILL.md'), /と、課題の決定の外の論点を自分が案を選んで反映したもの \(課題・論点・選んだ案・理由/);
+  assert.match(read('skills/d2-requirements/references/diff-update.md'), /と、課題の決定の外の論点を自分が案を選んで反映したもの \(課題・論点・選んだ案・理由/);
   assert.match(row(read(TEMPLATE), /^\| ① 要求 \|/), /`課題の外の論点も決めずに返さない。推奨の案で反映し「仮に決めた反映」に書く`/);
   assert.match(row(read(TEMPLATE), /^\| ① 要求の差分 \(画面部品\) \|/), /「項目の外の変更」/);
-  assert.match(read('skills/d2-requirements/SKILL.md'), /課題が想定していない論点 \(課題の決定の外で、反映するのに人の判断が要るもの\) も決めずに返さない。推奨の案で反映し、「仮に決めた反映」に論点・選んだ案・理由を書く/);
-  assert.match(read('skills/d2-design/SKILL.md'), /項目のファイルの外を変えたか消したら「\*\*項目の外の変更\*\*」に、ファイルごとにどの項目のための依存か/);
+  assert.match(read('skills/d2-requirements/references/diff-update.md'), /課題が想定していない論点 \(課題の決定の外で、反映するのに人の判断が要るもの\) も決めずに返さない。推奨の案で反映し、「仮に決めた反映」に論点・選んだ案・理由を書く/);
+  assert.match(read('skills/d2-design/references/design/feedback.md'), /項目のファイルの外を変えたか消したら「\*\*項目の外の変更\*\*」に、ファイルごとにどの項目のための依存か/);
 });
 
 test('0.1.35 R3/R21: やり直しの節 (検出・聞く・退避・回す・段ごとの扱い) と、4 か所からの参照。main マージ 3 の status は uc-status で書く', () => {

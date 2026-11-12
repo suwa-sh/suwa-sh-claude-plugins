@@ -7,14 +7,31 @@ description: >-
   「要求定義」「USDM で分解」「RDRA モデルを作る」「UC 一覧を作る」などで発動。
 ---
 
-# d2-requirements（段階① 要求）
+# d2-requirements
 
-パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
-
-入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
-
-要望テキストを USDM と RDRA に分解し、UC 一覧を作る。履歴は git が持つ（イベントソーシングは使わない）。
+要望テキストを、USDM と RDRA に分解し、UC 一覧を作る。
 生成物は `docs/requirements/` 直下に**直接**書き出す。
+履歴は git が持つ。
+この段階は最上流なので、生成物に `basis:` は付けない。
+
+UC 単位のシナリオは、ここでは書かない。
+受入基準は **1 行 Gherkin** (`Given … When … Then …`) で書き、人が確認する。
+
+## 呼び出し
+
+進行役 (d2-run) が派遣する。
+`docs/requirements/` の状態で、することが分かれる。
+
+| モード | 条件 | すること | 手順 |
+|---|---|---|---|
+| **初期構築** | `docs/requirements/rdra/` が無い、または空 | フルビルドする | 下の「初期構築の手順」 |
+| **差分更新** | `docs/requirements/rdra/*.tsv` が既存 | 差分を、既存ファイルへ**インプレース編集**する | [references/diff-update.md](references/diff-update.md) |
+
+差分更新では、差分アーティファクトは作らない。
+変更したファイルと要点を、最終報告に列挙する。
+
+パスの `<skills>` は、スキル群のディレクトリを指す。
+定義は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」にある。
 
 ## 入出力
 
@@ -25,179 +42,138 @@ description: >-
 | | `use-cases.yaml`（UC 一覧）|
 | | `_review-summary.md`（人が承認する材料。毎回作り直す）|
 
-この段階は最上流なので、生成物に `basis:` は付けない。
+## 初期構築の手順
 
-## モード判定
+`references/rdra/rdra-initial-build.md` に従い、下の順で実行する。
+RDRA の各フェーズはコンテキストを多く消費する。
+必ずサブエージェントに委譲する (下の「サブエージェントへの指示」)。
 
-`docs/requirements/` の有無で分岐する。
+| 順 | すること | 次へ進む条件 |
+|---|---|---|
+| 1 | USDM に分解し、`docs/requirements/requirements.yaml` を書く | 受入基準が 1 行 Gherkin である |
+| 2 | USDM を検証する | 検証が通る。FAIL なら requirements.yaml を直して再実行する |
+| 3 | USDM の Markdown を生成する | `requirements.md` ができた |
+| 4 | RDRA をフルビルドする | 一時ディレクトリ `1_RDRA/` に TSV ができた |
+| 5 | 整合性を lint する (確定前ゲート) | エラー (未定義参照) が 0 件である。警告 (未接続) は報告のみ |
+| 6 | 関連データと ZeroOne を生成する | 2 つのファイルができた |
+| 7 | 配置する | `docs/requirements/rdra/` へ移した |
+| 8 | RDRA のビューを生成し、不整合をチェックする | 検出件数を確認した。残る不整合は報告する |
+| 9 | 一時ディレクトリを削除する | `0_RDRAZeroOne/` と `1_RDRA/` を削除した |
+| 10 | UC 一覧を生成する | 下の「UC 一覧」 |
+| 11 | 確認材料を生成する | 下の「人の確認材料」 |
 
-- **初期構築**: `docs/requirements/rdra/` が無い、または空 → Step0（フルビルド）を実行する。
-- **差分更新**: `docs/requirements/rdra/*.tsv` が既存 → Step1（差分を既存ファイルへ**インプレース編集**）を実行する。
-  差分アーティファクトは作らない。変更したファイルと要点を最終報告に列挙する。
+### 1. USDM 分解
 
----
+要望テキストを `references/usdm-schema.md` の形式へ構造化する。
+`references/usdm/usdm-decompose.md` に従って書く。
 
-## Step0: 初期構築（フルビルド）
+仕様は 1 つの UC で確かめられる単位に分ける (複数の UC の振る舞いを 1 つの仕様に混ぜない。`usdm-decompose.md` 5 節)。
 
-`references/rdra/rdra-initial-build.md` に従い、以下の順で実行する。RDRA 各フェーズは
-コンテキストを多く消費するため、必ずサブエージェントに委譲する（下の「サブエージェントへの指示」参照）。
-
-1. **USDM 分解** — 要望テキストを `references/usdm-schema.md` の形式へ構造化し、
-   `references/usdm/usdm-decompose.md` に従って `docs/requirements/requirements.yaml` を書く。
-   受入基準（`acceptance_criteria`）は **1 行 Gherkin**（`Given … When … Then …`）で人が確認できる粒度にする。
-   UC 単位のシナリオはここでは書かない。仕様は 1 つの UC で確かめられる単位に分ける (複数の UC の振る舞いを 1 つの仕様に混ぜない。`usdm-decompose.md` 5 節。0.1.32 J1)。
-2. **USDM 検証** — 構造をバリデートする:
-   ```bash
-   node <skills>/d2-requirements/scripts/validateRequirements.js docs/requirements/requirements.yaml
-   ```
-   FAIL なら requirements.yaml を直して再実行する（必須フィールド / ID 形式 `REQ-001`・`SPEC-001-01` / `priority` / `affected_models`）。
-3. **USDM Markdown 生成**（決定論・LLM 非依存）:
-   ```bash
-   node <skills>/d2-requirements/scripts/generateRequirementsMd.js docs/requirements/requirements.yaml
-   ```
-4. **RDRA フルビルド** — `docs/requirements/requirements.yaml` を入力に Phase1–5 + RDRA 統合を実行し、
-   TSV を一時ディレクトリ `1_RDRA/` に作る（`references/rdra-phases/` の各タスク）。
-5. **整合性 lint（確定前ゲート）**:
-   ```bash
-   node <skills>/d2-requirements/scripts/generateRdraMd.js 1_RDRA --lint
-   ```
-   エラー（未定義参照）が 0 件になるまで `1_RDRA/` の TSV を直す。警告（未接続）は報告のみ。
-6. **関連データ・ZeroOne 生成**:
-   ```bash
-   node <skills>/d2-requirements/scripts/makeGraphData.js 1_RDRA
-   node <skills>/d2-requirements/scripts/makeZeroOneData.js 1_RDRA
-   ```
-7. **配置** — `1_RDRA/*.tsv`・`関連データ.txt`・`ZeroOne.txt`・`システム概要.json` を `docs/requirements/rdra/` へ移す。
-8. **RDRA ビュー生成 + 不整合チェック**:
-   ```bash
-   node <skills>/d2-requirements/scripts/generateRdraMd.js docs/requirements/rdra
-   ```
-   `docs/requirements/rdra/views/*.md`（Mermaid 図解つき）と `views/00_不整合チェック.md` が生成される。
-   検出件数を確認し、残る不整合を報告する。
-9. **一時ディレクトリ削除** — `0_RDRAZeroOne/`・`1_RDRA/` を削除する。
-10. **UC 一覧生成**（後述「UC 一覧」）。
-11. **確認材料生成**（後述「人の確認材料」）。
-
----
-
-## Step1: 差分更新（インプレース編集）
-
-既存の `docs/requirements/` がある場合、変更要望テキストを USDM で解釈し、既存ファイルを**編集**する
-（作り直さない）。入力が課題ファイル (`docs/feedback/<issue>.md`。実装で見つかった要求の穴) のときは、課題ごとに本文の事実・選択肢・決定を変更要望として読む。
-課題ファイルは読むだけで、消さない (反映を人が承認した後に d2-run が消す)。最終報告には、課題ごとに反映した要求・仕様の ID を書く。
-**課題ファイルの「決定」に従って反映する**。決定と違う反映にするなら、最終報告の「**決定と違う反映**」に課題・決定・実際の反映・理由を書く (無ければ「なし」。d2-run が確認ページに載せ、人が差し戻せるようにする。0.1.28 実走 L11)。
-
-1. `docs/requirements/requirements.yaml` に要求・仕様・受入基準を追記／修正する。ID は既存と重複させない。
-   仕様は 1 つの UC で確かめられる単位に分ける (課題が「他の UC の振る舞いが受入基準に混ざっている」なら、仕様自体を UC ごとに分け、手順 4 で `spec_ids` / `spec_ids_rejected` を整える。`usdm-decompose.md` 5 節。0.1.32 J1)。
-2. 影響する `docs/requirements/rdra/*.tsv` を編集する。
-3. Step0 の手順 2・3・5・8 を再実行して検証・Markdown・ビュー・不整合チェックを更新する。
-   **差分更新では入力ディレクトリを `docs/requirements/rdra` にする**（一時ディレクトリ `1_RDRA/` は
-   Step0 の手順 9 で削除済みのため）。手順 5・6 のコマンドは次に読み替える:
-   ```bash
-   node <skills>/d2-requirements/scripts/generateRdraMd.js docs/requirements/rdra --lint
-   node <skills>/d2-requirements/scripts/makeGraphData.js docs/requirements/rdra
-   node <skills>/d2-requirements/scripts/makeZeroOneData.js docs/requirements/rdra
-   ```
-   （関連データ・ZeroOne は TSV を変えたときだけ再生成する）。
-4. **UC 一覧**を再生成する（既存の `slug`・`status`・`tiers_hint`・`spec_ids_rejected` は uc_id で引き継がれ、`spec_ids` は却下済みを除いた推定候補との和集合になる）。
-5. **確認材料**を作り直す。
-6. 最終報告に「変更したファイル」と「追加／変更／削除した要求・UC」を列挙する。
-7. 最終報告に「**残った作業**」を書く: 課題を反映するために write-set (`docs/requirements/**`) の外で必要になった作業。種類は 2 つに限る (0.1.32 J2):
-   - `design` (画面の見本): 対象 = `docs/design/storybook-app/src/<相対パス>` (見本 `stories/<Name>.stories.tsx` でも部品 `components/**` でもよい。取り込み先 `packages/ui/` ではなく見本側のパス。0.1.32 実走 P11) と直す内容
-   - `assumption` (前提の記録を閉じる): 対象 = UC の slug・ティア・attempt・`A-xxx` の id (`.distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml`) と、今回の決定で閉じる理由
-
-   自分では触らない (write-set の外)。無ければ「なし」。どちらでもない作業 (既存の feature の受入タグなど) は作業に入れず、「仮に決めた反映」か「決定と違う反映」に書く。
-   d2-run が確認ページに種類ごとに載せ、人が「対応する / 無視」を選ぶ (対応する = `design` は画面部品の担当 (d2-design mode=feedback) に再派遣して取り込み直し、`assumption` は要求の差分で閉じる)。
-8. 最終報告に「**仮に決めた反映**」を書く: 課題に決定が無く (選択肢だけで人が決めていない) 自分が案を選んで反映したもの (課題・選んだ案・理由) と、課題の決定の外の論点を自分が案を選んで反映したもの (課題・論点・選んだ案・理由。下の 0.1.34 Q8)。無ければ「なし」。d2-run が確認ページに「決定と違う反映」と並べて載せ、人が差し戻せるようにする (0.1.32 N10・O8)。
-   課題が想定していない論点 (課題の決定の外で、反映するのに人の判断が要るもの) も決めずに返さない。推奨の案で反映し、「仮に決めた反映」に論点・選んだ案・理由を書く (問いとして返すと確認ページに載せる場所が無い。0.1.34 Q8)。
-   「決定と違う反映」(上) も同じ報告に書く。
-
----
-
-## UC 一覧（use-cases.yaml）
-
-`genUseCases.js` が requirements.yaml と `rdra/BUC.tsv` から UC 一覧を**決定論的に**導出する。
+### 2. USDM 検証
 
 ```bash
-node <skills>/d2-requirements/scripts/genUseCases.js
-# 既定: docs/requirements/requirements.yaml  docs/requirements/rdra/BUC.tsv  docs/requirements/use-cases.yaml
+node <skills>/d2-requirements/scripts/validateRequirements.js docs/requirements/requirements.yaml
 ```
 
-各 UC のフィールド:
+検査するのは、必須フィールド、ID 形式 (`REQ-001`・`SPEC-001-01`)、`priority`、`affected_models` である。
 
-| フィールド | 出どころ |
+### 3. USDM Markdown 生成
+
+決定論で、LLM に依存しない。
+
+```bash
+node <skills>/d2-requirements/scripts/generateRequirementsMd.js docs/requirements/requirements.yaml
+```
+
+### 4. RDRA フルビルド
+
+`docs/requirements/requirements.yaml` を入力に、Phase1–5 と RDRA 統合を実行する。
+各タスクは `references/rdra-phases/` にある。
+
+### 5. 整合性 lint
+
+```bash
+node <skills>/d2-requirements/scripts/generateRdraMd.js 1_RDRA --lint
+```
+
+エラーが 0 件になるまで、`1_RDRA/` の TSV を直す。
+
+### 6. 関連データと ZeroOne の生成
+
+```bash
+node <skills>/d2-requirements/scripts/makeGraphData.js 1_RDRA
+node <skills>/d2-requirements/scripts/makeZeroOneData.js 1_RDRA
+```
+
+### 7. 配置
+
+`1_RDRA/*.tsv`・`関連データ.txt`・`ZeroOne.txt`・`システム概要.json` を、`docs/requirements/rdra/` へ移す。
+
+### 8. RDRA ビュー生成と不整合チェック
+
+```bash
+node <skills>/d2-requirements/scripts/generateRdraMd.js docs/requirements/rdra
+```
+
+`docs/requirements/rdra/views/*.md` (Mermaid 図解つき) と `views/00_不整合チェック.md` が生成される。
+
+## UC 一覧
+
+`genUseCases.js` が、requirements.yaml と `rdra/BUC.tsv` から UC 一覧を**決定論的に**導出する。
+生成の後に、LLM が `slug` と `spec_ids` を編集し、検証する。
+
+| 順 | すること |
 |---|---|
-| `uc_id` | 業務・BUC・UC の canonical JSON 配列（NFC 正規化）の sha256 先頭 8 桁。衝突時は全 UC で 12 桁 |
-| `business` / `buc` / `uc` | BUC.tsv の 業務 / BUC / UC 列 |
-| `actors` | BUC.tsv の「アクター」関連オブジェクト |
-| `tiers_hint` | 画面あり→frontend、タイマーあり→worker、常に backend（暫定ヒント。ティアは d2-decide が決める）|
-| `spec_ids` | **スクリプトはフロー（BUC）単位で候補を当てる**。LLM が UC が実現する SPEC へ絞り込む。**原則 1 件以上**（空は下記 `no_spec_reason` を書いた UC だけ許す）|
-| `no_spec_reason` | 対応 SPEC が無い UC の理由。書くと `spec_ids` を空にでき、その UC は `status: blocked` にする（`validateUseCases` が両方を強制）|
-| `spec_ids_rejected` | **LLM が `spec_ids` から外した SPEC の置き場**（スクリプトは空配列を置く）。再生成で uc_id を引き継ぎ、却下済みは `spec_ids` へ戻さない |
-| `slug` | **スクリプトは暫定 `uc-<uc_id>` を置く**。LLM が意味のある英語 kebab-case（`^[a-z0-9]+(-[a-z0-9]+)*$`・一意）へ差し替える |
-| `status` | 既定 `planned`（`planned` / `in_progress` / `done` / `blocked`）。`no_spec_reason` を書いた UC は `blocked` |
+| 1 | `node <skills>/d2-requirements/scripts/genUseCases.js` で生成する |
+| 2 | 各 UC の `slug` を、意味のある英語の kebab-case に差し替える |
+| 3 | 各 UC の `spec_ids` を、その UC が実現する SPEC に絞り込む。外した SPEC は `spec_ids_rejected` へ移す |
+| 4 | `node <skills>/d2-requirements/scripts/validateUseCases.js docs/requirements/use-cases.yaml` で検証する |
 
-**LLM の作業**: 生成後、各 UC の `slug` を英名へ、`spec_ids` を実現する SPEC へ編集する。
-**`spec_ids` が空の UC を残さない**。`genUseCases` は空の UC を警告に列挙する。対応 SPEC を当てるか、
-本当に無いなら `no_spec_reason` に理由を書いて `status: blocked` にする。どちらもしないと `validateUseCases` が FAIL する
-（下流の受入基準網羅検査が空集合で素通りするのを防ぐため）。
-既存 use-cases.yaml があれば `slug`・`status`・`tiers_hint`・`spec_ids_rejected` は uc_id で引き継がれるので、
-再生成しても LLM の編集は消えない。`spec_ids` は**既存値（LLM が絞った SPEC）と今回はじめて出た推定候補の和集合**になり、
-SPEC を取りこぼさない。**外した SPEC は削除せず `spec_ids_rejected` へ移す**と、再生成で候補へ戻らない。
-`carry_over` (0.1.30〜0.1.31 の UC への持ち越し) は 0.1.32 で廃止した。再生成で消えるのは想定どおりで、**手で戻さない** (残った作業は d2-run の要求の差分が種類ごとの宛先に流す。0.1.32 実走 P10)。
-今回新規に増えた候補だけが各 UC の `spec_ids_added` に記録されるので（無ければキーごと出ない）、
-**LLM は `spec_ids_added` を見て採否を判断し、採用は `spec_ids` に残し、不採用は `spec_ids_rejected` へ移して `spec_ids_added` を削除する**。
-`no_spec_reason` を持つ (blocked の) UC に新しい候補が付いたときは、候補は `spec_ids_added` にだけ出て `spec_ids` は空のまま。採用するなら `spec_ids` に移し、`no_spec_reason` を消して `status: planned` に戻す。
-編集後にバリデートする:
+**`spec_ids` が空の UC を残さない**。
+対応する SPEC が本当に無いなら、`no_spec_reason` に理由を書いて `status: blocked` にする。
 
-```bash
-node <skills>/d2-requirements/scripts/validateUseCases.js docs/requirements/use-cases.yaml
-```
+各フィールドの出どころと、編集の決まりは [references/use-cases.md](references/use-cases.md) にある。
+手順 2 の前に読む。
 
-チェック内容: 構造（schema-use-cases.json）、uc_id 一意、slug 一意・パターン、spec_ids が requirements.yaml に実在、
-`spec_ids` が原則 1 件以上（空は `no_spec_reason` + `status: blocked` の UC だけ）、
-`spec_ids_rejected` が requirements.yaml に実在し `spec_ids` と重複しない。
+## 人の確認材料
 
----
+`docs/requirements/_review-summary.md` を書く。
+d2-run が、これをレビューページに変換し、人が承認する。
+仕様ではなく、毎回作り直す要約である。
+**内部 ID（uc_id・SPEC-xxx 等）は本文に出さず、業務・UC・情報の名前で書く**。
 
-## 人の確認材料（_review-summary.md）
+| 含める要点 | 内容 |
+|---|---|
+| **UC 一覧** | 業務ごとに UC 名を並べ、各 UC のアクターと一言説明を書く |
+| **業務ルール** | 条件とバリエーションの要点 (貸出可否・返却期限算出・媒体種別など) |
+| **状態遷移** | 主要な状態モデルの遷移 (書籍の状態・予約の状態など) |
+| **受入基準** | 各仕様の受入基準 (1 行 Gherkin) の要点。人が「これで合っているか」を判断できるように書く |
 
-`docs/requirements/_review-summary.md` を書く。オーケストレータ（d2-run）がこれをレビューページに変換し、人が承認する。
-仕様ではなく毎回作り直す要約。**内部 ID（uc_id・SPEC-xxx 等）は本文に出さず、業務・UC・情報の名前で書く**。
+決めずに返す論点は、`_review-summary.md` に「未決」として書かない。
+引き継ぎファイルの `asks` に書く (答えは、進行役が決めたことの記録に残す)。
+確認材料には「確認したい点は引き継ぎファイルの問いにある」とだけ書く。
 
-含める要点:
-
-- **UC 一覧** — 業務ごとに UC 名を並べ、各 UC のアクターと一言説明。
-- **業務ルール** — 条件・バリエーション（貸出可否・返却期限算出・媒体種別など）の要点。
+## RDRA の説明の書き方
 
 RDRA の TSV の「説明」「条件の説明」は、1 文目に要点だけ (60 字まで) を書き、2 文目以降に 1 文 1 つで細目を書く (例外は「例外: 」、順番は「順番: 」で始める)。
-図解 (`generateRdraMd.js`) が 1 文目を表に、2 文目以降を細目の箇条書きに出し、1 文目が長いと警告する。説明を書き足したら、全体をこの形に整え直す ([writing.md](../d2-common/references/writing.md))。
-- **状態遷移** — 主要な状態モデル（書籍の状態・予約の状態など）の遷移。
-- **受入基準** — 各仕様の受入基準（1 行 Gherkin）の要点。人が「これで合っているか」を判断できるように。
+図解 (`generateRdraMd.js`) が 1 文目を表に、2 文目以降を細目の箇条書きに出し、1 文目が長いと警告する。
+説明を書き足したら、全体をこの形に整え直す ([writing.md](../d2-common/references/writing.md))。
 
----
+## UI 画面を持たないプロダクト（CLI / API / バッチ）
 
-## スクリプト一覧
+後段の d2-design が、CLI の出力を GUI 画面としてデザインするのを防ぐ。
 
-すべて `<skills>/d2-requirements/scripts/` にあり、npm 依存なし・共有ライブラリ
-（`../d2-common/scripts/lib`）のみ使う。
-
-| スクリプト | 役割 |
+| すること | 細目 |
 |---|---|
-| `validateRequirements.js` | USDM requirements.yaml の構造・意味検証 |
-| `generateRequirementsMd.js` | requirements.yaml → requirements.md（決定論）|
-| `generateRdraMd.js` | RDRA TSV → views/*.md ＋ 参照整合性チェック（`--lint` で確定前ゲート）|
-| `makeGraphData.js` | RDRA TSV → 関連データ.txt |
-| `makeZeroOneData.js` | RDRA TSV → ZeroOne.txt |
-| `genUseCases.js` | requirements.yaml ＋ BUC.tsv → use-cases.yaml（決定論導出）|
-| `validateUseCases.js` | use-cases.yaml の構造・意味検証 |
-
----
+| Phase5 の `システム概要.json` に `interface_kind` を記録する (`gui` / `cli` / `api` / `batch`。省略時 `gui`) | `references/rdra-phases/phase5/システム概要生成.md` |
+| `gui` 以外では、RDRA の「画面」を **コマンド出力 / API レスポンス** として扱う。`{コマンド名} 出力` のように、GUI と誤読されない名前にする | `references/rdra-phases/spec/23_画面一覧生成.md` |
 
 ## サブエージェントへの指示（RDRA フェーズ）
 
-各フェーズタスクをサブエージェントに委譲する。`references/...` はスキルルート相対で、委譲時は
-`<skills>/d2-requirements/references/...` の絶対パスへ展開する。成果物パスはプロジェクトルート相対。
+各フェーズのタスクを、サブエージェントに委譲する。
+`references/...` はスキルルート相対である。
+委譲時は `<skills>/d2-requirements/references/...` の絶対パスへ展開する。
+成果物のパスは、プロジェクトルート相対である。
 
 ```
 以下のファイルを読み込んで理解してください:
@@ -213,18 +189,37 @@ RDRA の TSV の「説明」「条件の説明」は、1 文目に要点だけ (
 質問や確認は不要です。指示に従い即座に実行してください。
 ```
 
----
+## スクリプト
 
-## UI 画面を持たないプロダクト（CLI / API / バッチ）
+すべて `<skills>/d2-requirements/scripts/` にある。
+npm 依存は無く、共有ライブラリ (`../d2-common/scripts/lib`) だけを使う。
 
-- Phase5 の `システム概要.json` に `interface_kind`（`gui` / `cli` / `api` / `batch`。省略時 `gui`）を記録する
-  （`references/rdra-phases/phase5/システム概要生成.md`）。
-- `gui` 以外では RDRA の「画面」を **コマンド出力 / API レスポンス** として扱い、`{コマンド名} 出力` のように
-  GUI と誤読されない名前にする（`references/rdra-phases/spec/23_画面一覧生成.md`）。
-- 目的: 後段の d2-design が CLI 出力を GUI 画面としてデザインするのを防ぐ。
+| スクリプト | 役割 |
+|---|---|
+| `validateRequirements.js` | USDM requirements.yaml の構造・意味検証 |
+| `generateRequirementsMd.js` | requirements.yaml → requirements.md（決定論）|
+| `generateRdraMd.js` | RDRA TSV → views/*.md ＋ 参照整合性チェック（`--lint` で確定前ゲート）|
+| `makeGraphData.js` | RDRA TSV → 関連データ.txt |
+| `makeZeroOneData.js` | RDRA TSV → ZeroOne.txt |
+| `genUseCases.js` | requirements.yaml ＋ BUC.tsv → use-cases.yaml（決定論導出）|
+| `validateUseCases.js` | use-cases.yaml の構造・意味検証 |
 
 ## 引き継ぎファイル
 
-作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題を書く (書き方は [handoff.md](../d2-common/references/handoff.md))。報告の本文にだけ書いたことは扱われない。推奨は条件を付けずに 1 つ書く。
+作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。
+書くのは、人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題である。
+報告の本文にだけ書いたことは扱われない。
+推奨は条件を付けずに 1 つ書く。
+書き方は [handoff.md](../d2-common/references/handoff.md) にある。
 
-決めずに返す論点は `_review-summary.md` に「未決」として書かず、引き継ぎファイルの `asks` に書く (答えは進行役が決めたことの記録に残す)。確認材料には「確認したい点は引き継ぎファイルの問いにある」とだけ書く。
+## 細目の文書
+
+| 文書 | 読むとき | 内容 |
+|---|---|---|
+| [references/diff-update.md](references/diff-update.md) | 差分更新で呼ばれたとき | 既存の要求を編集する手順と、最終報告に書く欄 |
+| [references/use-cases.md](references/use-cases.md) | UC 一覧を編集する前 | 各フィールドの出どころ、`spec_ids` の編集の決まり、検証の内容 |
+| [references/rdra/rdra-initial-build.md](references/rdra/rdra-initial-build.md) | 初期構築の前 | フルビルドの進め方 |
+| [references/usdm-schema.md](references/usdm-schema.md) | 初期構築の手順 1 の前 | USDM の形式 |
+| [references/usdm/usdm-decompose.md](references/usdm/usdm-decompose.md) | 要求を書く前 | USDM への分解の仕方。仕様を UC 単位に分ける決まり (5 節) |
+| [../d2-common/references/writing.md](../d2-common/references/writing.md) | 説明を書く前 | 人が読む文章の書き方の決まり |
+| [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) | 入出力を確かめるとき | 入出力の正本 (図は [dataflow.md](../d2-common/references/dataflow.md)) |
