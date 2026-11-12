@@ -2,7 +2,7 @@
 
 `mid-harness` の `init` を空の git リポに対して実行した結果をそのまま置いたものです。何が生成され、各製品が何を読むかを見るためのサンプルで、正本は `plugins/toolbox/skills/mid-harness/` (templates + scripts) です。
 
-- 生成日: 2026-11-12 / toolbox 0.11.3
+- 生成日: 2026-11-12 / toolbox 0.11.4
 - targets: `claude-code, codex, cursor, grok, copilot, antigravity`
 - `bash regenerate.sh --check` で現在の templates / scripts との drift を検査できる (`bash regenerate.sh` で作り直し)
 

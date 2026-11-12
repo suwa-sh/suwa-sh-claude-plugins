@@ -482,7 +482,7 @@ def stdin_hits(toks):
     # bash < <(curl URL) / bash <(curl URL) はプロセス置換の中身を、bash <<EOF の本文の $(curl URL) は展開結果を、コードとして実行する
     # 検査済みの範囲の内側にある置換は、外側の検査に含まれるので見直さない (入力長に対して線形)
     # 括弧の中の ; で引数の走査を打ち切らないよう、検査した置換の範囲は丸ごと飛ばす
-    n = len(toks); k = 0; ends = None; done = -1
+    n = len(toks); k = 0; ends = None; done = -1; runners = None
     def check(p):
         nonlocal ends, done
         if ends is None: ends = paren_ends(toks)
@@ -491,7 +491,8 @@ def stdin_hits(toks):
         return code_from_fetch(toks[p + 1:ends[p]])
     while k < n:
         is_exec = toks[k].rsplit("/", 1)[-1] == "exec"          # exec < <(curl URL) は以降のコマンドの標準入力を取得物にする
-        if not (INTERP.match(toks[k]) or is_exec or is_runner_at(toks, k)):
+        if runners is None: runners = runner_positions(toks)
+        if not (INTERP.match(toks[k]) or is_exec or k in runners):
             k += 1; continue
         m = k + 1
         while m < n and not is_end(toks[m]):
@@ -502,22 +503,35 @@ def stdin_hits(toks):
             if t == "<" and m + 2 < n and toks[m + 1] == "<" and toks[m + 2] == "(":
                 if check(m + 2): return True                    # bash < <(curl URL) / exec < <(curl URL)
                 m = ends[m + 2] + 1; continue
-            if t == "<<<" and is_exec:
+            if t == "<<<":
                 e = m + 1
                 while e < n and not is_end(toks[e]): e += 1
-                if code_from_fetch(toks[m + 1:e]): return True  # exec <<< "$(curl URL)"
+                if code_from_fetch(toks[m + 1:e]): return True  # exec <<< "$(curl URL)" / source /dev/stdin <<< "$(curl URL)"
+                m = e; continue                                 # コマンドの終わりまで見たので、同じコマンドの残りの <<< は見直さない (線形)
             m += 1
         k = m
     return heredoc_hits(toks)
 
 RUNNERS = {"source", ".", "eval"}                               # 引数をコードとして読み込む組み込みコマンド
-def is_runner_at(toks, k):
-    # toks[k] がコマンドの先頭にある source / . / eval か (find . の . のような引数は除く)
-    return toks[k] in RUNNERS and (k == 0 or toks[k - 1] in CMD_SEP or toks[k - 1] in PIPE or toks[k - 1] in OPEN or toks[k - 1] in LEAD_KW)
+def is_code_cmd(t):
+    # 実コマンドとして置かれたとき、入力や引数をコードとして実行するもの (インタプリタと source / . / eval)
+    return bool(INTERP.match(t)) or t in RUNNERS
+
+def runner_positions(toks):
+    # 実コマンドの位置にある source / . / eval の位置の集合。前置コマンド (builtin / command / sudo など)・予約語 (if など)・
+    # リダイレクト・VAR=val を real_cmd と同じ規則で読み飛ばす (find . の . のような引数は含めない)
+    out = set(); start = 0
+    for i in range(len(toks) + 1):
+        if i == len(toks) or toks[i] in CMD_SEP or toks[i] in PIPE or toks[i] in OPEN or toks[i] in CLOSE or toks[i] in CLOSE_KW:
+            if i > start:
+                j = real_cmd(toks[start:i])
+                if j is not None and toks[start + j] in RUNNERS: out.add(start + j)
+            start = i + 1
+    return out
 
 def runs_code(toks):
-    # 語の列のどこかにインタプリタ・exec・コマンドの先頭の source / . / eval があるか (位置は問わない。安全側)
-    return any(INTERP.match(t) or t.rsplit("/", 1)[-1] in ("exec", "source", "eval") or is_runner_at(toks, i) for i, t in enumerate(toks))
+    # 語の列のどこかにインタプリタ・exec・source・eval・実コマンドの位置の . があるか (位置は問わない。安全側)
+    return any(INTERP.match(t) or t.rsplit("/", 1)[-1] in ("exec", "source", "eval") for t in toks) or bool(runner_positions(toks))
 
 def heredoc_hits(toks):
     # ヒアドキュメントの本文の $(curl URL) がコードとして実行される形 (bash <<EOF / cat <<EOF | bash / cat <<EOF | の次の行の bash / exec <<EOF)。
@@ -578,7 +592,7 @@ def hit_tokens(toks, level):
         seen = False
         for stage in cmd:
             subs = [expand_split(sc) for sc in sub_commands(stage)]
-            if seen and any(real_cmd(sc) is not None and INTERP.match(sc[real_cmd(sc)]) for sc in subs):
+            if seen and any(real_cmd(sc) is not None and is_code_cmd(sc[real_cmd(sc)]) for sc in subs):
                 return True                                     # 取得の後ろの段 (グループならその中のどれか) がインタプリタ
             if any(is_fetch(sc) for sc in subs):
                 seen = True

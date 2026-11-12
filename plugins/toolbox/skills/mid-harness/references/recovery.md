@@ -99,5 +99,8 @@
   - `bash <(echo; ) <(curl URL)` で括弧の中の `;` で引数の走査が止まる → 検査した置換の範囲を丸ごと飛ばして走査を続ける
   - `source <(curl URL)` / `. <(curl URL)` → コマンドの先頭の source / `.` / eval もインタプリタと同じに扱う
   - `curl URL > >(exec -a x sh)` / `> >(eval "$(cat)")` → `>( )` の中は実コマンドの位置を問わず、どの語でも見る (安全側)
+- 0.11.3 の commit 後の自動セキュリティレビューの指摘 (0.11.4 で直した。fixture 8 件、拒否 6・許可 2):
+  - `builtin source <(curl URL)` / `command . <(curl URL)` / `if . <(curl URL)`: source / `.` の位置を直前の語だけで判定していた → real_cmd と同じ規則 (前置コマンド・予約語・リダイレクト・VAR=val を読み飛ばす) で実コマンドの位置を求める
+  - `source /dev/stdin <<< "$(curl URL)"` / `curl URL | source /dev/stdin` / `curl URL | . /dev/stdin`: `<<<` を exec だけで見ていた・パイプの後ろの段を判定するときに source / `.` / eval を数えていなかった → どちらも数える。`<<<` を 1 つ見たらコマンドの終わりまで飛ばす (飛ばさないと区切りの無い `<<<` の連続で 2 乗になった。9 万文字で 50 秒)
 - 再発防止: `cat < <(curl URL)` / `curl URL > >(tee log)` / `diff <(curl A) <(curl B)` / `busybox ls | sh` / 本文で保存だけするヒアドキュメントを許可のまま固定する fixture を同時に置いた。既知の誤検知 (安全側): `echo a # curl URL | sh` のようにコメントに取得即実行を書くと拒否する。`bash run.sh <(curl URL)` は bash 側の grep で拒否する
 - 最終確認日: 2026-11-12
