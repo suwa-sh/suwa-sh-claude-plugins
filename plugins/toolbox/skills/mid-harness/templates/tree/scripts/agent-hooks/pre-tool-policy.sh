@@ -460,8 +460,9 @@ def hit_string(s, level):
     if FETCH.search(s) and not FETCH.search(stripped):
         # コメントとして消した部分にしか取得が無い: 引用の読み違いに備え、コメントを消さない形でも検査し、当たれば拒否 (fail-closed)。
         # git pull のコメントに fetch と書いただけのものは、消さない形でも取得即実行にならないので通す
-        raw = tokenize(normalize_quotes(s))
-        if raw is None or hit_tokens(raw, level):
+        raw_s = normalize_quotes(s)
+        raw = tokenize(raw_s)
+        if raw is None or hit_tokens(raw, level) or any(hit_string(inner, level + 1) for inner in substitutions(raw_s)):
             return True
     s = normalize_quotes(stripped)
     toks = tokenize(s)
