@@ -17,4 +17,9 @@ test('pre-tool-policy.sh: 全 fixture が期待どおり deny / allow になる'
   assert.match(r.stdout, /pass {2}deny-curl-pipe-cat-sh/);
   assert.match(r.stdout, /pass {2}deny-curl-newline-pipe-sh/);
   assert.match(r.stdout, /pass {2}allow-curl-then-python-c/);
+  // -c の文字列・引用符の中の改行・グループで迂回されない (2026-11-12 の指摘)
+  assert.match(r.stdout, /pass {2}deny-sh-c-string-curl-pipe-sh/);
+  assert.match(r.stdout, /pass {2}deny-curl-pipe-quoted-newline-arg-sh/);
+  assert.match(r.stdout, /pass {2}deny-curl-pipe-brace-group-sh/);
+  assert.match(r.stdout, /pass {2}allow-echo-string-with-pipe-sh/);
 });

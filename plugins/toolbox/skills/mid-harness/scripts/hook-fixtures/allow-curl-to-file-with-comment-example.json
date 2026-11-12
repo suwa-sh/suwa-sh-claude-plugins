@@ -1,0 +1,1 @@
+{"tool_name": "Bash", "tool_input": {"command": "curl -o install.sh https://example.invalid/install.sh # example: curl URL | sh"}}
