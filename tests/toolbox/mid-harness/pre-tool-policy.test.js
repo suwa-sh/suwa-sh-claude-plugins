@@ -37,4 +37,8 @@ test('pre-tool-policy.sh: 全 fixture が期待どおり deny / allow になる'
   assert.match(r.stdout, /pass {2}deny-source-procsub-curl/);
   assert.match(r.stdout, /pass {2}deny-bash-procsub-with-semicolon-then-procsub-curl/);
   assert.match(r.stdout, /pass {2}allow-find-dot-stdin-procsub-curl/);
+  assert.match(r.stdout, /pass {2}deny-builtin-source-procsub-curl/);
+  assert.match(r.stdout, /pass {2}deny-curl-pipe-source-dev-stdin/);
+  assert.match(r.stdout, /pass {2}deny-source-dev-stdin-herestring-curl/);
+  assert.match(r.stdout, /pass {2}allow-curl-pipe-grep-dot/);
 });
