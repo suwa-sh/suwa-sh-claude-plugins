@@ -2,6 +2,25 @@
 
 version の正本は `.claude-plugin/plugin.json`。
 
+## [0.3.3] - 2026-11-13
+
+スキルの定義 (LLM が読む手順書) を読みやすくした。振る舞いは変えていない。
+進行役の本体は約 4 万字あり、1 行が 200 字を超える行が 53 行あった。どのスキルも、何をするスキルかの説明より先に引数や入出力の表が来ていた。
+
+### Changed
+
+- 全スキルの本体 (`SKILL.md`) を、目的 → 呼び出し → 手順 → 決まり → 細目の文書、の順に書き直した。一文に 1 つのことを書き、一文ごとに改行した。版の経緯の注記 (「0.1.31 で移した」など) は本体から外した (経緯はこの CHANGELOG にある)
+- 本体の末尾に「細目の文書」の表を置いた。文書ごとに、いつ読むかと、何が書いてあるかを示す
+- 進行役 (`d2-run`) の本体を約 9 千字にした。段階ごとの手順は細目の文書に分けた: `startup.md` (起動の細目)、`stage-requirements.md` (① 要求・要求の差分・やり直し)、`stage-decide.md`、`stage-foundation.md`、`stage-uc.md` (④ の段階ごとの手順・ゲートが落ちたとき・関与ティアの決め方)、`review.md` (人レビュー)、`main-merge.md` (main マージ・旧形式の run)、`issues.md` (課題ファイル)
+- まれに使う手順を細目の文書に分けた: 画面部品の `mode=feedback` (`d2-design/references/design/feedback.md`)、決定の差分 (`d2-decide/references/feedback.md`)、要求の差分更新 (`d2-requirements/references/diff-update.md`)、UC 一覧のフィールドと編集の決まり (`d2-requirements/references/use-cases.md`)
+- 本体から外した細かい挙動と理由を細目の文書に移した: 契約のスクリプトの挙動 (`d2-contract/references/contract-tests.md`)、基盤の phase の順番の理由と画面の土台の CSS (`d2-foundation/references/phases.md`)、決定のスクリプトが検査するもの・描くもの (`d2-decide/references/scripts.md`)
+- 検証役の定義 (`agents/d2-verifier.md`) を、手順と決まりの表に書き直した
+
+### 確かめたこと
+
+- 会議室の予約の題材で、3 つ目の機能「予約を取り消す」を書き直した手順書で回し、main に入った (前の段の直し 3 回、写し直し 1 回、巻き戻し 2 回。指す先の無い参照は無し)
+- 別系統のモデルのレビュー 3 ラウンド (指摘 5 件 → 1 件 → 0 件)。決まりの変化の指摘は 1 件 (契約の冒頭に元に無い制限を足していた) で、直した
+
 ## [0.3.2] - 2026-11-12
 
 ### Changed
