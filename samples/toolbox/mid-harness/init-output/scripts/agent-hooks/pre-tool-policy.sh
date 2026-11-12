@@ -448,10 +448,96 @@ def code_from_fetch(after):
                 return True
     return any(is_fetch(expand_split(sc)) for sc in sub_commands(after))   # 引用符の外の $(curl ...) / `curl ...`
 
+def paren_ends(toks):
+    # 各 ( に対応する ) の位置を 1 回の走査で求める (閉じていない ( は末尾)。( ごとに走査し直すと入力長の 2 乗になる
+    ends = {}; stack = []
+    for j, t in enumerate(toks):
+        if t == "(": stack.append(j)
+        elif t == ")" and stack: ends[stack.pop()] = j
+    for j in stack: ends[j] = len(toks)
+    return ends
+
+def subst_fetch(toks):
+    # 語の列の中のコマンド置換 ($( ) と ` `) で取得しているか。置換の外の取得 (curl -o f URL) は見ない
+    n = len(toks); i = 0; ends = None
+    while i < n:
+        t = toks[i]
+        if "$(" in t or "`" in t:
+            if code_from_fetch([t]): return True                # 引用符の中の "$(curl ...)"
+        if t == "$" and i + 1 < n and toks[i + 1] == "(":
+            if ends is None: ends = paren_ends(toks)
+            e = ends[i + 1]
+            if code_from_fetch(toks[i + 2:e]): return True
+            i = e + 1; continue
+        if t == "`":
+            e = i + 1
+            while e < n and toks[e] != "`": e += 1
+            if code_from_fetch(toks[i + 1:e]): return True
+            i = e + 1; continue
+        i += 1
+    return False
+
+def stdin_hits(toks):
+    # インタプリタの標準入力やスクリプトに、取得物を渡す形。
+    # bash < <(curl URL) / bash <(curl URL) はプロセス置換の中身を、bash <<EOF の本文の $(curl URL) は展開結果を、コードとして実行する
+    # 検査済みの範囲の内側にある置換は、外側の検査に含まれるので見直さない (入力長に対して線形)
+    n = len(toks); k = 0; ends = None; done = -1
+    def check(p):
+        nonlocal ends, done
+        if p <= done: return False
+        if ends is None: ends = paren_ends(toks)
+        done = ends[p]
+        return code_from_fetch(toks[p + 1:ends[p]])
+    while k < n:
+        is_exec = toks[k].rsplit("/", 1)[-1] == "exec"          # exec < <(curl URL) は以降のコマンドの標準入力を取得物にする
+        if not (INTERP.match(toks[k]) or is_exec):
+            k += 1; continue
+        m = k + 1
+        while m < n and not is_end(toks[m]):
+            t = toks[m]
+            if t == "<" and m + 1 < n and toks[m + 1] == "(" and not is_exec:
+                if check(m + 1): return True                    # bash <(curl URL) / bash -o pipefail <(curl URL)。位置引数のどれでも拒否 (安全側)
+            if t == "<" and m + 2 < n and toks[m + 1] == "<" and toks[m + 2] == "(":
+                if check(m + 2): return True                    # bash < <(curl URL)
+            m += 1
+        k = m
+    return heredoc_hits(toks)
+
+def heredoc_hits(toks):
+    # ヒアドキュメントの本文の $(curl URL) が、同じ行のインタプリタ (bash <<EOF / cat <<EOF | bash) にコードとして渡る形。
+    # 本文の終わりを語の一致で探すと「EOF x」の行や同じ行の複数のヒアドキュメントで読み違えるので、
+    # インタプリタを含む行にヒアドキュメントがあれば、その後ろ全体のコマンド置換を見る (安全側。後ろ全体を見るので 1 回で足りる)
+    n = len(toks); line = 0; m = 0
+    while m < n:
+        t = toks[m]
+        if t == "\n":
+            line = m + 1
+        elif t == "<<":
+            b = m + 1
+            while b < n and toks[b] != "\n": b += 1
+            if any(real_cmd(sc) is not None and INTERP.match(sc[real_cmd(sc)]) for sc in sub_commands(toks[line:b])):
+                return subst_fetch(toks[b + 1:])
+            m = b; continue                                     # 同じ行の残りの << は同じ行の検査になるので飛ばす (線形)
+        m += 1
+    return False
+
+def out_proc_interp(stage):
+    # 段の中の出力側のプロセス置換 >(sh) がインタプリタか (curl URL > >(sh) は取得物を sh に流す)
+    ends = None; done = -1                                       # 検査済みの範囲の内側は見直さない (線形)
+    for i, t in enumerate(stage):
+        if t == "(" and i > done and i > 0 and stage[i - 1].endswith(">") and REDIR.match(stage[i - 1]):
+            if ends is None: ends = paren_ends(stage)
+            done = ends[i]
+            inner = stage[i + 1:done]
+            for sc in sub_commands(inner):
+                j = real_cmd(sc)
+                if j is not None and INTERP.match(sc[j]): return True
+    return False
+
 def is_fetch(sc):
-    # 単純コマンドの実コマンドが curl / wget / fetch か (./curl.sh のようなファイル名の部分一致では判定しない)
-    j = real_cmd(sc)
-    return j is not None and sc[j].rsplit("/", 1)[-1] in FETCH_CMDS
+    # 単純コマンドの語のどれかが curl / wget / fetch そのものか (./curl.sh のようなファイル名の部分一致では判定しない)。
+    # 実コマンドの位置だけを見ると busybox / stdbuf / torsocks などの起動役で迂回できるので、位置は問わない
+    return any(t.rsplit("/", 1)[-1] in FETCH_CMDS for t in sc)
 
 def hit_string(s, level):
     if level > MAX_DEPTH or len(s) > MAX_LEN:                   # 深すぎる入れ子・長すぎる入力: 取得を含むなら拒否 (fail-closed)
@@ -475,8 +561,10 @@ def hit_string(s, level):
 def hit_tokens(toks, level):
     if level > MAX_DEPTH:
         return any(FETCH.search(t) for t in toks)
-    if code_hits(toks):
-        return True                                             # インタプリタに渡すコードの中で取得している
+    if code_hits(toks) or stdin_hits(toks):
+        return True                                             # インタプリタに渡すコード・標準入力・ヒアドキュメントの中で取得している
+    if out_proc_interp(toks) and any(is_fetch(sc) for sc in sub_commands(toks)):
+        return True                                             # 出力側 >(sh) と取得が同じコマンド列にある (curl URL > >(sh) / exec 3> >(sh); curl URL >&3)。安全側
     for cmd in split_top(toks):
         seen = False
         for stage in cmd:

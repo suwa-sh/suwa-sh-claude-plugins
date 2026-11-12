@@ -22,4 +22,15 @@ test('pre-tool-policy.sh: 全 fixture が期待どおり deny / allow になる'
   assert.match(r.stdout, /pass {2}deny-curl-pipe-quoted-newline-arg-sh/);
   assert.match(r.stdout, /pass {2}deny-curl-pipe-brace-group-sh/);
   assert.match(r.stdout, /pass {2}allow-echo-string-with-pipe-sh/);
+  // 起動役・プロセス置換・ヒアドキュメントで迂回されない (2026-11-12 の push 後の指摘)
+  assert.match(r.stdout, /pass {2}deny-busybox-wget-pipe-sh/);
+  assert.match(r.stdout, /pass {2}deny-bash-stdin-procsub-curl/);
+  assert.match(r.stdout, /pass {2}deny-curl-to-output-procsub-sh/);
+  assert.match(r.stdout, /pass {2}deny-bash-heredoc-cmdsubst-curl/);
+  assert.match(r.stdout, /pass {2}allow-cat-stdin-procsub-curl/);
+  assert.match(r.stdout, /pass {2}allow-bash-heredoc-curl-to-file/);
+  assert.match(r.stdout, /pass {2}deny-two-heredocs-pipe-bash-cmdsubst-curl/);
+  assert.match(r.stdout, /pass {2}deny-bash-option-value-procsub-curl/);
+  assert.match(r.stdout, /pass {2}deny-exec-fd-output-procsub-sh-then-curl/);
+  assert.match(r.stdout, /pass {2}allow-exec-fd-output-procsub-tee-then-curl/);
 });
