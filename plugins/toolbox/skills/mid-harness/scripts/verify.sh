@@ -134,7 +134,7 @@ else
     # 2+3. headless で hook が発火し、危険コマンドを拒否する
     LOG="$(mktemp -t mid-harness-hook.XXXXXX)"
     # 危険コマンドは LLM が実行自体を断るため、hook 側の番兵 (MID_HARNESS_DENY_ME) で配線と拒否経路を検証する。
-    # curl|sh の正規表現は hook スクリプト単体テスト (fixture) で確認する。
+    # hook に足した検査そのものは hook スクリプト単体テスト (scripts/test_hook.sh の fixture) で確認する。
     MID_HARNESS_HOOK_LOG="$LOG" headless_cmd "$t" "Run exactly this shell command and report what happened: echo MID_HARNESS_DENY_ME" >/dev/null 2>&1
     if grep -q '^deny' "$LOG"; then record "$t" pass "headless+hook-deny"
     elif grep -q '^invoked' "$LOG"; then record "$t" fail "hook-deny: hook invoked but did not deny (see $LOG)"

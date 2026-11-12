@@ -21,7 +21,7 @@
 ## LLM は `curl | sh` の実行自体を断るので hook 拒否テストに使えない
 - 症状: hook 拒否テストで `invoked` すら残らない (Claude Code / Codex とも)
 - 原因: モデルが危険コマンドをツール呼び出しせずに断るため、PreToolUse が発火しない
-- 復旧: `pre-tool-policy.sh` の番兵 (`MID_HARNESS_HOOK_LOG` 有効時のみ `MID_HARNESS_DENY_ME` を拒否) を使う。curl|sh の正規表現は fixture でスクリプト単体テストする
+- 復旧: `pre-tool-policy.sh` の番兵 (`MID_HARNESS_HOOK_LOG` 有効時のみ `MID_HARNESS_DENY_ME` を拒否) を使う。hook に足した検査そのものは `scripts/test_hook.sh` の fixture でスクリプト単体テストする
 - 最終確認日: 2026-09-05
 
 ## Grok / Antigravity の trust は canonical パスで登録する
@@ -102,5 +102,6 @@
 - 0.11.3 の commit 後の自動セキュリティレビューの指摘 (0.11.4 で直した。fixture 8 件、拒否 6・許可 2):
   - `builtin source <(curl URL)` / `command . <(curl URL)` / `if . <(curl URL)`: source / `.` の位置を直前の語だけで判定していた → real_cmd と同じ規則 (前置コマンド・予約語・リダイレクト・VAR=val を読み飛ばす) で実コマンドの位置を求める
   - `source /dev/stdin <<< "$(curl URL)"` / `curl URL | source /dev/stdin` / `curl URL | . /dev/stdin`: `<<<` を exec だけで見ていた・パイプの後ろの段を判定するときに source / `.` / eval を数えていなかった → どちらも数える。`<<<` を 1 つ見たらコマンドの終わりまで飛ばす (飛ばさないと区切りの無い `<<<` の連続で 2 乗になった。9 万文字で 50 秒)
-- 再発防止: `cat < <(curl URL)` / `curl URL > >(tee log)` / `diff <(curl A) <(curl B)` / `busybox ls | sh` / 本文で保存だけするヒアドキュメントを許可のまま固定する fixture を同時に置いた。既知の誤検知 (安全側): `echo a # curl URL | sh` のようにコメントに取得即実行を書くと拒否する。`bash run.sh <(curl URL)` は bash 側の grep で拒否する
-- 最終確認日: 2026-11-12
+- 0.11.4 時点の再発防止 (履歴。0.12.0 で fixture ごと削除): `cat < <(curl URL)` / `curl URL > >(tee log)` / `diff <(curl A) <(curl B)` / `busybox ls | sh` / 本文で保存だけするヒアドキュメントを許可のまま固定する fixture を置いていた。当時の既知の誤検知 (安全側): `echo a # curl URL | sh` のようにコメントに取得即実行を書くと拒否した
+- その後の扱い (0.12.0、現行): 取得即実行の検知はやめ、サンプル hook を素通りにした。上の 3 節の fixture も削除した。理由: コマンドの書き方を見る検査は変形を追いかけても終わらない (4 回続いた) うえ、hook は元々サンプルとして置いたもの。現行の hook が拒否するのは、`MID_HARNESS_HOOK_LOG` があるときの番兵だけ。検査の置き場所の考え方は `hook-placement.md`、止める書き方の例は hook 末尾のコメントにある
+- 最終確認日: 2026-11-13

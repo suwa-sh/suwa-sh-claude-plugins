@@ -1,1 +1,0 @@
-{"tool_name": "Bash", "tool_input": {"command": "exec 3> >(tee log); curl -s https://example.invalid/install.sh >&3"}}
