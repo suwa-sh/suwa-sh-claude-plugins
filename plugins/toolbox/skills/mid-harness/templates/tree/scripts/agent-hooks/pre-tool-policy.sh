@@ -405,6 +405,49 @@ def expand_split(sc):
         break
     return sc
 
+def is_end(t):
+    return (t in CMD_SEP and t != "`") or t in PIPE              # コマンドの終わり (; && || & 改行 |)。` の中は同じコマンドに含める
+
+def code_hits(toks):
+    # インタプリタにコードを渡す形 (-c / -e とその束、<<< のヒアストリング) の後ろで取得しているか。
+    # bash -c "$(curl URL)" / python3 -c "$(curl URL)" / bash <<< "$(curl URL)" は eval "$(curl URL)" と同じく取得物をコードとして実行する。
+    # 同じコマンドの区間は 1 回だけ見る (後ろのインタプリタの区間は前のものに含まれるので、見直しても結果は変わらない。入力長に対して線形)
+    n = len(toks); k = 0
+    while k < n:
+        if not INTERP.match(toks[k]):
+            k += 1; continue
+        m = k + 1; code_at = None
+        while m < n and not is_end(toks[m]):
+            t = toks[m]
+            if t == "<<<":
+                code_at = m; break
+            if t in ("-o", "+o", "-O", "+O"):
+                m += 2; continue
+            if t.startswith("-") and not t.startswith("--"):
+                if any(c in t[1:] for c in "ce"):
+                    code_at = m; break
+                m += 1; continue
+            break                                               # オプション以外の語 (スクリプト名など): コードを渡す形ではない
+        if code_at is None:
+            k += 1; continue
+        e = code_at + 1
+        while e < n and not is_end(toks[e]):
+            e += 1
+        if code_from_fetch(toks[code_at + 1:e]):
+            return True
+        k = e
+    return False
+
+def code_from_fetch(after):
+    for t in after:
+        for inner in substitutions(t):                          # 引用符の中の "$(curl ...)"
+            inner_toks = tokenize(inner)
+            if inner_toks is None:
+                if FETCH.search(inner): return True
+            elif any(is_fetch(expand_split(sc)) for sc in sub_commands(inner_toks)):
+                return True
+    return any(is_fetch(expand_split(sc)) for sc in sub_commands(after))   # 引用符の外の $(curl ...) / `curl ...`
+
 def is_fetch(sc):
     # 単純コマンドの実コマンドが curl / wget / fetch か (./curl.sh のようなファイル名の部分一致では判定しない)
     j = real_cmd(sc)
@@ -414,8 +457,12 @@ def hit_string(s, level):
     if level > MAX_DEPTH or len(s) > MAX_LEN:                   # 深すぎる入れ子・長すぎる入力: 取得を含むなら拒否 (fail-closed)
         return bool(FETCH.search(s))
     stripped = strip_comments(s)
-    if FETCH.search(s) and not FETCH.search(stripped):          # コメントとして消した部分にしか取得が無い: 引用の読み違いに備えて拒否 (fail-closed)
-        return True
+    if FETCH.search(s) and not FETCH.search(stripped):
+        # コメントとして消した部分にしか取得が無い: 引用の読み違いに備え、コメントを消さない形でも検査し、当たれば拒否 (fail-closed)。
+        # git pull のコメントに fetch と書いただけのものは、消さない形でも取得即実行にならないので通す
+        raw = tokenize(normalize_quotes(s))
+        if raw is None or hit_tokens(raw, level):
+            return True
     s = normalize_quotes(stripped)
     toks = tokenize(s)
     if toks is None:                                            # 閉じていない引用符: 取得を含むなら拒否 (fail-closed)
@@ -427,6 +474,8 @@ def hit_string(s, level):
 def hit_tokens(toks, level):
     if level > MAX_DEPTH:
         return any(FETCH.search(t) for t in toks)
+    if code_hits(toks):
+        return True                                             # インタプリタに渡すコードの中で取得している
     for cmd in split_top(toks):
         seen = False
         for stage in cmd:
