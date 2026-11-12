@@ -41,17 +41,23 @@ function wsRow(name) {
 /** 表の行 (`| **<stage>** |` や `| ④ <stage>`) を 1 行で返す */
 const cells = line => line.split('|').slice(1, -1).map(c => c.trim());
 
+const STAGE_UC = 'skills/d2-run/references/stage-uc.md';
+/**
+ * 表の行を返す。④ の段階の行 (`| **verify** |` など) は、一覧の行 (要約) と「<段階> の手順」の節 (細目) に分かれているので、
+ * 両方をつないで返す。細目は stage-uc.md のその段階の節だけから取る (別の文書や別の段階の文言に当たらないように)
+ */
 function row(text, re) {
   const line = text.split('\n').find(l => re.test(l));
   assert.ok(line, `row not found: ${re}`);
-  // ④ の段階は、一覧の行 (要約) と「<段階> の手順」の節 (細目) に分かれている。両方をつないで返す
   const m = line.match(/^\| \*\*([a-z-]+)\*\* \|/);
   if (!m) return line;
-  const head = `\n#### ${m[1]} の手順\n`;
-  const i = text.indexOf(head);
-  if (i < 0) return line;
-  const rest = text.slice(i + head.length);
-  const j = rest.search(/\n#{1,4} /);
+  const doc = joinSentences(raw(STAGE_UC));
+  assert.ok(doc.split('\n').includes(line), `段階の一覧の行は stage-uc.md にある: ${m[1]}`);
+  const head = `\n### ${m[1]} の手順\n`;
+  const i = doc.indexOf(head);
+  assert.ok(i >= 0, `stage-uc.md に「${m[1]} の手順」の節がある`);
+  const rest = doc.slice(i + head.length);
+  const j = rest.search(/\n#{1,3} /);
   return `${line} ${(j < 0 ? rest : rest.slice(0, j)).replace(/\n+/g, ' ')}`;
 }
 

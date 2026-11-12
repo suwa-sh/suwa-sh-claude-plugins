@@ -12,7 +12,7 @@ const SKILLS = fs.readdirSync(path.join(PLUGIN, 'skills')).filter(d => fs.exists
 const read = d => fs.readFileSync(path.join(PLUGIN, 'skills', d, 'SKILL.md'), 'utf8');
 const body = t => t.split(/^---$/m).slice(2).join('---');
 
-// Agent Skills 仕様の目安は 500 行未満・5000 トークン未満。字数の上限は、いまの最大 (基盤) を超えて増やさないための歯止め
+// Agent Skills 仕様の目安は 500 行未満・5000 トークン未満 (ここでは 500 行以下を守る)。字数の上限は、いまの最大 (基盤) を超えて増やさないための歯止め
 const MAX_LINES = 500;
 const MAX_CHARS = 10500;
 
@@ -60,14 +60,38 @@ test('本体の末尾に「細目の文書」の表があり、文書・読む�
   }
 });
 
-test('本体から細目の文書へのリンクは 1 段 (本体が指す文書は実在し、references/ の下の文書はすべて本体かほかの細目から辿れる)', () => {
+/** dir の下の .md を、スキルのルートからの相対パスで列挙する */
+function listMd(skill, dir) {
+  const abs = path.join(PLUGIN, 'skills', skill, dir);
+  if (!fs.existsSync(abs)) return [];
+  return fs.readdirSync(abs, { withFileTypes: true }).flatMap(e => (e.isDirectory() ? listMd(skill, path.join(dir, e.name)) : e.name.endsWith('.md') ? [path.join(dir, e.name)] : []));
+}
+
+test('本体が指す文書は実在する。references/ の下の文書は、本体からリンクかパスの記述を辿って届く (決まりを置いた文書への案内が消えない)', () => {
   for (const d of SKILLS) {
     const t = read(d);
     for (const m of t.matchAll(/\]\(((?:references|scripts)\/[^)#]+)/g)) {
       assert.ok(fs.existsSync(path.join(PLUGIN, 'skills', d, m[1])), `${d}: リンク先が無い: ${m[1]}`);
     }
+    // 届く = 届いている文書 (最初は本体) の本文に、その文書のパスが出てくる (スキルのルートから、またはその文書の場所からの相対)
+    const files = listMd(d, 'references');
+    const reached = new Map([['SKILL.md', t]]);
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const f of files) {
+        if (reached.has(f)) continue;
+        const hit = [...reached].some(([from, text]) => {
+          const rel = path.relative(path.dirname(from), f);
+          // 入れ子のフォルダ (雛形やフェーズごとの文書) は、フォルダを指す記述で中の文書に届くとみなす
+          const dir = path.dirname(f);
+          return text.includes(f) || text.includes(rel) || (dir !== "references" && text.includes(`${dir}/`));
+        });
+        if (hit) { reached.set(f, fs.readFileSync(path.join(PLUGIN, 'skills', d, f), 'utf8')); grew = true; }
+      }
+    }
+    assert.deepEqual(files.filter(f => !reached.has(f)), [], `${d}: 本体から届かない文書`);
   }
-  // 進行役: 段階ごとの手順の文書は、本体の「全体の流れ」か「細目の文書」から必ず指す
+  // 進行役: 段階ごとの手順の文書は、本体から直接指す (細目を辿らせない)
   const run = read('d2-run');
   for (const f of ['startup.md', 'stage-requirements.md', 'stage-decide.md', 'stage-foundation.md', 'stage-uc.md', 'review.md', 'main-merge.md', 'issues.md', 'routing.md', 'subagent-template.md', 'run-state.md', 'git-delivery.md', 'direct-io.md', 'troubleshooting.md']) {
     assert.ok(run.includes(`(references/${f})`), `d2-run: ${f} を本体から指していない`);

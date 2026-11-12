@@ -11,7 +11,7 @@ description: >-
 # d2-contract
 
 契約 (OpenAPI、AsyncAPI、RDB スキーマ) を書き、そこから生成物を作る。
-人と LLM が書くのは `contracts/` の分割 YAML だけである。
+契約の正本は `contracts/` の分割 YAML である。カタログ (`contracts.json`) と UC の索引 (`uc-index.yaml`) も、手順に従って書く。
 bundle、UC ごとの slice、契約テストは、スクリプトが決定論的に生成する。
 
 個別仕様 (spec.md) やティア別の文書は作らない。

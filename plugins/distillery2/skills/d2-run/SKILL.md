@@ -137,7 +137,7 @@ review の手順は [references/review.md](references/review.md)、deliver の�
 | 5 | 作業ツリーの clean 判定をする (④ と上流の差分の開始時) |
 
 手順 2〜5 の細目は [references/startup.md](references/startup.md) にある。
-初めての起動と、④ を始める前に読む。
+起動のたびに、手順 2 を行う前に読む。
 
 ## 完了報告
 
@@ -161,7 +161,7 @@ review の手順は [references/review.md](references/review.md)、deliver の�
 
 | 文書 | 読むとき | 内容 |
 |---|---|---|
-| [references/startup.md](references/startup.md) | 初めての起動、④ を始める前 | モデルの解決、UC の解決、作業ツリーの clean 判定 |
+| [references/startup.md](references/startup.md) | 起動のたび (起動シーケンスの手順 2 の前) | モデルの解決、UC の解決、作業ツリーの clean 判定 (④ と上流の差分の開始時) |
 | [references/stage-requirements.md](references/stage-requirements.md) | ① 要求、要求の差分、やり直しの前 | 要求の段階の手順 |
 | [references/stage-decide.md](references/stage-decide.md) | ② 決定の前 | 決定の段階の手順 |
 | [references/stage-foundation.md](references/stage-foundation.md) | ③ 基盤の前 | 基盤の段階の手順と、仕上げの受理時の検査 |
