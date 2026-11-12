@@ -19,9 +19,9 @@ test('SKILL.md の name は d2-asbuilt (Agent Skills 仕様: ディレクトリ�
   assert.match(text, /^name:\s*d2-asbuilt\s*$/m);
 });
 
-test('SKILL.md は 150 行以内', () => {
+test('SKILL.md は 500 行以内 (Agent Skills 仕様の目安)', () => {
   const text = fs.readFileSync(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
-  assert.ok(text.split('\n').length <= 150, 'SKILL.md が 150 行を超えた');
+  assert.ok(text.split('\n').length <= 500, 'SKILL.md が 500 行を超えた');
 });
 
 test('SKILL.md の相対リンクはすべて実在する', () => {

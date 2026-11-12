@@ -9,84 +9,112 @@ description: >-
 
 # d2-asbuilt
 
-パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+実装が終わった UC について、実装の記録 (as-built) を作る。
+記録の大半は、スクリプトがテスト結果とトレースから抽出する。
+LLM が書くのは、要約ブロック 3 つと、課題の下書きだけである。
+抽出節はスクリプトの生成物なので触らない。
 
-入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
+## 呼び出し
 
-引数: `uc=<slug> run=<.distillery/runs/<slug> へのパス>`
+進行役 (d2-run) が、人レビューの後に派遣する。
 
-このスキルが抽出のスクリプトを回し、要約ブロック 3 つを埋め、書式の検査が ok になるまで直す (0.1.22 から。以前は抽出と検査を d2-run が回していた)。
-LLM が手で書くのは **要約ブロックの中だけ** (例外は段取り 5 の課題の下書き `<run>/issues/<ts>_asbuilt_<slug>.md`)。抽出節はスクリプトの生成物なので触らない。
+```
+uc=<slug> run=<.distillery/runs/<slug> へのパス>
+```
 
-節と情報源の正本は [references/asbuilt-format.md](references/asbuilt-format.md)。
+パスの `<skills>` は、スキル群のディレクトリを指す。
+定義は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」にある。
 
-git: 自分で git コマンドを打たない (commit は d2-run が行う)。抽出スクリプトの内部の git の読み取り (`rev-parse`・`diff`。変更ファイルと HEAD を得る) は例外。
+## 手順
 
-## 段取り
+| 順 | すること | だれが | 次へ進む条件 |
+|---|---|---|---|
+| 1 | 依存グラフの実態を取る | スクリプト | 失敗しても次へ進む |
+| 2 | 抽出する | スクリプト | 標準出力の 1 行を控えた |
+| 3 | 要約ブロック 3 つを埋める | LLM | 3 つとも表で書いた |
+| 4 | 書式を検査する | スクリプト | 検査が ok を返す。ok になるまで要約を直す |
+| 5 | 人が見ていない課題を下書きにする | LLM | 下書きを書いたら、手順 2 と 4 をやり直した |
 
-1. **依存グラフの実態 (スクリプト)**: `.dependency-cruiser.cjs` は F2 の生成物。失敗しても後続は続ける (抽出は config から「決定からの図」を描く)。
+### 1. 依存グラフの実態
 
-   ```bash
-   npx depcruise --config .dependency-cruiser.cjs --output-type json apps packages \
-     > .distillery/runs/<slug>/reports/depcruise.json
-   ```
+```bash
+npx depcruise --config .dependency-cruiser.cjs --output-type json apps packages \
+  > .distillery/runs/<slug>/reports/depcruise.json
+```
 
-2. **抽出 (スクリプト)**:
+`.dependency-cruiser.cjs` は基盤の生成物である。
+失敗したときは、抽出が config から「決定からの図」を描く。
 
-   ```bash
-   node "<skills>/d2-asbuilt/scripts/extractAsBuilt.js" \
-     --run .distillery/runs/<slug> --depcruise .distillery/runs/<slug>/reports/depcruise.json
-   ```
+### 2. 抽出
 
-   - 書くもの: `docs/as-built/<業務>/<UC>/{index.md, sequence.md}`、
-     `docs/as-built/_system/{traceability-index.json, api-inventory.md, data-flow.md, dependency-graph.md, index.md}`、
-     集計 `.distillery/runs/<slug>/reports/asbuilt.json` (slug・attempt・計装なしのティア。d2-run が受理時に読む)
-   - 標準出力 1 行をそのまま報告に転記する。`計装なしのティア: …` (トレースに現れないティア) か `正常系に部品 (call) が無いティア: …` (正常系のトレースに部品が無いティア) が出たら、
-     integrate の結線漏れ。要約はそのまま進めてよい (integrate へ戻す判断は d2-run が集計ファイルで行う)
-   - 決定論。同じ入力なら同じ出力。`generated_at` だけ最新イベント ts を使う
-   - 再実行しても、既存の `<!-- 要約:begin <名前> -->…<!-- 要約:end -->` の中身は名前で保存する
+```bash
+node "<skills>/d2-asbuilt/scripts/extractAsBuilt.js" \
+  --run .distillery/runs/<slug> --depcruise .distillery/runs/<slug>/reports/depcruise.json
+```
 
-3. **要約 (LLM = このスキル)**: `docs/as-built/<業務>/<UC>/index.md` の 3 か所の要約ブロックだけを埋める。
-   **すべて表で書く。文章で書かない。**
+- 標準出力の 1 行を、そのまま報告に転記する
+- `計装なしのティア: …` か `正常系に部品 (call) が無いティア: …` が出たら、integrate の結線漏れである。要約はそのまま進めてよい。integrate へ戻す判断は、d2-run が集計ファイルで行う
+- 再実行しても、既存の要約ブロックの中身は名前で保存される
 
-   | ブロック名 | 場所 | 表の形 | 行 |
-   |---|---|---|---|
-   | `概要` | 見出し直下 | `\| 項目 \| 内容 \| 根拠 \|` | 誰が / 何をする / 完了の条件 の 3 行 |
-   | `整合性` | 何を守るか | `\| 守ること \| 手段 \| 根拠 \|` | 原子性 / 競合 / 冪等 / 障害と副作用 の 4 行。手段が複数なら `<br>` で 1 行 1 手段 |
-   | `課題` | 課題 | `\| 課題 \| 背景 \| 今の実装 \| 対処 \| 根拠 \|` | 課題 1 つ 1 行。課題が無ければ、課題の列を `なし` にした 1 行だけ (`checkAsBuilt.js` の「課題の行」は 0 になる) |
+書かれるファイルと出力の決まりは [references/asbuilt-format.md](references/asbuilt-format.md) にある。
 
-4. **検査 (スクリプト)**: 書いたら必ず実行し、ok になるまで要約を直す。
+### 3. 要約
 
-   ```bash
-   node "<skills>/d2-asbuilt/scripts/checkAsBuilt.js" docs/as-built/<業務>/<UC>/index.md
-   ```
+`docs/as-built/<業務>/<UC>/index.md` の 3 か所の要約ブロックだけを埋める。
+**すべて表で書く。文章で書かない。**
 
-   検査する規則: ブロックが空でない / 表がある / セル 1 行 40 字以内 / 表の外に文を書かない / 見出しを使わない。
-   根拠列とコード位置 `path:line` は字数に数えない (`code` の中身と句読点は数える)。
-   0.1.5 以前の要約 (文章) を引き継いだときも違反になるので、表に書き直す (extractAsBuilt の標準出力に件数が出る)。
+| ブロック名 | 場所 | 表の形 | 行 |
+|---|---|---|---|
+| `概要` | 見出し直下 | `\| 項目 \| 内容 \| 根拠 \|` | 誰が / 何をする / 完了の条件 の 3 行 |
+| `整合性` | 何を守るか | `\| 守ること \| 手段 \| 根拠 \|` | 原子性 / 競合 / 冪等 / 障害と副作用 の 4 行。手段が複数なら `<br>` で 1 行 1 手段 |
+| `課題` | 課題 | `\| 課題 \| 背景 \| 今の実装 \| 対処 \| 根拠 \|` | 課題 1 つ 1 行。課題が無ければ、課題の列を `なし` にした 1 行だけ |
 
-5. **課題の下書き (LLM = このスキル)**: 要約ブロック `課題` の行ごとに、同じ index.md の抽出節「決めたこと」(人レビューに載った前提と Verifier の指摘) と「課題」の issues の表のどちらにも載っていない事柄だけを、
-   下書き `<run>/issues/<ts>_asbuilt_<slug>.md` にする (`<ts>` は `date -u +%Y%m%dT%H%M%SZ`、`<slug>` は課題を表す英小文字とハイフン)。
-   as-built は人レビューの後に作るので、ここで見つけた課題は人が見ていない。下書きは main マージの前に課題ファイルになり、要求の差分で人が決める。
-   載っている行は下書きにしない (人が見て決めたことを二重に聞かない)。
-   - front matter: `kind: requirement` (どれに揃えるか・どう直すかは人が決める)、`title` (40 字以内)、`source: asbuilt` (要約役の下書きの印。やり直すときにこの印の下書きだけを退避する)
-   - 本文: 背景・今の実装・対処の案・根拠のコード位置 (要約ブロックの行と同じ内容)
-   - 下書きを 1 つでも書いたら、2 の抽出をもう一度回し (要約ブロックの中身は残る。抽出節の「課題」と「結果」の未決の課題に下書きが載る)、4 の検査をやり直す
-
-## 要約の書き方 (厳守)
+要約の書き方 (厳守):
 
 - **`<!-- 要約:begin <名前> -->` と `<!-- 要約:end -->` の間だけに書く**。他の行は 1 文字も変えない
-- **一文一義**。1 セルに 1 つの事柄。条件や例外は別の行 (`<br>`) にする。列挙は「A・B・C」でなく行を分ける
-- **根拠はコード位置 `path:line`** を根拠列に書く (文中に書かない)。根拠は次だけを読んで得る:
-  - 「決めたこと」の場所列が指すコード (AssumptionRecord の `target`)
-  - 付録の変更ファイル
-- コードから読み取れないことは書かない。推測・一般論・「べき論」を書かない
-- 抽出節 (結果 / 入口 / どう動くか / 決めたこと / 証跡 / 付録) を書き換えない。表・箇条書きの数値を直さない
-- 用語は要求・契約・コードにある名前を使う (言い換えない)
+- **一文一義**。1 セルに 1 つの事柄を書く。条件や例外は別の行 (`<br>`) にする。列挙は「A・B・C」でなく行を分ける
+- **根拠はコード位置 `path:line`** を根拠列に書く。文中に書かない
+- 根拠は、「決めたこと」の場所列が指すコード (AssumptionRecord の `target`) と、付録の変更ファイルだけを読んで得る
+- コードから読み取れないことは書かない。推測、一般論、「べき論」を書かない
+- 抽出節 (結果 / 入口 / どう動くか / 決めたこと / 証跡 / 付録) を書き換えない。表や箇条書きの数値を直さない
+- 用語は、要求、契約、コードにある名前を使う。言い換えない
+
+### 4. 検査
+
+```bash
+node "<skills>/d2-asbuilt/scripts/checkAsBuilt.js" docs/as-built/<業務>/<UC>/index.md
+```
+
+検査する規則は次のとおりである。
+
+- ブロックが空でない
+- 表がある
+- セル 1 行が 40 字以内である。根拠列とコード位置 `path:line` は字数に数えない。`code` の中身と句読点は数える
+- 表の外に文を書かない
+- 見出しを使わない
+
+文章で書かれた古い要約を引き継いだときも違反になる。
+表に書き直す。
+
+課題が無いときの 1 行 (`なし`) は、出力の「課題の行」に数えない。
+
+### 5. 課題の下書き
+
+as-built は人レビューの後に作るので、ここで見つけた課題は人が見ていない。
+要約ブロック `課題` の行ごとに、人が見たかどうかを確かめる。
+同じ index.md の抽出節「決めたこと」(人レビューに載った前提と Verifier の指摘) と「課題」の issues の表のどちらにも載っていない事柄だけを、
+下書き `<run>/issues/<ts>_asbuilt_<slug>.md` にする。
+載っている行は下書きにしない (人が見て決めたことを二重に聞かない)。
+下書きは main マージの前に課題ファイルになり、要求の差分で人が決める。
+
+- ファイル名: `<ts>` は `date -u +%Y%m%dT%H%M%SZ`、`<slug>` は課題を表す英小文字とハイフン
+- front matter: `kind: requirement`、`title` (40 字以内)、`source: asbuilt` (要約役の下書きの印。やり直すときにこの印の下書きだけを退避する)
+- 本文: 背景、今の実装、対処の案、根拠のコード位置 (要約ブロックの行と同じ内容)
+- 下書きを 1 つでも書いたら、2 の抽出をもう一度回し、4 の検査をやり直す (要約ブロックの中身は残る。抽出節に下書きが載る)
 
 ## 読んでよいもの (read-set)
 
-要約 (LLM) が読むもの。抽出スクリプトが読むものは正本の「as-built の抽出」を見る。
+要約 (LLM) が読むもの。抽出スクリプトが読むものは、入出力の正本の「as-built の抽出」を見る。
 
 | 種類 | パス |
 |---|---|
@@ -94,7 +122,7 @@ git: 自分で git コマンドを打たない (commit は d2-run が行う)。�
 | 前提 | `<run>/attempt-<n>/assumptions.<tier>.yaml` の `target` が指すコード |
 | 変更ファイル | 付録に列挙された `apps/<tier>/src/...` |
 
-契約 source の全量・他 UC・設計書は読まない (存在しない)。
+契約 source の全量、他 UC、設計書は読まない (存在しない)。
 
 ## 書いてよいもの (write-set)
 
@@ -102,18 +130,34 @@ git: 自分で git コマンドを打たない (commit は d2-run が行う)。�
 |---|---|
 | depcruise | `<run>/reports/**` (依存グラフの JSON) |
 | extractAsBuilt.js | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/_system/**`、`<run>/reports/asbuilt.json` |
-| LLM (このスキル) | `docs/as-built/<業務>/<UC>/index.md` の要約ブロックの中身だけ、`<run>/issues/<ts>_asbuilt_<slug>.md` (課題の下書き。段取り 5) |
+| LLM (このスキル) | `docs/as-built/<業務>/<UC>/index.md` の要約ブロックの中身だけ、`<run>/issues/<ts>_asbuilt_<slug>.md` (課題の下書き。手順 5) |
 
 sequence.md と _system 配下はスクリプトの生成物であり、LLM は書き換えない。
+自分で git コマンドを打たない (commit は d2-run が行う)。
+抽出スクリプトの内部の git の読み取り (`rev-parse` と `diff`) は例外である。
 
 ## 報告
 
 - extractAsBuilt の標準出力 1 行 (そのまま)
-- 要約した 3 ブロックと、各ブロックが引用したコード位置の一覧、`checkAsBuilt.js` の結果 (ok であること)
-- 課題の下書き: 書いたファイルのパスと題名の一覧 (無ければ「なし」)。下書きにしなかった `課題` の行と、載っていた場所 (「決めたこと」か issues の表か)。両方の件数の合計は `checkAsBuilt.js` の出力の「課題の行」と同じになる
+- 要約した 3 ブロック、各ブロックが引用したコード位置の一覧、`checkAsBuilt.js` の結果 (ok であること)
+- 課題の下書き: 書いたファイルのパスと題名の一覧 (無ければ「なし」)
+- 下書きにしなかった `課題` の行と、載っていた場所 (「決めたこと」か issues の表か)
 - 要約できなかった項目 (根拠がコードから得られなかったもの) があれば、その理由
 - depcruise が失敗したら、その旨とエラーの 1 行
 
+下書きにした件数と、しなかった件数の合計は、`checkAsBuilt.js` の出力の「課題の行」と同じになる。
+
 ## 引き継ぎファイル
 
-作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題を書く (書き方は [handoff.md](../d2-common/references/handoff.md))。報告の本文にだけ書いたことは扱われない。推奨は条件を付けずに 1 つ書く。
+作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。
+書くのは、人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題である。
+報告の本文にだけ書いたことは扱われない。
+推奨は条件を付けずに 1 つ書く。
+書き方は [handoff.md](../d2-common/references/handoff.md) にある。
+
+## 細目の文書
+
+| 文書 | 読むとき | 内容 |
+|---|---|---|
+| [references/asbuilt-format.md](references/asbuilt-format.md) | 手順 2 の前 | 節と情報源の正本。抽出が書くファイルと出力の決まり |
+| [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) | 入出力を確かめるとき | 入出力の正本 (図は [dataflow.md](../d2-common/references/dataflow.md)) |

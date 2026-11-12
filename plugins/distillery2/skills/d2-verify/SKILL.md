@@ -8,17 +8,60 @@ description: >-
 
 # d2-verify
 
-パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+実装者とは別のエージェントが、1 つの UC の 1 つのティアの実装を検証する。
+見るのは次の 2 点だけである。
 
-入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
+| 観点 | 確かめること |
+|---|---|
+| 1. UC の意図 (`uc_intent`) | 実装が、シナリオと要求のとおりに振る舞うか |
+| 2. 前提の適合 (`assumption_conformance`) | 実装者が仕様に無くて自分で決めた前提が、要求、契約、開発ルールと矛盾しないか |
 
-引数: `uc=<slug> tier=<tier_id> attempt=<n> run=<.distillery/runs/<slug> へのパス> assumptions=<attempt-<n>/assumptions.<tier>.yaml へのパス>`
+テストは再実行しない。
+コードは直さない。
+git は使わない。
+書くのは検証結果のファイル (findings) 1 つだけである。
 
-観点の正本は [references/viewpoints.md](references/viewpoints.md)。前提の正本は
-[../d2-common/references/assumption-record.md](../d2-common/references/assumption-record.md)。前のステップの課題にする線の正本は
-[../d2-common/references/handoff.md](../d2-common/references/handoff.md) の「前のステップの課題にする線」(read-set の外だが、手順書として読む)。
+## 呼び出し
+
+進行役 (d2-run) が、5 つのゲートがすべて通った後に、ティアごとに派遣する。
+
+| 引数 | 内容 |
+|---|---|
+| `uc` | UC の slug |
+| `tier` | ティアの ID |
+| `attempt` | 何回目の実装か |
+| `run` | `.distillery/runs/<slug>` へのパス |
+| `assumptions` | 実装者の前提のファイル (`attempt-<n>/assumptions.<tier>.yaml`) へのパス |
+
+パスの `<skills>` は、スキル群のディレクトリを指す。
+定義は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」にある。
+
+## 手順
+
+観点ごとの突き合わせ方と findings の形は [references/viewpoints.md](references/viewpoints.md) にある。
+手順 2 の前に全部読む。
+
+| 順 | すること | 次へ進む条件 |
+|---|---|---|
+| 1 | `reports/gates.json` を読み、5 ゲートの結果を `gates_read` に転記する | `all_recorded: true` で、全段が pass である。`missing` の段や pass でない段があれば、呼び出し側の誤りとして停止する |
+| 2 | 観点 1 を、viewpoints.md の突き合わせ表どおりに行う。この間、前提のファイルは開かない | 根拠を findings の `evidence` に書いた。仕様に根拠の無い判断を、候補として控えた |
+| 3 | 観点 2 を、viewpoints.md の blind join の手順どおりに行う。ここで初めて前提のファイルを開く | 控えた候補と前提を突き合わせた |
+| 4 | findings を `<run>/attempt-<n>/findings.<tier>.yaml` に書き、下の検査を実行する | 検査が ok を返す。ok でなければ直す |
+| 5 | 結果を報告する | blocker、major、minor の件数と、`requires_answer` の件数を書いた。blocker があれば、戻すべきティアと理由も書いた |
+
+手順 2 の根拠には、レポートの該当箇所、トレースの行、要求の行のどれかを書く。
+
+手順 4 の検査:
+
+```
+node <skills>/d2-implement/scripts/validateAssumptions.js verdicts <findings> --assumptions <assumptions> --uc <slug> --tier <tier> --attempt <n>
+```
 
 ## 読んでよいもの (read-set)
+
+設計書や個別仕様書は存在しない。
+下の表に無いものは読まない。
+他の UC、関与しない契約、契約の source の全量も読まない (表の最後の行の例外を除く)。
 
 | 種類 | パス |
 |---|---|
@@ -30,32 +73,35 @@ description: >-
 | ルール | `docs/rules/common.md`、`docs/rules/tier-<kind>.md`、`docs/rules/testing.md` |
 | 契約 | `contracts/generated/slices/<slug>/contract-slice.json` (と rdb-slice.yaml) |
 | 実装 | `git diff --name-only <base_head>..HEAD` の変更ファイル (呼び出し側が一覧を渡す)。自ティアの `apps/<tier>/` |
-| 固定指示 | 派遣文で渡された「実装者の固定指示」のパス (`<skills>/<実装者のスキル>/references/<固定指示>.md` の形。前提の照合先として。d2-run が渡す。このスキルから他スキルの手順書を直接参照しない。0.1.31) |
+| 固定指示 | 派遣文で渡された「実装者の固定指示」のパス (`<skills>/<実装者のスキル>/references/<固定指示>.md` の形)。前提の照合先として読む。このスキルから他スキルの手順書を直接参照しない |
 | 他 UC への波及 (例外) | 呼び出し側が渡す「他 UC と共有する変更ファイル」、自ティアの変更ファイルの import 元 (`rg` で辿る)、`contracts/uc-index.yaml`、`docs/as-built/_system/traceability-index.json`、候補に紐づく他 UC のシナリオ (`features/<業務>/<他 slug>.feature`) |
-
-設計書や個別仕様書は存在しない。上の「他 UC への波及」の例外を除き、他 UC・関与しない契約・契約 source の全量は読まない。
-
-## 手順
-
-1. `reports/gates.json` を読み、5 ゲートの結果を `gates_read` に転記する。`all_recorded: true` でない (`missing` の段がある)、
-   または pass でない段があれば、呼び出し側の誤りとして停止する (Verifier は全段 pass の後にだけ動く)
-2. 観点 1 (uc_intent) を viewpoints.md の突き合わせ表どおりに行う。根拠 (レポートの該当箇所・トレースの行・要求の行) を
-   findings の `evidence` に書く。この間、前提ファイルは開かない。候補 (仕様に根拠の無い判断) を控える
-3. 観点 2 (assumption_conformance) を blind join の手順どおりに行う
-4. `findings.yaml` を `<run>/attempt-<n>/findings.<tier>.yaml` に書く (形は viewpoints.md)。書き終えたら
-   `node <skills>/d2-implement/scripts/validateAssumptions.js verdicts <findings> --assumptions <assumptions> --uc <slug> --tier <tier> --attempt <n>`
-   を実行し ok を確認する。ok でなければ直す
-5. 結果を報告する: blocker / major / minor の件数、`requires_answer` の件数、blocker があれば戻すべきティアと理由
 
 ## 書いてよいもの (write-set)
 
-`<run>/attempt-<n>/findings.<tier>.yaml` だけ。実装コード・テスト・契約・ルールは書き換えない。git を使わない。
+`<run>/attempt-<n>/findings.<tier>.yaml` だけである。
+実装コード、テスト、契約、ルールは書き換えない。
 
-## 判定の原則
+## 判定の決まり
 
-- 根拠のない severity を付けない。レポート・トレース・要求の行を必ず指す
-- 一般論 (可読性・性能・運用性) はルールに書かれていなければ指摘しない。機械のゲートが見るものは繰り返さない
-- 「動くように仕様と違うことをしている」は `contradicts` で blocker。仕様側が間違っていると思っても Verifier は仕様側に立つ
-  (仕様の問題は findings の `upstream_issues` に戻し先付きで書く。進行役が振り分ける)
-- `upstream_issues` に書くのは `<skills>/d2-common/references/handoff.md` の「前のステップの課題にする線」に当たるものだけ。
-  `spec_absent` / `unlisted` の前提でも、線の 1〜3 のどれか (業務の値の欠けを含む) に当たれば書く。線に当たらない仕様の空白 (実装者が決めた前提・黙った判断) は前提の判定 (`spec_absent` / `unlisted`) に留め、`upstream_issues` に書かない (人レビューの入口で扱う。点検役と同じ線で、写し直しを増やさない。0.3.0)
+| 決まり | 扱い |
+|---|---|
+| 根拠の無い severity を付けない | レポート、トレース、要求の行のどれかを必ず指す |
+| 一般論を指摘しない | 可読性、性能、運用性は、ルールに書かれているときだけ指摘する。機械のゲートが見るものは繰り返さない |
+| 仕様の側に立つ | 「動くように仕様と違うことをしている」は `contradicts` で blocker にする。仕様の側が間違っていると思っても同じである |
+| 仕様の問題は前のステップの課題にする | findings の `upstream_issues` に、戻し先を付けて書く。振り分けは進行役が行う |
+
+`upstream_issues` に書くのは、`<skills>/d2-common/references/handoff.md` の「前のステップの課題にする線」に当たるものだけである。
+線に当たらない仕様の空白は、前提の判定 (`spec_absent` / `unlisted`) に留める。
+実装者が決めた前提や、黙って下した判断がこれに当たる。
+これらは人レビューの入口で扱う。
+`upstream_issues` に書くと UC が止まり、写し直しが増えるためである。
+`spec_absent` / `unlisted` の前提でも、線の 1〜3 のどれか (業務の値の欠けを含む) に当たれば書く。
+
+## 細目の文書
+
+| 文書 | 読むとき | 内容 |
+|---|---|---|
+| [references/viewpoints.md](references/viewpoints.md) | 手順 2 の前 | 観点の正本。2 つの観点の突き合わせ方と findings の形 |
+| [../d2-common/references/assumption-record.md](../d2-common/references/assumption-record.md) | 手順 3 の前 | 前提の正本。前提の記録の形 |
+| [../d2-common/references/handoff.md](../d2-common/references/handoff.md) | `upstream_issues` を書く前 | 「前のステップの課題にする線」の正本。read-set の外だが、手順書として読む |
+| [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) | 入出力を確かめるとき | 入出力の正本 (図は [dataflow.md](../d2-common/references/dataflow.md)) |
