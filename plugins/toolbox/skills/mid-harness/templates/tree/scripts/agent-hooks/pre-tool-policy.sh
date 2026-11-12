@@ -481,57 +481,66 @@ def stdin_hits(toks):
     # インタプリタの標準入力やスクリプトに、取得物を渡す形。
     # bash < <(curl URL) / bash <(curl URL) はプロセス置換の中身を、bash <<EOF の本文の $(curl URL) は展開結果を、コードとして実行する
     # 検査済みの範囲の内側にある置換は、外側の検査に含まれるので見直さない (入力長に対して線形)
+    # 括弧の中の ; で引数の走査を打ち切らないよう、検査した置換の範囲は丸ごと飛ばす
     n = len(toks); k = 0; ends = None; done = -1
     def check(p):
         nonlocal ends, done
-        if p <= done: return False
         if ends is None: ends = paren_ends(toks)
+        if p <= done: return False
         done = ends[p]
         return code_from_fetch(toks[p + 1:ends[p]])
     while k < n:
         is_exec = toks[k].rsplit("/", 1)[-1] == "exec"          # exec < <(curl URL) は以降のコマンドの標準入力を取得物にする
-        if not (INTERP.match(toks[k]) or is_exec):
+        if not (INTERP.match(toks[k]) or is_exec or is_runner_at(toks, k)):
             k += 1; continue
         m = k + 1
         while m < n and not is_end(toks[m]):
             t = toks[m]
             if t == "<" and m + 1 < n and toks[m + 1] == "(" and not is_exec:
-                if check(m + 1): return True                    # bash <(curl URL) / bash -o pipefail <(curl URL)。位置引数のどれでも拒否 (安全側)
+                if check(m + 1): return True                    # bash <(curl URL) / source <(curl URL)。位置引数のどれでも拒否 (安全側)
+                m = ends[m + 1] + 1; continue
             if t == "<" and m + 2 < n and toks[m + 1] == "<" and toks[m + 2] == "(":
-                if check(m + 2): return True                    # bash < <(curl URL)
+                if check(m + 2): return True                    # bash < <(curl URL) / exec < <(curl URL)
+                m = ends[m + 2] + 1; continue
+            if t == "<<<" and is_exec:
+                e = m + 1
+                while e < n and not is_end(toks[e]): e += 1
+                if code_from_fetch(toks[m + 1:e]): return True  # exec <<< "$(curl URL)"
             m += 1
         k = m
     return heredoc_hits(toks)
 
+RUNNERS = {"source", ".", "eval"}                               # 引数をコードとして読み込む組み込みコマンド
+def is_runner_at(toks, k):
+    # toks[k] がコマンドの先頭にある source / . / eval か (find . の . のような引数は除く)
+    return toks[k] in RUNNERS and (k == 0 or toks[k - 1] in CMD_SEP or toks[k - 1] in PIPE or toks[k - 1] in OPEN or toks[k - 1] in LEAD_KW)
+
+def runs_code(toks):
+    # 語の列のどこかにインタプリタ・exec・コマンドの先頭の source / . / eval があるか (位置は問わない。安全側)
+    return any(INTERP.match(t) or t.rsplit("/", 1)[-1] in ("exec", "source", "eval") or is_runner_at(toks, i) for i, t in enumerate(toks))
+
 def heredoc_hits(toks):
-    # ヒアドキュメントの本文の $(curl URL) が、同じ行のインタプリタ (bash <<EOF / cat <<EOF | bash) にコードとして渡る形。
-    # 本文の終わりを語の一致で探すと「EOF x」の行や同じ行の複数のヒアドキュメントで読み違えるので、
-    # インタプリタを含む行にヒアドキュメントがあれば、その後ろ全体のコマンド置換を見る (安全側。後ろ全体を見るので 1 回で足りる)
-    n = len(toks); line = 0; m = 0
-    while m < n:
-        t = toks[m]
-        if t == "\n":
-            line = m + 1
-        elif t == "<<":
+    # ヒアドキュメントの本文の $(curl URL) がコードとして実行される形 (bash <<EOF / cat <<EOF | bash / cat <<EOF | の次の行の bash / exec <<EOF)。
+    # 本文の終わりと、本文の後ろに続くパイプの読み取りは読み違えやすいので、ヒアドキュメントがあって、入力のどこかにインタプリタなどがあれば、
+    # 最初のヒアドキュメントの行より後ろ全体のコマンド置換を見る (安全側。後ろ全体を見るので 1 回で足りる)
+    n = len(toks)
+    for m, t in enumerate(toks):
+        if t == "<<":
+            if not runs_code(toks): return False
             b = m + 1
             while b < n and toks[b] != "\n": b += 1
-            if any(real_cmd(sc) is not None and INTERP.match(sc[real_cmd(sc)]) for sc in sub_commands(toks[line:b])):
-                return subst_fetch(toks[b + 1:])
-            m = b; continue                                     # 同じ行の残りの << は同じ行の検査になるので飛ばす (線形)
-        m += 1
+            return subst_fetch(toks[b + 1:])
     return False
 
 def out_proc_interp(stage):
-    # 段の中の出力側のプロセス置換 >(sh) がインタプリタか (curl URL > >(sh) は取得物を sh に流す)
+    # 段の中の出力側のプロセス置換 >(sh) にインタプリタがあるか (curl URL > >(sh) は取得物を sh に流す)。
+    # 実コマンドの位置だけを見ると exec -a NAME sh のような前置コマンドのオプションで迂回できるので、中のどの語でも見る (安全側)
     ends = None; done = -1                                       # 検査済みの範囲の内側は見直さない (線形)
     for i, t in enumerate(stage):
         if t == "(" and i > done and i > 0 and stage[i - 1].endswith(">") and REDIR.match(stage[i - 1]):
             if ends is None: ends = paren_ends(stage)
             done = ends[i]
-            inner = stage[i + 1:done]
-            for sc in sub_commands(inner):
-                j = real_cmd(sc)
-                if j is not None and INTERP.match(sc[j]): return True
+            if runs_code(stage[i + 1:done]): return True
     return False
 
 def is_fetch(sc):
