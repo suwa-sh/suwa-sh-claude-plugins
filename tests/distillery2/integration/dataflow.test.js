@@ -193,8 +193,8 @@ test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run �
     ['asbuilt.summarize', 'reads', 'skills/d2-asbuilt/SKILL.md', /^## 読んでよいもの/],
     ['asbuilt', 'writes', 'skills/d2-asbuilt/SKILL.md', /^## 書いてよいもの/],
     // 決定の差分 (0.2.0。還流の ADR の担当を引き継いだ。契約の課題は機能を巻き戻すか開き直して mode=uc で直す)
-    ['decide.feedback', 'reads', 'skills/d2-decide/SKILL.md', /^## mode=feedback: 読むもの/],
-    ['decide.feedback', 'writes', 'skills/d2-decide/SKILL.md', /^## mode=feedback: 書くもの/],
+    ['decide.feedback', 'reads', 'skills/d2-decide/references/feedback.md', /^## mode=feedback: 読むもの/],
+    ['decide.feedback', 'writes', 'skills/d2-decide/references/feedback.md', /^## mode=feedback: 書くもの/],
   ];
   for (const [id, key, rel, re] of sections) {
     const p = procs.get(id);

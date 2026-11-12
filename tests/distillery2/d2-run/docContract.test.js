@@ -290,7 +290,9 @@ test('0.1.28 / 0.2.0: 決定の差分: 結果ファイルで分岐し、reason_k
   assert.match(done, /プラグインへ持ち帰る課題 \(`scan` の `plugin`\)/);
   const del = read(DELIVERY);
   assert.match(del, /\| Feedback-Reclassified \/ Feedback-Kind-Original \|/);
-  const t = read('skills/d2-decide/SKILL.md');
+  // 決定の差分の手順は細目の文書に分けた (本体は呼ばれ方の表から指す)
+  assert.match(read('skills/d2-decide/SKILL.md'), /\| `mode=feedback issue=<課題> result=<結果ファイル>` \|[^\n]*\[references\/feedback\.md\]\(references\/feedback\.md\)/);
+  const t = read('skills/d2-decide/references/feedback.md');
   assert.match(t, /`reason_kind: plugin`/);
   assert.match(t, /`reason_kind: scope`/);
   assert.match(t, /"reason_kind": "plugin" \| "scope"\}` \(`reason_kind` は `blocked` のとき必須\)/);
