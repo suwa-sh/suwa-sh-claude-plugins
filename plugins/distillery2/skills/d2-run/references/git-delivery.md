@@ -27,7 +27,7 @@ d2-run が作る**すべての commit** (簿記の commit `impl(<slug>): <stage>
 1. 開始条件: `git status --porcelain=v1 --untracked-files=all` が空、detached HEAD でない、`feature/*` 上でない、
    upstream と HEAD が一致。満たさなければ勝手に stash / commit せず、整理を依頼して停止する。
    upstream が設定されていなければ (リモート無し・base を未 push。`git rev-parse --abbrev-ref @{upstream}` が失敗する)
-   upstream 一致の条件は飛ばし、報告に「upstream なし」と書く (0.1.16 実走)。clean 判定の対象は d2-run SKILL.md の起動シーケンス 5 に従う
+   upstream 一致の条件は飛ばし、報告に「upstream なし」と書く (0.1.16 実走)。clean 判定の対象は startup.md の「手順 5: 作業ツリーの clean 判定」に従う
 2. `use-cases.yaml` の `slug` で `git switch -c feature/<slug>`。作成直後に `runState.js open` で run を開き、その直後に `events.jsonl` へ
    `branch_started {base_branch, base_head, feature_branch}` を追記する (`models_resolved` はその後。d2-run SKILL.md ④ 冒頭。0.1.34 Q11)
 3. 再開時 (main マージの done が無い) は `branch_started` の `feature_branch` と現在 branch が一致することを確認する。違う branch なら
@@ -88,7 +88,7 @@ main マージの done の commit と 4 の間で止まると、feature が残�
 
 ## 旧形式の片付け (0.1.25 までに PR で main マージした run)
 
-手順の正本は SKILL.md の main マージ節「旧形式の run」。git の約束だけを書く。
+手順の正本は main-merge.md の「旧形式の run」。git の約束だけを書く。
 
 - 人が「main マージ済み」と答えたら main の上で `runState.js mark-legacy-delivered` → `impl(<slug>): legacy delivered` で commit する
 - 残っている `feature/<slug>` は `git update-ref refs/distillery2/legacy/<slug>/<ts> feature/<slug>` で退避してから `git branch -D feature/<slug>`。squash merge で入れた feature は main の祖先でないことがあり `-d` では消せないので、常に退避してから `-D` (0.1.28 の試し運転では祖先だった)。
@@ -121,7 +121,7 @@ main マージの done の commit と 4 の間で止まると、feature が残�
 
 ## 要求の差分
 
-手順の正本は SKILL.md の ① の「要求の差分」。ここには git の約束だけを書く。
+手順の正本は stage-requirements.md の「要求の差分」。ここには git の約束だけを書く。
 
 - 一時の branch `upstream/<課題の名前>` で行い、確定してから `git merge --ff-only` で main を進める (進行中の UC が無いときだけ。決定の差分・基盤の差分も同じ。routing.md「上流の差分の branch」)。段ごとの commit は squash しない (basis が commit の ID を使う)。途中で止まっても main は汚れず、自動選択の `continue-upstream` が同じ branch で続ける
 - 反映した課題ファイルと取り下げた課題ファイルを `git rm` し、要求の変更と同じ commit (`req: feedback`) にする。trailer は `Feedback-Consumed:` / `Feedback-Dismissed:`。

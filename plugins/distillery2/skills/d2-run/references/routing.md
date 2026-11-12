@@ -1,6 +1,6 @@
 # 振り分け: モード・人に返すとき・前のステップの課題・縦横レビュー
 
-SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/handoff.js`、`<D>` = `node <skills>/d2-common/scripts/decisionLog.js`、`<RS>` = `node <skills>/d2-common/scripts/lib/runState.js`。
+d2-run の各段の手順から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/handoff.js`、`<D>` = `node <skills>/d2-common/scripts/decisionLog.js`、`<RS>` = `node <skills>/d2-common/scripts/lib/runState.js`。
 
 ## モード
 
@@ -115,7 +115,7 @@ SKILL.md の各段から呼ぶ規則。`<H>` = `node <skills>/d2-common/scripts/
 
 ## 上流の差分
 
-自動選択が `FB scan` の `upstream` で選ぶ (要求 → 決定 → 基盤の順に 1 つ)。要求は SKILL.md の「要求の差分」。決定と基盤は下。どれも次の「上流の差分の branch」で行う。
+自動選択が `FB scan` の `upstream` で選ぶ (要求 → 決定 → 基盤の順に 1 つ)。要求は stage-requirements.md の「要求の差分」。決定と基盤は下。どれも次の「上流の差分の branch」で行う。
 
 ### 上流の差分の branch (要求・決定・基盤で共通)
 
