@@ -35,7 +35,7 @@ function sortUnique(arr) {
 }
 
 /**
- * 読み書きと発行は、UC 自身の操作の中で起きた分 (tables / messages) と、シナリオが前準備で呼んだ他の UC の操作の中で起きた分 (setup) に分ける。
+ * 操作・読み書き・発行は、UC 自身の操作の中で起きた分 (operations / tables / messages) と、シナリオが前準備で呼んだ他の UC の操作の中で起きた分 (setup) に分ける。
  * 分け方は traceTree.js の operationScope (いちばん外側の http.in の operationId が ownOps にあるか)。
  * ownOps を渡さなければ分けない (すべて UC 自身の分)。
  * @param {Array<{scenario:string, lines:Array<object>}>} scenarios
@@ -62,7 +62,8 @@ function deriveFromTraces(scenarios, opts = {}) {
       const meta = node.meta || {};
       const own = operationScope(node, ownOps) === 'own';
       if (node.kind === 'http.in') {
-        if (meta.operationId) { operations.push(meta.operationId); scOps.push(meta.operationId); if (!own) setupOperations.push(meta.operationId); }
+        // UC に紐付ける操作は UC 自身の分だけ。前準備で呼んだ他の UC の操作は setup.operations だけに持つ
+        if (meta.operationId) { if (own) { operations.push(meta.operationId); scOps.push(meta.operationId); } else setupOperations.push(meta.operationId); }
       } else if (node.kind === 'db.query') {
         if (queryFailed(meta)) continue; // 失敗した文は取り消されている。表の読み書きに数えない
         const stmtMode = classifySql(meta.sql);

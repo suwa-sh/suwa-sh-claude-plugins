@@ -87,11 +87,11 @@ decision (`auto_confirmed` → 自動承認 …)、issue kind (`rule` → ルー
 |---|---|
 | UC 自身の操作 | `contracts/uc-index.yaml` の、その UC の `operations` |
 | 分け方 | 出来事の祖先のうち、いちばん外側の `http.in` (シナリオが呼んだ操作) の `operationId` を見る。UC 自身の操作にあれば UC の分、無ければ前準備の分 |
-| UC の分だけを載せるもの | 入口の発行イベント、traceability-index の `tables`・`tables_rw`・`messages`、`_system/data-flow.md` の表と図、分岐の表の書き込みと発行 |
+| UC の分だけを載せるもの | 入口の発行イベント、traceability-index の `operations`・`tables`・`tables_rw`・`messages` と横断の対応 (操作 → 使う UC、表 → 使う UC)、`_system/api-inventory.md` の「使う UC」、`_system/data-flow.md` の表と図、分岐の表の書き込みと発行 |
 | 前準備の分の出し方 (入口) | API の操作の名前の後ろに `(前準備)` を付ける |
 | 前準備の分の出し方 (分岐の表) | セルの後ろに `(前準備: <表か発行の名前>)` を付ける |
-| 前準備の分の出し方 (データの流れ) | 操作の名前の後ろに `(前準備)` を付ける。読み書きと発行は、細い点線 `前準備 Read` / `前準備 Write` / `前準備 Publish` で描く。UC 自身の線とは別の 1 本にする |
-| 前準備の分の出し方 (traceability-index) | `setup_operations` と `setup_tables_rw` に持つ |
+| 前準備の分の出し方 (データの流れ) | 操作の名前の後ろに `(前準備)` を付ける。同じ操作が UC 自身の処理の中 (自身の操作が中で呼ぶ) と前準備の両方に現れるときは、別のノードにする。読み書きと発行は、細い点線 `前準備 Read` / `前準備 Write` / `前準備 Publish` で描く。UC 自身の線とは別の 1 本にする |
+| 前準備の分の出し方 (traceability-index) | `setup_operations` と `setup_tables_rw` だけに持つ。`operations` と、操作 → 使う UC の対応には入れない |
 | シーケンス図 | 分けない。シナリオが呼んだ順にすべて描く |
 
 操作を特定できない出来事は、UC の分に数える。

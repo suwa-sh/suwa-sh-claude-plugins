@@ -845,3 +845,59 @@ test('operationScope: いちばん外側の http.in の操作で決める (自�
   assert.ok(text.includes(`${repoId} -. Read .-> ${tId}\n    ${repoId} -. 前準備 Write .-> ${tId}`), text);
   assert.doesNotMatch(renderFlowchart(buildFlows([{ scenario: 's', lines: shared }], {})), /前準備/);
 });
+
+test('前準備で呼んだ他の UC の操作は、横断索引と API インベントリで「その UC が使う操作」にしない (外部レビュー)。分けられないときは今までどおり', () => {
+  const repo = setupOpsRepo();
+  run(opts(repo));
+  const index = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json'));
+  assert.deepEqual(index.ucs['register-loan'].operations, ['createLoan']);
+  assert.deepEqual(index.ucs['register-loan'].setup_operations, ['returnLoan']);
+  assert.deepEqual(Object.keys(index.operations), ['createLoan'], '操作 → 使う UC に、前準備の操作を載せない');
+  const inv = fs.readFileSync(path.join(repo.dir, 'docs/as-built/_system/api-inventory.md'), 'utf8');
+  assert.match(inv, /\| createLoan \| POST \/loans \| backend-api \| register-loan \| 実装済み \|/);
+  assert.match(inv, /\| returnLoan \| POST \/loans\/\{id\}\/return \| backend-api \| - \| 未実装, 未使用 \|/, '前準備で呼んだだけの操作は、この UC が使う操作に数えない');
+  // 入口には、前準備の操作も区別して出す
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| API \| createLoan \(POST \/loans\)、returnLoan \(前準備\) \|/);
+  // uc-index にその UC が無ければ分けられないので、今までどおりすべて UC の操作
+  const noIndex = setupOpsRepo();
+  fs.rmSync(path.join(noIndex.dir, 'contracts/uc-index.yaml'));
+  run(opts(noIndex));
+  const index2 = readCanonicalJson(path.join(noIndex.dir, 'docs/as-built/_system/traceability-index.json'));
+  assert.deepEqual(index2.ucs['register-loan'].operations, ['createLoan', 'returnLoan']);
+  assert.deepEqual(index2.ucs['register-loan'].setup_operations, []);
+  assert.deepEqual(Object.keys(index2.operations), ['createLoan', 'returnLoan']);
+});
+
+test('同じ操作が UC 自身の処理の中と前準備の両方に現れるときは、データの流れで別のノードに描く (外部レビュー: 前準備のラベルが消えた)', () => {
+  const { buildFlows, renderFlowchart } = require(path.join(SCRIPTS, 'renderDataFlow'));
+  const { deriveFromTraces } = require(path.join(SCRIPTS, 'buildTraceIndex'));
+  const J = (seq, parent, kind, meta) => ({ ts: 't', seq, parent, scenario: 's', kind, name: 'n', meta });
+  const B = { tier: 'b' };
+  const lines = [
+    // UC 自身の操作 own が、処理の中で操作 lookup を呼ぶ (自身の処理)
+    J(1, undefined, 'http.in', { operationId: 'own', method: 'POST', path: '/own', ...B }),
+    J(2, 1, 'http.out', { url: 'http://b/lookup', ...B }),
+    J(3, 2, 'http.in', { operationId: 'lookup', method: 'GET', path: '/lookup', ...B }),
+    J(4, 3, 'db.query', { sql: 'SELECT * FROM t', tables: ['t'] }),
+    // シナリオが前準備で、同じ操作 lookup を独立に呼ぶ
+    J(5, undefined, 'http.in', { operationId: 'lookup', method: 'GET', path: '/lookup', ...B }),
+    J(6, 5, 'db.query', { sql: 'SELECT * FROM u', tables: ['u'] }),
+  ];
+  for (const order of [lines, [...lines.slice(4), ...lines.slice(0, 4)]]) {
+    const text = renderFlowchart(buildFlows([{ scenario: 's', lines: order }], { ownOps: ['own'] }));
+    const plain = text.match(/(n\d+)\[lookup （GET \/lookup）\]/);
+    const setup = text.match(/(n\d+)\[lookup （GET \/lookup） （前準備）\]/);
+    assert.ok(plain && setup, `自身の処理の中の lookup と、前準備の lookup の両方を描く\n${text}`);
+    assert.notEqual(plain[1], setup[1]);
+    const id = (t) => text.match(new RegExp(`(n\\d+)\\[\\(${t}\\)\\]`))[1];
+    assert.ok(text.includes(`${plain[1]} -. Read .-> ${id('t')}`), text);
+    assert.ok(text.includes(`${setup[1]} -. 前準備 Read .-> ${id('u')}`), text);
+  }
+  // 索引でも、自身の処理の中で呼んだ分は UC の操作、前準備で呼んだ分は setup に入る
+  const d = deriveFromTraces([{ scenario: 's', lines }], { ownOps: ['own'] });
+  assert.deepEqual(d.operations, ['lookup', 'own']);
+  assert.deepEqual(d.setup.operations, ['lookup']);
+  assert.deepEqual(d.tables, [{ name: 't', modes: ['read'] }]);
+  assert.deepEqual(d.setup.tables, [{ name: 'u', modes: ['read'] }]);
+});

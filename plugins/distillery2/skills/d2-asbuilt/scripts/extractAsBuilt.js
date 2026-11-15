@@ -643,8 +643,9 @@ function buildIndexMd(ctx, preserved) {
   L.push('');
   const opPaths = operationPaths(ctx.slice);
   // シナリオが前準備で呼んだ他の UC の操作は、この UC の入口ではない。名前の後ろに (前準備) を付けて区別する
-  const setupOps = new Set((ctx.derived.setup && ctx.derived.setup.operations) || []);
-  const ops = ctx.derived.operations.map((op) => { const p = opPaths[op]; return `${op}${p ? ` (${p.method} ${p.path})` : ''}${setupOps.has(op) ? ' (前準備)' : ''}`; });
+  const opText = (op, setup) => { const p = opPaths[op]; return `${op}${p ? ` (${p.method} ${p.path})` : ''}${setup ? ' (前準備)' : ''}`; };
+  const setupOnly = ((ctx.derived.setup && ctx.derived.setup.operations) || []).filter((op) => !ctx.derived.operations.includes(op));
+  const ops = [...ctx.derived.operations.map((op) => opText(op, false)), ...setupOnly.map((op) => opText(op, true))];
   const subs = sliceSubscriptions(ctx.slice);
   L.push('| 種類 | 名前 |');
   L.push('|---|---|');

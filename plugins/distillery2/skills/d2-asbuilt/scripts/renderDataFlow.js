@@ -57,7 +57,9 @@ function buildFlows(traces, opts = {}) {
     if (n.kind === 'http.in') {
       const op = n.meta.operationId || `${n.meta.method || ''} ${n.meta.path || ''}`.trim();
       const label = n.meta.operationId ? `${n.meta.operationId} (${n.meta.method || ''} ${n.meta.path || ''})`.replace(/\(\s*\)/, '').trim() : op;
-      return addNode(nodeKey(p, n), 'op', operationScope(n, ownOps) === 'setup' ? `${label} (前準備)` : label, p.tier);
+      // 同じ操作が、UC 自身の処理の中 (自身の操作の子) と前準備の両方に現れることがある。区分をキーに含め、別のノードで描く
+      const setup = operationScope(n, ownOps) === 'setup';
+      return addNode(`${nodeKey(p, n)}${setup ? ':setup' : ''}`, 'op', setup ? `${label} (前準備)` : label, p.tier);
     }
     if (n.kind === 'call') return addNode(nodeKey(p), 'comp', p.label, p.tier);
     if (n.kind === 'http.out') return addNode(nodeKey(p), 'ext', p.label, null);
