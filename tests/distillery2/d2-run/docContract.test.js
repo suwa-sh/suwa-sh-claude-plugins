@@ -543,7 +543,7 @@ test('0.1.32 手順の追記 16 件: 旧形式の自動選択 (legacy_runs)・ma
   assert.match(sq, /`<timestamp>` は `date -u \+%Y%m%dT%H%M%SZ` \(UTC。固定値を書かない/);
   assert.doesNotMatch(read(SKILL), /`broken`|already-applied/, '還流のバッチの状態の扱いは d2-run の本文に無い (0.1.x のバッチは FB status・merge・abandon で片付けるだけ)');
   const integ = row(t, /^\| \*\*integrate\*\* \|/);
-  assert.match(integ, /\*\*他 UC への回帰は d2-run が回す\*\*: 受理して done を書き `impl\(<slug>\): integrate` で commit した後、`git diff --name-only <base_head>\.\.HEAD -- features\/support features\/step_definitions` \(commit 済みの変更だけを見るので、commit の前に回さない\) に変更があれば、回帰の相手 \(`node runState\.js regression-targets \. --except <slug>` の全件。`status: done` の UC と、開き直した UC。[^\n]*`runGates\.js --uc <他 slug> --only uc-bdd` を回し/);
+  assert.match(integ, /\*\*他 UC への回帰は d2-run が回す\*\*: 受理して done を書き `impl\(<slug>\): integrate` で commit した後、`git diff --name-only <base_head>\.\.HEAD -- features\/support features\/step_definitions` \(commit 済みの変更だけを見るので、commit の前に回さない\) に変更があれば、回帰の相手 \(`node runState\.js regression-targets \. --except <slug>` の全件。`status: done` の UC と、開き直した UC。[^\n]*`runGates\.js --uc <他 slug> --only uc-bdd` を 1 つずつ順に回し/);
   assert.match(section(SKILL, '### 要求の差分', '## ② 決定'), /`grep -l "id: A-xxx" \.distillery\/runs\/\*\/attempt-\*\/assumptions\.<tier>\.yaml` で id を持つ \(slug, attempt\) の組をすべて出し、1 件なら確定、複数なら確認ページで人に選ばせる/);
   assert.match(read('skills/d2-design/references/design/feedback.md'), /リポジトリのルートからの相対パス `docs\/design\/storybook-app\/src\/<相対パス>`/);
   assert.match(read('skills/d2-implement/references/integrate.md'), /共有の補助[^\n]*を変えたら報告に書く。他 UC のシナリオは自分では回さない/);
@@ -870,7 +870,7 @@ test('0.2.0: 2 つのモード。auto でも要求の承認と人レビューは
   // 段の手順の側も同じ規則を書いている
   assert.match(section(SKILL, '## ① 要求', '### 要求の差分'), /auto でも必ず人に返す。recommend は推奨で承認して記録/);
   assert.match(section(SKILL, '### 要求の差分', '### やり直し'), /auto でも必ず人に返す/);
-  assert.match(section(SKILL, '## 人レビュー (review 段階)', '## main マージ (deliver 段階)'), /auto でも必ず人に返す。recommend は下の推奨で答えて記録し、最後のまとめに載せる/);
+  assert.match(section(SKILL, '## 人レビュー (review 段階)', '## main マージ (deliver 段階)'), /auto でも必ず人に返す\)。recommend では、この段の確認ページを作らない: 下の問いに推奨で答えて 5 のとおり記録し、起動の最後のまとめのページに載せる/);
   assert.match(section(SKILL, '## 完了報告', '## 細目の文書'), /`mode=recommend` で起動したときは、どの段でも完了報告の最後に、推奨で決めたものの一覧の確認ページ 1 枚 \(`decisionLog\.js list --root \. --since <起動の時刻> --format md`/);
 });
 
