@@ -54,7 +54,7 @@
 | ④ asbuilt | as-built の抽出と要約役 | `d2-asbuilt` `uc=<slug> run=<run>` | 既定 | 依存グラフの実態 → 抽出 → 要約 → 検査までこのスキルが行う。抽出の標準出力 1 行を報告に転記する |
 | ① 要求の差分 (画面部品) | 画面の見本の修正役 | `d2-design` `mode=feedback items=<直すファイル (docs/design/storybook-app/src/<相対パス>。stories も部品も) と直す内容を 1 行ずつ>` | 既定 | 要求の差分の「残った作業」で人が「対応する」と選んだ `design` の項目だけ (stage-requirements.md「要求の差分」の手順 4)。③ の全生成はしない。報告に変えた / 消したファイルと項目ごとの「直した / 直せない (理由)」、項目が部品なら「影響する Story」(その部品から import を Story まで辿った一覧。0.1.32 実走 P11)、項目の外のファイルを変えたか消したら「項目の外の変更」(ファイルごとに、どの項目のための依存か。消したならどの項目で使われなくなったか。0.1.34 Q17)。取り込み直し (`importUi.js`) は d2-run が行う (0.1.32 J2) |
 | ② 決定の差分 (ADR) | ルールの穴の記録役 | `d2-decide` `mode=feedback issue=<課題> result=<結果ファイル>` | 既定 | 本体の作業ツリー (clean な main) で派遣する (worktree は使わない。routing.md「決定の差分」)。`課題: <docs/feedback/<issue>.md の絶対パス>`、`結果ファイル: <.distillery/logs/decide-<issue>.result.json の絶対パス>` を追記 |
-| 反証して直す | レビューした場所の担当 (元の派遣と同じ役) | 元の派遣と同じ skill_name / skill_args | 元の派遣と同じ | レビューの指摘を受けて、同じ担当を派遣し直す (routing.md「縦・横レビュー」の 2)。元の派遣の additional_instructions に `レビューの指摘: <reviews の置き場の round<n>.md の絶対パス>。指摘を 1 件ずつ反証し、直すものは直して、引き継ぎファイルの refutations に全件を書く (書き方は handoff.md の「反証して直す派遣のとき」)` を足す。write-set は元の派遣の行をそのまま貼り、受理の write-set の検査も元の派遣の行で行う |
+| 反証して直す | レビューした場所の担当 (元の派遣と同じ役) | 元の派遣と同じ skill_name / skill_args | 元の派遣と同じ | レビューの指摘を受けて、同じ担当を派遣し直す (routing.md「縦・横レビュー」の 2)。元の派遣の additional_instructions に `レビューの指摘: <reviews の置き場の round<n>.md の絶対パス>。指摘を 1 件ずつ反証し、直すものは直して、引き継ぎファイルの refutations に全件を書く (書き方は handoff.md の「反証して直す派遣のとき」)。引き継ぎファイルの step は refute と書く (元の派遣の段の名前にしない)` を足す。write-set は元の派遣の行をそのまま貼り、受理の write-set の検査も元の派遣の行で行う |
 
 ## 派遣ごとの write-set (正本から生成。手で書かない)
 
@@ -74,7 +74,7 @@
 | ④ scenario | `features/<業務>/<slug>.feature`、`features/acceptance/**` |
 | ④ contract | `contracts/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**` |
 | ④ scaffold | `features/step_definitions/**`、`apps/<tier>/src/**/*.test.ts`、`apps/<tier>/src/**` (テストが import する入口の最小スタブ。**新規ファイルだけ**。既存ファイルの変更・削除は不可)、`<run>/reports/**` (完了条件の `--expect-red unit` が書く。単独の段なので競合しない) |
-| ④ tier | `apps/<tier>/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先 `.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。回すたびに上書きし、消さない) |
+| ④ tier | `apps/<tier>/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先 `<リポのルートの絶対パス>/.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。絶対パスで渡す。回すたびに上書きし、消さない) |
 | ④ integrate | `features/step_definitions/**`、`features/support/**`、`<run>/reports/**`、`<run>/traces/**` (完了条件の runGates が書く。integrate は単独の段なので競合しない) |
 | ④ verify | `<run>/attempt-<n>/findings.<tier>.yaml` |
 | ④ asbuilt | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)、`<run>/reports/**` (depcruise の結果と抽出の集計)、`<run>/issues/<ts>_asbuilt_<slug>.md` (要約の課題のうち、人レビューに載っていないものの下書き) |

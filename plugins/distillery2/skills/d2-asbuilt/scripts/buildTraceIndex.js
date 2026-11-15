@@ -18,7 +18,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseTraceLines, sqlVerb, withTableModes, queryFailed, cmpStr } = require('./traceTree');
+const { parseTraceLines, buildTree, operationScope, sqlVerb, withTableModes, queryFailed, cmpStr } = require('./traceTree');
 
 const READ_VERBS = new Set(['SELECT', 'WITH', 'SHOW', 'EXPLAIN']);
 const WRITE_VERBS = new Set(['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT', 'REPLACE', 'CREATE', 'ALTER', 'DROP', 'TRUNCATE']);
@@ -35,36 +35,49 @@ function sortUnique(arr) {
 }
 
 /**
+ * 読み書きと発行は、UC 自身の操作の中で起きた分 (tables / messages) と、シナリオが前準備で呼んだ他の UC の操作の中で起きた分 (setup) に分ける。
+ * 分け方は traceTree.js の operationScope (いちばん外側の http.in の operationId が ownOps にあるか)。
+ * ownOps を渡さなければ分けない (すべて UC 自身の分)。
  * @param {Array<{scenario:string, lines:Array<object>}>} scenarios
- * @returns {{operations:string[], tables:Array<{name:string,modes:string[]}>, messages:string[], perScenario:Array<object>}}
+ * @param {{ownOps?: string[]|null}} [opts]  UC 自身の操作 (contracts/uc-index.yaml のその UC の operations)
+ * @returns {{operations:string[], tables:Array<{name:string,modes:string[]}>, messages:string[], perScenario:Array<object>,
+ *   setup:{operations:string[], tables:Array<{name:string,modes:string[]}>, messages:string[]}}}
  */
-function deriveFromTraces(scenarios) {
+function deriveFromTraces(scenarios, opts = {}) {
+  const ownOps = Array.isArray(opts.ownOps) ? new Set(opts.ownOps.map(String)) : null;
   const operations = [];
   const messages = [];
+  const setupOperations = [];
+  const setupMessages = [];
   const tableModes = new Map(); // name -> Set(modes)
+  const setupTableModes = new Map();
   const perScenario = [];
+  const addMode = (map, tbl, mode) => { if (!map.has(tbl)) map.set(tbl, new Set()); map.get(tbl).add(mode); };
   for (const sc of Array.isArray(scenarios) ? scenarios : []) {
     const scOps = [];
     const scMsgs = [];
     const scRead = [];
     const scWrite = [];
-    for (const ev of sc.lines || []) {
-      const meta = (ev && ev.meta) || {};
-      if (ev.kind === 'http.in') {
-        if (meta.operationId) { operations.push(meta.operationId); scOps.push(meta.operationId); }
-      } else if (ev.kind === 'db.query') {
+    for (const node of buildTree(sc.lines || []).nodes) {
+      const meta = node.meta || {};
+      const own = operationScope(node, ownOps) === 'own';
+      if (node.kind === 'http.in') {
+        if (meta.operationId) { operations.push(meta.operationId); scOps.push(meta.operationId); if (!own) setupOperations.push(meta.operationId); }
+      } else if (node.kind === 'db.query') {
         if (queryFailed(meta)) continue; // 失敗した文は取り消されている。表の読み書きに数えない
         const stmtMode = classifySql(meta.sql);
         const perTable = withTableModes(meta.sql, meta.tables)
           || (Array.isArray(meta.tables) ? meta.tables : []).map((t) => ({ table: t, mode: stmtMode }));
         for (const { table: tbl, mode } of perTable) {
-          if (!tableModes.has(tbl)) tableModes.set(tbl, new Set());
-          tableModes.get(tbl).add(mode);
+          if (!own) { addMode(setupTableModes, tbl, mode); continue; } // 前準備の操作の読み書きは、UC の読み書きに数えない
+          addMode(tableModes, tbl, mode);
           if (mode === 'read') scRead.push(tbl);
           else if (mode === 'write') scWrite.push(tbl);
         }
-      } else if (ev.kind === 'publish') {
-        if (meta.message) { messages.push(meta.message); scMsgs.push(meta.message); }
+      } else if (node.kind === 'publish') {
+        if (!meta.message) continue;
+        if (!own) { setupMessages.push(meta.message); continue; }
+        messages.push(meta.message); scMsgs.push(meta.message);
       }
     }
     perScenario.push({
@@ -75,12 +88,12 @@ function deriveFromTraces(scenarios) {
       tables_written: sortUnique(scWrite),
     });
   }
-  const tables = [...tableModes.keys()].sort(cmpStr).map((name) => ({
-    name,
-    modes: [...tableModes.get(name)].sort(),
-  }));
+  const toTables = (map) => [...map.keys()].sort(cmpStr).map((name) => ({ name, modes: [...map.get(name)].sort() }));
   perScenario.sort((a, b) => cmpStr(a.scenario, b.scenario));
-  return { operations: sortUnique(operations), tables, messages: sortUnique(messages), perScenario };
+  return {
+    operations: sortUnique(operations), tables: toTables(tableModes), messages: sortUnique(messages), perScenario,
+    setup: { operations: sortUnique(setupOperations), tables: toTables(setupTableModes), messages: sortUnique(setupMessages) },
+  };
 }
 
 /**

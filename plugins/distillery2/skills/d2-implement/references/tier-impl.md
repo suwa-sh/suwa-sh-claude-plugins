@@ -52,7 +52,8 @@
    書き換えを伴う formatter は使わない (並列ティアの write-set を侵すため)。
    **`runGates.js` は使わない**。runGates は `<run>/reports/gates.json` をゲート名単位で置き換えるため、並列で走る他ティアの記録を消す。
    記録付きのゲートは全ティアの受理後にオーケストレータが 1 回だけ回す。
-   commands 中の `{slug}` は UC の slug に、`{report}` は `.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。ティアとコマンドごとに別の名前なので並列ティアと競合しない。回すたびに上書きし、消さない) に置き換えて直接実行する
+   commands 中の `{slug}` は UC の slug に、`{report}` は `<リポのルートの絶対パス>/.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。ティアとコマンドごとに別の名前なので並列ティアと競合しない。回すたびに上書きし、消さない) に置き換えて直接実行する。
+   必ず絶対パスで渡す (`npm run -w apps/<tier>` はティアのディレクトリで動くので、相対パスだと出力先がティアの中にずれる)
    (`<run>/reports/` に書かない。write-set の外で、並列ティアと競合する。リポの外の一時ファイルも使わない。headless では作ることも消すことも拒まれる)
 5. 自分で決めた判断を AssumptionRecord に書く (`<skills>/d2-common/references/assumption-record.md`)。書いたら
    `node <skills>/d2-implement/scripts/validateAssumptions.js record .distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml --uc <slug> --tier <tier> --attempt <n>` を実行し ok を確認する (引数はすべて必須)

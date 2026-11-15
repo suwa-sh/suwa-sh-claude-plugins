@@ -67,10 +67,11 @@ test('記録付きのゲートはオーケストレータが 1 回だけ回す (
   const impl = read('skills/d2-implement/references/tier-impl.md');
   assert.match(impl, /`runGates\.js` は使わない/);
   // {report} はリポの中の gitignore の置き場に書く (リポの外の一時ファイルは headless で作ることも消すことも拒まれた)
-  assert.match(impl, /`\{report\}` は `\.distillery\/logs\/gate-<slug>-<tier>-<コマンド名>\.json`/);
+  assert.match(impl, /`\{report\}` は `<リポのルートの絶対パス>\/\.distillery\/logs\/gate-<slug>-<tier>-<コマンド名>\.json`/);
+  assert.match(impl, /必ず絶対パスで渡す \(`npm run -w apps\/<tier>` はティアのディレクトリで動くので、相対パスだと出力先がティアの中にずれる\)/);
   assert.doesNotMatch(impl, /mktemp/);
   const tmplTier = wsRow('④ tier');
-  assert.match(tmplTier, /`\.distillery\/logs\/gate-<slug>-<tier>-<コマンド名>\.json` \(gitignore。回すたびに上書きし、消さない\)/);
+  assert.match(tmplTier, /`<リポのルートの絶対パス>\/\.distillery\/logs\/gate-<slug>-<tier>-<コマンド名>\.json` \(gitignore。絶対パスで渡す。回すたびに上書きし、消さない\)/);
   assert.doesNotMatch(tmplTier, /reports/, 'tier の write-set に reports を入れない (並列で記録を消し合う)');
 });
 

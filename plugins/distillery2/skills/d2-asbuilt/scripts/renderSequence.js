@@ -22,7 +22,7 @@
 'use strict';
 
 const fs = require('node:fs');
-const { buildTree, flatten, parseTraceLines, sqlVerb, withTableModes, queryFailed, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
+const { buildTree, flatten, parseTraceLines, sqlVerb, withTableModes, queryFailed, operationScope, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
 
 const ACTOR = DEFAULT_ACTOR;
 const DEFAULT_MAX_LINES = 60;
@@ -141,23 +141,36 @@ function pickHappyPath(traces) {
   })[0];
 }
 
-/** シナリオの結果の要約 (分岐の表用): {status, reads, writes, messages}。失敗した文 (取り消された文) の表は読み書きに数えない。 */
-function summarizeScenario(lines) {
+/**
+ * シナリオの結果の要約 (分岐の表用): {status, reads, writes, messages, setupWrites, setupMessages}。
+ * 失敗した文 (取り消された文) の表は読み書きに数えない。
+ * opts.ownOps (UC 自身の操作) を渡すと、前準備で呼んだ他の UC の操作の中の書き込みと発行を setupWrites / setupMessages に分ける
+ * (traceTree.js の operationScope)。渡さなければ分けない。
+ */
+function summarizeScenario(lines, opts = {}) {
+  const ownOps = Array.isArray(opts.ownOps) ? new Set(opts.ownOps.map(String)) : null;
   const tree = buildTree(lines);
   const statuses = [];
   const reads = new Set(); const writes = new Set(); const messages = new Set();
+  const setupWrites = new Set(); const setupMessages = new Set();
   for (const n of tree.nodes) {
     if (n.kind === 'http.in' && n.meta.status != null) statuses.push(String(n.meta.status));
+    const own = operationScope(n, ownOps) === 'own';
     if (n.kind === 'db.query' && !queryFailed(n.meta)) {
       const v = sqlVerb(n.meta.sql);
-      const perTable = withTableModes(n.meta.sql, n.meta.tables);
-      if (perTable) { for (const x of perTable) (x.mode === 'write' ? writes : reads).add(x.table); continue; }
-      const tables = Array.isArray(n.meta.tables) ? n.meta.tables : [];
-      for (const t of tables) { if (v === 'SELECT') reads.add(t); else if (['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT'].includes(v)) writes.add(t); }
+      const perTable = withTableModes(n.meta.sql, n.meta.tables)
+        || (Array.isArray(n.meta.tables) ? n.meta.tables : []).map((t) => ({ table: t, mode: v === 'SELECT' ? 'read' : ['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT'].includes(v) ? 'write' : null }));
+      for (const x of perTable) {
+        if (x.mode === 'write') (own ? writes : setupWrites).add(x.table);
+        else if (x.mode === 'read' && own) reads.add(x.table);
+      }
     }
-    if (n.kind === 'publish' && n.meta.message) messages.add(String(n.meta.message));
+    if (n.kind === 'publish' && n.meta.message) (own ? messages : setupMessages).add(String(n.meta.message));
   }
-  return { status: statuses.join(' → ') || '-', reads: [...reads].sort(cmpStr), writes: [...writes].sort(cmpStr), messages: [...messages].sort(cmpStr) };
+  const arr = (set) => [...set].sort(cmpStr);
+  const out = { status: statuses.join(' → ') || '-', reads: arr(reads), writes: arr(writes), messages: arr(messages) };
+  if (ownOps) { out.setupWrites = arr(setupWrites); out.setupMessages = arr(setupMessages); }
+  return out;
 }
 
 function main(argv) {

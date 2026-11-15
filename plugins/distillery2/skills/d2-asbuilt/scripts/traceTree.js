@@ -143,6 +143,28 @@ function queryFailed(meta) {
 }
 
 /**
+ * その出来事が、UC 自身の操作の中で起きたか、シナリオが前準備で呼んだ他の UC の操作の中で起きたか。
+ * 見るのは、いちばん外側の http.in (シナリオが呼んだ操作) の operationId。
+ *   own  : operationId が UC 自身の操作 (contracts/uc-index.yaml のその UC の operations) にある
+ *   setup: operationId があり、UC 自身の操作に無い (他の UC の操作。シナリオの前準備や後の確認で呼んだもの)
+ * 操作を特定できないものは own にする:
+ *   - http.in の外で起きた出来事 (API を入口にしない UC の処理。テストの前準備は計装していない DB を直接触るので、トレースに出ない)
+ *   - operationId の無い http.in の下の出来事 (契約の slice から操作を引けなかった)
+ *   - UC 自身の操作が分からないとき (ownOps が null。uc-index にその UC が無い)
+ * @param {Node} node
+ * @param {Set<string>|null} ownOps
+ * @returns {'own'|'setup'}
+ */
+function operationScope(node, ownOps) {
+  if (!ownOps) return 'own';
+  let entry = null;
+  for (let p = node; p; p = p.parent) if (p.kind === 'http.in') entry = p;
+  const op = entry && entry.meta && entry.meta.operationId;
+  if (!op) return 'own';
+  return ownOps.has(String(op)) ? 'own' : 'setup';
+}
+
+/**
  * 兄弟の span (seq の昇順) を、並行に動いた組にまとめる。
  * 後の span の seq が、組のどれかの seq_end より小さければ、その span は前の span が終わる前に始まっている (同じ組)。
  * seq_end の無い行 (瞬間イベントや旧形式) は組を広げない。
@@ -289,4 +311,4 @@ function observedPlacements(tree) {
   return [...tiers.keys()].sort(cmpStr).map((t) => ({ tier: t, layers: [...tiers.get(t)].sort(cmpStr) }));
 }
 
-module.exports = { buildTree, flatten, callerOf, participantOf, pairedHttpIn, observedPlacements, parseTraceLines, sqlVerb, withTableModes, queryFailed, overlapGroups, assignLanes, cmpStr, DEFAULT_ACTOR };
+module.exports = { buildTree, flatten, callerOf, participantOf, pairedHttpIn, observedPlacements, parseTraceLines, sqlVerb, withTableModes, queryFailed, operationScope, overlapGroups, assignLanes, cmpStr, DEFAULT_ACTOR };

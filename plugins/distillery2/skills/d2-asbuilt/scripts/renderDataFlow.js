@@ -8,6 +8,8 @@
  *   - データ  : テーブル [(name)]、発行メッセージ >name]、外部ホスト [[host]]
  *   - 辺      : 呼び出し -->、読み -. Read .->、書き == Write ==>、両方 == Read/Write ==>、発行 -- Publish -->
  *               失敗した文 (meta.result が error。取り消された文) は読み書きの辺にしない
+ *   - 前準備  : シナリオが前準備で呼んだ他の UC の操作 (opts.ownOps に無い operationId) は、名前に (前準備) を付ける。
+ *               その中の読み書きと発行は、細い点線 -. 前準備 Read .-> / -. 前準備 Write .-> / -. 前準備 Publish .-> で描き、UC の読み書きの線と分ける
  * すべて重複排除・ソート済み (決定論)。
  *
  * システム横断 (_system/data-flow.md) は traceability-index の UC × テーブルから CRUD 表と UC → テーブルの図を描く。
@@ -15,7 +17,7 @@
  */
 'use strict';
 
-const { buildTree, callerOf, sqlVerb, withTableModes, queryFailed, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
+const { buildTree, callerOf, sqlVerb, withTableModes, queryFailed, operationScope, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
 
 const READ = new Set(['SELECT', 'WITH', 'SHOW', 'EXPLAIN']);
 const WRITE = new Set(['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT', 'REPLACE', 'TRUNCATE']);
@@ -34,10 +36,11 @@ function nodeKey(participant, node) {
 /**
  * 複数シナリオのトレース → {nodes: Map<key,{key,kind,label,tier}>, edges: Map<"from\0to", Set<mode>>}
  * @param {Array<{scenario:string, lines:Array<object>}>} traces
- * @param {{actor?:string}} opts
+ * @param {{actor?:string, ownOps?:string[]|null}} opts  ownOps = UC 自身の操作 (渡さなければ前準備を分けない)
  */
 function buildFlows(traces, opts = {}) {
   const actorLabel = opts.actor || DEFAULT_ACTOR;
+  const ownOps = Array.isArray(opts.ownOps) ? new Set(opts.ownOps.map(String)) : null;
   const nodes = new Map();
   const edges = new Map();
   const addNode = (key, kind, label, tier) => { if (!nodes.has(key)) nodes.set(key, { key, kind, label, tier: tier || null }); return key; };
@@ -54,7 +57,7 @@ function buildFlows(traces, opts = {}) {
     if (n.kind === 'http.in') {
       const op = n.meta.operationId || `${n.meta.method || ''} ${n.meta.path || ''}`.trim();
       const label = n.meta.operationId ? `${n.meta.operationId} (${n.meta.method || ''} ${n.meta.path || ''})`.replace(/\(\s*\)/, '').trim() : op;
-      return addNode(nodeKey(p, n), 'op', label, p.tier);
+      return addNode(nodeKey(p, n), 'op', operationScope(n, ownOps) === 'setup' ? `${label} (前準備)` : label, p.tier);
     }
     if (n.kind === 'call') return addNode(nodeKey(p), 'comp', p.label, p.tier);
     if (n.kind === 'http.out') return addNode(nodeKey(p), 'ext', p.label, null);
@@ -63,6 +66,8 @@ function buildFlows(traces, opts = {}) {
   for (const tr of Array.isArray(traces) ? traces : []) {
     const tree = buildTree(tr.lines || []);
     for (const n of tree.nodes) {
+      // 前準備で呼んだ他の UC の操作の中の読み書きと発行は、別の種類の辺にする (UC の読み書きに数えない)
+      const pre = operationScope(n, ownOps) === 'setup' ? 'setup-' : '';
       switch (n.kind) {
         case 'http.in': {
           addEdge(sourceKey(n), nodeKeyFor(n), 'call');
@@ -80,12 +85,12 @@ function buildFlows(traces, opts = {}) {
           const src = sourceKey(n);
           const perTable = withTableModes(n.meta.sql, n.meta.tables)
             || (Array.isArray(n.meta.tables) ? n.meta.tables : []).map((t) => ({ table: t, mode }));
-          for (const x of perTable) addEdge(src, addNode(`tbl:${x.table}`, 'store', String(x.table), null), x.mode);
+          for (const x of perTable) addEdge(src, addNode(`tbl:${x.table}`, 'store', String(x.table), null), pre + x.mode);
           break;
         }
         case 'publish': {
           const m = String(n.meta.message || n.ev.name || '');
-          if (m) addEdge(sourceKey(n), addNode(`msg:${m}`, 'message', m, null), 'publish');
+          if (m) addEdge(sourceKey(n), addNode(`msg:${m}`, 'message', m, null), `${pre}publish`);
           break;
         }
         case 'http.out': {
@@ -125,6 +130,15 @@ function edgeText(modes) {
   return '-->';
 }
 
+/** 前準備の操作の中の読み書き・発行の線 (無ければ null)。UC 自身の線 (edgeText) とは別の 1 本として描く。 */
+function setupEdgeText(modes) {
+  const m = new Set(modes);
+  const rw = m.has('setup-read') && m.has('setup-write') ? 'Read/Write' : m.has('setup-write') ? 'Write' : m.has('setup-read') ? 'Read' : null;
+  if (rw) return `-. 前準備 ${rw} .->`;
+  if (m.has('setup-publish')) return '-. 前準備 Publish .->';
+  return null;
+}
+
 /** flows → mermaid flowchart LR。 */
 function renderFlowchart(flows) {
   const L = ['flowchart LR'];
@@ -144,7 +158,10 @@ function renderFlowchart(flows) {
   const edges = [...flows.edges.entries()].sort((a, b) => cmpStr(a[0], b[0]));
   for (const [k, modes] of edges) {
     const [from, to] = k.split('\u0000');
-    L.push(`    ${mid(from)} ${edgeText(modes)} ${mid(to)}`);
+    const own = [...modes].filter((x) => !String(x).startsWith('setup-'));
+    const setup = setupEdgeText(modes);
+    if (own.length || !setup) L.push(`    ${mid(from)} ${edgeText(own)} ${mid(to)}`);
+    if (setup) L.push(`    ${mid(from)} ${setup} ${mid(to)}`);
   }
   return L.join('\n');
 }
@@ -193,4 +210,7 @@ function renderSystemDataFlow(index) {
   return L.join('\n');
 }
 
-module.exports = { buildFlows, renderFlowchart, renderSystemDataFlow, edgeText };
+/** flows に前準備の線があるか (図の読み方の注記を出すかどうか)。 */
+function hasSetupFlows(flows) { return [...flows.edges.values()].some((modes) => [...modes].some((x) => String(x).startsWith('setup-'))); }
+
+module.exports = { buildFlows, renderFlowchart, renderSystemDataFlow, edgeText, setupEdgeText, hasSetupFlows };

@@ -305,10 +305,10 @@
     "template_row": "④ tier",
     "write_set": [
       "`apps/<tier>/**`",
-      "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先 `.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。回すたびに上書きし、消さない)"
+      "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先 `<リポのルートの絶対パス>/.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。絶対パスで渡す。回すたびに上書きし、消さない)"
     ],
     "notes": [
-      "例外: ゲートの `{report}` の置き換え先 `.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。回すたびに上書きし、消さない)"
+      "例外: ゲートの `{report}` の置き換え先 `<リポのルートの絶対パス>/.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。絶対パスで渡す。回すたびに上書きし、消さない)"
     ],
     "allowed_writes": [
       {
