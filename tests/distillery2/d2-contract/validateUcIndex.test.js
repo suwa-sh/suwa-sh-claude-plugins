@@ -245,5 +245,10 @@ test('invalidTestRequests: object 型の query の引数は、schema が項目�
   entry.operation['x-test-requests'] = { ok: { query: { 'filter[status]': 'a' } }, typo: { query: { 'filter[typo]': 'a' } } };
   const errs = G.invalidTestRequests(entry, { paths: {} });
   assert.equal(errs.length, 1, JSON.stringify(errs));
+  // 閉じ括弧の後ろに余分な文字が付いた名前は通さない (外部レビュー 3 ラウンド目)
+  entry.operation['x-test-requests'] = { tail: { query: { 'filter[status]oops': 'a' } }, deep: { query: { 'filter[status][eq]': 'a' } } };
+  const errs2 = G.invalidTestRequests(entry, { paths: {} });
+  assert.equal(errs2.length, 1, JSON.stringify(errs2));
+  assert.match(errs2[0], /tail\.query\.filter\[status\]oops/);
   assert.match(errs[0], /typo\.query\.filter\[typo\]: 契約の query の引数/);
 });

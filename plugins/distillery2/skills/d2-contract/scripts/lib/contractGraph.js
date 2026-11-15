@@ -418,7 +418,8 @@ function queryParameters(entry, doc) {
 /** query の引数名が契約にあるか。宣言された名前そのものか、nested な引数の `<名前>[<項目>]` の形だけを通す。schema が項目を列挙していれば (properties があり additionalProperties を許さない)、最初の項目名も照合する */
 function knownQueryName(name, declared) {
   if (declared.has(name)) return true;
-  const m = /^([^[\]]+)\[([^[\]]*)\].*$/.exec(name);
+  // `<名前>[<項目>]` か、その後ろに `[<項目>]` が続く形だけ (閉じ括弧の後ろの余分な文字は通さない)
+  const m = /^([^[\]]+)\[([^[\]]*)\](?:\[[^[\]]*\])*$/.exec(name);
   if (!m || !declared.has(m[1]) || !declared.get(m[1]).nested) return false;
   const keys = declared.get(m[1]).keys;
   return keys === null || keys.includes(m[2]);

@@ -407,7 +407,7 @@ test('review: attempt のディレクトリから人レビューの材料 (回�
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'assumption-review-'));
   fs.writeFileSync(path.join(dir, 'assumptions.tier-facade.yaml'), RECORD);
   fs.writeFileSync(path.join(dir, 'findings.tier-facade.yaml'), findings());
-  const r = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1']);
+  const r = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1', '--tiers', 'tier-facade']);
   assert.equal(r.ok, true, JSON.stringify(r));
   const single = validator.run(verdictsArgs(path.join(dir, 'findings.tier-facade.yaml'), path.join(dir, 'assumptions.tier-facade.yaml')));
   assert.deepEqual(r.tiers.map((t) => [t.tier, t.assumption_verdicts_sha256]), [['tier-facade', single.verdicts_sha256]]);
@@ -421,11 +421,17 @@ test('review: attempt のディレクトリから人レビューの材料 (回�
   assert.ok(r.findings.length >= 3);
   // 検証していないティア・検査に落ちるティアがあれば集めない
   fs.writeFileSync(path.join(dir, 'assumptions.tier-other.yaml'), RECORD.replace('tier: "tier-facade"', 'tier: "tier-other"'));
-  const missing = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1']);
+  const missing = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1', '--tiers', 'tier-facade']);
   assert.equal(missing.ok, false);
   assert.match(missing.errors.join('\n'), /findings\.tier-other\.yaml is missing/);
   fs.rmSync(path.join(dir, 'assumptions.tier-other.yaml'));
   fs.writeFileSync(path.join(dir, 'findings.tier-facade.yaml'), findings({ sha: 'deadbeef' }));
-  const stale = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1']);
+  const stale = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1', '--tiers', 'tier-facade']);
   assert.match(stale.errors.join('\n'), /tier-facade: assumptions_sha256 stale/);
+  // 関与ティアの両方のファイルが無ければ失敗する (そのティアの前提と指摘が材料から黙って消えない。外部レビュー 3 ラウンド目)
+  fs.writeFileSync(path.join(dir, 'findings.tier-facade.yaml'), findings());
+  const gone = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1', '--tiers', 'tier-facade,tier-web']);
+  assert.equal(gone.ok, false);
+  assert.match(gone.errors.join('\n'), /assumptions\.tier-web\.yaml and findings\.tier-web\.yaml are missing/);
+  assert.equal(validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1']).ok, false, '--tiers は必須');
 });

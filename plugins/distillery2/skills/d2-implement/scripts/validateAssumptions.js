@@ -7,8 +7,9 @@
  *   record   <assumptions.yaml> --uc <uc_slug> --tier <tier_id> --attempt <n>
  *   verdicts <findings.yaml> --assumptions <assumptions.yaml> --uc <uc_slug> --tier <tier_id> --attempt <n>
  *   evidence <tier_id>:<assumptions_sha256>:<assumption_verdicts_sha256> ...   # 人レビュー承認の assumption_evidence_sha256 を算出
- *   review   <attempt のディレクトリ> --uc <uc_slug> --attempt <n>            # 人レビューの材料を 1 回で集める (全ティアの record と verdicts を回し直す)
- *     出力: tiers[{tier, assumptions_sha256, verdicts_sha256, counts}]、assumption_evidence_sha256、
+ *   review   <attempt のディレクトリ> --uc <uc_slug> --attempt <n> --tiers <関与ティア (カンマ区切り)>   # 人レビューの材料を 1 回で集める (全ティアの record と verdicts を回し直す)
+ *     --tiers のティアすべてに assumptions と findings が揃っていなければ失敗する (片方も無いティアを黙って落とさない)
+ *     出力: tiers[{tier, assumptions_sha256, assumption_verdicts_sha256, counts}]、assumption_evidence_sha256、
  *           assumptions[{tier, id, title, assumption, verdict, category, verified_category, severity, required, recommended}] (required = 回答必須。recommended = 承認 | 実装を直す)、
  *           findings[{tier, id, severity, kind, title}] (前提に結びつかない指摘を含む全件)
  *
@@ -331,6 +332,9 @@ function reviewMaterial(attemptDir, expect, errors) {
   const withFindings = names.map(n => tierOf(n, 'findings')).filter(Boolean).sort();
   const withRecord = names.map(n => tierOf(n, 'assumptions')).filter(Boolean).sort();
   if (!withRecord.length) errors.push(`no assumptions.<tier>.yaml in ${attemptDir}`);
+  // 関与ティアの両方のファイルが無いと、そのティアの前提と指摘が材料から黙って消える。期待するティアと照らす
+  for (const t of expect.tiers) if (!withRecord.includes(t) && !withFindings.includes(t)) errors.push(`assumptions.${t}.yaml and findings.${t}.yaml are missing (tier ${t} is in --tiers)`);
+  for (const t of withRecord) if (!expect.tiers.includes(t)) errors.push(`assumptions.${t}.yaml is for a tier outside --tiers (${expect.tiers.join(',')})`);
   for (const t of withRecord) if (!withFindings.includes(t)) errors.push(`findings.${t}.yaml is missing (tier ${t} is not verified)`);
   for (const t of withFindings) if (!withRecord.includes(t)) errors.push(`assumptions.${t}.yaml is missing (tier ${t})`);
   if (errors.length) return null;
@@ -357,7 +361,7 @@ function reviewMaterial(attemptDir, expect, errors) {
   return { attempt: expect.attempt, tiers, assumption_evidence_sha256: evidenceHash(tiers), required: assumptions.filter(a => a.required).length, assumptions, findings };
 }
 
-const REQUIRED_OPTS = { record: ['uc', 'tier', 'attempt'], verdicts: ['assumptions', 'uc', 'tier', 'attempt'], evidence: [], review: ['uc', 'attempt'] };
+const REQUIRED_OPTS = { record: ['uc', 'tier', 'attempt'], verdicts: ['assumptions', 'uc', 'tier', 'attempt'], evidence: [], review: ['uc', 'attempt', 'tiers'] };
 
 function parseArgs(argv) {
   const [cmd, file, ...rest] = argv;
@@ -404,7 +408,9 @@ function run(argv) {
   if (cmd === 'evidence') return { ok: true, assumption_evidence_sha256: evidenceHash(parsed.tiers), tiers: parsed.tiers.length };
   const expect = { uc: opts.uc, tier: opts.tier, attempt: Number(opts.attempt) };
   if (cmd === 'review') {
-    result = reviewMaterial(path.resolve(file), { uc: opts.uc, attempt: Number(opts.attempt) }, errors);
+    const tiers = String(opts.tiers).split(',').map(t => t.trim()).filter(Boolean);
+    if (!tiers.length) errors.push('--tiers must list at least one tier');
+    else result = reviewMaterial(path.resolve(file), { uc: opts.uc, attempt: Number(opts.attempt), tiers }, errors);
   } else if (cmd === 'record') {
     const doc = loadYaml(path.resolve(file), errors);
     if (doc) result = validateRecord(doc, expect, errors);

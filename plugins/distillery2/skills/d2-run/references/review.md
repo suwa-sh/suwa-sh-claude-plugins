@@ -12,7 +12,7 @@
 
 1. 材料: `reports/gates.json` (static の `advisory` があれば依存の脆弱性として載せる)、全ティアの findings (major / minor。「他 UC への波及」の `cross_uc_change` を含む)、AssumptionRecord と verdict、`issues/`、
    contract の done の `contract_changes` のうち「他の UC にも効く変更」(`also_used_by` の付いた own、`other_uc`、`shared`)
-2. `node <skills>/d2-implement/scripts/validateAssumptions.js review <run>/attempt-<n> --uc <slug> --attempt <n>` で、前提の材料を 1 回で集める (全ティアの `record` と `verdicts` を回し直し、`assumption_evidence_sha256`、前提ごとの `required` (回答必須か) と `recommended` (推奨)、findings の一覧を返す。自分で集計しない)
+2. `node <skills>/d2-implement/scripts/validateAssumptions.js review <run>/attempt-<n> --uc <slug> --attempt <n> --tiers <関与ティア>` で、前提の材料を 1 回で集める (関与ティアのどれかに前提か検証の結果が無ければ失敗する。全ティアの `record` と `verdicts` を回し直し、`assumption_evidence_sha256`、前提ごとの `required` (回答必須か) と `recommended` (推奨)、findings の一覧を返す。自分で集計しない)
 3. human-html-review で確認ページを作る (auto でも必ず人に返す。recommend は下の推奨で答えて記録し、最後のまとめに載せる)。問いの順:
    - 何を作ったか (シナリオの結果、ゲートの結果)
    - **回答必須の前提** (verdict が spec_absent / unlisted で、category か verified_category が security / persistence のもの)。

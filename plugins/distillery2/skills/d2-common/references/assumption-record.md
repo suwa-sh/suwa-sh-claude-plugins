@@ -79,7 +79,7 @@ node "$V" verdicts attempt-1/findings.backend-api.yaml --assumptions attempt-1/a
 # → {"ok":true,"verdicts_sha256":"...","counts":{"consistent":0,"spec_absent":2,"contradicts":1,"unlisted":0},"requires_answer":1}
 
 # オーケストレータ: 人レビューの材料を 1 回で集める (全ティアの record と verdicts を回し直し、回答必須の前提・推奨・根拠の hash を返す)
-node "$V" review attempt-1 --uc register-loan --attempt 1
+node "$V" review attempt-1 --uc register-loan --attempt 1 --tiers backend-api,worker
 # → {"ok":true,"tiers":[...],"assumption_evidence_sha256":"...","required":1,"assumptions":[{"tier":"backend-api","id":"A-001","required":true,"recommended":"承認",...}],"findings":[...]}
 
 # オーケストレータ / 人レビュー: 承認証跡の集約 hash
