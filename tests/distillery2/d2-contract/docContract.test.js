@@ -53,6 +53,10 @@ test('契約テストの文書: query・一時 DB の後始末・一意制約の
   assert.match(t, /値に知らない項目 \(`path` \/ `query` \/ `headers` \/ `fixture` \/ `expect` 以外\)/);
   assert.match(t, /例の後 \(`afterEach`\) に `src\/test-app\.ts` の `closeTestApps\(\)` を呼ぶ/);
   assert.match(t, /2 件目が `23505` \(unique_violation\) で失敗/);
+  // 外部レビューの指摘: 引数名の照合と、制約そのものの存在の確認
+  assert.match(t, /契約に無い名前は `validateUcIndex\.js` が止める/);
+  assert.match(t, /`style: deepObject` の引数は、`<名前>\[<項目>\]` の形で書く/);
+  assert.match(t, /制約そのものの存在を、一意制約ごとにカタログ \(`pg_constraint`\) で確かめる/);
 });
 
 test('契約テストの文書: 同じ status の例が 3 つ以上のときの expect の決まりが、検査の動き (例の組ごと) と同じ', () => {

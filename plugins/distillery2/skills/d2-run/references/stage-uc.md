@@ -109,9 +109,9 @@ sub `d2-implement mode=scaffold`。
 - 受理時に既存の非テストファイルを変えていないことを確かめる (subagent-template.md「受理時の検査」)
 - `runGates.js --uc <slug> --tiers <関与ティア> --only unit --expect-red unit` が exit 0、dry-run で undefined step 0
 
-**実装が既にあるとき** (`<run>/invalidated/` に tier の done の退避 `*_tier.done.yaml` がある。巻き戻し・写し直しで、実装を終えた後に scenario か contract へ戻った run):
+**実装が既にあるとき** (`<run>/invalidated/` に tier の done の退避 `*_tier.done.yaml` がある。巻き戻し・写し直しで、実装を終えた後に scenario か contract へ戻った run。開き直した UC の run (stage-requirements.md「やり直し」) も、コードが main にあるので同じに扱う):
 
-- 派遣文に `実装が既にある。この段より前で変わったファイル: <git diff --name-only <前回の scaffold の done の commit>..HEAD -- features contracts の一覧>` を添える (前回の scaffold の commit は `git log -1 --format=%H --grep "^impl(<slug>): scaffold"`)
+- 派遣文に `実装が既にある。この段より前で変わったファイル: <git diff --name-only <前回の scaffold の done の commit>..HEAD -- features contracts の一覧>` を添える (前回の scaffold の commit は `git log -1 --format=%H --grep "^impl(<slug>): scaffold"`。開き直した UC は `<base_head>..HEAD`)
 - red は、変わった振る舞いを実装するティアにだけ求める。担当の報告の「red を書いたティア」で `runGates.js --uc <slug> --tiers <そのティア> --only unit --expect-red unit` を回す
 - 担当が「red を書いたティア: なし」(変わった振る舞いが無い。説明文だけの変更など) と報告したら、`--expect-red` を回さずに `runGates.js --uc <slug> --tiers <関与ティア> --only unit` が exit 0 (既存のテストが緑のまま) を確かめ、done に `red_tiers: []` を書く
 - 既存の非テストファイルを変えていないことは同じに確かめる (契約の変更で既存の実装が合わなくなった分は、tier の段が直す)
@@ -158,7 +158,8 @@ sub が「結線の変更は不要」と判断し、integrate.md の完了条件
 
 1. `node runState.js verify-list <run>` で、変更ファイルの一覧 `.distillery/logs/verify-<slug>-attempt-<n>.txt` と、変更前との差分 `.distillery/logs/verify-<slug>-attempt-<n>.diff` を書く (どちらも gitignore。件数で渡し方を変えず、**常に**ファイルで渡す)。
    結果の `uncommitted` が 0 でなければ、先に commit する (verify の前の段の変更が残っている。作業ツリーが clean の状態で検証させる)
-2. 実装のレビュー (`--point implementation`) を、ティアごとに 1 依頼を順に回す: `reviewStep.js run --point implementation --targets-file <一覧> --prefix apps/<tier>/ --out <run>/reviews/implementation-<tier>` (対象は一覧のそのティアの分)
+2. 実装のレビュー (`--point implementation`) を、ティアごとに 1 依頼を順に回す: `reviewStep.js run --point implementation --targets-file <一覧> --prefix apps/<tier>/ --out <run>/reviews/implementation-<tier>` (対象は一覧のそのティアの分)。
+   一覧に `apps/<tier>/` で始まる行が 1 つも無いティア (契約の生成物だけが変わったティアなど) は、レビューを回さない (`reviewStep.js` は対象が無いと exit 2 で拒む)。`decisionLog.js add --run <run> --page page:review-skip:implementation-<tier> --question "実装のレビューを回すか" --answer "回さない (変更ファイルが無い)" --by rule` で残し、検証役は派遣する
 3. 指摘があれば routing.md「縦・横レビュー」のとおり、そのティアの担当を「反証して直す」で派遣する。
    引き継ぎファイルの `refutations` に `accepted` が 1 件でもあれば (コードか前提が変わった)、全ティアで `validateAssumptions.js record` を回し直し、`runGates.js --uc <slug> --tiers <関与ティア>` で全段を回し直して pass を確かめ、`impl(<slug>): review fixes` で commit し、1 の `verify-list` を回し直す
 4. ティアごとに sub `d2-verify` を**同じメッセージで並列派遣** (agent_type `distillery2:d2-verifier`、model = verifier)。派遣文に、変更ファイルの一覧のパス、変更前との差分のパス、実装者の固定指示のパス (`<skills>/d2-implement/references/tier-impl.md` の絶対パス。前提の照合先) を渡す

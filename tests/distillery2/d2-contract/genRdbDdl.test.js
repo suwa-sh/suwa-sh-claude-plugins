@@ -158,3 +158,29 @@ test('uniqueKeyCases: 2 件目が別の一意制約にも当たるときは、�
   const long = 'x'.repeat(60);
   assert.deepEqual(genRdbDdl.uniqueKeyCases([{ name: long, columns: [col('a')], primary_key: ['a'] }]).map(c => c.constraints), [null]);
 });
+
+// --- 外部レビューの指摘: 列が重なる一意制約では、弾きだけでは制約の欠けを見つけられない ---
+test('db-schema.test.ts が、一意制約ごとに制約そのものの存在をカタログ (pg_constraint) の種類・列の並び・名前で確かめる', () => {
+  const col = (name) => ({ name, type: 'string', nullable: false });
+  const tables = [{ name: 't', columns: [col('id'), col('a'), col('b')], primary_key: ['id'],
+    indexes: [{ name: 't_a_key', columns: ['a'], unique: true }, { name: 't_a_b_key', columns: ['a', 'b'], unique: true }] }];
+  const testTs = genRdbDdl.dbSchemaTest(tables, 'apps/backend-api', '// head');
+  assert.match(testTs, /FROM pg_constraint c/);
+  assert.match(testTs, /c\.contype IN \('p', 'u'\)/);
+  // 種類・列の並び・名前の 3 つで 1 件に決まることを見る
+  assert.match(testTs, /r\.contype === key\.type && r\.cols === key\.columns\.join\(','\) && \(key\.name === null \|\| r\.conname === key\.name\)/);
+  assert.match(testTs, /expect\(matched\.map\(r => r\.conname\), JSON\.stringify\(found\.rows\)\)\.toHaveLength\(1\)/);
+  // 存在の確認は、弾きの確認より前に、制約ごとに 1 件ずつ出す
+  assert.ok(testTs.indexOf('has the ${key.type') < testTs.indexOf('rejects a second row'));
+  const keys = JSON.parse(/const uniqueKeys: UniqueKey\[\] = (\[[\s\S]*?\n\]);/.exec(testTs)[1]);
+  assert.deepEqual(keys.map(k => [k.type, k.name, k.columns]), [['p', 't_pkey', ['id']], ['u', 't_a_key', ['a']], ['u', 't_a_b_key', ['a', 'b']]]);
+  // UNIQUE(a, b) の 2 件目は UNIQUE(a) にも当たる (どちらが弾いても通る) ので、欠けは上の存在の確認が見つける。
+  // UNIQUE(a) の 2 件目は b が違うので UNIQUE(a) だけに当たり、弾きの確認はその制約名だけを期待する
+  assert.deepEqual(keys.map(k => k.constraints), [['t_pkey'], ['t_a_key'], ['t_a_key', 't_a_b_key']]);
+});
+
+test('uniqueKeyCases: 63 バイトを超える制約名は、存在の確認でも名前を照合しない (種類と列の並びで確かめる)', () => {
+  const long = 'x'.repeat(60);
+  const [pk] = genRdbDdl.uniqueKeyCases([{ name: long, columns: [{ name: 'a', type: 'string', nullable: false }], primary_key: ['a'] }]);
+  assert.deepEqual([pk.type, pk.name, pk.columns], ['p', null, ['a']]);
+});

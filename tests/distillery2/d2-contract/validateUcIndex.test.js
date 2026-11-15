@@ -137,8 +137,11 @@ test('unverifiedVariants: 同じ status で中身の違う例のうち expect �
 });
 
 // --- x-test-requests の query と、同じ status の例が 3 つ以上のときの expect ---
+// operation の parameters に、文字列の query の引数を宣言する YAML の行
+const queryParams = (...names) => ['parameters:', ...names.flatMap(n => [`  - name: ${n}`, '    in: query', '    schema:', '      type: string'])];
+
 test('query の値で区別すれば PASS。同じ query を送る例は区別できないので FAIL', () => {
-  const lines = (q401, q404) => yamlLines(['x-test-requests:', '  one:', '    query:', '      from: a', '  unauthorized:', '    query:', `      from: ${q401}`, '  not_found:', '    query:', `      from: ${q404}`]);
+  const lines = (q401, q404) => yamlLines([...queryParams('from'), 'x-test-requests:', '  one:', '    query:', '      from: a', '  unauthorized:', '    query:', `      from: ${q401}`, '  not_found:', '    query:', `      from: ${q404}`]);
   assert.deepEqual(validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra: lines('b', 'c') }))).errors, []);
   const same = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra: lines('a', 'c') }))).errors;
   assert.ok(same.some(e => /"one" \(200\)/.test(e) && /"unauthorized" \(401\)/.test(e) && /区別できない/.test(e)), same.join('\n'));
@@ -146,7 +149,7 @@ test('query の値で区別すれば PASS。同じ query を送る例は区別�
 });
 
 test('query を書く順が違うだけの 2 つの例は、同じ要求として区別できない', () => {
-  const opExtra = yamlLines(['x-test-requests:', '  one:', '    query:', '      a: 1', '      b: 2', '  unauthorized:', '    query:', '      b: 2', '      a: 1', '  not_found:', '    path:', '      id: missing']);
+  const opExtra = yamlLines([...queryParams('a', 'b'), 'x-test-requests:', '  one:', '    query:', '      a: 1', '      b: 2', '  unauthorized:', '    query:', '      b: 2', '      a: 1', '  not_found:', '    path:', '      id: missing']);
   const { errors } = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra })));
   assert.ok(errors.some(e => /"one" \(200\)/.test(e) && /"unauthorized" \(401\)/.test(e) && /区別できない/.test(e)), errors.join('\n'));
 });
@@ -155,7 +158,7 @@ test('x-test-requests の query が mapping でない・値が null や入れ子
   const notMap = yamlLines(['x-test-requests:', '  unauthorized:', '    query: from=a', '  not_found:', '    path:', '      id: missing']);
   const e1 = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra: notMap }))).errors;
   assert.ok(e1.some(e => /unauthorized\.query: 引数名 → 値の mapping/.test(e)), e1.join('\n'));
-  const badValue = yamlLines(['x-test-requests:', '  unauthorized:', '    query:', '      from: null', '      range:', '        start: a', '      tags: []', '      ok: [a, 1, true]', '  not_found:', '    path:', '      id: missing']);
+  const badValue = yamlLines([...queryParams('from', 'range', 'tags', 'ok'), 'x-test-requests:', '  unauthorized:', '    query:', '      from: null', '      range:', '        start: a', '      tags: []', '      ok: [a, 1, true]', '  not_found:', '    path:', '      id: missing']);
   const e2 = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra: badValue }))).errors;
   for (const name of ['from', 'range', 'tags']) assert.ok(e2.some(e => new RegExp(`unauthorized\\.query\\.${name}: 値は`).test(e)), e2.join('\n'));
   assert.ok(!e2.some(e => /unauthorized\.query\.ok/.test(e)), e2.join('\n'));
@@ -187,4 +190,45 @@ test('unverifiedVariants: code の無い例・2xx の例は、中身の違う相
     [{ status: '200', name: 'a' }, { status: '200', name: 'b' }]);
   // 中身まで同じ 2 つと、code の違う 1 つ: どれも要らない
   assert.deepEqual(G.unverifiedVariants(op('409', { a: { value: { code: 'A' } }, a2: { value: { code: 'A' } }, b: { value: { code: 'B' } } }), {}), []);
+});
+
+// --- 外部レビューの指摘: query の引数名を契約の引数と照合する ---
+test('契約に無い query の引数名は FAIL (誤記した名前だけが違う 2 つの例を、区別できると判定しない)', () => {
+  // 契約の引数は from。例は typo=a / typo=b を送る
+  const opExtra = yamlLines([...queryParams('from'), 'x-test-requests:', '  one:', '    query:', '      typo: a', '  unauthorized:', '    headers:', '      Authorization: Bearer invalid', '  not_found:', '    query:', '      typo: b']);
+  const { errors } = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra })));
+  assert.ok(errors.some(e => /one\.query\.typo: 契約の query の引数 \(parameters の in: query\) に無い名前/.test(e)), errors.join('\n'));
+  assert.ok(errors.some(e => /not_found\.query\.typo: 契約の query の引数/.test(e)), errors.join('\n'));
+  // query の引数を 1 つも宣言していない operation でも止める
+  const none = yamlLines(['x-test-requests:', '  one:', '    query:', '      from: a', '  unauthorized:', '    headers:', '      Authorization: Bearer invalid', '  not_found:', '    path:', '      id: missing']);
+  const e2 = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra: none }))).errors;
+  assert.ok(e2.some(e => /one\.query\.from: 契約の query の引数/.test(e)), e2.join('\n'));
+});
+
+test('invalidTestRequests: query の引数は path item と operation の parameters から読む ($ref も解決する)。path の引数と同じ名前は query の引数ではない', () => {
+  const G = require(path.join(SCRIPTS, 'lib', 'contractGraph.js'));
+  const doc = {
+    paths: { '/x/{id}': { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { $ref: '#/components/parameters/Shared' }] } },
+    components: { parameters: { Shared: { name: 'shared', in: 'query', schema: { type: 'string' } }, Own: { name: 'own', in: 'query', schema: { $ref: '#/components/schemas/S' } } }, schemas: { S: { type: 'string' } } },
+  };
+  const entry = (query) => ({ path: '/x/{id}', method: 'GET', operation: { operationId: 'o', parameters: [{ $ref: '#/components/parameters/Own' }], responses: {}, 'x-test-requests': { a: { query } } } });
+  assert.deepEqual(G.invalidTestRequests(entry({ shared: '1', own: '2' }), doc), []);
+  assert.deepEqual(G.invalidTestRequests(entry({ id: '1' }), doc), ['a.query.id: 契約の query の引数 (parameters の in: query) に無い名前']);
+  assert.deepEqual([...G.queryParameters(entry({}), doc).keys()], ['shared', 'own']);
+});
+
+test('invalidTestRequests: schema が object か style が deepObject の引数だけ、`<名前>[...]` の形を通す', () => {
+  const G = require(path.join(SCRIPTS, 'lib', 'contractGraph.js'));
+  const doc = { paths: { '/x': {} }, components: { schemas: { Filter: { type: 'object', properties: { name: { type: 'string' } } } } } };
+  const parameters = [
+    { name: 'filter', in: 'query', schema: { $ref: '#/components/schemas/Filter' } },
+    { name: 'page', in: 'query', style: 'deepObject', schema: {} },
+    { name: 'opt', in: 'query', schema: { type: ['object', 'null'] } },
+    { name: 'from', in: 'query', schema: { type: 'string' } },
+  ];
+  const entry = (query) => ({ path: '/x', method: 'GET', operation: { operationId: 'o', parameters, responses: {}, 'x-test-requests': { a: { query } } } });
+  assert.deepEqual(G.invalidTestRequests(entry({ 'filter[name]': 'a', 'page[size]': 10, 'opt[x][y]': true, from: 'b' }), doc), []);
+  // object でない引数の `<名前>[...]` と、宣言の無い名前の `<名前>[...]` は通さない
+  assert.deepEqual(G.invalidTestRequests(entry({ 'from[x]': 'a', 'filtre[name]': 'a', 'filter[name': 'a' }), doc).map(m => m.split(':')[0]),
+    ['a.query.from[x]', 'a.query.filtre[name]', 'a.query.filter[name']);
 });

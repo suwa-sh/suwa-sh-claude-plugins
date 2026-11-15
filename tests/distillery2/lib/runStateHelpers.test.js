@@ -194,3 +194,11 @@ test('verify-list: 追跡表が無ければ共有の候補は「なし」', () =
   assert.match(text, /共有の候補:\nなし\n$/);
   assert.equal(r.uncommitted, 0);
 });
+
+test('verify-list: base_head が commit の ID の形でなければ拒む (git のオプションとして渡さない)', () => {
+  const root = repo();
+  g(root, 'switch', '-q', '-c', 'feature/book-room');
+  const run = rs.openRun(root, 'book-room');
+  rs.appendEvent(run, 'branch_started', { base_head: '--output=/tmp/x' });
+  assert.throws(() => rs.verifyList(run), /commit の ID の形でない/);
+});

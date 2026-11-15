@@ -392,12 +392,43 @@ function unknownTestRequestKeys(entry, doc) {
   return Object.keys(all).filter(k => !known.has(k)).sort();
 }
 
-/** `x-test-requests` の各値の形の誤り (知らない項目名・型の誤り)。書き間違いで条件が黙って使われなくなるのを止める */
-function invalidTestRequests(entry) {
+/**
+ * operation が受ける query の引数 (名前 → { nested })。path item の parameters に operation の parameters を重ねる ($ref は doc で解決する)。
+ * nested = 引数の schema が object か、style が deepObject (`<名前>[<項目>]` の形で送る引数)。
+ */
+function queryParameters(entry, doc) {
+  const item = doc && object(doc.paths) && object(doc.paths[entry.path]) ? doc.paths[entry.path] : {};
+  const out = new Map();
+  for (const list of [item.parameters, entry.operation.parameters]) {
+    if (!Array.isArray(list)) continue;
+    for (const raw of list) {
+      const p = derefMaybe(doc, raw);
+      if (!object(p) || p.in !== 'query' || typeof p.name !== 'string') continue;
+      const schema = derefMaybe(doc, p.schema);
+      const types = object(schema) ? [].concat(schema.type || []) : [];
+      out.set(p.name, { nested: p.style === 'deepObject' || types.includes('object') });
+    }
+  }
+  return out;
+}
+
+/** query の引数名が契約にあるか。宣言された名前そのものか、nested な引数の `<名前>[...]` の形だけを通す */
+function knownQueryName(name, declared) {
+  if (declared.has(name)) return true;
+  const m = /^([^[\]]+)\[.*\]$/.exec(name);
+  return Boolean(m && declared.has(m[1]) && declared.get(m[1]).nested);
+}
+
+/**
+ * `x-test-requests` の各値の形の誤り (知らない項目名・型の誤り・契約に無い引数名)。書き間違いで条件が黙って使われなくなるのを止める。
+ * doc は bundle (query の引数の宣言を、path item と $ref の先まで読むため)。
+ */
+function invalidTestRequests(entry, doc) {
   const raw = entry.operation['x-test-requests'];
   if (raw !== undefined && !object(raw)) return ['全体: 応答の例の名前 → 条件の mapping'];
   const all = raw || {};
   const params = new Set([...entry.path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]));
+  const queryParams = queryParameters(entry, doc);
   const out = [];
   for (const [k, v] of Object.entries(all)) {
     if (!object(v)) { out.push(`${k}: 値は path / query / headers / fixture / expect を持つ mapping`); continue; }
@@ -406,6 +437,8 @@ function invalidTestRequests(entry) {
     if (object(v.path)) for (const p of Object.keys(v.path)) if (!params.has(p)) out.push(`${k}.path.${p}: 経路 ${entry.path} に無い引数`);
     if (own(v, 'query') && !object(v.query)) out.push(`${k}.query: 引数名 → 値の mapping`);
     if (object(v.query)) for (const [p, q] of Object.entries(v.query)) {
+      // 誤記した名前だけが違う 2 つの例を「区別できる」と判定しないため、契約の query の引数と照合する
+      if (!knownQueryName(p, queryParams)) out.push(`${k}.query.${p}: 契約の query の引数 (parameters の in: query) に無い名前`);
       const ok = queryScalar(q) || (Array.isArray(q) && q.length > 0 && q.every(queryScalar));
       if (!ok) out.push(`${k}.query.${p}: 値は文字列・数値・真偽値か、その配列 (送らない引数は書かない)`);
     }
@@ -509,6 +542,6 @@ module.exports = {
   operationsForMessages, resolveMessageName,
   operationExamples, mediaExamples, exampleGaps, messageExamples, assertResolvable,
   is2xx, is4xx, is5xx,
-  requestExampleFor, testRequestFor, testFixtures, testHeaders, testQuery, testUrl, unknownTestRequestKeys, invalidTestRequests, unverifiedVariants,
+  requestExampleFor, testRequestFor, testFixtures, testHeaders, testQuery, testUrl, queryParameters, unknownTestRequestKeys, invalidTestRequests, unverifiedVariants,
   contractTestCases, requestKey, indistinguishableExamples, undeclaredFixtures, usedFixtures,
 };

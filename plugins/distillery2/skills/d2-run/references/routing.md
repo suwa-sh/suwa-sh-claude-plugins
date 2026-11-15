@@ -35,7 +35,7 @@ d2-run の各段の手順から呼ぶ規則。`<H>` = `node <skills>/d2-common/s
 | この決定で進めてよいか | `page:decide:approve` | 承認 |
 | この実行設定で基盤を確定してよいか | `page:foundation:approve` | 承認 |
 | この振る舞いで合っているか (シナリオ) | `page:scenario:approve` | 承認 |
-| やり直す / 後で (UC ごと) | `page:reopen:<slug>` | 受入基準が増えたか変わった UC (`uncovered_done`) は やり直す。決定・基盤の差分で STALE になっただけの UC は 後で (「STALE の UC の扱い」) |
+| やり直す / 後で (UC ごと。要求の差分で受入基準が増えたか変わった UC) | `page:reopen:<slug>` | やり直す |
 | 残った作業ごとに対応する / 無視 (要求の差分) | `page:requirements-diff:<項目>` | 対応する (候補が 1 つに決まらない前提は推奨なし) |
 | 回答必須の前提ごとに 承認 / 実装を直す / 要求を直す | `page:review:assumption:<tier>:<A-id>` | 検証役の verdict が `contradicts` でなければ承認、`contradicts` なら実装を直す |
 | この実装で進めてよいか (人レビュー) | `page:review:approve` | 進める (回答必須の前提に「実装を直す」が無いとき) |
@@ -72,7 +72,7 @@ d2-run の各段の手順から呼ぶ規則。`<H>` = `node <skills>/d2-common/s
 | requirements / decide / foundation | **機能を止める**: 下書きを「上流で止めるとき」の手順で課題ファイルにして main に入れ、`blocked_on_upstream {issues}` を記録して feature に commit する (feature は消さない。上流の差分の後に写し直す) | 課題ファイルのまま。自動選択が上流の差分を選ぶ |
 
 - 契約ゲート・結合・検証・人レビューの「実装を直す」も、同じ `rewind <run> implementation` で戻す (回数を数えるため)。as-built からの差し戻しは `return-to-integrate` (同じく数える)
-- **巻き戻しの commit**: 巻き戻したら (`rewind` と `return-to-integrate` の直後に)、その時点の feature の変更をすべて commit する: `git add -A -- apps packages contracts features docs .distillery/runs/<slug>` (無いパスは名指ししない) → `impl(<slug>): rewind to <戻し先>`。
+- **巻き戻しの commit**: 巻き戻したら (`rewind` と `return-to-integrate` の直後に)、その時点の feature の変更をすべて commit する: `git add -A -- apps packages contracts features docs .distillery/runs/<slug>` (無いパスは名指ししない) → `impl(<slug>): rewind to <戻し先>`。`.qlty/qlty.toml` が変わっていれば (結合の段の `genQlty.js --refresh` が足した分) それも入れる。
   実装の途中のコードも入れる (戻った段の担当が、今のコードの続きから直す)。commit の後に起動シーケンス 5 の clean 判定の対象が空であることを確かめる
 - 巻き戻しも開き直しも写し直しも 3 回まで。超えたら `runState.js` / `resumeAfterUpstream.js` が exit 3 を返すので、人に返す (`page:limit:<slug>`)。人が続けると答えたら `--override-limit` を付けて回し直す
 
@@ -137,10 +137,10 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 2. 課題ごとに sub `d2-decide mode=feedback issue=<docs/feedback/<issue>.md> result=<.distillery/logs/decide-<issue>.result.json>` (派遣表「② 決定の差分 (ADR)」。ADR を 1 本足す。非機能グレード表の根拠だけの訂正 (レベルを変えない) なら ADR は足さず表だけを直す。結果ファイルは派遣の前に消す)。受理: 結果が `applied`、`validateAdr.js docs/adr` が exit 0 (非機能グレード表を直したら `validateNfrGrade.js docs/nfr/nfr-grade.yaml` も exit 0)、write-set の外が変わっていない。
    結果が `blocked` なら: `reason_kind: plugin` は「プラグインの不具合」(理由をファイルに書いて `FB reclassify <issue> --reason-file <ファイル> --co-author "<attribution の値>"` でプラグインへ持ち帰る課題にする)。`reason_kind: scope` は auto なら人に返し (推奨: 戻し先を基盤にする)、recommend なら推奨どおり課題の `target_step` を `foundation` に書き換え (`kind` も合わせる) て `<D> add --root . --page page:upstream:<課題> --question "決定では直せない課題の戻し先をどうするか" --answer "戻し先を基盤にする" --by recommended` で記録し、基盤の差分で直す
 3. 索引・開発ルール・アーキテストを作り直す (1 コマンドずつ): `node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements`、`node <skills>/d2-foundation/scripts/genRules.js --adr docs/adr --out docs/rules --cwd .`、`node <skills>/d2-foundation/scripts/genArchTests.js --adr docs/adr --out .dependency-cruiser.cjs --cwd .`。続けて `runGates.js --uc d2-feedback --only static` が通り、`contracts/` があれば `node <skills>/d2-contract/scripts/validateUcIndex.js contracts` が exit 0 (落ちたら「人に返すとき」の表のゲートの再失敗の行に従う: auto は人に返し、recommend は担当を 2 回まで派遣し直して 3 回目で人に返す)
-4. 決定のレビュー (下の「縦・横レビュー」の `decide`。指摘のうち戻し先が decide のものは、次の決定の差分にせず、この差分の「反証して直す」で扱う。戻し先が foundation の指摘は、課題ファイルにして main に戻さず、5 の 2 つの commit の後に**同じ branch のまま**下の「基盤の差分」の 2〜4 で直してから確定する (5 の 3。課題ファイルは `--chain-from` を付けてこの branch に書き、基盤の差分の 4 で消す。連鎖の上限は同じ。0.3.0: 指摘が次の上流の差分を生み続けて往復が長くなった) → 確認ページ (`page:decide:approve`。足した ADR (表だけの訂正なら直した表の項目と根拠) と、STALE の UC を「やり直す / 後で」で載せる。STALE の出し方と推奨は下の「STALE の UC の扱い」)
+4. 決定のレビュー (下の「縦・横レビュー」の `decide`。指摘のうち戻し先が decide のものは、次の決定の差分にせず、この差分の「反証して直す」で扱う。戻し先が foundation の指摘は、課題ファイルにして main に戻さず、5 の 2 つの commit の後に**同じ branch のまま**下の「基盤の差分」の 2〜4 で直してから確定する (5 の 3。課題ファイルは `--chain-from` を付けてこの branch に書き、基盤の差分の 4 で消す。連鎖の上限は同じ。0.3.0: 指摘が次の上流の差分を生み続けて往復が長くなった) → 確認ページ (`page:decide:approve`。足した ADR (表だけの訂正なら直した表の項目と根拠) を載せる。main マージ済みの UC のやり直しは聞かない: 下の「STALE の UC の扱い」)
 5. 2 回に分けて commit する (生成物の basis が、入力の ADR を入れた commit を指すように):
    1. `git add -A -- docs/adr docs/nfr` → `decide: feedback (adr)` (足した ADR と索引、直した非機能グレード表)
-   2. 開発ルールとアーキテストを 3 と同じコマンドで作り直す (basis が 1 の commit になる) → 反映した課題を `git rm` → genDocsReadme → `git add -A -- docs .distillery .dependency-cruiser.cjs` → `decide: feedback` で commit (trailer `Feedback-Consumed:`)。「やり直す」UC は `<RS> reopen <root> <slug> --from scenario` (同じ commit に入れる)
+   2. 開発ルールとアーキテストを 3 と同じコマンドで作り直す (basis が 1 の commit になる) → 反映した課題を `git rm` → genDocsReadme → `git add -A -- docs .distillery .dependency-cruiser.cjs` → `decide: feedback` で commit (trailer `Feedback-Consumed:`)。main マージ済みの UC の run は退避しない (下の「STALE の UC の扱い」)
    3. 4 で基盤向けの指摘を残したなら、ここでは確定せず、同じ branch のまま「基盤の差分」の 2〜4 を回す (基盤の差分の 4 の確定が、この branch のただ 1 回の確定になる)。残していなければ「上流の差分の branch」の 3 で main へ確定する
 6. 上流で止めた機能の feature は消さない。自動選択をもう一度呼ぶと、止めた課題がすべて main から消えた機能を `resume` で選ぶ (下の「写し直し」)
 
@@ -150,26 +150,23 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 2. 課題の推奨の直し方に合う派遣を選ぶ: 骨組み・設定・テスト基盤は sub `d2-foundation phase=<該当 phase>`、契約の骨格は sub `d2-contract mode=skeleton` (UC がある契約は `<skills>/d2-common/references/review-points.md`「反証して直す派遣の引数」の基盤・契約の行)、画面部品は sub `d2-design mode=feedback items=<直すファイルと直す内容を 1 行ずつ>` (派遣表「① 要求の差分 (画面部品)」と同じ。画面部品が 1 つも無いときだけ ③ と同じ全生成)。どの派遣も再実行して安全。
    契約の骨格か画面部品を直したら、仕上げの前に ③ の 4 と同じく `git add contracts docs/design` → `foundation: feedback (contracts and design)` で commit する (仕上げが basis に記録する入力の commit)。続けて sub `d2-foundation phase=finish ui=<true|false>`
    担当が課題を直す場所をプラグインの側だと返したら「プラグインの不具合」: リポの中で回避した (担当の引き継ぎファイルの課題に `workaround` がある) なら `FB reclassify <issue> --reason-file <ファイル> --workaround-file <ファイル>` で止めない課題にして続け、回避できないなら `--workaround-file` 無しで reclassify して人に返す
-3. 受理は ③ の 5 と同じで、`validateUcIndex.js contracts --keep-from <派遣の前の HEAD>` が exit 0 も足す (骨格を回し直しても既存の UC の契約を消さない・変えない)。基盤のレビュー → 確認ページ (`page:foundation:approve`。STALE の UC を「やり直す / 後で」で載せる。下の「STALE の UC の扱い」)
+3. 受理は ③ の 5 と同じで、`validateUcIndex.js contracts --keep-from <派遣の前の HEAD>` が exit 0 も足す (骨格を回し直しても既存の UC の契約を消さない・変えない)。基盤のレビュー → 確認ページ (`page:foundation:approve`。main マージ済みの UC のやり直しは聞かない: 下の「STALE の UC の扱い」)
 4. 反映した課題を `git rm` → genDocsReadme → `git add -A` (起動シーケンス 5 の clean 判定の対象外のルート直下の未追跡ファイルは入れない) → `foundation: feedback` で commit → 「上流の差分の branch」の 3 で main へ確定し、自動選択をもう一度呼ぶ (決定の差分の 6 と同じ)
 
 ### STALE の UC の扱い (決定・基盤の差分)
 
-STALE の UC は `node <skills>/d2-common/scripts/lib/basis.js check <docs/as-built/*/*/index.md を展開した一覧> requirements=docs/requirements adr=docs/adr contracts=contracts` で出す (as-built がまだ無ければ回さない)。
+決定・基盤の差分では、main マージ済みの UC を「上流が変わった」ことだけを理由にやり直さない。確認ページでも聞かない。
 
-古さの判定は、上流のディレクトリの最後の commit で比べる。
-決定の記録の題を直しただけでも、main マージ済みの UC がすべて STALE になる。
-STALE は「上流が変わった」ことだけを示し、「その UC を作り直す必要がある」ことは示さない。
-
-| UC | 推奨 (`page:reopen:<slug>`) |
+| UC | 扱い |
 |---|---|
-| STALE なだけの UC | 後で |
-| この差分の担当が、引き継ぎファイルの `upstream_issues` に `uc` 付きで挙げた UC (戻し先 scenario / contract / implementation) | 確認ページに載せない。課題ファイルになり、次の自動選択が `reopen_targets` でその段から開き直す |
+| 作り直しが要る UC | 差分の担当が、引き継ぎファイルの `upstream_issues` に `uc` 付きで挙げる (戻し先 scenario / contract / implementation)。課題ファイルになり、次の自動選択が `reopen_targets` でその段から開き直す |
+| 上流が変わっただけの UC (STALE) | やり直さない。完了報告に載せる |
 
-「後で」の影響: その UC の実装の記録 (as-built) の basis が古いまま残り、完了報告に STALE として載る。次にその UC を回したときに作り直す。
-人が「やり直す」を選んだ UC だけ `<RS> reopen <root> <slug> --from scenario` を回す。
+STALE の UC は、差分を main へ確定した後に `node <skills>/d2-common/scripts/lib/basis.js check <docs/as-built/*/*/index.md を展開した一覧> requirements=docs/requirements adr=docs/adr contracts=contracts` で出す (as-built がまだ無ければ回さない。basis は commit の ID で比べるので、差分の commit の前に回しても今回の変更は出ない)。
+出た UC を完了報告に「実装の記録の basis が古い機能」として載せる。次にその UC を回したときに作り直す (要求の差分の手順 6 と同じ扱い)。
 
-変更と関係が無い UC まで一律に「やり直す」を推奨にしない (会議室の予約の実地確認で、決定の記録の題を直しただけで完了済みの 2 機能が開き直しになった)。
+理由: 古さの判定は、上流のディレクトリの最後の commit で比べる。決定の記録の題を直しただけでも、main マージ済みの UC がすべて STALE になる。
+STALE は「その UC を作り直す必要がある」ことを示さない (会議室の予約の実地確認で、決定の記録の題を直しただけで完了済みの 2 機能が開き直しになった)。
 
 ## 機能の最初の点検 (新しい UC の branch を切る前)
 

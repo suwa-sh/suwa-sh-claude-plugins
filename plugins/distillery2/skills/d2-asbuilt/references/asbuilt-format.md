@@ -70,7 +70,7 @@ decision (`auto_confirmed` → 自動承認 …)、issue kind (`rule` → ルー
 
 | 事柄 | 描き方 |
 |---|---|
-| 並行の呼び出し | 同じ親の下で並行に動いた呼び出しを、シーケンス図の `par` / `and` / `end` で囲む。`par` と `and` の後ろは、その 1 本の呼び出しの名前である |
+| 並行の呼び出し | 同じ親の下で並行に動いた呼び出しを、シーケンス図の `par` / `and` / `end` で囲む。`par` と `and` の 1 つが 1 本の枝で、後ろはその枝の最初の呼び出しの名前である。枝の中に並ぶ呼び出しは、順に起きている (長い 1 本の間に順に起きた 2 本は、同じ枝に入る) |
 | 並行かどうかの判定 | 後の span の `seq` が、前の span の `seq_end` より小さいとき並行とする。時刻 (`ts`) はミリ秒までなので使わない。`seq_end` の無いトレースは順に描く |
 | 戻りの線の名前 | 例外なら `error`、値で返した結果の種類 (`meta.returned`) があればその名前、どちらでもなければ `ok` |
 | 失敗した文 | `meta.result` が `error` の `db.query` は、文ごと取り消されている。シーケンス図では名前の後ろに `(失敗)` を付ける。分岐の表・データの流れ・traceability-index の `tables` と `tables_rw` には数えない |
@@ -78,7 +78,23 @@ decision (`auto_confirmed` → 自動承認 …)、issue kind (`rule` → ルー
 
 `ok` は、例外が無かったことだけを示す。
 値で返した業務の拒否は例外ではないので、`meta.returned` が無ければ `ok` と描かれる。
-`meta.returned` に残るのは、戻り値が `{ ok, error: { code } }` か `{ kind }` の形のときだけである (tracer.ts の `returnLabel`)。
+`meta.returned` に残るのは、call の戻り値が次の形のときだけである (tracer.ts の `returnLabel`)。
+
+| 戻り値の形 | `meta.returned` |
+|---|---|
+| `{ ok: false, error: { code } }` | `code` の値 |
+| `{ ok: false, error: { kind } }` (`code` が無い) | `kind` の値 |
+| `{ ok: false, error: "<文字列>" }` | その文字列 |
+| `{ ok: false }` で上のどれでもない | `rejected` |
+| `{ ok: true, value: { kind } }` | `kind` の値。`value` に `code` もあれば `kind code` |
+| `{ ok: true, value }` で `value` に `kind` が無い | 残さない |
+| `{ kind }` | `kind` の値 |
+| `{ kind, code }` | `kind code` |
+| ほかの形 (配列、fetch の Response、`kind` も `ok` も無い値) | 残さない |
+
+値は 40 字で切る。
+`code` と `kind` は、空でない文字列のときだけ読む。
+例外で終わった call と、call 以外の span には残さない。
 
 ## 要約の書式 (checkAsBuilt.js が機械で検査する)
 

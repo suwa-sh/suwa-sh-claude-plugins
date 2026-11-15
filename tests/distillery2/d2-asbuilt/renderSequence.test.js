@@ -212,6 +212,38 @@ test('overlapGroups: 3 本以上の並行と、組の途中で終わった span 
   assert.deepEqual(overlapGroups([]), []);
 });
 
+test('並行の組の中で互いに重ならない呼び出しは、同じ枝に順に描く (外部レビュー: 長い 1 本の間に順に起きた 2 本が並行に見えた)', () => {
+  const { overlapGroups, assignLanes } = require(path.join(SCRIPTS, 'traceTree'));
+  const n = (s, e) => ({ seq: s, ev: { seq: s, seq_end: e } });
+  const lanes = (nodes) => overlapGroups(nodes).map((g) => assignLanes(g).map((l) => l.map((x) => x.seq)));
+  // long (2〜7) の間に、first (3〜4) と second (4〜5) が順に起きる: first と second は同じ枝
+  assert.deepEqual(lanes([n(2, 7), n(3, 4), n(4, 5)]), [[[2], [3, 4]]]);
+  // 3 本とも重なれば 3 本の枝
+  assert.deepEqual(lanes([n(1, 4), n(2, 4), n(3, 5)]), [[[1], [2], [3]]]);
+  // 先に空いた枝に入れる: a (1〜3) が終わった後の c (4〜6) は a の枝、b (2〜9) は別の枝
+  assert.deepEqual(lanes([n(1, 3), n(2, 9), n(4, 6)]), [[[1, 4], [2]]]);
+  // seq_end の無い行は、始まった時点で終わったものとして扱う
+  assert.deepEqual(lanes([n(1, 9), { seq: 2, ev: { seq: 2 } }, n(3, 4)]), [[[1], [2, 3]]]);
+  // 図: par long / and first の枝に first → second を順に描く
+  const B = { tier: 'backend-api' };
+  const uc = span2('call', 'Uc.execute', { component: 'Uc', fn: 'execute', result: 'ok', ...B }, 1, 8);
+  const long = span2('call', 'Repo.long', { component: 'Repo', fn: 'long', result: 'ok', ...B }, 2, 7, 1);
+  const first = span2('call', 'Repo.first', { component: 'Repo', fn: 'first', result: 'ok', ...B }, 3, 4, 1);
+  const second = span2('call', 'Repo.second', { component: 'Repo', fn: 'second', result: 'ok', ...B }, 4, 5, 1);
+  const out = renderScenario([first, second, long, uc]);
+  const body = out.split('\n').slice(out.split('\n').findIndex((l) => /->>/.test(l)));
+  assert.deepEqual(body, [
+    '    p0->>+p1: execute',
+    '    par long',
+    '        p1->>p2: long',
+    '    and first',
+    '        p1->>p2: first',
+    '        p1->>p2: second',
+    '    end',
+    '    p1-->>-p0: ok',
+  ]);
+});
+
 test('途中で切るときは、開いたままの par を閉じる (閉じないと図が描けない)', () => {
   const lines = parallelTrace();
   const count = (text, re) => text.split('\n').filter((l) => re.test(l.trim())).length;

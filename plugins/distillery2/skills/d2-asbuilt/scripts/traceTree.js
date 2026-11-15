@@ -161,6 +161,23 @@ function overlapGroups(siblings) {
   return groups;
 }
 
+/**
+ * 並行の組 (overlapGroups の 1 組) を、枝に割り当てる。1 つの枝の中の span は順に起きている。
+ * 開始順に見て、最後の span が終わった後 (seq_end ≦ 自分の seq) に始まる最初の枝に入れる。無ければ新しい枝を作る。
+ * 組の中で互いに重ならない span (長い 1 本の間に順に起きた 2 本など) を、並行の別の枝にしないため。
+ * seq_end の無い span は、始まった時点で終わったものとして扱う。
+ * @returns {Node[][]} 枝の配列 (枝は最初の span の開始順)
+ */
+function assignLanes(group) {
+  const lanes = [];
+  for (const n of group) {
+    const lane = lanes.find((l) => l.end <= n.seq);
+    const end = n.ev && typeof n.ev.seq_end === 'number' ? n.ev.seq_end : n.seq;
+    if (lane) { lane.nodes.push(n); lane.end = Math.max(lane.end, end); } else lanes.push({ nodes: [n], end });
+  }
+  return lanes.map((l) => l.nodes);
+}
+
 /** 並行の組の 1 本の名前 (par / and の後ろに書く)。 */
 function branchLabel(node) {
   const m = node.meta || {};
@@ -177,14 +194,16 @@ function branchLabel(node) {
 /**
  * 木を深さ優先で「描画イベント」の列に平らにする (renderSequence が矢印に変換する)。
  *   {type: 'request'|'response'|'leaf', node, from, to, label}
- *   {type: 'par'|'and', node, label} / {type: 'end'}   並行に動いた兄弟の組 (mermaid の par ブロック)
+ *   {type: 'par'|'and', node, label} / {type: 'end'}   並行に動いた兄弟の組 (mermaid の par ブロック)。
+ *     par / and の 1 つが 1 本の枝。枝の中に、順に起きた呼び出しが 2 つ以上入ることがある (assignLanes)
  */
 function flatten(tree, actorLabel) {
   const out = [];
   const visitAll = (siblings) => {
     for (const group of overlapGroups(siblings)) {
       if (group.length === 1) { visit(group[0]); continue; }
-      group.forEach((n, i) => { out.push({ type: i === 0 ? 'par' : 'and', node: n, label: branchLabel(n) }); visit(n); });
+      // 枝ごとに描く。1 つの枝の中は順に起きた呼び出し。枝の名前は、その枝の最初の呼び出し
+      assignLanes(group).forEach((lane, i) => { out.push({ type: i === 0 ? 'par' : 'and', node: lane[0], label: branchLabel(lane[0]) }); for (const n of lane) visit(n); });
       out.push({ type: 'end' });
     }
   };
@@ -270,4 +289,4 @@ function observedPlacements(tree) {
   return [...tiers.keys()].sort(cmpStr).map((t) => ({ tier: t, layers: [...tiers.get(t)].sort(cmpStr) }));
 }
 
-module.exports = { buildTree, flatten, callerOf, participantOf, pairedHttpIn, observedPlacements, parseTraceLines, sqlVerb, withTableModes, queryFailed, overlapGroups, cmpStr, DEFAULT_ACTOR };
+module.exports = { buildTree, flatten, callerOf, participantOf, pairedHttpIn, observedPlacements, parseTraceLines, sqlVerb, withTableModes, queryFailed, overlapGroups, assignLanes, cmpStr, DEFAULT_ACTOR };

@@ -572,6 +572,8 @@ function verifyList(runDir) {
   const root = path.resolve(runDir, '..', '..', '..');
   const st = status(runDir);
   if (!st.base_head) throw new Error('base_head が無い (branch_started の記録が無い)');
+  // base_head は実行の記録 (events.jsonl) から来る値。git の引数に渡す前に commit の ID の形だけを通す (オプションとして解釈される値を渡さない)
+  if (!/^[0-9a-f]{7,64}$/.test(String(st.base_head))) throw new Error(`base_head が commit の ID の形でない: ${st.base_head}`);
   const git = (args) => {
     const r = spawnSync('git', ['-c', 'core.quotepath=false', ...args], { cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
     if (r.status !== 0) throw new Error(`git ${args.join(' ')} が失敗した: ${(r.stderr || '').trim()}`);

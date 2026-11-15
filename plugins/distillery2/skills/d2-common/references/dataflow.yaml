@@ -1097,7 +1097,7 @@ processes:
     allowed_writes: [adr-dir, nfr, decide-result]
     scripts: [validateAdr.js, genAdrIndex.js, validateNfrGrade.js, generateNfrGradeMd.js]
   - id: run.decide-diff
-    name: 決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)
+    name: 決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除)
     stage: decide
     kind: orchestrator
     actor: d2-run
@@ -1107,7 +1107,7 @@ processes:
     writes: [adr, rules, depcruise-config, reports, feedback-docs, use-cases, run-archive]
   # ================= ③ 基盤の差分 (0.2.0。派遣は ③ の行 (骨格・契約の骨格・画面部品・仕上げ) を回し直す。ここは d2-run の直接作業だけ) =================
   - id: run.foundation-diff
-    name: 基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除・やり直す UC の run の退避)
+    name: 基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除)
     stage: foundation
     kind: orchestrator
     actor: d2-run

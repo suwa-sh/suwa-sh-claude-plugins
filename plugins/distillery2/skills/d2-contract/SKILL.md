@@ -76,7 +76,7 @@ contracts/
 | 2 | 契約を編集する | この UC が提供/利用する operation、message、table を分割ファイルに足す。触るのは分割ファイル (`openapi/` `asyncapi/` `db/domains/`) だけである |
 | 3 | examples を書く | requestBody と、各 2xx/4xx response に example を付ける。下の「examples の書き方」に従う |
 | 4 | uc-index を更新する | `uc-index.yaml` の該当 `slug` に `operations` / `messages` / `tables` を書く |
-| 5 | compile と validate をする | 先に、分割ファイルの basis の行を書き換える (下の「basis の行」)。次に `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js`。examples の不足や参照のずれは、validate が exit 1 で止める |
+| 5 | compile と validate をする | 先に、入口ファイルと `uc-index.yaml` の basis の行を書き換える (下の「basis の行」)。次に `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js`。examples の不足や参照のずれは、validate が exit 1 で止める |
 | 6 | 契約テストを生成する | `genContractTests.js --uc <slug>` と `genRdbDdl.js` を、対象リポに対して実行する。生成物の `basis:` の行は生成器が付ける |
 
 手順 2 で足すもの:

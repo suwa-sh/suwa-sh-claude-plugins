@@ -134,6 +134,9 @@ const fitsIdentifier = name => Buffer.byteLength(name, 'utf8') <= 63;
  *  - second: 一意制約の列だけ first と同じ値にし、ほかの列は違う値にした行 (ほかの一意制約には当たらない)。
  *  - constraints: second が当たる制約の名前。列がこの制約の列に含まれる別の一意制約と、値を変えられない列 (値が 1 つの enum) だけの
  *    一意制約にも当たるので、その名前も入れる。主キーの名前は Postgres の既定 (<表>_pkey)。照合できる名前が無ければ null。
+ *    当たる制約が 1 つなら、弾きのテストはその制約名だけを期待する。2 つ以上のときは、どれが弾いたかでは対象の制約の有無を
+ *    見分けられない (UNIQUE(a) があれば UNIQUE(a, b) が欠けても弾かれる)。
+ *  - type / name: そのため、制約そのものの存在を、生成するテストがカタログ (pg_constraint) の種類・列の並び・名前で別に確かめる。
  */
 function uniqueKeyCases(tables) {
   const out = [];
@@ -141,11 +144,15 @@ function uniqueKeyCases(tables) {
     const keys = [{ name: `${t.name}_pkey`, columns: t.primary_key }];
     for (const idx of t.indexes || []) if (idx.unique) keys.push({ name: idx.name, columns: idx.columns });
     const first = Object.fromEntries(t.columns.map(c => [c.name, sampleValue(c, 1)]));
-    for (const key of keys) {
+    keys.forEach((key, i) => {
       const second = Object.fromEntries(t.columns.map(c => [c.name, key.columns.includes(c.name) ? first[c.name] : sampleValue(c, 2)]));
       const hit = keys.filter(k => k.columns.every(c => second[c] === first[c])).map(k => k.name);
-      out.push({ table: t.name, columns: key.columns, constraints: hit.every(fitsIdentifier) ? hit : null, first, second });
-    }
+      out.push({
+        table: t.name, columns: key.columns, constraints: hit.every(fitsIdentifier) ? hit : null, first, second,
+        // 制約そのものの存在をカタログで確かめるための情報 (type: p = 主キー / u = UNIQUE。name は照合できないとき null)
+        type: i === 0 ? 'p' : 'u', name: fitsIdentifier(key.name) ? key.name : null,
+      });
+    });
   }
   return out;
 }
@@ -168,7 +175,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const migration = readFileSync(join(here, '..', '..', 'migrations', '0001_schema.sql'), 'utf8');
 const expected = ${embedded};
 // 一意制約 (主キーと UNIQUE) ごとの 2 件の行。second は制約の列だけ first と同じ値で、ほかの列は違う値
-type UniqueKey = { table: string; columns: string[]; constraints: string[] | null; first: Record<string, unknown>; second: Record<string, unknown> };
+type UniqueKey = { table: string; columns: string[]; type: string; name: string | null; constraints: string[] | null; first: Record<string, unknown>; second: Record<string, unknown> };
 const uniqueKeys: UniqueKey[] = ${uniqueKeys};
 
 let db: PGlite;
@@ -209,6 +216,23 @@ describe('db unique constraints contract', () => {
       \`INSERT INTO \${quote(table)} (\${cols.map(quote).join(', ')}) VALUES (\${cols.map((_, i) => \`$\${i + 1}\`).join(', ')})\`,
       cols.map(c => row[c]));
   };
+
+  // 制約そのものの存在を、カタログで制約ごとに確かめる (種類・列の並び・名前)。
+  // 列が重なる制約 (UNIQUE(a) と UNIQUE(a, b)) では、片方が欠けても 2 件目の行は弾かれるので、弾きだけでは欠けを見つけられない
+  for (const key of uniqueKeys) {
+    it(\`\${key.table} has the \${key.type === 'p' ? 'primary key' : 'unique constraint'} (\${key.columns.join(', ')})\`, async () => {
+      const found = await db.query<{ conname: string; contype: string; cols: string }>(
+        \`SELECT c.conname, c.contype, string_agg(a.attname, ',' ORDER BY k.ord) AS cols
+         FROM pg_constraint c
+         JOIN pg_class t ON t.oid = c.conrelid
+         CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+         JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+         WHERE t.relname = $1 AND t.relnamespace = 'public'::regnamespace AND c.contype IN ('p', 'u')
+         GROUP BY c.conname, c.contype\`, [key.table]);
+      const matched = found.rows.filter(r => r.contype === key.type && r.cols === key.columns.join(',') && (key.name === null || r.conname === key.name));
+      expect(matched.map(r => r.conname), JSON.stringify(found.rows)).toHaveLength(1);
+    });
+  }
 
   for (const key of uniqueKeys) {
     it(\`\${key.table} rejects a second row with the same (\${key.columns.join(', ')})\`, async () => {
