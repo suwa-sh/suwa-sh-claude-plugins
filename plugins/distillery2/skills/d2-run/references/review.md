@@ -12,7 +12,7 @@
 
 1. 材料: `reports/gates.json` (static の `advisory` があれば依存の脆弱性として載せる)、全ティアの findings (major / minor。「他 UC への波及」の `cross_uc_change` を含む)、AssumptionRecord と verdict、`issues/`、
    contract の done の `contract_changes` のうち「他の UC にも効く変更」(`also_used_by` の付いた own、`other_uc`、`shared`)
-2. `validateAssumptions.js evidence <tier>:<assumptions_sha256>:<verdicts_sha256> ...` で `assumption_evidence_sha256` を算出する
+2. `node <skills>/d2-implement/scripts/validateAssumptions.js review <run>/attempt-<n> --uc <slug> --attempt <n>` で、前提の材料を 1 回で集める (全ティアの `record` と `verdicts` を回し直し、`assumption_evidence_sha256`、前提ごとの `required` (回答必須か) と `recommended` (推奨)、findings の一覧を返す。自分で集計しない)
 3. human-html-review で確認ページを作る (auto でも必ず人に返す。recommend は下の推奨で答えて記録し、最後のまとめに載せる)。問いの順:
    - 何を作ったか (シナリオの結果、ゲートの結果)
    - **回答必須の前提** (verdict が spec_absent / unlisted で、category か verified_category が security / persistence のもの)。
@@ -25,7 +25,7 @@
    - 「実装を直す」が 1 件でもあれば `review_rejected {rejected_assumptions}` を記録し、`rewind <run> implementation` で該当ティアを tier に戻す
    - 「要求を直す」があれば `issues/` に下書き (`target_step: requirements`) を書き、routing.md「上流で止めるとき」の手順で止める
      (review は done にしない。要求の差分が課題を反映した後、写し直して scenario から続ける)
-   - 承認なら、全ティアの `record` / `verdicts` を再実行して hash が一致することを確認してから
+   - 承認なら、2 の `validateAssumptions.js review` をもう一度回して `assumption_evidence_sha256` が 2 の値と一致することを確認してから
      `review_approved {assumption_decisions[], assumption_evidence_sha256, gates_result, head}` を記録する。不一致なら承認を記録せず verify から再実行
 5. 回答は `events.jsonl` と決めたことの記録 (`decisionLog.js add --run <run> --page page:review:...`) に記録する (review-notes ファイルは持たない)
 
@@ -34,6 +34,7 @@
 | 値 | 書き方 |
 |---|---|
 | `head` | 承認した時点の `git rev-parse HEAD`。main マージ 1 の人の修正の判定に使う |
+| `assumption_decisions` | 2 の `assumptions` の全件を 1 件ずつ `{tier, id, decision, required}` で書く。回答必須で承認したものは `decision: confirmed`、回答任意で未回答のものは `decision: auto_confirmed` |
 | `assumption_decisions` の `by` | 承認 (`decision: confirmed`) には `by: human | recommended` を付ける: 人が答えたら `human`、推奨で進めるモードで推奨案を採ったら `recommended` |
 
 実装の記録がこの値で「人が承認」と「推奨案で承認」を書き分ける。

@@ -10,14 +10,15 @@
 | 基盤 (`foundation`) | ③ の仕上げの受理の後、確認ページの前 | `docs/rules/`・`contracts/`・`docs/design/`・`.distillery/config.yaml` | 直す場所の担当 (下の「反証して直す派遣の引数」) |
 | シナリオ (`scenario`) | ④ scenario の受理の後、確認ページの前 | その UC の feature と受入シナリオ | d2-implement mode=scenario |
 | 契約 (`contract`) | ④ contract の受理の後 | その UC の契約の差分 (`git diff <base_head> -- contracts/`) | d2-contract mode=uc |
-| 実装 (`implementation`) | ④ verify と同時 (検証役は残す)。ティアごとに 1 依頼を**順に**回す (同じ workspace では runner が 1 つずつしか動かない。スクリプトはロックで断られたら待って起動し直す) | そのティアの変更ファイル (verify の一覧と同じ) | d2-implement mode=tier |
+| 実装 (`implementation`) | ④ verify の最初 (検証役の派遣の前。レビューの直しを終えてから検証役が検証する)。ティアごとに 1 依頼を**順に**回す (同じ workspace では runner が 1 つずつしか動かない。スクリプトはロックで断られたら待って起動し直す) | そのティアの変更ファイル (verify の一覧と同じ。`--targets-file <一覧> --prefix apps/<tier>/`) | d2-implement mode=tier |
 | as-built (`asbuilt`) | ④ asbuilt の受理の後 | `docs/as-built/<業務>/<UC>/` と `docs/as-built/_system/` | d2-asbuilt |
 
 ## 回し方
 
-1. `reviewStep.js run --point <場所> --target <パス> ... --out <場所の置き場> [--known <課題ファイル> ...]` (Bash の timeout は 600000 ms。スクリプトは 540 秒で切り上げる)。場所の置き場は機能の中なら `<run>/reviews/<場所>[-<tier>]/`、上流なら `.distillery/reviews/<場所>/` (どちらも追跡する)。
+1. `reviewStep.js run --point <場所> (--target <パス> ... | --targets-file <一覧> [--prefix <前方一致>]) --out <場所の置き場> [--known <課題ファイル> ...]` (Bash の timeout は 600000 ms。スクリプトは 540 秒で切り上げる)。場所の置き場は機能の中なら `<run>/reviews/<場所>[-<tier>]/`、上流なら `.distillery/reviews/<場所>/` (どちらも追跡する)。
    スクリプトが `<場所の置き場>/<n>/round<k>.md` に書く (1 ラウンド目は新しい `<n>`、2 ラウンド目は同じ `<n>`。結果の `dir`)。同じ場所を同じ起動で 2 回回しても前の結果を上書きしない。
-   課題にした指摘 (この場所の成果物への課題ファイル) は `--known` で渡す (依頼文の「既知 (報告不要)」に載り、次のラウンドで出直さない)
+   課題にした指摘 (この場所の成果物への課題ファイル) は `--known` で渡す (依頼文の「既知 (報告不要)」に載り、次のラウンドで出直さない)。
+   `--known` に渡すのは課題ファイル (`docs/feedback/*.md`・`<run>/issues/*.md`) だけである。前のレビューの結果 (`round<k>.md`) は渡さない (同じ回の 2 ラウンド目は `--previous` で渡す。巻き戻しや写し直しの後のレビューは新しい回として回し、前の回の指摘のうち課題にしたものだけを `--known` で渡す)
 2. 結果の JSON の `status`:
    - `reviewed`: 指摘が 1 件以上なら、その場所の担当を「反証して直す」で派遣し直す (write-set はその場所と同じ。引き継ぎファイルの `refutations` に全件)。0 件なら次へ
    - `unavailable` / `timed_out` / `failed`: **未レビュー**。自律モードは人に返し、「同じモデルで代わりにレビューする / このまま進む / 止める」を聞く。推奨案で進めるモードは、同じ依頼文 (`prompt` のファイル) を新しいサブエージェント (Agent ツール、同じモデル) に渡して `round1.md` を書かせ、`fallback: same-model` を決めたことの記録に残す
@@ -63,6 +64,7 @@ contract:
   - {id: P2, name: 例どうしの横の整合, look: 応答ごとの例が、URL の値・ヘッダ・テスト用データ (x-test-requests) で区別でき、同じ要求で別の結果を期待していないか (同じ status の例どうしも)}
   - {id: P3, name: 他の UC の契約, look: 共有する操作・型・エラーの変更が、main マージ済みの UC の契約と食い違っていないか}
   - {id: P4, name: RDRA の情報との整合, look: 契約の項目と DB の表が、RDRA の情報の名前と中身に合っているか}
+  - {id: P5, name: 画面部品との整合, look: 受入基準とシナリオが言い分ける結果 (エラーの理由・文言の違い) が契約の応答の例で区別でき、この UC の画面 (docs/design/screens.yaml の該当画面と packages/ui の部品) がその応答をそのまま表示できるか}
 implementation:
   - {id: P1, name: シナリオと契約との縦の整合, look: 実装がシナリオの振る舞いと契約の応答・エラーをそのとおりに満たしているか}
   - {id: P2, name: ルールと ADR, look: 開発ルール・依存の向き・ADR の決定 (認証・データ・ログ) に沿っているか}

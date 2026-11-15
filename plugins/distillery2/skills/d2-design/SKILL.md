@@ -116,7 +116,7 @@ ADR の方針と食い違う技術を選ばない (SPA 指定なのに Next.js �
 
 完了条件は 2 つある。
 
-1. ビルド検証: `npx storybook build` が通る
+1. ビルド検証: `npx storybook build` が通る (`docs/design/storybook-app/` をカレントにして回す)
 2. **目視確認**: `captureStories.js` で各 Story を撮り、**はみ出し・文字切れ・コントラスト**を確認する。崩れがあれば部品を直して再ビルドする
 
 ビルドが通っても、表示崩れは残る。

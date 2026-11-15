@@ -4,7 +4,7 @@
  *
  * 導出するもの:
  *   - operations : http.in の operationId (重複排除・昇順)
- *   - tables     : db.query の tables を SQL 動詞で read/write 分類 (name 昇順)
+ *   - tables     : db.query の tables を SQL 動詞で read/write 分類 (name 昇順)。失敗した文 (meta.result が error) は数えない
  *   - messages   : publish の message (重複排除・昇順)
  *   - files      : 変更ファイルを apps/<tier>/src 単位にティア分類
  *   - perScenario: シナリオごとの読み書き・発行・operation
@@ -18,7 +18,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { parseTraceLines, sqlVerb, withTableModes, cmpStr } = require('./traceTree');
+const { parseTraceLines, sqlVerb, withTableModes, queryFailed, cmpStr } = require('./traceTree');
 
 const READ_VERBS = new Set(['SELECT', 'WITH', 'SHOW', 'EXPLAIN']);
 const WRITE_VERBS = new Set(['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT', 'REPLACE', 'CREATE', 'ALTER', 'DROP', 'TRUNCATE']);
@@ -53,6 +53,7 @@ function deriveFromTraces(scenarios) {
       if (ev.kind === 'http.in') {
         if (meta.operationId) { operations.push(meta.operationId); scOps.push(meta.operationId); }
       } else if (ev.kind === 'db.query') {
+        if (queryFailed(meta)) continue; // 失敗した文は取り消されている。表の読み書きに数えない
         const stmtMode = classifySql(meta.sql);
         const perTable = withTableModes(meta.sql, meta.tables)
           || (Array.isArray(meta.tables) ? meta.tables : []).map((t) => ({ table: t, mode: stmtMode }));

@@ -30,6 +30,10 @@
  *   node runState.js reopened <root>   (やり直し中の UC の slug の一覧)
  *   node runState.js rewind <runDir> scenario|contract|implementation [--issue <issues/...md>] [--reason <text>] [--override-limit]
  *     機能の中で前のステップへ巻き戻す (0.2.0)。implementation は attempt を 1 つ上げて tier から。巻き戻しは 1 つの run で 3 回まで (超えたら exit 3。人が続けると答えたときだけ --override-limit)
+ *   node runState.js uc-tiers <root> <slug>   (関与ティアを契約 (contracts.json と uc-index.yaml) から決め、use-cases.yaml の tiers に書き戻す。contract 段階の完了時)
+ *   node runState.js regression-targets <root> [--except <slug>]   (他 UC への回帰を回す相手: status が done の UC と、開き直した UC)
+ *   node runState.js carry-assumptions <runDir> --tiers <a,b> [--from <n>] [--to <n>]   (attempt を上げた後、戻さないティアの assumptions を新しい attempt に複製する。既定は 今の attempt - 1 → 今の attempt)
+ *   node runState.js verify-list <runDir>   (検証役と実装のレビューに渡す変更ファイルの一覧と、変更前との差分を .distillery/logs/ に書く。未 commit の変更も含める)
  *   node runState.js reopen <root> <slug> --from scenario|contract|implementation [--issue <docs/feedback/...md> ...] [--override-limit]
  *     main マージ済みの UC を、その段から開き直す (0.2.0)。前の段の done と scenario の承認を引き継ぐ (承認した feature の sha256 が今と違えば scenario から)。同じ UC の開き直しは 3 回まで
  */
@@ -466,6 +470,139 @@ function setUcStatus(root, slug, value, { dryRun = false } = {}) {
 }
 
 /**
+ * 関与ティアを契約から決めて、use-cases.yaml の slug の行の tiers に書き戻す (contract 段階の完了時)。
+ * 決め方: contracts/uc-index.yaml のその UC の operations / messages / tables が空でない種別 (openapi / asyncapi / rdb-schema) の契約について、
+ * contracts/contracts.json の provider と consumers を集め、.distillery/config.yaml の tiers の順に並べる。
+ * 同じ種別の契約が 2 つ以上あると、UC がどちらを使うかをここでは決められないので、その種別の契約をすべて数えて ambiguous に種別を返す (進行役が確かめる)
+ */
+function ucTiers(root, slug, { dryRun = false } = {}) {
+  const read = (rel) => { const f = path.join(root, rel); if (!fs.existsSync(f)) throw new Error(`${rel} が無い`); return fs.readFileSync(f, 'utf8'); };
+  const catalog = JSON.parse(read(path.join('contracts', 'contracts.json'))).contracts || [];
+  const entry = ((parseYaml(read(path.join('contracts', 'uc-index.yaml'))) || {}).ucs || []).find(u => u && u.slug === slug);
+  if (!entry) throw new Error(`contracts/uc-index.yaml に slug: ${slug} が無い (contract 段階の後に回す)`);
+  const order = ((parseYaml(read(path.join('.distillery', 'config.yaml'))) || {}).tiers || []).map(t => t && t.id).filter(Boolean);
+  const used = { openapi: (entry.operations || []).length > 0, asyncapi: (entry.messages || []).length > 0, 'rdb-schema': (entry.tables || []).length > 0 };
+  const hit = catalog.filter(c => c && used[c.type]);
+  const ids = new Set(hit.flatMap(c => [c.provider, ...(c.consumers || [])]).filter(Boolean));
+  const unknown = [...ids].filter(t => !order.includes(t));
+  if (unknown.length) throw new Error(`契約のティアが config.yaml の tiers に無い: ${unknown.join(', ')}`);
+  const tiers = order.filter(t => ids.has(t));
+  if (!tiers.length) throw new Error(`slug: ${slug} が使う契約が無い (uc-index.yaml の operations / messages / tables がすべて空)`);
+  const ambiguous = Object.keys(used).filter(t => used[t] && catalog.filter(c => c && c.type === t).length > 1);
+  const file = path.join(root, 'docs', 'requirements', 'use-cases.yaml');
+  const lines = read(path.join('docs', 'requirements', 'use-cases.yaml')).split('\n');
+  const esc = String(slug).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const slugRe = new RegExp(`^\\s+(- )?slug:\\s*["']?${esc}["']?\\s*$`);
+  const hits = lines.map((l, i) => (slugRe.test(l) ? i : -1)).filter(i => i >= 0);
+  if (hits.length !== 1) throw new Error(`use-cases.yaml に slug: ${slug} の行が ${hits.length} 件ある (1 件のときだけ書き換える)`);
+  const itemRe = /^ {2}- /;
+  let start = hits[0];
+  while (start > 0 && !itemRe.test(lines[start])) start--;
+  let end = hits[0] + 1;
+  while (end < lines.length && !itemRe.test(lines[end]) && !/^\S/.test(lines[end])) end++;
+  const block = ['    tiers:', ...tiers.map(t => `      - ${t}`)];
+  const at = [];
+  for (let i = start; i < end; i++) if (/^ {4}tiers:/.test(lines[i])) at.push(i);
+  if (at.length > 1) throw new Error(`slug: ${slug} の塊に tiers の行が ${at.length} 件ある`);
+  let previous = null;
+  if (at.length === 1) {
+    // 既存の tiers (ブロックの並びか、1 行の [a, b]) を置き換える
+    let last = at[0] + 1;
+    while (last < end && /^ {6}- /.test(lines[last])) last++;
+    previous = (parseYaml(lines.slice(at[0], last).map(l => l.slice(4)).join('\n')) || {}).tiers || [];
+    lines.splice(at[0], last - at[0], ...block);
+  } else {
+    const st = [];
+    for (let i = start; i < end; i++) if (/^ {4}status:/.test(lines[i])) st.push(i);
+    if (st.length !== 1) throw new Error(`slug: ${slug} の塊に status の行が ${st.length} 件ある (tiers は status の前に足す)`);
+    lines.splice(st[0], 0, ...block);
+  }
+  const changed = JSON.stringify(previous) !== JSON.stringify(tiers);
+  if (!dryRun && changed) fs.writeFileSync(file, lines.join('\n'));
+  return { slug, tiers, previous, changed, contracts: hit.map(c => c.id), ...(ambiguous.length ? { ambiguous } : {}) };
+}
+
+/**
+ * 他 UC への回帰を回す相手: コードが main にある UC。status が done の UC と、開き直した UC (status は planned に戻るが、コードは main に残る)。
+ * 開き直した UC を外すと、共有のコードを変えたときにその UC のシナリオの回帰が回らない (会議室の予約の実地確認)。except は今の UC
+ */
+function regressionTargets(root, except = null) {
+  const f = path.join(root, 'docs', 'requirements', 'use-cases.yaml');
+  const ucs = fs.existsSync(f) ? ((parseYaml(fs.readFileSync(f, 'utf8')) || {}).use_cases || []) : [];
+  const reopened = new Set(reopenedSlugs(root));
+  return ucs.filter(u => u && u.slug && u.slug !== except && (String(u.status) === 'done' || reopened.has(u.slug)))
+    .map(u => ({ slug: u.slug, reopened: reopened.has(u.slug), tiers: Array.isArray(u.tiers) ? u.tiers : [] }));
+}
+
+/**
+ * attempt を上げたとき、戻さないティアの assumptions を新しい attempt に複製し、attempt の値を書き換える (carry-forward)。
+ * hash の対象外の attempt だけを変える。複製先が既にあれば拒む (戻すティアを誤って上書きしない)
+ */
+function carryAssumptions(runDir, tiers, { from = null, to = null } = {}) {
+  const cur = currentAttempt(runDir);
+  const dst = to == null ? cur : Number(to);
+  const src = from == null ? dst - 1 : Number(from);
+  if (!(src >= 1) || !(dst > src)) throw new Error(`複製元と複製先の attempt が不正: ${src} → ${dst}`);
+  if (!tiers.length) throw new Error('--tiers <戻さないティア (カンマ区切り)> が要る');
+  const plan = tiers.map(tier => {
+    const s = path.join(runDir, `attempt-${src}`, `assumptions.${tier}.yaml`);
+    const d = path.join(runDir, `attempt-${dst}`, `assumptions.${tier}.yaml`);
+    if (!fs.existsSync(s)) throw new Error(`複製元が無い: ${path.relative(runDir, s)}`);
+    if (fs.existsSync(d)) throw new Error(`複製先が既にある: ${path.relative(runDir, d)}`);
+    const text = fs.readFileSync(s, 'utf8');
+    const re = new RegExp(`^attempt:\\s*${src}\\s*$`, 'm');
+    if (!re.test(text)) throw new Error(`attempt: ${src} の行が無い: ${path.relative(runDir, s)}`);
+    return { d, text: text.replace(re, `attempt: ${dst}`) };
+  });
+  attemptDir(runDir, dst);
+  for (const p of plan) fs.writeFileSync(p.d, p.text);
+  return { from: src, to: dst, copied: plan.map(p => path.relative(runDir, p.d)) };
+}
+
+// どの UC も書く簿記のファイル (検証役に渡す変更ファイルの一覧から除く)
+const BOOKKEEPING = [/^docs\/README\.md$/, /^docs\/requirements\/use-cases\.yaml$/, /^docs\/feedback\//];
+
+/**
+ * 検証役と実装のレビューに渡す変更ファイルの一覧を .distillery/logs/verify-<slug>-attempt-<n>.txt に書く。
+ * 変更ファイル = base_head から今の作業ツリーまでの差分 (commit 済み・未 commit・未追跡)。commit 済みの差分だけから作ると、commit 前の直しが漏れた (会議室の予約の実地確認)。
+ * 共有の候補 = 変更ファイルと、追跡表 (docs/as-built/_system/traceability-index.json) の他 UC の files の共通部分。
+ * 変更前との差分を同じ場所の .diff に書く (検証役は git を使えないので、変更前のコードと比べる材料にする)
+ */
+function verifyList(runDir) {
+  const root = path.resolve(runDir, '..', '..', '..');
+  const st = status(runDir);
+  if (!st.base_head) throw new Error('base_head が無い (branch_started の記録が無い)');
+  const git = (args) => {
+    const r = spawnSync('git', ['-c', 'core.quotepath=false', ...args], { cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+    if (r.status !== 0) throw new Error(`git ${args.join(' ')} が失敗した: ${(r.stderr || '').trim()}`);
+    return r.stdout;
+  };
+  const keep = (f) => f && !BOOKKEEPING.some(re => re.test(f));
+  const tracked = git(['diff', '--name-only', st.base_head]).split('\n').filter(keep);
+  const untracked = git(['ls-files', '--others', '--exclude-standard']).split('\n').filter(keep);
+  const files = [...new Set([...tracked, ...untracked])].sort();
+  const shared = [];
+  const idx = path.join(root, 'docs', 'as-built', '_system', 'traceability-index.json');
+  if (fs.existsSync(idx)) {
+    const ucs = (JSON.parse(fs.readFileSync(idx, 'utf8')).ucs) || {};
+    for (const other of Object.keys(ucs).sort()) {
+      if (other === st.slug) continue;
+      const set = new Set(ucs[other].files || []);
+      for (const f of files) if (set.has(f)) shared.push(`${f} — ${other}`);
+    }
+  }
+  const logs = path.join(root, '.distillery', 'logs');
+  fs.mkdirSync(logs, { recursive: true });
+  const list = path.join(logs, `verify-${st.slug}-attempt-${st.attempt}.txt`);
+  const diff = path.join(logs, `verify-${st.slug}-attempt-${st.attempt}.diff`);
+  fs.writeFileSync(list, [...files, '', '共有の候補:', ...(shared.length ? shared : ['なし'])].join('\n') + '\n');
+  // 未追跡のファイルは差分に出ないので、一覧にだけ載る (検証役は実物を読む)
+  fs.writeFileSync(diff, tracked.length ? git(['diff', st.base_head, '--', ...tracked]) : '');
+  const rel = (p) => path.relative(root, p).split(path.sep).join('/');
+  return { list: rel(list), diff: rel(diff), files: files.length, shared: shared.length, uncommitted: git(['status', '--porcelain', '--untracked-files=all']).split('\n').filter(l => keep(l.slice(3))).length, base_head: st.base_head, attempt: st.attempt };
+}
+
+/**
  * main マージ済みの UC をやり直す (0.1.35 R3)。要求の差分で新しい受入基準が付き、シナリオが網羅しなくなった UC を、main から新しい run で回し直せるようにする。
  *  1. 進行中 (feature/<slug> がある) か run が無ければ拒む
  *  2. run の reports/ と traces/ を消す (.gitignore の `.distillery/runs/<slug>/reports/` の形は退避先に効かず、git add -A で main に入るため。作り直せる生成物)
@@ -557,6 +694,9 @@ function main(argv) {
   const issues = [];
   let reasonArg = null;
   let overrideLimit = false;
+  let tiersArg = [];
+  let exceptArg = null;
+  let toArg = null;
   const a = [];
   for (let i = 0; i < a0.length; i++) {
     if (a0[i] === '--json') continue;
@@ -566,6 +706,9 @@ function main(argv) {
     if (a0[i] === '--issue') { issues.push(a0[++i]); continue; }
     if (a0[i] === '--reason') { reasonArg = a0[++i]; continue; }
     if (a0[i] === '--override-limit') { overrideLimit = true; continue; }
+    if (a0[i] === '--tiers') { tiersArg = String(a0[++i] || '').split(',').map(t => t.trim()).filter(Boolean); continue; }
+    if (a0[i] === '--except') { exceptArg = a0[++i]; continue; }
+    if (a0[i] === '--to') { toArg = a0[++i]; continue; }
     if (a0[i] === '--acceptance-dir') { acceptanceDir = a0[++i]; if (acceptanceDir == null) throw new Error('--acceptance-dir <dir>'); continue; }
     a.push(a0[i]);
   }
@@ -593,6 +736,10 @@ function main(argv) {
     }
     case 'rewind': console.log(JSON.stringify(rewind(path.resolve(args[0]), args[1], { issues, reason: reasonArg || '', overrideLimit }))); return 0;
     case 'reopened': console.log(JSON.stringify(reopenedSlugs(path.resolve(args[0])))); return 0;
+    case 'uc-tiers': console.log(JSON.stringify(ucTiers(path.resolve(args[0]), args[1]))); return 0;
+    case 'regression-targets': console.log(JSON.stringify(regressionTargets(path.resolve(args[0]), exceptArg))); return 0;
+    case 'carry-assumptions': console.log(JSON.stringify(carryAssumptions(path.resolve(args[0]), tiersArg, { from, to: toArg }))); return 0;
+    case 'verify-list': console.log(JSON.stringify(verifyList(path.resolve(args[0])))); return 0;
     case 'set-aside-asbuilt-drafts': console.log(JSON.stringify({ moved: setAsideAsbuiltDrafts(path.resolve(args[0])) })); return 0;
     case 'return-to-integrate': console.log(JSON.stringify(returnToIntegrate(path.resolve(args[0]), args[1] ? JSON.parse(args[1]) : {}))); return 0;
     case 'status': {
@@ -612,7 +759,7 @@ function main(argv) {
       }
       return 0;
     }
-    default: console.error('Usage: runState.js open|event|done|invalidate|rewind|return-to-integrate|set-aside-asbuilt-drafts|mark-legacy-delivered|scenario-approve|status|uc-status|reopen|reopened ...'); return 2;
+    default: console.error('Usage: runState.js open|event|done|invalidate|rewind|return-to-integrate|set-aside-asbuilt-drafts|mark-legacy-delivered|scenario-approve|status|uc-status|uc-tiers|regression-targets|carry-assumptions|verify-list|reopen|reopened ...'); return 2;
   }
 }
 
@@ -621,4 +768,4 @@ if (require.main === module) {
   catch (e) { if (e instanceof LimitError) { console.log(JSON.stringify({ limit_reached: true, error: e.message })); process.exit(3); } throw e; }
 }
 
-module.exports = { MAX_RESUMES, pausedEvent, blockedIssues, effectiveBaseHead, setAsideReviews, MAX_REWINDS, MAX_REOPENS, LimitError, rewind, rewindCount, inherit, STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, setAsideAsbuiltDrafts, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status, validateAssumptionResolved, scenarioApprove, setUcStatus, reopen, reopenedSlugs, acceptanceSha256 };
+module.exports = { MAX_RESUMES, pausedEvent, blockedIssues, effectiveBaseHead, setAsideReviews, MAX_REWINDS, MAX_REOPENS, LimitError, rewind, rewindCount, inherit, STAGES, runDirOf, openRun, readEvents, appendEvent, isDone, readDone, markDone, invalidate, invalidateFrom, setAsideAsbuiltDrafts, returnToIntegrate, attemptDir, currentAttempt, pendingFeedback, filedIssues, unfiledIssues, isLegacyOrder, markLegacyDelivered, status, validateAssumptionResolved, scenarioApprove, setUcStatus, ucTiers, regressionTargets, carryAssumptions, verifyList, reopen, reopenedSlugs, acceptanceSha256 };

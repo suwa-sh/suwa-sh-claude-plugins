@@ -241,7 +241,7 @@ function requestExampleFor(reqExamples, responseName, status) {
 }
 
 /**
- * operation の `x-test-requests` (response example 名 → { path, headers, fixture })。
+ * operation の `x-test-requests` (response example 名 → { path, query, headers, fixture, expect })。
  * ボディ無しの応答は example 名が無いので status の文字列 ('204' 等) をキーにする。
  */
 function testRequestFor(operation, key) {
@@ -274,11 +274,33 @@ function testHeaders(doc, operation, reqExample, testReq) {
   return [...merged.values()].filter(([, v]) => v !== null && v !== undefined);
 }
 
-/** 経路の `{param}` を埋める。`x-test-requests[名前].path` の値は URL エンコードし、指定の無い引数は `test-<param>` のまま。 */
+const queryScalar = v => ['string', 'number', 'boolean'].includes(typeof v);
+
+/**
+ * `x-test-requests[名前].query` (引数名 → 値) を `?a=1&b=2` にする。無ければ空文字。
+ * 引数名と値は URL エンコードする。配列は同じ引数名を値の数だけ並べる (`tag=a&tag=b`)。
+ * 引数名の順に並べる (書いた順が違うだけの 2 つの例を、同じ要求として比べるため)。
+ */
+function testQuery(testReq) {
+  const values = testReq && object(testReq.query) ? testReq.query : {};
+  const pairs = [];
+  for (const name of Object.keys(values).sort()) {
+    for (const v of Array.isArray(values[name]) ? values[name] : [values[name]]) {
+      if (queryScalar(v)) pairs.push(`${encodeURIComponent(name)}=${encodeURIComponent(String(v))}`);
+    }
+  }
+  return pairs.length ? `?${pairs.join('&')}` : '';
+}
+
+/**
+ * 要求の URL。経路の `{param}` を埋め、`x-test-requests[名前].query` を後ろに付ける。
+ * `x-test-requests[名前].path` の値は URL エンコードし、指定の無い引数は `test-<param>` のまま。
+ */
 function testUrl(pathTemplate, testReq) {
   const values = testReq && object(testReq.path) ? testReq.path : {};
-  return pathTemplate.replace(/\{([^}]+)\}/g, (_, p) => (own(values, p) && values[p] !== null && values[p] !== undefined
+  const filled = pathTemplate.replace(/\{([^}]+)\}/g, (_, p) => (own(values, p) && values[p] !== null && values[p] !== undefined
     ? encodeURIComponent(String(values[p])) : `test-${p}`));
+  return filled + testQuery(testReq);
 }
 
 /**
@@ -378,10 +400,15 @@ function invalidTestRequests(entry) {
   const params = new Set([...entry.path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]));
   const out = [];
   for (const [k, v] of Object.entries(all)) {
-    if (!object(v)) { out.push(`${k}: 値は path / headers / fixture を持つ mapping`); continue; }
-    for (const p of Object.keys(v)) if (!['path', 'headers', 'fixture', 'expect'].includes(p)) out.push(`${k}.${p}: 知らない項目 (path / headers / fixture / expect のどれか)`);
+    if (!object(v)) { out.push(`${k}: 値は path / query / headers / fixture / expect を持つ mapping`); continue; }
+    for (const p of Object.keys(v)) if (!['path', 'query', 'headers', 'fixture', 'expect'].includes(p)) out.push(`${k}.${p}: 知らない項目 (path / query / headers / fixture / expect のどれか)`);
     if (own(v, 'path') && !object(v.path)) out.push(`${k}.path: 引数名 → 値の mapping`);
     if (object(v.path)) for (const p of Object.keys(v.path)) if (!params.has(p)) out.push(`${k}.path.${p}: 経路 ${entry.path} に無い引数`);
+    if (own(v, 'query') && !object(v.query)) out.push(`${k}.query: 引数名 → 値の mapping`);
+    if (object(v.query)) for (const [p, q] of Object.entries(v.query)) {
+      const ok = queryScalar(q) || (Array.isArray(q) && q.length > 0 && q.every(queryScalar));
+      if (!ok) out.push(`${k}.query.${p}: 値は文字列・数値・真偽値か、その配列 (送らない引数は書かない)`);
+    }
     if (own(v, 'expect') && (!Array.isArray(v.expect) || !v.expect.length || !v.expect.every((f) => typeof f === 'string' && f))) out.push(`${k}.expect: 確かめる応答の項目名の配列`);
     if (own(v, 'headers') && !object(v.headers)) out.push(`${k}.headers: ヘッダ名 → 値の mapping`);
     if (own(v, 'fixture') && (typeof v.fixture !== 'string' || !v.fixture)) out.push(`${k}.fixture: テスト用データの名前 (文字列)`);
@@ -391,7 +418,9 @@ function invalidTestRequests(entry) {
 
 /**
  * 同じ status で応答の例の中身が違うのに、違いを確かめる手段が無い例 (返し分けがテストで確かめられない)。
- * 手段 = `x-test-requests[名前].expect` (確かめる項目名) か、エラー応答 (4xx / 5xx) で例ごとに違う `code`
+ * 手段 = `x-test-requests[名前].expect` (確かめる項目名) か、エラー応答 (4xx / 5xx) の `code` の違い。
+ * 例の組ごとに見る: 中身が違う相手のうち、`code` で見分けられない相手が 1 つでもある例だけが `expect` を要る。
+ * (409 の例が 3 つで、2 つが同じ code・1 つが別の code なら、`expect` が要るのは同じ code の 2 つだけ)
  */
 function unverifiedVariants(entry, doc) {
   const byStatus = new Map();
@@ -403,12 +432,13 @@ function unverifiedVariants(entry, doc) {
   }
   const out = [];
   for (const [status, list] of byStatus) {
-    const values = new Set(list.map((c) => JSON.stringify(c.response)));
-    if (values.size < 2) continue;
-    const codes = list.map((c) => (c.response && typeof c.response === 'object' ? c.response.code : undefined));
-    const codesDiffer = Number(status) >= 400 && codes.every((x) => typeof x === 'string') && new Set(codes).size === codes.length;
-    if (codesDiffer) continue;
+    const isError = Number(status) >= 400;
+    const codeOf = (c) => (isError && c.response && typeof c.response === 'object' && typeof c.response.code === 'string' ? c.response.code : null);
+    const toldApartByCode = (x, y) => codeOf(x) !== null && codeOf(y) !== null && codeOf(x) !== codeOf(y);
     for (const c of list) {
+      const body = JSON.stringify(c.response);
+      const needsExpect = list.some((d) => d !== c && JSON.stringify(d.response) !== body && !toldApartByCode(c, d));
+      if (!needsExpect) continue;
       const tr = testRequestFor(entry.operation, c.name);
       if (!(tr && Array.isArray(tr.expect) && tr.expect.length)) out.push({ status, name: c.name });
     }
@@ -479,6 +509,6 @@ module.exports = {
   operationsForMessages, resolveMessageName,
   operationExamples, mediaExamples, exampleGaps, messageExamples, assertResolvable,
   is2xx, is4xx, is5xx,
-  requestExampleFor, testRequestFor, testFixtures, testHeaders, testUrl, unknownTestRequestKeys, invalidTestRequests, unverifiedVariants,
+  requestExampleFor, testRequestFor, testFixtures, testHeaders, testQuery, testUrl, unknownTestRequestKeys, invalidTestRequests, unverifiedVariants,
   contractTestCases, requestKey, indistinguishableExamples, undeclaredFixtures, usedFixtures,
 };

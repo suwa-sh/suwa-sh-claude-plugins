@@ -11,8 +11,8 @@
  *   <run>/traces/<scenario>.jsonl                 実行トレース (traceTree.js の形)
  *   <run>/attempt-<n>/assumptions.<tier>.yaml     AssumptionRecord
  *   <run>/attempt-<n>/findings.<tier>.yaml        Verifier の findings
- *   <run>/events.jsonl                            review_approved の決定・generated_at の元
- *   <run>/issues/*.md                             仕様起因の課題 (front matter kind/title)
+ *   <run>/events.jsonl                            review_approved の決定・generated_at の元・片付いた課題 (resumed_after_upstream / carried_issues)
+ *   <run>/issues/*.md                             仕様起因の課題 (front matter kind/title)。イベントで片付いたと分かる課題は未決に数えない
  *   contracts/generated/slices/<slug>/contract-slice.json
  *   contracts/generated/openapi.bundle.yaml       api-inventory.md 用
  *   docs/design/screens.yaml                      画面 ↔ UC
@@ -210,7 +210,10 @@ function collect(opts) {
   const assumptions = loadAssumptions(runDir, attempt);
   const findings = loadFindings(runDir, attempt);
 
-  const issues = loadIssues(path.join(runDir, 'issues'));
+  // 未決の課題だけを数える。この UC の中で片付いた課題は別に持ち、件数だけを課題の節に出す
+  const allIssues = loadIssues(path.join(runDir, 'issues'), events);
+  const issues = allIssues.filter((it) => !it.settled);
+  const settledIssueList = allIssues.filter((it) => it.settled);
 
   const slice = readJsonIfExists(path.resolve(cwd, `contracts/generated/slices/${slug}/contract-slice.json`));
   const openapiBundle = readYamlIfExists(path.resolve(cwd, 'contracts/generated/openapi.bundle.yaml'));
@@ -238,7 +241,7 @@ function collect(opts) {
   return {
     cwd, runDir, slug, config, docsRoot, docs, uc, reqDoc, gates, scenarios,
     tiers, unitByTier, contractByTier, traces, derived, generatedAt, decisions,
-    attempt, assumptions, findings, issues, slice, openapiBundle, screens, files, depcruise, basis,
+    attempt, assumptions, findings, issues, settledIssues: settledIssueList, slice, openapiBundle, screens, files, depcruise, basis,
     head: headSha(cwd), actor, adrLayers, instrumentation, models,
   };
 }
@@ -363,12 +366,35 @@ function decisionGroup(d) {
   return t === 'confirmed' && d && d.by === 'recommended' ? 'confirmed_recommended' : t;
 }
 
-function loadIssues(dir) {
+/**
+ * この UC の中で片付いた課題の id (課題のファイル名から `.md` を除いたもの) → 片付き方。
+ *   upstream: 上流の差分が反映か取り下げをした (`resumed_after_upstream` の `issues`。写し直しは、課題ファイルが main から消えたことを確かめている)
+ *   carried : この UC の段に渡した (`carried_issues` の `issues`。戻し先の段の派遣文に添えて扱い、main マージで課題ファイルを消す)
+ * 課題のファイルは片付いた後も `<run>/issues/` に残るので、未決かどうかはイベントで決める。
+ */
+function settledIssues(events) {
+  const map = new Map();
+  for (const e of events || []) {
+    if (e.type === 'carried_issues') for (const i of e.issues || []) if (i && i.issue) map.set(String(i.issue), 'carried');
+  }
+  for (const e of events || []) {
+    if (e.type === 'resumed_after_upstream') for (const i of e.issues || []) if (i && i.id) map.set(String(i.id), 'upstream');
+  }
+  return map;
+}
+
+/**
+ * `<run>/issues/*.md` を読む。片付いた課題 (settledIssues) は `settled` に片付き方を持つ。
+ * `issues/consumed/` (その場で巻き戻して直した下書き) は読まない。
+ */
+function loadIssues(dir, events) {
   const out = [];
   if (!fs.existsSync(dir)) return out;
+  const settled = settledIssues(events);
   for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.md')).sort()) {
     const { data } = parseFrontMatter(fs.readFileSync(path.join(dir, f), 'utf8'));
-    out.push({ file: f, kind: data.kind || '未分類', title: data.title || f.replace(/\.md$/, '') });
+    const id = f.replace(/\.md$/, '');
+    out.push({ file: f, kind: data.kind || '未分類', title: data.title || id, settled: settled.get(id) || null });
   }
   return out;
 }
@@ -737,6 +763,16 @@ function buildIndexMd(ctx, preserved) {
     for (const it of ctx.issues) L.push(`| ${ja(KIND_JA, it.kind, it.kind)} | ${mdEscape(it.title)} |`);
   } else L.push('未決の課題なし。');
   L.push('');
+  const settledList = ctx.settledIssues || [];
+  if (settledList.length) {
+    const up = settledList.filter((it) => it.settled === 'upstream').length;
+    const carried = settledList.length - up;
+    const parts = [];
+    if (up) parts.push(`上流の差分で反映か取り下げ ${up}`);
+    if (carried) parts.push(`この UC の段で扱った ${carried}`);
+    L.push(`片付いた課題 ${settledList.length} 件は数えない (${parts.join('、')})。`);
+    L.push('');
+  }
   L.push('<!-- 要約: 表 1 つ (| 課題 | 背景 | 今の実装 | 対処 | 根拠 |)。課題 1 つ 1 行、セルは 40 字以内、根拠はコード位置 -->');
   L.push(summaryBegin('課題'));
   if (preserved['課題']) L.push(preserved['課題']);
@@ -1241,5 +1277,5 @@ module.exports = {
   run, collect, buildIndexMd, buildSequenceMd, buildApiInventory, buildDependencyGraph,
   buildSystemIndex, rebuildIndex, ucEntry, extractPreserved, parseCucumberReport, parseVitestReport,
   scenarioStatus, parseFrontMatter, latestDecisions, resolvedDecisions, decisionFor, loadAssumptions, layersFromAdr,
-  instrumentationCoverage, coverageRows, main, SUMMARY_NAMES,
+  instrumentationCoverage, coverageRows, settledIssues, loadIssues, main, SUMMARY_NAMES,
 };

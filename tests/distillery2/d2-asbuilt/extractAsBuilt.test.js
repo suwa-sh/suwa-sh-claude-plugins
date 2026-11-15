@@ -629,3 +629,63 @@ test('0.1.32 J2: 要求の差分で閉じた前提 (assumption_resolved) は処�
   assert.equal(decisionFor(merged, 'frontend', 'A-004').decision, 'resolved', '閉じた印が review の決定より勝つ');
   assert.equal(decisionFor(merged, 'frontend', 'A-006').decision, 'confirmed');
 });
+
+test('片付いた課題は未決に数えない: 上流の差分が反映か取り下げをした課題と、この UC の段に渡した課題 (実地確認: 閉じた課題が未決の件数に残った)', () => {
+  const repo = buildRepo();
+  const issue = (kind, title) => `---\nkind: ${kind}\ntitle: "${title}"\n---\n本文。\n`;
+  W(repo.dir, '.distillery/runs/register-loan/issues/002_upstream.md', issue('foundation', '部品が理由を出せない'));
+  W(repo.dir, '.distillery/runs/register-loan/issues/003_carried.md', issue('implementation', '画面の入力の検査が抜けている'));
+  W(repo.dir, '.distillery/runs/register-loan/issues/004_blocked.md', issue('requirement', '上限の数が決まっていない'));
+  W(repo.dir, '.distillery/runs/register-loan/issues/consumed/005_rewound.md', issue('contract', 'その場で直した契約の穴'));
+  const extra = [
+    { seq: 4, ts: '2026-09-23T10:10:00.000Z', type: 'blocked_on_upstream', issues: [{ id: '002_upstream', target: 'foundation' }] },
+    { seq: 5, ts: '2026-09-23T10:20:00.000Z', type: 'resumed_after_upstream', issues: [{ id: '002_upstream', target: 'foundation', resume_from: null }] },
+    { seq: 6, ts: '2026-09-23T10:21:00.000Z', type: 'carried_issues', issues: [{ issue: '003_carried', target_step: 'implementation', resume_from: null }, { issue: 'other-uc-issue', target_step: 'contract' }] },
+    // 今も上流で止まっている課題 (写し直していない) は未決のまま
+    { seq: 7, ts: '2026-09-23T10:30:00.000Z', type: 'blocked_on_upstream', issues: [{ id: '004_blocked', target: 'requirements' }] },
+  ].map((e) => JSON.stringify(e)).join('\n') + '\n';
+  W(repo.dir, '.distillery/runs/register-loan/events.jsonl', EVENTS + extra);
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| 未決の課題 \| 2 件 \(要求 1、ルール 1\) \|/);
+  assert.match(md, /\| ルール \| 貸出上限のルールが契約に無い \|/);
+  assert.match(md, /\| 要求 \| 上限の数が決まっていない \|/);
+  assert.doesNotMatch(md, /部品が理由を出せない/);
+  assert.doesNotMatch(md, /画面の入力の検査が抜けている/);
+  assert.doesNotMatch(md, /その場で直した契約の穴/);
+  assert.match(md, /片付いた課題 2 件は数えない \(上流の差分で反映か取り下げ 1、この UC の段で扱った 1\)。/);
+  // 片付いた課題が無ければ、その行を出さない
+  const plain = buildRepo();
+  run(opts(plain));
+  const md2 = fs.readFileSync(path.join(plain.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md2, /\| 未決の課題 \| 1 件 \(ルール 1\) \|/);
+  assert.doesNotMatch(md2, /片付いた課題/);
+  // 未決が 0 件になったときは「未決の課題なし」
+  const allSettled = buildRepo();
+  W(allSettled.dir, '.distillery/runs/register-loan/events.jsonl', EVENTS + JSON.stringify({ seq: 4, ts: '2026-09-23T10:20:00.000Z', type: 'resumed_after_upstream', issues: [{ id: '001_limit', target: 'decide' }] }) + '\n');
+  run(opts(allSettled));
+  const md3 = fs.readFileSync(path.join(allSettled.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md3, /\| 未決の課題 \| なし \|/);
+  assert.match(md3, /未決の課題なし。\n\n片付いた課題 1 件は数えない \(上流の差分で反映か取り下げ 1\)。/);
+});
+
+test('取り消された書き込み (result が error の db.query) は、分岐の表・データの流れ・traceability-index の tables_rw に数えない (実地確認)', () => {
+  const repo = buildRepo();
+  const SC3 = 'register-loan#同じ書籍の貸出が重なると拒否する';
+  const trace3 = [
+    traceLine(SC3, 'http.in', 'backend-api', { method: 'POST', path: '/loans', status: 409, operationId: 'createLoan', tier: 'backend-api' }),
+    traceLine(SC3, 'db.query', null, { sql: 'SELECT * FROM books WHERE id=$1', tables: ['books'], component: 'LoanRepo', result: 'ok' }),
+    traceLine(SC3, 'db.query', null, { sql: 'INSERT INTO loan_slots (id) VALUES ($1)', tables: ['loan_slots'], component: 'LoanRepo', result: 'error' }),
+  ].join('\n') + '\n';
+  W(repo.dir, '.distillery/runs/register-loan/traces/sc3.jsonl', trace3);
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| 同じ書籍の貸出が重なると拒否する \| 409 \| なし \| なし \|/, '分岐の表の書き込みは「なし」');
+  assert.ok(!md.includes('[(loan_slots)]'), 'データの流れに取り消された書き込みの表を描かない');
+  const index = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json'));
+  assert.deepEqual(index.ucs['register-loan'].tables_rw, { books: ['read'], loans: ['read', 'write'] });
+  assert.ok(!index.ucs['register-loan'].tables.includes('loan_slots'));
+  assert.ok(!('loan_slots' in index.tables));
+  const seqMd = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/sequence.md'), 'utf8');
+  assert.match(seqMd, /INSERT loan_slots \(失敗\)/, '全シナリオの図では、失敗した文と分かる');
+});

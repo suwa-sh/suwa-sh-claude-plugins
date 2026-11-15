@@ -7,6 +7,7 @@
  *   - 処理    : ティアごとの subgraph に、API operation と部品 (call の component)
  *   - データ  : テーブル [(name)]、発行メッセージ >name]、外部ホスト [[host]]
  *   - 辺      : 呼び出し -->、読み -. Read .->、書き == Write ==>、両方 == Read/Write ==>、発行 -- Publish -->
+ *               失敗した文 (meta.result が error。取り消された文) は読み書きの辺にしない
  * すべて重複排除・ソート済み (決定論)。
  *
  * システム横断 (_system/data-flow.md) は traceability-index の UC × テーブルから CRUD 表と UC → テーブルの図を描く。
@@ -14,7 +15,7 @@
  */
 'use strict';
 
-const { buildTree, callerOf, sqlVerb, withTableModes, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
+const { buildTree, callerOf, sqlVerb, withTableModes, queryFailed, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
 
 const READ = new Set(['SELECT', 'WITH', 'SHOW', 'EXPLAIN']);
 const WRITE = new Set(['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT', 'REPLACE', 'TRUNCATE']);
@@ -72,6 +73,7 @@ function buildFlows(traces, opts = {}) {
           break;
         }
         case 'db.query': {
+          if (queryFailed(n.meta)) break; // 失敗した文は取り消されている。読み書きの辺にしない
           const v = sqlVerb(n.meta.sql);
           const mode = READ.has(v) ? 'read' : WRITE.has(v) ? 'write' : null;
           if (!mode) break;

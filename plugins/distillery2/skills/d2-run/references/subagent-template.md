@@ -21,7 +21,7 @@
   それ以外への書き込みが必要になったら、作業を止めて理由を結果として返してください。引き継ぎファイル {handoff} は write-set に関わらず書いてよい
 - YAML を書くときは、値に `: ` や括弧を含む文字列を必ずクォートし、書き終えたら parse 確認してください
 {additional_instructions}
-完了後、生成・更新したファイル一覧と結果の要点を報告してください。自分で決めたことは、報告の「決めたこと」の見出しの下に 1 行ずつ `D<n> <要点>` で書き、引き継ぎファイルの `decisions` にも同じ `D<n>` で書いてください (ID の無い判断は受理されません)。
+完了後、生成・更新したファイル一覧と結果の要点を報告してください。自分で決めたことは、報告の「決めたこと」の見出しの下に 1 行ずつ `D<n> <要点>` で書き、引き継ぎファイルの `decisions` にも同じ `D<n>` で書いてください (ID の無い判断は受理されません)。決めたことが無ければ、見出しの下に「なし」と 1 行だけ書き、`decisions` は空の配列にしてください。
 ```
 
 ## 引き継ぎファイルの置き場 (`{handoff}`)
@@ -47,10 +47,10 @@
 | ④ precheck (ティアごと並列) | `<tier>` の点検役 | `d2-implement` `mode=precheck uc=<slug> tier=<tier>` | 既定 | 固定指示: `<skills>/d2-implement/references/precheck.md`。`{handoff}` は `.distillery/logs/precheck-<slug>/<tier>.handoff.json` (git 管理外。main の上で回るので main を汚さない) |
 | ④ scenario | UC シナリオの執筆役 | `d2-implement` `mode=scenario uc=<slug>` | 既定 | 固定指示: `<skills>/d2-implement/references/scenario.md` |
 | ④ contract | 契約の差分役 | `d2-contract` `mode=uc uc=<slug>` | 既定 | なし |
-| ④ scaffold | テスト足場の生成役 | `d2-implement` `mode=scaffold uc=<slug>` | 既定 | 固定指示: `<skills>/d2-implement/references/scaffold.md` |
+| ④ scaffold | テスト足場の生成役 | `d2-implement` `mode=scaffold uc=<slug>` | 既定 | 固定指示: `<skills>/d2-implement/references/scaffold.md`。実装が既にある run (stage-uc.md「scaffold の手順」) では `実装が既にある。この段より前で変わったファイル: <一覧>` を追記 |
 | ④ tier (ティアごと並列) | `<tier>` の実装者 | `d2-implement` `mode=tier uc=<slug> tier=<tier> attempt=<n>` | `models.implementer` | 固定指示: `<skills>/d2-implement/references/tier-impl.md`。`runGates.js は使わない (記録付きのゲートは全ティアの受理後にオーケストレータが回す)` を追記。blocker 由来の再実行時のみ `findings: <run>/attempt-<n-1>/findings.<tier>.yaml` を追記 |
 | ④ integrate | 結合の実装者 | `d2-implement` `mode=integrate uc=<slug>` | 既定 | 固定指示: `<skills>/d2-implement/references/integrate.md`。attempt ≥ 2 のときは `差し戻しの再実行。結線の変更が不要なら、変えずに完了条件だけ確かめて「結線変更なし」と報告してよい` を追記。as-built から戻ったとき (`returned_to_integrate`) は `as-built の集計で計装が足りない: 計装なし <ティア> / 正常系に部品なし <ティア>。結線を足す` を追記 |
-| ④ verify (ティアごと並列) | `<tier>` の Verifier | agent_type **`distillery2:d2-verifier`** / `d2-verify` `uc=<slug> tier=<tier> attempt=<n> run=<run> assumptions=<path>` | **`models.verifier`** (implementer と同じモデルに解決されてもよい。条件は別サブエージェント + 同等以上のモデル。startup.md「手順 2: モデルの解決」) | `変更ファイル一覧と他 UC と共有する変更ファイル (初期候補): <.distillery/logs/verify-<slug>-attempt-<n>.txt の絶対パス>` (d2-run が書く。1 行目から変更ファイル (`git diff --name-only base_head..HEAD` から `docs/README.md`・`docs/requirements/use-cases.yaml`・`docs/feedback/**` を除いたもの) を 1 行ずつ、空行、`共有の候補:` の後に `<ファイル> — <他 UC の slug>` を 1 行ずつ (無ければ「なし」)。件数に関わらず**常に**ファイルで渡す。stage-uc.md「verify の手順」。0.1.32 O16) と `実装者の固定指示: <パス>` (`<skills>/d2-implement/references/tier-impl.md` を絶対パスに展開して渡す。前提の照合先。d2-verify は他スキルの手順書を直接参照しないので d2-run が渡す。0.1.31) |
+| ④ verify (ティアごと並列) | `<tier>` の Verifier | agent_type **`distillery2:d2-verifier`** / `d2-verify` `uc=<slug> tier=<tier> attempt=<n> run=<run> assumptions=<path>` | **`models.verifier`** (implementer と同じモデルに解決されてもよい。条件は別サブエージェント + 同等以上のモデル。startup.md「手順 2: モデルの解決」) | `変更ファイル一覧と他 UC と共有する変更ファイル (初期候補): <.distillery/logs/verify-<slug>-attempt-<n>.txt の絶対パス>` (d2-run が `runState.js verify-list <run>` で書く。1 行目から変更ファイル (`git diff --name-only base_head..HEAD` に commit 前の変更を足したものから `docs/README.md`・`docs/requirements/use-cases.yaml`・`docs/feedback/**` を除いたもの) を 1 行ずつ、空行、`共有の候補:` の後に `<ファイル> — <他 UC の slug>` を 1 行ずつ (無ければ「なし」)。件数に関わらず**常に**ファイルで渡す。stage-uc.md「verify の手順」。0.1.32 O16) と `変更前との差分: <.distillery/logs/verify-<slug>-attempt-<n>.diff の絶対パス>` (検証役は git を使えないので、変更前のコードと比べる材料) と `実装者の固定指示: <パス>` (`<skills>/d2-implement/references/tier-impl.md` を絶対パスに展開して渡す。前提の照合先。d2-verify は他スキルの手順書を直接参照しないので d2-run が渡す。0.1.31) |
 | ④ asbuilt | as-built の抽出と要約役 | `d2-asbuilt` `uc=<slug> run=<run>` | 既定 | 依存グラフの実態 → 抽出 → 要約 → 検査までこのスキルが行う。抽出の標準出力 1 行を報告に転記する |
 | ① 要求の差分 (画面部品) | 画面の見本の修正役 | `d2-design` `mode=feedback items=<直すファイル (docs/design/storybook-app/src/<相対パス>。stories も部品も) と直す内容を 1 行ずつ>` | 既定 | 要求の差分の「残った作業」で人が「対応する」と選んだ `design` の項目だけ (stage-requirements.md「要求の差分」の手順 4)。③ の全生成はしない。報告に変えた / 消したファイルと項目ごとの「直した / 直せない (理由)」、項目が部品なら「影響する Story」(その部品から import を Story まで辿った一覧。0.1.32 実走 P11)、項目の外のファイルを変えたか消したら「項目の外の変更」(ファイルごとに、どの項目のための依存か。消したならどの項目で使われなくなったか。0.1.34 Q17)。取り込み直し (`importUi.js`) は d2-run が行う (0.1.32 J2) |
 | ② 決定の差分 (ADR) | ルールの穴の記録役 | `d2-decide` `mode=feedback issue=<課題> result=<結果ファイル>` | 既定 | 本体の作業ツリー (clean な main) で派遣する (worktree は使わない。routing.md「決定の差分」)。`課題: <docs/feedback/<issue>.md の絶対パス>`、`結果ファイル: <.distillery/logs/decide-<issue>.result.json の絶対パス>` を追記 |
@@ -74,7 +74,7 @@
 | ④ scenario | `features/<業務>/<slug>.feature`、`features/acceptance/**` |
 | ④ contract | `contracts/**`、`apps/*/test/contract/**`、`apps/<datastore_owner>/migrations/**`、`packages/contracts/**` |
 | ④ scaffold | `features/step_definitions/**`、`apps/<tier>/src/**/*.test.ts`、`apps/<tier>/src/**` (テストが import する入口の最小スタブ。**新規ファイルだけ**。既存ファイルの変更・削除は不可)、`<run>/reports/**` (完了条件の `--expect-red unit` が書く。単独の段なので競合しない) |
-| ④ tier | `apps/<tier>/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除) |
+| ④ tier | `apps/<tier>/**`、`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先 `.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。回すたびに上書きし、消さない) |
 | ④ integrate | `features/step_definitions/**`、`features/support/**`、`<run>/reports/**`、`<run>/traces/**` (完了条件の runGates が書く。integrate は単独の段なので競合しない) |
 | ④ verify | `<run>/attempt-<n>/findings.<tier>.yaml` |
 | ④ asbuilt | `docs/as-built/<業務>/<UC>/**`、`docs/as-built/_system/**` (スクリプトの生成物。LLM が手で書くのは index.md の要約ブロックの中だけ)、`<run>/reports/**` (depcruise の結果と抽出の集計)、`<run>/issues/<ts>_asbuilt_<slug>.md` (要約の課題のうち、人レビューに載っていないものの下書き) |

@@ -92,6 +92,15 @@ test('validate --report: 報告の「決めたこと」が D<n> で引き継ぎ�
   assert.ok(H.validate({ ...HO, decisions: [{ id: 'X1', topic: 't', choice: 'c', reason: 'r' }] }).length > 0, 'id は D<n>');
 });
 
+test('validate --report: 決めたことが無いときは「なし」の 1 行で通る (理由を括弧で添えても通る)。decisions があるのに「なし」なら拒む', () => {
+  const none = { ...HO, decisions: [] };
+  for (const line of ['なし', '- なし', 'なし (手順書どおりに実行した)', 'なし（手順書どおり）。', '無し。']) {
+    assert.deepEqual(H.checkReport(none, `## 決めたこと\n\n${line}\n\n## 手順書の不明点\n\nなし\n`), [], line);
+  }
+  assert.ok(H.checkReport(none, '## 決めたこと\n\nなし。ただし並び順は開始時刻にした\n').some((e) => /D<n> で始まらない行/.test(e)), '「なし」の後に判断を書いた行は拒む');
+  assert.ok(H.checkReport(HO, '## 決めたこと\n\nなし (手順書どおり)\n').some((e) => /件数/.test(e)));
+});
+
 test('decisionLog add --decision: 決めたことを同じ D<n> で記録し、list と md の一覧に残る (担当が決めた)', () => {
   const root = repo();
   const run = rs.openRun(root, 'book-room');
@@ -107,6 +116,34 @@ test('decisionLog add --decision: 決めたことを同じ D<n> で記録し、l
   const md = DL.toMarkdown(DL.list({ root }));
   assert.match(md, /\| book-room:tier-backend-1:D1 \| 予約の重なりの判定 \| 開始と終了の半開区間で比べる \| 担当が決めた/, '一覧に D<n> の ID が残る');
   assert.throws(() => DL.add({ run, handoff: hf, decision: 'D9', answer: 'x', by: 'recommended' }), /決めたことが無い/);
+});
+
+test('decisionLog add-handoff: 引き継ぎファイル 1 つ分 (推奨で決める問いと担当が決めたこと) をまとめて記録し、人に返す問いは記録せずに返す。回し直しても重ねない', () => {
+  const root = repo();
+  const run = rs.openRun(root, 'book-room');
+  const hf = path.join(run, 'handoff', 'tier-backend-1.json');
+  const asks = [
+    { id: 'store', kind: 'choice', question: '監査ログの置き場', options: [{ label: 'DB', impact: 'a' }, { label: 'ファイル', impact: 'b' }], recommended: 'DB', reason: '抜けない' },
+    { id: 'staff', kind: 'unknown_fact', question: '社員数', options: [{ label: '100', impact: 'a' }, { label: '1000', impact: 'b' }], recommended: '100', reason: '要望の規模' },
+    { id: 'seed', kind: 'choice', question: '初期データ', options: [{ label: '移行', impact: 'a' }, { label: '画面', impact: 'b' }], recommended: null, no_recommendation_reason: '手掛かりが無い' },
+  ];
+  w(hf, JSON.stringify({ ...HO, asks }));
+  const r = DL.addHandoff({ run, handoff: hf, mode: 'auto' });
+  assert.deepEqual(r.added, ['handoff:tier:store', 'book-room:tier-backend-1:D1', 'book-room:tier-backend-1:D2']);
+  assert.deepEqual(r.to_human.map((x) => x.id), ['staff', 'seed'], '事実の問いと推奨の無い問いは人に返す (記録しない)');
+  assert.deepEqual(DL.addHandoff({ run, handoff: hf, mode: 'auto' }).added, [], '回し直しても重ねない');
+  assert.equal(DL.list({ root }).length, 3);
+  // 推奨で進めるモード: 事実の問いは仮置きで記録し、推奨の無い問いは進行役に返す
+  const hf2 = path.join(run, 'handoff', 'tier-frontend-1.json');
+  w(hf2, JSON.stringify({ ...HO, decisions: [], asks }));
+  const r2 = DL.addHandoff({ run, handoff: hf2, mode: 'recommend' });
+  assert.deepEqual(r2.added, ['handoff:tier:store', 'handoff:tier:staff']);
+  assert.deepEqual(r2.make_recommendation.map((x) => x.id), ['seed']);
+  assert.equal(DL.list({ root }).find((e) => e.id === 'handoff:tier:staff').provisional, true);
+  // 形の検査に落ちる引き継ぎファイルは記録しない
+  const bad = path.join(run, 'handoff', 'bad.json');
+  w(bad, JSON.stringify({ schema_version: 'distillery2.handoff/v1', step: 'tier', asks: [] }));
+  assert.throws(() => DL.addHandoff({ run, handoff: bad, mode: 'auto' }), /検査に落ちる/);
 });
 
 test('decisionLog: 推奨の無い問いは、進行役が作った推奨を --provisional のときだけ推奨として記録できる', () => {

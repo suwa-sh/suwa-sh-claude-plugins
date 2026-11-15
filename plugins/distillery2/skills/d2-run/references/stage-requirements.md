@@ -120,7 +120,7 @@ trailer は反映した課題ごとに `Feedback-Consumed: docs/feedback/<issue>
 - 報告に `npx storybook build` が通ったことがある
 - d2-run が回す `node <skills>/d2-design/scripts/validateScreens.js docs/design/screens.yaml --app docs/design/storybook-app/src --use-cases docs/requirements/use-cases.yaml` が exit 0 (Story を消したときの `screens.yaml` の参照漏れを拾う)
 - write-set (`docs/design/**`) の外が変わっていない
-- `git status --porcelain --untracked-files=all -- docs/design` の変わったファイル (変更・追加・削除を 1 ファイルずつ) がすべて、項目のファイルか、報告の「項目の外の変更」に項目との対応付きで載っているか、`docs/design/screens.yaml` (Story か画面を消す項目があるときだけ) のどれかに入る
+- `git status --porcelain --untracked-files=all -- docs/design` の変わったファイル (変更・追加・削除を 1 ファイルずつ) がすべて、項目のファイルか、報告の「項目の外の変更」に項目との対応付きで載っているか、`docs/design/screens.yaml` (画面・Story・variant を足したか消したか名前を変えた項目があるときだけ) か、撮り直した `docs/design/screenshots/**` のどれかに入る
 - **項目がすべて「直した」**
 
 受理しないとき:
@@ -131,12 +131,12 @@ trailer は反映した課題ごとに `Feedback-Consumed: docs/feedback/<issue>
 受理後の作業:
 
 - `node <skills>/d2-foundation/scripts/importUi.js --from docs/design/storybook-app --cwd .` で `packages/ui/**` に取り込み直す (前回の一覧にあって消えたファイルは消える)
-- 続けて、main マージ済み UC (`status: done`) のうち `tiers` に frontend を含むものごとに `runGates.js --uc <slug> --tiers frontend --only unit` を回す (取り込んだ部品を使う既存 UC の回帰)。落ちたら止まって報告する (design の差し戻し。commit しない)
+- 続けて、回帰の相手 (`node runState.js regression-targets .` の全件。`status: done` の UC と開き直した UC) のうち `tiers` に frontend を含むものごとに `runGates.js --uc <slug> --tiers frontend --only unit` を回す (取り込んだ部品を使う既存 UC の回帰)。落ちたら止まって報告する (design の差し戻し。commit しない)
 
 ### 手順 5〜7
 
 5. 上流で止めた UC の feature は消さない (止めた課題がすべて main から消えると、次の自動選択が `resume` を返して写し直す。要求の課題は scenario から続く)
-6. 決定・契約への波及は `node <skills>/d2-common/scripts/lib/basis.js check <対象ファイル…> requirements=docs/requirements adr=docs/adr contracts=contracts` で見つける。
+6. 決定・契約への波及は `node <skills>/d2-common/scripts/lib/basis.js check <対象ファイル…> requirements=docs/requirements adr=docs/adr contracts=contracts` で見つける (スクリプトは `scripts/lib/` にある)。
    STALE は完了報告に載せるだけで、自動では追随しない (as-built はその UC を次に回したときに作り直す)。
 7. 自動選択をもう一度呼んで続ける (写し直し待ちの機能・次の上流の差分・次の UC)
 

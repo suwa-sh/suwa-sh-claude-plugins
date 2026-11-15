@@ -12,9 +12,18 @@
 
 ## トレースの形
 
-1 行 = `{ts, ts_end, seq, parent, scenario, kind, name, meta}`。`ts` は開始、`ts_end` は完了、`seq` は開始順、
+1 行 = `{ts, ts_end, seq, seq_end, parent, scenario, kind, name, meta}`。`ts` は開始、`ts_end` は完了、`seq` は開始順、
 `parent` は呼び出し元 span の seq。as-built はこの親子関係から「画面 → API → ユースケース → リポジトリ → DB」の
 シーケンス図とデータフロー図を描く。**計装していない部品は図に出ない**ので、下の結線は UC が通る全ティア・全レイヤに行う。
+
+| 項目 | 中身 | as-built での使い方 |
+|---|---|---|
+| `seq_end` | 完了した時点で次に振られる seq | 兄弟の span の seq がこれより小さければ並行 (`Promise.all` など)。図は `par` で囲む |
+| `x-scenario-span` ヘッダ | `tracedFetch` が http.out の span の中で付ける。値は http.out の seq | 受け側の http.in が http.out の子になり、画面 → http.out → http.in の入れ子になる |
+| `meta.result` | 例外・reject なら `error`、それ以外は `ok` | `error` の `db.query` は取り消された文として、読み書きに数えない |
+| `meta.returned` | call の戻り値の種類。`{ ok: false, error: { code } }` は `code`、`{ kind }` は `kind` (`returnLabel`) | 戻りの線の名前。値で返した業務の拒否が `ok` と描かれない |
+
+`meta.returned` に残るのは、`{ ok, value | error }` か `{ kind }` の形の戻り値だけである。ほかの形の戻り値は、図で `ok` と描かれる。
 
 ## 実装者が結線するもの (d2-implement mode=integrate が読む)
 
@@ -23,6 +32,13 @@
      `db` はシナリオごとの pglite (migration 済み。RDB が無ければ undefined)、`clock` は固定の時計。
      引数は省略できるようにする (契約テストは `createTestApp()` か `createTestApp({ fixture })` で呼ぶ)。省略された `db` と `clock` は
      テスト用の既定 (migration 済みの新しい pglite と `systemClock`) で埋める
+   - **一時 DB の後始末**: 同じファイルから `closeTestApps(): Promise<void>` も export する。
+     `closeTestApps()` は、`createTestApp` が自分で作ったもの (`db` を省略されたときの pglite) をすべて閉じる。
+     渡された `db` は閉じない (渡した側が閉じる。api ドライバの DB は hooks.ts の After が閉じる)。
+     生成された契約テストが、例の後 (`afterEach`) に呼ぶ。RDB が無いティアでも、何もしない関数として export する
+   - **時計を固定するテスト用データ**: 契約の slice の `fixtures` の説明に現在時刻が書いてあるテスト用データでは、
+     省略された `clock` を、その時刻の固定の時計で埋める (契約テストは時計を渡さないため)。
+     呼び出し側が `clock` を渡したときは、渡された時計を使う
      usecase と repository には、この `db` と `clock` を渡す (本番の composition root は実際の DB と `systemClock` を渡す)。
      時計の型はティアが自分で置く (`now(): Date` を持つ口。本番のコードから `@repo/test-support` を import しない。`FixedClock` はこの形に合う)。
      現在時刻は必ず `clock.now()` から取る (`new Date()` を実装に直接書かない。受入基準の「現在が … のとき」を確かめられなくなる)

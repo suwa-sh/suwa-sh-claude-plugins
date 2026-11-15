@@ -75,10 +75,19 @@ node <skills>/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
 旧 ADR の本文と旧 `rules[]` は変えない (決定の履歴を残す)。
 既存の ADR を、それ以外で変えない。
 
+### 手順 5 の後: main マージ済みの UC への波及
+
+足した ADR に合わせて、main マージ済みの UC (`docs/requirements/use-cases.yaml` の `status: done`) のシナリオ・契約・実装を直す必要があるかを、ADR の `rules[]` と UC の一覧から判断する。
+直す必要がある UC は、UC ごとに引き継ぎファイルの `upstream_issues` に書く (戻し先は `scenario` / `contract` / `implementation` のうち直し始める段。`uc` にその UC の slug)。
+進行役が課題ファイルにし、次の自動選択がその UC をその段から開き直す。
+書かなかった UC は、開き直しの推奨にならない (決定が変わっただけでは作り直さない)。
+
 ### 手順 6: 検証、索引、要約への追記
 
 `validateAdr.js` → `genAdrIndex.js` を回す (段階②と同じコマンド)。
-PASS するまで直す。
+自分が足した ADR (と、置き換えで front matter を変えた旧 ADR) の違反は、PASS するまで直す。
+この派遣で触っていない既存の ADR だけが落ちるときは、その ADR を直さない (手順 5 の「既存の ADR を変えない」が先に立つ)。
+自分の変更を残したまま、結果ファイルへ `status: blocked`、`reason_kind: scope`、理由 (落ちた ADR と検査の出力の要点) を書いて止まる。
 `genArchitectureDoc.js` は回さない (ティアを変えないので、図は変わらない)。
 
 `_review-summary.md` は作り直さず、**追記する**。
@@ -89,6 +98,7 @@ PASS するまで直す。
 | 「確認してほしいこと」 | 足した ADR の `confidence: low` の前提と、直した非機能グレード表の根拠を、1 行ずつ |
 
 既存の行は、置き換えた ADR の行だけ直す。
+それ以外の既存の行には、注記も足さない (足した ADR の行に「どの決定を補うか」を書けば足りる)。
 追記しないと、要約を読む人に変更が見えない。
 決定のレビューが、毎回「要約が古い」を課題にする。
 
@@ -108,6 +118,7 @@ d2-run は、このファイルで分岐する。
 
 - 課題ファイル `docs/feedback/<issue>.md` (派遣文で渡す)
 - `docs/adr/*.md` (既存の ADR と索引)、`docs/nfr/nfr-grade.yaml` (決定の根拠)
+- `docs/requirements/use-cases.yaml` (main マージ済みの UC への波及を判断するとき)
 
 ## mode=feedback: 書くもの
 

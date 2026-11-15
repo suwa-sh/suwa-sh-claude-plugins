@@ -51,6 +51,7 @@ UC が契約のどの要素を使うかは [`uc-index.md`](uc-index.md) が持�
 - **codegen**: `genRdbDdl.js` が Postgres migration・pglite の DB 契約テスト・
   `packages/contracts/<id>/tables.ts` (row 型 + 名前定数) を生成する。
 - **tests**: pglite に migration を当て、`information_schema` と bundle を突合する。
+  一意制約 (主キーと UNIQUE) が 2 件目の行を弾くことも確かめる。
 - **verify**: UC slice の tables が bundle に実在すること。列・型・FK は `compileRdbSchema.js` が検証する。
 - **read-set**: provider / consumers とも slice (契約対象テーブルの範囲) + 生成 row 型。
   migration は provider ティアの `migrations/` 配下に置く。

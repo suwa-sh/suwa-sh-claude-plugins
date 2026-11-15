@@ -51,6 +51,21 @@ git は使わない。
 
 手順 2 の根拠には、レポートの該当箇所、トレースの行、要求の行のどれかを書く。
 
+手順 4 で findings に書く値:
+
+| 値 | 書き方 |
+|---|---|
+| `verified_at` | findings を書いた時刻。`date -u +%Y-%m-%dT%H:%M:%SZ` の出力を書く (推測で書かない) |
+| `assumptions_sha256` | 手順 4 の検査の前に、前提のファイルを `validateAssumptions.js record` で検査した結果の `sha256` (下のコマンド) |
+| 前の attempt の指摘 | 書かない。findings は今の attempt の実装だけを判定する。前の attempt で指摘して今は直っているものは、指摘にしない (直ったことは `viewpoints_checked.uc_intent.note` に 1 行で書く) |
+| 前の attempt から減った前提 | 今の前提のファイルにある A-id だけに verdict を付ける。無くなった A-id には付けない (契約や要求に明示されて前提でなくなったものは、実装者が外す) |
+
+手順 4 の検査の前に回す、前提のファイルの検査 (読むだけ。`sha256` を得る):
+
+```
+node <skills>/d2-implement/scripts/validateAssumptions.js record <assumptions> --uc <slug> --tier <tier> --attempt <n>
+```
+
 手順 4 の検査:
 
 ```
@@ -72,7 +87,8 @@ node <skills>/d2-implement/scripts/validateAssumptions.js verdicts <findings> --
 | 要求 | `docs/requirements/requirements.yaml` の該当 spec_ids、`docs/requirements/rdra/条件.tsv` / `状態.tsv` の該当行 |
 | ルール | `docs/rules/common.md`、`docs/rules/tier-<kind>.md`、`docs/rules/testing.md` |
 | 契約 | `contracts/generated/slices/<slug>/contract-slice.json` (と rdb-slice.yaml) |
-| 実装 | `git diff --name-only <base_head>..HEAD` の変更ファイル (呼び出し側が一覧を渡す)。自ティアの `apps/<tier>/` |
+| 画面 (画面を持つティア) | `docs/design/screens.yaml` の該当画面、`packages/ui/` の部品と story |
+| 実装 | `git diff --name-only <base_head>..HEAD` の変更ファイル (呼び出し側が一覧を渡す)。自ティアの `apps/<tier>/`。変更前との差分 (呼び出し側が渡す差分ファイル。git を使わずに、変更前のコードと比べる材料にする) |
 | 固定指示 | 派遣文で渡された「実装者の固定指示」のパス (`<skills>/<実装者のスキル>/references/<固定指示>.md` の形)。前提の照合先として読む。このスキルから他スキルの手順書を直接参照しない |
 | 他 UC への波及 (例外) | 呼び出し側が渡す「他 UC と共有する変更ファイル」、自ティアの変更ファイルの import 元 (`rg` で辿る)、`contracts/uc-index.yaml`、`docs/as-built/_system/traceability-index.json`、候補に紐づく他 UC のシナリオ (`features/<業務>/<他 slug>.feature`) |
 

@@ -807,12 +807,12 @@ processes:
     template_row: "④ tier"
     write_set:
       - "`apps/<tier>/**`"
-      - "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
+      - "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先 `.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。回すたびに上書きし、消さない)"
     reads: [rules, feature, contract-slice, contracts-code, use-cases, req-usdm, req-rdra, design, ui, tier-src, test-support, findings]
     writes: [tier-src, assumptions, migrations]
     allowed_writes: [tier-dir, assumptions]
     notes:
-      - "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
+      - "例外: ゲートの `{report}` の置き換え先 `.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。回すたびに上書きし、消さない)"
   - id: implement.integrate
     name: 結合
     skill: d2-implement
@@ -840,7 +840,7 @@ processes:
     template_row: "④ verify"
     write_set:
       - "`<run>/attempt-<n>/findings.<tier>.yaml`"
-    reads: [reports, traces, assumptions, feature, use-cases, req-usdm, req-rdra, rules, contract-slice, tier-src, uc-index, asbuilt-system, skill-docs]
+    reads: [reports, traces, assumptions, feature, use-cases, req-usdm, req-rdra, rules, contract-slice, design, ui, tier-src, uc-index, asbuilt-system, skill-docs]
     writes: [findings]
     allowed_writes: [findings]
   - id: asbuilt
@@ -1092,7 +1092,7 @@ processes:
       - "`docs/adr/**`"
       - "`docs/nfr/**`"
       - "`.distillery/logs/decide-<issue>.result.json`"
-    reads: [feedback-docs, adr, nfr]
+    reads: [feedback-docs, adr, nfr, use-cases]
     writes: [adr, nfr, decide-result]
     allowed_writes: [adr-dir, nfr, decide-result]
     scripts: [validateAdr.js, genAdrIndex.js, validateNfrGrade.js, generateNfrGradeMd.js]

@@ -8,7 +8,7 @@
 ## 読むもの (read-set)
 
 - `.distillery/config.yaml` (ティアと能力)
-- `docs/requirements/use-cases.yaml` の UC の行 (`spec_ids`・`tiers_hint`)、`docs/requirements/requirements.yaml` の該当する仕様と受入基準、`docs/requirements/rdra/**` (情報・状態・条件)
+- `docs/requirements/use-cases.yaml` の UC の行 (`spec_ids`・`tiers`・`tiers_hint`。点検するティアは派遣文の `tier=` が正である。`tiers_hint` は要求の段の推定で、ティアの種類 (frontend / backend など) を書く。`tiers` は契約から決めたティアの id で、開き直した UC などに付く)、`docs/requirements/requirements.yaml` の該当する仕様と受入基準、`docs/requirements/rdra/**` (情報・状態・条件)
 - `docs/adr/*.md` (決定と front matter の rules)、`docs/rules/**` (開発ルール)
 - `contracts/**` (骨格: 共通のコンポーネント・エラーの型・既にある operation)
 - 手順書: `<skills>/d2-common/references/handoff.md` (引き継ぎファイルの書き方と「前のステップの課題にする線」)
@@ -34,7 +34,7 @@
 
 ## 完了条件
 
-- `node <skills>/d2-common/scripts/handoff.js validate {handoff}` が exit 0 (課題が 0 件でも空の配列で書く)
+- `node <skills>/d2-common/scripts/handoff.js validate {handoff}` が exit 0 (課題が 0 件でも空の配列で書く。`step` は `precheck`。置き場が `.json` なので JSON で書く)
 
 ## 禁止
 

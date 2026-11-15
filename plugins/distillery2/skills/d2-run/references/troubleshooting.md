@@ -36,10 +36,11 @@
 - 原因: パイプの終了コードは最後のコマンド (`cut`) のもので、前の失敗が隠れる
 - 回避: 1 コマンド = 1 目的で分けて実行し、終了コードを見てから次へ進む。パイプで整形しない
 
-## headless で `mktemp` が拒否される (tier の実装者がゲートの `{report}` の置き換え先を作れない)
+## headless で確認ページの雛形 (human-html-review の `assets/base.html`) を読めない
 
-- 症状: `mktemp` を含むコマンドが allowedTools に無く止まる (0.1.31 の試し運転 O17)
-- 回避: `node -e "console.log(require('os').tmpdir()+'/d2-'+Date.now()+'.json')"` で OS の一時ディレクトリのファイル名を作り、それを `{report}` に使う (node は許可済み)。使い終えたら消す (tier-impl.md 4)
+- 症状: human-html-review のスキルのディレクトリ (`assets/base.html`・`references/*`・`scripts/validate.py`) の読み取りが権限で拒否され、確認ページを雛形なしで自作することになる。自作のページは検査 (`validate.py`) の ERROR が残る (会議室の予約の実地確認: 選択肢が組み立て部品の外・コピーボタンにコピー元の指定が無い)
+- 原因: headless の起動で、toolbox プラグインのスキルのディレクトリが読み取りの許可に入っていない (distillery2 のスキルのディレクトリだけを渡している)
+- 回避: 起動する側が、toolbox プラグインのディレクトリも読み取りの許可に入れる (`claude -p` なら `--add-dir <toolbox プラグインのディレクトリ>`)。進行役の側では回避しない: 雛形を読めないまま確認ページを自作せず、読めなかったパスを添えて止まって報告する
 
 ## `runState.js event` / `done` に長い日本語の JSON を argv で渡すとハーネスの検査で止まる
 
@@ -70,7 +71,6 @@
 | シナリオで止まる | 執筆役の下書きの front matter が `uc:` (定義は `from_uc`) | そのままでよい。`file-issues` が `from_uc` に直す |
 | シナリオで止まる | 止まった後の作業ブランチが feature のまま | そのままでよい。次の起動は clean なら main に切り替える |
 | 人レビュー | 全体の承認だけで、個別に答えていない回答任意の前提 | 未回答として `auto_confirmed`。検証役が足した前提 (`V-xxx`) も同じ |
-| verify | 検証役に渡す「変わったファイルの一覧」と「共有の候補」を作るスクリプトが無い | `git diff --name-only <base_head>..HEAD` で一覧を作る。共有の候補はそのうち `packages/`・`features/support/`・`features/step_definitions/` の変更。補助スクリプトは `.distillery/logs/` に `.cjs` で置く |
 | main マージ | 止まったときに並べる「指摘の対象ファイル」に、合否に関わらない軽い指摘の対象も出る | 合否を決める重さ (`--fail-level`) 以上の指摘の対象だけで判定する |
 | main マージ | static で落ちると、単体テスト以降の段が回っていない | 報告に「単体テスト以降は回っていない」と添える |
 | main マージ | squash の本文 (`prTrailers.js` の出力) をファイルにする方法 | 標準出力を `.distillery/logs/` の下のファイルへリダイレクトし、`git commit -F` で渡す (作業ディレクトリの中なら通る。`/tmp` は上の節のとおり拒まれる) |
@@ -84,7 +84,6 @@
 | main マージ | 人が feature で直した commit (UC と無関係な検査の設定など) が squash で UC の 1 commit に入る | 手順どおり (feature の上で直す規則)。完了報告にその commit を挙げる |
 | verify | 検証役が「git は禁止」を読み取りの git まで禁止と解釈し、差分でなく今のコードで照合する | 受理してよい。検証役の手順は git を使わない (変更ファイルは一覧で渡し、照合先は今のコード) |
 | やり直し | 新しい run の前提の記録の番号が、前の run の番号の続きから始まる | そのままでよい。`validateAssumptions.js` が見るのは 1 つの記録ファイルの中で番号が重ならないことだけ |
-| 画面の見本 | Story を足したとき、`screens.yaml` の状態一覧に載せるかの規定が無い | 規定は無い。受理は `validateScreens.js` が通るかで決める (載せなくても受理する) |
 | 画面の見本 | 修正役が項目に無い表現 (ボタンを押せなくするなど) を足しても、受理の検査 (ファイル単位) で拾えない | 項目のファイルの中の変更は受理する。確認ページの差分で人が見る |
 | main の履歴 | 機能は squash して 1 commit なのに、上流の差分は段ごとの commit が main に並ぶ (粒度が揃わない) | 意図どおり。上流の差分の commit は basis が ID で指すので squash しない。差分は一時の branch でまとめて ff するので、途中の状態は main に入らない |
 | 要求の差分 | 6 の `docs/adr/[0-9]*.md` をそのまま渡すか、展開して列挙するか | シェルの展開で列挙して渡す (`basis.js` は引数をそのままファイルとして読み、展開しないので、そのままだと MISSING になる) |

@@ -21,7 +21,7 @@ v1 の 4 段 red baseline を「上位段は静的確認、実行して落とす
 
 ## 完了条件 (静的確認 + 単体の red)
 
-1. `node <skills>/d2-common/scripts/lib/gherkin.js` 相当の静的確認: feature が parse でき、
+1. 静的確認: `node <skills>/d2-implement/scripts/checkScenario.js features/<業務>/<slug>.feature --use-cases docs/requirements/use-cases.yaml --requirements docs/requirements/requirements.yaml --uc <slug> --acceptance-dir features/acceptance` が exit 0 (feature が parse でき、受入基準を網羅する) で、
    `npx cucumber-js -p dryrun --dry-run --tags "@uc:<slug>"` で undefined / ambiguous step が 0 (pending は可)。
    `-p dryrun` は cucumber.js の dryrun プロファイル (アプリを import しない)。既定プロファイルは world.ts 経由で `apps/<backend>/src/test-app` を読むので、
    実装前は解決に失敗する (0.1.10 実走 ④-4)
@@ -37,5 +37,10 @@ v1 の 4 段 red baseline を「上位段は静的確認、実行して落とす
 - ティアの実装コードは書かない (足場だけ)。書き込みは step_definitions、各ティアの test ファイル、新規の入口スタブに限定する
 - 既存の `apps/<tier>/src/**` (テスト以外) は変更・削除しない (d2-run が受理時に確かめる)
 - 入口が無いことを動的 import (`import(/* @vite-ignore */ ...)` など) で回避しない。スタブを置く (0.1.16 実走で回避策として使われた)
-- 報告に「step 数 / pending 数 / ティアごとの red テスト名 / 置いた入口スタブの一覧 / dry-run と expect-red の結果」を書く
+- 報告に「step 数 / pending 数 / ティアごとの red テスト名 / red を書いたティア / 置いた入口スタブの一覧 / dry-run と expect-red の結果」を書く。
+  step 数は、この UC の feature (と `@uc:<slug>` を持つ受入の feature) の step の延べ数である。pending 数は、そのうち実行すると pending になる step の数で、他の UC の step 定義を使い回して既に実装がある step は数えない
+- テストを緑にしない。この段が確かめるのは red だけである。契約やシナリオの変更で既存の実装やテストが合わなくなった分 (ビルドが通らない・既存のテストが落ちる) は、直さずに報告に書く (tier の段が直す。他のティアの書き込み範囲に手を出さない)
+- 実装が既にあるとき (派遣文に「実装が既にある。この段より前で変わったファイル」が添えてある。巻き戻しや写し直しで、実装を終えた後に scenario か contract へ戻った): 既存の `<slug>.steps.ts` の定義と既存のテストは残す。足りない step だけ pending で足す。
+  red は、変わったファイルが求める新しい振る舞いを実装するティアにだけ書き、完了条件 2 は `--tiers <そのティア>` を付けて回す。報告の「red を書いたティア」にそのティアを書く。
+  新しい振る舞いが無い (説明文だけの変更など、どのティアにも assertion で落ちるテストを書けない) なら、テストを足さず、完了条件 2 を回さずに「red を書いたティア: なし」と理由を報告する (進行役が既存のテストが緑のままであることを確かめる)
 - やり直し (派遣文に網羅されていない受入基準が添えてある。0.1.35): 既存の `<slug>.steps.ts` の定義は残し、足りない step だけ pending で足す。red は新しい受入基準を実装するティアにだけ書き、完了条件 2 は `--tiers <そのティア>` を付けて回す。報告にそのティアを書く (他のティアの既存の単体テストは緑のまま)

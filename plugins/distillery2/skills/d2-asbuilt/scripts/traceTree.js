@@ -2,9 +2,12 @@
 /**
  * traceTree.js — トレース JSONL の行を「呼び出しの木」に組み立てる純関数群 (renderSequence / renderDataFlow / extractAsBuilt が使う)
  *
- * 行の形 (tracer.ts v2): {ts, ts_end?, seq, parent?, scenario, kind, name, meta}
- *   - seq   : 開始順の通し番号。行はファイルに完了順で並ぶので seq で並べ直す
- *   - parent: 呼び出し元 span の seq。HTTP 越しは x-scenario-span ヘッダで運ばれる
+ * 行の形 (tracer.ts v2): {ts, ts_end?, seq, seq_end?, parent?, scenario, kind, name, meta}
+ *   - seq    : 開始順の通し番号。行はファイルに完了順で並ぶので seq で並べ直す
+ *   - seq_end: 完了した時点で次に振られる seq。兄弟の span の seq がこれより小さければ、2 つは並行に動いている
+ *   - parent : 呼び出し元 span の seq。HTTP 越しは x-scenario-span ヘッダで運ばれる
+ *   - meta.result  : 例外・reject なら error。db.query の error は、文が取り消されて何も読み書きしていない
+ *   - meta.returned: call が値で返した結果の種類 (業務の拒否など)。戻りの線の名前に使う
  * seq の無い旧形式 (0.1.4 以前) はファイル順のまま、全行を根として扱う。
  *
  * 木の各ノード = {ev, kind, meta, seq, parent: Node|null, children: Node[], participant: {kind, label, tier, layer}}
@@ -134,12 +137,57 @@ function callerOf(node, actorLabel) {
   return { kind: 'actor', label: actorLabel || DEFAULT_ACTOR, tier: null, layer: null };
 }
 
+/** 文が失敗したか。tracer は例外・reject を meta.result = 'error' で残す。失敗した文は取り消され、何も読み書きしていない。 */
+function queryFailed(meta) {
+  return Boolean(meta && meta.result === 'error');
+}
+
+/**
+ * 兄弟の span (seq の昇順) を、並行に動いた組にまとめる。
+ * 後の span の seq が、組のどれかの seq_end より小さければ、その span は前の span が終わる前に始まっている (同じ組)。
+ * seq_end の無い行 (瞬間イベントや旧形式) は組を広げない。
+ * @returns {Node[][]} 組の配列。要素が 1 つの組は並行でない
+ */
+function overlapGroups(siblings) {
+  const groups = [];
+  let cur = null;
+  let end = null;
+  for (const n of siblings) {
+    if (cur && end != null && n.seq < end) cur.push(n);
+    else { cur = [n]; groups.push(cur); end = null; }
+    const e = n.ev && typeof n.ev.seq_end === 'number' ? n.ev.seq_end : null;
+    if (e != null && (end == null || e > end)) end = e;
+  }
+  return groups;
+}
+
+/** 並行の組の 1 本の名前 (par / and の後ろに書く)。 */
+function branchLabel(node) {
+  const m = node.meta || {};
+  switch (node.kind) {
+    case 'call': return String(m.fn || node.ev.name || 'call');
+    case 'http.in': return `${m.method || ''} ${m.path || ''}`.trim() || 'http';
+    case 'http.out': { const p = pairedHttpIn(node); return p ? branchLabel(p) : (`${m.method || ''} ${m.url || ''}`.trim() || 'http'); }
+    case 'db.query': return sqlVerb(m.sql);
+    case 'publish': return String(m.message || node.ev.name || 'publish');
+    default: return String(node.ev.name || node.kind);
+  }
+}
+
 /**
  * 木を深さ優先で「描画イベント」の列に平らにする (renderSequence が矢印に変換する)。
  *   {type: 'request'|'response'|'leaf', node, from, to, label}
+ *   {type: 'par'|'and', node, label} / {type: 'end'}   並行に動いた兄弟の組 (mermaid の par ブロック)
  */
 function flatten(tree, actorLabel) {
   const out = [];
+  const visitAll = (siblings) => {
+    for (const group of overlapGroups(siblings)) {
+      if (group.length === 1) { visit(group[0]); continue; }
+      group.forEach((n, i) => { out.push({ type: i === 0 ? 'par' : 'and', node: n, label: branchLabel(n) }); visit(n); });
+      out.push({ type: 'end' });
+    }
+  };
   const visit = (node) => {
     const paired = pairedHttpIn(node);
     if (paired) {
@@ -147,10 +195,10 @@ function flatten(tree, actorLabel) {
       const from = callerOf(node, actorLabel);
       const to = paired.participant;
       out.push({ type: 'request', node: paired, from, to, label: `${paired.meta.method || ''} ${paired.meta.path || ''}`.trim() });
-      for (const c of paired.children) visit(c);
+      visitAll(paired.children);
       out.push({ type: 'response', node: paired, from: to, to: from, label: statusLabel(paired) });
       // http.out の他の子 (通常は無い) も描く
-      for (const c of node.children) if (c !== paired) visit(c);
+      visitAll(node.children.filter((c) => c !== paired));
       return;
     }
     const from = callerOf(node, actorLabel);
@@ -158,45 +206,48 @@ function flatten(tree, actorLabel) {
     switch (node.kind) {
       case 'http.in': {
         out.push({ type: 'request', node, from, to, label: `${node.meta.method || ''} ${node.meta.path || ''}`.trim() });
-        for (const c of node.children) visit(c);
+        visitAll(node.children);
         out.push({ type: 'response', node, from: to, to: from, label: statusLabel(node) });
         return;
       }
       case 'call': {
         const label = String(node.meta.fn || node.ev.name || '');
-        if (node.children.length) {
+        // 値で返した結果の種類 (業務の拒否など) があれば、子が無くても戻りの線を描く
+        const returned = node.meta.result !== 'error' && node.meta.returned ? String(node.meta.returned) : null;
+        if (node.children.length || returned) {
           out.push({ type: 'request', node, from, to, label, activate: true });
-          for (const c of node.children) visit(c);
-          out.push({ type: 'response', node, from: to, to: from, label: node.meta.result === 'error' ? 'error' : 'ok', activate: true });
+          visitAll(node.children);
+          out.push({ type: 'response', node, from: to, to: from, label: node.meta.result === 'error' ? 'error' : (returned || 'ok'), activate: true });
         } else out.push({ type: 'leaf', node, from, to, label });
         return;
       }
       case 'db.query': {
         const perTable = withTableModes(node.meta.sql, node.meta.tables);
         const tables = perTable ? perTable.map((x) => x.table) : Array.isArray(node.meta.tables) ? node.meta.tables : [];
-        out.push({ type: 'leaf', node, from, to, label: `${sqlVerb(node.meta.sql)}${tables.length ? ' ' + tables.join(', ') : ''}`, db: true, verb: sqlVerb(node.meta.sql), tables });
-        for (const c of node.children) visit(c);
+        const failed = queryFailed(node.meta);
+        out.push({ type: 'leaf', node, from, to, label: `${sqlVerb(node.meta.sql)}${tables.length ? ' ' + tables.join(', ') : ''}${failed ? ' (失敗)' : ''}`, db: true, verb: sqlVerb(node.meta.sql), tables, failed });
+        visitAll(node.children);
         return;
       }
       case 'publish': {
         const chan = node.meta.channel ? ` [${node.meta.channel}]` : '';
         out.push({ type: 'leaf', node, from, to, label: `${node.meta.message || node.ev.name || ''}${chan}`, async: true });
-        for (const c of node.children) visit(c);
+        visitAll(node.children);
         return;
       }
       case 'http.out': {
         out.push({ type: 'request', node, from, to, label: `${node.meta.method || ''} ${node.meta.url || ''}`.trim() });
-        for (const c of node.children) visit(c);
+        visitAll(node.children);
         out.push({ type: 'response', node, from: to, to: from, label: statusLabel(node) });
         return;
       }
       default: {
         out.push({ type: 'leaf', node, from, to, label: String(node.ev.name || node.kind) });
-        for (const c of node.children) visit(c);
+        visitAll(node.children);
       }
     }
   };
-  for (const r of tree.roots) visit(r);
+  visitAll(tree.roots);
   return out;
 }
 
@@ -219,4 +270,4 @@ function observedPlacements(tree) {
   return [...tiers.keys()].sort(cmpStr).map((t) => ({ tier: t, layers: [...tiers.get(t)].sort(cmpStr) }));
 }
 
-module.exports = { buildTree, flatten, callerOf, participantOf, pairedHttpIn, observedPlacements, parseTraceLines, sqlVerb, withTableModes, cmpStr, DEFAULT_ACTOR };
+module.exports = { buildTree, flatten, callerOf, participantOf, pairedHttpIn, observedPlacements, parseTraceLines, sqlVerb, withTableModes, queryFailed, overlapGroups, cmpStr, DEFAULT_ACTOR };

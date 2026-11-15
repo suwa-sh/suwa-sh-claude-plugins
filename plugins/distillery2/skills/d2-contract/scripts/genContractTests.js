@@ -7,7 +7,7 @@
  * bundle と (任意で UC slice) から provider 契約テストと consumer stub を生成する:
  *  - openapi: apps/<provider>/test/contract/<operationId>.test.ts (vitest + supertest + ajv)。
  *    各 example で request を組み、status を検証し、response body を JSON Schema (2020-12) で検証する。
- *    example が無い operation/status は it.todo。
+ *    example が無い operation/status は it.todo。例の後に closeTestApps() で、createTestApp が作った一時 DB を閉じる。
  *  - openapi consumer stub: packages/contracts/<id>/stubs/<operationId>.<status>.json (response example から)。
  *  - asyncapi: apps/<provider>/test/contract/messages.test.ts と
  *    packages/contracts/<id>/validators.ts (validateMessage(name, payload))。
@@ -151,17 +151,21 @@ function run(contractsDir, { configPath, outRoot, uc = null, check = false }) {
       const testRel = path.posix.join(providerDir, 'test', 'contract', `${op}.test.ts`);
       const appImport = posixRel(path.posix.dirname(testRel), path.posix.join(providerDir, 'src', 'test-app'));
       const body = openapiTest(op, entry, bundle, testRel, 'components');
+      // 例ごとに createTestApp が作る一時 DB を、例の後に閉じる (テストが起動したものはテストが破棄する)。
+      // 閉じる口は test-app の closeTestApps (createTestApp が自分で作ったものだけを閉じる。結線の契約は packages/test-support/README.md)。
+      // 全部が it.todo のファイルは createTestApp を呼ばないので、import も後始末も出さない
+      const opensApp = body.includes('createTestApp(');
       const text = `${head}
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect${opensApp ? ', afterEach' : ''} } from 'vitest';
 import request from 'supertest';
 import Ajv2020 from 'ajv/dist/2020';
 import addFormats from 'ajv-formats';
-${body.includes('randomUUID()') ? "import { randomUUID } from 'node:crypto';\n" : ''}import { createTestApp } from '${appImport}';
+${body.includes('randomUUID()') ? "import { randomUUID } from 'node:crypto';\n" : ''}import { createTestApp${opensApp ? ', closeTestApps' : ''} } from '${appImport}';
 
 const components = ${componentsJson};
 const ajv = new Ajv2020({ strict: false, allErrors: true });
 addFormats(ajv);
-
+${opensApp ? '\nafterEach(async () => {\n  await closeTestApps();\n});\n' : ''}
 ${body}
 `.replace(/\{"__ref":"components"\}/g, 'components');
       files.set(testRel, text);

@@ -62,7 +62,7 @@ Verifier が独立に `verified_category` を判定し、不一致は minor find
 2. 各前提に**「どこを探して無かったか」(`spec_refs`) を必ず書く**。探していない前提は書かない
 3. 判断の粒度は「Verifier が要求・契約 1 箇所と突き合わせて真偽を言える 1 文」にする。`title` は「何を決めたか」を
    30 字以内で (例: `貸出期間は全組み合わせ 14 日`)。条件・理由・値の列挙は `assumption` / `reason` に書く
-4. 「仕様と両立しない事実」(要求どおりに実装すると動かない) は前提ではなく `issues/` に起票する。二重記録しない
+4. 「仕様と両立しない事実」(要求どおりに実装すると動かない) は前提ではなく、引き継ぎファイルの `upstream_issues` に書く (課題のファイルを直接書かない)。二重記録しない
 5. `extraction` の 3 値を正直に書く。`recorded_count` は `assumptions[]` の件数と一致させる (検証器が照合する)
 
 ## 検証器
@@ -77,6 +77,10 @@ node "$V" record attempt-1/assumptions.backend-api.yaml --uc register-loan --tie
 # オーケストレータ: verify 段階の受理時に Verifier の判定を検査する
 node "$V" verdicts attempt-1/findings.backend-api.yaml --assumptions attempt-1/assumptions.backend-api.yaml --uc register-loan --tier backend-api --attempt 1
 # → {"ok":true,"verdicts_sha256":"...","counts":{"consistent":0,"spec_absent":2,"contradicts":1,"unlisted":0},"requires_answer":1}
+
+# オーケストレータ: 人レビューの材料を 1 回で集める (全ティアの record と verdicts を回し直し、回答必須の前提・推奨・根拠の hash を返す)
+node "$V" review attempt-1 --uc register-loan --attempt 1
+# → {"ok":true,"tiers":[...],"assumption_evidence_sha256":"...","required":1,"assumptions":[{"tier":"backend-api","id":"A-001","required":true,"recommended":"承認",...}],"findings":[...]}
 
 # オーケストレータ / 人レビュー: 承認証跡の集約 hash
 node "$V" evidence backend-api:<assumptions_sha256>:<verdicts_sha256> worker:<sha>:<sha>

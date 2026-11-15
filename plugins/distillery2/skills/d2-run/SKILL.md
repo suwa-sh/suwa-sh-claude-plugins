@@ -61,6 +61,8 @@ review の手順は [references/review.md](references/review.md)、deliver の�
 自動選択 (起動時に作業 branch と段階を決める): `node <skills>/d2-common/scripts/nextAction.js <リポのルート> [--uc <slug>] [--stage <段>]` を呼ぶ (読むだけ。JSON 1 行の `action`)。
 下の表の手順を行ったら、**起動を終えずにもう一度呼ぶ** (上流の差分・写し直しの後も同じ起動で続ける)。
 名指し (`uc=` / `stage=`) は片付けの後に、進行中・途中・写し直し待ちのものが別にあれば `refuse` になる。
+名指しで起動したときは、もう一度呼ぶときも**同じ名指しを付けて**呼ぶ。
+`uc=` の名指しでは、その UC の点検や作業が生んだ上流の直し (`continue-upstream`・上流の差分) が先に選ばれ、直した後に同じ UC へ戻る。
 止まるのは `refuse`・`none`・人に返す場面だけ。
 
 | action | すること |
@@ -105,7 +107,7 @@ review の手順は [references/review.md](references/review.md)、deliver の�
 | 人への確認は確認ページで | 人に確認するときは **必ず `human-html-review`** で確認ページを作り、showme の URL とローカルパスを示す |
 | 引き継ぎファイルを処理する | 担当を受理するたびに引き継ぎファイル (人に聞くこと・前のステップの課題) を処理する (routing.md「引き継ぎファイルの処理」)。報告の本文に書かれただけの問いや課題は扱わない |
 | レビューを回す | 成果物ごとに 7 か所で、別系統のモデルの縦・横レビューを回す (routing.md「縦・横レビュー」) |
-| 上流を再生成しない | 上流 (要求・ADR・契約) の再生成はしない。ズレは `basis.js check` で見つけ、戻し先付きの課題にして routing.md の振り分けで直す |
+| 上流を再生成しない | 上流 (要求・ADR・契約) の再生成はしない。ズレは `<skills>/d2-common/scripts/lib/basis.js check` で見つけ、戻し先付きの課題にして routing.md の振り分けで直す |
 
 `genDocsReadme.js` が書き換えるのは、管理ブロックの中だけである。
 人が書いた部分と distillery2 以外の文書は触らず、名前だけ列挙する。
@@ -118,7 +120,7 @@ review の手順は [references/review.md](references/review.md)、deliver の�
 - どの確認ページの問いにも推奨 (初期選択) を書き、推奨で決めたものも人が答えたものも `decisionLog.js` で記録する
 
 詰まったら各スキルの `references/troubleshooting.md` (環境依存の症状と回避策) を見る: 索引は [../d2-common/references/troubleshooting.md](../d2-common/references/troubleshooting.md) (d2-run / d2-foundation / d2-contract)。
-手順に無い回避策を使ったら報告に書く。
+手順に無い回避策を使ったら、決めたことの記録に残して報告に書く (routing.md「プラグインの不具合」の 4)。
 手順書に書いていない場面で迷ったら、d2-run の troubleshooting の「手順書に書いていない扱い」を見る。
 
 ## d2-run が直接読み書きするもの
@@ -177,4 +179,4 @@ review の手順は [references/review.md](references/review.md)、deliver の�
 | [references/troubleshooting.md](references/troubleshooting.md) | 詰まったとき | 実行環境 (headless の許可、npm、補助スクリプト) で踏んだ問題と回避策 |
 | [../d2-common/references/config-schema.md](../d2-common/references/config-schema.md) | 実行設定を読むとき | `.distillery/config.yaml` |
 
-使うスクリプト: `<skills>/d2-common/scripts/runGates.js`、`prTrailers.js`、`tokenReport.js`、`handoff.js`、`decisionLog.js`、`reviewStep.js`
+使うスクリプト: `<skills>/d2-common/scripts/runGates.js`、`prTrailers.js`、`tokenReport.js`、`handoff.js`、`decisionLog.js`、`reviewStep.js`、`lib/runState.js`、`lib/basis.js`

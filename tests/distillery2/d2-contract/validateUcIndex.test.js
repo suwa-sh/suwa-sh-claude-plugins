@@ -135,3 +135,56 @@ test('unverifiedVariants: 同じ status で中身の違う例のうち expect �
   entry.operation['x-test-requests'].a.expect = ['s'];
   assert.deepEqual(G.unverifiedVariants(entry, {}), []);
 });
+
+// --- x-test-requests の query と、同じ status の例が 3 つ以上のときの expect ---
+test('query の値で区別すれば PASS。同じ query を送る例は区別できないので FAIL', () => {
+  const lines = (q401, q404) => yamlLines(['x-test-requests:', '  one:', '    query:', '      from: a', '  unauthorized:', '    query:', `      from: ${q401}`, '  not_found:', '    query:', `      from: ${q404}`]);
+  assert.deepEqual(validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra: lines('b', 'c') }))).errors, []);
+  const same = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra: lines('a', 'c') }))).errors;
+  assert.ok(same.some(e => /"one" \(200\)/.test(e) && /"unauthorized" \(401\)/.test(e) && /区別できない/.test(e)), same.join('\n'));
+  assert.ok(!same.some(e => /not_found/.test(e)), same.join('\n'));
+});
+
+test('query を書く順が違うだけの 2 つの例は、同じ要求として区別できない', () => {
+  const opExtra = yamlLines(['x-test-requests:', '  one:', '    query:', '      a: 1', '      b: 2', '  unauthorized:', '    query:', '      b: 2', '      a: 1', '  not_found:', '    path:', '      id: missing']);
+  const { errors } = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra })));
+  assert.ok(errors.some(e => /"one" \(200\)/.test(e) && /"unauthorized" \(401\)/.test(e) && /区別できない/.test(e)), errors.join('\n'));
+});
+
+test('x-test-requests の query が mapping でない・値が null や入れ子だと FAIL', () => {
+  const notMap = yamlLines(['x-test-requests:', '  unauthorized:', '    query: from=a', '  not_found:', '    path:', '      id: missing']);
+  const e1 = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra: notMap }))).errors;
+  assert.ok(e1.some(e => /unauthorized\.query: 引数名 → 値の mapping/.test(e)), e1.join('\n'));
+  const badValue = yamlLines(['x-test-requests:', '  unauthorized:', '    query:', '      from: null', '      range:', '        start: a', '      tags: []', '      ok: [a, 1, true]', '  not_found:', '    path:', '      id: missing']);
+  const e2 = validateUcIndex.validate(compiledFrom(contractsWithGetBookErrors({ opExtra: badValue }))).errors;
+  for (const name of ['from', 'range', 'tags']) assert.ok(e2.some(e => new RegExp(`unauthorized\\.query\\.${name}: 値は`).test(e)), e2.join('\n'));
+  assert.ok(!e2.some(e => /unauthorized\.query\.ok/.test(e)), e2.join('\n'));
+});
+
+test('unverifiedVariants: 同じ status の例が 3 つで 2 つが同じ code なら、expect が要るのは同じ code の 2 つだけ', () => {
+  const G = require(path.join(SCRIPTS, 'lib', 'contractGraph.js'));
+  const examples = {
+    passed: { value: { code: 'CANCEL_DEADLINE_PASSED', title: '過ぎた' } },
+    reached: { value: { code: 'CANCEL_DEADLINE_PASSED', title: '迎えた' } },
+    cancelled: { value: { code: 'ALREADY_CANCELLED', title: '取消済み' } },
+  };
+  const entry = { path: '/x/{id}', method: 'POST', operation: { operationId: 'o', responses: { '409': { description: 'ng', content: { 'application/problem+json': { examples } } } },
+    'x-test-requests': { passed: { path: { id: '1' } }, reached: { path: { id: '2' } }, cancelled: { path: { id: '3' } } } } };
+  assert.deepEqual(G.unverifiedVariants(entry, {}), [{ status: '409', name: 'passed' }, { status: '409', name: 'reached' }]);
+  entry.operation['x-test-requests'].passed.expect = ['title'];
+  entry.operation['x-test-requests'].reached.expect = ['title'];
+  assert.deepEqual(G.unverifiedVariants(entry, {}), []);
+});
+
+test('unverifiedVariants: code の無い例・2xx の例は、中身の違う相手がいれば expect が要る。中身まで同じ例どうしは要らない', () => {
+  const G = require(path.join(SCRIPTS, 'lib', 'contractGraph.js'));
+  const op = (status, examples) => ({ path: '/x', method: 'GET', operation: { operationId: 'o', responses: { [status]: { description: 'r', content: { 'application/json': { examples } } } } } });
+  // code の無い例は、code のある例と code で見分けられない
+  assert.deepEqual(G.unverifiedVariants(op('409', { a: { value: { code: 'A' } }, b: { value: { title: 'code 無し' } } }), {}),
+    [{ status: '409', name: 'a' }, { status: '409', name: 'b' }]);
+  // 2xx は code が違っても expect が要る (生成するテストが code を確かめるのはエラー応答だけ)
+  assert.deepEqual(G.unverifiedVariants(op('200', { a: { value: { code: 'A' } }, b: { value: { code: 'B' } } }), {}),
+    [{ status: '200', name: 'a' }, { status: '200', name: 'b' }]);
+  // 中身まで同じ 2 つと、code の違う 1 つ: どれも要らない
+  assert.deepEqual(G.unverifiedVariants(op('409', { a: { value: { code: 'A' } }, a2: { value: { code: 'A' } }, b: { value: { code: 'B' } } }), {}), []);
+});

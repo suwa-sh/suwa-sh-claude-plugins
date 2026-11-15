@@ -15,6 +15,7 @@ v1 の 8 観点のうち、機械のゲート (静的検査・単体・契約・
 | 要求 ↔ 実装 | 要求の該当行 (`docs/requirements/requirements.yaml` の spec_ids、RDRA の条件・状態)、変更ファイル一覧、コード | 業務ルールが担保される箇所を特定できるか。特定できないルールは blocker 候補。状態遷移が要求の状態表と一致するか |
 | 契約 ↔ 実装 | `contracts/generated/slices/<slug>/contract-slice.json`、`reports/contract.*.json` | 契約テストが pass か。生成型を経由せず直書きした型・fetch が無いか |
 | ルール ↔ 実装 | `docs/rules/{common,tier-<kind>,testing}.md`、`reports/static.*` | 機械で落とせないルール文 (用語・命名・エラー文言・仕様を曲げない) に反していないか |
+| 画面部品 ↔ 実装 (画面を持つティア) | `docs/design/screens.yaml` の該当画面、`packages/ui/` の部品と story | 画面が、対応づいた部品と状態で組まれているか。承認済みの見本と違う表示や文言を、実装が黙って足していないか |
 | テストの質 | 単体テストとステップ定義 | 空の step、常に真になる assert、実装詳細への過剰な結合、モックで I/O を偽装した実体テスト |
 | 他 UC への波及 | 呼び出し側が渡す「他 UC と共有する変更ファイル (初期候補)」、自ティアの変更ファイルの import 元、候補に紐づく他 UC のシナリオ | 下の手順で候補を確定し、他 UC のシナリオが通る経路の振る舞い (エラーを返す順番、エラー文言、状態の変え方、応答の形) が変わっていないかをコードで確かめる。変わるものは `kind: cross_uc_change` の **major** (人レビューの判断材料。UC の意図に反しなければ blocker にしない)。候補が無ければ `viewpoints_checked.uc_intent.note` に「他 UC への波及: 該当なし」と書く |
 

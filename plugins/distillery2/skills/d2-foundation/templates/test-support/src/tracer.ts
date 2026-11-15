@@ -3,12 +3,16 @@
  *
  * AsyncLocalStorage にシナリオ文脈を置き、HTTP 入出力・DB クエリ・publish・任意の呼び出しを
  * JSONL で `${D2_TRACE_DIR}/<scenario_id>.jsonl` に追記する。1 行 =
- *   { ts, ts_end?, seq, parent?, scenario, kind: 'http.in'|'http.out'|'db.query'|'publish'|'call', name, meta }
+ *   { ts, ts_end?, seq, seq_end?, parent?, scenario, kind: 'http.in'|'http.out'|'db.query'|'publish'|'call', name, meta }
  *
  * - `ts` は**開始**時刻、`ts_end` は完了時刻。行は完了時に書くので、ファイル内の並びは完了順になる。
  *   読み手 (as-built) は `seq` (開始順の通し番号) で並べ直す
+ * - `seq_end` は、完了した時点で次に振られる seq。これより小さい seq の span は、この span が終わる前に始まっている。
+ *   読み手はこれで並行の呼び出し (Promise.all など) を見分ける (時刻はミリ秒までなので、重なりの判定に使わない)
  * - `parent` は呼び出し元の span の seq。HTTP をまたぐときは `x-scenario-span` ヘッダで運ぶ。
  *   これで「画面 → API → ユースケース → リポジトリ → DB」の入れ子が復元できる
+ * - `meta.result` は、例外・reject のとき `error`、それ以外は `ok`。値で返した業務の拒否は例外ではないので `ok` になる。
+ *   call の戻り値が `{ ok, error: { code } }` か `{ kind }` の形なら、その種類を `meta.returned` に残す (returnLabel)
  * - `meta.tier` / `meta.layer` は**部品ごと**に指定できる (同一プロセスで複数ティアを動かす in-process 実行のため)。
  *   省略時は setTier() で設定したプロセス既定のティア
  * scenario_id は `<uc_slug>#<scenario name>`。ファイル名にはサニタイズした値を使う。
@@ -23,6 +27,8 @@ export interface TraceEvent {
   ts: string;
   ts_end?: string;
   seq: number;
+  /** 完了した時点で次に振られる seq (これより小さい seq の span は、この span が終わる前に始まっている) */
+  seq_end?: number;
   parent?: number;
   scenario: string;
   kind: TraceKind;
@@ -165,9 +171,41 @@ export interface SpanHandle {
   set(extra: Record<string, unknown>): void;
 }
 
+const RETURN_LABEL_MAX = 40;
+function labelText(v: unknown): string | undefined {
+  return typeof v === 'string' && v.trim() ? v.trim().slice(0, RETURN_LABEL_MAX) : undefined;
+}
+
+/**
+ * 戻り値の種類 (as-built の図の、戻りの線の名前)。値で返した業務の拒否は例外にならないので、ここで拾う。
+ *   - `{ ok: false, error }`  → `error.code`、無ければ `error.kind`、error が文字列ならその値、どれも無ければ `rejected`
+ *   - `{ ok: true, value }`   → `value` の種類 (下の `kind` の規則。無ければ undefined)
+ *   - `{ kind, code? }`       → `kind`。`code` が文字列なら `kind code`
+ * どの形でもなければ undefined (図は ok と描く)。fetch の Response は `ok` を持つが、結果の型ではないので読まない。
+ */
+export function returnLabel(value: unknown, depth = 0): string | undefined {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  if (typeof Response !== 'undefined' && value instanceof Response) return undefined;
+  const v = value as Record<string, unknown>;
+  if (v.ok === false) {
+    const e = v.error;
+    if (e != null && typeof e === 'object') {
+      const er = e as Record<string, unknown>;
+      return labelText(er.code) ?? labelText(er.kind) ?? 'rejected';
+    }
+    return labelText(e) ?? 'rejected';
+  }
+  if (v.ok === true) return depth < 1 ? returnLabel(v.value, depth + 1) : undefined;
+  const kind = labelText(v.kind);
+  if (!kind) return undefined;
+  const code = labelText(v.code);
+  return code ? `${kind} ${code}`.slice(0, RETURN_LABEL_MAX) : kind;
+}
+
 /**
  * span (開始〜完了) として fn を実行し、完了時に 1 行書く。fn の中で起きた emit / span は
  * この span を parent に持つ。fn が Promise を返せば完了を待つ。例外・reject は meta.result = 'error' で記録して再送出する。
+ * kind が call の span は、戻り値の種類 (returnLabel) を meta.returned に残す。
  * fn は SpanHandle を受け取り、`set({...})` で完了時の meta を足せる。文脈が無ければ計装せずにそのまま fn を実行する。
  */
 export function span<T>(
@@ -200,11 +238,13 @@ export function span<T>(
       Object.assign(extra, x);
     },
   };
-  const finish = (result: 'ok' | 'error') => {
+  const finish = (result: 'ok' | 'error', value?: unknown) => {
+    const returned = result === 'ok' && kind === 'call' ? returnLabel(value) : undefined;
     writeEvent({
       ...base,
       ts_end: new Date().toISOString(),
-      meta: { ...base.meta, ...extra, result },
+      seq_end: nextSeq,
+      meta: { ...base.meta, ...extra, result, ...(returned ? { returned } : {}) },
     });
   };
   let out: T;
@@ -217,7 +257,7 @@ export function span<T>(
   if (out && typeof (out as { then?: unknown }).then === 'function') {
     return (out as unknown as Promise<unknown>).then(
       (v) => {
-        finish('ok');
+        finish('ok', v);
         return v;
       },
       (e) => {
@@ -226,7 +266,7 @@ export function span<T>(
       },
     ) as unknown as T;
   }
-  finish('ok');
+  finish('ok', out);
   return out;
 }
 
@@ -282,16 +322,18 @@ export function readScenarioHeaders(headers: Record<string, unknown>): {
 /**
  * fetch 関数を包み、シナリオヘッダを付与し http.out を span として記録する。
  * 生成クライアント (`packages/contracts/<id>/client.ts`) の `options.fetch` に渡す。placement は呼び出し側 (consumer) の所属。
+ * シナリオヘッダは http.out の span の中で読む。x-scenario-span が http.out の seq になり、受け側の http.in がその子になる
+ * (span の外で読むと、http.in の親が呼び出し元の画面になり、http.out と兄弟に並ぶ)。
  */
 export function tracedFetch(base: typeof fetch, placement?: Placement): typeof fetch {
   return (input, init) => {
     const req = normalizeFetchInput(input, init);
-    for (const [k, v] of Object.entries(scenarioHeaders())) req.headers.set(k, v);
     return span(
       'http.out',
       req.url,
       withTier({ method: req.method, url: req.url }, placement),
       async (h) => {
+        for (const [k, v] of Object.entries(scenarioHeaders())) req.headers.set(k, v);
         const res = await base(input as Request, {
           ...init,
           method: req.method,
@@ -438,6 +480,7 @@ export function expressScenarioMiddleware(
         ts,
         ts_end: new Date().toISOString(),
         seq,
+        seq_end: nextSeq,
         parent: parentSpan,
         scenario,
         kind: 'http.in',

@@ -305,10 +305,10 @@
     "template_row": "④ tier",
     "write_set": [
       "`apps/<tier>/**`",
-      "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
+      "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先 `.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。回すたびに上書きし、消さない)"
     ],
     "notes": [
-      "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
+      "例外: ゲートの `{report}` の置き換え先 `.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。回すたびに上書きし、消さない)"
     ],
     "allowed_writes": [
       {

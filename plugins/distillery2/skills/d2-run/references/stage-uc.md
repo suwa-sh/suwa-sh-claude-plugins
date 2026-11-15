@@ -18,7 +18,7 @@ run を開いたら `mode_resolved {mode}` を記録し、`FB scan` の `carried
 
 - 各段階の done を書いたら `impl(<slug>): <stage>` で commit する (attribution 行を付ける。git-delivery.md「commit の attribution」)
 - 各段の担当を受理するたびに引き継ぎファイルを処理する (routing.md)
-- 前のステップの課題で巻き戻したら、`runState.js status` の `next_stage` から続ける
+- 前のステップの課題で巻き戻したら、巻き戻しの commit (routing.md「前のステップの課題」) をしてから、`runState.js status` の `next_stage` から続ける
 - `runState.js status` の `deferred_issues` (巻き戻さずに先送りした課題で、その段がまだ done でないもの) は、その段の派遣文に添える
 - `runState.js done` / `event` の data は argv の JSON で渡す。長い JSON (日本語の一覧など) は `.distillery/logs/<name>.json` に書いて `--data-file <ファイル>` で渡す (argv と排他)
 - 要求の差分で残った作業は ④ に持ち込まない (要求の差分が種類ごとの宛先に流す)
@@ -51,8 +51,8 @@ run を開いたら `mode_resolved {mode}` を記録し、`FB scan` の `carried
 | **scaffold** | step 骨格と red 単体テストを書かせる | red baseline |
 | **tier** | ティアごとに並列で実装させ、自分が 1 回だけゲートを回す | 全ティアの assumptions が ok、上の runGates で static / unit が pass |
 | **contract-gate** | 契約のゲートを回す | contract まで pass |
-| **integrate** | 結合させ、全段のゲートと、他 UC への回帰を回す | static から acceptance まで pass、共有の補助を変えたなら main マージ済み UC の uc-bdd も pass |
-| **verify** | ティアごとに並列で検証させ、実装のレビューも回す | 全ティアの findings が ok で blocker 0、実装のレビューを反証して直した |
+| **integrate** | 結合させ、全段のゲートと、他 UC への回帰を回す | static から acceptance まで pass、共有の補助を変えたなら回帰の相手 (main マージ済みの UC と開き直した UC) の uc-bdd も pass |
+| **verify** | 実装のレビューを回して直してから、ティアごとに並列で検証させる | 実装のレビューを反証して直した、全ティアの findings が ok で blocker 0 |
 | **review** | 人レビュー ([review.md](review.md)) | `review_approved` 記録済み |
 | **asbuilt** | 実装の記録を作らせ、検査し、レビューする | as-built が生成済み、集計の計装なし / 正常系に部品なしのティアが空 |
 | **deliver** | main マージ ([main-merge.md](main-merge.md)) | `stages/deliver.done.yaml` が main にあり、`runState.js status` の `unfiled_issues` が空 |
@@ -98,6 +98,8 @@ examples が書けずに止まったら、担当の引き継ぎファイルの�
 
 受理時に `node <skills>/d2-contract/scripts/classifyContractChanges.js --uc <slug> --base <base_head> --json` で変わった契約の生成物 (`--base` で commit 済みの変更も数える。写し直しの後は機能の変更が commit 済みになる)を own / other_uc / shared に分け、結果を done の `contract_changes` に書く (契約は UC 間で共有するので、enum の追加などで他 UC のテストや共有の型も書き換わる)
 
+done を書く前に `node runState.js uc-tiers . <slug>` で関与ティアを `use-cases.yaml` に書き戻す (下記「関与ティアの決め方」)。
+
 ### scaffold の手順
 
 sub `d2-implement mode=scaffold`。
@@ -106,6 +108,13 @@ sub `d2-implement mode=scaffold`。
 
 - 受理時に既存の非テストファイルを変えていないことを確かめる (subagent-template.md「受理時の検査」)
 - `runGates.js --uc <slug> --tiers <関与ティア> --only unit --expect-red unit` が exit 0、dry-run で undefined step 0
+
+**実装が既にあるとき** (`<run>/invalidated/` に tier の done の退避 `*_tier.done.yaml` がある。巻き戻し・写し直しで、実装を終えた後に scenario か contract へ戻った run):
+
+- 派遣文に `実装が既にある。この段より前で変わったファイル: <git diff --name-only <前回の scaffold の done の commit>..HEAD -- features contracts の一覧>` を添える (前回の scaffold の commit は `git log -1 --format=%H --grep "^impl(<slug>): scaffold"`)
+- red は、変わった振る舞いを実装するティアにだけ求める。担当の報告の「red を書いたティア」で `runGates.js --uc <slug> --tiers <そのティア> --only unit --expect-red unit` を回す
+- 担当が「red を書いたティア: なし」(変わった振る舞いが無い。説明文だけの変更など) と報告したら、`--expect-red` を回さずに `runGates.js --uc <slug> --tiers <関与ティア> --only unit` が exit 0 (既存のテストが緑のまま) を確かめ、done に `red_tiers: []` を書く
+- 既存の非テストファイルを変えていないことは同じに確かめる (契約の変更で既存の実装が合わなくなった分は、tier の段が直す)
 
 ### tier の手順
 
@@ -132,27 +141,42 @@ attempt = `currentAttempt`。関与ティア (下記「関与ティアの決め�
 attempt ≥ 2 (差し戻しの後) も sub は**必ず派遣**する (ティアの入口や注入対象が変わっていれば結線の更新が要る)。
 sub が「結線の変更は不要」と判断し、integrate.md の完了条件 (runGates `--from uc-bdd`、受入の網羅、計装範囲の `extractAsBuilt --dry-run`) を満たしたと報告すれば、`features/` に差分が無くても done にしてよい。done に `wiring_changed: false` を書く。
 
-**他 UC への回帰は d2-run が回す**: 受理して done を書き `impl(<slug>): integrate` で commit した後、`git diff --name-only <base_head>..HEAD -- features/support features/step_definitions` (commit 済みの変更だけを見るので、commit の前に回さない) に変更があれば、main マージ済み UC (`status: done`) ごとに、そうでなくても contract の done の `contract_changes` に他の UC にも効く変更 (`also_used_by` の付いた own、`other_uc`、`shared`) があれば、その UC ごとに、`runGates.js --uc <他 slug> --only uc-bdd` を回し (他 UC の `<run>/traces/**` と `<run>/reports/**` は d2-run の runGates が書く。gitignore。as-built はその UC を次に回したときに作り直す)、落ちたら報告の分析に従い `rewind <run> implementation` で該当ティアを tier に戻す (integrate の write-set は自分の UC の reports / traces だけなので、実装者には回させない)
+**他 UC への回帰は d2-run が回す**: 受理して done を書き `impl(<slug>): integrate` で commit した後、`git diff --name-only <base_head>..HEAD -- features/support features/step_definitions` (commit 済みの変更だけを見るので、commit の前に回さない) に変更があれば、回帰の相手 (`node runState.js regression-targets . --except <slug>` の全件。`status: done` の UC と、開き直した UC。開き直した UC は status が `planned` に戻るが、コードは main に残る) ごとに、そうでなくても contract の done の `contract_changes` に他の UC にも効く変更 (`also_used_by` の付いた own、`other_uc`、`shared`) があれば、その UC ごとに、`runGates.js --uc <他 slug> --only uc-bdd` を回し (他 UC の `<run>/traces/**` と `<run>/reports/**` は d2-run の runGates が書く。gitignore。as-built はその UC を次に回したときに作り直す)、落ちたら報告の分析に従い `rewind <run> implementation` で該当ティアを tier に戻す (integrate の write-set は自分の UC の reports / traces だけなので、実装者には回させない)
 
 ### verify の手順
 
-ティアごとに sub `d2-verify` を**同じメッセージで並列派遣** (agent_type `distillery2:d2-verifier`、model = verifier、変更ファイル一覧のファイルのパスと実装者の固定指示のパス (`<skills>/d2-implement/references/tier-impl.md` の絶対パス。前提の照合先) を渡す)。
+実装のレビューを先に回し、直しを終えてから検証役を派遣する。
+レビューと検証を同時に回すと、レビューの直しで前提やコードが変わり、検証の結果が古くなって検証役を派遣し直すことになる。
 
-変更ファイル一覧と「他 UC と共有する変更ファイル」の初期候補は**常に** `.distillery/logs/verify-<slug>-attempt-<n>.txt` (gitignore) に書いてパスで渡す (件数で渡し方を変えない):
+| 順 | すること |
+|---|---|
+| 1 | 変更ファイルの一覧を書く |
+| 2 | 実装のレビューを、ティアごとに順に回す |
+| 3 | 指摘があれば反証して直させ、ゲートを回し直して commit し、一覧を書き直す |
+| 4 | ティアごとに検証役を並列で派遣する |
+| 5 | 受理する |
 
-- 変更ファイル = `git diff --name-only <base_head>..HEAD` から `docs/README.md`・`docs/requirements/use-cases.yaml`・`docs/feedback/**` (どの UC も書く簿記のファイル) を除いたもの
-- 初期候補 = 変更ファイルと `docs/as-built/_system/traceability-index.json` の `ucs[<他の slug>].files` の共通部分 (他 UC の slug つき。追跡表が無ければ「なし」)
+1. `node runState.js verify-list <run>` で、変更ファイルの一覧 `.distillery/logs/verify-<slug>-attempt-<n>.txt` と、変更前との差分 `.distillery/logs/verify-<slug>-attempt-<n>.diff` を書く (どちらも gitignore。件数で渡し方を変えず、**常に**ファイルで渡す)。
+   結果の `uncommitted` が 0 でなければ、先に commit する (verify の前の段の変更が残っている。作業ツリーが clean の状態で検証させる)
+2. 実装のレビュー (`--point implementation`) を、ティアごとに 1 依頼を順に回す: `reviewStep.js run --point implementation --targets-file <一覧> --prefix apps/<tier>/ --out <run>/reviews/implementation-<tier>` (対象は一覧のそのティアの分)
+3. 指摘があれば routing.md「縦・横レビュー」のとおり、そのティアの担当を「反証して直す」で派遣する。
+   引き継ぎファイルの `refutations` に `accepted` が 1 件でもあれば (コードか前提が変わった)、全ティアで `validateAssumptions.js record` を回し直し、`runGates.js --uc <slug> --tiers <関与ティア>` で全段を回し直して pass を確かめ、`impl(<slug>): review fixes` で commit し、1 の `verify-list` を回し直す
+4. ティアごとに sub `d2-verify` を**同じメッセージで並列派遣** (agent_type `distillery2:d2-verifier`、model = verifier)。派遣文に、変更ファイルの一覧のパス、変更前との差分のパス、実装者の固定指示のパス (`<skills>/d2-implement/references/tier-impl.md` の絶対パス。前提の照合先) を渡す
+5. 受理時の作業 (下)
+
+一覧の中身:
+
+- 変更ファイル = `<base_head>` から今の作業ツリーまでの差分 (`git diff --name-only <base_head>..HEAD` に、commit 前の変更と未追跡のファイルを足したもの) から `docs/README.md`・`docs/requirements/use-cases.yaml`・`docs/feedback/**` (どの UC も書く簿記のファイル) を除いたもの
+- 「他 UC と共有する変更ファイル」の初期候補 = 変更ファイルと `docs/as-built/_system/traceability-index.json` の `ucs[<他の slug>].files` の共通部分 (他 UC の slug つき。追跡表が無ければ「なし」)
 
 追跡表の files は各 UC が**変更した**ファイルなので、基盤から在る共通コードは拾えない。Verifier が import 元を辿って足す (viewpoints.md「他 UC への波及」)。
 
 受理時の作業:
 
-- 受理時に `validateAssumptions.js verdicts`
+- 受理時に `validateAssumptions.js verdicts` (前に、そのティアの `validateAssumptions.js record` が ok であること。verdicts は record の sha256 と照らす)
 - 報告 1 行目の `model: <ID>` が models_resolved.verifier と違えば models_resolved を記録し直す
 - blocker があれば `rewind <run> implementation` で該当ティアを tier に戻す (回数の上限は rewind が数える)
 - findings の `upstream_issues` と `asks` も routing.md で振り分ける
-
-検証役の派遣と並べて、実装のレビュー (`--point implementation`、ティアごとに 1 依頼を順に回す。対象は verify の変更ファイル一覧のそのティアの分。置き場 `<run>/reviews/implementation-<tier>/`) を回す
 
 ### asbuilt の手順
 
@@ -233,13 +257,15 @@ attempt++ は `runState.js rewind <run> implementation` で行う (`tier` 以降
 | 順 | すること |
 |---|---|
 | 1 | 前 attempt の findings パスを tier の派遣に渡す |
-| 2 | 戻さないティアの assumptions は新 attempt に複製し (carry-forward)、複製したファイルの `attempt` フィールドを新しい番号に書き換える (hash の対象外なので値は変わらない) |
+| 2 | 戻さないティアの assumptions は `node runState.js carry-assumptions <run> --tiers <戻さないティア>` で新 attempt に複製する (carry-forward。複製したファイルの `attempt` フィールドを新しい番号に書き換える。hash の対象外なので値は変わらない) |
 | 3 | 複製後に全ティアで `validateAssumptions.js record <assumptions> --uc <slug> --tier <tier> --attempt <n+1>` を再実行して ok を確認してから verify に進む |
 
 ## 関与ティアの決め方
 
 **関与ティアの決め方** (scaffold / tier / contract-gate / integrate / 全段の証跡の `--tiers` と派遣先に使う。正は 1 か所。`--tiers` にはカンマ区切りで渡す。例 `--tiers frontend,backend-api`):
 
-- contract 段階の完了時に、契約 slice の provider / consumers (`contracts.json` と `uc-index.yaml`) から関与ティアを確定し、`use-cases.yaml` の該当行の `tiers` に書き戻す (d2-run の write-set)。以後はこの `tiers` だけを読む
+- contract 段階の完了時に、`node runState.js uc-tiers . <slug>` で関与ティアを確定し、`use-cases.yaml` の該当行の `tiers` に書き戻す (d2-run の write-set)。以後はこの `tiers` だけを読む。
+  決め方: `contracts/uc-index.yaml` のその UC の operations / messages / tables が空でない種別の契約について、`contracts.json` の provider と consumers を集め、config の tiers の順に並べる。
+  結果に `ambiguous` (同じ種別の契約が 2 つ以上ある) が出たら、contract の担当の報告と照らして `tiers` を確かめ、違えば手で直す
 - `tiers_hint` (要求段階の推定) は slice が無い間の仮値であり、slice と食い違えば slice を優先する
 - red baseline は関与する全ティアが落ちなければ成立しない (unit コマンド未定義のティアがあれば fail)

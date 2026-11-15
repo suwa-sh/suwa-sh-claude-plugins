@@ -54,7 +54,7 @@ contracts/
 | 2 | 入口ファイルを書く | 下の表のとおり |
 | 3 | 共通コンポーネントとエラー型を置く | 全 UC が参照するエラースキーマ、ページング、共通ヘッダを `components` に置く。RDRA の状態モデルは、enum 列や status プロパティに落とす |
 | 4 | 空の uc-index を作る | `uc-index.yaml` が無い初回だけ、`schema_version` と空の `ucs: []` で作る。既にあれば UC のエントリを残す |
-| 5 | compile する | `compileContracts.js` と `compileRdbSchema.js` を実行して bundle を作る。この時点では slice は空である。生成物の先頭に `basis: requirements@<sha> adr@<sha>` を付ける |
+| 5 | compile する | `compileContracts.js` と `compileRdbSchema.js` を実行して bundle を作る。この時点では slice は空である。入口ファイルと `uc-index.yaml` の先頭に basis の行を書く (下の「basis の行」) |
 
 手順 2 の入口ファイル:
 
@@ -76,8 +76,8 @@ contracts/
 | 2 | 契約を編集する | この UC が提供/利用する operation、message、table を分割ファイルに足す。触るのは分割ファイル (`openapi/` `asyncapi/` `db/domains/`) だけである |
 | 3 | examples を書く | requestBody と、各 2xx/4xx response に example を付ける。下の「examples の書き方」に従う |
 | 4 | uc-index を更新する | `uc-index.yaml` の該当 `slug` に `operations` / `messages` / `tables` を書く |
-| 5 | compile と validate をする | `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js`。examples の不足や参照のずれは、validate が exit 1 で止める |
-| 6 | 契約テストを生成する | `genContractTests.js --uc <slug>` と `genRdbDdl.js` を、対象リポに対して実行する。生成物に `basis:` を付ける |
+| 5 | compile と validate をする | 先に、分割ファイルの basis の行を書き換える (下の「basis の行」)。次に `compileContracts.js` → `compileRdbSchema.js` → `validateUcIndex.js`。examples の不足や参照のずれは、validate が exit 1 で止める |
+| 6 | 契約テストを生成する | `genContractTests.js --uc <slug>` と `genRdbDdl.js` を、対象リポに対して実行する。生成物の `basis:` の行は生成器が付ける |
 
 手順 2 で足すもの:
 
@@ -102,7 +102,8 @@ contracts/
 | 応答の決まり方 | 例 | 入力の表し方 |
 |---|---|---|
 | 認証や冪等キーで決まる | 401 / 403 / 409 | 文書直下の `x-test-headers` (既定値) と、request example の `x-headers` (上書き。`null` で送らない) |
-| 本文だけでは区別できない | 無い ID の 404、本文の無い GET の 401 / 403、前提のデータで決まる 409 / 5xx | operation の `x-test-requests` で、例ごとに URL の値、ヘッダ、テスト用データ (`fixture`) を指定する。テスト用データの意味を `x-test-fixtures` に書く |
+| 本文だけでは区別できない | 無い ID の 404、query の条件で決まる 422、本文の無い GET の 401 / 403、前提のデータで決まる 409 / 5xx | operation の `x-test-requests` で、例ごとに URL の値 (`path` と `query`)、ヘッダ、テスト用データ (`fixture`) を指定する。テスト用データの意味を、その operation の `x-test-fixtures` に書く |
+| 現在時刻で決まる | 開始時刻ちょうどの境界の 409 | テスト用データで時計を固定する。`x-test-fixtures` の説明に、固定する現在時刻を書く |
 | 同じ status で中身が違う | (status では区別できない例) | `expect` で、確かめる項目を書く |
 
 期待する結果が違う例が同じ要求になると、validate が止める。
@@ -111,6 +112,32 @@ contracts/
 **シナリオから example を作れないときは、契約を推測で埋めず**、引き継ぎファイルの `upstream_issues` に書いて停止する。
 戻し先は、シナリオか要求が決めていない振る舞いなら `scenario` か `requirements` にする。
 契約の書き方で解けるなら、書いて進む。
+
+## basis の行
+
+basis の行は、そのファイルがどの上流 (要求と ADR) を基に書かれたかの記録である。
+
+| 対象 | 直す担当 | 直し方 |
+|---|---|---|
+| 入口ファイル (`openapi/openapi.yaml`・`asyncapi/asyncapi.yaml`・`db/rdb-schema.yaml`) と `uc-index.yaml` の先頭の `# basis:` | このスキル | 下の「書き換え方」で書き換える |
+| 生成した `.ts` の `// basis:` | 生成器 | 手で直さない。中身が同じなら生成器は書き換えない。行が古くても、鮮度の検査 (`--check`) は通る |
+| `contracts/generated/**` | — | basis の行を持たない |
+
+書き換え方:
+
+- 対象リポのルートで `node <skills>/d2-common/scripts/lib/basis.js stamp requirements=docs/requirements adr=docs/adr` を実行する。
+- 出力の 1 行 (`basis: requirements@<sha> adr@<sha>`) を、先頭の `# basis:` の行に書く。
+
+書き換える時点と対象:
+
+| 呼び出し | 時点 | 対象 |
+|---|---|---|
+| mode=skeleton | 手順 5 | 全部の入口ファイルと `uc-index.yaml` |
+| mode=uc | 手順 5 の先頭 | この UC が契約を持つ種別の入口ファイルと `uc-index.yaml` |
+
+mode=uc は、契約の中身を変えない呼び出しでも書き換える。
+写し直し (上流を直した後に、機能を新しい main の上で続けること) の後の呼び出しが、これにあたる。
+書き換える前に、mode=uc の手順 1 で上流を読み、契約に効く変更を手順 2 で反映する。
 
 ## スクリプト
 

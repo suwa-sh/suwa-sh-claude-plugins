@@ -114,6 +114,101 @@ test('tracedFetch は http.out を span にし、status を完了時に入れる
   assert.equal(line.meta.tier, 'frontend-staff');
 });
 
+test('tracedFetch は x-scenario-span に http.out の seq を載せ、http.in が http.out の子になる (実地確認: http.in の親が画面になり http.out と兄弟に並んだ)', async () => {
+  const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
+  const t = loadTracer(traceDir);
+  const mw = t.expressScenarioMiddleware({ placement: { tier: 'backend-api', layer: 'presentation' } });
+  // 受け側: 届いたヘッダでミドルウェアを通す (in-process の送信の体)
+  const seen = [];
+  const base = async (_input, init) => {
+    const headers = {};
+    new Headers(init.headers).forEach((v, k) => { headers[k] = v; });
+    seen.push(headers);
+    const listeners = {};
+    const res = { statusCode: 200, on(ev, cb) { listeners[ev] = cb; } };
+    await new Promise((resolve) => mw({ headers, method: 'GET', path: '/rooms' }, res, () => { listeners.finish(); resolve(); }));
+    return new Response('{}', { status: 200 });
+  };
+  const f = t.tracedFetch(base, { tier: 'frontend', layer: 'api-client' });
+  await t.withScenario('uc#nest', async () => {
+    const screen = t.tracedFn('空き状況画面', 'show', () => f('http://x/rooms'), { tier: 'frontend', layer: 'screen' });
+    await screen();
+  });
+  const lines = readTrace(traceDir);
+  const screen = lines.find((l) => l.kind === 'call');
+  const httpOut = lines.find((l) => l.kind === 'http.out');
+  const httpIn = lines.find((l) => l.kind === 'http.in');
+  assert.equal(seen[0]['x-scenario-span'], String(httpOut.seq), 'ヘッダの span は http.out の seq');
+  assert.equal(httpOut.parent, screen.seq, '画面 → http.out');
+  assert.equal(httpIn.parent, httpOut.seq, 'http.out → http.in (画面の直下ではない)');
+  // 呼び出し元が自分で付けた x-scenario-span があっても、http.out の seq で上書きする
+  seen.length = 0;
+  await t.withScenario('uc#nest', () => f('http://x/rooms', { headers: { 'x-scenario-span': '1' } }));
+  assert.notEqual(seen[0]['x-scenario-span'], '1');
+});
+
+test('seq_end は完了した時点で次に振られる seq: 並行の兄弟は重なり、順の兄弟は重ならない', async () => {
+  const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
+  const t = loadTracer(traceDir);
+  const tick = () => new Promise((resolve) => setImmediate(resolve));
+  const repo = t.traced('Repo', { async listRooms() { await tick(); }, async listReservations() { await tick(); }, async save() { await tick(); } }, { tier: 'b', layer: 'repository' });
+  await t.withScenario('uc#par', async () => {
+    const uc = t.traced('Uc', { async execute() { await Promise.all([repo.listRooms(), repo.listReservations()]); await repo.save(); } }, { tier: 'b', layer: 'usecase' });
+    await uc.execute();
+  });
+  const lines = readTrace(traceDir);
+  const by = (name) => lines.find((l) => l.name === name);
+  const rooms = by('Repo.listRooms'); const reservations = by('Repo.listReservations'); const save = by('Repo.save'); const execute = by('Uc.execute');
+  for (const l of lines) assert.equal(typeof l.seq_end, 'number');
+  assert.ok(reservations.seq < rooms.seq_end, '並行: 後の span は、前の span が終わる前に始まっている');
+  assert.ok(save.seq >= rooms.seq_end && save.seq >= reservations.seq_end, '順: 前の span が終わってから始まる');
+  assert.ok(execute.seq_end > save.seq, '親は子より後に終わる');
+  // 実装の記録のシーケンス図は、この seq_end で並行の 2 本だけを par で囲む
+  const { renderScenario } = require(path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-asbuilt/scripts/renderSequence'));
+  const body = renderScenario(lines).split('\n').map((l) => l.trim()).filter((l) => /^(par|and|end)\b|: (listRooms|listReservations|save)$/.test(l));
+  assert.deepEqual(body.map((l) => l.replace(/^p\d+->>\+?p\d+: /, '')), ['par listRooms', 'listRooms', 'and listReservations', 'listReservations', 'end', 'save']);
+});
+
+test('値で返した業務の拒否は result: ok のまま、戻り値の種類を meta.returned に残す (実地確認: 図が 409 の経路の戻りをすべて ok と描いた)', async () => {
+  const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
+  const t = loadTracer(traceDir);
+  const obj = t.traced('Uc', {
+    async rejected() { return { ok: false, error: { code: 'SLOT_OVERLAPS' } }; },
+    async rejectedKind() { return { ok: false, error: { kind: 'not_found' } }; },
+    async rejectedText() { return { ok: false, error: 'TOO_LATE' }; },
+    async rejectedBare() { return { ok: false }; },
+    async created() { return { ok: true, value: { kind: 'created', reservation: {} } }; },
+    async okPlain() { return { ok: true, value: [1, 2] }; },
+    overlaps() { return { kind: 'overlaps' }; },
+    screenError() { return { kind: 'error', code: 'SLOT_OVERLAPS' }; },
+    plain() { return { rows: [] }; },
+    nothing() {},
+    list() { return [{ kind: 'x' }]; },
+  }, { tier: 'b' });
+  await t.withScenario('uc#ret', async () => { for (const k of ['rejected', 'rejectedKind', 'rejectedText', 'rejectedBare', 'created', 'okPlain', 'overlaps', 'screenError', 'plain', 'nothing', 'list']) await obj[k](); });
+  const lines = readTrace(traceDir);
+  const returned = Object.fromEntries(lines.map((l) => [l.meta.fn, l.meta.returned]));
+  assert.deepEqual(returned, {
+    rejected: 'SLOT_OVERLAPS', rejectedKind: 'not_found', rejectedText: 'TOO_LATE', rejectedBare: 'rejected',
+    created: 'created', okPlain: undefined, overlaps: 'overlaps', screenError: 'error SLOT_OVERLAPS', plain: undefined, nothing: undefined, list: undefined,
+  });
+  for (const l of lines) assert.equal(l.meta.result, 'ok', '例外ではないので result は ok');
+  assert.equal(t.returnLabel({ kind: 'x'.repeat(100) }).length, 40, '長い名前は 40 字で切る');
+});
+
+test('meta.returned は call だけに付ける (fetch の Response は ok: false を持つが、http.out の戻りは status で描く)', async () => {
+  const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
+  const t = loadTracer(traceDir);
+  const f = t.tracedFetch(async () => new Response('{}', { status: 409 }), { tier: 'frontend' });
+  await t.withScenario('uc#resp', () => f('http://x/api'));
+  const [line] = readTrace(traceDir);
+  assert.equal(line.kind, 'http.out');
+  assert.equal(line.meta.status, 409);
+  assert.ok(!('returned' in line.meta));
+  // call が Response をそのまま返しても、結果の型として読まない
+  assert.equal(t.returnLabel(new Response('{}', { status: 409 })), undefined);
+});
+
 test('enterScenario の文脈は別の async 連鎖 (cucumber の step) からも解決でき、exitScenario で消える', async () => {
   const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'd2trace-'));
   const t = loadTracer(traceDir);

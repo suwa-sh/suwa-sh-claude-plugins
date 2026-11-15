@@ -22,13 +22,16 @@ mode=feedback items=<直すファイルと直す内容を 1 行ずつ>
 
 - `items` に書かれた `docs/design/storybook-app/src/<相対パス>` (直すファイル)
 - 直すファイルが使う、または直すファイルを使う `docs/design/storybook-app/src/**`。部品の項目なら、その部品を import する部品と Story を辿る
-- `docs/design/screens.yaml` (画面 ↔ Story の対応。Story を消す項目があるときだけ直す)
+- `docs/design/screens.yaml` (画面 ↔ Story の対応)
+- `docs/design/storybook-app/src/**/*.mdx` のうち見本の一覧の文書 (`ScreenMapping.mdx` など) と、`docs/design/_review-summary.md` (要約)
 - `docs/requirements/use-cases.yaml` (`validateScreens.js --use-cases` の実在検査)
 
 ## mode=feedback: 書くもの
 
 - `docs/design/storybook-app/src/**` のうち、項目に書かれたファイルと、その項目を直すために要る依存。項目に無い Story は書き換えない
-- `docs/design/screens.yaml` (画面や Story を消す項目があるときだけ。画面が増減しなければ変えない)
+- `docs/design/screens.yaml`: 画面・Story・variant (Story ファイルが export する状態) を足したか、消したか、名前を変えたときに直す。variant を足したら、その画面の `variants` に足す (対応表を Story の実物と一致させる)。どれも変えなければ触らない
+- 見本の一覧の文書 (`ScreenMapping.mdx` など) と `docs/design/_review-summary.md`: 項目の直しで記述が古くなる行だけを直す (画面・Story・variant の増減、部品の振る舞いの変更)。直したら報告の「項目の外の変更」に書く
+- `docs/design/screenshots/**`: 下の完了条件の撮り直しが書く (自分では書かない)
 
 項目が部品のとき、その部品を使う他の Story の表示も変わる。直してよい (「直せない」にしない)。報告の「影響する Story」に、その部品から import を **Story のファイルまで辿った**一覧 (部品を使う部品を介する間接の利用も含む) を書く。
 表示の確認は、受理の storybook build と、取り込み直し後の main マージ済み UC の frontend の unit の回帰が担う。
@@ -38,7 +41,8 @@ mode=feedback items=<直すファイルと直す内容を 1 行ずつ>
 
 ## mode=feedback: 完了条件
 
-- `npx storybook build` が通る (`docs/design/storybook-app/` で)
+- `npx storybook build` が通る (`docs/design/storybook-app/` をカレントにして回す)
+- `docs/design/screenshots/` があるときは、`node <skills>/d2-design/scripts/captureStories.js --cwd .` (リポのルートで回す) で撮り直す (直す前の撮影を証跡に残さない)。exit 2 (目視未実施) なら、報告に「目視未実施」と理由を書く。`docs/design/screenshots/` が無ければ回さない
 - `validateScreens.js docs/design/screens.yaml --app docs/design/storybook-app/src --use-cases docs/requirements/use-cases.yaml` が exit 0 を返す
 
 ## mode=feedback: 報告

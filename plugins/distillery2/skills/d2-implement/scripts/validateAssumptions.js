@@ -7,6 +7,10 @@
  *   record   <assumptions.yaml> --uc <uc_slug> --tier <tier_id> --attempt <n>
  *   verdicts <findings.yaml> --assumptions <assumptions.yaml> --uc <uc_slug> --tier <tier_id> --attempt <n>
  *   evidence <tier_id>:<assumptions_sha256>:<assumption_verdicts_sha256> ...   # 人レビュー承認の assumption_evidence_sha256 を算出
+ *   review   <attempt のディレクトリ> --uc <uc_slug> --attempt <n>            # 人レビューの材料を 1 回で集める (全ティアの record と verdicts を回し直す)
+ *     出力: tiers[{tier, assumptions_sha256, verdicts_sha256, counts}]、assumption_evidence_sha256、
+ *           assumptions[{tier, id, title, assumption, verdict, category, verified_category, severity, required, recommended}] (required = 回答必須。recommended = 承認 | 実装を直す)、
+ *           findings[{tier, id, severity, kind, title}] (前提に結びつかない指摘を含む全件)
  *
  * option はすべて必須(identity 照合を省略できない)。未知 option / 値欠落 / 重複 / 余剰引数は拒否する。
  *
@@ -314,11 +318,50 @@ function validateVerdicts(findingsDoc, assumptionsDoc, expect, errors) {
   };
 }
 
-const REQUIRED_OPTS = { record: ['uc', 'tier', 'attempt'], verdicts: ['assumptions', 'uc', 'tier', 'attempt'], evidence: [] };
+/**
+ * 人レビューの材料を集める。attempt のディレクトリの findings.<tier>.yaml ごとに、同じティアの assumptions を record と verdicts で検査し直し、
+ * 回答必須の前提 (spec_absent / unlisted で、category か verified_category が security / persistence)・推奨・根拠の hash を返す。
+ * 推奨: verdict が contradicts なら「実装を直す」、それ以外は「承認」(d2-run の人レビューの手順と同じ)。
+ * 進行役が毎回この集計を自作していた (会議室の予約の実地確認)
+ */
+function reviewMaterial(attemptDir, expect, errors) {
+  let names;
+  try { names = fs.readdirSync(attemptDir); } catch (e) { errors.push(`cannot read ${attemptDir}: ${e.message}`); return null; }
+  const tierOf = (n, kind) => { const m = n.match(new RegExp(`^${kind}\\.(.+)\\.yaml$`)); return m ? m[1] : null; };
+  const withFindings = names.map(n => tierOf(n, 'findings')).filter(Boolean).sort();
+  const withRecord = names.map(n => tierOf(n, 'assumptions')).filter(Boolean).sort();
+  if (!withRecord.length) errors.push(`no assumptions.<tier>.yaml in ${attemptDir}`);
+  for (const t of withRecord) if (!withFindings.includes(t)) errors.push(`findings.${t}.yaml is missing (tier ${t} is not verified)`);
+  for (const t of withFindings) if (!withRecord.includes(t)) errors.push(`assumptions.${t}.yaml is missing (tier ${t})`);
+  if (errors.length) return null;
+  const tiers = [];
+  const assumptions = [];
+  const findings = [];
+  for (const tier of withRecord) {
+    const local = [];
+    const record = loadYaml(path.join(attemptDir, `assumptions.${tier}.yaml`), local);
+    const found = loadYaml(path.join(attemptDir, `findings.${tier}.yaml`), local);
+    const r = record && found ? validateVerdicts(found, record, { ...expect, tier }, local) : null;
+    if (local.length) { errors.push(...local.map(e => `${tier}: ${e}`)); continue; }
+    tiers.push({ tier, assumptions_sha256: r.assumptions_sha256, assumption_verdicts_sha256: r.verdicts_sha256, counts: r.counts, requires_answer: r.requires_answer });
+    const byId = new Map((record.assumptions || []).map(a => [a.id, a]));
+    const sev = new Map((found.findings || []).map(f => [f.id, f.severity]));
+    for (const v of found.assumption_verdicts || []) {
+      const a = byId.get(v.id) || {};
+      assumptions.push({ tier, id: v.id, title: a.title || null, assumption: v.assumption, verdict: v.verdict, category: v.category, verified_category: v.verified_category,
+        severity: sev.get(v.finding_id) || null, required: requiresAnswer(v.verdict, v.category, v.verified_category), recommended: v.verdict === 'contradicts' ? '実装を直す' : '承認' });
+    }
+    for (const f of found.findings || []) findings.push({ tier, id: f.id, severity: f.severity, kind: f.kind, title: f.title || null });
+  }
+  if (errors.length) return null;
+  return { attempt: expect.attempt, tiers, assumption_evidence_sha256: evidenceHash(tiers), required: assumptions.filter(a => a.required).length, assumptions, findings };
+}
+
+const REQUIRED_OPTS = { record: ['uc', 'tier', 'attempt'], verdicts: ['assumptions', 'uc', 'tier', 'attempt'], evidence: [], review: ['uc', 'attempt'] };
 
 function parseArgs(argv) {
   const [cmd, file, ...rest] = argv;
-  if (!REQUIRED_OPTS[cmd]) throw new Error(`unknown command ${JSON.stringify(cmd)} (record | verdicts | evidence)`);
+  if (!REQUIRED_OPTS[cmd]) throw new Error(`unknown command ${JSON.stringify(cmd)} (record | verdicts | evidence | review)`);
   if (cmd === 'evidence') {
     const tiers = [file, ...rest].filter(Boolean).map(spec => {
       const m = String(spec).match(/^([^:]+):([0-9a-f]{64}):([0-9a-f]{64})$/);
@@ -360,7 +403,9 @@ function run(argv) {
   const { cmd, file, opts } = parsed;
   if (cmd === 'evidence') return { ok: true, assumption_evidence_sha256: evidenceHash(parsed.tiers), tiers: parsed.tiers.length };
   const expect = { uc: opts.uc, tier: opts.tier, attempt: Number(opts.attempt) };
-  if (cmd === 'record') {
+  if (cmd === 'review') {
+    result = reviewMaterial(path.resolve(file), { uc: opts.uc, attempt: Number(opts.attempt) }, errors);
+  } else if (cmd === 'record') {
     const doc = loadYaml(path.resolve(file), errors);
     if (doc) result = validateRecord(doc, expect, errors);
   } else {
@@ -378,4 +423,4 @@ if (require.main === module) {
   process.exit(out.ok ? 0 : 1);
 }
 
-module.exports = { run, validateRecord, validateVerdicts, canonicalHash, evidenceHash, expectedSeverity, requiresAnswer, CATEGORIES, VERDICTS, VIEWPOINTS, RECORD_HASH_KEYS, VERDICT_HASH_KEYS };
+module.exports = { run, reviewMaterial, validateRecord, validateVerdicts, canonicalHash, evidenceHash, expectedSeverity, requiresAnswer, CATEGORIES, VERDICTS, VIEWPOINTS, RECORD_HASH_KEYS, VERDICT_HASH_KEYS };

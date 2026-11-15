@@ -10,7 +10,10 @@
  *   2. qlty CLI が無い / git 外 / 出力が取れないときは固定リスト (フォールバック) を土台にする。
  *   3. 土台に distillery2 の上乗せをする (overlay。同じ入力に 2 回当てても同じ結果):
  *      - biome の版を lockfile / package.json の版に固定 (qlty の既定 1.9.4 は biome 2 系の設定を読めない)
- *      - 生成物・vendored (packages/ui、packages/contracts、contracts/generated、Storybook、契約テスト、.distillery) を exclude_patterns に追加
+ *      - インストールとビルドの場所 (node_modules、dist、build) を exclude_patterns に追加
+ *      - 生成物・流用物 (packages/ui、packages/contracts、contracts/generated、Storybook、契約テスト、.distillery と、qlty の既定の除外のうちリポに入る場所) は
+ *        末尾の [[exclude]] に書き、plugins に秘密の検出 (trufflehog) を入れない (exclude_patterns は秘密の検出にも効き、リポ全体の検査に穴が開く)。
+ *        --refresh でプラグインが増えたら、この plugins にも足す
  *      - qlty の既定除外のうち `**\/db/**` と `**\/config/**` は外す (実装のレイヤ名になりやすく、検査の穴になる)
  *      - lockfile は除外しない (osv-scanner の入力)
  *      - test_patterns に `features/**`
@@ -41,11 +44,20 @@ function parseArgs(argv) {
   return o;
 }
 
-/** distillery2 が足す除外 (生成物・vendored)。 */
-const D2_EXCLUDES = [
+/**
+ * 除外は 2 種類に分ける (仕様: https://docs.qlty.sh/cli/qlty-toml)。
+ *   - `exclude_patterns` は qlty のすべての働きから外す。秘密の検出 (trufflehog) も見なくなる
+ *   - `[[exclude]]` は `plugins` に並べたプラグインだけを `file_patterns` から外す (受け付けるキーはこの 2 つだけ)
+ * 秘密の検出はリポ全体を見るので、リポに入るもの (生成物・流用物) の除外は `[[exclude]]` に書き、`plugins` に秘密の検出を入れない。
+ */
+/** 全体から外すもの (`exclude_patterns`): インストールとビルドで作られる場所。リポに入らないので、秘密の検出からも外す。 */
+const D2_GLOBAL_EXCLUDES = [
   '**/node_modules/**',
   '**/dist/**',
   '**/build/**',
+];
+/** 秘密の検出を除くプラグインから外すもの (`[[exclude]]`): リポに入る生成物・流用物。 */
+const D2_SCOPED_EXCLUDES = [
   '**/*.d.ts',
   '**/*.min.*',
   '.distillery/**',
@@ -56,6 +68,32 @@ const D2_EXCLUDES = [
   'docs/design/screenshots/**',
   '**/test/contract/**',
 ];
+/**
+ * qlty init の既定の除外のうち、リポに入る場所を指すもの (0.618.0 の提案の実測)。`exclude_patterns` から `[[exclude]]` へ移す
+ * (`**\/generated/**` が残ると contracts/generated を、`**\/seed/**` `**\/templates/**` `**\/assets/**` が残るとその場所を、秘密の検出が見ない)。
+ * ここに無い除外 (インストールやビルドの場所、手で足したもの) は `exclude_patterns` に残す。
+ */
+const QLTY_DEFAULT_SCOPED_EXCLUDES = [
+  '*_min.*',
+  '*-min.*',
+  '*.min.*',
+  '**/assets/**',
+  '**/extern/**',
+  '**/external/**',
+  '**/generated/**',
+  '**/Godeps/**',
+  '**/gradlew/**',
+  '**/mvnw/**',
+  '**/protos/**',
+  '**/seed/**',
+  '**/templates/**',
+  '**/testdata/**',
+  '**/vendor/**',
+];
+/** 秘密の検出のプラグイン (`[[exclude]]` の `plugins` に入れない)。 */
+const SECRET_PLUGINS = ['trufflehog'];
+/** genQlty.js が管理する `[[exclude]]` の目印 (この行の次が `[[exclude]]`)。 */
+const SCOPED_MARK = '# 生成物と流用物の除外 (genQlty.js が管理)。';
 /** qlty init の既定除外のうち外すもの (実装のレイヤ名になりやすい)。 */
 const PRUNE_EXCLUDES = ['**/db/**', '**/config/**'];
 const D2_TEST_PATTERNS = ['features/**'];
@@ -239,17 +277,36 @@ function stripHeader(lines) {
 }
 
 /**
+ * genQlty.js が管理する `[[exclude]]` (目印 SCOPED_MARK の次) を取り除き、その file_patterns を返す。無ければ空。
+ * ブロックは次のセクション見出しかコメント行の手前まで。
+ */
+function takeScopedExclude(lines) {
+  const i = lines.findIndex((l, k) => l.startsWith(SCOPED_MARK) && /^\[\[exclude\]\]/.test(lines[k + 1] || ''));
+  if (i < 0) return { lines, patterns: [] };
+  let end = i + 2;
+  while (end < lines.length && !/^\[/.test(lines[end]) && !/^#/.test(lines[end])) end++;
+  const patterns = readArray(lines.slice(i + 2, end), 'file_patterns')?.items || [];
+  return { lines: [...lines.slice(0, i), ...lines.slice(end)], patterns };
+}
+
+/**
  * 土台の TOML に distillery2 の上乗せをする。同じ入力に 2 回当てても同じ結果。
  * @param {string} toml 土台
  * @param {{biomeVersion: string, source: 'suggest'|'fallback', hasBiomeDep: boolean}} opt
  */
 function overlay(toml, opt) {
   let lines = stripHeader(toml.replace(/\r\n/g, '\n').split('\n'));
-  // exclude_patterns: 既定の穴になりやすい 2 つと lockfile を外し、生成物を足す
-  const ex = (readArray(lines, 'exclude_patterns')?.items || [])
+  // 管理している [[exclude]] は作り直す (プラグインが増えたら plugins に足すため)。手で足した file_patterns は引き継ぐ
+  const taken = takeScopedExclude(lines);
+  lines = taken.lines;
+  // exclude_patterns: 既定の穴になりやすい 2 つと lockfile を外す。リポに入る場所の除外は [[exclude]] へ移す (秘密の検出は見る)
+  const scopedKnown = new Set([...D2_SCOPED_EXCLUDES, ...QLTY_DEFAULT_SCOPED_EXCLUDES]);
+  const all = (readArray(lines, 'exclude_patterns')?.items || [])
     .filter((p) => !PRUNE_EXCLUDES.includes(p))
     .filter((p) => !LOCKFILES.some((lf) => p.includes(lf)));
-  for (const p of D2_EXCLUDES) if (!ex.includes(p)) ex.push(p);
+  const ex = all.filter((p) => !scopedKnown.has(p));
+  for (const p of D2_GLOBAL_EXCLUDES) if (!ex.includes(p)) ex.push(p);
+  const scoped = [...new Set([...taken.patterns, ...all.filter((p) => scopedKnown.has(p)), ...D2_SCOPED_EXCLUDES])];
   lines = writeArray(lines, 'exclude_patterns', ex);
   // test_patterns: features/** を足す
   const tp = readArray(lines, 'test_patterns')?.items || [];
@@ -263,9 +320,16 @@ function overlay(toml, opt) {
   // radarlint-* (コードスメル) は助言扱い
   const radar = pluginNames(lines).filter((n) => n.startsWith('radarlint-')).filter((n) => !hasTriageFor(lines, n));
   if (radar.length) lines.push('', '# コードスメルは助言 (ゲートを止めない)', '[[triage]]', `match.plugins = [${radar.map((n) => `"${n}"`).join(', ')}]`, 'set.level = "low"');
+  // 生成物・流用物の除外: 秘密の検出を除く全プラグインに限る。ファイルの末尾に置く (トップレベルのキーより後)
+  const scopedPlugins = pluginNames(lines).filter((n) => !SECRET_PLUGINS.includes(n));
+  if (scopedPlugins.length) {
+    while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+    lines.push('', `${SCOPED_MARK} 秘密の検出 (${SECRET_PLUGINS.join(', ')}) はリポ全体を見るので plugins に入れない。plugins は作り直すたびに全プラグインから作る`,
+      '[[exclude]]', `plugins = [${scopedPlugins.map((n) => `"${n}"`).join(', ')}]`, ...renderArray('file_patterns', scoped));
+  }
   const header = [
     `# distillery2 genQlty.js が生成した qlty の設定 (土台: ${opt.source === 'suggest' ? '`qlty init` の提案' : '固定リスト (qlty CLI が無いときのフォールバック)'})。`,
-    '# 上乗せ: biome の版固定 / 生成物・vendored の除外 / `**/db/**` `**/config/**` は除外しない / lockfile は除外しない / features は test / radarlint は low。',
+    '# 上乗せ: biome の版固定 / 生成物・流用物の除外は秘密の検出を除くプラグインだけ (末尾の [[exclude]]) / `**/db/**` `**/config/**` は除外しない / lockfile は除外しない / features は test / radarlint は low。',
     '# ゲートは commands.quality (.distillery/config.yaml)。整形は `qlty fmt --all`。`qlty check --fix` は使わない。',
     '# 無視は [[ignore]] / [[triage]] で書く ([[exclude]] に rules は書けない)。仕様: https://docs.qlty.sh/cli/qlty-toml',
   ];
@@ -353,4 +417,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { parseArgs, run, overlay, suggestToml, refresh, FALLBACK_TOML, D2_EXCLUDES, PRUNE_EXCLUDES };
+module.exports = { parseArgs, run, overlay, suggestToml, refresh, FALLBACK_TOML, D2_GLOBAL_EXCLUDES, D2_SCOPED_EXCLUDES, QLTY_DEFAULT_SCOPED_EXCLUDES, SECRET_PLUGINS, PRUNE_EXCLUDES };

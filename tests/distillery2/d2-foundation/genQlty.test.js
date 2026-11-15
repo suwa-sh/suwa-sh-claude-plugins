@@ -8,7 +8,7 @@ const { spawnSync } = require('node:child_process');
 
 const SKILL = path.resolve(__dirname, '../../../plugins/distillery2/skills/d2-foundation');
 const SCRIPT = path.join(SKILL, 'scripts/genQlty.js');
-const { overlay, FALLBACK_TOML, D2_EXCLUDES, PRUNE_EXCLUDES } = require(SCRIPT);
+const { overlay, FALLBACK_TOML, D2_GLOBAL_EXCLUDES, D2_SCOPED_EXCLUDES, QLTY_DEFAULT_SCOPED_EXCLUDES, PRUNE_EXCLUDES } = require(SCRIPT);
 const INIT_FIXTURE = fs.readFileSync(path.join(__dirname, 'fixtures/qlty-init.toml'), 'utf8');
 
 function tmp() { return fs.mkdtempSync(path.join(os.tmpdir(), 'd2-qlty-')); }
@@ -24,6 +24,13 @@ function arr(toml, key) {
   const m = toml.match(new RegExp(`^${key} = \\[\\n([\\s\\S]*?)\\n\\]`, 'm'));
   return m ? [...m[1].matchAll(/"([^"]*)"/g)].map((x) => x[1]) : null;
 }
+/** genQlty.js が管理する [[exclude]] (秘密の検出を除くプラグインに限る除外)。無ければ null */
+function scopedExclude(toml) {
+  const m = toml.match(/^# 生成物と流用物の除外 \(genQlty\.js が管理\)。[^\n]*\n\[\[exclude\]\]\nplugins = \[([^\]\n]*)\]\nfile_patterns = \[\n([\s\S]*?)\n\]/m);
+  if (!m) return null;
+  const items = (s) => [...s.matchAll(/"([^"]*)"/g)].map((x) => x[1]);
+  return { plugins: items(m[1]), file_patterns: items(m[2]) };
+}
 const qltyProbe = spawnSync('qlty', ['--version'], { encoding: 'utf8' });
 const qltyOnPath = !qltyProbe.error && qltyProbe.status === 0;
 
@@ -35,20 +42,52 @@ test('overlay: qlty init の提案を土台に distillery2 の上乗せをする
   assert.ok(!names.includes('radarlint-js'), '提案に無いプラグインは足さない');
   // biome の版固定
   assert.equal(pluginBlocks(out).find((p) => p.name === 'biome').version, '2.2.5');
-  // 除外: 生成物を足し、既定の穴 (db / config) は外す。他の既定は残す
+  // 除外: インストールとビルドの場所を全体から外し、既定の穴 (db / config) は外す。インストールやビルドの場所を指す他の既定は残す
   const ex = arr(out, 'exclude_patterns');
-  for (const p of D2_EXCLUDES) assert.ok(ex.includes(p), `exclude ${p}`);
+  for (const p of D2_GLOBAL_EXCLUDES) assert.ok(ex.includes(p), `exclude ${p}`);
   for (const p of PRUNE_EXCLUDES) assert.ok(!ex.includes(p), `既定除外 ${p} を外す`);
-  assert.ok(ex.includes('**/vendor/**'), '他の既定除外は残す');
+  for (const p of ['**/.yarn/**', '**/bower_components/**', '**/cache/**', '**/deps/**', '**/target/**']) assert.ok(ex.includes(p), `既定除外 ${p} は残す`);
   assert.ok(!out.includes('package-lock.json'), 'lockfile は除外しない');
   // features は test 扱い。スメルはコメント
   assert.ok(arr(out, 'test_patterns').includes('features/**'));
   assert.match(out, /\[smells\]\nmode = "comment"/);
   // radarlint が提案に無いなら triage も出さない
   assert.ok(!/^\[\[triage\]\]/m.test(out));
-  assert.ok(!/^\[\[exclude\]\]/m.test(out), '[[exclude]] に rules を書く誤用を招かないよう exclude セクションは出さない');
   assert.ok(out.startsWith('# distillery2 genQlty.js'), '土台の由来をヘッダに書く');
   assert.ok(out.includes('`qlty init` の提案'));
+});
+
+test('overlay: 生成物・流用物の除外は秘密の検出 (trufflehog) を除くプラグインの [[exclude]] に書き、exclude_patterns に残さない (実地確認: 秘密の検出が生成物を見なかった)', () => {
+  const out = overlay(INIT_FIXTURE, { biomeVersion: '2.2.5', source: 'suggest', hasBiomeDep: true });
+  const ex = arr(out, 'exclude_patterns');
+  const scoped = scopedExclude(out);
+  assert.ok(scoped, out);
+  // exclude_patterns は秘密の検出にも効く。リポに入る場所 (生成物と、qlty の既定の除外のうち流用物・生成物を指すもの) を残さない
+  for (const p of [...D2_SCOPED_EXCLUDES, ...QLTY_DEFAULT_SCOPED_EXCLUDES]) {
+    assert.ok(!ex.includes(p), `exclude_patterns に残さない: ${p}`);
+    assert.ok(scoped.file_patterns.includes(p), `[[exclude]] に書く: ${p}`);
+  }
+  // `**/generated/**` が全体の除外に残ると、contracts/generated を秘密の検出が見ない
+  assert.ok(!ex.includes('**/generated/**'));
+  // plugins は秘密の検出を除く全プラグイン
+  assert.deepEqual(scoped.plugins, ['actionlint', 'biome', 'osv-scanner', 'ripgrep', 'zizmor']);
+  // [[exclude]] が受け付けるキーは plugins と file_patterns だけ (https://docs.qlty.sh/cli/qlty-toml)。rules を書かない
+  const block = out.slice(out.search(/^\[\[exclude\]\]/m));
+  assert.deepEqual([...block.matchAll(/^([a-z_.]+) = /gm)].map((m) => m[1]), ['plugins', 'file_patterns']);
+  assert.equal((out.match(/^\[\[exclude\]\]/gm) || []).length, 1);
+  // トップレベルのキーより後 (ファイルの末尾) に置く。前に置くと、後ろのキーがこの表に入る
+  assert.ok(out.search(/^\[\[exclude\]\]/m) > out.lastIndexOf('[[plugin]]'));
+  assert.ok(out.trimEnd().endsWith(']'));
+  // 2 回当てても同じ (冪等)
+  assert.equal(overlay(out, { biomeVersion: '2.2.5', source: 'suggest', hasBiomeDep: true }), out);
+  // 手で足した全体の除外は exclude_patterns に残り、管理している [[exclude]] に手で足したパターンも残る
+  const hand = out.replace('exclude_patterns = [\n', 'exclude_patterns = [\n  "legacy/**",\n').replace('file_patterns = [\n', 'file_patterns = [\n  "third_party/**",\n');
+  const again = overlay(hand, { biomeVersion: '2.2.5', source: 'suggest', hasBiomeDep: true });
+  assert.ok(arr(again, 'exclude_patterns').includes('legacy/**'));
+  assert.ok(scopedExclude(again).file_patterns.includes('third_party/**'));
+  // 秘密の検出しか無ければ [[exclude]] は出さない (plugins が空だと外す相手がいない)
+  const onlySecrets = overlay('config_version = "0"\n\n[[plugin]]\nname = "trufflehog"\n', { biomeVersion: '2.2.5', source: 'suggest', hasBiomeDep: false });
+  assert.ok(!/^\[\[exclude\]\]/m.test(onlySecrets), onlySecrets);
 });
 
 test('overlay: radarlint-* が提案に含まれれば low に降格。2 回当てても同じ (冪等)', () => {
@@ -99,7 +138,12 @@ test('genQlty (fallback): qlty CLI が無いときは固定リストを土台に
   for (const n of ['biome', 'radarlint-js', 'actionlint', 'zizmor', 'trufflehog', 'osv-scanner']) assert.ok(names.includes(n), `fallback plugin ${n}`);
   assert.equal(pluginBlocks(toml).find((p) => p.name === 'biome').version, '2.3.1');
   assert.match(toml, /\[\[triage\]\]\nmatch\.plugins = \["radarlint-js"\]\nset\.level = "low"/);
-  for (const p of D2_EXCLUDES) assert.ok(arr(toml, 'exclude_patterns').includes(p), `exclude ${p}`);
+  for (const p of D2_GLOBAL_EXCLUDES) assert.ok(arr(toml, 'exclude_patterns').includes(p), `exclude ${p}`);
+  for (const p of D2_SCOPED_EXCLUDES) {
+    assert.ok(!arr(toml, 'exclude_patterns').includes(p), `exclude_patterns に残さない: ${p}`);
+    assert.ok(scopedExclude(toml).file_patterns.includes(p), `[[exclude]] に書く: ${p}`);
+  }
+  assert.deepEqual(scopedExclude(toml).plugins, ['biome', 'radarlint-js', 'actionlint', 'zizmor', 'osv-scanner'], '秘密の検出 (trufflehog) を除く');
   assert.ok(toml.includes('固定リスト'));
   // 既存があればスキップ。--force で作り直す
   fs.writeFileSync(path.join(c, '.qlty/qlty.toml'), '# handwritten\nconfig_version = "0"\n');
@@ -212,6 +256,12 @@ test('genQlty --refresh: 提案で増えた plugins だけ足し、既存の内�
   assert.match(after, /\[\[triage\]\]\nmatch\.plugins = \["radarlint-python"\]\nset\.level = "low"/, '増えた radarlint は low に');
   assert.match(after, /\[\[ignore\]\]\nrules = \["biome:lint\/suspicious\/noExplicitAny"\]/, '手編集の ignore を保持');
   assert.equal(pluginBlocks(after).find((x) => x.name === 'biome').version, '2.2.5', 'biome の版固定を保持');
+  // プラグインを足しても、生成物の除外は exclude_patterns に戻らず、足したプラグインが [[exclude]] の plugins に入る (実地確認)
+  assert.deepEqual(scopedExclude(after).plugins, ['actionlint', 'biome', 'osv-scanner', 'ripgrep', 'zizmor', 'ruff', 'radarlint-python']);
+  assert.deepEqual(scopedExclude(after).file_patterns, scopedExclude(before).file_patterns, '除外するパターンは変わらない');
+  for (const p of D2_SCOPED_EXCLUDES) assert.ok(!arr(after, 'exclude_patterns').includes(p), `refresh の後も exclude_patterns に戻らない: ${p}`);
+  assert.equal((after.match(/^\[\[exclude\]\]/gm) || []).length, 1, '[[exclude]] は 1 つのまま');
+  assert.ok(after.search(/^\[\[exclude\]\]/m) > after.lastIndexOf('[[plugin]]'), '足したプラグインより後 (ファイルの末尾)');
   // 手書きの先頭コメントは refresh で消えない (自分のヘッダだけ置き換える。Codex 0.1.14 指摘 1)
   fs.writeFileSync(p, '# handwritten policy: keep this\n' + fs.readFileSync(p, 'utf8'));
   const later2 = tmp();

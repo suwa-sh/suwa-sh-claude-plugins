@@ -131,7 +131,8 @@ function checkReport(data, reportText) {
   const body = h < 0 ? [] : lines.slice(h + 1, (() => { const k = lines.slice(h + 1).findIndex((l) => /^#{1,6}\s/.test(l)); return k < 0 ? lines.length : h + 1 + k; })());
   const listed = [];
   for (const l of body) {
-    if (!l.trim() || /^\s*(なし|無し|-\s*なし)\s*$/.test(l)) continue;
+    // 決めたことが無いときの 1 行: 「なし」「- なし」「なし (理由)」「なし。」(理由を括弧で添えた行で受理が落ち、再派遣になった。会議室の予約の実地確認)
+    if (!l.trim() || /^\s*(?:[-*]\s*)?(?:なし|無し)\s*(?:[(（][^)）]*[)）])?\s*[。.]?\s*$/.test(l)) continue;
     const m = l.match(/^\s*(?:[-*]|\d+\.)?\s*(D\d+)\b/);
     if (!m) { errors.push(`「決めたこと」に D<n> で始まらない行がある: ${l.trim().slice(0, 60)}`); continue; }
     listed.push(m[1]);

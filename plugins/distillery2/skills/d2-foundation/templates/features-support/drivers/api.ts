@@ -127,6 +127,8 @@ export class ApiDriver implements Driver {
   /**
    * frontend ティアの生成クライアント (`packages/contracts/<id>/client.ts`) に渡す fetch。
    * URL のパス部分を supertest に流し、http.out (placement のティア) → http.in (backend) の入れ子を作る。
+   * x-scenario-span は inProcessFetch が http.out の span の中で付ける (値は http.out の seq)。
+   * request は同じ span の中で呼ばれるので、request が重ねる scenarioHeaders() も同じ値になる。
    */
   asFetch(placement: Placement): typeof fetch {
     return inProcessFetch(
