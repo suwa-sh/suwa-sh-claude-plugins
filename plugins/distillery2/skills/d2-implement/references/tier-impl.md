@@ -22,6 +22,8 @@
 
 - `apps/<tier>/src/**` (実装とテスト)。frontend の画面は、読むものの画面部品だけで組む (自作しない)
 - frontend が土台に横断の結線を足すときだけ、`apps/<tier>/**` のうち src の外の土台のファイル (vite.config.ts・index.html。進め方 3)
+- プラグインの不具合をリポの中で回避するときだけ、`apps/<tier>/**` のうち src の外のファイル (テストの設定・テストの補助など)。回避の仕方を引き継ぎファイルの課題の `workaround` に書く。
+  それ以外で src の外 (依存の一覧・ビルドやテストの設定) を直す必要があれば、直さずに戻し先 `foundation` の課題にする (基盤の生成物なので、作り直しで戻る)
 - `.distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml` (0 件でも必ず)
 - backend の datastore_owner ティアは `apps/<tier>/migrations/` の追加 migration (契約の DB 変更に追随するときだけ。DDL 生成物は書き換えない)
 
@@ -32,7 +34,10 @@
 2. 提供側なら `apps/<tier>/src/test-app.ts` に `createTestApp(deps)` を用意し、契約テストと UC BDD の API ドライバが同じ入口を使えるようにする。`deps` は省略できる `{ db, clock, fixture }` (`packages/test-support/README.md` の結線の契約)。現在時刻はティアが自分で置く時計の口 (`now(): Date` を持つ型。テストの `FixedClock` はこの形に合う。本番のコードから `@repo/test-support` を import しない) から取り、`new Date()` を usecase や domain に直接書かない
    (計装の結線は integrate 段階が行う。ここでは export だけ)。`createTestApp` は省略できる引数 `{ fixture }` を受け取り、
    `contracts/generated/slices/<slug>/contract-slice.json` の `fixtures` に載る各名前のテスト用データ (意味は説明文のとおり) を用意してから app を返す
-   (契約テストが例ごとに渡す。UC BDD の API ドライバは `{ db, clock }` を渡す。`packages/test-support/README.md` の結線の契約)。usecase / repository / gateway は **注入で差し替えられるオブジェクト**にする
+   (契約テストが例ごとに渡す。UC BDD の API ドライバは `{ db, clock }` を渡す。`packages/test-support/README.md` の結線の契約)。
+   説明に現在時刻が書いてあるテスト用データでは、省略された `clock` をその時刻の固定の時計で埋める。
+   同じファイルから `closeTestApps(): Promise<void>` も export する。`closeTestApps()` は、`createTestApp` が自分で作ったもの (`db` を省略されたときの一時 DB) をすべて閉じ、渡された `db` は閉じない
+   (生成された契約テストが例の後に呼ぶ。RDB が無いティアでも、何もしない関数として export する)。usecase / repository / gateway は **注入で差し替えられるオブジェクト**にする
    (integrate が `traced()` で包んで図の参加者にする)
 3. frontend なら、画面の操作を **ブラウザ無しで呼べる入口関数** (例: `submitLoanCheckout(api, input)`) として export し、
    API 呼び出しは生成クライアントの `options.fetch` で差し替えられる形にする (UC BDD が in-process で画面 → API を通すため)。
@@ -42,15 +47,18 @@
    (`src/App.tsx` への差し込み・`vite.config.ts` の中継の設定など。前のステップの課題にしない)。足した結線は AssumptionRecord に書く。後の画面の機能はそれに載せる。
    土台が無い構成 (ADR の ui が React の SPA・Tailwind 以外。基盤の報告に「最初の画面の機能が ADR に従って作る」と出る) では、最初の画面の機能が ADR に従って土台を作り、
    その作り方を AssumptionRecord に書く。後の画面の機能はそれに載せる
-4. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `build` / `unit` (`.distillery/config.yaml` の commands。`build` が無い古い config は `typecheck`)。
+4. ゲートは自ティアに限定して check-only で回す: `format_check` / `lint` / `build` / `unit` (`.distillery/config.yaml` の自ティアの commands。`build` が無い古い config は `typecheck`) と、依存方向の `commands.arch_test` (リポ全体を読むだけ。自ティアの違反を直す)。
+   どのコマンドも、リポのルートで回す (config の commands は `-w apps/<tier>` でティアを指す。ティアのディレクトリへ移動しない)。
    書き換えを伴う formatter は使わない (並列ティアの write-set を侵すため)。
    **`runGates.js` は使わない**。runGates は `<run>/reports/gates.json` をゲート名単位で置き換えるため、並列で走る他ティアの記録を消す。
    記録付きのゲートは全ティアの受理後にオーケストレータが 1 回だけ回す。
-   commands 中の `{slug}` は UC の slug に、`{report}` は OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。headless で `mktemp` が拒まれたら `node -e "console.log(require('os').tmpdir()+'/d2-'+Date.now()+'.json')"` で名前を作る。0.1.32 O17) に置き換えて直接実行し、使い終えたら消す
-   (`<run>/reports/` に書かない。write-set の外で、並列ティアと競合する)
+   commands 中の `{slug}` は UC の slug に、`{report}` は `<リポのルートの絶対パス>/.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。ティアとコマンドごとに別の名前なので並列ティアと競合しない。回すたびに上書きし、消さない) に置き換えて直接実行する。
+   必ず絶対パスで渡す (`npm run -w apps/<tier>` はティアのディレクトリで動くので、相対パスだと出力先がティアの中にずれる)
+   (`<run>/reports/` に書かない。write-set の外で、並列ティアと競合する。リポの外の一時ファイルも使わない。headless では作ることも消すことも拒まれる)
 5. 自分で決めた判断を AssumptionRecord に書く (`<skills>/d2-common/references/assumption-record.md`)。書いたら
-   `validateAssumptions.js record` を実行し ok を確認する
-6. 契約テスト (`test/contract/`) は生成物。落ちるなら実装を直す。契約の側が間違っていると思うなら引き継ぎファイルの `upstream_issues` に戻し先 `contract` で書き、
+   `node <skills>/d2-implement/scripts/validateAssumptions.js record .distillery/runs/<slug>/attempt-<n>/assumptions.<tier>.yaml --uc <slug> --tier <tier> --attempt <n>` を実行し ok を確認する (引数はすべて必須)
+6. エラーの分け方 (コード・status) と利用者に見せる文言は、契約の応答の例のとおりにする。例に無い分け方や文言を実装で足さない (受入基準が言い分ける結果を契約の例で区別できなければ、引き継ぎファイルの `upstream_issues` に戻し先 `contract` で書く)
+7. 契約テスト (`test/contract/`) は生成物。落ちるなら実装を直す。契約の側が間違っていると思うなら引き継ぎファイルの `upstream_issues` に戻し先 `contract` で書き、
    実装は契約どおりにする (「動くように契約と違うことをする」を禁止)
 
 ## 禁止
@@ -62,4 +70,4 @@
 
 ## 報告
 
-ゲート結果 (4 つ)、AssumptionRecord の件数と sha256、起票した issue、同じ失敗が 3 回続いた場合はその内容 (仕様疑義として)。
+ゲート結果 (自ティアの 4 つと arch_test)、AssumptionRecord の件数と sha256、引き継ぎファイルに書いた課題、同じ失敗が 3 回続いた場合はその内容 (仕様疑義として)。

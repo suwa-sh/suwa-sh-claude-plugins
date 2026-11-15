@@ -231,6 +231,9 @@ const STUB_TEST_APP_TS = `// distillery2 genSkeleton.js が置いた仮の compo
 export function createTestApp(_options?: { fixture?: string }): never {
   throw new Error('test-app は未結線 (d2-implement で createTestApp を実装する)');
 }
+
+// 生成された契約テストが各テストの後に呼ぶ。実装では、createTestApp が自分で作った一時 DB をすべて閉じる (渡された db は閉じない)
+export async function closeTestApps(): Promise<void> {}
 `;
 // ---- 画面の土台 (0.3.0) ----------------------------------------------------
 // ADR の ui が React の SPA・Tailwind のとき、frontend ティアに「ブラウザで開ける画面」の土台を置く。

@@ -807,12 +807,12 @@ processes:
     template_row: "④ tier"
     write_set:
       - "`apps/<tier>/**`"
-      - "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
+      - "`<run>/attempt-<n>/assumptions.<tier>.yaml`。例外: ゲートの `{report}` の置き換え先 `<リポのルートの絶対パス>/.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。絶対パスで渡す。回すたびに上書きし、消さない)"
     reads: [rules, feature, contract-slice, contracts-code, use-cases, req-usdm, req-rdra, design, ui, tier-src, test-support, findings]
     writes: [tier-src, assumptions, migrations]
     allowed_writes: [tier-dir, assumptions]
     notes:
-      - "例外: ゲートの `{report}` の置き換え先に使う OS の一時ファイル (`mktemp` か `node -e` で作る。リポの外。使い終えたら削除)"
+      - "例外: ゲートの `{report}` の置き換え先 `<リポのルートの絶対パス>/.distillery/logs/gate-<slug>-<tier>-<コマンド名>.json` (gitignore。絶対パスで渡す。回すたびに上書きし、消さない)"
   - id: implement.integrate
     name: 結合
     skill: d2-implement
@@ -840,7 +840,7 @@ processes:
     template_row: "④ verify"
     write_set:
       - "`<run>/attempt-<n>/findings.<tier>.yaml`"
-    reads: [reports, traces, assumptions, feature, use-cases, req-usdm, req-rdra, rules, contract-slice, tier-src, uc-index, asbuilt-system, skill-docs]
+    reads: [reports, traces, assumptions, feature, use-cases, req-usdm, req-rdra, rules, contract-slice, design, ui, tier-src, uc-index, asbuilt-system, skill-docs]
     writes: [findings]
     allowed_writes: [findings]
   - id: asbuilt
@@ -1092,29 +1092,29 @@ processes:
       - "`docs/adr/**`"
       - "`docs/nfr/**`"
       - "`.distillery/logs/decide-<issue>.result.json`"
-    reads: [feedback-docs, adr, nfr]
+    reads: [feedback-docs, adr, nfr, use-cases]
     writes: [adr, nfr, decide-result]
     allowed_writes: [adr-dir, nfr, decide-result]
     scripts: [validateAdr.js, genAdrIndex.js, validateNfrGrade.js, generateNfrGradeMd.js]
   - id: run.decide-diff
-    name: 決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除・やり直す UC の run の退避)
+    name: 決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除)
     stage: decide
     kind: orchestrator
     actor: d2-run
     scripts: [validateAdr.js, genAdrIndex.js, genRules.js, genArchTests.js, runGates.js, feedbackBatch.js, runState.js]
     run_table_row: "② の決定の差分の取り込み"
-    reads: [decide-result, adr, rule-templates, feedback-docs, config, skeleton, lockfile, qlty-config, tier-src, depcruise-config, use-cases]
-    writes: [adr, rules, depcruise-config, reports, feedback-docs, use-cases, run-archive]
+    reads: [decide-result, adr, rule-templates, feedback-docs, config, skeleton, lockfile, qlty-config, tier-src, depcruise-config]
+    writes: [adr, rules, depcruise-config, reports, feedback-docs]
   # ================= ③ 基盤の差分 (0.2.0。派遣は ③ の行 (骨格・契約の骨格・画面部品・仕上げ) を回し直す。ここは d2-run の直接作業だけ) =================
   - id: run.foundation-diff
-    name: 基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除・やり直す UC の run の退避)
+    name: 基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除)
     stage: foundation
     kind: orchestrator
     actor: d2-run
     scripts: [runState.js]
     run_table_row: "③ の基盤の差分の取り込み"
-    reads: [feedback-docs, config, reports, use-cases]
-    writes: [feedback-docs, reports, use-cases, run-archive]
+    reads: [feedback-docs, config, reports]
+    writes: [feedback-docs, reports]
   # ================= 起動時の自動選択と写し直し (0.3.0) =================
   - id: run.next-action
     name: 次に何をするかを決める (起動時の自動選択。読むだけ)

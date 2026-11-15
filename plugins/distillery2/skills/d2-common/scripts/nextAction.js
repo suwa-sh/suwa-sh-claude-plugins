@@ -19,7 +19,9 @@
  *   9  上流の課題        要求の課題か既存の持ち越し → requirements-diff、決定 → decide-diff、基盤 → foundation-diff
  *   10 開き直し          scan の reopen_targets の先頭  → reopen
  *   11 次の機能          scan の reopened の先頭、無ければ use-cases.yaml で status が done でなく、上流で止めた feature の無い最初の UC  → uc。無ければ none
- * 名指し (--uc / --stage) は 1・2 の後に、3・4・6 に当たるもの (進行中・途中・写し直し待ち) が名指しと別にあれば refuse を返す
+ * 名指し (--uc / --stage) は 1・2 の後に、3・4・6 に当たるもの (進行中・途中・写し直し待ち) が名指しと別にあれば refuse を返す。
+ * --uc では、途中の上流の直しは拒まず continue-upstream (for_uc 付き) を返す。名指しした UC が上流の課題の反映待ちなら 5〜9 へ進み、
+ * 選べる上流の差分があればそれを返し、無ければ refuse を返す (進行役は同じ名指しのまま呼び直せる)
  */
 'use strict';
 
@@ -82,19 +84,28 @@ function decide(rootArg, { uc = null, stage = null } = {}) {
   const ready = fs_.filter((f) => f.state === 'paused' && f.ready);
   const openUpstream = upstreams.filter((b) => !isAncestor(root, b, 'main'));
   // 名指し: 進行中・途中・写し直し待ちが名指しと別にあれば拒む
+  // UC の名指しでは、途中の上流の直しは拒まない: 名指しした UC の点検や作業が生んだ上流の直しを、同じ名指しのまま続けるため
+  // (名指しの起動で「もう一度呼ぶ」と自分が作った上流の直しで refuse になり、呼び直し方が無かった。会議室の予約の実地確認)
+  // 途中の上流の直しが名指しした UC に由来するかは見ない: 上流の直しは main を進める共有の作業で、終わるまでどの UC も始められない。
+  // 拒んでも、名指し無しで呼び直して同じ直しを続けるだけになる (外部レビューの指摘への答え)。for_uc を返し、進行役が完了報告に載せる
+  let namedWaiting = null;
   if (uc || stage) {
-    const pending = [...active.map((f) => `進行中の機能 ${f.slug}`), ...journals.map((f) => `途中の写し直し ${f.slug}`), ...openUpstream.map((b) => `途中の上流の直し ${b}`), ...ready.map((f) => `写し直し待ちの機能 ${f.slug}`)]
+    const pending = [...active.map((f) => `進行中の機能 ${f.slug}`), ...journals.map((f) => `途中の写し直し ${f.slug}`), ...(uc ? [] : openUpstream.map((b) => `途中の上流の直し ${b}`)), ...ready.map((f) => `写し直し待ちの機能 ${f.slug}`)]
       .filter((p) => !(uc && (p.endsWith(` ${uc}`))));
     if (pending.length) return { action: 'refuse', reason: '先に続けるものがある', pending };
     if (uc) {
+      if (openUpstream.length) return { action: 'continue-upstream', branch: openUpstream[0], issue: openUpstream[0].replace(/^upstream\//, ''), for_uc: uc };
       const f = fs_.find((x) => x.slug === uc);
-      if (f && f.state === 'paused' && !f.ready) return { action: 'refuse', reason: '上流の課題の反映待ち', slug: uc, waiting_on: f.waiting_on };
-      if (f && f.state === 'paused') return { action: 'resume', slug: uc };
-      if (f && f.state === 'journal') return { action: 'finish-resume', slug: uc };
-      const known = useCases(root).find((u) => u && u.slug === uc);
-      if (!known) return { action: 'refuse', reason: 'UC 一覧に無い', slug: uc };
-      if (String(known.status) === 'done' && !(f && f.state === 'active')) return { action: 'delivered', slug: uc };
-      return { action: f ? 'continue-feature' : 'uc', slug: uc };
+      // 上流の課題の反映待ち: 下の共通の順 (main へ切り替え → 上流の課題) へ進み、選ぶ上流の差分が無いときだけ拒む
+      if (f && f.state === 'paused' && !f.ready) namedWaiting = f;
+      else {
+        if (f && f.state === 'paused') return { action: 'resume', slug: uc };
+        if (f && f.state === 'journal') return { action: 'finish-resume', slug: uc };
+        const known = useCases(root).find((u) => u && u.slug === uc);
+        if (!known) return { action: 'refuse', reason: 'UC 一覧に無い', slug: uc };
+        if (String(known.status) === 'done' && !(f && f.state === 'active')) return { action: 'delivered', slug: uc };
+        return { action: f ? 'continue-feature' : 'uc', slug: uc };
+      }
     }
   }
   // 3 進行中の機能
@@ -125,6 +136,8 @@ function decide(rootArg, { uc = null, stage = null } = {}) {
   if (stage === 'requirements' || scan.upstream.requirements.length || carry) return { action: 'requirements-diff', issues: scan.upstream.requirements, carry_over: Boolean(carry), notes };
   if (scan.upstream.decide.length) return { action: 'decide-diff', issues: scan.upstream.decide, notes };
   if (scan.upstream.foundation.length) return { action: 'foundation-diff', issues: scan.upstream.foundation, notes };
+  // 名指しした UC が上流の課題の反映待ちで、選べる上流の差分が無い (止まった課題・プラグインの課題を待っている)
+  if (namedWaiting) return { action: 'refuse', reason: '上流の課題の反映待ち', slug: uc, waiting_on: namedWaiting.waiting_on };
   // stage=decide / foundation の直接指定で課題が無ければ、その段をやり直す (② / ③)
   if (stage === 'decide' || stage === 'foundation') return { action: stage, notes };
   // 10 開き直し

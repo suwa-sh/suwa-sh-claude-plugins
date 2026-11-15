@@ -193,8 +193,8 @@ test('(e) 各スキルの読む / 書くの節・基盤の phase 表・d2-run �
     ['asbuilt.summarize', 'reads', 'skills/d2-asbuilt/SKILL.md', /^## 読んでよいもの/],
     ['asbuilt', 'writes', 'skills/d2-asbuilt/SKILL.md', /^## 書いてよいもの/],
     // 決定の差分 (0.2.0。還流の ADR の担当を引き継いだ。契約の課題は機能を巻き戻すか開き直して mode=uc で直す)
-    ['decide.feedback', 'reads', 'skills/d2-decide/SKILL.md', /^## mode=feedback: 読むもの/],
-    ['decide.feedback', 'writes', 'skills/d2-decide/SKILL.md', /^## mode=feedback: 書くもの/],
+    ['decide.feedback', 'reads', 'skills/d2-decide/references/feedback.md', /^## mode=feedback: 読むもの/],
+    ['decide.feedback', 'writes', 'skills/d2-decide/references/feedback.md', /^## mode=feedback: 書くもの/],
   ];
   for (const [id, key, rel, re] of sections) {
     const p = procs.get(id);
@@ -262,7 +262,7 @@ test('(f) dataflow.md が最新 (genDataflow.js --check)', () => {
   execFileSync('node', [path.join(PLUGIN, 'skills/d2-common/scripts/genDataflow.js'), '--check'], { stdio: 'pipe' });
 });
 
-test('(f2) DFD の各図が読める大きさ (箱 9 以下・矢印 12 以下) で、全ファイル群に所属がある', () => {
+test('(f2) DFD の各図が読める大きさ (箱 10 以下・矢印 12 以下) で、全ファイル群に所属がある', () => {
   const G = require(path.join(PLUGIN, 'skills/d2-common/scripts/genDataflow.js'));
   const md = G.render(df);
   const sizes = G.diagramSizes(md);
@@ -271,7 +271,8 @@ test('(f2) DFD の各図が読める大きさ (箱 9 以下・矢印 12 以下) 
   // 数え方の確認: 矢印だけで暗黙に作られる箱も数える
   const implicit = G.diagramSizes('## x\n```mermaid\nflowchart LR\n' + Array.from({ length: 13 }, (_, i) => `  A${i} --> A${i + 1}`).join('\n') + '\n```\n');
   assert.deepEqual(implicit, [{ head: '## x', nodes: 14, edges: 13 }]);
-  const big = sizes.filter(d => d.nodes > 9 || d.edges > 12).map(d => `${d.head} (箱 ${d.nodes}・矢印 ${d.edges})`);
+  // 独立検証は 9 つのファイル群を読む (画面を持つティアの検証に画面部品が要る) ので、処理の箱と合わせて 10
+  const big = sizes.filter(d => d.nodes > 10 || d.edges > 12).map(d => `${d.head} (箱 ${d.nodes}・矢印 ${d.edges})`);
   assert.deepEqual(big, []);
   const groupIds = new Set((df.store_groups || []).map(g => g.id));
   assert.deepEqual(df.stores.filter(s => !groupIds.has(s.group)).map(s => s.id), [], 'store の group が store_groups に無い');

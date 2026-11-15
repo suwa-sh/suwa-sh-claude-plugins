@@ -27,6 +27,8 @@ const TIER_TOOLS = {
     sast: `${QLTY} apps/{dir}`,
   },
 };
+// secrets (秘密の検出) はリポ全体を見る。qlty.toml の exclude_patterns は trufflehog にも効くので、
+// genQlty.js は生成物・流用物の除外を exclude_patterns に書かず、trufflehog を除くプラグインの [[exclude]] に書く
 const REPO_TOOLS = {
   format: { biome: 'npx biome format .' },
   lint: { qlty: `${QLTY.replace('qlty check', 'qlty check --all')}` },

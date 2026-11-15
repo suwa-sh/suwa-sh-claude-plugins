@@ -402,3 +402,36 @@ test('verdicts: schema 2.2 は人に聞くこと (asks) と前のステップの
   const bad = `${v22}asks: []\nupstream_issues:\n  - {id: x, target_step: feedback, title: "t", detail: "d", evidence: "e", recommended_fix: "f"}\n`;
   assert.match(validator.run(verdictsArgs(write(bad), write(RECORD))).errors.join('\n'), /findings \$\.upstream_issues\[0\]\.target_step/);
 });
+
+test('review: attempt のディレクトリから人レビューの材料 (回答必須の前提・推奨・根拠の hash・指摘) を 1 回で集める', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'assumption-review-'));
+  fs.writeFileSync(path.join(dir, 'assumptions.tier-facade.yaml'), RECORD);
+  fs.writeFileSync(path.join(dir, 'findings.tier-facade.yaml'), findings());
+  const r = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1', '--tiers', 'tier-facade']);
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const single = validator.run(verdictsArgs(path.join(dir, 'findings.tier-facade.yaml'), path.join(dir, 'assumptions.tier-facade.yaml')));
+  assert.deepEqual(r.tiers.map((t) => [t.tier, t.assumption_verdicts_sha256]), [['tier-facade', single.verdicts_sha256]]);
+  const ev = validator.run(['evidence', `tier-facade:${single.assumptions_sha256}:${single.verdicts_sha256}`]);
+  assert.equal(r.assumption_evidence_sha256, ev.assumption_evidence_sha256, '根拠の hash は evidence と同じ');
+  assert.equal(r.required, 1);
+  const a1 = r.assumptions.find((a) => a.id === 'A-001');
+  assert.deepEqual({ required: a1.required, recommended: a1.recommended, title: a1.title }, { required: true, recommended: '承認', title: 'occurred_at は秒精度' });
+  const a2 = r.assumptions.find((a) => a.id === 'A-002');
+  assert.deepEqual({ verdict: a2.verdict, required: a2.required, recommended: a2.recommended }, { verdict: 'contradicts', required: false, recommended: '実装を直す' });
+  assert.ok(r.findings.length >= 3);
+  // 検証していないティア・検査に落ちるティアがあれば集めない
+  fs.writeFileSync(path.join(dir, 'assumptions.tier-other.yaml'), RECORD.replace('tier: "tier-facade"', 'tier: "tier-other"'));
+  const missing = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1', '--tiers', 'tier-facade']);
+  assert.equal(missing.ok, false);
+  assert.match(missing.errors.join('\n'), /findings\.tier-other\.yaml is missing/);
+  fs.rmSync(path.join(dir, 'assumptions.tier-other.yaml'));
+  fs.writeFileSync(path.join(dir, 'findings.tier-facade.yaml'), findings({ sha: 'deadbeef' }));
+  const stale = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1', '--tiers', 'tier-facade']);
+  assert.match(stale.errors.join('\n'), /tier-facade: assumptions_sha256 stale/);
+  // 関与ティアの両方のファイルが無ければ失敗する (そのティアの前提と指摘が材料から黙って消えない。外部レビュー 3 ラウンド目)
+  fs.writeFileSync(path.join(dir, 'findings.tier-facade.yaml'), findings());
+  const gone = validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1', '--tiers', 'tier-facade,tier-web']);
+  assert.equal(gone.ok, false);
+  assert.match(gone.errors.join('\n'), /assumptions\.tier-web\.yaml and findings\.tier-web\.yaml are missing/);
+  assert.equal(validator.run(['review', dir, '--uc', 'register-loan', '--attempt', '1']).ok, false, '--tiers は必須');
+});

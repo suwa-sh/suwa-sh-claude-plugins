@@ -8,25 +8,29 @@ description: >-
   「NFR グレードを作成」「アーキテクチャの決定を記録」「ADR を書く」「ティア構成を決める」「認可モデルを選ぶ」などで発動。
 ---
 
-# d2-decide (段階② 決定)
+# d2-decide
 
-パスの `<skills>` の意味は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」(スキル群のディレクトリ。読込時に表示されるこのスキルの場所の 1 つ上)。
+RDRA モデル、USDM、UC 一覧から、人が決めるべき 2 種類の成果物を作る。
 
-入出力の正本: [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) (図: [dataflow.md](../d2-common/references/dataflow.md))
+| 成果物 | 場所 | 中身 |
+|---|---|---|
+| **非機能要求グレード表** | `docs/nfr/nfr-grade.yaml` / `.md` | IPA 非機能要求グレードを推論した表。決定の根拠になる |
+| **アーキテクチャ決定記録 (ADR)** | `docs/adr/NNNN-<slug>.md` + `index.md` | ティア、レイヤ、データ、テストなどの決定。front matter に機械可読の `rules[]` を持つ |
 
-RDRA モデル・USDM・UC 一覧から、人が決めるべき 2 種類の成果物を作る。
+設計書は書かない (レイヤ構成図や、データモデルの詳細の yaml など)。
+それらは、段階④でコードから導くか、段階③のルールと契約で機械検証する。
 
-1. **非機能要求グレード表** (`docs/nfr/nfr-grade.yaml` / `.md`): IPA 非機能要求グレードを推論した表。決定の根拠。
-2. **アーキテクチャ決定記録 (ADR)** (`docs/adr/NNNN-<slug>.md` + `index.md`): ティア・レイヤ・データ・テスト等の決定。front matter に機械可読の `rules[]` を持つ。
+## 呼び出し
 
-設計書 (レイヤ構成図・データモデルの詳細 yaml 等) は書かない。それらはコードから導く (段階④) か、ルール / 契約 (段階③) で機械検証する。
+進行役 (d2-run) が派遣する。
 
-## 引数
+| 呼ばれ方 | いつ | すること |
+|---|---|---|
+| 引数なし | 段階② | 下の手順 1〜4 で、非機能要求グレード表と ADR を作る |
+| `mode=feedback issue=<課題> result=<結果ファイル>` | 決定の差分 | 実装で見つかったルールの穴を、新しい ADR 1 本にする。手順は [references/feedback.md](references/feedback.md) にある |
 
-```
-(なし)                                   # 段階② (下の「入出力」「手順」)
-mode=feedback issue=<課題> result=<結果ファイル>   # 決定の差分 (下の「mode=feedback」)
-```
+パスの `<skills>` は、スキル群のディレクトリを指す。
+定義は [../d2-common/SKILL.md](../d2-common/SKILL.md) の「パスの書き方」にある。
 
 ## 入出力
 
@@ -37,7 +41,10 @@ mode=feedback issue=<課題> result=<結果ファイル>   # 決定の差分 (�
 | `docs/requirements/use-cases.yaml` (UC 一覧: 業務/BUC/UC/slug/spec_ids/actors/status) | `docs/adr/index.md` (索引) |
 | | `docs/adr/_review-summary.md` (人レビュー用) |
 
-すべての出力の先頭に `basis: requirements@<sha>` を付ける。`.md` は YAML front matter、`nfr-grade.yaml` はトップレベルの `basis:` 文字列フィールド。basis は共有ライブラリで作る:
+すべての出力の先頭に `basis: requirements@<sha>` を付ける。
+`.md` は YAML front matter に書く。
+`nfr-grade.yaml` は、トップレベルの `basis:` 文字列フィールドに書く。
+basis は共有ライブラリで作る。
 
 ```bash
 node <skills>/d2-common/scripts/lib/basis.js stamp requirements=docs/requirements
@@ -45,36 +52,63 @@ node <skills>/d2-common/scripts/lib/basis.js stamp requirements=docs/requirement
 
 ## 手順
 
+| 順 | すること | 次へ進む条件 |
+|---|---|---|
+| 1 | 入力を読む | 判断材料を把握した |
+| 2 | 非機能要求グレードを推論して出力する | `validateNfrGrade.js` が終了コード 0 を返す |
+| 3 | 決定を導いて ADR を書く | 14 領域を覆い、`validateAdr.js` が PASS する。C4 図と索引を生成した |
+| 4 | 人レビュー用の要約を書く | `docs/adr/_review-summary.md` を書いた |
+
+**auto-adopt 方針**: 各領域で推奨案を採用して完走する。
+推論の確信度が低い決定は、front matter に `confidence: low` を付ける。
+手順 4 のレビュー要約で、人の確認対象にする。
+
 ### 1. 入力を読む
 
-- `docs/requirements/rdra/*.tsv` (全ファイル)、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml` を読む。
-- アクター種別 (社内 / 社外)、状態遷移の数、タイマー起動、外部システム、個人情報 / 金銭の有無を把握する。これが NFR 推論と ADR の判断材料になる。
+`docs/requirements/rdra/*.tsv` (全ファイル)、`docs/requirements/requirements.yaml`、`docs/requirements/use-cases.yaml` を読む。
+次のことを把握する。
+これが、NFR 推論と ADR の判断材料になる。
+
+- アクター種別 (社内 / 社外)
+- 状態遷移の数
+- タイマー起動
+- 外部システム
+- 個人情報と金銭の有無
 
 ### 2. 非機能要求グレードを推論して出力する
 
-NFR の推論は v1 手順を移植している。順に参照する:
+次の順に参照する。
 
-- [references/nfr-grade-catalog.md](references/nfr-grade-catalog.md) — IPA 6 大項目 (A 可用性 / B 性能 / C 運用 / D 移行 / E セキュリティ / F 環境) カタログ
-- [references/nfr-inference-rules.md](references/nfr-inference-rules.md) — RDRA → NFR 推論ルール
-- [references/nfr/nfr-infer.md](references/nfr/nfr-infer.md) — 推論の進め方
-- [references/nfr/nfr-dialogue.md](references/nfr/nfr-dialogue.md) — 確定の実行モード分岐。**auto-adopt では対話の各選択肢を推奨値で仮置きし、その仮置きに依存するメトリクスだけ `confidence: low` にする。推論根拠 (RDRA の事実) から決まるメトリクスは high / medium を保つ。人の確認一覧は important かつ low。** `--interactive` 指定時のみ対話する
-- [references/nfr-grade-schema.md](references/nfr-grade-schema.md) / [references/nfr/nfr-grade-output.md](references/nfr/nfr-grade-output.md) — 出力形式
+| 文書 | 内容 |
+|---|---|
+| [references/nfr-grade-catalog.md](references/nfr-grade-catalog.md) | IPA 6 大項目 (A 可用性 / B 性能 / C 運用 / D 移行 / E セキュリティ / F 環境) のカタログ |
+| [references/nfr-inference-rules.md](references/nfr-inference-rules.md) | RDRA → NFR の推論ルール |
+| [references/nfr/nfr-infer.md](references/nfr/nfr-infer.md) | 推論の進め方 |
+| [references/nfr/nfr-dialogue.md](references/nfr/nfr-dialogue.md) | 確定の実行モード分岐 |
+| [references/nfr-grade-schema.md](references/nfr-grade-schema.md) / [references/nfr/nfr-grade-output.md](references/nfr/nfr-grade-output.md) | 出力形式 |
 
-出力後、検証と Markdown 生成を実行する:
+確定の決まり:
+**auto-adopt では対話の各選択肢を推奨値で仮置きし、その仮置きに依存するメトリクスだけ `confidence: low` にする。推論根拠 (RDRA の事実) から決まるメトリクスは high / medium を保つ。人の確認一覧は important かつ low。**
+`--interactive` 指定時のみ対話する。
+
+出力後、検証と Markdown 生成を実行する。
 
 ```bash
 node <skills>/d2-decide/scripts/validateNfrGrade.js docs/nfr/nfr-grade.yaml
 node <skills>/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
 ```
 
-- 終了コード 0 (PASS) で次へ。1 (FAIL) はエラーを直して再検証する。
-- `generateNfrGradeMd.js` は決定論的 (同一入力 → 同一出力)。手で md を書かない。
+- 終了コード 0 (PASS) で次へ進む。1 (FAIL) は、エラーを直して再検証する
+- `generateNfrGradeMd.js` は決定論的である (同一入力 → 同一出力)。手で md を書かない
 
 ### 3. 決定を導いて ADR を書く
 
-[references/required-decisions.md](references/required-decisions.md) の 14 領域 (1〜8・10〜15) を最低限すべて覆う。該当しない領域は「不要」と 1 本の ADR で明記する (黙って省かない)。9 番目「コンテキストの境界」は任意 (業務ドメインが複数に分かれるときだけ `contexts[]` を書く)。
+[references/required-decisions.md](references/required-decisions.md) の 14 領域 (1〜8・10〜15) を最低限すべて覆う。
+該当しない領域は、「不要」と 1 本の ADR で明記する (黙って省かない)。
+9 番目「コンテキストの境界」は任意である。
+業務ドメインが複数に分かれるときだけ `contexts[]` を書く。
 
-各領域の判断材料は決定候補カタログにある:
+各領域の判断材料は、決定候補カタログにある。
 
 | 領域 | カタログ |
 |---|---|
@@ -92,26 +126,53 @@ node <skills>/d2-decide/scripts/generateNfrGradeMd.js docs/nfr/nfr-grade.yaml
 | 機械チェック | [decision-candidates/machine-checks.md](references/decision-candidates/machine-checks.md) |
 | 冪等性と再試行 | [decision-candidates/idempotency-retry.md](references/decision-candidates/idempotency-retry.md) |
 
-各 ADR は [references/adr-format.md](references/adr-format.md) の形で 1 ファイルずつ書く (`docs/adr/0001-<slug>.md` から連番)。要点:
+各 ADR は [references/adr-format.md](references/adr-format.md) の形で、1 ファイルずつ書く。
+`docs/adr/0001-<slug>.md` から連番にする。
 
-- front matter の必須フィールド: `id` (クォート必須) / `title` / `status` / `date` / `basis` / `scope`。
-- 本文は日本語で 背景 / 決定 / 却下した案 / 影響 の 4 節。
-- 該当する ADR は `rules[]` を最低 1 つ持つ。**ティア構成の ADR は `arch_test.level: tier` を、レイヤ構成の ADR は `arch_test.level: layer` を持つ**。
-- **題 (`title`) は決めたこと 1 つを 60 字までで言い切る**。開発ルールの要点の表と `docs/README.md` にそのまま出る。前の決定を置き換える ADR も新しい決定だけを題にし、別の ADR の番号から始めない (`validateAdr.js` が止める。[writing.md](../d2-common/references/writing.md))
-- **機械チェックの ADR (scope に system) は front matter に `checks` を持つ** (1 本だけ。形は [decision-candidates/machine-checks.md](references/decision-candidates/machine-checks.md)。段階③が一括チェックとコマンドを生成する入力)
-- **ティア構成の ADR は front matter に `tiers[]` (ティアごとに `packages`: そのティアの決定 (枠組み・DB のクライアント・認証) で使う npm のパッケージ名。無ければ `[]`。型定義は `dev_packages`) と `datastore_owner` を (scope に system を含む 1 本だけ)、accepted なテスト方針の ADR (scope に testing を含む) は `capabilities.browser` を持つ**
-  (段階③の config / 骨格 / rules の入力。形は adr-format.md「段階③が読む追加の front matter」)。
-- `rules[]` は段階③ の入力になる。カタログの「派生するルール例」を土台にする。
-- 言語 / FW が未定なら「未定」と明記した ADR を書く (ベンダーニュートラル。特定サービス名を使わない)。
-- **UI ADR (scope に ui を含む) は `ui.brand` を埋める** (presentation ティアがあるとき)。`brand` スキル
-  (`~/.claude/skills/brand` / `~/.agents/skills/brand` / `.claude/skills/brand`、またはプラグインのスキル一覧)
-  があれば走らせ / 出力を読んで `source: "brand skill"` で埋める。無ければ RDRA から推論し `source: "inferred"` と
-  `brand.confidence: low` を付ける (詳細は [decision-candidates/ui.md](references/decision-candidates/ui.md))。
-  ブランドは d2-design のトークンの起点になる (design 側で再推論しない)。
+全 ADR に共通の決まり:
 
-**auto-adopt 方針**: 各領域で推奨案を採用して完走する。推論の確信度が低い決定は front matter に `confidence: low` を付け、手順 4 のレビュー要約で人の確認対象にする。
+| 項目 | 決まり |
+|---|---|
+| front matter の必須フィールド | `id` (クォート必須) / `title` / `status` / `date` / `basis` / `scope` |
+| 本文 | 日本語で 背景 / 決定 / 却下した案 / 影響 の 4 節 |
+| 題 (`title`) | **題 (`title`) は決めたこと 1 つを 60 字までで言い切る**。別の ADR の番号から始めない (`validateAdr.js` が止める) |
+| `rules[]` | 該当する ADR は `rules[]` を最低 1 つ持つ。段階③の入力になる。カタログの「派生するルール例」を土台にする |
+| 言語 / FW が未定のとき | 「未定」と明記した ADR を書く。ベンダーニュートラルにし、特定サービス名を使わない |
 
-ADR を書き終えたら検証・C4 図・索引を生成する (この順):
+題は、開発ルールの要点の表と `docs/README.md` にそのまま出る。
+前の決定を置き換える ADR も、新しい決定だけを題にする ([writing.md](../d2-common/references/writing.md))。
+
+特定の ADR だけの決まり:
+
+| ADR | 持つもの |
+|---|---|
+| ティア構成 (scope に system を含む 1 本だけ) | `arch_test.level: tier`。front matter に `tiers[]` と `datastore_owner` |
+| レイヤ構成 | `arch_test.level: layer` |
+| テスト方針 (accepted。scope に testing を含む) | `capabilities.browser` |
+| 機械チェック (scope に system。1 本だけ) | front matter に `checks`。形は [decision-candidates/machine-checks.md](references/decision-candidates/machine-checks.md)。段階③が、一括チェックとコマンドを生成する入力にする |
+| UI (scope に ui を含む。presentation ティアがあるとき) | `ui.brand` |
+
+**ティア構成の ADR は `arch_test.level: tier` を、レイヤ構成の ADR は `arch_test.level: layer` を持つ**。
+
+`tiers[]` には、ティアごとに `packages` を書く。
+`packages` は、そのティアの決定 (枠組み・DB のクライアント・認証) で使う npm のパッケージ名である。
+無ければ `[]` にする。
+型定義は `dev_packages` に書く。
+これらは、段階③の config、骨格、rules の入力になる。
+形は adr-format.md の「段階③が読む追加の front matter」にある。
+
+`ui.brand` の埋め方:
+
+| 条件 | 埋め方 |
+|---|---|
+| `brand` スキルがある | 走らせるか、出力を読んで、`source: "brand skill"` で埋める |
+| `brand` スキルが無い | RDRA から推論し、`source: "inferred"` と `brand.confidence: low` を付ける |
+
+`brand` スキルは、`~/.claude/skills/brand` / `~/.agents/skills/brand` / `.claude/skills/brand`、またはプラグインのスキル一覧で探す。
+詳細は [decision-candidates/ui.md](references/decision-candidates/ui.md) にある。
+ブランドは、d2-design のトークンの起点になる (design 側で再推論しない)。
+
+ADR を書き終えたら、検証、C4 図、索引を、この順で生成する。
 
 ```bash
 node <skills>/d2-decide/scripts/validateAdr.js docs/adr
@@ -120,77 +181,61 @@ node <skills>/d2-decide/scripts/genArchitectureDoc.js docs/adr docs/adr/architec
 node <skills>/d2-decide/scripts/genAdrIndex.js docs/adr docs/adr/index.md requirements=docs/requirements
 ```
 
-- `validateAdr.js` はスキーマ・id 一意性・参照整合性 (supersedes / superseded_by の双方向)・status 遷移・`rules[].scope` 書式に加え、ティア構成 ADR がちょうど 1 本 (system scope・tiers キーは他 ADR に持たせない) あること・accepted な testing ADR の `capabilities.browser` (宣言は 1 本まで)・`rules[]` のカバレッジ (該当 scope の rules 必須、ティア間 `level: tier`・レイヤ `level: layer` の `arch_test`) を検査する。PASS するまで直す。
-- `genArchitectureDoc.js` は accepted な ADR (ティア構成 ADR の `tiers[]` / `datastore_owner` / 任意の `contexts[]`)・`contracts/contracts.json`・RDRA の `アクター.tsv` / `外部システム.tsv` から「決めたもの」の C4 図 (`docs/adr/architecture.md`) を決定論的に描く。システムコンテキスト図とコンテナ図 (どちらも Mermaid の `graph`。C4Context / C4Container 記法はレンダラで崩れて読みづらいため使わない)、`contexts[]` があればコンテキストマップ (flowchart) を出す。契約・RDRA は任意 (無ければその図を省くか、ティアのみ描く)。実態の依存図は段階④の `docs/as-built/_system/dependency-graph.md` が別に描く。
-- `genAdrIndex.js` は id 昇順で決定論的に `index.md` を生成する (`architecture.md` があればその C4 図へのリンクを載せる。上の順で先に architecture.md を作るため必ずリンクが付く)。
+| スクリプト | すること |
+|---|---|
+| `validateAdr.js` | ADR を検査する。PASS するまで直す |
+| `genArchitectureDoc.js` | 「決めたもの」の C4 図 (`docs/adr/architecture.md`) を決定論的に描く |
+| `genAdrIndex.js` | id 昇順で、決定論的に `index.md` を生成する。`architecture.md` があれば、C4 図へのリンクを載せる |
+
+上の順で先に architecture.md を作るので、索引には必ずリンクが付く。
+各スクリプトが検査するものと描くものは [references/scripts.md](references/scripts.md) にある。
 
 ### 4. 人レビュー用の要約を書く
 
-`docs/adr/_review-summary.md` を書く。オーケストレータ (d2-run) が human-html-review でヒトに提示する材料になる。
+`docs/adr/_review-summary.md` を書く。
+d2-run が、human-html-review で人に提示する材料になる。
 
-- NFR 表のハイライト (重要メトリクスと確信度が低い項目)。
-- 各 ADR を「決定」と「却下した案」の対で、平易な言葉で説明する。内部 ID や専門ジャーゴンを本文に出さない。
-- `confidence: low` の決定を「確認してほしいこと」として明示する。
-- **ブランド方針の由来** (`ui.brand.source`) を書く。`inferred` (RDRA から推論・低確信) のときは色とフォントを
-  「確認してほしいこと」に含める。`brand skill` のときはその旨を記す。
+- NFR 表のハイライト (重要メトリクスと、確信度が低い項目)
+- 各 ADR を「決定」と「却下した案」の対で、平易な言葉で説明する。内部 ID や専門ジャーゴンを本文に出さない
+- `confidence: low` の決定を「確認してほしいこと」として明示する
+- **ブランド方針の由来** (`ui.brand.source`) を書く。`inferred` (RDRA から推論・低確信) のときは、色とフォントを「確認してほしいこと」に含める。`brand skill` のときは、その旨を記す
 
-## mode=feedback (決定の差分)
-
-d2-run が決定の差分で派遣する (作業ディレクトリはリポのルート。clean な main)。実装で見つかった「ルールの穴」(課題ファイル `docs/feedback/<issue>.md` で戻し先が `decide`。古い課題は `kind: rule`) を、
-新しい ADR 1 本の `rules[]` にする (課題が非機能グレード表の誤りなら表を直す)。開発ルールとアーキテストは作り直さない (課題をすべて ADR にした後に d2-run が作り直す)。
-
-1. 課題を読む。既存の ADR をすべて読み、課題がどの決定に関わるかを決める
-2. 次のどれかに当たるなら、**ADR を書かずに**結果ファイルへ `status: blocked` と理由、理由の種類 `reason_kind` を書いて止まる:
-   - ADR の `rules[]` で表せない (生成器の直し、設定ファイル (`biome.json` など。生成器が作り直すので対象リポジトリで直しても戻る) の直し、手順書の直し) → `reason_kind: plugin`
-     (直す場所は distillery2 側。d2-run は課題を `kind: plugin` に書き換える)
-   - ティア構成・データストア・testing の capabilities を変える必要がある (config・骨格の作り直しが要る) → `reason_kind: scope` (d2-run が戻し先を基盤 (`foundation`) にするか人に返す)
-3. 課題が非機能グレード表 (`docs/nfr/nfr-grade.yaml`) の誤り (根拠の書き違い・レベルの見直し) なら、表を直して
-   `validateNfrGrade.js docs/nfr/nfr-grade.yaml` → `generateNfrGradeMd.js docs/nfr/nfr-grade.yaml` (段階②と同じ。md は手で書かない)。
-   レベルを変えずに済むなら ADR は書かず 6 へ進む。レベルを変えたら、そのレベルに依る決定を次の 4 の新しい ADR で直す (0.3.0 の実地確認 3 起動目:
-   表を直す道が無く、同じ根の課題が 2 回プラグインの課題になって止まった)
-4. 新しい ADR を 1 本書く ([references/adr-format.md](references/adr-format.md))。連番は既存の最大 + 1、`status: accepted`、
-   `basis` は既存の ADR と同じ書き方、`rules[]` を 1 つ以上。本文の背景に課題の要点 (課題のファイル名と、front matter の `from_uc`) を書く
-5. 既存の決定を置き換えるときだけ、新しい ADR に `supersedes` を書き、旧 ADR は front matter の `status: superseded` と
-   `superseded_by` の 2 項目だけを変える (本文と旧 `rules[]` は変えない。決定の履歴を残す)。既存の ADR をそれ以外で変えない
-6. `validateAdr.js` → `genAdrIndex.js` (段階②と同じコマンド)。PASS するまで直す。`genArchitectureDoc.js` は回さない (ティアを変えないので図は変わらない)。
-   `_review-summary.md` は作り直さず、**追記する**: 「作り方の決定」に足した ADR (置き換えなら旧 ADR を置き換えた旨) を、
-   「確認してほしいこと」に足した ADR の `confidence: low` の前提と、直した非機能グレード表の根拠を 1 行ずつ。既存の行は、置き換えた ADR の行だけ直す
-   (書かないと要約を読む人に見えず、決定のレビューが毎回「要約が古い」を課題にする。0.3.0 の実地確認 3 起動目)
-7. 結果ファイルへ `status: applied`、`targets` (足した ADR のファイル名と、置き換えた旧 ADR。表を直したら `docs/nfr/nfr-grade.yaml`)、`reason` (1 行) を書く
-
-結果ファイルは JSON 1 つ: `{"status": "applied" | "blocked", "targets": [...], "reason": "...", "reason_kind": "plugin" | "scope"}` (`reason_kind` は `blocked` のとき必須)。d2-run はこのファイルで分岐し、
-受理は `validateAdr.js` で行う (報告文では判断しない)。
-
-## mode=feedback: 読むもの
-
-- 課題ファイル `docs/feedback/<issue>.md` (派遣文で渡す)
-- `docs/adr/*.md` (既存の ADR と索引)、`docs/nfr/nfr-grade.yaml` (決定の根拠)
-
-## mode=feedback: 書くもの
-
-- `docs/adr/NNNN-<slug>.md` (新しい ADR 1 本。置き換えなら旧 ADR の front matter 2 項目も)、`docs/adr/index.md` (genAdrIndex)
-- `docs/nfr/nfr-grade.yaml` / `nfr-grade.md` (課題が非機能グレード表の誤りのときだけ)
-- 結果ファイル `.distillery/logs/decide-<issue>.result.json` (派遣文で渡す)
-- git は使わない (commit は d2-run が行う)
+`confidence: low` の決定や確認してほしいことは、選択肢と推奨を、引き継ぎファイルの `asks` にも書く。
+答えは、進行役が決めたことの記録に残す。
 
 ## 完了報告
 
-mode=feedback では: 結果ファイルの `status`、足した ADR と置き換えた旧 ADR のパス、`validateAdr.js` の結果 (blocked なら理由) だけを報告する。以下は段階②の報告。
+段階②の報告:
 
-- 生成した `docs/nfr/nfr-grade.yaml` と ADR 群のパス、ADR 件数。
-- 覆った 8 決定領域の一覧 (「不要」とした領域も明記)。
-- `confidence: low` の決定と、確認推奨項目 (上位数件)。
-- 検証スクリプトがすべて PASS したこと。
+- 生成した `docs/nfr/nfr-grade.yaml` と ADR 群のパス、ADR 件数
+- 覆った決定領域の一覧 (「不要」とした領域も明記する)
+- `confidence: low` の決定と、確認推奨項目 (上位数件)
+- 検証スクリプトがすべて PASS したこと
+
+mode=feedback の報告は [references/feedback.md](references/feedback.md) にある。
 
 ## やらないこと
 
-- 設計 yaml (レイヤ図・データモデルの詳細) は書かない。
-- インフラ / ベンダー選定はしない (ベンダーニュートラルに保つ)。
-- 差分モード・スナップショットマージは扱わない (履歴は Git)。
-- mode=feedback で開発ルール・アーキテスト・config を作り直さない (課題をすべて ADR にした後に d2-run が作り直す)。
+- 設計 yaml (レイヤ図・データモデルの詳細) は書かない
+- インフラ / ベンダー選定はしない (ベンダーニュートラルに保つ)
+- 差分モード・スナップショットマージは扱わない (履歴は Git)
+- mode=feedback で、開発ルール・アーキテスト・config を作り直さない (課題をすべて ADR にした後に、d2-run が作り直す)
 
 ## 引き継ぎファイル
 
-作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題を書く (書き方は [handoff.md](../d2-common/references/handoff.md))。報告の本文にだけ書いたことは扱われない。推奨は条件を付けずに 1 つ書く。
+作業の終わりに、進行役が派遣文で渡す場所 (`{handoff}`) に引き継ぎファイルを書く。
+書くのは、人に聞きたいことと、自分の書き込み範囲では直せない前のステップの問題である。
+報告の本文にだけ書いたことは扱われない。
+推奨は条件を付けずに 1 つ書く。
+書き方は [handoff.md](../d2-common/references/handoff.md) にある。
 
-`confidence: low` の決定や確認してほしいことも、`_review-summary.md` に書くのに加えて、選択肢と推奨を引き継ぎファイルの `asks` に書く (答えは進行役が決めたことの記録に残す)。
+## 細目の文書
+
+| 文書 | 読むとき | 内容 |
+|---|---|---|
+| [references/required-decisions.md](references/required-decisions.md) | 手順 3 の前 | 必ず決める領域 |
+| [references/adr-format.md](references/adr-format.md) | ADR を書く前 | ADR の形と、段階③が読む front matter |
+| [references/scripts.md](references/scripts.md) | 検証が落ちたとき、図の中身を確かめるとき | `validateAdr.js` が検査するもの、`genArchitectureDoc.js` が描くもの |
+| [references/feedback.md](references/feedback.md) | `mode=feedback` で呼ばれたとき | 決定の差分の手順、読むもの、書くもの、報告 |
+| [../d2-common/references/writing.md](../d2-common/references/writing.md) | 題と本文を書く前 | 人が読む文章の書き方の決まり |
+| [../d2-common/references/dataflow.yaml](../d2-common/references/dataflow.yaml) | 入出力を確かめるとき | 入出力の正本 (図は [dataflow.md](../d2-common/references/dataflow.md)) |

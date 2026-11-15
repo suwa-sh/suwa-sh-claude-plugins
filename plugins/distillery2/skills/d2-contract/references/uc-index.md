@@ -62,7 +62,7 @@ example を **同じ名前** で対応づける:
 `validateUcIndex.js` は次も止める:
 
 - 期待する結果が違う 2 つの例 (status が違うか、status が同じで応答の例の中身が違う) が同じ要求 (URL・ヘッダ・テスト用データ・本文) を送る。本文の無い GET の 200 / 401 / 404 や、
-  本文が同じ 200 と 404、同じ要求で中身の違う 409 が 2 つ (状態が違う・版が違う) がこれにあたる。operation の `x-test-requests` で例ごとに URL の値・ヘッダ・`fixture` を変えて区別する
+  本文が同じ 200 と 404、同じ要求で中身の違う 409 が 2 つ (状態が違う・版が違う) がこれにあたる。operation の `x-test-requests` で例ごとに URL の値 (`path` と `query`)・ヘッダ・`fixture` を変えて区別する
   (書き方は [`contract-tests.md`](contract-tests.md) の「例ごとの要求」)
 - `x-test-requests` が参照する `fixture` が `x-test-fixtures` (文書直下か operation) に宣言されていない
 - `x-test-requests` のキーがどの応答の例にも当たらない (応答の例の名前か、ボディ無しの応答の status。書き間違いで条件が黙って使われなくなるのを止める)

@@ -110,3 +110,77 @@ test('--skip-if-unused: 表を使う UC が無くなっても、生成物が残�
   fs.appendFileSync(path.join(out, 'apps/backend-api/migrations/0001_schema.sql'), '-- 手で足した\n');
   assert.throws(() => genRdbDdl.run(contractsDir, { configPath: CONFIG, outRoot: out, check: true, skipIfUnused: true }), /Stale/);
 });
+
+// --- 一意制約 (主キーと UNIQUE) が 2 件目を弾くことを確かめるテスト ---
+test('db-schema.test.ts が、一意制約ごとに 2 件目の行が 23505 で弾かれることを確かめる', () => {
+  const out = generated();
+  const testTs = read(out, 'apps/backend-api/test/contract/db-schema.test.ts');
+  assert.match(testTs, /describe\('db unique constraints contract'/);
+  assert.match(testTs, /expect\(rejected\?\.code\)\.toBe\('23505'\)/);
+  // 外部キーの検査だけを止め、終わったら戻す
+  assert.match(testTs, /SET session_replication_role = replica/);
+  assert.match(testTs, /SET session_replication_role = DEFAULT/);
+  // 入れた行は、次の制約の確認の前に消す
+  assert.match(testTs, /finally \{\s*await db\.query\(`DELETE FROM/);
+  // fixture の表 (books・loans) の主キーが載る
+  const keys = JSON.parse(/const uniqueKeys: UniqueKey\[\] = (\[[\s\S]*?\n\]);/.exec(testTs)[1]);
+  assert.deepEqual(keys.map(k => [k.table, k.columns, k.constraints]), [['books', ['id'], ['books_pkey']], ['loans', ['id'], ['loans_pkey']]]);
+});
+
+test('uniqueKeyCases: 主キーと UNIQUE の index ごとに、制約の列だけが同じ 2 件の行を作る (UNIQUE でない index は対象外)', () => {
+  const tables = [{
+    name: 'slots',
+    columns: [
+      { name: 'room_id', type: 'string', nullable: false }, { name: 'slot_start_at', type: 'datetime', nullable: false },
+      { name: 'reservation_id', type: 'uuid', nullable: false }, { name: 'seq', type: 'integer', nullable: false },
+      { name: 'active', type: 'boolean', nullable: false }, { name: 'day', type: 'date', nullable: true },
+      { name: 'kind', type: 'string', nullable: false, enum: ['a', 'b'] },
+    ],
+    primary_key: ['room_id', 'slot_start_at'],
+    indexes: [{ name: 'slots_reservation_id_key', columns: ['reservation_id'], unique: true }, { name: 'slots_day_idx', columns: ['day'], unique: false }],
+  }];
+  const cases = genRdbDdl.uniqueKeyCases(tables);
+  assert.deepEqual(cases.map(c => [c.columns, c.constraints]), [[['room_id', 'slot_start_at'], ['slots_pkey']], [['reservation_id'], ['slots_reservation_id_key']]]);
+  const first = { room_id: 'd2-1', slot_start_at: '2000-01-01T00:00:00Z', reservation_id: '00000000-0000-4000-8000-000000000001', seq: 1, active: true, day: '2000-01-01', kind: 'a' };
+  assert.deepEqual(cases[0].first, first);
+  // 主キーの列だけ同じで、ほかの列 (別の一意制約の列も) は違う値
+  assert.deepEqual(cases[0].second, { room_id: 'd2-1', slot_start_at: '2000-01-01T00:00:00Z', reservation_id: '00000000-0000-4000-8000-000000000002', seq: 2, active: false, day: '2000-01-02', kind: 'b' });
+  assert.equal(cases[1].second.reservation_id, first.reservation_id);
+  assert.notEqual(cases[1].second.room_id, first.room_id);
+});
+
+test('uniqueKeyCases: 2 件目が別の一意制約にも当たるときは、その名前も照合の候補に入れる。63 バイトを超える名前は照合しない', () => {
+  const col = (name, extra = {}) => ({ name, type: 'string', nullable: false, ...extra });
+  // UNIQUE (a) は主キー (a, b) の列に含まれる。UNIQUE (only) は値を変えられない (値が 1 つの enum)
+  const nested = genRdbDdl.uniqueKeyCases([{ name: 't', columns: [col('a'), col('b'), col('only', { enum: ['x'] })], primary_key: ['a', 'b'],
+    indexes: [{ name: 't_a_key', columns: ['a'], unique: true }, { name: 't_only_key', columns: ['only'], unique: true }] }]);
+  assert.deepEqual(nested.map(c => c.constraints), [['t_pkey', 't_a_key', 't_only_key'], ['t_a_key', 't_only_key'], ['t_only_key']]);
+  const long = 'x'.repeat(60);
+  assert.deepEqual(genRdbDdl.uniqueKeyCases([{ name: long, columns: [col('a')], primary_key: ['a'] }]).map(c => c.constraints), [null]);
+});
+
+// --- 外部レビューの指摘: 列が重なる一意制約では、弾きだけでは制約の欠けを見つけられない ---
+test('db-schema.test.ts が、一意制約ごとに制約そのものの存在をカタログ (pg_constraint) の種類・列の並び・名前で確かめる', () => {
+  const col = (name) => ({ name, type: 'string', nullable: false });
+  const tables = [{ name: 't', columns: [col('id'), col('a'), col('b')], primary_key: ['id'],
+    indexes: [{ name: 't_a_key', columns: ['a'], unique: true }, { name: 't_a_b_key', columns: ['a', 'b'], unique: true }] }];
+  const testTs = genRdbDdl.dbSchemaTest(tables, 'apps/backend-api', '// head');
+  assert.match(testTs, /FROM pg_constraint c/);
+  assert.match(testTs, /c\.contype IN \('p', 'u'\)/);
+  // 種類・列の並び・名前の 3 つで 1 件に決まることを見る
+  assert.match(testTs, /r\.contype === key\.type && r\.cols === key\.columns\.join\(','\) && \(key\.name === null \|\| r\.conname === key\.name\)/);
+  assert.match(testTs, /expect\(matched\.map\(r => r\.conname\), JSON\.stringify\(found\.rows\)\)\.toHaveLength\(1\)/);
+  // 存在の確認は、弾きの確認より前に、制約ごとに 1 件ずつ出す
+  assert.ok(testTs.indexOf('has the ${key.type') < testTs.indexOf('rejects a second row'));
+  const keys = JSON.parse(/const uniqueKeys: UniqueKey\[\] = (\[[\s\S]*?\n\]);/.exec(testTs)[1]);
+  assert.deepEqual(keys.map(k => [k.type, k.name, k.columns]), [['p', 't_pkey', ['id']], ['u', 't_a_key', ['a']], ['u', 't_a_b_key', ['a', 'b']]]);
+  // UNIQUE(a, b) の 2 件目は UNIQUE(a) にも当たる (どちらが弾いても通る) ので、欠けは上の存在の確認が見つける。
+  // UNIQUE(a) の 2 件目は b が違うので UNIQUE(a) だけに当たり、弾きの確認はその制約名だけを期待する
+  assert.deepEqual(keys.map(k => k.constraints), [['t_pkey'], ['t_a_key'], ['t_a_key', 't_a_b_key']]);
+});
+
+test('uniqueKeyCases: 63 バイトを超える制約名は、存在の確認でも名前を照合しない (種類と列の並びで確かめる)', () => {
+  const long = 'x'.repeat(60);
+  const [pk] = genRdbDdl.uniqueKeyCases([{ name: long, columns: [{ name: 'a', type: 'string', nullable: false }], primary_key: ['a'] }]);
+  assert.deepEqual([pk.type, pk.name, pk.columns], ['p', null, ['a']]);
+});

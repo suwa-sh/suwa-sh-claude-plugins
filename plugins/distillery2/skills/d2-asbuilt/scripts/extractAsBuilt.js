@@ -7,13 +7,14 @@
  *   docs/requirements/use-cases.yaml              UC 一覧 (run の slug で該当 UC を引く。actors / tiers)
  *   docs/requirements/requirements.yaml           受入基準
  *   docs/adr/*.md                                 レイヤ規則 (arch_test.level: layer) → 計装の範囲の期待値
- *   <run>/reports/gates.json / *.json             ゲート結果・cucumber JSON・vitest JSON
+ *   <run>/reports/gates.json / *.json             ゲート結果 (警告扱いで通った検査 = job の advisory を含む)・cucumber JSON・vitest JSON
  *   <run>/traces/<scenario>.jsonl                 実行トレース (traceTree.js の形)
  *   <run>/attempt-<n>/assumptions.<tier>.yaml     AssumptionRecord
  *   <run>/attempt-<n>/findings.<tier>.yaml        Verifier の findings
- *   <run>/events.jsonl                            review_approved の決定・generated_at の元
- *   <run>/issues/*.md                             仕様起因の課題 (front matter kind/title)
+ *   <run>/events.jsonl                            review_approved の決定・generated_at の元・片付いた課題 (resumed_after_upstream / carried_issues)
+ *   <run>/issues/*.md                             仕様起因の課題 (front matter kind/title)。イベントで片付いたと分かる課題は未決に数えない
  *   contracts/generated/slices/<slug>/contract-slice.json
+ *   contracts/uc-index.yaml                       UC 自身の操作 (operations)。前準備で呼んだ他の UC の操作の読み書きを分ける
  *   contracts/generated/openapi.bundle.yaml       api-inventory.md 用
  *   docs/design/screens.yaml                      画面 ↔ UC
  *   <run>/reports/depcruise.json (または --depcruise)  dependency-graph.md 用
@@ -42,7 +43,7 @@ const { stamp, headerLine } = require('../../d2-common/scripts/lib/basis');
 const { writeCanonicalJson, readCanonicalJson } = require('../../d2-common/scripts/lib/canonicalJson');
 const { readEvents, currentAttempt } = require('../../d2-common/scripts/lib/runState');
 const { renderScenario, pickHappyPath, summarizeScenario } = require('./renderSequence');
-const { buildFlows, renderFlowchart, renderSystemDataFlow } = require('./renderDataFlow');
+const { buildFlows, renderFlowchart, renderSystemDataFlow, hasSetupFlows } = require('./renderDataFlow');
 const { buildTree, observedPlacements, cmpStr } = require('./traceTree');
 const { check: checkSummaries } = require('./checkAsBuilt');
 const { deriveFromTraces, groupChangedFiles, changedFilesFromGit, loadTraces } = require('./buildTraceIndex');
@@ -198,7 +199,9 @@ function collect(opts) {
   }
 
   const traces = loadTraces(path.join(runDir, 'traces'));
-  const derived = deriveFromTraces(traces);
+  // UC 自身の操作 (uc-index)。シナリオが前準備で呼んだ他の UC の操作の読み書きを、この UC の読み書きに数えないために使う
+  const ownOps = ownOperations(readYamlIfExists(path.resolve(cwd, 'contracts/uc-index.yaml')), slug);
+  const derived = deriveFromTraces(traces, { ownOps });
 
   const events = readEvents(runDir);
   const generatedAt = events.length ? events[events.length - 1].ts : '';
@@ -210,7 +213,10 @@ function collect(opts) {
   const assumptions = loadAssumptions(runDir, attempt);
   const findings = loadFindings(runDir, attempt);
 
-  const issues = loadIssues(path.join(runDir, 'issues'));
+  // 未決の課題だけを数える。この UC の中で片付いた課題は別に持ち、件数だけを課題の節に出す
+  const allIssues = loadIssues(path.join(runDir, 'issues'), events);
+  const issues = allIssues.filter((it) => !it.settled);
+  const settledIssueList = allIssues.filter((it) => it.settled);
 
   const slice = readJsonIfExists(path.resolve(cwd, `contracts/generated/slices/${slug}/contract-slice.json`));
   const openapiBundle = readYamlIfExists(path.resolve(cwd, 'contracts/generated/openapi.bundle.yaml'));
@@ -238,8 +244,8 @@ function collect(opts) {
   return {
     cwd, runDir, slug, config, docsRoot, docs, uc, reqDoc, gates, scenarios,
     tiers, unitByTier, contractByTier, traces, derived, generatedAt, decisions,
-    attempt, assumptions, findings, issues, slice, openapiBundle, screens, files, depcruise, basis,
-    head: headSha(cwd), actor, adrLayers, instrumentation, models,
+    attempt, assumptions, findings, issues, settledIssues: settledIssueList, slice, openapiBundle, screens, files, depcruise, basis,
+    head: headSha(cwd), actor, adrLayers, instrumentation, models, ownOps,
   };
 }
 
@@ -363,12 +369,35 @@ function decisionGroup(d) {
   return t === 'confirmed' && d && d.by === 'recommended' ? 'confirmed_recommended' : t;
 }
 
-function loadIssues(dir) {
+/**
+ * この UC の中で片付いた課題の id (課題のファイル名から `.md` を除いたもの) → 片付き方。
+ *   upstream: 上流の差分が反映か取り下げをした (`resumed_after_upstream` の `issues`。写し直しは、課題ファイルが main から消えたことを確かめている)
+ *   carried : この UC の段に渡した (`carried_issues` の `issues`。戻し先の段の派遣文に添えて扱い、main マージで課題ファイルを消す)
+ * 課題のファイルは片付いた後も `<run>/issues/` に残るので、未決かどうかはイベントで決める。
+ */
+function settledIssues(events) {
+  const map = new Map();
+  for (const e of events || []) {
+    if (e.type === 'carried_issues') for (const i of e.issues || []) if (i && i.issue) map.set(String(i.issue), 'carried');
+  }
+  for (const e of events || []) {
+    if (e.type === 'resumed_after_upstream') for (const i of e.issues || []) if (i && i.id) map.set(String(i.id), 'upstream');
+  }
+  return map;
+}
+
+/**
+ * `<run>/issues/*.md` を読む。片付いた課題 (settledIssues) は `settled` に片付き方を持つ。
+ * `issues/consumed/` (その場で巻き戻して直した下書き) は読まない。
+ */
+function loadIssues(dir, events) {
   const out = [];
   if (!fs.existsSync(dir)) return out;
+  const settled = settledIssues(events);
   for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.md')).sort()) {
     const { data } = parseFrontMatter(fs.readFileSync(path.join(dir, f), 'utf8'));
-    out.push({ file: f, kind: data.kind || '未分類', title: data.title || f.replace(/\.md$/, '') });
+    const id = f.replace(/\.md$/, '');
+    out.push({ file: f, kind: data.kind || '未分類', title: data.title || id, settled: settled.get(id) || null });
   }
   return out;
 }
@@ -475,13 +504,46 @@ function yamlScalar(s) {
   return /[:#\[\]{}]|^\s|\s$/.test(str) ? JSON.stringify(str) : str;
 }
 
+/**
+ * contracts/uc-index.yaml のその UC の operations (UC 自身の操作)。uc-index が無い・その UC が無いときは null (前準備を分けない)。
+ */
+function ownOperations(ucIndex, slug) {
+  const ucs = ucIndex && Array.isArray(ucIndex.ucs) ? ucIndex.ucs : [];
+  const entry = ucs.find((u) => u && u.slug === slug);
+  if (!entry || !Array.isArray(entry.operations)) return null;
+  return entry.operations.map(String);
+}
+
+/**
+ * 警告扱いで通った検査 (gates.json の job の advisory。runGates.js が、落ちても段を止めない検査に残す)。
+ * advisory は 2 つの形: `{kind, exit}` (落ちたが止めない検査。生成物の鮮度・ティアの security) と
+ * `{plugin, count, rules, files}` (quality が依存の脆弱性の指摘だけで落ちた)。
+ * @returns {Array<{gate:string, name:string, tier:string|null, text:string}>} text = 「generate exit 1」の形
+ */
+function gateAdvisories(gates) {
+  const out = [];
+  for (const g of (gates && gates.gates) || []) {
+    for (const j of g.jobs || []) {
+      const a = j && j.advisory;
+      if (!a) continue;
+      const name = `${j.tier ? `${j.tier}:` : ''}${j.name}`;
+      const detail = Array.isArray(a.rules) ? `依存の脆弱性 ${a.count == null ? a.rules.length : a.count} 件` : `exit ${a.exit == null ? '不明' : a.exit}`;
+      out.push({ gate: g.name, name, tier: j.tier || null, text: `${name} ${detail}` });
+    }
+  }
+  return out;
+}
+
 function gatesSummary(gates) {
   if (!gates || !gates.gates) return 'ゲート結果なし';
   const list = gates.gates;
   const failed = list.filter((g) => g.status === 'fail').map((g) => g.name);
-  if (failed.length) return `**fail** (落ちた段: ${failed.join(', ')})`;
-  if (!gatesAllRecorded(gates)) return `部分実行 (未実行: ${gatesMissing(gates).join(', ') || '不明'})`;
-  return `${list.length} 段すべて ${gates.result || 'pass'}`;
+  // 警告扱いで通った検査は、段が pass でも落ちている。「すべて pass」と書かない
+  const adv = gateAdvisories(gates);
+  const warn = adv.length ? ` (警告 ${adv.length}: ${adv.map((a) => a.text).join('、')})` : '';
+  if (failed.length) return `**fail** (落ちた段: ${failed.join(', ')})${warn}`;
+  if (!gatesAllRecorded(gates)) return `部分実行 (未実行: ${gatesMissing(gates).join(', ') || '不明'})${warn}`;
+  return adv.length ? `${list.length} 段 ${gates.result || 'pass'}${warn}` : `${list.length} 段すべて ${gates.result || 'pass'}`;
 }
 
 function specById(reqDoc) {
@@ -580,7 +642,10 @@ function buildIndexMd(ctx, preserved) {
   L.push('## 入口 (抽出)');
   L.push('');
   const opPaths = operationPaths(ctx.slice);
-  const ops = ctx.derived.operations.map((op) => { const p = opPaths[op]; return `${op}${p ? ` (${p.method} ${p.path})` : ''}`; });
+  // シナリオが前準備で呼んだ他の UC の操作は、この UC の入口ではない。名前の後ろに (前準備) を付けて区別する
+  const opText = (op, setup) => { const p = opPaths[op]; return `${op}${p ? ` (${p.method} ${p.path})` : ''}${setup ? ' (前準備)' : ''}`; };
+  const setupOnly = ((ctx.derived.setup && ctx.derived.setup.operations) || []).filter((op) => !ctx.derived.operations.includes(op));
+  const ops = [...ctx.derived.operations.map((op) => opText(op, false)), ...setupOnly.map((op) => opText(op, true))];
   const subs = sliceSubscriptions(ctx.slice);
   L.push('| 種類 | 名前 |');
   L.push('|---|---|');
@@ -620,8 +685,10 @@ function buildIndexMd(ctx, preserved) {
       L.push('| シナリオ | 応答 | 書き込み | 発行 |');
       L.push('|---|---|---|---|');
       for (const t of others) {
-        const s = summarizeScenario(t.lines);
-        L.push(`| ${mdEscape(scenarioTitle(t.scenario, ctx.slug))} | ${mdEscape(s.status)} | ${s.writes.length ? mdEscape(s.writes.join(', ')) : 'なし'} | ${s.messages.length ? mdEscape(s.messages.join(', ')) : 'なし'} |`);
+        const s = summarizeScenario(t.lines, { ownOps: ctx.ownOps });
+        // 前準備で呼んだ他の UC の操作の書き込み・発行は、この UC のものと分けて書く
+        const cell = (own, setup) => `${own.length ? mdEscape(own.join(', ')) : 'なし'}${setup && setup.length ? ` (前準備: ${mdEscape(setup.join(', '))})` : ''}`;
+        L.push(`| ${mdEscape(scenarioTitle(t.scenario, ctx.slug))} | ${mdEscape(s.status)} | ${cell(s.writes, s.setupWrites)} | ${cell(s.messages, s.setupMessages)} |`);
       }
       L.push('');
     }
@@ -631,10 +698,12 @@ function buildIndexMd(ctx, preserved) {
   if (ctx.traces.length) {
     L.push('### データの流れ');
     L.push('');
+    const flows = buildFlows(ctx.traces, { actor: ctx.actor, ownOps: ctx.ownOps });
     L.push('全シナリオを合算。点線は Read、太線は Write。');
+    if (hasSetupFlows(flows)) L.push('「前準備」の線は、シナリオが前準備で呼んだ他の UC の操作の読み書きである。この UC の読み書きには数えない。');
     L.push('');
     L.push('```mermaid');
-    L.push(renderFlowchart(buildFlows(ctx.traces, { actor: ctx.actor })));
+    L.push(renderFlowchart(flows));
     L.push('```');
     L.push('');
   }
@@ -737,6 +806,16 @@ function buildIndexMd(ctx, preserved) {
     for (const it of ctx.issues) L.push(`| ${ja(KIND_JA, it.kind, it.kind)} | ${mdEscape(it.title)} |`);
   } else L.push('未決の課題なし。');
   L.push('');
+  const settledList = ctx.settledIssues || [];
+  if (settledList.length) {
+    const up = settledList.filter((it) => it.settled === 'upstream').length;
+    const carried = settledList.length - up;
+    const parts = [];
+    if (up) parts.push(`上流の差分で反映か取り下げ ${up}`);
+    if (carried) parts.push(`この UC の段で扱った ${carried}`);
+    L.push(`片付いた課題 ${settledList.length} 件は数えない (${parts.join('、')})。`);
+    L.push('');
+  }
   L.push('<!-- 要約: 表 1 つ (| 課題 | 背景 | 今の実装 | 対処 | 根拠 |)。課題 1 つ 1 行、セルは 40 字以内、根拠はコード位置 -->');
   L.push(summaryBegin('課題'));
   if (preserved['課題']) L.push(preserved['課題']);
@@ -749,6 +828,13 @@ function buildIndexMd(ctx, preserved) {
   if (ctx.gates && ctx.gates.gates) {
     L.push(`ゲート: ${ctx.gates.gates.map((g) => `${g.name} ${g.status}`).join(' / ')}`);
     L.push('');
+    const adv = gateAdvisories(ctx.gates);
+    if (adv.length) {
+      L.push('警告扱いで通った検査 (落ちたが、段は止めない決まりの検査):');
+      L.push('');
+      for (const a of adv) L.push(`- ${mdEscape(a.text)} (${a.gate} の段)`);
+      L.push('');
+    }
   }
   const involved = ctx.tiers.filter((t) => ctx.unitByTier[t.id] || ctx.contractByTier[t.id]);
   if (involved.length) {
@@ -957,6 +1043,9 @@ function buildSequenceMd(ctx) {
 function ucEntry(ctx) {
   const tablesRw = {};
   for (const t of ctx.derived.tables) tablesRw[t.name] = t.modes;
+  // 前準備で呼んだ他の UC の操作の読み書き (この UC の tables / tables_rw には入れない。全体の表にも出ない)
+  const setupTablesRw = {};
+  for (const t of (ctx.derived.setup && ctx.derived.setup.tables) || []) setupTablesRw[t.name] = t.modes;
   return {
     business: ctx.uc.business,
     uc: ctx.uc.uc,
@@ -965,6 +1054,8 @@ function ucEntry(ctx) {
     operations: ctx.derived.operations,
     tables: ctx.derived.tables.map((t) => t.name),
     tables_rw: tablesRw,
+    setup_tables_rw: setupTablesRw,
+    setup_operations: (ctx.derived.setup && ctx.derived.setup.operations) || [],
     messages: ctx.derived.messages,
     files: ctx.files.all,
     gates: (ctx.gates && ctx.gates.result) || 'unknown',
@@ -1241,5 +1332,5 @@ module.exports = {
   run, collect, buildIndexMd, buildSequenceMd, buildApiInventory, buildDependencyGraph,
   buildSystemIndex, rebuildIndex, ucEntry, extractPreserved, parseCucumberReport, parseVitestReport,
   scenarioStatus, parseFrontMatter, latestDecisions, resolvedDecisions, decisionFor, loadAssumptions, layersFromAdr,
-  instrumentationCoverage, coverageRows, main, SUMMARY_NAMES,
+  instrumentationCoverage, coverageRows, settledIssues, loadIssues, ownOperations, gateAdvisories, gatesSummary, main, SUMMARY_NAMES,
 };

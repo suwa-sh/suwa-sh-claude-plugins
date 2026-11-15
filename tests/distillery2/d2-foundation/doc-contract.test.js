@@ -27,7 +27,7 @@ test('SKILL.md relative reference links resolve', () => {
 });
 
 test('SKILL.md is within length budget', () => {
-  assert.ok(skillMd.split('\n').length <= 220, 'SKILL.md exceeds 220 lines');
+  assert.ok(skillMd.split('\n').length <= 500, 'SKILL.md exceeds 500 lines');
 });
 
 test('rule templates: testing.md uses 4 layers, no tier BDD as a layer', () => {

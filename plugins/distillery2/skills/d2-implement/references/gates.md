@@ -26,11 +26,12 @@
 ## check-only 規約 (ティア並列中)
 
 - tier 実装者は自ティアに限定した check-only コマンドだけ実行する。書き換えを伴う formatter (`--write` / `--fix`) は禁止
+- tier 実装者が回すのは、自ティアの `format_check` / `lint` / `build` / `unit` と、リポ全体の `commands.arch_test` (依存方向。読むだけ) である。`commands.quality`・`commands.secrets`・生成物の鮮度は d2-run が static ゲートで回す
 - 整形が必要なら実装者が自分のコードを直す。リポ全体の整形は d2-run が barrier 後に単一 writer として行う
 
 ## 失敗時
 
 - 1〜2 の fail: 実装者が直す。同じ失敗が 3 回続いたら仕様疑義として引き継ぎファイルの `upstream_issues` に書き、状況を返す
-- 3 の fail: 提供側ティアの attempt++ (契約側が間違っていると思うなら `kind: contract` の issue)
+- 3 の fail: 提供側ティアの attempt++ (契約側が間違っていると思うなら、引き継ぎファイルの `upstream_issues` に戻し先 `contract` で書く)
 - 4〜5 の fail: integrate は直さず分析を返す。d2-run が該当ティアに戻す
 - 環境起因 (依存欠落・ポート衝突) はゲート結果と区別して報告する

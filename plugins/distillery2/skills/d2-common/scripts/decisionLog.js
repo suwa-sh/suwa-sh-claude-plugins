@@ -9,6 +9,8 @@
  *   node decisionLog.js add (--run <runDir> | --root <repo>) --handoff <file> --ask <id> --answer <label> --by recommended|human|rule [--provisional]
  *   node decisionLog.js add (--run <runDir> | --root <repo>) --page <page:step:question> --question <text> --answer <label> --by recommended|human|rule [--recommended <label>] [--provisional]
  *   node decisionLog.js add (--run <runDir> | --root <repo>) --handoff <file> --decision D<n> --by recommended      # 担当が決めたこと (引き継ぎファイルの decisions。0.3.0)
+ *   node decisionLog.js add-handoff (--run <runDir> | --root <repo>) --handoff <file> --mode auto|recommend [--findings]
+ *     引き継ぎファイル 1 つ分をまとめて記録する (推奨で決める問いと、担当が決めたこと)。人に返す問いと進行役が推奨を作る問いは記録せずに返す。回し直して安全
  *   node decisionLog.js list --root <repo> [--since <ISO 時刻>] [--format json|md]
  *     list は上流・すべての run に加えて、上流で止めた feature/* の run の記録を git show で読む (where に paused:feature/<slug>。0.3.0)
  * 推奨の無い問い (recommended: null) は、推奨で進めるモードで進行役が推奨を作って --by recommended --provisional で記録してよい (recommended_by: orchestrator)
@@ -34,10 +36,11 @@ function logPath({ run, root }) {
 
 function parseArgs(argv) {
   const o = {};
-  const names = { '--decision': 'decision', '--run': 'run', '--root': 'root', '--handoff': 'handoff', '--ask': 'ask', '--answer': 'answer', '--by': 'by', '--page': 'page', '--question': 'question', '--recommended': 'recommended', '--since': 'since', '--format': 'format' };
+  const names = { '--decision': 'decision', '--run': 'run', '--root': 'root', '--handoff': 'handoff', '--ask': 'ask', '--answer': 'answer', '--by': 'by', '--page': 'page', '--question': 'question', '--recommended': 'recommended', '--since': 'since', '--format': 'format', '--mode': 'mode' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--provisional') o.provisional = true;
+    else if (a === '--findings') o.findings = true;
     else if (names[a]) o[names[a]] = argv[++i];
     else throw new Fail(`不明な引数: ${a}`);
   }
@@ -97,6 +100,39 @@ function add(o) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.appendFileSync(file, `${JSON.stringify(entry)}\n`);
   return { added: entry.id, file };
+}
+
+/**
+ * 引き継ぎファイル 1 つ分をまとめて記録する: 推奨で決める問い (handoff.js route の decide[]) と、担当が決めたこと (decisions[] の D<n>)。
+ * 人に返す問い (to_human)・進行役が推奨を作る問い (make_recommendation) は記録せず、振り分けの結果としてそのまま返す (進行役が扱う)。
+ * 同じ引き継ぎファイルの同じ ID が記録済みなら書かない (回し直して安全)。
+ * 進行役が受理のたびに 1 件ずつ add を呼ぶ補助スクリプトを自作していた (会議室の予約の実地確認)
+ */
+function addHandoff(o) {
+  if (!o.handoff) throw new Fail('--handoff が要る');
+  const handoff = require('./handoff');
+  const text = fs.readFileSync(o.handoff, 'utf8');
+  const raw = (o.handoff.endsWith('.json') ? JSON.parse(text) : parseYaml(text)) || {};
+  // 検証役の findings は引き継ぎの欄 (asks と upstream_issues) だけを使う (handoff.js --findings と同じ)
+  const data = o.findings ? { schema_version: 'distillery2.handoff/v1', step: 'verify', asks: raw.asks || [], upstream_issues: raw.upstream_issues || [] } : raw;
+  const errors = handoff.validate(data);
+  if (errors.length) throw new Fail(`引き継ぎファイルが検査に落ちる: ${errors.join(' / ')}`, 1);
+  const routed = handoff.route(data, o.mode || 'auto');
+  const file = logPath(o);
+  const seen = new Set(readLog(file, null).filter((e) => e.source === o.handoff).map((e) => e.id));
+  const added = [];
+  const skipped = [];
+  const put = (extra) => {
+    const entry = entryOf({ run: o.run, root: o.root, handoff: o.handoff, by: 'recommended', ...extra });
+    if (seen.has(entry.id)) { skipped.push(entry.id); return; }
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.appendFileSync(file, `${JSON.stringify(entry)}\n`);
+    seen.add(entry.id);
+    added.push(entry.id);
+  };
+  for (const d of routed.decide) put({ ask: d.id, answer: d.answer });
+  for (const d of (o.findings ? [] : (data.decisions || []))) put({ decision: d.id });
+  return { added, skipped, file, to_human: routed.to_human, make_recommendation: routed.make_recommendation, issues: routed.issues, needs_info: routed.needs_info, plugin_findings: routed.plugin_findings };
 }
 
 function readLog(file, where) {
@@ -160,11 +196,12 @@ function main(argv) {
   const [cmd, ...rest] = argv;
   const o = parseArgs(rest);
   if (cmd === 'add') return JSON.stringify(add(o));
+  if (cmd === 'add-handoff') return JSON.stringify(addHandoff(o));
   if (cmd === 'list') {
     const entries = list(o);
     return o.format === 'md' ? toMarkdown(entries) : JSON.stringify({ count: entries.length, entries });
   }
-  throw new Fail('decisionLog.js add|list ...');
+  throw new Fail('decisionLog.js add|add-handoff|list ...');
 }
 
 if (require.main === module) {
@@ -172,4 +209,4 @@ if (require.main === module) {
   catch (e) { console.log(JSON.stringify({ ok: false, error: e.message })); process.exit(e.code || 2); }
 }
 
-module.exports = { add, list, entryOf, toMarkdown, main, pausedLogs };
+module.exports = { add, addHandoff, list, entryOf, toMarkdown, main, pausedLogs };

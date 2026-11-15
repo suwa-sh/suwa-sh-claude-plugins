@@ -8,6 +8,8 @@
  *   node reviewStep.js prompt --point <場所> --target <パス> ... --out <場所の置き場> [--round ...]   # 依頼文だけを書く (同じモデルで代わりにレビューするとき)
  *
  * 置き場は <場所の置き場>/<n>/ (0.3.0)。1 ラウンド目は新しい <n> (今ある最大 + 1 を排他的に作る)、2 ラウンド目からは --previous (前のラウンドの結果) の <n> に書く (前の結果を上書きしない)。
+ * --targets-file <一覧> [--prefix <前方一致>]: 対象を一覧のファイルから読む (1 行に 1 パス。最初の空行まで)。--prefix があれば、それで始まるパスだけを対象にする。
+ *   実装のレビューで、検証役に渡す変更ファイルの一覧 (runState.js verify-list) からそのティアの分 (--prefix apps/<tier>/) を対象にするために使う。--target と併用できる
  * --known: 課題にした指摘 (課題ファイル) を依頼文の「既知 (報告不要)」に載せる (課題にした既存の欠陥が次のラウンドで出直さない)。
  * runner のロック (同じ workspace の別のジョブ) で起動できないときは、unavailable にせず締め切りまで待って起動し直す (ティアごとのレビューを順に回す)。
  *
@@ -43,6 +45,8 @@ function parseArgs(argv) {
     const v = () => { if (argv[i + 1] == null) throw new Fail(`${a} に値が要る`); return argv[++i]; };
     if (a === '--point') o.point = v();
     else if (a === '--target') o.targets.push(v());
+    else if (a === '--targets-file') o.targetsFile = v();
+    else if (a === '--prefix') o.prefix = v();
     else if (a === '--known') o.known.push(v());
     else if (a === '--out') o.out = v();
     else if (a === '--cwd') o.cwd = path.resolve(v());
@@ -53,7 +57,17 @@ function parseArgs(argv) {
     else if (a === '--poll') o.poll = Number(v());
     else throw new Fail(`不明な引数: ${a}`);
   }
-  if (!o.point || !o.out || !o.targets.length) throw new Fail('--point と --target と --out が要る');
+  if (o.prefix && !o.targetsFile) throw new Fail('--prefix は --targets-file と一緒に使う');
+  if (o.targetsFile) {
+    const f = path.resolve(o.cwd, o.targetsFile);
+    if (!fs.existsSync(f)) throw new Fail(`--targets-file が無い: ${o.targetsFile}`);
+    const lines = fs.readFileSync(f, 'utf8').split('\n');
+    const end = lines.indexOf('');
+    const listed = (end < 0 ? lines : lines.slice(0, end)).map((l) => l.trim()).filter(Boolean).filter((l) => !o.prefix || l.startsWith(o.prefix));
+    if (!listed.length) throw new Fail(`--targets-file に対象が無い: ${o.targetsFile}${o.prefix ? ` (--prefix ${o.prefix})` : ''}`);
+    for (const t of listed) if (!o.targets.includes(t)) o.targets.push(t);
+  }
+  if (!o.point || !o.out || !o.targets.length) throw new Fail('--point と --target (か --targets-file) と --out が要る');
   if (!(Number.isFinite(o.deadline) && o.deadline > 0) || !(Number.isFinite(o.poll) && o.poll > 0)) throw new Fail(`--deadline と --poll は正の数 (秒): ${o.deadline} / ${o.poll}`);
   if (!(Number.isInteger(o.round) && o.round >= 1)) throw new Fail(`--round は 1 以上の整数: ${o.round}`);
   if (o.round > 1 && !o.previous) throw new Fail('2 ラウンド目には --previous が要る');

@@ -131,3 +131,28 @@ test('renderSystemDataFlow は UC × テーブルの表と図を描く', () => {
   assert.equal(renderSystemDataFlow(index), md);
   assert.match(renderSystemDataFlow({ ucs: {} }), /トレースなし/);
 });
+
+test('失敗した文 (result が error。取り消された文) は読み書きの辺にせず、索引の tables_rw にも数えない (実地確認: 取り消された書き込みを Write に数えた)', () => {
+  const { deriveFromTraces } = require(path.join(SCRIPTS, 'buildTraceIndex'));
+  seq = 0;
+  const inn = sp('http.in', '/reservations', { method: 'POST', path: '/reservations', status: 409, operationId: 'reserveRoom', tier: 'backend-api' });
+  const repo = sp('call', null, { component: 'ReservationRepository', fn: 'save', tier: 'backend-api', result: 'ok' }, inn.seq);
+  const read = sp('db.query', null, { sql: 'SELECT room_id FROM rooms', tables: ['rooms'], result: 'ok' }, repo.seq);
+  const failedWrite = sp('db.query', null, { sql: 'INSERT INTO reservations (id) VALUES ($1)', tables: ['reservations'], result: 'error' }, repo.seq);
+  const failedWith = sp('db.query', null, { sql: 'WITH inserted AS (INSERT INTO reservation_events (id) VALUES ($1) RETURNING id) INSERT INTO room_slot_occupancies (id) SELECT id FROM inserted', tables: ['reservation_events', 'room_slot_occupancies', 'inserted'], result: 'error' }, repo.seq);
+  const failedRead = sp('db.query', null, { sql: 'SELECT * FROM locks', tables: ['locks'], result: 'error' }, repo.seq);
+  const traces = [{ scenario: 'reserve-room#重なり', lines: [read, failedWrite, failedWith, failedRead, repo, inn] }];
+  const text = renderFlowchart(buildFlows(traces, { actor: '社員' }));
+  assert.match(text, /\[\(rooms\)\]/);
+  for (const t of ['reservations', 'reservation_events', 'room_slot_occupancies', 'locks']) assert.ok(!text.includes(`[(${t})]`), `失敗した文の表を描かない: ${t}\n${text}`);
+  assert.doesNotMatch(text, /Write/);
+  const d = deriveFromTraces(traces);
+  assert.deepEqual(d.tables, [{ name: 'rooms', modes: ['read'] }]);
+  assert.deepEqual(d.perScenario[0].tables_read, ['rooms']);
+  assert.deepEqual(d.perScenario[0].tables_written, []);
+  // 同じ表を別のシナリオで書けていれば、書き込みとして残る
+  const ok = sp('db.query', null, { sql: 'INSERT INTO reservations (id) VALUES ($1)', tables: ['reservations'], result: 'ok' });
+  const both = [...traces, { scenario: 'reserve-room#成立', lines: [ok] }];
+  assert.deepEqual(deriveFromTraces(both).tables, [{ name: 'reservations', modes: ['write'] }, { name: 'rooms', modes: ['read'] }]);
+  assert.match(renderFlowchart(buildFlows(both, { actor: '社員' })), /== Write ==> n\d+/);
+});

@@ -9,6 +9,7 @@
  *
  * generated/rdb-schema.bundle.yaml から、datastore_owner ティアの Postgres migration・
  * pglite による DB 契約テスト・packages/contracts/<id>/tables.ts (row 型 + 名前定数) を生成する。
+ * DB 契約テストは、列・型・NULL 可否・主キーの突合と、一意制約 (主キーと UNIQUE) が 2 件目の行を弾くことを確かめる。
  * v1 の RDB codegen 案 (row 型 + テーブル/列名定数) を踏襲。生成物は決定論的。
  */
 
@@ -111,12 +112,58 @@ function rowTypes(tables, header) {
   return lines.join('\n').replace(/\n+$/, '\n');
 }
 
+/** 一意制約のテストで入れる値。n (1 か 2) ごとに違う値にする (値が 1 つしか無い enum だけは同じ値になる)。 */
+function sampleValue(col, n) {
+  if (col.enum) return col.enum[Math.min(n - 1, col.enum.length - 1)];
+  switch (col.type) {
+    case 'uuid': return `00000000-0000-4000-8000-00000000000${n}`;
+    case 'integer': case 'bigint': case 'decimal': return n;
+    case 'boolean': return n === 1;
+    case 'date': return `2000-01-0${n}`;
+    case 'datetime': return `2000-01-0${n}T00:00:00Z`;
+    default: return `d2-${n}`;
+  }
+}
+
+// Postgres の識別子は 63 バイトまで。超える名前は切り詰められるので、制約名の照合から外す
+const fitsIdentifier = name => Buffer.byteLength(name, 'utf8') <= 63;
+
+/**
+ * 表ごとの一意制約 (主キーと UNIQUE の index) と、その弾きを確かめる 2 件の行を作る。
+ *  - first: 全列に 1 件目の値を入れた行。
+ *  - second: 一意制約の列だけ first と同じ値にし、ほかの列は違う値にした行 (ほかの一意制約には当たらない)。
+ *  - constraints: second が当たる制約の名前。列がこの制約の列に含まれる別の一意制約と、値を変えられない列 (値が 1 つの enum) だけの
+ *    一意制約にも当たるので、その名前も入れる。主キーの名前は Postgres の既定 (<表>_pkey)。照合できる名前が無ければ null。
+ *    当たる制約が 1 つなら、弾きのテストはその制約名だけを期待する。2 つ以上のときは、どれが弾いたかでは対象の制約の有無を
+ *    見分けられない (UNIQUE(a) があれば UNIQUE(a, b) が欠けても弾かれる)。
+ *  - type / name: そのため、制約そのものの存在を、生成するテストがカタログ (pg_constraint) の種類・列の並び・名前で別に確かめる。
+ */
+function uniqueKeyCases(tables) {
+  const out = [];
+  for (const t of [...tables].sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
+    const keys = [{ name: `${t.name}_pkey`, columns: t.primary_key }];
+    for (const idx of t.indexes || []) if (idx.unique) keys.push({ name: idx.name, columns: idx.columns });
+    const first = Object.fromEntries(t.columns.map(c => [c.name, sampleValue(c, 1)]));
+    keys.forEach((key, i) => {
+      const second = Object.fromEntries(t.columns.map(c => [c.name, key.columns.includes(c.name) ? first[c.name] : sampleValue(c, 2)]));
+      const hit = keys.filter(k => k.columns.every(c => second[c] === first[c])).map(k => k.name);
+      out.push({
+        table: t.name, columns: key.columns, constraints: hit.every(fitsIdentifier) ? hit : null, first, second,
+        // 制約そのものの存在をカタログで確かめるための情報 (type: p = 主キー / u = UNIQUE。name は照合できないとき null)
+        type: i === 0 ? 'p' : 'u', name: fitsIdentifier(key.name) ? key.name : null,
+      });
+    });
+  }
+  return out;
+}
+
 function dbSchemaTest(tables, ownerDir, header) {
   const embedded = U.jsonDet(tables.map(t => ({
     name: t.name,
     columns: t.columns.map(c => ({ name: c.name, type: c.enum ? enumTypeName(t.name, c.name) : (PG_TYPE[c.type] || 'text'), nullable: c.nullable })),
     primary_key: t.primary_key,
   }))).trimEnd();
+  const uniqueKeys = U.jsonDet(uniqueKeyCases(tables)).trimEnd();
   return `${header}
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -127,6 +174,9 @@ import { PGlite } from '@electric-sql/pglite';
 const here = dirname(fileURLToPath(import.meta.url));
 const migration = readFileSync(join(here, '..', '..', 'migrations', '0001_schema.sql'), 'utf8');
 const expected = ${embedded};
+// 一意制約 (主キーと UNIQUE) ごとの 2 件の行。second は制約の列だけ first と同じ値で、ほかの列は違う値
+type UniqueKey = { table: string; columns: string[]; type: string; name: string | null; constraints: string[] | null; first: Record<string, unknown>; second: Record<string, unknown> };
+const uniqueKeys: UniqueKey[] = ${uniqueKeys};
 
 let db: PGlite;
 beforeAll(async () => { db = new PGlite(); await db.exec(migration); });
@@ -150,6 +200,55 @@ describe('db schema contract', () => {
          JOIN information_schema.key_column_usage kcu ON kcu.constraint_name = tc.constraint_name
          WHERE tc.table_name = $1 AND tc.constraint_type = 'PRIMARY KEY'\`, [table.name]);
       expect(new Set(pk.rows.map(r => r.column_name))).toEqual(new Set(table.primary_key));
+    });
+  }
+});
+
+describe('db unique constraints contract', () => {
+  // 外部キーの検査だけを止める (参照先の行を用意せず、1 つの表だけで確かめるため)。一意制約の検査は止まらない
+  beforeAll(async () => { await db.exec('SET session_replication_role = replica'); });
+  afterAll(async () => { await db.exec('SET session_replication_role = DEFAULT'); });
+
+  const quote = (id: string) => \`"\${id.replace(/"/g, '""')}"\`;
+  const insert = (table: string, row: Record<string, unknown>) => {
+    const cols = Object.keys(row);
+    return db.query(
+      \`INSERT INTO \${quote(table)} (\${cols.map(quote).join(', ')}) VALUES (\${cols.map((_, i) => \`$\${i + 1}\`).join(', ')})\`,
+      cols.map(c => row[c]));
+  };
+
+  // 制約そのものの存在を、カタログで制約ごとに確かめる (種類・列の並び・名前)。
+  // 列が重なる制約 (UNIQUE(a) と UNIQUE(a, b)) では、片方が欠けても 2 件目の行は弾かれるので、弾きだけでは欠けを見つけられない
+  for (const key of uniqueKeys) {
+    it(\`\${key.table} has the \${key.type === 'p' ? 'primary key' : 'unique constraint'} (\${key.columns.join(', ')})\`, async () => {
+      const found = await db.query<{ conname: string; contype: string; cols: string }>(
+        \`SELECT c.conname, c.contype, string_agg(a.attname, ',' ORDER BY k.ord) AS cols
+         FROM pg_constraint c
+         JOIN pg_class t ON t.oid = c.conrelid
+         CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+         JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum
+         WHERE t.relname = $1 AND t.relnamespace = 'public'::regnamespace AND c.contype IN ('p', 'u')
+         GROUP BY c.conname, c.contype\`, [key.table]);
+      const matched = found.rows.filter(r => r.contype === key.type && r.cols === key.columns.join(',') && (key.name === null || r.conname === key.name));
+      expect(matched.map(r => r.conname), JSON.stringify(found.rows)).toHaveLength(1);
+    });
+  }
+
+  for (const key of uniqueKeys) {
+    it(\`\${key.table} rejects a second row with the same (\${key.columns.join(', ')})\`, async () => {
+      try {
+        await insert(key.table, key.first);
+        const rejected = await insert(key.table, key.second).then(
+          () => null,
+          (e: unknown) => e as { code?: string; constraint?: string });
+        expect(rejected, 'the second row was inserted').not.toBeNull();
+        expect(rejected?.code).toBe('23505'); // unique_violation
+        if (key.constraints) expect(key.constraints).toContain(rejected?.constraint);
+        const count = await db.query<{ n: number }>(\`SELECT count(*)::int AS n FROM \${quote(key.table)}\`);
+        expect(count.rows[0].n).toBe(1);
+      } finally {
+        await db.query(\`DELETE FROM \${quote(key.table)}\`);
+      }
     });
   }
 });
@@ -202,7 +301,7 @@ function run(contractsDir, { configPath, outRoot, check = false, skipIfUnused = 
   return { status: check ? 'current' : 'generated', written, files: [...files.keys()] };
 }
 
-module.exports = { run, buildSql, rowTypes, dbSchemaTest, foreignKeySql, fkConstraintName };
+module.exports = { run, buildSql, rowTypes, dbSchemaTest, uniqueKeyCases, foreignKeySql, fkConstraintName };
 
 if (require.main === module) {
   try {

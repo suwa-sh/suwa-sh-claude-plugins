@@ -24,7 +24,7 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
 - **root `package.json` devDependencies** (常時): `@biomejs/biome` / `@cucumber/cucumber` / `@electric-sql/pglite` / `@redocly/cli` / `@apidevtools/json-schema-ref-parser` / `dependency-cruiser` / `vitest` / `supertest` / `@types/supertest` / `@playwright/test` / `ajv` / `ajv-formats` / `tsx` / `typescript`。frontend ティアがあれば `react` / `react-dom` / `@types/react` / `@types/react-dom` を追加。
 - **各 app `package.json` scripts** (実コマンド。echo プレースホルダは廃止): `test` = `vitest run` / `typecheck` = `tsc --noEmit -p .` / `lint` = `biome lint .` / `format:check` = `biome format .` / `test:contract` = `vitest run -c vitest.contract.config.ts`。
 - **各 app に生成**: `tsconfig.json` (base 継承、frontend は jsx 有効)、`vitest.config.ts` (単体: src/) と `vitest.contract.config.ts` (契約テスト: test/contract/) (frontend は `environment: jsdom` + 自動 JSX)、
-  空の `src/index.ts` (画面の土台を置く frontend は除く)、提供側 (kind≠frontend) には仮の `src/test-app.ts` (`createTestApp(_options?: { fixture?: string }): never`。契約テストと api ドライバの import 先。実装で置き換える)。
+  空の `src/index.ts` (画面の土台を置く frontend は除く)、提供側 (kind≠frontend) には仮の `src/test-app.ts` (`createTestApp(_options?: { fixture?: string }): never` と、何もしない `closeTestApps(): Promise<void>`。契約テストと api ドライバの import 先。実装で置き換える。`closeTestApps` は、生成された契約テストが各テストの後に呼ぶ一時 DB の後始末)。
 - **画面の土台** (ADR の `ui` が React の SPA・Tailwind のとき、frontend ティアだけ。0.3.0): `index.html`・`vite.config.ts`・`src/{main.tsx, App.tsx, routes.tsx, styles.css, vite-env.d.ts}`。
   scripts に `dev` / `preview` を足し、`build` を `tsc --noEmit -p . && vite build` にする。devDependencies に `vite` / `@vitejs/plugin-react` / `tailwindcss` / `@tailwindcss/vite`。
   既にある root の package.json が React を持たなければ、`react` / `react-dom` (dependencies) と型定義 (devDependencies) も画面のティアに足す。
@@ -50,8 +50,8 @@ F3 のテンプレートと F5 の生成 `package.json` が依存するライブ
   ルート `biome.json` の `files.includes` で `!**/test/contract/**` も外す (0.1.15〜。0.1.13 実走で実装者が app の biome.json で回避していた)。
 - **qlty の焼き込み** (0.1.11〜): `genQlty.js` が `.qlty/qlty.toml` を生成する。**プラグインの選定は qlty 自身の提案を優先**する
   (`qlty init --yes --dry-run` の出力を土台にする。qlty init は git 追跡済みファイルしか見ないので、未追跡ファイルを `git add -N` で一時的に見せ、保存した index ファイルを書き戻す)。
-  distillery2 は上乗せだけ: biome の版を lockfile / package.json に固定 (qlty 既定の 1.9.4 は biome 2 系の設定を読めない)、生成物・vendored を
-  `exclude_patterns` に追加、qlty 既定除外の `**/db/**` `**/config/**` は外す (実装のレイヤ名になりやすい)、lockfile は除外しない、
+  distillery2 は上乗せだけ: biome の版を lockfile / package.json に固定 (qlty 既定の 1.9.4 は biome 2 系の設定を読めない)、インストールとビルドの場所 (node_modules・dist・build) だけを
+  `exclude_patterns` に置き、生成物・流用物の除外は末尾の `[[exclude]]` に書く (`plugins` は trufflehog を除く全プラグイン。`exclude_patterns` は trufflehog にも効くので、生成物をそこに置くと秘密の検出が生成物を見ない)、qlty 既定除外の `**/db/**` `**/config/**` は外す (実装のレイヤ名になりやすい)、lockfile は除外しない、
   `features/**` を test、radarlint-* は `[[triage]]` で low。qlty CLI が無いときは固定リスト (biome / radarlint-js / actionlint / zizmor / trufflehog / osv-scanner) にフォールバック。ゲートは `.distillery/config.yaml` の `commands.quality` =
   `qlty check --all --no-fix --no-progress --no-upgrade-check --no-formatters --fail-level medium` で、static ゲートと CI がリポ全体で 1 回回す。
   各ティアの `format:check` / `lint` (biome) は実装者の手元の速い検査として残す。**`qlty check --fix` は使わない** (formatter がリポ全体に

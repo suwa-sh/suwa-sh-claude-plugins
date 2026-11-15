@@ -629,3 +629,275 @@ test('0.1.32 J2: 要求の差分で閉じた前提 (assumption_resolved) は処�
   assert.equal(decisionFor(merged, 'frontend', 'A-004').decision, 'resolved', '閉じた印が review の決定より勝つ');
   assert.equal(decisionFor(merged, 'frontend', 'A-006').decision, 'confirmed');
 });
+
+test('片付いた課題は未決に数えない: 上流の差分が反映か取り下げをした課題と、この UC の段に渡した課題 (実地確認: 閉じた課題が未決の件数に残った)', () => {
+  const repo = buildRepo();
+  const issue = (kind, title) => `---\nkind: ${kind}\ntitle: "${title}"\n---\n本文。\n`;
+  W(repo.dir, '.distillery/runs/register-loan/issues/002_upstream.md', issue('foundation', '部品が理由を出せない'));
+  W(repo.dir, '.distillery/runs/register-loan/issues/003_carried.md', issue('implementation', '画面の入力の検査が抜けている'));
+  W(repo.dir, '.distillery/runs/register-loan/issues/004_blocked.md', issue('requirement', '上限の数が決まっていない'));
+  W(repo.dir, '.distillery/runs/register-loan/issues/consumed/005_rewound.md', issue('contract', 'その場で直した契約の穴'));
+  const extra = [
+    { seq: 4, ts: '2026-09-23T10:10:00.000Z', type: 'blocked_on_upstream', issues: [{ id: '002_upstream', target: 'foundation' }] },
+    { seq: 5, ts: '2026-09-23T10:20:00.000Z', type: 'resumed_after_upstream', issues: [{ id: '002_upstream', target: 'foundation', resume_from: null }] },
+    { seq: 6, ts: '2026-09-23T10:21:00.000Z', type: 'carried_issues', issues: [{ issue: '003_carried', target_step: 'implementation', resume_from: null }, { issue: 'other-uc-issue', target_step: 'contract' }] },
+    // 今も上流で止まっている課題 (写し直していない) は未決のまま
+    { seq: 7, ts: '2026-09-23T10:30:00.000Z', type: 'blocked_on_upstream', issues: [{ id: '004_blocked', target: 'requirements' }] },
+  ].map((e) => JSON.stringify(e)).join('\n') + '\n';
+  W(repo.dir, '.distillery/runs/register-loan/events.jsonl', EVENTS + extra);
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| 未決の課題 \| 2 件 \(要求 1、ルール 1\) \|/);
+  assert.match(md, /\| ルール \| 貸出上限のルールが契約に無い \|/);
+  assert.match(md, /\| 要求 \| 上限の数が決まっていない \|/);
+  assert.doesNotMatch(md, /部品が理由を出せない/);
+  assert.doesNotMatch(md, /画面の入力の検査が抜けている/);
+  assert.doesNotMatch(md, /その場で直した契約の穴/);
+  assert.match(md, /片付いた課題 2 件は数えない \(上流の差分で反映か取り下げ 1、この UC の段で扱った 1\)。/);
+  // 片付いた課題が無ければ、その行を出さない
+  const plain = buildRepo();
+  run(opts(plain));
+  const md2 = fs.readFileSync(path.join(plain.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md2, /\| 未決の課題 \| 1 件 \(ルール 1\) \|/);
+  assert.doesNotMatch(md2, /片付いた課題/);
+  // 未決が 0 件になったときは「未決の課題なし」
+  const allSettled = buildRepo();
+  W(allSettled.dir, '.distillery/runs/register-loan/events.jsonl', EVENTS + JSON.stringify({ seq: 4, ts: '2026-09-23T10:20:00.000Z', type: 'resumed_after_upstream', issues: [{ id: '001_limit', target: 'decide' }] }) + '\n');
+  run(opts(allSettled));
+  const md3 = fs.readFileSync(path.join(allSettled.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md3, /\| 未決の課題 \| なし \|/);
+  assert.match(md3, /未決の課題なし。\n\n片付いた課題 1 件は数えない \(上流の差分で反映か取り下げ 1\)。/);
+});
+
+test('取り消された書き込み (result が error の db.query) は、分岐の表・データの流れ・traceability-index の tables_rw に数えない (実地確認)', () => {
+  const repo = buildRepo();
+  const SC3 = 'register-loan#同じ書籍の貸出が重なると拒否する';
+  const trace3 = [
+    traceLine(SC3, 'http.in', 'backend-api', { method: 'POST', path: '/loans', status: 409, operationId: 'createLoan', tier: 'backend-api' }),
+    traceLine(SC3, 'db.query', null, { sql: 'SELECT * FROM books WHERE id=$1', tables: ['books'], component: 'LoanRepo', result: 'ok' }),
+    traceLine(SC3, 'db.query', null, { sql: 'INSERT INTO loan_slots (id) VALUES ($1)', tables: ['loan_slots'], component: 'LoanRepo', result: 'error' }),
+  ].join('\n') + '\n';
+  W(repo.dir, '.distillery/runs/register-loan/traces/sc3.jsonl', trace3);
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| 同じ書籍の貸出が重なると拒否する \| 409 \| なし \| なし \|/, '分岐の表の書き込みは「なし」');
+  assert.ok(!md.includes('[(loan_slots)]'), 'データの流れに取り消された書き込みの表を描かない');
+  const index = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json'));
+  assert.deepEqual(index.ucs['register-loan'].tables_rw, { books: ['read'], loans: ['read', 'write'] });
+  assert.ok(!index.ucs['register-loan'].tables.includes('loan_slots'));
+  assert.ok(!('loan_slots' in index.tables));
+  const seqMd = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/sequence.md'), 'utf8');
+  assert.match(seqMd, /INSERT loan_slots \(失敗\)/, '全シナリオの図では、失敗した文と分かる');
+});
+
+// --- 警告扱いで通った検査・前準備で呼んだ他の UC の操作 (実地確認の課題) ---------------------------
+
+test('警告扱い (advisory) で通った検査を、結果のゲートの行と証跡に名前と終了コードで出す (実地確認: generate が exit 1 でも「すべて pass」と出た)', () => {
+  const { gateAdvisories, gatesSummary } = require(path.join(SCRIPTS, 'extractAsBuilt'));
+  const withAdvisory = JSON.parse(JSON.stringify(GATES));
+  withAdvisory.gates[0].jobs = [
+    { name: 'lint', tier: 'backend-api', exit: 0, status: 'pass' },
+    { name: 'generate', advisory_on_fail: 'generate', exit: 1, status: 'pass', advisory: { kind: 'generate', exit: 1 } },
+    { name: 'security', tier: 'backend-api', advisory_on_fail: 'security', exit: 2, status: 'pass', advisory: { kind: 'security', exit: 2 } },
+    { name: 'quality', exit: 1, status: 'pass', advisory: { plugin: 'osv-scanner', count: 3, rules: ['osv-scanner:GHSA-x'], files: ['package-lock.json'] } },
+  ];
+  assert.deepEqual(gateAdvisories(withAdvisory).map((a) => a.text), ['generate exit 1', 'backend-api:security exit 2', 'quality 依存の脆弱性 3 件']);
+  const repo = buildRepo();
+  W(repo.dir, '.distillery/runs/register-loan/reports/gates.json', withAdvisory);
+  run(opts(repo));
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| ゲート \| 5 段 pass \(警告 3: generate exit 1、backend-api:security exit 2、quality 依存の脆弱性 3 件\) \|/);
+  assert.doesNotMatch(md, /すべて pass/, '落ちた検査があるのに「すべて pass」と書かない');
+  assert.match(md, /ゲート: static pass \/ unit pass[^\n]*\n\n警告扱いで通った検査 \(落ちたが、段は止めない決まりの検査\):\n\n- generate exit 1 \(static の段\)\n- backend-api:security exit 2 \(static の段\)\n- quality 依存の脆弱性 3 件 \(static の段\)\n/);
+  // 警告が無ければ今までどおり
+  const plain = buildRepo();
+  run(opts(plain));
+  const md2 = fs.readFileSync(path.join(plain.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md2, /\| ゲート \| 5 段すべて pass \|/);
+  assert.doesNotMatch(md2, /警告/);
+  // 落ちた段や部分実行にも警告を添える
+  const failed = JSON.parse(JSON.stringify(withAdvisory));
+  failed.gates[1].status = 'fail'; failed.result = 'fail';
+  assert.equal(gatesSummary(failed), '**fail** (落ちた段: unit) (警告 3: generate exit 1、backend-api:security exit 2、quality 依存の脆弱性 3 件)');
+  // 要約ブロックの書式の検査は、抽出節の警告の行を違反にしない
+  const { check } = require(path.join(SCRIPTS, 'checkAsBuilt'));
+  assert.deepEqual(check(md).violations.filter((v) => !/R1/.test(v.rule)), []);
+});
+
+function spanLine(scenario, seq, parent, kind, name, meta) {
+  return JSON.stringify({ ts: '2026-11-15T00:00:00.000Z', ts_end: '2026-11-15T00:00:00.001Z', seq, seq_end: seq + 1, parent, scenario, kind, name, meta });
+}
+
+/** 一覧の UC の体: 自分の操作は createLoan だけ。シナリオは前準備で他の UC の操作 returnLoan を呼ぶ */
+function setupOpsRepo() {
+  const repo = buildRepo();
+  W(repo.dir, 'contracts/uc-index.yaml', 'schema_version: distillery2.uc-index/v1\nucs:\n  - slug: other-uc\n    operations: [returnLoan]\n  - slug: register-loan\n    operations:\n      - createLoan\n    messages: []\n    tables: [books, loans]\n');
+  const B = { tier: 'backend-api' };
+  const SC = 'register-loan#返却した書籍をもう一度貸し出す';
+  const trace = [
+    // 前準備: 他の UC の操作 (returnLoan)。loans を書き、returns を書き、発行する
+    spanLine(SC, 1, undefined, 'http.in', '/loans/1/return', { method: 'POST', path: '/loans/1/return', status: 200, operationId: 'returnLoan', ...B }),
+    spanLine(SC, 2, 1, 'call', 'ReturnLoan.execute', { component: 'ReturnLoan', fn: 'execute', result: 'ok', ...B }),
+    spanLine(SC, 3, 2, 'db.query', 'query', { sql: 'UPDATE loans SET returned_at = now()', tables: ['loans'], component: 'LoanRepo', result: 'ok', ...B }),
+    spanLine(SC, 4, 2, 'db.query', 'query', { sql: 'INSERT INTO returns (id) VALUES ($1)', tables: ['returns'], component: 'LoanRepo', result: 'ok', ...B }),
+    spanLine(SC, 5, 2, 'publish', 'loan.returned', { message: 'loan.returned', channel: 'loans', component: 'ReturnLoan', ...B }),
+    // UC 自身の操作 (createLoan)
+    spanLine(SC, 6, undefined, 'http.in', '/loans', { method: 'POST', path: '/loans', status: 201, operationId: 'createLoan', ...B }),
+    spanLine(SC, 7, 6, 'call', 'RegisterLoan.execute', { component: 'RegisterLoan', fn: 'execute', result: 'ok', ...B }),
+    spanLine(SC, 8, 7, 'db.query', 'query', { sql: 'SELECT * FROM books', tables: ['books'], component: 'LoanRepo', result: 'ok', ...B }),
+    spanLine(SC, 9, 7, 'db.query', 'query', { sql: 'INSERT INTO loans (id) VALUES ($1)', tables: ['loans'], component: 'LoanRepo', result: 'ok', ...B }),
+    // 操作を特定できない出来事: http.in の外の db.query と、operationId の無い http.in の下の db.query は UC 自身の分
+    spanLine(SC, 10, undefined, 'db.query', 'query', { sql: 'UPDATE outbox SET sent = true', tables: ['outbox'], component: 'Worker', result: 'ok', ...B }),
+    spanLine(SC, 11, undefined, 'http.in', '/health-data', { method: 'GET', path: '/health-data', status: 200, ...B }),
+    spanLine(SC, 12, 11, 'db.query', 'query', { sql: 'SELECT * FROM settings', tables: ['settings'], component: 'LoanRepo', result: 'ok', ...B }),
+  ].join('\n') + '\n';
+  fs.rmSync(path.join(repo.runDir, 'traces'), { recursive: true, force: true });
+  W(repo.dir, '.distillery/runs/register-loan/traces/sc1.jsonl', TRACE1);
+  W(repo.dir, '.distillery/runs/register-loan/traces/sc9.jsonl', trace);
+  return repo;
+}
+
+test('前準備で呼んだ他の UC の操作の読み書きは、UC の読み書きに数えない: 全体の表と tables_rw は UC 自身の操作の分だけ (実地確認: 一覧の UC に取消の書き込みが載った)', () => {
+  const repo = setupOpsRepo();
+  run(opts(repo));
+  const index = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json'));
+  const e = index.ucs['register-loan'];
+  // returns は前準備だけが書くので UC の表に出ない。loans は自身の操作が書くので write
+  assert.deepEqual(e.tables_rw, { books: ['read'], loans: ['write'], outbox: ['write'], settings: ['read'] });
+  assert.deepEqual(e.tables, ['books', 'loans', 'outbox', 'settings']);
+  assert.deepEqual(e.setup_tables_rw, { loans: ['write'], returns: ['write'] });
+  assert.deepEqual(e.setup_operations, ['returnLoan']);
+  assert.deepEqual(e.messages, ['loan.registered'], '前準備の操作の発行は UC の発行に数えない');
+  assert.ok(!('returns' in index.tables), '表ごとの UC の一覧にも、前準備だけの表は出ない');
+  const system = fs.readFileSync(path.join(repo.dir, 'docs/as-built/_system/data-flow.md'), 'utf8');
+  assert.doesNotMatch(system, /returns/);
+  assert.match(system, /\| loans \| W \|/);
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  // 入口: 前準備の操作は区別する
+  assert.match(md, /\| API \| createLoan \(POST \/loans\)、returnLoan \(前準備\) \|/);
+  assert.match(md, /\| 発行イベント \| loan\.registered \|/);
+  // 分岐の表: 書き込みと発行は UC 自身の分と前準備の分を分ける
+  const { summarizeScenario, parseTraceLines } = require(path.join(SCRIPTS, 'renderSequence'));
+  const sc9 = parseTraceLines(fs.readFileSync(path.join(repo.runDir, 'traces/sc9.jsonl'), 'utf8'));
+  assert.deepEqual(summarizeScenario(sc9, { ownOps: ['createLoan'] }), { status: '200 → 201 → 200', reads: ['books', 'settings'], writes: ['loans', 'outbox'], messages: [], setupWrites: ['loans', 'returns'], setupMessages: ['loan.returned'] });
+  // このシナリオが正常系 (図) に選ばれるので、分岐の表にはもう 1 本が載る。前準備の無いシナリオには (前準備: …) を付けない
+  assert.match(md, /\| 在庫ありの書籍を貸し出す \| 201 \| loans \| loan\.registered \|/);
+  // 分岐の表に載る側にしたときは、前準備の分を括弧で分ける
+  const repo2 = setupOpsRepo();
+  const big = TRACE1 + Array.from({ length: 30 }, () => traceLine(SC1, 'db.query', null, { sql: 'SELECT * FROM books WHERE id=$1', tables: ['books'], component: 'LoanRepo' })).join('\n') + '\n';
+  W(repo2.dir, '.distillery/runs/register-loan/traces/sc1.jsonl', big);
+  run(opts(repo2));
+  const md2 = fs.readFileSync(path.join(repo2.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md2, /\| 返却した書籍をもう一度貸し出す \| 200 → 201 → 200 \| loans, outbox \(前準備: loans, returns\) \| なし \(前準備: loan\.returned\) \|/);
+  // UC の図: 前準備の読み書きは別の線。注記を出す
+  assert.match(md, /「前準備」の線は、シナリオが前準備で呼んだ他の UC の操作の読み書きである。この UC の読み書きには数えない。/);
+  const id = (label) => md.match(new RegExp(`(n\\d+)\\[\\(${label}\\)\\]`))[1];
+  const comp = (label) => md.match(new RegExp(`(n\\d+)\\[${label}\\]`))[1];
+  assert.match(md, /\[returnLoan （POST \/loans\/1\/return） （前準備）\]/);
+  assert.ok(md.includes(`${comp('ReturnLoan')} -. 前準備 Write .-> ${id('returns')}\n`));
+  assert.ok(md.includes(`${comp('ReturnLoan')} -. 前準備 Write .-> ${id('loans')}\n`));
+  assert.ok(md.includes(`${comp('RegisterLoan')} == Write ==> ${id('loans')}\n`), 'UC 自身の操作の書き込みは今までどおりの線');
+  assert.match(md, new RegExp(`${comp('ReturnLoan')} -\\. 前準備 Publish \\.-> n\\d+`));
+  assert.ok(!md.includes(`== Write ==> ${id('returns')}`));
+});
+
+test('UC 自身の操作が分からないとき (uc-index が無い・その UC が無い) は前準備を分けず、今までどおりすべて UC の読み書きに数える', () => {
+  const { ownOperations } = require(path.join(SCRIPTS, 'extractAsBuilt'));
+  assert.equal(ownOperations(null, 'register-loan'), null);
+  assert.equal(ownOperations({ ucs: [{ slug: 'other', operations: ['x'] }] }, 'register-loan'), null);
+  assert.deepEqual(ownOperations({ ucs: [{ slug: 'register-loan', operations: ['createLoan'] }] }, 'register-loan'), ['createLoan']);
+  const repo = setupOpsRepo();
+  fs.rmSync(path.join(repo.dir, 'contracts/uc-index.yaml'));
+  run(opts(repo));
+  const e = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json')).ucs['register-loan'];
+  assert.deepEqual(e.tables_rw, { books: ['read'], loans: ['write'], outbox: ['write'], returns: ['write'], settings: ['read'] });
+  assert.deepEqual(e.setup_tables_rw, {});
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.doesNotMatch(md, /前準備/);
+});
+
+test('operationScope: いちばん外側の http.in の操作で決める (自身の操作が中で呼ぶ別の操作は、自身の処理)', () => {
+  const { buildTree, operationScope } = require(path.join(SCRIPTS, 'traceTree'));
+  const J = (seq, parent, kind, meta) => ({ ts: 't', seq, parent, scenario: 's', kind, name: 'n', meta });
+  const tree = buildTree([
+    J(1, undefined, 'http.in', { operationId: 'own' }),
+    J(2, 1, 'http.out', { url: 'http://other/x' }),
+    J(3, 2, 'http.in', { operationId: 'inner' }),
+    J(4, 3, 'db.query', { sql: 'INSERT INTO t (a) VALUES (1)', tables: ['t'] }),
+    J(5, undefined, 'http.in', { operationId: 'someoneElse' }),
+    J(6, 5, 'db.query', { sql: 'INSERT INTO u (a) VALUES (1)', tables: ['u'] }),
+  ]);
+  const own = new Set(['own']);
+  const by = (seq) => tree.nodes.find((n) => n.seq === seq);
+  assert.equal(operationScope(by(4), own), 'own');
+  assert.equal(operationScope(by(3), own), 'own');
+  assert.equal(operationScope(by(6), own), 'setup');
+  assert.equal(operationScope(by(5), own), 'setup');
+  assert.equal(operationScope(by(6), null), 'own', 'UC 自身の操作が分からなければ分けない');
+  // 同じ部品が UC 自身の操作と前準備の操作の両方から同じ表を触るときは、線を 2 本に分ける
+  const { buildFlows, renderFlowchart } = require(path.join(SCRIPTS, 'renderDataFlow'));
+  const shared = [
+    J(1, undefined, 'http.in', { operationId: 'own', tier: 'b' }), J(2, 1, 'call', { component: 'Repo', tier: 'b' }), J(3, 2, 'db.query', { sql: 'SELECT * FROM t', tables: ['t'] }),
+    J(4, undefined, 'http.in', { operationId: 'someoneElse', tier: 'b' }), J(5, 4, 'call', { component: 'Repo', tier: 'b' }), J(6, 5, 'db.query', { sql: 'UPDATE t SET a = 1', tables: ['t'] }),
+  ];
+  const text = renderFlowchart(buildFlows([{ scenario: 's', lines: shared }], { ownOps: ['own'] }));
+  const repoId = text.match(/(n\d+)\[Repo\]/)[1]; const tId = text.match(/(n\d+)\[\(t\)\]/)[1];
+  assert.ok(text.includes(`${repoId} -. Read .-> ${tId}\n    ${repoId} -. 前準備 Write .-> ${tId}`), text);
+  assert.doesNotMatch(renderFlowchart(buildFlows([{ scenario: 's', lines: shared }], {})), /前準備/);
+});
+
+test('前準備で呼んだ他の UC の操作は、横断索引と API インベントリで「その UC が使う操作」にしない (外部レビュー)。分けられないときは今までどおり', () => {
+  const repo = setupOpsRepo();
+  run(opts(repo));
+  const index = readCanonicalJson(path.join(repo.dir, 'docs/as-built/_system/traceability-index.json'));
+  assert.deepEqual(index.ucs['register-loan'].operations, ['createLoan']);
+  assert.deepEqual(index.ucs['register-loan'].setup_operations, ['returnLoan']);
+  assert.deepEqual(Object.keys(index.operations), ['createLoan'], '操作 → 使う UC に、前準備の操作を載せない');
+  const inv = fs.readFileSync(path.join(repo.dir, 'docs/as-built/_system/api-inventory.md'), 'utf8');
+  assert.match(inv, /\| createLoan \| POST \/loans \| backend-api \| register-loan \| 実装済み \|/);
+  assert.match(inv, /\| returnLoan \| POST \/loans\/\{id\}\/return \| backend-api \| - \| 未実装, 未使用 \|/, '前準備で呼んだだけの操作は、この UC が使う操作に数えない');
+  // 入口には、前準備の操作も区別して出す
+  const md = fs.readFileSync(path.join(repo.dir, 'docs/as-built/貸出業務/貸出を登録する/index.md'), 'utf8');
+  assert.match(md, /\| API \| createLoan \(POST \/loans\)、returnLoan \(前準備\) \|/);
+  // uc-index にその UC が無ければ分けられないので、今までどおりすべて UC の操作
+  const noIndex = setupOpsRepo();
+  fs.rmSync(path.join(noIndex.dir, 'contracts/uc-index.yaml'));
+  run(opts(noIndex));
+  const index2 = readCanonicalJson(path.join(noIndex.dir, 'docs/as-built/_system/traceability-index.json'));
+  assert.deepEqual(index2.ucs['register-loan'].operations, ['createLoan', 'returnLoan']);
+  assert.deepEqual(index2.ucs['register-loan'].setup_operations, []);
+  assert.deepEqual(Object.keys(index2.operations), ['createLoan', 'returnLoan']);
+});
+
+test('同じ操作が UC 自身の処理の中と前準備の両方に現れるときは、データの流れで別のノードに描く (外部レビュー: 前準備のラベルが消えた)', () => {
+  const { buildFlows, renderFlowchart } = require(path.join(SCRIPTS, 'renderDataFlow'));
+  const { deriveFromTraces } = require(path.join(SCRIPTS, 'buildTraceIndex'));
+  const J = (seq, parent, kind, meta) => ({ ts: 't', seq, parent, scenario: 's', kind, name: 'n', meta });
+  const B = { tier: 'b' };
+  const lines = [
+    // UC 自身の操作 own が、処理の中で操作 lookup を呼ぶ (自身の処理)
+    J(1, undefined, 'http.in', { operationId: 'own', method: 'POST', path: '/own', ...B }),
+    J(2, 1, 'http.out', { url: 'http://b/lookup', ...B }),
+    J(3, 2, 'http.in', { operationId: 'lookup', method: 'GET', path: '/lookup', ...B }),
+    J(4, 3, 'db.query', { sql: 'SELECT * FROM t', tables: ['t'] }),
+    // シナリオが前準備で、同じ操作 lookup を独立に呼ぶ
+    J(5, undefined, 'http.in', { operationId: 'lookup', method: 'GET', path: '/lookup', ...B }),
+    J(6, 5, 'db.query', { sql: 'SELECT * FROM u', tables: ['u'] }),
+  ];
+  for (const order of [lines, [...lines.slice(4), ...lines.slice(0, 4)]]) {
+    const text = renderFlowchart(buildFlows([{ scenario: 's', lines: order }], { ownOps: ['own'] }));
+    const plain = text.match(/(n\d+)\[lookup （GET \/lookup）\]/);
+    const setup = text.match(/(n\d+)\[lookup （GET \/lookup） （前準備）\]/);
+    assert.ok(plain && setup, `自身の処理の中の lookup と、前準備の lookup の両方を描く\n${text}`);
+    assert.notEqual(plain[1], setup[1]);
+    const id = (t) => text.match(new RegExp(`(n\\d+)\\[\\(${t}\\)\\]`))[1];
+    assert.ok(text.includes(`${plain[1]} -. Read .-> ${id('t')}`), text);
+    assert.ok(text.includes(`${setup[1]} -. 前準備 Read .-> ${id('u')}`), text);
+  }
+  // 索引でも、自身の処理の中で呼んだ分は UC の操作、前準備で呼んだ分は setup に入る
+  const d = deriveFromTraces([{ scenario: 's', lines }], { ownOps: ['own'] });
+  assert.deepEqual(d.operations, ['lookup', 'own']);
+  assert.deepEqual(d.setup.operations, ['lookup']);
+  assert.deepEqual(d.tables, [{ name: 't', modes: ['read'] }]);
+  assert.deepEqual(d.setup.tables, [{ name: 'u', modes: ['read'] }]);
+});

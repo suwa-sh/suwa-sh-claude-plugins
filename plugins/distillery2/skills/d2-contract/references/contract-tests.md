@@ -11,7 +11,7 @@
 | ajv | 8.17.1 | OpenAPI 3.1 / AsyncAPI payload の JSON Schema 検証 | `import Ajv2020 from 'ajv/dist/2020'`、`new Ajv2020({strict:false, allErrors:true})`、`ajv.compile(schema)`、`validate.errors`、`ajv.errorsText()` |
 | ajv-formats | 3.0.1 | `format: date` `uuid` 等の検証 | `import addFormats from 'ajv-formats'`、`addFormats(ajv)` |
 | supertest | 7.x | provider の in-process HTTP テスト | `request(app).<method>(url).send(body)` → `res.status` / `res.body` |
-| vitest | 2.x〜3.x | テストランナー | `describe` / `it` / `it.todo` / `expect` / `beforeAll` / `afterAll` |
+| vitest | 2.x〜3.x | テストランナー | `describe` / `it` / `it.todo` / `expect` / `beforeAll` / `afterAll` / `afterEach` |
 | @electric-sql/pglite | 0.2.x | DB 契約テスト (docker 不要の Postgres) | `new PGlite()`、`await db.exec(sql)`、`await db.query(sql, params)`、`await db.close()` |
 
 確認クエリ:
@@ -33,6 +33,11 @@
 - provider 契約テストは `apps/<provider>/test/contract/<operationId>.test.ts`。
   `src/test-app.ts` が export する `createTestApp()` を叩く (実装側が用意する composition root)。
   テスト用データを指定した例では `createTestApp({ fixture: "<名前>" })` を叩く (下の「例ごとの要求」)。
+- **一時 DB の後始末**: 生成するテストは、例の後 (`afterEach`) に `src/test-app.ts` の `closeTestApps()` を呼ぶ。
+  `closeTestApps()` は、`createTestApp` が自分で作ったもの (`db` を省略されたときの一時 DB) をすべて閉じる。
+  呼び出し側が渡した `db` は閉じない (渡した側が閉じる)。
+  提供側の `src/test-app.ts` は、`createTestApp` と `closeTestApps` の両方を export する (`packages/test-support/README.md` の結線の契約)。
+  全部が `it.todo` のファイルは `createTestApp` を呼ばないので、後始末を出さない。
 - status ごとに、その status を起こす **同名の request example** を送り、status を assert し、
   response body を response schema で検証する (201 の response example `success` には request example `success` を送る)。
   同名の request example が無い status は `it.todo('<status>: request example "<name>" missing')`。
@@ -46,28 +51,53 @@
 - **例ごとの要求** (0.2.0〜): operation の `x-test-requests` に、response example 名ごとの要求を書く。requestBody の有無に関係なく使える。
 
   ```yaml
-  x-test-fixtures:                 # 文書直下か operation。テスト用データの名前 → 意味
+  x-test-fixtures:                 # operation に書く。テスト用データの名前 → 意味
     returned-expense: 申請者本人の差し戻しの申請 (版番号 2) がある
   x-test-requests:
     not_found:
       path: { expenseId: no-such-expense }   # 指定の無い引数は test-<引数名>。値は URL エンコードする
+    out_of_range:
+      query: { from: '2026-11-10T10:00:00+09:00', tag: [a, b] }   # ?from=2026-11-10T10%3A00%3A00%2B09%3A00&tag=a&tag=b
     unauthorized:
       headers: { Authorization: null }       # x-headers の後に重ねる (null で送らない)
     success:
       fixture: returned-expense              # createTestApp({ fixture: "returned-expense" }) で始める
   ```
 
+  - `query` は、引数名 → 値で書く。値は文字列・数値・真偽値か、その配列にする。
+    引数名と値は URL エンコードして、URL の後ろに付ける。配列は同じ引数名を値の数だけ並べる。
+    付ける順は引数名の順である (書いた順ではない)。送らない引数は書かない (`null` は書けない)。
+  - `query` の引数名は、契約の query の引数 (operation か path item の `parameters` の `in: query`) の名前にする。
+    契約に無い名前は `validateUcIndex.js` が止める (誤記した名前だけが違う 2 つの例を、区別できると判定しないため)。
+    schema が object の引数と、`style: deepObject` の引数は、`<名前>[<項目>]` の形で書く (例 `filter[name]: a`)。
+    その schema が `properties` を持ち `additionalProperties` を許していなければ、`<項目>` も `properties` の名前と照合する。
   - ヘッダは 文書直下 → operation の `x-test-headers` → request example の `x-headers` → `x-test-requests` の順に重ねる。
   - 本文の無い応答 (例名が無い) は status の文字列 (`'503'` 等) をキーにする。
   - `fixture` を参照するなら `x-test-fixtures` に宣言する。UC の slice の `fixtures` に、その UC が参照する名前と意味が入る。
+- **テスト用データの宣言の置き場**: テスト用データは、それを使う operation の `x-test-fixtures` に宣言する。
+  2 つ以上の operation が同じテスト用データを使うときだけ、文書直下の `x-test-fixtures` に宣言する。
+  文書直下の `x-test-fixtures` と `x-test-headers` は、全 UC の slice の `openapi` にそのまま入る (その UC が使っていなくても入る)。
+  slice の `fixtures` に入るのは、その UC が参照する名前だけである。
+  そのため、文書直下を変えると全 UC の slice が変わる。`classifyContractChanges.js` は、これを他 UC の変更 (`other_uc`) として人レビューに載せる。
+- **現在時刻で決まる例**: 現在時刻で応答が決まる例 (開始時刻ちょうどの境界など) は、テスト用データで時計を固定する。
+  `x-test-fixtures` の説明に、固定する現在時刻を書く (例 `現在は 2026-11-10T10:00:00+09:00。会議室 A に 10:00 開始の予約がある`)。
+  契約テストは `createTestApp({ fixture })` に時計を渡さない。提供側の `createTestApp` が、説明に現在時刻のあるテスト用データのときに、その時刻の固定の時計を使う。
+  説明に現在時刻の無いテスト用データは、実行時の時計で動く。そのデータの日時は、実行する日で結果が変わらない値にする (遠い過去か遠い未来)。
 - **5xx**: response example を持つ 5xx は、`x-test-requests` の `fixture` があるときだけテストにする。
   無ければ `it.todo('<status> (example: <name>): fixture missing — 失敗を起こすテスト用データを x-test-requests に指定する')`。
   本文の無い 5xx は `fixture` が無ければ扱わない。
 - **区別できない例**: 1 つの operation で、期待する結果が違う 2 つの例 (status が違うか、status が同じで応答の例の中身が違う) が同じ要求 (URL・ヘッダ・fixture・本文) を送ると
   `validateUcIndex.js` が両方の例を名指しして止める (同じ要求に違う結果は返せないので、片方のテストが必ず落ちるか、違いを確かめられない)。
-  `x-test-requests` のキーがどの応答の例にも当たらないときと、値に知らない項目 (`path` / `headers` / `fixture` 以外) や型の誤りがあるときも止める。
+  URL は、経路の値と `query` を合わせたものである。
+  `x-test-requests` のキーがどの応答の例にも当たらないときと、値に知らない項目 (`path` / `query` / `headers` / `fixture` / `expect` 以外) や型の誤りがあるときも止める。
 - **エラー応答の code**: 4xx / 5xx の例の中身に `code` (文字列) があれば、生成するテストが `res.body.code` も確かめる (同じ status の返し分けを確かめるため)。
-- **同じ status の返し分け**: 同じ status で中身の違う例が 2 つ以上あるときは、`x-test-requests.<例>.expect` に確かめる応答の項目名を書く (例 `expect: [status]`)。生成するテストが `res.body[<項目>]` を例の値で確かめる。エラー応答で例ごとに `code` が違えば要らない。書かなければ `validateUcIndex.js` が止める。
+- **同じ status の返し分け**: 同じ status で中身の違う例が 2 つ以上あるときは、違いを確かめる手段が要る。
+  手段は 2 つある。エラー応答 (4xx / 5xx) の `code` の違いと、`x-test-requests.<例>.expect` (確かめる応答の項目名。例 `expect: [title]`) である。
+  - 検査は例の組ごとに見る。中身の違う相手のうち、`code` で見分けられない相手が 1 つでもある例に、`expect` を書く。
+  - `code` で見分けられない組は、`code` が同じ組、どちらかに `code` (文字列) が無い組、2xx の組である。
+  - 例: 409 の例が 3 つあり、2 つが同じ `code` で題だけが違い、1 つが別の `code` を持つ。`expect` を書くのは、同じ `code` の 2 つである。
+  - 生成するテストが `res.body[<項目>]` を例の値で確かめる。書かなければ `validateUcIndex.js` が止める。
+
   生成と検査は同じ計算 (`contractGraph.js` の `contractTestCases`) を使う。
 - consumer stub は `packages/contracts/<id>/stubs/<operationId>.<status>.json` (response example の中身)。
 - AsyncAPI は `packages/contracts/<id>/validators.ts` の `validateMessage(name, payload)` を
@@ -77,9 +107,72 @@
 
 - `apps/<datastore_owner>/migrations/0001_schema.sql` を `db.exec()` で適用し、
   `information_schema.columns` / `table_constraints` を引いて bundle と列・型・NULL 可否・PK を突合する。
+  出力は `apps/<datastore_owner>/test/contract/db-schema.test.ts` の 1 ファイルである。
 - enum 列は `CREATE TYPE <table>_<column> AS ENUM (...)` を `DO $$ ... EXCEPTION WHEN duplicate_object`
   で冪等化する。テーブルは `CREATE TABLE IF NOT EXISTS` (読みやすさのためトポロジ順に並べる)。
 - **FK は CREATE TABLE に埋めず、全テーブル作成後に `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY` で足す**。
   相互参照 (循環 FK) でも参照先が必ず存在する。`ADD CONSTRAINT` に IF NOT EXISTS が無いため、
   `DO $$ ... EXCEPTION WHEN duplicate_object` で冪等化する。制約名は `<table>_<列>_fkey` で決定論的。
 - pglite に対して二重適用しても失敗しないことを実測で確認済み。
+- **一意制約の弾き**: 一意制約 (主キーと `unique: true` の index) ごとに、2 件目の行が弾かれることを確かめる。
+  全列に値を入れた 1 件目を入れ、制約の列だけが同じ値の 2 件目を入れる。
+  2 件目が `23505` (unique_violation) で失敗し、行が 1 件のままであることを見る。
+  制約名も照合する (主キーは `<表>_pkey`、UNIQUE は index の `name`。63 バイトを超える名前は照合しない)。
+  - 2 件目の行は、制約の列のほかの列をすべて違う値にする。ほかの一意制約に当たらないので、対象の制約名だけを期待する。
+  - 列が重なる制約 (UNIQUE(a) と UNIQUE(a, b)) では、UNIQUE(a, b) の 2 件目が UNIQUE(a) にも当たる。どちらが弾いても通るので、弾きだけでは UNIQUE(a, b) の欠けを見つけられない。
+  - そのため、制約そのものの存在を、一意制約ごとにカタログ (`pg_constraint`) で確かめる。種類 (主キーか UNIQUE)・列の並び・名前が合う制約が 1 つあることを見る。
+  - 入れる値は、列の型から生成器が作る。契約に例を書く必要は無い。
+  - この確認の間だけ、`SET session_replication_role = replica` で外部キーの検査を止める。
+    参照先の行を用意せず、1 つの表だけで確かめるためである。一意制約の検査は止まらない (pglite 0.5.15 で実測)。
+  - 確かめるのは、契約 (bundle) にある一意制約である。手書きの追加 migration が足した制約は対象外である。
+
+## スクリプトの挙動
+
+### genContractTests.js
+
+全生成 (`--uc` なし) では、旧生成物を掃除する。
+生成時は削除し、`--check` 時は報告して exit 1 を返す。
+operation の削除や改名、provider の移設で、旧テストが残らないようにするためである。
+
+| 生成物 | 掃除の対象の決め方 |
+|---|---|
+| 契約テストと validators (`.ts`) | 所有タグで判定する。全 `apps/*/test/contract` を走査する (provider を別ティアへ移した後の旧テストも検出する) |
+| consumer stub (`.json`) | 各 `stubs/` の `.distillery2-generated.json` (生成一覧) に載るファイルだけを削除する。手書きの stub は消さない |
+
+`--uc <slug>` を指定したときは、生成の前に次の 2 つを検証する。
+古い契約からテストを作らないためである。
+
+- `generated/slices/<slug>/contract-slice.json` が実在する (無ければ exit 2)
+- source からの bundle が新しい (`compileContracts --check` 相当。古ければ exit 1)
+
+`--uc <slug>` では、生成済みの他 UC の契約テストも作り直す。
+テストは共有の型と契約の版を埋め込むので、型を足すと他 UC のテストが古くなるためである。
+まだ生成していない UC のテストは作らない。
+
+### 消費側 API クライアント (genApiClient.js)
+
+OpenAPI bundle から、次の 3 つを生成する。
+外部依存は無く、決定論的である。
+
+| ファイル | 中身 | 使う側 |
+|---|---|---|
+| `packages/contracts/<id>/types.ts` | スキーマから作った TS 型 | provider |
+| `packages/contracts/<id>/client.ts` | operationId ごとの型付き fetch | consumer |
+| `packages/contracts/<id>/server.ts` | operationId と method/path の対応表 | provider |
+
+全生成でも `--uc` でも、**全 operation から生成する**。
+型、経路、クライアントは UC 横断である。
+UC で縮めると、先に作った UC の分が消える。
+これらは、ティア実装者の手順書 (d2-implement の mode=tier) の read-set に入っている。
+
+### classifyContractChanges.js
+
+変わった契約の生成物を `git status` から拾い、次の 3 つに分ける。
+
+| 分類 | 中身 |
+|---|---|
+| own | この UC の operation。同じ operation を使う他 UC を併記する |
+| other_uc | 他 UC の operation |
+| shared | `messages.test.ts`、`db-schema.test.ts`、DDL、`packages/contracts/**`、bundle |
+
+d2-run が contract 段の受理時に使い、他の UC にも効く変更を人レビューに載せる。

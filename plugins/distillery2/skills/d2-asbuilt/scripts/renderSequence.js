@@ -8,8 +8,11 @@
  *   - 参加者は読める名前 (actor は UC のアクター名、ティアはティア id、部品は component 名、DB / Broker / 外部ホスト)。
  *     id は p0, p1, … (ラベルで読む)。ティアが 2 つ以上あるときはティアごとに box で囲む
  *   - http.in  : 送信元->>ティア: METHOD path … ティア-->>送信元: status
- *   - call     : 送信元->>部品: fn (子があれば activate して ok / error で戻る。無ければ 1 本)
- *   - db.query : 部品->>DB: VERB tables。連続する同一行は (xN)、連続する SELECT は 1 本にまとめてテーブルを列挙
+ *   - call     : 送信元->>部品: fn (子があれば activate して戻る。無ければ 1 本)。戻りの線の名前は、例外なら error、
+ *                値で返した結果の種類 (meta.returned。業務の拒否など) があればその名前、どちらでもなければ ok
+ *   - db.query : 部品->>DB: VERB tables。連続する同一行は (xN)、連続する SELECT は 1 本にまとめてテーブルを列挙。
+ *                失敗した文 (meta.result が error) は名前の後ろに (失敗) を付ける
+ *   - 並行     : 同じ親の下で並行に動いた呼び出し (seq_end で判定) は par / and / end で囲む
  *   - publish  : 部品-)Broker: message [channel]
  *   - http.out : 直下が http.in なら 1 本の矢印にまとめる (画面 → API)。外部なら 送信元->>host
  *   1 図 60 行を超えたら切って注記する。
@@ -19,7 +22,7 @@
 'use strict';
 
 const fs = require('node:fs');
-const { buildTree, flatten, parseTraceLines, sqlVerb, withTableModes, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
+const { buildTree, flatten, parseTraceLines, sqlVerb, withTableModes, queryFailed, operationScope, cmpStr, DEFAULT_ACTOR } = require('./traceTree');
 
 const ACTOR = DEFAULT_ACTOR;
 const DEFAULT_MAX_LINES = 60;
@@ -52,25 +55,27 @@ function renderScenario(lines, opts = {}) {
   };
   idFor({ kind: 'actor', label: actorLabel });
 
-  // 矢印
+  // 矢印と、並行の組の区切り (par / and / end)
   const body = [];
   for (const e of events) {
+    if (e.type === 'par' || e.type === 'and') { body.push({ text: `${e.type} ${esc(e.label)}`, block: e.type }); continue; }
+    if (e.type === 'end') { body.push({ text: 'end', block: 'end' }); continue; }
     const from = idFor(e.from);
     const to = idFor(e.to);
     if (e.type === 'request') body.push({ text: `${from}->>${e.activate ? '+' : ''}${to}: ${esc(e.label)}` });
     else if (e.type === 'response') body.push({ text: `${from}-->>${e.activate ? '-' : ''}${to}: ${esc(e.label)}` });
     else if (e.async) body.push({ text: `${from}-)${to}: ${esc(e.label)}` });
-    else if (e.db) body.push({ text: `${from}->>${to}: ${esc(e.label)}`, db: true, from, to, verb: e.verb, tables: e.tables.slice() });
+    else if (e.db) body.push({ text: `${from}->>${to}: ${esc(e.label)}`, db: true, from, to, verb: e.verb, tables: e.tables.slice(), failed: Boolean(e.failed) });
     else body.push({ text: `${from}->>${to}: ${esc(e.label)}` });
   }
 
-  // 連続する同一 db.query 行は (xN)、連続する SELECT (同じ送信元) は 1 本にまとめる
+  // 連続する同一 db.query 行は (xN)、連続する SELECT (同じ送信元) は 1 本にまとめる (失敗した文は成功した文とまとめない)
   const collapsed = [];
   for (const entry of body) {
     const prev = collapsed[collapsed.length - 1];
     if (entry.db && prev && prev.db && prev.from === entry.from && prev.to === entry.to) {
       if (prev.base === entry.text) { prev.count += 1; prev.text = `${prev.base} (x${prev.count})`; continue; }
-      if (prev.verb === 'SELECT' && entry.verb === 'SELECT' && prev.count === 1) {
+      if (prev.verb === 'SELECT' && entry.verb === 'SELECT' && prev.count === 1 && !prev.failed && !entry.failed) {
         prev.tables = [...new Set([...prev.tables, ...entry.tables])];
         prev.base = `${prev.from}->>${prev.to}: SELECT ${prev.tables.join(', ')}`;
         prev.text = prev.base;
@@ -83,7 +88,12 @@ function renderScenario(lines, opts = {}) {
   const total = collapsed.length;
   let shown = collapsed;
   let truncated = 0;
-  if (total > maxLines) { shown = collapsed.slice(0, maxLines); truncated = total - maxLines; }
+  if (total > maxLines) {
+    shown = collapsed.slice(0, maxLines);
+    // 中身の無い par / and で終わらせない (切った位置が区切りの直後なら、その区切りも落とす)
+    while (shown.length && (shown[shown.length - 1].block === 'par' || shown[shown.length - 1].block === 'and')) shown.pop();
+    truncated = total - shown.length;
+  }
 
   const out = ['sequenceDiagram'];
   // ティアが 2 つ以上あれば box で囲む (ティア無しの参加者は素のまま)
@@ -99,7 +109,16 @@ function renderScenario(lines, opts = {}) {
       out.push('    end');
     }
   } else for (const d of decls) out.push(declLine(d));
-  for (const s of shown) out.push(`    ${s.text}`);
+  // par の中は 1 段下げる。par / and / end は外側の段に置く
+  let depth = 0;
+  for (const s of shown) {
+    if (s.block === 'end') depth -= 1;
+    const level = s.block === 'and' ? depth - 1 : depth;
+    out.push(`${'    '.repeat(level + 1)}${s.text}`);
+    if (s.block === 'par') depth += 1;
+  }
+  // 途中で切ったときは、開いたままの par を閉じる (閉じないと図が描けない)
+  for (; depth > 0; depth -= 1) out.push(`${'    '.repeat(depth)}end`);
   if (truncated > 0) out.push(`    Note over p0: 残り ${truncated} 行を省略 (全 ${total} 行)`);
   return out.join('\n');
 }
@@ -122,23 +141,36 @@ function pickHappyPath(traces) {
   })[0];
 }
 
-/** シナリオの結果の要約 (分岐の表用): {status, reads, writes, messages}。 */
-function summarizeScenario(lines) {
+/**
+ * シナリオの結果の要約 (分岐の表用): {status, reads, writes, messages, setupWrites, setupMessages}。
+ * 失敗した文 (取り消された文) の表は読み書きに数えない。
+ * opts.ownOps (UC 自身の操作) を渡すと、前準備で呼んだ他の UC の操作の中の書き込みと発行を setupWrites / setupMessages に分ける
+ * (traceTree.js の operationScope)。渡さなければ分けない。
+ */
+function summarizeScenario(lines, opts = {}) {
+  const ownOps = Array.isArray(opts.ownOps) ? new Set(opts.ownOps.map(String)) : null;
   const tree = buildTree(lines);
   const statuses = [];
   const reads = new Set(); const writes = new Set(); const messages = new Set();
+  const setupWrites = new Set(); const setupMessages = new Set();
   for (const n of tree.nodes) {
     if (n.kind === 'http.in' && n.meta.status != null) statuses.push(String(n.meta.status));
-    if (n.kind === 'db.query') {
+    const own = operationScope(n, ownOps) === 'own';
+    if (n.kind === 'db.query' && !queryFailed(n.meta)) {
       const v = sqlVerb(n.meta.sql);
-      const perTable = withTableModes(n.meta.sql, n.meta.tables);
-      if (perTable) { for (const x of perTable) (x.mode === 'write' ? writes : reads).add(x.table); continue; }
-      const tables = Array.isArray(n.meta.tables) ? n.meta.tables : [];
-      for (const t of tables) { if (v === 'SELECT') reads.add(t); else if (['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT'].includes(v)) writes.add(t); }
+      const perTable = withTableModes(n.meta.sql, n.meta.tables)
+        || (Array.isArray(n.meta.tables) ? n.meta.tables : []).map((t) => ({ table: t, mode: v === 'SELECT' ? 'read' : ['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'UPSERT'].includes(v) ? 'write' : null }));
+      for (const x of perTable) {
+        if (x.mode === 'write') (own ? writes : setupWrites).add(x.table);
+        else if (x.mode === 'read' && own) reads.add(x.table);
+      }
     }
-    if (n.kind === 'publish' && n.meta.message) messages.add(String(n.meta.message));
+    if (n.kind === 'publish' && n.meta.message) (own ? messages : setupMessages).add(String(n.meta.message));
   }
-  return { status: statuses.join(' → ') || '-', reads: [...reads].sort(cmpStr), writes: [...writes].sort(cmpStr), messages: [...messages].sort(cmpStr) };
+  const arr = (set) => [...set].sort(cmpStr);
+  const out = { status: statuses.join(' → ') || '-', reads: arr(reads), writes: arr(writes), messages: arr(messages) };
+  if (ownOps) { out.setupWrites = arr(setupWrites); out.setupMessages = arr(setupMessages); }
+  return out;
 }
 
 function main(argv) {

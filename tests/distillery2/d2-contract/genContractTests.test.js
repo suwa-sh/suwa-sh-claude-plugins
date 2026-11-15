@@ -467,3 +467,53 @@ test('新しいキーを使わない契約の生成物は変わらない (0.2.0 
   assert.ok(getBook.includes(`  it('responds 200 (example: one)', async () => {\n    const app = await createTestApp();\n    const res = await request(app).get("/books/test-id");\n    expect(res.status).toBe(200);`), getBook);
   assert.doesNotMatch(read(out, 'apps/backend-api/test/contract/createLoan.test.ts'), /fixture/);
 });
+
+// --- x-test-requests の query と、一時 DB の後始末 ---
+test('x-test-requests の query を URL エンコードして付ける (引数名の順。配列は同じ引数名を並べる)', () => {
+  const opExtra = [
+    '      x-test-requests:',
+    '        one:',
+    '          query:',
+    '            to: 2026-11-10T11:00:00+09:00',
+    '            from: 2026-11-10T10:00:00+09:00',
+    '            tag: [a b, c]',
+    '            limit: 10',
+    '        unauthorized:',
+    '          headers:',
+    '            Authorization: null',
+    '        not_found:',
+    '          path:',
+    '            id: missing',
+    '          query:',
+    '            from: x&y',
+    '',
+  ].join('\n');
+  const out = generatedFrom(contractsWithGetBookErrors({ opExtra, docExtra: DOC_AUTH }));
+  const t = read(out, 'apps/backend-api/test/contract/getBook.test.ts');
+  const ok = block(t, 'responds 200 (example: one)');
+  assert.ok(ok.includes('.get("/books/test-id?from=2026-11-10T10%3A00%3A00%2B09%3A00&limit=10&tag=a%20b&tag=c&to=2026-11-10T11%3A00%3A00%2B09%3A00")'), ok);
+  assert.ok(block(t, 'responds 404 (example: not_found)').includes('.get("/books/missing?from=x%26y")'));
+  // query の無い例の URL は変わらない
+  assert.ok(block(t, 'responds 401 (example: unauthorized)').includes('.get("/books/test-id")'));
+});
+
+test('testUrl: query の無い条件・空の query では ? を付けない', () => {
+  assert.equal(contractGraph.testUrl('/rooms/{id}', null), '/rooms/test-id');
+  assert.equal(contractGraph.testUrl('/rooms/{id}', { query: {} }), '/rooms/test-id');
+  assert.equal(contractGraph.testUrl('/rooms', { query: { b: true, a: 1 } }), '/rooms?a=1&b=true');
+});
+
+test('生成した契約テストは、例の後に closeTestApps で一時 DB を閉じる。全部が todo のファイルは閉じる処理を持たない', () => {
+  const out = generated();
+  const createLoan = read(out, 'apps/backend-api/test/contract/createLoan.test.ts');
+  assert.ok(createLoan.includes("import { describe, it, expect, afterEach } from 'vitest';"), createLoan);
+  assert.ok(createLoan.includes("import { createTestApp, closeTestApps } from '../../src/test-app';"), createLoan);
+  assert.ok(createLoan.includes('\nafterEach(async () => {\n  await closeTestApps();\n});\n'), createLoan);
+  // 後始末は describe の外に 1 つだけ (どの例の後にも走る)
+  assert.equal((createLoan.match(/afterEach\(/g) || []).length, 1);
+  assert.ok(createLoan.indexOf('afterEach(') < createLoan.indexOf("describe('"));
+  // returnLoan は example が無く全部 todo: createTestApp を呼ばないので後始末も出さない
+  const returnLoan = read(out, 'apps/backend-api/test/contract/returnLoan.test.ts');
+  assert.doesNotMatch(returnLoan, /afterEach|closeTestApps/);
+  assert.ok(returnLoan.includes("import { createTestApp } from '../../src/test-app';"), returnLoan);
+});

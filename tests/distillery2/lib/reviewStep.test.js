@@ -161,7 +161,24 @@ test('0.3.0: 置き場の <n> は排他的に取る (既にある <n> のディ�
 
 test('0.3.0: ロックで断られても、残り時間があるうちは再試行する (最低時間で早く諦めない)', () => {
   const cwd = repo();
-  const r = run(['run', '--point', 'contract', '--target', 'c', '--out', 'r', '--cwd', cwd, '--runner', FAKE, '--poll', '0.01', '--deadline', '30'], { FAKE_MODE: 'locked', FAKE_LOG: path.join(cwd, 'l.log') });
+  const r = run(['run', '--point', 'requirements', '--target', 'c', '--out', 'r', '--cwd', cwd, '--runner', FAKE, '--poll', '0.01', '--deadline', '30'], { FAKE_MODE: 'locked', FAKE_LOG: path.join(cwd, 'l.log') });
   assert.equal(r.out.status, 'reviewed', JSON.stringify(r.out));
 });
 
+
+test('--targets-file: 対象を一覧のファイルから読む (最初の空行まで)。--prefix でそのティアの分だけにする。対象が無ければ拒む', () => {
+  const cwd = repo();
+  fs.mkdirSync(path.join(cwd, '.distillery/logs'), { recursive: true });
+  fs.writeFileSync(path.join(cwd, '.distillery/logs/verify-x-attempt-1.txt'), ['apps/backend-api/src/a.ts', 'apps/frontend/src/b.ts', 'apps/backend-api/src/c.ts', '', '共有の候補:', 'apps/backend-api/src/a.ts — view-rooms'].join('\n') + '\n');
+  const r = run(['prompt', '--point', 'implementation', '--targets-file', '.distillery/logs/verify-x-attempt-1.txt', '--prefix', 'apps/backend-api/', '--out', 'r', '--cwd', cwd]);
+  assert.equal(r.code, 0, r.err);
+  const text = fs.readFileSync(path.join(cwd, r.out.prompt), 'utf8');
+  assert.match(text, /- apps\/backend-api\/src\/a\.ts\n- apps\/backend-api\/src\/c\.ts\n/);
+  assert.doesNotMatch(text, /apps\/frontend\/src\/b\.ts/);
+  assert.doesNotMatch(text, /共有の候補/, '空行の後 (共有の候補) は対象にしない');
+  const none = run(['prompt', '--point', 'implementation', '--targets-file', '.distillery/logs/verify-x-attempt-1.txt', '--prefix', 'apps/worker/', '--out', 'r', '--cwd', cwd]);
+  assert.equal(none.code, 2);
+  assert.match(none.out.error, /対象が無い/);
+  assert.equal(run(['prompt', '--point', 'implementation', '--targets-file', 'missing.txt', '--out', 'r', '--cwd', cwd]).code, 2);
+  assert.equal(run(['prompt', '--point', 'implementation', '--target', 'x', '--prefix', 'apps/', '--out', 'r', '--cwd', cwd]).code, 2);
+});

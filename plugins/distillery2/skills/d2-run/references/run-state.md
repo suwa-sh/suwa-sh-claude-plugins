@@ -54,7 +54,15 @@ docs/feedback/README.md             # 課題の一覧 (genDocsReadme が生成�
 - 上流で止めた機能は、止めた課題がすべて main から消えたら `resumeAfterUpstream.js run` が新しい main の上に写し直し、続きの段以降の done とレビューの置き場を退避する (写し直しは 3 回まで)
 - `tier` と `verify` は attempt ごとに繰り返す。tier へ戻るときは `rewind <run> implementation` (tier 以降の done を退避して attempt を進める)。契約・シナリオへ戻るときは `rewind <run> contract | scenario`。巻き戻しと as-built からの差し戻しは合わせて 3 回まで (超えると exit 3。人に返す)
 - 後ろの段階をまとめて退避するときは `invalidate <run> <stage> <reason> --from` を使う (その段階と後ろの done をすべて退避する。1 つずつ呼ぶと漏らしやすい)
-- 上流 (要求・ADR・契約) が変わったら、`basis.js check` で古くなった成果物を見つけ、対応する段階を `invalidate` する
+- 上流 (要求・ADR・契約) が変わったら、`<skills>/d2-common/scripts/lib/basis.js check` で古くなった成果物を見つけ、対応する段階を `invalidate` する
+- 進行役が段の途中で使う補助 (どれも JSON 1 行を返す。自分で同じ処理を書かない):
+
+| コマンド | 使う場面 | すること |
+|---|---|---|
+| `runState.js uc-tiers <root> <slug>` | contract の受理 | 関与ティアを契約から決め、`use-cases.yaml` の `tiers` に書き戻す |
+| `runState.js regression-targets <root> [--except <slug>]` | integrate の後の回帰、画面部品の取り込み直しの後の回帰 | 回帰の相手 (`status: done` の UC と、開き直した UC) を返す |
+| `runState.js carry-assumptions <run> --tiers <a,b>` | attempt を上げた後 | 戻さないティアの前提を、新しい attempt に複製する |
+| `runState.js verify-list <run>` | verify の最初と、レビューの直しの後 | 検証役と実装のレビューに渡す変更ファイルの一覧と、変更前との差分を `.distillery/logs/` に書く |
 - `event` / `done` の data は argv の JSON か `--data-file <json ファイル>` (排他)。長い JSON (日本語の項目の一覧など) はファイルで渡す (argv の長い日本語をハーネスの検査が止める。0.1.32 O18)
 
 ## イベントの種類 (最小)

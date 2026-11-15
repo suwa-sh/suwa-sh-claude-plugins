@@ -197,6 +197,42 @@ test('名指し: 進行中・途中・写し直し待ちが名指しと別にあ
   feature(root2, 'book-room', { blocked: ['b1'] });
   issue(root2, 'b1');
   commitAll(root2, 'issue');
-  assert.deepEqual(NA.decide(root2, { uc: 'book-room' }), { action: 'refuse', reason: '上流の課題の反映待ち', slug: 'book-room', waiting_on: ['b1'] });
+  // 反映待ちの課題が上流の差分で直せるなら、名指しのままその差分を選ぶ (拒まない)
+  const r2 = NA.decide(root2, { uc: 'book-room' });
+  assert.equal(r2.action, 'decide-diff');
+  assert.deepEqual(r2.issues, ['b1']);
   assert.equal(NA.decide(root2, { uc: 'cancel-booking' }).action, 'uc');
+  // 選べる上流の差分が無い (プラグインの課題を待っている) ときだけ、課題を示して拒む
+  const root3 = repo();
+  feature(root3, 'book-room', { blocked: ['p1'] });
+  issue(root3, 'p1', 'kind: plugin');
+  commitAll(root3, 'plugin issue');
+  assert.deepEqual(NA.decide(root3, { uc: 'book-room' }), { action: 'refuse', reason: '上流の課題の反映待ち', slug: 'book-room', waiting_on: ['p1'] });
+});
+
+test('UC の名指しは、途中の上流の直しを拒まずに続ける (名指しのまま呼び直せる)。段の名指しは拒む', () => {
+  const root = repo();
+  feature(root, 'book-room', { blocked: ['i9'] });
+  issue(root, 'i9');
+  commitAll(root, 'issue');
+  g(root, 'switch', '-q', '-c', 'upstream/i9');
+  w(root, 'docs/adr/0002-y.md', '# y\n');
+  commitAll(root, 'decide: wip');
+  assert.deepEqual(NA.decide(root, { uc: 'book-room' }), { action: 'continue-upstream', branch: 'upstream/i9', issue: 'i9', for_uc: 'book-room' });
+  // 点検で上流の課題が出た UC (feature がまだ無い) も同じ
+  assert.equal(NA.decide(root, { uc: 'cancel-booking' }).action, 'continue-upstream');
+  assert.equal(NA.decide(root, { stage: 'decide' }).action, 'refuse');
+  // 名指しと別の機能が進行中なら、上流の直しより先に拒む
+  g(root, 'switch', '-q', 'main');
+  feature(root, 'view-rooms');
+  assert.equal(NA.decide(root, { uc: 'book-room' }).action, 'refuse');
+});
+
+test('名指しした UC が反映待ちで main にいないときは、切り替えを返す', () => {
+  const root = repo();
+  feature(root, 'book-room', { blocked: ['b1'] });
+  issue(root, 'b1');
+  commitAll(root, 'issue');
+  g(root, 'switch', '-q', 'feature/book-room');
+  assert.deepEqual(NA.decide(root, { uc: 'book-room' }), { action: 'switch-main', from: 'feature/book-room' });
 });
