@@ -232,3 +232,18 @@ test('invalidTestRequests: schema が object か style が deepObject の引数�
   assert.deepEqual(G.invalidTestRequests(entry({ 'from[x]': 'a', 'filtre[name]': 'a', 'filter[name': 'a' }), doc).map(m => m.split(':')[0]),
     ['a.query.from[x]', 'a.query.filtre[name]', 'a.query.filter[name']);
 });
+
+test('invalidTestRequests: object 型の query の引数は、schema が項目を列挙していれば `<名前>[<項目>]` の項目名も照合する (外部レビュー 2 ラウンド目)', () => {
+  const G = require(path.join(__dirname, '../../../plugins/distillery2/skills/d2-contract/scripts/lib/contractGraph'));
+  const op = (schema) => ({ path: '/rooms', method: 'get', operation: { parameters: [{ name: 'filter', in: 'query', style: 'deepObject', schema }] } });
+  const closed = G.queryParameters(op({ type: 'object', properties: { status: { type: 'string' } } }), { paths: {} });
+  assert.deepEqual(closed.get('filter'), { nested: true, keys: ['status'] });
+  // additionalProperties を許す schema と、項目を書いていない schema は、項目名を照合しない
+  assert.equal(G.queryParameters(op({ type: 'object', properties: { status: {} }, additionalProperties: true }), { paths: {} }).get('filter').keys, null);
+  assert.equal(G.queryParameters(op({ type: 'object' }), { paths: {} }).get('filter').keys, null);
+  const entry = op({ type: 'object', properties: { status: { type: 'string' } }, additionalProperties: false });
+  entry.operation['x-test-requests'] = { ok: { query: { 'filter[status]': 'a' } }, typo: { query: { 'filter[typo]': 'a' } } };
+  const errs = G.invalidTestRequests(entry, { paths: {} });
+  assert.equal(errs.length, 1, JSON.stringify(errs));
+  assert.match(errs[0], /typo\.query\.filter\[typo\]: 契約の query の引数/);
+});

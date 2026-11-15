@@ -29,10 +29,10 @@ flowchart LR
   st_requirements -->|"要求・画面・実行の記録・文書の入口と課題ファイル"| st_foundation
   st_requirements -->|"要求・画面・実行の記録・文書の入口と課題ファイル"| st_uc_all
   st_requirements -->|"実行の記録・文書の入口と課題ファイル"| st_startup
-  st_decide -->|"要求・決定 (NFR・ADR)・基盤の設定・実行の記録・文書の入口と課題ファイル"| st_foundation
-  st_decide -->|"要求・決定 (NFR・ADR)・基盤の設定・実行の記録・文書の入口と課題ファイル"| st_uc_all
+  st_decide -->|"決定 (NFR・ADR)・基盤の設定・実行の記録・文書の入口と課題ファイル"| st_foundation
+  st_decide -->|"決定 (NFR・ADR)・基盤の設定・実行の記録・文書の入口と課題ファイル"| st_uc_all
   st_decide -->|"文書の入口と課題ファイル"| st_startup
-  st_foundation -->|"要求・基盤の設定・テスト基盤・契約・画面・実行の記録・文書の入口と課題ファイル"| st_uc_all
+  st_foundation -->|"基盤の設定・テスト基盤・契約・画面・実行の記録・文書の入口と課題ファイル"| st_uc_all
   st_foundation -->|"文書の入口と課題ファイル"| st_startup
   st_uc_all -->|"実行の記録・文書の入口と課題ファイル"| st_startup
 ```
@@ -43,10 +43,10 @@ flowchart LR
 | ① 要求 | ③ 基盤 | 要求、画面、実行の記録、文書の入口と課題ファイル | RDRA モデル、UC 一覧 / デザインシステム (Storybook アプリ) / ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 | ① 要求 | ④ UC の縦切り | 要求、画面、実行の記録、文書の入口と課題ファイル | 要求 (USDM)、RDRA モデル、UC 一覧 / デザインシステム (Storybook アプリ)、画面部品 / 実行の記録 (events / done / 退避した done)、やり直した UC の前の run (runState.js reopen が移す。0.1.35)、ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 | ① 要求 | 起動時の移行 (UC の外。0.1.x の残りを片付ける) | 実行の記録、文書の入口と課題ファイル | 実行の記録 (events / done / 退避した done) / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
-| ② 決定 | ③ 基盤 | 要求、決定 (NFR・ADR)、基盤の設定、実行の記録、文書の入口と課題ファイル | UC 一覧 / 非機能要求グレード表、ADR / 依存方向の検査設定 / ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
-| ② 決定 | ④ UC の縦切り | 要求、決定 (NFR・ADR)、基盤の設定、実行の記録、文書の入口と課題ファイル | UC 一覧 / ADR / 開発ルール、依存方向の検査設定 / やり直した UC の前の run (runState.js reopen が移す。0.1.35)、ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
+| ② 決定 | ③ 基盤 | 決定 (NFR・ADR)、基盤の設定、実行の記録、文書の入口と課題ファイル | 非機能要求グレード表、ADR / 依存方向の検査設定 / ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
+| ② 決定 | ④ UC の縦切り | 決定 (NFR・ADR)、基盤の設定、実行の記録、文書の入口と課題ファイル | ADR / 開発ルール、依存方向の検査設定 / ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 | ② 決定 | 起動時の移行 (UC の外。0.1.x の残りを片付ける) | 文書の入口と課題ファイル | 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
-| ③ 基盤 | ④ UC の縦切り | 要求、基盤の設定、テスト基盤、契約、画面、実行の記録、文書の入口と課題ファイル | UC 一覧 / 開発ルール、依存方向の検査設定、Cucumber 設定、Cucumber の ESM ローダ (cucumber.js が読む)、実行設定、リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 / テスト基盤 (tracer・World)、Cucumber の support / 契約の分割ファイル、UC ごとの契約の索引、契約テスト (生成物)、契約からの codegen / デザインシステム (Storybook アプリ)、画面部品 / やり直した UC の前の run (runState.js reopen が移す。0.1.35)、ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
+| ③ 基盤 | ④ UC の縦切り | 基盤の設定、テスト基盤、契約、画面、実行の記録、文書の入口と課題ファイル | 開発ルール、依存方向の検査設定、Cucumber 設定、Cucumber の ESM ローダ (cucumber.js が読む)、実行設定、リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 / テスト基盤 (tracer・World)、Cucumber の support / 契約の分割ファイル、UC ごとの契約の索引、契約テスト (生成物)、契約からの codegen / デザインシステム (Storybook アプリ)、画面部品 / ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 | ③ 基盤 | 起動時の移行 (UC の外。0.1.x の残りを片付ける) | 文書の入口と課題ファイル | 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 | ④ UC の縦切り | 起動時の移行 (UC の外。0.1.x の残りを片付ける) | 実行の記録、文書の入口と課題ファイル | 実行の記録 (events / done / 退避した done)、as-built の要約役の課題、作業用の worktree (上流で止めるときの一時のもの。0.1.x の還流の worktree は片付けるだけ。gitignore) / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 
@@ -54,9 +54,9 @@ flowchart LR
 
 | 書く段階 | 読む段階 | 受け渡すファイル群 | 受け渡すファイル |
 |---|---|---|---|
-| ② 決定 | ① 要求 | 要求、文書の入口と課題ファイル | UC 一覧 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
-| ③ 基盤 | ① 要求 | 要求、画面、文書の入口と課題ファイル | UC 一覧 / デザインシステム (Storybook アプリ) / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
-| ③ 基盤 | ② 決定 | 要求、基盤の設定、文書の入口と課題ファイル | UC 一覧 / 依存方向の検査設定、実行設定、リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
+| ② 決定 | ① 要求 | 文書の入口と課題ファイル | 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
+| ③ 基盤 | ① 要求 | 画面、文書の入口と課題ファイル | デザインシステム (Storybook アプリ) / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
+| ③ 基盤 | ② 決定 | 基盤の設定、文書の入口と課題ファイル | 依存方向の検査設定、実行設定、リポの骨格 (package.json・apps/*・packages/*)、依存の lockfile、qlty 設定 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 | ④ UC の縦切り | ① 要求 | 要求、実行の記録、文書の入口と課題ファイル | UC 一覧 / 実行の記録 (events / done / 退避した done) / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 | ④ UC の縦切り | ② 決定 | 要求、決定 (NFR・ADR)、基盤の設定、ティアの実装、文書の入口と課題ファイル | UC 一覧 / ADR / 依存方向の検査設定、qlty 設定 / ティアの実装と単体テスト / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
 | ④ UC の縦切り | ③ 基盤 | 要求、決定 (NFR・ADR)、基盤の設定、契約、実行の記録、文書の入口と課題ファイル | UC 一覧 / ADR / 依存方向の検査設定、qlty 設定 / 契約の分割ファイル、契約テスト (生成物) / ゲートの記録 / 課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成) |
@@ -319,30 +319,27 @@ flowchart LR
 ```mermaid
 flowchart LR
   p_run_decide_diff["決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除)<br/>validateAdr.js / genAdrIndex.js / genRules.js / genArchTests.js / runGates.js / feedbackBatch.js / runState.js"]
-  g_run[("実行の記録<br/>決定の差分の派遣の結果 (applied / blocked。gitignore)・ゲートの記録・やり直した UC の前の run (runState.js reopen が移す。0.1.35)")]
+  g_run[("実行の記録<br/>決定の差分の派遣の結果 (applied / blocked。gitignore)・ゲートの記録")]
   g_decisions[("決定 (NFR・ADR)<br/>ADR")]
   g_packaged[("同梱のひな形と手順書<br/>ルールのひな形 (同梱)")]
   g_docs[("文書の入口と課題ファイル<br/>課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成)")]
   g_settings[("基盤の設定<br/>実行設定・リポの骨格 (package.json・apps/*・packages/*)・依存の lockfile・qlty 設定・依存方向の検査設定・開発ルール")]
   g_code[("ティアの実装<br/>ティアの実装と単体テスト")]
-  g_requirements[("要求<br/>UC 一覧")]
   g_run --> p_run_decide_diff
   g_decisions --> p_run_decide_diff
   g_packaged --> p_run_decide_diff
   g_docs --> p_run_decide_diff
   g_settings --> p_run_decide_diff
   g_code --> p_run_decide_diff
-  g_requirements --> p_run_decide_diff
   p_run_decide_diff --> g_decisions
   p_run_decide_diff --> g_settings
   p_run_decide_diff --> g_run
   p_run_decide_diff --> g_docs
-  p_run_decide_diff --> g_requirements
 ```
 
 | 読む | 書く |
 |---|---|
-| `.distillery/logs/decide-<issue>.result.json`<br>`docs/adr/*.md`<br>`<skills>/d2-foundation/references/rule-templates/**`<br>`docs/feedback/**`<br>`.distillery/config.yaml`<br>`package.json`<br>`package-lock.json`<br>`.qlty/qlty.toml`<br>`apps/<tier>/src/**`<br>`.dependency-cruiser.cjs`<br>`docs/requirements/use-cases.yaml` | `docs/adr/*.md`<br>`docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`<run>/reports/**`<br>`docs/feedback/**`<br>`docs/requirements/use-cases.yaml`<br>`.distillery/archive/runs/<slug>/**` |
+| `.distillery/logs/decide-<issue>.result.json`<br>`docs/adr/*.md`<br>`<skills>/d2-foundation/references/rule-templates/**`<br>`docs/feedback/**`<br>`.distillery/config.yaml`<br>`package.json`<br>`package-lock.json`<br>`.qlty/qlty.toml`<br>`apps/<tier>/src/**`<br>`.dependency-cruiser.cjs` | `docs/adr/*.md`<br>`docs/rules/**`<br>`.dependency-cruiser.cjs`<br>`<run>/reports/**`<br>`docs/feedback/**` |
 
 ### ③ 基盤
 
@@ -523,21 +520,16 @@ flowchart LR
   s_feedback_docs[("課題ファイルと一覧 (取り込む段階が反映したら削除する。一覧 README.md は genDocsReadme が生成)<br/>docs/feedback/**")]
   s_config[("実行設定<br/>.distillery/config.yaml")]
   s_reports[("ゲートの記録<br/>#lt;run#gt;/reports/**")]
-  s_use_cases[("UC 一覧<br/>docs/requirements/use-cases.yaml")]
-  s_run_archive[("やり直した UC の前の run (runState.js reopen が移す。0.1.35)<br/>.distillery/archive/runs/#lt;slug#gt;/**")]
   s_feedback_docs --> p_run_foundation_diff
   s_config --> p_run_foundation_diff
   s_reports --> p_run_foundation_diff
-  s_use_cases --> p_run_foundation_diff
   p_run_foundation_diff --> s_feedback_docs
   p_run_foundation_diff --> s_reports
-  p_run_foundation_diff --> s_use_cases
-  p_run_foundation_diff --> s_run_archive
 ```
 
 | 読む | 書く |
 |---|---|
-| `docs/feedback/**`<br>`.distillery/config.yaml`<br>`<run>/reports/**`<br>`docs/requirements/use-cases.yaml` | `docs/feedback/**`<br>`<run>/reports/**`<br>`docs/requirements/use-cases.yaml`<br>`.distillery/archive/runs/<slug>/**` |
+| `docs/feedback/**`<br>`.distillery/config.yaml`<br>`<run>/reports/**` | `docs/feedback/**`<br>`<run>/reports/**` |
 
 ### ④ precheck (機能の最初の点検)
 
@@ -1310,7 +1302,7 @@ flowchart LR
 | スキルの手順書 (同梱) | 同梱のひな形と手順書 | `<skills>/**` | プラグイン同梱 | — | 独立検証、引き継ぎファイルを書く (派遣したすべての担当。検証役は findings が代わり)、縦・横レビュー (上流の段: 要求・決定・基盤)、縦・横レビュー (機能の中: シナリオ・契約・実装・as-built) |
 | 要求 (USDM) | 要求 | `docs/requirements/requirements.yaml` | 生成 | 要求の整理 | 品質特性と設計の決定、機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)、UC シナリオの執筆、ティアの実装、独立検証、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、シナリオの静的確認、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
 | RDRA モデル | 要求 | `docs/requirements/rdra/**` | 生成 | 要求の整理 | 品質特性と設計の決定、デザインシステムの生成、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)、UC シナリオの執筆、契約の差分、ティアの実装、独立検証、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
-| UC 一覧 | 要求 | `docs/requirements/use-cases.yaml` | 生成 | 要求の整理、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)、d2-run (④)、main マージ (squash して main へ取り込む)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除)、基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除) | 品質特性と設計の決定、デザインシステムの生成、機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)、UC シナリオの執筆、契約の差分、ティアの実装、結合、独立検証、as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)、要求の差分の画面の見本 (項目のファイル (stories と部品) だけを直す)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、d2-run (④)、シナリオの静的確認、文書の入口の更新 (④)、main マージ (squash して main へ取り込む)、決定の差分の ADR、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除)、基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除)、次に何をするかを決める (起動時の自動選択。読むだけ)、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
+| UC 一覧 | 要求 | `docs/requirements/use-cases.yaml` | 生成 | 要求の整理、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)、d2-run (④)、main マージ (squash して main へ取り込む) | 品質特性と設計の決定、デザインシステムの生成、機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)、UC シナリオの執筆、契約の差分、ティアの実装、結合、独立検証、as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)、要求の差分の画面の見本 (項目のファイル (stories と部品) だけを直す)、文書の入口の更新 (① ②)、文書の入口の更新 (③)、d2-run (④)、シナリオの静的確認、文書の入口の更新 (④)、main マージ (squash して main へ取り込む)、決定の差分の ADR、次に何をするかを決める (起動時の自動選択。読むだけ)、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
 | 要求の確認材料 | 要求 | `docs/requirements/_review-summary.md` | 生成 | 要求の整理 | d2-run (① ②) |
 | 非機能要求グレード表 | 決定 (NFR・ADR) | `docs/nfr/**` | 生成 | 品質特性と設計の決定、決定の差分の ADR | デザインシステムの生成、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、決定の差分の ADR、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
 | ADR | 決定 (NFR・ADR) | `docs/adr/*.md` | 生成 | 品質特性と設計の決定、決定の差分の ADR、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除)、上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から) | 基盤の生成 (F1→F2→F3→F5→F7)、F1 ルール、F2 依存方向の検査、F5 設定・骨格・CI・qlty、F7 依存の導入 (npm install・qlty の提案)、契約の骨格、デザインシステムの生成、基盤の仕上げ (F8→F6→F7→F4→F9)、F8 契約込みの再生成 (設定・CI・C4 図)、F7 依存の導入 (F6 の後)、機能の最初の点検 (読むだけ。この UC に要る上流の決めごとの不足を洗い出す)、as-built の抽出と要約、as-built の抽出、文書の入口の更新 (① ②)、文書の入口の更新 (③)、文書の入口の更新 (④)、決定の差分の ADR、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除)、次に何をするかを決める (起動時の自動選択。読むだけ)、文書の入口の更新 (起動時の移行)、縦・横レビュー (上流の段: 要求・決定・基盤) |
@@ -1344,7 +1336,7 @@ flowchart LR
 | step 定義 | シナリオと step | `features/step_definitions/**` | 生成 | テスト足場の生成、結合 | テスト足場の生成、結合、ゲートの実行 |
 | ティアの実装と単体テスト | ティアの実装 | `apps/<tier>/src/**` | 生成 | テスト足場の生成、ティアの実装 | ティアの実装、結合、独立検証、as-built の抽出と要約、依存グラフの実態、要約ブロックを埋める (LLM)、ゲートの実行、qlty の提案を足す (④)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除)、縦・横レビュー (機能の中: シナリオ・契約・実装・as-built) |
 | 実行の記録 (events / done / 退避した done) | 実行の記録 | `<run>/events.jsonl` | 生成 | 要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)、d2-run (④)、UC の課題を課題ファイルにする (main マージの squash の前)、上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から)、旧形式の run の課題を課題ファイルにする (起動時の移行) | as-built の抽出と要約、as-built の抽出、要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)、d2-run (④)、main マージ (squash して main へ取り込む)、UC の課題を課題ファイルにする (main マージの squash の前)、次に何をするかを決める (起動時の自動選択。読むだけ)、上流で止めた機能の写し直し (新しい main の上へ統合して続きの段から)、旧形式の run の課題を課題ファイルにする (起動時の移行) |
-| やり直した UC の前の run (runState.js reopen が移す。0.1.35) | 実行の記録 | `.distillery/archive/runs/<slug>/**` | 生成 | 要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)、d2-run (④)、決定の差分の取り込み (結果ファイルで受理・索引と開発ルールとアーキテストの作り直し・static・課題ファイルの削除)、基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除) | d2-run (④)、次に何をするかを決める (起動時の自動選択。読むだけ)、決めたことの記録 (推奨で決めた答え・人の答え・規則で決めたこと) |
+| やり直した UC の前の run (runState.js reopen が移す。0.1.35) | 実行の記録 | `.distillery/archive/runs/<slug>/**` | 生成 | 要求の差分の取り込み (課題ファイルの削除と feature の退避。残った作業の宛先: 画面の見本の取り込み直し・前提の記録を閉じる。やり直す UC の run の退避)、d2-run (④) | d2-run (④)、次に何をするかを決める (起動時の自動選択。読むだけ)、決めたことの記録 (推奨で決めた答え・人の答え・規則で決めたこと) |
 | 実装者が補った前提 | 実行の記録 | `<run>/attempt-<n>/assumptions.<tier>.yaml` | 生成 | ティアの実装 | 独立検証、as-built の抽出と要約、as-built の抽出、要約ブロックを埋める (LLM)、d2-run (④) |
 | Verifier の指摘 | 実行の記録 | `<run>/attempt-<n>/findings.<tier>.yaml` | 生成 | 独立検証 | ティアの実装、as-built の抽出と要約、as-built の抽出、d2-run (④)、引き継ぎファイルの検査・振り分け・課題の下書き |
 | 仕様起因の課題 | 実行の記録 | `<run>/issues/**` | 生成 | 引き継ぎファイルの検査・振り分け・課題の下書き | as-built の抽出と要約、as-built の抽出、d2-run (④)、UC の課題を課題ファイルにする (main マージの squash の前)、旧形式の run の課題を課題ファイルにする (起動時の移行) |

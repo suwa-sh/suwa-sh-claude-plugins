@@ -1103,8 +1103,8 @@ processes:
     actor: d2-run
     scripts: [validateAdr.js, genAdrIndex.js, genRules.js, genArchTests.js, runGates.js, feedbackBatch.js, runState.js]
     run_table_row: "② の決定の差分の取り込み"
-    reads: [decide-result, adr, rule-templates, feedback-docs, config, skeleton, lockfile, qlty-config, tier-src, depcruise-config, use-cases]
-    writes: [adr, rules, depcruise-config, reports, feedback-docs, use-cases, run-archive]
+    reads: [decide-result, adr, rule-templates, feedback-docs, config, skeleton, lockfile, qlty-config, tier-src, depcruise-config]
+    writes: [adr, rules, depcruise-config, reports, feedback-docs]
   # ================= ③ 基盤の差分 (0.2.0。派遣は ③ の行 (骨格・契約の骨格・画面部品・仕上げ) を回し直す。ここは d2-run の直接作業だけ) =================
   - id: run.foundation-diff
     name: 基盤の差分の取り込み (受理は ③ と同じ。課題ファイルの削除)
@@ -1113,8 +1113,8 @@ processes:
     actor: d2-run
     scripts: [runState.js]
     run_table_row: "③ の基盤の差分の取り込み"
-    reads: [feedback-docs, config, reports, use-cases]
-    writes: [feedback-docs, reports, use-cases, run-archive]
+    reads: [feedback-docs, config, reports]
+    writes: [feedback-docs, reports]
   # ================= 起動時の自動選択と写し直し (0.3.0) =================
   - id: run.next-action
     name: 次に何をするかを決める (起動時の自動選択。読むだけ)

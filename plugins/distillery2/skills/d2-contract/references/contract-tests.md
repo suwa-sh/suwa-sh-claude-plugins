@@ -70,6 +70,7 @@
   - `query` の引数名は、契約の query の引数 (operation か path item の `parameters` の `in: query`) の名前にする。
     契約に無い名前は `validateUcIndex.js` が止める (誤記した名前だけが違う 2 つの例を、区別できると判定しないため)。
     schema が object の引数と、`style: deepObject` の引数は、`<名前>[<項目>]` の形で書く (例 `filter[name]: a`)。
+    その schema が `properties` を持ち `additionalProperties` を許していなければ、`<項目>` も `properties` の名前と照合する。
   - ヘッダは 文書直下 → operation の `x-test-headers` → request example の `x-headers` → `x-test-requests` の順に重ねる。
   - 本文の無い応答 (例名が無い) は status の文字列 (`'503'` 等) をキーにする。
   - `fixture` を参照するなら `x-test-fixtures` に宣言する。UC の slice の `fixtures` に、その UC が参照する名前と意味が入る。

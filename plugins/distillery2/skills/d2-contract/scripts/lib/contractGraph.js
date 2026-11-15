@@ -406,17 +406,22 @@ function queryParameters(entry, doc) {
       if (!object(p) || p.in !== 'query' || typeof p.name !== 'string') continue;
       const schema = derefMaybe(doc, p.schema);
       const types = object(schema) ? [].concat(schema.type || []) : [];
-      out.set(p.name, { nested: p.style === 'deepObject' || types.includes('object') });
+      // keys = `<名前>[<項目>]` の最初の項目として通す名前 (schema に properties があり、additionalProperties を許していないとき)。null = 項目名を照合しない
+      const props = object(schema) && object(schema.properties) ? Object.keys(schema.properties) : null;
+      const open = object(schema) && schema.additionalProperties !== undefined && schema.additionalProperties !== false;
+      out.set(p.name, { nested: p.style === 'deepObject' || types.includes('object'), keys: props && !open ? props : null });
     }
   }
   return out;
 }
 
-/** query の引数名が契約にあるか。宣言された名前そのものか、nested な引数の `<名前>[...]` の形だけを通す */
+/** query の引数名が契約にあるか。宣言された名前そのものか、nested な引数の `<名前>[<項目>]` の形だけを通す。schema が項目を列挙していれば (properties があり additionalProperties を許さない)、最初の項目名も照合する */
 function knownQueryName(name, declared) {
   if (declared.has(name)) return true;
-  const m = /^([^[\]]+)\[.*\]$/.exec(name);
-  return Boolean(m && declared.has(m[1]) && declared.get(m[1]).nested);
+  const m = /^([^[\]]+)\[([^[\]]*)\].*$/.exec(name);
+  if (!m || !declared.has(m[1]) || !declared.get(m[1]).nested) return false;
+  const keys = declared.get(m[1]).keys;
+  return keys === null || keys.includes(m[2]);
 }
 
 /**

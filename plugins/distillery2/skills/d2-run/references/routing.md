@@ -163,7 +163,7 @@ main を途中の状態にしない。差分は一時の branch で行い、確�
 | 上流が変わっただけの UC (STALE) | やり直さない。完了報告に載せる |
 
 STALE の UC は、差分を main へ確定した後に `node <skills>/d2-common/scripts/lib/basis.js check <docs/as-built/*/*/index.md を展開した一覧> requirements=docs/requirements adr=docs/adr contracts=contracts` で出す (as-built がまだ無ければ回さない。basis は commit の ID で比べるので、差分の commit の前に回しても今回の変更は出ない)。
-出た UC を完了報告に「実装の記録の basis が古い機能」として載せる。次にその UC を回したときに作り直す (要求の差分の手順 6 と同じ扱い)。
+出た UC を完了報告に「実装の記録の basis が古い機能」として載せる。次にその UC を回したとき (受入基準が変わってやり直すときか、課題で開き直すとき) に作り直す (要求の差分の手順 6 と同じ扱い)。
 
 理由: 古さの判定は、上流のディレクトリの最後の commit で比べる。決定の記録の題を直しただけでも、main マージ済みの UC がすべて STALE になる。
 STALE は「その UC を作り直す必要がある」ことを示さない (会議室の予約の実地確認で、決定の記録の題を直しただけで完了済みの 2 機能が開き直しになった)。
