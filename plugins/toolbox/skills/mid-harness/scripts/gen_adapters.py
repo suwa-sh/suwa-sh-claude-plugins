@@ -9,6 +9,7 @@ usage: gen_adapters.py [<repo>] [--out-root <dir>] [--adopt] [--quiet]
 生成はまず一時ディレクトリに全出力を作り、問題 (unmappable / 未所有ファイル / TOML 不正) が無いときだけ反映する (atomic)。
 変換規則の正本: references/adapters/<product>.md。この表を変えたら doc も変える。
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,31 +21,86 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import (AGENT_LAYOUT, CAPABILITIES, GENERATED_LINE, GENERATED_MARKER, OWNER_TAG,  # noqa: E402
-                     agy_key_owned, die, json_owned, load_manifest, load_policy, manifest_lists,
-                     owned_agent_file, owned_hook_command, resolve_repo)
+from _common import (
+    AGENT_LAYOUT,
+    CAPABILITIES,
+    GENERATED_LINE,
+    GENERATED_MARKER,
+    OWNER_TAG,  # noqa: E402
+    agy_key_owned,
+    die,
+    json_owned,
+    load_manifest,
+    load_policy,
+    manifest_lists,
+    owned_agent_file,
+    owned_hook_command,
+    resolve_repo,
+)
+
+CORE_DIR = ".agents"
+CODEX_CONFIG = ".codex/config.toml"
 
 EVENT_MAP = {
-    "claude-code": {"pre-tool": "PreToolUse", "post-tool": "PostToolUse",
-                    "session-start": "SessionStart", "stop": "Stop"},
-    "codex": {"pre-tool": "PreToolUse", "post-tool": "PostToolUse",
-              "session-start": "SessionStart", "stop": "Stop"},
-    "grok": {"pre-tool": "PreToolUse", "post-tool": "PostToolUse",
-             "session-start": "SessionStart", "stop": "Stop"},
-    "cursor": {"pre-tool": "beforeShellExecution", "post-tool": "afterShellExecution",
-               "session-start": "sessionStart", "stop": "stop"},
-    "copilot": {"pre-tool": "preToolUse", "post-tool": "postToolUse",
-                "session-start": "sessionStart"},                      # stop は対応なし
-    "antigravity": {"pre-tool": "PreToolUse", "post-tool": "PostToolUse", "stop": "Stop"},  # session-start は対応なし
+    "claude-code": {
+        "pre-tool": "PreToolUse",
+        "post-tool": "PostToolUse",
+        "session-start": "SessionStart",
+        "stop": "Stop",
+    },
+    "codex": {
+        "pre-tool": "PreToolUse",
+        "post-tool": "PostToolUse",
+        "session-start": "SessionStart",
+        "stop": "Stop",
+    },
+    "grok": {
+        "pre-tool": "PreToolUse",
+        "post-tool": "PostToolUse",
+        "session-start": "SessionStart",
+        "stop": "Stop",
+    },
+    "cursor": {
+        "pre-tool": "beforeShellExecution",
+        "post-tool": "afterShellExecution",
+        "session-start": "sessionStart",
+        "stop": "stop",
+    },
+    "copilot": {
+        "pre-tool": "preToolUse",
+        "post-tool": "postToolUse",
+        "session-start": "sessionStart",
+    },  # stop は対応なし
+    "antigravity": {
+        "pre-tool": "PreToolUse",
+        "post-tool": "PostToolUse",
+        "stop": "Stop",
+    },  # session-start は対応なし
 }
 CAPABILITY_MAP = {
-    "claude-code": {"read": ["Read", "Glob", "Grep"], "edit": ["Edit", "Write", "MultiEdit"],
-                    "shell": ["Bash"], "delegate": ["Agent"], "network": ["WebFetch", "WebSearch"]},
+    "claude-code": {
+        "read": ["Read", "Glob", "Grep"],
+        "edit": ["Edit", "Write", "MultiEdit"],
+        "shell": ["Bash"],
+        "delegate": ["Agent"],
+        "network": ["WebFetch", "WebSearch"],
+    },
     # Grok の tool ID は xai-grok-agent README の template 変数 (read_file / search_replace / run_terminal_cmd / grep / list_dir / web_search)
-    "grok": {"read": ["read_file", "grep", "list_dir"], "edit": ["search_replace"],
-             "shell": ["run_terminal_cmd"], "delegate": [], "network": ["web_search"]},
+    "grok": {
+        "read": ["read_file", "grep", "list_dir"],
+        "edit": ["search_replace"],
+        "shell": ["run_terminal_cmd"],
+        "delegate": [],
+        "network": ["web_search"],
+    },
     # Copilot は公式 alias (execute / read / edit / search / agent / web)。tools 省略 = 全ツール、空 = 無効
-    "copilot": {"read": ["read", "search"], "edit": ["edit"], "shell": ["execute"], "delegate": ["agent"], "network": ["web"]},
+    "copilot": {
+        "read": ["read", "search"],
+        "edit": ["edit"],
+        "shell": ["execute"],
+        "delegate": ["agent"],
+        "network": ["web"],
+    },
 }
 ROOT_CMD = 'bash "$(git rev-parse --show-toplevel)/{script}"'  # hook の cwd が product ごとに違うので実行時に root を解決
 CODEX_BLOCK_BEGIN = "# mid-harness:begin (generated — do not edit)"
@@ -54,12 +110,14 @@ CODEX_BLOCK_END = "# mid-harness:end"
 class Gen:
     def __init__(self, repo: Path, stage: Path, adopt: bool):
         self.repo = repo
-        self.stage = stage          # すべての出力はまずここに書く
+        self.stage = stage  # すべての出力はまずここに書く
         self.adopt = adopt
-        self.written: list[str] = []   # 反映するファイル (repo 相対)
+        self.written: list[str] = []  # 反映するファイル (repo 相対)
         self.symlinks: list[tuple[str, str]] = []
-        self.dirs: list[str] = []      # 反映するディレクトリ (skills)
-        self.removals: list[str] = []  # 反映時に削除する孤児 (所有マーカー付きで manifest に無いもの)
+        self.dirs: list[str] = []  # 反映するディレクトリ (skills)
+        self.removals: list[
+            str
+        ] = []  # 反映時に削除する孤児 (所有マーカー付きで manifest に無いもの)
         self.problems: list[str] = []
         self.notes: list[str] = []
 
@@ -76,13 +134,17 @@ class Gen:
         """生成先の既存内容。生成先 (またはその親) が symlink ならリポ外へ書く恐れがあるので problem にする."""
         p = self.repo / rel
         if p.is_symlink():
-            self.problems.append(f"{rel} は symlink です。生成先は通常ファイルにしてください")
+            self.problems.append(
+                f"{rel} は symlink です。生成先は通常ファイルにしてください"
+            )
             return None
         for parent in p.parents:
             if parent == self.repo:
                 break
             if parent.is_symlink():
-                self.problems.append(f"{rel} の親 {parent.relative_to(self.repo)} が symlink です。生成先はリポ内の実ディレクトリにしてください")
+                self.problems.append(
+                    f"{rel} の親 {parent.relative_to(self.repo)} が symlink です。生成先はリポ内の実ディレクトリにしてください"
+                )
                 return None
         return p.read_text() if p.is_file() else None
 
@@ -97,10 +159,14 @@ class Gen:
         existing = self.read_existing(rel)
         if existing is None or owned_agent_file(existing, fmt) or self.adopt:
             return True
-        self.problems.append(f"{rel} は手書きのようです (所有マーカー無し)。内容を agent-spec へ移してから --adopt で取り込んでください")
+        self.problems.append(
+            f"{rel} は手書きのようです (所有マーカー無し)。内容を agent-spec へ移してから --adopt で取り込んでください"
+        )
         return False
 
-    def collect_orphans(self, rel_dir: str, suffix: str, fmt: str, keep: set[str]) -> None:
+    def collect_orphans(
+        self, rel_dir: str, suffix: str, fmt: str, keep: set[str]
+    ) -> None:
         """rel_dir 配下の所有マーカー付き agent 定義のうち manifest に無いものを削除対象にする。
         suffix が '/agent.md' (antigravity) のときは <name>/agent.md 形式で、ディレクトリごと削除する."""
         d = self.repo / rel_dir
@@ -111,15 +177,34 @@ class Gen:
                 continue
             name = p.parent.name if suffix.startswith("/") else p.stem
             if name not in keep and owned_agent_file(p.read_text(), fmt):
-                self.removals.append(f"{rel_dir}/{name}" if suffix.startswith("/") else f"{rel_dir}/{p.name}")
+                self.removals.append(
+                    f"{rel_dir}/{name}"
+                    if suffix.startswith("/")
+                    else f"{rel_dir}/{p.name}"
+                )
 
-    def write_md_agent(self, rel: str, name: str, pol: dict, prompt: str, extra_fm: list[str], from_rel_dir: str) -> None:
+    def write_md_agent(
+        self,
+        rel: str,
+        name: str,
+        pol: dict,
+        prompt: str,
+        extra_fm: list[str],
+        from_rel_dir: str,
+    ) -> None:
         """Markdown + YAML front matter 形式の agent 定義 (Claude / Cursor / Grok / Copilot / Antigravity)."""
         if not self.guard_owned(rel, "md"):
             return
-        fm = [f"name: {name}", f"description: {json.dumps(pol['description'], ensure_ascii=False)}"] + extra_fm
-        body = f"<!-- {GENERATED_LINE} from .agents/agent-specs/{name}; do not edit -->\n"
-        body += prompt.rstrip() + "\n" + _docs_section(self.repo, from_rel_dir, pol["docs"])
+        fm = [
+            f"name: {name}",
+            f"description: {json.dumps(pol['description'], ensure_ascii=False)}",
+        ] + extra_fm
+        body = (
+            f"<!-- {GENERATED_LINE} from .agents/agent-specs/{name}; do not edit -->\n"
+        )
+        body += (
+            prompt.rstrip() + "\n" + _docs_section(self.repo, from_rel_dir, pol["docs"])
+        )
         self.write(rel, "---\n" + "\n".join(fm) + "\n---\n" + body)
 
     def owned_json_file(self, rel: str, doc: dict) -> None:
@@ -131,7 +216,9 @@ class Gen:
             except json.JSONDecodeError as e:
                 die(f"{rel} を JSON として読めません: {e}")
             if not _json_owned(old) and not self.adopt:
-                self.problems.append(f"{rel} は mid-harness の生成物ではありません (所有マーカー無し)。別名にするか --adopt")
+                self.problems.append(
+                    f"{rel} は mid-harness の生成物ではありません (所有マーカー無し)。別名にするか --adopt"
+                )
                 return
         self.write(rel, json.dumps(doc, ensure_ascii=False, indent=2))
 
@@ -144,7 +231,7 @@ class Gen:
             name = marker.parent.name
             if marker.parent.is_symlink():
                 continue
-            if not (self.repo / ".agents" / "skills" / name).is_dir():
+            if not (self.repo / CORE_DIR / "skills" / name).is_dir():
                 self.removals.append(f".claude/skills/{name}")
 
     def antigravity_drop_key(self) -> None:
@@ -157,18 +244,26 @@ class Gen:
             doc = json.loads(existing)
         except json.JSONDecodeError:
             return
-        if isinstance(doc, dict) and "mid-harness" in doc and _agy_key_owned(doc["mid-harness"]):
+        if (
+            isinstance(doc, dict)
+            and "mid-harness" in doc
+            and _agy_key_owned(doc["mid-harness"])
+        ):
             doc.pop("mid-harness")
-            self.write(rel, json.dumps(doc, ensure_ascii=False, indent=2) if doc else "{}")
+            self.write(
+                rel, json.dumps(doc, ensure_ascii=False, indent=2) if doc else "{}"
+            )
 
     def codex_drop_block(self) -> None:
         """codex が targets に無いとき、config.toml の管理ブロックだけを取り除く."""
-        existing = self.read_existing(".codex/config.toml")
+        existing = self.read_existing(CODEX_CONFIG)
         if existing is None or CODEX_BLOCK_BEGIN not in existing:
             return
         before, after = _split_block(existing)
-        new = (before.rstrip("\n") + "\n\n" if before.strip() else "") + (after if after.strip() else "")
-        self.write(".codex/config.toml", new.rstrip("\n"))
+        new = (before.rstrip("\n") + "\n\n" if before.strip() else "") + (
+            after if after.strip() else ""
+        )
+        self.write(CODEX_CONFIG, new.rstrip("\n"))
 
     # ---- hooks (JSON, Claude Code / Codex 共通形) --------------------
     def remove_owned_json(self, rel: str) -> None:
@@ -185,8 +280,7 @@ class Gen:
         else:
             self.notes.append(f"{rel} は mid-harness の生成物ではないので残す")
 
-    def hooks_json(self, product: str, hooks: list[dict], settings_rel: str) -> None:
-        """settings_rel の hooks.<Event>[].hooks[] のうち mid-harness 所有 handler だけを差し替える (handler 単位)."""
+    def _load_hook_settings(self, settings_rel):
         existing_text = self.read_existing(settings_rel)
         try:
             doc = json.loads(existing_text) if existing_text else {}
@@ -199,27 +293,16 @@ class Gen:
             hooks_obj = {}
         if not isinstance(hooks_obj, dict):
             die(f"{settings_rel} の hooks は object")
-        # 既存の所有 handler を除去 (group は他の handler が残れば保持)
-        for ev, groups in list(hooks_obj.items()):
-            if not isinstance(groups, list):
-                continue
-            kept_groups = []
-            for g in groups:
-                if isinstance(g, dict) and isinstance(g.get("hooks"), list):
-                    g["hooks"] = [h for h in g["hooks"] if not (isinstance(h, dict) and owned_hook_command(h.get("command")))]
-                    if g["hooks"]:
-                        kept_groups.append(g)
-                else:
-                    kept_groups.append(g)
-            if kept_groups:
-                hooks_obj[ev] = kept_groups
-            else:
-                del hooks_obj[ev]
-        # 生成
+        return doc, hooks_obj
+
+    def _add_hook_groups(self, product, hooks, hooks_obj):
         for h in hooks:
             ev = EVENT_MAP[product].get(h["event"])
             if ev is None:
-                self.unmappable(f"{product}: hook event {h['event']} に対応する製品イベントが無い", h.get("on_unmappable", "fail"))
+                self.unmappable(
+                    f"{product}: hook event {h['event']} に対応する製品イベントが無い",
+                    h.get("on_unmappable", "fail"),
+                )
                 continue
             script = h["script"]
             if not (self.repo / script).is_file():
@@ -234,48 +317,45 @@ class Gen:
             if h.get("matcher"):
                 entry = {"matcher": str(h["matcher"]), **entry}
             hooks_obj.setdefault(ev, []).append(entry)
-        if hooks_obj:
-            doc["hooks"] = hooks_obj
-        else:
-            doc.pop("hooks", None)
-        self.write(settings_rel, json.dumps(doc, ensure_ascii=False, indent=2))
 
-    # ---- claude-code ------------------------------------------------
-    def claude_code(self, m: dict) -> None:
-        hooks, agents = manifest_lists(m)
-        self.hooks_json("claude-code", hooks, ".claude/settings.json")
-        mode = m.get("skills_mode", "generate")
-        src_root = self.repo / ".agents" / "skills"
-        if mode == "manual":
-            self.notes.append("skills_mode=manual: .claude/skills は mid-harness の管理外")
-        elif src_root.is_symlink():
-            self.problems.append(".agents/skills が symlink です。正本を .agents/skills の実体にしてください (apply の移送対象)")
-        elif src_root.is_dir():
-            # SKILL.md の無いディレクトリ (references だけの資料置き場など) も同じ規則で link / copy する
-            # (skill から相対参照されている実績があるため)。隠しディレクトリは対象外
-            for skill in sorted(x for x in src_root.iterdir() if x.is_dir() and not x.name.startswith(".")):
-                rel = f".claude/skills/{skill.name}"
-                cur = self.repo / rel
-                if mode == "symlink":
-                    if cur.exists() and not cur.is_symlink() and not (cur / GENERATED_MARKER).exists():
-                        self.problems.append(f"{rel} は手書きのようです (マーカー無し)。.agents/skills へ移すか削除してください")
-                        continue
-                    self.symlinks.append((rel, f"../../.agents/skills/{skill.name}"))
-                else:
-                    if cur.exists() and not cur.is_symlink() and not (cur / GENERATED_MARKER).exists():
-                        self.problems.append(f"{rel} は手書きのようです (マーカー無し)。.agents/skills へ移すか削除してください")
-                        continue
-                    links = [p for p in skill.rglob("*") if p.is_symlink()]
-                    if links:
-                        self.problems.append(f".agents/skills/{skill.name} に symlink があります (コピー先で実体化されるため禁止): "
-                                             + ", ".join(str(p.relative_to(skill)) for p in links[:5]))
-                        continue
-                    dst = self.stage / rel
-                    shutil.copytree(skill, dst, symlinks=False, ignore=shutil.ignore_patterns("__pycache__", ".DS_Store"))
-                    (dst / GENERATED_MARKER).write_text(f"{GENERATED_LINE} from .agents/skills/{skill.name}; do not edit\n")
-                    self.dirs.append(rel)
-        if mode != "manual":
-            self.collect_orphan_skill_dirs()
+    def _stage_skills(self, src_root, mode):
+        for skill in sorted(
+            x for x in src_root.iterdir() if x.is_dir() and not x.name.startswith(".")
+        ):
+            rel = f".claude/skills/{skill.name}"
+            cur = self.repo / rel
+            if (
+                cur.exists()
+                and not cur.is_symlink()
+                and not (cur / GENERATED_MARKER).exists()
+            ):
+                self.problems.append(
+                    f"{rel} は手書きのようです (マーカー無し)。.agents/skills へ移すか削除してください"
+                )
+                continue
+            if mode == "symlink":
+                self.symlinks.append((rel, f"../../.agents/skills/{skill.name}"))
+            else:
+                links = [p for p in skill.rglob("*") if p.is_symlink()]
+                if links:
+                    self.problems.append(
+                        f".agents/skills/{skill.name} に symlink があります (コピー先で実体化されるため禁止): "
+                        + ", ".join(str(p.relative_to(skill)) for p in links[:5])
+                    )
+                    continue
+                dst = self.stage / rel
+                shutil.copytree(
+                    skill,
+                    dst,
+                    symlinks=False,
+                    ignore=shutil.ignore_patterns("__pycache__", ".DS_Store"),
+                )
+                (dst / GENERATED_MARKER).write_text(
+                    f"{GENERATED_LINE} from .agents/skills/{skill.name}; do not edit\n"
+                )
+                self.dirs.append(rel)
+
+    def _claude_agents(self, agents):
         self.collect_orphans(".claude/agents", ".md", "md", set(agents))
         for name in agents:
             prompt, pol = load_policy(self.repo, name)
@@ -283,74 +363,98 @@ class Gen:
             if not self.guard_owned(rel, "md"):
                 continue
             caps = pol["capabilities"]
-            fm = [f"name: {name}", f"description: {json.dumps(pol['description'], ensure_ascii=False)}"]
+            fm = [
+                f"name: {name}",
+                f"description: {json.dumps(pol['description'], ensure_ascii=False)}",
+            ]
             if not all(caps.get(c) for c in CAPABILITIES):
-                tools = [t for cap in CAPABILITY_MAP["claude-code"] if caps.get(cap) for t in CAPABILITY_MAP["claude-code"][cap]]
+                tools = [
+                    t
+                    for cap in CAPABILITY_MAP["claude-code"]
+                    if caps.get(cap)
+                    for t in CAPABILITY_MAP["claude-code"][cap]
+                ]
                 fm.append(f"tools: {', '.join(tools)}")
             if pol.get("model"):
                 fm.append(f"model: {pol['model']}")
             body = f"<!-- {GENERATED_LINE} from .agents/agent-specs/{name}; do not edit -->\n"
-            body += prompt.rstrip() + "\n" + _docs_section(self.repo, ".claude/agents", pol["docs"])
+            body += (
+                prompt.rstrip()
+                + "\n"
+                + _docs_section(self.repo, ".claude/agents", pol["docs"])
+            )
             self.write(rel, "---\n" + "\n".join(fm) + "\n---\n" + body)
 
-    # ---- codex ------------------------------------------------------
-    def codex(self, m: dict) -> None:
-        hooks, agents = manifest_lists(m)
-        self.hooks_json("codex", hooks, ".codex/hooks.json")
-        if m.get("skills_mode", "generate") != "manual" and (self.repo / ".agents" / "skills").is_symlink():
-            self.problems.append(".agents/skills が symlink です。Codex は .agents/skills を直接読むので実体にしてください")
-        self.collect_orphans(".codex/agents", ".toml", "toml", set(agents))
-        block_lines: list[str] = []
-        for name in agents:
-            prompt, pol = load_policy(self.repo, name)
-            rel = f".codex/agents/{name}.toml"
-            if not self.guard_owned(rel, "toml"):
-                continue
-            caps = pol["capabilities"]
-            mode = pol["on_unmappable"]
-            if not caps["shell"]:
-                # sandbox_mode はシェル実行の隔離方式であって shell tool の無効化ではない
-                self.unmappable(f"codex/{name}: shell=false は表現できない (shell tool は無効化できず sandbox_mode で隔離するだけ)", mode)
-            if not caps["delegate"]:
-                self.notes.append(f"codex/{name}: delegate=false は個別制御できない (グローバル [agents] enabled)。生成は続行")
-            if caps["network"] and not caps["edit"]:
-                self.unmappable(f"codex/{name}: edit=false かつ network=true は表現できない", mode)
-            body = prompt.rstrip() + "\n" + _docs_section(self.repo, ".codex/agents", pol["docs"])
-            lines = [f"# {GENERATED_LINE} from .agents/agent-specs/{name}; do not edit",
-                     f"name = {_toml_basic(name)}", f"description = {_toml_basic(pol['description'])}",
-                     f"developer_instructions = {_toml_multiline(body)}"]
-            if pol.get("model"):
-                lines.append(f"model = {_toml_basic(pol['model'])}")
-            lines.append(f'sandbox_mode = "{"workspace-write" if caps["edit"] else "read-only"}"')
-            if caps["edit"] and caps["network"]:
-                lines.append("\n[sandbox_workspace_write]\nnetwork_access = true")
-            text = "\n".join(lines) + "\n"
-            err = _toml_check(text)
-            if err:
-                self.problems.append(f"{rel}: 生成した TOML が不正: {err}")
-                continue
-            self.write(rel, text)
-            block_lines += [f"[agents.{name}]", f"description = {_toml_basic(pol['description'])}",
-                            f'config_file = "agents/{name}.toml"', ""]
-        existing = self.read_existing(".codex/config.toml")
+    def _check_codex_capabilities(self, name, pol, caps):
+        mode = pol["on_unmappable"]
+        if not caps["shell"]:
+            # sandbox_mode はシェル実行の隔離方式であって shell tool の無効化ではない
+            self.unmappable(
+                f"codex/{name}: shell=false は表現できない (shell tool は無効化できず sandbox_mode で隔離するだけ)",
+                mode,
+            )
+        if not caps["delegate"]:
+            self.notes.append(
+                f"codex/{name}: delegate=false は個別制御できない (グローバル [agents] enabled)。生成は続行"
+            )
+        if caps["network"] and not caps["edit"]:
+            self.unmappable(
+                f"codex/{name}: edit=false かつ network=true は表現できない", mode
+            )
+
+    def _codex_agent_text(self, name, pol, caps, prompt):
+        body = (
+            prompt.rstrip()
+            + "\n"
+            + _docs_section(self.repo, ".codex/agents", pol["docs"])
+        )
+        lines = [
+            f"# {GENERATED_LINE} from .agents/agent-specs/{name}; do not edit",
+            f"name = {_toml_basic(name)}",
+            f"description = {_toml_basic(pol['description'])}",
+            f"developer_instructions = {_toml_multiline(body)}",
+        ]
+        if pol.get("model"):
+            lines.append(f"model = {_toml_basic(pol['model'])}")
+        lines.append(
+            f'sandbox_mode = "{"workspace-write" if caps["edit"] else "read-only"}"'
+        )
+        if caps["edit"] and caps["network"]:
+            lines.append("\n[sandbox_workspace_write]\nnetwork_access = true")
+        text = "\n".join(lines) + "\n"
+        return text
+
+    def _write_codex_config(self, block_lines):
+        existing = self.read_existing(CODEX_CONFIG)
         before, after = _split_block(existing or "")
         block = ""
         if block_lines:
-            block = CODEX_BLOCK_BEGIN + "\n" + "\n".join(block_lines).rstrip() + "\n" + CODEX_BLOCK_END + "\n"
-        new = (before.rstrip("\n") + "\n\n" if before.strip() else "") + block + (after if after.strip() else "")
+            block = (
+                CODEX_BLOCK_BEGIN
+                + "\n"
+                + "\n".join(block_lines).rstrip()
+                + "\n"
+                + CODEX_BLOCK_END
+                + "\n"
+            )
+        new = (
+            (before.rstrip("\n") + "\n\n" if before.strip() else "")
+            + block
+            + (after if after.strip() else "")
+        )
         if new.strip():
             err = _toml_check(new)
             if err:
                 self.problems.append(f".codex/config.toml: 結合後の TOML が不正: {err}")
             else:
-                self.write(".codex/config.toml", new.rstrip("\n"))
+                self.write(CODEX_CONFIG, new.rstrip("\n"))
         elif existing is not None and existing.strip():
             # 管理ブロックを取り除いたら空になった: ブロックだけ消す (ファイルは空で残す)
-            self.write(".codex/config.toml", "")
+            self.write(CODEX_CONFIG, "")
 
-    # ---- cursor -----------------------------------------------------
-    def cursor(self, m: dict) -> None:
-        hooks, agents = manifest_lists(m)
+    def _load_cursor_hooks(
+        self,
+    ):
         rel = ".cursor/hooks.json"
         existing = self.read_existing(rel)
         try:
@@ -363,39 +467,236 @@ class Gen:
         hooks_obj = doc.get("hooks") if isinstance(doc.get("hooks"), dict) else {}
         for ev, entries in list(hooks_obj.items()):
             if isinstance(entries, list):
-                kept = [e for e in entries if not (isinstance(e, dict) and owned_hook_command(e.get("command")))]
+                kept = [
+                    e
+                    for e in entries
+                    if not (
+                        isinstance(e, dict) and owned_hook_command(e.get("command"))
+                    )
+                ]
                 if kept:
                     hooks_obj[ev] = kept
                 else:
                     del hooks_obj[ev]
+        return rel, existing, doc, hooks_obj
+
+    def _cursor_agents(self, agents):
+        self.collect_orphans(".cursor/agents", ".md", "md", set(agents))
+        for name in agents:
+            prompt, pol = load_policy(self.repo, name)
+            caps = pol["capabilities"]
+            extra = (
+                ["model: inherit"]
+                if not pol.get("model")
+                else [f"model: {pol['model']}"]
+            )
+            if not caps["edit"] and not caps["shell"]:
+                extra.append("readonly: true")
+            elif caps["edit"] != caps["shell"]:
+                self.unmappable(
+                    f"cursor/{name}: edit と shell の片方だけ false は表現できない (readonly は両方を禁止)",
+                    pol["on_unmappable"],
+                )
+            for cap in ("delegate", "network"):
+                if not caps[cap]:
+                    self.notes.append(
+                        f"cursor/{name}: {cap}=false は個別制御できない。生成は続行"
+                    )
+            self.write_md_agent(
+                f".cursor/agents/{name}.md", name, pol, prompt, extra, ".cursor/agents"
+            )
+
+    def _grok_agents(self, agents):
+        self.collect_orphans(".grok/agents", ".md", "md", set(agents))
+        for name in agents:
+            prompt, pol = load_policy(self.repo, name)
+            caps = pol["capabilities"]
+            extra: list[str] = []
+            if not all(caps.get(c) for c in CAPABILITIES):
+                tools = [
+                    t
+                    for cap in CAPABILITY_MAP["grok"]
+                    if caps.get(cap)
+                    for t in CAPABILITY_MAP["grok"][cap]
+                ]
+                if tools:
+                    extra.append("tools:")
+                    extra += [f"  - {t}" for t in tools]
+                else:
+                    # すべてのツールを無効にするときは空のリストを指定する。
+                    extra.append("tools: []")
+            if not caps["edit"] and not caps["shell"]:
+                extra.append("permissionMode: plan")
+            if not caps["delegate"]:
+                self.notes.append(
+                    f"grok/{name}: delegate=false は個別制御できない。生成は続行"
+                )
+            if pol.get("model"):
+                extra.append(f"model: {pol['model']}")
+            self.write_md_agent(
+                f".grok/agents/{name}.md", name, pol, prompt, extra, ".grok/agents"
+            )
+
+    def _copilot_agents(self, agents):
+        self.collect_orphans(".github/agents", ".md", "md", set(agents))
+        for name in agents:
+            prompt, pol = load_policy(self.repo, name)
+            caps = pol["capabilities"]
+            extra: list[str] = []
+            if not all(caps.get(c) for c in CAPABILITIES):
+                tools = [
+                    t
+                    for cap in CAPABILITY_MAP["copilot"]
+                    if caps.get(cap)
+                    for t in CAPABILITY_MAP["copilot"][cap]
+                ]
+                extra.append(
+                    f"tools: [{', '.join(tools)}]"
+                )  # 空なら全ツール無効 (公式仕様)
+            if pol.get("model"):
+                extra.append(f"model: {pol['model']}")
+            self.write_md_agent(
+                f".github/agents/{name}.md", name, pol, prompt, extra, ".github/agents"
+            )
+
+    def _antigravity_agents(self, agents):
+        self.collect_orphans(".agents/agents", "/agent.md", "md", set(agents))
+        for name in agents:
+            prompt, pol = load_policy(self.repo, name)
+            for cap in CAPABILITIES:
+                if not pol["capabilities"][cap]:
+                    self.notes.append(
+                        f"antigravity/{name}: {cap}=false は agent.md の個別制御項目が未確認のため反映しない"
+                    )
+            self.write_md_agent(
+                f".agents/agents/{name}/agent.md",
+                name,
+                pol,
+                prompt,
+                [],
+                f".agents/agents/{name}",
+            )
+
+    def _remove_orphans(self, out):
+        for rel in self.removals:
+            p = out / rel
+            if p.is_symlink():
+                continue
+            if p.is_file():
+                p.unlink()
+            elif p.is_dir():
+                shutil.rmtree(p)
+
+    def _prune_dropped_targets(self, m):
+        # targets から外れた製品の所有マーカー付き agent 定義も孤児として削除する
+        for product, (rel_dir, suffix, fmt) in AGENT_LAYOUT.items():
+            if product not in m["targets"]:
+                self.collect_orphans(rel_dir, suffix, fmt, set())
+        if "codex" not in m["targets"]:
+            self.codex_drop_block()
+        for product, rel in (
+            ("grok", ".grok/hooks/mid-harness.json"),
+            ("copilot", ".github/hooks/mid-harness.json"),
+        ):
+            if product not in m["targets"]:
+                self.remove_owned_json(rel)
+        if "antigravity" not in m["targets"]:
+            self.antigravity_drop_key()
+
+    def hooks_json(self, product: str, hooks: list[dict], settings_rel: str) -> None:
+        """settings_rel の hooks.<Event>[].hooks[] のうち mid-harness 所有 handler だけを差し替える (handler 単位)."""
+        doc, hooks_obj = self._load_hook_settings(settings_rel)
+        # 既存の所有 handler を除去 (group は他の handler が残れば保持)
+        _remove_owned_groups(hooks_obj)
+        # 生成
+        self._add_hook_groups(product, hooks, hooks_obj)
+        if hooks_obj:
+            doc["hooks"] = hooks_obj
+        else:
+            doc.pop("hooks", None)
+        self.write(settings_rel, json.dumps(doc, ensure_ascii=False, indent=2))
+
+    # ---- claude-code ------------------------------------------------
+    def claude_code(self, m: dict) -> None:
+        hooks, agents = manifest_lists(m)
+        self.hooks_json("claude-code", hooks, ".claude/settings.json")
+        mode = m.get("skills_mode", "generate")
+        src_root = self.repo / CORE_DIR / "skills"
+        if mode == "manual":
+            self.notes.append(
+                "skills_mode=manual: .claude/skills は mid-harness の管理外"
+            )
+        elif src_root.is_symlink():
+            self.problems.append(
+                ".agents/skills が symlink です。正本を .agents/skills の実体にしてください (apply の移送対象)"
+            )
+        elif src_root.is_dir():
+            # SKILL.md の無いディレクトリ (references だけの資料置き場など) も同じ規則で link / copy する
+            # (skill から相対参照されている実績があるため)。隠しディレクトリは対象外
+            self._stage_skills(src_root, mode)
+        if mode != "manual":
+            self.collect_orphan_skill_dirs()
+        self._claude_agents(agents)
+
+    # ---- codex ------------------------------------------------------
+    def codex(self, m: dict) -> None:
+        hooks, agents = manifest_lists(m)
+        self.hooks_json("codex", hooks, ".codex/hooks.json")
+        if (
+            m.get("skills_mode", "generate") != "manual"
+            and (self.repo / CORE_DIR / "skills").is_symlink()
+        ):
+            self.problems.append(
+                ".agents/skills が symlink です。Codex は .agents/skills を直接読むので実体にしてください"
+            )
+        self.collect_orphans(".codex/agents", ".toml", "toml", set(agents))
+        block_lines: list[str] = []
+        for name in agents:
+            prompt, pol = load_policy(self.repo, name)
+            rel = f".codex/agents/{name}.toml"
+            if not self.guard_owned(rel, "toml"):
+                continue
+            caps = pol["capabilities"]
+            self._check_codex_capabilities(name, pol, caps)
+            text = self._codex_agent_text(name, pol, caps, prompt)
+            err = _toml_check(text)
+            if err:
+                self.problems.append(f"{rel}: 生成した TOML が不正: {err}")
+                continue
+            self.write(rel, text)
+            block_lines += [
+                f"[agents.{name}]",
+                f"description = {_toml_basic(pol['description'])}",
+                f'config_file = "agents/{name}.toml"',
+                "",
+            ]
+        self._write_codex_config(block_lines)
+
+    # ---- cursor -----------------------------------------------------
+    def cursor(self, m: dict) -> None:
+        hooks, agents = manifest_lists(m)
+        rel, existing, doc, hooks_obj = self._load_cursor_hooks()
         for h in hooks:
             ev = EVENT_MAP["cursor"].get(h["event"])
             if ev is None:
-                self.unmappable(f"cursor: hook event {h['event']} に対応する製品イベントが無い", h.get("on_unmappable", "fail"))
+                self.unmappable(
+                    f"cursor: hook event {h['event']} に対応する製品イベントが無い",
+                    h.get("on_unmappable", "fail"),
+                )
                 continue
             if not (self.repo / h["script"]).is_file():
                 self.problems.append(f"hook script が無い: {h['script']}")
             # project hook は project root を cwd に実行される。failClosed で hook 失敗時もブロック
-            hooks_obj.setdefault(ev, []).append({"command": f"bash {h['script']}  {OWNER_TAG}", "failClosed": True})
+            hooks_obj.setdefault(ev, []).append(
+                {"command": f"bash {h['script']}  {OWNER_TAG}", "failClosed": True}
+            )
         if hooks_obj:
             doc["hooks"] = hooks_obj
         else:
             doc.pop("hooks", None)
         if hooks_obj or existing is not None:
             self.write(rel, json.dumps(doc, ensure_ascii=False, indent=2))
-        self.collect_orphans(".cursor/agents", ".md", "md", set(agents))
-        for name in agents:
-            prompt, pol = load_policy(self.repo, name)
-            caps = pol["capabilities"]
-            extra = ["model: inherit"] if not pol.get("model") else [f"model: {pol['model']}"]
-            if not caps["edit"] and not caps["shell"]:
-                extra.append("readonly: true")
-            elif caps["edit"] != caps["shell"]:
-                self.unmappable(f"cursor/{name}: edit と shell の片方だけ false は表現できない (readonly は両方を禁止)", pol["on_unmappable"])
-            for cap in ("delegate", "network"):
-                if not caps[cap]:
-                    self.notes.append(f"cursor/{name}: {cap}=false は個別制御できない。生成は続行")
-            self.write_md_agent(f".cursor/agents/{name}.md", name, pol, prompt, extra, ".cursor/agents")
+        self._cursor_agents(agents)
 
     # ---- grok -------------------------------------------------------
     def grok(self, m: dict) -> None:
@@ -405,37 +706,33 @@ class Gen:
         for h in hooks:
             ev = EVENT_MAP["grok"].get(h["event"])
             if ev is None:
-                self.unmappable(f"grok: hook event {h['event']} に対応する製品イベントが無い", h.get("on_unmappable", "fail"))
+                self.unmappable(
+                    f"grok: hook event {h['event']} に対応する製品イベントが無い",
+                    h.get("on_unmappable", "fail"),
+                )
                 continue
             if not (self.repo / h["script"]).is_file():
                 self.problems.append(f"hook script が無い: {h['script']}")
-            entry = {"hooks": [{"type": "command", "command": ROOT_CMD.format(script=h["script"]) + f"  {OWNER_TAG}", "timeout": 30}]}
+            entry = {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": ROOT_CMD.format(script=h["script"])
+                        + f"  {OWNER_TAG}",
+                        "timeout": 30,
+                    }
+                ]
+            }
             if h.get("matcher"):
                 entry = {"matcher": str(h["matcher"]), **entry}
             groups.setdefault(ev, []).append(entry)
         if groups:
-            self.owned_json_file(rel, {"_generated_by": OWNER_TAG.lstrip("# "), "hooks": groups})
+            self.owned_json_file(
+                rel, {"_generated_by": OWNER_TAG.lstrip("# "), "hooks": groups}
+            )
         else:
             self.remove_owned_json(rel)
-        self.collect_orphans(".grok/agents", ".md", "md", set(agents))
-        for name in agents:
-            prompt, pol = load_policy(self.repo, name)
-            caps = pol["capabilities"]
-            extra: list[str] = []
-            if not all(caps.get(c) for c in CAPABILITIES):
-                tools = [t for cap in CAPABILITY_MAP["grok"] if caps.get(cap) for t in CAPABILITY_MAP["grok"][cap]]
-                if tools:
-                    extra.append("tools:")
-                    extra += [f"  - {t}" for t in tools]
-                else:
-                    extra.append("tools: []")   # 空 = ツール無し (省略すると全ツール継承になる)
-            if not caps["edit"] and not caps["shell"]:
-                extra.append("permissionMode: plan")
-            if not caps["delegate"]:
-                self.notes.append(f"grok/{name}: delegate=false は個別制御できない。生成は続行")
-            if pol.get("model"):
-                extra.append(f"model: {pol['model']}")
-            self.write_md_agent(f".grok/agents/{name}.md", name, pol, prompt, extra, ".grok/agents")
+        self._grok_agents(agents)
 
     # ---- copilot ----------------------------------------------------
     def copilot(self, m: dict) -> None:
@@ -445,7 +742,10 @@ class Gen:
         for h in hooks:
             ev = EVENT_MAP["copilot"].get(h["event"])
             if ev is None:
-                self.unmappable(f"copilot: hook event {h['event']} に対応する製品イベントが無い", h.get("on_unmappable", "fail"))
+                self.unmappable(
+                    f"copilot: hook event {h['event']} に対応する製品イベントが無い",
+                    h.get("on_unmappable", "fail"),
+                )
                 continue
             if not (self.repo / h["script"]).is_file():
                 self.problems.append(f"hook script が無い: {h['script']}")
@@ -453,25 +753,54 @@ class Gen:
             entry: dict = {"type": "command", "bash": cmd, "timeoutSec": 30}
             if h.get("matcher"):
                 # Copilot の matcher は toolName 全体への正規表現。Claude 名 Bash は bash|powershell に読み替える
-                entry["matcher"] = "bash|powershell" if str(h["matcher"]) == "Bash" else str(h["matcher"])
+                entry["matcher"] = (
+                    "bash|powershell"
+                    if str(h["matcher"]) == "Bash"
+                    else str(h["matcher"])
+                )
             events.setdefault(ev, []).append(entry)
         if events:
-            self.owned_json_file(rel, {"version": 1, "_generated_by": OWNER_TAG.lstrip("# "), "hooks": events})
+            self.owned_json_file(
+                rel,
+                {
+                    "version": 1,
+                    "_generated_by": OWNER_TAG.lstrip("# "),
+                    "hooks": events,
+                },
+            )
         else:
             self.remove_owned_json(rel)
-        self.collect_orphans(".github/agents", ".md", "md", set(agents))
-        for name in agents:
-            prompt, pol = load_policy(self.repo, name)
-            caps = pol["capabilities"]
-            extra: list[str] = []
-            if not all(caps.get(c) for c in CAPABILITIES):
-                tools = [t for cap in CAPABILITY_MAP["copilot"] if caps.get(cap) for t in CAPABILITY_MAP["copilot"][cap]]
-                extra.append(f"tools: [{', '.join(tools)}]")   # 空なら全ツール無効 (公式仕様)
-            if pol.get("model"):
-                extra.append(f"model: {pol['model']}")
-            self.write_md_agent(f".github/agents/{name}.md", name, pol, prompt, extra, ".github/agents")
+        self._copilot_agents(agents)
 
     # ---- antigravity ------------------------------------------------
+    def _antigravity_hooks(self, hooks):
+        named: dict[str, list] = {}
+        for h in hooks:
+            ev = EVENT_MAP["antigravity"].get(h["event"])
+            if ev is None:
+                self.unmappable(
+                    f"antigravity: hook event {h['event']} に対応する製品イベントが無い",
+                    h.get("on_unmappable", "fail"),
+                )
+                continue
+            if not (self.repo / h["script"]).is_file():
+                self.problems.append(f"hook script が無い: {h['script']}")
+            # cwd は hooks.json のディレクトリ (.agents/) なので root を実行時解決する。matcher は * (ツール名が run_command)
+            named.setdefault(ev, []).append(
+                {
+                    "matcher": "*",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": ROOT_CMD.format(script=h["script"])
+                            + f"  {OWNER_TAG}",
+                            "timeout": 30,
+                        }
+                    ],
+                }
+            )
+        return named
+
     def antigravity(self, m: dict) -> None:
         hooks, agents = manifest_lists(m)
         rel = ".agents/hooks.json"
@@ -482,46 +811,29 @@ class Gen:
             die(f"{rel} を JSON として読めません: {e}")
         if not isinstance(doc, dict):
             die(f"{rel} の top-level は object (hook 名 → イベント)")
-        if "mid-harness" in doc and not _agy_key_owned(doc["mid-harness"]) and not self.adopt:
-            self.problems.append(f"{rel} の top-level キー 'mid-harness' は mid-harness の生成物ではありません (所有 ID 無し)。別名にするか --adopt")
+        if (
+            "mid-harness" in doc
+            and not _agy_key_owned(doc["mid-harness"])
+            and not self.adopt
+        ):
+            self.problems.append(
+                f"{rel} の top-level キー 'mid-harness' は mid-harness の生成物ではありません (所有 ID 無し)。別名にするか --adopt"
+            )
             return
         doc.pop("mid-harness", None)
-        named: dict[str, list] = {}
-        for h in hooks:
-            ev = EVENT_MAP["antigravity"].get(h["event"])
-            if ev is None:
-                self.unmappable(f"antigravity: hook event {h['event']} に対応する製品イベントが無い", h.get("on_unmappable", "fail"))
-                continue
-            if not (self.repo / h["script"]).is_file():
-                self.problems.append(f"hook script が無い: {h['script']}")
-            # cwd は hooks.json のディレクトリ (.agents/) なので root を実行時解決する。matcher は * (ツール名が run_command)
-            named.setdefault(ev, []).append({"matcher": "*", "hooks": [
-                {"type": "command", "command": ROOT_CMD.format(script=h["script"]) + f"  {OWNER_TAG}", "timeout": 30}]})
+        named = self._antigravity_hooks(hooks)
         if named:
             doc["mid-harness"] = named
         if doc:
             self.write(rel, json.dumps(doc, ensure_ascii=False, indent=2))
         elif existing is not None:
             self.write(rel, "{}")
-        self.collect_orphans(".agents/agents", "/agent.md", "md", set(agents))
-        for name in agents:
-            prompt, pol = load_policy(self.repo, name)
-            for cap in CAPABILITIES:
-                if not pol["capabilities"][cap]:
-                    self.notes.append(f"antigravity/{name}: {cap}=false は agent.md の個別制御項目が未確認のため反映しない")
-            self.write_md_agent(f".agents/agents/{name}/agent.md", name, pol, prompt, [], f".agents/agents/{name}")
+        self._antigravity_agents(agents)
 
     # ---- apply ------------------------------------------------------
     def apply(self, out: Path) -> None:
         """stage → out へ反映 (問題が無いときだけ呼ぶ)."""
-        for rel in self.removals:
-            p = out / rel
-            if p.is_symlink():
-                continue
-            if p.is_file():
-                p.unlink()
-            elif p.is_dir():
-                shutil.rmtree(p)
+        self._remove_orphans(out)
         for rel in self.dirs:
             dst = out / rel
             if dst.is_symlink():
@@ -545,7 +857,7 @@ class Gen:
             shutil.copyfile(self.stage / rel, dst)
 
 
-_json_owned = json_owned          # 所有判定は _common に集約 (drift 検査と共有)
+_json_owned = json_owned  # 所有判定は _common に集約 (drift 検査と共有)
 _agy_key_owned = agy_key_owned
 
 
@@ -581,7 +893,12 @@ def _toml_multiline(s: str) -> str:
     s = s.replace("\\", "\\\\")
     s = s.replace('"""', '""\\"')
     s = s.replace("\r\n", "\n").replace("\r", "\\r")
-    s = "".join(c if (c in "\n\t" or (ord(c) >= 0x20 and ord(c) != 0x7F)) else f"\\u{ord(c):04X}" for c in s)
+    s = "".join(
+        c
+        if (c in "\n\t" or (ord(c) >= 0x20 and ord(c) != 0x7F))
+        else f"\\u{ord(c):04X}"
+        for c in s
+    )
     # 末尾が " で終わると閉じ引用と結合するので改行を保証する
     if not s.endswith("\n"):
         s += "\n"
@@ -591,10 +908,12 @@ def _toml_multiline(s: str) -> str:
 def _toml_loader():
     try:
         import tomllib  # py3.11+
+
         return tomllib.loads
     except ImportError:
         try:
             import tomli  # type: ignore
+
             return tomli.loads
         except ImportError:
             return None
@@ -612,8 +931,54 @@ def _toml_check(text: str) -> str | None:
         return str(e)
 
 
+def _unowned_groups(groups):
+    kept_groups = []
+    for g in groups:
+        if isinstance(g, dict) and isinstance(g.get("hooks"), list):
+            g["hooks"] = [
+                h
+                for h in g["hooks"]
+                if not (isinstance(h, dict) and owned_hook_command(h.get("command")))
+            ]
+            if g["hooks"]:
+                kept_groups.append(g)
+        else:
+            kept_groups.append(g)
+    return kept_groups
+
+
+def _remove_owned_groups(hooks_obj):
+    for ev, groups in list(hooks_obj.items()):
+        if not isinstance(groups, list):
+            continue
+        kept_groups = _unowned_groups(groups)
+        if kept_groups:
+            hooks_obj[ev] = kept_groups
+        else:
+            del hooks_obj[ev]
+
+
+def _report_generation(repo, out, m, g):
+    print(f"repo: {repo}" + (f"  (out: {out})" if out != repo else ""))
+    print(
+        f"targets: {', '.join(m['targets'])}  skills_mode: {m.get('skills_mode', 'generate')}"
+    )
+    items = (
+        [f"{d}/" for d in g.dirs] + [f"{r} -> {t}" for r, t in g.symlinks] + g.written
+    )
+    print(f"written ({len(items)}):")
+    for w in items:
+        print(f"  * {w}")
+    for r in g.removals:
+        print(f"  - removed orphan: {r}")
+    for n in g.notes:
+        print(f"  note: {n}")
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("repo", nargs="?")
     ap.add_argument("--out-root")
     ap.add_argument("--adopt", action="store_true")
@@ -626,17 +991,7 @@ def main() -> int:
         g = Gen(repo, Path(tmp), args.adopt)
         for t in m["targets"]:
             getattr(g, t.replace("-", "_"))(m)
-        # targets から外れた製品の所有マーカー付き agent 定義も孤児として削除する
-        for product, (rel_dir, suffix, fmt) in AGENT_LAYOUT.items():
-            if product not in m["targets"]:
-                g.collect_orphans(rel_dir, suffix, fmt, set())
-        if "codex" not in m["targets"]:
-            g.codex_drop_block()
-        for product, rel in (("grok", ".grok/hooks/mid-harness.json"), ("copilot", ".github/hooks/mid-harness.json")):
-            if product not in m["targets"]:
-                g.remove_owned_json(rel)
-        if "antigravity" not in m["targets"]:
-            g.antigravity_drop_key()
+        g._prune_dropped_targets(m)
         if g.problems:
             print("unmappable / errors (何も書き込んでいません):", file=sys.stderr)
             for p in g.problems:
@@ -644,16 +999,7 @@ def main() -> int:
             return 1
         g.apply(out)
     if not args.quiet:
-        print(f"repo: {repo}" + (f"  (out: {out})" if out != repo else ""))
-        print(f"targets: {', '.join(m['targets'])}  skills_mode: {m.get('skills_mode', 'generate')}")
-        items = [f"{d}/" for d in g.dirs] + [f"{r} -> {t}" for r, t in g.symlinks] + g.written
-        print(f"written ({len(items)}):")
-        for w in items:
-            print(f"  * {w}")
-        for r in g.removals:
-            print(f"  - removed orphan: {r}")
-        for n in g.notes:
-            print(f"  note: {n}")
+        _report_generation(repo, out, m, g)
     return 0
 
 

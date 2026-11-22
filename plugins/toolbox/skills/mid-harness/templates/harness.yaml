@@ -2,7 +2,7 @@
 # 製品固有の値は書かない (変換規則は mid-harness skill の references/adapters/<product>.md)。
 skill_version: "__SKILL_VERSION__"
 targets: [__TARGETS__]
-skills_mode: __SKILLS_MODE__   # generate | symlink
+skills_mode: __SKILLS_MODE__ # generate | symlink
 hooks:
   - event: pre-tool
     matcher: Bash

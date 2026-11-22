@@ -4,7 +4,6 @@
 - 環境: GitHub Copilot CLI 1.0.80 (Homebrew cask は 1.0.65、CLI が自己更新)、macOS 26、`copilot -p` (非対話)
 - 状態: **解決済み** (2026-09-05、CLI 1.0.83 で再検証)。`-p` は repo hook が既定で無効。repo 単位なら `trustedFolders`、invocation 単位なら環境変数で有効化する (下記「有効化の 3 経路」)。
 
-
 ## 有効化の 3 経路 (2026-09-05 追記、1.0.83 の app.js を読んで実測)
 
 prompt mode で repo hook を読む条件は CLI 内部で次の OR になっている (`app.js`: `COPILOT_ALLOW_ALL==="true" || GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS==="true" || isFolderTrusted(cwd)`)。

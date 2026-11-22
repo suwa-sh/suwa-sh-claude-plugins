@@ -3,6 +3,7 @@
 実行者が別セッションでも届くように、学びはここに追記する。書式は「症状 / 原因 / 検出 / 復旧 / 再発防止 / 最終確認日」。
 
 ## Claude Code は `.agents/skills/` を読まない
+
 - 症状: Codex では skill が発見されるが Claude Code では発見されない
 - 原因: Claude Code の project skill は `.claude/skills/` (起動ディレクトリから repo root までの各階層) と `~/.claude/skills/`、plugin のみ。`.agents/skills/` は探索対象外 (公式 docs skills / slash-commands、2026-09-05 確認)
 - 検出: `verify.sh` の skill 発見テストが claude だけ fail
@@ -11,6 +12,7 @@
 - 最終確認日: 2026-09-05
 
 ## Codex の project hook は「project trust」と「hook 単位の trust hash」の両方が要る
+
 - 症状: `.codex/hooks.json` を置き project も trusted なのに、`codex exec` で hook が `invoked` を残さない。警告も出ない
 - 原因: 非 managed hook は hash 単位で Trusted / Modified / Untrusted を持ち、exec は Untrusted / Modified を黙って飛ばす。再生成で内容が変わると Modified に戻る
 - 検出: app-server の `hooks/list` の `trustStatus`。手軽には `codex exec --dangerously-bypass-hook-trust` で発火するなら trust が原因
@@ -19,12 +21,14 @@
 - 最終確認日: 2026-09-05 (codex-cli 0.145.0、テストリポで実測)
 
 ## LLM は `curl | sh` の実行自体を断るので hook 拒否テストに使えない
+
 - 症状: hook 拒否テストで `invoked` すら残らない (Claude Code / Codex とも)
 - 原因: モデルが危険コマンドをツール呼び出しせずに断るため、PreToolUse が発火しない
 - 復旧: `pre-tool-policy.sh` の番兵 (`MID_HARNESS_HOOK_LOG` 有効時のみ `MID_HARNESS_DENY_ME` を拒否) を使う。hook に足した検査そのものは `scripts/test_hook.sh` の fixture でスクリプト単体テストする
 - 最終確認日: 2026-09-05
 
 ## Grok / Antigravity の trust は canonical パスで登録する
+
 - 症状: `~/.grok/trusted_folders.toml` や agy の `trustedWorkspaces` に repo を足したのに hook が発火しない
 - 原因: `/tmp/...` のような symlink 経由のパスで登録した。製品側は git root の canonical パス (`/private/tmp/...`) で照合する
 - 検出: `grok inspect` の `Project trusted`、agy のログ `loaded N named hooks from M hooks.json file(s)`
@@ -32,6 +36,7 @@
 - 最終確認日: 2026-09-05
 
 ## Antigravity の headless は project に束縛しないと workspace hooks を読まない
+
 - 症状: `.agents/hooks.json` があり trust もあるのに `loaded 0 named hooks`
 - 原因: `agy -p` は既定で default project に束縛される。workspace の project は `--new-project` (初回登録) か `--project <project id>` で選ぶ
 - 復旧: 初回だけ `agy -p "reply OK" --new-project` を repo で実行。以降は `--project <id>` (verify.sh は `scripts/agy_project_id.py` で folderUri から ID を引く。名前 = basename でも指定できるが重複し得る)
@@ -39,6 +44,7 @@
 - 最終確認日: 2026-09-05 (agy 1.1.26)
 
 ## Copilot の repo hook (`.github/hooks/*.json`) が `-p` で発火しない
+
 - 症状: docs どおりの `.github/hooks/mid-harness.json` を置いても hook ログが空。user hook (`~/.copilot/hooks/`) は同形式で発火する
 - 原因: `-p` では repo hook が既定で無効。folder trust や `--allow-all-tools` では有効化されない
 - 検出: `copilot -p ... --log-level debug --log-dir <dir>` の `[rust:hooks] [hook stdout]` 行に repo hook の出力が無い
@@ -46,22 +52,26 @@
 - 最終確認日: 2026-09-05
 
 ## Grok の skill 発見テストが timeout する (skill が数百ある repo)
+
 - 症状: `grok  fail  skill-discovery: token not found in output: timeout` (hook 拒否は pass)
 - 原因: Grok は project + user + 互換パス (`.claude/skills` 等) の skill を全部読む。pkm では 506 skill で 300 秒を超えた
 - 復旧: verify.sh の既定 timeout を 600 秒にした。それでも足りなければ `MID_HARNESS_VERIFY_TIMEOUT=900`
 - 最終確認日: 2026-09-06
 
 ## Cursor の `-p` が Opus の usage limit で止まる
+
 - 症状: `ActionRequiredError: You've hit your usage limit for Opus`
 - 復旧: `--model auto` を付ける (verify.sh は既定で付ける)
 - 最終確認日: 2026-09-05
 
 ## PyYAML が無い環境
+
 - 症状: `ModuleNotFoundError: No module named 'yaml'`
 - 復旧: `pip install pyyaml` (またはその環境の python に合わせて)。scripts は PyYAML 以外の外部依存を持たない
 - 最終確認日: 2026-09-05
 
 ## `pre-tool-policy.sh` の取得即実行の検知を改行や中間パイプで迂回できる
+
 - 症状: `curl URL \` + 改行 + `| sh` や `curl URL | cat | sh` / `curl URL | tee f | bash` が hook を素通りする (as-built-atlas に vendored した版への自動セキュリティレビューで指摘、2026-11-04)
 - 原因: (a) `grep -E` は行単位で照合するため、改行を挟むと `curl` と `| sh` が別の行になる。(b) 正規表現が `FETCH[^|]*\|` の直後にインタプリタを要求するため、間に別の段を挟むと一致しない
 - 検出: `scripts/test_hook.sh` の fixture `deny-curl-newline-pipe-sh` / `deny-curl-pipe-cat-sh` など (迂回 7 形を追加。修正前は 7 件が `want=2 got=0`)
@@ -70,6 +80,7 @@
 - 最終確認日: 2026-11-04
 
 ## `pre-tool-policy.sh` の取得即実行の検知を `-c` の文字列・引用符の中の改行・グループで迂回できる
+
 - 症状: 次の 3 種類が hook を素通りする (as-built-atlas に toolbox 0.11.0 を取り込んだ commit への自動セキュリティレビューで指摘、2026-11-12)
   - シェルに渡す文字列の中: `sh -c "curl URL | sh"` / `eval "curl URL | sh"` / `ssh host "curl URL | sh"` / `echo "$(curl URL | sh)"`
   - 引用符の中の改行: `curl URL | tee "a<改行>b" | sh` (改行で先に行を割るので、引用符の途中で段が切れる)
@@ -82,6 +93,7 @@
 - 最終確認日: 2026-11-12
 
 ## `pre-tool-policy.sh` の取得即実行の検知を起動役・プロセス置換・ヒアドキュメントで迂回できる
+
 - 症状: 0.11.1 で次が hook を素通りする (0.11.1 を as-built-atlas / ai-agent-training に push した後の自動セキュリティレビューで指摘、2026-11-12)
   - 起動役を前に置いた取得: `busybox wget -O- URL | sh` / `stdbuf -oL curl URL | sh` / `torsocks curl URL | sh` (0.11.0 までは拒否していた退行)
   - プロセス置換: `bash < <(curl URL)` / `curl URL > >(sh)`

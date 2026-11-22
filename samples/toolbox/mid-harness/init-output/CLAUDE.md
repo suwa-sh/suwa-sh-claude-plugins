@@ -1,3 +1,5 @@
+# Claude Code
+
 @AGENTS.md
 
 ## Claude Code だけの補足

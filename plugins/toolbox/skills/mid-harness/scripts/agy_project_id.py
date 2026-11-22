@@ -4,6 +4,7 @@ folderUri が <repo> に一致する project の ID を 1 つ返す。無けれ�
 
 usage: agy_project_id.py <repo>     (HOME を差し替えればテストできる)
 """
+
 from __future__ import annotations
 
 import json
@@ -19,22 +20,31 @@ def find(repo: str, home: pathlib.Path) -> list[str]:
         try:
             j = json.loads(f.read_text())
         except Exception:
-            print(f"agy_project_id: {f.name} を JSON として読めないので skip", file=sys.stderr)
+            print(
+                f"agy_project_id: {f.name} を JSON として読めないので skip",
+                file=sys.stderr,
+            )
             continue
-        # 個別エントリの型が壊れていても検索全体は止めない
-        pid = j.get("id") if isinstance(j, dict) else None
-        if not isinstance(pid, str) or not pid.strip():
-            continue
-        pr = j.get("projectResources")
-        resources = pr.get("resources") if isinstance(pr, dict) else None
-        if not isinstance(resources, list):
-            continue
-        for r in resources:
-            uri = r.get("folderUri") if isinstance(r, dict) else None
-            if isinstance(uri, str) and uri in want:
-                ids.append(pid)
-                break
+        pid = _matching_id(j, want)
+        if pid is not None:
+            ids.append(pid)
     return ids
+
+
+def _matching_id(j, want):
+    # 個別エントリの型が壊れていても検索全体は止めない
+    pid = j.get("id") if isinstance(j, dict) else None
+    if not isinstance(pid, str) or not pid.strip():
+        return None
+    pr = j.get("projectResources")
+    resources = pr.get("resources") if isinstance(pr, dict) else None
+    if not isinstance(resources, list):
+        return None
+    for r in resources:
+        uri = r.get("folderUri") if isinstance(r, dict) else None
+        if isinstance(uri, str) and uri in want:
+            return pid
+    return None
 
 
 def main() -> int:
@@ -43,7 +53,10 @@ def main() -> int:
         return 2
     ids = find(sys.argv[1], pathlib.Path.home())
     if len(ids) > 1:
-        print(f"agy_project_id: project が複数あります ({len(ids)})。先頭 {ids[0]} を使います", file=sys.stderr)
+        print(
+            f"agy_project_id: project が複数あります ({len(ids)})。先頭 {ids[0]} を使います",
+            file=sys.stderr,
+        )
     print(ids[0] if ids else "")
     return 0
 

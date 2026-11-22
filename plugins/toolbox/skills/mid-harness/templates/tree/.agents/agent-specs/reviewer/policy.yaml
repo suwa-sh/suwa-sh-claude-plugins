@@ -2,7 +2,7 @@ description: コードレビューを行い、修正せずに指摘だけを返�
 capabilities:
   read: true
   edit: false
-  shell: false      # Codex では表現できない (shell tool は無効化不可)。on_unmappable: skip で read-only sandbox のみ適用
+  shell: false # Codex では表現できない (shell tool は無効化不可)。on_unmappable: skip で read-only sandbox のみ適用
   delegate: false
   network: false
 model: null

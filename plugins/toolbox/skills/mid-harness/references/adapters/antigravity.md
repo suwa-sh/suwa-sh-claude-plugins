@@ -59,7 +59,7 @@ manifest の `matcher: Bash` は `*` に読み替える (ツール名は `run_co
 
 ### gen_adapters の管理範囲
 
-`.agents/hooks.json` の top-level キー `mid-harness` だけを所有する。他のキー (他の named hook) は保持する。所有判定は「その値に含まれる全 command が所有 ID `  # mid-harness` で終わる」こと (値の中に独自キーを足すと製品側の parser を壊し得るため)。同名キーが手書きなら `--adopt` 無しでは失敗する。
+`.agents/hooks.json` の top-level キー `mid-harness` だけを所有する。他のキー (他の named hook) は保持する。所有判定は「その値に含まれる全 command が所有 ID `"  # mid-harness"` で終わる」こと (値の中に独自キーを足すと製品側の parser を壊し得るため)。同名キーが手書きなら `--adopt` 無しでは失敗する。
 
 ## Agents
 

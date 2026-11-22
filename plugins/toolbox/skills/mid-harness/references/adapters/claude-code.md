@@ -34,7 +34,7 @@
 
 ### gen_adapters の管理範囲
 
-`.claude/settings.json` の `hooks.<Event>[].hooks[]` のうち、`command` が所有 ID `  # mid-harness` で**終わる** handler だけを差し替える (部分一致ではない)。同じ group の他の handler、他の group、`permissions` 等の他キーは触らない。
+`.claude/settings.json` の `hooks.<Event>[].hooks[]` のうち、`command` が所有 ID `"  # mid-harness"` で**終わる** handler だけを差し替える (部分一致ではない)。同じ group の他の handler、他の group、`permissions` 等の他キーは触らない。
 
 生成はすべて一時ディレクトリで行い、unmappable / 未所有ファイル / TOML 不正が 1 つでもあれば何も書き込まない。
 
