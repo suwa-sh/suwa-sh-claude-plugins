@@ -1,1 +1,7 @@
-{"sessionId": "s", "timestamp": 1, "cwd": "/tmp/x", "toolName": "bash", "toolArgs": {"command": "MID_HARNESS_DENY_ME", "description": "d"}}
+{
+  "sessionId": "s",
+  "timestamp": 1,
+  "cwd": "/tmp/x",
+  "toolName": "bash",
+  "toolArgs": { "command": "MID_HARNESS_DENY_ME", "description": "d" }
+}

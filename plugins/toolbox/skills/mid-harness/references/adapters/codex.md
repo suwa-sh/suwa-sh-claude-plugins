@@ -47,15 +47,15 @@
 
 hook の `command` は **セッションの cwd** で実行される (`codex-rs/hooks/src/events/pre_tool_use.rs` が `request.cwd` を hook process の cwd に渡す)。project root とは限らない (サブディレクトリから起動すると相対パスは壊れる) ため、生成コマンドは実行時に root を解決する:
 
-```
+```bash
 bash "$(git rev-parse --show-toplevel)/scripts/agent-hooks/<name>.sh"  # mid-harness
 ```
 
-`.git` を project root marker にする Codex の既定 (`project_root_markers`) と一致する。git 管理外のディレクトリでは解決できないので、その場合は manifest 側で絶対パスを使う運用 (未実装) になる。末尾の `# mid-harness` は所有 ID で、gen_adapters はこの ID を持つ handler だけを差し替える。
+`.git` を project root marker にする Codex の既定 (`project_root_markers`) と一致する。git 管理外のディレクトリでは解決できないので、その場合は manifest 側で絶対パスを使う運用 (未実装) になる。末尾の `"  # mid-harness"` は所有 ID で、gen_adapters はこの ID を持つ handler だけを差し替える。
 
 ### gen_adapters の管理範囲
 
-`.codex/hooks.json` の `hooks.<Event>[].hooks[]` のうち、`command` が所有 ID `  # mid-harness` で**終わる** handler だけを差し替える (部分一致ではない)。同じ group に同居する他の handler は保持し、group が空になったときだけ group を消す。
+`.codex/hooks.json` の `hooks.<Event>[].hooks[]` のうち、`command` が所有 ID `"  # mid-harness"` で**終わる** handler だけを差し替える (部分一致ではない)。同じ group に同居する他の handler は保持し、group が空になったときだけ group を消す。
 
 ## Skills
 

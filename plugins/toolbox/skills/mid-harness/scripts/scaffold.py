@@ -3,6 +3,7 @@
 
 usage: scaffold.py [<repo>] [--targets claude-code,codex] [--skills-mode generate|symlink|manual] [--manifest-only]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -11,27 +12,17 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import (MANIFEST_REL, SUPPORTED_TARGETS, TEMPLATES_DIR, die,  # noqa: E402
-                     resolve_repo, skill_version)
+from _common import (
+    MANIFEST_REL,
+    SUPPORTED_TARGETS,
+    TEMPLATES_DIR,
+    die,  # noqa: E402
+    resolve_repo,
+    skill_version,
+)
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("repo", nargs="?")
-    ap.add_argument("--targets", default="claude-code,codex")
-    ap.add_argument("--skills-mode", default="generate", choices=("generate", "symlink", "manual"))
-    ap.add_argument("--manifest-only", action="store_true",
-                    help="推奨ツリーを展開せず manifest だけ作る (apply で既存リポに段階導入するとき)")
-    args = ap.parse_args()
-
-    repo = resolve_repo(args.repo)
-    targets = [t.strip() for t in args.targets.split(",") if t.strip()]
-    for t in targets:
-        if t not in SUPPORTED_TARGETS:
-            die(f"unsupported target: {t} (対応: {', '.join(SUPPORTED_TARGETS)})")
-
-    created: list[str] = []
-    skipped: list[str] = []
+def _install_tree(repo, args, created, skipped):
     tree = TEMPLATES_DIR / "tree"
     for src in sorted(tree.rglob("*")):
         if src.is_dir() or args.manifest_only:
@@ -47,14 +38,41 @@ def main() -> int:
             dst.chmod(0o755)
         created.append(str(rel))
 
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("repo", nargs="?")
+    ap.add_argument("--targets", default="claude-code,codex")
+    ap.add_argument(
+        "--skills-mode", default="generate", choices=("generate", "symlink", "manual")
+    )
+    ap.add_argument(
+        "--manifest-only",
+        action="store_true",
+        help="推奨ツリーを展開せず manifest だけ作る (apply で既存リポに段階導入するとき)",
+    )
+    args = ap.parse_args()
+
+    repo = resolve_repo(args.repo)
+    targets = [t.strip() for t in args.targets.split(",") if t.strip()]
+    for t in targets:
+        if t not in SUPPORTED_TARGETS:
+            die(f"unsupported target: {t} (対応: {', '.join(SUPPORTED_TARGETS)})")
+
+    created: list[str] = []
+    skipped: list[str] = []
+    _install_tree(repo, args, created, skipped)
+
     manifest = repo / MANIFEST_REL
     if manifest.exists():
         skipped.append(str(MANIFEST_REL))
     else:
         text = (TEMPLATES_DIR / "harness.yaml").read_text()
-        text = (text.replace("__SKILL_VERSION__", skill_version())
-                    .replace("__TARGETS__", ", ".join(targets))
-                    .replace("__SKILLS_MODE__", args.skills_mode))
+        text = (
+            text.replace("__SKILL_VERSION__", skill_version())
+            .replace("__TARGETS__", ", ".join(targets))
+            .replace("__SKILLS_MODE__", args.skills_mode)
+        )
         manifest.parent.mkdir(parents=True, exist_ok=True)
         manifest.write_text(text)
         created.append(str(MANIFEST_REL))

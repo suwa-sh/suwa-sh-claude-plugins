@@ -3,6 +3,7 @@
 
 usage: inventory.py [<repo>] [--out inventory.json]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -92,20 +93,31 @@ def main() -> int:
         d = describe(repo, rel)
         if d is None:
             continue
-        d.update({"product": product, "surface": surface, "kind": kind,
-                  "contract": None, "target": None})
+        d.update(
+            {
+                "product": product,
+                "surface": surface,
+                "kind": kind,
+                "contract": None,
+                "target": None,
+            }
+        )
         assets.append(d)
 
     result = {
         "repo": str(repo),
         "has_manifest": (repo / MANIFEST_REL).exists(),
         "assets": assets,
-        "products_present": sorted({a["product"] for a in assets if a["product"] != "core"}),
+        "products_present": sorted(
+            {a["product"] for a in assets if a["product"] != "core"}
+        ),
     }
     text = json.dumps(result, ensure_ascii=False, indent=2)
     if args.out:
         Path(args.out).write_text(text + "\n")
-        print(f"wrote {args.out}: {len(assets)} assets, products={result['products_present']}, manifest={result['has_manifest']}")
+        print(
+            f"wrote {args.out}: {len(assets)} assets, products={result['products_present']}, manifest={result['has_manifest']}"
+        )
     else:
         print(text)
     return 0

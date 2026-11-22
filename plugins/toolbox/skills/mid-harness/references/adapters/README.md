@@ -11,7 +11,7 @@
 | GitHub Copilot CLI | `copilot` | `copilot.md` | 1.0.83 で skill 発見・repo hook 拒否を実測。`-p` の repo hook は `trustedFolders` (repo 単位) か `GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS=true` (invocation 単位) で有効化 → 詳細: [copilot-repo-hook-issue.md](copilot-repo-hook-issue.md) |
 | Antigravity CLI | `antigravity` | `antigravity.md` | 確認済み。workspace の project 登録 + trust が前提。hook stdin (toolCall) / cwd (`.agents/`) を実測 |
 
-### 製品差の早見表
+## 製品差の早見表
 
 | | hook 設定 | hook stdin の command | ブロック | hook の cwd | skills 正本 `.agents/skills` | agent 定義 |
 |---|---|---|---|---|---|---|

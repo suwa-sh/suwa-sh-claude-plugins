@@ -45,7 +45,7 @@ manifest の `matcher` は無視する (Cursor はイベントで絞る)。
 
 ### gen_adapters の管理範囲
 
-`.cursor/hooks.json` の `hooks.<event>[]` のうち、`command` が `  # mid-harness` で終わる entry だけを差し替える。`version` が無ければ 1 を書く。
+`.cursor/hooks.json` の `hooks.<event>[]` のうち、`command` が `"  # mid-harness"` で終わる entry だけを差し替える。`version` が無ければ 1 を書く。
 
 ## Skills
 

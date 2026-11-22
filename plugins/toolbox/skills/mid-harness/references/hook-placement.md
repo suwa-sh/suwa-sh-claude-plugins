@@ -55,7 +55,7 @@ repos:
       - id: gitleaks
 ```
 
-CI では gitleaks-action (https://github.com/gitleaks/gitleaks-action) を使い、ブランチ保護の必須チェックに指定する。どちらも、使う時点の公式 README で設定を確かめてから入れる。
+CI では gitleaks-action (<https://github.com/gitleaks/gitleaks-action>) を使い、ブランチ保護の必須チェックに指定する。どちらも、使う時点の公式 README で設定を確かめてから入れる。
 
 ## サンプル hook に検査を足すとき
 

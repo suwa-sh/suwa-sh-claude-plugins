@@ -22,22 +22,25 @@
 #       ブロック時に "deny <理由>" を追記する (受け入れテスト用)。
 set -u
 
-log() { [ -n "${MID_HARNESS_HOOK_LOG:-}" ] && printf '%s\n' "$*" >> "$MID_HARNESS_HOOK_LOG"; return 0; }
+log() {
+	[ -n "${MID_HARNESS_HOOK_LOG:-}" ] && printf '%s\n' "$*" >>"$MID_HARNESS_HOOK_LOG"
+	return 0
+}
 
-deny() {  # $1 = 理由コード, $2 = 人向けメッセージ
-  log "deny $1"
-  local msg
-  msg="$(printf '%s' "$2" | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')"
-  printf '{"decision":"deny","reason":%s,"permissionDecision":"deny","permissionDecisionReason":%s,"permission":"deny","user_message":%s,"agent_message":%s}\n' \
-    "$msg" "$msg" "$msg" "$msg"
-  echo "BLOCKED by pre-tool-policy: $2" >&2
-  exit 2
+deny() { # $1 = 理由コード, $2 = 人向けメッセージ
+	log "deny $1"
+	local msg
+	msg="$(printf '%s' "$2" | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')"
+	printf '{"decision":"deny","reason":%s,"permissionDecision":"deny","permissionDecisionReason":%s,"permission":"deny","user_message":%s,"agent_message":%s}\n' \
+		"$msg" "$msg" "$msg" "$msg"
+	echo "BLOCKED by pre-tool-policy: $2" >&2
+	exit 2
 }
 
 INPUT="$(cat)"
 
 # 正規化: stdout 1 行目 = tool 種別 (shell|other|unknown)、2 行目以降 = command (無ければ空)
-PARSED="$(printf '%s' "$INPUT" | python3 -c '
+if ! PARSED="$(printf '%s' "$INPUT" | python3 -c '
 import sys, json
 SHELL_TOOLS = {"Bash", "bash", "shell", "exec_command", "local_shell", "shell_command", "container.exec",
                "run_terminal_command", "run_terminal_cmd", "run_command", "powershell"}
@@ -69,24 +72,23 @@ if isinstance(cmd, str):
     print(cmd)
 elif isinstance(cmd, list) and all(isinstance(c, str) for c in cmd):
     print(" ".join(cmd))
-' 2>/dev/null)"
-if [ $? -ne 0 ]; then
-  log "invoked unknown"
-  exit 0                                   # 入力を解釈できなくても素通り (止めたいなら下の例 1 を有効にする)
+' 2>/dev/null)"; then
+	log "invoked unknown"
+	exit 0 # 入力を解釈できなくても素通り (止めたいなら下の例 1 を有効にする)
 fi
 
 TOOLKIND="$(printf '%s' "$PARSED" | sed -n '1p')"
 CMD="$(printf '%s' "$PARSED" | sed '1d')"
 log "invoked $TOOLKIND"
 
-[ "$TOOLKIND" = "shell" ] || exit 0       # shell 以外のツール (Edit など) は対象外
+[ "$TOOLKIND" = "shell" ] || exit 0 # shell 以外のツール (Edit など) は対象外
 
 # 受け入れテスト用の番兵: ログ出力が有効なときだけ、MID_HARNESS_DENY_ME を含むコマンドを拒否する。
 # verify.sh が「各製品の headless 実行で hook が呼ばれ、拒否の判定まで進むか」を確かめるために使う
 # (製品側で実行が実際に止まったかまでは見ない)。普段の運用では働かない。
 # (LLM は curl|sh のような危険コマンドの実行自体を断ることがあり、hook の配線検証に使えないため)
 if [ -n "${MID_HARNESS_HOOK_LOG:-}" ] && printf '%s' "$CMD" | grep -q 'MID_HARNESS_DENY_ME'; then
-  deny "test-sentinel" "test sentinel"
+	deny "test-sentinel" "test sentinel"
 fi
 
 # ---- 検査の例 (既定はすべて無効。使うときはコメントを外し、fixture を足して scripts/test_hook.sh で確かめる) ----

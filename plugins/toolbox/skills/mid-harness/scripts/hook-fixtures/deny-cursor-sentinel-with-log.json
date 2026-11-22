@@ -1,1 +1,8 @@
-{"command": "MID_HARNESS_DENY_ME", "cwd": "", "hook_event_name": "beforeShellExecution", "workspace_roots": ["/tmp/x"], "conversation_id": "c1", "sandbox": false}
+{
+  "command": "MID_HARNESS_DENY_ME",
+  "cwd": "",
+  "hook_event_name": "beforeShellExecution",
+  "workspace_roots": ["/tmp/x"],
+  "conversation_id": "c1",
+  "sandbox": false
+}
